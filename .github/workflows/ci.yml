@@ -1,0 +1,88 @@
+# Baseline CI pipeline (Steuereule).
+#
+# The Docker Compose files (docker-compose.yml + the ci/e2e overlays) are the
+# foundation this pipeline is built on. Right now the stack is a single idle
+# baseline container, so most stages are honest placeholders that pass — they
+# exist to define the pipeline shape and grow as real services are added back.
+#
+# Flow:  validate-compose ──► lint ──► build ──► smoke
+#                          └─► test ─┘
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# One in-flight run per ref; a newer push cancels the older run.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Real gate today: the three compose file combinations must parse.
+  validate-compose:
+    name: Validate compose
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: base
+        run: docker compose -f docker-compose.yml config
+      - name: base + ci overlay
+        run: docker compose -f docker-compose.yml -f docker-compose.ci.yml config
+      - name: base + e2e overlay
+        run: docker compose -f docker-compose.yml -f docker-compose.e2e.yml config
+
+  # Placeholder — wire up eslint/prettier here once the app packages land.
+  lint:
+    name: Lint
+    needs: validate-compose
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: lint (placeholder)
+        run: |
+          echo "TODO — no lintable packages yet; baseline is empty."
+
+  # Placeholder — wire up the unit/integration test runner here.
+  test:
+    name: Test
+    needs: validate-compose
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: test (placeholder)
+        run: |
+          echo "TODO — no test suite yet; baseline is empty."
+
+  # Placeholder — build the service images once Dockerfiles exist.
+  build:
+    name: Build
+    needs: [lint, test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: build (placeholder)
+        run: |
+          echo "TODO — no images to build yet; baseline is empty."
+
+  # Real gate today: bring the baseline stack up and prove the container lives.
+  smoke:
+    name: Smoke
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: up
+        run: docker compose up -d
+      - name: container is running
+        run: |
+          docker compose ps
+          test "$(docker compose ps --status running --quiet | wc -l)" -ge 1
+      - name: baseline responds to exec
+        run: docker compose exec -T baseline echo ok
+      - name: down
+        if: always()
+        run: docker compose down -v
