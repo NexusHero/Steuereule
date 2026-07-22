@@ -429,6 +429,23 @@ pick one of two honest paths:
 What never happens: a defect noticed and left with no trace, or quietly patched with no issue link
 so a future reader has no way to know it was ever a known risk.
 
+### Ticket state is always live — the board reflects reality
+
+The **SteuereuleBoard** is only useful if its columns are true, so every ticket's state is updated the
+*moment* it changes — never batched up later:
+
+- **Moved to `In progress` the moment work actually starts** on it (branch cut / first commit) — so
+  anyone glancing at the board sees exactly which tickets are being worked, and no one picks up a
+  ticket already in flight.
+- **`In review` while its PR is open** — the PR links the ticket (`Refs`/`Closes #NNN`).
+- **Closed / `Done` only once the work is merged** to `main` and checked in — never before. The merge
+  is the single signal that the requirement is delivered; the Requirements Register status (§1.1)
+  moves to `Done` in the same step.
+
+A ticket whose board state lags reality is a process defect, the same as a stale doc (§1.5): a ticket
+still in `Todo` while its PR is open, or left in `In progress` after merge, misleads everyone reading
+the board. The ticket, its Requirements Register row, and its PR are kept in agreement at all times.
+
 ### Reviewer Protocol — the gap most process docs leave implicit
 
 The PR template checklist is the *author's* self-check. The reviewer's job is a distinct pass, not
