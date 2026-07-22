@@ -1,0 +1,24 @@
+{
+  "name": "@steuereule/tokens",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "exports": {
+    ".": "./src/index.ts",
+    "./theme": "./dist/theme.ts",
+    "./css": "./dist/tokens.css"
+  },
+  "scripts": {
+    "build": "tsx build.ts",
+    "test": "vitest run",
+    "coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "style-dictionary": "^4.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "tsx": "^4.19.2"
+  }
+}

@@ -1,5 +1,8 @@
 node_modules/
 dist/
+# @steuereule/tokens ships its generated theme + CSS so consumers and the drift-guard
+# test work without a build step (ADR-050); keep this one dist/ tracked on purpose.
+!packages/tokens/dist/
 coverage/
 .turbo/
 *.tsbuildinfo
