@@ -21,6 +21,7 @@ ultimate-dev-process §1.2.
 | 0003 | Seed/demo data: single synthetic fixture seeded at container start | Accepted |
 | 0004 | Testing strategy & tooling (Vitest · jest-expo + RTL · Playwright · MSW) | Accepted |
 | 0005 | UI takeover delivered as vertical slices, walking-skeleton first | Accepted |
+| 0006 | German base + English as a switchable UI locale (refines 0002) | Accepted |
 
 See also the [Tech Radar](./tech-radar.md).
 
