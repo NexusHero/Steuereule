@@ -48,5 +48,17 @@ Architecture/Design Decision Records. Format: Kontext → Entscheidung → Konse
 | 041 | Fehlerfall: „Stimmt nicht"-Knopf; Verworfenes kehrt nur bei neuen Fakten wieder | Akzeptiert |
 | 042 | Archiv-Wache: abgegebene Jahre + Einspruchsfrist-Karte | Akzeptiert |
 | 036 | Details: CH-Scan-Maske, CHF führt, 5 Rentenarten, 10er-Katalog, Abfindungs-Rechner | Akzeptiert |
+| 043 | Ein Monorepo mit Turborepo (pnpm-Workspace, packages/ + apps/) | Akzeptiert |
+| 044 | Expo + React-Native-Web: eine App-Codebasis, Marketing separat (präzisiert 003) | Akzeptiert |
+| 045 | Nativer Funktionsumfang & Expo Dev Builds (Scan/OCR/Push/Biometrie in 1.0) | Akzeptiert |
+| 046 | Backend: NestJS + Fastify, nur API, REST/OpenAPI, better-auth | Akzeptiert |
+| 047 | Datenschicht: Prisma auf managed EU-Postgres, Redis | Akzeptiert |
+| 048 | KI-Architektur: Determinismus-Grenze + LangChain/LangGraph hinter Port, provider-agnostisch | Akzeptiert (Provider-Endwahl offen) |
+| 049 | Deployment: k3s auf Hetzner (EU) + managed Postgres | Akzeptiert |
+| 050 | Styling-Engine & Token-Pipeline: RN StyleSheet + Style Dictionary | Akzeptiert |
 
 _Neue ADRs entstehen aus der Grilling-Session als `research/adr/NNN-titel.md`._
+
+_ADR 043–050 stammen aus der **Architektur-/Deployment-Grilling-Session** (07/2026): sie legen
+den Technologie- und Deployment-Rahmen für die Umsetzung fest. Verbindliche Zusammenfassung im
+Nachtrag zu `guidelines/tech-direktion.md`._
