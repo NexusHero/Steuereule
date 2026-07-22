@@ -83,3 +83,65 @@ Referenz-Implementierungen: `ui_kits/app/Belege.jsx` (Gruppen, Serie, Duplikat),
 ## Nicht verhandelbar (überlebt jeden Stack-Wechsel)
 Jede Zahl trägt Herkunft · Violett ausschließlich KI · eine Primäraktion pro Screen ·
 du-Form, keine Emoji · Grenzen ehrlich benennen · Zustände vollständig definiert.
+
+---
+
+## Nachtrag 07/2026 — Architektur- & Deployment-Rahmen (aus Grilling-Session)
+
+Diese Session hat den Technologie- und Deployment-Rahmen festgelegt, damit die *Umsetzung*
+auf sicherem Boden startet. Details je Beschluss in `research/adr/043`–`050`.
+
+**Sprach-Konvention.** Englisch ist der Standard im gesamten Entwicklungsprozess — Code,
+Bezeichner, Kommentare, Commit-Messages, PR-Titel/-Beschreibungen, technische Doku. Die
+**App-/Produktsprache ist Deutsch** — bewusste Ausnahme, weil SteuerEule gezielt für den
+deutschsprachigen Raum ist: nutzerseitige Copy, Fachbegriffe (Anlage N, Herkunft, Fassung) und
+die du-Form bleiben Deutsch, ebenso das bestehende deutsche Produkt-/Design-Doku-Korpus
+(Guidelines, ADRs).
+
+**Struktur & Werkzeug** (ADR-043)
+- Ein **Monorepo** in diesem Repo, **pnpm + Turborepo**.
+  `packages/` = `tokens` · `ui` · `core` (UI-freier TS-Fachkern) ·
+  `apps/` = `mobile-web` (Expo) · `marketing` (React-DOM) · `api` (NestJS).
+
+**Frontend & Design-System** (ADR-044, 045, 050)
+- **Expo + React-Native-Web** — eine App-Codebasis für iOS/Android/Web; die **Marketing-Seite**
+  ist **separat** als React-DOM (SEO/First-Paint). Präzisiert ADR-003.
+- Das CSS-DS wird zur **visuellen Spezifikation** und einmalig in **RN `StyleSheet`** neu gebaut.
+  Tokens über **Style Dictionary** aus `_ds_manifest.json` → CSS-Variablen (Marketing) + typisiertes
+  RN-Theme (App). Keine Styling-Framework-Schicht (kein Tamagui/NativeWind) — die Funke-Effekte
+  sind bewusst handgemacht.
+- **Native (Expo Dev Builds):** Kamera-Scan + **On-Device-OCR**, Push, Biometrie, Secure-Store in
+  1.0; Dynamic Island & In-App-Purchase später; Web-Fallbacks (`Platform.OS==='web'`).
+- Adherence-Checks aus `_adherence.oxlintrc.json` in die CI (kein Hex/px außerhalb Tokens,
+  `data-ai`⇔`--ki`, Touch ≥ 44px, `prefers-reduced-motion`).
+
+**Backend & Daten** (ADR-046, 047)
+- **NestJS + Fastify-Adapter**, **nur API** (Web deployt getrennt). **REST + OpenAPI**.
+  **better-auth** (Google/Apple/E-Mail/Gast, Identität in eigener EU-Postgres).
+- **Prisma** auf **managed EU-Postgres**; **Redis** für Scan-Queues (BullMQ). Fachlogik & jede Zahl
+  deterministisch im Backend/`core`.
+
+**KI — LangChain hinter Port, provider-agnostisch** (ADR-048)
+- **Determinismus-Grenze:** `core` rechnet (alleinige Zahlenquelle); das LLM schließt nur über
+  *aufbereitete* Daten und **füllt ein vorgegebenes Schema** (`withStructuredOutput(zod)`) —
+  erfindet nie Zahlen. Architektur-Garantie, keine Prompt-Bitte.
+- Hinter einem **`KiService`-Port**; *innen* orchestriert **LangChain.js** (ersetzt den Vercel
+  AI SDK — keine zwei überlappenden Abstraktionen). Provider **agnostisch** über LangChains
+  Chat-Model-Integrationen (OpenAI/Anthropic/Gemini/OpenRouter, je eigener Key, aktiver Provider
+  per Config). **Agents & RAG via LangGraph.js** — v. a. der Eulen-Modus als Rechtsquellen-RAG
+  (ADR-039/040/042). Bewusst als **Portfolio-Schaustück** gewählt (gefragte Frameworks).
+- **Absicherung:** die aktuelle **v1.x-Linie** pinnen (Stand 07/2026: `langchain@1.5.3`,
+  `@langchain/core@1.2.3`, `@langchain/langgraph@1.4.8`, Provider-Pakete entsprechend) und strikt
+  hinter dem Port halten (LangChain.js ist mit v1.0 GA, aber jünger als Python — Updates
+  kontrolliert, Wechsel bliebe möglich).
+- **Datenschutz-Leitplanke:** US-Provider (OpenRouter/OpenAI/Gemini) nur für Dev/nicht-sensibel;
+  Produktion mit sensiblen Belegen → EU-getermt/EU-gehostet (Mistral-EU, Gemini via Vertex-EU,
+  Anthropic-EU). **Provider-Endwahl offen** bis zur Rechtsklärung — dank Agnostik ein Config-Wechsel.
+
+**Deployment** (ADR-049)
+- **k3s auf Hetzner** (EU/DE) — API/Redis/Web-Export/Marketing; **Postgres managed EU**. Das
+  kopierte myDevTime-`k8s/`-Gerüst wird auf Steuereule umgebaut.
+
+**Offene Klärung (nicht-technisch):** Datenschutz/Recht entscheidet über den KI-Provider —
+ZDR vs. Retention · `inference_geo`+AVV vs. GCP-Bindung · kein Training auf Nutzdaten · ob Belege
+überhaupt (auch EU) an ein LLM dürfen oder nur abgeleitete Felder.
