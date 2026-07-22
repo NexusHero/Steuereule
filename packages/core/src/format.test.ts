@@ -1,26 +1,26 @@
 import { describe, it, expect } from 'vitest'
-import { formatZahl, formatEuro, formatEuroCent } from './format'
+import { formatNumber, formatEuro, formatEuroCents } from './format'
 
 // NBSP that must sit between number and unit (design-system rule 10, qa-checkliste).
-const NBSP = ' '
+const NBSP = '\u00A0'
 
-describe('formatZahl', () => {
+describe('formatNumber', () => {
   it('thousands_grouped_with_de_separator', () => {
     // Arrange / Act / Assert — golden value from demo-daten.js.
-    expect(formatZahl(1407)).toBe('1.407')
+    expect(formatNumber(1407)).toBe('1.407')
   })
 
   it('below_thousand_unchanged', () => {
-    expect(formatZahl(60)).toBe('60')
+    expect(formatNumber(60)).toBe('60')
   })
 
   it('zero_is_zero', () => {
-    expect(formatZahl(0)).toBe('0')
+    expect(formatNumber(0)).toBe('0')
   })
 
   it('nonfinite_throws_range_error', () => {
-    expect(() => formatZahl(Number.NaN)).toThrow(RangeError)
-    expect(() => formatZahl(Number.POSITIVE_INFINITY)).toThrow(RangeError)
+    expect(() => formatNumber(Number.NaN)).toThrow(RangeError)
+    expect(() => formatNumber(Number.POSITIVE_INFINITY)).toThrow(RangeError)
   })
 })
 
@@ -39,16 +39,16 @@ describe('formatEuro', () => {
   })
 })
 
-describe('formatEuroCent', () => {
+describe('formatEuroCents', () => {
   it('two_decimals_with_nbsp', () => {
-    expect(formatEuroCent(1444)).toBe(`1.444,00${NBSP}€`)
+    expect(formatEuroCents(1444)).toBe(`1.444,00${NBSP}€`)
   })
 
   it('rounds_to_two_decimals', () => {
-    expect(formatEuroCent(1444.567)).toBe(`1.444,57${NBSP}€`)
+    expect(formatEuroCents(1444.567)).toBe(`1.444,57${NBSP}€`)
   })
 
   it('nonfinite_throws_range_error', () => {
-    expect(() => formatEuroCent(Number.NEGATIVE_INFINITY)).toThrow(RangeError)
+    expect(() => formatEuroCents(Number.NEGATIVE_INFINITY)).toThrow(RangeError)
   })
 })

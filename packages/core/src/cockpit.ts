@@ -1,65 +1,66 @@
 // REQ-001 — Cockpit refund estimate as a RANGE, never a point value until everything is
 // settled (product ADR-015). The range narrows as open items and conflicts are cleared;
 // only with zero open items AND zero open conflicts does it collapse to a point value.
-// Pure, deterministic, dependency-free (ultimate-dev-process §3.3/§3.4).
+// Pure, deterministic, dependency-free (ultimate-dev-process §3.3/§3.4). Identifiers and
+// messages are English (dev-process language); this module has no customer-facing text.
 
 /** Uncertainty added to the range per still-open interview/receipt item, in euro. */
-export const UNSICHERHEIT_PRO_ANGABE = 60
+export const UNCERTAINTY_PER_ITEM = 60
 
 /** Uncertainty added per open posten conflict (ADR-008 "± offen"), in euro. */
-export const UNSICHERHEIT_PRO_KONFLIKT = 100
+export const UNCERTAINTY_PER_CONFLICT = 100
 
-export interface Spanne {
-  readonly von: number
-  readonly bis: number
+export interface EstimateRange {
+  readonly from: number
+  readonly to: number
 }
 
-export interface CockpitEingabe {
+export interface CockpitInput {
   /** Base estimate before the range is spread, in euro (>= 0). */
-  readonly schaetzung: number
+  readonly estimate: number
   /** Number of still-open items (>= 0 integer). */
-  readonly offeneAngaben: number
+  readonly openItems: number
   /** Number of open posten conflicts (ADR-008). Defaults to 0. */
-  readonly offeneKonflikte?: number
+  readonly openConflicts?: number
   /** Override for the per-item uncertainty (testing / rule tuning). */
-  readonly unsicherheitProAngabe?: number
+  readonly uncertaintyPerItem?: number
   /** Override for the per-conflict uncertainty. */
-  readonly unsicherheitProKonflikt?: number
+  readonly uncertaintyPerConflict?: number
 }
 
-function pruefeEingabe(e: CockpitEingabe): void {
-  if (!Number.isFinite(e.schaetzung) || e.schaetzung < 0) {
-    throw new RangeError('schaetzung muss eine nicht-negative endliche Zahl sein')
+function validateInput(input: CockpitInput): void {
+  if (!Number.isFinite(input.estimate) || input.estimate < 0) {
+    throw new RangeError('estimate must be a non-negative finite number')
   }
-  if (!Number.isInteger(e.offeneAngaben) || e.offeneAngaben < 0) {
-    throw new RangeError('offeneAngaben muss eine nicht-negative ganze Zahl sein')
+  if (!Number.isInteger(input.openItems) || input.openItems < 0) {
+    throw new RangeError('openItems must be a non-negative integer')
   }
-  const konflikte = e.offeneKonflikte ?? 0
-  if (!Number.isInteger(konflikte) || konflikte < 0) {
-    throw new RangeError('offeneKonflikte muss eine nicht-negative ganze Zahl sein')
+  const conflicts = input.openConflicts ?? 0
+  if (!Number.isInteger(conflicts) || conflicts < 0) {
+    throw new RangeError('openConflicts must be a non-negative integer')
   }
 }
 
 /** Compute the Cockpit estimate range from open items and conflicts (ADR-015). */
-export function spanneFuerCockpit(e: CockpitEingabe): Spanne {
-  pruefeEingabe(e)
-  const konflikte = e.offeneKonflikte ?? 0
-  const proAngabe = e.unsicherheitProAngabe ?? UNSICHERHEIT_PRO_ANGABE
-  const proKonflikt = e.unsicherheitProKonflikt ?? UNSICHERHEIT_PRO_KONFLIKT
+export function cockpitRange(input: CockpitInput): EstimateRange {
+  validateInput(input)
+  const conflicts = input.openConflicts ?? 0
+  const perItem = input.uncertaintyPerItem ?? UNCERTAINTY_PER_ITEM
+  const perConflict = input.uncertaintyPerConflict ?? UNCERTAINTY_PER_CONFLICT
 
   // Point value only when nothing is open (ADR-015).
-  if (e.offeneAngaben === 0 && konflikte === 0) {
-    return { von: e.schaetzung, bis: e.schaetzung }
+  if (input.openItems === 0 && conflicts === 0) {
+    return { from: input.estimate, to: input.estimate }
   }
 
-  const unsicherheit = e.offeneAngaben * proAngabe + konflikte * proKonflikt
+  const uncertainty = input.openItems * perItem + conflicts * perConflict
   return {
-    von: Math.max(0, e.schaetzung - unsicherheit),
-    bis: e.schaetzung + unsicherheit,
+    from: Math.max(0, input.estimate - uncertainty),
+    to: input.estimate + uncertainty,
   }
 }
 
 /** True once the range has collapsed to a single value (nothing open). */
-export function istPunktwert(s: Spanne): boolean {
-  return s.von === s.bis
+export function isPointValue(range: EstimateRange): boolean {
+  return range.from === range.to
 }
