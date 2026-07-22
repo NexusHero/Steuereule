@@ -1,0 +1,16 @@
+<!-- @dsCard group="Spacing" viewport="700x180" name="Radien & Konturen" subtitle="12 / 20 / 28 / Pille — Konturen 2px Tinte" -->
+<!DOCTYPE html>
+<html lang="de">
+<head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css">
+<style>
+body { padding: 20px 24px; display: flex; gap: 16px; align-items: center; }
+.k { background: var(--karte); border: var(--kontur) solid var(--tinte); box-shadow: var(--schatten-hart-s); width: 130px; height: 90px; display: flex; align-items: flex-end; padding: 8px; }
+.k code { font-family: var(--schrift-mono); font-size: 11px; color: var(--tinte-2); }
+</style></head>
+<body>
+<div class="k" style="border-radius: var(--radius-s);"><code>--radius-s 12</code></div>
+<div class="k" style="border-radius: var(--radius);"><code>--radius 20</code></div>
+<div class="k" style="border-radius: var(--radius-lg);"><code>--radius-lg 28</code></div>
+<div class="k" style="border-radius: var(--radius-pille); height: 52px; align-items: center; justify-content: center;"><code>Pille</code></div>
+</body>
+</html>

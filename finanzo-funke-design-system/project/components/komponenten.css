@@ -1,0 +1,291 @@
+/* ============================================================
+   Funke — Komponenten-Klassen (fk-*)
+   Von den React-Komponenten in components/ genutzt.
+   Muster: 2px Tinte-Kontur, harter Versatz-Schatten,
+   Hover hebt an, Druck drückt auf den Schatten.
+   KI-Territorium (.fk-ai-*) ist der EINZIGE Ort mit --ki.
+   ============================================================ */
+
+/* ---------- Button ---------- */
+.fk-btn {
+  display: flex; justify-content: center; align-items: center; gap: var(--s2);
+  width: 100%; min-height: 52px; padding: 0 var(--s5);
+  background: var(--funke); color: var(--tinte);
+  border: var(--kontur) solid var(--tinte); border-radius: var(--radius-pille);
+  font-weight: var(--gewicht-schwer); font-size: var(--text-m);
+  box-shadow: var(--schatten-hart);
+  transition: transform var(--t-schnell) var(--zack), box-shadow var(--t-schnell) var(--zack);
+}
+.fk-btn:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 var(--tinte); }
+.fk-btn:active { transform: translate(4px, 4px); box-shadow: 0 0 0 var(--tinte); }
+.fk-btn.ghost { background: var(--karte); }
+.fk-btn.leise { background: var(--funke-weich); box-shadow: var(--schatten-hart-s); }
+.fk-btn.nacht { background: var(--nacht); color: var(--funke); }
+.fk-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: var(--schatten-hart); }
+
+/* ---------- Chip & Pille ---------- */
+.fk-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: var(--text-s); font-weight: var(--gewicht-fett);
+  min-height: 36px; padding: 4px 14px;
+  background: var(--karte); color: var(--tinte);
+  border: var(--kontur) solid var(--tinte); border-radius: var(--radius-pille);
+  box-shadow: var(--schatten-hart-s);
+  transition: transform var(--t-schnell) var(--zack), box-shadow var(--t-schnell) var(--zack);
+}
+button.fk-chip:hover { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--tinte); }
+button.fk-chip:active { transform: translate(2px, 2px); box-shadow: 0 0 0 var(--tinte); }
+.fk-chip.src { background: var(--funke-weich); }
+.fk-chip.aktiv, .fk-chip[aria-pressed="true"] { background: var(--funke); }
+.fk-chip.pro { background: var(--nacht); color: var(--funke); }
+.fk-pill {
+  display: inline-flex; align-items: center;
+  font-family: var(--schrift-mono); font-size: var(--text-xs);
+  letter-spacing: var(--spationierung-label); text-transform: uppercase;
+  color: var(--tinte); background: var(--karte);
+  border: var(--kontur) solid var(--tinte); border-radius: var(--radius-pille);
+  padding: 4px 12px;
+}
+
+/* ---------- Sticker (Erfolgsmoment) ---------- */
+.fk-sticker {
+  display: inline-block; transform: rotate(-2.5deg);
+  background: var(--funke); color: var(--tinte);
+  border: var(--kontur) solid var(--tinte); border-radius: var(--radius-s);
+  box-shadow: var(--schatten-hart-s);
+  font-weight: var(--gewicht-schwer); padding: 2px 10px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .fk-sticker { animation: funke-pop var(--t-auftritt) var(--feder) both; }
+}
+
+/* ---------- Karte ---------- */
+/* Ruhe-Hierarchie: normale Karten flüstern (feine Linie, kein Schatten) —
+   nur Held-Karten (.nacht, .held) und KI-Karten tragen Kontur + Schatten. */
+.fk-karte {
+  background: var(--karte); border: 1.5px solid var(--linie-weich);
+  border-radius: var(--radius); padding: var(--s4);
+  box-shadow: none; margin-bottom: var(--s4);
+}
+.fk-karte.nacht, .fk-karte.held {
+  border: var(--kontur) solid var(--tinte);
+  box-shadow: var(--schatten-hart);
+}
+.fk-karte.nacht { background: var(--nacht); color: var(--nacht-text); }
+
+/* ---------- Formulare ---------- */
+.fk-input {
+  width: 100%; min-height: 52px; padding: var(--s3) var(--s4);
+  font: inherit; color: var(--tinte); background: var(--karte);
+  border: var(--kontur) solid var(--tinte); border-radius: var(--radius-s);
+}
+.fk-input:focus { outline: none; box-shadow: var(--schatten-hart-s); }
+.fk-input::placeholder { color: var(--tinte-2); }
+.fk-feld { margin-bottom: var(--s3); }
+.fk-feld label { display: block; font-size: var(--text-s); font-weight: var(--gewicht-fett); margin-bottom: var(--s1); }
+.fk-fehler-text { color: var(--fehler); font-size: var(--text-s); margin: var(--s1) 0 0; }
+.fk-opt {
+  display: block; width: 100%; text-align: left; min-height: 52px;
+  padding: var(--s4); margin-bottom: var(--s3);
+  font-weight: var(--gewicht-fett); font-size: var(--text-m);
+  background: var(--karte); border: var(--kontur) solid var(--tinte);
+  border-radius: var(--radius-s);
+  transition: transform var(--t-schnell) var(--zack), box-shadow var(--t-schnell) var(--zack);
+}
+.fk-opt:hover { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--tinte); }
+.fk-opt[aria-pressed="true"] { background: var(--funke); box-shadow: var(--schatten-hart-s); }
+.fk-schalter-zeile {
+  display: flex; justify-content: space-between; align-items: center; gap: var(--s3);
+  padding: var(--s3) 0; border-bottom: 1.5px solid var(--linie-weich);
+}
+.fk-schalter-zeile .tt { font-weight: var(--gewicht-fett); font-size: 15px; }
+.fk-schalter-zeile .td { font-size: var(--text-s); color: var(--tinte-2); }
+.fk-schalter {
+  width: 56px; height: 32px; border-radius: var(--radius-pille);
+  background: var(--karte); border: var(--kontur) solid var(--tinte);
+  position: relative; flex: none; transition: background var(--t-schnell);
+}
+.fk-schalter[aria-checked="true"] { background: var(--funke); }
+.fk-schalter i {
+  position: absolute; top: 2px; left: 2px; width: 24px; height: 24px;
+  border-radius: 50%; background: var(--tinte);
+  transition: left var(--t-flott) var(--feder);
+}
+.fk-schalter[aria-checked="true"] i { left: 26px; }
+
+/* ---------- KI-Territorium (einziger Ort mit --ki) ---------- */
+.fk-ai-dot {
+  width: 24px; height: 24px; border-radius: 50%;
+  background: var(--ki); color: #fff;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-weight: var(--gewicht-schwer); font-size: 13px; flex: none;
+}
+.fk-ai-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: var(--text-xs); font-weight: var(--gewicht-fett);
+  border-radius: var(--radius-pille); padding: 4px 12px 4px 6px;
+  background: var(--ki-weich); color: var(--ki-tinte);
+  border: var(--kontur) solid var(--ki);
+}
+.fk-ai-bar {
+  display: flex; align-items: center; gap: var(--s3); width: 100%; text-align: left;
+  background: var(--ki-weich); border: var(--kontur) solid var(--ki);
+  border-radius: var(--radius); padding: var(--s3) var(--s4); margin-top: var(--s3);
+  box-shadow: var(--schatten-ki); color: var(--ki-tinte); font-weight: var(--gewicht-halb);
+  transition: transform var(--t-schnell) var(--zack), box-shadow var(--t-schnell) var(--zack);
+}
+.fk-ai-bar:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 var(--ki); }
+.fk-ai-bar:active { transform: translate(4px, 4px); box-shadow: 0 0 0 var(--ki); }
+.fk-ai-bar span { font-size: var(--text-s); }
+.fk-ai-karte {
+  background: var(--ki-weich); border: var(--kontur) solid var(--ki);
+  border-radius: var(--radius); padding: var(--s4); margin-bottom: var(--s4);
+  box-shadow: var(--schatten-ki);
+}
+.fk-ai-quota { height: 8px; border-radius: 4px; background: #fff; border: 1.5px solid var(--ki-linie); overflow: hidden; }
+.fk-ai-quota > i { display: block; height: 100%; background: var(--ki); }
+
+/* ---------- Feedback ---------- */
+.fk-banner {
+  display: flex; gap: var(--s2); align-items: flex-start;
+  border-radius: var(--radius-s); padding: var(--s3) var(--s4);
+  margin-bottom: var(--s3); font-size: var(--text-s);
+  border: var(--kontur) solid;
+}
+.fk-banner.warnung { background: var(--warn-weich); border-color: var(--warn); }
+.fk-banner.gefahr { background: var(--fehler-weich); border-color: var(--fehler); }
+.fk-toast {
+  position: fixed; bottom: 104px; left: 50%; transform: translateX(-50%);
+  background: var(--nacht); color: var(--nacht-text);
+  border: var(--kontur) solid var(--tinte); border-radius: var(--radius-pille);
+  box-shadow: 3px 3px 0 var(--funke);
+  padding: var(--s2) var(--s5); font-size: var(--text-s); font-weight: var(--gewicht-fett); z-index: 30;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .fk-toast { animation: funke-pop var(--t-flott) var(--feder) both; }
+}
+.fk-ring {
+  width: 104px; height: 104px; border-radius: 50%; flex: none;
+  border: var(--kontur) solid var(--tinte);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: var(--schatten-hart-s);
+}
+.fk-ring > div {
+  width: 72px; height: 72px; border-radius: 50%;
+  background: var(--karte); border: var(--kontur) solid var(--tinte);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--schrift-display); font-weight: var(--gewicht-schwer); font-size: var(--text-l);
+}
+.fk-balken {
+  flex: 1; height: 12px; border-radius: var(--radius-pille);
+  background: var(--karte); border: 1.5px solid var(--tinte); overflow: hidden;
+}
+.fk-balken > i { display: block; height: 100%; background: var(--funke); border-radius: 0 var(--radius-pille) var(--radius-pille) 0; transition: width var(--t-auftritt) var(--zack); }
+
+/* ---------- Overlay / Sheet ---------- */
+.fk-overlay {
+  position: fixed; inset: 0; background: rgba(25, 27, 18, 0.55); z-index: 20;
+  display: flex; align-items: flex-end; justify-content: center;
+  /* Typo-Reset: Sheets erben nie den Trigger-Kontext (z. B. mono-label) */
+  font-family: var(--schrift-text); font-weight: 400; font-size: var(--text-m);
+  text-transform: none; letter-spacing: normal; color: var(--tinte); text-align: left;
+}
+.fk-sheet {
+  background: var(--grund); border: var(--kontur) solid var(--tinte); border-bottom: none;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  width: 100%; max-width: 480px; max-height: 92%; overflow-y: auto;
+  padding: var(--s4) var(--s4) var(--s6);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .fk-sheet { animation: funke-auftritt var(--t-auftritt) var(--feder) both; }
+}
+.fk-sheet-grip { width: 44px; height: 5px; border-radius: 3px; background: var(--tinte); margin: 0 auto var(--s4); }
+.fk-sheet-kopf { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--s3); }
+.fk-sheet-kopf h2 { font-size: var(--text-xl); }
+.fk-schliessen { min-width: 44px; min-height: 44px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+
+/* ---------- KI-Kennzeichnung Stufe 3: befüllte Werte ---------- */
+.fk-ki-wert {
+  display: inline-flex; align-items: center; gap: 6px;
+  border-bottom: 2px dashed var(--ki); padding-bottom: 1px;
+}
+
+/* Balken füllen sich weich, wenn sich Werte ändern */
+.fk-balken i { transition: width 0.55s var(--zack); }
+@media (min-width: 900px) {
+  .fk-overlay { align-items: center; }
+  .fk-sheet { border-radius: var(--radius-lg); border-bottom: var(--kontur) solid var(--tinte); max-height: 84%; box-shadow: var(--schatten-hart-l); }
+}
+
+/* ---------- Wissen: „Die Eule erklärt's" ---------- */
+/* Gepunktet = nachschlagbar (Fakt). Gestrichelt-Violett bleibt exklusiv KI. */
+.fk-begriff {
+  display: inline; padding: 0; font: inherit; color: inherit; text-align: inherit;
+  border-bottom: 2px dotted var(--tinte); cursor: help;
+  transition: background var(--t-schnell) var(--zack), border-color var(--t-schnell) var(--zack);
+}
+.fk-begriff:hover { background: var(--funke-weich); border-bottom-color: var(--tinte); border-bottom-style: solid; }
+.fk-begriff:active { background: var(--funke); }
+.fk-begriff-kopf { display: flex; align-items: center; gap: 10px; margin: -4px 0 10px; }
+.fk-begriff-text { margin: 0 0 14px; font-size: 15px; line-height: 1.55; }
+.fk-begriff-beispiel {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+  background: var(--funke-weich); border: var(--kontur) solid var(--tinte);
+  border-radius: var(--radius-s); padding: 10px 14px; margin-bottom: 12px; font-size: 14px;
+}
+.fk-begriff-frage {
+  display: block; width: 100%; text-align: left; font-size: 14px; font-weight: 700;
+  padding: 12px 14px; min-height: 48px; border: 1.5px solid var(--linie-weich);
+  border-radius: var(--radius-s); background: var(--karte);
+  transition: transform var(--t-schnell) var(--zack), box-shadow var(--t-schnell) var(--zack);
+}
+.fk-begriff-frage:hover { transform: translate(-1px, -1px); box-shadow: var(--schatten-hart-s); border-color: var(--tinte); }
+.fk-begriff-frage:active { transform: translate(1px, 1px); box-shadow: none; }
+
+/* ---------- Navigation ---------- */
+.fk-tabbar {
+  position: fixed; bottom: var(--s3); left: var(--s3); right: var(--s3);
+  display: flex; justify-content: center; z-index: 10;
+}
+.fk-tabbar-inner {
+  position: relative;
+  display: flex; width: 100%; max-width: 440px; gap: 2px;
+  background: var(--karte); border: var(--kontur) solid var(--tinte);
+  border-radius: var(--radius-pille); box-shadow: var(--schatten-hart);
+  padding: 6px;
+}
+/* Die wandernde Limetten-Pille — gleitet mit Feder-Overshoot hinter den aktiven Tab */
+.fk-tab-pille {
+  position: absolute; top: 0; left: 0; z-index: 0;
+  background: var(--funke); border: 1.5px solid var(--tinte);
+  border-radius: var(--radius-pille); box-sizing: border-box;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .fk-tab-pille { transition: transform 0.42s var(--feder), width 0.42s var(--feder), height 0.42s var(--feder); }
+  .fk-tab[aria-current="page"] svg { animation: funke-pop 0.38s var(--feder); }
+}
+.fk-tab {
+  position: relative; z-index: 1;
+  flex: 1; min-height: 52px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 2px;
+  font-size: 11px; font-weight: var(--gewicht-fett); color: var(--tinte-2);
+  border-radius: var(--radius-pille);
+  transition: color var(--t-schnell);
+}
+.fk-tab svg { width: 22px; height: 22px; }
+.fk-tab[aria-current="page"] { color: var(--tinte); }
+/* Fallback ohne JS-Messung (statische Karten): Pille fehlt → aktiver Tab färbt sich selbst */
+.fk-tabbar-inner:not(:has(.fk-tab-pille)) .fk-tab[aria-current="page"] { background: var(--funke); border: 1.5px solid var(--tinte); }
+
+/* Tablet/Desktop: Tab-Bar wird zur linken Rail */
+@media (min-width: 1000px) {
+  .fk-tabbar {
+    left: var(--s4); right: auto; bottom: auto; top: 50%;
+    transform: translateY(-50%);
+  }
+  .fk-tabbar-inner {
+    flex-direction: column; width: auto; max-width: none;
+    border-radius: var(--radius-lg); padding: 8px;
+  }
+  .fk-tab { flex: none; min-width: 84px; padding: 10px 12px; font-size: 12px; }
+}

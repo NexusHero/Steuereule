@@ -1,0 +1,36 @@
+<!-- @dsCard group="Components" viewport="700x360" name="Systemzustände" subtitle="Offline, Server-Fehler, Sitzung abgelaufen, Scan fehlgeschlagen — jedes Muster mit nächstem Schritt" -->
+<!DOCTYPE html>
+<html lang="de">
+<head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css">
+<style>
+body { padding: 16px 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-content: start; }
+.z { border: var(--kontur) solid; border-radius: var(--radius-s); padding: 12px 14px; font-size: 13px; }
+.z b { display: block; font-size: 14px; margin-bottom: 2px; }
+.z span { color: var(--tinte-2); }
+.z .cta { display: inline-block; margin-top: 8px; font-weight: 700; text-decoration: underline; font-size: 13px; }
+.spec { grid-column: 1 / -1; font-family: var(--schrift-mono); font-size: 11px; color: var(--tinte-2); line-height: 1.8; }
+</style></head>
+<body>
+<div class="z" style="background: var(--warn-weich); border-color: var(--warn);">
+  <b>Offline</b>
+  <span>Kein Netz — alles Erfasste ist sicher auf dem Gerät. Wir synchronisieren, sobald du wieder online bist.</span>
+  <span class="cta">Weiter offline arbeiten</span>
+</div>
+<div class="z" style="background: var(--fehler-weich); border-color: var(--fehler);">
+  <b>Server nicht erreichbar</b>
+  <span>Das liegt an uns, nicht an dir. Deine Angaben sind gespeichert — probier es in ein paar Minuten wieder.</span>
+  <span class="cta">Nochmal versuchen</span>
+</div>
+<div class="z" style="background: var(--karte); border-color: var(--tinte);">
+  <b>Sitzung abgelaufen</b>
+  <span>Zur Sicherheit ausgeloggt (Steuerdaten). Kurz entsperren — genau da weitermachen, wo du warst.</span>
+  <span class="cta">Mit Face ID entsperren</span>
+</div>
+<div class="z" style="background: var(--fehler-weich); border-color: var(--fehler);">
+  <b>Scan fehlgeschlagen</b>
+  <span>Wir konnten den Beleg nicht lesen — zu dunkel? Der Beleg bleibt als Foto gespeichert, nichts ist verloren.</span>
+  <span class="cta">Nochmal fotografieren · Manuell eintragen</span>
+</div>
+<p class="spec">Regeln: jeder Systemzustand nennt (1) was passiert ist, ohne Schuldzuweisung an den Nutzer, (2) was mit den Daten ist — IMMER, bei einer Steuer-App zuerst — und (3) genau einen nächsten Schritt. Semantik-Farben (warn/fehler), NIE Violett. Banner-Komponente `art="warnung|gefahr"`.</p>
+</body>
+</html>

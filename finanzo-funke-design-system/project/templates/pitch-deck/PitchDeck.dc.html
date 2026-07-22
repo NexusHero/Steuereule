@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<!-- @template name="Pitch-Deck" description="Vier Folien-Typen im Funke-Look: Titel (Nacht), Abschnitt (Limette), Inhalt (Papier), große Zahl" -->
+<helmet><script src="./ds-base.js"></script></helmet>
+
+<section data-screen-label="titel" style="width:1280px;height:720px;box-sizing:border-box;background:#191b12;color:#f4f2e9;padding:72px 88px;display:flex;flex-direction:column;justify-content:space-between;border-radius:8px;margin:0 auto 28px;">
+  <div style="display:flex;align-items:center;gap:14px;">
+    <img src="../../assets/marke-funke.svg" width="44" height="44" alt="SteuerEule Bildmarke">
+    <span style="font-family:var(--schrift-display);font-weight:800;font-size:30px;letter-spacing:-0.03em;">Steuer<b style="color:#c9f229;">Eule</b></span>
+  </div>
+  <h1 style="font-family:var(--schrift-display);font-weight:800;font-size:104px;line-height:1.02;letter-spacing:-0.03em;margin:0;">Steuern? <span style="display:inline-block;transform:rotate(-2deg);background:#c9f229;color:#191b12;border:2px solid #f4f2e9;border-radius:14px;padding:0 22px;">Zack,</span><br>erledigt.</h1>
+  <div style="display:flex;justify-content:space-between;font-family:var(--schrift-mono);font-size:15px;letter-spacing:0.08em;text-transform:uppercase;opacity:0.6;">
+    <span>Pitch · 2026</span>
+    <span>steuereule.app</span>
+  </div>
+</section>
+
+<section data-screen-label="abschnitt" style="width:1280px;height:720px;box-sizing:border-box;background:#c9f229;color:#191b12;padding:72px 88px;display:flex;flex-direction:column;justify-content:space-between;border:2px solid #191b12;border-radius:8px;margin:0 auto 28px;">
+  <span style="font-family:var(--schrift-mono);font-size:16px;letter-spacing:0.08em;text-transform:uppercase;">Kapitel</span>
+  <div>
+    <div style="font-family:var(--schrift-display);font-weight:800;font-size:200px;line-height:0.9;letter-spacing:-0.04em;">01</div>
+    <h2 style="font-family:var(--schrift-display);font-weight:800;font-size:64px;letter-spacing:-0.03em;margin:12px 0 0;">Das Problem</h2>
+  </div>
+  <p style="font-size:22px;font-weight:600;max-width:640px;margin:0;">Steuererklärungen fühlen sich an wie Formulare aus 1998 — dabei liegen im Schnitt 1.100 € Erstattung drin.</p>
+</section>
+
+<section data-screen-label="inhalt" style="width:1280px;height:720px;box-sizing:border-box;background:#f4f2e9;color:#191b12;padding:72px 88px;display:flex;flex-direction:column;gap:40px;border:2px solid #191b12;border-radius:8px;margin:0 auto 28px;">
+  <div>
+    <span style="font-family:var(--schrift-mono);font-size:14px;letter-spacing:0.08em;text-transform:uppercase;color:#5f6353;">So funktioniert's</span>
+    <h2 style="font-family:var(--schrift-display);font-weight:800;font-size:52px;letter-spacing:-0.03em;margin:8px 0 0;">Drei Schritte, keine Formulare.</h2>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;flex:1;">
+    <div style="background:#ffffff;border:2px solid #191b12;border-radius:20px;box-shadow:4px 4px 0 #191b12;padding:28px;">
+      <div style="font-family:var(--schrift-display);font-weight:800;font-size:40px;">1</div>
+      <h3 style="font-size:24px;font-weight:800;margin:10px 0 8px;">Reinwerfen</h3>
+      <p style="font-size:17px;color:#5f6353;margin:0;">Belege scannen — wir denken in Dokumenten, nicht in Zeilen.</p>
+    </div>
+    <div style="background:#ece6ff;border:2px solid #7c5cff;border-radius:20px;box-shadow:4px 4px 0 #7c5cff;padding:28px;" data-ai="true">
+      <div style="width:36px;height:36px;border-radius:50%;background:#7c5cff;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;">B</div>
+      <h3 style="font-size:24px;font-weight:800;margin:10px 0 8px;color:#4630b8;">Prüfen</h3>
+      <p style="font-size:17px;color:#4630b8;margin:0;">Der Berater schlägt vor und sagt immer, <b>weil</b> — du entscheidest.</p>
+    </div>
+    <div style="background:#ffffff;border:2px solid #191b12;border-radius:20px;box-shadow:4px 4px 0 #191b12;padding:28px;">
+      <div style="font-family:var(--schrift-display);font-weight:800;font-size:40px;">3</div>
+      <h3 style="font-size:24px;font-weight:800;margin:10px 0 8px;">Übertragen</h3>
+      <p style="font-size:17px;color:#5f6353;margin:0;">Zeile für Zeile mit Herkunft — bald ERiC-geprüft direkt ans Amt.</p>
+    </div>
+  </div>
+</section>
+
+<section data-screen-label="zahl" style="width:1280px;height:720px;box-sizing:border-box;background:#ffffff;color:#191b12;padding:72px 88px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:10px;border:2px solid #191b12;border-radius:8px;margin:0 auto;">
+  <span style="font-family:var(--schrift-mono);font-size:16px;letter-spacing:0.08em;text-transform:uppercase;color:#5f6353;">Durchschnittliche Erstattung</span>
+  <div style="font-family:var(--schrift-display);font-weight:800;font-size:220px;line-height:1;letter-spacing:-0.04em;font-variant-numeric:tabular-nums;">1.100 €</div>
+  <span style="display:inline-block;transform:rotate(-2.5deg);background:#c9f229;border:2px solid #191b12;border-radius:12px;box-shadow:2px 2px 0 #191b12;font-weight:800;font-size:26px;padding:4px 18px;">und oft mehr</span>
+  <p style="font-size:16px;color:#5f6353;margin:24px 0 0;">Quelle: Statistisches Bundesamt, Veranlagungen — jede Zahl im Deck trägt ihre Herkunft.</p>
+</section>
+
+</x-dc>
+</body>
+</html>

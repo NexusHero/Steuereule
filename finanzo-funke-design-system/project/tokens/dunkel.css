@@ -1,0 +1,39 @@
+/* ============================================================
+   Funke — Dunkles Design
+   Aktivierung: <html data-theme="dunkel">. Limette bleibt Limette;
+   Tinte und Flächen tauschen. KI-Violett bleibt exklusiv KI.
+   ============================================================ */
+[data-theme="dunkel"] {
+  --grund: #12140c;
+  --karte: #1d2013;
+  --tinte: #f2f0e3;
+  --tinte-2: #a9ad99;
+  --linie: #f2f0e3;
+  --linie-weich: #33371f;
+
+  --funke-weich: #2b3312;
+  --funke-tinte: #d9f077;
+
+  --nacht: #0d0f08;
+  --nacht-karte: #1d2013;
+  --nacht-text: #f4f2e9;
+
+  --ki-weich: #251d4f;
+  --ki-linie: #5a48c4;
+  --ki-tinte: #cfc4ff;
+
+  --ok-weich: #143020;
+  --warn-weich: #392a10;
+  --fehler-weich: #3b1512;
+}
+
+/* Tinte auf Limette bleibt dunkel — Lesbarkeit auf leuchtenden Flächen */
+[data-theme="dunkel"] .fk-btn:not(.ghost):not(.nacht):not(.leise),
+[data-theme="dunkel"] .fk-chip.aktiv,
+[data-theme="dunkel"] .fk-chip[aria-pressed="true"],
+[data-theme="dunkel"] .fk-sticker,
+[data-theme="dunkel"] .fk-opt[aria-pressed="true"],
+[data-theme="dunkel"] .fk-tab[aria-current="page"] {
+  color: #191b12;
+}
+[data-theme="dunkel"] .fk-schalter[aria-checked="true"] i { background: #191b12; }

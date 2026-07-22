@@ -1,0 +1,254 @@
+<!-- @dsCard group="Website" viewport="1280x800" name="Landingpage" subtitle="Hero mit animierter Marke, 3 Schritte, KI ehrlich erklärt, Preis, FAQ" -->
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SteuerEule — Steuern? Zack, erledigt.</title>
+<link rel="stylesheet" href="../../styles.css">
+<style>
+  body { background: var(--grund); }
+  .nav { display: flex; align-items: center; gap: 14px; max-width: 1120px; margin: 0 auto; padding: 20px 32px; }
+  .nav .wort { font-family: var(--schrift-display); font-weight: 800; font-size: 24px; letter-spacing: -0.03em; }
+  .nav .wort b { color: var(--funke-tinte); }
+  .nav nav { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+  .nav a { text-decoration: none; font-weight: 600; font-size: 14px; padding: 8px 14px; border-radius: 999px; }
+  .nav a:hover { background: var(--funke-weich); }
+
+  .hero { max-width: 1120px; margin: 0 auto; padding: 48px 32px 72px; display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 48px; align-items: center; }
+  .hero h1 { font-family: var(--schrift-display); font-weight: 800; font-size: clamp(44px, 6vw, 76px); line-height: 1.02; letter-spacing: -0.03em; margin: 0 0 18px; }
+  .zack { display: inline-block; transform: rotate(-2deg); background: var(--funke); border: var(--kontur) solid var(--tinte); border-radius: 14px; padding: 0 16px; }
+  .hero p.sub { font-size: 19px; color: var(--tinte-2); max-width: 460px; margin: 0 0 26px; }
+  .cta-reihe { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .cta { display: inline-flex; align-items: center; justify-content: center; min-height: 56px; padding: 0 28px; background: var(--funke); border: var(--kontur) solid var(--tinte); border-radius: 999px; box-shadow: var(--schatten-hart); font-weight: 800; font-size: 17px; text-decoration: none; color: var(--tinte); transition: transform var(--t-schnell) var(--zack), box-shadow var(--t-schnell) var(--zack); }
+  .cta:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 var(--tinte); background: var(--funke); }
+  .cta:active { transform: translate(4px, 4px); box-shadow: 0 0 0 var(--tinte); }
+  .cta.ghost { background: var(--karte); font-weight: 700; }
+  .hinweis { font-family: var(--schrift-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--tinte-2); margin-top: 14px; }
+
+  /* Hero-Mock: Erstattungs-Karte */
+  .mock { background: var(--nacht); color: var(--nacht-text); border: var(--kontur) solid var(--tinte); border-radius: var(--radius-lg); box-shadow: var(--schatten-hart-l); padding: 28px; transform: rotate(1.5deg); position: relative; }
+  .mock .l { font-family: var(--schrift-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--funke-hell); }
+  .mock .zahl { font-family: var(--schrift-display); font-weight: 800; font-size: 64px; color: var(--funke); font-variant-numeric: tabular-nums; line-height: 1.05; margin: 6px 0; }
+  .mock .sticker { position: absolute; top: -16px; right: 22px; display: inline-block; transform: rotate(4deg); background: var(--funke); color: var(--tinte); border: var(--kontur) solid var(--tinte); border-radius: 12px; box-shadow: var(--schatten-hart-s); font-weight: 800; padding: 4px 14px; font-variant-numeric: tabular-nums; }
+  .mock .ai { margin-top: 16px; background: var(--ki-weich); border: var(--kontur) solid var(--ki); border-radius: var(--radius-s); box-shadow: var(--schatten-ki); padding: 12px 14px; color: var(--ki-tinte); font-size: 14px; display: flex; gap: 10px; align-items: center; }
+  .mock .ai .b { width: 24px; height: 24px; border-radius: 50%; background: var(--ki); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px; flex: none; }
+
+  section.band { padding: 64px 32px; }
+  .innen { max-width: 1120px; margin: 0 auto; }
+  .kicker { font-family: var(--schrift-mono); font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--tinte-2); }
+  h2.titel { font-family: var(--schrift-display); font-weight: 800; font-size: clamp(30px, 4vw, 44px); letter-spacing: -0.03em; margin: 8px 0 32px; }
+
+  .schritte { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .schritt { background: var(--karte); border: var(--kontur) solid var(--tinte); border-radius: var(--radius); box-shadow: var(--schatten-hart); padding: 26px; }
+  .schritt .nr { font-family: var(--schrift-display); font-weight: 800; font-size: 34px; }
+  .schritt h3 { font-size: 21px; font-weight: 800; margin: 8px 0 6px; }
+  .schritt p { font-size: 15px; color: var(--tinte-2); margin: 0; }
+  .schritt.ki { background: var(--ki-weich); border-color: var(--ki); box-shadow: var(--schatten-ki); }
+  .schritt.ki h3, .schritt.ki p { color: var(--ki-tinte); }
+
+  .ehrlich { background: var(--nacht); color: var(--nacht-text); }
+  .ehrlich .punkte { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .ehrlich .p { border: 2px solid var(--nacht-karte); border-radius: var(--radius); padding: 22px; }
+  .ehrlich .p b { display: block; font-size: 17px; margin-bottom: 6px; color: var(--funke); }
+  .ehrlich .p span { font-size: 14px; opacity: 0.85; }
+
+  .preis { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 760px; }
+  .plan { background: var(--karte); border: var(--kontur) solid var(--tinte); border-radius: var(--radius); box-shadow: var(--schatten-hart); padding: 26px; }
+  .plan .p-zahl { font-family: var(--schrift-display); font-weight: 800; font-size: 40px; font-variant-numeric: tabular-nums; }
+  .plan ul { padding-left: 18px; margin: 12px 0 0; font-size: 14px; color: var(--tinte-2); line-height: 1.9; }
+  .plan.pro { background: var(--funke-weich); }
+
+  .faq { max-width: 760px; }
+  .faq details { border: var(--kontur) solid var(--tinte); border-radius: var(--radius-s); background: var(--karte); margin-bottom: 10px; padding: 0 18px; }
+  .faq summary { font-weight: 700; font-size: 15px; min-height: 52px; display: flex; align-items: center; cursor: pointer; list-style: none; }
+  .faq summary::after { content: "+"; margin-left: auto; font-family: var(--schrift-display); font-weight: 800; font-size: 22px; }
+  .faq details[open] summary::after { content: "–"; }
+  .faq details p { margin: 0 0 16px; font-size: 14px; color: var(--tinte-2); }
+
+  footer { padding: 40px 32px 60px; }
+  footer .innen { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; font-size: 13px; color: var(--tinte-2); }
+  footer a { color: var(--tinte-2); }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .hero > * { animation: funke-auftritt 0.5s var(--feder) both; }
+    .hero > *:nth-child(2) { animation-delay: 0.12s; }
+    .mock-marke { animation: funke-pop 0.5s var(--feder) 0.4s both; }
+  }
+  @media (max-width: 640px) {
+    .nav nav a:not(.cta) { display: none; }
+  }
+  @media (max-width: 900px) {
+    .hero { grid-template-columns: 1fr; padding-top: 24px; }
+    .schritte, .ehrlich .punkte, .preis { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <img src="../../assets/marke-tinte.svg" width="34" height="31" alt="SteuerEule Bildmarke">
+  <span class="wort">Steuer<b>Eule</b></span>
+  <nav aria-label="Hauptnavigation">
+    <a href="#so">So funktioniert's</a>
+    <a href="#ki">Der Berater</a>
+    <a href="#preis">Preis</a>
+    <a class="cta ghost" style="min-height: 44px; padding: 0 20px; font-size: 14px;" href="../app/auth.html">Einloggen</a>
+  </nav>
+</header>
+
+<section class="hero">
+  <div>
+    <h1>Steuern?<br><span class="zack">Zack,</span> erledigt.</h1>
+    <p class="sub">Belege reinwerfen, Vorschläge prüfen, übertragen. Im Schnitt liegen <b>1.100 €</b> Erstattung drin — und du siehst bei jeder Zahl, woher sie kommt.</p>
+    <div class="cta-reihe">
+      <a class="cta" href="../app/auth.html">Kostenlos starten</a>
+      <a class="cta ghost" href="#so">2 Minuten verstehen</a>
+    </div>
+    <p class="hinweis">Kein Abo · Gast-Modus ohne Konto · Deutsch, du-Form, ohne Amtsdeutsch</p>
+  </div>
+  <div class="mock" aria-label="App-Vorschau: Erstattungskarte">
+    <span class="sticker">+80 €</span>
+    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 14px;">
+      <img class="mock-marke" src="../../assets/marke-funke.svg" width="40" height="40" alt="">
+      <span class="l">Voraussichtliche Erstattung</span>
+    </div>
+    <div class="zahl">≈ 1.487 €</div>
+    <span style="font-size: 13px; opacity: 0.75;">Schätzung — 3 Angaben offen. Jede Zahl trägt ihre Herkunft.</span>
+    <div class="ai" data-ai="true">
+      <span class="b" aria-hidden="true">B</span>
+      <span><b>Berater:</b> Deine BahnCard ist absetzbar — <b>weil</b> sie überwiegend dem Arbeitsweg dient. +73 €?</span>
+    </div>
+  </div>
+</section>
+
+<section class="band" id="so">
+  <div class="innen">
+    <span class="kicker">So funktioniert's</span>
+    <h2 class="titel">Drei Schritte. Keine Formulare aus 1998.</h2>
+    <div class="schritte">
+      <div class="schritt">
+        <div class="nr">1</div>
+        <h3>Reinwerfen</h3>
+        <p>Belege scannen oder Fragen antippen — eine pro Screen. Wir denken in Dokumenten, nicht in Zeilen 31–45.</p>
+      </div>
+      <div class="schritt ki" data-ai="true">
+        <div class="nr" style="width: 40px; height: 40px; border-radius: 50%; background: var(--ki); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 20px;">B</div>
+        <h3>Prüfen</h3>
+        <p>Der Berater schlägt vor und sagt immer, <b>weil</b>. Violett = seine Meinung. Du entscheidest, was zählt.</p>
+      </div>
+      <div class="schritt">
+        <div class="nr">3</div>
+        <h3>Übertragen</h3>
+        <p>Zeile für Zeile mit Herkunft in Mein ELSTER — bald ERiC-geprüft direkt ans Amt, ohne Abtippen.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="band ehrlich" id="ki">
+  <div class="innen">
+    <span class="kicker" style="color: var(--funke-hell);">Der Berater — ehrlich eingefärbt</span>
+    <h2 class="titel">KI, die sich zu erkennen gibt.</h2>
+    <div class="punkte">
+      <div class="p"><b>Violett = Meinung</b><span>Alles, was vom Berater kommt, ist violett markiert — Chat, Vorschläge, befüllte Werte. Der Rest ist deins.</span></div>
+      <div class="p"><b>Immer mit „weil"</b><span>Kein Vorschlag ohne Begründung und Konfidenz. „Trifft nicht zu" ist immer einen Tap entfernt.</span></div>
+      <div class="p"><b>Herkunft an jeder Zahl</b><span>Beleg, Regel, Rechenweg — ein Tap zeigt, woraus sich jeder Euro zusammensetzt.</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="band" id="amt" style="padding-top: 0;">
+  <div class="innen">
+    <span class="kicker">Warum nicht einfach ELSTER?</span>
+    <h2 class="titel">Das Amt kennt deine Fahrtkosten nicht.</h2>
+    <div class="schritte" style="grid-template-columns: repeat(2, 1fr); max-width: 900px;">
+      <div class="schritt">
+        <h3>Ein Klick beim Amt = Pauschale</h3>
+        <p>Die vorausgefüllte Erklärung rechnet mit 1.230 € Werbungskosten-Pauschale. Pendeln, Homeoffice, Fortbildung, Handwerker — das weiß nur, wer dich fragt. Wir fragen.</p>
+      </div>
+      <div class="schritt">
+        <h3>Bescheidprüfung: bei uns kostenlos</h3>
+        <p>Kommt der Bescheid, vergleichen wir ihn Zeile für Zeile mit deiner Erklärung und formulieren den Einspruch — anderswo kostet genau das bis zu 79,99 € extra.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="band ehrlich" id="daten" style="padding-top: 48px;">
+  <div class="innen" style="text-align: center; max-width: 760px;">
+    <span class="kicker" style="color: var(--funke-hell);">Datenschutz — DSGVO, ernst gemeint</span>
+    <h2 class="titel" style="margin-bottom: 12px;">Deine Daten. Deine Regeln.</h2>
+    <p style="font-size: 16px; opacity: 0.85; margin: 0 0 24px;">Steuerdaten sind das Privateste, was eine App anfassen kann. Deshalb: verschlüsselt (TLS + AES-256), Server in Deutschland, kein Tracking, kein Datenverkauf, keine Modell-Trainings mit deinen Unterlagen. Export und endgültiges Löschen — jederzeit, ein Tap.</p>
+    <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; font-family: var(--schrift-mono); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase;">
+      <span style="border: 2px solid var(--funke); border-radius: 999px; padding: 8px 16px; color: var(--funke);">Server: Deutschland</span>
+      <span style="border: 2px solid var(--funke); border-radius: 999px; padding: 8px 16px; color: var(--funke);">AES-256</span>
+      <span style="border: 2px solid var(--funke); border-radius: 999px; padding: 8px 16px; color: var(--funke);">Kein Tracking</span>
+      <span style="border: 2px solid var(--funke); border-radius: 999px; padding: 8px 16px; color: var(--funke);">Löschen: 1 Tap</span>
+    </div>
+  </div>
+</section>
+
+<section class="band" id="preis">
+  <div class="innen">
+    <span class="kicker">Preis</span>
+    <h2 class="titel">Kostenlos rechnen. Zahlen erst bei Abgabe.</h2>
+    <div class="preis">
+      <div class="plan">
+        <b style="font-size: 15px;">Basis</b>
+        <div class="p-zahl">0 €</div>
+        <ul>
+          <li>Interview, Belege & Berater — unbegrenzt</li>
+          <li>Erstattung live berechnet, mit Herkunft</li>
+          <li>Unter 50 € Erstattung: Abgabe gratis</li>
+        </ul>
+      </div>
+      <div class="plan pro">
+        <b style="font-size: 15px;">Abgabe-Paket</b>
+        <div class="p-zahl">34,99 €<span style="font-size: 15px; color: var(--tinte-2);"> / Steuerjahr</span></div>
+        <ul>
+          <li>Übertragungshilfe & alle Exporte</li>
+          <li>Grenzgänger-Tracker mit Kalender-Import</li>
+          <li>Bald: ERiC-geprüft übermitteln</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="band" style="padding-top: 0;">
+  <div class="innen faq">
+    <span class="kicker">Fragen</span>
+    <h2 class="titel">Kurz beantwortet.</h2>
+    <details>
+      <summary>Ersetzt SteuerEule einen Steuerberater?</summary>
+      <p>Nein. SteuerEule hilft dir, deine Erklärung selbst zu machen — Vorschläge sind Einschätzungen auf Basis deiner Unterlagen, kein Ersatz für Rechts- oder Steuerberatung. Bei komplexen Fällen sagen wir dir das ehrlich.</p>
+    </details>
+    <details>
+      <summary>Wo liegen meine Daten?</summary>
+      <p>Im Gast-Modus nur auf deinem Gerät. Mit Konto verschlüsselt auf Servern in Deutschland — Export und endgültiges Löschen jederzeit, mit einem Tap im Profil.</p>
+    </details>
+    <details>
+      <summary>Was heißt „ERiC-geprüft"?</summary>
+      <p>Deine Werte werden gegen die offiziellen Prüfregeln der Finanzverwaltung validiert — nachweislich einreichbar, nicht nur „sieht richtig aus". Übermittlung immer erst nach deiner Bestätigung.</p>
+    </details>
+    <details>
+      <summary>Für wen ist SteuerEule (noch) nichts?</summary>
+      <p>Version 1 fokussiert Angestellte und Grenzgänger (Schweiz) — plus Kapitalerträge bis zum Sparerpauschbetrag und einfache Vermietung (eine Wohnung). Selbstständige mit EÜR und komplexe Vermietungsfälle kommen später — ehrlich ist ehrlich.</p>
+    </details>
+  </div>
+</section>
+
+<footer>
+  <div class="innen">
+    <img src="../../assets/marke-tinte.svg" width="26" height="24" alt="">
+    <b>SteuerEule</b>
+    <span>· Steuern? Zack, erledigt.</span>
+    <span style="margin-left: auto;">
+      <a href="#">AGB</a> · <a href="#">Datenschutz</a> · <a href="#">Impressum</a>
+    </span>
+  </div>
+</footer>
+
+</body>
+</html>

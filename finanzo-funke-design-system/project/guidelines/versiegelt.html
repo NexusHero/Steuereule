@@ -1,0 +1,34 @@
+<!-- @dsCard group="Components" viewport="700x330" name="Versiegelt-Muster" subtitle="Eingereicht = Rechtsdokument: offen vs. versiegelt — drei stille Signale statt Warnbanner" -->
+<!DOCTYPE html>
+<html lang="de">
+<head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css">
+<style>
+body { padding: 16px 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-content: start; }
+.demo { border: var(--kontur) solid var(--tinte); border-radius: var(--radius); padding: 14px; }
+.demo h4 { margin: 0 0 10px; font-family: var(--schrift-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--tinte-2); font-weight: 600; }
+.zeile { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1.5px solid var(--linie-weich); font-size: 13px; }
+.zeile .nr { font-family: var(--schrift-mono); font-size: 11px; color: var(--tinte-2); width: 24px; }
+.zeile b { margin-left: auto; font-variant-numeric: tabular-nums; }
+.kw { border-bottom: 2px dashed var(--ki); color: var(--ki-tinte); }
+.check { width: 22px; height: 22px; border: var(--kontur) solid var(--tinte); border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px; flex: none; }
+.pill { font-family: var(--schrift-mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; border: 1.5px solid var(--tinte); border-radius: 999px; padding: 3px 10px; }
+.spec { grid-column: 1 / -1; font-family: var(--schrift-mono); font-size: 11px; color: var(--tinte-2); line-height: 1.8; }
+</style></head>
+<body>
+<div class="demo" style="background: var(--karte);">
+  <h4>Offen — Handlung möglich</h4>
+  <span class="pill">2026</span>
+  <div class="zeile"><span class="nr">44</span> Fortbildung <b class="kw">890,00 €</b> <span class="check"></span></div>
+  <div class="zeile"><span class="nr">45</span> Entfernungspauschale <b class="kw">1.831,20 €</b> <span class="check"></span></div>
+  <div class="zeile" style="border: none;"><span class="nr">31</span> Bruttoarbeitslohn <b>54.320,00 €</b> <span class="check" style="background: var(--funke);">✓</span></div>
+</div>
+<div class="demo" style="background: var(--papier, var(--grund));">
+  <h4>Versiegelt — nur Fakten</h4>
+  <span class="pill">Eingereicht · 12.03.2026</span>
+  <div class="zeile"><span class="nr">44</span> Fortbildung <b>640,00 €</b></div>
+  <div class="zeile"><span class="nr">45</span> Entfernungspauschale <b>1.764,00 €</b></div>
+  <div class="zeile" style="border: none;"><span class="nr">31</span> Bruttoarbeitslohn <b>52.100,00 €</b></div>
+</div>
+<p class="spec">Drei stille Signale, kein Warnbanner: (1) Pill „Eingereicht · Datum" statt Jahr · (2) Papier-Ton statt Karten-Weiß · (3) Affordanzen weg — keine Checkboxen, keine gestrichelten KI-Werte (alles ist bestätigter Fakt), Kopieren + Herkunft bleiben. Wer ändern will, bekommt den Toast „… ist eingereicht — Änderungen nur als Berichtigung". Korrektur nie als Edit, immer als neue Fassung (§ 153 AO / Einspruch) mit Diff gegen Fassung 1.</p>
+</body>
+</html>

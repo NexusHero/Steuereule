@@ -1,0 +1,38 @@
+/* ============================================================
+   Funke — Basis-Resets & globale Utilities
+   ============================================================ */
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--grund);
+  color: var(--tinte);
+  font-family: var(--schrift-text);
+  font-size: var(--text-m);
+  font-weight: var(--gewicht-normal);
+  line-height: var(--zeile-normal);
+  -webkit-font-smoothing: antialiased;
+}
+button { font: inherit; color: inherit; background: none; border: none; padding: 0; cursor: pointer; }
+button:focus-visible, [tabindex]:focus-visible, input:focus-visible {
+  outline: 3px solid var(--funke);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+a { color: var(--funke-tinte); font-weight: var(--gewicht-fett); }
+a:hover { color: var(--tinte); }
+
+h1, h2, h3 {
+  font-family: var(--schrift-display);
+  letter-spacing: var(--spationierung-display);
+  line-height: var(--zeile-eng);
+  margin: 0;
+}
+
+.num { font-variant-numeric: tabular-nums; }
+.mono-label {
+  font-family: var(--schrift-mono);
+  font-size: var(--text-xs);
+  letter-spacing: var(--spationierung-label);
+  text-transform: uppercase;
+  color: var(--tinte-2);
+}

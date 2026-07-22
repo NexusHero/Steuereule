@@ -1,0 +1,44 @@
+/* ============================================================
+   Funke — Farbsystem
+   Regeln, die tragen (aus „Klar" übernommen, neu eingefärbt):
+   - --ki (Violett) ist EXKLUSIV für KI-Output reserviert.
+     Komponenten mit KI-Inhalt tragen [data-ai="true"] und
+     nutzen nur .ai-*-Klassen. Violett ist nie Deko.
+   - Semantik (ok/warn/fehler) ist sichtbar getrennt von --ki.
+   - --funke (Limette) ist die Marken-Energie: Primäraktionen,
+     Erfolgsmomente, der Erstattungs-Held.
+   ============================================================ */
+:root {
+  /* Gründe & Text */
+  --grund: #f4f2e9;
+  --karte: #ffffff;
+  --tinte: #191b12;
+  --tinte-2: #5f6353;
+  --linie: #191b12;        /* Konturen sind Tinte, 2px, mutig */
+  --linie-weich: #dedacb;  /* Trennlinien innerhalb von Karten */
+
+  /* Identität: Funke-Limette */
+  --funke: #c9f229;
+  --funke-hell: #e3fa8d;
+  --funke-weich: #f2fbd2;
+  --funke-tinte: #40510a;  /* lesbares Dunkel-Limett für Text auf Hell */
+
+  /* Dunkler Held (Erstattungs-Karte, Kamera, inverse Flächen) */
+  --nacht: #191b12;
+  --nacht-karte: #262a1c;
+  --nacht-text: #f4f2e9;
+
+  /* KI — exklusiv. Nie außerhalb von .ai-*-Selektoren referenzieren. */
+  --ki: #7c5cff;
+  --ki-weich: #ece6ff;
+  --ki-linie: #c7b8ff;
+  --ki-tinte: #4630b8;
+
+  /* Semantik (deutlich getrennt vom KI-Violett) */
+  --ok: #1f9d55;
+  --ok-weich: #def4e2;
+  --warn: #e07b00;
+  --warn-weich: #ffeecf;
+  --fehler: #e0362c;
+  --fehler-weich: #fde3de;
+}

@@ -1,0 +1,29 @@
+<!-- @dsCard group="Colors" viewport="700x240" name="Dunkles Design" subtitle="data-theme=„dunkel" — Limette bleibt, Tinte und Flächen tauschen" -->
+<!DOCTYPE html>
+<html lang="de" data-theme="dunkel">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { padding: 16px 20px; background: var(--grund); }
+  .reihe { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+  .sw { width: 92px; height: 64px; border: var(--kontur) solid var(--tinte); border-radius: var(--radius-s); padding: 8px; display: flex; align-items: flex-end; }
+  .sw b { font-family: var(--schrift-mono); font-size: 10px; font-weight: 400; }
+</style>
+</head>
+<body>
+<div class="reihe">
+  <div class="sw" style="background: var(--grund);"><b>--grund</b></div>
+  <div class="sw" style="background: var(--karte);"><b>--karte</b></div>
+  <div class="sw" style="background: var(--funke);"><b style="color: #191b12;">--funke</b></div>
+  <div class="sw" style="background: var(--ki-weich); border-color: var(--ki);"><b style="color: var(--ki-tinte);">--ki-weich</b></div>
+</div>
+<div class="reihe">
+  <button class="fk-btn" style="width: auto;">Übertragung starten</button>
+  <button class="fk-chip aktiv">Anlage N</button>
+  <span class="fk-sticker num">+80 €</span>
+  <span class="fk-pill">2026</span>
+</div>
+<p class="mono-label" style="margin: 0;">Umschalten im Profil — gespeichert als funke.theme</p>
+</body>
+</html>

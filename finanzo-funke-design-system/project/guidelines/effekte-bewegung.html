@@ -1,0 +1,22 @@
+<!-- @dsCard group="Effects" viewport="700x180" name="Bewegung" subtitle="Federnd & kurz: --feder für Auftritte, --zack für Micro-Transitions" -->
+<!DOCTYPE html>
+<html lang="de">
+<head><meta charset="utf-8"><link rel="stylesheet" href="../styles.css">
+<style>
+body { padding: 24px; display: flex; gap: 24px; align-items: center; }
+@media (prefers-reduced-motion: no-preference) {
+  .demo-pop { animation: funke-pop 0.38s var(--feder) infinite alternate; animation-duration: 1.2s; }
+  .demo-rise { animation: funke-auftritt 1.2s var(--feder) infinite alternate; }
+}
+.spec { font-family: var(--schrift-mono); font-size: 11px; color: var(--tinte-2); line-height: 1.8; }
+</style></head>
+<body>
+<span class="fk-sticker num demo-pop">+80 €</span>
+<div class="fk-karte demo-rise" style="margin: 0; padding: 10px 16px; font-weight: 700;">funke-auftritt</div>
+<div class="spec">
+  --feder&nbsp;&nbsp;cubic-bezier(.34, 1.56, .64, 1)<br>
+  --zack&nbsp;&nbsp;&nbsp;cubic-bezier(.2, .9, .3, 1)<br>
+  --t&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;120 / 220 / 380 ms · prefers-reduced-motion beachtet
+</div>
+</body>
+</html>

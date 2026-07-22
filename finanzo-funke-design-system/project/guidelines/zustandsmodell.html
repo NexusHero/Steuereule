@@ -1,0 +1,64 @@
+<!-- @dsCard group="Components" viewport="700x430" name="Zustandsmodell (Datenlogik)" subtitle="Posten, Fassung, Kopplung — die Lebenszyklen hinter den Screens" -->
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body{padding:18px 20px;font-family:var(--schrift-text),system-ui,sans-serif;color:var(--tinte)}
+  h2{font-family:var(--schrift-mono);font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--tinte-2);margin:0 0 10px}
+  .block{margin-bottom:20px}
+  .flow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .node{border:var(--kontur) solid var(--tinte);border-radius:12px;padding:8px 12px;font-size:13px;font-weight:700;background:var(--karte);line-height:1.25}
+  .node small{display:block;font-weight:400;font-size:11px;color:var(--tinte-2)}
+  .node.grau{border-style:dashed;color:var(--tinte-2);background:transparent}
+  .node.ok{border-color:var(--ok);box-shadow:2px 2px 0 var(--ok)}
+  .node.warn{border-color:var(--warn);box-shadow:2px 2px 0 var(--warn);color:var(--warn)}
+  .node.held{background:var(--nacht);color:var(--nacht-text);border-color:var(--nacht)}
+  .arr{font-weight:800;color:var(--tinte-2);flex:none}
+  .arr small{display:block;font-size:10px;font-weight:600;text-align:center}
+  .split{display:flex;flex-direction:column;gap:6px}
+  .regel{font-size:12px;color:var(--tinte-2);margin:8px 0 0}
+</style>
+</head>
+<body>
+<div class="block">
+  <h2>Posten — vom Beleg zum bestätigten Wert</h2>
+  <div class="flow">
+    <div class="node grau">Unbestätigt<small>KI-Vorschlag / aus Vorjahr · gestrichelt</small></div>
+    <span class="arr">→<small>antippen</small></span>
+    <div class="split">
+      <div class="node ok">Bestätigt<small>zählt in die Schätzung</small></div>
+      <div class="node warn">Konflikt<small>Beleg ≠ Eingabe · blockiert Abgabe</small></div>
+    </div>
+    <span class="arr">→<small>Quelle wählen</small></span>
+    <div class="node ok">Bestätigt<small>verworfene Quelle bleibt im Verlauf</small></div>
+  </div>
+  <p class="regel">Gestrichelt = unbestätigt, nichts Graues geht in die Schätzung. Konflikt ist gelb und hält die Abgabe an, bis der Nutzer entscheidet.</p>
+</div>
+
+<div class="block">
+  <h2>Fassung — nach der Abgabe versiegelt</h2>
+  <div class="flow">
+    <div class="node">Entwurf<small>editierbar</small></div>
+    <span class="arr">→<small>abgeben</small></span>
+    <div class="node held">Fassung 1<small>liegt beim Amt · schreibgeschützt</small></div>
+    <span class="arr">→<small>Rückfrage / Einspruch</small></span>
+    <div class="node">Fassung 2<small>neuer Entwurf, F1 bleibt erhalten</small></div>
+  </div>
+  <p class="regel">Die abgegebene Fassung wird nie überschrieben — sie ist das rechtliche Original. Korrekturen entstehen als neue Fassung daneben.</p>
+</div>
+
+<div class="block">
+  <h2>Kopplung — zwei Steuerjahre, eine Erklärung</h2>
+  <div class="flow">
+    <div class="node grau">Offen<small>allein veranlagt</small></div>
+    <span class="arr">→<small>Partner einladen</small></span>
+    <div class="node warn">Wartet auf Partner<small>Einladung raus</small></div>
+    <span class="arr">→<small>angenommen</small></span>
+    <div class="node ok">Gekoppelt<small>gemeinsames Ergebnis, je eigene Zahlen</small></div>
+  </div>
+  <p class="regel">Jede Person behält ihr eigenes Steuerjahr; die Kopplung verbindet nur das Ergebnis (Günstigerprüfung).</p>
+</div>
+</body>
+</html>

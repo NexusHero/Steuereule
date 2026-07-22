@@ -1,0 +1,47 @@
+<!-- @dsCard group="Colors" viewport="700x330" name="KI-Kennzeichnung (3 Stufen)" subtitle="Der Mehrwert bleibt sichtbar: KI spricht · KI schlägt vor · KI hat befüllt" -->
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<script src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../_ds_bundle.js"></script>
+<style>
+  body { padding: 16px 20px; }
+  .stufe { display: grid; grid-template-columns: 150px 1fr; gap: 14px; align-items: center; padding: 10px 0; border-bottom: 1.5px solid var(--linie-weich); }
+  .stufe:last-of-type { border-bottom: 0; }
+  .stufe .l { font-family: var(--schrift-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--tinte-2); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { AiChip, KiWert, Button } = window.FinanzoFunkeDesignSystem_7e417e;
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <div>
+    <div className="stufe">
+      <span className="l">1 · KI spricht</span>
+      <div data-ai="true" style={{ background: 'var(--ki-weich)', border: 'var(--kontur) solid var(--ki)', borderRadius: '16px 16px 16px 4px', padding: '8px 14px', color: 'var(--ki-tinte)', fontSize: 14, display: 'inline-flex', gap: 8, alignItems: 'center', justifySelf: 'start' }}>
+        <AiChip>Berater</AiChip> Ganze violette Fläche — Chat, Hinweise.
+      </div>
+    </div>
+    <div className="stufe">
+      <span className="l">2 · KI schlägt vor</span>
+      <div data-ai="true" style={{ background: 'var(--ki-weich)', border: 'var(--kontur) solid var(--ki)', borderRadius: 'var(--radius-s)', boxShadow: 'var(--schatten-ki)', padding: 10, display: 'flex', gap: 10, alignItems: 'center', justifySelf: 'start' }}>
+        <AiChip>Vorschlag · 92 %</AiChip>
+        <Button variante="leise" style={{ width: 'auto', minHeight: 38 }} onClick={() => {}}>Übernehmen</Button>
+        <Button variante="ghost" style={{ width: 'auto', minHeight: 38 }} onClick={() => {}}>Trifft nicht zu</Button>
+      </div>
+    </div>
+    <div className="stufe">
+      <span className="l">3 · KI hat befüllt</span>
+      <span style={{ fontSize: 15 }}>Entfernungspauschale: <KiWert>1.831,20 €</KiWert> — Strichel-Linie bis zur Bestätigung.</span>
+    </div>
+    <p className="mono-label" style={{ margin: '12px 0 0' }}>Bestätigt = Tinte, ohne Marker. Violett nie als Deko oder Semantik.</p>
+  </div>
+);
+</script>
+</body>
+</html>

@@ -1,0 +1,34 @@
+<!-- @dsCard group="App" viewport="420x880" name="Lebenslagen-Katalog" subtitle="10 kuratierte Lebenslagen mit echten Flows — Abfindungs-Rechner (Fünftelregelung) + zumutbare-Belastung-Live-Schwelle" -->
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SteuerEule — Lebenslagen</title>
+<link rel="stylesheet" href="../../styles.css">
+<script>try { if (localStorage.getItem('funke.theme') === 'dunkel') document.documentElement.dataset.theme = 'dunkel'; } catch (e) {}</script>
+<script src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>
+  .app-shell { max-width: 420px; margin: 0 auto; padding: 12px 16px 60px; }
+  @media (min-width: 700px) { .app-shell { max-width: 560px; padding-top: 36px; } }
+  @media (min-width: 1100px) { .app-shell { max-width: 640px; } }
+  .appbar { display: flex; justify-content: space-between; align-items: center; padding: 8px 0 18px; }
+  .appbar h1 { font-size: var(--text-2xl); font-weight: 800; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="demo-daten.js"></script>
+<script type="text/babel" src="Lebenslagen.jsx"></script>
+<script type="text/babel">
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <div className="app-shell">
+    <FunkeLebenslagen onZurueck={() => { window.location.href = 'index.html'; }} onBerater={() => { window.location.href = 'index.html#berater'; }} />
+  </div>
+);
+</script>
+</body>
+</html>

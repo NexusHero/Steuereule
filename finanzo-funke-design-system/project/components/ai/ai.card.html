@@ -1,0 +1,33 @@
+<!-- @dsCard group="Components" viewport="700x260" name="KI (Violett-Territorium)" subtitle="AiChip, BeraterLeiste, HerkunftsChip — Violett ist exklusiv KI" -->
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<script src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>body { padding: 20px; }</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { AiChip, BeraterLeiste, HerkunftsChip } = window.FinanzoFunkeDesignSystem_7e417e;
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <div>
+    <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+      <AiChip>Berater</AiChip>
+      <AiChip>Vorschlag · 92 %</AiChip>
+      <span style={{ marginLeft: 'auto' }}>
+        Pendlerpauschale <b className="num">1.831 €</b>{' '}
+        <HerkunftsChip quelle={{ beleg: 'Lohnsteuerbescheinigung 2026', regel: 'WK-PENDLER-01 · Stand 2026', rechenweg: '218 Tage × 28 km × 0,30 €' }} />
+      </span>
+    </div>
+    <BeraterLeiste text="Was fehlt noch zur Abgabe? Frag mich." onOeffnen={() => {}} />
+    <p className="mono-label" style={{ marginTop: 16 }}>Regel: Violett kennzeichnet ausschließlich KI-Output — nie Deko, nie Semantik.</p>
+  </div>
+);
+</script>
+</body>
+</html>

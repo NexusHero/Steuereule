@@ -1,0 +1,75 @@
+<!-- @dsCard group="App" viewport="420x760" name="Splash & Onboarding" subtitle="Marke zeichnet sich selbst → Name, Steuer-ID, Steuernummer → Maske vorgefüllt" -->
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SteuerEule — Splash & Onboarding</title>
+<link rel="stylesheet" href="../../styles.css">
+<script>try { if (localStorage.getItem('funke.theme') === 'dunkel') document.documentElement.dataset.theme = 'dunkel'; } catch (e) {}</script>
+<script src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>
+  .app-shell { max-width: 420px; margin: 0 auto; padding: 12px 20px 60px; }
+  /* responsiv */
+  @media (min-width: 700px) { .app-shell { max-width: 560px; padding-top: 36px; } }
+  @media (min-width: 1100px) { .app-shell { max-width: 640px; } }
+
+  /* ---------- Splash ---------- */
+  .fx-splash {
+    position: fixed; inset: 0; z-index: 50; width: 100%;
+    background: var(--nacht); color: var(--nacht-text); cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+  }
+  .fx-wort { font-family: var(--schrift-display); font-weight: 800; font-size: 44px; letter-spacing: -0.03em; }
+  .fx-wort b { color: var(--funke); }
+  .fx-claim { font-size: 17px; opacity: 0.9; }
+  .fx-claim i {
+    font-style: normal; display: inline-block; transform: rotate(-2deg);
+    background: var(--funke); color: var(--tinte); font-weight: 800;
+    border-radius: 8px; padding: 0 8px; border: var(--kontur) solid var(--tinte);
+  }
+  .fx-tipp { position: absolute; bottom: 28px; font-family: var(--schrift-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.45; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .fx-marke .au-kopf { opacity: 0; transform: scale(0.55); transform-box: fill-box; transform-origin: center; animation: au-pop 0.45s var(--feder) 0.1s forwards; }
+    .fx-marke .au-brille { opacity: 0; transform: translateY(-16px); animation: au-auf 0.4s var(--feder) 0.55s forwards; }
+    .fx-marke .au-lid { transform: scaleY(0); transform-box: fill-box; transform-origin: center top; animation: au-blinzeln 0.4s ease-in-out 1.3s; }
+    @keyframes au-pop { to { opacity: 1; transform: none; } }
+    @keyframes au-auf { to { opacity: 1; transform: none; } }
+    @keyframes au-blinzeln { 0%, 100% { transform: scaleY(0); } 45% { transform: scaleY(1); } }
+    .fx-wort { opacity: 0; animation: funke-auftritt 0.45s var(--feder) 0.9s forwards; }
+    .fx-claim { opacity: 0; animation: funke-auftritt 0.45s var(--feder) 1.1s forwards; }
+    .fx-claim i { animation: funke-pop 0.38s var(--feder) 1.35s both; }
+  }
+
+  /* ---------- Onboarding ---------- */
+  .fx-mark {
+    font-style: normal; display: inline-block; transform: rotate(-1.5deg);
+    background: var(--funke); border: var(--kontur) solid var(--tinte);
+    border-radius: 10px; padding: 0 10px;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .fx-schritt { animation: funke-auftritt var(--t-auftritt) var(--feder) both; }
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" src="Onboarding.jsx"></script>
+<script type="text/babel">
+function OnboardingDemo() {
+  const [phase, setPhase] = React.useState('splash');
+  if (phase === 'splash') return <FunkeSplash onFertig={() => setPhase('onboarding')} />;
+  return (
+    <div className="app-shell">
+      <FunkeOnboarding onFertig={() => { window.location.href = 'interview.html'; }} />
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<OnboardingDemo />);
+</script>
+</body>
+</html>

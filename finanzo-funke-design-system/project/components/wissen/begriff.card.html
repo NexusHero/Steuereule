@@ -1,0 +1,46 @@
+<!-- @dsCard group="Components" viewport="700x400" name="Die Eule erklärt's" subtitle="Nachschlagbare Begriffe: gepunktet = Wissen (Fakt), gestrichelt-violett bleibt KI — max. 1–2 pro Screen, nie automatisch" -->
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<script src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>body { padding: 20px 24px; max-width: 660px; }</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { Begriff, KiWert } = window.FinanzoFunkeDesignSystem_7e417e;
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <div>
+    <div className="fk-karte">
+      <p style={{ margin: 0, fontSize: 15, lineHeight: 1.6 }}>
+      Deine 812 € Erträge liegen unter dem{' '}
+      <Begriff
+        titel="Sparerpauschbetrag"
+        erklaerung="1.000 € Zinsen und Kursgewinne im Jahr sind steuerfrei — einfach so, für alle. Erst ab dem 1.001sten Euro will das Amt etwas sehen. Mit einem Freistellungsauftrag bei deiner Bank wird gar nicht erst etwas abgezogen."
+        beispiel="812 € Erträge → 0 € Steuer"
+        frage="Was ist der Sparerpauschbetrag?"
+      >Sparerpauschbetrag</Begriff>
+      {' '}— und{' '}
+      <Begriff
+        titel="Fassung 1"
+        erklaerung="Fassung 1 ist dein Original beim Amt. Stell sie dir wie ein abgeschicktes Paket vor: Du kannst reinschauen, aber nicht mehr umpacken. Willst du etwas ändern, schicken wir ein zweites Paket hinterher — Fassung 2. So weißt du immer, was das Amt wirklich hat."
+        beispiel="Beleg im November gefunden → Fassung 2, 5 Minuten"
+        frage="Warum kann ich Fassung 1 nicht ändern?"
+      >Fassung 1</Begriff>
+      {' '}bleibt unangetastet. Zum Vergleich ein KI-Wert: <KiWert>1.831,20 €</KiWert>
+      </p>
+    </div>
+    <p style={{ fontFamily: 'var(--schrift-mono)', fontSize: 11, color: 'var(--tinte-2)', lineHeight: 1.8 }}>
+      GEPUNKTET + TINTE = WISSEN (FAKT, ANTIPPEN) · GESTRICHELT + VIOLETT = KI-WERT<br />
+      REGELN: MAX. 1–2 PRO SCREEN · NIE AUTO-POPUP, KEINE TOUREN · TON: COOLER TUTOR, BILDER STATT PARAGRAFEN
+    </p>
+  </div>
+);
+</script>
+</body>
+</html>

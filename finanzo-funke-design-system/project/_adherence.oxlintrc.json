@@ -1,0 +1,343 @@
+{
+  "plugins": [
+    "react",
+    "import"
+  ],
+  "rules": {
+    "react/forbid-elements": [
+      "warn",
+      {
+        "forbid": []
+      }
+    ],
+    "no-restricted-imports": [
+      "warn",
+      {
+        "patterns": [
+          {
+            "group": [
+              "components/actions/**",
+              "components/ai/**",
+              "components/feedback/**",
+              "components/forms/**",
+              "components/navigation/**",
+              "components/overlay/**",
+              "components/wissen/**",
+              "ui_kits/app/**"
+            ],
+            "message": "Import design-system components from 'index.js', not component internals."
+          }
+        ]
+      }
+    ],
+    "no-restricted-syntax": [
+      "warn",
+      {
+        "selector": "Literal[value=/#[0-9a-fA-F]{3,8}\\b/]",
+        "message": "Raw hex color — use a design-system color token via var()."
+      },
+      {
+        "selector": "Literal[value=/\\b\\d+px\\b/]",
+        "message": "Raw px value — use a design-system spacing token via var()."
+      },
+      {
+        "selector": "Literal[value=/font-family\\s*:\\s*(?!['\\\"]?(?:Bricolage Grotesque|Schibsted Grotesk|Space Mono))/i]",
+        "message": "Font not provided by the design system. Available: Bricolage Grotesque, Schibsted Grotesk, Space Mono."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='AiChip'] > JSXAttribute > JSXIdentifier[name!=/^(?:children|style|key|ref|className|style|children)$/]",
+        "message": "<AiChip> doesn't accept that prop. Declared props: children, style."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Balken'] > JSXAttribute > JSXIdentifier[name!=/^(?:pct|style|key|ref|className|style|children)$/]",
+        "message": "<Balken> doesn't accept that prop. Declared props: pct, style."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Banner'] > JSXAttribute > JSXIdentifier[name!=/^(?:art|children|key|ref|className|style|children)$/]",
+        "message": "<Banner> doesn't accept that prop. Declared props: art, children."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Banner'] > JSXAttribute[name.name='art'] > Literal[value!=/^(?:warnung|gefahr)$/]",
+        "message": "<Banner> art must be one of 'warnung' | 'gefahr'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Begriff'] > JSXAttribute > JSXIdentifier[name!=/^(?:titel|erklaerung|beispiel|frage|onFrage|children|key|ref|className|style|children)$/]",
+        "message": "<Begriff> doesn't accept that prop. Declared props: titel, erklaerung, beispiel, frage, onFrage, children."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='BeraterLeiste'] > JSXAttribute > JSXIdentifier[name!=/^(?:text|onOeffnen|key|ref|className|style|children)$/]",
+        "message": "<BeraterLeiste> doesn't accept that prop. Declared props: text, onOeffnen."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Button'] > JSXAttribute > JSXIdentifier[name!=/^(?:variante|disabled|onClick|style|children|key|ref|className|style|children)$/]",
+        "message": "<Button> doesn't accept that prop. Declared props: variante, disabled, onClick, style, children."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Button'] > JSXAttribute[name.name='variante'] > Literal[value!=/^(?:primaer|ghost|leise|nacht)$/]",
+        "message": "<Button> variante must be one of 'primaer' | 'ghost' | 'leise' | 'nacht'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Chip'] > JSXAttribute > JSXIdentifier[name!=/^(?:variante|aktiv|onClick|style|children|key|ref|className|style|children)$/]",
+        "message": "<Chip> doesn't accept that prop. Declared props: variante, aktiv, onClick, style, children."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Chip'] > JSXAttribute[name.name='variante'] > Literal[value!=/^(?:standard|src|pro)$/]",
+        "message": "<Chip> variante must be one of 'standard' | 'src' | 'pro'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Feld'] > JSXAttribute > JSXIdentifier[name!=/^(?:label|fehler|children|key|ref|className|style|children)$/]",
+        "message": "<Feld> doesn't accept that prop. Declared props: label, fehler, children."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='HerkunftsChip'] > JSXAttribute > JSXIdentifier[name!=/^(?:quelle|key|ref|className|style|children)$/]",
+        "message": "<HerkunftsChip> doesn't accept that prop. Declared props: quelle."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Input'] > JSXAttribute > JSXIdentifier[name!=/^(?:type|value|onChange|placeholder|style|key|ref|className|style|children)$/]",
+        "message": "<Input> doesn't accept that prop. Declared props: type, value, onChange, placeholder, style."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='KiWert'] > JSXAttribute > JSXIdentifier[name!=/^(?:children|style|key|ref|className|style|children)$/]",
+        "message": "<KiWert> doesn't accept that prop. Declared props: children, style."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Option'] > JSXAttribute > JSXIdentifier[name!=/^(?:gewaehlt|onClick|style|children|key|ref|className|style|children)$/]",
+        "message": "<Option> doesn't accept that prop. Declared props: gewaehlt, onClick, style, children."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Pill'] > JSXAttribute > JSXIdentifier[name!=/^(?:children|style|key|ref|className|style|children)$/]",
+        "message": "<Pill> doesn't accept that prop. Declared props: children, style."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Ring'] > JSXAttribute > JSXIdentifier[name!=/^(?:pct|key|ref|className|style|children)$/]",
+        "message": "<Ring> doesn't accept that prop. Declared props: pct."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='SchalterZeile'] > JSXAttribute > JSXIdentifier[name!=/^(?:titel|detail|an|onChange|key|ref|className|style|children)$/]",
+        "message": "<SchalterZeile> doesn't accept that prop. Declared props: titel, detail, an, onChange."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Sheet'] > JSXAttribute > JSXIdentifier[name!=/^(?:titel|onClose|children|key|ref|className|style|children)$/]",
+        "message": "<Sheet> doesn't accept that prop. Declared props: titel, onClose, children."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Sticker'] > JSXAttribute > JSXIdentifier[name!=/^(?:children|style|key|ref|className|style|children)$/]",
+        "message": "<Sticker> doesn't accept that prop. Declared props: children, style."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='TabBar'] > JSXAttribute > JSXIdentifier[name!=/^(?:tabs|aktiv|onWechsel|key|ref|className|style|children)$/]",
+        "message": "<TabBar> doesn't accept that prop. Declared props: tabs, aktiv, onWechsel."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Toast'] > JSXAttribute > JSXIdentifier[name!=/^(?:text|aktion|onAktion|key|ref|className|style|children)$/]",
+        "message": "<Toast> doesn't accept that prop. Declared props: text, aktion, onAktion."
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": [
+        "**/index.js"
+      ],
+      "rules": {
+        "no-restricted-imports": "off"
+      }
+    }
+  ],
+  "x-omelette": {
+    "components": {
+      "AiChip": {
+        "replaces": []
+      },
+      "Balken": {
+        "replaces": []
+      },
+      "Banner": {
+        "replaces": []
+      },
+      "Begriff": {
+        "replaces": []
+      },
+      "BeraterLeiste": {
+        "replaces": []
+      },
+      "Button": {
+        "replaces": []
+      },
+      "Chip": {
+        "replaces": []
+      },
+      "Feld": {
+        "replaces": []
+      },
+      "HerkunftsChip": {
+        "replaces": []
+      },
+      "Input": {
+        "replaces": []
+      },
+      "KiWert": {
+        "replaces": []
+      },
+      "Option": {
+        "replaces": []
+      },
+      "Pill": {
+        "replaces": []
+      },
+      "Ring": {
+        "replaces": []
+      },
+      "SchalterZeile": {
+        "replaces": []
+      },
+      "Sheet": {
+        "replaces": []
+      },
+      "Sticker": {
+        "replaces": []
+      },
+      "TabBar": {
+        "replaces": []
+      },
+      "Toast": {
+        "replaces": []
+      }
+    },
+    "tokens": [
+      "--feder",
+      "--fehler",
+      "--fehler-weich",
+      "--funke",
+      "--funke-hell",
+      "--funke-tinte",
+      "--funke-weich",
+      "--gewicht-fett",
+      "--gewicht-halb",
+      "--gewicht-normal",
+      "--gewicht-schwer",
+      "--grund",
+      "--karte",
+      "--ki",
+      "--ki-linie",
+      "--ki-tinte",
+      "--ki-weich",
+      "--kontur",
+      "--linie",
+      "--linie-weich",
+      "--nacht",
+      "--nacht-karte",
+      "--nacht-text",
+      "--ok",
+      "--ok-weich",
+      "--radius",
+      "--radius-lg",
+      "--radius-pille",
+      "--radius-s",
+      "--s1",
+      "--s2",
+      "--s3",
+      "--s4",
+      "--s5",
+      "--s6",
+      "--s7",
+      "--schatten-hart",
+      "--schatten-hart-l",
+      "--schatten-hart-s",
+      "--schatten-ki",
+      "--schrift-display",
+      "--schrift-mono",
+      "--schrift-text",
+      "--spationierung-display",
+      "--spationierung-label",
+      "--t-auftritt",
+      "--t-flott",
+      "--t-schnell",
+      "--text-2xl",
+      "--text-3xl",
+      "--text-held",
+      "--text-l",
+      "--text-m",
+      "--text-s",
+      "--text-xl",
+      "--text-xs",
+      "--tinte",
+      "--tinte-2",
+      "--warn",
+      "--warn-weich",
+      "--zack",
+      "--zeile-eng",
+      "--zeile-normal"
+    ],
+    "tokenKinds": {
+      "--grund": "color",
+      "--karte": "color",
+      "--tinte": "color",
+      "--tinte-2": "color",
+      "--linie": "color",
+      "--linie-weich": "color",
+      "--funke": "color",
+      "--funke-hell": "color",
+      "--funke-weich": "color",
+      "--funke-tinte": "color",
+      "--nacht": "color",
+      "--nacht-karte": "color",
+      "--nacht-text": "font",
+      "--ki": "color",
+      "--ki-weich": "color",
+      "--ki-linie": "color",
+      "--ki-tinte": "color",
+      "--ok": "color",
+      "--ok-weich": "color",
+      "--warn": "color",
+      "--warn-weich": "color",
+      "--fehler": "color",
+      "--fehler-weich": "color",
+      "--schrift-display": "font",
+      "--schrift-text": "font",
+      "--schrift-mono": "font",
+      "--text-xs": "font",
+      "--text-s": "font",
+      "--text-m": "font",
+      "--text-l": "font",
+      "--text-xl": "font",
+      "--text-2xl": "font",
+      "--text-3xl": "font",
+      "--text-held": "font",
+      "--gewicht-normal": "font",
+      "--gewicht-halb": "font",
+      "--gewicht-fett": "font",
+      "--gewicht-schwer": "font",
+      "--zeile-eng": "font",
+      "--zeile-normal": "font",
+      "--spationierung-display": "font",
+      "--spationierung-label": "font",
+      "--s1": "spacing",
+      "--s2": "spacing",
+      "--s3": "spacing",
+      "--s4": "spacing",
+      "--s5": "spacing",
+      "--s6": "spacing",
+      "--s7": "spacing",
+      "--radius-s": "radius",
+      "--radius": "radius",
+      "--radius-lg": "radius",
+      "--radius-pille": "radius",
+      "--kontur": "spacing",
+      "--schatten-hart": "color",
+      "--schatten-hart-s": "color",
+      "--schatten-hart-l": "color",
+      "--schatten-ki": "color",
+      "--feder": "other",
+      "--zack": "other",
+      "--t-schnell": "other",
+      "--t-flott": "other",
+      "--t-auftritt": "other"
+    },
+    "fontFamilies": [
+      "Bricolage Grotesque",
+      "Schibsted Grotesk",
+      "Space Mono"
+    ]
+  }
+}

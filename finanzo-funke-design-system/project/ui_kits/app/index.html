@@ -1,0 +1,226 @@
+<!-- @dsCard group="App" viewport="420x860" name="SteuerEule App (Funke)" subtitle="Cockpit · Belege · Berater · Übertragen — interaktiver Klick-Durchlauf" -->
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SteuerEule — Funke UI Kit</title>
+<link rel="stylesheet" href="../../styles.css">
+<script>try { if (localStorage.getItem('funke.theme') === 'dunkel') document.documentElement.dataset.theme = 'dunkel'; } catch (e) {}</script>
+<script src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>
+  .app-shell { max-width: 420px; margin: 0 auto; padding: 12px 16px 130px; }
+  /* Tablet: mehr Luft, Karten bleiben eine Spalte */
+  @media (min-width: 700px) {
+    .app-shell { max-width: 620px; padding: 24px 24px 140px; }
+  }
+  /* Desktop: Tab-Bar wird zur linken Rail (komponenten.css), Inhalt rückt ein */
+  @media (min-width: 1000px) {
+    body { padding-left: 140px; }
+    .app-shell { max-width: 680px; padding-bottom: 48px; }
+  }
+  /* Großer Desktop: echte zwei Spalten im Cockpit und bei den Belegen */
+  @media (min-width: 1200px) {
+    .app-shell { max-width: 1040px; }
+    .ck-grid { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 24px; align-items: start; }
+    .bel-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+    .bel-grid .fk-karte { margin-bottom: 0; }
+  }
+  .appbar { display: flex; justify-content: space-between; align-items: center; padding: 8px 0 18px; }
+  .appbar h1 { font-size: var(--text-2xl); font-weight: 800; }
+  /* Phasen-Stepper im Jahr-Tab */
+  .fx-stepper { display: flex; align-items: flex-start; margin-top: 14px; overflow-x: auto; scrollbar-width: none; }
+  .fx-step { flex: none; width: 58px; display: flex; flex-direction: column; align-items: center; gap: 5px; text-align: center; }
+  .fx-step-kreis { width: 28px; height: 28px; border-radius: 999px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px; border: var(--kontur) solid var(--tinte); background: var(--karte); }
+  .fx-step-kreis[data-done="true"] { background: var(--funke); }
+  .fx-step-kreis[data-aktuell="true"] { background: var(--tinte); color: var(--funke); box-shadow: 2px 2px 0 var(--funke); }
+  .fx-step-kreis[data-offen="true"] { border: 1.5px dashed var(--linie-weich); color: var(--tinte-2); }
+  .fx-step-label { font-size: 11px; letter-spacing: 0.01em; }
+  .fx-step-linie { flex: 1; min-width: 8px; height: 0; border-top: 2px solid var(--tinte); margin-top: 13px; }
+  .fx-step-linie[data-offen="true"] { border-top-style: dashed; border-top-color: var(--linie-weich); }
+  /* Grenzgänger-Schnellzugriff — lebt über der Tab-Bar, auf jedem Screen */
+  .fx-ggchip { position: fixed; right: 16px; bottom: 106px; z-index: 40; display: flex; align-items: center; gap: 7px; min-height: 44px; padding: 0 15px; border: var(--kontur) solid var(--tinte); border-radius: 999px; background: var(--karte); font-weight: 800; font-size: 13px; box-shadow: 3px 3px 0 var(--tinte); }
+  @media (min-width: 1000px) { .fx-ggchip { right: 28px; bottom: 28px; } }
+  @media (prefers-reduced-motion: no-preference) {
+    .app-shell > * { animation: funke-auftritt var(--t-auftritt) var(--feder) both; }
+    /* Chat: neue Blasen federn rein */
+    .fx-bubble { animation: funke-auftritt 0.35s var(--feder) both; }
+    /* Übertragen: Abhaken poppt */
+    .fx-check[aria-pressed="true"] { animation: funke-pop 0.38s var(--feder); }
+    /* Stepper: aktuelle Phase poppt beim Phasenwechsel */
+    .fx-step-kreis[data-aktuell="true"] { animation: funke-pop 0.38s var(--feder); }
+    /* Tab-Wechsel: Inhalt gleitet aus der Richtung des neuen Tabs herein (Orte in einer Reihe) */
+    @keyframes fx-slide-rechts { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
+    @keyframes fx-slide-links { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
+    .app-shell[data-richtung="rechts"] > * { animation: fx-slide-rechts 0.3s var(--feder) both; }
+    .app-shell[data-richtung="links"] > * { animation: fx-slide-links 0.3s var(--feder) both; }
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="demo-daten.js"></script>
+<script type="text/babel" src="EulenModus.jsx"></script>
+<script type="text/babel" src="Cockpit.jsx"></script>
+<script type="text/babel" src="Belege.jsx"></script>
+<script type="text/babel" src="Berater.jsx"></script>
+<script type="text/babel" src="Uebertragen.jsx"></script>
+<script type="text/babel" src="Profil.jsx"></script>
+<script type="text/babel" src="Statistik.jsx"></script>
+<script type="text/babel" src="Jahre.jsx"></script>
+<script type="text/babel" src="Bescheid.jsx"></script>
+<script type="text/babel" src="GgTracker.jsx"></script>
+<script type="text/babel" src="Paywall.jsx"></script>
+<script type="text/babel" src="Veranlagung.jsx"></script>
+<script type="text/babel" src="Lebenslagen.jsx"></script>
+<script type="text/babel" src="Datenschutz.jsx"></script>
+<script type="text/babel" src="Abgabe.jsx"></script>
+<script type="text/babel" src="JahrDetail.jsx"></script>
+<script type="text/babel" src="JahrTab.jsx"></script>
+<script type="text/babel">
+const { TabBar } = window.FinanzoFunkeDesignSystem_7e417e;
+
+const START_HINWEISE = [
+  { id: 'h1', titel: 'Arbeitsmittel-Pauschale', detail: 'Bildschirm + Tastatur aus deinem Beleg vom 02.05. sind absetzbar.', betrag: 110, status: 'offen' },
+  { id: 'h2', titel: 'Homeoffice-Pauschale', detail: 'Laut Interview arbeitest du 2 Tage/Woche zuhause — 6 €/Tag.', betrag: 80, status: 'offen' },
+];
+
+const START_ZEILEN = [
+  { anlage: 'Anlage N', zeile: '31', label: 'Bruttoarbeitslohn', wert: '54.320,00 €', erledigt: true, quelle: { beleg: 'Lohnsteuerbescheinigung 2026', regel: 'MAP-N-31 · Stand 2026' } },
+  { anlage: 'Vorsorgeaufwand', zeile: '4', label: 'Kranken-/Pflegeversicherung (AN-Anteil)', wert: '5.980,00 €', erledigt: true, quelle: { beleg: 'Lohnsteuerbescheinigung 2026, Zeile 25/26', regel: 'VORS-KV-01' } },
+  { anlage: 'Vorsorgeaufwand', zeile: '8', label: 'Rentenversicherung (AN-Anteil)', wert: '5.052,00 €', erledigt: true, quelle: { beleg: 'Lohnsteuerbescheinigung 2026, Zeile 23', regel: 'VORS-RV-01' } },
+  { anlage: 'Anlage Kind', zeile: '6', label: 'Kindergeld erhalten (1 Kind)', wert: '3.060,00 €', erledigt: false, quelle: { beleg: 'Familienkasse', regel: 'KIND-GELD-26', rechenweg: '12 × 255 €' } },
+  { anlage: 'Anlage Kind', zeile: '31', label: 'Betreuungskosten (Kita)', wert: '2.400,00 €', erledigt: false, quelle: { beleg: 'Kita-Bescheide + Überweisungen', regel: 'KIND-BETR-01', rechenweg: '80 % absetzbar, max. 4.800 €' } },
+  { anlage: 'Anlage N', zeile: '44', label: 'Fortbildungskosten', wert: '890,00 €', erledigt: false, quelle: { beleg: 'Rechnung Workshop GmbH', regel: 'WK-FORT-02' } },
+  { anlage: 'Anlage N', zeile: '45', label: 'Entfernungspauschale', wert: '1.831,20 €', erledigt: false, quelle: { beleg: 'Interview: 218 Arbeitstage', regel: 'WK-PENDLER-01', rechenweg: '218 × 28 km × 0,30 €' } },
+  { anlage: 'Sonderausgaben', zeile: '5', label: 'Spenden (DRK)', wert: '150,00 €', erledigt: false, quelle: { beleg: 'Spendenquittung DRK', regel: 'SA-SPENDE-01' } },
+  { anlage: 'Anlage KAP', zeile: '7', label: 'Kapitalerträge', wert: '812,00 €', erledigt: false, quelle: { beleg: 'Jahressteuerbescheinigung Bank', regel: 'KAP-SPB-1000', rechenweg: 'unter Sparerpauschbetrag 1.000 € — keine Steuer, Angabe lohnt trotzdem' } },
+  { anlage: 'Anlage V', zeile: '9', label: 'Mieteinnahmen (1 Wohnung)', wert: '9.600,00 €', erledigt: false, quelle: { beleg: 'Mietvertrag + Kontoümsätze', regel: 'V-EINF-01', rechenweg: '12 × 800 € Kaltmiete' } },
+  { anlage: 'Anlage N-Gre', zeile: 'GG-1', label: 'Nichtrückkehrtage', wert: '12', erledigt: false, quelle: { regel: 'GG-NRT-60 · DBA Schweiz', rechenweg: 'Tracker: 12 markierte Tage' } },
+  { anlage: 'Anlage N-Gre', zeile: 'GG-3', label: 'Quellensteuer Schweiz (4,5 %)', wert: '4.256,46 €', erledigt: false, quelle: { beleg: 'Lohnausweis Ziffer 12', regel: 'DBA CH Art. 15a Abs. 3', rechenweg: '3.978 CHF × 1,07 — wird angerechnet' } },
+  { anlage: 'Anlage R', zeile: '4', label: 'Gesetzliche Rente (Jahresbetrag)', wert: '14.640,00 €', erledigt: false, quelle: { beleg: 'Rentenbezugsmitteilung', regel: 'R-BST-2020', rechenweg: 'Rentenbeginn 2020 → Besteuerungsanteil 80 %' } },
+  { anlage: 'Anlage N-Gre', zeile: 'GG-2', label: 'Bruttolohn Schweiz', wert: '94.588,00 €', erledigt: false, quelle: { beleg: 'Lohnausweis 2026', regel: 'GG-KURS-2026 · vorläufig', rechenweg: '88.400 CHF × 1,07 (EZB-Jahresmittel — amtlicher Kurs kommt im Januar 2027, wir rechnen automatisch neu)' } },
+];
+
+const START_CHAT = [
+  { rolle: 'assistant', text: 'Hallo! Ich sehe deine Unterlagen für 2026. Womit starten wir?', quellen: ['Interview', '4 Belege'] },
+  { rolle: 'user', text: 'Was fehlt zur Abgabe?' },
+  { rolle: 'assistant', text: 'Drei Punkte: Arbeitstage bestätigen, den Fortbildungs-Beleg prüfen und deine IBAN. Danach ist alles übertragbar.', quellen: ['Vollständigkeits-Report'] },
+];
+
+const ALLE_TABS = ['cockpit', 'belege', 'berater', 'jahr', 'profil', 'statistik', 'jahre', 'bescheid', 'ggtracker', 'paywall', 'veranlagung', 'datenschutz', 'abgabe', 'jahrdetail', 'lebenslagen'];
+const LEGACY_TABS = { uebertragen: 'jahr' }; /* alte Deep-Links bleiben gültig */
+/* Orte in einer Reihe: Position des Eltern-Tabs → Richtung des Inhalts-Slides */
+const TAB_ORDNUNG = { cockpit: 0, veranlagung: 0, ggtracker: 0, lebenslagen: 0, belege: 1, berater: 2, jahr: 3, statistik: 3, jahre: 3, jahrdetail: 3, bescheid: 3, abgabe: 3, profil: 4, datenschutz: 4, paywall: 4 };
+
+function App() {
+  const [tab, setTabRaw] = React.useState(() => {
+    const h = (window.location.hash || '').replace('#', '');
+    const ziel = LEGACY_TABS[h] || h;
+    return ALLE_TABS.includes(ziel) ? ziel : 'cockpit';
+  });
+  const vorTracker = React.useRef('cockpit');
+  const tabRef = React.useRef(tab);
+  React.useEffect(() => { tabRef.current = tab; }, [tab]);
+  const [richtung, setRichtung] = React.useState('');
+  /* Hash ist die Wahrheit: geheZu schreibt ihn, der Listener setzt den State — Reload & Browser-Zurück funktionieren echt */
+  const geheZu = React.useCallback((t) => {
+    const ziel = LEGACY_TABS[t] || t;
+    if (!ALLE_TABS.includes(ziel)) return;
+    setTabRaw((alt) => { if (ziel === 'ggtracker' && alt !== 'ggtracker') vorTracker.current = alt; return alt; });
+    if (('#' + ziel) === window.location.hash) return;
+    window.location.hash = ziel;
+  }, []);
+  React.useEffect(() => {
+    const f = () => {
+      const h = (window.location.hash || '').replace('#', '');
+      const ziel = LEGACY_TABS[h] || h;
+      if (!ALLE_TABS.includes(ziel)) return;
+      const a = TAB_ORDNUNG[tabRef.current] ?? 0, b = TAB_ORDNUNG[ziel] ?? 0;
+      setRichtung(b === a ? '' : b > a ? 'rechts' : 'links');
+      setTabRaw(ziel);
+    };
+    window.addEventListener('hashchange', f);
+    return () => window.removeEventListener('hashchange', f);
+  }, []);
+  /* Grenzgänger aktiv? → Schnellzugriffs-Chip auf jedem Screen */
+  const gg = React.useMemo(() => {
+    try { const a = JSON.parse(localStorage.getItem('funke.interview')) || {}; return a.schweiz !== 'Nein'; }
+    catch (e) { return true; }
+  }, []);
+  const [hinweise, setHinweise] = React.useState(START_HINWEISE);
+  const [zeilen, setZeilen] = React.useState(START_ZEILEN);
+  const [chat, setChat] = React.useState(START_CHAT);
+  const [quotaRest] = React.useState(6);
+  const [delta, setDelta] = React.useState(0);
+
+  function umsetzen(id) {
+    const h = hinweise.find((x) => x.id === id);
+    setHinweise(hinweise.map((x) => (x.id === id ? { ...x, status: 'umgesetzt' } : x)));
+    setDelta(h.betrag);
+    setTimeout(() => setDelta(0), 4000);
+  }
+  function verwerfen(id) {
+    setHinweise(hinweise.map((x) => (x.id === id ? { ...x, status: 'verworfen' } : x)));
+  }
+  function frage(text) {
+    const ANTWORTEN = {
+      'Was fehlt zur Abgabe?': { text: 'Drei Punkte: Arbeitstage bestätigen, den Fortbildungs-Beleg prüfen und deine IBAN. Danach ist alles übertragbar.', quellen: ['Vollständigkeits-Report'] },
+      'Homeoffice erklären': { text: 'Für jeden Homeoffice-Tag gibt es 6 €, maximal 1.260 € im Jahr. Bei deinen 2 Tagen/Woche sind das rund 80 € Erstattung — kein Arbeitszimmer nötig.', quellen: ['Regel HO-PAUSCH-26', 'Interview'] },
+      'Grenzgänger-Status?': { text: 'Du liegst bei 12 von 60 Nichtrückkehrtagen — dein Status ist sicher. Wichtig: jede beruflich bedingte Übernachtung außerhalb zählt. Pflege die Tage im Tracker.', quellen: ['GG-NRT-60 · DBA Schweiz', 'Tracker'] },
+      'Warum kann ich Fassung 1 nicht ändern?': { text: 'Fassung 1 ist exakt das, was beim Finanzamt liegt — dein rechtliches Original. Würden wir sie ändern, wüsstest du nie mehr, was du wirklich eingereicht hast. Deshalb: Änderungen laufen als Berichtigung (Fassung 2) — das Original bleibt.', quellen: ['§ 153 AO', 'Versiegelt-Regel'] },
+      'Wie funktioniert der Splittingtarif?': { text: 'Euer Einkommen wird gedanklich halbiert, versteuert und die Steuer verdoppelt. Weil der Steuersatz mit dem Einkommen steigt, zahlt ihr so oft weniger — je größer euer Verdienst-Unterschied, desto größer der Vorteil. Bei euch: +412 € gegenüber Einzelveranlagung.', quellen: ['GÜNST-01 · Splittingtarif 2026'] },
+      'Was ist der Sparerpauschbetrag?': { text: '1.000 € Kapitalerträge pro Jahr sind steuerfrei (2.000 € bei Zusammenveranlagung). Deine 812 € liegen darunter — 0 € Steuer. Tipp: Freistellungsauftrag bei der Bank stellen, dann wird gar nicht erst abgezogen.', quellen: ['KAP-SPB-1000', 'Jahressteuerbescheinigung Bank'] },
+    };
+    const a = ANTWORTEN[text] || { text: 'Dazu habe ich in deinen Unterlagen nichts Belastbares — ehrlich gesagt. Formuliere die Frage konkreter oder häng den passenden Beleg an.', quellen: ['4 Belege geprüft'] };
+    setChat((c) => [...c, { rolle: 'user', text }, { rolle: 'assistant', ...a }]);
+  }
+  function toggleZeile(zeile) {
+    setZeilen(zeilen.map((z) => (z.zeile === zeile ? { ...z, erledigt: !z.erledigt } : z)));
+  }
+
+  return (
+    <div>
+      <div className="app-shell" key={tab} data-richtung={richtung || undefined} data-screen-label={tab}>
+        {tab === 'cockpit' && <FunkeCockpit hinweise={hinweise} onUmsetzen={umsetzen} onVerwerfen={verwerfen} geheZu={geheZu} delta={delta} />}
+        {tab === 'belege' && <FunkeBelege onBerater={() => geheZu('berater')} />}
+        {tab === 'berater' && <FunkeBerater chat={chat} onFrage={frage} />}
+        {tab === 'jahr' && <FunkeJahrTab zeilen={zeilen} onToggle={toggleZeile} geheZu={geheZu} />}
+        {tab === 'profil' && <FunkeProfil geheZu={geheZu} />}
+        {tab === 'statistik' && <FunkeStatistik onZurueck={() => geheZu('jahr')} />}
+        {tab === 'jahre' && <FunkeJahre onWeiter={() => geheZu('cockpit')} onZurueck={() => geheZu('jahr')} onJahr={() => geheZu('jahrdetail')} />}
+        {tab === 'bescheid' && <FunkeBescheid onBerater={() => geheZu('berater')} onZurueck={() => geheZu('jahr')} />}
+        {tab === 'ggtracker' && <FunkeGgTracker startTage={7} onZurueck={() => geheZu(vorTracker.current)} />}
+        {tab === 'paywall' && <FunkePaywall onKaufen={() => geheZu('jahr')} onSchliessen={() => geheZu('jahr')} />}
+        {tab === 'veranlagung' && <FunkeVeranlagung onZurueck={() => geheZu('cockpit')} onFrage={(f) => { geheZu('berater'); setTimeout(() => frage(f), 50); }} />}
+        {tab === 'lebenslagen' && <FunkeLebenslagen onZurueck={() => geheZu('cockpit')} onBerater={() => geheZu('berater')} />}
+        {tab === 'datenschutz' && <FunkeDatenschutz onZurueck={() => geheZu('profil')} geheZu={geheZu} />}
+        {tab === 'abgabe' && <FunkeAbgabe onZurueck={() => geheZu('jahr')} />}
+        {tab === 'jahrdetail' && <FunkeJahrDetail onZurueck={() => geheZu('jahre')} onFrage={(f) => { geheZu('berater'); setTimeout(() => frage(f), 50); }} />}
+      </div>
+      {gg && ['cockpit', 'belege', 'jahr', 'veranlagung'].includes(tab) && (
+        <button className="fx-ggchip" onClick={() => geheZu('ggtracker')} aria-label={`Grenzgänger-Tracker öffnen — ${window.FunkeDemo.gg.stand} von ${window.FunkeDemo.gg.max} Nichtrückkehrtagen`}>
+          GG <b className="num" style={{ fontFamily: 'var(--schrift-mono)' }}>{window.FunkeDemo.gg.stand}/{window.FunkeDemo.gg.max}</b>
+        </button>
+      )}
+      <TabBar
+        tabs={[
+          { id: 'cockpit', label: 'Übersicht' },
+          { id: 'belege', label: 'Belege' },
+          { id: 'berater', label: 'Berater' },
+          { id: 'jahr', label: 'Jahr', icon: 'M4 5h16v15H4V5zm0 5h16M8 3v4m8-4v4' },
+          { id: 'profil', label: 'Profil' },
+        ]}
+        aktiv={({ jahr: 'jahr', abgabe: 'jahr', statistik: 'jahr', jahre: 'jahr', jahrdetail: 'jahr', bescheid: 'jahr', veranlagung: 'cockpit', ggtracker: 'cockpit', lebenslagen: 'cockpit', datenschutz: 'profil', paywall: 'profil' })[tab] || tab}
+        onWechsel={geheZu}
+      />
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

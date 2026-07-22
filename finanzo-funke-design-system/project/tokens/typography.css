@@ -1,0 +1,33 @@
+/* ============================================================
+   Funke — Typografie
+   Display: Bricolage Grotesque — laut, jung, eng gesetzt.
+   Text: Schibsted Grotesk — klar, freundlich, gut lesbar.
+   Mono: Space Mono — Zeilennummern, Regel-IDs, Metadaten.
+   Zahlen: IMMER tabular-nums (Klasse .num).
+   Skala: 12 / 14 / 16 / 18 / 24 / 32 / 44 / 60
+   ============================================================ */
+:root {
+  --schrift-display: "Bricolage Grotesque", "Arial Black", sans-serif; /* @kind font */
+  --schrift-text: "Schibsted Grotesk", system-ui, sans-serif; /* @kind font */
+  --schrift-mono: "Space Mono", ui-monospace, Menlo, monospace; /* @kind font */
+
+  --text-xs: 12px;
+  --text-s: 14px;
+  --text-m: 16px;
+  --text-l: 18px;
+  --text-xl: 24px;
+  --text-2xl: 32px;
+  --text-3xl: 44px;
+  --text-held: 60px;   /* der Erstattungs-Held */
+
+  --gewicht-normal: 450; /* @kind font */
+  --gewicht-halb: 600; /* @kind font */
+  --gewicht-fett: 700; /* @kind font */
+  --gewicht-schwer: 800; /* @kind font */
+
+  --zeile-eng: 1.05; /* @kind font */
+  --zeile-normal: 1.45; /* @kind font */
+
+  --spationierung-display: -0.03em; /* @kind font */
+  --spationierung-label: 0.08em; /* @kind font */
+}

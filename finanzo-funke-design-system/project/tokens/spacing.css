@@ -1,0 +1,21 @@
+/* ============================================================
+   Funke — Raum & Form
+   8pt-Raster (aus „Klar" übernommen). Radien deutlich runder:
+   Karten 20, Groß 28, Pillen 999. Konturen 2px Tinte.
+   ============================================================ */
+:root {
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+  --s6: 32px;
+  --s7: 48px;
+
+  --radius-s: 12px;
+  --radius: 20px;
+  --radius-lg: 28px;
+  --radius-pille: 999px;
+
+  --kontur: 2px; /* @kind spacing */
+}
