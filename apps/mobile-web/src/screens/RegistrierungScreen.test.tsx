@@ -147,7 +147,11 @@ describe('RegistrierungScreen', () => {
     ).toBeTruthy()
 
     fireEvent.click(screen.getByText('Weiter zum Onboarding →'))
-    expect(onDone).toHaveBeenCalledOnce()
+    // `onDone` fires synchronously off this click, but under CI's parallel CPU load the
+    // click->handler round trip through RN-Web's Pressable response system can land a tick later
+    // than a bare synchronous `expect` allows for — `waitFor` tolerates that settle without
+    // changing what's actually being asserted (still exactly one call).
+    await waitFor(() => expect(onDone).toHaveBeenCalledOnce())
   })
 
   it('does not show the unverified banner on the success step when better-auth reports the account already verified', async () => {
