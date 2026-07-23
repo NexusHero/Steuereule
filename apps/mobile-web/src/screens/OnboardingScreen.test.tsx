@@ -67,6 +67,23 @@ describe('OnboardingScreen', () => {
     expect(screen.getByDisplayValue('Beispiel')).toBeTruthy()
   })
 
+  it('prefills the Steuer-ID grouped, matching the typed-input format (steuereule#60)', async () => {
+    server.use(
+      http.get('*/v1/profile', () =>
+        HttpResponse.json({ firstName: 'Anna', lastName: 'Beispiel', steuerId: '02476291358', steuernummer: '1234567890' }, { status: 200 }),
+      ),
+    )
+    renderOnboarding()
+
+    await screen.findByDisplayValue('Anna')
+    fireEvent.click(screen.getByText('Weiter'))
+    expect(screen.getByDisplayValue('02 476 291 358')).toBeTruthy()
+    expect(screen.queryByDisplayValue('02476291358')).toBeNull()
+
+    fireEvent.click(screen.getByText('Weiter'))
+    expect(screen.getByDisplayValue('123/456/7890')).toBeTruthy()
+  })
+
   it('shows a retryable error screen when the profile fails to load, and recovers on retry', async () => {
     let attempt = 0
     server.use(

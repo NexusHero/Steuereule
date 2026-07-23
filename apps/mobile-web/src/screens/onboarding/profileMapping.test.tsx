@@ -2,10 +2,10 @@ import { describe, it, expect } from 'vitest'
 import { toOnboardingProfil, toPutProfileDto, EMPTY_ONBOARDING_PROFIL } from './profileMapping'
 
 describe('toOnboardingProfil', () => {
-  it('maps a saved profile field-by-field', () => {
+  it('maps a saved profile field-by-field, grouping the Steuer-ID/Steuernummer like the typing path (steuereule#60)', () => {
     expect(
       toOnboardingProfil({ firstName: 'Kim', lastName: 'Yilmaz', steuerId: '12345678901', steuernummer: '1234567890' }),
-    ).toEqual({ vorname: 'Kim', nachname: 'Yilmaz', steuerId: '12345678901', steuerNr: '1234567890' })
+    ).toEqual({ vorname: 'Kim', nachname: 'Yilmaz', steuerId: '12 345 678 901', steuerNr: '123/456/7890' })
   })
 
   it('maps the all-null default to the empty profile', () => {
