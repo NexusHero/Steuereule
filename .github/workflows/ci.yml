@@ -72,12 +72,14 @@ jobs:
       - name: Test
         run: pnpm -r test
 
-  # Real gate (#66): proves the two DSGVO-critical guarantees — REQ-003 field-
-  # encryption at rest and REQ-004 append-only audit log — against a real, migrated
-  # Postgres, not just the no-DB unit suite. A GitHub Actions service container
-  # (rather than docker-compose) because the test process runs natively on the
-  # runner (ADR-0010) — the compose stack's `postgres` service is the parity image
-  # for the *local*/e2e stack, not this job's database.
+  # Real gate (#66, extended for Slice 2/ADR-0012): proves the DSGVO-critical
+  # guarantees — REQ-003 field-encryption at rest, REQ-004 append-only audit log,
+  # and now REQ-005/006/009/010's auth acceptance suites (email/password signup +
+  # verification, session/guard precedence, guest->account upgrade, security
+  # hardening) — against a real, migrated Postgres, not just the no-DB unit suite.
+  # A GitHub Actions service container (rather than docker-compose) because the test
+  # process runs natively on the runner (ADR-0010) — the compose stack's `postgres`
+  # service is the parity image for the *local*/e2e stack, not this job's database.
   integration:
     name: Integration (Postgres)
     needs: validate-compose
@@ -98,6 +100,12 @@ jobs:
           --health-retries=10
     env:
       DATABASE_URL: postgres://steuereule:steuereule@localhost:5432/steuereule
+      # Synthetic, dev-only (ADR-0012) — vitest.integration.config.ts already sets
+      # these for the test process, but declared here too for the same reason
+      # DATABASE_URL is: this job's env is meant to be self-documenting about what
+      # it actually exercises.
+      BETTER_AUTH_SECRET: ci-integration-test-better-auth-secret-0123456789
+      BETTER_AUTH_URL: http://localhost:3000
     steps:
       - uses: actions/checkout@v5
       - name: Set up pnpm
@@ -113,7 +121,7 @@ jobs:
         run: pnpm --filter @steuereule/api prisma:generate
       - name: Apply migrations (migrate deploy, never migrate dev)
         run: pnpm --filter @steuereule/api migrate:deploy
-      - name: Integration test — encryption-at-rest + append-only audit log
+      - name: Integration + acceptance tests — encryption/audit + REQ-005/006/009/010 (ADR-0012)
         run: pnpm --filter @steuereule/api test:integration
 
   # Placeholder — build the service images once Dockerfiles exist.
@@ -157,6 +165,11 @@ jobs:
       # resolveFieldEncryptionKey refuse a guessable default under NODE_ENV=production).
       GUEST_SESSION_SECRET: ci-smoke-test-secret
       PRISMA_FIELD_ENCRYPTION_KEY: k1.aesgcm256.MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+      # Synthetic, dev-only (ADR-0012) — same story as the two secrets above:
+      # production requires both set explicitly (resolveBetterAuthSecret /
+      # resolveBetterAuthUrl refuse a guessable default under NODE_ENV=production).
+      BETTER_AUTH_SECRET: ci-smoke-test-better-auth-secret-0123456789
+      BETTER_AUTH_URL: http://localhost:3000
       PORT: '3000'
     steps:
       - uses: actions/checkout@v5
@@ -193,6 +206,15 @@ jobs:
           curl --fail --silent --show-error \
             --retry 30 --retry-delay 1 --retry-all-errors --retry-connrefused \
             http://localhost:3000/v1/profile
+      - name: Smoke request — GET /api/auth/get-session over real HTTP (ADR-0012 §1)
+        # Proves better-auth's Fastify catch-all mount actually answers on the real,
+        # booted server — the exact class of bug `.inject()` (light-my-request,
+        # never a real socket) is structurally blind to: the content-type-parser
+        # encapsulation wiring in mount-better-auth.ts only breaks when a real
+        # request hits a real listening Fastify instance.
+        run: |
+          curl --fail --silent --show-error \
+            http://localhost:3000/api/auth/get-session
       - name: Server log (on failure)
         if: failure()
         run: cat /tmp/steuereule-api-smoke.log || true
