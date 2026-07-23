@@ -2,11 +2,11 @@
 #
 # The Docker Compose files (docker-compose.yml + the ci/e2e overlays) are the
 # foundation this pipeline is built on. `lint` and `build` are still honest
-# placeholders (grow as lintable/buildable-image work lands); `test`, `integration`
-# and `smoke` are real, CI-blocking gates.
+# placeholders (grow as lintable/buildable-image work lands); `test`, `integration`,
+# `smoke` and `cross-origin-smoke` are real, CI-blocking gates.
 #
 # Flow:  validate-compose ──► lint ──────────────► build ──► smoke
-#                          ├─► test ───────────────┘
+#                          ├─► test ───────────────┤    └─► cross-origin-smoke
 #                          └─► integration ─────────┘
 name: CI
 
@@ -248,4 +248,118 @@ jobs:
         run: |
           if [ -f /tmp/steuereule-api-smoke.pid ]; then
             kill "$(cat /tmp/steuereule-api-smoke.pid)" 2>/dev/null || true
+          fi
+
+  # Real gate (M2 CI-hardening) — automates the class of bug that broke the deployed
+  # demo TWICE and was invisible to every unit/integration test and to `curl`/Node's own
+  # `fetch()` (neither enforces CORS the way a browser does): #106 (the hijacked
+  # better-auth mount silently dropping CORS headers on the real, non-OPTIONS response)
+  # and #108 (`enableCors`'s default `methods` list silently excluding PUT, failing the
+  # browser's real preflight). Both were only ever caught by Salih's manual cross-origin
+  # Playwright pass — this job is that pass, automated and CI-blocking.
+  #
+  # Boots the compiled `dist/` API on one origin and serves the exported web bundle
+  # (`expo export --platform web`) on a genuinely different origin (different port —
+  # sufficient for the browser's same-origin policy, which keys on scheme+host+port),
+  # then drives a real headless Chromium page (already-installed browser, ADR-0004) that
+  # executes actual credentialed `fetch()` calls from the web origin at the API origin:
+  # signup, get-session, sign-out, login, get-session again, and a PUT /v1/profile. Each
+  # call is checked two ways — (a) the in-page fetch must actually resolve (a real
+  # browser rejects the promise outright when CORS is broken, `net::ERR_FAILED`/"Failed
+  # to fetch" — exactly how #106/#108 manifest to a real user) and (b) the actual wire
+  # response is inspected via Playwright's network events for a genuine
+  # `Access-Control-Allow-Origin: <web origin>` header, not merely inferred from the
+  # fetch succeeding.
+  #
+  # See e2e/cross-origin/run.mjs for the full rationale/mechanics.
+  cross-origin-smoke:
+    name: Cross-origin browser smoke
+    needs: build
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: steuereule
+          POSTGRES_PASSWORD: steuereule
+          POSTGRES_DB: steuereule
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U steuereule -d steuereule"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      DATABASE_URL: postgres://steuereule:steuereule@localhost:5432/steuereule
+      GUEST_SESSION_SECRET: ci-cross-origin-smoke-secret
+      PRISMA_FIELD_ENCRYPTION_KEY: k1.aesgcm256.MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+      BETTER_AUTH_SECRET: ci-cross-origin-smoke-better-auth-secret-0123456789
+      # The two origins are genuinely distinct (different ports — different from the
+      # `smoke` job's :3000/:8081 pair on purpose, so a reader never conflates the two
+      # jobs' server instances).
+      API_ORIGIN: http://localhost:3301
+      WEB_ORIGIN: http://localhost:4173
+      BETTER_AUTH_URL: http://localhost:3301
+      PORT: '3301'
+      CORS_ALLOWED_ORIGINS: http://localhost:4173
+      EXPO_PUBLIC_API_BASE_URL: http://localhost:3301
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Generate Prisma Client
+        run: pnpm --filter @steuereule/api prisma:generate
+      - name: Apply migrations (migrate deploy, never migrate dev)
+        run: pnpm --filter @steuereule/api migrate:deploy
+      - name: Build the API
+        run: pnpm --filter @steuereule/api build
+      - name: Export the web bundle (offline/static web build, EXPO_PUBLIC_* baked in)
+        run: pnpm --filter @steuereule/mobile-web exec expo export --platform web
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      - name: Install Playwright's Chromium (browser only, no OS deps re-check needed on ubuntu-latest's image)
+        run: pnpm --filter @steuereule/e2e exec playwright install chromium --with-deps
+      - name: Boot the real server (compiled dist/, same tsx bridge as the `smoke` job)
+        working-directory: apps/api
+        run: |
+          node --import tsx dist/main.js > /tmp/steuereule-api-cross-origin.log 2>&1 &
+          echo $! > /tmp/steuereule-api-cross-origin.pid
+      - name: Serve the exported web bundle on its own origin
+        run: |
+          node e2e/cross-origin/static-server.mjs --root apps/mobile-web/dist --port 4173 --host localhost \
+            > /tmp/steuereule-web-cross-origin.log 2>&1 &
+          echo $! > /tmp/steuereule-web-cross-origin.pid
+      - name: Wait for both origins to answer (poll, no sleep)
+        run: |
+          curl --fail --silent --show-error --retry 30 --retry-delay 1 --retry-all-errors --retry-connrefused \
+            "${API_ORIGIN}/v1/profile"
+          curl --fail --silent --show-error --retry 30 --retry-delay 1 --retry-all-errors --retry-connrefused \
+            "${WEB_ORIGIN}/"
+      - name: Cross-origin browser smoke — signup, login, get-session, PUT /v1/profile
+        run: node e2e/cross-origin/run.mjs
+      - name: API log (on failure)
+        if: failure()
+        run: cat /tmp/steuereule-api-cross-origin.log || true
+      - name: Web static server log (on failure)
+        if: failure()
+        run: cat /tmp/steuereule-web-cross-origin.log || true
+      - name: Stop the servers (PID-scoped only — #114, never a blanket process kill)
+        if: always()
+        run: |
+          if [ -f /tmp/steuereule-api-cross-origin.pid ]; then
+            kill "$(cat /tmp/steuereule-api-cross-origin.pid)" 2>/dev/null || true
+          fi
+          if [ -f /tmp/steuereule-web-cross-origin.pid ]; then
+            kill "$(cat /tmp/steuereule-web-cross-origin.pid)" 2>/dev/null || true
           fi

@@ -1,0 +1,12 @@
+{
+  "name": "@steuereule/e2e",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "cross-origin-smoke": "node cross-origin/run.mjs"
+  },
+  "devDependencies": {
+    "playwright-core": "1.56.1"
+  }
+}
