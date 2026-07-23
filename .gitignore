@@ -6,6 +6,9 @@ dist/
 coverage/
 .turbo/
 *.tsbuildinfo
+# Local runtime artifacts (agent worktrees, Expo cache) — never committed.
+.claude/
+.expo/
 .env
 .env.*
 !.env.example
