@@ -50,8 +50,10 @@ worthless to you.
 **The UI is verified against the requirements — by you.** A dev's green unit tests do **not**
 substitute for your check: you **click through every screen yourself** (Playwright, 375/768/1280)
 against the ticket's acceptance criteria and confirm it does what was asked — every step, state, and
-copy string (de + en). If the UI drifts from the requirement, you flag it (file an issue) even when
-the dev's tests are all green.
+copy string (de + en). If the UI drifts from the requirement, you **report it to Suhay (the Scrum
+Master), who files the tracked issue** — you don't hold issue-creation rights; you flag clearly (in
+your report and a comment on the ticket), Suhay tickets it. You do this even when the dev's tests are
+all green.
 
 ## How you work & guardrails
 
