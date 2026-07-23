@@ -30,13 +30,19 @@ export class UserContextGuard implements CanActivate {
       reply.setCookie(GUEST_SESSION_COOKIE, signGuestSession(userId, secret), {
         httpOnly: true,
         // SameSite=None; Secure (ADR-0011, amending ADR-0007's original `strict`): the web
-        // app and the API run on separate origins in both local dev (different ports) and
-        // the deployed demo, so this is a cross-site credentialed cookie — `strict`/`Lax`
-        // is silently dropped by the browser on a cross-site request, which would leave the
-        // onboarding vertical broken even with CORS headers correct. `Secure` is required
-        // whenever `SameSite=None` is set (browsers reject the pairing otherwise); this is
-        // safe unconditionally because `http://localhost` is treated as a secure context by
-        // modern browsers even without TLS, and the deployed demo is HTTPS-only (ADR-0007).
+        // app and the API run on different origins in both local dev (different ports on
+        // localhost) and the deployed demo (distinct *.fly.dev subdomains). Local dev is
+        // cross-origin but same-site — `SameSite` keys on scheme + registrable domain, and
+        // port isn't part of "site", so `strict` would survive there unaffected. What
+        // genuinely forces `None` is the deployed demo, where the web app and API sit on
+        // different registrable domains (`fly.dev` is a public suffix, so each subdomain is
+        // its own site) — a real cross-site credentialed request, from which the browser
+        // silently drops a `strict`/`Lax` cookie, leaving the onboarding vertical broken even
+        // with CORS headers correct. `None` is required for that deployed cross-site case and
+        // harmlessly permissive for the same-site local one. `Secure` is required whenever
+        // `SameSite=None` is set (browsers reject the pairing otherwise); this is safe
+        // unconditionally because `http://localhost` is treated as a secure context by modern
+        // browsers even without TLS, and the deployed demo is HTTPS-only (ADR-0007).
         sameSite: 'none',
         secure: true,
         path: '/',

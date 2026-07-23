@@ -53,8 +53,10 @@ describe('UserContextGuard', () => {
     expect(cookieValue.startsWith(`${userId as string}.`)).toBe(true)
     expect(options.httpOnly).toBe(true)
     // SameSite=None; Secure (ADR-0011): the web app and the API are cross-origin in both
-    // local dev and the deployed demo, so the cookie must survive a cross-site credentialed
-    // request — `strict`/`Lax` is silently dropped by the browser in that case.
+    // local dev and the deployed demo, but only the deployed demo is cross-site (distinct
+    // *.fly.dev registrable domains) — that's what forces `None`, since `strict`/`Lax` is
+    // silently dropped by the browser on that cross-site credentialed request. Local dev
+    // (different ports on localhost) is same-site, where `None` is just harmlessly permissive.
     expect(options.sameSite).toBe('none')
     expect(options.secure).toBe(true)
   })
