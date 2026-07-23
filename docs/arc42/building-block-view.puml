@@ -1,0 +1,73 @@
+@startuml building-block-view
+' Rendered with PlantUML's built-in Smetana layout (pure Java) so the SVG export
+' needs no external Graphviz/dot install — reproducible in CI and on any machine.
+!pragma layout smetana
+' arc42 §5 — Building Block View (Level 1 whitebox) of the SteuerEule system.
+' Source of record for the diagram; export to building-block-view.svg (see README).
+' Highlighted (green) = building blocks added by REQ-001, the Cockpit vertical
+' (steuereule#91 backend / #93 frontend). Keep this in step with the code — a stale
+' arc42 is treated as a failing test.
+skinparam componentStyle rectangle
+skinparam defaultTextAlignment center
+skinparam shadowing false
+skinparam rectangleBorderColor #6b7280
+skinparam packageBorderColor #6b7280
+
+title SteuerEule — Building Block View (Level 1) · arc42 §5\ngreen = added by REQ-001 (Cockpit vertical, steuereule#91/#93)
+
+actor "User\n(guest session or\nverified account)" as user
+
+package "apps/mobile-web  ·  Expo / React-Native-Web" as fe {
+  component "LoginScreen" as login
+  component "OnboardingScreen" as onb
+  component "CockpitScreen\n(hero estimate card,\nhonest states)" as cockpitScreen #palegreen
+}
+
+package "Shared packages (monorepo)" as pkgs {
+  component "@steuereule/core\ndeterministic domain —\nvalidators · cockpitRange()" as core
+  component "@steuereule/api-client\norval-generated typed client\n+ TanStack Query hooks" as apiclient
+  component "@steuereule/ui\nFunke design system" as ui
+  component "@steuereule/tokens\ndesign tokens" as tokens
+}
+
+package "apps/api  ·  NestJS on Fastify" as api {
+  component "UserContextGuard\nidentity seam (ADR-0007/0012)" as guard
+  component "ProfileModule\nGET/PUT /v1/profile" as profile
+  component "CockpitModule\nGET /v1/steuerjahre/{jahr}/cockpit\ncontroller · service · TaxYearRepository" as cockpitMod #palegreen
+  component "AuditModule\nTaxDataAccessLog (append-only)" as audit
+  component "PrismaModule\nfield-encrypted Prisma client" as prisma
+}
+
+database "Postgres (EU)\nexpand-only migrations (ADR-047)" as db {
+  component "Profile" as tProfile
+  component "TaxDataAccessLog" as tAudit
+  component "TaxYear" as tTaxYear #palegreen
+}
+
+user --> fe
+login ..> apiclient
+onb ..> apiclient
+cockpitScreen ..> apiclient : useCockpit…GetCockpitSummary
+cockpitScreen --> ui
+cockpitScreen ..> core : formatEuroRange()
+ui ..> tokens
+
+apiclient ..> api : HTTP  /v1/*  (cookie-scoped)
+
+guard --> profile
+guard --> cockpitMod
+profile --> prisma
+cockpitMod ..> core : cockpitRange()\n(determinism boundary,\nADR-014/048)
+cockpitMod --> prisma
+audit --> prisma
+prisma --> db
+
+legend right
+  All API access is scoped by the trusted userId the
+  UserContextGuard establishes (ADR-0007) — never a
+  client-supplied identity. @steuereule/core is the single
+  home of deterministic rules (validators, cockpitRange),
+  imported by both api and frontend — no second copy.
+endlegend
+
+@enduml

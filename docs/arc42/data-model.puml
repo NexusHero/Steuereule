@@ -1,0 +1,77 @@
+@startuml data-model
+' Rendered with PlantUML's built-in Smetana layout (pure Java) so the SVG export
+' needs no external Graphviz/dot install — reproducible in CI and on any machine.
+!pragma layout smetana
+' arc42 §5 — Persistence data model (data view) of the SteuerEule Postgres schema.
+' Source of record for the diagram; export to data-model.svg (see README).
+' Highlighted (green) = added by REQ-001 (steuereule#91/#92). Mirror of
+' apps/api/prisma/schema.prisma — keep the two in step (stale arc42 = failing test).
+hide circle
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam classBorderColor #6b7280
+
+title SteuerEule — Persistence Data Model · arc42 §5 (data view)\ngreen = added by REQ-001 (Cockpit, steuereule#91/#92)
+
+note as Nscope
+  **userId is a logical scoping key, not a DB foreign key** (ADR-0007).
+  There is no User table — identity is the guest-session / verified-session
+  seam the UserContextGuard owns. Every row is read scoped to a single
+  userId; there are no cross-user joins between these entities.
+end note
+
+class Profile {
+  id : uuid <<PK>>
+  userId : string <<unique>>
+  firstName : string
+  lastName : string
+  steuerId : string <<encrypted>>
+  steuernummer : string? <<encrypted>>
+  createdAt : DateTime
+  updatedAt : DateTime
+}
+note bottom of Profile
+  steuerId / steuernummer are field-encrypted at rest
+  (ADR-0008 — AES-256-GCM, per-write nonce, mode=strict).
+  Plain facts only otherwise — clean side of the
+  determinism boundary; @steuereule/core never recomputes these.
+end note
+
+class TaxDataAccessLog <<append-only>> {
+  id : uuid <<PK>>
+  userId : string <<indexed>>
+  action : AuditAction (READ | WRITE)
+  resource : string
+  createdAt : DateTime
+}
+note bottom of TaxDataAccessLog
+  DSGVO Art. 30 accountability trail (ADR-0008 / REQ-004).
+  Who/what/when only — no value column, never the plaintext
+  or ciphertext. Audited surface is identifier-class access
+  (Profile), not read-of-own-estimate (Cockpit).
+end note
+
+class TaxYear #palegreen {
+  id : uuid <<PK>>
+  userId : string
+  steuerjahr : int
+  .. raw inputs only ..
+  baseEstimate : int
+  openItems : int
+  openConflicts : int
+  .. ..
+  createdAt : DateTime
+  updatedAt : DateTime
+  __ unique (userId, steuerjahr) __
+}
+note bottom of TaxYear
+  Stores **raw inputs only**. The Cockpit refund-estimate
+  **range is never persisted** — recomputed on every read via
+  @steuereule/core cockpitRange() (determinism boundary,
+  ADR-014/048), so there is no second place to drift.
+  No @encrypted field: ruled out of ADR-0008 scope (Musti
+  review, R1a) — no tax identifier, only a rounded estimate
+  and two counts. Revisit if assessed amounts / income land here.
+end note
+
+@enduml
