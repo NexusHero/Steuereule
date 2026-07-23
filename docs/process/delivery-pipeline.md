@@ -73,6 +73,9 @@ acceptance-cosmetics authored after the fact.
 
 ## Rules that keep it fast
 
+- **Two tracks, both loaded.** Suhay and Musti own capacity together: a slice is split so **Kaan
+  (frontend) and Robin (backend) run in parallel** on non-colliding work — no dev sits idle while the
+  other builds. Planned at a **sustainable pace** (the team gets its daily breather; no crunch).
 - **One ticket = one vertical slice = one short-lived branch.** Small diffs, small final pass.
 - **Blocking vs. non-blocking.** A real defect blocks and is fixed before the PR. A nice-to-have does
   **not** stall the slice — it goes to Suhay as a follow-up ticket (findings become tickets, and that
