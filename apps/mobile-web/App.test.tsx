@@ -1,8 +1,9 @@
 // Smoke test for the app shell's stage wiring (steuereule#72) — not a re-test of each screen's
 // own behaviour (that's LoginScreen.test.tsx / RegistrierungScreen.test.tsx / OnboardingScreen
-// .test.tsx), just that Login -> Registrierung -> Onboarding are actually reachable in sequence
-// through the real App component, with the real providers (auth client + query client + i18n +
-// theme) wired the way the deployed app boots.
+// .test.tsx), just that Splash -> Login -> Registrierung -> Onboarding are actually reachable in
+// sequence through the real App component, with the real providers (auth client + query client +
+// i18n + theme) wired the way the deployed app boots. Splash is skipped via its own tap-to-skip
+// affordance rather than waiting out its auto-advance timer, keeping this test fast.
 import { describe, it, expect } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
@@ -27,6 +28,7 @@ describe('App', () => {
     const { default: App } = await import('./App')
     render(<App />)
 
+    fireEvent.click(screen.getByLabelText('Weiter zur App'))
     expect(screen.getByText('Einloggen')).toBeTruthy()
     fireEvent.click(screen.getByText('Neu hier? Konto anlegen'))
 
@@ -44,6 +46,7 @@ describe('App', () => {
   it('goes from Login straight to Onboarding via guest mode, unchanged from before this slice', async () => {
     const { default: App } = await import('./App')
     render(<App />)
+    fireEvent.click(screen.getByLabelText('Weiter zur App'))
     fireEvent.click(screen.getByText('Erstmal als Gast umschauen'))
     await screen.findByPlaceholderText('Kim')
   })

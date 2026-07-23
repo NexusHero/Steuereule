@@ -11,6 +11,7 @@ import { configureApiClient } from '@steuereule/api-client'
 import { createAppI18n } from './src/i18n/app-i18n'
 import { createAppAuthClient } from './src/auth/auth-client'
 import { AuthClientProvider } from './src/auth/AuthClientProvider'
+import { SplashScreen } from './src/screens/SplashScreen'
 import { LoginScreen } from './src/screens/LoginScreen'
 import { RegistrierungScreen } from './src/screens/RegistrierungScreen'
 import { OnboardingScreen } from './src/screens/OnboardingScreen'
@@ -29,11 +30,13 @@ configureApiClient({ baseUrl: apiBaseUrl })
 // client has no post-construction reconfigure hook, unlike configureApiClient).
 const authClient = createAppAuthClient(apiBaseUrl)
 
-type Stage = 'login' | 'register' | 'onboarding' | 'done'
+type Stage = 'splash' | 'login' | 'register' | 'onboarding' | 'done'
 
 export default function App() {
   // Minimal shell: after onboarding we land on a placeholder until the next screens are ported.
-  const [stage, setStage] = useState<Stage>('login')
+  // Splash always leads to Login today — there's no session-detection mechanism yet to send a
+  // returning user straight to Cockpit instead (REQ-009, pending); see SplashScreen's own notes.
+  const [stage, setStage] = useState<Stage>('splash')
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -41,6 +44,7 @@ export default function App() {
         <ThemeProvider mode="light">
           <AuthClientProvider client={authClient}>
             <View style={{ flex: 1 }}>
+              {stage === 'splash' ? <SplashScreen onAdvance={() => setStage('login')} /> : null}
               {stage === 'login' ? (
                 <LoginScreen
                   onDone={() => setStage('onboarding')}
