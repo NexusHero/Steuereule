@@ -9,9 +9,10 @@
 // whose "Bearbeiten" affordance is a dead end and whose settings/export/delete rows have no
 // live backend today. This component builds only the part that's genuinely ready — the
 // profile-data summary + edit round-trip — reusing OnboardingScreen's field patterns exactly.
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { ActivityIndicator, ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
+import { useQueryClient } from '@tanstack/react-query'
 import { Button, Card, Chip, Feld, Input, Pill, Sticker, useTheme, type UiTheme } from '@steuereule/ui'
 import { isValidSteuerId } from '@steuereule/core'
 import { useProfileControllerGetProfile, useProfileControllerPutProfile } from '@steuereule/api-client'
@@ -21,21 +22,25 @@ import { toOnboardingProfil, toPutProfileDto, type OnboardingProfil } from './on
 
 export function ProfilScreen() {
   const { t: tr } = useTranslation(APP_NS)
+  const queryClient = useQueryClient()
   const profileQuery = useProfileControllerGetProfile()
   const putProfile = useProfileControllerPutProfile()
 
-  const [profil, setProfil] = useState<OnboardingProfil | null>(null)
   const [draft, setDraft] = useState<OnboardingProfil | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [justSaved, setJustSaved] = useState(false)
 
-  // Seed the local, in-memory profile exactly once from the loaded server value — mirrors
-  // OnboardingScreen's seeding so a caller's own edits stay the source of truth until save.
-  useEffect(() => {
-    if (profil === null && profileQuery.data !== undefined) {
-      setProfil(toOnboardingProfil(profileQuery.data.data))
-    }
-  }, [profileQuery.data, profil])
+  // Derive the view profile directly from the query's data on every render — never seed a
+  // local copy once and freeze it. Onboarding and Profil share one QueryClient/query key; if
+  // Onboarding's earlier (empty) GET is already cached when Profil mounts, TanStack Query
+  // hands back that stale value synchronously *and* kicks off a background refetch. A
+  // one-time "seed if null" effect latches onto the stale value and then never looks again —
+  // the later refetch lands in the cache but nothing rereads it. Reading `profileQuery.data`
+  // fresh each render means the real profile shows the moment the refetch resolves, with no
+  // extra state to go stale. The in-flight `draft` stays the sole edit-time source of truth;
+  // save writes the server's response straight into the query cache (below) so this same
+  // derivation reflects it immediately, without waiting on a second round-trip.
+  const profil = profileQuery.data ? toOnboardingProfil(profileQuery.data.data) : null
 
   if (profileQuery.isPending) {
     return <ProfilLoading />
@@ -65,7 +70,7 @@ export function ProfilScreen() {
       {
         onSuccess: (response) => {
           if (response.status === 200) {
-            setProfil(toOnboardingProfil(response.data))
+            queryClient.setQueryData(profileQuery.queryKey, response)
             setDraft(null)
             setJustSaved(true)
           } else {

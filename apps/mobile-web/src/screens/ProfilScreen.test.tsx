@@ -7,13 +7,18 @@ import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@steuereule/ui'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
+import { getProfileControllerGetProfileQueryKey } from '@steuereule/api-client'
 import { createAppI18n } from '../i18n/app-i18n'
 import { ProfilScreen } from './ProfilScreen'
-import { server } from '../test-msw-server'
+import { server, EMPTY_PROFILE_RESPONSE } from '../test-msw-server'
 
-function renderProfil(opts: { lng?: 'de' | 'en' } = {}) {
+function makeTestQueryClient() {
+  return new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+}
+
+function renderProfil(opts: { lng?: 'de' | 'en'; queryClient?: QueryClient } = {}) {
   const i18n = createAppI18n(opts.lng ?? 'de')
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+  const queryClient = opts.queryClient ?? makeTestQueryClient()
   return render(
     <QueryClientProvider client={queryClient}>
       <I18nextProvider i18n={i18n}>
@@ -54,6 +59,31 @@ describe('ProfilScreen', () => {
     renderProfil() // default MSW handler resolves the all-null profile
     await screen.findByText('Noch keine Angaben gespeichert.')
     expect(screen.queryByText('Anna Beispiel')).toBeNull()
+  })
+
+  it('reflects the freshest server profile even when the shared query cache already holds a stale, empty GET (steuereule#95 regression)', async () => {
+    // Reproduces the real Login -> "als Gast umschauen" -> Onboarding -> Profil path: Onboarding
+    // and Profil share one QueryClient/query key. By the time a user lands on Profil,
+    // Onboarding's own earlier GET (resolved before the profile existed) is already cached —
+    // exactly what a fresh, per-test QueryClient can never reproduce, which is why this bug
+    // escaped every other test in this file.
+    const queryClient = makeTestQueryClient()
+    queryClient.setQueryData(getProfileControllerGetProfileQueryKey(), {
+      data: EMPTY_PROFILE_RESPONSE,
+      status: 200,
+      headers: new Headers(),
+    })
+
+    // The real GET (post-Onboarding-submit) now resolves with the just-saved profile — this is
+    // what Profil's mount-time background refetch receives.
+    mockSavedProfile()
+
+    renderProfil({ queryClient })
+
+    // Must self-correct to the real data once the refetch resolves, not latch onto the stale
+    // cached empty snapshot.
+    await screen.findByText('Anna Beispiel')
+    expect(screen.queryByText('Noch keine Angaben gespeichert.')).toBeNull()
   })
 
   it('shows a retryable error state when the profile fails to load, and recovers on retry', async () => {
