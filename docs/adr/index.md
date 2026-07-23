@@ -25,6 +25,8 @@ ultimate-dev-process §1.2.
 | 0007 | Authentication: Keycloak IdP + better-auth (OIDC RP), EU-resident | Superseded by 0009 |
 | 0008 | Profile persistence: server-side, sensitive fields field-encrypted at rest | Accepted (refined 0009-era) |
 | 0009 | better-auth as the auth server (Keycloak dropped); supersedes 0007 | Accepted |
+| 0010 | Postgres in CI: service-container for test/smoke jobs, compose service for local/e2e stack | Accepted |
+| 0011 | CORS: strict env-driven origin allowlist with credentialed cross-origin | Accepted |
 
 See also the [Tech Radar](./tech-radar.md).
 
