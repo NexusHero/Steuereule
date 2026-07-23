@@ -36,6 +36,7 @@ import { Logger } from '@nestjs/common'
 import type { NestFastifyApplication } from '@nestjs/platform-fastify'
 import type { Auth } from 'better-auth'
 import { toNodeHandler } from 'better-auth/node'
+import { applyRawCorsHeaders } from '../cors/apply-raw-cors-headers.js'
 
 export const BETTER_AUTH_PATH_PREFIX = '/api/auth/'
 
@@ -54,6 +55,11 @@ export async function mountBetterAuthHandler(app: NestFastifyApplication, auth: 
     authScope.all(`${BETTER_AUTH_PATH_PREFIX}*`, async (request, reply) => {
       // better-auth's toNodeHandler writes the response directly onto the raw Node
       // ServerResponse — hijack() tells Fastify not to also try to send one itself.
+      // hijack() also means Fastify's onSend hook chain never runs here, so
+      // app.enableCors(...)'s CORS headers (an onSend hook, set in main.ts) would
+      // otherwise silently never reach this route's real response — set on the raw
+      // response ourselves, before better-auth writes anything to it.
+      applyRawCorsHeaders(request.headers.origin, reply.raw)
       reply.hijack()
       try {
         await handler(request.raw, reply.raw)
