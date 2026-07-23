@@ -73,9 +73,12 @@ acceptance-cosmetics authored after the fact.
 
 ## Rules that keep it fast
 
-- **Two tracks, both loaded.** Suhay and Musti own capacity together: a slice is split so **Kaan
-  (frontend) and Robin (backend) run in parallel** on non-colliding work — no dev sits idle while the
-  other builds. Planned at a **sustainable pace** (the team gets its daily breather; no crunch).
+- **Four tracks, all loaded.** Suhay and Musti own capacity together: work is split so the **four devs
+  — Kaan & Ogün (frontend), Robin & Enis (backend; Enis flexes to frontend when needed) — run in
+  parallel** on non-colliding slices — no dev sits idle while others build. This is the capacity that
+  keeps development *fast*: the board must stay deep enough in ready, independent slices that four
+  parallel tracks never starve. Planned at a **sustainable pace** (the team gets its daily breather; no
+  crunch).
 - **One ticket = one vertical slice = one short-lived branch.** Small diffs, small final pass.
 - **Every bug is fixed the moment it's found — nothing is parked for later.** A bug we find is a bug we
   fix now: before the PR opens if a local gate caught it, on the PR if CI or a reviewer caught it —
@@ -102,7 +105,9 @@ acceptance-cosmetics authored after the fact.
 | Product Owner | Matthias | Requirements & acceptance criteria, outward presentation |
 | Lead / Architect | Musti | Technical grilling, **local review**, approving record, architecture docs |
 | Frontend dev | Kaan | UI slices, tests-first, opens the PR once both gates pass |
+| Frontend dev | Ogün | UI slices (second frontend track), tests-first, opens the PR once both gates pass |
 | Backend dev | Robin | API/data slices, tests-first, opens the PR once both gates pass |
+| Backend dev (full-stack) | Enis | API/data (second backend track) + frontend when needed, tests-first, opens the PR once both gates pass |
 | Tester & DevOps | Salih | **Local test** (boot + flows), the evidence report, CI/CD health |
 
 The role definitions live in [`.claude/agents/`](../../.claude/agents/); this document is the flow they
