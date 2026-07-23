@@ -1,6 +1,17 @@
 import { afterAll, afterEach, beforeAll } from 'vitest'
-import { cleanup } from '@testing-library/react'
+import { cleanup, configure } from '@testing-library/react'
 import { server } from './test-msw-server'
+
+// RTL's default `asyncUtilTimeout` (findBy*/waitFor, 1000ms) is tuned for an
+// uncontended CI runner. Under `pnpm -r test`'s full monorepo parallel run (every
+// workspace's Vitest pool sharing the same CPUs), that budget intermittently isn't
+// enough for a real async render (App.test.tsx's full Login->Registrierung->signup
+// flow, RegistrierungScreen.test.tsx's MSW-backed submit) to resolve — not a logic
+// bug, just CPU contention, but it produced a flaky red on an otherwise-passing test.
+// Raising the budget for this suite only (isolated `apps/mobile-web` runs were never
+// the problem) makes `pnpm -r test` deterministic without masking a genuinely stuck
+// query, which would still exceed even this larger budget.
+configure({ asyncUtilTimeout: 5_000 })
 
 beforeAll(() => {
   server.listen({ onUnhandledRequest: 'error' })

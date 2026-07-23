@@ -49,20 +49,25 @@ describe('LoginScreen', () => {
     expect(screen.getByText('Look around as a guest')).toBeTruthy()
   })
 
-  // Honesty item #1 (steuereule#72) — the DS demo's Google/Apple buttons call straight through
-  // to a successful login; REQ-007/008 (social sign-in) is out of this slice, so they must not
-  // render at all rather than ship a button that fakes success.
-  it('does not render the Google/Apple social buttons (REQ-007/008 out of scope, ADR-0012)', () => {
+  // REQ-008 (Salih finding #1) — the DS demo's Google/Apple buttons call straight through to a
+  // successful login; REQ-008 (Google/Apple social sign-in) is out of this slice, so they must
+  // not render at all rather than ship a button that fakes success. This is a regression test,
+  // not a snapshot of current absence: it fails the moment a dead-wired (or even a real, but
+  // premature) Google/Apple affordance reappears on this screen before REQ-008 actually ships.
+  it('does not render the Google/Apple social buttons (REQ-008 out of scope this slice, ADR-0012)', () => {
     renderLogin()
     expect(screen.queryByText(/Google/)).toBeNull()
     expect(screen.queryByText(/Apple/)).toBeNull()
   })
 
-  // Honesty item #2 — "Passwort vergessen?" has no real flow and no DS artifact; a dead
-  // Pressable doesn't ship, so it's hidden rather than left as a no-op link.
+  // Honesty item #2 (Salih finding #1) — "Passwort vergessen?" has no real flow, no REQ-ID and
+  // no DS artifact; a dead Pressable doesn't ship, so it's hidden rather than left as a no-op
+  // link. Regression test: fails if a "forgot password" affordance is re-added before a real
+  // reset flow exists to back it.
   it('does not render a dead "forgot password" affordance', () => {
     renderLogin()
     expect(screen.queryByText('Passwort vergessen?')).toBeNull()
+    expect(screen.queryByText('Forgot password?')).toBeNull()
   })
 
   it('shows an email error for an invalid address', () => {

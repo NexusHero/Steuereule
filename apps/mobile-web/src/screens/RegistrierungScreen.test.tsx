@@ -42,6 +42,19 @@ describe('RegistrierungScreen', () => {
     expect(screen.getByText('Create account')).toBeTruthy()
   })
 
+  // REQ-008 (Salih finding #1) — same honesty rule as LoginScreen: Google/Apple sign-in
+  // (REQ-008) is out of scope for this slice, so no such affordance may render here either;
+  // password reset likewise has no real flow/REQ backing it. This is a regression test, not a
+  // snapshot of current absence — it fails the moment any of these three get dead-wired back in
+  // before a real flow exists to back them.
+  it('does not render Google/Apple sign-in or a password-reset affordance (REQ-008 out of scope this slice, ADR-0012)', () => {
+    renderRegistrierung()
+    expect(screen.queryByText(/Google/)).toBeNull()
+    expect(screen.queryByText(/Apple/)).toBeNull()
+    expect(screen.queryByText('Passwort vergessen?')).toBeNull()
+    expect(screen.queryByText('Forgot password?')).toBeNull()
+  })
+
   it('shows an email error for an invalid address', () => {
     renderRegistrierung()
     fireEvent.click(screen.getByText('Konto anlegen'))
