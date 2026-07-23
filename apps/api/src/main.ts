@@ -31,7 +31,7 @@ export async function buildApp(): Promise<NestFastifyApplication> {
   app.enableCors({
     origin: resolveCorsOrigins(process.env),
     credentials: true,
-    methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE'],
+    methods: ['GET', 'HEAD', 'POST', 'PUT'],
   })
 
   await app.register(fastifyCookie)
