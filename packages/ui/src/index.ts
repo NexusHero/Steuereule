@@ -12,5 +12,8 @@ export { Pill, type PillProps } from './components/Pill'
 export { Sticker, type StickerProps } from './components/Sticker'
 export { AiChip, type AiChipProps } from './components/AiChip'
 export { HerkunftsChip, type HerkunftsChipProps, type Herkunft } from './components/HerkunftsChip'
+export { Input, type InputProps, type InputType } from './components/Input'
+export { Feld, type FeldProps } from './components/Feld'
+export { Chip, type ChipProps, type ChipVariant } from './components/Chip'
 
 export { Gallery } from './gallery/Gallery'

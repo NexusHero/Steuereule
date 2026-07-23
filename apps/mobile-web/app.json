@@ -1,0 +1,14 @@
+{
+  "expo": {
+    "name": "SteuerEule",
+    "slug": "steuereule",
+    "scheme": "steuereule",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    }
+  }
+}

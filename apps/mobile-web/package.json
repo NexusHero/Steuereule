@@ -1,0 +1,36 @@
+{
+  "name": "@steuereule/mobile-web",
+  "version": "0.0.0",
+  "private": true,
+  "main": "index.js",
+  "scripts": {
+    "start": "expo start",
+    "web": "expo start --web",
+    "export:web": "expo export --platform web",
+    "test": "vitest run",
+    "coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit -p tsconfig.check.json"
+  },
+  "dependencies": {
+    "@expo/metro-runtime": "~5.0.5",
+    "@steuereule/core": "workspace:*",
+    "@steuereule/tokens": "workspace:*",
+    "@steuereule/ui": "workspace:*",
+    "expo": "~53.0.0",
+    "expo-status-bar": "~2.2.3",
+    "i18next": "^24.2.0",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "react-i18next": "^15.4.0",
+    "react-native": "0.79.5",
+    "react-native-svg": "15.11.2",
+    "react-native-web": "^0.20.0"
+  },
+  "devDependencies": {
+    "@testing-library/react": "^16.1.0",
+    "@types/react": "^19.0.2",
+    "@vitejs/plugin-react": "^4.3.4",
+    "jsdom": "^25.0.1",
+    "typescript": "^7.0.0"
+  }
+}
