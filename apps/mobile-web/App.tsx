@@ -15,6 +15,7 @@ import { SplashScreen } from './src/screens/SplashScreen'
 import { LoginScreen } from './src/screens/LoginScreen'
 import { RegistrierungScreen } from './src/screens/RegistrierungScreen'
 import { OnboardingScreen } from './src/screens/OnboardingScreen'
+import { ProfilScreen } from './src/screens/ProfilScreen'
 
 const i18n = createAppI18n('de')
 const queryClient = new QueryClient()
@@ -30,12 +31,13 @@ configureApiClient({ baseUrl: apiBaseUrl })
 // client has no post-construction reconfigure hook, unlike configureApiClient).
 const authClient = createAppAuthClient(apiBaseUrl)
 
-type Stage = 'splash' | 'login' | 'register' | 'onboarding' | 'done'
+type Stage = 'splash' | 'login' | 'register' | 'onboarding' | 'profil'
 
 export default function App() {
-  // Minimal shell: after onboarding we land on a placeholder until the next screens are ported.
-  // Splash always leads to Login today — there's no session-detection mechanism yet to send a
-  // returning user straight to Cockpit instead (REQ-009, pending); see SplashScreen's own notes.
+  // Minimal shell: Splash → Login/guest → Onboarding → Profil landing, until the next screens
+  // (Cockpit, ...) are ported/merged in. Splash always leads to Login today — there's no
+  // session-detection yet to send a returning user straight to Cockpit (REQ-009, pending);
+  // see SplashScreen's own notes.
   const [stage, setStage] = useState<Stage>('splash')
 
   return (
@@ -53,7 +55,8 @@ export default function App() {
                 />
               ) : null}
               {stage === 'register' ? <RegistrierungScreen onDone={() => setStage('onboarding')} /> : null}
-              {stage === 'onboarding' ? <OnboardingScreen onDone={() => setStage('done')} /> : null}
+              {stage === 'onboarding' ? <OnboardingScreen onDone={() => setStage('profil')} /> : null}
+              {stage === 'profil' ? <ProfilScreen /> : null}
               <StatusBar style="dark" />
             </View>
           </AuthClientProvider>
