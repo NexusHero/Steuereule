@@ -3,7 +3,7 @@
 import { TextInput, type TextStyle } from 'react-native'
 import { useTheme } from '../theme/useTheme'
 
-export type InputType = 'text' | 'email' | 'password'
+export type InputType = 'text' | 'email' | 'password' | 'numeric'
 
 export interface InputProps {
   readonly type?: InputType
@@ -13,9 +13,27 @@ export interface InputProps {
   readonly onSubmit?: () => void
   readonly testID?: string
   readonly accessibilityLabel?: string
+  /** Mono/tabular rendering for number-heavy fields (design-system rule: every number carries tabular-nums). */
+  readonly mono?: boolean
 }
 
-export function Input({ type = 'text', value, onChange, placeholder, onSubmit, testID, accessibilityLabel }: InputProps) {
+const KEYBOARD_TYPE: Record<InputType, 'default' | 'email-address' | 'number-pad'> = {
+  text: 'default',
+  email: 'email-address',
+  password: 'default',
+  numeric: 'number-pad',
+}
+
+export function Input({
+  type = 'text',
+  value,
+  onChange,
+  placeholder,
+  onSubmit,
+  testID,
+  accessibilityLabel,
+  mono = false,
+}: InputProps) {
   const t = useTheme()
   const style: TextStyle = {
     width: '100%',
@@ -27,8 +45,9 @@ export function Input({ type = 'text', value, onChange, placeholder, onSubmit, t
     borderWidth: 2,
     borderColor: t.color.tinte,
     borderRadius: t.radius.s,
-    fontFamily: t.font.text,
-    fontSize: t.size.m,
+    fontFamily: mono ? t.font.mono : t.font.text,
+    fontSize: mono ? t.size.l : t.size.m,
+    ...(mono ? { letterSpacing: 0.04 * t.size.l, fontVariant: ['tabular-nums'] as const } : {}),
   }
   return (
     <TextInput
@@ -39,7 +58,7 @@ export function Input({ type = 'text', value, onChange, placeholder, onSubmit, t
       placeholder={placeholder}
       placeholderTextColor={t.color.tinte2}
       secureTextEntry={type === 'password'}
-      keyboardType={type === 'email' ? 'email-address' : 'default'}
+      keyboardType={KEYBOARD_TYPE[type]}
       autoCapitalize="none"
       autoCorrect={false}
       onSubmitEditing={onSubmit}
