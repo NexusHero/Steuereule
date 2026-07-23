@@ -171,6 +171,10 @@ jobs:
       BETTER_AUTH_SECRET: ci-smoke-test-better-auth-secret-0123456789
       BETTER_AUTH_URL: http://localhost:3000
       PORT: '3000'
+      # The local Expo web dev origin (same value as apps/api/.env.example) — lets the
+      # smoke request below send a real, allow-listed Origin so it can assert the
+      # actual CORS response header, not just that the server answers (ADR-0011).
+      CORS_ALLOWED_ORIGINS: http://localhost:8081
     steps:
       - uses: actions/checkout@v5
       - name: Set up pnpm
@@ -212,9 +216,25 @@ jobs:
         # never a real socket) is structurally blind to: the content-type-parser
         # encapsulation wiring in mount-better-auth.ts only breaks when a real
         # request hits a real listening Fastify instance.
+        #
+        # Sends a real `Origin` header and asserts the echoed CORS header, not just a
+        # 2xx: this route is `reply.hijack()`'d (mount-better-auth.ts), which bypasses
+        # Fastify's `onSend` hook chain that `app.enableCors(...)` relies on elsewhere —
+        # an Origin-less request would answer fine either way and could never catch
+        # that class of regression on this one tier that boots the compiled `dist/`
+        # over a real external socket (integration-tier coverage lives in
+        # apps/api/test/acceptance/auth-mount-cors.test.ts).
         run: |
-          curl --fail --silent --show-error \
-            http://localhost:3000/api/auth/get-session
+          headers=$(curl --fail --silent --show-error \
+            --retry 30 --retry-delay 1 --retry-all-errors --retry-connrefused \
+            -D - -o /dev/null \
+            -H "Origin: ${CORS_ALLOWED_ORIGINS}" \
+            http://localhost:3000/api/auth/get-session | tr -d '\r')
+          echo "$headers"
+          echo "$headers" | grep -qi "^access-control-allow-origin: ${CORS_ALLOWED_ORIGINS}$" || {
+            echo "::error::Expected 'Access-Control-Allow-Origin: ${CORS_ALLOWED_ORIGINS}' on /api/auth/get-session for an allow-listed Origin — CORS regression on the hijacked better-auth mount (ADR-0011/ADR-0012 §1)."
+            exit 1
+          }
       - name: Server log (on failure)
         if: failure()
         run: cat /tmp/steuereule-api-smoke.log || true

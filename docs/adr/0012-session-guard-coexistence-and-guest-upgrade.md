@@ -48,6 +48,14 @@ the `SameSite=strict` session-cookie wording** in ADR-0009 §Session model and i
   that route prefix (or reconstructs the Web `Request` from the raw stream) so better-auth owns parsing.
   This is exactly the class of wiring that `.inject()` cannot prove — it **must** be verified by the
   **real boot smoke** (ADR-0010), not unit tests.
+- **`reply.hijack()` opts this route out of every `onSend`-registered cross-cutting concern, not just
+  the response write.** better-auth's handler writes straight onto the raw Node response, so the route
+  calls `reply.hijack()` to stop Fastify sending a second one — but `hijack()` skips Fastify's entire
+  `onSend` hook chain, and that is exactly how `app.enableCors(...)` (CORS today; compression/response
+  headers/logging are the same shape tomorrow) decorates every other route. Anything wired as an
+  `onSend` hook must instead be re-applied directly on `reply.raw`, before the hijack — see
+  `apps/api/src/cors/apply-raw-cors-headers.ts` for the reference implementation (reusing
+  `resolveCorsOrigins()` as the one allowlist, never a second copy).
 
 ### 2. The guard accepts guest **OR** session — precedence: verified session wins
 
