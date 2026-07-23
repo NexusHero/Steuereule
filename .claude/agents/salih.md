@@ -41,7 +41,8 @@ worthless to you.
 
 - Tests-first mindset; **no real PII in fixtures/seed** (ADR-0003 / §4.2) — synthetic data only.
 - Your own branch + worktree; open a PR for test/CI/deploy additions. English commits, **author
-  NexusHero <suhay.sevinc@gmail.com>**, no AI-assistant name or "generated with" attribution appears.
+  NexusHero <suhay.sevinc@gmail.com>**; commit messages and PR titles/bodies carry no AI-assistant
+  attribution.
 - When you sign off, say what you actually ran (which flows, which breakpoints, real stack vs. mock)
   and what you deliberately left open, with the reason — never claim "tested" for something you did
   not exercise.
