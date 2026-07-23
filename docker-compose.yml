@@ -1,8 +1,34 @@
-# Baseline stack. A single idle container that stays alive doing nothing —
-# the starting point the rest of the services get built up from.
+# Local/E2E stack (ADR-0010). A real postgres:16 service — the PO's one-command local
+# database — replaces the earlier idle `baseline` placeholder container:
 #   docker compose up -d
+# Then apply migrations and load the synthetic seed fixture (ADR-0003) against it:
+#   DATABASE_URL=postgresql://steuereule:steuereule@localhost:5432/steuereule \
+#     pnpm --filter @steuereule/api migrate:deploy
+#   DATABASE_URL=postgresql://steuereule:steuereule@localhost:5432/steuereule \
+#     pnpm --filter @steuereule/api prisma db seed
+# CI's `integration`/`smoke` jobs use a GitHub Actions Postgres service container instead
+# (faster — no image build/orchestration for a process that runs natively on the
+# runner, ADR-0010) but pin the same `postgres:16` image family, so this compose stack
+# and CI stay dev/CI/prod-shape parity (12-Factor X). The `ci`/`e2e` overlays layer on
+# top of this base.
 services:
-  baseline:
-    image: alpine:3.20
-    command: ['sleep', 'infinity']
-    init: true
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: steuereule
+      POSTGRES_PASSWORD: steuereule
+      POSTGRES_DB: steuereule
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U steuereule -d steuereule']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  # Named volume so data survives `docker compose stop`/`up` (only `down -v` clears it) —
+  # the PO's local stack keeps its seeded data across restarts.
+  postgres-data:

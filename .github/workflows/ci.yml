@@ -1,12 +1,13 @@
 # Baseline CI pipeline (Steuereule).
 #
 # The Docker Compose files (docker-compose.yml + the ci/e2e overlays) are the
-# foundation this pipeline is built on. Right now the stack is a single idle
-# baseline container, so most stages are honest placeholders that pass — they
-# exist to define the pipeline shape and grow as real services are added back.
+# foundation this pipeline is built on. `lint` and `build` are still honest
+# placeholders (grow as lintable/buildable-image work lands); `test`, `integration`
+# and `smoke` are real, CI-blocking gates.
 #
-# Flow:  validate-compose ──► lint ──► build ──► smoke
-#                          └─► test ─┘
+# Flow:  validate-compose ──► lint ──────────────► build ──► smoke
+#                          ├─► test ───────────────┘
+#                          └─► integration ─────────┘
 name: CI
 
 on:
@@ -46,7 +47,9 @@ jobs:
         run: |
           echo "TODO — no lintable packages yet; baseline is empty."
 
-  # Real gate: typecheck and test every workspace package in the monorepo.
+  # Real gate: typecheck and test every workspace package in the monorepo (no-DB
+  # unit/pure-logic suite — DB-requiring tests live in the `integration` job below,
+  # ADR-0004).
   test:
     name: Test
     needs: validate-compose
@@ -69,10 +72,54 @@ jobs:
       - name: Test
         run: pnpm -r test
 
+  # Real gate (#66): proves the two DSGVO-critical guarantees — REQ-003 field-
+  # encryption at rest and REQ-004 append-only audit log — against a real, migrated
+  # Postgres, not just the no-DB unit suite. A GitHub Actions service container
+  # (rather than docker-compose) because the test process runs natively on the
+  # runner (ADR-0010) — the compose stack's `postgres` service is the parity image
+  # for the *local*/e2e stack, not this job's database.
+  integration:
+    name: Integration (Postgres)
+    needs: validate-compose
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: steuereule
+          POSTGRES_PASSWORD: steuereule
+          POSTGRES_DB: steuereule
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U steuereule -d steuereule"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      DATABASE_URL: postgres://steuereule:steuereule@localhost:5432/steuereule
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Generate Prisma Client
+        run: pnpm --filter @steuereule/api prisma:generate
+      - name: Apply migrations (migrate deploy, never migrate dev)
+        run: pnpm --filter @steuereule/api migrate:deploy
+      - name: Integration test — encryption-at-rest + append-only audit log
+        run: pnpm --filter @steuereule/api test:integration
+
   # Placeholder — build the service images once Dockerfiles exist.
   build:
     name: Build
-    needs: [lint, test]
+    needs: [lint, test, integration]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -80,21 +127,78 @@ jobs:
         run: |
           echo "TODO — no images to build yet; baseline is empty."
 
-  # Real gate today: bring the baseline stack up and prove the container lives.
+  # Real gate (#69): boots the actual compiled server over real HTTP — not
+  # `.inject()` — against a real, migrated Postgres, and asserts a golden-path
+  # request succeeds. Exists specifically to catch the class of bug `.inject()`-only
+  # tests are structurally blind to (the missing-`@fastify/static` boot crash, the
+  # CORS gap) before it reaches a human or the acceptance/e2e tier.
   smoke:
     name: Smoke
     needs: build
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: steuereule
+          POSTGRES_PASSWORD: steuereule
+          POSTGRES_DB: steuereule
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U steuereule -d steuereule"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      DATABASE_URL: postgres://steuereule:steuereule@localhost:5432/steuereule
+      # Synthetic, dev-only values (ADR-0008/§4.2) — never real secrets. Production
+      # requires both to be set explicitly (resolveGuestSessionSecret /
+      # resolveFieldEncryptionKey refuse a guessable default under NODE_ENV=production).
+      GUEST_SESSION_SECRET: ci-smoke-test-secret
+      PRISMA_FIELD_ENCRYPTION_KEY: k1.aesgcm256.MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+      PORT: '3000'
     steps:
-      - uses: actions/checkout@v4
-      - name: up
-        run: docker compose up -d
-      - name: container is running
+      - uses: actions/checkout@v5
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Generate Prisma Client
+        run: pnpm --filter @steuereule/api prisma:generate
+      - name: Apply migrations (migrate deploy, never migrate dev)
+        run: pnpm --filter @steuereule/api migrate:deploy
+      - name: Build the API
+        run: pnpm --filter @steuereule/api build
+      - name: Boot the real server
+        # `node dist/main.js` alone cannot resolve `@steuereule/core` — it ships TS
+        # source (`main: ./src/index.ts`, extensionless internal imports), so plain
+        # Node's ESM resolver throws ERR_MODULE_NOT_FOUND. `--import tsx` is a bridge
+        # for that packaging quirk (ADR-0010a), not the production answer — it still
+        # boots the *compiled* `dist/`, so a real dist-wiring regression (the
+        # `@fastify/static` class of bug) is still caught. See the PR notes: the
+        # proper fix (give @steuereule/core a real build/exports map, or bundle the
+        # API) is a forward-looking packaging decision, tracked as its own follow-up.
+        working-directory: apps/api
         run: |
-          docker compose ps
-          test "$(docker compose ps --status running --quiet | wc -l)" -ge 1
-      - name: baseline responds to exec
-        run: docker compose exec -T baseline echo ok
-      - name: down
+          node --import tsx dist/main.js > /tmp/steuereule-api-smoke.log 2>&1 &
+          echo $! > /tmp/steuereule-api-smoke.pid
+      - name: Smoke request — GET /v1/profile over real HTTP (poll, no sleep — ADR-0004)
+        run: |
+          curl --fail --silent --show-error \
+            --retry 30 --retry-delay 1 --retry-all-errors --retry-connrefused \
+            http://localhost:3000/v1/profile
+      - name: Server log (on failure)
+        if: failure()
+        run: cat /tmp/steuereule-api-smoke.log || true
+      - name: Stop the server
         if: always()
-        run: docker compose down -v
+        run: |
+          if [ -f /tmp/steuereule-api-smoke.pid ]; then
+            kill "$(cat /tmp/steuereule-api-smoke.pid)" 2>/dev/null || true
+          fi
