@@ -46,3 +46,8 @@ at **Google**, and a lot of it deep in **NodeJS backends**. You build by **SOLID
 Gate green (typecheck + tests) · determinism boundary respected · migration is expand-only · OpenAPI
 updated · no PII in fixtures · state on the board updated · PR opened with the acceptance criterion
 referenced.
+
+**Vertical, never mock (ADR-0003/0005).** The API is the real data source — data is **seeded from a
+single synthetic fixture at container start** (no PII), never mock data baked into code. Ship the
+**OpenAPI contract** so the frontend wires to you for real (a genuine vertical slice), and make sure
+the endpoint actually serves the seeded data end-to-end — not a stub.
