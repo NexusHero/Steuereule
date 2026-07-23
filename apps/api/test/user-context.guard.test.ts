@@ -52,7 +52,11 @@ describe('UserContextGuard', () => {
     expect(cookieName).toBe(GUEST_SESSION_COOKIE)
     expect(cookieValue.startsWith(`${userId as string}.`)).toBe(true)
     expect(options.httpOnly).toBe(true)
-    expect(options.sameSite).toBe('strict')
+    // SameSite=None; Secure (ADR-0011): the web app and the API are cross-origin in both
+    // local dev and the deployed demo, so the cookie must survive a cross-site credentialed
+    // request — `strict`/`Lax` is silently dropped by the browser in that case.
+    expect(options.sameSite).toBe('none')
+    expect(options.secure).toBe(true)
   })
 
   it('mints a fresh userId when the cookie is tampered/forged (never trusts it)', () => {
