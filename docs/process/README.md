@@ -51,6 +51,13 @@ discovery.
 
 - **Two green lights before the PR:** Musti's local review **and** Salih's local test. A dev opening a
   PR is promising both.
+- **Depth follows a risk tier — T1 critical / T2 standard / T3 trivial.** Suhay tags each slice at
+  readiness (Musti may bump up); the tier sets how deep the gates go, so an auth flow gets the full pass
+  and a static splash screen doesn't (`delivery-pipeline.md` § Risk tiers). Honesty, tests-first, and
+  vertical-never-mock hold at every tier.
+- **WIP limit — at most two slices in the review+test queue.** Build is four-wide; review and test are
+  single-lane. When the queue is full, a freed dev helps *land* what's queued rather than start a sixth
+  branch. Landing finished work is throughput; a growing pile isn't.
 - **CI must be the *real* gate.** Two green lights are only as strong as CI, so: the
   compliance-critical tests (encryption-at-rest, the audit log) **run in CI against a real service**,
   a **real boot/smoke** step proves the server actually starts, and **GitHub branch protection**

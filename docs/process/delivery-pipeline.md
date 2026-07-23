@@ -71,6 +71,34 @@ acceptance-cosmetics authored after the fact.
 - CI: green
 ```
 
+## Risk tiers — match the machinery to the risk
+
+Not every slice needs the same weight. Applying the full grill + deep review + live 375/768/1280 test +
+arc42 to a static splash screen costs as much as it does for the auth flow — and buys almost nothing.
+So each slice gets a **tier**, assigned by Suhay at readiness (Musti may bump it **up** on a risk he
+sees; never silently down). The tier sets the *depth*, never waives honesty, tests-first, DS-fidelity,
+or vertical-never-mock — those hold at every tier.
+
+| Tier | What it is | Gate depth |
+|------|-----------|-----------|
+| **T1 — critical** | Auth, session, encryption, money/estimates, DSGVO, anything a real user's trust or data rides on | Full: Musti technical grill **+ ADR**, tests-first, Musti local review, Salih live test (boot + flows at **375/768/1280** on the real seeded stack + REQ acceptance), **arc42** moves with it, full evidence block |
+| **T2 — standard** | A normal vertical wired to an existing/contract'd surface (a screen, a CRUD endpoint) | Tests-first, Musti local review, Salih local test of the **touched** flow(s) on the real stack (not necessarily all three breakpoints unless layout is in play), evidence block. **ADR/arc42 only if the architecture actually changes.** |
+| **T3 — trivial** | Static/presentational screen, DS-asset or copy sync, docs, a pure-mechanical change | Dev self-check + gate green (typecheck + tests) + a **light Musti glance** (async on the PR is fine). No live-test, no arc42, no grill. |
+
+The tier is named on the ticket and repeated in the PR body, so the reviewer and stakeholder know which
+depth to expect. When in doubt, tier **up** — the cost of over-testing a T1 is smaller than the cost of
+under-testing something that turns out to touch trust or data. (A splash screen is T3; the Cockpit or
+Profil vertical is T2; better-auth / encryption / the guest-upgrade transaction are T1.)
+
+## How workers report — condensed, verdict-first
+
+A subagent's report is not a transcript. Lead with a **verdict + a ≤10-line summary** — PASS/FAIL (or
+APPROVE/REQUEST-CHANGES), what changed, and the one or two things that actually matter — then put the
+detail **below**, so it can be skimmed and so it doesn't flood the orchestrator's (or the next agent's)
+context. Multi-agent systems cost real tokens; a tight top-of-report is how we keep that cost down
+without losing the audit trail. The **PR evidence block stays curated** (it's the durable record) — but
+the working report back to the orchestrator leads with the conclusion, details on demand.
+
 ## Rules that keep it fast
 
 - **Four tracks, all loaded.** Suhay and Musti own capacity together: work is split so the **four devs
@@ -79,6 +107,14 @@ acceptance-cosmetics authored after the fact.
   keeps development *fast*: the board must stay deep enough in ready, independent slices that four
   parallel tracks never starve. Planned at a **sustainable pace** (the team gets its daily breather; no
   crunch).
+- **WIP limit: at most two slices in the review+test queue at once.** Four devs *build* in parallel, but
+  **review (Musti) and test (Salih) are single-lane** — so building faster than they can drain just
+  piles up unmergeable work (we once had five slices built and zero merged). Cap the number of slices
+  waiting on the gates: when the review/test queue is full, a freed-up dev's next move is to **help land
+  what's in the queue** (rebase, integrate, R2-style follow-ups, close review comments), *not* start a
+  sixth branch. Landing finished work is throughput; a growing pile is not. Suhay and the orchestrator
+  hold this limit; the real speed lever is a *short* queue that drains, plus automating the gate itself
+  (see risk tiers, and the CI regression gates that let a green pipeline stand in for a manual pass).
 - **One ticket = one vertical slice = one short-lived branch.** Small diffs, small final pass.
 - **The developer fixes — never the reviewer, the tester, or the orchestrator.** When a gate finds a
   defect, it goes back to the **dev who owns that code** to fix; it then re-enters the loop — **dev

@@ -123,6 +123,16 @@ all green.
 - When you sign off, say what you actually ran (which flows, which breakpoints, real stack vs. mock)
   and what you deliberately left open, with the reason — never claim "tested" for something you did
   not exercise.
+- **Report verdict-first, condensed (house style).** Lead with **PASS/FAIL + a ≤8-line summary** — the
+  verdict, what you ran, the one or two things that matter (and any defect, stated precisely: what /
+  where / repro). Put the full matrix and detail **below**, for skimming. Your reports are the richest
+  in the crew and they flood the orchestrator's context; a tight top keeps the multi-agent token cost
+  down without losing the audit trail. The curated **PR evidence block** is the durable record; the
+  working report back leads with the conclusion.
+- **Depth follows the slice's risk tier.** A **T1** slice earns the full pass (boot + flows at
+  375/768/1280 on the real stack + every REQ acceptance); a **T2** the touched flow(s); a **T3**
+  (static/DS-asset/docs) needs no live-test at all — gate-green is enough. Don't spend a full
+  three-breakpoint Playwright pass on a splash screen (`docs/process/delivery-pipeline.md` § Risk tiers).
 - **Test under the *real CI condition*, and name it (Slice-1 retro).** Green-locally-red-in-CI is the
   false-pass you exist to prevent — and it bit you once (Node 22 local vs Node 24 CI). So you verify
   against the **CI's actual Node/runtime version** (pinned via `.nvmrc`/CI config, not whatever's on
