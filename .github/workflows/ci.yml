@@ -121,7 +121,19 @@ jobs:
         run: pnpm --filter @steuereule/api prisma:generate
       - name: Apply migrations (migrate deploy, never migrate dev)
         run: pnpm --filter @steuereule/api migrate:deploy
-      - name: Integration + acceptance tests — encryption/audit + REQ-005/006/009/010 (ADR-0012)
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      # REQ-011/ADR-0013 §7: the export acceptance/integration suites render a real
+      # PDF-Bericht through PlaywrightPdfRenderer — a genuine Chromium launch, not a
+      # stub — so this job needs the same browser binary the cross-origin-smoke job
+      # already installs (same command, same rationale: `playwright-core`'s
+      # registered bin is `playwright-core`, not `playwright`).
+      - name: Install Playwright's Chromium (for the REQ-011 PDF export suites)
+        run: pnpm --filter @steuereule/api exec playwright-core install chromium --with-deps
+      - name: Integration + acceptance tests — encryption/audit + REQ-005/006/009/010/011 (ADR-0012/ADR-0013)
         run: pnpm --filter @steuereule/api test:integration
 
   # Placeholder — build the service images once Dockerfiles exist.
@@ -192,6 +204,15 @@ jobs:
         run: pnpm --filter @steuereule/api migrate:deploy
       - name: Build the API
         run: pnpm --filter @steuereule/api build
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      # REQ-011/ADR-0013 §7: the PDF-export smoke check below needs a real Chromium to
+      # render against — same install as the `integration` job, same rationale.
+      - name: Install Playwright's Chromium (for the REQ-011 PDF export smoke check)
+        run: pnpm --filter @steuereule/api exec playwright-core install chromium --with-deps
       - name: Boot the real server
         # `node dist/main.js` alone cannot resolve `@steuereule/core` — it ships TS
         # source (`main: ./src/index.ts`, extensionless internal imports), so plain
@@ -240,6 +261,48 @@ jobs:
           curl --fail --silent --show-error \
             --retry 30 --retry-delay 1 --retry-all-errors --retry-connrefused \
             http://localhost:3000/v1/steuerjahre/2026/cockpit
+      - name: Smoke request — REQ-011 DSGVO export, both formats, over real HTTP
+        # Signs a real account up (cookie jar carries the resulting session), saves a
+        # Profile, then exercises both `?format=` branches of GET /v1/account/export
+        # against the compiled, listening server — proves the real PlaywrightPdfRenderer
+        # actually launches Chromium and returns real PDF bytes in this runtime shape,
+        # not just under `.inject()` (ADR-0013 §7's honest infra note: this is exactly
+        # the Chromium-in-the-runtime-image question, exercised here in CI's own image).
+        run: |
+          set -e
+          JAR=$(mktemp)
+          curl --fail --silent --show-error -c "$JAR" -b "$JAR" \
+            -H "Content-Type: application/json" -H "Origin: ${CORS_ALLOWED_ORIGINS}" \
+            -X POST http://localhost:3000/api/auth/sign-up/email \
+            -d '{"email":"ci-smoke-export@example.com","password":"a-fine-strong-password-1","name":"CI Smoke Export"}' \
+            > /dev/null
+          curl --fail --silent --show-error -c "$JAR" -b "$JAR" \
+            -H "Content-Type: application/json" -H "Origin: ${CORS_ALLOWED_ORIGINS}" \
+            -X PUT http://localhost:3000/v1/profile \
+            -d '{"firstName":"CI","lastName":"Smoke","steuerId":"02476291358","steuernummer":"18181508155"}' \
+            > /dev/null
+
+          json_headers=$(curl --fail --silent --show-error -b "$JAR" -D - -o /tmp/steuereule-export-smoke.json \
+            "http://localhost:3000/v1/account/export?format=json")
+          echo "$json_headers" | grep -qi '^content-type: application/json' || {
+            echo "::error::GET /v1/account/export?format=json did not return application/json."
+            exit 1
+          }
+          grep -q '"schemaVersion":"1.0"' /tmp/steuereule-export-smoke.json || {
+            echo "::error::JSON export body missing the expected schemaVersion — got: $(cat /tmp/steuereule-export-smoke.json)"
+            exit 1
+          }
+
+          pdf_headers=$(curl --fail --silent --show-error -b "$JAR" -D - -o /tmp/steuereule-export-smoke.pdf \
+            "http://localhost:3000/v1/account/export?format=pdf")
+          echo "$pdf_headers" | grep -qi '^content-type: application/pdf' || {
+            echo "::error::GET /v1/account/export?format=pdf did not return application/pdf."
+            exit 1
+          }
+          head -c 5 /tmp/steuereule-export-smoke.pdf | grep -q '%PDF-' || {
+            echo "::error::PDF export body did not start with the %PDF- magic bytes — real Chromium render never happened."
+            exit 1
+          }
       - name: Server log (on failure)
         if: failure()
         run: cat /tmp/steuereule-api-smoke.log || true

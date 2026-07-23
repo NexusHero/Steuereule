@@ -6,6 +6,16 @@ export interface ProfileRecord {
   lastName: string
   steuerId: string
   steuernummer: string | null
+  /**
+   * Row timestamps — optional because the write side (ProfileService.saveProfile's
+   * upsert payload) never sets them; Prisma's own `@default(now())`/`@updatedAt` own
+   * these, not the caller. `findByUserId`'s read always populates them. Added for
+   * REQ-011's DSGVO export (ADR-0013), which needs the account holder's own
+   * Profile.createdAt/updatedAt in the export document — existing callers
+   * (ProfileService) are unaffected since neither field is required.
+   */
+  createdAt?: Date
+  updatedAt?: Date
 }
 
 export const PROFILE_REPOSITORY = Symbol('PROFILE_REPOSITORY')

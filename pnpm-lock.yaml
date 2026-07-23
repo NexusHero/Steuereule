@@ -84,6 +84,9 @@ importers:
       fastify:
         specifier: ^5.10.0
         version: 5.10.0
+      playwright-core:
+        specifier: 1.56.1
+        version: 1.56.1
       prisma-field-encryption:
         specifier: ^1.6.0
         version: 1.6.0(@prisma/client@6.19.3(prisma@6.19.3(magicast@0.3.5)(typescript@7.0.2))(typescript@7.0.2))

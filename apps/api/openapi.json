@@ -97,6 +97,49 @@
           "cockpit"
         ]
       }
+    },
+    "/v1/account/export": {
+      "get": {
+        "operationId": "AccountController_exportAccount",
+        "parameters": [
+          {
+            "name": "format",
+            "required": false,
+            "in": "query",
+            "description": "json (default) or pdf.",
+            "schema": {
+              "enum": [
+                "json",
+                "pdf"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The caller’s full DSGVO export (Art. 15/20), assembled once and returned either as this JSON document (?format=json, the default) or as an equivalent German PDF-Bericht (?format=pdf, application/pdf, same fields, human-readable). Both branches append exactly one READ/export audit entry before the response is sent (ADR-0013).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportDocumentDto"
+                }
+              },
+              "application/pdf": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportDocumentDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The caller has no better-auth account yet (a guest that never signed up)."
+          }
+        },
+        "tags": [
+          "account"
+        ]
+      }
     }
   },
   "info": {
@@ -250,6 +293,150 @@
           "taxYear",
           "estimate",
           "openItems"
+        ]
+      },
+      "ExportAccountDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "anna@example.com"
+          },
+          "name": {
+            "type": "string",
+            "example": "Anna Beispiel"
+          },
+          "emailVerified": {
+            "type": "boolean",
+            "example": true
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-01-15T09:30:00.000Z"
+          },
+          "authProviders": {
+            "example": [
+              "credential"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "email",
+          "name",
+          "emailVerified",
+          "createdAt",
+          "authProviders"
+        ]
+      },
+      "ExportProfileDto": {
+        "type": "object",
+        "properties": {
+          "firstName": {
+            "type": "string",
+            "example": "Anna"
+          },
+          "lastName": {
+            "type": "string",
+            "example": "Beispiel"
+          },
+          "steuerId": {
+            "type": "string",
+            "example": "02476291358"
+          },
+          "steuernummer": {
+            "type": "string",
+            "nullable": true,
+            "example": "18181508155"
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-01-15T09:30:00.000Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "example": "2026-02-01T09:30:00.000Z"
+          }
+        },
+        "required": [
+          "firstName",
+          "lastName",
+          "steuerId",
+          "steuernummer",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "ExportAccessLogEntryDto": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "example": "READ"
+          },
+          "resource": {
+            "type": "string",
+            "example": "export"
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-02-01T09:30:00.000Z"
+          }
+        },
+        "required": [
+          "action",
+          "resource",
+          "createdAt"
+        ]
+      },
+      "ExportDocumentDto": {
+        "type": "object",
+        "properties": {
+          "schemaVersion": {
+            "type": "string",
+            "example": "1.0"
+          },
+          "exportedAt": {
+            "type": "string",
+            "example": "2026-02-01T09:30:00.000Z"
+          },
+          "account": {
+            "$ref": "#/components/schemas/ExportAccountDto"
+          },
+          "profile": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ExportProfileDto"
+              }
+            ]
+          },
+          "taxData": {
+            "example": [],
+            "description": "Always empty until a tax-year model exists.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "accessLog": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExportAccessLogEntryDto"
+            }
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "exportedAt",
+          "account",
+          "profile",
+          "taxData",
+          "accessLog"
         ]
       }
     }

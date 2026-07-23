@@ -13,5 +13,11 @@ import { ProfileService } from './profile.service.js'
     ProfileService,
     { provide: PROFILE_REPOSITORY, useClass: PrismaProfileRepository },
   ],
+  // Exported so AccountModule's export assembly (REQ-011/ADR-0013) can inject the
+  // same repository directly — it reads the decrypted Profile without going through
+  // ProfileService, so it never double-appends ProfileService.getProfile's own
+  // "profile" READ audit entry; the export path appends exactly one "export" READ
+  // entry itself (see AccountExportService.recordExportRead).
+  exports: [PROFILE_REPOSITORY],
 })
 export class ProfileModule {}
