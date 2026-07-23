@@ -399,6 +399,21 @@ metadata. Because they carry intent, versioning and the changelog are *derived*,
   entry, and the immutable artifact together — so any deployed build is traceable back to its exact
   commits.
 
+### 5.2 Commit hygiene — your work ends committed and pushed
+
+A unit of work is not finished until it is **committed and pushed** to your branch. You never hand off
+or end your turn with **uncommitted changes lying in the working tree** — a dirty tree at hand-off is
+lost, un-reviewable work and it blocks the next person. Land your changes on your own
+`feat/`/`fix/`/… branch and push; the tree you leave behind is clean.
+
+**In parallel / multi-worker settings this cuts both ways — never commit over work that isn't yours.**
+If the working tree holds changes you didn't make, someone else is mid-flight: those changes are
+**theirs to commit**, on their branch, when their run finishes. You do **not** sweep another worker's
+in-progress edits into your commit, and you do **not** "tidy up" a dirty tree that a running task owns.
+Take your own branch/worktree instead. A generic "uncommitted changes" warning during someone else's
+active run is expected, not a defect — the fix is to let them finish and commit their own work, never
+to commit it for them.
+
 ---
 
 ## 6. Pull Request Workflow
