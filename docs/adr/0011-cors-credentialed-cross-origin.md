@@ -20,13 +20,14 @@ onboarding vertical cannot be demonstrated live end-to-end.
   `app.enableCors({ origin, credentials: true, methods })`.
 - **`credentials: true`** — required because the session travels in the httpOnly cookie (ADR-0007);
   the web client's fetch must set `credentials: 'include'` correspondingly.
-- **`methods` is given explicitly** — `['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE']`, matching
-  the REST surface the API actually serves. `@fastify/cors` defaults to `GET,HEAD,POST` when `methods`
-  is omitted, which silently excludes `PUT`/`PATCH`/`DELETE` from `Access-Control-Allow-Methods` and
-  fails the browser preflight for a credentialed cross-origin `PUT` — this broke `PUT /v1/profile`
-  (Onboarding save, the guest→account upgrade journey, the Profil screen) until caught by a live
-  cross-origin re-test and fixed here. There is a single allowed-methods list, not a second policy per
-  route/mount.
+- **`methods` is given explicitly** — `['GET', 'HEAD', 'POST', 'PUT']`, matching the REST surface the
+  API actually serves (`GET`/`PUT /v1/profile`; the better-auth mount is GET/POST). `@fastify/cors`
+  defaults to `GET,HEAD,POST` when `methods` is omitted, which silently excludes `PUT` from
+  `Access-Control-Allow-Methods` and fails the browser preflight for a credentialed cross-origin `PUT`
+  — this broke `PUT /v1/profile` (Onboarding save, the guest→account upgrade journey, the Profil
+  screen) until caught by a live cross-origin re-test and fixed here. `PATCH`/`DELETE` are **not**
+  granted until a slice introduces such an endpoint (least-privilege). There is a single
+  allowed-methods list, not a second policy per route/mount.
 - **Origin is a strict allowlist, never `*`.** `origin` is resolved from **config/env** (12-Factor
   III), following the existing `resolve*(env)` convention (`resolveGuestSessionSecret`,
   `resolveFieldEncryptionKey`) — a single `resolveCorsOrigins(env)` that parses a comma-separated
