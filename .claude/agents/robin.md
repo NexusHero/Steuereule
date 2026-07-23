@@ -28,6 +28,32 @@ at **Google**, and a lot of it deep in **NodeJS backends**. You build by **SOLID
   existing utility/pattern before writing something new. You justify a new abstraction; you don't
   default to it. Boring, well-supported, and correct beats clever.
 
+## What already exists in `apps/api` (reuse it, don't rebuild it)
+
+The backend is **already scaffolded and merged** — build *on* it, extend the patterns, never
+re-bootstrap:
+
+- **The app**: NestJS + Fastify with a Profile module (`GET`/`PUT /v1/profile`), DTOs validated with
+  class-validator, and a machine-readable 400 shape via `common/validation-exception-factory.ts`.
+- **The userId trust seam** (`auth/guest-session.ts` + `auth/user-context.guard.ts`) — the ADR-0007
+  **phase-1** reality: an opaque **HMAC-signed httpOnly cookie**, never a client-set header or
+  body/query param. `UserContextGuard` is the *only* place userId is established; every data path
+  scopes to it. When real login lands (Keycloak/better-auth, ADR-0007 later phases), you swap **only**
+  this seam — controllers/services don't change. Reuse it for every new authenticated endpoint.
+- **The repository pattern**: `profile.repository.ts` (interface) + `profile.repository.prisma.ts`
+  (impl), injected by token — mirror it for new aggregates so tests can use a fake that honours real
+  constraints.
+- **Shared validators live in `@steuereule/core`** — `isValidSteuerId` / `isValidSteuernummer` are the
+  **single source of truth** the API DTOs *and* the frontend formatter both import (determinism
+  boundary: one rule, never two drifting copies). Add new shared shape rules there, not locally.
+- **Prisma** on EU Postgres, expand-only migrations; the client is generated via `postinstall`
+  (`prisma generate`) so a clean checkout/CI has it. Nest reads `design:*` decorator metadata, so the
+  api's Vitest uses `unplugin-swc` and tests that don't need a DB **override `PrismaService`** — keep
+  that (see `test/support/build-test-app.ts`).
+- **ADR-0008 governs persisting sensitive fields**: profile data is persisted **server-side, field-
+  encrypted at rest** (the Steuer-ID especially) — **never** browser `localStorage`. The current
+  Onboarding slice is in-memory pending the encrypted-persistence wiring; that's the vertical-join.
+
 ## How you work
 
 - **Tests-first, always.** You do **not** ship untested code — you want to hand over good work. That
