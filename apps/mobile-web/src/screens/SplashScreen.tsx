@@ -32,7 +32,9 @@ const AUTO_ADVANCE_MS = 2400
 // (scaleY 1) at 45% of the duration and back open (scaleY 0) by 100% — not symmetric, so it's
 // two `Animated.timing` legs rather than one. This is the one ease-in-out beat in an otherwise
 // `feder`-eased entrance, and it's local to the blink only — not worth a shared motion token for
-// a single split used nowhere else.
+// a single split used nowhere else. It fires at 1.3s in the reference — AFTER `fx-wort` (0.9s)
+// and `fx-gruss` (1.1s) — so it's the LAST beat of the entrance (head -> glasses -> wordmark ->
+// greeting -> blink), coincident with the greeting's "Zack" pop, not slotted before the wordmark.
 const BLINK_DURATION_MS = 400
 const BLINK_CLOSE_MS = Math.round(BLINK_DURATION_MS * 0.45)
 const BLINK_OPEN_MS = BLINK_DURATION_MS - BLINK_CLOSE_MS
@@ -83,19 +85,17 @@ export function SplashScreen({ onAdvance }: SplashScreenProps) {
     const stage = (value: Animated.Value) =>
       Animated.timing(value, { toValue: 1, duration: motionTokens.duration.auftritt, easing: feder, useNativeDriver: false })
     const blinkEasing = Easing.inOut(Easing.ease)
-    // The blink plays once, right after the glasses draw in and before the wordmark — matching
-    // the DS reference's ordering (head -> glasses -> blink -> wordmark -> greeting). Built inline
-    // (rather than as a separately-named `const`) so its two legs are constructed, in source
-    // order, between the glasses and wordmark stages below.
+    // The blink plays once, as the LAST beat of the entrance — after the wordmark and the
+    // greeting — matching the DS reference's ordering (head -> glasses -> wordmark -> greeting ->
+    // blink). Built inline, after `stage(greetAnim)` in source order, so the two legs are also the
+    // last two `Animated.timing` calls constructed (see SplashScreen.test.tsx's ordering assertion).
     Animated.sequence([
       stage(headAnim),
       stage(glassesAnim),
-      Animated.sequence([
-        Animated.timing(lidAnim, { toValue: 1, duration: BLINK_CLOSE_MS, easing: blinkEasing, useNativeDriver: false }),
-        Animated.timing(lidAnim, { toValue: 0, duration: BLINK_OPEN_MS, easing: blinkEasing, useNativeDriver: false }),
-      ]),
       stage(wordAnim),
       stage(greetAnim),
+      Animated.timing(lidAnim, { toValue: 1, duration: BLINK_CLOSE_MS, easing: blinkEasing, useNativeDriver: false }),
+      Animated.timing(lidAnim, { toValue: 0, duration: BLINK_OPEN_MS, easing: blinkEasing, useNativeDriver: false }),
     ]).start()
   }, [reducedMotion, headAnim, glassesAnim, lidAnim, wordAnim, greetAnim])
 

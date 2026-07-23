@@ -117,26 +117,26 @@ describe('SplashScreen', () => {
     expect(lidStyle.transformOrigin).toBe('center top')
   })
 
-  it('plays a single blink (lids shut then open) right after the glasses draw in, when motion is allowed', async () => {
+  it('plays a single blink (lids shut then open) after the whole entrance — head, glasses, wordmark, greeting — when motion is allowed', async () => {
     vi.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(false)
     const timingSpy = vi.spyOn(Animated, 'timing')
     renderSplash()
     await waitFor(() => expect(timingSpy).toHaveBeenCalled())
 
     const lidAnim = (lastOwlMarkProps()?.lidStyle as { transform: [{ scaleY: unknown }] }).transform[0].scaleY
-    const lidCalls = timingSpy.mock.calls.filter(([value]) => value === lidAnim)
+    const allCalls = timingSpy.mock.calls
+    const lidIndices = allCalls.map(([value], i) => (value === lidAnim ? i : -1)).filter((i) => i >= 0)
+    const otherIndices = allCalls.map((_, i) => i).filter((i) => !lidIndices.includes(i))
 
     // Two legs: close (toValue 1) then open again (toValue 0) — a single blink, not a toggle.
-    expect(lidCalls).toHaveLength(2)
-    expect(lidCalls[0]?.[1]).toMatchObject({ toValue: 1 })
-    expect(lidCalls[1]?.[1]).toMatchObject({ toValue: 0 })
+    expect(lidIndices).toHaveLength(2)
+    expect(allCalls[lidIndices[0]!]?.[1]).toMatchObject({ toValue: 1 })
+    expect(allCalls[lidIndices[1]!]?.[1]).toMatchObject({ toValue: 0 })
 
-    // It's slotted in after the glasses stage and before the wordmark stage, matching the DS
-    // reference's entrance ordering (head -> glasses -> blink -> wordmark -> greeting).
-    const allCalls = timingSpy.mock.calls
-    const glassesAnim = (lastOwlMarkProps()?.glassesStyle as { opacity: unknown }).opacity
-    const glassesIndex = allCalls.findIndex(([value]) => value === glassesAnim)
-    const lidCloseIndex = allCalls.findIndex(([value]) => value === lidAnim)
-    expect(lidCloseIndex).toBeGreaterThan(glassesIndex)
+    // DS reference (splash.html): `au-blinzeln` fires at 1.3s — AFTER both `fx-wort` (0.9s) and
+    // `fx-gruss` (1.1s), not between glasses and the wordmark. So the blink must be the LAST beat
+    // of the entrance, strictly after every other stage (head, glasses, wordmark, greeting).
+    expect(otherIndices.length).toBeGreaterThan(0)
+    expect(Math.min(...lidIndices)).toBeGreaterThan(Math.max(...otherIndices))
   })
 })
