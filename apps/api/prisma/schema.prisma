@@ -1,0 +1,30 @@
+// Prisma schema for the Onboarding Profile (steuereule#29).
+// Managed EU Postgres, expand-only versioned migrations (ADR-047).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// One row per userId (guest session or real account, ADR-0007). Plain persisted
+/// facts collected during Onboarding — no derived values, clean side of the
+/// determinism boundary (ADR-014/048); @steuereule/core never recomputes these.
+model Profile {
+  id           String   @id @default(uuid())
+  /// Scoping key. Never read from the request body/query/path — only ever set
+  /// from the trusted userId the UserContextGuard produced (ADR-0007).
+  userId       String   @unique
+  firstName    String
+  lastName     String
+  /// Steuerliche Identifikationsnummer — exactly 11 digits (validated server-side
+  /// via @steuereule/core's isValidSteuerId before this is ever written).
+  steuerId     String
+  /// Optional — 1-13 digits if present (isValidSteuernummer).
+  steuernummer String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}

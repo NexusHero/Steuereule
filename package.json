@@ -28,6 +28,16 @@
     "overrides": {
       "react": "19.0.0",
       "react-dom": "19.0.0"
-    }
+    },
+    "onlyBuiltDependencies": [
+      "@bundled-es-modules/glob",
+      "@prisma/client",
+      "@prisma/engines",
+      "@scarf/scarf",
+      "@swc/core",
+      "esbuild",
+      "prisma",
+      "style-dictionary"
+    ]
   }
 }
