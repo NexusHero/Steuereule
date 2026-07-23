@@ -69,7 +69,7 @@
             "name": "jahr",
             "required": true,
             "in": "path",
-            "description": "The tax year (Steuerjahr) to summarize.",
+            "description": "The tax year (Steuerjahr) to summarize — validated to a sensible window (2000..currentYear+1), never just \"parses as a number\".",
             "schema": {
               "example": 2026,
               "type": "number"

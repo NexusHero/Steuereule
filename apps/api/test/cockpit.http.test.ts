@@ -101,4 +101,18 @@ describe('GET /v1/steuerjahre/:jahr/cockpit', () => {
 
     expect(response.statusCode).toBe(400)
   })
+
+  it('REQ-001 an absurd/out-of-int4-range year is rejected with a clean 400, never an unhandled 500 (Musti review, R1)', async () => {
+    // Parses fine as a JS integer, but exceeds Postgres int4 (max 2147483647) — without
+    // boundary validation this used to reach Prisma and surface as an unhandled 500.
+    const response = await app.inject({ method: 'GET', url: '/v1/steuerjahre/3000000000/cockpit' })
+
+    expect(response.statusCode).toBe(400)
+  })
+
+  it('REQ-001 a year below the sensible tax-year window is rejected with 400', async () => {
+    const response = await app.inject({ method: 'GET', url: '/v1/steuerjahre/1999/cockpit' })
+
+    expect(response.statusCode).toBe(400)
+  })
 })

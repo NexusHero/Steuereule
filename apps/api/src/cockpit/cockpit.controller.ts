@@ -1,9 +1,10 @@
-import { Controller, Get, Inject, Param, ParseIntPipe, UseGuards } from '@nestjs/common'
+import { Controller, Get, Inject, Param, UseGuards } from '@nestjs/common'
 import { ApiExtraModels, ApiOkResponse, ApiParam, ApiTags, getSchemaPath } from '@nestjs/swagger'
 import { CurrentUser } from '../auth/current-user.decorator.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
 import { CockpitSummaryDto, EstimateRangeDto } from './dto/cockpit-summary.dto.js'
 import { CockpitService } from './cockpit.service.js'
+import { ParseSteuerjahrPipe } from './parse-steuerjahr.pipe.js'
 
 @ApiTags('cockpit')
 @Controller('v1/steuerjahre')
@@ -13,7 +14,12 @@ export class CockpitController {
   constructor(@Inject(CockpitService) private readonly cockpitService: CockpitService) {}
 
   @Get(':jahr/cockpit')
-  @ApiParam({ name: 'jahr', type: Number, example: 2026, description: 'The tax year (Steuerjahr) to summarize.' })
+  @ApiParam({
+    name: 'jahr',
+    type: Number,
+    example: 2026,
+    description: 'The tax year (Steuerjahr) to summarize — validated to a sensible window (2000..currentYear+1), never just "parses as a number".',
+  })
   // ApiExtraModels + a raw `schema` (rather than plain `type: CockpitSummaryDto`):
   // the response can genuinely be the JSON literal `null` — "no tax year yet", the
   // honest empty state (REQ-001), never a 404/204 — and @nestjs/swagger's `type:`
@@ -30,7 +36,7 @@ export class CockpitController {
   })
   getCockpitSummary(
     @CurrentUser() userId: string,
-    @Param('jahr', ParseIntPipe) jahr: number,
+    @Param('jahr', ParseSteuerjahrPipe) jahr: number,
   ): Promise<CockpitSummaryDto | null> {
     return this.cockpitService.getSummary(userId, jahr)
   }
