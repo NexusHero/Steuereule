@@ -1,0 +1,25 @@
+@startuml 0012-guard-guest-or-session
+' ADR-0012 §2 — UserContextGuard: the single place userId is established,
+' now accepting a verified better-auth session OR a guest token.
+title UserContextGuard — guest OR verified session (ADR-0012 §2)
+
+start
+:Incoming request to a Nest controller\n(behind UserContextGuard);
+if (better-auth session cookie present?) then (yes)
+  :auth.api.getSession({ headers })\n(single indexed DB read on `session`);
+  if (session valid?) then (yes)
+    :userId = session.user.id  (AUTHENTICATED);
+    note right: do NOT mint / touch the guest cookie
+    stop
+  else (no / revoked)
+  endif
+else (no)
+endif
+if (valid guest cookie? (HMAC, no I/O)) then (yes)
+  :userId = guest userId;
+  stop
+else (no)
+  :mint fresh guest userId\n+ set se_guest_session cookie\n(httpOnly; SameSite=None; Secure);
+  stop
+endif
+@enduml

@@ -27,6 +27,7 @@ ultimate-dev-process §1.2.
 | 0009 | better-auth as the auth server (Keycloak dropped); supersedes 0007 | Accepted |
 | 0010 | Postgres in CI: service-container for test/smoke jobs, compose service for local/e2e stack | Accepted |
 | 0011 | CORS: strict env-driven origin allowlist with credentialed cross-origin | Accepted |
+| 0012 | better-auth mounting, guard guest-OR-session coexistence, atomic guest→account upgrade | Accepted |
 
 See also the [Tech Radar](./tech-radar.md).
 
