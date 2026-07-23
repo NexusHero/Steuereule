@@ -12,4 +12,10 @@ export function Svg({ children }: AnyProps) {
 export function Path(_: AnyProps) {
   return <View />
 }
+export function Rect(_: AnyProps) {
+  return <View />
+}
+export function Circle(_: AnyProps) {
+  return <View />
+}
 export type SvgProps = AnyProps

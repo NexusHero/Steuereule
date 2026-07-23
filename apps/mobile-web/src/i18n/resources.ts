@@ -6,6 +6,10 @@ export const appResources = {
   de: {
     [APP_NS]: {
       brand: { steuer: 'Steuer', eule: 'Eule' },
+      splash: {
+        greeting: 'Steuern? Zack, erledigt.',
+        skipLabel: 'Weiter zur App',
+      },
       login: {
         greetingBefore: 'Schön, dass du ',
         greetingMark: 'da',
@@ -138,6 +142,10 @@ export const appResources = {
   en: {
     [APP_NS]: {
       brand: { steuer: 'Steuer', eule: 'Eule' },
+      splash: {
+        greeting: 'Taxes? Sorted, just like that.',
+        skipLabel: 'Continue to the app',
+      },
       login: {
         greetingBefore: 'Good to see you ',
         greetingMark: 'here',
