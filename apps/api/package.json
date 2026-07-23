@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "postinstall": "prisma generate",
     "prisma:generate": "prisma generate",
     "start": "pnpm run build && node dist/main.js",
     "test": "vitest run --config vitest.config.ts",
