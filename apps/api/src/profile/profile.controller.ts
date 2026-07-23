@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Inject, Put, UseGuards } from '@nestjs/common'
-import { ApiOkResponse, ApiBadRequestResponse, ApiTags } from '@nestjs/swagger'
+import { ApiBody, ApiOkResponse, ApiBadRequestResponse, ApiTags } from '@nestjs/swagger'
 import { CurrentUser } from '../auth/current-user.decorator.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
 import { ProfileResponseDto } from './dto/profile-response.dto.js'
@@ -27,6 +27,12 @@ export class ProfileController {
   }
 
   @Put()
+  // Explicit @ApiBody(): Nest's Swagger plugin otherwise infers the request body schema
+  // from the reflected `design:paramtypes` metadata on `dto`, which — like the constructor
+  // injection and @ApiProperty() types noted above — is metadata esbuild/tsx never emit.
+  // Without this, the generated OpenAPI document (and therefore the frontend's orval
+  // client) silently loses the request body on PUT under any non-tsc/SWC toolchain.
+  @ApiBody({ type: PutProfileDto })
   @ApiOkResponse({ type: ProfileResponseDto, description: 'The saved profile, echoed back.' })
   @ApiBadRequestResponse({ type: ValidationErrorDto, description: 'Payload failed server-side validation; nothing was persisted.' })
   putProfile(@CurrentUser() userId: string, @Body() dto: PutProfileDto): Promise<ProfileResponseDto> {

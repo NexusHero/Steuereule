@@ -28,6 +28,12 @@ export const appResources = {
       onboarding: {
         back: 'Zurück',
         weiter: 'Weiter',
+        loading: 'Deine Angaben werden geladen …',
+        loadError: {
+          heading: 'Das hat nicht geklappt.',
+          message: 'Deine Angaben konnten nicht geladen werden. Prüf die Verbindung und versuch es noch mal.',
+          retry: 'Noch mal versuchen',
+        },
         step1: {
           titleBefore: 'Wer bist ',
           titleMark: 'du',
@@ -68,8 +74,13 @@ export const appResources = {
           rowSteuerNr: 'Steuernummer',
           steuerNrLater: 'später',
           cta: 'Weiter',
+          submitting: 'Wird gespeichert …',
+          submitError: {
+            validation: 'Deine Angaben konnten nicht gespeichert werden. Bitte prüf die Steuer-ID und versuch es noch mal.',
+            network: 'Das hat gerade nicht geklappt. Prüf die Verbindung und versuch es noch mal.',
+          },
           changeDetails: 'Angaben ändern',
-          footerNote: 'Bleibt nur für diese Sitzung — bis du weitergehst.',
+          footerNote: 'Wird sicher gespeichert — du kannst jederzeit zurückkommen.',
         },
       },
     },
@@ -99,6 +110,12 @@ export const appResources = {
       onboarding: {
         back: 'Back',
         weiter: 'Continue',
+        loading: 'Loading your details …',
+        loadError: {
+          heading: "That didn't work.",
+          message: "Your details couldn't be loaded. Check your connection and try again.",
+          retry: 'Try again',
+        },
         step1: {
           titleBefore: 'Who are ',
           titleMark: 'you',
@@ -139,8 +156,13 @@ export const appResources = {
           rowSteuerNr: 'Steuernummer',
           steuerNrLater: 'later',
           cta: 'Continue',
+          submitting: 'Saving …',
+          submitError: {
+            validation: "Your details couldn't be saved. Please check the Steuer-ID and try again.",
+            network: "That didn't work just now. Check your connection and try again.",
+          },
           changeDetails: 'Edit details',
-          footerNote: 'Stays only for this session — until you continue.',
+          footerNote: 'Saved securely — you can come back to it any time.',
         },
       },
     },

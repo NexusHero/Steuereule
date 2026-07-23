@@ -1,0 +1,179 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/v1/profile": {
+      "get": {
+        "operationId": "ProfileController_getProfile",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "The caller’s saved profile, or an all-null default if none was saved yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "profile"
+        ]
+      },
+      "put": {
+        "operationId": "ProfileController_putProfile",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutProfileDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The saved profile, echoed back.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Payload failed server-side validation; nothing was persisted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "profile"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "SteuerEule API",
+    "description": "Onboarding profile endpoints (steuereule#29)",
+    "version": "1.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "schemas": {
+      "ProfileResponseDto": {
+        "type": "object",
+        "properties": {
+          "firstName": {
+            "type": "string",
+            "nullable": true,
+            "example": "Anna"
+          },
+          "lastName": {
+            "type": "string",
+            "nullable": true,
+            "example": "Beispiel"
+          },
+          "steuerId": {
+            "type": "string",
+            "nullable": true,
+            "example": "02476291358"
+          },
+          "steuernummer": {
+            "type": "string",
+            "nullable": true,
+            "example": "18181508155"
+          }
+        },
+        "required": [
+          "firstName",
+          "lastName",
+          "steuerId",
+          "steuernummer"
+        ]
+      },
+      "PutProfileDto": {
+        "type": "object",
+        "properties": {
+          "firstName": {
+            "type": "string",
+            "example": "Anna",
+            "description": "Non-empty first name."
+          },
+          "lastName": {
+            "type": "string",
+            "example": "Beispiel",
+            "description": "Non-empty last name."
+          },
+          "steuerId": {
+            "type": "string",
+            "example": "02476291358",
+            "description": "Steuerliche Identifikationsnummer — exactly 11 digits."
+          },
+          "steuernummer": {
+            "type": "string",
+            "example": "18181508155",
+            "description": "Steuernummer — optional; 1-13 digits (no separators) if present."
+          }
+        },
+        "required": [
+          "firstName",
+          "lastName",
+          "steuerId"
+        ]
+      },
+      "ValidationFieldErrorDto": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string",
+            "example": "steuerId"
+          },
+          "message": {
+            "type": "string",
+            "example": "steuerId must be exactly 11 digits"
+          }
+        },
+        "required": [
+          "field",
+          "message"
+        ]
+      },
+      "ValidationErrorDto": {
+        "type": "object",
+        "properties": {
+          "statusCode": {
+            "type": "number",
+            "example": 400
+          },
+          "error": {
+            "type": "string",
+            "example": "Bad Request"
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ValidationFieldErrorDto"
+            }
+          }
+        },
+        "required": [
+          "statusCode",
+          "error",
+          "fields"
+        ]
+      }
+    }
+  }
+}

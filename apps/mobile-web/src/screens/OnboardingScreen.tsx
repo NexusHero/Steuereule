@@ -1,38 +1,67 @@
 // Onboarding (F: Onboarding.jsx in Funke dress) — 3-step flow: name → Steuer-ID → Steuernummer →
-// summary. All demo/in-memory: nothing is persisted (a Steuer-ID is sensitive personal data; unlike
-// the design-system reference this does not write to localStorage — ruled by the lead for #27).
+// summary, wired to the real Profile API (GET/PUT /v1/profile, steuereule#27/#29). The screen
+// holds the profile in-memory only — nothing is written to localStorage/AsyncStorage; the
+// Steuer-ID is persisted server-side, field-encrypted at rest (ADR-0008). Honest states
+// throughout: a real loading screen while the profile loads, a real retryable error screen if it
+// can't, and an inline retryable error if saving fails — no fake spinners, no silent failures.
 // Copy via i18n (de base + en, ADR-0006). One primary action per step. No entrance/step animation,
 // so `prefers-reduced-motion` is honored by omission (design-system CLAUDE.md).
-import { useState } from 'react'
-import { ScrollView, View, Text, Pressable, type ViewStyle, type TextStyle, type ViewProps } from 'react-native'
+import { useEffect, useState } from 'react'
+import {
+  ActivityIndicator,
+  ScrollView,
+  View,
+  Text,
+  Pressable,
+  type ViewStyle,
+  type TextStyle,
+  type ViewProps,
+} from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Button, Input, Feld, Chip, Pill, Sticker, Card, useTheme, type UiTheme } from '@steuereule/ui'
+import { isValidSteuerId } from '@steuereule/core'
+import { useProfileControllerGetProfile, useProfileControllerPutProfile } from '@steuereule/api-client'
 import { APP_NS } from '../i18n/resources'
 import { formatSteuerId, formatSteuerNr, countDigits } from './onboarding/format'
+import { toOnboardingProfil, toPutProfileDto, type OnboardingProfil } from './onboarding/profileMapping'
 
 export interface OnboardingScreenProps {
   readonly onDone: () => void
 }
 
-interface Profil {
-  readonly vorname: string
-  readonly nachname: string
-  readonly steuerId: string
-  readonly steuerNr: string
-}
-
-const LEER: Profil = { vorname: '', nachname: '', steuerId: '', steuerNr: '' }
 const STEP_COUNT = 3
 
 export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
-  const [profil, setProfil] = useState<Profil>(LEER)
-  const [schritt, setSchritt] = useState(0) // 0..2 = the three steps, 3 = summary
+  const profileQuery = useProfileControllerGetProfile()
+  const putProfile = useProfileControllerPutProfile()
+  const styles = makeStyles(t)
 
-  const set = (key: keyof Profil) => (value: string) => setProfil((p) => ({ ...p, [key]: value }))
+  const [profil, setProfil] = useState<OnboardingProfil | null>(null)
+  const [schritt, setSchritt] = useState(0) // 0..2 = the three steps, 3 = summary
+  const [submitError, setSubmitError] = useState<string | null>(null)
+
+  // Seed the local, in-memory profile exactly once from the loaded server value (or the
+  // all-null default) — after that the user's own edits are the source of truth until submit.
+  useEffect(() => {
+    if (profil === null && profileQuery.data !== undefined) {
+      setProfil(toOnboardingProfil(profileQuery.data.data))
+    }
+  }, [profileQuery.data, profil])
+
+  if (profileQuery.isPending) {
+    return <OnboardingLoading />
+  }
+  if (profileQuery.isError || profil === null) {
+    return <OnboardingLoadError onRetry={() => void profileQuery.refetch()} />
+  }
+
+  const set = (key: keyof OnboardingProfil) => (value: string) =>
+    setProfil((p) => (p ? { ...p, [key]: value } : p))
   const idDigits = countDigits(profil.steuerId)
-  const stepOk = [profil.vorname.trim() !== '' && profil.nachname.trim() !== '', idDigits === 11, true]
+  const steuerIdOk = isValidSteuerId(profil.steuerId.replace(/\D/g, ''))
+  const stepOk = [profil.vorname.trim() !== '' && profil.nachname.trim() !== '', steuerIdOk, true]
 
   function weiter() {
     setSchritt((s) => (s === STEP_COUNT - 1 ? STEP_COUNT : s + 1))
@@ -41,10 +70,37 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
     setSchritt((s) => Math.max(0, s - 1))
   }
 
-  const styles = makeStyles(t)
+  function submit() {
+    // Defensive only: unreachable in practice — submit() is only ever passed to
+    // OnboardingSummary, which never renders before `profil` is set (see the early
+    // returns above). TS can't carry that narrowing into a nested function declaration.
+    if (profil === null) return
+    setSubmitError(null)
+    putProfile.mutate(
+      { data: toPutProfileDto(profil) },
+      {
+        onSuccess: (response) => {
+          if (response.status === 200) {
+            onDone()
+          } else {
+            setSubmitError(tr('onboarding.summary.submitError.validation'))
+          }
+        },
+        onError: () => setSubmitError(tr('onboarding.summary.submitError.network')),
+      },
+    )
+  }
 
   if (schritt === STEP_COUNT) {
-    return <OnboardingSummary profil={profil} onDone={onDone} onEdit={() => setSchritt(0)} />
+    return (
+      <OnboardingSummary
+        profil={profil}
+        onSubmit={submit}
+        onEdit={() => setSchritt(0)}
+        isSubmitting={putProfile.isPending}
+        submitError={submitError}
+      />
+    )
   }
 
   return (
@@ -113,7 +169,7 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
           </Feld>
           <View style={styles.counterRow}>
             <Pill>{tr('onboarding.step2.counter', { count: idDigits })}</Pill>
-            {idDigits === 11 ? <Sticker>{tr('onboarding.step2.confirmed')}</Sticker> : null}
+            {steuerIdOk ? <Sticker>{tr('onboarding.step2.confirmed')}</Sticker> : null}
           </View>
         </>
       ) : null}
@@ -147,13 +203,48 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
   )
 }
 
-interface OnboardingSummaryProps {
-  readonly profil: Profil
-  readonly onDone: () => void
-  readonly onEdit: () => void
+function OnboardingLoading() {
+  const t = useTheme()
+  const { t: tr } = useTranslation(APP_NS)
+  const styles = makeStyles(t)
+  return (
+    <View style={styles.centerScreen}>
+      <ActivityIndicator size="large" color={t.color.tinte} accessibilityLabel={tr('onboarding.loading')} />
+      <Text style={styles.help}>{tr('onboarding.loading')}</Text>
+    </View>
+  )
 }
 
-function OnboardingSummary({ profil, onDone, onEdit }: OnboardingSummaryProps) {
+interface OnboardingLoadErrorProps {
+  readonly onRetry: () => void
+}
+
+function OnboardingLoadError({ onRetry }: OnboardingLoadErrorProps) {
+  const t = useTheme()
+  const { t: tr } = useTranslation(APP_NS)
+  const styles = makeStyles(t)
+  return (
+    <View style={styles.centerScreen}>
+      <Text style={styles.heading} accessibilityRole="alert">
+        {tr('onboarding.loadError.heading')}
+      </Text>
+      <Text style={styles.help}>{tr('onboarding.loadError.message')}</Text>
+      <Button onPress={onRetry} style={styles.cta}>
+        {tr('onboarding.loadError.retry')}
+      </Button>
+    </View>
+  )
+}
+
+interface OnboardingSummaryProps {
+  readonly profil: OnboardingProfil
+  readonly onSubmit: () => void
+  readonly onEdit: () => void
+  readonly isSubmitting: boolean
+  readonly submitError: string | null
+}
+
+function OnboardingSummary({ profil, onSubmit, onEdit, isSubmitting, submitError }: OnboardingSummaryProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
@@ -182,10 +273,16 @@ function OnboardingSummary({ profil, onDone, onEdit }: OnboardingSummaryProps) {
         ))}
       </Card>
 
-      <Button onPress={onDone} style={styles.cta}>
-        {tr('onboarding.summary.cta')}
+      {submitError !== null ? (
+        <Text style={styles.submitError} accessibilityRole="alert">
+          {submitError}
+        </Text>
+      ) : null}
+
+      <Button onPress={onSubmit} disabled={isSubmitting} style={styles.cta}>
+        {isSubmitting ? tr('onboarding.summary.submitting') : tr('onboarding.summary.cta')}
       </Button>
-      <Button variante="ghost" onPress={onEdit} style={styles.summaryEditButton}>
+      <Button variante="ghost" onPress={onEdit} disabled={isSubmitting} style={styles.summaryEditButton}>
         {tr('onboarding.summary.changeDetails')}
       </Button>
       <Text style={styles.summaryFooterNote}>{tr('onboarding.summary.footerNote')}</Text>
@@ -232,6 +329,12 @@ function makeStyles(t: UiTheme) {
     width: '100%',
     alignSelf: 'center',
   }
+  const centerScreen: ViewStyle = {
+    ...screen,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: t.space.s3,
+  }
   const headerRow: ViewStyle = {
     flexDirection: 'row',
     alignItems: 'center',
@@ -267,11 +370,24 @@ function makeStyles(t: UiTheme) {
     fontSize: t.size['3xl'],
     color: t.color.tinte,
     marginBottom: t.space.s2,
+    textAlign: 'center',
   }
   const mark: TextStyle = { color: t.color.funkeTinte }
-  const help: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.m, marginBottom: t.space.s5 }
+  const help: TextStyle = {
+    color: t.color.tinte2,
+    fontFamily: t.font.text,
+    fontSize: t.size.m,
+    marginBottom: t.space.s5,
+    textAlign: 'center',
+  }
   const counterRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s2 }
   const cta: ViewStyle = { marginTop: t.space.s5 }
+  const submitError: TextStyle = {
+    color: t.color.fehler,
+    fontFamily: t.font.text,
+    fontSize: t.size.s,
+    marginTop: t.space.s3,
+  }
   const summaryHeadingRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s3, marginBottom: t.space.s2 }
   const summaryHeading: TextStyle = {
     fontFamily: t.font.display,
@@ -303,6 +419,7 @@ function makeStyles(t: UiTheme) {
 
   return {
     screen,
+    centerScreen,
     headerRow,
     backButton,
     backArrow,
@@ -315,6 +432,7 @@ function makeStyles(t: UiTheme) {
     help,
     counterRow,
     cta,
+    submitError,
     summaryHeadingRow,
     summaryHeading,
     cardLabel,

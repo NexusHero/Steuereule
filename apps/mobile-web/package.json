@@ -13,9 +13,11 @@
   },
   "dependencies": {
     "@expo/metro-runtime": "~5.0.5",
+    "@steuereule/api-client": "workspace:*",
     "@steuereule/core": "workspace:*",
     "@steuereule/tokens": "workspace:*",
     "@steuereule/ui": "workspace:*",
+    "@tanstack/react-query": "^5.101.4",
     "expo": "~53.0.0",
     "expo-status-bar": "~2.2.3",
     "i18next": "^24.2.0",
@@ -28,9 +30,11 @@
   },
   "devDependencies": {
     "@testing-library/react": "^16.1.0",
+    "@types/node": "^22.10.5",
     "@types/react": "^19.0.2",
     "@vitejs/plugin-react": "^4.3.4",
     "jsdom": "^25.0.1",
+    "msw": "^2.15.0",
     "typescript": "^7.0.0"
   }
 }

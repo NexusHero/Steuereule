@@ -1,22 +1,29 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@steuereule/ui'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { http, HttpResponse } from 'msw'
 import { createAppI18n } from '../i18n/app-i18n'
 import { OnboardingScreen } from './OnboardingScreen'
+import { server } from '../test-msw-server'
 
 function renderOnboarding(opts: { lng?: 'de' | 'en'; onDone?: () => void } = {}) {
   const i18n = createAppI18n(opts.lng ?? 'de')
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   return render(
-    <I18nextProvider i18n={i18n}>
-      <ThemeProvider mode="light">
-        <OnboardingScreen onDone={opts.onDone ?? (() => {})} />
-      </ThemeProvider>
-    </I18nextProvider>,
+    <QueryClientProvider client={queryClient}>
+      <I18nextProvider i18n={i18n}>
+        <ThemeProvider mode="light">
+          <OnboardingScreen onDone={opts.onDone ?? (() => {})} />
+        </ThemeProvider>
+      </I18nextProvider>
+    </QueryClientProvider>,
   )
 }
 
-function fillNameStep() {
+async function fillNameStep() {
+  await screen.findByPlaceholderText('Kim')
   fireEvent.change(screen.getByPlaceholderText('Kim'), { target: { value: 'Kim' } })
   fireEvent.change(screen.getByPlaceholderText('Yilmaz'), { target: { value: 'Yilmaz' } })
   fireEvent.click(screen.getByText('Weiter'))
@@ -27,21 +34,60 @@ function fillSteuerId(digits: string) {
 }
 
 describe('OnboardingScreen', () => {
-  it('renders step 1 in German by default', () => {
+  it('shows a real loading state while the saved profile is fetched, then step 1 prefilled empty', async () => {
     renderOnboarding()
-    expect(screen.getByText('Genau wie im Ausweis — damit die Maske exakt stimmt.')).toBeTruthy()
+    expect(screen.getByLabelText('Deine Angaben werden geladen …')).toBeTruthy()
+
+    await screen.findByText('Vorname')
+    expect(screen.queryByLabelText('Deine Angaben werden geladen …')).toBeNull()
+  })
+
+  it('renders step 1 in German by default', async () => {
+    renderOnboarding()
+    await screen.findByText('Genau wie im Ausweis — damit die Maske exakt stimmt.')
     expect(screen.getByText('Vorname')).toBeTruthy()
     expect(screen.getByText('Nachname')).toBeTruthy()
   })
 
-  it('switches to English when the locale changes (ADR-0006)', () => {
+  it('switches to English when the locale changes (ADR-0006)', async () => {
     renderOnboarding({ lng: 'en' })
-    expect(screen.getByText('Just like on your ID — so the form matches exactly.')).toBeTruthy()
+    await screen.findByText('Just like on your ID — so the form matches exactly.')
     expect(screen.getByText('First name')).toBeTruthy()
   })
 
-  it('keeps the step-1 CTA disabled until both name fields are filled', () => {
+  it('prefills step 1 from a previously saved profile (GET /v1/profile)', async () => {
+    server.use(
+      http.get('*/v1/profile', () =>
+        HttpResponse.json({ firstName: 'Anna', lastName: 'Beispiel', steuerId: '02476291358', steuernummer: null }, { status: 200 }),
+      ),
+    )
     renderOnboarding()
+
+    expect(await screen.findByDisplayValue('Anna')).toBeTruthy()
+    expect(screen.getByDisplayValue('Beispiel')).toBeTruthy()
+  })
+
+  it('shows a retryable error screen when the profile fails to load, and recovers on retry', async () => {
+    let attempt = 0
+    server.use(
+      http.get('*/v1/profile', () => {
+        attempt += 1
+        if (attempt === 1) return HttpResponse.error()
+        return HttpResponse.json({ firstName: null, lastName: null, steuerId: null, steuernummer: null }, { status: 200 })
+      }),
+    )
+    renderOnboarding()
+
+    await screen.findByText('Das hat nicht geklappt.')
+    expect(screen.getByText('Deine Angaben konnten nicht geladen werden. Prüf die Verbindung und versuch es noch mal.')).toBeTruthy()
+
+    fireEvent.click(screen.getByText('Noch mal versuchen'))
+    await screen.findByText('Vorname')
+  })
+
+  it('keeps the step-1 CTA disabled until both name fields are filled', async () => {
+    renderOnboarding()
+    await screen.findByText('Vorname')
     fireEvent.click(screen.getByText('Weiter'))
     // Still on step 1: the step-2 help text must not have appeared.
     expect(screen.queryByText('11 Ziffern, lebenslang gleich — steht oben auf jedem Brief vom Finanzamt.')).toBeNull()
@@ -52,9 +98,9 @@ describe('OnboardingScreen', () => {
     expect(screen.getByText('11 Ziffern, lebenslang gleich — steht oben auf jedem Brief vom Finanzamt.')).toBeTruthy()
   })
 
-  it('formats the Steuer-ID live, shows the running counter, and confirms at exactly 11 digits', () => {
+  it('formats the Steuer-ID live, shows the running counter, and confirms at exactly 11 digits', async () => {
     renderOnboarding()
-    fillNameStep()
+    await fillNameStep()
 
     fillSteuerId('1234567890')
     expect(screen.getByText('10/11 Ziffern')).toBeTruthy()
@@ -71,9 +117,9 @@ describe('OnboardingScreen', () => {
     expect(screen.getByText('Steht auf deinem letzten Bescheid. Keinen zur Hand? Später geht auch.')).toBeTruthy()
   })
 
-  it('lets the Steuernummer step be skipped via the "later" chip without entering digits', () => {
+  it('lets the Steuernummer step be skipped via the "later" chip without entering digits', async () => {
     renderOnboarding()
-    fillNameStep()
+    await fillNameStep()
     fillSteuerId('12345678901')
     fireEvent.click(screen.getByText('Weiter'))
 
@@ -81,9 +127,9 @@ describe('OnboardingScreen', () => {
     expect(screen.getByText('Deine Maske')).toBeTruthy()
   })
 
-  it('reaches the summary with all four values, showing "später" for a skipped Steuernummer', () => {
+  it('reaches the summary with all four values, showing "später" for a skipped Steuernummer', async () => {
     renderOnboarding()
-    fillNameStep()
+    await fillNameStep()
     fillSteuerId('12345678901')
     fireEvent.click(screen.getByText('Weiter'))
     // Steuernummer is never required: tap Weiter with the field left empty.
@@ -96,10 +142,67 @@ describe('OnboardingScreen', () => {
     expect(screen.getByText('später')).toBeTruthy()
   })
 
-  it('returns to step 1 from "Angaben ändern" and calls onDone once from the summary CTA', () => {
+  it('saves via PUT /v1/profile and calls onDone once, only after the save succeeds', async () => {
+    let putCalls = 0
+    server.use(
+      http.put('*/v1/profile', async ({ request }) => {
+        putCalls += 1
+        const body = (await request.json()) as Record<string, unknown>
+        expect(body).toEqual({ firstName: 'Kim', lastName: 'Yilmaz', steuerId: '12345678901' })
+        return HttpResponse.json({ firstName: 'Kim', lastName: 'Yilmaz', steuerId: '12345678901', steuernummer: null }, { status: 200 })
+      }),
+    )
     const onDone = vi.fn()
     renderOnboarding({ onDone })
-    fillNameStep()
+    await fillNameStep()
+    fillSteuerId('12345678901')
+    fireEvent.click(screen.getByText('Weiter'))
+    fireEvent.click(screen.getByText('Weiter'))
+    expect(screen.getByText('Deine Maske')).toBeTruthy()
+
+    fireEvent.click(screen.getByText('Weiter'))
+
+    await waitFor(() => expect(onDone).toHaveBeenCalledOnce())
+    expect(putCalls).toBe(1)
+  })
+
+  it('shows a retryable inline error on the summary when saving fails validation server-side, without advancing', async () => {
+    server.use(
+      http.put('*/v1/profile', () =>
+        HttpResponse.json({ statusCode: 400, error: 'Bad Request', fields: [{ field: 'steuerId', message: 'invalid' }] }, { status: 400 }),
+      ),
+    )
+    const onDone = vi.fn()
+    renderOnboarding({ onDone })
+    await fillNameStep()
+    fillSteuerId('12345678901')
+    fireEvent.click(screen.getByText('Weiter'))
+    fireEvent.click(screen.getByText('Weiter'))
+
+    fireEvent.click(screen.getByText('Weiter'))
+
+    await screen.findByText('Deine Angaben konnten nicht gespeichert werden. Bitte prüf die Steuer-ID und versuch es noch mal.')
+    expect(onDone).not.toHaveBeenCalled()
+  })
+
+  it('shows a retryable inline error on the summary on a network failure while saving', async () => {
+    server.use(http.put('*/v1/profile', () => HttpResponse.error()))
+    const onDone = vi.fn()
+    renderOnboarding({ onDone })
+    await fillNameStep()
+    fillSteuerId('12345678901')
+    fireEvent.click(screen.getByText('Weiter'))
+    fireEvent.click(screen.getByText('Weiter'))
+
+    fireEvent.click(screen.getByText('Weiter'))
+
+    await screen.findByText('Das hat gerade nicht geklappt. Prüf die Verbindung und versuch es noch mal.')
+    expect(onDone).not.toHaveBeenCalled()
+  })
+
+  it('returns to step 1 from "Angaben ändern" and preserves entered values', async () => {
+    renderOnboarding()
+    await fillNameStep()
     fillSteuerId('12345678901')
     fireEvent.click(screen.getByText('Weiter'))
     fireEvent.click(screen.getByText('Weiter'))
@@ -108,26 +211,19 @@ describe('OnboardingScreen', () => {
     fireEvent.click(screen.getByText('Angaben ändern'))
     expect(screen.getByText('Vorname')).toBeTruthy()
     expect(screen.getByPlaceholderText('Kim')).toHaveProperty('value', 'Kim')
-
-    fillNameStep()
-    fillSteuerId('12345678901')
-    fireEvent.click(screen.getByText('Weiter'))
-    fireEvent.click(screen.getByText('Weiter'))
-    fireEvent.click(screen.getByText('Weiter'))
-    expect(onDone).toHaveBeenCalledOnce()
   })
 
-  it('lets the back arrow decrement the step while preserving entered values', () => {
+  it('lets the back arrow decrement the step while preserving entered values', async () => {
     renderOnboarding()
-    fillNameStep()
+    await fillNameStep()
     fireEvent.click(screen.getByLabelText('Zurück'))
     expect(screen.getByPlaceholderText('Kim')).toHaveProperty('value', 'Kim')
     expect(screen.getByPlaceholderText('Yilmaz')).toHaveProperty('value', 'Yilmaz')
   })
 
-  it('exposes the back button label and progressbar semantics on the step indicator', () => {
+  it('exposes the back button label and progressbar semantics on the step indicator', async () => {
     renderOnboarding()
-    fillNameStep()
+    await fillNameStep()
     const back = screen.getByLabelText('Zurück')
     expect(back.getAttribute('role')).toBe('button')
 
