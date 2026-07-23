@@ -6,11 +6,19 @@ import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fa
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
 import { AppModule } from './app.module.js'
 import { validationExceptionFactory } from './common/validation-exception-factory.js'
+import { resolveCorsOrigins } from './cors/resolve-cors-origins.js'
 
 export async function buildApp(): Promise<NestFastifyApplication> {
   const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter(), {
     logger: ['error', 'warn'],
   })
+
+  // Credentialed cross-origin CORS (ADR-0011): the guest-session userId travels in an
+  // httpOnly cookie, so the live demo's web origin must be granted `credentials: true`
+  // via a strict, env-driven allowlist — never `*` (incompatible with credentials anyway).
+  // Pairs with UserContextGuard's `SameSite=None; Secure` cookie (see guest-session.ts);
+  // CORS headers alone are not sufficient for the cross-origin credentialed call to work.
+  app.enableCors({ origin: resolveCorsOrigins(process.env), credentials: true })
 
   await app.register(fastifyCookie)
 

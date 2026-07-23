@@ -9,6 +9,13 @@
 > this ADR:** the phase-1 `UserContextGuard` `userId` seam (REQ-002) — ADR-0009 mounts better-auth
 > *behind* it unchanged. Only the "which identity system" choice is superseded.
 
+> **Amended (2026-07-23, [ADR-0011](./0011-cors-credentialed-cross-origin.md)).** The guest-session
+> cookie's `SameSite` attribute below was named `strict` for the *same-origin* web session. Enabling
+> credentialed cross-origin CORS for the live demo (ADR-0011) forces `SameSite=None; Secure` instead —
+> browsers drop a `strict`/`Lax` cookie on a cross-site credentialed request, which would leave the
+> onboarding vertical broken even with CORS headers correct. `UserContextGuard` now sets
+> `SameSite=None; Secure`; the seam itself (`UserContextGuard` / `guest-session.ts`) is unchanged.
+
 ## Context
 
 The product decided the auth *surface* already: Google & Apple, email + password, and a guest mode

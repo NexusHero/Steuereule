@@ -29,8 +29,16 @@ export class UserContextGuard implements CanActivate {
     if (!verifiedUserId) {
       reply.setCookie(GUEST_SESSION_COOKIE, signGuestSession(userId, secret), {
         httpOnly: true,
-        sameSite: 'strict',
-        secure: process.env.NODE_ENV === 'production',
+        // SameSite=None; Secure (ADR-0011, amending ADR-0007's original `strict`): the web
+        // app and the API run on separate origins in both local dev (different ports) and
+        // the deployed demo, so this is a cross-site credentialed cookie — `strict`/`Lax`
+        // is silently dropped by the browser on a cross-site request, which would leave the
+        // onboarding vertical broken even with CORS headers correct. `Secure` is required
+        // whenever `SameSite=None` is set (browsers reject the pairing otherwise); this is
+        // safe unconditionally because `http://localhost` is treated as a secure context by
+        // modern browsers even without TLS, and the deployed demo is HTTPS-only (ADR-0007).
+        sameSite: 'none',
+        secure: true,
         path: '/',
         maxAge: COOKIE_MAX_AGE_SECONDS,
       })
