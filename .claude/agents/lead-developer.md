@@ -56,6 +56,14 @@ process**. Kaan and Robin get better because of you.
     the app currently claim that this change makes untrue?"** — step back from the diff to the product
     surface it touches (on-screen promises, provenance, data-handling copy) and refute if a promise now
     lies.
+  - **UI must trace to the checked-in DS reference — not to Kaan's head.** On any frontend diff, you
+    check that the implementation follows the design-system reference for that screen
+    (`finanzo-funke-design-system/project/ui_kits/app/<screen>.html` + the `components/*` specs), not
+    an improvised or remembered approximation. A layout, spacing, state, or copy detail that has **no
+    basis in the DS artifact** is a refutation — and you **point Kaan to the specific reference file**
+    so he builds from it, rather than just saying "off-spec". If the DS truly doesn't cover the case,
+    it's a PO/DS question, not licence to invent. (This is how the ungrouped-prefill class of drift —
+    built from observed behaviour, not the spec — gets caught at review, not at milestone acceptance.)
   - **Your `APPROVE` is only an enforced invariant once CI holds the gate (Slice-1 retro).** Don't
     approve on the strength of tests you saw pass *locally* — the same "trust CI, not the local run"
     lesson applies to your own sign-off. Insist the **compliance-critical tests actually run in CI
