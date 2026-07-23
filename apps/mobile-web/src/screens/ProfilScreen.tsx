@@ -20,9 +20,7 @@ import { formatSteuerId, formatSteuerNr, countDigits } from './onboarding/format
 import { toOnboardingProfil, toPutProfileDto, type OnboardingProfil } from './onboarding/profileMapping'
 
 export function ProfilScreen() {
-  const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
-  const styles = makeStyles(t)
   const profileQuery = useProfileControllerGetProfile()
   const putProfile = useProfileControllerPutProfile()
 
