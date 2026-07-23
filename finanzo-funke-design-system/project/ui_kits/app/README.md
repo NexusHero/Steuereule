@@ -12,7 +12,7 @@ Produktregeln original, Visual komplett Funke.
 - `demo-daten.js` — EINE Quelle für jede Screen-übergreifende Zahl (`window.FunkeDemo`) inkl.
   `formatZahl`/`formatEuro`/`formatEuroCent`; Regel 10 in `guidelines/tech-direktion.md`
 - `interview.html` — Interview (F1): eine Frage pro Screen, Geld-Feedback als Sticker, erste Schätzung
-- `registrierung.html` — Konto anlegen + Code-Verifizierung (Demo 123456)
+- `registrierung.html` — Konto anlegen → ehrlicher Verifizierungs-Hinweis (kein Code-Gate, ADR-0012)
 - `scan.html` — Beleg-Scan: Kamera-Mock → Scan-Linie → KI-Vorschlag (Stufe 2) → übernommen
 - `gg-tracker.html` — Grenzgänger: Tage tippen, 60er-Grenze, ab 55 kippt die Karte auf Rot
 - `bescheid.html` — Bescheid-Vergleich: Amt vs. wir, Abweichung erklärt (KI), Einspruch mit Frist
