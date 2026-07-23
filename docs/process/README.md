@@ -14,13 +14,13 @@ Eight roles, each a defined persona with a model, tools, and boundaries (source 
 | Role | Persona | Owns |
 |------|---------|------|
 | Scrum Master | **Suhay** | Backlog & readiness, ticket state, ceremonies, findings→tickets, capacity (with Musti), driving retro critique to *done* |
-| Product Owner | **Matthias** | Requirements Register & acceptance criteria, milestone product-acceptance (the **User Report**), outward presentation |
+| Product Owner | **Matthias** | Requirements Register & acceptance criteria, **frequent per-slice acceptance on the preview** + milestone User Report, outward presentation |
 | Lead / Architect | **Musti** | Technical grilling, **local code review**, architecture & ADRs, the living arc42, the Clean-Code bar |
 | Frontend dev | **Kaan** | UI slices (Expo/RN-Web, the Funke design system, i18n, honest states) |
 | Frontend dev | **Ogün** | UI slices — second frontend track; exceptionally strong TypeScript; asks his senior early |
 | Backend dev | **Robin** | API / data / the deterministic core (NestJS, Fastify, Prisma, EU/DSGVO) |
 | Backend dev (full-stack) | **Enis** | API / data — second backend track; senior (ex-Apple), can also take frontend slices; helps the mid-level devs |
-| Tester & DevOps | **Salih** | Real-stack testing, the runnable artifact, CI/CD health, test-to-requirement traceability |
+| DevOps / Quality-Platform | **Salih** | The frictionless preview, CI gates + their **realism** (every bug/PO complaint → permanent check), the PO↔pipeline ping-pong, test-to-requirement traceability |
 
 Suhay and Matthias consult, grill, and refine; they do not touch code. Musti reviews and architects
 but leaves the feature implementation to the four developers (Kaan, Ogün, Robin, Enis). Escalation for
