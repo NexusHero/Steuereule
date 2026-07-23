@@ -146,7 +146,7 @@ KI-Violett bleiben, Tinte/Flächen tauschen; Umschalter im Profil (localStorage 
 
 - `ui_kits/app/` — die SteuerEule-App im Funke-Kleid, interaktiv: Cockpit, Belege, Berater,
   Übertragen, Profil; dazu `auth.html` (Login mit Google/Apple, E-Mail, Gast-Modus),
-  `registrierung.html` (Konto + Code), `onboarding.html` (Splash + Maske vorfüllen),
+  `registrierung.html` (Konto + ehrlicher Verifizierungs-Hinweis), `onboarding.html` (Splash + Maske vorfüllen),
   `interview.html` (F1 inkl. Arbeitstage-Rechner), `scan.html` (Beleg-Scan + PDF-Upload),
   `gg-tracker.html` (Grenzgänger), `paywall.html` (Abgabe-Paket + Kauf-Flow),
   `splash.html` (App-Start), `bescheid.html` (Bescheid-Vergleich + Einspruch),
