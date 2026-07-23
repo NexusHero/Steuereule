@@ -3,6 +3,7 @@
 // (firstName/lastName/steuerId/steuernummer). Pure and dependency-free so it is testable
 // without rendering the screen or hitting the network (steuereule#27 vertical join).
 import type { ProfileResponseDto, PutProfileDto } from '@steuereule/api-client'
+import { formatSteuerId, formatSteuerNr } from './format'
 
 export interface OnboardingProfil {
   readonly vorname: string
@@ -18,13 +19,18 @@ export const EMPTY_ONBOARDING_PROFIL: OnboardingProfil = {
   steuerNr: '',
 }
 
-/** GET response -> screen state. A `null` field (nothing saved yet) becomes ''. */
+/**
+ * GET response -> screen state. A `null` field (nothing saved yet) becomes ''. The Steuer-ID/
+ * Steuernummer are run through the same formatSteuerId/formatSteuerNr grouping the typing path
+ * applies, so a prefilled value renders identically to a freshly typed one (steuereule#60) —
+ * the raw digits round-trip unchanged, only the on-screen grouping is added.
+ */
 export function toOnboardingProfil(dto: ProfileResponseDto): OnboardingProfil {
   return {
     vorname: dto.firstName ?? '',
     nachname: dto.lastName ?? '',
-    steuerId: dto.steuerId ?? '',
-    steuerNr: dto.steuernummer ?? '',
+    steuerId: formatSteuerId(dto.steuerId ?? ''),
+    steuerNr: formatSteuerNr(dto.steuernummer ?? ''),
   }
 }
 

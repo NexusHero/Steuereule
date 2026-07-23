@@ -96,16 +96,13 @@ describe('REQ-012 — Onboarding vertical-join (ATDD acceptance, steuereule#53)'
     expect(screen.getByDisplayValue('Beispiel')).toBeTruthy()
 
     fireEvent.click(screen.getByText('Weiter'))
-    // NOTE (finding, non-blocking — flagged to Suhay for a follow-up ticket): the prefilled
-    // Steuer-ID/Steuernummer render as the server's raw digit string, not run through the
-    // same formatSteuerId/formatSteuerNr grouping the rest of the flow uses when the user
-    // types. The value itself is correct (round-trips faithfully); only the on-load display
-    // grouping is inconsistent with the typed-input experience. Asserting the real behaviour
-    // here rather than the grouped display it doesn't (yet) have.
-    expect(screen.getByDisplayValue('02476291358')).toBeTruthy()
+    // The prefilled Steuer-ID/Steuernummer render grouped via formatSteuerId/formatSteuerNr —
+    // the same grouping the rest of the flow applies as the user types (steuereule#60, fixed).
+    // The underlying digits are unchanged; only the on-screen grouping is added.
+    expect(screen.getByDisplayValue('02 476 291 358')).toBeTruthy()
 
     fireEvent.click(screen.getByText('Weiter'))
-    expect(screen.getByDisplayValue('1338150815')).toBeTruthy()
+    expect(screen.getByDisplayValue('133/815/0815')).toBeTruthy()
 
     fireEvent.click(screen.getByText('Weiter'))
     await screen.findByText('Deine Maske')
@@ -204,7 +201,7 @@ describe('REQ-012 — Onboarding vertical-join (ATDD acceptance, steuereule#53)'
 
       await screen.findByDisplayValue('Anna')
       fireEvent.click(screen.getByText('Weiter'))
-      expect(screen.getByDisplayValue('02476291358')).toBeTruthy()
+      expect(screen.getByDisplayValue('02 476 291 358')).toBeTruthy()
       fireEvent.click(screen.getByText('Weiter'))
       fireEvent.click(screen.getByText('Weiter'))
       await screen.findByText('Deine Maske')
