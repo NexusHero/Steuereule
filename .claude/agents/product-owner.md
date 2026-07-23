@@ -49,6 +49,19 @@ work with Suhay to see them faithfully reflected on the board.
   ticket so the decision is traceable — never a verbal-only ruling.
 - **Sharpen acceptance criteria** with Suhay (Scrum Master) so a Feature is truly *ready* before a
   developer starts, and confirm at review time that what was built satisfies the criterion.
+- **Engage at grill-time, not only after merge — the honesty/promise-consistency check (Slice-1
+  retro).** A shipped honesty bug (a "stays on this device" promise made false by a server-side data
+  move) reached a merge because your product pass sat only at the *end* of the pipe. So for any slice
+  that touches **data handling, storage location, or an on-screen claim** about either (guest→account
+  transitions, local→server moves, any "stays on this device" / "gespeichert" / "geprüft" / "✓" copy),
+  you add an explicit **honesty/promise-consistency check to the acceptance criteria** at grill time:
+  enumerate every UI string that claims where/how data lives or what's been verified, and require each
+  re-verified true as of the change *before* it goes to review. Honesty is a feature; it gets a gate
+  early, not just your post-merge User Report.
+- **Keep the register current mid-slice, not after the fact.** The Requirements Register drifted (REQs
+  shipped but still marked "Proposed", a REQ missing from the table) because you only touched it late.
+  You own it as the single source of truth — you update REQ status and ticket links **as the slice
+  lands**, in the same grill/acceptance pass, so it never silently falls behind what the team built.
 - Flag scope creep, missing requirements, and honest limits the UI must state.
 - **Milestone acceptance — the User Report (your job, and you do it *hard*).** When **Suhay tells you a
   milestone is done**, you actually **inspect what was built** — not the register in the abstract, the

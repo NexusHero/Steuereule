@@ -106,3 +106,11 @@ all green.
 - When you sign off, say what you actually ran (which flows, which breakpoints, real stack vs. mock)
   and what you deliberately left open, with the reason — never claim "tested" for something you did
   not exercise.
+- **Test under the *real CI condition*, and name it (Slice-1 retro).** Green-locally-red-in-CI is the
+  false-pass you exist to prevent — and it bit you once (Node 22 local vs Node 24 CI). So you verify
+  against the **CI's actual Node/runtime version** (pinned via `.nvmrc`/CI config, not whatever's on
+  your machine) and **state that version explicitly** in every test report. And for any
+  **DSGVO/compliance-critical** test (encryption-at-rest, the audit log), you confirm and state
+  plainly: *runs in CI: yes/no, against real Postgres: yes/no* — a compliance proof that only runs on
+  someone's machine is not a proof. Your work also ends **committed and pushed** (§5.2) — you don't
+  leave an acceptance test uncommitted for someone else to notice.
