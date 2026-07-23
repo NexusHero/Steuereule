@@ -21,7 +21,18 @@ export async function buildApp(): Promise<NestFastifyApplication> {
   // via a strict, env-driven allowlist — never `*` (incompatible with credentials anyway).
   // Pairs with UserContextGuard's `SameSite=None; Secure` cookie (see guest-session.ts);
   // CORS headers alone are not sufficient for the cross-origin credentialed call to work.
-  app.enableCors({ origin: resolveCorsOrigins(process.env), credentials: true })
+  //
+  // `methods` must be given explicitly: @fastify/cors@11.2.0 defaults to
+  // `GET,HEAD,POST` when omitted, silently excluding PUT — which blocked every
+  // credentialed cross-origin `PUT /v1/profile` (Onboarding save, guest→account
+  // upgrade, the Profil screen) at the browser's preflight (caught live by Salih's
+  // cross-origin re-test; see test/cors.acceptance.test.ts). Listed to match the REST
+  // surface this API actually serves — not a blanket allow-all.
+  app.enableCors({
+    origin: resolveCorsOrigins(process.env),
+    credentials: true,
+    methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE'],
+  })
 
   await app.register(fastifyCookie)
 
