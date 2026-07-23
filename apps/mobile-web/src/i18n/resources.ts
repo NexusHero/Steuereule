@@ -23,10 +23,12 @@ export const appResources = {
         guest: 'Erstmal als Gast umschauen',
         // Honest replacement for the pre-Slice-1 "stays on this device only" claim, which
         // became false once the guest path started flowing into Onboarding and its
-        // server-side, encrypted profile persistence (steuereule#65, ADR-0008/ADR-027).
-        // Wording proposed by Kaan, pending Matthias's (Product Owner) final confirmation —
-        // see PR evidence block.
-        guestNote: 'Gast-Modus: deine Angaben werden sicher verschlüsselt gespeichert — deine Identität ist erst bei der Abgabe gefragt.',
+        // server-side, encrypted profile persistence (steuereule#65, ADR-020 + REQ-003).
+        // Final wording per Matthias (Product Owner), ruling on issue #65 — shorter than
+        // Kaan's original proposal; drops the identity-at-filing clause since it sits one
+        // screen before Onboarding collects the Steuer-ID and could be misread as "no
+        // identifying data needed yet".
+        guestNote: 'Gast-Modus: deine Angaben werden sicher verschlüsselt gespeichert.',
         errEmail: 'Das sieht noch nicht nach einer E-Mail aus.',
         errPass: 'Mindestens 6 Zeichen fürs Passwort.',
       },
@@ -109,7 +111,7 @@ export const appResources = {
         register: 'New here? Create account',
         guest: 'Look around as a guest',
         // See the `de` entry above for the provenance note (steuereule#65).
-        guestNote: 'Guest mode: your details are saved securely, encrypted — we only need to confirm your identity when you actually file.',
+        guestNote: 'Guest mode: your details are saved securely, encrypted.',
         errEmail: "That doesn't look like an email yet.",
         errPass: 'At least 6 characters for the password.',
       },
