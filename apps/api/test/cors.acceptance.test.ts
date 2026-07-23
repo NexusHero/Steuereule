@@ -45,8 +45,12 @@ async function bootRealServer(): Promise<{ app: NestFastifyApplication; baseUrl:
     logger: false,
   })
 
-  // Mirrors src/main.ts exactly: same enableCors call, same resolver.
-  app.enableCors({ origin: resolveCorsOrigins(process.env), credentials: true })
+  // Mirrors src/main.ts exactly: same enableCors call, same resolver, same methods list.
+  app.enableCors({
+    origin: resolveCorsOrigins(process.env),
+    credentials: true,
+    methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE'],
+  })
 
   await app.register(fastifyCookie)
   app.useGlobalPipes(
@@ -112,5 +116,67 @@ describe('CORS — credentialed cross-origin (ADR-0011, #57), against the runnin
     expect(setCookie).toBeTruthy()
     expect(setCookie).toMatch(/SameSite=None/i)
     expect(setCookie).toMatch(/Secure/i)
+  })
+
+  // Regression test — Salih's live cross-origin re-test caught that @fastify/cors@11.2.0's
+  // default `methods: 'GET,HEAD,POST'` (main.ts's enableCors() never overrode it) never
+  // includes PUT, so a credentialed cross-origin `PUT /v1/profile` (Onboarding save,
+  // guest→account upgrade, the Profil screen) fails the browser's preflight — invisible to
+  // `.inject()`-level tests, which never run a real preflight/CORS check at all.
+  it('an OPTIONS preflight for PUT /v1/profile from an allow-listed Origin includes PUT in Access-Control-Allow-Methods', async () => {
+    const response = await fetch(`${baseUrl}/v1/profile`, {
+      method: 'OPTIONS',
+      headers: {
+        Origin: ALLOWED_ORIGIN,
+        'Access-Control-Request-Method': 'PUT',
+        'Access-Control-Request-Headers': 'content-type',
+      },
+    })
+
+    const allowedMethods = response.headers.get('access-control-allow-methods') ?? ''
+    const methods = allowedMethods.split(',').map((method) => method.trim())
+    expect(methods).toContain('PUT')
+    expect(response.headers.get('access-control-allow-origin')).toBe(ALLOWED_ORIGIN)
+  })
+
+  it('a disallowed Origin still gets no Access-Control-Allow-Origin on an OPTIONS preflight for PUT — fail-closed, regardless of the methods list', async () => {
+    const response = await fetch(`${baseUrl}/v1/profile`, {
+      method: 'OPTIONS',
+      headers: {
+        Origin: DISALLOWED_ORIGIN,
+        'Access-Control-Request-Method': 'PUT',
+        'Access-Control-Request-Headers': 'content-type',
+      },
+    })
+
+    expect(response.headers.get('access-control-allow-origin')).toBeNull()
+    expect(response.headers.get('access-control-allow-origin')).not.toBe('*')
+  })
+
+  it('a real credentialed cross-origin PUT /v1/profile from an allow-listed Origin succeeds end-to-end', async () => {
+    // First establish a guest session (mints the httpOnly cookie), exactly as the web
+    // app's onboarding save flow would after an initial GET.
+    const getResponse = await fetch(`${baseUrl}/v1/profile`, {
+      method: 'GET',
+      headers: { Origin: ALLOWED_ORIGIN },
+    })
+    const setCookie = getResponse.headers.get('set-cookie')
+    expect(setCookie).toBeTruthy()
+    const guestCookie = (setCookie as string).split(';')[0] ?? ''
+    expect(guestCookie).toBeTruthy()
+
+    const putResponse = await fetch(`${baseUrl}/v1/profile`, {
+      method: 'PUT',
+      headers: {
+        Origin: ALLOWED_ORIGIN,
+        'Content-Type': 'application/json',
+        Cookie: guestCookie,
+      },
+      body: JSON.stringify({ firstName: 'Anna', lastName: 'Beispiel', steuerId: '02476291358' }),
+    })
+
+    expect(putResponse.status).toBe(200)
+    expect(putResponse.headers.get('access-control-allow-origin')).toBe(ALLOWED_ORIGIN)
+    expect(putResponse.headers.get('access-control-allow-credentials')).toBe('true')
   })
 })
