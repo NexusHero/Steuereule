@@ -19,6 +19,17 @@ describe('Input', () => {
     // RN-Web renders secureTextEntry as type=password
     expect(screen.getByTestId('pw').getAttribute('type')).toBe('password')
   })
+
+  it('gives a numeric field the numeric keyboard mode', () => {
+    renderUi(<Input type="numeric" value="" onChange={() => {}} testID="num" />)
+    expect(screen.getByTestId('num').getAttribute('inputmode')).toBe('numeric')
+  })
+
+  it('renders mono/tabular-nums for tax-number fields', () => {
+    renderUi(<Input value="12 345" onChange={() => {}} testID="mono" mono />)
+    const el = screen.getByTestId('mono') as HTMLElement
+    expect(el.style.fontFamily).toContain('Space Mono')
+  })
 })
 
 describe('Feld', () => {
