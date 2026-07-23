@@ -1,0 +1,31 @@
+@startuml 0012-guest-account-upgrade
+' ADR-0012 §4 — atomic guest->account upgrade (#42, REQ-006).
+title Guest -> account upgrade — atomic FK re-key (ADR-0012 §4)
+
+actor "Guest\n(has se_guest_session)" as Guest
+participant "Web / Expo" as App
+participant "better-auth\n(/api/auth/*)" as BA
+database "Postgres" as DB
+
+Guest -> App : sign up (email + password)
+App -> BA : POST /api/auth/sign-up\n(credentials: include, guest cookie sent)
+BA -> DB : create user + session\n(commit account first)
+BA --> App : Set-Cookie: session (SameSite=None; Secure)\n+ verification email via EmailSender stub
+
+group One Prisma $transaction (all-or-nothing, idempotent)
+  App -> DB : migrate(guestUserId -> accountUserId)
+  alt guest has profile AND account profile-less
+    DB -> DB : UPDATE Profile.userId  guest -> account
+    DB -> DB : UPDATE TaxDataAccessLog.userId  guest -> account\n(sanctioned append-only exception)
+    DB -> DB : INSERT TaxDataAccessLog WRITE\n(migration recorded under account)
+  else guest has no profile
+    DB -> DB : no-op (nothing to carry)
+  else account already owns a profile
+    DB -> DB : no-op (account data wins; guest profile NOT clobbered)
+  end
+end
+
+App -> App : clear se_guest_session (retire guest)
+note over App,DB : Interrupted mid-flight -> rollback;\nretry is idempotent (account exists, guest still owns profile)
+Guest -> App : next request -> resolves via account session (guard rule 2.1)
+@enduml

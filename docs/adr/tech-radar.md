@@ -13,6 +13,9 @@ confidence) · **Assess** (evaluating, not yet committed) · **Hold** (avoid / l
 | NestJS + Fastify (API-only) | Adopt | ADR-046 |
 | REST + OpenAPI | Adopt | ADR-046 |
 | better-auth (auth **server**, behind the UserContextGuard seam) | Adopt | ADR-046 / ADR-0009 |
+| better-auth client SDK (`createAuthClient`, Expo/RN + web) | Adopt | ADR-0012 |
+| better-auth Have-I-Been-Pwned plugin (breach check, k-anonymity) | Adopt | ADR-0012 (REQ-010) |
+| `@fastify/helmet` (security headers / CSP) | Adopt | ADR-0009 hardening / ADR-0012 |
 | Keycloak (self-hosted IdP) | Hold | ADR-0009 (dropped; better-auth is the server) |
 | Prisma + managed EU Postgres | Adopt | ADR-047 |
 | prisma-field-encryption (AES-256-GCM, randomized) | Adopt | ADR-0008 |
