@@ -31,6 +31,7 @@ The ADRs **justify** the architecture; the [living arc42 document](../arc42/READ
 | 0010 | Postgres in CI: service-container for test/smoke jobs, compose service for local/e2e stack | Accepted |
 | 0011 | CORS: strict env-driven origin allowlist with credentialed cross-origin | Accepted |
 | 0012 | better-auth mounting, guard guest-OR-session coexistence, atomic guest→account upgrade | Accepted |
+| 0013 | DSGVO export (JSON + PDF) & account deletion: anonymise-and-retain audit, atomic teardown | Accepted |
 
 See also the [Tech Radar](./tech-radar.md).
 
