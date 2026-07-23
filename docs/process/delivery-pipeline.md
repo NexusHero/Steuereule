@@ -80,6 +80,14 @@ acceptance-cosmetics authored after the fact.
   parallel tracks never starve. Planned at a **sustainable pace** (the team gets its daily breather; no
   crunch).
 - **One ticket = one vertical slice = one short-lived branch.** Small diffs, small final pass.
+- **The developer fixes — never the reviewer, the tester, or the orchestrator.** When a gate finds a
+  defect, it goes back to the **dev who owns that code** to fix; it then re-enters the loop — **dev
+  fixes → Musti re-reviews → Salih re-tests**, round again until it holds. Musti reviews, Salih tests,
+  the dev fixes: those stay separate heads on purpose. A reviewer or tester who reaches in and patches
+  the code (even a "trivial" one-liner) blurs the role and burns their context on work that isn't
+  theirs — and a shortcut fix that skips the loop never gets the independent re-review + re-test that
+  makes the gate mean something. So even a one-line correction routes through the dev and back around
+  the loop. (The orchestrator dispatches and sequences; it does not hand-edit the code either.)
 - **Every bug is fixed the moment it's found — nothing is parked for later.** A bug we find is a bug we
   fix now: before the PR opens if a local gate caught it, on the PR if CI or a reviewer caught it —
   never carried forward as "later" work. Suhay still files a ticket for **every** finding, but the
