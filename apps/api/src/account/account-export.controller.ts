@@ -7,10 +7,15 @@ import { AccountExportService } from './account-export.service.js'
 import { EXPORT_FORMATS, type ExportFormat, ExportQueryDto } from './dto/export-query.dto.js'
 import { ExportDocumentDto } from './dto/export-response.dto.js'
 
+// Named *Export*Controller (not AccountController) — REQ-011/BE-A is one of two
+// sibling slices sharing the `v1/account` module (ADR-0013); the DELETE /v1/account
+// teardown (BE-B) lands in its own AccountDeletionController class alongside this one
+// (Nest happily lets multiple controllers share a `@Controller()` path prefix), so the
+// two tracks never need to touch the same controller file/class.
 @ApiTags('account')
 @Controller('v1/account')
 @UseGuards(UserContextGuard)
-export class AccountController {
+export class AccountExportController {
   // Explicit token — see the comment on ProfileController's constructor.
   constructor(@Inject(AccountExportService) private readonly exportService: AccountExportService) {}
 
