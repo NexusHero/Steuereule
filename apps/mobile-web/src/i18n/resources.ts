@@ -11,14 +11,18 @@ export const appResources = {
         greetingMark: 'da',
         greetingAfter: ' bist.',
         subtitle: 'Dein Steuerjahr wartet — weiter, wo du aufgehört hast.',
-        google: 'Weiter mit Google',
-        apple: 'Weiter mit Apple',
-        orEmail: 'oder mit E-Mail',
+        // steuereule#72 (ADR-0012, REQ-007/008) — Google/Apple sign-in is out of this slice; the
+        // DS demo (auth.html) has both buttons calling straight through to onFertig, which faked
+        // a login. Rather than ship a button that lies, they're hidden until REQ-007/008 lands
+        // (no "coming soon" copy exists in the DS either, so no divider/label is invented here).
         emailLabel: 'E-Mail',
         emailPlaceholder: 'du@beispiel.de',
         passwordLabel: 'Passwort',
         submit: 'Einloggen',
-        forgot: 'Passwort vergessen?',
+        submitting: 'Wird geprüft …',
+        continue: 'Weiter',
+        // "Passwort vergessen?" is a dead link in the DS demo and password reset has no DS
+        // artifact and isn't in REQ-005 scope — hidden rather than wired to nothing (steuereule#72).
         register: 'Neu hier? Konto anlegen',
         guest: 'Erstmal als Gast umschauen',
         // Honest replacement for the pre-Slice-1 "stays on this device only" claim, which
@@ -31,6 +35,45 @@ export const appResources = {
         guestNote: 'Gast-Modus: deine Angaben werden sicher verschlüsselt gespeichert.',
         errEmail: 'Das sieht noch nicht nach einer E-Mail aus.',
         errPass: 'Mindestens 6 Zeichen fürs Passwort.',
+      },
+      // Shared copy for both Login and Registrierung, driven by better-auth's own error codes
+      // (authErrors.ts) and REQ-005's honest-unverified-state requirement — one place, not
+      // duplicated per screen.
+      auth: {
+        errInvalidCredentials: 'E-Mail oder Passwort stimmen nicht.',
+        errEmailTaken: 'Für diese E-Mail gibt es schon ein Konto.',
+        errPasswordTooShort: 'Das Passwort ist zu kurz.',
+        errPasswordCompromised: 'Dieses Passwort ist in einem bekannten Datenleck aufgetaucht — wähl bitte ein anderes.',
+        errGeneric: 'Das hat gerade nicht geklappt. Prüf die Verbindung und versuch es noch mal.',
+        verifyBanner: {
+          heading: 'Bitte bestätige noch deine E-Mail.',
+          body: 'Wir haben einen Bestätigungslink an {{email}} geschickt. Du kannst schon loslegen — bestätige, wenn du Zeit hast.',
+          resend: 'Mail erneut senden',
+          resendSending: 'Wird gesendet …',
+          resendSent: 'Ist raus — schau in dein Postfach.',
+          resendError: 'Das hat gerade nicht geklappt. Versuch es gleich noch mal.',
+        },
+      },
+      registrierung: {
+        titleBefore: 'Leg dein ',
+        titleMark: 'Konto',
+        titleAfter: ' an.',
+        subtitle: 'E-Mail und Passwort — mehr braucht es nicht.',
+        emailLabel: 'E-Mail',
+        emailPlaceholder: 'du@beispiel.de',
+        passwordLabel: 'Passwort',
+        passwordPlaceholder: 'Mindestens 6 Zeichen',
+        submit: 'Konto anlegen',
+        submitting: 'Wird angelegt …',
+        legalNote: 'Mit dem Anlegen akzeptierst du AGB & Datenschutz.',
+        errEmail: 'Das sieht noch nicht nach einer E-Mail aus.',
+        errPass: 'Mindestens 6 Zeichen fürs Passwort.',
+        success: {
+          badge: 'Konto steht ✓',
+          heading: 'Willkommen bei SteuerEule.',
+          subtitle: 'Jetzt noch drei Angaben, dann ist deine Maske vorgefüllt.',
+          cta: 'Weiter zum Onboarding →',
+        },
       },
       onboarding: {
         back: 'Zurück',
@@ -100,20 +143,55 @@ export const appResources = {
         greetingMark: 'here',
         greetingAfter: '.',
         subtitle: 'Your tax year is waiting — pick up where you left off.',
-        google: 'Continue with Google',
-        apple: 'Continue with Apple',
-        orEmail: 'or with email',
+        // See the `de` entry above for the provenance note (steuereule#72, ADR-0012).
         emailLabel: 'Email',
         emailPlaceholder: 'you@example.com',
         passwordLabel: 'Password',
         submit: 'Log in',
-        forgot: 'Forgot password?',
+        submitting: 'Checking …',
+        continue: 'Continue',
         register: 'New here? Create account',
         guest: 'Look around as a guest',
         // See the `de` entry above for the provenance note (steuereule#65).
         guestNote: 'Guest mode: your details are saved securely, encrypted.',
         errEmail: "That doesn't look like an email yet.",
         errPass: 'At least 6 characters for the password.',
+      },
+      auth: {
+        errInvalidCredentials: "Email or password doesn't match.",
+        errEmailTaken: 'There is already an account for this email.',
+        errPasswordTooShort: "That password's too short.",
+        errPasswordCompromised: 'That password has shown up in a known data breach — please choose a different one.',
+        errGeneric: "That didn't work just now. Check your connection and try again.",
+        verifyBanner: {
+          heading: 'Please verify your email.',
+          body: "We've sent a verification link to {{email}}. You can already get started — verify whenever you have a moment.",
+          resend: 'Resend email',
+          resendSending: 'Sending …',
+          resendSent: 'Sent — check your inbox.',
+          resendError: "That didn't work just now. Try again in a moment.",
+        },
+      },
+      registrierung: {
+        titleBefore: 'Create your ',
+        titleMark: 'account',
+        titleAfter: '.',
+        subtitle: 'Email and password — that’s all it takes.',
+        emailLabel: 'Email',
+        emailPlaceholder: 'you@example.com',
+        passwordLabel: 'Password',
+        passwordPlaceholder: 'At least 6 characters',
+        submit: 'Create account',
+        submitting: 'Creating …',
+        legalNote: 'By creating an account you accept the terms & privacy policy.',
+        errEmail: "That doesn't look like an email yet.",
+        errPass: 'At least 6 characters for the password.',
+        success: {
+          badge: 'Account created ✓',
+          heading: 'Welcome to SteuerEule.',
+          subtitle: "Just three more details and your form is pre-filled.",
+          cta: 'Continue to onboarding →',
+        },
       },
       onboarding: {
         back: 'Back',
