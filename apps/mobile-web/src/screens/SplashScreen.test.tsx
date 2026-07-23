@@ -5,6 +5,24 @@ import { ThemeProvider } from '@steuereule/ui'
 import { Animated, AccessibilityInfo } from 'react-native'
 import { createAppI18n } from '../i18n/app-i18n'
 import { SplashScreen } from './SplashScreen'
+import { OwlMark, type OwlMarkProps } from '../marks/OwlMark'
+
+// Regression guard for the "green eyes, no blink" bug: OwlMark has three animatable layers, and
+// SplashScreen must actually drive all three (including the eyelids) rather than silently
+// leaving `lidStyle` unpassed. Mocking OwlMark lets us assert on the exact props SplashScreen
+// hands it, without depending on react-native-svg's internal rendering.
+vi.mock('../marks/OwlMark', () => ({ OwlMark: vi.fn(() => null) }))
+
+function lastOwlMarkProps(): OwlMarkProps | undefined {
+  const mock = vi.mocked(OwlMark)
+  return mock.mock.calls.at(-1)?.[0]
+}
+
+// Animated.Value doesn't expose its current number through any public, typed API — `__getValue`
+// is the same escape hatch RN's own test utilities use.
+function currentValue(node: unknown): number {
+  return (node as { __getValue: () => number }).__getValue()
+}
 
 function renderSplash(opts: { lng?: 'de' | 'en'; onAdvance?: () => void } = {}) {
   const i18n = createAppI18n(opts.lng ?? 'de')
@@ -20,6 +38,7 @@ function renderSplash(opts: { lng?: 'de' | 'en'; onAdvance?: () => void } = {}) 
 beforeEach(() => {
   // Deterministic default: resolve immediately as reduced motion unless a test overrides it.
   vi.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(true)
+  vi.mocked(OwlMark).mockClear()
 })
 
 afterEach(() => {
@@ -83,5 +102,41 @@ describe('SplashScreen', () => {
     const timingSpy = vi.spyOn(Animated, 'timing')
     renderSplash()
     await waitFor(() => expect(timingSpy).toHaveBeenCalled())
+  })
+
+  it('drives the eyelid layer, retracted (eyes OPEN) at rest under reduced motion', async () => {
+    vi.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(true)
+    renderSplash()
+    await screen.findByText('Steuern? Zack, erledigt.')
+
+    const props = lastOwlMarkProps()
+    expect(props?.lidStyle).toBeTruthy()
+    const lidStyle = props?.lidStyle as { transform: [{ scaleY: unknown }]; transformOrigin: string }
+    // scaleY(0), anchored top — retracted, i.e. the eyes are visible, not covered by green lids.
+    expect(currentValue(lidStyle.transform[0].scaleY)).toBe(0)
+    expect(lidStyle.transformOrigin).toBe('center top')
+  })
+
+  it('plays a single blink (lids shut then open) right after the glasses draw in, when motion is allowed', async () => {
+    vi.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(false)
+    const timingSpy = vi.spyOn(Animated, 'timing')
+    renderSplash()
+    await waitFor(() => expect(timingSpy).toHaveBeenCalled())
+
+    const lidAnim = (lastOwlMarkProps()?.lidStyle as { transform: [{ scaleY: unknown }] }).transform[0].scaleY
+    const lidCalls = timingSpy.mock.calls.filter(([value]) => value === lidAnim)
+
+    // Two legs: close (toValue 1) then open again (toValue 0) — a single blink, not a toggle.
+    expect(lidCalls).toHaveLength(2)
+    expect(lidCalls[0]?.[1]).toMatchObject({ toValue: 1 })
+    expect(lidCalls[1]?.[1]).toMatchObject({ toValue: 0 })
+
+    // It's slotted in after the glasses stage and before the wordmark stage, matching the DS
+    // reference's entrance ordering (head -> glasses -> blink -> wordmark -> greeting).
+    const allCalls = timingSpy.mock.calls
+    const glassesAnim = (lastOwlMarkProps()?.glassesStyle as { opacity: unknown }).opacity
+    const glassesIndex = allCalls.findIndex(([value]) => value === glassesAnim)
+    const lidCloseIndex = allCalls.findIndex(([value]) => value === lidAnim)
+    expect(lidCloseIndex).toBeGreaterThan(glassesIndex)
   })
 })

@@ -19,6 +19,12 @@ const VIEWBOX = '0 0 96 96'
 export function OwlMark({ size = 104, headStyle, glassesStyle, lidStyle }: OwlMarkProps) {
   const t = useTheme()
   const layer: ViewStyle = { position: 'absolute', width: size, height: size }
+  // DS reference (splash.html `.au-lid`): rest state is `scaleY(0)` anchored `center top` — the
+  // eyelid rect collapses to nothing from its top edge, so at rest the eyes render OPEN. A
+  // consumer (SplashScreen) overrides this with an animated `lidStyle` to play a blink
+  // (scaleY 0 -> 1 -> 0); with no `lidStyle` at all the mark must still show open eyes, never the
+  // green lids fully covering the pupils.
+  const lidRestStyle: ViewStyle = { transform: [{ scaleY: 0 }], transformOrigin: 'center top' }
 
   return (
     <View
@@ -47,8 +53,9 @@ export function OwlMark({ size = 104, headStyle, glassesStyle, lidStyle }: OwlMa
         </Svg>
       </View>
 
-      {/* au-lid: eyelids, drawn last so they sit on top of the pupils */}
-      <View style={[layer, lidStyle]}>
+      {/* au-lid: eyelids, drawn last so they sit on top of the pupils. Anchored top so a scaleY
+          animation hinges from the top edge like a real eyelid, matching the DS reference. */}
+      <View style={[layer, lidRestStyle, lidStyle]}>
         <Svg width={size} height={size} viewBox={VIEWBOX}>
           <Rect x={19} y={33} width={28} height={28} rx={14} fill={t.color.funke} />
           <Rect x={49} y={33} width={28} height={28} rx={14} fill={t.color.funke} />
