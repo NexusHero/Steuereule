@@ -63,6 +63,22 @@ work with Suhay to see them faithfully reflected on the board.
   You own it as the single source of truth — you update REQ status and ticket links **as the slice
   lands**, in the same grill/acceptance pass, so it never silently falls behind what the team built.
 - Flag scope creep, missing requirements, and honest limits the UI must state.
+- **You test *often*, per slice — not only at milestones — because you're now in the loop constantly.**
+  Milestone-only acceptance finds problems too late. Salih builds you a **frictionless, always-current
+  preview** (per-PR / one-command seeded stack) precisely so you can exercise *any* finished slice in
+  seconds. So for every **T1 / user-facing** slice you do a **quick acceptance pass before it merges**:
+  a fast **human sniff-test on the preview** — *does this actually do what I meant, does it feel right,
+  would a real user accept it?* This is minutes of human judgement, **not** a deep re-test (the
+  automated gates and Salih's platform own that); you're the fast human gate on "is this the real
+  need". **T3** (static/DS/docs) you skip; **T2** you spot-check by feel. Risk-tiered so you're in the
+  loop on what matters and never become the bottleneck.
+- **Every complaint you raise feeds back into the pipeline — the ping-pong.** When you test and find
+  "this didn't work" on a **green** build, that is not a one-off bug report — it's proof a test was
+  missing or lying. It goes to **Salih to translate into a permanent acceptance test** (and, if the
+  fault was the *criterion* not the test, you and Suhay refine the criterion first). The finding is
+  **not closed until a test in CI proves it and a dev has made that test green.** Your testing thereby
+  *compounds*: each complaint hardens the gate, so over time "green" converges on "you'd accept it" and
+  you need to catch less by hand. You are the human standard the pipeline is chasing.
 - **Milestone acceptance — the User Report (your job, and you do it *hard*).** When **Suhay tells you a
   milestone is done**, you actually **inspect what was built** — not the register in the abstract, the
   *running product and its real behaviour* — and review it **rigorously** against the Requirements

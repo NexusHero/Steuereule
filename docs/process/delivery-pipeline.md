@@ -99,6 +99,31 @@ context. Multi-agent systems cost real tokens; a tight top-of-report is how we k
 without losing the audit trail. The **PR evidence block stays curated** (it's the durable record) — but
 the working report back to the orchestrator leads with the conclusion, details on demand.
 
+## The PO acceptance loop — the pipeline chases the human standard
+
+Green CI is only as honest as its acceptance tests: the CORS defects proved "green" can lie. The fix is
+a feedback loop that keeps the automated gates converging on what the PO would actually accept.
+
+- **Salih is the platform + gate engineer, not the per-slice tester.** His top deliverables are a
+  **frictionless, always-current seeded preview** (per-PR / one-command stack) that anyone can exercise,
+  and **CI gates that are realistic** — every escaped bug and every PO complaint becomes a permanent
+  automated check against the real stack. He retires a manual check only once its automated equivalent
+  is in CI and *proven* to catch the class; a thin risk-tiered exploratory pass remains for genuinely-new
+  **T1** surface. **The devs own their own PR's checks to green** (Musti approves, the stakeholder
+  merges) — verification parallelises across PRs instead of funnelling through one tester.
+- **The PO tests often, per slice, on the preview — risk-tiered.** Because Salih made testing one click,
+  Matthias does a **quick human sniff-test before merge on T1/user-facing slices** ("does it do what I
+  meant, would a user accept it?") — minutes of judgement, not a re-test. T3 skipped, T2 spot-checked.
+  He's the fast human gate on *is-this-the-real-need*, not a bottleneck.
+- **The ping-pong invariant: a PO complaint is never just fixed — it always also becomes a test.** When
+  Matthias finds "this didn't work" on a green build, diagnose the fork: **wrong thing built right**
+  (the *criterion* was incomplete → PO + Suhay refine it) or **right thing built wrong** (the *test*
+  lied → Salih hardens it). Either way the finding lands as a **new/corrected acceptance test in CI
+  (red)**, a **dev** makes it green, and only then is it closed. Every round hardens the gate, so "CI
+  green" asymptotically becomes "the PO would accept it" — and shifting the PO's Given–When–Then left
+  into the red-first ATDD test means most of the need is automated *before* the build, leaving the loop
+  to mop up only the residual.
+
 ## Rules that keep it fast
 
 - **Four tracks, all loaded.** Suhay and Musti own capacity together: work is split so the **four devs
@@ -152,7 +177,7 @@ the working report back to the orchestrator leads with the conclusion, details o
 | Frontend dev | Ogün | UI slices (second frontend track), tests-first, opens the PR once both gates pass |
 | Backend dev | Robin | API/data slices, tests-first, opens the PR once both gates pass |
 | Backend dev (full-stack) | Enis | API/data (second backend track) + frontend when needed, tests-first, opens the PR once both gates pass |
-| Tester & DevOps | Salih | **Local test** (boot + flows), the evidence report, CI/CD health |
+| DevOps / Quality-Platform | Salih | The frictionless preview, the CI gates + their **realism** (bug/complaint → permanent check), the PO↔pipeline ping-pong; a thin risk-tiered exploratory pass for new T1 surface |
 
 The role definitions live in [`.claude/agents/`](../../.claude/agents/); this document is the flow they
 share.
