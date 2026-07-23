@@ -1,0 +1,33 @@
+@startuml
+' ADR-0013 — DSGVO account deletion: one atomic Prisma $transaction, all-or-nothing.
+' Source of record (diffable). SVG export is a tracked follow-up (no PlantUML renderer
+' in the current toolchain — see docs/adr/index.md "Known inconsistency").
+title ADR-0013 — DELETE /v1/account: atomic teardown (anonymise-and-retain audit)
+
+actor "Account holder" as U
+participant "FE: Deine Daten panel" as FE
+participant "UserContextGuard" as G
+participant "AccountController\nDELETE /v1/account" as C
+participant "better-auth\n(re-auth only)" as BA
+database "Postgres\n(Prisma $transaction)" as DB
+
+U -> FE : Konto & Daten loeschen
+FE -> U : mandatory export offer + ADR-011 Loeschschutz warning
+U -> FE : confirm + re-auth (password / fresh session)
+FE -> G : DELETE /v1/account { confirm, re-auth proof }
+G -> G : resolve userId (session wins; @CurrentUser only)
+G -> C : userId (trusted; never from body/query/path)
+C -> BA : verify fresh-auth proof
+BA --> C : ok
+
+group single $transaction — all-or-nothing
+  C -> DB : find active LegalHold rows for userId
+  C -> DB : hard-delete Profile (except LegalHold-exempt)
+  C -> DB : anonymise TaxDataAccessLog.userId -> tombstone\n(except LegalHold-exempt) [ADR-0012 §4 exception shape]
+  C -> DB : delete User (cascade Session + Account) + Verification(email)
+end
+note right of DB : mid-transaction failure -> full rollback\n(no partial teardown ever observable)
+
+C --> FE : 200 { deleted, retainedAnonymisedAuditRows, retainedUnderLegalHold }
+FE -> FE : clear session -> goodbye / onboarding
+@enduml
