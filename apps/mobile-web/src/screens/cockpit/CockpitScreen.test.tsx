@@ -1,7 +1,8 @@
 // REQ-001 (steuereule#3, T6/#93) — Cockpit hero card: refund estimate range + "N Angaben offen",
-// honest loading/empty/error states, i18n de/en, exactly one primary action. See CockpitScreen.tsx
-// for the contract-dependency note (backend T4/#91 not yet built; this exercises the real fetch
-// path via MSW, contract-pinned to docs/runtime/req-001-cockpit-read.md).
+// honest loading/empty/error states, i18n de/en, exactly one primary action. Exercises the real
+// generated `useCockpitControllerGetCockpitSummary` hook (@steuereule/api-client) against
+// `GET /v1/steuerjahre/{jahr}/cockpit`, with MSW mocking the wire shape (contract-pinned to
+// docs/runtime/req-001-cockpit-read.md; the real endpoint landed in #119).
 import { describe, it, expect } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
@@ -11,7 +12,7 @@ import { http, HttpResponse } from 'msw'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { CockpitScreen } from './CockpitScreen'
 import { server } from '../../test-msw-server'
-import type { CockpitSummaryDto } from './cockpitSummary'
+import type { CockpitSummaryDto } from '@steuereule/api-client'
 
 const TAX_YEAR = 2026
 const COCKPIT_URL = `*/v1/steuerjahre/${TAX_YEAR}/cockpit`
@@ -25,7 +26,7 @@ const LOADED_SUMMARY: CockpitSummaryDto = {
 function mockCockpit(data: CockpitSummaryDto | null, status = 200) {
   // The wire body IS the CockpitSummaryDto (or null) directly — matching the profile client's
   // convention, where the `{ data, status }` envelope is httpClient's own generic wrapper around
-  // the parsed JSON, never something the server itself sends (see cockpitSummary.ts).
+  // the parsed JSON, never something the server itself sends.
   server.use(http.get(COCKPIT_URL, () => HttpResponse.json(data, { status })))
 }
 
