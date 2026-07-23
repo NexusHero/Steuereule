@@ -19,29 +19,46 @@ const API_BASE_URL = 'http://localhost:3000'
 // during Vitest's collection phase, which runs *before* `beforeAll` — so it's imported
 // dynamically inside each test instead, after the suite has actually started running.
 describe('App', () => {
-  it('goes from Login, to Registrierung (via the real "create account" link), through a real sign-up, to Onboarding', async () => {
-    server.use(
-      http.post(`${API_BASE_URL}/api/auth/sign-up/email`, () =>
-        HttpResponse.json({ token: 'tok_1', user: { id: 'u1', email: 'neu@beispiel.de', emailVerified: true, name: '' } }),
-      ),
-    )
-    const { default: App } = await import('./App')
-    render(<App />)
+  // A genuine end-to-end flow (real MSW sign-up + four screen transitions: Splash skip -> Login
+  // -> Registrierung -> sign-up success -> Onboarding). Each step below already awaits via
+  // `findBy*` (RTL's own auto-retry), one step at a time, rather than one long `waitFor` lumping
+  // several transitions together — so it's the *total* budget across every step that needs to be
+  // generous, not any single assertion racing the clock. That total, not any one `findBy*`, is
+  // what tips over vitest's 5000ms default `testTimeout` under CI's parallel-CPU contention (the
+  // same class of flake as the `RegistrierungScreen` "onDone" hardening) — this test genuinely
+  // needs more wall-clock than a single short interaction does, so it gets its own realistic
+  // per-test timeout instead of a blanket bump to the whole suite's default.
+  it(
+    'goes from Login, to Registrierung (via the real "create account" link), through a real sign-up, to Onboarding',
+    async () => {
+      server.use(
+        http.post(`${API_BASE_URL}/api/auth/sign-up/email`, () =>
+          HttpResponse.json({ token: 'tok_1', user: { id: 'u1', email: 'neu@beispiel.de', emailVerified: true, name: '' } }),
+        ),
+      )
+      const { default: App } = await import('./App')
+      render(<App />)
 
-    fireEvent.click(screen.getByLabelText('Weiter zur App'))
-    expect(screen.getByText('Einloggen')).toBeTruthy()
-    fireEvent.click(screen.getByText('Neu hier? Konto anlegen'))
+      fireEvent.click(screen.getByLabelText('Weiter zur App'))
+      // `findBy*` rather than a bare synchronous `getByText`: the Splash->Login stage flip is
+      // driven by the same click->handler round trip through RN-Web's Pressable response system
+      // that motivated the `waitFor` hardening in `RegistrierungScreen.test.tsx` — under CI's CPU
+      // contention it can land a tick later than a synchronous assertion allows for.
+      await screen.findByText('Einloggen')
+      fireEvent.click(screen.getByText('Neu hier? Konto anlegen'))
 
-    expect(await screen.findByText('Konto anlegen')).toBeTruthy()
-    fireEvent.change(screen.getByPlaceholderText('du@beispiel.de'), { target: { value: 'neu@beispiel.de' } })
-    fireEvent.change(screen.getByPlaceholderText('Mindestens 6 Zeichen'), { target: { value: 'geheim1' } })
-    fireEvent.click(screen.getByText('Konto anlegen'))
+      expect(await screen.findByText('Konto anlegen')).toBeTruthy()
+      fireEvent.change(screen.getByPlaceholderText('du@beispiel.de'), { target: { value: 'neu@beispiel.de' } })
+      fireEvent.change(screen.getByPlaceholderText('Mindestens 6 Zeichen'), { target: { value: 'geheim1' } })
+      fireEvent.click(screen.getByText('Konto anlegen'))
 
-    await screen.findByText('Willkommen bei SteuerEule.')
-    fireEvent.click(screen.getByText('Weiter zum Onboarding →'))
+      await screen.findByText('Willkommen bei SteuerEule.')
+      fireEvent.click(screen.getByText('Weiter zum Onboarding →'))
 
-    await screen.findByPlaceholderText('Kim')
-  })
+      await screen.findByPlaceholderText('Kim')
+    },
+    15_000,
+  )
 
   it('goes from Login straight to Onboarding via guest mode, unchanged from before this slice', async () => {
     const { default: App } = await import('./App')
