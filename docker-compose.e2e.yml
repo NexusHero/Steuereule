@@ -1,7 +1,7 @@
-# E2E overlay, layered on docker-compose.yml. For now it just marks the baseline
-# container as running in E2E mode — grows as real services are added back:
+# E2E overlay, layered on docker-compose.yml. Marks the postgres service as running in
+# E2E mode — grows as real services (API, seed) are added back:
 #   docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d
 services:
-  baseline:
+  postgres:
     environment:
       NODE_ENV: development
