@@ -54,11 +54,20 @@ proving test is a gap Salih raises to Suhay to ticket. No green-theatre (re-asse
 acceptance-cosmetics authored after the fact.
 5. **PR opens — only now.** The dev opens the PR only once **both** local gates pass. Opening a PR is a
    promise: *review-passed + test-passed*. The PR body carries the **evidence block**.
-6. **CI green + approving record.** CI re-confirms on the PR what was already locally true. Musti lands
-   a concise GitHub **`APPROVE`** stating what he checked (the deep pass already happened locally) — or
-   `REQUEST_CHANGES` if something regressed. A red pipeline is an automatic block.
-7. **Stakeholder final pass.** The stakeholder reviews the finished, evidenced PR on GitHub and merges.
-   They are the **final human gate**, not a reviewer of unfinished work.
+6. **CI green + lead-review record + ready-for-review flip.** CI re-confirms on the PR what was already
+   locally true. Musti lands a concise GitHub **lead-review record** — a *comment* "Lead review: PASS —
+   <what was checked>" (or "REQUEST CHANGES — <reason>" if something regressed). **Not** a formal
+   `APPROVE`: this is a **single-account repo**, so GitHub blocks self-approval *and* a self-"APPROVE"
+   reads as a review-gate bypass — the record is the durable trail, the human merge is the only
+   authorization. A red pipeline is an automatic block. **The PR stays a *draft* through steps 5–6;
+   once both crew gates have passed and CI is green, the crew marks it *ready-for-review* — that
+   draft→ready flip is the explicit signal "this one is finished and for the stakeholder now."**
+7. **Stakeholder final pass.** The stakeholder reviews only the **ready-for-review (non-draft)** PRs —
+   those, and only those, are the finished, evidenced ones awaiting them; **drafts are still in the
+   crew and are not the human's to review**. So "which PRs do I review?" is answered at a glance: the
+   non-draft queue. They are the **final human gate**, not a reviewer of unfinished work. (Branch
+   protection can require the CI **checks** but not "N reviews" — single account, nobody else to
+   approve; the human merge is the gate.)
 
 ## The evidence block (required in every PR body)
 
