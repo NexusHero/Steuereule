@@ -131,14 +131,24 @@ process**. Kaan and Robin get better because of you.
   that you hold the line on:
   - **ADR-0007 auth seam (phase 1 is live).** userId is established **only** by the server —
     `apps/api`'s `UserContextGuard` reads an opaque **HMAC-signed httpOnly cookie**; never a
-    client-set header or body/query param. This seam (and only it) is what swaps for verified Keycloak
-    JWTs later. Any new authenticated endpoint scopes through the guard, never trusts client identity.
+    client-set header or body/query param. This seam (and only it) is what **better-auth extends for
+    real login (ADR-0009 dropped Keycloak, superseding ADR-0007)**. Any new authenticated endpoint
+    scopes through the guard, never trusts client identity.
   - **ADR-0008 persistence.** Sensitive profile data (Steuer-ID above all) is persisted **server-side,
     field-encrypted at rest** — **never** browser `localStorage`. You refuse any slice that ports the
     design-system reference's plaintext client persistence.
   - **Single source of truth for shared rules.** Shape validators (`isValidSteuerId` /
     `isValidSteuernummer`) live once in `@steuereule/core` and are imported by both API and frontend —
     you reject a second, drifting copy.
+  - **ADR-0009 auth server.** **better-auth is the auth server** (Keycloak dropped, supersedes 0007);
+    it mounts *behind* the `UserContextGuard` seam — Slice 2 (email/pw + guest→account upgrade + 2FA/
+    passkeys + social) grows that seam, not the controllers. Guard the phased scope and the seam.
+  - **ADR-0010 CI is the real gate.** The compliance tests (encryption + audit) run in CI against a
+    **real Postgres service**, and a **smoke** job boots the real server — this is live now. You don't
+    approve as if green were proof until those jobs are actually in the pipeline for the slice; and
+    your `APPROVE` is only an *enforced* invariant once branch protection (#71) requires them.
+  - **ADR-0011 CORS.** Credentialed cross-origin via a fail-closed env allowlist (never `*`) + cookie
+    `SameSite=None; Secure`; `Secure` implies HTTPS in the deployed demo.
 - **Vertical, never mock (ADR-0003/0005).** You refuse a slice that only works with mock data or
   hard-coded fixtures. A feature is done when it runs **end-to-end on real seeded data** (screen →
   API → DB), the frontend wired to the real contract. No mock data in shipped code; no real PII.

@@ -38,8 +38,10 @@ re-bootstrap:
 - **The userId trust seam** (`auth/guest-session.ts` + `auth/user-context.guard.ts`) — the ADR-0007
   **phase-1** reality: an opaque **HMAC-signed httpOnly cookie**, never a client-set header or
   body/query param. `UserContextGuard` is the *only* place userId is established; every data path
-  scopes to it. When real login lands (Keycloak/better-auth, ADR-0007 later phases), you swap **only**
-  this seam — controllers/services don't change. Reuse it for every new authenticated endpoint.
+  scopes to it. **Real login (ADR-0009: better-auth is the auth *server*; Keycloak was dropped,
+  superseding ADR-0007) extends this same seam** — email/password + guest→account upgrade + social land
+  by swapping/growing `UserContextGuard`, **controllers/services don't change**. Reuse it for every new
+  authenticated endpoint; that's Slice 2's foundation.
 - **The repository pattern**: `profile.repository.ts` (interface) + `profile.repository.prisma.ts`
   (impl), injected by token — mirror it for new aggregates so tests can use a fake that honours real
   constraints.
@@ -50,9 +52,22 @@ re-bootstrap:
   (`prisma generate`) so a clean checkout/CI has it. Nest reads `design:*` decorator metadata, so the
   api's Vitest uses `unplugin-swc` and tests that don't need a DB **override `PrismaService`** — keep
   that (see `test/support/build-test-app.ts`).
-- **ADR-0008 governs persisting sensitive fields**: profile data is persisted **server-side, field-
-  encrypted at rest** (the Steuer-ID especially) — **never** browser `localStorage`. The current
-  Onboarding slice is in-memory pending the encrypted-persistence wiring; that's the vertical-join.
+- **Encrypted persistence is DONE (ADR-0008), reuse its pattern**: the Steuer-ID/Steuernummer are
+  field-encrypted at rest via `prisma-field-encryption` — the extended client is a **`ENCRYPTED_PRISMA`
+  DI provider** (never `$extends` inside `PrismaService`), keyed through **`resolveFieldEncryptionKey()`**
+  (the env→KMS swap-seam, same idiom as `resolveGuestSessionSecret`). **Never** browser `localStorage`.
+- **The audit log is DONE (ADR-0008/REQ-004), reuse it**: `TaxDataAccessLog` is **append-only**
+  (`AuditRepository` exposes only `append()`); a write + its audit entry commit in **one
+  `$transaction`**. Any new tax-data access follows this.
+- **CORS is live (ADR-0011)**: `resolveCorsOrigins()` (exact-match allowlist, **fail-closed**, never
+  `*`) + `credentials: true`; the guest cookie is `SameSite=None; Secure` for the cross-origin demo.
+  Reuse the resolver idiom; the `Secure` cookie implies HTTPS in the deployed demo.
+- **CI is the real gate now (ADR-0010)**: an `integration` job runs `test:integration` (encryption +
+  audit) against a **real Postgres service container**, and a `smoke` job **boots the real server**
+  (`node --import tsx dist/main.js`) and curls `/v1/profile`. `docker-compose.yml` has a real
+  `postgres` service (the one-command local stack). Your commitment holds: no DSGVO-tagged story is
+  done without its integration path running in CI — it now exists, extend it. (The `tsx` boot bridge
+  for `@steuereule/core`'s TS-source packaging is a deferred prod decision — ticket #75, ADR-0010a.)
 
 ## How you work
 
