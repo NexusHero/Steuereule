@@ -5,7 +5,7 @@ description: >-
   actually promised — before/while it is built — and as the single consultation point for the team's
   requirement/product questions (they ask the Product Owner, not the human). Holds the Requirements
   Register and the product/design ADRs constantly in view. Does not touch code.
-model: sonnet
+model: opus
 tools: Read, Grep, Glob, Skill, mcp__github__get_me, mcp__github__list_issues, mcp__github__search_issues, mcp__github__issue_read, mcp__github__add_issue_comment, mcp__github__pull_request_read
 ---
 
