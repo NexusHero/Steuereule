@@ -140,3 +140,34 @@ model RateLimit {
   count       Int?
   lastRequest BigInt?
 }
+
+/// One row per (userId, steuerjahr) — the raw inputs behind the Cockpit's refund
+/// estimate range (REQ-001, steuereule#91/#92). Deliberately stores only the plain
+/// facts (`baseEstimate`/`openItems`/`openConflicts`); the derived range itself is
+/// never persisted — it's recomputed on every read via @steuereule/core's
+/// `cockpitRange()` (ADR-014/048 determinism boundary), so this table can never drift
+/// out of sync with the uncertainty rule. No `/// @encrypted` field here: unlike
+/// Profile.steuerId this carries no tax identifier, only a rounded euro estimate and
+/// two counts, so it sits outside ADR-0008's scope as written; flagged for explicit
+/// confirmation in review rather than assumed.
+model TaxYear {
+  id            String   @id @default(uuid())
+  /// Scoping key — same trusted userId as Profile.userId (ADR-0007). Never read from
+  /// the request path/query/body.
+  userId        String
+  /// The tax year shown in the Cockpit (e.g. 2026). Part of the request path, but the
+  /// row lookup is always userId-scoped first (`@@unique([userId, steuerjahr])`).
+  steuerjahr    Int
+  /// Base estimate before the range is spread, in whole euro (>= 0) — "Basis vor
+  /// Berater-Funden" (successor of demo-daten.js's `schaetzung`).
+  baseEstimate  Int
+  /// Number of still-open interview/receipt items (>= 0).
+  openItems     Int
+  /// Number of open posten conflicts (ADR-008 "± offen"); defaults to 0 until that
+  /// feature exists.
+  openConflicts Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([userId, steuerjahr])
+}

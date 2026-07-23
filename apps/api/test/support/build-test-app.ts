@@ -1,9 +1,10 @@
 // Boots a real Nest + Fastify app — same guard, same ValidationPipe, same controller
-// wiring as production — but with the Prisma-backed repository swapped for the
-// in-memory fake, via light-my-request's `.inject()` so no real socket/DB is needed.
-// This is what test/profile.http.test.ts drives to exercise the full HTTP contract
-// (validation, guard-derived userId scoping, "persists nothing on 400") without a
-// live Postgres, keeping it in the no-DB unit `test` job (ADR-0004).
+// wiring as production — but with every Prisma-backed repository (Profile, TaxYear)
+// swapped for its in-memory fake, via light-my-request's `.inject()` so no real
+// socket/DB is needed. This is what test/profile.http.test.ts and test/cockpit.http.test.ts
+// drive to exercise the full HTTP contract (validation, guard-derived userId scoping,
+// "persists nothing on 400") without a live Postgres, keeping it in the no-DB unit
+// `test` job (ADR-0004).
 import fastifyCookie from '@fastify/cookie'
 import { ValidationPipe } from '@nestjs/common'
 import { Test } from '@nestjs/testing'
@@ -14,11 +15,18 @@ import { validationExceptionFactory } from '../../src/common/validation-exceptio
 import { ENCRYPTED_PRISMA } from '../../src/prisma/encrypted-prisma.provider.js'
 import { PrismaService } from '../../src/prisma/prisma.service.js'
 import { PROFILE_REPOSITORY } from '../../src/profile/profile.repository.js'
+import { TAX_YEAR_REPOSITORY } from '../../src/cockpit/tax-year.repository.js'
 import { FakeAuditRepository } from '../fakes/fake-audit.repository.js'
 import { FakeProfileRepository } from '../fakes/fake-profile.repository.js'
+import { FakeTaxYearRepository } from '../fakes/fake-tax-year.repository.js'
 
-export async function buildTestApp(): Promise<{ app: NestFastifyApplication; repository: FakeProfileRepository }> {
+export async function buildTestApp(): Promise<{
+  app: NestFastifyApplication
+  repository: FakeProfileRepository
+  taxYearRepository: FakeTaxYearRepository
+}> {
   const repository = new FakeProfileRepository()
+  const taxYearRepository = new FakeTaxYearRepository()
 
   // Nest instantiates every provider registered on a module it constructs — including
   // PrismaService — regardless of whether anything in *this* test's request path ends up
@@ -32,8 +40,9 @@ export async function buildTestApp(): Promise<{ app: NestFastifyApplication; rep
   // ENCRYPTED_PRISMA is the same story one layer up: it's a top-level provider in
   // PrismaModule (built by calling `.$extends()` on PrismaService), so it's eagerly
   // instantiated too — overridden with an inert stub for the same reason. Nothing in
-  // this fake-repository test path ever reads it (PrismaProfileRepository, the only
-  // consumer, is itself swapped out by the PROFILE_REPOSITORY override below).
+  // this fake-repository test path ever reads it (PrismaProfileRepository and
+  // PrismaTaxYearRepository, its only consumers, are themselves swapped out by the
+  // PROFILE_REPOSITORY/TAX_YEAR_REPOSITORY overrides below).
   //
   // AUDIT_REPOSITORY is overridden with an in-memory fake (mirroring PROFILE_REPOSITORY)
   // rather than an inert stub, because ProfileService genuinely calls AuditService on
@@ -42,6 +51,8 @@ export async function buildTestApp(): Promise<{ app: NestFastifyApplication; rep
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(PROFILE_REPOSITORY)
     .useValue(repository)
+    .overrideProvider(TAX_YEAR_REPOSITORY)
+    .useValue(taxYearRepository)
     .overrideProvider(AUDIT_REPOSITORY)
     .useValue(new FakeAuditRepository())
     .overrideProvider(PrismaService)
@@ -67,7 +78,7 @@ export async function buildTestApp(): Promise<{ app: NestFastifyApplication; rep
   await app.init()
   await app.getHttpAdapter().getInstance().ready()
 
-  return { app, repository }
+  return { app, repository, taxYearRepository }
 }
 
 /** Pulls the `name=value` pair out of a Set-Cookie response header, for reuse on the next request. */
