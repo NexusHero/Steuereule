@@ -1,10 +1,10 @@
-// Regression test for the auth-mount CORS defect Salih's local test caught (real
-// cross-origin HTTP in a browser, not `.inject()` and not Node's own CORS-blind
-// `fetch()`): `reply.hijack()` in mount-better-auth.ts bypasses Fastify's `onSend`
-// hook chain entirely, so Nest's `app.enableCors(...)` (registered in src/main.ts,
-// itself hooked via `onSend`) never gets a chance to decorate a *real* `/api/auth/*`
-// response — unlike every ordinary Nest route (e.g. `/v1/profile`), which does carry
-// the CORS headers because it's never hijacked.
+// REQ-010 / ADR-0011 / ADR-0012 §5 — regression test for the auth-mount CORS defect
+// Salih's local test caught (real cross-origin HTTP in a browser, not `.inject()` and
+// not Node's own CORS-blind `fetch()`): `reply.hijack()` in mount-better-auth.ts
+// bypasses Fastify's `onSend` hook chain entirely, so Nest's `app.enableCors(...)`
+// (registered in src/main.ts, itself hooked via `onSend`) never gets a chance to
+// decorate a *real* `/api/auth/*` response — unlike every ordinary Nest route (e.g.
+// `/v1/profile`), which does carry the CORS headers because it's never hijacked.
 //
 // A naive OPTIONS-preflight check doesn't catch this: preflight is answered by a hook
 // that runs before the route ever executes, so it looks correct regardless of what the
@@ -23,7 +23,7 @@ const ALLOWED_ORIGIN = 'https://allowed.example.com'
 const DISALLOWED_ORIGIN = 'https://not-allowed.example.com'
 process.env.CORS_ALLOWED_ORIGINS = ALLOWED_ORIGIN
 
-describe('CORS on the better-auth mount (/api/auth/*), against the real server', () => {
+describe('REQ-010/ADR-0011/ADR-0012 §5 — CORS on the better-auth mount (/api/auth/*), against the real server', () => {
   let app: NestFastifyApplication
   let baseUrl: string
   let prisma: PrismaClient
