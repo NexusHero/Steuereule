@@ -329,7 +329,13 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-chromium-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
       - name: Install Playwright's Chromium (browser only, no OS deps re-check needed on ubuntu-latest's image)
-        run: pnpm --filter @steuereule/e2e exec playwright install chromium --with-deps
+        # e2e only depends on `playwright-core` (the library the smoke script actually
+        # imports — no test-runner needed), whose registered bin is named
+        # `playwright-core`, not `playwright`. `pnpm exec playwright ...` resolves bins
+        # by their registered name, so it fails with "Command \"playwright\" not found"
+        # even though the package is installed (#120 CI run). `playwright-core`'s CLI
+        # ships the same `install` subcommand as the `playwright` package's CLI.
+        run: pnpm --filter @steuereule/e2e exec playwright-core install chromium --with-deps
       - name: Boot the real server (compiled dist/, same tsx bridge as the `smoke` job)
         working-directory: apps/api
         run: |
