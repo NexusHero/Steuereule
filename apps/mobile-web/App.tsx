@@ -15,8 +15,9 @@ import { OnboardingScreen } from './src/screens/OnboardingScreen'
 const i18n = createAppI18n('de')
 const queryClient = new QueryClient()
 
-// Same-origin by default (an empty baseUrl); override for local dev where the API runs on
-// its own port, or any deployment where the app and API are not served from one origin.
+// API base URL comes from EXPO_PUBLIC_API_BASE_URL; it falls back to http://localhost:3000
+// for local dev, where the API runs on its own port. Set the env var per deployment so the
+// app and API can be served from different origins.
 configureApiClient({ baseUrl: process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://localhost:3000' })
 
 type Stage = 'login' | 'onboarding' | 'done'
