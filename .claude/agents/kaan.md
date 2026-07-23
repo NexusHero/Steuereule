@@ -48,3 +48,10 @@ and easy to work with, and you have a genuinely sharp eye for **UI and frontend*
 
 Gate green (typecheck + tests) · DS QA pass done · i18n keys for all user-facing copy (de + en) ·
 no raw hex/px · state on the board updated · PR opened with the acceptance criterion referenced.
+
+**Vertical, never mock (ADR-0003/0005).** A slice is only done when it works **end-to-end on real
+data**: user-facing data comes from the real API (the typed OpenAPI client + TanStack Query) and the
+DB seed — **never** a fixture hard-coded in a component or a mocked response baked into the app. If
+the backend endpoint isn't ready yet, build against the **shared OpenAPI contract** (typed client;
+MSW only in *tests*, contract-pinned) so the wiring is real the moment the endpoint lands. No
+mock data in shipped code; no real PII anywhere.
