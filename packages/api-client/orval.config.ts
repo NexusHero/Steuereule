@@ -12,9 +12,24 @@ import { defineConfig } from 'orval'
 
 export default defineConfig({
   profile: {
-    input: '../../apps/api/openapi.json',
+    input: { target: '../../apps/api/openapi.json', filters: { tags: ['profile'] } },
     output: {
       target: './src/generated/profile.ts',
+      mode: 'split',
+      client: 'react-query',
+      httpClient: 'fetch',
+      mock: true,
+      override: {
+        mutator: { path: './src/http-client.ts', name: 'httpClient' },
+      },
+    },
+  },
+  // REQ-001 (steuereule#91) — same openapi.json, filtered to the cockpit tag, into its
+  // own output so the generated file names stay honest about what they contain.
+  cockpit: {
+    input: { target: '../../apps/api/openapi.json', filters: { tags: ['cockpit'] } },
+    output: {
+      target: './src/generated/cockpit.ts',
       mode: 'split',
       client: 'react-query',
       httpClient: 'fetch',

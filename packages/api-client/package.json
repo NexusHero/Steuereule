@@ -7,7 +7,7 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./msw": "./src/generated/profile.msw.ts"
+    "./msw": "./src/msw.ts"
   },
   "scripts": {
     "generate": "orval --config orval.config.ts",

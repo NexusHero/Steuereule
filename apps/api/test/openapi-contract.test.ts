@@ -61,3 +61,47 @@ describe('OpenAPI contract for /v1/profile', () => {
     expect(Object.keys(properties)).toContain('fields')
   })
 })
+
+describe('OpenAPI contract for GET /v1/steuerjahre/{jahr}/cockpit (REQ-001)', () => {
+  let app: NestFastifyApplication
+  let document: OpenAPIObject
+
+  beforeAll(async () => {
+    app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter(), {
+      logger: false,
+    })
+    const config = new DocumentBuilder().setTitle('SteuerEule API').setVersion('1.0').build()
+    document = SwaggerModule.createDocument(app, config)
+  })
+
+  afterAll(async () => {
+    await app.close()
+  })
+
+  it('documents GET /v1/steuerjahre/{jahr}/cockpit with a `jahr` path param', () => {
+    const get = document.paths['/v1/steuerjahre/{jahr}/cockpit']?.get
+    expect(get).toBeDefined()
+    expect(get?.parameters?.some((p) => 'name' in p && p.name === 'jahr')).toBe(true)
+  })
+
+  it('documents the 200 response as nullable — the honest empty state is part of the contract, not a 404', () => {
+    const get = document.paths['/v1/steuerjahre/{jahr}/cockpit']?.get
+    const okResponse = get?.responses['200'] as { content?: Record<string, { schema?: unknown }> }
+    const schema = okResponse?.content?.['application/json']?.schema as { nullable?: boolean } | undefined
+    expect(schema?.nullable).toBe(true)
+  })
+
+  it('exposes CockpitSummaryDto with exactly the fields the frozen frontend contract expects', () => {
+    const schema = document.components?.schemas?.CockpitSummaryDto
+    expect(schema).toBeDefined()
+    const properties = (schema as { properties?: Record<string, unknown> }).properties ?? {}
+    expect(Object.keys(properties).sort()).toEqual(['estimate', 'openItems', 'taxYear'].sort())
+  })
+
+  it('exposes EstimateRangeDto with from/to fields', () => {
+    const schema = document.components?.schemas?.EstimateRangeDto
+    expect(schema).toBeDefined()
+    const properties = (schema as { properties?: Record<string, unknown> }).properties ?? {}
+    expect(Object.keys(properties).sort()).toEqual(['from', 'to'].sort())
+  })
+})

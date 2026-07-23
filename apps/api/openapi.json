@@ -60,6 +60,43 @@
           "profile"
         ]
       }
+    },
+    "/v1/steuerjahre/{jahr}/cockpit": {
+      "get": {
+        "operationId": "CockpitController_getCockpitSummary",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr) to summarize.",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The caller’s Cockpit summary for the given tax year, or null when nothing has been seeded/entered yet for it (the honest empty state, not a 404).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/CockpitSummaryDto"
+                    }
+                  ],
+                  "nullable": true
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "cockpit"
+        ]
+      }
     }
   },
   "info": {
@@ -172,6 +209,47 @@
           "statusCode",
           "error",
           "fields"
+        ]
+      },
+      "EstimateRangeDto": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "number",
+            "example": 1227,
+            "description": "Lower bound of the estimate range, in whole euro."
+          },
+          "to": {
+            "type": "number",
+            "example": 1587,
+            "description": "Upper bound of the estimate range, in whole euro."
+          }
+        },
+        "required": [
+          "from",
+          "to"
+        ]
+      },
+      "CockpitSummaryDto": {
+        "type": "object",
+        "properties": {
+          "taxYear": {
+            "type": "number",
+            "example": 2026
+          },
+          "estimate": {
+            "$ref": "#/components/schemas/EstimateRangeDto"
+          },
+          "openItems": {
+            "type": "number",
+            "example": 3,
+            "description": "Count of still-open interview/receipt items."
+          }
+        },
+        "required": [
+          "taxYear",
+          "estimate",
+          "openItems"
         ]
       }
     }

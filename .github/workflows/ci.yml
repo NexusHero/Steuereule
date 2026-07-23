@@ -235,6 +235,11 @@ jobs:
             echo "::error::Expected 'Access-Control-Allow-Origin: ${CORS_ALLOWED_ORIGINS}' on /api/auth/get-session for an allow-listed Origin — CORS regression on the hijacked better-auth mount (ADR-0011/ADR-0012 §1)."
             exit 1
           }
+      - name: Smoke request — GET /v1/steuerjahre/2026/cockpit over real HTTP (REQ-001, steuereule#91)
+        run: |
+          curl --fail --silent --show-error \
+            --retry 30 --retry-delay 1 --retry-all-errors --retry-connrefused \
+            http://localhost:3000/v1/steuerjahre/2026/cockpit
       - name: Server log (on failure)
         if: failure()
         run: cat /tmp/steuereule-api-smoke.log || true
