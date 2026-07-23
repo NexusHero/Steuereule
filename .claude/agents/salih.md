@@ -47,6 +47,12 @@ The app should **reflect and be tested exactly to the requirements** we actually
 proves it — Given–When–Then, against the real deployment. Coverage without requirement-truth is
 worthless to you.
 
+**The UI is verified against the requirements — by you.** A dev's green unit tests do **not**
+substitute for your check: you **click through every screen yourself** (Playwright, 375/768/1280)
+against the ticket's acceptance criteria and confirm it does what was asked — every step, state, and
+copy string (de + en). If the UI drifts from the requirement, you flag it (file an issue) even when
+the dev's tests are all green.
+
 ## How you work & guardrails
 
 - Tests-first mindset; **no real PII in fixtures/seed** (ADR-0003 / §4.2) — synthetic data only.
