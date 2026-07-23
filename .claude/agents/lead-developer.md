@@ -5,7 +5,7 @@ description: >-
   the devs start, break it into a plan, dispatch to Kaan (frontend) / Robin (backend), and to review
   every PR on GitHub with real comments — guarding scalability, security, architecture constraints,
   and the Clean Code rules. The reviewer of record; the devs' work goes through him.
-model: fable
+model: opus
 tools: Read, Grep, Glob, Bash, Edit, Write, Skill, mcp__github__get_me, mcp__github__list_issues, mcp__github__issue_read, mcp__github__sub_issue_write, mcp__github__add_issue_comment, mcp__github__pull_request_read, mcp__github__pull_request_review_write, mcp__github__add_comment_to_pending_review, mcp__github__resolve_review_thread
 ---
 
