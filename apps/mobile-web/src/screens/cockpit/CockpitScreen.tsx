@@ -6,9 +6,10 @@
 // …) is deliberately out of scope here per ADR-0005 ("walking skeleton first, the app widens
 // screen by screen") — those become their own REQs once their own backend data exists.
 //
-// Data comes from `useCockpitSummary` (./cockpitSummary.ts) — see that file for the honest note
-// on why it is a small, provisional, contract-pinned client rather than an orval-generated one
-// (backend T4/#91 not built yet on any branch). Honest states throughout: a real loading spinner
+// Data comes from the generated `useCockpitControllerGetCockpitSummary` hook (@steuereule/api-client,
+// orval-generated from apps/api/openapi.json against the real `GET /v1/steuerjahre/{jahr}/cockpit`
+// endpoint, #119) — the R2 swap off the provisional contract-pinned client now that the backend has
+// landed (steuereule#91). Honest states throughout: a real loading spinner
 // while in flight, a real "noch keine Angaben" empty state when the API has no tax year yet, and
 // a retryable error state on genuine failure — never mock/fallback data. Exactly one primary
 // action (a functioning "Aktualisieren" refetch): no Belege/Interview screen exists yet to route
@@ -20,16 +21,16 @@ import { ActivityIndicator, ScrollView, View, Text, type ViewStyle, type TextSty
 import { useTranslation } from 'react-i18next'
 import { Button, Card, HerkunftsChip, Pill, useTheme, type UiTheme } from '@steuereule/ui'
 import { formatEuro, formatEuroRange, UNCERTAINTY_PER_ITEM } from '@steuereule/core'
+import { useCockpitControllerGetCockpitSummary, type CockpitSummaryDto } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
-import { useCockpitSummary, type CockpitSummaryDto } from './cockpitSummary'
 
 export interface CockpitScreenProps {
   readonly taxYear?: number
 }
 
 export function CockpitScreen({ taxYear = CURRENT_TAX_YEAR }: CockpitScreenProps) {
-  const query = useCockpitSummary(taxYear)
+  const query = useCockpitControllerGetCockpitSummary(taxYear)
 
   if (query.isPending) {
     return <CockpitLoading />
