@@ -55,9 +55,11 @@ discovery.
   on, an `APPROVE` is a personal promise, not an enforced invariant.
 - **Every milestone yields a valid, testable artifact** the PO can exercise (a one-command seeded
   stack / preview) — not green tests alone.
-- **Blocking vs. non-blocking vs. trivial:** a real defect blocks; a trivial-but-real nit (a wrong
-  comment, dead reference) is resolved *in the review loop*; a genuine nice-to-have becomes a Suhay
-  follow-up ticket.
+- **Every bug is fixed now, ticketed for the record — nothing parked for later:** a real defect is
+  fixed the moment it's found (before the PR if a local gate caught it, on the PR if CI/review did); a
+  trivial-but-real nit (a wrong comment, dead reference) is resolved *in the review loop*. Suhay files
+  a ticket for every finding as the **record** of the fix — opened *and closed* inside the slice, never
+  a deferral. Only future **feature scope** is planned forward; a known bug never is.
 
 ## Ceremonies
 
