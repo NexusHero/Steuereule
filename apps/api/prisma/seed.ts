@@ -1,9 +1,17 @@
 // Dev/CI/E2E seed (ADR-0003): synthetic-only fixture, run at container start. No real
 // PII, ever, in non-production (§4.2). Steuer-ID/Steuernummer below are made-up digit
 // strings shaped to pass validation, not real identifiers issued to anyone.
+//
+// Writes through the field-encryption-extended client (ADR-0008), never the plain
+// PrismaClient — otherwise the seeded steuerId/steuernummer would land as plaintext,
+// exactly the thing encryption-at-rest is meant to prevent.
 import { PrismaClient } from '@prisma/client'
+import { fieldEncryptionExtension } from 'prisma-field-encryption'
+import { resolveFieldEncryptionKey } from '../src/prisma/field-encryption-key.js'
 
-const prisma = new PrismaClient()
+const basePrisma = new PrismaClient()
+const { encryptionKey, decryptionKeys } = resolveFieldEncryptionKey()
+const prisma = basePrisma.$extends(fieldEncryptionExtension({ encryptionKey, decryptionKeys }))
 
 const SYNTHETIC_PROFILES = [
   {

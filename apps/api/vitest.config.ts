@@ -23,6 +23,9 @@ export default defineConfig({
       // valid value here — no real database is contacted by anything in this job.
       DATABASE_URL: 'postgresql://user:pass@localhost:5432/steuereule_unit_test?schema=public',
       GUEST_SESSION_SECRET: 'unit-test-secret',
+      // Fixed synthetic key (ADR-0008) — never a real secret, only fed to a Prisma
+      // client that never actually connects/queries in this no-DB job.
+      PRISMA_FIELD_ENCRYPTION_KEY: 'k1.aesgcm256.MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=',
       NODE_ENV: 'test',
       VITEST: 'true',
     },

@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest'
+import { AuditService } from '../src/audit/audit.service.js'
 import { ProfileService } from '../src/profile/profile.service.js'
 import type { PutProfileDto } from '../src/profile/dto/put-profile.dto.js'
+import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
 import { FakeProfileRepository } from './fakes/fake-profile.repository.js'
 
 function validPayload(overrides: Partial<PutProfileDto> = {}): PutProfileDto {
@@ -15,11 +17,13 @@ function validPayload(overrides: Partial<PutProfileDto> = {}): PutProfileDto {
 
 describe('ProfileService', () => {
   let repository: FakeProfileRepository
+  let auditRepository: FakeAuditRepository
   let service: ProfileService
 
   beforeEach(() => {
     repository = new FakeProfileRepository()
-    service = new ProfileService(repository)
+    auditRepository = new FakeAuditRepository()
+    service = new ProfileService(repository, new AuditService(auditRepository))
   })
 
   it('returns an all-null default profile for a userId with nothing saved', async () => {

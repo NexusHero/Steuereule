@@ -14,6 +14,9 @@ export default defineConfig({
     testTimeout: 30_000,
     env: {
       GUEST_SESSION_SECRET: 'integration-test-secret',
+      // Fixed synthetic key (ADR-0008) — generated for this test suite only, never a
+      // real secret, never reused outside this config.
+      PRISMA_FIELD_ENCRYPTION_KEY: 'k1.aesgcm256.88HQ6liBiB7TuT9O1FcbkSPqheUyhJj9cPwirUr8njs=',
       NODE_ENV: 'test',
       VITEST: 'true',
     },

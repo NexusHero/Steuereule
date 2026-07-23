@@ -22,9 +22,40 @@ model Profile {
   lastName     String
   /// Steuerliche Identifikationsnummer — exactly 11 digits (validated server-side
   /// via @steuereule/core's isValidSteuerId before this is ever written).
-  steuerId     String
-  /// Optional — 1-13 digits if present (isValidSteuernummer).
-  steuernummer String?
+  /// Field-encrypted at rest (ADR-0008, prisma-field-encryption, AES-256-GCM,
+  /// randomized nonce per write — ciphertext is longer than the plaintext digit
+  /// string, so the column stays `String`, no type migration needed). `mode=strict`
+  /// so a tampered/corrupted ciphertext throws on read instead of silently passing
+  /// through as clear text or null (REQ-003.5) — safe once every existing row is
+  /// encrypted, which is true from this migration onward.
+  steuerId     String /// @encrypted?mode=strict
+  /// Optional — 1-13 digits if present (isValidSteuernummer). Field-encrypted at
+  /// rest for the same reason as steuerId.
+  steuernummer String? /// @encrypted?mode=strict
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+}
+
+/// Append-only audit trail of who touched a user's sensitive tax/profile fields, and
+/// when (ADR-0008, REQ-004, DSGVO Art. 30 accountability). Deliberately carries no
+/// value column — not the plaintext, not the ciphertext — only who/what/when. Never
+/// updated or deleted at the application layer (no repository method exposes
+/// anything but append); DB-level (role/trigger) enforcement is a follow-up.
+model TaxDataAccessLog {
+  id        String      @id @default(uuid())
+  /// Scoping key — same trusted userId as Profile.userId (ADR-0007). Never joined
+  /// across users; every read of this table is scoped to a single userId.
+  userId    String
+  action    AuditAction
+  /// The resource/field-class touched, e.g. "profile". A short discriminator, never
+  /// the sensitive value itself.
+  resource  String
+  createdAt DateTime    @default(now())
+
+  @@index([userId])
+}
+
+enum AuditAction {
+  READ
+  WRITE
 }
