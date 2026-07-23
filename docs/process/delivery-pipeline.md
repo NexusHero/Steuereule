@@ -80,6 +80,13 @@ acceptance-cosmetics authored after the fact.
 - **Blocking vs. non-blocking.** A real defect blocks and is fixed before the PR. A nice-to-have does
   **not** stall the slice — it goes to Suhay as a follow-up ticket (findings become tickets, and that
   routing is the Scrum Master's job).
+- **Every milestone yields a testable artifact + a current arc42.** "Done" is not green tests alone: a
+  milestone hands the PO a **valid, runnable artifact to exercise** (a one-command seeded stack / a
+  preview — Salih owns it), its compliance-critical acceptance tests **run in CI against a real
+  service** (not a script nothing invokes), and the **arc42 doc moves with the change** — diagrams as
+  **PlantUML source + exported SVG**, kept current (Musti owns it; Suhay asks "is the arc42 updated?"
+  on every completed task). The PO then runs a hard product-acceptance pass (the **User Report**) on
+  that artifact, and its findings become tickets.
 - **Nobody merges around the gates.** No PR without Musti's local review *and* Salih's local test; no
   approve on red CI; the stakeholder is the last gate.
 
