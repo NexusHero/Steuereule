@@ -146,10 +146,10 @@ model RateLimit {
 /// facts (`baseEstimate`/`openItems`/`openConflicts`); the derived range itself is
 /// never persisted — it's recomputed on every read via @steuereule/core's
 /// `cockpitRange()` (ADR-014/048 determinism boundary), so this table can never drift
-/// out of sync with the uncertainty rule. No `/// @encrypted` field here: unlike
-/// Profile.steuerId this carries no tax identifier, only a rounded euro estimate and
-/// two counts, so it sits outside ADR-0008's scope as written; flagged for explicit
-/// confirmation in review rather than assumed.
+/// out of sync with the uncertainty rule. No `/// @encrypted` field here: ruled
+/// out-of-scope for ADR-0008 in review (Musti) — unlike Profile.steuerId this holds no
+/// tax identifier, only a rounded refund estimate and two open-item/conflict counts.
+/// Revisit if assessed amounts or income figures ever land on this entity.
 model TaxYear {
   id            String   @id @default(uuid())
   /// Scoping key — same trusted userId as Profile.userId (ADR-0007). Never read from
