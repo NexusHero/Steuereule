@@ -23,6 +23,7 @@ ultimate-dev-process §1.2.
 | 0005 | UI takeover delivered as vertical slices, walking-skeleton first | Accepted |
 | 0006 | German base + English as a switchable UI locale (refines 0002) | Accepted |
 | 0007 | Authentication: self-hosted better-auth on the NestJS API, EU-resident | Accepted |
+| 0008 | Profile persistence: server-side, sensitive fields field-encrypted at rest | Accepted |
 
 See also the [Tech Radar](./tech-radar.md).
 
