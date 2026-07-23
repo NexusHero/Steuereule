@@ -1,6 +1,13 @@
 # ADR-0007 — Authentication: Keycloak IdP + better-auth (OIDC RP), EU-resident, TLS everywhere
 
-**Status:** Accepted · 2026-07-22 · implements product ADR-046, honours ADR-027/020/006
+**Status:** ~~Accepted~~ · **Superseded by [ADR-0009](./0009-better-auth-as-auth-server.md)**
+(2026-07-23) · 2026-07-22 · implements product ADR-046, honours ADR-027/020/006
+
+> **Superseded (2026-07-23).** The Keycloak-IdP decision below is replaced by
+> [ADR-0009](./0009-better-auth-as-auth-server.md): **better-auth is the auth server** and Keycloak is
+> dropped. Kept on record per the log's immutability rule (supersede, don't rewrite). **Still live from
+> this ADR:** the phase-1 `UserContextGuard` `userId` seam (REQ-002) — ADR-0009 mounts better-auth
+> *behind* it unchanged. Only the "which identity system" choice is superseded.
 
 ## Context
 
