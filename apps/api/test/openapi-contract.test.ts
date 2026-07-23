@@ -155,3 +155,67 @@ describe('OpenAPI contract for DELETE /v1/account (REQ-011, ADR-0013)', () => {
     expect(Object.keys(properties).sort()).toEqual(['account', 'profile'].sort())
   })
 })
+
+describe('OpenAPI contract for GET /v1/account/export (REQ-011/ADR-0013)', () => {
+  let app: NestFastifyApplication
+  let document: OpenAPIObject
+
+  beforeAll(async () => {
+    app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter(), {
+      logger: false,
+    })
+    const config = new DocumentBuilder().setTitle('SteuerEule API').setVersion('1.0').build()
+    document = SwaggerModule.createDocument(app, config)
+  })
+
+  afterAll(async () => {
+    await app.close()
+  })
+
+  it('documents GET /v1/account/export with an optional `format` query param', () => {
+    const get = document.paths['/v1/account/export']?.get
+    expect(get).toBeDefined()
+    expect(get?.parameters?.some((p) => 'name' in p && p.name === 'format')).toBe(true)
+  })
+
+  it('documents the 200 response and a 404 (no account to export) response', () => {
+    const get = document.paths['/v1/account/export']?.get
+    expect(get?.responses['200']).toBeDefined()
+    expect(get?.responses['404']).toBeDefined()
+  })
+
+  it('exposes ExportDocumentDto with exactly the ADR-0013 frozen contract fields', () => {
+    const schema = document.components?.schemas?.ExportDocumentDto
+    expect(schema).toBeDefined()
+    const properties = (schema as { properties?: Record<string, unknown> }).properties ?? {}
+    expect(Object.keys(properties).sort()).toEqual(
+      ['schemaVersion', 'exportedAt', 'account', 'profile', 'taxData', 'accessLog'].sort(),
+    )
+  })
+
+  it('exposes ExportAccountDto, ExportProfileDto and ExportAccessLogEntryDto with the documented fields', () => {
+    const accountSchema = document.components?.schemas?.ExportAccountDto as { properties?: Record<string, unknown> }
+    expect(Object.keys(accountSchema?.properties ?? {}).sort()).toEqual(
+      ['email', 'name', 'emailVerified', 'createdAt', 'authProviders'].sort(),
+    )
+
+    const profileSchema = document.components?.schemas?.ExportProfileDto as { properties?: Record<string, unknown> }
+    expect(Object.keys(profileSchema?.properties ?? {}).sort()).toEqual(
+      ['firstName', 'lastName', 'steuerId', 'steuernummer', 'createdAt', 'updatedAt'].sort(),
+    )
+
+    const accessLogSchema = document.components?.schemas?.ExportAccessLogEntryDto as {
+      properties?: Record<string, unknown>
+    }
+    expect(Object.keys(accessLogSchema?.properties ?? {}).sort()).toEqual(['action', 'resource', 'createdAt'].sort())
+  })
+
+  it('never documents a secret field (password/token) anywhere in the export schemas', () => {
+    const schemaNames = ['ExportDocumentDto', 'ExportAccountDto', 'ExportProfileDto', 'ExportAccessLogEntryDto']
+    for (const name of schemaNames) {
+      const schema = document.components?.schemas?.[name] as { properties?: Record<string, unknown> }
+      const fields = Object.keys(schema?.properties ?? {}).join(',').toLowerCase()
+      expect(fields).not.toMatch(/password|token|secret/)
+    }
+  })
+})

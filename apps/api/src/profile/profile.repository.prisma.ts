@@ -71,11 +71,15 @@ function toRecord(row: {
   lastName: string
   steuerId: string
   steuernummer: string | null
+  createdAt: Date
+  updatedAt: Date
 }): ProfileRecord {
   return {
     firstName: row.firstName,
     lastName: row.lastName,
     steuerId: row.steuerId,
     steuernummer: row.steuernummer,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
   }
 }
