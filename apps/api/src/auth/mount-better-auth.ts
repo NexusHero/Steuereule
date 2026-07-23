@@ -30,7 +30,8 @@
 // This mount is genuinely `.inject()`-blind (light-my-request never opens a real
 // socket, so a raw-stream-consuming bug like this wouldn't surface) — it must be
 // proven by booting the real server and hitting `/api/auth/*` over real HTTP
-// (ADR-0010/ADR-0012 §1; see test/auth-boot.smoke.test.ts).
+// (ADR-0010/ADR-0012 §1; the CI `smoke` job's "GET /api/auth/get-session over real
+// HTTP" step in `.github/workflows/ci.yml` is that proof).
 import { Logger } from '@nestjs/common'
 import type { NestFastifyApplication } from '@nestjs/platform-fastify'
 import type { Auth } from 'better-auth'
