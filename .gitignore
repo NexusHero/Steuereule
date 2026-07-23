@@ -7,9 +7,10 @@ coverage/
 .turbo/
 *.tsbuildinfo
 # Local runtime artifacts (agent worktrees, Expo cache) — never committed.
-# But the role team under .claude/agents/ IS tracked (shared, versioned config).
+# But the role team (.claude/agents/) and the skill links (.claude/skills/) ARE tracked.
 .claude/*
 !.claude/agents/
+!.claude/skills/
 .expo/
 .env
 .env.*
