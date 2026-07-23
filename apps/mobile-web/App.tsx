@@ -15,7 +15,7 @@ import { SplashScreen } from './src/screens/SplashScreen'
 import { LoginScreen } from './src/screens/LoginScreen'
 import { RegistrierungScreen } from './src/screens/RegistrierungScreen'
 import { OnboardingScreen } from './src/screens/OnboardingScreen'
-import { ProfilScreen } from './src/screens/ProfilScreen'
+import { CockpitScreen } from './src/screens/cockpit/CockpitScreen'
 
 const i18n = createAppI18n('de')
 const queryClient = new QueryClient()
@@ -31,13 +31,20 @@ configureApiClient({ baseUrl: apiBaseUrl })
 // client has no post-construction reconfigure hook, unlike configureApiClient).
 const authClient = createAppAuthClient(apiBaseUrl)
 
-type Stage = 'splash' | 'login' | 'register' | 'onboarding' | 'profil'
+type Stage = 'splash' | 'login' | 'register' | 'onboarding' | 'cockpit'
 
 export default function App() {
-  // Minimal shell: Splash → Login/guest → Onboarding → Profil landing, until the next screens
-  // (Cockpit, ...) are ported/merged in. Splash always leads to Login today — there's no
-  // session-detection yet to send a returning user straight to Cockpit (REQ-009, pending);
-  // see SplashScreen's own notes.
+  // After onboarding, the Cockpit (REQ-001) is the app's home screen — the first slice of it
+  // (hero estimate card only, ADR-0005 walking skeleton). Widens screen by screen from here.
+  // Profil (REQ-013) landed as a temporary post-onboarding placeholder while Cockpit was still
+  // in flight (see its own commit); now that Cockpit has landed as the intended home screen, it
+  // resumes that spot. ProfilScreen itself is untouched and still fully covered by its own
+  // ProfilScreen.test.tsx — it isn't wired into this linear stage shell because the DS Cockpit
+  // reference reaches Profil via an open-item link ("Stammdaten" -> profil), and that in-app
+  // navigation is out of scope for this walking-skeleton slice (see CockpitScreen's own notes);
+  // it'll get a real route once that navigation exists. Splash always leads to Login today —
+  // there's no session-detection mechanism yet to send a returning user straight to Cockpit
+  // instead (REQ-009, pending); see SplashScreen's own notes.
   const [stage, setStage] = useState<Stage>('splash')
 
   return (
@@ -55,8 +62,8 @@ export default function App() {
                 />
               ) : null}
               {stage === 'register' ? <RegistrierungScreen onDone={() => setStage('onboarding')} /> : null}
-              {stage === 'onboarding' ? <OnboardingScreen onDone={() => setStage('profil')} /> : null}
-              {stage === 'profil' ? <ProfilScreen /> : null}
+              {stage === 'onboarding' ? <OnboardingScreen onDone={() => setStage('cockpit')} /> : null}
+              {stage === 'cockpit' ? <CockpitScreen /> : null}
               <StatusBar style="dark" />
             </View>
           </AuthClientProvider>
