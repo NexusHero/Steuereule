@@ -44,10 +44,14 @@ and easy to work with, and you have a genuinely sharp eye for **UI and frontend*
 
 ## What already exists (wire to it, don't fake it)
 
-- **The Profile API is live and merged**: `GET`/`PUT /v1/profile` (NestJS, scoped to the userId the
-  server establishes). That's the real contract you generate the typed OpenAPI client + TanStack Query
-  against — no hard-coded fixtures. The **Onboarding vertical-join** (wiring `LoginScreen`/Onboarding
-  to this endpoint) is the pending slice.
+- **The Onboarding vertical-join is DONE and merged — reuse its pattern.** `packages/api-client`
+  exists: the **typed OpenAPI client + TanStack Query** (orval-generated from `apps/api/openapi.json`),
+  with MSW/faker confined to a **test-only `./msw` subpath** (production never imports them) and one
+  `http-client` mutator (`credentials: 'include'` for the guest cookie, non-throwing on non-2xx,
+  injectable `baseUrl`). The Onboarding screen wires `GET`/`PUT /v1/profile` through it with honest
+  loading/error states. Generate new endpoints' clients the same way — no hard-coded fixtures. The
+  **login/registration screens are the next frontend work** (Slice 2 — DS refs `auth.html`,
+  `registrierung.html`).
 - **Shared validators live in `@steuereule/core`** — `isValidSteuerId` / `isValidSteuernummer`. The
   frontend formatter and the API DTO import the **same** rule (single source of truth); never
   re-implement the Steuer-ID/Steuernummer shape locally.
