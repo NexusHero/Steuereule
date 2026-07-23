@@ -27,7 +27,10 @@
   "pnpm": {
     "overrides": {
       "react": "19.0.0",
-      "react-dom": "19.0.0"
+      "react-dom": "19.0.0",
+      "react-native": "0.79.5",
+      "react-i18next": "15.7.4",
+      "i18next": "24.2.3"
     },
     "onlyBuiltDependencies": [
       "@bundled-es-modules/glob",
