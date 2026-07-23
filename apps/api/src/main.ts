@@ -5,8 +5,11 @@ import { NestFactory } from '@nestjs/core'
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify'
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
 import { AppModule } from './app.module.js'
+import { BETTER_AUTH_BUNDLE, type BetterAuthBundle } from './auth/auth.tokens.js'
+import { mountBetterAuthHandler } from './auth/mount-better-auth.js'
 import { validationExceptionFactory } from './common/validation-exception-factory.js'
 import { resolveCorsOrigins } from './cors/resolve-cors-origins.js'
+import { registerHelmet } from './security/register-helmet.js'
 
 export async function buildApp(): Promise<NestFastifyApplication> {
   const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter(), {
@@ -21,6 +24,10 @@ export async function buildApp(): Promise<NestFastifyApplication> {
   app.enableCors({ origin: resolveCorsOrigins(process.env), credentials: true })
 
   await app.register(fastifyCookie)
+
+  // Must be registered before SwaggerModule.setup() below — its /docs routes need to
+  // already be tagged `helmet: false` by the time helmet's own onRoute hook sees them.
+  await registerHelmet(app)
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -38,6 +45,14 @@ export async function buildApp(): Promise<NestFastifyApplication> {
     .build()
   const document = SwaggerModule.createDocument(app, config)
   SwaggerModule.setup('docs', app, document)
+
+  // better-auth is mounted as a raw Fastify catch-all, deliberately OUTSIDE the Nest
+  // pipeline above (ADR-0012 §1) — it must come after app.init() (below) so the
+  // DI-built BETTER_AUTH_BUNDLE already exists, but it does not depend on
+  // app.listen(); the boot smoke proves it actually answers over real HTTP.
+  await app.init()
+  const { auth } = app.get<BetterAuthBundle>(BETTER_AUTH_BUNDLE)
+  await mountBetterAuthHandler(app, auth)
 
   return app
 }

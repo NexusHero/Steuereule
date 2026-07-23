@@ -2,11 +2,13 @@ import type { ExecutionContext } from '@nestjs/common'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { signGuestSession } from '../src/auth/guest-session.js'
 import { GUEST_SESSION_COOKIE, USER_ID_REQUEST_KEY, UserContextGuard } from '../src/auth/user-context.guard.js'
+import type { BetterAuthBundle } from '../src/auth/auth.tokens.js'
 
 const SECRET = 'test-secret'
+const SESSION_COOKIE_NAME = 'better-auth.session_token'
 
 function makeContext(cookies: Record<string, string | undefined>) {
-  const request: Record<string, unknown> = { cookies }
+  const request: Record<string, unknown> = { cookies, headers: {} }
   const setCookie = vi.fn()
   const reply = { setCookie }
   const context = {
@@ -18,28 +20,41 @@ function makeContext(cookies: Record<string, string | undefined>) {
   return { context, request, setCookie }
 }
 
+function makeBetterAuthBundle(getSession: ReturnType<typeof vi.fn>): BetterAuthBundle {
+  return {
+    // Only `api.getSession` is ever called by the guard — the rest of `Auth` is
+    // irrelevant to this unit test, so it's deliberately left out of the fake shape.
+    auth: { api: { getSession } } as unknown as BetterAuthBundle['auth'],
+    sessionCookieName: SESSION_COOKIE_NAME,
+  }
+}
+
 describe('UserContextGuard', () => {
   beforeEach(() => {
     process.env.GUEST_SESSION_SECRET = SECRET
     process.env.NODE_ENV = 'test'
   })
 
-  it('trusts a valid signed cookie and does not mint a new one', () => {
-    const guard = new UserContextGuard()
+  it('trusts a valid signed guest cookie and does not mint a new one (no better-auth session cookie present)', async () => {
+    const getSession = vi.fn()
+    const guard = new UserContextGuard(makeBetterAuthBundle(getSession))
     const existingUserId = 'existing-user'
     const token = signGuestSession(existingUserId, SECRET)
     const { context, request, setCookie } = makeContext({ [GUEST_SESSION_COOKIE]: token })
 
-    expect(guard.canActivate(context)).toBe(true)
+    await expect(guard.canActivate(context)).resolves.toBe(true)
     expect(request[USER_ID_REQUEST_KEY]).toBe(existingUserId)
     expect(setCookie).not.toHaveBeenCalled()
+    // I/O-free guest path (ADR-0012 §2): no better-auth session cookie means no DB read.
+    expect(getSession).not.toHaveBeenCalled()
   })
 
-  it('mints a fresh userId and sets a cookie when no cookie is present', () => {
-    const guard = new UserContextGuard()
+  it('mints a fresh userId and sets a cookie when no cookie is present, without touching better-auth', async () => {
+    const getSession = vi.fn()
+    const guard = new UserContextGuard(makeBetterAuthBundle(getSession))
     const { context, request, setCookie } = makeContext({})
 
-    expect(guard.canActivate(context)).toBe(true)
+    await expect(guard.canActivate(context)).resolves.toBe(true)
     const userId = request[USER_ID_REQUEST_KEY]
     expect(typeof userId).toBe('string')
     expect((userId as string).length).toBeGreaterThan(0)
@@ -52,34 +67,65 @@ describe('UserContextGuard', () => {
     expect(cookieName).toBe(GUEST_SESSION_COOKIE)
     expect(cookieValue.startsWith(`${userId as string}.`)).toBe(true)
     expect(options.httpOnly).toBe(true)
-    // SameSite=None; Secure (ADR-0011): the web app and the API are cross-origin in both
-    // local dev and the deployed demo, but only the deployed demo is cross-site (distinct
-    // *.fly.dev registrable domains) — that's what forces `None`, since `strict`/`Lax` is
-    // silently dropped by the browser on that cross-site credentialed request. Local dev
-    // (different ports on localhost) is same-site, where `None` is just harmlessly permissive.
     expect(options.sameSite).toBe('none')
     expect(options.secure).toBe(true)
+    expect(getSession).not.toHaveBeenCalled()
   })
 
-  it('mints a fresh userId when the cookie is tampered/forged (never trusts it)', () => {
-    const guard = new UserContextGuard()
+  it('mints a fresh userId when the guest cookie is tampered/forged (never trusts it)', async () => {
+    const getSession = vi.fn()
+    const guard = new UserContextGuard(makeBetterAuthBundle(getSession))
     const { context, request, setCookie } = makeContext({
       [GUEST_SESSION_COOKIE]: 'attacker-supplied-user-id.deadbeef',
     })
 
-    expect(guard.canActivate(context)).toBe(true)
+    await expect(guard.canActivate(context)).resolves.toBe(true)
     expect(request[USER_ID_REQUEST_KEY]).not.toBe('attacker-supplied-user-id')
     expect(setCookie).toHaveBeenCalledOnce()
   })
 
-  it('two requests with no cookie get two different userIds (no cross-request leakage)', () => {
-    const guard = new UserContextGuard()
+  it('two requests with no cookie get two different userIds (no cross-request leakage)', async () => {
+    const guard = new UserContextGuard(makeBetterAuthBundle(vi.fn()))
     const first = makeContext({})
     const second = makeContext({})
 
-    guard.canActivate(first.context)
-    guard.canActivate(second.context)
+    await guard.canActivate(first.context)
+    await guard.canActivate(second.context)
 
     expect(first.request[USER_ID_REQUEST_KEY]).not.toBe(second.request[USER_ID_REQUEST_KEY])
+  })
+
+  // --- ADR-0012 §2: a verified better-auth session wins over a guest cookie ---
+  describe('a better-auth session cookie is present', () => {
+    it('a verified session wins: userId = session.user.id, and no guest cookie is minted or touched', async () => {
+      const getSession = vi.fn().mockResolvedValue({ user: { id: 'real-account-id' }, session: {} })
+      const guard = new UserContextGuard(makeBetterAuthBundle(getSession))
+      // Even carrying a guest cookie too (e.g. a browser that never cleared it) — the
+      // verified session must still win per ADR-0012 §2's precedence rule.
+      const guestToken = signGuestSession('some-guest', SECRET)
+      const { context, request, setCookie } = makeContext({
+        [SESSION_COOKIE_NAME]: 'a-better-auth-session-cookie-value',
+        [GUEST_SESSION_COOKIE]: guestToken,
+      })
+
+      await expect(guard.canActivate(context)).resolves.toBe(true)
+      expect(request[USER_ID_REQUEST_KEY]).toBe('real-account-id')
+      expect(setCookie).not.toHaveBeenCalled()
+      expect(getSession).toHaveBeenCalledOnce()
+    })
+
+    it('an expired/revoked session (getSession resolves null) falls through to the guest path', async () => {
+      const getSession = vi.fn().mockResolvedValue(null)
+      const guard = new UserContextGuard(makeBetterAuthBundle(getSession))
+      const { context, request, setCookie } = makeContext({
+        [SESSION_COOKIE_NAME]: 'a-revoked-session-cookie-value',
+      })
+
+      await expect(guard.canActivate(context)).resolves.toBe(true)
+      expect(request[USER_ID_REQUEST_KEY]).not.toBe('real-account-id')
+      // No guest cookie existed either, so a fresh one is minted — the revoked
+      // session must never leave the request without *some* trusted userId.
+      expect(setCookie).toHaveBeenCalledOnce()
+    })
   })
 })

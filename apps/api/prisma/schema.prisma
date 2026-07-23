@@ -59,3 +59,84 @@ enum AuditAction {
   READ
   WRITE
 }
+
+// --- better-auth tables (ADR-0009/ADR-0012 §3) --------------------------------
+// New tables only — a pure expand-only migration. None of these touch Profile or
+// TaxDataAccessLog. Field/table shapes follow better-auth's own canonical Prisma
+// schema (the shape its Prisma adapter queries against unconditionally) so no
+// custom `modelName`/field-mapping config is needed on the betterAuth() side —
+// Prisma's client property for each model is just its lowerCamelCase name
+// (`prisma.user`, `prisma.session`, ...), which is exactly the model identifier
+// the adapter looks up. better-auth's own `id` values are app-generated
+// (typically a random id), but `@default(uuid())` is a safe DB-side fallback,
+// mirroring Profile/TaxDataAccessLog's existing convention.
+
+/// A real account (better-auth). `id` is the same userId namespace as a guest
+/// session's opaque uuid (ADR-0012 §3) — Profile.userId holds either without a
+/// type change, and REQ-006's guest->account upgrade just re-keys the FK value.
+model User {
+  id            String    @id @default(uuid())
+  name          String
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  sessions      Session[]
+  accounts      Account[]
+}
+
+/// DB-backed, server-revocable session (ADR-0012 §3). Read on every
+/// authenticated request via UserContextGuard -> auth.api.getSession(); guest
+/// requests never touch this table (ADR-0012 §2).
+model Session {
+  id        String   @id @default(uuid())
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+/// One row per credential/identity linked to a User — email+password today
+/// (REQ-005), social providers later (REQ-008). Never logged in plaintext
+/// (better-auth hashes with scrypt before this is ever written).
+model Account {
+  id                    String    @id @default(uuid())
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+}
+
+/// Short-lived tokens: email verification, password reset (REQ-005/REQ-010).
+model Verification {
+  id         String    @id @default(uuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime? @default(now())
+  updatedAt  DateTime? @updatedAt
+}
+
+/// Login rate-limit counters, DB-backed (REQ-010/ADR-0012 §5) — deliberately not
+/// in-memory, so the limit holds across horizontally scaled API instances (an
+/// in-memory counter resets per pod and is trivially bypassed).
+model RateLimit {
+  id          String  @id @default(uuid())
+  key         String?
+  count       Int?
+  lastRequest BigInt?
+}

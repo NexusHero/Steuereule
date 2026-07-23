@@ -15,7 +15,9 @@ export default defineConfig({
   plugins: [swc.vite()],
   test: {
     include: ['test/**/*.test.ts'],
-    exclude: ['test/**/*.integration.test.ts', 'node_modules/**'],
+    // test/acceptance/**: the REQ-tagged ATDD suites (ADR-0012) — DB-gated, run only
+    // via vitest.integration.config.ts, same tier as *.integration.test.ts.
+    exclude: ['test/**/*.integration.test.ts', 'test/acceptance/**', 'node_modules/**'],
     env: {
       // Dummy, never-dialled connection string: PrismaClient parses DATABASE_URL at
       // construction time even though it only connects lazily on first query, so
