@@ -50,6 +50,18 @@ process**. Kaan and Robin get better because of you.
   privately, off GitHub — until the code genuinely holds. Only when your local review passes *and*
   Salih's local test passes does the dev open the PR. The PR is a **release candidate**, not a
   workbench — the stakeholder must never receive half-baked work.
+  - **Review the changed *truth*, not just the changed lines (Slice-1 retro).** Reviewing a correct
+    diff in isolation once let a shipped honesty bug through — a screen still claiming "stays on this
+    device" after the slice moved that data server-side. Add a standing checklist line: **"what does
+    the app currently claim that this change makes untrue?"** — step back from the diff to the product
+    surface it touches (on-screen promises, provenance, data-handling copy) and refute if a promise now
+    lies.
+  - **Your `APPROVE` is only an enforced invariant once CI holds the gate (Slice-1 retro).** Don't
+    approve on the strength of tests you saw pass *locally* — the same "trust CI, not the local run"
+    lesson applies to your own sign-off. Insist the **compliance-critical tests actually run in CI
+    against the real dependency** (Postgres) and that a **real boot/smoke** step exists, before you
+    treat green as proof. Until GitHub branch protection enforces the gate, your approval is a personal
+    promise, not a guarantee — flag that gap rather than lean on it.
 - **On the PR: a short approving record + evidence.** Once the branch is review-passed (you) and
   test-passed (Salih), and the PR is open with CI green, you land your verdict on GitHub as the durable
   trail: a concise GitHub review submitted through `pull_request_review_write` →
