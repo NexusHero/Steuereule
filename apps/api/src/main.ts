@@ -27,11 +27,13 @@ export async function buildApp(): Promise<NestFastifyApplication> {
   // credentialed cross-origin `PUT /v1/profile` (Onboarding save, guest→account
   // upgrade, the Profil screen) at the browser's preflight (caught live by Salih's
   // cross-origin re-test; see test/cors.acceptance.test.ts). Listed to match the REST
-  // surface this API actually serves — not a blanket allow-all.
+  // surface this API actually serves — not a blanket allow-all. DELETE added for
+  // REQ-011's `DELETE /v1/account` (ADR-0013) — the same preflight gap PUT hit
+  // earlier would otherwise silently block it too.
   app.enableCors({
     origin: resolveCorsOrigins(process.env),
     credentials: true,
-    methods: ['GET', 'HEAD', 'POST', 'PUT'],
+    methods: ['GET', 'HEAD', 'POST', 'PUT', 'DELETE'],
   })
 
   await app.register(fastifyCookie)

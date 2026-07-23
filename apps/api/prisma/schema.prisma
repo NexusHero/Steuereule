@@ -171,3 +171,26 @@ model TaxYear {
 
   @@unique([userId, steuerjahr])
 }
+
+/// Minimal Löschschutz seam (ADR-0013 §5, product ADR-011). While a hold is active
+/// (`holdUntil` in the future) for a given userId/resource pair, the account-deletion
+/// transaction exempts that resource from erasure/anonymisation instead of tearing it
+/// down. `resource` names the thing held — today only "profile" and "auditLog" are
+/// meaningful (no filing/tax-year Löschschutz model persists yet), so the exempt set
+/// is vacuous in real use; the REQ-011 acceptance test seeds a synthetic row to
+/// exercise both the exempt and non-exempt branches for real. Expand-only: this
+/// migration adds only this one new table, no change to any existing model.
+model LegalHold {
+  id        String   @id @default(uuid())
+  /// Scoping key — same trusted userId namespace as Profile/TaxDataAccessLog.
+  userId    String
+  /// The resource held, e.g. "profile" or "auditLog" — matches the model the
+  /// deletion transaction consults it against, never a free-text label.
+  resource  String
+  /// The hold is active while `holdUntil` is in the future; once past, the deletion
+  /// transaction treats it as expired and proceeds normally.
+  holdUntil DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}

@@ -110,6 +110,19 @@ function buildOptions(options: CreateBetterAuthOptions): BetterAuthOptions {
       // Backed by the DB (the RateLimit table, ADR-0012 §5), not in-memory — a limit
       // that resets per pod is trivially bypassed on a horizontally scaled deployment.
       storage: 'database',
+      // better-auth's own built-in special-path rules (window 10s/max 3) already cover
+      // /sign-in*, /sign-up*, /change-password, /change-email — but NOT /verify-password,
+      // which otherwise falls back to the generic default (window 10s/max 100, far too
+      // loose for a password-guessing surface). ADR-0013 §6 requires DELETE /v1/account's
+      // fresh-auth re-verification step to be "rate-limited via the existing DB-backed
+      // RateLimit table — no new mechanism": `customRules` is that same built-in
+      // extension point (still the one shared DB-backed limiter/table), just naming one
+      // more path at the same strictness better-auth already applies to sign-in. Caught
+      // by the real-Postgres REQ-011 acceptance test before this reached review — 12
+      // wrong-password DELETE attempts never tripped 429 under the bare default.
+      customRules: {
+        '/verify-password': { window: 10, max: 3 },
+      },
     },
     advanced: {
       defaultCookieAttributes: {

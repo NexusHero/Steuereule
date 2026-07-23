@@ -105,3 +105,53 @@ describe('OpenAPI contract for GET /v1/steuerjahre/{jahr}/cockpit (REQ-001)', ()
     expect(Object.keys(properties).sort()).toEqual(['from', 'to'].sort())
   })
 })
+
+describe('OpenAPI contract for DELETE /v1/account (REQ-011, ADR-0013)', () => {
+  let app: NestFastifyApplication
+  let document: OpenAPIObject
+
+  beforeAll(async () => {
+    app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter(), {
+      logger: false,
+    })
+    const config = new DocumentBuilder().setTitle('SteuerEule API').setVersion('1.0').build()
+    document = SwaggerModule.createDocument(app, config)
+  })
+
+  afterAll(async () => {
+    await app.close()
+  })
+
+  it('documents DELETE /v1/account accepting a confirm+password body and returning the summary schema', () => {
+    const del = document.paths['/v1/account']?.delete
+    expect(del).toBeDefined()
+    expect(del?.requestBody).toBeDefined()
+    expect(del?.responses['200']).toBeDefined()
+  })
+
+  it('exposes DeleteAccountRequestDto requiring confirm, with an optional password', () => {
+    const schema = document.components?.schemas?.DeleteAccountRequestDto
+    expect(schema).toBeDefined()
+    const properties = (schema as { properties?: Record<string, unknown> }).properties ?? {}
+    expect(Object.keys(properties).sort()).toEqual(['confirm', 'password'].sort())
+    const required = (schema as { required?: string[] }).required ?? []
+    expect(required).toContain('confirm')
+    expect(required).not.toContain('password')
+  })
+
+  it('exposes DeleteAccountResponseDto with the honest summary fields — never a vague "everything erased"', () => {
+    const schema = document.components?.schemas?.DeleteAccountResponseDto
+    expect(schema).toBeDefined()
+    const properties = (schema as { properties?: Record<string, unknown> }).properties ?? {}
+    expect(Object.keys(properties).sort()).toEqual(
+      ['deleted', 'retainedAnonymisedAuditRows', 'retainedUnderLegalHold'].sort(),
+    )
+  })
+
+  it('exposes DeletedSummaryDto with profile/account booleans', () => {
+    const schema = document.components?.schemas?.DeletedSummaryDto
+    expect(schema).toBeDefined()
+    const properties = (schema as { properties?: Record<string, unknown> }).properties ?? {}
+    expect(Object.keys(properties).sort()).toEqual(['account', 'profile'].sort())
+  })
+})
