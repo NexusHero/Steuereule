@@ -3,7 +3,8 @@
 // caller-supplied `lidStyle` to drive a blink. See SplashScreen.tsx for the entrance that plays
 // the blink; this file only pins OwlMark's own presentational contract.
 import { describe, it, expect } from 'vitest'
-import { render } from '@testing-library/react'
+import { render, act } from '@testing-library/react'
+import { Animated } from 'react-native'
 import { ThemeProvider } from '@steuereule/ui'
 import { OwlMark } from './OwlMark'
 
@@ -39,5 +40,34 @@ describe('OwlMark', () => {
     )
     const style = lidLayerHtml(container)
     expect(style).toContain('transform: scaleY(1)')
+  })
+
+  // Regression for the "the whole entrance is inert in the real browser" bug: SplashScreen feeds
+  // OwlMark's layers a live `Animated.Value`, not a static number. On react-native-web, a plain
+  // (non-animated) `View` handed an `Animated.Value` inside its style never resolves it — the
+  // style freezes at whatever the *object itself* stringifies to (`scaleY([object Object])`,
+  // effectively `none`) for the component's entire lifetime, and never updates when the value
+  // changes. Only `Animated.View` (or `Animated.createAnimatedComponent`) subscribes to the value
+  // and pushes real, live CSS to the DOM node. This must hold for every layer OwlMark exposes for
+  // animation (head, glasses, lid) — asserted here for the lid, since that's the layer the bug
+  // report was about, using the same live-Animated.Value path SplashScreen actually uses.
+  it('resolves a live Animated.Value on the lid layer to a real, live transform (not a plain View)', () => {
+    const lidAnim = new Animated.Value(0)
+    const { container } = render(
+      <ThemeProvider mode="light">
+        <OwlMark lidStyle={{ transform: [{ scaleY: lidAnim }], transformOrigin: 'center top' }} />
+      </ThemeProvider>,
+    )
+    // Rest: scaleY(0) should already be a concrete, resolved number — not the Animated.Value
+    // object leaking through as `[object Object]`.
+    expect(lidLayerHtml(container)).toContain('transform: scaleY(0)')
+    expect(lidLayerHtml(container)).not.toContain('[object Object]')
+
+    // Mutating the value (exactly what SplashScreen's Animated.timing does every frame) must
+    // reach the DOM without a React re-render — that's the whole point of Animated.Value.
+    act(() => {
+      lidAnim.setValue(1)
+    })
+    expect(lidLayerHtml(container)).toContain('transform: scaleY(1)')
   })
 })
