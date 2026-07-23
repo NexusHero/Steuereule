@@ -30,3 +30,21 @@ export function formatEuroCents(n: number): string {
   assertFinite(n)
   return `${n.toLocaleString(LOCALE, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${NBSP}€`
 }
+
+/**
+ * Whole-euro range for the Cockpit's Spannen-Ticker (ADR-015), e.g. {from:1227,to:1587} ->
+ * "1.227-1.587 €" (en dash) — one trailing unit for the pair. Collapses to a single
+ * `formatEuro` value when `from === to` (ADR-015: a settled estimate, `isPointValue`, reads
+ * as a plain amount, not "N-N €").
+ */
+export function formatEuroRange(from: number, to: number): string {
+  assertFinite(from)
+  assertFinite(to)
+  if (from > to) {
+    throw new RangeError('`from` must not exceed `to`')
+  }
+  if (from === to) {
+    return formatEuro(from)
+  }
+  return `${from.toLocaleString(LOCALE)}–${to.toLocaleString(LOCALE)}${NBSP}€`
+}
