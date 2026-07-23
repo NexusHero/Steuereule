@@ -67,4 +67,24 @@ describe('LoginScreen', () => {
     fireEvent.click(screen.getByText('Weiter mit Google'))
     expect(onDone).toHaveBeenCalledOnce()
   })
+
+  // steuereule#65 — the guest-mode note used to claim device-only storage, which went false
+  // once the guest path started flowing into Onboarding's server-side, encrypted persistence
+  // (ADR-0008). Exact-match assertions (not a loose substring) so a future regression back to
+  // a false "stays on this device" claim fails loudly.
+  it('renders honest guest-mode copy that no longer claims device-only storage (de)', () => {
+    renderLogin()
+    expect(
+      screen.getByText('Gast-Modus: deine Angaben werden sicher verschlüsselt gespeichert — deine Identität ist erst bei der Abgabe gefragt.'),
+    ).toBeTruthy()
+    expect(screen.queryByText(/nur auf diesem Gerät/)).toBeNull()
+  })
+
+  it('renders honest guest-mode copy that no longer claims device-only storage (en)', () => {
+    renderLogin({ lng: 'en' })
+    expect(
+      screen.getByText('Guest mode: your details are saved securely, encrypted — we only need to confirm your identity when you actually file.'),
+    ).toBeTruthy()
+    expect(screen.queryByText(/this device only/)).toBeNull()
+  })
 })
