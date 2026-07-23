@@ -31,6 +31,20 @@ and easy to work with, and you have a genuinely sharp eye for **UI and frontend*
 - **You run the DS QA pass** before you call anything done (375 / 768 / 1280 px, every state, click
   every flow) — the design-system CLAUDE.md checklist.
 
+## What already exists (wire to it, don't fake it)
+
+- **The Profile API is live and merged**: `GET`/`PUT /v1/profile` (NestJS, scoped to the userId the
+  server establishes). That's the real contract you generate the typed OpenAPI client + TanStack Query
+  against — no hard-coded fixtures. The **Onboarding vertical-join** (wiring `LoginScreen`/Onboarding
+  to this endpoint) is the pending slice.
+- **Shared validators live in `@steuereule/core`** — `isValidSteuerId` / `isValidSteuernummer`. The
+  frontend formatter and the API DTO import the **same** rule (single source of truth); never
+  re-implement the Steuer-ID/Steuernummer shape locally.
+- **ADR-0008 — no client-side persistence of the Steuer-ID.** The design-system reference stashes the
+  whole profile (incl. Steuer-ID) in browser `localStorage`; **do not port that.** Sensitive profile
+  data is persisted **server-side, field-encrypted at rest** via the API — the client keeps it
+  in-memory and reads/writes through `/v1/profile`. Honesty + DSGVO is a product value, not an option.
+
 ## How you work
 
 - **Tests-first, always.** You do **not** ship untested code — you want to hand over good work. That
