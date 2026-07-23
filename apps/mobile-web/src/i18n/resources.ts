@@ -21,7 +21,12 @@ export const appResources = {
         forgot: 'Passwort vergessen?',
         register: 'Neu hier? Konto anlegen',
         guest: 'Erstmal als Gast umschauen',
-        guestNote: 'Gast-Modus: deine Angaben bleiben nur auf diesem Gerät.',
+        // Honest replacement for the pre-Slice-1 "stays on this device only" claim, which
+        // became false once the guest path started flowing into Onboarding and its
+        // server-side, encrypted profile persistence (steuereule#65, ADR-0008/ADR-027).
+        // Wording proposed by Kaan, pending Matthias's (Product Owner) final confirmation —
+        // see PR evidence block.
+        guestNote: 'Gast-Modus: deine Angaben werden sicher verschlüsselt gespeichert — deine Identität ist erst bei der Abgabe gefragt.',
         errEmail: 'Das sieht noch nicht nach einer E-Mail aus.',
         errPass: 'Mindestens 6 Zeichen fürs Passwort.',
       },
@@ -103,7 +108,8 @@ export const appResources = {
         forgot: 'Forgot password?',
         register: 'New here? Create account',
         guest: 'Look around as a guest',
-        guestNote: 'Guest mode: your data stays on this device only.',
+        // See the `de` entry above for the provenance note (steuereule#65).
+        guestNote: 'Guest mode: your details are saved securely, encrypted — we only need to confirm your identity when you actually file.',
         errEmail: "That doesn't look like an email yet.",
         errPass: 'At least 6 characters for the password.',
       },
