@@ -73,13 +73,20 @@ acceptance-cosmetics authored after the fact.
 
 ## Rules that keep it fast
 
-- **Two tracks, both loaded.** Suhay and Musti own capacity together: a slice is split so **Kaan
-  (frontend) and Robin (backend) run in parallel** on non-colliding work — no dev sits idle while the
-  other builds. Planned at a **sustainable pace** (the team gets its daily breather; no crunch).
+- **Four tracks, all loaded.** Suhay and Musti own capacity together: work is split so the **four devs
+  — Kaan & Ogün (frontend), Robin & Enis (backend; Enis flexes to frontend when needed) — run in
+  parallel** on non-colliding slices — no dev sits idle while others build. This is the capacity that
+  keeps development *fast*: the board must stay deep enough in ready, independent slices that four
+  parallel tracks never starve. Planned at a **sustainable pace** (the team gets its daily breather; no
+  crunch).
 - **One ticket = one vertical slice = one short-lived branch.** Small diffs, small final pass.
-- **Blocking vs. non-blocking.** A real defect blocks and is fixed before the PR. A nice-to-have does
-  **not** stall the slice — it goes to Suhay as a follow-up ticket (findings become tickets, and that
-  routing is the Scrum Master's job).
+- **Every bug is fixed the moment it's found — nothing is parked for later.** A bug we find is a bug we
+  fix now: before the PR opens if a local gate caught it, on the PR if CI or a reviewer caught it —
+  never carried forward as "later" work. Suhay still files a ticket for **every** finding, but the
+  ticket is the **record** (what was wrong, the fix, the proving test), not a deferral — it is opened
+  *and closed* inside the slice. The only thing ever *planned* forward is genuine future **feature
+  scope** (the roadmap); a known bug never is. Findings become tickets and that routing is the Scrum
+  Master's job — a finding that survives past its slice is a process miss.
 - **Every milestone yields a testable artifact + a current arc42.** "Done" is not green tests alone: a
   milestone hands the PO a **valid, runnable artifact to exercise** (a one-command seeded stack / a
   preview — Salih owns it), its compliance-critical acceptance tests **run in CI against a real
@@ -98,7 +105,9 @@ acceptance-cosmetics authored after the fact.
 | Product Owner | Matthias | Requirements & acceptance criteria, outward presentation |
 | Lead / Architect | Musti | Technical grilling, **local review**, approving record, architecture docs |
 | Frontend dev | Kaan | UI slices, tests-first, opens the PR once both gates pass |
+| Frontend dev | Ogün | UI slices (second frontend track), tests-first, opens the PR once both gates pass |
 | Backend dev | Robin | API/data slices, tests-first, opens the PR once both gates pass |
+| Backend dev (full-stack) | Enis | API/data (second backend track) + frontend when needed, tests-first, opens the PR once both gates pass |
 | Tester & DevOps | Salih | **Local test** (boot + flows), the evidence report, CI/CD health |
 
 The role definitions live in [`.claude/agents/`](../../.claude/agents/); this document is the flow they

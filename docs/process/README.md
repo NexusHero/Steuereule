@@ -8,7 +8,7 @@ doc.
 
 ## The team
 
-Six roles, each a defined persona with a model, tools, and boundaries (source of record:
+Eight roles, each a defined persona with a model, tools, and boundaries (source of record:
 [`.claude/agents/`](../../.claude/agents/)).
 
 | Role | Persona | Owns |
@@ -17,11 +17,14 @@ Six roles, each a defined persona with a model, tools, and boundaries (source of
 | Product Owner | **Matthias** | Requirements Register & acceptance criteria, milestone product-acceptance (the **User Report**), outward presentation |
 | Lead / Architect | **Musti** | Technical grilling, **local code review**, architecture & ADRs, the living arc42, the Clean-Code bar |
 | Frontend dev | **Kaan** | UI slices (Expo/RN-Web, the Funke design system, i18n, honest states) |
+| Frontend dev | **Ogün** | UI slices — second frontend track; exceptionally strong TypeScript; asks his senior early |
 | Backend dev | **Robin** | API / data / the deterministic core (NestJS, Fastify, Prisma, EU/DSGVO) |
+| Backend dev (full-stack) | **Enis** | API / data — second backend track; senior (ex-Apple), can also take frontend slices; helps the mid-level devs |
 | Tester & DevOps | **Salih** | Real-stack testing, the runnable artifact, CI/CD health, test-to-requirement traceability |
 
 Suhay and Matthias consult, grill, and refine; they do not touch code. Musti reviews and architects
-but leaves the feature implementation to Kaan and Robin. Escalation for requirement questions:
+but leaves the feature implementation to the four developers (Kaan, Ogün, Robin, Enis). Escalation for
+requirement questions:
 **devs → Matthias → human**; for architecture/future-shaping calls Musti **asks the stakeholder** via
 the `ask-matt` flow and records the outcome as an ADR.
 
@@ -31,8 +34,8 @@ Full flow with diagram: [`delivery-pipeline.md`](./delivery-pipeline.md). In sho
 **left of the pull request**:
 
 1. **Suhay** pulls a ready, grilled ticket; **Matthias** holds the requirements, **Musti** grills the
-   technical design (and writes the ADR). Suhay + Musti split the slice so **Kaan and Robin run in
-   parallel** — no dev idle.
+   technical design (and writes the ADR). Suhay + Musti split the work so the **four devs (Kaan, Ogün,
+   Robin, Enis) run in parallel** across their tracks — no dev idle.
 2. Devs implement **tests-first**, gate green.
 3. **Musti reviews the diff locally**, line by line, off GitHub, and iterates with the dev.
 4. **Salih tests locally** against the real seeded stack (boot proof + flows + acceptance tests).
@@ -55,9 +58,11 @@ discovery.
   on, an `APPROVE` is a personal promise, not an enforced invariant.
 - **Every milestone yields a valid, testable artifact** the PO can exercise (a one-command seeded
   stack / preview) — not green tests alone.
-- **Blocking vs. non-blocking vs. trivial:** a real defect blocks; a trivial-but-real nit (a wrong
-  comment, dead reference) is resolved *in the review loop*; a genuine nice-to-have becomes a Suhay
-  follow-up ticket.
+- **Every bug is fixed now, ticketed for the record — nothing parked for later:** a real defect is
+  fixed the moment it's found (before the PR if a local gate caught it, on the PR if CI/review did); a
+  trivial-but-real nit (a wrong comment, dead reference) is resolved *in the review loop*. Suhay files
+  a ticket for every finding as the **record** of the fix — opened *and closed* inside the slice, never
+  a deferral. Only future **feature scope** is planned forward; a known bug never is.
 
 ## Ceremonies
 
