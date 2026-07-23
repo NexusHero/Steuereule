@@ -46,16 +46,28 @@ jobs:
         run: |
           echo "TODO — no lintable packages yet; baseline is empty."
 
-  # Placeholder — wire up the unit/integration test runner here.
+  # Real gate: typecheck and test every workspace package in the monorepo.
   test:
     name: Test
     needs: validate-compose
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: test (placeholder)
-        run: |
-          echo "TODO — no test suite yet; baseline is empty."
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Typecheck
+        run: pnpm -r typecheck
+      - name: Test
+        run: pnpm -r test
 
   # Placeholder — build the service images once Dockerfiles exist.
   build:
