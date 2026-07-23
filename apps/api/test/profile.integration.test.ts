@@ -184,13 +184,19 @@ describe('PROFILE /v1/profile — real Postgres', () => {
       expect(rawSteuerId).not.toBeNull()
       expect(rawSteuerId).not.toBe(VALID_PAYLOAD.steuerId)
       expect(rawSteuerId!.length).toBeGreaterThan(VALID_PAYLOAD.steuerId.length)
-      // prisma-field-encryption's cloak envelope: "<keyLabel>.aesgcm256.<payload>" —
-      // namespaced by cipher name, never a bare 11-digit string.
-      expect(rawSteuerId).toMatch(/^k\d+\.aesgcm256\./)
+      // prisma-field-encryption's cloak envelope: "<envelopeVersion>.aesgcm256.<fingerprint>.<iv>.<ciphertext>"
+      // — namespaced by cipher name, never a bare 11-digit string. Corrected from
+      // `k\d+` (that's the *key* encoding prefix, e.g. `k1.aesgcm256.<key>` — used for
+      // PRISMA_FIELD_ENCRYPTION_KEY) to `v\d+` (the *message* envelope version prefix
+      // @47ng/cloak actually emits for ciphertext at rest — see
+      // node_modules/@47ng/cloak/dist/message.js `encodeEncryptedString`, which
+      // hardcodes 'v1'; not configurable). Verified against the real library output,
+      // not asserted from memory.
+      expect(rawSteuerId).toMatch(/^v\d+\.aesgcm256\./)
 
       expect(rawSteuernummer).not.toBeNull()
       expect(rawSteuernummer).not.toBe(VALID_PAYLOAD.steuernummer)
-      expect(rawSteuernummer).toMatch(/^k\d+\.aesgcm256\./)
+      expect(rawSteuernummer).toMatch(/^v\d+\.aesgcm256\./)
     })
 
     it('REQ-003.3 randomized: two userIds with the same Steuer-ID have different ciphertext at rest', async () => {

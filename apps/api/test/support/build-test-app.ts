@@ -9,9 +9,12 @@ import { ValidationPipe } from '@nestjs/common'
 import { Test } from '@nestjs/testing'
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify'
 import { AppModule } from '../../src/app.module.js'
+import { AUDIT_REPOSITORY } from '../../src/audit/audit.repository.js'
 import { validationExceptionFactory } from '../../src/common/validation-exception-factory.js'
+import { ENCRYPTED_PRISMA } from '../../src/prisma/encrypted-prisma.provider.js'
 import { PrismaService } from '../../src/prisma/prisma.service.js'
 import { PROFILE_REPOSITORY } from '../../src/profile/profile.repository.js'
+import { FakeAuditRepository } from '../fakes/fake-audit.repository.js'
 import { FakeProfileRepository } from '../fakes/fake-profile.repository.js'
 
 export async function buildTestApp(): Promise<{ app: NestFastifyApplication; repository: FakeProfileRepository }> {
@@ -19,15 +22,31 @@ export async function buildTestApp(): Promise<{ app: NestFastifyApplication; rep
 
   // Nest instantiates every provider registered on a module it constructs — including
   // PrismaService — regardless of whether anything in *this* test's request path ends up
-  // injecting it. ProfileModule always registers PrismaService, so without this override
-  // `new PrismaClient()` still runs here even though PROFILE_REPOSITORY is swapped for the
-  // fake. That requires the generated Prisma client to exist and reaches toward a real DB
-  // driver — exactly what a fake-repository HTTP test must never depend on (ADR-0004).
-  // Overriding it with an inert stub keeps this test genuinely Prisma-free.
+  // injecting it. ProfileModule always registers PrismaService (via PrismaModule), so
+  // without this override `new PrismaClient()` still runs here even though
+  // PROFILE_REPOSITORY is swapped for the fake. That requires the generated Prisma client
+  // to exist and reaches toward a real DB driver — exactly what a fake-repository HTTP
+  // test must never depend on (ADR-0004). Overriding it with an inert stub keeps this
+  // test genuinely Prisma-free.
+  //
+  // ENCRYPTED_PRISMA is the same story one layer up: it's a top-level provider in
+  // PrismaModule (built by calling `.$extends()` on PrismaService), so it's eagerly
+  // instantiated too — overridden with an inert stub for the same reason. Nothing in
+  // this fake-repository test path ever reads it (PrismaProfileRepository, the only
+  // consumer, is itself swapped out by the PROFILE_REPOSITORY override below).
+  //
+  // AUDIT_REPOSITORY is overridden with an in-memory fake (mirroring PROFILE_REPOSITORY)
+  // rather than an inert stub, because ProfileService genuinely calls AuditService on
+  // every successful GET — a real dependency of the code path under test, not a
+  // Prisma-connection detail to merely stub out.
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(PROFILE_REPOSITORY)
     .useValue(repository)
+    .overrideProvider(AUDIT_REPOSITORY)
+    .useValue(new FakeAuditRepository())
     .overrideProvider(PrismaService)
+    .useValue({})
+    .overrideProvider(ENCRYPTED_PRISMA)
     .useValue({})
     .compile()
 
