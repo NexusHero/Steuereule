@@ -13,7 +13,7 @@ import { useState } from 'react'
 import { ActivityIndicator, ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { Button, Card, Chip, Feld, Input, Pill, Sticker, useTheme, type UiTheme } from '@steuereule/ui'
+import { Button, Card, Chip, Feld, Input, Pill, Sticker, useTheme, useBreakpoint, type UiTheme } from '@steuereule/ui'
 import { isValidSteuerId } from '@steuereule/core'
 import { useProfileControllerGetProfile, useProfileControllerPutProfile } from '@steuereule/api-client'
 import { APP_NS } from '../i18n/resources'
@@ -101,7 +101,7 @@ export function ProfilScreen() {
 function ProfilLoading() {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
-  const styles = makeStyles(t)
+  const styles = makeStyles(t, useBreakpoint())
   return (
     <View style={styles.centerScreen}>
       <ActivityIndicator size="large" color={t.color.tinte} accessibilityLabel={tr('profil.loading')} />
@@ -117,7 +117,7 @@ interface ProfilLoadErrorProps {
 function ProfilLoadError({ onRetry }: ProfilLoadErrorProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
-  const styles = makeStyles(t)
+  const styles = makeStyles(t, useBreakpoint())
   return (
     <View style={styles.centerScreen}>
       <Text style={styles.heading} accessibilityRole="alert">
@@ -140,7 +140,7 @@ interface ProfilViewProps {
 function ProfilView({ profil, onEdit, justSaved }: ProfilViewProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
-  const styles = makeStyles(t)
+  const styles = makeStyles(t, useBreakpoint())
   const fullName = `${profil.vorname} ${profil.nachname}`.trim()
   const initialSource = profil.vorname.trim() || profil.nachname.trim()
   const initial = initialSource ? initialSource[0]?.toUpperCase() : '?'
@@ -183,7 +183,7 @@ interface ProfilEditProps {
 function ProfilEdit({ draft, onChange, onSave, onCancel, isSaving, saveError }: ProfilEditProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
-  const styles = makeStyles(t)
+  const styles = makeStyles(t, useBreakpoint())
   const idDigits = countDigits(draft.steuerId)
   const steuerIdOk = isValidSteuerId(draft.steuerId.replace(/\D/g, ''))
   const canSave = draft.vorname.trim() !== '' && draft.nachname.trim() !== '' && steuerIdOk
@@ -249,13 +249,13 @@ function ProfilEdit({ draft, onChange, onSave, onCancel, isSaving, saveError }: 
   )
 }
 
-function makeStyles(t: UiTheme) {
+function makeStyles(t: UiTheme, bp: 's' | 'm' | 'l') {
   const screen: ViewStyle = {
     backgroundColor: t.color.grund,
     paddingHorizontal: t.space.s5,
     paddingVertical: t.space.s6,
     minHeight: '100%',
-    maxWidth: 460,
+    maxWidth: bp === 's' ? 460 : 800,
     width: '100%',
     alignSelf: 'center',
   }

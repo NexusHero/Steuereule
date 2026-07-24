@@ -1,1 +1,1015 @@
-{"namespace":"FinanzoFunkeDesignSystem_7e417e","components":[{"name":"Button","sourcePath":"components/actions/Button.jsx"},{"name":"Chip","sourcePath":"components/actions/Chip.jsx"},{"name":"Pill","sourcePath":"components/actions/Pill.jsx"},{"name":"AiChip","sourcePath":"components/ai/AiChip.jsx"},{"name":"BeraterLeiste","sourcePath":"components/ai/BeraterLeiste.jsx"},{"name":"HerkunftsChip","sourcePath":"components/ai/HerkunftsChip.jsx"},{"name":"KiWert","sourcePath":"components/ai/KiWert.jsx"},{"name":"Balken","sourcePath":"components/feedback/Balken.jsx"},{"name":"Banner","sourcePath":"components/feedback/Banner.jsx"},{"name":"Ring","sourcePath":"components/feedback/Ring.jsx"},{"name":"Sticker","sourcePath":"components/feedback/Sticker.jsx"},{"name":"Toast","sourcePath":"components/feedback/Toast.jsx"},{"name":"Feld","sourcePath":"components/forms/Feld.jsx"},{"name":"Input","sourcePath":"components/forms/Input.jsx"},{"name":"Option","sourcePath":"components/forms/Option.jsx"},{"name":"SchalterZeile","sourcePath":"components/forms/SchalterZeile.jsx"},{"name":"TabBar","sourcePath":"components/navigation/TabBar.jsx"},{"name":"Sheet","sourcePath":"components/overlay/Sheet.jsx"},{"name":"Begriff","sourcePath":"components/wissen/Begriff.jsx"}],"startingPoints":[],"cards":[{"path":"ui_kits/app/abgabe.html","group":"App","viewport":"420x860","subtitle":"Der emotionale Höhepunkt: „Zack. Drüben.","name":"Abgabe-Abschluss"},{"path":"ui_kits/app/auth.html","group":"App","viewport":"420x820","subtitle":"Google & Apple, E-Mail+Passwort, Gast-Modus — gestaffelter Auftritt","name":"Login"},{"path":"ui_kits/app/bescheid.html","group":"App","viewport":"420x900","subtitle":"Bescheid kam: Zeile für Zeile gegen unsere Berechnung, Abweichung erklärt, Einspruch mit Frist","name":"Bescheid-Vergleich"},{"path":"ui_kits/app/datenschutz.html","group":"App","viewport":"420x840","subtitle":"„Deine Daten. Deine Regeln.","name":"Datenschutz (DSGVO)"},{"path":"ui_kits/app/gg-tracker.html","group":"App","viewport":"420x860","subtitle":"Nichtrückkehrtage tippen — die 60er-Grenze ist immer sichtbar, ab 55 wird's rot","name":"Grenzgänger-Tracker"},{"path":"ui_kits/app/index.html","group":"App","viewport":"420x860","subtitle":"Cockpit · Belege · Berater · Übertragen — interaktiver Klick-Durchlauf","name":"SteuerEule App (Funke)"},{"path":"ui_kits/app/interview.html","group":"App","viewport":"420x760","subtitle":"Eine Frage pro Screen — Antworten zeigen sofort, was drin ist","name":"Interview"},{"path":"ui_kits/app/jahr-2025.html","group":"App","viewport":"420x880","subtitle":"Eingereicht = Rechtsdokument: Übertragen-Layout im Fakten-Modus, Belege gebündelt, Korrektur nur als Fassung 2","name":"Versiegeltes Jahr (2025)"},{"path":"ui_kits/app/jahre.html","group":"App","viewport":"420x820","subtitle":"„Alles wie 2025?","name":"Steuerjahre & Übernahme"},{"path":"ui_kits/app/lebenslagen.html","group":"App","viewport":"420x880","subtitle":"10 kuratierte Lebenslagen mit echten Flows — Abfindungs-Rechner (Fünftelregelung) + zumutbare-Belastung-Live-Schwelle","name":"Lebenslagen-Katalog"},{"path":"ui_kits/app/onboarding.html","group":"App","viewport":"420x760","subtitle":"Marke zeichnet sich selbst → Name, Steuer-ID, Steuernummer → Maske vorgefüllt","name":"Splash & Onboarding"},{"path":"ui_kits/app/paywall.html","group":"App","viewport":"420x820","subtitle":"Nicht verlinkt — 1.0 ist komplett kostenlos (Beta, ADR-017); Kauf-Flow kommt mit der ELSTER-Abgabe","name":"Paywall (2.0-Konzept)"},{"path":"ui_kits/app/registrierung.html","group":"App","viewport":"420x680","subtitle":"Konto anlegen → Code-Verifizierung (Demo 123456) → Onboarding","name":"Registrierung"},{"path":"ui_kits/app/scan.html","group":"App","viewport":"420x760","subtitle":"Kamera-Mock → Extraktion → KI-Vorschlag mit „weil …","name":"Beleg-Scan"},{"path":"ui_kits/app/splash.html","group":"App","viewport":"420x760","subtitle":"Beim Öffnen mit Session: Marke zeichnet sich, grüßt namentlich, geht selbst weiter","name":"Splash (App-Start)"},{"path":"ui_kits/app/statistik.html","group":"App","viewport":"420x1080","subtitle":"Alle Jahre + Kosten-Bilanz (zu-/abgenommen) — feste Slots, skaliert ohne Endlos-Listen","name":"Statistik"},{"path":"ui_kits/app/veranlagung.html","group":"App","viewport":"420x880","subtitle":"Zusammen vs. Einzeln: beide Tarife voll gerechnet, Empfehlung mit Herkunft — Taxfix' größte Lücke","name":"Günstigerprüfung"},{"path":"guidelines/marke-animation.html","group":"Brand","viewport":"700x210","subtitle":"Kopf poppt, die Brille setzt sich auf, die Eule blinzelt einmal — Reload zum Abspielen","name":"Marken-Animation"},{"path":"guidelines/marke-logo.html","group":"Brand","viewport":"700x190","subtitle":"Eule mit Brille — sie prüft genau. Tinte auf Hell, Limette auf Nacht. Nie in KI-Violett.","name":"Bildmarke „Eule"},{"path":"guidelines/marke-ton.html","group":"Brand","viewport":"700x190","subtitle":"Kurz, direkt, feiernd — ehrlich bei Geld und Recht","name":"Ton & Claim"},{"path":"guidelines/farben-dunkel.html","group":"Colors","viewport":"700x240","subtitle":"data-theme=„dunkel","name":"Dunkles Design"},{"path":"guidelines/farben-kern.html","group":"Colors","viewport":"700x150","subtitle":"Grund, Karte, Tinte, Funke-Limette","name":"Kernfarben"},{"path":"guidelines/farben-ki.html","group":"Colors","viewport":"700x170","subtitle":"Eine Farbe = KI. Violett ist nie Deko, nie Semantik.","name":"KI-Violett (exklusiv)"},{"path":"guidelines/farben-limette.html","group":"Colors","viewport":"700x150","subtitle":"Die Marken-Energie in vier Stufen","name":"Limette-Familie"},{"path":"guidelines/farben-nacht.html","group":"Colors","viewport":"700x170","subtitle":"Erstattungs-Karte & Kamera — Limette leuchtet auf Tinte","name":"Nacht (dunkler Held)"},{"path":"guidelines/farben-semantik.html","group":"Colors","viewport":"700x150","subtitle":"ok / warn / fehler — deutlich getrennt vom KI-Violett","name":"Semantik"},{"path":"guidelines/ki-kennzeichnung.html","group":"Colors","viewport":"700x330","subtitle":"Der Mehrwert bleibt sichtbar: KI spricht · KI schlägt vor · KI hat befüllt","name":"KI-Kennzeichnung (3 Stufen)"},{"path":"components/actions/actions.card.html","group":"Components","viewport":"700x230","subtitle":"Button (4 Varianten), Chip, Pill","name":"Actions"},{"path":"components/ai/ai.card.html","group":"Components","viewport":"700x260","subtitle":"AiChip, BeraterLeiste, HerkunftsChip — Violett ist exklusiv KI","name":"KI (Violett-Territorium)"},{"path":"components/feedback/feedback.card.html","group":"Components","viewport":"700x300","subtitle":"Banner, Toast, Ring, Balken, Sticker","name":"Feedback"},{"path":"components/forms/forms.card.html","group":"Components","viewport":"700x380","subtitle":"Input, Feld, Option, SchalterZeile","name":"Forms"},{"path":"components/navigation/navigation.card.html","group":"Components","viewport":"700x160","subtitle":"Schwebende Pillen-Navigation, Icons aus dem Quell-Repo","name":"TabBar"},{"path":"components/overlay/overlay.card.html","group":"Components","viewport":"700x400","subtitle":"Bottom-Sheet / Modal mit federndem Auftritt","name":"Sheet"},{"path":"components/wissen/begriff.card.html","group":"Components","viewport":"700x400","subtitle":"Nachschlagbare Begriffe: gepunktet = Wissen (Fakt), gestrichelt-violett bleibt KI — max. 1–2 pro Screen, nie automatisch","name":"Die Eule erklärt's"},{"path":"guidelines/systemzustaende.html","group":"Components","viewport":"700x360","subtitle":"Offline, Server-Fehler, Sitzung abgelaufen, Scan fehlgeschlagen — jedes Muster mit nächstem Schritt","name":"Systemzustände"},{"path":"guidelines/versiegelt.html","group":"Components","viewport":"700x330","subtitle":"Eingereicht = Rechtsdokument: offen vs. versiegelt — drei stille Signale statt Warnbanner","name":"Versiegelt-Muster"},{"path":"guidelines/zustaende.html","group":"Components","viewport":"700x290","subtitle":"Leer, Laden, Fehler — jeder Zustand hat einen nächsten Schritt","name":"Zustände"},{"path":"guidelines/zustandsmodell.html","group":"Components","viewport":"700x430","subtitle":"Posten, Fassung, Kopplung — die Lebenszyklen hinter den Screens","name":"Zustandsmodell (Datenlogik)"},{"path":"guidelines/effekte-bewegung.html","group":"Effects","viewport":"700x180","subtitle":"Federnd & kurz: --feder für Auftritte, --zack für Micro-Transitions","name":"Bewegung"},{"path":"guidelines/effekte-hover-druck.html","group":"Effects","viewport":"700x170","subtitle":"Hover hebt an — Druck drückt AUF den Schatten (ausprobieren!)","name":"Hover & Druck"},{"path":"guidelines/effekte-schatten.html","group":"Effects","viewport":"700x180","subtitle":"Sticker-Optik: 2/4/7px Versatz, kein Blur","name":"Harte Schatten"},{"path":"guidelines/raum-radien.html","group":"Spacing","viewport":"700x180","subtitle":"12 / 20 / 28 / Pille — Konturen 2px Tinte","name":"Radien & Konturen"},{"path":"guidelines/raum-raster.html","group":"Spacing","viewport":"700x170","subtitle":"8pt-Raster: --s1 bis --s7","name":"Raum-Raster"},{"path":"guidelines/typo-display.html","group":"Type","viewport":"700x200","subtitle":"Laut, eng, schwer — für Titel und Held-Zahlen","name":"Display — Bricolage Grotesque"},{"path":"guidelines/typo-mono.html","group":"Type","viewport":"700x180","subtitle":"Space Mono für Zeilen & Regeln · Zahlen immer tabular-nums","name":"Mono & Zahlen"},{"path":"guidelines/typo-skala.html","group":"Type","viewport":"700x260","subtitle":"12 / 14 / 16 / 18 / 24 / 32 / 44 / 60","name":"Typo-Skala"},{"path":"guidelines/typo-text.html","group":"Type","viewport":"700x190","subtitle":"Klar und freundlich — Fließtext, Labels, Buttons","name":"Text — Schibsted Grotesk"},{"path":"ui_kits/website/index.html","group":"Website","viewport":"1280x800","subtitle":"Hero mit animierter Marke, 3 Schritte, KI ehrlich erklärt, Preis, FAQ","name":"Landingpage"}],"templates":[{"name":"Pitch-Deck","description":"Vier Folien-Typen im Funke-Look: Titel (Nacht), Abschnitt (Limette), Inhalt (Papier), große Zahl","folder":"templates/pitch-deck","entryPath":"templates/pitch-deck/PitchDeck.dc.html","thumbnail":{"path":"templates/pitch-deck/.thumbnail","kind":"captured"}}],"hasThumbnailHtml":true,"globalCssPaths":["tokens/fonts.css","tokens/colors.css","tokens/dunkel.css","tokens/typography.css","tokens/spacing.css","tokens/effects.css","tokens/base.css","components/komponenten.css","styles.css"],"tokens":[{"name":"--grund","value":"#f4f2e9","kind":"color","definedIn":"tokens/colors.css"},{"name":"--karte","value":"#ffffff","kind":"color","definedIn":"tokens/colors.css"},{"name":"--tinte","value":"#191b12","kind":"color","definedIn":"tokens/colors.css"},{"name":"--tinte-2","value":"#5f6353","kind":"color","definedIn":"tokens/colors.css"},{"name":"--linie","value":"#191b12","kind":"color","definedIn":"tokens/colors.css"},{"name":"--linie-weich","value":"#dedacb","kind":"color","definedIn":"tokens/colors.css"},{"name":"--funke","value":"#c9f229","kind":"color","definedIn":"tokens/colors.css"},{"name":"--funke-hell","value":"#e3fa8d","kind":"color","definedIn":"tokens/colors.css"},{"name":"--funke-weich","value":"#f2fbd2","kind":"color","definedIn":"tokens/colors.css"},{"name":"--funke-tinte","value":"#40510a","kind":"color","definedIn":"tokens/colors.css"},{"name":"--nacht","value":"#191b12","kind":"color","definedIn":"tokens/colors.css"},{"name":"--nacht-karte","value":"#262a1c","kind":"color","definedIn":"tokens/colors.css"},{"name":"--nacht-text","value":"#f4f2e9","kind":"font","definedIn":"tokens/colors.css"},{"name":"--ki","value":"#7c5cff","kind":"color","definedIn":"tokens/colors.css"},{"name":"--ki-weich","value":"#ece6ff","kind":"color","definedIn":"tokens/colors.css"},{"name":"--ki-linie","value":"#c7b8ff","kind":"color","definedIn":"tokens/colors.css"},{"name":"--ki-tinte","value":"#4630b8","kind":"color","definedIn":"tokens/colors.css"},{"name":"--ok","value":"#1f9d55","kind":"color","definedIn":"tokens/colors.css"},{"name":"--ok-weich","value":"#def4e2","kind":"color","definedIn":"tokens/colors.css"},{"name":"--warn","value":"#e07b00","kind":"color","definedIn":"tokens/colors.css"},{"name":"--warn-weich","value":"#ffeecf","kind":"color","definedIn":"tokens/colors.css"},{"name":"--fehler","value":"#e0362c","kind":"color","definedIn":"tokens/colors.css"},{"name":"--fehler-weich","value":"#fde3de","kind":"color","definedIn":"tokens/colors.css"},{"name":"--grund","value":"#12140c","kind":"color","definedIn":"tokens/dunkel.css","scope":"[data-theme=\"dunkel\"]"},{"name":"--karte","value":"#1d2013","kind":"color","definedIn":"tokens/dunkel.css","scope":"[data-theme=\"dunkel\"]"},{"name":"--tinte","value":"#f2f0e3","kind":"color","definedIn":"tokens/dunkel.css","scope":"[data-theme=\"dunkel\"]"},{"name":"--tinte-2","value":"#a9ad99","kind":"color","definedIn":"tokens/dunkel.css","scope":"[data-theme=\"dunkel\"]"},{"name":"--linie","value":"#f2f0e3","kind":"color","definedIn":"tokens/dunkel.css","scope":"[data-theme=\"dunkel\"]"},{"name":"--linie-weich","value":"#33371f","kind":"color","definedIn":"tokens/dunkel.css","scope":"[data-theme=\"dunkel\"]"},{"name":"--funke-weich","value":"#2b3312","kind":"color","definedIn":"tokens/dunkel.css","scope":"[data-theme=\"dunkel\"]"},{"name":"--funke-tinte","value":"#d9f077","kind":"color","definedIn":"tokens/dunkel.css","scope":"[data-theme=\"dunkel\"]"},{"name":"--nacht","value":"#0d0f08","kind":"color","definedIn":"tokens/dunkel.css","scope":"[data-theme=\"dunkel\"]"},{"name":"--nacht-karte","value":"#1d2013","kind":"color","definedIn":"tokens/dunkel.css","scope":"[data-theme=\"dunkel\"]"},{"name":"--nacht-text","value":"#f4f2e9","kind":"font","definedIn":"tokens/dunkel.css","scope":"[data-theme=\"dunkel\"]"},{"name":"--ki-weich","value":"#251d4f","kind":"color","definedIn":"tokens/dunkel.css","scope":"[data-theme=\"dunkel\"]"},{"name":"--ki-linie","value":"#5a48c4","kind":"color","definedIn":"tokens/dunkel.css","scope":"[data-theme=\"dunkel\"]"},{"name":"--ki-tinte","value":"#cfc4ff","kind":"color","definedIn":"tokens/dunkel.css","scope":"[data-theme=\"dunkel\"]"},{"name":"--ok-weich","value":"#143020","kind":"color","definedIn":"tokens/dunkel.css","scope":"[data-theme=\"dunkel\"]"},{"name":"--warn-weich","value":"#392a10","kind":"color","definedIn":"tokens/dunkel.css","scope":"[data-theme=\"dunkel\"]"},{"name":"--fehler-weich","value":"#3b1512","kind":"color","definedIn":"tokens/dunkel.css","scope":"[data-theme=\"dunkel\"]"},{"name":"--schrift-display","value":"\"Bricolage Grotesque\", \"Arial Black\", sans-serif","kind":"font","definedIn":"tokens/typography.css","annotation":"font"},{"name":"--schrift-text","value":"\"Schibsted Grotesk\", system-ui, sans-serif","kind":"font","definedIn":"tokens/typography.css","annotation":"font"},{"name":"--schrift-mono","value":"\"Space Mono\", ui-monospace, Menlo, monospace","kind":"font","definedIn":"tokens/typography.css","annotation":"font"},{"name":"--text-xs","value":"12px","kind":"font","definedIn":"tokens/typography.css"},{"name":"--text-s","value":"14px","kind":"font","definedIn":"tokens/typography.css"},{"name":"--text-m","value":"16px","kind":"font","definedIn":"tokens/typography.css"},{"name":"--text-l","value":"18px","kind":"font","definedIn":"tokens/typography.css"},{"name":"--text-xl","value":"24px","kind":"font","definedIn":"tokens/typography.css"},{"name":"--text-2xl","value":"32px","kind":"font","definedIn":"tokens/typography.css"},{"name":"--text-3xl","value":"44px","kind":"font","definedIn":"tokens/typography.css"},{"name":"--text-held","value":"60px","kind":"font","definedIn":"tokens/typography.css"},{"name":"--gewicht-normal","value":"450","kind":"font","definedIn":"tokens/typography.css","annotation":"font"},{"name":"--gewicht-halb","value":"600","kind":"font","definedIn":"tokens/typography.css","annotation":"font"},{"name":"--gewicht-fett","value":"700","kind":"font","definedIn":"tokens/typography.css","annotation":"font"},{"name":"--gewicht-schwer","value":"800","kind":"font","definedIn":"tokens/typography.css","annotation":"font"},{"name":"--zeile-eng","value":"1.05","kind":"font","definedIn":"tokens/typography.css","annotation":"font"},{"name":"--zeile-normal","value":"1.45","kind":"font","definedIn":"tokens/typography.css","annotation":"font"},{"name":"--spationierung-display","value":"-0.03em","kind":"font","definedIn":"tokens/typography.css","annotation":"font"},{"name":"--spationierung-label","value":"0.08em","kind":"font","definedIn":"tokens/typography.css","annotation":"font"},{"name":"--s1","value":"4px","kind":"spacing","definedIn":"tokens/spacing.css"},{"name":"--s2","value":"8px","kind":"spacing","definedIn":"tokens/spacing.css"},{"name":"--s3","value":"12px","kind":"spacing","definedIn":"tokens/spacing.css"},{"name":"--s4","value":"16px","kind":"spacing","definedIn":"tokens/spacing.css"},{"name":"--s5","value":"24px","kind":"spacing","definedIn":"tokens/spacing.css"},{"name":"--s6","value":"32px","kind":"spacing","definedIn":"tokens/spacing.css"},{"name":"--s7","value":"48px","kind":"spacing","definedIn":"tokens/spacing.css"},{"name":"--radius-s","value":"12px","kind":"radius","definedIn":"tokens/spacing.css"},{"name":"--radius","value":"20px","kind":"radius","definedIn":"tokens/spacing.css"},{"name":"--radius-lg","value":"28px","kind":"radius","definedIn":"tokens/spacing.css"},{"name":"--radius-pille","value":"999px","kind":"radius","definedIn":"tokens/spacing.css"},{"name":"--kontur","value":"2px","kind":"spacing","definedIn":"tokens/spacing.css","annotation":"spacing"},{"name":"--schatten-hart","value":"4px 4px 0 var(--tinte)","kind":"color","definedIn":"tokens/effects.css"},{"name":"--schatten-hart-s","value":"2px 2px 0 var(--tinte)","kind":"color","definedIn":"tokens/effects.css"},{"name":"--schatten-hart-l","value":"7px 7px 0 var(--tinte)","kind":"color","definedIn":"tokens/effects.css"},{"name":"--schatten-ki","value":"4px 4px 0 var(--ki)","kind":"color","definedIn":"tokens/effects.css"},{"name":"--feder","value":"cubic-bezier(0.34, 1.56, 0.64, 1)","kind":"other","definedIn":"tokens/effects.css","annotation":"other"},{"name":"--zack","value":"cubic-bezier(0.2, 0.9, 0.3, 1)","kind":"other","definedIn":"tokens/effects.css","annotation":"other"},{"name":"--t-schnell","value":"120ms","kind":"other","definedIn":"tokens/effects.css","annotation":"other"},{"name":"--t-flott","value":"220ms","kind":"other","definedIn":"tokens/effects.css","annotation":"other"},{"name":"--t-auftritt","value":"380ms","kind":"other","definedIn":"tokens/effects.css","annotation":"other"}],"themes":[{"selector":"[data-theme=\"dunkel\"]","label":"Dunkel"}],"fonts":[],"brandFonts":[{"family":"Bricolage Grotesque","status":"ok","tokens":["--schrift-display"],"path":"tokens/typography.css"},{"family":"Schibsted Grotesk","status":"ok","tokens":["--schrift-text"],"path":"tokens/typography.css"},{"family":"Space Mono","status":"ok","tokens":["--schrift-mono"],"path":"tokens/typography.css"}],"source":"spa"}
+{
+  "namespace": "FinanzoFunkeDesignSystem_7e417e",
+  "components": [
+    {
+      "name": "Button",
+      "sourcePath": "components/actions/Button.jsx"
+    },
+    {
+      "name": "Chip",
+      "sourcePath": "components/actions/Chip.jsx"
+    },
+    {
+      "name": "Pill",
+      "sourcePath": "components/actions/Pill.jsx"
+    },
+    {
+      "name": "AiChip",
+      "sourcePath": "components/ai/AiChip.jsx"
+    },
+    {
+      "name": "BeraterLeiste",
+      "sourcePath": "components/ai/BeraterLeiste.jsx"
+    },
+    {
+      "name": "HerkunftsChip",
+      "sourcePath": "components/ai/HerkunftsChip.jsx"
+    },
+    {
+      "name": "KiWert",
+      "sourcePath": "components/ai/KiWert.jsx"
+    },
+    {
+      "name": "Balken",
+      "sourcePath": "components/feedback/Balken.jsx"
+    },
+    {
+      "name": "Banner",
+      "sourcePath": "components/feedback/Banner.jsx"
+    },
+    {
+      "name": "Ring",
+      "sourcePath": "components/feedback/Ring.jsx"
+    },
+    {
+      "name": "Sticker",
+      "sourcePath": "components/feedback/Sticker.jsx"
+    },
+    {
+      "name": "Toast",
+      "sourcePath": "components/feedback/Toast.jsx"
+    },
+    {
+      "name": "Feld",
+      "sourcePath": "components/forms/Feld.jsx"
+    },
+    {
+      "name": "Input",
+      "sourcePath": "components/forms/Input.jsx"
+    },
+    {
+      "name": "Option",
+      "sourcePath": "components/forms/Option.jsx"
+    },
+    {
+      "name": "SchalterZeile",
+      "sourcePath": "components/forms/SchalterZeile.jsx"
+    },
+    {
+      "name": "TabBar",
+      "sourcePath": "components/navigation/TabBar.jsx"
+    },
+    {
+      "name": "Sheet",
+      "sourcePath": "components/overlay/Sheet.jsx"
+    },
+    {
+      "name": "Begriff",
+      "sourcePath": "components/wissen/Begriff.jsx"
+    }
+  ],
+  "startingPoints": [],
+  "cards": [
+    {
+      "path": "ui_kits/app/abgabe.html",
+      "group": "App",
+      "viewport": "420x860",
+      "subtitle": "Der emotionale Höhepunkt: „Zack. Drüben.",
+      "name": "Abgabe-Abschluss"
+    },
+    {
+      "path": "ui_kits/app/auth.html",
+      "group": "App",
+      "viewport": "420x820",
+      "subtitle": "Google & Apple, E-Mail+Passwort, Gast-Modus — gestaffelter Auftritt",
+      "name": "Login"
+    },
+    {
+      "path": "ui_kits/app/bescheid.html",
+      "group": "App",
+      "viewport": "420x900",
+      "subtitle": "Bescheid kam: Zeile für Zeile gegen unsere Berechnung, Abweichung erklärt, Einspruch mit Frist",
+      "name": "Bescheid-Vergleich"
+    },
+    {
+      "path": "ui_kits/app/datenschutz.html",
+      "group": "App",
+      "viewport": "420x840",
+      "subtitle": "„Deine Daten. Deine Regeln.",
+      "name": "Datenschutz (DSGVO)"
+    },
+    {
+      "path": "ui_kits/app/gg-tracker.html",
+      "group": "App",
+      "viewport": "420x860",
+      "subtitle": "Nichtrückkehrtage tippen — die 60er-Grenze ist immer sichtbar, ab 55 wird's rot",
+      "name": "Grenzgänger-Tracker"
+    },
+    {
+      "path": "ui_kits/app/index.html",
+      "group": "App",
+      "viewport": "420x860",
+      "subtitle": "Cockpit · Belege · Berater · Übertragen — interaktiver Klick-Durchlauf",
+      "name": "SteuerEule App (Funke)"
+    },
+    {
+      "path": "ui_kits/app/interview.html",
+      "group": "App",
+      "viewport": "420x760",
+      "subtitle": "Eine Frage pro Screen — Antworten zeigen sofort, was drin ist",
+      "name": "Interview"
+    },
+    {
+      "path": "ui_kits/app/jahr-2025.html",
+      "group": "App",
+      "viewport": "420x880",
+      "subtitle": "Eingereicht = Rechtsdokument: Übertragen-Layout im Fakten-Modus, Belege gebündelt, Korrektur nur als Fassung 2",
+      "name": "Versiegeltes Jahr (2025)"
+    },
+    {
+      "path": "ui_kits/app/jahre.html",
+      "group": "App",
+      "viewport": "420x820",
+      "subtitle": "„Alles wie 2025?",
+      "name": "Steuerjahre & Übernahme"
+    },
+    {
+      "path": "ui_kits/app/lebenslagen.html",
+      "group": "App",
+      "viewport": "420x880",
+      "subtitle": "10 kuratierte Lebenslagen mit echten Flows — Abfindungs-Rechner (Fünftelregelung) + zumutbare-Belastung-Live-Schwelle",
+      "name": "Lebenslagen-Katalog"
+    },
+    {
+      "path": "ui_kits/app/onboarding.html",
+      "group": "App",
+      "viewport": "420x760",
+      "subtitle": "Marke zeichnet sich selbst → Name, Steuer-ID, Steuernummer → Maske vorgefüllt",
+      "name": "Splash & Onboarding"
+    },
+    {
+      "path": "ui_kits/app/paywall.html",
+      "group": "App",
+      "viewport": "420x820",
+      "subtitle": "Nicht verlinkt — 1.0 ist komplett kostenlos (Beta, ADR-017); Kauf-Flow kommt mit der ELSTER-Abgabe",
+      "name": "Paywall (2.0-Konzept)"
+    },
+    {
+      "path": "ui_kits/app/registrierung.html",
+      "group": "App",
+      "viewport": "420x680",
+      "subtitle": "Konto anlegen → Code-Verifizierung (Demo 123456) → Onboarding",
+      "name": "Registrierung"
+    },
+    {
+      "path": "ui_kits/app/scan.html",
+      "group": "App",
+      "viewport": "420x760",
+      "subtitle": "Kamera-Mock → Extraktion → KI-Vorschlag mit „weil …",
+      "name": "Beleg-Scan"
+    },
+    {
+      "path": "ui_kits/app/splash.html",
+      "group": "App",
+      "viewport": "420x760",
+      "subtitle": "Beim Öffnen mit Session: Marke zeichnet sich, grüßt namentlich, geht selbst weiter",
+      "name": "Splash (App-Start)"
+    },
+    {
+      "path": "ui_kits/app/statistik.html",
+      "group": "App",
+      "viewport": "420x1080",
+      "subtitle": "Alle Jahre + Kosten-Bilanz (zu-/abgenommen) — feste Slots, skaliert ohne Endlos-Listen",
+      "name": "Statistik"
+    },
+    {
+      "path": "ui_kits/app/veranlagung.html",
+      "group": "App",
+      "viewport": "420x880",
+      "subtitle": "Zusammen vs. Einzeln: beide Tarife voll gerechnet, Empfehlung mit Herkunft — Taxfix' größte Lücke",
+      "name": "Günstigerprüfung"
+    },
+    {
+      "path": "guidelines/marke-animation.html",
+      "group": "Brand",
+      "viewport": "700x210",
+      "subtitle": "Kopf poppt, die Brille setzt sich auf, die Eule blinzelt einmal — Reload zum Abspielen",
+      "name": "Marken-Animation"
+    },
+    {
+      "path": "guidelines/marke-logo.html",
+      "group": "Brand",
+      "viewport": "700x190",
+      "subtitle": "Eule mit Brille — sie prüft genau. Tinte auf Hell, Limette auf Nacht. Nie in KI-Violett.",
+      "name": "Bildmarke „Eule"
+    },
+    {
+      "path": "guidelines/marke-ton.html",
+      "group": "Brand",
+      "viewport": "700x190",
+      "subtitle": "Kurz, direkt, feiernd — ehrlich bei Geld und Recht",
+      "name": "Ton & Claim"
+    },
+    {
+      "path": "guidelines/farben-dunkel.html",
+      "group": "Colors",
+      "viewport": "700x240",
+      "subtitle": "data-theme=„dunkel",
+      "name": "Dunkles Design"
+    },
+    {
+      "path": "guidelines/farben-kern.html",
+      "group": "Colors",
+      "viewport": "700x150",
+      "subtitle": "Grund, Karte, Tinte, Funke-Limette",
+      "name": "Kernfarben"
+    },
+    {
+      "path": "guidelines/farben-ki.html",
+      "group": "Colors",
+      "viewport": "700x170",
+      "subtitle": "Eine Farbe = KI. Violett ist nie Deko, nie Semantik.",
+      "name": "KI-Violett (exklusiv)"
+    },
+    {
+      "path": "guidelines/farben-limette.html",
+      "group": "Colors",
+      "viewport": "700x150",
+      "subtitle": "Die Marken-Energie in vier Stufen",
+      "name": "Limette-Familie"
+    },
+    {
+      "path": "guidelines/farben-nacht.html",
+      "group": "Colors",
+      "viewport": "700x170",
+      "subtitle": "Erstattungs-Karte & Kamera — Limette leuchtet auf Tinte",
+      "name": "Nacht (dunkler Held)"
+    },
+    {
+      "path": "guidelines/farben-semantik.html",
+      "group": "Colors",
+      "viewport": "700x150",
+      "subtitle": "ok / warn / fehler — deutlich getrennt vom KI-Violett",
+      "name": "Semantik"
+    },
+    {
+      "path": "guidelines/ki-kennzeichnung.html",
+      "group": "Colors",
+      "viewport": "700x330",
+      "subtitle": "Der Mehrwert bleibt sichtbar: KI spricht · KI schlägt vor · KI hat befüllt",
+      "name": "KI-Kennzeichnung (3 Stufen)"
+    },
+    {
+      "path": "components/actions/actions.card.html",
+      "group": "Components",
+      "viewport": "700x230",
+      "subtitle": "Button (4 Varianten), Chip, Pill",
+      "name": "Actions"
+    },
+    {
+      "path": "components/ai/ai.card.html",
+      "group": "Components",
+      "viewport": "700x260",
+      "subtitle": "AiChip, BeraterLeiste, HerkunftsChip — Violett ist exklusiv KI",
+      "name": "KI (Violett-Territorium)"
+    },
+    {
+      "path": "components/feedback/feedback.card.html",
+      "group": "Components",
+      "viewport": "700x300",
+      "subtitle": "Banner, Toast, Ring, Balken, Sticker",
+      "name": "Feedback"
+    },
+    {
+      "path": "components/forms/forms.card.html",
+      "group": "Components",
+      "viewport": "700x380",
+      "subtitle": "Input, Feld, Option, SchalterZeile",
+      "name": "Forms"
+    },
+    {
+      "path": "components/navigation/navigation.card.html",
+      "group": "Components",
+      "viewport": "700x160",
+      "subtitle": "Schwebende Pillen-Navigation, Icons aus dem Quell-Repo",
+      "name": "TabBar"
+    },
+    {
+      "path": "components/overlay/overlay.card.html",
+      "group": "Components",
+      "viewport": "700x400",
+      "subtitle": "Bottom-Sheet / Modal mit federndem Auftritt",
+      "name": "Sheet"
+    },
+    {
+      "path": "components/wissen/begriff.card.html",
+      "group": "Components",
+      "viewport": "700x400",
+      "subtitle": "Nachschlagbare Begriffe: gepunktet = Wissen (Fakt), gestrichelt-violett bleibt KI — max. 1–2 pro Screen, nie automatisch",
+      "name": "Die Eule erklärt's"
+    },
+    {
+      "path": "guidelines/systemzustaende.html",
+      "group": "Components",
+      "viewport": "700x360",
+      "subtitle": "Offline, Server-Fehler, Sitzung abgelaufen, Scan fehlgeschlagen — jedes Muster mit nächstem Schritt",
+      "name": "Systemzustände"
+    },
+    {
+      "path": "guidelines/versiegelt.html",
+      "group": "Components",
+      "viewport": "700x330",
+      "subtitle": "Eingereicht = Rechtsdokument: offen vs. versiegelt — drei stille Signale statt Warnbanner",
+      "name": "Versiegelt-Muster"
+    },
+    {
+      "path": "guidelines/zustaende.html",
+      "group": "Components",
+      "viewport": "700x290",
+      "subtitle": "Leer, Laden, Fehler — jeder Zustand hat einen nächsten Schritt",
+      "name": "Zustände"
+    },
+    {
+      "path": "guidelines/zustandsmodell.html",
+      "group": "Components",
+      "viewport": "700x430",
+      "subtitle": "Posten, Fassung, Kopplung — die Lebenszyklen hinter den Screens",
+      "name": "Zustandsmodell (Datenlogik)"
+    },
+    {
+      "path": "guidelines/effekte-bewegung.html",
+      "group": "Effects",
+      "viewport": "700x180",
+      "subtitle": "Federnd & kurz: --feder für Auftritte, --zack für Micro-Transitions",
+      "name": "Bewegung"
+    },
+    {
+      "path": "guidelines/effekte-hover-druck.html",
+      "group": "Effects",
+      "viewport": "700x170",
+      "subtitle": "Hover hebt an — Druck drückt AUF den Schatten (ausprobieren!)",
+      "name": "Hover & Druck"
+    },
+    {
+      "path": "guidelines/effekte-schatten.html",
+      "group": "Effects",
+      "viewport": "700x180",
+      "subtitle": "Sticker-Optik: 2/4/7px Versatz, kein Blur",
+      "name": "Harte Schatten"
+    },
+    {
+      "path": "guidelines/raum-radien.html",
+      "group": "Spacing",
+      "viewport": "700x180",
+      "subtitle": "12 / 20 / 28 / Pille — Konturen 2px Tinte",
+      "name": "Radien & Konturen"
+    },
+    {
+      "path": "guidelines/raum-raster.html",
+      "group": "Spacing",
+      "viewport": "700x170",
+      "subtitle": "8pt-Raster: --s1 bis --s7",
+      "name": "Raum-Raster"
+    },
+    {
+      "path": "guidelines/typo-display.html",
+      "group": "Type",
+      "viewport": "700x200",
+      "subtitle": "Laut, eng, schwer — für Titel und Held-Zahlen",
+      "name": "Display — Bricolage Grotesque"
+    },
+    {
+      "path": "guidelines/typo-mono.html",
+      "group": "Type",
+      "viewport": "700x180",
+      "subtitle": "Space Mono für Zeilen & Regeln · Zahlen immer tabular-nums",
+      "name": "Mono & Zahlen"
+    },
+    {
+      "path": "guidelines/typo-skala.html",
+      "group": "Type",
+      "viewport": "700x260",
+      "subtitle": "12 / 14 / 16 / 18 / 24 / 32 / 44 / 60",
+      "name": "Typo-Skala"
+    },
+    {
+      "path": "guidelines/typo-text.html",
+      "group": "Type",
+      "viewport": "700x190",
+      "subtitle": "Klar und freundlich — Fließtext, Labels, Buttons",
+      "name": "Text — Schibsted Grotesk"
+    },
+    {
+      "path": "ui_kits/website/index.html",
+      "group": "Website",
+      "viewport": "1280x800",
+      "subtitle": "Hero mit animierter Marke, 3 Schritte, KI ehrlich erklärt, Preis, FAQ",
+      "name": "Landingpage"
+    }
+  ],
+  "templates": [
+    {
+      "name": "Pitch-Deck",
+      "description": "Vier Folien-Typen im Funke-Look: Titel (Nacht), Abschnitt (Limette), Inhalt (Papier), große Zahl",
+      "folder": "templates/pitch-deck",
+      "entryPath": "templates/pitch-deck/PitchDeck.dc.html",
+      "thumbnail": {
+        "path": "templates/pitch-deck/.thumbnail",
+        "kind": "captured"
+      }
+    }
+  ],
+  "hasThumbnailHtml": true,
+  "globalCssPaths": [
+    "tokens/fonts.css",
+    "tokens/colors.css",
+    "tokens/dunkel.css",
+    "tokens/typography.css",
+    "tokens/spacing.css",
+    "tokens/effects.css",
+    "tokens/base.css",
+    "components/komponenten.css",
+    "styles.css"
+  ],
+  "tokens": [
+    {
+      "name": "--grund",
+      "value": "#f4f2e9",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
+    },
+    {
+      "name": "--karte",
+      "value": "#ffffff",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
+    },
+    {
+      "name": "--tinte",
+      "value": "#191b12",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
+    },
+    {
+      "name": "--tinte-2",
+      "value": "#5f6353",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
+    },
+    {
+      "name": "--linie",
+      "value": "#191b12",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
+    },
+    {
+      "name": "--linie-weich",
+      "value": "#dedacb",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
+    },
+    {
+      "name": "--funke",
+      "value": "#c9f229",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
+    },
+    {
+      "name": "--funke-hell",
+      "value": "#e3fa8d",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
+    },
+    {
+      "name": "--funke-weich",
+      "value": "#f2fbd2",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
+    },
+    {
+      "name": "--funke-tinte",
+      "value": "#40510a",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
+    },
+    {
+      "name": "--nacht",
+      "value": "#191b12",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
+    },
+    {
+      "name": "--nacht-karte",
+      "value": "#262a1c",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
+    },
+    {
+      "name": "--nacht-text",
+      "value": "#f4f2e9",
+      "kind": "font",
+      "definedIn": "tokens/colors.css"
+    },
+    {
+      "name": "--ki",
+      "value": "#7c5cff",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
+    },
+    {
+      "name": "--ki-weich",
+      "value": "#ece6ff",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
+    },
+    {
+      "name": "--ki-linie",
+      "value": "#c7b8ff",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
+    },
+    {
+      "name": "--ki-tinte",
+      "value": "#4630b8",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
+    },
+    {
+      "name": "--ok",
+      "value": "#1f9d55",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
+    },
+    {
+      "name": "--ok-weich",
+      "value": "#def4e2",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
+    },
+    {
+      "name": "--warn",
+      "value": "#e07b00",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
+    },
+    {
+      "name": "--warn-weich",
+      "value": "#ffeecf",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
+    },
+    {
+      "name": "--fehler",
+      "value": "#e0362c",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
+    },
+    {
+      "name": "--fehler-weich",
+      "value": "#fde3de",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
+    },
+    {
+      "name": "--grund",
+      "value": "#12140c",
+      "kind": "color",
+      "definedIn": "tokens/dunkel.css",
+      "scope": "[data-theme=\"dunkel\"]"
+    },
+    {
+      "name": "--karte",
+      "value": "#1d2013",
+      "kind": "color",
+      "definedIn": "tokens/dunkel.css",
+      "scope": "[data-theme=\"dunkel\"]"
+    },
+    {
+      "name": "--tinte",
+      "value": "#f2f0e3",
+      "kind": "color",
+      "definedIn": "tokens/dunkel.css",
+      "scope": "[data-theme=\"dunkel\"]"
+    },
+    {
+      "name": "--tinte-2",
+      "value": "#a9ad99",
+      "kind": "color",
+      "definedIn": "tokens/dunkel.css",
+      "scope": "[data-theme=\"dunkel\"]"
+    },
+    {
+      "name": "--linie",
+      "value": "#f2f0e3",
+      "kind": "color",
+      "definedIn": "tokens/dunkel.css",
+      "scope": "[data-theme=\"dunkel\"]"
+    },
+    {
+      "name": "--linie-weich",
+      "value": "#33371f",
+      "kind": "color",
+      "definedIn": "tokens/dunkel.css",
+      "scope": "[data-theme=\"dunkel\"]"
+    },
+    {
+      "name": "--funke-weich",
+      "value": "#2b3312",
+      "kind": "color",
+      "definedIn": "tokens/dunkel.css",
+      "scope": "[data-theme=\"dunkel\"]"
+    },
+    {
+      "name": "--funke-tinte",
+      "value": "#d9f077",
+      "kind": "color",
+      "definedIn": "tokens/dunkel.css",
+      "scope": "[data-theme=\"dunkel\"]"
+    },
+    {
+      "name": "--nacht",
+      "value": "#0d0f08",
+      "kind": "color",
+      "definedIn": "tokens/dunkel.css",
+      "scope": "[data-theme=\"dunkel\"]"
+    },
+    {
+      "name": "--nacht-karte",
+      "value": "#1d2013",
+      "kind": "color",
+      "definedIn": "tokens/dunkel.css",
+      "scope": "[data-theme=\"dunkel\"]"
+    },
+    {
+      "name": "--nacht-text",
+      "value": "#f4f2e9",
+      "kind": "font",
+      "definedIn": "tokens/dunkel.css",
+      "scope": "[data-theme=\"dunkel\"]"
+    },
+    {
+      "name": "--ki-weich",
+      "value": "#251d4f",
+      "kind": "color",
+      "definedIn": "tokens/dunkel.css",
+      "scope": "[data-theme=\"dunkel\"]"
+    },
+    {
+      "name": "--ki-linie",
+      "value": "#5a48c4",
+      "kind": "color",
+      "definedIn": "tokens/dunkel.css",
+      "scope": "[data-theme=\"dunkel\"]"
+    },
+    {
+      "name": "--ki-tinte",
+      "value": "#cfc4ff",
+      "kind": "color",
+      "definedIn": "tokens/dunkel.css",
+      "scope": "[data-theme=\"dunkel\"]"
+    },
+    {
+      "name": "--ok-weich",
+      "value": "#143020",
+      "kind": "color",
+      "definedIn": "tokens/dunkel.css",
+      "scope": "[data-theme=\"dunkel\"]"
+    },
+    {
+      "name": "--warn-weich",
+      "value": "#392a10",
+      "kind": "color",
+      "definedIn": "tokens/dunkel.css",
+      "scope": "[data-theme=\"dunkel\"]"
+    },
+    {
+      "name": "--fehler-weich",
+      "value": "#3b1512",
+      "kind": "color",
+      "definedIn": "tokens/dunkel.css",
+      "scope": "[data-theme=\"dunkel\"]"
+    },
+    {
+      "name": "--schrift-display",
+      "value": "\"Bricolage Grotesque\", \"Arial Black\", sans-serif",
+      "kind": "font",
+      "definedIn": "tokens/typography.css",
+      "annotation": "font"
+    },
+    {
+      "name": "--schrift-text",
+      "value": "\"Schibsted Grotesk\", system-ui, sans-serif",
+      "kind": "font",
+      "definedIn": "tokens/typography.css",
+      "annotation": "font"
+    },
+    {
+      "name": "--schrift-mono",
+      "value": "\"Space Mono\", ui-monospace, Menlo, monospace",
+      "kind": "font",
+      "definedIn": "tokens/typography.css",
+      "annotation": "font"
+    },
+    {
+      "name": "--text-xs",
+      "value": "12px",
+      "kind": "font",
+      "definedIn": "tokens/typography.css"
+    },
+    {
+      "name": "--text-s",
+      "value": "14px",
+      "kind": "font",
+      "definedIn": "tokens/typography.css"
+    },
+    {
+      "name": "--text-m",
+      "value": "16px",
+      "kind": "font",
+      "definedIn": "tokens/typography.css"
+    },
+    {
+      "name": "--text-l",
+      "value": "18px",
+      "kind": "font",
+      "definedIn": "tokens/typography.css"
+    },
+    {
+      "name": "--text-xl",
+      "value": "24px",
+      "kind": "font",
+      "definedIn": "tokens/typography.css"
+    },
+    {
+      "name": "--text-2xl",
+      "value": "32px",
+      "kind": "font",
+      "definedIn": "tokens/typography.css"
+    },
+    {
+      "name": "--text-3xl",
+      "value": "44px",
+      "kind": "font",
+      "definedIn": "tokens/typography.css"
+    },
+    {
+      "name": "--text-held",
+      "value": "60px",
+      "kind": "font",
+      "definedIn": "tokens/typography.css"
+    },
+    {
+      "name": "--gewicht-normal",
+      "value": "450",
+      "kind": "font",
+      "definedIn": "tokens/typography.css",
+      "annotation": "font"
+    },
+    {
+      "name": "--gewicht-halb",
+      "value": "600",
+      "kind": "font",
+      "definedIn": "tokens/typography.css",
+      "annotation": "font"
+    },
+    {
+      "name": "--gewicht-fett",
+      "value": "700",
+      "kind": "font",
+      "definedIn": "tokens/typography.css",
+      "annotation": "font"
+    },
+    {
+      "name": "--gewicht-schwer",
+      "value": "800",
+      "kind": "font",
+      "definedIn": "tokens/typography.css",
+      "annotation": "font"
+    },
+    {
+      "name": "--zeile-eng",
+      "value": "1.05",
+      "kind": "font",
+      "definedIn": "tokens/typography.css",
+      "annotation": "font"
+    },
+    {
+      "name": "--zeile-normal",
+      "value": "1.45",
+      "kind": "font",
+      "definedIn": "tokens/typography.css",
+      "annotation": "font"
+    },
+    {
+      "name": "--spationierung-display",
+      "value": "-0.03em",
+      "kind": "font",
+      "definedIn": "tokens/typography.css",
+      "annotation": "font"
+    },
+    {
+      "name": "--spationierung-label",
+      "value": "0.08em",
+      "kind": "font",
+      "definedIn": "tokens/typography.css",
+      "annotation": "font"
+    },
+    {
+      "name": "--s1",
+      "value": "4px",
+      "kind": "spacing",
+      "definedIn": "tokens/spacing.css"
+    },
+    {
+      "name": "--s2",
+      "value": "8px",
+      "kind": "spacing",
+      "definedIn": "tokens/spacing.css"
+    },
+    {
+      "name": "--s3",
+      "value": "12px",
+      "kind": "spacing",
+      "definedIn": "tokens/spacing.css"
+    },
+    {
+      "name": "--s4",
+      "value": "16px",
+      "kind": "spacing",
+      "definedIn": "tokens/spacing.css"
+    },
+    {
+      "name": "--s5",
+      "value": "24px",
+      "kind": "spacing",
+      "definedIn": "tokens/spacing.css"
+    },
+    {
+      "name": "--s6",
+      "value": "32px",
+      "kind": "spacing",
+      "definedIn": "tokens/spacing.css"
+    },
+    {
+      "name": "--s7",
+      "value": "48px",
+      "kind": "spacing",
+      "definedIn": "tokens/spacing.css"
+    },
+    {
+      "name": "--radius-s",
+      "value": "12px",
+      "kind": "radius",
+      "definedIn": "tokens/spacing.css"
+    },
+    {
+      "name": "--radius",
+      "value": "20px",
+      "kind": "radius",
+      "definedIn": "tokens/spacing.css"
+    },
+    {
+      "name": "--radius-lg",
+      "value": "28px",
+      "kind": "radius",
+      "definedIn": "tokens/spacing.css"
+    },
+    {
+      "name": "--radius-pille",
+      "value": "999px",
+      "kind": "radius",
+      "definedIn": "tokens/spacing.css"
+    },
+    {
+      "name": "--kontur",
+      "value": "2px",
+      "kind": "spacing",
+      "definedIn": "tokens/spacing.css",
+      "annotation": "spacing"
+    },
+    {
+      "name": "--schatten-hart",
+      "value": "4px 4px 0 var(--tinte)",
+      "kind": "color",
+      "definedIn": "tokens/effects.css"
+    },
+    {
+      "name": "--schatten-hart-s",
+      "value": "2px 2px 0 var(--tinte)",
+      "kind": "color",
+      "definedIn": "tokens/effects.css"
+    },
+    {
+      "name": "--schatten-hart-l",
+      "value": "7px 7px 0 var(--tinte)",
+      "kind": "color",
+      "definedIn": "tokens/effects.css"
+    },
+    {
+      "name": "--schatten-ki",
+      "value": "4px 4px 0 var(--ki)",
+      "kind": "color",
+      "definedIn": "tokens/effects.css"
+    },
+    {
+      "name": "--feder",
+      "value": "cubic-bezier(0.34, 1.56, 0.64, 1)",
+      "kind": "other",
+      "definedIn": "tokens/effects.css",
+      "annotation": "other"
+    },
+    {
+      "name": "--zack",
+      "value": "cubic-bezier(0.2, 0.9, 0.3, 1)",
+      "kind": "other",
+      "definedIn": "tokens/effects.css",
+      "annotation": "other"
+    },
+    {
+      "name": "--t-schnell",
+      "value": "120ms",
+      "kind": "other",
+      "definedIn": "tokens/effects.css",
+      "annotation": "other"
+    },
+    {
+      "name": "--t-flott",
+      "value": "220ms",
+      "kind": "other",
+      "definedIn": "tokens/effects.css",
+      "annotation": "other"
+    },
+    {
+      "name": "--t-auftritt",
+      "value": "380ms",
+      "kind": "other",
+      "definedIn": "tokens/effects.css",
+      "annotation": "other"
+    },
+    {
+      "name": "--bp-s",
+      "value": "375px",
+      "kind": "breakpoint",
+      "definedIn": "tokens/breakpoints.css",
+      "annotation": "breakpoint"
+    },
+    {
+      "name": "--bp-m",
+      "value": "768px",
+      "kind": "breakpoint",
+      "definedIn": "tokens/breakpoints.css",
+      "annotation": "breakpoint"
+    },
+    {
+      "name": "--bp-l",
+      "value": "1280px",
+      "kind": "breakpoint",
+      "definedIn": "tokens/breakpoints.css",
+      "annotation": "breakpoint"
+    }
+  ],
+  "themes": [
+    {
+      "selector": "[data-theme=\"dunkel\"]",
+      "label": "Dunkel"
+    }
+  ],
+  "fonts": [],
+  "brandFonts": [
+    {
+      "family": "Bricolage Grotesque",
+      "status": "ok",
+      "tokens": [
+        "--schrift-display"
+      ],
+      "path": "tokens/typography.css"
+    },
+    {
+      "family": "Schibsted Grotesk",
+      "status": "ok",
+      "tokens": [
+        "--schrift-text"
+      ],
+      "path": "tokens/typography.css"
+    },
+    {
+      "family": "Space Mono",
+      "status": "ok",
+      "tokens": [
+        "--schrift-mono"
+      ],
+      "path": "tokens/typography.css"
+    }
+  ],
+  "source": "spa"
+}

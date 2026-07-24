@@ -63,6 +63,9 @@
   --t-schnell: 120ms;
   --t-flott: 220ms;
   --t-auftritt: 380ms;
+  --bp-s: 375px;
+  --bp-m: 768px;
+  --bp-l: 1280px;
 }
 
 [data-theme="dunkel"] {

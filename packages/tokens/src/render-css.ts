@@ -17,6 +17,7 @@ const GROUP_ORDER = [
   'tracking',
   'easing',
   'duration',
+  'breakpoint',
 ] as const
 
 function line(t: NormalToken): string {

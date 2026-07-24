@@ -14,7 +14,7 @@
 import { useState } from 'react'
 import { ScrollView, View, Text, Pressable, ActivityIndicator, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { Button, Input, Feld, Sticker, useTheme, type UiTheme } from '@steuereule/ui'
+import { Button, Input, Feld, Sticker, useTheme, useBreakpoint, type UiTheme } from '@steuereule/ui'
 import { APP_NS } from '../i18n/resources'
 import { useAuthClient } from '../auth/AuthClientProvider'
 import { authErrorKey } from '../auth/authErrors'
@@ -32,7 +32,7 @@ export function RegistrierungScreen({ onDone }: RegistrierungScreenProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const authClient = useAuthClient()
-  const styles = makeStyles(t)
+  const styles = makeStyles(t, useBreakpoint())
 
   const [mail, setMail] = useState('')
   const [pass, setPass] = useState('')
@@ -140,14 +140,14 @@ export function RegistrierungScreen({ onDone }: RegistrierungScreenProps) {
   )
 }
 
-function makeStyles(t: UiTheme) {
+function makeStyles(t: UiTheme, bp: 's' | 'm' | 'l') {
   const screen: ViewStyle = {
     backgroundColor: t.color.grund,
     paddingHorizontal: t.space.s5,
     paddingVertical: t.space.s6,
     justifyContent: 'center',
     minHeight: '100%',
-    maxWidth: 460,
+    maxWidth: bp === 's' ? 460 : 800,
     width: '100%',
     alignSelf: 'center',
   }

@@ -33,6 +33,7 @@ export type Group =
   | 'tracking'
   | 'easing'
   | 'duration'
+  | 'breakpoint'
 
 /** A single normalized token: its JS key, raw CSS value, and the CSS custom-property name. */
 export interface NormalToken {
@@ -69,6 +70,7 @@ export function classify(cssVar: string): { group: Group; key: string } {
   if (bare === 'kontur') return { group: 'space', key: 'kontur' }
   if (bare.startsWith('t-')) return { group: 'duration', key: bare.slice('t-'.length) }
   if (bare === 'feder' || bare === 'zack') return { group: 'easing', key: bare }
+  if (bare.startsWith('bp-')) return { group: 'breakpoint', key: bare.slice('bp-'.length) }
 
   // Everything else is a colour (colors.css / dunkel.css). The manifest mis-labels
   // `--nacht-text` as kind "font"; grouping by name keeps it a colour where it belongs.
@@ -87,6 +89,7 @@ const EMPTY_BASE = (): Record<Group, NormalToken[]> => ({
   tracking: [],
   easing: [],
   duration: [],
+  breakpoint: [],
 })
 
 /** Normalize the manifest into the grouped light tree + dark colour overrides. */

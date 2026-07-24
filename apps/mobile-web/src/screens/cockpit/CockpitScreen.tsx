@@ -19,7 +19,7 @@
 // (design-system CLAUDE.md).
 import { ActivityIndicator, ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { Button, Card, HerkunftsChip, Pill, useTheme, type UiTheme } from '@steuereule/ui'
+import { Button, Card, HerkunftsChip, Pill, useTheme, useBreakpoint, type UiTheme } from '@steuereule/ui'
 import { formatEuro, formatEuroRange, UNCERTAINTY_PER_ITEM } from '@steuereule/core'
 import { useCockpitControllerGetCockpitSummary, type CockpitSummaryDto } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
@@ -50,7 +50,7 @@ export function CockpitScreen({ taxYear = CURRENT_TAX_YEAR }: CockpitScreenProps
 function Appbar({ taxYear }: { readonly taxYear: number }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
-  const styles = makeStyles(t)
+  const styles = makeStyles(t, useBreakpoint())
   return (
     <View style={styles.appbar}>
       <Text style={styles.appbarTitle}>{tr('cockpit.appbarTitle')}</Text>
@@ -62,7 +62,7 @@ function Appbar({ taxYear }: { readonly taxYear: number }) {
 function CockpitLoading() {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
-  const styles = makeStyles(t)
+  const styles = makeStyles(t, useBreakpoint())
   return (
     <View style={styles.centerScreen}>
       <ActivityIndicator size="large" color={t.color.tinte} accessibilityLabel={tr('cockpit.loading')} />
@@ -78,7 +78,7 @@ interface CockpitLoadErrorProps {
 function CockpitLoadError({ onRetry }: CockpitLoadErrorProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
-  const styles = makeStyles(t)
+  const styles = makeStyles(t, useBreakpoint())
   return (
     <View style={styles.centerScreen}>
       <Text style={styles.heading} accessibilityRole="alert">
@@ -101,7 +101,7 @@ interface CockpitEmptyProps {
 function CockpitEmpty({ taxYear, onRefresh, isRefreshing }: CockpitEmptyProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
-  const styles = makeStyles(t)
+  const styles = makeStyles(t, useBreakpoint())
   return (
     <ScrollView contentContainerStyle={styles.screen}>
       <Appbar taxYear={taxYear} />
@@ -126,7 +126,7 @@ interface CockpitLoadedProps {
 function CockpitLoaded({ summary, taxYear, onRefresh, isRefreshing }: CockpitLoadedProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
-  const styles = makeStyles(t)
+  const styles = makeStyles(t, useBreakpoint())
   const { openItems } = summary
 
   return (
@@ -150,13 +150,13 @@ function CockpitLoaded({ summary, taxYear, onRefresh, isRefreshing }: CockpitLoa
   )
 }
 
-function makeStyles(t: UiTheme) {
+function makeStyles(t: UiTheme, bp: 's' | 'm' | 'l') {
   const screen: ViewStyle = {
     backgroundColor: t.color.grund,
     paddingHorizontal: t.space.s5,
     paddingVertical: t.space.s6,
     minHeight: '100%',
-    maxWidth: 460,
+    maxWidth: bp === 's' ? 460 : 800,
     width: '100%',
     alignSelf: 'center',
   }

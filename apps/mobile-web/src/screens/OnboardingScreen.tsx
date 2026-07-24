@@ -18,7 +18,7 @@ import {
   type ViewProps,
 } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { Button, Input, Feld, Chip, Pill, Sticker, Card, useTheme, type UiTheme } from '@steuereule/ui'
+import { Button, Input, Feld, Chip, Pill, Sticker, Card, useTheme, useBreakpoint, type UiTheme } from '@steuereule/ui'
 import { isValidSteuerId } from '@steuereule/core'
 import { useProfileControllerGetProfile, useProfileControllerPutProfile } from '@steuereule/api-client'
 import { APP_NS } from '../i18n/resources'
@@ -36,7 +36,7 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
   const { t: tr } = useTranslation(APP_NS)
   const profileQuery = useProfileControllerGetProfile()
   const putProfile = useProfileControllerPutProfile()
-  const styles = makeStyles(t)
+  const styles = makeStyles(t, useBreakpoint())
 
   const [profil, setProfil] = useState<OnboardingProfil | null>(null)
   const [schritt, setSchritt] = useState(0) // 0..2 = the three steps, 3 = summary
@@ -206,7 +206,7 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
 function OnboardingLoading() {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
-  const styles = makeStyles(t)
+  const styles = makeStyles(t, useBreakpoint())
   return (
     <View style={styles.centerScreen}>
       <ActivityIndicator size="large" color={t.color.tinte} accessibilityLabel={tr('onboarding.loading')} />
@@ -222,7 +222,7 @@ interface OnboardingLoadErrorProps {
 function OnboardingLoadError({ onRetry }: OnboardingLoadErrorProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
-  const styles = makeStyles(t)
+  const styles = makeStyles(t, useBreakpoint())
   return (
     <View style={styles.centerScreen}>
       <Text style={styles.heading} accessibilityRole="alert">
@@ -247,7 +247,7 @@ interface OnboardingSummaryProps {
 function OnboardingSummary({ profil, onSubmit, onEdit, isSubmitting, submitError }: OnboardingSummaryProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
-  const styles = makeStyles(t)
+  const styles = makeStyles(t, useBreakpoint())
   const rows: ReadonlyArray<readonly [string, string, boolean]> = [
     [tr('onboarding.summary.rowFirstName'), profil.vorname, false],
     [tr('onboarding.summary.rowLastName'), profil.nachname, false],
@@ -303,7 +303,7 @@ type WebProgressAria = Pick<ViewProps, never>
 
 function StepIndicator({ step, total }: StepIndicatorProps) {
   const t = useTheme()
-  const styles = makeStyles(t)
+  const styles = makeStyles(t, useBreakpoint())
   const ariaProps = {
     accessibilityValueMin: 1,
     accessibilityValueMax: total,
@@ -319,13 +319,13 @@ function StepIndicator({ step, total }: StepIndicatorProps) {
   )
 }
 
-function makeStyles(t: UiTheme) {
+function makeStyles(t: UiTheme, bp: 's' | 'm' | 'l') {
   const screen: ViewStyle = {
     backgroundColor: t.color.grund,
     paddingHorizontal: t.space.s5,
     paddingVertical: t.space.s6,
     minHeight: '100%',
-    maxWidth: 460,
+    maxWidth: bp === 's' ? 460 : 800,
     width: '100%',
     alignSelf: 'center',
   }

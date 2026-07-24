@@ -1,0 +1,10 @@
+/* ============================================================
+   Funke — Breakpoints
+   Viewport thresholds per ADR-0014 / tech-direktion.md.
+   s = phone portrait (375), m = tablet (768), l = desktop (1280).
+   ============================================================ */
+:root {
+  --bp-s: 375px;
+  --bp-m: 768px;
+  --bp-l: 1280px;
+}

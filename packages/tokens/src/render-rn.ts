@@ -118,6 +118,7 @@ export function buildRnTheme(n: NormalizedTokens) {
     tracking: stringMap(n.base.tracking),
     duration: numberMap(n.base.duration, msToNumber),
     easing: Object.fromEntries(n.base.easing.map((t) => [t.key, parseEasing(t.value)])),
+    breakpoint: numberMap(n.base.breakpoint, pxToNumber),
     light: { color: lightColors, shadow: shadowMap(n.base.shadow, lightColors) },
     dark: { color: darkColors, shadow: shadowMap(n.base.shadow, darkColors) },
   } as const
