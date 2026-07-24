@@ -1,13 +1,10 @@
 // Login (F: auth.html / Auth.jsx in Funke dress) — email+password against the real better-auth
-// client SDK, guest mode (#61). Copy via i18n (de base + en). One primary action.
+// client SDK, Google social sign-in (REQ-008), guest mode (#61). Copy via i18n (de base + en).
+// One primary action.
 //
-// Deliberate deviations from the checked-in DS reference (steuereule#72, ADR-0012 — see the PR
-// description for the full honesty writeup):
-//   - Google/Apple sign-in is dropped. The DS demo wires both buttons straight to a successful
-//     login; REQ-007/008 (social sign-in) isn't built yet, so showing them would fake success.
-//     Hidden rather than a disabled dead button — there's no DS "coming soon" treatment to draw
-//     from, and dropping them also keeps a single, unambiguous primary action.
-//   - "Passwort vergessen?" is dropped too — no DS artifact for a reset flow exists and it isn't
+// Deliberate deviations from the checked-in DS reference:
+//   - Apple sign-in remains hidden (REQ-008b, #45 — backlog-gated until iOS build exists).
+//   - "Passwort vergessen?" is dropped — no DS artifact for a reset flow exists and it isn't
 //     in REQ-005's scope; a dead Pressable doesn't ship.
 //   - A real, honest "please verify your email" banner is added after a successful sign-in to an
 //     unverified account (REQ-005) — a case neither auth.html nor Auth.jsx shows at all.
@@ -18,6 +15,7 @@ import { Button, Input, Feld, Chip, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WI
 import { APP_NS } from '../i18n/resources'
 import { useAuthClient } from '../auth/AuthClientProvider'
 import { authErrorKey } from '../auth/authErrors'
+import { GoogleG } from '../icons/GoogleG'
 
 export interface LoginScreenProps {
   readonly onDone: () => void
@@ -86,6 +84,31 @@ export function LoginScreen({ onDone, onGuest, onRegister }: LoginScreenProps) {
     }
   }
 
+  async function googleSignIn() {
+    setStage({ kind: 'submitting' })
+    try {
+      const { error } = await authClient.signIn.social({
+        provider: 'google',
+        callbackURL: '/',
+      })
+      if (error) {
+        setStage({ kind: 'form' })
+        setFehler(tr(`auth.${authErrorKey(error)}`))
+        return
+      }
+      // better-auth's social sign-in redirects the browser to Google's OAuth page.
+      // On success, Google redirects back to `/api/auth/callback/google`, which
+      // creates the session and redirects to `callbackURL`. The onDone callback is
+      // not called here — the redirect itself navigates away.
+      // If we reach this point without a redirect (e.g. popup flow), treat as success.
+      setStage({ kind: 'form' })
+      onDone()
+    } catch {
+      setStage({ kind: 'form' })
+      setFehler(tr('auth.errGeneric'))
+    }
+  }
+
   if (stage.kind === 'unverified') {
     return (
       <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} keyboardShouldPersistTaps="handled" data-testid="screen-container">
@@ -118,6 +141,18 @@ export function LoginScreen({ onDone, onGuest, onRegister }: LoginScreenProps) {
         {tr('login.greetingAfter')}
       </Text>
       <Text style={styles.subtitle}>{tr('login.subtitle')}</Text>
+
+      <View style={styles.socialButtons}>
+        <Button variante="ghost" onPress={() => void googleSignIn()} disabled={stage.kind === 'submitting'}>
+          <GoogleG /> {tr('login.google')}
+        </Button>
+      </View>
+
+      <View style={styles.dividerRow} accessibilityRole="none">
+        <View style={styles.dividerLine} />
+        <Text style={styles.dividerLabel}>{tr('login.orEmail')}</Text>
+        <View style={styles.dividerLine} />
+      </View>
 
       <Feld label={tr('login.emailLabel')}>
         <Input type="email" value={mail} onChange={setMail} placeholder={tr('login.emailPlaceholder')} />
@@ -184,6 +219,10 @@ function makeStyles(t: UiTheme) {
   }
   const heading: TextStyle = { fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size['3xl'], color: t.color.tinte, marginBottom: t.space.s2 }
   const subtitle: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.m, marginBottom: t.space.s5 }
+  const socialButtons: ViewStyle = { flexDirection: 'column', gap: t.space.s2, marginBottom: t.space.s4 }
+  const dividerRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s2, marginVertical: t.space.s4 }
+  const dividerLine: ViewStyle = { flex: 1, height: 2, backgroundColor: t.color.linieWeich, borderRadius: 1 }
+  const dividerLabel: TextStyle = { fontFamily: t.font.mono, fontSize: t.size.xs, color: t.color.tinte2 }
   const linksRow: ViewStyle = { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', paddingTop: t.space.s3 }
   const link: TextStyle = { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte }
   const guestNote: TextStyle = { fontFamily: t.font.text, fontSize: t.size.xs, color: t.color.tinte2, textAlign: 'center', marginTop: t.space.s2 }
@@ -209,6 +248,10 @@ function makeStyles(t: UiTheme) {
     wideScreen,
     heading,
     subtitle,
+    socialButtons,
+    dividerRow,
+    dividerLine,
+    dividerLabel,
     linksRow,
     link,
     guestNote,

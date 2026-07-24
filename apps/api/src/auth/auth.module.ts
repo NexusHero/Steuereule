@@ -12,7 +12,7 @@ import { PrismaModule } from '../prisma/prisma.module.js'
 import { PrismaService } from '../prisma/prisma.service.js'
 import { resolveCorsOrigins } from '../cors/resolve-cors-origins.js'
 import { BETTER_AUTH_BUNDLE } from './auth.tokens.js'
-import { createBetterAuth, resolveBetterAuthSecret, resolveBetterAuthUrl } from './better-auth.js'
+import { createBetterAuth, resolveBetterAuthSecret, resolveBetterAuthUrl, resolveGoogleClientId, resolveGoogleClientSecret } from './better-auth.js'
 import { EMAIL_SENDER, type EmailSender } from './email-sender.js'
 import { LoggingEmailSender } from './logging-email-sender.js'
 import { UserContextGuard } from './user-context.guard.js'
@@ -34,6 +34,9 @@ import { UserContextGuard } from './user-context.guard.js'
           // "who is allowed to call us cross-origin", never a second, drifting copy.
           trustedOrigins: resolveCorsOrigins(),
           emailSender,
+          // Google OAuth (REQ-008): credentials from env, dev-only fallback outside prod.
+          googleClientId: resolveGoogleClientId(),
+          googleClientSecret: resolveGoogleClientSecret(),
         }),
     },
     UserContextGuard,

@@ -15,10 +15,10 @@ export const appResources = {
         greetingMark: 'da',
         greetingAfter: ' bist.',
         subtitle: 'Dein Steuerjahr wartet — weiter, wo du aufgehört hast.',
-        // steuereule#72 (ADR-0012, REQ-007/008) — Google/Apple sign-in is out of this slice; the
-        // DS demo (auth.html) has both buttons calling straight through to onFertig, which faked
-        // a login. Rather than ship a button that lies, they're hidden until REQ-007/008 lands
-        // (no "coming soon" copy exists in the DS either, so no divider/label is invented here).
+        // REQ-008: Google sign-in is now live (matching DS auth.html's "Weiter mit Google" ghost button).
+        // Apple sign-in (#45) stays hidden until its gate opens.
+        google: 'Weiter mit Google',
+        orEmail: 'oder mit E-Mail',
         emailLabel: 'E-Mail',
         emailPlaceholder: 'du@beispiel.de',
         passwordLabel: 'Passwort',
@@ -210,7 +210,9 @@ export const appResources = {
         greetingMark: 'here',
         greetingAfter: '.',
         subtitle: 'Your tax year is waiting — pick up where you left off.',
-        // See the `de` entry above for the provenance note (steuereule#72, ADR-0012).
+        // REQ-008: Google sign-in is now live.
+        google: 'Continue with Google',
+        orEmail: 'or with email',
         emailLabel: 'Email',
         emailPlaceholder: 'you@example.com',
         passwordLabel: 'Password',

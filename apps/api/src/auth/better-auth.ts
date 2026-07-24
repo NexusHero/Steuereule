@@ -20,6 +20,14 @@ import { createGuestAccountUpgradeHook } from './guest-account-upgrade.js'
 const DEV_ONLY_FALLBACK_SECRET = 'dev-only-insecure-better-auth-secret-do-not-use-in-production'
 const DEV_ONLY_FALLBACK_URL = 'http://localhost:3000'
 
+/** Dev-only Google OAuth credentials for local testing (REQ-008).
+ *  These are NOT real Google credentials — they are placeholder values that
+ *  better-auth's `/api/auth/sign-in/social` endpoint will accept in dev/test,
+ *  enabling the Google sign-in button to appear and the flow to be exercised
+ *  with a test double. Production MUST set real values. */
+const DEV_ONLY_GOOGLE_CLIENT_ID = 'dev-only-google-client-id'
+const DEV_ONLY_GOOGLE_CLIENT_SECRET = 'dev-only-google-client-secret'
+
 /**
  * Resolves the better-auth signing/encryption secret. Production must set
  * BETTER_AUTH_SECRET explicitly — refusing to start under a guessable default is
@@ -47,6 +55,30 @@ export function resolveBetterAuthUrl(env: NodeJS.ProcessEnv = process.env): stri
   return DEV_ONLY_FALLBACK_URL
 }
 
+/** Resolves the Google OAuth client ID (REQ-008). Falls back to a dev-only placeholder
+ *  outside production; production MUST set GOOGLE_CLIENT_ID to a real value from the
+ *  Google Cloud Console. When absent in production, Google sign-in stays disabled
+ *  (better-auth's social provider is not configured). */
+export function resolveGoogleClientId(env: NodeJS.ProcessEnv = process.env): string | undefined {
+  const id = env.GOOGLE_CLIENT_ID
+  if (id && id.length > 0) return id
+  if (env.NODE_ENV === 'production') {
+    // Production refuses to fall back — Google sign-in must be explicitly configured.
+    return undefined
+  }
+  return DEV_ONLY_GOOGLE_CLIENT_ID
+}
+
+/** Resolves the Google OAuth client secret (REQ-008). Same rules as resolveGoogleClientId. */
+export function resolveGoogleClientSecret(env: NodeJS.ProcessEnv = process.env): string | undefined {
+  const secret = env.GOOGLE_CLIENT_SECRET
+  if (secret && secret.length > 0) return secret
+  if (env.NODE_ENV === 'production') {
+    return undefined
+  }
+  return DEV_ONLY_GOOGLE_CLIENT_SECRET
+}
+
 export interface CreateBetterAuthOptions {
   prisma: PrismaClient
   secret: string
@@ -55,6 +87,10 @@ export interface CreateBetterAuthOptions {
    *  truth, wired to better-auth's origin-based CSRF check via `trustedOrigins`. */
   trustedOrigins: string[]
   emailSender: EmailSender
+  /** Google OAuth client ID (REQ-008). Empty/undefined = Google sign-in disabled. */
+  googleClientId?: string | undefined
+  /** Google OAuth client secret (REQ-008). Empty/undefined = Google sign-in disabled. */
+  googleClientSecret?: string | undefined
 }
 
 export interface BetterAuthBundle {
@@ -72,7 +108,19 @@ export interface BetterAuthBundle {
  *  (to construct the real instance) and `getCookies()` (to derive the session cookie
  *  name), so the two can never see different config. */
 function buildOptions(options: CreateBetterAuthOptions): BetterAuthOptions {
-  const { prisma, secret, baseUrl, trustedOrigins, emailSender } = options
+  const { prisma, secret, baseUrl, trustedOrigins, emailSender, googleClientId, googleClientSecret } = options
+
+  // Google social provider is enabled only when both credentials are provided (REQ-008).
+  // When absent, better-auth's `/api/auth/sign-in/social` rejects `provider: 'google'`
+  // with a clear error — the frontend shows the Google button only when the env is set,
+  // but the server-side gate is the real authority.
+  const socialProviders: NonNullable<BetterAuthOptions['socialProviders']> = {}
+  if (googleClientId && googleClientSecret) {
+    socialProviders.google = {
+      clientId: googleClientId,
+      clientSecret: googleClientSecret,
+    }
+  }
 
   return {
     baseURL: baseUrl,
@@ -88,6 +136,7 @@ function buildOptions(options: CreateBetterAuthOptions): BetterAuthOptions {
       requireEmailVerification: false,
       minPasswordLength: 8,
     },
+    socialProviders,
     emailVerification: {
       sendOnSignUp: true,
       sendVerificationEmail: async ({ user, url, token }) => {

@@ -18,6 +18,19 @@ describe('authErrorKey', () => {
     expect(authErrorKey({ code: 'PASSWORD_COMPROMISED', status: 400 })).toBe('errPasswordCompromised')
   })
 
+  // REQ-008 — social sign-in error codes map to the generic error
+  it('maps PROVIDER_NOT_FOUND (social sign-in, REQ-008) to the generic key', () => {
+    expect(authErrorKey({ code: 'PROVIDER_NOT_FOUND', status: 400 })).toBe('errGeneric')
+  })
+
+  it('maps INVALID_OAUTH_STATE (social sign-in, REQ-008) to the generic key', () => {
+    expect(authErrorKey({ code: 'INVALID_OAUTH_STATE', status: 400 })).toBe('errGeneric')
+  })
+
+  it('maps ACCESS_DENIED (social sign-in user denied consent, REQ-008) to the generic key', () => {
+    expect(authErrorKey({ code: 'ACCESS_DENIED', status: 403 })).toBe('errGeneric')
+  })
+
   it('falls back to the generic honest error for an unrecognized code', () => {
     expect(authErrorKey({ code: 'SOME_FUTURE_CODE', status: 400 })).toBe('errGeneric')
   })
