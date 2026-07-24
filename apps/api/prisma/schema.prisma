@@ -171,3 +171,21 @@ model TaxYear {
 
   @@unique([userId, steuerjahr])
 }
+
+/// Minimal LegalHold seam (ADR-0013 §5, product ADR-011): records active legal holds
+/// that exempt matching rows from erasure/anonymisation during account deletion.
+/// Expand-only migration: the exempt set is currently empty (no filing model yet),
+/// but the mechanism is real and the REQ-011 acceptance test seeds a synthetic hold to
+/// exercise both the exempt and non-exempt branches.
+model LegalHold {
+  id        String   @id @default(uuid())
+  /// The user under hold — same trusted userId namespace as Profile (ADR-0007).
+  userId    String
+  /// The resource category under hold (e.g. "filing", "profile").
+  resource  String
+  /// When the hold expires. After this date, the row is no longer an active exemption
+  /// and normal deletion/anonymisation rules apply.
+  holdUntil DateTime
+
+  @@index([userId])
+}
