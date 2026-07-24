@@ -14,7 +14,7 @@
 import { useState } from 'react'
 import { ScrollView, View, Text, Pressable, ActivityIndicator, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { Button, Input, Feld, Chip, useTheme, type UiTheme } from '@steuereule/ui'
+import { Button, Input, Feld, Chip, useTheme, useBreakpoint, type UiTheme } from '@steuereule/ui'
 import { APP_NS } from '../i18n/resources'
 import { useAuthClient } from '../auth/AuthClientProvider'
 import { authErrorKey } from '../auth/authErrors'
@@ -32,6 +32,7 @@ type Stage =
 
 export function LoginScreen({ onDone, onGuest, onRegister }: LoginScreenProps) {
   const t = useTheme()
+  const bp = useBreakpoint()
   const { t: tr } = useTranslation(APP_NS)
   const authClient = useAuthClient()
   const styles = makeStyles(t)
@@ -87,7 +88,7 @@ export function LoginScreen({ onDone, onGuest, onRegister }: LoginScreenProps) {
 
   if (stage.kind === 'unverified') {
     return (
-      <ScrollView contentContainerStyle={styles.screen} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} keyboardShouldPersistTaps="handled" data-testid="screen-container">
         <Brand tr={tr} t={t} />
         <View style={styles.verifyBanner} accessibilityRole="alert">
           <Text style={styles.verifyHeading}>{tr('auth.verifyBanner.heading')}</Text>
@@ -108,7 +109,7 @@ export function LoginScreen({ onDone, onGuest, onRegister }: LoginScreenProps) {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.screen} keyboardShouldPersistTaps="handled">
+    <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} keyboardShouldPersistTaps="handled" data-testid="screen-container">
       <Brand tr={tr} t={t} />
 
       <Text style={styles.heading}>
@@ -177,6 +178,10 @@ function makeStyles(t: UiTheme) {
     width: '100%',
     alignSelf: 'center',
   }
+  const wideScreen: ViewStyle = {
+    ...screen,
+    maxWidth: 960,
+  }
   const heading: TextStyle = { fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size['3xl'], color: t.color.tinte, marginBottom: t.space.s2 }
   const subtitle: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.m, marginBottom: t.space.s5 }
   const linksRow: ViewStyle = { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', paddingTop: t.space.s3 }
@@ -201,6 +206,7 @@ function makeStyles(t: UiTheme) {
 
   return {
     screen,
+    wideScreen,
     heading,
     subtitle,
     linksRow,

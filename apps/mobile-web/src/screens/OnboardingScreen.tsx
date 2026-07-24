@@ -18,7 +18,7 @@ import {
   type ViewProps,
 } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { Button, Input, Feld, Chip, Pill, Sticker, Card, useTheme, type UiTheme } from '@steuereule/ui'
+import { Button, Input, Feld, Chip, Pill, Sticker, Card, useTheme, useBreakpoint, type UiTheme, type Breakpoint } from '@steuereule/ui'
 import { isValidSteuerId } from '@steuereule/core'
 import { useProfileControllerGetProfile, useProfileControllerPutProfile } from '@steuereule/api-client'
 import { APP_NS } from '../i18n/resources'
@@ -33,6 +33,7 @@ const STEP_COUNT = 3
 
 export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
   const t = useTheme()
+  const bp = useBreakpoint()
   const { t: tr } = useTranslation(APP_NS)
   const profileQuery = useProfileControllerGetProfile()
   const putProfile = useProfileControllerPutProfile()
@@ -51,10 +52,10 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
   }, [profileQuery.data, profil])
 
   if (profileQuery.isPending) {
-    return <OnboardingLoading />
+    return <OnboardingLoading bp={bp} />
   }
   if (profileQuery.isError || profil === null) {
-    return <OnboardingLoadError onRetry={() => void profileQuery.refetch()} />
+    return <OnboardingLoadError onRetry={() => void profileQuery.refetch()} bp={bp} />
   }
 
   const set = (key: keyof OnboardingProfil) => (value: string) =>
@@ -99,12 +100,13 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
         onEdit={() => setSchritt(0)}
         isSubmitting={putProfile.isPending}
         submitError={submitError}
+        bp={bp}
       />
     )
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.screen} keyboardShouldPersistTaps="handled">
+    <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} keyboardShouldPersistTaps="handled" data-testid="screen-container">
       <View style={styles.headerRow}>
         {schritt > 0 ? (
           <Pressable
@@ -203,12 +205,12 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
   )
 }
 
-function OnboardingLoading() {
+function OnboardingLoading({ bp }: { readonly bp: Breakpoint }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
   return (
-    <View style={styles.centerScreen}>
+    <View style={bp === 's' ? styles.centerScreen : styles.wideCenterScreen} data-testid="screen-container">
       <ActivityIndicator size="large" color={t.color.tinte} accessibilityLabel={tr('onboarding.loading')} />
       <Text style={styles.help}>{tr('onboarding.loading')}</Text>
     </View>
@@ -217,14 +219,15 @@ function OnboardingLoading() {
 
 interface OnboardingLoadErrorProps {
   readonly onRetry: () => void
+  readonly bp: Breakpoint
 }
 
-function OnboardingLoadError({ onRetry }: OnboardingLoadErrorProps) {
+function OnboardingLoadError({ onRetry, bp }: OnboardingLoadErrorProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
   return (
-    <View style={styles.centerScreen}>
+    <View style={bp === 's' ? styles.centerScreen : styles.wideCenterScreen} data-testid="screen-container">
       <Text style={styles.heading} accessibilityRole="alert">
         {tr('onboarding.loadError.heading')}
       </Text>
@@ -242,9 +245,10 @@ interface OnboardingSummaryProps {
   readonly onEdit: () => void
   readonly isSubmitting: boolean
   readonly submitError: string | null
+  readonly bp: Breakpoint
 }
 
-function OnboardingSummary({ profil, onSubmit, onEdit, isSubmitting, submitError }: OnboardingSummaryProps) {
+function OnboardingSummary({ profil, onSubmit, onEdit, isSubmitting, submitError, bp }: OnboardingSummaryProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
@@ -256,7 +260,7 @@ function OnboardingSummary({ profil, onSubmit, onEdit, isSubmitting, submitError
   ]
 
   return (
-    <ScrollView contentContainerStyle={styles.screen} keyboardShouldPersistTaps="handled">
+    <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} keyboardShouldPersistTaps="handled" data-testid="screen-container">
       <View style={styles.summaryHeadingRow}>
         <Text style={styles.summaryHeading}>{tr('onboarding.summary.heading')}</Text>
         <Sticker>{tr('onboarding.summary.badge')}</Sticker>
@@ -329,12 +333,14 @@ function makeStyles(t: UiTheme) {
     width: '100%',
     alignSelf: 'center',
   }
+  const wideScreen: ViewStyle = { ...screen, maxWidth: 960 }
   const centerScreen: ViewStyle = {
     ...screen,
     alignItems: 'center',
     justifyContent: 'center',
     gap: t.space.s3,
   }
+  const wideCenterScreen: ViewStyle = { ...centerScreen, maxWidth: 960 }
   const headerRow: ViewStyle = {
     flexDirection: 'row',
     alignItems: 'center',
@@ -419,7 +425,9 @@ function makeStyles(t: UiTheme) {
 
   return {
     screen,
+    wideScreen,
     centerScreen,
+    wideCenterScreen,
     headerRow,
     backButton,
     backArrow,
