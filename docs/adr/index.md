@@ -32,6 +32,7 @@ The ADRs **justify** the architecture; the [living arc42 document](../arc42/READ
 | 0011 | CORS: strict env-driven origin allowlist with credentialed cross-origin | Accepted |
 | 0012 | better-auth mounting, guard guest-OR-session coexistence, atomic guest→account upgrade | Accepted |
 | 0013 | DSGVO export (JSON + PDF) & account deletion: anonymise-and-retain audit, atomic teardown | Accepted |
+| 0014 | Responsive layout via Platform switch (Option C — binary web/native, no tokens) | Proposed |
 
 See also the [Tech Radar](./tech-radar.md).
 

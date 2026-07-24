@@ -10,7 +10,7 @@
 // live backend today. This component builds only the part that's genuinely ready — the
 // profile-data summary + edit round-trip — reusing OnboardingScreen's field patterns exactly.
 import { useState } from 'react'
-import { ActivityIndicator, ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
+import { ActivityIndicator, ScrollView, View, Text, Platform, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button, Card, Chip, Feld, Input, Pill, Sticker, useTheme, type UiTheme } from '@steuereule/ui'
@@ -250,12 +250,13 @@ function ProfilEdit({ draft, onChange, onSave, onCancel, isSaving, saveError }: 
 }
 
 function makeStyles(t: UiTheme) {
+  const isWide = Platform.OS === 'web'
   const screen: ViewStyle = {
     backgroundColor: t.color.grund,
     paddingHorizontal: t.space.s5,
     paddingVertical: t.space.s6,
     minHeight: '100%',
-    maxWidth: 460,
+    maxWidth: isWide ? 800 : 460,
     width: '100%',
     alignSelf: 'center',
   }

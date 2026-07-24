@@ -12,7 +12,7 @@
 // account is still unverified — a state the DS artifact doesn't depict at all. The DS reference
 // itself needs a follow-up update to stop promising a code-gate that no longer exists.
 import { useState } from 'react'
-import { ScrollView, View, Text, Pressable, ActivityIndicator, type ViewStyle, type TextStyle } from 'react-native'
+import { ScrollView, View, Text, Pressable, ActivityIndicator, Platform, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Button, Input, Feld, Sticker, useTheme, type UiTheme } from '@steuereule/ui'
 import { APP_NS } from '../i18n/resources'
@@ -141,13 +141,14 @@ export function RegistrierungScreen({ onDone }: RegistrierungScreenProps) {
 }
 
 function makeStyles(t: UiTheme) {
+  const isWide = Platform.OS === 'web'
   const screen: ViewStyle = {
     backgroundColor: t.color.grund,
     paddingHorizontal: t.space.s5,
     paddingVertical: t.space.s6,
     justifyContent: 'center',
     minHeight: '100%',
-    maxWidth: 460,
+    maxWidth: isWide ? 800 : 460,
     width: '100%',
     alignSelf: 'center',
   }

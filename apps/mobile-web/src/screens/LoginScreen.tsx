@@ -12,7 +12,7 @@
 //   - A real, honest "please verify your email" banner is added after a successful sign-in to an
 //     unverified account (REQ-005) — a case neither auth.html nor Auth.jsx shows at all.
 import { useState } from 'react'
-import { ScrollView, View, Text, Pressable, ActivityIndicator, type ViewStyle, type TextStyle } from 'react-native'
+import { ScrollView, View, Text, Pressable, ActivityIndicator, Platform, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Button, Input, Feld, Chip, useTheme, type UiTheme } from '@steuereule/ui'
 import { APP_NS } from '../i18n/resources'
@@ -167,13 +167,14 @@ function Brand({ tr, t }: BrandProps) {
 }
 
 function makeStyles(t: UiTheme) {
+  const isWide = Platform.OS === 'web'
   const screen: ViewStyle = {
     backgroundColor: t.color.grund,
     paddingHorizontal: t.space.s5,
     paddingVertical: t.space.s6,
     justifyContent: 'center',
     minHeight: '100%',
-    maxWidth: 460,
+    maxWidth: isWide ? 800 : 460,
     width: '100%',
     alignSelf: 'center',
   }

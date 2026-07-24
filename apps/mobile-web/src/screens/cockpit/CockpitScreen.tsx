@@ -17,7 +17,7 @@
 // (see steuereule#93 — revisit the CTA's target once the app widens). Copy via i18n (de + en,
 // ADR-0006). No entrance/step animation, so `prefers-reduced-motion` is honored by omission
 // (design-system CLAUDE.md).
-import { ActivityIndicator, ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
+import { ActivityIndicator, ScrollView, View, Text, Platform, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Button, Card, HerkunftsChip, Pill, useTheme, type UiTheme } from '@steuereule/ui'
 import { formatEuro, formatEuroRange, UNCERTAINTY_PER_ITEM } from '@steuereule/core'
@@ -151,12 +151,13 @@ function CockpitLoaded({ summary, taxYear, onRefresh, isRefreshing }: CockpitLoa
 }
 
 function makeStyles(t: UiTheme) {
+  const isWide = Platform.OS === 'web'
   const screen: ViewStyle = {
     backgroundColor: t.color.grund,
     paddingHorizontal: t.space.s5,
     paddingVertical: t.space.s6,
     minHeight: '100%',
-    maxWidth: 460,
+    maxWidth: isWide ? 800 : 460,
     width: '100%',
     alignSelf: 'center',
   }

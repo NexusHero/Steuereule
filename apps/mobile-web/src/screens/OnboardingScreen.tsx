@@ -13,6 +13,7 @@ import {
   View,
   Text,
   Pressable,
+  Platform,
   type ViewStyle,
   type TextStyle,
   type ViewProps,
@@ -320,12 +321,13 @@ function StepIndicator({ step, total }: StepIndicatorProps) {
 }
 
 function makeStyles(t: UiTheme) {
+  const isWide = Platform.OS === 'web'
   const screen: ViewStyle = {
     backgroundColor: t.color.grund,
     paddingHorizontal: t.space.s5,
     paddingVertical: t.space.s6,
     minHeight: '100%',
-    maxWidth: 460,
+    maxWidth: isWide ? 800 : 460,
     width: '100%',
     alignSelf: 'center',
   }
