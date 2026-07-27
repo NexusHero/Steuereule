@@ -11,6 +11,25 @@ import { server } from './src/test-msw-server'
 
 const API_BASE_URL = 'http://localhost:3000'
 
+/** Walks guest onboarding to completion — the only way into the tabbed shell. */
+async function completeOnboarding() {
+  await screen.findByPlaceholderText('Kim')
+  fireEvent.change(screen.getByPlaceholderText('Kim'), { target: { value: 'Kim' } })
+  fireEvent.change(screen.getByPlaceholderText('Yilmaz'), { target: { value: 'Yilmaz' } })
+  fireEvent.click(screen.getByText('Weiter'))
+
+  fireEvent.change(await screen.findByPlaceholderText('12 345 678 901'), { target: { value: '12345678901' } })
+  fireEvent.click(screen.getByText('Weiter'))
+
+  // Step 3 is the optional Steuernummer — skipped, which is a legitimate guest path.
+  fireEvent.click(screen.getByText('Weiter'))
+
+  // Await the summary before pressing its CTA: the CTA is a different button from the step
+  // one, and clicking before it exists is how this silently stalled on the summary.
+  await screen.findByText('Deine Maske')
+  fireEvent.click(screen.getByText('Weiter'))
+}
+
 // App.tsx constructs the better-auth client once, at module top level (correct for the real
 // app — the client's own fetch just uses the real global `fetch`). Under MSW, though, that
 // module-level construction must happen strictly after `test-setup.ts`'s `beforeAll` has
@@ -68,5 +87,48 @@ describe('App', () => {
     fireEvent.click(screen.getByLabelText('Weiter zur App'))
     fireEvent.click(screen.getByText('Erstmal als Gast umschauen'))
     await screen.findByPlaceholderText('Kim')
+  })
+  // The point of the tab bar slice: Profil (REQ-013) shipped, but Cockpit took the
+  // post-onboarding home slot, leaving Profil with no route at all in the running app. This
+  // proves a user can actually get to it — and back — through the real shell.
+  it(
+    'reaches Profil from Cockpit through the tab bar, and back again',
+    async () => {
+      const { default: App } = await import('./App')
+      render(<App />)
+      fireEvent.click(screen.getByLabelText('Weiter zur App'))
+      fireEvent.click(screen.getByText('Erstmal als Gast umschauen'))
+
+      // Guest onboarding, filled the way OnboardingScreen actually requires, to land in
+      // the tabbed shell: name -> Steuer-ID -> summary -> save.
+      await completeOnboarding()
+
+      // Cockpit is the default tab, matching the DS reference.
+      await screen.findByText('Cockpit')
+
+      fireEvent.click(screen.getByText('Profil'))
+      // ProfilScreen's own card label — Profil is genuinely rendered, not just tab state.
+      await screen.findByText('Deine Angaben')
+
+      fireEvent.click(screen.getByText('Cockpit'))
+      // Cockpit's app-bar title — we are genuinely back on the Cockpit screen.
+      await screen.findByText('Steuerjahr')
+    },
+    15_000,
+  )
+
+  it('offers only the tabs that have a screen behind them', async () => {
+    const { default: App } = await import('./App')
+    render(<App />)
+    fireEvent.click(screen.getByLabelText('Weiter zur App'))
+    fireEvent.click(screen.getByText('Erstmal als Gast umschauen'))
+    await completeOnboarding()
+    await screen.findByText('Cockpit')
+
+    // The DS reference lists five tabs; Belege, Berater and Jahr have no screen yet, so
+    // offering them would be a dead affordance (the honesty rule).
+    expect(screen.queryByText('Belege')).toBeNull()
+    expect(screen.queryByText('Berater')).toBeNull()
+    expect(screen.queryByText('Jahr')).toBeNull()
   })
 })

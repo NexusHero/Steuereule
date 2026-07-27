@@ -15,8 +15,10 @@ export { HerkunftsChip, type HerkunftsChipProps, type Herkunft } from './compone
 export { Input, type InputProps, type InputType } from './components/Input'
 export { Feld, type FeldProps } from './components/Feld'
 export { Chip, type ChipProps, type ChipVariant } from './components/Chip'
+export { TabBar, TAB_ICON_PATHS, type TabBarProps, type TabItem } from './components/TabBar'
 
 export { Gallery } from './gallery/Gallery'
 
+export { useReducedMotion } from './motion/useReducedMotion'
 export { useBreakpoint, resolveBreakpoint, type Breakpoint } from './responsive/useBreakpoint'
 export { WIDE_CONTENT_MAX_WIDTH } from './responsive/contentWidth'

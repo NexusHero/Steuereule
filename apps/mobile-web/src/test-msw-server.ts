@@ -9,6 +9,7 @@ import {
   getProfileControllerGetProfileMockHandler,
   getProfileControllerPutProfileMockHandler,
   getAuthCapabilitiesControllerGetCapabilitiesMockHandler,
+  getCockpitControllerGetCockpitSummaryMockHandler,
 } from '@steuereule/api-client/msw'
 import type { ProfileResponseDto, AuthCapabilitiesDto } from '@steuereule/api-client'
 
@@ -33,4 +34,9 @@ export const server = setupServer(
   getProfileControllerGetProfileMockHandler(EMPTY_PROFILE_RESPONSE),
   getProfileControllerPutProfileMockHandler(),
   getAuthCapabilitiesControllerGetCapabilitiesMockHandler(CAPABILITIES_WITH_GOOGLE),
+  // Cockpit's honest empty state ("noch keine Angaben") — a fresh guest genuinely has no
+  // tax year yet, so this is what the real API returns. Present by default so shell-level
+  // tests that merely pass through Cockpit don't each have to stub it; CockpitScreen's own
+  // suite overrides it with real figures where the numbers are the point.
+  getCockpitControllerGetCockpitSummaryMockHandler(null),
 )
