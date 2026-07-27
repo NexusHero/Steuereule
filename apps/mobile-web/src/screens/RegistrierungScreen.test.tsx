@@ -42,15 +42,26 @@ describe('RegistrierungScreen', () => {
     expect(screen.getByText('Create account')).toBeTruthy()
   })
 
-  // REQ-008 (Salih finding #1) — same honesty rule as LoginScreen: Google/Apple sign-in
-  // (REQ-008) is out of scope for this slice, so no such affordance may render here either;
-  // password reset likewise has no real flow/REQ backing it. This is a regression test, not a
-  // snapshot of current absence — it fails the moment any of these three get dead-wired back in
-  // before a real flow exists to back them.
-  it('does not render Google/Apple sign-in or a password-reset affordance (REQ-008 out of scope this slice, ADR-0012)', () => {
+  // REQ-008 — Google social sign-in is now live. The button renders on Registrierung too.
+  // Apple sign-in (#45) remains hidden (backlog-gated).
+  it('renders the Google social sign-in button (REQ-008)', () => {
     renderRegistrierung()
-    expect(screen.queryByText(/Google/)).toBeNull()
+    expect(screen.getByText('Weiter mit Google')).toBeTruthy()
+  })
+
+  it('does not render the Apple social button (REQ-008b, backlog-gated)', () => {
+    renderRegistrierung()
     expect(screen.queryByText(/Apple/)).toBeNull()
+  })
+
+  it('renders the "or with email" divider (DS auth.html)', () => {
+    renderRegistrierung()
+    expect(screen.getByText('oder mit E-Mail')).toBeTruthy()
+  })
+
+  // Honesty rule: "Passwort vergessen?" still has no real flow behind it
+  it('does not render a dead "forgot password" affordance', () => {
+    renderRegistrierung()
     expect(screen.queryByText('Passwort vergessen?')).toBeNull()
     expect(screen.queryByText('Forgot password?')).toBeNull()
   })

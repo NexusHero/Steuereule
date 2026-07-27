@@ -18,6 +18,14 @@ const CODE_TO_KEY: Record<string, string> = {
   PASSWORD_TOO_SHORT: 'errPasswordTooShort',
   // better-auth's Have I Been Pwned plugin (REQ-010) — a confirmed breach match rejects.
   PASSWORD_COMPROMISED: 'errPasswordCompromised',
+  // better-auth social sign-in (REQ-008) — the provider is not configured on the server.
+  PROVIDER_NOT_FOUND: 'errGeneric',
+  // better-auth social sign-in (REQ-008) — the OAuth state parameter is invalid/expired.
+  INVALID_OAUTH_STATE: 'errGeneric',
+  // better-auth social sign-in (REQ-008) — the OAuth code exchange failed.
+  INVALID_CODE: 'errGeneric',
+  // better-auth social sign-in (REQ-008) — the user denied consent on the provider page.
+  ACCESS_DENIED: 'errGeneric',
 }
 
 export function authErrorKey(error: AuthErrorLike | null | undefined): string {

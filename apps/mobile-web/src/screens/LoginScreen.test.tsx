@@ -49,15 +49,21 @@ describe('LoginScreen', () => {
     expect(screen.getByText('Look around as a guest')).toBeTruthy()
   })
 
-  // REQ-008 (Salih finding #1) — the DS demo's Google/Apple buttons call straight through to a
-  // successful login; REQ-008 (Google/Apple social sign-in) is out of this slice, so they must
-  // not render at all rather than ship a button that fakes success. This is a regression test,
-  // not a snapshot of current absence: it fails the moment a dead-wired (or even a real, but
-  // premature) Google/Apple affordance reappears on this screen before REQ-008 actually ships.
-  it('does not render the Google/Apple social buttons (REQ-008 out of scope this slice, ADR-0012)', () => {
+  // REQ-008 — Google social sign-in is now live. The button renders and triggers the
+  // better-auth social sign-in flow. Apple sign-in (#45) remains hidden (backlog-gated).
+  it('renders the Google social sign-in button (REQ-008, DS auth.html ghost variant)', () => {
     renderLogin()
-    expect(screen.queryByText(/Google/)).toBeNull()
+    expect(screen.getByText('Weiter mit Google')).toBeTruthy()
+  })
+
+  it('does not render the Apple social button (REQ-008b, backlog-gated until iOS build)', () => {
+    renderLogin()
     expect(screen.queryByText(/Apple/)).toBeNull()
+  })
+
+  it('renders the "or with email" divider between social and email form (DS auth.html)', () => {
+    renderLogin()
+    expect(screen.getByText('oder mit E-Mail')).toBeTruthy()
   })
 
   // Honesty item #2 (Salih finding #1) — "Passwort vergessen?" has no real flow, no REQ-ID and
@@ -235,5 +241,43 @@ describe('LoginScreen', () => {
     fireEvent.click(screen.getByText('Mail erneut senden'))
 
     await screen.findByText('Das hat gerade nicht geklappt. Versuch es gleich noch mal.')
+  })
+
+  // REQ-008 — Google social sign-in: calls better-auth's signIn.social({ provider: 'google' })
+  it('calls authClient.signIn.social with provider "google" when the Google button is pressed', async () => {
+    let socialRequestBody: unknown
+    server.use(
+      http.post(`${BASE_URL}/api/auth/sign-in/social`, async ({ request }) => {
+        socialRequestBody = await request.json()
+        // better-auth's social endpoint returns a redirect URL for the OAuth flow
+        return HttpResponse.json({ url: 'https://accounts.google.com/o/oauth2/v2/auth?...' })
+      }),
+    )
+    renderLogin()
+    fireEvent.click(screen.getByText('Weiter mit Google'))
+
+    await waitFor(() => {
+      expect(socialRequestBody).toMatchObject({ provider: 'google' })
+    })
+  })
+
+  it('shows an honest error when Google social sign-in fails (server error)', async () => {
+    server.use(
+      http.post(`${BASE_URL}/api/auth/sign-in/social`, () =>
+        HttpResponse.json({ code: 'INVALID_OAUTH_STATE', message: 'Invalid state' }, { status: 400 }),
+      ),
+    )
+    renderLogin()
+    fireEvent.click(screen.getByText('Weiter mit Google'))
+
+    await screen.findByText('Das hat gerade nicht geklappt. Prüf die Verbindung und versuch es noch mal.')
+  })
+
+  it('shows an honest error when Google social sign-in fails (network failure)', async () => {
+    server.use(http.post(`${BASE_URL}/api/auth/sign-in/social`, () => HttpResponse.error()))
+    renderLogin()
+    fireEvent.click(screen.getByText('Weiter mit Google'))
+
+    await screen.findByText('Das hat gerade nicht geklappt. Prüf die Verbindung und versuch es noch mal.')
   })
 })

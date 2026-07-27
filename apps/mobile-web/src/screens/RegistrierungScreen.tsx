@@ -18,6 +18,8 @@ import { Button, Input, Feld, Sticker, useTheme, useBreakpoint, WIDE_CONTENT_MAX
 import { APP_NS } from '../i18n/resources'
 import { useAuthClient } from '../auth/AuthClientProvider'
 import { authErrorKey } from '../auth/authErrors'
+import { useSocialSignIn } from '../auth/useSocialSignIn'
+import { GoogleG } from '../icons/GoogleG'
 
 export interface RegistrierungScreenProps {
   readonly onDone: () => void
@@ -38,6 +40,7 @@ export function RegistrierungScreen({ onDone }: RegistrierungScreenProps) {
   const [mail, setMail] = useState('')
   const [pass, setPass] = useState('')
   const [fehler, setFehler] = useState('')
+  const { signIn: socialSignIn, isSubmitting: socialSubmitting } = useSocialSignIn()
   const [stage, setStage] = useState<Stage>({ kind: 'form' })
   const [resend, setResend] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
 
@@ -77,6 +80,15 @@ export function RegistrierungScreen({ onDone }: RegistrierungScreenProps) {
     }
   }
 
+  async function googleSignIn() {
+    const fehler = await socialSignIn('google')
+    if (fehler) {
+      setFehler(fehler)
+      return
+    }
+    onDone()
+  }
+
   if (stage.kind === 'success') {
     return (
       <ScrollView contentContainerStyle={bp === 's' ? styles.successScreen : styles.wideSuccessScreen} keyboardShouldPersistTaps="handled" data-testid="screen-container">
@@ -113,6 +125,18 @@ export function RegistrierungScreen({ onDone }: RegistrierungScreenProps) {
         {tr('registrierung.titleAfter')}
       </Text>
       <Text style={styles.subtitle}>{tr('registrierung.subtitle')}</Text>
+
+      <View style={styles.socialButtons}>
+        <Button variante="ghost" onPress={() => void googleSignIn()} disabled={socialSubmitting || stage.kind === 'submitting'}>
+          <GoogleG /> {tr('login.google')}
+        </Button>
+      </View>
+
+      <View style={styles.dividerRow} accessibilityRole="none">
+        <View style={styles.dividerLine} />
+        <Text style={styles.dividerLabel}>{tr('login.orEmail')}</Text>
+        <View style={styles.dividerLine} />
+      </View>
 
       <Feld label={tr('registrierung.emailLabel')}>
         <Input type="email" value={mail} onChange={setMail} placeholder={tr('registrierung.emailPlaceholder')} />
@@ -157,6 +181,10 @@ function makeStyles(t: UiTheme) {
   const wideSuccessScreen: ViewStyle = { ...successScreen, maxWidth: WIDE_CONTENT_MAX_WIDTH }
   const heading: TextStyle = { fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size['3xl'], color: t.color.tinte, marginBottom: t.space.s2 }
   const subtitle: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.m, marginBottom: t.space.s5 }
+  const socialButtons: ViewStyle = { flexDirection: 'column', gap: t.space.s2, marginBottom: t.space.s4 }
+  const dividerRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s2, marginVertical: t.space.s4 }
+  const dividerLine: ViewStyle = { flex: 1, height: 2, backgroundColor: t.color.linieWeich, borderRadius: 1 }
+  const dividerLabel: TextStyle = { fontFamily: t.font.mono, fontSize: t.size.xs, color: t.color.tinte2 }
   const submittingRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s2 }
   const submittingLabel: TextStyle = { fontFamily: t.font.text, fontWeight: t.weight.schwer, fontSize: t.size.m, color: t.color.tinte }
   const legalNote: TextStyle = { fontFamily: t.font.text, fontSize: t.size.xs, color: t.color.tinte2, textAlign: 'center', marginTop: t.space.s3 }
@@ -186,6 +214,10 @@ function makeStyles(t: UiTheme) {
     wideSuccessScreen,
     heading,
     subtitle,
+    socialButtons,
+    dividerRow,
+    dividerLine,
+    dividerLabel,
     submittingRow,
     submittingLabel,
     legalNote,

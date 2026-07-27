@@ -1,6 +1,6 @@
 import type { PrismaClient } from '@prisma/client'
 import { describe, expect, it, vi } from 'vitest'
-import { createBetterAuth, resolveBetterAuthSecret, resolveBetterAuthUrl } from '../src/auth/better-auth.js'
+import { createBetterAuth, resolveBetterAuthSecret, resolveBetterAuthUrl, resolveGoogleClientId, resolveGoogleClientSecret } from '../src/auth/better-auth.js'
 import type { EmailSender } from '../src/auth/email-sender.js'
 
 function fakeEmailSender(): EmailSender {
@@ -63,5 +63,35 @@ describe('createBetterAuth', () => {
 
     expect(typeof auth.handler).toBe('function')
     expect(typeof auth.api.getSession).toBe('function')
+  })
+})
+
+describe('resolveGoogleClientId', () => {
+  it('returns the configured GOOGLE_CLIENT_ID when set', () => {
+    expect(resolveGoogleClientId({ GOOGLE_CLIENT_ID: 'real-client-id.apps.googleusercontent.com' })).toBe(
+      'real-client-id.apps.googleusercontent.com',
+    )
+  })
+
+  it('falls back to the dev-only placeholder outside production', () => {
+    expect(resolveGoogleClientId({ NODE_ENV: 'test' })).toMatch(/dev-only-google-client-id/)
+  })
+
+  it('returns undefined in production when not set (Google sign-in disabled)', () => {
+    expect(resolveGoogleClientId({ NODE_ENV: 'production' })).toBeUndefined()
+  })
+})
+
+describe('resolveGoogleClientSecret', () => {
+  it('returns the configured GOOGLE_CLIENT_SECRET when set', () => {
+    expect(resolveGoogleClientSecret({ GOOGLE_CLIENT_SECRET: 'GOCSPX-real-secret' })).toBe('GOCSPX-real-secret')
+  })
+
+  it('falls back to the dev-only placeholder outside production', () => {
+    expect(resolveGoogleClientSecret({ NODE_ENV: 'test' })).toMatch(/dev-only-google-client-secret/)
+  })
+
+  it('returns undefined in production when not set (Google sign-in disabled)', () => {
+    expect(resolveGoogleClientSecret({ NODE_ENV: 'production' })).toBeUndefined()
   })
 })
