@@ -437,6 +437,7 @@
     "tokens/typography.css",
     "tokens/spacing.css",
     "tokens/effects.css",
+    "tokens/breakpoints.css",
     "tokens/base.css",
     "components/komponenten.css",
     "styles.css"
@@ -959,17 +960,23 @@
     {
       "name": "--bp-s",
       "value": "375",
-      "group": "breakpoint"
+      "kind": "other",
+      "definedIn": "tokens/breakpoints.css",
+      "annotation": "other"
     },
     {
       "name": "--bp-m",
       "value": "768",
-      "group": "breakpoint"
+      "kind": "other",
+      "definedIn": "tokens/breakpoints.css",
+      "annotation": "other"
     },
     {
       "name": "--bp-l",
       "value": "1280",
-      "group": "breakpoint"
+      "kind": "other",
+      "definedIn": "tokens/breakpoints.css",
+      "annotation": "other"
     }
   ],
   "themes": [

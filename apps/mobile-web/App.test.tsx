@@ -57,6 +57,8 @@ describe('App', () => {
 
       await screen.findByPlaceholderText('Kim')
     },
+    // The suite-wide `testTimeout` in vitest.config.ts now carries this; kept explicit only
+    // because this flow is the longest one and the reason the headroom exists.
     15_000,
   )
 
