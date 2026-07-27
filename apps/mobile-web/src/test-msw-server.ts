@@ -8,8 +8,9 @@ import { setupServer } from 'msw/node'
 import {
   getProfileControllerGetProfileMockHandler,
   getProfileControllerPutProfileMockHandler,
+  getAuthCapabilitiesControllerGetCapabilitiesMockHandler,
 } from '@steuereule/api-client/msw'
-import type { ProfileResponseDto } from '@steuereule/api-client'
+import type { ProfileResponseDto, AuthCapabilitiesDto } from '@steuereule/api-client'
 
 export const EMPTY_PROFILE_RESPONSE: ProfileResponseDto = {
   firstName: null,
@@ -18,7 +19,18 @@ export const EMPTY_PROFILE_RESPONSE: ProfileResponseDto = {
   steuernummer: null,
 }
 
+/**
+ * Default capability answer (REQ-008): a deployment with Google configured, which is what
+ * the auth screens are normally exercised against. A test that wants the unconfigured
+ * deployment overrides with `CAPABILITIES_WITHOUT_SOCIAL` via `server.use(...)`. Pinned
+ * explicitly rather than left to the generated faker factory, which would return random
+ * provider names and make the gating tests meaningless.
+ */
+export const CAPABILITIES_WITH_GOOGLE: AuthCapabilitiesDto = { socialProviders: ['google'] }
+export const CAPABILITIES_WITHOUT_SOCIAL: AuthCapabilitiesDto = { socialProviders: [] }
+
 export const server = setupServer(
   getProfileControllerGetProfileMockHandler(EMPTY_PROFILE_RESPONSE),
   getProfileControllerPutProfileMockHandler(),
+  getAuthCapabilitiesControllerGetCapabilitiesMockHandler(CAPABILITIES_WITH_GOOGLE),
 )

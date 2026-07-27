@@ -26,6 +26,21 @@ export default defineConfig({
   },
   // REQ-001 (steuereule#91) — same openapi.json, filtered to the cockpit tag, into its
   // own output so the generated file names stay honest about what they contain.
+  // REQ-008 — the auth capability probe, so the login screen can ask what this deployment
+  // can actually authenticate with before it offers a social button.
+  auth: {
+    input: { target: '../../apps/api/openapi.json', filters: { tags: ['auth'] } },
+    output: {
+      target: './src/generated/auth.ts',
+      mode: 'split',
+      client: 'react-query',
+      httpClient: 'fetch',
+      mock: true,
+      override: {
+        mutator: { path: './src/http-client.ts', name: 'httpClient' },
+      },
+    },
+  },
   cockpit: {
     input: { target: '../../apps/api/openapi.json', filters: { tags: ['cockpit'] } },
     output: {

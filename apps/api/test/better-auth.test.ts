@@ -95,3 +95,33 @@ describe('resolveGoogleClientSecret', () => {
     expect(resolveGoogleClientSecret({ NODE_ENV: 'production' })).toBeUndefined()
   })
 })
+
+// REQ-008 capability probe: the login screen must know whether Google sign-in is
+// genuinely available *before* offering it, so it can stay silent instead of showing a
+// button whose every press ends in "provider not found". The bundle reports the exact
+// `socialProviders` object handed to better-auth — not a second read of the env — so the
+// probe can never claim a provider the server would reject.
+describe('createBetterAuth — enabledSocialProviders', () => {
+  const base = {
+    prisma: {} as PrismaClient,
+    secret: 'test-secret-at-least-32-characters-long!!',
+    baseUrl: 'http://localhost:3000',
+    trustedOrigins: ['http://localhost:3000'],
+    emailSender: fakeEmailSender(),
+  }
+
+  it('reports google when both credentials are provided', () => {
+    const bundle = createBetterAuth({ ...base, googleClientId: 'id', googleClientSecret: 'secret' })
+    expect(bundle.enabledSocialProviders).toEqual(['google'])
+  })
+
+  it('reports nothing when the credentials are absent — the unconfigured deployment', () => {
+    const bundle = createBetterAuth({ ...base, googleClientId: undefined, googleClientSecret: undefined })
+    expect(bundle.enabledSocialProviders).toEqual([])
+  })
+
+  it('reports nothing when only one half of the pair is set (a half-configured provider is not usable)', () => {
+    const bundle = createBetterAuth({ ...base, googleClientId: 'id', googleClientSecret: undefined })
+    expect(bundle.enabledSocialProviders).toEqual([])
+  })
+})

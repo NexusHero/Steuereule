@@ -3,7 +3,9 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@steuereule/ui'
 import { http, HttpResponse, delay } from 'msw'
-import { server } from '../test-msw-server'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { server, CAPABILITIES_WITH_GOOGLE, CAPABILITIES_WITHOUT_SOCIAL } from '../test-msw-server'
+import { getAuthCapabilitiesControllerGetCapabilitiesMockHandler } from '@steuereule/api-client/msw'
 import { createAppI18n } from '../i18n/app-i18n'
 import { createAppAuthClient } from '../auth/auth-client'
 import { AuthClientProvider } from '../auth/AuthClientProvider'
@@ -16,7 +18,9 @@ function renderLogin(
 ) {
   const i18n = createAppI18n(opts.lng ?? 'de')
   const authClient = createAppAuthClient(BASE_URL)
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
+    <QueryClientProvider client={queryClient}>
     <I18nextProvider i18n={i18n}>
       <ThemeProvider mode="light">
         <AuthClientProvider client={authClient}>
@@ -27,7 +31,8 @@ function renderLogin(
           />
         </AuthClientProvider>
       </ThemeProvider>
-    </I18nextProvider>,
+    </I18nextProvider>
+    </QueryClientProvider>,
   )
 }
 
@@ -51,9 +56,9 @@ describe('LoginScreen', () => {
 
   // REQ-008 — Google social sign-in is now live. The button renders and triggers the
   // better-auth social sign-in flow. Apple sign-in (#45) remains hidden (backlog-gated).
-  it('renders the Google social sign-in button (REQ-008, DS auth.html ghost variant)', () => {
+  it('renders the Google social sign-in button (REQ-008, DS auth.html ghost variant)', async () => {
     renderLogin()
-    expect(screen.getByText('Weiter mit Google')).toBeTruthy()
+    expect(await screen.findByText('Weiter mit Google')).toBeTruthy()
   })
 
   it('does not render the Apple social button (REQ-008b, backlog-gated until iOS build)', () => {
@@ -61,9 +66,9 @@ describe('LoginScreen', () => {
     expect(screen.queryByText(/Apple/)).toBeNull()
   })
 
-  it('renders the "or with email" divider between social and email form (DS auth.html)', () => {
+  it('renders the "or with email" divider between social and email form (DS auth.html)', async () => {
     renderLogin()
-    expect(screen.getByText('oder mit E-Mail')).toBeTruthy()
+    expect(await screen.findByText('oder mit E-Mail')).toBeTruthy()
   })
 
   // Honesty item #2 (Salih finding #1) — "Passwort vergessen?" has no real flow, no REQ-ID and
@@ -254,7 +259,7 @@ describe('LoginScreen', () => {
       }),
     )
     renderLogin()
-    fireEvent.click(screen.getByText('Weiter mit Google'))
+    fireEvent.click(await screen.findByText('Weiter mit Google'))
 
     await waitFor(() => {
       expect(socialRequestBody).toMatchObject({ provider: 'google' })
@@ -268,7 +273,7 @@ describe('LoginScreen', () => {
       ),
     )
     renderLogin()
-    fireEvent.click(screen.getByText('Weiter mit Google'))
+    fireEvent.click(await screen.findByText('Weiter mit Google'))
 
     await screen.findByText('Das hat gerade nicht geklappt. Prüf die Verbindung und versuch es noch mal.')
   })
@@ -276,8 +281,39 @@ describe('LoginScreen', () => {
   it('shows an honest error when Google social sign-in fails (network failure)', async () => {
     server.use(http.post(`${BASE_URL}/api/auth/sign-in/social`, () => HttpResponse.error()))
     renderLogin()
-    fireEvent.click(screen.getByText('Weiter mit Google'))
+    fireEvent.click(await screen.findByText('Weiter mit Google'))
 
     await screen.findByText('Das hat gerade nicht geklappt. Prüf die Verbindung und versuch es noch mal.')
   })
+
+  // REQ-008 — the honesty gate. Social credentials are server-side, so an unconfigured
+  // deployment (local dev, CI, a fresh server, staging before setup) would otherwise render
+  // a Google button whose every press ends in "provider not found". The capability probe
+  // says what this deployment can actually do, and the screen offers nothing it cannot.
+  it('does not offer Google sign-in when the deployment has no social provider configured', async () => {
+    server.use(getAuthCapabilitiesControllerGetCapabilitiesMockHandler(CAPABILITIES_WITHOUT_SOCIAL))
+    renderLogin()
+
+    // Email sign-in is unaffected — it always works, so it proves the screen rendered.
+    await screen.findByPlaceholderText('du@beispiel.de')
+    expect(screen.queryByText('Weiter mit Google')).toBeNull()
+    // With no social option above it, the divider has nothing left to divide.
+    expect(screen.queryByText('oder mit E-Mail')).toBeNull()
+  })
+
+  it('does not offer Google sign-in while the capability probe is still unanswered', async () => {
+    server.use(
+      http.get(`${BASE_URL}/v1/auth/capabilities`, async () => {
+        await delay('infinite')
+        return HttpResponse.json(CAPABILITIES_WITH_GOOGLE)
+      }),
+    )
+    renderLogin()
+
+    await screen.findByPlaceholderText('du@beispiel.de')
+    // Rendering the button first and removing it on the answer would flicker; staying
+    // silent until the deployment confirms it is the honest default.
+    expect(screen.queryByText('Weiter mit Google')).toBeNull()
+  })
+
 })

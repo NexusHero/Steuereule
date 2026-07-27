@@ -14,3 +14,8 @@ export {
   getCockpitControllerGetCockpitSummaryMockHandler,
   getSteuerEuleAPIMock as getCockpitApiMock,
 } from './generated/cockpit.msw'
+export {
+  getAuthCapabilitiesControllerGetCapabilitiesResponseMock,
+  getAuthCapabilitiesControllerGetCapabilitiesMockHandler,
+  getSteuerEuleAPIMock as getAuthApiMock,
+} from './generated/auth.msw'
