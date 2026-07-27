@@ -11,6 +11,8 @@ import { server } from './test-msw-server'
 // Raising the budget for this suite only (isolated `apps/mobile-web` runs were never
 // the problem) makes `pnpm -r test` deterministic without masking a genuinely stuck
 // query, which would still exceed even this larger budget.
+// Paired with `testTimeout` in vitest.config.ts, which must stay strictly larger than this —
+// otherwise both budgets expire at once and Vitest's vaguer timeout wins the race.
 configure({ asyncUtilTimeout: 5_000 })
 
 beforeAll(() => {
