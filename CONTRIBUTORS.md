@@ -30,10 +30,20 @@ misleading:
 | **Matthias** | Product Owner — requirements, acceptance, outward presentation | `Matthias <matthias@steuereule-crew.example>` |
 | **Musti** | Lead Developer / Architect — grilling, local review, ADRs, arc42 | `Musti <musti@steuereule-crew.example>` |
 | **Kaan** | Frontend Developer — Expo/RN-Web, the Funke design system, i18n | `Kaan <kaan@steuereule-crew.example>` |
-| **Ogün** | Frontend Developer — second FE track; strong TypeScript | `Ogün <ogun@steuereule-crew.example>` |
 | **Robin** | Backend Developer — NestJS/Fastify/Prisma, the deterministic core | `Robin <robin@steuereule-crew.example>` |
-| **Enis** | Backend Developer (full-stack) — second BE track; senior | `Enis <enis@steuereule-crew.example>` |
 | **Salih** | DevOps / Quality-Platform — the preview, the CI gates & their realism | `Salih <salih@steuereule-crew.example>` |
 
 The human orchestrator (NexusHero) sets direction, makes the strategic/stakeholder calls, and is the
 final merge gate on GitHub. The crew does the implementation, review, and testing under that direction.
+
+## Former members
+
+The crew briefly ran with a second developer on each side. Both were retired in **ADR-0015** — the
+review and test lanes, not authoring capacity, were the real bottleneck, so the extra tracks cost far
+more than they returned. Their entries stay here because **`Co-authored-by:` trailers naming them
+remain in the merged history**, and a trailer nobody can resolve is worse than no trailer at all.
+
+| Persona | Role while active | Co-author identity | Left |
+|---------|-------------------|--------------------|------|
+| **Enis** | Backend Developer (full-stack) — second BE track; senior. Authored `DELETE /v1/account` (REQ-011 BE-B) and found two real defects while building it | `Enis <enis@steuereule-crew.example>` | ADR-0015 |
+| **Ogün** | Frontend Developer — second FE track. Never dispatched a slice; the queue never drained far enough to reach him, which is part of why the seat was cut | `Ogün <ogun@steuereule-crew.example>` | ADR-0015 |

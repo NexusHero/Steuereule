@@ -33,6 +33,7 @@ The ADRs **justify** the architecture; the [living arc42 document](../arc42/READ
 | 0012 | better-auth mounting, guard guest-OR-session coexistence, atomic guest→account upgrade | Accepted |
 | 0013 | DSGVO export (JSON + PDF) & account deletion: anonymise-and-retain audit, atomic teardown | Accepted |
 | 0014 | Responsive breakpoint strategy (hybrid: tokens + structural hook + future media queries) | Accepted |
+| 0015 | Crew reduced from four developers to two (Ogün and Enis retired) | Accepted |
 
 See also the [Tech Radar](./tech-radar.md).
 

@@ -136,7 +136,7 @@ a feedback loop that keeps the automated gates converging on what the PO would a
 ## Rules that keep it fast
 
 - **Four tracks, all loaded.** Suhay and Musti own capacity together: work is split so the **four devs
-  — Kaan & Ogün (frontend), Robin & Enis (backend; Enis flexes to frontend when needed) — run in
+  — Kaan (frontend) and Robin (backend) — run in
   parallel** on non-colliding slices — no dev sits idle while others build. This is the capacity that
   keeps development *fast*: the board must stay deep enough in ready, independent slices that four
   parallel tracks never starve. Planned at a **sustainable pace** (the team gets its daily breather; no
@@ -183,9 +183,7 @@ a feedback loop that keeps the automated gates converging on what the PO would a
 | Product Owner | Matthias | Requirements & acceptance criteria, outward presentation |
 | Lead / Architect | Musti | Technical grilling, **local review**, approving record, architecture docs |
 | Frontend dev | Kaan | UI slices, tests-first, opens the PR once both gates pass |
-| Frontend dev | Ogün | UI slices (second frontend track), tests-first, opens the PR once both gates pass |
 | Backend dev | Robin | API/data slices, tests-first, opens the PR once both gates pass |
-| Backend dev (full-stack) | Enis | API/data (second backend track) + frontend when needed, tests-first, opens the PR once both gates pass |
 | DevOps / Quality-Platform | Salih | The frictionless preview, the CI gates + their **realism** (bug/complaint → permanent check), the PO↔pipeline ping-pong; a thin risk-tiered exploratory pass for new T1 surface |
 
 The role definitions live in [`.claude/agents/`](../../.claude/agents/); this document is the flow they
