@@ -8,7 +8,7 @@ doc.
 
 ## The team
 
-Eight roles, each a defined persona with a model, tools, and boundaries (source of record:
+Six roles, each a defined persona with a model, tools, and boundaries (source of record:
 [`.claude/agents/`](../../.claude/agents/)).
 
 | Role | Persona | Owns |
@@ -17,13 +17,11 @@ Eight roles, each a defined persona with a model, tools, and boundaries (source 
 | Product Owner | **Matthias** | Requirements Register & acceptance criteria, **frequent per-slice acceptance on the preview** + milestone User Report, outward presentation |
 | Lead / Architect | **Musti** | Technical grilling, **local code review**, architecture & ADRs, the living arc42, the Clean-Code bar |
 | Frontend dev | **Kaan** | UI slices (Expo/RN-Web, the Funke design system, i18n, honest states) |
-| Frontend dev | **Ogün** | UI slices — second frontend track; exceptionally strong TypeScript; asks his senior early |
 | Backend dev | **Robin** | API / data / the deterministic core (NestJS, Fastify, Prisma, EU/DSGVO) |
-| Backend dev (full-stack) | **Enis** | API / data — second backend track; senior (ex-Apple), can also take frontend slices; helps the mid-level devs |
 | DevOps / Quality-Platform | **Salih** | The frictionless preview, CI gates + their **realism** (every bug/PO complaint → permanent check), the PO↔pipeline ping-pong, test-to-requirement traceability |
 
 Suhay and Matthias consult, grill, and refine; they do not touch code. Musti reviews and architects
-but leaves the feature implementation to the four developers (Kaan, Ogün, Robin, Enis). Escalation for
+but leaves the feature implementation to the two developers (Kaan, Robin). Escalation for
 requirement questions:
 **devs → Matthias → human**; for architecture/future-shaping calls Musti **asks the stakeholder** via
 the `ask-matt` flow and records the outcome as an ADR.
@@ -34,8 +32,8 @@ Full flow with diagram: [`delivery-pipeline.md`](./delivery-pipeline.md). In sho
 **left of the pull request**:
 
 1. **Suhay** pulls a ready, grilled ticket; **Matthias** holds the requirements, **Musti** grills the
-   technical design (and writes the ADR). Suhay + Musti split the work so the **four devs (Kaan, Ogün,
-   Robin, Enis) run in parallel** across their tracks — no dev idle.
+   technical design (and writes the ADR). Suhay + Musti split the work so the **two devs (Kaan,
+   Robin) run in parallel** across their tracks — no dev idle.
 2. Devs implement **tests-first**, gate green.
 3. **Musti reviews the diff locally**, line by line, off GitHub, and iterates with the dev.
 4. **Salih tests locally** against the real seeded stack (boot proof + flows + acceptance tests).

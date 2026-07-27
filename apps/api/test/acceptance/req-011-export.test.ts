@@ -1,8 +1,8 @@
 // REQ-011 (#48) — DSGVO data export, the BE-A "export" slice of ADR-0013. Real
 // Postgres, real HTTP against the actual `buildApp()` boot (never `.inject()`), real
 // Chromium via PlaywrightPdfRenderer (ADR-0013 §7) — the full T1 round-trip, not an
-// approximation of it. Account deletion (BE-B, DELETE /v1/account) is Enis's sibling
-// slice and is intentionally out of scope here.
+// approximation of it. Account deletion (BE-B, DELETE /v1/account) is covered by the
+// sibling `req-011-export-delete.test.ts` and is intentionally out of scope here.
 //
 // Named after the acceptance criterion, not an implementation file, per this suite's
 // own convention (see req-005/006/009/010): this is the ATDD gate CI's `integration`

@@ -2,12 +2,11 @@
 // actual `buildApp()` boot (never `.inject()`), same convention as every other
 // acceptance suite (ADR-0010/ADR-0012).
 //
-// File ownership (coordinate before editing, #128/#127): Enis (BE-B, #128) owns this
-// file — the `DELETE /v1/account` describe block below. Robin's export endpoint
-// (#127, BE-A) shares the `REQ-011` tag; his cases belong in their own top-level
-// `describe('REQ-011 — export ...')` block appended to this same file (or, if that
-// ever collides awkwardly with concurrent edits, a sibling
-// `req-011-export.test.ts` — either is fine, just don't restructure this block).
+// This file covers the deletion half (BE-B, #128); the export half (BE-A, #127) lives
+// in the sibling `req-011-export.test.ts`. Both were built on parallel branches, which
+// is why they are split across two files rather than one — keep the split, it maps to
+// the two endpoints. Backend is a single track again (ADR-0015), so there is no longer
+// a second author to coordinate with before editing either file.
 import type { NestFastifyApplication } from '@nestjs/platform-fastify'
 import { PrismaClient } from '@prisma/client'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'

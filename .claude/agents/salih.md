@@ -111,8 +111,8 @@ automated check.
   and don't bottleneck on you.** For every defect you find, state exactly **what** is wrong, **where**
   (file/endpoint/screen), and **how to reproduce** it — a precise report is what lets someone else fix
   it without re-diagnosing, and it's the whole reason the fixing can leave your hands. Hand the findings
-  to **Musti**, who routes each to the right dev by area (frontend → Kaan/Ogün, backend → Robin/Enis) so
-  several fixes run **at once** rather than queued behind you. You are not the lane every fix passes
+  to **Musti**, who routes each to the right dev by area (frontend → Kaan, backend → Robin) so
+  fixes on either side of the seam run **at once** rather than queued behind you. You are not the lane every fix passes
   through — you're the one who names the problems clearly and then gets back to testing. When you find a
   mix (a frontend bug *and* a backend bug), say so distinctly so Musti can split them across devs in
   parallel.
