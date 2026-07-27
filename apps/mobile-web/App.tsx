@@ -4,18 +4,21 @@
 import { useState } from 'react'
 import { View } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
-import { I18nextProvider } from 'react-i18next'
+import { I18nextProvider, useTranslation } from 'react-i18next'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { ThemeProvider } from '@steuereule/ui'
+import { TabBar, TAB_ICON_PATHS, ThemeProvider, useTheme, type TabItem } from '@steuereule/ui'
 import { configureApiClient } from '@steuereule/api-client'
 import { createAppI18n } from './src/i18n/app-i18n'
+import { APP_NS } from './src/i18n/resources'
 import { createAppAuthClient } from './src/auth/auth-client'
 import { AuthClientProvider } from './src/auth/AuthClientProvider'
+import { TabIcon } from './src/icons/TabIcon'
 import { SplashScreen } from './src/screens/SplashScreen'
 import { LoginScreen } from './src/screens/LoginScreen'
 import { RegistrierungScreen } from './src/screens/RegistrierungScreen'
 import { OnboardingScreen } from './src/screens/OnboardingScreen'
 import { CockpitScreen } from './src/screens/cockpit/CockpitScreen'
+import { ProfilScreen } from './src/screens/ProfilScreen'
 
 const i18n = createAppI18n('de')
 const queryClient = new QueryClient()
@@ -31,21 +34,18 @@ configureApiClient({ baseUrl: apiBaseUrl })
 // client has no post-construction reconfigure hook, unlike configureApiClient).
 const authClient = createAppAuthClient(apiBaseUrl)
 
-type Stage = 'splash' | 'login' | 'register' | 'onboarding' | 'cockpit'
+/** The linear entry flow, and then `app` — the tabbed shell everything else lives in. */
+type Stage = 'splash' | 'login' | 'register' | 'onboarding' | 'app'
+
+/** Only the tabs that have a real screen behind them. Grows as screens land. */
+type Tab = 'cockpit' | 'profil'
 
 export default function App() {
-  // After onboarding, the Cockpit (REQ-001) is the app's home screen — the first slice of it
-  // (hero estimate card only, ADR-0005 walking skeleton). Widens screen by screen from here.
-  // Profil (REQ-013) landed as a temporary post-onboarding placeholder while Cockpit was still
-  // in flight (see its own commit); now that Cockpit has landed as the intended home screen, it
-  // resumes that spot. ProfilScreen itself is untouched and still fully covered by its own
-  // ProfilScreen.test.tsx — it isn't wired into this linear stage shell because the DS Cockpit
-  // reference reaches Profil via an open-item link ("Stammdaten" -> profil), and that in-app
-  // navigation is out of scope for this walking-skeleton slice (see CockpitScreen's own notes);
-  // it'll get a real route once that navigation exists. Splash always leads to Login today —
-  // there's no session-detection mechanism yet to send a returning user straight to Cockpit
-  // instead (REQ-009, pending); see SplashScreen's own notes.
+  // Splash always leads to Login today — there's no session-detection mechanism yet to send a
+  // returning user straight into the app instead (REQ-009, pending); see SplashScreen's notes.
   const [stage, setStage] = useState<Stage>('splash')
+  // Cockpit (REQ-001) is where onboarding lands, matching the DS reference's own default tab.
+  const [tab, setTab] = useState<Tab>('cockpit')
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -62,13 +62,55 @@ export default function App() {
                 />
               ) : null}
               {stage === 'register' ? <RegistrierungScreen onDone={() => setStage('onboarding')} /> : null}
-              {stage === 'onboarding' ? <OnboardingScreen onDone={() => setStage('cockpit')} /> : null}
-              {stage === 'cockpit' ? <CockpitScreen /> : null}
+              {stage === 'onboarding' ? <OnboardingScreen onDone={() => setStage('app')} /> : null}
+              {stage === 'app' ? <TabbedShell tab={tab} onTabChange={setTab} /> : null}
               <StatusBar style="dark" />
             </View>
           </AuthClientProvider>
         </ThemeProvider>
       </I18nextProvider>
     </QueryClientProvider>
+  )
+}
+
+/**
+ * The tabbed part of the app: a screen plus the design system's floating tab bar.
+ *
+ * Split out as its own component so it can read the theme and the translations — both come
+ * from providers that `App` itself mounts, and a component cannot consume context it
+ * provides in the same render.
+ *
+ * **Only tabs with a screen behind them are listed.** The DS reference carries five
+ * (cockpit, belege, berater, jahr, profil), but Belege, Berater and Jahr have not been
+ * built — offering them would be exactly the dead affordance the honesty rule forbids. Each
+ * gets its tab when its screen lands.
+ */
+function TabbedShell({ tab, onTabChange }: { readonly tab: Tab; readonly onTabChange: (tab: Tab) => void }) {
+  const t = useTheme()
+  const { t: tr } = useTranslation(APP_NS)
+
+  // The active tab's icon sits on the lime pill and needs the ink colour to stay legible;
+  // the others sit on card white. Mirrors `.fk-tab`/`.fk-tab[aria-current]` in the DS.
+  const iconColor = (id: Tab) => (id === tab ? t.color.tinte : t.color.tinte2)
+
+  const tabs: TabItem[] = [
+    {
+      id: 'cockpit',
+      label: tr('tabs.cockpit'),
+      icon: <TabIcon path={TAB_ICON_PATHS.cockpit} color={iconColor('cockpit')} />,
+    },
+    {
+      id: 'profil',
+      label: tr('tabs.profil'),
+      icon: <TabIcon path={TAB_ICON_PATHS.profil} color={iconColor('profil')} />,
+    },
+  ]
+
+  return (
+    <View style={{ flex: 1 }}>
+      {tab === 'cockpit' ? <CockpitScreen /> : null}
+      {tab === 'profil' ? <ProfilScreen /> : null}
+      <TabBar tabs={tabs} aktiv={tab} onWechsel={(id) => onTabChange(id as Tab)} />
+    </View>
   )
 }

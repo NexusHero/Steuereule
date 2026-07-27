@@ -6,6 +6,7 @@ export const appResources = {
   de: {
     [APP_NS]: {
       brand: { steuer: 'Steuer', eule: 'Eule' },
+      tabs: { cockpit: 'Cockpit', profil: 'Profil' },
       splash: {
         greeting: 'Steuern? Zack, erledigt.',
         skipLabel: 'Weiter zur App',
@@ -201,6 +202,7 @@ export const appResources = {
   en: {
     [APP_NS]: {
       brand: { steuer: 'Steuer', eule: 'Eule' },
+      tabs: { cockpit: 'Cockpit', profil: 'Profile' },
       splash: {
         greeting: 'Taxes? Sorted, just like that.',
         skipLabel: 'Continue to the app',

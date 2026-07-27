@@ -20,7 +20,7 @@ import { useTheme, type UiTheme } from '@steuereule/ui'
 import { theme as motionTokens } from '@steuereule/tokens'
 import { APP_NS } from '../i18n/resources'
 import { OwlMark } from '../marks/OwlMark'
-import { useReducedMotion } from './splash/useReducedMotion'
+import { useReducedMotion } from '@steuereule/ui'
 
 export interface SplashScreenProps {
   readonly onAdvance: () => void
