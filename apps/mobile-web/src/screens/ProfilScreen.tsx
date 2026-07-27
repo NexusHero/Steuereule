@@ -13,7 +13,7 @@ import { useState } from 'react'
 import { ActivityIndicator, ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { Button, Card, Chip, Feld, Input, Pill, Sticker, useTheme, type UiTheme } from '@steuereule/ui'
+import { Button, Card, Chip, Feld, Input, Pill, Sticker, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme, type Breakpoint } from '@steuereule/ui'
 import { isValidSteuerId } from '@steuereule/core'
 import { useProfileControllerGetProfile, useProfileControllerPutProfile } from '@steuereule/api-client'
 import { APP_NS } from '../i18n/resources'
@@ -22,6 +22,7 @@ import { toOnboardingProfil, toPutProfileDto, type OnboardingProfil } from './on
 
 export function ProfilScreen() {
   const { t: tr } = useTranslation(APP_NS)
+  const bp = useBreakpoint()
   const queryClient = useQueryClient()
   const profileQuery = useProfileControllerGetProfile()
   const putProfile = useProfileControllerPutProfile()
@@ -43,10 +44,10 @@ export function ProfilScreen() {
   const profil = profileQuery.data ? toOnboardingProfil(profileQuery.data.data) : null
 
   if (profileQuery.isPending) {
-    return <ProfilLoading />
+    return <ProfilLoading bp={bp} />
   }
   if (profileQuery.isError || profil === null) {
-    return <ProfilLoadError onRetry={() => void profileQuery.refetch()} />
+    return <ProfilLoadError onRetry={() => void profileQuery.refetch()} bp={bp} />
   }
 
   function startEdit() {
@@ -91,19 +92,20 @@ export function ProfilScreen() {
         onCancel={cancelEdit}
         isSaving={putProfile.isPending}
         saveError={saveError}
+        bp={bp}
       />
     )
   }
 
-  return <ProfilView profil={profil} onEdit={startEdit} justSaved={justSaved} />
+  return <ProfilView profil={profil} onEdit={startEdit} justSaved={justSaved} bp={bp} />
 }
 
-function ProfilLoading() {
+function ProfilLoading({ bp }: { readonly bp: Breakpoint }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
   return (
-    <View style={styles.centerScreen}>
+    <View style={bp === 's' ? styles.centerScreen : styles.wideCenterScreen} data-testid="screen-container">
       <ActivityIndicator size="large" color={t.color.tinte} accessibilityLabel={tr('profil.loading')} />
       <Text style={styles.help}>{tr('profil.loading')}</Text>
     </View>
@@ -112,14 +114,15 @@ function ProfilLoading() {
 
 interface ProfilLoadErrorProps {
   readonly onRetry: () => void
+  readonly bp: Breakpoint
 }
 
-function ProfilLoadError({ onRetry }: ProfilLoadErrorProps) {
+function ProfilLoadError({ onRetry, bp }: ProfilLoadErrorProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
   return (
-    <View style={styles.centerScreen}>
+    <View style={bp === 's' ? styles.centerScreen : styles.wideCenterScreen} data-testid="screen-container">
       <Text style={styles.heading} accessibilityRole="alert">
         {tr('profil.loadError.heading')}
       </Text>
@@ -135,9 +138,10 @@ interface ProfilViewProps {
   readonly profil: OnboardingProfil
   readonly onEdit: () => void
   readonly justSaved: boolean
+  readonly bp: Breakpoint
 }
 
-function ProfilView({ profil, onEdit, justSaved }: ProfilViewProps) {
+function ProfilView({ profil, onEdit, justSaved, bp }: ProfilViewProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
@@ -146,7 +150,7 @@ function ProfilView({ profil, onEdit, justSaved }: ProfilViewProps) {
   const initial = initialSource ? initialSource[0]?.toUpperCase() : '?'
 
   return (
-    <ScrollView contentContainerStyle={styles.screen}>
+    <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} data-testid="screen-container">
       <Text style={styles.heading}>{tr('profil.cardLabel')}</Text>
 
       <Card variant="nacht" style={styles.summaryCard}>
@@ -178,9 +182,10 @@ interface ProfilEditProps {
   readonly onCancel: () => void
   readonly isSaving: boolean
   readonly saveError: string | null
+  readonly bp: Breakpoint
 }
 
-function ProfilEdit({ draft, onChange, onSave, onCancel, isSaving, saveError }: ProfilEditProps) {
+function ProfilEdit({ draft, onChange, onSave, onCancel, isSaving, saveError, bp }: ProfilEditProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
@@ -189,7 +194,7 @@ function ProfilEdit({ draft, onChange, onSave, onCancel, isSaving, saveError }: 
   const canSave = draft.vorname.trim() !== '' && draft.nachname.trim() !== '' && steuerIdOk
 
   return (
-    <ScrollView contentContainerStyle={styles.screen} keyboardShouldPersistTaps="handled">
+    <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} keyboardShouldPersistTaps="handled" data-testid="screen-container">
       <Text style={styles.heading}>{tr('profil.editHeading')}</Text>
 
       <Feld label={tr('profil.firstNameLabel')}>
@@ -259,12 +264,14 @@ function makeStyles(t: UiTheme) {
     width: '100%',
     alignSelf: 'center',
   }
+  const wideScreen: ViewStyle = { ...screen, maxWidth: WIDE_CONTENT_MAX_WIDTH }
   const centerScreen: ViewStyle = {
     ...screen,
     alignItems: 'center',
     justifyContent: 'center',
     gap: t.space.s3,
   }
+  const wideCenterScreen: ViewStyle = { ...centerScreen, maxWidth: WIDE_CONTENT_MAX_WIDTH }
   const heading: TextStyle = {
     fontFamily: t.font.display,
     fontWeight: t.weight.schwer,
@@ -321,7 +328,9 @@ function makeStyles(t: UiTheme) {
 
   return {
     screen,
+    wideScreen,
     centerScreen,
+    wideCenterScreen,
     heading,
     help,
     cta,

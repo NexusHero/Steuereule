@@ -64,6 +64,11 @@ export const theme = {
       1
     ]
   },
+  "breakpoint": {
+    "s": 375,
+    "m": 768,
+    "l": 1280
+  },
   "light": {
     "color": {
       "grund": "#f4f2e9",

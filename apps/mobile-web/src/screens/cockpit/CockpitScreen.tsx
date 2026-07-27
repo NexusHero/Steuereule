@@ -19,7 +19,7 @@
 // (design-system CLAUDE.md).
 import { ActivityIndicator, ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { Button, Card, HerkunftsChip, Pill, useTheme, type UiTheme } from '@steuereule/ui'
+import { Button, Card, HerkunftsChip, Pill, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme, type Breakpoint } from '@steuereule/ui'
 import { formatEuro, formatEuroRange, UNCERTAINTY_PER_ITEM } from '@steuereule/core'
 import { useCockpitControllerGetCockpitSummary, type CockpitSummaryDto } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
@@ -30,21 +30,22 @@ export interface CockpitScreenProps {
 }
 
 export function CockpitScreen({ taxYear = CURRENT_TAX_YEAR }: CockpitScreenProps) {
+  const bp = useBreakpoint()
   const query = useCockpitControllerGetCockpitSummary(taxYear)
 
   if (query.isPending) {
-    return <CockpitLoading />
+    return <CockpitLoading bp={bp} />
   }
   if (query.isError || query.data.status !== 200) {
-    return <CockpitLoadError onRetry={() => void query.refetch()} />
+    return <CockpitLoadError onRetry={() => void query.refetch()} bp={bp} />
   }
   const summary = query.data.data
   const onRefresh = () => void query.refetch()
 
   if (summary === null) {
-    return <CockpitEmpty taxYear={taxYear} onRefresh={onRefresh} isRefreshing={query.isFetching} />
+    return <CockpitEmpty taxYear={taxYear} onRefresh={onRefresh} isRefreshing={query.isFetching} bp={bp} />
   }
-  return <CockpitLoaded summary={summary} taxYear={taxYear} onRefresh={onRefresh} isRefreshing={query.isFetching} />
+  return <CockpitLoaded summary={summary} taxYear={taxYear} onRefresh={onRefresh} isRefreshing={query.isFetching} bp={bp} />
 }
 
 function Appbar({ taxYear }: { readonly taxYear: number }) {
@@ -59,12 +60,12 @@ function Appbar({ taxYear }: { readonly taxYear: number }) {
   )
 }
 
-function CockpitLoading() {
+function CockpitLoading({ bp }: { readonly bp: Breakpoint }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
   return (
-    <View style={styles.centerScreen}>
+    <View style={bp === 's' ? styles.centerScreen : styles.wideCenterScreen} data-testid="screen-container">
       <ActivityIndicator size="large" color={t.color.tinte} accessibilityLabel={tr('cockpit.loading')} />
       <Text style={styles.help}>{tr('cockpit.loading')}</Text>
     </View>
@@ -73,14 +74,15 @@ function CockpitLoading() {
 
 interface CockpitLoadErrorProps {
   readonly onRetry: () => void
+  readonly bp: Breakpoint
 }
 
-function CockpitLoadError({ onRetry }: CockpitLoadErrorProps) {
+function CockpitLoadError({ onRetry, bp }: CockpitLoadErrorProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
   return (
-    <View style={styles.centerScreen}>
+    <View style={bp === 's' ? styles.centerScreen : styles.wideCenterScreen} data-testid="screen-container">
       <Text style={styles.heading} accessibilityRole="alert">
         {tr('cockpit.loadError.heading')}
       </Text>
@@ -96,14 +98,15 @@ interface CockpitEmptyProps {
   readonly taxYear: number
   readonly onRefresh: () => void
   readonly isRefreshing: boolean
+  readonly bp: Breakpoint
 }
 
-function CockpitEmpty({ taxYear, onRefresh, isRefreshing }: CockpitEmptyProps) {
+function CockpitEmpty({ taxYear, onRefresh, isRefreshing, bp }: CockpitEmptyProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
   return (
-    <ScrollView contentContainerStyle={styles.screen}>
+    <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} data-testid="screen-container">
       <Appbar taxYear={taxYear} />
       <View style={styles.emptyBlock}>
         <Text style={styles.heading}>{tr('cockpit.empty.heading')}</Text>
@@ -121,16 +124,17 @@ interface CockpitLoadedProps {
   readonly taxYear: number
   readonly onRefresh: () => void
   readonly isRefreshing: boolean
+  readonly bp: Breakpoint
 }
 
-function CockpitLoaded({ summary, taxYear, onRefresh, isRefreshing }: CockpitLoadedProps) {
+function CockpitLoaded({ summary, taxYear, onRefresh, isRefreshing, bp }: CockpitLoadedProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
   const { openItems } = summary
 
   return (
-    <ScrollView contentContainerStyle={styles.screen}>
+    <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} data-testid="screen-container">
       <Appbar taxYear={taxYear} />
       <Card variant="nacht">
         <Text style={styles.heroLabel}>{tr('cockpit.hero.label')}</Text>
@@ -160,12 +164,14 @@ function makeStyles(t: UiTheme) {
     width: '100%',
     alignSelf: 'center',
   }
+  const wideScreen: ViewStyle = { ...screen, maxWidth: WIDE_CONTENT_MAX_WIDTH }
   const centerScreen: ViewStyle = {
     ...screen,
     alignItems: 'center',
     justifyContent: 'center',
     gap: t.space.s3,
   }
+  const wideCenterScreen: ViewStyle = { ...centerScreen, maxWidth: WIDE_CONTENT_MAX_WIDTH }
   const appbar: ViewStyle = {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -222,5 +228,5 @@ function makeStyles(t: UiTheme) {
     marginBottom: t.space.s3,
   }
 
-  return { screen, centerScreen, appbar, appbarTitle, heading, help, cta, emptyBlock, heroLabel, heroValue, openItems }
+  return { screen, wideScreen, centerScreen, wideCenterScreen, appbar, appbarTitle, heading, help, cta, emptyBlock, heroLabel, heroValue, openItems }
 }

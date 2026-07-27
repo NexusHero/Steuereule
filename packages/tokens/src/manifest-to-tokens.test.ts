@@ -31,6 +31,9 @@ describe('classify', () => {
     ['--kontur', 'space', 'kontur'],
     ['--t-schnell', 'duration', 'schnell'],
     ['--feder', 'easing', 'feder'],
+    ['--bp-s', 'breakpoint', 's'],
+    ['--bp-m', 'breakpoint', 'm'],
+    ['--bp-l', 'breakpoint', 'l'],
   ])('%s -> %s.%s', (cssVar, group, key) => {
     expect(classify(cssVar)).toStrictEqual({ group, key })
   })
