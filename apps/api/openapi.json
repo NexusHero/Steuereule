@@ -1,6 +1,27 @@
 {
   "openapi": "3.0.0",
   "paths": {
+    "/v1/auth/capabilities": {
+      "get": {
+        "operationId": "AuthCapabilitiesController_getCapabilities",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "What this deployment can authenticate with. `socialProviders` is empty when none are configured; clients must then not offer social sign-in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthCapabilitiesDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/v1/profile": {
       "get": {
         "operationId": "ProfileController_getProfile",
@@ -98,9 +119,40 @@
         ]
       }
     },
+    "/v1/account": {
+      "delete": {
+        "operationId": "AccountDeletionController_deleteAccount",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteAccountRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The account was torn down (ADR-0013). An honest summary of what was erased, anonymised-and-retained, or held under active Löschschutz.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteAccountResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "account"
+        ]
+      }
+    },
     "/v1/account/export": {
       "get": {
-        "operationId": "AccountController_exportAccount",
+        "operationId": "AccountExportController_exportAccount",
         "parameters": [
           {
             "name": "format",
@@ -152,6 +204,24 @@
   "servers": [],
   "components": {
     "schemas": {
+      "AuthCapabilitiesDto": {
+        "type": "object",
+        "properties": {
+          "socialProviders": {
+            "description": "Social providers this deployment will actually accept, e.g. [\"google\"]. Empty when none are configured — the client must then not offer social sign-in at all, rather than offering a button that always errors.",
+            "example": [
+              "google"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "socialProviders"
+        ]
+      },
       "ProfileResponseDto": {
         "type": "object",
         "properties": {
@@ -293,6 +363,71 @@
           "taxYear",
           "estimate",
           "openItems"
+        ]
+      },
+      "DeleteAccountRequestDto": {
+        "type": "object",
+        "properties": {
+          "confirm": {
+            "type": "boolean",
+            "enum": [
+              true
+            ],
+            "example": true,
+            "description": "Explicit confirmation — must be exactly `true`. The mandatory pre-delete export offer and Löschschutz warning are a frontend/UX concern; this is the server-side confirmation gate."
+          },
+          "password": {
+            "type": "string",
+            "description": "Required only when the caller’s current session is not fresh enough (ADR-0013 §6) — re-verified via better-auth’s own password check, never a second hand-rolled one."
+          }
+        },
+        "required": [
+          "confirm"
+        ]
+      },
+      "DeletedSummaryDto": {
+        "type": "object",
+        "properties": {
+          "profile": {
+            "type": "boolean",
+            "example": true,
+            "description": "False only when an active LegalHold on \"profile\" exempted the row — it still exists, retained under legal obligation."
+          },
+          "account": {
+            "type": "boolean",
+            "enum": [
+              true
+            ],
+            "example": true,
+            "description": "Always true — the account (User, cascading Session/Account) and its Verification rows are always torn down; LegalHold never exempts login/identity itself."
+          }
+        },
+        "required": [
+          "profile",
+          "account"
+        ]
+      },
+      "DeleteAccountResponseDto": {
+        "type": "object",
+        "properties": {
+          "deleted": {
+            "$ref": "#/components/schemas/DeletedSummaryDto"
+          },
+          "retainedAnonymisedAuditRows": {
+            "type": "number",
+            "example": 0,
+            "description": "Count of TaxDataAccessLog rows anonymised (userId severed to an irreversible tombstone) by this call — retained as the Art. 30 accountability record, no longer person-linkable."
+          },
+          "retainedUnderLegalHold": {
+            "type": "number",
+            "example": 0,
+            "description": "Count of rows retained untouched — neither erased nor anonymised — because an active LegalHold exempted them."
+          }
+        },
+        "required": [
+          "deleted",
+          "retainedAnonymisedAuditRows",
+          "retainedUnderLegalHold"
         ]
       },
       "ExportAccountDto": {

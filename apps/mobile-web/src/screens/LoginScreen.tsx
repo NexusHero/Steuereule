@@ -16,6 +16,7 @@ import { APP_NS } from '../i18n/resources'
 import { useAuthClient } from '../auth/AuthClientProvider'
 import { authErrorKey } from '../auth/authErrors'
 import { useSocialSignIn } from '../auth/useSocialSignIn'
+import { useSocialSignInAvailable } from '../auth/useSocialSignInAvailable'
 import { GoogleG } from '../icons/GoogleG'
 
 export interface LoginScreenProps {
@@ -40,6 +41,7 @@ export function LoginScreen({ onDone, onGuest, onRegister }: LoginScreenProps) {
   const [pass, setPass] = useState('')
   const [fehler, setFehler] = useState('')
   const { signIn: socialSignIn, isSubmitting: socialSubmitting } = useSocialSignIn()
+  const googleAvailable = useSocialSignInAvailable('google')
   const [stage, setStage] = useState<Stage>({ kind: 'form' })
   const [resend, setResend] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
 
@@ -128,17 +130,25 @@ export function LoginScreen({ onDone, onGuest, onRegister }: LoginScreenProps) {
       </Text>
       <Text style={styles.subtitle}>{tr('login.subtitle')}</Text>
 
-      <View style={styles.socialButtons}>
-        <Button variante="ghost" onPress={() => void googleSignIn()} disabled={socialSubmitting || stage.kind === 'submitting'}>
-          <GoogleG /> {tr('login.google')}
-        </Button>
-      </View>
+      {/* Only offered where the server says Google is actually configured (REQ-008) — a
+          deployment without credentials must not show a button whose every press fails.
+          The divider goes with it: with no social option above, there is nothing to
+          divide the email form from. */}
+      {googleAvailable ? (
+        <>
+          <View style={styles.socialButtons}>
+            <Button variante="ghost" onPress={() => void googleSignIn()} disabled={socialSubmitting || stage.kind === 'submitting'}>
+              <GoogleG /> {tr('login.google')}
+            </Button>
+          </View>
 
-      <View style={styles.dividerRow} accessibilityRole="none">
-        <View style={styles.dividerLine} />
-        <Text style={styles.dividerLabel}>{tr('login.orEmail')}</Text>
-        <View style={styles.dividerLine} />
-      </View>
+          <View style={styles.dividerRow} accessibilityRole="none">
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerLabel}>{tr('login.orEmail')}</Text>
+            <View style={styles.dividerLine} />
+          </View>
+        </>
+      ) : null}
 
       <Feld label={tr('login.emailLabel')}>
         <Input type="email" value={mail} onChange={setMail} placeholder={tr('login.emailPlaceholder')} />

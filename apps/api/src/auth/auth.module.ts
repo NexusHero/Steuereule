@@ -16,10 +16,12 @@ import { createBetterAuth, resolveBetterAuthSecret, resolveBetterAuthUrl, resolv
 import { EMAIL_SENDER, type EmailSender } from './email-sender.js'
 import { LoggingEmailSender } from './logging-email-sender.js'
 import { UserContextGuard } from './user-context.guard.js'
+import { AuthCapabilitiesController } from './auth-capabilities.controller.js'
 
 @Global()
 @Module({
   imports: [PrismaModule],
+  controllers: [AuthCapabilitiesController],
   providers: [
     { provide: EMAIL_SENDER, useClass: LoggingEmailSender },
     {

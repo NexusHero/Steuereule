@@ -26,6 +26,8 @@ function makeBetterAuthBundle(getSession: ReturnType<typeof vi.fn>): BetterAuthB
     // irrelevant to this unit test, so it's deliberately left out of the fake shape.
     auth: { api: { getSession } } as unknown as BetterAuthBundle['auth'],
     sessionCookieName: SESSION_COOKIE_NAME,
+    // The guard never reads this; it belongs to the capability probe (REQ-008).
+    enabledSocialProviders: [],
   }
 }
 

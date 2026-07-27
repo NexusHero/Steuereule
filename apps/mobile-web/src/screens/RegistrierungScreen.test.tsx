@@ -2,8 +2,10 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@steuereule/ui'
-import { http, HttpResponse } from 'msw'
-import { server } from '../test-msw-server'
+import { http, HttpResponse, delay } from 'msw'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { server, CAPABILITIES_WITH_GOOGLE, CAPABILITIES_WITHOUT_SOCIAL } from '../test-msw-server'
+import { getAuthCapabilitiesControllerGetCapabilitiesMockHandler } from '@steuereule/api-client/msw'
 import { createAppI18n } from '../i18n/app-i18n'
 import { createAppAuthClient } from '../auth/auth-client'
 import { AuthClientProvider } from '../auth/AuthClientProvider'
@@ -14,14 +16,17 @@ const BASE_URL = 'http://localhost:3000'
 function renderRegistrierung(opts: { lng?: 'de' | 'en'; onDone?: () => void } = {}) {
   const i18n = createAppI18n(opts.lng ?? 'de')
   const authClient = createAppAuthClient(BASE_URL)
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
+    <QueryClientProvider client={queryClient}>
     <I18nextProvider i18n={i18n}>
       <ThemeProvider mode="light">
         <AuthClientProvider client={authClient}>
           <RegistrierungScreen onDone={opts.onDone ?? (() => {})} />
         </AuthClientProvider>
       </ThemeProvider>
-    </I18nextProvider>,
+    </I18nextProvider>
+    </QueryClientProvider>,
   )
 }
 
@@ -44,9 +49,9 @@ describe('RegistrierungScreen', () => {
 
   // REQ-008 — Google social sign-in is now live. The button renders on Registrierung too.
   // Apple sign-in (#45) remains hidden (backlog-gated).
-  it('renders the Google social sign-in button (REQ-008)', () => {
+  it('renders the Google social sign-in button (REQ-008)', async () => {
     renderRegistrierung()
-    expect(screen.getByText('Weiter mit Google')).toBeTruthy()
+    expect(await screen.findByText('Weiter mit Google')).toBeTruthy()
   })
 
   it('does not render the Apple social button (REQ-008b, backlog-gated)', () => {
@@ -54,9 +59,9 @@ describe('RegistrierungScreen', () => {
     expect(screen.queryByText(/Apple/)).toBeNull()
   })
 
-  it('renders the "or with email" divider (DS auth.html)', () => {
+  it('renders the "or with email" divider (DS auth.html)', async () => {
     renderRegistrierung()
-    expect(screen.getByText('oder mit E-Mail')).toBeTruthy()
+    expect(await screen.findByText('oder mit E-Mail')).toBeTruthy()
   })
 
   // Honesty rule: "Passwort vergessen?" still has no real flow behind it
@@ -216,4 +221,35 @@ describe('RegistrierungScreen', () => {
     fireEvent.click(screen.getByText('Weiter zum Onboarding →'))
     await waitFor(() => expect(onDone).toHaveBeenCalledOnce())
   })
+
+  // REQ-008 — the honesty gate. Social credentials are server-side, so an unconfigured
+  // deployment (local dev, CI, a fresh server, staging before setup) would otherwise render
+  // a Google button whose every press ends in "provider not found". The capability probe
+  // says what this deployment can actually do, and the screen offers nothing it cannot.
+  it('does not offer Google sign-in when the deployment has no social provider configured', async () => {
+    server.use(getAuthCapabilitiesControllerGetCapabilitiesMockHandler(CAPABILITIES_WITHOUT_SOCIAL))
+    renderRegistrierung()
+
+    // Email sign-in is unaffected — it always works, so it proves the screen rendered.
+    await screen.findByPlaceholderText('du@beispiel.de')
+    expect(screen.queryByText('Weiter mit Google')).toBeNull()
+    // With no social option above it, the divider has nothing left to divide.
+    expect(screen.queryByText('oder mit E-Mail')).toBeNull()
+  })
+
+  it('does not offer Google sign-in while the capability probe is still unanswered', async () => {
+    server.use(
+      http.get(`${BASE_URL}/v1/auth/capabilities`, async () => {
+        await delay('infinite')
+        return HttpResponse.json(CAPABILITIES_WITH_GOOGLE)
+      }),
+    )
+    renderRegistrierung()
+
+    await screen.findByPlaceholderText('du@beispiel.de')
+    // Rendering the button first and removing it on the answer would flicker; staying
+    // silent until the deployment confirms it is the honest default.
+    expect(screen.queryByText('Weiter mit Google')).toBeNull()
+  })
+
 })

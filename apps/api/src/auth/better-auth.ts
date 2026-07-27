@@ -102,6 +102,13 @@ export interface BetterAuthBundle {
    * cookie fork can never drift from what better-auth itself actually sets.
    */
   sessionCookieName: string
+  /**
+   * The social providers this instance will actually accept, derived from the exact
+   * `socialProviders` object handed to better-auth rather than a second read of the
+   * environment — so the capability probe (REQ-008) can never advertise a provider the
+   * server would reject. Empty when none are configured.
+   */
+  enabledSocialProviders: readonly string[]
 }
 
 /** Builds the shared better-auth config object once — passed to both `betterAuth()`
@@ -218,5 +225,6 @@ export function createBetterAuth(options: CreateBetterAuthOptions): BetterAuthBu
   const authOptions = buildOptions(options)
   const auth = betterAuth(authOptions)
   const sessionCookieName = getCookies(authOptions).sessionToken.name
-  return { auth, sessionCookieName }
+  const enabledSocialProviders = Object.keys(authOptions.socialProviders ?? {})
+  return { auth, sessionCookieName, enabledSocialProviders }
 }
