@@ -18,6 +18,7 @@ import { Button, Input, Feld, Sticker, useTheme, useBreakpoint, WIDE_CONTENT_MAX
 import { APP_NS } from '../i18n/resources'
 import { useAuthClient } from '../auth/AuthClientProvider'
 import { authErrorKey } from '../auth/authErrors'
+import { useSocialSignIn } from '../auth/useSocialSignIn'
 import { GoogleG } from '../icons/GoogleG'
 
 export interface RegistrierungScreenProps {
@@ -39,6 +40,7 @@ export function RegistrierungScreen({ onDone }: RegistrierungScreenProps) {
   const [mail, setMail] = useState('')
   const [pass, setPass] = useState('')
   const [fehler, setFehler] = useState('')
+  const { signIn: socialSignIn, isSubmitting: socialSubmitting } = useSocialSignIn()
   const [stage, setStage] = useState<Stage>({ kind: 'form' })
   const [resend, setResend] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
 
@@ -79,23 +81,12 @@ export function RegistrierungScreen({ onDone }: RegistrierungScreenProps) {
   }
 
   async function googleSignIn() {
-    setStage({ kind: 'submitting' })
-    try {
-      const { error } = await authClient.signIn.social({
-        provider: 'google',
-        callbackURL: '/',
-      })
-      if (error) {
-        setStage({ kind: 'form' })
-        setFehler(tr(`auth.${authErrorKey(error)}`))
-        return
-      }
-      setStage({ kind: 'form' })
-      onDone()
-    } catch {
-      setStage({ kind: 'form' })
-      setFehler(tr('auth.errGeneric'))
+    const fehler = await socialSignIn('google')
+    if (fehler) {
+      setFehler(fehler)
+      return
     }
+    onDone()
   }
 
   if (stage.kind === 'success') {
@@ -136,7 +127,7 @@ export function RegistrierungScreen({ onDone }: RegistrierungScreenProps) {
       <Text style={styles.subtitle}>{tr('registrierung.subtitle')}</Text>
 
       <View style={styles.socialButtons}>
-        <Button variante="ghost" onPress={() => void googleSignIn()} disabled={stage.kind === 'submitting'}>
+        <Button variante="ghost" onPress={() => void googleSignIn()} disabled={socialSubmitting || stage.kind === 'submitting'}>
           <GoogleG /> {tr('login.google')}
         </Button>
       </View>

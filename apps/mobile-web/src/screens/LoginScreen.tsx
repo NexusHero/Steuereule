@@ -15,6 +15,7 @@ import { Button, Input, Feld, Chip, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WI
 import { APP_NS } from '../i18n/resources'
 import { useAuthClient } from '../auth/AuthClientProvider'
 import { authErrorKey } from '../auth/authErrors'
+import { useSocialSignIn } from '../auth/useSocialSignIn'
 import { GoogleG } from '../icons/GoogleG'
 
 export interface LoginScreenProps {
@@ -38,6 +39,7 @@ export function LoginScreen({ onDone, onGuest, onRegister }: LoginScreenProps) {
   const [mail, setMail] = useState('')
   const [pass, setPass] = useState('')
   const [fehler, setFehler] = useState('')
+  const { signIn: socialSignIn, isSubmitting: socialSubmitting } = useSocialSignIn()
   const [stage, setStage] = useState<Stage>({ kind: 'form' })
   const [resend, setResend] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
 
@@ -85,28 +87,12 @@ export function LoginScreen({ onDone, onGuest, onRegister }: LoginScreenProps) {
   }
 
   async function googleSignIn() {
-    setStage({ kind: 'submitting' })
-    try {
-      const { error } = await authClient.signIn.social({
-        provider: 'google',
-        callbackURL: '/',
-      })
-      if (error) {
-        setStage({ kind: 'form' })
-        setFehler(tr(`auth.${authErrorKey(error)}`))
-        return
-      }
-      // better-auth's social sign-in redirects the browser to Google's OAuth page.
-      // On success, Google redirects back to `/api/auth/callback/google`, which
-      // creates the session and redirects to `callbackURL`. The onDone callback is
-      // not called here — the redirect itself navigates away.
-      // If we reach this point without a redirect (e.g. popup flow), treat as success.
-      setStage({ kind: 'form' })
-      onDone()
-    } catch {
-      setStage({ kind: 'form' })
-      setFehler(tr('auth.errGeneric'))
+    const fehler = await socialSignIn('google')
+    if (fehler) {
+      setFehler(fehler)
+      return
     }
+    onDone()
   }
 
   if (stage.kind === 'unverified') {
@@ -143,7 +129,7 @@ export function LoginScreen({ onDone, onGuest, onRegister }: LoginScreenProps) {
       <Text style={styles.subtitle}>{tr('login.subtitle')}</Text>
 
       <View style={styles.socialButtons}>
-        <Button variante="ghost" onPress={() => void googleSignIn()} disabled={stage.kind === 'submitting'}>
+        <Button variante="ghost" onPress={() => void googleSignIn()} disabled={socialSubmitting || stage.kind === 'submitting'}>
           <GoogleG /> {tr('login.google')}
         </Button>
       </View>

@@ -111,9 +111,12 @@ function buildOptions(options: CreateBetterAuthOptions): BetterAuthOptions {
   const { prisma, secret, baseUrl, trustedOrigins, emailSender, googleClientId, googleClientSecret } = options
 
   // Google social provider is enabled only when both credentials are provided (REQ-008).
-  // When absent, better-auth's `/api/auth/sign-in/social` rejects `provider: 'google'`
-  // with a clear error — the frontend shows the Google button only when the env is set,
-  // but the server-side gate is the real authority.
+  // When absent, better-auth's `/api/auth/sign-in/social` rejects `provider: 'google'`,
+  // and the frontend surfaces that rejection as an honest error rather than a fake success.
+  // Note the frontend does NOT gate the button on this: it renders the Google option
+  // unconditionally, so a deployment that never sets GOOGLE_CLIENT_ID/SECRET shows a button
+  // whose every press ends in that error. Configure both in any environment where the
+  // button is meant to work; a capability probe that lets the UI hide it is still open.
   const socialProviders: NonNullable<BetterAuthOptions['socialProviders']> = {}
   if (googleClientId && googleClientSecret) {
     socialProviders.google = {
