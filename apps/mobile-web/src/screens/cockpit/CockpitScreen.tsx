@@ -19,7 +19,7 @@
 // (design-system CLAUDE.md).
 import { ActivityIndicator, ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { Button, Card, HerkunftsChip, Pill, useTheme, useBreakpoint, type UiTheme, type Breakpoint } from '@steuereule/ui'
+import { Button, Card, HerkunftsChip, Pill, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme, type Breakpoint } from '@steuereule/ui'
 import { formatEuro, formatEuroRange, UNCERTAINTY_PER_ITEM } from '@steuereule/core'
 import { useCockpitControllerGetCockpitSummary, type CockpitSummaryDto } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
@@ -164,14 +164,14 @@ function makeStyles(t: UiTheme) {
     width: '100%',
     alignSelf: 'center',
   }
-  const wideScreen: ViewStyle = { ...screen, maxWidth: 960 }
+  const wideScreen: ViewStyle = { ...screen, maxWidth: WIDE_CONTENT_MAX_WIDTH }
   const centerScreen: ViewStyle = {
     ...screen,
     alignItems: 'center',
     justifyContent: 'center',
     gap: t.space.s3,
   }
-  const wideCenterScreen: ViewStyle = { ...centerScreen, maxWidth: 960 }
+  const wideCenterScreen: ViewStyle = { ...centerScreen, maxWidth: WIDE_CONTENT_MAX_WIDTH }
   const appbar: ViewStyle = {
     flexDirection: 'row',
     justifyContent: 'space-between',

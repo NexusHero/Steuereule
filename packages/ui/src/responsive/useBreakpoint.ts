@@ -15,5 +15,9 @@ export { resolveBreakpoint, type Breakpoint }
  */
 export function useBreakpoint(): Breakpoint {
   const { width } = useWindowDimensions()
+  // Fail safe to the narrowest layout when the platform hands us no usable width
+  // (SSR/first paint before the window is measured): a phone layout on a wide screen
+  // is merely narrow, whereas a desktop layout on a phone is broken.
+  if (typeof width !== 'number' || !Number.isFinite(width) || width <= 0) return 's'
   return resolveBreakpoint(width)
 }

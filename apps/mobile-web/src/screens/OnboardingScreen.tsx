@@ -18,7 +18,7 @@ import {
   type ViewProps,
 } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { Button, Input, Feld, Chip, Pill, Sticker, Card, useTheme, useBreakpoint, type UiTheme, type Breakpoint } from '@steuereule/ui'
+import { Button, Input, Feld, Chip, Pill, Sticker, Card, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme, type Breakpoint } from '@steuereule/ui'
 import { isValidSteuerId } from '@steuereule/core'
 import { useProfileControllerGetProfile, useProfileControllerPutProfile } from '@steuereule/api-client'
 import { APP_NS } from '../i18n/resources'
@@ -333,14 +333,14 @@ function makeStyles(t: UiTheme) {
     width: '100%',
     alignSelf: 'center',
   }
-  const wideScreen: ViewStyle = { ...screen, maxWidth: 960 }
+  const wideScreen: ViewStyle = { ...screen, maxWidth: WIDE_CONTENT_MAX_WIDTH }
   const centerScreen: ViewStyle = {
     ...screen,
     alignItems: 'center',
     justifyContent: 'center',
     gap: t.space.s3,
   }
-  const wideCenterScreen: ViewStyle = { ...centerScreen, maxWidth: 960 }
+  const wideCenterScreen: ViewStyle = { ...centerScreen, maxWidth: WIDE_CONTENT_MAX_WIDTH }
   const headerRow: ViewStyle = {
     flexDirection: 'row',
     alignItems: 'center',

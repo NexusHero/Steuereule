@@ -19,3 +19,4 @@ export { Chip, type ChipProps, type ChipVariant } from './components/Chip'
 export { Gallery } from './gallery/Gallery'
 
 export { useBreakpoint, resolveBreakpoint, type Breakpoint } from './responsive/useBreakpoint'
+export { WIDE_CONTENT_MAX_WIDTH } from './responsive/contentWidth'

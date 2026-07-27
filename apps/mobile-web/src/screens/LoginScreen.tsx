@@ -14,7 +14,7 @@
 import { useState } from 'react'
 import { ScrollView, View, Text, Pressable, ActivityIndicator, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { Button, Input, Feld, Chip, useTheme, useBreakpoint, type UiTheme } from '@steuereule/ui'
+import { Button, Input, Feld, Chip, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
 import { APP_NS } from '../i18n/resources'
 import { useAuthClient } from '../auth/AuthClientProvider'
 import { authErrorKey } from '../auth/authErrors'
@@ -180,7 +180,7 @@ function makeStyles(t: UiTheme) {
   }
   const wideScreen: ViewStyle = {
     ...screen,
-    maxWidth: 960,
+    maxWidth: WIDE_CONTENT_MAX_WIDTH,
   }
   const heading: TextStyle = { fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size['3xl'], color: t.color.tinte, marginBottom: t.space.s2 }
   const subtitle: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.m, marginBottom: t.space.s5 }

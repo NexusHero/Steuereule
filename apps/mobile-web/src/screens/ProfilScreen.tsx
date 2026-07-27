@@ -13,7 +13,7 @@ import { useState } from 'react'
 import { ActivityIndicator, ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { Button, Card, Chip, Feld, Input, Pill, Sticker, useTheme, useBreakpoint, type UiTheme, type Breakpoint } from '@steuereule/ui'
+import { Button, Card, Chip, Feld, Input, Pill, Sticker, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme, type Breakpoint } from '@steuereule/ui'
 import { isValidSteuerId } from '@steuereule/core'
 import { useProfileControllerGetProfile, useProfileControllerPutProfile } from '@steuereule/api-client'
 import { APP_NS } from '../i18n/resources'
@@ -264,14 +264,14 @@ function makeStyles(t: UiTheme) {
     width: '100%',
     alignSelf: 'center',
   }
-  const wideScreen: ViewStyle = { ...screen, maxWidth: 960 }
+  const wideScreen: ViewStyle = { ...screen, maxWidth: WIDE_CONTENT_MAX_WIDTH }
   const centerScreen: ViewStyle = {
     ...screen,
     alignItems: 'center',
     justifyContent: 'center',
     gap: t.space.s3,
   }
-  const wideCenterScreen: ViewStyle = { ...centerScreen, maxWidth: 960 }
+  const wideCenterScreen: ViewStyle = { ...centerScreen, maxWidth: WIDE_CONTENT_MAX_WIDTH }
   const heading: TextStyle = {
     fontFamily: t.font.display,
     fontWeight: t.weight.schwer,
