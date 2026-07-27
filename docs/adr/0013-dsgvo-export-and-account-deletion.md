@@ -107,6 +107,17 @@ on. The destructive path additionally requires: the mandatory pre-delete export 
 Löschschutz warning + explicit confirmation + fresh-auth re-verification, and is **rate-limited by
 reusing the existing DB-backed `RateLimit` table** (ADR-0012 §5) — no new mechanism.
 
+> **Maintenance note (added post-implementation).** The fresh-auth password check calls
+> `auth.api.verifyPassword()` **in process**, which bypasses better-auth's own rate limiter — that
+> limiter only runs in the mounted `/api/auth/*` router's `onRequest` hook. To honour the "no new
+> mechanism" rule above, `apps/api/src/auth/verify-password-rate-limit.ts` consults the same
+> `RateLimit` table directly, hand-mirroring better-auth's internal `consume` algorithm (same key
+> shape, same 10s window, max 3, same conditional-increment-then-reset semantics). That algorithm is
+> **internal and un-exported**, so it is not covered by better-auth's public API contract:
+> **re-verify this mirror whenever better-auth is version-bumped.** If it ever drifts, the deletion
+> path silently loses its rate limit while the login path keeps its own — the tests that prove the
+> 429 are the tripwire.
+
 ### 7. PDF generation — reuse the Chromium we already have, behind a `PdfRenderer` seam
 
 The PDF-Bericht is produced by **server-side HTML→PDF using the Chromium already present via Playwright**
