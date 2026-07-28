@@ -51,13 +51,14 @@ flowchart TD
    his review costs roughly a third of a real-stack run, and code sent back would invalidate that run
    anyway.
 
-   **A draft PR from a dev is itself the trigger. Nobody asks for permission to start the review, and
-   the orchestrator does not gate it.** The rule exists because the alternative was tried: for one
-   slice the orchestrator asked before each dispatch, and that turned the review into something waiting
-   on a hand-off — the same "a role that has to be couriered is a role the process routes around"
-   failure ADR-0017 §9 removed on the tooling side. The gates in this document are the process; an
-   extra approval step in front of one of them is not a safety measure, it is a stall with a person
-   standing in it.
+   **A draft PR opening is itself the trigger (ADR-0020). Nobody asks for permission to start the
+   review, and the orchestrator does not gate it.** The trigger is the PR, not who wrote it: a draft
+   from Kaan or Robin, from Salih, or from the orchestrator all start the review the same way. The rule
+   exists because the alternative was tried — for one slice the orchestrator asked before each
+   dispatch, and that turned the review into something waiting on a hand-off, the same "a role that has
+   to be couriered is a role the process routes around" failure ADR-0017 §9 removed on the tooling
+   side. The gates in this document are the process; an extra approval step in front of one of them is
+   not a safety measure, it is a stall with a person standing in it.
 
    Two exceptions, both already stated elsewhere and neither an invitation to wait: he is **not** the
    gate on a PR he authored (§7a), and a **red CI pipeline blocks first** (gate 6) — a review of code
@@ -194,18 +195,23 @@ preview, the loop stops learning; nothing else supplies its input.
   **PlantUML source + exported SVG**, kept current (Musti owns it and asks himself "is the arc42
   updated?" on every completed task). The **stakeholder** then runs a hard product-acceptance pass on
   that artifact against the Requirements Register, and its findings become tickets.
-- **Nobody merges around the gates.** No PR without Musti's local review *and* Salih's local test; no
-  approve on red CI; the stakeholder is the last gate.
+- **Nobody merges around the gates.** A PR reaches `ready` only once every gate it was owed has passed
+  — Musti's review on the draft, and Salih's test where the tier calls for one; no approve on red CI;
+  the stakeholder is the last gate. The stakeholder *can* merge a PR before the gates run, since he is
+  the final authority on his own repository — but then the review becomes post-merge and can only
+  produce tickets, never prevent the merge. That has a measured cost: it happened on #173 and a
+  user-visible change went to `main` on five screens with neither gate on it.
 
 ## Who owns what
 
 | Role | Persona | Owns in this pipeline |
 |------|---------|-----------------------|
-| Stakeholder (human) | NexusHero | Requirements & acceptance criteria (the register), the board, per-slice acceptance on the preview, the merge |
-| Lead / Architect | Musti | Technical grilling, **local review**, approving record, architecture docs, risk tiers, WIP, findings→tickets |
-| Frontend dev | Kaan | UI slices, tests-first, opens the PR once both gates pass |
-| Backend dev | Robin | API/data slices, tests-first, opens the PR once both gates pass |
-| DevOps / Quality-Platform | Salih | The frictionless preview, the CI gates + their **realism** (bug/complaint → permanent check), the stakeholder↔pipeline ping-pong; a thin risk-tiered exploratory pass for new T1 surface |
+| Stakeholder (human) | NexusHero | Requirements & acceptance criteria, **ruling on the refinement block**, per-slice acceptance on the preview, the merge |
+| Scrum Master | Suhay | The backlog and the board, **the story/scope/readiness half of the refinement**, risk tiers, the WIP limit, findings→tickets, the Requirements Register's state |
+| Lead / Architect | Musti | **The technical half of the refinement**, **review on the draft PR**, his record, architecture docs, the right to bump a tier **up** (never down) |
+| Frontend dev | Kaan | UI slices, tests-first, **opens a draft PR as soon as their own gate is green** |
+| Backend dev | Robin | API/data slices, tests-first, **opens a draft PR as soon as their own gate is green** |
+| DevOps / Quality-Platform | Salih | The frictionless preview, the CI gates + their **realism** (bug/complaint → permanent check), the stakeholder↔pipeline ping-pong; the risk-tiered test pass, and **the flip to ready** |
 
 The role definitions live in [`.claude/agents/`](../../.claude/agents/); this document is the flow they
 share.
