@@ -40,24 +40,30 @@ Level-1 whitebox of the running system: the two apps, the shared monorepo packag
 API's internal modules, and the EU Postgres database. Green blocks were added **since this
 view's previous revision** (REQ-001, the Cockpit vertical): Slice 2's auth stack
 (REQ-005/006/008/009/010 — ADR-0009 better-auth, ADR-0012 guard coexistence) and REQ-011's
-DSGVO export/deletion (ADR-0013). The one **dashed** block, `DatenschutzScreen`, is built and
-in review (`steuereule#153`) but not yet on `main` — drawn because this revision exists to
-close the map/territory gap that slice exposed, marked because the map must not claim it
-sooner than the code lands.
+DSGVO export/deletion (ADR-0013). Everything drawn here is on `main`: the previous revision
+carried `DatenschutzScreen` dashed because it was still in review (`steuereule#153`), and that
+marker came off when the slice merged — the map may show what is coming, but only for as long
+as it says so.
 
 ![Building block view](./building-block-view.svg)
 
 **Frontend — `apps/mobile-web`** (Expo / React-Native-Web). Screen-by-screen takeover
 (ADR-0005, walking skeleton), now: Splash → Login/Registrierung → Onboarding → the tabbed
-shell (Cockpit, Profil), with Datenschutz as a drill-down reached from Profil (#153, in
-review).
+shell (Cockpit, Profil), with Datenschutz as a drill-down reached from Profil.
 - `CockpitScreen` — hero refund-estimate card plus honest loading/empty/error states; reads
   the generated hook and formats the range with `@steuereule/core`.
 - `ProfilScreen` — the stored profile, viewed and edited against the live `GET`/`PUT
   /v1/profile` (REQ-013). **Nothing sensitive is written to client storage** (ADR-0008).
-- `DatenschutzScreen` *(in review, #153)* — the user-facing half of REQ-011: DSGVO export
-  (JSON + PDF) and account deletion with the pre-delete export offer, the Löschschutz
-  warning, and fresh-auth re-verification as real UI paths.
+- `DatenschutzScreen` — the user-facing half of REQ-011: DSGVO export (JSON + PDF) and
+  account deletion with the pre-delete export offer, the Löschschutz warning, and fresh-auth
+  re-verification (400/401/429/403 each a distinct, honest state) as real UI paths. On a
+  successful deletion it clears both caches that could outlive the account — TanStack Query's,
+  and better-auth's own session atom — so "signed out" is a state the code produces, not one
+  that happens to follow.
+- `exportDownload.ts` — the **one** sanctioned egress outside the generated client, drawn on
+  the map rather than left inside the screen. See the api-client bullet below for why it
+  exists; it is on the diagram because an undrawn second egress is how "one call site" quietly
+  stops being true.
 - `AuthClientProvider` — the **one** better-auth client construction site (mirrors the
   api-client's "one fetch call site" rule): session reads, sign-in/up/out, guest upgrade.
   A screen asking "is this a guest or an account?" asks *this*, so the answer is the same
@@ -69,11 +75,14 @@ review).
   (`cockpitRange`). Imported by **both** frontend and API; there is no second copy of these
   rules (the determinism boundary, ADR-014/048).
 - `@steuereule/api-client` — the orval-generated typed client + TanStack Query hooks,
-  generated from `apps/api/openapi.json` (ADR-0001). Three generated targets on `main` —
-  profile, cockpit, auth (capabilities) — with `account` (export/deletion) arriving with #153;
-  the endpoints exist, the generated client for them does not yet. The **one** fetch call site is
-  its `httpClient` mutator — one deliberate exception arrives with #153, the export download,
-  because a binary attachment cannot travel through that JSON envelope.
+  generated from `apps/api/openapi.json` (ADR-0001). Four generated targets: profile, cockpit,
+  auth (capabilities) and account (export/deletion). The **one** fetch call site is its
+  `httpClient` mutator, with exactly **one** documented exception: the export download
+  (`exportDownload.ts`). The export body is a `Content-Disposition: attachment` — JSON *or* PDF
+  bytes — and the mutator unconditionally `JSON.parse`s, which throws on a PDF; a query hook's
+  cache semantics are also the wrong shape for a one-off download. The exception reuses the same
+  configured origin and the same `credentials: 'include'` discipline, so what it bypasses is the
+  JSON envelope, not the transport policy.
 - `@steuereule/ui` / `@steuereule/tokens` — the Funke design system and its design tokens.
 
 **Backend — `apps/api`** (NestJS on Fastify).
