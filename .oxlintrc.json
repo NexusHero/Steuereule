@@ -1,0 +1,28 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oxc-project/oxc/main/npm/oxlint/configuration_schema.json",
+  "plugins": ["eslint", "typescript", "unicorn", "oxc"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error"
+  },
+  "ignorePatterns": [
+    "**/dist/**",
+    "**/coverage/**",
+    "**/.expo/**",
+    "**/generated/**",
+    "spikes/**",
+    "finanzo-funke-design-system/**",
+    "desktop-companion/**",
+    "Documentation/**"
+  ],
+  "rules": {
+    "typescript/ban-ts-comment": ["error", { "ts-expect-error": "allow-with-description" }],
+    "typescript/no-extraneous-class": ["error", { "allowWithDecorator": true }],
+    "eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
+
+    "unicorn/no-array-sort": "off",
+    "unicorn/no-invalid-fetch-options": "off",
+    "unicorn/consistent-function-scoping": "off",
+    "eslint/no-underscore-dangle": "off"
+  }
+}

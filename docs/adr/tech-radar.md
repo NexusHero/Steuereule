@@ -27,6 +27,9 @@ confidence) · **Assess** (evaluating, not yet committed) · **Hold** (avoid / l
 | i18next / react-i18next | Adopt | ADR-0002 |
 | Prisma seed from single synthetic fixture | Adopt | ADR-0003 |
 | Vitest · jest-expo + RN Testing Library · Playwright · MSW | Adopt | ADR-0004 |
+| oxlint (static lint gate, own parser — no compiler-API coupling) | Adopt | ADR-0019 |
+| ESLint + typescript-eslint | Hold | ADR-0019 (dropped; cannot run at TS 7) |
+| oxlint type-aware rules (`oxlint-tsgolint`) | Assess | ADR-0019 §4 (deferred, proven to work at TS 7) |
 | Walking-skeleton / vertical-slice delivery | Adopt | ADR-0005 |
 | React Hook Form + Zod (forms) | Assess | _(later slice: Interview)_ |
 | Chart library (victory-native / visx) | Hold | tech-direktion (no chart lib in V1) |

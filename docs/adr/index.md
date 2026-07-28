@@ -37,13 +37,16 @@ The ADRs **justify** the architecture; the [living arc42 document](../arc42/READ
 | 0016 | Product Owner and Scrum Master retired; the crew is four roles | Accepted |
 | 0017 | Draft-first PRs with a public review, mandatory refinement, risk-tiered testing | Accepted |
 | 0018 | Suhay (Scrum Master) reinstated; backlog, refinement and readiness leave the lead | Accepted |
+| 0019 | oxlint replaces ESLint/typescript-eslint as the static-lint gate | Accepted |
 
 See also the [Tech Radar](./tech-radar.md).
 
 ## Known inconsistency (tracked, not ignored)
 
-`eslint.config.js` references `ADR-0025` (NestJS) and `k8s/README.md` references `ADR-0056`
-(Kubernetes) — 4-digit references inherited from the **myDevTime** lineage that have **no matching
-file** in this log yet. Per §1.5 a docs-staleness gate will flag these once wired. Reconcile by either
-importing the real decisions under their referenced numbers or correcting the references to the
-product-log equivalents (ADR-046 NestJS, ADR-049 k3s/Hetzner). Filed as a follow-up.
+`k8s/README.md` references `ADR-0056` (Kubernetes) — a 4-digit reference inherited from the
+**myDevTime** lineage that has **no matching file** in this log yet. Per §1.5 a docs-staleness gate
+will flag it once wired. Reconcile by either importing the real decision under its referenced number
+or correcting the reference to the product-log equivalent (ADR-049 k3s/Hetzner). Filed as a follow-up.
+
+The companion `eslint.config.js` → `ADR-0025` (NestJS) dangling reference is **closed**: ADR-0019
+deleted that file when oxlint replaced ESLint.

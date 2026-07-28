@@ -32,6 +32,9 @@ java -jar plantuml.jar -tsvg docs/arc42/*.puml
 | §5 Building block view | [`building-block-view.puml`](./building-block-view.puml) | [`building-block-view.svg`](./building-block-view.svg) |
 | §5 Data model (data view) | [`data-model.puml`](./data-model.puml) | [`data-model.svg`](./data-model.svg) |
 
+§8 below is prose-only by design: it describes a toolchain, not a structure, and a diagram of
+"which tools run in which order" would only restate the CI workflow file that already says it.
+
 ---
 
 ## 5. Building block view
@@ -176,3 +179,52 @@ revision: the better-auth identity tables and `RateLimit` (Slice 2), and `LegalH
   **No `@encrypted` field**: ruled out of ADR-0008 scope in review — it holds no tax
   identifier, only a rounded estimate and two counts. Revisit if assessed amounts or income
   figures ever land on this entity.
+
+---
+
+## 8. Crosscutting concepts — the build & quality toolchain
+
+Added because ADR-0019 is the first change to touch this layer. It records what the tools *are*
+and what each one is trusted to prove; the **human** gates (refinement, review, risk-tiered test)
+live in [`docs/process/delivery-pipeline.md`](../process/delivery-pipeline.md) and are deliberately
+not duplicated here.
+
+The governing principle is ADR-0010's: **a gate counts only when it runs in CI against the real
+thing.** A check that runs only on a developer's machine is evidence, not a guarantee.
+
+| Layer | Tool | What it is trusted to prove | Where it is real |
+|---|---|---|---|
+| Types | `tsc --noEmit`, TS **7.0.2**, `strict` + `noUncheckedIndexedAccess` + `exactOptionalPropertyTypes` | Type correctness across the workspace. Carries the **type-aware** load that the linter deliberately does not (ADR-0019 §4). | CI `test` job |
+| Static lint | **oxlint** (ADR-0019) | Syntactic/semantic defect classes `tsc` does not cover — notably unused bindings (`noUnusedLocals` is **not** enabled) and shadowing across the Playwright `page.evaluate` serialisation boundary. | CI `lint` job |
+| Unit / pure logic | Vitest | Behaviour of pure logic, no DB. | CI `test` job |
+| Compliance | Vitest against **real Postgres** | REQ-003 field encryption at rest, REQ-004 append-only audit, REQ-005/006/009/010/011 acceptance. Never a mock (ADR-0010). | CI `integration` job |
+| Boot | compiled `dist/` over real HTTP | Wiring bugs that `.inject()` is structurally blind to. | CI `smoke` job |
+| Browser CORS | headless Chromium, two real origins | Credentialed cross-origin behaviour no `curl` or Node `fetch()` can enforce. | CI `cross-origin-smoke` job |
+
+### Why the linter has its own parser
+
+`typescript-eslint` is coupled to the TypeScript **compiler API**, which made the linter a hostage
+to this repo's deliberate TS 7 pin — it threw at module load and the repo went its whole life
+without a working static-lint gate. oxlint carries its own parser, so the same coupling cannot
+recur. The lesson generalises: when a tool conflicts with the language version, **decouple the tool
+from the compiler API rather than downgrade the language** (ADR-0019, *Alternatives*).
+
+Type-aware linting is **deferred, not surrendered** — `oxlint-tsgolint` is built on typescript-go
+(TS 7's own engine) and was proven to work here; it is a separate cost decision (ADR-0019 §4).
+
+### A gate must be provably real
+
+The `lint` job was, until ADR-0019, wired into `needs: [lint, test, integration]` while running
+`echo "TODO"` — it blocked the pipeline while checking nothing and passed in ~3s on every run. A
+gate carrying authority without content is worse than no gate, because it reports a safety it never
+established.
+
+The standing consequence: **every gate here must be demonstrated failing.** The evidence for a gate
+is a link to a CI run that went red on a deliberately introduced defect and skipped its dependants
+— not a green run, and not a local one.
+
+> **In flight on `chore/oxlint-adoption-113`:** the `lint` row above describes the toolchain as
+> decided in ADR-0019. The CI job itself is still the placeholder until Salih's wiring and its
+> failing-run proof land on this branch. Following this document's convention for work in review,
+> this marker comes off when that job is real — the map may show what is coming, but only for as
+> long as it says so out loud.
