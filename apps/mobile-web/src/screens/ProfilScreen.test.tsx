@@ -16,14 +16,14 @@ function makeTestQueryClient() {
   return new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
 }
 
-function renderProfil(opts: { lng?: 'de' | 'en'; queryClient?: QueryClient } = {}) {
+function renderProfil(opts: { lng?: 'de' | 'en'; queryClient?: QueryClient; onOpenDatenschutz?: () => void } = {}) {
   const i18n = createAppI18n(opts.lng ?? 'de')
   const queryClient = opts.queryClient ?? makeTestQueryClient()
   return render(
     <QueryClientProvider client={queryClient}>
       <I18nextProvider i18n={i18n}>
         <ThemeProvider mode="light">
-          <ProfilScreen />
+          <ProfilScreen onOpenDatenschutz={opts.onOpenDatenschutz ?? (() => {})} />
         </ThemeProvider>
       </I18nextProvider>
     </QueryClientProvider>,
@@ -243,5 +243,25 @@ describe('ProfilScreen', () => {
     renderProfil()
     await screen.findByText('Anna Beispiel')
     expect(screen.getByRole('button', { name: 'Bearbeiten' })).toBeTruthy()
+  })
+
+  describe('the "Deine Daten" row (REQ-011, steuereule#152)', () => {
+    it('reaches the Datenschutz screen via onOpenDatenschutz — a real navigation, not a dead row', async () => {
+      mockSavedProfile()
+      const onOpenDatenschutz = vi.fn()
+      renderProfil({ onOpenDatenschutz })
+      await screen.findByText('Anna Beispiel')
+
+      fireEvent.click(screen.getByText('So schützen wir deine Daten (DSGVO)'))
+
+      expect(onOpenDatenschutz).toHaveBeenCalledOnce()
+    })
+
+    it('renders the row in English too (ADR-0006)', async () => {
+      mockSavedProfile()
+      renderProfil({ lng: 'en' })
+      await screen.findByText('Anna Beispiel')
+      expect(screen.getByText('How we protect your data (GDPR)')).toBeTruthy()
+    })
   })
 })

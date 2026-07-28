@@ -19,6 +19,7 @@ import { RegistrierungScreen } from './src/screens/RegistrierungScreen'
 import { OnboardingScreen } from './src/screens/OnboardingScreen'
 import { CockpitScreen } from './src/screens/cockpit/CockpitScreen'
 import { ProfilScreen } from './src/screens/ProfilScreen'
+import { DatenschutzScreen } from './src/screens/DatenschutzScreen'
 
 const i18n = createAppI18n('de')
 const queryClient = new QueryClient()
@@ -63,7 +64,23 @@ export default function App() {
               ) : null}
               {stage === 'register' ? <RegistrierungScreen onDone={() => setStage('onboarding')} /> : null}
               {stage === 'onboarding' ? <OnboardingScreen onDone={() => setStage('app')} /> : null}
-              {stage === 'app' ? <TabbedShell tab={tab} onTabChange={setTab} /> : null}
+              {stage === 'app' ? (
+                <TabbedShell
+                  tab={tab}
+                  onTabChange={setTab}
+                  onSignedOut={() => {
+                    // REQ-011 (ADR-0013): the server already cleared the session cookie on a
+                    // successful DELETE /v1/account — the client must not keep showing a screen
+                    // for an account that no longer exists, and must not let the next session
+                    // (guest or a different account) see this one's cached data (Slice-1-retro
+                    // class honesty bug). App owns both `stage` and `queryClient`, so it's the
+                    // one place that can retire both at once.
+                    queryClient.clear()
+                    setTab('cockpit')
+                    setStage('login')
+                  }}
+                />
+              ) : null}
               <StatusBar style="dark" />
             </View>
           </AuthClientProvider>
@@ -85,9 +102,20 @@ export default function App() {
  * built — offering them would be exactly the dead affordance the honesty rule forbids. Each
  * gets its tab when its screen lands.
  */
-function TabbedShell({ tab, onTabChange }: { readonly tab: Tab; readonly onTabChange: (tab: Tab) => void }) {
+interface TabbedShellProps {
+  readonly tab: Tab
+  readonly onTabChange: (tab: Tab) => void
+  readonly onSignedOut: () => void
+}
+
+function TabbedShell({ tab, onTabChange, onSignedOut }: TabbedShellProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
+
+  // Datenschutz (REQ-011) is a screen reached *from* Profil, not a tab of its own (TAB_ORDNUNG
+  // groups it with Profil in the DS reference) — so it's a sub-view owned by this shell, the
+  // same way OnboardingScreen owns its own step state, rather than a sixth `Tab` value.
+  const [profilView, setProfilView] = useState<'main' | 'datenschutz'>('main')
 
   // The active tab's icon sits on the lime pill and needs the ink colour to stay legible;
   // the others sit on card white. Mirrors `.fk-tab`/`.fk-tab[aria-current]` in the DS.
@@ -106,11 +134,24 @@ function TabbedShell({ tab, onTabChange }: { readonly tab: Tab; readonly onTabCh
     },
   ]
 
+  function changeTab(next: Tab) {
+    // Leaving Profil always resets its sub-view — coming back to a half-open Datenschutz
+    // screen via the tab bar would be a confusing, unrequested "resume" the DS never shows.
+    setProfilView('main')
+    onTabChange(next)
+  }
+
   return (
     <View style={{ flex: 1 }}>
       {tab === 'cockpit' ? <CockpitScreen /> : null}
-      {tab === 'profil' ? <ProfilScreen /> : null}
-      <TabBar tabs={tabs} aktiv={tab} onWechsel={(id) => onTabChange(id as Tab)} />
+      {tab === 'profil' && profilView === 'main' ? <ProfilScreen onOpenDatenschutz={() => setProfilView('datenschutz')} /> : null}
+      {tab === 'profil' && profilView === 'datenschutz' ? (
+        <DatenschutzScreen onZurueck={() => setProfilView('main')} onAccountDeleted={onSignedOut} />
+      ) : null}
+      {/* Datenschutz is a drill-down screen (its own back button, like Onboarding/Login), not
+          a peer of the tabs — hiding the bar here matches that and avoids a confusing second
+          way to leave a screen with a destructive, in-progress delete flow on it. */}
+      {profilView === 'main' ? <TabBar tabs={tabs} aktiv={tab} onWechsel={(id) => changeTab(id as Tab)} /> : null}
     </View>
   )
 }
