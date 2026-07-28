@@ -196,9 +196,9 @@ typed client, no mock (ADR-0003/0005).
 - **PDF adds a runtime Chromium footprint** to the API image — tracked as an infra follow-up; the
   `PdfRenderer` seam keeps it swappable.
 - **Sequence diagram** of the delete transaction is authored as PlantUML source
-  ([`0013-account-deletion-transaction.puml`](./0013-account-deletion-transaction.puml)); SVG export is a
-  tracked follow-up (no PlantUML renderer in the current toolchain — same tracked-inconsistency
-  convention as `index.md`).
+  ([`0013-account-deletion-transaction.puml`](./0013-account-deletion-transaction.puml)) and exported to
+  [`0013-account-deletion-transaction.svg`](./0013-account-deletion-transaction.svg) — the export was the
+  outstanding follow-up here and is now committed alongside the source.
 
 ## Alternatives considered
 

@@ -4,70 +4,109 @@
 !pragma layout smetana
 ' arc42 §5 — Building Block View (Level 1 whitebox) of the SteuerEule system.
 ' Source of record for the diagram; export to building-block-view.svg (see README).
-' Highlighted (green) = building blocks added by REQ-001, the Cockpit vertical
-' (steuereule#91 backend / #93 frontend). Keep this in step with the code — a stale
-' arc42 is treated as a failing test.
+' Highlighted (green) = building blocks added since this view's previous revision
+' (REQ-001, the Cockpit vertical): Slice 2's auth stack (REQ-005/006/008/009/010,
+' ADR-0009/0012) and REQ-011's DSGVO export/deletion (ADR-0013).
+' Dashed = built and in review, arrives with steuereule#153.
+' Keep this in step with the code — a stale arc42 is treated as a failing test.
 skinparam componentStyle rectangle
 skinparam defaultTextAlignment center
 skinparam shadowing false
 skinparam rectangleBorderColor #6b7280
 skinparam packageBorderColor #6b7280
 
-title SteuerEule — Building Block View (Level 1) · arc42 §5\ngreen = added by REQ-001 (Cockpit vertical, steuereule#91/#93)
+title SteuerEule — Building Block View (Level 1) · arc42 §5\ngreen = added since the REQ-001 revision (Slice 2 auth · REQ-011 DSGVO) · dashed = in review (#153)
 
 actor "User\n(guest session or\nverified account)" as user
 
 package "apps/mobile-web  ·  Expo / React-Native-Web" as fe {
-  component "LoginScreen" as login
+  component "SplashScreen" as splash
+  component "LoginScreen · RegistrierungScreen\nemail/password · guest · Google" as login #palegreen
   component "OnboardingScreen" as onb
-  component "CockpitScreen\n(hero estimate card,\nhonest states)" as cockpitScreen #palegreen
+  component "CockpitScreen\n(hero estimate card,\nhonest states)" as cockpitScreen
+  component "ProfilScreen\n(view/edit stored profile)" as profilScreen #palegreen
+  component "DatenschutzScreen\nDSGVO export + deletion\n(in review — #153)" as datenschutzScreen #palegreen;line.dashed
+  component "AuthClientProvider\nthe one better-auth client\n(session · sign-in/up/out)" as authClient #palegreen
 }
 
 package "Shared packages (monorepo)" as pkgs {
   component "@steuereule/core\ndeterministic domain —\nvalidators · cockpitRange()" as core
-  component "@steuereule/api-client\norval-generated typed client\n+ TanStack Query hooks" as apiclient
+  component "@steuereule/api-client\norval-generated typed client\n+ TanStack Query hooks\nprofile · cockpit · auth · (account with #153)" as apiclient
   component "@steuereule/ui\nFunke design system" as ui
   component "@steuereule/tokens\ndesign tokens" as tokens
 }
 
 package "apps/api  ·  NestJS on Fastify" as api {
-  component "UserContextGuard\nidentity seam (ADR-0007/0012)" as guard
+  component "better-auth\nFastify catch-all on /api/auth/*\n(mounted outside Nest)" as betterauth #palegreen
+  component "UserContextGuard\nidentity seam (ADR-0007/0012):\nverified session OR signed guest cookie" as guard
+  component "AuthModule\ncapabilities · guest→account upgrade\nFreshAuthChecker · breach-check\nEmailSender seam" as authMod #palegreen
   component "ProfileModule\nGET/PUT /v1/profile" as profile
-  component "CockpitModule\nGET /v1/steuerjahre/{jahr}/cockpit\ncontroller · service · TaxYearRepository" as cockpitMod #palegreen
+  component "CockpitModule\nGET /v1/steuerjahre/{jahr}/cockpit" as cockpitMod
+  component "AccountModule\nGET /v1/account/export (JSON · PDF)\nDELETE /v1/account (teardown txn)\nPdfRenderer seam" as accountMod #palegreen
   component "AuditModule\nTaxDataAccessLog (append-only)" as audit
   component "PrismaModule\nfield-encrypted Prisma client" as prisma
+  component "Cross-cutting\nCORS allowlist (ADR-0011) ·\nhelmet/CSP · DB-backed rate limits" as crosscut #palegreen
 }
 
 database "Postgres (EU)\nexpand-only migrations (ADR-047)" as db {
   component "Profile" as tProfile
   component "TaxDataAccessLog" as tAudit
-  component "TaxYear" as tTaxYear #palegreen
+  component "TaxYear" as tTaxYear
+  component "User · Session ·\nAccount · Verification\n(better-auth)" as tAuth #palegreen
+  component "LegalHold · RateLimit" as tHold #palegreen
 }
 
 user --> fe
-login ..> apiclient
+splash ..> login
+login ..> authClient
+login ..> apiclient : useAuthCapabilities…\n(is Google actually configured?)
 onb ..> apiclient
 cockpitScreen ..> apiclient : useCockpit…GetCockpitSummary
-cockpitScreen --> ui
 cockpitScreen ..> core : formatEuroRange()
+profilScreen ..> apiclient : useProfile…Get / Put
+profilScreen ..> core : isValidSteuerId()
+datenschutzScreen ..> apiclient : useAccountDeletion…DeleteAccount
+datenschutzScreen ..> authClient : useSession()\nguest vs. account
+fe --> ui
 ui ..> tokens
 
+authClient ..> betterauth : HTTP  /api/auth/*  (credentialed)
 apiclient ..> api : HTTP  /v1/*  (cookie-scoped)
 
+betterauth --> prisma
+guard ..> betterauth : resolves the session
 guard --> profile
 guard --> cockpitMod
+guard --> accountMod
+authMod --> betterauth
 profile --> prisma
+profile --> audit
 cockpitMod ..> core : cockpitRange()\n(determinism boundary,\nADR-014/048)
 cockpitMod --> prisma
+accountMod ..> profile : reuses ProfileRepository\n(one decrypt path)
+accountMod --> audit
+accountMod ..> authMod : FreshAuthChecker\n(fresh session or password)
+accountMod --> prisma
 audit --> prisma
 prisma --> db
+crosscut ..> api
+
+note right of accountMod
+  Deletion is **one Prisma $transaction** (ADR-0013 §3):
+  hard-delete Profile · anonymise the audit rows to an
+  irreversible tombstone (the Art. 30 record survives, the
+  person-link does not) · delete the better-auth User
+  (Session/Account cascade). Rows under an active LegalHold
+  are exempt. All-or-nothing, never a partial teardown.
+end note
 
 legend right
-  All API access is scoped by the trusted userId the
-  UserContextGuard establishes (ADR-0007) — never a
-  client-supplied identity. @steuereule/core is the single
-  home of deterministic rules (validators, cockpitRange),
-  imported by both api and frontend — no second copy.
+  All /v1 access is scoped by the trusted userId the UserContextGuard
+  establishes (ADR-0007/0012) — a verified better-auth session or an
+  HMAC-signed guest cookie, never a client-supplied identity.
+  better-auth (ADR-0009) mounts *behind* that seam, not around it.
+  @steuereule/core is the single home of deterministic rules
+  (validators, cockpitRange), imported by both api and frontend.
 endlegend
 
 @enduml
