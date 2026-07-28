@@ -34,14 +34,16 @@ the stakeholder** via the `ask-matt` flow and records the outcome as an ADR.
 Full flow with diagram: [`delivery-pipeline.md`](./delivery-pipeline.md). In short, the work happens
 **in the open, on the draft pull request** (ADR-0017):
 
-1. **Refinement** — Musti drafts the block (REQ, one Given–When–Then, ADR check, out-of-scope, which
-   existing product claim this might make untrue, risk tier); the **stakeholder rules on it**. No dev
-   starts without one.
+1. **Refinement** — **Suhay and Musti grill it together** (ADR-0018): the block carries the REQ, one
+   Given–When–Then, the ADR check, out-of-scope, which existing product claim this might make untrue,
+   and the risk tier. The **stakeholder rules on it**. No dev starts without one, and **half a block is
+   not one** — a refinement either of them ran alone gets sent back.
 2. Devs implement **tests-first** until their own gate is green.
 3. **The dev opens a draft PR** — the workbench, deliberately public. CI starts here.
 4. **Musti reviews on the draft and comments as Musti**, posting his record *even when he finds
    nothing*. Advances on **no unresolved findings**, not on "no comments". He runs **before** Salih —
-   his review costs about a third of a real-stack run.
+   his review costs about a third of a real-stack run. **The draft opening is the trigger**: he starts
+   on his own, and nobody — including the orchestrator — gates that (`delivery-pipeline.md` § gate 4).
 5. **Salih tests, risk-tiered** — not at all on T3, on T2 when a user can see a difference, in full on
    T1. On a pass he posts his record and **flips the PR to ready** — that flip is the signal that both
    gates are through.

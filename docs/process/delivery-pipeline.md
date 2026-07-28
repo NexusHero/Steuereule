@@ -16,10 +16,11 @@ This keeps two promises:
 
 ```mermaid
 flowchart TD
-    A[Stakeholder + Musti<br/>refinement block: REQ, one Given-When-Then,<br/>ADR check, scope, honesty check, risk tier] --> B[Musti · Lead<br/>grill the technical design, break down, dispatch]
+    A[Suhay + Musti · joint grilling<br/>refinement block: REQ, one Given-When-Then,<br/>ADR check, scope, honesty check, risk tier] --> A2[Stakeholder rules on the block]
+    A2 --> B[Musti · Lead<br/>break down, dispatch]
     B --> C[Kaan / Robin · Dev<br/>implement tests-first, own gate green]
     C --> D[Dev opens a DRAFT PR<br/>CI starts running here]
-    D --> E{Musti · Lead<br/>reviews on the draft, comments in public as Musti<br/>posts his record even when he finds nothing}
+    D -- the draft itself is the trigger --> E{Musti · Lead<br/>reviews on the draft, comments in public as Musti<br/>posts his record even when he finds nothing}
     E -- unresolved findings --> C
     E -- no unresolved findings --> F{Salih · QA<br/>tests per risk tier: T3 not at all,<br/>T2 if user-visible, T1 in full}
     F -- fails --> C
@@ -29,22 +30,38 @@ flowchart TD
 
 ## The gates, in order
 
-1. **Refinement — no dev starts without it.** Musti drafts the block, the **stakeholder rules on it**:
-   the REQ it serves (or "new → into the register first"), exactly one Given–When–Then criterion, the
-   ADRs it touches and any conflict, what is explicitly out of scope, **which existing product claim
-   this change might make untrue**, and the risk tier. Musti drafts because he knows the codebase; he
-   does not decide, because what was promised to the user is not his to settle.
+1. **Refinement — no dev starts without it, and no one half of it counts.** **Suhay and Musti grill
+   it together** (ADR-0018) and the **stakeholder rules on the result**: the REQ it serves (or "new →
+   into the register first"), exactly one Given–When–Then criterion, the ADRs it touches and any
+   conflict, what is explicitly out of scope, **which existing product claim this change might make
+   untrue**, and the risk tier. Suhay owns the story/scope/readiness half and the tier; Musti owns the
+   technical design. Neither decides, because what was promised to the user is not theirs to settle.
+   A refinement one of them ran alone **is not a refinement** — Kaan and Robin send back work that
+   arrives without the joint block, or with only half of it.
 2. **Implementation** — Kaan (frontend) / Robin (backend) build **tests-first** in their own
    branch/worktree until their own gate is green (`typecheck` + `tests` + boot proof). No mock data in
    shipped code; a slice is vertical or it isn't done (ADR-0003/0005).
 3. **Draft PR — opened as soon as the dev's own gate is green.** The draft *is* the workbench, on
    purpose: the review happens on it, in the open, so the process can be watched rather than only its
    result. It also puts CI to work during the review instead of after it.
-4. **Review — Musti, in public on the draft.** He reads the diff locally (cheaper and better than
-   through the API) but **posts findings as comments on the PR**. He posts his record **even when he
-   finds nothing** — a silent pass is indistinguishable from not having looked. The slice advances on
-   **no unresolved findings**, never on "no comments". He runs **before** Salih: his review costs
-   roughly a third of a real-stack run, and code sent back would invalidate that run anyway.
+4. **Review — Musti, in public on the draft, and he starts on his own.** He reads the diff locally
+   (cheaper and better than through the API) but **posts findings as comments on the PR**. He posts his
+   record **even when he finds nothing** — a silent pass is indistinguishable from not having looked.
+   The slice advances on **no unresolved findings**, never on "no comments". He runs **before** Salih:
+   his review costs roughly a third of a real-stack run, and code sent back would invalidate that run
+   anyway.
+
+   **A draft PR from a dev is itself the trigger. Nobody asks for permission to start the review, and
+   the orchestrator does not gate it.** The rule exists because the alternative was tried: for one
+   slice the orchestrator asked before each dispatch, and that turned the review into something waiting
+   on a hand-off — the same "a role that has to be couriered is a role the process routes around"
+   failure ADR-0017 §9 removed on the tooling side. The gates in this document are the process; an
+   extra approval step in front of one of them is not a safety measure, it is a stall with a person
+   standing in it.
+
+   Two exceptions, both already stated elsewhere and neither an invitation to wait: he is **not** the
+   gate on a PR he authored (§7a), and a **red CI pipeline blocks first** (gate 6) — a review of code
+   that does not build is wasted.
 5. **Test — Salih, risk-tiered, and he flips the switch.** **T3** (docs, DS assets, test infra,
    config): he does not run — CI covers it and there is nothing there his kind of testing catches.
    **T2**: he runs when a user can actually see or do something different. **T1** and any genuinely new
