@@ -7,7 +7,6 @@
 ' Highlighted (green) = building blocks added since this view's previous revision
 ' (REQ-001, the Cockpit vertical): Slice 2's auth stack (REQ-005/006/008/009/010,
 ' ADR-0009/0012) and REQ-011's DSGVO export/deletion (ADR-0013).
-' Dashed = built and in review, arrives with steuereule#153.
 ' Keep this in step with the code — a stale arc42 is treated as a failing test.
 skinparam componentStyle rectangle
 skinparam defaultTextAlignment center
@@ -15,7 +14,7 @@ skinparam shadowing false
 skinparam rectangleBorderColor #6b7280
 skinparam packageBorderColor #6b7280
 
-title SteuerEule — Building Block View (Level 1) · arc42 §5\ngreen = added since the REQ-001 revision (Slice 2 auth · REQ-011 DSGVO) · dashed = in review (#153)
+title SteuerEule — Building Block View (Level 1) · arc42 §5\ngreen = added since the REQ-001 revision (Slice 2 auth · REQ-011 DSGVO)
 
 actor "User\n(guest session or\nverified account)" as user
 
@@ -25,13 +24,14 @@ package "apps/mobile-web  ·  Expo / React-Native-Web" as fe {
   component "OnboardingScreen" as onb
   component "CockpitScreen\n(hero estimate card,\nhonest states)" as cockpitScreen
   component "ProfilScreen\n(view/edit stored profile)" as profilScreen #palegreen
-  component "DatenschutzScreen\nDSGVO export + deletion\n(in review — #153)" as datenschutzScreen #palegreen;line.dashed
+  component "DatenschutzScreen\nDSGVO export + deletion" as datenschutzScreen #palegreen
   component "AuthClientProvider\nthe one better-auth client\n(session · sign-in/up/out)" as authClient #palegreen
+  component "exportDownload.ts\nthe one documented egress\noutside the generated client" as exportDl #palegreen
 }
 
 package "Shared packages (monorepo)" as pkgs {
   component "@steuereule/core\ndeterministic domain —\nvalidators · cockpitRange()" as core
-  component "@steuereule/api-client\norval-generated typed client\n+ TanStack Query hooks\nprofile · cockpit · auth · (account with #153)" as apiclient
+  component "@steuereule/api-client\norval-generated typed client\n+ TanStack Query hooks\nprofile · cockpit · auth · account" as apiclient
   component "@steuereule/ui\nFunke design system" as ui
   component "@steuereule/tokens\ndesign tokens" as tokens
 }
@@ -67,11 +67,13 @@ profilScreen ..> apiclient : useProfile…Get / Put
 profilScreen ..> core : isValidSteuerId()
 datenschutzScreen ..> apiclient : useAccountDeletion…DeleteAccount
 datenschutzScreen ..> authClient : useSession()\nguest vs. account
+datenschutzScreen ..> exportDl : runExport(json | pdf)
 fe --> ui
 ui ..> tokens
 
 authClient ..> betterauth : HTTP  /api/auth/*  (credentialed)
 apiclient ..> api : HTTP  /v1/*  (cookie-scoped)
+exportDl ..> api : HTTP  GET /v1/account/export\n(credentialed, binary attachment)
 
 betterauth --> prisma
 guard ..> betterauth : resolves the session
@@ -90,6 +92,17 @@ accountMod --> prisma
 audit --> prisma
 prisma --> db
 crosscut ..> api
+
+note bottom of exportDl
+  The **one** sanctioned exception to "all /v1 traffic goes through
+  @steuereule/api-client's httpClient mutator" (ADR-0001): the export
+  is a `Content-Disposition: attachment` body — JSON *or* PDF bytes —
+  and the mutator unconditionally JSON.parse()s. It reuses the same
+  configured origin and the same `credentials: 'include'` discipline,
+  and it is drawn here rather than hidden inside the screen precisely
+  because an undrawn second egress is how "one call site" quietly
+  stops being true.
+end note
 
 note right of accountMod
   Deletion is **one Prisma $transaction** (ADR-0013 §3):
