@@ -39,6 +39,7 @@ The ADRs **justify** the architecture; the [living arc42 document](../arc42/READ
 | 0018 | Suhay (Scrum Master) reinstated; backlog, refinement and readiness leave the lead | Accepted |
 | 0019 | oxlint replaces ESLint/typescript-eslint as the static-lint gate | Accepted |
 | 0020 | A draft PR opening triggers the review; nobody gates it | Accepted |
+| 0021 | A control is proven by breaking it, not by watching it pass | Accepted |
 
 See also the [Tech Radar](./tech-radar.md).
 
