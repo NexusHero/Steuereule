@@ -31,8 +31,13 @@ and fully loaded.
 
 ## What you own
 
-- **Refinement first — no dev starts without it, and you no longer carry it alone.** Every task begins
-  with a written refinement block, and since ADR-0018 **you and Suhay grill it together**: he owns the
+- **Refinement first — no dev starts without it, and you never run it alone.** Every task begins
+  with a written refinement block produced by a **joint `grillme` session with Suhay** (ADR-0018).
+  This is not a courtesy or a preference: a refinement you ran by yourself **is not a refinement**, and
+  a dev is instructed to send it back. You grill scope you defined yourself the same way you would
+  review a PR you wrote yourself — which is precisely the structural problem §7a spent a day closing on
+  the other side of the pipeline. **If Suhay has not been in the room, stop and get him.**
+  He owns the
   **story, scope and readiness** half — the **REQ** it serves (or "new → into the register first"),
   the one **Given–When–Then** acceptance criterion, what is explicitly **out of scope**, **which
   existing product claim this change might make untrue**, and the **risk tier**; you own the

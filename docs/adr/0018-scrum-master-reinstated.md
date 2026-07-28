@@ -62,11 +62,22 @@ crew is five roles: Suhay, Musti, Kaan, Robin, Salih.
 | Requirements Register custody | **Suhay** |
 | Capacity / keeping both devs loaded | **Suhay and Musti jointly**, as before |
 
-**Refinement is a joint grilling (amends ADR-0017 §1).** Suhay grills the **story, scope and
-readiness** — the REQ, the one Given–When–Then criterion, out-of-scope, which existing product claim
-the change might make untrue, and the tier. Musti grills the **technical design** — the ADRs touched,
-the seam, feasibility. **The stakeholder still rules on the result**, because what was promised to the
-user is neither of theirs to settle. Neither half alone makes a task ready.
+**Refinement is a joint grilling, and it is a hard precondition (amends ADR-0017 §1).** Every task
+begins with a `grillme` session run by **Suhay and Musti together**. Suhay grills the **story, scope
+and readiness** — the REQ, the one Given–When–Then criterion, out-of-scope, which existing product
+claim the change might make untrue, and the tier. Musti grills the **technical design** — the ADRs
+touched, the seam, feasibility. **The stakeholder still rules on the result**, because what was
+promised to the user is neither of theirs to settle.
+
+**Neither half alone is a refinement**, and this is enforced from both ends: Musti's definition tells
+him to stop and fetch Suhay if he finds himself grilling alone, and Kaan's and Robin's tell them to
+send back work that arrives without the joint block or with only one half of it. ADR-0017 §1 already
+had Musti drafting it solo; that is what changes here. The reason is the same one §7a settled on the
+review side of the pipeline a day earlier: **someone grilling scope they defined themselves is the
+same structural weakness as someone reviewing a PR they wrote themselves.** The refinement is where
+scope, honesty and risk are decided, and everything downstream — the tier, the gate depth, the
+register entry, the acceptance criterion the tests are written against — is derived from it. A
+project without that step has no structure to derive anything from.
 
 **Three things the restored definition could not keep, because they are no longer true:**
 
