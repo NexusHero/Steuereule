@@ -1,7 +1,7 @@
 @startuml
 ' ADR-0013 — DSGVO account deletion: one atomic Prisma $transaction, all-or-nothing.
-' Source of record (diffable). SVG export is a tracked follow-up (no PlantUML renderer
-' in the current toolchain — see docs/adr/index.md "Known inconsistency").
+' Source of record (diffable); exported to 0013-account-deletion-transaction.svg and
+' referenced from the ADR — regenerate with the command in docs/arc42/README.md.
 title ADR-0013 — DELETE /v1/account: atomic teardown (anonymise-and-retain audit)
 
 actor "Account holder" as U

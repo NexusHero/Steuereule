@@ -37,15 +37,31 @@ java -jar plantuml.jar -tsvg docs/arc42/*.puml
 ## 5. Building block view
 
 Level-1 whitebox of the running system: the two apps, the shared monorepo packages, the
-API's internal modules, and the EU Postgres database. Green blocks were added by
-**REQ-001, the Cockpit vertical** (`steuereule#91` backend / `#93` frontend).
+API's internal modules, and the EU Postgres database. Green blocks were added **since this
+view's previous revision** (REQ-001, the Cockpit vertical): Slice 2's auth stack
+(REQ-005/006/008/009/010 — ADR-0009 better-auth, ADR-0012 guard coexistence) and REQ-011's
+DSGVO export/deletion (ADR-0013). The one **dashed** block, `DatenschutzScreen`, is built and
+in review (`steuereule#153`) but not yet on `main` — drawn because this revision exists to
+close the map/territory gap that slice exposed, marked because the map must not claim it
+sooner than the code lands.
 
 ![Building block view](./building-block-view.svg)
 
 **Frontend — `apps/mobile-web`** (Expo / React-Native-Web). Screen-by-screen takeover
-(ADR-0005, walking skeleton). `CockpitScreen` is the new home screen after Onboarding: the
-hero refund-estimate card plus honest loading/empty/error states. It reads through the
-generated `@steuereule/api-client` hook and formats the range with `@steuereule/core`.
+(ADR-0005, walking skeleton), now: Splash → Login/Registrierung → Onboarding → the tabbed
+shell (Cockpit, Profil), with Datenschutz as a drill-down reached from Profil (#153, in
+review).
+- `CockpitScreen` — hero refund-estimate card plus honest loading/empty/error states; reads
+  the generated hook and formats the range with `@steuereule/core`.
+- `ProfilScreen` — the stored profile, viewed and edited against the live `GET`/`PUT
+  /v1/profile` (REQ-013). **Nothing sensitive is written to client storage** (ADR-0008).
+- `DatenschutzScreen` *(in review, #153)* — the user-facing half of REQ-011: DSGVO export
+  (JSON + PDF) and account deletion with the pre-delete export offer, the Löschschutz
+  warning, and fresh-auth re-verification as real UI paths.
+- `AuthClientProvider` — the **one** better-auth client construction site (mirrors the
+  api-client's "one fetch call site" rule): session reads, sign-in/up/out, guest upgrade.
+  A screen asking "is this a guest or an account?" asks *this*, so the answer is the same
+  one the server would give.
 
 **Shared packages.**
 - `@steuereule/core` — the **deterministic domain**: the single home of the shape
@@ -53,51 +69,98 @@ generated `@steuereule/api-client` hook and formats the range with `@steuereule/
   (`cockpitRange`). Imported by **both** frontend and API; there is no second copy of these
   rules (the determinism boundary, ADR-014/048).
 - `@steuereule/api-client` — the orval-generated typed client + TanStack Query hooks,
-  generated from `apps/api/openapi.json` (ADR-0001); REQ-001 added the Cockpit endpoint's
-  generated hook and schemas.
+  generated from `apps/api/openapi.json` (ADR-0001). Three generated targets on `main` —
+  profile, cockpit, auth (capabilities) — with `account` (export/deletion) arriving with #153;
+  the endpoints exist, the generated client for them does not yet. The **one** fetch call site is
+  its `httpClient` mutator — one deliberate exception arrives with #153, the export download,
+  because a binary attachment cannot travel through that JSON envelope.
 - `@steuereule/ui` / `@steuereule/tokens` — the Funke design system and its design tokens.
 
 **Backend — `apps/api`** (NestJS on Fastify).
-- `UserContextGuard` — the **one** place a request's `userId` is established (ADR-0007,
-  refined by ADR-0012): a verified session or an HMAC-signed guest cookie, never a
-  client-supplied identity. Every authenticated module scopes through it.
+- **better-auth** (ADR-0009, supersedes ADR-0007's Keycloak) — mounted as a Fastify
+  catch-all on `/api/auth/*`, **outside** Nest but **behind** the same trust seam: it is the
+  auth *server*, not a second identity authority.
+- `UserContextGuard` — still the **one** place a request's `userId` is established (ADR-0007,
+  refined by ADR-0012): a verified better-auth session **or** an HMAC-signed guest cookie,
+  never a client-supplied identity. Every `/v1` module scopes through it.
+- `AuthModule` — capabilities endpoint (is Google actually configured?), the atomic
+  guest→account upgrade (ADR-0012 §4), the `FreshAuthChecker` used by destructive actions,
+  the breached-password check (REQ-010), and the `EmailSender` seam.
 - `ProfileModule` — `GET`/`PUT /v1/profile`.
-- **`CockpitModule` (new)** — `GET /v1/steuerjahre/{jahr}/cockpit`. Controller (guarded,
-  `jahr` bounds-validated) → `CockpitService` → `TaxYearRepository` seam. The service reads
-  the raw `TaxYear` inputs and computes the estimate range via `@steuereule/core`'s
-  `cockpitRange()` — **the range is never recomputed locally or persisted**.
+- `CockpitModule` — `GET /v1/steuerjahre/{jahr}/cockpit`. Controller (guarded, `jahr`
+  bounds-validated) → `CockpitService` → `TaxYearRepository` seam. The service reads the raw
+  `TaxYear` inputs and computes the estimate range via `@steuereule/core`'s `cockpitRange()`
+  — **the range is never recomputed locally or persisted**.
+- **`AccountModule` (new)** — the DSGVO surface (ADR-0013): `GET /v1/account/export`
+  assembles the export **once** and renders it two ways (Art. 20 JSON, human-readable
+  PDF-Bericht through the `PdfRenderer` seam), reusing `ProfileRepository` so there is one
+  decrypt path; `DELETE /v1/account` runs the teardown as a **single Prisma
+  `$transaction`** — hard-delete `Profile`, anonymise the audit rows to an irreversible
+  tombstone, delete the better-auth `User` (Session/Account cascade), exempting anything
+  under an active `LegalHold`. All-or-nothing: no partial teardown is ever observable.
 - `AuditModule` — the append-only `TaxDataAccessLog` (DSGVO Art. 30; the audited surface is
   identifier-class access, not read-of-own-estimate — see §Data model).
 - `PrismaModule` — the shared, field-encryption-extended Prisma client (ADR-0008).
+- **Cross-cutting** — the fail-closed CORS origin allowlist (ADR-0011; never `*`, credentialed
+  cross-origin with `SameSite=None; Secure`), `helmet`/CSP, and the DB-backed rate limits.
 
-**Persistence — Postgres (EU)**, expand-only versioned migrations (ADR-047). Three
-independently `userId`-scoped tables (see the data model).
+**Persistence — Postgres (EU)**, expand-only versioned migrations (ADR-047). Nine tables:
+four `userId`-scoped domain tables, the four better-auth identity tables, and `RateLimit`
+(see the data model).
 
-### REQ-001 introduced no new architectural *decision*
+### Which decisions these blocks trace to
 
-The Cockpit vertical is a straight application of already-adopted patterns (the guarded
-controller → service → repository-seam shape, the determinism boundary, the
-DTO-mirrors-the-frozen-contract discipline, expand-only migrations). It adds **building
-blocks** — a module, a screen, a generated hook, a persisted entity — but **no new ADR-level
-decision, dependency, or cross-cutting concern**. This document is updated because the
-building-block and data views changed; the ADR log is not, because no decision changed.
+REQ-001 (Cockpit) introduced **no new ADR-level decision** — it was a straight application of
+already-adopted patterns, and that remains true. The blocks added since then are not: they
+implement decisions that were escalated and recorded first — **ADR-0009** (better-auth as the
+auth server), **ADR-0012** (guard/guest coexistence and the atomic upgrade), **ADR-0011**
+(credentialed cross-origin), **ADR-0010** (CI as the real gate), and **ADR-0013** (DSGVO
+export/deletion, including the two stakeholder rulings: anonymise-and-retain over hard-deleting
+the audit log, and JSON *and* PDF rather than either alone). This view **shows** the structure;
+those ADRs **justify** it and stay the source of record.
 
 ---
 
 ## 5.1 Data model (data view)
 
-The persisted schema (`apps/api/prisma/schema.prisma`). `TaxYear` (green) was added by
-REQ-001.
+The persisted schema (`apps/api/prisma/schema.prisma`). Green = added since the REQ-001
+revision: the better-auth identity tables and `RateLimit` (Slice 2), and `LegalHold`
+(REQ-011's Löschschutz seam).
 
 ![Data model](./data-model.svg)
 
-- **`userId` is a logical scoping key, not a DB foreign key** (ADR-0007). There is no
-  `User` table — identity is the guest-/verified-session seam the `UserContextGuard` owns.
-  Every row is read scoped to a single `userId`; there are no cross-user joins.
+- **`userId` is a logical scoping key on the domain tables, not a DB foreign key**
+  (ADR-0007). `Profile` / `TaxDataAccessLog` / `TaxYear` / `LegalHold` carry **no FK** to
+  `User`: the same column holds either a verified better-auth user id or an HMAC-signed guest
+  id, and only the `UserContextGuard` decides which. Every row is read scoped to a single
+  `userId`; there are no cross-user joins.
+  **Correction (this revision):** the previous text said "there is no `User` table". That
+  stopped being true when better-auth landed (ADR-0009/0012) — there *is* one, with real FKs
+  among the identity tables. What survived the change is the *absence of a foreign key from
+  the domain tables to it*, which is the property the guest/account seam actually depends on.
 - **`Profile`** — plain onboarding facts; `steuerId` / `steuernummer` are **field-encrypted
-  at rest** (ADR-0008, AES-256-GCM, per-write nonce, `mode=strict`).
+  at rest** (ADR-0008, AES-256-GCM, per-write nonce, `mode=strict`). **Hard-deleted** on
+  account deletion (ADR-0013 §2): the app-wide encryption key makes per-user crypto-shredding
+  impossible, so hard-delete is what makes erasure genuine.
 - **`TaxDataAccessLog`** — append-only who/what/when trail, no value column (ADR-0008 /
-  REQ-004).
+  REQ-004). On account deletion the rows are **anonymised, not deleted** (ADR-0013 §1): the
+  `userId` is re-keyed to an irreversible tombstone, keeping the Art. 30 processing record
+  while severing the person-link (Recital 26). That UPDATE is the **second** sanctioned
+  structural exception to app-layer append-only, after ADR-0012 §4's guest re-key — any future
+  DB-level append-only enforcement must whitelist both.
+- **`LegalHold`** — the minimal Löschschutz seam (ADR-0013 §5): while `holdUntil` is in the
+  future, the deletion transaction **exempts** that `(userId, resource)` and retains it under
+  legal obligation. The exempt set is vacuous in real use today (no filing model persists yet),
+  but the mechanism is real and acceptance-tested on both branches — which is what makes the
+  UI's retention wording an honest statement rather than a hypothetical.
+- **`User` / `Session` / `Account` / `Verification`** — better-auth's own schema (ADR-0009),
+  the only place with real foreign keys (`Session`/`Account` cascade off `User`). `Account`
+  holds the scrypt password hash and any social-provider tokens and is **never exported**: the
+  DSGVO export carries account *identity* only — email, name, `emailVerified`, providers — and
+  no secret of any kind (ADR-0013 §4).
+- **`RateLimit`** — DB-backed on purpose (REQ-010 / ADR-0012 §5): an in-memory counter resets
+  per pod and is trivially bypassed once the API scales horizontally. Reused, not re-invented,
+  by the deletion path's password re-verification limit.
 - **`TaxYear`** — **raw inputs only** (`baseEstimate` / `openItems` / `openConflicts`),
   unique per `(userId, steuerjahr)`. The refund-estimate range is **never persisted** —
   recomputed per read via `cockpitRange()`, so there is no second place to drift.

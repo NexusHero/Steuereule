@@ -4,20 +4,24 @@
 !pragma layout smetana
 ' arc42 §5 — Persistence data model (data view) of the SteuerEule Postgres schema.
 ' Source of record for the diagram; export to data-model.svg (see README).
-' Highlighted (green) = added by REQ-001 (steuereule#91/#92). Mirror of
+' Highlighted (green) = added since this view's previous revision (REQ-001): the
+' better-auth identity tables + RateLimit (Slice 2, ADR-0009/0012, REQ-005/006/009/010)
+' and LegalHold (REQ-011 Löschschutz seam, ADR-0013 §5). Mirror of
 ' apps/api/prisma/schema.prisma — keep the two in step (stale arc42 = failing test).
 hide circle
 skinparam classAttributeIconSize 0
 skinparam shadowing false
 skinparam classBorderColor #6b7280
 
-title SteuerEule — Persistence Data Model · arc42 §5 (data view)\ngreen = added by REQ-001 (Cockpit, steuereule#91/#92)
+title SteuerEule — Persistence Data Model · arc42 §5 (data view)\ngreen = added since the REQ-001 revision (Slice 2 auth · REQ-011 Löschschutz)
 
 note as Nscope
-  **userId is a logical scoping key, not a DB foreign key** (ADR-0007).
-  There is no User table — identity is the guest-session / verified-session
-  seam the UserContextGuard owns. Every row is read scoped to a single
-  userId; there are no cross-user joins between these entities.
+  **userId is a logical scoping key on the domain tables, not a DB foreign key**
+  (ADR-0007). Profile / TaxDataAccessLog / TaxYear / LegalHold carry no FK to
+  User: the same column holds either a **verified better-auth user id** or an
+  **HMAC-signed guest id**, and only the UserContextGuard decides which. Every
+  row is read scoped to a single userId; there are no cross-user joins.
+  The better-auth tables below *do* use real FKs among themselves.
 end note
 
 class Profile {
@@ -35,6 +39,10 @@ note bottom of Profile
   (ADR-0008 — AES-256-GCM, per-write nonce, mode=strict).
   Plain facts only otherwise — clean side of the
   determinism boundary; @steuereule/core never recomputes these.
+  **On account deletion the row is hard-deleted** (ADR-0013 §2):
+  the ciphertext is genuinely gone, not soft-flagged. The
+  field-encryption key is app-wide, so per-user crypto-shredding
+  is not available — hard-delete is what makes erasure real.
 end note
 
 class TaxDataAccessLog <<append-only>> {
@@ -48,10 +56,16 @@ note bottom of TaxDataAccessLog
   DSGVO Art. 30 accountability trail (ADR-0008 / REQ-004).
   Who/what/when only — no value column, never the plaintext
   or ciphertext. Audited surface is identifier-class access
-  (Profile), not read-of-own-estimate (Cockpit).
+  (Profile / export), not read-of-own-estimate (Cockpit).
+  **On account deletion the rows are anonymised, not deleted**
+  (ADR-0013 §1): userId is re-keyed to an irreversible
+  `deleted:<uuid>` tombstone, so the processing record survives
+  while the person-link does not (Recital 26). That UPDATE is
+  the **second** sanctioned exception to app-layer append-only,
+  after ADR-0012 §4's guest→account re-key.
 end note
 
-class TaxYear #palegreen {
+class TaxYear {
   id : uuid <<PK>>
   userId : string
   steuerjahr : int
@@ -72,6 +86,97 @@ note bottom of TaxYear
   No @encrypted field: ruled out of ADR-0008 scope (Musti
   review, R1a) — no tax identifier, only a rounded estimate
   and two counts. Revisit if assessed amounts / income land here.
+end note
+
+class LegalHold #palegreen {
+  id : uuid <<PK>>
+  userId : string <<indexed>>
+  resource : string
+  holdUntil : DateTime
+  createdAt : DateTime
+}
+note bottom of LegalHold
+  Minimal **Löschschutz** seam (ADR-0013 §5, product ADR-011).
+  While holdUntil is in the future, the deletion transaction
+  **exempts** that (userId, resource) from erasure/anonymisation
+  and retains it under legal obligation. Today only "profile" /
+  "auditLog" are meaningful and the exempt set is vacuous in real
+  use — the mechanism is real and acceptance-tested on both
+  branches, so the UI's retention promise is not a hypothetical.
+end note
+
+package "better-auth identity (ADR-0009 · schema owned by the library)" as ba {
+  class User #palegreen {
+    id : uuid <<PK>>
+    name : string
+    email : string <<unique>>
+    emailVerified : boolean
+    image : string?
+    createdAt : DateTime
+    updatedAt : DateTime
+  }
+
+  class Session #palegreen {
+    id : uuid <<PK>>
+    userId : string <<FK → User>>
+    token : string <<unique>>
+    expiresAt : DateTime
+    ipAddress : string?
+    userAgent : string?
+    createdAt : DateTime
+    updatedAt : DateTime
+  }
+
+  class Account #palegreen {
+    id : uuid <<PK>>
+    userId : string <<FK → User>>
+    providerId : string
+    accountId : string
+    password : string? <<scrypt hash>>
+    accessToken / refreshToken / idToken : string?
+    scope : string?
+    createdAt : DateTime
+    updatedAt : DateTime
+  }
+
+  class Verification #palegreen {
+    id : uuid <<PK>>
+    identifier : string
+    value : string
+    expiresAt : DateTime
+  }
+}
+
+User "1" -- "0..*" Session : onDelete: Cascade
+User "1" -- "0..*" Account : onDelete: Cascade
+
+note bottom of User
+  Deleting this row is what makes an account **gone**: Session and
+  Account cascade, Verification rows are removed by email, and the
+  whole teardown runs inside the single deletion $transaction
+  (ADR-0013 §3) together with Profile's hard-delete and the audit
+  anonymisation — all-or-nothing.
+end note
+
+note bottom of Account
+  Holds the **password hash** (scrypt, better-auth's own) and any
+  social-provider tokens. **Never exported**: the DSGVO export
+  assembles account *identity* only (email, name, emailVerified,
+  providers) — no hash, no session/verification token, ever
+  (ADR-0013 §4).
+end note
+
+class RateLimit #palegreen {
+  id : uuid <<PK>>
+  key : string?
+  count : int?
+  lastRequest : bigint?
+}
+note bottom of RateLimit
+  DB-backed, deliberately **not** in-memory (REQ-010 / ADR-0012 §5):
+  an in-memory counter resets per pod and is trivially bypassed once
+  the API scales horizontally. Reused — not re-invented — by the
+  deletion path's password re-verification limit (ADR-0013 §6 note).
 end note
 
 @enduml
