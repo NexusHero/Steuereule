@@ -10,7 +10,7 @@ import { ThemeProvider } from '@steuereule/ui'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import { createAppI18n } from '../i18n/app-i18n'
-import { createAppAuthClient } from '../auth/auth-client'
+import { createAppAuthClient, type AppAuthClient } from '../auth/auth-client'
 import { AuthClientProvider } from '../auth/AuthClientProvider'
 import { DatenschutzScreen } from './DatenschutzScreen'
 import { server } from '../test-msw-server'
@@ -34,9 +34,14 @@ function mockSession(session: typeof REAL_SESSION | null) {
   server.use(http.get(`${BASE_URL}/api/auth/get-session`, () => HttpResponse.json(session)))
 }
 
-function renderDatenschutz(opts: { lng?: 'de' | 'en'; onZurueck?: () => void; onAccountDeleted?: () => void; queryClient?: QueryClient } = {}) {
+function renderDatenschutz(opts: { lng?: 'de' | 'en'; onZurueck?: () => void; onAccountDeleted?: () => void; queryClient?: QueryClient; authClient?: AppAuthClient } = {}) {
   const i18n = createAppI18n(opts.lng ?? 'de')
-  const authClient = createAppAuthClient(BASE_URL)
+  // Defaults to a fresh client per render, same as before — but a caller can pass its own,
+  // already-constructed client (and reuse it across an unmount/re-mount) to prove F2: whether
+  // "signed out" survives a re-mount depends on this client's session atom actually being
+  // invalidated, not on component unmount timing (App.tsx constructs its auth client once,
+  // outside the tree, so it stays alive across the stage change back to Login).
+  const authClient = opts.authClient ?? createAppAuthClient(BASE_URL)
   const queryClient = opts.queryClient ?? new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   return render(
     <QueryClientProvider client={queryClient}>
@@ -140,7 +145,10 @@ describe('DatenschutzScreen', () => {
       await screen.findByText('Bevor du löschst')
       expect(screen.getByText(/anonymisiert erhalten/)).toBeTruthy()
       expect(screen.getByText(/Löschschutz/)).toBeTruthy()
-      expect(screen.getByText(/Nachweise gegenüber dem Finanzamt|Nachweise\./) ?? screen.getByText(/Exportiere sie dir vorher/)).toBeTruthy()
+      // A single, explicit assertion against the actual current wording — not a `getByText(a)
+      // ?? getByText(b)` "either" that can never actually fall through to `b` (`getByText`
+      // throws instead of returning null on no match, per Musti's T1, F5).
+      expect(screen.getByText(/Exportiere sie dir vorher/)).toBeTruthy()
 
       // The DS demo's factually wrong wording must never appear.
       expect(screen.queryByText(/Belege.*ZIP/)).toBeNull()
@@ -327,6 +335,95 @@ describe('DatenschutzScreen', () => {
 
       expect(await screen.findByText('Das hat gerade nicht geklappt. Prüf die Verbindung und versuch es noch mal.')).toBeTruthy()
       expect(screen.getByText('Bestätige mit deinem Passwort')).toBeTruthy()
+    })
+
+    // Musti's T1, F1 — reproduced on the branch: the generated union types `.status` as exactly
+    // 200/400/401/403/429, but `httpClient` never throws on a non-2xx and a real 500 (ADR-0013
+    // §3 rollback) parses fine — so it reached the switch with no matching case, `deleteFlow`
+    // never left `'deleting'`, and the user sat on an un-cancellable spinner forever. Drives a
+    // real 500 and asserts the screen returns to an actionable state instead of hanging.
+    it('a genuine 500 on confirm returns the user to the confirm step, never an infinite spinner', async () => {
+      server.use(http.delete(`${BASE_URL}/v1/account`, () => HttpResponse.json({ statusCode: 500, message: 'internal error' }, { status: 500 })))
+      await openAccountScreen()
+      fireEvent.click(screen.getByText('Konto & Daten löschen'))
+      await screen.findByText('Bevor du löschst')
+      fireEvent.click(screen.getByText('Weiter ohne Export'))
+      await screen.findByText('Bist du sicher?')
+
+      fireEvent.click(screen.getByText('Ja, endgültig löschen'))
+
+      expect(await screen.findByText('Das hat gerade nicht geklappt. Prüf die Verbindung und versuch es noch mal.')).toBeTruthy()
+      // The user can act again — the confirm step's own buttons are back, not a spinner with
+      // no way out.
+      expect(screen.getByText('Ja, endgültig löschen')).toBeTruthy()
+      expect(screen.getByText('Abbrechen')).toBeTruthy()
+      expect(screen.queryByText('Wird gelöscht …')).toBeNull()
+    })
+
+    it('a genuine 500 while submitting the password returns the user to the password step, never an infinite spinner', async () => {
+      server.use(
+        http.delete(`${BASE_URL}/v1/account`, async ({ request }) => {
+          const body = (await request.json()) as { password?: string }
+          if (body.password === undefined) return HttpResponse.json({ statusCode: 400 }, { status: 400 })
+          return HttpResponse.json({ statusCode: 500, message: 'internal error' }, { status: 500 })
+        }),
+      )
+      await openAccountScreen()
+      fireEvent.click(screen.getByText('Konto & Daten löschen'))
+      await screen.findByText('Bevor du löschst')
+      fireEvent.click(screen.getByText('Weiter ohne Export'))
+      await screen.findByText('Bist du sicher?')
+      fireEvent.click(screen.getByText('Ja, endgültig löschen'))
+      await screen.findByText('Bestätige mit deinem Passwort')
+
+      fireEvent.change(screen.getByLabelText('Passwort'), { target: { value: 'whatever' } })
+      fireEvent.click(screen.getByText('Bestätigen'))
+
+      expect(await screen.findByText('Das hat gerade nicht geklappt. Prüf die Verbindung und versuch es noch mal.')).toBeTruthy()
+      expect(screen.getByText('Bestätige mit deinem Passwort')).toBeTruthy()
+      expect(screen.queryByText('Wird gelöscht …')).toBeNull()
+    })
+
+    // Musti's T1, F2 — reproduced on the branch: the 200 branch and App.tsx's `onSignedOut`
+    // both clear the TanStack cache, but nothing invalidated better-auth's own session atom,
+    // which `authClient.useSession()` (the guest gate) reads. Re-mounting after deletion — the
+    // real shape of what happens when App.tsx swaps the stage back to Login, since it keeps its
+    // one auth-client instance alive across that swap — kept rendering the signed-in section
+    // for an account that no longer existed.
+    it('genuinely signs the user out for a re-mount, not just the current mount (session atom refetched)', async () => {
+      const authClient = createAppAuthClient(BASE_URL)
+      let getSessionCalls = 0
+      server.use(
+        http.get(`${BASE_URL}/api/auth/get-session`, () => {
+          getSessionCalls += 1
+          // Only the very first read (before deletion) is the real, signed-in session — every
+          // read after that reflects the account genuinely being gone, exactly like the real
+          // server would answer once the session cookie is cleared server-side.
+          return HttpResponse.json(getSessionCalls === 1 ? REAL_SESSION : null)
+        }),
+        http.delete(`${BASE_URL}/v1/account`, () =>
+          HttpResponse.json({ deleted: { profile: true, account: true }, retainedAnonymisedAuditRows: 0, retainedUnderLegalHold: 0 }, { status: 200 }),
+        ),
+      )
+      const onAccountDeleted = vi.fn()
+      const { unmount } = renderDatenschutz({ authClient, onAccountDeleted })
+      await screen.findByText('Konto & Daten löschen')
+
+      fireEvent.click(screen.getByText('Konto & Daten löschen'))
+      await screen.findByText('Bevor du löschst')
+      fireEvent.click(screen.getByText('Weiter ohne Export'))
+      await screen.findByText('Bist du sicher?')
+      fireEvent.click(screen.getByText('Ja, endgültig löschen'))
+      await waitFor(() => expect(onAccountDeleted).toHaveBeenCalledOnce())
+
+      unmount()
+
+      // Re-mount with the *same* auth-client instance — the only way this proves the atom
+      // itself was invalidated, rather than a fresh client just fetching its own first answer.
+      renderDatenschutz({ authClient })
+
+      await screen.findByText('Noch kein Konto')
+      expect(screen.queryByText('Konto & Daten löschen')).toBeNull()
     })
   })
 
