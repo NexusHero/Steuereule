@@ -16,59 +16,55 @@ This keeps two promises:
 
 ```mermaid
 flowchart TD
-    A[Stakeholder<br/>a ready ticket + the requirement behind it] --> B[Musti · Lead<br/>grill the technical design, break down, dispatch]
-    B --> C[Kaan / Robin · Dev<br/>implement tests-first, gate green typecheck + tests]
-    C --> D{Musti · Lead<br/>LOCAL review on the real diff<br/>git diff main...branch, line by line}
-    D -- refute --> C
-    D -- passes --> E{Salih · QA<br/>LOCAL test on the reviewed branch<br/>boot + flows 375/768/1280, real seeded stack}
-    E -- fails --> C
-    E -- passes --> F[Dev opens the PR<br/>release candidate + evidence block]
-    F --> G[CI must be green]
-    G --> H[Musti posts a short APPROVE + evidence on the PR]
-    H --> I[Stakeholder · final human pass on GitHub → merge]
+    A[Stakeholder + Musti<br/>refinement block: REQ, one Given-When-Then,<br/>ADR check, scope, honesty check, risk tier] --> B[Musti · Lead<br/>grill the technical design, break down, dispatch]
+    B --> C[Kaan / Robin · Dev<br/>implement tests-first, own gate green]
+    C --> D[Dev opens a DRAFT PR<br/>CI starts running here]
+    D --> E{Musti · Lead<br/>reviews on the draft, comments in public as Musti<br/>posts his record even when he finds nothing}
+    E -- unresolved findings --> C
+    E -- no unresolved findings --> F{Salih · QA<br/>tests per risk tier: T3 not at all,<br/>T2 if user-visible, T1 in full}
+    F -- fails --> C
+    F -- passes --> G[Salih posts his test record<br/>and flips the PR to READY]
+    G --> H[Stakeholder · final human pass on GitHub → merge]
 ```
 
 ## The gates, in order
 
-1. **Ready & grilled** — the stakeholder brings the ticket and the requirement behind it (from the
-   Requirements Register); the technical design is grilled with Musti, who also assigns the risk tier.
-   A dev only ever starts *ready* work.
+1. **Refinement — no dev starts without it.** Musti drafts the block, the **stakeholder rules on it**:
+   the REQ it serves (or "new → into the register first"), exactly one Given–When–Then criterion, the
+   ADRs it touches and any conflict, what is explicitly out of scope, **which existing product claim
+   this change might make untrue**, and the risk tier. Musti drafts because he knows the codebase; he
+   does not decide, because what was promised to the user is not his to settle.
 2. **Implementation** — Kaan (frontend) / Robin (backend) build **tests-first** in their own
-   branch/worktree until the gate is green (`typecheck` + `tests`). No mock data in shipped code; a
-   slice is vertical or it isn't done (ADR-0003/0005).
-3. **Local review — Musti (before any PR).** Musti reads the actual diff on the branch, line by line,
-   refutes directly to the dev, and iterates *off GitHub* until the code genuinely holds. Coaching
-   happens here — privately, before anything is public.
-4. **Local test — Salih (before any PR).** On the reviewed branch, Salih proves it **boots**, drives
-   every touched flow with Playwright at 375 / 768 / 1280 px against the **real seeded stack**, and
-   writes an honest confidence report (what he ran, what he did *not*). His test-pass means **every
-   REQ-tagged acceptance test is green against the real stack** — see below.
+   branch/worktree until their own gate is green (`typecheck` + `tests` + boot proof). No mock data in
+   shipped code; a slice is vertical or it isn't done (ADR-0003/0005).
+3. **Draft PR — opened as soon as the dev's own gate is green.** The draft *is* the workbench, on
+   purpose: the review happens on it, in the open, so the process can be watched rather than only its
+   result. It also puts CI to work during the review instead of after it.
+4. **Review — Musti, in public on the draft.** He reads the diff locally (cheaper and better than
+   through the API) but **posts findings as comments on the PR**. He posts his record **even when he
+   finds nothing** — a silent pass is indistinguishable from not having looked. The slice advances on
+   **no unresolved findings**, never on "no comments". He runs **before** Salih: his review costs
+   roughly a third of a real-stack run, and code sent back would invalidate that run anyway.
+5. **Test — Salih, risk-tiered, and he flips the switch.** **T3** (docs, DS assets, test infra,
+   config): he does not run — CI covers it and there is nothing there his kind of testing catches.
+   **T2**: he runs when a user can actually see or do something different. **T1** and any genuinely new
+   user-facing surface: full real-stack pass. On a pass he posts his test record and **flips the draft
+   to ready-for-review** — that flip is the signal that *both gates are through and it is the
+   stakeholder's to merge*. Nobody else flips it.
+6. **CI green.** CI re-confirms on the PR what the crew already proved locally. A red pipeline is an
+   automatic block — nothing advances past it, and because the draft opened early, CI has usually
+   already spoken by the time the review finishes.
 
-### Acceptance tests — ATDD, authored from the criteria
-
-Each REQ a slice implements gets an **executable acceptance test derived one-to-one from the
-register's Given–When–Then criterion**, authored by Salih **early (red-first)** so it *defines* done — the
-requirement drives the code. Tests are **tagged with their REQ-ID**, live at the honest level
-(API-integration + Playwright E2E against the **real seeded stack**, never mocks), and feed a
-**REQ↔test traceability matrix**: every REQ maps to the test(s) that prove it, and a REQ with no
-proving test is a gap Salih raises to the stakeholder to ticket. No green-theatre (re-asserting unit tests), no
-acceptance-cosmetics authored after the fact.
-5. **PR opens — only now.** The dev opens the PR only once **both** local gates pass. Opening a PR is a
-   promise: *review-passed + test-passed*. The PR body carries the **evidence block**.
-6. **CI green + lead-review record + ready-for-review flip.** CI re-confirms on the PR what was already
-   locally true. Musti lands a concise GitHub **lead-review record** — a *comment* "Lead review: PASS —
-   <what was checked>" (or "REQUEST CHANGES — <reason>" if something regressed). **Not** a formal
-   `APPROVE`: this is a **single-account repo**, so GitHub blocks self-approval *and* a self-"APPROVE"
-   reads as a review-gate bypass — the record is the durable trail, the human merge is the only
-   authorization. A red pipeline is an automatic block. **The PR stays a *draft* through steps 5–6;
-   once both crew gates have passed and CI is green, the crew marks it *ready-for-review* — that
-   draft→ready flip is the explicit signal "this one is finished and for the stakeholder now."**
+   On the review *record*: Musti lands a comment ("Lead review: PASS — <what was checked>", or the
+   findings if he has any), **never a formal `APPROVE`**. This is a single-account repo, so GitHub
+   blocks self-approval, and a self-"APPROVE" reads as a review-gate bypass. The comment is the durable
+   trail; the human merge is the only authorization.
 7. **Stakeholder final pass.** The stakeholder reviews only the **ready-for-review (non-draft)** PRs —
-   those, and only those, are the finished, evidenced ones awaiting them; **drafts are still in the
-   crew and are not the human's to review**. So "which PRs do I review?" is answered at a glance: the
-   non-draft queue. They are the **final human gate**, not a reviewer of unfinished work. (Branch
-   protection can require the CI **checks** but not "N reviews" — single account, nobody else to
-   approve; the human merge is the gate.)
+   those, and only those, have both gates behind them. **Drafts are the crew at work and are not the
+   human's to review**, though they are deliberately open to *watch*: the review thread is the point.
+   So "which PRs do I review?" is answered at a glance: the non-draft queue. (Branch protection can
+   require the CI **checks** but not "N reviews" — single account, nobody else to approve; the human
+   merge is the gate.)
 
 ## The evidence block (required in every PR body)
 

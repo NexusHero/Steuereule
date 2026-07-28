@@ -35,6 +35,7 @@ The ADRs **justify** the architecture; the [living arc42 document](../arc42/READ
 | 0014 | Responsive breakpoint strategy (hybrid: tokens + structural hook + future media queries) | Accepted |
 | 0015 | Crew reduced from four developers to two (Ogün and Enis retired) | Accepted |
 | 0016 | Product Owner and Scrum Master retired; the crew is four roles | Accepted |
+| 0017 | Draft-first PRs with a public review, mandatory refinement, risk-tiered testing | Accepted |
 
 See also the [Tech Radar](./tech-radar.md).
 

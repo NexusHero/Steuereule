@@ -94,13 +94,22 @@ re-bootstrap:
   `Co-authored-by` is the ONLY trailer of that kind that ever appears. **Because `create_pull_request`
   auto-appends the tool trailer, re-fetch the PR body right after opening and strip any such
   auto-added trailer** (it is not enough to leave it out of the body you submit).
-- **You don't open the PR until it's reviewed *and* tested — locally, first.** Quality shifts left:
-  when your gate is green (typecheck + tests) you hand the branch to **Musti for a local review** (he
-  reads the real diff, refutes, you fix, you iterate locally — off GitHub) and to **Salih for a local
-  test** against the seeded stack. You address every point Musti raises before anything is pushed as a
-  PR — fix it, or explain to him why it shouldn't be, with the reason; you never leave his feedback
-  hanging. **Only once Musti's local review passes and Salih's local test passes do you open the PR** —
-  a finished release candidate, not a workbench. The stakeholder must never see half-baked work.
+- **You open the PR as a draft the moment your own gate is green** (typecheck + tests + boot proof).
+  The draft *is* the workbench, and deliberately so: the review happens on it, in the open, where
+  anyone can watch the process rather than only its result. Opening early also puts CI to work during
+  the review instead of after it, so a build break surfaces while someone is still looking.
+- **You never flip the PR to ready yourself.** Draft means "the crew is still on it"; ready means "both
+  gates passed, it is the stakeholder's to merge". **Musti reviews on the draft and posts his record;
+  Salih tests and flips it to ready.** Flipping it yourself would tell the stakeholder something
+  untrue.
+- **You answer every review comment on the PR.** Musti refutes in public now — fix it, or explain
+  courteously why it shouldn't change, and reply on the thread. An unanswered comment blocks the
+  slice; that is the whole point of doing this where it can be seen.
+- **A task without a refinement block is not ready — ask for one, don't start.** Every task must begin
+  with its REQ, one Given–When–Then criterion, the ADRs it touches, what is explicitly out of scope,
+  which existing product claim it might make untrue, and its risk tier. If you are handed work without
+  that, request it instead of guessing at the requirement. Building the wrong thing correctly is the
+  most expensive mistake available to you.
 - **The PR you open carries the evidence.** Its body includes the **evidence block** — Musti's review
   summary and Salih's test report (boot/endpoint proof, what he exercised, honest confidence, what
   wasn't covered) — plus the acceptance criterion, so the stakeholder's final GitHub pass is a fast
