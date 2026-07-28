@@ -6,7 +6,8 @@
 // ADR-0011 both call out that this must be checked against the real listening server.
 //
 // Uses the same fake-repository provider overrides as test/support/build-test-app.ts (no
-// live Postgres needed) but adds `app.enableCors(...)` (mirroring src/main.ts) and calls
+// live Postgres needed) but adds `app.enableCors(...)` (importing the exact same
+// `buildCorsOptions()` src/main.ts uses — see its header comment) and calls
 // `app.listen(0)` for a real ephemeral port instead of just `.inject()`.
 import fastifyCookie from '@fastify/cookie'
 import { ValidationPipe } from '@nestjs/common'
@@ -16,7 +17,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { AppModule } from '../src/app.module.js'
 import { AUDIT_REPOSITORY } from '../src/audit/audit.repository.js'
 import { validationExceptionFactory } from '../src/common/validation-exception-factory.js'
-import { resolveCorsOrigins } from '../src/cors/resolve-cors-origins.js'
+import { buildCorsOptions } from '../src/cors/build-cors-options.js'
 import { ENCRYPTED_PRISMA } from '../src/prisma/encrypted-prisma.provider.js'
 import { PrismaService } from '../src/prisma/prisma.service.js'
 import { PROFILE_REPOSITORY } from '../src/profile/profile.repository.js'
@@ -45,15 +46,10 @@ async function bootRealServer(): Promise<{ app: NestFastifyApplication; baseUrl:
     logger: false,
   })
 
-  // Mirrors src/main.ts exactly: same enableCors call, same resolver, same methods/exposed
-  // headers list. Keep this literally in sync with main.ts's own `app.enableCors(...)` —
-  // this file's whole premise is "same config, real socket, real CORS enforcement".
-  app.enableCors({
-    origin: resolveCorsOrigins(process.env),
-    credentials: true,
-    methods: ['GET', 'HEAD', 'POST', 'PUT', 'DELETE'],
-    exposedHeaders: ['Content-Disposition'],
-  })
+  // Imports the exact same options object src/main.ts's `app.enableCors(...)` uses — see
+  // build-cors-options.ts's header comment for why this stopped being a hand-mirrored
+  // copy (steuereule#153, F4).
+  app.enableCors(buildCorsOptions(process.env))
 
   await app.register(fastifyCookie)
   app.useGlobalPipes(

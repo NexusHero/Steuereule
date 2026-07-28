@@ -8,7 +8,7 @@ import { AppModule } from './app.module.js'
 import { BETTER_AUTH_BUNDLE, type BetterAuthBundle } from './auth/auth.tokens.js'
 import { mountBetterAuthHandler } from './auth/mount-better-auth.js'
 import { validationExceptionFactory } from './common/validation-exception-factory.js'
-import { resolveCorsOrigins } from './cors/resolve-cors-origins.js'
+import { buildCorsOptions } from './cors/build-cors-options.js'
 import { registerHelmet } from './security/register-helmet.js'
 
 export async function buildApp(): Promise<NestFastifyApplication> {
@@ -22,28 +22,13 @@ export async function buildApp(): Promise<NestFastifyApplication> {
   // Pairs with UserContextGuard's `SameSite=None; Secure` cookie (see guest-session.ts);
   // CORS headers alone are not sufficient for the cross-origin credentialed call to work.
   //
-  // `methods` must be given explicitly: @fastify/cors@11.2.0 defaults to
-  // `GET,HEAD,POST` when omitted, silently excluding PUT — which blocked every
-  // credentialed cross-origin `PUT /v1/profile` (Onboarding save, guest→account
-  // upgrade, the Profil screen) at the browser's preflight (caught live by Salih's
-  // cross-origin re-test; see test/cors.acceptance.test.ts). Listed to match the REST
-  // surface this API actually serves — not a blanket allow-all. DELETE added for
-  // REQ-011's `DELETE /v1/account` (ADR-0013) — the same preflight gap PUT hit
-  // earlier would otherwise silently block it too.
-  app.enableCors({
-    origin: resolveCorsOrigins(process.env),
-    credentials: true,
-    methods: ['GET', 'HEAD', 'POST', 'PUT', 'DELETE'],
-    // `Content-Disposition` is not one of the CORS-safelisted response headers a browser
-    // exposes to page JS by default — found live (REQ-011/ADR-0013's Datenschutz screen
-    // QA pass, steuereule#152): the cross-origin export download silently fell back to
-    // its generic filename because `response.headers.get('content-disposition')` read
-    // `null` in a real browser, even though the server sent the header correctly (`curl`/
-    // Node's `fetch()` don't enforce CORS, so this class of bug is invisible to them —
-    // same lesson as #106/#108, see e2e/cross-origin/run.mjs). Exposing it here is what
-    // `exportDownload.ts`'s `Content-Disposition` filename read actually needs.
-    exposedHeaders: ['Content-Disposition'],
-  })
+  // The actual policy (allowlist, `credentials`, `methods`, `exposedHeaders`) lives in
+  // `buildCorsOptions()` — a single exported builder shared with
+  // `test/cors.acceptance.test.ts`, so the acceptance evidence can never silently drift
+  // from what production actually serves (see that builder's header comment for the
+  // drift this closed, and for why `Content-Disposition` must stay exposed — it's what
+  // the cross-origin export download's dated filename read depends on).
+  app.enableCors(buildCorsOptions(process.env))
 
   await app.register(fastifyCookie)
 
