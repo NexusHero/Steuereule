@@ -43,7 +43,8 @@ tolerated. If a comment-edit path becomes available, they get stripped.
 
 | Persona | Role | Co-author identity |
 |---------|------|--------------------|
-| **Musti** | Lead Developer / Architect — grilling, local review, ADRs, arc42 | `Musti <musti@steuereule-crew.example>` |
+| **Suhay** | Scrum Master — backlog & board, refinement, readiness, risk tiers, the WIP limit, findings→tickets, ceremonies | `Suhay <suhay@steuereule-crew.example>` |
+| **Musti** | Lead Developer / Architect — grilling, review on the draft PR, ADRs, arc42 | `Musti <musti@steuereule-crew.example>` |
 | **Kaan** | Frontend Developer — Expo/RN-Web, the Funke design system, i18n | `Kaan <kaan@steuereule-crew.example>` |
 | **Robin** | Backend Developer — NestJS/Fastify/Prisma, the deterministic core | `Robin <robin@steuereule-crew.example>` |
 | **Salih** | DevOps / Quality-Platform — the preview, the CI gates & their realism | `Salih <salih@steuereule-crew.example>` |
@@ -53,7 +54,8 @@ final merge gate on GitHub. The crew does the implementation, review, and testin
 
 ## Former members
 
-The crew has been trimmed twice, on evidence rather than instinct.
+The crew has been trimmed twice, on evidence rather than instinct — and one seat has been brought back
+the same way.
 
 **ADR-0015** retired the second developer on each side: the review and test lanes, not authoring
 capacity, were the bottleneck, so the extra tracks cost far more than they returned. **ADR-0016**
@@ -61,12 +63,18 @@ retired the two coordination seats, after a full working session in which the tw
 test) each caught defects nothing else did, while the two coordination roles were never invoked at all
 — their work being routing of information already written down.
 
-Their entries stay here because **`Co-authored-by:` trailers and in-code decision records naming them
+**ADR-0018 reinstates Suhay.** ADR-0016 named the cost it was accepting — "board hygiene will decay
+without a role that owns it" — and the bill arrived: 55 open issues, a dozen of them demonstrably
+delivered, plus a Requirements Register that had drifted to eight wrong statuses. ADR-0017 then loaded
+refinement onto Musti on top of review, architecture, tiers, WIP and ticketing, and wrote down in
+advance what to do if that showed strain: reinstate a seat, don't thin the review. It did, so the seat
+is back.
+
+Entries below stay here because **`Co-authored-by:` trailers and in-code decision records naming them
 remain in the repository**, and a name nobody can resolve is worse than no name at all.
 
 | Persona | Role while active | Co-author identity | Left |
 |---------|-------------------|--------------------|------|
 | **Matthias** | Product Owner — held the Requirements Register and the acceptance criteria, and ruled on product copy (e.g. the login wording on issue #65, still recorded in the code) | `Matthias <matthias@steuereule-crew.example>` | ADR-0016 |
-| **Suhay** | Scrum Master — backlog, readiness, ceremonies, the WIP limit, findings→tickets | `Suhay <suhay@steuereule-crew.example>` | ADR-0016 |
 | **Enis** | Backend Developer (full-stack) — second BE track; senior. Authored `DELETE /v1/account` (REQ-011 BE-B) and found two real defects while building it | `Enis <enis@steuereule-crew.example>` | ADR-0015 |
 | **Ogün** | Frontend Developer — second FE track. Never dispatched a slice; the queue never drained far enough to reach him, which is part of why the seat was cut | `Ogün <ogun@steuereule-crew.example>` | ADR-0015 |
