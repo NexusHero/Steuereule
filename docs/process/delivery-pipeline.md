@@ -92,8 +92,19 @@ flowchart TD
 - Test (Salih): <what booted; flows + breakpoints exercised; real stack vs. contract; honest
   confidence; what was NOT covered>
 - Acceptance (Salih): <REQ-IDs covered → their acceptance tests, green against the real stack>
+- Control proof (ADR-0021, only if this PR adds or changes a control): <what was broken, what
+  failed as a result, and that it passed again once restored>
 - CI: green
 ```
+
+**On the control-proof line (ADR-0021).** A *control* is anything whose purpose is to constrain, block
+or guarantee — a CI job, a linter or tool config, an ignore/allow list, a security header, an
+authorization check, a rate limit, a regression test guarding a specific defect, a seed step something
+else depends on. A control that has only been watched to **pass** is unproven: passing is also what the
+broken version does. Break it, watch the right thing fail, restore it, and write that down. The proof
+runs where the control runs — a CI gate is proven by a *red CI run*, a browser-enforced behaviour by a
+*browser*. Where a genuine break is impractical, say so and say what was done instead; silence is not
+an option. Ordinary feature code is out of scope — its tests are already the proof.
 
 ## Risk tiers — match the machinery to the risk
 
