@@ -168,6 +168,30 @@ describe('CORS — credentialed cross-origin (ADR-0011, #57), against the runnin
     expect(response.headers.get('access-control-allow-origin')).not.toBe('*')
   })
 
+  // Mirrors the PUT preflight case above — pinned separately because the drift F4 fixed
+  // was specifically DELETE falling off the test's hand-mirrored methods list while
+  // production's stayed correct (see build-cors-options.ts's header comment). DELETE is
+  // REQ-011's `DELETE /v1/account` (ADR-0013) — the destructive erasure endpoint this
+  // list exists to keep reachable cross-origin. A shared builder makes the *drift*
+  // structurally impossible, but only a named assertion per method proves the *symptom*
+  // (a method silently missing from the allowed list, refused at the browser's
+  // preflight) stays caught if the list ever regresses again.
+  it('an OPTIONS preflight for DELETE /v1/account from an allow-listed Origin includes DELETE in Access-Control-Allow-Methods', async () => {
+    const response = await fetch(`${baseUrl}/v1/account`, {
+      method: 'OPTIONS',
+      headers: {
+        Origin: ALLOWED_ORIGIN,
+        'Access-Control-Request-Method': 'DELETE',
+        'Access-Control-Request-Headers': 'content-type',
+      },
+    })
+
+    const allowedMethods = response.headers.get('access-control-allow-methods') ?? ''
+    const methods = allowedMethods.split(',').map((method) => method.trim())
+    expect(methods).toContain('DELETE')
+    expect(response.headers.get('access-control-allow-origin')).toBe(ALLOWED_ORIGIN)
+  })
+
   it('a real credentialed cross-origin PUT /v1/profile from an allow-listed Origin succeeds end-to-end', async () => {
     // First establish a guest session (mints the httpOnly cookie), exactly as the web
     // app's onboarding save flow would after an initial GET.
