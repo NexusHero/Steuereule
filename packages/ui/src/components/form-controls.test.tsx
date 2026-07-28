@@ -83,4 +83,15 @@ describe('Chip', () => {
     renderUi(<Chip variante="pro">pro</Chip>)
     expect(screen.getByText('pro')).toBeTruthy()
   })
+
+  it('applies_the_caller_supplied_style_alongside_its_own', () => {
+    // Regression: `style` was accepted but silently dropped (oxlint no-unused-vars, ADR-0019
+    // finding) — the DS spec (components/actions/Chip.d.ts) declares it as part of the contract.
+    renderUi(
+      <Chip testID="tag" style={{ marginTop: 12 }}>
+        tag
+      </Chip>,
+    )
+    expect((screen.getByTestId('tag') as HTMLElement).style.marginTop).toBe('12px')
+  })
 })

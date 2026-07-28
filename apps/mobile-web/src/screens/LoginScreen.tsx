@@ -89,9 +89,9 @@ export function LoginScreen({ onDone, onGuest, onRegister }: LoginScreenProps) {
   }
 
   async function googleSignIn() {
-    const fehler = await socialSignIn('google')
-    if (fehler) {
-      setFehler(fehler)
+    const sozialFehler = await socialSignIn('google')
+    if (sozialFehler) {
+      setFehler(sozialFehler)
       return
     }
     onDone()

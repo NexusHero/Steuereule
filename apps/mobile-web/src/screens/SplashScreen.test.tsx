@@ -123,7 +123,9 @@ describe('SplashScreen', () => {
     renderSplash()
     await waitFor(() => expect(timingSpy).toHaveBeenCalled())
 
-    const lidAnim = (lastOwlMarkProps()?.lidStyle as { transform: [{ scaleY: unknown }] }).transform[0].scaleY
+    const lidStyle = lastOwlMarkProps()?.lidStyle
+    expect(lidStyle).toBeTruthy()
+    const lidAnim = (lidStyle as { transform: [{ scaleY: unknown }] }).transform[0].scaleY
     const allCalls = timingSpy.mock.calls
     const lidIndices = allCalls.map(([value], i) => (value === lidAnim ? i : -1)).filter((i) => i >= 0)
     const otherIndices = allCalls.map((_, i) => i).filter((i) => !lidIndices.includes(i))

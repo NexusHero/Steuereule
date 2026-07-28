@@ -51,6 +51,7 @@ export function Chip({ variante = 'standard', aktiv = false, onPress, style, chi
       style={({ pressed }) => [
         container,
         pressed && { transform: [{ translateX: 2 }, { translateY: 2 }], shadowOpacity: 0, elevation: 0 },
+        style,
       ]}
     >
       {typeof children === 'string' ? <Text style={label}>{children}</Text> : children}
