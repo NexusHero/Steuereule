@@ -70,7 +70,7 @@ export function DatenschutzScreen({ onZurueck, onAccountDeleted }: DatenschutzSc
   // better-auth's own session read, the exact same call UserContextGuard/fresh-auth.ts make
   // server-side. Never guessed at client-side (e.g. "did onboarding run") — that could drift
   // from what the server would actually answer on GET/DELETE.
-  const { data: sessionData, isPending: sessionPending } = authClient.useSession()
+  const { data: sessionData, isPending: sessionPending, refetch: refetchSession } = authClient.useSession()
 
   const [exportState, setExportState] = useState<Record<ExportFormat, ExportButtonState>>({ json: 'idle', pdf: 'idle' })
   const [deleteFlow, setDeleteFlow] = useState<DeleteFlow>({ kind: 'closed' })
@@ -100,6 +100,13 @@ export function DatenschutzScreen({ onZurueck, onAccountDeleted }: DatenschutzSc
           // the next session (a fresh guest, or a different account) must never see this
           // account's data flash from a stale cache (Slice-1-retro-class honesty bug).
           queryClient.clear()
+          // ...and refetch better-auth's own session read right next to it (Musti's T1, F2):
+          // `authClient.useSession()` is backed by better-auth's nanostores atom, which
+          // `queryClient.clear()` never touches. Without this, "signed out" only held by
+          // accident of this component unmounting — a re-mount (App.tsx keeps the auth
+          // client alive across the stage change back to Login) would read the stale,
+          // still-signed-in atom and render actions for an account that no longer exists.
+          await refetchSession()
           setPassword('')
           onAccountDeleted()
           return
@@ -115,6 +122,19 @@ export function DatenschutzScreen({ onZurueck, onAccountDeleted }: DatenschutzSc
         case 403:
           setDeleteFlow({ kind: 'guestBlocked' })
           return
+        default: {
+          // Musti's T1, F1: the generated union types `.status` as exactly the five cases
+          // above, but `httpClient` never throws on a non-2xx and genuinely reachable server
+          // errors (ADR-0013 §3 rollback) parse fine — so a real 500 reached this switch with
+          // no matching case, `deleteFlow` never left `'deleting'`, and the user sat on a
+          // spinner forever with no error and no way to cancel. Fall back to a usable state
+          // instead of silently hanging, and force any future status addition to be handled
+          // explicitly: if the generated union ever grows a new literal, `result` is no longer
+          // `never` here and this line fails to compile.
+          const exhaustiveCheck: never = result
+          setDeleteFlow({ kind: withPassword !== undefined ? 'password' : 'confirm', error: 'generic' })
+          return exhaustiveCheck
+        }
       }
     } catch {
       setDeleteFlow({ kind: withPassword !== undefined ? 'password' : 'confirm', error: 'generic' })
