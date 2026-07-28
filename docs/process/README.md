@@ -13,14 +13,18 @@ Six roles, each a defined persona with a model, tools, and boundaries (source of
 
 | Role | Persona | Owns |
 |------|---------|------|
-| Lead / Architect | **Musti** | Technical grilling, **local code review**, architecture & ADRs, the living arc42, the Clean-Code bar, **plus risk tiers, the WIP limit, capacity and findings→tickets** (ADR-0016) |
+| Scrum Master | **Suhay** | The backlog and the board, prioritisation, **readiness & refinement (with Musti)**, risk tiers, the WIP limit, findings→tickets, the Requirements Register's state, ceremonies (ADR-0018) |
+| Lead / Architect | **Musti** | Technical grilling, **review on the draft PR**, architecture & ADRs, the living arc42, the Clean-Code bar, the right to bump a tier **up** |
 | Frontend dev | **Kaan** | UI slices (Expo/RN-Web, the Funke design system, i18n, honest states) |
 | Backend dev | **Robin** | API / data / the deterministic core (NestJS, Fastify, Prisma, EU/DSGVO) |
 | DevOps / Quality-Platform | **Salih** | The frictionless preview, CI gates + their **realism** (every escaped bug / stakeholder complaint → permanent check), the stakeholder↔pipeline ping-pong, test-to-requirement traceability |
 
 Musti reviews and architects but leaves the feature implementation to the two developers (Kaan,
-Robin). **ADR-0016 retired the Product Owner and Scrum Master seats**: requirements and acceptance
-now sit with the **stakeholder**, working from the Requirements Register
+Robin). **ADR-0016 retired the Product Owner and Scrum Master seats; ADR-0018 brought the Scrum
+Master back** — the board decayed exactly as ADR-0016 predicted (55 open issues, a dozen of them
+delivered; a register that drifted twice), so backlog, readiness, tiers, the WIP limit and
+findings→tickets left the lead again. The **Product Owner seat stays retired**: requirements and
+acceptance sit with the **stakeholder**, working from the Requirements Register
 (`docs/requirements/register.md`) and the product/design ADRs. Escalation for requirement questions:
 **devs read the register → ask the stakeholder**; for architecture/future-shaping calls Musti **asks
 the stakeholder** via the `ask-matt` flow and records the outcome as an ADR.
@@ -48,10 +52,14 @@ discovery.
 
 ## The gates
 
-- **Two green lights before the PR:** Musti's local review **and** Salih's local test. A dev opening a
-  PR is promising both.
-- **Depth follows a risk tier — T1 critical / T2 standard / T3 trivial.** Musti tags each slice at
-  readiness (ADR-0016); the tier sets how deep the gates go, so an auth flow gets the full pass
+- **Two green lights, in public, on the draft PR (ADR-0017).** The dev opens a **draft** as soon as
+  their own gate is green; Musti reviews there and posts his record even when he finds nothing; Salih
+  then runs and **he alone flips it to ready**. Where the tier stood Salih down, or the author is the
+  only crew member whose gate applies, nobody in the crew flips it and it goes to the stakeholder
+  (§7a). `ready` means *every gate this PR was owed has passed*.
+- **Depth follows a risk tier — T1 critical / T2 standard / T3 trivial.** Suhay tags each slice at
+  readiness (ADR-0018), and Musti may bump it **up**, never silently down; the tier sets how deep the
+  gates go, so an auth flow gets the full pass
   and a static splash screen doesn't (`delivery-pipeline.md` § Risk tiers). Honesty, tests-first, and
   vertical-never-mock hold at every tier.
 - **WIP limit — at most two slices in the review+test queue.** Build is two-wide; review and test are

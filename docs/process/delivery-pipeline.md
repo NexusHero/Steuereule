@@ -81,8 +81,10 @@ flowchart TD
 
 Not every slice needs the same weight. Applying the full grill + deep review + live 375/768/1280 test +
 arc42 to a static splash screen costs as much as it does for the auth flow — and buys almost nothing.
-So each slice gets a **tier**, assigned by Musti at readiness (ADR-0016 moved this to him with the
-Scrum Master seat; he may still bump it **up** on a risk he sees, never silently down). The tier sets the *depth*, never waives honesty, tests-first, DS-fidelity,
+So each slice gets a **tier**, assigned by **Suhay** at readiness (ADR-0018 moved it back to the Scrum
+Master seat; Musti may bump it **up** on a risk he sees, never silently down — the assigning and the
+bumping sit in different seats on purpose, so the ratchet only turns one way). The tier sets the
+*depth*, never waives honesty, tests-first, DS-fidelity,
 or vertical-never-mock — those hold at every tier.
 
 | Tier | What it is | Gate depth |
@@ -136,7 +138,8 @@ preview, the loop stops learning; nothing else supplies its input.
 
 ## Rules that keep it fast
 
-- **Two tracks, both loaded.** Musti owns capacity (ADR-0016): work is split so the **two devs
+- **Two tracks, both loaded.** Suhay and Musti own capacity together (ADR-0018) — Suhay lines up the
+  *ready* work, Musti shapes the technical split: work is split so the **two devs
   — Kaan (frontend) and Robin (backend) — run in
   parallel** on non-colliding slices — no dev sits idle while others build. This is the capacity that
   keeps development *fast*: the board must stay deep enough in ready, independent slices that four
@@ -161,8 +164,9 @@ preview, the loop stops learning; nothing else supplies its input.
   the loop. (The orchestrator dispatches and sequences; it does not hand-edit the code either.)
 - **Every bug is fixed the moment it's found — nothing is parked for later.** A bug we find is a bug we
   fix now: before the PR opens if a local gate caught it, on the PR if CI or a reviewer caught it —
-  never carried forward as "later" work. **Musti** files a ticket for **every** finding (ADR-0016 moved
-  this to him), but the ticket is the **record** (what was wrong, the fix, the proving test), not a
+  never carried forward as "later" work. **Suhay** files a ticket for **every** finding (ADR-0018 moved
+  this back to him; the reporter reports precisely, he creates, prioritises and links), but the ticket
+  is the **record** (what was wrong, the fix, the proving test), not a
   deferral — it is opened *and closed* inside the slice. The only thing ever *planned* forward is
   genuine future **feature scope** (the roadmap); a known bug never is. A finding that survives past
   its slice is a process miss.
