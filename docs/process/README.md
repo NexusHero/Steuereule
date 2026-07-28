@@ -27,19 +27,21 @@ the stakeholder** via the `ask-matt` flow and records the outcome as an ADR.
 
 ## The delivery pipeline — quality before the PR
 
-Full flow with diagram: [`delivery-pipeline.md`](./delivery-pipeline.md). In short, quality shifts
-**left of the pull request**:
+Full flow with diagram: [`delivery-pipeline.md`](./delivery-pipeline.md). In short, the work happens
+**in the open, on the draft pull request** (ADR-0017):
 
-1. The **stakeholder** brings a ready ticket and the requirement behind it; **Musti** grills the
-   technical design (and writes the ADR) and splits the work so the **two devs (Kaan, Robin) run in
-   parallel** across their tracks — no dev idle.
-2. Devs implement **tests-first**, gate green.
-3. **Musti reviews the diff locally**, line by line, off GitHub, and iterates with the dev.
-4. **Salih tests locally** against the real seeded stack (boot proof + flows + acceptance tests).
-5. **Only then does the dev open the PR** — a *release candidate*, carrying an **evidence block**
-   (Musti's review summary + Salih's test report).
-6. CI is green; **Musti lands a concise `APPROVE`** as the durable record.
-7. **The stakeholder** does the final human pass on GitHub and merges.
+1. **Refinement** — Musti drafts the block (REQ, one Given–When–Then, ADR check, out-of-scope, which
+   existing product claim this might make untrue, risk tier); the **stakeholder rules on it**. No dev
+   starts without one.
+2. Devs implement **tests-first** until their own gate is green.
+3. **The dev opens a draft PR** — the workbench, deliberately public. CI starts here.
+4. **Musti reviews on the draft and comments as Musti**, posting his record *even when he finds
+   nothing*. Advances on **no unresolved findings**, not on "no comments". He runs **before** Salih —
+   his review costs about a third of a real-stack run.
+5. **Salih tests, risk-tiered** — not at all on T3, on T2 when a user can see a difference, in full on
+   T1. On a pass he posts his record and **flips the PR to ready** — that flip is the signal that both
+   gates are through.
+6. The stakeholder reviews the **non-draft** queue and merges.
 
 A PR reaching the stakeholder is already reviewed and tested — their pass is an *audit*, not a
 discovery.
