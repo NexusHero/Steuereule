@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Inject, Req, Res, UseGuards } from '@nestjs/common'
-import { ApiBody, ApiOkResponse, ApiTags } from '@nestjs/swagger'
+import { ApiBadRequestResponse, ApiBody, ApiForbiddenResponse, ApiOkResponse, ApiResponse, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger'
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import { BETTER_AUTH_BUNDLE, type BetterAuthBundle } from '../auth/auth.tokens.js'
 import { CurrentUser } from '../auth/current-user.decorator.js'
@@ -30,6 +30,16 @@ export class AccountDeletionController {
     type: DeleteAccountResponseDto,
     description: 'The account was torn down (ADR-0013). An honest summary of what was erased, anonymised-and-retained, or held under active Löschschutz.',
   })
+  // Explicit error responses (previously undocumented — swagger only had the 200) so the
+  // FE's orval-generated client can discriminate on `.status` instead of an untyped `as
+  // number` cast: each of these is a distinct, real branch (ADR-0013 §6/fresh-auth.ts)
+  // that the Datenschutz screen renders its own honest message for (REQ-011).
+  @ApiBadRequestResponse({
+    description: '`confirm` was not exactly `true`, or the session is not fresh enough and no `password` was given (re-verification required).',
+  })
+  @ApiUnauthorizedResponse({ description: 'The given `password` failed re-verification.' })
+  @ApiForbiddenResponse({ description: 'A guest session — there is no real account here to delete.' })
+  @ApiResponse({ status: 429, description: 'Too many password re-verification attempts; the existing DB-backed rate limit tripped (ADR-0013 §6).' })
   async deleteAccount(
     @CurrentUser() userId: string,
     @Body() dto: DeleteAccountRequestDto,

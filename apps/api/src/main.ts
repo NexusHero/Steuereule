@@ -34,6 +34,15 @@ export async function buildApp(): Promise<NestFastifyApplication> {
     origin: resolveCorsOrigins(process.env),
     credentials: true,
     methods: ['GET', 'HEAD', 'POST', 'PUT', 'DELETE'],
+    // `Content-Disposition` is not one of the CORS-safelisted response headers a browser
+    // exposes to page JS by default — found live (REQ-011/ADR-0013's Datenschutz screen
+    // QA pass, steuereule#152): the cross-origin export download silently fell back to
+    // its generic filename because `response.headers.get('content-disposition')` read
+    // `null` in a real browser, even though the server sent the header correctly (`curl`/
+    // Node's `fetch()` don't enforce CORS, so this class of bug is invisible to them —
+    // same lesson as #106/#108, see e2e/cross-origin/run.mjs). Exposing it here is what
+    // `exportDownload.ts`'s `Content-Disposition` filename read actually needs.
+    exposedHeaders: ['Content-Disposition'],
   })
 
   await app.register(fastifyCookie)
