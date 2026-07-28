@@ -131,4 +131,75 @@ describe('App', () => {
     expect(screen.queryByText('Berater')).toBeNull()
     expect(screen.queryByText('Jahr')).toBeNull()
   })
+
+  // REQ-011 (ADR-0013, steuereule#152) — Datenschutz is reached from Profil, never a tab of its
+  // own (TAB_ORDNUNG groups it with Profil), and has a real back affordance.
+  it(
+    'reaches Datenschutz from Profil’s "Deine Daten" row, and back again — a guest sees the honest no-account notice',
+    async () => {
+      server.use(http.get(`${API_BASE_URL}/api/auth/get-session`, () => HttpResponse.json(null)))
+      const { default: App } = await import('./App')
+      render(<App />)
+      fireEvent.click(screen.getByLabelText('Weiter zur App'))
+      fireEvent.click(screen.getByText('Erstmal als Gast umschauen'))
+      await completeOnboarding()
+      await screen.findByText('Cockpit')
+
+      fireEvent.click(screen.getByText('Profil'))
+      await screen.findByText('Deine Angaben')
+
+      fireEvent.click(screen.getByText('So schützen wir deine Daten (DSGVO)'))
+      await screen.findByText('Noch kein Konto')
+      // The tab bar hides on this drill-down screen (its own back button is the way out).
+      expect(screen.queryByText('Cockpit')).toBeNull()
+
+      fireEvent.click(screen.getByLabelText('Zurück'))
+      await screen.findByText('Deine Angaben')
+    },
+    15_000,
+  )
+
+  it(
+    'a completed account deletion from Datenschutz returns the app to a signed-out state (Login), never a stale screen for a gone account',
+    async () => {
+      const session = {
+        user: { id: 'u1', email: 'neu@beispiel.de', emailVerified: true, name: '' },
+        session: { id: 's1', createdAt: new Date().toISOString() },
+      }
+      server.use(
+        http.post(`${API_BASE_URL}/api/auth/sign-up/email`, () => HttpResponse.json({ token: 'tok_1', user: session.user })),
+        http.get(`${API_BASE_URL}/api/auth/get-session`, () => HttpResponse.json(session)),
+        http.delete(`${API_BASE_URL}/v1/account`, () =>
+          HttpResponse.json({ deleted: { profile: true, account: true }, retainedAnonymisedAuditRows: 0, retainedUnderLegalHold: 0 }, { status: 200 }),
+        ),
+      )
+      const { default: App } = await import('./App')
+      render(<App />)
+      fireEvent.click(screen.getByLabelText('Weiter zur App'))
+      await screen.findByText('Einloggen')
+      fireEvent.click(screen.getByText('Neu hier? Konto anlegen'))
+      expect(await screen.findByText('Konto anlegen')).toBeTruthy()
+      fireEvent.change(screen.getByPlaceholderText('du@beispiel.de'), { target: { value: 'neu@beispiel.de' } })
+      fireEvent.change(screen.getByPlaceholderText('Mindestens 6 Zeichen'), { target: { value: 'geheim1' } })
+      fireEvent.click(screen.getByText('Konto anlegen'))
+      await screen.findByText('Willkommen bei SteuerEule.')
+      fireEvent.click(screen.getByText('Weiter zum Onboarding →'))
+      await completeOnboarding()
+      await screen.findByText('Cockpit')
+
+      fireEvent.click(screen.getByText('Profil'))
+      await screen.findByText('Deine Angaben')
+      fireEvent.click(screen.getByText('So schützen wir deine Daten (DSGVO)'))
+      await screen.findByText('Konto & Daten löschen')
+
+      fireEvent.click(screen.getByText('Konto & Daten löschen'))
+      await screen.findByText('Bevor du löschst')
+      fireEvent.click(screen.getByText('Weiter ohne Export'))
+      await screen.findByText('Bist du sicher?')
+      fireEvent.click(screen.getByText('Ja, endgültig löschen'))
+
+      await screen.findByText('Einloggen')
+    },
+    20_000,
+  )
 })

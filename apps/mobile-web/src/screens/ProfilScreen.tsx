@@ -6,11 +6,13 @@
 // saving/inline-error on save, no fake data.
 //
 // Scope note (see steuereule#95): the DS reference (Profil.jsx) is an account/settings screen
-// whose "Bearbeiten" affordance is a dead end and whose settings/export/delete rows have no
-// live backend today. This component builds only the part that's genuinely ready — the
-// profile-data summary + edit round-trip — reusing OnboardingScreen's field patterns exactly.
+// whose "Bearbeiten" affordance is a dead end and whose settings rows (theme, notifications, …)
+// have no live backend today. This component builds the part that's genuinely ready — the
+// profile-data summary + edit round-trip, reusing OnboardingScreen's field patterns exactly —
+// plus, since REQ-011 (steuereule#152), the one "Deine Daten" row that reaches the real,
+// wired Datenschutz screen (DSGVO export + account deletion).
 import { useState } from 'react'
-import { ActivityIndicator, ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
+import { ActivityIndicator, ScrollView, View, Text, Pressable, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button, Card, Chip, Feld, Input, Pill, Sticker, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme, type Breakpoint } from '@steuereule/ui'
@@ -20,7 +22,14 @@ import { APP_NS } from '../i18n/resources'
 import { formatSteuerId, formatSteuerNr, countDigits } from './onboarding/format'
 import { toOnboardingProfil, toPutProfileDto, type OnboardingProfil } from './onboarding/profileMapping'
 
-export function ProfilScreen() {
+export interface ProfilScreenProps {
+  /** Navigates to the Datenschutz screen (REQ-011) — Profil never renders it itself; the DS
+   *  reference (`Profil.jsx`'s `geheZu('datenschutz')`) and TAB_ORDNUNG both make Datenschutz
+   *  a screen reached *from* Profil, not a sub-view owned by it. */
+  readonly onOpenDatenschutz: () => void
+}
+
+export function ProfilScreen({ onOpenDatenschutz }: ProfilScreenProps) {
   const { t: tr } = useTranslation(APP_NS)
   const bp = useBreakpoint()
   const queryClient = useQueryClient()
@@ -97,7 +106,7 @@ export function ProfilScreen() {
     )
   }
 
-  return <ProfilView profil={profil} onEdit={startEdit} justSaved={justSaved} bp={bp} />
+  return <ProfilView profil={profil} onEdit={startEdit} justSaved={justSaved} bp={bp} onOpenDatenschutz={onOpenDatenschutz} />
 }
 
 function ProfilLoading({ bp }: { readonly bp: Breakpoint }) {
@@ -139,9 +148,10 @@ interface ProfilViewProps {
   readonly onEdit: () => void
   readonly justSaved: boolean
   readonly bp: Breakpoint
+  readonly onOpenDatenschutz: () => void
 }
 
-function ProfilView({ profil, onEdit, justSaved, bp }: ProfilViewProps) {
+function ProfilView({ profil, onEdit, justSaved, bp, onOpenDatenschutz }: ProfilViewProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
@@ -171,6 +181,13 @@ function ProfilView({ profil, onEdit, justSaved, bp }: ProfilViewProps) {
           {tr('profil.savedNotice')}
         </Text>
       ) : null}
+
+      <Card style={styles.datenCard}>
+        <Pressable accessibilityRole="button" onPress={onOpenDatenschutz} style={styles.datenRow}>
+          <Text style={styles.datenRowLabel}>{tr('profil.deineDaten.rowLabel')}</Text>
+          <Text style={styles.datenRowArrow} aria-hidden={true}>→</Text>
+        </Pressable>
+      </Card>
     </ScrollView>
   )
 }
@@ -325,6 +342,17 @@ function makeStyles(t: UiTheme) {
   }
   const counterRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s2, marginTop: -t.space.s2, marginBottom: t.space.s3 }
   const saveErrorText: TextStyle = { color: t.color.fehler, fontFamily: t.font.text, fontSize: t.size.s, marginTop: t.space.s2 }
+  const datenCard: ViewStyle = { padding: 0, overflow: 'hidden' }
+  const datenRow: ViewStyle = {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    minHeight: 52,
+    paddingHorizontal: t.space.s4,
+    paddingVertical: t.space.s3,
+  }
+  const datenRowLabel: TextStyle = { fontFamily: t.font.text, fontSize: t.size.m, color: t.color.tinte, flex: 1 }
+  const datenRowArrow: TextStyle = { fontFamily: t.font.text, fontWeight: t.weight.schwer, color: t.color.tinte }
 
   return {
     screen,
@@ -345,5 +373,9 @@ function makeStyles(t: UiTheme) {
     savedNotice,
     counterRow,
     saveErrorText,
+    datenCard,
+    datenRow,
+    datenRowLabel,
+    datenRowArrow,
   }
 }

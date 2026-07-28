@@ -173,6 +173,76 @@ export const appResources = {
           validation: 'Deine Angaben konnten nicht gespeichert werden. Bitte prüf die Steuer-ID und versuch es noch mal.',
           network: 'Das hat gerade nicht geklappt. Prüf die Verbindung und versuch es noch mal.',
         },
+        deineDaten: {
+          rowLabel: 'So schützen wir deine Daten (DSGVO)',
+        },
+      },
+      // REQ-011 (ADR-0013) — Datenschutz screen: DSGVO export (Art. 15/20) + account deletion
+      // (Art. 17), reached from Profil. The delete copy is corrected, not ported from the DS
+      // demo (Datenschutz.jsx/Profil.jsx): profile + account are permanently erased
+      // server-side; the access-log record is anonymised and *retained* (Art. 30), never
+      // deleted; anything under active Löschschutz is retained under legal obligation; the
+      // export offers JSON and PDF, never "Belege (ZIP)" — no receipts model exists yet.
+      datenschutz: {
+        back: 'Zurück',
+        title: 'Datenschutz',
+        badge: 'DSGVO',
+        hero: {
+          kicker: 'Ernst gemeint, nicht kleingedruckt',
+          heading: 'Deine Daten.\nDeine Regeln.',
+          body: 'Steuerdaten sind das Privateste, was eine App anfassen kann. Deshalb steht hier alles — kurz, konkret, nachprüfbar.',
+        },
+        sessionChecking: 'Wird geprüft …',
+        guest: {
+          heading: 'Noch kein Konto',
+          body: 'Für ein Gast-Profil ohne Konto gibt es weder einen Export noch eine Kontolöschung. Leg ein Konto an, um dein Recht auf Auskunft (Art. 15) und Löschung (Art. 17) wahrzunehmen.',
+        },
+        export: {
+          title: 'Auskunft & Export',
+          subtitle: 'Art. 15 (Auskunft) und Art. 20 (Übertragbarkeit): lade eine vollständige Kopie deiner Daten herunter.',
+          jsonButton: 'Als JSON herunterladen',
+          jsonHint: 'Maschinenlesbar — zum Weitergeben oder Archivieren.',
+          pdfButton: 'Als PDF-Bericht herunterladen',
+          pdfHint: 'Zum Lesen, Ausdrucken oder Ablegen.',
+          preparing: 'Wird erstellt …',
+          success: 'Heruntergeladen.',
+          error: 'Der Export hat gerade nicht geklappt. Versuch es noch mal.',
+        },
+        delete: {
+          title: 'Löschen',
+          subtitle: 'Art. 17: entfernt dein Profil und dein Konto endgültig von unseren Servern.',
+          openButton: 'Konto & Daten löschen',
+          offer: {
+            heading: 'Bevor du löschst',
+            warning1:
+              'Dein Profil und dein Konto werden endgültig von unseren Servern gelöscht — das lässt sich nicht rückgängig machen. Einträge deines Zugriffsprotokolls bleiben anonymisiert erhalten: Wir entfernen deine Kennung daraus, behalten die Einträge selbst aber als gesetzlich vorgeschriebenen Nachweis (Art. 30 DSGVO) — sie lassen sich danach niemandem mehr zuordnen. Daten unter gesetzlichem Löschschutz (z. B. bereits eingereichte Fassungen) bleiben ebenfalls erhalten, bis die Aufbewahrungspflicht endet.',
+            warning2:
+              'Falls du bereits Fassungen beim Finanzamt eingereicht hast, verlierst du mit der Kontolöschung deinen Zugriff auf diese Nachweise. Exportiere sie dir vorher.',
+            exportFirstButton: 'Erst als JSON exportieren (empfohlen)',
+            exportedNote: 'Export gestartet.',
+            continueButton: 'Weiter ohne Export',
+            cancelButton: 'Abbrechen',
+          },
+          confirm: {
+            heading: 'Bist du sicher?',
+            warning: 'Diesen Schritt kannst du nicht rückgängig machen. Dein Profil und dein Konto werden jetzt endgültig gelöscht.',
+            confirmButton: 'Ja, endgültig löschen',
+            cancelButton: 'Abbrechen',
+            genericError: 'Das hat gerade nicht geklappt. Prüf die Verbindung und versuch es noch mal.',
+          },
+          password: {
+            heading: 'Bestätige mit deinem Passwort',
+            explain: 'Deine Sitzung ist nicht mehr aktuell genug für diesen unwiderruflichen Schritt. Gib dein Passwort ein, um fortzufahren.',
+            label: 'Passwort',
+            submitButton: 'Bestätigen',
+            cancelButton: 'Abbrechen',
+            wrongPasswordError: 'Das Passwort stimmt nicht. Versuch es noch mal.',
+            rateLimitedError: 'Zu viele Versuche. Warte kurz und versuch es dann noch mal.',
+            genericError: 'Das hat gerade nicht geklappt. Prüf die Verbindung und versuch es noch mal.',
+          },
+          deleting: 'Wird gelöscht …',
+          guestBlocked: 'Für Gast-Zugänge gibt es kein Konto zum Löschen.',
+        },
       },
       cockpit: {
         appbarTitle: 'Steuerjahr',
@@ -356,6 +426,70 @@ export const appResources = {
         saveError: {
           validation: "Your details couldn't be saved. Please check the Steuer-ID and try again.",
           network: "That didn't work just now. Check your connection and try again.",
+        },
+        deineDaten: {
+          rowLabel: 'How we protect your data (GDPR)',
+        },
+      },
+      datenschutz: {
+        back: 'Back',
+        title: 'Privacy',
+        badge: 'GDPR',
+        hero: {
+          kicker: 'We mean it, not just fine print',
+          heading: 'Your data.\nYour rules.',
+          body: "Tax data is about the most private thing an app can touch. So here's everything — short, concrete, checkable.",
+        },
+        sessionChecking: 'Checking …',
+        guest: {
+          heading: 'No account yet',
+          body: "A guest profile without an account has neither an export nor an account to delete. Create an account to exercise your right to access (Art. 15) and erasure (Art. 17).",
+        },
+        export: {
+          title: 'Access & export',
+          subtitle: 'Art. 15 (access) and Art. 20 (portability): download a full copy of your data.',
+          jsonButton: 'Download as JSON',
+          jsonHint: 'Machine-readable — for sharing or archiving.',
+          pdfButton: 'Download as PDF report',
+          pdfHint: 'For reading, printing, or filing.',
+          preparing: 'Preparing …',
+          success: 'Downloaded.',
+          error: "That export didn't work just now. Try again.",
+        },
+        delete: {
+          title: 'Delete',
+          subtitle: 'Art. 17: permanently removes your profile and account from our servers.',
+          openButton: 'Delete account & data',
+          offer: {
+            heading: 'Before you delete',
+            warning1:
+              "Your profile and account are permanently deleted from our servers — this can't be undone. Your access-log entries are retained, anonymised: we sever your identifier from them, but keep the entries themselves as a legally required record (GDPR Art. 30) — they can no longer be linked to anyone afterwards. Data under an active legal hold (e.g. filings you've already submitted) is likewise retained until the retention obligation ends.",
+            warning2:
+              "If you've already submitted filings to the tax office, deleting your account means losing access to that evidence. Export it first.",
+            exportFirstButton: 'Export as JSON first (recommended)',
+            exportedNote: 'Export started.',
+            continueButton: 'Continue without exporting',
+            cancelButton: 'Cancel',
+          },
+          confirm: {
+            heading: 'Are you sure?',
+            warning: "This step can't be undone. Your profile and account will now be permanently deleted.",
+            confirmButton: 'Yes, delete permanently',
+            cancelButton: 'Cancel',
+            genericError: "That didn't work just now. Check your connection and try again.",
+          },
+          password: {
+            heading: 'Confirm with your password',
+            explain: "Your session isn't fresh enough for this irreversible step. Enter your password to continue.",
+            label: 'Password',
+            submitButton: 'Confirm',
+            cancelButton: 'Cancel',
+            wrongPasswordError: "That password doesn't match. Try again.",
+            rateLimitedError: 'Too many attempts. Wait a moment and try again.',
+            genericError: "That didn't work just now. Check your connection and try again.",
+          },
+          deleting: 'Deleting …',
+          guestBlocked: 'Guest accounts have no account to delete.',
         },
       },
       cockpit: {
