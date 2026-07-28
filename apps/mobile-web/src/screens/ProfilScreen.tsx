@@ -136,7 +136,7 @@ function ProfilLoadError({ onRetry, bp }: ProfilLoadErrorProps) {
         {tr('profil.loadError.heading')}
       </Text>
       <Text style={styles.help}>{tr('profil.loadError.message')}</Text>
-      <Button onPress={onRetry} style={styles.ctaCentered}>
+      <Button onPress={onRetry}>
         {tr('profil.loadError.retry')}
       </Button>
     </View>
@@ -303,12 +303,10 @@ function makeStyles(t: UiTheme) {
     fontSize: t.size.m,
     textAlign: 'center',
   }
+  // #176: `cta`'s marginTop only applies at the edit form's save button (:264 — nothing before it
+  // already claims the seam). The LoadError button (:139) passes no `style` at all: centerScreen's
+  // own `gap` already supplies its leading space, so a competing marginTop would double it.
   const cta: ViewStyle = { marginTop: t.space.s5 }
-  // issue #176: `centerScreen`'s own `gap: s3` already supplies the button's leading space on the
-  // load-error screen; a `marginTop` on top of it double-counts the seam (the compounding
-  // Musti/Salih measured — 12px became 36px). The DS reference never stacks a flex gap and a
-  // button marginTop, so this variant carries none.
-  const ctaCentered: ViewStyle = {}
   const cancelButton: ViewStyle = { marginTop: t.space.s3 }
   const summaryCard: ViewStyle = { padding: t.space.s4 }
   const summaryRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s3 }
@@ -367,7 +365,6 @@ function makeStyles(t: UiTheme) {
     heading,
     help,
     cta,
-    ctaCentered,
     cancelButton,
     summaryCard,
     summaryRow,
