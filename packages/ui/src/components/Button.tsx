@@ -56,6 +56,7 @@ export function Button({ variante = 'primaer', disabled = false, onPress, style,
         container,
         disabled && { opacity: 0.4 },
         pressed && !disabled && { transform: [{ translateX: 4 }, { translateY: 4 }], shadowOpacity: 0, elevation: 0 },
+        style,
       ]}
     >
       {typeof children === 'string' ? <Text style={label}>{children}</Text> : children}
