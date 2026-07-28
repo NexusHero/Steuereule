@@ -38,6 +38,7 @@
     "rxjs": "^7.8.2"
   },
   "devDependencies": {
+    "@fastify/cors": "^11.2.0",
     "@nestjs/testing": "^11.1.28",
     "@swc/core": "^1.15.46",
     "@types/node": "^22.10.5",
