@@ -26,8 +26,6 @@ misleading:
 
 | Persona | Role | Co-author identity |
 |---------|------|--------------------|
-| **Suhay** | Scrum Master — backlog, readiness, ceremonies, WIP & findings→tickets | `Suhay <suhay@steuereule-crew.example>` |
-| **Matthias** | Product Owner — requirements, acceptance, outward presentation | `Matthias <matthias@steuereule-crew.example>` |
 | **Musti** | Lead Developer / Architect — grilling, local review, ADRs, arc42 | `Musti <musti@steuereule-crew.example>` |
 | **Kaan** | Frontend Developer — Expo/RN-Web, the Funke design system, i18n | `Kaan <kaan@steuereule-crew.example>` |
 | **Robin** | Backend Developer — NestJS/Fastify/Prisma, the deterministic core | `Robin <robin@steuereule-crew.example>` |
@@ -38,12 +36,20 @@ final merge gate on GitHub. The crew does the implementation, review, and testin
 
 ## Former members
 
-The crew briefly ran with a second developer on each side. Both were retired in **ADR-0015** — the
-review and test lanes, not authoring capacity, were the real bottleneck, so the extra tracks cost far
-more than they returned. Their entries stay here because **`Co-authored-by:` trailers naming them
-remain in the merged history**, and a trailer nobody can resolve is worse than no trailer at all.
+The crew has been trimmed twice, on evidence rather than instinct.
+
+**ADR-0015** retired the second developer on each side: the review and test lanes, not authoring
+capacity, were the bottleneck, so the extra tracks cost far more than they returned. **ADR-0016**
+retired the two coordination seats, after a full working session in which the two *gates* (review and
+test) each caught defects nothing else did, while the two coordination roles were never invoked at all
+— their work being routing of information already written down.
+
+Their entries stay here because **`Co-authored-by:` trailers and in-code decision records naming them
+remain in the repository**, and a name nobody can resolve is worse than no name at all.
 
 | Persona | Role while active | Co-author identity | Left |
 |---------|-------------------|--------------------|------|
+| **Matthias** | Product Owner — held the Requirements Register and the acceptance criteria, and ruled on product copy (e.g. the login wording on issue #65, still recorded in the code) | `Matthias <matthias@steuereule-crew.example>` | ADR-0016 |
+| **Suhay** | Scrum Master — backlog, readiness, ceremonies, the WIP limit, findings→tickets | `Suhay <suhay@steuereule-crew.example>` | ADR-0016 |
 | **Enis** | Backend Developer (full-stack) — second BE track; senior. Authored `DELETE /v1/account` (REQ-011 BE-B) and found two real defects while building it | `Enis <enis@steuereule-crew.example>` | ADR-0015 |
 | **Ogün** | Frontend Developer — second FE track. Never dispatched a slice; the queue never drained far enough to reach him, which is part of why the seat was cut | `Ogün <ogun@steuereule-crew.example>` | ADR-0015 |

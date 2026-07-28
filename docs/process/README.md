@@ -13,27 +13,26 @@ Six roles, each a defined persona with a model, tools, and boundaries (source of
 
 | Role | Persona | Owns |
 |------|---------|------|
-| Scrum Master | **Suhay** | Backlog & readiness, ticket state, ceremonies, findings→tickets, capacity (with Musti), driving retro critique to *done* |
-| Product Owner | **Matthias** | Requirements Register & acceptance criteria, **frequent per-slice acceptance on the preview** + milestone User Report, outward presentation |
-| Lead / Architect | **Musti** | Technical grilling, **local code review**, architecture & ADRs, the living arc42, the Clean-Code bar |
+| Lead / Architect | **Musti** | Technical grilling, **local code review**, architecture & ADRs, the living arc42, the Clean-Code bar, **plus risk tiers, the WIP limit, capacity and findings→tickets** (ADR-0016) |
 | Frontend dev | **Kaan** | UI slices (Expo/RN-Web, the Funke design system, i18n, honest states) |
 | Backend dev | **Robin** | API / data / the deterministic core (NestJS, Fastify, Prisma, EU/DSGVO) |
-| DevOps / Quality-Platform | **Salih** | The frictionless preview, CI gates + their **realism** (every bug/PO complaint → permanent check), the PO↔pipeline ping-pong, test-to-requirement traceability |
+| DevOps / Quality-Platform | **Salih** | The frictionless preview, CI gates + their **realism** (every escaped bug / stakeholder complaint → permanent check), the stakeholder↔pipeline ping-pong, test-to-requirement traceability |
 
-Suhay and Matthias consult, grill, and refine; they do not touch code. Musti reviews and architects
-but leaves the feature implementation to the two developers (Kaan, Robin). Escalation for
-requirement questions:
-**devs → Matthias → human**; for architecture/future-shaping calls Musti **asks the stakeholder** via
-the `ask-matt` flow and records the outcome as an ADR.
+Musti reviews and architects but leaves the feature implementation to the two developers (Kaan,
+Robin). **ADR-0016 retired the Product Owner and Scrum Master seats**: requirements and acceptance
+now sit with the **stakeholder**, working from the Requirements Register
+(`docs/requirements/register.md`) and the product/design ADRs. Escalation for requirement questions:
+**devs read the register → ask the stakeholder**; for architecture/future-shaping calls Musti **asks
+the stakeholder** via the `ask-matt` flow and records the outcome as an ADR.
 
 ## The delivery pipeline — quality before the PR
 
 Full flow with diagram: [`delivery-pipeline.md`](./delivery-pipeline.md). In short, quality shifts
 **left of the pull request**:
 
-1. **Suhay** pulls a ready, grilled ticket; **Matthias** holds the requirements, **Musti** grills the
-   technical design (and writes the ADR). Suhay + Musti split the work so the **two devs (Kaan,
-   Robin) run in parallel** across their tracks — no dev idle.
+1. The **stakeholder** brings a ready ticket and the requirement behind it; **Musti** grills the
+   technical design (and writes the ADR) and splits the work so the **two devs (Kaan, Robin) run in
+   parallel** across their tracks — no dev idle.
 2. Devs implement **tests-first**, gate green.
 3. **Musti reviews the diff locally**, line by line, off GitHub, and iterates with the dev.
 4. **Salih tests locally** against the real seeded stack (boot proof + flows + acceptance tests).
@@ -49,34 +48,35 @@ discovery.
 
 - **Two green lights before the PR:** Musti's local review **and** Salih's local test. A dev opening a
   PR is promising both.
-- **Depth follows a risk tier — T1 critical / T2 standard / T3 trivial.** Suhay tags each slice at
-  readiness (Musti may bump up); the tier sets how deep the gates go, so an auth flow gets the full pass
+- **Depth follows a risk tier — T1 critical / T2 standard / T3 trivial.** Musti tags each slice at
+  readiness (ADR-0016); the tier sets how deep the gates go, so an auth flow gets the full pass
   and a static splash screen doesn't (`delivery-pipeline.md` § Risk tiers). Honesty, tests-first, and
   vertical-never-mock hold at every tier.
-- **WIP limit — at most two slices in the review+test queue.** Build is four-wide; review and test are
-  single-lane. When the queue is full, a freed dev helps *land* what's queued rather than start a sixth
+- **WIP limit — at most two slices in the review+test queue.** Build is two-wide; review and test are
+  single-lane. When the queue is full, a freed dev helps *land* what's queued rather than start a third
   branch. Landing finished work is throughput; a growing pile isn't.
 - **CI must be the *real* gate.** Two green lights are only as strong as CI, so: the
   compliance-critical tests (encryption-at-rest, the audit log) **run in CI against a real service**,
   a **real boot/smoke** step proves the server actually starts, and **GitHub branch protection**
   enforces required checks + review (no merge on pending/red, no bypass). Until branch protection is
   on, an `APPROVE` is a personal promise, not an enforced invariant.
-- **Every milestone yields a valid, testable artifact** the PO can exercise (a one-command seeded
-  stack / preview) — not green tests alone.
+- **Every milestone yields a valid, testable artifact** the stakeholder can exercise (a one-command
+  seeded stack / preview) — not green tests alone.
 - **Every bug is fixed now, ticketed for the record — nothing parked for later:** a real defect is
   fixed the moment it's found (before the PR if a local gate caught it, on the PR if CI/review did); a
-  trivial-but-real nit (a wrong comment, dead reference) is resolved *in the review loop*. Suhay files
+  trivial-but-real nit (a wrong comment, dead reference) is resolved *in the review loop*. Musti files
   a ticket for every finding as the **record** of the fix — opened *and closed* inside the slice, never
   a deferral. Only future **feature scope** is planned forward; a known bug never is.
 
 ## Ceremonies
 
-- **Planning** — Suhay pulls & refines the committed items; cross-track contracts are frozen so both
-  devs can start in parallel.
-- **Milestone acceptance** — when a milestone lands, Suhay tells Matthias, who inspects the *running
-  product* hard and writes an **intensive User Report** (product/user-acceptance, not code review);
-  Matthias + Suhay grill it into concrete tickets.
-- **Retrospective** — at the end of each iteration/milestone, blameless feedback from everyone. Suhay
+- **Planning** — the stakeholder and Musti pick and refine the committed items; cross-track contracts
+  are frozen so both devs can start in parallel.
+- **Milestone acceptance** — when a milestone lands, the **stakeholder** inspects the *running product*
+  on Salih's preview against the Requirements Register, and what they find becomes concrete tickets.
+  With the PO seat retired (ADR-0016) this pass is the only thing standing between "tests are green"
+  and "it does what we promised" — if it is skipped, nothing else catches requirement drift.
+- **Retrospective** — at the end of each iteration/milestone, blameless feedback from everyone. Musti
   synthesises it, turns each improvement into an owned action item, **plays it back to the whole team**
   (each participant hears their commitment), and **drives it to done** — verifying on the next slices
   that the critique was actually applied, not just filed.
@@ -97,7 +97,7 @@ discovery.
   casual add.
 - **Speaking code** — comments explain *why*, not *what*; a comment-dense diff is a smell.
 - **Living architecture docs** — the arc42 is as important as the software; diagrams are **PlantUML**
-  (text source committed) exported to **SVG** and referenced from the docs; Suhay checks "is the arc42
+  (text source committed) exported to **SVG** and referenced from the docs; Musti checks "is the arc42
   updated?" on every completed task.
 
 ## Sources of record
