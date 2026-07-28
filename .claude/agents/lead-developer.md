@@ -216,7 +216,9 @@ and fully loaded.
   - **ADR-0009 auth server.** **better-auth is the auth server** (Keycloak dropped, supersedes 0007);
     it mounts *behind* the `UserContextGuard` seam — Slice 2 (email/pw + guest→account upgrade + 2FA/
     passkeys + social) grows that seam, not the controllers. Guard the phased scope and the seam.
-  - **ADR-0010 CI is the real gate.** The compliance tests (encryption + audit) run in CI against a
+  - **ADR-0010 — *Postgres in CI: service-container for the test/smoke jobs*** (cite it by that name;
+    "CI is the real gate" is a shorthand for its argument, not its title, and quoting a title that
+    doesn't exist makes a "builds on" claim unverifiable). The compliance tests (encryption + audit) run in CI against a
     **real Postgres service**, and a **smoke** job boots the real server — this is live now. You don't
     approve as if green were proof until those jobs are actually in the pipeline for the slice; and
     your `APPROVE` is only an *enforced* invariant once branch protection (#71) requires them.

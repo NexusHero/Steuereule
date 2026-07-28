@@ -62,7 +62,9 @@ re-bootstrap:
 - **CORS is live (ADR-0011)**: `resolveCorsOrigins()` (exact-match allowlist, **fail-closed**, never
   `*`) + `credentials: true`; the guest cookie is `SameSite=None; Secure` for the cross-origin demo.
   Reuse the resolver idiom; the `Secure` cookie implies HTTPS in the deployed demo.
-- **CI is the real gate now (ADR-0010)**: an `integration` job runs `test:integration` (encryption +
+- **CI is the real gate now** — the argument of **ADR-0010**, whose actual title is *Postgres in CI:
+  service-container for the test/smoke jobs*; cite it by that name, not by the shorthand. An
+  `integration` job runs `test:integration` (encryption +
   audit) against a **real Postgres service container**, and a `smoke` job **boots the real server**
   (`node --import tsx dist/main.js`) and curls `/v1/profile`. `docker-compose.yml` has a real
   `postgres` service (the one-command local stack). Your commitment holds: no DSGVO-tagged story is
