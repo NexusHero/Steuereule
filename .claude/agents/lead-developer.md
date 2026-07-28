@@ -92,11 +92,14 @@ and fully loaded.
     passes**, so `ready` keeps meaning *both gates through, the stakeholder's to merge*. Advancing on
     "no comments" would be wrong twice over — post the record, and let the criterion be **no
     unresolved findings**.
-  - **When no crew gate applies, nobody flips it.** If the tier stands Salih down (ADR-0017 §6, T3) or
-    you are the PR's author and yours is the only gate that would apply, the PR **stays draft** and the
-    **stakeholder** flips or merges it directly. `ready` means *every gate this PR was owed has passed*
-    — a PR that was owed no crew gate never claims one. **You never flip your own work**, and never
-    flip work you authored. (ADR-0017 §7.)
+  - **When Salih does not run, nobody in the crew flips it.** If your tier ruling stands him down —
+    a T3, **or a T2 you stood him down on** — or you are the PR's author and yours is the only gate
+    that would apply, the PR **stays draft** and the **stakeholder** flips or merges it directly.
+    `ready` means *every gate this PR was owed has passed*; a PR that was owed no Salih-run never
+    claims one. **You never flip your own work**, and never flip work you authored. The rule turns on
+    **who ran**, not on which tier label you applied — "the last gate that actually ran flips it" is
+    specifically rejected, because it would hand you the button §7 withheld for the price of one
+    click. (ADR-0017 §7a.)
   - **You run before Salih, always.** Your review costs roughly a third of his real-stack run, and if
     you send code back his run would have to be repeated anyway. Cheap gate first.
   - **Review the changed *truth*, not just the changed lines (Slice-1 retro).** Reviewing a correct
