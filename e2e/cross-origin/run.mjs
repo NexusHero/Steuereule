@@ -121,6 +121,56 @@ async function credentialedFetch(page, { method, path, body }) {
   return { evalResult, realResponse }
 }
 
+/**
+ * F3 (Musti's T1 review on PR #153, REQ-011): the two existing CORS-exposure regression
+ * tests (`apps/api/test/cors.acceptance.test.ts` and
+ * `apps/api/test/acceptance/req-011-export.test.ts`) both assert the
+ * `access-control-expose-headers` *string* via Node's `fetch()` — and Node/`curl` never
+ * enforce CORS at all, so that only proves the server opts in. It cannot prove a browser
+ * can actually read the header. The real bug (steuereule#152) was exactly that gap:
+ * `Content-Disposition` is not one of the CORS-safelisted response headers a browser
+ * exposes to page JS by default, so `exportDownload.ts`'s
+ * `response.headers.get('content-disposition')` silently returned `null` and the download
+ * fell back to a generic filename — invisible to every test that doesn't run inside a real
+ * browser. This function is that proof: a real, credentialed, cross-origin in-page fetch,
+ * reading the header exactly the way `exportDownload.ts` does.
+ */
+async function assertExportFilenameReadableInPage(page) {
+  const url = `${API_ORIGIN}/v1/account/export?format=json`
+  const result = await page.evaluate(async (url) => {
+    try {
+      const response = await fetch(url, { credentials: 'include', mode: 'cors' })
+      return { ok: response.ok, status: response.status, contentDisposition: response.headers.get('content-disposition') }
+    } catch (error) {
+      return { ok: false, error: String(error) }
+    }
+  }, url)
+
+  if (result.error) {
+    fail(`Browser fetch GET /v1/account/export?format=json threw: ${result.error}`)
+  }
+  if (!result.ok) {
+    fail(`GET /v1/account/export?format=json did not succeed: status=${result.status}`)
+  }
+  if (result.contentDisposition === null || result.contentDisposition === undefined) {
+    fail(
+      "In-page response.headers.get('content-disposition') was null — the browser did not expose the " +
+        'header to page JS even though the server presumably sent it. This is the exact class of the ' +
+        'REQ-011 export-filename bug (steuereule#152, PR #153 finding F3): main.ts\'s enableCors ' +
+        "options must list 'Content-Disposition' in exposedHeaders (or the shared CORS-options builder, " +
+        'once #155 lands) for a real browser — not curl/Node fetch — to ever see it.',
+    )
+  }
+  const filenameMatch = /filename="steuereule-export-\d{4}-\d{2}-\d{2}\.json"/.exec(result.contentDisposition)
+  if (!filenameMatch) {
+    fail(
+      `In-page Content-Disposition was readable but did not carry the expected dated filename pattern: ` +
+        `${JSON.stringify(result.contentDisposition)}`,
+    )
+  }
+  return result.contentDisposition
+}
+
 async function main() {
   const browser = await chromium.launch({ headless: true })
   try {
@@ -181,6 +231,14 @@ async function main() {
       body: { firstName: 'Anna', lastName: 'Beispiel', steuerId: '02476291358' },
     })
     console.log('[cross-origin-smoke] PUT /v1/profile: cross-origin readable (preflight + real PUT both succeeded)')
+
+    // F3 (Musti's T1 review on PR #153, REQ-011) — see assertExportFilenameReadableInPage's
+    // header comment: the existing CORS-exposure regression tests can't prove a browser can
+    // read Content-Disposition; this does, against the real running stack.
+    const contentDisposition = await assertExportFilenameReadableInPage(page)
+    console.log(
+      `[cross-origin-smoke] GET /v1/account/export?format=json: Content-Disposition readable in-page — ${contentDisposition}`,
+    )
 
     console.log('[cross-origin-smoke] PASS — all credentialed cross-origin flows completed and were readable.')
   } finally {
