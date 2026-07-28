@@ -45,11 +45,14 @@ async function bootRealServer(): Promise<{ app: NestFastifyApplication; baseUrl:
     logger: false,
   })
 
-  // Mirrors src/main.ts exactly: same enableCors call, same resolver, same methods list.
+  // Mirrors src/main.ts exactly: same enableCors call, same resolver, same methods/exposed
+  // headers list. Keep this literally in sync with main.ts's own `app.enableCors(...)` —
+  // this file's whole premise is "same config, real socket, real CORS enforcement".
   app.enableCors({
     origin: resolveCorsOrigins(process.env),
     credentials: true,
-    methods: ['GET', 'HEAD', 'POST', 'PUT'],
+    methods: ['GET', 'HEAD', 'POST', 'PUT', 'DELETE'],
+    exposedHeaders: ['Content-Disposition'],
   })
 
   await app.register(fastifyCookie)
@@ -94,6 +97,22 @@ describe('CORS — credentialed cross-origin (ADR-0011, #57), against the runnin
     expect(response.status).toBeLessThan(300)
     expect(response.headers.get('access-control-allow-origin')).toBe(ALLOWED_ORIGIN)
     expect(response.headers.get('access-control-allow-credentials')).toBe('true')
+  })
+
+  // Regression test — found live via a real cross-origin browser QA pass on the
+  // Datenschutz screen's export download (REQ-011/ADR-0013, steuereule#152):
+  // `Content-Disposition` is not one of the CORS-safelisted response headers a browser
+  // exposes to page JS by default, so `exportDownload.ts`'s filename read silently fell
+  // back to a generic name on every real cross-origin deployment — invisible to
+  // `curl`/Node's `fetch()`, which never enforce CORS (same lesson as #106/#108).
+  it('Access-Control-Expose-Headers includes Content-Disposition for an allow-listed Origin', async () => {
+    const response = await fetch(`${baseUrl}/v1/profile`, {
+      method: 'GET',
+      headers: { Origin: ALLOWED_ORIGIN },
+    })
+
+    const exposedHeaders = (response.headers.get('access-control-expose-headers') ?? '').toLowerCase()
+    expect(exposedHeaders).toContain('content-disposition')
   })
 
   it('a disallowed Origin gets no Access-Control-Allow-Origin header — refused, never a wildcard or a reflected origin', async () => {

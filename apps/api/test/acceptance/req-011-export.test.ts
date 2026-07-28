@@ -114,6 +114,27 @@ describe('REQ-011 — DSGVO data export (Art. 15/20), against the real server', 
     expect(bytes.subarray(0, 5).toString('ascii')).toBe('%PDF-')
   })
 
+  // Found live via a real cross-origin browser QA pass on the Datenschutz screen
+  // (steuereule#152) — `curl`/Node's `fetch()` never enforce CORS, so they happily read
+  // `Content-Disposition` regardless of this header; only a real browser hides it from
+  // page JS unless the server opts in via `Access-Control-Expose-Headers`. Without it,
+  // `exportDownload.ts`'s filename read silently falls back to a generic name for every
+  // deployment where the web app and API are on different origins (ADR-0011's whole
+  // cross-origin architecture) — the exact class of invisible-to-non-browser-tooling bug
+  // #106/#108 already taught this codebase to watch for (see cors.acceptance.test.ts).
+  it('exposes Content-Disposition cross-origin so a real browser can read the export filename (ADR-0011)', async () => {
+    const { cookie } = await signUpAndSaveProfile('acceptance-expose-headers@example.com')
+
+    const response = await fetch(`${baseUrl}/v1/account/export?format=json`, {
+      headers: { cookie, ...TRUSTED_ORIGIN_HEADERS },
+    })
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get('content-disposition')).toMatch(/filename="steuereule-export-\d{4}-\d{2}-\d{2}\.json"/)
+    const exposedHeaders = (response.headers.get('access-control-expose-headers') ?? '').toLowerCase()
+    expect(exposedHeaders).toContain('content-disposition')
+  })
+
   it('trust boundary: user A cannot export user B’s data — there is no id parameter to forge, only the guard-derived session', async () => {
     const userA = await signUpAndSaveProfile('acceptance-a@example.com', PROFILE_PAYLOAD)
     const userB = await signUpAndSaveProfile('acceptance-b@example.com', {
