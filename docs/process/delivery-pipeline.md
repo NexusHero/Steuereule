@@ -211,7 +211,7 @@ preview, the loop stops learning; nothing else supplies its input.
 | Lead / Architect | Musti | **The technical half of the refinement**, **review on the draft PR**, his record, architecture docs, the right to bump a tier **up** (never down) |
 | Frontend dev | Kaan | UI slices, tests-first, **opens a draft PR as soon as their own gate is green** |
 | Backend dev | Robin | API/data slices, tests-first, **opens a draft PR as soon as their own gate is green** |
-| DevOps / Quality-Platform | Salih | The frictionless preview, the CI gates + their **realism** (bug/complaint → permanent check), the stakeholder↔pipeline ping-pong; the risk-tiered test pass, and **the flip to ready** |
+| DevOps / Quality-Platform | Salih | The frictionless preview, the CI gates + their **realism** (bug/complaint → permanent check), the stakeholder↔pipeline ping-pong; the risk-tiered test pass, and **the flip to ready — except where §7a stands him down** (a tier he doesn't run, or a PR whose only applicable gate is its own author's), in which case nobody in the crew flips and it goes to the stakeholder |
 
 The role definitions live in [`.claude/agents/`](../../.claude/agents/); this document is the flow they
 share.

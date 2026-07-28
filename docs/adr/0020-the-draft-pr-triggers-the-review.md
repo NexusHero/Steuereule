@@ -43,11 +43,19 @@ start it, and the orchestrator does not gate it.**
 the orchestrator all start the review the same way. The first version of this rule said "a draft PR
 from a dev", which failed to cover its own PR — a scoping bug found by the review it describes.
 
-Two exceptions, both pre-existing and neither an invitation to wait:
+Two exceptions, neither an invitation to wait:
 
-1. **He is not the gate on a PR he authored** (ADR-0017 §7a). The PR then goes to the stakeholder.
+1. **He is not the gate on a PR he authored.** The PR then goes to the stakeholder.
+
+   This one is **stated here for the first time**, which is itself a finding from the review of this
+   ADR. It was previously *implied* by ADR-0017 §4 (the reviewer reads the developers' work) and
+   *presupposed* by §7a (which asks what happens when the author is the only applicable gate) — but
+   written down in neither. An unwritten exception to a mandatory gate is exactly the kind of thing
+   that survives on shared memory until the memory is wrong, so it is written down now.
+
 2. **A red CI pipeline blocks first** (ADR-0017 §6, gate 6). Reviewing code that does not build is
-   wasted effort.
+   wasted effort. **Pending is not red**: a review may start while CI is still running, and in
+   practice usually does, since the draft opens early precisely so the two overlap.
 
 Nothing else stands between a draft opening and the review starting.
 
@@ -69,6 +77,19 @@ Nothing else stands between a draft opening and the review starting.
 - **Tokens are spent without a human deciding they should be.** Every draft PR now costs a review
   whether or not anyone was waiting for one. That is the point — a gate you can skip by not asking is
   the failure mode being removed — but it is a real, recurring cost and it is accepted knowingly.
+
+  Three things this costing does *not* claim, since it is the one part of this ADR carrying no
+  measurement:
+  - **The rate is not flat per PR.** It scales with diff surface and tier. On the slice that prompted
+    this ADR the three reviews differed by roughly an order of magnitude — one was two files of
+    renames, another needed twelve call sites resolved, a design-system reference cross-checked and a
+    suite run.
+  - **Re-reviews are the term that can grow without bound**, and they are the real exposure rather
+    than the per-PR cost: a push after the review starts, a re-review after findings, a re-review
+    after Salih. Opening a draft early — which this process encourages — makes an early read more
+    likely, and therefore a re-read more likely too.
+  - **The tier still bounds the depth**, which keeps this narrower than "a full review on everything".
+    A T3 gets a light pass, and Salih does not run at all.
 - **A review can now start on a PR the author is still pushing to.** Mitigated by ADR-0017's own rule
   that a draft opens *once the dev's own gate is green*, not as scratch space, but a dev who opens
   early will get read early.
@@ -85,9 +106,16 @@ Nothing else stands between a draft opening and the review starting.
   Rejected: it makes the mandatory gate optional in practice, since the way to skip it is simply not
   to ask. It also puts a routing decision in the one seat whose scarce attention the whole process is
   designed to protect.
-- **Have Suhay trigger reviews as board owner.** Fits his seat — he tracks ticket state through the
-  pipeline. Rejected as a courier one seat over: the same latency, the same failure if he is not
-  invoked, and it re-adds coordination work ADR-0018 had just finished rebalancing.
+- **Have Suhay trigger reviews as board owner.** The closest call of the four, and it needs a better
+  argument than "a courier one seat over" — he already tracks the ticket through the pipeline, so the
+  marginal cost really is near nil. Two things decide it:
+  - **Tracking that a gate *ran* is not the same as controlling whether it *starts*.** Routing the
+    start signal through the bookkeeping seat re-couples precisely what ADR-0018 decoupled, one ADR
+    later.
+  - **Under ADR-0018 Suhay owns half the refinement.** Making him the trigger for the gate that checks
+    the resulting code puts a seat with an authorship interest in the scope in control of *when that
+    scope gets checked* — a milder form of the exact structural problem §7a closed on the review side.
+    That is not a close call once stated.
 - **Write the rule in the process doc only** (what PR #175 did). Rejected by this ADR's own existence,
   for the reason Musti gave: a load-bearing rule with no decision record behind it recreates the #171
   drift inverted.
