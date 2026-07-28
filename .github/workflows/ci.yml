@@ -1,9 +1,13 @@
 # Baseline CI pipeline (Steuereule).
 #
 # The Docker Compose files (docker-compose.yml + the ci/e2e overlays) are the
-# foundation this pipeline is built on. `lint` and `build` are still honest
-# placeholders (grow as lintable/buildable-image work lands); `test`, `integration`,
-# `smoke` and `cross-origin-smoke` are real, CI-blocking gates.
+# foundation this pipeline is built on. `build` is still an honest placeholder
+# (grows as buildable-image work lands); `lint`, `test`, `integration`, `smoke`
+# and `cross-origin-smoke` are real, CI-blocking gates.
+#
+# `lint` runs oxlint (ADR-0019) — a syntactic gate only; type-aware rules are
+# knowingly deferred to `tsc --strict` in the `test` job (#168). "CI: green"
+# now covers a real lint pass for the first time, but not that gap.
 #
 # Flow:  validate-compose ──► lint ──────────────► build ──► smoke
 #                          ├─► test ───────────────┤    └─► cross-origin-smoke
@@ -36,16 +40,32 @@ jobs:
       - name: base + e2e overlay
         run: docker compose -f docker-compose.yml -f docker-compose.e2e.yml config
 
-  # Placeholder — wire up eslint/prettier here once the app packages land.
+  # Real gate (#168): oxlint (ADR-0019) against the whole repo. Purely syntactic —
+  # no Prisma, no Postgres, no Playwright — so it stays the cheap ~0.1s check that
+  # runs before the expensive jobs. Runs `pnpm lint` (`oxlint --deny-warnings`),
+  # never bare `oxlint`: a bare run exits 0 even when it reports findings
+  # (measured), so the exit code has to come from a step that actually fails on
+  # findings, not be assumed. Never invoke oxlint with `--config` here — in oxlint
+  # 1.76.0 that silently disables `ignorePatterns` (ADR-0019 §5, measured: 276
+  # findings vs 0) — `.oxlintrc.json` lives at the repo root specifically so it is
+  # auto-discovered.
   lint:
     name: Lint
     needs: validate-compose
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: lint (placeholder)
-        run: |
-          echo "TODO — no lintable packages yet; baseline is empty."
+      - uses: actions/checkout@v5
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Lint (oxlint --deny-warnings, ADR-0019 — auto-discovered config, exit code asserted)
+        run: pnpm lint
 
   # Real gate: typecheck and test every workspace package in the monorepo (no-DB
   # unit/pure-logic suite — DB-requiring tests live in the `integration` job below,
