@@ -54,4 +54,19 @@ export default defineConfig({
       },
     },
   },
+  // REQ-011 (ADR-0013) — DSGVO export (GET /v1/account/export) + account deletion
+  // (DELETE /v1/account). Both controllers share the `account` OpenAPI tag.
+  account: {
+    input: { target: '../../apps/api/openapi.json', filters: { tags: ['account'] } },
+    output: {
+      target: './src/generated/account.ts',
+      mode: 'split',
+      client: 'react-query',
+      httpClient: 'fetch',
+      mock: true,
+      override: {
+        mutator: { path: './src/http-client.ts', name: 'httpClient' },
+      },
+    },
+  },
 })

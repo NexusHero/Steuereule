@@ -26,6 +26,17 @@ export function resetApiClientConfig(): void {
   config = DEFAULT_CONFIG
 }
 
+/**
+ * Read-only access to the configured API origin — for the rare caller that must bypass
+ * this module's own `httpClient` (REQ-011's export download: the response is a binary
+ * attachment, `httpClient` above unconditionally `JSON.parse`s the body, which would
+ * throw on a PDF's bytes). Such a caller still needs the same configured origin +
+ * `credentials: 'include'` discipline, just not the JSON-envelope shape.
+ */
+export function getApiClientBaseUrl(): string {
+  return config.baseUrl
+}
+
 const NO_BODY_STATUSES = new Set([204, 205, 304])
 
 export const httpClient = async <T>(url: string, options: RequestInit = {}): Promise<T> => {

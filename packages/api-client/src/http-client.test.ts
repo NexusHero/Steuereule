@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { configureApiClient, httpClient, resetApiClientConfig } from './http-client'
+import { configureApiClient, getApiClientBaseUrl, httpClient, resetApiClientConfig } from './http-client'
 
 function fakeFetch(response: { status: number; body?: unknown }) {
   return vi.fn(async (_url: string, _init?: RequestInit) =>
@@ -75,5 +75,21 @@ describe('httpClient', () => {
     vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('network down') }))
 
     await expect(httpClient('/v1/profile')).rejects.toThrow('network down')
+  })
+})
+
+describe('getApiClientBaseUrl', () => {
+  afterEach(() => {
+    resetApiClientConfig()
+  })
+
+  it('defaults to the empty (same-origin) base URL', () => {
+    expect(getApiClientBaseUrl()).toBe('')
+  })
+
+  it('reflects whatever configureApiClient was last called with — the same origin httpClient itself uses', () => {
+    configureApiClient({ baseUrl: 'https://api.example.test' })
+
+    expect(getApiClientBaseUrl()).toBe('https://api.example.test')
   })
 })
