@@ -232,7 +232,7 @@ function OnboardingLoadError({ onRetry, bp }: OnboardingLoadErrorProps) {
         {tr('onboarding.loadError.heading')}
       </Text>
       <Text style={styles.help}>{tr('onboarding.loadError.message')}</Text>
-      <Button onPress={onRetry} style={styles.cta}>
+      <Button onPress={onRetry} style={styles.ctaCentered}>
         {tr('onboarding.loadError.retry')}
       </Button>
     </View>
@@ -388,6 +388,11 @@ function makeStyles(t: UiTheme) {
   }
   const counterRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s2 }
   const cta: ViewStyle = { marginTop: t.space.s5 }
+  // issue #176: `centerScreen`'s own `gap: s3` plus `help.marginBottom: s5` already supply the
+  // button's leading space on the load-error screen; a `marginTop` on top of both double-counts
+  // the seam (the largest compounding Musti/Salih measured — 36px became 60px). The DS reference
+  // never stacks a flex gap and a button marginTop, so this variant carries none.
+  const ctaCentered: ViewStyle = {}
   const submitError: TextStyle = {
     color: t.color.fehler,
     fontFamily: t.font.text,
@@ -440,6 +445,7 @@ function makeStyles(t: UiTheme) {
     help,
     counterRow,
     cta,
+    ctaCentered,
     submitError,
     summaryHeadingRow,
     summaryHeading,

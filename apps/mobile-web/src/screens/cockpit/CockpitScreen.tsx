@@ -87,7 +87,7 @@ function CockpitLoadError({ onRetry, bp }: CockpitLoadErrorProps) {
         {tr('cockpit.loadError.heading')}
       </Text>
       <Text style={styles.help}>{tr('cockpit.loadError.message')}</Text>
-      <Button onPress={onRetry} style={styles.cta}>
+      <Button onPress={onRetry} style={styles.ctaCentered}>
         {tr('cockpit.loadError.retry')}
       </Button>
     </View>
@@ -111,7 +111,7 @@ function CockpitEmpty({ taxYear, onRefresh, isRefreshing, bp }: CockpitEmptyProp
       <View style={styles.emptyBlock}>
         <Text style={styles.heading}>{tr('cockpit.empty.heading')}</Text>
         <Text style={styles.help}>{tr('cockpit.empty.message')}</Text>
-        <Button onPress={onRefresh} disabled={isRefreshing} style={styles.cta}>
+        <Button onPress={onRefresh} disabled={isRefreshing} style={styles.ctaCentered}>
           {isRefreshing ? tr('cockpit.refreshing') : tr('cockpit.refresh')}
         </Button>
       </View>
@@ -201,6 +201,12 @@ function makeStyles(t: UiTheme) {
     textAlign: 'center',
   }
   const cta: ViewStyle = { marginTop: t.space.s4 }
+  // issue #176: `centerScreen`'s own `gap: s3` (and, in the empty state, `help.marginBottom: s3`
+  // right above the button) already supplies the button's leading space — a `marginTop` here
+  // would double it, the exact compounding Musti/Salih measured. The DS reference never stacks a
+  // flex gap and a button marginTop (finanzo-funke-design-system/project/ui_kits/app/*.jsx uses a
+  // single hand-tuned marginTop with no competing container gap), so this variant carries none.
+  const ctaCentered: ViewStyle = {}
   const emptyBlock: ViewStyle = { alignItems: 'center', paddingVertical: t.space.s6 }
   const heroLabel: TextStyle = {
     fontFamily: t.font.mono,
@@ -228,5 +234,5 @@ function makeStyles(t: UiTheme) {
     marginBottom: t.space.s3,
   }
 
-  return { screen, wideScreen, centerScreen, wideCenterScreen, appbar, appbarTitle, heading, help, cta, emptyBlock, heroLabel, heroValue, openItems }
+  return { screen, wideScreen, centerScreen, wideCenterScreen, appbar, appbarTitle, heading, help, cta, ctaCentered, emptyBlock, heroLabel, heroValue, openItems }
 }
