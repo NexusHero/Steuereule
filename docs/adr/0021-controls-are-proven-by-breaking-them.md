@@ -22,9 +22,10 @@ least nine times, in nine different subsystems, and every instance had the same 
 |---|---|---|---|
 | `Content-Disposition` | a header the client reads | not CORS-exposed; unreadable in a browser | #152, F3 |
 | CI `lint` job | a gate, wired via `needs:` | `echo "TODO"`, green in 3s | #113 |
+| CI `build` job (`ci.yml:148`) | a gate | the same `echo "TODO"` shape | found reviewing this ADR |
 | `turbo.json` `"lint": {}` | a task | no package implements it | ADR-0019 |
-| `ignorePatterns` via `--config` | an ignore list | silently inert in oxlint 1.76 | ADR-0019 |
-| bare `oxlint` | a check | reports findings, exits 0 | ADR-0019 |
+| `ignorePatterns` under `--config` **pointing outside the scan root** | an ignore list | silently inert; even `**/sub/**` does not rescue it | ADR-0019 |
+| `oxlint` **at warning severity** | a check | reports findings, exits 0 | ADR-0019 |
 | `Button`/`Chip` `style` prop | public API, 12 call sites | destructured, never applied | #173, #176 |
 | `prisma db seed` | a seed run | no-op, missing `prisma.seed` config | #111 |
 | `smoke` CI job | caught the CORS gap | sent no `Origin` header | #107 |
@@ -41,6 +42,17 @@ Two properties unite them, and both matter for the fix:
 The second property is why these survive review. They are not subtle in hindsight — they are
 *invisible to the instrument*, and the instrument reporting green is exactly what stops anyone
 looking further.
+
+**Two rows carry conditions, and how those conditions were found is itself the argument.** Reviewing
+this ADR, Musti's first three attempts to reproduce the `ignorePatterns` row **contradicted it** — a
+co-located config honours the ignore list correctly, and he was close to reporting the row as wrong.
+Only when he tried the shape this repo actually runs, `--config` pointing outside the scan root, did
+the file that should have been ignored get silently linted; even `**/sub/**` did not rescue it. The
+`oxlint` row is likewise severity-dependent: it exits 0 at warning severity, and the reason it exits 1
+here is that `correctness`/`suspicious` are configured as errors.
+
+Watching it pass three times taught him nothing. Only breaking it **in the shape it actually runs**
+found the gap — which is this ADR's own thesis, re-derived by someone trying to disprove its table.
 
 Three of the nine were caught by luck or by a person happening to look twice. One — the `style` prop —
 was caught by ADR-0019's linter **on its first run**, which is evidence that part of this class is
@@ -75,10 +87,23 @@ Two supporting rules, both already practised and neither new:
   array the implementation produces asserts nothing and passes for any value, including empty. Where
   the choice is duplication or tautology, take the duplication.
 
-**Scope — what this does not require.** Ordinary feature code is out: its tests are already the proof,
-and demanding a mutation for every function would be ceremony. This applies to the narrower set above:
-things whose entire value is that they *prevent* something. If a change would still be correct with the
-control deleted, the control is what needs proving.
+**Scope — the test is observable, not a judgement call.**
+
+> **If deleting it would leave the existing suite green, it needs proving.**
+
+Ordinary feature code is out: delete it and the suite goes red, because its tests are already the
+proof. Demanding a mutation for every function would be ceremony.
+
+This test replaces the first draft's, which defined a control by category ("constrain, block,
+guarantee") and then tested it with "would the change still be correct without it". Those two
+disagreed, and the review found the disagreement **using this ADR's own table against it**: the
+`Button` `style` prop is not a control by the category definition, so the rule would not have caught
+an instance the ADR itself cites. The replacement keys on the *instrument* rather than on a ruling
+about correctness, which is the thesis of the whole document.
+
+It also settles the ambiguous case the review predicted. `isValidSteuerId` is a control by category
+and feature code by the correctness test — and correctly **in scope** by this one, since deleting it
+leaves the suite green.
 
 ## Consequences
 
