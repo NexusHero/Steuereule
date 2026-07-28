@@ -68,14 +68,18 @@ async function credentialedFetch(page, { method, path, body }) {
     .catch(() => null)
 
   const evalPromise = page.evaluate(
-    async ({ url, method, body }) => {
+    // Renamed from the outer `url`/`method`/`body` (no-shadow, ADR-0019 finding): this
+    // callback is serialised into the browser and captures nothing from the Node scope
+    // above — the names below are purely the in-page copies delivered via the second
+    // `page.evaluate` argument, unrelated to (and not shadowing) the Node-side variables.
+    async ({ url: requestUrl, method: requestMethod, body: requestBody }) => {
       try {
-        const response = await fetch(url, {
-          method,
+        const response = await fetch(requestUrl, {
+          method: requestMethod,
           credentials: 'include',
           mode: 'cors',
-          headers: body ? { 'content-type': 'application/json' } : undefined,
-          body: body ? JSON.stringify(body) : undefined,
+          headers: requestBody ? { 'content-type': 'application/json' } : undefined,
+          body: requestBody ? JSON.stringify(requestBody) : undefined,
         })
         const text = await response.text()
         return { ok: response.ok, status: response.status, body: text }
@@ -137,9 +141,12 @@ async function credentialedFetch(page, { method, path, body }) {
  */
 async function assertExportFilenameReadableInPage(page) {
   const url = `${API_ORIGIN}/v1/account/export?format=json`
-  const result = await page.evaluate(async (url) => {
+  // Renamed from the outer `url` (no-shadow, ADR-0019 finding) — same reasoning as
+  // credentialedFetch above: this is the in-page copy delivered via the second
+  // `page.evaluate` argument, not a reference to the Node-side `url`.
+  const result = await page.evaluate(async (requestUrl) => {
     try {
-      const response = await fetch(url, { credentials: 'include', mode: 'cors' })
+      const response = await fetch(requestUrl, { credentials: 'include', mode: 'cors' })
       return { ok: response.ok, status: response.status, contentDisposition: response.headers.get('content-disposition') }
     } catch (error) {
       return { ok: false, error: String(error) }

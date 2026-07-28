@@ -43,14 +43,18 @@ function fail(message) {
 async function credentialedFetch(page, { method, path, body }) {
   const url = `${API_ORIGIN}${path}`
   const evalPromise = page.evaluate(
-    async ({ url, method, body }) => {
+    // Renamed from the outer `url`/`method`/`body` (no-shadow, ADR-0019 finding): this
+    // callback is serialised into the browser and captures nothing from the Node scope
+    // above — the names below are purely the in-page copies delivered via the second
+    // `page.evaluate` argument, unrelated to (and not shadowing) the Node-side variables.
+    async ({ url: requestUrl, method: requestMethod, body: requestBody }) => {
       try {
-        const response = await fetch(url, {
-          method,
+        const response = await fetch(requestUrl, {
+          method: requestMethod,
           credentials: 'include',
           mode: 'cors',
-          headers: body ? { 'content-type': 'application/json' } : undefined,
-          body: body ? JSON.stringify(body) : undefined,
+          headers: requestBody ? { 'content-type': 'application/json' } : undefined,
+          body: requestBody ? JSON.stringify(requestBody) : undefined,
         })
         const text = await response.text()
         return { ok: response.ok, status: response.status, body: text }
