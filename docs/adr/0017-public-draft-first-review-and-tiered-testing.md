@@ -67,11 +67,11 @@ animation, a stale cache, a solid-green eye — and away from those where he has
 Salih ran, `ready` would have meant "one gate passed, one running" — and the stakeholder could merge
 into an untested state.
 
-**7a. When no crew gate applies, nobody flips it.** Where the tier stands Salih down (§6, T3), or the
-PR's author is the only crew member whose gate would apply, **no crew member flips it** — the PR stays
-draft and the **stakeholder** flips or merges it directly. `ready` means *every gate this PR was owed
-has passed*; a PR that was owed no crew gate never claims one. A reviewer never flips their own work,
-and never flips work they authored.
+**7a. When Salih does not run, nobody in the crew flips it.** Where the tier stands Salih down — a T3,
+**or a T2 the tier ruling stands him down on** — or where the PR's author is the only crew member whose
+gate would apply, **no crew member flips it**: the PR stays draft and the **stakeholder** flips or
+merges it directly. `ready` means *every gate this PR was owed has passed*; a PR that was owed no
+Salih-run never claims one. A reviewer never flips their own work, and never flips work they authored.
 
 This was found the day §7 was written, by the first PR that hit it: [#154](https://github.com/NexusHero/Steuereule/pull/154),
 Musti's own arc42 update — T3, so §6 stood Salih down, and self-authored, so §4 left no reviewer. Under
@@ -79,6 +79,15 @@ Musti's own arc42 update — T3, so §6 stood Salih down, and self-authored, so 
 rejected: it would reduce the flip to pressing a button and hollow out exactly the meaning §7 exists to
 protect. Adding a second crew reviewer for self-authored T3 docs was also rejected — it reintroduces a
 gate for the one class where the evidence says none is needed.
+
+The **T2 clause was added within the hour**, by the second PR to hit the same edge:
+[#155](https://github.com/NexusHero/Steuereule/pull/155), a backend refactor Musti tiered **T2** and on
+which §6's own test ("he runs when a user can see or do something different") stood Salih down. A crew
+gate *did* apply and *did* pass — Musti's review — yet the first draft of §7a named nobody, because it
+spoke only of T3. The tempting repair was "the last crew gate that actually ran flips it", and it is
+rejected for the same reason as everything else in §7: it hands the reviewer, for the price of one
+click, the button §7 deliberately withheld from him. The rule is about **who ran**, not about which
+tier label was applied.
 
 **8. Salih commits the harness instead of re-improvising it.** The recipe for standing the stack up
 lives **only as YAML in `ci.yml`**, which nothing can import, so it is rewritten in bash on every run
