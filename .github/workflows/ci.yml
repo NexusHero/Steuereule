@@ -373,14 +373,26 @@ jobs:
   # `[data-testid="screen-container"]`, never matches anything in the exported build —
   # react-native-web forwards a `testID` prop to `data-testid`, not a literal
   # `data-testid` prop, so every assertion has always fallen through to the script's own
-  # div-scan fallback. That fallback is what both this PR's and #197's control proofs
-  # (break `width: 100%`/`EXPECTED_MAX_WIDTH.s`, watch it fail; restore, watch it pass)
-  # actually exercised — it is proven to catch real regressions, which is why wiring
-  # proceeds rather than waiting on the selector fix. But it means this job is currently
-  # gated by the fallback path, not the primary one; fixing the six screens'
-  # `data-testid` → `testID` is tracked as its own follow-up, not bundled here.
+  # div-scan fallback. That fallback is what this PR's own CI control proof (break
+  # `EXPECTED_MAX_WIDTH.s`, watch the job go red; restore, watch it pass) exercised, and
+  # what #197's *local* break/restore of `width: 100%` exercised — local by necessity,
+  # since this PR is what first runs the script in CI at all: #197's pipeline could not
+  # have executed breakpoint-layout.mjs, full stop. The #177 button-fills-parent
+  # assertions have been observed green in CI (this PR's own run, on `950d524`) but never
+  # red in CI — only on a laptop; they fail through the same `fail()` helper whose
+  # propagation this PR's CI cycle proved. That composed argument is why wiring proceeds
+  # rather than waiting on the selector fix, with its one soft edge named rather than
+  # hidden. But it means this job is currently gated by the fallback path, not the
+  # primary one; fixing the six screens' `data-testid` → `testID` is tracked as its own
+  # follow-up (#201) — which will need its own fresh break/restore cycle once the primary
+  # selector starts matching, since this PR's proof will no longer be proving the code
+  # that runs.
   cross-origin-smoke:
-    name: Cross-origin browser smoke
+    # The job's `name` is the check name shown on the PR and pinned by branch protection
+    # once #71 lands — it must describe both gates this job runs, or a future ADR-0014
+    # regression fails a required check whose name points at the wrong subsystem. The job
+    # key stays `cross-origin-smoke` (nothing references it); only the display name changes.
+    name: Browser gates — cross-origin + responsive layout
     needs: build
     runs-on: ubuntu-latest
     services:
