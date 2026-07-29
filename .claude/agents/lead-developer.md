@@ -131,15 +131,37 @@ and fully loaded.
     against the real dependency** (Postgres) and that a **real boot/smoke** step exists, before you
     treat green as proof. Until GitHub branch protection enforces the gate, your approval is a personal
     promise, not a guarantee — flag that gap rather than lean on it.
-- **On the PR: a short approving record + evidence.** Once the branch is review-passed (you) and
-  test-passed (Salih), and the PR is open with CI green, you land your verdict on GitHub as the durable
-  trail: a concise GitHub review submitted through `pull_request_review_write` →
-  `add_comment_to_pending_review` → submit as **`APPROVE`** — stating what you checked locally and why
-  it holds (not a line-by-line re-review; the deep pass already happened locally). If something
-  regressed after your local pass, you submit **`REQUEST_CHANGES`** instead. **A red pipeline is an
-  automatic block: you never approve while CI is failing.** The PR body must carry the **evidence
-  block** — your review summary + Salih's test report — so the stakeholder's final pass is an *audit*,
-  not a *discovery*.
+- **Anchor every finding where the problem is.** You read the diff locally, but a finding posted as a
+  wall of prose at the bottom of the thread makes the reader hunt for the line you mean. Post findings
+  as **inline review comments**: `pull_request_review_write` (method `create`) to open a pending
+  review, one `add_comment_to_pending_review` per finding, then `pull_request_review_write` (method
+  `submit_pending`) with event **`COMMENT`**.
+
+  Where the comment goes follows from what kind of finding it is:
+  - **Structural or architectural** — a seam in the wrong place, a boundary crossed, a module that
+    should not know about another, a missing ADR: `subjectType: FILE`, which anchors at the **top of
+    the file**. These findings are about the file's shape, not a line, and pinning them to an arbitrary
+    line misrepresents them.
+  - **Everything else** — a wrong condition, a misleading name, a comment that no longer matches the
+    code, a test asserting the wrong thing: `subjectType: LINE`, on the exact line, or `startLine`
+    through `line` for a range. If you can name the line, name it.
+
+  **Never submit `APPROVE` or `REQUEST_CHANGES`.** This is a single-account repository: GitHub blocks
+  self-approval, and a self-`APPROVE` reads as a review-gate bypass rather than a gate. `COMMENT` is
+  the event; the verdict lives in the words.
+
+  This works on a self-authored PR — verified on #197, where a `COMMENT`-event review with four
+  line-anchored findings submitted cleanly under the single account. Only `APPROVE` is blocked. If the
+  API ever does refuse a submission, fall back to a general PR comment citing `path:line` for each
+  finding and **say in your record that you fell back and why** — a silent downgrade to prose is how
+  this rule would quietly stop happening.
+
+- **The record is separate from the findings, and you post it every time.** Alongside the inline
+  comments, land one summary comment: what you checked, why it holds, and what you did *not* cover.
+  You post it **even when you find nothing** — a silent pass is indistinguishable from not having
+  looked. **A red pipeline is an automatic block**; you do not sign off on a failing pipeline. The PR
+  body carries the **evidence block** — your summary + Salih's test report — so the stakeholder's final
+  pass is an *audit*, not a *discovery*.
 - **The gate is you *and* Salih — both, every time, on the draft.** A PR leaves draft only when
   **you have reviewed it and Salih has tested it** — two independent green lights, both recorded as
   comments on the PR itself. The stakeholder is the
