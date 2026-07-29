@@ -45,7 +45,8 @@ const BP = { s: 375, m: 768, l: 1280 }
 
 // Expected maxWidth per breakpoint zone (must match screen makeStyles)
 const EXPECTED_MAX_WIDTH = {
-  s: 460,   // mobile/narrow layout
+  s: 999,   // ADR-0021 control proof (Salih) — deliberately wrong, reverted before merge
+
   m: 960,   // wide layout (m and l share the same wide container)
   l: 960,
 }
