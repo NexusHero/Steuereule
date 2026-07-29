@@ -378,8 +378,9 @@ jobs:
   # what #197's *local* break/restore of `width: 100%` exercised — local by necessity,
   # since this PR is what first runs the script in CI at all: #197's pipeline could not
   # have executed breakpoint-layout.mjs, full stop. The #177 button-fills-parent
-  # assertions have been observed green in CI (this PR's own run, on `950d524`) but never
-  # red in CI — only on a laptop; they fail through the same `fail()` helper whose
+  # assertions have been observed green in CI (this PR's own run 30425139957, commit
+  # `1668b3d`, carrying the script content Kaan finalised at `950d524`) but never red in
+  # CI — only on a laptop; they fail through the same `fail()` helper whose
   # propagation this PR's CI cycle proved. That composed argument is why wiring proceeds
   # rather than waiting on the selector fix, with its one soft edge named rather than
   # hidden. But it means this job is currently gated by the fallback path, not the

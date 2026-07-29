@@ -199,8 +199,8 @@ thing.** A check that runs only on a developer's machine is evidence, not a guar
 | Unit / pure logic | Vitest | Behaviour of pure logic, no DB. | CI `test` job |
 | Compliance | Vitest against **real Postgres** | REQ-003 field encryption at rest, REQ-004 append-only audit, REQ-005/006/009/010/011 acceptance. Never a mock (ADR-0010). | CI `integration` job |
 | Boot | compiled `dist/` over real HTTP | Wiring bugs that `.inject()` is structurally blind to. | CI `smoke` job |
-| Browser CORS | headless Chromium, two real origins | Credentialed cross-origin behaviour no `curl` or Node `fetch()` can enforce. | CI `cross-origin-smoke` job (**Browser gates — cross-origin + responsive layout**) |
-| Real-browser layout | headless Chromium, real viewports (s/m/l) | ADR-0014 breakpoint `maxWidth` resolution and the DS's `.fk-btn { width: 100% }` contract — jsdom performs no layout, so this is unprovable at the unit layer. | CI `cross-origin-smoke` job (**Browser gates — cross-origin + responsive layout**) |
+| Browser CORS | headless Chromium, two real origins | Credentialed cross-origin behaviour no `curl` or Node `fetch()` can enforce. | CI `cross-origin-smoke` job |
+| Real-browser layout | headless Chromium, real viewports (s/m/l) | ADR-0014 breakpoint `maxWidth` resolution and the DS's `.fk-btn { width: 100% }` contract — jsdom performs no layout, so this is unprovable at the unit layer. | CI `cross-origin-smoke` job |
 
 ### Why the linter has its own parser
 
