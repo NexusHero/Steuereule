@@ -54,10 +54,15 @@ describe('Button', () => {
     expect((screen.getByTestId('cta') as HTMLElement).style.width).toBe('100%')
   })
 
-  it('lets_a_caller_supplied_width_win_over_the_container_default', () => {
-    // The DS's own documented opt-out idiom (ui_kits/app/JahrTab.jsx:76: `className="fk-btn"`
-    // with an inline `width: 'auto'` override). `style` is spread last in Button's style
-    // array, so a caller-supplied width overrides the `width: 100%` default (#177).
+  it('a_caller_supplied_width_overrides_the_container_default_in_the_style_cascade', () => {
+    // Proves spread order, not layout: `style` is spread last in Button's style array,
+    // so a caller-supplied `width` reaches the DOM node over the container default
+    // (#177). This does NOT by itself prove the DS's opt-out idiom (JahrTab.jsx:76,
+    // `width: 'auto'` on a `.fk-btn`) actually works — under an `alignSelf: 'stretch'`
+    // implementation this same assertion would still pass while the button kept
+    // stretching (stretch applies exactly when width is 'auto'). That's why the
+    // container uses `width: '100%'`, not `alignSelf: 'stretch'` (see Button.tsx) —
+    // this test only pins that the cascade itself doesn't silently drop the override.
     renderUi(
       <Button testID="cta" style={{ width: 'auto' }}>
         Los
