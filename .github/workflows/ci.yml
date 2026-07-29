@@ -367,6 +367,18 @@ jobs:
   # only as a local dev/CI-author tool nothing invoked in CI — ADR-0021's own defect
   # class (#197 found its `measureScreenMaxWidth` never reached a real screen either, for
   # the same reason).
+  #
+  # Known, deliberately-not-fixed-here gap (also #197, documented in
+  # breakpoint-layout.mjs itself): the script's primary locator,
+  # `[data-testid="screen-container"]`, never matches anything in the exported build —
+  # react-native-web forwards a `testID` prop to `data-testid`, not a literal
+  # `data-testid` prop, so every assertion has always fallen through to the script's own
+  # div-scan fallback. That fallback is what both this PR's and #197's control proofs
+  # (break `width: 100%`/`EXPECTED_MAX_WIDTH.s`, watch it fail; restore, watch it pass)
+  # actually exercised — it is proven to catch real regressions, which is why wiring
+  # proceeds rather than waiting on the selector fix. But it means this job is currently
+  # gated by the fallback path, not the primary one; fixing the six screens'
+  # `data-testid` → `testID` is tracked as its own follow-up, not bundled here.
   cross-origin-smoke:
     name: Cross-origin browser smoke
     needs: build
