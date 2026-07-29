@@ -6,6 +6,11 @@
 // @steuereule/ui), but the full chain: viewport → useWindowDimensions → hook →
 // StyleSheet → rendered element.
 //
+// Coverage today is LoginScreen only — App.tsx has no URL routing, so every route this
+// script can reach without driving a real flow through the app lands on the same
+// screen. Add more screens' maxWidth coverage here as their flows become reachable
+// (see `continueAsGuestThroughOnboarding` below for the click-through pattern).
+//
 // This catches regressions the unit/integration layer cannot:
 //   - React-Native-Web's useWindowDimensions not updating on resize
 //   - makeStyles producing wrong maxWidth values
@@ -51,6 +56,10 @@ const EXPECTED_MAX_WIDTH = {
 // flow this script depends on silently changing shape is exactly the kind of thing a
 // merge gate should catch, not paper over with a resilient-but-wrong selector.
 const COPY = {
+  // Splash's tap-to-skip, `accessibilityLabel={tr('splash.skipLabel')}` — gates every
+  // single assertion in this file (every flow starts by skipping it), so it goes
+  // through `COPY` more than any other string here.
+  splashSkip: 'Weiter zur App',
   guest: 'Erstmal als Gast umschauen',
   register: 'Neu hier? Konto anlegen',
   weiter: 'Weiter',
@@ -87,23 +96,29 @@ function fail(message) {
  * screen container element (the ScrollView with screen/wideScreen style).
  */
 async function measureScreenMaxWidth(page, route) {
-  await page.goto(`${WEB_ORIGIN}${route}`, { waitUntil: 'networkidle' })
-
-  // App.tsx has no URL routing (a plain `Stage` state machine) — every route always
-  // boots to Splash first, which is a deliberate full-bleed brand screen with no
-  // `maxWidth` container of its own. Skip it the same way a real user would (its own
-  // documented tap-to-skip affordance, identified by its accessibility label so this
-  // never clicks a button on any other screen) so `route` below reaches an actual
-  // screen with a `screen-container`, rather than measuring nothing.
-  const splashSkip = page.getByRole('button', { name: 'Weiter zur App' })
-  if (await splashSkip.count()) {
-    await splashSkip.click()
-    await page.waitForTimeout(100)
-  }
+  // App.tsx has no URL routing (a plain `Stage` state machine) — every route serves the
+  // identical bundle and always boots to Splash, then Login. `route` is kept only as a
+  // label for this assertion's own console/error messages, not a real navigation target.
+  // `skipSplash` owns the navigation and the (guarded, racy-timer-safe) skip itself —
+  // see its own comment; this used to inline a second, unguarded copy of that logic.
+  await skipSplash(page)
 
   // The screen container is the top-level ScrollView — in React-Native-Web
   // this renders as a <div> with a maxWidth style. We query by the data-testid
   // attribute that each screen sets on its root ScrollView.
+  //
+  // FINDING (found fixing #177's F1, not fixed here — out of this PR's blast radius):
+  // this locator never matches anything in the exported build. Every screen sets
+  // `data-testid="screen-container"` (a literal DOM-attribute-named prop), but
+  // react-native-web's `View`/`ScrollView` only forward a `testID` prop (converting
+  // *that* to `data-testid` internally) —
+  // `node_modules/react-native-web/dist/modules/forwardedProps/index.js`'s
+  // `defaultProps` allowlists `testID`, not `data-testid`, so the prop the screens
+  // actually pass is silently dropped by RNW's own prop filtering and never reaches
+  // the DOM. The fallback below has therefore been doing 100% of the real work here,
+  // for every route, since this file was written — worth its own ticket (rename
+  // `data-testid="screen-container"` to `testID="screen-container"` across all six
+  // screens), not a #177 fix.
   const container = page.locator('[data-testid="screen-container"]').first()
   if (!(await container.count())) {
     // Fallback: find the element whose computed maxWidth is not "none"
@@ -178,10 +193,13 @@ async function measureButtonFillsParent(buttonLocator, label) {
     if (!(parent instanceof HTMLElement)) return { buttonWidth: el.getBoundingClientRect().width, parentContentWidth: NaN }
     // `width: 100%` resolves against the parent's CONTENT box (padding excluded), not
     // its border box — comparing against `getBoundingClientRect()` on the parent would
-    // wrongly fail on any padded parent (every real one here: `centerScreen`/
-    // `emptyBlock`/`screen` all carry `paddingHorizontal`). `clientWidth` includes
-    // padding but excludes border, so subtract the parent's own computed padding to get
-    // the actual box a `width: 100%` child fills.
+    // wrongly fail on any padded parent. `centerScreen` (CockpitScreen LoadError) and
+    // `successScreen` (RegistrierungScreen) both carry `paddingHorizontal`; `emptyBlock`
+    // (CockpitScreen Empty) carries none (CockpitScreen.tsx:208 — `paddingVertical`
+    // only), so the padding subtraction below is a no-op there — but the same code path
+    // must handle both correctly, which is why it's computed rather than assumed.
+    // `clientWidth` includes padding but excludes border, so subtract the parent's own
+    // computed padding to get the actual box a `width: 100%` child fills.
     const style = getComputedStyle(parent)
     const paddingLeft = parseFloat(style.paddingLeft) || 0
     const paddingRight = parseFloat(style.paddingRight) || 0
@@ -204,9 +222,24 @@ async function measureButtonFillsParent(buttonLocator, label) {
 
 async function skipSplash(page) {
   await page.goto(WEB_ORIGIN, { waitUntil: 'networkidle' })
-  // Splash's tap-to-skip is `accessibilityLabel={tr('splash.skipLabel')}` ("Weiter zur
-  // App") — identified by name so this can never click a button on any other screen.
-  await page.getByRole('button', { name: 'Weiter zur App' }).click()
+
+  // SplashScreen.tsx's own AUTO_ADVANCE_MS (2400ms) races the `networkidle` wait above,
+  // which has no upper bound — on a slow/cold runner it can exceed 2.4s, at which point
+  // Splash has already self-advanced and its tap-to-skip button is gone. A bare
+  // `.click()` here would then wait Playwright's full default timeout for an element
+  // that will never appear — a flake with nothing to do with the code under test.
+  // Guarded by `count()` first: if Splash already advanced, there's nothing to skip.
+  const splashSkip = page.getByRole('button', { name: COPY.splashSkip })
+  if (await splashSkip.count()) {
+    await splashSkip.click()
+  }
+
+  // A real wait, not a sleep (ADR-0004): block until LoginScreen (the only screen
+  // Splash ever leads to, no URL routing) has actually mounted, rather than guessing a
+  // fixed delay is enough. NOT waited on via `[data-testid="screen-container"]` — see
+  // the note on `measureScreenMaxWidth`'s own fallback below for why that selector
+  // never matches anything in this exported build.
+  await page.getByText(COPY.guest).waitFor({ state: 'visible', timeout: 10_000 })
 }
 
 async function continueAsGuestThroughOnboarding(page) {
@@ -319,10 +352,15 @@ async function main() {
     // Above l — still "l"
     await assertMaxWidthAtViewport(page, 1920, '/', 'l')
 
-    // ── Test screen routes (if app renders them unauthenticated) ────────
-    // Login route should always be accessible
-    await assertMaxWidthAtViewport(page, BP.s, '/login', 's')
-    await assertMaxWidthAtViewport(page, BP.l, '/login', 'l')
+    // This maxWidth block covers LoginScreen only today — App.tsx has no URL routing,
+    // so `route` above is a label, not a real navigation target: every route boots to
+    // the same Splash, then the same LoginScreen. A second assertion at a `/login`
+    // "route" would silently remeasure that identical screen rather than add coverage
+    // (`e2e/cross-origin/static-server.mjs`'s catch-all `index.html` fallback makes
+    // that literal) — which is exactly the defect class this file is meant to catch,
+    // not commit. Add more screens' maxWidth coverage here as their flows become
+    // reachable from a fresh guest session (see `continueAsGuestThroughOnboarding`
+    // below for the click-through pattern already available for that).
 
     // ── #177: Button fills its parent at every breakpoint — the mandatory real-
     // layout proof (Musti's refinement, F3/F4). Each of the three target CTAs is
