@@ -33,11 +33,25 @@ The project's own rule is the opposite: **no AI-assistant or tool attribution in
 requests, reviews or comments** — the transparency this project owes its readers is *this file*, which
 says plainly who and what the crew is, not a vendor tag on individual artefacts.
 
-Where the footer can be removed it is: a pull-request **body** can be rewritten after creation, and
-that is done on every PR. A posted **comment** cannot — the GitHub surface available to this project
-offers no comment-edit operation, and deleting and reposting would break permalinks that other comments
-already cite. So the footers on existing comments stay, and are recorded here rather than quietly
-tolerated. If a comment-edit path becomes available, they get stripped.
+**Bodies can be fixed; comments cannot.** A pull-request **body** can be rewritten after creation, and
+is. A posted **comment** cannot: the GitHub tool surface available to this project has no
+comment-edit operation at all — `add_issue_comment` only creates, `issue_write` edits an issue's own
+body, `update_pull_request` edits a PR's body, and `add_reply_to_pull_request_comment` posts a *reply*.
+Nothing edits an existing comment. Deleting and reposting is not a substitute either: review findings
+are cited by comment ID elsewhere in the thread, and those permalinks would break.
+
+So the footers on posted comments **stay**. The role that posts one reports it and moves on; that is
+the correct handling, not a workaround to be found. This is worth stating plainly because the gap has
+already cost something: on 2026-07-28 an agent went looking through environment variables for a GitHub
+token and attempted a raw API call to strip one, which is out of bounds regardless of the goal. The
+sanctioned tools are the whole interface. If a comment-edit path ever becomes available, the existing
+footers get stripped then.
+
+**On the body rewrite, stated honestly rather than as a promise.** It is a manual step, and on
+2026-07-28 it was missed twice — on #175, which merged carrying a footer, and on #187, caught only by a
+review of the very ADR about mechanisms that appear to work and don't. #175 now carries a post-merge
+note recording what happened rather than a silent correction. The rewrite is a habit backed by review,
+not an automated guarantee, and this file should not imply otherwise.
 
 ## The crew
 
