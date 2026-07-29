@@ -28,6 +28,11 @@ export function Button({ variante = 'primaer', disabled = false, onPress, style,
   const shadow = variante === 'leise' ? t.shadow.hartS : t.shadow.hart
 
   const container: ViewStyle = {
+    // `.fk-btn { width: 100% }` (komponenten.css:12) — the faithful RN port, not
+    // `alignSelf: 'stretch'`: stretch would silently survive a caller passing
+    // `width: 'auto'`, breaking the DS's own opt-out idiom (JahrTab.jsx:76). `style` is
+    // spread last below, so a caller-supplied width still wins over this default (#177).
+    width: '100%',
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',

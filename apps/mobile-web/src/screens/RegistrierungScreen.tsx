@@ -201,7 +201,10 @@ function makeStyles(t: UiTheme) {
   const successBadge: ViewStyle = { alignSelf: 'center', marginBottom: t.space.s4 }
   const successHeading: TextStyle = { fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size['3xl'], color: t.color.tinte, textAlign: 'center', marginBottom: t.space.s2 }
   const successSubtitle: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.m, textAlign: 'center', marginBottom: t.space.s5 }
-  const cta: ViewStyle = { marginTop: t.space.s3, width: '100%' }
+  // `width: '100%'` used to be a call-site workaround for Button's container omitting the
+  // DS's own `width: 100%` contract (komponenten.css:12) — Button now carries it by default,
+  // so this is just spacing (#177; verified identical box, Musti/Salih).
+  const cta: ViewStyle = { marginTop: t.space.s3 }
   const verifyBanner: ViewStyle = {
     backgroundColor: t.color.warnWeich,
     borderWidth: 2,
