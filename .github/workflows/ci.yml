@@ -355,8 +355,45 @@ jobs:
   # fetch succeeding.
   #
   # See e2e/cross-origin/run.mjs for the full rationale/mechanics.
+  #
+  # Also runs the ADR-0014 responsive breakpoint gate (e2e/responsive/breakpoint-layout.mjs)
+  # as an extra step below, rather than as its own job. That script needs exactly this
+  # job's stack — a real, migrated Postgres, the compiled API booted and reachable, and
+  # the exported web bundle statically served with EXPO_PUBLIC_API_BASE_URL baked in at
+  # the same origin the script's flows drive (the #177 assertions sign a real guest and a
+  # real account up through the running app) — so standing up a second full stack just to
+  # run a second Playwright script would duplicate CI minutes for no isolation benefit;
+  # nothing about the two scripts' assertions conflicts. Before this, the script existed
+  # only as a local dev/CI-author tool nothing invoked in CI — ADR-0021's own defect
+  # class (#197 found its `measureScreenMaxWidth` never reached a real screen either, for
+  # the same reason).
+  #
+  # Known, deliberately-not-fixed-here gap (also #197, documented in
+  # breakpoint-layout.mjs itself): the script's primary locator,
+  # `[data-testid="screen-container"]`, never matches anything in the exported build —
+  # react-native-web forwards a `testID` prop to `data-testid`, not a literal
+  # `data-testid` prop, so every assertion has always fallen through to the script's own
+  # div-scan fallback. That fallback is what this PR's own CI control proof (break
+  # `EXPECTED_MAX_WIDTH.s`, watch the job go red; restore, watch it pass) exercised, and
+  # what #197's *local* break/restore of `width: 100%` exercised — local by necessity,
+  # since this PR is what first runs the script in CI at all: #197's pipeline could not
+  # have executed breakpoint-layout.mjs, full stop. The #177 button-fills-parent
+  # assertions have been observed green in CI (this PR's own run 30425139957, commit
+  # `1668b3d`, carrying the script content Kaan finalised at `950d524`) but never red in
+  # CI — only on a laptop; they fail through the same `fail()` helper whose
+  # propagation this PR's CI cycle proved. That composed argument is why wiring proceeds
+  # rather than waiting on the selector fix, with its one soft edge named rather than
+  # hidden. But it means this job is currently gated by the fallback path, not the
+  # primary one; fixing the six screens' `data-testid` → `testID` is tracked as its own
+  # follow-up (#201) — which will need its own fresh break/restore cycle once the primary
+  # selector starts matching, since this PR's proof will no longer be proving the code
+  # that runs.
   cross-origin-smoke:
-    name: Cross-origin browser smoke
+    # The job's `name` is the check name shown on the PR and pinned by branch protection
+    # once #71 lands — it must describe both gates this job runs, or a future ADR-0014
+    # regression fails a required check whose name points at the wrong subsystem. The job
+    # key stays `cross-origin-smoke` (nothing references it); only the display name changes.
+    name: Browser gates — cross-origin + responsive layout
     needs: build
     runs-on: ubuntu-latest
     services:
@@ -437,6 +474,13 @@ jobs:
             "${WEB_ORIGIN}/"
       - name: Cross-origin browser smoke — signup, login, get-session, PUT /v1/profile
         run: node e2e/cross-origin/run.mjs
+      - name: Responsive breakpoint layout gate (ADR-0014) — real browser, s/m/l assertions
+        # Shares this job's already-running API + statically-served web bundle (see the
+        # job header comment above for why this rides here rather than its own job). Only
+        # needs WEB_ORIGIN — the script drives the app through the browser itself (a real
+        # guest sign-up + onboarding, a real account sign-up), it never calls the API
+        # directly, so API_ORIGIN is not passed.
+        run: node e2e/responsive/breakpoint-layout.mjs
       - name: API log (on failure)
         if: failure()
         run: cat /tmp/steuereule-api-cross-origin.log || true
