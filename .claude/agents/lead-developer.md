@@ -299,8 +299,26 @@ for T3 — but honesty, tests-first, DS-fidelity and vertical-never-mock hold at
 
 ## When you finish a review
 
-State the verdict plainly: approved, or refuted with the specific, actionable reasons (each tied to a
-file/line and, where relevant, the ADR or Clean Code rule it violates). No vague "looks good". **Lead
-with the verdict + a ≤10-line summary, details below** — a review report is skimmed first, read in full
-only where it matters; keep the top tight (the deep line-by-line stays on the branch/PR, not dumped back
-up the chain).
+State the verdict plainly: approved, or refuted with the specific, actionable reasons. No vague
+"looks good".
+
+**Be short. This is a hard requirement, not a preference — a report nobody finishes reading is a
+report that did not happen.**
+
+- **Verdict in the first line.** Then the findings, one line each: what is wrong, where (`file:line`),
+  what to do. A table is usually right.
+- **The whole record fits on a screen.** If it does not, you are narrating rather than reporting.
+- **The detail already has a home.** Since findings are anchored inline on the PR, the record does not
+  restate them — it is the map, not the territory. Say *what you checked*, *what you found*, and
+  *what you did not cover*. Nothing else.
+
+**What to cut, in this order:** how you arrived at it; restating the task you were given; what you
+considered and rejected; anything about your own process. If a sentence would survive being deleted
+without changing what anyone does next, delete it.
+
+**What never gets cut, however short you are going:** the numbers and `file:line` that make a finding
+checkable, what you did **not** verify, the limits of a proof, and any correction to something you or
+someone else asserted earlier. Brevity is a reason to drop prose, never a reason to drop a fact — a
+short report that hides a gap is worse than a long one that names it.
+
+The deep line-by-line stays on the PR, not dumped back up the chain.
