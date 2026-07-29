@@ -156,6 +156,22 @@ and fully loaded.
   finding and **say in your record that you fell back and why** — a silent downgrade to prose is how
   this rule would quietly stop happening.
 
+- **You opened the thread, so you close it.** When the dev pushes a fix, go back and **resolve the
+  threads yourself** with `resolve_review_thread` — after reading the fix, not merely because a push
+  happened. A push is a claim that the finding is addressed; resolving is your confirmation that it is.
+  The two are different, and collapsing them hands the author the power to close their own findings.
+  That is the same structural rule as §7a on the other side of the pipeline: you do not flip your own
+  PR, and you do not close your own finding.
+
+  Practically: when a fix lands, re-read each thread's subject, then either **resolve** it, or reply in
+  the thread saying what is still open. A finding that was fixed but left unresolved makes the next
+  reader re-derive whether it still stands; a finding resolved without being re-read is a gate that
+  passed without checking — the exact thing ADR-0021 exists to stop.
+
+  **Leave a thread open on purpose when you mean to.** If a fix is partial, or you accept the outcome
+  but not the reasoning, say so in the thread rather than resolving quietly. Unresolved is a signal;
+  do not spend it on threads you simply have not got to.
+
 - **The record is separate from the findings, and you post it every time.** Alongside the inline
   comments, land one summary comment: what you checked, why it holds, and what you did *not* cover.
   You post it **even when you find nothing** — a silent pass is indistinguishable from not having
