@@ -25,8 +25,8 @@ export interface RegistrierungScreenProps {
   readonly onDone: () => void
 }
 
-// `Stage.success` carries only `email` (what was submitted) — verification status is read
-// live every render, never snapshotted (#194, ADR-0012 amendment).
+// `Stage.success` carries only `email` — the server's value from the signup response, never the
+// raw input — verification status is read live every render, never snapshotted (#194, ADR-0012 amendment).
 type Stage =
   | { readonly kind: 'form' }
   | { readonly kind: 'submitting' }
