@@ -48,7 +48,7 @@ export function RegistrierungScreen({ onDone }: RegistrierungScreenProps) {
   const [stage, setStage] = useState<Stage>({ kind: 'form' })
   const [resend, setResend] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
   // Live, account-scoped, fail-closed — shared with LoginScreen (#194/#217, ADR-0012 amendment).
-  const verifiedForThisAccount = useEmailVerified(stage.kind === 'success' ? stage.email : '')
+  const verifiedForThisAccount = useEmailVerified(stage.kind === 'success' ? stage.email : undefined)
 
   const ok = mail.includes('@') && pass.length >= 6
 
