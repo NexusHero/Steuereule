@@ -58,6 +58,11 @@ export const appResources = {
           resendSent: 'Ist raus — schau in dein Postfach.',
           resendError: 'Das hat gerade nicht geklappt. Versuch es gleich noch mal.',
         },
+        // Shown in the verify banner's place once the session confirms verification (#194,
+        // stakeholder ruling — a deliberate DS deviation, the reference has no such artifact).
+        verifiedBanner: {
+          heading: 'E-Mail bestätigt ✓',
+        },
       },
       registrierung: {
         titleBefore: 'Leg dein ',
@@ -311,6 +316,9 @@ export const appResources = {
           resendSending: 'Sending …',
           resendSent: 'Sent — check your inbox.',
           resendError: "That didn't work just now. Try again in a moment.",
+        },
+        verifiedBanner: {
+          heading: 'Email verified ✓',
         },
       },
       registrierung: {

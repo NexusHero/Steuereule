@@ -217,3 +217,30 @@ behind `EmailSender` with no flow change.
   data wins, the guest profile is not clobbered.
 - **A dedicated transactional email provider chosen now** — deferred: it is a forward-looking,
   data-residency decision for the stakeholder, not a dev-time or lead-alone call.
+
+## Amendment — 2026-07-30 (#194): pin `sessionOptions.refetchOnWindowFocus` explicitly
+
+Per the log's immutability rule above, sections 1–6 stand unedited; this appends a new decision
+rather than rewriting one.
+
+**Context.** #194 (Salih's T2 finding on #191) found `RegistrierungScreen`'s "please verify your
+email" banner unreachable-to-clear: it snapshotted `emailVerified` from the signup response once
+and never re-read it, so a user who verified out-of-band (their mail client, possibly a different
+device) kept seeing a claim that had gone false. Musti's technical half verified the fix needs no
+new mechanism: the frontend's better-auth client (1.6.24) already defaults
+`sessionOptions.refetchOnWindowFocus` to `true`, and the resulting session atom subscribes the
+global focus manager to the tab's `visibilitychange` — exactly the trigger the out-of-band-return
+case produces (unlike #153's F2 account-deletion gap, which had no such trigger at all; that fix
+needed an explicit `refetchSession()` call instead, see `DatenschutzScreen.tsx`).
+
+**Decision.** `apps/mobile-web/src/auth/auth-client.ts` now sets
+`sessionOptions: { refetchOnWindowFocus: true }` explicitly on `createAuthClient(...)`, rather than
+relying on the library's own default. This is a tactical hardening call, not a behaviour change:
+today's behaviour is unchanged. The point is that `RegistrierungScreen`'s honesty guarantee (the
+banner clears without a reload) would otherwise rest on an *undocumented dependency default* — a
+future better-auth minor version flipping that default would silently break the fix without a
+single line in this app's own code changing, and nothing would fail loudly. Pinning it makes the
+dependency an explicit, reviewable line of config instead of an assumption.
+
+**Consequence.** Any future change to this pin is a visible diff in `auth-client.ts`, not a
+`pnpm update` side effect.

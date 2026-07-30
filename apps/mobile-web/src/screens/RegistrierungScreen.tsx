@@ -9,8 +9,7 @@
 // already works before it's clicked (REQ-005). So there is no code-entry step here; "Konto
 // anlegen" goes straight to the same success step the DS shows ("Konto steht ✓" / "Willkommen
 // bei SteuerEule"), with an honest "please verify your email" banner added whenever the fresh
-// account is still unverified — a state the DS artifact doesn't depict at all. The DS reference
-// itself needs a follow-up update to stop promising a code-gate that no longer exists.
+// account is still unverified — a state the DS artifact doesn't depict at all.
 import { useState } from 'react'
 import { ScrollView, View, Text, Pressable, ActivityIndicator, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
@@ -26,10 +25,18 @@ export interface RegistrierungScreenProps {
   readonly onDone: () => void
 }
 
+// `Stage.success` carries only `email` — what the user submitted, never a server fact.
+// It used to also snapshot `emailVerified` from the signup response, one-time, at signup
+// (#194): better-auth's `signUp.email()` always answers `emailVerified: false` here
+// (`autoSignIn`/`requireEmailVerification: false`, better-auth.ts), so that snapshot could
+// only ever go stale, never self-correct — a user who verified out-of-band (their mail
+// client, possibly a different device) kept reading "please confirm your email" forever,
+// which by then was false. The live answer now comes from `authClient.useSession()` below,
+// re-read on every render instead of captured once.
 type Stage =
   | { readonly kind: 'form' }
   | { readonly kind: 'submitting' }
-  | { readonly kind: 'success'; readonly email: string; readonly emailVerified: boolean }
+  | { readonly kind: 'success'; readonly email: string }
 
 export function RegistrierungScreen({ onDone }: RegistrierungScreenProps) {
   const t = useTheme()
@@ -45,6 +52,21 @@ export function RegistrierungScreen({ onDone }: RegistrierungScreenProps) {
   const googleAvailable = useSocialSignInAvailable('google')
   const [stage, setStage] = useState<Stage>({ kind: 'form' })
   const [resend, setResend] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
+  // The live source for "is this account's email verified yet" (#194) — better-auth's own
+  // session read, backed by its nanostores atom. better-auth 1.6.24 defaults
+  // `sessionOptions.refetchOnWindowFocus` to `true` (pinned explicitly in auth-client.ts so
+  // a dependency bump can't silently flip it), which already subscribes the global focus
+  // manager to the tab's `visibilitychange` — so a user who verifies out-of-band (their mail
+  // client, possibly a different device) and comes back to this tab gets the session
+  // re-fetched automatically. No extra listener, poll, or explicit `refetchSession()` call
+  // is needed here; reading the live atom instead of a one-time snapshot is the whole fix.
+  const { data: sessionData } = authClient.useSession()
+  // Fail-closed: only a session that *positively* answers `emailVerified: true` turns the
+  // banner off. On a non-401 session-fetch error, better-auth's atom keeps whatever `data`
+  // it last had (session-atom.mjs) rather than clearing it — so inferring "verified" from a
+  // missing/errored read would be reachable, and wrong. Absence of a positive answer always
+  // means "still show the banner".
+  const emailUnverified = !(sessionData?.user.emailVerified ?? false)
 
   const ok = mail.includes('@') && pass.length >= 6
 
@@ -65,7 +87,7 @@ export function RegistrierungScreen({ onDone }: RegistrierungScreenProps) {
         setFehler(tr(`auth.${authErrorKey(error)}`))
         return
       }
-      setStage({ kind: 'success', email: data.user.email, emailVerified: data.user.emailVerified })
+      setStage({ kind: 'success', email: data.user.email })
     } catch {
       setStage({ kind: 'form' })
       setFehler(tr('auth.errGeneric'))
@@ -98,7 +120,7 @@ export function RegistrierungScreen({ onDone }: RegistrierungScreenProps) {
         <Text style={styles.successHeading}>{tr('registrierung.success.heading')}</Text>
         <Text style={styles.successSubtitle}>{tr('registrierung.success.subtitle')}</Text>
 
-        {!stage.emailVerified ? (
+        {emailUnverified ? (
           <View style={styles.verifyBanner} accessibilityRole="alert">
             <Text style={styles.verifyHeading}>{tr('auth.verifyBanner.heading')}</Text>
             <Text style={styles.verifyBody}>{tr('auth.verifyBanner.body', { email: stage.email })}</Text>
@@ -110,7 +132,23 @@ export function RegistrierungScreen({ onDone }: RegistrierungScreenProps) {
             {resend === 'sent' ? <Text style={styles.verifyResendNote}>{tr('auth.verifyBanner.resendSent')}</Text> : null}
             {resend === 'error' ? <Text style={styles.verifyResendError}>{tr('auth.verifyBanner.resendError')}</Text> : null}
           </View>
-        ) : null}
+        ) : (
+          // Deliberate DS deviation (#194, stakeholder ruling — recorded in the PR description):
+          // the checked-in DS reference (`Registrierung.jsx`) has no verified-state artifact at
+          // all — it depicts only the warning banner or nothing. The banner simply vanishing
+          // once verification lands would show the user the *absence* of a warning, not a
+          // confirmation, so the stakeholder asked for one explicitly. This reuses the exact same
+          // box primitive and spacing/token vocabulary as the banner above (`View`/`Text`,
+          // `t.color.ok`/`okWeich` — the DS's own existing positive-semantic pair, `farben-
+          // semantik.html`), swapped in where the banner was; nothing new is invented but the copy.
+          // `accessibilityRole="alert"` matches the same role the banner it replaces used (and
+          // every other honest state-change message in this app, e.g. LoginScreen's own copy of
+          // this banner, OnboardingScreen's error heading) — RN's `AccessibilityRole` union has
+          // no ARIA-style `status`/`polite` distinction to reach for instead.
+          <View style={styles.verifiedBanner} accessibilityRole="alert">
+            <Text style={styles.verifiedHeading}>{tr('auth.verifiedBanner.heading')}</Text>
+          </View>
+        )}
 
         <Button onPress={onDone} style={styles.cta}>
           {tr('registrierung.success.cta')}
@@ -219,6 +257,19 @@ function makeStyles(t: UiTheme) {
   const verifyResendLink: TextStyle = { fontFamily: t.font.text, fontWeight: t.weight.schwer, fontSize: t.size.s, color: t.color.tinte, textDecorationLine: 'underline', minHeight: 44, textAlignVertical: 'center' }
   const verifyResendNote: TextStyle = { fontFamily: t.font.text, fontSize: t.size.xs, color: t.color.tinte2, marginTop: t.space.s1 }
   const verifyResendError: TextStyle = { fontFamily: t.font.text, fontSize: t.size.xs, color: t.color.fehler, marginTop: t.space.s1 }
+  // Same box primitive as `verifyBanner` above, recolored with the DS's existing positive
+  // semantic pair (`--ok`/`--ok-weich`, `farben-semantik.html`) instead of `warn` — the
+  // deliberate DS deviation recorded at the call site and in the PR description (#194).
+  const verifiedBanner: ViewStyle = {
+    backgroundColor: t.color.okWeich,
+    borderWidth: 2,
+    borderColor: t.color.ok,
+    borderRadius: t.radius.s,
+    padding: t.space.s4,
+    marginBottom: t.space.s4,
+    width: '100%',
+  }
+  const verifiedHeading: TextStyle = { fontFamily: t.font.text, fontWeight: t.weight.schwer, fontSize: t.size.m, color: t.color.tinte }
 
   return {
     screen,
@@ -244,5 +295,7 @@ function makeStyles(t: UiTheme) {
     verifyResendLink,
     verifyResendNote,
     verifyResendError,
+    verifiedBanner,
+    verifiedHeading,
   }
 }
