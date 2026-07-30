@@ -4,7 +4,9 @@
 - **Date:** 2026-07-29
 - **Deciders:** Stakeholder (NexusHero)
 - **Completes** [ADR-0020](0020-the-draft-pr-triggers-the-review.md) (what starts the review) and the
-  thread-resolution rule from PR #198 (how a finding is closed).
+  thread-resolution rule that lives in `.claude/agents/lead-developer.md`, § *"You opened the thread, so
+  you close it"* (PR #198, commit `b4b6818`) — how a finding is closed. That rule has no ADR of its own,
+  so the agent definition is the citable artifact; the PR is only where it was argued.
 - **Context tags:** delivery method
 
 ## Context
@@ -58,8 +60,19 @@ Two clarifications that follow from #198 rather than being new:
 - **More re-reads, and some will find nothing.** Head-based batching keeps it proportional, but a dev
   who pushes across several sessions will pull several re-reads. Accepted for the same reason as
   ADR-0020's cost: a gate you can skip by not being asked is the failure being removed.
-- **He cannot currently reply inside a thread.** GitHub's reply-to-review-thread endpoint returns 403 in
-  his session, so "reply instead of resolving" is available only as a *new anchored comment* — which
+- **The trigger is scoped to PRs that still have open findings, and the reverse case stays uncovered.**
+  Once the last thread is resolved, a subsequent push triggers nothing: ADR-0020's first-pass trigger
+  does not re-fire, so a dev who lands every fix, gets every thread closed, then pushes a refactor that
+  crosses a boundary gets no second architectural pass — Salih's tier run would catch behaviour, not
+  structure. Re-review of post-resolution pushes stays request-driven. Named rather than left to be
+  inferred, because it is this ADR's own gap shape one iteration out; the alternative is unbounded
+  re-reads on every push, which is what the "current head" clause exists to avoid.
+- **He cannot currently reply inside a thread.** No reply-to-review-thread operation is exposed in his
+  tool surface at all — he has create/submit/resolve/unresolve and comment-on-pending-review, none of
+  which reply into an existing thread. (A 403 was also observed against the underlying endpoint, but the
+  missing tool is the operative cause, and the distinction is load-bearing for #192: a 403 is fixed by
+  widening a token, an absent tool by adding one.) So "reply instead of resolving" is available only as
+  a *new anchored comment* — which
   GitHub creates as a **new thread**. Anyone using that fallback has to close both the original and the
   reply thread; on #204 that is how two extra threads came to look like live findings. Tracked with
   #192's tooling gap. The rule stands and the workaround is worse than the rule deserves.
