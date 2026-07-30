@@ -338,12 +338,44 @@ describe('LoginScreen', () => {
   })
 
   // Fail-closed (#194/#217): a session-fetch error must never be read as "verified".
+  // better-auth's atom keeps whatever `data` it last had on a non-401 error rather than clearing
+  // it (session-atom.mjs) — here there never was a successful load, so `data` stays `null`
+  // throughout; the banner must still show rather than defaulting open on the missing answer.
+  // Note (Musti's #217 review): this fixture alone kills nothing — with `data` null the
+  // account-scoping clause already returns false first, so a genuinely fail-open hook
+  // (`emailVerified !== false`) would pass this test too. The next test below is what actually
+  // exercises the fail-closed clause; keep this one anyway, it's cheap and locks the no-data path.
   it('keeps the unverified banner when the session fetch fails, rather than assuming verified', async () => {
     server.use(
       http.post(`${BASE_URL}/api/auth/sign-in/email`, () =>
         HttpResponse.json({ token: 'tok_1', user: { id: 'u1', email: 'a@b.de', emailVerified: false, name: '' } }),
       ),
       http.get(`${BASE_URL}/api/auth/get-session`, () => HttpResponse.json({ message: 'Internal Server Error' }, { status: 500 })),
+    )
+    renderLogin()
+    fillCredentials()
+    fireEvent.click(screen.getByText('Einloggen'))
+
+    await screen.findByText('Bitte bestätige noch deine E-Mail.')
+    expect(screen.queryByText('E-Mail bestätigt ✓')).toBeNull()
+  })
+
+  // Fail-closed, the load-bearing case (Musti's #217 review): a session that loads
+  // *successfully for this account* but doesn't positively answer — `user.email` matches,
+  // `emailVerified` absent — is the shape a partial or errored read actually leaves behind, and
+  // it's the case the hook's own fail-closed comment claims to guard. Verified in review both
+  // directions: fails on a fail-open mutant (`emailVerified !== false`), passes on this hook.
+  it('keeps the unverified banner when the session for this account never positively answers emailVerified', async () => {
+    server.use(
+      http.post(`${BASE_URL}/api/auth/sign-in/email`, () =>
+        HttpResponse.json({ token: 'tok_1', user: { id: 'u1', email: 'a@b.de', emailVerified: false, name: '' } }),
+      ),
+      http.get(`${BASE_URL}/api/auth/get-session`, () =>
+        HttpResponse.json({
+          user: { id: 'u1', email: 'a@b.de', name: '' },
+          session: { id: 's1', createdAt: new Date().toISOString() },
+        }),
+      ),
     )
     renderLogin()
     fillCredentials()

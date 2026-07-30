@@ -49,7 +49,7 @@ export function LoginScreen({ onDone, onGuest, onRegister }: LoginScreenProps) {
   // amendment). Scoping matters more here: this is the screen a second person on a shared
   // device signs in on, so a stale verified session belonging to a *different* account is a
   // routine path, not a race.
-  const emailVerified = useEmailVerified(stage.kind === 'unverified' ? stage.email : '')
+  const emailVerified = useEmailVerified(stage.kind === 'unverified' ? stage.email : undefined)
 
   const ok = mail.includes('@') && pass.length >= 6
 
@@ -256,6 +256,13 @@ function makeStyles(t: UiTheme) {
   // Same box primitive as `verifyBanner`, recolored with the DS's positive semantic pair
   // (`--ok`/`--ok-weich`, `farben-semantik.html`) — duplicated from RegistrierungScreen rather
   // than extracted (Musti's #217 ruling: style drift is a DS-review concern, not this one).
+  // Not byte-identical: RegistrierungScreen's copy carries `width: '100%'`, this one doesn't —
+  // deliberately. RegistrierungScreen's container is `successScreen = { ...screen, alignItems:
+  // 'center' }` (RegistrierungScreen.tsx:202), which shrinks children to content width, so its
+  // banner needs the explicit `width: '100%'`; LoginScreen's container is plain `screen`, which
+  // stretches children, so it doesn't need it. Consistent within each file too — this file's
+  // sibling `verifyBanner` above also omits it, RegistrierungScreen's also has it. Don't
+  // "restore parity" between the two; that would break one of them.
   const verifiedBanner: ViewStyle = {
     backgroundColor: t.color.okWeich,
     borderWidth: 2,
