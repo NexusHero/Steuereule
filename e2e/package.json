@@ -6,6 +6,8 @@
   "scripts": {
     "cross-origin-smoke": "node cross-origin/run.mjs",
     "breakpoint-layout": "node responsive/breakpoint-layout.mjs",
+    "banner-ds-qa": "node responsive/banner-ds-qa.mjs",
+    "visibility-refetch": "node visibility/visibility-refetch.mjs",
     "google-auth": "node google-auth/google-login.mjs"
   },
   "devDependencies": {
