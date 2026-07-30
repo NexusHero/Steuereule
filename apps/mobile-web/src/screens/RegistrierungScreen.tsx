@@ -19,6 +19,7 @@ import { useAuthClient } from '../auth/AuthClientProvider'
 import { authErrorKey } from '../auth/authErrors'
 import { useSocialSignIn } from '../auth/useSocialSignIn'
 import { useSocialSignInAvailable } from '../auth/useSocialSignInAvailable'
+import { useEmailVerified } from '../auth/useEmailVerified'
 import { GoogleG } from '../icons/GoogleG'
 
 export interface RegistrierungScreenProps {
@@ -46,8 +47,8 @@ export function RegistrierungScreen({ onDone }: RegistrierungScreenProps) {
   const googleAvailable = useSocialSignInAvailable('google')
   const [stage, setStage] = useState<Stage>({ kind: 'form' })
   const [resend, setResend] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
-  // Live, re-read every render — never a snapshot (#194, ADR-0012 amendment).
-  const { data: sessionData } = authClient.useSession()
+  // Live, account-scoped, fail-closed — shared with LoginScreen (#194/#217, ADR-0012 amendment).
+  const verifiedForThisAccount = useEmailVerified(stage.kind === 'success' ? stage.email : '')
 
   const ok = mail.includes('@') && pass.length >= 6
 
@@ -95,17 +96,6 @@ export function RegistrierungScreen({ onDone }: RegistrierungScreenProps) {
   }
 
   if (stage.kind === 'success') {
-    // Fail-closed: only a session that *positively* answers `emailVerified: true` turns the
-    // banner off. On a non-401 session-fetch error, better-auth's atom keeps whatever `data`
-    // it last had (session-atom.mjs) rather than clearing it — so inferring "verified" from a
-    // missing/errored read would be reachable, and wrong. Absence of a positive answer always
-    // means "still show the banner".
-    // Scoped to *this* account, not just any signed-in one (Musti's T1): `sessionData` can
-    // briefly be a different, already-verified session still resolving after `signUp.email`
-    // notifies the atom to refetch, or the atom's stale last-known `data` from before this
-    // account existed. Matching `stage.email` (from the signup response, never user input)
-    // against `sessionData.user.email` closes both stale-positive paths.
-    const verifiedForThisAccount = sessionData?.user.emailVerified === true && sessionData.user.email === stage.email
     return (
       <ScrollView contentContainerStyle={bp === 's' ? styles.successScreen : styles.wideSuccessScreen} keyboardShouldPersistTaps="handled" data-testid="screen-container">
         <Sticker style={styles.successBadge}>{tr('registrierung.success.badge')}</Sticker>
