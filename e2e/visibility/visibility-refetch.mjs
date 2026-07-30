@@ -19,13 +19,47 @@
 //   1. Real sign-up/sign-in → assert the UNVERIFIED banner.
 //   2. Dispatch visibilitychange BEFORE the DB flip, and assert the banner does NOT flip. A
 //      single break/restore of `refetchOnWindowFocus` (proven separately, see the PR's evidence
-//      block) only proves "the banner never updates" — it says nothing about
-//      `useEmailVerified`'s two real rules (fail-closed: only `emailVerified === true` counts;
-//      account-scoped: only a session for THIS email counts). A permissive mutant of either
-//      rule leaves a break/restore-only gate green. This step is what catches that class
-//      (#227's fifteenth instance).
+//      block) only proves "the banner never updates" — it says nothing about the fail-open
+//      direction where `useEmailVerified`'s fail-closed rule lives (only `emailVerified === true`
+//      counts). A permissive mutant of that rule leaves a break/restore-only gate green; this
+//      step catches that class (#227's fifteenth instance). This assertion requires observing a
+//      real `/api/auth/get-session` response between the dispatch and the check (Musti's #223
+//      review, F3) — without that precondition, "banner did not flip" and "no refetch fired at
+//      all" produce the identical green, and the assertion would hold only by accident of
+//      better-auth's own `session-refresh.mjs` internals, not by anything this file checks.
+//      **Not covered by this step:** `useEmailVerified`'s second rule, account-scoping (only a
+//      session for THIS email counts) — in both flows below the session's own email already
+//      equals the screen's email, so a mutant dropping `useEmailVerified.ts:35`'s
+//      `sessionData.user.email === email` check survives this spec untouched (Musti's #223
+//      review, F4). Guarding that needs a second, already-verified account's session live in the
+//      same browser context, which costs another auth call against the shared bucket documented
+//      below — reported as a follow-up rather than bolted on here.
 //   3. Flip `emailVerified` in the real DB, dispatch visibilitychange again, and assert the
 //      VERIFIED banner appears within a bounded timeout.
+//
+// SHARED-RATE-LIMIT BUCKET (Musti's #223 review, F1/F2/F5 — read this before adding a call).
+// better-auth's built-in `/sign-up*`/`/sign-in*` rule (window=10s/max=3,
+// apps/api/src/auth/better-auth.ts:169-187, a real REQ-010 control) is enforced per PATH, keyed
+// `no-trusted-ip|<path>` — this environment can't resolve a client IP (the API logs that
+// directly), so every script in the `Browser gates` job shares ONE bucket per path, not one per
+// script (`e2e/responsive/banner-ds-qa.mjs`'s header documents the same mechanics — keep the two
+// descriptions in sync if either changes). The bucket is a ROLLING window keyed on `lastRequest`,
+// not a per-job quota: `count` resets after any gap longer than 10s, and `lastRequest` advances on
+// every allowed call. The rule to keep in mind when adding a call on this path is about GAPS —
+// never more than 3 sign-up/sign-in calls without a >10s quiet period — not about a shrinking
+// pool of "calls left".
+//
+// This script does NOT clear the bucket (a prior version did, via `DELETE FROM "RateLimit"` —
+// reverted: clearing a REQ-010 control to make a gate pass is exactly the inversion this project
+// exists to prevent, and it would suppress the limiter for every later caller in the same job
+// too, not just this script). Instead it PACES itself: `waitForRateLimitHeadroom` reads the
+// bucket's current state (never deletes it) and waits out the remainder of the window if the
+// path is already at its cap, so this script's own sign-up/sign-in calls behave like a
+// well-behaved rate-limited client rather than relying on lucky timing against whatever ran
+// immediately before it in the job. `banner-ds-qa.mjs` does not do the same — it has no DB access
+// by design (Musti's #223 ruling: the DS check never touches Postgres) — so it relies on its own
+// reduced call count plus a fail-fast 429 guard instead; this script already needs DATABASE_URL
+// for the DB flip, and runs last in the job (the tightest fit), so it carries the active pacing.
 //
 // Assumes the caller has already booted the same stack as `e2e/cross-origin/run.mjs` /
 // `e2e/responsive/breakpoint-layout.mjs` (real Postgres, the compiled API, the exported web
@@ -46,6 +80,11 @@ import { execSync } from 'node:child_process'
 const WEB_ORIGIN = requireEnv('WEB_ORIGIN')
 const API_ORIGIN = requireEnv('API_ORIGIN')
 const DATABASE_URL = requireEnv('DATABASE_URL')
+
+// Must match better-auth's own built-in special-path rule (better-auth.ts:169-187) — see the
+// shared-rate-limit-bucket header comment above.
+const RATE_LIMIT_WINDOW_MS = 10_000
+const RATE_LIMIT_MAX = 3
 
 // German copy (app boots in `de`, ADR-0006), lifted straight from
 // apps/mobile-web/src/i18n/resources.ts. Shared between RegistrierungScreen and LoginScreen
@@ -93,6 +132,60 @@ function sql(query) {
   ).trim()
 }
 
+/**
+ * Reads (never mutates) the shared per-path rate-limit bucket's current state. `null` when the
+ * path has no row yet — a fresh bucket, nothing to wait for. See the shared-rate-limit-bucket
+ * header comment for why this exists instead of clearing the table.
+ */
+function readRateLimitBucket(path) {
+  const row = sql(`SELECT count, "lastRequest" FROM "RateLimit" WHERE key = 'no-trusted-ip|${path}'`)
+  if (!row) return null
+  const [countStr, lastRequestStr] = row.split('|')
+  const count = Number(countStr)
+  const lastRequest = Number(lastRequestStr)
+  if (!Number.isFinite(count) || !Number.isFinite(lastRequest)) return null
+  return { count, lastRequest }
+}
+
+/**
+ * Waits out the remainder of the rolling window if `path`'s shared bucket is already at its cap
+ * — a real, bounded wait (event-driven arithmetic on the bucket's own `lastRequest`, not a guess)
+ * rather than deleting the row. A well-behaved rate-limited client waits; it doesn't reset the
+ * limiter for whoever calls next.
+ */
+async function waitForRateLimitHeadroom(path) {
+  const bucket = readRateLimitBucket(path)
+  if (!bucket) return
+  const elapsed = Date.now() - bucket.lastRequest
+  if (bucket.count >= RATE_LIMIT_MAX && elapsed < RATE_LIMIT_WINDOW_MS) {
+    const waitMs = RATE_LIMIT_WINDOW_MS - elapsed + 250
+    console.log(
+      `[visibility-refetch] ${path}'s shared bucket is at ${bucket.count}/${RATE_LIMIT_MAX} ` +
+        `(${elapsed}ms since its last call) — waiting ${waitMs}ms for the rolling window to lapse ` +
+        `rather than clearing it.`,
+    )
+    await new Promise((resolvePromise) => setTimeout(resolvePromise, waitMs))
+  }
+}
+
+/**
+ * Fails loudly and immediately on a 429 from any auth path, instead of letting the caller's own
+ * subsequent `waitFor` time out ten seconds later with no named cause (Musti's #223 review, F7 —
+ * raised against `banner-ds-qa.mjs`, applied here too as defense-in-depth: this script already
+ * paces itself via `waitForRateLimitHeadroom`, but a wrong assumption about the bucket key format
+ * or a clock skew should still fail legibly, not as a mystery timeout).
+ */
+function guardAgainst429(page) {
+  page.on('response', (response) => {
+    if (response.status() === 429 && response.url().includes('/api/auth/')) {
+      fail(
+        `${response.url()} returned 429 — the shared per-path rate-limit bucket was exhausted ` +
+          `despite waitForRateLimitHeadroom (see this file's header comment).`,
+      )
+    }
+  })
+}
+
 async function signUpOutOfBand(email, password) {
   const res = await fetch(`${API_ORIGIN}/api/auth/sign-up/email`, {
     method: 'POST',
@@ -123,13 +216,27 @@ async function dispatchVisibilityChange(page) {
 
 /**
  * Step 2 of the per-screen shape: dispatch while the DB row is still unverified, and assert the
- * banner does NOT flip. Waits the same bound the positive assertion waits (so a hypothetical
- * slow-but-eventually-wrong flip would still be caught), then asserts both directions: the
- * unverified banner is still there, and the verified banner has not appeared.
+ * banner does NOT flip. Requires observing a real `/api/auth/get-session` response between the
+ * dispatch and the check (Musti's #223 review, F3) — otherwise "no flip" could mean "no refetch
+ * fired at all", which proves nothing about the fail-closed rule this step exists to guard.
  */
 async function assertBannerDoesNotFlip(page) {
   const dispatchedAt = Date.now()
+  const gotSessionResponse = page
+    .waitForResponse((response) => response.url().includes('/api/auth/get-session'), { timeout: 5_000 })
+    .then(() => true)
+    .catch(() => false)
+
   await dispatchVisibilityChange(page)
+
+  if (!(await gotSessionResponse)) {
+    fail(
+      'No /api/auth/get-session response was observed after the visibilitychange dispatch — the ' +
+        '"banner did not flip" check below would hold on silence alone, which proves nothing ' +
+        "about useEmailVerified's fail-closed rule (Musti's #223 review, F3).",
+    )
+  }
+
   await page.waitForTimeout(1_500)
   const stillUnverified = await page.getByRole('alert').getByText(COPY.verifyHeading).isVisible().catch(() => false)
   const verifiedAppeared = await page.getByRole('alert').getByText(COPY.verifiedHeading).count()
@@ -157,7 +264,9 @@ async function assertBannerFlipsAfterDbVerify(page, email) {
 // *positive* assertion times out for a reason that has nothing to do with `useEmailVerified` —
 // discovered running this very script against the real stack while wiring it into CI. Waiting
 // out the real throttle here is also the honest thing to do: a real user's mail-app round trip
-// is never sub-5-seconds anyway.
+// is never sub-5-seconds anyway. (This is a distinct, client-side throttle from the server-side,
+// DB-backed rate limit the shared-bucket header comment above describes — two different limiters,
+// not the same one described twice.)
 async function waitOutFocusRefetchRateLimit(sinceMs) {
   const elapsed = Date.now() - sinceMs
   const remaining = 5_500 - elapsed
@@ -179,12 +288,14 @@ async function testRegistrierungScreen(browser) {
   const context = await browser.newContext({ viewport: { width: 375, height: 812 } })
   try {
     const page = await context.newPage()
+    guardAgainst429(page)
     const email = `visibility-refetch-registrierung-${Date.now()}@beispiel.de`
 
     await skipSplash(page)
     await page.getByText(COPY.register, { exact: true }).click()
     await page.getByPlaceholder(COPY.registrierungEmailPlaceholder).fill(email)
     await page.getByPlaceholder(COPY.registrierungPasswordPlaceholder).fill('Sicheres-Passwort-1!')
+    await waitForRateLimitHeadroom('/sign-up/email')
     await page.getByRole('button', { name: COPY.registrierungSubmit }).click()
     await page.getByText(COPY.registrierungSuccessHeading).waitFor({ state: 'visible', timeout: 10_000 })
 
@@ -206,6 +317,7 @@ async function testLoginScreen(browser) {
   const context = await browser.newContext({ viewport: { width: 375, height: 812 } })
   try {
     const page = await context.newPage()
+    guardAgainst429(page)
     const email = `visibility-refetch-login-${Date.now()}@beispiel.de`
     const password = 'Sicheres-Passwort-1!'
 
@@ -213,11 +325,13 @@ async function testLoginScreen(browser) {
     // browser context) so the browser reaches LoginScreen's `unverified` stage through a real
     // sign-in click, not a fabricated stage — this screen's own sign-up flow is
     // RegistrierungScreen's job to cover, not this one's.
+    await waitForRateLimitHeadroom('/sign-up/email')
     await signUpOutOfBand(email, password)
 
     await skipSplash(page)
     await page.getByPlaceholder('du@beispiel.de').fill(email)
     await page.getByPlaceholder('••••••••').fill(password)
+    await waitForRateLimitHeadroom('/sign-in/email')
     await page.getByRole('button', { name: COPY.loginSubmit }).click()
 
     await page.getByRole('alert').getByText(COPY.verifyHeading).waitFor({ state: 'visible', timeout: 10_000 })
@@ -235,15 +349,9 @@ async function testLoginScreen(browser) {
 }
 
 async function main() {
-  // Rate-limited per client-IP bucket (better-auth + RateLimit table, ADR-0012 §5) — this
-  // script drives several sign-ups/sign-ins in a row from the same loopback IP, so clear the
-  // bucket up front rather than fight it (same reasoning as the scratch runs this promotes).
-  sql(`DELETE FROM "RateLimit"`)
-
   const browser = await chromium.launch({ headless: true })
   try {
     await testRegistrierungScreen(browser)
-    sql(`DELETE FROM "RateLimit"`)
     await testLoginScreen(browser)
     console.log('[visibility-refetch] PASS — both screens re-read verification live, both directions.')
   } finally {
