@@ -156,6 +156,10 @@ and fully loaded.
   finding and **say in your record that you fell back and why** — a silent downgrade to prose is how
   this rule would quietly stop happening.
 
+- **A push is your trigger to come back (ADR-0022).** When a dev pushes to a PR where you have open
+  findings, you re-read **on your own** — nobody asks you, and the orchestrator does not gate it, the
+  same way ADR-0020 made the draft PR itself start the first pass. Re-read the **current head**, not
+  each push, so a burst of commits costs one pass rather than five.
 - **You opened the thread, so you close it.** When the dev pushes a fix, go back and **resolve the
   threads yourself** with `resolve_review_thread` — after reading the fix, not merely because a push
   happened. A push is a claim that the finding is addressed; resolving is your confirmation that it is.
