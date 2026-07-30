@@ -19,29 +19,52 @@
 // this harness (Musti's #223 ruling, tracked separately as #226 — deliberately out of scope
 // here).
 //
-// SHARED-RATE-LIMIT-BUCKET CONSTRAINT (found running this in CI, first #223 attempt, ef5930c):
-// better-auth's built-in special-path rule for `/sign-up*`/`/sign-in*` is window=10s/max=3
-// (apps/api/src/auth/better-auth.ts:169-187) — a real, load-bearing REQ-010 control, never
-// loosened for CI. In THIS job specifically, the API logs "Rate limiting could not determine a
-// client IP and is falling back to a single shared per-path bucket" — every script's sign-up/
-// sign-in calls in this job compete for the SAME bucket, not one per script. The original version
-// of this script created one fresh account per breakpoint (3 sign-ups + 3 sign-ins = 6 auth
-// calls) and ran immediately after `breakpoint-layout.mjs`'s own 3 real sign-ups in the same job
-// — combined, that overran the shared bucket and the job went red on `bp=l` (the 6th-ish call in
-// the window), not on anything this script actually measures. Fixed by using exactly ONE account
-// for the whole file: one real sign-up (RegistrierungScreen) and one real sign-in with that same
-// account (LoginScreen), sweeping all three breakpoints on the SAME already-mounted page via
-// `page.setViewportSize` (the same resize technique `breakpoint-layout.mjs`'s
-// `assertMaxWidthAtViewport` already uses) instead of a new browser context + new account per
-// width. Two auth calls total, not six. **Any future step added to this job that also drives
-// sign-up/sign-in must budget against this same shared bucket** — it is not this script's
-// private quota.
+// SHARED-RATE-LIMIT BUCKET (found running this in CI, first #223 attempt, ef5930c; corrected
+// after Musti's #223 review, F5). better-auth's built-in special-path rule for `/sign-up*`/
+// `/sign-in*` is window=10s/max=3 (apps/api/src/auth/better-auth.ts:169-187) — a real,
+// load-bearing REQ-010 control, never loosened for CI. In THIS job specifically, the API logs
+// "Rate limiting could not determine a client IP and is falling back to a single shared per-path
+// bucket" — every script's sign-up calls in this job share ONE bucket, and every script's sign-in
+// calls share a separate one (`e2e/visibility/visibility-refetch.mjs`'s header documents the
+// identical mechanics — keep the two descriptions in sync if either changes).
+//
+// **The bucket is a ROLLING window keyed on `lastRequest`, not a per-job quota.** `count` resets
+// after any gap longer than 10s on that path; `lastRequest` advances on every allowed call. Three
+// calls nine seconds apart still exhaust it; the same three calls with a >10s gap never touch it.
+// So the guidance for whoever adds a fourth step here is NOT "how many calls are left" — it's
+// "never drive more than 3 sign-up/sign-in calls on the same path without a >10s quiet period
+// somewhere in the sequence". `breakpoint-layout.mjs`'s own three sign-ups (one per breakpoint)
+// stay safe today because its CockpitScreen flows between them take real time — a gap, not a
+// remaining-count.
+//
+// The original version of this script created one fresh account per breakpoint (3 sign-ups + 3
+// sign-ins) landing immediately after `breakpoint-layout.mjs`'s own 3 sign-ups with no gap between
+// scripts — that clustering, not a quota being "used up", is what tripped the job on `bp=l`. Fixed
+// by using exactly ONE account for the whole file: one real sign-up (RegistrierungScreen) and one
+// real sign-in with that same account (LoginScreen), sweeping all three breakpoints on the SAME
+// already-mounted page via `page.setViewportSize`. This departs from the *closer* precedent in
+// `breakpoint-layout.mjs`, worth naming rather than glossing: that file uses resize for its own
+// `assertMaxWidthAtViewport` (a read-only layout measurement), but a **fresh context per width**
+// for `measureRegistrierungSuccess` (`breakpoint-layout.mjs:298`) — exactly the flow that costs an
+// auth call. This file does the opposite trade for that flow, on purpose: `verifyBanner`'s style
+// is built by `makeStyles(t)` off theme alone, no `bp`/width input
+// (`RegistrierungScreen.tsx:220-228`, `LoginScreen.tsx:243`), so re-authenticating per width would
+// spend three sign-ups/sign-ins to re-assert byte-identical `EXPECTED` values three times. Account
+// reuse costs nothing here; a fresh context per width would have cost three real auth calls for no
+// additional coverage on the axis that varies (see the coverage note on `measureBanner`, below).
+//
+// If a REQ-010 CI-only carve-out is ever wanted for the rate limiter itself, that is a call for
+// Suhay/the stakeholder to make explicitly — this script does not take it unilaterally, and does
+// not delete or otherwise weaken the `RateLimit` table.
 //
 // Locator note: neither banner nor its heading carries a `testID` on either screen — both use
 // `accessibilityRole="alert"` only (confirmed directly against RegistrierungScreen.tsx /
 // LoginScreen.tsx). Selectors below are role + the resolved i18n copy, never a `data-testid`.
 //
-// Exits non-zero on the first failed assertion — merge gate, not a report.
+// Exits non-zero on the first failed assertion (or an immediate 429 from any `/api/auth/*`
+// response — see `guardAgainst429`, Musti's #223 review F7: a 429 must be the reported cause, not
+// a heading-timeout ten seconds later with the real reason three log files away) — merge gate,
+// not a report.
 
 import { chromium } from 'playwright-core'
 
@@ -100,6 +123,24 @@ function hexToRgb(hex) {
   return `rgb(${parseInt(r, 16)}, ${parseInt(g, 16)}, ${parseInt(b, 16)})`
 }
 
+/**
+ * Fails loudly and immediately on a 429 from any auth path, instead of letting the caller's own
+ * subsequent `waitFor` surface it ten seconds later as an unexplained heading timeout (Musti's
+ * #223 review, F7 — a comment alone is not sufficient). This script has no DB access (see the
+ * header comment) so it can't proactively check the bucket the way `visibility-refetch.mjs`
+ * does; this is its equivalent safety net.
+ */
+function guardAgainst429(page) {
+  page.on('response', (response) => {
+    if (response.status() === 429 && response.url().includes('/api/auth/')) {
+      fail(
+        `${response.url()} returned 429 — the shared per-path rate-limit bucket (see this file's ` +
+          `header comment) was exhausted.`,
+      )
+    }
+  })
+}
+
 async function skipSplash(page) {
   await page.goto(WEB_ORIGIN, { waitUntil: 'networkidle' })
   const splashSkip = page.getByRole('button', { name: COPY.splashSkip })
@@ -108,6 +149,15 @@ async function skipSplash(page) {
   }
 }
 
+/**
+ * Asserts the verify-banner's computed style against `EXPECTED` and checks for horizontal
+ * overflow at the page's current viewport. Coverage note (Musti's #223 review, F6): `EXPECTED`
+ * is width-independent by construction (see the header comment) — the token/colour/box-metric
+ * assertion is genuinely proven once, at whichever breakpoint runs first, and the m/l passes
+ * re-assert the identical values rather than adding independent token coverage at those widths.
+ * The overflow check is the one assertion in this function that is actually width-sensitive, and
+ * it does run fresh at all three.
+ */
 async function measureBanner(page, label) {
   const banner = page.getByRole('alert')
   await banner.waitFor({ state: 'visible', timeout: 5_000 })
@@ -144,8 +194,11 @@ async function measureBanner(page, label) {
 /**
  * Sweeps all three breakpoints on the SAME already-mounted page — no new navigation, no new
  * account, exactly like `breakpoint-layout.mjs`'s `assertMaxWidthAtViewport` — so the whole file
- * spends exactly one auth call per screen, not one per breakpoint (see the shared-rate-limit-
- * bucket header comment above for why that matters in this job).
+ * spends exactly one auth call per screen, not one per breakpoint (see the shared-rate-limit
+ * header comment above for why that matters in this job). What this sweep proves per screen:
+ * horizontal-overflow-free rendering at all three widths, and the `EXPECTED` token/box-metric
+ * assertion once (the values are width-independent by construction — see `measureBanner`'s own
+ * comment).
  */
 async function measureBannerAcrossBreakpoints(page, screenLabel) {
   for (const bp of BREAKPOINTS) {
@@ -161,6 +214,7 @@ async function checkRegistrierung(browser, email) {
   const context = await browser.newContext({ viewport: { width: BREAKPOINTS[0].width, height: BREAKPOINTS[0].height } })
   try {
     const page = await context.newPage()
+    guardAgainst429(page)
     await skipSplash(page)
     await page.getByText(COPY.register, { exact: true }).click()
     await page.getByPlaceholder(COPY.registrierungEmailPlaceholder).fill(email)
@@ -179,6 +233,7 @@ async function checkLogin(browser, email) {
   const context = await browser.newContext({ viewport: { width: BREAKPOINTS[0].width, height: BREAKPOINTS[0].height } })
   try {
     const page = await context.newPage()
+    guardAgainst429(page)
     await skipSplash(page)
     await page.getByPlaceholder(COPY.loginEmailPlaceholder).fill(email)
     await page.getByPlaceholder(COPY.loginPasswordPlaceholder).fill(PASSWORD)
