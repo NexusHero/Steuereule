@@ -5,6 +5,7 @@
 // random faker data, so tests aren't flaky; individual tests layer overrides with
 // `server.use(...)` and get reset in test-setup.ts's afterEach.
 import { setupServer } from 'msw/node'
+import { http, HttpResponse } from 'msw'
 import {
   getProfileControllerGetProfileMockHandler,
   getProfileControllerPutProfileMockHandler,
@@ -39,4 +40,10 @@ export const server = setupServer(
   // tests that merely pass through Cockpit don't each have to stub it; CockpitScreen's own
   // suite overrides it with real figures where the numbers are the point.
   getCockpitControllerGetCockpitSummaryMockHandler(null),
+  // better-auth's own session read — not orval-generated (better-auth owns this contract,
+  // ADR-0012 §1), so it's not in @steuereule/api-client. Defaults to "no session" (`null`),
+  // which is also the fail-closed default any screen deriving "verified"/"signed in" from
+  // this read must land on absent a positive answer (#194, RegistrierungScreen). Tests that
+  // need a real session (or a session-fetch error) override with `server.use(...)`.
+  http.get('*/api/auth/get-session', () => HttpResponse.json(null)),
 )

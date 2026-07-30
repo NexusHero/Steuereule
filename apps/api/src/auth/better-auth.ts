@@ -141,7 +141,9 @@ function buildOptions(options: CreateBetterAuthOptions): BetterAuthOptions {
       enabled: true,
       // Account works immediately (autoSignIn, REQ-005) — verification is async and
       // never blocks basic use; the UI renders the honest "please verify" state from
-      // session.user.emailVerified instead (ADR-0012 §6).
+      // session.user.emailVerified instead. (Was miscited as ADR-0012 §6, which is "Email
+      // delivery" and says nothing about this — the actual spec is REQ-005's register entry,
+      // docs/requirements/register.md; fixed #194.)
       autoSignIn: true,
       requireEmailVerification: false,
       minPasswordLength: 8,

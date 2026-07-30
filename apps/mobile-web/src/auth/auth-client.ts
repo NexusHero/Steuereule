@@ -18,7 +18,19 @@ import { createAuthClient } from 'better-auth/react'
 const AUTH_BASE_PATH = '/api/auth'
 
 export function createAppAuthClient(baseUrl: string) {
-  return createAuthClient({ baseURL: baseUrl, basePath: AUTH_BASE_PATH })
+  return createAuthClient({
+    baseURL: baseUrl,
+    basePath: AUTH_BASE_PATH,
+    // Pinned explicitly rather than left to inherit better-auth's own default (Musti's T1,
+    // #194, ADR-0012 amendment): RegistrierungScreen's "please verify your email" banner
+    // depends on the session atom re-fetching when the user returns to this tab after
+    // verifying out-of-band (their mail client, possibly another device) — an *honesty*
+    // behaviour, not a convenience one. better-auth 1.6.24 already defaults
+    // `refetchOnWindowFocus` to `true`, but a future minor bump silently flipping that
+    // default would quietly break the fix without touching a single line here. Recording
+    // the dependency as config, not an assumption.
+    sessionOptions: { refetchOnWindowFocus: true },
+  })
 }
 
 export type AppAuthClient = ReturnType<typeof createAppAuthClient>

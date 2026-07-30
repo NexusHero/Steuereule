@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@steuereule/ui'
 import { http, HttpResponse, delay } from 'msw'
@@ -170,10 +170,20 @@ describe('RegistrierungScreen', () => {
     await waitFor(() => expect(onDone).toHaveBeenCalledOnce())
   })
 
-  it('does not show the unverified banner on the success step when better-auth reports the account already verified', async () => {
+  // Musti's T1: signUp.email() never actually returns `emailVerified: true` (better-auth.ts:146,
+  // asserted false at req-005-email-signup.test.ts:61) — a signup response fabricating that value
+  // proved nothing about the real "already verified" branch, which is driven by the session, not
+  // the signup call. Drives the state through a mocked `GET /api/auth/get-session` instead (#194).
+  it('shows the verified confirmation on the success step when the session reports the account already verified', async () => {
     server.use(
       http.post(`${BASE_URL}/api/auth/sign-up/email`, () =>
-        HttpResponse.json({ token: 'tok_1', user: { id: 'u1', email: 'neu@beispiel.de', emailVerified: true, name: '' } }),
+        HttpResponse.json({ token: 'tok_1', user: { id: 'u1', email: 'neu@beispiel.de', emailVerified: false, name: '' } }),
+      ),
+      http.get(`${BASE_URL}/api/auth/get-session`, () =>
+        HttpResponse.json({
+          user: { id: 'u1', email: 'neu@beispiel.de', emailVerified: true, name: '' },
+          session: { id: 's1', createdAt: new Date().toISOString() },
+        }),
       ),
     )
     renderRegistrierung()
@@ -181,7 +191,67 @@ describe('RegistrierungScreen', () => {
     fireEvent.click(screen.getByText('Konto anlegen'))
 
     await screen.findByText('Willkommen bei SteuerEule.')
+    await screen.findByText('E-Mail bestätigt ✓')
     expect(screen.queryByText('Bitte bestätige noch deine E-Mail.')).toBeNull()
+  })
+
+  // #194 — the actual regression. `stage` used to snapshot `emailVerified` at signup and never
+  // re-read it, so this tab never learned that verification had genuinely completed out of band
+  // (the mail client, possibly a different device) unless the user reloaded. This must fail
+  // under today's (pre-#194) code — confirmed by running it against that code directly, not
+  // assumed. better-auth's session atom re-fetches on tab focus by default (auth-client.ts),
+  // which subscribes `document`'s `visibilitychange` — the same event the real mail-app -> browser
+  // return produces; jsdom's `visibilityState` is already `'visible'` here, and the atom's
+  // internal focus-rate-limit window starts at 0, so this first dispatch always clears it.
+  it('clears the unverified banner without a reload once the session reports verification (out-of-band verify, #194)', async () => {
+    let verified = false
+    server.use(
+      http.post(`${BASE_URL}/api/auth/sign-up/email`, () =>
+        HttpResponse.json({ token: 'tok_1', user: { id: 'u1', email: 'neu@beispiel.de', emailVerified: false, name: '' } }),
+      ),
+      http.get(`${BASE_URL}/api/auth/get-session`, () =>
+        HttpResponse.json({
+          user: { id: 'u1', email: 'neu@beispiel.de', emailVerified: verified, name: '' },
+          session: { id: 's1', createdAt: new Date().toISOString() },
+        }),
+      ),
+    )
+    renderRegistrierung()
+    fillCredentials()
+    fireEvent.click(screen.getByText('Konto anlegen'))
+
+    await screen.findByText('Willkommen bei SteuerEule.')
+    expect(screen.getByText('Bitte bestätige noch deine E-Mail.')).toBeTruthy()
+
+    // The verification itself happened elsewhere (mail client / another device) — nothing on
+    // this tab caused it. Only the tab regaining focus/visibility should make it notice.
+    verified = true
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'))
+    })
+
+    await screen.findByText('E-Mail bestätigt ✓')
+    expect(screen.queryByText('Bitte bestätige noch deine E-Mail.')).toBeNull()
+  })
+
+  // Fail-closed (#194, Musti's T1 F2): a session-fetch error must never be read as "verified".
+  // better-auth's atom keeps whatever `data` it last had on a non-401 error rather than clearing
+  // it (session-atom.mjs) — here there never was a successful load, so `data` stays `null`
+  // throughout; the banner must still show rather than defaulting open on the missing answer.
+  it('keeps the unverified banner when the session fetch fails, rather than assuming verified', async () => {
+    server.use(
+      http.post(`${BASE_URL}/api/auth/sign-up/email`, () =>
+        HttpResponse.json({ token: 'tok_1', user: { id: 'u1', email: 'neu@beispiel.de', emailVerified: false, name: '' } }),
+      ),
+      http.get(`${BASE_URL}/api/auth/get-session`, () => HttpResponse.json({ message: 'Internal Server Error' }, { status: 500 })),
+    )
+    renderRegistrierung()
+    fillCredentials()
+    fireEvent.click(screen.getByText('Konto anlegen'))
+
+    await screen.findByText('Willkommen bei SteuerEule.')
+    expect(screen.getByText('Bitte bestätige noch deine E-Mail.')).toBeTruthy()
+    expect(screen.queryByText('E-Mail bestätigt ✓')).toBeNull()
   })
 
   it('lets the user resend the verification email from the success step, and shows an honest error if that fails', async () => {
@@ -207,9 +277,12 @@ describe('RegistrierungScreen', () => {
   })
 
   it('completes to onboarding via onDone from the success step CTA', async () => {
+    // No fabricated `emailVerified: true` here (#194) — the CTA must work regardless of
+    // verification state, so the honest signup response (always `false`, better-auth.ts:146)
+    // is enough to prove the point without implying anything about the session.
     server.use(
       http.post(`${BASE_URL}/api/auth/sign-up/email`, () =>
-        HttpResponse.json({ token: 'tok_1', user: { id: 'u1', email: 'neu@beispiel.de', emailVerified: true, name: '' } }),
+        HttpResponse.json({ token: 'tok_1', user: { id: 'u1', email: 'neu@beispiel.de', emailVerified: false, name: '' } }),
       ),
     )
     const onDone = vi.fn()
