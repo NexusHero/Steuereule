@@ -388,12 +388,25 @@ jobs:
   # follow-up (#201) — which will need its own fresh break/restore cycle once the primary
   # selector starts matching, since this PR's proof will no longer be proving the code
   # that runs.
+  # #223 adds two more steps below (`e2e/responsive/banner-ds-qa.mjs`,
+  # `e2e/visibility/visibility-refetch.mjs`), promoting the manual proof already run on PRs
+  # #215/#225 into a standing regression gate for REQ-005's "shown honestly" clause — the
+  # unverified/verified banner on RegistrierungScreen and LoginScreen must be a LIVE read via the
+  # shared `useEmailVerified` hook, never a value snapshotted and left stale. Two separate
+  # scripts, not one (Musti's #223 ruling): a DS-fidelity regression (wrong banner colour/token)
+  # and a mechanism regression (the banner never updates, or updates when it shouldn't) are
+  # different failure modes and must not share one red/green signal. Both ride this job rather
+  # than a new one for the same reason `breakpoint-layout.mjs` does — see the header comment
+  # above.
   cross-origin-smoke:
     # The job's `name` is the check name shown on the PR and pinned by branch protection
-    # once #71 lands — it must describe both gates this job runs, or a future ADR-0014
-    # regression fails a required check whose name points at the wrong subsystem. The job
-    # key stays `cross-origin-smoke` (nothing references it); only the display name changes.
-    name: Browser gates — cross-origin + responsive layout
+    # once #71 lands — it must describe every gate this job runs, or a future regression fails a
+    # required check whose name points at the wrong subsystem. The job key stays
+    # `cross-origin-smoke` (nothing references it); only the display name changes. Renamed here,
+    # while #71 is still open (Musti's #223 ruling) — after #71 lands, a rename costs a branch
+    # protection edit plus a window where the required check doesn't exist, so this is the free
+    # window to take it in.
+    name: Browser gates — cross-origin + responsive + live-verify
     needs: build
     runs-on: ubuntu-latest
     services:
@@ -481,6 +494,19 @@ jobs:
         # guest sign-up + onboarding, a real account sign-up), it never calls the API
         # directly, so API_ORIGIN is not passed.
         run: node e2e/responsive/breakpoint-layout.mjs
+      - name: Banner DS-QA gate (#223) — verify-banner colour/token fidelity, s/m/l, both screens
+        # Only needs WEB_ORIGIN — both screens' unverified banner is reached purely by driving
+        # the real UI (sign-up through RegistrierungScreen, then sign-in with that same account
+        # through LoginScreen), no DB/API access needed.
+        run: node e2e/responsive/banner-ds-qa.mjs
+      - name: Visibility-refetch gate (#223) — live re-read of email verification, both screens
+        # Needs DATABASE_URL (already set in this job's env, above) to flip `emailVerified`
+        # directly — there is no mail client in this environment (#224 is the still-manual,
+        # permanently out-of-automation-scope iOS complement; see e2e/visibility/
+        # visibility-refetch.mjs's header comment). Relies on `psql` already being present on the
+        # `ubuntu-latest` runner image (no install step) — the `runner-images` catalogue for this
+        # image lists the PostgreSQL client tools as preinstalled.
+        run: node e2e/visibility/visibility-refetch.mjs
       - name: API log (on failure)
         if: failure()
         run: cat /tmp/steuereule-api-cross-origin.log || true
