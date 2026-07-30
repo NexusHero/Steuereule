@@ -19,6 +19,24 @@
 // this harness (Musti's #223 ruling, tracked separately as #226 — deliberately out of scope
 // here).
 //
+// SHARED-RATE-LIMIT-BUCKET CONSTRAINT (found running this in CI, first #223 attempt, ef5930c):
+// better-auth's built-in special-path rule for `/sign-up*`/`/sign-in*` is window=10s/max=3
+// (apps/api/src/auth/better-auth.ts:169-187) — a real, load-bearing REQ-010 control, never
+// loosened for CI. In THIS job specifically, the API logs "Rate limiting could not determine a
+// client IP and is falling back to a single shared per-path bucket" — every script's sign-up/
+// sign-in calls in this job compete for the SAME bucket, not one per script. The original version
+// of this script created one fresh account per breakpoint (3 sign-ups + 3 sign-ins = 6 auth
+// calls) and ran immediately after `breakpoint-layout.mjs`'s own 3 real sign-ups in the same job
+// — combined, that overran the shared bucket and the job went red on `bp=l` (the 6th-ish call in
+// the window), not on anything this script actually measures. Fixed by using exactly ONE account
+// for the whole file: one real sign-up (RegistrierungScreen) and one real sign-in with that same
+// account (LoginScreen), sweeping all three breakpoints on the SAME already-mounted page via
+// `page.setViewportSize` (the same resize technique `breakpoint-layout.mjs`'s
+// `assertMaxWidthAtViewport` already uses) instead of a new browser context + new account per
+// width. Two auth calls total, not six. **Any future step added to this job that also drives
+// sign-up/sign-in must budget against this same shared bucket** — it is not this script's
+// private quota.
+//
 // Locator note: neither banner nor its heading carries a `testID` on either screen — both use
 // `accessibilityRole="alert"` only (confirmed directly against RegistrierungScreen.tsx /
 // LoginScreen.tsx). Selectors below are role + the resolved i18n copy, never a `data-testid`.
@@ -57,6 +75,8 @@ const COPY = {
   loginSubmit: 'Einloggen',
   verifyHeading: 'Bitte bestätige noch deine E-Mail.',
 }
+
+const PASSWORD = 'Sicheres-Passwort-1!'
 
 function requireEnv(name) {
   const value = process.env[name]
@@ -121,32 +141,50 @@ async function measureBanner(page, label) {
   console.log(`[banner-ds-qa] ✅ ${label} — verify-banner matches the warn token pair, no overflow`)
 }
 
-async function checkRegistrierung(browser, bp, email) {
-  const context = await browser.newContext({ viewport: { width: bp.width, height: bp.height } })
+/**
+ * Sweeps all three breakpoints on the SAME already-mounted page — no new navigation, no new
+ * account, exactly like `breakpoint-layout.mjs`'s `assertMaxWidthAtViewport` — so the whole file
+ * spends exactly one auth call per screen, not one per breakpoint (see the shared-rate-limit-
+ * bucket header comment above for why that matters in this job).
+ */
+async function measureBannerAcrossBreakpoints(page, screenLabel) {
+  for (const bp of BREAKPOINTS) {
+    await page.setViewportSize({ width: bp.width, height: bp.height })
+    // Allow React-Native-Web's useWindowDimensions to re-render after resize (same guard
+    // `breakpoint-layout.mjs` uses).
+    await page.waitForTimeout(300)
+    await measureBanner(page, `${screenLabel} (bp=${bp.name})`)
+  }
+}
+
+async function checkRegistrierung(browser, email) {
+  const context = await browser.newContext({ viewport: { width: BREAKPOINTS[0].width, height: BREAKPOINTS[0].height } })
   try {
     const page = await context.newPage()
     await skipSplash(page)
     await page.getByText(COPY.register, { exact: true }).click()
     await page.getByPlaceholder(COPY.registrierungEmailPlaceholder).fill(email)
-    await page.getByPlaceholder(COPY.registrierungPasswordPlaceholder).fill('Sicheres-Passwort-1!')
+    await page.getByPlaceholder(COPY.registrierungPasswordPlaceholder).fill(PASSWORD)
     await page.getByRole('button', { name: COPY.registrierungSubmit }).click()
     await page.getByText(COPY.registrierungSuccessHeading).waitFor({ state: 'visible', timeout: 10_000 })
-    await measureBanner(page, `RegistrierungScreen (bp=${bp.name})`)
+    await measureBannerAcrossBreakpoints(page, 'RegistrierungScreen')
   } finally {
     await context.close()
   }
 }
 
-async function checkLogin(browser, bp, email) {
-  const context = await browser.newContext({ viewport: { width: bp.width, height: bp.height } })
+async function checkLogin(browser, email) {
+  // Fresh context (no cookies) — the same account signing in again, a real returning-user flow,
+  // through LoginScreen's own form. One sign-in call for the whole file, not one per breakpoint.
+  const context = await browser.newContext({ viewport: { width: BREAKPOINTS[0].width, height: BREAKPOINTS[0].height } })
   try {
     const page = await context.newPage()
     await skipSplash(page)
     await page.getByPlaceholder(COPY.loginEmailPlaceholder).fill(email)
-    await page.getByPlaceholder(COPY.loginPasswordPlaceholder).fill('Sicheres-Passwort-1!')
+    await page.getByPlaceholder(COPY.loginPasswordPlaceholder).fill(PASSWORD)
     await page.getByRole('button', { name: COPY.loginSubmit }).click()
     await page.getByText(COPY.verifyHeading).waitFor({ state: 'visible', timeout: 10_000 })
-    await measureBanner(page, `LoginScreen (bp=${bp.name})`)
+    await measureBannerAcrossBreakpoints(page, 'LoginScreen')
   } finally {
     await context.close()
   }
@@ -155,16 +193,12 @@ async function checkLogin(browser, bp, email) {
 async function main() {
   const browser = await chromium.launch({ headless: true })
   try {
-    for (const bp of BREAKPOINTS) {
-      // A fresh account per breakpoint (rather than one shared account) keeps each breakpoint's
-      // pass independent — no ordering dependency, no state bleeding across viewport sizes.
-      const email = `banner-ds-qa-${bp.name}-${Date.now()}@beispiel.de`
-      await checkRegistrierung(browser, bp, email)
-      // Same account, driven through LoginScreen's own sign-in form in a fresh context — no
-      // out-of-band API call and no DB access needed; the account already exists from the
-      // RegistrierungScreen pass above.
-      await checkLogin(browser, bp, email)
-    }
+    // One account for the whole file (see the shared-rate-limit-bucket header comment) — a real
+    // sign-up, then a real sign-in with that same account, each swept across all three
+    // breakpoints on its own already-mounted page rather than re-authenticated per width.
+    const email = `banner-ds-qa-${Date.now()}@beispiel.de`
+    await checkRegistrierung(browser, email)
+    await checkLogin(browser, email)
     console.log('[banner-ds-qa] PASS — verify-banner DS fidelity holds on both screens, all breakpoints.')
   } finally {
     await browser.close()
