@@ -17,6 +17,7 @@ import { useAuthClient } from '../auth/AuthClientProvider'
 import { authErrorKey } from '../auth/authErrors'
 import { useSocialSignIn } from '../auth/useSocialSignIn'
 import { useSocialSignInAvailable } from '../auth/useSocialSignInAvailable'
+import { useEmailVerified } from '../auth/useEmailVerified'
 import { GoogleG } from '../icons/GoogleG'
 
 export interface LoginScreenProps {
@@ -44,6 +45,11 @@ export function LoginScreen({ onDone, onGuest, onRegister }: LoginScreenProps) {
   const googleAvailable = useSocialSignInAvailable('google')
   const [stage, setStage] = useState<Stage>({ kind: 'form' })
   const [resend, setResend] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
+  // Live, account-scoped, fail-closed — shared with RegistrierungScreen (#194/#217, ADR-0012
+  // amendment). Scoping matters more here: this is the screen a second person on a shared
+  // device signs in on, so a stale verified session belonging to a *different* account is a
+  // routine path, not a race.
+  const emailVerified = useEmailVerified(stage.kind === 'unverified' ? stage.email : '')
 
   const ok = mail.includes('@') && pass.length >= 6
 
@@ -101,17 +107,26 @@ export function LoginScreen({ onDone, onGuest, onRegister }: LoginScreenProps) {
     return (
       <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} keyboardShouldPersistTaps="handled" data-testid="screen-container">
         <Brand tr={tr} t={t} />
-        <View style={styles.verifyBanner} accessibilityRole="alert">
-          <Text style={styles.verifyHeading}>{tr('auth.verifyBanner.heading')}</Text>
-          <Text style={styles.verifyBody}>{tr('auth.verifyBanner.body', { email: stage.email })}</Text>
-          <Pressable onPress={() => void resendVerification(stage.email)} disabled={resend === 'sending'}>
-            <Text style={styles.verifyResendLink}>
-              {resend === 'sending' ? tr('auth.verifyBanner.resendSending') : tr('auth.verifyBanner.resend')}
-            </Text>
-          </Pressable>
-          {resend === 'sent' ? <Text style={styles.verifyResendNote}>{tr('auth.verifyBanner.resendSent')}</Text> : null}
-          {resend === 'error' ? <Text style={styles.verifyResendError}>{tr('auth.verifyBanner.resendError')}</Text> : null}
-        </View>
+        {!emailVerified ? (
+          <View style={styles.verifyBanner} accessibilityRole="alert">
+            <Text style={styles.verifyHeading}>{tr('auth.verifyBanner.heading')}</Text>
+            <Text style={styles.verifyBody}>{tr('auth.verifyBanner.body', { email: stage.email })}</Text>
+            <Pressable onPress={() => void resendVerification(stage.email)} disabled={resend === 'sending'}>
+              <Text style={styles.verifyResendLink}>
+                {resend === 'sending' ? tr('auth.verifyBanner.resendSending') : tr('auth.verifyBanner.resend')}
+              </Text>
+            </Pressable>
+            {resend === 'sent' ? <Text style={styles.verifyResendNote}>{tr('auth.verifyBanner.resendSent')}</Text> : null}
+            {resend === 'error' ? <Text style={styles.verifyResendError}>{tr('auth.verifyBanner.resendError')}</Text> : null}
+          </View>
+        ) : (
+          // Stakeholder's (b) ruling on #217 (mirrors #194 on RegistrierungScreen): a positive
+          // confirmation the user taps through, never an auto-navigate off a background event.
+          // The resend affordance goes with the banner it lived in — nothing left to resend.
+          <View style={styles.verifiedBanner} accessibilityRole="alert">
+            <Text style={styles.verifiedHeading}>{tr('auth.verifiedBanner.heading')}</Text>
+          </View>
+        )}
         <Button onPress={onDone} style={styles.cta}>
           {tr('login.continue')}
         </Button>
@@ -238,6 +253,18 @@ function makeStyles(t: UiTheme) {
   const verifyResendLink: TextStyle = { fontFamily: t.font.text, fontWeight: t.weight.schwer, fontSize: t.size.s, color: t.color.tinte, textDecorationLine: 'underline', minHeight: 44, textAlignVertical: 'center' }
   const verifyResendNote: TextStyle = { fontFamily: t.font.text, fontSize: t.size.xs, color: t.color.tinte2, marginTop: t.space.s1 }
   const verifyResendError: TextStyle = { fontFamily: t.font.text, fontSize: t.size.xs, color: t.color.fehler, marginTop: t.space.s1 }
+  // Same box primitive as `verifyBanner`, recolored with the DS's positive semantic pair
+  // (`--ok`/`--ok-weich`, `farben-semantik.html`) — duplicated from RegistrierungScreen rather
+  // than extracted (Musti's #217 ruling: style drift is a DS-review concern, not this one).
+  const verifiedBanner: ViewStyle = {
+    backgroundColor: t.color.okWeich,
+    borderWidth: 2,
+    borderColor: t.color.ok,
+    borderRadius: t.radius.s,
+    padding: t.space.s4,
+    marginBottom: t.space.s4,
+  }
+  const verifiedHeading: TextStyle = { fontFamily: t.font.text, fontWeight: t.weight.schwer, fontSize: t.size.m, color: t.color.tinte }
 
   return {
     screen,
@@ -260,5 +287,7 @@ function makeStyles(t: UiTheme) {
     verifyResendLink,
     verifyResendNote,
     verifyResendError,
+    verifiedBanner,
+    verifiedHeading,
   }
 }

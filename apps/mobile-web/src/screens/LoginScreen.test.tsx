@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@steuereule/ui'
 import { http, HttpResponse, delay } from 'msw'
@@ -246,6 +246,133 @@ describe('LoginScreen', () => {
     fireEvent.click(screen.getByText('Mail erneut senden'))
 
     await screen.findByText('Das hat gerade nicht geklappt. Versuch es gleich noch mal.')
+  })
+
+  // Musti's #217 T1: mirrors RegistrierungScreen.test.tsx's four verified-flip tests via the
+  // shared useEmailVerified hook (#194/#217, ADR-0012 amendment). The stakeholder's (b) ruling
+  // on #217: the banner becomes a confirmation, the user taps the existing continue button —
+  // no auto-navigate.
+  it('shows the verified confirmation on the unverified stage when the session reports the account already verified', async () => {
+    server.use(
+      http.post(`${BASE_URL}/api/auth/sign-in/email`, () =>
+        HttpResponse.json({ token: 'tok_1', user: { id: 'u1', email: 'a@b.de', emailVerified: false, name: '' } }),
+      ),
+      http.get(`${BASE_URL}/api/auth/get-session`, () =>
+        HttpResponse.json({
+          user: { id: 'u1', email: 'a@b.de', emailVerified: true, name: '' },
+          session: { id: 's1', createdAt: new Date().toISOString() },
+        }),
+      ),
+    )
+    const onDone = vi.fn()
+    renderLogin({ onDone })
+    fillCredentials()
+    fireEvent.click(screen.getByText('Einloggen'))
+
+    await screen.findByText('E-Mail bestätigt ✓')
+    expect(screen.queryByText('Bitte bestätige noch deine E-Mail.')).toBeNull()
+    // (b), not (a): the confirmation is shown, but the app doesn't navigate on its own.
+    expect(onDone).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByText('Weiter'))
+    expect(onDone).toHaveBeenCalledOnce()
+  })
+
+  // Musti's T1: a stale or different account's verified session on the shared atom is a routine
+  // path here, not a race — LoginScreen is where a second person on a shared device signs in.
+  // Comparator must be `sessionData.user.email === stage.email` (the server value), never `mail`.
+  it('does not show the verified confirmation when the session belongs to a different account', async () => {
+    server.use(
+      http.post(`${BASE_URL}/api/auth/sign-in/email`, () =>
+        HttpResponse.json({ token: 'tok_1', user: { id: 'u1', email: 'a@b.de', emailVerified: false, name: '' } }),
+      ),
+      http.get(`${BASE_URL}/api/auth/get-session`, () =>
+        HttpResponse.json({
+          user: { id: 'u2', email: 'jemand-anderes@beispiel.de', emailVerified: true, name: '' },
+          session: { id: 's2', createdAt: new Date().toISOString() },
+        }),
+      ),
+    )
+    renderLogin()
+    fillCredentials()
+    fireEvent.click(screen.getByText('Einloggen'))
+
+    await screen.findByText('Bitte bestätige noch deine E-Mail.')
+    expect(screen.queryByText('E-Mail bestätigt ✓')).toBeNull()
+  })
+
+  // #217 — the actual regression, narrower sibling of #194: `stage` used to snapshot
+  // `emailVerified` once at sign-in and never re-read it, so this tab never learned that
+  // verification had genuinely completed out of band (mail client, possibly a different
+  // device) unless the user reloaded. Confirmed red against pre-#217 code by running this
+  // test before the fix landed — not assumed. Same visibilitychange mechanism as #194's
+  // RegistrierungScreen test (auth-client.ts's `refetchOnWindowFocus`).
+  it('clears the unverified banner without a reload once the session reports verification (out-of-band verify, #217)', async () => {
+    let verified = false
+    server.use(
+      http.post(`${BASE_URL}/api/auth/sign-in/email`, () =>
+        HttpResponse.json({ token: 'tok_1', user: { id: 'u1', email: 'a@b.de', emailVerified: false, name: '' } }),
+      ),
+      http.get(`${BASE_URL}/api/auth/get-session`, () =>
+        HttpResponse.json({
+          user: { id: 'u1', email: 'a@b.de', emailVerified: verified, name: '' },
+          session: { id: 's1', createdAt: new Date().toISOString() },
+        }),
+      ),
+    )
+    renderLogin()
+    fillCredentials()
+    fireEvent.click(screen.getByText('Einloggen'))
+
+    await screen.findByText('Bitte bestätige noch deine E-Mail.')
+
+    // The verification itself happened elsewhere (mail client / another device) — nothing on
+    // this tab caused it. Only the tab regaining focus/visibility should make it notice.
+    verified = true
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'))
+    })
+
+    await screen.findByText('E-Mail bestätigt ✓')
+    expect(screen.queryByText('Bitte bestätige noch deine E-Mail.')).toBeNull()
+  })
+
+  // Fail-closed (#194/#217): a session-fetch error must never be read as "verified".
+  it('keeps the unverified banner when the session fetch fails, rather than assuming verified', async () => {
+    server.use(
+      http.post(`${BASE_URL}/api/auth/sign-in/email`, () =>
+        HttpResponse.json({ token: 'tok_1', user: { id: 'u1', email: 'a@b.de', emailVerified: false, name: '' } }),
+      ),
+      http.get(`${BASE_URL}/api/auth/get-session`, () => HttpResponse.json({ message: 'Internal Server Error' }, { status: 500 })),
+    )
+    renderLogin()
+    fillCredentials()
+    fireEvent.click(screen.getByText('Einloggen'))
+
+    await screen.findByText('Bitte bestätige noch deine E-Mail.')
+    expect(screen.queryByText('E-Mail bestätigt ✓')).toBeNull()
+  })
+
+  // The resend affordance disappears with the banner it lives in, mirroring RegistrierungScreen's
+  // success stage — once verified, there's nothing left to resend.
+  it('drops the resend affordance once the verified confirmation replaces the banner', async () => {
+    server.use(
+      http.post(`${BASE_URL}/api/auth/sign-in/email`, () =>
+        HttpResponse.json({ token: 'tok_1', user: { id: 'u1', email: 'a@b.de', emailVerified: false, name: '' } }),
+      ),
+      http.get(`${BASE_URL}/api/auth/get-session`, () =>
+        HttpResponse.json({
+          user: { id: 'u1', email: 'a@b.de', emailVerified: true, name: '' },
+          session: { id: 's1', createdAt: new Date().toISOString() },
+        }),
+      ),
+    )
+    renderLogin()
+    fillCredentials()
+    fireEvent.click(screen.getByText('Einloggen'))
+
+    await screen.findByText('E-Mail bestätigt ✓')
+    expect(screen.queryByText('Mail erneut senden')).toBeNull()
   })
 
   // REQ-008 — Google social sign-in: calls better-auth's signIn.social({ provider: 'google' })
