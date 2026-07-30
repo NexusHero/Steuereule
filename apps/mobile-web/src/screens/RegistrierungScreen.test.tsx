@@ -195,6 +195,32 @@ describe('RegistrierungScreen', () => {
     expect(screen.queryByText('Bitte bestätige noch deine E-Mail.')).toBeNull()
   })
 
+  // Musti's T1 (post-review): `sessionData` can be a *different*, already-verified session
+  // still resolving right after `signUp.email()` (or the atom's stale last-known `data` from
+  // before this account existed) — not the account this screen just created. Reading
+  // `emailVerified: true` off any session, without matching it to `stage.email`, would show
+  // the confirmation for an account that is definitionally unverified.
+  it('does not show the verified confirmation when the session belongs to a different account', async () => {
+    server.use(
+      http.post(`${BASE_URL}/api/auth/sign-up/email`, () =>
+        HttpResponse.json({ token: 'tok_1', user: { id: 'u1', email: 'neu@beispiel.de', emailVerified: false, name: '' } }),
+      ),
+      http.get(`${BASE_URL}/api/auth/get-session`, () =>
+        HttpResponse.json({
+          user: { id: 'u2', email: 'jemand-anderes@beispiel.de', emailVerified: true, name: '' },
+          session: { id: 's2', createdAt: new Date().toISOString() },
+        }),
+      ),
+    )
+    renderRegistrierung()
+    fillCredentials()
+    fireEvent.click(screen.getByText('Konto anlegen'))
+
+    await screen.findByText('Willkommen bei SteuerEule.')
+    expect(screen.getByText('Bitte bestätige noch deine E-Mail.')).toBeTruthy()
+    expect(screen.queryByText('E-Mail bestätigt ✓')).toBeNull()
+  })
+
   // #194 — the actual regression. `stage` used to snapshot `emailVerified` at signup and never
   // re-read it, so this tab never learned that verification had genuinely completed out of band
   // (the mail client, possibly a different device) unless the user reloaded. This must fail

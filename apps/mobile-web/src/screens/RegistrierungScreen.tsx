@@ -25,14 +25,8 @@ export interface RegistrierungScreenProps {
   readonly onDone: () => void
 }
 
-// `Stage.success` carries only `email` — what the user submitted, never a server fact.
-// It used to also snapshot `emailVerified` from the signup response, one-time, at signup
-// (#194): better-auth's `signUp.email()` always answers `emailVerified: false` here
-// (`autoSignIn`/`requireEmailVerification: false`, better-auth.ts), so that snapshot could
-// only ever go stale, never self-correct — a user who verified out-of-band (their mail
-// client, possibly a different device) kept reading "please confirm your email" forever,
-// which by then was false. The live answer now comes from `authClient.useSession()` below,
-// re-read on every render instead of captured once.
+// `Stage.success` carries only `email` (what was submitted) — verification status is read
+// live every render, never snapshotted (#194, ADR-0012 amendment).
 type Stage =
   | { readonly kind: 'form' }
   | { readonly kind: 'submitting' }
@@ -52,21 +46,8 @@ export function RegistrierungScreen({ onDone }: RegistrierungScreenProps) {
   const googleAvailable = useSocialSignInAvailable('google')
   const [stage, setStage] = useState<Stage>({ kind: 'form' })
   const [resend, setResend] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
-  // The live source for "is this account's email verified yet" (#194) — better-auth's own
-  // session read, backed by its nanostores atom. better-auth 1.6.24 defaults
-  // `sessionOptions.refetchOnWindowFocus` to `true` (pinned explicitly in auth-client.ts so
-  // a dependency bump can't silently flip it), which already subscribes the global focus
-  // manager to the tab's `visibilitychange` — so a user who verifies out-of-band (their mail
-  // client, possibly a different device) and comes back to this tab gets the session
-  // re-fetched automatically. No extra listener, poll, or explicit `refetchSession()` call
-  // is needed here; reading the live atom instead of a one-time snapshot is the whole fix.
+  // Live, re-read every render — never a snapshot (#194, ADR-0012 amendment).
   const { data: sessionData } = authClient.useSession()
-  // Fail-closed: only a session that *positively* answers `emailVerified: true` turns the
-  // banner off. On a non-401 session-fetch error, better-auth's atom keeps whatever `data`
-  // it last had (session-atom.mjs) rather than clearing it — so inferring "verified" from a
-  // missing/errored read would be reachable, and wrong. Absence of a positive answer always
-  // means "still show the banner".
-  const emailUnverified = !(sessionData?.user.emailVerified ?? false)
 
   const ok = mail.includes('@') && pass.length >= 6
 
@@ -114,13 +95,24 @@ export function RegistrierungScreen({ onDone }: RegistrierungScreenProps) {
   }
 
   if (stage.kind === 'success') {
+    // Fail-closed: only a session that *positively* answers `emailVerified: true` turns the
+    // banner off. On a non-401 session-fetch error, better-auth's atom keeps whatever `data`
+    // it last had (session-atom.mjs) rather than clearing it — so inferring "verified" from a
+    // missing/errored read would be reachable, and wrong. Absence of a positive answer always
+    // means "still show the banner".
+    // Scoped to *this* account, not just any signed-in one (Musti's T1): `sessionData` can
+    // briefly be a different, already-verified session still resolving after `signUp.email`
+    // notifies the atom to refetch, or the atom's stale last-known `data` from before this
+    // account existed. Matching `stage.email` (from the signup response, never user input)
+    // against `sessionData.user.email` closes both stale-positive paths.
+    const verifiedForThisAccount = sessionData?.user.emailVerified === true && sessionData.user.email === stage.email
     return (
       <ScrollView contentContainerStyle={bp === 's' ? styles.successScreen : styles.wideSuccessScreen} keyboardShouldPersistTaps="handled" data-testid="screen-container">
         <Sticker style={styles.successBadge}>{tr('registrierung.success.badge')}</Sticker>
         <Text style={styles.successHeading}>{tr('registrierung.success.heading')}</Text>
         <Text style={styles.successSubtitle}>{tr('registrierung.success.subtitle')}</Text>
 
-        {emailUnverified ? (
+        {!verifiedForThisAccount ? (
           <View style={styles.verifyBanner} accessibilityRole="alert">
             <Text style={styles.verifyHeading}>{tr('auth.verifyBanner.heading')}</Text>
             <Text style={styles.verifyBody}>{tr('auth.verifyBanner.body', { email: stage.email })}</Text>
@@ -133,18 +125,10 @@ export function RegistrierungScreen({ onDone }: RegistrierungScreenProps) {
             {resend === 'error' ? <Text style={styles.verifyResendError}>{tr('auth.verifyBanner.resendError')}</Text> : null}
           </View>
         ) : (
-          // Deliberate DS deviation (#194, stakeholder ruling — recorded in the PR description):
-          // the checked-in DS reference (`Registrierung.jsx`) has no verified-state artifact at
-          // all — it depicts only the warning banner or nothing. The banner simply vanishing
-          // once verification lands would show the user the *absence* of a warning, not a
-          // confirmation, so the stakeholder asked for one explicitly. This reuses the exact same
-          // box primitive and spacing/token vocabulary as the banner above (`View`/`Text`,
-          // `t.color.ok`/`okWeich` — the DS's own existing positive-semantic pair, `farben-
-          // semantik.html`), swapped in where the banner was; nothing new is invented but the copy.
-          // `accessibilityRole="alert"` matches the same role the banner it replaces used (and
-          // every other honest state-change message in this app, e.g. LoginScreen's own copy of
-          // this banner, OnboardingScreen's error heading) — RN's `AccessibilityRole` union has
-          // no ARIA-style `status`/`polite` distinction to reach for instead.
+          // Deliberate DS deviation (#194, stakeholder ruling — see PR description): the DS
+          // reference has no verified-state artifact at all. Reuses the same box primitive as
+          // the banner above, recolored with `t.color.ok`/`okWeich` — the DS's own existing
+          // positive-semantic token pair (`farben-semantik.html`) — instead of `warn`.
           <View style={styles.verifiedBanner} accessibilityRole="alert">
             <Text style={styles.verifiedHeading}>{tr('auth.verifiedBanner.heading')}</Text>
           </View>
