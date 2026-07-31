@@ -56,10 +56,28 @@
 // bucket's current state (never deletes it) and waits out the remainder of the window if the
 // path is already at its cap, so this script's own sign-up/sign-in calls behave like a
 // well-behaved rate-limited client rather than relying on lucky timing against whatever ran
-// immediately before it in the job. `banner-ds-qa.mjs` does not do the same — it has no DB access
-// by design (Musti's #223 ruling: the DS check never touches Postgres) — so it relies on its own
+// immediately before it in the job — a claim `assertRequestCount` below now actually checks,
+// rather than merely intends. `banner-ds-qa.mjs` does not do the same — it has no DB access by
+// design (Musti's #223 ruling: the DS check never touches Postgres) — so it relies on its own
 // reduced call count plus a fail-fast 429 guard instead; this script already needs DATABASE_URL
 // for the DB flip, and runs last in the job (the tightest fit), so it carries the active pacing.
+//
+// WHAT THE PACER DOES NOT COVER (Musti's #223 review, F8). `waitForRateLimitHeadroom` absorbs a
+// regression at or below the cap: if a bug made RegistrierungScreen fire three sign-ups on one
+// click, none would be denied, the flow would stay green, and the pacer would just read a fuller
+// bucket and wait a little longer before the next call. Un-paced, that call would have been the
+// one to overflow the window and go red — so pacing genuinely removes a signal, not just a flake.
+// The bucket's own `count` can't be the fix: it is a job-wide aggregate (shared with
+// `cross-origin-smoke`/`breakpoint-layout.mjs`/`banner-ds-qa.mjs`), taken at one moment under a
+// ROLLING window, so a reading of it describes only the last ~10s of the whole chain — it cannot
+// distinguish "the job happened to be busy" from "this flow doubled its calls", and a terminal
+// reading says nothing about what accumulated several scripts earlier. What actually names a
+// same-flow regression is the call count that flow itself issues — deterministic, independent of
+// whatever ran before it — which is what `countRequestsTo`/`assertRequestCount` below check per
+// flow, alongside the existing `guardAgainst429` response guard. `signUpOutOfBand`'s call is
+// counted separately (in practice, not counted at all): it is a raw Node `fetch`, so it bypasses
+// both `page.on('request')`-based counting and `page.on('response')`-based `guardAgainst429`
+// entirely — its own `!res.ok` check is the real, sufficient guard for that one call.
 //
 // Assumes the caller has already booted the same stack as `e2e/cross-origin/run.mjs` /
 // `e2e/responsive/breakpoint-layout.mjs` (real Postgres, the compiled API, the exported web
@@ -186,6 +204,31 @@ function guardAgainst429(page) {
   })
 }
 
+/**
+ * Counts real network REQUESTS (not responses) this page issues to a specific auth path — the
+ * deterministic counterpart `waitForRateLimitHeadroom`'s tolerance needs (Musti's #223 review,
+ * F8; see the "WHAT THE PACER DOES NOT COVER" header note for why the shared bucket's own `count`
+ * can't do this job). `page.on('request')`, not `page.on('response')`: this only needs to know a
+ * request was sent, before the rate limiter's decision on it is even known.
+ */
+function countRequestsTo(page, path) {
+  const counter = { count: 0 }
+  page.on('request', (request) => {
+    if (request.url().includes(path)) counter.count += 1
+  })
+  return counter
+}
+
+function assertRequestCount(counter, path, expected, label) {
+  if (counter.count !== expected) {
+    fail(
+      `${label}: expected exactly ${expected} request(s) to ${path}, observed ${counter.count} — ` +
+        `a same-flow regression issuing more calls than expected would otherwise hide behind ` +
+        `waitForRateLimitHeadroom's tolerance (Musti's #223 review, F8).`,
+    )
+  }
+}
+
 async function signUpOutOfBand(email, password) {
   const res = await fetch(`${API_ORIGIN}/api/auth/sign-up/email`, {
     method: 'POST',
@@ -289,6 +332,7 @@ async function testRegistrierungScreen(browser) {
   try {
     const page = await context.newPage()
     guardAgainst429(page)
+    const signUpRequests = countRequestsTo(page, '/api/auth/sign-up/email')
     const email = `visibility-refetch-registrierung-${Date.now()}@beispiel.de`
 
     await skipSplash(page)
@@ -298,6 +342,7 @@ async function testRegistrierungScreen(browser) {
     await waitForRateLimitHeadroom('/sign-up/email')
     await page.getByRole('button', { name: COPY.registrierungSubmit }).click()
     await page.getByText(COPY.registrierungSuccessHeading).waitFor({ state: 'visible', timeout: 10_000 })
+    assertRequestCount(signUpRequests, '/api/auth/sign-up/email', 1, 'RegistrierungScreen sign-up')
 
     await page.getByRole('alert').getByText(COPY.verifyHeading).waitFor({ state: 'visible', timeout: 5_000 })
     console.log('[visibility-refetch] RegistrierungScreen: unverified banner shown after real sign-up')
@@ -318,13 +363,17 @@ async function testLoginScreen(browser) {
   try {
     const page = await context.newPage()
     guardAgainst429(page)
+    const signInRequests = countRequestsTo(page, '/api/auth/sign-in/email')
     const email = `visibility-refetch-login-${Date.now()}@beispiel.de`
     const password = 'Sicheres-Passwort-1!'
 
     // The account is created out-of-band (a direct POST, its own cookie jar never touching the
     // browser context) so the browser reaches LoginScreen's `unverified` stage through a real
     // sign-in click, not a fabricated stage — this screen's own sign-up flow is
-    // RegistrierungScreen's job to cover, not this one's.
+    // RegistrierungScreen's job to cover, not this one's. This call is a raw Node `fetch`, never
+    // a page-driven request, so it is invisible to both `countRequestsTo` and `guardAgainst429`
+    // above (see the "WHAT THE PACER DOES NOT COVER" header note) — `signUpOutOfBand`'s own
+    // `!res.ok` check is what covers a 429 on this specific call.
     await waitForRateLimitHeadroom('/sign-up/email')
     await signUpOutOfBand(email, password)
 
@@ -333,8 +382,8 @@ async function testLoginScreen(browser) {
     await page.getByPlaceholder('••••••••').fill(password)
     await waitForRateLimitHeadroom('/sign-in/email')
     await page.getByRole('button', { name: COPY.loginSubmit }).click()
-
     await page.getByRole('alert').getByText(COPY.verifyHeading).waitFor({ state: 'visible', timeout: 10_000 })
+    assertRequestCount(signInRequests, '/api/auth/sign-in/email', 1, 'LoginScreen sign-in')
     console.log('[visibility-refetch] LoginScreen: unverified banner shown after real sign-in')
 
     const negativeDispatchAt = await assertBannerDoesNotFlip(page)
