@@ -210,21 +210,40 @@ function guardAgainst429(page) {
  * F8; see the "WHAT THE PACER DOES NOT COVER" header note for why the shared bucket's own `count`
  * can't do this job). `page.on('request')`, not `page.on('response')`: this only needs to know a
  * request was sent, before the rate limiter's decision on it is even known.
+ *
+ * Matches on method + URL, not URL alone (Musti's #223 re-review, F8 follow-up): `WEB_ORIGIN` and
+ * `API_ORIGIN` are genuinely distinct origins in this job (`ci.yml`'s `Browser gates` job), so
+ * every page-driven auth POST is cross-origin, and the API's CORS options set no `maxAge`, so
+ * Chromium preflights each one against its own default cache window. An `OPTIONS` to the same URL
+ * satisfies a URL-only match exactly like the real `POST` does — latent today only because this
+ * Chromium build/version doesn't (yet, or don't-know-if-ever) surface preflights as
+ * `page.on('request')` events; an assertion whose whole value is exactness shouldn't rest on an
+ * unstated engine behaviour a Playwright bump could change out from under it.
  */
 function countRequestsTo(page, path) {
   const counter = { count: 0 }
   page.on('request', (request) => {
-    if (request.url().includes(path)) counter.count += 1
+    if (request.method() === 'POST' && request.url().includes(path)) counter.count += 1
   })
   return counter
 }
 
+/**
+ * Asserts an EXACT count, not an upper bound (Musti's #223 re-review, F8 follow-up — the
+ * question was raised and settled the other way): "at most N" goes blind to a retry-loop
+ * regression (1 call where 1 is expected today, silently 1-of-2 tomorrow, never trips a ceiling
+ * of 1), and a lower bound is already dead surface — the heading waits this runs after can't pass
+ * on zero calls in the first place. A tripwire on the flow's current shape, which a future author
+ * must raise deliberately rather than the assertion quietly tolerating drift, is the point.
+ */
 function assertRequestCount(counter, path, expected, label) {
   if (counter.count !== expected) {
     fail(
-      `${label}: expected exactly ${expected} request(s) to ${path}, observed ${counter.count} — ` +
-        `a same-flow regression issuing more calls than expected would otherwise hide behind ` +
-        `waitForRateLimitHeadroom's tolerance (Musti's #223 review, F8).`,
+      `${label}: expected exactly ${expected} request(s) to ${path}, observed ${counter.count}. ` +
+        `If this is a same-flow regression issuing more calls than expected, it would otherwise ` +
+        `hide behind waitForRateLimitHeadroom's tolerance (Musti's #223 review, F8) — that's what ` +
+        `this catches. If this flow legitimately gained a call (a retry, a second screen sharing ` +
+        `this page), raise this number deliberately rather than relaxing the assertion.`,
     )
   }
 }
@@ -392,6 +411,14 @@ async function testLoginScreen(browser) {
     await waitOutFocusRefetchRateLimit(negativeDispatchAt)
     await assertBannerFlipsAfterDbVerify(page, email)
     console.log('[visibility-refetch] LoginScreen: banner flipped to verified after DB flip + dispatch')
+
+    // Re-asserted here, not just at :405 (Musti's #223 re-review, F8 follow-up): unlike
+    // RegistrierungScreen, where nothing after its own sign-up assertion can issue another
+    // sign-up, everything below :405 is the two visibilitychange refetch cycles — exactly where
+    // an unanticipated re-authentication would sit, and the first assertion stopped watching
+    // before them. Kept the first assertion too (not moved) — it fails fast, naming the defect
+    // before spending the ~15s the visibility phases take.
+    assertRequestCount(signInRequests, '/api/auth/sign-in/email', 1, 'LoginScreen sign-in (post-dispatch)')
   } finally {
     await context.close()
   }
