@@ -101,11 +101,23 @@
 // What actually matters is the MINIMUM ENFORCED GAP between consecutive `/sign-in/email` calls,
 // not a count: the job-boundary gap (`banner-ds-qa.mjs`'s one sign-in → this file's own
 // LoginScreen sign-in) is the whole Registrierung flow, comfortably ≥20s. This file's own new
-// gap (the LoginScreen sign-in at line ~500 → page2's cross-account sign-in) is
-// `assertBannerDoesNotFlip`'s ~1.5s wait + two `waitOutFocusRefetchRateLimit` calls at 5.5s each
-// + two page loads, a floor of roughly 12.5s — over the 10s window either way.
+// gap (the LoginScreen sign-in → page2's cross-account sign-in) is NOT the two waits' durations
+// stacked on top of `assertBannerDoesNotFlip`'s own 1.5s wait (corrected in Musti's #237
+// re-review, F6 — his arithmetic, and his correction): that 1.5s wait sits INSIDE the first
+// `waitOutFocusRefetchRateLimit` window, not before it. Both waits anchor on their own dispatch
+// timestamp — `waitOutFocusRefetchRateLimit(negativeDispatchAt)` sleeps until
+// `negativeDispatchAt + 5500`ms, and `assertBannerDoesNotFlip`'s 1.5s wait runs ~0.2s after
+// `negativeDispatchAt` was captured, so it is consumed by that same 5.5s window, not additional
+// to it. The two `waitOutFocusRefetchRateLimit` calls (5.5s each, one per dispatch) are what
+// compose: a TIMER-GUARANTEED FLOOR of **11.0s**, not the two waits plus the 1.5s. Add the
+// environment-dependent time neither wait accounts for — the sign-in round trip, the DB
+// `UPDATE`, page2's own creation + `goto(networkidle)` + form fills — and two consecutive green
+// CI runs measured **12 094ms and 12 060ms** between the two `loginSubmit` clicks. So the
+// guaranteed margin over the 10s window is **1.0s**, not the wider margin a naive sum would
+// suggest — worth stating exactly, since a floor comment is only useful if it names one the code
+// can actually be held to. The conclusion is unchanged either way: 11.0s > 10s.
 //
-// That 12.5s floor is INCIDENTAL, not the real backstop, and it would be dishonest to lean on it:
+// That 11.0s floor is INCIDENTAL, not the real backstop, and it would be dishonest to lean on it:
 // it falls out of `waitOutFocusRefetchRateLimit`, which exists for better-auth's *client-side*
 // focus-refetch throttle (a different limiter, see the FINDING comment on that function below) —
 // if `FOCUS_REFETCH_RATE_LIMIT_SECONDS` ever drops, this gap shrinks with it and nothing here
