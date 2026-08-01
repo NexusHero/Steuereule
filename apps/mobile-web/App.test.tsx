@@ -1,15 +1,27 @@
-// Smoke test for the app shell's stage wiring (steuereule#72) — not a re-test of each screen's
-// own behaviour (that's LoginScreen.test.tsx / RegistrierungScreen.test.tsx / OnboardingScreen
-// .test.tsx), just that Splash -> Login -> Registrierung -> Onboarding are actually reachable in
-// sequence through the real App component, with the real providers (auth client + query client +
-// i18n + theme) wired the way the deployed app boots. Splash is skipped via its own tap-to-skip
-// affordance rather than waiting out its auto-advance timer, keeping this test fast.
-import { describe, it, expect } from 'vitest'
+// Smoke test for the app shell's routing (steuereule#72, rewired for #238 task 1b's Stage ->
+// Route rework at the composition root) — not a re-test of each screen's own behaviour (that's
+// LoginScreen.test.tsx / RegistrierungScreen.test.tsx / OnboardingScreen.test.tsx), just that
+// Splash -> Login -> Registrierung -> Onboarding are actually reachable in sequence through the
+// real App component and its real `@react-navigation/native` router, with the real providers
+// (auth client + query client + i18n + theme) wired the way the deployed app boots. Splash is
+// skipped via its own tap-to-skip affordance rather than waiting out its auto-advance timer,
+// keeping this test fast.
+import { describe, it, expect, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { server } from './src/test-msw-server'
 
 const API_BASE_URL = 'http://localhost:3000'
+
+// The router (task 1b) reads real browser history, which — unlike the `Stage` state it
+// replaces — is not reset by RTL's `cleanup()` between tests; jsdom keeps one `window` for the
+// whole file. Without this, a test that navigated to `/app` would leak that URL into the next
+// test's fresh `render(<App />)`, which would mount straight into the tabbed shell instead of
+// Splash. Every test in this file gets a clean `/` to start from, exactly like `Stage`'s old
+// `useState('splash')` default did.
+beforeEach(() => {
+  window.history.pushState({}, '', '/')
+})
 
 /** Walks guest onboarding to completion — the only way into the tabbed shell. */
 async function completeOnboarding() {
@@ -202,4 +214,52 @@ describe('App', () => {
     },
     20_000,
   )
+
+  // #238 task 1b's own done-when: "every previous Stage transition reachable by URL." Each of
+  // these sets the browser URL via `history.pushState` *before* mount — the mechanism AC-1 (#238)
+  // names explicitly — and asserts the route's screen renders directly, with no click sequence
+  // and no `setStage` involved. A router that only reacted to in-app navigation and ignored the
+  // URL it was opened on would fail every one of these while still passing the sequential flow
+  // above, which is exactly why that flow alone was never sufficient proof of a real router.
+  describe('every route is reachable by opening its URL directly, not just by clicking through', () => {
+    it('/login resolves straight to Login', async () => {
+      window.history.pushState({}, '', '/login')
+      const { default: App } = await import('./App')
+      render(<App />)
+      expect(await screen.findByText('Einloggen')).toBeTruthy()
+    })
+
+    it('/registrierung resolves straight to Registrierung', async () => {
+      window.history.pushState({}, '', '/registrierung')
+      const { default: App } = await import('./App')
+      render(<App />)
+      expect(await screen.findByText('Konto anlegen')).toBeTruthy()
+    })
+
+    it('/onboarding resolves straight to Onboarding', async () => {
+      window.history.pushState({}, '', '/onboarding')
+      const { default: App } = await import('./App')
+      render(<App />)
+      expect(await screen.findByPlaceholderText('Kim')).toBeTruthy()
+    })
+
+    it('/app resolves straight to the tabbed shell, Cockpit first', async () => {
+      window.history.pushState({}, '', '/app')
+      const { default: App } = await import('./App')
+      render(<App />)
+      expect(await screen.findByText('Cockpit')).toBeTruthy()
+      expect(await screen.findByText('Profil')).toBeTruthy()
+    })
+
+    it('an unmapped path falls back to Splash, not to whichever screen happened to render last', async () => {
+      window.history.pushState({}, '', '/nonexistent')
+      const { default: App } = await import('./App')
+      render(<App />)
+      expect(await screen.findByLabelText('Weiter zur App')).toBeTruthy()
+      expect(screen.queryByText('Einloggen')).toBeNull()
+      expect(screen.queryByText('Konto anlegen')).toBeNull()
+      expect(screen.queryByPlaceholderText('Kim')).toBeNull()
+      expect(screen.queryByText('Cockpit')).toBeNull()
+    })
+  })
 })
