@@ -287,23 +287,24 @@ describe('RegistrierungScreen', () => {
 
   // Fail-closed, the load-bearing case (#227, Musti's mutation-test finding on #225's review): a
   // session that loads *successfully for this account* but doesn't positively answer —
-  // `user.email` matches, `emailVerified` absent — is the shape a partial or errored read
-  // actually leaves behind, and it's the case the hook's own fail-closed comment claims to guard
-  // (`sessionData?.user.emailVerified === true`, not `!== false`). Mirrors
-  // LoginScreen.test.tsx:368-386 exactly; verified both directions: fails (shows the verified
-  // confirmation) on a fail-open mutant that preserves the optional chain
+  // `user.email` matches, `emailVerified` absent — is the shape a degraded or non-conforming
+  // response leaves behind (better-auth 1.6.24 types the field as required, which is precisely
+  // why a fail-closed guard must not depend on it). It's the case the hook's own fail-closed
+  // comment claims to guard (`sessionData?.user.emailVerified === true`, not `!== false`).
+  // Mirrors LoginScreen.test.tsx:368-386 exactly; verified both directions: fails (shows the
+  // verified confirmation) on a fail-open mutant that preserves the optional chain
   // (`sessionData?.user.emailVerified !== false && sessionData?.user.email === email`), passes on
-  // this hook. `user.email` here must equal the *sign-up response's* `user.email`
-  // (RegistrierungScreen.tsx:72 sets `stage.email` from `data.user.email`, not from the typed
-  // input) — 'neu@beispiel.de', matching the sign-up mock above.
+  // this hook. `KONTO_EMAIL` is shared between both mocks on purpose, structurally — not a
+  // coincidence of two literals — so the two can't silently drift apart.
   it('keeps the unverified banner when the session for this account never positively answers emailVerified', async () => {
+    const KONTO_EMAIL = 'neu@beispiel.de'
     server.use(
       http.post(`${BASE_URL}/api/auth/sign-up/email`, () =>
-        HttpResponse.json({ token: 'tok_1', user: { id: 'u1', email: 'neu@beispiel.de', emailVerified: false, name: '' } }),
+        HttpResponse.json({ token: 'tok_1', user: { id: 'u1', email: KONTO_EMAIL, emailVerified: false, name: '' } }),
       ),
       http.get(`${BASE_URL}/api/auth/get-session`, () =>
         HttpResponse.json({
-          user: { id: 'u1', email: 'neu@beispiel.de', name: '' },
+          user: { id: 'u1', email: KONTO_EMAIL, name: '' },
           session: { id: 's1', createdAt: new Date().toISOString() },
         }),
       ),
