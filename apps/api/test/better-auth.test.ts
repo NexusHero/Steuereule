@@ -42,6 +42,7 @@ describe('createBetterAuth', () => {
       secret: 'test-secret',
       baseUrl: 'http://localhost:3000',
       trustedOrigins: [],
+      trustedProxies: [],
       emailSender: fakeEmailSender(),
     })
 
@@ -58,6 +59,7 @@ describe('createBetterAuth', () => {
       secret: 'test-secret',
       baseUrl: 'http://localhost:3000',
       trustedOrigins: [],
+      trustedProxies: [],
       emailSender: fakeEmailSender(),
     })
 
@@ -107,6 +109,7 @@ describe('createBetterAuth — enabledSocialProviders', () => {
     secret: 'test-secret-at-least-32-characters-long!!',
     baseUrl: 'http://localhost:3000',
     trustedOrigins: ['http://localhost:3000'],
+    trustedProxies: [],
     emailSender: fakeEmailSender(),
   }
 

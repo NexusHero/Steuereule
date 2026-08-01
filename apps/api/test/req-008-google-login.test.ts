@@ -28,6 +28,7 @@ describe('REQ-008 Google OAuth — ATDD acceptance', () => {
       secret: 'test-secret',
       baseUrl: 'http://localhost:3000',
       trustedOrigins: ['http://localhost:8081'],
+      trustedProxies: [],
       emailSender: fakeEmailSender(),
       googleClientId: 'test-client-id.apps.googleusercontent.com',
       googleClientSecret: 'GOCSPX-test-secret',
@@ -44,6 +45,7 @@ describe('REQ-008 Google OAuth — ATDD acceptance', () => {
       secret: 'test-secret',
       baseUrl: 'http://localhost:3000',
       trustedOrigins: ['http://localhost:8081'],
+      trustedProxies: [],
       emailSender: fakeEmailSender(),
       // No googleClientId / googleClientSecret — provider not registered
     })

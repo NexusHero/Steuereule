@@ -91,6 +91,16 @@ export interface CreateBetterAuthOptions {
   googleClientId?: string | undefined
   /** Google OAuth client secret (REQ-008). Empty/undefined = Google sign-in disabled. */
   googleClientSecret?: string | undefined
+  /**
+   * The API's own trusted reverse-proxy addresses (#241,
+   * `resolveTrustedProxies()`), fed straight through to better-auth's
+   * `advanced.ipAddress.trustedProxies`. Governs `getIp()` — and therefore both
+   * `Session.ipAddress` and better-auth's own built-in rate limiter — which
+   * otherwise trust `X-Forwarded-For` verbatim. Empty means "no proxy configured",
+   * the same runtime posture this app has always had; see trusted-proxies.ts's own
+   * header comment for the full reasoning (including what this can and cannot fix).
+   */
+  trustedProxies: string[]
 }
 
 export interface BetterAuthBundle {
@@ -115,7 +125,7 @@ export interface BetterAuthBundle {
  *  (to construct the real instance) and `getCookies()` (to derive the session cookie
  *  name), so the two can never see different config. */
 function buildOptions(options: CreateBetterAuthOptions): BetterAuthOptions {
-  const { prisma, secret, baseUrl, trustedOrigins, emailSender, googleClientId, googleClientSecret } = options
+  const { prisma, secret, baseUrl, trustedOrigins, emailSender, googleClientId, googleClientSecret, trustedProxies } = options
 
   // Google social provider is enabled only when both credentials are provided (REQ-008).
   // When absent, better-auth's `/api/auth/sign-in/social` rejects `provider: 'google'`,
@@ -208,6 +218,16 @@ function buildOptions(options: CreateBetterAuthOptions): BetterAuthOptions {
       // it explicitly to `false` here makes the check deterministic across every
       // environment, dev/test/prod alike.
       disableOriginCheck: false,
+      // #241: which hops to strip from a forwarded IP chain before trusting what's
+      // left — governs both Session.ipAddress and better-auth's own built-in rate
+      // limiter (both read via its `getIp()`). Empty (today's default outside
+      // production) is today's actual shipped posture, unchanged by introducing
+      // this seam; see resolveTrustedProxies()/trusted-proxies.ts for the full
+      // reasoning, including the single-value X-Forwarded-For bypass this can NOT
+      // close by itself.
+      ipAddress: {
+        trustedProxies,
+      },
     },
     // Guest -> account upgrade (REQ-006, ADR-0012 §4): fires on every session
     // creation — sign-up (autoSignIn) and plain sign-in alike — so it covers both
