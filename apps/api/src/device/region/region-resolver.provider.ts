@@ -42,8 +42,12 @@ function tryLoadDatabase(paths: GeoIpDatabasePaths | undefined): GeoIpRegionReso
     const manifest: GeoIpManifest = loadGeoIpManifest(paths.manifestPath)
     return { ranges, manifest }
   } catch (error) {
-    // eslint-disable-next-line no-console -- see the comment above: this must be
-    // visible, not swallowed, but must also never block the request.
+    // This must be visible, not swallowed, but must also never block the request —
+    // see the comment above. (No lint suppression needed here: ADR-0019 replaced
+    // ESLint with oxlint, and this project's .oxlintrc.json does not enable
+    // `no-console` — a stray `eslint-disable-next-line` previously sat here
+    // suppressing nothing, exactly the kind of mechanism that looks like it
+    // controls something and doesn't.)
     console.warn(`[RegionResolver] Could not load geo-IP database (${paths.csvPath}): ${String(error)} — resolving every request as "unknown".`)
     return { ranges: null, manifest: null }
   }
