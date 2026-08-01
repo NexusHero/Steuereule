@@ -204,6 +204,28 @@ Three consequences, none of them smoothed over:
 The attribution carried in the Datenschutzerklärung inherits this open item. Whoever closes it
 updates this row, the Datenschutz copy, and the script header together.
 
+### Region on the device list
+
+The device list's region is a **`Session.region` column**, stamped at session creation in
+`databaseHooks.session.create.after` and surfaced through `session.additionalFields` — mirroring how
+`DeviceCode.requestRegion` is stamped in `device.service.ts:67-74`. `listSessions`' return type
+widens with `additionalFields` (`session.d.mts:253-259`), so this is typed end to end with no
+wrapper endpoint and no second source of truth.
+
+**Not resolved per display.** Resolving on each read would recompute a *historical* fact through a
+database that is refreshed on a schedule — the same session could render `DE` today and `unknown`
+after the next refresh with nothing about that session having changed. On a surface whose job is
+"does this look like you?", an answer that silently moves is worse than no answer.
+
+**Sessions that predate the column render "Region unbekannt", and are not backfilled.** A backfill
+would re-derive a past fact through the current database, which is precisely the guess
+`RegionResolver` refuses.
+
+**The hook slot is shared.** `databaseHooks.session.create.after` already carries
+`createGuestAccountUpgradeHook` (REQ-006). The region stamp **composes** with it; replacing it would
+delete the guest→account upgrade silently, which is why the proving test asserts *both* effects on
+one session creation.
+
 ## Consequences
 
 **Positive**
@@ -256,12 +278,25 @@ updates this row, the Datenschutz copy, and the script header together.
   request. One line here is cheaper than rediscovering it.
 - **A new data dependency with an open licence question** enters the deployment — see above. It is the
   first dataset this project self-hosts.
-- **`request.ip` is the raw socket peer.** No `trustProxy` is configured, so behind a reverse proxy the
-  address seen is the proxy's — which also makes the per-IP limiter on `/v1/device/pending` collapse
-  onto a single key. The deployed demo needs `trustProxy` plus a trusted `X-Forwarded-For` reader. Out
-  of scope for REQ-014 and tracked as a deployment follow-up — named here rather than presented as
-  solved. Proxy-shaped addresses still resolve safely: the resolver treats anything private or
-  unroutable as `unknown`.
+- **`request.ip` is the raw socket peer, and it is only half the IP story.** There are **two IP
+  mechanisms in this system, with opposite failure modes**, and they are governed by two different
+  settings. Conflating them is easy and was done once already in this ADR's own history.
+
+  | | Source | Fails by | Governed by |
+  |---|---|---|---|
+  | `DeviceCode.requestIp` | Fastify `request.ip` — the socket peer | showing the **proxy's** address behind a reverse proxy | Fastify `trustProxy` |
+  | `Session.ipAddress` | better-auth `getIp(headers)` → **`x-forwarded-for`** (`internal-adapter.mjs:177`) | trusting a **client-supplied** header | `advanced.ipAddress.trustedProxies` |
+
+  With `trustedProxies` unset, `getIPFromHeader` trusts a **single-value `x-forwarded-for`
+  verbatim**. Unless something in front strips or rewrites it, a client sets its own recorded IP.
+  On the device list — a **detection** surface — that would let an attacker holding a session on a
+  victim's account render their rogue session in the victim's own country, defeating the exact
+  signal the screen exists to give. **A spoofable input on a detection surface is worse than a blank
+  one**, because it manufactures false reassurance.
+
+  Both settings are required; neither substitutes for the other. The per-IP limiter on
+  `/v1/device/pending` and the mint limiter depend on the first; the device list's region depends on
+  the second.
 
 ## Not decided here
 
