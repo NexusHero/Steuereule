@@ -9,21 +9,30 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import { getProfileControllerGetProfileQueryKey } from '@steuereule/api-client'
 import { createAppI18n } from '../i18n/app-i18n'
+import { createAppAuthClient } from '../auth/auth-client'
+import { AuthClientProvider } from '../auth/AuthClientProvider'
 import { ProfilScreen } from './ProfilScreen'
 import { server, EMPTY_PROFILE_RESPONSE } from '../test-msw-server'
+
+const BASE_URL = 'http://localhost:3000'
 
 function makeTestQueryClient() {
   return new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
 }
 
-function renderProfil(opts: { lng?: 'de' | 'en'; queryClient?: QueryClient; onOpenDatenschutz?: () => void } = {}) {
+function renderProfil(
+  opts: { lng?: 'de' | 'en'; queryClient?: QueryClient; onOpenDatenschutz?: () => void; onSignedOut?: () => void } = {},
+) {
   const i18n = createAppI18n(opts.lng ?? 'de')
   const queryClient = opts.queryClient ?? makeTestQueryClient()
+  const authClient = createAppAuthClient(BASE_URL)
   return render(
     <QueryClientProvider client={queryClient}>
       <I18nextProvider i18n={i18n}>
         <ThemeProvider mode="light">
-          <ProfilScreen onOpenDatenschutz={opts.onOpenDatenschutz ?? (() => {})} />
+          <AuthClientProvider client={authClient}>
+            <ProfilScreen onOpenDatenschutz={opts.onOpenDatenschutz ?? (() => {})} onSignedOut={opts.onSignedOut ?? (() => {})} />
+          </AuthClientProvider>
         </ThemeProvider>
       </I18nextProvider>
     </QueryClientProvider>,
