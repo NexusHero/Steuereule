@@ -264,12 +264,49 @@ describe('RegistrierungScreen', () => {
   // better-auth's atom keeps whatever `data` it last had on a non-401 error rather than clearing
   // it (session-atom.mjs) — here there never was a successful load, so `data` stays `null`
   // throughout; the banner must still show rather than defaulting open on the missing answer.
+  // Note (#227, mirroring LoginScreen.test.tsx:344-347): this fixture alone kills nothing — with
+  // `data` null the account-scoping clause already returns false first, so a genuinely fail-open
+  // hook (`emailVerified !== false`) would pass this test too. The next test below is what
+  // actually exercises the fail-closed clause; keep this one anyway, it's cheap and locks the
+  // no-data path.
   it('keeps the unverified banner when the session fetch fails, rather than assuming verified', async () => {
     server.use(
       http.post(`${BASE_URL}/api/auth/sign-up/email`, () =>
         HttpResponse.json({ token: 'tok_1', user: { id: 'u1', email: 'neu@beispiel.de', emailVerified: false, name: '' } }),
       ),
       http.get(`${BASE_URL}/api/auth/get-session`, () => HttpResponse.json({ message: 'Internal Server Error' }, { status: 500 })),
+    )
+    renderRegistrierung()
+    fillCredentials()
+    fireEvent.click(screen.getByText('Konto anlegen'))
+
+    await screen.findByText('Willkommen bei SteuerEule.')
+    expect(screen.getByText('Bitte bestätige noch deine E-Mail.')).toBeTruthy()
+    expect(screen.queryByText('E-Mail bestätigt ✓')).toBeNull()
+  })
+
+  // Fail-closed, the load-bearing case (#227, Musti's mutation-test finding on #225's review): a
+  // session that loads *successfully for this account* but doesn't positively answer —
+  // `user.email` matches, `emailVerified` absent — is the shape a partial or errored read
+  // actually leaves behind, and it's the case the hook's own fail-closed comment claims to guard
+  // (`sessionData?.user.emailVerified === true`, not `!== false`). Mirrors
+  // LoginScreen.test.tsx:368-386 exactly; verified both directions: fails (shows the verified
+  // confirmation) on a fail-open mutant that preserves the optional chain
+  // (`sessionData?.user.emailVerified !== false && sessionData?.user.email === email`), passes on
+  // this hook. `user.email` here must equal the *sign-up response's* `user.email`
+  // (RegistrierungScreen.tsx:72 sets `stage.email` from `data.user.email`, not from the typed
+  // input) — 'neu@beispiel.de', matching the sign-up mock above.
+  it('keeps the unverified banner when the session for this account never positively answers emailVerified', async () => {
+    server.use(
+      http.post(`${BASE_URL}/api/auth/sign-up/email`, () =>
+        HttpResponse.json({ token: 'tok_1', user: { id: 'u1', email: 'neu@beispiel.de', emailVerified: false, name: '' } }),
+      ),
+      http.get(`${BASE_URL}/api/auth/get-session`, () =>
+        HttpResponse.json({
+          user: { id: 'u1', email: 'neu@beispiel.de', name: '' },
+          session: { id: 's1', createdAt: new Date().toISOString() },
+        }),
+      ),
     )
     renderRegistrierung()
     fillCredentials()
