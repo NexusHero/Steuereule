@@ -18,3 +18,48 @@ export interface DeviceCodeResponseDto {
   interval: number;
 }
 
+export type DevicePendingResponseDtoStatus = typeof DevicePendingResponseDtoStatus[keyof typeof DevicePendingResponseDtoStatus];
+
+
+export const DevicePendingResponseDtoStatus = {
+  pending: 'pending',
+  approved: 'approved',
+  denied: 'denied',
+} as const;
+
+export interface DevicePendingResponseDto {
+  userCode: string;
+  status: DevicePendingResponseDtoStatus;
+  /**
+     * The requesting desktop's raw User-Agent, or null if it was absent.
+     * @nullable
+     */
+  userAgent: string | null;
+  /**
+     * Country code from task 0b's geo-IP resolver, or "unknown" — never null once task 0/0b's write path has run.
+     * @nullable
+     */
+  region: string | null;
+  /**
+     * When the desktop requested this code.
+     * @nullable
+     */
+  requestedAt: string | null;
+}
+
+export interface ApproveDeviceRequestDto {
+  userCode: string;
+}
+
+export interface AckResponseDto {
+  success: boolean;
+}
+
+export interface DeviceTokenRequestDto {
+  deviceCode: string;
+}
+
+export type DeviceControllerGetPendingParams = {
+userCode: string;
+};
+
