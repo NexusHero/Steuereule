@@ -38,20 +38,29 @@
 // resolved client. The only real defence against that is a network property — the app
 // being unreachable except through the real proxy (#246) — not an application
 // configuration value. Nothing built against this resolver should imply otherwise.
+import { isIP } from 'node:net'
+
 const CIDR_PREFIX_PATTERN = /^\d+$/
 
-/** Whether `entry` is a syntactically valid IP address or `IP/prefix` CIDR range.
- *  Deliberately does NOT reject an overly-broad range (e.g. `0.0.0.0/0`) — Robin
- *  checked, not assumed: `@fastify/proxy-addr` already throws on that itself
- *  ("invalid range on address: 0.0.0.0/0"), so a second guard here would be partly
- *  redundant; and better-auth's own trustedProxies handling only warns on an invalid
- *  entry rather than rejecting it, which is why this resolver validates syntax at all
- *  — an unparseable entry should fail loud, at boot, where the information is
- *  available, not warn quietly into a log nobody is watching. */
+// A floor on how broad a configured range may be is explicitly NOT built here (#241,
+// Musti's review). Measured, not assumed: `@fastify/proxy-addr@5.1.0` throws only on
+// the exact range `0.0.0.0/0` — `0.0.0.0/1` and `::/1` pass through it silently and
+// return the attacker-controlled leftmost value (peer `127.0.0.1`, XFF
+// `203.0.113.66, 127.0.0.1`, `trustProxy: ["0.0.0.0/1"]` → `203.0.113.66`, the spoof).
+// That failure belongs to `@fastify/proxy-addr`/Fastify's `trustProxy`, which this
+// ticket does NOT wire up (that's #238's own follow-up, consuming this resolver's
+// output). better-auth's own algorithm — the only consumer this ticket actually wires
+// — fails the opposite direction on an overly-broad range (converges toward `null`, a
+// shared bucket, not an attacker-chosen value), so a breadth guard sized for
+// proxy-addr's failure mode has no real test to go red against here yet. #238 must
+// add that guard, with its own justified floor and a red test at the real boundary
+// proxy-addr actually has (`/1` unsafe, `/2`/`/8` safe in the one setup measured so
+// far) — named explicitly as that ticket's own follow-up, not silently dropped.
+/** Whether `entry` is a syntactically valid IP address or `IP/prefix` CIDR range. */
 function isValidTrustedProxyEntry(entry: string): boolean {
   const slashIndex = entry.lastIndexOf('/')
   const address = slashIndex === -1 ? entry : entry.slice(0, slashIndex)
-  const family = ipFamily(address)
+  const family = isIP(address)
   if (family === 0) return false
   if (slashIndex === -1) return true
   const prefixPart = entry.slice(slashIndex + 1)
@@ -59,16 +68,6 @@ function isValidTrustedProxyEntry(entry: string): boolean {
   const prefix = Number(prefixPart)
   const maxPrefix = family === 4 ? 32 : 128
   return prefix >= 0 && prefix <= maxPrefix
-}
-
-/** 4 for a valid IPv4 address, 6 for IPv6, 0 for neither — the exact shape Node's own
- *  `net.isIP` already returns; re-implemented as a thin wrapper only so this file
- *  doesn't depend on `node:net`'s IPv6 quirks for the (very small) validation surface
- *  it actually needs. */
-function ipFamily(address: string): 0 | 4 | 6 {
-  if (/^(\d{1,3}\.){3}\d{1,3}$/.test(address) && address.split('.').every((octet) => Number(octet) <= 255)) return 4
-  if (/^[0-9a-fA-F:]+$/.test(address) && address.includes(':')) return 6
-  return 0
 }
 
 /**
