@@ -204,6 +204,27 @@
           "account"
         ]
       }
+    },
+    "/v1/device/code": {
+      "post": {
+        "operationId": "DeviceController_requestCode",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "A freshly minted device/user code pair, valid for 2 minutes (ADR-0024).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceCodeResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "device"
+        ]
+      }
     }
   },
   "info": {
@@ -584,6 +605,39 @@
           "profile",
           "taxData",
           "accessLog"
+        ]
+      },
+      "DeviceCodeResponseDto": {
+        "type": "object",
+        "properties": {
+          "userCode": {
+            "type": "string",
+            "example": "K7QX-9F2M",
+            "description": "The short code shown on the desktop and matched on the phone."
+          },
+          "deviceCode": {
+            "type": "string",
+            "description": "The RFC 8628 device_code — held by the desktop only, to poll POST /v1/device/token. Not a session credential; carries no authenticated power on its own."
+          },
+          "verificationUriComplete": {
+            "type": "string",
+            "description": "The full verification URL to encode as the QR code (includes the user_code as a query param)."
+          },
+          "expiresIn": {
+            "type": "number",
+            "description": "Seconds until this code expires (ADR-0024: 2 minutes)."
+          },
+          "interval": {
+            "type": "number",
+            "description": "Minimum seconds between POST /v1/device/token polls."
+          }
+        },
+        "required": [
+          "userCode",
+          "deviceCode",
+          "verificationUriComplete",
+          "expiresIn",
+          "interval"
         ]
       }
     }

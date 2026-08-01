@@ -172,6 +172,65 @@ model TaxYear {
   @@unique([userId, steuerjahr])
 }
 
+/// QR-code device-authorization (#238, RFC 8628, ADR-0024). better-auth's
+/// `device-authorization` plugin owns this table's core nine fields — its own
+/// canonical shape (`schema.mjs`), unrenamed, so no `schema.deviceCode.fields.*`
+/// override is needed on the plugin config side. The plugin's own HTTP routes are
+/// switched off via `disabledPaths` (ADR-0024) — only our `/v1/device/*` endpoints
+/// and server-side `auth.api.*` calls ever touch this table, which is what makes the
+/// five `request*`/`grantScope` columns below safe to add: the plugin never reads or
+/// writes them, so there is nothing for it to conflict with.
+model DeviceCode {
+  id              String    @id @default(uuid())
+  /// RFC 8628 `device_code` — the polling secret, never shown to a human.
+  deviceCode      String    @unique
+  /// RFC 8628 `user_code` — the short code shown on the desktop and typed/matched on
+  /// the phone. Looked up directly by the plugin's `/device`, `/device/approve`,
+  /// `/device/deny` handlers.
+  userCode        String    @unique
+  /// Claimed by `/device` (GET) once a signed-in phone opens the verification URL —
+  /// null while pending-unclaimed. Never the desktop's identity; always the
+  /// approving phone's.
+  userId          String?
+  expiresAt       DateTime
+  /// One of "pending" | "approved" | "denied" — a plain plugin-owned string, not a
+  /// Prisma enum, so a plugin version bump introducing a new status value can never
+  /// fail a CHECK constraint this schema didn't anticipate.
+  status          String
+  /// Set on each `/device/token` poll — backs the plugin's own `slow_down` throttle.
+  lastPolledAt    DateTime?
+  /// Milliseconds between polls (plugin's `interval` option, ms-encoded).
+  pollingInterval Int?
+  clientId        String?
+  /// Space-separated OAuth-style scope string (plugin's own RFC 8628 field) —
+  /// unrelated to `grantScope` below, which is our session-lifetime choice, not the
+  /// protocol's scope.
+  scope           String?
+
+  // --- Our columns (ADR-0024) — nullable, additive, never read by the plugin ---
+  /// The desktop's User-Agent at `/v1/device/code` request time — match-verification
+  /// evidence (AC-3), never the approving phone's.
+  requestUserAgent String?
+  /// The desktop's request IP at `/v1/device/code` time — the geo-IP resolver's
+  /// input (task 0b); never persisted alongside a resolved region that could outlive
+  /// its own accuracy guarantee (the resolver re-derives `requestRegion` once, at
+  /// write time, from this same value).
+  requestIp        String?
+  /// Country-level result of resolving `requestIp` (task 0b) — `null` until
+  /// resolved, "unknown" (never a guess) when the address is private/unroutable or
+  /// the geo-IP database is stale (ADR-0021 control).
+  requestRegion    String?
+  /// When the desktop's `/v1/device/code` request was made — distinct from
+  /// `expiresAt`/`lastPolledAt`, which are the plugin's own protocol timestamps.
+  requestedAt      DateTime?
+  /// The session-scope choice made at approval — "session_only" | "trusted"
+  /// (decision 5, AC-4). Written by `/v1/device/approve` (task 2), read by
+  /// `/v1/device/token` (task 2) to decide the issued session's lifetime/cookie.
+  grantScope       String?
+
+  @@index([userId])
+}
+
 /// Minimal Löschschutz seam (ADR-0013 §5, product ADR-011). While a hold is active
 /// (`holdUntil` in the future) for a given userId/resource pair, the account-deletion
 /// transaction exempts that resource from erasure/anonymisation instead of tearing it
