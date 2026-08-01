@@ -275,6 +275,9 @@ jobs:
       # #241: no real reverse proxy in front of this job's server — declared
       # explicitly, same self-documenting reason as the two lines above.
       TRUSTED_PROXIES: none
+      # #238/ADR-0024: declared explicitly for the same self-documenting reason as
+      # BETTER_AUTH_URL above, even though it matches resolveWebAppUrl's dev fallback.
+      WEB_APP_URL: http://localhost:8081
     steps:
       - uses: actions/checkout@v5
       - name: Set up pnpm
@@ -506,6 +509,10 @@ jobs:
       CORS_ALLOWED_ORIGINS: http://localhost:4173
       # #241: no real reverse proxy in front of this job's server either.
       TRUSTED_PROXIES: none
+      # #238/ADR-0024: the real web app origin in this job — WEB_ORIGIN above, not
+      # BETTER_AUTH_URL/API_ORIGIN — so the device-authorization QR (if exercised here)
+      # would point at the actually-served static export, not the API.
+      WEB_APP_URL: http://localhost:4173
       EXPO_PUBLIC_API_BASE_URL: http://localhost:3301
     steps:
       - uses: actions/checkout@v5
