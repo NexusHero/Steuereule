@@ -14,7 +14,6 @@ CREATE TABLE "DeviceCode" (
     "requestIp" TEXT,
     "requestRegion" TEXT,
     "requestedAt" TIMESTAMP(3),
-    "grantScope" TEXT,
 
     CONSTRAINT "DeviceCode_pkey" PRIMARY KEY ("id")
 );

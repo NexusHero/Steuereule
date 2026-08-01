@@ -178,8 +178,8 @@ model TaxYear {
 /// override is needed on the plugin config side. The plugin's own HTTP routes are
 /// switched off via `disabledPaths` (ADR-0024) — only our `/v1/device/*` endpoints
 /// and server-side `auth.api.*` calls ever touch this table, which is what makes the
-/// five `request*`/`grantScope` columns below safe to add: the plugin never reads or
-/// writes them, so there is nothing for it to conflict with.
+/// four `request*` columns below safe to add: the plugin never reads or writes
+/// them, so there is nothing for it to conflict with.
 model DeviceCode {
   id              String    @id @default(uuid())
   /// RFC 8628 `device_code` — the polling secret, never shown to a human.
@@ -202,14 +202,12 @@ model DeviceCode {
   /// Milliseconds between polls (plugin's `interval` option, ms-encoded).
   pollingInterval Int?
   clientId        String?
-  /// Space-separated OAuth-style scope string (plugin's own RFC 8628 field) —
-  /// unrelated to `grantScope` below, which is our session-lifetime choice, not the
-  /// protocol's scope.
+  /// Space-separated OAuth-style scope string (plugin's own RFC 8628 field).
   scope           String?
 
   // --- Our columns (ADR-0024) — nullable, additive, never read by the plugin ---
   /// The desktop's User-Agent at `/v1/device/code` request time — match-verification
-  /// evidence (AC-3), never the approving phone's.
+  /// evidence (AC-3) for the phone's approval screen, never the approving phone's own.
   requestUserAgent String?
   /// The desktop's request IP at `/v1/device/code` time — the geo-IP resolver's
   /// input (task 0b); never persisted alongside a resolved region that could outlive
@@ -218,15 +216,12 @@ model DeviceCode {
   requestIp        String?
   /// Country-level result of resolving `requestIp` (task 0b) — `null` until
   /// resolved, "unknown" (never a guess) when the address is private/unroutable or
-  /// the geo-IP database is stale (ADR-0021 control).
+  /// the geo-IP database is stale (ADR-0021 control). Two consumers: the phone's
+  /// match-verification approval screen and the device list in Profil.
   requestRegion    String?
   /// When the desktop's `/v1/device/code` request was made — distinct from
   /// `expiresAt`/`lastPolledAt`, which are the plugin's own protocol timestamps.
   requestedAt      DateTime?
-  /// The session-scope choice made at approval — "session_only" | "trusted"
-  /// (decision 5, AC-4). Written by `/v1/device/approve` (task 2), read by
-  /// `/v1/device/token` (task 2) to decide the issued session's lifetime/cookie.
-  grantScope       String?
 
   @@index([userId])
 }

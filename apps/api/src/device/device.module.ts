@@ -12,6 +12,10 @@ import { geoIpRegionResolverProvider } from './region/region-resolver.provider.j
 @Module({
   imports: [PrismaModule],
   controllers: [DeviceController],
-  providers: [DeviceService, { provide: DEVICE_CODE_REPOSITORY, useClass: PrismaDeviceCodeRepository }, geoIpRegionResolverProvider],
+  providers: [
+    DeviceService,
+    { provide: DEVICE_CODE_REPOSITORY, useClass: PrismaDeviceCodeRepository },
+    geoIpRegionResolverProvider,
+  ],
 })
 export class DeviceModule {}
