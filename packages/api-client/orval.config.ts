@@ -69,4 +69,20 @@ export default defineConfig({
       },
     },
   },
+  // #238 — QR device-authorization. `POST /v1/device/code` today (Robin's task 0); the
+  // `device` tag is what task 2's `/v1/device/{pending,approve,token}` will land in too,
+  // regenerating this same target rather than adding a new one.
+  device: {
+    input: { target: '../../apps/api/openapi.json', filters: { tags: ['device'] } },
+    output: {
+      target: './src/generated/device.ts',
+      mode: 'split',
+      client: 'react-query',
+      httpClient: 'fetch',
+      mock: true,
+      override: {
+        mutator: { path: './src/http-client.ts', name: 'httpClient' },
+      },
+    },
+  },
 })

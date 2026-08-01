@@ -11,8 +11,9 @@ import {
   getProfileControllerPutProfileMockHandler,
   getAuthCapabilitiesControllerGetCapabilitiesMockHandler,
   getCockpitControllerGetCockpitSummaryMockHandler,
+  getDeviceControllerRequestCodeMockHandler,
 } from '@steuereule/api-client/msw'
-import type { ProfileResponseDto, AuthCapabilitiesDto } from '@steuereule/api-client'
+import type { ProfileResponseDto, AuthCapabilitiesDto, DeviceCodeResponseDto } from '@steuereule/api-client'
 
 export const EMPTY_PROFILE_RESPONSE: ProfileResponseDto = {
   firstName: null,
@@ -31,6 +32,22 @@ export const EMPTY_PROFILE_RESPONSE: ProfileResponseDto = {
 export const CAPABILITIES_WITH_GOOGLE: AuthCapabilitiesDto = { socialProviders: ['google'] }
 export const CAPABILITIES_WITHOUT_SOCIAL: AuthCapabilitiesDto = { socialProviders: [] }
 
+/**
+ * Default `POST /v1/device/code` answer (#238) — pinned, not the generated factory's random
+ * faker data, same reasoning as the capability answer above: a QR/`user_code` assertion against
+ * a random string is no assertion at all. LoginScreen's own suite renders at jsdom's default
+ * window width (1024px, breakpoint `m`), so the QR column mounts and requests a code in every
+ * test that renders Login unless overridden — this is what keeps that request from becoming an
+ * unhandled-request error in every one of them.
+ */
+export const DEVICE_CODE_RESPONSE: DeviceCodeResponseDto = {
+  userCode: 'K7QX-9F2M',
+  deviceCode: 'test-device-code',
+  verificationUriComplete: 'http://localhost:3000/geraet?user_code=K7QX-9F2M',
+  expiresIn: 120,
+  interval: 5,
+}
+
 export const server = setupServer(
   getProfileControllerGetProfileMockHandler(EMPTY_PROFILE_RESPONSE),
   getProfileControllerPutProfileMockHandler(),
@@ -40,6 +57,7 @@ export const server = setupServer(
   // tests that merely pass through Cockpit don't each have to stub it; CockpitScreen's own
   // suite overrides it with real figures where the numbers are the point.
   getCockpitControllerGetCockpitSummaryMockHandler(null),
+  getDeviceControllerRequestCodeMockHandler(DEVICE_CODE_RESPONSE),
   // better-auth's own session read — not orval-generated (better-auth owns this contract,
   // ADR-0012 §1), so it's not in @steuereule/api-client. Defaults to "no session" (`null`),
   // which is also the fail-closed default any screen deriving "verified"/"signed in" from

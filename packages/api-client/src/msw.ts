@@ -26,3 +26,8 @@ export {
   getAccountExportControllerExportAccountMockHandler,
   getSteuerEuleAPIMock as getAccountApiMock,
 } from './generated/account.msw'
+export {
+  getDeviceControllerRequestCodeResponseMock,
+  getDeviceControllerRequestCodeMockHandler,
+  getSteuerEuleAPIMock as getDeviceApiMock,
+} from './generated/device.msw'

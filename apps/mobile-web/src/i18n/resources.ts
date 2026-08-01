@@ -40,6 +40,19 @@ export const appResources = {
         guestNote: 'Gast-Modus: deine Angaben werden sicher verschlüsselt gespeichert.',
         errEmail: 'Das sieht noch nicht nach einer E-Mail aus.',
         errPass: 'Mindestens 6 Zeichen fürs Passwort.',
+        // #238 — the QR column next to the login form. A phone that opens the code's URL uses
+        // its own native camera + browser, never this app's camera — so there is nothing here
+        // about permissions, only about what happens once the phone gets there.
+        qr: {
+          heading: 'Mit dem Handy anmelden',
+          body: 'Scanne den Code mit der Kamera deines Handys — dort bist du schon angemeldet.',
+          accessibilityLabel: 'QR-Code zum Anmelden mit dem Handy',
+          loading: 'Code wird erzeugt …',
+          expired: 'Code abgelaufen.',
+          requestNew: 'Neuen Code anzeigen',
+          error: 'Code konnte nicht erzeugt werden.',
+          retry: 'Erneut versuchen',
+        },
       },
       // Shared copy for both Login and Registrierung, driven by better-auth's own error codes
       // (authErrors.ts) and REQ-005's honest-unverified-state requirement — one place, not
@@ -316,6 +329,16 @@ export const appResources = {
         guestNote: 'Guest mode: your details are saved securely, encrypted.',
         errEmail: "That doesn't look like an email yet.",
         errPass: 'At least 6 characters for the password.',
+        qr: {
+          heading: 'Sign in with your phone',
+          body: "Scan the code with your phone's camera — you're already signed in there.",
+          accessibilityLabel: 'QR code to sign in with your phone',
+          loading: 'Generating code …',
+          expired: 'Code expired.',
+          requestNew: 'Show a new code',
+          error: 'Could not generate a code.',
+          retry: 'Try again',
+        },
       },
       auth: {
         errInvalidCredentials: "Email or password doesn't match.",

@@ -8,17 +8,28 @@
 //     in REQ-005's scope; a dead Pressable doesn't ship.
 //   - A real, honest "please verify your email" banner is added after a successful sign-in to an
 //     unverified account (REQ-005) — a case neither auth.html nor Auth.jsx shows at all.
+//   - A QR device-login column (#238) — no DS artifact shows this either; NexusHero's own ruling
+//     (not an invented pattern) puts it in its own column next to the form on `m`/`l`, derived
+//     from existing building blocks only: `Card` for the frame, the same owl entrance already
+//     running on Splash (`useOwlEntranceAnimation`, extracted from there rather than copied), and
+//     `QrMark` (react-native-svg, the same rendering technology OwlMark already uses). Absent on
+//     `s` — scanning a code with the same phone you're reading it on has no honest use, and there
+//     is nowhere near enough width for a second column at 375px.
 import { useState } from 'react'
 import { ScrollView, View, Text, Pressable, ActivityIndicator, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { Button, Input, Feld, Chip, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
+import { Button, Card, Input, Feld, Chip, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
 import { APP_NS } from '../i18n/resources'
 import { useAuthClient } from '../auth/AuthClientProvider'
 import { authErrorKey } from '../auth/authErrors'
 import { useSocialSignIn } from '../auth/useSocialSignIn'
 import { useSocialSignInAvailable } from '../auth/useSocialSignInAvailable'
 import { useEmailVerified } from '../auth/useEmailVerified'
+import { useDeviceQrCode } from '../auth/useDeviceQrCode'
 import { GoogleG } from '../icons/GoogleG'
+import { OwlMark } from '../marks/OwlMark'
+import { useOwlEntranceAnimation } from '../marks/useOwlEntranceAnimation'
+import { QrMark } from '../marks/QrMark'
 
 export interface LoginScreenProps {
   readonly onDone: () => void
@@ -134,8 +145,8 @@ export function LoginScreen({ onDone, onGuest, onRegister }: LoginScreenProps) {
     )
   }
 
-  return (
-    <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} keyboardShouldPersistTaps="handled" data-testid="screen-container">
+  const formColumn = (
+    <View style={bp === 's' ? undefined : styles.formColumn}>
       <Brand tr={tr} t={t} />
 
       <Text style={styles.heading}>
@@ -192,7 +203,86 @@ export function LoginScreen({ onDone, onGuest, onRegister }: LoginScreenProps) {
         <Chip onPress={onGuest}>{tr('login.guest')}</Chip>
         <Text style={styles.guestNote}>{tr('login.guestNote')}</Text>
       </View>
+    </View>
+  )
+
+  // The QR column has no honest use on `s` (375px, and it's the same phone whose camera would
+  // have to scan its own screen) — `useBreakpoint` is called once, at this screen's root
+  // (ADR-0014), and this is the one structural switch it drives.
+  if (bp === 's') {
+    return (
+      <ScrollView contentContainerStyle={styles.screen} keyboardShouldPersistTaps="handled" data-testid="screen-container">
+        {formColumn}
+      </ScrollView>
+    )
+  }
+
+  return (
+    <ScrollView contentContainerStyle={styles.wideRow} keyboardShouldPersistTaps="handled" data-testid="screen-container">
+      {formColumn}
+      <DeviceQrColumn t={t} tr={tr} styles={styles} />
     </ScrollView>
+  )
+}
+
+interface DeviceQrColumnProps {
+  readonly t: UiTheme
+  readonly tr: (key: string) => string
+  readonly styles: ReturnType<typeof makeStyles>
+}
+
+/**
+ * The Login screen's QR device-login column (#238) — derived entirely from existing building
+ * blocks (Card for the frame, the owl's existing entrance, QrMark's react-native-svg rendering),
+ * per NexusHero's ruling that no new DS pattern gets invented here. Requests a real code the
+ * moment it mounts (ADR-0003/0005) via `useDeviceQrCode`; every state below is honest — a
+ * loading code never shows a blank frame, an expired or failed one never keeps showing a code
+ * that no longer works.
+ */
+function DeviceQrColumn({ t, tr, styles }: DeviceQrColumnProps) {
+  const { state, requestNewCode } = useDeviceQrCode()
+  const owl = useOwlEntranceAnimation()
+
+  return (
+    <View style={styles.qrColumn}>
+      <Card style={styles.qrCard}>
+        <OwlMark size={56} headStyle={owl.headStyle} glassesStyle={owl.glassesStyle} lidStyle={owl.lidStyle} />
+        <Text style={styles.qrHeading}>{tr('login.qr.heading')}</Text>
+        <Text style={styles.qrBody}>{tr('login.qr.body')}</Text>
+
+        {state.kind === 'loading' ? (
+          <View style={styles.qrFrame}>
+            <ActivityIndicator size="small" color={t.color.tinte} />
+            <Text style={styles.qrStatusLabel}>{tr('login.qr.loading')}</Text>
+          </View>
+        ) : null}
+
+        {state.kind === 'ready' ? (
+          <View style={styles.qrFrame}>
+            <QrMark value={state.verificationUriComplete} size={144} accessibilityLabel={tr('login.qr.accessibilityLabel')} />
+            <Text style={styles.qrCode}>{state.userCode}</Text>
+          </View>
+        ) : null}
+
+        {state.kind === 'expired' ? (
+          <View style={styles.qrFrame} accessibilityRole="alert">
+            <Text style={styles.qrStatusLabel}>{tr('login.qr.expired')}</Text>
+            <Pressable accessibilityRole="button" onPress={requestNewCode}>
+              <Text style={styles.qrRetryLink}>{tr('login.qr.requestNew')}</Text>
+            </Pressable>
+          </View>
+        ) : null}
+
+        {state.kind === 'error' ? (
+          <View style={styles.qrFrame} accessibilityRole="alert">
+            <Text style={styles.qrStatusLabel}>{tr('login.qr.error')}</Text>
+            <Pressable accessibilityRole="button" onPress={requestNewCode}>
+              <Text style={styles.qrRetryLink}>{tr('login.qr.retry')}</Text>
+            </Pressable>
+          </View>
+        ) : null}
+      </Card>
+    </View>
   )
 }
 
@@ -228,6 +318,34 @@ function makeStyles(t: UiTheme) {
     ...screen,
     maxWidth: WIDE_CONTENT_MAX_WIDTH,
   }
+  // Two columns, `m`/`l` only (LoginScreen's single `useBreakpoint` call above already gates
+  // this) — the form keeps its own established width via `formColumn`, the QR column takes the
+  // rest up to the same `WIDE_CONTENT_MAX_WIDTH` every other wide layout in this app uses.
+  const wideRow: ViewStyle = {
+    ...wideScreen,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: t.space.s6,
+    justifyContent: 'center',
+  }
+  const formColumn: ViewStyle = { width: '100%', maxWidth: 460, flexShrink: 1 }
+  const qrColumn: ViewStyle = { width: '100%', maxWidth: 280, flexShrink: 0 }
+  const qrCard: ViewStyle = { alignItems: 'center', marginBottom: 0 }
+  const qrHeading: TextStyle = {
+    fontFamily: t.font.text,
+    fontWeight: t.weight.schwer,
+    fontSize: t.size.m,
+    color: t.color.tinte,
+    textAlign: 'center',
+    marginTop: t.space.s2,
+  }
+  const qrBody: TextStyle = { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte2, textAlign: 'center', marginTop: t.space.s1, marginBottom: t.space.s4 }
+  // Fixed footprint regardless of state (loading spinner / QR / expired or error message) so the
+  // column doesn't jump around as the request resolves.
+  const qrFrame: ViewStyle = { alignItems: 'center', justifyContent: 'center', minHeight: 144, gap: t.space.s2 }
+  const qrStatusLabel: TextStyle = { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte2, textAlign: 'center' }
+  const qrCode: TextStyle = { fontFamily: t.font.mono, fontSize: t.size.l, fontWeight: t.weight.schwer, color: t.color.tinte, letterSpacing: 2 }
+  const qrRetryLink: TextStyle = { fontFamily: t.font.text, fontWeight: t.weight.schwer, fontSize: t.size.s, color: t.color.tinte, textDecorationLine: 'underline', minHeight: 44, textAlignVertical: 'center' }
   const heading: TextStyle = { fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size['3xl'], color: t.color.tinte, marginBottom: t.space.s2 }
   const subtitle: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.m, marginBottom: t.space.s5 }
   const socialButtons: ViewStyle = { flexDirection: 'column', gap: t.space.s2, marginBottom: t.space.s4 }
@@ -276,6 +394,16 @@ function makeStyles(t: UiTheme) {
   return {
     screen,
     wideScreen,
+    wideRow,
+    formColumn,
+    qrColumn,
+    qrCard,
+    qrHeading,
+    qrBody,
+    qrFrame,
+    qrStatusLabel,
+    qrCode,
+    qrRetryLink,
     heading,
     subtitle,
     socialButtons,

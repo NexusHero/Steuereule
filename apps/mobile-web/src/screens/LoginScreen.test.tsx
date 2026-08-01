@@ -1,10 +1,11 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@steuereule/ui'
 import { http, HttpResponse, delay } from 'msw'
+import { AccessibilityInfo } from 'react-native'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { server, CAPABILITIES_WITH_GOOGLE, CAPABILITIES_WITHOUT_SOCIAL } from '../test-msw-server'
+import { server, CAPABILITIES_WITH_GOOGLE, CAPABILITIES_WITHOUT_SOCIAL, DEVICE_CODE_RESPONSE } from '../test-msw-server'
 import { getAuthCapabilitiesControllerGetCapabilitiesMockHandler } from '@steuereule/api-client/msw'
 import { createAppI18n } from '../i18n/app-i18n'
 import { createAppAuthClient } from '../auth/auth-client'
@@ -12,6 +13,32 @@ import { AuthClientProvider } from '../auth/AuthClientProvider'
 import { LoginScreen } from './LoginScreen'
 
 const BASE_URL = 'http://localhost:3000'
+
+// `useBreakpoint` reads react-native-web's `Dimensions`, which reads
+// `document.documentElement.clientWidth` (jsdom default: 0, i.e. breakpoint `s`) and only
+// re-reads on a real `resize` event — setting the property alone is not enough once
+// `Dimensions` has already initialised once in this worker.
+function setViewportWidth(width: number) {
+  Object.defineProperty(document.documentElement, 'clientWidth', { value: width, configurable: true })
+  window.dispatchEvent(new Event('resize'))
+}
+
+beforeEach(() => {
+  // Resets any width a previous test in this file set, *before* this test renders anything —
+  // not in `afterEach`, which would dispatch the `resize` event right as RTL's own `cleanup()`
+  // is tearing the previous test's tree down, and land on whichever side of that race lost (an
+  // `act()` warning from a `useWindowDimensions` subscriber updating an unmounting component).
+  setViewportWidth(0)
+  // The QR column's owl (#238, `useOwlEntranceAnimation`) queries the real
+  // `AccessibilityInfo.isReduceMotionEnabled()` otherwise, which resolves on a later tick than
+  // this file's assertions — an `act()` warning, not a real bug (SplashScreen.test.tsx mocks
+  // the same query for the same reason). Nothing in this file asserts on the entrance itself.
+  vi.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(true)
+})
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
 
 function renderLogin(
   opts: { lng?: 'de' | 'en'; onDone?: () => void; onGuest?: () => void; onRegister?: () => void } = {},
@@ -475,4 +502,112 @@ describe('LoginScreen', () => {
     expect(screen.queryByText('Weiter mit Google')).toBeNull()
   })
 
+  // #238 — the QR device-login column. NexusHero's ruling: its own column next to the form,
+  // present at `m`/`l`, absent at `s` (no honest use scanning a code with the same phone),
+  // requested the moment the screen mounts rather than gated behind a tap.
+  describe('QR device-login column (#238)', () => {
+    it('does not render at the narrow (s) breakpoint, and never requests a code there', async () => {
+      let requests = 0
+      server.use(
+        http.post(`${BASE_URL}/v1/device/code`, () => {
+          requests += 1
+          return HttpResponse.json(DEVICE_CODE_RESPONSE, { status: 201 })
+        }),
+      )
+      setViewportWidth(320)
+      renderLogin()
+      await screen.findByText('Einloggen')
+
+      expect(screen.queryByText('Mit dem Handy anmelden')).toBeNull()
+      expect(requests).toBe(0)
+    })
+
+    it('renders the column and requests exactly one real code the moment the screen mounts, at the wide breakpoint', async () => {
+      let requests = 0
+      server.use(
+        http.post(`${BASE_URL}/v1/device/code`, () => {
+          requests += 1
+          return HttpResponse.json(DEVICE_CODE_RESPONSE, { status: 201 })
+        }),
+      )
+      setViewportWidth(1024)
+      renderLogin()
+
+      expect(await screen.findByText('Mit dem Handy anmelden')).toBeTruthy()
+      await screen.findByLabelText('QR-Code zum Anmelden mit dem Handy')
+      expect(screen.getByText(DEVICE_CODE_RESPONSE.userCode)).toBeTruthy()
+      expect(requests).toBe(1)
+    })
+
+    it('shows an honest loading state before the code arrives', async () => {
+      server.use(
+        http.post(`${BASE_URL}/v1/device/code`, async () => {
+          await delay('infinite')
+          return HttpResponse.json(DEVICE_CODE_RESPONSE, { status: 201 })
+        }),
+      )
+      setViewportWidth(1024)
+      renderLogin()
+
+      expect(await screen.findByText('Code wird erzeugt …')).toBeTruthy()
+      expect(screen.queryByLabelText('QR-Code zum Anmelden mit dem Handy')).toBeNull()
+    })
+
+    it('shows an honest error state on a genuine network failure, with a real way to try again', async () => {
+      let requests = 0
+      server.use(
+        http.post(`${BASE_URL}/v1/device/code`, () => {
+          requests += 1
+          return requests === 1 ? HttpResponse.error() : HttpResponse.json(DEVICE_CODE_RESPONSE, { status: 201 })
+        }),
+      )
+      setViewportWidth(1024)
+      renderLogin()
+
+      await screen.findByText('Code konnte nicht erzeugt werden.')
+      expect(requests).toBe(1)
+
+      fireEvent.click(screen.getByText('Erneut versuchen'))
+      await screen.findByLabelText('QR-Code zum Anmelden mit dem Handy')
+      expect(requests).toBe(2)
+    })
+
+    it('shows an honest error state when the deployment answers with something other than 201 (e.g. rate-limited)', async () => {
+      server.use(http.post(`${BASE_URL}/v1/device/code`, () => HttpResponse.json({}, { status: 429 })))
+      setViewportWidth(1024)
+      renderLogin()
+
+      await screen.findByText('Code konnte nicht erzeugt werden.')
+      expect(screen.queryByLabelText('QR-Code zum Anmelden mit dem Handy')).toBeNull()
+    })
+
+    it("marks the code expired once its lifetime elapses, and requests a genuinely new one on request, not a stale copy", async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      let requests = 0
+      server.use(
+        http.post(`${BASE_URL}/v1/device/code`, () => {
+          requests += 1
+          return HttpResponse.json({ ...DEVICE_CODE_RESPONSE, expiresIn: 1 }, { status: 201 })
+        }),
+      )
+      setViewportWidth(1024)
+      renderLogin()
+      await screen.findByLabelText('QR-Code zum Anmelden mit dem Handy')
+      expect(requests).toBe(1)
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1000)
+      })
+      await screen.findByText('Code abgelaufen.')
+      expect(screen.queryByLabelText('QR-Code zum Anmelden mit dem Handy')).toBeNull()
+
+      fireEvent.click(screen.getByText('Neuen Code anzeigen'))
+      await screen.findByLabelText('QR-Code zum Anmelden mit dem Handy')
+      expect(requests).toBe(2)
+      // The second code's own expiry timer is still pending (fake time) — drop it before
+      // switching back to real timers so it can't fire (and update unmounted state) later.
+      vi.clearAllTimers()
+      vi.useRealTimers()
+    })
+  })
 })
