@@ -12,7 +12,7 @@ import type { PrismaClient } from '@prisma/client'
 import { prismaAdapter } from '@better-auth/prisma-adapter'
 import { betterAuth, type Auth, type BetterAuthOptions } from 'better-auth'
 import { getCookies } from 'better-auth/cookies'
-import { haveIBeenPwned } from 'better-auth/plugins'
+import { deviceAuthorization, haveIBeenPwned } from 'better-auth/plugins'
 import { hibpFailOpenPlugin } from './breach-check.js'
 import type { EmailSender } from './email-sender.js'
 import { createGuestAccountUpgradeHook } from './guest-account-upgrade.js'
@@ -27,6 +27,24 @@ const DEV_ONLY_FALLBACK_URL = 'http://localhost:3000'
  *  with a test double. Production MUST set real values. */
 const DEV_ONLY_GOOGLE_CLIENT_ID = 'dev-only-google-client-id'
 const DEV_ONLY_GOOGLE_CLIENT_SECRET = 'dev-only-google-client-secret'
+
+/**
+ * The `device-authorization` plugin's own HTTP surface (#238, RFC 8628 path names —
+ * exact strings from `better-auth/dist/plugins/device-authorization/routes.mjs`),
+ * switched off at the router via `disabledPaths` (ADR-0024). A browser must never
+ * reach these directly: `/device/token` returns a Bearer token in the JSON body
+ * instead of setting a session cookie (ADR-0008/0012 forbid holding one in
+ * JS-reachable storage), the plugin has no way to honour our "just for now" vs
+ * "trust this device" session-scope choice, no columns exist here to verify a
+ * request's browser/OS/region/time against, and `/device` (GET) skips the origin
+ * check for all GET requests — reachable cross-site under our `SameSite=None`
+ * cookie. `disabledPaths` gates HTTP routing only (`api/index.mjs`'s `onRequest`) —
+ * the server-side `auth.api.*` calls this app makes instead still work, which is the
+ * whole point of the wrapper (same shape as the `UserContextGuard` seam). A
+ * better-auth upgrade must re-check `routes.mjs`/`origin-check.mjs` before assuming
+ * this list is still complete — see ADR-0024.
+ */
+export const DEVICE_AUTHORIZATION_DISABLED_PATHS = ['/device/code', '/device/token', '/device', '/device/approve', '/device/deny']
 
 /**
  * Resolves the better-auth signing/encryption secret. Production must set
@@ -175,7 +193,21 @@ function buildOptions(options: CreateBetterAuthOptions): BetterAuthOptions {
     // behaviour it doesn't support alone — failing open on a provider outage instead
     // of hard-rejecting signup (see breach-check.ts). Order matters: it must run
     // after haveIBeenPwned() so it wraps the already-checking hash function.
-    plugins: [haveIBeenPwned(), hibpFailOpenPlugin],
+    //
+    // deviceAuthorization() (#238, ADR-0024): RFC 8628 mechanics only — code
+    // generation/expiry/polling-throttle/status transitions. Its own HTTP routes are
+    // switched off (`disabledPaths` below); our `/v1/device/*` endpoints call
+    // `auth.api.*` server-side instead. `expiresIn: '2m'`, not the 30m default — a QR
+    // on screen doesn't need half an hour, and the window is a direct multiplier on
+    // how many codes are pending (and therefore guessable) at once. `interval` and
+    // `generateUserCode` are left at their defaults: the default 8-char/32-symbol
+    // `generateUserCode` draws exactly 40 bits, uniformly (no modulo bias — 256 % 32
+    // === 0), and lengthening it only costs the human reading it off a screen.
+    plugins: [haveIBeenPwned(), hibpFailOpenPlugin, deviceAuthorization({ expiresIn: '2m' })],
+    // A browser must never reach the plugin's own HTTP routes (see the constant's own
+    // doc comment above for why) — this is what actually enforces that; the
+    // server-side `auth.api.*` calls this app makes are untouched by it.
+    disabledPaths: DEVICE_AUTHORIZATION_DISABLED_PATHS,
     rateLimit: {
       enabled: true,
       // Backed by the DB (the RateLimit table, ADR-0012 §5), not in-memory — a limit
@@ -191,8 +223,27 @@ function buildOptions(options: CreateBetterAuthOptions): BetterAuthOptions {
       // more path at the same strictness better-auth already applies to sign-in. Caught
       // by the real-Postgres REQ-011 acceptance test before this reached review — 12
       // wrong-password DELETE attempts never tripped 429 under the bare default.
+      //
+      // '/device' (ADR-0024): named here per the ADR, at the strictness a guessable
+      // 40-bit code deserves — but be clear-eyed about what it actually covers. This
+      // is better-auth's *router-bound* limiter (`onRequestRateLimit` in its
+      // `onRequest` hook, `api/index.mjs`); it only ever runs for a request that
+      // reaches the plugin's HTTP router, and `/device` is one of the five paths
+      // `disabledPaths` 404s before that limiter is even consulted (disabledPaths is
+      // checked first — same file, same hook). It also never fires for a direct
+      // `auth.api.*` in-process call, which is exactly the gap
+      // `verify-password-rate-limit.ts` documents and works around for
+      // `/verify-password`'s own in-process caller (`FreshAuthChecker`). The rule
+      // stays here because it is genuinely harmless and keeps the ADR's stated
+      // config real rather than aspirational — but it is NOT what protects
+      // `/v1/device/pending`, our own Nest endpoint that calls
+      // `auth.api.deviceVerify()` server-side and is the actual externally-reachable
+      // surface a code-guessing attacker would hit. That endpoint (task 2) needs its
+      // own DB-backed limiter in the `verify-password-rate-limit.ts` shape, keyed per
+      // IP, same window/max — tracked there, not solved by this entry alone.
       customRules: {
         '/verify-password': { window: 10, max: 3 },
+        '/device': { window: 60, max: 10 },
       },
     },
     advanced: {

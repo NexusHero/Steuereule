@@ -219,3 +219,35 @@ describe('OpenAPI contract for GET /v1/account/export (REQ-011/ADR-0013)', () =>
     }
   })
 })
+
+describe('OpenAPI contract for POST /v1/device/code (#238, task 0, ADR-0024)', () => {
+  let app: NestFastifyApplication
+  let document: OpenAPIObject
+
+  beforeAll(async () => {
+    app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter(), {
+      logger: false,
+    })
+    const config = new DocumentBuilder().setTitle('SteuerEule API').setVersion('1.0').build()
+    document = SwaggerModule.createDocument(app, config)
+  })
+
+  afterAll(async () => {
+    await app.close()
+  })
+
+  it('documents POST /v1/device/code returning the DeviceCodeResponse schema', () => {
+    const post = document.paths['/v1/device/code']?.post
+    expect(post).toBeDefined()
+    expect(post?.responses['201']).toBeDefined()
+  })
+
+  it('exposes DeviceCodeResponseDto with exactly the RFC 8628 fields the desktop needs', () => {
+    const schema = document.components?.schemas?.DeviceCodeResponseDto
+    expect(schema).toBeDefined()
+    const properties = (schema as { properties?: Record<string, unknown> }).properties ?? {}
+    expect(Object.keys(properties).sort()).toEqual(
+      ['userCode', 'deviceCode', 'verificationUriComplete', 'expiresIn', 'interval'].sort(),
+    )
+  })
+})
