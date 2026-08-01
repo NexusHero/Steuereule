@@ -50,13 +50,41 @@ describe('resolveTrustedProxies', () => {
     expect(() => resolveTrustedProxies({ TRUSTED_PROXIES: '::1/129' })).toThrow(/invalid entries: ::1\/129/)
   })
 
-  // Musti's review explicitly did NOT prescribe a floor on how broad a prefix may be
-  // (e.g. rejecting 0.0.0.0/0) — @fastify/proxy-addr already throws on that itself for
-  // its own consumer, and a guard added here "on suspicion" without a failing case to
-  // justify it is exactly the kind of unproven control this project has spent a whole
-  // day removing elsewhere. This test records that choice as deliberate, not an
-  // oversight: it stays green precisely because no floor was added.
-  it('does not reject an overly broad range on its own — that guard belongs to whichever consumer actually needs it, proven by a failing case first', () => {
-    expect(resolveTrustedProxies({ TRUSTED_PROXIES: '0.0.0.0/0' })).toEqual(['0.0.0.0/0'])
+  // No floor on prefix breadth is built here (#241, Musti's review). Measured, not
+  // assumed: @fastify/proxy-addr@5.1.0 throws only on the *exact* range `0.0.0.0/0`;
+  // `0.0.0.0/1`/`::/1` pass through it silently and return the attacker-controlled
+  // leftmost value, while `/2`/`/8` were harmless in the one setup measured so far.
+  // That failure mode belongs to proxy-addr/Fastify's `trustProxy`, which this ticket
+  // does not wire (#238's own follow-up, consuming this resolver's output) —
+  // better-auth's own algorithm, the only consumer wired here, fails the *opposite*
+  // direction on an overly-broad range (converges toward `null`, not an
+  // attacker-chosen value), so there is no failing case against THIS ticket's actual
+  // consumer to justify a guard here yet. This test records that as a deliberate,
+  // named deferral to #238 — not an oversight, and not "Musti checked this and it's
+  // fine everywhere" (an earlier draft of this comment said exactly that, incorrectly
+  // generalising a narrower, explicitly-scoped measurement; corrected here).
+  it('does not reject an overly broad range on its own — that guard belongs to #238’s Fastify/proxy-addr consumer, proven by a failing case there first', () => {
+    expect(resolveTrustedProxies({ TRUSTED_PROXIES: '0.0.0.0/1' })).toEqual(['0.0.0.0/1'])
+  })
+})
+
+describe('resolveTrustedProxies — F1 regression: node:net’s isIP, not a hand-rolled regex', () => {
+  // Musti's review measured the earlier hand-rolled `ipFamily` regex against
+  // `node:net`'s own `isIP` and found it wrong in both directions on 6 of 9 samples —
+  // the security-relevant direction is the false negative: this resolver exists
+  // specifically to fail loud on an unparseable entry (unlike better-auth's own
+  // findInvalidTrustedProxies, which only warns), so a valid entry this resolver
+  // wrongly rejects is a boot-abort an operator did nothing to deserve, and a value
+  // this resolver wrongly *accepts* as a hop to trust, that better-auth's own (more
+  // lenient) parser then silently drops, leaves the operator believing a hop is
+  // trusted when it is not — exactly the gap this resolver was built to prevent.
+  it('rejects garbage that a permissive regex could mistake for IPv6', () => {
+    expect(() => resolveTrustedProxies({ TRUSTED_PROXIES: '::::' })).toThrow(/invalid entries: ::::/)
+    expect(() => resolveTrustedProxies({ TRUSTED_PROXIES: '1:2:3' })).toThrow(/invalid entries: 1:2:3/)
+    expect(() => resolveTrustedProxies({ TRUSTED_PROXIES: '2001:db8::1::2' })).toThrow(/invalid entries: 2001:db8::1::2/)
+  })
+
+  it('accepts a real IPv4-mapped IPv6 address — better-auth’s own ip.mjs handles this shape explicitly (extractIPv4FromMapped)', () => {
+    expect(resolveTrustedProxies({ TRUSTED_PROXIES: '::ffff:1.2.3.4' })).toEqual(['::ffff:1.2.3.4'])
   })
 })

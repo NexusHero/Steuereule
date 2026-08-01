@@ -37,10 +37,18 @@ async function cleanUp(prisma: PrismaClient): Promise<void> {
 // names as bypassable.
 const SIGN_IN_WINDOW_MAX = 3
 
+// A trusted Origin, matching CORS_ALLOWED_ORIGINS below — without it, better-auth's
+// own origin-check middleware (origin-check.mjs's `validateFormCsrf`) rejects the
+// request with 403 MISSING_OR_NULL_ORIGIN before ever reaching credential
+// validation (Node's `fetch()` sets Fetch Metadata headers plain `curl` doesn't,
+// which trips this; checked directly, not assumed). That 403 happens to also prove
+// A1's point (it's also never 429), but it would make the test read as asserting an
+// accident of the HTTP client rather than the actual failed-login status this test
+// means to name — sending Origin exercises the real credential-check path instead.
 async function attemptSignIn(baseUrl: string, xForwardedFor: string): Promise<number> {
   const response = await fetch(`${baseUrl}/api/auth/sign-in/email`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-forwarded-for': xForwardedFor },
+    headers: { 'content-type': 'application/json', origin: 'https://allowed.example.com', 'x-forwarded-for': xForwardedFor },
     body: JSON.stringify({ email: 'trusted-proxies-probe@example.com', password: 'definitely-wrong-password' }),
   })
   return response.status
@@ -80,7 +88,16 @@ describe('#241 A1 — TRUSTED_PROXIES unset: today’s live bypass, kept as a pe
       // therefore differs every time, so no bucket ever accumulates past 1.
       statuses.push(await attemptSignIn(baseUrl, `203.0.113.${i + 1}`))
     }
-    expect(statuses).not.toContain(429)
+    // Positive expectation, not an absence (Musti's review, ADR-0021: "a check states
+    // its expectation independently of what it checks" — `not.toContain(429)` would
+    // stay green if every request 500'd, or 404'd after a path move, or the server
+    // never came up at all, none of which say anything about the bypass). Every
+    // attempt is a genuine failed login against a real, existing account with the
+    // wrong password — 401 INVALID_EMAIL_OR_PASSWORD, checked directly against the
+    // real server before writing this assertion, not guessed. This test would go red
+    // on a broken endpoint AND on a returned 429, and green only when the exact
+    // condition it names actually holds.
+    expect(statuses).toEqual(Array(SIGN_IN_WINDOW_MAX + 3).fill(401))
   })
 })
 
