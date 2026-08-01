@@ -6,6 +6,9 @@ import { View } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
 import { I18nextProvider, useTranslation } from 'react-i18next'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { NavigationContainer, type LinkingOptions } from '@react-navigation/native'
+import { createNativeStackNavigator, type NativeStackScreenProps } from '@react-navigation/native-stack'
+import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { TabBar, TAB_ICON_PATHS, ThemeProvider, useTheme, type TabItem } from '@steuereule/ui'
 import { configureApiClient } from '@steuereule/api-client'
 import { createAppI18n } from './src/i18n/app-i18n'
@@ -35,58 +38,130 @@ configureApiClient({ baseUrl: apiBaseUrl })
 // client has no post-construction reconfigure hook, unlike configureApiClient).
 const authClient = createAppAuthClient(apiBaseUrl)
 
-/** The linear entry flow, and then `app` — the tabbed shell everything else lives in. */
-type Stage = 'splash' | 'login' | 'register' | 'onboarding' | 'app'
+/**
+ * The app's real, URL-addressable route table (ADR-0023, #238 task 1b) — what `Stage` used to be
+ * as a `useState` union. Retired in its favour: every one of these is now a real, externally
+ * openable URL, not in-memory state. `App` is a real, plain data shape for one entry; params stay
+ * `undefined` everywhere today because nothing here reads one yet, deliberately named ahead of
+ * #238's own device-authorization route rather than left for that slice to invent.
+ */
+type RootStackParamList = {
+  Splash: undefined
+  Login: undefined
+  Registrierung: undefined
+  Onboarding: undefined
+  App: undefined
+}
+
+const RootStack = createNativeStackNavigator<RootStackParamList>()
+
+/** Maps every route above to a path — the mechanism AC-1 (#238) needs: a URL that resolves to a
+ * screen through a real router, not a query-param stand-in. `prefixes` stays empty; this app is
+ * `web.output: "single"` and RN-Web's own history integration needs no origin allowlist here. */
+const linking: LinkingOptions<RootStackParamList> = {
+  prefixes: [],
+  config: {
+    screens: {
+      Splash: '',
+      Login: 'login',
+      Registrierung: 'registrierung',
+      Onboarding: 'onboarding',
+      App: 'app',
+    },
+  },
+}
 
 /** Only the tabs that have a real screen behind them. Grows as screens land. */
 type Tab = 'cockpit' | 'profil'
 
+/**
+ * Composition root only — this is the one file in `apps/mobile-web` allowed to import
+ * `@react-navigation/*` (ADR-0023). Every `*Screen` component below keeps taking plain callback
+ * props exactly as before; the route wrapper components in this file are what translate a screen's
+ * `onDone`/`onGuest`/… into a `navigation.replace`/`navigate` call, so a screen itself never sees
+ * a navigation object, a route param, or a router import.
+ */
 export default function App() {
-  // Splash always leads to Login today — there's no session-detection mechanism yet to send a
-  // returning user straight into the app instead (REQ-009, pending); see SplashScreen's notes.
-  const [stage, setStage] = useState<Stage>('splash')
-  // Cockpit (REQ-001) is where onboarding lands, matching the DS reference's own default tab.
+  return (
+    <SafeAreaProvider>
+      <QueryClientProvider client={queryClient}>
+        <I18nextProvider i18n={i18n}>
+          <ThemeProvider mode="light">
+            <AuthClientProvider client={authClient}>
+              <View style={{ flex: 1 }}>
+                <NavigationContainer linking={linking}>
+                  <RootStack.Navigator screenOptions={{ headerShown: false }}>
+                    <RootStack.Screen name="Splash" component={SplashRoute} />
+                    <RootStack.Screen name="Login" component={LoginRoute} />
+                    <RootStack.Screen name="Registrierung" component={RegistrierungRoute} />
+                    <RootStack.Screen name="Onboarding" component={OnboardingRoute} />
+                    <RootStack.Screen name="App" component={AppRoute} />
+                  </RootStack.Navigator>
+                </NavigationContainer>
+                <StatusBar style="dark" />
+              </View>
+            </AuthClientProvider>
+          </ThemeProvider>
+        </I18nextProvider>
+      </QueryClientProvider>
+    </SafeAreaProvider>
+  )
+}
+
+// Splash always leads to Login today — there's no session-detection mechanism yet to send a
+// returning user straight into the app instead (REQ-009, pending); see SplashScreen's notes.
+// `replace`, not `navigate`: Splash is a one-time intro, never a page a back button should return
+// to (matches the old `setStage` overwrite semantics exactly).
+function SplashRoute({ navigation }: NativeStackScreenProps<RootStackParamList, 'Splash'>) {
+  return <SplashScreen onAdvance={() => navigation.replace('Login')} />
+}
+
+// `replace` throughout, not `navigate`: none of these screens offers a way back to the one
+// before it today (RegistrierungScreen has no "back to Login" affordance, matching the old
+// `Stage` union, which never had a history to go back through either — `useState` only ever
+// held the current value). `replace` reproduces that exactly and, as a side effect, avoids
+// `native-stack`'s backgrounded-but-still-mounted previous screen (kept resident for the native
+// slide-back transition) ever sitting in the DOM next to the active one.
+function LoginRoute({ navigation }: NativeStackScreenProps<RootStackParamList, 'Login'>) {
+  return (
+    <LoginScreen
+      onDone={() => navigation.replace('Onboarding')}
+      onGuest={() => navigation.replace('Onboarding')}
+      onRegister={() => navigation.replace('Registrierung')}
+    />
+  )
+}
+
+function RegistrierungRoute({ navigation }: NativeStackScreenProps<RootStackParamList, 'Registrierung'>) {
+  return <RegistrierungScreen onDone={() => navigation.replace('Onboarding')} />
+}
+
+function OnboardingRoute({ navigation }: NativeStackScreenProps<RootStackParamList, 'Onboarding'>) {
+  return <OnboardingScreen onDone={() => navigation.replace('App')} />
+}
+
+// Cockpit (REQ-001) is where onboarding lands, matching the DS reference's own default tab. Tab
+// state stays local to this route, exactly as it lived on `App` before — the tab bar was never a
+// `Stage` transition, so it stays in-memory rather than gaining a URL of its own here.
+function AppRoute({ navigation }: NativeStackScreenProps<RootStackParamList, 'App'>) {
   const [tab, setTab] = useState<Tab>('cockpit')
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={i18n}>
-        <ThemeProvider mode="light">
-          <AuthClientProvider client={authClient}>
-            <View style={{ flex: 1 }}>
-              {stage === 'splash' ? <SplashScreen onAdvance={() => setStage('login')} /> : null}
-              {stage === 'login' ? (
-                <LoginScreen
-                  onDone={() => setStage('onboarding')}
-                  onGuest={() => setStage('onboarding')}
-                  onRegister={() => setStage('register')}
-                />
-              ) : null}
-              {stage === 'register' ? <RegistrierungScreen onDone={() => setStage('onboarding')} /> : null}
-              {stage === 'onboarding' ? <OnboardingScreen onDone={() => setStage('app')} /> : null}
-              {stage === 'app' ? (
-                <TabbedShell
-                  tab={tab}
-                  onTabChange={setTab}
-                  onSignedOut={() => {
-                    // REQ-011 (ADR-0013): the server already cleared the session cookie on a
-                    // successful DELETE /v1/account — the client must not keep showing a screen
-                    // for an account that no longer exists, and must not let the next session
-                    // (guest or a different account) see this one's cached data (Slice-1-retro
-                    // class honesty bug). App owns both `stage` and `queryClient`, so it's the
-                    // one place that can retire both at once.
-                    queryClient.clear()
-                    setTab('cockpit')
-                    setStage('login')
-                  }}
-                />
-              ) : null}
-              <StatusBar style="dark" />
-            </View>
-          </AuthClientProvider>
-        </ThemeProvider>
-      </I18nextProvider>
-    </QueryClientProvider>
+    <TabbedShell
+      tab={tab}
+      onTabChange={setTab}
+      onSignedOut={() => {
+        // REQ-011 (ADR-0013): the server already cleared the session cookie on a
+        // successful DELETE /v1/account — the client must not keep showing a screen
+        // for an account that no longer exists, and must not let the next session
+        // (guest or a different account) see this one's cached data (Slice-1-retro
+        // class honesty bug). App owns both `stage` and `queryClient`, so it's the
+        // one place that can retire both at once.
+        queryClient.clear()
+        setTab('cockpit')
+        navigation.replace('Login')
+      }}
+    />
   )
 }
 
