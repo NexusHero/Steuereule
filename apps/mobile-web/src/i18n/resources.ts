@@ -198,6 +198,20 @@ export const appResources = {
           body: 'Steuerdaten sind das Privateste, was eine App anfassen kann. Deshalb steht hier alles — kurz, konkret, nachprüfbar.',
         },
         sessionChecking: 'Wird geprüft …',
+        // #238, ADR-0024 (task 0c) — two disclosures, both new to this text, neither new to
+        // what the server actually stores: Session.ipAddress/userAgent are collected for
+        // every session since day one (see prisma/schema.prisma), and what's new here is
+        // that a signed-in user can now see that data themselves, in their own Geräte-Liste
+        // (Profil). The geo-IP resolution is genuinely new processing, added for the
+        // QR-Code-Login's match-verification screen — see attribution below for the source.
+        deviceSessions: {
+          heading: 'Anmeldungen & Geräte',
+          sessionData:
+            'Bei jeder Anmeldung speichern wir die IP-Adresse und den Gerätetyp (User-Agent) der jeweiligen Sitzung — das war schon immer so. Neu ist: Wenn du dich per QR-Code von einem neuen Gerät aus anmeldest, siehst du diese Angaben jetzt selbst — als Vergleichshilfe auf dem Bestätigungsbildschirm und in deiner eigenen Geräte-Liste in Profil, wo du jede Sitzung einzeln abmelden kannst.',
+          geoIp:
+            'Für die QR-Code-Anmeldung lösen wir die IP-Adresse des anfragenden Geräts zusätzlich auf Länderebene auf (z. B. "Deutschland"), nie genauer — das hilft dir, eine fremde Anfrage von deiner eigenen zu unterscheiden. Diese Auflösung läuft vollständig auf unseren eigenen EU-Servern, mit einer selbst gehosteten, regelmäßig aktualisierten Datenbank; deine IP-Adresse verlässt dafür nie unsere Infrastruktur und geht an keinen externen Anbieter. Ist die Datenbank veraltet oder eine Adresse nicht zuordenbar, zeigen wir ehrlich "Region unbekannt" statt zu raten.',
+          geoIpAttribution: 'Länderdaten: DB-IP.com, Lizenz CC BY 4.0.',
+        },
         guest: {
           heading: 'Noch kein Konto',
           body: 'Für ein Gast-Profil ohne Konto gibt es weder einen Export noch eine Kontolöschung. Leg ein Konto an, um dein Recht auf Auskunft (Art. 15) und Löschung (Art. 17) wahrzunehmen.',
@@ -449,6 +463,14 @@ export const appResources = {
           body: "Tax data is about the most private thing an app can touch. So here's everything — short, concrete, checkable.",
         },
         sessionChecking: 'Checking …',
+        deviceSessions: {
+          heading: 'Sign-ins & devices',
+          sessionData:
+            "Every sign-in stores that session's IP address and device type (User-Agent) — that has always been true. What's new: when you sign in from a new device via QR code, you now see that data yourself — as a comparison aid on the confirmation screen, and in your own device list in Profile, where you can sign each session out individually.",
+          geoIp:
+            "For QR-code sign-in we additionally resolve the requesting device's IP address to a country (e.g. \"Germany\"), never anything more precise — this helps you tell a stranger's request apart from your own. That resolution runs entirely on our own EU servers, against a self-hosted database we keep up to date; your IP address never leaves our infrastructure and is never sent to a third-party provider. If the database is out of date or an address can't be matched, we honestly show \"Region unknown\" rather than guess.",
+          geoIpAttribution: 'Country data: DB-IP.com, licensed CC BY 4.0.',
+        },
         guest: {
           heading: 'No account yet',
           body: "A guest profile without an account has neither an export nor an account to delete. Create an account to exercise your right to access (Art. 15) and erasure (Art. 17).",
