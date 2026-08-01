@@ -232,6 +232,26 @@ export const appResources = {
         deineDaten: {
           rowLabel: 'So schützen wir deine Daten (DSGVO)',
         },
+        // #238, Decision 6 — every session on the account, not just QR-authorized ones. No
+        // region here (see DeviceListSection.tsx's header comment) — Musti's ADR-0021 control
+        // test showed the only deployment-config candidate for a trustworthy client IP still
+        // returns a spoofable address, so `Session.region` was never built; fail-closed.
+        devices: {
+          heading: 'Angemeldete Geräte',
+          loading: 'Geräte werden geladen …',
+          loadError: 'Deine Geräte konnten nicht geladen werden. Prüf die Verbindung und versuch es noch mal.',
+          empty: 'Keine weiteren Geräte angemeldet.',
+          browser: 'Browser',
+          os: 'Betriebssystem',
+          lastActive: 'Letzte Aktivität',
+          unknownBrowser: 'Unbekannter Browser',
+          unknownOs: 'Unbekanntes Betriebssystem',
+          unknownTime: 'Zeitpunkt unbekannt',
+          currentDevice: 'Dieses Gerät',
+          signOut: 'Abmelden',
+          revoking: 'Wird abgemeldet …',
+          revokeError: 'Das hat nicht geklappt. Versuch es noch einmal.',
+        },
       },
       // REQ-011 (ADR-0013) — Datenschutz screen: DSGVO export (Art. 15/20) + account deletion
       // (Art. 17), reached from Profil. The delete copy is corrected, not ported from the DS
@@ -545,6 +565,22 @@ export const appResources = {
         },
         deineDaten: {
           rowLabel: 'How we protect your data (GDPR)',
+        },
+        devices: {
+          heading: 'Signed-in devices',
+          loading: 'Loading devices …',
+          loadError: "Your devices couldn't be loaded. Check your connection and try again.",
+          empty: 'No other devices signed in.',
+          browser: 'Browser',
+          os: 'Operating system',
+          lastActive: 'Last active',
+          unknownBrowser: 'Unknown browser',
+          unknownOs: 'Unknown operating system',
+          unknownTime: 'Unknown time',
+          currentDevice: 'This device',
+          signOut: 'Sign out',
+          revoking: 'Signing out …',
+          revokeError: "That didn't work. Please try again.",
         },
       },
       datenschutz: {

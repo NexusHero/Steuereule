@@ -67,4 +67,9 @@ export const server = setupServer(
   // this read must land on absent a positive answer (#194, RegistrierungScreen). Tests that
   // need a real session (or a session-fetch error) override with `server.use(...)`.
   http.get('*/api/auth/get-session', () => HttpResponse.json(null)),
+  // #238 — the device list's own `listSessions()` read. Defaults to an empty list, the
+  // simplest answer that keeps every existing ProfilScreen-rendering test undisturbed by a
+  // section it isn't testing; DeviceListSection's own suite overrides with real session rows
+  // (and with an error response, for its own honest-failure test) via `server.use(...)`.
+  http.get('*/api/auth/list-sessions', () => HttpResponse.json([])),
 )

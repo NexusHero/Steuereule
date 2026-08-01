@@ -235,7 +235,9 @@ function TabbedShell({ tab, onTabChange, onSignedOut }: TabbedShellProps) {
   return (
     <View style={{ flex: 1 }}>
       {tab === 'cockpit' ? <CockpitScreen /> : null}
-      {tab === 'profil' && profilView === 'main' ? <ProfilScreen onOpenDatenschutz={() => setProfilView('datenschutz')} /> : null}
+      {tab === 'profil' && profilView === 'main' ? (
+        <ProfilScreen onOpenDatenschutz={() => setProfilView('datenschutz')} onSignedOut={onSignedOut} />
+      ) : null}
       {tab === 'profil' && profilView === 'datenschutz' ? (
         <DatenschutzScreen onZurueck={() => setProfilView('main')} onAccountDeleted={onSignedOut} />
       ) : null}

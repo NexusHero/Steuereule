@@ -21,15 +21,20 @@ import { useProfileControllerGetProfile, useProfileControllerPutProfile } from '
 import { APP_NS } from '../i18n/resources'
 import { formatSteuerId, formatSteuerNr, countDigits } from './onboarding/format'
 import { toOnboardingProfil, toPutProfileDto, type OnboardingProfil } from './onboarding/profileMapping'
+import { DeviceListSection } from './device/DeviceListSection'
 
 export interface ProfilScreenProps {
   /** Navigates to the Datenschutz screen (REQ-011) — Profil never renders it itself; the DS
    *  reference (`Profil.jsx`'s `geheZu('datenschutz')`) and TAB_ORDNUNG both make Datenschutz
    *  a screen reached *from* Profil, not a sub-view owned by it. */
   readonly onOpenDatenschutz: () => void
+  /** Fires when the device list (#238) revokes the session this very screen is running
+   *  under — the same "never a stale screen for a gone account" contract
+   *  DatenschutzScreen's `onAccountDeleted` already honours for account deletion. */
+  readonly onSignedOut: () => void
 }
 
-export function ProfilScreen({ onOpenDatenschutz }: ProfilScreenProps) {
+export function ProfilScreen({ onOpenDatenschutz, onSignedOut }: ProfilScreenProps) {
   const { t: tr } = useTranslation(APP_NS)
   const bp = useBreakpoint()
   const queryClient = useQueryClient()
@@ -106,7 +111,16 @@ export function ProfilScreen({ onOpenDatenschutz }: ProfilScreenProps) {
     )
   }
 
-  return <ProfilView profil={profil} onEdit={startEdit} justSaved={justSaved} bp={bp} onOpenDatenschutz={onOpenDatenschutz} />
+  return (
+    <ProfilView
+      profil={profil}
+      onEdit={startEdit}
+      justSaved={justSaved}
+      bp={bp}
+      onOpenDatenschutz={onOpenDatenschutz}
+      onSignedOut={onSignedOut}
+    />
+  )
 }
 
 function ProfilLoading({ bp }: { readonly bp: Breakpoint }) {
@@ -149,9 +163,10 @@ interface ProfilViewProps {
   readonly justSaved: boolean
   readonly bp: Breakpoint
   readonly onOpenDatenschutz: () => void
+  readonly onSignedOut: () => void
 }
 
-function ProfilView({ profil, onEdit, justSaved, bp, onOpenDatenschutz }: ProfilViewProps) {
+function ProfilView({ profil, onEdit, justSaved, bp, onOpenDatenschutz, onSignedOut }: ProfilViewProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
@@ -188,6 +203,10 @@ function ProfilView({ profil, onEdit, justSaved, bp, onOpenDatenschutz }: Profil
           <Text style={styles.datenRowArrow} aria-hidden={true}>→</Text>
         </Pressable>
       </Card>
+
+      {/* #238 — every session on the account, not just QR-authorized ones (Decision 6). Its
+          own file carries the region omission's full reasoning. */}
+      <DeviceListSection onCurrentSessionRevoked={onSignedOut} />
     </ScrollView>
   )
 }
