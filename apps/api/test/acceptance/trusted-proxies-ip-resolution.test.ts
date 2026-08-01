@@ -92,11 +92,14 @@ describe('#241 A1 — TRUSTED_PROXIES unset: today’s live bypass, kept as a pe
     // its expectation independently of what it checks" — `not.toContain(429)` would
     // stay green if every request 500'd, or 404'd after a path move, or the server
     // never came up at all, none of which say anything about the bypass). Every
-    // attempt is a genuine failed login against a real, existing account with the
-    // wrong password — 401 INVALID_EMAIL_OR_PASSWORD, checked directly against the
-    // real server before writing this assertion, not guessed. This test would go red
-    // on a broken endpoint AND on a returned 429, and green only when the exact
-    // condition it names actually holds.
+    // attempt is a genuine failed login against an account that does not exist (no
+    // beforeEach/signUp seeds one, and afterEach's cleanUp() deletes every user row
+    // regardless) — better-auth deliberately answers that the same way it answers a
+    // wrong password against a real account, 401 INVALID_EMAIL_OR_PASSWORD, so the
+    // endpoint can't be used to enumerate accounts; checked directly against the real
+    // server before writing this assertion, not guessed. This test would go red on a
+    // broken endpoint AND on a returned 429, and green only when the exact condition
+    // it names actually holds.
     expect(statuses).toEqual(Array(SIGN_IN_WINDOW_MAX + 3).fill(401))
   })
 })
