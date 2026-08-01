@@ -15,6 +15,7 @@ import { resolveBetterAuthSecret } from '../auth/better-auth.js'
 import { PrismaService } from '../prisma/prisma.service.js'
 import { deviceAuthorizationApi } from './device-authorization-api.js'
 import { translateDeviceApiError } from './device-api-error.js'
+import { consumeDeviceCodeRateLimit } from './device-code-rate-limit.js'
 import { DEVICE_CODE_REPOSITORY, type DeviceCodeRepository } from './device-code.repository.js'
 import { consumeDevicePendingRateLimit } from './device-pending-rate-limit.js'
 import type { DeviceCodeResponseDto } from './dto/device-code-response.dto.js'
@@ -56,6 +57,14 @@ export class DeviceService {
   ) {}
 
   async requestCode(origin: DeviceCodeRequestOrigin): Promise<DeviceCodeResponseDto> {
+    // Keyed on the same `request.ip` the controller already documents as the raw
+    // socket peer (no `trustProxy` configured yet): behind a reverse proxy, every
+    // caller collapses onto one shared key and this limiter throttles everyone
+    // together rather than per real client — the existing `trustProxy` deployment
+    // follow-up (device.controller.ts) is load-bearing for this limiter too, not
+    // merely cosmetic.
+    await consumeDeviceCodeRateLimit(this.prisma, `device-code:${origin.ip ?? 'no-ip'}`)
+
     const result = await deviceAuthorizationApi(this.betterAuth.auth).deviceCode({
       body: { client_id: DEVICE_AUTHORIZATION_CLIENT_ID },
     })

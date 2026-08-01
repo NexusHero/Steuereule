@@ -2,6 +2,7 @@
 // (#238, ADR-0024). Real Postgres, real HTTP against the actual `buildApp()` boot
 // (never `.inject()` — see req-009's own header comment for why the mount is
 // `.inject()`-blind).
+import http from 'node:http'
 import type { NestFastifyApplication } from '@nestjs/platform-fastify'
 import { PrismaClient } from '@prisma/client'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
@@ -41,11 +42,35 @@ describe('REQ-014 task 0 — device-authorization plugin registration, against t
 
   afterEach(async () => {
     await prisma.$executeRawUnsafe(`DELETE FROM "DeviceCode"`)
+    await prisma.rateLimit.deleteMany()
   })
 
   afterAll(async () => {
     await app.close()
   })
+
+  /**
+   * Posts to `/v1/device/code` from a genuinely distinct *real* source address —
+   * `localAddress` binds the outgoing TCP connection's own end, so the server's
+   * `request.ip` (the raw socket peer, no `trustProxy`) actually differs, real HTTP,
+   * no header spoofing `disableOriginCheck`/`trustProxy` would otherwise make moot.
+   * 127.0.0.0/8 is all loopback on Linux — 127.0.0.2 routes to this same server
+   * without any extra interface configuration, verified against this real listener.
+   */
+  function postDeviceCodeFrom(localAddress: string): Promise<number> {
+    return new Promise((resolve, reject) => {
+      const url = new URL(`${baseUrl}/v1/device/code`)
+      const request = http.request(
+        { host: url.hostname, port: url.port, path: '/v1/device/code', method: 'POST', localAddress, headers: { 'user-agent': 'RateLimitProbe/1.0' } },
+        (response) => {
+          response.resume()
+          response.on('end', () => resolve(response.statusCode ?? 0))
+        },
+      )
+      request.on('error', reject)
+      request.end()
+    })
+  }
 
   it('the migration is applied — the DeviceCode table exists and is queryable', async () => {
     await expect(prisma.deviceCode.findMany()).resolves.toEqual([])
@@ -129,5 +154,29 @@ describe('REQ-014 task 0 — device-authorization plugin registration, against t
 
     const directVerify = await fetch(`${baseUrl}/api/auth/device?user_code=AAAAAAAA`)
     expect(directVerify.status).toBe(404)
+  })
+
+  // Musti's #239 ruling: not the entropy margin (an attacker-minted code is worthless
+  // to guess — it points at the attacker's own desktop) but write-amplification — an
+  // unauthenticated, unthrottled mint writes a permanent row nothing ever deletes
+  // (~14.9 GB/day measured against real Postgres at local write capacity). Three
+  // assertions, each killing a different broken limiter (ADR-0021):
+  it('POST /v1/device/code is rate-limited at window 60s / max 10 per IP — the write-amplification ADR-0024 names', async () => {
+    let lastStatus = 0
+    for (let i = 0; i < 11; i++) {
+      lastStatus = await postDeviceCodeFrom('127.0.0.1')
+    }
+    // (1) the 11th mint from the same IP within the window is rejected.
+    expect(lastStatus).toBe(429)
+
+    // (2) and writes no row — a limiter that inserts-then-429s would still pass (1)
+    // alone; the 10 allowed mints above are the only rows that may exist.
+    await expect(prisma.deviceCode.count()).resolves.toBe(10)
+
+    // (3) a different IP within the very same window still gets 201 — the
+    // discriminating half: a limiter that rejects everything unconditionally would
+    // otherwise pass (1) and (2) too.
+    const otherIpStatus = await postDeviceCodeFrom('127.0.0.2')
+    expect(otherIpStatus).toBe(201)
   })
 })
