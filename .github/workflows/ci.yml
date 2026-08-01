@@ -126,6 +126,9 @@ jobs:
       # it actually exercises.
       BETTER_AUTH_SECRET: ci-integration-test-better-auth-secret-0123456789
       BETTER_AUTH_URL: http://localhost:3000
+      # #241: no real reverse proxy in front of this job's server — declared
+      # explicitly for the same self-documenting reason as the two lines above.
+      TRUSTED_PROXIES: none
     steps:
       - uses: actions/checkout@v5
       - name: Set up pnpm
@@ -207,6 +210,9 @@ jobs:
       # smoke request below send a real, allow-listed Origin so it can assert the
       # actual CORS response header, not just that the server answers (ADR-0011).
       CORS_ALLOWED_ORIGINS: http://localhost:8081
+      # #241: no real reverse proxy in front of this job's server — declared
+      # explicitly, same self-documenting reason as the two lines above.
+      TRUSTED_PROXIES: none
     steps:
       - uses: actions/checkout@v5
       - name: Set up pnpm
@@ -436,6 +442,8 @@ jobs:
       BETTER_AUTH_URL: http://localhost:3301
       PORT: '3301'
       CORS_ALLOWED_ORIGINS: http://localhost:4173
+      # #241: no real reverse proxy in front of this job's server either.
+      TRUSTED_PROXIES: none
       EXPO_PUBLIC_API_BASE_URL: http://localhost:3301
     steps:
       - uses: actions/checkout@v5

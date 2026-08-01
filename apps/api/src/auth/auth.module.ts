@@ -11,6 +11,7 @@ import { Global, Module } from '@nestjs/common'
 import { PrismaModule } from '../prisma/prisma.module.js'
 import { PrismaService } from '../prisma/prisma.service.js'
 import { resolveCorsOrigins } from '../cors/resolve-cors-origins.js'
+import { resolveTrustedProxies } from '../config/trusted-proxies.js'
 import { BETTER_AUTH_BUNDLE } from './auth.tokens.js'
 import { createBetterAuth, resolveBetterAuthSecret, resolveBetterAuthUrl, resolveGoogleClientId, resolveGoogleClientSecret } from './better-auth.js'
 import { EMAIL_SENDER, type EmailSender } from './email-sender.js'
@@ -39,6 +40,9 @@ import { AuthCapabilitiesController } from './auth-capabilities.controller.js'
           // Google OAuth (REQ-008): credentials from env, dev-only fallback outside prod.
           googleClientId: resolveGoogleClientId(),
           googleClientSecret: resolveGoogleClientSecret(),
+          // #241: which reverse-proxy hops to trust when reading X-Forwarded-For —
+          // governs Session.ipAddress and better-auth's own built-in rate limiter.
+          trustedProxies: resolveTrustedProxies(),
         }),
     },
     UserContextGuard,
