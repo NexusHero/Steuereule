@@ -13,6 +13,14 @@ process.env.BETTER_AUTH_URL = 'http://127.0.0.1:0' // overwritten to the real ep
 const ALLOWED_ORIGIN = 'https://allowed.example.com'
 process.env.CORS_ALLOWED_ORIGINS = ALLOWED_ORIGIN
 
+// Deliberately a *different* origin from BETTER_AUTH_URL above (a different host
+// entirely, not just a different port) — the whole point of this fixture. If
+// `verificationUri` were ever dropped from the deviceAuthorization() plugin config,
+// better-auth's own fallback would resolve the verification link against its
+// `baseURL` (BETTER_AUTH_URL) instead, and the test below would go red.
+const WEB_APP_ORIGIN = 'https://web-app.example.com'
+process.env.WEB_APP_URL = WEB_APP_ORIGIN
+
 describe('REQ-014 task 0 — device-authorization plugin registration, against the real server', () => {
   let app: NestFastifyApplication
   let baseUrl: string
@@ -62,6 +70,30 @@ describe('REQ-014 task 0 — device-authorization plugin registration, against t
     expect(body.verificationUriComplete).toContain(body.userCode)
     // ADR-0024: expiresIn: '2m', not the plugin's 30m default.
     expect(body.expiresIn).toBe(120)
+  })
+
+  // ADR-0021: a control is proven by breaking it. This shipped broken once already —
+  // every other assertion here only checks that `userCode` appears *somewhere* in
+  // `verificationUriComplete`, which is equally true whether the link points at the
+  // web app or, as it did before this fix, at this very API server's own origin (a
+  // phone then lands on a bare Fastify 404, no route, no HTML — the feature would
+  // ship dead with every other assertion in this file green). Asserts against
+  // `process.env.WEB_APP_URL` — the value's own origin — rather than a literal this
+  // test would otherwise have to keep in sync by hand.
+  it('the verification URL points at the web app\'s own origin, never at this API (#238)', async () => {
+    const response = await fetch(`${baseUrl}/v1/device/code`, {
+      method: 'POST',
+      headers: { 'user-agent': 'IntegrationTestAgent/1.0' },
+    })
+    const body = (await response.json()) as { verificationUriComplete: string }
+
+    expect(body.verificationUriComplete.startsWith(WEB_APP_ORIGIN)).toBe(true)
+    // `baseUrl` is this test's own real, listening API server (the ephemeral
+    // 127.0.0.1 port bound above) — proving the link does NOT resolve there is the
+    // actual regression this guards: without `verificationUri` set explicitly, the
+    // plugin's own fallback (`buildVerificationUris`) resolves against exactly this
+    // origin instead.
+    expect(body.verificationUriComplete.startsWith(baseUrl)).toBe(false)
   })
 
   it('stamps the desktop\'s own User-Agent/IP/requestedAt onto the row, status "pending"', async () => {

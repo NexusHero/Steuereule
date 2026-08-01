@@ -13,7 +13,14 @@ import { PrismaService } from '../prisma/prisma.service.js'
 import { resolveCorsOrigins } from '../cors/resolve-cors-origins.js'
 import { resolveTrustedProxies } from '../config/trusted-proxies.js'
 import { BETTER_AUTH_BUNDLE } from './auth.tokens.js'
-import { createBetterAuth, resolveBetterAuthSecret, resolveBetterAuthUrl, resolveGoogleClientId, resolveGoogleClientSecret } from './better-auth.js'
+import {
+  createBetterAuth,
+  resolveBetterAuthSecret,
+  resolveBetterAuthUrl,
+  resolveGoogleClientId,
+  resolveGoogleClientSecret,
+  resolveWebAppUrl,
+} from './better-auth.js'
 import { EMAIL_SENDER, type EmailSender } from './email-sender.js'
 import { LoggingEmailSender } from './logging-email-sender.js'
 import { UserContextGuard } from './user-context.guard.js'
@@ -36,6 +43,10 @@ import { AuthCapabilitiesController } from './auth-capabilities.controller.js'
           // Same allowlist CORS uses (ADR-0011/ADR-0012 §5) — one source of truth for
           // "who is allowed to call us cross-origin", never a second, drifting copy.
           trustedOrigins: resolveCorsOrigins(),
+          // The web app's own origin (#238, ADR-0024) — its own env var, deliberately
+          // not derived from the CORS allowlist above (see resolveWebAppUrl's doc
+          // comment). Used to build the device-authorization QR's verificationUri.
+          webAppUrl: resolveWebAppUrl(),
           emailSender,
           // Google OAuth (REQ-008): credentials from env, dev-only fallback outside prod.
           googleClientId: resolveGoogleClientId(),

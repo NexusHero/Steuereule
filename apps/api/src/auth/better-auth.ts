@@ -19,6 +19,10 @@ import { createGuestAccountUpgradeHook } from './guest-account-upgrade.js'
 
 const DEV_ONLY_FALLBACK_SECRET = 'dev-only-insecure-better-auth-secret-do-not-use-in-production'
 const DEV_ONLY_FALLBACK_URL = 'http://localhost:3000'
+// The web app's own origin (as opposed to `DEV_ONLY_FALLBACK_URL`, the *API's* origin
+// above) — same value the API's own CORS allowlist and the frontend's local Expo web
+// dev server use (apps/api/.env.example, .github/workflows/ci.yml).
+const DEV_ONLY_FALLBACK_WEB_APP_URL = 'http://localhost:8081'
 
 /** Dev-only Google OAuth credentials for local testing (REQ-008).
  *  These are NOT real Google credentials — they are placeholder values that
@@ -93,6 +97,30 @@ export function resolveBetterAuthUrl(env: NodeJS.ProcessEnv = process.env): stri
   return DEV_ONLY_FALLBACK_URL
 }
 
+/**
+ * Resolves the web app's own origin — used to build the device-authorization QR's
+ * `verification_uri_complete` (#238, ADR-0024). Deliberately its OWN env var, not
+ * derived from `CORS_ALLOWED_ORIGINS`: that's an allowlist with no "canonical first
+ * entry" semantics, so pulling one value out of it would be a silent assumption about
+ * which of possibly several trusted origins is "the" web app. Without this, better-auth's
+ * `deviceAuthorization` plugin falls back to its own `baseURL` — the *API's* origin
+ * (`buildVerificationUris`, `better-auth/dist/plugins/device-authorization/routes.mjs`) —
+ * and the QR then points a phone at a bare API server with no route for it: a 404, no
+ * HTML, nothing a router can ever resolve. Caught by Kaan building the frontend route
+ * against it and finding it dead on arrival.
+ */
+export function resolveWebAppUrl(env: NodeJS.ProcessEnv = process.env): string {
+  const url = env.WEB_APP_URL
+  if (url && url.length > 0) return url
+  if (env.NODE_ENV === 'production') {
+    throw new Error(
+      'WEB_APP_URL must be set in production — without it the device-authorization QR ' +
+        "points at the API's own origin instead of the web app's (ADR-0024).",
+    )
+  }
+  return DEV_ONLY_FALLBACK_WEB_APP_URL
+}
+
 /** Resolves the Google OAuth client ID (REQ-008). Falls back to a dev-only placeholder
  *  outside production; production MUST set GOOGLE_CLIENT_ID to a real value from the
  *  Google Cloud Console. When absent in production, Google sign-in stays disabled
@@ -125,6 +153,13 @@ export interface CreateBetterAuthOptions {
    *  truth, wired to better-auth's origin-based CSRF check via `trustedOrigins`. */
   trustedOrigins: string[]
   emailSender: EmailSender
+  /**
+   * The web app's own origin (#238, ADR-0024) — used to build the device-authorization
+   * QR's `verificationUri`, so it points at a route the frontend router actually owns
+   * instead of falling back to `baseUrl` (the API's own origin). See
+   * `resolveWebAppUrl`'s doc comment for the full reasoning.
+   */
+  webAppUrl: string
   /** Google OAuth client ID (REQ-008). Empty/undefined = Google sign-in disabled. */
   googleClientId?: string | undefined
   /** Google OAuth client secret (REQ-008). Empty/undefined = Google sign-in disabled. */
@@ -175,7 +210,17 @@ export interface BetterAuthBundle {
  *  (to construct the real instance) and `getCookies()` (to derive the session cookie
  *  name), so the two can never see different config. */
 function buildOptions(options: CreateBetterAuthOptions): BetterAuthOptions {
-  const { prisma, secret, baseUrl, trustedOrigins, emailSender, googleClientId, googleClientSecret, trustedProxies } = options
+  const {
+    prisma,
+    secret,
+    baseUrl,
+    trustedOrigins,
+    emailSender,
+    webAppUrl,
+    googleClientId,
+    googleClientSecret,
+    trustedProxies,
+  } = options
 
   // Google social provider is enabled only when both credentials are provided (REQ-008).
   // When absent, better-auth's `/api/auth/sign-in/social` rejects `provider: 'google'`,
@@ -235,7 +280,22 @@ function buildOptions(options: CreateBetterAuthOptions): BetterAuthOptions {
     // `generateUserCode` are left at their defaults: the default 8-char/32-symbol
     // `generateUserCode` draws exactly 40 bits, uniformly (no modulo bias — 256 % 32
     // === 0), and lengthening it only costs the human reading it off a screen.
-    plugins: [haveIBeenPwned(), hibpFailOpenPlugin, deviceAuthorization({ expiresIn: '2m' })],
+    //
+    // `verificationUri` MUST be set explicitly to the web app's own origin. Left
+    // unset, `buildVerificationUris` (`routes.mjs`) falls back to `ctx.context.baseURL`
+    // — our own `baseUrl` above, the API's origin — and the QR then encodes
+    // `<api-origin>/device?user_code=...`: a phone lands on the bare API server, at a
+    // path no controller serves, with `disabledPaths` not applying either (that only
+    // gates `/device*` beneath `/api/auth`). Fastify answers a plain 404 — no HTML, no
+    // router, nothing to resolve. Found only because nothing asserted the *origin* of
+    // `verification_uri_complete`; every prior test supplied its own path and so never
+    // saw a real one. `/device` matches the plugin's own default path name — the
+    // frontend router's own route for it, reserved but not yet built.
+    plugins: [
+      haveIBeenPwned(),
+      hibpFailOpenPlugin,
+      deviceAuthorization({ expiresIn: '2m', verificationUri: `${webAppUrl}/device` }),
+    ],
     // A browser must never reach the plugin's own HTTP routes (see the constant's own
     // doc comment above for why) — this is what actually enforces that; the
     // server-side `auth.api.*` calls this app makes are untouched by it.
