@@ -87,3 +87,22 @@ export function resolveRegionName(region: string | null, locale: string): string
   if (!name || name.toUpperCase() === region.toUpperCase()) return null
   return name
 }
+
+/**
+ * Formats a request's `requestedAt` timestamp for display, in the app's current
+ * language — this is a "does this look like you, right now" comparison aid, not a
+ * financial figure (unlike `@steuereule/core/format.ts`'s deliberately German-fixed
+ * currency formatting), so it follows the UI locale rather than staying pinned to
+ * `de-DE`. Returns `null` for an absent/malformed timestamp — the caller renders its
+ * own honest fallback copy rather than this module inventing one.
+ */
+export function formatRequestedAt(requestedAt: string | null, locale: string): string | null {
+  if (!requestedAt) return null
+  const date = new Date(requestedAt)
+  if (Number.isNaN(date.getTime())) return null
+  try {
+    return new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(date)
+  } catch {
+    return null
+  }
+}

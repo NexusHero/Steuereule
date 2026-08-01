@@ -23,6 +23,7 @@ import { OnboardingScreen } from './src/screens/OnboardingScreen'
 import { CockpitScreen } from './src/screens/cockpit/CockpitScreen'
 import { ProfilScreen } from './src/screens/ProfilScreen'
 import { DatenschutzScreen } from './src/screens/DatenschutzScreen'
+import { DeviceScreen } from './src/screens/device/DeviceScreen'
 
 const i18n = createAppI18n('de')
 const queryClient = new QueryClient()
@@ -42,8 +43,9 @@ const authClient = createAppAuthClient(apiBaseUrl)
  * The app's real, URL-addressable route table (ADR-0023, #238 task 1b) — what `Stage` used to be
  * as a `useState` union. Retired in its favour: every one of these is now a real, externally
  * openable URL, not in-memory state. `App` is a real, plain data shape for one entry; params stay
- * `undefined` everywhere today because nothing here reads one yet, deliberately named ahead of
- * #238's own device-authorization route rather than left for that slice to invent.
+ * `undefined` everywhere today because nothing here reads one yet — except `Device`, #238's own
+ * device-authorization route, whose `user_code` param is exactly what a phone's camera opens the
+ * QR/link to (`verificationUri`, apps/api/src/auth/better-auth.ts: `${WEB_APP_URL}/device`).
  */
 type RootStackParamList = {
   Splash: undefined
@@ -51,13 +53,18 @@ type RootStackParamList = {
   Registrierung: undefined
   Onboarding: undefined
   App: undefined
+  Device: { user_code?: string } | undefined
 }
 
 const RootStack = createNativeStackNavigator<RootStackParamList>()
 
 /** Maps every route above to a path — the mechanism AC-1 (#238) needs: a URL that resolves to a
  * screen through a real router, not a query-param stand-in. `prefixes` stays empty; this app is
- * `web.output: "single"` and RN-Web's own history integration needs no origin allowlist here. */
+ * `web.output: "single"` and RN-Web's own history integration needs no origin allowlist here.
+ * `Device: 'device'` matches `verificationUri`'s own fixed path exactly (Robin's fix, #238) —
+ * `user_code` needs no explicit `parse` config, since `getStateFromPath`'s query-string parsing
+ * lands it in `route.params` on its own (confirmed directly against the installed
+ * `@react-navigation/core`, not assumed from its types). */
 const linking: LinkingOptions<RootStackParamList> = {
   prefixes: [],
   config: {
@@ -67,6 +74,7 @@ const linking: LinkingOptions<RootStackParamList> = {
       Registrierung: 'registrierung',
       Onboarding: 'onboarding',
       App: 'app',
+      Device: 'device',
     },
   },
 }
@@ -96,6 +104,7 @@ export default function App() {
                     <RootStack.Screen name="Registrierung" component={RegistrierungRoute} />
                     <RootStack.Screen name="Onboarding" component={OnboardingRoute} />
                     <RootStack.Screen name="App" component={AppRoute} />
+                    <RootStack.Screen name="Device" component={DeviceRoute} />
                   </RootStack.Navigator>
                 </NavigationContainer>
                 <StatusBar style="dark" />
@@ -138,6 +147,13 @@ function RegistrierungRoute({ navigation }: NativeStackScreenProps<RootStackPara
 
 function OnboardingRoute({ navigation }: NativeStackScreenProps<RootStackParamList, 'Onboarding'>) {
   return <OnboardingScreen onDone={() => navigation.replace('App')} />
+}
+
+// #238 AC-1: a real route, resolving the URL a phone's camera actually opens. No `navigation`
+// use inside `DeviceScreen` itself (AC-2/AC-7's embedded-Login mechanism deliberately never
+// navigates) — this wrapper's only job is handing the parsed `user_code` param down.
+function DeviceRoute({ route }: NativeStackScreenProps<RootStackParamList, 'Device'>) {
+  return <DeviceScreen userCode={route.params?.user_code} />
 }
 
 // Cockpit (REQ-001) is where onboarding lands, matching the DS reference's own default tab. Tab

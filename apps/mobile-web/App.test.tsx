@@ -6,7 +6,7 @@
 // (auth client + query client + i18n + theme) wired the way the deployed app boots. Splash is
 // skipped via its own tap-to-skip affordance rather than waiting out its auto-advance timer,
 // keeping this test fast.
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { server } from './src/test-msw-server'
@@ -260,6 +260,137 @@ describe('App', () => {
       expect(screen.queryByText('Konto anlegen')).toBeNull()
       expect(screen.queryByPlaceholderText('Kim')).toBeNull()
       expect(screen.queryByText('Cockpit')).toBeNull()
+    })
+  })
+
+  // #238 AC-1/AC-2 — the device-authorization route, resolved through the same real router
+  // proven above, with the session-based fork task 3 needs. AC-7's own full round trip (the
+  // no-session detour actually completing a login and landing back on the same pending code)
+  // is task 4's own test — this file proves the fork exists and the embedded-Login mechanism
+  // renders in place, which is what task 4 builds on rather than re-proving from scratch.
+  describe('the device-authorization route (#238 AC-1/AC-2)', () => {
+    // Every other describe block in this file only ever moves the shared, module-level
+    // `authClient` (App.tsx constructs it once, matching the real app's own boot) from "no
+    // session" *toward* "a real session" — a direction that never needs the underlying
+    // nanostore to actually restart. These tests need the opposite: a real session in one
+    // test, then none at all in the next. Without `resetModules()`, `authClient.useSession()`'s
+    // session atom does not necessarily refetch on a fresh `<App/>` mount here — nanostores'
+    // own deferred unsubscribe cleanup (see issue #240, the same mechanism traced there)
+    // deliberately survives a quick unmount→remount, so the *previous* test's cached session
+    // value can still be what a brand-new render sees, regardless of this test's own MSW
+    // override. Forcing a fresh module (and therefore a fresh `authClient`/session atom) per
+    // test here is what actually isolates them — confirmed by watching this fail without it
+    // (the "no session" test rendered the approval screen, carrying over the previous test's
+    // real session) before adding this line.
+    beforeEach(() => {
+      vi.resetModules()
+    })
+
+    function mockPendingRequest(overrides: Partial<{ userCode: string; status: string; userAgent: string | null; region: string | null; requestedAt: string | null }> = {}) {
+      server.use(
+        http.get(`${API_BASE_URL}/v1/device/pending`, () =>
+          HttpResponse.json(
+            {
+              userCode: 'K7QX-9F2M',
+              status: 'pending',
+              userAgent: 'DesktopBrowser/1.0',
+              region: 'unknown',
+              requestedAt: '2026-08-01T14:32:00.000Z',
+              ...overrides,
+            },
+            { status: 200 },
+          ),
+        ),
+      )
+    }
+
+    it('AC-1: a real route resolves /device?user_code=… to the approval screen (a signed-in phone)', async () => {
+      server.use(
+        http.get(`${API_BASE_URL}/api/auth/get-session`, () =>
+          HttpResponse.json({ user: { id: 'u1', email: 'phone@beispiel.de', emailVerified: true, name: '' }, session: { id: 's1' } }),
+        ),
+      )
+      mockPendingRequest()
+      window.history.pushState({}, '', '/device?user_code=K7QX-9F2M')
+      const { default: App } = await import('./App')
+      render(<App />)
+
+      expect(await screen.findByText('K7QX-9F2M')).toBeTruthy()
+      expect(screen.getByText('Steht dieser Code gerade auf deinem Bildschirm?')).toBeTruthy()
+    })
+
+    it('AC-2: a phone with a real session skips Login entirely — no "Einloggen" ever renders', async () => {
+      server.use(
+        http.get(`${API_BASE_URL}/api/auth/get-session`, () =>
+          HttpResponse.json({ user: { id: 'u1', email: 'phone@beispiel.de', emailVerified: true, name: '' }, session: { id: 's1' } }),
+        ),
+      )
+      mockPendingRequest()
+      window.history.pushState({}, '', '/device?user_code=K7QX-9F2M')
+      const { default: App } = await import('./App')
+      render(<App />)
+
+      await screen.findByText('K7QX-9F2M')
+      expect(screen.queryByText('Einloggen')).toBeNull()
+    })
+
+    it('AC-2: a phone with no session renders Login embedded, in place — never the approval screen', async () => {
+      // test-msw-server's default `get-session` answer is already `null` — asserted
+      // explicitly here anyway so this test doesn't depend on that default silently.
+      server.use(http.get(`${API_BASE_URL}/api/auth/get-session`, () => HttpResponse.json(null)))
+      mockPendingRequest()
+      window.history.pushState({}, '', '/device?user_code=K7QX-9F2M')
+      const { default: App } = await import('./App')
+      render(<App />)
+
+      expect(await screen.findByText('Einloggen')).toBeTruthy()
+      expect(screen.queryByText('Steht dieser Code gerade auf deinem Bildschirm?')).toBeNull()
+      // AC-7's mechanism: embedding, not navigating — the URL (and therefore `user_code`)
+      // never changes just because Login rendered in its place.
+      expect(window.location.pathname + window.location.search).toBe('/device?user_code=K7QX-9F2M')
+    })
+
+    it('AC-7 mechanism: the embedded Login omits guest/register and its own QR column — a guest/new account has nothing to approve with', async () => {
+      server.use(http.get(`${API_BASE_URL}/api/auth/get-session`, () => HttpResponse.json(null)))
+      let deviceCodeRequests = 0
+      server.use(
+        http.post(`${API_BASE_URL}/v1/device/code`, () => {
+          deviceCodeRequests += 1
+          return HttpResponse.json({}, { status: 201 })
+        }),
+      )
+      window.history.pushState({}, '', '/device?user_code=K7QX-9F2M')
+      const { default: App } = await import('./App')
+      render(<App />)
+
+      await screen.findByText('Einloggen')
+      expect(screen.queryByText('Neu hier? Konto anlegen')).toBeNull()
+      expect(screen.queryByText('Erstmal als Gast umschauen')).toBeNull()
+      expect(deviceCodeRequests).toBe(0)
+    })
+
+    it('honestly reports a missing code when /device is opened with no user_code at all', async () => {
+      server.use(
+        http.get(`${API_BASE_URL}/api/auth/get-session`, () =>
+          HttpResponse.json({ user: { id: 'u1', email: 'phone@beispiel.de', emailVerified: true, name: '' }, session: { id: 's1' } }),
+        ),
+      )
+      window.history.pushState({}, '', '/device')
+      const { default: App } = await import('./App')
+      render(<App />)
+
+      expect(await screen.findByText('Kein Code angegeben')).toBeTruthy()
+    })
+
+    it('shows an honest loading state while the phone\'s own session is still being checked', async () => {
+      server.use(http.get(`${API_BASE_URL}/api/auth/get-session`, () => new Promise(() => {})))
+      window.history.pushState({}, '', '/device?user_code=K7QX-9F2M')
+      const { default: App } = await import('./App')
+      render(<App />)
+
+      expect(await screen.findByLabelText('Wir prüfen deine Anmeldung …')).toBeTruthy()
+      expect(screen.queryByText('Einloggen')).toBeNull()
+      expect(screen.queryByText('Steht dieser Code gerade auf deinem Bildschirm?')).toBeNull()
     })
   })
 })

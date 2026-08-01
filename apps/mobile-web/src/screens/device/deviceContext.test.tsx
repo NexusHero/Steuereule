@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseUserAgent, resolveRegionName } from './deviceContext'
+import { parseUserAgent, resolveRegionName, formatRequestedAt } from './deviceContext'
 
 describe('parseUserAgent', () => {
   it('reads Chrome on Windows', () => {
@@ -87,5 +87,38 @@ describe('resolveRegionName', () => {
     // decorative — removing the try/catch turns this into a thrown RangeError instead of
     // the honest null every other unresolved case above already returns.
     expect(resolveRegionName('DE', 'not-a-real-locale-tag-!!')).toBeNull()
+  })
+})
+
+describe('formatRequestedAt', () => {
+  const SAMPLE = '2026-08-01T14:32:00.000Z'
+
+  it('formats a real timestamp in German', () => {
+    const formatted = formatRequestedAt(SAMPLE, 'de')
+    expect(formatted).not.toBeNull()
+    // Exact wall-clock rendering is timezone-dependent (Intl resolves the runtime's own
+    // zone) — asserting the date/year appear is enough to prove real formatting ran,
+    // without pinning this test to whatever zone happens to run it.
+    expect(formatted).toMatch(/2026/)
+  })
+
+  it('formats the same timestamp differently across locales — not one static string', () => {
+    expect(formatRequestedAt(SAMPLE, 'de')).not.toBe(formatRequestedAt(SAMPLE, 'en'))
+  })
+
+  it('formats two different timestamps differently — not a hard-coded value', () => {
+    expect(formatRequestedAt('2026-08-01T14:32:00.000Z', 'de')).not.toBe(formatRequestedAt('2020-01-01T00:00:00.000Z', 'de'))
+  })
+
+  it('renders null for a missing timestamp', () => {
+    expect(formatRequestedAt(null, 'de')).toBeNull()
+  })
+
+  it('renders null for a malformed timestamp, rather than "Invalid Date"', () => {
+    expect(formatRequestedAt('not-a-real-date', 'de')).toBeNull()
+  })
+
+  it('renders null rather than throwing when handed a malformed locale', () => {
+    expect(formatRequestedAt(SAMPLE, 'not-a-real-locale-tag-!!')).toBeNull()
   })
 })

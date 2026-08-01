@@ -156,6 +156,44 @@ export const appResources = {
           footerNote: 'Wird sicher gespeichert — du kannst jederzeit zurückkommen.',
         },
       },
+      // #238 — the match-verification screen a phone lands on after opening the QR/link
+      // (`/device?user_code=…`). Match-verification, not one-tap: the question is whether
+      // the code is currently on the *other* screen, never "approve?".
+      device: {
+        sessionChecking: 'Wir prüfen deine Anmeldung …',
+        missingCode: {
+          heading: 'Kein Code angegeben',
+          body: 'Öffne den Link oder QR-Code noch einmal von dem Bildschirm, der sich anmelden möchte.',
+        },
+        approval: {
+          loading: 'Wir laden die Anfrage …',
+          error: {
+            heading: 'Code ungültig oder abgelaufen',
+            body: 'Fordere auf dem anderen Bildschirm einen neuen Code an.',
+          },
+          question: 'Steht dieser Code gerade auf deinem Bildschirm?',
+          // The explicit, persistent statement Decision 4 requires — never approved from a
+          // code received via message/link, only from what this screen itself resolved.
+          warning: 'Ein Code, den du per Nachricht oder Link bekommen hast, wird hier niemals bestätigt — nur ein Code, der gerade auf einem anderen Bildschirm steht.',
+          context: {
+            browser: 'Browser',
+            os: 'Betriebssystem',
+            region: 'Region',
+            time: 'Zeitpunkt',
+            unknownBrowser: 'Unbekannter Browser',
+            unknownOs: 'Unbekanntes Betriebssystem',
+            unknownRegion: 'Region unbekannt',
+            unknownTime: 'Zeitpunkt unbekannt',
+          },
+          confirm: 'Ja, das ist mein Code',
+          confirming: 'Wird bestätigt …',
+          approveError: 'Das hat nicht geklappt. Versuch es noch einmal.',
+          approved: {
+            heading: 'Erledigt',
+            body: 'Der andere Bildschirm meldet sich jetzt an.',
+          },
+        },
+      },
       profil: {
         loading: 'Dein Profil wird geladen …',
         loadError: {
@@ -435,6 +473,39 @@ export const appResources = {
           },
           changeDetails: 'Edit details',
           footerNote: 'Saved securely — you can come back to it any time.',
+        },
+      },
+      device: {
+        sessionChecking: 'Checking your sign-in …',
+        missingCode: {
+          heading: 'No code given',
+          body: 'Open the link or QR code again from the screen that wants to sign in.',
+        },
+        approval: {
+          loading: 'Loading the request …',
+          error: {
+            heading: 'Code invalid or expired',
+            body: 'Request a new code on the other screen.',
+          },
+          question: 'Is this code currently on your screen?',
+          warning: 'A code you received by message or link is never approved here — only a code that is currently shown on another screen.',
+          context: {
+            browser: 'Browser',
+            os: 'Operating system',
+            region: 'Region',
+            time: 'Time',
+            unknownBrowser: 'Unknown browser',
+            unknownOs: 'Unknown operating system',
+            unknownRegion: 'Unknown region',
+            unknownTime: 'Unknown time',
+          },
+          confirm: 'Yes, this is my code',
+          confirming: 'Confirming …',
+          approveError: "That didn't work. Please try again.",
+          approved: {
+            heading: 'Done',
+            body: 'The other screen is signing in now.',
+          },
         },
       },
       profil: {

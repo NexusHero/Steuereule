@@ -15,6 +15,14 @@
 //     `QrMark` (react-native-svg, the same rendering technology OwlMark already uses). Absent on
 //     `s` — scanning a code with the same phone you're reading it on has no honest use, and there
 //     is nowhere near enough width for a second column at 375px.
+//
+// Also used *embedded* (#238 AC-7): the device-approval flow renders this screen in place —
+// never navigates to it — when the phone opening `/device?user_code=…` has no session, so the
+// URL (and the pending code) survives the whole detour by construction. In that context
+// `onGuest`/`onRegister` are omitted and `showDeviceQr` is `false`: NexusHero's ruling on the
+// onRegister gap ("whoever has no account has nothing to release") applies identically to guest
+// mode, and a second, unrelated QR column minting its own device code makes no sense next to
+// "sign in to approve this one."
 import { useState } from 'react'
 import { ScrollView, View, Text, Pressable, ActivityIndicator, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
@@ -33,8 +41,15 @@ import { QrMark } from '../marks/QrMark'
 
 export interface LoginScreenProps {
   readonly onDone: () => void
-  readonly onGuest: () => void
-  readonly onRegister: () => void
+  /** Omit to hide "weiter als Gast" — used when this screen is embedded inside the
+   *  device-approval flow (#238 AC-7), where a guest has nothing to approve with. */
+  readonly onGuest?: () => void
+  /** Omit to hide "Neu hier? Konto anlegen" — same reasoning as `onGuest` above. */
+  readonly onRegister?: () => void
+  /** False when embedded (#238 AC-7) — a second, unrelated device-login column has no
+   *  place next to "sign in to approve this code", and would silently mint its own
+   *  DeviceCode row every time. Defaults to `true` (the top-level Login route). */
+  readonly showDeviceQr?: boolean
 }
 
 type Stage =
@@ -42,7 +57,7 @@ type Stage =
   | { readonly kind: 'submitting' }
   | { readonly kind: 'unverified'; readonly email: string }
 
-export function LoginScreen({ onDone, onGuest, onRegister }: LoginScreenProps) {
+export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true }: LoginScreenProps) {
   const t = useTheme()
   const bp = useBreakpoint()
   const { t: tr } = useTranslation(APP_NS)
@@ -193,23 +208,29 @@ export function LoginScreen({ onDone, onGuest, onRegister }: LoginScreenProps) {
         )}
       </Button>
 
-      <View style={styles.linksRow}>
-        <Pressable accessibilityRole="link" onPress={onRegister}>
-          <Text style={styles.link}>{tr('login.register')}</Text>
-        </Pressable>
-      </View>
+      {onRegister ? (
+        <View style={styles.linksRow}>
+          <Pressable accessibilityRole="link" onPress={onRegister}>
+            <Text style={styles.link}>{tr('login.register')}</Text>
+          </Pressable>
+        </View>
+      ) : null}
 
-      <View style={{ alignItems: 'center', marginTop: t.space.s5 }}>
-        <Chip onPress={onGuest}>{tr('login.guest')}</Chip>
-        <Text style={styles.guestNote}>{tr('login.guestNote')}</Text>
-      </View>
+      {onGuest ? (
+        <View style={{ alignItems: 'center', marginTop: t.space.s5 }}>
+          <Chip onPress={onGuest}>{tr('login.guest')}</Chip>
+          <Text style={styles.guestNote}>{tr('login.guestNote')}</Text>
+        </View>
+      ) : null}
     </View>
   )
 
   // The QR column has no honest use on `s` (375px, and it's the same phone whose camera would
   // have to scan its own screen) — `useBreakpoint` is called once, at this screen's root
-  // (ADR-0014), and this is the one structural switch it drives.
-  if (bp === 's') {
+  // (ADR-0014), and this is the one structural switch it drives. `showDeviceQr` folds into the
+  // same switch rather than a second one: embedded usage (#238 AC-7) never wants the column,
+  // regardless of width.
+  if (bp === 's' || !showDeviceQr) {
     return (
       <ScrollView contentContainerStyle={styles.screen} keyboardShouldPersistTaps="handled" data-testid="screen-container">
         {formColumn}
