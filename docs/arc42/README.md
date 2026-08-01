@@ -41,18 +41,34 @@ java -jar plantuml.jar -tsvg docs/arc42/*.puml
 
 Level-1 whitebox of the running system: the two apps, the shared monorepo packages, the
 API's internal modules, and the EU Postgres database. Green blocks were added **since this
-view's previous revision** (REQ-001, the Cockpit vertical): Slice 2's auth stack
-(REQ-005/006/008/009/010 — ADR-0009 better-auth, ADR-0012 guard coexistence) and REQ-011's
-DSGVO export/deletion (ADR-0013). Everything drawn here is on `main`: the previous revision
-carried `DatenschutzScreen` dashed because it was still in review (`steuereule#153`), and that
-marker came off when the slice merged — the map may show what is coming, but only for as long
-as it says so.
+view's previous revision** (Slice 2's auth stack and REQ-011's DSGVO export/deletion):
+REQ-014's QR device authorization (ADR-0024) and the app's **first real router** (ADR-0023).
+
+**Dashed blocks are in review on `steuereule#239` and are not yet on `main`.** The same marker
+carried `DatenschutzScreen` through `steuereule#153` and came off when that slice merged — the
+map may show what is coming, but only for as long as it says so. When #239 merges, the dashes
+come off these five blocks.
 
 ![Building block view](./building-block-view.svg)
 
 **Frontend — `apps/mobile-web`** (Expo / React-Native-Web). Screen-by-screen takeover
 (ADR-0005, walking skeleton), now: Splash → Login/Registrierung → Onboarding → the tabbed
 shell (Cockpit, Profil), with Datenschutz as a drill-down reached from Profil.
+- **`App.tsx` — the composition root, and now the app's first real router** (ADR-0023):
+  `@react-navigation/native` + native-stack with a `linking` config, replacing what was a
+  `useState<Stage>` union. **It is the one file permitted to import `@react-navigation/*`.**
+  Screens stay prop-driven — a screen never imports the router, never calls a navigation hook,
+  never imports a navigation type. That constraint is not stylistic: it is what holds the test
+  blast radius at 1 file instead of 15, and it is enforced at review.
+- **`GeraetefreigabeScreen` — the QR approval surface** (REQ-014). It does not ask "Approve?";
+  it asks whether the code shown is the one on your screen, next to the requesting browser, OS,
+  region and time, and carries a standing statement that a code received by message is never
+  approved here. That statement is a **control**, not reassurance: approving a code someone else
+  claimed installs *their* session on *your* desktop — session fixation, not account takeover.
+- `LoginScreen` additionally carries the **open QR column** (`QrMark`, reusing the animated
+  `OwlMark`); the code is minted on page load, which is a deliberate trade recorded in ADR-0024.
+- `ProfilScreen` additionally carries the **device list** with per-entry revocation, and is the
+  second consumer of the resolved region.
 - `CockpitScreen` — hero refund-estimate card plus honest loading/empty/error states; reads
   the generated hook and formats the range with `@steuereule/core`.
 - `ProfilScreen` — the stored profile, viewed and edited against the live `GET`/`PUT
@@ -98,6 +114,24 @@ shell (Cockpit, Profil), with Datenschutz as a drill-down reached from Profil.
 - `AuthModule` — capabilities endpoint (is Google actually configured?), the atomic
   guest→account upgrade (ADR-0012 §4), the `FreshAuthChecker` used by destructive actions,
   the breached-password check (REQ-010), and the `EmailSender` seam.
+- **`DeviceModule` (new)** — `/v1/device/{code,pending,approve,token}` (ADR-0024). better-auth's
+  `device-authorization` plugin implements RFC 8628, but its **HTTP routes are switched off**
+  (`disabledPaths`) and only server-side `auth.api.*` calls reach it. Two of its behaviours force
+  that seam: `/device/token` returns a Bearer token in JSON and never sets a cookie (ADR-0008/0012
+  forbid holding one in JS-reachable storage), and `GET /device` claims a code for the caller's
+  account while the origin check skips **all** `GET`s — reachable cross-site under our
+  `SameSite=None` cookie. **Same shape as the `UserContextGuard` seam: better-auth is the
+  mechanism, our API owns the surface.** Because `/device/token` sets no cookie, this module also
+  writes the session cookie itself in better-auth's signed format (`session-cookie.ts`) — the one
+  place where a silent upstream format change would produce a wrong signature rather than a red
+  test, which is why an acceptance test round-trips it through a real better-auth instance.
+- **`RegionResolver` (new)** — country-level geo-IP (ADR-0024), self-hosted in our EU deployment,
+  fetched at build time and pinned by checksum; **no user IP ever leaves our infrastructure**.
+  It **never guesses**: a private/unroutable address, an unlisted block, or a database past its
+  refresh interval all resolve to `unknown`, rendered as "Region unbekannt". One resolver, **two
+  consumers** — the approval screen and the device list — so the fallback cannot come to mean two
+  different things on two screens. Country granularity is deliberate data minimisation
+  (Art. 5(1)(c)).
 - `ProfileModule` — `GET`/`PUT /v1/profile`.
 - `CockpitModule` — `GET /v1/steuerjahre/{jahr}/cockpit`. Controller (guarded, `jahr`
   bounds-validated) → `CockpitService` → `TaxYearRepository` seam. The service reads the raw
@@ -122,9 +156,9 @@ shell (Cockpit, Profil), with Datenschutz as a drill-down reached from Profil.
   ([#246](https://github.com/NexusHero/Steuereule/issues/246)); the Requirements Register records it
   as REQ-010 `not met (rate limiting)`. See ADR-0012 §5 and its 2026-08-04 amendment.
 
-**Persistence — Postgres (EU)**, expand-only versioned migrations (ADR-047). Nine tables:
-four `userId`-scoped domain tables, the four better-auth identity tables, and `RateLimit`
-(see the data model).
+**Persistence — Postgres (EU)**, expand-only versioned migrations (ADR-047). Ten tables:
+four `userId`-scoped domain tables, the four better-auth identity tables, `RateLimit`, and
+`DeviceCode` (see the data model).
 
 ### Which decisions these blocks trace to
 

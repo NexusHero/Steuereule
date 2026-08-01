@@ -16,12 +16,20 @@ confidence) · **Assess** (evaluating, not yet committed) · **Hold** (avoid / l
 | better-auth client SDK (`createAuthClient`, Expo/RN + web) | Adopt | ADR-0012 |
 | better-auth Have-I-Been-Pwned plugin (breach check, k-anonymity) | Adopt | ADR-0012 (REQ-010) |
 | `@fastify/helmet` (security headers / CSP) | Adopt | ADR-0009 hardening / ADR-0012 |
+| better-auth `device-authorization` plugin (RFC 8628, behind our own `/v1/device/*`) | Adopt | ADR-0024 |
 | Keycloak (self-hosted IdP) | Hold | ADR-0009 (dropped; better-auth is the server) |
 | Prisma + managed EU Postgres | Adopt | ADR-047 |
 | prisma-field-encryption (AES-256-GCM, randomized) | Adopt | ADR-0008 |
 | Redis (BullMQ queues) | Adopt | ADR-047 |
 | k3s on Hetzner (EU) | Adopt | ADR-049 |
 | LangChain.js / LangGraph.js (v1.x, behind KiService port) | Adopt | ADR-048 |
+| `@react-navigation/native` + `native-stack` (router at the composition root only) | Adopt | ADR-0023 |
+| `react-native-screens` · `react-native-safe-area-context` (navigator's required deps) | Adopt | ADR-0023 (entered with the navigator, not chosen separately) |
+| `expo-router` | Hold | ADR-0023 (not chosen — needs Metro `require.context` + `jest-expo`) |
+| `qrcode-generator` (QR encoding; drawn with `react-native-svg` off theme tokens) | Adopt | ADR-0024 (MIT, zero deps, leaf — adopted without escalation, deliberately) |
+| DB-IP IP-to-Country Lite (self-hosted, country-level geo-IP) | Trial | ADR-0024 — **licence line unconfirmed**; source unreachable from the build environment |
+| MaxMind GeoLite2 | Hold | ADR-0024 (EULA's 30-day update-or-delete duty) |
+| Third-party geo-IP lookup APIs (ip-api, ipinfo, …) | Hold | ADR-0024 (would transfer user IPs to a processor we have no agreement with) |
 | TanStack Query | Adopt | ADR-0001 |
 | OpenAPI-generated typed client (orval) | Adopt | ADR-0001 |
 | i18next / react-i18next | Adopt | ADR-0002 |
