@@ -43,7 +43,10 @@ export const CAPABILITIES_WITHOUT_SOCIAL: AuthCapabilitiesDto = { socialProvider
 export const DEVICE_CODE_RESPONSE: DeviceCodeResponseDto = {
   userCode: 'K7QX-9F2M',
   deviceCode: 'test-device-code',
-  verificationUriComplete: 'http://localhost:3000/geraet?user_code=K7QX-9F2M',
+  // `/device` — the app's own router route (#238 AC-1), matching `verificationUri`'s real,
+  // fixed value (`${WEB_APP_URL}/device`, apps/api/src/auth/better-auth.ts). Was `/geraet`
+  // here before Robin's fix landed the actual path; kept in sync now that it's settled.
+  verificationUriComplete: 'http://localhost:8081/device?user_code=K7QX-9F2M',
   expiresIn: 120,
   interval: 5,
 }

@@ -41,21 +41,33 @@ afterEach(() => {
 })
 
 function renderLogin(
-  opts: { lng?: 'de' | 'en'; onDone?: () => void; onGuest?: () => void; onRegister?: () => void } = {},
+  opts: {
+    lng?: 'de' | 'en'
+    onDone?: () => void
+    onGuest?: () => void
+    onRegister?: () => void
+    // Embedded usage (#238 AC-7) omits both entirely, rather than passing no-ops —
+    // `undefined` is what actually drives LoginScreen's own conditional rendering.
+    omitGuestAndRegister?: boolean
+    showDeviceQr?: boolean
+  } = {},
 ) {
   const i18n = createAppI18n(opts.lng ?? 'de')
   const authClient = createAppAuthClient(BASE_URL)
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  // `exactOptionalPropertyTypes` treats `prop={undefined}` differently from omitting `prop`
+  // entirely — spreading only the keys that actually apply is what genuinely omits
+  // onGuest/onRegister for the embedded-usage tests, not just sets them to `undefined`.
+  const optionalProps = {
+    ...(opts.omitGuestAndRegister ? {} : { onGuest: opts.onGuest ?? (() => {}), onRegister: opts.onRegister ?? (() => {}) }),
+    ...(opts.showDeviceQr === undefined ? {} : { showDeviceQr: opts.showDeviceQr }),
+  }
   return render(
     <QueryClientProvider client={queryClient}>
     <I18nextProvider i18n={i18n}>
       <ThemeProvider mode="light">
         <AuthClientProvider client={authClient}>
-          <LoginScreen
-            onDone={opts.onDone ?? (() => {})}
-            onGuest={opts.onGuest ?? (() => {})}
-            onRegister={opts.onRegister ?? (() => {})}
-          />
+          <LoginScreen onDone={opts.onDone ?? (() => {})} {...optionalProps} />
         </AuthClientProvider>
       </ThemeProvider>
     </I18nextProvider>
@@ -608,6 +620,44 @@ describe('LoginScreen', () => {
       // switching back to real timers so it can't fire (and update unmounted state) later.
       vi.clearAllTimers()
       vi.useRealTimers()
+    })
+  })
+
+  // #238 AC-7: the device-approval flow embeds this exact screen in place rather than
+  // navigating to it, so `onGuest`/`onRegister` must be omittable and the QR column
+  // suppressible — otherwise a phone with no session, confirming someone else's code,
+  // would be offered to sign that code in as a guest, or shown an unrelated second QR
+  // column minting its own device code next to the one it's there to approve.
+  describe('embedded usage (#238 AC-7 — device-approval detour)', () => {
+    it('hides "Neu hier? Konto anlegen" and "weiter als Gast" when onGuest/onRegister are omitted', () => {
+      renderLogin({ omitGuestAndRegister: true })
+      expect(screen.queryByText('Neu hier? Konto anlegen')).toBeNull()
+      expect(screen.queryByText('Erstmal als Gast umschauen')).toBeNull()
+    })
+
+    it('still shows both when onGuest/onRegister are provided — the top-level Login route is unaffected', () => {
+      renderLogin()
+      expect(screen.queryByText('Neu hier? Konto anlegen')).not.toBeNull()
+      expect(screen.queryByText('Erstmal als Gast umschauen')).not.toBeNull()
+    })
+
+    it('never mounts the QR column when showDeviceQr is false, even at a wide breakpoint that would otherwise show it', async () => {
+      setViewportWidth(1024)
+      let deviceCodeRequests = 0
+      server.use(
+        http.post(`${BASE_URL}/v1/device/code`, () => {
+          deviceCodeRequests += 1
+          return HttpResponse.json(DEVICE_CODE_RESPONSE, { status: 201 })
+        }),
+      )
+      renderLogin({ showDeviceQr: false, omitGuestAndRegister: true })
+
+      // Give any (wrongly) mounted QR column's mount-time request a chance to fire before
+      // asserting its absence — a synchronous check alone would pass even with a bug that
+      // mounts the column and just hasn't resolved its fetch yet.
+      await screen.findByText('Einloggen')
+      expect(screen.queryByLabelText('QR-Code zum Anmelden mit dem Handy')).toBeNull()
+      expect(deviceCodeRequests).toBe(0)
     })
   })
 })
