@@ -1,5 +1,5 @@
 import { Body, Controller, Get, HttpCode, Inject, Post, Query, Req, Res } from '@nestjs/common'
-import { ApiCreatedResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger'
+import { ApiBody, ApiCreatedResponse, ApiOkResponse, ApiQuery, ApiTags } from '@nestjs/swagger'
 import { fromNodeHeaders } from 'better-auth/node'
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import { SESSION_COOKIE_ATTRIBUTES } from '../auth/better-auth.js'
@@ -41,6 +41,12 @@ export class DeviceController {
   // auth.api.deviceVerify() inside the service. A phone with no session at all can
   // still call this (AC-2's no-session detour): the code simply stays unclaimed.
   @Get('pending')
+  // Explicit @ApiQuery(): Nest's Swagger plugin otherwise infers a @Query() DTO's shape
+  // from reflected `design:paramtypes` metadata, which esbuild/tsx never emit (same gap
+  // ProfileController's @ApiBody() comment documents for request bodies) — without this
+  // the generated OpenAPI document (and therefore orval's client) silently loses the
+  // `userCode` parameter, leaving callers with no way to pass it at all.
+  @ApiQuery({ name: 'userCode', type: String, required: true, example: 'K7QX-9F2M' })
   @ApiOkResponse({ type: DevicePendingResponseDto, description: 'The match-verification payload for a pending device-authorization request (ADR-0024).' })
   getPending(@Query() query: DevicePendingQueryDto, @Req() request: FastifyRequest): Promise<DevicePendingResponseDto> {
     return this.deviceService.getPending(query.userCode, fromNodeHeaders(request.headers), request.ip ?? null)
@@ -52,6 +58,11 @@ export class DeviceController {
   // caller instead of rejecting it, which is exactly the wrong behaviour here.
   @Post('approve')
   @HttpCode(200)
+  // Explicit @ApiBody() — see ProfileController's PUT for why: esbuild/tsx never emit
+  // the `design:paramtypes` metadata Nest's Swagger plugin would otherwise infer the
+  // body schema from, and without it the generated document (and orval's client) loses
+  // the request body silently.
+  @ApiBody({ type: ApproveDeviceRequestDto })
   @ApiOkResponse({ type: AckResponseDto, description: 'Approves the device-authorization request (ADR-0024) — one tap, no session-scope choice.' })
   async approve(@Body() dto: ApproveDeviceRequestDto, @Req() request: FastifyRequest): Promise<AckResponseDto> {
     await this.deviceService.approve(dto.userCode, fromNodeHeaders(request.headers))
@@ -62,6 +73,8 @@ export class DeviceController {
   // its own; its only credential is the device_code itself (RFC 8628).
   @Post('token')
   @HttpCode(200)
+  // Explicit @ApiBody() — same gap as `approve` above.
+  @ApiBody({ type: DeviceTokenRequestDto })
   @ApiOkResponse({ type: AckResponseDto, description: 'Exchanges an approved device code for a real session, set as an httpOnly cookie (ADR-0008/0012) — never returned in the response body.' })
   async exchangeToken(
     @Body() dto: DeviceTokenRequestDto,
