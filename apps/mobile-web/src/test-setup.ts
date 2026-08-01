@@ -44,12 +44,19 @@ vi.mock('./auth/auth-client', async (importOriginal) => {
   }
 })
 
-// jsdom implements no `ResizeObserver` — a real browser-API gap, not a product concern.
-// `@react-navigation/elements`' `useFrameSize` (pulled in by task 1a's router feasibility proof,
-// #238) observes its container for frame-size tracking; without this it throws on mount before a
-// single assertion runs. No test in this suite asserts on resize-driven layout, so an inert
-// observer (no-op, never fires) is the honest stand-in — real resize behaviour belongs to the
-// Chromium-backed e2e gate (docs/process/delivery-pipeline.md § Browser gates), not jsdom.
+// jsdom implements no `ResizeObserver` at all — a missing platform API, not a product
+// dependency. `@react-navigation/elements`' `useFrameSize` (pulled in by the router, #238)
+// observes its container for frame-size tracking; without this it throws on mount before a
+// single assertion runs. The precedent is `src/test-stubs/react-native-svg.tsx` (a real
+// dependency's Flow-typed source jsdom can't parse — stubbed because there is no other way to
+// run it here at all), not the AbortSignal patch further down in this file, which fixes a
+// Node-version incompatibility in a control flow the app itself owns end to end. Nothing here
+// replaces the *subject under test* — no screen's own logic reads or reacts to a resize; this
+// only keeps `useFrameSize`'s own `observe()` call from throwing during mount.
+// Standing limitation this leaves: `useFrameSize` never actually sees a frame size under this
+// suite, so it cannot be exercised here — real resize behaviour is the Chromium-backed e2e
+// gate's job (docs/process/delivery-pipeline.md § Browser gates), not jsdom's, and belongs in
+// Salih's T1 pass for this slice, not only in this comment.
 class NoopResizeObserver implements ResizeObserver {
   observe() {}
   unobserve() {}
