@@ -251,3 +251,52 @@ describe('OpenAPI contract for POST /v1/device/code (#238, task 0, ADR-0024)', (
     )
   })
 })
+
+describe('OpenAPI contract for /v1/device/{pending,approve,token} (#238, task 2, ADR-0024)', () => {
+  let app: NestFastifyApplication
+  let document: OpenAPIObject
+
+  beforeAll(async () => {
+    app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter(), {
+      logger: false,
+    })
+    const config = new DocumentBuilder().setTitle('SteuerEule API').setVersion('1.0').build()
+    document = SwaggerModule.createDocument(app, config)
+  })
+
+  afterAll(async () => {
+    await app.close()
+  })
+
+  it('documents GET /v1/device/pending returning the match-verification payload (AC-3)', () => {
+    const get = document.paths['/v1/device/pending']?.get
+    expect(get).toBeDefined()
+    expect(get?.responses['200']).toBeDefined()
+    expect(get?.parameters?.some((p) => 'name' in p && p.name === 'userCode')).toBe(true)
+  })
+
+  it('exposes DevicePendingResponseDto with the full browser/OS/region/time payload — never a scope field (one-tap, no session-scope choice)', () => {
+    const schema = document.components?.schemas?.DevicePendingResponseDto
+    expect(schema).toBeDefined()
+    const properties = (schema as { properties?: Record<string, unknown> }).properties ?? {}
+    expect(Object.keys(properties).sort()).toEqual(['userCode', 'status', 'userAgent', 'region', 'requestedAt'].sort())
+  })
+
+  it('documents POST /v1/device/approve with just userCode — no scope field in the request body', () => {
+    const post = document.paths['/v1/device/approve']?.post
+    expect(post).toBeDefined()
+    expect(post?.responses['200']).toBeDefined()
+    const schema = document.components?.schemas?.ApproveDeviceRequestDto
+    const properties = (schema as { properties?: Record<string, unknown> }).properties ?? {}
+    expect(Object.keys(properties)).toEqual(['userCode'])
+  })
+
+  it('documents POST /v1/device/token, never exposing a session token field in its response', () => {
+    const post = document.paths['/v1/device/token']?.post
+    expect(post).toBeDefined()
+    expect(post?.responses['200']).toBeDefined()
+    const schema = document.components?.schemas?.AckResponseDto
+    const properties = (schema as { properties?: Record<string, unknown> }).properties ?? {}
+    expect(Object.keys(properties)).toEqual(['success'])
+  })
+})

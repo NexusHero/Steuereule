@@ -28,6 +28,8 @@ function makeBetterAuthBundle(getSession: ReturnType<typeof vi.fn>): BetterAuthB
     sessionCookieName: SESSION_COOKIE_NAME,
     // The guard never reads this; it belongs to the capability probe (REQ-008).
     enabledSocialProviders: [],
+    // The guard never reads this either; it belongs to #238 task 2's device-token cookie.
+    sessionExpiresInSeconds: 604800,
   }
 }
 

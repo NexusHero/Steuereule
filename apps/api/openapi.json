@@ -225,6 +225,69 @@
           "device"
         ]
       }
+    },
+    "/v1/device/pending": {
+      "get": {
+        "operationId": "DeviceController_getPending",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "The match-verification payload for a pending device-authorization request (ADR-0024).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DevicePendingResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "device"
+        ]
+      }
+    },
+    "/v1/device/approve": {
+      "post": {
+        "operationId": "DeviceController_approve",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Approves the device-authorization request (ADR-0024) — one tap, no session-scope choice.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AckResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "device"
+        ]
+      }
+    },
+    "/v1/device/token": {
+      "post": {
+        "operationId": "DeviceController_exchangeToken",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Exchanges an approved device code for a real session, set as an httpOnly cookie (ADR-0008/0012) — never returned in the response body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AckResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "device"
+        ]
+      }
     }
   },
   "info": {
@@ -638,6 +701,59 @@
           "verificationUriComplete",
           "expiresIn",
           "interval"
+        ]
+      },
+      "DevicePendingResponseDto": {
+        "type": "object",
+        "properties": {
+          "userCode": {
+            "type": "string",
+            "example": "K7QX-9F2M"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "approved",
+              "denied"
+            ],
+            "example": "pending"
+          },
+          "userAgent": {
+            "type": "string",
+            "nullable": true,
+            "description": "The requesting desktop's raw User-Agent, or null if it was absent."
+          },
+          "region": {
+            "type": "string",
+            "nullable": true,
+            "description": "Country code from task 0b's geo-IP resolver, or \"unknown\" — never null once task 0/0b's write path has run."
+          },
+          "requestedAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time",
+            "description": "When the desktop requested this code."
+          }
+        },
+        "required": [
+          "userCode",
+          "status",
+          "userAgent",
+          "region",
+          "requestedAt"
+        ]
+      },
+      "AckResponseDto": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          }
+        },
+        "required": [
+          "success"
         ]
       }
     }

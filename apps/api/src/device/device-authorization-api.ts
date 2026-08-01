@@ -26,6 +26,30 @@ export interface DeviceAuthorizationApi {
     expires_in: number
     interval: number
   }>
+  /** `/device` (GET) — claims the code onto the caller's session, if any (server-side
+   *  only; see device.controller.ts for why the browser must never reach this
+   *  directly). `headers` carries the *phone's* cookies. */
+  deviceVerify(input: { headers: Headers; query: { user_code: string } }): Promise<{
+    user_code: string
+    status: string
+  }>
+  /** `/device/approve` — `headers` carries the *phone's* cookies; the plugin itself
+   *  401s/403s if they don't resolve to the code's claimed userId. */
+  deviceApprove(input: { headers: Headers; body: { userCode: string } }): Promise<{ success: boolean }>
+  /** `/device/token` — `headers` carries the *desktop's* headers. Load-bearing, not
+   *  incidental: `internalAdapter.createSession` reads `ipAddress`/`userAgent` off
+   *  the current request context (`db/internal-adapter.mjs:163-166,177-178`) via
+   *  these same headers — omit them and every QR-issued session shows a blank
+   *  device in the list AC-5 exists to populate. */
+  deviceToken(input: {
+    headers: Headers
+    body: { grant_type: 'urn:ietf:params:oauth:grant-type:device_code'; device_code: string; client_id: string }
+  }): Promise<{
+    access_token: string
+    token_type: string
+    expires_in: number
+    scope: string
+  }>
 }
 
 /** Narrows `auth.api` to the device-authorization endpoints this app calls

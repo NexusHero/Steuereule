@@ -47,6 +47,26 @@ const DEV_ONLY_GOOGLE_CLIENT_SECRET = 'dev-only-google-client-secret'
 export const DEVICE_AUTHORIZATION_DISABLED_PATHS = ['/device/code', '/device/token', '/device', '/device/approve', '/device/deny']
 
 /**
+ * The session cookie's own static attributes (name aside) — extracted to one place
+ * so `advanced.defaultCookieAttributes` below and `/v1/device/token`'s hand-built
+ * `Set-Cookie` (task 2, ADR-0024 — the plugin's own `/device/token` route never
+ * calls `setSessionCookie`, so this app must construct that cookie itself) can never
+ * silently drift apart. `path: '/'` matches `createCookie()`'s own base default
+ * (`better-auth/dist/cookies/index.mjs`) — not set via `defaultCookieAttributes`
+ * today, but pinned here explicitly since task 2 depends on it.
+ */
+export const SESSION_COOKIE_ATTRIBUTES = {
+  httpOnly: true,
+  // SameSite=None; Secure (ADR-0012 §3, supersedes ADR-0009/REQ-009's `strict`
+  // wording) — see the identical comment on `advanced.defaultCookieAttributes`
+  // below for the full cross-site reasoning; kept in sync by construction, not by
+  // two separately-maintained comments.
+  sameSite: 'none' as const,
+  secure: true,
+  path: '/',
+}
+
+/**
  * Resolves the better-auth signing/encryption secret. Production must set
  * BETTER_AUTH_SECRET explicitly — refusing to start under a guessable default is
  * the whole point of the seam (mirrors resolveGuestSessionSecret).
@@ -137,6 +157,18 @@ export interface BetterAuthBundle {
    * server would reject. Empty when none are configured.
    */
   enabledSocialProviders: readonly string[]
+  /**
+   * The device-issued session's lifetime, in seconds (#238 task 2, ADR-0024) — one
+   * fixed value; NexusHero dropped the "just for now" vs "trust this device"
+   * session-scope choice, so there is no second, shorter variant to compute.
+   * Computed the exact same way better-auth's own context does internally
+   * (`options.session?.expiresIn || 60 * 60 * 24 * 7`,
+   * `better-auth/dist/context/create-context.mjs`'s `sessionConfig.expiresIn`), so
+   * `/v1/device/token`'s hand-built `Set-Cookie` `Max-Age` can never drift from what
+   * better-auth itself would have used, without needing to configure
+   * `session.expiresIn` twice.
+   */
+  sessionExpiresInSeconds: number
 }
 
 /** Builds the shared better-auth config object once — passed to both `betterAuth()`
@@ -247,15 +279,11 @@ function buildOptions(options: CreateBetterAuthOptions): BetterAuthOptions {
       },
     },
     advanced: {
-      defaultCookieAttributes: {
-        httpOnly: true,
-        // SameSite=None; Secure (ADR-0012 §3, supersedes ADR-0009/REQ-009's
-        // `strict` wording) — the same cross-site reality ADR-0011 already forced on
-        // the guest cookie: the deployed demo has the web app and API on distinct
-        // *.fly.dev registrable domains, a genuinely cross-site credentialed call.
-        sameSite: 'none',
-        secure: true,
-      },
+      // SameSite=None; Secure (ADR-0012 §3, supersedes ADR-0009/REQ-009's `strict`
+      // wording) — the same cross-site reality ADR-0011 already forced on the guest
+      // cookie: the deployed demo has the web app and API on distinct *.fly.dev
+      // registrable domains, a genuinely cross-site credentialed call.
+      defaultCookieAttributes: SESSION_COOKIE_ATTRIBUTES,
       // Secure explicitly, independent of NODE_ENV — keeps the cookie NAME
       // deterministic (no environment-dependent `__Secure-` prefix toggling) so
       // UserContextGuard's derived sessionCookieName is stable across dev and prod.
@@ -299,5 +327,9 @@ export function createBetterAuth(options: CreateBetterAuthOptions): BetterAuthBu
   const auth = betterAuth(authOptions)
   const sessionCookieName = getCookies(authOptions).sessionToken.name
   const enabledSocialProviders = Object.keys(authOptions.socialProviders ?? {})
-  return { auth, sessionCookieName, enabledSocialProviders }
+  // Mirrors `sessionConfig.expiresIn`'s exact default expression
+  // (`context/create-context.mjs`) — we never set `session.expiresIn` ourselves, so
+  // this is always the 7-day default today, but stays correct if that ever changes.
+  const sessionExpiresInSeconds = authOptions.session?.expiresIn || 60 * 60 * 24 * 7
+  return { auth, sessionCookieName, enabledSocialProviders, sessionExpiresInSeconds }
 }

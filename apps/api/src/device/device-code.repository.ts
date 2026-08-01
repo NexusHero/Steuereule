@@ -4,7 +4,7 @@
 // a fake that still honours the real per-deviceCode lookup, ADR-0004). The plugin's
 // own nine columns are never written here — better-auth's Prisma adapter (via
 // `auth.api.deviceCode(...)`) owns those exclusively; this repository only ever
-// touches the five `request*`/`grantScope` columns we added.
+// touches the four `request*` columns we added.
 export interface DeviceCodeRequestContext {
   /** The desktop's User-Agent at request time — null if the header was absent. */
   userAgent: string | null
@@ -12,10 +12,22 @@ export interface DeviceCodeRequestContext {
   ip: string | null
   /**
    * Country-level geo-IP result (task 0b's `RegionResolver`) — "unknown" (never a
-   * guess) when unresolvable/stale, or null before resolution has run at all.
+   * guess) when unresolvable/stale, or null before resolution has run at all. Two
+   * consumers: the phone's match-verification approval screen (task 3) and the
+   * device list in Profil.
    */
   region: string | null
   requestedAt: Date
+}
+
+/** The match-verification payload `GET /v1/device/pending` needs (#238 task 2, AC-3)
+ *  — read fresh from the row, never cached/hard-coded. */
+export interface DevicePendingRecord {
+  userCode: string
+  status: string
+  userAgent: string | null
+  region: string | null
+  requestedAt: Date | null
 }
 
 export const DEVICE_CODE_REPOSITORY = Symbol('DEVICE_CODE_REPOSITORY')
@@ -30,4 +42,10 @@ export interface DeviceCodeRepository {
    * propagate rather than swallowing it.
    */
   recordRequestContext(deviceCode: string, context: DeviceCodeRequestContext): Promise<void>
+
+  /** Reads the match-verification payload by `user_code` — `null` if no such code
+   *  exists (the plugin's own `deviceVerify` call already validates existence/expiry
+   *  before this is ever reached, so a `null` here on the happy path is unexpected,
+   *  but the type stays honest about it rather than asserting non-null). */
+  findByUserCode(userCode: string): Promise<DevicePendingRecord | null>
 }
