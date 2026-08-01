@@ -9,6 +9,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { BetterAuthBundle } from '../src/auth/auth.tokens.js'
 import { DEVICE_AUTHORIZATION_CLIENT_ID, DeviceService } from '../src/device/device.service.js'
+import type { RegionResolver } from '../src/device/region/region-resolver.js'
 import { FakeDeviceCodeRepository } from './fakes/fake-device-code.repository.js'
 
 function fakeBundle(deviceCode: ReturnType<typeof vi.fn>): BetterAuthBundle {
@@ -31,13 +32,17 @@ const CANNED_RESULT = {
 describe('DeviceService.requestCode', () => {
   let repository: FakeDeviceCodeRepository
   let deviceCode: ReturnType<typeof vi.fn>
+  let regionResolver: RegionResolver
+  let resolve: ReturnType<typeof vi.fn>
   let service: DeviceService
 
   beforeEach(() => {
     repository = new FakeDeviceCodeRepository()
     repository.seedKnownDeviceCode(CANNED_RESULT.device_code)
     deviceCode = vi.fn().mockResolvedValue(CANNED_RESULT)
-    service = new DeviceService(fakeBundle(deviceCode), repository)
+    resolve = vi.fn().mockResolvedValue('DE')
+    regionResolver = { resolve }
+    service = new DeviceService(fakeBundle(deviceCode), repository, regionResolver)
   })
 
   it('calls the plugin with this app\'s fixed client_id, never a caller-supplied one', async () => {
@@ -55,20 +60,27 @@ describe('DeviceService.requestCode', () => {
     })
   })
 
-  it('stamps the desktop\'s own User-Agent/IP onto the row the plugin just created, keyed by device_code', async () => {
+  it('stamps the desktop\'s own User-Agent/IP/resolved-region onto the row the plugin just created, keyed by device_code', async () => {
     await service.requestCode({ userAgent: 'Mozilla/5.0 TestAgent', ip: '203.0.113.5' })
     expect(repository.calls).toHaveLength(1)
     expect(repository.calls[0]!.deviceCode).toBe(CANNED_RESULT.device_code)
     expect(repository.calls[0]!.context).toMatchObject({
       userAgent: 'Mozilla/5.0 TestAgent',
       ip: '203.0.113.5',
-      region: null,
+      region: 'DE',
     })
     expect(repository.calls[0]!.context.requestedAt).toBeInstanceOf(Date)
   })
 
+  it('resolves the region from the desktop\'s own IP, not the plugin\'s response', async () => {
+    await service.requestCode({ userAgent: 'Mozilla/5.0', ip: '203.0.113.5' })
+    expect(resolve).toHaveBeenCalledWith('203.0.113.5')
+  })
+
   it('passes through a missing User-Agent/IP as null rather than inventing a placeholder', async () => {
+    resolve.mockResolvedValue('unknown')
     await service.requestCode({ userAgent: null, ip: null })
-    expect(repository.calls[0]!.context).toMatchObject({ userAgent: null, ip: null })
+    expect(resolve).toHaveBeenCalledWith(null)
+    expect(repository.calls[0]!.context).toMatchObject({ userAgent: null, ip: null, region: 'unknown' })
   })
 })

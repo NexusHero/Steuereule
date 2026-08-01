@@ -25,6 +25,10 @@ describe('REQ-014 task 0 — device-authorization plugin registration, against t
     baseUrl = await app.getUrl()
     const { PrismaService } = await import('../../src/prisma/prisma.service.js')
     prisma = app.get(PrismaService)
+    // The shared dev Postgres this suite runs against may already carry rows from a
+    // manual boot/curl session against the same DATABASE_URL — start from a clean
+    // table rather than assuming one.
+    await prisma.$executeRawUnsafe(`DELETE FROM "DeviceCode"`)
   })
 
   afterEach(async () => {
@@ -72,9 +76,12 @@ describe('REQ-014 task 0 — device-authorization plugin registration, against t
     expect(row.userId).toBeNull()
     expect(row.requestUserAgent).toBe('IntegrationTestAgent/1.0')
     expect(row.requestedAt).not.toBeNull()
-    // task 0b's RegionResolver hasn't landed yet at this point in the row's write
-    // path — requestRegion stays null rather than a guessed value.
-    expect(row.requestRegion).toBeNull()
+    // No GEOIP_DATABASE_PATH is configured in this test environment (task 0b's
+    // resolver has nothing to load yet — matching real dev/CI before the build-time
+    // fetch has run) — and the test client's own address is loopback regardless.
+    // Either reason alone makes "unknown" the only honest answer; RegionResolver's
+    // own three-branch behaviour is proven directly in region-resolver.geoip.test.ts.
+    expect(row.requestRegion).toBe('unknown')
   })
 
   // ADR-0024's whole reason to exist: the plugin's own HTTP surface must be

@@ -14,6 +14,7 @@ import { BETTER_AUTH_BUNDLE, type BetterAuthBundle } from '../auth/auth.tokens.j
 import { deviceAuthorizationApi } from './device-authorization-api.js'
 import { DEVICE_CODE_REPOSITORY, type DeviceCodeRepository } from './device-code.repository.js'
 import type { DeviceCodeResponseDto } from './dto/device-code-response.dto.js'
+import { REGION_RESOLVER, type RegionResolver } from './region/region-resolver.js'
 
 /** This app is the device flow's one and only first-party client — no third-party
  *  integrator ever calls `/v1/device/code`, so a single fixed `client_id` is correct
@@ -32,6 +33,7 @@ export class DeviceService {
   constructor(
     @Inject(BETTER_AUTH_BUNDLE) private readonly betterAuth: BetterAuthBundle,
     @Inject(DEVICE_CODE_REPOSITORY) private readonly repository: DeviceCodeRepository,
+    @Inject(REGION_RESOLVER) private readonly regionResolver: RegionResolver,
   ) {}
 
   async requestCode(origin: DeviceCodeRequestOrigin): Promise<DeviceCodeResponseDto> {
@@ -39,15 +41,16 @@ export class DeviceService {
       body: { client_id: DEVICE_AUTHORIZATION_CLIENT_ID },
     })
 
-    // Region resolution lands with task 0b's RegionResolver (ADR-0024) — this column
-    // is written as null until that resolver exists to fill it; AC-3's "Region
-    // unbekannt" fallback is a *rendered* state for an unresolved/unknown region, not
-    // this pre-resolver gap, so nothing here should be read as that fallback already
-    // being implemented.
+    // task 0b: resolves to a country code, or UNKNOWN_REGION ("unknown", never a
+    // guess) for a private/unroutable address or a stale/unconfigured database —
+    // AC-3's rendered "Region unbekannt" state is this value round-tripped, not a
+    // frontend-side fallback of its own.
+    const region = await this.regionResolver.resolve(origin.ip)
+
     await this.repository.recordRequestContext(result.device_code, {
       userAgent: origin.userAgent,
       ip: origin.ip,
-      region: null,
+      region,
       requestedAt: new Date(),
     })
 
