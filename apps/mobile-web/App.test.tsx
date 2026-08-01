@@ -7,7 +7,7 @@
 // skipped via its own tap-to-skip affordance rather than waiting out its auto-advance timer,
 // keeping this test fast.
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { server } from './src/test-msw-server'
 
@@ -22,6 +22,15 @@ const API_BASE_URL = 'http://localhost:3000'
 beforeEach(() => {
   window.history.pushState({}, '', '/')
 })
+
+// LoginScreen.test.tsx's own helper, copied rather than imported — `useBreakpoint` reads
+// `document.documentElement.clientWidth` (jsdom default: 0, breakpoint `s`) and only re-reads on
+// a real `resize` event. Needed here once, for AC-7's own test: the desktop side of that flow
+// only shows its QR device-login column (and therefore only mints a code at all) at `m`/`l`.
+function setViewportWidth(width: number) {
+  Object.defineProperty(document.documentElement, 'clientWidth', { value: width, configurable: true })
+  window.dispatchEvent(new Event('resize'))
+}
 
 /** Walks guest onboarding to completion — the only way into the tabbed shell. */
 async function completeOnboarding() {
@@ -359,11 +368,17 @@ describe('App', () => {
           return HttpResponse.json({}, { status: 201 })
         }),
       )
+      // Wide, deliberately: at `s` the QR column is already hidden regardless of
+      // `showDeviceQr` (LoginScreen's own `bp === 's' || !showDeviceQr` gate) — asserting at
+      // jsdom's default width would pass even if `showDeviceQr={false}` were dropped entirely,
+      // proving nothing about the embedded-usage flag this test exists to check.
+      setViewportWidth(1024)
       window.history.pushState({}, '', '/device?user_code=K7QX-9F2M')
       const { default: App } = await import('./App')
       render(<App />)
 
       await screen.findByText('Einloggen')
+      expect(screen.queryByLabelText('QR-Code zum Anmelden mit dem Handy')).toBeNull()
       expect(screen.queryByText('Neu hier? Konto anlegen')).toBeNull()
       expect(screen.queryByText('Erstmal als Gast umschauen')).toBeNull()
       expect(deviceCodeRequests).toBe(0)
@@ -391,6 +406,100 @@ describe('App', () => {
       expect(await screen.findByLabelText('Wir prüfen deine Anmeldung …')).toBeTruthy()
       expect(screen.queryByText('Einloggen')).toBeNull()
       expect(screen.queryByText('Steht dieser Code gerade auf deinem Bildschirm?')).toBeNull()
+    })
+
+    // #238 task 4 — AC-7's own full round trip. Everything up to here proved the fork exists
+    // and that Login renders embedded, in place; this proves the *detour completes*: a real
+    // sign-in, inside that embedded form, actually lands the phone on the approval screen —
+    // showing the identical code, not merely *a* code — and that the whole journey, the
+    // desktop's own mint included, cost exactly one `POST /v1/device/code`. Both assertions are
+    // load-bearing together: "the same code" alone would still pass a second, coincidentally
+    // identical mint — exactly what a careless mock could produce — which is the entire reason
+    // AC-7 names the request count explicitly rather than trusting the value alone.
+    it('AC-7: the no-session detour completes a real login and lands on the identical pending code — exactly one POST /v1/device/code for the whole flow', async () => {
+      const AC7_CODE = 'AC7X-9F2M'
+      let deviceCodeRequests = 0
+      server.use(
+        http.post(`${API_BASE_URL}/v1/device/code`, () => {
+          deviceCodeRequests += 1
+          return HttpResponse.json(
+            {
+              userCode: AC7_CODE,
+              deviceCode: 'ac7-device-code',
+              verificationUriComplete: `http://localhost:8081/device?user_code=${AC7_CODE}`,
+              expiresIn: 120,
+              interval: 5,
+            },
+            { status: 201 },
+          )
+        }),
+      )
+
+      // The desktop half of the story: Login at a wide breakpoint, its own QR column mints
+      // the one code this whole flow counts. A real, separate render — not a value handed
+      // straight to the phone's render below — so the count below is genuine, not assumed.
+      setViewportWidth(1024)
+      window.history.pushState({}, '', '/login')
+      const { default: DesktopApp } = await import('./App')
+      const desktop = render(<DesktopApp />)
+      await screen.findByLabelText('QR-Code zum Anmelden mit dem Handy')
+      expect(await screen.findByText(AC7_CODE)).toBeTruthy()
+      expect(deviceCodeRequests).toBe(1)
+      desktop.unmount()
+
+      // The phone half: a genuinely separate app instance — the desktop and phone are
+      // different browsers in reality, sharing nothing but this one MSW-mocked backend, so a
+      // fresh module (and therefore a fresh `authClient`) here is the same reasoning as this
+      // describe block's own per-test `resetModules()`, just applied mid-test on purpose.
+      vi.resetModules()
+      setViewportWidth(375)
+
+      let phoneSignedIn = false
+      server.use(
+        http.get(`${API_BASE_URL}/api/auth/get-session`, () =>
+          HttpResponse.json(
+            phoneSignedIn
+              ? { user: { id: 'u-phone', email: 'phone@beispiel.de', emailVerified: true, name: '' }, session: { id: 's-phone' } }
+              : null,
+          ),
+        ),
+        http.post(`${API_BASE_URL}/api/auth/sign-in/email`, () => {
+          phoneSignedIn = true
+          return HttpResponse.json({ user: { id: 'u-phone', email: 'phone@beispiel.de', emailVerified: true, name: '' }, token: 'phone-session-token' })
+        }),
+        http.get(`${API_BASE_URL}/v1/device/pending`, () =>
+          HttpResponse.json(
+            { userCode: AC7_CODE, status: 'pending', userAgent: 'DesktopBrowser/1.0', region: 'unknown', requestedAt: '2026-08-01T14:32:00.000Z' },
+            { status: 200 },
+          ),
+        ),
+      )
+
+      window.history.pushState({}, '', `/device?user_code=${AC7_CODE}`)
+      const { default: PhoneApp } = await import('./App')
+      render(<PhoneApp />)
+
+      // No session yet — the embedded Login, not the approval screen, and no way out of it
+      // toward registration or guest (both already proven unreachable from here).
+      await screen.findByText('Einloggen')
+      expect(screen.queryByText('Steht dieser Code gerade auf deinem Bildschirm?')).toBeNull()
+      expect(screen.queryByText('Neu hier? Konto anlegen')).toBeNull()
+      expect(screen.queryByText('Erstmal als Gast umschauen')).toBeNull()
+
+      fireEvent.change(screen.getByPlaceholderText('du@beispiel.de'), { target: { value: 'phone@beispiel.de' } })
+      fireEvent.change(screen.getByPlaceholderText('••••••••'), { target: { value: 'geheim1' } })
+      fireEvent.click(screen.getByText('Einloggen'))
+
+      // The URL never changed underneath this — no navigation happened, the same mounted
+      // route just flips what it renders once its own session read updates. Landing here is
+      // the actual proof of the embedded mechanism, not merely that it was *designed* to work.
+      expect(await screen.findByText(AC7_CODE)).toBeTruthy()
+      expect(screen.getByText('Steht dieser Code gerade auf deinem Bildschirm?')).toBeTruthy()
+      expect(window.location.pathname + window.location.search).toBe(`/device?user_code=${AC7_CODE}`)
+
+      // The two assertions AC-7 needs, together: identical value, and exactly one mint across
+      // the desktop's page load *and* the phone's whole detour.
+      await waitFor(() => expect(deviceCodeRequests).toBe(1))
     })
   })
 })
