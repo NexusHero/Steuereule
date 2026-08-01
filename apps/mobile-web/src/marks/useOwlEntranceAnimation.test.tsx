@@ -1,7 +1,7 @@
 // The hook itself has no DOM to assert on, so a tiny harness renders `OwlMark` driven by it —
 // the same technique SplashScreen.test.tsx uses to inspect the animated styles it's handed.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, waitFor } from '@testing-library/react'
 import { ThemeProvider } from '@steuereule/ui'
 import { Animated, AccessibilityInfo } from 'react-native'
 import { useOwlEntranceAnimation } from './useOwlEntranceAnimation'
@@ -61,9 +61,10 @@ describe('useOwlEntranceAnimation', () => {
     await waitFor(() => expect(timingSpy).toHaveBeenCalled())
 
     const props = lastOwlMarkProps()
-    const headAnim = (props?.headStyle as { opacity: unknown }).opacity
-    const glassesAnim = (props?.glassesStyle as { opacity: unknown }).opacity
-    const lidAnim = (props?.lidStyle as { transform: [{ scaleY: unknown }] }).transform[0].scaleY
+    if (!props) throw new Error('OwlMark was never rendered — the harness never mounted it')
+    const headAnim = (props.headStyle as { opacity: unknown }).opacity
+    const glassesAnim = (props.glassesStyle as { opacity: unknown }).opacity
+    const lidAnim = (props.lidStyle as { transform: [{ scaleY: unknown }] }).transform[0].scaleY
 
     const allCalls = timingSpy.mock.calls
     const indexOf = (value: unknown) => allCalls.map(([v], i) => (v === value ? i : -1)).filter((i) => i >= 0)
