@@ -4,16 +4,16 @@
 !pragma layout smetana
 ' arc42 §5 — Persistence data model (data view) of the SteuerEule Postgres schema.
 ' Source of record for the diagram; export to data-model.svg (see README).
-' Highlighted (green) = added since this view's previous revision (REQ-001): the
-' better-auth identity tables + RateLimit (Slice 2, ADR-0009/0012, REQ-005/006/009/010)
-' and LegalHold (REQ-011 Löschschutz seam, ADR-0013 §5). Mirror of
+' Highlighted (green) = added since this view's previous revision (Slice 2 auth /
+' REQ-011 Löschschutz): DeviceCode, REQ-014's QR device-authorization table (ADR-0024).
+' Dashed border = in review on steuereule#239, not yet on main. Mirror of
 ' apps/api/prisma/schema.prisma — keep the two in step (stale arc42 = failing test).
 hide circle
 skinparam classAttributeIconSize 0
 skinparam shadowing false
 skinparam classBorderColor #6b7280
 
-title SteuerEule — Persistence Data Model · arc42 §5 (data view)\ngreen = added since the REQ-001 revision (Slice 2 auth · REQ-011 Löschschutz)
+title SteuerEule — Persistence Data Model · arc42 §5 (data view)\ngreen = added since the Slice-2/REQ-011 revision (REQ-014 device authorization)\ndashed = in review on #239, not yet on main
 
 note as Nscope
   **userId is a logical scoping key on the domain tables, not a DB foreign key**
@@ -88,7 +88,7 @@ note bottom of TaxYear
   and two counts. Revisit if assessed amounts / income land here.
 end note
 
-class LegalHold #palegreen {
+class LegalHold {
   id : uuid <<PK>>
   userId : string <<indexed>>
   resource : string
@@ -106,7 +106,7 @@ note bottom of LegalHold
 end note
 
 package "better-auth identity (ADR-0009 · schema owned by the library)" as ba {
-  class User #palegreen {
+  class User {
     id : uuid <<PK>>
     name : string
     email : string <<unique>>
@@ -116,7 +116,7 @@ package "better-auth identity (ADR-0009 · schema owned by the library)" as ba {
     updatedAt : DateTime
   }
 
-  class Session #palegreen {
+  class Session {
     id : uuid <<PK>>
     userId : string <<FK → User>>
     token : string <<unique>>
@@ -127,7 +127,7 @@ package "better-auth identity (ADR-0009 · schema owned by the library)" as ba {
     updatedAt : DateTime
   }
 
-  class Account #palegreen {
+  class Account {
     id : uuid <<PK>>
     userId : string <<FK → User>>
     providerId : string
@@ -139,7 +139,7 @@ package "better-auth identity (ADR-0009 · schema owned by the library)" as ba {
     updatedAt : DateTime
   }
 
-  class Verification #palegreen {
+  class Verification {
     id : uuid <<PK>>
     identifier : string
     value : string
@@ -166,7 +166,7 @@ note bottom of Account
   (ADR-0013 §4).
 end note
 
-class RateLimit #palegreen {
+class RateLimit {
   id : uuid <<PK>>
   key : string?
   count : int?
@@ -177,6 +177,39 @@ note bottom of RateLimit
   an in-memory counter resets per pod and is trivially bypassed once
   the API scales horizontally. Reused — not re-invented — by the
   deletion path's password re-verification limit (ADR-0013 §6 note).
+end note
+
+class DeviceCode #palegreen;line.dashed {
+  id : uuid <<PK>>
+  deviceCode : string <<unique>>
+  userCode : string <<unique>>
+  userId : string?
+  expiresAt : DateTime
+  status : string
+  lastPolledAt : DateTime?
+  pollingInterval : int?
+  clientId : string?
+  scope : string?
+  --  our columns (ADR-0024)  --
+  requestUserAgent : string?
+  requestIp : string?
+  requestRegion : string?
+  requestedAt : DateTime?
+}
+note bottom of DeviceCode
+  RFC 8628 device authorization (REQ-014, ADR-0024). The first ten
+  fields are **better-auth's own**, unrenamed; the four below the line
+  are ours — the desktop's request context, which the plugin never
+  reads or writes. That is only safe because the plugin's HTTP routes
+  are switched off (`disabledPaths`) and every access goes through our
+  own /v1/device/* endpoints.
+  **grantScope is deliberately absent:** it existed to record the
+  "just for now" vs "trust this device" choice, and that decision was
+  revoked — there is one fixed session lifetime.
+  `userId` is the **approving phone's**, never the requesting desktop's,
+  and is null until the code is claimed.
+  requestRegion is country-level or the literal "unknown" — never a
+  guess (ADR-0024, Art. 5(1)(c) data minimisation).
 end note
 
 @enduml

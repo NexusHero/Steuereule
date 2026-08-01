@@ -5,8 +5,10 @@
 ' arc42 §5 — Building Block View (Level 1 whitebox) of the SteuerEule system.
 ' Source of record for the diagram; export to building-block-view.svg (see README).
 ' Highlighted (green) = building blocks added since this view's previous revision
-' (REQ-001, the Cockpit vertical): Slice 2's auth stack (REQ-005/006/008/009/010,
-' ADR-0009/0012) and REQ-011's DSGVO export/deletion (ADR-0013).
+' (Slice 2's auth stack + REQ-011's DSGVO export/deletion): REQ-014's QR device
+' authorization (ADR-0024) and the app's first real router (ADR-0023).
+' Dashed border = landing in review on steuereule#239, not yet on main — the marker
+' comes off when the slice merges, exactly as DatenschutzScreen's did at #153.
 ' Keep this in step with the code — a stale arc42 is treated as a failing test.
 skinparam componentStyle rectangle
 skinparam defaultTextAlignment center
@@ -14,19 +16,21 @@ skinparam shadowing false
 skinparam rectangleBorderColor #6b7280
 skinparam packageBorderColor #6b7280
 
-title SteuerEule — Building Block View (Level 1) · arc42 §5\ngreen = added since the REQ-001 revision (Slice 2 auth · REQ-011 DSGVO)
+title SteuerEule — Building Block View (Level 1) · arc42 §5\ngreen = added since the Slice-2/REQ-011 revision (REQ-014 QR device authorization · first router)\ndashed = in review on #239, not yet on main
 
 actor "User\n(guest session or\nverified account)" as user
 
 package "apps/mobile-web  ·  Expo / React-Native-Web" as fe {
+  component "App.tsx — composition root\n@react-navigation/native + native-stack\nroute table + linking config\n**the one @react-navigation import site**" as router #palegreen;line.dashed
   component "SplashScreen" as splash
-  component "LoginScreen · RegistrierungScreen\nemail/password · guest · Google" as login #palegreen
+  component "LoginScreen · RegistrierungScreen\nemail/password · guest · Google\n+ open QR column (QrMark)" as login
+  component "GeraetefreigabeScreen\nmatch verification: is this code\non your screen? + warning copy" as approval #palegreen;line.dashed
   component "OnboardingScreen" as onb
   component "CockpitScreen\n(hero estimate card,\nhonest states)" as cockpitScreen
-  component "ProfilScreen\n(view/edit stored profile)" as profilScreen #palegreen
-  component "DatenschutzScreen\nDSGVO export + deletion" as datenschutzScreen #palegreen
-  component "AuthClientProvider\nthe one better-auth client\n(session · sign-in/up/out)" as authClient #palegreen
-  component "exportDownload.ts\nthe one documented egress\noutside the generated client" as exportDl #palegreen
+  component "ProfilScreen\n(view/edit stored profile)\n+ device list · per-entry revoke" as profilScreen
+  component "DatenschutzScreen\nDSGVO export + deletion" as datenschutzScreen
+  component "AuthClientProvider\nthe one better-auth client\n(session · sign-in/up/out)" as authClient
+  component "exportDownload.ts\nthe one documented egress\noutside the generated client" as exportDl
 }
 
 package "Shared packages (monorepo)" as pkgs {
@@ -37,12 +41,14 @@ package "Shared packages (monorepo)" as pkgs {
 }
 
 package "apps/api  ·  NestJS on Fastify" as api {
-  component "better-auth\nFastify catch-all on /api/auth/*\n(mounted outside Nest)" as betterauth #palegreen
+  component "better-auth\nFastify catch-all on /api/auth/*\n(mounted outside Nest)\ndevice-authorization plugin:\nHTTP routes disabledPaths-off" as betterauth
   component "UserContextGuard\nidentity seam (ADR-0007/0012):\nverified session OR signed guest cookie" as guard
-  component "AuthModule\ncapabilities · guest→account upgrade\nFreshAuthChecker · breach-check\nEmailSender seam" as authMod #palegreen
+  component "AuthModule\ncapabilities · guest→account upgrade\nFreshAuthChecker · breach-check\nEmailSender seam" as authMod
+  component "DeviceModule  (ADR-0024)\n/v1/device/{code,pending,approve,token}\nour surface in front of the plugin\nsession-cookie.ts · pending rate limit" as deviceMod #palegreen;line.dashed
+  component "RegionResolver  (ADR-0024)\ncountry-level geo-IP, self-hosted\nnever guesses — resolves to 'unknown'\ntwo consumers: approval + device list" as region #palegreen;line.dashed
   component "ProfileModule\nGET/PUT /v1/profile" as profile
   component "CockpitModule\nGET /v1/steuerjahre/{jahr}/cockpit" as cockpitMod
-  component "AccountModule\nGET /v1/account/export (JSON · PDF)\nDELETE /v1/account (teardown txn)\nPdfRenderer seam" as accountMod #palegreen
+  component "AccountModule\nGET /v1/account/export (JSON · PDF)\nDELETE /v1/account (teardown txn)\nPdfRenderer seam" as accountMod
   component "AuditModule\nTaxDataAccessLog (append-only)" as audit
   component "PrismaModule\nfield-encrypted Prisma client" as prisma
   component "Cross-cutting\nCORS allowlist (ADR-0011) ·\nhelmet/CSP ·\nDB-backed rate limits — NOT effective:\nIP-keyed via untrusted X-Forwarded-For,\nbypassable (#241), closes with #246" as crosscut #palegreen
@@ -52,12 +58,20 @@ database "Postgres (EU)\nexpand-only migrations (ADR-047)" as db {
   component "Profile" as tProfile
   component "TaxDataAccessLog" as tAudit
   component "TaxYear" as tTaxYear
-  component "User · Session ·\nAccount · Verification\n(better-auth)" as tAuth #palegreen
-  component "LegalHold · RateLimit" as tHold #palegreen
+  component "User · Session ·\nAccount · Verification\n(better-auth)" as tAuth
+  component "LegalHold · RateLimit" as tHold
+  component "DeviceCode\n9 plugin fields + our 4\nrequest-context columns" as tDevice #palegreen;line.dashed
 }
 
 user --> fe
+router ..> splash
+router ..> login
+router ..> approval : URL → screen\n(linking config)
+router ..> onb
 splash ..> login
+login ..> deviceMod : POST /v1/device/code\n(on page load)
+approval ..> deviceMod : GET /v1/device/pending\nPOST /v1/device/approve
+profilScreen ..> authMod : device list · revoke
 login ..> authClient
 login ..> apiclient : useAuthCapabilities…\n(is Google actually configured?)
 onb ..> apiclient
@@ -74,6 +88,10 @@ ui ..> tokens
 authClient ..> betterauth : HTTP  /api/auth/*  (credentialed)
 apiclient ..> api : HTTP  /v1/*  (cookie-scoped)
 exportDl ..> api : HTTP  GET /v1/account/export\n(credentialed, binary attachment)
+
+deviceMod ..> betterauth : auth.api.deviceCode/Verify/\nApprove/Token — server-side only,\nthe plugin's HTTP routes are off
+deviceMod ..> region : resolve(ip) → country | "unknown"
+deviceMod --> prisma
 
 betterauth --> prisma
 guard ..> betterauth : resolves the session
@@ -102,6 +120,27 @@ note bottom of exportDl
   and it is drawn here rather than hidden inside the screen precisely
   because an undrawn second egress is how "one call site" quietly
   stops being true.
+end note
+
+note right of deviceMod
+  **ADR-0024 — the plugin runs behind our endpoints.**
+  It is never in front of the browser: better-auth's device-authorization routes are
+  switched off via `disabledPaths`; only `auth.api.*` server-side
+  calls reach it. Two findings force this: `/device/token` returns a
+  Bearer token in JSON and never sets a cookie (ADR-0008/0012 forbid
+  holding one in JS-reachable storage), and `/device` (GET) claims a
+  code for the caller's account while the origin check skips all GETs
+  — reachable cross-site under our `SameSite=None` cookie.
+  Same shape as the UserContextGuard seam: better-auth is the
+  mechanism, our API owns the surface.
+end note
+
+note bottom of router
+  **ADR-0023 — the router lives here and only here.** Screens stay
+  prop-driven: a screen never imports `@react-navigation/*`, never
+  calls a navigation hook, never imports a navigation type. That
+  constraint is what keeps the 14 prop-mounted test files untouched
+  (blast radius 1, not 15) — and it is enforced at review, not hoped for.
 end note
 
 note right of accountMod
