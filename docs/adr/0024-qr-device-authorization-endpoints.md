@@ -125,11 +125,26 @@ given up.
 - **The code-guessing surface is `GET /v1/device/pending`, and it carries its own DB-backed limiter**
   (`device-pending-rate-limit.ts`, window 60s / max 10 per IP). Against the default
   `generateUserCode`'s 40 bits — 8 characters from a 32-symbol charset (`routes.mjs:9,541-544`),
-  exactly uniform since 256/32 = 8 with no modulo bias, `I`/`O`/`0`/`1` already excluded — that is
-  ~0.17 guesses/s. Even at 100,000 codes pending simultaneously the expected time to a hit is
-  ~2 years from a single IP.
-- **`POST /v1/device/code` itself carries no limiter**, and under open placement it is an
-  unauthenticated endpoint that writes a row on every Login page view. See *Consequences*.
+  exactly uniform since 256/32 = 8 with no modulo bias, `I`/`O`/`0`/`1` already excluded — one
+  guessing IP gets 5,256,000 attempts/year against a space of 2⁴⁰.
+
+  **The quantity that matters is `N`, the number of *victim-minted* codes pending at once** — at
+  100,000 organic page views/day, `N ≈ 139` and a single guessing IP needs ~1,500 years; 100
+  rotating IPs, ~15 years. **`N` counts only codes minted by real users:** a code the attacker
+  minted points at the attacker's own desktop, so guessing it buys nothing, and flooding the table
+  therefore does **not** erode this margin. **Rotating source IPs on `/v1/device/pending` is the
+  only lever that moves it**, and it is the one to watch.
+
+  *(An earlier revision of this ADR illustrated the bound with `N = 100,000` — a number that needs
+  833 login page views per second, 72 million a day. It was a deliberately absurd ceiling and it was
+  read as a baseline. Replaced with loads this app could actually see.)*
+- **`POST /v1/device/code` carries a per-IP DB-backed limiter** (window 60s / max 10, the
+  `db-rate-limit.ts` shape). Its justification is **write amplification, not entropy**: unguarded, an
+  unauthenticated caller sustained a measured 305 rows/s — ~14.9 GB/day of rows that nothing deletes
+  — against the database holding every user's encrypted tax data. The limiter puts one source at
+  ~8.2 MB/day, so matching that single process takes ~1,830 distinct IPs. It keys on `request.ip`,
+  which makes the `trustProxy` follow-up below **load-bearing**: behind a proxy this collapses onto
+  one key and throttles everyone.
 
 `generateUserCode` stays at its default: lengthening it costs the human reading it off a screen, and
 the two levers above are what move the risk.
@@ -222,12 +237,17 @@ updates this row, the Datenschutz copy, and the script header together.
   **This re-check is the price of the wrapper**, written here so the next person knows they are
   paying it rather than discovering it.
 
-- **`POST /v1/device/code` is unauthenticated, unthrottled, and now fires on every Login page view.**
-  Open placement made the mint a page-view-rate event rather than a deliberate one. Each call writes a
-  `DeviceCode` row, and **no sweeper deletes expired rows** — the table grows with login page views,
-  not with logins. `expiresIn: '2m'` bounds how many codes are *live*; it does not bound how many rows
-  accumulate. Named here as a known property of the decision, and explicitly *not* as something the
-  `/device` rate rule covers, because it does not.
+- **`POST /v1/device/code` is unauthenticated and now fires on every Login page view**, so the mint is
+  a page-view-rate event rather than a deliberate one. Each call writes a `DeviceCode` row of
+  ~567 bytes (measured over 1,000 real rows via `pg_total_relation_size`). That is why it carries its
+  own limiter — see above.
+- **Nothing deletes expired rows.** There is no sweeper (`@nestjs/schedule` is not a dependency), and
+  the plugin's own lazy delete only fires when something polls a specific `device_code` after
+  expiry — so abandoned page-view mints are permanent. `expiresIn: '2m'` bounds how many codes are
+  *live*; it does not bound how many rows accumulate. With minting limited this is ~170 MB/month at
+  10,000 page views/day, which is why it is **not** treated as an emergency — but the cleanup
+  mechanism is a genuine open decision (in-process scheduler vs. external cron vs. delete-on-mint),
+  and adopting a scheduler is an architecture call, not a slice call. Tracked separately, on purpose.
 - **The revoked session-scope decision left a live trap for anyone who reinstates it.** better-auth's
   `getSession()` **silently extends a shortened session back to the full configured lifetime on the
   next read** unless a second `dontRememberToken` cookie is also set. Found by booting a real server,
