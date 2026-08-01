@@ -6,17 +6,31 @@
  * OpenAPI spec version: 1.0
  */
 import {
-  useMutation
+  useMutation,
+  useQuery
 } from '@tanstack/react-query';
 import type {
+  DataTag,
+  DefinedInitialDataOptions,
+  DefinedUseQueryResult,
   MutationFunction,
   QueryClient,
+  QueryFunction,
+  QueryKey,
+  UndefinedInitialDataOptions,
   UseMutationOptions,
-  UseMutationResult
+  UseMutationResult,
+  UseQueryOptions,
+  UseQueryResult
 } from '@tanstack/react-query';
 
 import type {
-  DeviceCodeResponseDto
+  AckResponseDto,
+  ApproveDeviceRequestDto,
+  DeviceCodeResponseDto,
+  DeviceControllerGetPendingParams,
+  DevicePendingResponseDto,
+  DeviceTokenRequestDto
 } from './device.schemas';
 
 import { httpClient } from '../http-client';
@@ -25,6 +39,21 @@ import { httpClient } from '../http-client';
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 
+
+const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKey: K } => {
+  const result = { queryKey } as T & { queryKey: K };
+  for (const key of Object.keys(query)) {
+    // The explicit queryKey always wins, matching the previous
+    // `{ ...query, queryKey }` spread where it was set last.
+    if (key === 'queryKey') continue;
+    Object.defineProperty(result, key, {
+      enumerable: true,
+      configurable: true,
+      get: () => (query as Record<string, unknown>)[key],
+    });
+  }
+  return result;
+};
 
 export type deviceControllerRequestCodeResponse201 = {
   data: DeviceCodeResponseDto
@@ -101,5 +130,273 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getDeviceControllerRequestCodeMutationOptions(options), queryClient);
+    }
+
+export type deviceControllerGetPendingResponse200 = {
+  data: DevicePendingResponseDto
+  status: 200
+}
+
+export type deviceControllerGetPendingResponseSuccess = (deviceControllerGetPendingResponse200) & {
+  headers: Headers;
+};
+;
+
+export type deviceControllerGetPendingResponse = (deviceControllerGetPendingResponseSuccess)
+
+export const getDeviceControllerGetPendingUrl = (params: DeviceControllerGetPendingParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/device/pending?${stringifiedParams}` : `/v1/device/pending`
+}
+
+export const deviceControllerGetPending = async (params: DeviceControllerGetPendingParams, options?: RequestInit): Promise<deviceControllerGetPendingResponse> => {
+
+  return httpClient<deviceControllerGetPendingResponse>(getDeviceControllerGetPendingUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeviceControllerGetPendingQueryKey = (params?: DeviceControllerGetPendingParams,) => {
+    return [
+    `/v1/device/pending`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getDeviceControllerGetPendingQueryOptions = <TData = Awaited<ReturnType<typeof deviceControllerGetPending>>, TError = unknown>(params: DeviceControllerGetPendingParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof deviceControllerGetPending>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getDeviceControllerGetPendingQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof deviceControllerGetPending>>> = ({ signal }) => deviceControllerGetPending(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof deviceControllerGetPending>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type DeviceControllerGetPendingQueryResult = NonNullable<Awaited<ReturnType<typeof deviceControllerGetPending>>>
+export type DeviceControllerGetPendingQueryError = unknown
+
+
+export function useDeviceControllerGetPending<TData = Awaited<ReturnType<typeof deviceControllerGetPending>>, TError = unknown>(
+ params: DeviceControllerGetPendingParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof deviceControllerGetPending>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof deviceControllerGetPending>>,
+          TError,
+          Awaited<ReturnType<typeof deviceControllerGetPending>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useDeviceControllerGetPending<TData = Awaited<ReturnType<typeof deviceControllerGetPending>>, TError = unknown>(
+ params: DeviceControllerGetPendingParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof deviceControllerGetPending>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof deviceControllerGetPending>>,
+          TError,
+          Awaited<ReturnType<typeof deviceControllerGetPending>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useDeviceControllerGetPending<TData = Awaited<ReturnType<typeof deviceControllerGetPending>>, TError = unknown>(
+ params: DeviceControllerGetPendingParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof deviceControllerGetPending>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useDeviceControllerGetPending<TData = Awaited<ReturnType<typeof deviceControllerGetPending>>, TError = unknown>(
+ params: DeviceControllerGetPendingParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof deviceControllerGetPending>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getDeviceControllerGetPendingQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type deviceControllerApproveResponse200 = {
+  data: AckResponseDto
+  status: 200
+}
+
+export type deviceControllerApproveResponseSuccess = (deviceControllerApproveResponse200) & {
+  headers: Headers;
+};
+;
+
+export type deviceControllerApproveResponse = (deviceControllerApproveResponseSuccess)
+
+export const getDeviceControllerApproveUrl = () => {
+
+
+
+
+  return `/v1/device/approve`
+}
+
+export const deviceControllerApprove = async (approveDeviceRequestDto: ApproveDeviceRequestDto, options?: RequestInit): Promise<deviceControllerApproveResponse> => {
+
+  return httpClient<deviceControllerApproveResponse>(getDeviceControllerApproveUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(approveDeviceRequestDto)
+  }
+);}
+
+
+
+
+
+export const getDeviceControllerApproveMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deviceControllerApprove>>, TError,{data: ApproveDeviceRequestDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof deviceControllerApprove>>, TError,{data: ApproveDeviceRequestDto}, TContext> => {
+
+const mutationKey = ['deviceControllerApprove'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deviceControllerApprove>>, {data: ApproveDeviceRequestDto}> = (props) => {
+          const {data} = props ?? {};
+
+          return  deviceControllerApprove(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeviceControllerApproveMutationResult = NonNullable<Awaited<ReturnType<typeof deviceControllerApprove>>>
+    export type DeviceControllerApproveMutationBody = ApproveDeviceRequestDto
+    export type DeviceControllerApproveMutationError = unknown
+
+    export const useDeviceControllerApprove = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deviceControllerApprove>>, TError,{data: ApproveDeviceRequestDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deviceControllerApprove>>,
+        TError,
+        {data: ApproveDeviceRequestDto},
+        TContext
+      > => {
+      return useMutation(getDeviceControllerApproveMutationOptions(options), queryClient);
+    }
+
+export type deviceControllerExchangeTokenResponse200 = {
+  data: AckResponseDto
+  status: 200
+}
+
+export type deviceControllerExchangeTokenResponseSuccess = (deviceControllerExchangeTokenResponse200) & {
+  headers: Headers;
+};
+;
+
+export type deviceControllerExchangeTokenResponse = (deviceControllerExchangeTokenResponseSuccess)
+
+export const getDeviceControllerExchangeTokenUrl = () => {
+
+
+
+
+  return `/v1/device/token`
+}
+
+export const deviceControllerExchangeToken = async (deviceTokenRequestDto: DeviceTokenRequestDto, options?: RequestInit): Promise<deviceControllerExchangeTokenResponse> => {
+
+  return httpClient<deviceControllerExchangeTokenResponse>(getDeviceControllerExchangeTokenUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(deviceTokenRequestDto)
+  }
+);}
+
+
+
+
+
+export const getDeviceControllerExchangeTokenMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deviceControllerExchangeToken>>, TError,{data: DeviceTokenRequestDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof deviceControllerExchangeToken>>, TError,{data: DeviceTokenRequestDto}, TContext> => {
+
+const mutationKey = ['deviceControllerExchangeToken'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deviceControllerExchangeToken>>, {data: DeviceTokenRequestDto}> = (props) => {
+          const {data} = props ?? {};
+
+          return  deviceControllerExchangeToken(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeviceControllerExchangeTokenMutationResult = NonNullable<Awaited<ReturnType<typeof deviceControllerExchangeToken>>>
+    export type DeviceControllerExchangeTokenMutationBody = DeviceTokenRequestDto
+    export type DeviceControllerExchangeTokenMutationError = unknown
+
+    export const useDeviceControllerExchangeToken = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deviceControllerExchangeToken>>, TError,{data: DeviceTokenRequestDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deviceControllerExchangeToken>>,
+        TError,
+        {data: DeviceTokenRequestDto},
+        TContext
+      > => {
+      return useMutation(getDeviceControllerExchangeTokenMutationOptions(options), queryClient);
     }
 

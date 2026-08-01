@@ -18,11 +18,19 @@ import type {
 } from 'msw';
 
 import type {
-  DeviceCodeResponseDto
+  AckResponseDto,
+  DeviceCodeResponseDto,
+  DevicePendingResponseDto
 } from './device.schemas';
 
 
 export const getDeviceControllerRequestCodeResponseMock = (overrideResponse: Partial<Extract<DeviceCodeResponseDto, object>> = {}): DeviceCodeResponseDto => ({userCode: faker.string.alpha({length: {min: 10, max: 20}}), deviceCode: faker.string.alpha({length: {min: 10, max: 20}}), verificationUriComplete: faker.string.alpha({length: {min: 10, max: 20}}), expiresIn: faker.number.float({fractionDigits: 2}), interval: faker.number.float({fractionDigits: 2}), ...overrideResponse})
+
+export const getDeviceControllerGetPendingResponseMock = (overrideResponse: Partial<Extract<DevicePendingResponseDto, object>> = {}): DevicePendingResponseDto => ({userCode: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.helpers.arrayElement(['pending','approved','denied'] as const), userAgent: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), region: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), requestedAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), ...overrideResponse})
+
+export const getDeviceControllerApproveResponseMock = (overrideResponse: Partial<Extract<AckResponseDto, object>> = {}): AckResponseDto => ({success: faker.datatype.boolean(), ...overrideResponse})
+
+export const getDeviceControllerExchangeTokenResponseMock = (overrideResponse: Partial<Extract<AckResponseDto, object>> = {}): AckResponseDto => ({success: faker.datatype.boolean(), ...overrideResponse})
 
 
 export const getDeviceControllerRequestCodeMockHandler = (overrideResponse?: DeviceCodeResponseDto | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<DeviceCodeResponseDto> | DeviceCodeResponseDto), options?: RequestHandlerOptions) => {
@@ -36,6 +44,45 @@ export const getDeviceControllerRequestCodeMockHandler = (overrideResponse?: Dev
       })
   }, options)
 }
+
+export const getDeviceControllerGetPendingMockHandler = (overrideResponse?: DevicePendingResponseDto | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<DevicePendingResponseDto> | DevicePendingResponseDto), options?: RequestHandlerOptions) => {
+  return http.get('*/v1/device/pending', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getDeviceControllerGetPendingResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getDeviceControllerApproveMockHandler = (overrideResponse?: AckResponseDto | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<AckResponseDto> | AckResponseDto), options?: RequestHandlerOptions) => {
+  return http.post('*/v1/device/approve', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getDeviceControllerApproveResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getDeviceControllerExchangeTokenMockHandler = (overrideResponse?: AckResponseDto | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<AckResponseDto> | AckResponseDto), options?: RequestHandlerOptions) => {
+  return http.post('*/v1/device/token', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getDeviceControllerExchangeTokenResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
 export const getSteuerEuleAPIMock = () => [
-  getDeviceControllerRequestCodeMockHandler()
+  getDeviceControllerRequestCodeMockHandler(),
+  getDeviceControllerGetPendingMockHandler(),
+  getDeviceControllerApproveMockHandler(),
+  getDeviceControllerExchangeTokenMockHandler()
 ]

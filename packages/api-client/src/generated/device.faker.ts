@@ -10,9 +10,17 @@ import {
 } from '@faker-js/faker';
 
 import type {
-  DeviceCodeResponseDto
+  AckResponseDto,
+  DeviceCodeResponseDto,
+  DevicePendingResponseDto
 } from './device.schemas';
 
 
 export const getDeviceControllerRequestCodeResponseMock = (overrideResponse: Partial<Extract<DeviceCodeResponseDto, object>> = {}): DeviceCodeResponseDto => ({userCode: faker.string.alpha({length: {min: 10, max: 20}}), deviceCode: faker.string.alpha({length: {min: 10, max: 20}}), verificationUriComplete: faker.string.alpha({length: {min: 10, max: 20}}), expiresIn: faker.number.float({fractionDigits: 2}), interval: faker.number.float({fractionDigits: 2}), ...overrideResponse})
+
+export const getDeviceControllerGetPendingResponseMock = (overrideResponse: Partial<Extract<DevicePendingResponseDto, object>> = {}): DevicePendingResponseDto => ({userCode: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.helpers.arrayElement(['pending','approved','denied'] as const), userAgent: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), region: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), requestedAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), ...overrideResponse})
+
+export const getDeviceControllerApproveResponseMock = (overrideResponse: Partial<Extract<AckResponseDto, object>> = {}): AckResponseDto => ({success: faker.datatype.boolean(), ...overrideResponse})
+
+export const getDeviceControllerExchangeTokenResponseMock = (overrideResponse: Partial<Extract<AckResponseDto, object>> = {}): AckResponseDto => ({success: faker.datatype.boolean(), ...overrideResponse})
 
