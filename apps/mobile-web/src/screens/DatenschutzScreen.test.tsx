@@ -438,4 +438,45 @@ describe('DatenschutzScreen', () => {
     await screen.findByText('Before you delete')
     expect(screen.queryByText(/Belege \(ZIP\)/)).toBeNull()
   })
+
+  // #238 task 0c (ADR-0024): the QR-Code-Login slice makes Session.ipAddress/userAgent
+  // user-visible and adds geo-IP resolution — both must be named here, explicitly (not via
+  // snapshot, which would keep passing silently if this copy were ever deleted).
+  describe('device-sessions & geo-IP disclosure (#238 task 0c)', () => {
+    it('names that session IP/User-Agent are now user-visible, shown to a guest as well as an account holder', async () => {
+      mockSession(null)
+      renderDatenschutz()
+      await screen.findByText('Anmeldungen & Geräte')
+      expect(
+        screen.getByText(
+          'Bei jeder Anmeldung speichern wir die IP-Adresse und den Gerätetyp (User-Agent) der jeweiligen Sitzung — das war schon immer so. Neu ist: Wenn du dich per QR-Code von einem neuen Gerät aus anmeldest, siehst du diese Angaben jetzt selbst — als Vergleichshilfe auf dem Bestätigungsbildschirm und in deiner eigenen Geräte-Liste in Profil, wo du jede Sitzung einzeln abmelden kannst.',
+        ),
+      ).toBeTruthy()
+    })
+
+    it('names the geo-IP processing: country-only, self-hosted on our own EU infrastructure, never a third-party lookup, with the "Region unbekannt" fallback', async () => {
+      await openAccountScreen()
+      const geoIpCopy = screen.getByText(
+        'Für die QR-Code-Anmeldung lösen wir die IP-Adresse des anfragenden Geräts zusätzlich auf Länderebene auf (z. B. "Deutschland"), nie genauer — das hilft dir, eine fremde Anfrage von deiner eigenen zu unterscheiden. Diese Auflösung läuft vollständig auf unseren eigenen EU-Servern, mit einer selbst gehosteten, regelmäßig aktualisierten Datenbank; deine IP-Adresse verlässt dafür nie unsere Infrastruktur und geht an keinen externen Anbieter. Ist die Datenbank veraltet oder eine Adresse nicht zuordenbar, zeigen wir ehrlich "Region unbekannt" statt zu raten.',
+      )
+      expect(geoIpCopy).toBeTruthy()
+      expect(geoIpCopy.textContent).toMatch(/eigenen EU-Servern/)
+      expect(geoIpCopy.textContent).toMatch(/keinen externen Anbieter/)
+      expect(geoIpCopy.textContent).toMatch(/Region unbekannt/)
+    })
+
+    it('carries the geo-IP source attribution (CC BY 4.0, DB-IP)', async () => {
+      renderDatenschutz()
+      await screen.findByText('Anmeldungen & Geräte')
+      expect(screen.getByText('Länderdaten: DB-IP.com, Lizenz CC BY 4.0.')).toBeTruthy()
+    })
+
+    it('renders both disclosures and the attribution in English too (ADR-0006)', async () => {
+      renderDatenschutz({ lng: 'en' })
+      await screen.findByText('Sign-ins & devices')
+      expect(screen.getByText(/QR code, you now see that data yourself/)).toBeTruthy()
+      expect(screen.getByText(/never leaves our infrastructure/)).toBeTruthy()
+      expect(screen.getByText('Country data: DB-IP.com, licensed CC BY 4.0.')).toBeTruthy()
+    })
+  })
 })

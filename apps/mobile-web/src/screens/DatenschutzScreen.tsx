@@ -26,6 +26,13 @@
 // the exact wording — profile + account are genuinely erased; the access-log record is
 // anonymised and *retained* (Art. 30), never deleted; Löschschutz-held data is retained under
 // legal obligation; export offers JSON + PDF only (no receipts model exists yet).
+//
+// #238 task 0c (ADR-0024): DeviceSessionsSection discloses that Session.ipAddress/userAgent
+// (persisted since day one) are now user-visible via QR-Code-Login's match-verification/device
+// list, and that QR-Login resolves the requesting device's IP to a country-level region on our
+// own EU infrastructure — never a third-party lookup API, never more than country granularity.
+// No Verarbeitungsverzeichnis entry rides with this — Musti confirmed none exists in this repo
+// today, and creating one is a legal-document decision for the stakeholder, not this slice.
 import { useState } from 'react'
 import { ActivityIndicator, ScrollView, View, Text, Pressable, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
@@ -147,6 +154,7 @@ export function DatenschutzScreen({ onZurueck, onAccountDeleted }: DatenschutzSc
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} data-testid="screen-container">
       <Appbar tr={tr} onZurueck={onZurueck} />
       <Hero tr={tr} />
+      <DeviceSessionsSection tr={tr} />
 
       {sessionPending ? (
         <SessionChecking tr={tr} />
@@ -210,6 +218,27 @@ function SessionChecking({ tr }: { readonly tr: (key: string) => string }) {
       <ActivityIndicator size="large" color={t.color.tinte} accessibilityLabel={tr('datenschutz.sessionChecking')} />
       <Text style={styles.help}>{tr('datenschutz.sessionChecking')}</Text>
     </View>
+  )
+}
+
+// #238, ADR-0024 (task 0c): discloses that Session.ipAddress/userAgent — collected
+// for every session since day one (prisma/schema.prisma) — are now user-visible via
+// the QR-Code-Login's match-verification screen and device list, and that QR-Login
+// additionally resolves the requesting device's IP to a country (never more
+// precise) on our own EU infrastructure, never a third-party lookup API. Derives
+// from this screen's own established Card + sectionTitle/sectionBody pattern —
+// no new component, shown to every visitor regardless of session state, same as the
+// Hero card above it.
+function DeviceSessionsSection({ tr }: { readonly tr: (key: string) => string }) {
+  const t = useTheme()
+  const styles = makeStyles(t)
+  return (
+    <Card>
+      <Text style={styles.sectionTitle}>{tr('datenschutz.deviceSessions.heading')}</Text>
+      <Text style={styles.sectionBody}>{tr('datenschutz.deviceSessions.sessionData')}</Text>
+      <Text style={styles.sectionBody}>{tr('datenschutz.deviceSessions.geoIp')}</Text>
+      <Text style={styles.hint}>{tr('datenschutz.deviceSessions.geoIpAttribution')}</Text>
+    </Card>
   )
 }
 
