@@ -44,6 +44,19 @@ vi.mock('./auth/auth-client', async (importOriginal) => {
   }
 })
 
+// jsdom implements no `ResizeObserver` — a real browser-API gap, not a product concern.
+// `@react-navigation/elements`' `useFrameSize` (pulled in by task 1a's router feasibility proof,
+// #238) observes its container for frame-size tracking; without this it throws on mount before a
+// single assertion runs. No test in this suite asserts on resize-driven layout, so an inert
+// observer (no-op, never fires) is the honest stand-in — real resize behaviour belongs to the
+// Chromium-backed e2e gate (docs/process/delivery-pipeline.md § Browser gates), not jsdom.
+class NoopResizeObserver implements ResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+globalThis.ResizeObserver ??= NoopResizeObserver
+
 beforeAll(() => {
   server.listen({ onUnhandledRequest: 'error' })
 
