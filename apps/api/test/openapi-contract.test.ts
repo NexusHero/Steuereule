@@ -1,31 +1,30 @@
-// The generated OpenAPI document is load-bearing (ADR-0001): the frontend's orval
-// client and MSW handlers are pinned to it. This asserts the actual document Nest
-// emits — not a hand-maintained copy — exposes the typed GET/PUT /v1/profile contract
-// with the 400 error DTO, so drift here is caught in CI.
-import type { NestFastifyApplication } from '@nestjs/platform-fastify'
+// The checked-in `openapi.json` is load-bearing (ADR-0001): it's the exact artifact
+// orval reads to generate the frontend's typed client and MSW handlers — not a
+// hand-maintained copy, and not the in-process document Nest would build under this
+// test file's own toolchain either.
+//
+// Musti's #239 ruling (replacing this file's earlier approach, ADR-0022): this used
+// to build the document in-process via `SwaggerModule.createDocument(...)`, under
+// Vitest/SWC — which, like production's `tsc` build, emits `design:paramtypes`
+// metadata. `scripts/generate-openapi-spec.ts`, the actual generator behind the
+// checked-in file, deliberately runs under plain `tsx` (esbuild, no metadata
+// emission) — so a `@Query()`/`@Body()` DTO whose shape depended on that metadata
+// alone rendered correctly in-process here while silently losing its parameter/body
+// in the file orval actually consumes. Three endpoints shipped that way
+// (`/v1/device/pending`'s `userCode`, `/v1/device/approve`'s and `/v1/device/token`'s
+// request bodies) with this file green throughout, because it was asking a document
+// nobody downstream reads. Reading the checked-in file directly is what makes this a
+// real control on the shipped artifact rather than a correct answer to the wrong
+// question — the CI freshness gate (`openapi:spec`, failing on a diff) is what keeps
+// this file's answer from going stale against it.
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import type { OpenAPIObject } from '@nestjs/swagger'
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
-import { NestFactory } from '@nestjs/core'
-import { FastifyAdapter } from '@nestjs/platform-fastify'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { AppModule } from '../src/app.module.js'
+import { describe, expect, it } from 'vitest'
+
+const document = JSON.parse(readFileSync(fileURLToPath(new URL('../openapi.json', import.meta.url)), 'utf-8')) as OpenAPIObject
 
 describe('OpenAPI contract for /v1/profile', () => {
-  let app: NestFastifyApplication
-  let document: OpenAPIObject
-
-  beforeAll(async () => {
-    app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter(), {
-      logger: false,
-    })
-    const config = new DocumentBuilder().setTitle('SteuerEule API').setVersion('1.0').build()
-    document = SwaggerModule.createDocument(app, config)
-  })
-
-  afterAll(async () => {
-    await app.close()
-  })
-
   it('documents GET /v1/profile returning the ProfileResponse schema', () => {
     const get = document.paths['/v1/profile']?.get
     expect(get).toBeDefined()
@@ -63,21 +62,6 @@ describe('OpenAPI contract for /v1/profile', () => {
 })
 
 describe('OpenAPI contract for GET /v1/steuerjahre/{jahr}/cockpit (REQ-001)', () => {
-  let app: NestFastifyApplication
-  let document: OpenAPIObject
-
-  beforeAll(async () => {
-    app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter(), {
-      logger: false,
-    })
-    const config = new DocumentBuilder().setTitle('SteuerEule API').setVersion('1.0').build()
-    document = SwaggerModule.createDocument(app, config)
-  })
-
-  afterAll(async () => {
-    await app.close()
-  })
-
   it('documents GET /v1/steuerjahre/{jahr}/cockpit with a `jahr` path param', () => {
     const get = document.paths['/v1/steuerjahre/{jahr}/cockpit']?.get
     expect(get).toBeDefined()
@@ -107,21 +91,6 @@ describe('OpenAPI contract for GET /v1/steuerjahre/{jahr}/cockpit (REQ-001)', ()
 })
 
 describe('OpenAPI contract for DELETE /v1/account (REQ-011, ADR-0013)', () => {
-  let app: NestFastifyApplication
-  let document: OpenAPIObject
-
-  beforeAll(async () => {
-    app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter(), {
-      logger: false,
-    })
-    const config = new DocumentBuilder().setTitle('SteuerEule API').setVersion('1.0').build()
-    document = SwaggerModule.createDocument(app, config)
-  })
-
-  afterAll(async () => {
-    await app.close()
-  })
-
   it('documents DELETE /v1/account accepting a confirm+password body and returning the summary schema', () => {
     const del = document.paths['/v1/account']?.delete
     expect(del).toBeDefined()
@@ -157,21 +126,6 @@ describe('OpenAPI contract for DELETE /v1/account (REQ-011, ADR-0013)', () => {
 })
 
 describe('OpenAPI contract for GET /v1/account/export (REQ-011/ADR-0013)', () => {
-  let app: NestFastifyApplication
-  let document: OpenAPIObject
-
-  beforeAll(async () => {
-    app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter(), {
-      logger: false,
-    })
-    const config = new DocumentBuilder().setTitle('SteuerEule API').setVersion('1.0').build()
-    document = SwaggerModule.createDocument(app, config)
-  })
-
-  afterAll(async () => {
-    await app.close()
-  })
-
   it('documents GET /v1/account/export with an optional `format` query param', () => {
     const get = document.paths['/v1/account/export']?.get
     expect(get).toBeDefined()
@@ -221,21 +175,6 @@ describe('OpenAPI contract for GET /v1/account/export (REQ-011/ADR-0013)', () =>
 })
 
 describe('OpenAPI contract for POST /v1/device/code (#238, task 0, ADR-0024)', () => {
-  let app: NestFastifyApplication
-  let document: OpenAPIObject
-
-  beforeAll(async () => {
-    app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter(), {
-      logger: false,
-    })
-    const config = new DocumentBuilder().setTitle('SteuerEule API').setVersion('1.0').build()
-    document = SwaggerModule.createDocument(app, config)
-  })
-
-  afterAll(async () => {
-    await app.close()
-  })
-
   it('documents POST /v1/device/code returning the DeviceCodeResponse schema', () => {
     const post = document.paths['/v1/device/code']?.post
     expect(post).toBeDefined()
@@ -252,27 +191,30 @@ describe('OpenAPI contract for POST /v1/device/code (#238, task 0, ADR-0024)', (
   })
 })
 
+// #238 task 2 (ADR-0024). These three assertions are the ones that actually caught
+// nothing before this file read the checked-in artifact (Kaan's find, Musti's #239
+// ruling) — `device.controller.ts`'s `@Query()`/`@Body()` DTOs silently lost their
+// documented parameter/body under the generator's `tsx` toolchain, and every
+// assertion that only checked `.toBeDefined()`/`parameters.length` here stayed green
+// throughout, because it was reading a document nobody downstream consumes.
+//
+// ADR-0021 form: assert the *specific* content — a parameter actually named
+// `userCode` (our DTO's own field name, not RFC 8628's `user_code` wire name — Nest
+// binds `@Query()` by the DTO's own property name), and a request body whose schema
+// is a concrete `$ref` to the real DTO — not `parameters.length > 0` or
+// `requestBody` truthiness, either of which junk (an empty object, an unrelated
+// parameter) would also satisfy. Remove the controller's `@ApiQuery()`/`@ApiBody()`
+// and regenerate, and each of these goes red — verified before landing.
 describe('OpenAPI contract for /v1/device/{pending,approve,token} (#238, task 2, ADR-0024)', () => {
-  let app: NestFastifyApplication
-  let document: OpenAPIObject
-
-  beforeAll(async () => {
-    app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter(), {
-      logger: false,
-    })
-    const config = new DocumentBuilder().setTitle('SteuerEule API').setVersion('1.0').build()
-    document = SwaggerModule.createDocument(app, config)
-  })
-
-  afterAll(async () => {
-    await app.close()
-  })
-
-  it('documents GET /v1/device/pending returning the match-verification payload (AC-3)', () => {
+  it('documents GET /v1/device/pending returning the match-verification payload (AC-3), with a named userCode query parameter', () => {
     const get = document.paths['/v1/device/pending']?.get
     expect(get).toBeDefined()
     expect(get?.responses['200']).toBeDefined()
-    expect(get?.parameters?.some((p) => 'name' in p && p.name === 'userCode')).toBe(true)
+    const userCodeParam = get?.parameters?.find((p) => 'name' in p && p.name === 'userCode') as
+      | { name: string; in: string }
+      | undefined
+    expect(userCodeParam).toBeDefined()
+    expect(userCodeParam?.in).toBe('query')
   })
 
   it('exposes DevicePendingResponseDto with the full browser/OS/region/time payload — never a scope field (one-tap, no session-scope choice)', () => {
@@ -282,19 +224,25 @@ describe('OpenAPI contract for /v1/device/{pending,approve,token} (#238, task 2,
     expect(Object.keys(properties).sort()).toEqual(['userCode', 'status', 'userAgent', 'region', 'requestedAt'].sort())
   })
 
-  it('documents POST /v1/device/approve with just userCode — no scope field in the request body', () => {
+  it('documents POST /v1/device/approve with a request body referencing ApproveDeviceRequestDto (just userCode — no scope field)', () => {
     const post = document.paths['/v1/device/approve']?.post
     expect(post).toBeDefined()
     expect(post?.responses['200']).toBeDefined()
+    const requestBody = post?.requestBody as { content?: Record<string, { schema?: { $ref?: string } }> } | undefined
+    expect(requestBody?.content?.['application/json']?.schema?.$ref).toBe('#/components/schemas/ApproveDeviceRequestDto')
+
     const schema = document.components?.schemas?.ApproveDeviceRequestDto
     const properties = (schema as { properties?: Record<string, unknown> }).properties ?? {}
     expect(Object.keys(properties)).toEqual(['userCode'])
   })
 
-  it('documents POST /v1/device/token, never exposing a session token field in its response', () => {
+  it('documents POST /v1/device/token with a request body referencing DeviceTokenRequestDto, never exposing a session token field in its response', () => {
     const post = document.paths['/v1/device/token']?.post
     expect(post).toBeDefined()
     expect(post?.responses['200']).toBeDefined()
+    const requestBody = post?.requestBody as { content?: Record<string, { schema?: { $ref?: string } }> } | undefined
+    expect(requestBody?.content?.['application/json']?.schema?.$ref).toBe('#/components/schemas/DeviceTokenRequestDto')
+
     const schema = document.components?.schemas?.AckResponseDto
     const properties = (schema as { properties?: Record<string, unknown> }).properties ?? {}
     expect(Object.keys(properties)).toEqual(['success'])

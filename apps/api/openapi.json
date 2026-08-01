@@ -229,7 +229,17 @@
     "/v1/device/pending": {
       "get": {
         "operationId": "DeviceController_getPending",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "userCode",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "example": "K7QX-9F2M",
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "The match-verification payload for a pending device-authorization request (ADR-0024).",
@@ -251,6 +261,16 @@
       "post": {
         "operationId": "DeviceController_approve",
         "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApproveDeviceRequestDto"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Approves the device-authorization request (ADR-0024) — one tap, no session-scope choice.",
@@ -272,6 +292,16 @@
       "post": {
         "operationId": "DeviceController_exchangeToken",
         "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceTokenRequestDto"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Exchanges an approved device code for a real session, set as an httpOnly cookie (ADR-0008/0012) — never returned in the response body.",
@@ -744,6 +774,18 @@
           "requestedAt"
         ]
       },
+      "ApproveDeviceRequestDto": {
+        "type": "object",
+        "properties": {
+          "userCode": {
+            "type": "string",
+            "example": "K7QX-9F2M"
+          }
+        },
+        "required": [
+          "userCode"
+        ]
+      },
       "AckResponseDto": {
         "type": "object",
         "properties": {
@@ -754,6 +796,17 @@
         },
         "required": [
           "success"
+        ]
+      },
+      "DeviceTokenRequestDto": {
+        "type": "object",
+        "properties": {
+          "deviceCode": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "deviceCode"
         ]
       }
     }
