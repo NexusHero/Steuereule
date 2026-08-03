@@ -621,6 +621,172 @@ describe('LoginScreen', () => {
       vi.clearAllTimers()
       vi.useRealTimers()
     })
+
+    // Task 6 (Salih's T1 gate): minting a code is only half of RFC 8628 — without the desktop
+    // actually polling `POST /v1/device/token`, "Der andere Bildschirm meldet sich jetzt an."
+    // (the phone's own approval copy, resources.ts's `device.approval.approved.body`) is false.
+    // This exercises the real user-facing path a phone's tap would trigger, not the endpoint
+    // directly — the same discipline Salih's own T1 script applied, per NexusHero's instruction.
+    describe('polling for approval (#238 task 6, AC-5)', () => {
+      it('polls POST /v1/device/token at the server-given interval and signs the desktop in once approved, never faster than that interval', async () => {
+        vi.useFakeTimers({ shouldAdvanceTime: true })
+        let tokenRequests = 0
+        server.use(
+          http.post(`${BASE_URL}/v1/device/token`, () => {
+            tokenRequests += 1
+            // Approved only on the second real poll — the first must genuinely still be
+            // "pending", not a synthetic always-succeeds stub, or this would prove nothing
+            // about the loop actually running more than once.
+            if (tokenRequests < 2) {
+              return HttpResponse.json({ error: 'authorization_pending' }, { status: 400 })
+            }
+            return HttpResponse.json({ success: true }, { status: 200 })
+          }),
+        )
+        const onDone = vi.fn()
+        setViewportWidth(1024)
+        renderLogin({ onDone })
+        await screen.findByLabelText('QR-Code zum Anmelden mit dem Handy')
+        expect(tokenRequests).toBe(0)
+
+        // DEVICE_CODE_RESPONSE's interval is 5s — well short of it (`shouldAdvanceTime`'s own
+        // real-clock drift while awaiting the mint above is at most a handful of ms, nowhere
+        // near enough to close a 1s margin), nothing has polled yet.
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(4000)
+        })
+        expect(tokenRequests).toBe(0)
+
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(1500)
+        })
+        expect(tokenRequests).toBe(1)
+        expect(onDone).not.toHaveBeenCalled()
+
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(5500)
+        })
+        expect(tokenRequests).toBe(2)
+        expect(onDone).toHaveBeenCalledTimes(1)
+
+        vi.clearAllTimers()
+        vi.useRealTimers()
+      })
+
+      it('backs off on slow_down (RFC 8628 §3.5) instead of treating it as a failure', async () => {
+        vi.useFakeTimers({ shouldAdvanceTime: true })
+        let tokenRequests = 0
+        server.use(
+          http.post(`${BASE_URL}/v1/device/token`, () => {
+            tokenRequests += 1
+            if (tokenRequests === 1) return HttpResponse.json({ error: 'slow_down' }, { status: 400 })
+            return HttpResponse.json({ error: 'authorization_pending' }, { status: 400 })
+          }),
+        )
+        setViewportWidth(1024)
+        renderLogin()
+        await screen.findByLabelText('QR-Code zum Anmelden mit dem Handy')
+
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(5000)
+        })
+        expect(tokenRequests).toBe(1)
+        // Still on the standard 5s interval — this poll must not have landed yet.
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(5000)
+        })
+        expect(tokenRequests).toBe(1)
+        // The +5s RFC 8628 back-off is what gets the next one through.
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(5000)
+        })
+        expect(tokenRequests).toBe(2)
+        // Never surfaced as an error — the QR is still the thing on screen.
+        expect(screen.queryByText('Code konnte nicht erzeugt werden.')).toBeNull()
+
+        vi.clearAllTimers()
+        vi.useRealTimers()
+      })
+
+      it('shows an honest, distinct "denied" state on access_denied — not silently the generic error', async () => {
+        vi.useFakeTimers({ shouldAdvanceTime: true })
+        server.use(http.post(`${BASE_URL}/v1/device/token`, () => HttpResponse.json({ error: 'access_denied' }, { status: 400 })))
+        setViewportWidth(1024)
+        renderLogin()
+        await screen.findByLabelText('QR-Code zum Anmelden mit dem Handy')
+
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(5000)
+        })
+        await screen.findByText('Anmeldung wurde nicht bestätigt.')
+        expect(screen.queryByText('Code konnte nicht erzeugt werden.')).toBeNull()
+
+        vi.clearAllTimers()
+        vi.useRealTimers()
+      })
+
+      it('treats an unrecognised poll failure (e.g. a bare 429) as an honest error, never as "still pending" — and stops polling until retried', async () => {
+        vi.useFakeTimers({ shouldAdvanceTime: true })
+        let tokenRequests = 0
+        server.use(
+          http.post(`${BASE_URL}/v1/device/token`, () => {
+            tokenRequests += 1
+            return HttpResponse.json({ statusCode: 429, message: 'Too Many Requests' }, { status: 429 })
+          }),
+        )
+        const onDone = vi.fn()
+        setViewportWidth(1024)
+        renderLogin({ onDone })
+        await screen.findByLabelText('QR-Code zum Anmelden mit dem Handy')
+
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(5000)
+        })
+        expect(tokenRequests).toBe(1)
+        await screen.findByText('Code konnte nicht erzeugt werden.')
+        expect(onDone).not.toHaveBeenCalled()
+
+        // No further poll fires on its own — an honest error state waits for a real retry,
+        // it doesn't quietly keep trying underneath a screen that says it failed.
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(30_000)
+        })
+        expect(tokenRequests).toBe(1)
+
+        vi.clearAllTimers()
+        vi.useRealTimers()
+      })
+
+      it('stops polling once the code has expired — no further POST /v1/device/token after that', async () => {
+        vi.useFakeTimers({ shouldAdvanceTime: true })
+        let tokenRequests = 0
+        server.use(
+          http.post(`${BASE_URL}/v1/device/code`, () => HttpResponse.json({ ...DEVICE_CODE_RESPONSE, expiresIn: 3, interval: 5 }, { status: 201 })),
+          http.post(`${BASE_URL}/v1/device/token`, () => {
+            tokenRequests += 1
+            return HttpResponse.json({ error: 'authorization_pending' }, { status: 400 })
+          }),
+        )
+        setViewportWidth(1024)
+        renderLogin()
+        await screen.findByLabelText('QR-Code zum Anmelden mit dem Handy')
+
+        // The 3s expiry lands before the 5s poll interval ever would.
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(3000)
+        })
+        await screen.findByText('Code abgelaufen.')
+        expect(tokenRequests).toBe(0)
+
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(10_000)
+        })
+        expect(tokenRequests).toBe(0)
+
+        vi.clearAllTimers()
+        vi.useRealTimers()
+      })
+    })
   })
 
   // #238 AC-7: the device-approval flow embeds this exact screen in place rather than

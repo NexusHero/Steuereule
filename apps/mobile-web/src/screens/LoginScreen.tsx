@@ -241,7 +241,7 @@ export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true }
   return (
     <ScrollView contentContainerStyle={styles.wideRow} keyboardShouldPersistTaps="handled" data-testid="screen-container">
       {formColumn}
-      <DeviceQrColumn t={t} tr={tr} styles={styles} />
+      <DeviceQrColumn t={t} tr={tr} styles={styles} onApproved={onDone} />
     </ScrollView>
   )
 }
@@ -250,6 +250,13 @@ interface DeviceQrColumnProps {
   readonly t: UiTheme
   readonly tr: (key: string) => string
   readonly styles: ReturnType<typeof makeStyles>
+  /** Fires once the phone has approved this exact code and the desktop's own session cookie is
+   *  already set (`useDeviceQrCode`'s polling loop, task 6) — the same `onDone` a real
+   *  email/social sign-in calls, so a QR sign-in lands in the same place a typed-password one
+   *  does (REQ-009 is still pending a dedicated "already signed in" landing; this reuses
+   *  whatever Login's own `onDone` already does today, deliberately, rather than inventing a
+   *  second destination). */
+  readonly onApproved: () => void
 }
 
 /**
@@ -257,11 +264,11 @@ interface DeviceQrColumnProps {
  * blocks (Card for the frame, the owl's existing entrance, QrMark's react-native-svg rendering),
  * per NexusHero's ruling that no new DS pattern gets invented here. Requests a real code the
  * moment it mounts (ADR-0003/0005) via `useDeviceQrCode`; every state below is honest — a
- * loading code never shows a blank frame, an expired or failed one never keeps showing a code
- * that no longer works.
+ * loading code never shows a blank frame, an expired, denied, or failed one never keeps showing
+ * a code that no longer works.
  */
-function DeviceQrColumn({ t, tr, styles }: DeviceQrColumnProps) {
-  const { state, requestNewCode } = useDeviceQrCode()
+function DeviceQrColumn({ t, tr, styles, onApproved }: DeviceQrColumnProps) {
+  const { state, requestNewCode } = useDeviceQrCode(onApproved)
   const owl = useOwlEntranceAnimation()
 
   return (
@@ -282,6 +289,15 @@ function DeviceQrColumn({ t, tr, styles }: DeviceQrColumnProps) {
           <View style={styles.qrFrame}>
             <QrMark value={state.verificationUriComplete} size={144} accessibilityLabel={tr('login.qr.accessibilityLabel')} />
             <Text style={styles.qrCode}>{state.userCode}</Text>
+          </View>
+        ) : null}
+
+        {state.kind === 'denied' ? (
+          <View style={styles.qrFrame} accessibilityRole="alert">
+            <Text style={styles.qrStatusLabel}>{tr('login.qr.denied')}</Text>
+            <Pressable accessibilityRole="button" onPress={requestNewCode}>
+              <Text style={styles.qrRetryLink}>{tr('login.qr.requestNew')}</Text>
+            </Pressable>
           </View>
         ) : null}
 
