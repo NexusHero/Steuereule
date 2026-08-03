@@ -48,6 +48,11 @@ export const appResources = {
           body: 'Scanne den Code mit der Kamera deines Handys — dort bist du schon angemeldet.',
           accessibilityLabel: 'QR-Code zum Anmelden mit dem Handy',
           loading: 'Code wird erzeugt …',
+          // Task 6 (Salih's T1 gate) — the desktop's own polling loop (`useDeviceQrCode`)
+          // reaching `access_denied` (RFC 8628 §3.5): the phone confirmed a *different* code,
+          // or (once a decline affordance exists) explicitly said no. Distinct from `error`
+          // deliberately — nothing here broke, the answer was just "not this one".
+          denied: 'Anmeldung wurde nicht bestätigt.',
           expired: 'Code abgelaufen.',
           requestNew: 'Neuen Code anzeigen',
           error: 'Code konnte nicht erzeugt werden.',
@@ -392,6 +397,7 @@ export const appResources = {
           body: "Scan the code with your phone's camera — you're already signed in there.",
           accessibilityLabel: 'QR code to sign in with your phone',
           loading: 'Generating code …',
+          denied: 'Sign-in was not confirmed.',
           expired: 'Code expired.',
           requestNew: 'Show a new code',
           error: 'Could not generate a code.',

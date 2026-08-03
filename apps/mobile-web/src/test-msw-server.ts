@@ -61,6 +61,12 @@ export const server = setupServer(
   // suite overrides it with real figures where the numbers are the point.
   getCockpitControllerGetCockpitSummaryMockHandler(null),
   getDeviceControllerRequestCodeMockHandler(DEVICE_CODE_RESPONSE),
+  // Task 6's polling default — "still pending" (RFC 8628 `authorization_pending`, HTTP 400,
+  // the exact shape `translateDeviceApiError` relays), not the generated mock's 200 `AckResponseDto`:
+  // that would auto-approve every test that renders the QR column and happens to run its polling
+  // timer, silently faking the very phone-approval step the poll exists to wait for. Tests that
+  // need "approved"/"denied"/"expired"/an error override with `server.use(...)`.
+  http.post('*/v1/device/token', () => HttpResponse.json({ error: 'authorization_pending' }, { status: 400 })),
   // better-auth's own session read — not orval-generated (better-auth owns this contract,
   // ADR-0012 §1), so it's not in @steuereule/api-client. Defaults to "no session" (`null`),
   // which is also the fail-closed default any screen deriving "verified"/"signed in" from
