@@ -116,10 +116,19 @@ describe('REQ-005 — email/password signup + async verification, against the re
       // hash breach-check.ts's underlying plugin does and echoes its own suffix back
       // as a "match" — proving the real plugin's request/parse/compare logic runs
       // end-to-end, not just that our wrapper plugin exists.
+      // Counted, not just invoked — a green run alone can't tell "our stub
+      // intercepted the call" apart from "the request reached the live HIBP API and
+      // it happened to answer the same way" (Musti's review on #253: this file's own
+      // first `it`, above, stubs nothing and genuinely calls the live provider on
+      // every run, so the suite demonstrably can reach it). Asserting this count is
+      // what makes the rest of this test's claim falsifiable regardless of what the
+      // live corpus contains.
+      let hibpStubHits = 0
       const realFetch = globalThis.fetch
       vi.stubGlobal('fetch', async (input: string | URL, init?: RequestInit) => {
         const url = typeof input === 'string' ? input : input.toString()
         if (url.startsWith('https://api.pwnedpasswords.com/range/')) {
+          hibpStubHits += 1
           // We don't know our own password's real SHA-1 suffix without recomputing
           // it here, so recompute the exact same way breach-check.ts does and echo
           // it back as a "match" — proving the plugin's real matching logic (data
@@ -145,7 +154,21 @@ describe('REQ-005 — email/password signup + async verification, against the re
         }),
       })
 
+      expect(hibpStubHits).toBe(1)
+
       expect(response.status).toBeGreaterThanOrEqual(400)
+      // Pins the cause, not just the failure: `status >= 400` + no user row holds for
+      // *any* signup failure (a CSRF rejection, a Postgres error, or a rate-limit
+      // trip — this file's own afterEach comment names the shared-bucket rate limiter
+      // as a live hazard). Asserting the exact `PASSWORD_COMPROMISED` code —
+      // `isBreachedPasswordError`'s shape, `apps/api/src/auth/breach-check.ts` — is
+      // what makes this the acceptance-tier counterpart of breach-check.test.ts's
+      // unit-tier assertion, and it's also REQ-010's "rejected with a clear message"
+      // half: the status alone proves rejection, the code proves it carries an
+      // identifiable, non-generic reason.
+      const responseBody = (await response.json()) as { code?: string }
+      expect(responseBody.code).toBe('PASSWORD_COMPROMISED')
+
       const user = await prisma.user.findUnique({ where: { email: 'breached@example.com' } })
       expect(user).toBeNull()
     })
