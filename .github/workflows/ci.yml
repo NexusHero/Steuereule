@@ -12,6 +12,7 @@
 # Flow:  validate-compose ──► lint ──────────────► build ──► smoke
 #                          ├─► test ───────────────┤    └─► cross-origin-smoke
 #                          └─► integration ─────────┘
+#        docs-consistency (standalone — reads docs/, needs no build)
 name: CI
 
 on:
@@ -158,6 +159,37 @@ jobs:
         run: pnpm --filter @steuereule/api exec playwright-core install chromium --with-deps
       - name: Integration + acceptance tests — encryption/audit + REQ-005/006/009/010/011 (ADR-0012/ADR-0013)
         run: pnpm --filter @steuereule/api test:integration
+
+  # Real gate (#221, ADR-0025) — turns docs/requirements/register.md and docs/adr/ from a
+  # claim, checked only when a human happens to re-read it, into a control (ADR-0021): both
+  # register-check and adr-check are proven by breaking them, not by watching them pass — see
+  # scripts/checks/README.md and this job's own PR evidence block for the six break/restore
+  # transcripts.
+  #
+  # Standalone (no `needs`): this reads docs/ and the vitest configs' source text directly, no
+  # build/Postgres/browser required, so it's cheap and gives the fastest possible signal on a
+  # docs-only PR. No `pnpm install` either — everything under scripts/checks is plain Node
+  # (`fs`, `fetch`), deliberately dependency-free (see the README).
+  docs-consistency:
+    name: Docs consistency — register-check + adr-check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: register-check — docs/requirements/register.md against the real repo (checks 1-5)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/checks/register-check.mjs
+      - name: adr-check — docs/adr/ numbering, index, cross-references (check 6)
+        # Runs against whatever `actions/checkout` resolved for this event — for a
+        # `pull_request` run, that's the synthetic merge commit (refs/pull/N/merge) by
+        # default, which is the whole mechanism behind catching a cross-PR ADR-number
+        # collision (see scripts/checks/adr-check.mjs's header comment for the honest limit:
+        # this only re-checks on a new push, and only until #71/branch protection lands).
+        run: node scripts/checks/adr-check.mjs
 
   # Placeholder — build the service images once Dockerfiles exist.
   build:
