@@ -218,7 +218,7 @@ preview, the loop stops learning; nothing else supplies its input.
 | Role | Persona | Owns in this pipeline |
 |------|---------|-----------------------|
 | Stakeholder (human) | NexusHero | Requirements & acceptance criteria, **ruling on the refinement block**, per-slice acceptance on the preview, the merge |
-| Scrum Master | Suhay | The backlog and the board, **the story/scope/readiness half of the refinement**, risk tiers, the WIP limit, findings→tickets, and the Requirements Register — **its state and, since ADR-0023, its text**: he holds `Edit` and writes the *meaning* of a row (status, statement, GWT), while `register-check` in CI verifies the *evidence*. No `Write`, no `Bash`: he cannot create a file, run the test he cites, or land his own edit — it rides the branch in flight through the normal gate |
+| Scrum Master | Suhay | The backlog and the board, **the story/scope/readiness half of the refinement**, risk tiers, the WIP limit, findings→tickets, and the Requirements Register — **its state and, since ADR-0025, its text**: he holds `Edit` and writes the *meaning* of a row (status, statement, GWT), while `register-check` in CI verifies the *evidence*. No `Write`, no `Bash`: he cannot create a file, run the test he cites, or land his own edit — it rides the branch in flight through the normal gate |
 | Lead / Architect | Musti | **The technical half of the refinement**, **review on the draft PR**, his record, architecture docs, the right to bump a tier **up** (never down) |
 | Frontend dev | Kaan | UI slices, tests-first, **opens a draft PR as soon as their own gate is green** |
 | Backend dev | Robin | API/data slices, tests-first, **opens a draft PR as soon as their own gate is green** |
