@@ -16,36 +16,20 @@ import { server } from './test-msw-server'
 // otherwise both budgets expire at once and Vitest's vaguer timeout wins the race.
 configure({ asyncUtilTimeout: 5_000 })
 
-// #240 — better-auth's session store (the nanostores atom behind every `authClient.useSession()`)
-// uses nanostores' own deferred-unmount lifecycle: its last unsubscribe doesn't destroy
-// synchronously, it schedules a REAL `setTimeout` (`nanostores/lifecycle`'s
-// `STORE_UNMOUNT_DELAY`, 1000ms) before running the store's teardown — which, for the session
-// atom, is better-auth's `session-refresh.mjs` `cleanup()`, and that in turn removes the
-// `storage` listener `broadcast-channel.mjs`'s `setup()` attached to `window`
-// (`window.removeEventListener(...)`).
+// #240 — a shared-harness fix, not a screen patch. nanostores' deferred UNMOUNT timer
+// (`nanostores/lifecycle`'s `STORE_UNMOUNT_DELAY`) can fire after Vitest tears this file's
+// `window` down; `cleanStores()` runs the destroy synchronously and flips the store's `active`
+// flag false first, so the already-scheduled timer's own guard reads false and no-ops instead of
+// throwing. Full mechanism, and why the throw (not the destroy's own trivial work — a handful of
+// `Set` deletes and `removeEventListener` calls, nowhere near a 5s budget) is what actually costs
+// a later file time under `pnpm test`'s contended load: #240 and Musti's ruling on it. Control
+// proof for this exact mechanism: `./auth/session-store-cleanup.test.tsx`.
 //
-// Vitest tears this file's jsdom `window` down as soon as its tests finish (`isolate: true`, the
-// default, and unchanged here). If that 1000ms timer is still pending at that point, it fires
-// later, into an environment that no longer exists: "ReferenceError: window is not defined ...
-// caught after test environment was torn down" if it fires on its own (#220's shape), or —
-// because it's a real, uncancellable Node timer running on the shared process clock, not
-// anything scoped to this file — it can land mid-flight in whichever *next* file Vitest happens
-// to run under contended, root-level `pnpm test` load, quietly eating part of that file's
-// `findBy*`/`waitFor` budget instead (#222's shape, reproduced on `App.test.tsx`). Traced in
-// #240 (see that ticket, and Musti's ruling on it, for the full chain); the control proof for
-// this exact mechanism lives in `./auth/session-store-cleanup.test.ts`.
-//
-// nanostores ships its own escape hatch for exactly this, rather than needing one invented here:
-// `cleanStores()` runs a store's deferred UNMOUNT destroys *synchronously* and flips the store's
-// internal `active` flag off, so when the already-scheduled real timer eventually fires, its own
-// guard (`if ($store.active && !$store.lc)`, `nanostores/lifecycle/index.js`) is false and it's a
-// no-op — entschärft, not just outrun. This wires that escape hatch into the ONE seam every
-// `authClient.useSession()` consumer passes through, `createAppAuthClient` — this app's single
-// client-construction site (`./auth/auth-client.ts`'s own doc comment) — rather than into any
-// particular screen, so every test file's client(s) get drained generically, for whichever
-// component(s) call `useSession()` today or are added later (not just today's one caller,
-// `DatenschutzScreen`). No product code is touched by this — only this shared test harness
-// module's own module graph is intercepted.
+// Wired at the ONE seam every `authClient.useSession()` consumer passes through —
+// `createAppAuthClient`, this app's single client-construction site (`./auth/auth-client.ts`'s
+// own doc comment) — rather than into any particular screen, so it drains generically for
+// whichever component(s) use `useSession()`, not just today's one caller, `DatenschutzScreen`. No
+// product code is touched — only this shared harness module's own module graph is intercepted.
 const pendingSessionStores: WritableAtom<unknown>[] = []
 vi.mock('./auth/auth-client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./auth/auth-client')>()
