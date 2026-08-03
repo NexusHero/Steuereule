@@ -41,6 +41,7 @@ The ADRs **justify** the architecture; the [living arc42 document](../arc42/READ
 | 0020 | A draft PR opening triggers the review; nobody gates it | Accepted |
 | 0021 | A control is proven by breaking it, not by watching it pass | Accepted |
 | 0022 | A push to a PR with open findings triggers the re-read | Accepted |
+| 0023 | The Requirements Register's owner can write it; the evidence is checked by CI | Accepted |
 
 See also the [Tech Radar](./tech-radar.md).
 
