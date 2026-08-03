@@ -44,9 +44,10 @@ Three corrections worth calling out, because they change what the register *clai
   was written: `apps/api/test/profile.integration.test.ts:248-364` already contained
   `describe('REQ-004 — immutable audit log of tax-data access')` (REQ-004.1–.6, run against real
   Postgres) before this reconciliation. The register's REQ-004 row previously cited only
-  `req-011-export.test.ts` — a real test, but one that self-identifies as `REQ-011`
-  (`describe('REQ-011 — DSGVO data export…')`), not REQ-004; citing it as REQ-004's evidence was a
-  broken cross-reference, not a missing test. Both rows above now cite the actual REQ-004-tagged test
+  `apps/api/test/acceptance/req-011-export.test.ts` — a real test, but one that self-identifies as
+  `REQ-011` (`describe('REQ-011 — DSGVO data export…')`), not REQ-004; citing it as REQ-004's evidence
+  was a broken cross-reference, not a missing test. Both rows above now cite the actual REQ-004-tagged
+  test
   directly.
 
 ## Notes — 2026-07-23 auth/login direction
