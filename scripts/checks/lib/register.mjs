@@ -38,12 +38,21 @@ export function extractCitations(cellText) {
   return out
 }
 
+// A cell can legitimately contain an escaped pipe (`` `${ip}\|${path}` `` — REQ-010's own
+// traceability row, quoting better-auth's rate-limit key literally) to put a literal `|`
+// character inside a Markdown table cell without ending it. A naive split on every `|`
+// treats that as a column separator, shifting every later cell in the row left by one — for
+// REQ-010 specifically, that misread the State column's text as the Location column's,
+// which is how this bug was found running the #249 T1 pass (checks 4's German-word/`not met`
+// rule then compared the wrong two cells and reported a mismatch that doesn't exist). Split
+// only on an unescaped `|` (a negative lookbehind for `\`), matching how Markdown itself
+// reads the escape.
 function splitRow(line) {
   return line
     .trim()
     .replace(/^\|/, '')
     .replace(/\|$/, '')
-    .split('|')
+    .split(/(?<!\\)\|/)
     .map((c) => c.trim())
 }
 
