@@ -12,7 +12,9 @@
     "typecheck": "turbo run typecheck",
     "coverage": "pnpm --filter @steuereule/core coverage",
     "lint": "oxlint --deny-warnings",
-    "gate": "pnpm -r typecheck && pnpm -r test"
+    "gate": "pnpm -r typecheck && pnpm -r test",
+    "register-check": "node scripts/checks/register-check.mjs",
+    "adr-check": "node scripts/checks/adr-check.mjs"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^2.1.8",

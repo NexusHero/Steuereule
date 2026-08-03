@@ -54,6 +54,11 @@ async function attemptSignIn(baseUrl: string, xForwardedFor: string): Promise<nu
   return response.status
 }
 
+// @documents-defect #246 — A1 stays green *because* the single-value X-Forwarded-For bypass
+// is unfixed (register.md, REQ-010): closing it needs a real deployment (#246, still open)
+// so a real TRUSTED_PROXIES value exists. register-check's check 5 (docs/requirements/
+// register.md's citation of this file, both tables) mirrors this exact marker text and
+// verifies #246 is still open — the day it closes, that citation goes red until re-read.
 describe('#241 A1 — TRUSTED_PROXIES unset: today’s live bypass, kept as a permanent regression test', () => {
   let app: NestFastifyApplication
   let baseUrl: string
