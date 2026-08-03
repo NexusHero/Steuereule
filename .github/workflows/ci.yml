@@ -179,6 +179,14 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: 24
+          # actions/setup-node@v5's package-manager-cache auto-detection defaults to true and
+          # reads root package.json's `packageManager` field, expecting `pnpm` already on
+          # PATH to cache its store — but this job runs no `pnpm install` (see above), so
+          # `pnpm` was never installed here and the step failed with "Unable to locate
+          # executable file: pnpm" (observed on this PR's own first CI run, run 30846683020,
+          # job 91796590386 — exactly ADR-0021's own defect class: a declared-but-not-connected
+          # default). Explicitly opted out rather than adding an unneeded pnpm/install step.
+          package-manager-cache: false
       - name: register-check — docs/requirements/register.md against the real repo (checks 1-5)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
