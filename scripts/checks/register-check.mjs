@@ -1,10 +1,14 @@
 #!/usr/bin/env node
 // register-check — turns docs/requirements/register.md from a claim into a control
-// (ADR-0021, ADR-0025). Five mechanical checks, run against the real repo tree:
+// (ADR-0021 and the register-ownership decision landing via #251). Five mechanical checks,
+// run against the real repo tree:
 //
-//   1. every cited path exists
-//   2. every cited test file is actually executed by a CI job (matched against the real
-//      vitest include/exclude globs, and against ci.yml's e2e invocations)
+//   1. every cited path exists (a bare-filename citation that only resolves by basename is
+//      real evidence but under-qualified — reported separately, as check 1b, so it doesn't
+//      block on the same finding class as a genuinely missing file)
+//   2. every cited test file is actually executed by a CI job — matched against the real
+//      vitest include/exclude globs of every discovered apps/*/packages/* project, and
+//      against ci.yml's e2e invocations
 //   3. a bidirectional REQ-NNN tag reconciliation: every REQ-tagged describe() block in the
 //      test tree is cited under that REQ in the register, and every register citation of a
 //      REQ-tagged file actually carries that file's own tag
@@ -27,7 +31,7 @@ import { Findings } from './lib/findings.mjs'
 import { parseTables, citationColumnIndex, statusColumnIndex, reqColumnIndex, extractCitations } from './lib/register.mjs'
 import { walk, buildBasenameIndex, resolveCitedPath } from './lib/paths.mjs'
 import { matchAnyGlob } from './lib/glob.mjs'
-import { readVitestGlobs } from './lib/vitest-config.mjs'
+import { discoverVitestProjects } from './lib/vitest-config.mjs'
 import { isIssueOpen } from './lib/github.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -59,6 +63,11 @@ async function main() {
         if (!resolution.exists) {
           const where = resolution.kind === 'basename-ambiguous' ? `ambiguous — matches ${resolution.candidates.join(', ')}` : 'no such file'
           findings.add('1-path-exists', `register.md:${i + 1} cites \`${p}\` — ${where}.`)
+        } else if (resolution.kind === 'basename-unique') {
+          // Low severity, own class (Musti's F5 review on #252): real evidence, resolved by
+          // basename only, not a citation error — but under-qualified. Spelling these out is
+          // meant to get them fixed and this fallback deleted, not to live here permanently.
+          findings.add('1b-under-qualified-citation', `register.md:${i + 1} cites \`${p}\` — resolves only by filename, to \`${resolution.resolved}\`; spell out the full path.`)
         }
       }
     }
@@ -90,33 +99,50 @@ async function main() {
   const ciYml = fs.readFileSync(CI_YML_PATH, 'utf8')
   const runsPlainTest = /\bpnpm\s+-r\s+test\b/.test(ciYml)
   const runsIntegrationTest = /test:integration\b/.test(ciYml)
-  const apiUnit = readVitestGlobs(path.join(REPO_ROOT, 'apps/api/vitest.config.ts'))
-  const apiIntegration = readVitestGlobs(path.join(REPO_ROOT, 'apps/api/vitest.integration.config.ts'))
-  const mobileWeb = readVitestGlobs(path.join(REPO_ROOT, 'apps/mobile-web/vitest.config.ts'))
+  // Every apps/* and packages/* workspace with its own vitest.config.ts, discovered rather
+  // than hard-coded (Musti's F3 review on #252 — this used to only know about apps/api and
+  // apps/mobile-web, so packages/core/tokens/api-client/ui all false-negatived even though
+  // pnpm -r test runs every one of them).
+  const vitestProjects = discoverVitestProjects(REPO_ROOT)
 
+  /** @returns {{run: boolean, reason: string}} */
   function isRunByCI(filePath) {
     if (E2E_MJS_RE.test(filePath)) {
       return ciYml.includes(filePath)
+        ? { run: true, reason: 'e2e step in ci.yml' }
+        : { run: false, reason: 'no ci.yml step invokes this e2e script' }
     }
-    if (!TEST_FILE_RE.test(filePath)) return true // not a test file — check 2 doesn't apply
-    if (filePath.startsWith('apps/api/')) {
-      const rel = filePath.slice('apps/api/'.length)
-      const inUnit = matchAnyGlob(apiUnit.include, rel) && !matchAnyGlob(apiUnit.exclude, rel)
-      const inIntegration = matchAnyGlob(apiIntegration.include, rel)
-      return (inUnit && runsPlainTest) || (inIntegration && runsIntegrationTest)
+    if (!TEST_FILE_RE.test(filePath)) return { run: true, reason: 'not a test file — check 2 does not apply' }
+
+    const matchingProjects = vitestProjects.filter((p) => filePath.startsWith(p.prefix))
+    if (matchingProjects.length === 0) {
+      // F3: say what it means, rather than folding into the same "not run" bucket as a file
+      // that IS in a known project but genuinely excluded — an unrecognised workspace
+      // location is its own finding (a gap in this check's own project discovery, or a file
+      // that isn't really part of any vitest project), not silent "false".
+      return { run: false, reason: 'unrecognised workspace location — no apps/*/vitest.config.ts or packages/*/vitest.config.ts prefix matches this path' }
     }
-    if (filePath.startsWith('apps/mobile-web/')) {
-      const rel = filePath.slice('apps/mobile-web/'.length)
-      return matchAnyGlob(mobileWeb.include, rel) && runsPlainTest
+    for (const project of matchingProjects) {
+      const rel = filePath.slice(project.prefix.length)
+      // F4: exclude applied symmetrically for every project/tier, not just the first one
+      // written (the bug was apiIntegration's exclude being read and never used).
+      const included = matchAnyGlob(project.include, rel) && !matchAnyGlob(project.exclude, rel)
+      if (!included) continue
+      const coveredByCI = project.tier === 'unit' ? runsPlainTest : runsIntegrationTest
+      if (coveredByCI) return { run: true, reason: `${project.prefix} (${project.tier})` }
     }
-    return false
+    return {
+      run: false,
+      reason: `matched by a vitest include glob under ${matchingProjects.map((p) => `${p.prefix} (${p.tier})`).join(', ')}, but excluded there or its CI script isn't invoked`,
+    }
   }
 
   for (const row of rows) {
     for (const c of row.citations) {
       if (!c.exists) continue // already reported by check 1
-      if (!isRunByCI(c.resolved)) {
-        findings.add('2-executed-by-ci', `register.md:${row.lineNumber} (${row.req}, ${row.table}) cites \`${c.raw}\` — no CI job's vitest globs (or ci.yml e2e step) actually run this file.`)
+      const result = isRunByCI(c.resolved)
+      if (!result.run) {
+        findings.add('2-executed-by-ci', `register.md:${row.lineNumber} (${row.req}, ${row.table}) cites \`${c.raw}\` — ${result.reason}.`)
       }
     }
   }
@@ -267,11 +293,14 @@ async function checkDocumentsDefect(findings, markers, rows) {
     try {
       open = await isIssueOpen(issue)
     } catch (err) {
-      findings.add('5-documents-defect', `${file}'s \`${markerText}\`: ${err.message}`)
+      // F9 (Musti's review on #252): a failed lookup and a real "the issue closed" finding
+      // must not share one heading — a reader hitting red needs to know at a glance whether
+      // the check *found* something or *failed to look*, without reading the message body.
+      findings.add('5-documents-defect-unavailable', `${file}'s \`${markerText}\`: ${err.message}`)
       continue
     }
     if (!open) {
-      findings.add('5-documents-defect', `${file} carries \`${markerText}\`, but issue #${issue} is closed — this test's green state was documenting an unfixed defect against a ticket that no longer says "unfixed"; re-read it (fix the test, or reopen the ticket, or drop the marker).`)
+      findings.add('5-documents-defect', `${file} carries \`${markerText}\`, but issue #${issue} is closed — this test's green state was documenting an unfixed defect against a ticket that no longer says "unfixed"; re-read it (fix the test, reopen the ticket, re-point the marker at whatever now carries the remaining gap, or drop the marker).`)
     }
   }
 }
