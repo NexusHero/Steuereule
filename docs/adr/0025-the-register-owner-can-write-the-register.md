@@ -1,4 +1,4 @@
-# ADR-0023 — The Requirements Register's owner can write it; the evidence is checked by CI
+# ADR-0025 — The Requirements Register's owner can write it; the evidence is checked by CI
 
 - **Status:** Accepted
 - **Date:** 2026-08-03

@@ -41,7 +41,7 @@ The ADRs **justify** the architecture; the [living arc42 document](../arc42/READ
 | 0020 | A draft PR opening triggers the review; nobody gates it | Accepted |
 | 0021 | A control is proven by breaking it, not by watching it pass | Accepted |
 | 0022 | A push to a PR with open findings triggers the re-read | Accepted |
-| 0023 | The Requirements Register's owner can write it; the evidence is checked by CI | Accepted |
+| 0025 | The Requirements Register's owner can write it; the evidence is checked by CI | Accepted |
 
 See also the [Tech Radar](./tech-radar.md).
 
@@ -53,4 +53,7 @@ will flag it once wired. Reconcile by either importing the real decision under i
 or correcting the reference to the product-log equivalent (ADR-049 k3s/Hetzner). Filed as a follow-up.
 
 The companion `eslint.config.js` → `ADR-0025` (NestJS) dangling reference is **closed**: ADR-0019
-deleted that file when oxlint replaced ESLint.
+deleted that file when oxlint replaced ESLint. **Note the number is now genuinely taken** — the
+`ADR-0025` in this log is the Requirements Register decision above, unrelated to that inherited NestJS
+reference. The two are only a numeric coincidence, recorded here so nobody reads this paragraph as a
+description of the real 0025.
