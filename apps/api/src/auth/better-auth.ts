@@ -164,6 +164,10 @@ export function assertDeviceAuthorizationDisabledPathsComplete(plugin: DeviceAut
           'the controller checks this whole design exists to interpose',
       )
     }
+    // Reached only once every registered endpoint yielded a readable path — but
+    // "readable" is not "correct": a wrong-but-string `.path` still lands here and
+    // can misreport. No distinctness guard on purpose: it would refuse to boot the
+    // day two endpoints legitimately share one path across different HTTP methods.
     if (disabledButNotDeclared.length > 0) {
       problems.push(
         `DEVICE_AUTHORIZATION_DISABLED_PATHS still names ${JSON.stringify(disabledButNotDeclared)}, which the ` +
