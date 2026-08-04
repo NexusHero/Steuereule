@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // register-check — turns docs/requirements/register.md from a claim into a control
-// (ADR-0021 and the register-ownership decision landing via #251). Five mechanical checks,
-// run against the real repo tree:
+// (ADR-0021 and the register-ownership decision landing via #251). Mechanical checks, run
+// against the real repo tree:
 //
 //   1. every cited path exists (a bare-filename citation that only resolves by basename is
 //      real evidence but under-qualified — reported separately, as check 1b, so it doesn't
@@ -18,10 +18,26 @@
 //      set of apps/*/packages/* vitest projects check 2 discovers — not a separate, narrower
 //      guess (F10, Musti's review on #252: this used to hard-code apps/ only, so a REQ tag or
 //      an @documents-defect marker planted in packages/* would be invisible to checks 3/5).
+//      Check 3b: check 3's own reconciliation Set is merged across both tables by design (a
+//      file cited in *either* table satisfies it) — which means a REQ's citation column can
+//      sit empty in one table indefinitely, invisible to check 3 (Musti's finding on #239, the
+//      REQ-014 summary-row instance). Check 3b reads each table's own citation column instead:
+//      once a REQ has real evidence in one table, every table carrying a row for it must too.
 //   4. Status/State come from the declared English vocabulary — no German, and a "not met"
-//      qualifier must read identically in both columns (the REQ-010/F5 defect)
+//      qualifier must read identically in both columns (the REQ-010/F5 defect). The tier
+//      sub-rule requires every REQ the register's own "Applied consistently ... to" sentence
+//      names to carry a `green (tier)` marker at all — not only that a tier, if present, is
+//      spelled from the declared vocabulary (#258: the old version matched validity but not
+//      existence, so a State cell that lost its tier wholesale produced no finding).
 //   5. a test carrying `@documents-defect #NNN` is cited in the register with the same
 //      marker, and #NNN is still open — the day it closes, this goes red until re-read
+//
+// Checks 3b and 4's tier-existence rule are both instances of the same shape (ADR-0021's
+// 2026-08-04 amendment, "break by deletion"): an existence claim ("is there a tier/citation at
+// all?") that used to be checked only as a validity claim ("if one is there, is it well
+// formed?") — vacuously satisfied by absence. The fix in both cases is the reversed
+// quantifier over a governed set the register's own text already names or implies, not a
+// better regex.
 //
 // What this deliberately does NOT check: whether a cited test's *content* actually proves
 // the requirement. That is a judgement call for a human review (Musti/Suhay), not
@@ -225,6 +241,42 @@ async function main() {
     }
   }
 
+  // --- Check 3b: per-table citation presence -----------------------------------------------
+  // Musti's finding on #239 (https://github.com/NexusHero/Steuereule/pull/239#issuecomment-5180191738):
+  // registerCitesByReq above is a Set merged across *both* tables, by design — that's correct
+  // for check 3's "is this file cited somewhere under this REQ" purpose. But it means a REQ's
+  // own citation column can sit *empty* in one table indefinitely, invisible to check 3, as
+  // long as the other table cites something. That is exactly what happened to REQ-014: the
+  // summary row's "Acceptance test" cell held status prose instead of citations while the
+  // traceability row correctly cited two real tests — check 3 stayed green throughout because
+  // the union was non-empty. A human re-read caught it; the gate didn't.
+  //
+  // The governed set here is derived from the register's own data, not guessed: a REQ that
+  // legitimately has no evidence anywhere yet (REQ-007's "_not started_"/"_tbd_" cells) must
+  // not be flagged — an empty citation column is not itself wrong, only an *inconsistently*
+  // empty one is. So the rule only fires once a REQ has established real evidence in at least
+  // one table: if any table cites something under a REQ, every table carrying a row for that
+  // REQ must too. This is the reversed quantifier from check 4's tier fix, applied to the
+  // other place the same shape was found the same day: "is there a citation at all in *this*
+  // table's column", not "is the citation cell's content well-formed".
+  const rowsByReq = new Map() // req -> rows across both tables
+  for (const row of rows) {
+    if (!rowsByReq.has(row.req)) rowsByReq.set(row.req, [])
+    rowsByReq.get(row.req).push(row)
+  }
+  for (const [req, reqRows] of rowsByReq) {
+    const anyTableCites = reqRows.some((r) => r.citations.length > 0)
+    if (!anyTableCites) continue // ungoverned: no evidence claimed anywhere for this REQ yet
+    for (const r of reqRows) {
+      if (r.citations.length === 0) {
+        findings.add(
+          '3b-cross-table-citation-gap',
+          `register.md:${r.lineNumber} (${req}, ${r.table} table) has an empty citation column while ${req} carries citations in its other table — a citation column can sit empty in one table indefinitely under check 3's cross-table union; this checks each table's own column.`,
+        )
+      }
+    }
+  }
+
   // --- Check 4: Status/State vocabulary --------------------------------------------------
   const GERMAN_BLOCKLIST = /\b(nicht|erfüllt|abgeschlossen|unvollständig|läuft|ausstehend|fertig)\b/i
   const NOT_MET_RE = /\*\*not met[^*]*\*\*/gi
@@ -278,15 +330,36 @@ async function main() {
         }
       }
     }
-    if (TIER_RECONCILED_REQS.has(req) && entry.state != null) {
-      const tierMatch = entry.state.match(/\bgreen\s*\(([^)]+)\)/i)
-      if (tierMatch) {
-        const tokens = tierMatch[1]
-          .split(/\s*\+\s*/)
-          .map((t) => t.trim())
-        for (const token of tokens) {
-          if (!TIER_WORDS.has(token)) {
-            findings.add('4-status-vocabulary', `register.md:${entry.stateLine} ${req}'s State column tier "${token}" is not one of the declared tiers (unit, integration, acceptance).`)
+    // #258 / ADR-0021 amendment #1: this sub-check used to fire only once
+    // `/\bgreen\s*\(([^)]+)\)/i` matched — a validity check ("if a tier is present, is it
+    // spelled right?") with no existence branch, so a State cell that lost its tier entirely
+    // (bare `green`, or no `green` at all) produced tierMatch === null and the block was
+    // skipped silently — vacuously satisfied by absence. That is precisely how the #249/#253
+    // rebase regression arrived: two reconciled REQs' State cells were overwritten wholesale,
+    // both lost their tier, and this check stayed green throughout. The reversed quantifier:
+    // for every REQ the register itself names as tier-reconciled, does its State cell carry a
+    // tier *at all* — not "if it carries one, is it valid".
+    if (TIER_RECONCILED_REQS.has(req)) {
+      if (entry.state == null) {
+        findings.add(
+          '4-status-vocabulary',
+          `${req} is named in the register's "Applied consistently ... to" sentence as tier-reconciled, but has no traceability State cell at all — a tier requires a State cell to carry it.`,
+        )
+      } else {
+        const tierMatch = entry.state.match(/\bgreen\s*\(([^)]+)\)/i)
+        if (!tierMatch) {
+          findings.add(
+            '4-status-vocabulary',
+            `register.md:${entry.stateLine} ${req}'s State column ("${entry.state}") carries no \`green (tier)\` marker at all — every REQ named in the "Applied consistently ... to" sentence must state its evidence tier; a missing tier is a finding, not silence (#258).`,
+          )
+        } else {
+          const tokens = tierMatch[1]
+            .split(/\s*\+\s*/)
+            .map((t) => t.trim())
+          for (const token of tokens) {
+            if (!TIER_WORDS.has(token)) {
+              findings.add('4-status-vocabulary', `register.md:${entry.stateLine} ${req}'s State column tier "${token}" is not one of the declared tiers (unit, integration, acceptance).`)
+            }
           }
         }
       }
