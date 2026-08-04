@@ -11,8 +11,14 @@
 // Shapes below are transcribed from the plugin's own installed
 // `better-auth/plugins/device-authorization/index.d.mts` (1.6.24) — not guessed, the
 // same "read the dist, not the assumption" standard the rest of ADR-0024 was built
-// on. Re-check this file on any better-auth version bump, same as the disabledPaths
-// list in better-auth.ts.
+// on. Re-check this file on any better-auth version bump.
+//
+// Unlike the disabledPaths list in better-auth.ts (#262: now proven equal to the
+// plugin's own declared routes at every boot, `assertDeviceAuthorizationDisabledPathsComplete`),
+// the TypeScript shapes below have no equivalent runtime check — a type is erased at
+// build time, so there is nothing left at runtime to introspect and compare against.
+// A version bump changing a response shape here still needs a human to re-read the
+// dist; that half of the risk is unchanged by #262.
 import type { Auth } from 'better-auth'
 
 export interface DeviceAuthorizationApi {

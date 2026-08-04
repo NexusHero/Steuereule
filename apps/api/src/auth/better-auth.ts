@@ -44,11 +44,103 @@ const DEV_ONLY_GOOGLE_CLIENT_SECRET = 'dev-only-google-client-secret'
  * check for all GET requests — reachable cross-site under our `SameSite=None`
  * cookie. `disabledPaths` gates HTTP routing only (`api/index.mjs`'s `onRequest`) —
  * the server-side `auth.api.*` calls this app makes instead still work, which is the
- * whole point of the wrapper (same shape as the `UserContextGuard` seam). A
- * better-auth upgrade must re-check `routes.mjs`/`origin-check.mjs` before assuming
- * this list is still complete — see ADR-0024.
+ * whole point of the wrapper (same shape as the `UserContextGuard` seam).
+ *
+ * #262: this list used to be trusted by a comment ("re-check on a version bump") —
+ * Musti's verdict was that a comment asking a human to remember is not a control.
+ * It is now proven equal to the plugin's own declared route set at every
+ * construction, not merely re-read by hand on a bump — see
+ * `assertDeviceAuthorizationDisabledPathsComplete` below, called from
+ * `buildOptions()`. A better-auth upgrade that adds, removes, or renames a route
+ * now refuses to boot instead of silently widening what a browser can reach.
  */
 export const DEVICE_AUTHORIZATION_DISABLED_PATHS = ['/device/code', '/device/token', '/device', '/device/approve', '/device/deny']
+
+/** Structural shape of a constructed better-call/better-auth endpoint — once built,
+ *  it carries a `.path` string property (`better-call`'s `createEndpoint`,
+ *  `dist/endpoint.mjs`: `internalHandler.path = path`), the exact property
+ *  better-auth's own router reads to build its endpoint registry and to test
+ *  `disabledPaths.includes(normalizedPath)` (`better-auth/dist/api/index.mjs`,
+ *  `checkEndpointConflicts`/the `onRequest` hook). Narrow and structural, not the
+ *  library's own type, so a test can hand in a synthetic plugin object without
+ *  constructing a real one (#262). */
+interface ConstructedPluginEndpoint {
+  path?: unknown
+}
+
+/** Structural shape of what `deviceAuthorization(...)` (or any better-auth plugin
+ *  factory) returns — only `.endpoints` is needed here (#262). */
+export interface DeviceAuthorizationPluginLike {
+  endpoints?: Record<string, ConstructedPluginEndpoint>
+}
+
+/**
+ * Reads the device-authorization plugin's own declared HTTP route set directly off
+ * its constructed `endpoints` — the same mechanism better-auth's own router uses
+ * internally (`Object.entries(plugin.endpoints)`, filtering on `"path" in endpoint
+ * && typeof endpoint.path === 'string'`, `better-auth/dist/api/index.mjs`) — instead
+ * of a second hand-maintained list (#262). A version bump that adds, removes, or
+ * renames a route changes what this returns; nothing here restates it.
+ */
+export function deviceAuthorizationPluginPaths(plugin: DeviceAuthorizationPluginLike): string[] {
+  return Object.values(plugin.endpoints ?? {})
+    .filter((endpoint): endpoint is ConstructedPluginEndpoint & { path: string } => typeof endpoint?.path === 'string')
+    .map((endpoint) => endpoint.path)
+}
+
+/**
+ * Fails loudly, at plugin-construction time (every boot — dev, test and prod alike,
+ * not only in a dedicated test), if `DEVICE_AUTHORIZATION_DISABLED_PATHS` has
+ * drifted from the plugin's own declared routes (#262). This is the control that
+ * replaces `device-authorization-api.ts`'s "re-check this file on a version bump"
+ * comment for the disabledPaths half specifically — Musti's review: a comment asking
+ * a human to remember is not a control.
+ *
+ * Guards the vacuous case too (ADR-0021 amendment §1, "an existence claim checked as
+ * a validity claim"): an empty derived route set is itself a finding, not read as
+ * "nothing to disagree with" — it almost certainly means the introspection above
+ * broke (a better-auth/better-call internal shape changed under an upgrade), not
+ * that the plugin genuinely registered zero routes.
+ */
+export function assertDeviceAuthorizationDisabledPathsComplete(plugin: DeviceAuthorizationPluginLike): void {
+  const pluginPaths = deviceAuthorizationPluginPaths(plugin)
+  if (pluginPaths.length === 0) {
+    throw new Error(
+      "device-authorization plugin's endpoints yielded zero declared paths — the introspection " +
+        '`deviceAuthorizationPluginPaths` (better-auth.ts) relies on has almost certainly broken (a ' +
+        'better-auth/better-call internal shape changed), not genuinely become empty. Re-check `.endpoints`/' +
+        '`.path` against the installed better-auth version before trusting DEVICE_AUTHORIZATION_DISABLED_PATHS ' +
+        'is still correct (#262).',
+    )
+  }
+
+  const declared = new Set(pluginPaths)
+  const disabled = new Set(DEVICE_AUTHORIZATION_DISABLED_PATHS)
+  const declaredButNotDisabled = pluginPaths.filter((path) => !disabled.has(path))
+  const disabledButNotDeclared = DEVICE_AUTHORIZATION_DISABLED_PATHS.filter((path) => !declared.has(path))
+
+  if (declaredButNotDisabled.length > 0 || disabledButNotDeclared.length > 0) {
+    const problems: string[] = []
+    if (declaredButNotDisabled.length > 0) {
+      problems.push(
+        `the plugin now declares ${JSON.stringify(declaredButNotDisabled)}, which ` +
+          'DEVICE_AUTHORIZATION_DISABLED_PATHS does not cover — reachable directly by a browser, bypassing ' +
+          'the controller checks this whole design exists to interpose',
+      )
+    }
+    if (disabledButNotDeclared.length > 0) {
+      problems.push(
+        `DEVICE_AUTHORIZATION_DISABLED_PATHS still names ${JSON.stringify(disabledButNotDeclared)}, which the ` +
+          'plugin no longer declares — a stale entry, not itself a hole, but worth removing',
+      )
+    }
+    throw new Error(
+      'DEVICE_AUTHORIZATION_DISABLED_PATHS (better-auth.ts) has drifted from the device-authorization ' +
+        `plugin's own declared routes: ${problems.join('; ')}. Re-check device-authorization-api.ts too, per ` +
+        'its own header comment (#262).',
+    )
+  }
+}
 
 /**
  * The session cookie's own static attributes (name aside) — extracted to one place
@@ -237,6 +329,13 @@ function buildOptions(options: CreateBetterAuthOptions): BetterAuthOptions {
     }
   }
 
+  // Constructed once here (not inline in `plugins: [...]` below) so its own declared
+  // routes can be read back and checked against DEVICE_AUTHORIZATION_DISABLED_PATHS
+  // before this config is handed to `betterAuth()` (#262) — the same plugin instance
+  // both consume, never two separately-constructed ones that could drift.
+  const deviceAuthorizationPlugin = deviceAuthorization({ expiresIn: '2m', verificationUri: `${webAppUrl}/device` })
+  assertDeviceAuthorizationDisabledPathsComplete(deviceAuthorizationPlugin)
+
   return {
     baseURL: baseUrl,
     secret,
@@ -291,11 +390,7 @@ function buildOptions(options: CreateBetterAuthOptions): BetterAuthOptions {
     // `verification_uri_complete`; every prior test supplied its own path and so never
     // saw a real one. `/device` matches the plugin's own default path name — the
     // frontend router's own route for it, reserved but not yet built.
-    plugins: [
-      haveIBeenPwned(),
-      hibpFailOpenPlugin,
-      deviceAuthorization({ expiresIn: '2m', verificationUri: `${webAppUrl}/device` }),
-    ],
+    plugins: [haveIBeenPwned(), hibpFailOpenPlugin, deviceAuthorizationPlugin],
     // A browser must never reach the plugin's own HTTP routes (see the constant's own
     // doc comment above for why) — this is what actually enforces that; the
     // server-side `auth.api.*` calls this app makes are untouched by it.
