@@ -119,9 +119,17 @@ describe('REQ-009 — session/token storage model, against the real server', () 
     expect(row).not.toBeNull()
   })
 
-  it('an unauthenticated request (no cookie at all) still gets a guest session — I/O-free, no better-auth session lookup involved', async () => {
-    const response = await fetch(`${baseUrl}/v1/profile`)
-    expect(response.status).toBe(200)
-    expect(response.headers.get('set-cookie')).toMatch(/se_guest_session=/)
+  // Nested under its own REQ-002 tag (Musti's #253 precedent, applied here): this `it`
+  // proves REQ-002's guest-cookie-mint clause against the real deployed artifact — real
+  // `buildApp()`, real socket, real Postgres — it was just sitting untagged in this
+  // REQ-009 file. Dropping the register's citation would delete real evidence and pull
+  // REQ-002 back to `green (unit)`; tagging it here makes the citation match the file's
+  // own describe() tree instead.
+  describe('REQ-002 — an unauthenticated request still gets a guest session', () => {
+    it('an unauthenticated request (no cookie at all) still gets a guest session — I/O-free, no better-auth session lookup involved', async () => {
+      const response = await fetch(`${baseUrl}/v1/profile`)
+      expect(response.status).toBe(200)
+      expect(response.headers.get('set-cookie')).toMatch(/se_guest_session=/)
+    })
   })
 })
