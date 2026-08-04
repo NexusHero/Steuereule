@@ -213,6 +213,60 @@ preview, the loop stops learning; nothing else supplies its input.
   produce tickets, never prevent the merge. That has a measured cost: it happened on #173 and a
   user-visible change went to `main` on five screens with neither gate on it.
 
+## Working rules — earned, not invented
+
+Five rules from 2026-08-04, the day eleven PRs landed. Each one exists because somebody got it
+wrong that day, and four of the five were the reviewer, the tester or the lead — not a dev. They
+are here because a rule that lives only in a conversation is gone by the next morning, and the
+next person deletes it as ceremony because nothing records what it cost.
+
+- **Throwaway verification runs in your own worktree — never the shared checkout.** A checker
+  spliced in from another branch, a scratch file that prints a raw response, a `git checkout` to
+  read someone else's tree: all get `git worktree add`. The shared checkout has one HEAD and
+  several agents; a scratch file left on a colleague's branch is one `git add -A` from their
+  commit and, with auto-merge armed, one merge from `main`. Reading a blob needs no checkout at
+  all — `git show <ref>:<path>`.
+  **Second half, and the expensive one: after a break test, inspect the worktree, not just the
+  file you broke.** Restoring the file is not restoring the tree. A revert of a test hardening
+  was found *already staged* in the shared checkout — one commit from landing, and an automated
+  hook was at that moment asking for exactly that commit. `git status` after a break test, every
+  time.
+  *Footnote, because the wrong check makes it worse:* we merge by rebase, so every SHA is
+  rewritten. **Ancestry is not evidence of presence — content is.**
+  `git merge-base --is-ancestor <sha> origin/main` answered *no* for work that was demonstrably
+  on `main`. Whoever trusts that answer concludes the work was lost, treats a stale revert as
+  valuable, and pushes it. Grep for the change, don't ask about the commit.
+
+- **Read the PR body back after `create_pull_request`, and strip the tool footer.** The create
+  call appends it; `update_pull_request` does not. Bodies are editable and posted comments are
+  not, so the body is the only place this is recoverable — which is exactly why it has to be
+  caught there. Missed on #175 (merged carrying one), #187 (caught only at review) and twice more
+  the same day. Nobody writes the footer; it is a tooling artifact (ADR-0017 §10,
+  `CONTRIBUTORS.md`) and on comments it stays — report it and move on.
+
+- **A conflicted PR's displayed checks are stale.** GitHub publishes `refs/pull/N/merge` only for
+  a mergeable PR, and `pull_request` runs are created against that ref. A conflicted PR therefore
+  gets **no run at all** — while the last green run stays displayed on it. The gate disappears
+  exactly when the PR has drifted far enough to be dangerous, and it still looks checked. Two
+  pushes to #239 went entirely unchecked this way. **`mergeable_state: dirty` means this PR has no
+  valid CI, whatever is shown.** Rebase, then read. The durable fix is branch protection's
+  *"Require branches to be up to date before merging"* — see #71.
+
+- **After resolving a review thread, confirm the thread you meant is the one that closed.**
+  `resolve_thread` keys on the thread ID alone and ignores the repo and PR number it is given, so
+  a stale ID from an earlier pass resolves a thread on a different, already-merged PR — and
+  reports success. The reviewer then reports a PR clear while its findings are still open, with
+  the tool agreeing. Re-fetch thread IDs for the PR in front of you; never carry them between
+  passes.
+
+- **Describing someone else's document means opening it — even if you read it last.** Ruling from
+  memory on something written down is the same failure as reviewing a diff from memory, and it is
+  harder to catch, because a confident citation reads like a verified one. This happened three
+  times in one day, to three different people, *while all three were working on a rule against
+  it* — including twice in the twenty minutes after the first one was admitted. It survives
+  knowing about it, which is why it needs a mechanism and not resolve.
+
+
 ## Who owns what
 
 | Role | Persona | Owns in this pipeline |
