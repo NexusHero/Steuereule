@@ -5,6 +5,13 @@
 // comment for the run this file was proven against: 3/3 consecutive real-stack passes, Node
 // 24.18.0. The polling gap this file originally found (below) is CLOSED as of Kaan's 94c5b2a. ***
 //
+// MUSTI'S #263 REVIEW (F2) — this file is now the real caller `sampleComputedStyleOverFrames`/
+// `probeColourAtPoint` were missing: the QR column's own owl-entrance animation (moving AND, via
+// `newReducedMotionContext`, static) and the approve button's own painted fill (matched AND, at
+// a deliberately wrong coordinate, correctly NOT matched). See `loginOwlHeadLayer`/
+// `assertOwlEntranceOpacity` below and the `probeColourAtPoint` block ahead of the approve
+// click — both calibrated in both directions, not just proven to return a number.
+//
 // THE FLOW THIS FILE PROVES (Musti's #238 spec, restated so the code and the spec stay legible
 // side by side):
 //   1. Context A (desktop, `l` breakpoint, no session) opens Login → the open QR column mints a
@@ -89,7 +96,15 @@
 // Exits non-zero on the first failed assertion — merge gate, not a report, once promoted out of
 // draft.
 
-import { launchBrowser, closeBrowser, newContextAtBreakpoint, guardAgainst429 } from '../harness/browser.mjs'
+import {
+  launchBrowser,
+  closeBrowser,
+  newContextAtBreakpoint,
+  newReducedMotionContext,
+  guardAgainst429,
+  sampleComputedStyleOverFrames,
+  probeColourAtPoint,
+} from '../harness/browser.mjs'
 import { startStack } from '../harness/stack.mjs'
 
 const AUTH_BUCKET = { windowMs: 10_000, max: 3 } // better-auth's own built-in rule
@@ -122,6 +137,24 @@ const COPY = {
   profilTab: 'Profil',
   devicesSignOut: 'Abmelden',
   devicesCurrentBadge: 'Dieses Gerät',
+}
+
+// `t.color.funke` (packages/tokens/dist/theme.ts, both light/dark themes: `#c9f229`) — the
+// primary-button fill `packages/ui/src/components/Button.tsx`'s `bg.primaer` uses, and what
+// GeraetefreigabeScreen's "Ja, das ist mein Code" button (the default `primaer` variant) is
+// painted with. `t.color.grund` (`#f4f2e9`, light theme — App.tsx mounts `ThemeProvider
+// mode="light"`) is the screen background outside any card/button. Both lifted here rather than
+// imported (this workspace's only devDependency is `playwright-core`, matching `COPY` above's
+// own lifted-not-imported convention) — confirmed against the real rendered pixel once, see this
+// file's PR record, not assumed from the source.
+const FUNKE_RGB = { r: 201, g: 242, b: 41 }
+const GRUND_RGB = { r: 244, g: 242, b: 233 }
+const COLOUR_TOLERANCE = 4 // real screenshot encoding is exact for a flat fill; a few units of
+// slack absorbs the theoretical case of a compositor/colour-profile rounding difference without
+// widening enough to blur FUNKE_RGB and GRUND_RGB into each other (their channels differ by 40+).
+
+function coloursMatch(observed, expected, tolerance = COLOUR_TOLERANCE) {
+  return Math.abs(observed.r - expected.r) <= tolerance && Math.abs(observed.g - expected.g) <= tolerance && Math.abs(observed.b - expected.b) <= tolerance
 }
 
 function fail(message) {
@@ -236,6 +269,69 @@ function expectedLabelFromRealUserAgent(userAgent) {
   return { browser, os }
 }
 
+/**
+ * The QR column's `OwlMark` head/glasses layers (`DeviceQrColumn` → `OwlMark(headStyle:
+ * owl.headStyle, glassesStyle: owl.glassesStyle)`, `apps/mobile-web/src/screens/LoginScreen.tsx`)
+ * — the two elements `useOwlEntranceAnimation` animates `opacity: 0 → 1` on mount, one after the
+ * other (head's own 380ms stage, then glasses' own 380ms stage — `Animated.sequence`), on the
+ * exact screen this file's `l`-breakpoint Context A always renders (Decision 3a: the QR column
+ * only exists at `m`/`l`). Located by DOM order, confirmed against a real render rather than
+ * assumed: `formColumn` (whose password field carries its own `<svg>` visibility-toggle icon)
+ * always renders before `DeviceQrColumn` in `LoginScreen.tsx`'s JSX, and `OwlMark`'s head/glasses
+ * layers are the first two of its own three `<svg>` layers (head, glasses, lid, in that fixed
+ * order, `OwlMark.tsx`) — so on this exact screen, at this exact breakpoint, they are reliably
+ * `svg >> nth=1`/`nth=2`'s parents. No `data-testid` exists on `OwlMark` to select by instead.
+ */
+function loginOwlLayers(page) {
+  return { head: page.locator('svg').nth(1).locator('xpath=..'), glasses: page.locator('svg').nth(2).locator('xpath=..') }
+}
+
+/**
+ * Calibrates `sampleComputedStyleOverFrames` in both directions on the QR column's own real
+ * entrance animation (Musti's #263 review, F2) — not a synthetic self-test, the exact element
+ * and exact screen this gate already visits for AC-6. `expectProgress: true` samples the
+ * animation running (a fresh Login mount, motion allowed); `false` samples it under
+ * `newReducedMotionContext` (`useOwlEntranceAnimation.ts`: every value starts at `1`, already at
+ * rest, when `reducedMotion` is true — the entrance never plays at all). An instrument proven
+ * only on the "it moved" half would still pass if it silently always reported "moving" — the
+ * false-negative-on-static-input case a solid-green-eye class of bug would need caught by the
+ * *other* half.
+ *
+ * Tracks BOTH the head and glasses layers, and samples across a window wide enough to cover
+ * their whole combined ~760ms (Node ↔ browser round-trip jitter between this file's own
+ * `skipSplash()` returning and the first sampled frame is real, observed directly: a first
+ * version of this check sampled ONLY the head layer over 8 frames — ~130ms — and flaked once in
+ * four runs when that round trip alone ate more than the head stage's own 380ms, landing every
+ * sample after the head had already settled at `opacity: 1`. Widening to both layers and ~90
+ * frames doesn't remove the jitter; it makes the check tolerant of it, the same way this file
+ * already paces against rate-limit buckets instead of assuming zero latency elsewhere).
+ */
+async function assertOwlEntranceOpacity(page, { expectProgress }) {
+  const layers = loginOwlLayers(page)
+  const [headSamples, glassesSamples] = await Promise.all([
+    sampleComputedStyleOverFrames(page, layers.head, ['opacity'], 90),
+    sampleComputedStyleOverFrames(page, layers.glasses, ['opacity'], 90),
+  ])
+  const headValues = headSamples.map((s) => Number(s.opacity))
+  const glassesValues = glassesSamples.map((s) => Number(s.opacity))
+  if (headValues.some(Number.isNaN) || glassesValues.some(Number.isNaN)) {
+    fail(`assertOwlEntranceOpacity: sampled a non-numeric opacity — head: ${JSON.stringify(headSamples)}, glasses: ${JSON.stringify(glassesSamples)}`)
+  }
+  const progressed = (values) => values.some((v) => Math.abs(v - values[0]) > 0.01)
+  const headProgressed = progressed(headValues)
+  const glassesProgressed = progressed(glassesValues)
+  if (expectProgress && !headProgressed && !glassesProgressed) {
+    fail(
+      `assertOwlEntranceOpacity: expected the QR column's owl entrance to PROGRESS across ${headValues.length} frames on EITHER the head or glasses layer (motion allowed), but neither moved — head: ${JSON.stringify(headValues)}, glasses: ${JSON.stringify(glassesValues)}. Either the entrance regressed to inert (the class this instrument exists to catch), or this file's own element locator drifted.`,
+    )
+  }
+  if (!expectProgress && (headProgressed || glassesProgressed)) {
+    fail(
+      `assertOwlEntranceOpacity: expected the QR column's owl entrance to STAY STATIC under prefers-reduced-motion, but head and/or glasses opacity moved — head: ${JSON.stringify(headValues)}, glasses: ${JSON.stringify(glassesValues)}. Either reduced-motion stopped being honoured, or this instrument reports motion that isn't there.`,
+    )
+  }
+}
+
 async function completeOnboarding(page) {
   await page.getByPlaceholder(COPY.onboardingFirstNamePlaceholder).fill('Kim')
   await page.getByPlaceholder(COPY.onboardingLastNamePlaceholder).fill('Yilmaz')
@@ -262,6 +358,15 @@ async function main() {
     const codeResponsePromise = pageA.waitForResponse((r) => r.request().method() === 'POST' && r.url().includes('/v1/device/code'))
     await waitForBucketHeadroom(readBucketByPrefix(sql, 'device-code'), DEVICE_CODE_BUCKET, 'device-code')
     await skipSplash(pageA, webOrigin)
+
+    // --- Musti's #263 review, F2 (moving half): sample the QR column's real owl entrance the
+    // instant Login mounts, racing it against the still-in-flight device-code mint — the
+    // entrance (~1.1s total) and the mint response are on comparable timescales, so sampling
+    // has to happen here, not after the mint resolves, or the animation may already have
+    // settled by the time this file gets to it. ---
+    await assertOwlEntranceOpacity(pageA, { expectProgress: true })
+    console.log('[device-authorization] sampleComputedStyleOverFrames (moving half): the QR column\'s owl entrance genuinely progresses on a real mount.')
+
     const codeResponse = await codeResponsePromise
     if (codeResponse.status() !== 201) fail(`POST /v1/device/code returned ${codeResponse.status()}, expected 201.`)
     const deviceCode = await codeResponse.json()
@@ -269,6 +374,23 @@ async function main() {
 
     await pageA.getByText(deviceCode.userCode, { exact: true }).waitFor({ state: 'visible', timeout: 5_000 })
     console.log(`[device-authorization] AC-6: Context A rendered user_code ${deviceCode.userCode}, matching the API response that minted it.`)
+
+    // --- Musti's #263 review, F2 (static half): the SAME element, SAME screen, under
+    // `newReducedMotionContext` — `useOwlEntranceAnimation.ts` starts every value already at
+    // rest when reduced motion is honoured, so this is a genuine second case, not a restatement
+    // of the first. A short-lived third context/mint, torn down immediately after sampling —
+    // paced against the same device-code bucket as everything else in this job. ---
+    await waitForBucketHeadroom(readBucketByPrefix(sql, 'device-code'), DEVICE_CODE_BUCKET, 'device-code')
+    const contextStatic = await newReducedMotionContext(browser, { viewport: { width: 1280, height: 900 } })
+    const pageStatic = await contextStatic.newPage()
+    guardAgainst429(pageStatic, fail, '/v1/device/')
+    try {
+      await skipSplash(pageStatic, webOrigin)
+      await assertOwlEntranceOpacity(pageStatic, { expectProgress: false })
+      console.log('[device-authorization] sampleComputedStyleOverFrames (static half): under prefers-reduced-motion, the same entrance genuinely stays inert.')
+    } finally {
+      await contextStatic.close()
+    }
 
     const aUserAgent = await pageA.evaluate(() => navigator.userAgent)
     const expectedLabel = expectedLabelFromRealUserAgent(aUserAgent)
@@ -341,12 +463,37 @@ async function main() {
     }
     console.log('[device-authorization] AC-3: approval screen renders A\'s real browser/OS, the fail-closed region sentinel, and a plausible time.')
 
+    // --- Musti's #263 review, F2: `probeColourAtPoint`, both halves, on the real approve
+    // button — a known-good coordinate (the button's own fill) and a deliberately wrong one
+    // (the page background outside it), so a systematically-shifted or hard-coded-return crop
+    // can't pass by coincidence. Read the button's real `boundingBox()` rather than a fixed
+    // offset — a fragile literal here would defeat the point of reading the ACTUAL rendered
+    // geometry. The probe point is offset from the box's top-left corner, not its centre: the
+    // button's own label text sits centred and its ink-brown glyphs are NOT `FUNKE_RGB`
+    // (confirmed directly — see this file's PR record), so a centre probe would fail for a
+    // reason that has nothing to do with what this instrument is proving. ---
+    const approveButton = pageB.getByRole('button', { name: COPY.approveConfirm })
+    const approveButtonBox = await approveButton.boundingBox()
+    if (!approveButtonBox) fail('probeColourAtPoint calibration: the approve button has no bounding box — not rendered?')
+    const knownGoodColour = await probeColourAtPoint(pageB, approveButtonBox.x + 10, approveButtonBox.y + 10)
+    if (!coloursMatch(knownGoodColour, FUNKE_RGB)) {
+      fail(`probeColourAtPoint (known-good half): expected the approve button's own fill (${JSON.stringify(FUNKE_RGB)}, t.color.funke) near its corner, read ${JSON.stringify(knownGoodColour)} instead.`)
+    }
+    const knownWrongColour = await probeColourAtPoint(pageB, 5, 5)
+    if (coloursMatch(knownWrongColour, FUNKE_RGB)) {
+      fail(`probeColourAtPoint (deliberately-wrong half): the page corner (5,5) read the BUTTON's own fill colour (${JSON.stringify(knownWrongColour)}) — the crop is not position-specific (a device-pixel-ratio offset or a hard-coded return would produce exactly this).`)
+    }
+    if (!coloursMatch(knownWrongColour, GRUND_RGB)) {
+      fail(`probeColourAtPoint (deliberately-wrong half): expected the page background (${JSON.stringify(GRUND_RGB)}, t.color.grund) at (5,5), read ${JSON.stringify(knownWrongColour)} instead.`)
+    }
+    console.log('[device-authorization] probeColourAtPoint: reads the approve button\'s real painted fill, and correctly does NOT read it at an unrelated coordinate.')
+
     // --- Approve. `device.service.ts#approve` calls no `consume*RateLimit` at all (checked
     // directly — unlike requestCode/getPending, approve() has no db-rate-limit guard), so there
     // is no bucket to pace against here; nothing to wait for before this click. ---
     const approveRequests = countRequestsTo(pageB, 'POST', '/v1/device/approve')
     const approveResponsePromise = pageB.waitForResponse((r) => r.request().method() === 'POST' && r.url().includes('/v1/device/approve'))
-    await pageB.getByRole('button', { name: COPY.approveConfirm }).click()
+    await approveButton.click()
     const approveResponse = await approveResponsePromise
     if (approveResponse.status() !== 200) fail(`POST /v1/device/approve returned ${approveResponse.status()}, expected 200.`)
     assertRequestCount(approveRequests, '/v1/device/approve', 1, 'Context B approval')

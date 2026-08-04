@@ -73,9 +73,14 @@ the environment truths that keep getting silently re-derived, written down once.
 `startStack()` returns `{ apiOrigin, webOrigin, sql, stop }`. Two modes, chosen automatically by
 whether `API_ORIGIN`/`WEB_ORIGIN`/`DATABASE_URL` are already set:
 
-- **ATTACH** (CI's normal shape): reuses the stack the calling job already booted; `stop()` is a
-  no-op. This is what every existing `e2e/*.mjs` script already assumes via `requireEnv(...)` —
-  `stack.mjs` centralises that assumption rather than replacing how those scripts work today.
+- **ATTACH** (CI's normal shape): confirms both origins actually answer (the same `httpReachable`
+  probes BOOT runs on what it just started — Musti's #263 review, F1: the two modes must make the
+  identical claim about the return value, not "checked" in one and "trusted" in the other), then
+  reuses the stack the calling job already booted; `stop()` is a no-op. This is what every
+  existing `e2e/*.mjs` script already assumes via `requireEnv(...)` — `stack.mjs` centralises
+  that assumption rather than replacing how those scripts work today. Shorter timeout than BOOT's
+  own probes (10s, not 30s): nothing is starting in this mode, so a slow answer means a hung
+  service, not a cold start — waiting the full 30s would only delay the diagnosis.
 - **BOOT** (local dev, or `startStack({ boot: true })` explicitly): stands the whole stack up
   itself — Postgres (docker, native fallback), `prisma migrate deploy`, build + boot the compiled
   API, `expo export --clear`, serve the bundle on a second origin (reusing
@@ -117,6 +122,21 @@ can still emit correctly:
   class of bug: a gradient stop that never resolved, or a stuck transition, can leave a
   "correct" computed `fill` (the intent) sitting next to a visibly wrong painted pixel (the
   effect) — `getComputedStyle` would have called that green.
+
+Both are exercised by a real caller, not a synthetic self-test (Musti's #263 review, F2: an
+instrument with no caller is unproven that it's needed at all — the same "generated, correct, and
+called by nothing" shape that made the QR-login desktop poll go dead) — `e2e/device/
+device-authorization.mjs`'s own `l`-breakpoint Context A already renders the QR column's real
+owl-entrance animation and the real approve button; both instruments read those, not a fixture
+built for the purpose. And both are calibrated in BOTH directions there, not just proven to
+return *a* number: `sampleComputedStyleOverFrames` against the entrance actually running
+(`expectProgress: true`) AND the same entrance under `newReducedMotionContext`, genuinely at rest
+(`expectProgress: false`); `probeColourAtPoint` against the approve button's own known fill
+(`t.color.funke`) AND a deliberately wrong coordinate (the page background), so a
+device-pixel-ratio-shifted or hard-coded-return crop can't pass by reading the same value
+everywhere. An instrument proven on only the "it moved"/"it matched" half is unproven that it can
+tell a positive from a negative — Musti's point, restated: a check that silently always passes is
+worse than no check, because the next reader reads the green as coverage.
 
 ## Not done in this pass
 

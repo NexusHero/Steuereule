@@ -14,11 +14,16 @@
 //
 //   ATTACH mode (the default in CI): if API_ORIGIN/WEB_ORIGIN/DATABASE_URL are already set —
 //   exactly the shape `cross-origin-smoke`'s own `env:` block provides — this module does NOT
-//   start a second stack next to the one CI already booted. It attaches: returns those origins
-//   verbatim, a `sql()` bound to DATABASE_URL, and a no-op `stop()` (CI's own job teardown owns
-//   the processes this mode never started). This is what every gate script in `e2e/` already
-//   assumes implicitly via `requireEnv('WEB_ORIGIN')`; `startStack()` centralises that
-//   assumption instead of each script re-deriving it, and is a safe drop-in for any of them.
+//   start a second stack next to the one CI already booted. It attaches: confirms both origins
+//   actually answer (the identical `httpReachable` probes BOOT mode runs on what it just
+//   started — Musti's #263 review, F1: a function returning the same `{ apiOrigin, webOrigin }`
+//   shape from two modes must make the same claim about it in both, or a dead ATTACH origin
+//   surfaces as a confusing failure several assertions later instead of here, at the one place
+//   that actually knows), then returns those origins, a `sql()` bound to DATABASE_URL, and a
+//   no-op `stop()` (CI's own job teardown owns the processes this mode never started). This is
+//   what every gate script in `e2e/` already assumes implicitly via `requireEnv('WEB_ORIGIN')`;
+//   `startStack()` centralises that assumption instead of each script re-deriving it, and is a
+//   safe drop-in for any of them.
 //
 //   BOOT mode (local dev, or `{ boot: true }` explicitly): when those three env vars are absent,
 //   this module stands the entire stack up itself — Postgres (docker compose, falling back to a
@@ -232,9 +237,22 @@ export async function startStack(options = {}) {
 
   if (!boot) {
     console.log('[stack] ATTACH mode — API_ORIGIN/WEB_ORIGIN/DATABASE_URL already set, reusing the caller\'s own stack.')
+    const apiOrigin = process.env.API_ORIGIN
+    const webOrigin = process.env.WEB_ORIGIN
+    // Musti's #263 review, F1: BOOT proves both origins answer before returning (the two
+    // waitUntil(httpReachable(...)) calls inside startApi/startWeb below); ATTACH used to
+    // return the same-shaped { apiOrigin, webOrigin } on faith alone — one function making two
+    // different assertions depending on which environment happens to be calling it. A caller
+    // can't tell which mode it got from the return value, so a dead origin in ATTACH surfaced
+    // only as a confusing failure several assertions later in whatever gate script called
+    // startStack(), not here, at the one place that actually knows. Both modes now make the
+    // identical claim: this function does not return an origin it hasn't itself confirmed
+    // answers, in ATTACH exactly as much as in BOOT.
+    await waitUntil(() => httpReachable(`${apiOrigin}/v1/profile`), { timeoutMs: 10_000, label: `ATTACH mode's API_ORIGIN (${apiOrigin}) to answer GET /v1/profile` })
+    await waitUntil(() => httpReachable(`${webOrigin}/`), { timeoutMs: 10_000, label: `ATTACH mode's WEB_ORIGIN (${webOrigin}) to answer` })
     return {
-      apiOrigin: process.env.API_ORIGIN,
-      webOrigin: process.env.WEB_ORIGIN,
+      apiOrigin,
+      webOrigin,
       sql: makeSql(process.env.DATABASE_URL),
       stop: async () => {},
     }
