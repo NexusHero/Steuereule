@@ -115,6 +115,15 @@ describe('#240 — better-auth session store deferred-unmount timer vs. cleanSto
 // is the entire point of the mechanism above.
 describe('#240 — the shipped harness wiring itself (not just the nanostores mechanism it rests on)', () => {
   let capturedSessionStore: WritableAtom<unknown> | undefined
+  // Musti's #250 F6: `active` goes false for two different reasons, not one — `cleanStores()`
+  // (the thing under test) is one; the real deferred timer firing on its own after
+  // `STORE_UNMOUNT_DELAY` elapses (`lifecycle/index.js:137-138` sets the same flag in its own
+  // callback) is the other. This `it` unmounts under REAL timers, so that second timer is
+  // genuinely running in the background — if more than `STORE_UNMOUNT_DELAY` of wall-clock time
+  // passes before the assertion below, it could fire on its own and this test would pass for the
+  // wrong reason, indistinguishable from `cleanStores()` doing nothing. Recording when the timer
+  // started is what lets the assertion below tell the two apart.
+  let unmountedAt: number | undefined
 
   it('mounts and unmounts a client through the real, mocked construction seam', () => {
     const client = createAppAuthClient(BASE_URL)
@@ -125,14 +134,20 @@ describe('#240 — the shipped harness wiring itself (not just the nanostores me
     capturedSessionStore = sessionStore
     const unsubscribe = sessionStore.listen(() => {})
     unsubscribe()
+    unmountedAt = Date.now()
     // No `cleanStores()` call here — that's the shared `afterEach`'s job, and it runs after this
     // test returns, not inside it.
   })
 
   it('is inactive once the shared afterEach has run — proving test-setup.ts drained it, not this test', () => {
-    if (!capturedSessionStore) {
+    if (!capturedSessionStore || unmountedAt === undefined) {
       throw new Error('the previous test did not capture a session store — see it above')
     }
+    // The proof's own premise, checked rather than assumed: this run must still be inside the
+    // real deferred timer's own window, or a slow CI machine under this PR's own contended load
+    // could let that timer fire on its own and validate nothing. Fails loud ("this proof has
+    // expired") instead of passing empty.
+    expect(Date.now() - unmountedAt).toBeLessThan(STORE_UNMOUNT_DELAY)
     // `active` is nanostores' own runtime flag (`lifecycle/index.js`), not part of its public
     // `WritableAtom` type — this is the one place that reads it directly, the same way
     // `cleanStores()`'s own guard does.
