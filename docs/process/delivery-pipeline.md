@@ -243,6 +243,10 @@ and the next person deletes it as ceremony because nothing records what it cost.
   caught there. Missed on #175 (merged carrying one), #187 (caught only at review) and twice more
   the same day. Nobody writes the footer; it is a tooling artifact (ADR-0017 §10,
   `CONTRIBUTORS.md`) and on comments it stays — report it and move on.
+  *Second thing the read-back catches:* GitHub's sanitiser **silently drops** a literal `<email>`
+  in a PR body — which is where the `Co-authored-by:` lines with no address came from. Use the HTML
+  entity form. Same family as rule 4 below: a tool that discards input and reports success, so the
+  only defence is looking at what actually landed rather than at the return value.
 
 - **A conflicted PR's displayed checks are stale.** GitHub publishes `refs/pull/N/merge` only for
   a mergeable PR, and `pull_request` runs are created against that ref. A conflicted PR therefore
