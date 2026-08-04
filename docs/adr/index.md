@@ -45,7 +45,7 @@ The ADRs **justify** the architecture; the [living arc42 document](../arc42/READ
 
 See also the [Tech Radar](./tech-radar.md).
 
-## Known inconsistency (tracked, not ignored)
+## Closed inconsistencies (kept as record)
 
 `k8s/README.md` used to carry a dangling reference to a 4-digit Kubernetes-decision number with no
 matching file in this log — inherited from the **myDevTime** lineage. **Closed by deletion**: `k8s/`
