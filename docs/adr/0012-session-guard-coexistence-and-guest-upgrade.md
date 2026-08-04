@@ -143,6 +143,11 @@ re-encryption** (the field-encryption key is app-wide, ADR-0008/0009):
 - **Rate limiting:** better-auth's built-in per-route login rate limiting, backed by its
   **database/secondary storage — not in-memory**, so the limit holds **across horizontally scaled API
   instances** (in-memory would reset per pod and be trivially bypassed).
+  > **Amended 2026-08-04 — this bullet describes where the counter lives, not whether the limit
+  > works. As shipped it is bypassable (#241); see the Amendment dated 2026-08-04 at the end of this
+  > file.** The decision text above stands unedited per the log's immutability rule
+  > (`docs/adr/index.md:5` — "never rewrite history"); this pointer annotates it rather than
+  > restating it.
 - **CSRF = origin check, single source of truth:** better-auth's origin-based CSRF via `trustedOrigins`
   — wired to the **same** `resolveCorsOrigins(env)` allowlist the CORS layer uses (ADR-0011). One
   allowlist, imported in both places; **no second, drifting copy** (the single-source-of-truth rule).
@@ -244,3 +249,35 @@ dependency an explicit, reviewable line of config instead of an assumption.
 
 **Consequence.** Any future change to this pin is a visible diff in `auth-client.ts`, not a
 `pnpm update` side effect.
+
+## Amendment — 2026-08-04 (#241/#246): the rate-limiting claim in §5 is about storage, not effectiveness
+
+Per the log's immutability rule above, sections 1–6 stand unedited; this appends a correction to
+what §5's rate-limiting bullet can be read to promise, rather than rewriting it.
+
+**Context.** §5 states that DB-backed storage makes the login rate limit hold *across horizontally
+scaled API instances*. That is true and remains true — it is a claim about **where the counter
+lives**. It is easy to read it as a claim that the limit **works**, and that reading is false on
+shipped `main`.
+
+**The gap (measured by others, cited not re-derived).** [#241](https://github.com/NexusHero/Steuereule/issues/241)
+established that better-auth's limiter keys its bucket on a client IP resolved from the
+`X-Forwarded-For` header, which is trusted verbatim because no trusted-proxy boundary is configured.
+Any caller can therefore send a single-value `X-Forwarded-For` and obtain a fresh bucket per request.
+DB-backed storage does not help: it fixes *where* the counter is kept, not *what it counts*.
+
+**Scope — what is and is not affected.** This applies to better-auth's own IP-keyed routes. It does
+**not** apply to our own fresh-auth path (`apps/api/src/auth/fresh-auth.ts`), which is **userId**-keyed
+and never calls `getIp()`.
+
+**Decision.** §5's rate-limiting bullet is qualified, not withdrawn. Until a deployment topology
+supplies a trusted-proxy boundary — [#246](https://github.com/NexusHero/Steuereule/issues/246), which
+is the network property this depends on — **the login rate limit must not be counted as an effective
+control** in any threat model, review, or status claim. The Requirements Register records this as
+REQ-010 `not met (rate limiting)`; this ADR and the arc42 building-block view now say the same thing,
+so the qualification is not stranded in one document.
+
+**Consequence for readers.** A reader of §5 alone would have concluded we have working rate limiting.
+That is precisely the failure this amendment exists to prevent: `docs/adr/index.md:8-9` requires the
+ADRs and the living arc42 document to be **kept in step**, and for one day they were not — the
+register carried the correction while this ADR and the diagram still asserted the unqualified claim.
