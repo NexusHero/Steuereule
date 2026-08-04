@@ -64,7 +64,7 @@ importers:
         specifier: workspace:*
         version: link:../../packages/core
       better-auth:
-        specifier: ^1.6.24
+        specifier: 1.6.24
         version: 1.6.24(@prisma/client@6.19.3(prisma@6.19.3(magicast@0.3.5)(typescript@7.0.2))(typescript@7.0.2))(prisma@6.19.3(magicast@0.3.5)(typescript@7.0.2))(react-dom@19.0.0(react@19.0.0))(react@19.0.0)(vitest@2.1.9(@types/node@22.20.1)(jsdom@25.0.1)(lightningcss@1.27.0)(msw@2.15.0(@types/node@22.20.1)(typescript@7.0.2))(terser@5.49.0))
       class-transformer:
         specifier: ^0.5.1
