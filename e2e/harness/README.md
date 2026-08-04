@@ -99,17 +99,24 @@ different copy; new scripts import this instead), `launchBrowser`/`closeBrowser`
 `newContextAtBreakpoint` (a fresh browser **context**, never a second page — see its own comment
 for why that distinction is load-bearing for any two-actor flow), `newReducedMotionContext`,
 `sweepBreakpoints`, `guardAgainst429`, `saveNamedScreenshot`, and two new instruments with no
-prior committed equivalent:
+prior committed equivalent — both the same move, applied to two different surfaces: **measure
+the effect, not the intent.** A component's props, its CSS class, its `getComputedStyle` report,
+even a green unit test, are all statements of what the code *intends* to happen — none of them
+is a statement that it *did*. Both instruments below read the thing itself (real animation
+frames, a real decoded pixel) instead of trusting an adjacent signal that a broken implementation
+can still emit correctly:
 
 - `sampleComputedStyleOverFrames` — proves an animation actually PROGRESSES across real
   `requestAnimationFrame` frames, not just that its final computed style is correct. What would
   have caught the inert-splash-entrance class of bug: a single-sample style read stays green
-  whether the animation ran once or never ran at all.
+  whether the animation ran once or never ran at all — the intent (the CSS/animation config) was
+  correct, the effect (motion on screen) wasn't.
 - `probeColourAtPoint` — reads the actual rendered PIXEL at a page coordinate (a real screenshot
   crop, decoded via this file's own dependency-free PNG reader), not `getComputedStyle`'s report
   of what the stylesheet *says* should be painted. What would have caught the solid-green-eye
   class of bug: a gradient stop that never resolved, or a stuck transition, can leave a
-  "correct" computed `fill` sitting next to a visibly wrong painted pixel.
+  "correct" computed `fill` (the intent) sitting next to a visibly wrong painted pixel (the
+  effect) — `getComputedStyle` would have called that green.
 
 ## Not done in this pass
 
