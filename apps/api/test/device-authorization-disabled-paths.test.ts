@@ -100,8 +100,8 @@ describe('assertDeviceAuthorizationDisabledPathsComplete', () => {
   // it would still throw on the disabledButNotDeclared branch here, but for a
   // misleading message; the dedicated guard names the real, more likely cause).
   it('guards the total vacuum — zero registered endpoints is itself a finding, not a silent pass', () => {
-    expect(() => assertDeviceAuthorizationDisabledPathsComplete({})).toThrow(/registered zero endpoints/)
-    expect(() => assertDeviceAuthorizationDisabledPathsComplete({ endpoints: {} })).toThrow(/registered zero endpoints/)
+    expect(() => assertDeviceAuthorizationDisabledPathsComplete({})).toThrow(/registered 0 endpoint\(s\), of which 0 yielded/)
+    expect(() => assertDeviceAuthorizationDisabledPathsComplete({ endpoints: {} })).toThrow(/registered 0 endpoint\(s\), of which 0 yielded/)
   })
 
   // Salih's finding on #272: the total-vacuum guard above catches "0 of 0" but not
@@ -146,5 +146,49 @@ describe('assertDeviceAuthorizationDisabledPathsComplete', () => {
     // different message that happens not to mention them by coincidence.
     expect(message).not.toMatch(/no longer declares/)
     expect(message).not.toMatch(/not itself a hole/)
+  })
+
+  // Musti's F1 on #272's first partial-vacuum fix: splitting the vacuum guard on
+  // `Object.keys(...)` (registered endpoint count) moved a case that used to belong
+  // to the total-vacuum branch. Rename `.path` away on EVERY endpoint (not one) — the
+  // most plausible shape of a genuinely *total* read failure, e.g. a better-call
+  // change that drops the property everywhere at once — and the endpoint MAP still
+  // survives (5 keys), only the property does not. `registeredEndpointCount` is then
+  // 5, `pluginPaths.length` is 0, the total-vacuum branch (keyed only on
+  // `registeredEndpointCount === 0`) never fires, and the partial branch reported
+  // "only 0 yielded" / "for some, not all" in the same sentence — internally
+  // contradictory, still refuses to start and still says "unverifiable" (no second
+  // severity inversion — Musti explicit on this), but the same class this whole fix
+  // exists to remove: a claim the code did not verify. Fixed by widening the
+  // total-vacuum condition to `registeredEndpointCount === 0 || pluginPaths.length
+  // === 0` (Musti's preferred of his two named options — keeps "total" and "partial"
+  // as the two distinct causes the doc block above claims) rather than deleting the
+  // partial branch's "for some, not all" clause.
+  it('a fully-but-not-totally-vacuous read (endpoints survive, .path does not, on all of them) is still the total-vacuum finding, never "partial" (#272 F1)', () => {
+    const plugin = realPlugin()
+    const realEndpoints = plugin.endpoints ?? {}
+    expect(Object.keys(realEndpoints)).toHaveLength(5)
+
+    const allPathsLost: DeviceAuthorizationPluginLike = {
+      endpoints: Object.fromEntries(Object.keys(realEndpoints).map((key) => [key, { path: undefined }])),
+    }
+    expect(Object.keys(allPathsLost.endpoints ?? {})).toHaveLength(5)
+    expect(deviceAuthorizationPluginPaths(allPathsLost)).toHaveLength(0)
+
+    let thrown: unknown
+    try {
+      assertDeviceAuthorizationDisabledPathsComplete(allPathsLost)
+    } catch (error) {
+      thrown = error
+    }
+    expect(thrown).toBeInstanceOf(Error)
+    const message = (thrown as Error).message
+    // Both counts stay in the message (Musti's ruling) — 5 registered, 0 readable.
+    expect(message).toMatch(/5 endpoint/)
+    expect(message).toMatch(/\b0\b/)
+    // The internally-contradictory wording this test exists to kill: claiming "some,
+    // not all" while zero endpoints yielded a readable path.
+    expect(message).not.toMatch(/partially/)
+    expect(message).not.toMatch(/for some, not all/)
   })
 })
