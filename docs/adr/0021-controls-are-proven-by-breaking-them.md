@@ -252,8 +252,13 @@ Three independent instances, 2026-08-04:
 | Instance | How the instrument corrupted the measurement |
 |---|---|
 | #239 F3 (frontend) | Spying on `clearTimeout` changed the object identity `vitest` checks when restoring, so `vi.useRealTimers()` silently failed and **every later test in the file ran on a fake clock** |
-| #239 T1 harness | A position-based row selection revoked the wrong session, and a leftover ghost session skewed the next assertion — both in the harness, not the product |
+| #239 T1 harness | A leaked **phantom session** (better-auth's `autoSignIn` minting a real `Session` row for an out-of-band call) turned "the non-current row" into an ambiguous choice between two non-current rows — which is what made a **position-based** selector revoke the wrong session. One state leak, one consequence; not two faults |
 | #261 (docs) | A regenerated SVG compared only against itself: "identical twice" with no baseline says the renderer is deterministic, not that the output was ever right |
+| #263 calibration | The calibration for `sampleComputedStyleOverFrames` sampled one layer over 8 frames — a window narrower than the Node↔browser jitter it had to see through. It flaked 1 run in 4: the rig meant to certify an instrument was itself unreliable |
+
+**Four instances, four different ways to be wrong** — perturbation, state leakage, no reference
+point, and too narrow a sampling window. The shared property is not the mechanism: it is that in every
+case the instrument's *reading* was trusted before the instrument was.
 
 **Rule.** Prefer the framework's own reported state over reaching into its internals — `vi.getTimerCount()`
 over a global spy on a timer primitive. Where an instrument must be invasive, its blast radius is
@@ -263,6 +268,11 @@ good and one where it is known bad — before its readings are used as evidence.
 
 **Reviewer's test:** *would this instrument report the same thing if the subject were absent, and does
 it leave the next run in the state it found?*
+
+One named consequence, from the #239 harness: **positional selection is not robust against state
+leaks.** "The row that isn't the current one" is a claim about the *set*, and any leaked row makes it
+ambiguous without making it look ambiguous. Select on an identifying property, not a position, wherever
+the set can grow behind you.
 
 Corollary, from all three: **audit the instrument before attributing the reading to the product.** Every
 instance above was found by the person operating the instrument, against their own work, before anything
