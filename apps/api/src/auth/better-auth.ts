@@ -100,11 +100,16 @@ export function deviceAuthorizationPluginPaths(plugin: DeviceAuthorizationPlugin
  * it finds (ADR-0021 amendment §1, "an existence claim checked as a validity claim"),
  * because they are not the same finding and must not share a message:
  *
- * 1. **Total vacuum** — the plugin registered zero endpoints. Almost certainly means
- *    the introspection broke outright (a better-auth/better-call internal shape
- *    changed), not that the plugin genuinely has no routes.
- * 2. **Partial vacuum** (#272, Salih's finding) — some endpoints keep a readable
- *    `.path`, others don't. The naive set-comparison below would then see the
+ * 1. **Total vacuum** — either the plugin registered zero endpoints, or it registered
+ *    some but *none* of them yielded a readable `.path` (#272 F1 — a better-call
+ *    change that drops `.path` on every endpoint at once leaves the endpoint map
+ *    intact; keying this branch on the endpoint count alone missed exactly that
+ *    shape and produced an internally-contradictory "only 0 yielded ... for some,
+ *    not all" message). Either way, nothing here is verifiable at all; almost
+ *    certainly means the introspection broke outright (a better-auth/better-call
+ *    internal shape changed), not that the plugin genuinely has no routes.
+ * 2. **Partial vacuum** (#272, Salih's finding) — *some* endpoints keep a readable
+ *    `.path`, at least one doesn't. The naive set-comparison below would then see the
  *    unreadable ones as simply *absent* and report them under
  *    `disabledButNotDeclared` — "the plugin no longer declares this, a stale entry,
  *    not itself a hole" — which is doubly wrong: the plugin *does* still declare it
@@ -112,21 +117,22 @@ export function deviceAuthorizationPluginPaths(plugin: DeviceAuthorizationPlugin
  *    exists is exactly what a partial read cannot determine. Musti's ruling: a
  *    control that fails closed and then tells the operator the failure is harmless is
  *    worse than one that stays silent — it gives the operator a reason not to look.
- *    This branch states the count, names no route, and claims neither safety nor
+ *    This branch states both counts, names no route, and claims neither safety nor
  *    staleness — only that coverage is unverifiable, which is reason enough to
  *    refuse to start.
  *
  * Only once every registered endpoint has yielded a readable path does the set
- * comparison below run at all — a partial read never reaches it.
+ * comparison below run at all — neither vacuum branch reaches it.
  */
 export function assertDeviceAuthorizationDisabledPathsComplete(plugin: DeviceAuthorizationPluginLike): void {
   const registeredEndpointCount = Object.keys(plugin.endpoints ?? {}).length
   const pluginPaths = deviceAuthorizationPluginPaths(plugin)
 
-  if (registeredEndpointCount === 0) {
+  if (registeredEndpointCount === 0 || pluginPaths.length === 0) {
     throw new Error(
-      'device-authorization plugin registered zero endpoints — the introspection ' +
-        '`deviceAuthorizationPluginPaths` (better-auth.ts) relies on has almost certainly broken (a ' +
+      `device-authorization plugin registered ${registeredEndpointCount} endpoint(s), of which ` +
+        `${pluginPaths.length} yielded a readable string .path — the introspection ` +
+        '`deviceAuthorizationPluginPaths` (better-auth.ts) relies on has almost certainly broken outright (a ' +
         'better-auth/better-call internal shape changed), not genuinely become empty. Re-check `.endpoints`/' +
         '`.path` against the installed better-auth version before trusting DEVICE_AUTHORIZATION_DISABLED_PATHS ' +
         'is still correct (#262).',
