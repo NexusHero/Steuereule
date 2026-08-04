@@ -17,8 +17,8 @@ acceptance-tier test against the real artifact, §3.5).
 | REQ-006 | A guest upgrading to a real account (email/password or social) carries **all** their guest-owned data over **atomically** — never partially — and the guest session is retired. | **Done** | Epic [#8](https://github.com/NexusHero/Steuereule/issues/8) · PR #116 | `apps/api/test/acceptance/req-006-guest-upgrade.test.ts` |
 | REQ-007 | An account holder can add **TOTP 2FA** and/or a **passkey (WebAuthn)** as opt-in additional sign-in factors. | Proposed — **1.0** _(see note below — updates ADR-027(b))_ | tbd (Epic [#8](https://github.com/NexusHero/Steuereule/issues/8)) | _not started_ |
 | REQ-008 | A user can sign in/up with **Google** in 1.0; **Apple Sign-In** is built and wired but stays flagged off until an Apple Developer account + a shipped iOS build exist. | **Google: Done** · Apple: not started | Epic [#8](https://github.com/NexusHero/Steuereule/issues/8) · PRs #144, #148 | `apps/api/test/req-008-google-login.test.ts`, `apps/api/test/auth-capabilities.http.test.ts`, Login/Registrierung screen tests. **Correction:** Apple is *not* code-complete-but-flagged — it is **unbuilt**; see Notes. |
-| REQ-009 | Sessions are server-verified and stored per platform: better-auth DB-backed sessions; web keeps the token only in an `httpOnly`+`Secure`+`SameSite=strict` cookie; Expo/RN keeps it only in `SecureStore`. | **Done (web)** · Expo/`SecureStore` half not built | Epic [#8](https://github.com/NexusHero/Steuereule/issues/8) · PR #116 | `apps/api/test/acceptance/req-009-session-model.test.ts` |
-| REQ-010 | Login/account endpoints carry baseline hardening: per-route login rate limiting, CSRF protection, `helmet`/CSP security headers, and a known-breached-password check at signup/change. | **Done** | Epic [#8](https://github.com/NexusHero/Steuereule/issues/8) · PR #116 | `apps/api/test/acceptance/req-010-security-hardening.test.ts`, `apps/api/test/breach-check.test.ts`, `apps/api/test/cors.acceptance.test.ts`, `apps/api/test/acceptance/trusted-proxies-ip-resolution.test.ts` (real Postgres), `apps/api/test/trusted-proxies.test.ts` (unit), `apps/api/test/acceptance/auth-mount-cors.test.ts` (real Postgres — CORS on the `/api/auth/*` mount itself), `apps/api/test/acceptance/req-005-email-signup.test.ts:112-175` (nested `describe('the known-breach check (REQ-010, must land no later than REQ-005)')` — the breach-check clause, proven at acceptance tier against the real server: the HIBP call is stubbed and its hit count asserted, and the rejection asserts the exact `PASSWORD_COMPROMISED` code) |
+| REQ-009 | Sessions are server-verified and stored per platform: better-auth DB-backed sessions; web keeps the token only in an `httpOnly`+`Secure`+`SameSite=None` cookie (ADR-0011 §Interaction / ADR-0012 §3 explicitly supersede the original `SameSite=strict` wording for the deployed demo's genuine cross-site topology, compensated by ADR-0011's fail-closed CORS origin allowlist and ADR-0012 §5's origin-based CSRF check — see Status accuracy); Expo/RN keeps it only in `SecureStore`. | **Done (web)** · Expo/`SecureStore` half not built | Epic [#8](https://github.com/NexusHero/Steuereule/issues/8) · PR #116 | `apps/api/test/acceptance/req-009-session-model.test.ts` |
+| REQ-010 | Login/account endpoints carry baseline hardening: per-route login rate limiting, CSRF protection, `helmet`/CSP security headers, and a known-breached-password check at signup/change. | **Done** (CSRF · helmet/CSP · breach-check) · **not met (rate limiting)** — IP-keyed only, bypassable by a single-value `X-Forwarded-For`; closes only once the network property from [#246](https://github.com/NexusHero/Steuereule/issues/246) exists | Epic [#8](https://github.com/NexusHero/Steuereule/issues/8) · PR #116, #247 | `apps/api/test/acceptance/req-010-security-hardening.test.ts` (rate-limit clause: proves IP-keyed counting, not failed logins — #248), `apps/api/test/breach-check.test.ts`, `apps/api/test/cors.acceptance.test.ts`, `apps/api/test/acceptance/trusted-proxies-ip-resolution.test.ts` (real Postgres), `apps/api/test/trusted-proxies.test.ts` (unit), `apps/api/test/acceptance/auth-mount-cors.test.ts` (real Postgres — CORS on the `/api/auth/*` mount itself), `apps/api/test/acceptance/req-005-email-signup.test.ts:112-175` (nested `describe('the known-breach check (REQ-010, must land no later than REQ-005)')` — the breach-check clause, proven at acceptance tier against the real server: the HIBP call is stubbed and its hit count asserted, and the rejection asserts the exact `PASSWORD_COMPROMISED` code) |
 | REQ-011 | Every account holder can **export** their full data (Art. 15/20) and **delete** their account (Art. 17, with the mandatory pre-delete export offer, ADR-011) — this REQ must be **Done before any real, non-synthetic user** is let onto the product. | **Done** | Epic [#8](https://github.com/NexusHero/Steuereule/issues/8) / [#10](https://github.com/NexusHero/Steuereule/issues/10) · PRs #137, #138, #153 · closed #129, #130 | `apps/api/test/acceptance/req-011-export.test.ts`, `apps/api/test/acceptance/req-011-export-delete.test.ts` — real Postgres + real Chromium; `apps/mobile-web/src/screens/DatenschutzScreen.test.tsx` — reached from Profil, wired to the real endpoints; `e2e/cross-origin/run.mjs` — proves the export filename is browser-readable cross-origin; `apps/api/test/openapi-contract.test.ts:109-221` (`describe('OpenAPI contract for DELETE /v1/account (REQ-011, ADR-0013)')` and `describe('OpenAPI contract for GET /v1/account/export (REQ-011/ADR-0013)')`). |
 | REQ-012 | Onboarding is joined to the real backend end to end: a brand-new guest's form prefills from `GET /v1/profile` (the honest all-null empty state, never mock data) and completing it persists through `PUT /v1/profile`. | **Done** | [#53](https://github.com/NexusHero/Steuereule/issues/53) | `apps/mobile-web/src/screens/onboarding/req-012-onboarding-vertical-join.test.tsx` |
 | REQ-013 | A user can view and edit their stored profile (name, Steuer-ID, Steuernummer) against the live `GET`/`PUT /v1/profile`, with honest loading/empty/error states and no client-side persistence (ADR-0008). | **Done** | [#95](https://github.com/NexusHero/Steuereule/issues/95) · PRs #126, #149 | `apps/mobile-web/src/screens/ProfilScreen.test.tsx` (incl. the shared-cache regression), reachable via the tab bar since #149 |
@@ -39,16 +39,142 @@ Three corrections worth calling out, because they change what the register *clai
   evidence standard (named test files that exist in the repo).
 - **REQ-008's Apple half is unbuilt, not "code-complete but flagged off."** The note below described
   it as built-and-gated; no Apple integration exists in the codebase. Corrected in the table.
-- **Correction — REQ-004 does have an acceptance test of its own.** This line previously claimed
-  otherwise ("no acceptance test of its own… a genuine traceability gap"). That was wrong on the day it
-  was written: `apps/api/test/profile.integration.test.ts:248-364` already contained
-  `describe('REQ-004 — immutable audit log of tax-data access')` (REQ-004.1–.6, run against real
-  Postgres) before this reconciliation. The register's REQ-004 row previously cited only
-  `apps/api/test/acceptance/req-011-export.test.ts` — a real test, but one that self-identifies as
-  `REQ-011` (`describe('REQ-011 — DSGVO data export…')`), not REQ-004; citing it as REQ-004's evidence
-  was a broken cross-reference, not a missing test. Both rows above now cite the actual REQ-004-tagged
-  test
-  directly.
+- **Correction (2026-08-03, Musti's REQ-010 ruling on PR #247):** the line above — carried at this
+  reconciliation and repeated in the traceability matrix below — claimed **REQ-004 has no acceptance
+  test of its own.** That was wrong **on the day it was written**: `apps/api/test/profile.integration.test.ts:248-364`
+  already contained `describe('REQ-004 — immutable audit log of tax-data access')` with REQ-004.1
+  through REQ-004.6 (one-entry-per-write, read logging, append-only/no-mutation-surface, cross-userId
+  isolation, no plaintext/ciphertext value stored, failed writes append nothing), run against real
+  Postgres, landed **2026-07-23** (`08099ac`) — five days before the reconciliation commit itself
+  (`d650a03`, **2026-07-28** — one day later than the "reconciled 2026-07-27" heading above states)
+  recorded the gap as genuine. No test was ever missing; the check that produced this note never
+  looked. Re-verified by execution on 2026-08-03 (real Postgres): all 6 pass. The traceability matrix's
+  REQ-004 row is corrected to cite this test directly.
+
+## Status accuracy — reconciled 2026-08-03 (Musti's REQ-010 ruling on PR #247)
+
+PR #247 (#241's trusted-proxies fix) appended its own test paths to REQ-010's row (`a5d053f`) without
+re-reading the status/GWT/state above them — the row still read `Done`/`green` unconditionally, while
+one of the tests just cited (`apps/api/test/acceptance/trusted-proxies-ip-resolution.test.ts`'s A1) is a **permanent regression
+test that stays green *because* the bypass it documents is unfixed**. A pass through all 13 rows found
+four more lines where the cited evidence proves something other than what the line claims — not a
+missing file (that class was closed in the 2026-07-27 reconciliation above and has stayed closed), but
+the file existing and being correct, while the register's summary of it drifted. Full ruling:
+https://github.com/NexusHero/Steuereule/pull/247#issuecomment-5170258284
+
+- **REQ-010's rate-limiting clause is corrected above to a composite status**, the same form already
+  used for REQ-008 (Google/Apple) and REQ-009 (web/Expo): the three other clauses (CSRF, `helmet`/CSP,
+  breach-check) are genuinely `Done`/`green` and **keep that credit** — #247 did not touch them and
+  they are not in question. Only the rate-limiting clause moves off `Done`, labeled **`not met (rate
+  limiting)`** — the same phrase in both the `Status` and traceability `State` columns (F5, Musti's
+  review on this PR: the two columns had described the identical fact in two different words,
+  `In progress` vs. `nicht erfüllt`, in a section whose whole subject is status accuracy) — gated on
+  [#246](https://github.com/NexusHero/Steuereule/issues/246) (the still-missing deployment pipeline;
+  without it there is no real `TRUSTED_PROXIES` value, and a single-value `X-Forwarded-For` bypasses
+  the limiter regardless of any value that could be configured today — see the corrected GWT clause).
+- **Labeling convention for regression tests that guard a known, unfixed defect (ADR-0021 keeps such
+  tests standing on purpose, so this will recur):** an acceptance-test citation whose passing state
+  *documents a bypass* rather than *proves a fix* must say so at the point it's cited, not just in the
+  test's own comment. REQ-010's `apps/api/test/acceptance/trusted-proxies-ip-resolution.test.ts` citation and its traceability
+  `State` column now both carry that flag ("A1 is green *as evidence of the bypass*"). **F4 (Musti's
+  review on this PR): the rule wasn't applied to its own most important instance.**
+  `apps/api/test/acceptance/req-010-security-hardening.test.ts` sat first, unmarked, in both citation columns while #248 (this
+  same reconciliation) documents that its rate-limit test never reaches a real failed login. Fixed
+  above: both citations now carry `(rate-limit clause: proves IP-keyed counting, not failed logins —
+  #248)`. Any future REQ row citing a test in this class should do the same rather than relying on a
+  reader to open the test file and notice.
+- **R4, verified by real execution, not taken on faith (Musti could not run it — no Postgres/Docker in
+  his session; this session has both).** Booted the real server (`node --import tsx`-style boot via
+  `buildApp()`) against a native Postgres 16 instance and drove `apps/api/test/acceptance/req-010-security-hardening.test.ts`'s
+  exact "repeated failed logins from the same account" scenario by hand, capturing every status code
+  and body, plus checking the `user`/`RateLimit` tables directly:
+  - `POST /api/auth/sign-up/email` with no `origin` header → **403 `MISSING_OR_NULL_ORIGIN`**; no
+    `user` row created (`rate-limited@example.com` never exists).
+  - The 12 subsequent `sign-in/email` attempts against that (nonexistent) account: the first 3 also
+    **403 `MISSING_OR_NULL_ORIGIN`**, then attempts 4–12 **429**. **Musti's per-attempt prediction (all
+    12 → 403) is corrected by this run: 3× 403, then 429 from attempt 4, once the limiter's own
+    threshold trips ahead of the origin check.** (His original wording was internally inconsistent —
+    twelve 403s would have left `toContain(429)` red, so both could never have held at once.) **His
+    conclusion holds**: the rate limiter counts in better-auth's `onRequest` hook, which runs *before*
+    `originCheckMiddleware`, so once the threshold trips it starts answering 429 before the origin check
+    gets another chance to run; no credential validation is ever reached, and `toContain(429)` passes
+    for a reason unrelated to its name. A section about "the evidence proves something other than the
+    line claims" should not record a measurement as confirming a prediction it corrects — noted here so
+    this line doesn't repeat that mistake about itself.
+  - This test is the register's own cited evidence for REQ-010's rate-limiting clause and is now known
+    to prove the wrong thing under its current name. Rebuilding it (send a trusted `origin` so it
+    exercises real failed logins, per `apps/api/test/acceptance/trusted-proxies-ip-resolution.test.ts`'s A1/A2 pattern — or
+    honestly rename it) is **its own ticket (ADR-0017: one finding, one ticket)**, not folded into this
+    documentation pass. Filed as [#248](https://github.com/NexusHero/Steuereule/issues/248).
+- **F5 — REQ-010's `Status` and GWT cells were in German; the register is English throughout**
+  (`docs/process/README.md`: "the development process is **English**; the product/app language is
+  **German**"). The wording traces back to Musti's own suggested replacement text, offered in a German
+  review comment on PR #247 — adopting it verbatim there was the right call (his exact words, not a
+  paraphrase); the mismatch was in his template, not in copying it. Both cells are now translated
+  above and in the traceability row, including a fix to a half-sentence that was grammatically broken
+  in the German original too ("the single-value form closes only the network property — the app
+  unreachable except through the real proxy" had no verb connecting the two clauses; now reads "...is
+  closed only by a network property — the app being unreachable except through the real proxy — which
+  does not yet exist").
+- **F3 — the evidence-tier system above is Musti's own technical determination, not a register-owner
+  call.** This PR's first draft raised REQ-002's `.inject()`-only tier as an open tension while leaving
+  REQ-003/REQ-004's `apps/api/test/profile.integration.test.ts` — measured: 32× `app.inject()`, 0× `fetch()` — at
+  plain, untagged `green`. Both readings are individually defensible, but not in the same diff: if
+  `.inject()` disqualifies a row, it disqualifies REQ-003 (unchanged `green` since the original
+  reconciliation) and now REQ-004 too; if a real dependency (Postgres) is the bar instead, `.inject()`
+  is irrelevant and REQ-002's actual gap is that its own tests carry no dependency at all, not their
+  transport. Deciding which reading governs is a technical call about what §3.5 requires, not a
+  register-state call — Musti's, not Suhay's (unlike R1 below). His ruling: the three-tier system
+  above, applied consistently to REQ-002/003/004/010.
+- **R1 — `SameSite=strict` → `SameSite=None` (REQ-002, REQ-009): confirmed (Musti).** He ruled on
+  this in his report comment rather than on the line itself — his own noted process gap, since only
+  line-anchored review threads trigger a reaction from me; he's flagged it for himself to anchor
+  decisions to the line going forward. ADR-0011 (§Interaction) and ADR-0012 §3 both explicitly and
+  deliberately supersede ADR-0007/ADR-0009's `SameSite=strict` wording with `SameSite=None; Secure`,
+  reasoned from the deployed demo's genuine cross-site topology (web and API on distinct `*.fly.dev`
+  registrable domains) — and the shipped code (`apps/api/src/auth/better-auth.ts:201`, `apps/api/src/auth/user-context.guard.ts:70`) and
+  its own tests (`apps/api/test/acceptance/req-009-session-model.test.ts:78`, `apps/api/test/user-context.guard.test.ts:72`,
+  `apps/api/test/cors.acceptance.test.ts:132`) all assert `None`, consistently. The three "pending Musti's
+  confirmation" markers are removed from REQ-002's and REQ-009's statement/GWT text above; the
+  requirement text now carries the substance of his confirmation directly rather than a footnote:
+  - **The supersession trail** — ADR-0011 §Interaction and ADR-0012 §3, by name, as the two Accepted
+    decisions that replaced `SameSite=strict`. Without naming them, the change reads as a silent
+    weakening of a security-relevant cookie attribute rather than a decided, traceable one.
+  - **The compensating controls** — ADR-0011's fail-closed CORS origin allowlist and ADR-0012 §5's
+    origin-based CSRF check, which is *why* `SameSite=None` doesn't leave the session cookie
+    unprotected: `SameSite=None` alone removes the cookie's own CSRF defence-in-depth, and these two
+    controls are what carries that weight instead (ADR-0012 §3 says this plainly — "removes the
+    cookie's own CSRF defence-in-depth, which is why REQ-010's origin-based CSRF check... is
+    load-bearing, not optional" — it just wasn't in the requirement text these two REQ rows carry).
+
+  **Why this was Musti's call, not the stakeholder's** (his own reasoning, recorded here): the two
+  superseding ADRs are already Accepted, and the register is downstream of them, not a parallel
+  decision surface. It would belong to the stakeholder only if the cookie policy itself were being
+  changed here (it isn't — this is documentation catching up to a decision already made in 2026-07-23's
+  ADR-0011/ADR-0012) or if the requirement text were itself a user-facing promise (it isn't — REQ-002
+  and REQ-009 describe an internal session mechanism, not a claim made to the product's users).
+- **R3 — REQ-002's traceability `Location` column cited source files (`apps/api/src/auth/guest-session.ts`,
+  `apps/api/src/auth/user-context.guard.ts`), not tests; corrected above to the actual test files** (already named
+  correctly in the summary row, line 13), **plus the two acceptance-tier tests that were sitting
+  un-cited in this very paragraph's own draft: `apps/api/test/cors.acceptance.test.ts`'s guest `Set-Cookie`
+  assertion and `apps/api/test/acceptance/req-009-session-model.test.ts:122-126`'s guest-vs-session precedence test.** The
+  latter boots the real `buildApp()` on a real socket against real Postgres and asserts the guest
+  cookie is minted on an unauthenticated request — a genuine acceptance-tier proof of REQ-002's mint
+  clause against the real deployed artifact; it just wasn't cited under REQ-002. This was a citation
+  fix, not a status question — both candidates were already named, just not linked. (Musti's
+  correction, and the general point behind it: escalating to whoever owns the register state costs
+  someone else a turn; when the candidates can be named, look them up first, and reserve escalation
+  for what's still open *after* looking — unlike R1 below, where there genuinely is nothing to look up,
+  only a call to make.) `State` is now `green (unit + acceptance)`, tier-tagged per the Evidence tiers
+  table in the Traceability section.
+- **A general process gap, not specific to any one row:** a status gets set when the slice that writes
+  a REQ line lands, and is then read again only by whichever slice *next* touches that same line — never
+  on its own schedule. #247 followed the letter of the existing process (append test paths on request)
+  and still produced a wrong row, because nothing asked it to re-read the status/GWT/state above the
+  citation it was adding to. **Proposed rule:** touching any part of a REQ row requires re-reading the
+  whole row — statement, status, issue, acceptance test, and its corresponding GWT/state in the
+  Traceability table — not just the cell being edited. This is the same principle as ADR-0022's
+  "a push is a claim, resolving is my confirmation," applied to documentation instead of code review.
 
 ## Notes — 2026-07-23 auth/login direction
 
@@ -91,18 +217,31 @@ Every `REQ-NNN` maps to at least one acceptance-tier test (§3.5). The matrix is
 implemented; a requirement reaching `Done` without a green acceptance test against the real deployed
 artifact is not done.
 
+**Evidence tiers (Musti's REQ-010 ruling on PR #249)** — the `State` column's "green" needs a tier
+suffix so §3.5's "against the real artifact" is checkable rather than a matter of each row's own
+reading of "real":
+
+| Tier | Meaning |
+|------|---------|
+| `green (unit)` | handler/module tested in isolation, no real dependency |
+| `green (integration)` | a real dependency (Postgres), transport via `.inject()` |
+| `green (acceptance)` | real `buildApp()` + a real socket + a real dependency |
+
+`Done` (line 7–8 above) binds to the **acceptance** tier. Applied consistently below to REQ-002,
+REQ-003, REQ-004, and REQ-010 — the four rows this and the prior reconciliation touched.
+
 | REQ | Acceptance test (Given–When–Then) | Location | State |
 |-----|-----------------------------------|----------|-------|
 | REQ-001 | Given a seeded tax year, when the Cockpit opens, then the estimate range + open-items count render from the API with honest states. | `apps/api/test/cockpit.integration.test.ts`, `apps/mobile-web/src/screens/cockpit/CockpitScreen.test.tsx`, `apps/api/test/openapi-contract.test.ts:65-107` | green |
-| REQ-002 | Given a first-time visitor with no session cookie, when they make any user-scoped API request, then the server mints an opaque HMAC-signed guest `userId`, returns it as an `httpOnly` cookie (`Secure` in production, `SameSite=strict`), and scopes all reads/writes to that `userId`; no controller/service reads `userId` from anywhere but this guard; guest data is reachable only by its own session until claimed by a real account. *Traces to: product ADR-027 ("Identität erst bei Abgabe"); engineering ADR-0007 phase 1 (the seam itself — its Keycloak specifics are superseded, see Notes above).* | `apps/api/src/auth/guest-session.ts`, `apps/api/src/auth/user-context.guard.ts` | green (unit) |
-| REQ-003 | Given a caller (guest or account) `PUT`s a profile containing a Steuer-ID, when the API persists it, then the Steuer-ID (and any equally sensitive tax identifier) is stored as ciphertext from a vetted authenticated cipher (AES-256-GCM, randomized nonce, e.g. via `prisma-field-encryption`), encrypt/decrypt happens transparently in the service layer, the data-encryption key comes from a rotation-ready sealed secret (never hard-coded, never returned to any client), and no sensitive field is ever written to `localStorage`/`AsyncStorage` on any client; a DB or backup leak alone does not expose the Steuer-ID in the clear. *Traces to: engineering ADR-0008 (refined into a concrete, testable cipher/key requirement); product ADR-020 (EU-Cloud, encrypted); DSGVO Art. 5(1)(f); ADR-0003 (no real PII in non-prod).* | `apps/api/test/profile.integration.test.ts` (real Postgres) | green |
-| REQ-004 | Given a userId with a persisted profile, when any process (the owner's own session, or an authorized export path) reads or writes that profile's sensitive fields, then an append-only audit record is written (acting userId/session, field-class touched, operation, timestamp); the data subject sees their own access log as part of their Art. 15 export; no one can query another user's audit trail. *Traces to: engineering ADR-0007's hardening list ("audit logging of tax-data access"); DSGVO Art. 15/30.* | append-only `AuditRepository`; `apps/api/test/profile.integration.test.ts:248-364` (REQ-004.1–.6, real Postgres); own rows also surfaced in the Art. 15 export (see REQ-011) | green |
+| REQ-002 | Given a first-time visitor with no session cookie, when they make any user-scoped API request, then the server mints an opaque HMAC-signed guest `userId`, returns it as an `httpOnly` cookie (`Secure` in production, `SameSite=None` — ADR-0011 §Interaction and ADR-0012 §3 explicitly supersede the original `SameSite=strict` wording, compensated by ADR-0011's fail-closed CORS origin allowlist and ADR-0012 §5's origin-based CSRF check; see Status accuracy), and scopes all reads/writes to that `userId`; no controller/service reads `userId` from anywhere but this guard; guest data is reachable only by its own session until claimed by a real account. *Traces to: product ADR-027 ("Identität erst bei Abgabe"); engineering ADR-0007 phase 1 (the seam itself — its Keycloak specifics are superseded, see Notes above).* | `apps/api/test/guest-session.test.ts`, `apps/api/test/user-context.guard.test.ts` (unit); `apps/api/test/cors.acceptance.test.ts:124` (real HTTP, fake repositories — cited as what it is, not full acceptance tier); `apps/api/test/acceptance/req-009-session-model.test.ts:122-126` (real `buildApp()`, real socket, real Postgres — mints the guest cookie for an unauthenticated request against the actual deployed artifact) | green (unit + acceptance) |
+| REQ-003 | Given a caller (guest or account) `PUT`s a profile containing a Steuer-ID, when the API persists it, then the Steuer-ID (and any equally sensitive tax identifier) is stored as ciphertext from a vetted authenticated cipher (AES-256-GCM, randomized nonce, e.g. via `prisma-field-encryption`), encrypt/decrypt happens transparently in the service layer, the data-encryption key comes from a rotation-ready sealed secret (never hard-coded, never returned to any client), and no sensitive field is ever written to `localStorage`/`AsyncStorage` on any client; a DB or backup leak alone does not expose the Steuer-ID in the clear. *Traces to: engineering ADR-0008 (refined into a concrete, testable cipher/key requirement); product ADR-020 (EU-Cloud, encrypted); DSGVO Art. 5(1)(f); ADR-0003 (no real PII in non-prod).* | `apps/api/test/profile.integration.test.ts` (real Postgres, `.inject()` transport) | green (integration) |
+| REQ-004 | Given a userId with a persisted profile, when any process (the owner's own session, or an authorized export path) reads or writes that profile's sensitive fields, then an append-only audit record is written (acting userId/session, field-class touched, operation, timestamp); the data subject sees their own access log as part of their Art. 15 export; no one can query another user's audit trail. *Traces to: engineering ADR-0007's hardening list ("audit logging of tax-data access"); DSGVO Art. 15/30.* | append-only `AuditRepository`; `apps/api/test/profile.integration.test.ts:248-364` (REQ-004.1–.6, real Postgres, `.inject()` transport); own rows also surfaced in the Art. 15 export (see REQ-011) | green (integration) |
 | REQ-005 | Given a visitor on the Login screen, when they submit a valid email + a password meeting policy, then the auth server creates the account, sends a verification email, and signs them in; while unverified, the UI honestly shows a "please verify" state without blocking basic use; when they follow the verification link/code, then the account is marked verified; a password matching the known-breach check (REQ-010) is rejected before account creation completes. *Traces to: product ADR-027(a) (email/Google/Apple sufficient for 1.0); engineering ADR-0007 methods (email+password); DSGVO data minimization.* | `apps/api/test/acceptance/req-005-email-signup.test.ts`, `apps/mobile-web/src/screens/RegistrierungScreen.test.tsx`, `apps/mobile-web/src/screens/LoginScreen.test.tsx`, `e2e/visibility/visibility-refetch.mjs` (CI-gated, real Chromium + real API + real Postgres — the "shown honestly" clause's live-re-read proof, both screens, #223) | green |
 | REQ-006 | Given a guest `userId` with a persisted profile and/or tax-year data, when that guest completes sign-up (email/password or social) from the same session, then all guest-owned data migrates to the new account identity in a single atomic operation (no duplicate rows, no orphaned data, no partial state visible mid-flight), the guest session is invalidated, and the user continues under the new identity with everything intact; no identity verification is required at this step (that stays gated to real ELSTER submission, ADR-027(a)). *Traces to: product ADR-027; engineering ADR-0007 Consequences ("guest→account upgrade must migrate anonymous data atomically").* | `apps/api/test/acceptance/req-006-guest-upgrade.test.ts` | green |
 | REQ-007 | Given a signed-in account holder, when they opt in from account/security settings, then they can register a TOTP authenticator (confirm one generated code) and/or a WebAuthn passkey; once at least one second factor is registered, a later login prompts for it after the primary factor succeeds; a factor can be removed after re-authenticating. 2FA/passkeys are opt-in, not mandatory, for 1.0. *Traces to: the 2026-07-23 stakeholder auth decision; supersedes product ADR-027(b)'s "keine 2FA in 1.0" clause on this point — see Notes above (ADR amendment pending, not made by this register).* | _tbd_ | not started |
 | REQ-008 | **Google:** given a visitor taps "Weiter mit Google", when they complete Google's OAuth flow, then they land signed in (new or existing account), with REQ-006's upgrade atomicity if they arrived as a guest. **Apple:** given the Apple integration is code-complete and feature-flagged off, when no Apple Developer account and no shipped iOS build exist yet, then "Weiter mit Apple" stays hidden/disabled in production; the flag flips on once both preconditions are met, and no later than the first iOS build shipping Google login (App Store rule: Google on iOS obligates Sign in with Apple). *Traces to: engineering ADR-0007 methods (Google/Apple via social login); product ADR-027(a).* | `apps/api/test/req-008-google-login.test.ts`, `apps/api/test/auth-capabilities.http.test.ts` | green (Google) · Apple unbuilt |
-| REQ-009 | Given a user signs in on web, when the session is issued, then the token is set as an `httpOnly`, `Secure`, `SameSite=strict` cookie, unreadable by client JS, backed by a server-side, revocable DB session; given the same user signs in via Expo/React-Native, when the session is issued, then the token is written only to `SecureStore`, never `AsyncStorage`; in both cases, server-side revocation invalidates the client's stored token on its next use. *Traces to: the 2026-07-23 stakeholder decision (session model); engineering ADR-0007 (sessions/tokens — DB-session model replaces the Keycloak-refresh-token wording).* | `apps/api/test/acceptance/req-009-session-model.test.ts` | green (web) · Expo half unbuilt |
-| REQ-010 | Given repeated failed logins from the same account/origin, when a configured threshold is exceeded, then further attempts are rate-limited rather than unbounded; given a state-changing request to an auth endpoint, when it lacks a valid CSRF token/origin check, then it is rejected; given any API response, when inspected, then it carries `helmet`-set security headers and a CSP disallowing inline/unsafe script; given a new password at signup/change, when it matches a known-breached-password list, then it is rejected with a clear message before acceptance. *Traces to: engineering ADR-0007's "Security hardening" section; the 2026-07-23 decision list.* | `apps/api/test/acceptance/req-010-security-hardening.test.ts`, `apps/api/test/breach-check.test.ts`, `apps/api/test/acceptance/trusted-proxies-ip-resolution.test.ts` (real Postgres), `apps/api/test/trusted-proxies.test.ts` (unit), `apps/api/test/acceptance/auth-mount-cors.test.ts` (real Postgres), `apps/api/test/acceptance/req-005-email-signup.test.ts:112-175` (breach-check clause, proven at acceptance tier against the real server: the HIBP call is stubbed and its hit count asserted, and the rejection asserts the exact `PASSWORD_COMPROMISED` code) | green |
+| REQ-009 | Given a user signs in on web, when the session is issued, then the token is set as an `httpOnly`, `Secure`, `SameSite=None` cookie (ADR-0011 §Interaction and ADR-0012 §3 explicitly supersede the original `SameSite=strict` wording, compensated by ADR-0011's fail-closed CORS origin allowlist and ADR-0012 §5's origin-based CSRF check; see Status accuracy), unreadable by client JS, backed by a server-side, revocable DB session; given the same user signs in via Expo/React-Native, when the session is issued, then the token is written only to `SecureStore`, never `AsyncStorage`; in both cases, server-side revocation invalidates the client's stored token on its next use. *Traces to: the 2026-07-23 stakeholder decision (session model); engineering ADR-0007 (sessions/tokens — DB-session model replaces the Keycloak-refresh-token wording).* | `apps/api/test/acceptance/req-009-session-model.test.ts` | green (web) · Expo half unbuilt |
+| REQ-010 | Given repeated failed logins from the same account/origin, when a configured threshold is exceeded, then further attempts are rate-limited rather than unbounded — **holds only as long as the caller's IP matches the real socket peer.** The limiter keys on `${ip}\|${path}` (better-auth's `createRateLimitKey`), and `getIp()` returns a **single-value** `X-Forwarded-For` verbatim regardless of `advanced.ipAddress.trustedProxies`: whoever sends a new value per request gets a new bucket per request (**A1 — documented, not fixed; the test is green *because* the bypass exists**). `trustedProxies` closes the **multi-hop** form (A2/A3); the single-value form is closed only by a network property — the app being unreachable except through the real proxy — which does not yet exist (#246, still no deployment pipeline, and consequently no production `TRUSTED_PROXIES` value either); given a state-changing request to an auth endpoint, when it lacks a valid CSRF token/origin check, then it is rejected; given any API response, when inspected, then it carries `helmet`-set security headers and a CSP disallowing inline/unsafe script; given a new password at signup/change, when it matches a known-breached-password list, then it is rejected with a clear message before acceptance. *Traces to: engineering ADR-0007's "Security hardening" section; the 2026-07-23 decision list.* | `apps/api/test/acceptance/req-010-security-hardening.test.ts` (rate-limit clause: proves IP-keyed counting, not failed logins — #248), `apps/api/test/breach-check.test.ts`, `apps/api/test/acceptance/trusted-proxies-ip-resolution.test.ts` (real Postgres), `apps/api/test/trusted-proxies.test.ts` (unit), `apps/api/test/acceptance/auth-mount-cors.test.ts` (real Postgres), `apps/api/test/acceptance/req-005-email-signup.test.ts:112-175` (breach-check clause, proven at acceptance tier against the real server: the HIBP call is stubbed and its hit count asserted, and the rejection asserts the exact `PASSWORD_COMPROMISED` code) | green (acceptance): CSRF, Header/CSP, Breach · **not met (rate limiting)** — A1 is green *as evidence of the bypass* |
 | REQ-011 | Given a signed-in account holder, when they request an export from account/privacy settings, then they receive a complete, machine-readable export of their tax data, profile, and their own audit log (REQ-004), satisfying Art. 15/20; given the same user requests full account deletion, when they confirm after being shown the mandatory export offer and the "you lose your Finanzamt evidence" warning (ADR-011), then all their data (including encrypted fields, REQ-003) is irrecoverably deleted server-side (Art. 17), except data under active Löschschutz for already-submitted filings (ADR-011), which requires the full-account-deletion path rather than a partial delete. No account holding real (non-synthetic) personal data may go live before this REQ is Done. *Traces to: product ADR-011 (Löschschutz); ADR-020 (server-side deletion + export step); DSGVO Art. 15/17/20.* | `apps/api/test/acceptance/req-011-export.test.ts`, `apps/api/test/acceptance/req-011-export-delete.test.ts`, `apps/mobile-web/src/screens/DatenschutzScreen.test.tsx`, `e2e/cross-origin/run.mjs`, `apps/api/test/openapi-contract.test.ts:109-221` | green (API + UI + real-browser) |
 | REQ-012 | Given a brand-new guest, when Onboarding mounts, then `GET /v1/profile` prefills the honest all-null empty state (never mock data), and completing the flow persists through `PUT /v1/profile`. | `apps/mobile-web/src/screens/onboarding/req-012-onboarding-vertical-join.test.tsx` | green |
 | REQ-013 | Given a stored profile, when the user opens Profil, then the live `GET /v1/profile` values render (honest loading/empty/error), edits save through `PUT`, and nothing sensitive is written to client storage (ADR-0008). | `apps/mobile-web/src/screens/ProfilScreen.test.tsx` | green |
