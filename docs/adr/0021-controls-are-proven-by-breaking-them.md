@@ -199,6 +199,24 @@ both are meaningful, both lines go in the evidence block:
 **Reviewer's test, one question:** *can this check pass on empty input?* If yes, the existence branch
 is unproven and the control is unestablished, however green the corruption proof was.
 
+**And confirm the break landed before reading the result.** A break that silently fails to take
+produces a green run that reads as *"the control doesn't discriminate"* — the inverse error, and the
+costlier one, because the remedy it invites is deleting a control that works. Two instances, two
+hours apart, different causes, identical signature: one removal left a literal string that the
+library's own regex still matched, so encryption kept running; one edit targeted a string that was
+not in that branch's file at all, so nothing changed. Neither run was evidence of anything.
+
+The guard is not *"watch for clever regexes"* — that only covers the first. It is **count what you
+changed**, and say the number:
+
+```
+- Control proof (existence): tier removed -- break landed on 2 cells -> red; restored -> pass.
+```
+
+Verify the *state*, not the test outcome: is there plaintext in the database now, did the row lose
+its marker, is the string gone. A break you did not confirm is a run you cannot read in either
+direction.
+
 This is the operational half of a more general shape: most of our escapes this week were **existence
 claims checked as validity claims** — a missing tier, a missing caller, a missing route in a disabled
 list, a missing marker, an unparseable date treated as an age. The fix is never a better pattern; it
