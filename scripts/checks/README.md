@@ -77,6 +77,19 @@ pnpm adr-check         # node scripts/checks/adr-check.mjs
    finding — exactly the shape of the `#249`/`#253` rebase regression this check exists to
    catch. The reversed quantifier: for every tier-reconciled REQ, *is there a tier at all*, not
    *if there is one, is it spelled right*.
+
+   **Check 4b — the governed set itself can go silently empty (Musti's F1 review on `#268`).**
+   The tier-existence rule above derives which REQs it governs from the register's own
+   "Applied consistently ... to" sentence — honest, not hard-coded, but with no floor: reword or
+   delete that sentence and the derived set becomes an empty `Set`, at which point the per-REQ
+   check governs **nothing**, for every previously-reconciled REQ, without a single finding.
+   Measured against the real register: deleting REQ-004's tier while the sentence still named it
+   went red (the fix above); deleting REQ-004's tier **and** making the sentence unrecognisable
+   went silent, pre-4b. 4b closes that: if the tier vocabulary is declared (`TIER_WORDS` is
+   non-empty) but the derived governed set is empty, that is itself a finding, naming that the
+   *set* is empty rather than pointing at any one REQ's tier — a register that hasn't introduced
+   the tier convention at all yet (no `Evidence tiers` table, `TIER_WORDS` empty) is exempt, so
+   this doesn't false-positive on legitimate absence of the whole convention.
 5. `@documents-defect #NNN` in a test's source: every register row citing that file must repeat
    the identical marker in its own citation cell (both the summary and traceability tables,
    independently — one table getting fixed while its sibling is forgotten is exactly the
@@ -193,6 +206,29 @@ existence branch — got the two-sided proof that amendment demands, against the
 - REQ-007 (legitimately not-started, no citation in either table) does **not** trigger check
   3b at any point in the above — confirmed on every run: the governed set is "has evidence
   somewhere", not "every row, unconditionally".
+
+**Check 4b (Musti's F1 review on `#268`, same day, one level deeper)** — proved with the exact
+repro he supplied, against the real register:
+
+- Tier removed from REQ-004's `State` cell, "Applied consistently ... to" sentence left intact
+  → red on `4-status-vocabulary`, naming `register.md:239` (the existing per-REQ existence
+  branch, unaffected).
+- Tier removed from REQ-004's `State` cell **and** the sentence reworded into something that
+  names no REQs → **pre-4b this went silent** — reproduced directly, then confirmed the 4b fix
+  turns it red: `The register declares an evidence-tier vocabulary (...) but its "Applied
+  consistently ... to" sentence names no REQs — the per-REQ tier-existence check below has
+  nothing to govern.` The message names the *set* as empty, not any one REQ's tier — the two
+  failure modes read differently on purpose, so a reader isn't sent looking at one REQ's cell
+  for a document-wide problem. Restored (sentence and tier both) — clean.
+- Sentence reworded alone (tiers left untouched everywhere) → same 4b finding, confirming the
+  set-emptiness is what's detected, independent of whether any individual tier is also missing.
+  Restored — clean.
+- Tier vocabulary itself removed (the `Evidence tiers` table's three `` `green (...)` `` rows
+  deleted, sentence and REQ data left alone) → 4b does **not** fire (`TIER_WORDS` empty is the
+  guard), confirming a register that hasn't introduced the tier convention at all is exempt —
+  though the pre-existing validity branch correctly still complains that every real tier token
+  is now "not declared", which is a different, expected consequence of removing the vocabulary
+  table out from under live data, not a 4b false positive. Restored — clean.
 
 Every break above was undone by restoring the exact prior file content (`git diff` clean after
 each revert), not by a fresh `git checkout` that could silently pick up an unrelated stray change

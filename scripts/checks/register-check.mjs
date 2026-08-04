@@ -28,16 +28,22 @@
 //      sub-rule requires every REQ the register's own "Applied consistently ... to" sentence
 //      names to carry a `green (tier)` marker at all — not only that a tier, if present, is
 //      spelled from the declared vocabulary (#258: the old version matched validity but not
-//      existence, so a State cell that lost its tier wholesale produced no finding).
+//      existence, so a State cell that lost its tier wholesale produced no finding). Check 4b
+//      (Musti's F1 review on #268): that fix derives its governed set from the scoping
+//      sentence itself, which is honest but has no floor — reword or delete the sentence and
+//      the derived set silently becomes empty, at which point the per-REQ check above governs
+//      nothing for every REQ that used to be reconciled, with no finding. 4b catches the
+//      governed set itself coming out empty while the tier vocabulary is still declared.
 //   5. a test carrying `@documents-defect #NNN` is cited in the register with the same
 //      marker, and #NNN is still open — the day it closes, this goes red until re-read
 //
-// Checks 3b and 4's tier-existence rule are both instances of the same shape (ADR-0021's
-// 2026-08-04 amendment, "break by deletion"): an existence claim ("is there a tier/citation at
-// all?") that used to be checked only as a validity claim ("if one is there, is it well
-// formed?") — vacuously satisfied by absence. The fix in both cases is the reversed
-// quantifier over a governed set the register's own text already names or implies, not a
-// better regex.
+// Checks 3b, 4's tier-existence rule, and 4b are all instances of the same shape (ADR-0021's
+// 2026-08-04 amendment, "break by deletion"): an existence claim ("is there a tier/citation/
+// governed-set at all?") that used to be checked only as a validity claim ("if one is there,
+// is it well formed?") — vacuously satisfied by absence. 4b is that same shape found one level
+// down, in the derivation the tier-existence check itself relies on. The fix in every case is
+// the reversed quantifier over a governed set the register's own text already names or
+// implies, not a better regex.
 //
 // What this deliberately does NOT check: whether a cited test's *content* actually proves
 // the requirement. That is a judgement call for a human review (Musti/Suhay), not
@@ -291,6 +297,25 @@ async function main() {
   const TIER_WORDS = new Set([...registerText.matchAll(/`green \(([a-z]+)\)`/g)].map((m) => m[1]))
   const appliedToMatch = registerText.match(/Applied consistently (?:below )?to ([^.—]+)/)
   const TIER_RECONCILED_REQS = new Set(appliedToMatch ? [...appliedToMatch[1].matchAll(/REQ-\d{3}/g)].map((m) => m[0]) : [])
+
+  // Musti's F1 review on #268: the tier-existence fix below derives its governed set
+  // (TIER_RECONCILED_REQS) honestly from this register's own scoping sentence rather than a
+  // hard-coded list — but the derivation itself has no check that the *set* came out
+  // non-empty. Reword or delete the "Applied consistently ... to" sentence (appliedToMatch
+  // becomes null, or matches but names no REQ-NNN) and TIER_RECONCILED_REQS silently becomes
+  // an empty Set — at which point the per-REQ existence check below governs nothing, for
+  // every REQ that used to be reconciled, without a single finding. That is the same
+  // vacuously-satisfied-by-absence shape one level down: this time in the check's own
+  // derivation of what it governs, not in the register data it reads. Only fires once the
+  // tier vocabulary itself is declared (TIER_WORDS non-empty) — a register that hasn't
+  // introduced the Evidence tiers table yet at all legitimately has nothing for any REQ to be
+  // reconciled to, and that is not this finding's business.
+  if (TIER_WORDS.size > 0 && TIER_RECONCILED_REQS.size === 0) {
+    findings.add(
+      '4b-tier-scope-empty',
+      `The register declares an evidence-tier vocabulary (${[...TIER_WORDS].map((t) => `\`green (${t})\``).join(', ')}) but its "Applied consistently ... to" sentence names no REQs — the per-REQ tier-existence check below has nothing to govern. Either re-read the sentence by hand (it may have been reworded or removed, silently dropping every previously-reconciled REQ from this check's reach) or, if genuinely no REQ has adopted the tier convention yet, that is itself worth stating plainly rather than leaving this check governing nothing.`,
+    )
+  }
 
   const byReqStatus = new Map() // req -> { summaryStatus, traceabilityState, summaryLine, traceabilityLine }
   for (const row of rows) {
