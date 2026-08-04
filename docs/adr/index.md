@@ -47,10 +47,12 @@ See also the [Tech Radar](./tech-radar.md).
 
 ## Known inconsistency (tracked, not ignored)
 
-`k8s/README.md` references `ADR-0056` (Kubernetes) — a 4-digit reference inherited from the
-**myDevTime** lineage that has **no matching file** in this log yet. Per §1.5 a docs-staleness gate
-will flag it once wired. Reconcile by either importing the real decision under its referenced number
-or correcting the reference to the product-log equivalent (ADR-049 k3s/Hetzner). Filed as a follow-up.
+`k8s/README.md` used to carry a dangling reference to a 4-digit Kubernetes-decision number with no
+matching file in this log — inherited from the **myDevTime** lineage. **Closed by deletion**: `k8s/`
+was inherited scaffolding that nothing in this workspace, CI, or the compose stack referenced or ran,
+removed in #260. There is nothing left in this log to reconcile against it. (This closes the dangling
+reference only — it makes no claim about the deployment target itself; see the
+[Tech Radar](./tech-radar.md).)
 
 The companion `eslint.config.js` → `ADR-0025` (NestJS) dangling reference is **closed**: ADR-0019
 deleted that file when oxlint replaced ESLint. **Note the number is now genuinely taken** — the
