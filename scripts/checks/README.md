@@ -49,6 +49,19 @@ pnpm adr-check         # node scripts/checks/adr-check.mjs
    already knew about — a REQ tag planted in `packages/*` would be invisible here even though
    check 2 would confirm CI runs it (F10, Musti's review on #252's `b91ce00` fix); both checks
    now derive their test tree from the one discovery pass.
+
+   **Check 3b — per-table citation presence.** Check 3's own reconciliation `Set` is merged
+   across both tables *by design* (a file cited in either table satisfies check 3's "is it
+   cited under this REQ anywhere" question) — but that means a REQ's citation column can sit
+   **empty in one table indefinitely** while the other table carries real evidence, and check 3
+   never sees it (Musti's finding on `#239`, https://github.com/NexusHero/Steuereule/pull/239#issuecomment-5180191738:
+   the REQ-014 summary row held status prose in its "Acceptance test" cell instead of citations
+   while the traceability row correctly cited two real tests — check 3 stayed green throughout).
+   Check 3b reads each table's own citation column: once a REQ carries a citation in *any*
+   table, every table with a row for that REQ must carry one too. A REQ with **no** citations
+   anywhere (a not-yet-started requirement — e.g. REQ-007's `_tbd_`/`_not started_` cells) is
+   not governed by this rule and produces no finding; only an *inconsistently* empty column
+   does. The governed set is derived from the register's own data, not guessed.
 4. `Status`/`State` come from the English vocabulary — a German-word blocklist, and a
    `**not met (...)**`-style qualifier must read identically in both the summary table's
    `Status` column and the traceability table's `State` column for the same row (the
@@ -56,7 +69,14 @@ pnpm adr-check         # node scripts/checks/adr-check.mjs
    `nicht erfüllt`). The tier-vocabulary sub-rule (`unit`/`integration`/`acceptance`) reads its
    own vocabulary and which REQ rows it applies to straight out of the register's own
    "Evidence tiers" section, rather than hard-coding either — a register that hasn't declared
-   the vocabulary yet gets no findings from that sub-rule, not invented ones.
+   the vocabulary yet gets no findings from that sub-rule, not invented ones. **It also requires
+   every REQ named in that scoping sentence to carry a tier at all** — not only that a tier, if
+   present, is spelled from the declared vocabulary (`#258`). The old version matched
+   `/\bgreen\s*\(([^)]+)\)/i` and skipped the whole sub-check silently when it didn't match, so a
+   `State` cell that lost its tier entirely (bare `green`, or no `green` at all) produced no
+   finding — exactly the shape of the `#249`/`#253` rebase regression this check exists to
+   catch. The reversed quantifier: for every tier-reconciled REQ, *is there a tier at all*, not
+   *if there is one, is it spelled right*.
 5. `@documents-defect #NNN` in a test's source: every register row citing that file must repeat
    the identical marker in its own citation cell (both the summary and traceability tables,
    independently — one table getting fixed while its sibling is forgotten is exactly the
@@ -149,6 +169,34 @@ The same run also added a proof line dedicated to check 2b's own truncation logi
 coverage-bearing config (`packages/core`) — disabling the truncation entirely produces twelve
 false `2-executed-by-ci` findings against real, CI-run `apps/mobile-web` test files, which the
 original F4 proof (using a config with no `coverage:` block at all) never actually exercised.
+
+**`#258`/Musti's `#239` cross-table finding (2026-08-04) — the "break by deletion" amendment
+(ADR-0021, "existence checked as validity").** Both new rules — check 3b and check 4's tier-
+existence branch — got the two-sided proof that amendment demands, against the real register on
+`main`, not a fixture:
+
+- Check 4, validity branch (already existed; re-proved so the fix doesn't regress it):
+  REQ-004's traceability `State` tier corrupted `green (integration)` → `green (bogus)` — red,
+  naming `register.md:239`, `tier "bogus" is not one of the declared tiers`. Restored — clean.
+- Check 4, existence branch (the new rule): REQ-004's tier **deleted** entirely (`green
+  (integration) · ` removed, leaving only the `**acceptance-tier proof outstanding**` prose) —
+  red, `register.md:239 REQ-004's State column (...) carries no \`green (tier)\` marker at all`.
+  The pre-fix check passed this exact input silently — this is the `#249`/`#253` regression
+  shape, reproduced directly. Restored — clean.
+- Check 3b, existence branch (the new rule): REQ-014's **summary**-row citation column emptied
+  (its two test citations replaced with status prose, mirroring the real regression), its
+  traceability row left untouched — red, naming `register.md:25 (REQ-014, summary table)`.
+  Restored — clean.
+- Check 3 (unmodified, re-proved so the 3b addition doesn't regress it): a real test file's
+  `describe('REQ-012 — ...')` tag corrupted to `REQ-997` — red, unaffected by the 3b code path
+  running alongside it. Restored — clean.
+- REQ-007 (legitimately not-started, no citation in either table) does **not** trigger check
+  3b at any point in the above — confirmed on every run: the governed set is "has evidence
+  somewhere", not "every row, unconditionally".
+
+Every break above was undone by restoring the exact prior file content (`git diff` clean after
+each revert), not by a fresh `git checkout` that could silently pick up an unrelated stray change
+in the same worktree.
 
 ## Deliberately out of scope
 
