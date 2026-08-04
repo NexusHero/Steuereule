@@ -21,9 +21,25 @@ function extractArray(source, key) {
   return strings
 }
 
+// Given the index of a `{` character, returns the index of its matching `}` by brace-depth
+// counting (ignores that a brace could theoretically appear inside a string/comment — none
+// of this repo's configs do that, and this whole module is already scoped to "the shapes
+// this repo's own configs actually use", not a general parser).
+function findMatchingBrace(source, openBraceIndex) {
+  let depth = 0
+  for (let i = openBraceIndex; i < source.length; i += 1) {
+    if (source[i] === '{') depth += 1
+    else if (source[i] === '}') {
+      depth -= 1
+      if (depth === 0) return i
+    }
+  }
+  return -1
+}
+
 /**
  * @param {string} configPath absolute path to a vitest.config.ts
- * @returns {{include: string[], exclude: string[]}}
+ * @returns {{include: string[], exclude: string[], truncationDisagreement: boolean}}
  */
 export function readVitestGlobs(configPath) {
   const source = fs.readFileSync(configPath, 'utf8')
@@ -38,9 +54,40 @@ export function readVitestGlobs(configPath) {
   // that can only be `test.*`, in every config this repo actually has today.
   const coverageAt = source.indexOf('coverage:')
   const testScopedSource = coverageAt === -1 ? source : source.slice(0, coverageAt)
+  const truncatedExclude = extractArray(testScopedSource, 'exclude')
+  // F11 (Musti's review on #252, commit b91ce00): the truncation above is correct for every
+  // config this repo has today, but nothing in vitest's own schema requires `test.exclude`
+  // to appear before `coverage:` — that's an invariant of these seven files, not a rule. If
+  // it were ever violated (a real `test.exclude` written textually after `coverage:`, e.g.
+  // as a sibling property added below the coverage block instead of above it), the truncated
+  // search would silently see none of it and report an empty/wrong exclude list — the
+  // expensive failure direction: a file CI actually skips would wrongly read as "run".
+  //
+  // A first attempt compared the truncated result against an *untruncated* re-read of the
+  // same source and flagged any disagreement — but that produces exactly the false positive
+  // this file already documents above as the *expected* case: packages/core, packages/tokens,
+  // packages/ui and apps/mobile-web all have a `coverage.exclude` and no `test.exclude` at
+  // all, so the untruncated read legitimately finds `coverage.exclude` (there is nothing
+  // else for it to find) while the truncated read correctly finds nothing — "disagreement"
+  // by string comparison, but not a bug; that's the truncation working as designed.
+  //
+  // What actually matters is narrower: is there an `exclude:` occurrence that sits *outside*
+  // the coverage block entirely (before it, which truncation already finds correctly; or
+  // after the coverage block's own closing brace) — that is the one shape this file cannot
+  // currently produce and truncation cannot see. Find the coverage block's real extent by
+  // brace-matching (not just "the first `coverage:` string"), and flag any `exclude:` match
+  // whose index falls after that block closes.
+  let coverageEnd = -1
+  if (coverageAt !== -1) {
+    const openBrace = source.indexOf('{', coverageAt)
+    if (openBrace !== -1) coverageEnd = findMatchingBrace(source, openBrace)
+  }
+  const excludeMatches = [...source.matchAll(/exclude\s*:\s*\[/g)]
+  const truncationDisagreement = coverageEnd !== -1 && excludeMatches.some((m) => m.index > coverageEnd)
   return {
     include: extractArray(testScopedSource, 'include'),
-    exclude: extractArray(testScopedSource, 'exclude'),
+    exclude: truncatedExclude,
+    truncationDisagreement,
   }
 }
 
