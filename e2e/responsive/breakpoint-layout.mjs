@@ -103,46 +103,61 @@ async function measureScreenMaxWidth(page, route) {
   // see its own comment; this used to inline a second, unguarded copy of that logic.
   await skipSplash(page)
 
-  // The screen container is the top-level ScrollView — in React-Native-Web
-  // this renders as a <div> with a maxWidth style. We query by the data-testid
-  // attribute that each screen sets on its root ScrollView.
+  // The screen container is the top-level ScrollView/View — in React-Native-Web this
+  // renders as a <div> with a maxWidth style. We query by the `data-testid` attribute
+  // RNW itself produces on the DOM from each screen's `testID="screen-container"` prop.
   //
-  // FINDING (found fixing #177's F1, not fixed here — out of this PR's blast radius):
-  // this locator never matches anything in the exported build. Every screen sets
-  // `data-testid="screen-container"` (a literal DOM-attribute-named prop), but
-  // react-native-web's `View`/`ScrollView` only forward a `testID` prop (converting
-  // *that* to `data-testid` internally) —
-  // `node_modules/react-native-web/dist/modules/forwardedProps/index.js`'s
-  // `defaultProps` allowlists `testID`, not `data-testid`, so the prop the screens
-  // actually pass is silently dropped by RNW's own prop filtering and never reaches
-  // the DOM. The fallback below has therefore been doing 100% of the real work here,
-  // for every route, since this file was written — worth its own ticket (rename
-  // `data-testid="screen-container"` to `testID="screen-container"` across all six
-  // screens), not a #177 fix.
+  // #201: until this ticket, every screen passed a literal `data-testid="screen-container"`
+  // prop instead — react-native-web's `View`/`ScrollView` only forward a `testID` prop,
+  // converting *that* to a real `data-testid` attribute internally
+  // (`node_modules/react-native-web/dist/modules/forwardedProps/index.js`'s `defaultProps`
+  // allowlists `testID`, not `data-testid`), so the caller's literal `data-testid` prop was
+  // silently dropped by RNW's own prop filtering and never reached the DOM. This locator
+  // never matched anything in any exported build, for as long as this file existed, and a
+  // div-scan fallback that used to live here did 100% of the real work in its place —
+  // invisible for exactly the ADR-0021 reason: the fallback made a broken primary selector
+  // pass instead of fail.
+  //
+  // The fallback is deliberately NOT restored now that the eight screens' `testID` prop
+  // reaches the DOM for real (all give this selector a genuine match): a fallback with no
+  // caller left to need it is dead code, and a fallback that DOES still fire is worse — it
+  // would mask exactly the class of regression this ticket exists to catch (someone
+  // reverting `testID` back to `data-testid`, or a future RNW version changing what it
+  // forwards) behind a still-green run, the same way it did here for months. Failing loudly
+  // when the primary selector doesn't match is the point, not a gap to paper over.
   const container = page.locator('[data-testid="screen-container"]').first()
   if (!(await container.count())) {
-    // Fallback: find the element whose computed maxWidth is not "none"
-    // This works even if data-testid is not set — we find the outermost
-    // element with a constrained maxWidth matching our known values.
-    const maxWidth = await page.evaluate(() => {
-      const all = document.querySelectorAll('div')
-      for (const el of all) {
-        const style = getComputedStyle(el)
-        const mw = style.maxWidth
-        if (mw && mw !== 'none' && mw !== '0px') {
-          return mw
-        }
-      }
-      return null
-    })
-    if (!maxWidth) fail(`No element with constrained maxWidth found at route ${route}`)
-    return parseFloat(maxWidth)
+    fail(`Screen container selector [data-testid="screen-container"] matched nothing at route ${route} — ` +
+      `a screen is missing its \`testID="screen-container"\` prop, or react-native-web stopped forwarding it.`)
   }
 
+  // A real DOM-shape fact, found only once the primary selector actually resolved to
+  // something: RNW's `View` puts `style` directly on the one DOM node that also carries
+  // `data-testid`, but `ScrollView` splits `style` (the scroll viewport) from
+  // `contentContainerStyle` (the scrollable content) — and it's `contentContainerStyle`
+  // that carries `maxWidth` on every screen here — onto TWO different nodes, with
+  // `data-testid` landing on the outer one. So `getComputedStyle(container)` alone reads
+  // `maxWidth: none` on every ScrollView-rooted screen even once the selector is correct.
+  //
+  // This is NOT the removed div-scan fallback come back under a new name — that scanned
+  // the WHOLE document for ANY div with a constrained maxWidth, with no relationship to
+  // whether the primary selector matched anything at all, which is exactly what let it
+  // mask the selector being broken for months. This walks strictly the *children of the
+  // element the primary selector just found*, only once that selector has already
+  // resolved — it is the primary check reading the one place a `ScrollView`'s content
+  // width honestly lives, not an alternate path that fires when the real one fails.
   const maxWidth = await container.evaluate((el) => {
-    return getComputedStyle(el).maxWidth
+    const ownMaxWidth = getComputedStyle(el).maxWidth
+    if (ownMaxWidth !== 'none') return ownMaxWidth
+    for (const child of el.children) {
+      const childMaxWidth = getComputedStyle(child).maxWidth
+      if (childMaxWidth !== 'none') return childMaxWidth
+    }
+    return 'none'
   })
-  if (maxWidth === 'none') fail(`Screen container maxWidth is 'none' at route ${route}`)
+  if (maxWidth === 'none') {
+    fail(`Screen container [data-testid="screen-container"] (and its immediate children) has maxWidth 'none' at route ${route}`)
+  }
   return parseFloat(maxWidth)
 }
 
@@ -236,9 +251,11 @@ async function skipSplash(page) {
 
   // A real wait, not a sleep (ADR-0004): block until LoginScreen (the only screen
   // Splash ever leads to, no URL routing) has actually mounted, rather than guessing a
-  // fixed delay is enough. NOT waited on via `[data-testid="screen-container"]` — see
-  // the note on `measureScreenMaxWidth`'s own fallback below for why that selector
-  // never matches anything in this exported build.
+  // fixed delay is enough. Waited on via this guest-CTA copy rather than
+  // `[data-testid="screen-container"]` on principle, not necessity (#201 made that
+  // selector real) — this wait's whole point is to assert LoginScreen specifically has
+  // mounted, and every screen shares the same container testID, so the copy is the more
+  // specific signal here regardless.
   await page.getByText(COPY.guest).waitFor({ state: 'visible', timeout: 10_000 })
 }
 

@@ -97,7 +97,7 @@ export function RegistrierungScreen({ onDone }: RegistrierungScreenProps) {
 
   if (stage.kind === 'success') {
     return (
-      <ScrollView contentContainerStyle={bp === 's' ? styles.successScreen : styles.wideSuccessScreen} keyboardShouldPersistTaps="handled" data-testid="screen-container">
+      <ScrollView contentContainerStyle={bp === 's' ? styles.successScreen : styles.wideSuccessScreen} keyboardShouldPersistTaps="handled" testID="screen-container">
         <Sticker style={styles.successBadge}>{tr('registrierung.success.badge')}</Sticker>
         <Text style={styles.successHeading}>{tr('registrierung.success.heading')}</Text>
         <Text style={styles.successSubtitle}>{tr('registrierung.success.subtitle')}</Text>
@@ -132,7 +132,7 @@ export function RegistrierungScreen({ onDone }: RegistrierungScreenProps) {
   }
 
   return (
-    <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} keyboardShouldPersistTaps="handled" data-testid="screen-container">
+    <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} keyboardShouldPersistTaps="handled" testID="screen-container">
       <Text style={styles.heading}>
         {tr('registrierung.titleBefore')}
         <Text style={{ color: t.color.funkeTinte }}>{tr('registrierung.titleMark')}</Text>

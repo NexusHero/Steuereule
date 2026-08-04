@@ -65,7 +65,7 @@ function CockpitLoading({ bp }: { readonly bp: Breakpoint }) {
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
   return (
-    <View style={bp === 's' ? styles.centerScreen : styles.wideCenterScreen} data-testid="screen-container">
+    <View style={bp === 's' ? styles.centerScreen : styles.wideCenterScreen} testID="screen-container">
       <ActivityIndicator size="large" color={t.color.tinte} accessibilityLabel={tr('cockpit.loading')} />
       <Text style={styles.help}>{tr('cockpit.loading')}</Text>
     </View>
@@ -82,7 +82,7 @@ function CockpitLoadError({ onRetry, bp }: CockpitLoadErrorProps) {
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
   return (
-    <View style={bp === 's' ? styles.centerScreen : styles.wideCenterScreen} data-testid="screen-container">
+    <View style={bp === 's' ? styles.centerScreen : styles.wideCenterScreen} testID="screen-container">
       <Text style={styles.heading} accessibilityRole="alert">
         {tr('cockpit.loadError.heading')}
       </Text>
@@ -106,7 +106,7 @@ function CockpitEmpty({ taxYear, onRefresh, isRefreshing, bp }: CockpitEmptyProp
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
   return (
-    <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} data-testid="screen-container">
+    <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
       <Appbar taxYear={taxYear} />
       <View style={styles.emptyBlock}>
         <Text style={styles.heading}>{tr('cockpit.empty.heading')}</Text>
@@ -134,7 +134,7 @@ function CockpitLoaded({ summary, taxYear, onRefresh, isRefreshing, bp }: Cockpi
   const { openItems } = summary
 
   return (
-    <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} data-testid="screen-container">
+    <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
       <Appbar taxYear={taxYear} />
       <Card variant="nacht">
         <Text style={styles.heroLabel}>{tr('cockpit.hero.label')}</Text>

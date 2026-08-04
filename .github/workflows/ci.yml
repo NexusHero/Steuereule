@@ -455,26 +455,26 @@ jobs:
   # class (#197 found its `measureScreenMaxWidth` never reached a real screen either, for
   # the same reason).
   #
-  # Known, deliberately-not-fixed-here gap (also #197, documented in
-  # breakpoint-layout.mjs itself): the script's primary locator,
-  # `[data-testid="screen-container"]`, never matches anything in the exported build —
-  # react-native-web forwards a `testID` prop to `data-testid`, not a literal
-  # `data-testid` prop, so every assertion has always fallen through to the script's own
-  # div-scan fallback. That fallback is what this PR's own CI control proof (break
+  # Historical gap, fixed by #201 (kept for the record — do not re-derive this from
+  # memory, this paragraph used to describe a live gap and is now the closed account of
+  # it): from when this script was first wired into CI until #201, the script's primary
+  # locator, `[data-testid="screen-container"]`, never matched anything in the exported
+  # build — react-native-web forwards a `testID` prop to `data-testid`, not a literal
+  # `data-testid` prop, so every assertion fell through to the script's own div-scan
+  # fallback. That fallback is what this job's own CI control proof (break
   # `EXPECTED_MAX_WIDTH.s`, watch the job go red; restore, watch it pass) exercised, and
   # what #197's *local* break/restore of `width: 100%` exercised — local by necessity,
-  # since this PR is what first runs the script in CI at all: #197's pipeline could not
+  # since this job is what first ran the script in CI at all: #197's pipeline could not
   # have executed breakpoint-layout.mjs, full stop. The #177 button-fills-parent
-  # assertions have been observed green in CI (this PR's own run 30425139957, commit
-  # `1668b3d`, carrying the script content Kaan finalised at `950d524`) but never red in
-  # CI — only on a laptop; they fail through the same `fail()` helper whose
-  # propagation this PR's CI cycle proved. That composed argument is why wiring proceeds
-  # rather than waiting on the selector fix, with its one soft edge named rather than
-  # hidden. But it means this job is currently gated by the fallback path, not the
-  # primary one; fixing the six screens' `data-testid` → `testID` is tracked as its own
-  # follow-up (#201) — which will need its own fresh break/restore cycle once the primary
-  # selector starts matching, since this PR's proof will no longer be proving the code
-  # that runs.
+  # assertions were observed green in CI (run 30425139957, commit `1668b3d`, carrying the
+  # script content Kaan finalised at `950d524`) but never red in CI — only on a laptop;
+  # they failed through the same `fail()` helper whose propagation that CI cycle proved.
+  # #201 renamed the prop at all 25 call sites across the app's eight screens
+  # (`data-testid="screen-container"` → `testID="screen-container"`), removed the
+  # div-scan fallback (dead once the primary selector genuinely matches, and a risk of
+  # masking the exact same class of regression if left in), and re-ran this job's
+  # break/restore cycle against the corrected selector — this job is gated by the primary
+  # selector now, not the fallback.
   # #223 adds two more steps below (`e2e/responsive/banner-ds-qa.mjs`,
   # `e2e/visibility/visibility-refetch.mjs`), promoting the manual proof already run on PRs
   # #215/#225 into a standing regression gate for REQ-005's "shown honestly" clause — the

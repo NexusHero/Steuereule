@@ -151,7 +151,7 @@ export function DatenschutzScreen({ onZurueck, onAccountDeleted }: DatenschutzSc
   const styles = makeStyles(useTheme())
 
   return (
-    <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} data-testid="screen-container">
+    <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
       <Appbar tr={tr} onZurueck={onZurueck} />
       <Hero tr={tr} />
       <DeviceSessionsSection tr={tr} />

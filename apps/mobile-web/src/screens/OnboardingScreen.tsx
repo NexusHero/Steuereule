@@ -106,7 +106,7 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
   }
 
   return (
-    <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} keyboardShouldPersistTaps="handled" data-testid="screen-container">
+    <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} keyboardShouldPersistTaps="handled" testID="screen-container">
       <View style={styles.headerRow}>
         {schritt > 0 ? (
           <Pressable
@@ -210,7 +210,7 @@ function OnboardingLoading({ bp }: { readonly bp: Breakpoint }) {
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
   return (
-    <View style={bp === 's' ? styles.centerScreen : styles.wideCenterScreen} data-testid="screen-container">
+    <View style={bp === 's' ? styles.centerScreen : styles.wideCenterScreen} testID="screen-container">
       <ActivityIndicator size="large" color={t.color.tinte} accessibilityLabel={tr('onboarding.loading')} />
       <Text style={styles.help}>{tr('onboarding.loading')}</Text>
     </View>
@@ -227,7 +227,7 @@ function OnboardingLoadError({ onRetry, bp }: OnboardingLoadErrorProps) {
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
   return (
-    <View style={bp === 's' ? styles.centerScreen : styles.wideCenterScreen} data-testid="screen-container">
+    <View style={bp === 's' ? styles.centerScreen : styles.wideCenterScreen} testID="screen-container">
       <Text style={styles.heading} accessibilityRole="alert">
         {tr('onboarding.loadError.heading')}
       </Text>
@@ -260,7 +260,7 @@ function OnboardingSummary({ profil, onSubmit, onEdit, isSubmitting, submitError
   ]
 
   return (
-    <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} keyboardShouldPersistTaps="handled" data-testid="screen-container">
+    <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} keyboardShouldPersistTaps="handled" testID="screen-container">
       <View style={styles.summaryHeadingRow}>
         <Text style={styles.summaryHeading}>{tr('onboarding.summary.heading')}</Text>
         <Sticker>{tr('onboarding.summary.badge')}</Sticker>

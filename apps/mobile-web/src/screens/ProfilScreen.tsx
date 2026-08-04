@@ -128,7 +128,7 @@ function ProfilLoading({ bp }: { readonly bp: Breakpoint }) {
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
   return (
-    <View style={bp === 's' ? styles.centerScreen : styles.wideCenterScreen} data-testid="screen-container">
+    <View style={bp === 's' ? styles.centerScreen : styles.wideCenterScreen} testID="screen-container">
       <ActivityIndicator size="large" color={t.color.tinte} accessibilityLabel={tr('profil.loading')} />
       <Text style={styles.help}>{tr('profil.loading')}</Text>
     </View>
@@ -145,7 +145,7 @@ function ProfilLoadError({ onRetry, bp }: ProfilLoadErrorProps) {
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
   return (
-    <View style={bp === 's' ? styles.centerScreen : styles.wideCenterScreen} data-testid="screen-container">
+    <View style={bp === 's' ? styles.centerScreen : styles.wideCenterScreen} testID="screen-container">
       <Text style={styles.heading} accessibilityRole="alert">
         {tr('profil.loadError.heading')}
       </Text>
@@ -175,7 +175,7 @@ function ProfilView({ profil, onEdit, justSaved, bp, onOpenDatenschutz, onSigned
   const initial = initialSource ? initialSource[0]?.toUpperCase() : '?'
 
   return (
-    <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} data-testid="screen-container">
+    <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
       <Text style={styles.heading}>{tr('profil.cardLabel')}</Text>
 
       <Card variant="nacht" style={styles.summaryCard}>
@@ -230,7 +230,7 @@ function ProfilEdit({ draft, onChange, onSave, onCancel, isSaving, saveError, bp
   const canSave = draft.vorname.trim() !== '' && draft.nachname.trim() !== '' && steuerIdOk
 
   return (
-    <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} keyboardShouldPersistTaps="handled" data-testid="screen-container">
+    <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} keyboardShouldPersistTaps="handled" testID="screen-container">
       <Text style={styles.heading}>{tr('profil.editHeading')}</Text>
 
       <Feld label={tr('profil.firstNameLabel')}>
