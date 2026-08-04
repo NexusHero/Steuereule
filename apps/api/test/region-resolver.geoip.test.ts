@@ -73,4 +73,49 @@ describe('GeoIpRegionResolver — branch 3: a stale database resolves to "unknow
     const resolver = new GeoIpRegionResolver({ ranges: RANGES, manifest: FRESH_MANIFEST }, () => atThreshold)
     await expect(resolver.resolve('203.0.113.42')).resolves.toBe('DE')
   })
+
+  // Musti's #239 F1: `new Date(unparsable).getTime()` is `NaN`, and every comparison
+  // against `NaN` (including `ageMs > MAX_DATABASE_AGE_MS`) is `false` — a bare `>`
+  // check on `ageMs` therefore falls THROUGH to the lookup instead of forcing
+  // `unknown`. `loadGeoIpManifest`'s `JSON.parse(...) as GeoIpManifest` never
+  // validates the manifest it reads from disk, so a truncated or malformed file
+  // (a broken fetch, most plausibly) reaches this resolver as-is. ADR-0021: proven
+  // both directions — an unparsable `fetchedAt` must force `unknown`, and repairing
+  // it must resolve the country again, or the branch could be a no-op that always
+  // answers `unknown` regardless of what it inspects.
+  it.each([
+    ['not-a-date', 'a non-date string'],
+    ['', 'an empty string'],
+    ['2026-13-45', 'an out-of-range calendar date'],
+  ])('an unparsable fetchedAt (%s — %s) resolves to "unknown", never a guess from a database of unknown age', async (fetchedAt) => {
+    const manifest: GeoIpManifest = { ...FRESH_MANIFEST, fetchedAt }
+    const resolver = new GeoIpRegionResolver({ ranges: RANGES, manifest }, fixedNow('2026-07-25T00:00:00.000Z'))
+    await expect(resolver.resolve('203.0.113.42')).resolves.toBe(UNKNOWN_REGION)
+  })
+
+  it('a manifest missing fetchedAt entirely resolves to "unknown" — same NaN path as an unparsable value', async () => {
+    // `loadGeoIpManifest`'s bare `JSON.parse(...) as GeoIpManifest` cast means a
+    // truncated write can drop the field outright, not just corrupt its value —
+    // `GeoIpManifest['fetchedAt']` is typed as a required `string`, so this
+    // constructs the runtime shape the cast would let through, deliberately outside
+    // that type.
+    const { fetchedAt: _omitted, ...rest } = FRESH_MANIFEST
+    const manifest = rest as GeoIpManifest
+    const resolver = new GeoIpRegionResolver({ ranges: RANGES, manifest }, fixedNow('2026-07-25T00:00:00.000Z'))
+    await expect(resolver.resolve('203.0.113.42')).resolves.toBe(UNKNOWN_REGION)
+  })
+
+  it('repairing an unparsable fetchedAt back to a real, fresh timestamp resolves the country again', async () => {
+    const resolver = new GeoIpRegionResolver({ ranges: RANGES, manifest: FRESH_MANIFEST }, fixedNow('2026-07-25T00:00:00.000Z'))
+    await expect(resolver.resolve('203.0.113.42')).resolves.toBe('DE')
+  })
+
+  // Same "only one direction checked" shape as the NaN case above — a future
+  // `fetchedAt` (clock skew, a corrupted manifest) yields a negative `ageMs`, which
+  // is also `< MAX_DATABASE_AGE_MS` and would otherwise be trusted as "fresh".
+  it('a fetchedAt in the future resolves to "unknown" — not evidence of freshness', async () => {
+    const future: GeoIpManifest = { ...FRESH_MANIFEST, fetchedAt: '2026-08-01T00:00:00.000Z' }
+    const resolver = new GeoIpRegionResolver({ ranges: RANGES, manifest: future }, fixedNow('2026-07-25T00:00:00.000Z'))
+    await expect(resolver.resolve('203.0.113.42')).resolves.toBe(UNKNOWN_REGION)
+  })
 })

@@ -154,6 +154,33 @@ describe('REQ-014 task 0 — device-authorization plugin registration, against t
 
     const directVerify = await fetch(`${baseUrl}/api/auth/device?user_code=AAAAAAAA`)
     expect(directVerify.status).toBe(404)
+
+    // Musti's #239 F2: `DEVICE_AUTHORIZATION_DISABLED_PATHS` names five routes
+    // (better-auth.ts); only `/device/code` and `/device` (GET) were proven above.
+    // `/device/token`, `/device/approve`, and `/device/deny` are the three that
+    // actually matter — token mints the session, approve/deny decide an
+    // authorization — and were asserted nowhere. All three are POST in the plugin's
+    // own route table (better-auth/dist/plugins/device-authorization/routes.mjs).
+    const directToken = await fetch(`${baseUrl}/api/auth/device/token`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', origin: ALLOWED_ORIGIN },
+      body: JSON.stringify({ device_code: 'anything', client_id: 'anything', grant_type: 'urn:ietf:params:oauth:grant-type:device_code' }),
+    })
+    expect(directToken.status).toBe(404)
+
+    const directApprove = await fetch(`${baseUrl}/api/auth/device/approve`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', origin: ALLOWED_ORIGIN },
+      body: JSON.stringify({ userCode: 'AAAAAAAA' }),
+    })
+    expect(directApprove.status).toBe(404)
+
+    const directDeny = await fetch(`${baseUrl}/api/auth/device/deny`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', origin: ALLOWED_ORIGIN },
+      body: JSON.stringify({ userCode: 'AAAAAAAA' }),
+    })
+    expect(directDeny.status).toBe(404)
   })
 
   // Musti's #239 ruling: not the entropy margin (an attacker-minted code is worthless
