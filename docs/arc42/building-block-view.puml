@@ -45,7 +45,7 @@ package "apps/api  ·  NestJS on Fastify" as api {
   component "AccountModule\nGET /v1/account/export (JSON · PDF)\nDELETE /v1/account (teardown txn)\nPdfRenderer seam" as accountMod #palegreen
   component "AuditModule\nTaxDataAccessLog (append-only)" as audit
   component "PrismaModule\nfield-encrypted Prisma client" as prisma
-  component "Cross-cutting\nCORS allowlist (ADR-0011) ·\nhelmet/CSP · DB-backed rate limits" as crosscut #palegreen
+  component "Cross-cutting\nCORS allowlist (ADR-0011) ·\nhelmet/CSP ·\nDB-backed rate limits — NOT effective:\nIP-keyed via untrusted X-Forwarded-For,\nbypassable (#241), closes with #246" as crosscut #palegreen
 }
 
 database "Postgres (EU)\nexpand-only migrations (ADR-047)" as db {
