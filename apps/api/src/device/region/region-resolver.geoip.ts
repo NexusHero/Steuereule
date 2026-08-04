@@ -43,8 +43,23 @@ export class GeoIpRegionResolver implements RegionResolver {
     // Staleness is checked *before* any lookup — never "usually fresh, so trust the
     // match this one time" (ADR-0021: this is a control, proven by watching it force
     // `unknown` even when the stale data would otherwise have answered).
-    const ageMs = this.now().getTime() - new Date(this.data.manifest.fetchedAt).getTime()
-    if (ageMs > MAX_DATABASE_AGE_MS) return Promise.resolve(UNKNOWN_REGION)
+    //
+    // `fetchedAt` is untrusted input from disk (loadGeoIpManifest does a bare
+    // `JSON.parse(...) as GeoIpManifest`, never validated) — an unparsable, empty, or
+    // missing value makes `Date#getTime()` return `NaN`, and *every* comparison
+    // against `NaN` is `false`. Left unchecked, `ageMs > MAX_DATABASE_AGE_MS` would
+    // silently fall through to the lookup below instead of forcing `unknown` — the
+    // exact "never a guess" promise ADR-0024:173-176 makes, broken by an unreadable
+    // timestamp rather than an old one. Musti's #239 F1: fails loudly (`unknown`), not
+    // silently (a guessed country from a database of unknown age).
+    const fetchedAtMs = new Date(this.data.manifest.fetchedAt).getTime()
+    if (!Number.isFinite(fetchedAtMs)) return Promise.resolve(UNKNOWN_REGION)
+    const ageMs = this.now().getTime() - fetchedAtMs
+    // A `fetchedAt` in the future is exactly as untrustworthy as one too old to
+    // trust — a clock-skewed or corrupted manifest, not evidence of freshness. Same
+    // "only checked one direction" shape Musti flagged for the parse failure above:
+    // catch it here rather than let a negative age silently pass the `> MAX` check.
+    if (ageMs < 0 || ageMs > MAX_DATABASE_AGE_MS) return Promise.resolve(UNKNOWN_REGION)
 
     if (isPrivateOrUnroutableIPv6(ip)) return Promise.resolve(UNKNOWN_REGION)
 
