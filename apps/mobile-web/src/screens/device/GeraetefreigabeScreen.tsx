@@ -51,7 +51,7 @@ export function GeraetefreigabeScreen({ userCode }: GeraetefreigabeScreenProps) 
 
   if (pendingQuery.isPending) {
     return (
-      <View style={bp === 's' ? styles.centerScreen : styles.wideCenterScreen} data-testid="screen-container">
+      <View style={bp === 's' ? styles.centerScreen : styles.wideCenterScreen} testID="screen-container">
         <ActivityIndicator size="large" color={t.color.tinte} accessibilityLabel={tr('device.approval.loading')} />
         <Text style={styles.help}>{tr('device.approval.loading')}</Text>
       </View>
@@ -60,7 +60,7 @@ export function GeraetefreigabeScreen({ userCode }: GeraetefreigabeScreenProps) 
 
   if (pendingQuery.isError || pendingStatus !== 200) {
     return (
-      <View style={bp === 's' ? styles.centerScreen : styles.wideCenterScreen} data-testid="screen-container">
+      <View style={bp === 's' ? styles.centerScreen : styles.wideCenterScreen} testID="screen-container">
         <Text style={styles.heading} accessibilityRole="alert">
           {tr('device.approval.error.heading')}
         </Text>
@@ -90,7 +90,7 @@ export function GeraetefreigabeScreen({ userCode }: GeraetefreigabeScreenProps) 
   // checked above.
   if (approveState === 'approved' || pending.status === 'approved') {
     return (
-      <View style={bp === 's' ? styles.centerScreen : styles.wideCenterScreen} data-testid="screen-container">
+      <View style={bp === 's' ? styles.centerScreen : styles.wideCenterScreen} testID="screen-container">
         <Text style={styles.heading}>{tr('device.approval.approved.heading')}</Text>
         <Text style={styles.help}>{tr('device.approval.approved.body')}</Text>
       </View>
@@ -101,7 +101,7 @@ export function GeraetefreigabeScreen({ userCode }: GeraetefreigabeScreenProps) 
     // 'denied', or any future value — this screen only ever produces 'approved' itself; a
     // denial or anything else reaching here means the request is no longer actionable.
     return (
-      <View style={bp === 's' ? styles.centerScreen : styles.wideCenterScreen} data-testid="screen-container">
+      <View style={bp === 's' ? styles.centerScreen : styles.wideCenterScreen} testID="screen-container">
         <Text style={styles.heading} accessibilityRole="alert">
           {tr('device.approval.error.heading')}
         </Text>
@@ -115,7 +115,7 @@ export function GeraetefreigabeScreen({ userCode }: GeraetefreigabeScreenProps) 
   const time = formatRequestedAt(pending.requestedAt, i18n.language)
 
   return (
-    <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} data-testid="screen-container">
+    <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
       <Text style={styles.code} accessibilityLabel={pending.userCode}>
         {pending.userCode}
       </Text>

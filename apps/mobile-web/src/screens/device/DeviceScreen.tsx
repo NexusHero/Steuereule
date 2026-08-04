@@ -41,7 +41,7 @@ export function DeviceScreen({ userCode }: DeviceScreenProps) {
 
   if (sessionPending) {
     return (
-      <View style={bp === 's' ? styles.centerScreen : styles.wideCenterScreen} data-testid="screen-container">
+      <View style={bp === 's' ? styles.centerScreen : styles.wideCenterScreen} testID="screen-container">
         <ActivityIndicator size="large" color={t.color.tinte} accessibilityLabel={tr('device.sessionChecking')} />
         <Text style={styles.help}>{tr('device.sessionChecking')}</Text>
       </View>
@@ -54,7 +54,7 @@ export function DeviceScreen({ userCode }: DeviceScreenProps) {
 
   if (!userCode) {
     return (
-      <View style={bp === 's' ? styles.centerScreen : styles.wideCenterScreen} data-testid="screen-container">
+      <View style={bp === 's' ? styles.centerScreen : styles.wideCenterScreen} testID="screen-container">
         <Text style={styles.heading} accessibilityRole="alert">
           {tr('device.missingCode.heading')}
         </Text>

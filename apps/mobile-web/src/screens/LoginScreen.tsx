@@ -131,7 +131,7 @@ export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true }
 
   if (stage.kind === 'unverified') {
     return (
-      <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} keyboardShouldPersistTaps="handled" data-testid="screen-container">
+      <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} keyboardShouldPersistTaps="handled" testID="screen-container">
         <Brand tr={tr} t={t} />
         {!emailVerified ? (
           <View style={styles.verifyBanner} accessibilityRole="alert">
@@ -232,14 +232,14 @@ export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true }
   // regardless of width.
   if (bp === 's' || !showDeviceQr) {
     return (
-      <ScrollView contentContainerStyle={styles.screen} keyboardShouldPersistTaps="handled" data-testid="screen-container">
+      <ScrollView contentContainerStyle={styles.screen} keyboardShouldPersistTaps="handled" testID="screen-container">
         {formColumn}
       </ScrollView>
     )
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.wideRow} keyboardShouldPersistTaps="handled" data-testid="screen-container">
+    <ScrollView contentContainerStyle={styles.wideRow} keyboardShouldPersistTaps="handled" testID="screen-container">
       {formColumn}
       <DeviceQrColumn t={t} tr={tr} styles={styles} onApproved={onDone} />
     </ScrollView>

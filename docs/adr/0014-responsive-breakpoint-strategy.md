@@ -43,7 +43,7 @@ function CockpitScreen() {
   const styles = makeStyles(t)
   return (
     <ScrollView
-      data-testid="screen-container"
+      testID="screen-container"
       style={bp === 's' ? styles.screen : styles.wideScreen}
     >
       {/* content */}
