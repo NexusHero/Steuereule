@@ -12,7 +12,6 @@
     "**/generated/**",
     "spikes/**",
     "finanzo-funke-design-system/**",
-    "desktop-companion/**",
     "Documentation/**"
   ],
   "rules": {
