@@ -34,10 +34,21 @@ pnpm adr-check         # node scripts/checks/adr-check.mjs
    `exclude` array is honoured for every discovered project, not just the first one written
    (F4). A file under a path this check doesn't recognise as any known workspace project is its
    own distinct finding, not folded into "not run" (F3) — those are different problems with
-   different fixes.
+   different fixes. Check **2b**: a vitest config's own `include`/`exclude` is read by regex,
+   scoped by truncating the source at `coverage:` so `test.exclude` and `coverage.exclude`
+   (two different arrays, both spelled `exclude: [...]`) can't be confused — but nothing
+   enforces that `test.exclude` is actually written before `coverage:` in the source, so that
+   scoping is compared against an untruncated re-read for a stray `exclude:` that falls outside
+   the coverage block's own brace span; a disagreement there means this check can no longer
+   tell the two apart for that project and says so, rather than silently trusting the truncated
+   guess (F11, Musti's review on #252's `b91ce00` fix).
 3. a **bidirectional** `REQ-NNN` tag reconciliation: every `describe('REQ-NNN — ...')` block in
-   `apps/**/*.test.{ts,tsx}` is cited under that REQ somewhere in the register, and every
-   register citation of a REQ-tagged file is cited under the tag that file actually carries
+   the same `apps/*`/`packages/*` test tree check 2 discovers is cited under that REQ somewhere
+   in the register, and every register citation of a REQ-tagged file is cited under the tag
+   that file actually carries. This used to scan `apps/**` only, a narrower tree than check 2
+   already knew about — a REQ tag planted in `packages/*` would be invisible here even though
+   check 2 would confirm CI runs it (F10, Musti's review on #252's `b91ce00` fix); both checks
+   now derive their test tree from the one discovery pass.
 4. `Status`/`State` come from the English vocabulary — a German-word blocklist, and a
    `**not met (...)**`-style qualifier must read identically in both the summary table's
    `Status` column and the traceability table's `State` column for the same row (the
@@ -107,6 +118,14 @@ deliberately a same-line substring, not a specific comment syntax, so it works u
 documenting a known-broken or not-yet-real reference) — not as a general suppression for a
 reference someone doesn't want to fix.
 
+**It must never be used inside `desktop-companion/`.** <!-- adr-check-ignore: this line describes the dangling references below, it does not assert them --> That directory's dangling `ADR-0057`/
+`0058`/`0059` references (`README.md`, `capture.cjs`, `main.cjs`, `package.json`,
+`preload.cjs`) are not prose *describing* a known gap the way `docs/adr/index.md`'s own
+"Known inconsistency" section is — they *assert* live decisions that were never written. The
+marker exists for the former shape, not the latter; muting these with `adr-check-ignore` would
+turn a real, still-open gap invisible instead of fixing it. They stay red until the directory
+itself is cleaned up (or the ADRs get written) by whoever owns it.
+
 ## Control proofs (ADR-0021)
 
 Every one of the six checks was proven by planting the exact break it exists to catch, watching
@@ -120,7 +139,16 @@ Musti's review on `ae47fdb` found five further gaps in these checks themselves (
 above); each of those fixes carries its own proof in the same PR's evidence block — F3 and F5 in
 particular were re-proved directly, not just reasoned about, since a fix to a check that catches
 false negatives/positives is exactly the kind of control this whole gate exists to demand proof
-of.
+of. A follow-up review on `b91ce00` found two more (F10/F11 above); F10 was proved by planting a
+`describe('REQ-997 — ...')` probe in a real `packages/core` test file (invisible under the old
+`apps/`-only tree, caught once check 3 shared check 2's discovery), and F11 by a synthetic
+`vitest.config.ts` with `test.exclude` genuinely written after the `coverage:` block — confirmed
+first that the pre-fix code silently returns an empty `exclude` for it (the expensive false
+negative), then that the fix flags `2b-glob-parse-ambiguous` instead of trusting that emptiness.
+The same run also added a proof line dedicated to check 2b's own truncation logic against a real
+coverage-bearing config (`packages/core`) — disabling the truncation entirely produces twelve
+false `2-executed-by-ci` findings against real, CI-run `apps/mobile-web` test files, which the
+original F4 proof (using a config with no `coverage:` block at all) never actually exercised.
 
 ## Deliberately out of scope
 

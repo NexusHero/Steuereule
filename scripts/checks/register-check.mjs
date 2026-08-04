@@ -8,10 +8,16 @@
 //      block on the same finding class as a genuinely missing file)
 //   2. every cited test file is actually executed by a CI job — matched against the real
 //      vitest include/exclude globs of every discovered apps/*/packages/* project, and
-//      against ci.yml's e2e invocations
+//      against ci.yml's e2e invocations. Check 2b: if a project's own vitest config can't be
+//      read unambiguously (the coverage:-truncation heuristic in lib/vitest-config.mjs
+//      disagreeing with an untruncated read of the same exclude glob), that is itself a
+//      finding rather than a silently-trusted guess (F11, Musti's review on #252).
 //   3. a bidirectional REQ-NNN tag reconciliation: every REQ-tagged describe() block in the
 //      test tree is cited under that REQ in the register, and every register citation of a
-//      REQ-tagged file actually carries that file's own tag
+//      REQ-tagged file actually carries that file's own tag. The "test tree" here is the same
+//      set of apps/*/packages/* vitest projects check 2 discovers — not a separate, narrower
+//      guess (F10, Musti's review on #252: this used to hard-code apps/ only, so a REQ tag or
+//      an @documents-defect marker planted in packages/* would be invisible to checks 3/5).
 //   4. Status/State come from the declared English vocabulary — no German, and a "not met"
 //      qualifier must read identically in both columns (the REQ-010/F5 defect)
 //   5. a test carrying `@documents-defect #NNN` is cited in the register with the same
@@ -105,6 +111,21 @@ async function main() {
   // pnpm -r test runs every one of them).
   const vitestProjects = discoverVitestProjects(REPO_ROOT)
 
+  // F11 (Musti's review on #252, commit b91ce00): readVitestGlobs' coverage:-truncation
+  // heuristic (see lib/vitest-config.mjs) rests on an invariant this repo has never violated
+  // — test.exclude written before coverage: — but nothing enforces that ordering, and the
+  // silent failure mode is the expensive one (a file CI actually skips reads as "run"). Say
+  // so instead of trusting it blind: if the truncated and untruncated reads of a config's own
+  // exclude glob disagree, this check's own parsing is unreliable for that project.
+  for (const project of vitestProjects) {
+    if (project.truncationDisagreement) {
+      findings.add(
+        '2b-glob-parse-ambiguous',
+        `${project.prefix} (${project.tier}): the coverage:-truncated and untruncated reads of this vitest config's own \`exclude\` glob disagree — this check cannot reliably tell test.exclude from coverage.exclude here. Read the config by hand; if test.exclude genuinely comes after coverage: in the source, fix the ordering, or this check's own truncation logic in lib/vitest-config.mjs.`,
+      )
+    }
+  }
+
   /** @returns {{run: boolean, reason: string}} */
   function isRunByCI(filePath) {
     if (E2E_MJS_RE.test(filePath)) {
@@ -148,7 +169,15 @@ async function main() {
   }
 
   // --- Gather the describe()-tagged REQ tree, once, for checks 3 and 5 --------------------
-  const testTreeFiles = allFiles.filter((f) => f.startsWith('apps/') && TEST_FILE_RE.test(f))
+  // F10 (Musti's review on #252, commit b91ce00): this used to hard-code `apps/` while check
+  // 2's isRunByCI already knew about packages/* too (discoverVitestProjects, F3) — so a
+  // describe('REQ-NNN — ...') tag or an @documents-defect marker planted in a packages/*
+  // test file would be invisible to checks 3 and 5, even though pnpm -r test runs it and
+  // check 2 would happily confirm it's executed by CI. Deriving the test tree from the same
+  // vitestProjects prefixes check 2 already discovered keeps all three checks talking about
+  // one test tree instead of three slightly different ones.
+  const testTreePrefixes = vitestProjects.map((p) => p.prefix)
+  const testTreeFiles = allFiles.filter((f) => TEST_FILE_RE.test(f) && testTreePrefixes.some((prefix) => f.startsWith(prefix)))
   /** @type {Map<string, Set<string>>} file -> REQ tags found via describe() */
   const fileTags = new Map()
   /** @type {Map<string, Set<string>>} REQ -> files tagging it */
