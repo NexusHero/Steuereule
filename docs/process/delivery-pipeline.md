@@ -216,9 +216,9 @@ preview, the loop stops learning; nothing else supplies its input.
 ## Working rules — earned, not invented
 
 Five rules from 2026-08-04, the day eleven PRs landed. Each one exists because somebody got it
-wrong that day, and four of the five were the reviewer, the tester or the lead — not a dev. They
-are here because a rule that lives only in a conversation is gone by the next morning, and the
-next person deletes it as ceremony because nothing records what it cost.
+wrong that day, and four of the five were the reviewer, the tester or the coordinator — not a
+dev. They are here because a rule that lives only in a conversation is gone by the next morning,
+and the next person deletes it as ceremony because nothing records what it cost.
 
 - **Throwaway verification runs in your own worktree — never the shared checkout.** A checker
   spliced in from another branch, a scratch file that prints a raw response, a `git checkout` to
@@ -265,6 +265,14 @@ next person deletes it as ceremony because nothing records what it cost.
   times in one day, to three different people, *while all three were working on a rule against
   it* — including twice in the twenty minutes after the first one was admitted. It survives
   knowing about it, which is why it needs a mechanism and not resolve.
+  **Two further instances happened while writing this rule, an hour apart.** The pull request
+  introducing it credited rule 5 to the wrong colleague in its description — written from memory
+  of who had made the error. The correction that followed then reported the error as being *in
+  this file*, derived from that description without opening the file, which had never named
+  anyone. Both were caught by reading the artifact; neither was caught by care. Recorded rather
+  than quietly fixed, because a rule broken twice by the people writing it is the strongest
+  evidence it needs to exist. None of the five carries a name for the same reason — what matters
+  is that four came from outside the dev seats, not who they came from.
 
 
 ## Who owns what
