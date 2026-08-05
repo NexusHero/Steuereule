@@ -995,6 +995,57 @@ describe('LoginScreen', () => {
       expect(requests).toBe(0)
     })
 
+    // §4(2) — Musti's review question: `hasStarted` only ever gates the *first* automatic mint;
+    // it must never read a FAILED first attempt as "already handled" and go quiet forever. A
+    // failed mint still needs to recover — via the auto-retry-on-error effect (§4(1), keyed on
+    // `state`, not on `enabled`/`hasStarted`) and via the manual retry link — even across a
+    // resize that would otherwise look like "a fresh reason to try again". Proven end to end:
+    // first attempt fails, the screen is resized down and back up (exercising the exact
+    // sequence a `hasStarted`-blocks-forever bug would freeze on), and the auto-retry still
+    // fires and succeeds — not a second *initial* mint from the resize (that's the sibling test
+    // above), the *scheduled retry* the error state itself owns.
+    it('recovers via auto-retry after a failed first attempt, even across a resize (never permanently latched shut by a failure)', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      let requests = 0
+      server.use(
+        http.post(`${BASE_URL}/v1/device/code`, () => {
+          requests += 1
+          return requests === 1 ? HttpResponse.error() : HttpResponse.json(DEVICE_CODE_RESPONSE, { status: 201 })
+        }),
+      )
+      setViewportWidth(1024)
+      renderLogin()
+      await screen.findByText('Wir versuchen es automatisch erneut …')
+      expect(requests).toBe(1)
+
+      // Resize down past `s` and back — must not itself trigger a second *initial* mint (the
+      // latch correctly stays closed for that), and must not cancel the pending retry either.
+      act(() => {
+        setViewportWidth(320)
+      })
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0)
+      })
+      act(() => {
+        setViewportWidth(1024)
+      })
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0)
+      })
+      expect(requests).toBe(1)
+
+      // The auto-retry backoff (2s base) fires on its own — the failed first attempt did not
+      // permanently latch the column shut.
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2500)
+      })
+      expect(requests).toBe(2)
+      await screen.findByLabelText('QR-Code zum Anmelden mit dem Handy')
+
+      vi.clearAllTimers()
+      vi.useRealTimers()
+    })
+
     // #283 §5, state 3 ("knapp") — ADR-0021: the boundary is the point, not just "some amber
     // text shows eventually". At 21s remaining the ordinary countdown must still be showing;
     // one tick later, at exactly 20s, the pre-warning must have taken over — a `< 20` off-by-one
