@@ -9,9 +9,16 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build
 
 Brings up Postgres, runs migrations, and boots real container images for the API
 (`http://localhost:3000`) and the web app (`http://localhost:8080`) — guest browsing,
-registration, login and the QR-code device sign-in all work against this stack, **proven on
-Linux/amd64** (CI's `prod-deploy-smoke` job builds and drives this exact compose file against a
-real headless browser on every push). See `.env.example`'s own header for what each variable does
+registration, login, and the QR code rendering against the containerised API all work against this
+stack, **proven on Linux/amd64** (CI's `prod-deploy-smoke` job builds and drives this exact compose
+file against a real headless browser on every push).
+
+Note the deliberately narrow QR claim: what is proven against *these containers* is that the QR
+column mints and renders a real `user_code` (`POST /v1/device/code` → 201 → the code on screen) —
+the stakeholder's own reported symptom. Completing a cross-device *sign-in* (approve → the
+RFC-8628 `POST /v1/device/token` poll → the desktop is actually signed in) is proven by
+`e2e/device/device-authorization.mjs` in the `Browser gates` job, against that job's own
+hand-wired stack, never against these images. See `.env.example`'s own header for what each variable does
 and `docs/adr/0026-local-production-shaped-compose-stack.md` for the reasoning behind this setup
 (and what it deliberately does not yet answer — the real cloud deployment pipeline, target now
 confirmed as k3s on Hetzner + managed EU Postgres per ADR-049, tracked separately as #246).
@@ -27,15 +34,18 @@ proxy's own status endpoint), the same "registry can be blocked" environment tru
 Silicon Mac and this doesn't build or boot, that is a real, reportable gap — not a mistake on your
 end.
 
-**Three things you'll hit immediately, named here so they don't look like something broke:**
+**Three things to know before your first click, named here so nothing looks broken that isn't:**
 
 - **The database starts empty.** This is deliberate, not a bug — a fresh Postgres with no seed
   data is exactly the "clean slate, sign up for real" scenario this stack exists for. There is
   nothing to log into until you register an account or continue as a guest.
-- **PDF export (the DSGVO data-export screen's PDF option) does not work yet.** The API image
-  needs a bundled headless-Chromium binary to render it (`apps/api/Dockerfile`); until that lands
-  and is confirmed working end to end, an export click will fail. The JSON export option is
-  unaffected.
+- **PDF export (the DSGVO data-export screen's PDF option) works in this stack** — same
+  Linux/amd64 footnote as the rest of this section. `apps/api/Dockerfile` bundles the
+  headless-Chromium binary the renderer needs, and CI's `prod-deploy-smoke` job proves it against
+  the built container on every push: sign up, save a profile, `GET /v1/account/export?format=pdf`,
+  assert `application/pdf` and the `%PDF-` magic bytes. (This bullet previously said the opposite;
+  it was already untrue when written — Chromium had landed a commit earlier. Kept visible here
+  rather than silently deleted.)
 - **The Google sign-in button renders, but pressing it will fail.** This stack ships the same
   dev-only placeholder Google OAuth credentials the rest of the repo uses (`.env.example`'s own
   header explains why) — real Google sign-in needs real credentials from

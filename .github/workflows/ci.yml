@@ -724,6 +724,22 @@ jobs:
         # error is not the same claim as Chromium launching and rendering inside THIS image's
         # exact base layers/permissions — closing that gap here, the same way `smoke`'s own
         # REQ-011 step already proves it for the non-containerised boot path.
+        #
+        # API_ORIGIN is hardcoded `:3000` here for the same reason the step above hardcodes it
+        # (this job's own header comment, Musti's #274 review F3) — but stated again HERE rather
+        # than inherited by proximity: the step above carries that isolation in its own `env:`
+        # block, this one does not, so a reader arriving at this step alone has nothing to read it
+        # off. Same fixed port, same deliberate independence from whatever `.env` says.
+        #
+        # ADR-0021 control proof (Musti's #274 review, F7): structurally this cannot go vacuously
+        # green — `account.module.ts` binds PDF_RENDERER unconditionally to PlaywrightPdfRenderer
+        # and `renderPdf()` has no non-Chromium path, so `%PDF-` bytes can only come out of
+        # `page.pdf()`. But that is the source-code reading of the proof, and this PR's own
+        # OpenSSL section is the argument for why that is not enough. Proven by commit A/B
+        # instead: apps/api/Dockerfile's `playwright-core install chromium` line removed, this
+        # step watched fall with its OWN error text below, then restored and watched go green —
+        # which also proves F1's fix is load-bearing rather than incidentally present. See PR
+        # #274's body for the transcript.
         run: |
           set -e
           JAR=$(mktemp)
@@ -740,11 +756,21 @@ jobs:
           pdf_headers=$(curl --fail --silent --show-error -b "$JAR" -D - -o /tmp/prod-deploy-pdf-smoke.pdf \
             "http://localhost:3000/v1/account/export?format=pdf")
           echo "$pdf_headers" | grep -qi '^content-type: application/pdf' || {
-            echo "::error::GET /v1/account/export?format=pdf (real container) did not return application/pdf."
+            echo "::error::GET /v1/account/export?format=pdf (real container) did not return application/pdf. Headers were:"
+            echo "$pdf_headers"
             exit 1
           }
+          # The first bytes are echoed into the failure message on purpose: this assertion goes
+          # red for the right reason but tells the next reader nothing about WHAT came back
+          # instead — an HTML error page and an empty body look identical in a bare "did not
+          # start with %PDF-". Print the head so the log names the actual body, not just its
+          # absence.
           head -c 5 /tmp/prod-deploy-pdf-smoke.pdf | grep -q '%PDF-' || {
             echo "::error::PDF export body (real container) did not start with the %PDF- magic bytes — Chromium never rendered inside this image."
+            echo "First 200 bytes of the body actually returned:"
+            head -c 200 /tmp/prod-deploy-pdf-smoke.pdf | cat -v
+            echo
+            echo "Body size: $(wc -c < /tmp/prod-deploy-pdf-smoke.pdf) bytes"
             exit 1
           }
       - name: Container logs (on failure)
