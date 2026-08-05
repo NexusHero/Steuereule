@@ -36,7 +36,8 @@
 // `trustedProxies` configured, that same lone value still isn't matched against
 // anything (there's nothing to its right to strip), so it is *still* returned as the
 // resolved client. The only real defence against that is a network property — the app
-// being unreachable except through the real proxy (#246) — not an application
+// being unreachable except through the real proxy (#292, successor to the closed
+// #246 — the deployment that would supply it still does not exist) — not an application
 // configuration value. Nothing built against this resolver should imply otherwise.
 import { isIP } from 'node:net'
 
@@ -89,10 +90,11 @@ function isValidTrustedProxyEntry(entry: string): boolean {
  *   this resolver validates rather than warning.
  *
  * The real production value (the deployment's actual proxy CIDR ranges) is explicitly
- * NOT part of this ticket's Definition of Done — it depends on #246, the still-missing
- * deployment pipeline. This resolver's production-throw exists so that gap cannot stay
- * silently open once #246 lands: the API will refuse to boot in production without an
- * explicit answer, at the moment the answer becomes knowable.
+ * NOT part of this ticket's Definition of Done — it is #277's, and #277 is blocked on
+ * #292 (successor to the closed #246), the still-missing deployment pipeline. This
+ * resolver's production-throw exists so that gap cannot stay silently open once a
+ * deployment lands: the API will refuse to boot in production without an explicit
+ * answer, at the moment the answer becomes knowable.
  */
 export function resolveTrustedProxies(env: NodeJS.ProcessEnv = process.env): string[] {
   const raw = env.TRUSTED_PROXIES
