@@ -23,7 +23,10 @@ hand-wired stack, never against these images.
 See `.env.example`'s own header for what each variable does
 and `docs/adr/0026-local-production-shaped-compose-stack.md` for the reasoning behind this setup
 (and what it deliberately does not yet answer — the real cloud deployment pipeline, target now
-confirmed as k3s on Hetzner + managed EU Postgres per ADR-049, tracked separately as #246).
+confirmed as k3s on Hetzner + managed EU Postgres per ADR-049, tracked separately as #292). That
+gap was #246's until the stakeholder closed #246 on 2026-08-05; **the gap itself did not close with
+it** — #292 is its successor and carries it, so a reader who follows a "closed" ticket from here
+does not conclude the deployment question is answered.
 
 **Apple Silicon (arm64) — genuinely unverified, not "probably fine."** Both Dockerfiles are plain
 `node:24-bookworm-slim` builds with no amd64-only instructions we're aware of, but that is an
