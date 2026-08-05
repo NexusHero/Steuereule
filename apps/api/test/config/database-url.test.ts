@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest'
 import { resolveDatabaseUrl } from '../../src/config/database-url.js'
 
 describe('resolveDatabaseUrl', () => {
-  it('returns the configured value untouched', () => {
+  it('returns the configured value', () => {
     expect(resolveDatabaseUrl({ DATABASE_URL: 'postgresql://u:p@localhost:5432/db' })).toBe(
       'postgresql://u:p@localhost:5432/db',
     )
@@ -23,5 +23,19 @@ describe('resolveDatabaseUrl', () => {
 
   it('throws when set to an empty string', () => {
     expect(() => resolveDatabaseUrl({ DATABASE_URL: '' })).toThrow(/DATABASE_URL must be set/)
+  })
+
+  // F2 (Musti's review): a whitespace-only value used to pass this check — `.length > 0`
+  // is true for `'   '` — and only failed 5 seconds later inside the reachability
+  // probe's I/O, reported as the wrong finding (reachability instead of presence).
+  it('throws the presence finding for a whitespace-only value, not a reachability failure 5s later', () => {
+    expect(() => resolveDatabaseUrl({ DATABASE_URL: '   ' })).toThrow(/DATABASE_URL must be set/)
+    expect(() => resolveDatabaseUrl({ DATABASE_URL: '\t\n' })).toThrow(/DATABASE_URL must be set/)
+  })
+
+  it('trims incidental surrounding whitespace off an otherwise real value', () => {
+    expect(resolveDatabaseUrl({ DATABASE_URL: '  postgresql://u:p@localhost:5432/db  ' })).toBe(
+      'postgresql://u:p@localhost:5432/db',
+    )
   })
 })

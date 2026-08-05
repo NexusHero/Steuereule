@@ -14,8 +14,21 @@
 // run never appears anywhere in the process's combined stdout+stderr — the same
 // container-log-shaped check database-boot-guard.test.ts uses, against the one failure
 // class that needed a live server to actually produce.
+//
+// F3 (Musti's review): "Cannot reach the database at" alone is emitted identically for
+// connection-refused, unknown-host AND auth-failure — it does not, on its own, prove
+// this test ever reached the failure class it exists for. If the integration Postgres
+// were simply down, this would still pass. Since F1 established there is no `errorCode`
+// (or any other structured field) left to match on after redaction, the fix is a
+// positive control: prove — right alongside the guard's own attempt, against the exact
+// same host:port — that the real, correct credentials DO authenticate successfully.
+// That is something a connection-refused/unreachable-host failure could never also
+// satisfy (the control query would fail identically), so it pins the guard's failure
+// below to specifically an authentication rejection, not a network problem wearing the
+// same message.
 import { type ChildProcessWithoutNullStreams, spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
+import { PrismaClient } from '@prisma/client'
 import { describe, expect, it } from 'vitest'
 import { resolveDatabaseUrl } from '../../src/config/database-url.js'
 
@@ -55,14 +68,28 @@ function runServer(env: Record<string, string>): Promise<{ code: number | null; 
 
 describe('the real server, given a real database it cannot authenticate against', () => {
   it(
-    'exits non-zero and never names the configured username in its combined stdout+stderr',
+    'exits non-zero and never names the configured username in its combined stdout+stderr — and this really is an auth failure, not a network problem in disguise',
     async () => {
       const realDatabaseUrl = resolveDatabaseUrl()
+
+      // The positive control (F3): the exact same host:port, with the real password,
+      // must succeed — proving the target is genuinely reachable and authenticates
+      // correctly right now. A connection-refused or unreachable-host failure could
+      // never pass this; only a target that's up and only rejecting THIS run's
+      // credentials can.
+      const controlClient = new PrismaClient({ datasources: { db: { url: realDatabaseUrl } } })
+      try {
+        await controlClient.$queryRaw`SELECT 1`
+      } finally {
+        await controlClient.$disconnect()
+      }
+
       const parsed = new URL(realDatabaseUrl)
       const username = parsed.username
-      // Same host/port/db/user as the real integration database — only the password is
-      // wrong, so the server genuinely reaches Postgres and gets a real P1000 back,
-      // rather than the connection-refused case its sibling test already covers.
+      // Same host/port/db/user as the control connection above — only the password is
+      // wrong, so the server genuinely reaches Postgres and gets a real authentication
+      // rejection back, rather than the connection-refused case its sibling test
+      // already covers.
       parsed.password = `${parsed.password}-deliberately-wrong`
       const wrongPasswordUrl = parsed.toString()
 
