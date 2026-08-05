@@ -23,10 +23,15 @@ drift.
 
 Two related, harder questions are explicitly OUT of this decision's scope:
 
-- **#246** — a real Fly.io deployment pipeline. Still start-gated on Musti's architecture call
-  (mechanism, secrets, staging/prod topology). This ADR does not touch it; it answers a narrower,
-  already-unblocked question — "can the stakeholder run something production-shaped on his own
-  machine today" — not "where does this run in the cloud".
+- **#246** — the real cloud deployment pipeline. Still start-gated on Musti's architecture call
+  (mechanism, secrets, staging/prod topology) at the time this ADR was written; #246's own body
+  named Fly.io, but the target platform is now confirmed as **k3s on Hetzner + managed EU
+  Postgres** (the product ADR log's ADR-049, accepted 2026-07-22, confirmed by the stakeholder
+  2026-08-05) — #246's Fly.io framing is stale. This ADR does not touch the real pipeline either
+  way; it answers a narrower, already-unblocked question — "can the stakeholder run something
+  production-shaped on his own machine today" — not "where does this run in the cloud". Nothing
+  in this ADR's own compose stack assumes Fly.io (it is plain `docker-compose`, portable to any
+  Docker host); it does not need updating for the platform correction.
 - **#75** — `@steuereule/core`'s production packaging (a real compiled/bundled artifact with no
   TS-loader in the boot path). Still start-gated on a stakeholder+Musti architecture decision.
 

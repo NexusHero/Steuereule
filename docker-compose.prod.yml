@@ -1,6 +1,7 @@
 # Production-shaped local stack (#76, the stakeholder's own local-testing complement to
-# #246 — NOT the Fly.io deployment pipeline #246 tracks; that remains its own,
-# start-gated, separate ticket). Builds real images for the API and the exported web
+# #246 — NOT the real cloud deployment pipeline #246 tracks; that remains its own,
+# start-gated, separate ticket, now targeting k3s on Hetzner + managed Postgres per
+# ADR-049, not Fly.io as #246's own body still says). Builds real images for the API and the exported web
 # bundle — no more "postgres only, everything else by hand" — and wires them with the
 # SAME four env vars whose mismatch produced the stakeholder's own bug report (guest
 # browsing, registration, login and the QR code all failing identically, because the
