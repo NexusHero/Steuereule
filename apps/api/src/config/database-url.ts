@@ -25,21 +25,44 @@
 // separate failure message (Musti's review: two distinct findings, never collapsed into
 // one message — "configuration present" and "database reachable" are different claims).
 export function resolveDatabaseUrl(env: NodeJS.ProcessEnv = process.env): string {
-  // `.trim()` before the presence check (Musti's review, F2): `DATABASE_URL="   "`
-  // is not "present" in any sense that helps — untrimmed, it slipped past this check
-  // and only failed 5 seconds later, inside assertDatabaseReachable's I/O-bearing
-  // probe, reported as a *reachability* defect. That's the wrong finding for what is
-  // really a presence/format one, and it's exactly the two-findings-never-collapsed
-  // line this file draws for itself above. A trimmed, non-empty value is returned
-  // (not the raw untrimmed one) — incidental surrounding whitespace is never
-  // intentional in a connection string either.
-  const url = env.DATABASE_URL?.trim()
-  if (url && url.length > 0) return url
+  const raw = env.DATABASE_URL
 
-  throw new Error(
-    'DATABASE_URL must be set — every guest/registration/device-code path needs a database ' +
-      'connection on its very first request, in every environment; unlike the guest-session ' +
-      'secret or the field-encryption key there is no dev-only fallback that would actually ' +
-      'work here (see apps/api/.env.example, or docker-compose.yml for the local stack’s value).',
-  )
+  if (!raw || raw.trim().length === 0) {
+    throw new Error(
+      'DATABASE_URL must be set — every guest/registration/device-code path needs a database ' +
+        'connection on its very first request, in every environment; unlike the guest-session ' +
+        'secret or the field-encryption key there is no dev-only fallback that would actually ' +
+        'work here (see apps/api/.env.example, or docker-compose.yml for the local stack’s value).',
+    )
+  }
+
+  // Reject surrounding whitespace rather than trim it away (Musti's review, F5 —
+  // fixing a regression the first version of the F2 fix introduced): this resolver's
+  // return value is NOT the only place `DATABASE_URL` gets read. `PrismaService`
+  // extends `PrismaClient` with no explicit datasource override, so it resolves
+  // `env("DATABASE_URL")` straight out of `schema.prisma` — the RAW process
+  // environment, never through this function. A version of this resolver that
+  // trimmed and returned a different string than that raw value would make the guard
+  // check one string while the app connects with another; measured, end to end, with
+  // a real server and a real database: `DATABASE_URL="  postgres://…"` (leading
+  // whitespace only) passed this check when it trimmed-and-returned, then 500'd on
+  // the very first DB-touching request anyway — Prisma tolerates trailing whitespace
+  // in `env()`-sourced values but not leading. Silently normalising here would have
+  // to mutate `process.env` itself to keep the two paths looking at the same string,
+  // which breaks the pure `resolve*(env)` contract every sibling in this codebase
+  // relies on. Rejecting keeps the contract pure and keeps guard and app looking at
+  // the identical value: an operator who fat-fingers whitespace into their `.env`
+  // gets a synchronous, no-I/O, named config defect instead of either variant of the
+  // wrong-finding bug this file already fixed once.
+  if (raw !== raw.trim()) {
+    throw new Error(
+      'DATABASE_URL has surrounding whitespace — refusing to silently strip it, since that would ' +
+        'make this check pass a different string than the one PrismaClient actually connects with ' +
+        '(it reads DATABASE_URL straight from the raw process environment via schema.prisma, not ' +
+        'through this function). Remove the surrounding whitespace at the source (your .env file or ' +
+        'shell export).',
+    )
+  }
+
+  return raw
 }

@@ -33,9 +33,28 @@ describe('resolveDatabaseUrl', () => {
     expect(() => resolveDatabaseUrl({ DATABASE_URL: '\t\n' })).toThrow(/DATABASE_URL must be set/)
   })
 
-  it('trims incidental surrounding whitespace off an otherwise real value', () => {
-    expect(resolveDatabaseUrl({ DATABASE_URL: '  postgresql://u:p@localhost:5432/db  ' })).toBe(
-      'postgresql://u:p@localhost:5432/db',
+  // F5 (Musti's review): the first version of this fix trimmed-and-returned a padded
+  // value — which made this resolver check a different string than the one
+  // PrismaService actually connects with (it reads DATABASE_URL raw, via
+  // schema.prisma's env(), never through this function). Measured, real server, real
+  // database: a leading-whitespace DATABASE_URL passed the trim-based check, then
+  // 500'd on the first DB-touching request anyway — silently reintroducing the exact
+  // bug this file exists to close. Rejecting instead of normalising keeps guard and
+  // app looking at the identical value.
+  it('rejects a value with surrounding whitespace instead of silently trimming it — trimming would check a different string than PrismaService actually connects with', () => {
+    expect(() => resolveDatabaseUrl({ DATABASE_URL: '  postgresql://u:p@localhost:5432/db' })).toThrow(
+      /surrounding whitespace/,
     )
+    expect(() => resolveDatabaseUrl({ DATABASE_URL: 'postgresql://u:p@localhost:5432/db  ' })).toThrow(
+      /surrounding whitespace/,
+    )
+    expect(() => resolveDatabaseUrl({ DATABASE_URL: '  postgresql://u:p@localhost:5432/db  ' })).toThrow(
+      /surrounding whitespace/,
+    )
+  })
+
+  it('returns a value with no surrounding whitespace completely untouched', () => {
+    const value = 'postgresql://u:p@localhost:5432/db?schema=public'
+    expect(resolveDatabaseUrl({ DATABASE_URL: value })).toBe(value)
   })
 })

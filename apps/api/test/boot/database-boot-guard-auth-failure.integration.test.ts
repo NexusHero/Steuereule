@@ -80,6 +80,19 @@ describe('the real server, given a real database it cannot authenticate against'
       const controlClient = new PrismaClient({ datasources: { db: { url: realDatabaseUrl } } })
       try {
         await controlClient.$queryRaw`SELECT 1`
+      } catch (cause) {
+        // DX note (Musti's review): without this, a failure here surfaces as a bare
+        // PrismaClientInitializationError, and it's easy to misread that as "the
+        // guard under test is broken" rather than what it actually means — the
+        // integration-tier Postgres itself isn't up/reachable with the real
+        // credentials, so this test can't even establish its own precondition yet.
+        throw new Error(
+          'Positive control failed: could not reach the integration-tier database with its own real, ' +
+            'correct credentials. This points at your local/CI Postgres for `test:integration` being ' +
+            'down or misconfigured — not at a defect in assertDatabaseReachable/redactCause, the guard ' +
+            'this file actually tests.',
+          { cause },
+        )
       } finally {
         await controlClient.$disconnect()
       }
