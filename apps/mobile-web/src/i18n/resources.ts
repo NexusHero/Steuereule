@@ -51,9 +51,17 @@ export const appResources = {
         // copy). Wording follows the same voice Musti cited from AuthGeraete.jsx's own `fehler`
         // state (names the cause, takes the blame, reassures), generalised beyond "no QR code"
         // since this banner now also covers the login form — final wording is Suhay's to bless.
+        //
+        // #298 review, F2 — two bodies, not one: `bodyRetrying`'s "wir versuchen es automatisch
+        // weiter" is only true while the QR column actually has a retry scheduled
+        // (`autoRetryStatus === 'scheduled'`). At `bp === 's'` (or embedded usage) the column
+        // never even starts, and once §4(1)'s attempt cap is spent nothing is retrying either —
+        // `body` (no retry claim) is what shows then. LoginScreen picks between the two live,
+        // never both.
         apiUnreachable: {
           heading: 'Gerade nicht erreichbar — das liegt an uns.',
-          body: 'Unsere Server antworten nicht. Deine Daten sind sicher, es ist nichts verloren. Wir versuchen es automatisch weiter.',
+          body: 'Unsere Server antworten nicht. Deine Daten sind sicher, es ist nichts verloren.',
+          bodyRetrying: 'Unsere Server antworten nicht. Deine Daten sind sicher, es ist nichts verloren. Wir versuchen es automatisch weiter.',
         },
         // #238 — the QR column next to the login form. A phone that opens the code's URL uses
         // its own native camera + browser, never this app's camera — so there is nothing here
@@ -76,13 +84,25 @@ export const appResources = {
           // own specific copy, manual retry only, never the "that's on us" framing above.
           rateLimited: 'Gerade zu viele Anfragen. Versuch es in ein paar Sekunden noch mal.',
           retryingAuto: 'Wir versuchen es automatisch erneut …',
+          // #298 review, F1(b) — once the bounded auto-retry has genuinely given up (the attempt
+          // cap, not just a long delay), the copy must say so rather than keep claiming an
+          // ongoing retry that stopped.
+          retryExhausted: 'Die automatischen Versuche sind pausiert — bitte versuch es manuell noch einmal.',
           // #283 §5, state 3 ("knapp") — the amber pre-warning under 20s, and the ordinary
           // countdown otherwise. `{{time}}` is already formatted mm:ss.
           knapp: 'Läuft gleich ab — noch {{time}}',
           remaining: 'Gilt noch {{time}}',
           copy: 'Kopieren',
           copied: '✓ Kopiert',
-          noCamera: 'Keine Kamera? Öffne steuereule.de/koppeln auf dem Telefon und tipp den Code unterm Muster ein.',
+          // #298 review, F3 — dropped: the DS demo's "Keine Kamera? …tipp den Code ein" promises
+          // a manual-entry capability this product does not have. `steuereule.de/koppeln` isn't
+          // even the right domain/route (the real one is `/device?user_code=…`) — but fixing
+          // just the URL wouldn't make the claim true either: `DeviceScreen.tsx` has no
+          // code-entry field at all, and visiting `/device` without a `user_code` renders
+          // `device.missingCode` ("open the link/QR again"), which is worse than useless advice
+          // for someone who followed this exact line because they have no camera. Same
+          // discipline as "Passwort vergessen?" elsewhere in this file: a capability that
+          // doesn't exist doesn't ship copy promising it, DS reference notwithstanding.
           // #283 §5, state 7 — the confirmation beat before `onApproved` actually fires.
           approved: {
             heading: 'Das war’s — du bist drin.',
@@ -427,7 +447,8 @@ export const appResources = {
         errPass: 'At least 6 characters for the password.',
         apiUnreachable: {
           heading: "Not reachable right now — that's on us.",
-          body: "Our servers aren't answering. Your data is safe, nothing is lost. We're automatically trying again.",
+          body: "Our servers aren't answering. Your data is safe, nothing is lost.",
+          bodyRetrying: "Our servers aren't answering. Your data is safe, nothing is lost. We're automatically trying again.",
         },
         qr: {
           heading: 'Sign in with your phone',
@@ -441,11 +462,11 @@ export const appResources = {
           retry: 'Try again',
           rateLimited: 'Too many requests just now. Try again in a few seconds.',
           retryingAuto: 'Automatically trying again …',
+          retryExhausted: 'Automatic retries are paused — please try again yourself.',
           knapp: 'Expiring soon — {{time}} left',
           remaining: '{{time}} left',
           copy: 'Copy',
           copied: '✓ Copied',
-          noCamera: 'No camera? Open steuereule.de/koppeln on your phone and type in the code under the pattern.',
           approved: {
             heading: "That's it — you're in.",
             body: 'Approved via your phone. Your tax year is loading.',

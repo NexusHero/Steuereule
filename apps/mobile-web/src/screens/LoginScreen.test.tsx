@@ -3,7 +3,6 @@ import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@steuereule/ui'
 import { http, HttpResponse, delay } from 'msw'
-import { AccessibilityInfo } from 'react-native'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { server, CAPABILITIES_WITH_GOOGLE, CAPABILITIES_WITHOUT_SOCIAL, DEVICE_CODE_RESPONSE } from '../test-msw-server'
 import { getAuthCapabilitiesControllerGetCapabilitiesMockHandler } from '@steuereule/api-client/msw'
@@ -29,11 +28,12 @@ beforeEach(() => {
   // is tearing the previous test's tree down, and land on whichever side of that race lost (an
   // `act()` warning from a `useWindowDimensions` subscriber updating an unmounting component).
   setViewportWidth(0)
-  // The QR column's owl (#238, `useOwlEntranceAnimation`) queries the real
-  // `AccessibilityInfo.isReduceMotionEnabled()` otherwise, which resolves on a later tick than
-  // this file's assertions — an `act()` warning, not a real bug (SplashScreen.test.tsx mocks
-  // the same query for the same reason). Nothing in this file asserts on the entrance itself.
-  vi.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(true)
+  // #298 review, F6 — the `AccessibilityInfo.isReduceMotionEnabled()` mock this beforeEach used
+  // to carry here is gone, not just its comment: #283/C3 dropped the QR column's animated owl
+  // (the mock's only reason to exist in this file), and nothing else this file renders queries
+  // AccessibilityInfo. Removed rather than left with a corrected comment pointing at nothing —
+  // confirmed empirically, not assumed: this file's full suite runs clean without it, no new
+  // `act()` warnings.
 })
 
 afterEach(() => {
@@ -201,7 +201,11 @@ describe('LoginScreen', () => {
   // #283 AC-A — a genuine transport failure on the sign-in request now surfaces through the
   // single shared-outage alert (`login.apiUnreachable.*`), not a duplicate, form-local generic
   // string — "one cause, one message" applies here too, not just to the three-surface case.
-  it('shows the shared outage alert on a genuine network failure (not just a server-returned error)', async () => {
+  // #298 review, F2 — this test renders at the default (0px / `s`) viewport, where the QR column
+  // never starts (`deviceQrEnabled` is false there) and so nothing is actually auto-retrying —
+  // the banner must NOT claim it is. This is the exact scenario the finding was about: an
+  // earlier version of this very test asserted the false claim.
+  it('shows the shared outage alert on a genuine network failure, without a false auto-retry claim at the narrow breakpoint (#298 F2)', async () => {
     server.use(http.post(`${BASE_URL}/api/auth/sign-in/email`, () => HttpResponse.error()))
     const onDone = vi.fn()
     renderLogin({ onDone })
@@ -209,7 +213,8 @@ describe('LoginScreen', () => {
     fireEvent.click(screen.getByText('Einloggen'))
 
     await screen.findByText('Gerade nicht erreichbar — das liegt an uns.')
-    expect(screen.getByText('Unsere Server antworten nicht. Deine Daten sind sicher, es ist nichts verloren. Wir versuchen es automatisch weiter.')).toBeTruthy()
+    expect(screen.getByText('Unsere Server antworten nicht. Deine Daten sind sicher, es ist nichts verloren.')).toBeTruthy()
+    expect(screen.queryByText(/Wir versuchen es automatisch weiter/)).toBeNull()
     expect(onDone).not.toHaveBeenCalled()
   })
 
@@ -916,6 +921,10 @@ describe('LoginScreen', () => {
       // Exactly one — not the outage banner *plus* a separate password-field error, not a
       // second copy inside the QR column.
       expect(screen.getAllByRole('alert')).toHaveLength(1)
+      // #298 F2's other half: at THIS breakpoint the QR column really is retrying, so the
+      // banner's own "we're automatically trying again" claim is true here — mirrors the
+      // narrow-breakpoint test above, which is the case where it must NOT appear.
+      expect(screen.getByText('Unsere Server antworten nicht. Deine Daten sind sicher, es ist nichts verloren. Wir versuchen es automatisch weiter.')).toBeTruthy()
 
       // The Google slot doesn't just vanish — capabilities never answered either.
       expect(screen.getByText('Wir können gerade nicht prüfen, ob Google verfügbar ist.')).toBeTruthy()
@@ -1045,6 +1054,109 @@ describe('LoginScreen', () => {
       vi.clearAllTimers()
       vi.useRealTimers()
     })
+
+    // Musti's #298 review, F1 — the actual bug: `retryAttempt` reset to 0 on ANY non-error
+    // state, and `requestNewCode()` itself commits `{ kind: 'loading' }` before the mint
+    // resolves — so every automatic retry re-entered the effect via 'loading' first and reset
+    // the counter, and the backoff never grew (measured: a constant ~2300ms/attempt instead of
+    // doubling). Load-bearing detail this test gets right where the original code's own test
+    // suite didn't: the mock below genuinely DELAYS before rejecting (`delay(20)`), so the
+    // mutation resolves on a later macrotask and React actually commits the intermediate
+    // 'loading' render as its own frame — a *synchronous* `HttpResponse.error()` (what every
+    // other test in this file uses) can resolve within the same microtask flush as the
+    // `loading` state, and React 18's automatic batching then coalesces `loading` and the
+    // following `error` into ONE commit, skipping the render this bug depends on entirely. That
+    // is exactly why this bug shipped past this file's own suite the first time — confirmed
+    // directly: this test's own negative assertions (the "must still be N, not N+1" checks at
+    // just-under-the-expected-delay) fail correctly against the pre-fix code, and pass against
+    // the fix.
+    it('backs the retry delay off (2s → 4s → 8s → capped 16s) and stops after MAX_AUTO_RETRIES, never resetting mid-cycle (#298 F1)', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      let requests = 0
+      server.use(
+        http.post(`${BASE_URL}/v1/device/code`, async () => {
+          requests += 1
+          // The load-bearing detail (see comment above): a real delay, not a synchronous reject.
+          await delay(20)
+          return HttpResponse.error()
+        }),
+      )
+      setViewportWidth(1024)
+      renderLogin()
+
+      await screen.findByText('Wir versuchen es automatisch erneut …')
+      expect(requests).toBe(1)
+
+      // Advances fake time in small, fixed steps until `requests` reaches `target`, and returns
+      // how much fake time that actually took — measuring the GAP empirically rather than
+      // asserting a cumulative absolute boundary (which is where an earlier draft of this test
+      // got its own arithmetic wrong: `advanceTimersByTimeAsync` keeps ADDING to a running fake
+      // clock, it does not reset a per-checkpoint baseline). `shouldAdvanceTime` genuinely tracks
+      // wall-clock overhead too (this file's other tests already rely on it for
+      // `findByText`/`waitFor` polling to progress at all), so a fixed small step size is what
+      // keeps the measurement's own resolution well under the 2×/4×/8×/16000ms gaps it's trying
+      // to tell apart.
+      async function measureGapUntil(target: number, maxMs = 20_000, stepMs = 100): Promise<number> {
+        const steps = maxMs / stepMs
+        let elapsed = 0
+        for (let i = 0; i < steps; i += 1) {
+          await act(async () => {
+            await vi.advanceTimersByTimeAsync(stepMs)
+          })
+          elapsed += stepMs
+          if (requests >= target) return elapsed
+        }
+        throw new Error(`measureGapUntil: requests never reached ${target} within ${maxMs}ms (stuck at ${requests}).`)
+      }
+
+      // Each gap is measured from the PREVIOUS request's own failure (≈20ms mint delay) to the
+      // next mint firing — asserted against the expected backoff with a tolerance band wide
+      // enough to absorb that overhead and this environment's own scheduling jitter, but narrow
+      // enough that the reset bug (a constant ~2000-2300ms every time, per Musti's own
+      // measurement) cannot pass any of the later, larger-expected-gap checks.
+      const gap1to2 = await measureGapUntil(2) // expect ≈2000ms
+      expect(gap1to2).toBeGreaterThanOrEqual(1700)
+      expect(gap1to2).toBeLessThan(3000)
+
+      const gap2to3 = await measureGapUntil(3) // expect ≈4000ms — the reset bug caps this at ~2300
+      expect(gap2to3).toBeGreaterThanOrEqual(3400)
+      expect(gap2to3).toBeLessThan(5500)
+
+      const gap3to4 = await measureGapUntil(4) // expect ≈8000ms
+      expect(gap3to4).toBeGreaterThanOrEqual(7000)
+      expect(gap3to4).toBeLessThan(10_000)
+
+      const gap4to5 = await measureGapUntil(5) // expect ≈16000ms — RETRY_CAP_MS, not 16000×2
+      expect(gap4to5).toBeGreaterThanOrEqual(14_000)
+      expect(gap4to5).toBeLessThan(19_000)
+
+      const gap5to6 = await measureGapUntil(6) // still capped at ≈16000ms, not growing further
+      expect(gap5to6).toBeGreaterThanOrEqual(14_000)
+      expect(gap5to6).toBeLessThan(19_000)
+
+      const gap6to7 = await measureGapUntil(7) // the 6th and last automatic retry (MAX_AUTO_RETRIES)
+      expect(gap6to7).toBeGreaterThanOrEqual(14_000)
+      expect(gap6to7).toBeLessThan(19_000)
+
+      // The cap: 6 automatic retries have now happened (7 mints total). No further request
+      // fires on its own, no matter how long — this is the count cap Musti's F1(b) asked for,
+      // distinct from the per-retry delay cap proven above.
+      await screen.findByText('Die automatischen Versuche sind pausiert — bitte versuch es manuell noch einmal.')
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(60_000)
+      })
+      expect(requests).toBe(7)
+
+      // The manual way out still works after the cap — it isn't a dead end.
+      fireEvent.click(screen.getByText('Erneut versuchen'))
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(50)
+      })
+      expect(requests).toBe(8)
+
+      vi.clearAllTimers()
+      vi.useRealTimers()
+    }, 30_000)
 
     // #283 §5, state 3 ("knapp") — ADR-0021: the boundary is the point, not just "some amber
     // text shows eventually". At 21s remaining the ordinary countdown must still be showing;

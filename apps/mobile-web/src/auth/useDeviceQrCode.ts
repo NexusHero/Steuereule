@@ -60,13 +60,24 @@ export interface UseDeviceQrCodeResult {
   readonly state: DeviceQrState
   /** Re-requests a code — the honest way out of `denied`/`expired`/`error`, never a silent retry. */
   readonly requestNewCode: () => void
+  /** `null` outside `{ kind: 'error' }`. `'scheduled'`/`'exhausted'` only ever apply to
+   *  'unreachable'/'server' (§4(1)); 'rate-limited' is always `'none'` — ADR-0024's own brake,
+   *  never fought automatically, ever. The UI reads this rather than re-deriving it, so the copy
+   *  it shows ("we're retrying" vs. "retry yourself") can never drift from what actually happens. */
+  readonly autoRetryStatus: AutoRetryStatus | null
 }
 
 const APPROVED_BEAT_MS = 1500
-// Auto-retry backoff (§4(1)): starts at 2s, doubles, caps at 16s — bounded, and never applied to
-// 'rate-limited' (ADR-0024's own brake) or to 'expired'/'denied' (not `error` states at all).
+// Auto-retry backoff (§4(1)): starts at 2s, doubles, caps the PER-RETRY delay at 16s — and,
+// separately, caps the NUMBER of automatic retries at MAX_AUTO_RETRIES (Musti's #298 review,
+// F1(b) — a delay cap alone bounds how *slow* the hammering gets, not whether it ever stops).
+// After the cap, the column falls back to manual-only ("Erneut versuchen" stays live throughout
+// regardless) rather than retrying into a still-down server forever.
 const RETRY_BASE_MS = 2000
 const RETRY_CAP_MS = 16000
+const MAX_AUTO_RETRIES = 6
+
+export type AutoRetryStatus = 'scheduled' | 'exhausted' | 'none'
 
 /**
  * `POST /v1/device/token`'s OpenAPI contract only documents its 200 (`AckResponseDto`) — the
@@ -93,6 +104,7 @@ export function useDeviceQrCode(onApproved: () => void, enabled: boolean): UseDe
   const mintMutation = useDeviceControllerRequestCode()
   const tokenMutation = useDeviceControllerExchangeToken()
   const [state, setState] = useState<DeviceQrState>({ kind: 'loading' })
+  const [autoRetryStatus, setAutoRetryStatus] = useState<AutoRetryStatus | null>(null)
   // Plain `useRef`s, not TanStack Query's own retry/staleTime machinery: this is a one-shot
   // mint-then-poll-then-countdown sequence, not a value worth re-fetching on focus or a stale
   // clock — and the poll's own cadence is server-given (RFC 8628 `interval`), not TanStack
@@ -240,8 +252,27 @@ export function useDeviceQrCode(onApproved: () => void, enabled: boolean): UseDe
   // never `expired`/`denied` (answers, not failures). The manual "Erneut versuchen" affordance
   // stays available throughout — a user who just fixed their WiFi shouldn't have to wait out
   // the backoff.
+  //
+  // Musti's #298 review, F1 — the real bug: `retryAttempt` used to reset to 0 whenever `state`
+  // was NOT an auto-retryable error, and `requestNewCode()` itself commits `{ kind: 'loading' }`
+  // *before* the mint resolves — so every single automatic retry re-entered this effect via
+  // 'loading' first, reset the counter, and the backoff never actually grew: measured at a
+  // constant ~2300ms/attempt (base delay + overhead) rather than doubling. Confirmed synchronous
+  // MSW rejections (what this file's own tests used) never exposed it — React can commit
+  // 'loading' and the following 'error' in the same microtask flush, skipping the render this
+  // bug depended on; a *real* network round trip (or `delay(...)` in a test) never skips it. The
+  // fix has two parts, both required: (a) only genuine recovery resets the counter now — `ready`,
+  // not "any non-error state" — so passing through 'loading' on the way to the *next* failure no
+  // longer erases how many attempts already happened; (b) `MAX_AUTO_RETRIES` bounds the attempt
+  // COUNT, not just each individual delay — `RETRY_CAP_MS` alone only slows the hammering down to
+  // one request per 16s forever, it never stops it.
   useEffect(() => {
     if (state.kind === 'error' && (state.reason === 'unreachable' || state.reason === 'server')) {
+      if (retryAttempt.current >= MAX_AUTO_RETRIES) {
+        setAutoRetryStatus('exhausted')
+        return undefined
+      }
+      setAutoRetryStatus('scheduled')
       const backoffMs = Math.min(RETRY_BASE_MS * 2 ** retryAttempt.current, RETRY_CAP_MS)
       const timer = setTimeout(() => {
         retryAttempt.current += 1
@@ -249,7 +280,16 @@ export function useDeviceQrCode(onApproved: () => void, enabled: boolean): UseDe
       }, backoffMs)
       return () => clearTimeout(timer)
     }
-    retryAttempt.current = 0
+    if (state.kind === 'error' && state.reason === 'rate-limited') {
+      setAutoRetryStatus('none')
+      return undefined
+    }
+    // Only a genuine mint SUCCESS counts as recovery — passing through on the way to another
+    // failure (the exact bug above) must not look like one.
+    if (state.kind === 'ready') {
+      retryAttempt.current = 0
+    }
+    setAutoRetryStatus(null)
     return undefined
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `requestNewCode` reads the
     // mutations via refs; only a genuine `state` transition should (re)schedule a retry.
@@ -261,5 +301,5 @@ export function useDeviceQrCode(onApproved: () => void, enabled: boolean): UseDe
     }
   }, [])
 
-  return { state, requestNewCode }
+  return { state, requestNewCode, autoRetryStatus }
 }
