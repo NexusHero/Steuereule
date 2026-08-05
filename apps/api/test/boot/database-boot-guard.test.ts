@@ -1,4 +1,4 @@
-// The two negative cases ADR-0021 asks for before any "the guard holds" claim: this
+// The negative cases ADR-0021 asks for before any "the guard holds" claim: this
 // spawns the REAL production entry point (`tsx src/main.ts`, the same "run without a
 // build step" bridge ADR-0010a's smoke job uses for `dist/main.js`) as its own child
 // process, with an explicit, hand-built env — never `...process.env`. That's the
@@ -20,9 +20,19 @@
 //
 // The positive case (a real, reachable Postgres) is already covered by CI's `smoke`
 // job (ci.yml, boots `dist/main.js` against a live service-container Postgres) — no new
-// CI surface needed for it. What's missing, and what these two prove, is that the
-// process refuses to even get that far under the two broken conditions a stakeholder's
-// own docker setup can produce: the variable never set, and the variable set but wrong.
+// CI surface needed for it. What's missing, and what the first two cases prove, is that
+// the process refuses to even get that far under the two broken conditions a
+// stakeholder's own docker setup can produce: the variable never set, and the variable
+// set but wrong.
+//
+// The third case (the cleanup path) is CONFIRMATION, not proof, and the distinction
+// should not get lost later (Musti's review). Whether `$disconnect()` actually rejects
+// is environment-dependent: on a machine where it disconnects cleanly this case passes
+// WITHOUT ever exercising the cleanup path at all, and it is written to pass in that
+// situation on purpose rather than go red for the wrong reason. The proof is
+// `test/config/disconnect-quietly.test.ts`, whose stub always rejects — deterministic,
+// every run, everywhere. This case's job is to show the property surviving in the real
+// composed process, in the shape Salih actually hit.
 //
 // `runServer()` below captures BOTH stdout and stderr of the real child process into
 // one `output` string, and the credential assertions in the second case run against
@@ -46,6 +56,52 @@ interface RunResult {
   output: string
 }
 
+// THE INVARIANT (Salih's wording, and it belongs next to the numbers rather than in a
+// report): **the failsafe must always be shorter than the test that contains it.**
+//
+// Why it is load-bearing (Musti's F10, measured independently by both of them):
+// `runServer`'s failsafe is the only thing that kills a hung server. Vitest's per-case
+// timeout merely fails the case and walks away, leaving `tsx src/main.ts` alive and
+// holding its port — which turns the NEXT run red with `EADDRINUSE`, a failure that
+// looks like a defect in whatever is being reviewed. Musti lost time to exactly that in
+// this session; Salih then counted 20 orphaned servers on his machine from earlier
+// sessions, the oldest 1h44m old.
+//
+// The ordering used to hold by coincidence (15s < 20s) and broke when the failsafe was
+// raised to 30s for the cleanup-path case, leaving two of three cases with a failsafe
+// that could never be reached. Derived from one constant rather than written twice, so
+// the relationship cannot drift again: every case gets CASE_TIMEOUT_MS, which is
+// strictly greater than FAILSAFE_MS by construction. If you add a case, use
+// CASE_TIMEOUT_MS — do not write a literal.
+const FAILSAFE_MS = 30_000
+const CASE_TIMEOUT_MS = FAILSAFE_MS + 10_000
+
+/** Kills the spawned server's whole process GROUP, not just the process we hold a
+ *  handle to — and that distinction is the entire point (measured while fixing F10).
+ *
+ *  `tsxBin` is a CLI wrapper: it spawns the real `src/main.ts` server as a GRANDchild.
+ *  `child.kill()` therefore reaps the wrapper and leaves the server running, reparented
+ *  to init and still holding its port.
+ *
+ *  This is a second, independent mechanism behind the same symptom, and it predates the
+ *  timing bug rather than following from it. Measured with a deliberately hung guard:
+ *  fixing F10's timing alone still left 3 live servers behind at `ppid=1`, and so did
+ *  the ORIGINAL 15s harness in which the failsafe reliably won — it fired, it printed
+ *  its diagnostic, and it killed the wrong process every time. So the failsafe has never
+ *  actually reaped a hung server; the timing fix alone would only have restored the
+ *  message. That is the better explanation for orphans surviving across sessions.
+ *
+ *  `detached: true` above puts the wrapper and the server in their own process group,
+ *  and the negative pid signals the whole group. Verified: 0 survivors. */
+function killServerTree(child: ChildProcessWithoutNullStreams): void {
+  if (child.pid === undefined) return
+  try {
+    process.kill(-child.pid, 'SIGKILL')
+  } catch {
+    // Already gone, or the group outlived its leader — nothing left to reap.
+  }
+}
+
 /** Boots `src/main.ts` as a real child process under an explicit (never inherited)
  *  env, and waits for it to exit on its own — a guard that hangs instead of failing
  *  fast is exactly as broken as one that doesn't fire at all. */
@@ -57,6 +113,9 @@ function runServer(env: Record<string, string>): Promise<RunResult> {
       // cache lookups) are the only ambient values carried through; everything the
       // app itself reads is set explicitly below, per test.
       env: { PATH: process.env.PATH ?? '', HOME: process.env.HOME ?? '', ...env },
+      // `detached` makes this child a process-group leader so the failsafe can kill the
+      // GROUP. See killServerTree — without it the failsafe reaps the wrong process.
+      detached: true,
     })
 
     let output = ''
@@ -69,13 +128,13 @@ function runServer(env: Record<string, string>): Promise<RunResult> {
 
     // 30s, not 15s: the presence and connection-refused cases exit in ~3s, but the
     // cleanup-path case below deliberately drives Prisma into its own connection-pool
-    // timeout, measured at ~13s to exit. This failsafe exists to catch a guard that
-    // HANGS rather than failing fast, and 30s still does that with room for a slower
-    // CI runner — a tighter bound would turn that case red for the wrong reason.
+    // timeout, measured at ~13s to exit — a 15s bound would flake on a slower runner.
+    // This must stay strictly below every case's own timeout; see FAILSAFE_MS above for
+    // why that ordering is load-bearing rather than incidental.
     const failSafe = setTimeout(() => {
-      child.kill('SIGKILL')
+      killServerTree(child)
       reject(new Error(`server did not exit on its own within the test timeout — output so far:\n${output}`))
-    }, 30_000)
+    }, FAILSAFE_MS)
 
     child.on('error', (error) => {
       clearTimeout(failSafe)
@@ -114,7 +173,7 @@ describe('the real server refuses to start against a broken database configurati
       expect(code).not.toBe(0)
       expect(output).toMatch(/DATABASE_URL must be set/)
     },
-    20_000,
+    CASE_TIMEOUT_MS,
   )
 
   it(
@@ -135,7 +194,7 @@ describe('the real server refuses to start against a broken database configurati
       // findings and this run's actual defect is reachability, not presence.
       expect(output).not.toMatch(/DATABASE_URL must be set/)
     },
-    20_000,
+    CASE_TIMEOUT_MS,
   )
 
   // Salih's #275 test report, FAIL. The redaction and the finding both live in the
@@ -152,6 +211,15 @@ describe('the real server refuses to start against a broken database configurati
   // deterministic and needs no external network: with `?connect_timeout=30` the driver
   // stays inside its own connect window long past the 5s probe timeout, so the probe
   // throws and the disconnect on that half-open connection is what rejects.
+  //
+  // Salih's diagnosis of why this hid for five rounds, which is the part worth keeping:
+  // the trigger was never "unreachable host". `10.255.255.1` is a blackhole — packets
+  // are dropped with no RST — while `192.0.2.1` draws an ICMP unreachable and fails fast
+  // enough that the disconnect succeeds and nothing is wrong. The actual condition is
+  // **the probe expiring while the driver's connect is still in flight**, so fifteen of
+  // his sixteen canary shapes missed it for the same reason: they are built to fail
+  // FAST. A suite optimised for fast failure structurally cannot see a defect that only
+  // appears on slow failure — which is why this case buys its ~13s.
   //
   // What this asserts is the INVARIANT, not the mechanism — the finding survives
   // cleanup and nothing leaks. If some environment resolves the disconnect cleanly,
@@ -189,6 +257,6 @@ describe('the real server refuses to start against a broken database configurati
         await new Promise<void>((resolve) => stall.close(() => resolve()))
       }
     },
-    45_000,
+    CASE_TIMEOUT_MS,
   )
 })
