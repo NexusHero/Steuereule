@@ -20,11 +20,13 @@
 //   4. The two above must hold AT THE SAME TIME — N waiters on a *failing* launch
 //      (Musti's review, F1). Cases 1 and 2 each touch one side: case 1 is failure with
 //      a single caller, case 2 is concurrency on a launch that succeeds. Their
-//      intersection is where a fix of this shape typically breaks — the clear fires
-//      once per waiter, and the retry that follows opens the very herd `??=` exists to
-//      prevent. `getOrLaunch()`'s comment asserts "the clear runs exactly once no
-//      matter how many callers were waiting on it"; this is the case that makes that
-//      sentence a tested property instead of a claim.
+//      intersection is where a fix of this shape typically breaks: one shared attempt
+//      must still deliver the REAL failure to every waiter, and the retries that
+//      follow must share one new launch rather than opening the very herd `??=` exists
+//      to prevent. Note what it does not settle — whether the clear runs once per
+//      launch or once per waiting caller is NOT observable here; see the note inside
+//      that case for why this file cannot decide it, and why the choice is still not
+//      arbitrary.
 import { describe, expect, it } from 'vitest'
 import type { Browser } from 'playwright-core'
 import { PlaywrightPdfRenderer } from '../src/account/export/pdf-renderer.playwright.js'
@@ -135,9 +137,22 @@ describe('PlaywrightPdfRenderer — launch caching lifecycle (#285)', () => {
     expect(renderer.launchCalls).toBe(1)
 
     // And the retry after that failure is itself de-duplicated — three concurrent
-    // renders get ONE new launch (2 total), not one each (4 total). This is the half
-    // that reopens if the clear is done per-waiting-caller instead of once at the
-    // source of the failure.
+    // renders get ONE new launch (2 total), not one each (4 total).
+    //
+    // What this does NOT distinguish, so nobody reads more into it than it proves: the
+    // per-waiting-caller variant (a `try/catch` around the await, clearing there)
+    // passes every case in this file identically — measured, independently, twice.
+    // The two forms are equivalent in observable behaviour, which is precisely why the
+    // reason to prefer the one in `getOrLaunch()` belongs in a comment rather than in
+    // another case: it is checkable by reading, not by running. That per-caller clear
+    // is safe only because Node drains every continuation of the same rejected promise
+    // as microtasks before the next task runs, so no new caller can interleave between
+    // waiter 1's catch and waiter 2's. If one ever could, waiter 2 would reset the
+    // promise waiter 1's retry had just created — an orphaned in-flight launch nobody
+    // awaits or closes, plus a second Chromium nobody asked for. Clearing at the
+    // source has no such window at all: it happens once, before a new promise can
+    // exist. This form's safety is structural; the other's rests on a scheduling
+    // argument (Musti's review, F1).
     const retries = [renderer.renderPdf(HTML), renderer.renderPdf(HTML), renderer.renderPdf(HTML)]
     expect(renderer.launchCalls).toBe(2)
 
