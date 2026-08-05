@@ -38,7 +38,7 @@ import { authErrorKey } from '../auth/authErrors'
 import { useSocialSignIn } from '../auth/useSocialSignIn'
 import { useSocialSignInAvailable } from '../auth/useSocialSignInAvailable'
 import { useEmailVerified } from '../auth/useEmailVerified'
-import { useDeviceQrCode, type DeviceQrState } from '../auth/useDeviceQrCode'
+import { useDeviceQrCode, type DeviceQrState, type AutoRetryStatus } from '../auth/useDeviceQrCode'
 import { GoogleG } from '../icons/GoogleG'
 import { QrMark } from '../marks/QrMark'
 
@@ -100,7 +100,7 @@ export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true }
   // own `hasStarted` latch is what then keeps a later `s -> m` resize from burning a code that
   // already exists, or minting twice.
   const deviceQrEnabled = showDeviceQr && bp !== 's'
-  const { state: qrState, requestNewCode: requestNewQrCode } = useDeviceQrCode(onDone, deviceQrEnabled)
+  const { state: qrState, requestNewCode: requestNewQrCode, autoRetryStatus } = useDeviceQrCode(onDone, deviceQrEnabled)
 
   // AC-A — one cause, one message. Driven off the QR mint's own transport read (`useDeviceQrCode`
   // fires it the instant the screen mounts wide enough, before any user action), plus the login
@@ -110,6 +110,13 @@ export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true }
   const [formTransportError, setFormTransportError] = useState(false)
   const qrUnreachable = qrState.kind === 'error' && qrState.reason === 'unreachable'
   const apiUnreachable = qrUnreachable || formTransportError
+  // Musti's #298 review, F2 — the banner's "we're automatically retrying" sentence is only true
+  // while something is actually scheduled to retry. At `bp === 's'` (or embedded usage) the QR
+  // column never even starts (`deviceQrEnabled` is false), so `autoRetryStatus` stays `null`
+  // there forever — the banner must not claim an in-flight retry that structurally cannot exist.
+  // Same logic covers 'exhausted' (§4(1)'s attempt cap): once auto-retry has genuinely given up,
+  // the banner stops claiming it's still happening too.
+  const apiUnreachableAutoRetrying = autoRetryStatus === 'scheduled'
 
   const ok = mail.includes('@') && pass.length >= 6
 
@@ -242,7 +249,9 @@ export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true }
       {apiUnreachable ? (
         <View style={styles.outageBanner} accessibilityRole="alert">
           <Text style={styles.outageHeading}>{tr('login.apiUnreachable.heading')}</Text>
-          <Text style={styles.outageBody}>{tr('login.apiUnreachable.body')}</Text>
+          <Text style={styles.outageBody}>
+            {apiUnreachableAutoRetrying ? tr('login.apiUnreachable.bodyRetrying') : tr('login.apiUnreachable.body')}
+          </Text>
         </View>
       ) : null}
 
@@ -300,7 +309,15 @@ export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true }
       <PageHeader tr={tr} t={t} styles={styles} showDivider />
       <View style={styles.wideRow}>
         {formColumn}
-        <DeviceQrColumn t={t} tr={tr} styles={styles} state={qrState} requestNewCode={requestNewQrCode} apiUnreachable={apiUnreachable} />
+        <DeviceQrColumn
+          t={t}
+          tr={tr}
+          styles={styles}
+          state={qrState}
+          requestNewCode={requestNewQrCode}
+          apiUnreachable={apiUnreachable}
+          autoRetryStatus={autoRetryStatus}
+        />
       </View>
     </ScrollView>
   )
@@ -331,6 +348,10 @@ interface DeviceQrColumnProps {
    *  instead of repeating an unreachable-flavoured message of its own; it still shows that a
    *  retry is happening, just not why, a second time. */
   readonly apiUnreachable: boolean
+  /** The hook's own live answer to "is a retry actually scheduled right now" (#298 F2) — read
+   *  here rather than re-derived from `apiUnreachable`, so the copy can never claim more than
+   *  the state machine is actually doing. */
+  readonly autoRetryStatus: AutoRetryStatus | null
 }
 
 /**
@@ -339,7 +360,7 @@ interface DeviceQrColumnProps {
  * §4(2)) — this component is presentational, driven entirely by the `state`/`requestNewCode`
  * it's handed, so it can unmount/remount freely across the `s` boundary without losing anything.
  */
-function DeviceQrColumn({ t, tr, styles, state, requestNewCode, apiUnreachable }: DeviceQrColumnProps) {
+function DeviceQrColumn({ t, tr, styles, state, requestNewCode, apiUnreachable, autoRetryStatus }: DeviceQrColumnProps) {
   const knapp = state.kind === 'ready' && state.secondsRemaining <= 20
   const [kopiert, setKopiert] = useState(false)
   const kopiertTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
@@ -452,9 +473,15 @@ function DeviceQrColumn({ t, tr, styles, state, requestNewCode, apiUnreachable }
               </>
             ) : apiUnreachable ? (
               <>
-                <Text style={styles.qrStatusLabel}>{tr('login.qr.retryingAuto')}</Text>
-                {/* The auto-retry backing off is not a reason to take the manual way out away —
-                    a user who has just fixed their WiFi shouldn't have to wait out the backoff. */}
+                {/* #298 F2/F1(b) — this must say exactly what's actually happening: 'scheduled'
+                    while a retry is really pending, 'exhausted' once §4(1)'s attempt cap has
+                    given up on its own (never claim an ongoing retry that stopped). */}
+                <Text style={styles.qrStatusLabel}>
+                  {autoRetryStatus === 'exhausted' ? tr('login.qr.retryExhausted') : tr('login.qr.retryingAuto')}
+                </Text>
+                {/* The auto-retry backing off (or having given up) is not a reason to take the
+                    manual way out away — a user who has just fixed their WiFi shouldn't have to
+                    wait out the backoff, and once it's exhausted this is the only way left. */}
                 <Pressable accessibilityRole="button" onPress={requestNewCode}>
                   <Text style={styles.qrRetryLink}>{tr('login.qr.retry')}</Text>
                 </Pressable>
@@ -462,7 +489,9 @@ function DeviceQrColumn({ t, tr, styles, state, requestNewCode, apiUnreachable }
             ) : (
               <>
                 <Text style={styles.qrStatusLabel}>{tr('login.qr.error')}</Text>
-                <Text style={styles.qrRetryNote}>{tr('login.qr.retryingAuto')}</Text>
+                <Text style={styles.qrRetryNote}>
+                  {autoRetryStatus === 'exhausted' ? tr('login.qr.retryExhausted') : tr('login.qr.retryingAuto')}
+                </Text>
                 <Pressable accessibilityRole="button" onPress={requestNewCode}>
                   <Text style={styles.qrRetryLink}>{tr('login.qr.retry')}</Text>
                 </Pressable>
@@ -470,8 +499,6 @@ function DeviceQrColumn({ t, tr, styles, state, requestNewCode, apiUnreachable }
             )}
           </View>
         ) : null}
-
-        <Text style={styles.qrNoCamera}>{tr('login.qr.noCamera')}</Text>
       </Card>
     </View>
   )
@@ -490,11 +517,17 @@ interface PageHeaderProps {
 function PageHeader({ tr, t, styles, showDivider }: PageHeaderProps) {
   return (
     <View style={styles.header}>
-      <Text style={styles.wordmark} accessibilityRole="header">
+      {/* C2 — the wordmark is the page's real title now (level 1); the former greeting is
+          visually a subheading and, per Musti's #298 review (F8), must be one semantically
+          too — `role="heading"`/`aria-level` (react-native-web forwards both straight through,
+          RN's own `accessibilityRole="header"` alone maps to `role="heading"` but carries no
+          level, which the DOM/ARIA default to 2 regardless — explicit here so it's not an
+          accident of a spec default). */}
+      <Text style={styles.wordmark} role="heading" aria-level={1}>
         {tr('brand.steuer')}
         <Text style={{ color: t.color.funkeTinte }}>{tr('brand.eule')}</Text>
       </Text>
-      <Text style={styles.subheading}>
+      <Text style={styles.subheading} role="heading" aria-level={2}>
         {tr('login.greetingBefore')}
         <Text style={{ color: t.color.funkeTinte }}>{tr('login.greetingMark')}</Text>
         {tr('login.greetingAfter')}
@@ -562,7 +595,6 @@ function makeStyles(t: UiTheme) {
   const qrCopyChip: ViewStyle = { minHeight: 44, borderColor: t.color.nachtLinie, backgroundColor: 'transparent' }
   const qrCopyChipLabel: TextStyle = { fontSize: t.size.xs, fontWeight: t.weight.fett, color: t.color.nachtText }
   const qrRetryLink: TextStyle = { fontFamily: t.font.text, fontWeight: t.weight.schwer, fontSize: t.size.s, color: t.color.funke, textDecorationLine: 'underline', minHeight: 44, textAlignVertical: 'center' }
-  const qrNoCamera: TextStyle = { fontFamily: t.font.text, fontSize: t.size.xs, color: t.color.nachtText, opacity: 0.6, textAlign: 'center', marginTop: t.space.s4 }
   const qrApprovedBadge: ViewStyle = { width: 48, height: 48, borderRadius: 99, backgroundColor: t.color.funke, alignItems: 'center', justifyContent: 'center' }
   const qrApprovedCheck: TextStyle = { fontSize: t.size.l, fontWeight: t.weight.schwer, color: t.color.nacht }
   const qrLifetime: ViewStyle = { width: '100%', marginTop: t.space.s3, gap: t.space.s1 }
@@ -659,7 +691,6 @@ function makeStyles(t: UiTheme) {
     qrCopyChip,
     qrCopyChipLabel,
     qrRetryLink,
-    qrNoCamera,
     qrApprovedBadge,
     qrApprovedCheck,
     qrLifetime,

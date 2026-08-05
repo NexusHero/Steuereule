@@ -65,8 +65,12 @@ shell (Cockpit, Profil), with Datenschutz as a drill-down reached from Profil.
   region and time, and carries a standing statement that a code received by message is never
   approved here. That statement is a **control**, not reassurance: approving a code someone else
   claimed installs *their* session on *your* desktop — session fixation, not account takeover.
-- `LoginScreen` additionally carries the **open QR column** (`QrMark`, reusing the animated
-  `OwlMark`); the code is minted on page load, which is a deliberate trade recorded in ADR-0024.
+- `LoginScreen` additionally carries the **open QR column** (`QrMark`, the brand mark static
+  inside the QR pattern's own centre, per the Funke DS's dedicated reference — #283 dropped the
+  earlier animated `OwlMark` entrance once that reference existed); the code is minted on page
+  load, which is a deliberate trade recorded in ADR-0024. Its own mint/poll failures classify as
+  `unreachable`/`server`/`rate-limited` and drive a bounded, backing-off auto-retry — never on
+  the rate-limited case, which is ADR-0024's own brake, not a bug to route around.
 - `ProfilScreen` additionally carries the **device list** with per-entry revocation, and is the
   second consumer of the resolved region.
 - `CockpitScreen` — hero refund-estimate card plus honest loading/empty/error states; reads
