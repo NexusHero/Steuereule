@@ -5,9 +5,18 @@
 // deliberate break from every other test file in this suite: `vitest.config.ts`
 // injects a syntactically-valid `DATABASE_URL` into every in-process test's env before
 // any test body runs (see its own comment), so no test running inside that process
-// could ever observe "DATABASE_URL is unset" — the exact condition this guard exists
-// to catch. A real child process, given a real env object we control top to bottom, is
-// the only way to reach it.
+// could ever observe a broken `DATABASE_URL` at all — the exact condition this guard
+// exists to catch. A real child process is the only way to reach it.
+//
+// What that child's env is NOT is ours top to bottom (Musti's review, F7 — this comment
+// used to claim exactly that, and it was measurably false). `assert-database-reachable.ts`
+// imports `@prisma/client` at module top level, and the generated client merges
+// `apps/api/.env` into `process.env` at import time, before `bootstrap()` reads anything.
+// So on any machine that followed our documented local setup (`cp .env.example .env`) the
+// child inherits a whole `.env` we never handed it. What we DO control is precedence:
+// that merge only fills what is UNSET and never overrides — measured, an explicitly passed
+// value survives byte-for-byte, empty string included. Both cases below rest on that, and
+// neither depends on `.env` happening to be absent.
 //
 // The positive case (a real, reachable Postgres) is already covered by CI's `smoke`
 // job (ci.yml, boots `dist/main.js` against a live service-container Postgres) — no new
@@ -74,10 +83,27 @@ function runServer(env: Record<string, string>): Promise<RunResult> {
 }
 
 describe('the real server refuses to start against a broken database configuration', () => {
+  // EMPTY, not absent — and the name says so, because they are different inputs
+  // (Musti's review, F7). A genuinely-unset `DATABASE_URL` is not establishable from
+  // out here: `@prisma/client`'s import fills it in from `apps/api/.env` before
+  // `bootstrap()` reads it, and Prisma exposes no flag to skip that load. Passing `{}`
+  // — what this case used to do — therefore proved nothing on a machine with a `.env`:
+  // measured at this head with the documented local setup in place, the server booted
+  // clean and served `GET /v1/profile` → 200 while this assertion went red. It was
+  // green in CI only because CI has no `.env` on disk.
+  //
+  // An explicit `''` is the one broken input the merge cannot overwrite (measured:
+  // dotenv treats a set-but-empty key as present and leaves it alone), it reaches the
+  // same `!raw || raw.trim().length === 0` branch, and it produces the same presence
+  // finding — so the process-level evidence for the presence path is intact; it is now
+  // proven with an input this test can actually establish, on any machine, `.env` or
+  // not. Genuinely-undefined is covered where it IS reachable — at the function level,
+  // in `test/config/database-url.test.ts` (`resolveDatabaseUrl({})`), which imports no
+  // Prisma and so triggers no `.env` merge.
   it(
-    'DATABASE_URL unset → exits non-zero with the presence finding, not a silent boot',
+    'DATABASE_URL set but empty → exits non-zero with the presence finding, not a silent boot',
     async () => {
-      const { code, output } = await runServer({})
+      const { code, output } = await runServer({ DATABASE_URL: '' })
 
       expect(code).not.toBe(0)
       expect(output).toMatch(/DATABASE_URL must be set/)
