@@ -66,9 +66,18 @@ export class PlaywrightPdfRenderer implements PdfRenderer, OnModuleInit, OnModul
     //
     // Clearing the latch at the point of failure keeps both halves: in flight, one
     // shared promise; once rejected, gone, so the NEXT call is a real attempt again.
-    // The clear runs exactly once no matter how many callers were waiting on it, and
-    // it cannot clobber a later successful launch — a new one is only ever created
-    // after this assignment has already run.
+    // Both are pinned in pdf-renderer-launch-lifecycle.test.ts, including the case
+    // where they cross — N waiters on a FAILING launch: one shared attempt, the real
+    // launch error to every waiter, and their retries sharing ONE new launch rather
+    // than one each.
+    //
+    // Attaching the clear to the promise rather than to the awaiting caller means it
+    // runs once per launch instead of once per waiter. Measured, that difference is
+    // NOT observable through this class's interface — a per-caller `try/catch` clear
+    // passes every case above identically — so read it as the simpler shape, not as a
+    // property the tests establish. What they do establish is the consequence that
+    // matters: a new launch is only ever created after the clear has run, so no late
+    // clear can discard a later successful one.
     //
     // Deliberately no backoff or attempt cap: renderPdf() is request-bound, so a
     // failed launch surfaces as a failed request and the natural retry is the user
