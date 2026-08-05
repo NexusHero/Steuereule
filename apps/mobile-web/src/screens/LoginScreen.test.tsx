@@ -198,14 +198,18 @@ describe('LoginScreen', () => {
     await waitFor(() => expect(screen.queryByText('Wird geprüft …')).toBeNull())
   })
 
-  it('shows the honest generic error on a genuine network failure (not just a server-returned error)', async () => {
+  // #283 AC-A — a genuine transport failure on the sign-in request now surfaces through the
+  // single shared-outage alert (`login.apiUnreachable.*`), not a duplicate, form-local generic
+  // string — "one cause, one message" applies here too, not just to the three-surface case.
+  it('shows the shared outage alert on a genuine network failure (not just a server-returned error)', async () => {
     server.use(http.post(`${BASE_URL}/api/auth/sign-in/email`, () => HttpResponse.error()))
     const onDone = vi.fn()
     renderLogin({ onDone })
     fillCredentials()
     fireEvent.click(screen.getByText('Einloggen'))
 
-    await screen.findByText('Das hat gerade nicht geklappt. Prüf die Verbindung und versuch es noch mal.')
+    await screen.findByText('Gerade nicht erreichbar — das liegt an uns.')
+    expect(screen.getByText('Unsere Server antworten nicht. Deine Daten sind sicher, es ist nichts verloren. Wir versuchen es automatisch weiter.')).toBeTruthy()
     expect(onDone).not.toHaveBeenCalled()
   })
 
@@ -222,6 +226,9 @@ describe('LoginScreen', () => {
 
     await screen.findByText('E-Mail oder Passwort stimmen nicht.')
     expect(onDone).not.toHaveBeenCalled()
+    // #283 AC-B — a wrong password is a real answer, not a failure: it must never be merged
+    // into (or read as) the shared-outage alert.
+    expect(screen.queryByText('Gerade nicht erreichbar — das liegt an uns.')).toBeNull()
   })
 
   // REQ-005 — "while unverified, the UI honestly shows a 'please verify' state without
@@ -488,15 +495,19 @@ describe('LoginScreen', () => {
   // deployment (local dev, CI, a fresh server, staging before setup) would otherwise render
   // a Google button whose every press ends in "provider not found". The capability probe
   // says what this deployment can actually do, and the screen offers nothing it cannot.
-  it('does not offer Google sign-in when the deployment has no social provider configured', async () => {
+  // #283 §3(a) — a confirmed "not configured" answer is no longer silence: the DS's own honest
+  // fallback (auth.html) takes the button's place, and the divider stays (there is still content
+  // in that slot to separate the email form from).
+  it('shows the DS honest fallback instead of the Google button when the deployment has no social provider configured (#283)', async () => {
     server.use(getAuthCapabilitiesControllerGetCapabilitiesMockHandler(CAPABILITIES_WITHOUT_SOCIAL))
     renderLogin()
 
     // Email sign-in is unaffected — it always works, so it proves the screen rendered.
     await screen.findByPlaceholderText('du@beispiel.de')
     expect(screen.queryByText('Weiter mit Google')).toBeNull()
-    // With no social option above it, the divider has nothing left to divide.
-    expect(screen.queryByText('oder mit E-Mail')).toBeNull()
+    expect(await screen.findByText('Google ist auf diesem Gerät nicht eingerichtet — die anderen Wege stehen dir offen.')).toBeTruthy()
+    // The fallback notice takes the button's place — the divider still has content above it.
+    expect(screen.queryByText('oder mit E-Mail')).not.toBeNull()
   })
 
   it('does not offer Google sign-in while the capability probe is still unanswered', async () => {
@@ -565,7 +576,11 @@ describe('LoginScreen', () => {
       expect(screen.queryByLabelText('QR-Code zum Anmelden mit dem Handy')).toBeNull()
     })
 
-    it('shows an honest error state on a genuine network failure, with a real way to try again', async () => {
+    // #283 AC-A — a genuine transport failure on the mint is exactly the "unreachable" reason,
+    // which is also what drives the shared-outage banner: this column defers to it (its own
+    // prose stays just "retrying", not a repeated cause), but the manual way out stays right
+    // there regardless of the auto-retry running underneath it.
+    it('shows the shared-outage retry state on a genuine network failure, with a real way to try again (#283 AC-A)', async () => {
       let requests = 0
       server.use(
         http.post(`${BASE_URL}/v1/device/code`, () => {
@@ -576,21 +591,30 @@ describe('LoginScreen', () => {
       setViewportWidth(1024)
       renderLogin()
 
-      await screen.findByText('Code konnte nicht erzeugt werden.')
+      await screen.findByText('Wir versuchen es automatisch erneut …')
       expect(requests).toBe(1)
+      // The shared alert names the actual cause — the QR column itself deliberately doesn't
+      // repeat it.
+      expect(screen.getByText('Gerade nicht erreichbar — das liegt an uns.')).toBeTruthy()
+      expect(screen.queryByText('Code konnte nicht erzeugt werden.')).toBeNull()
 
       fireEvent.click(screen.getByText('Erneut versuchen'))
       await screen.findByLabelText('QR-Code zum Anmelden mit dem Handy')
       expect(requests).toBe(2)
+      expect(screen.queryByText('Gerade nicht erreichbar — das liegt an uns.')).toBeNull()
     })
 
-    it('shows an honest error state when the deployment answers with something other than 201 (e.g. rate-limited)', async () => {
+    // #283 AC-B — ADR-0024's own rate limit is an answer, not a failure: distinct copy, no
+    // outage banner, and (proven in the auto-retry describe block below) never an auto-retry.
+    it('shows a distinct rate-limited state when the deployment answers with 429 — not the generic/outage copy (#283 AC-B)', async () => {
       server.use(http.post(`${BASE_URL}/v1/device/code`, () => HttpResponse.json({}, { status: 429 })))
       setViewportWidth(1024)
       renderLogin()
 
-      await screen.findByText('Code konnte nicht erzeugt werden.')
+      await screen.findByText('Gerade zu viele Anfragen. Versuch es in ein paar Sekunden noch mal.')
       expect(screen.queryByLabelText('QR-Code zum Anmelden mit dem Handy')).toBeNull()
+      expect(screen.queryByText('Code konnte nicht erzeugt werden.')).toBeNull()
+      expect(screen.queryByText('Gerade nicht erreichbar — das liegt an uns.')).toBeNull()
     })
 
     it("marks the code expired once its lifetime elapses, and requests a genuinely new one on request, not a stale copy", async () => {
@@ -612,6 +636,9 @@ describe('LoginScreen', () => {
       })
       await screen.findByText('Code abgelaufen.')
       expect(screen.queryByLabelText('QR-Code zum Anmelden mit dem Handy')).toBeNull()
+      // #283 AC-B — an expiry is an honest answer (a code's own lifetime ran out), never the
+      // shared-outage alert.
+      expect(screen.queryByText('Gerade nicht erreichbar — das liegt an uns.')).toBeNull()
 
       fireEvent.click(screen.getByText('Neuen Code anzeigen'))
       await screen.findByLabelText('QR-Code zum Anmelden mit dem Handy')
@@ -667,6 +694,14 @@ describe('LoginScreen', () => {
           await vi.advanceTimersByTimeAsync(5500)
         })
         expect(tokenRequests).toBe(2)
+        // #283 §5, state 7 — the confirmation beat: approved is *shown*, `onDone` doesn't fire
+        // in the same tick the 200 arrives.
+        await screen.findByText('Das war’s — du bist drin.')
+        expect(onDone).not.toHaveBeenCalled()
+
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(1500)
+        })
         expect(onDone).toHaveBeenCalledTimes(1)
 
         vi.clearAllTimers()
@@ -720,12 +755,17 @@ describe('LoginScreen', () => {
         })
         await screen.findByText('Anmeldung wurde nicht bestätigt.')
         expect(screen.queryByText('Code konnte nicht erzeugt werden.')).toBeNull()
+        // #283 AC-B — a phone declining the code is a real answer, never the shared-outage alert.
+        expect(screen.queryByText('Gerade nicht erreichbar — das liegt an uns.')).toBeNull()
 
         vi.clearAllTimers()
         vi.useRealTimers()
       })
 
-      it('treats an unrecognised poll failure (e.g. a bare 429) as an honest error, never as "still pending" — and stops polling until retried', async () => {
+      // #283 AC-B — a bare 429 on the poll is ADR-0024's rate limit, not an outage: its own
+      // distinct copy, and — proven here — no auto-retry at all (the mint's own auto-retry
+      // effect explicitly excludes 'rate-limited', §4(1)).
+      it('treats an unrecognised poll failure (e.g. a bare 429) as a distinct rate-limited state, never "still pending" and never auto-retried', async () => {
         vi.useFakeTimers({ shouldAdvanceTime: true })
         let tokenRequests = 0
         server.use(
@@ -743,11 +783,13 @@ describe('LoginScreen', () => {
           await vi.advanceTimersByTimeAsync(5000)
         })
         expect(tokenRequests).toBe(1)
-        await screen.findByText('Code konnte nicht erzeugt werden.')
+        await screen.findByText('Gerade zu viele Anfragen. Versuch es in ein paar Sekunden noch mal.')
+        expect(screen.queryByText('Gerade nicht erreichbar — das liegt an uns.')).toBeNull()
         expect(onDone).not.toHaveBeenCalled()
 
         // No further poll fires on its own — an honest error state waits for a real retry,
-        // it doesn't quietly keep trying underneath a screen that says it failed.
+        // it doesn't quietly keep trying underneath a screen that says it failed. Same
+        // assertion also proves the hard ADR-0024 boundary: a 429 must never auto-retry.
         await act(async () => {
           await vi.advanceTimersByTimeAsync(30_000)
         })
@@ -850,6 +892,135 @@ describe('LoginScreen', () => {
         vi.clearAllTimers()
         vi.useRealTimers()
       })
+    })
+  })
+
+  // #283 — DS-fidelity/honesty refinement on top of #238 (Musti's refinement block, ADR-0018).
+  describe('#283 — shared-outage banner (AC-A/AC-B) and the resize/countdown fixes', () => {
+    // ADR-0021 — proving AC-A means proving it can actually go *wrong*: this drives all three
+    // surfaces (device-code mint, capabilities probe, email sign-in) into a genuine transport
+    // failure at once and checks there is exactly one alert on screen, not the union of what
+    // each surface would have said on its own.
+    it('AC-A: merges a genuine three-surface transport outage into exactly one alert, with the Google slot and QR column both deferring to it', async () => {
+      server.use(
+        http.post(`${BASE_URL}/v1/device/code`, () => HttpResponse.error()),
+        http.get(`${BASE_URL}/v1/auth/capabilities`, () => HttpResponse.error()),
+        http.post(`${BASE_URL}/api/auth/sign-in/email`, () => HttpResponse.error()),
+      )
+      setViewportWidth(1024)
+      renderLogin()
+      fillCredentials()
+      fireEvent.click(screen.getByText('Einloggen'))
+
+      await screen.findByText('Gerade nicht erreichbar — das liegt an uns.')
+      // Exactly one — not the outage banner *plus* a separate password-field error, not a
+      // second copy inside the QR column.
+      expect(screen.getAllByRole('alert')).toHaveLength(1)
+
+      // The Google slot doesn't just vanish — capabilities never answered either.
+      expect(screen.getByText('Wir können gerade nicht prüfen, ob Google verfügbar ist.')).toBeTruthy()
+      expect(screen.queryByText('Weiter mit Google')).toBeNull()
+
+      // The QR column defers to the shared alert (no repeated "server unreachable" prose) but
+      // still says it's retrying, and still offers a manual way out.
+      expect(screen.getByText('Wir versuchen es automatisch erneut …')).toBeTruthy()
+      expect(screen.queryByText('Code konnte nicht erzeugt werden.')).toBeNull()
+      expect(screen.getByText('Erneut versuchen')).toBeTruthy()
+    })
+
+    // The mirror image: each of AC-B's four real answers, one alert query each, proving the
+    // merge doesn't ever fire on an answer even when checked directly (not just "the old copy
+    // is absent" as in the tests above, but "no alert-role element at all beyond the surface's
+    // own specific one").
+    it('AC-B: a 429 on the mint never raises the shared alert, and offers only its own specific copy', async () => {
+      server.use(http.post(`${BASE_URL}/v1/device/code`, () => HttpResponse.json({}, { status: 429 })))
+      setViewportWidth(1024)
+      renderLogin()
+
+      await screen.findByText('Gerade zu viele Anfragen. Versuch es in ein paar Sekunden noch mal.')
+      const alerts = screen.getAllByRole('alert')
+      expect(alerts).toHaveLength(1)
+      expect(alerts[0]?.textContent).not.toMatch(/nicht erreichbar/)
+    })
+
+    // #283 §4(2) — the actual regression Musti found: crossing the `s`/`m` boundary used to
+    // unmount `DeviceQrColumn` (the hook lived inside it), burning a perfectly good code. The
+    // state machine now lives in `LoginScreen` itself, which never unmounts on a resize.
+    it('keeps a valid code across a resize below 768px and back — does not re-mint (#283 §4(2))', async () => {
+      let requests = 0
+      server.use(
+        http.post(`${BASE_URL}/v1/device/code`, () => {
+          requests += 1
+          return HttpResponse.json(DEVICE_CODE_RESPONSE, { status: 201 })
+        }),
+      )
+      setViewportWidth(1024)
+      renderLogin()
+      await screen.findByText(DEVICE_CODE_RESPONSE.userCode)
+      expect(requests).toBe(1)
+
+      // Narrow past the `s` boundary — the column itself still has no honest use there
+      // (unchanged, ADR-0014/§7), but the code underneath it must survive the round trip.
+      act(() => {
+        setViewportWidth(320)
+      })
+      await waitFor(() => expect(screen.queryByText('Mit dem Handy anmelden')).toBeNull())
+      expect(requests).toBe(1)
+
+      act(() => {
+        setViewportWidth(1024)
+      })
+      await screen.findByText(DEVICE_CODE_RESPONSE.userCode)
+      // The load-bearing assertion: still exactly one mint, not a second one from remounting.
+      expect(requests).toBe(1)
+    })
+
+    // A screen that never leaves `s` must still never request a code at all — the latch itself
+    // (not just the visual gating) has to stay closed when it's never had a reason to open.
+    it('still never requests a code if the screen never leaves the narrow breakpoint', async () => {
+      let requests = 0
+      server.use(
+        http.post(`${BASE_URL}/v1/device/code`, () => {
+          requests += 1
+          return HttpResponse.json(DEVICE_CODE_RESPONSE, { status: 201 })
+        }),
+      )
+      setViewportWidth(320)
+      renderLogin()
+      await screen.findByText('Einloggen')
+      act(() => {
+        setViewportWidth(500)
+      })
+      await screen.findByText('Einloggen')
+      expect(requests).toBe(0)
+    })
+
+    // #283 §5, state 3 ("knapp") — ADR-0021: the boundary is the point, not just "some amber
+    // text shows eventually". At 21s remaining the ordinary countdown must still be showing;
+    // one tick later, at exactly 20s, the pre-warning must have taken over — a `< 20` off-by-one
+    // would pass a looser assertion here but fail this one at the boundary itself.
+    it('shows the amber pre-warning at exactly 20s remaining, and the ordinary countdown before that', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      server.use(http.post(`${BASE_URL}/v1/device/code`, () => HttpResponse.json({ ...DEVICE_CODE_RESPONSE, expiresIn: 22, interval: 5 }, { status: 201 })))
+      setViewportWidth(1024)
+      renderLogin()
+      await screen.findByLabelText('QR-Code zum Anmelden mit dem Handy')
+      await screen.findByText('Gilt noch 0:22')
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1000)
+      })
+      await screen.findByText('Gilt noch 0:21')
+      expect(screen.queryByText(/Läuft gleich ab/)).toBeNull()
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1000)
+      })
+      await screen.findByText('Läuft gleich ab — noch 0:20')
+      expect(screen.queryByText('Gilt noch 0:20')).toBeNull()
+
+      vi.clearAllTimers()
+      vi.useRealTimers()
     })
   })
 

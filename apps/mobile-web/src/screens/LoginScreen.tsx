@@ -8,22 +8,27 @@
 //     in REQ-005's scope; a dead Pressable doesn't ship.
 //   - A real, honest "please verify your email" banner is added after a successful sign-in to an
 //     unverified account (REQ-005) — a case neither auth.html nor Auth.jsx shows at all.
-//   - A QR device-login column (#238) — no DS artifact shows this either; NexusHero's own ruling
-//     (not an invented pattern) puts it in its own column next to the form on `m`/`l`, derived
-//     from existing building blocks only: `Card` for the frame, the same owl entrance already
-//     running on Splash (`useOwlEntranceAnimation`, extracted from there rather than copied), and
-//     `QrMark` (react-native-svg, the same rendering technology OwlMark already uses). Absent on
-//     `s` — scanning a code with the same phone you're reading it on has no honest use, and there
-//     is nowhere near enough width for a second column at 375px.
+//   - A QR device-login column (#238) — no DS artifact showed this at the time; NexusHero's own
+//     ruling (not an invented pattern) put it in its own column next to the form on `m`/`l`,
+//     derived from existing building blocks only. #282/#283 later brought a dedicated reference
+//     (`AuthGeraete.jsx`) — see the #283 block below for what changed once it existed.
 //
-// Also used *embedded* (#238 AC-7): the device-approval flow renders this screen in place —
-// never navigates to it — when the phone opening `/device?user_code=…` has no session, so the
-// URL (and the pending code) survives the whole detour by construction. In that context
-// `onGuest`/`onRegister` are omitted and `showDeviceQr` is `false`: NexusHero's ruling on the
-// onRegister gap ("whoever has no account has nothing to release") applies identically to guest
-// mode, and a second, unrelated QR column minting its own device code makes no sense next to
-// "sign in to approve this one."
-import { useState } from 'react'
+// #283 (Musti's refinement block + the stakeholder's own ruling on the three collisions between
+// that reference and their stated wish, ADR-0018) — layout and honesty changes on top of #238:
+//   C1 (arrangement, decided *against* the reference): stays two columns — form left, a shared
+//     divider under the page title, QR right — because the *shipped* screen was already closer to
+//     the stakeholder's wish than `Auth.jsx`'s own single-column "Anderer Weg" pill arrangement.
+//   C2 (title): the wordmark is now the page's title, sitting above both columns; the former
+//     greeting ("Schön, dass du da bist.") steps down to a subheading under it. A text-hierarchy
+//     decision, not just a moved element.
+//   C3 (QR surface): the QR card now uses `Card variant="nacht"` — the DS's own device for making
+//     the second path unmistakable, not the default light card. The stakeholder weighed emphasis
+//     over surface-matching for this one, explicitly.
+//   The owl mark is dropped from above the QR card (no basis in the current reference — the DS
+//   puts the brand mark inside the QR pattern's own centre instead, `AuthGeraete.jsx:25-27`); a
+//   copy affordance and a "no camera" fallback line are added to the code, matching the reference.
+//   AC-A/AC-B (the shared-outage banner and its hard boundary) live in `apiUnreachable` below.
+import { useEffect, useRef, useState } from 'react'
 import { ScrollView, View, Text, Pressable, ActivityIndicator, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Button, Card, Input, Feld, Chip, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
@@ -33,11 +38,14 @@ import { authErrorKey } from '../auth/authErrors'
 import { useSocialSignIn } from '../auth/useSocialSignIn'
 import { useSocialSignInAvailable } from '../auth/useSocialSignInAvailable'
 import { useEmailVerified } from '../auth/useEmailVerified'
-import { useDeviceQrCode } from '../auth/useDeviceQrCode'
+import { useDeviceQrCode, type DeviceQrState } from '../auth/useDeviceQrCode'
 import { GoogleG } from '../icons/GoogleG'
-import { OwlMark } from '../marks/OwlMark'
-import { useOwlEntranceAnimation } from '../marks/useOwlEntranceAnimation'
 import { QrMark } from '../marks/QrMark'
+
+/** The real `t` function's type (with interpolation support) — used by every small subcomponent
+ *  below that takes `tr` as a prop, so a component that needs `tr(key, { … })` (the QR
+ *  countdown's `{{time}}`) doesn't need its own hand-rolled, narrower signature. */
+type Tr = ReturnType<typeof useTranslation<typeof APP_NS>>['t']
 
 export interface LoginScreenProps {
   readonly onDone: () => void
@@ -56,6 +64,13 @@ type Stage =
   | { readonly kind: 'form' }
   | { readonly kind: 'submitting' }
   | { readonly kind: 'unverified'; readonly email: string }
+
+function formatCountdown(seconds: number): string {
+  const clamped = Math.max(seconds, 0)
+  const m = Math.floor(clamped / 60)
+  const s = clamped % 60
+  return `${m}:${String(s).padStart(2, '0')}`
+}
 
 export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true }: LoginScreenProps) {
   const t = useTheme()
@@ -77,6 +92,25 @@ export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true }
   // routine path, not a race.
   const emailVerified = useEmailVerified(stage.kind === 'unverified' ? stage.email : undefined)
 
+  // #283 §3(c)/§4(2) — the QR device machine is owned here, at the screen's own top level, not
+  // inside `DeviceQrColumn`: `LoginScreen` is the one thing among the three surfaces (this form,
+  // the capability probe, the QR mint) that never unmounts on a resize, which is exactly why
+  // Musti's block names it as the seam rather than a provider. `enabled` is false whenever there
+  // is structurally no honest use for a code yet (`s`, or embedded usage) — `useDeviceQrCode`'s
+  // own `hasStarted` latch is what then keeps a later `s -> m` resize from burning a code that
+  // already exists, or minting twice.
+  const deviceQrEnabled = showDeviceQr && bp !== 's'
+  const { state: qrState, requestNewCode: requestNewQrCode } = useDeviceQrCode(onDone, deviceQrEnabled)
+
+  // AC-A — one cause, one message. Driven off the QR mint's own transport read (`useDeviceQrCode`
+  // fires it the instant the screen mounts wide enough, before any user action), plus the login
+  // form's own transport catch below. Deliberately narrow: AC-B is exactly as load-bearing as
+  // AC-A, so this must never go true on a real *answer* (wrong password, an expired/denied code,
+  // a 429) — only on a genuine "nothing answered" failure.
+  const [formTransportError, setFormTransportError] = useState(false)
+  const qrUnreachable = qrState.kind === 'error' && qrState.reason === 'unreachable'
+  const apiUnreachable = qrUnreachable || formTransportError
+
   const ok = mail.includes('@') && pass.length >= 6
 
   async function login() {
@@ -85,10 +119,12 @@ export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true }
       return
     }
     setFehler('')
+    setFormTransportError(false)
     setStage({ kind: 'submitting' })
     // better-auth's client only resolves to `{ data, error }` for a request that reached the
     // server; a genuine network failure (offline, DNS, CORS) rejects the promise instead — both
-    // must land on the same honest, generic error rather than an unhandled rejection.
+    // must land on an honest state rather than an unhandled rejection. Which honest state depends
+    // on whether the shared banner is already up (AC-A: one alert, not two) — see the render below.
     try {
       const { data, error } = await authClient.signIn.email({ email: mail, password: pass })
       if (error || !data) {
@@ -106,7 +142,7 @@ export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true }
       }
     } catch {
       setStage({ kind: 'form' })
-      setFehler(tr('auth.errGeneric'))
+      setFormTransportError(true)
     }
   }
 
@@ -132,7 +168,7 @@ export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true }
   if (stage.kind === 'unverified') {
     return (
       <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} keyboardShouldPersistTaps="handled" testID="screen-container">
-        <Brand tr={tr} t={t} />
+        <PageHeader tr={tr} t={t} styles={styles} showDivider={false} />
         {!emailVerified ? (
           <View style={styles.verifyBanner} accessibilityRole="alert">
             <Text style={styles.verifyHeading}>{tr('auth.verifyBanner.heading')}</Text>
@@ -160,41 +196,60 @@ export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true }
     )
   }
 
+  // AC-A — the password field's own inline error is suppressed while the shared banner is up:
+  // "exactly one alert naming the cause", not the same generic text twice.
+  const passwordFehler = apiUnreachable ? '' : fehler
+
   const formColumn = (
     <View style={bp === 's' ? undefined : styles.formColumn}>
-      <Brand tr={tr} t={t} />
-
-      <Text style={styles.heading}>
-        {tr('login.greetingBefore')}
-        <Text style={{ color: t.color.funkeTinte }}>{tr('login.greetingMark')}</Text>
-        {tr('login.greetingAfter')}
-      </Text>
-      <Text style={styles.subtitle}>{tr('login.subtitle')}</Text>
-
       {/* Only offered where the server says Google is actually configured (REQ-008) — a
           deployment without credentials must not show a button whose every press fails.
-          The divider goes with it: with no social option above, there is nothing to
-          divide the email form from. */}
-      {googleAvailable ? (
+          `not-configured` gets the DS's own honest fallback (`auth.html`) rather than silently
+          vanishing; `unknown` alone (still probing) stays silent to avoid a flicker, but once
+          the shared banner is up (AC-A) it too gets an honest "can't tell right now" line rather
+          than disappearing without trace. */}
+      {googleAvailable === 'available' ? (
         <>
           <View style={styles.socialButtons}>
             <Button variante="ghost" onPress={() => void googleSignIn()} disabled={socialSubmitting || stage.kind === 'submitting'}>
               <GoogleG /> {tr('login.google')}
             </Button>
           </View>
-
-          <View style={styles.dividerRow} accessibilityRole="none">
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerLabel}>{tr('login.orEmail')}</Text>
-            <View style={styles.dividerLine} />
-          </View>
+          <SocialDivider tr={tr} styles={styles} />
         </>
+      ) : googleAvailable === 'not-configured' ? (
+        <>
+          <View style={styles.socialFallback} accessibilityRole="text">
+            <View style={styles.socialFallbackIcon}>
+              <GoogleG />
+            </View>
+            <Text style={styles.socialFallbackText}>{tr('login.googleNotConfigured')}</Text>
+          </View>
+          <SocialDivider tr={tr} styles={styles} />
+        </>
+      ) : apiUnreachable ? (
+        <>
+          <View style={styles.socialFallback} accessibilityRole="text">
+            <View style={styles.socialFallbackIcon}>
+              <GoogleG />
+            </View>
+            <Text style={styles.socialFallbackText}>{tr('login.googleUnknown')}</Text>
+          </View>
+          <SocialDivider tr={tr} styles={styles} />
+        </>
+      ) : null}
+
+      {apiUnreachable ? (
+        <View style={styles.outageBanner} accessibilityRole="alert">
+          <Text style={styles.outageHeading}>{tr('login.apiUnreachable.heading')}</Text>
+          <Text style={styles.outageBody}>{tr('login.apiUnreachable.body')}</Text>
+        </View>
       ) : null}
 
       <Feld label={tr('login.emailLabel')}>
         <Input type="email" value={mail} onChange={setMail} placeholder={tr('login.emailPlaceholder')} />
       </Feld>
-      <Feld label={tr('login.passwordLabel')} fehler={fehler}>
+      <Feld label={tr('login.passwordLabel')} fehler={passwordFehler}>
         <Input type="password" value={pass} onChange={setPass} placeholder="••••••••" onSubmit={() => void login()} />
       </Feld>
       <Button onPress={() => void login()} disabled={stage.kind === 'submitting'}>
@@ -229,66 +284,132 @@ export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true }
   // have to scan its own screen) — `useBreakpoint` is called once, at this screen's root
   // (ADR-0014), and this is the one structural switch it drives. `showDeviceQr` folds into the
   // same switch rather than a second one: embedded usage (#238 AC-7) never wants the column,
-  // regardless of width.
+  // regardless of width. The QR *state machine* itself (`qrState` above) is unaffected by any of
+  // this — only its visual column is conditionally rendered here.
   if (bp === 's' || !showDeviceQr) {
     return (
       <ScrollView contentContainerStyle={styles.screen} keyboardShouldPersistTaps="handled" testID="screen-container">
+        <PageHeader tr={tr} t={t} styles={styles} showDivider={false} />
         {formColumn}
       </ScrollView>
     )
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.wideRow} keyboardShouldPersistTaps="handled" testID="screen-container">
-      {formColumn}
-      <DeviceQrColumn t={t} tr={tr} styles={styles} onApproved={onDone} />
+    <ScrollView contentContainerStyle={styles.wideScreen} keyboardShouldPersistTaps="handled" testID="screen-container">
+      <PageHeader tr={tr} t={t} styles={styles} showDivider />
+      <View style={styles.wideRow}>
+        {formColumn}
+        <DeviceQrColumn t={t} tr={tr} styles={styles} state={qrState} requestNewCode={requestNewQrCode} apiUnreachable={apiUnreachable} />
+      </View>
     </ScrollView>
+  )
+}
+
+interface SocialDividerProps {
+  readonly tr: Tr
+  readonly styles: ReturnType<typeof makeStyles>
+}
+
+function SocialDivider({ tr, styles }: SocialDividerProps) {
+  return (
+    <View style={styles.dividerRow} accessibilityRole="none">
+      <View style={styles.dividerLine} />
+      <Text style={styles.dividerLabel}>{tr('login.orEmail')}</Text>
+      <View style={styles.dividerLine} />
+    </View>
   )
 }
 
 interface DeviceQrColumnProps {
   readonly t: UiTheme
-  readonly tr: (key: string) => string
+  readonly tr: Tr
   readonly styles: ReturnType<typeof makeStyles>
-  /** Fires once the phone has approved this exact code and the desktop's own session cookie is
-   *  already set (`useDeviceQrCode`'s polling loop, task 6) — the same `onDone` a real
-   *  email/social sign-in calls, so a QR sign-in lands in the same place a typed-password one
-   *  does (REQ-009 is still pending a dedicated "already signed in" landing; this reuses
-   *  whatever Login's own `onDone` already does today, deliberately, rather than inventing a
-   *  second destination). */
-  readonly onApproved: () => void
+  readonly state: DeviceQrState
+  readonly requestNewCode: () => void
+  /** AC-A — while the shared banner above already names the cause, this column defers to it
+   *  instead of repeating an unreachable-flavoured message of its own; it still shows that a
+   *  retry is happening, just not why, a second time. */
+  readonly apiUnreachable: boolean
 }
 
 /**
- * The Login screen's QR device-login column (#238) — derived entirely from existing building
- * blocks (Card for the frame, the owl's existing entrance, QrMark's react-native-svg rendering),
- * per NexusHero's ruling that no new DS pattern gets invented here. Requests a real code the
- * moment it mounts (ADR-0003/0005) via `useDeviceQrCode`; every state below is honest — a
- * loading code never shows a blank frame, an expired, denied, or failed one never keeps showing
- * a code that no longer works.
+ * The Login screen's QR device-login column (#238, restyled to `AuthGeraete.jsx`'s `nacht`
+ * surface per #283/C3). The state machine itself lives in `LoginScreen` (`useDeviceQrCode`,
+ * §4(2)) — this component is presentational, driven entirely by the `state`/`requestNewCode`
+ * it's handed, so it can unmount/remount freely across the `s` boundary without losing anything.
  */
-function DeviceQrColumn({ t, tr, styles, onApproved }: DeviceQrColumnProps) {
-  const { state, requestNewCode } = useDeviceQrCode(onApproved)
-  const owl = useOwlEntranceAnimation()
+function DeviceQrColumn({ t, tr, styles, state, requestNewCode, apiUnreachable }: DeviceQrColumnProps) {
+  const knapp = state.kind === 'ready' && state.secondsRemaining <= 20
+  const [kopiert, setKopiert] = useState(false)
+  const kopiertTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
+
+  useEffect(() => () => clearTimeout(kopiertTimer.current), [])
+
+  function copyCode(code: string) {
+    try {
+      void navigator.clipboard?.writeText(code)
+    } catch {
+      // Best-effort — a missing/blocked Clipboard API must not break the affordance itself; the
+      // code is already right there, mono and selectable, as a fallback.
+    }
+    setKopiert(true)
+    clearTimeout(kopiertTimer.current)
+    kopiertTimer.current = setTimeout(() => setKopiert(false), 1400)
+  }
 
   return (
     <View style={styles.qrColumn}>
-      <Card style={styles.qrCard}>
-        <OwlMark size={56} headStyle={owl.headStyle} glassesStyle={owl.glassesStyle} lidStyle={owl.lidStyle} />
+      <Card variant="nacht" style={styles.qrCard} testID="qr-card">
         <Text style={styles.qrHeading}>{tr('login.qr.heading')}</Text>
         <Text style={styles.qrBody}>{tr('login.qr.body')}</Text>
 
         {state.kind === 'loading' ? (
           <View style={styles.qrFrame}>
-            <ActivityIndicator size="small" color={t.color.tinte} />
+            <ActivityIndicator size="small" color={t.color.funke} />
             <Text style={styles.qrStatusLabel}>{tr('login.qr.loading')}</Text>
           </View>
         ) : null}
 
         {state.kind === 'ready' ? (
           <View style={styles.qrFrame}>
-            <QrMark value={state.verificationUriComplete} size={144} accessibilityLabel={tr('login.qr.accessibilityLabel')} />
-            <Text style={styles.qrCode}>{state.userCode}</Text>
+            <QrMark value={state.verificationUriComplete} size={144} accessibilityLabel={tr('login.qr.accessibilityLabel')} brandMark />
+            <View style={styles.qrCodeRow}>
+              <Text style={styles.qrCode}>{state.userCode}</Text>
+              <Chip
+                onPress={() => copyCode(state.userCode)}
+                style={styles.qrCopyChip}
+                testID="qr-copy-chip"
+              >
+                <Text style={styles.qrCopyChipLabel}>{kopiert ? tr('login.qr.copied') : tr('login.qr.copy')}</Text>
+              </Chip>
+            </View>
+            {/* The lifetime bar (§5, state 3 `knapp`) — visible, honest, with an amber
+                pre-warning under 20s, not just a silent expiry event. */}
+            <View style={styles.qrLifetime} accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: state.totalSeconds, now: state.secondsRemaining }}>
+              <View style={[styles.qrLifetimeTrack]}>
+                <View
+                  style={[
+                    styles.qrLifetimeFill,
+                    { width: `${(state.secondsRemaining / state.totalSeconds) * 100}%` },
+                    knapp && styles.qrLifetimeFillKnapp,
+                  ]}
+                />
+              </View>
+              <Text style={[styles.qrLifetimeLabel, knapp && styles.qrLifetimeLabelKnapp]}>
+                {knapp ? tr('login.qr.knapp', { time: formatCountdown(state.secondsRemaining) }) : tr('login.qr.remaining', { time: formatCountdown(state.secondsRemaining) })}
+              </Text>
+            </View>
+          </View>
+        ) : null}
+
+        {state.kind === 'approved' ? (
+          <View style={styles.qrFrame} accessibilityRole="alert">
+            <View style={styles.qrApprovedBadge}>
+              <Text style={styles.qrApprovedCheck}>✓</Text>
+            </View>
+            <Text style={styles.qrStatusHeading}>{tr('login.qr.approved.heading')}</Text>
+            <Text style={styles.qrStatusLabel}>{tr('login.qr.approved.body')}</Text>
           </View>
         ) : null}
 
@@ -311,31 +432,75 @@ function DeviceQrColumn({ t, tr, styles, onApproved }: DeviceQrColumnProps) {
         ) : null}
 
         {state.kind === 'error' ? (
-          <View style={styles.qrFrame} accessibilityRole="alert">
-            <Text style={styles.qrStatusLabel}>{tr('login.qr.error')}</Text>
-            <Pressable accessibilityRole="button" onPress={requestNewCode}>
-              <Text style={styles.qrRetryLink}>{tr('login.qr.retry')}</Text>
-            </Pressable>
+          // AC-A: "exactly one alert" is an accessibility contract, not just a visual one — while
+          // the shared banner above already owns the `alert` announcement, this frame doesn't
+          // duplicate it (no role at all beyond the manual retry's own `button`) *only* when it's
+          // actually deferring to that banner. 'rate-limited' never defers (AC-B: it must keep
+          // its own specific copy and its own announcement even if some other surface happens to
+          // be down at the same time) — checked by reason, not by the blanket `apiUnreachable`.
+          <View style={styles.qrFrame} accessibilityRole={apiUnreachable && state.reason !== 'rate-limited' ? 'none' : 'alert'}>
+            {/* AC-A: while the shared banner above is up, this defers to it — no repeated
+                "we can't reach the server" prose, just that a retry is under way. AC-B/ADR-0024:
+                'rate-limited' never says that, and never auto-retries — its own specific copy,
+                manual retry only. */}
+            {state.reason === 'rate-limited' ? (
+              <>
+                <Text style={styles.qrStatusLabel}>{tr('login.qr.rateLimited')}</Text>
+                <Pressable accessibilityRole="button" onPress={requestNewCode}>
+                  <Text style={styles.qrRetryLink}>{tr('login.qr.retry')}</Text>
+                </Pressable>
+              </>
+            ) : apiUnreachable ? (
+              <>
+                <Text style={styles.qrStatusLabel}>{tr('login.qr.retryingAuto')}</Text>
+                {/* The auto-retry backing off is not a reason to take the manual way out away —
+                    a user who has just fixed their WiFi shouldn't have to wait out the backoff. */}
+                <Pressable accessibilityRole="button" onPress={requestNewCode}>
+                  <Text style={styles.qrRetryLink}>{tr('login.qr.retry')}</Text>
+                </Pressable>
+              </>
+            ) : (
+              <>
+                <Text style={styles.qrStatusLabel}>{tr('login.qr.error')}</Text>
+                <Text style={styles.qrRetryNote}>{tr('login.qr.retryingAuto')}</Text>
+                <Pressable accessibilityRole="button" onPress={requestNewCode}>
+                  <Text style={styles.qrRetryLink}>{tr('login.qr.retry')}</Text>
+                </Pressable>
+              </>
+            )}
           </View>
         ) : null}
+
+        <Text style={styles.qrNoCamera}>{tr('login.qr.noCamera')}</Text>
       </Card>
     </View>
   )
 }
 
-interface BrandProps {
-  readonly tr: (key: string) => string
+interface PageHeaderProps {
+  readonly tr: Tr
   readonly t: UiTheme
+  readonly styles: ReturnType<typeof makeStyles>
+  /** C1/C2 (#283, stakeholder ruling) — the wordmark is the page's title, sitting above both
+   *  columns, with a shared divider underneath when there actually are two columns to share it.
+   *  At `s` (one column) or on the unverified stage there is nothing to divide. */
+  readonly showDivider: boolean
 }
 
-function Brand({ tr, t }: BrandProps) {
-  const wordmark: TextStyle = { fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size.xl, color: t.color.tinte }
+function PageHeader({ tr, t, styles, showDivider }: PageHeaderProps) {
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.s2, marginBottom: t.space.s5 }}>
-      <Text style={wordmark}>
+    <View style={styles.header}>
+      <Text style={styles.wordmark} accessibilityRole="header">
         {tr('brand.steuer')}
         <Text style={{ color: t.color.funkeTinte }}>{tr('brand.eule')}</Text>
       </Text>
+      <Text style={styles.subheading}>
+        {tr('login.greetingBefore')}
+        <Text style={{ color: t.color.funkeTinte }}>{tr('login.greetingMark')}</Text>
+        {tr('login.greetingAfter')}
+      </Text>
+      <Text style={styles.subtitle}>{tr('login.subtitle')}</Text>
+      {showDivider ? <View style={styles.headerDivider} /> : null}
     </View>
   )
 }
@@ -359,33 +524,71 @@ function makeStyles(t: UiTheme) {
   // this) — the form keeps its own established width via `formColumn`, the QR column takes the
   // rest up to the same `WIDE_CONTENT_MAX_WIDTH` every other wide layout in this app uses.
   const wideRow: ViewStyle = {
-    ...wideScreen,
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: t.space.s6,
     justifyContent: 'center',
+    width: '100%',
   }
+  const header: ViewStyle = { width: '100%' }
+  // C2 — the wordmark is now the page's title: the same weight/size the old inline greeting
+  // heading used to carry, promoted here instead of staying a small brand lockup.
+  const wordmark: TextStyle = { fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size['3xl'], color: t.color.tinte, marginBottom: t.space.s2 }
+  // The former page title, demoted to a subheading under the wordmark (C2's stated side effect).
+  const subheading: TextStyle = { fontFamily: t.font.text, fontWeight: t.weight.schwer, fontSize: t.size.l, color: t.color.tinte, marginBottom: t.space.s1 }
+  const subtitle: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.m }
+  const headerDivider: ViewStyle = { height: 2, backgroundColor: t.color.linieWeich, borderRadius: 1, marginTop: t.space.s5, marginBottom: t.space.s5, width: '100%' }
   const formColumn: ViewStyle = { width: '100%', maxWidth: 460, flexShrink: 1 }
-  const qrColumn: ViewStyle = { width: '100%', maxWidth: 280, flexShrink: 0 }
+  const qrColumn: ViewStyle = { width: '100%', maxWidth: 320, flexShrink: 0 }
   const qrCard: ViewStyle = { alignItems: 'center', marginBottom: 0 }
   const qrHeading: TextStyle = {
     fontFamily: t.font.text,
     fontWeight: t.weight.schwer,
     fontSize: t.size.m,
-    color: t.color.tinte,
+    color: t.color.nachtText,
     textAlign: 'center',
-    marginTop: t.space.s2,
   }
-  const qrBody: TextStyle = { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte2, textAlign: 'center', marginTop: t.space.s1, marginBottom: t.space.s4 }
+  const qrBody: TextStyle = { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.nachtText, opacity: 0.8, textAlign: 'center', marginTop: t.space.s1, marginBottom: t.space.s4 }
   // Fixed footprint regardless of state (loading spinner / QR / expired or error message) so the
   // column doesn't jump around as the request resolves.
-  const qrFrame: ViewStyle = { alignItems: 'center', justifyContent: 'center', minHeight: 144, gap: t.space.s2 }
-  const qrStatusLabel: TextStyle = { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte2, textAlign: 'center' }
-  const qrCode: TextStyle = { fontFamily: t.font.mono, fontSize: t.size.l, fontWeight: t.weight.schwer, color: t.color.tinte, letterSpacing: 2 }
-  const qrRetryLink: TextStyle = { fontFamily: t.font.text, fontWeight: t.weight.schwer, fontSize: t.size.s, color: t.color.tinte, textDecorationLine: 'underline', minHeight: 44, textAlignVertical: 'center' }
-  const heading: TextStyle = { fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size['3xl'], color: t.color.tinte, marginBottom: t.space.s2 }
-  const subtitle: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.m, marginBottom: t.space.s5 }
+  const qrFrame: ViewStyle = { alignItems: 'center', justifyContent: 'center', minHeight: 144, gap: t.space.s2, width: '100%' }
+  const qrStatusLabel: TextStyle = { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.nachtText, opacity: 0.85, textAlign: 'center' }
+  const qrStatusHeading: TextStyle = { fontFamily: t.font.text, fontWeight: t.weight.schwer, fontSize: t.size.m, color: t.color.nachtText, textAlign: 'center' }
+  const qrRetryNote: TextStyle = { fontFamily: t.font.text, fontSize: t.size.xs, color: t.color.nachtText, opacity: 0.6, textAlign: 'center' }
+  const qrCodeRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s2, marginTop: t.space.s3 }
+  const qrCode: TextStyle = { fontFamily: t.font.mono, fontSize: t.size.l, fontWeight: t.weight.schwer, color: t.color.funke, letterSpacing: 2, fontVariant: ['tabular-nums'] }
+  // The reference's own copy chip is 30px tall (`AuthGeraete.jsx:130`) — not ported: touch
+  // targets stay ≥44px (this file's own accessibility rule) even where the DS demo is smaller.
+  const qrCopyChip: ViewStyle = { minHeight: 44, borderColor: t.color.nachtLinie, backgroundColor: 'transparent' }
+  const qrCopyChipLabel: TextStyle = { fontSize: t.size.xs, fontWeight: t.weight.fett, color: t.color.nachtText }
+  const qrRetryLink: TextStyle = { fontFamily: t.font.text, fontWeight: t.weight.schwer, fontSize: t.size.s, color: t.color.funke, textDecorationLine: 'underline', minHeight: 44, textAlignVertical: 'center' }
+  const qrNoCamera: TextStyle = { fontFamily: t.font.text, fontSize: t.size.xs, color: t.color.nachtText, opacity: 0.6, textAlign: 'center', marginTop: t.space.s4 }
+  const qrApprovedBadge: ViewStyle = { width: 48, height: 48, borderRadius: 99, backgroundColor: t.color.funke, alignItems: 'center', justifyContent: 'center' }
+  const qrApprovedCheck: TextStyle = { fontSize: t.size.l, fontWeight: t.weight.schwer, color: t.color.nacht }
+  const qrLifetime: ViewStyle = { width: '100%', marginTop: t.space.s3, gap: t.space.s1 }
+  const qrLifetimeTrack: ViewStyle = { height: 5, borderRadius: 99, backgroundColor: t.color.nachtLinie, overflow: 'hidden', width: '100%' }
+  const qrLifetimeFill: ViewStyle = { height: '100%', backgroundColor: t.color.funke, borderRadius: 99 }
+  const qrLifetimeFillKnapp: ViewStyle = { backgroundColor: t.color.warn }
+  const qrLifetimeLabel: TextStyle = { fontFamily: t.font.mono, fontSize: t.size.xs, color: t.color.nachtText, opacity: 0.6, textAlign: 'center' }
+  const qrLifetimeLabelKnapp: TextStyle = { color: t.color.warn, opacity: 1, fontWeight: t.weight.schwer }
   const socialButtons: ViewStyle = { flexDirection: 'column', gap: t.space.s2, marginBottom: t.space.s4 }
+  // The DS's own honest fallback for a genuinely unconfigured/unknown provider (auth.html) — a
+  // dashed outline in the button's own place, not silence (#283 §3(a)).
+  const socialFallback: ViewStyle = {
+    minHeight: 52,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: t.space.s2,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: t.color.linieWeich,
+    borderRadius: t.radius.pille,
+    paddingHorizontal: t.space.s4,
+    marginBottom: t.space.s4,
+  }
+  const socialFallbackIcon: ViewStyle = { opacity: 0.45 }
+  const socialFallbackText: TextStyle = { flexShrink: 1, fontFamily: t.font.text, fontSize: t.size.xs, color: t.color.tinte2 }
   const dividerRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s2, marginVertical: t.space.s4 }
   const dividerLine: ViewStyle = { flex: 1, height: 2, backgroundColor: t.color.linieWeich, borderRadius: 1 }
   const dividerLabel: TextStyle = { fontFamily: t.font.mono, fontSize: t.size.xs, color: t.color.tinte2 }
@@ -411,13 +614,6 @@ function makeStyles(t: UiTheme) {
   // Same box primitive as `verifyBanner`, recolored with the DS's positive semantic pair
   // (`--ok`/`--ok-weich`, `farben-semantik.html`) — duplicated from RegistrierungScreen rather
   // than extracted (Musti's #217 ruling: style drift is a DS-review concern, not this one).
-  // Not byte-identical: RegistrierungScreen's copy carries `width: '100%'`, this one doesn't —
-  // deliberately. RegistrierungScreen's container is `successScreen = { ...screen, alignItems:
-  // 'center' }` (RegistrierungScreen.tsx:202), which shrinks children to content width, so its
-  // banner needs the explicit `width: '100%'`; LoginScreen's container is plain `screen`, which
-  // stretches children, so it doesn't need it. Consistent within each file too — this file's
-  // sibling `verifyBanner` above also omits it, RegistrierungScreen's also has it. Don't
-  // "restore parity" between the two; that would break one of them.
   const verifiedBanner: ViewStyle = {
     backgroundColor: t.color.okWeich,
     borderWidth: 2,
@@ -427,11 +623,28 @@ function makeStyles(t: UiTheme) {
     marginBottom: t.space.s4,
   }
   const verifiedHeading: TextStyle = { fontFamily: t.font.text, fontWeight: t.weight.schwer, fontSize: t.size.m, color: t.color.tinte }
+  // AC-A's single shared alert — same box primitive as `verifyBanner`, recoloured `fehler`/
+  // `fehlerWeich`: an outage is a failure, not a caution or a positive confirmation.
+  const outageBanner: ViewStyle = {
+    backgroundColor: t.color.fehlerWeich,
+    borderWidth: 2,
+    borderColor: t.color.fehler,
+    borderRadius: t.radius.s,
+    padding: t.space.s4,
+    marginBottom: t.space.s4,
+  }
+  const outageHeading: TextStyle = { fontFamily: t.font.text, fontWeight: t.weight.schwer, fontSize: t.size.m, color: t.color.tinte, marginBottom: t.space.s1 }
+  const outageBody: TextStyle = { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte2 }
 
   return {
     screen,
     wideScreen,
     wideRow,
+    header,
+    wordmark,
+    subheading,
+    subtitle,
+    headerDivider,
     formColumn,
     qrColumn,
     qrCard,
@@ -439,11 +652,26 @@ function makeStyles(t: UiTheme) {
     qrBody,
     qrFrame,
     qrStatusLabel,
+    qrStatusHeading,
+    qrRetryNote,
+    qrCodeRow,
     qrCode,
+    qrCopyChip,
+    qrCopyChipLabel,
     qrRetryLink,
-    heading,
-    subtitle,
+    qrNoCamera,
+    qrApprovedBadge,
+    qrApprovedCheck,
+    qrLifetime,
+    qrLifetimeTrack,
+    qrLifetimeFill,
+    qrLifetimeFillKnapp,
+    qrLifetimeLabel,
+    qrLifetimeLabelKnapp,
     socialButtons,
+    socialFallback,
+    socialFallbackIcon,
+    socialFallbackText,
     dividerRow,
     dividerLine,
     dividerLabel,
@@ -461,5 +689,8 @@ function makeStyles(t: UiTheme) {
     verifyResendError,
     verifiedBanner,
     verifiedHeading,
+    outageBanner,
+    outageHeading,
+    outageBody,
   }
 }

@@ -363,15 +363,20 @@ describe('RegistrierungScreen', () => {
   // deployment (local dev, CI, a fresh server, staging before setup) would otherwise render
   // a Google button whose every press ends in "provider not found". The capability probe
   // says what this deployment can actually do, and the screen offers nothing it cannot.
-  it('does not offer Google sign-in when the deployment has no social provider configured', async () => {
+  //
+  // #283 §3(a) — a confirmed "not configured" answer is no longer silence: the DS's own honest
+  // fallback (auth.html) takes the button's place, and the divider stays (there is still content
+  // in that slot to separate the email form from).
+  it('shows the DS honest fallback instead of the Google button when the deployment has no social provider configured (#283)', async () => {
     server.use(getAuthCapabilitiesControllerGetCapabilitiesMockHandler(CAPABILITIES_WITHOUT_SOCIAL))
     renderRegistrierung()
 
     // Email sign-in is unaffected — it always works, so it proves the screen rendered.
     await screen.findByPlaceholderText('du@beispiel.de')
     expect(screen.queryByText('Weiter mit Google')).toBeNull()
-    // With no social option above it, the divider has nothing left to divide.
-    expect(screen.queryByText('oder mit E-Mail')).toBeNull()
+    expect(await screen.findByText('Google ist auf diesem Gerät nicht eingerichtet — die anderen Wege stehen dir offen.')).toBeTruthy()
+    // The fallback notice takes the button's place — the divider still has content above it.
+    expect(screen.queryByText('oder mit E-Mail')).not.toBeNull()
   })
 
   it('does not offer Google sign-in while the capability probe is still unanswered', async () => {
@@ -389,4 +394,16 @@ describe('RegistrierungScreen', () => {
     expect(screen.queryByText('Weiter mit Google')).toBeNull()
   })
 
+  // #283 §3(a) — the widened `SocialAvailability` on both call sites: a genuinely failed probe
+  // ('unknown') must render neither the button nor the DS's 'not-configured' fallback here —
+  // Registrierung has no shared-outage banner of its own (that's LoginScreen-specific, §3(c)),
+  // so 'unknown' stays silent regardless of whether it's still in flight or has actually failed.
+  it('renders neither the Google button nor the not-configured fallback when the capability probe itself fails (#283)', async () => {
+    server.use(http.get(`${BASE_URL}/v1/auth/capabilities`, () => HttpResponse.error()))
+    renderRegistrierung()
+
+    await screen.findByPlaceholderText('du@beispiel.de')
+    expect(screen.queryByText('Weiter mit Google')).toBeNull()
+    expect(screen.queryByText('Google ist auf diesem Gerät nicht eingerichtet — die anderen Wege stehen dir offen.')).toBeNull()
+  })
 })

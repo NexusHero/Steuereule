@@ -19,6 +19,12 @@ export const appResources = {
         // REQ-008: Google sign-in is now live (matching DS auth.html's "Weiter mit Google" ghost button).
         // Apple sign-in (#45) stays hidden until its gate opens.
         google: 'Weiter mit Google',
+        // #283 §3(a) — the DS's own honest fallback for a provider the deployment genuinely
+        // doesn't have configured (auth.html), shown in the button's own place rather than
+        // silence. `googleUnknown` is the distinct case: the probe itself can't currently answer
+        // (only shown once the shared-outage banner is already up — see LoginScreen.tsx).
+        googleNotConfigured: 'Google ist auf diesem Gerät nicht eingerichtet — die anderen Wege stehen dir offen.',
+        googleUnknown: 'Wir können gerade nicht prüfen, ob Google verfügbar ist.',
         orEmail: 'oder mit E-Mail',
         emailLabel: 'E-Mail',
         emailPlaceholder: 'du@beispiel.de',
@@ -40,6 +46,15 @@ export const appResources = {
         guestNote: 'Gast-Modus: deine Angaben werden sicher verschlüsselt gespeichert.',
         errEmail: 'Das sieht noch nicht nach einer E-Mail aus.',
         errPass: 'Mindestens 6 Zeichen fürs Passwort.',
+        // #283 AC-A — the single shared alert for a genuine, transport-level API outage (not a
+        // real answer like a wrong password or a rate limit — AC-B keeps those on their own
+        // copy). Wording follows the same voice Musti cited from AuthGeraete.jsx's own `fehler`
+        // state (names the cause, takes the blame, reassures), generalised beyond "no QR code"
+        // since this banner now also covers the login form — final wording is Suhay's to bless.
+        apiUnreachable: {
+          heading: 'Gerade nicht erreichbar — das liegt an uns.',
+          body: 'Unsere Server antworten nicht. Deine Daten sind sicher, es ist nichts verloren. Wir versuchen es automatisch weiter.',
+        },
         // #238 — the QR column next to the login form. A phone that opens the code's URL uses
         // its own native camera + browser, never this app's camera — so there is nothing here
         // about permissions, only about what happens once the phone gets there.
@@ -57,6 +72,22 @@ export const appResources = {
           requestNew: 'Neuen Code anzeigen',
           error: 'Code konnte nicht erzeugt werden.',
           retry: 'Erneut versuchen',
+          // #283 §3(b)/AC-B — a deliberate server-side brake (ADR-0024), never an outage: its
+          // own specific copy, manual retry only, never the "that's on us" framing above.
+          rateLimited: 'Gerade zu viele Anfragen. Versuch es in ein paar Sekunden noch mal.',
+          retryingAuto: 'Wir versuchen es automatisch erneut …',
+          // #283 §5, state 3 ("knapp") — the amber pre-warning under 20s, and the ordinary
+          // countdown otherwise. `{{time}}` is already formatted mm:ss.
+          knapp: 'Läuft gleich ab — noch {{time}}',
+          remaining: 'Gilt noch {{time}}',
+          copy: 'Kopieren',
+          copied: '✓ Kopiert',
+          noCamera: 'Keine Kamera? Öffne steuereule.de/koppeln auf dem Telefon und tipp den Code unterm Muster ein.',
+          // #283 §5, state 7 — the confirmation beat before `onApproved` actually fires.
+          approved: {
+            heading: 'Das war’s — du bist drin.',
+            body: 'Freigegeben über dein Telefon. Dein Steuerjahr lädt.',
+          },
         },
       },
       // Shared copy for both Login and Registrierung, driven by better-auth's own error codes
@@ -379,6 +410,8 @@ export const appResources = {
         subtitle: 'Your tax year is waiting — pick up where you left off.',
         // REQ-008: Google sign-in is now live.
         google: 'Continue with Google',
+        googleNotConfigured: "Google isn't set up on this device — the other ways are still open to you.",
+        googleUnknown: "We can't tell right now whether Google is available.",
         orEmail: 'or with email',
         emailLabel: 'Email',
         emailPlaceholder: 'you@example.com',
@@ -392,6 +425,10 @@ export const appResources = {
         guestNote: 'Guest mode: your details are saved securely, encrypted.',
         errEmail: "That doesn't look like an email yet.",
         errPass: 'At least 6 characters for the password.',
+        apiUnreachable: {
+          heading: "Not reachable right now — that's on us.",
+          body: "Our servers aren't answering. Your data is safe, nothing is lost. We're automatically trying again.",
+        },
         qr: {
           heading: 'Sign in with your phone',
           body: "Scan the code with your phone's camera — you're already signed in there.",
@@ -402,6 +439,17 @@ export const appResources = {
           requestNew: 'Show a new code',
           error: 'Could not generate a code.',
           retry: 'Try again',
+          rateLimited: 'Too many requests just now. Try again in a few seconds.',
+          retryingAuto: 'Automatically trying again …',
+          knapp: 'Expiring soon — {{time}} left',
+          remaining: '{{time}} left',
+          copy: 'Copy',
+          copied: '✓ Copied',
+          noCamera: 'No camera? Open steuereule.de/koppeln on your phone and type in the code under the pattern.',
+          approved: {
+            heading: "That's it — you're in.",
+            body: 'Approved via your phone. Your tax year is loading.',
+          },
         },
       },
       auth: {
