@@ -1,4 +1,4 @@
-/* @ds-bundle: {"format":4,"namespace":"FinanzoFunkeDesignSystem_7e417e","components":[{"name":"Button","sourcePath":"components/actions/Button.jsx"},{"name":"Chip","sourcePath":"components/actions/Chip.jsx"},{"name":"Pill","sourcePath":"components/actions/Pill.jsx"},{"name":"AiChip","sourcePath":"components/ai/AiChip.jsx"},{"name":"BeraterLeiste","sourcePath":"components/ai/BeraterLeiste.jsx"},{"name":"HerkunftsChip","sourcePath":"components/ai/HerkunftsChip.jsx"},{"name":"KiWert","sourcePath":"components/ai/KiWert.jsx"},{"name":"Balken","sourcePath":"components/feedback/Balken.jsx"},{"name":"Banner","sourcePath":"components/feedback/Banner.jsx"},{"name":"Ring","sourcePath":"components/feedback/Ring.jsx"},{"name":"Sticker","sourcePath":"components/feedback/Sticker.jsx"},{"name":"Toast","sourcePath":"components/feedback/Toast.jsx"},{"name":"Feld","sourcePath":"components/forms/Feld.jsx"},{"name":"Input","sourcePath":"components/forms/Input.jsx"},{"name":"Option","sourcePath":"components/forms/Option.jsx"},{"name":"SchalterZeile","sourcePath":"components/forms/SchalterZeile.jsx"},{"name":"TabBar","sourcePath":"components/navigation/TabBar.jsx"},{"name":"Sheet","sourcePath":"components/overlay/Sheet.jsx"},{"name":"Begriff","sourcePath":"components/wissen/Begriff.jsx"}],"sourceHashes":{"components/actions/Button.jsx":"cd5284795795","components/actions/Chip.jsx":"e98992abcac9","components/actions/Pill.jsx":"3b4570b38cdf","components/ai/AiChip.jsx":"4ac8a95d6399","components/ai/BeraterLeiste.jsx":"d5859c56cba1","components/ai/HerkunftsChip.jsx":"283dbee9ea84","components/ai/KiWert.jsx":"34af813299eb","components/feedback/Balken.jsx":"6693b23cd629","components/feedback/Banner.jsx":"00a43f359591","components/feedback/Ring.jsx":"e175af6d66b2","components/feedback/Sticker.jsx":"ead41b350be1","components/feedback/Toast.jsx":"81e182ee1fb6","components/forms/Feld.jsx":"5e9739072428","components/forms/Input.jsx":"fdce479afa12","components/forms/Option.jsx":"bfe522d13ad7","components/forms/SchalterZeile.jsx":"1bbf3338cde4","components/navigation/TabBar.jsx":"e0403ece68c8","components/overlay/Sheet.jsx":"80ff64df44f5","components/wissen/Begriff.jsx":"a6503ed227ae","ui_kits/app/Abgabe.jsx":"87553eb11fa0","ui_kits/app/Auth.jsx":"f70220682848","ui_kits/app/Belege.jsx":"9e97f741be19","ui_kits/app/Berater.jsx":"694be6332fa1","ui_kits/app/Bescheid.jsx":"cb91d3cde6e9","ui_kits/app/Cockpit.jsx":"6d57017715d4","ui_kits/app/Datenschutz.jsx":"1f3dfd057c01","ui_kits/app/EulenModus.jsx":"79c42349495b","ui_kits/app/GgTracker.jsx":"1ac9cf7c6576","ui_kits/app/Interview.jsx":"dfcfeb0b7970","ui_kits/app/JahrDetail.jsx":"06a7e25cb646","ui_kits/app/JahrTab.jsx":"102418a4c86d","ui_kits/app/Jahre.jsx":"65c85bdb0198","ui_kits/app/Lebenslagen.jsx":"dbec8d0ca03d","ui_kits/app/Onboarding.jsx":"430ce8e4e38d","ui_kits/app/Paywall.jsx":"6b41deb066c4","ui_kits/app/Profil.jsx":"43291a5f10ab","ui_kits/app/Registrierung.jsx":"723e7e5b2949","ui_kits/app/Scan.jsx":"20c4a945e047","ui_kits/app/Statistik.jsx":"8df81f21c190","ui_kits/app/Uebertragen.jsx":"ddf9d89054af","ui_kits/app/Veranlagung.jsx":"a6961bf0ac01","ui_kits/app/demo-daten.js":"a162c7bb4c0a"},"inlinedExternals":[],"unexposedExports":[]} */
+/* @ds-bundle: {"format":4,"namespace":"FinanzoFunkeDesignSystem_7e417e","components":[{"name":"Button","sourcePath":"components/actions/Button.jsx"},{"name":"Chip","sourcePath":"components/actions/Chip.jsx"},{"name":"Pill","sourcePath":"components/actions/Pill.jsx"},{"name":"AiChip","sourcePath":"components/ai/AiChip.jsx"},{"name":"BeraterLeiste","sourcePath":"components/ai/BeraterLeiste.jsx"},{"name":"HerkunftsChip","sourcePath":"components/ai/HerkunftsChip.jsx"},{"name":"KiWert","sourcePath":"components/ai/KiWert.jsx"},{"name":"Balken","sourcePath":"components/feedback/Balken.jsx"},{"name":"Banner","sourcePath":"components/feedback/Banner.jsx"},{"name":"Ring","sourcePath":"components/feedback/Ring.jsx"},{"name":"Sticker","sourcePath":"components/feedback/Sticker.jsx"},{"name":"Toast","sourcePath":"components/feedback/Toast.jsx"},{"name":"Feld","sourcePath":"components/forms/Feld.jsx"},{"name":"Input","sourcePath":"components/forms/Input.jsx"},{"name":"Option","sourcePath":"components/forms/Option.jsx"},{"name":"SchalterZeile","sourcePath":"components/forms/SchalterZeile.jsx"},{"name":"TabBar","sourcePath":"components/navigation/TabBar.jsx"},{"name":"Sheet","sourcePath":"components/overlay/Sheet.jsx"},{"name":"Begriff","sourcePath":"components/wissen/Begriff.jsx"}],"sourceHashes":{"components/actions/Button.jsx":"cd5284795795","components/actions/Chip.jsx":"e98992abcac9","components/actions/Pill.jsx":"3b4570b38cdf","components/ai/AiChip.jsx":"4ac8a95d6399","components/ai/BeraterLeiste.jsx":"d5859c56cba1","components/ai/HerkunftsChip.jsx":"283dbee9ea84","components/ai/KiWert.jsx":"34af813299eb","components/feedback/Balken.jsx":"6693b23cd629","components/feedback/Banner.jsx":"00a43f359591","components/feedback/Ring.jsx":"e175af6d66b2","components/feedback/Sticker.jsx":"ead41b350be1","components/feedback/Toast.jsx":"81e182ee1fb6","components/forms/Feld.jsx":"5e9739072428","components/forms/Input.jsx":"fdce479afa12","components/forms/Option.jsx":"bfe522d13ad7","components/forms/SchalterZeile.jsx":"1bbf3338cde4","components/navigation/TabBar.jsx":"e0403ece68c8","components/overlay/Sheet.jsx":"80ff64df44f5","components/wissen/Begriff.jsx":"a6503ed227ae","ui_kits/app/Abgabe.jsx":"87553eb11fa0","ui_kits/app/Auth.jsx":"930fc19df525","ui_kits/app/AuthGeraete.jsx":"c8fe3e491977","ui_kits/app/Belege.jsx":"9e97f741be19","ui_kits/app/Berater.jsx":"694be6332fa1","ui_kits/app/Bescheid.jsx":"cb91d3cde6e9","ui_kits/app/Cockpit.jsx":"6d57017715d4","ui_kits/app/Datenschutz.jsx":"1f3dfd057c01","ui_kits/app/EulenModus.jsx":"79c42349495b","ui_kits/app/GgTracker.jsx":"1ac9cf7c6576","ui_kits/app/Interview.jsx":"dfcfeb0b7970","ui_kits/app/JahrDetail.jsx":"06a7e25cb646","ui_kits/app/JahrTab.jsx":"102418a4c86d","ui_kits/app/Jahre.jsx":"65c85bdb0198","ui_kits/app/Lebenslagen.jsx":"dbec8d0ca03d","ui_kits/app/Onboarding.jsx":"430ce8e4e38d","ui_kits/app/Paywall.jsx":"6b41deb066c4","ui_kits/app/Profil.jsx":"43291a5f10ab","ui_kits/app/Registrierung.jsx":"723e7e5b2949","ui_kits/app/Scan.jsx":"20c4a945e047","ui_kits/app/Statistik.jsx":"8df81f21c190","ui_kits/app/Uebertragen.jsx":"ddf9d89054af","ui_kits/app/Veranlagung.jsx":"a6961bf0ac01","ui_kits/app/demo-daten.js":"a162c7bb4c0a"},"inlinedExternals":[],"unexposedExports":[]} */
 
 (() => {
 
@@ -769,8 +769,10 @@ Object.assign(window, {
 
 // ui_kits/app/Auth.jsx
 try { (() => {
-/* Login (aus Auth.tsx-Umfang des Quell-Repos, Funke-Kleid) — Google/Apple,
-   E-Mail+Passwort, Gast-Modus (#61). Alles Demo: erfolgreicher Login → onFertig. */
+/* Login — drei Wege, klare Hierarchie: E-Mail+Passwort ist die Primäraktion,
+   Google/Apple sind schnelle Nebenwege, die Geräte-Kopplung (QR) ist der eigene
+   Desktop-Weg auf der Nacht-Fläche (ab 700px — am Telefon ist der Login selbst
+   der kürzeste Weg; das Telefon ist der Gegenpart, siehe FunkeGeraetBestaetigen). */
 const {
   Button,
   Input,
@@ -812,11 +814,20 @@ function AppleMark() {
 }
 function FunkeAuth({
   onFertig,
-  onGast
+  onGast,
+  googleVerfuegbar = true
 }) {
   const [mail, setMail] = React.useState('');
   const [pass, setPass] = React.useState('');
   const [fehler, setFehler] = React.useState('');
+  /* Geräte-Kopplung ist ein Großbild-Weg (Tablet/Desktop) — am Telefon ist der Login selbst der kürzeste Weg */
+  const [gross, setGross] = React.useState(() => window.matchMedia('(min-width: 700px)').matches);
+  React.useEffect(() => {
+    const mq = window.matchMedia('(min-width: 700px)');
+    const auf = e => setGross(e.matches);
+    mq.addEventListener('change', auf);
+    return () => mq.removeEventListener('change', auf);
+  }, []);
   const ok = mail.includes('@') && pass.length >= 6;
   function einloggen() {
     if (!ok) {
@@ -880,11 +891,34 @@ function FunkeAuth({
       flexDirection: 'column',
       gap: 12
     }
-  }, /*#__PURE__*/React.createElement(Button, {
+  }, googleVerfuegbar ? /*#__PURE__*/React.createElement(Button, {
     variante: "ghost",
     onClick: onFertig,
     "aria-label": "Weiter mit Google"
-  }, /*#__PURE__*/React.createElement(GoogleG, null), " Weiter mit Google"), /*#__PURE__*/React.createElement(Button, {
+  }, /*#__PURE__*/React.createElement(GoogleG, null), " Weiter mit Google") :
+  /*#__PURE__*/
+  /* Grenzen ehrlich benennen: der Weg verschwindet nicht spurlos */
+  React.createElement("div", {
+    style: {
+      minHeight: 52,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 10,
+      border: '1.5px dashed var(--linie-weich)',
+      borderRadius: 14,
+      padding: '8px 16px',
+      color: 'var(--tinte-2)',
+      fontSize: 13
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      opacity: 0.45,
+      display: 'inline-flex',
+      flex: 'none'
+    },
+    "aria-hidden": "true"
+  }, /*#__PURE__*/React.createElement(GoogleG, null)), /*#__PURE__*/React.createElement("span", null, "Google ist auf diesem Ger\xE4t nicht eingerichtet \u2014 die anderen Wege stehen dir offen.")), /*#__PURE__*/React.createElement(Button, {
     variante: "nacht",
     onClick: onFertig,
     "aria-label": "Weiter mit Apple"
@@ -973,12 +1007,745 @@ function FunkeAuth({
       color: 'var(--tinte-2)',
       margin: '10px 0 0'
     }
-  }, "Gast-Modus: deine Angaben bleiben nur auf diesem Ger\xE4t.")));
+  }, "Gast-Modus: deine Angaben bleiben nur auf diesem Ger\xE4t.")), gross && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "fx-rein",
+    style: {
+      margin: '32px 0 14px',
+      textAlign: 'center'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "mono-label",
+    style: {
+      display: 'inline-block',
+      padding: '4px 12px',
+      border: '1.5px solid var(--linie-weich)',
+      borderRadius: 99,
+      background: 'var(--papier)'
+    }
+  }, "Anderer Weg")), /*#__PURE__*/React.createElement("div", {
+    className: "fx-rein"
+  }, /*#__PURE__*/React.createElement(window.FunkeQrKopplung, {
+    onFertig: onFertig
+  }))));
 }
 Object.assign(window, {
   FunkeAuth
 });
 })(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/app/Auth.jsx", error: String((e && e.message) || e) }); }
+
+// ui_kits/app/AuthGeraete.jsx
+try { (() => {
+/* Geräte-Kopplung (Device Grant, RFC 8628) — der Desktop zeigt einen Code, das Telefon bestätigt.
+   ALLE Zustände entworfen: laedt, bereit, knapp (läuft ab), abgelaufen, fehler, wartet, bestaetigt, abgelehnt.
+   Dazu FunkeGeraetBestaetigen — der Gegenpart auf dem Telefon (entscheiden / zugestimmt / abgelehnt). */
+const {
+  Button,
+  Chip
+} = window.FinanzoFunkeDesignSystem_7e417e;
+const CODE_DAUER = 120; /* Sekunden — ein Code lebt 2 Minuten */
+const KOPPEL_CODE = 'A7K‑M2Q';
+
+/* QR-Platzhalter: deterministisches Zellenraster mit drei Finder-Ecken — kein echter Code (Demo) */
+function QrPlatzhalter({
+  n = 21,
+  gedimmt = false
+}) {
+  const zellen = [];
+  for (let y = 0; y < n; y++) {
+    for (let x = 0; x < n; x++) {
+      const ecke = x < 7 && y < 7 || x > n - 8 && y < 7 || x < 7 && y > n - 8;
+      const rahmen = ecke && (x === 0 || y === 0 || x === n - 1 || y === n - 1 || x < 7 && y < 7 && (x === 6 || y === 6) || x > n - 8 && (x === n - 7 || y === 6) || y > n - 8 && (y === n - 7 || x === 6));
+      const kern = ecke && (x > 1 && x < 5 && y > 1 && y < 5 || x > n - 6 && x < n - 2 && y > 1 && y < 5 || x > 1 && x < 5 && y > n - 6 && y < n - 2);
+      const an = ecke ? rahmen || kern : (x * 7 + y * 13 + x * y % 5) % 3 === 0;
+      zellen.push(/*#__PURE__*/React.createElement("i", {
+        key: x + '-' + y,
+        style: {
+          background: an ? 'var(--tinte)' : 'transparent'
+        }
+      }));
+    }
+  }
+  return /*#__PURE__*/React.createElement("div", {
+    "aria-label": "QR-Code (Demo)",
+    role: "img",
+    style: {
+      width: 150,
+      height: 150,
+      borderRadius: 14,
+      background: '#fff',
+      padding: 10,
+      boxShadow: 'var(--schatten-hart-s)',
+      opacity: gedimmt ? 0.16 : 1
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'grid',
+      gridTemplateColumns: `repeat(${n}, 1fr)`,
+      gridTemplateRows: `repeat(${n}, 1fr)`,
+      width: '100%',
+      height: '100%',
+      position: 'relative'
+    }
+  }, zellen, /*#__PURE__*/React.createElement("span", {
+    style: {
+      position: 'absolute',
+      inset: '39%',
+      background: '#fff',
+      borderRadius: 4,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
+    }
+  }, /*#__PURE__*/React.createElement("img", {
+    src: "../../assets/marke-tinte.svg?v=2",
+    width: "18",
+    height: "18",
+    alt: ""
+  }))));
+}
+
+/* Bekannte Hardware — Geräte, die schon mal eingeloggt waren (Demo) */
+const BEKANNTE_GERAETE = [{
+  id: 'iphone',
+  name: 'Alex’ iPhone 15',
+  art: 'Telefon · iOS 18',
+  aktiv: 'aktiv · jetzt'
+}, {
+  id: 'ipad',
+  name: 'iPad Air (Küche)',
+  art: 'Tablet · iPadOS 18',
+  aktiv: 'zuletzt: gestern'
+}, {
+  id: 'mac',
+  name: 'MacBook Pro',
+  art: 'Rechner · Safari',
+  aktiv: 'zuletzt: 12. Juli'
+}];
+function mmss(s) {
+  return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+}
+
+/* Die Nacht-Fläche mit dem kompletten Kopplungs-Lebenszyklus.
+   start/startSek/statisch nur für Referenz-Blätter — live läuft die Maschine selbst. */
+function FunkeQrKopplung({
+  onFertig,
+  start = 'laedt',
+  startSek = CODE_DAUER,
+  statisch = false
+}) {
+  const [stand, setStand] = React.useState(start);
+  const [sek, setSek] = React.useState(startSek);
+  const [geraet, setGeraet] = React.useState(null);
+  const [kopiert, setKopiert] = React.useState(false);
+  React.useEffect(() => {
+    if (statisch) return;
+    if (stand === 'laedt') {
+      const t = setTimeout(() => {
+        setStand('bereit');
+        setSek(CODE_DAUER);
+      }, 1100);
+      return () => clearTimeout(t);
+    }
+    if (stand === 'bereit') {
+      const t = setInterval(() => setSek(s => {
+        if (s <= 1) {
+          setStand('abgelaufen');
+          return 0;
+        }
+        return s - 1;
+      }), 1000);
+      return () => clearInterval(t);
+    }
+    if (stand === 'wartet') {
+      const t = setTimeout(() => setStand('bestaetigt'), 2600);
+      return () => clearTimeout(t);
+    }
+    if (stand === 'bestaetigt') {
+      const t = setTimeout(() => onFertig && onFertig(), 1500);
+      return () => clearTimeout(t);
+    }
+  }, [stand, statisch]);
+  const knapp = stand === 'bereit' && sek <= 20;
+  const neuerCode = () => {
+    setStand('laedt');
+    setGeraet(null);
+  };
+  const hell = {
+    color: 'var(--nacht-text)'
+  };
+  const leise = {
+    color: 'var(--nacht-text)',
+    opacity: 0.7
+  };
+
+  /* ---- Endzustände: eine Botschaft, eine Aktion ---- */
+  if (stand === 'wartet' || stand === 'bestaetigt' || stand === 'abgelehnt' || stand === 'fehler') {
+    return /*#__PURE__*/React.createElement("div", {
+      className: "fk-karte nacht",
+      style: {
+        padding: 24,
+        textAlign: 'center'
+      }
+    }, stand === 'wartet' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      className: "fx-puls",
+      style: {
+        width: 56,
+        height: 56,
+        margin: '4px auto 14px',
+        borderRadius: 99,
+        border: '3px solid var(--funke)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      "aria-hidden": "true",
+      style: {
+        width: 14,
+        height: 14,
+        borderRadius: 99,
+        background: 'var(--funke)'
+      }
+    })), /*#__PURE__*/React.createElement("b", {
+      style: {
+        fontSize: 17,
+        ...hell
+      }
+    }, "Best\xE4tige es auf ", geraet ? geraet.name : 'deinem Telefon', "."), /*#__PURE__*/React.createElement("p", {
+      style: {
+        margin: '6px auto 16px',
+        fontSize: 13,
+        maxWidth: 300,
+        ...leise
+      }
+    }, "Wir haben eine Anfrage geschickt. Tippe dort auf \u201EJa, das bin ich\" \u2014 danach bist du hier drin."), /*#__PURE__*/React.createElement(Button, {
+      variante: "ghost",
+      style: {
+        width: 'auto',
+        minHeight: 42,
+        background: 'transparent',
+        borderColor: 'var(--nacht-linie)',
+        ...hell
+      },
+      onClick: () => {
+        setStand('bereit');
+        setSek(CODE_DAUER);
+      }
+    }, "Abbrechen")), stand === 'bestaetigt' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        width: 56,
+        height: 56,
+        margin: '4px auto 14px',
+        borderRadius: 99,
+        background: 'var(--funke)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: 26,
+        fontWeight: 800,
+        color: 'var(--tinte)',
+        boxShadow: 'var(--schatten-hart-s)'
+      },
+      "aria-hidden": "true"
+    }, "\u2713"), /*#__PURE__*/React.createElement("b", {
+      style: {
+        fontSize: 17,
+        ...hell
+      }
+    }, "Das war's \u2014 du bist drin."), /*#__PURE__*/React.createElement("p", {
+      style: {
+        margin: '6px auto 0',
+        fontSize: 13,
+        maxWidth: 300,
+        ...leise
+      }
+    }, "Freigegeben \xFCber ", geraet ? geraet.name : 'dein Telefon', ". Dein Steuerjahr l\xE4dt.")), stand === 'abgelehnt' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        width: 56,
+        height: 56,
+        margin: '4px auto 14px',
+        borderRadius: 99,
+        border: '3px solid var(--fehler)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: 22,
+        fontWeight: 800,
+        color: 'var(--fehler)'
+      },
+      "aria-hidden": "true"
+    }, "\xD7"), /*#__PURE__*/React.createElement("b", {
+      style: {
+        fontSize: 17,
+        ...hell
+      }
+    }, "Am Telefon abgelehnt."), /*#__PURE__*/React.createElement("p", {
+      style: {
+        margin: '6px auto 16px',
+        fontSize: 13,
+        maxWidth: 320,
+        ...leise
+      }
+    }, "Kein Zugriff gew\xE4hrt \u2014 hier ist nichts passiert. Warst du das nicht, \xE4ndere zur Sicherheit dein Passwort."), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        gap: 8,
+        justifyContent: 'center',
+        flexWrap: 'wrap'
+      }
+    }, /*#__PURE__*/React.createElement(Button, {
+      variante: "leise",
+      style: {
+        width: 'auto',
+        minHeight: 42
+      },
+      onClick: neuerCode
+    }, "Neuen Code holen"), /*#__PURE__*/React.createElement(Button, {
+      variante: "ghost",
+      style: {
+        width: 'auto',
+        minHeight: 42,
+        background: 'transparent',
+        borderColor: 'var(--nacht-linie)',
+        ...hell
+      },
+      onClick: e => e.preventDefault()
+    }, "Passwort \xE4ndern"))), stand === 'fehler' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("b", {
+      style: {
+        fontSize: 17,
+        ...hell
+      }
+    }, "Gerade kein Code \u2014 das liegt an uns."), /*#__PURE__*/React.createElement("p", {
+      style: {
+        margin: '6px auto 16px',
+        fontSize: 13,
+        maxWidth: 320,
+        ...leise
+      }
+    }, "Unsere Server antworten nicht. Deine Daten sind sicher, es ist nichts verloren. Versuch es gleich nochmal \u2014 oder nimm oben E-Mail."), /*#__PURE__*/React.createElement(Button, {
+      variante: "leise",
+      style: {
+        width: 'auto',
+        minHeight: 42
+      },
+      onClick: neuerCode
+    }, "Nochmal versuchen"), /*#__PURE__*/React.createElement("p", {
+      className: "num",
+      style: {
+        margin: '12px 0 0',
+        fontSize: 11,
+        fontFamily: 'var(--schrift-mono)',
+        ...leise,
+        opacity: 0.45
+      }
+    }, "KOPPLUNG\u2011503 \xB7 14:02:11")));
+  }
+
+  /* ---- laedt / bereit / knapp / abgelaufen: QR links, Erklärung rechts, Geräte darunter ---- */
+  return /*#__PURE__*/React.createElement("div", {
+    className: "fk-karte nacht",
+    style: {
+      padding: 20
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 18,
+      alignItems: 'flex-start',
+      flexWrap: 'wrap'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 'none',
+      width: 150,
+      textAlign: 'center'
+    }
+  }, stand === 'laedt' ? /*#__PURE__*/React.createElement("div", {
+    "aria-label": "Code wird geholt",
+    style: {
+      width: 150,
+      height: 150,
+      borderRadius: 14,
+      border: '1.5px dashed var(--nacht-linie)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "fx-puls",
+    "aria-hidden": "true",
+    style: {
+      width: 14,
+      height: 14,
+      borderRadius: 99,
+      background: 'var(--funke)'
+    }
+  })) : stand === 'abgelaufen' ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: 'relative',
+      width: 150,
+      height: 150
+    }
+  }, /*#__PURE__*/React.createElement(QrPlatzhalter, {
+    gedimmt: true
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: 'absolute',
+      inset: 0,
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 10
+    }
+  }, /*#__PURE__*/React.createElement("b", {
+    style: {
+      fontSize: 13,
+      ...hell
+    }
+  }, "Abgelaufen"), /*#__PURE__*/React.createElement(Button, {
+    variante: "leise",
+    style: {
+      width: 'auto',
+      minHeight: 40,
+      fontSize: 13
+    },
+    onClick: neuerCode
+  }, "Neuer Code"))) : /*#__PURE__*/React.createElement(QrPlatzhalter, null), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      gap: 6,
+      marginTop: 10
+    }
+  }, /*#__PURE__*/React.createElement("b", {
+    className: "num",
+    style: {
+      fontFamily: 'var(--schrift-mono)',
+      fontSize: 17,
+      letterSpacing: '0.14em',
+      color: stand === 'bereit' ? 'var(--funke)' : 'var(--nacht-linie)'
+    }
+  }, stand === 'laedt' ? '···‑···' : KOPPEL_CODE), stand === 'bereit' && /*#__PURE__*/React.createElement(Chip, {
+    onClick: () => {
+      setKopiert(true);
+      setTimeout(() => setKopiert(false), 1400);
+    },
+    style: {
+      flex: 'none',
+      minHeight: 30,
+      fontSize: 11,
+      borderColor: 'var(--nacht-linie)',
+      background: 'transparent',
+      ...hell
+    }
+  }, kopiert ? '✓ Kopiert' : 'Kopieren')), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 8
+    },
+    "aria-live": "polite"
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      display: 'block',
+      height: 5,
+      borderRadius: 99,
+      background: 'var(--nacht-linie)',
+      overflow: 'hidden'
+    },
+    role: "progressbar",
+    "aria-valuenow": sek,
+    "aria-valuemin": 0,
+    "aria-valuemax": CODE_DAUER
+  }, /*#__PURE__*/React.createElement("i", {
+    style: {
+      display: 'block',
+      height: '100%',
+      width: stand === 'laedt' ? '0%' : sek / CODE_DAUER * 100 + '%',
+      background: knapp ? 'var(--warn)' : 'var(--funke)',
+      transition: 'width 1s linear'
+    }
+  })), /*#__PURE__*/React.createElement("span", {
+    style: {
+      display: 'block',
+      fontSize: 11,
+      marginTop: 5,
+      color: knapp ? 'var(--warn)' : 'var(--nacht-text)',
+      opacity: knapp ? 1 : 0.6,
+      fontWeight: knapp ? 700 : 400
+    }
+  }, stand === 'laedt' ? 'Code wird geholt …' : stand === 'abgelaufen' ? 'Ein Code gilt aus Sicherheit nur 2 Minuten.' : knapp ? `Läuft gleich ab — noch ${mmss(sek)}` : `Gilt noch ${mmss(sek)}`))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      minWidth: 200
+    }
+  }, /*#__PURE__*/React.createElement("b", {
+    style: {
+      display: 'block',
+      fontFamily: 'var(--schrift-display)',
+      fontSize: 22,
+      lineHeight: 1.15,
+      ...hell
+    }
+  }, "Mit deinem Telefon anmelden"), /*#__PURE__*/React.createElement("p", {
+    style: {
+      margin: '8px 0 10px',
+      fontSize: 13,
+      ...leise
+    }
+  }, "Kein Passwort tippen: SteuerEule auf dem Telefon \xF6ffnen, Profil \u2192 ", /*#__PURE__*/React.createElement("b", null, "Ger\xE4t koppeln"), ", Muster scannen. Dein Steuerjahr ist in zwei Sekunden hier."), /*#__PURE__*/React.createElement("p", {
+    style: {
+      margin: 0,
+      fontSize: 12,
+      ...leise,
+      opacity: 0.55
+    }
+  }, "Keine Kamera? \xD6ffne ", /*#__PURE__*/React.createElement("b", null, "steuereule.de/koppeln"), " auf dem Telefon und tipp den Code unterm Muster ein."))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      borderTop: '1.5px solid var(--nacht-linie)',
+      margin: '16px 0 0',
+      paddingTop: 12
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "mono-label",
+    style: {
+      color: 'var(--funke-hell)'
+    }
+  }, "Deine bekannten Ger\xE4te"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 8,
+      marginTop: 10
+    }
+  }, BEKANNTE_GERAETE.map(g => /*#__PURE__*/React.createElement("button", {
+    key: g.id,
+    onClick: () => {
+      setGeraet(g);
+      setStand('wartet');
+    },
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 12,
+      width: '100%',
+      textAlign: 'left',
+      minHeight: 52,
+      padding: '8px 12px',
+      borderRadius: 12,
+      border: '1.5px solid var(--nacht-linie)',
+      ...hell
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    "aria-hidden": "true",
+    style: {
+      width: 8,
+      height: 8,
+      borderRadius: 99,
+      flex: 'none',
+      background: g.aktiv.includes('jetzt') ? 'var(--funke)' : 'var(--nacht-linie)'
+    }
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      flex: 1,
+      minWidth: 0
+    }
+  }, /*#__PURE__*/React.createElement("b", {
+    style: {
+      display: 'block',
+      fontSize: 14
+    }
+  }, g.name), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 12,
+      opacity: 0.65
+    }
+  }, g.art, " \xB7 ", g.aktiv)), /*#__PURE__*/React.createElement("span", {
+    "aria-hidden": "true",
+    style: {
+      fontWeight: 800,
+      flex: 'none'
+    }
+  }, "\u2192")))), /*#__PURE__*/React.createElement("p", {
+    style: {
+      margin: '10px 0 0',
+      fontSize: 12,
+      ...leise,
+      opacity: 0.6
+    }
+  }, "Ger\xE4te, die schon einmal drin waren. Nicht dein Ger\xE4t dabei? Dann scanne das Muster.")));
+}
+
+/* Der Gegenpart auf dem Telefon: „Ein Gerät möchte sich anmelden. Warst du das?" */
+function FunkeGeraetBestaetigen({
+  start = 'entscheiden',
+  onFertig
+}) {
+  const [stand, setStand] = React.useState(start);
+  if (stand === 'zugestimmt') {
+    return /*#__PURE__*/React.createElement("div", {
+      className: "fk-karte",
+      style: {
+        textAlign: 'center',
+        padding: 24
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        width: 56,
+        height: 56,
+        margin: '4px auto 14px',
+        borderRadius: 99,
+        background: 'var(--funke)',
+        border: 'var(--kontur) solid var(--tinte)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: 26,
+        fontWeight: 800,
+        boxShadow: 'var(--schatten-hart-s)'
+      },
+      "aria-hidden": "true"
+    }, "\u2713"), /*#__PURE__*/React.createElement("b", {
+      style: {
+        fontSize: 17
+      }
+    }, "Freigegeben."), /*#__PURE__*/React.createElement("p", {
+      style: {
+        margin: '6px auto 0',
+        fontSize: 13,
+        color: 'var(--tinte-2)',
+        maxWidth: 280
+      }
+    }, "Das andere Ger\xE4t ist jetzt drin. Du findest es ab sofort unter Profil \u2192 Ger\xE4te."));
+  }
+  if (stand === 'abgelehnt') {
+    return /*#__PURE__*/React.createElement("div", {
+      className: "fk-karte",
+      style: {
+        textAlign: 'center',
+        padding: 24
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        width: 56,
+        height: 56,
+        margin: '4px auto 14px',
+        borderRadius: 99,
+        border: '3px solid var(--fehler)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: 22,
+        fontWeight: 800,
+        color: 'var(--fehler)'
+      },
+      "aria-hidden": "true"
+    }, "\xD7"), /*#__PURE__*/React.createElement("b", {
+      style: {
+        fontSize: 17
+      }
+    }, "Abgelehnt \u2014 nichts passiert."), /*#__PURE__*/React.createElement("p", {
+      style: {
+        margin: '6px auto 14px',
+        fontSize: 13,
+        color: 'var(--tinte-2)',
+        maxWidth: 300
+      }
+    }, "Das Ger\xE4t kommt nicht rein. Warst du das nicht, \xE4ndere zur Sicherheit dein Passwort \u2014 dauert eine Minute."), /*#__PURE__*/React.createElement(Chip, {
+      onClick: e => e.preventDefault()
+    }, "Passwort \xE4ndern"));
+  }
+  return /*#__PURE__*/React.createElement("div", {
+    className: "fk-karte held",
+    style: {
+      padding: 20
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "mono-label"
+  }, "Anmelde-Anfrage"), /*#__PURE__*/React.createElement("h2", {
+    style: {
+      fontFamily: 'var(--schrift-display)',
+      fontWeight: 800,
+      fontSize: 26,
+      lineHeight: 1.1,
+      margin: '8px 0 12px'
+    }
+  }, "Ein Ger\xE4t m\xF6chte in dein Konto. ", /*#__PURE__*/React.createElement("em", {
+    style: {
+      fontStyle: 'normal',
+      background: 'var(--funke)',
+      borderRadius: 8,
+      padding: '0 6px'
+    }
+  }, "Warst du das?")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 6,
+      fontSize: 13,
+      color: 'var(--tinte-2)',
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", {
+    style: {
+      color: 'var(--tinte)'
+    }
+  }, "Ger\xE4t:"), " Chrome auf Windows"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", {
+    style: {
+      color: 'var(--tinte)'
+    }
+  }, "Wo ungef\xE4hr:"), " Freiburg, Deutschland"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", {
+    style: {
+      color: 'var(--tinte)'
+    }
+  }, "Wann:"), " gerade eben")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      border: '1.5px dashed var(--linie)',
+      borderRadius: 12,
+      padding: '10px 12px',
+      marginBottom: 16,
+      textAlign: 'center'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      display: 'block',
+      fontSize: 12,
+      color: 'var(--tinte-2)',
+      marginBottom: 4
+    }
+  }, "Steht dieser Code auch auf dem anderen Bildschirm?"), /*#__PURE__*/React.createElement("b", {
+    className: "num",
+    style: {
+      fontFamily: 'var(--schrift-mono)',
+      fontSize: 22,
+      letterSpacing: '0.18em'
+    }
+  }, KOPPEL_CODE)), /*#__PURE__*/React.createElement(Button, {
+    onClick: () => {
+      setStand('zugestimmt');
+      onFertig && setTimeout(onFertig, 1200);
+    }
+  }, "Ja, das bin ich"), /*#__PURE__*/React.createElement(Button, {
+    variante: "ghost",
+    style: {
+      marginTop: 10
+    },
+    onClick: () => setStand('abgelehnt')
+  }, "Ablehnen"), /*#__PURE__*/React.createElement("p", {
+    style: {
+      margin: '12px 0 0',
+      fontSize: 11,
+      color: 'var(--tinte-2)',
+      textAlign: 'center'
+    }
+  }, "Stimmt der Code nicht \xFCberein, lehn ab \u2014 dann probiert es jemand anderes."));
+}
+Object.assign(window, {
+  FunkeQrKopplung,
+  FunkeGeraetBestaetigen,
+  FunkeQrPlatzhalter: QrPlatzhalter
+});
+})(); } catch (e) { __ds_ns.__errors.push({ path: "ui_kits/app/AuthGeraete.jsx", error: String((e && e.message) || e) }); }
 
 // ui_kits/app/Belege.jsx
 try { (() => {

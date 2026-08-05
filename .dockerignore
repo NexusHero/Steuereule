@@ -1,0 +1,35 @@
+# Both apps/api/Dockerfile and apps/mobile-web/Dockerfile build from the repo root and run
+# their own `pnpm install --frozen-lockfile` inside the image — the host's own
+# node_modules/dist/coverage are never copied in. Copying them would risk shipping
+# host-platform-compiled native binaries (@swc/core, esbuild, Prisma's query engine) built
+# for whatever platform ran `pnpm install` outside Docker, silently mismatched against the
+# container's own linux/glibc target.
+**/node_modules
+# Deliberately NOT a blanket `**/dist` (Docker's .dockerignore does not reliably support
+# re-including a file via `!` once a parent directory pattern has excluded it — unlike git's
+# own .gitignore semantics, which is what a blanket-then-negate pattern would assume; not worth
+# relying on given the one real exception below). Named explicitly instead: `apps/api/dist` and
+# `apps/mobile-web/dist` are host-build output the image must never trust (rebuilt fresh inside
+# the image by each Dockerfile's own RUN steps). `packages/tokens/dist/` is deliberately NOT
+# listed here — it ships its generated theme.ts/tokens.css checked into git on purpose (ADR-050,
+# mirrors .gitignore's own exception), and apps/mobile-web/Dockerfile's `expo export` needs it
+# present in the build context. Excluding it broke the very first real docker build
+# (`expo export` failing to resolve `../dist/theme` from packages/tokens/src/index.ts) — found
+# by prod-deploy-smoke's own first CI run, not by review. Checked, not assumed: of the four
+# workspace packages @steuereule/mobile-web depends on (core, tokens, ui, api-client), only
+# tokens has a `scripts.build` at all — the other three export straight from `./src/index.ts`,
+# no dist required (`grep -n '"build"' packages/*/package.json`), so tokens is the only package
+# this distinction matters for.
+apps/api/dist
+apps/mobile-web/dist
+**/coverage
+**/.turbo
+**/.expo
+.git
+
+# Real secrets never belong in an image layer — env vars are injected by
+# docker-compose.prod.yml's `environment:` at container start, not read from a baked-in
+# file. Mirrors .gitignore's own .env exception shape.
+**/.env
+**/.env.*
+!**/.env.example

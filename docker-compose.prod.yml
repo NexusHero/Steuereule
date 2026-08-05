@@ -1,0 +1,88 @@
+# Production-shaped local stack (#76, the stakeholder's own local-testing complement to the
+# real cloud deployment — NOT that pipeline itself; it remains its own, start-gated, separate
+# ticket: #292, successor to #246, which was closed 2026-08-05 with the gap still open. Target
+# is k3s on Hetzner + managed Postgres per ADR-049; #246's own body was corrected to say so on
+# 2026-08-05, so the Fly.io framing this comment used to flag there is gone). Builds real images for the API and the exported web
+# bundle — no more "postgres only, everything else by hand" — and wires them with the
+# SAME four env vars whose mismatch produced the stakeholder's own bug report (guest
+# browsing, registration, login and the QR code all failing identically, because the
+# browser was never actually able to reach the API — see this overlay's own `.env.example`
+# header for the single-source-of-truth reasoning).
+#
+# One command, from the repo root (copy .env.example to .env first):
+#
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build
+#
+# Frontend: http://localhost:${WEB_PORT:-8080}    API: http://localhost:${API_PORT:-3000}
+# — the exact ports the stakeholder's own local test used.
+#
+# `migrate` is a one-shot service (Postgres → migrate → API, in that order, enforced by
+# `depends_on: condition:`), not a manual follow-up step the operator has to remember —
+# ADR-0010's "one-command local stack" promise, extended past Postgres to the app itself.
+x-api-env: &api-env
+  NODE_ENV: production
+  # `postgres`, not `localhost` — this is the container-internal hostname on the compose
+  # network; the CI job/local operator reading the SAME database from the host (e.g. via
+  # psql) uses `localhost:5432` instead (the published port). Two different consumers,
+  # two different addresses for the same database — not a duplicated source of truth, the
+  # same asymmetry ADR-0010's own e2e harness already documents.
+  DATABASE_URL: postgresql://${POSTGRES_USER:-steuereule}:${POSTGRES_PASSWORD:-steuereule}@postgres:5432/${POSTGRES_DB:-steuereule}
+  GUEST_SESSION_SECRET: ${GUEST_SESSION_SECRET}
+  PRISMA_FIELD_ENCRYPTION_KEY: ${PRISMA_FIELD_ENCRYPTION_KEY}
+  BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+  # The API's OWN origin — same value it listens on (PORT below), used to build absolute
+  # verification/reset links (resolveBetterAuthUrl).
+  BETTER_AUTH_URL: ${API_ORIGIN}
+  # The web app's origin — ONE value (WEB_ORIGIN, set once in .env) feeds both of these,
+  # never two independently-typed copies of the same fact.
+  CORS_ALLOWED_ORIGINS: ${WEB_ORIGIN}
+  WEB_APP_URL: ${WEB_ORIGIN}
+  # No reverse proxy in front of this local stack (#241's own resolver requires an
+  # explicit answer in production — "none" records that as a deliberate choice, not an
+  # omission).
+  TRUSTED_PROXIES: none
+  GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+  GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+  PORT: ${API_PORT:-3000}
+
+services:
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    # Same image as `api` below (one Dockerfile, two roles — see that file's own CMD
+    # comment) — overrides the default CMD to run the migration and exit, rather than
+    # boot the server. `cd /repo` because the image's own WORKDIR is apps/api/ (where the
+    # server CMD needs to run from); pnpm's workspace `--filter` resolution walks upward
+    # to find pnpm-workspace.yaml regardless, but running from the actual workspace root
+    # avoids relying on that upward walk for a step this whole stack's boot order depends on.
+    command: ['sh', '-c', 'cd /repo && pnpm --filter @steuereule/api migrate:deploy']
+    environment: *api-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment: *api-env
+    ports:
+      - '${API_PORT:-3000}:${API_PORT:-3000}'
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/mobile-web/Dockerfile
+      args:
+        # Baked into the bundle at BUILD time (Expo inlines EXPO_PUBLIC_* — see the
+        # Dockerfile's own comment) — API_ORIGIN, the SAME value the api service's
+        # BETTER_AUTH_URL above uses, never a second, independently-typed copy.
+        EXPO_PUBLIC_API_BASE_URL: ${API_ORIGIN}
+    ports:
+      - '${WEB_PORT:-8080}:8080'
+    depends_on:
+      - api

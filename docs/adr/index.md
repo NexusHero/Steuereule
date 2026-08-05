@@ -44,6 +44,7 @@ The ADRs **justify** the architecture; the [living arc42 document](../arc42/READ
 | 0023 | Routing in the web app: `@react-navigation/native` with a `linking` config | Accepted |
 | 0024 | QR device authorization: our `/v1/device/*` endpoints in front of better-auth's plugin | Accepted |
 | 0025 | The Requirements Register's owner can write it; the evidence is checked by CI | Accepted |
+| 0026 | A local, production-shaped Docker Compose stack for the API and web bundle (#76) | Accepted |
 
 See also the [Tech Radar](./tech-radar.md).
 

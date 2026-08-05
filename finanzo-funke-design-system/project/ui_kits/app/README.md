@@ -48,6 +48,18 @@ Produktregeln original, Visual komplett Funke.
   Rente (Anlage R inkl. Zeile in Übertragen), KAP-Verzweigung (ausländische Broker ja,
   Krypto-Gate mit Vormerken), Vermietung bis mehrere Objekte (Verkauf/möbliert bleibt Gate),
   Progressionsvorbehalt sichtbar im Spannen-Ticker, Gewerbe-Gate bestätigt.
+- Login (`auth.html`, `Auth.jsx` + `AuthGeraete.jsx`) — drei Wege mit klarer Hierarchie:
+  **E-Mail+Passwort ist die eine Primäraktion** (Limette „Einloggen"), Google/Apple sind schnelle
+  Nebenwege darüber (Ghost/Nacht), die **Geräte-Kopplung** (Device Grant, RFC 8628) ist der
+  eigene Desktop-Weg auf der Nacht-Fläche hinter dem „Anderer Weg"-Trenner — erst ab 700 px,
+  am Telefon ist der Login selbst der kürzeste Weg. Ist Google nicht eingerichtet, verschwindet
+  der Knopf nicht spurlos, sondern sagt es ehrlich (gestrichelte Zeile).
+- `AuthGeraete.jsx` — `FunkeQrKopplung` mit allen 8 Zuständen (laedt, bereit, läuft ab ≤20 s,
+  abgelaufen, fehler, wartet, bestätigt, abgelehnt): QR-Muster (Demo), Zeichen-Code darunter
+  gepinnt (`A7K‑M2Q` + Kopieren, steuereule.de/koppeln), sichtbare Lebensdauer (2 min, Balken +
+  Countdown, Vorwarnung in Amber), bekannte Geräte. Dazu `FunkeGeraetBestaetigen` — der
+  Gegenpart auf dem Telefon („Warst du das?" mit Gerät/Ort/Zeit + Code-Abgleich / zugestimmt /
+  abgelehnt). Referenzblatt: `auth-zustaende.html` (alle Zustände nebeneinander).
 - Eulen-Modus (ADR 037–042): opt-in KI-Stufe 2 — Opt-in nach dem Interview („Soll ich ab jetzt
   mitdenken?"), Profil-Schalter, violetter Cockpit-Einstieg „Ich hätte 4 Fragen an dich" +
   proaktiver Gesetzes-Fund (≥50 €, Quelle menschlich übersetzt), Abruf-Gespräch im Berater
