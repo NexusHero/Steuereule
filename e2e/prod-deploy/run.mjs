@@ -93,14 +93,44 @@ async function guestFlow(browser, webOrigin) {
     console.log('[prod-deploy] web bundle booted cleanly, guest CTA visible')
 
     await page.getByText(COPY.guest).click()
-    await page.getByPlaceholder(COPY.firstNamePlaceholder).fill('Kim')
+
+    // FOUND FIXING THE ADR-0021 CONTROL PROOF (2026-08-05): OnboardingScreen's own step 1 (name
+    // entry, the very field below) is ALREADY gated behind its first real request to the API
+    // (`useProfileControllerGetProfile()` — GET /v1/profile) — `OnboardingScreen.tsx`'s own
+    // `profileQuery.isPending`/`.isError` early returns render `OnboardingLoading`/
+    // `OnboardingLoadError` INSTEAD of the step-1 form, not just step 2 as this script's first
+    // version assumed. A wrong EXPO_PUBLIC_API_BASE_URL therefore fails here, at the FIRST
+    // field, not the second — this script's own earlier version filled `firstNamePlaceholder`
+    // unconditionally and only raced load-error against the *second* field, so on a real
+    // API-unreachable break it produced a bare, undiagnostic `locator.fill: Timeout 30000ms
+    // exceeded` instead of naming the cause. Fixed by racing load-error against the FIRST
+    // field instead — the same pattern already used for step 2 below, just moved to where the
+    // gating actually is.
+    const nameLoadError = page.getByText(COPY.onboardingLoadErrorHeading)
+    const firstNameField = page.getByPlaceholder(COPY.firstNamePlaceholder)
+    await Promise.race([
+      nameLoadError.waitFor({ state: 'visible', timeout: 15_000 }).catch(() => {}),
+      firstNameField.waitFor({ state: 'visible', timeout: 15_000 }).catch(() => {}),
+    ])
+    if (await nameLoadError.count()) {
+      fail(
+        `Guest flow: onboarding shows "${COPY.onboardingLoadErrorHeading}" on its very first step — the ` +
+          'exact error the stakeholder reported. The browser could not reach the API from the exported web ' +
+          'bundle (stale EXPO_PUBLIC_API_BASE_URL baked into the bundle, or a CORS_ALLOWED_ORIGINS/WEB_APP_URL ' +
+          'mismatch against the real published origin — see this file\'s own header comment).',
+      )
+    }
+    if (!(await firstNameField.count())) {
+      fail('Guest flow: neither onboarding step 1 nor the load-error state appeared within 15s.')
+    }
+
+    await firstNameField.fill('Kim')
     await page.getByPlaceholder(COPY.lastNamePlaceholder).fill('Yilmaz')
     await page.getByRole('button', { name: COPY.weiter }).click()
 
-    // The exact point the stakeholder's own report hit: onboarding's first real request to
-    // the API. If unreachable, `onboarding.loadError.heading` ("Das hat nicht geklappt.")
-    // appears instead of step 2. Race the two outcomes explicitly rather than waiting on
-    // one and letting the other time out with no named cause.
+    // Step 2 (Steuer-ID) needs no SECOND network round-trip of its own (the profile is already
+    // loaded in memory at this point) — but kept as a race, not a bare fill, for the same
+    // reason: a regression here should name itself, not time out silently.
     const loadError = page.getByText(COPY.onboardingLoadErrorHeading)
     const steuerIdField = page.getByPlaceholder(COPY.steuerIdPlaceholder)
     await Promise.race([
@@ -109,10 +139,8 @@ async function guestFlow(browser, webOrigin) {
     ])
     if (await loadError.count()) {
       fail(
-        `Guest flow: onboarding shows "${COPY.onboardingLoadErrorHeading}" — the exact error the ` +
-          'stakeholder reported. The browser could not reach the API from the exported web bundle ' +
-          '(stale EXPO_PUBLIC_API_BASE_URL baked into the bundle, or a CORS_ALLOWED_ORIGINS/WEB_APP_URL ' +
-          'mismatch against the real published origin — see this file\'s own header comment).',
+        `Guest flow: onboarding shows "${COPY.onboardingLoadErrorHeading}" after step 1 — unexpected, ` +
+          'since the profile was already loaded once to reach step 1 at all.',
       )
     }
     if (!(await steuerIdField.count())) {
