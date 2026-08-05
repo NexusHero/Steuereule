@@ -8,6 +8,7 @@ import { AppModule } from './app.module.js'
 import { BETTER_AUTH_BUNDLE, type BetterAuthBundle } from './auth/auth.tokens.js'
 import { mountBetterAuthHandler } from './auth/mount-better-auth.js'
 import { validationExceptionFactory } from './common/validation-exception-factory.js'
+import { assertDatabaseReachable } from './config/assert-database-reachable.js'
 import { buildCorsOptions } from './cors/build-cors-options.js'
 import { registerHelmet } from './security/register-helmet.js'
 
@@ -65,6 +66,14 @@ export async function buildApp(): Promise<NestFastifyApplication> {
 }
 
 async function bootstrap(): Promise<void> {
+  // Fail fast on the database, before building anything (see
+  // config/assert-database-reachable.ts for why this lives here and not near Prisma):
+  // `buildApp()` itself must stay database-free (tests and `openapi:spec` both rely on
+  // that), but this real, request-serving process needs one from its very first
+  // request, so the checked-in `DATABASE_URL` being absent or unreachable is a boot
+  // failure here, not a 500 on someone's first click.
+  await assertDatabaseReachable()
+
   const app = await buildApp()
   const port = Number(process.env.PORT ?? 3000)
   await app.listen(port, '0.0.0.0')
