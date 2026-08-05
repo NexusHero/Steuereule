@@ -8,7 +8,9 @@
     "breakpoint-layout": "node responsive/breakpoint-layout.mjs",
     "banner-ds-qa": "node responsive/banner-ds-qa.mjs",
     "visibility-refetch": "node visibility/visibility-refetch.mjs",
-    "google-auth": "node google-auth/google-login.mjs"
+    "google-auth": "node google-auth/google-login.mjs",
+    "device-authorization": "node device/device-authorization.mjs",
+    "prod-deploy-smoke": "node prod-deploy/run.mjs"
   },
   "devDependencies": {
     "playwright-core": "1.56.1"

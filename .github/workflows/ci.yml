@@ -1,17 +1,17 @@
 # Baseline CI pipeline (Steuereule).
 #
-# The Docker Compose files (docker-compose.yml + the ci/e2e overlays) are the
+# The Docker Compose files (docker-compose.yml + the ci/e2e/prod overlays) are the
 # foundation this pipeline is built on. `build` is still an honest placeholder
-# (grows as buildable-image work lands); `lint`, `test`, `integration`, `smoke`
-# and `cross-origin-smoke` are real, CI-blocking gates.
+# (grows as buildable-image work lands); `lint`, `test`, `integration`, `smoke`,
+# `cross-origin-smoke` and `prod-deploy-smoke` are real, CI-blocking gates.
 #
 # `lint` runs oxlint (ADR-0019) — a syntactic gate only; type-aware rules are
 # knowingly deferred to `tsc --strict` in the `test` job (#168). "CI: green"
 # now covers a real lint pass for the first time, but not that gap.
 #
 # Flow:  validate-compose ──► lint ──────────────► build ──► smoke
-#                          ├─► test ───────────────┤    └─► cross-origin-smoke
-#                          └─► integration ─────────┘
+#                          ├─► test ───────────────┤    ├─► cross-origin-smoke
+#                          └─► integration ─────────┘    └─► prod-deploy-smoke
 #        docs-consistency (standalone — reads docs/, needs no build)
 name: CI
 
@@ -40,6 +40,12 @@ jobs:
         run: docker compose -f docker-compose.yml -f docker-compose.ci.yml config
       - name: base + e2e overlay
         run: docker compose -f docker-compose.yml -f docker-compose.e2e.yml config
+      # #76: the production-shaped local stack (docker-compose.prod.yml + apps/api/Dockerfile +
+      # apps/mobile-web/Dockerfile) — parses without a real `.env` present (unset vars default to
+      # a blank string, a warning not an error; `prod-deploy-smoke` below is what actually proves
+      # this overlay boots and works, with real values).
+      - name: base + prod overlay
+        run: docker compose -f docker-compose.yml -f docker-compose.prod.yml config
 
   # Real gate (#168): oxlint (ADR-0019) against the whole repo. Purely syntactic —
   # no Prisma, no Postgres, no Playwright — so it stays the cheap ~0.1s check that
@@ -493,7 +499,17 @@ jobs:
     # while #71 is still open (Musti's #223 ruling) — after #71 lands, a rename costs a branch
     # protection edit plus a window where the required check doesn't exist, so this is the free
     # window to take it in.
-    name: Browser gates — cross-origin + responsive + live-verify
+    #
+    # Renamed again here (Salih) to the generic form #206's own technical ruling already proposed
+    # for this exact next addition — resolving the enumeration problem once rather than appending
+    # a fifth clause ("+ device-QR") to a string that keeps growing. This job now also runs
+    # e2e/device/device-authorization.mjs (see the new step below) — but deliberately NOT
+    # e2e/google-auth/google-login.mjs, named here rather than left silent: #206 found three real
+    # defects in that script (never advances past Splash, checks `.error` not `.status` on the
+    # social sign-in response, asserts only "not 404" on the callback), dispatched to Robin, not
+    # yet fixed. Wiring a known-broken/flaky script in would be exactly the green-theatre shape
+    # this pipeline exists to refuse — it stays unwired until #206 closes.
+    name: Browser gates (real stack, headless Chromium)
     needs: build
     runs-on: ubuntu-latest
     services:
@@ -600,6 +616,14 @@ jobs:
         # `ubuntu-latest` runner image (no install step) — the `runner-images` catalogue for this
         # image lists the PostgreSQL client tools as preinstalled.
         run: node e2e/visibility/visibility-refetch.mjs
+      - name: QR device-authorization gate (#238/REQ-014, ADR-0023/0024) — real cross-device sign-in
+        # MUST run last in this job (its own header comment) — LoginScreen's QR column mints a
+        # device-code row on every m/l-breakpoint mount, so breakpoint-layout.mjs/banner-ds-qa.mjs
+        # above have already spent some of that bucket before this script gets to run; it paces
+        # itself against the real RateLimit table's live state rather than assuming a fresh bucket.
+        # Attaches via e2e/harness/stack.mjs's ATTACH mode (API_ORIGIN/WEB_ORIGIN/DATABASE_URL
+        # already set above) — the same real Postgres/API/web bundle this job already booted.
+        run: node e2e/device/device-authorization.mjs
       - name: API log (on failure)
         if: failure()
         run: cat /tmp/steuereule-api-cross-origin.log || true
@@ -615,3 +639,61 @@ jobs:
           if [ -f /tmp/steuereule-web-cross-origin.pid ]; then
             kill "$(cat /tmp/steuereule-web-cross-origin.pid)" 2>/dev/null || true
           fi
+
+  # Real gate (#76) — the stakeholder's own bug report, automated: builds and boots the ACTUAL
+  # docker-compose.prod.yml stack (real apps/api/Dockerfile + apps/mobile-web/Dockerfile, a real
+  # `docker compose build`, the real container boot order: postgres -> migrate -> api, web
+  # independently) — not a hand-typed re-derivation of that stack the way `smoke`/
+  # `cross-origin-smoke` boot their own processes directly on the runner. Green here is the claim
+  # "the shipped production images serve a working sign-in", which is a DIFFERENT claim from "the
+  # individual pieces work" — the stakeholder's own local run is proof the two can diverge; see
+  # e2e/prod-deploy/run.mjs's own header comment for the exact class of bug this closes.
+  #
+  # Uses the SAME .env.example the stakeholder himself copies locally (`cp .env.example .env`) —
+  # one file, one set of values, checked in both places, never a second CI-only copy that could
+  # silently pass while the real instructions in the repo root don't.
+  prod-deploy-smoke:
+    name: Production compose stack — guest, registration, login, QR (real Docker build)
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+      - name: Install Playwright's Chromium
+        run: pnpm --filter @steuereule/e2e exec playwright-core install chromium --with-deps
+      - name: The one env file — copy the example verbatim (the point of #76's single-source .env)
+        run: cp .env.example .env
+      - name: Build + boot the real production stack (Postgres -> migrate -> api; web independently)
+        run: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+      - name: Wait for both published origins to answer (poll, no sleep — ADR-0004)
+        run: |
+          curl --fail --silent --show-error --retry 40 --retry-delay 2 --retry-all-errors --retry-connrefused \
+            "http://localhost:3000/v1/auth/capabilities"
+          curl --fail --silent --show-error --retry 40 --retry-delay 2 --retry-all-errors --retry-connrefused \
+            "http://localhost:8080/"
+      - name: Guest, registration, login, QR — real browser against the real containers
+        env:
+          API_ORIGIN: http://localhost:3000
+          WEB_ORIGIN: http://localhost:8080
+          DATABASE_URL: postgresql://steuereule:steuereule@localhost:5432/steuereule
+        run: node e2e/prod-deploy/run.mjs
+      - name: Container logs (on failure)
+        if: failure()
+        run: docker compose -f docker-compose.yml -f docker-compose.prod.yml logs --no-color
+      - name: Tear down (always — never leave a built stack/volume behind on this runner)
+        if: always()
+        run: docker compose -f docker-compose.yml -f docker-compose.prod.yml down -v
