@@ -36,45 +36,31 @@ export function resolveDatabaseUrl(env: NodeJS.ProcessEnv = process.env): string
     )
   }
 
-  // `return raw` below — never a trimmed or otherwise normalised copy — is what
-  // actually closes the guard-vs-app divergence (Musti's review, F5): this
-  // resolver's return value is NOT the only place `DATABASE_URL` gets read.
-  // `PrismaService` extends `PrismaClient` with no explicit datasource override, so
-  // it resolves `env("DATABASE_URL")` straight out of `schema.prisma` — the RAW
-  // process environment, never through this function. Any version of this resolver
-  // that returned a different string than that raw value (a trim, a normalisation)
-  // would make the guard check one string while the app connects with another;
-  // measured, end to end, with a real server and a real database, is exactly how a
-  // trim-and-return version of this function regressed into a silent 500 on the
-  // first DB-touching request after a clean boot.
+  // `return raw`, never a trimmed or normalised copy (Musti's review, F5): `PrismaService`
+  // extends `PrismaClient` with no datasource override, so the app connects with
+  // `env("DATABASE_URL")` read RAW via `schema.prisma`, never through this function — any
+  // other return value here checks a different string than the app connects with.
   //
-  // Leading whitespace only, not surrounding (Musti's review, F6): measured against
-  // Prisma 6.19.3 on both consumption paths — this guard's own reachability probe
-  // AND PrismaService's env()-sourced connection — leading whitespace makes BOTH
-  // fail identically (no divergence either way), while trailing whitespace,
-  // including a trailing newline, makes BOTH succeed identically. Rejecting leading
-  // whitespace converts a config that's doomed on both paths anyway from a slow (5s
-  // I/O), mislabeled reachability failure into a fast, correctly-labeled
-  // presence/format one — the same reasoning that motivated this whole check (F2).
-  // Rejecting trailing whitespace would buy nothing (nothing is silently succeeding
-  // that shouldn't) while actively refusing a configuration proven to work — and a
-  // trailing newline is the single most common shape a Kubernetes Secret value
-  // arrives in (`kubectl create secret generic --from-file=` appends one; so does a
-  // YAML `|` block literal), which matters concretely here because ADR-049 confirms
-  // k3s on Hetzner as this project's deployment target. A stricter, "reject
-  // anything padded" version would be defensive against Prisma someday changing
-  // that trailing-whitespace tolerance — but it doesn't need to be: the
-  // reachability probe just below runs the real, current Prisma connection logic
-  // against this exact string on every boot, so if a future Prisma version ever
-  // does stop tolerating it, that probe reports it honestly as a reachability
-  // failure at that point — nothing here has to predict or hardcode library
-  // behaviour that can change out from under it.
+  // This resolver reads the environment AFTER `@prisma/client`'s import has merged
+  // `apps/api/.env` into it (`assert-database-reachable.ts` imports it at module top level).
+  // Measured: that merge only fills what is UNSET and never overrides, so an operator-set
+  // value survives byte-for-byte — guard and app still read one identical string. Part of
+  // why the paragraph above holds, not an exception to it (F7).
+  //
+  // Leading whitespace: measured to fail on BOTH paths (Prisma 6.19.3) → reject, fast and
+  // correctly labeled, instead of the same failure 5s later mislabeled as unreachable (F2).
+  // Trailing whitespace/newline: measured to SUCCEED on both → accept; it's the ordinary
+  // Kubernetes Secret shape (ADR-049, k3s on Hetzner). The full weighing behind that choice
+  // lives in this PR's commit trail, not here (F6/F9).
   if (raw !== raw.replace(/^\s+/, '')) {
     throw new Error(
-      'DATABASE_URL has leading whitespace — refusing to silently strip it, since that would make ' +
-        'this check pass a different string than the one PrismaClient actually connects with (it reads ' +
-        'DATABASE_URL straight from the raw process environment via schema.prisma, not through this ' +
-        'function). Remove the leading whitespace at the source (your .env file or shell export).',
+      'DATABASE_URL has leading whitespace — this value cannot connect as written. Measured against ' +
+        'Prisma 6.19.3, leading whitespace fails identically on both paths (this guard’s probe and the ' +
+        'connection PrismaService makes), so refusing now is the same failure you would get anyway, ' +
+        'five seconds sooner and correctly labeled instead of reported as unreachable. Trailing ' +
+        'whitespace — including the trailing newline `kubectl create secret --from-file` and a YAML ' +
+        '`|` block append — is a different case: it works on both paths and is NOT rejected. Remove ' +
+        'the LEADING whitespace at the source (your .env file or shell export).',
     )
   }
 
