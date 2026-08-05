@@ -715,6 +715,38 @@ jobs:
           WEB_ORIGIN: http://localhost:8080
           DATABASE_URL: postgresql://steuereule:steuereule@localhost:5432/steuereule
         run: node e2e/prod-deploy/run.mjs
+      - name: REQ-011 PDF export — real HTTP against the built apps/api/Dockerfile container
+        # The coordinator's own F5 follow-up: F1 (Musti's #274 review) added Chromium to
+        # apps/api/Dockerfile, but nothing had actually exercised it INSIDE the built container —
+        # e2e/prod-deploy/run.mjs only covers guest/registration/login/QR, and the `smoke`/
+        # `integration` jobs' own REQ-011 checks run against the API booted directly on the
+        # runner via the tsx bridge, never through this Dockerfile. Chromium installing without
+        # error is not the same claim as Chromium launching and rendering inside THIS image's
+        # exact base layers/permissions — closing that gap here, the same way `smoke`'s own
+        # REQ-011 step already proves it for the non-containerised boot path.
+        run: |
+          set -e
+          JAR=$(mktemp)
+          curl --fail --silent --show-error -c "$JAR" -b "$JAR" \
+            -H "Content-Type: application/json" -H "Origin: http://localhost:8080" \
+            -X POST http://localhost:3000/api/auth/sign-up/email \
+            -d '{"email":"prod-deploy-pdf-smoke@example.com","password":"a-fine-strong-password-1","name":"Prod Deploy PDF Smoke"}' \
+            > /dev/null
+          curl --fail --silent --show-error -c "$JAR" -b "$JAR" \
+            -H "Content-Type: application/json" -H "Origin: http://localhost:8080" \
+            -X PUT http://localhost:3000/v1/profile \
+            -d '{"firstName":"Prod","lastName":"Deploy","steuerId":"02476291358","steuernummer":"18181508155"}' \
+            > /dev/null
+          pdf_headers=$(curl --fail --silent --show-error -b "$JAR" -D - -o /tmp/prod-deploy-pdf-smoke.pdf \
+            "http://localhost:3000/v1/account/export?format=pdf")
+          echo "$pdf_headers" | grep -qi '^content-type: application/pdf' || {
+            echo "::error::GET /v1/account/export?format=pdf (real container) did not return application/pdf."
+            exit 1
+          }
+          head -c 5 /tmp/prod-deploy-pdf-smoke.pdf | grep -q '%PDF-' || {
+            echo "::error::PDF export body (real container) did not start with the %PDF- magic bytes — Chromium never rendered inside this image."
+            exit 1
+          }
       - name: Container logs (on failure)
         if: failure()
         run: docker compose -f docker-compose.yml -f docker-compose.prod.yml logs --no-color
