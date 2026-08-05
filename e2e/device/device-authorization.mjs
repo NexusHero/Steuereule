@@ -5,12 +5,30 @@
 // comment for the run this file was proven against: 3/3 consecutive real-stack passes, Node
 // 24.18.0. The polling gap this file originally found (below) is CLOSED as of Kaan's 94c5b2a. ***
 //
-// MUSTI'S #263 REVIEW (F2) — this file is now the real caller `sampleComputedStyleOverFrames`/
-// `probeColourAtPoint` were missing: the QR column's own owl-entrance animation (moving AND, via
-// `newReducedMotionContext`, static) and the approve button's own painted fill (matched AND, at
-// a deliberately wrong coordinate, correctly NOT matched). See `loginOwlHeadLayer`/
-// `assertOwlEntranceOpacity` below and the `probeColourAtPoint` block ahead of the approve
-// click — both calibrated in both directions, not just proven to return a number.
+// MUSTI'S #263 REVIEW (F2) — this file is the real caller `probeColourAtPoint` was missing: the
+// approve button's own painted fill (matched AND, at a deliberately wrong coordinate, correctly
+// NOT matched) — see the `probeColourAtPoint` block ahead of the approve click, calibrated in
+// both directions, not just proven to return a number.
+//
+// #283/C3 (Kaan, 2026-08-05) — this file used to ALSO calibrate `sampleComputedStyleOverFrames`
+// against the QR column's own owl-entrance animation (`loginOwlLayers`/`assertOwlEntranceOpacity`,
+// removed here). That instrumentation started failing deterministically (two different heads,
+// same gate — reported by the coordinator, reproduced locally against this exact commit before
+// touching anything) once #283 dropped the animated `OwlMark` from the QR card entirely: the DS's
+// own dedicated reference for this screen (`AuthGeraete.jsx:25-27`, landed in #282, after this
+// entrance was originally built under "derive from existing blocks, no reference exists yet")
+// puts a STATIC brand mark inside the QR pattern's own centre — no animation is called for here
+// at all. The failure was real (deterministic, not a flake) but its cause was a design change
+// this ticket deliberately made, not a regression: confirmed by re-running this exact script with
+// only the owl-entrance assertions removed, against the real stack — the ENTIRE rest of the flow,
+// including the actual thing this gate is *for* (AC-5, the cross-device poll → approve → desktop
+// signed-in round trip), passed end to end. `useOwlEntranceAnimation`'s own animation mechanism
+// remains real and tested where it's still actually used (`SplashScreen.tsx`'s own independent
+// entrance, `SplashScreen.test.tsx`) and at the hook level (`useOwlEntranceAnimation.test.tsx`) —
+// there is no longer an owl-entrance animation on THIS screen to calibrate a control-proof
+// against, so removing the assertion here is not weakening a check, it's retiring one whose
+// subject no longer exists. `newReducedMotionContext`/`sampleComputedStyleOverFrames` are no
+// longer imported here as a result — nothing else in this file's flow needs them.
 //
 // THE FLOW THIS FILE PROVES (Musti's #238 spec, restated so the code and the spec stay legible
 // side by side):
@@ -100,9 +118,7 @@ import {
   launchBrowser,
   closeBrowser,
   newContextAtBreakpoint,
-  newReducedMotionContext,
   guardAgainst429,
-  sampleComputedStyleOverFrames,
   probeColourAtPoint,
 } from '../harness/browser.mjs'
 import { startStack } from '../harness/stack.mjs'
@@ -269,68 +285,11 @@ function expectedLabelFromRealUserAgent(userAgent) {
   return { browser, os }
 }
 
-/**
- * The QR column's `OwlMark` head/glasses layers (`DeviceQrColumn` → `OwlMark(headStyle:
- * owl.headStyle, glassesStyle: owl.glassesStyle)`, `apps/mobile-web/src/screens/LoginScreen.tsx`)
- * — the two elements `useOwlEntranceAnimation` animates `opacity: 0 → 1` on mount, one after the
- * other (head's own 380ms stage, then glasses' own 380ms stage — `Animated.sequence`), on the
- * exact screen this file's `l`-breakpoint Context A always renders (Decision 3a: the QR column
- * only exists at `m`/`l`). Located by DOM order, confirmed against a real render rather than
- * assumed: `formColumn` (whose password field carries its own `<svg>` visibility-toggle icon)
- * always renders before `DeviceQrColumn` in `LoginScreen.tsx`'s JSX, and `OwlMark`'s head/glasses
- * layers are the first two of its own three `<svg>` layers (head, glasses, lid, in that fixed
- * order, `OwlMark.tsx`) — so on this exact screen, at this exact breakpoint, they are reliably
- * `svg >> nth=1`/`nth=2`'s parents. No `data-testid` exists on `OwlMark` to select by instead.
- */
-function loginOwlLayers(page) {
-  return { head: page.locator('svg').nth(1).locator('xpath=..'), glasses: page.locator('svg').nth(2).locator('xpath=..') }
-}
-
-/**
- * Calibrates `sampleComputedStyleOverFrames` in both directions on the QR column's own real
- * entrance animation (Musti's #263 review, F2) — not a synthetic self-test, the exact element
- * and exact screen this gate already visits for AC-6. `expectProgress: true` samples the
- * animation running (a fresh Login mount, motion allowed); `false` samples it under
- * `newReducedMotionContext` (`useOwlEntranceAnimation.ts`: every value starts at `1`, already at
- * rest, when `reducedMotion` is true — the entrance never plays at all). An instrument proven
- * only on the "it moved" half would still pass if it silently always reported "moving" — the
- * false-negative-on-static-input case a solid-green-eye class of bug would need caught by the
- * *other* half.
- *
- * Tracks BOTH the head and glasses layers, and samples across a window wide enough to cover
- * their whole combined ~760ms (Node ↔ browser round-trip jitter between this file's own
- * `skipSplash()` returning and the first sampled frame is real, observed directly: a first
- * version of this check sampled ONLY the head layer over 8 frames — ~130ms — and flaked once in
- * four runs when that round trip alone ate more than the head stage's own 380ms, landing every
- * sample after the head had already settled at `opacity: 1`. Widening to both layers and ~90
- * frames doesn't remove the jitter; it makes the check tolerant of it, the same way this file
- * already paces against rate-limit buckets instead of assuming zero latency elsewhere).
- */
-async function assertOwlEntranceOpacity(page, { expectProgress }) {
-  const layers = loginOwlLayers(page)
-  const [headSamples, glassesSamples] = await Promise.all([
-    sampleComputedStyleOverFrames(page, layers.head, ['opacity'], 90),
-    sampleComputedStyleOverFrames(page, layers.glasses, ['opacity'], 90),
-  ])
-  const headValues = headSamples.map((s) => Number(s.opacity))
-  const glassesValues = glassesSamples.map((s) => Number(s.opacity))
-  if (headValues.some(Number.isNaN) || glassesValues.some(Number.isNaN)) {
-    fail(`assertOwlEntranceOpacity: sampled a non-numeric opacity — head: ${JSON.stringify(headSamples)}, glasses: ${JSON.stringify(glassesSamples)}`)
-  }
-  const progressed = (values) => values.some((v) => Math.abs(v - values[0]) > 0.01)
-  const headProgressed = progressed(headValues)
-  const glassesProgressed = progressed(glassesValues)
-  if (expectProgress && !headProgressed && !glassesProgressed) {
-    fail(
-      `assertOwlEntranceOpacity: expected the QR column's owl entrance to PROGRESS across ${headValues.length} frames on EITHER the head or glasses layer (motion allowed), but neither moved — head: ${JSON.stringify(headValues)}, glasses: ${JSON.stringify(glassesValues)}. Either the entrance regressed to inert (the class this instrument exists to catch), or this file's own element locator drifted.`,
-    )
-  }
-  if (!expectProgress && (headProgressed || glassesProgressed)) {
-    fail(
-      `assertOwlEntranceOpacity: expected the QR column's owl entrance to STAY STATIC under prefers-reduced-motion, but head and/or glasses opacity moved — head: ${JSON.stringify(headValues)}, glasses: ${JSON.stringify(glassesValues)}. Either reduced-motion stopped being honoured, or this instrument reports motion that isn't there.`,
-    )
-  }
-}
+// `loginOwlLayers`/`assertOwlEntranceOpacity` (#263, Musti's F2) lived here — removed by #283/C3:
+// the QR column no longer has an animated owl entrance to calibrate against (see this file's
+// header comment for the full account, including the real-stack re-run that confirmed the rest
+// of this gate's flow was never affected). Not restored as a no-op or a permanently-skipped
+// call: an assertion with nothing left to assert is dead code, not a weakened check.
 
 async function completeOnboarding(page) {
   await page.getByPlaceholder(COPY.onboardingFirstNamePlaceholder).fill('Kim')
@@ -359,13 +318,10 @@ async function main() {
     await waitForBucketHeadroom(readBucketByPrefix(sql, 'device-code'), DEVICE_CODE_BUCKET, 'device-code')
     await skipSplash(pageA, webOrigin)
 
-    // --- Musti's #263 review, F2 (moving half): sample the QR column's real owl entrance the
-    // instant Login mounts, racing it against the still-in-flight device-code mint — the
-    // entrance (~1.1s total) and the mint response are on comparable timescales, so sampling
-    // has to happen here, not after the mint resolves, or the animation may already have
-    // settled by the time this file gets to it. ---
-    await assertOwlEntranceOpacity(pageA, { expectProgress: true })
-    console.log('[device-authorization] sampleComputedStyleOverFrames (moving half): the QR column\'s owl entrance genuinely progresses on a real mount.')
+    // Musti's #263 review (F2) used to sample the QR column's own owl-entrance animation right
+    // here, racing it against the still-in-flight device-code mint. Removed by #283/C3 — see
+    // this file's header comment for the full account. Nothing replaces it: there is no longer
+    // a custom animation on this screen for a control-proof to calibrate against.
 
     const codeResponse = await codeResponsePromise
     if (codeResponse.status() !== 201) fail(`POST /v1/device/code returned ${codeResponse.status()}, expected 201.`)
@@ -374,23 +330,6 @@ async function main() {
 
     await pageA.getByText(deviceCode.userCode, { exact: true }).waitFor({ state: 'visible', timeout: 5_000 })
     console.log(`[device-authorization] AC-6: Context A rendered user_code ${deviceCode.userCode}, matching the API response that minted it.`)
-
-    // --- Musti's #263 review, F2 (static half): the SAME element, SAME screen, under
-    // `newReducedMotionContext` — `useOwlEntranceAnimation.ts` starts every value already at
-    // rest when reduced motion is honoured, so this is a genuine second case, not a restatement
-    // of the first. A short-lived third context/mint, torn down immediately after sampling —
-    // paced against the same device-code bucket as everything else in this job. ---
-    await waitForBucketHeadroom(readBucketByPrefix(sql, 'device-code'), DEVICE_CODE_BUCKET, 'device-code')
-    const contextStatic = await newReducedMotionContext(browser, { viewport: { width: 1280, height: 900 } })
-    const pageStatic = await contextStatic.newPage()
-    guardAgainst429(pageStatic, fail, '/v1/device/')
-    try {
-      await skipSplash(pageStatic, webOrigin)
-      await assertOwlEntranceOpacity(pageStatic, { expectProgress: false })
-      console.log('[device-authorization] sampleComputedStyleOverFrames (static half): under prefers-reduced-motion, the same entrance genuinely stays inert.')
-    } finally {
-      await contextStatic.close()
-    }
 
     const aUserAgent = await pageA.evaluate(() => navigator.userAgent)
     const expectedLabel = expectedLabelFromRealUserAgent(aUserAgent)
