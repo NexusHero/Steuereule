@@ -142,14 +142,35 @@ export function RegistrierungScreen({ onDone }: RegistrierungScreenProps) {
 
       {/* Only offered where the server says Google is actually configured (REQ-008) — a
           deployment without credentials must not show a button whose every press fails.
-          The divider goes with it: with no social option above, there is nothing to
-          divide the email form from. */}
-      {googleAvailable ? (
+          #283 §3(a): 'not-configured' gets the DS's own honest fallback (auth.html) rather than
+          silently vanishing — shared copy with LoginScreen (`login.googleNotConfigured`), same
+          convention this screen already follows for the button label itself (`login.google`).
+          'unknown' (still probing, or the probe failed) stays silent here — this screen has no
+          shared-outage banner of its own (that's LoginScreen-specific, #283 §3(c)); showing
+          something on a bare, possibly-transient 'unknown' would only flicker. The divider goes
+          with whichever of the two actually renders — with neither, there's nothing to divide
+          the email form from. */}
+      {googleAvailable === 'available' ? (
         <>
           <View style={styles.socialButtons}>
             <Button variante="ghost" onPress={() => void googleSignIn()} disabled={socialSubmitting || stage.kind === 'submitting'}>
               <GoogleG /> {tr('login.google')}
             </Button>
+          </View>
+
+          <View style={styles.dividerRow} accessibilityRole="none">
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerLabel}>{tr('login.orEmail')}</Text>
+            <View style={styles.dividerLine} />
+          </View>
+        </>
+      ) : googleAvailable === 'not-configured' ? (
+        <>
+          <View style={styles.socialFallback} accessibilityRole="text">
+            <View style={styles.socialFallbackIcon}>
+              <GoogleG />
+            </View>
+            <Text style={styles.socialFallbackText}>{tr('login.googleNotConfigured')}</Text>
           </View>
 
           <View style={styles.dividerRow} accessibilityRole="none">
@@ -204,6 +225,25 @@ function makeStyles(t: UiTheme) {
   const heading: TextStyle = { fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size['3xl'], color: t.color.tinte, marginBottom: t.space.s2 }
   const subtitle: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.m, marginBottom: t.space.s5 }
   const socialButtons: ViewStyle = { flexDirection: 'column', gap: t.space.s2, marginBottom: t.space.s4 }
+  // The DS's own honest fallback for a genuinely unconfigured provider (auth.html) — a dashed
+  // outline in the button's own place, not silence (#283 §3(a)). Mirrors LoginScreen.tsx's
+  // identical style, duplicated rather than extracted (Musti's #217 ruling on this file: style
+  // drift is a DS-review concern, not this one).
+  const socialFallback: ViewStyle = {
+    minHeight: 52,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: t.space.s2,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: t.color.linieWeich,
+    borderRadius: t.radius.pille,
+    paddingHorizontal: t.space.s4,
+    marginBottom: t.space.s4,
+  }
+  const socialFallbackIcon: ViewStyle = { opacity: 0.45 }
+  const socialFallbackText: TextStyle = { flexShrink: 1, fontFamily: t.font.text, fontSize: t.size.xs, color: t.color.tinte2 }
   const dividerRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s2, marginVertical: t.space.s4 }
   const dividerLine: ViewStyle = { flex: 1, height: 2, backgroundColor: t.color.linieWeich, borderRadius: 1 }
   const dividerLabel: TextStyle = { fontFamily: t.font.mono, fontSize: t.size.xs, color: t.color.tinte2 }
@@ -253,6 +293,9 @@ function makeStyles(t: UiTheme) {
     heading,
     subtitle,
     socialButtons,
+    socialFallback,
+    socialFallbackIcon,
+    socialFallbackText,
     dividerRow,
     dividerLine,
     dividerLabel,
