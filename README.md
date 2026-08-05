@@ -18,7 +18,9 @@ column mints and renders a real `user_code` (`POST /v1/device/code` → 201 → 
 the stakeholder's own reported symptom. Completing a cross-device *sign-in* (approve → the
 RFC-8628 `POST /v1/device/token` poll → the desktop is actually signed in) is proven by
 `e2e/device/device-authorization.mjs` in the `Browser gates` job, against that job's own
-hand-wired stack, never against these images. See `.env.example`'s own header for what each variable does
+hand-wired stack, never against these images.
+
+See `.env.example`'s own header for what each variable does
 and `docs/adr/0026-local-production-shaped-compose-stack.md` for the reasoning behind this setup
 (and what it deliberately does not yet answer — the real cloud deployment pipeline, target now
 confirmed as k3s on Hetzner + managed EU Postgres per ADR-049, tracked separately as #246).

@@ -261,6 +261,21 @@ async function qrFlow(browser, webOrigin) {
       fail(`QR flow: POST /v1/device/code returned ${codeResponse.status()}, expected 201.`)
     }
     const deviceCode = await codeResponse.json()
+    // Checked BEFORE it is used as a selector, not after — this is the one assertion in this
+    // file that takes its own expected value straight from the response it is checking, so an
+    // empty/absent `userCode` would otherwise be handed to `getByText('')`, which asks the page
+    // "is there an element with no text", not "is the code on screen". Whether that then errors
+    // (strict-mode, several empty nodes) or quietly passes (exactly one) depends on the DOM the
+    // day it happens — an assertion whose verdict turns on that is not an assertion. `user_code`
+    // is minted server-side (device.service.ts maps better-auth's `user_code` through), so a
+    // blank one is a real API defect and must be named as one, not silently converted into a
+    // selector that can't fail honestly.
+    if (typeof deviceCode.userCode !== 'string' || !/^\S{6,}$/.test(deviceCode.userCode)) {
+      fail(
+        `QR flow: POST /v1/device/code returned 201 but no usable user_code (got ${JSON.stringify(deviceCode.userCode)}) — ` +
+          'the API minted a code-shaped response with nothing in it.',
+      )
+    }
     await page.getByText(deviceCode.userCode, { exact: true }).waitFor({ state: 'visible', timeout: 5_000 })
     console.log(`[prod-deploy] PASS — QR column rendered a real user_code (${deviceCode.userCode}) from the containerised API.`)
   } finally {
