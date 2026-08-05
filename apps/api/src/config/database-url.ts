@@ -36,31 +36,45 @@ export function resolveDatabaseUrl(env: NodeJS.ProcessEnv = process.env): string
     )
   }
 
-  // Reject surrounding whitespace rather than trim it away (Musti's review, F5 —
-  // fixing a regression the first version of the F2 fix introduced): this resolver's
-  // return value is NOT the only place `DATABASE_URL` gets read. `PrismaService`
-  // extends `PrismaClient` with no explicit datasource override, so it resolves
-  // `env("DATABASE_URL")` straight out of `schema.prisma` — the RAW process
-  // environment, never through this function. A version of this resolver that
-  // trimmed and returned a different string than that raw value would make the guard
-  // check one string while the app connects with another; measured, end to end, with
-  // a real server and a real database: `DATABASE_URL="  postgres://…"` (leading
-  // whitespace only) passed this check when it trimmed-and-returned, then 500'd on
-  // the very first DB-touching request anyway — Prisma tolerates trailing whitespace
-  // in `env()`-sourced values but not leading. Silently normalising here would have
-  // to mutate `process.env` itself to keep the two paths looking at the same string,
-  // which breaks the pure `resolve*(env)` contract every sibling in this codebase
-  // relies on. Rejecting keeps the contract pure and keeps guard and app looking at
-  // the identical value: an operator who fat-fingers whitespace into their `.env`
-  // gets a synchronous, no-I/O, named config defect instead of either variant of the
-  // wrong-finding bug this file already fixed once.
-  if (raw !== raw.trim()) {
+  // `return raw` below — never a trimmed or otherwise normalised copy — is what
+  // actually closes the guard-vs-app divergence (Musti's review, F5): this
+  // resolver's return value is NOT the only place `DATABASE_URL` gets read.
+  // `PrismaService` extends `PrismaClient` with no explicit datasource override, so
+  // it resolves `env("DATABASE_URL")` straight out of `schema.prisma` — the RAW
+  // process environment, never through this function. Any version of this resolver
+  // that returned a different string than that raw value (a trim, a normalisation)
+  // would make the guard check one string while the app connects with another;
+  // measured, end to end, with a real server and a real database, is exactly how a
+  // trim-and-return version of this function regressed into a silent 500 on the
+  // first DB-touching request after a clean boot.
+  //
+  // Leading whitespace only, not surrounding (Musti's review, F6): measured against
+  // Prisma 6.19.3 on both consumption paths — this guard's own reachability probe
+  // AND PrismaService's env()-sourced connection — leading whitespace makes BOTH
+  // fail identically (no divergence either way), while trailing whitespace,
+  // including a trailing newline, makes BOTH succeed identically. Rejecting leading
+  // whitespace converts a config that's doomed on both paths anyway from a slow (5s
+  // I/O), mislabeled reachability failure into a fast, correctly-labeled
+  // presence/format one — the same reasoning that motivated this whole check (F2).
+  // Rejecting trailing whitespace would buy nothing (nothing is silently succeeding
+  // that shouldn't) while actively refusing a configuration proven to work — and a
+  // trailing newline is the single most common shape a Kubernetes Secret value
+  // arrives in (`kubectl create secret generic --from-file=` appends one; so does a
+  // YAML `|` block literal), which matters concretely here because ADR-049 confirms
+  // k3s on Hetzner as this project's deployment target. A stricter, "reject
+  // anything padded" version would be defensive against Prisma someday changing
+  // that trailing-whitespace tolerance — but it doesn't need to be: the
+  // reachability probe just below runs the real, current Prisma connection logic
+  // against this exact string on every boot, so if a future Prisma version ever
+  // does stop tolerating it, that probe reports it honestly as a reachability
+  // failure at that point — nothing here has to predict or hardcode library
+  // behaviour that can change out from under it.
+  if (raw !== raw.replace(/^\s+/, '')) {
     throw new Error(
-      'DATABASE_URL has surrounding whitespace — refusing to silently strip it, since that would ' +
-        'make this check pass a different string than the one PrismaClient actually connects with ' +
-        '(it reads DATABASE_URL straight from the raw process environment via schema.prisma, not ' +
-        'through this function). Remove the surrounding whitespace at the source (your .env file or ' +
-        'shell export).',
+      'DATABASE_URL has leading whitespace — refusing to silently strip it, since that would make ' +
+        'this check pass a different string than the one PrismaClient actually connects with (it reads ' +
+        'DATABASE_URL straight from the raw process environment via schema.prisma, not through this ' +
+        'function). Remove the leading whitespace at the source (your .env file or shell export).',
     )
   }
 

@@ -41,19 +41,32 @@ describe('resolveDatabaseUrl', () => {
   // 500'd on the first DB-touching request anyway — silently reintroducing the exact
   // bug this file exists to close. Rejecting instead of normalising keeps guard and
   // app looking at the identical value.
-  it('rejects a value with surrounding whitespace instead of silently trimming it — trimming would check a different string than PrismaService actually connects with', () => {
+  it('rejects leading whitespace instead of silently stripping it — stripping would check a different string than PrismaService actually connects with', () => {
     expect(() => resolveDatabaseUrl({ DATABASE_URL: '  postgresql://u:p@localhost:5432/db' })).toThrow(
-      /surrounding whitespace/,
+      /leading whitespace/,
     )
-    expect(() => resolveDatabaseUrl({ DATABASE_URL: 'postgresql://u:p@localhost:5432/db  ' })).toThrow(
-      /surrounding whitespace/,
-    )
-    expect(() => resolveDatabaseUrl({ DATABASE_URL: '  postgresql://u:p@localhost:5432/db  ' })).toThrow(
-      /surrounding whitespace/,
+    expect(() => resolveDatabaseUrl({ DATABASE_URL: '\tpostgresql://u:p@localhost:5432/db' })).toThrow(
+      /leading whitespace/,
     )
   })
 
-  it('returns a value with no surrounding whitespace completely untouched', () => {
+  // F6 (Musti's review): measured against real Prisma 6.19.3 on both consumption
+  // paths (this resolver's own reachability probe, and PrismaService's raw
+  // env()-sourced connection) — leading whitespace makes both fail identically
+  // (no divergence, either way); trailing whitespace, including a trailing newline,
+  // makes both SUCCEED identically. A trailing newline is the single most common
+  // shape a Kubernetes Secret value arrives in (`kubectl create secret generic
+  // --from-file=` appends one, so does a YAML `|` block literal — ADR-049 confirms
+  // k3s on Hetzner as the deployment target). Rejecting it would refuse a
+  // configuration proven to work end to end, for zero correctness benefit — nothing
+  // is silently succeeding that shouldn't.
+  it('does NOT reject trailing whitespace, including a trailing newline (the Kubernetes Secret shape) — measured to work identically on both paths', () => {
+    const base = 'postgresql://u:p@localhost:5432/db'
+    expect(resolveDatabaseUrl({ DATABASE_URL: `${base}  ` })).toBe(`${base}  `)
+    expect(resolveDatabaseUrl({ DATABASE_URL: `${base}\n` })).toBe(`${base}\n`)
+  })
+
+  it('returns a value with no leading whitespace completely untouched', () => {
     const value = 'postgresql://u:p@localhost:5432/db?schema=public'
     expect(resolveDatabaseUrl({ DATABASE_URL: value })).toBe(value)
   })
