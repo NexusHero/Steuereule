@@ -1,0 +1,19 @@
+# Both apps/api/Dockerfile and apps/mobile-web/Dockerfile build from the repo root and run
+# their own `pnpm install --frozen-lockfile` inside the image — the host's own
+# node_modules/dist/coverage are never copied in. Copying them would risk shipping
+# host-platform-compiled native binaries (@swc/core, esbuild, Prisma's query engine) built
+# for whatever platform ran `pnpm install` outside Docker, silently mismatched against the
+# container's own linux/glibc target.
+**/node_modules
+**/dist
+**/coverage
+**/.turbo
+**/.expo
+.git
+
+# Real secrets never belong in an image layer — env vars are injected by
+# docker-compose.prod.yml's `environment:` at container start, not read from a baked-in
+# file. Mirrors .gitignore's own .env exception shape.
+**/.env
+**/.env.*
+!**/.env.example
