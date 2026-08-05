@@ -753,8 +753,25 @@ jobs:
             -X PUT http://localhost:3000/v1/profile \
             -d '{"firstName":"Prod","lastName":"Deploy","steuerId":"02476291358","steuernummer":"18181508155"}' \
             > /dev/null
-          pdf_headers=$(curl --fail --silent --show-error -b "$JAR" -D - -o /tmp/prod-deploy-pdf-smoke.pdf \
+          # NO --fail on THIS request, deliberately (found by this gate's own ADR-0021 control
+          # proof, run 31001786620): with --fail, the single most likely real failure — Chromium
+          # missing/unable to render, so the export 500s — aborted the step at curl under `set -e`
+          # with a bare "curl: (22) ... error: 500" / "Process completed with exit code 22", and
+          # NONE of the assertions below ever ran. The gate was red for the right reason and
+          # said none of it: an operator got an exit code, not the named cause, and the careful
+          # error text under it was unreachable in exactly the case it was written for. Take the
+          # status explicitly instead and let this step do its own diagnosis.
+          http_status=$(curl --silent --show-error -b "$JAR" -o /tmp/prod-deploy-pdf-smoke.pdf \
+            -D /tmp/prod-deploy-pdf-headers.txt -w '%{http_code}' \
             "http://localhost:3000/v1/account/export?format=pdf")
+          if [ "$http_status" != "200" ]; then
+            echo "::error::GET /v1/account/export?format=pdf (real container) returned HTTP $http_status, expected 200 — the export never produced a document. Chromium failing to launch or render inside this image is the first thing to check (see the api container's own PlaywrightPdfRenderer log line, printed by the Container logs step below)."
+            echo "First 400 bytes of the body actually returned:"
+            head -c 400 /tmp/prod-deploy-pdf-smoke.pdf | cat -v
+            echo
+            exit 1
+          fi
+          pdf_headers=$(cat /tmp/prod-deploy-pdf-headers.txt)
           echo "$pdf_headers" | grep -qi '^content-type: application/pdf' || {
             echo "::error::GET /v1/account/export?format=pdf (real container) did not return application/pdf. Headers were:"
             echo "$pdf_headers"
