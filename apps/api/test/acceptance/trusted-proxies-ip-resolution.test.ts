@@ -54,7 +54,7 @@ async function attemptSignIn(baseUrl: string, xForwardedFor: string): Promise<nu
   return response.status
 }
 
-// @documents-defect #292 — A1 stays green *because* the single-value X-Forwarded-For bypass
+// @documents-defect #244 — A1 stays green *because* the single-value X-Forwarded-For bypass
 // is unfixed (register.md, REQ-010). Green here means "the bypass is still there", not "the
 // fix works": no TRUSTED_PROXIES value closes the single-value form, only the network property
 // of the app being unreachable except through a real proxy does — and that needs a real
