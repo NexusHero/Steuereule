@@ -90,6 +90,17 @@ async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
  * future Prisma rename — leaking by default, silently, with no test to catch it. This
  * fails the opposite way: anything new lands on the safe side until someone
  * deliberately allowlists it.
+ *
+ * The `instanceof ProbeTimeoutError` check below degrades gracefully, on purpose, if
+ * it ever stops matching (a dual ESM/CJS copy of this module, a bundler producing two
+ * class instances, a refactor that changes how the timeout error is constructed): the
+ * timeout error would simply fall through to the redaction branch below it, same as
+ * any other error. The operator still learns it was a timeout — `constructor.name`
+ * is still literally `ProbeTimeoutError` — they only lose the exact millisecond count
+ * that only lived in `.message`. Safe direction to fail in; not something this
+ * function tries to detect or fix, only worth naming so a future reader seeing a bare
+ * `ProbeTimeoutError` with no message doesn't mistake it for the redaction being
+ * broken.
  */
 export function redactCause(rawCause: unknown): Error {
   if (!(rawCause instanceof Error)) return new Error('unknown error')
