@@ -55,6 +55,29 @@ async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 }
 
 /**
+ * Redacts whatever the probe's query attempt threw, for use as the guard error's own
+ * `cause` — measured, not assumed to be needed: a wrong-password-but-reachable-host
+ * failure (`PrismaClientInitializationError`, code `P1000`) puts the *username* right
+ * in `.message` ("...credentials for `someuser` are not valid"), and `cause` prints by
+ * default wherever this thrown error surfaces unhandled — `bootstrap()`'s own top-level
+ * `.catch` does exactly that. Reusing that raw error as `cause` would reopen, at the
+ * back of this function, exactly the redaction `describeDatabaseTarget` builds at the
+ * front of it. So a Prisma-originated failure is reduced to its class name and (only if
+ * present) its short, fixed `errorCode` (Prisma's own enum, e.g. `P1001` — never
+ * server-supplied text) — enough to tell a timeout apart from an auth failure in a log,
+ * without carrying anything the server put in the message. A non-Prisma failure (today,
+ * only this file's own timeout error, whose message is a fixed template with no
+ * interpolated secret) is passed through unchanged.
+ */
+export function redactCause(rawCause: unknown): Error {
+  if (!(rawCause instanceof Error)) return new Error('unknown error')
+  if (!rawCause.constructor.name.startsWith('Prisma')) return rawCause
+
+  const errorCode = 'errorCode' in rawCause && typeof rawCause.errorCode === 'string' ? rawCause.errorCode : undefined
+  return new Error(errorCode ? `${rawCause.constructor.name} (${errorCode})` : rawCause.constructor.name)
+}
+
+/**
  * Resolves `DATABASE_URL` (throwing the presence finding if unset) and then attempts a
  * real, timeboxed query against it. Throws the reachability finding — host:port only,
  * never the DSN — if that query doesn't succeed in time. Used exactly once, at the very
@@ -70,13 +93,22 @@ export async function assertDatabaseReachable(env: NodeJS.ProcessEnv = process.e
   const prisma = new PrismaClient({ datasources: { db: { url: databaseUrl } } })
   try {
     await withTimeout(prisma.$queryRaw`SELECT 1`, PROBE_TIMEOUT_MS)
-  } catch (cause) {
+  } catch (rawCause) {
+    // oxlint's preserve-caught-error only recognises the caught binding passed
+    // through *verbatim* as `cause` — it can't see that `redactCause(rawCause)` is
+    // still genuinely derived from it, not a fresh, disconnected error. Passing
+    // `rawCause` itself, unwrapped, would satisfy the rule syntactically while
+    // reopening the exact leak `redactCause` exists to close (see its own comment —
+    // measured: a wrong-password failure names the configured username in
+    // `.message`). The cause is preserved, redacted, not discarded — this is the
+    // rule's blind spot, not a suppressed defect.
+    // oxlint-disable-next-line eslint/preserve-caught-error
     throw new Error(
       `Cannot reach the database at ${target} within ${PROBE_TIMEOUT_MS}ms — refusing to start. ` +
         'This process fails fast and does not retry (12-Factor IX); fix connectivity or the ' +
         'startup order at the orchestrator (e.g. a depends_on: service_healthy dependency on the ' +
         'database container), not by waiting on this one.',
-      { cause: cause instanceof Error ? cause : new Error(String(cause)) },
+      { cause: redactCause(rawCause) },
     )
   } finally {
     await prisma.$disconnect()

@@ -14,6 +14,16 @@
 // CI surface needed for it. What's missing, and what these two prove, is that the
 // process refuses to even get that far under the two broken conditions a stakeholder's
 // own docker setup can produce: the variable never set, and the variable set but wrong.
+//
+// `runServer()` below captures BOTH stdout and stderr of the real child process into
+// one `output` string, and the credential assertions in the second case run against
+// that — not against a parsed `.message` field. That distinction is the point: a
+// container's log is the process's combined stdout/stderr, exactly what an operator
+// would see, not a structured field only a test can reach into. This one exercises the
+// connection-refused failure class, which is measured to never put a credential
+// anywhere in that output even unredacted; `redact-cause.test.ts` proves the
+// *auth-failure* class — where Prisma's own message does name the configured username —
+// is still cut before it can reach here.
 import { type ChildProcessWithoutNullStreams, spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
