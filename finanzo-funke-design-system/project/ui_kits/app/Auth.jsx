@@ -1,5 +1,7 @@
-/* Login (aus Auth.tsx-Umfang des Quell-Repos, Funke-Kleid) — Google/Apple,
-   E-Mail+Passwort, Gast-Modus (#61). Alles Demo: erfolgreicher Login → onFertig. */
+/* Login — drei Wege, klare Hierarchie: E-Mail+Passwort ist die Primäraktion,
+   Google/Apple sind schnelle Nebenwege, die Geräte-Kopplung (QR) ist der eigene
+   Desktop-Weg auf der Nacht-Fläche (ab 700px — am Telefon ist der Login selbst
+   der kürzeste Weg; das Telefon ist der Gegenpart, siehe FunkeGeraetBestaetigen). */
 const { Button, Input, Feld, Chip } = window.FinanzoFunkeDesignSystem_7e417e;
 
 /* Offizielle Button-Marken der Anbieter (Standard-Pfade der Sign-in-Kits) */
@@ -21,10 +23,18 @@ function AppleMark() {
   );
 }
 
-function FunkeAuth({ onFertig, onGast }) {
+function FunkeAuth({ onFertig, onGast, googleVerfuegbar = true }) {
   const [mail, setMail] = React.useState('');
   const [pass, setPass] = React.useState('');
   const [fehler, setFehler] = React.useState('');
+  /* Geräte-Kopplung ist ein Großbild-Weg (Tablet/Desktop) — am Telefon ist der Login selbst der kürzeste Weg */
+  const [gross, setGross] = React.useState(() => window.matchMedia('(min-width: 700px)').matches);
+  React.useEffect(() => {
+    const mq = window.matchMedia('(min-width: 700px)');
+    const auf = (e) => setGross(e.matches);
+    mq.addEventListener('change', auf);
+    return () => mq.removeEventListener('change', auf);
+  }, []);
   const ok = mail.includes('@') && pass.length >= 6;
 
   function einloggen() {
@@ -49,9 +59,17 @@ function FunkeAuth({ onFertig, onGast }) {
       <p className="fx-rein" style={{ margin: '0 0 24px', color: 'var(--tinte-2)' }}>Dein Steuerjahr wartet — weiter, wo du aufgehört hast.</p>
 
       <div className="fx-rein" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <Button variante="ghost" onClick={onFertig} aria-label="Weiter mit Google">
-          <GoogleG /> Weiter mit Google
-        </Button>
+        {googleVerfuegbar ? (
+          <Button variante="ghost" onClick={onFertig} aria-label="Weiter mit Google">
+            <GoogleG /> Weiter mit Google
+          </Button>
+        ) : (
+          /* Grenzen ehrlich benennen: der Weg verschwindet nicht spurlos */
+          <div style={{ minHeight: 52, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, border: '1.5px dashed var(--linie-weich)', borderRadius: 14, padding: '8px 16px', color: 'var(--tinte-2)', fontSize: 13 }}>
+            <span style={{ opacity: 0.45, display: 'inline-flex', flex: 'none' }} aria-hidden="true"><GoogleG /></span>
+            <span>Google ist auf diesem Gerät nicht eingerichtet — die anderen Wege stehen dir offen.</span>
+          </div>
+        )}
         <Button variante="nacht" onClick={onFertig} aria-label="Weiter mit Apple">
           <span style={{ color: '#fff', display: 'inline-flex' }}><AppleMark /></span>
           <span style={{ color: '#fff' }}>Weiter mit Apple</span>
@@ -82,6 +100,18 @@ function FunkeAuth({ onFertig, onGast }) {
         <Chip onClick={onGast}>Erstmal als Gast umschauen</Chip>
         <p style={{ fontSize: 12, color: 'var(--tinte-2)', margin: '10px 0 0' }}>Gast-Modus: deine Angaben bleiben nur auf diesem Gerät.</p>
       </div>
+
+      {/* Zweiter Weg — klar abgesetzte Nacht-Fläche, nur auf großen Schirmen (Tablet/Desktop) */}
+      {gross && (
+        <div>
+          <div className="fx-rein" style={{ margin: '32px 0 14px', textAlign: 'center' }}>
+            <span className="mono-label" style={{ display: 'inline-block', padding: '4px 12px', border: '1.5px solid var(--linie-weich)', borderRadius: 99, background: 'var(--papier)' }}>Anderer Weg</span>
+          </div>
+          <div className="fx-rein">
+            <window.FunkeQrKopplung onFertig={onFertig}></window.FunkeQrKopplung>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
