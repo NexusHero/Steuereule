@@ -37,6 +37,22 @@ the environment truths that keep getting silently re-derived, written down once.
   native-binary steps as an unprivileged user — is real, scoped follow-up work, deliberately not
   folded into this pass so the fix can be reviewed on its own.
 
+  **Refined in Salih's #274 pass (2026-08-05): "the daemon could not be started" was this
+  session's own gap, not a permanent one — `dockerd` DOES start as root in this class of sandbox
+  (confirmed directly: `nohup dockerd &`, then `docker info` answers). The real, still-open
+  blocker is the registry PULL itself, not the daemon: `docker pull`/`docker buildx build` both
+  fail with `403 Forbidden` on the very first blob request, and the agent proxy's own status
+  endpoint (`curl "$HTTPS_PROXY/__agentproxy/status"`) names the cause precisely —
+  `recentRelayFailures` shows `connect_rejected` / `gateway answered 403 to CONNECT (policy denial
+  or upstream failure)` against `production.cloudfront.docker.com:443`, Docker Hub's own blob CDN.
+  This blocks pulling ANY image, for ANY platform (confirmed trying `linux/arm64` specifically,
+  investigating #274's own arm64-portability question for the stakeholder's Mac — blocked before
+  either architecture could even be attempted). `/root/.ccr/README.md`'s own "docker build /
+  docker run" section covers network access FROM INSIDE a build/container; it does not cover this
+  — the base-image pull itself, at the daemon's own registry client, before any container starts.
+  Check that status endpoint first in any future session that sees a `docker pull`/`compose up`
+  hang or a 403 — it answers in one call what used to take a timeout to even suspect.**
+
 - **`expo export --platform web --clear` — the `--clear` is load-bearing, not defensive.**
   Metro's bundler cache survives between exports; a second `expo export` with a different
   `EXPO_PUBLIC_API_BASE_URL` and no `--clear` can silently ship the STALE baked-in origin. The
