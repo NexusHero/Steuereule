@@ -83,7 +83,8 @@ RUN pnpm --filter @steuereule/api build
 # earlier version of this file combined them into one `RUN`/one `apt-get`, per Musti's original
 # review) — needs `node_modules` already installed (`pnpm --filter ... exec`), so it cannot run
 # before `pnpm install`, and openssl now genuinely must.
-RUN pnpm --filter @steuereule/api exec playwright-core install chromium --with-deps
+# TEMPORARY ADR-0021 CONTROL PROOF (F7) -- restored in the very next commit:
+# RUN pnpm --filter @steuereule/api exec playwright-core install chromium --with-deps
 
 ENV NODE_ENV=production
 EXPOSE 3000
