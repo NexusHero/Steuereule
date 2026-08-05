@@ -25,7 +25,15 @@
 // separate failure message (Musti's review: two distinct findings, never collapsed into
 // one message — "configuration present" and "database reachable" are different claims).
 export function resolveDatabaseUrl(env: NodeJS.ProcessEnv = process.env): string {
-  const url = env.DATABASE_URL
+  // `.trim()` before the presence check (Musti's review, F2): `DATABASE_URL="   "`
+  // is not "present" in any sense that helps — untrimmed, it slipped past this check
+  // and only failed 5 seconds later, inside assertDatabaseReachable's I/O-bearing
+  // probe, reported as a *reachability* defect. That's the wrong finding for what is
+  // really a presence/format one, and it's exactly the two-findings-never-collapsed
+  // line this file draws for itself above. A trimmed, non-empty value is returned
+  // (not the raw untrimmed one) — incidental surrounding whitespace is never
+  // intentional in a connection string either.
+  const url = env.DATABASE_URL?.trim()
   if (url && url.length > 0) return url
 
   throw new Error(

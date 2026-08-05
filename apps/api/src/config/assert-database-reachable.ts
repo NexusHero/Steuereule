@@ -42,10 +42,19 @@ export function describeDatabaseTarget(databaseUrl: string): string {
   }
 }
 
+/**
+ * Identifies `withTimeout`'s own timeout rejection, and only that — a named class
+ * rather than a message-prefix check, so `redactCause`'s one allowed passthrough is an
+ * identity check, not string matching against a template that could drift. Exported
+ * only so redact-cause.test.ts can exercise the real allowlisted case directly,
+ * without waiting out a real timeout.
+ */
+export class ProbeTimeoutError extends Error {}
+
 async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   let timer: NodeJS.Timeout | undefined
   const timeout = new Promise<never>((_resolve, reject) => {
-    timer = setTimeout(() => reject(new Error(`timed out after ${ms}ms`)), ms)
+    timer = setTimeout(() => reject(new ProbeTimeoutError(`timed out after ${ms}ms`)), ms)
   })
   try {
     return await Promise.race([promise, timeout])
@@ -57,24 +66,35 @@ async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 /**
  * Redacts whatever the probe's query attempt threw, for use as the guard error's own
  * `cause` — measured, not assumed to be needed: a wrong-password-but-reachable-host
- * failure (`PrismaClientInitializationError`, code `P1000`) puts the *username* right
- * in `.message` ("...credentials for `someuser` are not valid"), and `cause` prints by
- * default wherever this thrown error surfaces unhandled — `bootstrap()`'s own top-level
+ * failure (`PrismaClientInitializationError`) puts the *username* right in `.message`
+ * ("...credentials for `someuser` are not valid"), and `cause` prints by default
+ * wherever this thrown error surfaces unhandled — `bootstrap()`'s own top-level
  * `.catch` does exactly that. Reusing that raw error as `cause` would reopen, at the
  * back of this function, exactly the redaction `describeDatabaseTarget` builds at the
- * front of it. So a Prisma-originated failure is reduced to its class name and (only if
- * present) its short, fixed `errorCode` (Prisma's own enum, e.g. `P1001` — never
- * server-supplied text) — enough to tell a timeout apart from an auth failure in a log,
- * without carrying anything the server put in the message. A non-Prisma failure (today,
- * only this file's own timeout error, whose message is a fixed template with no
- * interpolated secret) is passed through unchanged.
+ * front of it.
+ *
+ * Measured against Prisma 6.19.3's real failure classes (wrong password, connection
+ * refused, unknown host, wrong database name): `.errorCode` is `undefined` on every
+ * one of them — there is no structured field left that survives redaction and still
+ * tells them apart. So a redacted cause carries only the error's class name — today
+ * uniformly `PrismaClientInitializationError` for all four — nothing more specific.
+ * That still distinguishes "the database rejected us" from this file's own timeout,
+ * without carrying anything the server put in the message; it does not distinguish
+ * *which* database failure occurred, and no comment here should imply it does.
+ *
+ * Allowlist, not a denylist (Musti's review): the only value ever passed through
+ * unredacted is `ProbeTimeoutError` — recognised by identity, not by "isn't Prisma".
+ * Everything else, known or not, is redacted by default. A denylist ("redact only
+ * what starts with `Prisma`") would pass anything unrecognised straight through with
+ * its full message and stack — a wrapper error, a Node-level DNS/TLS failure, a
+ * future Prisma rename — leaking by default, silently, with no test to catch it. This
+ * fails the opposite way: anything new lands on the safe side until someone
+ * deliberately allowlists it.
  */
 export function redactCause(rawCause: unknown): Error {
   if (!(rawCause instanceof Error)) return new Error('unknown error')
-  if (!rawCause.constructor.name.startsWith('Prisma')) return rawCause
-
-  const errorCode = 'errorCode' in rawCause && typeof rawCause.errorCode === 'string' ? rawCause.errorCode : undefined
-  return new Error(errorCode ? `${rawCause.constructor.name} (${errorCode})` : rawCause.constructor.name)
+  if (rawCause instanceof ProbeTimeoutError) return rawCause
+  return new Error(rawCause.constructor.name)
 }
 
 /**
