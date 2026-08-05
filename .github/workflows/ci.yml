@@ -650,8 +650,16 @@ jobs:
   # e2e/prod-deploy/run.mjs's own header comment for the exact class of bug this closes.
   #
   # Uses the SAME .env.example the stakeholder himself copies locally (`cp .env.example .env`) —
-  # one file, one set of values, checked in both places, never a second CI-only copy that could
-  # silently pass while the real instructions in the repo root don't.
+  # one file, one set of values for what gets BUILT (the compose stack, the images, every
+  # secret/origin baked into them). Musti's #274 review, F3: the readiness `curl`s and the
+  # "Guest, registration, login, QR" step's own API_ORIGIN/WEB_ORIGIN below are DELIBERATELY
+  # hardcoded literals, not re-derived from .env.example's values, even though they happen to
+  # match its defaults today — corrected here because the comment used to claim otherwise. This
+  # is load-bearing, not an oversight: #274's own ADR-0021 control proof (break .env.example's
+  # API_ORIGIN, watch this job go red) depends on this job's OWN probes staying pointed at the
+  # real, fixed ports regardless of what .env.example says, so a bundle-side break (the wrong
+  # origin baked into the web image) is isolated and named, rather than the harness quietly
+  # re-pointing itself at whatever the broken value was and never noticing the mismatch.
   prod-deploy-smoke:
     name: Production compose stack — guest, registration, login, QR (real Docker build)
     needs: build
@@ -686,6 +694,8 @@ jobs:
           curl --fail --silent --show-error --retry 40 --retry-delay 2 --retry-all-errors --retry-connrefused \
             "http://localhost:8080/"
       - name: Guest, registration, login, QR — real browser against the real containers
+        # API_ORIGIN/WEB_ORIGIN deliberately hardcoded, not read from the copied .env — see this
+        # job's own header comment (Musti's #274 review, F3) for why that isolation matters.
         env:
           API_ORIGIN: http://localhost:3000
           WEB_ORIGIN: http://localhost:8080

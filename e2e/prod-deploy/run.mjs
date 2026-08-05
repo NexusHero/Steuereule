@@ -27,11 +27,18 @@
 // attaches via e2e/harness/stack.mjs's ATTACH mode (API_ORIGIN/WEB_ORIGIN/DATABASE_URL
 // already set), it does not build or boot anything itself.
 //
-// Four flows, each the stakeholder's own exact words:
+// Five checks, covering all FOUR of the stakeholder's own exact-worded symptoms plus the
+// account this whole gate proves end to end:
 //   1. Guest — "Erst mal als Gast umschauen" through onboarding to Cockpit, no error.
 //   2. Registration — a real account, created for real (Konto anlegen).
 //   3. Login — signing back in with that same account.
-//   4. QR code — the device-authorization column actually renders a user_code, not just
+//   4. The Google button — asserted inside loginFlow() (Musti's #274 review, F4): the
+//      stakeholder's own FIRST-quoted symptom ("Google-Button fehlt komplett") was, until
+//      this pass, listed here but never actually checked — a curl against
+//      /v1/auth/capabilities (this job's own readiness step) proves the API side only,
+//      not that the browser renders the button (that reads the capability probe against
+//      whatever origin is baked into THIS web bundle, a genuinely different claim).
+//   5. QR code — the device-authorization column actually renders a user_code, not just
 //      an "Erneut versuchen" retry button.
 //
 // Exits non-zero on the first failed assertion — merge gate, not a report.
@@ -58,6 +65,7 @@ const COPY = {
   loginEmailPlaceholder: 'du@beispiel.de',
   loginPasswordPlaceholder: '••••••••',
   loginSubmit: 'Einloggen',
+  loginGoogleButton: 'Weiter mit Google',
   tabCockpit: 'Cockpit',
   errGeneric: 'Das hat gerade nicht geklappt. Prüf die Verbindung und versuch es noch mal.',
   errInvalidCredentials: 'E-Mail oder Passwort stimmen nicht.',
@@ -194,6 +202,19 @@ async function loginFlow(browser, webOrigin, { email, password }) {
   try {
     const page = await context.newPage()
     await skipSplash(page, webOrigin)
+
+    // The stakeholder's own FIRST-quoted symptom (Musti's #274 review, F4): a
+    // curl against /v1/auth/capabilities (this job's own readiness step) proves the API
+    // is willing to offer the provider — it does NOT prove the browser renders the
+    // button, which is a genuinely different claim (`useSocialSignInAvailable` reads the
+    // capability probe against the origin actually baked into THIS web bundle). Without
+    // this assertion, a GOOGLE_CLIENT_ID missing/wrong in .env — every other flow still
+    // green — would sail straight through this gate uncaught, exactly the class of
+    // omission REQ-008's own honesty rule exists to prevent.
+    await page.getByText(COPY.loginGoogleButton).waitFor({ state: 'visible', timeout: 10_000 }).catch(() => {
+      fail(`Login flow: "${COPY.loginGoogleButton}" button did not render — the stakeholder's own first-reported symptom.`)
+    })
+
     await page.getByPlaceholder(COPY.loginEmailPlaceholder).fill(email)
     await page.getByPlaceholder(COPY.loginPasswordPlaceholder).fill(password)
     await page.getByRole('button', { name: COPY.loginSubmit }).click()
