@@ -55,12 +55,42 @@ export class PlaywrightPdfRenderer implements PdfRenderer, OnModuleInit, OnModul
 
   private async getOrLaunch(): Promise<Browser> {
     if (this.browser) return this.browser
-    this.launching ??= this.launch()
+    // `??=` is here to de-duplicate: concurrent renders arriving while a launch is
+    // still in flight must join that one launch, not each start their own Chromium.
+    // But it caches the PROMISE, not the outcome — so a rejected launch used to stay
+    // cached for the life of the process, and every later render re-awaited the same
+    // settled rejection and got the identical original error (#285). That turned this
+    // method into a one-shot latch: onModuleInit deliberately survives a boot without
+    // Chromium and defers to "retry lazily on first use" (see its comment above), and
+    // this — the very path meant to recover — was what made the failure permanent.
+    //
+    // Clearing the latch at the point of failure keeps both halves: in flight, one
+    // shared promise; once rejected, gone, so the NEXT call is a real attempt again.
+    // The clear runs exactly once no matter how many callers were waiting on it, and
+    // it cannot clobber a later successful launch — a new one is only ever created
+    // after this assignment has already run.
+    //
+    // Deliberately no backoff or attempt cap: renderPdf() is request-bound, so a
+    // failed launch surfaces as a failed request and the natural retry is the user
+    // clicking again. A timer would add state and a second test dimension for a
+    // failure that is in practice either permanent (missing binary — fix the image,
+    // #281) or brief.
+    this.launching ??= this.launch().catch((error: unknown) => {
+      this.launching = undefined
+      throw error
+    })
     this.browser = await this.launching
     return this.browser
   }
 
-  private launch(): Promise<Browser> {
+  /** `protected`, not `private`, solely so the launch-lifecycle test can substitute a
+   *  scripted launcher (`test/pdf-renderer-launch-lifecycle.test.ts`). That test is
+   *  about *caching* — retry after failure, one shared launch under concurrency — which
+   *  is real logic in `getOrLaunch()`/`renderPdf()` above and needs no real browser to
+   *  exercise; the real-Chromium behaviour keeps its own integration test. One
+   *  overridable method is a smaller seam than injecting a launcher through the DI
+   *  graph for the same purpose. */
+  protected launch(): Promise<Browser> {
     return chromium.launch({ headless: true })
   }
 }
