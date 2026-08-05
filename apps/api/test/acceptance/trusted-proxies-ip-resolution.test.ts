@@ -54,11 +54,18 @@ async function attemptSignIn(baseUrl: string, xForwardedFor: string): Promise<nu
   return response.status
 }
 
-// @documents-defect #246 — A1 stays green *because* the single-value X-Forwarded-For bypass
-// is unfixed (register.md, REQ-010): closing it needs a real deployment (#246, still open)
-// so a real TRUSTED_PROXIES value exists. register-check's check 5 (docs/requirements/
-// register.md's citation of this file, both tables) mirrors this exact marker text and
-// verifies #246 is still open — the day it closes, that citation goes red until re-read.
+// @documents-defect #292 — A1 stays green *because* the single-value X-Forwarded-For bypass
+// is unfixed (register.md, REQ-010). Green here means "the bypass is still there", not "the
+// fix works": no TRUSTED_PROXIES value closes the single-value form, only the network property
+// of the app being unreachable except through a real proxy does — and that needs a real
+// deployment, which still does not exist (ADR-049: k3s on Hetzner). #246 carried that gap
+// until the stakeholder closed it on 2026-08-05; #274 had landed two minutes earlier, but it
+// ships a *local* production-shaped Compose stack and its own merge commit says so — "what
+// this deliberately does not resolve: #75 ... and #246 ... both stay open". #292 is #246's
+// successor and carries the same gap and the same dependents. register-check's check 5
+// (docs/requirements/register.md's citation of this file, both tables) mirrors this exact
+// marker text and verifies #292 is still open — the day it closes, that citation goes red
+// until re-read, which is exactly how #246's closure was caught.
 describe('#241 A1 — TRUSTED_PROXIES unset: today’s live bypass, kept as a permanent regression test', () => {
   let app: NestFastifyApplication
   let baseUrl: string
@@ -120,7 +127,9 @@ describe('#241 A2/A3 — TRUSTED_PROXIES configured: the fix, proven against a s
     process.env.BETTER_AUTH_URL = 'http://127.0.0.1:0'
     process.env.CORS_ALLOWED_ORIGINS = 'https://allowed.example.com'
     // A placeholder trusted-proxy CIDR (RFC 1918 private range) — deliberately NOT a
-    // real Fly.io range (that value depends on #246, out of this ticket's DoD) and
+    // real ingress range (that value is #277's, itself blocked on the deployment gap
+    // #292 now carries; it was written here as "a real Fly.io range" against a platform
+    // premise #246's own 2026-08-05 correction retired — ADR-049 is k3s on Hetzner) and
     // deliberately NOT overlapping any test IP below (TEST-NET-2/TEST-NET-3, RFC
     // 5737), so the resolver's own hop-stripping logic is what's under test, not an
     // accidental address collision.
