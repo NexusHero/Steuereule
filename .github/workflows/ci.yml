@@ -616,21 +616,6 @@ jobs:
         # `ubuntu-latest` runner image (no install step) — the `runner-images` catalogue for this
         # image lists the PostgreSQL client tools as preinstalled.
         run: node e2e/visibility/visibility-refetch.mjs
-      - name: TEMPORARY ADR-0021 control proof — kill the API before the QR gate runs
-        # Musti's #274 review, F2: device-authorization.mjs was wired into this job with no
-        # proof it goes red on a broken path — this job's own env hand-wires its own
-        # API_ORIGIN (http://localhost:3301), so #274's .env.example break could never reach
-        # this script at all. Proven here the way Musti named: stop the already-running API
-        # right before the QR step, leaving every step ABOVE this one (cross-origin smoke,
-        # breakpoint-layout, banner-ds-qa, visibility-refetch) to run and pass against the
-        # real, live API exactly as before — isolating the break to the one step this finding
-        # is about, the same discipline #274's own API_ORIGIN break used. Expect the QR step
-        # red immediately below; this step and its own comment are removed in the very next
-        # commit once that's confirmed, restoring the job to its real, permanent shape.
-        run: |
-          if [ -f /tmp/steuereule-api-cross-origin.pid ]; then
-            kill "$(cat /tmp/steuereule-api-cross-origin.pid)" 2>/dev/null || true
-          fi
       - name: QR device-authorization gate (#238/REQ-014, ADR-0023/0024) — real cross-device sign-in
         # MUST run last in this job (its own header comment) — LoginScreen's QR column mints a
         # device-code row on every m/l-breakpoint mount, so breakpoint-layout.mjs/banner-ds-qa.mjs
@@ -638,6 +623,26 @@ jobs:
         # itself against the real RateLimit table's live state rather than assuming a fresh bucket.
         # Attaches via e2e/harness/stack.mjs's ATTACH mode (API_ORIGIN/WEB_ORIGIN/DATABASE_URL
         # already set above) — the same real Postgres/API/web bundle this job already booted.
+        #
+        # TEMPORARY ADR-0021 control proof (Musti's #274 review, F2), this commit only: this
+        # step's own `env:` below overrides just API_ORIGIN to an unreachable port
+        # (http://localhost:19999), for this one step only — every step ABOVE this one keeps
+        # running against the job's real API_ORIGIN (http://localhost:3301) exactly as before, so
+        # a red result here isolates the break to this step alone. First attempt at this proof
+        # (a prior commit, killing the API process by its captured pid right before this step)
+        # did NOT work — CI's own log showed the kill command "succeed" but this script's
+        # ATTACH-mode readiness probe against that same API answered within ~300ms anyway, and the
+        # full script then ran to a genuine PASS: the process was never actually terminated (root
+        # cause not conclusively found — no obvious subshell/&&/exec issue in the boot step that
+        # backgrounds it). Replaced with this env-override approach instead, because it's the same
+        # mechanism already PROVEN reliable earlier in this same PR (control proof #1: a wrong
+        # API_ORIGIN in .env.example made stack.mjs's ATTACH-mode httpReachable probe fail
+        # cleanly, by name, after its own 10s timeout) rather than a second, unproven mechanism.
+        # Expect this step red, naming ATTACH mode's own API_ORIGIN (http://localhost:19999) as
+        # unreachable — this `env:` override and this whole comment are removed in the very next
+        # commit once that's confirmed, restoring the job to its real, permanent shape.
+        env:
+          API_ORIGIN: http://localhost:19999
         run: node e2e/device/device-authorization.mjs
       - name: API log (on failure)
         if: failure()
