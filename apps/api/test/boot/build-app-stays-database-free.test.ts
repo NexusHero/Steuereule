@@ -28,7 +28,12 @@ describe('buildApp() stays database-free', () => {
   })
 
   it('constructs the real Nest app without ever attempting a database connection', async () => {
+    // The real assertion is implicit: an eager connection attempt against
+    // 192.0.2.1:1 would make this `await` itself reject, failing the test. This
+    // explicit check just confirms buildApp() actually handed back a usable app,
+    // rather than the test passing vacuously on an unawaited promise.
     const app = await buildApp()
+    expect(app).toBeDefined()
     await app.close()
   })
 })
