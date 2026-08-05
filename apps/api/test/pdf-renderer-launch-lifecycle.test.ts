@@ -3,7 +3,7 @@
 // belongs in the plain no-DB/no-browser tier where it runs on every push. The
 // real-Chromium behaviour keeps its own `pdf-renderer.playwright.integration.test.ts`.
 //
-// What these three pin down is one property with two halves that pull against each
+// What these four pin down is one property with two halves that pull against each
 // other, and a fix that only gets one of them is not a fix:
 //
 //   1. A failed launch must NOT latch. `renderPdf()`'s whole reason for launching
@@ -17,6 +17,14 @@
 //      starting its own Chromium.
 //   3. A successful launch must stay cached, which is the property the original `??=`
 //      got right and a fix must not undo.
+//   4. The two above must hold AT THE SAME TIME — N waiters on a *failing* launch
+//      (Musti's review, F1). Cases 1 and 2 each touch one side: case 1 is failure with
+//      a single caller, case 2 is concurrency on a launch that succeeds. Their
+//      intersection is where a fix of this shape typically breaks — the clear fires
+//      once per waiter, and the retry that follows opens the very herd `??=` exists to
+//      prevent. `getOrLaunch()`'s comment asserts "the clear runs exactly once no
+//      matter how many callers were waiting on it"; this is the case that makes that
+//      sentence a tested property instead of a claim.
 import { describe, expect, it } from 'vitest'
 import type { Browser } from 'playwright-core'
 import { PlaywrightPdfRenderer } from '../src/account/export/pdf-renderer.playwright.js'
@@ -93,6 +101,53 @@ describe('PlaywrightPdfRenderer — launch caching lifecycle (#285)', () => {
     expect((await first).subarray(0, 5).toString('ascii')).toBe('%PDF-')
     expect((await second).subarray(0, 5).toString('ascii')).toBe('%PDF-')
     expect(renderer.launchCalls).toBe(1)
+  })
+
+  it('N waiters on a FAILING launch share that one attempt, all receive the failure, and their retries share one new launch', async () => {
+    // The crossing point of cases 1 and 2 (Musti's review, F1). Every count below is an
+    // exact number and every list assertion is preceded by a length assertion, so this
+    // case cannot pass on an empty collection — `.every()` on `[]` is `true`, which is
+    // precisely how a case like this passes while proving nothing.
+    let failLaunch: (error: Error) => void = () => {}
+    const pendingFailure = new Promise<Browser>((_resolve, reject) => {
+      failLaunch = reject
+    })
+    const renderer = new ScriptedLaunchRenderer((call) =>
+      call === 1 ? pendingFailure : Promise.resolve(stubBrowser()),
+    )
+
+    // Five renders arrive while the launch is still in flight — they must join it, not
+    // start five Chromiums, exactly as in case 2. The difference is how it ends.
+    const waiters = [renderer.renderPdf(HTML), renderer.renderPdf(HTML), renderer.renderPdf(HTML), renderer.renderPdf(HTML), renderer.renderPdf(HTML)]
+    expect(renderer.launchCalls).toBe(1)
+
+    failLaunch(new Error('browserType.launch: Failed to launch'))
+    const settled = await Promise.allSettled(waiters)
+
+    expect(settled).toHaveLength(5)
+    expect(settled.map((result) => result.status)).toEqual(['rejected', 'rejected', 'rejected', 'rejected', 'rejected'])
+    // The real launch error reaches every waiter — not a generic rejection, and not a
+    // different error introduced by the clearing itself.
+    for (const result of settled) {
+      expect(result.status === 'rejected' && String(result.reason)).toContain('Failed to launch')
+    }
+    // The clear ran, but it did not relaunch: clearing is not retrying.
+    expect(renderer.launchCalls).toBe(1)
+
+    // And the retry after that failure is itself de-duplicated — three concurrent
+    // renders get ONE new launch (2 total), not one each (4 total). This is the half
+    // that reopens if the clear is done per-waiting-caller instead of once at the
+    // source of the failure.
+    const retries = [renderer.renderPdf(HTML), renderer.renderPdf(HTML), renderer.renderPdf(HTML)]
+    expect(renderer.launchCalls).toBe(2)
+
+    const pdfs = await Promise.all(retries)
+
+    expect(pdfs).toHaveLength(3)
+    for (const pdf of pdfs) {
+      expect(pdf.subarray(0, 5).toString('ascii')).toBe('%PDF-')
+    }
+    expect(renderer.launchCalls).toBe(2)
   })
 
   it('keeps a successful launch cached — a second render reuses the same browser', async () => {
