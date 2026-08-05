@@ -69,12 +69,41 @@ interface RunResult {
 //
 // The ordering used to hold by coincidence (15s < 20s) and broke when the failsafe was
 // raised to 30s for the cleanup-path case, leaving two of three cases with a failsafe
-// that could never be reached. Derived from one constant rather than written twice, so
-// the relationship cannot drift again: every case gets CASE_TIMEOUT_MS, which is
-// strictly greater than FAILSAFE_MS by construction. If you add a case, use
-// CASE_TIMEOUT_MS — do not write a literal.
-const FAILSAFE_MS = 30_000
-const CASE_TIMEOUT_MS = FAILSAFE_MS + 10_000
+// that could never be reached. The first repair derived the case timeout FROM the
+// failsafe (`CASE_TIMEOUT_MS = FAILSAFE_MS + 10_000`) and put `do not write a literal`
+// in a comment next to it — but a note is not a control (F12). Anyone adding a case
+// with a hand-written `5_000` got a 30s failsafe inside a 5s case, i.e. exactly the
+// unreachable failsafe this constant exists to prevent, with nothing to stop them.
+//
+// So the derivation runs the other way now: the CASE TIMEOUT is the input, and
+// `failsafeFor()` computes a bound strictly below it — for every positive input, not
+// just for the one we happen to pass. `runServer(env, caseTimeoutMs)` takes the case's
+// own timeout and derives its failsafe from it, so a literal at the call site produces
+// a failsafe underneath THAT literal instead of drifting away from it. Structural
+// instead of conventional; the same move as denylist → allowlist in `redactCause`.
+const CASE_TIMEOUT_MS = 40_000
+
+// How far below the case timeout the failsafe sits when there is room for it. 10s
+// leaves the cleanup-path case (measured at ~13s to exit) its 30s bound unchanged
+// from the version this replaces, so the timing behaviour is not silently retuned.
+const FAILSAFE_MARGIN_MS = 10_000
+
+/** Salih's invariant, as a computation rather than a comment: **the failsafe must
+ *  always be shorter than the test that contains it.**
+ *
+ *  Total over every usable case timeout. Where the margin fits, the failsafe is
+ *  `caseTimeoutMs - FAILSAFE_MARGIN_MS`; where it does not (a short, hand-written
+ *  case timeout), it falls back to half the case timeout, which is still strictly
+ *  below it. A non-positive or non-finite input has no failsafe that can satisfy the
+ *  invariant, so it is rejected rather than quietly returning a bound that cannot
+ *  fire — the failure mode this whole constant exists to make impossible. */
+export function failsafeFor(caseTimeoutMs: number): number {
+  if (!Number.isFinite(caseTimeoutMs) || caseTimeoutMs <= 0) {
+    throw new Error(`case timeout must be a positive, finite number of ms — got ${caseTimeoutMs}`)
+  }
+  const withMargin = caseTimeoutMs - FAILSAFE_MARGIN_MS
+  return withMargin > 0 ? withMargin : Math.floor(caseTimeoutMs / 2)
+}
 
 /** Kills the spawned server's whole process GROUP, not just the process we hold a
  *  handle to — and that distinction is the entire point (measured while fixing F10).
@@ -95,17 +124,73 @@ const CASE_TIMEOUT_MS = FAILSAFE_MS + 10_000
  *  and the negative pid signals the whole group. Verified: 0 survivors. */
 function killServerTree(child: ChildProcessWithoutNullStreams): void {
   if (child.pid === undefined) return
+  killGroup(child.pid)
+}
+
+function killGroup(pid: number): void {
   try {
-    process.kill(-child.pid, 'SIGKILL')
+    process.kill(-pid, 'SIGKILL')
   } catch {
     // Already gone, or the group outlived its leader — nothing left to reap.
   }
+  liveGroups.delete(pid)
+}
+
+/** Every spawned group leader that has not been observed to exit (F11).
+ *
+ *  `detached: true` closed one door and opened another, and that second door is the
+ *  more likely source of the orphans we keep counting. Before it, the wrapper and the
+ *  server sat in vitest's own foreground process group, so a terminal Ctrl-C reached
+ *  them along with everything else. Now they form their OWN group, which is what lets
+ *  the failsafe reap them — and also what makes an INTERRUPTED run leave them standing:
+ *  the SIGINT goes to vitest's group and never crosses into theirs.
+ *
+ *  Measured on this branch, a real aborted run (SIGINT to the runner's process group,
+ *  survivors counted over `/proc`, not `ps | grep`): 2 processes alive mid-run → 2
+ *  survivors at `ppid=1` without this reaper, still there 40s later. The failsafe
+ *  cannot cover this case; it dies with the run that armed it.
+ *
+ *  What the same measurement also showed, and it qualifies the finding rather than
+ *  softening it: abort while a case whose child exits on its own is in flight (the
+ *  presence case, ~3s) and the count is back to 0 within seconds — that child was
+ *  leaving anyway. The orphan is permanent exactly when the child does NOT exit on its
+ *  own, which is the hung-server condition the failsafe exists for and the one that
+ *  produces a server still holding its port an hour later. So the numbers above were
+ *  taken with a deliberately hung guard, removed again afterwards.
+ *
+ *  So the groups are tracked here and killed when this process goes away for any
+ *  reason it can observe. Not coverable, and deliberately not pretended otherwise: a
+ *  SIGKILL of the runner, which no handler can intercept. */
+const liveGroups = new Set<number>()
+
+function reapAllGroups(): void {
+  // `killGroup` deletes the entry it was handed. Removing the CURRENT element during a
+  // Set iteration is well-defined — the iterator visits each remaining entry once — so
+  // this needs no defensive copy.
+  for (const pid of liveGroups) killGroup(pid)
+}
+
+// `exit` covers the ordinary end of the run, including a failed one. The signal
+// handlers cover the interrupted run: they are `once`, so after reaping they re-raise
+// the same signal, which then reaches vitest's own handler — or the default action if
+// it has none. Registering a listener suppresses that default, so re-raising rather
+// than swallowing is what keeps Ctrl-C still meaning "stop".
+process.on('exit', reapAllGroups)
+for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+  process.once(signal, () => {
+    reapAllGroups()
+    process.kill(process.pid, signal)
+  })
 }
 
 /** Boots `src/main.ts` as a real child process under an explicit (never inherited)
  *  env, and waits for it to exit on its own — a guard that hangs instead of failing
- *  fast is exactly as broken as one that doesn't fire at all. */
-function runServer(env: Record<string, string>): Promise<RunResult> {
+ *  fast is exactly as broken as one that doesn't fire at all.
+ *
+ *  Takes the CASE's timeout and derives its own failsafe from it (F12), so the bound
+ *  is always inside the case that armed it, whatever that case passes. */
+function runServer(env: Record<string, string>, caseTimeoutMs: number): Promise<RunResult> {
+  const failSafeMs = failsafeFor(caseTimeoutMs)
   return new Promise((resolve, reject) => {
     const child: ChildProcessWithoutNullStreams = spawn(tsxBin, ['src/main.ts'], {
       cwd: apiRoot,
@@ -118,6 +203,8 @@ function runServer(env: Record<string, string>): Promise<RunResult> {
       detached: true,
     })
 
+    if (child.pid !== undefined) liveGroups.add(child.pid)
+
     let output = ''
     child.stdout.on('data', (chunk: Buffer) => {
       output += chunk.toString()
@@ -129,19 +216,21 @@ function runServer(env: Record<string, string>): Promise<RunResult> {
     // 30s, not 15s: the presence and connection-refused cases exit in ~3s, but the
     // cleanup-path case below deliberately drives Prisma into its own connection-pool
     // timeout, measured at ~13s to exit — a 15s bound would flake on a slower runner.
-    // This must stay strictly below every case's own timeout; see FAILSAFE_MS above for
-    // why that ordering is load-bearing rather than incidental.
+    // That 30s is now a CONSEQUENCE of the 40s case timeout rather than a number that
+    // has to be kept in step with it by hand; see `failsafeFor` above.
     const failSafe = setTimeout(() => {
       killServerTree(child)
       reject(new Error(`server did not exit on its own within the test timeout — output so far:\n${output}`))
-    }, FAILSAFE_MS)
+    }, failSafeMs)
 
     child.on('error', (error) => {
       clearTimeout(failSafe)
+      if (child.pid !== undefined) liveGroups.delete(child.pid)
       reject(error)
     })
     child.on('exit', (code) => {
       clearTimeout(failSafe)
+      if (child.pid !== undefined) liveGroups.delete(child.pid)
       resolve({ code, output })
     })
   })
@@ -168,7 +257,7 @@ describe('the real server refuses to start against a broken database configurati
   it(
     'DATABASE_URL set but empty → exits non-zero with the presence finding, not a silent boot',
     async () => {
-      const { code, output } = await runServer({ DATABASE_URL: '' })
+      const { code, output } = await runServer({ DATABASE_URL: '' }, CASE_TIMEOUT_MS)
 
       expect(code).not.toBe(0)
       expect(output).toMatch(/DATABASE_URL must be set/)
@@ -179,12 +268,15 @@ describe('the real server refuses to start against a broken database configurati
   it(
     'DATABASE_URL set but unreachable (wrong host/port — the stakeholder’s own failure mode) → exits non-zero with the reachability finding, host:port only, never the DSN',
     async () => {
-      const { code, output } = await runServer({
-        // Port 1 on loopback: nothing listens there, so this refuses the connection
-        // immediately rather than waiting out the probe's own timeout — keeps the
-        // test fast without weakening what it proves.
-        DATABASE_URL: 'postgresql://someuser:super-secret-pw@127.0.0.1:1/steuereule',
-      })
+      const { code, output } = await runServer(
+        {
+          // Port 1 on loopback: nothing listens there, so this refuses the connection
+          // immediately rather than waiting out the probe's own timeout — keeps the
+          // test fast without weakening what it proves.
+          DATABASE_URL: 'postgresql://someuser:super-secret-pw@127.0.0.1:1/steuereule',
+        },
+        CASE_TIMEOUT_MS,
+      )
 
       expect(code).not.toBe(0)
       expect(output).toMatch(/Cannot reach the database at 127\.0\.0\.1:1/)
@@ -241,9 +333,12 @@ describe('the real server refuses to start against a broken database configurati
       if (address === null || typeof address === 'string') throw new Error('expected a TCP address')
 
       try {
-        const { code, output } = await runServer({
-          DATABASE_URL: `postgresql://someuser:super-secret-pw@127.0.0.1:${address.port}/steuereule?connect_timeout=30`,
-        })
+        const { code, output } = await runServer(
+          {
+            DATABASE_URL: `postgresql://someuser:super-secret-pw@127.0.0.1:${address.port}/steuereule?connect_timeout=30`,
+          },
+          CASE_TIMEOUT_MS,
+        )
 
         expect(code).not.toBe(0)
         // The guard's own finding must still be what the operator sees...
@@ -258,5 +353,59 @@ describe('the real server refuses to start against a broken database configurati
       }
     },
     CASE_TIMEOUT_MS,
+  )
+})
+
+// The invariant above is load-bearing enough to be checked rather than trusted (F12).
+// The version this replaces stated it in a comment — `do not write a literal` — next to
+// a constant that a literal at any call site walked straight past. These cases are that
+// comment as a computation: they construct the misuse the note asked people not to
+// commit, and measure that the ordering survives it anyway.
+describe('the failsafe is always shorter than the case that contains it', () => {
+  // The case timeouts anyone plausibly writes, including the deliberately hostile ones:
+  // shorter than the margin, equal to it, and 1ms.
+  const caseTimeouts = [1, 2, 100, 5_000, 9_999, 10_000, 10_001, 20_000, CASE_TIMEOUT_MS, 120_000]
+
+  // Just above the margin, so the derived failsafe is 500ms — see the last case.
+  const HAND_WRITTEN_CASE_TIMEOUT_MS = 10_500
+
+  it.each(caseTimeouts)('a case timeout of %ims derives a strictly shorter failsafe', (caseTimeoutMs) => {
+    expect(failsafeFor(caseTimeoutMs)).toBeLessThan(caseTimeoutMs)
+  })
+
+  it('the case timeouts this file actually passes get the failsafe the cases were measured against', () => {
+    // 30s is what the cleanup-path case (~13s to exit) was tuned for. Asserted here so
+    // that inverting the derivation cannot silently retune the timing it inherited.
+    expect(failsafeFor(CASE_TIMEOUT_MS)).toBe(30_000)
+  })
+
+  it('rejects a case timeout no failsafe could fit inside, instead of returning one that cannot fire', () => {
+    for (const bad of [0, -1, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(() => failsafeFor(bad)).toThrow(/positive, finite/)
+    }
+  })
+
+  // The cases above prove the DERIVATION is total. They cannot see whether `runServer`
+  // actually uses it — and "the harness stopped calling it" is the existence branch of
+  // exactly this control (ADR-0021's amendment: a check that only corrupts a value is
+  // vacuously satisfied by the value being gone). This one spawns the real child and
+  // measures the failsafe firing inside the case that passed its own timeout in.
+  it(
+    'a hand-written case timeout gets a failsafe that really fires inside it',
+    async () => {
+      // A literal, deliberately: this is the misuse the old `do not write a literal`
+      // comment could only ask people not to commit. It now derives a 500ms failsafe —
+      // comfortably before this child's measured ~3s exit, inside a case with 10.5s of
+      // room, so the failsafe is what ends this and not vitest's own timeout.
+      expect(failsafeFor(HAND_WRITTEN_CASE_TIMEOUT_MS)).toBe(500)
+
+      await expect(
+        runServer(
+          { DATABASE_URL: 'postgresql://someuser:super-secret-pw@127.0.0.1:1/steuereule' },
+          HAND_WRITTEN_CASE_TIMEOUT_MS,
+        ),
+      ).rejects.toThrow(/did not exit on its own/)
+    },
+    HAND_WRITTEN_CASE_TIMEOUT_MS,
   )
 })
