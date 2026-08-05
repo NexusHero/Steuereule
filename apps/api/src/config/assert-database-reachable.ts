@@ -109,6 +109,32 @@ export function redactCause(rawCause: unknown): Error {
 }
 
 /**
+ * Closes the probe's throwaway client without ever being able to change what the probe
+ * concluded — the cleanup path, contained (Salih's #275 test report, blocking).
+ *
+ * `$disconnect()` can itself reject, and an abrupt completion in a `finally` REPLACES
+ * whatever the `try`/`catch` was completing with. So `finally { await
+ * prisma.$disconnect() }` had two failure modes, both measured on a real spawned
+ * server, not derived: against a blackholed host the guard's redacted finding was
+ * discarded entirely and Prisma's raw error and stack went to stderr in its place; with
+ * `?connect_timeout=30` and a peer that accepts but never completes the handshake, the
+ * same substitution put the configured USERNAME there. That is the exact leak
+ * `redactCause` exists to close, coming back through a door `redactCause` never
+ * guarded — because redaction lives in the `catch`, and the cleanup path runs whatever
+ * happens, including when nothing went wrong at all.
+ *
+ * Swallowed rather than redacted-and-rethrown, deliberately. By the time this runs the
+ * probe's verdict is already decided and is the thing the operator needs; a failed
+ * disconnect on a client that exists only for one `SELECT 1` is not separately
+ * actionable, and the process is about to either exit or hand over to the app's own
+ * PrismaService. The cost is a probe connection that may outlive the check on the
+ * failure path — bounded by the process itself, which fails fast a moment later.
+ */
+export async function disconnectQuietly(client: Pick<PrismaClient, '$disconnect'>): Promise<void> {
+  await client.$disconnect().catch(() => {})
+}
+
+/**
  * Resolves `DATABASE_URL` (throwing the presence finding if unset) and then attempts a
  * real, timeboxed query against it. Throws the reachability finding — host:port only,
  * never the DSN — if that query doesn't succeed in time. Used exactly once, at the very
@@ -142,6 +168,6 @@ export async function assertDatabaseReachable(env: NodeJS.ProcessEnv = process.e
       { cause: redactCause(rawCause) },
     )
   } finally {
-    await prisma.$disconnect()
+    await disconnectQuietly(prisma)
   }
 }

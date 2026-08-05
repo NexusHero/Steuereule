@@ -34,6 +34,7 @@
 // *auth-failure* class — where Prisma's own message does name the configured username —
 // is still cut before it can reach here.
 import { type ChildProcessWithoutNullStreams, spawn } from 'node:child_process'
+import net from 'node:net'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
@@ -66,10 +67,15 @@ function runServer(env: Record<string, string>): Promise<RunResult> {
       output += chunk.toString()
     })
 
+    // 30s, not 15s: the presence and connection-refused cases exit in ~3s, but the
+    // cleanup-path case below deliberately drives Prisma into its own connection-pool
+    // timeout, measured at ~13s to exit. This failsafe exists to catch a guard that
+    // HANGS rather than failing fast, and 30s still does that with room for a slower
+    // CI runner — a tighter bound would turn that case red for the wrong reason.
     const failSafe = setTimeout(() => {
       child.kill('SIGKILL')
       reject(new Error(`server did not exit on its own within the test timeout — output so far:\n${output}`))
-    }, 15_000)
+    }, 30_000)
 
     child.on('error', (error) => {
       clearTimeout(failSafe)
@@ -130,5 +136,59 @@ describe('the real server refuses to start against a broken database configurati
       expect(output).not.toMatch(/DATABASE_URL must be set/)
     },
     20_000,
+  )
+
+  // Salih's #275 test report, FAIL. The redaction and the finding both live in the
+  // guard's `catch`; its `finally { await prisma.$disconnect() }` runs regardless, and
+  // an abrupt completion in a `finally` REPLACES whatever try/catch was completing
+  // with. So a rejecting disconnect discarded the redacted finding entirely and put
+  // Prisma's own raw error — message and stack — on stderr instead. Measured on this
+  // branch before the fix, two independent ways: a blackholed host (`10.255.255.1`),
+  // and the shape below. He also measured a form where the configured USERNAME reached
+  // stderr that way, which is the leak this PR's whole first finding exists to close,
+  // arriving through the cleanup path instead of through `cause`.
+  //
+  // A local TCP server that accepts and then never speaks Postgres makes it
+  // deterministic and needs no external network: with `?connect_timeout=30` the driver
+  // stays inside its own connect window long past the 5s probe timeout, so the probe
+  // throws and the disconnect on that half-open connection is what rejects.
+  //
+  // What this asserts is the INVARIANT, not the mechanism — the finding survives
+  // cleanup and nothing leaks. If some environment resolves the disconnect cleanly,
+  // this still passes rather than failing for the wrong reason; it can only go red if
+  // the cleanup path is once again allowed to replace or leak.
+  it(
+    'a rejecting $disconnect in the guard’s cleanup path cannot replace the redacted finding or leak the DSN',
+    async () => {
+      // Sockets are tracked so cleanup can destroy them explicitly: `close()` only
+      // stops accepting and then waits for existing connections, and the stalled one
+      // outlives the child, so without this the test hangs on its own teardown.
+      const sockets = new Set<net.Socket>()
+      const stall = net.createServer((socket) => {
+        sockets.add(socket)
+        socket.on('error', () => {})
+      })
+      await new Promise<void>((resolve) => stall.listen(0, '127.0.0.1', resolve))
+      const address = stall.address()
+      if (address === null || typeof address === 'string') throw new Error('expected a TCP address')
+
+      try {
+        const { code, output } = await runServer({
+          DATABASE_URL: `postgresql://someuser:super-secret-pw@127.0.0.1:${address.port}/steuereule?connect_timeout=30`,
+        })
+
+        expect(code).not.toBe(0)
+        // The guard's own finding must still be what the operator sees...
+        expect(output).toMatch(/Cannot reach the database at 127\.0\.0\.1:/)
+        // ...and the cleanup path must not have become a second way out for the
+        // credentials the `catch` path is careful to redact.
+        expect(output).not.toContain('someuser')
+        expect(output).not.toContain('super-secret-pw')
+      } finally {
+        for (const socket of sockets) socket.destroy()
+        await new Promise<void>((resolve) => stall.close(() => resolve()))
+      }
+    },
+    45_000,
   )
 })
