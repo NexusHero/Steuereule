@@ -707,6 +707,18 @@ jobs:
             "http://localhost:3000/v1/auth/capabilities"
           curl --fail --silent --show-error --retry 40 --retry-delay 2 --retry-all-errors --retry-connrefused \
             "http://localhost:8080/"
+      - name: Calibrate what the smoke run is allowed to CLAIM it ran against (ADR-0021 §3)
+        # run.mjs's PASS lines used to hardcode the word "containerised" — a claim about the far
+        # end of an HTTP origin that an ATTACHING script cannot see, measured false on a machine
+        # with no Docker daemon at all and true here only by CI's own coincidence of running
+        # `docker compose up` first. The phrase is now derived from `docker compose ps`, and this
+        # step is what stops that derivation from silently collapsing back into a constant: it
+        # feeds known-good and known-bad inputs through it and fails if they stop differing.
+        # Placed AFTER the stack is up so its trailing live-probe line reads the real project —
+        # the one environment where the confirmed branch is exercised against real docker output.
+        env:
+          API_ORIGIN: http://localhost:3000
+        run: node e2e/prod-deploy/api-target.mjs
       - name: Guest, registration, login, QR — real browser against the real containers
         # API_ORIGIN/WEB_ORIGIN deliberately hardcoded, not read from the copied .env — see this
         # job's own header comment (Musti's #274 review, F3) for why that isolation matters.

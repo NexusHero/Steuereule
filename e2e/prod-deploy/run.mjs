@@ -42,9 +42,19 @@
 //      an "Erneut versuchen" retry button.
 //
 // Exits non-zero on the first failed assertion — merge gate, not a report.
+//
+// WHAT THE PASS LINES BELOW MAY CLAIM (Salih's own finding against this file, 2026-08-05). This
+// script ATTACHES; it does not start the stack, and an HTTP origin does not tell you what is
+// behind it. Every PASS line here used to say "the containerised API" as a hardcoded literal
+// regardless — measured false on a machine where the Docker daemon was not even running, and
+// true in CI only because CI happens to `docker compose up` first. The phrase is now DERIVED
+// from an actual observation of the compose project (`./api-target.mjs`), so an attached run
+// that cannot confirm a container says so instead. Nothing about the assertions changed: the
+// derivation describes a pass, it can never cause or prevent one.
 
 import { launchBrowser, closeBrowser, newContextAtBreakpoint } from '../harness/browser.mjs'
 import { startStack } from '../harness/stack.mjs'
+import { resolveApiTarget } from './api-target.mjs'
 
 // German copy (app boots in `de`, ADR-0006), lifted from apps/mobile-web/src/i18n/resources.ts —
 // exact strings, including the two the stakeholder himself quoted.
@@ -87,7 +97,7 @@ async function skipSplash(page, webOrigin) {
 }
 
 // --- Flow 1: guest browsing (the stakeholder's own first complaint) -----------------------
-async function guestFlow(browser, webOrigin) {
+async function guestFlow(browser, webOrigin, target) {
   const context = await browser.newContext({ viewport: { width: 768, height: 1024 } })
   try {
     const page = await context.newPage()
@@ -160,22 +170,23 @@ async function guestFlow(browser, webOrigin) {
     await page.getByText(COPY.steuerNrLater).click()
     await page.getByRole('button', { name: COPY.weiter }).click()
 
-    // Reaching this point means the real PUT /v1/profile against the real, containerised
-    // API succeeded — the guest flow genuinely completed, not merely "didn't show an error".
+    // Reaching this point means the real PUT /v1/profile against whatever is serving API_ORIGIN
+    // succeeded — the guest flow genuinely completed, not merely "didn't show an error". Whether
+    // that server is a container is `target`'s business to state, not this comment's to assume.
     await page.getByRole('tab', { name: COPY.tabCockpit }).waitFor({ state: 'visible', timeout: 15_000 }).catch(async () => {
       // Fallback locator, in case the accessibilityRole="tab" -> role="tab" mapping ever
       // changes shape (packages/ui/src/components/TabBar.tsx) — either way, something past
       // onboarding must be visible.
       await page.getByText(COPY.tabCockpit).first().waitFor({ state: 'visible', timeout: 5_000 })
     })
-    console.log('[prod-deploy] PASS — guest flow reached Cockpit through the real containerised API.')
+    console.log(`[prod-deploy] PASS — guest flow reached Cockpit through ${target.apiPhrase}.`)
   } finally {
     await context.close()
   }
 }
 
 // --- Flow 2: registration (the stakeholder's own "Konto anlegen geht nicht") --------------
-async function registrationFlow(browser, webOrigin) {
+async function registrationFlow(browser, webOrigin, target) {
   const context = await browser.newContext({ viewport: { width: 768, height: 1024 } })
   try {
     const page = await context.newPage()
@@ -189,7 +200,7 @@ async function registrationFlow(browser, webOrigin) {
     await page.getByRole('button', { name: COPY.registrierungSubmit }).click()
 
     await page.getByRole('button', { name: COPY.registrierungSuccessCta }).waitFor({ state: 'visible', timeout: 15_000 })
-    console.log(`[prod-deploy] PASS — registration created a real account (${email}) against the containerised API.`)
+    console.log(`[prod-deploy] PASS — registration created a real account (${email}) against ${target.apiPhrase}.`)
     return { email, password }
   } finally {
     await context.close()
@@ -197,7 +208,7 @@ async function registrationFlow(browser, webOrigin) {
 }
 
 // --- Flow 3: login with the account just created -------------------------------------------
-async function loginFlow(browser, webOrigin, { email, password }) {
+async function loginFlow(browser, webOrigin, { email, password }, target) {
   const context = await browser.newContext({ viewport: { width: 768, height: 1024 } })
   try {
     const page = await context.newPage()
@@ -232,14 +243,14 @@ async function loginFlow(browser, webOrigin, { email, password }) {
     if (await page.getByRole('button', { name: COPY.loginSubmit }).count()) {
       fail('Login flow: the Einloggen button is still on screen 15s after submit — login neither succeeded nor surfaced a named error.')
     }
-    console.log('[prod-deploy] PASS — login succeeded against the containerised API with the account just registered.')
+    console.log(`[prod-deploy] PASS — login succeeded against ${target.apiPhrase} with the account just registered.`)
   } finally {
     await context.close()
   }
 }
 
 // --- Flow 4: the QR code (the stakeholder's own "kein QR-Code, nur Erneut versuchen") -----
-async function qrFlow(browser, webOrigin) {
+async function qrFlow(browser, webOrigin, target) {
   // Wide breakpoint only — the QR column renders at m/l (Decision 3a), matching
   // e2e/device/device-authorization.mjs's own Context A.
   const context = await newContextAtBreakpoint(browser, 'l')
@@ -277,7 +288,7 @@ async function qrFlow(browser, webOrigin) {
       )
     }
     await page.getByText(deviceCode.userCode, { exact: true }).waitFor({ state: 'visible', timeout: 5_000 })
-    console.log(`[prod-deploy] PASS — QR column rendered a real user_code (${deviceCode.userCode}) from the containerised API.`)
+    console.log(`[prod-deploy] PASS — QR column rendered a real user_code (${deviceCode.userCode}) from ${target.apiPhrase}.`)
   } finally {
     await context.close()
   }
@@ -285,15 +296,21 @@ async function qrFlow(browser, webOrigin) {
 
 async function main() {
   const { apiOrigin, webOrigin } = await startStack()
+  // Resolved ONCE, before the browser opens, and threaded into every PASS line — so all five
+  // lines of this run's report make the same, single, measured claim about the same stack rather
+  // than each restating a literal nobody re-checks.
+  const target = resolveApiTarget(apiOrigin)
   console.log(`[prod-deploy] attached — API ${apiOrigin}, web ${webOrigin}`)
+  console.log(`[prod-deploy] target — ${target.apiPhrase}`)
+  console.log(`[prod-deploy] target — ${target.note}`)
 
   const browser = await launchBrowser()
   try {
-    await guestFlow(browser, webOrigin)
-    const account = await registrationFlow(browser, webOrigin)
-    await loginFlow(browser, webOrigin, account)
-    await qrFlow(browser, webOrigin)
-    console.log('[prod-deploy] PASS — all four of the stakeholder\'s own flows work against the real docker-compose.prod.yml stack.')
+    await guestFlow(browser, webOrigin, target)
+    const account = await registrationFlow(browser, webOrigin, target)
+    await loginFlow(browser, webOrigin, account, target)
+    await qrFlow(browser, webOrigin, target)
+    console.log(`[prod-deploy] PASS — all four of the stakeholder's own flows work against ${target.stackPhrase}.`)
   } finally {
     await closeBrowser(browser)
   }
