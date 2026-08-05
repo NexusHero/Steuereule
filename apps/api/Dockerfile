@@ -40,6 +40,25 @@ RUN pnpm install --frozen-lockfile
 RUN pnpm --filter @steuereule/api prisma:generate
 RUN pnpm --filter @steuereule/api build
 
+# REQ-011 (Musti's #274 review, F1) — `pdf-renderer.playwright.ts`'s own header comment
+# states the requirement plainly: "the API's production image must bundle the Chromium
+# binary", explicitly named there as a tracked follow-up rather than a blocker AT THE
+# TIME that comment was written, because no production image existed yet to bundle it
+# into. This is that image, so the follow-up is now due, not deferred a second time.
+# Without this, `PlaywrightPdfRenderer.onModuleInit()` swallows the launch failure so
+# boot survives, and `renderPdf()` retries lazily — the failure is POSTPONED to a real
+# user's first export click against this exact image, not avoided. Same `RUN`/same
+# `apt-get` as the OpenSSL fix directly below (Musti's #274 review): one layer, not two.
+# Verbatim the same install CI's own `smoke`/`integration` jobs already run.
+#
+# The OpenSSL warning (`prisma:warn ... Defaulting to "openssl-1.1.x"`, seen in this
+# image's own boot logs on PR #274) is fixed in the same command — `node:24-bookworm-slim`
+# doesn't ship `openssl`, which is what Prisma's query engine probes for to pick the
+# right binary target. Never failed a run so far (the fallback is correct), but costs
+# nothing extra to close here rather than leave as a second latent gap next to the first.
+RUN apt-get update && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/* \
+    && pnpm --filter @steuereule/api exec playwright-core install chromium --with-deps
+
 ENV NODE_ENV=production
 EXPOSE 3000
 
