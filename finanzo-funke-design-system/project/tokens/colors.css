@@ -27,6 +27,7 @@
   --nacht: #191b12;
   --nacht-karte: #262a1c;
   --nacht-text: #f4f2e9;
+  --nacht-linie: #3d4230;
 
   /* KI — exklusiv. Nie außerhalb von .ai-*-Selektoren referenzieren. */
   --ki: #7c5cff;

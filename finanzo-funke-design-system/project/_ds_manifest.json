@@ -88,11 +88,18 @@
       "name": "Abgabe-Abschluss"
     },
     {
+      "path": "ui_kits/app/auth-zustaende.html",
+      "group": "App",
+      "viewport": "1280x1750",
+      "subtitle": "Geräte-Kopplung (RFC 8628): alle 8 Zustände + Telefon-Gegenpart + Google-nicht-da — nicht nur der Idealfall",
+      "name": "Anmelden — Zustände (Referenz)"
+    },
+    {
       "path": "ui_kits/app/auth.html",
       "group": "App",
-      "viewport": "420x820",
-      "subtitle": "Google & Apple, E-Mail+Passwort, Gast-Modus — gestaffelter Auftritt",
-      "name": "Login"
+      "viewport": "900x1230",
+      "subtitle": "Drei Wege: Google/Apple/E-Mail oben — Geräte-Kopplung im Spotify-Stil: QR-Muster, Code darunter gepinnt, Lebensdauer-Balken, bekannte Geräte (ab 700px)",
+      "name": "Login (Desktop/Tablet)"
     },
     {
       "path": "ui_kits/app/bescheid.html",
@@ -522,6 +529,12 @@
       "definedIn": "tokens/colors.css"
     },
     {
+      "name": "--nacht-linie",
+      "value": "#3d4230",
+      "kind": "color",
+      "definedIn": "tokens/colors.css"
+    },
+    {
       "name": "--ki",
       "value": "#7c5cff",
       "kind": "color",
@@ -655,6 +668,13 @@
       "name": "--nacht-text",
       "value": "#f4f2e9",
       "kind": "font",
+      "definedIn": "tokens/dunkel.css",
+      "scope": "[data-theme=\"dunkel\"]"
+    },
+    {
+      "name": "--nacht-linie",
+      "value": "#313624",
+      "kind": "color",
       "definedIn": "tokens/dunkel.css",
       "scope": "[data-theme=\"dunkel\"]"
     },
