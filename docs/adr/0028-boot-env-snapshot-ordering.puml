@@ -1,0 +1,63 @@
+@startuml 0028-boot-env-snapshot-ordering
+!pragma layout smetana
+title ADR-0028 — why the snapshot must be the entry point's first import
+
+skinparam shadowing false
+skinparam defaultFontName sans-serif
+skinparam sequenceMessageAlign left
+
+participant "node\n(module evaluation)" as Node
+participant "config/env-snapshot.ts" as Snap
+participant "app.module.ts\n→ PrismaService" as App
+participant "@prisma/client" as Prisma
+participant "process.env" as Env
+participant "bootstrap()" as Boot
+
+== Module evaluation — imports run in source order ==
+
+Node -> Snap : import 1 (deliberately ahead of alphabetical order)
+activate Snap
+Snap -> Env : read presence of the 7 guarded names
+Env --> Snap : the operator's own configuration
+note right of Snap
+  PRESENT_BEFORE_PRISMA_COULD_LOAD
+  frozen here, once
+end note
+deactivate Snap
+
+Node -> App : import 2 (would sort first)
+activate App
+App -> Prisma : reached at import time via PrismaService
+activate Prisma
+Prisma -> Env : merge schema-adjacent apps/api/.env\n(import side effect, fill-only)
+note right of Env
+  Whatever the operator left unset
+  is now silently supplied by a file.
+end note
+deactivate Prisma
+deactivate App
+
+== bootstrap() — after everything above has already run ==
+
+Node -> Boot
+activate Boot
+Boot -> Env : read live environment
+Env --> Boot
+Boot -> Boot : names present now\nminus names present before
+alt NODE_ENV=production and something arrived
+  Boot -->o] : refuse to start —\nname the variables and the file,\nnever the values
+else otherwise
+  Boot -> Boot : no-op (F6: never reject a working configuration)
+end
+deactivate Boot
+
+legend right
+  Swap imports 1 and 2 and the snapshot is taken
+  AFTER the merge: nothing looks like it arrived,
+  the guard goes blind, and the process runs on
+  values nobody set.
+  That is the control proof (ADR-0021) the
+  acceptance suite runs as its own case.
+endlegend
+
+@enduml

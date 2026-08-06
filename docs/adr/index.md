@@ -46,6 +46,7 @@ The ADRs **justify** the architecture; the [living arc42 document](../arc42/READ
 | 0025 | The Requirements Register's owner can write it; the evidence is checked by CI | Accepted |
 | 0026 | A local, production-shaped Docker Compose stack for the API and web bundle (#76) | Accepted |
 | 0027 | better-auth's session freshness gate is disabled (`session.freshAge: 0`) — exhaustive consumer list, accepted loss on `/unlink-account` | Accepted |
+| 0028 | Check the effect, not the mechanism: the pre-Prisma environment snapshot, and the boot ordering invariant it rests on (#284) | Accepted |
 
 See also the [Tech Radar](./tech-radar.md).
 
