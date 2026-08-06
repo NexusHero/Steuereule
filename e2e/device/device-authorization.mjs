@@ -83,17 +83,25 @@
 //      explicitly. Routed around here via a direct `/app` navigation so the revocation mechanism
 //      itself could still be proven. Not a REQ-014 blocker.
 //
-// RATE-LIMIT BUDGET (Musti's #238 gate spec — requirements, not suggestions):
-//   1. This script MUST run LAST in its CI job. `LoginScreen`'s QR column mints a
-//      `device-code:<ip>` row on every `m`/`l`-breakpoint mount (Decision 3a, no tap needed) —
-//      `breakpoint-layout.mjs`'s own breakpoint sweep and `cross-origin/run.mjs`'s flows already
-//      spend some of that bucket before this script gets to run, in the real `cross-origin-smoke`
-//      job (see `e2e/harness/README.md`).
+// RATE-LIMIT BUDGET (Musti's #238 gate spec — requirements, not suggestions; corrected in his
+// #300 review, G1 — read #1 closely, its actual constraint is narrower than the old wording said):
+//   1. This script must run AFTER every gate in its CI job that consumes the device-code bucket
+//      WITHOUT pacing itself — concretely `breakpoint-layout.mjs` and `banner-ds-qa.mjs`, neither
+//      of which calls `waitForBucketHeadroom` at all. `LoginScreen`'s QR column mints a
+//      `device-code:<ip>` row on every `m`/`l`-breakpoint mount (Decision 3a, no tap needed), so
+//      those two scripts have already spent some of that bucket before this one gets to run (see
+//      `e2e/harness/README.md`). This is NOT "must be the job's literal last step": a script that
+//      self-paces via #2 below (e.g. `session/return-visit.mjs`, added after this file) can run
+//      on either side of this one without breaking anything — whichever runs second just waits
+//      out whatever the first left behind. This file happens to run before that one today for the
+//      simplest reason available (it was here first), not because that ordering is load-bearing.
 //   2. It paces itself against both device buckets (`device-code:<ip>`, `device-pending:<ip>`,
 //      `apps/api/src/device/device-{code,pending}-rate-limit.ts`, window 60s/max 10 each) AND the
 //      shared better-auth sign-up/sign-in bucket (`no-trusted-ip|<path>`, window 10s/max 3,
 //      already documented by `visibility-refetch.mjs`'s header) — via `waitForBucketHeadroom`
-//      below, which READS the real `RateLimit` row and never deletes it (see #3).
+//      (`../harness/rate-limit.mjs`, imported above and shared with `session/return-visit.mjs`
+//      since Musti's #300 review, G2 — see that module's own header), which READS the real
+//      `RateLimit` row and never deletes it (see #3).
 //   3. `guardAgainst429` fails loudly and immediately on any 429 from `/api/auth/*` or
 //      `/v1/device/*`, so a bucket exhaustion is reported as its own cause, not as a mystery
 //      timeout several assertions later.
@@ -127,6 +135,7 @@ import {
   probeColourAtPoint,
 } from '../harness/browser.mjs'
 import { startStack } from '../harness/stack.mjs'
+import { fail, readBucketByExactKey, readBucketByPrefix, waitForBucketHeadroom } from '../harness/rate-limit.mjs'
 
 const AUTH_BUCKET = { windowMs: 10_000, max: 3 } // better-auth's own built-in rule
 const DEVICE_CODE_BUCKET = { windowMs: 60_000, max: 10 } // device-code-rate-limit.ts
@@ -178,47 +187,14 @@ function coloursMatch(observed, expected, tolerance = COLOUR_TOLERANCE) {
   return Math.abs(observed.r - expected.r) <= tolerance && Math.abs(observed.g - expected.g) <= tolerance && Math.abs(observed.b - expected.b) <= tolerance
 }
 
-function fail(message) {
-  console.error(`::error::${message}`)
-  process.exitCode = 1
-  throw new Error(message)
-}
-
-// --- Rate-limit pacing — reads the real RateLimit table, never deletes a row. See this file's
-// own header for the budget rules these implement.
-
-/** Exact-key bucket (better-auth's own built-in rule — the key is known ahead of time, it does
- *  not depend on a per-caller IP this environment can't resolve). */
-function readBucketByExactKey(sql, key) {
-  const row = sql(`SELECT count, "lastRequest" FROM "RateLimit" WHERE key = '${key}'`)
-  return parseBucketRow(row)
-}
-
-/** Prefix-scanned bucket (the device endpoints' keys embed Fastify's own `request.ip`, which
- *  this script cannot predict ahead of time — it reads whichever key this job's shared,
- *  unresolvable-IP address actually produced, most-recently-touched first). */
-function readBucketByPrefix(sql, prefix) {
-  const row = sql(`SELECT count, "lastRequest" FROM "RateLimit" WHERE key LIKE '${prefix}:%' ORDER BY "lastRequest" DESC LIMIT 1`)
-  return parseBucketRow(row)
-}
-
-function parseBucketRow(row) {
-  if (!row) return null
-  const [countStr, lastRequestStr] = row.split('|')
-  const count = Number(countStr)
-  const lastRequest = Number(lastRequestStr)
-  if (!Number.isFinite(count) || !Number.isFinite(lastRequest)) return null
-  return { count, lastRequest }
-}
-
-async function waitForBucketHeadroom(bucket, config, label) {
-  if (!bucket) return
-  const elapsed = Date.now() - bucket.lastRequest
-  if (bucket.count >= config.max && elapsed < config.windowMs) {
-    const waitMs = config.windowMs - elapsed + 250
-    console.log(`[device-authorization] ${label} bucket is at ${bucket.count}/${config.max} — waiting ${waitMs}ms rather than clearing it.`)
-    await new Promise((resolvePromise) => setTimeout(resolvePromise, waitMs))
-  }
+// `fail`, `readBucketByExactKey`, `readBucketByPrefix`, `waitForBucketHeadroom` now come from
+// `../harness/rate-limit.mjs` (Musti's #300 review, G2 — this file's own copies were byte-
+// identical to `session/return-visit.mjs`'s, which grew its own before this shared module
+// existed; both migrated onto the one canonical copy together). `waitForRateLimit` below is a
+// thin, script-local wrapper supplying this file's own `scriptTag` so every call site below
+// doesn't have to repeat `'device-authorization'`.
+function waitForRateLimit(bucket, config, label) {
+  return waitForBucketHeadroom(bucket, config, label, 'device-authorization')
 }
 
 function countRequestsTo(page, method, pathSubstring) {
@@ -320,7 +296,7 @@ async function main() {
     const codeRequests = countRequestsTo(pageA, 'POST', '/v1/device/code')
 
     const codeResponsePromise = pageA.waitForResponse((r) => r.request().method() === 'POST' && r.url().includes('/v1/device/code'))
-    await waitForBucketHeadroom(readBucketByPrefix(sql, 'device-code'), DEVICE_CODE_BUCKET, 'device-code')
+    await waitForRateLimit(readBucketByPrefix(sql, 'device-code'), DEVICE_CODE_BUCKET, 'device-code')
     await skipSplash(pageA, webOrigin)
 
     // Musti's #263 review (F2) used to sample the QR column's own owl-entrance animation right
@@ -347,7 +323,7 @@ async function main() {
     guardAgainst429(pageB, fail, '/v1/device/')
 
     const email = `device-auth-${Date.now()}@beispiel.de`
-    await waitForBucketHeadroom(readBucketByExactKey(sql, 'no-trusted-ip|/sign-up/email'), AUTH_BUCKET, 'sign-up/email')
+    await waitForRateLimit(readBucketByExactKey(sql, 'no-trusted-ip|/sign-up/email'), AUTH_BUCKET, 'sign-up/email')
     await signUpOutOfBand(apiOrigin, webOrigin, email, TEST_PASSWORD)
     // Pre-verified — REQ-014 describes "an account holder already signed in on their phone", not
     // a fresh unverified sign-up; verifying here keeps the flow on its own critical path instead
@@ -359,7 +335,7 @@ async function main() {
     await skipSplash(pageB, webOrigin)
     await pageB.getByPlaceholder(COPY.loginEmailPlaceholder).fill(email)
     await pageB.getByPlaceholder(COPY.loginPasswordPlaceholder).fill(TEST_PASSWORD)
-    await waitForBucketHeadroom(readBucketByExactKey(sql, 'no-trusted-ip|/sign-in/email'), AUTH_BUCKET, 'sign-in/email')
+    await waitForRateLimit(readBucketByExactKey(sql, 'no-trusted-ip|/sign-in/email'), AUTH_BUCKET, 'sign-in/email')
     await pageB.getByRole('button', { name: COPY.loginSubmit }).click()
     await pageB.getByPlaceholder(COPY.onboardingFirstNamePlaceholder).waitFor({ state: 'visible', timeout: 10_000 })
     assertRequestCount(signInRequests, '/sign-in/email', 1, 'Context B real sign-in')
@@ -368,7 +344,7 @@ async function main() {
 
     const pendingRequests = countRequestsTo(pageB, 'GET', '/v1/device/pending')
     const pendingResponsePromise = pageB.waitForResponse((r) => r.request().method() === 'GET' && r.url().includes('/v1/device/pending'))
-    await waitForBucketHeadroom(readBucketByPrefix(sql, 'device-pending'), DEVICE_PENDING_BUCKET, 'device-pending')
+    await waitForRateLimit(readBucketByPrefix(sql, 'device-pending'), DEVICE_PENDING_BUCKET, 'device-pending')
     await pageB.goto(deviceCode.verificationUriComplete)
     const pendingResponse = await pendingResponsePromise
     if (pendingResponse.status() !== 200) fail(`GET /v1/device/pending returned ${pendingResponse.status()}, expected 200.`)

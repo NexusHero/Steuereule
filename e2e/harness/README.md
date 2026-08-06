@@ -166,14 +166,46 @@ everywhere. An instrument proven on only the "it moved"/"it matched" half is unp
 tell a positive from a negative — Musti's point, restated: a check that silently always passes is
 worse than no check, because the next reader reads the green as coverage.
 
+**A second real caller landed for `sampleComputedStyleOverFrames`/`newReducedMotionContext`
+specifically (Musti's #300 review, F10/G1)** — `session/return-visit.mjs`'s Row G, against
+SplashScreen's own independent entrance animation. Not redundant with the caller above: Kaan's
+#298 removes LoginScreen's QR-column owl (a real design change), which would have taken
+`device-authorization.mjs`'s `assertOwlEntranceOpacity` — these two instruments' only caller —
+with it the moment that PR merges. Pointing a second caller at a target #298 doesn't touch means
+both instruments keep a real caller once that happens, rather than quietly going unproven again
+(the exact class #263's F2 already closed once). `probeColourAtPoint` still has exactly one real
+caller (`device-authorization.mjs`, unaffected by #298) — no second one added for it here, because
+nothing else in this repo currently exercises a comparable painted-pixel claim.
+
+## `rate-limit.mjs`
+
+`fail`, `readBucketByExactKey`, `readBucketByPrefix`, `waitForBucketHeadroom` — the "read the real
+`RateLimit` row, never truncate it" discipline every gate that shares CI's `Browser gates` job
+must follow (see "The `RateLimit` table is never truncated..." above). Extracted after Musti's
+#300 review, G2: `device-authorization.mjs` and `session/return-visit.mjs` had each grown a
+byte-identical copy of these five functions — not a style nit, since they encode a REQ-010
+control's own policy (bucket-key shapes, and above all the never-truncate rule), and two copies of
+a control are two things that can quietly drift apart. Both scripts migrated onto this one
+canonical copy in the same change that introduced it — see this module's own header for why a
+new file growing a second copy was never what the "Not done in this pass" note below licensed.
+`waitForBucketHeadroom`'s `scriptTag` parameter is what lets two self-pacing scripts share one CI
+job's log without either needing its own copy just to get its own log prefix.
+
 ## Not done in this pass
 
-- `ci.yml`'s own steps are **not** rewired to call `stack.mjs`/`browser.mjs` yet. That is a
-  real, low-risk follow-up (each already-green job's bash steps get replaced by one script
-  import, one job at a time, each proven green again before the next), deliberately left out of
-  the pass that introduces the module those steps would import — rewiring five working CI jobs
-  and introducing the thing they'd import are two different amounts of blast radius, and mixing
-  them would make a revert of either one harder than it needs to be.
-- Existing scripts (`visibility-refetch.mjs`'s own `sql()`, `banner-ds-qa.mjs`'s own
-  `guardAgainst429`) are **not** migrated to import the canonical versions here. Same reasoning —
-  each is a small, separate, easy-to-review diff once this module exists to import from.
+- `ci.yml`'s own remaining steps are **not** rewired to call `stack.mjs`/`browser.mjs` yet (the
+  `Browser gates` job's device-authorization/return-visit steps already attach via `stack.mjs`'s
+  ATTACH mode — that part is done; the job's own boot/serve steps above them are still hand-typed
+  bash). That is a real, low-risk follow-up (each already-green job's remaining bash steps get
+  replaced by one script import, one job at a time, each proven green again before the next),
+  deliberately left out of the pass that introduces the module those steps would import —
+  rewiring five working CI jobs and introducing the thing they'd import are two different amounts
+  of blast radius, and mixing them would make a revert of either one harder than it needs to be.
+- `visibility-refetch.mjs`'s own `sql()` and `banner-ds-qa.mjs`'s own `guardAgainst429` are
+  **not** migrated to import the canonical versions here (the rate-limit helpers above ARE now
+  migrated, on both `device-authorization.mjs` and `session/return-visit.mjs` — see
+  `rate-limit.mjs`'s own section). Same reasoning as always for what's left: each is a small,
+  separate, easy-to-review diff once a script already needs to change for another reason. What
+  this note does **not** license, and never did (Musti's #300 review, G2): a **new** script
+  growing its own copy of something a shared module already provides — that is the moment to
+  import or extract, not the moment to note the duplication and move on.

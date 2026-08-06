@@ -79,24 +79,33 @@
 // RATE-LIMIT BUDGET (same discipline as visibility-refetch.mjs/device-authorization.mjs — read
 // before adding a call). This file spends, in the shared `no-trusted-ip|<path>` sign-up/sign-in
 // bucket (window 10s/max 3): row B (1 sign-up + 1 sign-in), row C (1 sign-up + 2 sign-ins) — 5
-// calls total, paced via `waitForBucketHeadroom` below, which only READS the real `RateLimit`
-// table (never truncates it — clearing a REQ-010 control to make a gate pass was tried once
-// elsewhere in this repo and reverted). Rows A/D/E/F issue no sign-up/sign-in calls at all (row
-// A's control-proof login submit is aborted by the harness's own `page.route` before it ever
-// reaches the server, so it spends nothing). Device-code mints (`device-code:<ip>`, window
-// 60s/max 10): row A (1, real) + row C (2 — see below) + row F (2) = 5, also paced. Rows B/D/E
-// deliberately run at the `s` (375px) breakpoint — the QR column only renders at `m`/`l`
-// (Decision 3a) — so those three rows never touch the device-code bucket at all. Row C is the one
-// exception: it runs at `l` (1280px) deliberately, because #295's own report includes the QR
-// card failing, and `s` has no QR column to exercise that symptom against at all — both of its
-// Login-screen mounts (session 1's initial load, session 2's reopen) mint a code and are paced
-// the same way row A's does.
-// If this file is ever wired into the shared `Browser gates` CI job, it should run AFTER
-// `device-authorization.mjs` (or that script's own "must run last" rule needs revisiting) — not
-// done in this pass; this file stands alone today, same as `device-authorization.mjs` did before
-// its own wiring (see this file's own PR for the state left here).
+// calls total, paced via `waitForBucketHeadroom` (`../harness/rate-limit.mjs`, imported above),
+// which only READS the real `RateLimit` table (never truncates it — clearing a REQ-010 control
+// to make a gate pass was tried once elsewhere in this repo and reverted). Rows A/D/E/F issue no
+// sign-up/sign-in calls at all (row A's control-proof login submit is aborted by the harness's
+// own `page.route` before it ever reaches the server, so it spends nothing). Device-code mints
+// (`device-code:<ip>`, window 60s/max 10): row A (1, real) + row C (2 — see below) + row F (2) =
+// 5, also paced. Rows B/D/E deliberately run at the `s` (375px) breakpoint — the QR column only
+// renders at `m`/`l` (Decision 3a) — so those three rows never touch the device-code bucket at
+// all. Row C is the one exception: it runs at `l` (1280px) deliberately, because #295's own
+// report includes the QR card failing, and `s` has no QR column to exercise that symptom against
+// at all — both of its Login-screen mounts (session 1's initial load, session 2's reopen) mint a
+// code and are paced the same way row A's does.
 //
-// Exits non-zero on the first failed assertion — merge gate, not a report, once wired in.
+// WIRED into `ci.yml`'s `Browser gates` job (Musti's #300 review, G1 — a repair instrument with
+// no real caller in CI is the same defect one level up, so this did not stay a standing-alone
+// draft the way `device-authorization.mjs` once did). Runs as the job's LAST step, after
+// `device-authorization.mjs`. That ordering is NOT "device-authorization.mjs's own script header
+// requires strictly-last" — read closely (Musti's #300 review), its actual constraint is "after
+// every gate that consumes the device-code bucket WITHOUT pacing itself"
+// (`breakpoint-layout.mjs`, `banner-ds-qa.mjs` — neither calls `waitForBucketHeadroom` at all).
+// This file and `device-authorization.mjs` both self-pace via the same shared helper, so their
+// order relative to EACH OTHER doesn't matter for correctness — whichever runs second simply
+// waits out whatever bucket state the first left behind, exactly as designed. This file runs
+// after `device-authorization.mjs` for the simplest reason available (least risk to an existing,
+// proven step), not because ordering between two self-pacing scripts is load-bearing.
+//
+// Exits non-zero on the first failed assertion — merge gate, not a report.
 
 import { chromium } from 'playwright-core'
 import { mkdtemp, rm } from 'node:fs/promises'
@@ -104,6 +113,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { launchBrowser, closeBrowser, newContextAtBreakpoint, guardAgainst429, sampleComputedStyleOverFrames, newReducedMotionContext } from '../harness/browser.mjs'
 import { startStack } from '../harness/stack.mjs'
+import { fail, readBucketByExactKey, readBucketByPrefix, waitForBucketHeadroom } from '../harness/rate-limit.mjs'
 
 const AUTH_BUCKET = { windowMs: 10_000, max: 3 } // better-auth's own built-in rule
 const DEVICE_CODE_BUCKET = { windowMs: 60_000, max: 10 } // device-code-rate-limit.ts
@@ -133,43 +143,14 @@ const COPY = {
   cockpitLoadErrorHeading: 'Das hat nicht geklappt.',
 }
 
-function fail(message) {
-  console.error(`::error::${message}`)
-  process.exitCode = 1
-  throw new Error(message)
-}
-
-// --- Rate-limit pacing — reads the real RateLimit table, never deletes a row. Same shape as
-// device-authorization.mjs's own copy (not migrated to a shared harness helper in this pass —
-// see e2e/harness/README.md's "Not done in this pass" section for why duplication stands today).
-
-function readBucketByExactKey(sql, key) {
-  const row = sql(`SELECT count, "lastRequest" FROM "RateLimit" WHERE key = '${key}'`)
-  return parseBucketRow(row)
-}
-
-function readBucketByPrefix(sql, prefix) {
-  const row = sql(`SELECT count, "lastRequest" FROM "RateLimit" WHERE key LIKE '${prefix}:%' ORDER BY "lastRequest" DESC LIMIT 1`)
-  return parseBucketRow(row)
-}
-
-function parseBucketRow(row) {
-  if (!row) return null
-  const [countStr, lastRequestStr] = row.split('|')
-  const count = Number(countStr)
-  const lastRequest = Number(lastRequestStr)
-  if (!Number.isFinite(count) || !Number.isFinite(lastRequest)) return null
-  return { count, lastRequest }
-}
-
-async function waitForBucketHeadroom(bucket, config, label) {
-  if (!bucket) return
-  const elapsed = Date.now() - bucket.lastRequest
-  if (bucket.count >= config.max && elapsed < config.windowMs) {
-    const waitMs = config.windowMs - elapsed + 250
-    console.log(`[return-visit] ${label} bucket is at ${bucket.count}/${config.max} — waiting ${waitMs}ms rather than clearing it.`)
-    await new Promise((resolvePromise) => setTimeout(resolvePromise, waitMs))
-  }
+// Rate-limit pacing (`fail`, `readBucketByExactKey`, `readBucketByPrefix`,
+// `waitForBucketHeadroom`) is imported from `../harness/rate-limit.mjs` — the one canonical copy
+// this file and `device-authorization.mjs` both migrated onto together (Musti's #300 review, G2;
+// see that module's own header for why the two prior byte-identical copies were a real problem,
+// not a style nit). `waitForRateLimit` below is a thin, script-local wrapper that supplies this
+// file's own `scriptTag` so every call site doesn't have to repeat it.
+function waitForRateLimit(bucket, config, label) {
+  return waitForBucketHeadroom(bucket, config, label, 'return-visit')
 }
 
 async function skipSplash(page, webOrigin) {
@@ -350,12 +331,12 @@ async function testSignedInReload(browser, apiOrigin, webOrigin, sql) {
     guardAgainst429(page, fail, '/api/auth/')
     const email = `return-visit-reload-${Date.now()}@beispiel.de`
 
-    await waitForBucketHeadroom(readBucketByExactKey(sql, 'no-trusted-ip|/sign-up/email'), AUTH_BUCKET, 'sign-up/email')
+    await waitForRateLimit(readBucketByExactKey(sql, 'no-trusted-ip|/sign-up/email'), AUTH_BUCKET, 'sign-up/email')
     await signUpOutOfBand(apiOrigin, webOrigin, email, TEST_PASSWORD)
     sql(`UPDATE "User" SET "emailVerified" = true WHERE email = '${email}'`)
 
     await skipSplash(page, webOrigin)
-    await waitForBucketHeadroom(readBucketByExactKey(sql, 'no-trusted-ip|/sign-in/email'), AUTH_BUCKET, 'sign-in/email')
+    await waitForRateLimit(readBucketByExactKey(sql, 'no-trusted-ip|/sign-in/email'), AUTH_BUCKET, 'sign-in/email')
     await page.getByPlaceholder(COPY.loginEmailPlaceholder).fill(email)
     await page.getByPlaceholder(COPY.loginPasswordPlaceholder).fill(TEST_PASSWORD)
     await page.getByRole('button', { name: COPY.loginSubmit }).click()
@@ -399,11 +380,13 @@ async function testSignedInReload(browser, apiOrigin, webOrigin, sql) {
     // NOT asserted: that this lands on /login. FOUND while building this row (not assumed going
     // in): /app has no guard, so clearing the cookie and reloading does NOT fall back to /login —
     // UserContextGuard (REQ-002) silently mints a brand-new, empty GUEST session instead, and
-    // /app renders its own honest empty Cockpit under that guest identity. That is real, on-topic
-    // behaviour this file did not go looking for — reported in this PR's body as its own finding,
-    // not folded silently into this row's assertion (which only needs "not the same account",
-    // proven above via get-session, and is honestly agnostic about which of /login or a fresh
-    // guest is the right landing spot for a lost session — a product call, not this file's).
+    // /app renders its own empty Cockpit under that guest identity — NOT called "honest" here
+    // (Musti's #300 review, G3): a blank Cockpit is indistinguishable from "your data is gone",
+    // which is an honesty defect, not a display of one. Reported in this PR's body as its own
+    // finding, not folded silently into this row's assertion (which only needs "not the same
+    // account", proven above via get-session, and is agnostic about which of /login or a fresh
+    // guest is the right landing spot for a lost session — a product call, not this file's; see
+    // Row E's own header for the exact question this raises for the stakeholder).
     console.log('[return-visit] Row B (control): clearing the session cookie correctly clears the account identity on reload — the positive assertion above is real, not vacuous.')
   } finally {
     await ctx.close()
@@ -416,7 +399,7 @@ async function testSignedInReload(browser, apiOrigin, webOrigin, sql) {
  *  against a live API throughout. */
 async function testCloseAndReopenReLogin(apiOrigin, webOrigin, sql) {
   const email = `return-visit-reopen-${Date.now()}@beispiel.de`
-  await waitForBucketHeadroom(readBucketByExactKey(sql, 'no-trusted-ip|/sign-up/email'), AUTH_BUCKET, 'sign-up/email')
+  await waitForRateLimit(readBucketByExactKey(sql, 'no-trusted-ip|/sign-up/email'), AUTH_BUCKET, 'sign-up/email')
   await signUpOutOfBand(apiOrigin, webOrigin, email, TEST_PASSWORD)
   sql(`UPDATE "User" SET "emailVerified" = true WHERE email = '${email}'`)
 
@@ -430,9 +413,9 @@ async function testCloseAndReopenReLogin(apiOrigin, webOrigin, sql) {
       guardAgainst429(page, fail, '/v1/device/')
       // `l`-breakpoint (see below) mounts the QR column, which mints a device-code row on every
       // load (Decision 3a) — paced against the shared bucket like every other mint in this file.
-      await waitForBucketHeadroom(readBucketByPrefix(sql, 'device-code'), DEVICE_CODE_BUCKET, 'device-code')
+      await waitForRateLimit(readBucketByPrefix(sql, 'device-code'), DEVICE_CODE_BUCKET, 'device-code')
       await skipSplash(page, webOrigin)
-      await waitForBucketHeadroom(readBucketByExactKey(sql, 'no-trusted-ip|/sign-in/email'), AUTH_BUCKET, 'sign-in/email')
+      await waitForRateLimit(readBucketByExactKey(sql, 'no-trusted-ip|/sign-in/email'), AUTH_BUCKET, 'sign-in/email')
       await assertLoginSubmitHonest(page, email, TEST_PASSWORD, { expectHealthy: true, label: 'Row C (session 1 sign-in)' })
       console.log('[return-visit] Row C: session 1 — real sign-in against a live API succeeded, no #295 symptom 1.')
 
@@ -457,14 +440,14 @@ async function testCloseAndReopenReLogin(apiOrigin, webOrigin, sql) {
       const page = ctx.pages()[0] ?? (await ctx.newPage())
       guardAgainst429(page, fail, '/api/auth/')
       guardAgainst429(page, fail, '/v1/device/')
-      await waitForBucketHeadroom(readBucketByPrefix(sql, 'device-code'), DEVICE_CODE_BUCKET, 'device-code')
+      await waitForRateLimit(readBucketByPrefix(sql, 'device-code'), DEVICE_CODE_BUCKET, 'device-code')
       await skipSplash(page, webOrigin)
       // Splash always leads to Login today (App.tsx's own comment: no boot-time session-detection
       // yet, REQ-009 pending) — an already-documented gap, not asserted here as new. The
       // stakeholder's own next step is what this row actually tests: re-entering the same
       // credentials on the screen that's actually shown.
       await assertLoginScreenHonest(page, apiOrigin, { expectHealthy: true, label: 'Row C (session 2, before re-login)' })
-      await waitForBucketHeadroom(readBucketByExactKey(sql, 'no-trusted-ip|/sign-in/email'), AUTH_BUCKET, 'sign-in/email')
+      await waitForRateLimit(readBucketByExactKey(sql, 'no-trusted-ip|/sign-in/email'), AUTH_BUCKET, 'sign-in/email')
       await assertLoginSubmitHonest(page, email, TEST_PASSWORD, { expectHealthy: true, label: 'Row C (session 2, re-login)' })
       console.log(
         '[return-visit] Row C: session 2 — after a real close+reopen of the browser, re-entering the same ' +
@@ -531,11 +514,18 @@ async function testGuestReload(browser, webOrigin) {
 /** Row E — no session at all, a direct deep link to a protected route. Pins TODAY'S REAL,
  *  OBSERVED behaviour (confirmed by actually driving the browser, not assumed from reading the
  *  router — App.tsx's `AppRoute` carries no guard at all): `/app`'s own `UserContextGuard`
- *  (REQ-002) silently mints a brand-new guest session and renders the honest, empty Cockpit —
- *  never a blank page, never a stuck spinner, never a crash. This is NOT this file's ruling that
- *  that is the *right* behaviour (silently starting a new guest identity from an arbitrary
- *  bookmark/deep link is a genuine, open product question — flagged in this PR's body, not
- *  decided here); it is a regression guard on the behaviour that exists today. */
+ *  (REQ-002) silently mints a brand-new guest session and renders the empty Cockpit — never a
+ *  blank page, never a stuck spinner, never a crash.
+ *
+ *  Musti's ruling (#300 review): this is NOT a confidentiality hole — the new guest sees nothing
+ *  of anyone else's — but it IS an honesty defect, and this file does not call it "honest"
+ *  anywhere below. A blank Cockpit is indistinguishable from "your data is gone"; nothing on
+ *  screen tells whoever is looking at it that they are no longer the identity they were a moment
+ *  ago. The open question for the stakeholder is not "should /app redirect to /login" — it is
+ *  whether the app may EVER silently replace a known account identity with a fresh anonymous one
+ *  without telling the user. T1, the stakeholder decides, ticketed separately. This row stays
+ *  exactly as written either way: a regression guard on today's actual behaviour, not a ruling
+ *  that the behaviour is right. */
 async function testUnauthenticatedDeepLink(browser, webOrigin) {
   const ctx = await newContextAtBreakpoint(browser, 's')
   try {
@@ -546,13 +536,17 @@ async function testUnauthenticatedDeepLink(browser, webOrigin) {
     })
     const emptyHeadingVisible = await page.getByText(COPY.cockpitEmptyHeading, { exact: true }).isVisible().catch(() => false)
     if (!emptyHeadingVisible) {
-      fail(`Row E: a deep link to /app with no session did not show the honest "${COPY.cockpitEmptyHeading}" empty state — check whether a stale/wrong Cockpit rendered instead.`)
+      fail(`Row E: a deep link to /app with no session did not show the expected "${COPY.cockpitEmptyHeading}" empty state — check whether a stale/wrong Cockpit rendered instead.`)
     }
     const bodyText = await page.locator('body').innerText()
     if (bodyText.trim().length === 0) {
       fail('Row E: a deep link to /app with no session rendered an empty page body — the "leere Hülle" class this row exists to catch.')
     }
-    console.log('[return-visit] Row E: a deep link straight to /app with no session renders the honest, empty guest Cockpit — no broken screen, no blank shell (today\'s real, observed behaviour).')
+    console.log(
+      '[return-visit] Row E: a deep link straight to /app with no session renders the empty guest Cockpit — ' +
+        "no broken screen, no blank shell (today's real, observed behaviour; NOT a ruling that silently " +
+        'replacing a known identity with a fresh anonymous one is honest — see this row\'s own header).',
+    )
   } finally {
     await ctx.close()
   }
@@ -578,12 +572,12 @@ async function testDeviceCodeDoesNotSurviveReload(browser, webOrigin, sql) {
       }
     })
 
-    await waitForBucketHeadroom(readBucketByPrefix(sql, 'device-code'), DEVICE_CODE_BUCKET, 'device-code')
+    await waitForRateLimit(readBucketByPrefix(sql, 'device-code'), DEVICE_CODE_BUCKET, 'device-code')
     await skipSplash(page, webOrigin)
     await page.getByText(/^[A-Z0-9]{8}$/).first().waitFor({ state: 'visible', timeout: 15_000 })
     if (!firstCode) fail('Row F: no POST /v1/device/code response observed on first mount — nothing to compare against a reload.')
 
-    await waitForBucketHeadroom(readBucketByPrefix(sql, 'device-code'), DEVICE_CODE_BUCKET, 'device-code')
+    await waitForRateLimit(readBucketByPrefix(sql, 'device-code'), DEVICE_CODE_BUCKET, 'device-code')
     await page.reload({ waitUntil: 'networkidle' })
     await page.getByText(/^[A-Z0-9]{8}$/).first().waitFor({ state: 'visible', timeout: 15_000 })
 

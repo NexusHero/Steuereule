@@ -617,12 +617,18 @@ jobs:
         # image lists the PostgreSQL client tools as preinstalled.
         run: node e2e/visibility/visibility-refetch.mjs
       - name: QR device-authorization gate (#238/REQ-014, ADR-0023/0024) — real cross-device sign-in
-        # MUST run last in this job (its own header comment) — LoginScreen's QR column mints a
-        # device-code row on every m/l-breakpoint mount, so breakpoint-layout.mjs/banner-ds-qa.mjs
-        # above have already spent some of that bucket before this script gets to run; it paces
-        # itself against the real RateLimit table's live state rather than assuming a fresh bucket.
-        # Attaches via e2e/harness/stack.mjs's ATTACH mode (API_ORIGIN/WEB_ORIGIN/DATABASE_URL
-        # already set above) — the same real Postgres/API/web bundle this job already booted.
+        # Must run after breakpoint-layout.mjs/banner-ds-qa.mjs above (its own header comment,
+        # corrected in Musti's #300 review, G1 — the real constraint, not "must be this job's
+        # literal last step"): LoginScreen's QR column mints a device-code row on every m/l-
+        # breakpoint mount, and NEITHER of those two scripts paces itself against that bucket, so
+        # they have already spent some of it before this script gets to run. This script paces
+        # itself against the real RateLimit table's live state rather than assuming a fresh
+        # bucket — which is also why its ORDER relative to the return-visit gate below doesn't
+        # matter: that script self-paces the same way, via the same shared
+        # e2e/harness/rate-limit.mjs helper, so whichever runs second just waits out whatever the
+        # first left behind. Attaches via e2e/harness/stack.mjs's ATTACH mode
+        # (API_ORIGIN/WEB_ORIGIN/DATABASE_URL already set above) — the same real Postgres/API/web
+        # bundle this job already booted.
         #
         # ADR-0021 control proof (Musti's #274 review, F2), confirmed: a prior commit overrode
         # just this step's own API_ORIGIN to an unreachable port (http://localhost:19999) and
@@ -638,6 +644,21 @@ jobs:
         # httpReachable probe fail cleanly, by name, after its 10s timeout). See PR #274's own
         # body for the full transcript.
         run: node e2e/device/device-authorization.mjs
+      - name: Return-visit gate (#295's occasion, #300) — reload/close+reopen/re-login, real stack
+        # Wired here (Musti's #300 review, G1) rather than left a standing-alone draft: Row G of
+        # this script is itself a repair for #298's F10 finding (an orphaned harness instrument is
+        # unproven per ADR-0021), and an UNWIRED repair caller is the identical defect one level
+        # up — a script nothing in CI runs proves nothing to CI. Runs after device-authorization.mjs
+        # above for the simplest reason available (least risk to an already-proven step), not
+        # because the order between these two self-pacing scripts is load-bearing — see that
+        # step's own comment. Attaches via ATTACH mode exactly like every other step in this job.
+        #
+        # This gate's own header states plainly what a green run here does and does NOT prove:
+        # the app's own return-visit handling is honest when the API stays healthy; it says
+        # nothing about whether an API container itself stayed alive between two real-world
+        # sessions (#295's own, still-open, remaining half) — a claim this job's own PASS line
+        # repeats on every green run, not just in a header nobody opens.
+        run: node e2e/session/return-visit.mjs
       - name: API log (on failure)
         if: failure()
         run: cat /tmp/steuereule-api-cross-origin.log || true
