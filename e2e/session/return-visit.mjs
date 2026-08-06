@@ -33,8 +33,13 @@
 // QR column both DEFER to it (an honest "can't tell"/"retrying" line each) instead of each
 // raising independent prose. #295's own three original strings (a password-field `auth.errGeneric`,
 // the QR card's `"Code konnte nicht erzeugt werden."`, a silently-missing Google button) are no
-// longer what this codepath produces at all — this file was rebased onto `main` post-merge and
-// its assertions rewritten against the REAL current contract, not the one #295 was filed against.
+// longer what the OUTAGE codepath produces — this file was rebased onto `main` post-merge and its
+// assertions rewritten against the REAL current contract, not the one #295 was filed against.
+// Narrower than it sounds: both strings still render on this same screen for a DIFFERENT cause —
+// `login.qr.error` for a genuine, non-outage QR-only failure (`LoginScreen.tsx`'s own `error`
+// branch, reached only when `!apiUnreachable`), `auth.errGeneric` for a Google social-sign-in
+// failure (`LoginScreen.tsx`'s `googleSignIn()`, covered by `LoginScreen.test.tsx`). Neither of
+// those is the outage case this file's own rows construct or assert on.
 //
 // One row below (`assertLoginScreenHonest`'s `expectHealthy: false` branch, control proof A) DOES
 // reproduce this CONSOLIDATED failure shape, under a genuine, harness-induced network break
@@ -146,9 +151,12 @@ const COPY = {
   // three independent messages. This directly closes the bug CLASS #295 reported (three
   // confusing, uncorrelated failures); it is not #295 itself (see this file's header). The old
   // per-surface strings this COPY block used to carry (a password-field `auth.errGeneric`, a QR
-  // `login.qr.error`) are gone from this codepath entirely — AC-A suppresses both in favour of
-  // the one banner below, and every row in this file that touches an outage now asserts THAT
-  // consolidation, not the three old strings independently.
+  // `login.qr.error`) are gone from the OUTAGE codepath — AC-A suppresses both in favour of the
+  // one banner below, and every row in this file that touches an outage now asserts THAT
+  // consolidation, not the three old strings independently. Both strings still render on this
+  // same screen for a genuinely different, non-outage cause (`login.qr.error` for a QR-only
+  // failure against a reachable API, `auth.errGeneric` for a Google social-sign-in failure) — see
+  // this file's own header for the exact statement; neither is what this file's rows construct.
   apiUnreachableHeading: 'Gerade nicht erreichbar — das liegt an uns.',
   googleUnknown: 'Wir können gerade nicht prüfen, ob Google verfügbar ist.',
   qrRetryingAuto: 'Wir versuchen es automatisch erneut …',
