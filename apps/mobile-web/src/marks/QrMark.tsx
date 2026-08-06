@@ -17,7 +17,22 @@ export interface QrMarkProps {
   readonly accessibilityLabel: string
   /** #283/C3 — `AuthGeraete.jsx` puts the brand mark inside the QR pattern's own centre
    *  (`:25-27`), not above the card as a separate element (the dropped owl this replaces).
-   *  'M' error correction tolerates ~15% obscured area; the mark here stays well under that.
+   *
+   *  #298 review, F5(a)/(b) (Musti) — the size below is not a round number chosen for looks; it
+   *  is the answer to a real measurement. Verified directly against this app's own encoder
+   *  (`qrcode-generator`) for the actual URL shape this component renders in production
+   *  (`.../device?user_code=…`, which resolves to a 33×33 module grid, RFC-level M-4): the
+   *  earlier `0.22`-of-`size` box covered 81 of 1089 modules — 7.4%, not the ≈4.8% a naive
+   *  "22% of the width" area estimate suggests, because a square doesn't align to the module
+   *  grid and partially-covered modules still count as lost. At `0.14`, the same measurement
+   *  gives 25/1089 — 2.3%. Both figures came from actually counting covered module cells, the
+   *  same method Musti's own review used, not a fresh guess. This scales safely: box AREA is
+   *  `size²` × the fraction SQUARED, so the *proportion* covered stays roughly constant
+   *  regardless of how long a given `verificationUriComplete` happens to be (a longer URL means
+   *  more, smaller modules, not a bigger box) — 2.3% held with real margin below M-level's
+   *  nominal ~15% budget is what actually matters here, not the specific 33×33 grid this was
+   *  measured against. That budget exists for real scan conditions — an angle, glare, a cheap
+   *  sensor — not to be spent in advance by this component.
    *  A plain sibling of the `Svg`, not one of its children — `qr-mark`'s own child count (what
    *  QrMark.test.tsx pins down) is unaffected by this. */
   readonly brandMark?: boolean
@@ -44,7 +59,9 @@ export function QrMark({ value, size = 168, accessibilityLabel, brandMark = fals
   }, [value])
 
   const cell = size / modules.count
-  const markSize = Math.round(size * 0.22)
+  // See this prop's own doc comment above for exactly where `0.14` comes from — a measured
+  // module-coverage figure, not a chosen-for-looks fraction.
+  const markSize = Math.round(size * 0.14)
   const markInset = (size - markSize) / 2
   // #298 review, F5(b) — the quiet zone. ISO/IEC 18004 §5.3.2 requires a light margin of at
   // least 4 modules around the whole symbol: a scanner's finder-pattern search relies on the
