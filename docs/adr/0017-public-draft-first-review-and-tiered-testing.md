@@ -1,7 +1,7 @@
 # ADR-0017 — Draft-first PRs with a public review, mandatory refinement, and risk-tiered testing
 
 - **Status:** Accepted
-- **Date:** 2026-07-27
+- **Date:** 2026-07-27 (amended 2026-08-06 — §4a, §7b)
 - **Deciders:** Stakeholder (NexusHero)
 - **Extends** [ADR-0015](0015-crew-reduced-to-two-developers.md), [ADR-0016](0016-crew-reduced-to-four-roles.md)
 - **Context tags:** delivery method, transparency, operating cost
@@ -54,6 +54,35 @@ better than through the API — but posts findings as PR comments. **He posts hi
 finds nothing**, because a silent pass is indistinguishable from not having looked. The slice
 advances on **no unresolved findings**, never on "no comments".
 
+**4a. A review thread is a brake. Use one only where something is demanded.** A resolvable thread is
+not a formatting choice — with "all comments must be resolved" on the branch, opening one **holds the
+merge** until someone clicks. So the surface follows the intent:
+
+| What it is | Where it goes | Blocks? |
+|---|---|---|
+| A finding, or anything asking for a change | **Inline review thread**, anchored at `file:line` | Yes, correctly |
+| Evidence, confirmation that a finding is satisfied, praise, a self-correction | **Plain PR comment** | No |
+
+Both are permanent and both are public, so nothing is lost by choosing the non-blocking surface — the
+only thing given up is the brake, which evidence was never entitled to.
+
+**And close your own threads at the end of the pass that satisfied them**, rather than leaving them for
+the next round. §4's "no unresolved findings" is the advance criterion; a satisfied-but-open thread
+makes that criterion lie.
+
+Found by counting: on **four PRs in one day** the crew's own gates were complete, CI was green, and the
+merge still sat waiting on threads with nothing substantive open ([#298](https://github.com/NexusHero/Steuereule/pull/298),
+[#299](https://github.com/NexusHero/Steuereule/pull/299), [#300](https://github.com/NexusHero/Steuereule/pull/300) —
+the last of these had **five** open threads of which **four had never been a demand**: two proofs, a
+confirmation, and a correction of the reviewer's own earlier claim). The stakeholder's words for the
+cost: *"I never know whether it's my turn or Musti's."* Every one of those was a round trip he paid
+for, to learn that nothing was wrong.
+
+The rule was already being followed before it was written, which is why it is cheap to adopt: a finding
+about an outdated PR body on #299 was posted as a plain comment *specifically* to avoid opening a
+thread — *"a note should mean something, not serve as a lever."* This clause is that instinct, made
+binding.
+
 **5. Musti runs before Salih, always.** The cheap gate first: his review is roughly a third of a
 real-stack run, and code sent back would invalidate that run anyway.
 
@@ -88,6 +117,31 @@ spoke only of T3. The tempting repair was "the last crew gate that actually ran 
 rejected for the same reason as everything else in §7: it hands the reviewer, for the price of one
 click, the button §7 deliberately withheld from him. The rule is about **who ran**, not about which
 tier label was applied.
+
+**7b. `draft` means two different things, and the PR must say which.** §7a deliberately leaves a whole
+class of finished work sitting in draft. So `draft` now carries two states that look identical from
+the outside:
+
+1. **The crew is still working.** Nobody should look yet.
+2. **The crew is finished and structurally cannot flip it** — §7a: self-authored, or a tier that stood
+   Salih down. The stakeholder is the only one who can move it, and does not know it.
+
+State 2 is invisible, and invisibility is the whole defect: the signal that is supposed to mean *"not
+your turn"* is also, silently, the signal for *"only you can act."* This is the same class the crew
+spent the day finding in the product — a mechanism that looks like it signals one thing while carrying
+two states — and it costs the stakeholder a round trip each time.
+
+**The crew must emit an explicit terminal signal when state 2 is reached**: a closing comment on the PR
+naming which gates ran, which were owed and stood down under §6/§7a, and that the PR is now the
+stakeholder's to flip or merge. Silence is not a handover. The signal is owed by whoever ran the last
+gate that applied — which is *not* a licence to flip it; §7a's separation of "who ran" from "who
+flips" stands unchanged, and saying "your turn" is precisely the opposite of pressing the button.
+
+**Open, for the stakeholder to rule:** whether a comment is enough, or whether this warrants a label
+(e.g. `stakeholder-turn`) so state 2 is visible on the PR **list**, which is where he actually looks —
+a comment is only visible once he has already opened the PR and paid most of the cost the rule exists
+to save. Recommended: the label, with the comment carrying the detail. Left open rather than decided
+here because it shapes his workflow, not the crew's.
 
 **8. Salih commits the harness instead of re-improvising it.** The recipe for standing the stack up
 lives **only as YAML in `ci.yml`**, which nothing can import, so it is rewritten in bash on every run
@@ -127,6 +181,13 @@ states what the footer is, who did not write it, and why the existing ones remai
 
 **Negative / accepted**
 
+- **§4a costs the reviewer a judgement per comment** — "am I demanding something, or reporting
+  something?" — where before every comment was the same shape. Accepted: it is the cheaper end of the
+  trade, since the alternative is charging the stakeholder a round trip to discover nothing is wrong.
+- **§7b's handover comment can be forgotten**, and when it is, the PR is invisible again. Nothing
+  enforces it; it is a convention, and it is worth saying so rather than implying the gap is closed.
+  A label would be checkable at a glance, which is why the recommendation is a label — but until the
+  stakeholder rules, this is a promise, not a mechanism.
 - **The PR is no longer a clean release candidate.** It shows refute→fix churn. That was the whole
   reason the loop was local. Traded deliberately for watchability.
 - Token cost of review goes slightly **up**, not down: comments are GitHub round-trips. Mitigated by

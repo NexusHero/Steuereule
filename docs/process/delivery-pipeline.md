@@ -63,6 +63,14 @@ flowchart TD
    Two exceptions, both already stated elsewhere and neither an invitation to wait: he is **not** the
    gate on a PR he authored (§7a), and a **red CI pipeline blocks first** (gate 6) — a review of code
    that does not build is wasted.
+
+   **A thread is a brake; spend it only on demands (ADR-0017 §4a).** With "all comments must be
+   resolved" on the branch, opening a review thread holds the merge. Findings and change requests get
+   an inline thread, anchored at `file:line`. Evidence, confirmations that a finding is satisfied,
+   praise, and self-corrections get a **plain PR comment** — just as permanent, just as public, but it
+   does not hold the merge it was never entitled to hold. And **resolve your own satisfied threads at
+   the end of the pass**, not in the next round: "no unresolved findings" is the advance criterion, so
+   a satisfied-but-open thread makes that criterion lie.
 5. **Test — Salih, risk-tiered, and he flips the switch.** **T3** (docs, DS assets, test infra,
    config): he does not run — CI covers it and there is nothing there his kind of testing catches.
    **T2**: he runs when a user can actually see or do something different. **T1** and any genuinely new
@@ -77,12 +85,18 @@ flowchart TD
    findings if he has any), **never a formal `APPROVE`**. This is a single-account repo, so GitHub
    blocks self-approval, and a self-"APPROVE" reads as a review-gate bypass. The comment is the durable
    trail; the human merge is the only authorization.
-7. **Stakeholder final pass.** The stakeholder reviews only the **ready-for-review (non-draft)** PRs —
-   those, and only those, have both gates behind them. **Drafts are the crew at work and are not the
-   human's to review**, though they are deliberately open to *watch*: the review thread is the point.
-   So "which PRs do I review?" is answered at a glance: the non-draft queue. (Branch protection can
-   require the CI **checks** but not "N reviews" — single account, nobody else to approve; the human
-   merge is the gate.)
+7. **Stakeholder final pass.** A **ready-for-review (non-draft)** PR has both gates behind it and is
+   his to merge. **Most drafts are the crew at work and are not the human's to review**, though they
+   are deliberately open to *watch*: the review thread is the point.
+
+   **But "the non-draft queue" is not the whole answer, and treating it as one costs a round trip.**
+   Under ADR-0017 §7a a PR that was owed no Salih-run — self-authored, or a tier that stood him down —
+   is finished by the crew and **stays draft**, because nobody in the crew may flip it. That draft
+   looks exactly like one still being worked on. So the crew owes an **explicit handover** on those
+   (ADR-0017 §7b): a comment naming which gates ran, which were stood down and why, and that the PR is
+   now the stakeholder's to flip or merge. Until that comment exists, a draft means "not yet".
+   (Branch protection can require the CI **checks** but not "N reviews" — single account, nobody else
+   to approve; the human merge is the gate.)
 
 ## The evidence block (required in every PR body)
 
