@@ -66,6 +66,18 @@ the environment truths that keep getting silently re-derived, written down once.
   playwright-core install chromium --with-deps` is the right invocation; `pnpm exec playwright
   ...` fails with "Command \"playwright\" not found" even though the package that provides the
   browser-install logic is present (this bit CI once — see `ci.yml`'s own comment on that step).
+  **CI's own runner starts with nothing cached beyond `actions/cache`'s `~/.cache/ms-playwright`
+  entry, so that install step is genuinely load-bearing there — do not read the next line as
+  overriding it for CI.** Corrected here (this line was wrong in a way that cost two prior
+  sessions a capability they already had): in this agent sandbox specifically, a real,
+  already-downloaded Chromium sits at `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers` — set that
+  env var and `chromium.launch()` starts in ~90ms with **no** `playwright-core install` step
+  needed at all (confirmed directly: `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node -e
+  "require('playwright-core').chromium.launch({headless:true})..."`, 87ms, Salih's #295-occasion
+  return-visit gate, 2026-08-06). A prior version of this bullet said nothing about this
+  shortcut, so each new session re-ran (or worse, assumed it needed and couldn't run) the full
+  install step against this environment's registry-blocked network before finding the
+  preinstalled binary.
 
 - **The `RateLimit` table is never truncated to make a gate pass.** `db-rate-limit.ts`'s rolling
   window (keyed on `lastRequest`, not a quota) is a real REQ-010 control; several scripts already
