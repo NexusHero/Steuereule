@@ -99,7 +99,15 @@ export function RegistrierungScreen({ onDone }: RegistrierungScreenProps) {
     return (
       <ScrollView contentContainerStyle={bp === 's' ? styles.successScreen : styles.wideSuccessScreen} keyboardShouldPersistTaps="handled" testID="screen-container">
         <Sticker style={styles.successBadge}>{tr('registrierung.success.badge')}</Sticker>
-        <Text style={styles.successHeading}>{tr('registrierung.success.heading')}</Text>
+        {/* Same class Musti's #298 review named for LoginScreen (F8), found here on re-check
+            (the coordinator's "does the class sit elsewhere" ask): the DS reference
+            (`Registrierung.jsx:31`) renders this as a real `<h1>`; this screen's own page
+            title was visual only. `role="heading"`/`aria-level={1}` explicit for the same
+            reason as LoginScreen's wordmark — not left to `accessibilityRole="header"`'s
+            level-less default. */}
+        <Text style={styles.successHeading} role="heading" aria-level={1}>
+          {tr('registrierung.success.heading')}
+        </Text>
         <Text style={styles.successSubtitle}>{tr('registrierung.success.subtitle')}</Text>
 
         {!verifiedForThisAccount ? (
@@ -133,7 +141,9 @@ export function RegistrierungScreen({ onDone }: RegistrierungScreenProps) {
 
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} keyboardShouldPersistTaps="handled" testID="screen-container">
-      <Text style={styles.heading}>
+      {/* Same class as the success heading above and as LoginScreen's wordmark (F8): the DS
+          reference (`Registrierung.jsx:55`) renders this as a real `<h1>` too. */}
+      <Text style={styles.heading} role="heading" aria-level={1}>
         {tr('registrierung.titleBefore')}
         <Text style={{ color: t.color.funkeTinte }}>{tr('registrierung.titleMark')}</Text>
         {tr('registrierung.titleAfter')}

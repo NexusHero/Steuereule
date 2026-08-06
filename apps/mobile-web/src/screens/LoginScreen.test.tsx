@@ -93,6 +93,18 @@ describe('LoginScreen', () => {
     expect(screen.getByText('Look around as a guest')).toBeTruthy()
   })
 
+  // Musti's #298 review, F8 — the wordmark (C1/C2's promoted page title) and the greeting
+  // (demoted to a subheading) are a visual level-1/level-2 pair only if the DOM says so too;
+  // the PR's own evidence block previously named this as a manual, one-off DOM check, not a
+  // standing assertion — closed here. `getByRole('heading', { level: N })` only resolves if
+  // `role="heading"`/`aria-level={N}` actually reached the rendered DOM (react-native-web's
+  // own forwarding, not assumed) — dropping either prop from PageHeader turns this red.
+  it('gives the wordmark and greeting real heading semantics, not just visual size (#298 F8)', () => {
+    renderLogin()
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('SteuerEule')
+    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('Schön, dass du da bist.')
+  })
+
   // REQ-008 — Google social sign-in is now live. The button renders and triggers the
   // better-auth social sign-in flow. Apple sign-in (#45) remains hidden (backlog-gated).
   it('renders the Google social sign-in button (REQ-008, DS auth.html ghost variant)', async () => {
@@ -1058,26 +1070,30 @@ describe('LoginScreen', () => {
     // Musti's #298 review, F1 — the actual bug: `retryAttempt` reset to 0 on ANY non-error
     // state, and `requestNewCode()` itself commits `{ kind: 'loading' }` before the mint
     // resolves — so every automatic retry re-entered the effect via 'loading' first and reset
-    // the counter, and the backoff never grew (measured: a constant ~2300ms/attempt instead of
-    // doubling). Load-bearing detail this test gets right where the original code's own test
-    // suite didn't: the mock below genuinely DELAYS before rejecting (`delay(20)`), so the
-    // mutation resolves on a later macrotask and React actually commits the intermediate
-    // 'loading' render as its own frame — a *synchronous* `HttpResponse.error()` (what every
-    // other test in this file uses) can resolve within the same microtask flush as the
-    // `loading` state, and React 18's automatic batching then coalesces `loading` and the
-    // following `error` into ONE commit, skipping the render this bug depends on entirely. That
-    // is exactly why this bug shipped past this file's own suite the first time — confirmed
-    // directly: this test's own negative assertions (the "must still be N, not N+1" checks at
-    // just-under-the-expected-delay) fail correctly against the pre-fix code, and pass against
-    // the fix.
+    // the counter, and the backoff never grew. Musti's own measurement, reproduced exactly here
+    // rather than approximated: 7 mints/70s at an immediate/synchronous reject (never exposed
+    // the bug), vs. 31 mints/70s at a constant ~2300ms/attempt once the same failure carried a
+    // genuine `delay(300)` first. Load-bearing detail this test gets right where the original
+    // code's own test suite didn't: the mock below genuinely DELAYS before rejecting
+    // (`delay(300)`, Musti's own figure — not an arbitrary smaller value picked to just barely
+    // clear a macrotask boundary), so the mutation resolves on a later macrotask and React
+    // actually commits the intermediate 'loading' render as its own frame — a *synchronous*
+    // `HttpResponse.error()` (what every other test in this file uses) can resolve within the
+    // same microtask flush as the `loading` state, and React 18's automatic batching then
+    // coalesces `loading` and the following `error` into ONE commit, skipping the render this
+    // bug depended on entirely. That is exactly why this bug shipped past this file's own suite
+    // the first time — confirmed directly: this test's own negative assertions (the "must still
+    // be N, not N+1" checks at just-under-the-expected-delay) fail correctly against the
+    // pre-fix code, and pass against the fix.
     it('backs the retry delay off (2s → 4s → 8s → capped 16s) and stops after MAX_AUTO_RETRIES, never resetting mid-cycle (#298 F1)', async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true })
       let requests = 0
       server.use(
         http.post(`${BASE_URL}/v1/device/code`, async () => {
           requests += 1
-          // The load-bearing detail (see comment above): a real delay, not a synchronous reject.
-          await delay(20)
+          // The load-bearing detail (see comment above): a real delay, matching Musti's own
+          // measurement method exactly, not a smaller value picked just to clear the boundary.
+          await delay(300)
           return HttpResponse.error()
         }),
       )

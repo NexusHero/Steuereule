@@ -47,6 +47,15 @@ describe('RegistrierungScreen', () => {
     expect(screen.getByText('Create account')).toBeTruthy()
   })
 
+  // Same class as Musti's #298 review F8 (LoginScreen's wordmark/greeting), found here on
+  // re-check rather than assumed absent: the DS reference (`Registrierung.jsx:55`) renders
+  // this page's title as a real `<h1>`; this screen's own title was visual only. Standing
+  // assertion, not a one-off DOM check — drops red if `role`/`aria-level` regress.
+  it('gives the form title real heading semantics, not just visual size (#298 F8 class)', () => {
+    renderRegistrierung()
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Leg dein Konto an.')
+  })
+
   // REQ-008 — Google social sign-in is now live. The button renders on Registrierung too.
   // Apple sign-in (#45) remains hidden (backlog-gated).
   it('renders the Google social sign-in button (REQ-008)', async () => {
@@ -168,6 +177,24 @@ describe('RegistrierungScreen', () => {
     // than a bare synchronous `expect` allows for — `waitFor` tolerates that settle without
     // changing what's actually being asserted (still exactly one call).
     await waitFor(() => expect(onDone).toHaveBeenCalledOnce())
+  })
+
+  // Same F8 class as the form title's own test above, on the success step's heading
+  // (`Registrierung.jsx:31`'s `<h1>` — "Willkommen bei SteuerEule."). Its own test, not folded
+  // into the banner test above, so it still runs (and can still go red on its own) regardless
+  // of which banner variant the success step happens to be showing.
+  it('gives the success-step heading real heading semantics too (#298 F8 class)', async () => {
+    server.use(
+      http.post(`${BASE_URL}/api/auth/sign-up/email`, () =>
+        HttpResponse.json({ token: 'tok_1', user: { id: 'u1', email: 'neu@beispiel.de', emailVerified: false, name: '' } }),
+      ),
+    )
+    renderRegistrierung()
+    fillCredentials()
+    fireEvent.click(screen.getByText('Konto anlegen'))
+
+    await screen.findByText('Willkommen bei SteuerEule.')
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Willkommen bei SteuerEule.')
   })
 
   // Musti's T1: signUp.email() never actually returns `emailVerified: true` (better-auth.ts:146,
