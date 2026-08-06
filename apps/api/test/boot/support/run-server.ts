@@ -145,8 +145,7 @@ function reapAllGroups(): void {
 
 /** The ONE registration point in this test tier for "run this when the process ends,
  *  however it ends" (#284 F1). `exit` covers the ordinary end of the run, including a
- *  failed one — every `cleanup` registered here runs, since 'exit' listeners always all
- *  fire. The signal handlers cover the interrupted run: each is `once`, so after
+ *  failed one. The signal handlers cover the interrupted run: each is `once`, so after
  *  reaping it re-raises the same signal, which then reaches vitest's own handler — or
  *  the default action if it has none. Registering a listener suppresses that default,
  *  so re-raising rather than swallowing is what keeps Ctrl-C still meaning "stop".
@@ -154,18 +153,46 @@ function reapAllGroups(): void {
  *  `reapAllGroups` below is the original caller; `env-snapshot-client-fixtures.ts`'s own
  *  `.env` restore is the second (Musti's ruling on F1: "reuse that mechanism, do not
  *  build a second one" — a second, independently built exit/signal handler is exactly
- *  the kind of drift that leaves one of the two half-covered). Multiple registrations
- *  compose safely: `exit` listeners all run regardless of how many there are, and two
- *  independent `once` signal wrappers both firing on the same signal only means the
- *  signal gets re-raised twice — harmless, since by the second delivery every listener
- *  registered here has already run and removed itself. */
+ *  the kind of drift that leaves one of the two half-covered).
+ *
+ *  EACH REGISTERED CLEANUP RUNS IN ITS OWN try/catch (#284 F6, measured with a two-
+ *  registrant repro — A throws, B is registered after A): `process.emit` calls every
+ *  listener for an event synchronously, in ONE loop, and an exception thrown out of one
+ *  listener propagates out of that loop — every OTHER listener for the same event that
+ *  was registered AFTER the throwing one simply never runs ("B ran" never printed, on
+ *  both the `exit` path and the `SIGINT` path). A previous version of this comment
+ *  claimed "multiple registrations compose safely"; that was true only by the accident
+ *  that no cleanup registered before another had ever actually thrown — `reapAllGroups`
+ *  can't (`killGroup` catches), but `env-snapshot-client-fixtures.ts`'s own restore CAN
+ *  (an ENOENT `renameSync` if its backup vanished from under it), and it registers
+ *  last, so nothing downstream of it was ever exposed. Registration order is not a
+ *  contract; a throw is now caught and reported (`console.error`, never swallowed) so
+ *  it cannot starve any other cleanup registered here, in either order.
+ *
+ *  CONTRACT: every `cleanup` passed here MUST be idempotent. On the signal path the
+ *  SAME cleanup runs TWICE by design — once from the `once` signal wrapper below, and
+ *  again from the `exit` listener as the process actually terminates once `process.kill`
+ *  re-raises the signal (measured: "A ran" printed twice in the same two-registrant
+ *  repro). Re-triggering a cleanup that isn't idempotent is a caller bug this function
+ *  cannot detect or prevent — see `buildClientFixtures()`'s own `cleaned` flag in
+ *  `env-snapshot-client-fixtures.ts` for the shape a caller needs. */
 export function registerExitCleanup(cleanup: () => void): void {
-  process.on('exit', cleanup)
+  process.on('exit', () => runCleanupSafely(cleanup))
   for (const signal of ['SIGINT', 'SIGTERM'] as const) {
     process.once(signal, () => {
-      cleanup()
+      runCleanupSafely(cleanup)
       process.kill(process.pid, signal)
     })
+  }
+}
+
+/** Report, never swallow (#284 F6): a cleanup that throws still gets its error printed,
+ *  it just can no longer take any other registered cleanup down with it. */
+function runCleanupSafely(cleanup: () => void): void {
+  try {
+    cleanup()
+  } catch (error) {
+    console.error(error)
   }
 }
 
