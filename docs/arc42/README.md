@@ -31,9 +31,14 @@ java -jar plantuml.jar -tsvg docs/arc42/*.puml
 |------|--------|----------|
 | §5 Building block view | [`building-block-view.puml`](./building-block-view.puml) | [`building-block-view.svg`](./building-block-view.svg) |
 | §5 Data model (data view) | [`data-model.puml`](./data-model.puml) | [`data-model.svg`](./data-model.svg) |
+| §8.1 Boot ordering | [`../adr/0028-boot-env-snapshot-ordering.puml`](../adr/0028-boot-env-snapshot-ordering.puml) | [`../adr/0028-boot-env-snapshot-ordering.svg`](../adr/0028-boot-env-snapshot-ordering.svg) |
 
-§8 below is prose-only by design: it describes a toolchain, not a structure, and a diagram of
-"which tools run in which order" would only restate the CI workflow file that already says it.
+**§8's toolchain half is prose-only by design:** it describes a toolchain, not a structure, and a
+diagram of "which tools run in which order" would only restate the CI workflow file that already says
+it. That sentence used to cover all of §8; **§8.1 is the exception it now takes**, because boot
+ordering *is* a structure — an invariant about which module is evaluated before which — and it is
+exactly the kind of thing prose describes badly. The diagram lives with ADR-0028 rather than being
+duplicated here, and is referenced from both.
 
 ---
 
@@ -274,3 +279,31 @@ is a link to a CI run that went red on a deliberately introduced defect and skip
 > failing-run proof land on this branch. Following this document's convention for work in review,
 > this marker comes off when that job is real — the map may show what is coming, but only for as
 > long as it says so out loud.
+
+## 8.1 Boot ordering — a structural invariant in `apps/api/src/main.ts`
+
+Added because [ADR-0028](../adr/0028-check-the-effect-not-the-mechanism.md) is the first decision to
+make module-evaluation order load-bearing. This is the one place in the system where **the order of
+two import statements is an architectural constraint**, so it belongs on the map rather than only in
+the file that happens to contain it.
+
+![Boot ordering](../adr/0028-boot-env-snapshot-ordering.svg)
+
+*(source: [`0028-boot-env-snapshot-ordering.puml`](../adr/0028-boot-env-snapshot-ordering.puml))*
+
+**The constraint:** `main.ts` imports `./config/env-snapshot.js` **first**, deliberately ahead of its
+otherwise-alphabetical order. `./app.module.js` would sort first and reaches `@prisma/client` at
+import time, whose generated client merges the schema-adjacent `apps/api/.env` into `process.env` as
+a side effect. Once that has run, "what the operator actually supplied" is unrecoverable from inside
+the process.
+
+**What is and is not enforced, stated plainly:**
+
+| | Status |
+|---|---|
+| A lint rule preventing a re-sort | **None.** `.oxlintrc.json` has no import-sort rule today. If one is ever adopted it needs an exception for this line. |
+| A test that goes red when the order breaks | **Yes**, `apps/api/test/boot/assert-env-not-file-sourced.test.ts` — the acceptance case's own refusal disappears, and a derived ordering-broken entry point proves it (ADR-0021 control proof). |
+| The invariant holding in the compiled `dist/` | **By construction, untested.** `tsc` neither reorders imports nor elides side-effect-only ones, but no test asserts it against `dist/main.js`, which is what the `smoke` job and the production image actually boot. |
+
+The third row is the honest gap. It is recorded here rather than in a comment because it is the kind
+of thing a reader of this document should be able to find without reading the entry point.
