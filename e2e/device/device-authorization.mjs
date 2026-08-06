@@ -22,13 +22,18 @@
 // this ticket deliberately made, not a regression: confirmed by re-running this exact script with
 // only the owl-entrance assertions removed, against the real stack — the ENTIRE rest of the flow,
 // including the actual thing this gate is *for* (AC-5, the cross-device poll → approve → desktop
-// signed-in round trip), passed end to end. `useOwlEntranceAnimation`'s own animation mechanism
-// remains real and tested where it's still actually used (`SplashScreen.tsx`'s own independent
-// entrance, `SplashScreen.test.tsx`) and at the hook level (`useOwlEntranceAnimation.test.tsx`) —
-// there is no longer an owl-entrance animation on THIS screen to calibrate a control-proof
-// against, so removing the assertion here is not weakening a check, it's retiring one whose
-// subject no longer exists. `newReducedMotionContext`/`sampleComputedStyleOverFrames` are no
-// longer imported here as a result — nothing else in this file's flow needs them.
+// signed-in round trip), passed end to end. At the time this paragraph was first written,
+// `useOwlEntranceAnimation`'s own animation mechanism was still real and tested elsewhere
+// (`SplashScreen.tsx`, `useOwlEntranceAnimation.test.tsx`) — that stopped being true one commit
+// later in this same PR (Musti's #298 review, F9, catching F6 a directory over): `218c7dd`
+// deleted the hook and its test outright, once a trace confirmed `SplashScreen` was never
+// actually a consumer in the first place (it always ran its own independent inline `Animated`
+// values, never this hook). Corrected here rather than left stale — the investigation this
+// paragraph records still holds, only the sentence about where the hook lived on doesn't. There
+// is no longer an owl-entrance animation on THIS screen to calibrate a control-proof against
+// either way, so removing the assertion here was never weakening a check, it was retiring one
+// whose subject no longer exists. `newReducedMotionContext`/`sampleComputedStyleOverFrames` are
+// no longer imported here as a result — nothing else in this file's flow needs them.
 //
 // THE FLOW THIS FILE PROVES (Musti's #238 spec, restated so the code and the spec stay legible
 // side by side):
