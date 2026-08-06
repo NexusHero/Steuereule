@@ -257,10 +257,19 @@ and the next person deletes it as ceremony because nothing records what it cost.
   caught there. Missed on #175 (merged carrying one), #187 (caught only at review) and twice more
   the same day. Nobody writes the footer; it is a tooling artifact (ADR-0017 §10,
   `CONTRIBUTORS.md`) and on comments it stays — report it and move on.
-  *Second thing the read-back catches:* GitHub's sanitiser **silently drops** a literal `<email>`
-  in a PR body — which is where the `Co-authored-by:` lines with no address came from. Use the HTML
-  entity form. Same family as rule 4 below: a tool that discards input and reports success, so the
-  only defence is looking at what actually landed rather than at the return value.
+
+- **Angle brackets in a PR body or issue text: send `&lt;`/`&gt;`, never a literal `<…>`.** GitHub's
+  sanitiser reads `<musti@steuereule-crew.example>` as an HTML tag and **silently drops it**, leaving
+  `Co-authored-by: Musti` with no address. It reports success either way, so the return value tells
+  you nothing — same family as the stale-thread-ID rule below: a tool that discards input and calls
+  it done. The only defence is reading the body back **through the API** (`pull_request_read`,
+  `method: "get"`), not off the rendered page, which shows you the sanitiser's output rather than
+  what you stored.
+
+  *This rule was already here and still caught three of us in one day* — it was a sub-clause of the
+  footer bullet above, so anyone scanning for "angle brackets" or "broken trailer" did not find it.
+  Promoted to its own bullet for that reason alone. A rule nobody can locate is, in practice, a rule
+  that is not written down — and the fix is the heading, not another retelling.
 
 - **A conflicted PR's displayed checks are stale.** GitHub publishes `refs/pull/N/merge` only for
   a mergeable PR, and `pull_request` runs are created against that ref. A conflicted PR therefore
