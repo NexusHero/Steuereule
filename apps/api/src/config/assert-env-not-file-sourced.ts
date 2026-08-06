@@ -8,12 +8,10 @@
 // would already have been dialled (successfully or not) before this ever got to name
 // the leak — the wrong finding would report first.
 //
-// Deliberately does NOT read `schemaEnvPath` or any other `@prisma/client` internal
-// (Musti's ruling, after two corrections that each targeted something upstream of the
-// hazard: file-on-disk, then the baked path). This checks the EFFECT — did a guarded
-// name materialise in `process.env` between the snapshot and now, for a name the
-// operator never set — which stays true regardless of how Prisma produces it, what its
-// internal field is called, or whether that field exists in a future Prisma version.
+// WHY this checks the EFFECT (arrival in process.env) rather than `schemaEnvPath` or
+// any other @prisma/client internal — see env-snapshot.ts's header comment, the
+// canonical home for that reasoning (#284 F5: keep it in one place, not three, so the
+// next correction lands where it can actually be found).
 import { fileURLToPath } from 'node:url'
 import { GUARDED_ENV_VAR_NAMES, type GuardedEnvVarName, namesPresentIn, PRESENT_BEFORE_PRISMA_COULD_LOAD } from './env-snapshot.js'
 
@@ -56,6 +54,18 @@ export function namesThatArrivedAfterPrismaCouldLoad(
  * operator already supplied, so `before` already contains it and the filter above
  * never selects it. That's the F6 clause this function exists to satisfy, not just
  * document: see the boot test's cases 2/3 for the proof.
+ *
+ * KNOWN GAP (#284 F3, no behaviour change intended): the `env.NODE_ENV !== 'production'`
+ * gate right below reads `NODE_ENV` from the SAME live environment the merge already
+ * wrote into, so a stray schema-adjacent `.env` that also happens to carry
+ * `NODE_ENV=development` — or an operator who simply forgot to set it — switches this
+ * guard off in the same breath it exists to catch. That is a limit shared with every
+ * sibling resolver gating on the same live value (`resolveFieldEncryptionKey`,
+ * `resolveGuestSessionSecret`, `resolveBetterAuthUrl`), a pre-existing production gate
+ * out of scope for this ticket's acceptance criterion. Reading the pre-Prisma
+ * snapshot's own `NODE_ENV` instead is deliberately NOT done here: it would break
+ * today's working `.env`-supplied-`NODE_ENV` deployments for no correctness gain this
+ * criterion asks for.
  */
 export function assertEnvNotFileSourced(
   env: NodeJS.ProcessEnv = process.env,

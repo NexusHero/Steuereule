@@ -24,15 +24,14 @@
 // be overwritten by a stray file appearing or disappearing on disk mid-run.
 //
 // MEASURED, NOT ASSUMED (Musti's explicit flag: "ob ein sauberer pnpm install in
-// diesem Repo ein nicht-leeres schemaEnvPath backt — miss es"): a clean `pnpm install`
-// in a fresh worktree of this repo, no `apps/api/.env` on disk, bakes
-// `relativeEnvPaths` with ONLY `rootEnvPath: null` — the `schemaEnvPath` key is
-// genuinely ABSENT, not present-and-null. Re-running `prisma generate` with
-// `apps/api/.env` present bakes `schemaEnvPath: "../../../../../../apps/api/.env"`.
-// Both states measured directly by reading the generated `index.js`, on this ticket,
-// before this fixture was written. `prisma generate` itself measured at ~150–500ms
-// per call (cached query engine, no network) — the two generations this fixture does
-// add well under a second to the suite, nowhere near the CI-cost concern Musti flagged.
+// diesem Repo ein nicht-leeres schemaEnvPath backt — miss es"): the schemaEnvPath
+// absent-vs-present measurement this fixture's two generated states prove against is
+// recorded once, in env-snapshot.ts's header comment — see it for the actual byte
+// values (#284 F5: kept in one place, not duplicated across every file that relies on
+// it). What's specific to THIS fixture: `prisma generate` itself measured at
+// ~150–500ms per call (cached query engine, no network) — the two generations this
+// fixture does add well under a second to the suite, nowhere near the CI-cost concern
+// Musti flagged.
 //
 // A generated client's baked `.env` path is relative to `__dirname` READ AT RUNTIME
 // (`config.dirname = __dirname` in the generated `index.js`), not an absolute string
@@ -43,14 +42,16 @@
 // therefore generated in place, never copied.
 import { execFileSync } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
-import { cpSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { registerExitCleanup } from './run-server.js'
 
 const apiRoot = fileURLToPath(new URL('../../../', import.meta.url))
 const realSchemaPath = path.join(apiRoot, 'prisma', 'schema.prisma')
 const envPath = path.join(apiRoot, '.env')
-const envBackupPath = path.join(apiRoot, `.env.robin-284-backup-${randomUUID()}`)
+const BACKUP_FILE_PREFIX = '.env.robin-284-backup-'
+const envBackupPath = path.join(apiRoot, `${BACKUP_FILE_PREFIX}${randomUUID()}`)
 const fixtureRoot = path.join(apiRoot, '.generated-test-clients')
 
 const SNAPSHOT_IMPORT_MARKER = "import './config/env-snapshot.js'"
@@ -103,9 +104,52 @@ export interface ClientFixtures {
   cleanup(): void
 }
 
-function readCompilerOptions(tsconfigPath: string): Record<string, unknown> {
-  const parsed = JSON.parse(readFileSync(tsconfigPath, 'utf8')) as { compilerOptions: Record<string, unknown> }
-  return parsed.compilerOptions
+interface ParsedTsconfig {
+  extends?: unknown
+  compilerOptions: Record<string, unknown>
+}
+
+function readTsconfig(tsconfigPath: string): ParsedTsconfig {
+  return JSON.parse(readFileSync(tsconfigPath, 'utf8')) as ParsedTsconfig
+}
+
+// The path-relative keys the shallow flatten below cannot correctly reproduce — a value
+// under one of these resolves relative to the FILE it's declared in, and a `{...base,
+// ...api}` merge written at the fixture root has no file of its own to resolve against
+// (Musti's F4). `rootDir`/`outDir` are also path-relative but deliberately excluded:
+// tsx does not consult either (measured while building this fixture — see the header's
+// TSX_TSCONFIG_PATH paragraph).
+const PATH_RELATIVE_COMPILER_OPTION_KEYS = ['paths', 'baseUrl', 'typeRoots'] as const
+
+/** Throws the day the flatten in `buildClientFixtures()` stops being faithful to
+ *  production (#284 F4) — a note next to the flatten is not a control (F12,
+ *  run-server.ts). A shallow `{...base, ...api}` merge is only equivalent to the real
+ *  `apps/api/tsconfig.json` → `tsconfig.base.json` extends chain while NEITHER config
+ *  resolves anything relative to its OWN file: the day `tsconfig.base.json` gains its
+ *  own `extends`, or either file's `compilerOptions` gains `paths`/`baseUrl`/
+ *  `typeRoots`, this fixture would transform the copied `src/` under different options
+ *  than production produces — with nothing going red, because the divergence is in HOW
+ *  it compiled, not whether it compiled. */
+function assertTsconfigIsFlattenable(baseTsconfigPath: string, baseTsconfig: ParsedTsconfig, apiCompilerOptions: Record<string, unknown>): void {
+  if (baseTsconfig.extends !== undefined) {
+    throw new Error(
+      `env-snapshot-client-fixtures: ${baseTsconfigPath} now has its own "extends" — the shallow ` +
+        'two-file flatten this fixture does is no longer faithful to the real extends chain. Teach ' +
+        'this fixture to follow the longer chain, or stop flattening and depend on tsx/get-tsconfig ' +
+        'resolving it correctly (measured unreliable against a freshly-copied tree — see this file’s header).',
+    )
+  }
+  for (const compilerOptions of [baseTsconfig.compilerOptions, apiCompilerOptions]) {
+    for (const key of PATH_RELATIVE_COMPILER_OPTION_KEYS) {
+      if (compilerOptions[key] !== undefined) {
+        throw new Error(
+          `env-snapshot-client-fixtures: compilerOptions.${key} is now set — a path-relative option a ` +
+            'shallow flatten at a different directory depth would resolve differently than production. ' +
+            'Teach this fixture to rebase it, or stop flattening.',
+        )
+      }
+    }
+  }
 }
 
 function runPrismaGenerate(schemaPath: string): void {
@@ -114,6 +158,18 @@ function runPrismaGenerate(schemaPath: string): void {
     stdio: 'pipe',
   })
 }
+
+/** Every throwaway schema this run has written but not yet cleaned up — the SAME shape
+ *  as run-server.ts's `liveGroups` (#284 F1), covering the same gap: `generateClientAt`'s
+ *  own `finally` handles a normal return or throw, but not a SIGKILL landing mid
+ *  `runPrismaGenerate`. Unlike the `.env` swap, this one lands in a TRACKED directory
+ *  (`prisma/` is not gitignored for this filename pattern — measured with `git
+ *  check-ignore`), so an orphan here is at least visible in `git status`; still worth
+ *  the same handler rather than relying on visibility alone. */
+const liveTempSchemaPaths = new Set<string>()
+registerExitCleanup(() => {
+  for (const tempSchemaPath of liveTempSchemaPaths) rmSync(tempSchemaPath, { force: true })
+})
 
 /** Writes a throwaway schema.prisma NEXT TO the real one (same directory — the
  *  relative distance from schema to "project root .env" is what Prisma's env search
@@ -130,50 +186,87 @@ function generateClientAt(outputDir: string, label: string): void {
   const tempSchemaPath = path.join(apiRoot, 'prisma', `.generated-test-schema-${label}-${randomUUID()}.prisma`)
   const tempSchemaContents = schemaContents.replace(marker, `${marker}\n  output   = ${JSON.stringify(outputDir)}`)
   writeFileSync(tempSchemaPath, tempSchemaContents)
+  liveTempSchemaPaths.add(tempSchemaPath)
   try {
     runPrismaGenerate(tempSchemaPath)
   } finally {
     rmSync(tempSchemaPath, { force: true })
+    liveTempSchemaPaths.delete(tempSchemaPath)
   }
 }
 
 /** Derives the ordering-broken entry point from the REAL (copied) `main.ts` by moving
  *  the whole env-snapshot import block — its explanatory comment included — to just
  *  after the `./app.module.js` import, rather than hand-maintaining a second literal
- *  copy that could silently drift from what `main.ts` actually says. Throws instead of
- *  producing a silently-unbroken copy if either marker is missing (Musti's own amendment
- *  to ADR-0021: confirm a break actually landed before trusting the run it produces). */
+ *  copy that could silently drift from what `main.ts` actually says.
+ *
+ *  Checks the real precondition this surgery depends on BEFORE doing any slicing (#284
+ *  F2, reproduced): the #284 ordering invariant — the snapshot import precedes
+ *  `./app.module.js`'s in `original` — must actually hold, or the string surgery below
+ *  produces nonsense. Checking it up front, on the input, is what makes the failure
+ *  legible: without it, a `main.ts` whose snapshot import already sorts AFTER
+ *  app.module's swallows the app.module marker INTO `snapshotBlock` while slicing, so
+ *  `rest.indexOf(APP_MODULE_IMPORT_MARKER)` returns -1 and the error reads "marker not
+ *  found in main.ts" — sending the reader hunting for a missing import that is right
+ *  there, instead of telling them the one thing that matters: the invariant itself
+ *  broke. (This replaces a post-hoc assertion that used to sit after the surgery,
+ *  confirming the reorder "landed" — dead by construction once the surgery only ever
+ *  runs after this precondition passes: same class as F10/F14, an instrument that can
+ *  only ever show the expected result. The check that can actually fire is this one,
+ *  on the input.) */
 function deriveBrokenOrderingEntry(realMainTsPath: string, outputPath: string): void {
   const original = readFileSync(realMainTsPath, 'utf8')
   const snapshotIndex = original.indexOf(SNAPSHOT_IMPORT_MARKER)
   if (snapshotIndex === -1) {
     throw new Error(`env-snapshot-client-fixtures: ${JSON.stringify(SNAPSHOT_IMPORT_MARKER)} not found in main.ts`)
   }
+  const appModuleIndexInOriginal = original.indexOf(APP_MODULE_IMPORT_MARKER)
+  if (appModuleIndexInOriginal === -1) {
+    throw new Error(`env-snapshot-client-fixtures: ${JSON.stringify(APP_MODULE_IMPORT_MARKER)} not found in main.ts`)
+  }
+  if (snapshotIndex > appModuleIndexInOriginal) {
+    throw new Error(
+      `env-snapshot-client-fixtures: main.ts's ${JSON.stringify(SNAPSHOT_IMPORT_MARKER)} import no longer ` +
+        `precedes ${JSON.stringify(APP_MODULE_IMPORT_MARKER)} — the #284 ordering invariant is broken. Fix ` +
+        'main.ts, not this fixture.',
+    )
+  }
+
   const snapshotLineEnd = original.indexOf('\n', snapshotIndex) + 1
   const snapshotBlock = original.slice(0, snapshotLineEnd) // file start through the snapshot import line, comment included
   const rest = original.slice(snapshotLineEnd)
 
+  // appModuleIndex cannot be -1 here: the precondition above already found the marker
+  // in `original` strictly after `snapshotIndex`, i.e. inside `rest` by construction.
   const appModuleIndex = rest.indexOf(APP_MODULE_IMPORT_MARKER)
-  if (appModuleIndex === -1) {
-    throw new Error(`env-snapshot-client-fixtures: ${JSON.stringify(APP_MODULE_IMPORT_MARKER)} not found in main.ts`)
-  }
   const appModuleLineEnd = rest.indexOf('\n', appModuleIndex) + 1
 
   const broken = rest.slice(0, appModuleLineEnd) + snapshotBlock + rest.slice(appModuleLineEnd)
 
-  // Confirm the break actually landed (Musti's amendment to ADR-0021) rather than
-  // trusting string surgery blind: the snapshot import must now appear strictly AFTER
-  // the app.module import in the derived file.
-  if (broken.indexOf(APP_MODULE_IMPORT_MARKER) > broken.indexOf(SNAPSHOT_IMPORT_MARKER)) {
-    throw new Error('env-snapshot-client-fixtures: ordering-broken entry point did not actually reorder the imports')
-  }
-
   writeFileSync(outputPath, broken)
+}
+
+/** Self-heal (#284 F1, reproduced): a PREVIOUS run that was killed mid-suite (SIGINT
+ *  reaches the exit-cleanup below and is enough to prevent this; a SIGKILL cannot be
+ *  intercepted by anything, so this is the backstop for that) can leave the real
+ *  `apps/api/.env` sitting under `.env.robin-284-backup-*` with the fixture's own
+ *  content at `.env` in its place. Called FIRST in `buildClientFixtures()`, before this
+ *  run backs anything up: restoring an existing backup before making a new one is what
+ *  keeps a recoverable mess recoverable. Backing up OVER an existing backup — the bug
+ *  Musti reproduced — orphans the real file permanently, because `envBackupPath` is
+ *  freshly randomised per run and nothing was ever going to look at the OLD name again. */
+function restoreStaleBackupIfAny(): void {
+  const stale = readdirSync(apiRoot).find((name) => name.startsWith(BACKUP_FILE_PREFIX))
+  if (!stale) return
+  rmSync(envPath, { force: true })
+  renameSync(path.join(apiRoot, stale), envPath)
 }
 
 /** Builds both client states plus the ordering-broken fixture. Call once in
  *  `beforeAll`; every case in the suite reuses the same three entry points. */
 export function buildClientFixtures(): ClientFixtures {
+  restoreStaleBackupIfAny()
+
   rmSync(fixtureRoot, { recursive: true, force: true })
   mkdirSync(fixtureRoot, { recursive: true })
 
@@ -185,6 +278,22 @@ export function buildClientFixtures(): ClientFixtures {
       return false
     }
   })()
+
+  // Registered as soon as the backup above could have happened, through the ONE
+  // exit/signal registration point this test tier has (#284 F1 — see
+  // run-server.ts's registerExitCleanup for why this isn't a second, independent
+  // mechanism). `cleaned` makes `runCleanup` idempotent: the explicit `cleanup()` a
+  // test's own `afterAll` calls and this exit-time fallback can both fire for the same
+  // normal run, and the second call must be a no-op — `cleanup()` itself is NOT safe to
+  // call twice (its `rmSync(envPath)` would delete a just-restored real `.env` before
+  // failing on the already-consumed backup).
+  let cleaned = false
+  const runCleanup = (): void => {
+    if (cleaned) return
+    cleaned = true
+    cleanup(hadRealEnv)
+  }
+  registerExitCleanup(runCleanup)
 
   try {
     // 1. Generate the WITHOUT-env state first, while apps/api/.env is genuinely absent.
@@ -222,10 +331,19 @@ export function buildClientFixtures(): ClientFixtures {
     //     never seen before (the real, un-copied apps/api/src never hits it, decorators
     //     used there for years). Flattening it here, once, in plain JS, side-steps that
     //     resolver instead of depending on it.
-    const baseCompilerOptions = readCompilerOptions(path.join(apiRoot, '..', '..', 'tsconfig.base.json'))
-    const apiCompilerOptions = readCompilerOptions(path.join(apiRoot, 'tsconfig.json'))
+    //
+    //     `assertTsconfigIsFlattenable` is the control this note used to be alone
+    //     (#284 F4): the flatten below is only faithful while `tsconfig.base.json` has
+    //     no `extends` of its own and neither file's `compilerOptions` resolves
+    //     anything path-relative (`paths`/`baseUrl`/`typeRoots`) — the day either
+    //     becomes true, this throws instead of silently compiling the copied `src/`
+    //     under different options than production.
+    const baseTsconfigPath = path.join(apiRoot, '..', '..', 'tsconfig.base.json')
+    const baseTsconfig = readTsconfig(baseTsconfigPath)
+    const apiTsconfig = readTsconfig(path.join(apiRoot, 'tsconfig.json'))
+    assertTsconfigIsFlattenable(baseTsconfigPath, baseTsconfig, apiTsconfig.compilerOptions)
     const tsconfigContent = JSON.stringify({
-      compilerOptions: { ...baseCompilerOptions, ...apiCompilerOptions },
+      compilerOptions: { ...baseTsconfig.compilerOptions, ...apiTsconfig.compilerOptions },
     })
     writeFileSync(path.join(withoutEnvDir, 'tsconfig.json'), tsconfigContent)
     writeFileSync(path.join(withEnvDir, 'tsconfig.json'), tsconfigContent)
@@ -241,10 +359,10 @@ export function buildClientFixtures(): ClientFixtures {
       withoutEnvEntryPath: path.join(withoutEnvDir, 'src', 'main.ts'),
       withEnvTsconfigPath: path.join(withEnvDir, 'tsconfig.json'),
       withoutEnvTsconfigPath: path.join(withoutEnvDir, 'tsconfig.json'),
-      cleanup: () => cleanup(hadRealEnv),
+      cleanup: runCleanup,
     }
   } catch (error) {
-    cleanup(hadRealEnv)
+    runCleanup()
     throw error
   }
 }
