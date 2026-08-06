@@ -56,19 +56,47 @@ advances on **no unresolved findings**, never on "no comments".
 
 **4a. A review thread is a brake. Use one only where something is demanded.** A resolvable thread is
 not a formatting choice — with "all comments must be resolved" on the branch, opening one **holds the
-merge** until someone clicks. So the surface follows the intent:
+merge** until someone clicks. So the surface follows the intent.
+
+**The test is one sentence: does this comment owe someone an action before merge?** Yes → thread. No →
+plain comment. Everything below is that test worked out on the shapes we actually see; the table is
+**illustrative, not exhaustive**, and when a comment does not match a row, apply the sentence rather
+than forcing the fit.
 
 | What it is | Where it goes | Blocks? |
 |---|---|---|
 | A finding, or anything asking for a change | **Inline review thread**, anchored at `file:line` | Yes, correctly |
 | Evidence, confirmation that a finding is satisfied, praise, a self-correction | **Plain PR comment** | No |
+| **A requested ruling that concludes "no change needed"** | **Plain PR comment** | No — it owes nobody an action |
 
-Both are permanent and both are public, so nothing is lost by choosing the non-blocking surface — the
-only thing given up is the brake, which evidence was never entitled to.
+That third row exists because the first version of this clause did not have it, and the omission was
+found by testing the rule against real traffic instead of against examples: on #300,
+[`r3728254766`](https://github.com/NexusHero/Steuereule/pull/300#discussion_r3728254766) ("the #295
+boundary holds — no change wanted") and
+[`r3728253741`](https://github.com/NexusHero/Steuereule/pull/300#discussion_r3728253741) ("my ruling on
+`/app` … Row E stays exactly as it is") are both answers to questions a dev asked. Neither is evidence,
+a self-correction, or praise; both were opened as threads; both held the merge for nothing. **Being
+asked for a ruling does not make the ruling a demand.**
+
+**A comment that carries a demand *anywhere* in it is a thread — and the demand should be its own
+comment.** The mixed shape is real and it is the trap:
+[#299 `r3728477136`](https://github.com/NexusHero/Steuereule/pull/299#discussion_r3728477136) confirms
+an interpretation in full ("he read me correctly … nothing needs walking back") and *then* requires a
+specific register edit ("what I want added: the closing condition"). Split it: the confirmation is a
+plain comment, the required edit is a thread anchored where the edit goes. Where splitting is
+impractical, **the demand wins and the whole comment is a thread** — a brake wrongly applied costs a
+click, a demand posted where nothing blocks costs a missed change.
 
 **And close your own threads at the end of the pass that satisfied them**, rather than leaving them for
 the next round. §4's "no unresolved findings" is the advance criterion; a satisfied-but-open thread
 makes that criterion lie.
+
+**The author's side, since the rule above is written from the reviewer's seat.** A dev who has pushed a
+fix **replies in the thread saying what changed, and does not resolve it**. Resolving stays with
+whoever opened it, after re-reading the fix. A push is a *claim* that a finding is addressed; resolving
+is the *confirmation* that it is, and collapsing the two hands the author the power to close their own
+findings — the same separation §7a draws on the other side of the pipeline. In a single-account repo
+GitHub cannot enforce this, which is precisely why it is written down.
 
 Found by counting: on **four PRs in one day** the crew's own gates were complete, CI was green, and the
 merge still sat waiting on threads with nothing substantive open ([#298](https://github.com/NexusHero/Steuereule/pull/298),
@@ -117,6 +145,35 @@ spoke only of T3. The tempting repair was "the last crew gate that actually ran 
 rejected for the same reason as everything else in §7: it hands the reviewer, for the price of one
 click, the button §7 deliberately withheld from him. The rule is about **who ran**, not about which
 tier label was applied.
+
+**7a (i) — the unreviewed class, named on purpose. Open for the stakeholder to reconfirm.** The two
+rules above intersect in one place: a **T3 PR authored by Musti** gets *no crew second opinion at all*
+— §6 stands Salih down, §4 leaves no reviewer, and the author cannot be his own gate. That is not an
+oversight. #154 considered adding a second crew reviewer for exactly this class and **rejected it** —
+*"it reintroduces a gate for the one class where the evidence says none is needed."*
+
+It is worth saying out loud because **this ADR's own amendment ([#309](https://github.com/NexusHero/Steuereule/pull/309))
+is the second live instance of that class, and it is the PR revising the sections that govern it.** A
+document changing the rules under which it is itself unexamined should say so rather than let a reader
+discover it.
+
+Two things follow, and neither is settled here:
+
+- **The exception that happened is not a mechanism.** Salih did review #309, outside the tier ruling
+  that stands him down, because the stakeholder had asked to see only what the crew calls finished —
+  which this class can never structurally deliver. That was **an exception to a decision, not the
+  closing of a gap**, and it does not become standing practice by having happened once.
+- **The tooling makes the class self-referential.** §4a is executed with inline review threads, and
+  **only Musti's toolset can open one** — Salih's `add_comment_to_pending_review` fails without a
+  pending review he has no way to create. So on his #309 pass he marked each finding's category in
+  prose and *said* he could not test the rule in the mechanism. The one person who can follow §4a
+  mechanically is therefore the one person nobody can check at it. Same family as §10's missing
+  comment-edit: a rule whose enforceability is set by which tool surface a role happens to hold.
+
+**The question for the stakeholder:** does self-authored-T3-by-Musti stay a deliberately unreviewed
+class, as #154 decided — or has #309 changed your mind about the one case where the document rewrites
+its own rules? Named, not answered, deliberately: it is a question about who checks the crew, which is
+not the crew's to settle. (Raised by Salih on #309; the framing is his.)
 
 **7b. `draft` means two different things, and the PR must say which.** §7a deliberately leaves a whole
 class of finished work sitting in draft. So `draft` now carries two states that look identical from
