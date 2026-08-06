@@ -5,11 +5,12 @@
 - **Deciders:** Robin (engineering); reviewed by Musti (lead) — see *Decision history* below, this
   ADR exists because his review found the original justification wrong, not merely under-written.
 - **Builds on** [ADR-0009](0009-better-auth-as-auth-server.md) (better-auth is the auth server),
-  [ADR-0013](0013-dsgvo-export-and-account-deletion.md) (`DELETE /v1/account`'s own,
-  independent fresh-auth window), [ADR-0021](0021-controls-are-proven-by-breaking-them.md) (a
-  control is proven by breaking it, and a claim of completeness must be checked, not assumed),
-  [ADR-0024](0024-qr-device-authorization-endpoints.md) (the precedent this ADR does *not* yet
-  follow — see *Alternatives*).
+  [ADR-0013](0013-dsgvo-export-and-account-deletion.md) §6 *Trust boundary* (`DELETE /v1/account`'s
+  own, independent fresh-auth window), [ADR-0021](0021-controls-are-proven-by-breaking-them.md)
+  ("a control is not established until it has been observed to fail" — its actual Decision, not
+  restated further; see *Context* below for this ADR's own, separate point about a completeness
+  claim), [ADR-0024](0024-qr-device-authorization-endpoints.md) (the precedent this ADR does *not*
+  yet follow — see *Alternatives*).
 - **Context tags:** security, auth
 - **Introduced by:** `steuereule#299` (stakeholder bug report — the device list stayed empty for a
   returning, genuinely signed-in user), REQ-014
@@ -23,6 +24,13 @@ though the session was otherwise entirely valid (its own `expiresIn` default is 
 other endpoint touching it (`GET /v1/profile`, `GET /api/auth/get-session`) kept working. A
 returning user — the ordinary case, not an edge case — could never see their own device list again
 without a fresh sign-in.
+
+**A claim of completeness must itself be checked, not assumed — this ADR's own point, not a
+restatement of ADR-0021's.** ADR-0021 requires a control to be observed to fail; it says nothing
+about how a list of a control's *consumers* should be established. The first version of this
+decision (see *Decision history*) named "the only other consumer" from memory-adjacent reading of
+the source rather than an exhaustive search, and was wrong. The fix applied here is a search, not a
+recollection:
 
 **The exhaustive consumer list, measured against the installed dist, not assumed.** `grep -rn
 "use: \[freshSessionMiddleware\]" <better-auth>/dist --include=*.mjs` (better-auth 1.6.24) returns
@@ -47,7 +55,8 @@ sensitive-but-reversible actions", not an irreversible one.
 
 **`/change-email` and `/change-password` do not use this gate at all.** Both are gated by
 `sensitiveSessionMiddleware` — a plain "the session must be valid" check with no freshness
-component (`update-user.mjs:81` / `:406`, confirmed directly against the dist). An earlier draft of
+component (`update-user.mjs:93` (`/change-password`, declared `:75`) / `:406` (`/change-email`,
+declared `:400`), confirmed directly against the dist). An earlier draft of
 this decision (PR #299's first pushed commit) misattributed `update-user.mjs:329` — the
 `/delete-user` branch above — to these two endpoints, and used that wrong citation as the load-
 bearing justification for the whole change. Corrected here; the wrong version never merged.
