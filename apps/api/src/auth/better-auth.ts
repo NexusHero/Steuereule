@@ -502,41 +502,13 @@ function buildOptions(options: CreateBetterAuthOptions): BetterAuthOptions {
         trustedProxies,
       },
     },
-    // `session.freshAge` (default 86400s/24h, `context/create-context.mjs:148`) gates
-    // better-auth's own `freshSessionMiddleware` — used by exactly one endpoint this
-    // app calls: `GET /list-sessions` (`session.mjs:375-401`, the device list's real
-    // data source, `useDeviceSessions.ts`). Found live: a session older than 24h but
-    // still well inside its own 7-day `expiresIn` still passes `GET /v1/profile` and
-    // `GET /get-session` (neither checks freshness) but 403s `list-sessions` with
-    // `SESSION_NOT_FRESH` — a returning user who signed in yesterday can never see
-    // their own "Angemeldete Geräte" list again without a fresh sign-in, and the
-    // frontend's generic network-error copy (apps/mobile-web, Kaan's to fix) then
-    // claims a connectivity problem that was never real.
-    //
-    // `revoke-session`/`revoke-sessions` do NOT use this gate (`sensitiveSessionMiddleware`,
-    // `session.mjs:332-339` — a valid session, no freshness check) — so a device could
-    // already be revoked on a stale session; only VIEWING the list was broken. That
-    // asymmetry is better-auth's own, not introduced here.
-    //
-    // Set to 0 (disables the freshness check entirely, `session.mjs:365`/
-    // `update-user.mjs:329`) rather than raised to some other number, because this app
-    // does not use better-auth's own freshness concept for anything real: `/change-email`
-    // and `/change-password` are not wired to any frontend screen (checked directly —
-    // `grep -rn 'changeEmail\|change-password' apps/mobile-web/src apps/api/src` finds
-    // nothing but comments), so `update-user.mjs`'s "skip password re-entry only if the
-    // session is fresh" branch this would otherwise also gate is dead code in this
-    // product today. The one genuinely destructive action this app has — `DELETE
-    // /v1/account` (REQ-011/ADR-0013 §6) — was already built with its OWN, independent,
-    // much shorter freshness window (`fresh-auth.ts`'s `ACCOUNT_DELETE_FRESH_WINDOW_MS`,
-    // 5 minutes, not better-auth's `session.freshAge`) specifically because 24h is "sized
-    // for routine sensitive-but-reversible actions", not an irreversible one — so nothing
-    // here loses protection it actually had.
-    //
-    // Re-evaluation condition, stated rather than left implicit (ADR-0021 convention): if
-    // `/change-email` or `/change-password` is ever wired to a real screen, this decision
-    // must be revisited — either give that action its own fresh-auth-style window (mirroring
-    // `fresh-auth.ts`) the way account deletion already does, or restore a non-zero
-    // `freshAge` scoped so it no longer catches `list-sessions`.
+    // `session.freshAge` disables/enables better-auth's `freshSessionMiddleware`
+    // (default 86400s/24h, `context/create-context.mjs:148`) — the gate behind the
+    // `GET /list-sessions` bug this app hit (#299/REQ-014) and the decision recorded in
+    // full in **ADR-0027**, not restated here. Short version: `freshAge: 0` is correct
+    // and deliberate, not merely convenient — see the ADR for the exhaustive consumer
+    // list (exactly two endpoints in better-auth 1.6.24, measured against the installed
+    // dist), the accepted loss on `/unlink-account`, and the re-evaluation trigger.
     session: {
       freshAge: 0,
     },

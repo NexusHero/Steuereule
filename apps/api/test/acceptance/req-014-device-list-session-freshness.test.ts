@@ -9,21 +9,34 @@
 // `SESSION_NOT_FRESH` once `Date.now() - session.createdAt >= session.freshAge` — default 86400s
 // (24h), unrelated to the session's own 7-day `expiresIn`. Neither `/v1/profile` nor
 // `/api/auth/get-session` runs that middleware, so exactly one call fails while the rest of the
-// screen looks fully authenticated — the isolated-failure shape the report described. `better-auth.ts`
-// now sets `session.freshAge: 0` — see its own header comment on that block for why 0, not some
-// other number (this app never wires `/change-email`/`/change-password`, the only other consumer
-// of this gate, and has its own independent, purpose-built freshness window for the one genuinely
-// destructive action, `fresh-auth.ts`).
+// screen looks fully authenticated — the isolated-failure shape the report described.
+// `better-auth.ts` now sets `session.freshAge: 0` — full reasoning, the exhaustive two-endpoint
+// consumer list, and the accepted `/unlink-account` trade-off are recorded in **ADR-0027**, not
+// restated here.
 //
 // Real Postgres, real HTTP (never `.inject()`, same reasoning as req-009-session-model.test.ts) —
 // boots via the actual `buildApp()`, never a re-assembled copy.
+//
+// Musti's #299 review, in one line: two of the four `it`s below (the fresh-session sanity check
+// and the revoke-session asymmetry check) pass identically before AND after the fix — they are
+// CONTROLS that isolate the defect to exactly one endpoint, not regression guards on the change
+// itself. Said explicitly on each, not left for a reader to notice by re-running them against
+// main. Only the second `it` (the aged list-sessions call) and the fourth (the accepted
+// `/unlink-account` loss, ADR-0027) are regression guards on this PR's own change.
 import type { NestFastifyApplication } from '@nestjs/platform-fastify'
 import { PrismaClient } from '@prisma/client'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 
 process.env.GUEST_SESSION_SECRET = 'req-014-freshness-secret'
 process.env.BETTER_AUTH_SECRET = 'req-014-freshness-better-auth-secret-0123456789'
-process.env.BETTER_AUTH_URL = 'http://127.0.0.1:0' // overwritten to the real ephemeral URL below
+// Placeholder only — unlike `baseUrl` below (the real ephemeral URL `app.listen(0, ...)` binds
+// to), `BETTER_AUTH_URL`/`resolveBetterAuthUrl()` is read once at `createBetterAuth()` construction
+// time, before the real port is known, and nothing in this file ever exercises a path that reads
+// `baseURL` back (no redirect/callback assertions here — see req-005-email-signup.test.ts for
+// those). The fixed port below can't collide with `app.listen(0, ...)`'s own dynamically-assigned
+// one because this tier runs `fileParallelism: false` (vitest.integration.config.ts) — one file at
+// a time, never a second file racing this same literal (Musti's #299 review, F4).
+process.env.BETTER_AUTH_URL = 'http://127.0.0.1:0'
 
 const ALLOWED_ORIGIN = 'https://allowed.example.com'
 process.env.CORS_ALLOWED_ORIGINS = ALLOWED_ORIGIN
@@ -67,7 +80,7 @@ describe('REQ-014 — device list session freshness (list-sessions must not requ
     await app.close()
   })
 
-  it('a session younger than the library default freshAge can list its own sessions (sanity — this was never broken)', async () => {
+  it('[control, not a regression guard — passes identically before and after this PR] a session younger than the library default freshAge can list its own sessions', async () => {
     const signUp = await fetch(`${baseUrl}/api/auth/sign-up/email`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', ...TRUSTED_ORIGIN_HEADERS },
@@ -80,7 +93,7 @@ describe('REQ-014 — device list session freshness (list-sessions must not requ
     expect(listSessions.status).toBe(200)
   })
 
-  it('a genuinely returning user (session older than the library default freshAge, still inside its own expiresIn) can STILL list their own sessions — the exact regression the stakeholder hit', async () => {
+  it('[regression guard] a genuinely returning user (session older than the library default freshAge, still inside its own expiresIn) can STILL list their own sessions — the exact regression the stakeholder hit', async () => {
     const signUp = await fetch(`${baseUrl}/api/auth/sign-up/email`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', ...TRUSTED_ORIGIN_HEADERS },
@@ -114,7 +127,7 @@ describe('REQ-014 — device list session freshness (list-sessions must not requ
     expect(sessions.length).toBeGreaterThan(0)
   })
 
-  it('revoke-session was never gated by freshness (asymmetry check — a device could already be revoked on a stale session; only viewing the list was broken)', async () => {
+  it('[control, not a regression guard — passes identically before and after this PR] revoke-session was never gated by freshness — a device could already be revoked on a stale session; only viewing the list was broken', async () => {
     const signUp = await fetch(`${baseUrl}/api/auth/sign-up/email`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', ...TRUSTED_ORIGIN_HEADERS },
@@ -135,5 +148,50 @@ describe('REQ-014 — device list session freshness (list-sessions must not requ
       body: JSON.stringify({ token: body.token }),
     })
     expect(revoke.status).toBe(200)
+  })
+
+  // ADR-0027's pinned trade-off (Musti's #299 review, F2): `/unlink-account` is the OTHER real
+  // consumer of `freshSessionMiddleware` in better-auth 1.6.24 (`dist/api/routes/account.mjs:229`)
+  // — setting `session.freshAge: 0` removes its freshness requirement too, not only
+  // `list-sessions`'s. This asserts the ACCEPTED post-fix behaviour (unlink succeeds on an aged
+  // session) so that trade-off is a recorded decision a future change can deliberately revisit,
+  // not an unexamined side effect nobody wrote a test against.
+  it('[regression guard, ADR-0027] session.freshAge: 0 also removes /unlink-account\'s freshness requirement — asserted, not merely stated', async () => {
+    const signUp = await fetch(`${baseUrl}/api/auth/sign-up/email`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', ...TRUSTED_ORIGIN_HEADERS },
+      body: JSON.stringify({ email: 'req014-unlink@example.com', password: 'a-fine-strong-password-1', name: 'Req 014 Unlink' }),
+    })
+    expect(signUp.status).toBe(200)
+    const cookie = signUp.headers.get('set-cookie')!.split(';')[0]!
+    const signUpBody = (await signUp.json()) as { user: { id: string } }
+
+    // `/unlink-account` refuses to remove a caller's only linked account
+    // (`FAILED_TO_UNLINK_LAST_ACCOUNT`, account.mjs) unconditionally — a real second, linked
+    // provider is required to reach the freshness check at all. Real OAuth cannot run in this
+    // suite, so the second `Account` row is inserted directly (the same "construct the real DB
+    // state, never a fabricated cookie" convention the other tests in this file already use for
+    // an aged `Session` row) — this is exactly the row better-auth's own `/callback/google` would
+    // have written had the OAuth round trip actually happened.
+    await prisma.account.create({
+      data: {
+        userId: signUpBody.user.id,
+        providerId: 'google',
+        accountId: 'req014-unlink-google-sub',
+      },
+    })
+
+    await prisma.session.updateMany({
+      where: { user: { email: 'req014-unlink@example.com' } },
+      data: { createdAt: new Date(Date.now() - PAST_DEFAULT_FRESH_AGE_MS) },
+    })
+
+    const unlink = await fetch(`${baseUrl}/api/auth/unlink-account`, {
+      method: 'POST',
+      headers: { cookie, 'content-type': 'application/json', ...TRUSTED_ORIGIN_HEADERS },
+      body: JSON.stringify({ providerId: 'google' }),
+    })
+    expect(unlink.status).toBe(200)
+    expect(await unlink.json()).toEqual({ status: true })
   })
 })
