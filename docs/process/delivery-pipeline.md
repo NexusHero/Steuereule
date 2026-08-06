@@ -258,13 +258,19 @@ and the next person deletes it as ceremony because nothing records what it cost.
   the same day. Nobody writes the footer; it is a tooling artifact (ADR-0017 §10,
   `CONTRIBUTORS.md`) and on comments it stays — report it and move on.
 
-- **Angle brackets in a PR body or issue text: send `&lt;`/`&gt;`, never a literal `<…>`.** GitHub's
-  sanitiser reads `<musti@steuereule-crew.example>` as an HTML tag and **silently drops it**, leaving
-  `Co-authored-by: Musti` with no address. It reports success either way, so the return value tells
-  you nothing — same family as the stale-thread-ID rule below: a tool that discards input and calls
-  it done. The only defence is reading the body back **through the API** (`pull_request_read`,
-  `method: "get"`), not off the rendered page, which shows you the sanitiser's output rather than
-  what you stored.
+- **Angle brackets in a PR body or issue text: send `&lt;`/`&gt;`, never a literal one.** GitHub's
+  sanitiser reads `musti@steuereule-crew.example` wrapped in angle brackets as an HTML tag and
+  **silently drops it**, leaving `Co-authored-by: Musti` with no address. It reports success either
+  way, so the return value tells you nothing — same family as the stale-thread-ID rule below: a tool
+  that discards input and calls it done. The only defence is reading the body back **through the
+  API** (`pull_request_read`, `method: "get"`), not off the rendered page, which shows you the
+  sanitiser's output rather than what you stored.
+
+  **A code span does not protect it.** Measured on #309: a body containing the word *email* in angle
+  brackets *inside backticks* came back as an empty pair of backticks. The sanitiser runs before
+  markdown, so backticks are not an escape — the entity form is the only one that survives, in prose
+  and in code spans alike. Worth stating because "it's in backticks, it'll be fine" is the obvious
+  wrong assumption, and it is how this rule got broken again *in the very PR that promoted it*.
 
   *This rule was already here and still caught three of us in one day* — it was a sub-clause of the
   footer bullet above, so anyone scanning for "angle brackets" or "broken trailer" did not find it.
