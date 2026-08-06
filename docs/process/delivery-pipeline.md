@@ -65,12 +65,18 @@ flowchart TD
    that does not build is wasted.
 
    **A thread is a brake; spend it only on demands (ADR-0017 §4a).** With "all comments must be
-   resolved" on the branch, opening a review thread holds the merge. Findings and change requests get
-   an inline thread, anchored at `file:line`. Evidence, confirmations that a finding is satisfied,
-   praise, and self-corrections get a **plain PR comment** — just as permanent, just as public, but it
-   does not hold the merge it was never entitled to hold. And **resolve your own satisfied threads at
-   the end of the pass**, not in the next round: "no unresolved findings" is the advance criterion, so
-   a satisfied-but-open thread makes that criterion lie.
+   resolved" on the branch, opening a review thread holds the merge. **The test is one sentence: does
+   this comment owe someone an action before merge?** Yes → inline thread anchored at `file:line`.
+   No → **plain PR comment** — just as permanent, just as public, minus a brake it was never entitled
+   to. Findings and change requests are threads; evidence, confirmations, praise, self-corrections and
+   **a requested ruling that concludes "no change needed"** are comments. A comment carrying a demand
+   *anywhere* in it is a thread, and the demand is better split into its own comment. And **resolve
+   your own satisfied threads at the end of the pass**, not in the next round: "no unresolved findings"
+   is the advance criterion, so a satisfied-but-open thread makes that criterion lie.
+
+   **Authors: reply, don't resolve.** Pushed a fix to a thread someone opened? Say in the thread what
+   changed. **Resolving belongs to whoever opened it**, after re-reading — a push claims a finding is
+   addressed, resolving confirms it, and merging the two lets an author close their own findings.
 5. **Test — Salih, risk-tiered, and he flips the switch.** **T3** (docs, DS assets, test infra,
    config): he does not run — CI covers it and there is nothing there his kind of testing catches.
    **T2**: he runs when a user can actually see or do something different. **T1** and any genuinely new
