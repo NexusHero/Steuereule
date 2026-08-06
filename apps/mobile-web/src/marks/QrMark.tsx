@@ -104,7 +104,12 @@ export function QrMark({ value, size = 168, accessibilityLabel, brandMark = fals
   const quietZonePx = cell * QUIET_ZONE_MODULES
 
   return (
+    // `testID` here (not just on `qr-mark` below) is what lets QrMark.test.tsx's own geometry
+    // test (#298 F5's decision, Musti's ruling — a unit test against the real rendered geometry,
+    // no decoder) read the quiet zone's actual rendered `padding` back out, rather than
+    // re-deriving it from a constant duplicated into the test.
     <View
+      testID="qr-mark-quiet-zone"
       style={{
         width: size + quietZonePx * 2,
         height: size + quietZonePx * 2,
@@ -129,6 +134,7 @@ export function QrMark({ value, size = 168, accessibilityLabel, brandMark = fals
         </Svg>
         {brandMark ? (
           <View
+            testID="qr-mark-brand-mark"
             accessible={false}
             importantForAccessibility="no-hide-descendants"
             style={{
