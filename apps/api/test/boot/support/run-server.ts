@@ -143,18 +143,33 @@ function reapAllGroups(): void {
   for (const pid of liveGroups) killGroup(pid)
 }
 
-// `exit` covers the ordinary end of the run, including a failed one. The signal
-// handlers cover the interrupted run: they are `once`, so after reaping they re-raise
-// the same signal, which then reaches vitest's own handler — or the default action if
-// it has none. Registering a listener suppresses that default, so re-raising rather
-// than swallowing is what keeps Ctrl-C still meaning "stop".
-process.on('exit', reapAllGroups)
-for (const signal of ['SIGINT', 'SIGTERM'] as const) {
-  process.once(signal, () => {
-    reapAllGroups()
-    process.kill(process.pid, signal)
-  })
+/** The ONE registration point in this test tier for "run this when the process ends,
+ *  however it ends" (#284 F1). `exit` covers the ordinary end of the run, including a
+ *  failed one — every `cleanup` registered here runs, since 'exit' listeners always all
+ *  fire. The signal handlers cover the interrupted run: each is `once`, so after
+ *  reaping it re-raises the same signal, which then reaches vitest's own handler — or
+ *  the default action if it has none. Registering a listener suppresses that default,
+ *  so re-raising rather than swallowing is what keeps Ctrl-C still meaning "stop".
+ *
+ *  `reapAllGroups` below is the original caller; `env-snapshot-client-fixtures.ts`'s own
+ *  `.env` restore is the second (Musti's ruling on F1: "reuse that mechanism, do not
+ *  build a second one" — a second, independently built exit/signal handler is exactly
+ *  the kind of drift that leaves one of the two half-covered). Multiple registrations
+ *  compose safely: `exit` listeners all run regardless of how many there are, and two
+ *  independent `once` signal wrappers both firing on the same signal only means the
+ *  signal gets re-raised twice — harmless, since by the second delivery every listener
+ *  registered here has already run and removed itself. */
+export function registerExitCleanup(cleanup: () => void): void {
+  process.on('exit', cleanup)
+  for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+    process.once(signal, () => {
+      cleanup()
+      process.kill(process.pid, signal)
+    })
+  }
 }
+
+registerExitCleanup(reapAllGroups)
 
 /** Boots a real entry point (`src/main.ts` by default) as a real child process under
  *  an explicit (never inherited) env, and waits for it to exit on its own — a guard
