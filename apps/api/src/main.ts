@@ -1,3 +1,12 @@
+// MUST be the very first import in this file (#284) — deliberately ahead of the
+// otherwise-alphabetical order every other import below follows (`./app.module.js`
+// would sort first). `env-snapshot.ts` captures which guarded env vars are present
+// at its own module-evaluation time, and that capture is only meaningful if it runs
+// before anything reaches `@prisma/client` — which `./app.module.js` does, at import
+// time, via PrismaService. See env-snapshot.ts's header comment for the full
+// reasoning, and test/boot/assert-env-not-file-sourced.test.ts's control-proof case
+// for what breaks if a re-sort ever moves this back below `./app.module.js`.
+import './config/env-snapshot.js'
 import 'reflect-metadata'
 import fastifyCookie from '@fastify/cookie'
 import { ValidationPipe } from '@nestjs/common'
@@ -9,6 +18,7 @@ import { BETTER_AUTH_BUNDLE, type BetterAuthBundle } from './auth/auth.tokens.js
 import { mountBetterAuthHandler } from './auth/mount-better-auth.js'
 import { validationExceptionFactory } from './common/validation-exception-factory.js'
 import { assertDatabaseReachable } from './config/assert-database-reachable.js'
+import { assertEnvNotFileSourced } from './config/assert-env-not-file-sourced.js'
 import { buildCorsOptions } from './cors/build-cors-options.js'
 import { registerHelmet } from './security/register-helmet.js'
 
@@ -66,6 +76,14 @@ export async function buildApp(): Promise<NestFastifyApplication> {
 }
 
 async function bootstrap(): Promise<void> {
+  // Cheapest, synchronous, no I/O — runs before assertDatabaseReachable() below on
+  // purpose, and not only because it's cheaper (#284). If a DATABASE_URL leaked in
+  // via an import-time `.env` merge, running the reachability probe first would dial
+  // that leaked value before this ever got to name the leak — the wrong finding would
+  // report first, same rule as resolveDatabaseUrl's presence check running ahead of
+  // the reachability probe it sits beside.
+  assertEnvNotFileSourced()
+
   // Fail fast on the database, before building anything (see
   // config/assert-database-reachable.ts for why this lives here and not near Prisma):
   // `buildApp()` itself must stay database-free (tests and `openapi:spec` both rely on
