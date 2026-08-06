@@ -26,16 +26,27 @@
 // stayed healthy on the stakeholder's Mac. Do not let a green run here retire #295 — say so on
 // the ticket in exactly those words.
 //
-// One row below (`assertLoginScreenHonest`'s `expectHealthy: false` branch, control proof A)
-// DOES reproduce all three of #295's own symptom strings byte for byte, under a genuine,
-// harness-induced network break (`page.route(...).abort()` against every request the BROWSER
-// itself makes to `apiOrigin` — a real aborted connection at the transport layer, not a mocked
-// JSON body). That is deliberate and useful: it is the calibration this file's positive
-// assertions need (Musti's "prove the assertion can fail" bar) AND it shows precisely what an
-// honest client does when the API truly is unreachable — the three symptoms are not a bug in
-// that telling, they are the client correctly reporting reality. What it is NOT is a claim that
-// this is what happened on the stakeholder's Mac; it only proves the shape a real API outage
-// produces, so a future reader can compare it against whatever #295 eventually captures.
+// A NOTE ON TIMING, left visible rather than smoothed over: #298 (the LoginScreen/Registrierung
+// DS-alignment slice) merged to `main` while this PR was in review — its own AC-A directly
+// redesigns the exact failure shape #295 reported: a genuine, transport-level outage now shows
+// ONE shared banner ("Gerade nicht erreichbar — das liegt an uns."), and the Google slot and the
+// QR column both DEFER to it (an honest "can't tell"/"retrying" line each) instead of each
+// raising independent prose. #295's own three original strings (a password-field `auth.errGeneric`,
+// the QR card's `"Code konnte nicht erzeugt werden."`, a silently-missing Google button) are no
+// longer what this codepath produces at all — this file was rebased onto `main` post-merge and
+// its assertions rewritten against the REAL current contract, not the one #295 was filed against.
+//
+// One row below (`assertLoginScreenHonest`'s `expectHealthy: false` branch, control proof A) DOES
+// reproduce this CONSOLIDATED failure shape, under a genuine, harness-induced network break
+// (`page.route(...).abort()` against every request the BROWSER itself makes to `apiOrigin` — a
+// real aborted connection at the transport layer, not a mocked JSON body). That is deliberate and
+// useful: it is the calibration this file's positive assertions need (Musti's "prove the
+// assertion can fail" bar) AND it confirms AC-A's own consolidation actually holds under a real
+// break, not just in the source. What it is NOT is a claim that #295's own incident looked like
+// this — #295 was filed against the OLD, three-message screen, and nobody has confirmed the API
+// was even the same kind of unreachable on the stakeholder's Mac. This row shows what an honest
+// client does today when the API truly is unreachable; it is evidence the bug CLASS is fixed, not
+// evidence about the specific incident.
 //
 // THE MATRIX (Given–When–Then, against the real stack from `e2e/harness/stack.mjs`):
 //   A. Fresh context, no cookies at all → the Login screen is fully honest (control proof below
@@ -130,8 +141,18 @@ const COPY = {
   loginSubmit: 'Einloggen',
   loginGoogle: 'Weiter mit Google',
   loginGuest: 'Erstmal als Gast umschauen',
-  errGeneric: 'Das hat gerade nicht geklappt. Prüf die Verbindung und versuch es noch mal.',
-  qrError: 'Code konnte nicht erzeugt werden.',
+  // #283/#298 AC-A (landed on `main` while this file was in review, see this file's own PR
+  // thread) — a genuine, transport-level API outage now shows exactly ONE shared alert, not
+  // three independent messages. This directly closes the bug CLASS #295 reported (three
+  // confusing, uncorrelated failures); it is not #295 itself (see this file's header). The old
+  // per-surface strings this COPY block used to carry (a password-field `auth.errGeneric`, a QR
+  // `login.qr.error`) are gone from this codepath entirely — AC-A suppresses both in favour of
+  // the one banner below, and every row in this file that touches an outage now asserts THAT
+  // consolidation, not the three old strings independently.
+  apiUnreachableHeading: 'Gerade nicht erreichbar — das liegt an uns.',
+  googleUnknown: 'Wir können gerade nicht prüfen, ob Google verfügbar ist.',
+  qrRetryingAuto: 'Wir versuchen es automatisch erneut …',
+  qrRetryExhausted: 'Die automatischen Versuche sind pausiert — bitte versuch es manuell noch einmal.',
   onboardingFirstNamePlaceholder: 'Kim',
   onboardingLastNamePlaceholder: 'Yilmaz',
   onboardingSteuerIdPlaceholder: '12 345 678 901',
@@ -201,47 +222,75 @@ async function googleShouldBeAvailable(page, apiOrigin) {
 
 /**
  * Row A / row C's shared assertion: does the Login screen, AS RENDERED RIGHT NOW, tell the truth
- * about whether the API is reachable? Two independently-checked surfaces (Musti's #295-adjacent
- * standard: state the exact symptom, not a summary):
- *   - the Google button's presence matches a REAL, freshly-issued capabilities probe (see
- *     `googleShouldBeAvailable` above) — never assumed from the branch's own label.
- *   - the QR column reaches a terminal state (a real rendered `user_code`, or the honest
- *     `qr.error` text) within a bounded wait — never left in `loading` forever unexamined.
+ * about whether the API is reachable? Rewritten against the real, current contract (AC-A/#283,
+ * #298 — landed on `main` mid-review; see this file's header for the note on that): a genuine
+ * outage shows exactly ONE shared banner naming the cause, and every other surface DEFERS to it
+ * instead of raising its own prose. Three checks, each on its own surface:
+ *   - the shared outage banner (`apiUnreachableHeading`) is present iff `expectHealthy` is false
+ *     — never up against a healthy API, never silent against a genuinely broken one.
+ *   - the Google slot: `loginGoogle` (the real button) when the API is healthy AND a real,
+ *     freshly-issued in-page capabilities probe says available (see `googleShouldBeAvailable`
+ *     above — never assumed from the branch's own label); `googleUnknown` (the honest "can't
+ *     tell" fallback, not silence) once the banner is up.
+ *   - the QR column reaches a terminal state within a bounded wait: a real rendered `user_code`
+ *     when healthy, or the deferred `qrRetryingAuto`/`qrRetryExhausted` text when not (never the
+ *     old, now-retired `login.qr.error` string — that copy only shows for a NON-outage QR-only
+ *     failure, a case this row does not construct).
  * Does NOT submit the login form — that is `assertLoginSubmitHonest` below, used only where a
  * row actually needs to attempt a sign-in (row A's control, row C's real re-login).
  */
 async function assertLoginScreenHonest(page, apiOrigin, { expectHealthy, label }) {
-  const googleAvailable = await googleShouldBeAvailable(page, apiOrigin)
-  const googleVisible = await page.getByText(COPY.loginGoogle, { exact: true }).isVisible().catch(() => false)
-  if (googleVisible !== googleAvailable) {
+  const bannerLocator = page.getByText(COPY.apiUnreachableHeading, { exact: true })
+  const qrCodeLocator = page.getByText(/^[A-Z0-9]{8}$/)
+  const qrDeferredLocator = page.getByText(COPY.qrRetryingAuto, { exact: true }).or(page.getByText(COPY.qrRetryExhausted, { exact: true }))
+  await Promise.race([
+    qrCodeLocator.first().waitFor({ state: 'visible', timeout: 15_000 }).catch(() => {}),
+    qrDeferredLocator.first().waitFor({ state: 'visible', timeout: 15_000 }).catch(() => {}),
+  ])
+
+  const bannerVisible = await bannerLocator.isVisible().catch(() => false)
+  if (bannerVisible !== !expectHealthy) {
     fail(
-      `${label}: Google button visibility (${googleVisible}) does not match the real, freshly-probed ` +
-        `/v1/auth/capabilities answer (available=${googleAvailable}) — the button is either shown when the ` +
-        'API cannot actually offer it, or hidden when it can (both are dishonesty, REQ-008/#295 symptom 3).',
+      `${label}: the shared outage banner ("${COPY.apiUnreachableHeading}") visibility is ${bannerVisible}, ` +
+        `expected ${!expectHealthy} — either it is up against a healthy API (a false alarm), or silent against ` +
+        'a genuinely unreachable one (AC-A/#283 — exactly the class #295 reported, now supposed to be fixed).',
     )
   }
 
-  const qrErrorLocator = page.getByText(COPY.qrError, { exact: true })
-  const qrCodeLocator = page.getByText(/^[A-Z0-9]{8}$/)
-  await Promise.race([
-    qrErrorLocator.waitFor({ state: 'visible', timeout: 15_000 }).catch(() => {}),
-    qrCodeLocator.first().waitFor({ state: 'visible', timeout: 15_000 }).catch(() => {}),
-  ])
-  const qrErrored = await qrErrorLocator.isVisible().catch(() => false)
-  const qrReady = await qrCodeLocator.first().isVisible().catch(() => false)
-
+  const googleAvailable = await googleShouldBeAvailable(page, apiOrigin)
+  const googleButtonVisible = await page.getByText(COPY.loginGoogle, { exact: true }).isVisible().catch(() => false)
+  const googleUnknownVisible = await page.getByText(COPY.googleUnknown, { exact: true }).isVisible().catch(() => false)
   if (expectHealthy) {
-    if (qrErrored) fail(`${label}: QR column shows "${COPY.qrError}" against a healthy API — #295 symptom 2, reproduced when it should not be.`)
+    if (googleButtonVisible !== googleAvailable) {
+      fail(
+        `${label}: Google button visibility (${googleButtonVisible}) does not match the real, freshly-probed ` +
+          `/v1/auth/capabilities answer (available=${googleAvailable}) against a healthy API.`,
+      )
+    }
+    if (googleUnknownVisible) fail(`${label}: the "${COPY.googleUnknown}" fallback is showing against a healthy API — it should only appear once the outage banner is up.`)
+  } else {
+    if (googleButtonVisible) fail(`${label}: the real Google button rendered despite the harness's own network break — an affordance that cannot work must not show (REQ-008).`)
+    if (!googleUnknownVisible) fail(`${label}: neither the real Google button nor the honest "${COPY.googleUnknown}" fallback rendered despite the outage banner being up — Google went silent instead of deferring honestly.`)
+  }
+
+  const qrReady = await qrCodeLocator.first().isVisible().catch(() => false)
+  const qrDeferred = await qrDeferredLocator.first().isVisible().catch(() => false)
+  if (expectHealthy) {
+    if (qrDeferred) fail(`${label}: QR column shows the deferred outage copy against a healthy API.`)
     if (!qrReady) fail(`${label}: QR column never reached a rendered user_code against a healthy API within 15s (stuck loading).`)
   } else {
     if (qrReady) fail(`${label}: QR column rendered a real user_code despite the harness's own network break — the break did not actually reach this request.`)
-    if (!qrErrored) fail(`${label}: QR column never showed the honest "${COPY.qrError}" state despite the harness's own network break — an unreachable API produced no visible signal at all (worse than #295's own report, which at least surfaced this text).`)
+    if (!qrDeferred) fail(`${label}: QR column never showed the deferred "${COPY.qrRetryingAuto}"/"${COPY.qrRetryExhausted}" state despite the outage banner being up — it raised its own prose instead of deferring (AC-A).`)
   }
-  return { googleAvailable, qrReady, qrErrored }
+  return { googleAvailable, qrReady, bannerVisible }
 }
 
-/** Submits the login form for real and asserts the password-field transport-error text matches
- *  `expectHealthy` — #295 symptom 1, the third leg alongside `assertLoginScreenHonest`'s two. */
+/** Submits the login form for real and asserts the shared outage banner's presence matches
+ *  `expectHealthy` — AC-A's whole point is that a transport failure on THIS specific submit path
+ *  produces the exact same one banner the QR/Google surfaces already deferred to, not a second,
+ *  independent password-field message (the old per-surface `auth.errGeneric` text this codepath
+ *  used to set is gone — `LoginScreen.tsx`'s `login()` now sets `formTransportError` instead, and
+ *  the password field's own `fehler` is suppressed to `''` for as long as the banner is up). */
 async function assertLoginSubmitHonest(page, email, password, { expectHealthy, label }) {
   await page.getByPlaceholder(COPY.loginEmailPlaceholder).fill(email)
   await page.getByPlaceholder(COPY.loginPasswordPlaceholder).fill(password)
@@ -251,19 +300,20 @@ async function assertLoginSubmitHonest(page, email, password, { expectHealthy, l
     await page.waitForURL((u) => u.pathname === '/onboarding' || u.pathname === '/app', { timeout: 15_000 }).catch(() => {
       fail(`${label}: real sign-in with valid credentials against a healthy API never navigated off /login within 15s.`)
     })
-    const errGenericVisible = await page.getByText(COPY.errGeneric, { exact: true }).isVisible().catch(() => false)
-    if (errGenericVisible) fail(`${label}: "${COPY.errGeneric}" appeared under the password field against a healthy API and valid credentials — #295 symptom 1, reproduced when it should not be.`)
+    const bannerVisible = await page.getByText(COPY.apiUnreachableHeading, { exact: true }).isVisible().catch(() => false)
+    if (bannerVisible) fail(`${label}: the shared outage banner appeared against a healthy API and valid credentials.`)
   } else {
-    await page.getByText(COPY.errGeneric, { exact: true }).waitFor({ state: 'visible', timeout: 15_000 }).catch(() => {
-      fail(`${label}: no honest transport-error text appeared under the password field despite the harness's own network break — a submit against an unreachable API produced no visible signal at all.`)
+    await page.getByText(COPY.apiUnreachableHeading, { exact: true }).waitFor({ state: 'visible', timeout: 15_000 }).catch(() => {
+      fail(`${label}: no honest outage banner appeared despite the harness's own network break — a submit against an unreachable API produced no visible signal at all.`)
     })
   }
 }
 
 /** Row A — fresh context, no cookies at all. Two passes: the real, healthy stack (the positive
  *  claim), then the SAME screen under a harness-induced, page-scoped network break (the control
- *  proof this file's other assertions lean on, and the one place this file deliberately
- *  reproduces #295's own three symptom strings — see this file's header for the boundary). */
+ *  proof this file's other assertions lean on, and the one place this file confirms AC-A's
+ *  consolidated-outage banner actually holds under a real transport failure — see this file's
+ *  header for exactly what that does and doesn't say about #295). */
 async function testFreshLoginScreen(browser, apiOrigin, webOrigin) {
   // --- healthy pass ---
   const healthyCtx = await newContextAtBreakpoint(browser, 'l')
@@ -273,7 +323,7 @@ async function testFreshLoginScreen(browser, apiOrigin, webOrigin) {
     guardAgainst429(page, fail, '/v1/device/')
     await skipSplash(page, webOrigin)
     await assertLoginScreenHonest(page, apiOrigin, { expectHealthy: true, label: 'Row A (healthy)' })
-    console.log('[return-visit] Row A (healthy): fresh Login screen is fully honest — Google matches capabilities, QR reached a real user_code.')
+    console.log('[return-visit] Row A (healthy): fresh Login screen is fully honest — no outage banner, Google matches capabilities, QR reached a real user_code.')
   } finally {
     await healthyCtx.close()
   }
@@ -287,9 +337,9 @@ async function testFreshLoginScreen(browser, apiOrigin, webOrigin) {
     await assertLoginScreenHonest(page, apiOrigin, { expectHealthy: false, label: 'Row A (control: API unreachable)' })
     await assertLoginSubmitHonest(page, 'nobody@beispiel.de', 'irrelevant-pw', { expectHealthy: false, label: 'Row A (control: API unreachable)' })
     console.log(
-      '[return-visit] Row A (control): with the API genuinely unreachable, the Login screen shows exactly ' +
-        "#295's three symptoms, honestly and together — this calibrates the assertions above, it does not " +
-        'establish #295\'s own cause (see this file\'s header).',
+      '[return-visit] Row A (control): with the API genuinely unreachable, the Login screen shows the ONE ' +
+        'shared outage banner, and Google/QR both defer to it instead of raising their own prose (AC-A) — ' +
+        "this calibrates the assertions above, it does not establish #295's own cause (see this file's header).",
     )
   } finally {
     await brokenCtx.close()
@@ -417,7 +467,7 @@ async function testCloseAndReopenReLogin(apiOrigin, webOrigin, sql) {
       await skipSplash(page, webOrigin)
       await waitForRateLimit(readBucketByExactKey(sql, 'no-trusted-ip|/sign-in/email'), AUTH_BUCKET, 'sign-in/email')
       await assertLoginSubmitHonest(page, email, TEST_PASSWORD, { expectHealthy: true, label: 'Row C (session 1 sign-in)' })
-      console.log('[return-visit] Row C: session 1 — real sign-in against a live API succeeded, no #295 symptom 1.')
+      console.log('[return-visit] Row C: session 1 — real sign-in against a live API succeeded, no outage banner.')
 
       const cookiesBeforeClose = await ctx.cookies()
       if (!cookiesBeforeClose.some((c) => c.name.includes('session_token'))) {
@@ -451,9 +501,9 @@ async function testCloseAndReopenReLogin(apiOrigin, webOrigin, sql) {
       await assertLoginSubmitHonest(page, email, TEST_PASSWORD, { expectHealthy: true, label: 'Row C (session 2, re-login)' })
       console.log(
         '[return-visit] Row C: session 2 — after a real close+reopen of the browser, re-entering the same ' +
-          "credentials against a live API succeeds cleanly, none of #295's three symptoms appear. This proves " +
-          "the CLIENT side of a close/reopen/re-login cycle is honest when the API stays healthy; it says " +
-          "nothing about whether the API stayed healthy on the stakeholder's own Mac (see this file's header).",
+          'credentials against a live API succeeds cleanly, no outage banner, no dishonest Google/QR state. ' +
+          'This proves the CLIENT side of a close/reopen/re-login cycle is honest when the API stays healthy; ' +
+          "it says nothing about whether the API stayed healthy on the stakeholder's own Mac (see this file's header).",
       )
     } finally {
       await ctx.close()
@@ -633,21 +683,22 @@ function opacityProgressed(samples) {
 
 /**
  * Row G — repairs Musti's F10 finding on #298: `sampleComputedStyleOverFrames`/
- * `newReducedMotionContext` (`e2e/harness/browser.mjs`) lost their only real caller when Kaan's
- * #298 dropped the owl from LoginScreen's QR column (a real design change, not a bug — "no basis
- * in the reference") — `device-authorization.mjs`'s own `assertOwlEntranceOpacity` was that
- * caller. An instrument with no real caller is unproven by ADR-0021's own rule (Musti's #263
- * review, F2, closed once already — #298 silently reopened it on the QR-column side).
+ * `newReducedMotionContext` (`e2e/harness/browser.mjs`) lost their only real caller when #298
+ * dropped the owl from LoginScreen's QR column (a real design change, not a bug — the DS's own
+ * `AuthGeraete.jsx` reference puts a static brand mark there instead) — `device-authorization.mjs`
+ * removed its own `assertOwlEntranceOpacity` in the same PR (`ede1749`), correctly: an assertion
+ * with no element left to assert against is dead code, not a weakened check. That reopened
+ * exactly the gap ADR-0021/#263's review (F2) had closed once already: an instrument with no real
+ * caller is unproven.
  *
- * Not deleted here: `assertOwlEntranceOpacity` still calls both today, on `main` (this branch is
- * off `main`; #298 hasn't merged there yet) — removing the exports would break that caller the
- * moment either PR lands. Rewired instead to a DIFFERENT, durable target: SplashScreen's own
- * entrance (its own local `Animated.Value` sequence — never the extracted hook the QR column
- * borrowed, see SplashScreen.tsx's own header — untouched by #298 and not going anywhere), which
- * every row above already visits on every fresh context via `skipSplash`. Same both-directions
- * calibration `device-authorization.mjs` used: `expectProgress: true` on a genuine load (motion
- * allowed), `expectProgress: false` under `newReducedMotionContext` (SplashScreen's own `if
- * (reducedMotion || hasPlayed.current) return` — every value starts at 1, already at rest).
+ * Rewired here, not deleted, to a DIFFERENT, durable target: SplashScreen's own entrance (its own
+ * local `Animated.Value` sequence — confirmed directly, never the extracted hook the QR column
+ * had borrowed, see `device-authorization.mjs`'s own header for the correction on that exact
+ * point), which every row above already visits on every fresh context via `skipSplash` and which
+ * no Login-screen redesign touches. Same both-directions calibration `assertOwlEntranceOpacity`
+ * used: `expectProgress: true` on a genuine load (motion allowed), `expectProgress: false` under
+ * `newReducedMotionContext` (SplashScreen's own `if (reducedMotion || hasPlayed.current) return`
+ * — every value starts at 1, already at rest).
  */
 async function testSplashEntranceReplaysHonestly(browser, webOrigin) {
   const normalCtx = await newContextAtBreakpoint(browser, 's')

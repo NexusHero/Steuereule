@@ -151,31 +151,32 @@ can still emit correctly:
   "correct" computed `fill` (the intent) sitting next to a visibly wrong painted pixel (the
   effect) — `getComputedStyle` would have called that green.
 
-Both are exercised by a real caller, not a synthetic self-test (Musti's #263 review, F2: an
-instrument with no caller is unproven that it's needed at all — the same "generated, correct, and
-called by nothing" shape that made the QR-login desktop poll go dead) — `e2e/device/
-device-authorization.mjs`'s own `l`-breakpoint Context A already renders the QR column's real
-owl-entrance animation and the real approve button; both instruments read those, not a fixture
-built for the purpose. And both are calibrated in BOTH directions there, not just proven to
-return *a* number: `sampleComputedStyleOverFrames` against the entrance actually running
-(`expectProgress: true`) AND the same entrance under `newReducedMotionContext`, genuinely at rest
-(`expectProgress: false`); `probeColourAtPoint` against the approve button's own known fill
-(`t.color.funke`) AND a deliberately wrong coordinate (the page background), so a
-device-pixel-ratio-shifted or hard-coded-return crop can't pass by reading the same value
-everywhere. An instrument proven on only the "it moved"/"it matched" half is unproven that it can
-tell a positive from a negative — Musti's point, restated: a check that silently always passes is
-worse than no check, because the next reader reads the green as coverage.
+Both were originally exercised by `e2e/device/device-authorization.mjs`'s own `l`-breakpoint
+Context A, which used to render the QR column's own owl-entrance animation alongside the real
+approve button — a real caller, not a synthetic self-test (Musti's #263 review, F2: an instrument
+with no caller is unproven that it's needed at all — the same "generated, correct, and called by
+nothing" shape that made the QR-login desktop poll go dead). `probeColourAtPoint` still lives
+there today, against the approve button's own known fill (`t.color.funke`) AND a deliberately
+wrong coordinate (the page background), calibrated in both directions so a device-pixel-ratio-
+shifted or hard-coded-return crop can't pass by reading the same value everywhere.
 
-**A second real caller landed for `sampleComputedStyleOverFrames`/`newReducedMotionContext`
-specifically (Musti's #300 review, F10/G1)** — `session/return-visit.mjs`'s Row G, against
-SplashScreen's own independent entrance animation. Not redundant with the caller above: Kaan's
-#298 removes LoginScreen's QR-column owl (a real design change), which would have taken
-`device-authorization.mjs`'s `assertOwlEntranceOpacity` — these two instruments' only caller —
-with it the moment that PR merges. Pointing a second caller at a target #298 doesn't touch means
-both instruments keep a real caller once that happens, rather than quietly going unproven again
-(the exact class #263's F2 already closed once). `probeColourAtPoint` still has exactly one real
-caller (`device-authorization.mjs`, unaffected by #298) — no second one added for it here, because
-nothing else in this repo currently exercises a comparable painted-pixel claim.
+**`sampleComputedStyleOverFrames`/`newReducedMotionContext` lost that caller for a real reason
+(#283/C3, landed in #298): the QR column's owl was dropped entirely** — `AuthGeraete.jsx`'s own DS
+reference puts a static brand mark inside the QR pattern instead, no animation at all — so
+`device-authorization.mjs`'s `assertOwlEntranceOpacity` had nothing left to calibrate against and
+was retired with it (`ede1749`), not weakened. That reopened exactly the F2 gap it had closed: an
+instrument with no real caller.
+
+**Repaired, not left orphaned (Musti's #300 review, F10/G1):** `session/return-visit.mjs`'s Row G
+is now these two instruments' one real caller, sampling SplashScreen's own independent entrance
+animation instead — `expectProgress: true` on a genuine load, `expectProgress: false` under
+`newReducedMotionContext`, the identical both-directions shape `assertOwlEntranceOpacity` used.
+SplashScreen's entrance was never the hook the QR column borrowed (its own inline `Animated`
+values, confirmed directly, not assumed — see `device-authorization.mjs`'s own header for the
+correction on that point) and isn't affected by any Login-screen redesign, so this caller is
+durable in a way the one it replaces stopped being. An instrument proven on only the "it moved"
+half is unproven that it can tell a positive from a negative — Row G proves both, the same
+standard the original caller set.
 
 ## `rate-limit.mjs`
 
