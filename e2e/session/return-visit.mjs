@@ -58,6 +58,12 @@
 //      token" finding #1 is the sibling control on the desktop-token half of this same code); it
 //      must not survive a reload client-side. If it ever does, that is a security finding, not a
 //      test result — see this row's own FAIL message.
+//   G. Not part of the stakeholder's own matrix — a harness-instrument repair (Musti's F10 on
+//      #298, see this file's own PR body). SplashScreen's own entrance animation, which every row
+//      above already visits on every fresh context, sampled both moving (a real load) and static
+//      (forced reduced motion) — the same real-caller obligation ADR-0021/#263's F2 already
+//      established for `sampleComputedStyleOverFrames`/`newReducedMotionContext`, now pointed at
+//      a target #298 does not touch (LoginScreen's own owl, their prior caller, is what #298 drops).
 //
 // WHAT IS DELIBERATELY NOT HERE (said plainly, not hidden):
 //   - No row asserts anything about the API process's own lifetime/memory/restart policy — that
@@ -96,7 +102,7 @@ import { chromium } from 'playwright-core'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { launchBrowser, closeBrowser, newContextAtBreakpoint, guardAgainst429 } from '../harness/browser.mjs'
+import { launchBrowser, closeBrowser, newContextAtBreakpoint, guardAgainst429, sampleComputedStyleOverFrames, newReducedMotionContext } from '../harness/browser.mjs'
 import { startStack } from '../harness/stack.mjs'
 
 const AUTH_BUCKET = { windowMs: 10_000, max: 3 } // better-auth's own built-in rule
@@ -613,6 +619,84 @@ async function testDeviceCodeDoesNotSurviveReload(browser, webOrigin, sql) {
   }
 }
 
+/**
+ * Locates SplashScreen's own OwlMark layers (head, glasses — the two `sampleComputedStyleOverFrames`
+ * needs; the blink/lid stage is the LAST beat and not needed to prove the entrance progresses at
+ * all). SplashScreen is the ONLY thing on this page with an `<svg>` (unlike LoginScreen, which
+ * also has a password-field visibility-toggle icon ahead of its own owl in DOM order —
+ * `device-authorization.mjs`'s own `loginOwlLayers` offsets by one for that reason), so here
+ * `svg >> nth=0`/`nth=1` are reliably head/glasses — confirmed against a real render, not assumed
+ * from source (see this row's own PR evidence).
+ */
+function splashOwlLayers(page) {
+  return { head: page.locator('svg').nth(0).locator('xpath=..'), glasses: page.locator('svg').nth(1).locator('xpath=..') }
+}
+
+function opacityProgressed(samples) {
+  const values = samples.map((s) => Number(s.opacity))
+  return values.some((v) => Math.abs(v - values[0]) > 0.01)
+}
+
+/**
+ * Row G — repairs Musti's F10 finding on #298: `sampleComputedStyleOverFrames`/
+ * `newReducedMotionContext` (`e2e/harness/browser.mjs`) lost their only real caller when Kaan's
+ * #298 dropped the owl from LoginScreen's QR column (a real design change, not a bug — "no basis
+ * in the reference") — `device-authorization.mjs`'s own `assertOwlEntranceOpacity` was that
+ * caller. An instrument with no real caller is unproven by ADR-0021's own rule (Musti's #263
+ * review, F2, closed once already — #298 silently reopened it on the QR-column side).
+ *
+ * Not deleted here: `assertOwlEntranceOpacity` still calls both today, on `main` (this branch is
+ * off `main`; #298 hasn't merged there yet) — removing the exports would break that caller the
+ * moment either PR lands. Rewired instead to a DIFFERENT, durable target: SplashScreen's own
+ * entrance (its own local `Animated.Value` sequence — never the extracted hook the QR column
+ * borrowed, see SplashScreen.tsx's own header — untouched by #298 and not going anywhere), which
+ * every row above already visits on every fresh context via `skipSplash`. Same both-directions
+ * calibration `device-authorization.mjs` used: `expectProgress: true` on a genuine load (motion
+ * allowed), `expectProgress: false` under `newReducedMotionContext` (SplashScreen's own `if
+ * (reducedMotion || hasPlayed.current) return` — every value starts at 1, already at rest).
+ */
+async function testSplashEntranceReplaysHonestly(browser, webOrigin) {
+  const normalCtx = await newContextAtBreakpoint(browser, 's')
+  try {
+    const page = await normalCtx.newPage()
+    await page.goto(webOrigin, { waitUntil: 'networkidle' })
+    const layers = splashOwlLayers(page)
+    const [headSamples, glassesSamples] = await Promise.all([
+      sampleComputedStyleOverFrames(page, layers.head, ['opacity'], 90),
+      sampleComputedStyleOverFrames(page, layers.glasses, ['opacity'], 90),
+    ])
+    if (!opacityProgressed(headSamples) && !opacityProgressed(glassesSamples)) {
+      fail(
+        'Row G: Splash entrance did not progress across 90 real animation frames on a fresh load ' +
+          "(motion allowed) — either the entrance regressed to inert, or this row's own locator drifted.",
+      )
+    }
+    console.log("[return-visit] Row G (moving half): Splash's own brand entrance genuinely progresses on a fresh visit — sampleComputedStyleOverFrames repaired with a real, durable caller.")
+  } finally {
+    await normalCtx.close()
+  }
+
+  const reducedCtx = await newReducedMotionContext(browser, { viewport: { width: 375, height: 812 } })
+  try {
+    const page = await reducedCtx.newPage()
+    await page.goto(webOrigin, { waitUntil: 'networkidle' })
+    const layers = splashOwlLayers(page)
+    const [headSamples, glassesSamples] = await Promise.all([
+      sampleComputedStyleOverFrames(page, layers.head, ['opacity'], 90),
+      sampleComputedStyleOverFrames(page, layers.glasses, ['opacity'], 90),
+    ])
+    if (opacityProgressed(headSamples) || opacityProgressed(glassesSamples)) {
+      fail(
+        'Row G: Splash entrance moved under prefers-reduced-motion — either reduced motion stopped ' +
+          'being honoured, or this instrument reports motion that is not there.',
+      )
+    }
+    console.log('[return-visit] Row G (static half): under prefers-reduced-motion, the same entrance genuinely stays inert — newReducedMotionContext repaired with a real, durable caller.')
+  } finally {
+    await reducedCtx.close()
+  }
+}
+
 async function main() {
   const { apiOrigin, webOrigin, sql } = await startStack()
   const browser = await launchBrowser()
@@ -624,9 +708,10 @@ async function main() {
     await testGuestReload(browser, webOrigin)
     await testUnauthenticatedDeepLink(browser, webOrigin)
     await testDeviceCodeDoesNotSurviveReload(browser, webOrigin, sql)
+    await testSplashEntranceReplaysHonestly(browser, webOrigin)
     console.log(
       '[return-visit] PASS — return-visit/re-login handling is honest against a real, healthy stack ' +
-        "(rows A-F). This does NOT close #295 — see this file's own header for the exact boundary.",
+        "(rows A-G). This does NOT close #295 — see this file's own header for the exact boundary.",
     )
   } finally {
     await closeBrowser(browser)
