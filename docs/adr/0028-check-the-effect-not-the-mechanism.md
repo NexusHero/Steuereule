@@ -12,8 +12,10 @@
   test/smoke jobs*.
 - **Constrains** the values guarded by [ADR-0007](0007-authentication.md)
   (`GUEST_SESSION_SECRET`), [ADR-0008](0008-profile-persistence-encryption.md)
-  (`PRISMA_FIELD_ENCRYPTION_KEY`) and [ADR-0011](0011-cors-credentialed-cross-origin.md)
-  (`CORS_ALLOWED_ORIGINS`).
+  (`PRISMA_FIELD_ENCRYPTION_KEY`), [ADR-0011](0011-cors-credentialed-cross-origin.md)
+  (`CORS_ALLOWED_ORIGINS`) and [ADR-0012](0012-session-guard-coexistence-and-guest-upgrade.md)
+  (`BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`). Four of the seven guarded names; `DATABASE_URL` and
+  `PORT` trace to no single ADR.
 - **Context tags:** security, configuration, boot
 
 ## Context
@@ -152,8 +154,8 @@ enumerated here rather than sampled, because the size of the set is the argument
 | `assertEnvNotFileSourced` | `config/assert-env-not-file-sourced.ts` | no-op (this ADR) |
 | `resolveFieldEncryptionKey` | `prisma/field-encryption-key.ts:29` | a fixed, guessable encryption key ([0008](0008-profile-persistence-encryption.md)) |
 | `resolveGuestSessionSecret` | `auth/guest-session.ts:58` | a fixed, guessable HMAC secret ([0007](0007-authentication.md)) |
-| `resolveBetterAuthSecret` | `auth/better-auth.ts:213` | a fixed, guessable secret ([0009](0009-better-auth-as-auth-server.md)) |
-| `resolveBetterAuthUrl` | `auth/better-auth.ts:226` | `http://localhost:3000` |
+| `resolveBetterAuthSecret` | `auth/better-auth.ts:213` | a fixed, guessable secret ([0012](0012-session-guard-coexistence-and-guest-upgrade.md)) |
+| `resolveBetterAuthUrl` | `auth/better-auth.ts:226` | `http://localhost:3000` ([0012](0012-session-guard-coexistence-and-guest-upgrade.md)) |
 | `resolveWebAppUrl` | `auth/better-auth.ts:247` | `http://localhost:8081` |
 | `resolveGoogleClientId` / `…Secret` | `auth/better-auth.ts:263`, `:274` | dev-only placeholder credentials |
 | `resolveTrustedProxies` | `config/trusted-proxies.ts:103` | the permissive development list |
@@ -161,6 +163,14 @@ enumerated here rather than sampled, because the size of the set is the argument
 **Nine gates, one variable, all of them dropping to their fallbacks together and silently.** That
 `DATABASE_URL` deliberately does *not* gate on `NODE_ENV` (`config/database-url.ts:8`) is the one
 place this repo already made the opposite choice, and its reasoning is the seed of the answer.
+
+Every ADR cited in that table is **the one the source file itself cites**, not the one that seemed
+right. The first draft of this document attributed `resolveBetterAuthSecret` to ADR-0009 while
+`auth/better-auth.ts:216` names ADR-0012 — caught in review by reading both ADRs rather than the
+table. One honest asymmetry, stated because it is the reason a mention-count is not the test either:
+ADR-0007 never spells `GUEST_SESSION_SECRET`, yet `auth/guest-session.ts:61` cites it and is right to,
+because 0007 is the seam that variable protects. **The check is agreement with the source, not the
+presence of a string.**
 
 This is **pre-existing and wider than #284** — it predates this control and is not created by it.
 It is recorded here rather than closed because the fix is a deployment/architecture question, not a
