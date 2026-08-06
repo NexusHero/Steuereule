@@ -852,42 +852,34 @@ describe('LoginScreen', () => {
       // that test drives the *client's own* countdown reaching zero (never asked the server);
       // this one drives the server telling the client the code expired mid-poll, the RFC 8628
       // `expired_token` branch (`useDeviceQrCode.ts`'s `poll()`) — the only one of the five
-      // `switch` arms with zero coverage before this. Asserting only the rendered state would
-      // pass even if that branch's own `stopPolling()` call were silently dropped — the leftover
-      // client-side poll timer would just fire later and re-set the same `expired` state,
-      // invisible to a state-only assertion (exactly Musti's point, and exactly the class of bug
-      // #240 cost a day on).
+      // `switch` arms with zero coverage before this.
       //
-      // Correction (#298, re-verification pass) — this comment used to narrate the mechanism as
-      // a dedicated `expiryTimer` ref, `clearTimeout(expiryTimer.current)` on the branch. That
-      // was true for #239's original implementation; #283's own state-3/state-7 rework (this same
-      // PR, `useDeviceQrCode.ts`'s own header comment: "replacing the old, separately-tracked
-      // `expiryTimer`") replaced it with the countdown reaching zero — there is no `expiryTimer`
-      // ref left to name. The two timer sources today are `pollTimer` (the poll's own
-      // `setTimeout`, cleared by `stopPolling()`) and the `ready`-only countdown `setInterval`,
-      // which tears itself down via its own effect cleanup the moment `state.kind` leaves
-      // `ready` — both need to be gone once `expired_token` lands, or a stray one fires later.
-      // What follows was re-verified against the CURRENT code, not left describing the old one.
+      // Correction (#298 F14, Musti's second pass) — an earlier version of this comment and test
+      // built an elaborate `vi.getTimerCount()`-before/-after pairing, claiming it proved "no
+      // stray timer left behind": that assertion was already structurally unable to move by the
+      // time this comment was first corrected in the prior re-verification pass, and the
+      // correction re-explained it in today's terms without re-proving it — a comment fix is
+      // itself a claim, and this one wasn't checked against a mutant before being written. Mutated
+      // and measured now, both ways, and both stayed green: removing the `expired_token` branch's
+      // `stopPolling()` call entirely, and disabling the countdown interval's own `clearInterval`
+      // cleanup. Two reasons, together fatal to that assertion: (1) by the time this branch runs,
+      // `pollTimer` has already fired — `poll()` only ever runs *from* that timeout — so
+      // `clearTimeout` on it here is a no-op regardless of whether `stopPolling()` is even called;
+      // there is nothing left armed for `stopPolling()` to still catch. (2) `vi.getTimerCount()`
+      // counts *pending* timers; a `setInterval` re-arms itself on every tick, so its contribution
+      // to the count never changes whether or not its cleanup ever runs — an orphaned interval
+      // passes this check by doing exactly what the check was looking for. The intended proof
+      // ("a stray timer fires, removes itself, the count drops") only ever describes a one-shot
+      // `setTimeout` — that was `expiryTimer`, and #283 deleted it. Removed rather than re-argued
+      // a third time: the `getTimerCount()` pairing, its "precise proof" framing, and the "no
+      // stray timer left behind" claim in this test's own name.
       //
-      // Two earlier drafts here didn't hold up. The first spied on the global `clearTimeout` and
-      // asserted only a raised call *count* across the response — that did not go red when
-      // `stopPolling()`'s own call was deliberately removed from the branch: whatever bookkeeping
-      // TanStack Query's mutation does in the same window was already enough to clear the bar.
-      // The second tried to pin the exact timer id by spying on `setTimeout`/`clearTimeout` —
-      // that broke `vi.useRealTimers()`'s own teardown (the spy wrapper changes the identity
-      // vitest's fake clock checks when restoring), leaving every later test in this file's real
-      // timers silently faked and hanging on a 15s watchdog. Spying on the global timer functions
-      // while fake timers are installed is the wrong tool here regardless of assertion precision.
-      //
-      // `vi.getTimerCount()` sidesteps both problems: it's vitest's own read of its fake clock's
-      // pending-timer set, not a wrapper around the globals. The proof: right after the
-      // `expired_token` response is handled, note how many timers are still armed, then advance
-      // fake time straight through the client's own 120s (`expiresIn`) deadline. If either
-      // `pollTimer` had been left armed or the countdown's `setInterval` hadn't torn itself down,
-      // a stray timer would still be armed and would fire — and, on firing, remove itself — right
-      // at that mark, so the pending count would drop. A clean branch leaves nothing armed there,
-      // so the count doesn't move.
-      it('shows the expired state and genuinely stops polling on a server-reported expired_token — no stray timer left behind', async () => {
+      // What's left, and is genuinely breakable: `tokenRequests` staying at 1 through the full
+      // 120s deadline. Nothing in the `expired_token` branch calls `schedulePoll(...)` again, so
+      // this doesn't currently exercise `stopPolling()` specifically — but it does guard the real
+      // regression of someone later treating `expired_token` as pollable (adding a `schedulePoll`
+      // call there by mistake), which is exactly the shape of bug #240 cost a day on.
+      it('shows the expired state and genuinely stops polling on a server-reported expired_token', async () => {
         vi.useFakeTimers({ shouldAdvanceTime: true })
         let tokenRequests = 0
         server.use(
@@ -906,16 +898,13 @@ describe('LoginScreen', () => {
         await screen.findByText('Code abgelaufen.')
         expect(tokenRequests).toBe(1)
 
-        const timersArmedAfterExpiredResponse = vi.getTimerCount()
         // The server-given 120s deadline passing changes nothing further: no more polls, state
-        // stays exactly as it was, and — the precise proof — no timer that was armed a moment
-        // ago quietly fired and disappeared here.
+        // stays exactly as it was.
         await act(async () => {
           await vi.advanceTimersByTimeAsync(120_000)
         })
         expect(tokenRequests).toBe(1)
         await screen.findByText('Code abgelaufen.')
-        expect(vi.getTimerCount()).toBe(timersArmedAfterExpiredResponse)
 
         vi.clearAllTimers()
         vi.useRealTimers()
