@@ -1,9 +1,10 @@
 // Rate-limits `POST /v1/device/code` (#238, ADR-0024, Musti's PR #239 ruling). The
 // endpoint is unauthenticated by design (the desktop requesting a code has no
 // identity yet — see device.service.ts's header comment) and mints a permanent row
-// with no sweeper (deliberately out of scope here — a cleanup mechanism needs a
-// scheduler, `@nestjs/schedule` is not a current dependency, and adopting one is an
-// architecture decision that belongs to NexusHero, tracked as its own ticket).
+// with no sweeper — still true, and still out of scope here. The mechanism is no
+// longer undecided: ADR-0029 settled it as a piggybacked bounded batch sweep (no
+// scheduler, no new dependency). Applying it to this table is work nobody has done
+// yet; build it per ADR-0029 rather than reopening the choice.
 //
 // NOT an entropy-margin argument: an attacker-minted code points at the attacker's
 // own desktop, so flooding this endpoint adds nothing to the pool a guessing attack

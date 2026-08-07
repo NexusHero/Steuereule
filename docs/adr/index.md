@@ -47,6 +47,8 @@ The ADRs **justify** the architecture; the [living arc42 document](../arc42/READ
 | 0026 | A local, production-shaped Docker Compose stack for the API and web bundle (#76) | Accepted |
 | 0027 | better-auth's session freshness gate is disabled (`session.freshAge: 0`) — exhaustive consumer list, accepted loss on `/unlink-account` | Accepted |
 | 0028 | Check the effect, not the mechanism: the pre-Prisma environment snapshot, and the boot ordering invariant it rests on (#284) | Accepted |
+| 0029 | Periodic cleanup runs as a piggybacked batch sweep, not a scheduler — settles the mechanism ADR-0024 left open (#294, #238) | Accepted |
+| 0030 | System-initiated deletion: the first erasure path no user confirms — unverified accounts after 30 days (#294) | Accepted |
 
 See also the [Tech Radar](./tech-radar.md).
 
