@@ -303,14 +303,24 @@ the process.
 |---|---|
 | A lint rule preventing a re-sort | **None.** `.oxlintrc.json` has no import-sort rule today. If one is ever adopted it needs an exception for this line. |
 | A test that goes red when the order breaks | **Yes**, `apps/api/test/boot/assert-env-not-file-sourced.test.ts` — the acceptance case's own refusal disappears, and a derived ordering-broken entry point proves it (ADR-0021 control proof). Scope: it spawns `tsx src/main.ts`, never `dist/`. |
-| The invariant holding in the compiled `dist/` | **Observed, not controlled.** Rows 1 and 2 were reproduced against `node --import tsx dist/main.js` — the `CMD` in `apps/api/Dockerfile:96` — on Node 24 against real Postgres at `ff633a3` (Salih's #310 run): the refusal fired and named the guarded vars, and the no-op case booted through to a real `GET /v1/profile` → 200. The emitted order was re-checked at `71074c6`: `tsc` puts `import './config/env-snapshot.js'` first in `dist/main.js` and emits `dist/config/env-snapshot.js`, so it neither reorders nor elides. |
+| The invariant holding in the compiled `dist/` | **Observed on the code path, not controlled, and never in the image.** Rows 1 and 2 were reproduced against `node --import tsx dist/main.js` — the `CMD` in `apps/api/Dockerfile:96` — on Node 24 with `@prisma/client` 6.19.3 against real Postgres at `ff633a3` (Salih's #310 run): the refusal fired and named the guarded vars, and the no-op case booted through to a real `GET /v1/profile` → 200. **That run was made outside any container, against a fresh `tsc` build — not against the built production image**, which a registry/blob-CDN block prevents building in this environment (the same block behind `e2e/harness/README.md`'s native-Postgres fallback). The emitted order was re-checked at `71074c6`: `tsc` puts `import './config/env-snapshot.js'` first in `dist/main.js` and emits `dist/config/env-snapshot.js`, so it neither reorders nor elides. |
 
-**The gap that remains, stated as narrowly as it now is.** The invariant has been *seen to hold*
-against the artifact production actually boots — that is more than the earlier "by construction,
-untested" wording admitted, and this row is corrected here because that wording became false the day
-#310 merged. What is still missing is the **control proof at that layer**: row 4 has never been run
-against `dist/`, so nothing has been observed going *red* there, and both measurements above are
-one-off manual runs at named commits rather than a checked-in test. By ADR-0021's own standard a
-control is established only once it has been seen to fail, so the compiled path carries evidence, not
-a gate. Recorded here rather than in a comment because a reader of this document should find it
-without reading the entry point.
+**The gap that remains, stated as narrowly as it now is.** The invariant has been *seen to hold* on
+the code path production runs — that is more than the earlier "by construction, untested" wording
+admitted, and this row is corrected here because that wording became false the day #310 merged. Three
+things are still missing, and they are different sizes:
+
+- **The control proof at that layer.** Row 4 has never been run against `dist/`, so nothing has been
+  observed going *red* there. By ADR-0021's own standard a control is established only once it has
+  been seen to fail, so the compiled path carries evidence, not a gate.
+- **A checked-in test.** Both measurements above are one-off manual runs at named commits.
+  `apps/api/test/boot/support/run-server.ts`'s `entryPath` defaults to `src/main.ts` and no fixture
+  points at `dist/`.
+- **This invariant inside the image.** The image *is* built and booted in CI — `prod-deploy-smoke`
+  (`.github/workflows/ci.yml:699`, "Production compose stack … (real Docker build)") — but that job
+  asserts guest/registration/login/QR, not the env-source guard. So the image is exercised and this
+  invariant is exercised, never in the same run.
+
+Recorded here rather than in a comment because a reader of this document should find it without
+reading the entry point — and stated at this length because the failure mode being guarded against is
+precisely a limit that drops out of the write-up and reads as coverage.
