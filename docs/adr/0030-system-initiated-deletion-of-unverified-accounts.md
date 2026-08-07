@@ -78,6 +78,31 @@ hand-rolled `prisma.user.delete()` would be a refutation on sight.
 **No soft-delete, no suspended state.** A second erasure semantics would be a second thing to prove
 for no gain the stakeholder wanted.
 
+### 3a. Eligibility is gated on the warning having been *sent*, not on age alone
+
+**This clause exists because §1 and ADR-0029 together have a hole, and it is the kind that only
+appears when the two are read side by side.**
+
+ADR-0029's sweep is traffic-dependent: with no traffic, no sweep runs. If the warnings are sent by
+that same sweep, then a system that sees no traffic for 40 days and then a login would, on §1's rule
+alone, delete accounts **whose warning was never sent** — because no sweep ever ran to send it. The
+"advance warning" that §2 offers as the replacement for explicit confirmation would be skipped
+entirely, and every rule above would still have been followed.
+
+So age is not sufficient. An account is deletable only when:
+
+- §1's two conditions hold, **and**
+- the T-7 warning was **actually recorded as sent** for this account, **and**
+- at least 7 days have elapsed since that send.
+
+The deadline therefore floats: it is `max(createdAt + 30d, warningSentAt + 7d)`. That is a direct
+consequence of ADR-0029's traffic-dependence, and it is why "no sooner than 30 days" is the honest
+phrasing rather than a hedge.
+
+The same reasoning applies to any future variation of this mechanism: **a safeguard that is
+delivered by the same run that performs the destructive act must be gated on its own completion, not
+assumed to have preceded it.**
+
 ### 4. The race is real and must be closed in the transaction
 
 A verification click and the sweep can interleave. The check "is this user still unverified?" and
@@ -115,6 +140,7 @@ the query ignores `emailVerified` entirely. These must be seen red:
 | 3 | exactly on the boundary | pick a side and assert it, so `gt`/`gte` is visible |
 | 4 | the warning went out **before** the deletion | assert on the `EmailSender` double for that user |
 | 5 | §4's race | move the check outside the transaction |
+| 6 | **§3a**: an account 40 days old whose warning was never sent **survives** this run | drop the `warningSentAt` gate and delete on age alone — the traffic-gap case, and the one a test written from §1 alone would miss |
 
 ## Consequences
 
