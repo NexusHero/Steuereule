@@ -267,9 +267,19 @@ one session creation.
   the plugin's own lazy delete only fires when something polls a specific `device_code` after
   expiry — so abandoned page-view mints are permanent. `expiresIn: '2m'` bounds how many codes are
   *live*; it does not bound how many rows accumulate. With minting limited this is ~170 MB/month at
-  10,000 page views/day, which is why it is **not** treated as an emergency — but the cleanup
-  mechanism is a genuine open decision (in-process scheduler vs. external cron vs. delete-on-mint),
-  and adopting a scheduler is an architecture call, not a slice call. Tracked separately, on purpose.
+  10,000 page views/day, which is why it is **not** treated as an emergency.
+
+  **The mechanism is no longer an open decision — amended 2026-08-07.** This bullet used to end
+  "the cleanup mechanism is a genuine open decision (in-process scheduler vs. external cron vs.
+  delete-on-mint) … Tracked separately, on purpose." It was tracked to
+  [ADR-0029](0029-piggybacked-batch-sweep-instead-of-a-scheduler.md), which settles it in favour of
+  a **piggybacked bounded batch sweep** — the third of the three options named above. #294 was the
+  second feature to need it, which is what finally brought the question to the stakeholder.
+
+  **What is still true is the state, not the question:** nothing sweeps `DeviceCode` rows *yet*.
+  Deciding the mechanism and applying it to this table are separate pieces of work and only the
+  first has happened. Anyone picking this up builds it per ADR-0029 rather than reopening the
+  choice.
 - **The revoked session-scope decision left a live trap for anyone who reinstates it.** better-auth's
   `getSession()` **silently extends a shortened session back to the full configured lifetime on the
   next read** unless a second `dontRememberToken` cookie is also set. Found by booting a real server,
