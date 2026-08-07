@@ -302,8 +302,15 @@ the process.
 | | Status |
 |---|---|
 | A lint rule preventing a re-sort | **None.** `.oxlintrc.json` has no import-sort rule today. If one is ever adopted it needs an exception for this line. |
-| A test that goes red when the order breaks | **Yes**, `apps/api/test/boot/assert-env-not-file-sourced.test.ts` — the acceptance case's own refusal disappears, and a derived ordering-broken entry point proves it (ADR-0021 control proof). |
-| The invariant holding in the compiled `dist/` | **By construction, untested.** `tsc` neither reorders imports nor elides side-effect-only ones, but no test asserts it against `dist/main.js`, which is what the `smoke` job and the production image actually boot. |
+| A test that goes red when the order breaks | **Yes**, `apps/api/test/boot/assert-env-not-file-sourced.test.ts` — the acceptance case's own refusal disappears, and a derived ordering-broken entry point proves it (ADR-0021 control proof). Scope: it spawns `tsx src/main.ts`, never `dist/`. |
+| The invariant holding in the compiled `dist/` | **Observed, not controlled.** Rows 1 and 2 were reproduced against `node --import tsx dist/main.js` — the `CMD` in `apps/api/Dockerfile:96` — on Node 24 against real Postgres at `ff633a3` (Salih's #310 run): the refusal fired and named the guarded vars, and the no-op case booted through to a real `GET /v1/profile` → 200. The emitted order was re-checked at `71074c6`: `tsc` puts `import './config/env-snapshot.js'` first in `dist/main.js` and emits `dist/config/env-snapshot.js`, so it neither reorders nor elides. |
 
-The third row is the honest gap. It is recorded here rather than in a comment because it is the kind
-of thing a reader of this document should be able to find without reading the entry point.
+**The gap that remains, stated as narrowly as it now is.** The invariant has been *seen to hold*
+against the artifact production actually boots — that is more than the earlier "by construction,
+untested" wording admitted, and this row is corrected here because that wording became false the day
+#310 merged. What is still missing is the **control proof at that layer**: row 4 has never been run
+against `dist/`, so nothing has been observed going *red* there, and both measurements above are
+one-off manual runs at named commits rather than a checked-in test. By ADR-0021's own standard a
+control is established only once it has been seen to fail, so the compiled path carries evidence, not
+a gate. Recorded here rather than in a comment because a reader of this document should find it
+without reading the entry point.
