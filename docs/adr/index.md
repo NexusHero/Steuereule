@@ -49,6 +49,7 @@ The ADRs **justify** the architecture; the [living arc42 document](../arc42/READ
 | 0028 | Check the effect, not the mechanism: the pre-Prisma environment snapshot, and the boot ordering invariant it rests on (#284) | Accepted |
 | 0029 | Periodic cleanup runs as a piggybacked batch sweep, not a scheduler — settles the mechanism ADR-0024 left open (#294, #238) | Accepted |
 | 0030 | System-initiated deletion: the first erasure path no user confirms — unverified accounts after 30 days (#294) | Accepted |
+| 0031 | Nine questions, two segments: the interview stays three, the other six arrive as the catalog's first entry (#318, #11) | Accepted |
 
 See also the [Tech Radar](./tech-radar.md).
 
