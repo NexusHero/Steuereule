@@ -1,7 +1,12 @@
 import type { ExecutionContext } from '@nestjs/common'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { signGuestSession } from '../src/auth/guest-session.js'
-import { GUEST_SESSION_COOKIE, USER_ID_REQUEST_KEY, UserContextGuard } from '../src/auth/user-context.guard.js'
+import {
+  GUEST_SESSION_COOKIE,
+  USER_ID_KIND_REQUEST_KEY,
+  USER_ID_REQUEST_KEY,
+  UserContextGuard,
+} from '../src/auth/user-context.guard.js'
 import type { BetterAuthBundle } from '../src/auth/auth.tokens.js'
 
 const SECRET = 'test-secret'
@@ -48,6 +53,8 @@ describe('UserContextGuard', () => {
 
     await expect(guard.canActivate(context)).resolves.toBe(true)
     expect(request[USER_ID_REQUEST_KEY]).toBe(existingUserId)
+    // #318 — a verified guest cookie is still 'guest', never 'session'.
+    expect(request[USER_ID_KIND_REQUEST_KEY]).toBe('guest')
     expect(setCookie).not.toHaveBeenCalled()
     // I/O-free guest path (ADR-0012 §2): no better-auth session cookie means no DB read.
     expect(getSession).not.toHaveBeenCalled()
@@ -74,6 +81,8 @@ describe('UserContextGuard', () => {
     expect(options.sameSite).toBe('none')
     expect(options.secure).toBe(true)
     expect(getSession).not.toHaveBeenCalled()
+    // #318 — a freshly-minted guest is 'guest', never 'session'.
+    expect(request[USER_ID_KIND_REQUEST_KEY]).toBe('guest')
   })
 
   it('mints a fresh userId when the guest cookie is tampered/forged (never trusts it)', async () => {
@@ -114,6 +123,8 @@ describe('UserContextGuard', () => {
 
       await expect(guard.canActivate(context)).resolves.toBe(true)
       expect(request[USER_ID_REQUEST_KEY]).toBe('real-account-id')
+      // #318 — the signal @RequiresAccount() reads: a verified session is 'session'.
+      expect(request[USER_ID_KIND_REQUEST_KEY]).toBe('session')
       expect(setCookie).not.toHaveBeenCalled()
       expect(getSession).toHaveBeenCalledOnce()
     })
@@ -130,6 +141,10 @@ describe('UserContextGuard', () => {
       // No guest cookie existed either, so a fresh one is minted — the revoked
       // session must never leave the request without *some* trusted userId.
       expect(setCookie).toHaveBeenCalledOnce()
+      // #318 — a revoked session must fall all the way through to 'guest', never be
+      // left as (or mistaken for) 'session' — that would let @RequiresAccount() admit
+      // a caller whose session just failed to verify.
+      expect(request[USER_ID_KIND_REQUEST_KEY]).toBe('guest')
     })
   })
 })
