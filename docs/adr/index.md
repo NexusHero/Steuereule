@@ -50,6 +50,8 @@ The ADRs **justify** the architecture; the [living arc42 document](../arc42/READ
 | 0029 | Periodic cleanup runs as a piggybacked batch sweep, not a scheduler — settles the mechanism ADR-0024 left open (#294, #238) | Accepted |
 | 0030 | System-initiated deletion: the first erasure path no user confirms — unverified accounts after 30 days (#294) | Accepted |
 | 0031 | Nine questions, two segments: the interview stays three, the other six arrive as the catalog's first entry (#318, #11) | Accepted |
+| 0032 | Nothing on screen promises what the slice does not deliver — settles D1, D3 and the Vormerken button as one rule (#11, #321) | Accepted |
+| 0033 | The interview's question graph lives in `packages/core`, and the server validates against it (#318 task 0) | Accepted |
 
 See also the [Tech Radar](./tech-radar.md).
 
