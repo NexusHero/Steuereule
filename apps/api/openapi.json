@@ -119,6 +119,92 @@
         ]
       }
     },
+    "/v1/steuerjahre/{jahr}/interview": {
+      "get": {
+        "operationId": "InterviewController_getInterview",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr) — validated to a sensible window (ParseSteuerjahrPipe, same as Cockpit).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The caller’s Minimal-Gate state for this tax year — re-entry.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InterviewStateDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "interview"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/interview/antworten": {
+      "post": {
+        "operationId": "InterviewController_postAnswer",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr) — validated to a sensible window (ParseSteuerjahrPipe, same as Cockpit).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PostAnswerDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The next step and open-items count after this write.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostAnswerResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "value is not an accepted answer for questionId — nothing was persisted."
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "409": {
+            "description": "questionId is not reachable given the answers stored so far — nothing was persisted."
+          }
+        },
+        "tags": [
+          "interview"
+        ]
+      }
+    },
     "/v1/account": {
       "delete": {
         "operationId": "AccountDeletionController_deleteAccount",
@@ -488,6 +574,103 @@
         "required": [
           "taxYear",
           "estimate",
+          "openItems"
+        ]
+      },
+      "StepDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "question",
+              "gate",
+              "done"
+            ],
+            "example": "question"
+          },
+          "id": {
+            "type": "string",
+            "example": "ausland",
+            "description": "A packages/core StepId (question or gate id). Absent when kind is \"done\"."
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "InterviewStateDto": {
+        "type": "object",
+        "properties": {
+          "answers": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "example": {
+              "job": "Angestellt",
+              "ausland": "Nein"
+            },
+            "description": "Every stored answer/gate-acknowledgement so far, keyed by question/gate id (packages/core StepId). Empty object for a tax year with nothing answered yet."
+          },
+          "nextStep": {
+            "description": "@steuereule/core’s nextStep(answers) — never recomputed elsewhere.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StepDto"
+              }
+            ]
+          },
+          "openItems": {
+            "type": "number",
+            "example": 2,
+            "description": "Questions still to answer — @steuereule/core’s remainingSteps(answers)."
+          }
+        },
+        "required": [
+          "answers",
+          "nextStep",
+          "openItems"
+        ]
+      },
+      "PostAnswerDto": {
+        "type": "object",
+        "properties": {
+          "questionId": {
+            "type": "string",
+            "example": "job",
+            "description": "A question or gate id from the graph (packages/core/src/interview.ts) — validated server-side."
+          },
+          "value": {
+            "type": "string",
+            "example": "Angestellt",
+            "description": "The answer value — validated server-side against this step's own allowed set."
+          }
+        },
+        "required": [
+          "questionId",
+          "value"
+        ]
+      },
+      "PostAnswerResponseDto": {
+        "type": "object",
+        "properties": {
+          "nextStep": {
+            "description": "@steuereule/core’s nextStep(answers) after this write.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/StepDto"
+              }
+            ]
+          },
+          "openItems": {
+            "type": "number",
+            "example": 1,
+            "description": "Questions still to answer after this write — @steuereule/core’s remainingSteps(answers)."
+          }
+        },
+        "required": [
+          "nextStep",
           "openItems"
         ]
       },
