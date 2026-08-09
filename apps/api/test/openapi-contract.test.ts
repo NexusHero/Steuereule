@@ -90,6 +90,55 @@ describe('OpenAPI contract for GET /v1/steuerjahre/{jahr}/cockpit (REQ-001)', ()
   })
 })
 
+describe('OpenAPI contract for /v1/steuerjahre/{jahr}/interview (#318, REQ-015)', () => {
+  it('documents GET /v1/steuerjahre/{jahr}/interview with a `jahr` path param', () => {
+    const get = document.paths['/v1/steuerjahre/{jahr}/interview']?.get
+    expect(get).toBeDefined()
+    expect(get?.parameters?.some((p) => 'name' in p && p.name === 'jahr')).toBe(true)
+    expect(get?.responses['200']).toBeDefined()
+  })
+
+  it('documents POST /v1/steuerjahre/{jahr}/interview/antworten with a request body referencing PostAnswerDto', () => {
+    const post = document.paths['/v1/steuerjahre/{jahr}/interview/antworten']?.post
+    expect(post).toBeDefined()
+    const requestBody = post?.requestBody as { content?: Record<string, { schema?: { $ref?: string } }> } | undefined
+    expect(requestBody?.content?.['application/json']?.schema?.$ref).toBe('#/components/schemas/PostAnswerDto')
+    expect(post?.responses['200']).toBeDefined()
+    expect(post?.responses['400']).toBeDefined()
+    expect(post?.responses['409']).toBeDefined()
+  })
+
+  it('exposes InterviewStateDto with answers/nextStep/openItems', () => {
+    const schema = document.components?.schemas?.InterviewStateDto
+    expect(schema).toBeDefined()
+    const properties = (schema as { properties?: Record<string, unknown> }).properties ?? {}
+    expect(Object.keys(properties).sort()).toEqual(['answers', 'nextStep', 'openItems'].sort())
+  })
+
+  it('exposes PostAnswerDto requiring questionId and value', () => {
+    const schema = document.components?.schemas?.PostAnswerDto
+    expect(schema).toBeDefined()
+    const properties = (schema as { properties?: Record<string, unknown> }).properties ?? {}
+    expect(Object.keys(properties).sort()).toEqual(['questionId', 'value'].sort())
+    const required = (schema as { required?: string[] }).required ?? []
+    expect(required.sort()).toEqual(['questionId', 'value'].sort())
+  })
+
+  it('exposes PostAnswerResponseDto with nextStep/openItems', () => {
+    const schema = document.components?.schemas?.PostAnswerResponseDto
+    expect(schema).toBeDefined()
+    const properties = (schema as { properties?: Record<string, unknown> }).properties ?? {}
+    expect(Object.keys(properties).sort()).toEqual(['nextStep', 'openItems'].sort())
+  })
+
+  it('exposes StepDto mirroring @steuereule/core’s Step union (kind + optional id)', () => {
+    const schema = document.components?.schemas?.StepDto
+    expect(schema).toBeDefined()
+    const properties = (schema as { properties?: Record<string, unknown> }).properties ?? {}
+    expect(Object.keys(properties).sort()).toEqual(['kind', 'id'].sort())
+  })
+})
+
 describe('OpenAPI contract for DELETE /v1/account (REQ-011, ADR-0013)', () => {
   it('documents DELETE /v1/account accepting a confirm+password body and returning the summary schema', () => {
     const del = document.paths['/v1/account']?.delete
