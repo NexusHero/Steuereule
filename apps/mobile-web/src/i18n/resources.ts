@@ -390,6 +390,63 @@ export const appResources = {
           guestBlocked: 'Für Gast-Zugänge gibt es kein Konto zum Löschen.',
         },
       },
+      // REQ-015 (#318, Segment 1 of ADR-0031) — the Minimal-Gate: three questions, one per
+      // screen, rendered purely against `nextStep()` from `@steuereule/core`. Option *values*
+      // stay the German domain vocabulary the graph and (later) the API persist
+      // (`packages/core/src/interview.ts`) — only the *label* shown here is translated; see
+      // InterviewScreen.tsx's option tables for the value/label split.
+      // ADR-0032 removes two controls the DS reference (Interview.jsx) offers but this slice
+      // cannot honour — the Gewerbe gate's notify-me button (#83 unbuilt) and the CH-only
+      // gate's "Vormerken" button (no storage decided) — so neither has copy here.
+      interview: {
+        back: 'Zurück zur Frage',
+        job: {
+          titleBefore: 'Woher kam dein ',
+          titleMark: 'Geld',
+          titleAfter: ' 2026?',
+          help: 'Mehrfachjobs? Nimm die Hauptquelle — der Rest kommt später.',
+          options: {
+            angestellt: 'Angestellt',
+            selbststaendig: 'Selbstständig',
+            beides: 'Beides',
+            rente: 'Rente',
+          },
+        },
+        ausland: {
+          titleBefore: 'Pendelst du zum Arbeiten ins ',
+          titleMark: 'Ausland',
+          titleAfter: '?',
+          help: 'Grenzgänger haben Sonderregeln — in die Schweiz können wir sie komplett, inklusive 60-Tage-Tracking.',
+          options: {
+            schweiz: 'Ja, in die Schweiz',
+            andereLand: 'In ein anderes Land',
+            nein: 'Nein',
+          },
+        },
+        kinder: {
+          titleBefore: 'Hast du ',
+          titleMark: 'Kinder',
+          titleAfter: '?',
+          help: 'Kindergeld, Freibeträge, Betreuungskosten — die Günstigerprüfung Kindergeld vs. Freibetrag läuft automatisch.',
+          options: {
+            nein: 'Nein',
+            einKind: '1 Kind',
+            mehrere: '2 oder mehr',
+          },
+        },
+        gewerbe: {
+          heading: 'Ehrlich: dafür sind wir noch nicht gut genug.',
+          body1: 'Selbstständige brauchen EÜR, Anlage G/S und Umsatzsteuer — das kann SteuerEule in Version 1 nicht. Halbe Steuererklärungen liefern wir nicht.',
+          body2: 'Was heute schon geht: vorbereiten. Bei „Beides“ sammeln wir deinen Angestellten-Teil komplett ein — abgegeben wird erst, wenn das Gewerbe drin ist. Eine Steuererklärung ist unteilbar.',
+          prepareEmployeePart: 'Angestellten-Teil vorbereiten — Abgabe erst mit Gewerbe',
+        },
+        chOnly: {
+          heading: 'Ehrlich: andere Länder können wir noch nicht.',
+          body1: 'Jedes Land hat sein eigenes Abkommen mit eigenen Regeln — Österreich und Frankreich mit Grenzzonen, Luxemburg mit Bagatellgrenze. Halb gerechnet wäre falsch gerechnet.',
+          body2: 'Was heute geht: die Schweiz komplett — und dein restliches Steuerjahr sowieso. Österreich, Frankreich und Luxemburg stehen auf der Liste.',
+          continueWithoutForeign: 'Ohne Auslands-Teil weitermachen',
+        },
+      },
       cockpit: {
         appbarTitle: 'Steuerjahr',
         loading: 'Dein Cockpit wird geladen …',
@@ -725,6 +782,55 @@ export const appResources = {
           },
           deleting: 'Deleting …',
           guestBlocked: 'Guest accounts have no account to delete.',
+        },
+      },
+      interview: {
+        back: 'Back to the question',
+        job: {
+          titleBefore: 'Where did your ',
+          titleMark: 'money',
+          titleAfter: ' come from in 2026?',
+          help: 'Multiple jobs? Use your main source — the rest comes later.',
+          options: {
+            angestellt: 'Employed',
+            selbststaendig: 'Self-employed',
+            beides: 'Both',
+            rente: 'Pension',
+          },
+        },
+        ausland: {
+          titleBefore: 'Do you commute abroad for ',
+          titleMark: 'work',
+          titleAfter: '?',
+          help: 'Cross-border commuters have special rules — we can do Switzerland completely, including 60-day tracking.',
+          options: {
+            schweiz: 'Yes, to Switzerland',
+            andereLand: 'To another country',
+            nein: 'No',
+          },
+        },
+        kinder: {
+          titleBefore: 'Do you have ',
+          titleMark: 'children',
+          titleAfter: '?',
+          help: 'Child benefit, allowances, childcare costs — the child-benefit-vs-allowance comparison runs automatically.',
+          options: {
+            nein: 'No',
+            einKind: '1 child',
+            mehrere: '2 or more',
+          },
+        },
+        gewerbe: {
+          heading: "Honestly: we're not good enough for that yet.",
+          body1: "Self-employed returns need EÜR, Anlage G/S and VAT — SteuerEule can't do that in version 1. We don't ship half tax returns.",
+          body2: 'What works today: preparing. For "Both" we collect your employee part completely — filing only happens once your business return is in too. A tax return is indivisible.',
+          prepareEmployeePart: 'Prepare the employee part — filing waits for the business return',
+        },
+        chOnly: {
+          heading: "Honestly: we can't do other countries yet.",
+          body1: "Every country has its own treaty with its own rules — Austria and France with border zones, Luxembourg with a minor-amount threshold. Half-computed would be wrong.",
+          body2: 'What works today: Switzerland, completely — and the rest of your tax year regardless. Austria, France and Luxembourg are on the list.',
+          continueWithoutForeign: 'Continue without the foreign part',
         },
       },
       cockpit: {
