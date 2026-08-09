@@ -23,6 +23,7 @@ import {
 } from './better-auth.js'
 import { EMAIL_SENDER, type EmailSender } from './email-sender.js'
 import { LoggingEmailSender } from './logging-email-sender.js'
+import { RequiresAccountGuard } from './requires-account.guard.js'
 import { UserContextGuard } from './user-context.guard.js'
 import { AuthCapabilitiesController } from './auth-capabilities.controller.js'
 
@@ -57,7 +58,11 @@ import { AuthCapabilitiesController } from './auth-capabilities.controller.js'
         }),
     },
     UserContextGuard,
+    // Route-scoped, no constructor deps of its own — registered/exported the same way
+    // as UserContextGuard so @RequiresAccount() works from any feature module by
+    // importing nothing extra (#318).
+    RequiresAccountGuard,
   ],
-  exports: [BETTER_AUTH_BUNDLE, EMAIL_SENDER, UserContextGuard],
+  exports: [BETTER_AUTH_BUNDLE, EMAIL_SENDER, UserContextGuard, RequiresAccountGuard],
 })
 export class AuthModule {}

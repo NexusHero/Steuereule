@@ -12,10 +12,23 @@ import { newGuestUserId, resolveGuestSessionSecret, signGuestSession, verifyGues
 
 export const GUEST_SESSION_COOKIE = 'se_guest_session'
 export const USER_ID_REQUEST_KEY = 'userId'
+/**
+ * How the request's userId came about — set alongside USER_ID_REQUEST_KEY on every
+ * request this guard admits (#318). `newGuestUserId()` is a bare `randomUUID()`
+ * (guest-session.ts), indistinguishable from a real account id by string shape alone,
+ * so this is the only trustworthy signal a downstream route-scoped check (e.g.
+ * @RequiresAccount()) can use to tell a guest from a real, signed-in account.
+ */
+export const USER_ID_KIND_REQUEST_KEY = 'userIdKind'
 
 const COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 180 // 180 days
 
-export type RequestWithUserId = FastifyRequest & { [USER_ID_REQUEST_KEY]?: string }
+export type UserIdKind = 'session' | 'guest'
+
+export type RequestWithUserId = FastifyRequest & {
+  [USER_ID_REQUEST_KEY]?: string
+  [USER_ID_KIND_REQUEST_KEY]?: UserIdKind
+}
 
 @Injectable()
 export class UserContextGuard implements CanActivate {
@@ -36,6 +49,7 @@ export class UserContextGuard implements CanActivate {
       })
       if (session) {
         request[USER_ID_REQUEST_KEY] = session.user.id
+        request[USER_ID_KIND_REQUEST_KEY] = 'session'
         return true
       }
       // Cookie present but no longer valid (expired/revoked) — fall through to the
@@ -75,6 +89,7 @@ export class UserContextGuard implements CanActivate {
     }
 
     request[USER_ID_REQUEST_KEY] = userId
+    request[USER_ID_KIND_REQUEST_KEY] = 'guest'
     return true
   }
 }
