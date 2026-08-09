@@ -3,7 +3,7 @@
 // generated `useCockpitControllerGetCockpitSummary` hook (@steuereule/api-client) against
 // `GET /v1/steuerjahre/{jahr}/cockpit`, with MSW mocking the wire shape (contract-pinned to
 // docs/runtime/req-001-cockpit-read.md; the real endpoint landed in #119).
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@steuereule/ui'
@@ -34,14 +34,14 @@ function mockCockpitError() {
   server.use(http.get(COCKPIT_URL, () => HttpResponse.error()))
 }
 
-function renderCockpit(opts: { lng?: 'de' | 'en' } = {}) {
+function renderCockpit(opts: { lng?: 'de' | 'en'; onOpenInterview?: () => void } = {}) {
   const i18n = createAppI18n(opts.lng ?? 'de')
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={queryClient}>
       <I18nextProvider i18n={i18n}>
         <ThemeProvider mode="light">
-          <CockpitScreen taxYear={TAX_YEAR} />
+          <CockpitScreen taxYear={TAX_YEAR} onOpenInterview={opts.onOpenInterview ?? (() => {})} />
         </ThemeProvider>
       </I18nextProvider>
     </QueryClientProvider>,
@@ -98,11 +98,29 @@ describe('CockpitScreen', () => {
     expect(screen.getByText('2026')).toBeTruthy()
   })
 
-  it('exposes exactly one primary action once loaded', async () => {
+  // REQ-015/#318 task 2 — the revisit this file itself announced (`:16-17`'s old comment):
+  // "Fragen beantworten" is now the one primary action while items are open, routing to the
+  // real Minimal-Gate; "Aktualisieren" demotes to the secondary slot alongside it rather than
+  // disappearing (one primary action per screen, design-system CLAUDE.md — not "one action").
+  it('shows "Fragen beantworten" as the primary CTA while items are open, and reaches the Minimal-Gate', async () => {
     mockCockpit(LOADED_SUMMARY)
+    const onOpenInterview = vi.fn()
+    renderCockpit({ onOpenInterview })
+
+    await screen.findByText('Voraussichtliche Erstattung')
+    expect(screen.getByText('Fragen beantworten')).toBeTruthy()
+    expect(screen.getAllByText('Aktualisieren')).toHaveLength(1)
+
+    fireEvent.click(screen.getByText('Fragen beantworten'))
+    expect(onOpenInterview).toHaveBeenCalledOnce()
+  })
+
+  it('exposes exactly one primary action once loaded with nothing open — "Aktualisieren" alone', async () => {
+    mockCockpit({ ...LOADED_SUMMARY, openItems: 0 })
     renderCockpit()
 
     await screen.findByText('Voraussichtliche Erstattung')
+    expect(screen.queryByText('Fragen beantworten')).toBeNull()
     expect(screen.getAllByText('Aktualisieren')).toHaveLength(1)
   })
 
@@ -178,6 +196,21 @@ describe('CockpitScreen', () => {
     expect(screen.getAllByText('Aktualisieren')).toHaveLength(1)
   })
 
+  // Found by actually driving this screen against a fresh account (real API, real Postgres,
+  // #318 task 2's own live-proof run): a brand-new account has no `TaxYear` row at all, so
+  // Cockpit shows this exact empty state — without a CTA here, such an account could never
+  // reach the Minimal-Gate from Cockpit. This IS "no interview answers yet" (REQ-015's GWT
+  // opening clause), so the CTA belongs here too, not only once a summary already exists.
+  it('offers "Fragen beantworten" from the empty state too — the only way a brand-new account ever reaches the Minimal-Gate', async () => {
+    mockCockpit(null)
+    const onOpenInterview = vi.fn()
+    renderCockpit({ onOpenInterview })
+
+    await screen.findByText('Noch keine Angaben.')
+    fireEvent.click(screen.getByText('Fragen beantworten'))
+    expect(onOpenInterview).toHaveBeenCalledOnce()
+  })
+
   it('shows a retryable error state on a genuine network failure, and recovers on retry', async () => {
     mockCockpitError()
     renderCockpit()
@@ -205,6 +238,7 @@ describe('CockpitScreen', () => {
     expect(await screen.findByText('Estimated refund')).toBeTruthy()
     expect(screen.getByText('6 items still open')).toBeTruthy()
     expect(screen.getByText('Tax year')).toBeTruthy()
+    expect(screen.getByText('Answer questions')).toBeTruthy()
   })
 
   it('renders the empty and error states in English too', async () => {

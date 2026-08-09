@@ -31,3 +31,10 @@ export {
   getDeviceControllerRequestCodeMockHandler,
   getSteuerEuleAPIMock as getDeviceApiMock,
 } from './generated/device.msw'
+export {
+  getInterviewControllerGetInterviewResponseMock,
+  getInterviewControllerGetInterviewMockHandler,
+  getInterviewControllerPostAnswerResponseMock,
+  getInterviewControllerPostAnswerMockHandler,
+  getSteuerEuleAPIMock as getInterviewApiMock,
+} from './generated/interview.msw'

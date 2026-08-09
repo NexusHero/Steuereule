@@ -85,4 +85,32 @@ export default defineConfig({
       },
     },
   },
+  // REQ-015 (#318 task 2) — the Minimal-Gate: GET the re-entry state, POST each answer.
+  // Same `interview` OpenAPI tag both endpoints share.
+  interview: {
+    input: { target: '../../apps/api/openapi.json', filters: { tags: ['interview'] } },
+    output: {
+      target: './src/generated/interview.ts',
+      mode: 'split',
+      client: 'react-query',
+      httpClient: 'fetch',
+      mock: true,
+      override: {
+        mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        // `StepDto.id` (@ApiPropertyOptional — genuinely absent when kind is "done", not
+        // nullable) is the first response schema in this API with a truly optional,
+        // non-nullable property. orval's default faker output for that shape is
+        // `id: faker.helpers.arrayElement([value, undefined])`, which fails to typecheck
+        // under this repo's `exactOptionalPropertyTypes: true` (TS2375 — an *explicit*
+        // `undefined` on an optional key is stricter-disallowed than omitting the key).
+        // `mock.required: true` (an orval-native override, not a hand-edit of generated
+        // output — see @orval/mock's own `MockOptions.required`) makes every mocked property
+        // always populated, matching this repo's own convention of never trusting random
+        // faker data in a real test anyway (every test here pins its own fixture). The real
+        // `StepDto.id` TYPE stays genuinely optional in interview.schemas.ts — only the mock
+        // *value* generation changes.
+        mock: { required: true },
+      },
+    },
+  },
 })

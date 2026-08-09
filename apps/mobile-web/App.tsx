@@ -21,6 +21,7 @@ import { LoginScreen } from './src/screens/LoginScreen'
 import { RegistrierungScreen } from './src/screens/RegistrierungScreen'
 import { OnboardingScreen } from './src/screens/OnboardingScreen'
 import { CockpitScreen } from './src/screens/cockpit/CockpitScreen'
+import { InterviewScreen } from './src/screens/interview/InterviewScreen'
 import { ProfilScreen } from './src/screens/ProfilScreen'
 import { DatenschutzScreen } from './src/screens/DatenschutzScreen'
 import { DeviceScreen } from './src/screens/device/DeviceScreen'
@@ -207,6 +208,14 @@ function TabbedShell({ tab, onTabChange, onSignedOut }: TabbedShellProps) {
   // groups it with Profil in the DS reference) — so it's a sub-view owned by this shell, the
   // same way OnboardingScreen owns its own step state, rather than a sixth `Tab` value.
   const [profilView, setProfilView] = useState<'main' | 'datenschutz'>('main')
+  // The Minimal-Gate (REQ-015/#318 task 2) is reached from Cockpit's own CTA the same way —
+  // a sub-view of the Cockpit tab, not a top-level route (ADR-0023: only the composition root
+  // touches `@react-navigation/*`, and this is exactly the Datenschutz precedent applied here).
+  // Unlike Datenschutz, the tab bar stays visible: nothing about the Minimal-Gate is
+  // destructive/in-progress the way account deletion is, so switching tabs mid-flow is a
+  // legitimate, honest way out — no separate "exit" affordance is invented for it (the DS
+  // reference has none, and #318 doesn't ask for one).
+  const [cockpitView, setCockpitView] = useState<'main' | 'interview'>('main')
 
   // The active tab's icon sits on the lime pill and needs the ink colour to stay legible;
   // the others sit on card white. Mirrors `.fk-tab`/`.fk-tab[aria-current]` in the DS.
@@ -226,15 +235,18 @@ function TabbedShell({ tab, onTabChange, onSignedOut }: TabbedShellProps) {
   ]
 
   function changeTab(next: Tab) {
-    // Leaving Profil always resets its sub-view — coming back to a half-open Datenschutz
-    // screen via the tab bar would be a confusing, unrequested "resume" the DS never shows.
+    // Leaving Profil/Cockpit always resets their sub-view — coming back to a half-open
+    // Datenschutz/Interview screen via the tab bar would be a confusing, unrequested "resume"
+    // the DS never shows.
     setProfilView('main')
+    setCockpitView('main')
     onTabChange(next)
   }
 
   return (
     <View style={{ flex: 1 }}>
-      {tab === 'cockpit' ? <CockpitScreen /> : null}
+      {tab === 'cockpit' && cockpitView === 'main' ? <CockpitScreen onOpenInterview={() => setCockpitView('interview')} /> : null}
+      {tab === 'cockpit' && cockpitView === 'interview' ? <InterviewScreen onDone={() => setCockpitView('main')} /> : null}
       {tab === 'profil' && profilView === 'main' ? (
         <ProfilScreen onOpenDatenschutz={() => setProfilView('datenschutz')} onSignedOut={onSignedOut} />
       ) : null}

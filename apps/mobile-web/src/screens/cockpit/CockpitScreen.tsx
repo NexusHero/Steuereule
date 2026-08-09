@@ -12,10 +12,12 @@
 // landed (steuereule#91). Honest states throughout: a real loading spinner
 // while in flight, a real "noch keine Angaben" empty state when the API has no tax year yet, and
 // a retryable error state on genuine failure — never mock/fallback data. Exactly one primary
-// action (a functioning "Aktualisieren" refetch): no Belege/Interview screen exists yet to route
-// "resolve your open items" to, so refresh is the one honest, real action available at this slice
-// (see steuereule#93 — revisit the CTA's target once the app widens). Copy via i18n (de + en,
-// ADR-0006). No entrance/step animation, so `prefers-reduced-motion` is honored by omission
+// action: while items are open, it's "Fragen beantworten", routing to the real Minimal-Gate
+// (`onOpenInterview`, REQ-015/#318 task 2 — the revisit this file itself announced, steuereule#93:
+// "no Belege/Interview screen exists yet ... revisit the CTA's target once the app widens" is now
+// true) — "Aktualisieren" demotes to the secondary slot alongside it. With nothing open (or no
+// tax year yet), refresh is the only honest action left, so it stays primary. Copy via i18n (de +
+// en, ADR-0006). No entrance/step animation, so `prefers-reduced-motion` is honored by omission
 // (design-system CLAUDE.md).
 import { ActivityIndicator, ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
@@ -27,9 +29,13 @@ import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 
 export interface CockpitScreenProps {
   readonly taxYear?: number
+  /** Opens the Minimal-Gate (REQ-015/#318) — wired at the composition root (ADR-0023); this
+   *  screen never imports the router itself. Defaults to a no-op so every existing call site
+   *  (and every test that doesn't care about this flow) keeps compiling unchanged. */
+  readonly onOpenInterview?: () => void
 }
 
-export function CockpitScreen({ taxYear = CURRENT_TAX_YEAR }: CockpitScreenProps) {
+export function CockpitScreen({ taxYear = CURRENT_TAX_YEAR, onOpenInterview = () => {} }: CockpitScreenProps) {
   const bp = useBreakpoint()
   const query = useCockpitControllerGetCockpitSummary(taxYear)
 
@@ -43,9 +49,18 @@ export function CockpitScreen({ taxYear = CURRENT_TAX_YEAR }: CockpitScreenProps
   const onRefresh = () => void query.refetch()
 
   if (summary === null) {
-    return <CockpitEmpty taxYear={taxYear} onRefresh={onRefresh} isRefreshing={query.isFetching} bp={bp} />
+    return <CockpitEmpty taxYear={taxYear} onRefresh={onRefresh} isRefreshing={query.isFetching} onOpenInterview={onOpenInterview} bp={bp} />
   }
-  return <CockpitLoaded summary={summary} taxYear={taxYear} onRefresh={onRefresh} isRefreshing={query.isFetching} bp={bp} />
+  return (
+    <CockpitLoaded
+      summary={summary}
+      taxYear={taxYear}
+      onRefresh={onRefresh}
+      isRefreshing={query.isFetching}
+      onOpenInterview={onOpenInterview}
+      bp={bp}
+    />
+  )
 }
 
 function Appbar({ taxYear }: { readonly taxYear: number }) {
@@ -98,10 +113,11 @@ interface CockpitEmptyProps {
   readonly taxYear: number
   readonly onRefresh: () => void
   readonly isRefreshing: boolean
+  readonly onOpenInterview: () => void
   readonly bp: Breakpoint
 }
 
-function CockpitEmpty({ taxYear, onRefresh, isRefreshing, bp }: CockpitEmptyProps) {
+function CockpitEmpty({ taxYear, onRefresh, isRefreshing, onOpenInterview, bp }: CockpitEmptyProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
@@ -111,7 +127,14 @@ function CockpitEmpty({ taxYear, onRefresh, isRefreshing, bp }: CockpitEmptyProp
       <View style={styles.emptyBlock}>
         <Text style={styles.heading}>{tr('cockpit.empty.heading')}</Text>
         <Text style={styles.help}>{tr('cockpit.empty.message')}</Text>
-        <Button onPress={onRefresh} disabled={isRefreshing}>
+        {/* The empty state IS the "no interview answers yet" case (REQ-015's GWT opening
+            clause) — without this, a brand-new account has no TaxYear row and therefore no
+            way to ever reach the Minimal-Gate from Cockpit at all (found by actually driving
+            this screen against a fresh account, real API, real Postgres — #318 task 2). */}
+        <Button onPress={onOpenInterview} style={styles.cta}>
+          {tr('cockpit.answerQuestions')}
+        </Button>
+        <Button variante="ghost" onPress={onRefresh} disabled={isRefreshing} style={styles.secondaryCta}>
           {isRefreshing ? tr('cockpit.refreshing') : tr('cockpit.refresh')}
         </Button>
       </View>
@@ -124,14 +147,19 @@ interface CockpitLoadedProps {
   readonly taxYear: number
   readonly onRefresh: () => void
   readonly isRefreshing: boolean
+  readonly onOpenInterview: () => void
   readonly bp: Breakpoint
 }
 
-function CockpitLoaded({ summary, taxYear, onRefresh, isRefreshing, bp }: CockpitLoadedProps) {
+function CockpitLoaded({ summary, taxYear, onRefresh, isRefreshing, onOpenInterview, bp }: CockpitLoadedProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
   const { openItems } = summary
+  // One primary action per screen (design-system CLAUDE.md): while there's something to
+  // resolve, that's it — "Aktualisieren" moves to the secondary/ghost slot alongside it. With
+  // nothing open, refresh is the only honest action, so it keeps the primary slot.
+  const hasOpenItems = openItems > 0
 
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
@@ -147,7 +175,17 @@ function CockpitLoaded({ summary, taxYear, onRefresh, isRefreshing, bp }: Cockpi
           }}
         />
       </Card>
-      <Button onPress={onRefresh} disabled={isRefreshing} style={styles.cta}>
+      {hasOpenItems ? (
+        <Button onPress={onOpenInterview} style={styles.cta}>
+          {tr('cockpit.answerQuestions')}
+        </Button>
+      ) : null}
+      <Button
+        variante={hasOpenItems ? 'ghost' : 'primaer'}
+        onPress={onRefresh}
+        disabled={isRefreshing}
+        style={hasOpenItems ? styles.secondaryCta : styles.cta}
+      >
         {isRefreshing ? tr('cockpit.refreshing') : tr('cockpit.refresh')}
       </Button>
     </ScrollView>
@@ -200,11 +238,16 @@ function makeStyles(t: UiTheme) {
     marginBottom: t.space.s3,
     textAlign: 'center',
   }
-  // #176: `cta`'s marginTop only applies at the Loaded button (:150, after Card — nothing before
-  // it already claims the seam). The LoadError (:90) and Empty (:114) buttons pass no `style` at
-  // all: `centerScreen`'s own `gap` and/or the preceding help text's `marginBottom` already
-  // supply that leading space, so a competing marginTop would double it.
+  // #176: `cta`'s marginTop applies at the Loaded screen's primary button (after Card — nothing
+  // before it already claims the seam) and at Empty's own primary "Fragen beantworten" (#318
+  // task 2 — Empty gained a second button, so it now needs the same explicit spacing Loaded
+  // uses, rather than relying solely on `help`'s `marginBottom` the way a single button could).
+  // The LoadError button alone still passes no `style`: `centerScreen`'s own `gap` and the
+  // preceding help text's `marginBottom` already supply its leading space.
   const cta: ViewStyle = { marginTop: t.space.s4 }
+  // Only used once "Fragen beantworten" already claimed `cta`'s marginTop — the secondary
+  // "Aktualisieren" needs its own, smaller gap underneath it, not a doubled one.
+  const secondaryCta: ViewStyle = { marginTop: t.space.s3 }
   const emptyBlock: ViewStyle = { alignItems: 'center', paddingVertical: t.space.s6 }
   const heroLabel: TextStyle = {
     fontFamily: t.font.mono,
@@ -232,5 +275,5 @@ function makeStyles(t: UiTheme) {
     marginBottom: t.space.s3,
   }
 
-  return { screen, wideScreen, centerScreen, wideCenterScreen, appbar, appbarTitle, heading, help, cta, emptyBlock, heroLabel, heroValue, openItems }
+  return { screen, wideScreen, centerScreen, wideCenterScreen, appbar, appbarTitle, heading, help, cta, secondaryCta, emptyBlock, heroLabel, heroValue, openItems }
 }

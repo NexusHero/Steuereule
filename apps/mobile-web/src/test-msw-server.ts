@@ -12,8 +12,9 @@ import {
   getAuthCapabilitiesControllerGetCapabilitiesMockHandler,
   getCockpitControllerGetCockpitSummaryMockHandler,
   getDeviceControllerRequestCodeMockHandler,
+  getInterviewControllerGetInterviewMockHandler,
 } from '@steuereule/api-client/msw'
-import type { ProfileResponseDto, AuthCapabilitiesDto, DeviceCodeResponseDto } from '@steuereule/api-client'
+import type { ProfileResponseDto, AuthCapabilitiesDto, DeviceCodeResponseDto, InterviewStateDto } from '@steuereule/api-client'
 
 export const EMPTY_PROFILE_RESPONSE: ProfileResponseDto = {
   firstName: null,
@@ -51,10 +52,27 @@ export const DEVICE_CODE_RESPONSE: DeviceCodeResponseDto = {
   interval: 5,
 }
 
+/**
+ * Default `GET .../interview` answer (REQ-015/#318 task 2): a brand-new tax year with nothing
+ * answered yet, matching the real API's honest re-entry shape — pinned, not the generated
+ * factory's random faker data, same reasoning as `CAPABILITIES_WITH_GOOGLE` above. Tests that
+ * need mid-flow re-entry or a load error override with `server.use(...)`.
+ */
+export const EMPTY_INTERVIEW_STATE: InterviewStateDto = { answers: {}, nextStep: { kind: 'question', id: 'job' }, openItems: 3 }
+
 export const server = setupServer(
   getProfileControllerGetProfileMockHandler(EMPTY_PROFILE_RESPONSE),
   getProfileControllerPutProfileMockHandler(),
   getAuthCapabilitiesControllerGetCapabilitiesMockHandler(CAPABILITIES_WITH_GOOGLE),
+  getInterviewControllerGetInterviewMockHandler(EMPTY_INTERVIEW_STATE),
+  // Default `POST .../interview/antworten` answer: a generic 200 — InterviewScreen renders the
+  // next step from the local graph, not from this response body (#318 task 2's own "the graph
+  // stays local" brief), so the exact `nextStep`/`openItems` values here are never asserted on
+  // by a test that doesn't override this handler. Tests proving the 400/409/network paths, or
+  // the exact request body sent, override with `server.use(...)`.
+  http.post('*/v1/steuerjahre/:jahr/interview/antworten', () =>
+    HttpResponse.json({ nextStep: { kind: 'question', id: 'ausland' }, openItems: 2 }, { status: 200 }),
+  ),
   // Cockpit's honest empty state ("noch keine Angaben") — a fresh guest genuinely has no
   // tax year yet, so this is what the real API returns. Present by default so shell-level
   // tests that merely pass through Cockpit don't each have to stub it; CockpitScreen's own

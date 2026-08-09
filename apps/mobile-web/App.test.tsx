@@ -138,6 +138,62 @@ describe('App', () => {
     15_000,
   )
 
+  // REQ-015/#318 task 2 — the GWT's own closing clause, walked through the real app shell and
+  // router: the Cockpit CTA reaches the real Minimal-Gate (not a dead affordance, closing the
+  // revisit CockpitScreen.tsx itself announced), the tab bar stays visible while inside it (no
+  // invented exit affordance), and completing all three questions returns to Cockpit showing a
+  // *lower* open-items count — read from a real re-fetch, not a cached stale value.
+  it(
+    'Cockpit\'s "Fragen beantworten" reaches the Minimal-Gate, and finishing it drops the Cockpit open-items count',
+    async () => {
+      server.use(
+        http.get(`${API_BASE_URL}/v1/steuerjahre/2026/cockpit`, () =>
+          HttpResponse.json({ taxYear: 2026, estimate: { from: 100, to: 300 }, openItems: 3 }, { status: 200 }),
+        ),
+        http.get(`${API_BASE_URL}/v1/steuerjahre/2026/interview`, () =>
+          HttpResponse.json({ answers: {}, nextStep: { kind: 'question', id: 'job' }, openItems: 3 }, { status: 200 }),
+        ),
+        http.post(`${API_BASE_URL}/v1/steuerjahre/2026/interview/antworten`, () =>
+          HttpResponse.json({ nextStep: { kind: 'question', id: 'ausland' }, openItems: 2 }, { status: 200 }),
+        ),
+      )
+
+      const { default: App } = await import('./App')
+      render(<App />)
+      fireEvent.click(screen.getByLabelText('Weiter zur App'))
+      fireEvent.click(screen.getByText('Erstmal als Gast umschauen'))
+      await completeOnboarding()
+
+      await screen.findByText('3 Angaben offen')
+      fireEvent.click(screen.getByText('Fragen beantworten'))
+
+      // Inside the Minimal-Gate: the job question, real client and server wiring (#318 task 2).
+      await screen.findByText('Angestellt')
+      // The tab bar stays reachable — unlike Datenschutz, nothing here is destructive/in-progress.
+      expect(screen.getByText('Profil')).toBeTruthy()
+
+      fireEvent.click(screen.getByText('Angestellt'))
+      await screen.findByText('Grenzgänger haben Sonderregeln — in die Schweiz können wir sie komplett, inklusive 60-Tage-Tracking.') // ausland question
+
+      // The server now holds a lower open-items count (2, after the one answer above) — the
+      // next Cockpit render reads it, not a value carried over in memory.
+      server.use(
+        http.get(`${API_BASE_URL}/v1/steuerjahre/2026/cockpit`, () =>
+          HttpResponse.json({ taxYear: 2026, estimate: { from: 100, to: 300 }, openItems: 2 }, { status: 200 }),
+        ),
+      )
+      fireEvent.click(screen.getByText('Nein')) // ausland: no gate
+      await screen.findByText('Kindergeld, Freibeträge, Betreuungskosten — die Günstigerprüfung Kindergeld vs. Freibetrag läuft automatisch.') // kinder question
+      fireEvent.click(screen.getByText('2 oder mehr')) // completes the Minimal-Gate
+
+      // onDone returns to Cockpit; its query was invalidated by the last successful write, so
+      // this is a real re-fetch landing on the lower count, not a stale in-memory value.
+      await screen.findByText('2 Angaben offen')
+      expect(screen.queryByText('3 Angaben offen')).toBeNull()
+    },
+    15_000,
+  )
+
   it('offers only the tabs that have a screen behind them', async () => {
     const { default: App } = await import('./App')
     render(<App />)
