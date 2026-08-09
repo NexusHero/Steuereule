@@ -400,6 +400,20 @@ export const appResources = {
       // gate's "Vormerken" button (no storage decided) — so neither has copy here.
       interview: {
         back: 'Zurück zur Frage',
+        loading: 'Deine Antworten werden geladen …',
+        loadError: {
+          heading: 'Das hat nicht geklappt.',
+          message: 'Deine Antworten konnten nicht geladen werden. Prüf die Verbindung und versuch es noch mal.',
+          retry: 'Noch mal versuchen',
+        },
+        // #318 task 2 — the client and server disagreeing about the path (409) or the value
+        // (400) "should not happen" for a well-behaved client; shown honestly rather than
+        // swallowed, never a generic error. `network` covers a genuine connection failure.
+        postError: {
+          conflict: 'Deine Antwort passte nicht zum gespeicherten Stand. Wir haben deinen Fortschritt aktualisiert.',
+          invalid: 'Diese Antwort wurde nicht akzeptiert. Wir haben deinen Fortschritt aktualisiert.',
+          network: 'Deine Antwort konnte nicht gespeichert werden. Prüf die Verbindung und versuch es noch mal.',
+        },
         job: {
           titleBefore: 'Woher kam dein ',
           titleMark: 'Geld',
@@ -469,6 +483,10 @@ export const appResources = {
         },
         refresh: 'Aktualisieren',
         refreshing: 'Wird aktualisiert …',
+        // #318 task 2 — the Minimal-Gate is now reachable from here (the revisit CockpitScreen.tsx
+        // itself named): the one primary action while items are open, demoting "Aktualisieren" to
+        // the secondary slot (one primary action per screen, design-system CLAUDE.md).
+        answerQuestions: 'Fragen beantworten',
       },
     },
   },
@@ -786,6 +804,17 @@ export const appResources = {
       },
       interview: {
         back: 'Back to the question',
+        loading: 'Loading your answers …',
+        loadError: {
+          heading: "That didn't work.",
+          message: "Your answers couldn't be loaded. Check your connection and try again.",
+          retry: 'Try again',
+        },
+        postError: {
+          conflict: "Your answer didn't match what was already saved. We've refreshed your progress.",
+          invalid: "That answer wasn't accepted. We've refreshed your progress.",
+          network: "Your answer couldn't be saved. Check your connection and try again.",
+        },
         job: {
           titleBefore: 'Where did your ',
           titleMark: 'money',
@@ -855,6 +884,7 @@ export const appResources = {
         },
         refresh: 'Refresh',
         refreshing: 'Refreshing …',
+        answerQuestions: 'Answer questions',
       },
     },
   },
