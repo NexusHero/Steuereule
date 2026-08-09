@@ -172,6 +172,49 @@ model TaxYear {
   @@unique([userId, steuerjahr])
 }
 
+/// One row per (userId, steuerjahr, questionId) — the Minimal-Gate's stored interview
+/// answers (#318, REQ-015, ADR-0033). Additive: the Cockpit read path (REQ-001, Done)
+/// is untouched by this model. A gate the user has seen and carried on past is stored
+/// here too, under its own gate id, with the fixed value `GATE_ACKNOWLEDGED`
+/// (ADR-0033 §"Gates are answerable steps") — no separate model for gates.
+model InterviewAnswer {
+  id         String   @id @default(uuid())
+  /// Scoping key — same trusted userId as Profile.userId (ADR-0007). Never read from
+  /// the request path/query/body.
+  userId     String
+  /// The tax year this answer belongs to — answers are collected per Steuerjahr, same
+  /// granularity as TaxYear.
+  steuerjahr Int
+  /// A `StepId` from packages/core/src/interview.ts — a QuestionId
+  /// ('job'|'ausland'|'kinder') or a GateId ('gewerbe'|'ch-only'). Left in the clear
+  /// (unlike `value` below) so uniqueness, lookup and remainingSteps()/isReachable()'s
+  /// replay over stored answers keep working without decrypting anything.
+  //
+  // CAUTION (found the hard way, `//` not `///` deliberately — see below): prisma-field-
+  // encryption matches a literal substring anywhere in a field's *own* `///` doc
+  // comment (dmmf.js's encryptedAnnotationRegex — an "@" immediately followed by that
+  // word, no negation-aware parsing). An earlier draft's doc comment for this field
+  // *described* that other annotation in prose to explain why this field carries no
+  // such annotation, and the description alone was enough to trip it — this plaintext
+  // field silently got encrypted too. Never let that word (with its "@" prefix) appear
+  // inside a `///` block for a field that must stay unencrypted; this note is `//` (a
+  // plain comment, invisible to Prisma's DMMF and therefore to that regex) precisely
+  // so explaining the trap can never re-trigger it.
+  questionId String
+  /// The stored answer value — one of that question's accepted values, or
+  /// `GATE_ACKNOWLEDGED` for a gate row. Field-encrypted at rest from day one
+  /// (ADR-0008 ruling in #318): unlike TaxYear this holds personal facts about the
+  /// user (employment status, foreign work, children) that are joinable to Profile's
+  /// Steuer-ID via the same userId. `mode=strict` — see Profile.steuerId's comment
+  /// for why a tampered/corrupted ciphertext must throw on read, never pass through.
+  value      String   /// @encrypted?mode=strict
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, steuerjahr, questionId])
+  @@index([userId, steuerjahr])
+}
+
 /// QR-code device-authorization (#238, RFC 8628, ADR-0024). better-auth's
 /// `device-authorization` plugin owns this table's core nine fields — its own
 /// canonical shape (`schema.mjs`), unrenamed, so no `schema.deviceCode.fields.*`
