@@ -40,6 +40,19 @@ interface ExpectedEncryptedField extends ExpectedField {
   strictDecryption: boolean
 }
 
+interface ExpectedHashedField extends ExpectedField {
+  // `targetField` is the actual column that materialises in Postgres (e.g.
+  // "steuerIdHash") — analyseDMMF attaches hash config to the SOURCE field
+  // (`modelDescriptor.fields[hashConfig.sourceField].hash = hash`, dist/dmmf.js:64),
+  // so `field` alone names the encrypted column, not the hash column it protects.
+  targetField: string
+  algorithm: string
+  // Deliberately NOT asserting `hash.salt` here: parseHashAnnotation resolves it from
+  // `process.env.PRISMA_FIELD_ENCRYPTION_HASH_SALT` at analyse time (dist/dmmf.js:132),
+  // so asserting it would make this test's verdict depend on the CI environment rather
+  // than on the schema.
+}
+
 function byModelField(a: ExpectedField, b: ExpectedField): number {
   return `${a.model}.${a.field}`.localeCompare(`${b.model}.${b.field}`)
 }
@@ -57,7 +70,7 @@ const EXPECTED_ENCRYPTED_FIELDS: ExpectedEncryptedField[] = [
 // has the same unanchored-regex shape per Musti's #325 ruling. None is in use today —
 // this list going non-empty without a matching schema.prisma change would be exactly
 // the kind of silent drift this test exists to catch.
-const EXPECTED_HASHED_FIELDS: ExpectedField[] = []
+const EXPECTED_HASHED_FIELDS: ExpectedHashedField[] = []
 
 // `@encryption:cursor` (dist/dmmf.js:14) is the third annotation sharing the same
 // unanchored-substring shape. It doesn't encrypt anything, but it silently redirects
@@ -101,12 +114,17 @@ describe('encrypted/hashed field set (#325) — derived from Prisma.dmmf, not co
   })
 
   it('the hashed-field set matches the checked-in expected list exactly', () => {
-    const actual: ExpectedField[] = Object.entries(analysis)
+    const actual: ExpectedHashedField[] = Object.entries(analysis)
       .flatMap(([model, descriptor]) =>
-        Object.entries(descriptor.fields)
-          .filter(([, config]) => config.hash !== undefined)
-          .map(([field]) => ({ model, field })),
+        Object.entries(descriptor.fields).map(([field, config]) => ({ model, field, hash: config.hash })),
       )
+      .filter((entry): entry is typeof entry & { hash: NonNullable<(typeof entry)['hash']> } => entry.hash !== undefined)
+      .map(({ model, field, hash }) => ({
+        model,
+        field,
+        targetField: hash.targetField,
+        algorithm: hash.algorithm,
+      }))
       .sort(byModelField)
 
     expect(actual).toEqual(EXPECTED_HASHED_FIELDS)
