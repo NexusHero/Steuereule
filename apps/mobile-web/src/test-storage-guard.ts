@@ -16,6 +16,20 @@ export type ReachableStore = 'localStorage' | 'sessionStorage'
 /** Installs a `vi.stubGlobal`-backed stand-in for `window[storeName]` whose `setItem` is a spy
  *  the Proxy cannot defeat. Caller is responsible for `vi.unstubAllGlobals()` in `afterEach`.
  *
+ *  Bound (#333, Musti's finding 2): this guards `window[storeName]` itself, not every path that
+ *  can reach the real store. A reference captured *before* this function installs the stand-in —
+ *  `const captured = window.localStorage` at module scope, say — still points at the real
+ *  `Storage` object forever, so a later `captured.setItem(...)` (a handler, an effect, any time
+ *  during the test, not only "before `beforeEach`") writes straight past this guard: the identity
+ *  check in `assertNoStorageWrites` is satisfied — the guard genuinely is installed on
+ *  `window[storeName]` — it simply isn't the object that call went through. **The bound is which
+ *  reference was captured, not when the write happens.** Latent, not live: nothing in
+ *  `apps/mobile-web/src` holds a storage handle today. Not closed here on purpose — wrapping
+ *  `Storage.prototype.setItem` itself would reach it, but that targets the mechanism upstream of
+ *  the hazard, which ADR-0028 rules against by name; `e2e/storage/no-client-persistence.mjs`
+ *  (#331) is the control built to close this class, by observing a real page after every module's
+ *  top-level code has already run rather than relying on a stub at all.
+ *
  *  Built by delegating to the *real* store's methods, not by spreading it (#329, Musti's finding
  *  2): `{ ...window[storeName] }` copies own enumerable properties, which on jsdom's `Storage`
  *  are the stored *keys* (e.g. a leftover `preexisting` value), not the API — `getItem`,
