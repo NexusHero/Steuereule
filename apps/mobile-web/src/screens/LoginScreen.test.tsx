@@ -248,6 +248,50 @@ describe('LoginScreen', () => {
     expect(screen.queryByText('Gerade nicht erreichbar — das liegt an uns.')).toBeNull()
   })
 
+  // #308 — the partial case, which neither AC-A nor AC-B covered. AC-B holds when the API is
+  // wholly reachable and AC-A when it is wholly not; in between, the QR column's health was
+  // allowed to veto the login form's own message. These run at `l`, where the QR column
+  // actually starts — at `s` it never mints, so the defect is unreachable there by construction,
+  // which is exactly why #298's review, Salih's real-stack run and CI all missed it.
+  describe('#308 — one surface being down must not swallow another surface\'s real answer', () => {
+    it('renders the wrong-password message when only /v1/device/code is unreachable', async () => {
+      setViewportWidth(1280)
+      server.use(
+        http.post(`${BASE_URL}/v1/device/code`, () => HttpResponse.error()),
+        http.post(`${BASE_URL}/api/auth/sign-in/email`, () =>
+          HttpResponse.json({ code: 'INVALID_EMAIL_OR_PASSWORD', message: 'Invalid email or password' }, { status: 401 }),
+        ),
+      )
+      const onDone = vi.fn()
+      renderLogin({ onDone })
+      fillCredentials()
+      fireEvent.click(screen.getByText('Einloggen'))
+
+      // The server answered, and what it said was "wrong password". That answer must survive
+      // the QR column's unrelated failure.
+      await screen.findByText('E-Mail oder Passwort stimmen nicht.')
+      expect(onDone).not.toHaveBeenCalled()
+    })
+
+    it('still shows the single consolidated banner when the form\'s own submit cannot reach the server (#298 must not regress)', async () => {
+      setViewportWidth(1280)
+      server.use(
+        http.post(`${BASE_URL}/v1/device/code`, () => HttpResponse.error()),
+        http.post(`${BASE_URL}/api/auth/sign-in/email`, () => HttpResponse.error()),
+      )
+      const onDone = vi.fn()
+      renderLogin({ onDone })
+      fillCredentials()
+      fireEvent.click(screen.getByText('Einloggen'))
+
+      await screen.findByText('Gerade nicht erreichbar — das liegt an uns.')
+      // One cause, one message: the field's generic error stays suppressed here, because the
+      // banner genuinely subsumes it — this is the case #298 consolidated, and it is unchanged.
+      expect(screen.queryByText('E-Mail oder Passwort stimmen nicht.')).toBeNull()
+      expect(onDone).not.toHaveBeenCalled()
+    })
+  })
+
   // REQ-005 — "while unverified, the UI honestly shows a 'please verify' state without
   // blocking basic use": the account IS real and signed in, so the honest banner is shown
   // inline instead of silently claiming success; the user can still continue on their own.
