@@ -130,6 +130,11 @@ function findWritesSinceReference(dump, reference, flowLabel) {
       if (!(key in before)) {
         hits.push({ flow: flowLabel, store: storeName, key, value, reason: 'new key' })
       } else if (before[key] !== value) {
+        // Defensive, not load-bearing: `before` is always `baseline` here (or `EMPTY_DUMP` for the
+        // baseline call itself), and `baseline` is asserted against `EMPTY_DUMP` above — so a key
+        // can only land in this branch on a run whose baseline check has already failed. It cannot
+        // by itself turn a green run red; it only sharpens the finding on a run that already is
+        // (#331 review, F9).
         hits.push({ flow: flowLabel, store: storeName, key, value, reason: `value changed (was "${before[key]}")` })
       }
     }
