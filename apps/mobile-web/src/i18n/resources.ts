@@ -301,7 +301,12 @@ export const appResources = {
           // only assert what its `FailureReason` actually establishes; `unknown` asserts nothing.
           loadError: {
             unreachable: 'Deine Geräte konnten nicht geladen werden. Prüf die Verbindung und versuch es noch mal.',
-            refused: 'Deine Geräte konnten nicht geladen werden — der Server hat die Anfrage abgelehnt. An deiner Verbindung liegt es nicht.',
+            // Suhay's ruling, #336 — "abgelehnt" (a deliberate refusal) is true for 401/403 but
+            // misleads for 500, which `classifyByStatus` also routes here (failure-reason.ts):
+            // the server didn't decline, it broke. This wording asserts only what all four
+            // statuses share — it answered, and that answer didn't get you your devices — and
+            // keeps the retraction Musti flagged as the load-bearing clause.
+            refused: 'Deine Geräte konnten nicht geladen werden — der Server hat sich gemeldet, aber das hat nicht geklappt. An deiner Verbindung liegt es nicht.',
             unknown: 'Deine Geräte konnten nicht geladen werden. Versuch es noch mal.',
           },
           empty: 'Keine weiteren Geräte angemeldet.',
@@ -729,7 +734,8 @@ export const appResources = {
           loading: 'Loading devices …',
           loadError: {
             unreachable: "Your devices couldn't be loaded. Check your connection and try again.",
-            refused: "Your devices couldn't be loaded — the server declined the request. It isn't your connection.",
+            // Suhay's ruling, #336 — follows the German (ADR-0006); see the `de` block for why.
+            refused: "Your devices couldn't be loaded — the server responded, but that didn't work. It isn't your connection.",
             unknown: "Your devices couldn't be loaded. Try again.",
           },
           empty: 'No other devices signed in.',
