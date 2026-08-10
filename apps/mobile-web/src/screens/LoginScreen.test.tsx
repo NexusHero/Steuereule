@@ -282,6 +282,26 @@ describe('LoginScreen', () => {
       expect(screen.getByText('Code konnte nicht erzeugt werden.')).toBeTruthy()
     })
 
+    // #336 review, F8 — the branch of AC-A nothing in this suite drove: all three surfaces down
+    // and NO submit, which is the state a user is in for the first seconds on the page. AC-A's
+    // "(if submitted)" is load-bearing, and narrowing `apiUnreachable` in F1 took the Google
+    // slot's honest line with it — the slot vanished without trace, which #283 §3(a) calls
+    // worse than fixing neither surface.
+    it('keeps the Google slot\'s honest "can\'t tell" line when nothing has been submitted yet (#283 §3(a), #336 F8)', async () => {
+      setViewportWidth(1280)
+      server.use(
+        http.post(`${BASE_URL}/v1/device/code`, () => HttpResponse.error()),
+        http.get(`${BASE_URL}/v1/auth/capabilities`, () => HttpResponse.error()),
+      )
+      renderLogin()
+
+      // The probe cannot answer, and says so rather than disappearing.
+      expect(await screen.findByText('Wir können gerade nicht prüfen, ob Google verfügbar ist.')).toBeTruthy()
+      // And still no screen-wide claim, because nothing the user did has established one.
+      expect(screen.queryByText('Gerade nicht erreichbar — das liegt an uns.')).toBeNull()
+      expect(screen.queryByText(/Unsere Server antworten nicht/)).toBeNull()
+    })
+
     it('still shows the single consolidated banner when the form\'s own submit cannot reach the server (#298 must not regress)', async () => {
       setViewportWidth(1280)
       server.use(

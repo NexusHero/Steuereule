@@ -121,6 +121,17 @@ export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true }
   // ruling on this was "no new string" — the existing one claims exactly what the mint
   // established and nothing more.
   const apiUnreachable = formTransportError
+  // #336 review, F8 — the second job `apiUnreachable` used to carry, which F1 killed by accident
+  // along with the first. This one CLAIMS NOTHING about the API: it only answers "has some
+  // surface established a real transport failure, so a slot that is silent-because-still-probing
+  // should now say it cannot tell?" It was never wrong, and it must not be gated on the banner.
+  //
+  // The distinction is the whole of #283 §3(a): a probe that cannot answer says so rather than
+  // disappearing, because "fixing one and leaving the other silently disappearing is worse than
+  // fixing neither". With this folded into `apiUnreachable`, F1's narrowing made the Google slot
+  // vanish without trace for an unsubmitted user with all three surfaces down.
+  const qrUnreachable = qrState.kind === 'error' && qrState.reason === 'unreachable'
+  const anySurfaceUnreachable = qrUnreachable || formTransportError
   // Musti's #298 review, F2 — the banner's "we're automatically retrying" sentence is only true
   // while something is actually scheduled to retry. At `bp === 's'` (or embedded usage) the QR
   // column never even starts (`deviceQrEnabled` is false), so `autoRetryStatus` stays `null`
@@ -254,7 +265,7 @@ export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true }
           </View>
           <SocialDivider tr={tr} styles={styles} />
         </>
-      ) : apiUnreachable ? (
+      ) : anySurfaceUnreachable ? (
         <>
           <View style={styles.socialFallback} accessibilityRole="text">
             <View style={styles.socialFallbackIcon}>
