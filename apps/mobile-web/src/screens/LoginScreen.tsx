@@ -108,8 +108,19 @@ export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true }
   // AC-A, so this must never go true on a real *answer* (wrong password, an expired/denied code,
   // a 429) — only on a genuine "nothing answered" failure.
   const [formTransportError, setFormTransportError] = useState(false)
-  const qrUnreachable = qrState.kind === 'error' && qrState.reason === 'unreachable'
-  const apiUnreachable = qrUnreachable || formTransportError
+  // #336 review, F1 — established by OUR OWN submit failing to reach the server, and by nothing
+  // else. `qrUnreachable || formTransportError` made one surface speak for the whole app: with
+  // only `/v1/device/code` down, this screen rendered "Unsere Server antworten nicht" directly
+  // above "E-Mail oder Passwort stimmen nicht." — a claim refuted three lines below it by a
+  // message that is only knowable because a server answered.
+  //
+  // The banner's wording cannot be reused for a QR-only outage (resources.ts records it as
+  // "generalised beyond 'no QR code' since this banner now also covers the login form"), and it
+  // does not need to be: the QR column already owns honest copy for its own failure
+  // (`login.qr.error` + the retry-status line), which is what it now falls through to. Suhay's
+  // ruling on this was "no new string" — the existing one claims exactly what the mint
+  // established and nothing more.
+  const apiUnreachable = formTransportError
   // Musti's #298 review, F2 — the banner's "we're automatically retrying" sentence is only true
   // while something is actually scheduled to retry. At `bp === 's'` (or embedded usage) the QR
   // column never even starts (`deviceQrEnabled` is false), so `autoRetryStatus` stays `null`
@@ -324,7 +335,7 @@ export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true }
           styles={styles}
           state={qrState}
           requestNewCode={requestNewQrCode}
-          apiUnreachable={apiUnreachable}
+          screenBannerShown={apiUnreachable}
           autoRetryStatus={autoRetryStatus}
         />
       </View>
@@ -356,7 +367,7 @@ interface DeviceQrColumnProps {
   /** AC-A — while the shared banner above already names the cause, this column defers to it
    *  instead of repeating an unreachable-flavoured message of its own; it still shows that a
    *  retry is happening, just not why, a second time. */
-  readonly apiUnreachable: boolean
+  readonly screenBannerShown: boolean
   /** The hook's own live answer to "is a retry actually scheduled right now" (#298 F2) — read
    *  here rather than re-derived from `apiUnreachable`, so the copy can never claim more than
    *  the state machine is actually doing. */
@@ -369,7 +380,7 @@ interface DeviceQrColumnProps {
  * §4(2)) — this component is presentational, driven entirely by the `state`/`requestNewCode`
  * it's handed, so it can unmount/remount freely across the `s` boundary without losing anything.
  */
-function DeviceQrColumn({ t, tr, styles, state, requestNewCode, apiUnreachable, autoRetryStatus }: DeviceQrColumnProps) {
+function DeviceQrColumn({ t, tr, styles, state, requestNewCode, screenBannerShown, autoRetryStatus }: DeviceQrColumnProps) {
   const knapp = state.kind === 'ready' && state.secondsRemaining <= 20
   const [kopiert, setKopiert] = useState(false)
   const kopiertTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
@@ -468,7 +479,7 @@ function DeviceQrColumn({ t, tr, styles, state, requestNewCode, apiUnreachable, 
           // actually deferring to that banner. 'rate-limited' never defers (AC-B: it must keep
           // its own specific copy and its own announcement even if some other surface happens to
           // be down at the same time) — checked by reason, not by the blanket `apiUnreachable`.
-          <View style={styles.qrFrame} accessibilityRole={apiUnreachable && state.reason !== 'rate-limited' ? 'none' : 'alert'}>
+          <View style={styles.qrFrame} accessibilityRole={screenBannerShown && state.reason !== 'rate-limited' ? 'none' : 'alert'}>
             {/* AC-A: while the shared banner above is up, this defers to it — no repeated
                 "we can't reach the server" prose, just that a retry is under way. AC-B/ADR-0024:
                 'rate-limited' never says that, and never auto-retries — its own specific copy,
@@ -480,7 +491,7 @@ function DeviceQrColumn({ t, tr, styles, state, requestNewCode, apiUnreachable, 
                   <Text style={styles.qrRetryLink}>{tr('login.qr.retry')}</Text>
                 </Pressable>
               </>
-            ) : apiUnreachable ? (
+            ) : screenBannerShown ? (
               <>
                 {/* #298 F2/F1(b) — this must say exactly what's actually happening: 'scheduled'
                     while a retry is really pending, 'exhausted' once §4(1)'s attempt cap has
