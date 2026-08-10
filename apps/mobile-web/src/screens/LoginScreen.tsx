@@ -205,7 +205,16 @@ export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true }
 
   // AC-A — the password field's own inline error is suppressed while the shared banner is up:
   // "exactly one alert naming the cause", not the same generic text twice.
-  const passwordFehler = apiUnreachable ? '' : fehler
+  //
+  // #308 — suppress only when the banner's cause actually SUBSUMES the field's message. It does
+  // when the form's own submit never reached the server (`formTransportError`): there is one
+  // cause, and the banner names it. It does not when only the QR column is down — the auth
+  // endpoint answered, and what it answered was "wrong password". Keying this off `apiUnreachable`
+  // let one surface's failure veto another surface's real answer, so a user at `m`/`l` was told
+  // the app could not reach the server while the server was busy telling them their password was
+  // wrong. Two independent causes are two messages; that is not the jabber #298 consolidated,
+  // which was three messages about one cause.
+  const passwordFehler = formTransportError ? '' : fehler
 
   const formColumn = (
     <View style={bp === 's' ? undefined : styles.formColumn}>
