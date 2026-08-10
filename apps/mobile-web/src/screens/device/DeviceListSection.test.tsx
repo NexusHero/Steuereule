@@ -102,11 +102,11 @@ describe('DeviceListSection (#238, Decision 6)', () => {
   // *answering*, and the copy it expected told the user to check their connection. The
   // stakeholder hit the same class for real on a 403, with his name and Steuer-ID rendered
   // three lines above the message blaming his network.
-  it('names the server, not the connection, when the server answered and refused (#306)', async () => {
+  it('names the server, not the connection, when the server answered (#306)', async () => {
     server.use(http.get(`${BASE_URL}/api/auth/list-sessions`, () => HttpResponse.json({}, { status: 500 })))
     renderDeviceList()
     expect(
-      await screen.findByText('Deine Geräte konnten nicht geladen werden — der Server hat die Anfrage abgelehnt. An deiner Verbindung liegt es nicht.'),
+      await screen.findByText('Deine Geräte konnten nicht geladen werden — der Server hat sich gemeldet, aber das hat nicht geklappt. An deiner Verbindung liegt es nicht.'),
     ).toBeTruthy()
     // The defect, stated as an assertion so it cannot come back: the connection copy must not
     // appear on a response the server actually sent.
@@ -117,7 +117,7 @@ describe('DeviceListSection (#238, Decision 6)', () => {
     server.use(http.get(`${BASE_URL}/api/auth/list-sessions`, () => HttpResponse.json({ code: 'SESSION_NOT_FRESH' }, { status: 403 })))
     renderDeviceList()
     expect(
-      await screen.findByText('Deine Geräte konnten nicht geladen werden — der Server hat die Anfrage abgelehnt. An deiner Verbindung liegt es nicht.'),
+      await screen.findByText('Deine Geräte konnten nicht geladen werden — der Server hat sich gemeldet, aber das hat nicht geklappt. An deiner Verbindung liegt es nicht.'),
     ).toBeTruthy()
   })
 
@@ -141,7 +141,7 @@ describe('DeviceListSection (#238, Decision 6)', () => {
     // Neither cause may be asserted: nothing here establishes either one.
     expect(screen.queryByText('Deine Geräte konnten nicht geladen werden. Prüf die Verbindung und versuch es noch mal.')).toBeNull()
     expect(
-      screen.queryByText('Deine Geräte konnten nicht geladen werden — der Server hat die Anfrage abgelehnt. An deiner Verbindung liegt es nicht.'),
+      screen.queryByText('Deine Geräte konnten nicht geladen werden — der Server hat sich gemeldet, aber das hat nicht geklappt. An deiner Verbindung liegt es nicht.'),
     ).toBeNull()
   })
 
@@ -162,7 +162,7 @@ describe('DeviceListSection (#238, Decision 6)', () => {
     // completed would be the same over-claim pointed the other way.
     expect(await screen.findByText('Deine Geräte konnten nicht geladen werden. Prüf die Verbindung und versuch es noch mal.')).toBeTruthy()
     expect(
-      screen.queryByText('Deine Geräte konnten nicht geladen werden — der Server hat die Anfrage abgelehnt. An deiner Verbindung liegt es nicht.'),
+      screen.queryByText('Deine Geräte konnten nicht geladen werden — der Server hat sich gemeldet, aber das hat nicht geklappt. An deiner Verbindung liegt es nicht.'),
     ).toBeNull()
   })
 
