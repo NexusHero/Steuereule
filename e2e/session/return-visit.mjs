@@ -130,6 +130,7 @@ import { join } from 'node:path'
 import { launchBrowser, closeBrowser, newContextAtBreakpoint, guardAgainst429, sampleComputedStyleOverFrames, newReducedMotionContext } from '../harness/browser.mjs'
 import { startStack } from '../harness/stack.mjs'
 import { fail, readBucketByExactKey, readBucketByPrefix, waitForBucketHeadroom } from '../harness/rate-limit.mjs'
+import { FLOW_COPY, skipSplash, signUpOutOfBand, completeOnboarding } from '../harness/flows.mjs'
 
 const AUTH_BUCKET = { windowMs: 10_000, max: 3 } // better-auth's own built-in rule
 const DEVICE_CODE_BUCKET = { windowMs: 60_000, max: 10 } // device-code-rate-limit.ts
@@ -138,12 +139,12 @@ const TEST_PASSWORD = 'Sicheres-Passwort-1!'
 
 // German copy (app boots in `de`, ADR-0006), lifted from apps/mobile-web/src/i18n/resources.ts —
 // same lifted-not-imported convention every other e2e script in this directory follows (this
-// workspace's only devDependency is `playwright-core`).
+// workspace's only devDependency is `playwright-core`). The splash/login/onboarding/profil keys
+// live in `FLOW_COPY` (`../harness/flows.mjs`, Musti's #331 review, F6) alongside the drive
+// sequences that read them — spread in here so every existing `COPY.xyz` call site below keeps
+// working unchanged; only the screen-specific strings below are this file's own.
 const COPY = {
-  splashSkip: 'Weiter zur App',
-  loginEmailPlaceholder: 'du@beispiel.de',
-  loginPasswordPlaceholder: '••••••••',
-  loginSubmit: 'Einloggen',
+  ...FLOW_COPY,
   loginGoogle: 'Weiter mit Google',
   loginGuest: 'Erstmal als Gast umschauen',
   // #283/#298 AC-A (landed on `main` while this file was in review, see this file's own PR
@@ -161,12 +162,6 @@ const COPY = {
   googleUnknown: 'Wir können gerade nicht prüfen, ob Google verfügbar ist.',
   qrRetryingAuto: 'Wir versuchen es automatisch erneut …',
   qrRetryExhausted: 'Die automatischen Versuche sind pausiert — bitte versuch es manuell noch einmal.',
-  onboardingFirstNamePlaceholder: 'Kim',
-  onboardingLastNamePlaceholder: 'Yilmaz',
-  onboardingSteuerIdPlaceholder: '12 345 678 901',
-  onboardingWeiter: 'Weiter',
-  onboardingSteuerNrLater: 'Hab ich nicht zur Hand — später',
-  profilTab: 'Profil',
   cockpitTab: 'Cockpit',
   cockpitEmptyHeading: 'Noch keine Angaben.',
   cockpitLoadErrorHeading: 'Das hat nicht geklappt.',
@@ -182,32 +177,9 @@ function waitForRateLimit(bucket, config, label) {
   return waitForBucketHeadroom(bucket, config, label, 'return-visit')
 }
 
-async function skipSplash(page, webOrigin) {
-  await page.goto(webOrigin, { waitUntil: 'networkidle' })
-  const splashSkip = page.getByRole('button', { name: COPY.splashSkip })
-  if (await splashSkip.count()) {
-    await splashSkip.click()
-  }
-}
-
-async function signUpOutOfBand(apiOrigin, webOrigin, email, password) {
-  const res = await fetch(`${apiOrigin}/api/auth/sign-up/email`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', origin: webOrigin },
-    body: JSON.stringify({ name: '', email, password }),
-  })
-  if (!res.ok) fail(`out-of-band sign-up failed for ${email}: ${res.status} ${await res.text()}`)
-}
-
-async function completeOnboarding(page) {
-  await page.getByPlaceholder(COPY.onboardingFirstNamePlaceholder).fill('Kim')
-  await page.getByPlaceholder(COPY.onboardingLastNamePlaceholder).fill('Yilmaz')
-  await page.getByRole('button', { name: COPY.onboardingWeiter }).click()
-  await page.getByPlaceholder(COPY.onboardingSteuerIdPlaceholder).fill('12345678901')
-  await page.getByRole('button', { name: COPY.onboardingWeiter }).click()
-  await page.getByText(COPY.onboardingSteuerNrLater).click()
-  await page.getByRole('button', { name: COPY.onboardingWeiter }).click()
-}
+// `skipSplash`, `signUpOutOfBand`, `completeOnboarding` are imported from `../harness/flows.mjs`
+// above (Musti's #331 review, F6) — this file and `storage/no-client-persistence.mjs` are its two
+// real callers as of the same change that introduced it.
 
 /**
  * Whether the Google button SHOULD render, asked the exact way `useSocialSignInAvailable` itself

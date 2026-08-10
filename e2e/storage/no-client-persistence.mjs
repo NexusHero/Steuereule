@@ -17,7 +17,8 @@
 // script ever asks the page anything — there is no "before the stub was installed" gap to hide
 // in, because nothing here is stubbed at all. This script simply loads the real page, drives the
 // real flows, and reads `window.localStorage`/`window.sessionStorage` afterward. If either store
-// holds anything, this file will see it, no matter when during the page's life it was written.
+// holds anything NEW relative to a truly fresh page load, this file will see it, no matter when
+// during the page's life it was written.
 //
 // THE TWO FLOWS (mirroring #329's own two fixed test files, one script — see this file's own PR
 // for the corresponding jsdom coverage; T1 tier, real Chromium, real stack, no mocks):
@@ -28,64 +29,70 @@
 //   2. Profil, on that same now-provisioned account: view -> edit -> save (PUT /v1/profile
 //      again), the exact round trip ProfilScreen.test.tsx's fixed assertion covers.
 //
-// Storage is read and enumerated (every key, not a boolean) at four checkpoints: baseline (fresh
+// *** THE CHECK ITSELF (rewritten, Musti's #331 review, F1-F4) ***
+//
+// Storage is read and enumerated (every key, not a boolean) at FIVE checkpoints: baseline (fresh
 // page, before sign-in), mid-Onboarding (summary reached, before the final save submit — catches
-// a write during typing, not only after landing), after the Onboarding save, and after the Profil
-// save. A non-empty dump is not automatically a defect — a third-party key with no profile data
-// in it (e.g. a router/i18n cache) is a finding to name, not a defect on its own; a key whose
-// VALUE contains the Steuer-ID, the entered name, or any profile field IS a T1 defect and this
-// script fails on it by name (key, value, which flow, what it matched).
+// a write during typing, not only after landing), after the Onboarding save, Profil view (before
+// any edit — the checkpoint most likely to catch a "hydrate a client cache from the GET" defect),
+// and after the Profil save. ALL FIVE are asserted, not just dumped:
+//   - `baseline` is compared against a truly empty dump. Nothing in this app writes to client
+//     storage at all today (grep the source before doubting that — `OnboardingScreen.tsx`,
+//     `ProfilScreen.tsx`, `SplashScreen.tsx` each say so in their own header comments, and none of
+//     the three actually calls `setItem`), so ANY key present before sign-in is itself the
+//     finding — there is no legitimate baseline write for this app to have to tolerate.
+//   - every checkpoint AFTER baseline is compared against `baseline` (not against a needle list):
+//     any key present now that wasn't at baseline, or any key whose VALUE changed since baseline,
+//     is a finding, named with the flow, the store, the key, and both the before/after value. This
+//     is what actually backs the PASS line's claim ("left storage exactly as it started") — a
+//     needle list only catches the specific strings someone thought to list, which #331's own
+//     review caught missing 'Yilmaz' from Flow 2's list; a before/after diff catches anything.
+//
+// A LIMIT, stated rather than left implicit (Musti's #331 review, F5): this is a SAMPLING gate —
+// it reads storage at five points in time, it does not observe every write as it happens. A write
+// made and then removed BETWEEN two checkpoints (e.g. the Steuer-ID sitting in localStorage for
+// the ~200ms a field is being typed into, then cleared before the next dump) would not appear in
+// any dump here. The fix for that is NOT wrapping `Storage.prototype.setItem` via an init script —
+// ADR-0028 rules against aiming a check at the mechanism upstream of a hazard instead of at the
+// hazard itself, and ADR-0008's hazard is profile data AT REST in client storage, which sampling
+// the store (the actual hazard) is the correct target for. This is a decided, accepted limit, not
+// an unnoticed hole.
 //
 // Wired into ci.yml's "Browser gates" job, after return-visit.mjs (least risk to an already-green
 // step; no ordering dependency — this script issues its own sign-up/sign-in against the shared
 // no-trusted-ip bucket and paces itself via the same waitForBucketHeadroom every other script in
 // this job already uses).
 //
-// Exits non-zero on the first failed assertion or any sensitive-value finding — merge gate, not a
-// report.
+// Exits non-zero on the first failed assertion or any storage finding — merge gate, not a report.
 
 import { launchBrowser, closeBrowser, newContextAtBreakpoint, guardAgainst429 } from '../harness/browser.mjs'
 import { startStack } from '../harness/stack.mjs'
 import { fail, readBucketByExactKey, waitForBucketHeadroom } from '../harness/rate-limit.mjs'
+import { FLOW_COPY, skipSplash, signUpOutOfBand, fillOnboardingThroughSummary } from '../harness/flows.mjs'
 
 const AUTH_BUCKET = { windowMs: 10_000, max: 3 } // better-auth's own built-in rule
 const TEST_PASSWORD = 'Sicheres-Passwort-1!'
 
 // German copy (app boots in `de`, ADR-0006), lifted from apps/mobile-web/src/i18n/resources.ts —
-// the same lifted-not-imported convention every other e2e script in this directory follows.
+// the same lifted-not-imported convention every other e2e script in this directory follows. The
+// splash/login/onboarding/profil-tab keys live in `FLOW_COPY` (`../harness/flows.mjs`, Musti's
+// #331 review, F6) alongside the drive sequences (`skipSplash`, `signUpOutOfBand`,
+// `fillOnboardingThroughSummary`) that read them — spread in here so `COPY.xyz` keeps working for
+// every call site below; only this file's own Profil-screen strings are added locally.
 const COPY = {
-  splashSkip: 'Weiter zur App',
-  loginEmailPlaceholder: 'du@beispiel.de',
-  loginPasswordPlaceholder: '••••••••',
-  loginSubmit: 'Einloggen',
-  onboardingFirstNamePlaceholder: 'Kim',
-  onboardingLastNamePlaceholder: 'Yilmaz',
-  onboardingSteuerIdPlaceholder: '12 345 678 901',
-  onboardingWeiter: 'Weiter',
-  onboardingSteuerNrLater: 'Hab ich nicht zur Hand — später',
-  profilTab: 'Profil',
+  ...FLOW_COPY,
   profilEdit: 'Bearbeiten',
   profilSave: 'Speichern',
   profilSaved: 'Gespeichert.',
+  // A separate key from `onboardingLastNamePlaceholder` even though the VALUE is identical
+  // ('Yilmaz', apps/mobile-web/src/i18n/resources.ts:273) — Musti's #331 review, F7: naming this
+  // field after the OTHER screen's copy needed four lines of comment to explain why that was
+  // still correct, which is the tell that the name was doing the work a name should do instead.
+  profilLastNamePlaceholder: 'Yilmaz',
 }
 
 function waitForRateLimit(bucket, config, label) {
   return waitForBucketHeadroom(bucket, config, label, 'no-client-persistence')
-}
-
-async function skipSplash(page, webOrigin) {
-  await page.goto(webOrigin, { waitUntil: 'networkidle' })
-  const splashSkip = page.getByRole('button', { name: COPY.splashSkip })
-  if (await splashSkip.count()) await splashSkip.click()
-}
-
-async function signUpOutOfBand(apiOrigin, webOrigin, email, password) {
-  const res = await fetch(`${apiOrigin}/api/auth/sign-up/email`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', origin: webOrigin },
-    body: JSON.stringify({ name: '', email, password }),
-  })
-  if (!res.ok) fail(`out-of-band sign-up failed for ${email}: ${res.status} ${await res.text()}`)
 }
 
 /** Reads the REAL, live storage from inside the page — every key/value, never a boolean. */
@@ -102,15 +109,28 @@ function describeDump(dump) {
   return `localStorage: ${fmt(dump.localStorage)} · sessionStorage: ${fmt(dump.sessionStorage)}`
 }
 
-/** #323's own T1 defect class, applied here: a value that carries the profile itself — the
- *  Steuer-ID (raw or grouped), or the entered name — anywhere in either store. Any other key is
- *  reported (via the checkpoint log lines above) but not treated as a defect by this function. */
-function findSensitiveValues(dump, flowLabel, sensitiveValues) {
+const EMPTY_DUMP = { localStorage: {}, sessionStorage: {} }
+
+/**
+ * The genuine no-writes check ADR-0008 asks for (Musti's #331 review, F1/F4 — replaces the
+ * earlier needle-substring approach, whose coverage was only ever as good as the list of strings
+ * someone remembered to include). Compares `dump` against `reference` (either the true empty set,
+ * for `baseline`, or `baseline` itself, for every checkpoint after it) and reports every key that
+ * is NEW since the reference, or whose VALUE CHANGED since the reference — either is a write this
+ * flow made, regardless of what that write's value happens to contain. A key present in both with
+ * an unchanged value is a pre-existing artifact this flow did not touch and is not reported (it
+ * still appears in the console dump above each call, for a human to look at if they want to).
+ */
+function findWritesSinceReference(dump, reference, flowLabel) {
   const hits = []
-  for (const [storeName, store] of [['localStorage', dump.localStorage], ['sessionStorage', dump.sessionStorage]]) {
-    for (const [key, value] of Object.entries(store)) {
-      for (const needle of sensitiveValues) {
-        if (needle && String(value).includes(needle)) hits.push({ flow: flowLabel, store: storeName, key, value, needle })
+  for (const storeName of ['localStorage', 'sessionStorage']) {
+    const before = reference[storeName]
+    const now = dump[storeName]
+    for (const [key, value] of Object.entries(now)) {
+      if (!(key in before)) {
+        hits.push({ flow: flowLabel, store: storeName, key, value, reason: 'new key' })
+      } else if (before[key] !== value) {
+        hits.push({ flow: flowLabel, store: storeName, key, value, reason: `value changed (was "${before[key]}")` })
       }
     }
   }
@@ -135,6 +155,7 @@ async function main() {
     await skipSplash(page, webOrigin)
     const baseline = await dumpStorage(page)
     console.log(`[no-client-persistence] baseline (fresh page load, before sign-in) — ${describeDump(baseline)}`)
+    findings.push(...findWritesSinceReference(baseline, EMPTY_DUMP, 'baseline (fresh page load, before sign-in)'))
 
     // --- Flow 1: fresh account, Onboarding through to save ---
     await waitForRateLimit(readBucketByExactKey(sql, 'no-trusted-ip|/sign-in/email'), AUTH_BUCKET, 'sign-in/email')
@@ -151,16 +172,11 @@ async function main() {
       fail('Flow 1: the fresh-account first-name field was not empty on mount — this run did not exercise the empty-state path it is meant to.')
     }
 
-    await firstNameField.fill('Kim')
-    await page.getByPlaceholder(COPY.onboardingLastNamePlaceholder).fill('Yilmaz')
-    await page.getByRole('button', { name: COPY.onboardingWeiter }).click()
-    await page.getByPlaceholder(COPY.onboardingSteuerIdPlaceholder).fill('12345678901')
-    await page.getByRole('button', { name: COPY.onboardingWeiter }).click()
-    await page.getByText(COPY.onboardingSteuerNrLater).click()
+    await fillOnboardingThroughSummary(page)
 
     const midFlow = await dumpStorage(page)
     console.log(`[no-client-persistence] mid-flow checkpoint (Onboarding summary reached, before the final save submit) — ${describeDump(midFlow)}`)
-    findings.push(...findSensitiveValues(midFlow, 'mid-flow (before Onboarding save submit)', ['12345678901', '12 345 678 901', 'Kim', 'Yilmaz']))
+    findings.push(...findWritesSinceReference(midFlow, baseline, 'mid-flow (before Onboarding save submit)'))
 
     await page.getByRole('button', { name: COPY.onboardingWeiter }).click()
     await page.waitForURL((u) => u.pathname === '/app', { timeout: 15_000 }).catch(() => {
@@ -169,7 +185,7 @@ async function main() {
 
     const afterOnboardingSave = await dumpStorage(page)
     console.log(`[no-client-persistence] Flow 1 — Onboarding through save, fresh account — ${describeDump(afterOnboardingSave)}`)
-    findings.push(...findSensitiveValues(afterOnboardingSave, 'Flow 1 (after Onboarding save)', ['12345678901', '12 345 678 901', 'Kim', 'Yilmaz']))
+    findings.push(...findWritesSinceReference(afterOnboardingSave, baseline, 'Flow 1 (after Onboarding save)'))
 
     // --- Flow 2: Profil view -> edit -> save, same now-provisioned account ---
     await page.getByRole('tab', { name: COPY.profilTab }).click()
@@ -179,13 +195,13 @@ async function main() {
 
     const profilView = await dumpStorage(page)
     console.log(`[no-client-persistence] Flow 2 checkpoint (Profil view, before edit) — ${describeDump(profilView)}`)
+    findings.push(...findWritesSinceReference(profilView, baseline, 'Flow 2 (Profil view, before edit)'))
 
     await page.getByText(COPY.profilEdit).click()
-    // Profil's edit-form last-name field shares the identical placeholder text Onboarding uses
-    // ("Yilmaz") — real Playwright has no `getByDisplayValue` (that is a Testing-Library API,
-    // not this library's), so the field is located the same honest way the rest of this script
-    // locates every other input: by its own placeholder.
-    await page.getByPlaceholder(COPY.onboardingLastNamePlaceholder).fill('Yilmaz-Geändert')
+    // Real Playwright has no `getByDisplayValue` (that is a Testing-Library API, not this
+    // library's), so the field is located the same honest way the rest of this script locates
+    // every other input: by its own placeholder.
+    await page.getByPlaceholder(COPY.profilLastNamePlaceholder).fill('Yilmaz-Geändert')
     await page.getByText(COPY.profilSave).click()
     await page.getByText(COPY.profilSaved, { exact: true }).waitFor({ state: 'visible', timeout: 10_000 }).catch(() => {
       fail('Flow 2: Profil save never showed the "Gespeichert." confirmation within 10s.')
@@ -193,16 +209,16 @@ async function main() {
 
     const afterProfilSave = await dumpStorage(page)
     console.log(`[no-client-persistence] Flow 2 — Profil view -> edit -> save — ${describeDump(afterProfilSave)}`)
-    findings.push(...findSensitiveValues(afterProfilSave, 'Flow 2 (after Profil save)', ['12345678901', '12 345 678 901', 'Kim', 'Yilmaz-Geändert']))
+    findings.push(...findWritesSinceReference(afterProfilSave, baseline, 'Flow 2 (after Profil save)'))
 
     await ctx.close()
 
     if (findings.length > 0) {
       const lines = findings
-        .map((f) => `${f.flow}: ${f.store}["${f.key}"] = "${f.value}" (contains "${f.needle}")`)
+        .map((f) => `${f.flow}: ${f.store}["${f.key}"] = "${f.value}" (${f.reason})`)
         .join('\n  ')
       fail(
-        `T1 DEFECT — profile data found in client storage after a real-browser round trip (ADR-0008):\n  ${lines}\n` +
+        `T1 DEFECT — client storage was written to during a real-browser round trip (ADR-0008):\n  ${lines}\n` +
           'Report this to Musti for routing (frontend, Kaan) — do NOT patch this script to tolerate it.',
       )
     }
@@ -210,9 +226,10 @@ async function main() {
     console.log(
       '[no-client-persistence] PASS — real Chromium, real seeded stack: Onboarding-through-save (fresh account, ' +
         'empty-state path) and Profil view->edit->save both leave localStorage AND sessionStorage exactly as they ' +
-        'started at every checkpoint (baseline, mid-flow, after each save — enumerated above, never just "looked ' +
-        "empty\"). This closes, by observation, the one bound #323's own fix disclosed: vi.stubGlobal's per-test, " +
-        "post-import installation cannot see a write at module-import time — a real page load has no such gap.",
+        'started (no new key, no changed value, relative to the pre-sign-in baseline) at every one of the five ' +
+        'checkpoints enumerated above. This closes, by observation, the one bound #323\'s own fix disclosed: ' +
+        "vi.stubGlobal's per-test, post-import installation cannot see a write at module-import time — a real " +
+        'page load has no such gap, and the baseline checkpoint above is itself asserted, not just printed.',
     )
   } finally {
     await closeBrowser(browser)

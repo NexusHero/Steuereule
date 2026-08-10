@@ -192,6 +192,24 @@ new file growing a second copy was never what the "Not done in this pass" note b
 `waitForBucketHeadroom`'s `scriptTag` parameter is what lets two self-pacing scripts share one CI
 job's log without either needing its own copy just to get its own log prefix.
 
+## `flows.mjs`
+
+`FLOW_COPY`, `skipSplash`, `signUpOutOfBand`, `fillOnboardingThroughSummary`, `completeOnboarding`
+— the splash-dismiss / out-of-band-sign-up / onboarding-fill sequences every real-stack gate that
+drives a fresh account needs, plus the German copy they read. Extracted after Musti's #331 review,
+F6: `storage/no-client-persistence.mjs` had grown a near-byte-identical copy of what
+`session/return-visit.mjs` already had, the same shape `rate-limit.mjs`'s own header already ruled
+against once (Musti's #300 review, G2) — a brand-new script growing a second copy instead of
+importing the first was never what the "existing scripts not migrated" note below licensed. Both
+scripts import from here as of the same change that introduced it — two real callers on the day it
+landed, not a speculative abstraction.
+
+`completeOnboarding` and `fillOnboardingThroughSummary` are two separate exports, not one with a
+flag: `no-client-persistence.mjs` needs to stop after the summary screen and before the final save
+submit (its own mid-flow storage checkpoint sits exactly there); `return-visit.mjs` only ever needs
+to get all the way through. `completeOnboarding` is `fillOnboardingThroughSummary` plus that final
+submit — which function a caller calls says where it stops, no parameter threads that through.
+
 ## Not done in this pass
 
 - `ci.yml`'s own remaining steps are **not** rewired to call `stack.mjs`/`browser.mjs` yet (the
