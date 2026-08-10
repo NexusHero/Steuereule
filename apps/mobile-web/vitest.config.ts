@@ -87,10 +87,13 @@ export default defineConfig({
       // `src/test-whatever.ts` *or* `.tsx` is excluded automatically instead of requiring a second
       // edit here.
       //
-      // `.ts` *and* `.tsx`, not just `.ts` (#333, Musti's finding 1 — measured with a probe file:
-      // `src/test-probe-fixture.tsx` stayed in the coverage table at 0% under a `.ts`-only glob,
-      // `.tsx` did not). A React app's next test-only module very plausibly carries JSX — this tree
-      // already has one, `src/test-stubs/react-native-svg.tsx`, excluded today only because it
+      // `.ts` *and* `.tsx`, not just `.ts` (#333, Musti's finding 1 — measured with two probe
+      // files: under a `.ts`-only glob, `src/test-probe-fixture.tsx` stayed in the coverage table
+      // at 0%, `src/test-probe-fixture2.ts` did not. A negative control,
+      // `src/control-not-test-prefixed.tsx`, stayed in the table too — confirming the glob excludes
+      // by the `test-` prefix rather than by swallowing the directory). A React app's next
+      // test-only module very plausibly carries JSX — this tree already has one,
+      // `src/test-stubs/react-native-svg.tsx`, excluded today only because it
       // happens to sit under the *directory* glob rather than the naming one. `.test.ts` is
       // deliberately left out of this exclude's reach even though the glob's `{ts,tsx}` would
       // otherwise imply it: `include` above (`src/**/*.test.tsx`) never runs a `.test.ts` file at
