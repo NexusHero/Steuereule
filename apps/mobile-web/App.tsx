@@ -15,6 +15,7 @@ import { createAppI18n } from './src/i18n/app-i18n'
 import { APP_NS } from './src/i18n/resources'
 import { createAppAuthClient } from './src/auth/auth-client'
 import { AuthClientProvider } from './src/auth/AuthClientProvider'
+import { APP_QUERY_DEFAULTS } from './src/query-client'
 import { TabIcon } from './src/icons/TabIcon'
 import { SplashScreen } from './src/screens/SplashScreen'
 import { LoginScreen } from './src/screens/LoginScreen'
@@ -27,7 +28,9 @@ import { DatenschutzScreen } from './src/screens/DatenschutzScreen'
 import { DeviceScreen } from './src/screens/device/DeviceScreen'
 
 const i18n = createAppI18n('de')
-const queryClient = new QueryClient()
+// Defaults live in ./src/query-client so they can be asserted; a bare `new QueryClient()` left
+// a first-paint query spinning for ~30s against an unreachable API (#307).
+const queryClient = new QueryClient({ defaultOptions: APP_QUERY_DEFAULTS })
 
 // API base URL comes from EXPO_PUBLIC_API_BASE_URL; it falls back to http://localhost:3000
 // for local dev, where the API runs on its own port. Set the env var per deployment so the
