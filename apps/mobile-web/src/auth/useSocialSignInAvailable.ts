@@ -24,9 +24,17 @@ import { useAuthCapabilitiesControllerGetCapabilities } from '@steuereule/api-cl
  * - `'unknown'` — the probe is still in flight, or it failed. Deliberately not split further:
  *   telling the two apart from here would need the raw query object at every call site: this
  *   hook's job is "can I show the button", nothing about *why* not. A caller that also needs to
- *   know whether the deployment is unreachable (LoginScreen's shared-outage banner) derives that
- *   from a surface that already carries a real reason — the QR column's own `error.reason`
- *   (#283 §3(b)/(c)) — not from re-deriving it here.
+ *   know whether the deployment is unreachable derives that from a surface carrying a real
+ *   reason, not from re-deriving it here.
+ *
+ *   Which surface depends on what is being claimed, and #336's F1/F8 split those apart. The
+ *   shared-outage banner names a screen-wide cause, so only the login form's own submit failing
+ *   at transport level may drive it — the QR column's `error.reason` cannot establish that, and
+ *   using it there put "Unsere Server antworten nicht" directly above a live wrong-password
+ *   message. Deciding whether THIS slot stays silent or says it cannot tell is a different
+ *   question that claims nothing about the API, and that one does read the QR column's reason
+ *   (#283 §3(b)/(c)): any real transport failure is enough to know a still-probing slot should
+ *   speak rather than vanish.
  */
 export type SocialAvailability = 'available' | 'not-configured' | 'unknown'
 
