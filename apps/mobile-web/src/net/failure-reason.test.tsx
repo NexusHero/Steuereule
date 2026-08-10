@@ -20,10 +20,12 @@ describe('classifyByStatus', () => {
     expect(classifyByStatus(500)).toBe('refused')
   })
 
-  it('says unknown rather than guessing, for a status that is not a status', () => {
-    expect(classifyByStatus(-1)).toBe('unknown')
-    expect(classifyByStatus(99)).toBe('unknown')
-  })
+  // No case here for the `< 100` branch. It is unreachable through every caller that exists —
+  // the only source is better-fetch's `status`, taken from `Response.status`, which is never in
+  // (0, 100) — so a test would have to invent a value no `Response` can carry in order to reach
+  // the line. That is a coverage-driven test, not a behavioural one (#336 review, F5), and it
+  // would have inflated this module's coverage figure while proving nothing. The branch stays
+  // as a documented defensive default; see the comment on it.
 })
 
 describe('classifyThrown', () => {
@@ -37,6 +39,21 @@ describe('classifyThrown', () => {
     expect(classifyThrown(new Error('boom'))).toBe('unknown')
     expect(classifyThrown('boom')).toBe('unknown')
     expect(classifyThrown(undefined)).toBe('unknown')
+  })
+})
+
+describe('reasonOf — the fallback, and why it must not be load-bearing', () => {
+  // Measured on #336, and the reason `useDeviceSessions` grew an `Array.isArray` guard: a 200
+  // carrying `text/html` used to reach `data.map(...)` and throw a raw `TypeError`, which lands
+  // here and defaults to 'unknown'. The copy a user saw was correct — by accident. This pins
+  // the fallback's behaviour so the distinction stays visible: an unclassified error rendering
+  // the right string is not the same as a classified one, even when the screen cannot tell.
+  it('defaults an unclassified TypeError to unknown — the accident that hid a missing guard', () => {
+    expect(reasonOf(new TypeError('data.map is not a function'))).toBe('unknown')
+    // Note what it must NOT do: `classifyThrown` would call this same value 'unreachable',
+    // because `fetch` rejects with `TypeError`. That is why only a value thrown by the request
+    // itself may go through `classifyThrown` — see its doc comment.
+    expect(classifyThrown(new TypeError('data.map is not a function'))).toBe('unreachable')
   })
 })
 

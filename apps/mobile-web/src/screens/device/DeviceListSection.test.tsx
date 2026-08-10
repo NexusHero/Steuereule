@@ -121,6 +121,40 @@ describe('DeviceListSection (#238, Decision 6)', () => {
     ).toBeTruthy()
   })
 
+  // #336 review, F7 — `unknown` was the one variant with no screen test.
+  //
+  // The mechanism here is not the one the review and I both assumed. Measured, by instrumenting
+  // the hook: a 200 carrying `text/html` does not throw a parse error and does not arrive as
+  // `data: null`. better-auth returns `data: '<html>…</html>'` — a truthy string — with
+  // `error: null`. Before the `Array.isArray` guard this fell through to `data.map(...)` and
+  // threw a raw `TypeError`, and the honest copy appeared only because `reasonOf` defaults an
+  // unclassified error to 'unknown'. Right answer, no decision behind it. The guard makes it a
+  // decision; this test is what stops it reverting to luck.
+  it('names no cause when something answered but we cannot read it (#306)', async () => {
+    server.use(
+      http.get(`${BASE_URL}/api/auth/list-sessions`, () =>
+        HttpResponse.text('<html>Login to the hotel wifi</html>', { status: 200, headers: { 'content-type': 'text/html' } }),
+      ),
+    )
+    renderDeviceList()
+    expect(await screen.findByText('Deine Geräte konnten nicht geladen werden. Versuch es noch mal.')).toBeTruthy()
+    // Neither cause may be asserted: nothing here establishes either one.
+    expect(screen.queryByText('Deine Geräte konnten nicht geladen werden. Prüf die Verbindung und versuch es noch mal.')).toBeNull()
+    expect(
+      screen.queryByText('Deine Geräte konnten nicht geladen werden — der Server hat die Anfrage abgelehnt. An deiner Verbindung liegt es nicht.'),
+    ).toBeNull()
+  })
+
+  // #336 review, F2 — a 200 with a null body used to be routed through
+  // `classifyByStatus(undefined)` and came out as 'unreachable': the server answered, and the
+  // screen blamed the connection. The defect this ticket exists to delete, inside its own fix.
+  it('names no cause when the server answered 200 with nothing usable in it (#306)', async () => {
+    server.use(http.get(`${BASE_URL}/api/auth/list-sessions`, () => HttpResponse.json(null, { status: 200 })))
+    renderDeviceList()
+    expect(await screen.findByText('Deine Geräte konnten nicht geladen werden. Versuch es noch mal.')).toBeTruthy()
+    expect(screen.queryByText('Deine Geräte konnten nicht geladen werden. Prüf die Verbindung und versuch es noch mal.')).toBeNull()
+  })
+
   it('blames the connection only when nothing answered (#306)', async () => {
     server.use(http.get(`${BASE_URL}/api/auth/list-sessions`, () => HttpResponse.error()))
     renderDeviceList()
