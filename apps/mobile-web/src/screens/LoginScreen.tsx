@@ -494,7 +494,7 @@ function DeviceQrColumn({ t, tr, styles, state, requestNewCode, screenBannerShow
           // duplicate it (no role at all beyond the manual retry's own `button`) *only* when it's
           // actually deferring to that banner. 'rate-limited' never defers (AC-B: it must keep
           // its own specific copy and its own announcement even if some other surface happens to
-          // be down at the same time) — checked by reason, not by the blanket `apiUnreachable`.
+          // be down at the same time) — checked by reason, not by whether a banner is up.
           <View style={styles.qrFrame} accessibilityRole={screenBannerShown && state.reason !== 'rate-limited' ? 'none' : 'alert'}>
             {/* AC-A: while the shared banner above is up, this defers to it — no repeated
                 "we can't reach the server" prose, just that a retry is under way. AC-B/ADR-0024:
