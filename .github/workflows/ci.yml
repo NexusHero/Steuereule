@@ -659,6 +659,17 @@ jobs:
         # sessions (#295's own, still-open, remaining half) — a claim this job's own PASS line
         # repeats on every green run, not just in a header nobody opens.
         run: node e2e/session/return-visit.mjs
+      - name: No-client-persistence gate (#323/#329 retroactive T1 pass) — Onboarding + Profil save, real browser
+        # #329 fixed two jsdom assertions that never intercepted (#323: vi.spyOn(window.localStorage,
+        # ...) is defeated by jsdom's own Storage Proxy) with vi.stubGlobal-backed stubs. Those stubs
+        # install PER TEST, AFTER the module under test is imported, so a write at module-IMPORT time
+        # is structurally outside what jsdom can catch — a disclosed, not a hidden, bound. This step
+        # closes that bound by observation: a real page load runs every module's top-level code before
+        # this script ever reads storage, so there is no "before the stub existed" gap to hide in.
+        # Attaches via ATTACH mode exactly like every other step in this job; self-paces against the
+        # shared no-trusted-ip sign-up/sign-in bucket the same way return-visit.mjs above does, so its
+        # order relative to that step doesn't matter for correctness.
+        run: node e2e/storage/no-client-persistence.mjs
       - name: API log (on failure)
         if: failure()
         run: cat /tmp/steuereule-api-cross-origin.log || true
