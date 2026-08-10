@@ -36,7 +36,24 @@ import { useAuthCapabilitiesControllerGetCapabilities } from '@steuereule/api-cl
  *   (#283 §3(b)/(c)): any real transport failure is enough to know a still-probing slot should
  *   speak rather than vanish.
  */
-export type SocialAvailability = 'available' | 'not-configured' | 'unknown'
+export type SocialAvailability =
+  | 'available'
+  | 'not-configured'
+  /** Still in flight, or answered something we cannot read. No positive answer, no evidence of an outage. */
+  | 'unknown'
+  /**
+   * The probe itself failed at transport level — nothing answered.
+   *
+   * Split out of `'unknown'` by #336's F10, on the same reasoning that widened this hook's
+   * predecessor from a boolean to a tri-state: a caller acquired a correctness need for the
+   * distinction. `LoginScreen`'s shared-outage banner may only claim a screen-wide cause when
+   * more than one independent surface has failed at transport — one surface speaking for the
+   * whole app is F1's defect, and requiring the user to submit first is F10's. Telling
+   * "still probing" apart from "nothing answered" is what makes that predicate expressible.
+   *
+   * Callers that only ask "can I show the button" should treat this exactly like `'unknown'`.
+   */
+  | 'unreachable'
 
 export function useSocialSignInAvailable(provider: string): SocialAvailability {
   const { data, isPending, isError } = useAuthCapabilitiesControllerGetCapabilities({
@@ -50,7 +67,12 @@ export function useSocialSignInAvailable(provider: string): SocialAvailability {
     },
   })
 
-  if (isPending || isError || !data) return 'unknown'
+  // `isError` with `retry: false` means the query function rejected — for this generated client
+  // that is a transport failure, since a non-2xx still resolves (see the status check below).
+  // Kept distinct from the in-flight case: "we have not heard yet" and "nothing answered" are
+  // different facts, and #336's F10 is what happens when a screen cannot tell them apart.
+  if (isError) return 'unreachable'
+  if (isPending || !data) return 'unknown'
 
   // The generated client resolves to the whole HTTP envelope (`{ data, status, headers }`),
   // so the payload is one level in — same as ProfileScreen's `profileQuery.data.data`. The
