@@ -98,10 +98,38 @@ describe('DeviceListSection (#238, Decision 6)', () => {
     expect(await screen.findByText('Keine weiteren Geräte angemeldet.')).toBeTruthy()
   })
 
-  it('shows an honest error state if the sessions request fails, never a blank section', async () => {
+  // #306 — this used to be one assertion, and it asserted the defect: a 500 is the server
+  // *answering*, and the copy it expected told the user to check their connection. The
+  // stakeholder hit the same class for real on a 403, with his name and Steuer-ID rendered
+  // three lines above the message blaming his network.
+  it('names the server, not the connection, when the server answered and refused (#306)', async () => {
     server.use(http.get(`${BASE_URL}/api/auth/list-sessions`, () => HttpResponse.json({}, { status: 500 })))
     renderDeviceList()
-    expect(await screen.findByText("Deine Geräte konnten nicht geladen werden. Prüf die Verbindung und versuch es noch mal.")).toBeTruthy()
+    expect(
+      await screen.findByText('Deine Geräte konnten nicht geladen werden — der Server hat die Anfrage abgelehnt. An deiner Verbindung liegt es nicht.'),
+    ).toBeTruthy()
+    // The defect, stated as an assertion so it cannot come back: the connection copy must not
+    // appear on a response the server actually sent.
+    expect(screen.queryByText('Deine Geräte konnten nicht geladen werden. Prüf die Verbindung und versuch es noch mal.')).toBeNull()
+  })
+
+  it('names the server, not the connection, on the 403 the stakeholder actually hit (#306)', async () => {
+    server.use(http.get(`${BASE_URL}/api/auth/list-sessions`, () => HttpResponse.json({ code: 'SESSION_NOT_FRESH' }, { status: 403 })))
+    renderDeviceList()
+    expect(
+      await screen.findByText('Deine Geräte konnten nicht geladen werden — der Server hat die Anfrage abgelehnt. An deiner Verbindung liegt es nicht.'),
+    ).toBeTruthy()
+  })
+
+  it('blames the connection only when nothing answered (#306)', async () => {
+    server.use(http.get(`${BASE_URL}/api/auth/list-sessions`, () => HttpResponse.error()))
+    renderDeviceList()
+    // The mirror defect this guards: asserting a server-side cause when the request never
+    // completed would be the same over-claim pointed the other way.
+    expect(await screen.findByText('Deine Geräte konnten nicht geladen werden. Prüf die Verbindung und versuch es noch mal.')).toBeTruthy()
+    expect(
+      screen.queryByText('Deine Geräte konnten nicht geladen werden — der Server hat die Anfrage abgelehnt. An deiner Verbindung liegt es nicht.'),
+    ).toBeNull()
   })
 
   // The property itself — revocation actually revoking, one session rejected while another

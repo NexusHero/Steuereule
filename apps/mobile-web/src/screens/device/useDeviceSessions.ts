@@ -15,6 +15,7 @@
 // code-creation time, a completely different path from Session's client-IP question.
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthClient } from '../../auth/AuthClientProvider'
+import { RequestFailedError, classifyByStatus, classifyThrown } from '../../net/failure-reason'
 
 export interface DeviceSessionRow {
   readonly token: string
@@ -38,9 +39,18 @@ export function useDeviceSessions() {
   const sessionsQuery = useQuery({
     queryKey: DEVICE_SESSIONS_QUERY_KEY,
     queryFn: async (): Promise<Omit<DeviceSessionRow, 'isCurrent'>[]> => {
-      const { data, error } = await authClient.listSessions()
+      // #306 — the reason used to die here. `throw new Error('listSessions failed')` discarded
+      // the one fact the screen needed, so `profil.devices.loadError` could only ever guess, and
+      // it guessed "check your connection" at a stakeholder whose connection had just served his
+      // name and Steuer-ID. Whatever we know about the cause has to survive this boundary.
+      // `.catch` rather than try//catch around the await: it keeps better-auth's own inferred
+      // result type on `result`, which the `data.map` below relies on for `session`.
+      const result = await authClient.listSessions().catch((thrown: unknown) => {
+        throw new RequestFailedError('listSessions did not complete', classifyThrown(thrown))
+      })
+      const { data, error } = result
       if (error || !data) {
-        throw new Error('listSessions failed')
+        throw new RequestFailedError('listSessions failed', classifyByStatus(error?.status))
       }
       return data.map((session) => ({
         token: session.token,
