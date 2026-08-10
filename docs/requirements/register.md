@@ -288,9 +288,9 @@ is open, unmerged, and not yet reviewed-through in [#333](https://github.com/Nex
 — including one that mirrors #323's own class, and the underlying property is independently confirmed
 by static absence (`localStorage|sessionStorage|AsyncStorage` — three matches across shipped (non-test)
 `apps/*/src`, `packages/*/src`, all comments, zero first-party call sites, measured 2026-08-10; this
-does not cover writes from bundled dependencies, which only a real-page observation reaches) and — for
-the calibration half only — by [#331](https://github.com/NexusHero/Steuereule/pull/331)'s real-browser
-gate, which is **not** cited as proof of the clause itself: it is open, draft, and unmerged.
+does not cover writes from bundled dependencies, which only a real-page observation reaches). A
+real-browser gate for the calibration half ([#331](https://github.com/NexusHero/Steuereule/pull/331))
+is open, unmerged and not cited.
 
 **Not closed by this edit, again.** This corrects the register's evidence claim a second time; it does
 not fix `apps/mobile-web/src/test-storage-guard.ts`. When #329's three findings are fixed in #333 and
