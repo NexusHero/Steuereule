@@ -14,10 +14,31 @@ import { vi, type Mock } from 'vitest'
 export type ReachableStore = 'localStorage' | 'sessionStorage'
 
 /** Installs a `vi.stubGlobal`-backed stand-in for `window[storeName]` whose `setItem` is a spy
- *  the Proxy cannot defeat. Caller is responsible for `vi.unstubAllGlobals()` in `afterEach`. */
+ *  the Proxy cannot defeat. Caller is responsible for `vi.unstubAllGlobals()` in `afterEach`.
+ *
+ *  Built by delegating to the *real* store's methods, not by spreading it (#329, Musti's finding
+ *  2): `{ ...window[storeName] }` copies own enumerable properties, which on jsdom's `Storage`
+ *  are the stored *keys* (e.g. a leftover `preexisting` value), not the API — `getItem`,
+ *  `removeItem`, `clear` and `key` live on the prototype and a spread never reaches them, and
+ *  `length` needs to stay live rather than being frozen at stub-install time. The result of
+ *  spreading was a stand-in with no `getItem` at all: any screen that reads storage under the
+ *  guard would throw `TypeError: ... .getItem is not a function` — a confusing failure inside a
+ *  privacy control, which is exactly the kind of failure whose cheapest fix is deleting the
+ *  guard. Binding through to the real store means a read behaves identically with or without the
+ *  guard installed, and no stored key leaks onto the stand-in. */
 export function stubStorageSetItem(storeName: ReachableStore): Mock {
+  const realStore = window[storeName]
   const setItem = vi.fn()
-  vi.stubGlobal(storeName, { ...window[storeName], setItem })
+  vi.stubGlobal(storeName, {
+    getItem: realStore.getItem.bind(realStore),
+    removeItem: realStore.removeItem.bind(realStore),
+    clear: realStore.clear.bind(realStore),
+    key: realStore.key.bind(realStore),
+    get length() {
+      return realStore.length
+    },
+    setItem,
+  })
   return setItem
 }
 
@@ -29,8 +50,24 @@ export function stubStorageSetItem(storeName: ReachableStore): Mock {
  * weaken the assertion rather than investigate it. Naming the key and value lets that call be
  * made in one read: a language code is obviously benign, a Steuer-ID-shaped value is obviously
  * not (#323, Musti's steer #1).
+ *
+ * Checks the guard is actually wired *before* trusting its call count (#329, Musti's finding 1 —
+ * #323's own defect, one level up). `setItem.mock.calls.length === 0` is equally consistent with
+ * "nothing was written" and with "the stub was never installed, was installed on the wrong
+ * global, or was clobbered by a later `beforeEach`" — a disconnected instrument reads exactly
+ * like a clean one. Comparing `window[storeName].setItem` against the exact `Mock` the caller is
+ * holding proves the global in front of the test right now is the same object being asserted on;
+ * anything else means this assertion cannot observe a write at all and must not be allowed to
+ * report success.
  */
 export function assertNoStorageWrites(storeName: ReachableStore, setItem: Mock): void {
+  if (window[storeName].setItem !== setItem) {
+    throw new Error(
+      `${storeName} guard is not installed — call stubStorageSetItem('${storeName}') in beforeEach ` +
+        'before asserting with it. Without that, this assertion cannot observe a write and would ' +
+        'pass regardless of what was written.',
+    )
+  }
   if (setItem.mock.calls.length === 0) return
   const written = setItem.mock.calls.map(([key, value]) => `${String(key)}=${String(value)}`).join(', ')
   throw new Error(

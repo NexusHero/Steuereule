@@ -76,7 +76,16 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       include: ['src/**/*.{ts,tsx}'],
-      exclude: ['src/**/*.test.tsx', 'src/test-setup.ts', 'src/i18n/**'],
+      // Derived from the house naming convention (Musti's #329 finding 3, and its correction on
+      // #330 confirming `test-`-prefixed modules in `src` are the established pattern), not
+      // hand-enumerated file-by-file: every test-only module in this tree is either
+      // `src/test-*.ts(x)` (test-setup.ts, test-msw-server.ts, test-storage-guard.ts, …) or lives
+      // under `src/test-stubs/**`. A hand-maintained per-file list is exactly the shape that drifted
+      // here (and in #325, #242) — it silently stopped matching new test infrastructure the moment
+      // someone added a file and didn't also remember to update this array. The glob below matches
+      // by the convention new files already have to follow, so a future `src/test-whatever.ts` is
+      // excluded automatically instead of requiring a second edit here.
+      exclude: ['src/**/*.test.tsx', 'src/test-*.ts', 'src/test-stubs/**', 'src/i18n/**'],
       thresholds: { statements: 90, branches: 90, functions: 90, lines: 90 },
     },
   },
