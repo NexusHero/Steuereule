@@ -37,8 +37,32 @@
 // Exits non-zero on the first failed assertion — merge gate, not a report.
 
 import { chromium } from 'playwright-core'
+import { makeSql } from '../harness/stack.mjs'
+import { readBucketByExactKey, waitForBucketHeadroom } from '../harness/rate-limit.mjs'
 
 const WEB_ORIGIN = requireEnv('WEB_ORIGIN')
+// #336 CI investigation (Salih) found the DOWNSTREAM half of this bucket's timing edge —
+// banner-ds-qa.mjs unpaced, 429ing after this script's own faster CockpitScreen retry timing
+// (below) shrank the gap between the two scripts' calls (fixed in 4b92346). This script is the
+// UPSTREAM half of the same bucket and was never itself paced: `measureRegistrierungSuccess`'s
+// loop below issues exactly 3 `/sign-up/email` calls (one per breakpoint). NOT hypothetical —
+// confirmed directly against the real stack, twice, at this head: one real run landed the three
+// calls ~9s apart (no internal collision, but no margin left either); a second real run, with the
+// earlier CockpitScreen phase completing faster, needed this very pacer to wait 1.1s before the
+// bp=s call and ~10.2s/10.1s before the bp=m/bp=l calls — i.e., without it, this script's OWN
+// loop would have 429'd on its own third call, not just handed banner-ds-qa.mjs a hot bucket.
+// This is the same "stayed slow enough, by luck, not by design" posture `visibility-refetch.mjs`'s
+// own header names as what broke once already (#336's banner-ds-qa.mjs incident) — this script's
+// own CockpitScreen LoadError/Empty flows share the exact query-retry defaults (#306/#307) that
+// caused that earlier compression, so its own internal timing moves with the same lever. Paced
+// here the same way as every other caller of this bucket in the job, rather than left as the one
+// remaining unpaced one (`DATABASE_URL` is already present in `cross-origin-smoke`'s job env —
+// every other step in this job already reads it; this one now does too).
+const sql = makeSql(requireEnv('DATABASE_URL'))
+const AUTH_BUCKET = { windowMs: 10_000, max: 3 } // better-auth's own built-in rule
+function waitForRateLimit(bucket, config, label) {
+  return waitForBucketHeadroom(bucket, config, label, 'breakpoint-layout')
+}
 
 // Breakpoint token values (must match @steuereule/tokens dist/theme.ts)
 const BP = { s: 375, m: 768, l: 1280 }
@@ -321,6 +345,7 @@ async function measureRegistrierungSuccess(browser, width, label) {
     const email = `kaan-177-e2e-${label}-${Date.now()}@example.com`
     await page.getByPlaceholder(COPY.registrierungEmailPlaceholder).fill(email)
     await page.getByPlaceholder(COPY.registrierungPasswordPlaceholder).fill('a-fine-strong-password-1')
+    await waitForRateLimit(readBucketByExactKey(sql, 'no-trusted-ip|/sign-up/email'), AUTH_BUCKET, 'sign-up/email')
     await page.getByRole('button', { name: COPY.registrierungSubmit }).click()
     const cta = page.getByRole('button', { name: COPY.registrierungSuccessCta })
     // Pins RegistrierungScreen:115 — its own `width: '100%'` override is now removed

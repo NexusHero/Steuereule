@@ -659,10 +659,16 @@ jobs:
         run: node e2e/cross-origin/run.mjs
       - name: Responsive breakpoint layout gate (ADR-0014) — real browser, s/m/l assertions
         # Shares this job's already-running API + statically-served web bundle (see the
-        # job header comment above for why this rides here rather than its own job). Only
-        # needs WEB_ORIGIN — the script drives the app through the browser itself (a real
-        # guest sign-up + onboarding, a real account sign-up), it never calls the API
-        # directly, so API_ORIGIN is not passed.
+        # job header comment above for why this rides here rather than its own job).
+        # Drives the app through the browser itself (a real guest sign-up + onboarding, a
+        # real account sign-up) rather than calling the API directly, so API_ORIGIN is not
+        # passed. DATABASE_URL IS read directly as of the #336 CI investigation (Salih) —
+        # this script now paces its own 3 RegistrierungScreen sign-ups against the shared
+        # no-trusted-ip sign-up/sign-in bucket (`../harness/rate-limit.mjs`, the same
+        # discipline `banner-ds-qa.mjs`/`visibility-refetch.mjs` below already follow),
+        # rather than relying on the upstream cross-origin-smoke step's own single sign-up
+        # clearing the window before this step's first call — see this file's own header.
+        # DATABASE_URL is already set at this job's env level above, read-only here.
         run: node e2e/responsive/breakpoint-layout.mjs
       - name: Banner DS-QA gate (#223) — verify-banner colour/token fidelity, s/m/l, both screens
         # Only needs WEB_ORIGIN — both screens' unverified banner is reached purely by driving
