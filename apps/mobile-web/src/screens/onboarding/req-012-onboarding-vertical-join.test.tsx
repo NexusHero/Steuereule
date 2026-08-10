@@ -20,7 +20,7 @@
 // working Expo web dev server, and a live run additionally needs CORS (#57, owner Robin),
 // which isn't in this diff. That live run is still open — tracked as follow-up, not
 // silently declared "done" here.
-import { describe, it, expect, vi, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@steuereule/ui'
@@ -29,6 +29,7 @@ import { http, HttpResponse } from 'msw'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { OnboardingScreen } from '../OnboardingScreen'
 import { server } from '../../test-msw-server'
+import { stubStorageSetItem, assertNoStorageWrites } from '../../test-storage-guard'
 
 function renderOnboarding(opts: { lng?: 'de' | 'en'; onDone?: () => void } = {}) {
   const i18n = createAppI18n(opts.lng ?? 'de')
@@ -182,11 +183,24 @@ describe('REQ-012 — Onboarding vertical-join (ATDD acceptance, steuereule#53)'
   })
 
   describe('REQ-012: no client-side persistence of the Steuer-ID (ADR-0008)', () => {
-    const setItemSpy = vi.spyOn(window.localStorage, 'setItem')
+    // NOT `vi.spyOn(window.localStorage, 'setItem')` — see test-storage-guard.ts's doc comment
+    // and #323: jsdom's `Storage` Proxy silently defeats a spy installed that way, so the old
+    // assertion here passed regardless of what the screen wrote. The comment above this describe
+    // block (and this file's header) names three stores — localStorage, AsyncStorage, any
+    // client-side store — but this suite asserts only the ones genuinely reachable in the web
+    // build: `sessionStorage` is asserted alongside `localStorage` because jsdom exposes both as
+    // regular globals here; `AsyncStorage` is not, because this app has no
+    // `@react-native-async-storage/async-storage` dependency at all — stubbing it would be a
+    // vacuous control on a store nothing here can reach, the exact bug this ticket fixes.
+    let localSetItem: ReturnType<typeof vi.fn>
+    let sessionSetItem: ReturnType<typeof vi.fn>
+    beforeEach(() => {
+      localSetItem = stubStorageSetItem('localStorage')
+      sessionSetItem = stubStorageSetItem('sessionStorage')
+    })
+    afterEach(() => vi.unstubAllGlobals())
 
-    afterEach(() => setItemSpy.mockClear())
-
-    it('never writes to localStorage at any point across the full prefill -> edit -> save round-trip', async () => {
+    it('never writes to localStorage or sessionStorage at any point across the full prefill -> edit -> save round-trip', async () => {
       server.use(
         http.get('*/v1/profile', () =>
           HttpResponse.json({ firstName: 'Anna', lastName: 'Beispiel', steuerId: '02476291358', steuernummer: null }, { status: 200 }),
@@ -209,7 +223,8 @@ describe('REQ-012 — Onboarding vertical-join (ATDD acceptance, steuereule#53)'
 
       await waitFor(() => expect(onDone).toHaveBeenCalledOnce())
 
-      expect(setItemSpy).not.toHaveBeenCalled()
+      assertNoStorageWrites('localStorage', localSetItem)
+      assertNoStorageWrites('sessionStorage', sessionSetItem)
     })
   })
 

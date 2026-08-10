@@ -1,7 +1,7 @@
 // REQ-013 — Profil screen (steuereule#95). Tests-first: this file is written before
 // ProfilScreen.tsx exists, mirroring the pattern OnboardingScreen.test.tsx already
 // established for the same live GET/PUT /v1/profile contract.
-import { describe, it, expect, vi, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@steuereule/ui'
@@ -13,6 +13,7 @@ import { createAppAuthClient } from '../auth/auth-client'
 import { AuthClientProvider } from '../auth/AuthClientProvider'
 import { ProfilScreen } from './ProfilScreen'
 import { server, EMPTY_PROFILE_RESPONSE } from '../test-msw-server'
+import { stubStorageSetItem, assertNoStorageWrites } from '../test-storage-guard'
 
 const BASE_URL = 'http://localhost:3000'
 
@@ -214,10 +215,23 @@ describe('ProfilScreen', () => {
   })
 
   describe('no client-side persistence of the Steuer-ID (ADR-0008)', () => {
-    const setItemSpy = vi.spyOn(window.localStorage, 'setItem')
-    afterEach(() => setItemSpy.mockClear())
+    // NOT `vi.spyOn(window.localStorage, 'setItem')` — see test-storage-guard.ts's doc comment
+    // and #323: jsdom's `Storage` Proxy silently defeats a spy installed that way, so the old
+    // assertion here passed regardless of what the screen wrote. `sessionStorage` is asserted
+    // alongside `localStorage` because both are genuinely reachable in this web build (jsdom
+    // exposes both as regular globals). `AsyncStorage` is not asserted: this app has no
+    // `@react-native-async-storage/async-storage` dependency at all, so stubbing it would be a
+    // vacuous control on a store nothing here can reach — the exact bug this ticket fixes, one
+    // level up.
+    let localSetItem: ReturnType<typeof vi.fn>
+    let sessionSetItem: ReturnType<typeof vi.fn>
+    beforeEach(() => {
+      localSetItem = stubStorageSetItem('localStorage')
+      sessionSetItem = stubStorageSetItem('sessionStorage')
+    })
+    afterEach(() => vi.unstubAllGlobals())
 
-    it('never writes to localStorage across the full view -> edit -> save round-trip', async () => {
+    it('never writes to localStorage or sessionStorage across the full view -> edit -> save round-trip', async () => {
       mockSavedProfile()
       server.use(
         http.put('*/v1/profile', async ({ request }) => {
@@ -232,7 +246,8 @@ describe('ProfilScreen', () => {
       fireEvent.click(screen.getByText('Speichern'))
       await screen.findByText('Anna Neu')
 
-      expect(setItemSpy).not.toHaveBeenCalled()
+      assertNoStorageWrites('localStorage', localSetItem)
+      assertNoStorageWrites('sessionStorage', sessionSetItem)
     })
   })
 
