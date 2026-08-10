@@ -108,19 +108,26 @@ export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true }
   // AC-A, so this must never go true on a real *answer* (wrong password, an expired/denied code,
   // a 429) — only on a genuine "nothing answered" failure.
   const [formTransportError, setFormTransportError] = useState(false)
-  // #336 review, F1 — established by OUR OWN submit failing to reach the server, and by nothing
-  // else. `qrUnreachable || formTransportError` made one surface speak for the whole app: with
-  // only `/v1/device/code` down, this screen rendered "Unsere Server antworten nicht" directly
-  // above "E-Mail oder Passwort stimmen nicht." — a claim refuted three lines below it by a
-  // message that is only knowable because a server answered.
+  // Per-surface transport reads. Each says only what its own request established.
+  const qrUnreachable = qrState.kind === 'error' && qrState.reason === 'unreachable'
+  const capabilitiesUnreachable = googleAvailable === 'unreachable'
+
+  // #336 review, F1 then F10 — what may claim a SCREEN-WIDE cause, arrived at in two corrections.
   //
-  // The banner's wording cannot be reused for a QR-only outage (resources.ts records it as
-  // "generalised beyond 'no QR code' since this banner now also covers the login form"), and it
-  // does not need to be: the QR column already owns honest copy for its own failure
-  // (`login.qr.error` + the retry-status line), which is what it now falls through to. Suhay's
-  // ruling on this was "no new string" — the existing one claims exactly what the mint
-  // established and nothing more.
-  const apiUnreachable = formTransportError
+  // F1: `qrUnreachable || formTransportError` let one surface speak for the whole app. With only
+  // `/v1/device/code` down, the screen rendered "Unsere Server antworten nicht" directly above
+  // "E-Mail oder Passwort stimmen nicht." — refuted three lines below by a message that is only
+  // knowable because a server answered.
+  //
+  // F10: `formTransportError` alone then separated the wrong things. It distinguished a QR-only
+  // failure from THE USER HAVING SUBMITTED, not from a genuine outage — so with the whole API
+  // aborted and nothing submitted, the screen said nothing at all. AC-A's Given says
+  // "(if submitted)" precisely because the sign-in may not have happened.
+  //
+  // Sufficiency of evidence is the line, and it always was: two independent surfaces failing at
+  // transport is honest evidence of a screen-wide outage; one is not.
+  const apiUnreachable = formTransportError || (qrUnreachable && capabilitiesUnreachable)
+
   // #336 review, F8 — the second job `apiUnreachable` used to carry, which F1 killed by accident
   // along with the first. This one CLAIMS NOTHING about the API: it only answers "has some
   // surface established a real transport failure, so a slot that is silent-because-still-probing
@@ -128,10 +135,8 @@ export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true }
   //
   // The distinction is the whole of #283 §3(a): a probe that cannot answer says so rather than
   // disappearing, because "fixing one and leaving the other silently disappearing is worse than
-  // fixing neither". With this folded into `apiUnreachable`, F1's narrowing made the Google slot
-  // vanish without trace for an unsubmitted user with all three surfaces down.
-  const qrUnreachable = qrState.kind === 'error' && qrState.reason === 'unreachable'
-  const anySurfaceUnreachable = qrUnreachable || formTransportError
+  // fixing neither".
+  const anySurfaceUnreachable = qrUnreachable || capabilitiesUnreachable || formTransportError
   // Musti's #298 review, F2 — the banner's "we're automatically retrying" sentence is only true
   // while something is actually scheduled to retry. At `bp === 's'` (or embedded usage) the QR
   // column never even starts (`deviceQrEnabled` is false), so `autoRetryStatus` stays `null`

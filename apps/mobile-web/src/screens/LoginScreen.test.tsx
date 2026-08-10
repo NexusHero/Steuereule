@@ -297,7 +297,28 @@ describe('LoginScreen', () => {
 
       // The probe cannot answer, and says so rather than disappearing.
       expect(await screen.findByText('Wir können gerade nicht prüfen, ob Google verfügbar ist.')).toBeTruthy()
-      // And still no screen-wide claim, because nothing the user did has established one.
+
+      // #336 review, F10 — and the banner IS shown, without a submit. Two independent surfaces
+      // failed at transport, which is sufficient evidence of a screen-wide outage; requiring the
+      // user to submit first was F10's defect, caught by `return-visit.mjs` Row B against a real
+      // browser after five unit rounds missed it. AC-A's "(if submitted)" exists precisely
+      // because the sign-in may not have happened.
+      expect(await screen.findByText('Gerade nicht erreichbar — das liegt an uns.')).toBeTruthy()
+    })
+
+    // The other half of F10's partition, and the one F1 was right about: a single surface down
+    // is NOT sufficient. Without this, the fix for F10 would simply reinstate F1's defect.
+    it('makes no screen-wide claim when only the QR mint failed and the probe answered (#336 F1 must not regress)', async () => {
+      setViewportWidth(1280)
+      server.use(
+        http.post(`${BASE_URL}/v1/device/code`, () => HttpResponse.error()),
+        http.get(`${BASE_URL}/v1/auth/capabilities`, () => HttpResponse.json({ socialProviders: ['google'] }, { status: 200 })),
+      )
+      renderLogin()
+
+      // The QR column speaks for itself…
+      expect(await screen.findByText('Code konnte nicht erzeugt werden.')).toBeTruthy()
+      // …and the screen claims nothing, because the capabilities probe answered.
       expect(screen.queryByText('Gerade nicht erreichbar — das liegt an uns.')).toBeNull()
       expect(screen.queryByText(/Unsere Server antworten nicht/)).toBeNull()
     })
