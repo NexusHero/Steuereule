@@ -49,8 +49,23 @@ export function useDeviceSessions() {
         throw new RequestFailedError('listSessions did not complete', classifyThrown(thrown))
       })
       const { data, error } = result
-      if (error || !data) {
-        throw new RequestFailedError('listSessions failed', classifyByStatus(error?.status))
+      // Two different states, deliberately not collapsed (#336 review, F2). `error || !data`
+      // fed `classifyByStatus(undefined)` for the no-data case, which returns 'unreachable' by
+      // its own documented rule — so a 200 carrying a null body blamed the user's connection.
+      // That is this ticket's exact defect, reproduced inside its own fix.
+      if (error) {
+        throw new RequestFailedError('listSessions failed', classifyByStatus(error.status))
+      }
+      // `Array.isArray`, not `!data`, and the difference is measured rather than defensive.
+      // A 200 carrying `text/html` (captive portal, proxy interception page) does NOT arrive as
+      // `{ data: null }` and does not throw a parse error — better-auth hands back
+      // `data: '<html>…</html>'`, a truthy string, with `error: null`. `!data` is false, so the
+      // old shape fell through to `data.map(...)` and threw a raw `TypeError` from inside the
+      // query function. The screen still rendered the honest copy, but only because `reasonOf`
+      // defaults an unclassified error to 'unknown' — by accident, not by decision. Something
+      // answered, we cannot use it, and we cannot name why: that is 'unknown', said on purpose.
+      if (!Array.isArray(data)) {
+        throw new RequestFailedError('listSessions returned an unusable body', 'unknown')
       }
       return data.map((session) => ({
         token: session.token,
