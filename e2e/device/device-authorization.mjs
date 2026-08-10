@@ -87,7 +87,9 @@
 // #300 review, G1 — read #1 closely, its actual constraint is narrower than the old wording said):
 //   1. This script must run AFTER every gate in its CI job that consumes the device-code bucket
 //      WITHOUT pacing itself — concretely `breakpoint-layout.mjs` and `banner-ds-qa.mjs`, neither
-//      of which calls `waitForBucketHeadroom` at all. `LoginScreen`'s QR column mints a
+//      of which calls `waitForBucketHeadroom` against THAT bucket (`banner-ds-qa.mjs` now paces
+//      itself against the sign-up/sign-in bucket it spends — #336 CI investigation, Salih — but
+//      still mints a device code same as before, unpaced). `LoginScreen`'s QR column mints a
 //      `device-code:<ip>` row on every `m`/`l`-breakpoint mount (Decision 3a, no tap needed), so
 //      those two scripts have already spent some of that bucket before this one gets to run (see
 //      `e2e/harness/README.md`). This is NOT "must be the job's literal last step": a script that
