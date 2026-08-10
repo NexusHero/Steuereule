@@ -295,7 +295,15 @@ export const appResources = {
         devices: {
           heading: 'Angemeldete Geräte',
           loading: 'Geräte werden geladen …',
-          loadError: 'Deine Geräte konnten nicht geladen werden. Prüf die Verbindung und versuch es noch mal.',
+          // #306 — one string used to serve every failure, so it named a cause it had not
+          // established: it told the stakeholder to check a connection that had just rendered
+          // his name and Steuer-ID, when better-auth had in fact answered 403. Each variant may
+          // only assert what its `FailureReason` actually establishes; `unknown` asserts nothing.
+          loadError: {
+            unreachable: 'Deine Geräte konnten nicht geladen werden. Prüf die Verbindung und versuch es noch mal.',
+            refused: 'Deine Geräte konnten nicht geladen werden — der Server hat die Anfrage abgelehnt. An deiner Verbindung liegt es nicht.',
+            unknown: 'Deine Geräte konnten nicht geladen werden. Versuch es noch mal.',
+          },
           empty: 'Keine weiteren Geräte angemeldet.',
           browser: 'Browser',
           os: 'Betriebssystem',
@@ -719,7 +727,11 @@ export const appResources = {
         devices: {
           heading: 'Signed-in devices',
           loading: 'Loading devices …',
-          loadError: "Your devices couldn't be loaded. Check your connection and try again.",
+          loadError: {
+            unreachable: "Your devices couldn't be loaded. Check your connection and try again.",
+            refused: "Your devices couldn't be loaded — the server declined the request. It isn't your connection.",
+            unknown: "Your devices couldn't be loaded. Try again.",
+          },
           empty: 'No other devices signed in.',
           browser: 'Browser',
           os: 'Operating system',

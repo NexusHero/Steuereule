@@ -18,6 +18,7 @@ import { Button, Card, Chip, Feld, Pill, useTheme, type UiTheme } from '@steuere
 import { APP_NS } from '../../i18n/resources'
 import { parseUserAgent, formatRequestedAt } from './deviceContext'
 import { useDeviceSessions, type DeviceSessionRow } from './useDeviceSessions'
+import { reasonOf } from '../../net/failure-reason'
 
 export interface DeviceListSectionProps {
   /** Fires once the session the app is *currently* running under is the one just revoked —
@@ -68,7 +69,10 @@ export function DeviceListSection({ onCurrentSessionRevoked }: DeviceListSection
       <Card style={styles.card}>
         <Text style={styles.sectionTitle}>{tr('profil.devices.heading')}</Text>
         <Text style={styles.help} accessibilityRole="alert">
-          {tr('profil.devices.loadError')}
+          {/* #306 — the copy follows what the failure actually established, never a default
+              guess. `reasonOf` returns 'unknown' for anything that reached us without a reason,
+              and the 'unknown' string deliberately names no cause at all. */}
+          {tr(`profil.devices.loadError.${reasonOf(sessionsQuery.error)}`)}
         </Text>
       </Card>
     )
