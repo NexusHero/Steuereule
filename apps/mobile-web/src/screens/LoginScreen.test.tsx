@@ -300,7 +300,8 @@ describe('LoginScreen', () => {
 
       // #336 review, F10 — and the banner IS shown, without a submit. Two independent surfaces
       // failed at transport, which is sufficient evidence of a screen-wide outage; requiring the
-      // user to submit first was F10's defect, caught by `return-visit.mjs` Row B against a real
+      // user to submit first was F10's defect, caught by `return-visit.mjs` Row A's control
+      // branch (there is no "Row B" — Row B is the signed-in reload; the misnomer is mine) against a real
       // browser after five unit rounds missed it. AC-A's "(if submitted)" exists precisely
       // because the sign-in may not have happened.
       expect(await screen.findByText('Gerade nicht erreichbar — das liegt an uns.')).toBeTruthy()
