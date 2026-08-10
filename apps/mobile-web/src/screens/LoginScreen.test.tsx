@@ -306,6 +306,37 @@ describe('LoginScreen', () => {
       expect(await screen.findByText('Gerade nicht erreichbar — das liegt an uns.')).toBeTruthy()
     })
 
+    // #336 review, F11 — the discriminating scenario F10's rewrite displaced, restored.
+    //
+    // F8's test used to drive both surfaces down, which under the old predicate left the banner
+    // off while the two flags disagreed — that disagreement was what made it discriminate. Under
+    // F10's predicate the same scenario turns the banner ON, so `apiUnreachable` and
+    // `anySurfaceUnreachable` are both true and the test can no longer tell them apart. The
+    // rewrite was right; nobody asked which other property that scenario had been the only
+    // witness for.
+    //
+    // A capabilities answer of 500 is the case that separates all three concerns at once: the
+    // probe ANSWERED (so no screen-wide claim is licensed), it answered something unusable (so
+    // the slot must say it cannot tell rather than vanish), and the QR mint genuinely failed at
+    // transport (so the column speaks for itself).
+    it('treats a capabilities answer as an answer: slot speaks, no outage claimed (#336 F8/F11)', async () => {
+      setViewportWidth(1280)
+      server.use(
+        http.post(`${BASE_URL}/v1/device/code`, () => HttpResponse.error()),
+        http.get(`${BASE_URL}/v1/auth/capabilities`, () => HttpResponse.json({ m: 'boom' }, { status: 500 })),
+      )
+      renderLogin()
+
+      await screen.findByText('Code konnte nicht erzeugt werden.')
+      // F8 — the slot says it cannot tell rather than disappearing without trace.
+      expect(screen.getByText('Wir können gerade nicht prüfen, ob Google verfügbar ist.')).toBeTruthy()
+      // F1/F10 — a server that ANSWERED is not evidence of a screen-wide outage, whatever it
+      // answered. This is the assertion that keeps `capabilitiesUnreachable` meaning "nothing
+      // answered" rather than drifting to "did not answer usefully".
+      expect(screen.queryByText('Gerade nicht erreichbar — das liegt an uns.')).toBeNull()
+      expect(screen.queryByText(/Unsere Server antworten nicht/)).toBeNull()
+    })
+
     // The other half of F10's partition, and the one F1 was right about: a single surface down
     // is NOT sufficient. Without this, the fix for F10 would simply reinstate F1's defect.
     it('makes no screen-wide claim when only the QR mint failed and the probe answered (#336 F1 must not regress)', async () => {
