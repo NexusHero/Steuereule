@@ -220,11 +220,15 @@ submit — which function a caller calls says where it stops, no parameter threa
   deliberately left out of the pass that introduces the module those steps would import —
   rewiring five working CI jobs and introducing the thing they'd import are two different amounts
   of blast radius, and mixing them would make a revert of either one harder than it needs to be.
-- `visibility-refetch.mjs`'s own `sql()` and `banner-ds-qa.mjs`'s own `guardAgainst429` are
-  **not** migrated to import the canonical versions here (the rate-limit helpers above ARE now
-  migrated, on both `device-authorization.mjs` and `session/return-visit.mjs` — see
-  `rate-limit.mjs`'s own section). Same reasoning as always for what's left: each is a small,
-  separate, easy-to-review diff once a script already needs to change for another reason. What
-  this note does **not** license, and never did (Musti's #300 review, G2): a **new** script
-  growing its own copy of something a shared module already provides — that is the moment to
-  import or extract, not the moment to note the duplication and move on.
+- `visibility-refetch.mjs`'s own `sql()` is **not** migrated to import the canonical version here
+  (the rate-limit helpers above ARE now migrated, on `device-authorization.mjs`,
+  `session/return-visit.mjs`, and — as of the #336 CI investigation, Salih —
+  `responsive/banner-ds-qa.mjs` too, see `rate-limit.mjs`'s own section). `banner-ds-qa.mjs`'s own
+  `guardAgainst429` closed the same way in that same pass: it needed to change anyway (to add the
+  rate-limit pacing that #336's investigation found missing), which is exactly the "small,
+  separate, easy-to-review diff once a script already needs to change for another reason" this
+  note describes — so its local copy was retired in favour of importing `browser.mjs`'s canonical
+  one rather than left as a second thing to fix later. What this note does **not** license, and
+  never did (Musti's #300 review, G2): a **new** script growing its own copy of something a shared
+  module already provides — that is the moment to import or extract, not the moment to note the
+  duplication and move on.

@@ -113,8 +113,11 @@
 // draft the way `device-authorization.mjs` once did). Runs as the job's LAST step, after
 // `device-authorization.mjs`. That ordering is NOT "device-authorization.mjs's own script header
 // requires strictly-last" — read closely (Musti's #300 review), its actual constraint is "after
-// every gate that consumes the device-code bucket WITHOUT pacing itself"
-// (`breakpoint-layout.mjs`, `banner-ds-qa.mjs` — neither calls `waitForBucketHeadroom` at all).
+// every gate that consumes the device-code bucket WITHOUT pacing itself" — `breakpoint-layout.mjs`
+// and `banner-ds-qa.mjs`, neither of which calls a device-code endpoint at all, so neither paces
+// against THAT bucket (`banner-ds-qa.mjs` now does call `waitForBucketHeadroom` — as of the #336
+// CI investigation, Salih — but only against the sign-up/sign-in bucket it actually spends; it
+// still mints no device code, so this ordering constraint is unchanged).
 // This file and `device-authorization.mjs` both self-pace via the same shared helper, so their
 // order relative to EACH OTHER doesn't matter for correctness — whichever runs second simply
 // waits out whatever bucket state the first left behind, exactly as designed. This file runs

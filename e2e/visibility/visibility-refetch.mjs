@@ -65,10 +65,15 @@
 // path is already at its cap, so this script's own sign-up/sign-in calls behave like a
 // well-behaved rate-limited client rather than relying on lucky timing against whatever ran
 // immediately before it in the job — a claim `assertRequestCount` below now actually checks,
-// rather than merely intends. `banner-ds-qa.mjs` does not do the same — it has no DB access by
-// design (Musti's #223 ruling: the DS check never touches Postgres) — so it relies on its own
-// reduced call count plus a fail-fast 429 guard instead; this script already needs DATABASE_URL
-// for the DB flip, and runs last in the job (the tightest fit), so it carries the active pacing.
+// rather than merely intends. `banner-ds-qa.mjs` now paces itself the same way (#336 CI
+// investigation, Salih — see that file's own header for the full account): it used to rely on a
+// reduced call count plus a fail-fast 429 guard instead of reading the bucket (Musti's #223
+// ruling — the DS check never touches Postgres), and that held only as long as
+// `breakpoint-layout.mjs`'s own CockpitScreen flows stayed slow enough to leave the bucket a
+// >10s gap before `banner-ds-qa.mjs`'s turn. #336's faster query-retry defaults shrank that gap
+// below 10s and reproduced the 429 twice in CI; `banner-ds-qa.mjs` now imports the same
+// `../harness/rate-limit.mjs` pacer this file does and reads `DATABASE_URL` for it, read-only,
+// same as here.
 //
 // WHAT THE PACER DOES NOT COVER (Musti's #223 review, F8). `waitForRateLimitHeadroom` absorbs a
 // regression at or below the cap: if a bug made RegistrierungScreen fire three sign-ups on one
