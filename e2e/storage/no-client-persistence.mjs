@@ -133,7 +133,13 @@ function findWritesSinceReference(dump, reference, flowLabel) {
         // Defensive, not load-bearing: `before` is always `baseline` here (or `EMPTY_DUMP` for the
         // baseline call itself), and `baseline` is asserted against `EMPTY_DUMP` above — so a key
         // can only land in this branch on a run whose baseline check has already failed. It cannot
-        // by itself turn a green run red; it only sharpens the finding on a run that already is
+        // by itself turn a green run red. What it's worth keeping FOR: on that already-red run, a
+        // baseline-present key that keeps changing (e.g. `probe=1` at baseline, `probe=2` by the
+        // Profil checkpoint) is a real, distinct defect signal — a CONTINUOUS write through the
+        // flow, not the one-time import-time write the baseline hit alone would suggest. Drop this
+        // branch and that later mutation reports nothing at all (no arm matches a same-key,
+        // different-value pair once `key in before` is already true) — the reader sees one hit and
+        // concludes the wrong shape of bug. This branch is the only thing that distinguishes them
         // (#331 review, F9).
         hits.push({ flow: flowLabel, store: storeName, key, value, reason: `value changed (was "${before[key]}")` })
       }
