@@ -114,6 +114,46 @@ jobs:
             echo "::error::apps/api/openapi.json is stale — run 'pnpm --filter @steuereule/api openapi:spec' and commit the result."
             exit 1
           }
+      # Freshness gate (#242): the checked-in `packages/api-client/src/generated/*` is
+      # orval output generated FROM the openapi.json the step above just confirmed is
+      # current — nothing previously asserted the client still matched it. #324 merged
+      # two new endpoints and their openapi.json entries while the generated client kept
+      # its old contents (zero occurrences of `interview` anywhere under `src/generated/`)
+      # and typecheck, lint, all six suites and all nine CI jobs stayed green throughout;
+      # the divergence surfaced only because a later task needed those hooks and someone
+      # grepped for them.
+      #
+      # Runs `pnpm --filter @steuereule/api-client run generate` directly against the
+      # working copy (same one-line shape as the openapi.json gate immediately above,
+      # not a separate temp checkout) — this job's checkout is itself the disposable
+      # copy, so regenerating in place and diffing with git is exactly "regenerate and
+      # diff against the committed output", nothing survives past this job.
+      #
+      # Diff and typecheck are ONE gate here, not two (Musti's #242 ruling, folded into
+      # the ticket's own AC by Suhay's DoR comment): a detector that only diffs would
+      # have hidden a second, real defect the #324 episode also produced — regenerating
+      # by hand found that `StepDto.id` (this API's first optional-but-not-nullable
+      # response property) trips orval's default faker mock into emitting
+      # `id: faker.helpers.arrayElement([value, undefined])`, which fails to typecheck
+      # under this repo's `exactOptionalPropertyTypes: true` (TS2375). The fix is
+      # `override.mock.required: true`, scoped to the `interview` project in
+      # `orval.config.ts` — configuration, not a hand-edit of generated output, and
+      # confirmed reproducible from that config alone (a clean regeneration against
+      # today's openapi.json produces zero diff and typechecks) before this gate was
+      # written, not assumed. A content diff alone would pass a client that does not
+      # compile; typechecking the freshly regenerated output is what actually proves the
+      # regeneration is usable, not merely identical-or-not to what's committed.
+      - name: API client freshness — regenerate, diff, and typecheck as one gate
+        run: |
+          pnpm --filter @steuereule/api-client run generate
+          git diff --exit-code -- packages/api-client/src/generated || {
+            echo "::error::packages/api-client/src/generated is stale — run 'pnpm --filter @steuereule/api openapi:spec' then 'pnpm --filter @steuereule/api-client generate' and commit the result."
+            exit 1
+          }
+          pnpm --filter @steuereule/api-client typecheck || {
+            echo "::error::The regenerated api-client no longer typechecks (exactOptionalPropertyTypes). See orval.config.ts's per-project 'override.mock' entries — a genuinely optional, non-nullable response property (e.g. StepDto.id, #242) needs 'mock.required: true' on that project or orval's default faker mock emits an explicit 'undefined' that TS2375 rejects."
+            exit 1
+          }
 
   # Real gate (#66, extended for Slice 2/ADR-0012): proves the DSGVO-critical
   # guarantees — REQ-003 field-encryption at rest, REQ-004 append-only audit log,
