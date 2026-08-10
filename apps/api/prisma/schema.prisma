@@ -1,5 +1,17 @@
 // Prisma schema for the Onboarding Profile (steuereule#29).
 // Managed EU Postgres, expand-only versioned migrations (ADR-047).
+//
+// !! The string `@encrypted` must NEVER appear in a `///` doc comment except as the
+// !! annotation itself (and likewise `@encryption:hash(...)` / `@encryption:cursor`).
+// !! prisma-field-encryption's own regex is unanchored and reads a field's ENTIRE
+// !! doc string — a comment that merely mentions `@encrypted` while explaining that a
+// !! field is NOT encrypted silently becomes the annotation and encrypts the column
+// !! (#325; verified in the installed prisma-field-encryption@1.6.0, dist/dmmf.js:78).
+// !! If you need to explain an encryption decision in prose, write a plain `//`
+// !! comment instead — Prisma's DMMF (and therefore this regex) never sees `//`.
+// !! `test/prisma-encrypted-fields.test.ts` asserts the actual encrypted/hashed field
+// !! set (derived from `Prisma.dmmf`, not from this comment text) against a checked-in
+// !! expected list — update that list in the same commit as any intentional change.
 
 generator client {
   provider = "prisma-client-js"
