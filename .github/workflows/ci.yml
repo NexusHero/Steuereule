@@ -143,9 +143,30 @@ jobs:
       # written, not assumed. A content diff alone would pass a client that does not
       # compile; typechecking the freshly regenerated output is what actually proves the
       # regeneration is usable, not merely identical-or-not to what's committed.
+      #
+      # `git add --intent-to-add` before the diff (Musti's #330 review, blocking finding
+      # r3747098040): `git diff --exit-code` only ever compares TRACKED paths, so a newly
+      # generated file that was never committed is invisible to it and the step exits 0 —
+      # measured: an untracked file dropped under this path leaves `git diff --exit-code`
+      # at 0 until `--intent-to-add` puts it in the index (then it correctly flips to 1).
+      # That is not a hypothetical gap: `orval.config.ts` is one project per OpenAPI tag
+      # with `mode: 'split'`, so a genuinely NEW tag produces four new files
+      # (`<tag>.{ts,schemas,faker,msw}.ts`), not a modification to an existing one — #324,
+      # this gate's own motivation above, was exactly that shape, and an untracked-blind
+      # diff would let it through green a second time. `--intent-to-add` stages the paths
+      # (empty blobs, no content) so `--exit-code` sees them without giving up either the
+      # exit-code short-circuit or the diff output naming the actual new/changed content on
+      # failure — this is the property that makes this shape equivalent to the sibling
+      # openapi.json gate above, not merely similar to it: that gate's target is a single
+      # file already tracked in the repo (regeneration can only ever modify it in place, so
+      # `git diff` alone already sees the whole file set), while this gate's target is a
+      # DIRECTORY that a `mode: 'split'` regeneration can add new members to — so this gate
+      # must compare the file SET, not just tracked-file content, and only `--intent-to-add`
+      # (or an equivalent `git status --porcelain`-based check) gives it that.
       - name: API client freshness — regenerate, diff, and typecheck as one gate
         run: |
           pnpm --filter @steuereule/api-client run generate
+          git add --intent-to-add -- packages/api-client/src/generated
           git diff --exit-code -- packages/api-client/src/generated || {
             echo "::error::packages/api-client/src/generated is stale — run 'pnpm --filter @steuereule/api openapi:spec' then 'pnpm --filter @steuereule/api-client generate' and commit the result."
             exit 1
