@@ -271,6 +271,15 @@ describe('LoginScreen', () => {
       // the QR column's unrelated failure.
       await screen.findByText('E-Mail oder Passwort stimmen nicht.')
       expect(onDone).not.toHaveBeenCalled()
+
+      // #336 review, F1 — the assertion this test was missing, and the reason the contradiction
+      // survived it. Nothing checked what the BANNER said, so the suite was blind to a screen
+      // claiming "Unsere Server antworten nicht" three lines above a message that is only
+      // knowable because a server answered.
+      expect(screen.queryByText('Gerade nicht erreichbar — das liegt an uns.')).toBeNull()
+      expect(screen.queryByText(/Unsere Server antworten nicht/)).toBeNull()
+      // The QR column still says its own honest piece — scoped to what its mint established.
+      expect(screen.getByText('Code konnte nicht erzeugt werden.')).toBeTruthy()
     })
 
     it('still shows the single consolidated banner when the form\'s own submit cannot reach the server (#298 must not regress)', async () => {
@@ -637,11 +646,24 @@ describe('LoginScreen', () => {
       expect(screen.queryByLabelText('QR-Code zum Anmelden mit dem Handy')).toBeNull()
     })
 
-    // #283 AC-A — a genuine transport failure on the mint is exactly the "unreachable" reason,
-    // which is also what drives the shared-outage banner: this column defers to it (its own
-    // prose stays just "retrying", not a repeated cause), but the manual way out stays right
-    // there regardless of the auto-retry running underneath it.
-    it('shows the shared-outage retry state on a genuine network failure, with a real way to try again (#283 AC-A)', async () => {
+    // #283 AC-A, as refined by #336's F1 and the stakeholder's ruling on it.
+    //
+    // This test used to assert the opposite of what it asserts now, and the change is deliberate
+    // rather than a fixture drifting to match code. It expected the shared banner ("Gerade nicht
+    // erreichbar — das liegt an uns." / "Unsere Server antworten nicht.") on a QR-only transport
+    // failure, and expected `login.qr.error` to be ABSENT because the column deferred to that
+    // banner.
+    //
+    // AC-A's "one cause, one message" is intact — what was wrong was the claim's *scope*. A
+    // failed mint establishes that the mint failed; it does not establish that our servers are
+    // down, and on `m`/`l` the login form is frequently working at the same moment (see the
+    // #308 partial-outage tests above, where the server answers a wrong password while this
+    // endpoint is dead). The banner's wording was generalised for the whole-outage case and
+    // cannot be stretched to cover this one.
+    //
+    // So the column stops deferring and owns its own honest copy — which already existed, which
+    // is why Suhay's ruling on the copy question was "no new string".
+    it('shows the QR column\'s own error state on a genuine mint failure, and no screen-wide outage claim (#283 AC-A, #336 F1)', async () => {
       let requests = 0
       server.use(
         http.post(`${BASE_URL}/v1/device/code`, () => {
@@ -654,15 +676,17 @@ describe('LoginScreen', () => {
 
       await screen.findByText('Wir versuchen es automatisch erneut …')
       expect(requests).toBe(1)
-      // The shared alert names the actual cause — the QR column itself deliberately doesn't
-      // repeat it.
-      expect(screen.getByText('Gerade nicht erreichbar — das liegt an uns.')).toBeTruthy()
-      expect(screen.queryByText('Code konnte nicht erzeugt werden.')).toBeNull()
+      // The column names what the mint established, and nothing wider.
+      expect(screen.getByText('Code konnte nicht erzeugt werden.')).toBeTruthy()
+      // And the screen makes no claim about the API as a whole, because nothing here
+      // established one — this is F1's defect, asserted so it cannot return.
+      expect(screen.queryByText('Gerade nicht erreichbar — das liegt an uns.')).toBeNull()
+      expect(screen.queryByText(/Unsere Server antworten nicht/)).toBeNull()
 
       fireEvent.click(screen.getByText('Erneut versuchen'))
       await screen.findByLabelText('QR-Code zum Anmelden mit dem Handy')
       expect(requests).toBe(2)
-      expect(screen.queryByText('Gerade nicht erreichbar — das liegt an uns.')).toBeNull()
+      expect(screen.queryByText('Code konnte nicht erzeugt werden.')).toBeNull()
     })
 
     // #283 AC-B — ADR-0024's own rate limit is an answer, not a failure: distinct copy, no
