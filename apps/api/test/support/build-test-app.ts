@@ -15,6 +15,7 @@ import { ACCOUNT_IDENTITY_REPOSITORY } from '../../src/account/account-identity.
 import { PDF_RENDERER } from '../../src/account/export/pdf-renderer.js'
 import { AUDIT_REPOSITORY } from '../../src/audit/audit.repository.js'
 import { validationExceptionFactory } from '../../src/common/validation-exception-factory.js'
+import { DATABASE_REACHABILITY_CHECK } from '../../src/health/health.service.js'
 import { ENCRYPTED_PRISMA } from '../../src/prisma/encrypted-prisma.provider.js'
 import { PrismaService } from '../../src/prisma/prisma.service.js'
 import { PROFILE_REPOSITORY } from '../../src/profile/profile.repository.js'
@@ -25,7 +26,11 @@ import { FakePdfRenderer } from '../fakes/fake-pdf-renderer.js'
 import { FakeProfileRepository } from '../fakes/fake-profile.repository.js'
 import { FakeTaxYearRepository } from '../fakes/fake-tax-year.repository.js'
 
-export async function buildTestApp(): Promise<{
+export async function buildTestApp(options?: {
+  /** Overrides the default always-succeeding DATABASE_REACHABILITY_CHECK stub — the one
+   * seam a caller needs to exercise `/v1/health/ready`'s failure branch (#279). */
+  databaseReachabilityCheck?: () => Promise<void>
+}): Promise<{
   app: NestFastifyApplication
   repository: FakeProfileRepository
   taxYearRepository: FakeTaxYearRepository
@@ -67,6 +72,12 @@ export async function buildTestApp(): Promise<{
   // every test using this harness, even ones with nothing to do with export/PDF. The
   // no-DB unit job (ADR-0004) must never need a live database *or* a live browser;
   // PlaywrightPdfRenderer gets its own dedicated test (pdf-renderer.playwright.test.ts).
+  //
+  // DATABASE_REACHABILITY_CHECK (#279) is overridden to an always-succeeding stub for
+  // the same reason: HealthModule's real provider is `assertDatabaseReachable`, which
+  // dials an actual Postgres client — nothing this no-DB harness's callers may assume.
+  // A test that wants the FAILURE branch of `/v1/health/ready` overrides this again,
+  // per-test, on top of this default (see health.controller.test.ts).
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(PROFILE_REPOSITORY)
     .useValue(repository)
@@ -82,6 +93,8 @@ export async function buildTestApp(): Promise<{
     .useValue({})
     .overrideProvider(ENCRYPTED_PRISMA)
     .useValue({})
+    .overrideProvider(DATABASE_REACHABILITY_CHECK)
+    .useValue(options?.databaseReachabilityCheck ?? (async () => {}))
     .compile()
 
   const app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter(), {
