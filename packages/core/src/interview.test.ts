@@ -188,6 +188,23 @@ describe('branchFor — Object.prototype keys are never "declared" (review F9, #
   })
 })
 
+describe('isValidAnswer — the QUESTIONS lookup must not treat an Object.prototype key as declared (review F11, #341)', () => {
+  // F9's exact mistake, thirty lines down, `===` instead of `!==`: `QUESTIONS` is a plain object
+  // literal too, so `QUESTIONS['constructor']` etc. resolve to an inherited `Object.prototype`
+  // member instead of `undefined` — the OLD `decl === undefined` guard never fired for these
+  // `step` values, so `isAccepted(decl.form, ...)` read `.kind` off `undefined` and threw instead
+  // of returning `false` for an unknown step. Unlike F9 this is on `isValidAnswer`'s READ-path
+  // guard (`interview-answer.repository.prisma.ts`'s integrity check has no reachability check in
+  // front of it), not only the write path's `nextStep`/`isReachable`.
+  it.each(['constructor', 'toString', '__proto__', 'valueOf', 'hasOwnProperty'])(
+    'step=%s (an Object.prototype key, not a declared QUESTIONS key) is rejected, not thrown',
+    (step) => {
+      expect(() => isValidAnswer(step as EntryStepId, GATE_ACKNOWLEDGED)).not.toThrow()
+      expect(isValidAnswer(step as EntryStepId, GATE_ACKNOWLEDGED)).toBe(false)
+    },
+  )
+})
+
 describe('isReachable — the server admission check (#318 P2)', () => {
   it('accepts the step the user is actually standing on', () => {
     expect(isReachable({}, 'job')).toBe(true)

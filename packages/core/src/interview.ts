@@ -651,7 +651,13 @@ function isAccepted(form: ValueForm, value: string): boolean {
  * that test go red — see the evidence block.
  */
 export function isValidAnswer(step: EntryStepId, value: string): boolean {
-  const decl = QUESTIONS[step]
+  // F11 fix (review of #341) — F9's exact mistake, thirty lines down: `QUESTIONS` is a plain
+  // object literal, so `QUESTIONS['constructor']` etc. resolve to an inherited `Object.prototype`
+  // member (never `undefined`) even though no such step is declared. `decl === undefined` below
+  // is *the* unknown-step guard and does not fire for those, so `isAccepted(decl.form, ...)`
+  // would read `.kind` off `undefined`. `Object.hasOwn` restricts lookup to an OWN key, same fix
+  // as `branchFor`.
+  const decl = Object.hasOwn(QUESTIONS, step) ? QUESTIONS[step] : undefined
   if (decl === undefined) return false
   return isAccepted(decl.form, value)
 }
