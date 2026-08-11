@@ -1,25 +1,120 @@
-// REQ-015 — the Minimal-Gate's question graph (product ADR-016, engineering ADR-0031 §1).
-//
-// This is the single source of "which screen comes next", imported by BOTH the web app and
-// the API (ADR-0033). The client renders from it without a round trip; the server validates
-// every incoming answer against it. A gate that only runs in the client would be exactly the
-// defect class ADR-0021 names — a mechanism that appears to control behaviour and does not.
+// REQ-015 / REQ-016 — the on-demand catalogue's entry layer (#318, #321; product ADR-016,
+// engineering ADR-0031/0033). Imported by BOTH the web app and the API (ADR-0033). The client
+// renders from it without a round trip; the server validates every incoming answer against it.
+// A gate that only runs in the client is exactly the defect class ADR-0021 names — a mechanism
+// that appears to control behaviour and does not.
 //
 // Pure, deterministic, dependency-free (ADR-0004). Identifiers and messages are English
-// (dev-process language); every customer-facing string lives in the i18n layer, not here.
-// The answer VALUES are German because they are the persisted domain vocabulary, byte-equal
-// to what product ADR-016/034 and the design-system reference define.
+// (dev-process language); every customer-facing string lives in the i18n layer, not here. The
+// answer VALUES are German because they are the persisted domain vocabulary, byte-equal to what
+// product ADR-016/031/034 and the design-system reference define.
+//
+// --------------------------------------------------------------------------------------------
+// #321 R1 — the catalogue seam (Musti's build plan, issue #321). Five rulings, D1-D5:
+//
+//   D1 — There is ONE walker over a declared `CatalogueEntry`, and the Minimal-Gate is entry
+//        one (`ENTRIES['minimal-gate']`). There is no "interview path" vs. "catalogue path" —
+//        this is what turns ADR-0031 §3 ("a catalogue entry is a named set of question ids, not
+//        a second code path") from a claim someone has to remember into a structural fact:
+//        Segment 2 (`ENTRIES['segment-2']`) is built through the exact same engine
+//        (`nextStepFor`/`isReachableFor`/`remainingStepsFor`).
+//
+//   D2 — A gate is declared as a FOLLOW-UP of the question that determines it, never as a bare
+//        position in an entry's own step list. `CatalogueEntry.steps` is typed
+//        `readonly EntryQuestionId[]` — a gate id literally does not fit there, and
+//        `buildStepIndex` below re-asserts the same rule at runtime (defense in depth against a
+//        cast bypassing the type). This is what makes ADR-0031 §4 (no gate fires later than the
+//        question that determines it) unrepresentable to violate, rather than a rule someone has
+//        to remember — the prototype breaks exactly this at `Interview.jsx:14,52`.
+//
+//   D3 — Entries partition the question-id space; the SERVER derives the owning entry from a
+//        bare `questionId` (`entryForStep`, via `STEP_INDEX`) rather than trusting a
+//        client-supplied scope — the same instinct ADR-0007 applies to identity.
+//        `buildStepIndex` throws if two entries ever claim the same step id.
+//
+//   D4 — Coupling (ADR-006, #321's `partner`) never enters this module. `isReachable`/
+//        `isReachableFor` and `remainingSteps`/`remainingStepsFor` replay one person's own
+//        stored rows only; nothing here reads a second user's answers, and nothing here needs
+//        to. See R5's own tests for the "feed a partner's rows into the replay" red path — the
+//        correct behaviour here is that this module has no surface for a second user's data at
+//        all.
+//
+//   D5 — `isValidAnswer` accepts a declared VALUE FORM per step: `enum` (the original,
+//        unchanged behaviour) or `integer` with an inclusive range. `weg` and `tage` are
+//        integer-typed; the column stays `String` (no migration — see schema.prisma).
+//
+// ADR-0021 amendment (Musti, forthcoming engineering ADR at R1's landing): this file relocates
+// the code #318's P1/P2 breaks were run against — `needsGewerbeGate`/`isTerminalGate` are gone,
+// replaced by the generic `walk`/`countRemaining` engine reading `QUESTIONS['job'].followUps`.
+// A proof is a statement about a CODE SHAPE, not a name; the old proof is void until re-run
+// against this shape. Both breaks were re-run for this change — see this PR's evidence block.
+//
+// TWO TYPE TIERS, deliberately, and this is the load-bearing design choice of this file:
+//
+//  - `QuestionId` / `GateId` / `StepId` / `Step` — the MINIMAL-GATE's own, UNCHANGED since #318
+//    (3 questions, 2 gates). `nextStep`, `remainingSteps`, `isReachable`, `isValidAnswer` and
+//    every Segment-1 constant (`JOB_VALUES`, `AUSLAND_VALUES`, `KINDER_VALUES`, `QUESTION_ORDER`,
+//    `GATE_ACKNOWLEDGED`) keep these exact pre-#321 names, signatures, VALUES and — this is the
+//    part that matters — RETURN/PARAMETER TYPES. They are now thin bindings onto the generic
+//    engine bound to `ENTRIES['minimal-gate']`, re-expressed but behaviourally identical.
+//  - `EntryQuestionId` / `EntryGateId` / `EntryStepId` / `EntryStep` — every step declared
+//    ANYWHERE in the catalogue (Minimal-Gate + Segment 2 today). The generic engine
+//    (`CatalogueEntry`, `QUESTIONS`, `nextStepFor`, `isReachableFor`, `remainingStepsFor`,
+//    `buildStepIndex`, `entryForStep`) is expressed over THIS wider domain.
+//
+// This is not cosmetic. An earlier draft of this file widened `QuestionId`/`StepId` themselves
+// to cover Segment 2, and that broke two things at once: (1) it turned
+// `apps/mobile-web/src/screens/interview/InterviewScreen.tsx`'s exhaustive
+// `Record<QuestionId, ...>` into a compile error for six ids that screen doesn't render yet —
+// Kaan's K3, not R1's, to add; (2) worse, it would have widened `isReachable`'s `target`
+// parameter to accept a Segment-2 id THROUGH THE SEGMENT-1 ENDPOINT
+// (`apps/api/src/interview/interview.service.ts` casts `dto.questionId as StepId` before
+// calling it) — since `isReachable` derives its entry from the id, a client could then write
+// `partner` (always reachable — it is Segment 2's first step) via
+// `POST /v1/steuerjahre/:jahr/interview/antworten`, a live behaviour change to code R1 does not
+// touch and R2 has not reviewed yet. Keeping `StepId` narrow and bound to `minimal-gate` closes
+// that off: `isReachable`'s admission check for the Segment-1 route is byte-identical to #318.
+// The cross-entry derivation D3 asks for is real and tested (`entryForStep` + `isReachableFor`),
+// just under names R2 opts into deliberately rather than inheriting silently.
+// --------------------------------------------------------------------------------------------
 
 /** The three questions of the Minimal-Gate. Fixed at three by product ADR-016. */
-export type QuestionId = 'job' | 'ausland' | 'kinder'
+export type MinimalGateQuestionId = 'job' | 'ausland' | 'kinder'
 
-/** The two hard branches. Product ADR-016: "die einzigen harten Verzweigungen". */
-export type GateId = 'gewerbe' | 'ch-only'
+/** The two hard branches of the Minimal-Gate. Product ADR-016: "die einzigen harten Verzweigungen". */
+export type MinimalGateGateId = 'gewerbe' | 'ch-only'
 
 /**
- * Anything that can carry a stored answer. Gates are included deliberately: reaching a gate
- * and choosing to carry on is a fact about the user's tax year, it is auditable, and storing
- * it is what lets `nextStep` move past a gate instead of returning it forever.
+ * Segment 2's six questions (ADR-0031 §2) plus its two follow-up-only branch questions
+ * (`kap-depot`, `vermietung-art`) — reachable only via `einkuenfte`'s `followUps`, never listed
+ * in `ENTRIES['segment-2'].steps` directly (D2).
+ */
+export type SegmentTwoQuestionId =
+  | 'partner'
+  | 'homeoffice'
+  | 'weg'
+  | 'tage'
+  | 'fortbildung'
+  | 'einkuenfte'
+  | 'kap-depot'
+  | 'vermietung-art'
+
+/** Segment 2's two honesty gates (product ADR-032/033) — both passable, neither terminal. */
+export type SegmentTwoGateId = 'krypto-gate' | 'vermietung-gate'
+
+// ---- Back-compat tier (#318, UNCHANGED) -----------------------------------------------------
+
+/** The Minimal-Gate's own question ids. Byte-identical to #318 — see the header comment. */
+export type QuestionId = MinimalGateQuestionId
+
+/** The Minimal-Gate's own gate ids. Byte-identical to #318. */
+export type GateId = MinimalGateGateId
+
+/**
+ * Anything that can carry a stored Minimal-Gate answer. Gates are included deliberately:
+ * reaching a gate and choosing to carry on is a fact about the user's tax year, it is
+ * auditable, and storing it is what lets `nextStep` move past a gate instead of returning it
+ * forever.
  */
 export type StepId = QuestionId | GateId
 
@@ -28,8 +123,28 @@ export type Step =
   | { readonly kind: 'gate'; readonly id: GateId }
   | { readonly kind: 'done' }
 
-/** Stored answers, keyed by step. Sparse — a missing key means "not answered yet". */
-export type Answers = Partial<Record<StepId, string>>
+// ---- Catalogue tier (#321, every entry) -----------------------------------------------------
+
+export type EntryQuestionId = MinimalGateQuestionId | SegmentTwoQuestionId
+export type EntryGateId = MinimalGateGateId | SegmentTwoGateId
+
+/** Any step declared in ANY entry — the generic engine's own domain (D1/D3). */
+export type EntryStepId = EntryQuestionId | EntryGateId
+
+export type EntryStep =
+  | { readonly kind: 'question'; readonly id: EntryQuestionId }
+  | { readonly kind: 'gate'; readonly id: EntryGateId }
+  | { readonly kind: 'done' }
+
+/**
+ * Stored answers, keyed by any step declared in any entry. Sparse — a missing key means "not
+ * answered yet". Deliberately the WIDE (`EntryStepId`) domain even though `nextStep`/
+ * `isReachable`/etc. only ever read the Minimal-Gate's own five keys out of it: a single
+ * `InterviewAnswer` row set is shared across every entry for the same (userId, steuerjahr) —
+ * see `schema.prisma`'s `InterviewAnswer` — so a real `answers` object legitimately carries
+ * Segment-2 keys too, and this type has to admit them to stay honest about that.
+ */
+export type Answers = Partial<Record<EntryStepId, string>>
 
 /** Accepted values for `job` (product ADR-016 + ADR-034: Rente is an option, not a branch). */
 export const JOB_VALUES = ['Angestellt', 'Selbstständig', 'Beides', 'Rente'] as const
@@ -40,6 +155,27 @@ export const AUSLAND_VALUES = ['Ja, in die Schweiz', 'In ein anderes Land', 'Nei
 /** Accepted values for `kinder`. */
 export const KINDER_VALUES = ['Nein', '1 Kind', '2 oder mehr'] as const
 
+/** Accepted values for `partner` (product ADR-006 — the fact only; coupling/invitation live outside `core`, D4). */
+export const PARTNER_VALUES = ['Ja', 'Nein'] as const
+
+/** Accepted values for `homeoffice`, byte-equal to `Interview.jsx:9`'s `optionen`. */
+export const HOMEOFFICE_VALUES = ['Nie', '1–2 Tage pro Woche', 'Fast immer'] as const
+
+/** Accepted values for `fortbildung`. */
+export const FORTBILDUNG_VALUES = ['Ja', 'Nein'] as const
+
+/** Accepted values for `einkuenfte` (ADR-032/033 — the branch that opens `kap-depot`/`vermietung-art`). */
+export const EINKUENFTE_VALUES = ['Nein', 'Kapitalerträge', 'Vermietung', 'Beides'] as const
+
+/** Accepted values for `kap-depot` (ADR-032 — both broker kinds ship; crypto gates). */
+export const KAP_DEPOT_VALUES = ['Deutscher Broker', 'Ausländischer Broker', 'Krypto'] as const
+
+/** Accepted values for `vermietung-art` (ADR-033 — several objects ship; sale/furnished-short-term gates). */
+export const VERMIETUNG_ART_VALUES = ['Einfach', 'Mehrere', 'Verkauf oder möbliert'] as const
+
+/** The Minimal-Gate's questions, in the order product ADR-016 fixes them. Unchanged from #318. */
+export const QUESTION_ORDER: readonly MinimalGateQuestionId[] = ['job', 'ausland', 'kinder']
+
 /**
  * The single value a gate stores once the user has seen it and carries on. Gates offer no
  * choice in this slice: ADR-0032 keeps every "notify me" / "remember this" button out until
@@ -47,82 +183,283 @@ export const KINDER_VALUES = ['Nein', '1 Kind', '2 oder mehr'] as const
  */
 export const GATE_ACKNOWLEDGED = 'weiter'
 
-const QUESTION_VALUES: Readonly<Record<QuestionId, readonly string[]>> = {
-  job: JOB_VALUES,
-  ausland: AUSLAND_VALUES,
-  kinder: KINDER_VALUES,
-}
+// --------------------------------------------------------------------------------------------
+// The entry layer (D1-D5)
+// --------------------------------------------------------------------------------------------
 
-/** The questions, in the order product ADR-016 fixes them. */
-export const QUESTION_ORDER: readonly QuestionId[] = ['job', 'ausland', 'kinder']
+/** D5 — the two value forms a step's answer can be checked against. The column stays `String`. */
+export type ValueForm =
+  | { readonly kind: 'enum'; readonly values: readonly string[] }
+  | { readonly kind: 'integer'; readonly min: number; readonly max: number }
 
 /**
- * `job` answers that put the user behind the Gewerbe gate (product ADR-028). Mirrors the
- * design-system reference's own condition — everything except Angestellt and Rente.
+ * D2 — a follow-up is either a plain step id (reachable once its own answer is given, and
+ * passable once that answer is itself given) or a step marked `terminal`. A `terminal`
+ * follow-up is returned as the next step FOREVER once reached, regardless of whether it has
+ * itself been answered — this is what makes the Gewerbe gate a full stop for
+ * `job === 'Selbstständig'` (product ADR-028) while staying passable for `'Beides'`, without a
+ * second, hand-written "is this terminal" predicate outside the declaration.
  */
-function needsGewerbeGate(job: string): boolean {
-  return job !== 'Angestellt' && job !== 'Rente'
+export type FollowUpTarget = EntryStepId | { readonly step: EntryStepId; readonly terminal: true }
+
+export interface QuestionDeclaration {
+  readonly id: EntryStepId
+  readonly kind: 'question' | 'gate'
+  readonly form: ValueForm
+  /**
+   * D2 — keyed by THIS step's own answer value. A gate is declared here, under the question
+   * whose answer determines it, never as a member of an entry's own `steps` list.
+   */
+  readonly followUps?: Readonly<Record<string, readonly FollowUpTarget[]>>
 }
 
 /**
- * Behind the Gewerbe gate, "Selbstständig" is a full stop and "Beides" is not.
+ * The single registry of every declared step, across every entry. `Record<EntryStepId, ...>` is
+ * exhaustive by construction — TypeScript refuses to compile if an `EntryStepId` is ever added
+ * to the union above without a matching declaration here.
+ */
+export const QUESTIONS: Readonly<Record<EntryStepId, QuestionDeclaration>> = {
+  // ---- Minimal-Gate (segment 1, #318) ----------------------------------------------------
+  job: {
+    id: 'job',
+    kind: 'question',
+    form: { kind: 'enum', values: JOB_VALUES },
+    followUps: {
+      // Selbstständig is a full stop (product ADR-028) — the gate is `terminal`.
+      Selbstständig: [{ step: 'gewerbe', terminal: true }],
+      // Beides is explicitly passable — ADR-028's "collect the employee part".
+      Beides: ['gewerbe'],
+    },
+  },
+  ausland: {
+    id: 'ausland',
+    kind: 'question',
+    form: { kind: 'enum', values: AUSLAND_VALUES },
+    followUps: {
+      'In ein anderes Land': ['ch-only'],
+    },
+  },
+  kinder: { id: 'kinder', kind: 'question', form: { kind: 'enum', values: KINDER_VALUES } },
+  gewerbe: { id: 'gewerbe', kind: 'gate', form: { kind: 'enum', values: [GATE_ACKNOWLEDGED] } },
+  'ch-only': { id: 'ch-only', kind: 'gate', form: { kind: 'enum', values: [GATE_ACKNOWLEDGED] } },
+
+  // ---- Segment 2 (#321, ADR-0031 §2 — the catalogue's first entry) -----------------------
+  partner: { id: 'partner', kind: 'question', form: { kind: 'enum', values: PARTNER_VALUES } },
+  homeoffice: { id: 'homeoffice', kind: 'question', form: { kind: 'enum', values: HOMEOFFICE_VALUES } },
+  // Simple integer forms for now (D5). #337's exactness ruling (issue #321 discussion, 2026-08-11)
+  // will replace `tage`'s single row with the calculator's own multi-row shape (work-week
+  // pattern, vacation days, sick days, computed result, plus Bundesland/municipality/weekday
+  // pattern) once #337 exists — that is R4's declaration to make, not R1's; this entry keeps the
+  // base entry's step list and Q1/K3's "no screen-side change" claim true today.
+  weg: { id: 'weg', kind: 'question', form: { kind: 'integer', min: 0, max: 999 } },
+  tage: { id: 'tage', kind: 'question', form: { kind: 'integer', min: 0, max: 366 } },
+  fortbildung: { id: 'fortbildung', kind: 'question', form: { kind: 'enum', values: FORTBILDUNG_VALUES } },
+  einkuenfte: {
+    id: 'einkuenfte',
+    kind: 'question',
+    form: { kind: 'enum', values: EINKUENFTE_VALUES },
+    followUps: {
+      Kapitalerträge: ['kap-depot'],
+      Vermietung: ['vermietung-art'],
+      // Q2 (issue #321) — "Beides" opens BOTH branches, in this fixed order. The prototype
+      // (`Interview.jsx:48,50`) only ever routes "Beides" to the Vermietung branch and never to
+      // the KAP branch at all — not authoritative for this, same split as #318/ADR-0031.
+      Beides: ['kap-depot', 'vermietung-art'],
+    },
+  },
+  'kap-depot': {
+    id: 'kap-depot',
+    kind: 'question',
+    form: { kind: 'enum', values: KAP_DEPOT_VALUES },
+    followUps: {
+      // ADR-032 — crypto is not 1.0; everything else (DE or foreign broker) is.
+      Krypto: ['krypto-gate'],
+    },
+  },
+  'krypto-gate': { id: 'krypto-gate', kind: 'gate', form: { kind: 'enum', values: [GATE_ACKNOWLEDGED] } },
+  'vermietung-art': {
+    id: 'vermietung-art',
+    kind: 'question',
+    form: { kind: 'enum', values: VERMIETUNG_ART_VALUES },
+    followUps: {
+      // ADR-033 — sale / furnished-short-term stays out; several ordinary objects are in.
+      'Verkauf oder möbliert': ['vermietung-gate'],
+    },
+  },
+  'vermietung-gate': { id: 'vermietung-gate', kind: 'gate', form: { kind: 'enum', values: [GATE_ACKNOWLEDGED] } },
+}
+
+/** D1 — the two entries that exist today. `EntryId` grows as later Lebenslagen arrive (ADR-0031 §3). */
+export type EntryId = 'minimal-gate' | 'segment-2'
+
+export interface CatalogueEntry {
+  readonly id: EntryId
+  /**
+   * D2 — ORDERING ONLY, and only ever question ids: a gate id does not typecheck here, which
+   * is what makes "hang a gate at the end of an entry" (the prototype's `Interview.jsx:14,52`
+   * defect) unrepresentable rather than merely discouraged. `buildStepIndex` re-checks this at
+   * runtime for anything that reaches it via a type-system bypass (e.g. a test).
+   */
+  readonly steps: readonly EntryQuestionId[]
+}
+
+export const ENTRIES: Readonly<Record<EntryId, CatalogueEntry>> = {
+  'minimal-gate': { id: 'minimal-gate', steps: ['job', 'ausland', 'kinder'] },
+  'segment-2': { id: 'segment-2', steps: ['partner', 'homeoffice', 'weg', 'tage', 'fortbildung', 'einkuenfte'] },
+}
+
+function targetId(target: FollowUpTarget): EntryStepId {
+  return typeof target === 'string' ? target : target.step
+}
+
+function isTerminalTarget(target: FollowUpTarget): boolean {
+  return typeof target !== 'string' && target.terminal === true
+}
+
+/**
+ * D3 — builds the reverse index ("which entry owns this step id") that lets the SERVER derive
+ * the owning entry from a bare `questionId` instead of trusting a client-supplied scope. Walks
+ * every entry's declared `steps` AND every step transitively reachable through `followUps`, so
+ * a gate/branch question reachable only via a follow-up (e.g. `kap-depot`, `krypto-gate`) is
+ * indexed too, not only the entry's own top-level list.
  *
- * Product ADR-028 is explicit about both halves: EÜR/Anlage G/S/Umsatzsteuer stay out of 1.0,
- * AND "bei 'Beides' sammeln wir deinen Angestellten-Teil komplett ein". A purely self-employed
- * return is entirely the part we cannot do — collecting more of it would be the half return
- * that ADR-028 refuses to ship.
- */
-function isTerminalGate(answers: Answers): boolean {
-  return answers.job === 'Selbstständig'
-}
-
-/**
- * The next screen for these answers. Total and deterministic: same answers, same step.
+ * Generic over the entry-id type deliberately (`TEntryId extends string`, not the closed
+ * `EntryId` union) — so a TEST can call this directly with synthetic, entirely made-up entries
+ * to prove D3's partition rule and D2/§4's "no bare gate in `.steps`" rule, without touching
+ * `ENTRIES` or any other production declaration. `questions` defaults to the real `QUESTIONS`
+ * registry (every production caller gets this for free) but is overridable, so a test can also
+ * exercise "a followUp references a step with no declaration at all" — a typo in a `followUps`
+ * value — without needing an undeclared id to exist in the real, exhaustively-typed registry
+ * (which the `Record<EntryStepId, ...>` type makes impossible by construction).
  *
- * Order: job → [gewerbe] → ausland → [ch-only] → kinder → done.
+ * Throws on:
+ *  - two entries claiming the same step id (D3's partition rule);
+ *  - a step referenced anywhere (an entry's `steps`, or any `followUps` target) with no
+ *    matching declaration in `questions`;
+ *  - a step of kind `'gate'` appearing directly in an entry's own `steps` list (D2/ADR-0031 §4
+ *    — the runtime half of what `CatalogueEntry.steps`'s type already prevents at compile time).
  */
-export function nextStep(answers: Answers): Step {
-  if (answers.job === undefined) return { kind: 'question', id: 'job' }
+export function buildStepIndex<TEntryId extends string>(
+  entries: Readonly<Record<TEntryId, CatalogueEntry>>,
+  questions: Readonly<Partial<Record<EntryStepId, QuestionDeclaration>>> = QUESTIONS,
+): ReadonlyMap<EntryStepId, TEntryId> {
+  const index = new Map<EntryStepId, TEntryId>()
 
-  if (needsGewerbeGate(answers.job)) {
-    // A terminal gate is returned forever — there is deliberately no way past it.
-    if (isTerminalGate(answers)) return { kind: 'gate', id: 'gewerbe' }
-    if (answers.gewerbe === undefined) return { kind: 'gate', id: 'gewerbe' }
+  function claim(id: EntryStepId, entryId: TEntryId): void {
+    const owner = index.get(id)
+    if (owner !== undefined && owner !== entryId) {
+      throw new Error(
+        `catalogue seam (D3): "${id}" is claimed by both entry "${owner}" and entry "${entryId}" — ` +
+          'entries must partition the question-id space.',
+      )
+    }
+    index.set(id, entryId)
   }
 
-  if (answers.ausland === undefined) return { kind: 'question', id: 'ausland' }
+  function walkDeclared(ids: readonly FollowUpTarget[], entryId: TEntryId): void {
+    for (const target of ids) {
+      const id = targetId(target)
+      claim(id, entryId)
 
-  // The CH-only gate drops the foreign part and carries on with the rest of the tax year —
-  // "und dein restliches Steuerjahr sowieso" (product ADR-029, design-system reference).
-  if (answers.ausland === 'In ein anderes Land' && answers['ch-only'] === undefined) {
-    return { kind: 'gate', id: 'ch-only' }
+      const decl = questions[id]
+      if (decl === undefined) {
+        throw new Error(`catalogue seam: "${id}" is referenced by entry "${entryId}" but has no QUESTIONS declaration.`)
+      }
+      if (decl.followUps !== undefined) {
+        for (const branch of Object.values(decl.followUps)) {
+          walkDeclared(branch, entryId)
+        }
+      }
+    }
   }
 
-  if (answers.kinder === undefined) return { kind: 'question', id: 'kinder' }
+  for (const entryId of Object.keys(entries) as TEntryId[]) {
+    const entry = entries[entryId]
+    for (const id of entry.steps) {
+      const decl = questions[id]
+      if (decl === undefined) {
+        throw new Error(`catalogue seam: "${id}" is listed in entry "${entryId}".steps but has no QUESTIONS declaration.`)
+      }
+      if (decl.kind !== 'question') {
+        throw new Error(
+          `catalogue seam (ADR-0031 §4): "${id}" is a gate but appears directly in entry "${entryId}".steps — ` +
+            "a gate must only be reachable as a follow-up of the question that determines it, never as a bare " +
+            "position in an entry's own step list.",
+        )
+      }
+    }
+    walkDeclared(entry.steps, entryId)
+  }
 
+  return index
+}
+
+/** The real, production index — built (and therefore validated) once, at module load. */
+const STEP_INDEX: ReadonlyMap<EntryStepId, EntryId> = buildStepIndex(ENTRIES)
+
+/**
+ * D3 — which entry owns `step`, or `undefined` if it belongs to none. This is the primitive R2
+ * needs to admit a write for an arbitrary catalogue questionId (deriving the entry from the id
+ * rather than trusting a client-supplied scope) without reaching into `STEP_INDEX` directly.
+ */
+export function entryForStep(step: EntryStepId): EntryId | undefined {
+  return STEP_INDEX.get(step)
+}
+
+function stepFor(id: EntryStepId): EntryStep {
+  const decl = QUESTIONS[id]
+  // `decl.kind` is the only thing TS's structural narrowing here can't tie back to `id`'s own
+  // branch of the `EntryStepId` union — the two casts below are exactly as safe as `decl.kind`
+  // itself, which QUESTIONS[id] (D3's exhaustive Record) guarantees matches `id`'s real kind.
+  return decl.kind === 'gate' ? { kind: 'gate', id: id as EntryGateId } : { kind: 'question', id: id as EntryQuestionId }
+}
+
+/**
+ * D1 — the one walker. Total and deterministic: same `entry` + same `answers`, same `EntryStep`.
+ * Walks `ids` (an entry's `steps`, or a resolved `followUps` branch) left to right: the first
+ * step in the chain without a stored answer is the next step; a `terminal` follow-up is
+ * returned forever, regardless of its own stored answer (D2). Once a chain resolves fully
+ * (every step in it answered, and it has no dangling follow-up), the walk continues to the
+ * NEXT sibling in `ids` — which is how a gate slots in immediately after the question that
+ * determines it without disturbing the entry's own ordering.
+ */
+function walk(ids: readonly FollowUpTarget[], answers: Answers): EntryStep {
+  for (const target of ids) {
+    const id = targetId(target)
+    if (isTerminalTarget(target)) return stepFor(id)
+
+    const answer = answers[id]
+    if (answer === undefined) return stepFor(id)
+
+    const decl = QUESTIONS[id]
+    const branch = decl.followUps?.[answer] ?? []
+    const next = walk(branch, answers)
+    if (next.kind !== 'done') return next
+  }
   return { kind: 'done' }
 }
 
-/** The id of a step, or `undefined` for `done`. */
-function stepId(step: Step): StepId | undefined {
-  return step.kind === 'done' ? undefined : step.id
+/** The generic engine (D1) — the next screen for `entry` given `answers`. */
+export function nextStepFor(entry: CatalogueEntry, answers: Answers): EntryStep {
+  return walk(entry.steps, answers)
 }
 
 /**
- * Can `target` legitimately be written, given what is already answered?
+ * Can `target` legitimately be written within `entry`, given what is already answered?
  *
- * This is the server's admission check (#318's P2). It replays the graph from empty answers,
- * consuming only answers the path actually reaches — so an answer smuggled in for a step the
- * user could never have been shown is rejected, and a stored answer that is unreachable on
- * the current path is ignored rather than trusted.
+ * This is the server's admission check (#318's P2, re-expressed over entries for #321). It
+ * replays `entry`'s graph from empty answers, consuming only answers the path actually
+ * reaches — so an answer smuggled in for a step the user could never have been shown is
+ * rejected, and a stored answer that is unreachable on the current path is ignored rather than
+ * trusted.
  */
-export function isReachable(answers: Answers, target: StepId): boolean {
-  const seen = new Set<StepId>()
+export function isReachableFor(entry: CatalogueEntry, answers: Answers, target: EntryStepId): boolean {
+  const seen = new Set<EntryStepId>()
   let reached: Answers = {}
 
   for (;;) {
-    const step = nextStep(reached)
-    const id = stepId(step)
+    const step = nextStepFor(entry, reached)
+    const id = step.kind === 'done' ? undefined : step.id
     if (id === undefined) return false // reached `done` without ever offering `target`
     if (id === target) return true
 
@@ -137,26 +474,106 @@ export function isReachable(answers: Answers, target: StepId): boolean {
   }
 }
 
-/** Is `value` an accepted answer for `step`? Gates accept only the acknowledgement. */
-export function isValidAnswer(step: StepId, value: string): boolean {
-  const allowed = QUESTION_VALUES[step as QuestionId]
-  if (allowed !== undefined) return allowed.includes(value)
-  return value === GATE_ACKNOWLEDGED
+/** Sentinel: "everything beyond this point is unreachable" (a terminal gate was found). */
+const TERMINAL_STOP = Symbol('terminal-stop')
+
+function countRemaining(ids: readonly FollowUpTarget[], answers: Answers): number | typeof TERMINAL_STOP {
+  let total = 0
+  for (const target of ids) {
+    if (isTerminalTarget(target)) return TERMINAL_STOP
+
+    const id = targetId(target)
+    const decl = QUESTIONS[id]
+    const answer = answers[id]
+
+    if (answer === undefined) {
+      // Not yet answered — count it if it's a question (never a gate), but we cannot see past
+      // it: its own follow-ups depend on an answer we don't have. Independent SIBLINGS in `ids`
+      // are still fully counted (see below) — they are already-certain future obligations
+      // (e.g. `einkuenfte: 'Beides'` certainly opens BOTH `kap-depot` and `vermietung-art`,
+      // regardless of which one is asked first), not unknowable content.
+      if (decl.kind === 'question') total += 1
+      continue
+    }
+
+    const sub = countRemaining(decl.followUps?.[answer] ?? [], answers)
+    if (sub === TERMINAL_STOP) return TERMINAL_STOP
+    total += sub
+  }
+  return total
 }
 
 /**
- * How many QUESTIONS the user must still answer — what `TaxYear.openItems` is written from.
+ * How many QUESTIONS within `entry` the user must still answer — what `TaxYear.openItems` is
+ * written from. Counts only questions, never gates: a gate is something we tell the user, not
+ * something we are waiting on. Zero behind a terminal gate — an honest zero, not a finished
+ * one: nothing further can ever be collected on that path, so any sibling steps counted
+ * elsewhere in the SAME computation are discarded too (`TERMINAL_STOP` propagates to the top).
  *
- * Counts only questions, never gates: a gate is something we tell the user, not something we
- * are waiting on. Behind a terminal gate the count is 0, because nothing further can be
- * collected at all — an honest zero, not a finished one.
- *
- * This is a MINIMUM. Answers not yet given cannot open branches we can foresee, and in this
- * slice no branch adds a question, so the minimum is also exact. That stops being true when
- * the on-demand catalogue lands — ADR-0031 §3, and #318's own revisit trigger for deriving
- * `openItems` on read instead of storing it.
+ * A genuine graph replay (not a flat count): once a branch-opening answer is known
+ * (`einkuenfte: 'Vermietung'`), the questions it opens are counted too. It is still a MINIMUM
+ * in the strict sense that content behind an as-yet-unanswered step cannot be foreseen — but
+ * that is now the only source of imprecision, not "no branch in this entry can add a
+ * question" (#318's own note, which stopped being true the moment Segment 2 landed). Call this
+ * fresh on every read rather than caching it (R3, ADR-0033 Consequences / #321's C3c) — the
+ * count is only ever accurate for the `answers` it was computed from.
  */
+export function remainingStepsFor(entry: CatalogueEntry, answers: Answers): number {
+  const result = countRemaining(entry.steps, answers)
+  return result === TERMINAL_STOP ? 0 : result
+}
+
+// --------------------------------------------------------------------------------------------
+// Back-compatible Segment-1 bindings — see the header comment for why these keep #318's exact
+// narrow types. Each is the generic engine bound to `ENTRIES['minimal-gate']`; the casts down
+// to the narrow `Step`/`StepId` types are sound because that entry's declared steps and every
+// step its `followUps` can reach are, by construction, exactly `MinimalGateQuestionId` /
+// `MinimalGateGateId` — nothing else is reachable from it.
+// --------------------------------------------------------------------------------------------
+
+/** The next screen of the Minimal-Gate for these answers. Order: job → [gewerbe] → ausland → [ch-only] → kinder → done. */
+export function nextStep(answers: Answers): Step {
+  return nextStepFor(ENTRIES['minimal-gate'], answers) as Step
+}
+
+/** The Minimal-Gate's own `remainingStepsFor` binding — see that function's doc for the semantics. */
 export function remainingSteps(answers: Answers): number {
-  if (isTerminalGate(answers)) return 0
-  return QUESTION_ORDER.filter((id) => answers[id] === undefined).length
+  return remainingStepsFor(ENTRIES['minimal-gate'], answers)
+}
+
+/**
+ * The Minimal-Gate's own admission check (#318 P2), re-expressed over the generic engine but
+ * bound to `ENTRIES['minimal-gate']` — byte-identical behaviour to #318, on purpose (see the
+ * header comment on why this does NOT derive its entry from `target` the way D3 otherwise
+ * would): a Segment-2 id is simply not a valid `StepId` here, so it can never be reachable
+ * through this function, exactly as it could never be reachable before #321 existed.
+ *
+ * The cross-entry version D3 asks for — deriving the owning entry from an arbitrary
+ * `EntryStepId` — is `entryForStep` + `isReachableFor`, exported separately for R2 to use where
+ * it deliberately wants that behaviour (a new Segment-2 route), not inherited here.
+ */
+export function isReachable(answers: Answers, target: StepId): boolean {
+  return isReachableFor(ENTRIES['minimal-gate'], answers, target)
+}
+
+function isAccepted(form: ValueForm, value: string): boolean {
+  if (form.kind === 'enum') return form.values.includes(value)
+  // D5 — a plain base-10 integer literal (optional leading '-', no leading zeros beyond a bare
+  // "0", no whitespace, no "+"), within the declared inclusive range. The column stays `String`.
+  if (!/^(0|-?[1-9]\d*)$/.test(value)) return false
+  const n = Number(value)
+  return n >= form.min && n <= form.max
+}
+
+/**
+ * Is `value` an accepted answer for `step`? Unknown steps (not in `QUESTIONS`) are rejected.
+ * Deliberately takes the WIDE `EntryStepId` (not the narrow `StepId`): unlike `isReachable`,
+ * accepting a value is a per-step, entry-independent question — there is no equivalent
+ * "which entry is this route for" concern to keep narrow, and R2/R3/R4 need this for Segment 2
+ * answers too.
+ */
+export function isValidAnswer(step: EntryStepId, value: string): boolean {
+  const decl = QUESTIONS[step]
+  if (decl === undefined) return false
+  return isAccepted(decl.form, value)
 }

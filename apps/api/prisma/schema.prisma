@@ -188,11 +188,15 @@ model TaxYear {
   @@unique([userId, steuerjahr])
 }
 
-/// One row per (userId, steuerjahr, questionId) — the Minimal-Gate's stored interview
-/// answers (#318, REQ-015, ADR-0033). Additive: the Cockpit read path (REQ-001, Done)
-/// is untouched by this model. A gate the user has seen and carried on past is stored
-/// here too, under its own gate id, with the fixed value `GATE_ACKNOWLEDGED`
-/// (ADR-0033 §"Gates are answerable steps") — no separate model for gates.
+/// One row per (userId, steuerjahr, questionId) — the on-demand catalogue's stored answers
+/// (#318 REQ-015's Minimal-Gate; #321 REQ-016's Segment 2 entry; ADR-0031/0033). Additive: the
+/// Cockpit read path (REQ-001, Done) is untouched by this model. A gate the user has seen and
+/// carried on past is stored here too, under its own gate id, with the fixed value
+/// `GATE_ACKNOWLEDGED` (ADR-0033 §"Gates are answerable steps") — no separate model for gates.
+/// One shared row set across every catalogue entry for the same (userId, steuerjahr) — a
+/// catalogue entry is a named set of question ids over this same table, not a second model
+/// (ADR-0031 §3); `packages/core/src/interview.ts`'s `entryForStep` derives which entry a given
+/// row's `questionId` belongs to.
 model InterviewAnswer {
   id         String   @id @default(uuid())
   /// Scoping key — same trusted userId as Profile.userId (ADR-0007). Never read from
@@ -201,10 +205,11 @@ model InterviewAnswer {
   /// The tax year this answer belongs to — answers are collected per Steuerjahr, same
   /// granularity as TaxYear.
   steuerjahr Int
-  /// A `StepId` from packages/core/src/interview.ts — a QuestionId
-  /// ('job'|'ausland'|'kinder') or a GateId ('gewerbe'|'ch-only'). Left in the clear
-  /// (unlike `value` below) so uniqueness, lookup and remainingSteps()/isReachable()'s
-  /// replay over stored answers keep working without decrypting anything.
+  /// An `EntryStepId` from packages/core/src/interview.ts's `QUESTIONS` registry — the current,
+  /// exhaustive set (not hand-copied here, so this comment cannot drift the way ADR-0033
+  /// already names as a real defect class for this file). Left in the clear (unlike `value`
+  /// below) so uniqueness, lookup and remainingSteps()/isReachable()'s replay over stored
+  /// answers keep working without decrypting anything.
   //
   // CAUTION (found the hard way, `//` not `///` deliberately — see below): prisma-field-
   // encryption matches a literal substring anywhere in a field's *own* `///` doc
