@@ -52,6 +52,7 @@ The ADRs **justify** the architecture; the [living arc42 document](../arc42/READ
 | 0031 | Nine questions, two segments: the interview stays three, the other six arrive as the catalog's first entry (#318, #11) | Accepted |
 | 0032 | Nothing on screen promises what the slice does not deliver — settles D1, D3 and the Vormerken button as one rule (#11, #321) | Accepted |
 | 0033 | The interview's question graph lives in `packages/core`, and the server validates against it (#318 task 0) | Accepted |
+| 0035 | Account-keyed sign-in rate limiter closes REQ-010's IP-spoofable gap; the lockout residual is left OPEN for the stakeholder (#248/#292, PR #339) | Accepted (mechanism) · residual open |
 
 See also the [Tech Radar](./tech-radar.md).
 

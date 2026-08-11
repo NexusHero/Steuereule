@@ -81,24 +81,50 @@ describe('REQ-010 — security hardening, against the real server', () => {
     expect(response.status).toBe(200)
   })
 
+  // #248 — the test this replaces sent no `origin` header on either the sign-up or
+  // the 12 sign-in attempts. better-auth's own origin-check middleware rejects any
+  // request with no `origin` at all with 403 MISSING_OR_NULL_ORIGIN, *before*
+  // credential validation ever runs — so the probe account never existed, and the
+  // 429 the old assertion found came from better-auth's router-level rate limiter
+  // (which counts *every* request to /sign-in*, tripped by the 12 origin-rejected
+  // calls) rather than from 12 genuine wrong-password attempts against a real
+  // account. `toContain(429)` passed, but not for the reason the test's name claims.
+  // Sending a trusted origin (matching CORS_ALLOWED_ORIGINS) on both calls — the
+  // same fix `trusted-proxies-ip-resolution.test.ts`'s A1/A2 already use — makes the
+  // account genuinely exist and every sign-in attempt reach real credential
+  // validation, so the status sequence below is asserted exactly, not merely
+  // "contains 429 somewhere" (ADR-0021: "a check states its expectation
+  // independently of what it checks").
   it('repeated failed logins from the same account trip the DB-backed rate limit rather than being unbounded', async () => {
-    await fetch(`${baseUrl}/api/auth/sign-up/email`, {
+    const signUpResponse = await fetch(`${baseUrl}/api/auth/sign-up/email`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', origin: 'https://allowed.example.com' },
       body: JSON.stringify({ email: 'rate-limited@example.com', password: 'a-fine-strong-password-1', name: 'Rate Limited' }),
     })
+    expect(signUpResponse.status).toBe(200)
+    const user = await prisma.user.findUnique({ where: { email: 'rate-limited@example.com' } })
+    expect(user).not.toBeNull()
+
+    // better-auth's own built-in special rule for /sign-in* (getDefaultSpecialRules)
+    // — window 10s / max 3, not our own config.
+    const SIGN_IN_WINDOW_MAX = 3
 
     const attempts: number[] = []
     for (let i = 0; i < 12; i += 1) {
       const response = await fetch(`${baseUrl}/api/auth/sign-in/email`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: { 'content-type': 'application/json', origin: 'https://allowed.example.com' },
         body: JSON.stringify({ email: 'rate-limited@example.com', password: 'definitely-wrong-password' }),
       })
       attempts.push(response.status)
     }
 
-    expect(attempts).toContain(429)
+    // The first SIGN_IN_WINDOW_MAX attempts are genuine failed logins against the
+    // real account created above (401 INVALID_EMAIL_OR_PASSWORD); every attempt
+    // after that trips the DB-backed limiter (429) instead of reaching credential
+    // validation at all.
+    expect(attempts).toEqual([...Array(SIGN_IN_WINDOW_MAX).fill(401), ...Array(12 - SIGN_IN_WINDOW_MAX).fill(429)])
+
     // Proves the counter is actually DB-backed (ADR-0012 §5), not an
     // in-memory-only structure invisible to inspection.
     const rows = await prisma.rateLimit.findMany()
