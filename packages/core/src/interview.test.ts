@@ -448,13 +448,25 @@ describe('Segment 2 (#321) — same engine, entry-derived answers, over ENTRIES[
     const afterKap: Answers = { ...beforeKap, 'kap-depot': 'Krypto' }
     expect(isReachableFor(entry, afterKap, 'krypto-gate')).toBe(true)
 
-    // The crypto gate is passable, not terminal — acknowledging it must carry on to `fortbildung`,
-    // the next unanswered base step, not stay stuck (review F8 — `fortbildung` is deliberately LEFT
-    // OUT of this case's answers, unlike `BASE_ANSWERED`, so the assertion below actually proves
-    // the walk resumes at the right place instead of merely proving the gate is non-terminal).
-    const { fortbildung: _fortbildung, ...withoutFortbildung } = beforeKap
-    const acknowledged: Answers = { ...withoutFortbildung, 'kap-depot': 'Krypto', 'krypto-gate': GATE_ACKNOWLEDGED }
-    expect(nextStepFor(entry, acknowledged)).toEqual({ kind: 'question', id: 'fortbildung' })
+    // passability — every base step answered, so acknowledging the gate ends the walk
+    // (review F12 — F8's `fortbildung`-omitted form never reached this branch at all: `walk`
+    // returns on the first unanswered id, and `fortbildung` sits before `einkuenfte` in
+    // `ENTRIES['segment-2'].steps`, so removing it made the assertion pass independent of
+    // krypto-gate's own passability).
+    const acknowledged: Answers = { ...afterKap, 'krypto-gate': GATE_ACKNOWLEDGED }
+    expect(nextStepFor(entry, acknowledged)).toEqual({ kind: 'done' })
+
+    // resumption — 'Beides' opens BOTH branches in fixed order, so a resolved krypto-gate
+    // must carry on into vermietung-art. This is the only fixture in this entry where a
+    // step genuinely follows a resolved gate; einkuenfte is last, so `done` above cannot
+    // prove it and this case must.
+    const bothBranches: Answers = {
+      ...BASE_ANSWERED,
+      einkuenfte: 'Beides',
+      'kap-depot': 'Krypto',
+      'krypto-gate': GATE_ACKNOWLEDGED,
+    }
+    expect(nextStepFor(entry, bothBranches)).toEqual({ kind: 'question', id: 'vermietung-art' })
   })
 
   it('Q3 — the sale/furnished-short-term gate is server-side: vermietung-gate only after vermietung-art: Verkauf oder möbliert', () => {
@@ -466,6 +478,12 @@ describe('Segment 2 (#321) — same engine, entry-derived answers, over ENTRIES[
     // Not reachable at all when a non-gating vermietung-art answer was given instead.
     const einfach: Answers = { ...before, 'vermietung-art': 'Einfach' }
     expect(isReachableFor(entry, einfach, 'vermietung-gate')).toBe(false)
+
+    // passability — every base step answered, so acknowledging the gate ends the walk
+    // (review F12 — this gate had the same unproven-passability hole as krypto-gate's F8,
+    // undetected because this case never asserted post-acknowledgement behaviour at all).
+    const acknowledgedVermietung: Answers = { ...after, 'vermietung-gate': GATE_ACKNOWLEDGED }
+    expect(nextStepFor(entry, acknowledgedVermietung)).toEqual({ kind: 'done' })
   })
 
   it('Q5 — leaving the entry mid-way and returning: answers already given persist and remain reachable', () => {
