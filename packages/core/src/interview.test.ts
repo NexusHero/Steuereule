@@ -7,6 +7,7 @@ import {
   isReachable,
   isReachableFor,
   isValidAnswer,
+  JOB_VALUES,
   nextStep,
   nextStepFor,
   QUESTIONS,
@@ -20,10 +21,11 @@ import {
   type StepId,
 } from './interview'
 
-// REQ-015 / #318 / REQ-016 / #321 — the trap this suite exists to avoid is named in #318's
-// ticket: a test that asserts THAT a next step appears rather than WHICH one. Such a test
-// stays green when the branch is completely wrong. Every case below names the identity of the
-// step.
+// REQ-015 / #318 / #321 — the trap this suite exists to avoid is named in #318's ticket: a test
+// that asserts THAT a next step appears rather than WHICH one. Such a test stays green when the
+// branch is completely wrong. Every case below names the identity of the step. (#321 has no REQ
+// id of its own yet — that is Suhay's to create once the ticket is refined, ADR-0025 — so it is
+// cited by issue number alone, review F7.)
 //
 // Red paths (ADR-0021 — a control is only a control if it can fail):
 //  - P1: remove the `Selbstständig`/`Beides` entries from `QUESTIONS.job.followUps` so `job`
@@ -115,6 +117,47 @@ describe('nextStep — the identity of the next screen (product ADR-016)', () =>
       expect(nextStep(after)).toEqual({ kind: 'gate', id: gate })
     }
   })
+})
+
+type GewerbeGateDecision = 'exempt' | 'gated-passable' | 'gated-terminal'
+
+/**
+ * Review F1 (#341) — `main`'s original deny-list (`job !== 'Angestellt' && job !== 'Rente'`,
+ * `isTerminalGate` true only for `'Selbstständig'`) gave EVERY job value an implicit decision.
+ * This Record makes that decision explicit, and — the point of this test — EXHAUSTIVE:
+ * `Record<(typeof JOB_VALUES)[number], GewerbeGateDecision>` fails to compile the moment a value
+ * is added to `JOB_VALUES` without a matching entry here. A missing decision is therefore a TYPE
+ * ERROR (`pnpm typecheck` red, a real build break) rather than a silently-passing test — proven by
+ * temporarily adding `'Werkstudent mit Gewerbe'` to `JOB_VALUES` and observing exactly that error;
+ * see this PR's evidence block for the command and output, then reverted.
+ */
+const GEWERBE_GATE_DECISIONS: Record<(typeof JOB_VALUES)[number], GewerbeGateDecision> = {
+  Angestellt: 'exempt',
+  Selbstständig: 'gated-terminal',
+  Beides: 'gated-passable',
+  Rente: 'exempt',
+}
+
+describe('Gewerbe gate default (review F1, #341) — every JOB_VALUES entry has a declared, checked decision', () => {
+  it.each(JOB_VALUES.map((job) => [job, GEWERBE_GATE_DECISIONS[job]] as const))(
+    'job=%s → %s',
+    (job, decision) => {
+      const beforeAck = nextStep({ job })
+      if (decision === 'exempt') {
+        expect(beforeAck).not.toEqual({ kind: 'gate', id: 'gewerbe' })
+      } else {
+        expect(beforeAck).toEqual({ kind: 'gate', id: 'gewerbe' })
+      }
+
+      const afterAck = nextStep({ job, gewerbe: GATE_ACKNOWLEDGED })
+      if (decision === 'gated-terminal') {
+        // A full stop (product ADR-028) — the gate is returned forever, ack or not.
+        expect(afterAck).toEqual({ kind: 'gate', id: 'gewerbe' })
+      } else {
+        expect(afterAck).not.toEqual({ kind: 'gate', id: 'gewerbe' })
+      }
+    },
+  )
 })
 
 describe('isReachable — the server admission check (#318 P2)', () => {
@@ -213,6 +256,15 @@ describe('isValidAnswer', () => {
 
   it('rejects an entirely unknown step id', () => {
     expect(isValidAnswer('vermietung' as StepId, 'Ja')).toBe(false)
+  })
+
+  it('rejects the acknowledgement value too, for an unknown step id (review F4, #341)', () => {
+    // #318's `isValidAnswer` ended `return value === GATE_ACKNOWLEDGED`, so ANY unknown step id
+    // accepted `'weiter'` — a real hole this PR closes but did not originally prove. The existing
+    // case above (using `'Ja'`) cannot distinguish the two shapes: `'Ja' !== GATE_ACKNOWLEDGED`
+    // makes it `false` under BOTH. This one can — proven by reverting this line to #318's shape
+    // and observing it go red; see this PR's evidence block.
+    expect(isValidAnswer('vermietung' as StepId, GATE_ACKNOWLEDGED)).toBe(false)
   })
 
   describe('D5 — the integer value form (#321: weg, tage)', () => {
@@ -350,10 +402,14 @@ describe('Segment 2 (#321) — same engine, entry-derived answers, over ENTRIES[
 
     const afterKap: Answers = { ...beforeKap, 'kap-depot': 'Krypto' }
     expect(isReachableFor(entry, afterKap, 'krypto-gate')).toBe(true)
-    // The crypto gate is passable, not terminal — acknowledging it must carry on to fortbildung
-    // (the next unanswered base step), not stay stuck.
-    const acknowledged: Answers = { ...afterKap, 'krypto-gate': GATE_ACKNOWLEDGED }
-    expect(nextStepFor(entry, acknowledged)).toEqual({ kind: 'done' })
+
+    // The crypto gate is passable, not terminal — acknowledging it must carry on to `fortbildung`,
+    // the next unanswered base step, not stay stuck (review F8 — `fortbildung` is deliberately LEFT
+    // OUT of this case's answers, unlike `BASE_ANSWERED`, so the assertion below actually proves
+    // the walk resumes at the right place instead of merely proving the gate is non-terminal).
+    const { fortbildung: _fortbildung, ...withoutFortbildung } = beforeKap
+    const acknowledged: Answers = { ...withoutFortbildung, 'kap-depot': 'Krypto', 'krypto-gate': GATE_ACKNOWLEDGED }
+    expect(nextStepFor(entry, acknowledged)).toEqual({ kind: 'question', id: 'fortbildung' })
   })
 
   it('Q3 — the sale/furnished-short-term gate is server-side: vermietung-gate only after vermietung-art: Verkauf oder möbliert', () => {
