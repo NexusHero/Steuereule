@@ -23,15 +23,24 @@
 //     module deliberately does not try to supply one — #321 §A leaves "which figure" an open
 //     stakeholder call. An exact tariff over a coarse input reads as authoritative PRECISELY
 //     BECAUSE it is precise. A caller may render this module's output as a recommendation
-//     only once #321 §A's income-figure question is settled AND product ADR-032 §1's origin
+//     only once #321 §A's income-figure question is settled AND Produkt-ADR-032 §1's origin
 //     requirement (HerkunftsChip: Regel + Rechenweg) is met on screen.
 //
 // EXPLICITLY NOT COMPUTED HERE, and this is a finding, not a caveat: Solidaritätszuschlag,
 // Kirchensteuer, Progressionsvorbehalt. Each of these can flip which Veranlagung wins. The
 // design-system reference promises out loud to catch exactly that flip
 // (`Veranlagung.jsx:60` — "Kippt das (z. B. durch Lohnersatz mit Progressionsvorbehalt),
-// sagen wir es dir hier zuerst") — under product ADR-032 that sentence does not ship until
+// sagen wir es dir hier zuerst") — under Produkt-ADR-032 that sentence does not ship until
 // this module (or a successor) computes what causes the flip.
+//
+// F3 (Musti's PR #340 review — HELD for his forthcoming engineering ADR, not rebuilt here):
+// none of the honesty above travels past this module's own boundary. `veranlagungsvergleich`
+// returns a bare `empfehlung` with identical confidence at `delta = 1 €` as at `delta =
+// -1449 €`, while the three factors just named are excluded and can move the true delta by
+// hundreds of euro. Musti is settling the shape this should take — a name that stops implying
+// a settled favourability verdict, a carried `excludes` limit, or withholding `empfehlung`
+// inside the noise band — in the ADR referenced above. Do not redesign the return shape ahead
+// of that ruling.
 //
 // AN UNSUPPORTED TAX YEAR THROWS. It never falls back to a neighbouring year's coefficients.
 // That is `Interview.jsx:28-30`'s hard-wired-2026 defect one level more consequential than
@@ -40,17 +49,21 @@
 // present value is vacuously satisfied by absence).
 //
 // SOURCE CAVEAT — stated rather than hidden. This sandbox has no live fetch to the
-// Bundesgesetzblatt or the BMF's published Programmablaufplan. The coefficients below are
-// reconstructed from trained knowledge of the published §32a EStG formula for each year, and
-// cross-checked for internal continuity at every zone boundary (see tarif.test.ts) — a
-// fabricated or mistyped table would not, by chance, produce a continuous curve across four
-// independent boundary checks per year, so the check is real evidence, not decoration. It is
-// still a self-consistency check, not a verification against the primary source. Musti:
-// please verify TAX_YEARS against the Bundesgesetzblatt / BMF Programmablaufplan before this
-// feeds anything user-facing — flagging on the first zone per your instruction, rather than
-// after all three. 2026 is deliberately left unsupported for the same reason: I do not have
-// confident recall of its coefficients specifically, and this module's own rule is "throw,
-// don't approximate" — so it applies to its own gaps too.
+// Bundesgesetzblatt or the BMF's published Programmablaufplan (reconfirmed for PR #340's
+// review round: CONNECT to www.bmf-steuerrechner.de and www.gesetze-im-internet.de both 403 at
+// the proxy). The coefficients below are reconstructed from trained knowledge of the published
+// §32a EStG formula for each year, and cross-checked for internal continuity at every zone
+// boundary (see tarif.test.ts) — a fabricated or mistyped table would not, by chance, produce a
+// continuous curve across three independent boundary checks per year, so the check is real
+// evidence, not decoration. It is still a self-consistency check, not a verification against
+// the primary source (F1, PR #340 review: replacing one year's whole table with another year's
+// verbatim and rederiving every test literal from it left the suite 36/36 green — continuity
+// braces coefficients against each other, not against reality). Musti: please verify TAX_YEARS
+// against the Bundesgesetzblatt / BMF Programmablaufplan before this feeds anything
+// user-facing — flagging on the first zone per your instruction, rather than after all three.
+// 2026 is deliberately left unsupported for the same reason: I do not have confident recall of
+// its coefficients specifically, and this module's own rule is "throw, don't approximate" — so
+// it applies to its own gaps too.
 //
 // Pure, deterministic, dependency-free (packages/core's charter, see index.ts). No I/O, no
 // LLM. Identifiers and messages are English (dev-process language); this module has no
@@ -131,9 +144,30 @@ const TAX_YEARS: Readonly<Record<IncomeTaxYear, TariffCoefficients>> = {
   },
 }
 
-/** True for a year this module holds coefficients for. Never true for a year it would guess at. */
+/**
+ * True for a year this module holds coefficients for. Never true for a year it would guess at.
+ *
+ * `Number.isInteger` is required, not decorative (F6, PR #340 review): `TAX_YEARS`' keys are
+ * object-property strings, so `hasOwnProperty` alone treats the *string* `'2024'` as a
+ * supported year too — exactly the untyped boundary this existence check exists to hold, since
+ * `year` reaches this module from a path/query parameter (R1-R4) as a string.
+ */
 export function isSupportedIncomeTaxYear(year: number): year is IncomeTaxYear {
-  return Object.prototype.hasOwnProperty.call(TAX_YEARS, year)
+  return Number.isInteger(year) && Object.prototype.hasOwnProperty.call(TAX_YEARS, year)
+}
+
+/**
+ * The zvE boundaries between zone 2/3/4/5 for a supported year, ascending:
+ * `[zone2Upper, zone3Upper, zone4Upper]`.
+ *
+ * Exported so a continuity test asks this module where its own edges are (F7, PR #340 review),
+ * rather than duplicating them in a second, hand-maintained map that can silently stop tracking
+ * `TAX_YEARS` — which is precisely what happened during F1's investigation: shifting a year's
+ * `zone2Upper` moved the actual boundary while a hard-coded fixture kept checking the old one.
+ */
+export function zoneBoundaries(year: IncomeTaxYear): readonly [number, number, number] {
+  const c = TAX_YEARS[year]
+  return [c.zone2Upper, c.zone3Upper, c.zone4Upper]
 }
 
 function grundtarif(zvE: number, c: TariffCoefficients): number {
@@ -186,14 +220,25 @@ export interface VeranlagungsvergleichResult {
   readonly zusammenTax: number
   /** Combined tax under Einzelveranlagung (two Grundtarif calculations), in whole euro. */
   readonly einzelTax: number
-  /** `zusammenTax - einzelTax`. Zero or negative whenever coupling helps or is neutral. */
+  /**
+   * `zusammenTax - einzelTax`. Negative whenever coupling genuinely helps. Not merely
+   * zero at exact-equal incomes — CAN BE POSITIVE in a narrow band near them (F2, PR #340
+   * review): each side of `einzelTax` is floored independently (§32a Abs. 1 Satz 6 EStG)
+   * before summing, while `zusammenTax` floors the averaged, then doubled, amount once — so a
+   * sub-euro Splitting-Vorteil can be inverted by rounding. E.g.
+   * `veranlagungsvergleich(11931, 12017, 2024)` has `delta = +1`. Not a defect: the assessed
+   * (floored) amounts are what the statute actually taxes.
+   */
   readonly delta: number
   readonly empfehlung: VeranlagungEmpfehlung
 }
 
 /**
- * Günstigerprüfung (product ADR-006 / M1): Zusammenveranlagung (Splittingtarif) vs.
- * Einzelveranlagung (two Grundtarif calculations), for a couple's zvE values in `year`.
+ * Veranlagungsartenvergleich (Produkt-ADR-006 / M1): Zusammenveranlagung (Splittingtarif) vs.
+ * Einzelveranlagung (two Grundtarif calculations), for a couple's zvE values in `year`. (Named
+ * "Veranlagungsartenvergleich" rather than "Günstigerprüfung" — the latter is already
+ * Produkt-ADR-032's term for the Abgeltungsteuer-vs-personal-rate test on Kapitalerträge, a
+ * different comparison; F3, PR #340 review.)
  *
  * Layer 2 of the module doc above — exact GIVEN `zveA`/`zveB`. This function does not
  * validate that either figure is the couple's real income; that is layer 3, and the
