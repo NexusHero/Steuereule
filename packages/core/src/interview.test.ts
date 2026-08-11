@@ -160,6 +160,34 @@ describe('Gewerbe gate default (review F1, #341) — every JOB_VALUES entry has 
   )
 })
 
+describe('branchFor — Object.prototype keys are never "declared" (review F9, #341)', () => {
+  // `decl.followUps` is a plain object literal, so `followUps['constructor'] !== undefined` is
+  // true (it resolves to the inherited `Object.prototype.constructor`, not `undefined`) even
+  // though `job` never declared a `'constructor'` key. Before the F9 fix that inherited value
+  // (a function, not a step array) was returned as the branch and crashed the caller. These four
+  // answers must instead fall through to `job`'s `defaultFollowUp` — i.e. gate, not throw.
+  it.each(['constructor', 'toString', '__proto__', 'valueOf'])(
+    'job=%s (an Object.prototype key, not a declared followUps key) falls through to defaultFollowUp',
+    (job) => {
+      expect(() => nextStep({ job })).not.toThrow()
+      expect(nextStep({ job })).toEqual({ kind: 'gate', id: 'gewerbe' })
+      expect(() => remainingSteps({ job })).not.toThrow()
+      expect(() => isReachable({ job }, 'ausland')).not.toThrow()
+    },
+  )
+
+  it('is not reachable through the endpoint today regardless — isValidAnswer and isReachable both refuse these values', () => {
+    // Defense in depth, not the fix itself: `interview-answer.repository.prisma.ts` re-validates
+    // every row it reads, so even if this guard were absent, no such value could be admitted or
+    // replayed through the real write path. The `branchFor` fix matters because R2/R3/R4 inherit
+    // the same helper for Segment-2 questions that DO get client-controlled string values.
+    for (const value of ['constructor', 'toString', '__proto__', 'valueOf']) {
+      expect(isValidAnswer('job', value)).toBe(false)
+      expect(isReachable({}, value as StepId)).toBe(false)
+    }
+  })
+})
+
 describe('isReachable — the server admission check (#318 P2)', () => {
   it('accepts the step the user is actually standing on', () => {
     expect(isReachable({}, 'job')).toBe(true)

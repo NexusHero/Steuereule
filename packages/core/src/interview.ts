@@ -10,7 +10,7 @@
 // Pure, deterministic, dependency-free (ADR-0004). Identifiers and messages are English
 // (dev-process language); every customer-facing string lives in the i18n layer, not here. The
 // answer VALUES are German because they are the persisted domain vocabulary, byte-equal to what
-// product ADR-016/031/034 and the design-system reference define.
+// Produkt-ADR-016/031/034 and the design-system reference define.
 //
 // --------------------------------------------------------------------------------------------
 // #321 R1 — the catalogue seam (Musti's build plan, issue #321). Five rulings, D1-D5:
@@ -250,7 +250,7 @@ export const QUESTIONS: Readonly<Record<EntryStepId, QuestionDeclaration>> = {
     followUps: {
       // Selbstständig is a full stop (product ADR-028) — the gate is `terminal`.
       Selbstständig: [{ step: 'gewerbe', terminal: true }],
-      // Beides is explicitly passable — ADR-028's "collect the employee part".
+      // Beides is explicitly passable — Produkt-ADR-028's "collect the employee part".
       Beides: ['gewerbe'],
       // Angestellt and Rente are the ONLY two values product ADR-028/034 exempt from the Gewerbe
       // gate — declared explicitly (empty branch) rather than left absent, because `defaultFollowUp`
@@ -469,7 +469,8 @@ function stepFor(id: EntryStepId): EntryStep {
  * NEXT sibling in `ids` — which is how a gate slots in immediately after the question that
  * determines it without disturbing the entry's own ordering.
  *
- * F1 fix — the branch for a given answer is `followUps[answer]` if that key exists, else
+ * F1 fix — the branch for a given answer is `followUps[answer]` if that OWN key exists (review
+ * F9: "exists" means `Object.hasOwn`, not `!== undefined` — see `branchFor`), else
  * `defaultFollowUp` if the declaration has one, else no follow-up at all. A question that
  * declares `followUps` but no matching key for the answer given does NOT silently pass through
  * (that was #341 review F1: an allow-list with no default is fail-OPEN) — it falls to
@@ -477,7 +478,15 @@ function stepFor(id: EntryStepId): EntryStep {
  * `followUps` nor `defaultFollowUp` truly has no follow-up semantics.
  */
 function branchFor(decl: QuestionDeclaration, answer: string): readonly FollowUpTarget[] {
-  const declared = decl.followUps?.[answer]
+  const followUps = decl.followUps
+  // F9 fix (review of #341) — `decl.followUps` is a plain object literal, so `!== undefined`
+  // alone is NOT "is this answer declared": every `Object.prototype` key (`constructor`,
+  // `toString`, `__proto__`, `valueOf`, ...) resolves to an inherited member instead of
+  // `undefined`, which used to return that inherited value (a function, not a step array) as
+  // the branch and crash the caller ("ids is not iterable") rather than falling through to
+  // `defaultFollowUp` as this comment always claimed. `Object.hasOwn` restricts "declared" to an
+  // OWN key, so those four answers now correctly fall through to `defaultFollowUp`.
+  const declared = followUps !== undefined && Object.hasOwn(followUps, answer) ? followUps[answer] : undefined
   if (declared !== undefined) return declared
   return decl.defaultFollowUp ?? []
 }
