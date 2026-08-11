@@ -658,3 +658,66 @@ does it return for `'constructor'`?*
   today is a person reading a diff, and this document's own thesis says what that is worth. §9 is the
   one of the three that a lint rule could plausibly enforce; whether one exists that distinguishes a
   data-keyed lookup from an ordinary property read is an open question, not a plan.
+
+### 10. A changed control is a **new** control. It inherits nothing from the one it replaced
+
+§4 and §4b cover a proof going stale because the **code** moved. This is the inverse and it is more
+dangerous, because it arrives dressed as an improvement: the code stands still and the **control** is
+replaced — usually during review, usually to make it *stronger* — and the replacement is accepted on
+the strength of the argument for it rather than on an observed failure. A control that has never been
+broken is unproven no matter how much better it reads than the one before it.
+
+**Measured (#341, F8 → F12).** A test acknowledged Segment 2's passable `krypto-gate` and asserted the
+walk was finished. I ruled at review that `{ kind: 'done' }` was too weak, and prescribed leaving
+`fortbildung` unanswered and asserting `{ kind: 'question', id: 'fortbildung' }` instead — so the test
+would prove the walk *resumes* rather than merely that the gate is not terminal. It was implemented
+exactly as prescribed, with a comment faithfully restating what I had said it proved.
+
+`ENTRIES['segment-2'].steps` is `['partner','homeoffice','weg','tage','fortbildung','einkuenfte']` and
+`walk` returns on the first unanswered id. `fortbildung` is index 4; `einkuenfte`, which is what opens
+`kap-depot` → `krypto-gate` at all, is index 5. Removing `fortbildung` from the fixture stops the walk
+one step **before** the gate exists on the path:
+
+| Break | before my "fix" | after it |
+|---|---|---|
+| `krypto-gate` made terminal | **1 red** | **116/116 green** |
+| `vermietung-gate` made terminal | green | green |
+| `krypto-gate` removed entirely | 2 red | 2 red |
+
+The control I called too weak was the one that worked. The replacement asserts something true and
+detects nothing, and its comment claims the opposite. Three people passed it — the reviewer who
+prescribed it, the same reviewer re-reading the head, and the tester's gate. An automated reviewer
+with no context found it, by reading the entry's ordering against the fixture instead of checking that
+the diff matched the instruction.
+
+**Rule.** When a control is **replaced, strengthened, or has its fixture changed**, it is broken
+against the property it is meant to detect *before the change is accepted*. The observed failure is
+recorded like any other. "Stronger than what it replaced" is an argument (§4a), and the slot it goes
+in is the one reserved for a result.
+
+**The prescriber owes the break, not the author.** A review instruction of the form *"assert X
+instead"* is a **hypothesis about what X detects**, and it carries the same obligation as writing X
+would. A reviewer who has not run their own prescription against the break is asking an author to take
+on faith exactly what this document exists to refuse. This is the asymmetry that let F8 through: the
+author had to prove their code, and the reviewer did not have to prove their instruction.
+
+**Reviewer's test, one question:** *has the replacement been observed to fail against the thing the
+original was meant to catch?*
+
+**Corollary — check the sibling.** F12's second instance was not in the report that found the first.
+`vermietung-gate`, declared the same way one branch over, had never had its passability asserted
+either — its test covers reachability only, so making it terminal was invisible before and after. Where
+a control turns out to be blind, the same shape next door is the cheapest place to look, and it was
+found by asking rather than by another external reviewer.
+
+**Consequences**
+
+- **Review gets slower in one specific place, on purpose:** prescribing a new assertion now costs the
+  reviewer a run. It is the same cost §4a imposed on evidence blocks, moved to the other side of the
+  table, and F12 is what it buys.
+- **§10 is why F8's own record is left standing above, uncorrected.** The finding was real; the
+  prescription was wrong. Editing the history to make the reviewer look right would remove the only
+  evidence this rule has.
+- **Passability of a gate is a distinct property from its existence**, and the interview module now
+  asserts both for both Segment-2 gates. Existence was proven throughout; only passability was blind.
+  A control can be genuinely real about one property and vacuous about the neighbouring one.
