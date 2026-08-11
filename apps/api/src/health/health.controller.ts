@@ -1,4 +1,8 @@
-// #279 — liveness/readiness endpoints for k3s on Hetzner (ADR-049). Deliberately
+// #279 — liveness/readiness endpoints for k3s on Hetzner (Produkt-ADR-049,
+// `finanzo-funke-design-system/project/research/adr/049-deployment-k3s-hetzner.md` —
+// three-digit product log, not the four-digit `docs/adr/` engineering log; see
+// ADR-0033's "Citation form" section for why the two must never be conflated).
+// Deliberately
 // **unauthenticated** and outside `UserContextGuard` (no `@UseGuards` — see
 // `ProfileController` for the guarded shape this is NOT): the kubelet polls both paths
 // before any session/cookie machinery is relevant, the same reasoning
