@@ -441,6 +441,66 @@ firmly, is not a remedy — restating it is what already failed.
 
 **Reviewer's test:** *if everyone ignored this rule tomorrow, what would go red?*
 
+#### 7a. Documenting a gap is not closing it — and the instrument that can only see one tree
+
+§7 was filed at 17:23 on 2026-08-11. **Ten minutes later it produced a second instance, of a
+different kind, which is why it earns its own sub-section rather than a line in the table.**
+
+Two open pull requests each allocated decision number **0034** — this document's companion
+(`0034-veranlagungsartenvergleich-…`, PR #343) and the account-keyed rate limiter (PR #339). `main`
+carried neither; the highest number there was 0033. ADR numbers are allocated by whoever writes one,
+by reading the directory, with **no reservation step and no cross-branch view**.
+
+**Measured, all three states:**
+
+| Tree | `adr-check` |
+|---|---|
+| PR #343 alone | `PASS — no findings.` |
+| PR #339 alone | `PASS — no findings.` |
+| the two merged into one tree | `FAIL — ADR-0034 is used by more than one file: …` |
+
+**The check is correct and sufficient. What fails is its field of view.** It validates a single
+working tree, and the defect does not exist in any single working tree — it exists only in the union,
+which nothing computes.
+
+And here is the part that makes this a §7 instance rather than a missing feature. **The gap was
+already written down, in detail, in the checker's own header** — the merge-ref mechanism, and its
+limit (a): GitHub only publishes `refs/pull/N/merge` for a *cleanly mergeable* PR, and *"two branches
+that both append a row to `docs/adr/index.md` … are exactly the ones likely to conflict on that file
+first, before the two ADR numbers are ever compared."* That prose was written after #239/#251 hit the
+identical collision on decision number 0023.
+
+I confirmed the predicted mechanism rather than assuming it: merging the two branches conflicts, and
+the conflicted path is exactly **`docs/adr/index.md`** and nothing else. So no merge ref was
+published, `actions/checkout` had no union to resolve, and the compensating mechanism never ran — the
+documented limit firing exactly as documented, on its second recorded occurrence.
+
+> **A gap that is written down, precisely, with a worked precedent, and enforced by nothing, is still
+> enforced by nothing.** Careful prose about a hole reads as diligence and behaves as absence. That is
+> §7's own thesis applied to §7's own evidence, and it is the strongest form of the argument this
+> document has produced.
+
+**Consequence for the sized work §7 defers.** This is a **different shape of check** from the
+citation-form grep, and scoping them as one job would be a mistake. The citation rule is a pattern
+match over one tree and needs nothing else. This one cannot be answered from a tree at all: it needs
+either a comparison against **the merge target's** ADR set, or an **allocation record** that a number
+is claimed before a file exists. Whether a cheap version exists is a real question and not a
+foregone one — it is being asked rather than assumed.
+
+**Reviewer's test, the general form:** *is the property this check asserts a property of one tree?* If
+the defect can only appear when two independently-valid trees meet, a single-tree instrument cannot
+see it, however correct the instrument is.
+
+**Resolution of this instance, for the record.** #339 renumbers to the next free number (0035); #343
+keeps 0034, because it was opened first and `tarif.ts` is being written against that number as this is
+written. Renumbering the one that code already cites would trade a documentation collision for a code
+one.
+
+*(The two colliding numbers are written out here because both now resolve to real files. Where a
+number does **not** resolve — the next-free one above — it is deliberately spelled without its prefix,
+for the reason the 2026-08-04 amendment gives about its own planted reference: this document is inside
+the tree its own gate scans.)*
+
 **Applied to the instance that produced it.** `adr-check` gains a rule flagging a three-digit
 `ADR-NNN` reference that is not prefixed `Produkt-`, outside the product log's own path. **Not in this
 PR**, and the reason matters rather than being an excuse: the ~180 existing sites need reading
@@ -464,3 +524,11 @@ instrument.
 - **§7 costs a gate per convention, and this project will not always pay it.** The rule permits
   saying so out loud instead, which is worth more than a rule nobody follows: an ADR that admits it is
   unenforced tells the next reader what to expect. An ADR that does not, does not.
+- **§7a splits the deferred gate work into two jobs, not one.** A single-tree pattern match
+  (citation form) and a cross-tree or allocation-record check (number collision) share a motivation
+  and nothing else. Sizing them together would produce an estimate for the cheap half and a surprise
+  in the expensive one.
+- **§7a is deliberately uncomfortable about this document's own genre.** Both of its instances were
+  produced *by* careful writing — a citation rule that was written down and then broken five times, and
+  a limit that was written down and then hit twice. Neither is an argument against writing things
+  down. Both are an argument against counting it as done.
