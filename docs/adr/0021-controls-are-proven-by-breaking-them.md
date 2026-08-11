@@ -305,3 +305,162 @@ was filed against the code under test. That is the expensive habit worth keeping
   handling is to say so when one is next touched rather than to re-prove the whole inventory now.
 - This amendment does not close #258. That gap is check 4's inability to see a missing tier, and it
   needs a code change, not a rule. This says how the gap would have been found.
+
+## Amendment — 2026-08-11 (#336, #340, #341): four more ways a proof is not one
+
+Per the log's immutability rule (`docs/adr/index.md:5`), the Decision and the 2026-08-04 amendment
+above stand unedited. This appends four rules, continuing that amendment's numbering (§1–§3 are
+already cited elsewhere in the tree). Each comes from a control that had a passing test, or a passing
+proof, and a hole anyway — found in one review round across three pull requests.
+
+### 4. A proof **expires** when the code it was run against moves
+
+The Decision says a control must be observed to fail. It says nothing about how long that observation
+remains true. In practice a proof is written once, in a PR, against a named function — and the next
+refactor deletes that function while the proof line lives on in the record, still reading as evidence.
+
+**Measured (#341).** #318 proved P1 and P2 against `needsGewerbeGate` and `isTerminalGate`. #341
+deleted both outright, replacing them with a generic `walk`/`countRemaining` engine driven by
+`QUESTIONS['job'].followUps`. The old evidence lines named two functions that no longer exist
+anywhere in the tree. #341's author re-ran both against the relocated shape rather than inheriting
+them — **13 red for P1, 13 red for P2**, restored to 101/101 — and I reproduced both numbers
+independently at review.
+
+That was voluntary. It should not be.
+
+**Rule.** When a change **relocates, renames, or restructures** the code a control's proof was run
+against, that proof is **void**. The change's own evidence block either re-states it against the new
+shape, with a fresh observed result, or says plainly that the control is now unproven. A proof is a
+statement about a **code shape**, not about a name.
+
+**Reviewer's test, one question:** *does the evidence line name a function, file, or line that this
+diff still contains?*
+
+#### 4a. A reason the control would fail is not an observation that it did
+
+The 2026-08-04 amendment accepts an honest *"could not break this, here is why"*. It does not accept
+a third thing, which is what actually turns up: an **argument for the control's correctness**, placed
+in the slot reserved for the result of breaking it.
+
+**Measured (#341).** The evidence block read: *"removing that specific check (not exercised in this
+evidence line, but the code path is isolated and single-purpose) is what the existence half asks
+reviewers to check for."* The check was in fact breakable in about thirty seconds — neutralised at
+`interview.ts:383`, one site, **1 test red**, restored to 55/55. The control was real. **That is not
+the point.** Nobody knew it was real, and the reader of the evidence block could not tell an
+unbroken-because-obvious control from an unbroken-because-absent one, which is the exact distinction
+this ADR exists to preserve.
+
+**Rule.** An evidence line contains **either** an observed result **or** an explicit statement that
+the break was not attempted *and why it could not be*. "It is obviously fine" is neither. Where a
+break is cheap, the cost of arguing about it exceeds the cost of running it.
+
+### 5. An expectation that equals the **loading or default value** passes before the behaviour happens
+
+**Measured (#336, F11/F12).** Two hook tests asserted the value the hook holds at `t = 0` — its
+loading state — as though it were the answer. The assertion is satisfied **before the code under test
+has run**, and stays satisfied for a hook that does nothing at all. F12 was found **inside the fix for
+F11**: the same trap re-entered while repairing an instance of it.
+
+The shape is easy to miss precisely because it reads as careful: an explicit expected value, named,
+not a truthiness check. It happens to be the value that was already there.
+
+**Rule.** An expectation must **differ from the value the subject holds before the behaviour under
+test occurs**. Where the two coincide, either wait for a transition that is itself observable, or
+assert a value the default cannot be.
+
+**Reviewer's test:** *what is this value before the code runs, and is that what I am asserting?*
+
+**Corollary, from F12 being inside F11's fix:** this trap is re-entered most often **while fixing an
+instance of it**, because the repair is written in the same file, in the same frame of mind, minutes
+later. A fix for a bad assertion deserves the same question the original failed.
+
+### 6. An expectation **recomputed from the source the code reads** proves arithmetic, not correctness
+
+**Measured (#340, F1).** `tarif.test.ts`'s expected tax amounts were hand-derived — genuinely by
+hand, genuinely not by calling the function — from the same § 32a coefficient table `tarif.ts` reads.
+Replacing 2025's coefficients with 2024's **verbatim** and rederiving every literal from them left the
+suite **36/36 green**, including the test written specifically to catch a copy-pasted table.
+
+This is not the naive tautology the Decision already forbids: nothing re-ran the implementation to
+produce its own expectation. The shared origin sits **one level up**, in the data both the code and
+the arithmetic read. Both are then wrong together, in agreement, silently.
+
+**Rule.** The question to ask of an expected value is not *"did I compute this independently of the
+code?"* but:
+
+> **"Could this expectation still be produced if the thing I am least sure about were wrong?"**
+
+Where the answer is yes, the suite is blind to that thing, however much arithmetic sits in front of
+it. Where a table of published constants is involved, at least one expectation is an independently
+**published** value carrying a citation, not a recomputation.
+
+#### 6a. The same shape over a **value set** — growing the set is invisible
+
+**Measured (#341, F1).** `QUESTIONS['job'].followUps` declares which `job` answers open the Gewerbe
+gate; the tests name members of `JOB_VALUES` one at a time. Adding a fifth member —
+`'Werkstudent mit Gewerbe'` — leaves the suite **55/55 green** while that answer walks straight past
+the gate. The expectations are bounded by the same set the code reads, so **growth in the set is
+invisible to them**, exactly as a wrong table was invisible above.
+
+This one also flipped a default. The predicate it replaced was a **deny-list**
+(`job !== 'Angestellt' && job !== 'Rente'`, so an unknown value *gated*); the declaration that replaced
+it is an **allow-list** (an unknown value *does not*). Measured over the full answer space: 445
+divergences from the previous behaviour in 1350 combinations, **every one of them on an undeclared
+value, none on a declared one** — which is why every existing test stayed green.
+
+**Rule.** Where a control is keyed on a value set, at least one assertion is about **the set**: every
+member is classified, and an unclassified member **fails**. Asserting members one at a time proves the
+members, and the next one added is not among them.
+
+**And when a refactor changes how a decision is expressed** — predicate to declaration, deny-list to
+allow-list, imperative to table — the question is not whether the declared cases still behave the
+same. It is: *what happens to the cases neither form mentions, and which way does the new default
+lean?* For anything that gates, the answer has to be **closed**.
+
+### 7. A convention that only **review** enforces is not a control
+
+This is the Decision's own thesis turned on the ADR log itself, and it is the uncomfortable one.
+
+ADR-0033 § *"Citation form, so this class of error stops"* settled the three-digit product log versus
+four-digit engineering log ambiguity on 2026-08-08. In the week that followed, the conflation recurred
+**five times, in four files, across three of the four crew members** — twice in code that also cites
+the four-digit form of the *same* number a few lines away, and once in a file already on `main`.
+
+Every instance was caught at review. **That is the failure, not the success.** Review caught them one
+at a time, after the code was written, five times running, and did so only because a reviewer happened
+to look twice at a citation. There are roughly **180 bare three-digit citations across 50 files**
+outside the product log today; nobody knows how many are wrong.
+
+A rule whose only instrument is a human reading a diff **cannot distinguish "honoured" from "absent"**,
+and the instrument reports green either way. That is this document's own definition of the defect
+class, and an ADR is not exempt from it.
+
+**Rule.** A convention stated in an ADR and enforced by nothing gets a **mechanical gate**, or an
+explicit note in that ADR that it is unenforced and will drift. Restating it a second time, more
+firmly, is not a remedy — restating it is what already failed.
+
+**Reviewer's test:** *if everyone ignored this rule tomorrow, what would go red?*
+
+**Applied to the instance that produced it.** `adr-check` gains a rule flagging a three-digit
+`ADR-NNN` reference that is not prefixed `Produkt-`, outside the product log's own path. **Not in this
+PR**, and the reason matters rather than being an excuse: the ~180 existing sites need reading
+individually, because several are genuine *misattributions* — the four-digit engineering decision was
+meant — and a blind prefix insertion would cement the wrong citation permanently under a gate that
+then calls it correct. It is filed as its own work against this amendment, with an owner, which is
+what §7 asks for; it is not a deferral, and this note is the record that the rule currently has no
+instrument.
+
+### Consequences
+
+- **Evidence blocks get shorter, not longer.** §4a removes the option of arguing, which is the
+  expensive half; running the break is usually the cheap half.
+- **Some controls proven before today are, by §4, unproven** — any whose proof named code that has
+  since been restructured. As with the 2026-08-04 amendment: not retroactively broken, retroactively
+  *unverified*, and the honest handling is to say so when one is next touched.
+- **§6 and §6a will occasionally demand a citation this project cannot fetch.** Where the primary
+  source is unreachable, the honest form is the one #340 already uses — state the caveat, name what
+  the check does and does not establish, and do not let a self-consistency check be reported as a
+  verification.
+- **§7 costs a gate per convention, and this project will not always pay it.** The rule permits
+  saying so out loud instead, which is worth more than a rule nobody follows: an ADR that admits it is
+  unenforced tells the next reader what to expect. An ADR that does not, does not.
