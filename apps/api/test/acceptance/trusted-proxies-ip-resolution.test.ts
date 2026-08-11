@@ -42,7 +42,7 @@
 // mid-test.
 import type { NestFastifyApplication } from '@nestjs/platform-fastify'
 import { PrismaClient } from '@prisma/client'
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { LOGIN_RATE_LIMIT_MAX, loginRateLimitKey } from '../../src/auth/login-rate-limit.js'
 
 async function bootApp(port: number): Promise<{ app: NestFastifyApplication; baseUrl: string; prisma: PrismaClient }> {
@@ -96,16 +96,29 @@ async function attemptSignIn(baseUrl: string, email: string, xForwardedFor?: str
 // (@better-auth/core/env/env-impl) reads NODE_ENV into a top-level `const` exactly once,
 // the first time it is imported in this process — so `isTest()` is permanently `true` for
 // the rest of THIS vitest worker's life, and no per-test `process.env` change can undo
-// that. Concretely: `getIp()`'s literal `null` return (the branch that produces the
-// `no-trusted-ip` sentinel key, `resolveRateLimitConfig`, `@better-auth/core`) is
-// structurally unreachable from inside this suite; its own `isTest()||isDevelopment()`
-// fallback to a fixed `127.0.0.1` fires first. The shape under test — one caller-agnostic
-// key shared by every unresolvable request — is identical either way; only the literal
-// string differs. The `no-trusted-ip` string itself was measured directly against a real
-// boot with NODE_ENV genuinely unset (the actual shape of CI's `smoke`/`Browser gates`
-// jobs, `node --import tsx dist/main.js`, no NODE_ENV set at all) while diagnosing #292:
-// two alternating target emails with no XFF header collided in one `no-trusted-ip|
-// /sign-in/email` row, capped at 3, exactly as asserted here for the `127.0.0.1` variant.
+// that. Concretely: from THIS describe block's own test, `getIp()`'s literal `null` return
+// (the branch that produces the `no-trusted-ip` sentinel key) is unreachable — its own
+// `isTest()||isDevelopment()` fallback to a fixed `127.0.0.1` fires first, so the row this
+// test's own request produces is always `127.0.0.1|/sign-in/email`.
+//
+// **Correction (Musti's review, PR #339, blocking finding 3):** "structurally unreachable
+// from inside this suite" — i.e. the whole *file*, or this DB across a whole test run — was
+// false and measured false: he reproduced a real `no-trusted-ip|/sign-in/email` row read
+// back by THIS test three separate ways (run alongside `req-010-security-hardening.test.ts`
+// against a database carrying a stale row; a seeded stale row alone; this session's own
+// manual boot-proof against a real compiled server with `NODE_ENV` genuinely unset, writing
+// directly into the same shared Postgres this integration tier also uses). The `RateLimit`
+// table has no per-test/per-file isolation and nothing prunes it, so any OTHER process that
+// writes a `no-trusted-ip|...` row into the same database — a different test file, a manual
+// boot, a previous run that didn't clean up — leaves it there for an unordered, `contains`-
+// filtered `findFirst` to pick up. `beforeEach` below (not only `afterEach`) exists precisely
+// so this test's precondition is established, not assumed; the assertion now reads the
+// COMPLETE set of rows this test's own two requests can have produced, not an arbitrary one.
+// The `no-trusted-ip` string itself remains real and was measured independently against a
+// real boot with `NODE_ENV` genuinely unset (the actual shape of CI's `smoke`/`Browser gates`
+// jobs) while diagnosing #292: two alternating target emails with no XFF header collided in
+// one `no-trusted-ip|/sign-in/email` row, capped at 3 — the same shape this test proves for
+// the `127.0.0.1` variant it can actually produce from inside vitest.
 describe('#241/#292 A0 — no X-Forwarded-For header at all: getIp() falls back to one caller-agnostic key, every caller shares one bucket', () => {
   let app: NestFastifyApplication
   let baseUrl: string
@@ -122,6 +135,13 @@ describe('#241/#292 A0 — no X-Forwarded-For header at all: getIp() falls back 
     // under today.
     process.env.TRUSTED_PROXIES = 'none'
     ;({ app, baseUrl, prisma } = await bootApp(0))
+  })
+
+  // Establishes the precondition rather than assuming it (Musti's review, PR #339,
+  // blocking finding 3) — this table is shared with every other file/process that talks
+  // to the same database, and nothing else prunes it.
+  beforeEach(async () => {
+    await cleanUp(prisma)
   })
 
   afterEach(async () => {
@@ -145,12 +165,14 @@ describe('#241/#292 A0 — no X-Forwarded-For header at all: getIp() falls back 
 
     expect(statuses).toEqual([...Array(SIGN_IN_WINDOW_MAX).fill(401), 429])
 
-    // The literal key, not merely "some row exists" (same discipline as A2 below) — the
-    // `127.0.0.1` fallback this suite's own NODE_ENV=test forces (see this describe
-    // block's header comment for why the real `no-trusted-ip` string is unreachable here
-    // and how it was independently measured instead).
-    const row = await prisma.rateLimit.findFirst({ where: { key: { contains: '/sign-in/email' } } })
-    expect(row?.key).toBe('127.0.0.1|/sign-in/email')
+    // The COMPLETE set of matching rows, not an arbitrary one (Musti's review, PR #339,
+    // blocking finding 3 — an unordered `findFirst` with `contains` can return a row this
+    // test never created). Because `beforeEach` just cleared the table, every row found here
+    // was created by this test's own requests — asserting there is exactly one distinct key
+    // is itself part of the proof that the bucket is shared, not per-account.
+    const rows = await prisma.rateLimit.findMany({ where: { key: { contains: '/sign-in/email' } } })
+    const distinctKeys = [...new Set(rows.map((row) => row.key))]
+    expect(distinctKeys).toEqual(['127.0.0.1|/sign-in/email'])
   })
 })
 
@@ -190,6 +212,10 @@ describe('#241 A1 — TRUSTED_PROXIES unset: today’s live bypass, kept as a pe
     process.env.CORS_ALLOWED_ORIGINS = 'https://allowed.example.com'
     delete process.env.TRUSTED_PROXIES
     ;({ app, baseUrl, prisma } = await bootApp(0))
+  })
+
+  beforeEach(async () => {
+    await cleanUp(prisma)
   })
 
   afterEach(async () => {
@@ -232,7 +258,14 @@ describe('#241 A1 — TRUSTED_PROXIES unset: today’s live bypass, kept as a pe
 // the caller's claimed origin/IP, closing exactly the gap #248 named without needing #292's
 // real deployment topology at all: an attacker cannot rotate an email address the way they
 // can rotate a header.
-describe('#248 — the account-keyed control closes repeated guessing against ONE account, even under full IP rotation', () => {
+//
+// Musti's review, PR #339, blocking finding 1: the original version of this control counted
+// EVERY attempt, successes included, and never reset — so a legitimate account holder's own
+// correct sign-in still consumed quota, and nothing ever gave it back. Fixed: only a FAILED
+// attempt counts (`hooks.after` sees the real outcome, not `hooks.before`), and a SUCCESSFUL
+// sign-in clears the bucket outright. The tests below prove both halves, not just the
+// pre-existing "it blocks eventually" one.
+describe('the account-keyed control (#248, ADR-0034) closes repeated guessing against ONE account, even under full IP rotation, and counts failures only', () => {
   let app: NestFastifyApplication
   let baseUrl: string
   let prisma: PrismaClient
@@ -246,6 +279,10 @@ describe('#248 — the account-keyed control closes repeated guessing against ON
     ;({ app, baseUrl, prisma } = await bootApp(0))
   })
 
+  beforeEach(async () => {
+    await cleanUp(prisma)
+  })
+
   afterEach(async () => {
     await cleanUp(prisma)
   })
@@ -254,7 +291,7 @@ describe('#248 — the account-keyed control closes repeated guessing against ON
     await app.close()
   })
 
-  it('a rotating X-Forwarded-For targeting the SAME account trips 429 once the account-keyed threshold is hit', async () => {
+  it('a rotating X-Forwarded-For targeting the SAME account trips 429 exactly once the account-keyed threshold is hit', async () => {
     const target = 'account-keyed-victim@example.com'
     const statuses: number[] = []
     for (let i = 0; i < LOGIN_RATE_LIMIT_MAX + 2; i += 1) {
@@ -262,13 +299,96 @@ describe('#248 — the account-keyed control closes repeated guessing against ON
       // bucket alone (as A1 shows) would never trip here.
       statuses.push(await attemptSignIn(baseUrl, target, `198.51.100.${i + 1}`))
     }
-    expect(statuses).toContain(429)
+    // Exact sequence, not `toContain(429)` (Musti's review, PR #339, secondary finding: the
+    // old assertion would have passed even if 429 arrived on attempt 2 — i.e. if
+    // LOGIN_RATE_LIMIT_MAX were silently wrong). LOGIN_RATE_LIMIT_MAX + 2 attempts: the first
+    // LOGIN_RATE_LIMIT_MAX are genuine failed logins (401), the remaining 2 are blocked (429).
+    expect(statuses).toEqual([...Array(LOGIN_RATE_LIMIT_MAX).fill(401), 429, 429])
+
     // Discriminates "429 appeared" from "429 appeared for the right reason" (same
     // discipline as A2 below): the row must be the account-keyed key specifically, not
     // some other bucket that happened to also trip.
     const row = await prisma.rateLimit.findFirst({ where: { key: loginRateLimitKey(target) } })
     expect(row).not.toBeNull()
     expect(row!.count).toBeGreaterThanOrEqual(LOGIN_RATE_LIMIT_MAX)
+  })
+
+  it('a successful sign-in clears the bucket — the account holder is not locked out by their own correct password', async () => {
+    const target = 'account-keyed-legit-user@example.com'
+    const password = 'a-fine-strong-password-1'
+    const signUpResponse = await fetch(`${baseUrl}/api/auth/sign-up/email`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', origin: 'https://allowed.example.com' },
+      body: JSON.stringify({ email: target, password, name: 'Legit User' }),
+    })
+    expect(signUpResponse.status).toBe(200)
+    // The hook only ever matches `ctx.path === '/sign-in/email'`, so sign-up itself never
+    // writes this key — a brand-new account starts with no row at all, which is itself the
+    // baseline "cleared" state this test's later assertion depends on.
+
+    // A fresh X-Forwarded-For per call (same technique as A1/the account-keyed-guessing
+    // test above) — deliberately so better-auth's OWN, unrelated, IP-keyed limiter (10s/
+    // max 3) never engages here. Six correct sign-ins is otherwise indistinguishable from
+    // "two devices, a re-auth, a reinstall" and must never be denied by EITHER limiter;
+    // isolating the IP one out is what makes this test only about the account-keyed one.
+    const signIn = async (xForwardedFor: string): Promise<number> => {
+      const response = await fetch(`${baseUrl}/api/auth/sign-in/email`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', origin: 'https://allowed.example.com', 'x-forwarded-for': xForwardedFor },
+        body: JSON.stringify({ email: target, password }),
+      })
+      return response.status
+    }
+
+    // Several genuine, correct-password sign-ins in a row. None of them may ever count
+    // against the account-keyed limiter, however many happen.
+    const statuses: number[] = []
+    for (let i = 0; i < 6; i += 1) {
+      statuses.push(await signIn(`198.51.100.${200 + i}`))
+    }
+    expect(statuses).toEqual(Array(6).fill(200))
+
+    // The literal proof: no row for this account's key exists after 6 correct sign-ins —
+    // not merely "count is low", but genuinely absent, because every success deletes it.
+    const row = await prisma.rateLimit.findFirst({ where: { key: loginRateLimitKey(target) } })
+    expect(row).toBeNull()
+  })
+
+  it('a successful sign-in resets the count even after failed attempts — the next failure starts counting from zero, not from where the attacker left off', async () => {
+    const target = 'account-keyed-reset-after-fail@example.com'
+    const password = 'a-fine-strong-password-1'
+    const signUpResponse = await fetch(`${baseUrl}/api/auth/sign-up/email`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', origin: 'https://allowed.example.com' },
+      body: JSON.stringify({ email: target, password, name: 'Reset After Fail' }),
+    })
+    expect(signUpResponse.status).toBe(200)
+
+    const failedAttempt = async (): Promise<number> => {
+      const response = await fetch(`${baseUrl}/api/auth/sign-in/email`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', origin: 'https://allowed.example.com' },
+        body: JSON.stringify({ email: target, password: 'definitely-wrong-password' }),
+      })
+      return response.status
+    }
+    const correctAttempt = async (): Promise<number> => {
+      const response = await fetch(`${baseUrl}/api/auth/sign-in/email`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', origin: 'https://allowed.example.com' },
+        body: JSON.stringify({ email: target, password }),
+      })
+      return response.status
+    }
+
+    expect(await failedAttempt()).toBe(401)
+    expect(await failedAttempt()).toBe(401)
+    let row = await prisma.rateLimit.findFirst({ where: { key: loginRateLimitKey(target) } })
+    expect(row?.count).toBe(2)
+
+    expect(await correctAttempt()).toBe(200)
+    row = await prisma.rateLimit.findFirst({ where: { key: loginRateLimitKey(target) } })
+    expect(row).toBeNull()
   })
 })
 
@@ -293,6 +413,10 @@ describe('#241 A2/A3 — TRUSTED_PROXIES configured: the fix, proven against a s
     ;({ app, baseUrl, prisma } = await bootApp(0))
   })
 
+  beforeEach(async () => {
+    await cleanUp(prisma)
+  })
+
   afterEach(async () => {
     await cleanUp(prisma)
   })
@@ -307,13 +431,21 @@ describe('#241 A2/A3 — TRUSTED_PROXIES configured: the fix, proven against a s
   // above, so getIPFromHeader returns it directly rather than stripping past it.
   const SIMULATED_REAL_CLIENT = '203.0.113.50'
 
+  // One fixed target email throughout, sending SIGN_IN_WINDOW_MAX + 1 attempts (one past
+  // the IP-keyed limiter's own 3-attempt window) — deliberately fewer than
+  // login-rate-limit.ts's own account-keyed max (5), so THAT control never engages here;
+  // this test isolates the IP-keyed dimension specifically. Musti's review, PR #339,
+  // secondary finding: the previous SIGN_IN_WINDOW_MAX + 2 = 5 attempts had ZERO margin
+  // against the account-keyed max (also 5) — a silent retune of either constant would have
+  // made this test pass for the wrong reason. The assertion below pins that assumption so
+  // it fails loudly instead.
+  const ATTEMPTS = SIGN_IN_WINDOW_MAX + 1
+
   it('A2: the rotating fake left of a simulated real client is ignored — the limiter buckets on the correctly-resolved real IP, and the threshold trips 429 there', async () => {
+    expect(LOGIN_RATE_LIMIT_MAX).toBeGreaterThan(ATTEMPTS) // isolation margin — see ATTEMPTS' own comment
     const statuses: number[] = []
-    // One fixed target email throughout — SIGN_IN_WINDOW_MAX + 2 = 5 attempts, under
-    // login-rate-limit.ts's own account-keyed max (5) so that control never engages
-    // here; this test is isolating the IP-keyed dimension specifically.
     const email = 'trusted-proxies-a2-probe@example.com'
-    for (let i = 0; i < SIGN_IN_WINDOW_MAX + 2; i += 1) {
+    for (let i = 0; i < ATTEMPTS; i += 1) {
       // <rotating attacker-controlled value>, <fixed simulated real client> — the
       // shape Musti's review specifies: without a genuine second hop, a rotating
       // single value still bypasses (A1); this is what actually differs once fixed.
@@ -335,8 +467,14 @@ describe('#241 A2/A3 — TRUSTED_PROXIES configured: the fix, proven against a s
     // `${ip}|${path}` string better-auth's own createRateLimitKey builds
     // (better-auth/dist/api/rate-limiter/index.mjs) — read directly off the row, not
     // reconstructed by this test.
-    const rateLimitRow = await prisma.rateLimit.findFirst({ where: { key: { contains: '/sign-in/email' } } })
-    expect(rateLimitRow?.key).toBe(`${SIMULATED_REAL_CLIENT}|/sign-in/email`)
+    //
+    // The COMPLETE set, not an arbitrary matching row (Musti's review, PR #339, blocking
+    // finding 3 — the same unordered-`findFirst`-with-`contains` pattern as A0's, fixed the
+    // same way: `beforeEach` above owns the precondition, so every row found here was
+    // created by this test's own requests).
+    const rows = await prisma.rateLimit.findMany({ where: { key: { contains: '/sign-in/email' } } })
+    const distinctKeys = [...new Set(rows.map((row) => row.key))]
+    expect(distinctKeys).toEqual([`${SIMULATED_REAL_CLIENT}|/sign-in/email`])
   })
 
   it('A3: a session created via the real sign-up/sign-in flow with a spoofed leading hop does not carry the spoofed IP', async () => {

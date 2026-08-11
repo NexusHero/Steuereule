@@ -66,3 +66,34 @@ export async function consumeDbRateLimit(
   // Still inside the window and already at/over the max — blocked.
   return false
 }
+
+/**
+ * Read-only version of the same window/max rule `consumeDbRateLimit` enforces, but
+ * never writes anything. Exists for callers that must decide "is this request allowed
+ * to proceed at all" *before* they know whether it will succeed or fail — e.g.
+ * `login-rate-limit.ts`'s `hooks.before`, which has to block an over-quota sign-in
+ * attempt before credential validation ever runs, while the actual increment (on
+ * failure) or reset (on success) happens later, once the outcome is known
+ * (`hooks.after`). Splitting "may I?" from "count this" is what makes a
+ * success-clears/failure-only-counts limiter possible without a second table or a
+ * read-modify-write race between the two hooks.
+ */
+export async function peekDbRateLimit(prisma: PrismaClient, key: string, config: DbRateLimitConfig, now: number = Date.now()): Promise<boolean> {
+  const existing = await prisma.rateLimit.findFirst({ where: { key } })
+  if (!existing) return true
+
+  const lastRequest = Number(existing.lastRequest ?? 0)
+  if (now - lastRequest > config.windowMs) return true // the window has elapsed — treated as a fresh bucket, same as consumeDbRateLimit's own reset branch
+
+  return (existing.count ?? 0) < config.max
+}
+
+/**
+ * Deletes `key`'s row outright. Used to clear a bucket on a *success* — e.g. a
+ * correct sign-in — so a legitimate user's own further traffic against that key is
+ * never counted against a limit meant to bound repeated *failures* (REQ-010's own
+ * wording; Musti's review, PR #339). A no-op if the key has no row.
+ */
+export async function resetDbRateLimit(prisma: PrismaClient, key: string): Promise<void> {
+  await prisma.rateLimit.deleteMany({ where: { key } })
+}

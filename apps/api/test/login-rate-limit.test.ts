@@ -1,12 +1,17 @@
 // login-rate-limit.ts's pure half (#248/#292 — REQ-010's account-keyed sign-in
 // limiter). No DB, no server — just the key-derivation function, the same idiom as
 // trusted-proxies.test.ts's split between its pure resolver tests and its own
-// acceptance-tier siblings. The hook itself (createLoginRateLimitHook) needs a real
-// better-auth dispatch + Postgres to exercise meaningfully — that's
-// trusted-proxies-ip-resolution.test.ts's "#248" describe block and
-// req-010-security-hardening.test.ts, both acceptance tier.
+// acceptance-tier siblings. The hooks themselves (createLoginRateLimitBeforeHook /
+// createLoginRateLimitAfterHook) need a real better-auth dispatch + Postgres to
+// exercise meaningfully — that's trusted-proxies-ip-resolution.test.ts's account-keyed
+// describe block and req-010-security-hardening.test.ts, both acceptance tier.
+import { createHash } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
 import { LOGIN_RATE_LIMIT_MAX, LOGIN_RATE_LIMIT_WINDOW_MS, loginRateLimitKey } from '../src/auth/login-rate-limit.js'
+
+function sha256Hex(value: string): string {
+  return createHash('sha256').update(value).digest('hex')
+}
 
 describe('loginRateLimitKey', () => {
   it('is stable for the same email', () => {
@@ -25,8 +30,20 @@ describe('loginRateLimitKey', () => {
     expect(loginRateLimitKey('alice@example.com')).not.toBe(loginRateLimitKey('bob@example.com'))
   })
 
-  it('carries a fixed, recognisable prefix — never collides with better-auth’s own "${ip}|${path}" key shape', () => {
-    expect(loginRateLimitKey('someone@example.com')).toBe('login-attempts|someone@example.com')
+  it('carries a fixed, recognisable prefix and a sha256-hex digest of the normalized email — never collides with better-auth’s own "${ip}|${path}" key shape', () => {
+    expect(loginRateLimitKey('someone@example.com')).toBe(`login-attempts|${sha256Hex('someone@example.com')}`)
+  })
+
+  // Musti's review, PR #339, blocking finding 2: `ctx.body?.email` used to be taken
+  // raw — a 5000-char non-email string produced a 5015-char `RateLimit.key` row on an
+  // unindexed, unpruned table, before the endpoint's own zod schema ever got a chance
+  // to reject the request. Hashing removes the size dimension: this must hold
+  // regardless of how long or malformed the input is.
+  it('is a fixed length — 15-char prefix + 64 hex chars — no matter how long the (attacker-controlled) input is', () => {
+    const fixedLength = 'login-attempts|'.length + 64
+    expect(loginRateLimitKey('a@b.co')).toHaveLength(fixedLength)
+    expect(loginRateLimitKey(`${'a'.repeat(5000)}@example.com`)).toHaveLength(fixedLength)
+    expect(loginRateLimitKey('x'.repeat(5000))).toHaveLength(fixedLength) // junk, not even email-shaped
   })
 })
 
