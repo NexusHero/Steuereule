@@ -126,6 +126,14 @@ export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true }
   //
   // Sufficiency of evidence is the line, and it always was: two independent surfaces failing at
   // transport is honest evidence of a screen-wide outage; one is not.
+  //
+  // RULED by NexusHero (stakeholder), option A of the #336 F10 ask, put to him because his own
+  // F1 ruling had been made on partial-case evidence and then applied to the total-outage case,
+  // which AC-A covers and which nobody had shown him. The alternative was to amend AC-A's
+  // "(if submitted)" so the screen stays silent until the user acts; he kept AC-A intact. This
+  // line is therefore a decision, not an accretion — recorded here rather than only in the PR
+  // thread, on the same convention as `resources.ts:43-46`, so the next person to touch it can
+  // see it was chosen and by whom.
   const apiUnreachable = formTransportError || (qrUnreachable && capabilitiesUnreachable)
 
   // #336 review, F8 — the second job `apiUnreachable` used to carry, which F1 killed by accident
