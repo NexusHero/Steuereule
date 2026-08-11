@@ -15,10 +15,11 @@
 //     formula runs, and the resulting tax is floored to the full euro AFTER (§32a Abs. 1
 //     Satz 6 EStG) — leaving either implicit is how two correct-looking implementations
 //     disagree by a euro.
-//  2. `veranlagungsvergleich` is EXACT GIVEN two zvE values — integer/float arithmetic over
-//     two calls to `incomeTax`, no approximation anywhere in the path:
-//     `2 × incomeTax(⌊(zvE_A + zvE_B) / 2⌋, year)` against
-//     `incomeTax(zvE_A, year) + incomeTax(zvE_B, year)`.
+//  2. `veranlagungsartenvergleich`'s `einzel`/`zusammen`/`delta` triple is EXACT GIVEN two zvE
+//     values — integer/float arithmetic over two calls to `incomeTax`, no approximation
+//     anywhere in the path: `2 × incomeTax(⌊(zvE_A + zvE_B) / 2⌋, year)` against
+//     `incomeTax(zvE_A, year) + incomeTax(zvE_B, year)`. What this layer does NOT claim is a
+//     verdict — see ADR-0034, decision 3/4 below.
 //  3. NEITHER OF THE ABOVE SAYS ANYTHING ABOUT THE ACCURACY OF THE zvE THAT GOES IN, and this
 //     module deliberately does not try to supply one — #321 §A leaves "which figure" an open
 //     stakeholder call. An exact tariff over a coarse input reads as authoritative PRECISELY
@@ -33,14 +34,21 @@
 // sagen wir es dir hier zuerst") — under Produkt-ADR-032 that sentence does not ship until
 // this module (or a successor) computes what causes the flip.
 //
-// F3 (Musti's PR #340 review — HELD for his forthcoming engineering ADR, not rebuilt here):
-// none of the honesty above travels past this module's own boundary. `veranlagungsvergleich`
-// returns a bare `empfehlung` with identical confidence at `delta = 1 €` as at `delta =
-// -1449 €`, while the three factors just named are excluded and can move the true delta by
-// hundreds of euro. Musti is settling the shape this should take — a name that stops implying
-// a settled favourability verdict, a carried `excludes` limit, or withholding `empfehlung`
-// inside the noise band — in the ADR referenced above. Do not redesign the return shape ahead
-// of that ruling.
+// F3 (Musti's PR #340 review) IS SETTLED — docs/adr/0034-veranlagungsartenvergleich-returns-a-
+// bounded-comparison.md. `veranlagungsartenvergleich` (renamed from `veranlagungsvergleich`;
+// "Günstigerprüfung" is reserved for Produkt-ADR-032's § 32d Abs. 6 Abgeltungsteuer-vs-
+// personal-rate comparison and is never used for this § 26 assessment-type comparison) returns
+// a discriminated union keyed on `aussage`. `empfehlung` survives only inside the
+// `aussage: 'eindeutig'` variant — not optional, not nullable, not a top-level field beside an
+// ignorable confidence flag — so a caller that wants the verdict must read `aussage` first and
+// the compiler refuses the shortcut (see `Veranlagungsartenvergleich` below; the same
+// unrepresentable-to-skip instinct as ADR-0031 §4 as built in #341). `unschaerfe` carries the
+// margin, computed from `einzel`/`zusammen` — Soli and Kirchensteuer are surcharges on assessed
+// tax and so are boundable from those two amounts, but Progressionsvorbehalt is NOT boundable
+// from zvE alone and this module takes no Lohnersatzleistungen input, so `unschaerfe` is
+// `{ kind: 'unbestimmt' }` unconditionally today and `aussage` can never be `'eindeutig'` — see
+// the function doc below. That is ADR-0034's consequence working, not a defect: "we cannot say"
+// is the honest answer until Progressionsvorbehalt is an input.
 //
 // AN UNSUPPORTED TAX YEAR THROWS. It never falls back to a neighbouring year's coefficients.
 // That is `Interview.jsx:28-30`'s hard-wired-2026 defect one level more consequential than
@@ -212,49 +220,95 @@ export function incomeTax(zuVersteuerndesEinkommen: number, year: number): numbe
   return Math.floor(tax)
 }
 
-/** Which Veranlagung the comparison recommends. */
-export type VeranlagungEmpfehlung = 'zusammenveranlagung' | 'einzelveranlagung'
-
-export interface VeranlagungsvergleichResult {
-  /** Combined tax under Zusammenveranlagung (Splittingtarif), in whole euro. */
-  readonly zusammenTax: number
-  /** Combined tax under Einzelveranlagung (two Grundtarif calculations), in whole euro. */
-  readonly einzelTax: number
-  /**
-   * `zusammenTax - einzelTax`. Negative whenever coupling genuinely helps. Not merely
-   * zero at exact-equal incomes — CAN BE POSITIVE in a narrow band near them (F2, PR #340
-   * review): each side of `einzelTax` is floored independently (§32a Abs. 1 Satz 6 EStG)
-   * before summing, while `zusammenTax` floors the averaged, then doubled, amount once — so a
-   * sub-euro Splitting-Vorteil can be inverted by rounding. E.g.
-   * `veranlagungsvergleich(11931, 12017, 2024)` has `delta = +1`. Not a defect: the assessed
-   * (floored) amounts are what the statute actually taxes.
-   */
-  readonly delta: number
-  readonly empfehlung: VeranlagungEmpfehlung
-}
+/**
+ * ADR-0034 decision 3: the bound on how far the three excluded factors (Solidaritätszuschlag,
+ * Kirchensteuer, Progressionsvorbehalt) could move `delta` away from what
+ * `veranlagungsartenvergleich` computed.
+ *
+ * `'bestimmt'` (a computed `obergrenze`, in whole euro) is reachable only once Soli/Kirchensteuer
+ * are computed AND Progressionsvorbehalt is bounded — the latter needs a Lohnersatzleistungen
+ * input this module does not (yet) accept, so `'bestimmt'` is currently unreachable. A bound that
+ * ignores an unboundable factor is not a bound; that is why the two are not tracked separately
+ * and one absent input collapses the whole value to `'unbestimmt'`, never a partial figure.
+ */
+export type Unschaerfe =
+  | { readonly kind: 'bestimmt'; readonly obergrenze: number }
+  | { readonly kind: 'unbestimmt'; readonly grund: 'progressionsvorbehalt-nicht-eingegeben' }
 
 /**
- * Veranlagungsartenvergleich (Produkt-ADR-006 / M1): Zusammenveranlagung (Splittingtarif) vs.
- * Einzelveranlagung (two Grundtarif calculations), for a couple's zvE values in `year`. (Named
- * "Veranlagungsartenvergleich" rather than "Günstigerprüfung" — the latter is already
- * Produkt-ADR-032's term for the Abgeltungsteuer-vs-personal-rate test on Kapitalerträge, a
- * different comparison; F3, PR #340 review.)
+ * ADR-0034 decision 2: the result of `veranlagungsartenvergleich`, discriminated on `aussage` so
+ * a caller cannot read `empfehlung` without first checking whether the module has earned the
+ * right to give one. `empfehlung` exists ONLY on the `'eindeutig'` variant — not optional, not
+ * nullable, not a top-level field beside an ignorable confidence flag. The compiler refuses the
+ * shortcut; see `tarif.test.ts`'s `@ts-expect-error` proof.
  *
- * Layer 2 of the module doc above — exact GIVEN `zveA`/`zveB`. This function does not
- * validate that either figure is the couple's real income; that is layer 3, and the
- * caller's responsibility (#321 §A).
+ * What a caller is entitled to conclude from each field (ADR-0034 §4, verbatim):
  *
- * At equal incomes the Splitting-Vorteil is zero (`delta === 0`) and the recommendation is
- * `'einzelveranlagung'` — coupling two tax years buys nothing there, so nothing recommends
- * it. This is deliberately NOT the same branch as "splitting wins": a fixed/hard-coded
- * `'zusammenveranlagung'` winner would pass every case where splitting genuinely helps and
- * only fail here, which is exactly why this boundary is the module's own red path (N2).
+ * | From | Entitled to conclude | **Not** entitled to conclude |
+ * |---|---|---|
+ * | `einzel`, `zusammen` | the § 32a tariff on the two zvE handed in, exact to the euro | that the zvE handed in is the right figure — accuracy layer 3 is still open (#321 § A) |
+ * | `delta` | the exact tariff difference **for those zvE** | the difference in what the user actually pays |
+ * | `aussage: 'eindeutig'` + `empfehlung` | this Veranlagung wins **by more than the excluded factors could move it** | that it wins *by* `delta` |
+ * | `aussage: 'zu-knapp'` | the tariff difference is inside the noise floor of what we do not compute | that the two are equal, or that it does not matter |
+ * | `aussage: 'unbestimmt'` | we cannot bound the error at all | anything whatsoever about which wins |
+ *
+ * `delta` (= `zusammen - einzel`) is negative whenever coupling genuinely helps, but is NOT
+ * merely zero at exact-equal incomes — it CAN BE POSITIVE in a narrow band near them (F2, PR
+ * #340 review, preserved across the ADR-0034 rename): each side of `einzel` is floored
+ * independently (§32a Abs. 1 Satz 6 EStG) before summing, while `zusammen` floors the averaged,
+ * then doubled, amount once — so a sub-euro Splitting-Vorteil can be inverted by rounding. E.g.
+ * `veranlagungsartenvergleich(11931, 12017, 2024).delta === 1`. Not a defect: the assessed
+ * (floored) amounts are what the statute actually taxes.
  */
-export function veranlagungsvergleich(
+export type Veranlagungsartenvergleich =
+  | {
+      readonly aussage: 'eindeutig'
+      readonly empfehlung: 'einzel' | 'zusammen'
+      readonly einzel: number
+      readonly zusammen: number
+      readonly delta: number
+      readonly unschaerfe: Unschaerfe
+    }
+  | {
+      readonly aussage: 'zu-knapp'
+      readonly einzel: number
+      readonly zusammen: number
+      readonly delta: number
+      readonly unschaerfe: Unschaerfe
+    }
+  | {
+      readonly aussage: 'unbestimmt'
+      readonly einzel: number
+      readonly zusammen: number
+      readonly delta: number
+      readonly unschaerfe: Unschaerfe
+    }
+
+/**
+ * Veranlagungsartenvergleich (Produkt-ADR-006 / M1, module contract ADR-0034): Zusammenveranlagung
+ * (Splittingtarif) vs. Einzelveranlagung (two Grundtarif calculations), for a couple's zvE values
+ * in `year`. Named "veranlagungsartenvergleich" — NOT "Günstigerprüfung", which is reserved
+ * (ADR-0034 decision 1) for Produkt-ADR-032's § 32d Abs. 6 Abgeltungsteuer-vs-personal-rate test
+ * on Kapitalerträge, a different comparison entirely.
+ *
+ * `einzel`/`zusammen`/`delta` are layer 2 of the module doc above — exact GIVEN `zveA`/`zveB`.
+ * This function does not validate that either figure is the couple's real income; that is layer
+ * 3, and the caller's responsibility (#321 §A).
+ *
+ * `aussage` is ALWAYS `'unbestimmt'` today (ADR-0034's stated consequence, not a defect):
+ * Solidaritätszuschlag and Kirchensteuer are surcharges on assessed tax and so are boundable from
+ * `einzel`/`zusammen` alone, but Progressionsvorbehalt is not boundable from zvE alone, and this
+ * function takes no Lohnersatzleistungen input to bound it with. One unboundable excluded factor
+ * makes the whole margin `unbestimmt`, so `aussage` can never reach `'eindeutig'` or `'zu-knapp'`
+ * — both require `unschaerfe.kind === 'bestimmt'` — until a future input supplies
+ * Progressionsvorbehalt. The `'eindeutig'`/`'zu-knapp'` variants exist in the type so that day
+ * does not require another breaking change to this contract.
+ */
+export function veranlagungsartenvergleich(
   zveA: number,
   zveB: number,
   year: number,
-): VeranlagungsvergleichResult {
+): Veranlagungsartenvergleich {
   if (!Number.isFinite(zveA) || !Number.isFinite(zveB)) {
     throw new RangeError('zvE must be a finite number')
   }
@@ -264,14 +318,15 @@ export function veranlagungsvergleich(
   // isSupportedIncomeTaxYear is checked by `incomeTax` below; no need to duplicate it here.
 
   const gemeinsam = Math.floor((zveA + zveB) / 2)
-  const zusammenTax = 2 * incomeTax(gemeinsam, year)
-  const einzelTax = incomeTax(zveA, year) + incomeTax(zveB, year)
-  const delta = zusammenTax - einzelTax
+  const zusammen = 2 * incomeTax(gemeinsam, year)
+  const einzel = incomeTax(zveA, year) + incomeTax(zveB, year)
+  const delta = zusammen - einzel
 
   return {
-    zusammenTax,
-    einzelTax,
+    aussage: 'unbestimmt',
+    einzel,
+    zusammen,
     delta,
-    empfehlung: delta < 0 ? 'zusammenveranlagung' : 'einzelveranlagung',
+    unschaerfe: { kind: 'unbestimmt', grund: 'progressionsvorbehalt-nicht-eingegeben' },
   }
 }

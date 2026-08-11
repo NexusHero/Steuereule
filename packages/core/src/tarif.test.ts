@@ -2,9 +2,10 @@ import { describe, expect, it } from 'vitest'
 import {
   incomeTax,
   isSupportedIncomeTaxYear,
-  veranlagungsvergleich,
+  veranlagungsartenvergleich,
   zoneBoundaries,
   type IncomeTaxYear,
+  type Veranlagungsartenvergleich,
 } from './tarif'
 
 // #321 strand N — §32a EStG tariff. Every expected number below is a LITERAL constant, not a
@@ -177,73 +178,126 @@ describe('incomeTax — §32a EStG Grundtarif', () => {
   })
 })
 
-describe('veranlagungsvergleich — Veranlagungsartenvergleich (Produkt-ADR-006)', () => {
+describe('veranlagungsartenvergleich — Veranlagungsartenvergleich (Produkt-ADR-006, module contract ADR-0034)', () => {
   // gemeinsam = ⌊(60000+20000)/2⌋ = 40000, so:
   //   zusammen = 2 × incomeTax(40000, 2024) = 14990
-  //   einzeln  = incomeTax(60000, 2024) + incomeTax(20000, 2024) = 16439
-  it('splitting helps when incomes differ — recommends Zusammenveranlagung', () => {
-    const result = veranlagungsvergleich(60000, 20000, 2024)
-    expect(result.zusammenTax).toBe(14990)
-    expect(result.einzelTax).toBe(16439)
+  //   einzel   = incomeTax(60000, 2024) + incomeTax(20000, 2024) = 16439
+  it('computes the exact tariff arithmetic — same numbers as pre-ADR-0034, renamed fields', () => {
+    const result = veranlagungsartenvergleich(60000, 20000, 2024)
+    expect(result.zusammen).toBe(14990)
+    expect(result.einzel).toBe(16439)
     expect(result.delta).toBe(-1449)
-    expect(result.empfehlung).toBe('zusammenveranlagung')
   })
 
-  it('extreme income gap — splitting helps even more', () => {
-    const result = veranlagungsvergleich(0, 80000, 2024)
-    expect(result.zusammenTax).toBe(14990)
-    expect(result.einzelTax).toBe(22997)
-    expect(result.empfehlung).toBe('zusammenveranlagung')
+  it('extreme income gap — splitting helps even more (arithmetic only, no verdict)', () => {
+    const result = veranlagungsartenvergleich(0, 80000, 2024)
+    expect(result.zusammen).toBe(14990)
+    expect(result.einzel).toBe(22997)
+    expect(result.delta).toBe(-8007)
   })
 
-  // The boundary that catches a hard-coded/fixed recommendation (N2's own red path, Musti's
-  // comment §F): equal incomes carry zero Splitting-Vorteil, so the correct call is
-  // 'einzelveranlagung' — a `return 'zusammenveranlagung'` regardless of input passes every
-  // other case in this file and only fails here.
-  it('equal incomes — zero advantage, recommends Einzelveranlagung, not a fixed winner', () => {
-    const result = veranlagungsvergleich(40000, 40000, 2024)
-    expect(result.zusammenTax).toBe(result.einzelTax)
+  it('equal incomes — zero advantage', () => {
+    const result = veranlagungsartenvergleich(40000, 40000, 2024)
+    expect(result.zusammen).toBe(result.einzel)
     expect(result.delta).toBe(0)
-    expect(result.empfehlung).toBe('einzelveranlagung')
   })
 
-  // F2 (PR #340 review, blocking): `delta` is not "zero or negative whenever coupling helps
-  // or is neutral" — it CAN be positive, and this was previously untested (the only
-  // 'einzelveranlagung' case in this file was the exact tie above). Musti measured 156,063
-  // such pairs over a sampled 2024 grid; this is the smallest.
+  // F2 (PR #340 review, blocking) — control re-proven against the ADR-0034 shape (ADR-0021
+  // amendment §4: a proof is void once the code it ran against moves; this one both renamed the
+  // function and restructured the return type, so it is re-run rather than inherited). `delta`
+  // is not "zero or negative whenever coupling helps or is neutral" — it CAN be positive.
+  // Musti measured 156,063 such pairs over a sampled 2024 grid; this is the smallest.
   //   gemeinsam = ⌊(11931+12017)/2⌋ = 11974
   //   zusammen  = 2 × incomeTax(11974, 2024) = 2 × 53  = 106
-  //   einzeln   = incomeTax(11931, 2024) + incomeTax(12017, 2024) = 46 + 59 = 105
-  //   delta     = +1  →  'einzelveranlagung'
+  //   einzel    = incomeTax(11931, 2024) + incomeTax(12017, 2024) = 46 + 59 = 105
+  //   delta     = +1
   // Legally correct, not a math defect: the floored (assessed) amounts are what the statute
   // taxes, and unfloored Zusammenveranlagung is genuinely cheaper (106.127 vs 106.161) —
   // statutory rounding inverts a sub-euro advantage in this narrow band.
   it('a narrow band near equal incomes can flip delta positive — statutory flooring, not a fixed winner', () => {
-    const result = veranlagungsvergleich(11931, 12017, 2024)
-    expect(result.zusammenTax).toBe(106)
-    expect(result.einzelTax).toBe(105)
+    const result = veranlagungsartenvergleich(11931, 12017, 2024)
+    expect(result.zusammen).toBe(106)
+    expect(result.einzel).toBe(105)
     expect(result.delta).toBe(1)
-    expect(result.empfehlung).toBe('einzelveranlagung')
   })
 
   it('is symmetric — swapping the two people does not change the result', () => {
-    const a = veranlagungsvergleich(60000, 20000, 2024)
-    const b = veranlagungsvergleich(20000, 60000, 2024)
+    const a = veranlagungsartenvergleich(60000, 20000, 2024)
+    const b = veranlagungsartenvergleich(20000, 60000, 2024)
     expect(b).toEqual(a)
   })
 
   it('rejects a negative zvE for either person', () => {
-    expect(() => veranlagungsvergleich(-1, 20000, 2024)).toThrow(RangeError)
-    expect(() => veranlagungsvergleich(20000, -1, 2024)).toThrow(RangeError)
+    expect(() => veranlagungsartenvergleich(-1, 20000, 2024)).toThrow(RangeError)
+    expect(() => veranlagungsartenvergleich(20000, -1, 2024)).toThrow(RangeError)
   })
 
   it('rejects a non-finite zvE for either person', () => {
-    expect(() => veranlagungsvergleich(Number.NaN, 20000, 2024)).toThrow(RangeError)
-    expect(() => veranlagungsvergleich(20000, Number.NaN, 2024)).toThrow(RangeError)
+    expect(() => veranlagungsartenvergleich(Number.NaN, 20000, 2024)).toThrow(RangeError)
+    expect(() => veranlagungsartenvergleich(20000, Number.NaN, 2024)).toThrow(RangeError)
   })
 
   it('propagates the unsupported-year throw — the comparison is only ever as exact as `incomeTax`', () => {
-    expect(() => veranlagungsvergleich(60000, 20000, 2026)).toThrow(RangeError)
+    expect(() => veranlagungsartenvergleich(60000, 20000, 2026)).toThrow(RangeError)
+  })
+
+  describe('ADR-0034 — the verdict travels only inside a bounded `aussage`, never bare', () => {
+    // Existence proof (ADR-0021 amendment §6a's shape, applied to a value range rather than a
+    // set): a check that only samples a couple of deltas could pass by luck if 'eindeutig' were
+    // reachable only outside the sampled range. Sweep in the huge-delta direction specifically,
+    // since a huge delta is exactly the case a naive "delta beyond some threshold" reading would
+    // expect to see 'eindeutig' — and per ADR-0034 §3 it must not, because Progressionsvorbehalt
+    // is unbounded regardless of how large `delta` is.
+    const pairs: ReadonlyArray<readonly [number, number]> = [
+      [60000, 20000],
+      [0, 80000],
+      [40000, 40000],
+      [11931, 12017],
+      [1_000_000, 0],
+      [0, 0],
+    ]
+
+    it.each(pairs)('aussage is unbestimmt for (%d, %d) — Progressionsvorbehalt has no input to bound it', (a, b) => {
+      const result = veranlagungsartenvergleich(a, b, 2024)
+      expect(result.aussage).toBe('unbestimmt')
+    })
+
+    it('unschaerfe states the reason, not a silent absence', () => {
+      const result = veranlagungsartenvergleich(60000, 20000, 2024)
+      expect(result.unschaerfe).toEqual({
+        kind: 'unbestimmt',
+        grund: 'progressionsvorbehalt-nicht-eingegeben',
+      })
+    })
+
+    // Control proof, existence branch (ADR-0021 amendment §1): break it by DELETING the
+    // narrowing check rather than corrupting a value — read `.empfehlung` off the result with no
+    // narrowing at all. This is a compile-time control, so the break is "does `tsc` accept this
+    // line": delete the `@ts-expect-error` line below (only that one line, by hand — a sed match
+    // on the directive's own name would also delete this sentence) and re-run
+    // `pnpm --filter @steuereule/core typecheck`. Measured, restored after:
+    //
+    //   src/tarif.test.ts(NNN,38): error TS2339: Property 'empfehlung' does not exist on type
+    //     'Veranlagungsartenvergleich'.
+    //     Property 'empfehlung' does not exist on type '{ readonly aussage: "zu-knapp"; ... }'.
+    //   (NNN shifts by one line once the directive itself is removed — the message text is the
+    //   fixed part; the exact number was 289 in the run this comment is describing.)
+    //
+    // restored (directive back) → `pnpm typecheck` clean again. Full transcript is in the PR
+    // body rather than duplicated here, since this comment is not itself executable evidence.
+    it('the compiler refuses `.empfehlung` before `aussage` is narrowed to eindeutig', () => {
+      const result: Veranlagungsartenvergleich = veranlagungsartenvergleich(60000, 20000, 2024)
+      // @ts-expect-error — `empfehlung` exists only on the `aussage: 'eindeutig'` variant. This
+      // line is the control: delete the directive above and this file must fail `tsc`.
+      const leaked: unknown = result.empfehlung
+      expect(leaked).toBeUndefined()
+
+      if (result.aussage === 'eindeutig') {
+        // Narrowed — `empfehlung` is legitimately readable here. Unreachable today (see the
+        // sweep above), kept so the type stays exercised once ADR-0034's future input lands.
+        expect(['einzel', 'zusammen']).toContain(result.empfehlung)
+      }
+    })
   })
 })
 
