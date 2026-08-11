@@ -532,3 +532,129 @@ instrument.
   produced *by* careful writing — a citation rule that was written down and then broken five times, and
   a limit that was written down and then hit twice. Neither is an argument against writing things
   down. Both are an argument against counting it as done.
+
+## Amendment — 2026-08-11 (#338, #341 rounds 2–4): what a sweep licenses, and where a default lives
+
+Per the log's immutability rule (`docs/adr/index.md:5`), everything above stands unedited. This
+appends three rules from the same day's later review rounds, continuing the numbering. §4b belongs
+inside §4 and is appended here instead, for that reason; read them together.
+
+**Not repeated here, because they are already above.** #341's F1 (the deny-list → allow-list default
+flip, 445/1350) is §6a's evidence, and #341's F3 (an argument in the slot reserved for an observation)
+is §4a. Both were re-measured in the later rounds and neither needs a second rule.
+
+### 4b. An expired proof does not go red. It goes green.
+
+§4 establishes that a proof is **void** when the code it was run against moves. It does not say what a
+void proof *looks like from the outside*, and that is the whole of the cost: a control whose subject
+has been replaced does not announce itself. The test still runs, still passes, and still reads in the
+evidence block as the thing that proves the endpoint works.
+
+**Measured (#338).** The readiness endpoint's discriminating test — the one written specifically to
+prove `/v1/health/ready` performs a real database probe rather than being wired to something that
+resolves — worked by mutating `process.env.DATABASE_URL` on the already-booted app. That was correct
+for the mechanism it was written against: #275's `assertDatabaseReachable` re-read `process.env` on
+every call. The F1 fix replaced that mechanism with a probe through `PrismaService`'s own pool, whose
+datasource is bound once, at construction. The test's premise silently stopped being true.
+
+Re-instated against the fixed code and measured directly, waiting past the 1.5 s coalescing TTL so the
+probe was genuinely fresh rather than a cached answer:
+
+```
+MUSTI: old-form status = 200 {"status":"ok"}
+Tests  1 passed (1)
+```
+
+Green. Proving nothing. Forever, and without a single symptom.
+
+**Found by its own author.** Salih wrote that test, wrote the fix that expired it, and then went back
+to the test he had already earned once, measured that it had stopped meaning anything, and said so in
+public before anyone asked — on the same day §4 was written, and without having read it. The rule
+below is his practice, not an instruction to him.
+
+**Rule.** When a change replaces the **mechanism** a control's proof was run against — not merely its
+name or its file, but the thing it does — re-running the proof is **not sufficient**. The proof is
+re-run *and re-broken* against the new mechanism, with a fresh observed failure. A test that passes
+after a mechanism change has established only that it still passes.
+
+**Reviewer's test, one question:** *has this control been observed to fail against the mechanism that
+is in the tree now, or only against the one it replaced?*
+
+**Corollary.** The replacement must be checked against the *new* mechanism's failure mode, which is
+often a different one. #338's rewritten test builds a second application whose pool can never connect,
+because binding-at-construction is what the new probe does; the break confirming it discriminates was
+run against the new wiring, not inherited from the old test's record.
+
+### 8. A sweep proves the space it sampled. Name the space, not just the count.
+
+A differential sweep — walk the answer space, compare old against new, count divergences — is the
+strongest instrument in this document, and it produces the most confident-sounding wrong claim in it.
+A report of the form *"1350 combinations, 445 divergences"* reads as exhaustive. It is a **sample**,
+and its shape is decided entirely by the domains the sweep drew from.
+
+**Measured (#341, F9/F11).** The sweep that found F1 drew every `job` value from `JOB_VALUES` plus one
+invented string. On the strength of it I wrote, in a review record: *"F1 and F4 are the only two
+Segment-1 behavioural divergences from `main`, and I looked exhaustively."* Two rounds later, `job` =
+`'constructor'` turned out to throw `TypeError: ids is not iterable` where `main` returned a step — a
+third divergence class the sweep was **structurally incapable** of generating, because it only ever
+fed values from the declared domain. The same blindness hid F11 one function away. The instrument was
+fine. The word "exhaustively" was not.
+
+**Rule.** State the **domain each variable was drawn from**, so a reader can see what was not fed.
+Where the code under test is a **lookup keyed by data** — an object indexed by an answer, an id, a
+user-supplied string — the sampled space includes values from outside the declared domain: the
+language's own keys (`constructor`, `toString`, `__proto__`, `valueOf`), the empty string, and at
+least one **valid-but-undeclared** value. Those are precisely the values a declared-domain sweep
+cannot generate, and they are where defaults and guards fail.
+
+**"Exhaustive" is reserved for a space closed by construction** — an exhaustive `Record` over a union,
+checked by the compiler, which cannot be satisfied by a sample. A sweep is never exhaustive, however
+large. The reservation is the load-bearing half of this rule: it leaves a writer something they *can*
+honestly claim instead of only telling them what they cannot.
+
+**Reviewer's test:** *what could this sweep not have generated?*
+
+### 9. For a lookup keyed by data, "declared" is a decision the language makes, not the author
+
+§6a is about a declared set **growing**. This is about values that are in no declared set at all and
+are nevertheless found there, because JavaScript answers "does this object have that key?" with the
+prototype chain included.
+
+**Measured (#341, F9 and F11).** Two different functions, the same mistake, thirty lines apart:
+
+| Where | Written | For `answer`/`step` = `'constructor'` |
+|---|---|---|
+| `branchFor` | `decl.followUps?.[answer] !== undefined` | inherited `Object.prototype.constructor`, returned as a step list → `TypeError: ids is not iterable` |
+| `isValidAnswer` | `const decl = QUESTIONS[step]; if (decl === undefined) return false` | `QUESTIONS['constructor']` is `Object`, so *the* unknown-step guard never fires → `TypeError: Cannot read properties of undefined (reading 'kind')` |
+
+Both were unreachable through the endpoint on the day they were found, and both sat in the module that
+*is* the gate. The second is the sharper one: it is a guard written **specifically** to handle unknown
+steps, which reads as though it does, and does not — the failure §7 describes, in four characters.
+
+`in` does not fix it either; `'constructor' in QUESTIONS` is also `true`. `Object.hasOwn` is the tool.
+
+**Rule.** Where an object literal is used as a lookup table keyed by data the author did not write,
+membership is tested with `Object.hasOwn`, never `!== undefined`, `?.[k]` or `in`. Where such a table
+has a fallback — a default branch, an unknown-key guard — the test suite contains at least one case
+proving a prototype key **reaches the fallback**, because that case cannot be produced by any
+enumeration of the declared keys (§8).
+
+**Reviewer's test:** *is this object indexed by a string the author did not choose, and if so, what
+does it return for `'constructor'`?*
+
+### Consequences
+
+- **§4b makes a mechanism change more expensive than a rename, deliberately.** §4's re-run is cheap;
+  §4b's re-break is the one that costs, and it is the one that would have caught #338. Where the
+  mechanism is unchanged, §4 alone still applies.
+- **§8 makes sweep reports slightly longer and considerably more useful.** The sampled domains are two
+  lines. The claim they replace was one word, and it was wrong.
+- **§8 retires a word.** "Exhaustively", used of a sweep, is now a review finding, including — and this
+  is the instance that produced the rule — when I write it.
+- **§9 is the first rule here that is language-specific**, and it earns the exception: the defect is
+  invisible to types, invisible to 100 % branch coverage, and both of its instances passed a full
+  suite. `packages/core/src/interview.ts` carries both fixes and both proofs; it is the worked example.
+- **These three do not close any gate.** Like §7 and §7a above, they are rules whose only instrument
+  today is a person reading a diff, and this document's own thesis says what that is worth. §9 is the
+  one of the three that a lint rule could plausibly enforce; whether one exists that distinguishes a
+  data-keyed lookup from an ordinary property read is an open question, not a plan.
