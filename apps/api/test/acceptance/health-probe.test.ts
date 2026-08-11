@@ -45,32 +45,53 @@ describe('#279 — GET /v1/health/live and /v1/health/ready, against the real se
 
   // #338 F2 (Salih's review) — the two tests above do NOT discriminate: they only prove
   // readiness is WIRED to something that resolves, not that it performs a real database
-  // probe. Measured directly — swapping HealthModule's `assertDatabaseReachable` for
-  // `async () => {}` leaves both green (see this PR's own report for the run). This test
-  // closes that gap using the REAL, production-wired `assertDatabaseReachable` (never a
-  // stub or a mock) pointed at a target nothing is listening on, so the only way this can
-  // pass is if the readiness path actually attempts a live connection and lets it fail —
-  // an inert stub would still answer 200 here, which is exactly what would go red.
+  // probe. Measured directly — swapping HealthModule's real provider for
+  // `async () => {}` left both green (see this PR's own report for that run).
   //
-  // `DATABASE_URL` is mutated on the live `process.env` (not passed as an argument)
-  // because that is genuinely how `assertDatabaseReachable`'s default parameter resolves
-  // it in production — `HealthModule` wires the bare function, not a closure over a
-  // fixed URL — so this exercises the identical resolution path the real server uses on
-  // every request, not a parallel one invented for the test. Restored in `finally` so no
-  // later test in this file (or, since `fileParallelism: false`, this suite) inherits a
-  // broken `DATABASE_URL`. Port 1 is unprivileged-inaccessible on this OS and nothing in
-  // this stack ever binds to it, so the connection fails fast (measured: ~120ms, refused
-  // — not the 5s reachability timeout) rather than this test waiting one out.
-  it('readiness performs a REAL database probe, not a wired-to-succeed stub: pointed at a target nothing is listening on, it answers 503', async () => {
+  // REDESIGNED under #338 F1 (Musti's §4): the first version of this test mutated
+  // `process.env.DATABASE_URL` on the ALREADY-BOOTED `app` above and expected readiness
+  // to pick it up — that was true of #275's `assertDatabaseReachable` (which re-read
+  // `process.env` on every call, itself part of F1's finding) but is FALSE of the F1 fix,
+  // which probes through `PrismaService`'s own connection, bound once at construction.
+  // Measured directly, unfiltered, after the F1 fix landed: the mutated-env version of
+  // this test now answers 200, not 503 — confirmed empirically, not assumed, before being
+  // rewritten below. Silently leaving a test that asserts the OLD implementation's
+  // resolution path would be exactly the green-theatre trap this PR's own F2 exists to
+  // close a second time.
+  //
+  // The correct discriminator for the new mechanism: `PrismaClient`'s datasource is read
+  // from `DATABASE_URL` once, at construction — so a SECOND, throwaway `buildApp()`
+  // instance, built with `DATABASE_URL` pointed at a target nothing is listening on
+  // (port 1) at the moment of construction, has a `PrismaService` that can never
+  // successfully connect. Its readiness endpoint can only answer 503 if the real,
+  // production-wired probe actually attempts I/O against that broken connection — an
+  // inert stub would still answer 200 regardless of what `DATABASE_URL` says, which is
+  // exactly what would go red under this test. `DATABASE_URL` is restored immediately
+  // after `buildApp()` resolves (all providers, including `PrismaService`, are
+  // constructed synchronously within that one `await` — see `main.ts`'s `buildApp()`),
+  // so no other test in this suite (`fileParallelism: false`) is exposed to the broken
+  // value even momentarily.
+  it('readiness performs a REAL database probe, not a wired-to-succeed stub: a second app built against a target nothing is listening on answers 503', async () => {
     const originalDatabaseUrl = process.env.DATABASE_URL
     process.env.DATABASE_URL = 'postgresql://steuereule:steuereule@127.0.0.1:1/steuereule'
+    let unreachableApp: NestFastifyApplication | undefined
     try {
-      const response = await fetch(`${baseUrl}/v1/health/ready`)
+      const { buildApp } = await import('../../src/main.js')
+      unreachableApp = await buildApp()
+    } finally {
+      process.env.DATABASE_URL = originalDatabaseUrl
+    }
+
+    try {
+      await unreachableApp.listen(0, '127.0.0.1')
+      const unreachableBaseUrl = await unreachableApp.getUrl()
+
+      const response = await fetch(`${unreachableBaseUrl}/v1/health/ready`)
 
       expect(response.status).toBe(503)
       await expect(response.json()).resolves.toEqual({ status: 'error' })
     } finally {
-      process.env.DATABASE_URL = originalDatabaseUrl
+      await unreachableApp.close()
     }
   })
 })

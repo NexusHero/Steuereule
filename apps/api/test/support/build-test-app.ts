@@ -74,10 +74,11 @@ export async function buildTestApp(options?: {
   // PlaywrightPdfRenderer gets its own dedicated test (pdf-renderer.playwright.test.ts).
   //
   // DATABASE_REACHABILITY_CHECK (#279) is overridden to an always-succeeding stub for
-  // the same reason: HealthModule's real provider is `assertDatabaseReachable`, which
-  // dials an actual Postgres client — nothing this no-DB harness's callers may assume.
-  // A test that wants the FAILURE branch of `/v1/health/ready` overrides this again,
-  // per-test, on top of this default (see health.controller.test.ts).
+  // the same reason: HealthModule's real provider (`createPooledDatabaseReachabilityCheck`,
+  // #338 F1) queries through the app's own `PrismaService` — nothing this no-DB harness's
+  // callers may assume, and PrismaService is itself already stubbed to `{}` above. A test
+  // that wants the FAILURE branch of `/v1/health/ready` overrides this again, per-test, on
+  // top of this default (see health.controller.test.ts).
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(PROFILE_REPOSITORY)
     .useValue(repository)
