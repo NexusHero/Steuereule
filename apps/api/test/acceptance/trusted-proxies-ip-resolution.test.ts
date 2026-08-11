@@ -265,7 +265,7 @@ describe('#241 A1 — TRUSTED_PROXIES unset: today’s live bypass, kept as a pe
 // attempt counts (`hooks.after` sees the real outcome, not `hooks.before`), and a SUCCESSFUL
 // sign-in clears the bucket outright. The tests below prove both halves, not just the
 // pre-existing "it blocks eventually" one.
-describe('the account-keyed control (#248, ADR-0034) closes repeated guessing against ONE account, even under full IP rotation, and counts failures only', () => {
+describe('the account-keyed control (#248, ADR-0035) closes repeated guessing against ONE account, even under full IP rotation, and counts failures only', () => {
   let app: NestFastifyApplication
   let baseUrl: string
   let prisma: PrismaClient

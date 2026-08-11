@@ -158,7 +158,7 @@ shell (Cockpit, Profil), with Datenschutz as a drill-down reached from Profil.
 - `PrismaModule` — the shared, field-encryption-extended Prisma client (ADR-0008).
 - **Cross-cutting** — the fail-closed CORS origin allowlist (ADR-0011; never `*`, credentialed
   cross-origin with `SameSite=None; Secure`), `helmet`/CSP, and the DB-backed rate limits — **two
-  independent limiters, only one of them effective as shipped** (ADR-0034):
+  independent limiters, only one of them effective as shipped** (ADR-0035):
   - better-auth's own built-in limiter is keyed on a client IP read from `X-Forwarded-For` with no
     trusted-proxy boundary, so a single-value header yields a fresh bucket per request
     ([#241](https://github.com/NexusHero/Steuereule/issues/241)), and a caller who sends no
@@ -172,10 +172,10 @@ shell (Cockpit, Profil), with Datenschutz as a drill-down reached from Profil.
     they rotate a header, so this closes REQ-010's own "repeated **failed** logins from the same
     account" wording today, independent of #292. It does not help against a stolen-credential list
     tried once per account, and it has its own known, stakeholder-facing availability trade-off (an
-    attacker who knows a victim's email can still burn that account's quota) — see ADR-0034's
+    attacker who knows a victim's email can still burn that account's quota) — see ADR-0035's
     Consequences, currently **open**. The Requirements Register records the composite:
     `Done (account-keyed rate limiting)` · `not met (IP-keyed rate limiting)`. See ADR-0012 §5 and its
-    2026-08-04 amendment, and ADR-0034 for the account-keyed design.
+    2026-08-04 amendment, and ADR-0035 for the account-keyed design.
 
 **Persistence — Postgres (EU)**, expand-only versioned migrations (ADR-047). Ten tables:
 four `userId`-scoped domain tables, the four better-auth identity tables, `RateLimit`, and

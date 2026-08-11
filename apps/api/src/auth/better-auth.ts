@@ -524,7 +524,7 @@ function buildOptions(options: CreateBetterAuthOptions): BetterAuthOptions {
         },
       },
     },
-    // REQ-010 rate-limiting clause, #248/#292/ADR-0034: an account-keyed sign-in
+    // REQ-010 rate-limiting clause, #248/#292/ADR-0035: an account-keyed sign-in
     // limiter, independent of the (today unfixable-without-a-real-deployment)
     // IP-keyed one above. `before` only ever peeks and blocks; `after` is the only
     // place it writes, once the real outcome is known — a failure counts, a success

@@ -1,7 +1,7 @@
 // Account-keyed sign-in rate limiting (REQ-010, #248/#292) — a control that closes
 // the part of "repeated failed logins from the same account" that does NOT depend on
 // trusting the caller's IP. Full design reasoning, alternatives considered and the
-// still-open availability trade-off live in **ADR-0034** — this file is the
+// still-open availability trade-off live in **ADR-0035** — this file is the
 // implementation, not the decision record.
 //
 // Two hooks, not one, because "was this attempt a failure" is only known *after* the
@@ -22,7 +22,7 @@ import { consumeDbRateLimit, peekDbRateLimit, resetDbRateLimit } from './db-rate
  * bucket is shared by every caller regardless of source, honest or not, so it must
  * tolerate a legitimate account holder mistyping a password a few times from a
  * shared/rotating network without becoming a denial-of-service tool against a target
- * the attacker never has to authenticate as. See ADR-0034 for why 60s/5, and for the
+ * the attacker never has to authenticate as. See ADR-0035 for why 60s/5, and for the
  * lockout exposure this value does NOT close (open, pending stakeholder ruling).
  */
 export const LOGIN_RATE_LIMIT_WINDOW_MS = 60_000

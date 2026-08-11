@@ -1,4 +1,4 @@
-# ADR-0034 — An account-keyed sign-in rate limiter closes REQ-010's IP-spoofable gap, and leaves one trade-off open
+# ADR-0035 — An account-keyed sign-in rate limiter closes REQ-010's IP-spoofable gap, and leaves one trade-off open
 
 - **Status:** Accepted (mechanism) · **the residual named in Consequences is OPEN, pending stakeholder ruling**
 - **Date:** 2026-08-11
