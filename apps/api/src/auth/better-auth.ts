@@ -16,6 +16,7 @@ import { deviceAuthorization, haveIBeenPwned } from 'better-auth/plugins'
 import { hibpFailOpenPlugin } from './breach-check.js'
 import type { EmailSender } from './email-sender.js'
 import { createGuestAccountUpgradeHook } from './guest-account-upgrade.js'
+import { createLoginRateLimitHook } from './login-rate-limit.js'
 
 const DEV_ONLY_FALLBACK_SECRET = 'dev-only-insecure-better-auth-secret-do-not-use-in-production'
 const DEV_ONLY_FALLBACK_URL = 'http://localhost:3000'
@@ -522,6 +523,14 @@ function buildOptions(options: CreateBetterAuthOptions): BetterAuthOptions {
           after: createGuestAccountUpgradeHook(prisma),
         },
       },
+    },
+    // REQ-010 rate-limiting clause, #248/#292: an account-keyed sign-in limiter,
+    // independent of the (today unfixable-without-a-real-deployment) IP-keyed one
+    // above. See login-rate-limit.ts's own header comment for the full reasoning —
+    // in short, it closes "repeated failed logins from the same account" for the
+    // one dimension that does not require trusting a network header at all.
+    hooks: {
+      before: createLoginRateLimitHook(prisma),
     },
   }
 }
