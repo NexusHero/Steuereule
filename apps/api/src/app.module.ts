@@ -3,10 +3,11 @@ import { AccountModule } from './account/account.module.js'
 import { AuthModule } from './auth/auth.module.js'
 import { CockpitModule } from './cockpit/cockpit.module.js'
 import { DeviceModule } from './device/device.module.js'
+import { HealthModule } from './health/health.module.js'
 import { InterviewModule } from './interview/interview.module.js'
 import { ProfileModule } from './profile/profile.module.js'
 
 @Module({
-  imports: [AuthModule, ProfileModule, CockpitModule, InterviewModule, AccountModule, DeviceModule],
+  imports: [AuthModule, ProfileModule, CockpitModule, InterviewModule, AccountModule, DeviceModule, HealthModule],
 })
 export class AppModule {}
