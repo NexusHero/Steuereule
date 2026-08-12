@@ -20,3 +20,12 @@ coverage/
 # apps/api/node_modules for everything except @prisma/client) — cleaned up in the
 # test's own afterAll, this is only a backstop for a run that was killed mid-suite.
 apps/api/.generated-test-clients/
+# Same #284 fixture's throwaway schema files (env-snapshot-client-fixtures.ts's
+# `generateClientAt`) — deliberately written NEXT TO the real schema.prisma, not under
+# .generated-test-clients/ above, because the relative distance from schema to
+# "project root .env" is what Prisma's env search actually uses. Removed in the same
+# function's own `finally` and by its exit-cleanup backstop; this is only a second
+# backstop for the one gap neither covers — a SIGKILL landing mid `prisma generate`,
+# noticed via `git status` rather than silently committed (coordinator flagged this
+# tree was reachable by `git add -A` with no ignore rule, 2026-08-11).
+apps/api/prisma/.generated-test-schema-*.prisma
