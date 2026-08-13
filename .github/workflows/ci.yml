@@ -737,6 +737,17 @@ jobs:
         # shared no-trusted-ip sign-up/sign-in bucket the same way return-visit.mjs above does, so its
         # order relative to that step doesn't matter for correctness.
         run: node e2e/storage/no-client-persistence.mjs
+      - name: Cold-start session-read gate (#349/#353) — a 429/5xx/network failure on GET /get-session must not render Login
+        # Salih's task, filed the same day PR #353's fix merged (#349's own class: a genuine
+        # transport-level failure on a COLD START must render the honest "could not check" state,
+        # never LoginScreen to a phone that might genuinely be signed in). Real network-layer
+        # `page.route(...).fulfill({status:429})`/`.abort('failed')` interceptions against this
+        # job's own real API_ORIGIN/WEB_ORIGIN, not DeviceScreen.test.tsx's already-green MSW
+        # suite re-run — this file's own header records the revert-the-fix/watch-it-go-red control
+        # proof its claim rests on (ADR-0021 §5). No sign-up/sign-in/device-code call at all
+        # (`showDeviceQr={false}` on the embedded LoginScreen), so this step spends no shared
+        # rate-limit bucket and its order relative to every other step in this job is unconstrained.
+        run: node e2e/session/cold-start-session-failure.mjs
       - name: API log (on failure)
         if: failure()
         run: cat /tmp/steuereule-api-cross-origin.log || true

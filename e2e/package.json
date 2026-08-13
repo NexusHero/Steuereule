@@ -11,6 +11,7 @@
     "google-auth": "node google-auth/google-login.mjs",
     "device-authorization": "node device/device-authorization.mjs",
     "return-visit": "node session/return-visit.mjs",
+    "cold-start-session-failure": "node session/cold-start-session-failure.mjs",
     "no-client-persistence": "node storage/no-client-persistence.mjs",
     "prod-deploy-smoke": "node prod-deploy/run.mjs"
   },
