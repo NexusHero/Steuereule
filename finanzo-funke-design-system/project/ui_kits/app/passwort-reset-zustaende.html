@@ -1,4 +1,4 @@
-<!-- @dsCard group="App" viewport="1280x1750" name="Passwort-Reset — Zustände (Referenz)" subtitle="Alle 8 Zustände, nicht nur der Idealfall — inkl. abgelaufener/benutzter Link und der bewusst neutralen Bestätigung (kein „Konto nicht gefunden")" -->
+<!-- @dsCard group="App" viewport="1280x1600" name="Passwort-Reset — Zustände (Referenz)" subtitle="Alle 9 Zustände, nicht nur der Idealfall — inkl. dem einen ehrlichen „Link gilt nicht mehr" und der bewusst neutralen Bestätigung (kein „Konto nicht gefunden")" -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
@@ -33,8 +33,7 @@ const ZUSTAENDE = [
   ['Neues Passwort — Einstieg über den Mail-Link', { start: 'neues-passwort' }],
   ['Neues Passwort — zu kurz', { start: 'neues-passwort', fehlerStart: 'Mindestens 6 Zeichen fürs Passwort.' }],
   ['Neues Passwort — stimmen nicht überein', { start: 'neues-passwort', fehlerStart: 'Die beiden Passwörter stimmen nicht überein.' }],
-  ['Link abgelaufen — älter als eine Stunde, Passwort unverändert', { start: 'abgelaufen' }],
-  ['Link schon benutzt — er gilt genau einmal', { start: 'verbraucht' }],
+  ['Link gilt nicht mehr — abgelaufen ODER benutzt, EIN ehrlicher Zustand (im Produkt: nach dem Absenden)', { start: 'ungueltig' }],
   ['Erfolg — Passwort neu UND überall abgemeldet, weiter zur Anmeldung', { start: 'erfolg' }],
 ];
 function Galerie() {

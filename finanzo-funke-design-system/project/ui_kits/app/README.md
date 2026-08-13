@@ -30,10 +30,12 @@ Produktregeln original, Visual komplett Funke.
 - `passwort-reset.html` — Passwort-Reset in zwei Schritten: anfordern → neutrale
   Bestätigung (bewusst identisch für jede Adresse — kein Ausspäh-Kanal), Link aus
   der Mail → neues Passwort → Erfolg mit „überall abgemeldet", zurück zur Anmeldung.
-  Schritt 2 hier über `#neu`/`#abgelaufen`/`#verbraucht` erreichbar
+  Ein einziger „Link gilt nicht mehr"-Zustand (abgelaufen ODER benutzt — der Server
+  unterscheidet es nicht; erscheint im Produkt nach dem Absenden). Schritt 2 hier über
+  `#neu`/`#ungueltig` erreichbar
 - `passwort-reset-zustaende.html` — alle Reset-Zustände als Referenz, nicht nur der
   Idealfall: leer/getippt/Formfehler, gesendet, neues Passwort (+ zu kurz, ungleich),
-  abgelaufen, schon benutzt, Erfolg
+  „Link gilt nicht mehr", Erfolg
 - `onboarding.html` — Splash (Marke zeichnet sich selbst) + 3-Schritt-Onboarding:
   Name → Steuer-ID → Steuernummer, live formatiert; füllt die Maske vor
   (localStorage `funke.onboarding.profil`) und mündet in `index.html`

@@ -6,13 +6,22 @@
    Schritt 2 (neues-passwort, erreicht über den Link aus der Mail): neues Passwort setzen.
    Nach dem Erfolg gilt: ALLE Sitzungen sind beendet — auch die auf diesem Gerät. Der
    Erfolgs-Screen führt darum zur Anmeldung, nie in die App, und sagt beides klar.
+
+   Ein einziger Ungültig-Zustand, bewusst (Stakeholder-Entscheid, Option B): der Server
+   unterscheidet „abgelaufen" und „schon benutzt" NICHT — better-auth wirft für beide (und
+   für „gibt's nicht") denselben einen Fehler, und verbraucht einen abgelaufenen Token beim
+   Versuch. Zwei getrennte Zustände wären ein Versprechen, das das Backend nicht hält (und
+   „schon benutzt" vs. „nie existiert" wäre selbst ein kleines Ausspäh-Leck). Darum EIN
+   ehrlicher „gilt nicht mehr", für beide Fälle wahr. Und weil der Token erst beim ABSENDEN
+   des neuen Passworts geprüft werden kann (kein Prüf-ohne-Verbrauch im Standard), erscheint
+   dieser Zustand nach dem Absenden, nicht beim Öffnen des Links.
    Kein Code-Eingabefeld (der Reset läuft über einen Link, nicht über einen Code),
    keine Stärkeanzeige (gibt es in diesem Kit nirgends). */
 const { Button, Input, Feld, Sticker } = window.FinanzoFunkeDesignSystem_7e417e;
 
-/* start: 'anfordern' | 'gesendet' | 'neues-passwort' | 'abgelaufen' | 'verbraucht' | 'erfolg'
-   — 'neues-passwort'/'abgelaufen'/'verbraucht' sind Einstiege über den Mail-Link; welcher
-   davon gilt, entscheidet der Server am Token, nie dieser Screen.
+/* start: 'anfordern' | 'gesendet' | 'neues-passwort' | 'ungueltig' | 'erfolg'
+   — 'neues-passwort'/'ungueltig' sind die Einstiege/Ausgänge des Mail-Link-Wegs; 'ungueltig'
+   erscheint im Produkt erst nach dem Absenden, wenn der Server den Token verwirft.
    mailStart/fehlerStart: nur für die Zustands-Referenzseite (wie AuthGeraete's `start`). */
 function FunkePasswortReset({ start = 'anfordern', mailStart = '', fehlerStart = '', onZurAnmeldung }) {
   const [schritt, setSchritt] = React.useState(start);
@@ -64,34 +73,21 @@ function FunkePasswortReset({ start = 'anfordern', mailStart = '', fehlerStart =
     );
   }
 
-  /* — Einstieg über einen abgelaufenen Link: sagen, was los ist und was jetzt geht. — */
-  if (schritt === 'abgelaufen') {
+  /* — Ein Link, der nicht mehr gilt: abgelaufen ODER schon benutzt, ohne zu behaupten
+       welches von beiden (der Server unterscheidet es nicht, und „schon benutzt" vs.
+       „nie existiert" wäre ein Ausspäh-Leck). Sagen, was los ist und was jetzt geht. — */
+  if (schritt === 'ungueltig') {
     return (
-      <div className="fx-schritt" key="abgelaufen" style={{ textAlign: 'center', paddingTop: 60 }}>
-        <h1 style={{ fontSize: 36, fontWeight: 800, margin: '0 0 8px' }}>Der Link ist abgelaufen.</h1>
+      <div className="fx-schritt" key="ungueltig" style={{ textAlign: 'center', paddingTop: 60 }}>
+        <h1 style={{ fontSize: 36, fontWeight: 800, margin: '0 0 8px' }}>Der Link gilt nicht mehr.</h1>
         <p style={{ margin: '0 0 24px', color: 'var(--tinte-2)' }}>
-          Ein Reset-Link gilt eine Stunde — dieser hier ist älter. Dein Passwort ist unverändert.
+          Ein Reset-Link gilt eine Stunde und funktioniert genau einmal — dieser ist
+          abgelaufen oder wurde schon benutzt. Dein Passwort ist unverändert. Fordere
+          einfach einen neuen an.
         </p>
         <Button onClick={nochmalAnfordern}>Neuen Link anfordern</Button>
         <button onClick={onZurAnmeldung} style={{ display: 'block', margin: '14px auto 0', fontSize: 14, textDecoration: 'underline', minHeight: 44 }}>
           Zurück zur Anmeldung
-        </button>
-      </div>
-    );
-  }
-
-  /* — Einstieg über einen schon benutzten Link: er gilt genau einmal. — */
-  if (schritt === 'verbraucht') {
-    return (
-      <div className="fx-schritt" key="verbraucht" style={{ textAlign: 'center', paddingTop: 60 }}>
-        <h1 style={{ fontSize: 36, fontWeight: 800, margin: '0 0 8px' }}>Der Link wurde schon benutzt.</h1>
-        <p style={{ margin: '0 0 24px', color: 'var(--tinte-2)' }}>
-          Jeder Link funktioniert genau einmal. Hast du dein Passwort gerade geändert,
-          melde dich einfach damit an. Warst du das nicht, fordere jetzt einen neuen Link an.
-        </p>
-        <Button onClick={nochmalAnfordern}>Neuen Link anfordern</Button>
-        <button onClick={onZurAnmeldung} style={{ display: 'block', margin: '14px auto 0', fontSize: 14, textDecoration: 'underline', minHeight: 44 }}>
-          Zur Anmeldung
         </button>
       </div>
     );

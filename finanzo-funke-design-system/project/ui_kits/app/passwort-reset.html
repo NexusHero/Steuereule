@@ -26,8 +26,9 @@
 <script type="text/babel">
 /* Der zweite Schritt beginnt im echten Produkt am Link aus der Mail — hier über den
    Hash erreichbar, damit die Referenz komplett durchklickbar bleibt:
-   #neu → neues Passwort setzen · #abgelaufen · #verbraucht */
-const START = { '#neu': 'neues-passwort', '#abgelaufen': 'abgelaufen', '#verbraucht': 'verbraucht' }[window.location.hash] || 'anfordern';
+   #neu → neues Passwort setzen · #ungueltig → Link gilt nicht mehr (im Produkt: nach
+   dem Absenden, wenn der Server den Token verwirft) */
+const START = { '#neu': 'neues-passwort', '#ungueltig': 'ungueltig' }[window.location.hash] || 'anfordern';
 ReactDOM.createRoot(document.getElementById('root')).render(
   <div className="app-shell">
     <FunkePasswortReset start={START} onZurAnmeldung={() => { window.location.href = 'auth.html'; }} />
