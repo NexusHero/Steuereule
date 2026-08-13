@@ -217,6 +217,17 @@ export const appResources = {
       // the code is currently on the *other* screen, never "approve?".
       device: {
         sessionChecking: 'Wir prüfen deine Anmeldung …',
+        // #349 — distinct from both `missingCode` (we know there's no code) and the embedded
+        // LoginScreen (we know there's no session): here we genuinely do not know whether this
+        // phone is signed in, because `/get-session` itself didn't answer (429, a 5xx, no
+        // connection). Voiced like `login.googleUnknown` — "we can't currently tell", never
+        // "check your connection", which would overclaim on a 429 the connection had nothing to
+        // do with.
+        sessionUnknown: {
+          heading: 'Das können wir gerade nicht prüfen.',
+          body: 'Wir können gerade nicht feststellen, ob du angemeldet bist. Versuch es noch mal.',
+          retry: 'Noch mal versuchen',
+        },
         missingCode: {
           heading: 'Kein Code angegeben',
           body: 'Öffne den Link oder QR-Code noch einmal von dem Bildschirm, der sich anmelden möchte.',
@@ -338,6 +349,15 @@ export const appResources = {
           body: 'Steuerdaten sind das Privateste, was eine App anfassen kann. Deshalb steht hier alles — kurz, konkret, nachprüfbar.',
         },
         sessionChecking: 'Wird geprüft …',
+        // #349 — the honest "we don't know" state, distinct from `GuestNotice` (we know there's
+        // no account) and the signed-in content below (we know there is). See `device.
+        // sessionUnknown` for the full reasoning; this screen gets its own key rather than
+        // sharing that one, matching every other pair of `device`/`datenschutz` strings here.
+        sessionUnknown: {
+          heading: 'Das können wir gerade nicht prüfen.',
+          body: 'Wir können gerade nicht feststellen, ob du angemeldet bist. Versuch es noch mal.',
+          retry: 'Noch mal versuchen',
+        },
         // #238, ADR-0024 (task 0c) — two disclosures, both new to this text, neither new to
         // what the server actually stores: Session.ipAddress/userAgent are collected for
         // every session since day one (see prisma/schema.prisma), and what's new here is
@@ -660,6 +680,11 @@ export const appResources = {
       },
       device: {
         sessionChecking: 'Checking your sign-in …',
+        sessionUnknown: {
+          heading: "We can't check that right now.",
+          body: "We can't tell right now whether you're signed in. Try again.",
+          retry: 'Try again',
+        },
         missingCode: {
           heading: 'No code given',
           body: 'Open the link or QR code again from the screen that wants to sign in.',
@@ -761,6 +786,11 @@ export const appResources = {
           body: "Tax data is about the most private thing an app can touch. So here's everything — short, concrete, checkable.",
         },
         sessionChecking: 'Checking …',
+        sessionUnknown: {
+          heading: "We can't check that right now.",
+          body: "We can't tell right now whether you're signed in. Try again.",
+          retry: 'Try again',
+        },
         deviceSessions: {
           heading: 'Sign-ins & devices',
           sessionData:

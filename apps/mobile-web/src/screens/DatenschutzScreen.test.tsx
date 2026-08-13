@@ -82,6 +82,63 @@ describe('DatenschutzScreen', () => {
     await screen.findByText('Konto & Daten löschen')
   })
 
+  // #349 — the same defect DeviceScreen carried, on this second consumer: a cold-start
+  // `/get-session` failure (429, a genuine network error, a 5xx) must never read as "no
+  // account" (`GuestNotice`), because we never actually established that — see
+  // `../auth/useAccountSession.ts` for the shared mechanism this closes.
+  describe('cold-start session-read failure (#349)', () => {
+    it('never shows the guest notice on a cold-start 429 — shows the honest "could not check" state instead', async () => {
+      server.use(http.get(`${BASE_URL}/api/auth/get-session`, () => HttpResponse.json({ message: 'nope' }, { status: 429 })))
+      renderDatenschutz()
+
+      await screen.findByText('Das können wir gerade nicht prüfen.')
+      expect(screen.getByText('Wir können gerade nicht feststellen, ob du angemeldet bist. Versuch es noch mal.')).toBeTruthy()
+      expect(screen.queryByText('Noch kein Konto')).toBeNull()
+      expect(screen.queryByText('Konto & Daten löschen')).toBeNull()
+    })
+
+    it('never shows the guest notice on a cold-start genuine network failure', async () => {
+      server.use(http.get(`${BASE_URL}/api/auth/get-session`, () => HttpResponse.error()))
+      renderDatenschutz()
+
+      await screen.findByText('Das können wir gerade nicht prüfen.')
+      expect(screen.queryByText('Noch kein Konto')).toBeNull()
+    })
+
+    it('the "could not check" state offers a real retry, not a dead end', async () => {
+      let getSessionCalls = 0
+      server.use(
+        http.get(`${BASE_URL}/api/auth/get-session`, () => {
+          getSessionCalls += 1
+          if (getSessionCalls === 1) return HttpResponse.json({ message: 'nope' }, { status: 429 })
+          return HttpResponse.json(REAL_SESSION, { status: 200 })
+        }),
+      )
+      renderDatenschutz()
+
+      await screen.findByText('Das können wir gerade nicht prüfen.')
+      fireEvent.click(screen.getByText('Noch mal versuchen'))
+
+      // The retry's own answer (a genuine, real session) now renders the account content —
+      // proving the retry button actually re-asks better-auth, not just re-renders stale state.
+      expect(await screen.findByText('Konto & Daten löschen')).toBeTruthy()
+    })
+
+    // The one status better-auth's own atom already treats as authoritative — must still work.
+    it('does show the guest notice on a cold-start 401 (the one status that genuinely means "signed out")', async () => {
+      server.use(http.get(`${BASE_URL}/api/auth/get-session`, () => HttpResponse.json({ message: 'nope' }, { status: 401 })))
+      renderDatenschutz()
+      await screen.findByText('Noch kein Konto')
+    })
+
+    it('renders correctly in English (ADR-0006)', async () => {
+      server.use(http.get(`${BASE_URL}/api/auth/get-session`, () => HttpResponse.json({ message: 'nope' }, { status: 429 })))
+      renderDatenschutz({ lng: 'en' })
+      await screen.findByText("We can't check that right now.")
+      expect(screen.getByText("We can't tell right now whether you're signed in. Try again.")).toBeTruthy()
+    })
+  })
+
   describe('guest (no real better-auth account)', () => {
     it('shows an honest "no account" notice instead of export/delete actions', async () => {
       mockSession(null)
