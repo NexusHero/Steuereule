@@ -14,6 +14,7 @@ import { betterAuth, type Auth, type BetterAuthOptions } from 'better-auth'
 import { getCookies } from 'better-auth/cookies'
 import { deviceAuthorization, haveIBeenPwned } from 'better-auth/plugins'
 import { hibpFailOpenPlugin } from './breach-check.js'
+import { CLIENT_ADDRESS_HEADER } from './client-address.js'
 import type { EmailSender } from './email-sender.js'
 import { createGuestAccountUpgradeHook } from './guest-account-upgrade.js'
 
@@ -491,15 +492,26 @@ function buildOptions(options: CreateBetterAuthOptions): BetterAuthOptions {
       // it explicitly to `false` here makes the check deterministic across every
       // environment, dev/test/prod alike.
       disableOriginCheck: false,
-      // #241: which hops to strip from a forwarded IP chain before trusting what's
-      // left — governs both Session.ipAddress and better-auth's own built-in rate
-      // limiter (both read via its `getIp()`). Empty (today's default outside
-      // production) is today's actual shipped posture, unchanged by introducing
-      // this seam; see resolveTrustedProxies()/trusted-proxies.ts for the full
-      // reasoning, including the single-value X-Forwarded-For bypass this can NOT
-      // close by itself.
+      // #350 (superseding #241's own posture on this specific point — see
+      // client-address.ts's header comment): `ipAddressHeaders` REPLACES
+      // better-auth's own default (`['x-forwarded-for']`), so `getIp()` never reads
+      // `x-forwarded-for` directly again — only CLIENT_ADDRESS_HEADER, which
+      // `stamp-client-address.ts` overwrites (or, with a trusted proxy configured,
+      // extends) from the real socket peer on every request BEFORE better-auth ever
+      // sees it (mount-better-auth.ts). That is what fixes both Session.ipAddress
+      // and better-auth's own built-in rate limiter at once — `getIp()` is their one
+      // shared read path (docs/adr/0035-ip-resolution-seam.md has the full reasoning
+      // for why (a) — fix resolution, not the limiter — was ruled over building a
+      // second, in-house limiter).
+      //
+      // `trustedProxies` stays wired here unchanged (#241's own original wiring):
+      // once CLIENT_ADDRESS_HEADER carries the (possibly proxy-extended) chain,
+      // better-auth's own `getIPFromHeader` still needs to know which hops in that
+      // chain are the trusted proxy's own, so it can keep peeling from the right
+      // exactly as it always has — this seam extends what's read, not how it's read.
       ipAddress: {
         trustedProxies,
+        ipAddressHeaders: [CLIENT_ADDRESS_HEADER],
       },
     },
     // `session.freshAge` disables/enables better-auth's `freshSessionMiddleware`

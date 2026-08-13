@@ -19,6 +19,7 @@ import { mountBetterAuthHandler } from './auth/mount-better-auth.js'
 import { validationExceptionFactory } from './common/validation-exception-factory.js'
 import { assertDatabaseReachable } from './config/assert-database-reachable.js'
 import { assertEnvNotFileSourced } from './config/assert-env-not-file-sourced.js'
+import { resolveTrustedProxies } from './config/trusted-proxies.js'
 import { buildCorsOptions } from './cors/build-cors-options.js'
 import { registerHelmet } from './security/register-helmet.js'
 
@@ -70,7 +71,10 @@ export async function buildApp(): Promise<NestFastifyApplication> {
   // app.listen(); the boot smoke proves it actually answers over real HTTP.
   await app.init()
   const { auth } = app.get<BetterAuthBundle>(BETTER_AUTH_BUNDLE)
-  await mountBetterAuthHandler(app, auth)
+  // Same resolver createBetterAuth() itself was handed (auth.module.ts) — one
+  // env read, called wherever it's needed (the existing resolve*(env) idiom), never
+  // a second, independently-drifting value for the same deployment fact (#350).
+  await mountBetterAuthHandler(app, auth, { trustedProxies: resolveTrustedProxies() })
 
   return app
 }

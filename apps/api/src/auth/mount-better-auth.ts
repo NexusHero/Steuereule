@@ -37,12 +37,14 @@ import type { NestFastifyApplication } from '@nestjs/platform-fastify'
 import type { Auth } from 'better-auth'
 import { toNodeHandler } from 'better-auth/node'
 import { applyRawCorsHeaders } from '../cors/apply-raw-cors-headers.js'
+import type { ClientAddressPolicy } from './client-address.js'
+import { registerClientAddressStamp } from './stamp-client-address.js'
 
 export const BETTER_AUTH_PATH_PREFIX = '/api/auth/'
 
 const logger = new Logger('BetterAuthMount')
 
-export async function mountBetterAuthHandler(app: NestFastifyApplication, auth: Auth): Promise<void> {
+export async function mountBetterAuthHandler(app: NestFastifyApplication, auth: Auth, clientAddressPolicy: ClientAddressPolicy): Promise<void> {
   const fastify = app.getHttpAdapter().getInstance()
   const handler = toNodeHandler(auth)
 
@@ -51,6 +53,14 @@ export async function mountBetterAuthHandler(app: NestFastifyApplication, auth: 
     authScope.addContentTypeParser('application/json', (_request, payload, done) => {
       done(null, payload)
     })
+
+    // The IP-resolution seam (#350) — stamps CLIENT_ADDRESS_HEADER from the real
+    // socket peer onto every request reaching this scope, BEFORE better-auth's own
+    // handler (registered below) ever runs. Must be an addHook, not inline in the
+    // route handler: `onRequest` hooks in this scope run ahead of this scope's own
+    // routes, and doing it here (rather than in main.ts globally) keeps the write
+    // scoped to exactly the requests better-auth actually serves.
+    registerClientAddressStamp(authScope, clientAddressPolicy)
 
     authScope.all(`${BETTER_AUTH_PATH_PREFIX}*`, async (request, reply) => {
       // better-auth's toNodeHandler writes the response directly onto the raw Node

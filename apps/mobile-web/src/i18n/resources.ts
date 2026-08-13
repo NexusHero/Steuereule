@@ -289,9 +289,10 @@ export const appResources = {
           rowLabel: 'So schützen wir deine Daten (DSGVO)',
         },
         // #238, Decision 6 — every session on the account, not just QR-authorized ones. No
-        // region here (see DeviceListSection.tsx's header comment) — Musti's ADR-0021 control
-        // test showed the only deployment-config candidate for a trustworthy client IP still
-        // returns a spoofable address, so `Session.region` was never built; fail-closed.
+        // region here (see DeviceListSection.tsx's header comment) — #350 closed the original
+        // trustworthy-client-IP gap Musti's ADR-0021 control test found, but `Session.region`
+        // still doesn't exist as a column, so there's still nothing to derive a region from
+        // (see #351).
         devices: {
           heading: 'Angemeldete Geräte',
           loading: 'Geräte werden geladen …',

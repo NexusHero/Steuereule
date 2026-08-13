@@ -3,16 +3,25 @@
 // "configuration + a screen", exactly as the ticket names it — no plugin, no new backend
 // machinery, apps/api/src/device/* is untouched by this file.
 //
-// No region here. Musti's ADR-0021 control test (not a read) proved the only deployment-config
-// candidate for a trustworthy client IP — better-auth's `ipAddressHeaders` + `trustedProxies` —
-// still returns a spoofable address: the trust check's own hop-peeling logic has nothing to
-// peel for a single-value header, so the config path *removes* the check rather than replacing
-// it. Fail-closed follows directly: no `Session.region` column, therefore no region field on
-// this list at all — not even a "Region unbekannt" row, because there is no column to be
-// unknown. This is deliberate, not an oversight — see DeviceListSection.tsx for the exact spot
-// a region row would have gone. The approval screen's own region (GeraetefreigabeScreen) is
-// unaffected: it reads `DeviceCode.requestRegion`, stamped from Fastify's own `request.ip` at
-// code-creation time, a completely different path from Session's client-IP question.
+// No region here — updated by #350, which PARTLY retires the reasoning this comment used to
+// give. The original premise (Musti's ADR-0021 control test) was that the only
+// deployment-CONFIG candidate for a trustworthy client IP — better-auth's `ipAddressHeaders` +
+// `trustedProxies` pointed at `X-Forwarded-For` — still returned a spoofable address, because
+// the hop-peeling logic has nothing to peel for a single-value header. #350 closes that
+// specific gap with a CODE seam instead of a config value: `apps/api/src/auth/stamp-client-address.ts`
+// stamps the real socket peer into a header the app itself controls (overwriting, never trusting,
+// whatever a caller sends), so `Session.ipAddress` is now resolved from a genuinely trustworthy
+// source — see docs/adr/0035-ip-resolution-seam.md.
+//
+// Region still doesn't appear on this list, but the reason has changed: there is still no
+// `Session.region` column to read at all (only `Session.ipAddress` exists), so there is nothing
+// to compute a region FROM, trustworthy or not. Whether to add that column and derive a region
+// here is a product decision for #351 (downstream, separate, not decided by this comment) — not
+// a consequence of #350 landing. This is still deliberate, not an oversight — see
+// DeviceListSection.tsx for the exact spot a region row would have gone. The approval screen's
+// own region (GeraetefreigabeScreen) is unaffected either way: it reads `DeviceCode.requestRegion`,
+// stamped from Fastify's own `request.ip` at code-creation time, a completely different path from
+// Session's client-IP question.
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthClient } from '../../auth/AuthClientProvider'
 import { RequestFailedError, classifyByStatus, classifyThrown } from '../../net/failure-reason'

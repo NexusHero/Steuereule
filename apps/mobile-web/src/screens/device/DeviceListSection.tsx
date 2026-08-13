@@ -4,13 +4,18 @@
 // own Card + Feld + Pill composition, the same one GeraetefreigabeScreen's context block uses —
 // no new packages/ui/src/components/ addition.
 //
-// No region column. Musti's ADR-0021 control test proved the only deployment-config candidate
-// for a trustworthy client IP still returns a spoofable address for a single-value header — the
-// fix removes the trust check rather than replacing it, so `Session.region` was never built.
-// Fail-closed: this list shows Browser, Betriebssystem, and letzte Aktivität only — see the
-// comment at the bottom of `deviceRow` below for exactly where a region row would have gone and
-// why it doesn't exist, so nobody adds it back "for completeness" without re-reading why it's
-// missing. The approval screen's own region is unaffected — see useDeviceSessions.ts's header.
+// No region column. Musti's original ADR-0021 control test proved the only deployment-CONFIG
+// candidate for a trustworthy client IP still returned a spoofable address for a single-value
+// header — #350 has since closed that specific gap with a CODE seam instead (the app stamps the
+// real socket peer itself, overwriting rather than trusting anything a caller sends — see
+// useDeviceSessions.ts's header for the full correction). `Session.ipAddress` is trustworthy now.
+// `Session.region` still doesn't exist as a column, though — there's nothing to derive a region
+// FROM yet, independent of whether the IP behind it can be trusted, so this list still shows
+// Browser, Betriebssystem, and letzte Aktivität only. Whether to add that column (#351) is a
+// product decision, not a consequence of #350. See the comment at the bottom of `deviceRow`
+// below for exactly where a region row would have gone, so nobody adds it back "for
+// completeness" without re-reading why it's missing. The approval screen's own region is
+// unaffected — see useDeviceSessions.ts's header.
 import { useState } from 'react'
 import { ActivityIndicator, View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
