@@ -25,7 +25,17 @@ Produktregeln original, Visual komplett Funke.
 - `splash.html` — Splash beim App-Start mit Session: Marke zeichnet sich, grüßt
   namentlich (aus `funke.onboarding.profil`), geht nach 2,2 s selbst ins Cockpit
 - `auth.html` — Login: Google & Apple (offizielle Button-Marken), E-Mail+Passwort,
-  Gast-Modus (#61); Login → Onboarding, Gast → App
+  Gast-Modus (#61); Login → Onboarding, Gast → App; „Passwort vergessen?" →
+  `passwort-reset.html`, „Konto anlegen" → `registrierung.html`
+- `passwort-reset.html` — Passwort-Reset in zwei Schritten: anfordern → neutrale
+  Bestätigung (bewusst identisch für jede Adresse — kein Ausspäh-Kanal), Link aus
+  der Mail → neues Passwort → Erfolg mit „überall abgemeldet", zurück zur Anmeldung.
+  Ein einziger „Link gilt nicht mehr"-Zustand (abgelaufen ODER benutzt — der Server
+  unterscheidet es nicht; erscheint im Produkt nach dem Absenden). Schritt 2 hier über
+  `#neu`/`#ungueltig` erreichbar
+- `passwort-reset-zustaende.html` — alle Reset-Zustände als Referenz, nicht nur der
+  Idealfall: leer/getippt/Formfehler, gesendet, neues Passwort (+ zu kurz, ungleich),
+  „Link gilt nicht mehr", Erfolg
 - `onboarding.html` — Splash (Marke zeichnet sich selbst) + 3-Schritt-Onboarding:
   Name → Steuer-ID → Steuernummer, live formatiert; füllt die Maske vor
   (localStorage `funke.onboarding.profil`) und mündet in `index.html`

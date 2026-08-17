@@ -23,7 +23,7 @@ function AppleMark() {
   );
 }
 
-function FunkeAuth({ onFertig, onGast, googleVerfuegbar = true }) {
+function FunkeAuth({ onFertig, onGast, onPasswortVergessen, onKontoAnlegen, googleVerfuegbar = true }) {
   const [mail, setMail] = React.useState('');
   const [pass, setPass] = React.useState('');
   const [fehler, setFehler] = React.useState('');
@@ -91,8 +91,10 @@ function FunkeAuth({ onFertig, onGast, googleVerfuegbar = true }) {
         </Feld>
         <Button onClick={einloggen} style={{ marginTop: 6 }}>Einloggen</Button>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 2px 0', fontSize: 14 }}>
-          <a href="#" onClick={(e) => e.preventDefault()}>Passwort vergessen?</a>
-          <a href="#" onClick={(e) => e.preventDefault()}>Neu hier? Konto anlegen</a>
+          {/* Beide Wege sind echt (PasswortReset.jsx / Registrierung.jsx) — ein toter
+              Link wäre nach den Kit-Regeln ein Defekt, keine Platzhalter-Geste. */}
+          <a href="#" onClick={(e) => { e.preventDefault(); onPasswortVergessen && onPasswortVergessen(); }}>Passwort vergessen?</a>
+          <a href="#" onClick={(e) => { e.preventDefault(); onKontoAnlegen && onKontoAnlegen(); }}>Neu hier? Konto anlegen</a>
         </div>
       </div>
 
