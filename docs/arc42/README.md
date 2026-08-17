@@ -157,14 +157,23 @@ shell (Cockpit, Profil), with Datenschutz as a drill-down reached from Profil.
   identifier-class access, not read-of-own-estimate — see §Data model).
 - `PrismaModule` — the shared, field-encryption-extended Prisma client (ADR-0008).
 - **Cross-cutting** — the fail-closed CORS origin allowlist (ADR-0011; never `*`, credentialed
-  cross-origin with `SameSite=None; Secure`), `helmet`/CSP, and the DB-backed rate limits —
-  **the rate limit is not an effective control as shipped**: it is keyed on a client IP read from
-  `X-Forwarded-For` with no trusted-proxy boundary, so a single-value header yields a fresh bucket
-  per request ([#241](https://github.com/NexusHero/Steuereule/issues/241)). DB-backed storage fixes
-  where the counter lives, not what it counts. Closes once the deployment supplies that boundary
-  ([#292](https://github.com/NexusHero/Steuereule/issues/292), successor to the closed
-  [#246](https://github.com/NexusHero/Steuereule/issues/246)); the Requirements Register records it
-  as REQ-010 `not met (rate limiting)`. See ADR-0012 §5 and its 2026-08-04 amendment.
+  cross-origin with `SameSite=None; Secure`), `helmet`/CSP, and the DB-backed rate limits, now keyed
+  on a **resolved** client address rather than a client-supplied header
+  ([#350](https://github.com/NexusHero/Steuereule/issues/350), [ADR-0035](../adr/0035-ip-resolution-seam.md)):
+  a Fastify `onRequest` hook stamps the real socket peer (`request.ip` — already the true TCP peer;
+  no `trustProxy` is configured) into a self-owned header, overwriting whatever a caller sent, and
+  better-auth's `ipAddressHeaders` is pointed at that header exclusively — `X-Forwarded-For` is never
+  read directly again. This closes the single-value-header bypass
+  ([#241](https://github.com/NexusHero/Steuereule/issues/241)) **in code**, independent of the
+  still-missing deployment ([#292](https://github.com/NexusHero/Steuereule/issues/292), successor to
+  the closed [#246](https://github.com/NexusHero/Steuereule/issues/246)) — what #292/#277 still gate
+  is only whether a real reverse-proxy CIDR range can be *configured* at all, not whether a caller can
+  forge its own rate-limit bucket. `/sign-in*`/`/sign-up*`/`/change-password`/`/change-email` raised
+  10s/3 → 10s/5, `/request-password-reset`/`/send-verification-email` raised 60s/3 → 60s/5 (via
+  `customRules`, matched by exact reachable path — better-auth's own `getDefaultSpecialRules()`'s
+  `/forget-password` matcher names a path this app's better-auth config does not actually expose, so
+  it is not the key used here); `/get-session`, `/verify-password`, `/device` unchanged. See
+  ADR-0035 and ADR-0012 §5.
 
 **Persistence — Postgres (EU)**, expand-only versioned migrations (ADR-047). Ten tables:
 four `userId`-scoped domain tables, the four better-auth identity tables, `RateLimit`, and

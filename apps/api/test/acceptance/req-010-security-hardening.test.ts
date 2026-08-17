@@ -81,7 +81,19 @@ describe('REQ-010 — security hardening, against the real server', () => {
     expect(response.status).toBe(200)
   })
 
-  it('repeated failed logins from the same account trip the DB-backed rate limit rather than being unbounded', async () => {
+  // #350 (Musti's finding): this test used to be named "from the same account", as
+  // if the account being targeted were what the assertion depended on — but it
+  // never was. better-auth's built-in limiter has no account dimension at all; it
+  // keys purely on `${resolvedIp}|${path}` (createRateLimitKey,
+  // better-auth/dist/api/rate-limiter/index.mjs). A version of this test hitting 12
+  // DIFFERENT accounts from this same `fetch()` caller would trip the identical
+  // 429 at the identical attempt — the name just happened not to say so. Rather
+  // than leave that unstated, the second test below makes it the explicit
+  // assertion: same caller, 12 different accounts, same result. This one keeps its
+  // original shape (one account, repeated) but is renamed to describe what it
+  // actually proves, and now asserts the literal key too — which the second test's
+  // comparison depends on.
+  it('repeated failed sign-in attempts trip the DB-backed rate limit, keyed by caller+path — not by account identity', async () => {
     await fetch(`${baseUrl}/api/auth/sign-up/email`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -103,5 +115,43 @@ describe('REQ-010 — security hardening, against the real server', () => {
     // in-memory-only structure invisible to inspection.
     const rows = await prisma.rateLimit.findMany()
     expect(rows.length).toBeGreaterThan(0)
+    // The caller dimension, stated directly (#350): the persisted key names the
+    // resolved caller and the path — `rate-limited@example.com` appears nowhere in
+    // it. This is what the discriminator test right below relies on to prove the
+    // account identity played no part at all.
+    const signInRow = rows.find((r) => r.key?.endsWith('|/sign-in/email'))
+    expect(signInRow?.key).toBe('127.0.0.1|/sign-in/email')
+  })
+
+  // The discriminator #350 asked for directly: this test's own account list is the
+  // twelve-different-accounts case the test above's old name could not distinguish
+  // itself from. Same real caller (this test process's own loopback peer), a fresh
+  // email on every attempt — and it STILL trips 429 at the same point, because the
+  // bucket was never scoped to the account at all. Green here is not "the account
+  // control works" (there is no account control in this limiter); it is "the
+  // caller+path scoping the seam gives every better-auth ceiling holds even when an
+  // attacker never reuses a target account".
+  it('twelve DIFFERENT accounts from the same caller trip the identical bucket — proving there is no account dimension to this limiter', async () => {
+    const attempts: number[] = []
+    for (let i = 0; i < 12; i += 1) {
+      const email = `rate-limited-discriminator-${i}@example.com`
+      await fetch(`${baseUrl}/api/auth/sign-up/email`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ email, password: 'a-fine-strong-password-1', name: 'Discriminator' }),
+      })
+      const response = await fetch(`${baseUrl}/api/auth/sign-in/email`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ email, password: 'definitely-wrong-password' }),
+      })
+      attempts.push(response.status)
+    }
+
+    expect(attempts).toContain(429)
+    const row = await prisma.rateLimit.findFirst({ where: { key: { contains: '/sign-in/email' } } })
+    // The same literal key as the single-account test above — the row is shared
+    // across every one of the twelve distinct accounts, not one row per account.
+    expect(row?.key).toBe('127.0.0.1|/sign-in/email')
   })
 })

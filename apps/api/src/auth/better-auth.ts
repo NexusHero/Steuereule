@@ -14,6 +14,7 @@ import { betterAuth, type Auth, type BetterAuthOptions } from 'better-auth'
 import { getCookies } from 'better-auth/cookies'
 import { deviceAuthorization, haveIBeenPwned } from 'better-auth/plugins'
 import { hibpFailOpenPlugin } from './breach-check.js'
+import { CLIENT_ADDRESS_HEADER } from './client-address.js'
 import type { EmailSender } from './email-sender.js'
 import { createGuestAccountUpgradeHook } from './guest-account-upgrade.js'
 
@@ -467,9 +468,76 @@ function buildOptions(options: CreateBetterAuthOptions): BetterAuthOptions {
       // surface a code-guessing attacker would hit. That endpoint (task 2) needs its
       // own DB-backed limiter in the `verify-password-rate-limit.ts` shape, keyed per
       // IP, same window/max — tracked there, not solved by this entry alone.
+      //
+      // #350 (stakeholder's ruling, once the seam above made every one of these buckets
+      // per-client rather than globally shared — raising a still-global ceiling would
+      // have been a strict regression, so this landed only after the seam, never
+      // before): the two path groups below are better-auth's own built-in
+      // `getDefaultSpecialRules()` (`api/rate-limiter/index.mjs:370-384`), raised via
+      // this SAME extension point rather than a library option that doesn't exist for
+      // changing the built-in numbers directly — `customRules` takes precedence over
+      // the default special rules when both match the same path
+      // (`resolveRateLimitConfig`, same file), which is what makes this override work.
+      //
+      // Every key below is the app's own ACTUAL reachable better-auth path — not
+      // `getDefaultSpecialRules()`'s own pattern strings, which are prefix/wildcard
+      // matchers over a broader path space than this config exposes. Two matter enough
+      // to name explicitly: `getDefaultSpecialRules()`'s second rule matches
+      // `path.startsWith('/forget-password')`, but no such endpoint is registered here
+      // (or, checked directly against the installed better-auth@1.6.24 dist, exists at
+      // all under that name) — the real endpoint is `/request-password-reset`, which IS
+      // named below. A `customRules` key that never matches is silently inert (ADR-0021's
+      // own shape: the ceiling looks raised and isn't) — using the literal reachable path
+      // instead avoids planting that trap. Likewise `/email-otp/*` matches nothing: no
+      // email-otp plugin is registered in `plugins` above. `customRules` itself matches on
+      // exact path or an explicit `*` wildcard (`resolveRateLimitConfig`, same file) —
+      // every key below is an exact literal, not a wildcard, so there is no
+      // separator-crossing ambiguity to get wrong. Each one is proven to actually fire at
+      // its new threshold, per path, in
+      // `apps/api/test/acceptance/req-010-rate-limit-ceilings.test.ts`.
+      //
+      // Rule 1 (10s/3 → 10s/5): /sign-in/email, /sign-in/social (routes/sign-in.mjs),
+      // /sign-up/email (routes/sign-up.mjs), /change-password, /change-email
+      // (routes/update-user.mjs) — the exact endpoint paths this config actually
+      // registers under better-auth's `getDefaultSpecialRules()` rule-1 pattern
+      // (`path.startsWith('/sign-in') || '/sign-up' || '/change-password' ||
+      // '/change-email'`).
+      //
+      // Rule 2 (60s/3 → 60s/5, window UNCHANGED): /request-password-reset,
+      // /send-verification-email (routes/password.mjs, routes/email-verification.mjs) —
+      // the stakeholder's ruling was "5", not "5 at a shorter window"; collapsing 60s to
+      // 10s here would be a 10× rate increase on a path that sends email to an address
+      // the requester does not control (Musti's correction, confirmed against the
+      // installed dist before anyone built the literal "10s" the first draft of the
+      // ruling named).
+      //
+      // `/get-session`: deliberately NOT named here. It has no special rule at all —
+      // it takes the generic default (`ctx.rateLimit.window`/`max`, unset by this
+      // config, so better-auth's own `window || 10`/`max || 100`) — and the
+      // stakeholder ruled it untouched; the seam above is the whole change it gets
+      // (globally-shared 100/10s becomes per-client 100/10s).
+      //
+      // `/verify-password` and `/device` stay exactly as they were — pinned by the
+      // stakeholder's own ruling (§D of #350's refinement), not merely left alone by
+      // omission: `/verify-password` guards ADR-0013 §6's fresh-auth step before
+      // account deletion, `/device` is ADR-0024's guessable 40-bit code, and neither
+      // question was put to him. The seam still changes their behaviour even with the
+      // number untouched: today both are shared-bucket ceilings; after this lands,
+      // both are per-client, which in aggregate permits strictly more requests across
+      // the whole caller population — the correct direction, since a shared bucket
+      // was never protecting the account or the code, only throttling the product as
+      // a whole (see ADR-0035's Consequences for the full argument, stated rather
+      // than left for a reader to notice).
       customRules: {
         '/verify-password': { window: 10, max: 3 },
         '/device': { window: 60, max: 10 },
+        '/sign-in/email': { window: 10, max: 5 },
+        '/sign-in/social': { window: 10, max: 5 },
+        '/sign-up/email': { window: 10, max: 5 },
+        '/change-password': { window: 10, max: 5 },
+        '/change-email': { window: 10, max: 5 },
+        '/request-password-reset': { window: 60, max: 5 },
+        '/send-verification-email': { window: 60, max: 5 },
       },
     },
     advanced: {
@@ -491,15 +559,26 @@ function buildOptions(options: CreateBetterAuthOptions): BetterAuthOptions {
       // it explicitly to `false` here makes the check deterministic across every
       // environment, dev/test/prod alike.
       disableOriginCheck: false,
-      // #241: which hops to strip from a forwarded IP chain before trusting what's
-      // left — governs both Session.ipAddress and better-auth's own built-in rate
-      // limiter (both read via its `getIp()`). Empty (today's default outside
-      // production) is today's actual shipped posture, unchanged by introducing
-      // this seam; see resolveTrustedProxies()/trusted-proxies.ts for the full
-      // reasoning, including the single-value X-Forwarded-For bypass this can NOT
-      // close by itself.
+      // #350 (superseding #241's own posture on this specific point — see
+      // client-address.ts's header comment): `ipAddressHeaders` REPLACES
+      // better-auth's own default (`['x-forwarded-for']`), so `getIp()` never reads
+      // `x-forwarded-for` directly again — only CLIENT_ADDRESS_HEADER, which
+      // `stamp-client-address.ts` overwrites (or, with a trusted proxy configured,
+      // extends) from the real socket peer on every request BEFORE better-auth ever
+      // sees it (mount-better-auth.ts). That is what fixes both Session.ipAddress
+      // and better-auth's own built-in rate limiter at once — `getIp()` is their one
+      // shared read path (docs/adr/0035-ip-resolution-seam.md has the full reasoning
+      // for why (a) — fix resolution, not the limiter — was ruled over building a
+      // second, in-house limiter).
+      //
+      // `trustedProxies` stays wired here unchanged (#241's own original wiring):
+      // once CLIENT_ADDRESS_HEADER carries the (possibly proxy-extended) chain,
+      // better-auth's own `getIPFromHeader` still needs to know which hops in that
+      // chain are the trusted proxy's own, so it can keep peeling from the right
+      // exactly as it always has — this seam extends what's read, not how it's read.
       ipAddress: {
         trustedProxies,
+        ipAddressHeaders: [CLIENT_ADDRESS_HEADER],
       },
     },
     // `session.freshAge` disables/enables better-auth's `freshSessionMiddleware`
