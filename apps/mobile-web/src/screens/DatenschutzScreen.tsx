@@ -40,7 +40,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Button, Card, Feld, Input, Pill, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
 import { useAccountDeletionControllerDeleteAccount } from '@steuereule/api-client'
 import { APP_NS } from '../i18n/resources'
-import { useAuthClient } from '../auth/AuthClientProvider'
+import { useAccountSession } from '../auth/useAccountSession'
 import { downloadAccountExport, type ExportFormat } from './datenschutz/exportDownload'
 
 export interface DatenschutzScreenProps {
@@ -69,7 +69,6 @@ export function DatenschutzScreen({ onZurueck, onAccountDeleted }: DatenschutzSc
   // needs, and threading the real `TFunction` type through each of their props would drag that
   // whole overload set along for no benefit — every call site here passes a single string key.
   const tr = (key: string): string => t(key)
-  const authClient = useAuthClient()
   const queryClient = useQueryClient()
   const deleteAccountMutation = useAccountDeletionControllerDeleteAccount()
 
@@ -77,7 +76,14 @@ export function DatenschutzScreen({ onZurueck, onAccountDeleted }: DatenschutzSc
   // better-auth's own session read, the exact same call UserContextGuard/fresh-auth.ts make
   // server-side. Never guessed at client-side (e.g. "did onboarding run") — that could drift
   // from what the server would actually answer on GET/DELETE.
-  const { data: sessionData, isPending: sessionPending, refetch: refetchSession } = authClient.useSession()
+  //
+  // #349 — routed through the shared `useAccountSession()` seam rather than `authClient.
+  // useSession()` directly: this screen used to read `sessionData === null` on its own, which
+  // shared DeviceScreen's exact defect (a cold-start 429/5xx/network failure reading as "no
+  // account" — `GuestNotice` for a signed-in user). `retrySession` below is `refetch`, unwrapped
+  // from `useAccountSession` rather than swallowed, so this screen's existing post-delete
+  // re-sync (Musti's #238 T1, F2) can still `await` it.
+  const { state: sessionState, retry: retrySession } = useAccountSession()
 
   const [exportState, setExportState] = useState<Record<ExportFormat, ExportButtonState>>({ json: 'idle', pdf: 'idle' })
   const [deleteFlow, setDeleteFlow] = useState<DeleteFlow>({ kind: 'closed' })
@@ -108,12 +114,12 @@ export function DatenschutzScreen({ onZurueck, onAccountDeleted }: DatenschutzSc
           // account's data flash from a stale cache (Slice-1-retro-class honesty bug).
           queryClient.clear()
           // ...and refetch better-auth's own session read right next to it (Musti's T1, F2):
-          // `authClient.useSession()` is backed by better-auth's nanostores atom, which
+          // `useAccountSession()` is backed by better-auth's nanostores atom, which
           // `queryClient.clear()` never touches. Without this, "signed out" only held by
           // accident of this component unmounting — a re-mount (App.tsx keeps the auth
           // client alive across the stage change back to Login) would read the stale,
           // still-signed-in atom and render actions for an account that no longer exists.
-          await refetchSession()
+          await retrySession()
           setPassword('')
           onAccountDeleted()
           return
@@ -156,9 +162,11 @@ export function DatenschutzScreen({ onZurueck, onAccountDeleted }: DatenschutzSc
       <Hero tr={tr} />
       <DeviceSessionsSection tr={tr} />
 
-      {sessionPending ? (
+      {sessionState.status === 'loading' ? (
         <SessionChecking tr={tr} />
-      ) : sessionData === null ? (
+      ) : sessionState.status === 'unknown' ? (
+        <SessionUnknown tr={tr} onRetry={retrySession} />
+      ) : sessionState.status === 'signed-out' ? (
         <GuestNotice tr={tr} />
       ) : (
         <>
@@ -218,6 +226,26 @@ function SessionChecking({ tr }: { readonly tr: (key: string) => string }) {
       <ActivityIndicator size="large" color={t.color.tinte} accessibilityLabel={tr('datenschutz.sessionChecking')} />
       <Text style={styles.help}>{tr('datenschutz.sessionChecking')}</Text>
     </View>
+  )
+}
+
+// #349 — the honest third outcome: `/get-session` didn't answer (429, a 5xx, no connection), so
+// this screen genuinely does not know whether there's an account behind it. Never `GuestNotice`
+// (that asserts "no account", which we haven't established) and never the export/delete section
+// (that asserts a real account, equally unestablished) — see `useAccountSession.ts` for the
+// mechanism this state closes.
+function SessionUnknown({ tr, onRetry }: { readonly tr: (key: string) => string; readonly onRetry: () => void }) {
+  const styles = makeStyles(useTheme())
+  return (
+    <Card>
+      <Text style={styles.sectionTitle} accessibilityRole="alert">
+        {tr('datenschutz.sessionUnknown.heading')}
+      </Text>
+      <Text style={styles.sectionBody}>{tr('datenschutz.sessionUnknown.body')}</Text>
+      <Button variante="ghost" onPress={onRetry}>
+        {tr('datenschutz.sessionUnknown.retry')}
+      </Button>
+    </Card>
   )
 }
 
