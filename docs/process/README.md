@@ -108,6 +108,12 @@ discovery.
   framework/major dependency is a forward-looking decision Musti escalates to the stakeholder, not a
   casual add.
 - **Speaking code** — comments explain *why*, not *what*; a comment-dense diff is a smell.
+- **Definition of Done, four levels (ADR-0029)** — *Ticket/Slice* (the PR-template checklist: TDD,
+  `typecheck` + `oxlint` green, draft-PR review, acceptance test on the REQ's tier, no bespoke
+  machinery without an ADR, why-only comments, a security/performance posture line, ADR/register
+  upkeep) → *REQ* (register `Done`) → *Phase* (all tickets done, edges resolved, demoable, status +
+  progress.db updated) → *1.0* ("zeigbar"). Source: [`docs/roadmap-1.0.md`](../roadmap-1.0.md) and the
+  draft [`0029-definition-of-done.md`](../../.scratch/roadmap-1.0/adr-drafts/0029-definition-of-done.md).
 - **Living architecture docs** — the arc42 is as important as the software; diagrams are **PlantUML**
   (text source committed) exported to **SVG** and referenced from the docs; Musti checks "is the arc42
   updated?" on every completed task.
