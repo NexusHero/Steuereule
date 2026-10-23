@@ -60,17 +60,20 @@
 //
 // Wired into ci.yml's "Browser gates" job, after return-visit.mjs (least risk to an already-green
 // step; no ordering dependency — this script issues its own sign-up/sign-in against the shared
-// no-trusted-ip bucket and paces itself via the same waitForBucketHeadroom every other script in
+// better-auth bucket and paces itself via the same waitForBucketHeadroom every other script in
 // this job already uses).
 //
 // Exits non-zero on the first failed assertion or any storage finding — merge gate, not a report.
 
 import { launchBrowser, closeBrowser, newContextAtBreakpoint, guardAgainst429 } from '../harness/browser.mjs'
 import { startStack } from '../harness/stack.mjs'
-import { fail, readBucketByExactKey, waitForBucketHeadroom } from '../harness/rate-limit.mjs'
+import { fail, waitForBucketHeadroom } from '../harness/rate-limit.mjs'
 import { FLOW_COPY, skipSplash, signUpOutOfBand, fillOnboardingThroughSummary } from '../harness/flows.mjs'
 
-const AUTH_BUCKET = { windowMs: 10_000, max: 3 } // better-auth's own built-in rule
+// `shared: true`: the sign-up/sign-in bucket is spent by every other script in the `Browser gates`
+// job (one in-memory bucket), so this process cannot read its live state and waits out a full
+// window before its first spend (see rate-limit.mjs).
+const AUTH_BUCKET = { windowMs: 10_000, max: 3, shared: true } // better-auth's own built-in rule
 const TEST_PASSWORD = 'Sicheres-Passwort-1!'
 
 // German copy (app boots in `de`, ADR-0006), lifted from apps/mobile-web/src/i18n/resources.ts —
@@ -91,8 +94,8 @@ const COPY = {
   profilLastNamePlaceholder: 'Yilmaz',
 }
 
-function waitForRateLimit(bucket, config, label) {
-  return waitForBucketHeadroom(bucket, config, label, 'no-client-persistence')
+function waitForRateLimit(config, label) {
+  return waitForBucketHeadroom(config, label, 'no-client-persistence')
 }
 
 /** Reads the REAL, live storage from inside the page — every key/value, never a boolean. */
@@ -155,7 +158,7 @@ async function main() {
 
   try {
     const email = `no-client-persistence-${Date.now()}@beispiel.de`
-    await waitForRateLimit(readBucketByExactKey(sql, 'no-trusted-ip|/sign-up/email'), AUTH_BUCKET, 'sign-up/email')
+    await waitForRateLimit(AUTH_BUCKET, 'sign-up/email')
     await signUpOutOfBand(apiOrigin, webOrigin, email, TEST_PASSWORD)
     sql(`UPDATE "User" SET "emailVerified" = true WHERE email = '${email}'`)
 
@@ -169,7 +172,7 @@ async function main() {
     findings.push(...findWritesSinceReference(baseline, EMPTY_DUMP, 'baseline (fresh page load, before sign-in)'))
 
     // --- Flow 1: fresh account, Onboarding through to save ---
-    await waitForRateLimit(readBucketByExactKey(sql, 'no-trusted-ip|/sign-in/email'), AUTH_BUCKET, 'sign-in/email')
+    await waitForRateLimit(AUTH_BUCKET, 'sign-in/email')
     await page.getByPlaceholder(COPY.loginEmailPlaceholder).fill(email)
     await page.getByPlaceholder(COPY.loginPasswordPlaceholder).fill(TEST_PASSWORD)
     await page.getByRole('button', { name: COPY.loginSubmit }).click()

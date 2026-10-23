@@ -37,8 +37,7 @@
 // Exits non-zero on the first failed assertion — merge gate, not a report.
 
 import { chromium } from 'playwright-core'
-import { makeSql } from '../harness/stack.mjs'
-import { readBucketByExactKey, waitForBucketHeadroom } from '../harness/rate-limit.mjs'
+import { waitForBucketHeadroom } from '../harness/rate-limit.mjs'
 
 const WEB_ORIGIN = requireEnv('WEB_ORIGIN')
 // #336 CI investigation (Salih) found the DOWNSTREAM half of this bucket's timing edge —
@@ -56,12 +55,11 @@ const WEB_ORIGIN = requireEnv('WEB_ORIGIN')
 // own CockpitScreen LoadError/Empty flows share the exact query-retry defaults (#306/#307) that
 // caused that earlier compression, so its own internal timing moves with the same lever. Paced
 // here the same way as every other caller of this bucket in the job, rather than left as the one
-// remaining unpaced one (`DATABASE_URL` is already present in `cross-origin-smoke`'s job env —
-// every other step in this job already reads it; this one now does too).
-const sql = makeSql(requireEnv('DATABASE_URL'))
-const AUTH_BUCKET = { windowMs: 10_000, max: 3 } // better-auth's own built-in rule
-function waitForRateLimit(bucket, config, label) {
-  return waitForBucketHeadroom(bucket, config, label, 'breakpoint-layout')
+// remaining unpaced one. Ticket 13 moved the pacer off the (removed) `RateLimit` table onto a
+// client-side mirror (`../harness/rate-limit.mjs`) — no `DATABASE_URL` read here anymore.
+const AUTH_BUCKET = { windowMs: 10_000, max: 3, shared: true } // better-auth's own built-in rule
+function waitForRateLimit(config, label) {
+  return waitForBucketHeadroom(config, label, 'breakpoint-layout')
 }
 
 // Breakpoint token values (must match @steuereule/tokens dist/theme.ts)
@@ -345,7 +343,7 @@ async function measureRegistrierungSuccess(browser, width, label) {
     const email = `kaan-177-e2e-${label}-${Date.now()}@example.com`
     await page.getByPlaceholder(COPY.registrierungEmailPlaceholder).fill(email)
     await page.getByPlaceholder(COPY.registrierungPasswordPlaceholder).fill('a-fine-strong-password-1')
-    await waitForRateLimit(readBucketByExactKey(sql, 'no-trusted-ip|/sign-up/email'), AUTH_BUCKET, 'sign-up/email')
+    await waitForRateLimit(AUTH_BUCKET, 'sign-up/email')
     await page.getByRole('button', { name: COPY.registrierungSubmit }).click()
     const cta = page.getByRole('button', { name: COPY.registrierungSuccessCta })
     // Pins RegistrierungScreen:115 — its own `width: '100%'` override is now removed

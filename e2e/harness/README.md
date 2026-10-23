@@ -79,22 +79,25 @@ the environment truths that keep getting silently re-derived, written down once.
   install step against this environment's registry-blocked network before finding the
   preinstalled binary.
 
-- **The `RateLimit` table is never truncated to make a gate pass.** `db-rate-limit.ts`'s rolling
-  window (keyed on `lastRequest`, not a quota) is a real REQ-010 control; several scripts already
+- **The rate-limit buckets are never cleared to make a gate pass.** The limiter's rolling window
+  (keyed on `lastRequest`, not a quota) is a real REQ-010 control; several scripts already
   document (`visibility-refetch.mjs`, `banner-ds-qa.mjs`) that clearing it was tried once and
   reverted as the exact inversion this project exists to prevent. Any script that shares a CI job
-  with others must PACE itself against the real bucket state, never reset it. Two db-rate-limit
-  buckets a new device-authorization script must specifically pace against: `device-code:<ip>`
-  (`apps/api/src/device/device-code-rate-limit.ts`, window 60s/max 10) and `device-pending:<ip>`
-  (`device-pending-rate-limit.ts`, same shape) — both keyed by Fastify's raw `request.ip`, which
-  this job cannot resolve to a real per-caller address any more than better-auth's own limiter
-  can, so every script in the job shares one bucket per path exactly like the `/sign-up`/`/sign-in`
-  case `visibility-refetch.mjs`'s header already documents. **Also true, easy to miss:** the
-  `LoginScreen`'s QR column mints a `device-code:*` row on every render at the `m`/`l` breakpoints
-  (Decision 3a — no tap required), so any earlier script in the same job that renders LoginScreen
-  wide (`breakpoint-layout.mjs`'s own breakpoint sweep, for one) has already spent some of that
-  bucket before a device-authorization script gets to run — one more reason such a script must run
-  LAST in its job and read the bucket's live state rather than assume it starts empty.
+  with others must PACE itself against the bucket, never reset it. Since Ticket 02 the buckets are
+  in-memory, not a `RateLimit` table: better-auth's built-in limiter lives in
+  `apps/api/src/auth/rate-limit-storage.ts` (key `${ip}|${path}`, window 10s/max 3), and the two
+  device limiters live in `@nestjs/throttler` (IP-keyed, window 60s/max 10 each,
+  `apps/api/src/rate-limit/rate-limit.ts`). Neither is readable from a separate e2e process, so the
+  pacer (`rate-limit.mjs`) mirrors the limiter's window/max in-process and — where a bucket is
+  shared with other scripts in the job — waits out a full window before its first spend rather than
+  assuming it starts empty. This is a pacing aid, never a weakening: nothing clears the limiter,
+  `guardAgainst429` still fails loudly on a real 429, and the acceptance tests still prove the
+  limits fire. **Also true, easy to miss:** the `LoginScreen`'s QR column mints a device code on
+  every render at the `m`/`l` breakpoints (Decision 3a — no tap required), so an earlier script in
+  the same job that renders LoginScreen wide (`breakpoint-layout.mjs`'s own breakpoint sweep, for
+  one) has already spent some of the shared device bucket before a device-authorization script gets
+  to run — one more reason such a script must run late in its job and pace itself rather than
+  assume the bucket starts empty.
 
 ## `stack.mjs`
 
@@ -180,17 +183,23 @@ standard the original caller set.
 
 ## `rate-limit.mjs`
 
-`fail`, `readBucketByExactKey`, `readBucketByPrefix`, `waitForBucketHeadroom` — the "read the real
-`RateLimit` row, never truncate it" discipline every gate that shares CI's `Browser gates` job
-must follow (see "The `RateLimit` table is never truncated..." above). Extracted after Musti's
-#300 review, G2: `device-authorization.mjs` and `session/return-visit.mjs` had each grown a
-byte-identical copy of these five functions — not a style nit, since they encode a REQ-010
-control's own policy (bucket-key shapes, and above all the never-truncate rule), and two copies of
-a control are two things that can quietly drift apart. Both scripts migrated onto this one
-canonical copy in the same change that introduced it — see this module's own header for why a
-new file growing a second copy was never what the "Not done in this pass" note below licensed.
-`waitForBucketHeadroom`'s `scriptTag` parameter is what lets two self-pacing scripts share one CI
-job's log without either needing its own copy just to get its own log prefix.
+`fail` and `waitForBucketHeadroom` — the "pace against the bucket, never clear it" discipline every
+gate that shares CI's `Browser gates` job must follow (see "The rate-limit buckets are never
+cleared..." above). Extracted after Musti's #300 review, G2: `device-authorization.mjs` and
+`session/return-visit.mjs` had each grown a byte-identical copy of these functions — not a style
+nit, since they encode a REQ-010 control's own policy (bucket window/max, and above all the
+never-clear rule), and two copies of a control are two things that can quietly drift apart. Both
+scripts migrated onto this one canonical copy in the same change that introduced it — see this
+module's own header for why a new file growing a second copy was never what the "Not done in this
+pass" note below licensed.
+
+Ticket 13 (PR #362) changed the pacer's substrate: the `readBucketByExactKey`/`readBucketByPrefix`
+DB-reads are gone with the `RateLimit` table. `waitForBucketHeadroom(config, label, scriptTag)`
+now mirrors the limiter's own rolling-window arithmetic in-process, and — where `config.shared` is
+set — waits out a full window before a process's first spend on that bucket, because the shared
+in-memory bucket is no longer observable across processes. `scriptTag` still prefixes the wait log
+so two self-pacing scripts sharing one CI job stay distinguishable. See the module's own header for
+the full account and the `shared`-flag reasoning.
 
 ## `flows.mjs`
 
@@ -221,9 +230,10 @@ submit — which function a caller calls says where it stops, no parameter threa
   rewiring five working CI jobs and introducing the thing they'd import are two different amounts
   of blast radius, and mixing them would make a revert of either one harder than it needs to be.
 - `visibility-refetch.mjs`'s own `sql()` is **not** migrated to import the canonical version here
-  (the rate-limit helpers above ARE now migrated, on `device-authorization.mjs`,
-  `session/return-visit.mjs`, and — as of the #336 CI investigation, Salih —
-  `responsive/banner-ds-qa.mjs` too, see `rate-limit.mjs`'s own section). `banner-ds-qa.mjs`'s own
+  (the rate-limit pacing above IS now migrated, on `device-authorization.mjs`,
+  `session/return-visit.mjs`, `responsive/banner-ds-qa.mjs`, and — as of Ticket 13 —
+  `visibility/visibility-refetch.mjs` too; only its `sql()`/`guardAgainst429` local copies remain,
+  see `rate-limit.mjs`'s own section). `banner-ds-qa.mjs`'s own
   `guardAgainst429` closed the same way in that same pass: it needed to change anyway (to add the
   rate-limit pacing that #336's investigation found missing), which is exactly the "small,
   separate, easy-to-review diff once a script already needs to change for another reason" this

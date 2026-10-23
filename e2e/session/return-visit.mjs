@@ -93,20 +93,21 @@
 //     that behaviour is the right one. That call is the stakeholder's, flagged in this PR's body.
 //
 // RATE-LIMIT BUDGET (same discipline as visibility-refetch.mjs/device-authorization.mjs — read
-// before adding a call). This file spends, in the shared `no-trusted-ip|<path>` sign-up/sign-in
-// bucket (window 10s/max 3): row B (1 sign-up + 1 sign-in), row C (1 sign-up + 2 sign-ins) — 5
-// calls total, paced via `waitForBucketHeadroom` (`../harness/rate-limit.mjs`, imported above),
-// which only READS the real `RateLimit` table (never truncates it — clearing a REQ-010 control
-// to make a gate pass was tried once elsewhere in this repo and reverted). Rows A/D/E/F issue no
-// sign-up/sign-in calls at all (row A's control-proof login submit is aborted by the harness's
-// own `page.route` before it ever reaches the server, so it spends nothing). Device-code mints
-// (`device-code:<ip>`, window 60s/max 10): row A (1, real) + row C (2 — see below) + row F (2) =
-// 5, also paced. Rows B/D/E deliberately run at the `s` (375px) breakpoint — the QR column only
-// renders at `m`/`l` (Decision 3a) — so those three rows never touch the device-code bucket at
-// all. Row C is the one exception: it runs at `l` (1280px) deliberately, because #295's own
-// report includes the QR card failing, and `s` has no QR column to exercise that symptom against
-// at all — both of its Login-screen mounts (session 1's initial load, session 2's reopen) mint a
-// code and are paced the same way row A's does.
+// before adding a call). This file spends, in the shared better-auth sign-up/sign-in bucket
+// (window 10s/max 3, in-memory `rate-limit-storage.ts`): row B (1 sign-up + 1 sign-in), row C
+// (1 sign-up + 2 sign-ins) — 5 calls total, paced via `waitForBucketHeadroom`
+// (`../harness/rate-limit.mjs`, imported above), which mirrors the limiter's own window/max and
+// never clears it (clearing a REQ-010 control to make a gate pass was tried once elsewhere in
+// this repo and reverted). Rows A/D/E/F issue no sign-up/sign-in calls at all (row A's
+// control-proof login submit is aborted by the harness's own `page.route` before it ever reaches
+// the server, so it spends nothing). Device-code mints (`@nestjs/throttler`, window 60s/max 10):
+// row A (1, real) + row C (2 — see below) + row F (2) = 5, also paced. Rows B/D/E deliberately
+// run at the `s` (375px) breakpoint — the QR column only renders at `m`/`l` (Decision 3a) — so
+// those three rows never touch the device-code bucket at all. Row C is the one exception: it runs
+// at `l` (1280px) deliberately, because #295's own report includes the QR card failing, and `s`
+// has no QR column to exercise that symptom against at all — both of its Login-screen mounts
+// (session 1's initial load, session 2's reopen) mint a code and are paced the same way row A's
+// does.
 //
 // WIRED into `ci.yml`'s `Browser gates` job (Musti's #300 review, G1 — a repair instrument with
 // no real caller in CI is the same defect one level up, so this did not stay a standing-alone
@@ -132,11 +133,15 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { launchBrowser, closeBrowser, newContextAtBreakpoint, guardAgainst429, sampleComputedStyleOverFrames, newReducedMotionContext } from '../harness/browser.mjs'
 import { startStack } from '../harness/stack.mjs'
-import { fail, readBucketByExactKey, readBucketByPrefix, waitForBucketHeadroom } from '../harness/rate-limit.mjs'
+import { fail, waitForBucketHeadroom } from '../harness/rate-limit.mjs'
 import { FLOW_COPY, skipSplash, signUpOutOfBand, completeOnboarding } from '../harness/flows.mjs'
 
-const AUTH_BUCKET = { windowMs: 10_000, max: 3 } // better-auth's own built-in rule
-const DEVICE_CODE_BUCKET = { windowMs: 60_000, max: 10 } // device-code-rate-limit.ts
+// `shared: true`: the sign-up/sign-in bucket is spent by every other script in the `Browser gates`
+// job (same API process, one in-memory bucket), so this process cannot read its live state and
+// waits out a full window before its first spend (see rate-limit.mjs). The device bucket is not
+// shared in the collision sense — 60s window + multi-minute scripts, so no first-use wait.
+const AUTH_BUCKET = { windowMs: 10_000, max: 3, shared: true } // better-auth's own built-in rule
+const DEVICE_CODE_BUCKET = { windowMs: 60_000, max: 10 } // @nestjs/throttler (rate-limit.ts)
 
 const TEST_PASSWORD = 'Sicheres-Passwort-1!'
 
@@ -170,14 +175,15 @@ const COPY = {
   cockpitLoadErrorHeading: 'Das hat nicht geklappt.',
 }
 
-// Rate-limit pacing (`fail`, `readBucketByExactKey`, `readBucketByPrefix`,
-// `waitForBucketHeadroom`) is imported from `../harness/rate-limit.mjs` — the one canonical copy
-// this file and `device-authorization.mjs` both migrated onto together (Musti's #300 review, G2;
-// see that module's own header for why the two prior byte-identical copies were a real problem,
-// not a style nit). `waitForRateLimit` below is a thin, script-local wrapper that supplies this
-// file's own `scriptTag` so every call site doesn't have to repeat it.
-function waitForRateLimit(bucket, config, label) {
-  return waitForBucketHeadroom(bucket, config, label, 'return-visit')
+// Rate-limit pacing (`fail`, `waitForBucketHeadroom`) is imported from
+// `../harness/rate-limit.mjs` — the one canonical copy this file and `device-authorization.mjs`
+// both migrated onto together (Musti's #300 review, G2; see that module's own header for why the
+// two prior byte-identical copies were a real problem, not a style nit). The
+// `readBucketByExactKey`/`readBucketByPrefix` DB-reads are gone with the `RateLimit` table
+// (Ticket 13) — the pacer tracks spend itself. `waitForRateLimit` below is a thin, script-local
+// wrapper that supplies this file's own `scriptTag` so every call site doesn't have to repeat it.
+function waitForRateLimit(config, label) {
+  return waitForBucketHeadroom(config, label, 'return-visit')
 }
 
 // `skipSplash`, `signUpOutOfBand`, `completeOnboarding` are imported from `../harness/flows.mjs`
@@ -364,12 +370,12 @@ async function testSignedInReload(browser, apiOrigin, webOrigin, sql) {
     guardAgainst429(page, fail, '/api/auth/')
     const email = `return-visit-reload-${Date.now()}@beispiel.de`
 
-    await waitForRateLimit(readBucketByExactKey(sql, 'no-trusted-ip|/sign-up/email'), AUTH_BUCKET, 'sign-up/email')
+    await waitForRateLimit(AUTH_BUCKET, 'sign-up/email')
     await signUpOutOfBand(apiOrigin, webOrigin, email, TEST_PASSWORD)
     sql(`UPDATE "User" SET "emailVerified" = true WHERE email = '${email}'`)
 
     await skipSplash(page, webOrigin)
-    await waitForRateLimit(readBucketByExactKey(sql, 'no-trusted-ip|/sign-in/email'), AUTH_BUCKET, 'sign-in/email')
+    await waitForRateLimit(AUTH_BUCKET, 'sign-in/email')
     await page.getByPlaceholder(COPY.loginEmailPlaceholder).fill(email)
     await page.getByPlaceholder(COPY.loginPasswordPlaceholder).fill(TEST_PASSWORD)
     await page.getByRole('button', { name: COPY.loginSubmit }).click()
@@ -432,7 +438,7 @@ async function testSignedInReload(browser, apiOrigin, webOrigin, sql) {
  *  against a live API throughout. */
 async function testCloseAndReopenReLogin(apiOrigin, webOrigin, sql) {
   const email = `return-visit-reopen-${Date.now()}@beispiel.de`
-  await waitForRateLimit(readBucketByExactKey(sql, 'no-trusted-ip|/sign-up/email'), AUTH_BUCKET, 'sign-up/email')
+  await waitForRateLimit(AUTH_BUCKET, 'sign-up/email')
   await signUpOutOfBand(apiOrigin, webOrigin, email, TEST_PASSWORD)
   sql(`UPDATE "User" SET "emailVerified" = true WHERE email = '${email}'`)
 
@@ -446,9 +452,9 @@ async function testCloseAndReopenReLogin(apiOrigin, webOrigin, sql) {
       guardAgainst429(page, fail, '/v1/device/')
       // `l`-breakpoint (see below) mounts the QR column, which mints a device-code row on every
       // load (Decision 3a) — paced against the shared bucket like every other mint in this file.
-      await waitForRateLimit(readBucketByPrefix(sql, 'device-code'), DEVICE_CODE_BUCKET, 'device-code')
+      await waitForRateLimit(DEVICE_CODE_BUCKET, 'device-code')
       await skipSplash(page, webOrigin)
-      await waitForRateLimit(readBucketByExactKey(sql, 'no-trusted-ip|/sign-in/email'), AUTH_BUCKET, 'sign-in/email')
+      await waitForRateLimit(AUTH_BUCKET, 'sign-in/email')
       await assertLoginSubmitHonest(page, email, TEST_PASSWORD, { expectHealthy: true, label: 'Row C (session 1 sign-in)' })
       console.log('[return-visit] Row C: session 1 — real sign-in against a live API succeeded, no outage banner.')
 
@@ -473,14 +479,14 @@ async function testCloseAndReopenReLogin(apiOrigin, webOrigin, sql) {
       const page = ctx.pages()[0] ?? (await ctx.newPage())
       guardAgainst429(page, fail, '/api/auth/')
       guardAgainst429(page, fail, '/v1/device/')
-      await waitForRateLimit(readBucketByPrefix(sql, 'device-code'), DEVICE_CODE_BUCKET, 'device-code')
+      await waitForRateLimit(DEVICE_CODE_BUCKET, 'device-code')
       await skipSplash(page, webOrigin)
       // Splash always leads to Login today (App.tsx's own comment: no boot-time session-detection
       // yet, REQ-009 pending) — an already-documented gap, not asserted here as new. The
       // stakeholder's own next step is what this row actually tests: re-entering the same
       // credentials on the screen that's actually shown.
       await assertLoginScreenHonest(page, apiOrigin, { expectHealthy: true, label: 'Row C (session 2, before re-login)' })
-      await waitForRateLimit(readBucketByExactKey(sql, 'no-trusted-ip|/sign-in/email'), AUTH_BUCKET, 'sign-in/email')
+      await waitForRateLimit(AUTH_BUCKET, 'sign-in/email')
       await assertLoginSubmitHonest(page, email, TEST_PASSWORD, { expectHealthy: true, label: 'Row C (session 2, re-login)' })
       console.log(
         '[return-visit] Row C: session 2 — after a real close+reopen of the browser, re-entering the same ' +
@@ -590,7 +596,7 @@ async function testUnauthenticatedDeepLink(browser, webOrigin) {
  *  checks neither the old nor the new code was ever written to `localStorage`/`sessionStorage` —
  *  `useDeviceQrCode.ts` holds it in plain `useState`, so this also stands as a regression guard
  *  against a future change accidentally persisting it client-side. */
-async function testDeviceCodeDoesNotSurviveReload(browser, webOrigin, sql) {
+async function testDeviceCodeDoesNotSurviveReload(browser, webOrigin) {
   const ctx = await newContextAtBreakpoint(browser, 'l')
   try {
     const page = await ctx.newPage()
@@ -605,12 +611,12 @@ async function testDeviceCodeDoesNotSurviveReload(browser, webOrigin, sql) {
       }
     })
 
-    await waitForRateLimit(readBucketByPrefix(sql, 'device-code'), DEVICE_CODE_BUCKET, 'device-code')
+    await waitForRateLimit(DEVICE_CODE_BUCKET, 'device-code')
     await skipSplash(page, webOrigin)
     await page.getByText(/^[A-Z0-9]{8}$/).first().waitFor({ state: 'visible', timeout: 15_000 })
     if (!firstCode) fail('Row F: no POST /v1/device/code response observed on first mount — nothing to compare against a reload.')
 
-    await waitForRateLimit(readBucketByPrefix(sql, 'device-code'), DEVICE_CODE_BUCKET, 'device-code')
+    await waitForRateLimit(DEVICE_CODE_BUCKET, 'device-code')
     await page.reload({ waitUntil: 'networkidle' })
     await page.getByText(/^[A-Z0-9]{8}$/).first().waitFor({ state: 'visible', timeout: 15_000 })
 
@@ -735,7 +741,7 @@ async function main() {
     await testCloseAndReopenReLogin(apiOrigin, webOrigin, sql)
     await testGuestReload(browser, webOrigin)
     await testUnauthenticatedDeepLink(browser, webOrigin)
-    await testDeviceCodeDoesNotSurviveReload(browser, webOrigin, sql)
+    await testDeviceCodeDoesNotSurviveReload(browser, webOrigin)
     await testSplashEntranceReplaysHonestly(browser, webOrigin)
     console.log(
       '[return-visit] PASS — return-visit/re-login handling is honest against a real, healthy stack ' +
