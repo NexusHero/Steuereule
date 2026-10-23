@@ -1,8 +1,8 @@
 # ADR-0028 — Foundation-Konsolidierung: Framework-Standard statt Eigenbau, ein Produkt statt Slices (ENTWURF)
 
-- **Status:** Proposed (Draft — Grilling-Session 2026-10-23; Review durch Musti steht aus)
+- **Status:** Accepted
 - **Date:** 2026-10-23
-- **Deciders:** NexusHero (Stakeholder) · **Review:** Musti (Lead), ausstehend
+- **Deciders:** NexusHero (Stakeholder) · **Review:** Musti (Lead) — re-review GO (2026-10-23)
 - **Introduced by:** roadmap grilling session 2026-10-23 (decisions D3, D4, D6, D9)
 - **Builds on** [ADR-0009](0009-better-auth-as-auth-server.md) (better-auth is the auth server),
   [ADR-0011](0011-cors-credentialed-cross-origin.md), [ADR-0012](0012-session-guard-coexistence-and-guest-upgrade.md),
@@ -77,4 +77,4 @@ headers trimmed on every touched file (boy-scout rule, no global comment sprint)
 
 - 2026-10-23: Draft from the roadmap grilling session (decisions D3, D4, D6, D9).
 - 2026-10-23: Rev 2 — Musti review findings B1 (ADR-027(b) amendment), B2 (link conventions),
-  M6, M8, M9 addressed. Awaiting Musti review before promotion from draft.
+  M6, M8, M9 addressed; re-review GO. Promoted to `docs/adr/`.

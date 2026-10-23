@@ -47,7 +47,6 @@ Architecture/Design Decision Records. Format: Kontext → Entscheidung → Konse
 | 040 | Unsicherheit: sicherer Weg empfohlen; empfehlen nur bei eindeutiger Lage (StBerG) | Akzeptiert |
 | 041 | Fehlerfall: „Stimmt nicht"-Knopf; Verworfenes kehrt nur bei neuen Fakten wieder | Akzeptiert |
 | 042 | Archiv-Wache: abgegebene Jahre + Einspruchsfrist-Karte | Akzeptiert |
-| 036 | Details: CH-Scan-Maske, CHF führt, 5 Rentenarten, 10er-Katalog, Abfindungs-Rechner | Akzeptiert |
 | 043 | Ein Monorepo mit Turborepo (pnpm-Workspace, packages/ + apps/) | Akzeptiert |
 | 044 | Expo + React-Native-Web: eine App-Codebasis, Marketing separat (präzisiert 003) | Akzeptiert |
 | 045 | Nativer Funktionsumfang & Expo Dev Builds (Scan/OCR/Push/Biometrie in 1.0) | Akzeptiert |
@@ -56,6 +55,7 @@ Architecture/Design Decision Records. Format: Kontext → Entscheidung → Konse
 | 048 | KI-Architektur: Determinismus-Grenze + LangChain/LangGraph hinter Port, provider-agnostisch | Akzeptiert (Provider-Endwahl offen) |
 | 049 | Deployment: k3s auf Hetzner (EU) + managed Postgres | Akzeptiert |
 | 050 | Styling-Engine & Token-Pipeline: RN StyleSheet + Style Dictionary | Akzeptiert |
+| 051 | Roadmap 1.0: Ziel, Tracks, Phasen, Zeitrahmen, Agenten-Besatzung (Master: docs/roadmap-1.0.md) | Akzeptiert |
 
 _Neue ADRs entstehen aus der Grilling-Session als `research/adr/NNN-titel.md`._
 

@@ -1,6 +1,6 @@
 # ADR-051 — Roadmap 1.0: Ziel, Tracks, Phasen, Zeitrahmen (ENTWURF)
 
-**Status:** Vorgeschlagen (Entwurf — Grilling-Session 2026-10-23; Review durch Musti steht aus) · 2026-10-23
+**Status:** Akzeptiert (Grilling-Session 2026-10-23; Review: Musti — Re-Review GO) · 2026-10-23
 
 **Kontext:** Das Projekt hat einen diszipliniert getesteten Mantel (REQ-001–014), aber die
 eigentliche Produktfunktion (Produkt-ADRs 001–042) existiert nur auf Papier, der Code zeigt
@@ -70,4 +70,5 @@ und den Review-Engpass (ADR-0015) nicht schneller; Ausnahme nur in P2 bei leerer
   umgekehrt auf diesen ADR).
 
 **Entscheidungs-Historie:** 2026-10-23 — Entwurf aus der Roadmap-Grilling-Session
-(D1, D2, D3, D5, D7, D8, D9, D10, D11, D12, D21). Rev 2 nach Mustis Re-Review (GO).
+(D1, D2, D3, D5, D7, D8, D9, D10, D11, D12, D21). Rev 2 nach Mustis Re-Review (GO);
+promoted zum Research-Log (2026-10-23).

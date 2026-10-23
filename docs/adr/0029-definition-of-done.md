@@ -1,8 +1,8 @@
 # ADR-0029 — Definition of Done: vier Ebenen (ENTWURF)
 
-- **Status:** Proposed (Draft — Grilling-Session 2026-10-23; Review durch Musti steht aus)
+- **Status:** Accepted
 - **Date:** 2026-10-23
-- **Deciders:** NexusHero (Stakeholder) · **Review:** Musti (Lead), ausstehend
+- **Deciders:** NexusHero (Stakeholder) · **Review:** Musti (Lead) — re-review GO (2026-10-23)
 - **Introduced by:** DoD grilling session 2026-10-23 (decisions D13–D20)
 - **Builds on** [ADR-0017](0017-public-draft-first-review-and-tiered-testing.md) (tiered
   testing), [ADR-0021](0021-controls-are-proven-by-breaking-them.md) (a control is proven by
@@ -76,5 +76,5 @@ criteria (2 and 3) admit no exceptions — only a go-live deferral.
 ## Decision history
 
 - 2026-10-23: Draft from the DoD grilling session (decisions D13–D20).
-- 2026-10-23: Rev 2 — Musti review findings I1 (ADR-0021 paraphrase), M8, M9 addressed.
-  Awaiting Musti review before promotion from draft.
+- 2026-10-23: Rev 2 — Musti review findings I1 (ADR-0021 paraphrase), M8, M9 addressed;
+  re-review GO. Promoted to `docs/adr/`.

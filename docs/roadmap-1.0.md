@@ -2,7 +2,7 @@
 
 **Status:** Akzeptiert (Grilling-Session 2026-10-23) · **Decider:** NexusHero (Stakeholder), gegrillt und gegengeprüft von Musti (Lead-Rolle)
 
-**Wo die Tickets leben:** `.scratch/roadmap-1.0/issues/` (eine Datei pro Ticket, Blocking-Edges im Tracer-Format). **Wo die ADR-Entwürfe leben:** `.scratch/roadmap-1.0/adr-drafts/` — sie wandern nach Review in `docs/adr/` (Engineering) bzw. `finanzo-funke-design-system/project/research/adr/` (Produkt).
+**Wo die Tickets leben:** `.scratch/roadmap-1.0/issues/` (eine Datei pro Ticket, Blocking-Edges im Tracer-Format). **Wo die ADRs leben:** `docs/adr/0028` und `0029` (Engineering) bzw. `finanzo-funke-design-system/project/research/adr/051` (Produkt) — promotet nach Mustis Re-Review (GO); der Review-Report liegt unter `.scratch/roadmap-1.0/adr-review-findings.md`.
 
 ## Ziel
 
@@ -70,7 +70,7 @@ bis dahin Beta kostenlos und abgabe-bereit ohne Übermittlung.
 
 ## Definition of Done — vier Ebenen (D13–D20)
 
-**Eingeführt durch die ADR-Entwürfe `0029-definition-of-done.md` (Engineering). Durchsetzung:
+**Eingeführt durch [ADR-0029](adr/0029-definition-of-done.md) (Engineering). Durchsetzung:
 PR-Checkliste + Review-Haken; Ausnahmen sichtbar + genehmigt + begründet + mit Nachhol-Ticket.**
 
 ### 1. DoD Ticket/Slice
@@ -113,8 +113,8 @@ Ausnahmen — dort gibt es nur Go-Live-Verschiebung.
 
 Jede Phase läuft durch den bestehenden Crew-Flow: `to-spec` → `to-tickets` (Tracer-Slices mit
 Blocking-Edges; die Phasen-Tickets hier werden beim Phasenstart fein geschnitten) → `implement`
-(TDD) → `code-review`. Die Entscheidungen D1–D21 werden als ADRs festgeschrieben (Entwürfe in
-`.scratch/roadmap-1.0/adr-drafts/`), inkl. Amendments, wo bestehende ADRs berührt sind
+(TDD) → `code-review`. Die Entscheidungen D1–D21 sind als ADRs festgeschrieben (ADR-0028/0029
+in `docs/adr/`, ADR-051 im Research-Log), inkl. Amendments, wo bestehende ADRs berührt sind
 (ADR-0015-Lehre bei D5, ADR-0026 (#292-Lücke, geschlossen durch den Infra-Track),
 Produkt-ADR-027(b) bei REQ-007 — Supersession auf dem 2FA-Punkt, Durchsetzung in Ticket 05).
 Register bekommt neue REQs für die Produktfeatures, sobald die Phasen sie schneiden.
