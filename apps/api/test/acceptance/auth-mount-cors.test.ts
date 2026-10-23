@@ -14,6 +14,7 @@
 import type { NestFastifyApplication } from '@nestjs/platform-fastify'
 import { PrismaClient } from '@prisma/client'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { resetRateLimiters } from '../support/reset-rate-limiters.js'
 
 process.env.GUEST_SESSION_SECRET = 'auth-mount-cors-secret'
 process.env.BETTER_AUTH_SECRET = 'auth-mount-cors-better-auth-secret-0123456789'
@@ -38,10 +39,10 @@ describe('REQ-010/ADR-0011/ADR-0012 §5 — CORS on the better-auth mount (/api/
   })
 
   afterEach(async () => {
+    resetRateLimiters(app)
     await prisma.session.deleteMany()
     await prisma.account.deleteMany()
     await prisma.user.deleteMany()
-    await prisma.rateLimit.deleteMany()
   })
 
   afterAll(async () => {

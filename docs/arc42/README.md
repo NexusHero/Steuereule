@@ -130,10 +130,10 @@ shell (Cockpit, Profil), with Datenschutz as a drill-down reached from Profil.
   forbid holding one in JS-reachable storage), and `GET /device` claims a code for the caller's
   account while the origin check skips **all** `GET`s — reachable cross-site under our
   `SameSite=None` cookie. **Same shape as the `UserContextGuard` seam: better-auth is the
-  mechanism, our API owns the surface.** Because `/device/token` sets no cookie, this module also
-  writes the session cookie itself in better-auth's signed format (`session-cookie.ts`) — the one
-  place where a silent upstream format change would produce a wrong signature rather than a red
-  test, which is why an acceptance test round-trips it through a real better-auth instance.
+  mechanism, our API owns the surface.** Because `/device/token` sets no cookie, a better-auth
+  plugin (`device-session-cookie.ts`) adds an `after`-hook that calls better-auth's own
+  `setSessionCookie` — no re-implemented signed-cookie format — and the acceptance test
+  round-trips the result through a real better-auth instance.
 - **`RegionResolver` (new)** — country-level geo-IP (ADR-0024), self-hosted in our EU deployment,
   fetched at build time and pinned by checksum; **no user IP ever leaves our infrastructure**.
   It **never guesses**: a private/unroutable address, an unlisted block, or a database past its
@@ -157,17 +157,19 @@ shell (Cockpit, Profil), with Datenschutz as a drill-down reached from Profil.
   identifier-class access, not read-of-own-estimate — see §Data model).
 - `PrismaModule` — the shared, field-encryption-extended Prisma client (ADR-0008).
 - **Cross-cutting** — the fail-closed CORS origin allowlist (ADR-0011; never `*`, credentialed
-  cross-origin with `SameSite=None; Secure`), `helmet`/CSP, and the DB-backed rate limits —
-  **the rate limit is not an effective control as shipped**: it is keyed on a client IP read from
+  cross-origin with `SameSite=None; Secure`), `helmet`/CSP, and rate limiting (`@nestjs/throttler`
+  for the device/verify-password routes, better-auth's built-in limiter for its own) — **the rate
+  limit is not an effective control as shipped**: it is keyed on a client IP read from
   `X-Forwarded-For` with no trusted-proxy boundary, so a single-value header yields a fresh bucket
-  per request ([#241](https://github.com/NexusHero/Steuereule/issues/241)). DB-backed storage fixes
-  where the counter lives, not what it counts. Closes once the deployment supplies that boundary
+  per request ([#241](https://github.com/NexusHero/Steuereule/issues/241)). The storage moved from
+  the removed `RateLimit` table to in-memory (ADR-0035); that fixes where the counter lives, not
+  what it counts. Closes once the deployment supplies that boundary
   ([#292](https://github.com/NexusHero/Steuereule/issues/292), successor to the closed
   [#246](https://github.com/NexusHero/Steuereule/issues/246)); the Requirements Register records it
   as REQ-010 `not met (rate limiting)`. See ADR-0012 §5 and its 2026-08-04 amendment.
 
-**Persistence — Postgres (EU)**, expand-only versioned migrations (ADR-047). Ten tables:
-four `userId`-scoped domain tables, the four better-auth identity tables, `RateLimit`, and
+**Persistence — Postgres (EU)**, expand-only versioned migrations (ADR-047). Nine tables:
+four `userId`-scoped domain tables, the four better-auth identity tables, and
 `DeviceCode` (see the data model).
 
 ### Which decisions these blocks trace to
@@ -186,7 +188,7 @@ those ADRs **justify** it and stay the source of record.
 ## 5.1 Data model (data view)
 
 The persisted schema (`apps/api/prisma/schema.prisma`). Green = added since the REQ-001
-revision: the better-auth identity tables and `RateLimit` (Slice 2), and `LegalHold`
+revision: the better-auth identity tables (Slice 2) and `LegalHold`
 (REQ-011's Löschschutz seam).
 
 ![Data model](./data-model.svg)

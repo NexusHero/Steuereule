@@ -50,21 +50,21 @@ describe('resolveTrustedProxies', () => {
     expect(() => resolveTrustedProxies({ TRUSTED_PROXIES: '::1/129' })).toThrow(/invalid entries: ::1\/129/)
   })
 
-  // No floor on prefix breadth is built here (#241, Musti's review). Measured, not
-  // assumed: @fastify/proxy-addr@5.1.0 throws only on the *exact* range `0.0.0.0/0`;
-  // `0.0.0.0/1`/`::/1` pass through it silently and return the attacker-controlled
-  // leftmost value, while `/2`/`/8` were harmless in the one setup measured so far.
-  // That failure mode belongs to proxy-addr/Fastify's `trustProxy`, which this ticket
-  // does not wire (#238's own follow-up, consuming this resolver's output) —
-  // better-auth's own algorithm, the only consumer wired here, fails the *opposite*
-  // direction on an overly-broad range (converges toward `null`, not an
-  // attacker-chosen value), so there is no failing case against THIS ticket's actual
-  // consumer to justify a guard here yet. This test records that as a deliberate,
-  // named deferral to #238 — not an oversight, and not "Musti checked this and it's
-  // fine everywhere" (an earlier draft of this comment said exactly that, incorrectly
-  // generalising a narrower, explicitly-scoped measurement; corrected here).
-  it('does not reject an overly broad range on its own — that guard belongs to #238’s Fastify/proxy-addr consumer, proven by a failing case there first', () => {
-    expect(resolveTrustedProxies({ TRUSTED_PROXIES: '0.0.0.0/1' })).toEqual(['0.0.0.0/1'])
+  // The breadth floor (#241, Musti's review) — a trusted range broad enough to cover
+  // the socket peer makes Fastify's `@fastify/proxy-addr` return the attacker-controlled
+  // leftmost `X-Forwarded-For` value (fail-open): `trustProxy: ['0.0.0.0/1']`, peer
+  // `127.0.0.1`, XFF `203.0.113.66, 127.0.0.1` → `203.0.113.66`. `/0` and `/1` are the
+  // two lengths that fail open; `/2` and narrower leave the loopback peer outside the
+  // trusted set and fail closed instead. The guard lives here, once, so both better-auth
+  // and Fastify consume a value that is safe for both.
+  it('rejects an overly broad range (/0 or /1) that would make Fastify fail open on a spoofed leftmost value', () => {
+    expect(() => resolveTrustedProxies({ TRUSTED_PROXIES: '0.0.0.0/0' })).toThrow(/overly broad entries: 0\.0\.0\.0\/0/)
+    expect(() => resolveTrustedProxies({ TRUSTED_PROXIES: '0.0.0.0/1' })).toThrow(/overly broad entries: 0\.0\.0\.0\/1/)
+    expect(() => resolveTrustedProxies({ TRUSTED_PROXIES: '::/1' })).toThrow(/overly broad entries: ::\/1/)
+  })
+
+  it('accepts a /2 range — the first length narrow enough to keep the socket peer outside the trusted set', () => {
+    expect(resolveTrustedProxies({ TRUSTED_PROXIES: '0.0.0.0/2' })).toEqual(['0.0.0.0/2'])
   })
 })
 

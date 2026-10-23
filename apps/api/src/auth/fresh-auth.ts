@@ -11,13 +11,11 @@
 // effect, which would be a strange thing to do half a second before deleting the
 // account entirely. `verifyPassword` checks the password against the *already
 // authenticated* session's user with no side effect beyond the check itself.
-import { BadRequestException, ForbiddenException, Inject, Injectable, UnauthorizedException } from '@nestjs/common'
+import { BadRequestException, ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common'
 import { fromNodeHeaders } from 'better-auth/node'
 import { APIError } from 'better-auth'
 import type { IncomingHttpHeaders } from 'node:http'
 import type { BetterAuthBundle } from './auth.tokens.js'
-import { PrismaService } from '../prisma/prisma.service.js'
-import { consumeVerifyPasswordRateLimit } from './verify-password-rate-limit.js'
 
 /**
  * How recently the caller's real better-auth session must have been established to
@@ -48,9 +46,6 @@ export class FreshAuthFailedError extends UnauthorizedException {
 
 @Injectable()
 export class FreshAuthChecker {
-  // Explicit token — see the comment on ProfileController's constructor for why.
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
-
   /**
    * Throws unless the caller both (a) holds a genuine better-auth account session for
    * `expectedUserId` (never merely a guest cookie) and (b) has proven that session is
@@ -82,18 +77,12 @@ export class FreshAuthChecker {
 
     if (!password) throw new FreshAuthRequiredError()
 
-    // Rate-limit the re-verification attempt itself, keyed per account, before ever
-    // touching the password. `auth.api.verifyPassword()` below is an in-process call,
-    // not a request through the mounted `/api/auth/*` router — better-auth's own
-    // rate-limit check runs in that router's `onRequest` hook (see
-    // verify-password-rate-limit.ts's header comment) and never sees this call, so it
-    // cannot be relied on here. This consults the same DB-backed `RateLimit` table
-    // directly instead (ADR-0013 §6: reuse the existing table, no new mechanism).
-    await consumeVerifyPasswordRateLimit(this.prisma, `delete-account-verify-password:${expectedUserId}`)
-
     try {
       // Reuses better-auth's own `/verify-password` endpoint (its scrypt check) —
-      // never a second, hand-rolled password check.
+      // never a second, hand-rolled password check. The re-verification attempt
+      // itself is rate-limited at the HTTP layer by `@nestjs/throttler` (keyed per
+      // account, see rate-limit.ts), not here — the deleted
+      // verify-password-rate-limit.ts consulted the removed `RateLimit` table.
       await betterAuth.auth.api.verifyPassword({ headers: fetchHeaders, body: { password } })
     } catch (error) {
       if (error instanceof APIError) throw new FreshAuthFailedError()

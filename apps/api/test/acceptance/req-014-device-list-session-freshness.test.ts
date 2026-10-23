@@ -26,6 +26,7 @@
 import type { NestFastifyApplication } from '@nestjs/platform-fastify'
 import { PrismaClient } from '@prisma/client'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { resetRateLimiters } from '../support/reset-rate-limiters.js'
 
 process.env.GUEST_SESSION_SECRET = 'req-014-freshness-secret'
 process.env.BETTER_AUTH_SECRET = 'req-014-freshness-better-auth-secret-0123456789'
@@ -65,15 +66,11 @@ describe('REQ-014 — device list session freshness (list-sessions must not requ
   })
 
   afterEach(async () => {
+    resetRateLimiters(app)
     await prisma.session.deleteMany()
     await prisma.account.deleteMany()
     await prisma.user.deleteMany()
     await prisma.profile.deleteMany()
-    // Same reasoning as req-009-session-model.test.ts's own afterEach: this sandbox can't
-    // resolve a real client IP, so better-auth's login rate limiter shares one bucket across
-    // every caller in this file (and any other acceptance file sharing this Postgres) unless
-    // cleaned between tests.
-    await prisma.rateLimit.deleteMany()
   })
 
   afterAll(async () => {

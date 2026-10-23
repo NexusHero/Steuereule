@@ -240,7 +240,7 @@
             "description": "A guest session — there is no real account here to delete."
           },
           "429": {
-            "description": "Too many password re-verification attempts; the existing DB-backed rate limit tripped (ADR-0013 §6)."
+            "description": "Too many password re-verification attempts; the throttler limit (ADR-0013 §6, 10s/3 per account) tripped."
           }
         },
         "tags": [

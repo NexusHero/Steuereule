@@ -166,19 +166,6 @@ note bottom of Account
   (ADR-0013 §4).
 end note
 
-class RateLimit {
-  id : uuid <<PK>>
-  key : string?
-  count : int?
-  lastRequest : bigint?
-}
-note bottom of RateLimit
-  DB-backed, deliberately **not** in-memory (REQ-010 / ADR-0012 §5):
-  an in-memory counter resets per pod and is trivially bypassed once
-  the API scales horizontally. Reused — not re-invented — by the
-  deletion path's password re-verification limit (ADR-0013 §6 note).
-end note
-
 class DeviceCode #palegreen;line.dashed {
   id : uuid <<PK>>
   deviceCode : string <<unique>>

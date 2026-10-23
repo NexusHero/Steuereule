@@ -18,6 +18,7 @@
 import type { NestFastifyApplication } from '@nestjs/platform-fastify'
 import { PrismaClient } from '@prisma/client'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { resetRateLimiters } from '../support/reset-rate-limiters.js'
 
 process.env.GUEST_SESSION_SECRET = 'req-014-approve-token-secret'
 process.env.BETTER_AUTH_SECRET = 'req-014-approve-token-better-auth-secret-0123'
@@ -58,7 +59,7 @@ describe('REQ-014 task 2 — /v1/device/{pending,approve,token}, against the rea
     await prisma.session.deleteMany()
     await prisma.account.deleteMany()
     await prisma.user.deleteMany()
-    await prisma.rateLimit.deleteMany()
+    resetRateLimiters(app)
   })
 
   afterAll(async () => {

@@ -13,10 +13,9 @@
 // "trust this device" distinction (one-tap approval, one fixed session lifetime).
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { BetterAuthBundle } from '../src/auth/auth.tokens.js'
-import { resolveBetterAuthSecret } from '../src/auth/better-auth.js'
+import { createResettableRateLimitStorage } from '../src/auth/rate-limit-storage.js'
 import { DEVICE_AUTHORIZATION_CLIENT_ID, DeviceService } from '../src/device/device.service.js'
 import type { RegionResolver } from '../src/device/region/region-resolver.js'
-import { signBetterAuthCookieValue } from '../src/device/session-cookie.js'
 import { FakeDeviceCodeRepository } from './fakes/fake-device-code.repository.js'
 import { APIError } from 'better-auth'
 
@@ -25,18 +24,8 @@ function fakeBundle(api: Record<string, ReturnType<typeof vi.fn>>): BetterAuthBu
     auth: { api } as unknown as BetterAuthBundle['auth'],
     sessionCookieName: 'test-session',
     enabledSocialProviders: [],
-    sessionExpiresInSeconds: 604800,
+    rateLimitStorage: createResettableRateLimitStorage(),
   }
-}
-
-/** A PrismaService-shaped stub whose `rateLimit.updateMany` always reports "still
- *  under the max" — every call is allowed, unconditionally. DeviceService's own
- *  rate-limit consult (`consumeDevicePendingRateLimit`) is exercised for real,
- *  against real Postgres, in test/db-rate-limit.integration.test.ts and the
- *  req-014 acceptance suites; this fake exists only so getPending's *other* logic
- *  can be unit-tested without a live database. */
-function fakeAllowingPrisma() {
-  return { rateLimit: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) } } as never
 }
 
 const CANNED_CODE_RESULT = {
@@ -61,7 +50,7 @@ describe('DeviceService.requestCode', () => {
     deviceCode = vi.fn().mockResolvedValue(CANNED_CODE_RESULT)
     resolve = vi.fn().mockResolvedValue('DE')
     regionResolver = { resolve }
-    service = new DeviceService(fakeBundle({ deviceCode }), repository, regionResolver, fakeAllowingPrisma())
+    service = new DeviceService(fakeBundle({ deviceCode }), repository, regionResolver)
   })
 
   it('calls the plugin with this app\'s fixed client_id, never a caller-supplied one', async () => {
@@ -121,16 +110,16 @@ describe('DeviceService.getPending (#238 task 2, AC-3 — match-verification)', 
       requestedAt: new Date('2026-08-01T10:00:00.000Z'),
     })
     deviceVerify = vi.fn().mockResolvedValue({ user_code: 'USER1', status: 'pending' })
-    service = new DeviceService(fakeBundle({ deviceVerify }), repository, { resolve: vi.fn() }, fakeAllowingPrisma())
+    service = new DeviceService(fakeBundle({ deviceVerify }), repository, { resolve: vi.fn() })
   })
 
   it('claims the code server-side by forwarding the caller\'s (the phone\'s) headers into deviceVerify — never a browser-direct claim', async () => {
-    await service.getPending('USER1', phoneHeaders, '203.0.113.5')
+    await service.getPending('USER1', phoneHeaders)
     expect(deviceVerify).toHaveBeenCalledWith({ headers: phoneHeaders, query: { user_code: 'USER1' } })
   })
 
   it('returns the actual stored browser/region/time, read fresh from the row, not the plugin\'s narrower response', async () => {
-    await expect(service.getPending('USER1', phoneHeaders, '203.0.113.5')).resolves.toEqual({
+    await expect(service.getPending('USER1', phoneHeaders)).resolves.toEqual({
       userCode: 'USER1',
       status: 'pending',
       userAgent: 'Mozilla/5.0 Desktop',
@@ -149,15 +138,15 @@ describe('DeviceService.getPending (#238 task 2, AC-3 — match-verification)', 
       requestedAt: new Date('2026-08-01T11:00:00.000Z'),
     })
     deviceVerify.mockResolvedValue({ user_code: 'USER2', status: 'pending' })
-    const first = await service.getPending('USER1', phoneHeaders, '203.0.113.5')
-    const second = await service.getPending('USER2', phoneHeaders, '203.0.113.5')
+    const first = await service.getPending('USER1', phoneHeaders)
+    const second = await service.getPending('USER2', phoneHeaders)
     expect(first.userAgent).not.toBe(second.userAgent)
     expect(first.region).not.toBe(second.region)
   })
 
   it('translates a plugin APIError (e.g. invalid/expired code) into the equivalent HttpException, same status/body', async () => {
     deviceVerify.mockRejectedValue(new APIError('BAD_REQUEST', { error: 'invalid_request', error_description: 'Invalid user code' }))
-    await expect(service.getPending('BOGUS', phoneHeaders, '203.0.113.5')).rejects.toMatchObject({
+    await expect(service.getPending('BOGUS', phoneHeaders)).rejects.toMatchObject({
       status: 400,
       response: { error: 'invalid_request', error_description: 'Invalid user code' },
     })
@@ -174,7 +163,7 @@ describe('DeviceService.approve (#238 task 2, AC-5 — one tap, no scope choice)
     repository = new FakeDeviceCodeRepository()
     repository.seedRow({ deviceCode: 'dev-1', userCode: 'USER1', status: 'pending' })
     deviceApprove = vi.fn().mockResolvedValue({ success: true })
-    service = new DeviceService(fakeBundle({ deviceApprove }), repository, { resolve: vi.fn() }, fakeAllowingPrisma())
+    service = new DeviceService(fakeBundle({ deviceApprove }), repository, { resolve: vi.fn() })
   })
 
   it('forwards the phone\'s headers into deviceApprove — the plugin itself enforces "must be a real, matching session"', async () => {
@@ -194,13 +183,14 @@ describe('DeviceService.approve (#238 task 2, AC-5 — one tap, no scope choice)
 describe('DeviceService.exchangeToken (#238 task 2, AC-5)', () => {
   const desktopHeaders = new Headers({ 'user-agent': 'DesktopBrowser/1.0' })
   const CANNED_TOKEN_RESULT = { access_token: 'the-session-token', token_type: 'Bearer', expires_in: 604800, scope: '' }
+  const SIGNED_SESSION_COOKIE = '__Secure-better-auth.session_token=the-session-token.signature; HttpOnly; Path=/; Max-Age=604800'
 
-  function setUp() {
+  function setUp(deviceToken?: ReturnType<typeof vi.fn>) {
     const repository = new FakeDeviceCodeRepository()
     repository.seedRow({ deviceCode: 'dev-1', userCode: 'USER1', status: 'approved' })
-    const deviceToken = vi.fn().mockResolvedValue(CANNED_TOKEN_RESULT)
-    const service = new DeviceService(fakeBundle({ deviceToken }), repository, { resolve: vi.fn() }, fakeAllowingPrisma())
-    return { repository, deviceToken, service }
+    const mock = deviceToken ?? vi.fn().mockResolvedValue({ headers: new Headers({ 'set-cookie': SIGNED_SESSION_COOKIE }), response: CANNED_TOKEN_RESULT })
+    const service = new DeviceService(fakeBundle({ deviceToken: mock }), repository, { resolve: vi.fn() })
+    return { repository, deviceToken: mock, service }
   }
 
   it('forwards the desktop\'s own headers into deviceToken — load-bearing for ipAddress/userAgent on the created session', async () => {
@@ -209,25 +199,21 @@ describe('DeviceService.exchangeToken (#238 task 2, AC-5)', () => {
     expect(deviceToken).toHaveBeenCalledWith({
       headers: desktopHeaders,
       body: { grant_type: 'urn:ietf:params:oauth:grant-type:device_code', device_code: 'dev-1', client_id: DEVICE_AUTHORIZATION_CLIENT_ID },
+      returnHeaders: true,
     })
   })
 
-  it('signs the cookie value in better-auth\'s own wire format, with the resolved secret', async () => {
+  it('returns the signed session cookie better-auth produced, verbatim — never a re-signed value', async () => {
     const { service } = setUp()
     const result = await service.exchangeToken('dev-1', desktopHeaders)
-    expect(result.cookieValue).toBe(signBetterAuthCookieValue('the-session-token', resolveBetterAuthSecret()))
+    expect(result.setCookies).toEqual([SIGNED_SESSION_COOKIE])
   })
 
-  it('returns the bundle\'s real session cookie name, never a hard-coded string', async () => {
-    const { service } = setUp()
-    const result = await service.exchangeToken('dev-1', desktopHeaders)
-    expect(result.cookieName).toBe('test-session')
-  })
-
-  it('carries the bundle\'s configured session lifetime as maxAge — one fixed lifetime, no scope choice', async () => {
-    const { service } = setUp()
-    const result = await service.exchangeToken('dev-1', desktopHeaders)
-    expect(result.maxAge).toBe(604800)
+  it('fails loudly (400) when the after-hook produced no session cookie — a silent no-cookie success would leave the desktop authenticated as nothing', async () => {
+    const { service } = setUp(vi.fn().mockResolvedValue({ headers: new Headers(), response: CANNED_TOKEN_RESULT }))
+    await expect(service.exchangeToken('dev-1', desktopHeaders)).rejects.toMatchObject({
+      status: 400,
+    })
   })
 
   it('translates a plugin APIError (e.g. still pending) into the equivalent HttpException, same status/body', async () => {

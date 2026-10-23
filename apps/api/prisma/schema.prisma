@@ -147,16 +147,6 @@ model Verification {
   updatedAt  DateTime? @updatedAt
 }
 
-/// Login rate-limit counters, DB-backed (REQ-010/ADR-0012 §5) — deliberately not
-/// in-memory, so the limit holds across horizontally scaled API instances (an
-/// in-memory counter resets per pod and is trivially bypassed).
-model RateLimit {
-  id          String  @id @default(uuid())
-  key         String?
-  count       Int?
-  lastRequest BigInt?
-}
-
 /// One row per (userId, steuerjahr) — the raw inputs behind the Cockpit's refund
 /// estimate range (REQ-001, steuereule#91/#92). Deliberately stores only the plain
 /// facts (`baseEstimate`/`openItems`/`openConflicts`); the derived range itself is

@@ -1,9 +1,11 @@
 import { Body, Controller, Delete, Inject, Req, Res, UseGuards } from '@nestjs/common'
 import { ApiBadRequestResponse, ApiBody, ApiForbiddenResponse, ApiOkResponse, ApiResponse, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger'
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler'
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import { BETTER_AUTH_BUNDLE, type BetterAuthBundle } from '../auth/auth.tokens.js'
 import { CurrentUser } from '../auth/current-user.decorator.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
+import { VERIFY_PASSWORD_THROTTLE, verifyPasswordTracker } from '../rate-limit/rate-limit.js'
 import { AccountDeletionService } from './account-deletion.service.js'
 import { DeleteAccountRequestDto } from './dto/delete-account-request.dto.js'
 import { DeleteAccountResponseDto } from './dto/delete-account-response.dto.js'
@@ -21,6 +23,13 @@ export class AccountDeletionController {
   ) {}
 
   @Delete()
+  // @nestjs/throttler for the password re-verification step, keyed per account (not
+  // per IP) — a shared-IP caller must not consume another account's budget, and an
+  // IP-rotating attacker must not reset their own. Route-scoped on purpose: it runs
+  // *after* the controller-scoped UserContextGuard, so `verifyPasswordTracker` can
+  // read the userId the guard already resolved.
+  @Throttle({ default: { ...VERIFY_PASSWORD_THROTTLE, getTracker: verifyPasswordTracker } })
+  @UseGuards(ThrottlerGuard)
   // Explicit @ApiBody(): Nest's Swagger plugin otherwise infers the schema from
   // reflected `design:paramtypes` metadata, which esbuild/tsx never emit — without
   // this the generated OpenAPI document (and therefore orval's client) silently loses
@@ -39,7 +48,7 @@ export class AccountDeletionController {
   })
   @ApiUnauthorizedResponse({ description: 'The given `password` failed re-verification.' })
   @ApiForbiddenResponse({ description: 'A guest session — there is no real account here to delete.' })
-  @ApiResponse({ status: 429, description: 'Too many password re-verification attempts; the existing DB-backed rate limit tripped (ADR-0013 §6).' })
+  @ApiResponse({ status: 429, description: 'Too many password re-verification attempts; the throttler limit (ADR-0013 §6, 10s/3 per account) tripped.' })
   async deleteAccount(
     @CurrentUser() userId: string,
     @Body() dto: DeleteAccountRequestDto,

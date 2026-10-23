@@ -84,7 +84,6 @@ const EXPECTED_CURSORS: Record<string, string> = {
   Session: 'id',
   Account: 'id',
   Verification: 'id',
-  RateLimit: 'id',
   TaxYear: 'id',
   InterviewAnswer: 'id',
   DeviceCode: 'id',
