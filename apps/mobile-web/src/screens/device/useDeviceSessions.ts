@@ -13,8 +13,15 @@
 // a region row would have gone. The approval screen's own region (GeraetefreigabeScreen) is
 // unaffected: it reads `DeviceCode.requestRegion`, stamped from Fastify's own `request.ip` at
 // code-creation time, a completely different path from Session's client-IP question.
+//
+// #349 — like every other session read, the "which row is current" comparison goes through the
+// shared `useAccountSession()` seam (its `signed-in` state's `session.session.token`), not a raw
+// `authClient.useSession()`. No behaviour difference: the seam's `signed-in` state is exactly
+// better-auth's non-null `data`, and in every other state (`loading`/`signed-out`/`unknown`) the
+// raw read's `data` was `null`/`undefined` too — no row marked either way.
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthClient } from '../../auth/AuthClientProvider'
+import { useAccountSession } from '../../auth/useAccountSession'
 import { RequestFailedError, classifyByStatus, classifyThrown } from '../../net/failure-reason'
 
 export interface DeviceSessionRow {
@@ -32,9 +39,13 @@ export function useDeviceSessions() {
   const authClient = useAuthClient()
   const queryClient = useQueryClient()
   // The one honest source for "which of these rows is the one I'm looking at this list from" —
-  // the same `useSession()` read DatenschutzScreen/DeviceScreen already use, compared by its
-  // own session token rather than guessed at from e.g. matching User-Agent strings.
-  const { data: currentSession } = authClient.useSession()
+  // the shared `useAccountSession()` seam (#349) every session read goes through now, compared
+  // by its own session token rather than guessed at from e.g. matching User-Agent strings. The
+  // token lives at `sessionState.session.session.token` in the `signed-in` state; every other
+  // state means "no token to compare", so no row is marked — identical to the raw read's
+  // `null`/`undefined` `data` before this migration.
+  const { state: sessionState } = useAccountSession()
+  const currentToken = sessionState.status === 'signed-in' ? sessionState.session.session.token : undefined
 
   const sessionsQuery = useQuery({
     queryKey: DEVICE_SESSIONS_QUERY_KEY,
@@ -90,15 +101,16 @@ export function useDeviceSessions() {
   })
 
   // `isCurrent` is derived fresh on every render, never baked into the cached query data:
-  // `listSessions()` and `useSession()` are two independent fetches that can resolve in either
-  // order, and TanStack Query's own cache would otherwise freeze whatever `currentSession` was
-  // at the moment `queryFn` happened to run — including `undefined`, if the session read hadn't
-  // resolved yet — with no reason for the sessions query to ever refetch once it had. Comparing
-  // at render time means a `currentSession` that resolves *after* the list already loaded still
-  // marks the right row, no query invalidation required to "unstick" it.
+  // `listSessions()` and the session read (`useAccountSession()`) are two independent fetches
+  // that can resolve in either order, and TanStack Query's own cache would otherwise freeze
+  // whatever the current token was at the moment `queryFn` happened to run — including
+  // `undefined`, if the session read hadn't resolved yet — with no reason for the sessions query
+  // to ever refetch once it had. Comparing at render time means a session read that resolves
+  // *after* the list already loaded still marks the right row, no query invalidation required to
+  // "unstick" it.
   const sessions = sessionsQuery.data?.map((session) => ({
     ...session,
-    isCurrent: currentSession?.session.token === session.token,
+    isCurrent: currentToken === session.token,
   }))
 
   return { sessionsQuery: { ...sessionsQuery, data: sessions }, revokeMutation }
