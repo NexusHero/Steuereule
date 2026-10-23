@@ -7,9 +7,11 @@
 # the real cluster (06.1) and does not touch ci.yml — ci.yml is owned by the Ticket-01
 # agent working in parallel; this workflow is additive and separate.
 #
-# What is real here: the plan/validate job will actually run `tofu validate`/`plan`
-# against the HCL when the HCLOUD_TOKEN secret is configured; without it, it fails fast
-# with a named "credentials not configured" error rather than half-deploying.
+# What is real here: `tofu validate` runs on every PR touching infra/ (no credentials
+# needed — that is the review signal). The plan job additionally needs HCLOUD_TOKEN:
+# on PRs without it, it skips with a NAMED notice; on pushes to main or manual runs
+# without it, it fails fast with a named "credentials not configured" error rather than
+# half-deploying.
 # What is NOT here yet (by design): image push to GHCR, `kubectl apply -k`, prod-deploy-smoke
 # against a real URL — those are sub-tickets 06.4/06.8 and need the cluster + registry.
 # ---------------------------------------------------------------------------
@@ -51,12 +53,23 @@ jobs:
           HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
         run: |
           if [ -z "$HCLOUD_TOKEN" ]; then
+            # On PRs the token is not expected: the credential boundary is a deploy-time
+            # fact, not a review fact. The skip is NAMED, not silent — and `tofu validate`
+            # above still ran, so a PR still proves the HCL is well-formed.
+            if [ "${{ github.event_name }}" = "pull_request" ]; then
+              echo "::notice::HCLOUD_TOKEN not configured — plan skipped by design (credential" \
+                   "boundary, infra/README.md §5 item 1). A push to main or a manual run" \
+                   "without the token still fails fast below."
+              echo "has_token=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
             echo "::error::HCLOUD_TOKEN secret is not configured. This is the credential" \
-                 "boundary (infra/README.md §5 item 1) — Slice 1 stops here by design." \
-                 "Nothing was provisioned."
+                 "boundary (infra/README.md §5 item 1) — a deploy-path run without it must" \
+                 "not proceed. Nothing was provisioned."
             exit 1
           fi
           echo "credentials present"
+          echo "has_token=true" >> "$GITHUB_OUTPUT"
 
       - name: tofu init + validate
         working-directory: infra/terraform
@@ -65,6 +78,7 @@ jobs:
           tofu validate
 
       - name: tofu plan (write-only preview; applies nothing)
+        if: steps.gate.outputs.has_token == 'true'
         working-directory: infra/terraform
         env:
           HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
