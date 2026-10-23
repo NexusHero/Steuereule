@@ -1,0 +1,10 @@
+# Terraform/OpenTofu local state + downloaded providers — never committed.
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+
+# Real kubeconfigs are credentials — never committed (they carry cluster-admin access).
+*.kubeconfig
+kubeconfig

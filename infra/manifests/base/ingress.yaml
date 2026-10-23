@@ -1,0 +1,46 @@
+# ---------------------------------------------------------------------------
+# The single public entry. WHY ingress-nginx + cert-manager (upstream Helm charts,
+# installed as cluster add-ons in 06.1 — not hand-built manifests):
+#   - TLS termination + HTTP->HTTPS redirect happen HERE, once, so the app containers
+#     stay on plain HTTP behind a real proxy — which is exactly the TRUSTED_PROXIES
+#     topology REQ-010's rate-limiting needs (client IP must come from the proxy, 06.8).
+#   - The API is exposed only via this ingress (its Service is ClusterIP), so there is
+#     no public, proxy-bypassing path to the API.
+# Hosts are placeholders; the staging/prod overlays patch them to the real domains.
+# The marketing site is a separate static deploy (ADR-049) and out of scope here.
+# ---------------------------------------------------------------------------
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: steuereule
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - api.steuereule.example
+        - steuereule.example
+      secretName: steuereule-tls
+  rules:
+    - host: api.steuereule.example
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: api
+                port:
+                  number: 3000
+    - host: steuereule.example
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web
+                port:
+                  number: 8080

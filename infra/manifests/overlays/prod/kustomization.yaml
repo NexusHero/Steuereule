@@ -1,0 +1,68 @@
+# ---------------------------------------------------------------------------
+# Prod overlay. Same shape as staging (base + image tag + origins + hosts); the real
+# prod domain and the prod proxy CIDR (TRUSTED_PROXIES, sub-ticket 06.8) land here.
+# ---------------------------------------------------------------------------
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: steuereule-prod
+
+resources:
+  - ../../base
+
+images:
+  - name: ghcr.io/steuereule/api
+    newTag: prod
+  - name: ghcr.io/steuereule/web
+    newTag: prod
+
+patches:
+  - target:
+      kind: ConfigMap
+      name: steuereule-api-config
+    patch: |-
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: steuereule-api-config
+      data:
+        BETTER_AUTH_URL: https://api.steuereule.example
+        CORS_ALLOWED_ORIGINS: https://steuereule.example
+        WEB_APP_URL: https://steuereule.example
+        # 06.8: the real ingress-nginx CIDR — the property REQ-010 rate-limiting needs.
+        TRUSTED_PROXIES: CHANGE_ME_PROD_PROXY_CIDR
+  - target:
+      kind: Ingress
+      name: steuereule
+    patch: |-
+      apiVersion: networking.k8s.io/v1
+      kind: Ingress
+      metadata:
+        name: steuereule
+      spec:
+        tls:
+          - hosts:
+              - api.steuereule.example
+              - steuereule.example
+            secretName: steuereule-tls
+        rules:
+          - host: api.steuereule.example
+            http:
+              paths:
+                - path: /
+                  pathType: Prefix
+                  backend:
+                    service:
+                      name: api
+                      port:
+                        number: 3000
+          - host: steuereule.example
+            http:
+              paths:
+                - path: /
+                  pathType: Prefix
+                  backend:
+                    service:
+                      name: web
+                      port:
+                        number: 8080
