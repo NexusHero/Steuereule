@@ -1,0 +1,22 @@
+# ---------------------------------------------------------------------------
+# Base manifests for the Steuereule app on k3s. The target topology mirrors
+# docker-compose.prod.yml (ADR-0026): API :3000, web :8080, migrate as a one-shot step,
+# managed Postgres (external, ADR-047/049), Redis on-cluster. See infra/README.md for
+# the full tooling rationale and the staging/prod overlay story.
+# ---------------------------------------------------------------------------
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Default namespace; the staging/prod overlays override this to
+# steuereule-staging / steuereule-prod (created once via `kubectl create ns ...`).
+namespace: steuereule
+
+resources:
+  - configmap.yaml
+  - api-deployment.yaml
+  - api-service.yaml
+  - web-deployment.yaml
+  - web-service.yaml
+  - redis-deployment.yaml
+  - redis-service.yaml
+  - ingress.yaml

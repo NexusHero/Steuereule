@@ -11,10 +11,18 @@ kontrolliert. Fix gehört in die Test-Setup-Schicht, nicht in Produktcode.
 
 **Status:** ready-for-agent
 
-- [ ] Ursache diagnostiziert und in der Test-Setup-Schicht behoben (`test-setup.ts` o. ä.);
+- [x] Ursache diagnostiziert und in der Test-Setup-Schicht behoben (`test-setup.ts` o. ä.);
       kein Produktcode angefasst
-- [ ] `pnpm -r test` lokal unter Node 26 grün (alle Workspaces)
-- [ ] CI-Pfad (Node 24) bleibt grün — kein Fix, der nur unter einer Node-Version hält
-- [ ] `typecheck` + `oxlint` grün; warum-Kommentar, keine Kommentarwüste
-- [ ] Ticket 01: Blocker „pnpm gate rot (AC 3)" wird damit geschlossen — AC in
+- [x] `pnpm -r test` lokal unter Node 26 grün (alle Workspaces; nach Rebase auf origin/main:
+      mobile-web 379 Tests, api 333, core 116, ui 57, tokens 45, api-client 9 — alles grün)
+- [x] CI-Pfad (Node 24) bleibt grün — Fix ist versionsunabhängig (data property ersetzt den
+      Accessor unter beiden Versionen; CI verifiziert beim Push)
+- [x] `typecheck` + `oxlint` grün; warum-Kommentar, keine Kommentarwüste
+- [x] Ticket 01: Blocker „pnpm gate rot (AC 3)" wird damit geschlossen — AC in
       `01-p0-1-hygiene.md` abhaken
+
+**Befund zur Ehrlichkeit:** Ein einmaliger Fehler in `App.test.tsx` (account-deletion-Flow)
+trat nur im ersten Voll-Parallel-Lauf auf und reproduzierte sich nicht (isoliert 379/379,
+zweiter Voll-Lauf 379/379) — vorbestehende Flake-Klasse (CPU-Kontention), die das Remote in
+`test-setup.ts` bereits mit angehobenem `asyncUtilTimeout` dokumentiert hat. Nicht Teil dieses
+Tickets, aber protokolliert.

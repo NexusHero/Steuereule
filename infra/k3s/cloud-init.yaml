@@ -1,0 +1,24 @@
+#cloud-config
+# Bootstraps k3s on first boot of the Hetzner node. WHY a cloud-config file and not
+# Ansible/Salt: k3s ships an official installer, and cloud-init is the provider-native
+# way to run it once at boot — no bespoke config-management layer for a cluster this
+# size (the project's "no Eigenbau where the standard exists" rule, infra/README.md).
+
+# The k3s server token: on a SINGLE node k3s generates its own at first boot and stores
+# it under /var/lib/rancher/k3s/server/token. For node_count > 1 you must generate a
+# token ahead of time (e.g. `openssl rand -hex 16`) and set it identically here and on
+# every agent. Never commit a real token — this is a placeholder shape (sub-ticket 06.1).
+write_files:
+  - path: /etc/rancher/k3s/config.yaml
+    permissions: "0644"
+    content: |
+      # tls-san: the serving cert must be valid for the public address kubectl uses,
+      # not just the node's own 127.0.0.1 — otherwise `kubectl` fails TLS verification
+      # when reaching the cluster over the public IP/domain.
+      tls-san:
+        - REPLACE_ME_PUBLIC_IP_OR_DOMAIN
+
+runcmd:
+  # The official k3s install script, pinned to a stable channel (ADR-049's choice).
+  # `server` = control-plane + worker in one (single-node default).
+  - curl -sfL https://get.k3s.io | INSTALL_K3S_CHANNEL=stable sh -s - server

@@ -1,0 +1,51 @@
+# ---------------------------------------------------------------------------
+# Redis on the cluster (ADR-049 keeps Redis on-cluster; only Postgres is managed).
+# Serves BullMQ scan/OCR queues + caching (ADR-047). WHY a Deployment and not a
+# StatefulSet for now: queues can be rebuilt (jobs re-enqueue), so strict ordered
+# identity isn't required — but AOF persistence is kept so an in-flight queue survives
+# a pod restart. Revisit a StatefulSet / Redis-HA once load demands (sub-ticket 06.2).
+# ---------------------------------------------------------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  labels:
+    app: redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          # --requirepass reads the password from the container env (k8s $(VAR)
+          # expansion, resolved at container start) so the password never sits in the
+          # args text — it comes from the Secret like everything else.
+          args: ["--appendonly", "yes", "--requirepass", "$(REDIS_PASSWORD)"]
+          ports:
+            - containerPort: 6379
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: steuereule-api-secrets
+                  key: REDIS_PASSWORD
+          volumeMounts:
+            - name: redis-data
+              mountPath: /data
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "50m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+      volumes:
+        - name: redis-data
+          emptyDir: {} # TODO(06.2): real PVC with a storage class; emptyDir survives only the pod lifecycle

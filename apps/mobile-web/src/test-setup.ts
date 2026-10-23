@@ -64,6 +64,60 @@ class NoopResizeObserver implements ResizeObserver {
 }
 globalThis.ResizeObserver ??= NoopResizeObserver
 
+// Node ≥26 ships experimental Web Storage globals: `globalThis.localStorage` and
+// `sessionStorage` become own accessors on the global object (with no `--localstorage-file`,
+// `localStorage` reads back `undefined`). Vitest's jsdom environment only copies jsdom's
+// `window.localStorage` onto the global when the key does *not* already exist there — and it now
+// does — so jsdom's Storage is skipped and `window.localStorage` stays `undefined`. The two
+// ADR-0008 guards (`ProfilScreen`/`req-012-onboarding-vertical-join`) fail at collection time
+// under Node 26 because the store they guard does not exist. Installing our own Storage as a
+// *data* property replaces Node's accessor (a plain `globalThis.localStorage = …` would just
+// invoke its setter), so `localStorage` is controllable under Node 24 *and* 26 alike. No product
+// code reads or writes `localStorage` (that is the whole point of ADR-0008 — the guard asserts
+// its absence), so this mock only exists to be observed, never exercised.
+//
+// Why own properties instead of a Map: `test-storage-guard.test.tsx` (#329 finding 2) proves
+// the stand-in's shape against jsdom's real Storage — stored keys are *own enumerable
+// properties* (so `Object.keys`/spreads see them), the API (`getItem`/`setItem`/`removeItem`/
+// `clear`/`key`/`length`) lives on the prototype. A Map-backed stand-in broke that contract:
+// the guard's control test (a bare spread must leak the pre-existing keys) failed because the
+// Map hid them. Mirroring jsdom's own shape keeps every #323/#329/#333 guard semantics intact.
+class InMemoryStorage {
+  get length(): number {
+    return Object.keys(this).length
+  }
+
+  clear(): void {
+    for (const key of Object.keys(this)) {
+      delete (this as unknown as Record<string, unknown>)[key]
+    }
+  }
+
+  getItem(key: string): string | null {
+    const value = (this as unknown as Record<string, unknown>)[key]
+    return typeof value === 'string' ? value : null
+  }
+
+  key(index: number): string | null {
+    return Object.keys(this)[index] ?? null
+  }
+
+  removeItem(key: string): void {
+    delete (this as unknown as Record<string, unknown>)[key]
+  }
+
+  setItem(key: string, value: string): void {
+    ;(this as unknown as Record<string, unknown>)[key] = String(value)
+  }
+}
+
+Object.defineProperty(globalThis, 'localStorage', {
+  value: new InMemoryStorage(),
+  configurable: true,
+  writable: true,
+  enumerable: true,
+})
+
 beforeAll(() => {
   server.listen({ onUnhandledRequest: 'error' })
 

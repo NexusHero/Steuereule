@@ -1,0 +1,26 @@
+# ---------------------------------------------------------------------------
+# Non-secret runtime config. WHY a ConfigMap and not a Secret: these are not
+# credentials — they are environment shape (origins, port, proxy CIDR). Keeping them
+# out of the Secret makes the actual secret material auditable at a glance (sub-ticket
+# 06.3). The ADR-0026 single-source-of-truth concern carries over: API_ORIGIN and
+# WEB_ORIGIN are set ONCE per environment (here, then refined per overlay) and flow to
+# BOTH the API's own config and the web image's build-time origin — never hand-duplicated.
+# ---------------------------------------------------------------------------
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: steuereule-api-config
+data:
+  NODE_ENV: "production"
+  PORT: "3000"
+  # The three origins below are environment-specific; the staging/prod overlays replace
+  # these placeholders with the real https:// origins. The local compose stack's
+  # "http://localhost" values are NOT valid here.
+  BETTER_AUTH_URL: "https://api.steuereule.example"
+  CORS_ALLOWED_ORIGINS: "https://steuereule.example"
+  WEB_APP_URL: "https://steuereule.example"
+  # TRUSTED_PROXIES: the real reverse-proxy CIDR(s) once sub-ticket 06.8 lands. Until
+  # then this placeholder is NOT a valid value — the API's resolver must be told the
+  # real proxy source, or REQ-010 rate-limiting sees pod IPs instead of client IPs.
+  # Set to the ingress-nginx pod/service CIDR in the overlay (06.8).
+  TRUSTED_PROXIES: "CHANGE_ME_PROXY_CIDR"
