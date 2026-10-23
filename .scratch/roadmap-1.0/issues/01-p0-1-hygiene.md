@@ -13,7 +13,7 @@ PR-Template verankert. Danach kann jede weitere Änderung nach der neuen DoD abg
       Neuerzeugung durch `npm install`); `pnpm-lock.yaml` alleiniges Lockfile; CI nutzt pnpm
 - [ ] `.gitignore` vollständig (`.DS_Store` u. a.); untracked Müll entfernt
 - [ ] `pnpm gate` (typecheck + tests) und `pnpm lint` grün auf `main`
-- [ ] PR-Template enthält die DoD-Checkliste aus ADR-0029-Entwurf (Posture-Zeile inklusive)
+- [ ] PR-Template enthält die DoD-Checkliste aus ADR-0036 (Posture-Zeile inklusive)
 - [ ] `docs/process/README.md` verlinkt die DoD (vier Ebenen)
 
 _Phasen-Ticket: wird beim Start per `to-spec`/`to-tickets` fein geschnitten (D11)._

@@ -11,7 +11,7 @@ wundertax und Steuerbot konkurriert (D1), mit dem **kompletten 1.0-Umfang** als 
 **Entscheidung:** Eine gestufte Roadmap mit drei Tracks:
 
 1. **Code-Track:** Phase 0 Foundation (Hygiene → Framework-Ersatz → Verdrahtung →
-   Domänenkern → Mantel-Abschluss; Details in Engineering-ADR-0028) → Phase 1 zwei Vertikalen
+   Domänenkern → Mantel-Abschluss; Details in Engineering-ADR-0035) → Phase 1 zwei Vertikalen
    **parallel** (Angestellte ∥ Grenzgänger-CH) → Phase 2 Verbreiterung → Phase 3
    Go-Live-Readiness. Vollständig in `docs/roadmap-1.0.md`.
 2. **Infra-Track:** #292 (k3s/Hetzner, managed EU-Postgres, Redis, CI/CD, Observability,
@@ -23,7 +23,7 @@ wundertax und Steuerbot konkurriert (D1), mit dem **kompletten 1.0-Umfang** als 
 
 **Parallel-Tracks-Entscheidung (D5):** Angestellte und Grenzgänger-CH werden gleichzeitig
 gebaut — bewusst gegen die Lehre aus ADR-0015, die die *Review*-Kapazität als Engpass
-identifiziert hat. Gegenmittel: der geteilte Domänenkern (Engineering-ADR-0028) als
+identifiziert hat. Gegenmittel: der geteilte Domänenkern (Engineering-ADR-0035) als
 gemeinsame Naht, ein gemeinsames Kern-Review-Gate, und Review bleibt in der Planung der
 Engpass. Die Vertikalen sind zwei Fallwelten **eines** Kerns, nicht zwei Apps.
 
@@ -34,7 +34,7 @@ Punkt; das Amendment wird im Research-ADR-Log nachgezogen (Durchsetzungsort: Tic
 
 **Qualitätslatte (D3):** kein Eigenbau wo das Framework die Antwort ist, Slices als ein
 Produkt verdrahtet, Kommentare warum-only. Durchsetzung über die vier DoD-Ebenen
-(Engineering-ADR-0029).
+(Engineering-ADR-0036).
 
 **Zeitrahmen (D12):** keine Kalenderdaten; relative Phasen in Crew-Slices. Einziger externer
 Taktgeber ist der ELSTER-Antrag. Ein Zieldatum, falls es entsteht, justiert den Plan
@@ -63,9 +63,9 @@ und den Review-Engpass (ADR-0015) nicht schneller; Ausnahme nur in P2 bei leerer
 - Der 1.0-Umfang bleibt sehr groß. Reißt die Kapazität, bleiben Rentner/Kapital/Vermietung
   ehrlich „gegated" (Entscheidung nur durch NexusHero, sichtbar im Register).
 - Neue Produkt-REQs entstehen beim Schneiden der Phasen; das Register bleibt die einzige
-  Status-Quelle (REQ-DoD, Engineering-ADR-0029).
+  Status-Quelle (REQ-DoD, Engineering-ADR-0036).
 - Dieser ADR steht bewusst im Research-Log: D1/D2/D5/D8 sind Produkt-/Geschäfts-Entscheidungen;
-  die Engineering-Konsequenzen delegieren an Engineering-ADR-0028/0029 und den Master
+  die Engineering-Konsequenzen delegieren an Engineering-ADR-0035/0036 und den Master
   `docs/roadmap-1.0.md` (Referenzrichtung: Engineering-ADRs verweisen auf den Master, nicht
   umgekehrt auf diesen ADR).
 

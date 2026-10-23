@@ -1,4 +1,4 @@
-# ADR-0028 — Foundation-Konsolidierung: Framework-Standard statt Eigenbau, ein Produkt statt Slices (ENTWURF)
+# ADR-0035 — Foundation-Konsolidierung: Framework-Standard statt Eigenbau, ein Produkt statt Slices
 
 - **Status:** Accepted
 - **Date:** 2026-10-23
@@ -70,7 +70,7 @@ headers trimmed on every touched file (boy-scout rule, no global comment sprint)
 - The foundation is large (hygiene → replacement → integration → core → mantle); WIP limit
   and the internal order are load-bearing. Overload risk was named and accepted by the
   stakeholder (decision D9).
-- Enforcement: see ADR-0029 (Definition of Done) — "no bespoke machinery" and "why-only
+- Enforcement: see ADR-0036 (Definition of Done) — "no bespoke machinery" and "why-only
   comments" are review judgements, not lint rules.
 
 ## Decision history

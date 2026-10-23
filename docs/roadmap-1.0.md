@@ -2,7 +2,7 @@
 
 **Status:** Akzeptiert (Grilling-Session 2026-10-23) · **Decider:** NexusHero (Stakeholder), gegrillt und gegengeprüft von Musti (Lead-Rolle)
 
-**Wo die Tickets leben:** `.scratch/roadmap-1.0/issues/` (eine Datei pro Ticket, Blocking-Edges im Tracer-Format). **Wo die ADRs leben:** `docs/adr/0028` und `0029` (Engineering) bzw. `finanzo-funke-design-system/project/research/adr/051` (Produkt) — promotet nach Mustis Re-Review (GO); der Review-Report liegt unter `.scratch/roadmap-1.0/adr-review-findings.md`.
+**Wo die Tickets leben:** `.scratch/roadmap-1.0/issues/` (eine Datei pro Ticket, Blocking-Edges im Tracer-Format). **Wo die ADRs leben:** `docs/adr/0035` und `0036` (Engineering) bzw. `finanzo-funke-design-system/project/research/adr/051` (Produkt) — promotet nach Mustis Re-Review (GO); der Review-Report liegt unter `.scratch/roadmap-1.0/adr-review-findings.md`.
 
 ## Ziel
 
@@ -70,7 +70,7 @@ bis dahin Beta kostenlos und abgabe-bereit ohne Übermittlung.
 
 ## Definition of Done — vier Ebenen (D13–D20)
 
-**Eingeführt durch [ADR-0029](adr/0029-definition-of-done.md) (Engineering). Durchsetzung:
+**Eingeführt durch [ADR-0036](adr/0036-definition-of-done.md) (Engineering). Durchsetzung:
 PR-Checkliste + Review-Haken; Ausnahmen sichtbar + genehmigt + begründet + mit Nachhol-Ticket.**
 
 ### 1. DoD Ticket/Slice
@@ -113,7 +113,7 @@ Ausnahmen — dort gibt es nur Go-Live-Verschiebung.
 
 Jede Phase läuft durch den bestehenden Crew-Flow: `to-spec` → `to-tickets` (Tracer-Slices mit
 Blocking-Edges; die Phasen-Tickets hier werden beim Phasenstart fein geschnitten) → `implement`
-(TDD) → `code-review`. Die Entscheidungen D1–D21 sind als ADRs festgeschrieben (ADR-0028/0029
+(TDD) → `code-review`. Die Entscheidungen D1–D21 sind als ADRs festgeschrieben (ADR-0035/0036
 in `docs/adr/`, ADR-051 im Research-Log), inkl. Amendments, wo bestehende ADRs berührt sind
 (ADR-0015-Lehre bei D5, ADR-0026 (#292-Lücke, geschlossen durch den Infra-Track),
 Produkt-ADR-027(b) bei REQ-007 — Supersession auf dem 2FA-Punkt, Durchsetzung in Ticket 05).
@@ -147,6 +147,24 @@ kein Koordinations-Sitz (ADR-0016: Tickets und ADRs sind die Koordination).
 als echte Parallel-Sub-Tracks geschnitten werden — nur solange die Review-Queue leer bleibt
 (Formel: Autoren ≤ Review-Durchsatz − 1). Alle Rollen laufen auf Pro; der Reviewer braucht
 mindestens Autor-Qualität, weil er der Engpass ist.
+
+## Stand-Sync 2026-10-23 (origin/main 8c9a150)
+
+Die Roadmap wurde gegen `origin/main` revalidiert (71 Commits Fortschritt; Details:
+`.scratch/roadmap-1.0/gap-analyse-2026-10-23.md`). Entscheidungen D1–D23 unverändert; drei
+Zustands-Korrekturen:
+
+1. **0.4 (Domänenkern) umgescoped:** Der Interview-Fragen-Graph existiert bereits in
+   `packages/core` (ADR-0031/0033, REQ-015 Done — Minimal-Gate Segment 1; Segment 2/Katalog
+   in Arbeit, #341). Die Foundation baut die Engine nicht neu, sondern auf; ihr Kern-Deliverable
+   ist der Rest (Beleg-Schnitt ADR-007/008, deterministischer Rechenkern, KI-Port).
+2. **Infra-Track angelaufen:** #338 lieferte liveness/readiness-Health-Endpoints für k3s/Hetzner.
+   Track-06-Slice 1 nutzt diese Endpoints für die Readiness-Probe; Sub-Ticket 06.1 anerkennt
+   #338 als erledigten Teil.
+3. **Veranlagungsartenvergleich existiert** (ADR-0034, bounded comparison, explizit *keine*
+   Günstigerprüfung) — Phase 1 baut darauf auf; M1 bleibt Phase 2.
+4. **ADR-Nummern:** unsere Engineering-ADRs tragen jetzt **0035** (Foundation-Konsolidierung)
+   und **0036** (Definition of Done) — 0028/0029 waren remote belegt.
 
 ## Risiken (ehrlich)
 

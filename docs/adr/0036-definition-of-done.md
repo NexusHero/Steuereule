@@ -1,4 +1,4 @@
-# ADR-0029 — Definition of Done: vier Ebenen (ENTWURF)
+# ADR-0036 — Definition of Done: vier Ebenen
 
 - **Status:** Accepted
 - **Date:** 2026-10-23
