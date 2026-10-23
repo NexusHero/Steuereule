@@ -2,7 +2,7 @@
 
 <!-- One or two sentences: what this change does and why. No AI-assistant attribution. -->
 
-## Definition of Done — Ticket/Slice (ADR-0029)
+## Definition of Done — Ticket/Slice (ADR-0036)
 
 Tick each line before requesting review. The reviewer confirms each line, not just the tick.
 
@@ -19,4 +19,4 @@ Tick each line before requesting review. The reviewer confirms each line, not ju
 
 ## Deviations (if any)
 
-<!-- ADR-0029 D20: approved by Musti, recorded here **and** in the register with reason + follow-up ticket. -->
+<!-- ADR-0036 D20: approved by Musti, recorded here **and** in the register with reason + follow-up ticket. -->
