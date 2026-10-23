@@ -3,6 +3,8 @@
 // A pure function taking `env` as a parameter, same shape as every other resolve*(env)
 // test in this codebase (resolveBetterAuthSecret/resolveBetterAuthUrl in
 // better-auth.test.ts) — no server, no DB needed.
+import proxyaddr from '@fastify/proxy-addr'
+import type { IncomingMessage } from 'node:http'
 import { describe, expect, it } from 'vitest'
 import { resolveTrustedProxies } from '../src/config/trusted-proxies.js'
 
@@ -86,5 +88,31 @@ describe('resolveTrustedProxies — F1 regression: node:net’s isIP, not a hand
 
   it('accepts a real IPv4-mapped IPv6 address — better-auth’s own ip.mjs handles this shape explicitly (extractIPv4FromMapped)', () => {
     expect(resolveTrustedProxies({ TRUSTED_PROXIES: '::ffff:1.2.3.4' })).toEqual(['::ffff:1.2.3.4'])
+  })
+})
+
+// The breadth floor's reason, re-proven against the real resolver instead of re-stated as a
+// comment. Until Ticket 02 the `/1`-vs-`/2` fail-open boundary was only documented as
+// "measured against @fastify/proxy-addr@5.1.0" (`trusted-proxies.ts`); this pins that
+// measurement as a re-executed test against the exact library Fastify's `trustProxy` runs,
+// so a proxy-addr upgrade that shifts the boundary turns this red instead of silently
+// invalidating `MIN_TRUSTED_PROXY_PREFIX_LENGTH`. The full-adapter integration test (real
+// `FastifyAdapter` + spoofed XFF) is follow-up work — Ticket 13.
+describe('@fastify/proxy-addr fail-open threshold — why the breadth guard floors at /2', () => {
+  // A minimal request carrying only what `@fastify/forwarded` (which proxy-addr reads)
+  // actually touches: the `X-Forwarded-For` header and the socket peer address.
+  function requestWith(xff: string | undefined, remoteAddress: string): IncomingMessage {
+    return {
+      headers: xff === undefined ? {} : { 'x-forwarded-for': xff },
+      socket: { remoteAddress },
+    } as unknown as IncomingMessage
+  }
+
+  it('/1 covers the socket peer, so proxy-addr returns the attacker-controlled leftmost XFF value (fail-open)', () => {
+    expect(proxyaddr(requestWith('203.0.113.66, 127.0.0.1', '127.0.0.1'), ['0.0.0.0/1'])).toBe('203.0.113.66')
+  })
+
+  it('/2 leaves the socket peer outside the trusted set, so proxy-addr returns the peer itself (fail-closed)', () => {
+    expect(proxyaddr(requestWith('203.0.113.66, 127.0.0.1', '127.0.0.1'), ['0.0.0.0/2'])).toBe('127.0.0.1')
   })
 })

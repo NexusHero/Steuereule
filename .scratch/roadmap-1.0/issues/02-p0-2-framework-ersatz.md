@@ -65,7 +65,8 @@ _Phasen-Ticket: wird beim Start per `to-spec`/`to-tickets` fein geschnitten (D11
 2. **e2e-Harness liest `RateLimit`-Tabelle** (`e2e/harness/rate-limit.mjs` + Konsumenten
    `device-authorization.mjs`, `session/return-visit.mjs`, …). Die Tabelle existiert nicht
    mehr; die „read, never truncate"-Disziplin braucht ein neues Bucket-Substrat. **Außerhalb
-   dieses Tickets** (e2e/„Browser gates"-Job); als Folge-Arbeit zu schneiden.
+   dieses Tickets** (e2e/„Browser gates"-Job) → **Folge-Ticket 13 — e2e-Harness:
+   Rate-Limit-Umstellung** (`.scratch/roadmap-1.0/issues/13-e2e-harness-rate-limit-umstellung.md`).
 3. **Lokaler macOS-Testlauf:** `req-014-device-code`'s `127.0.0.2`-Quell-IP
    (`localAddress`) bindet ohne `sudo ifconfig lo0 alias` nicht (Linux-CI hat ganz 127/8).
    Chromium fehlt lokal → PDF-/Playwright-Tests rot. Beides umweltbedingt, nicht durch dieses

@@ -15,6 +15,15 @@
 // non-atomic `legacyConsume` fall back to `get`/`set`) because dropping the atomic
 // increment would silently weaken the concurrency guarantee the removed DB-backed
 // limiter had.
+//
+// Known limitation (deliberate, not fixed here): the `Map` below grows unbounded in a
+// long-lived process — one entry per seen `${ip}|${path}` key. better-auth's built-in
+// memory store also prunes expired entries (`Date.now() >= expiresAt`) and caps itself
+// at `MEMORY_STORE_MAX_ENTRIES = 1e5`; this store does neither. That is not a
+// correctness bug — an expired key is correctly reset to `count: 1` on its next
+// `consume` — but an unbounded-memory regression versus the built-in store. Resolved by
+// the Redis-backed follow-up (gated on #292), not here; see
+// `.scratch/roadmap-1.0/issues/13-e2e-harness-rate-limit-umstellung.md`.
 import type { BetterAuthRateLimitStorage } from 'better-auth'
 
 export interface ResettableRateLimitStorage extends BetterAuthRateLimitStorage {
