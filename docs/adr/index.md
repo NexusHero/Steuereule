@@ -53,6 +53,8 @@ The ADRs **justify** the architecture; the [living arc42 document](../arc42/READ
 | 0032 | Nothing on screen promises what the slice does not deliver — settles D1, D3 and the Vormerken button as one rule (#11, #321) | Accepted |
 | 0033 | The interview's question graph lives in `packages/core`, and the server validates against it (#318 task 0) | Accepted |
 | 0034 | The Veranlagungsartenvergleich returns a bounded comparison, never a bare verdict — and it is not a Günstigerprüfung (#340 F3, #321) | Accepted |
+| 0035 | Foundation consolidation: framework standard over bespoke machinery, one product over slices, shared tax domain core, mantle completion in the foundation | Accepted |
+| 0036 | Definition of Done: four levels (ticket · REQ · phase · 1.0), posture line, exception process | Accepted |
 
 See also the [Tech Radar](./tech-radar.md).
 
