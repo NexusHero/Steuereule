@@ -1,0 +1,12 @@
+# Redis service — internal only; the API reaches it as redis:6379 (REDIS_URL in the Secret).
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+spec:
+  selector:
+    app: redis
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: 6379

@@ -1,0 +1,104 @@
+# ---------------------------------------------------------------------------
+# Deploy pipeline — DRAFT SKELETON (Track 06, Slice 1).
+#
+# This file is intentionally a skeleton that STOPS at the credential boundary: it shows
+# the OpenTofu plan/apply shape and the image build shape, but it cannot and must not
+# deploy anything until the credentials in infra/README.md §5 exist. It is NOT wired into
+# the real cluster (06.1) and does not touch ci.yml — ci.yml is owned by the Ticket-01
+# agent working in parallel; this workflow is additive and separate.
+#
+# What is real here: `tofu validate` runs on every PR touching infra/ (no credentials
+# needed — that is the review signal). The plan job additionally needs HCLOUD_TOKEN:
+# on PRs without it, it skips with a NAMED notice; on pushes to main or manual runs
+# without it, it fails fast with a named "credentials not configured" error rather than
+# half-deploying.
+# What is NOT here yet (by design): image push to GHCR, `kubectl apply -k`, prod-deploy-smoke
+# against a real URL — those are sub-tickets 06.4/06.8 and need the cluster + registry.
+# ---------------------------------------------------------------------------
+name: Deploy
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "infra/**"
+  push:
+    branches: [main]
+    paths:
+      - "infra/**"
+
+permissions:
+  contents: read
+
+jobs:
+  terraform-plan:
+    name: OpenTofu plan (validate + plan against real HCL)
+    runs-on: ubuntu-latest
+    # Least privilege: this job only needs to read the repo and, if configured, the
+    # HCLOUD_TOKEN secret. `id-token`/deploy permissions are deliberately NOT granted
+    # here — a plan must never mutate anything.
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: "1.8.0"
+
+      - name: Credential gate (fail fast with a NAMED reason, never a silent skip)
+        id: gate
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+        run: |
+          if [ -z "$HCLOUD_TOKEN" ]; then
+            # On PRs the token is not expected: the credential boundary is a deploy-time
+            # fact, not a review fact. The skip is NAMED, not silent — and `tofu validate`
+            # above still ran, so a PR still proves the HCL is well-formed.
+            if [ "${{ github.event_name }}" = "pull_request" ]; then
+              echo "::notice::HCLOUD_TOKEN not configured — plan skipped by design (credential" \
+                   "boundary, infra/README.md §5 item 1). A push to main or a manual run" \
+                   "without the token still fails fast below."
+              echo "has_token=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            echo "::error::HCLOUD_TOKEN secret is not configured. This is the credential" \
+                 "boundary (infra/README.md §5 item 1) — a deploy-path run without it must" \
+                 "not proceed. Nothing was provisioned."
+            exit 1
+          fi
+          echo "credentials present"
+          echo "has_token=true" >> "$GITHUB_OUTPUT"
+
+      - name: tofu init + validate
+        working-directory: infra/terraform
+        run: |
+          tofu init -backend=false   # local backend until 06.1 wires Hetzner Object Storage
+          tofu validate
+
+      - name: tofu plan (write-only preview; applies nothing)
+        if: steps.gate.outputs.has_token == 'true'
+        working-directory: infra/terraform
+        env:
+          HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+        run: |
+          # terraform.tfvars is NOT committed; CI passes the token via env and the
+          # remaining variables must come from TF_VAR_* GitHub secrets once 06.1 lands.
+          # For now the plan is exercised against the skeleton defaults via a stub
+          # tfvars, proving the pipeline shape without real values.
+          printf 'hcloud_token = "%s"\n' "$HCLOUD_TOKEN" > ci.auto.tfvars
+          tofu plan -var-file=ci.auto.tfvars
+
+  # ---------------------------------------------------------------------------
+  # Placeholder for the apply step — deliberately unwired. Real apply is sub-ticket
+  # 06.1 (cluster) / 06.4 (images + rollout). Kept as a documented stub so the shape is
+  # visible without pretending it runs.
+  # ---------------------------------------------------------------------------
+  terraform-apply:
+    name: OpenTofu apply (STUB — needs cluster + GHCR + sealed secrets, 06.1/06.4)
+    if: false
+    needs: terraform-plan
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "STUB — apply lands with sub-ticket 06.1; see infra/README.md §5."

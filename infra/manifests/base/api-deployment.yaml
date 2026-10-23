@@ -1,0 +1,72 @@
+# ---------------------------------------------------------------------------
+# The API (NestJS/Fastify) — the SAME image the local compose stack builds
+# (apps/api/Dockerfile), now as a Deployment. WHY a Deployment and not a StatefulSet:
+# the API is stateless; its state lives in managed Postgres (ADR-047). Replicas scale
+# horizontally behind the Service + ingress.
+#
+# Boot order (mirrors docker-compose.prod.yml's migrate -> api gate, ADR-0026): an
+# initContainer runs `prisma migrate deploy` before the API pod becomes Ready, so a
+# rollout never serves against an unmigrated schema. The image's default CMD is the
+# server; the initContainer overrides it to run the migration — same image, two roles,
+# exactly like the compose `migrate` one-shot service (one Dockerfile to keep in sync).
+# ---------------------------------------------------------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  labels:
+    app: api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: api
+  template:
+    metadata:
+      labels:
+        app: api
+    spec:
+      initContainers:
+        - name: migrate
+          image: ghcr.io/steuereule/api:CHANGE_ME # built+tagged by deploy.yml (06.4)
+          command: ["sh", "-c", "cd /repo && pnpm --filter @steuereule/api migrate:deploy"]
+          envFrom:
+            - secretRef:
+                name: steuereule-api-secrets
+      containers:
+        - name: api
+          image: ghcr.io/steuereule/api:CHANGE_ME
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - secretRef:
+                name: steuereule-api-secrets
+            - configMapRef:
+                name: steuereule-api-config
+          # Chromium (REQ-011 PDF export) runs INSIDE this image (apps/api/Dockerfile
+          # bundles it); its memory footprint is the binding constraint on these limits.
+          # Set deliberately, not left at defaults — otherwise Chromium OOM-kills the
+          # pod mid-export.
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "1"
+          readinessProbe:
+            httpGet:
+              # #338 delivered /v1/health/ready (unauthenticated, outside UserContextGuard)
+              # exactly for this kubelet probe — pinned path, see health.controller.ts "PIN".
+              path: /v1/health/ready
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              # Same #338 contract: /v1/health/live answers "process up" (DB reachability
+              # is a readiness concern, not liveness — see HealthService on #338).
+              path: /v1/health/live
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 20

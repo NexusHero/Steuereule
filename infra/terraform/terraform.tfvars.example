@@ -1,0 +1,14 @@
+# Copy this file to `terraform.tfvars` (git-ignored) and fill in real values from the
+# credential checklist in infra/README.md. This file is committed as a TEMPLATE on
+# purpose — no secret ever lives here (infra/.gitignore ignores *.tfvars but keeps
+# *.tfvars.example).
+
+hcloud_token = "REPLACE_ME"        # Hetzner Cloud API token (checklist item 1)
+location     = "fsn1"              # EU region (ADR-020); fsn1/nbg1/hel1
+server_type  = "cpx31"
+node_count   = 1
+domain       = "steuereule.example" # your real domain (checklist item 2)
+
+ssh_public_keys = [
+  "ssh-ed25519 AAAA... REPLACE_ME",
+]
