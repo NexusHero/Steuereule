@@ -1,36 +1,29 @@
 // Profil (REQ-013, steuereule#95) — view + edit the stored profile (name, Steuer-ID,
 // Steuernummer), wired to the live GET/PUT /v1/profile (same contract, same hooks, same
 // no-client-persistence discipline as OnboardingScreen/REQ-012). ADR-0008: the profile lives
-// server-side, field-encrypted; this screen holds it in-memory only — nothing is written to
-// localStorage/AsyncStorage. Honest states throughout: real loading/error on load, real
-// saving/inline-error on save, no fake data.
+// server-side, field-encrypted; this screen holds it in-memory only.
 //
-// Scope note (see steuereule#95): the DS reference (Profil.jsx) is an account/settings screen
-// whose "Bearbeiten" affordance is a dead end and whose settings rows (theme, notifications, …)
-// have no live backend today. This component builds the part that's genuinely ready — the
-// profile-data summary + edit round-trip, reusing OnboardingScreen's field patterns exactly —
-// plus, since REQ-011 (steuereule#152), the one "Deine Daten" row that reaches the real,
-// wired Datenschutz screen (DSGVO export + account deletion).
+// The DS reference (Profil.jsx) is an account/settings screen whose "Bearbeiten" affordance is a
+// dead end and whose settings rows have no live backend — this builds the part that's genuinely
+// ready: the profile-data summary + edit round trip, plus (REQ-011) the one "Deine Daten" row
+// that reaches the wired Datenschutz screen. The read view and edit form live in ./profil/.
 import { useState } from 'react'
-import { ActivityIndicator, ScrollView, View, Text, Pressable, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { Button, Card, Chip, Feld, Input, Pill, Sticker, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme, type Breakpoint } from '@steuereule/ui'
-import { isValidSteuerId } from '@steuereule/core'
+import { useBreakpoint } from '@steuereule/ui'
 import { useProfileControllerGetProfile, useProfileControllerPutProfile } from '@steuereule/api-client'
 import { APP_NS } from '../i18n/resources'
-import { formatSteuerId, formatSteuerNr, countDigits } from './onboarding/format'
 import { toOnboardingProfil, toPutProfileDto, type OnboardingProfil } from './onboarding/profileMapping'
-import { DeviceListSection } from './device/DeviceListSection'
+import { ProfilView } from './profil/ProfilView'
+import { ProfilEdit } from './profil/ProfilEdit'
+import { LoadingState, ErrorState } from './shared/ScreenState'
 
 export interface ProfilScreenProps {
   /** Navigates to the Datenschutz screen (REQ-011) — Profil never renders it itself; the DS
-   *  reference (`Profil.jsx`'s `geheZu('datenschutz')`) and TAB_ORDNUNG both make Datenschutz
-   *  a screen reached *from* Profil, not a sub-view owned by it. */
+   *  reference and TAB_ORDNUNG both make Datenschutz a screen reached *from* Profil. */
   readonly onOpenDatenschutz: () => void
-  /** Fires when the device list (#238) revokes the session this very screen is running
-   *  under — the same "never a stale screen for a gone account" contract
-   *  DatenschutzScreen's `onAccountDeleted` already honours for account deletion. */
+  /** Fires when the device list (#238) revokes the session this very screen is running under —
+   *  the same "never a stale screen for a gone account" contract DatenschutzScreen honours. */
   readonly onSignedOut: () => void
 }
 
@@ -45,23 +38,29 @@ export function ProfilScreen({ onOpenDatenschutz, onSignedOut }: ProfilScreenPro
   const [saveError, setSaveError] = useState<string | null>(null)
   const [justSaved, setJustSaved] = useState(false)
 
-  // Derive the view profile directly from the query's data on every render — never seed a
-  // local copy once and freeze it. Onboarding and Profil share one QueryClient/query key; if
-  // Onboarding's earlier (empty) GET is already cached when Profil mounts, TanStack Query
-  // hands back that stale value synchronously *and* kicks off a background refetch. A
-  // one-time "seed if null" effect latches onto the stale value and then never looks again —
-  // the later refetch lands in the cache but nothing rereads it. Reading `profileQuery.data`
-  // fresh each render means the real profile shows the moment the refetch resolves, with no
-  // extra state to go stale. The in-flight `draft` stays the sole edit-time source of truth;
-  // save writes the server's response straight into the query cache (below) so this same
-  // derivation reflects it immediately, without waiting on a second round-trip.
+  // Derive the view profile directly from the query's data on every render — never seed a local
+  // copy once and freeze it. Onboarding and Profil share one QueryClient/query key; if
+  // Onboarding's earlier (empty) GET is already cached when Profil mounts, TanStack Query hands
+  // back that stale value synchronously *and* kicks off a background refetch. A one-time "seed if
+  // null" effect would latch onto the stale value and never look again; reading fresh each render
+  // shows the real profile the moment the refetch resolves. The in-flight `draft` stays the sole
+  // edit-time source of truth; save writes the server's response straight into the query cache so
+  // this same derivation reflects it immediately.
   const profil = profileQuery.data ? toOnboardingProfil(profileQuery.data.data) : null
 
   if (profileQuery.isPending) {
-    return <ProfilLoading bp={bp} />
+    return <LoadingState bp={bp} label={tr('profil.loading')} />
   }
   if (profileQuery.isError || profil === null) {
-    return <ProfilLoadError onRetry={() => void profileQuery.refetch()} bp={bp} />
+    return (
+      <ErrorState
+        bp={bp}
+        heading={tr('profil.loadError.heading')}
+        message={tr('profil.loadError.message')}
+        retryLabel={tr('profil.loadError.retry')}
+        onRetry={() => void profileQuery.refetch()}
+      />
+    )
   }
 
   function startEdit() {
@@ -121,283 +120,4 @@ export function ProfilScreen({ onOpenDatenschutz, onSignedOut }: ProfilScreenPro
       onSignedOut={onSignedOut}
     />
   )
-}
-
-function ProfilLoading({ bp }: { readonly bp: Breakpoint }) {
-  const t = useTheme()
-  const { t: tr } = useTranslation(APP_NS)
-  const styles = makeStyles(t)
-  return (
-    <View style={bp === 's' ? styles.centerScreen : styles.wideCenterScreen} testID="screen-container">
-      <ActivityIndicator size="large" color={t.color.tinte} accessibilityLabel={tr('profil.loading')} />
-      <Text style={styles.help}>{tr('profil.loading')}</Text>
-    </View>
-  )
-}
-
-interface ProfilLoadErrorProps {
-  readonly onRetry: () => void
-  readonly bp: Breakpoint
-}
-
-function ProfilLoadError({ onRetry, bp }: ProfilLoadErrorProps) {
-  const t = useTheme()
-  const { t: tr } = useTranslation(APP_NS)
-  const styles = makeStyles(t)
-  return (
-    <View style={bp === 's' ? styles.centerScreen : styles.wideCenterScreen} testID="screen-container">
-      <Text style={styles.heading} accessibilityRole="alert">
-        {tr('profil.loadError.heading')}
-      </Text>
-      <Text style={styles.help}>{tr('profil.loadError.message')}</Text>
-      <Button onPress={onRetry}>
-        {tr('profil.loadError.retry')}
-      </Button>
-    </View>
-  )
-}
-
-interface ProfilViewProps {
-  readonly profil: OnboardingProfil
-  readonly onEdit: () => void
-  readonly justSaved: boolean
-  readonly bp: Breakpoint
-  readonly onOpenDatenschutz: () => void
-  readonly onSignedOut: () => void
-}
-
-function ProfilView({ profil, onEdit, justSaved, bp, onOpenDatenschutz, onSignedOut }: ProfilViewProps) {
-  const t = useTheme()
-  const { t: tr } = useTranslation(APP_NS)
-  const styles = makeStyles(t)
-  const fullName = `${profil.vorname} ${profil.nachname}`.trim()
-  const initialSource = profil.vorname.trim() || profil.nachname.trim()
-  const initial = initialSource ? initialSource[0]?.toUpperCase() : '?'
-
-  return (
-    <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
-      <Text style={styles.heading}>{tr('profil.cardLabel')}</Text>
-
-      <Card variant="nacht" style={styles.summaryCard}>
-        <View style={styles.summaryRow}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{initial}</Text>
-          </View>
-          <View style={styles.summaryTextCol}>
-            <Text style={styles.name}>{fullName || tr('profil.namePlaceholder')}</Text>
-            <Text style={styles.idLine}>{profil.steuerId ? profil.steuerId : tr('profil.emptyNote')}</Text>
-          </View>
-          <Chip onPress={onEdit}>{tr('profil.edit')}</Chip>
-        </View>
-      </Card>
-
-      {justSaved ? (
-        <Text style={styles.savedNotice} accessibilityLiveRegion="polite">
-          {tr('profil.savedNotice')}
-        </Text>
-      ) : null}
-
-      <Card style={styles.datenCard}>
-        <Pressable accessibilityRole="button" onPress={onOpenDatenschutz} style={styles.datenRow}>
-          <Text style={styles.datenRowLabel}>{tr('profil.deineDaten.rowLabel')}</Text>
-          <Text style={styles.datenRowArrow} aria-hidden={true}>→</Text>
-        </Pressable>
-      </Card>
-
-      {/* #238 — every session on the account, not just QR-authorized ones (Decision 6). Its
-          own file carries the region omission's full reasoning. */}
-      <DeviceListSection onCurrentSessionRevoked={onSignedOut} />
-    </ScrollView>
-  )
-}
-
-interface ProfilEditProps {
-  readonly draft: OnboardingProfil
-  readonly onChange: (key: keyof OnboardingProfil) => (value: string) => void
-  readonly onSave: () => void
-  readonly onCancel: () => void
-  readonly isSaving: boolean
-  readonly saveError: string | null
-  readonly bp: Breakpoint
-}
-
-function ProfilEdit({ draft, onChange, onSave, onCancel, isSaving, saveError, bp }: ProfilEditProps) {
-  const t = useTheme()
-  const { t: tr } = useTranslation(APP_NS)
-  const styles = makeStyles(t)
-  const idDigits = countDigits(draft.steuerId)
-  const steuerIdOk = isValidSteuerId(draft.steuerId.replace(/\D/g, ''))
-  const canSave = draft.vorname.trim() !== '' && draft.nachname.trim() !== '' && steuerIdOk
-
-  return (
-    <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} keyboardShouldPersistTaps="handled" testID="screen-container">
-      <Text style={styles.heading}>{tr('profil.editHeading')}</Text>
-
-      <Feld label={tr('profil.firstNameLabel')}>
-        <Input
-          value={draft.vorname}
-          onChange={onChange('vorname')}
-          placeholder={tr('profil.firstNamePlaceholder')}
-          accessibilityLabel={tr('profil.firstNameLabel')}
-        />
-      </Feld>
-      <Feld label={tr('profil.lastNameLabel')}>
-        <Input
-          value={draft.nachname}
-          onChange={onChange('nachname')}
-          placeholder={tr('profil.lastNamePlaceholder')}
-          accessibilityLabel={tr('profil.lastNameLabel')}
-        />
-      </Feld>
-      <Feld label={tr('profil.steuerIdLabel')}>
-        <Input
-          type="numeric"
-          mono
-          value={draft.steuerId}
-          onChange={(value) => onChange('steuerId')(formatSteuerId(value))}
-          placeholder={tr('profil.steuerIdPlaceholder')}
-          accessibilityLabel={tr('profil.steuerIdLabel')}
-        />
-      </Feld>
-      <View style={styles.counterRow}>
-        <Pill>{tr('profil.steuerIdCounter', { count: idDigits })}</Pill>
-        {steuerIdOk ? <Sticker>{tr('profil.steuerIdConfirmed')}</Sticker> : null}
-      </View>
-      <Feld label={tr('profil.steuerNrLabel')}>
-        <Input
-          type="numeric"
-          mono
-          value={draft.steuerNr}
-          onChange={(value) => onChange('steuerNr')(formatSteuerNr(value))}
-          placeholder={tr('profil.steuerNrPlaceholder')}
-          accessibilityLabel={tr('profil.steuerNrLabel')}
-        />
-      </Feld>
-
-      {saveError !== null ? (
-        <Text style={styles.saveErrorText} accessibilityRole="alert">
-          {saveError}
-        </Text>
-      ) : null}
-
-      <Button onPress={onSave} disabled={!canSave || isSaving} style={styles.cta}>
-        {isSaving ? tr('profil.saving') : tr('profil.save')}
-      </Button>
-      <Button variante="ghost" onPress={onCancel} disabled={isSaving} style={styles.cancelButton}>
-        {tr('profil.cancel')}
-      </Button>
-    </ScrollView>
-  )
-}
-
-function makeStyles(t: UiTheme) {
-  const screen: ViewStyle = {
-    backgroundColor: t.color.grund,
-    paddingHorizontal: t.space.s5,
-    paddingVertical: t.space.s6,
-    minHeight: '100%',
-    maxWidth: 460,
-    width: '100%',
-    alignSelf: 'center',
-  }
-  const wideScreen: ViewStyle = { ...screen, maxWidth: WIDE_CONTENT_MAX_WIDTH }
-  const centerScreen: ViewStyle = {
-    ...screen,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: t.space.s3,
-  }
-  const wideCenterScreen: ViewStyle = { ...centerScreen, maxWidth: WIDE_CONTENT_MAX_WIDTH }
-  const heading: TextStyle = {
-    fontFamily: t.font.display,
-    fontWeight: t.weight.schwer,
-    fontSize: t.size['3xl'],
-    color: t.color.tinte,
-    marginBottom: t.space.s4,
-    textAlign: 'center',
-  }
-  const help: TextStyle = {
-    color: t.color.tinte2,
-    fontFamily: t.font.text,
-    fontSize: t.size.m,
-    textAlign: 'center',
-  }
-  // #176: `cta`'s marginTop only applies at the edit form's save button (:264 — nothing before it
-  // already claims the seam). The LoadError button (:139) passes no `style` at all: centerScreen's
-  // own `gap` already supplies its leading space, so a competing marginTop would double it.
-  const cta: ViewStyle = { marginTop: t.space.s5 }
-  const cancelButton: ViewStyle = { marginTop: t.space.s3 }
-  const summaryCard: ViewStyle = { padding: t.space.s4 }
-  const summaryRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s3 }
-  const summaryTextCol: ViewStyle = { flex: 1, minWidth: 0 }
-  const avatar: ViewStyle = {
-    width: 54,
-    height: 54,
-    borderRadius: t.radius.pille,
-    backgroundColor: t.color.funke,
-    borderWidth: 2,
-    borderColor: t.color.tinte,
-    alignItems: 'center',
-    justifyContent: 'center',
-  }
-  const avatarText: TextStyle = {
-    fontFamily: t.font.display,
-    fontWeight: t.weight.schwer,
-    fontSize: t.size.xl,
-    color: t.color.tinte,
-  }
-  const name: TextStyle = { fontFamily: t.font.text, fontWeight: t.weight.schwer, fontSize: t.size.l, color: t.color.funke }
-  const idLine: TextStyle = {
-    fontFamily: t.font.mono,
-    fontSize: t.size.s,
-    color: t.color.nachtText,
-    opacity: 0.8,
-    fontVariant: ['tabular-nums'],
-    marginTop: t.space.s1,
-  }
-  const savedNotice: TextStyle = {
-    color: t.color.tinte,
-    fontFamily: t.font.text,
-    fontSize: t.size.s,
-    textAlign: 'center',
-    marginTop: t.space.s3,
-  }
-  const counterRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s2, marginTop: -t.space.s2, marginBottom: t.space.s3 }
-  const saveErrorText: TextStyle = { color: t.color.fehler, fontFamily: t.font.text, fontSize: t.size.s, marginTop: t.space.s2 }
-  const datenCard: ViewStyle = { padding: 0, overflow: 'hidden' }
-  const datenRow: ViewStyle = {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    minHeight: 52,
-    paddingHorizontal: t.space.s4,
-    paddingVertical: t.space.s3,
-  }
-  const datenRowLabel: TextStyle = { fontFamily: t.font.text, fontSize: t.size.m, color: t.color.tinte, flex: 1 }
-  const datenRowArrow: TextStyle = { fontFamily: t.font.text, fontWeight: t.weight.schwer, color: t.color.tinte }
-
-  return {
-    screen,
-    wideScreen,
-    centerScreen,
-    wideCenterScreen,
-    heading,
-    help,
-    cta,
-    cancelButton,
-    summaryCard,
-    summaryRow,
-    summaryTextCol,
-    avatar,
-    avatarText,
-    name,
-    idLine,
-    savedNotice,
-    counterRow,
-    saveErrorText,
-    datenCard,
-    datenRow,
-    datenRowLabel,
-    datenRowArrow,
-  }
 }

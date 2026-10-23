@@ -102,6 +102,24 @@ describe('App', () => {
     15_000,
   )
 
+  // Phase 0.3 AC-2/AC-5 — the reverse of the "create account" link above: Registrierung used to
+  // be a dead branch (no way back to Login once you'd arrived). This proves the two auth screens
+  // are a real, closed pair — Login → Registrierung → Login — not two one-way doors.
+  it('goes back from Registrierung to Login via the "already have an account" link (no dead branch)', async () => {
+    const { default: App } = await import('./App')
+    render(<App />)
+    fireEvent.click(screen.getByLabelText('Weiter zur App'))
+    await screen.findByText('Einloggen')
+    fireEvent.click(screen.getByText('Neu hier? Konto anlegen'))
+    expect(await screen.findByText('Konto anlegen')).toBeTruthy()
+
+    fireEvent.click(screen.getByText('Schon ein Konto? Einloggen'))
+    await screen.findByText('Einloggen')
+    // And the return trip still works, so the pair is genuinely bidirectional.
+    fireEvent.click(screen.getByText('Neu hier? Konto anlegen'))
+    expect(await screen.findByText('Konto anlegen')).toBeTruthy()
+  })
+
   it('goes from Login straight to Onboarding via guest mode, unchanged from before this slice', async () => {
     const { default: App } = await import('./App')
     render(<App />)

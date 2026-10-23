@@ -2,28 +2,22 @@
 // summary, wired to the real Profile API (GET/PUT /v1/profile, steuereule#27/#29). The screen
 // holds the profile in-memory only — nothing is written to localStorage/AsyncStorage; the
 // Steuer-ID is persisted server-side, field-encrypted at rest (ADR-0008). Honest states
-// throughout: a real loading screen while the profile loads, a real retryable error screen if it
-// can't, and an inline retryable error if saving fails — no fake spinners, no silent failures.
-// Copy via i18n (de base + en, ADR-0006). One primary action per step. No entrance/step animation,
-// so `prefers-reduced-motion` is honored by omission (design-system CLAUDE.md).
+// throughout: a real loading screen, a real retryable error, an inline retryable save error —
+// no fake spinners, no silent failures. Copy via i18n (de base + en, ADR-0006).
 import { useEffect, useState } from 'react'
-import {
-  ActivityIndicator,
-  ScrollView,
-  View,
-  Text,
-  Pressable,
-  type ViewStyle,
-  type TextStyle,
-  type ViewProps,
-} from 'react-native'
+import { ScrollView, View, Text } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { Button, Input, Feld, Chip, Pill, Sticker, Card, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme, type Breakpoint } from '@steuereule/ui'
+import { Button, Input, Feld, Chip, Pill, Sticker, useTheme, useBreakpoint } from '@steuereule/ui'
 import { isValidSteuerId } from '@steuereule/core'
 import { useProfileControllerGetProfile, useProfileControllerPutProfile } from '@steuereule/api-client'
 import { APP_NS } from '../i18n/resources'
 import { formatSteuerId, formatSteuerNr, countDigits } from './onboarding/format'
 import { toOnboardingProfil, toPutProfileDto, type OnboardingProfil } from './onboarding/profileMapping'
+import { makeOnboardingStyles } from './onboarding/styles'
+import { OnboardingSummary } from './onboarding/OnboardingSummary'
+import { LoadingState, ErrorState } from './shared/ScreenState'
+import { StepIndicator } from './shared/StepIndicator'
+import { BackButton, BackButtonSpacer } from './shared/BackButton'
 
 export interface OnboardingScreenProps {
   readonly onDone: () => void
@@ -37,7 +31,7 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
   const { t: tr } = useTranslation(APP_NS)
   const profileQuery = useProfileControllerGetProfile()
   const putProfile = useProfileControllerPutProfile()
-  const styles = makeStyles(t)
+  const styles = makeOnboardingStyles(t)
 
   const [profil, setProfil] = useState<OnboardingProfil | null>(null)
   const [schritt, setSchritt] = useState(0) // 0..2 = the three steps, 3 = summary
@@ -52,10 +46,18 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
   }, [profileQuery.data, profil])
 
   if (profileQuery.isPending) {
-    return <OnboardingLoading bp={bp} />
+    return <LoadingState bp={bp} label={tr('onboarding.loading')} />
   }
   if (profileQuery.isError || profil === null) {
-    return <OnboardingLoadError onRetry={() => void profileQuery.refetch()} bp={bp} />
+    return (
+      <ErrorState
+        bp={bp}
+        heading={tr('onboarding.loadError.heading')}
+        message={tr('onboarding.loadError.message')}
+        retryLabel={tr('onboarding.loadError.retry')}
+        onRetry={() => void profileQuery.refetch()}
+      />
+    )
   }
 
   const set = (key: keyof OnboardingProfil) => (value: string) =>
@@ -72,9 +74,9 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
   }
 
   function submit() {
-    // Defensive only: unreachable in practice — submit() is only ever passed to
-    // OnboardingSummary, which never renders before `profil` is set (see the early
-    // returns above). TS can't carry that narrowing into a nested function declaration.
+    // Defensive only: `submit` is only ever passed to OnboardingSummary, which never renders
+    // before `profil` is set (see the early returns above). TS can't carry that narrowing into
+    // a nested function declaration.
     if (profil === null) return
     setSubmitError(null)
     putProfile.mutate(
@@ -109,16 +111,9 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} keyboardShouldPersistTaps="handled" testID="screen-container">
       <View style={styles.headerRow}>
         {schritt > 0 ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={tr('onboarding.back')}
-            onPress={zurueck}
-            style={styles.backButton}
-          >
-            <Text style={styles.backArrow}>←</Text>
-          </Pressable>
+          <BackButton accessibilityLabel={tr('onboarding.back')} onPress={zurueck} />
         ) : (
-          <View style={styles.backSpacer} />
+          <BackButtonSpacer />
         )}
         <StepIndicator step={schritt} total={STEP_COUNT} />
         <Pill>{`${schritt + 1}/${STEP_COUNT}`}</Pill>
@@ -203,256 +198,4 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
       </Button>
     </ScrollView>
   )
-}
-
-function OnboardingLoading({ bp }: { readonly bp: Breakpoint }) {
-  const t = useTheme()
-  const { t: tr } = useTranslation(APP_NS)
-  const styles = makeStyles(t)
-  return (
-    <View style={bp === 's' ? styles.centerScreen : styles.wideCenterScreen} testID="screen-container">
-      <ActivityIndicator size="large" color={t.color.tinte} accessibilityLabel={tr('onboarding.loading')} />
-      <Text style={styles.help}>{tr('onboarding.loading')}</Text>
-    </View>
-  )
-}
-
-interface OnboardingLoadErrorProps {
-  readonly onRetry: () => void
-  readonly bp: Breakpoint
-}
-
-function OnboardingLoadError({ onRetry, bp }: OnboardingLoadErrorProps) {
-  const t = useTheme()
-  const { t: tr } = useTranslation(APP_NS)
-  const styles = makeStyles(t)
-  return (
-    <View style={bp === 's' ? styles.centerScreen : styles.wideCenterScreen} testID="screen-container">
-      <Text style={styles.heading} accessibilityRole="alert">
-        {tr('onboarding.loadError.heading')}
-      </Text>
-      <Text style={styles.help}>{tr('onboarding.loadError.message')}</Text>
-      <Button onPress={onRetry}>
-        {tr('onboarding.loadError.retry')}
-      </Button>
-    </View>
-  )
-}
-
-interface OnboardingSummaryProps {
-  readonly profil: OnboardingProfil
-  readonly onSubmit: () => void
-  readonly onEdit: () => void
-  readonly isSubmitting: boolean
-  readonly submitError: string | null
-  readonly bp: Breakpoint
-}
-
-function OnboardingSummary({ profil, onSubmit, onEdit, isSubmitting, submitError, bp }: OnboardingSummaryProps) {
-  const t = useTheme()
-  const { t: tr } = useTranslation(APP_NS)
-  const styles = makeStyles(t)
-  const rows: ReadonlyArray<readonly [string, string, boolean]> = [
-    [tr('onboarding.summary.rowFirstName'), profil.vorname, false],
-    [tr('onboarding.summary.rowLastName'), profil.nachname, false],
-    [tr('onboarding.summary.rowSteuerId'), profil.steuerId, true],
-    [tr('onboarding.summary.rowSteuerNr'), profil.steuerNr || tr('onboarding.summary.steuerNrLater'), true],
-  ]
-
-  return (
-    <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} keyboardShouldPersistTaps="handled" testID="screen-container">
-      <View style={styles.summaryHeadingRow}>
-        <Text style={styles.summaryHeading}>{tr('onboarding.summary.heading')}</Text>
-        <Sticker>{tr('onboarding.summary.badge')}</Sticker>
-      </View>
-      <Text style={styles.help}>{tr('onboarding.summary.intro')}</Text>
-
-      <Card variant="nacht">
-        <Text style={styles.cardLabel}>{tr('onboarding.summary.cardLabel')}</Text>
-        {rows.map(([label, value, mono]) => (
-          <View key={label} style={styles.summaryRow}>
-            <Text style={styles.summaryRowLabel}>{label}</Text>
-            <Text style={[styles.summaryRowValue, mono ? styles.summaryRowValueMono : null]}>{value}</Text>
-          </View>
-        ))}
-      </Card>
-
-      {submitError !== null ? (
-        <Text style={styles.submitError} accessibilityRole="alert">
-          {submitError}
-        </Text>
-      ) : null}
-
-      <Button onPress={onSubmit} disabled={isSubmitting} style={styles.cta}>
-        {isSubmitting ? tr('onboarding.summary.submitting') : tr('onboarding.summary.cta')}
-      </Button>
-      <Button variante="ghost" onPress={onEdit} disabled={isSubmitting} style={styles.summaryEditButton}>
-        {tr('onboarding.summary.changeDetails')}
-      </Button>
-      <Text style={styles.summaryFooterNote}>{tr('onboarding.summary.footerNote')}</Text>
-    </ScrollView>
-  )
-}
-
-interface StepIndicatorProps {
-  readonly step: number
-  readonly total: number
-}
-
-// React-Native-Web forwards a step indicator's ARIA min/max/now from the flat legacy
-// `accessibilityValueMin/Max/Now` props, not from RN's `accessibilityValue` object (verified
-// against react-native-web's forwardedProps/createDOMProps — the object form is silently dropped).
-// Contained to this one cast so the rest of the screen stays on RN's documented API.
-type WebProgressAria = Pick<ViewProps, never>
-
-function StepIndicator({ step, total }: StepIndicatorProps) {
-  const t = useTheme()
-  const styles = makeStyles(t)
-  const ariaProps = {
-    accessibilityValueMin: 1,
-    accessibilityValueMax: total,
-    accessibilityValueNow: step + 1,
-  } as unknown as WebProgressAria
-
-  return (
-    <View accessibilityRole="progressbar" style={styles.progressRow} {...ariaProps}>
-      {Array.from({ length: total }).map((_, i) => (
-        <View key={i} style={[styles.segment, i <= step ? styles.segmentFilled : null]} />
-      ))}
-    </View>
-  )
-}
-
-function makeStyles(t: UiTheme) {
-  const screen: ViewStyle = {
-    backgroundColor: t.color.grund,
-    paddingHorizontal: t.space.s5,
-    paddingVertical: t.space.s6,
-    minHeight: '100%',
-    maxWidth: 460,
-    width: '100%',
-    alignSelf: 'center',
-  }
-  const wideScreen: ViewStyle = { ...screen, maxWidth: WIDE_CONTENT_MAX_WIDTH }
-  const centerScreen: ViewStyle = {
-    ...screen,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: t.space.s3,
-  }
-  const wideCenterScreen: ViewStyle = { ...centerScreen, maxWidth: WIDE_CONTENT_MAX_WIDTH }
-  const headerRow: ViewStyle = {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: t.space.s3,
-    paddingBottom: t.space.s5,
-  }
-  const backButton: ViewStyle = {
-    width: 44,
-    height: 44,
-    borderRadius: t.radius.pille,
-    borderWidth: 2,
-    borderColor: t.color.tinte,
-    backgroundColor: t.color.karte,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...t.shadow.hartS,
-  }
-  const backArrow: TextStyle = { fontWeight: t.weight.schwer, fontSize: t.size.m, color: t.color.tinte }
-  const backSpacer: ViewStyle = { width: 44, height: 44 }
-  const progressRow: ViewStyle = { flexDirection: 'row', gap: t.space.s1, flex: 1 }
-  const segment: ViewStyle = {
-    flex: 1,
-    height: 8,
-    borderRadius: 4,
-    borderWidth: 1.5,
-    borderColor: t.color.tinte,
-    backgroundColor: t.color.karte,
-  }
-  const segmentFilled: ViewStyle = { backgroundColor: t.color.funke }
-  const heading: TextStyle = {
-    fontFamily: t.font.display,
-    fontWeight: t.weight.schwer,
-    fontSize: t.size['3xl'],
-    color: t.color.tinte,
-    marginBottom: t.space.s2,
-    textAlign: 'center',
-  }
-  const mark: TextStyle = { color: t.color.funkeTinte }
-  const help: TextStyle = {
-    color: t.color.tinte2,
-    fontFamily: t.font.text,
-    fontSize: t.size.m,
-    marginBottom: t.space.s5,
-    textAlign: 'center',
-  }
-  const counterRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s2 }
-  // #176: `cta`'s marginTop only applies at the step-form Weiter (:201) and summary submit (:286),
-  // where nothing before them already claims the seam. The LoadError button (:235) passes no
-  // `style` at all: centerScreen's own `gap` plus help's `marginBottom` already supply its
-  // leading space, so a competing marginTop would double it.
-  const cta: ViewStyle = { marginTop: t.space.s5 }
-  const submitError: TextStyle = {
-    color: t.color.fehler,
-    fontFamily: t.font.text,
-    fontSize: t.size.s,
-    marginTop: t.space.s3,
-  }
-  const summaryHeadingRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s3, marginBottom: t.space.s2 }
-  const summaryHeading: TextStyle = {
-    fontFamily: t.font.display,
-    fontWeight: t.weight.schwer,
-    fontSize: t.size['3xl'],
-    color: t.color.tinte,
-  }
-  const cardLabel: TextStyle = {
-    fontFamily: t.font.mono,
-    fontSize: t.size.xs,
-    color: t.color.funkeHell,
-    textTransform: 'uppercase',
-    letterSpacing: 0.08 * t.size.xs,
-    marginBottom: t.space.s2,
-  }
-  const summaryRow: ViewStyle = {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: t.space.s3,
-    borderBottomWidth: 1.5,
-    borderBottomColor: t.color.nachtKarte,
-    paddingVertical: t.space.s2,
-  }
-  const summaryRowLabel: TextStyle = { color: t.color.nachtText, opacity: 0.7, fontFamily: t.font.text, fontSize: t.size.s }
-  const summaryRowValue: TextStyle = { color: t.color.funke, fontFamily: t.font.text, fontWeight: t.weight.schwer, fontSize: t.size.s }
-  const summaryRowValueMono: TextStyle = { fontFamily: t.font.mono, fontVariant: ['tabular-nums'] }
-  const summaryEditButton: ViewStyle = { marginTop: t.space.s2 }
-  const summaryFooterNote: TextStyle = { fontSize: t.size.xs, color: t.color.tinte2, textAlign: 'center', marginTop: t.space.s3 }
-
-  return {
-    screen,
-    wideScreen,
-    centerScreen,
-    wideCenterScreen,
-    headerRow,
-    backButton,
-    backArrow,
-    backSpacer,
-    progressRow,
-    segment,
-    segmentFilled,
-    heading,
-    mark,
-    help,
-    counterRow,
-    cta,
-    submitError,
-    summaryHeadingRow,
-    summaryHeading,
-    cardLabel,
-    summaryRow,
-    summaryRowLabel,
-    summaryRowValue,
-    summaryRowValueMono,
-    summaryEditButton,
-    summaryFooterNote,
-  }
 }

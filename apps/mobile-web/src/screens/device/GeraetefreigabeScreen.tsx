@@ -2,20 +2,13 @@
 // on after opening the device-authorization QR/link (`/device?user_code=…`). Decision 4
 // (reinstated): the phone never sees "Freigeben?" — it sees "Steht dieser Code gerade auf
 // deinem Bildschirm?" next to the real requesting browser/OS/region/time, and a persistent
-// warning that a code received by message/link is never approved here. No session-scope
-// choice (Decision 5 stays revoked) — approving is the whole action, one button.
+// warning that a code received by message/link is never approved here. No session-scope choice
+// (Decision 5 stays revoked) — approving is the whole action, one button.
 //
-// Derived entirely from existing building blocks, per NexusHero's ruling that no new pattern
-// gets invented for this screen:
-//   - Card + Feld + Pill — the same composition ProfilScreen.tsx:18 already uses for a
-//     labelled-rows summary block — carry the context block here too.
-//   - The warning banner is LoginScreen.tsx's own accessibilityRole="alert" pattern
-//     (`verifyBanner`, LoginScreen.tsx:137), restyled with the same warn/warnWeich semantic
-//     colour pair — no new alert component.
-//   - Browser/OS/region/time are parsed from the endpoint's deliberately raw fields via
-//     ./deviceContext.ts — shared logic with the (still-blocked) device list, but never a
-//     shared *test*: this screen's region-branch assertion is independent of the device
-//     list's own, per the ticket's explicit "two rendering paths, two tests" note.
+// Derived entirely from existing building blocks, per NexusHero's ruling that no new pattern gets
+// invented for this screen: Card + Feld + Pill for the context block, LoginScreen's own
+// accessibilityRole="alert" pattern for the warning, and ./deviceContext.ts for the raw-field
+// parsing. Loading/error/success render through the shared ScreenState (Phase 0.3 AC-3).
 import { useState } from 'react'
 import { ActivityIndicator, ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
@@ -23,6 +16,7 @@ import { Button, Card, Feld, Pill, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WID
 import { useDeviceControllerGetPending, useDeviceControllerApprove } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { parseUserAgent, resolveRegionName, formatRequestedAt } from './deviceContext'
+import { LoadingState, ErrorState, SuccessState } from '../shared/ScreenState'
 
 export interface GeraetefreigabeScreenProps {
   readonly userCode: string
@@ -40,33 +34,17 @@ export function GeraetefreigabeScreen({ userCode }: GeraetefreigabeScreenProps) 
   const pendingQuery = useDeviceControllerGetPending({ userCode })
   const approveMutation = useDeviceControllerApprove()
 
-  // `httpClient` never throws on a non-2xx (Musti's T1, F1, DatenschutzScreen.tsx's own
-  // account-deletion switch names the same class) — `DeviceController.getPending` documents
-  // only its 200 response, so the generated type narrows `.status` to the literal `200` even
-  // though a real 400 (expired/invalid code, `translateDeviceApiError`) or 429 (rate-limited)
-  // reaches this exact branch at runtime. Widening the check here, rather than trusting the
-  // generated type, is what keeps an expired/invalid code from being rendered as if it were a
-  // real pending request.
+  // `httpClient` never throws on a non-2xx (Musti's T1, F1) — the generated type narrows `.status`
+  // to `200` even though a real 400 (expired/invalid code) or 429 reaches this branch at runtime.
+  // Widening the check here is what keeps an expired/invalid code from rendering as a real request.
   const pendingStatus = pendingQuery.data ? (pendingQuery.data as { status: number }).status : undefined
 
   if (pendingQuery.isPending) {
-    return (
-      <View style={bp === 's' ? styles.centerScreen : styles.wideCenterScreen} testID="screen-container">
-        <ActivityIndicator size="large" color={t.color.tinte} accessibilityLabel={tr('device.approval.loading')} />
-        <Text style={styles.help}>{tr('device.approval.loading')}</Text>
-      </View>
-    )
+    return <LoadingState bp={bp} label={tr('device.approval.loading')} />
   }
 
   if (pendingQuery.isError || pendingStatus !== 200) {
-    return (
-      <View style={bp === 's' ? styles.centerScreen : styles.wideCenterScreen} testID="screen-container">
-        <Text style={styles.heading} accessibilityRole="alert">
-          {tr('device.approval.error.heading')}
-        </Text>
-        <Text style={styles.help}>{tr('device.approval.error.body')}</Text>
-      </View>
-    )
+    return <ErrorState bp={bp} heading={tr('device.approval.error.heading')} message={tr('device.approval.error.body')} />
   }
 
   const pending = pendingQuery.data.data
@@ -85,29 +63,16 @@ export function GeraetefreigabeScreen({ userCode }: GeraetefreigabeScreenProps) 
   }
 
   // Already resolved (approved from another tab, or this exact tap already landed) — the same
-  // honest confirmation, not the approval UI again. `pending.status` is the domain's own
-  // pending/approved/denied field (DevicePendingResponseDto), distinct from the HTTP status
-  // checked above.
+  // honest confirmation, not the approval UI again. `pending.status` is the domain's own field,
+  // distinct from the HTTP status checked above.
   if (approveState === 'approved' || pending.status === 'approved') {
-    return (
-      <View style={bp === 's' ? styles.centerScreen : styles.wideCenterScreen} testID="screen-container">
-        <Text style={styles.heading}>{tr('device.approval.approved.heading')}</Text>
-        <Text style={styles.help}>{tr('device.approval.approved.body')}</Text>
-      </View>
-    )
+    return <SuccessState bp={bp} heading={tr('device.approval.approved.heading')} message={tr('device.approval.approved.body')} />
   }
 
   if (pending.status !== 'pending') {
-    // 'denied', or any future value — this screen only ever produces 'approved' itself; a
-    // denial or anything else reaching here means the request is no longer actionable.
-    return (
-      <View style={bp === 's' ? styles.centerScreen : styles.wideCenterScreen} testID="screen-container">
-        <Text style={styles.heading} accessibilityRole="alert">
-          {tr('device.approval.error.heading')}
-        </Text>
-        <Text style={styles.help}>{tr('device.approval.error.body')}</Text>
-      </View>
-    )
+    // 'denied', or any future value — this screen only ever produces 'approved' itself; anything
+    // else reaching here means the request is no longer actionable.
+    return <ErrorState bp={bp} heading={tr('device.approval.error.heading')} message={tr('device.approval.error.body')} />
   }
 
   const { browser, os } = parseUserAgent(pending.userAgent)
@@ -172,20 +137,8 @@ function makeStyles(t: UiTheme) {
     alignSelf: 'center',
   }
   const wideScreen: ViewStyle = { ...screen, maxWidth: WIDE_CONTENT_MAX_WIDTH }
-  const centerScreen: ViewStyle = { ...screen, alignItems: 'center', justifyContent: 'center', gap: t.space.s3 }
-  const wideCenterScreen: ViewStyle = { ...centerScreen, maxWidth: WIDE_CONTENT_MAX_WIDTH }
-  const heading: TextStyle = {
-    fontFamily: t.font.display,
-    fontWeight: t.weight.schwer,
-    fontSize: t.size['3xl'],
-    color: t.color.tinte,
-    marginBottom: t.space.s2,
-    textAlign: 'center',
-  }
-  const help: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.m, textAlign: 'center' }
   // "Code groß" — the large, provenance-carrying number this whole screen exists to compare
-  // against the other screen's own display, mono + tabular-nums + letterSpacing like
-  // LoginScreen's own QR code text (LoginScreen.tsx's `qrCode` style), just larger.
+  // against the other screen's own display, mono + tabular-nums + letterSpacing.
   const code: TextStyle = {
     fontFamily: t.font.mono,
     fontWeight: t.weight.schwer,
@@ -198,9 +151,8 @@ function makeStyles(t: UiTheme) {
   }
   const contextCard: ViewStyle = { marginBottom: t.space.s4 }
   const contextValue: TextStyle = { fontFamily: t.font.text, fontSize: t.size.m, color: t.color.tinte }
-  // Same box primitive as LoginScreen's `verifyBanner` (LoginScreen.tsx:137), recoloured with
-  // the DS's warn semantic pair — a caution, not an error (`fehler`/`fehlerWeich` stays for
-  // genuine failures, e.g. `approveErrorText` below).
+  // LoginScreen's own `verifyBanner` box primitive, recoloured with the DS's warn pair — a
+  // caution, not an error (the error pair stays for genuine failures like `approveErrorText`).
   const warning: ViewStyle = {
     backgroundColor: t.color.warnWeich,
     borderWidth: 2,
@@ -226,10 +178,6 @@ function makeStyles(t: UiTheme) {
   return {
     screen,
     wideScreen,
-    centerScreen,
-    wideCenterScreen,
-    heading,
-    help,
     code,
     contextCard,
     contextValue,
