@@ -6,6 +6,11 @@ echter, anwendbarer Infrastruktur: OpenTofu/Terraform provisioniert die Hetzner-
 cloud-init gebootstrapt, und ein Kubeconfig fällt als Output an. Danach ist der Cluster der
 Träger für alle weiteren Sub-Tickets.
 
+**Bereits erledigt (nicht neu bauen):** #338 hat die liveness/readiness-Endpoints
+(`/v1/health/live`, `/v1/health/ready` — gepinnte Pfade, health.controller.ts „PIN") geliefert;
+Slice 1 nutzt sie bereits in den Manifest-Proben. Dazu gehört #344 (Ingress-/NetworkPolicy-
+Ausschluss des `/v1/health/*`-Präfixes, #338 F3) — sofern noch offen, hier mitziehen.
+
 **Blocked by:** Credential-Blöcke (Hetzner-API-Token, Domain/DNS, EU-Region) — siehe
 `infra/README.md`. Kein Track-Dep — kann sofort starten, sobald die Credentials vorliegen.
 
@@ -18,3 +23,6 @@ Träger für alle weiteren Sub-Tickets.
 - [ ] Remote-State (Hetzner Object Storage) aktiv; kein `*.tfstate` landet je im Repo
 - [ ] ADR für die IaC-Tooling-Entscheidung nachgezogen (OpenTofu vs Terraform, Kustomize vs Helm,
       Sealed Secrets vs SOPS) — Musti-Review, DoD „ADR bei Architektur-Entscheidung"
+- [ ] Musti-Review F1/F2 aus `review-ticket-06.md` geschlossen: alle `terraform.tfvars.example`-
+      Variablen haben Defaults oder sind als Pflicht markiert, sodass `tofu plan` mit Token
+      durchläuft und das Credential-Gate `tofu validate` nicht blockiert

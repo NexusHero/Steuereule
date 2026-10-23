@@ -56,7 +56,17 @@ spec:
               cpu: "1"
           readinessProbe:
             httpGet:
-              path: /v1/auth/capabilities
+              # #338 delivered /v1/health/ready (unauthenticated, outside UserContextGuard)
+              # exactly for this kubelet probe — pinned path, see health.controller.ts "PIN".
+              path: /v1/health/ready
               port: 3000
             initialDelaySeconds: 10
             periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              # Same #338 contract: /v1/health/live answers "process up" (DB reachability
+              # is a readiness concern, not liveness — see HealthService on #338).
+              path: /v1/health/live
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 20
