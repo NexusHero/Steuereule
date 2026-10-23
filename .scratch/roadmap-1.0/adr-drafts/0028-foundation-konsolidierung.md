@@ -53,7 +53,7 @@ A **foundation phase** precedes all new product work, in strict internal order, 
 5. **Mantle completion in the foundation:** REQ-007 (TOTP/passkey), REQ-008 (Apple wiring,
    flagged off), REQ-009 (Expo `SecureStore` half) — built on the consolidated auth stack,
    deliberately before product features. This supersedes product ADR-027(b)'s "keine 2FA in
-   1.0" on exactly this point; the amendment is recorded in the product ADR log, and its
+   1.0" on exactly this point; the amendment is recorded in the research ADR log, and its
    enforcement site is ticket 05.
 
 **Comment discipline, repo-wide from now on:** comments explain *why*, never *what*; file
@@ -65,8 +65,8 @@ headers trimmed on every touched file (boy-scout rule, no global comment sprint)
   acceptance tests are the safety net and must stay green or be changed only with a
   documented reason.
 - The domain core is the deepest seam of the whole roadmap: both product tracks (Angestellte,
-  Grenzgänger-CH) plug into it, which is what makes parallel tracks (research ADR-051) viable
-  without producing two apps.
+  Grenzgänger-CH) plug into it, which is what makes parallel tracks viable without producing
+  two apps (see `docs/roadmap-1.0.md`, decision D5).
 - The foundation is large (hygiene → replacement → integration → core → mantle); WIP limit
   and the internal order are load-bearing. Overload risk was named and accepted by the
   stakeholder (decision D9).

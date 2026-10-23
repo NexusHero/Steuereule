@@ -208,3 +208,80 @@ selben Zug mitbehandelt werden, weil eines davon (#170) sonst ohne Heimat bleibt
 
 **Nicht verifiziert:** ein von M5 unabhängiger „zweiter Lockfile-Fix" (kein Beleg im Repo);
 die genaue Absicht hinter der Roadmap-Formulierung „ADR-0026/0027" (Engineering vs. Produkt, I2).
+
+---
+
+## Re-Review (Rev 2)
+
+**Reviewer:** Musti (Lead, Review-Rolle) · **Autor:** NexusHero · **Datum:** 2026-10-23
+**Scope:** Nur Verifikation der behaupteten Fixes (B1, B2, I1–I4, M2, M3, M5, M6, M8, M9) gegen den
+aktuellen Dateistand, plus Check auf durch die Fixes entstandene neue Inkonsistenzen. Kein Voll-Review.
+Gegenprüfung gegen die Quellen (`docs/adr/0021-…`, Produkt-ADR `025-027-…`,
+`docs/requirements/register.md`, beide ADR-Indizes).
+
+### Urteil: **GO** — alle 12 behaupteten Fixes sind im aktuellen Stand umgesetzt und inhaltlich korrekt.
+Kein verbleibender Blocker. Drei neue, nicht-blockierende Konsistenz-Punkte sind unten notiert (N1–N3).
+
+### Verifikation der behaupteten Fixes (jeweils gegen Datei:Zeile)
+
+| # | Fix | Fundstelle | Status |
+|---|---|---|---|
+| B1 | ADR-027(b)-Amendment sichtbar | 0028 `:53–57` („supersedes product ADR-027(b) … on exactly this point"), 051 `:30–33` („superseded … auf genau diesem Punkt"), Master `:118–119` („Produkt-ADR-027(b) bei REQ-007") | ✅ |
+| B2 | Research-ADRs in Prosa, Verweis auf Master | 0028 `:10–12` („research ADR-046 …, ADR-048 …, ADR-049 …", „see `docs/roadmap-1.0.md`") | ✅ |
+| I1 | ADR-0021-Paraphrase korrigiert | 0029 `:7–9` („proven by breaking it — not established until observed to fail"); deckt sich mit ADR-0021 `:1` + `:63` | ✅ |
+| I2 | Roadmap-Formulierung präzisiert | Master `:117–119` (statt „ADR-0026/0027" jetzt „ADR-0026 (#292-Lücke) … Produkt-ADR-027(b) bei REQ-007") | ✅ |
+| I3 | #170 hat Heimat | Master `:66–67` (Phase 3), Ticket 11 `:17–19` (Kriterium + REQ-008-Unterscheidung) | ✅ |
+| I4 | Zirkularität 0028↔051 aufgelöst | 0028 „Builds on" `:11` → `docs/roadmap-1.0.md` (nicht 051); 051 `:67–70` behält Research-Log mit Begründung + Referenzrichtung | ✅ |
+| M2 | D11-Prozess-Abschnitt | 051 `:47–48` („Prozess (D11): … `to-spec` → `to-tickets` → `implement` → `code-review`") | ✅ |
+| M3 | arm64 | 051 `:17–18`, Master `:29` (beide im Infra-Track) | ✅ |
+| M5 | `.gitignore`-Eintrag | Ticket 01 `:12–13` („entfernt **und** in `.gitignore` eingetragen (verhindert Neuerzeugung)") | ✅ |
+| M6 | Kommentar-Charakterisierung präzisiert | 0028 `:32–33` („decision recaps whose length outweighs their signal" statt „explain what"), Disziplin `:59–60` | ✅ |
+| M8 | Deciders/Review getrennt | 0028 `:5`, 0029 `:5` („Deciders: NexusHero … · **Review:** Musti (Lead), ausstehend") | ✅ |
+| M9 | „Introduced by"-Feld | 0028 `:6`, 0029 `:6` | ✅ |
+
+Detailprüfung der Substanz (nicht nur „vorhanden, sondern auch richtig"):
+
+- **B1 widerspruchsfrei:** Alle drei Fundstellen formulieren identisch (Supersession *nur* auf dem
+  2FA-Punkt, Durchsetzungsort Ticket 05). Deckt sich mit dem Register
+  (`docs/requirements/register.md:231–238`: „superseded on this one point only — multi-device-without-
+  management, part (b)'s other half, is untouched") und mit dem Wortlaut der Quelle
+  (`025-027-a11y-export-konto.md:23` „keine 2FA in 1.0"). Kein Widerspruch.
+- **I1 deckt sich mit beiden Quellen:** Titel `:1` („proven by breaking it, not by watching it pass")
+  und Decision `:63` („not established until it has been observed to fail") sind korrekt übernommen.
+- **I4:** Die formale „Builds on"-Abhängigkeit von 0028 zeigt jetzt auf den Master, nicht auf 051;
+  die frühere Vorwärts-Kette ist aufgelöst. 051 rechtfertigt seine Research-Log-Zugehörigkeit explizit
+  (D1/D2/D5/D8 als Produkt-/Geschäftsentscheidungen) und definiert die Referenzrichtung.
+
+### Neue Punkte aus den Fixes (nicht-blockierend)
+
+- **N1 — 051-Entscheidungs-Historie zählt D3/D9/D21 nicht auf.** Der Body von 051 enthält jetzt
+  Abschnitte für D3 (Qualitätslatte `:35`), D9 (Mantel-Abschluss `:30`) und D21 (Agenten-Besatzung
+  `:50`), aber die Historie `:72–73` listet weiterhin nur „(D1, D2, D5, D7, D8, D10, D11, D12)". D21
+  ist seit Rev 1 neu (Master-Entscheidungslog jetzt bis D21, `docs/roadmap-1.0.md:186`; Master `:116`
+  spricht korrekt von „D1–D21"). Die Enumeration sollte um D21 (und zur Konsistenz D3/D9) ergänzt
+  werden. Reine Vollständigkeit — kein Entscheidungskonflikt.
+- **N2 — Residualverweis „research ADR-051" in 0028.** `0028:68` nennt weiterhin „parallel tracks
+  (research ADR-051)". Das ist eine Prosa-Kreuzreferenz (keine „Builds on"-Abhängigkeit), steht aber in
+  leichter Spannung zu 051 `:69–70` („Referenzrichtung: Engineering-ADRs verweisen auf den Master,
+  nicht umgekehrt auf diesen ADR"). Entweder die Klammer in 0028:68 streichen oder die Formulierung in
+  051 weicher fassen. Kein Blocker.
+- **N3 — Terminologie „product ADR log" vs. „Research-ADR-Log".** 0028 `:56` sagt „recorded in the
+  product ADR log", 051 `:33` sagt „im Research-ADR-Log nachgezogen". Beides meint dasselbe Verzeichnis
+  (`finanzo-funke-design-system/project/research/adr/`, laut `docs/adr/index.md:13–18` das „Product/
+  design log"). Nur Label-Drift, kein Widerspruch — für die Konsistenz vereinheitlichen.
+
+### Nicht im Scope / unverändert offen (wie im Erst-Review gefordert erst zur Promotion)
+
+- **M10** (doppelter Research-Index-Eintrag „036", `research/adr/index.md:43` + `:50`) ist unverändert
+  vorhanden — erwartungsgemäß, da als Promotion-Schritt geführt, nicht als Fix.
+- **051** ist noch nicht im Research-Index eingetragen (Index endet bei 050) — ebenfalls Promotion-Schritt.
+- **M1/M4/M7/M11** waren nicht als behauptete Fixes gelistet; nicht erneut geprüft. M7 („hand-rolled
+  rate limiter" vs. Code-Gegenargument) ist in 0028 unverändert — als Important-adjacent Punkt zur
+  Kenntnis, aber nicht Teil des Re-Review-Auftrags.
+
+### Fazit
+
+Die beiden Blocking-Findings (B1, B2) und alle als fixiert behaupteten Important-/Minor-Punkte sind
+korrekt und widerspruchsfrei umgesetzt. N1–N3 sind Ein-Zeilen-Konsistenz-Punkte, die die Promotion
+nicht aufhalten. **Promotion freigeben** (0028/0029 → `docs/adr/`, 051 → `research/adr/`, Index-Einträge
+inkl. M10-Bereinigung); N1–N3 idealerweise im selben Zug mitziehen.

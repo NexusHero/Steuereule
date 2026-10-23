@@ -70,4 +70,4 @@ und den Review-Engpass (ADR-0015) nicht schneller; Ausnahme nur in P2 bei leerer
   umgekehrt auf diesen ADR).
 
 **Entscheidungs-Historie:** 2026-10-23 — Entwurf aus der Roadmap-Grilling-Session
-(D1, D2, D5, D7, D8, D10, D11, D12). Review durch Musti vor Promotion aussteht.
+(D1, D2, D3, D5, D7, D8, D9, D10, D11, D12, D21). Rev 2 nach Mustis Re-Review (GO).
