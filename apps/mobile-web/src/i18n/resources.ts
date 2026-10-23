@@ -145,6 +145,9 @@ export const appResources = {
         submit: 'Konto anlegen',
         submitting: 'Wird angelegt …',
         legalNote: 'Mit dem Anlegen akzeptierst du AGB & Datenschutz.',
+        // The reverse of LoginScreen's "Neu hier? Konto anlegen" — closes the dead branch where
+        // a user on Registrierung had no way back (Phase 0.3 AC-2).
+        backToLogin: 'Schon ein Konto? Einloggen',
         errEmail: 'Das sieht noch nicht nach einer E-Mail aus.',
         errPass: 'Mindestens 6 Zeichen fürs Passwort.',
         success: {
@@ -611,6 +614,7 @@ export const appResources = {
         submit: 'Create account',
         submitting: 'Creating …',
         legalNote: 'By creating an account you accept the terms & privacy policy.',
+        backToLogin: 'Already have an account? Log in',
         errEmail: "That doesn't look like an email yet.",
         errPass: 'At least 6 characters for the password.',
         success: {

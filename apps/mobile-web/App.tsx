@@ -146,7 +146,14 @@ function LoginRoute({ navigation }: NativeStackScreenProps<RootStackParamList, '
 }
 
 function RegistrierungRoute({ navigation }: NativeStackScreenProps<RootStackParamList, 'Registrierung'>) {
-  return <RegistrierungScreen onDone={() => navigation.replace('Onboarding')} />
+  return (
+    <RegistrierungScreen
+      onDone={() => navigation.replace('Onboarding')}
+      // AC-2 (Phase 0.3): the reverse of Login's "Neu hier? Konto anlegen" — a user who reached
+      // Registrierung and changed their mind can go back instead of being stuck on a dead branch.
+      onLogin={() => navigation.replace('Login')}
+    />
+  )
 }
 
 function OnboardingRoute({ navigation }: NativeStackScreenProps<RootStackParamList, 'Onboarding'>) {

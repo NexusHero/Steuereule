@@ -1,47 +1,26 @@
-// Datenschutz (DSGVO) — REQ-011 (ADR-0013), reached from Profil (see ProfilScreen's "Deine
-// Daten" row), never a top-level tab (TAB_ORDNUNG groups it with Profil in the DS reference).
-// Built from finanzo-funke-design-system/project/ui_kits/app/datenschutz.html + Datenschutz.jsx
-// for the appbar/hero shell, but the "Deine Rechte" section is rebuilt as two real, wired
-// actions (export + delete) rather than the DS demo's tap-shows-a-toast placeholders — this
-// screen *is* the user-facing half of REQ-011, not a page that points back to Profil for it
-// (see steuereule#152's task framing).
+// Datenschutz (DSGVO) — REQ-011 (ADR-0013), reached from Profil (never a top-level tab). The
+// two wired actions (JSON/PDF export, account deletion) are the user-facing half of REQ-011; the
+// DS demo's tap-shows-a-toast placeholders are not reproduced. The delete copy is *corrected*,
+// not ported: profile + account are genuinely erased server-side; the access-log record is
+// anonymised and retained (Art. 30); export offers JSON + PDF only (no receipts model exists yet).
+// Marketing claims with no evidence ("Server in Deutschland", "KI ohne Gedächtnis", "im
+// Gast-Modus verlässt nichts dein Gerät") are omitted rather than overstated (ADR-0013 §8).
 //
-// Deliberate scope cuts from the DS reference (noted, not silently dropped):
-//   - The SCHUTZ marketing cards ("Server in Deutschland", "Nie verkauft, nie beworben", "KI
-//     ohne Gedächtnis") are unverified product/infra claims this slice has no evidence for —
-//     porting them would risk exactly the kind of overstatement ADR-0013 §8 calls out.
-//     Omitted rather than guessed at; a question for the stakeholder if they're wanted.
-//   - The "Ehrlich: was wir sehen" card's "Im Gast-Modus verlässt nichts dein Gerät" line is
-//     flatly false since guest profiles started persisting server-side, encrypted (ADR-0008,
-//     REQ-003) — the same correction LoginScreen's guestNote already made. Dropped rather than
-//     re-introduced here.
-//   - Berichtigung (Art. 16) and Übertragbarkeit (Art. 20) aren't separate tappable rows: Art.
-//     16 is already live via Profil's own edit flow (REQ-013) and Art. 20 is satisfied by the
-//     same JSON export as Art. 15 — a second row pointing at the same action would be a dead
-//     duplicate, not an honest affordance.
-//
-// Honesty correction (ADR-0013 §8, the point of this slice): the DS delete-Sheet copy ("Alle
-// Belege … auch auf unseren Servern … nicht rückgängig") and export label ("PDF-Bericht +
-// Belege (ZIP)") are corrected, not ported. See the `datenschutz` i18n keys in resources.ts for
-// the exact wording — profile + account are genuinely erased; the access-log record is
-// anonymised and *retained* (Art. 30), never deleted; Löschschutz-held data is retained under
-// legal obligation; export offers JSON + PDF only (no receipts model exists yet).
-//
-// #238 task 0c (ADR-0024): DeviceSessionsSection discloses that Session.ipAddress/userAgent
-// (persisted since day one) are now user-visible via QR-Code-Login's match-verification/device
-// list, and that QR-Login resolves the requesting device's IP to a country-level region on our
-// own EU infrastructure — never a third-party lookup API, never more than country granularity.
-// No Verarbeitungsverzeichnis entry rides with this — Musti confirmed none exists in this repo
-// today, and creating one is a legal-document decision for the stakeholder, not this slice.
+// #349 — the session read goes through the shared `useAccountSession()` seam, so a cold-start
+// 429/5xx/network failure reads as the honest `unknown` (this screen genuinely cannot tell
+// whether there is an account), never as `signed-out`/"GuestNotice" for a signed-in user.
 import { useState } from 'react'
-import { ActivityIndicator, ScrollView, View, Text, Pressable, type ViewStyle, type TextStyle } from 'react-native'
+import { ScrollView, View, Text, Pressable, ActivityIndicator } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { Button, Card, Feld, Input, Pill, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
+import { Button, Card, Pill, useTheme, useBreakpoint } from '@steuereule/ui'
 import { useAccountDeletionControllerDeleteAccount } from '@steuereule/api-client'
 import { APP_NS } from '../i18n/resources'
 import { useAccountSession } from '../auth/useAccountSession'
 import { downloadAccountExport, type ExportFormat } from './datenschutz/exportDownload'
+import { ExportSection, type ExportButtonState } from './datenschutz/ExportSection'
+import { DeleteSection, type DeleteFlow } from './datenschutz/DeleteSection'
+import { makeDatenschutzStyles } from './datenschutz/styles'
 
 export interface DatenschutzScreenProps {
   readonly onZurueck: () => void
@@ -51,38 +30,18 @@ export interface DatenschutzScreenProps {
   readonly onAccountDeleted: () => void
 }
 
-type ExportButtonState = 'idle' | 'loading' | 'success' | 'error'
-
-type DeleteFlow =
-  | { readonly kind: 'closed' }
-  | { readonly kind: 'offer'; readonly exported: boolean }
-  | { readonly kind: 'confirm'; readonly error?: 'generic' }
-  | { readonly kind: 'password'; readonly error?: 'wrong' | 'rateLimited' | 'generic' }
-  | { readonly kind: 'deleting' }
-  | { readonly kind: 'guestBlocked' }
-
 export function DatenschutzScreen({ onZurueck, onAccountDeleted }: DatenschutzScreenProps) {
   const bp = useBreakpoint()
   const { t } = useTranslation(APP_NS)
-  // A plain `(key: string) => string` adapter, not `t` itself: i18next's `TFunction` overload
-  // set (interpolation options, arrays of keys, …) is wider than every sub-component below
-  // needs, and threading the real `TFunction` type through each of their props would drag that
-  // whole overload set along for no benefit — every call site here passes a single string key.
+  // A plain `(key: string) => string` adapter, not `t` itself — the sections below only ever
+  // pass a single string key, and threading i18next's full overload set through their props
+  // would drag it along for no benefit.
   const tr = (key: string): string => t(key)
   const queryClient = useQueryClient()
   const deleteAccountMutation = useAccountDeletionControllerDeleteAccount()
 
-  // The one honest source for "does this session have a real account, or just a guest cookie":
-  // better-auth's own session read, the exact same call UserContextGuard/fresh-auth.ts make
-  // server-side. Never guessed at client-side (e.g. "did onboarding run") — that could drift
-  // from what the server would actually answer on GET/DELETE.
-  //
-  // #349 — routed through the shared `useAccountSession()` seam rather than `authClient.
-  // useSession()` directly: this screen used to read `sessionData === null` on its own, which
-  // shared DeviceScreen's exact defect (a cold-start 429/5xx/network failure reading as "no
-  // account" — `GuestNotice` for a signed-in user). `retrySession` below is `refetch`, unwrapped
-  // from `useAccountSession` rather than swallowed, so this screen's existing post-delete
-  // re-sync (Musti's #238 T1, F2) can still `await` it.
+  // The one honest source for "does this session have a real account, or just a guest cookie" —
+  // better-auth's own session read via the shared seam (#349), never guessed client-side.
   const { state: sessionState, retry: retrySession } = useAccountSession()
 
   const [exportState, setExportState] = useState<Record<ExportFormat, ExportButtonState>>({ json: 'idle', pdf: 'idle' })
@@ -109,15 +68,11 @@ export function DatenschutzScreen({ onZurueck, onAccountDeleted }: DatenschutzSc
       })
       switch (result.status) {
         case 200:
-          // Clear every cached query (profile/cockpit/…) before handing back to the caller —
-          // the next session (a fresh guest, or a different account) must never see this
-          // account's data flash from a stale cache (Slice-1-retro-class honesty bug).
+          // Clear every cached query before handing back — the next session must never see this
+          // account's data flash from a stale cache (Slice-1-retro honesty bug).
           queryClient.clear()
-          // ...and refetch better-auth's own session read right next to it (Musti's T1, F2):
-          // `useAccountSession()` is backed by better-auth's nanostores atom, which
-          // `queryClient.clear()` never touches. Without this, "signed out" only held by
-          // accident of this component unmounting — a re-mount (App.tsx keeps the auth
-          // client alive across the stage change back to Login) would read the stale,
+          // ...and refetch better-auth's own session read: `queryClient.clear()` never touches
+          // better-auth's nanostores atom, so without this a re-mount would read the stale,
           // still-signed-in atom and render actions for an account that no longer exists.
           await retrySession()
           setPassword('')
@@ -136,14 +91,10 @@ export function DatenschutzScreen({ onZurueck, onAccountDeleted }: DatenschutzSc
           setDeleteFlow({ kind: 'guestBlocked' })
           return
         default: {
-          // Musti's T1, F1: the generated union types `.status` as exactly the five cases
-          // above, but `httpClient` never throws on a non-2xx and genuinely reachable server
-          // errors (ADR-0013 §3 rollback) parse fine — so a real 500 reached this switch with
-          // no matching case, `deleteFlow` never left `'deleting'`, and the user sat on a
-          // spinner forever with no error and no way to cancel. Fall back to a usable state
-          // instead of silently hanging, and force any future status addition to be handled
-          // explicitly: if the generated union ever grows a new literal, `result` is no longer
-          // `never` here and this line fails to compile.
+          // The generated union types `.status` as exactly the cases above, but `httpClient`
+          // never throws on a non-2xx — a real 500 reached this switch with no case, leaving the
+          // user on a spinner forever. Fall back to a usable state, and force any future status
+          // addition to be handled explicitly (a new literal makes `result` no longer `never`).
           const exhaustiveCheck: never = result
           setDeleteFlow({ kind: withPassword !== undefined ? 'password' : 'confirm', error: 'generic' })
           return exhaustiveCheck
@@ -154,7 +105,7 @@ export function DatenschutzScreen({ onZurueck, onAccountDeleted }: DatenschutzSc
     }
   }
 
-  const styles = makeStyles(useTheme())
+  const styles = makeDatenschutzStyles(useTheme())
 
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
@@ -194,7 +145,7 @@ export function DatenschutzScreen({ onZurueck, onAccountDeleted }: DatenschutzSc
 
 function Appbar({ tr, onZurueck }: { readonly tr: (key: string) => string; readonly onZurueck: () => void }) {
   const t = useTheme()
-  const styles = makeStyles(t)
+  const styles = makeDatenschutzStyles(t)
   return (
     <View style={styles.appbar}>
       <Pressable accessibilityRole="button" accessibilityLabel={tr('datenschutz.back')} onPress={onZurueck} style={styles.backButton}>
@@ -206,9 +157,9 @@ function Appbar({ tr, onZurueck }: { readonly tr: (key: string) => string; reado
   )
 }
 
-function Hero({ tr }: { readonly tr: (key: string) => string } ) {
+function Hero({ tr }: { readonly tr: (key: string) => string }) {
   const t = useTheme()
-  const styles = makeStyles(t)
+  const styles = makeDatenschutzStyles(t)
   return (
     <Card variant="nacht">
       <Text style={styles.heroKicker}>{tr('datenschutz.hero.kicker')}</Text>
@@ -220,7 +171,7 @@ function Hero({ tr }: { readonly tr: (key: string) => string } ) {
 
 function SessionChecking({ tr }: { readonly tr: (key: string) => string }) {
   const t = useTheme()
-  const styles = makeStyles(t)
+  const styles = makeDatenschutzStyles(t)
   return (
     <View style={styles.centerBlock}>
       <ActivityIndicator size="large" color={t.color.tinte} accessibilityLabel={tr('datenschutz.sessionChecking')} />
@@ -229,13 +180,11 @@ function SessionChecking({ tr }: { readonly tr: (key: string) => string }) {
   )
 }
 
-// #349 — the honest third outcome: `/get-session` didn't answer (429, a 5xx, no connection), so
-// this screen genuinely does not know whether there's an account behind it. Never `GuestNotice`
-// (that asserts "no account", which we haven't established) and never the export/delete section
-// (that asserts a real account, equally unestablished) — see `useAccountSession.ts` for the
-// mechanism this state closes.
+// #349 — the honest third outcome: `/get-session` didn't answer, so this screen genuinely does
+// not know whether there's an account behind it. Never `GuestNotice` (asserts "no account") and
+// never the export/delete section (asserts a real account) — see `useAccountSession.ts`.
 function SessionUnknown({ tr, onRetry }: { readonly tr: (key: string) => string; readonly onRetry: () => void }) {
-  const styles = makeStyles(useTheme())
+  const styles = makeDatenschutzStyles(useTheme())
   return (
     <Card>
       <Text style={styles.sectionTitle} accessibilityRole="alert">
@@ -249,17 +198,12 @@ function SessionUnknown({ tr, onRetry }: { readonly tr: (key: string) => string;
   )
 }
 
-// #238, ADR-0024 (task 0c): discloses that Session.ipAddress/userAgent — collected
-// for every session since day one (prisma/schema.prisma) — are now user-visible via
-// the QR-Code-Login's match-verification screen and device list, and that QR-Login
-// additionally resolves the requesting device's IP to a country (never more
-// precise) on our own EU infrastructure, never a third-party lookup API. Derives
-// from this screen's own established Card + sectionTitle/sectionBody pattern —
-// no new component, shown to every visitor regardless of session state, same as the
-// Hero card above it.
+// #238, ADR-0024 (task 0c): discloses that Session.ipAddress/userAgent are now user-visible via
+// the QR-Code-Login's match-verification and the device list, and that QR-Login resolves the
+// requesting device's IP to a country on our own EU infrastructure — never a third-party lookup.
 function DeviceSessionsSection({ tr }: { readonly tr: (key: string) => string }) {
   const t = useTheme()
-  const styles = makeStyles(t)
+  const styles = makeDatenschutzStyles(t)
   return (
     <Card>
       <Text style={styles.sectionTitle}>{tr('datenschutz.deviceSessions.heading')}</Text>
@@ -272,277 +216,11 @@ function DeviceSessionsSection({ tr }: { readonly tr: (key: string) => string })
 
 function GuestNotice({ tr }: { readonly tr: (key: string) => string }) {
   const t = useTheme()
-  const styles = makeStyles(t)
+  const styles = makeDatenschutzStyles(t)
   return (
     <Card>
       <Text style={styles.sectionTitle}>{tr('datenschutz.guest.heading')}</Text>
       <Text style={styles.sectionBody}>{tr('datenschutz.guest.body')}</Text>
     </Card>
   )
-}
-
-interface ExportSectionProps {
-  readonly tr: (key: string) => string
-  readonly state: Record<ExportFormat, ExportButtonState>
-  readonly onExport: (format: ExportFormat) => void
-}
-
-function ExportSection({ tr, state, onExport }: ExportSectionProps) {
-  const t = useTheme()
-  const styles = makeStyles(t)
-  return (
-    <Card>
-      <Text style={styles.sectionTitle}>{tr('datenschutz.export.title')}</Text>
-      <Text style={styles.sectionBody}>{tr('datenschutz.export.subtitle')}</Text>
-
-      <ExportFormatRow
-        tr={tr}
-        format="json"
-        label={tr('datenschutz.export.jsonButton')}
-        hint={tr('datenschutz.export.jsonHint')}
-        state={state.json}
-        onPress={() => onExport('json')}
-      />
-      <ExportFormatRow
-        tr={tr}
-        format="pdf"
-        label={tr('datenschutz.export.pdfButton')}
-        hint={tr('datenschutz.export.pdfHint')}
-        state={state.pdf}
-        onPress={() => onExport('pdf')}
-      />
-    </Card>
-  )
-}
-
-interface ExportFormatRowProps {
-  readonly tr: (key: string) => string
-  readonly format: ExportFormat
-  readonly label: string
-  readonly hint: string
-  readonly state: ExportButtonState
-  readonly onPress: () => void
-}
-
-function ExportFormatRow({ tr, label, hint, state, onPress }: ExportFormatRowProps) {
-  const t = useTheme()
-  const styles = makeStyles(t)
-  return (
-    <View style={styles.exportRow}>
-      <Button variante="ghost" onPress={onPress} disabled={state === 'loading'}>
-        {state === 'loading' ? tr('datenschutz.export.preparing') : label}
-      </Button>
-      <Text style={styles.hint}>{hint}</Text>
-      {state === 'success' ? <Text style={styles.successNote}>{tr('datenschutz.export.success')}</Text> : null}
-      {state === 'error' ? (
-        <Text style={styles.errorNote} accessibilityRole="alert">
-          {tr('datenschutz.export.error')}
-        </Text>
-      ) : null}
-    </View>
-  )
-}
-
-interface DeleteSectionProps {
-  readonly tr: (key: string) => string
-  readonly flow: DeleteFlow
-  readonly password: string
-  readonly onPasswordChange: (value: string) => void
-  readonly onOpen: () => void
-  readonly onExportFirst: () => void
-  readonly onContinueWithoutExport: () => void
-  readonly onCancel: () => void
-  readonly onConfirmDelete: () => void
-  readonly onSubmitPassword: () => void
-}
-
-function DeleteSection({
-  tr,
-  flow,
-  password,
-  onPasswordChange,
-  onOpen,
-  onExportFirst,
-  onContinueWithoutExport,
-  onCancel,
-  onConfirmDelete,
-  onSubmitPassword,
-}: DeleteSectionProps) {
-  const t = useTheme()
-  const styles = makeStyles(t)
-
-  return (
-    <Card>
-      <Text style={styles.sectionTitle}>{tr('datenschutz.delete.title')}</Text>
-      <Text style={styles.sectionBody}>{tr('datenschutz.delete.subtitle')}</Text>
-
-      {flow.kind === 'closed' ? (
-        <View style={styles.buttonSpacer}>
-          <Button variante="ghost" onPress={onOpen}>
-            <Text style={styles.dangerLabel}>{tr('datenschutz.delete.openButton')}</Text>
-          </Button>
-        </View>
-      ) : null}
-
-      {flow.kind === 'offer' ? (
-        <View>
-          <Text style={styles.offerHeading}>{tr('datenschutz.delete.offer.heading')}</Text>
-          <Text style={styles.warningBody}>{tr('datenschutz.delete.offer.warning1')}</Text>
-          <Text style={styles.warningBody}>{tr('datenschutz.delete.offer.warning2')}</Text>
-          <View style={styles.buttonSpacer}>
-            <Button variante="leise" onPress={onExportFirst}>
-              {tr('datenschutz.delete.offer.exportFirstButton')}
-            </Button>
-          </View>
-          {flow.exported ? <Text style={styles.successNote}>{tr('datenschutz.delete.offer.exportedNote')}</Text> : null}
-          <View style={styles.buttonSpacer}>
-            <Button variante="ghost" onPress={onContinueWithoutExport}>
-              {tr('datenschutz.delete.offer.continueButton')}
-            </Button>
-          </View>
-          <View style={styles.buttonSpacer}>
-            <Button variante="ghost" onPress={onCancel}>
-              {tr('datenschutz.delete.offer.cancelButton')}
-            </Button>
-          </View>
-        </View>
-      ) : null}
-
-      {flow.kind === 'confirm' ? (
-        <View>
-          <Text style={styles.offerHeading}>{tr('datenschutz.delete.confirm.heading')}</Text>
-          <Text style={styles.warningBody}>{tr('datenschutz.delete.confirm.warning')}</Text>
-          {flow.error === 'generic' ? (
-            <Text style={styles.errorNote} accessibilityRole="alert">
-              {tr('datenschutz.delete.confirm.genericError')}
-            </Text>
-          ) : null}
-          <View style={styles.buttonSpacer}>
-            <Button variante="ghost" onPress={onConfirmDelete}>
-              <Text style={styles.dangerLabel}>{tr('datenschutz.delete.confirm.confirmButton')}</Text>
-            </Button>
-          </View>
-          <View style={styles.buttonSpacer}>
-            <Button variante="ghost" onPress={onCancel}>
-              {tr('datenschutz.delete.confirm.cancelButton')}
-            </Button>
-          </View>
-        </View>
-      ) : null}
-
-      {flow.kind === 'password' ? (
-        <View>
-          <Text style={styles.offerHeading}>{tr('datenschutz.delete.password.heading')}</Text>
-          <Text style={styles.warningBody}>{tr('datenschutz.delete.password.explain')}</Text>
-          <Feld label={tr('datenschutz.delete.password.label')}>
-            <Input type="password" value={password} onChange={onPasswordChange} accessibilityLabel={tr('datenschutz.delete.password.label')} />
-          </Feld>
-          {flow.error === 'wrong' ? (
-            <Text style={styles.errorNote} accessibilityRole="alert">
-              {tr('datenschutz.delete.password.wrongPasswordError')}
-            </Text>
-          ) : null}
-          {flow.error === 'rateLimited' ? (
-            <Text style={styles.errorNote} accessibilityRole="alert">
-              {tr('datenschutz.delete.password.rateLimitedError')}
-            </Text>
-          ) : null}
-          {flow.error === 'generic' ? (
-            <Text style={styles.errorNote} accessibilityRole="alert">
-              {tr('datenschutz.delete.password.genericError')}
-            </Text>
-          ) : null}
-          <View style={styles.buttonSpacer}>
-            <Button variante="ghost" onPress={onSubmitPassword} disabled={password.trim() === ''}>
-              <Text style={styles.dangerLabel}>{tr('datenschutz.delete.password.submitButton')}</Text>
-            </Button>
-          </View>
-          <View style={styles.buttonSpacer}>
-            <Button variante="ghost" onPress={onCancel}>
-              {tr('datenschutz.delete.password.cancelButton')}
-            </Button>
-          </View>
-        </View>
-      ) : null}
-
-      {flow.kind === 'deleting' ? (
-        <View style={styles.centerBlock}>
-          <ActivityIndicator size="small" color={t.color.tinte} accessibilityLabel={tr('datenschutz.delete.deleting')} />
-          <Text style={styles.help}>{tr('datenschutz.delete.deleting')}</Text>
-        </View>
-      ) : null}
-
-      {flow.kind === 'guestBlocked' ? (
-        <Text style={styles.errorNote} accessibilityRole="alert">
-          {tr('datenschutz.delete.guestBlocked')}
-        </Text>
-      ) : null}
-    </Card>
-  )
-}
-
-function makeStyles(t: UiTheme) {
-  const screen: ViewStyle = {
-    backgroundColor: t.color.grund,
-    paddingHorizontal: t.space.s5,
-    paddingVertical: t.space.s6,
-    minHeight: '100%',
-    maxWidth: 460,
-    width: '100%',
-    alignSelf: 'center',
-  }
-  const wideScreen: ViewStyle = { ...screen, maxWidth: WIDE_CONTENT_MAX_WIDTH }
-  const appbar: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s3, paddingBottom: t.space.s4 }
-  const backButton: ViewStyle = {
-    width: 44,
-    height: 44,
-    borderRadius: t.radius.pille,
-    borderWidth: 2,
-    borderColor: t.color.tinte,
-    backgroundColor: t.color.karte,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...t.shadow.hartS,
-  }
-  const backGlyph: TextStyle = { fontFamily: t.font.text, fontWeight: t.weight.schwer, fontSize: t.size.l, color: t.color.tinte }
-  const appbarTitle: TextStyle = { fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size['2xl'], color: t.color.tinte, flex: 1 }
-  const heroKicker: TextStyle = { fontFamily: t.font.mono, fontSize: t.size.xs, color: t.color.funkeHell, textTransform: 'uppercase', letterSpacing: 0.08 * t.size.xs }
-  const heroHeading: TextStyle = { fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size['2xl'], color: t.color.nachtText, marginTop: t.space.s2, marginBottom: t.space.s2, lineHeight: t.size['2xl'] * 1.1 }
-  const heroBody: TextStyle = { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.nachtText, opacity: 0.85 }
-  const centerBlock: ViewStyle = { alignItems: 'center', justifyContent: 'center', paddingVertical: t.space.s6, gap: t.space.s3 }
-  const help: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.m, textAlign: 'center' }
-  const sectionTitle: TextStyle = { fontFamily: t.font.text, fontWeight: t.weight.schwer, fontSize: t.size.l, color: t.color.tinte, marginBottom: t.space.s2 }
-  const sectionBody: TextStyle = { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte2, marginBottom: t.space.s4 }
-  const exportRow: ViewStyle = { marginBottom: t.space.s4 }
-  const hint: TextStyle = { fontFamily: t.font.text, fontSize: t.size.xs, color: t.color.tinte2, marginTop: t.space.s2 }
-  const successNote: TextStyle = { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte, marginTop: t.space.s2 }
-  const errorNote: TextStyle = { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.fehler, marginTop: t.space.s2 }
-  const dangerLabel: TextStyle = { fontFamily: t.font.text, fontWeight: t.weight.schwer, fontSize: t.size.m, color: t.color.fehler }
-  const offerHeading: TextStyle = { fontFamily: t.font.text, fontWeight: t.weight.schwer, fontSize: t.size.m, color: t.color.tinte, marginTop: t.space.s2, marginBottom: t.space.s2 }
-  const warningBody: TextStyle = { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte2, marginBottom: t.space.s3 }
-  const buttonSpacer: ViewStyle = { marginTop: t.space.s3 }
-
-  return {
-    screen,
-    wideScreen,
-    appbar,
-    backButton,
-    backGlyph,
-    appbarTitle,
-    heroKicker,
-    heroHeading,
-    heroBody,
-    centerBlock,
-    help,
-    sectionTitle,
-    sectionBody,
-    exportRow,
-    hint,
-    successNote,
-    errorNote,
-    dangerLabel,
-    offerHeading,
-    warningBody,
-    buttonSpacer,
-  }
 }
