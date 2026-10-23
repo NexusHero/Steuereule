@@ -1,0 +1,67 @@
+# ---------------------------------------------------------------------------
+# Staging overlay. WHY overlays and not separate full manifests: the delta between
+# staging and prod is exactly this — image tag + the three origins + ingress hosts — and
+# a diff this small is the whole point of base+overlay (no duplicated YAML to drift).
+# ---------------------------------------------------------------------------
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: steuereule-staging
+
+resources:
+  - ../../base
+
+images:
+  - name: ghcr.io/steuereule/api
+    newTag: staging
+  - name: ghcr.io/steuereule/web
+    newTag: staging
+
+patches:
+  - target:
+      kind: ConfigMap
+      name: steuereule-api-config
+    patch: |-
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: steuereule-api-config
+      data:
+        BETTER_AUTH_URL: https://api.staging.steuereule.example
+        CORS_ALLOWED_ORIGINS: https://staging.steuereule.example
+        WEB_APP_URL: https://staging.steuereule.example
+  - target:
+      kind: Ingress
+      name: steuereule
+    patch: |-
+      apiVersion: networking.k8s.io/v1
+      kind: Ingress
+      metadata:
+        name: steuereule
+      spec:
+        tls:
+          - hosts:
+              - api.staging.steuereule.example
+              - staging.steuereule.example
+            secretName: steuereule-staging-tls
+        rules:
+          - host: api.staging.steuereule.example
+            http:
+              paths:
+                - path: /
+                  pathType: Prefix
+                  backend:
+                    service:
+                      name: api
+                      port:
+                        number: 3000
+          - host: staging.steuereule.example
+            http:
+              paths:
+                - path: /
+                  pathType: Prefix
+                  backend:
+                    service:
+                      name: web
+                      port:
+                        number: 8080

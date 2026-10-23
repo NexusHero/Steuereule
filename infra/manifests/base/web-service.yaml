@@ -1,0 +1,12 @@
+# Web app service — ClusterIP like the API; the public path is through the ingress.
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+spec:
+  selector:
+    app: web
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
