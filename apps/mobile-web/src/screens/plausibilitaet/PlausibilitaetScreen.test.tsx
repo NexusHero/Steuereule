@@ -54,6 +54,9 @@ describe('PlausibilitaetScreen', () => {
     renderPlausibilitaet()
 
     expect(await screen.findByText('Alles klar — du kannst abgeben.')).toBeTruthy()
+    // ADR-0032 (ticket 15 review F3): "einreichbar" must not read as "everything was checked" —
+    // the werktage/Pendlerpauschale boundary is stated on the screen, not hidden in the header.
+    expect(screen.getByText('Ehrlich: die Arbeitstage- und Pendlerpauschale-Prüfung folgt in einem späteren Schritt.')).toBeTruthy()
   })
 
   it('names a gated Einkunftsart as a blocker (ADR-032)', async () => {

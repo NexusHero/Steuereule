@@ -95,11 +95,11 @@ describe('CockpitScreen', () => {
     expect(await screen.findByText('1 Frage offen')).toBeTruthy()
   })
 
-  it('shows the "N LStB-Felder offen" line from the spanne', async () => {
+  it('shows the "N Posten offen" line from the spanne', async () => {
     mockCockpit(LOADED_SUMMARY)
     renderCockpit()
 
-    expect(await screen.findByText('2 LStB-Felder offen')).toBeTruthy()
+    expect(await screen.findByText('2 Posten offen')).toBeTruthy()
   })
 
   it('reveals provenance (Herkunft) on tap, consistent with the shown range', async () => {
@@ -109,7 +109,7 @@ describe('CockpitScreen', () => {
     await screen.findByText('Erfasstes Einkommen')
     fireEvent.click(screen.getByText('Herkunft'))
     expect(screen.getByText('Spannen-Regel · ADR-015')).toBeTruthy()
-    expect(screen.getByText('2 offene Felder × 60 € Unsicherheit')).toBeTruthy()
+    expect(screen.getByText('2 offene Posten × 60 € Unsicherheit')).toBeTruthy()
   })
 
   it('shows the appbar title and tax year pill', async () => {
@@ -209,7 +209,7 @@ describe('CockpitScreen', () => {
 
     await screen.findByText('Noch keine Angaben.')
     expect(
-      screen.getByText('Für dieses Steuerjahr liegen noch keine Angaben vor. Sobald deine Daten da sind, zeigen wir dir hier deine Erstattung.'),
+      screen.getByText('Für dieses Steuerjahr liegen noch keine Angaben vor. Sobald deine Daten da sind, zeigen wir dir hier dein erfasstes Einkommen.'),
     ).toBeTruthy()
     expect(screen.queryByText('Erfasstes Einkommen')).toBeNull()
     expect(screen.getAllByText('Aktualisieren')).toHaveLength(1)

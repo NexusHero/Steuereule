@@ -12,11 +12,9 @@
 import { Inject, Injectable } from '@nestjs/common'
 import {
   LEERES_LSTB,
-  angestellteAusAntworten,
+  angestellteAusDaten,
   cockpitSpanneAusEingaben,
   deserialisiereLstbFeld,
-  gatedEinkunftsarten,
-  lstbZustand,
   type Answers,
   type CockpitSpanne,
   type LstbDaten,
@@ -41,55 +39,6 @@ function toAnswers(rows: InterviewAnswerRecord[]): Answers {
   const answers: Record<string, string> = {}
   for (const row of rows) answers[row.questionId] = row.value
   return answers as Answers
-}
-
-/** The LStB figures only apply when the Angestellte vertical does (job = Angestellt/Beides). */
-function angestellteZutreffend(answers: Answers): boolean {
-  return answers.job === 'Angestellt' || answers.job === 'Beides'
-}
-
-/**
- * The settled income-Posten sum this slice can fold (ADR-048: income-only Posten). Only the
- * LStB Bruttoarbeitslohn (when the Angestellte vertical applies) and a declared Nebenjob's
- * Brutto are income; Werbungskosten and Sonderausgaben are captured-but-not-folded (their
- * formulas are later slices) and never enter this sum — a partial truth stated as a partial
- * truth, never a guess.
- */
-function summeAusDaten(daten: LstbDaten, answers: Answers): number {
-  let summe = 0
-  if (angestellteZutreffend(answers) && daten.bruttoarbeitslohn.kind === 'erfasst') {
-    summe += daten.bruttoarbeitslohn.wert
-  }
-  if (answers.nebenjob === 'Midijob' || answers.nebenjob === 'Nebenjob') {
-    summe += angestellteAusAntworten(answers).nebenjobBrutto
-  }
-  return summe
-}
-
-/**
- * Required-but-empty line items: the LStB's own open/unclear fields (only when the Angestellte
- * vertical applies — a pensioner/self-employed person has no LStB to transcribe), plus a
- * declared Nebenjob whose Brutto follow-up was never entered. Optional Lebenslagen/Sonderausgaben
- * branches are NOT counted — they are optional-by-declaration, and their amounts surface as a
- * plausibility Hinweis, not as an open required line item.
- */
-function offenePostenAusDaten(daten: LstbDaten, answers: Answers): number {
-  let offen = 0
-  if (angestellteZutreffend(answers)) {
-    const zustand = lstbZustand(daten)
-    if (zustand.kind === 'unvollstaendig') offen = zustand.offen.length + zustand.unklar.length
-  }
-  const nebenjobOffen =
-    (answers.nebenjob === 'Midijob' || answers.nebenjob === 'Nebenjob') && angestellteAusAntworten(answers).nebenjobBrutto === 0
-  if (nebenjobOffen) offen += 1
-  return offen
-}
-
-/** Open conflicts: the LStB's named widerspruch (ADR-008), counted — `berechne` reads only this count. */
-function konflikteAusDaten(daten: LstbDaten, answers: Answers): number {
-  if (!angestellteZutreffend(answers)) return 0
-  const zustand = lstbZustand(daten)
-  return zustand.kind === 'widerspruch' ? zustand.widersprueche.length : 0
 }
 
 /** The core's CockpitSpanne → the flat wire DTO (kind + optional fields, LstbZustandDto's shape). */
@@ -130,12 +79,14 @@ export class CockpitService {
     const answers = toAnswers(interviewRows)
 
     // The one and only place the stand is derived — @steuereule/core's cockpitSpanneAusEingaben,
-    // never re-derived here (determinism boundary, ADR-014/048/015).
+    // never re-derived here (determinism boundary, ADR-014/048/015). The settled income + open/
+    // conflict counts come from `angestellteAusDaten`, the single core fold shared with mobile-web.
+    const fakten = angestellteAusDaten(daten, answers)
     const stand = cockpitSpanneAusEingaben({
-      summe: summeAusDaten(daten, answers),
-      offenePosten: offenePostenAusDaten(daten, answers),
-      konflikte: konflikteAusDaten(daten, answers),
-      gegated: gatedEinkunftsarten(answers),
+      summe: fakten.einnahmen,
+      offenePosten: fakten.offenePosten,
+      konflikte: fakten.konflikte,
+      gegated: fakten.gegated,
     })
 
     return { taxYear: record.steuerjahr, stand: toStandDto(stand), openItems: record.openItems }

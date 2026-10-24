@@ -13,7 +13,8 @@
 // foldable; Abfindung/Lohnersatz/DHF-Miete are captured but surfaced as "not yet computed", never
 // silently dropped or guessed (ADR-032). Pure, deterministic, dependency-free (ADR-0004).
 import type { Answers } from './interview.js'
-import type { Einkunftsart } from './einkunftsarten.js'
+import { gatedEinkunftsarten, type Einkunftsart } from './einkunftsarten.js'
+import { lstbZustand, type LstbDaten } from './lstb.js'
 
 /**
  * The interview-catalogue-derived figures for the Angestellte case, already categorised into
@@ -136,5 +137,57 @@ export function angestelltenStand(eingaben: AngestellteEingaben): AngestelltenSt
     offenePosten: eingaben.offenePosten,
     konflikte: eingaben.konflikte,
     gegated: eingaben.gegated,
+  }
+}
+
+/**
+ * The ONE fold from the readable Angestellte facts (LStB + catalogue answers) → every numeric
+ * input both the Cockpit spanne AND the Plausibilitäts-Prüfung need: the settled income sum, the
+ * open required line items, the open conflicts, the gated Einkunftsarten and the
+ * captured-but-not-folded amounts. Extracted (ticket 15 review F2) so the Cockpit API service
+ * and the mobile-web Plausibilitäts-Screen share this single derivation instead of each re-summing
+ * "LStB Brutto + Nebenjob" and re-counting open/conflict on its own — one truth (ADR-014/048),
+ * never a second calc path that can drift when a new income Posten is added.
+ */
+export interface AngestellteFakten {
+  /** Settled income: LStB Bruttoarbeitslohn (Angestellte vertical only) + declared Nebenjob-Brutto. */
+  readonly einnahmen: number
+  /** Werbungskosten: Umzug only this slice — Pendlerpauschale absent until werktage is persisted. */
+  readonly werbungskosten: number
+  /** Sonderausgaben: Spenden + KV/PV + Riester (reported, never subtracted — later slice's formula). */
+  readonly sonderausgaben: number
+  /** Still-open required line items (open LStB fields + a declared Nebenjob whose Brutto is still 0). */
+  readonly offenePosten: number
+  /** Open LStB widerspruch count (ADR-008). */
+  readonly konflikte: number
+  /** Declared-but-uncomputable Einkunftsarten (ADR-028/032/033), from `gatedEinkunftsarten`. */
+  readonly gegated: readonly Einkunftsart[]
+  /** Captured-but-not-folded amounts (DHF-Miete + Abfindung + Lohnersatz), whole euros. */
+  readonly erfasstNichtGerechnet: number
+}
+
+/** Fold the readable Angestellte facts into the shared numeric inputs (the one truth, ADR-014/048). */
+export function angestellteAusDaten(daten: LstbDaten, answers: Answers): AngestellteFakten {
+  const zahlen = angestellteAusAntworten(answers)
+  const zustand = lstbZustand(daten)
+  const angestellt = answers.job === 'Angestellt' || answers.job === 'Beides'
+
+  const einnahmen =
+    (angestellt && daten.bruttoarbeitslohn.kind === 'erfasst' ? daten.bruttoarbeitslohn.wert : 0) + zahlen.nebenjobBrutto
+
+  const offeneLstb =
+    angestellt && zustand.kind === 'unvollstaendig' ? zustand.offen.length + zustand.unklar.length : 0
+  const nebenjobOffen =
+    (answers.nebenjob === 'Midijob' || answers.nebenjob === 'Nebenjob') && zahlen.nebenjobBrutto === 0
+  const offenePosten = offeneLstb + (nebenjobOffen ? 1 : 0)
+
+  return {
+    einnahmen,
+    werbungskosten: zahlen.umzugKosten,
+    sonderausgaben: zahlen.spenden + zahlen.kvPvBeitraege + zahlen.riester,
+    offenePosten,
+    konflikte: angestellt && zustand.kind === 'widerspruch' ? zustand.widersprueche.length : 0,
+    gegated: gatedEinkunftsarten(answers),
+    erfasstNichtGerechnet: zahlen.dhfMiete + zahlen.abfindungBetrag + zahlen.lohnersatzBetrag,
   }
 }

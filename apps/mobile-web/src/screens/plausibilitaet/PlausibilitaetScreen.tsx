@@ -13,9 +13,8 @@ import { ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-na
 import { useTranslation } from 'react-i18next'
 import { useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
 import {
-  angestellteAusAntworten,
+  angestellteAusDaten,
   angestelltenStand,
-  gatedEinkunftsarten,
   lstbZustand,
   pruefePlausibilitaet,
   type Answers,
@@ -75,6 +74,11 @@ export function PlausibilitaetScreen({ onBack, taxYear = CURRENT_TAX_YEAR }: Pla
 
       <Text style={styles.heading}>{tr('plausibilitaet.heading')}</Text>
 
+      {/* ADR-0032 (ticket 15 review F3): the werktage/Pendlerpauschale check is NOT run this
+          slice — say so on the screen, not just in this file's header, so "einreichbar" can never
+          read as "everything was checked". Shown always, not hidden in a footnote. */}
+      <Text style={styles.werktageNote}>{tr('plausibilitaet.werktageNote')}</Text>
+
       {ergebnis.kind === 'einreichbar' ? (
         <Text style={styles.einreichbar}>{tr('plausibilitaet.einreichbar')}</Text>
       ) : (
@@ -117,22 +121,22 @@ function datenAusResponse(r: LstbResponseDto): LstbDaten {
 
 /** Fold the readable facts into the core's PlausibilitaetsEingaben (werktage neutral — see header). */
 function fold(daten: LstbDaten, answers: Answers) {
-  const zahlen = angestellteAusAntworten(answers)
-  const zustand = lstbZustand(daten)
-  const angestellt = answers.job === 'Angestellt' || answers.job === 'Beides'
-
-  const einnahmen = (angestellt && daten.bruttoarbeitslohn.kind === 'erfasst' ? daten.bruttoarbeitslohn.wert : 0) + zahlen.nebenjobBrutto
-  const werbungskosten = zahlen.umzugKosten // Pendlerpauschale absent — werktage not persisted this slice.
-  const sonderausgaben = zahlen.spenden + zahlen.kvPvBeitraege + zahlen.riester
-
-  const offenePosten = angestellt && zustand.kind === 'unvollstaendig' ? zustand.offen.length + zustand.unklar.length : 0
-  const konflikte = angestellt && zustand.kind === 'widerspruch' ? zustand.widersprueche.length : 0
+  // The settled income + open/conflict counts are NOT re-derived here — `angestellteAusDaten`
+  // is the ONE core fold the Cockpit API and this screen both consume (ticket 15 review F2).
+  const fakten = angestellteAusDaten(daten, answers)
 
   return {
-    lstb: zustand,
+    lstb: lstbZustand(daten),
     werktage: { kind: 'bestimmt' as const, wochentage: 0, werktage: 0, pendlertage: 0 },
-    stand: angestelltenStand({ einnahmen, werbungskosten, sonderausgaben, offenePosten, konflikte, gegated: gatedEinkunftsarten(answers) }),
-    erfasstNichtGerechnet: zahlen.dhfMiete + zahlen.abfindungBetrag + zahlen.lohnersatzBetrag,
+    stand: angestelltenStand({
+      einnahmen: fakten.einnahmen,
+      werbungskosten: fakten.werbungskosten,
+      sonderausgaben: fakten.sonderausgaben,
+      offenePosten: fakten.offenePosten,
+      konflikte: fakten.konflikte,
+      gegated: fakten.gegated,
+    }),
+    erfasstNichtGerechnet: fakten.erfasstNichtGerechnet,
   }
 }
 
@@ -155,11 +159,12 @@ function makeStyles(t: UiTheme) {
     color: t.color.tinte,
     marginBottom: t.space.s3,
   }
+  const werktageNote: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.s, marginBottom: t.space.s3 }
   const einreichbar: TextStyle = { color: t.color.ok, fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size.l, marginBottom: t.space.s4 }
   const nichtEinreichbar: TextStyle = { color: t.color.warn, fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size.l, marginBottom: t.space.s4 }
   const block: ViewStyle = { marginBottom: t.space.s4, padding: t.space.s3, backgroundColor: t.color.karte, borderWidth: t.space.kontur, borderColor: t.color.linieWeich, borderRadius: t.radius.s }
   const blockHeading: TextStyle = { color: t.color.tinte, fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size.m, marginBottom: t.space.s2 }
   const widerspruchItem: TextStyle = { color: t.color.fehler, fontFamily: t.font.text, fontSize: t.size.s, marginBottom: t.space.s1 }
   const hinweisItem: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.s, marginBottom: t.space.s1 }
-  return { screen, wideScreen, headerRow, heading, einreichbar, nichtEinreichbar, block, blockHeading, widerspruchItem, hinweisItem }
+  return { screen, wideScreen, headerRow, heading, werktageNote, einreichbar, nichtEinreichbar, block, blockHeading, widerspruchItem, hinweisItem }
 }

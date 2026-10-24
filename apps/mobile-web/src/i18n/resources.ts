@@ -671,6 +671,9 @@ export const appResources = {
         heading: 'Prüfung vor Abgabe',
         einreichbar: 'Alles klar — du kannst abgeben.',
         nichtEinreichbar: 'Da ist noch etwas offen:',
+        // Ticket 15 review F3 — the werktage/Pendlerpauschale check is not run this slice; the
+        // screen says so instead of letting "einreichbar" read as "everything was checked".
+        werktageNote: 'Ehrlich: die Arbeitstage- und Pendlerpauschale-Prüfung folgt in einem späteren Schritt.',
         widersprueche: 'Widersprüche',
         hinweise: 'Hinweise',
         widerspruch: {
@@ -695,7 +698,7 @@ export const appResources = {
         },
         empty: {
           heading: 'Noch keine Angaben.',
-          message: 'Für dieses Steuerjahr liegen noch keine Angaben vor. Sobald deine Daten da sind, zeigen wir dir hier deine Erstattung.',
+          message: 'Für dieses Steuerjahr liegen noch keine Angaben vor. Sobald deine Daten da sind, zeigen wir dir hier dein erfasstes Einkommen.',
         },
         hero: {
           // Ticket 15 — the Schätz-Platzhalter is gone; the hero now shows the deterministic
@@ -705,11 +708,11 @@ export const appResources = {
           label: 'Erfasstes Einkommen',
           openItems_one: '{{count}} Frage offen',
           openItems_other: '{{count}} Fragen offen',
-          offenePosten_one: '{{count}} LStB-Feld offen',
-          offenePosten_other: '{{count}} LStB-Felder offen',
+          offenePosten_one: '{{count}} Posten offen',
+          offenePosten_other: '{{count}} Posten offen',
           herkunftRegel: 'Spannen-Regel · ADR-015',
-          herkunftRechenweg_one: '{{count}} offenes Feld × {{perItem}} Unsicherheit',
-          herkunftRechenweg_other: '{{count}} offene Felder × {{perItem}} Unsicherheit',
+          herkunftRechenweg_one: '{{count}} offener Posten × {{perItem}} Unsicherheit',
+          herkunftRechenweg_other: '{{count}} offene Posten × {{perItem}} Unsicherheit',
           // ADR-032 — a declared-but-uncomputable Einkunftsart is named, never widened into a
           // numeric range. `{{name}}` is the German domain vocabulary (e.g. "Gewerbe").
           gatedHeading: 'Ehrlich: dafür sind wir noch nicht gut genug.',
@@ -1276,6 +1279,7 @@ export const appResources = {
         heading: 'Check before filing',
         einreichbar: "All clear — you're ready to file.",
         nichtEinreichbar: 'Something is still open:',
+        werktageNote: "Honestly: the work-days and commuting-allowance check comes in a later step.",
         widersprueche: 'Blockers',
         hinweise: 'Warnings',
         widerspruch: {
@@ -1300,17 +1304,17 @@ export const appResources = {
         },
         empty: {
           heading: 'No details yet.',
-          message: "There's nothing on record for this tax year yet. Once your data is in, your refund shows up here.",
+          message: "There's nothing on record for this tax year yet. Once your data is in, your recorded income shows up here.",
         },
         hero: {
           label: 'Recorded income',
           openItems_one: '{{count}} question still open',
           openItems_other: '{{count}} questions still open',
-          offenePosten_one: '{{count}} LStB field still open',
-          offenePosten_other: '{{count}} LStB fields still open',
+          offenePosten_one: '{{count}} item still open',
+          offenePosten_other: '{{count}} items still open',
           herkunftRegel: 'Range rule · ADR-015',
-          herkunftRechenweg_one: '{{count}} open field × {{perItem}} uncertainty',
-          herkunftRechenweg_other: '{{count}} open fields × {{perItem}} uncertainty',
+          herkunftRechenweg_one: '{{count}} open item × {{perItem}} uncertainty',
+          herkunftRechenweg_other: '{{count}} open items × {{perItem}} uncertainty',
           gatedHeading: "Honestly: we're not good enough for this yet.",
           gatedBody: "{{name}} is something SteuerEule can't calculate in version 1 yet. Your recorded income stays visible — nothing is filed until everything is in.",
           refundLater: "We'll calculate the refund in a later step.",
