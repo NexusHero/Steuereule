@@ -195,7 +195,10 @@ describe('InterviewService', () => {
     it('admits ch-wohnsitz as the CH entry’s first question and returns the CH next step, without touching the Minimal-Gate’s openItems', async () => {
       const result = await service.postAnswer(USER_ID, STEUERJAHR, { questionId: 'ch-wohnsitz', value: 'Deutschland' })
 
-      expect(result).toEqual({ nextStep: { kind: 'question', id: 'ch-nichtrueckkehrtage' }, openItems: 3 })
+      // Entry-scoped openItems (union with ticket 08's semantics): 1 of 2 segment-ch questions
+      // answered → 1 remaining. The Minimal-Gate's own count stays untouched (see the repository
+      // write below — openItems is the Minimal-Gate projection, unchanged by CH answers).
+      expect(result).toEqual({ nextStep: { kind: 'question', id: 'ch-nichtrueckkehrtage' }, openItems: 1 })
       await expect(repository.findAllForUserAndYear(USER_ID, STEUERJAHR)).resolves.toEqual([
         { questionId: 'ch-wohnsitz', value: 'Deutschland' },
       ])
@@ -228,7 +231,7 @@ describe('InterviewService', () => {
       await service.postAnswer(USER_ID, STEUERJAHR, { questionId: 'ch-wohnsitz', value: 'Schweiz' })
       const result = await service.postAnswer(USER_ID, STEUERJAHR, { questionId: 'ch-nichtrueckkehrtage', value: '0' })
 
-      expect(result).toEqual({ nextStep: { kind: 'done' }, openItems: 3 })
+      expect(result).toEqual({ nextStep: { kind: 'done' }, openItems: 0 })
       await expect(repository.findAllForUserAndYear(USER_ID, STEUERJAHR)).resolves.toEqual([
         { questionId: 'ch-wohnsitz', value: 'Schweiz' },
         { questionId: 'ch-nichtrueckkehrtage', value: '0' },

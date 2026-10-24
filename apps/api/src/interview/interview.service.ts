@@ -21,7 +21,6 @@ import {
   remainingStepsFor,
   type Answers,
   type EntryId,
-  type EntryStepId,
 } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
 import {

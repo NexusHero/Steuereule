@@ -1,4 +1,4 @@
-// REQ-017 — the Grenzgänger-CH interview entry (segment-ch, ADR-013/036). Real Postgres,
+// REQ-020 — the Grenzgänger-CH interview entry (segment-ch, ADR-013/036). Real Postgres,
 // real HTTP against the actual `buildApp()` boot (never `.inject()`) — the acceptance tier
 // the register's `Done` binds to, same bar as REQ-015 (#318).
 //
@@ -27,7 +27,7 @@ const STEUERJAHR = 2026
 
 type InterviewAnswerRow = { userId: string; steuerjahr: number; questionId: string; value: string }
 
-describe('REQ-017 — the Grenzgänger-CH interview entry, against the real server', () => {
+describe('REQ-020 — the Grenzgänger-CH interview entry, against the real server', () => {
   let app: NestFastifyApplication
   let baseUrl: string
   let prisma: PrismaClient
@@ -82,7 +82,9 @@ describe('REQ-017 — the Grenzgänger-CH interview entry, against the real serv
       body: JSON.stringify({ questionId: 'ch-wohnsitz', value: 'Deutschland' }),
     })
     expect(wohnsitz.status).toBe(200)
-    expect(await wohnsitz.json()).toEqual({ nextStep: { kind: 'question', id: 'ch-nichtrueckkehrtage' }, openItems: 3 })
+    // Entry-scoped openItems (union with ticket 08's response semantics): 1 of 2 segment-ch
+    // questions answered → 1 remaining. The Minimal-Gate's own count stays untouched.
+    expect(await wohnsitz.json()).toEqual({ nextStep: { kind: 'question', id: 'ch-nichtrueckkehrtage' }, openItems: 1 })
 
     const tage = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
       method: 'POST',
@@ -90,7 +92,7 @@ describe('REQ-017 — the Grenzgänger-CH interview entry, against the real serv
       body: JSON.stringify({ questionId: 'ch-nichtrueckkehrtage', value: '20' }),
     })
     expect(tage.status).toBe(200)
-    expect(await tage.json()).toEqual({ nextStep: { kind: 'done' }, openItems: 3 })
+    expect(await tage.json()).toEqual({ nextStep: { kind: 'done' }, openItems: 0 })
 
     // Raw SQL proves the two rows exist; the GET proves the values are decrypted back to what
     // the client sent (raw SQL returns ciphertext — asserted as such in the ciphertext test below).
