@@ -12,7 +12,7 @@ import type { PrismaClient } from '@prisma/client'
 import { prismaAdapter } from '@better-auth/prisma-adapter'
 import { betterAuth, type Auth, type BetterAuthOptions } from 'better-auth'
 import { getCookies } from 'better-auth/cookies'
-import { deviceAuthorization, haveIBeenPwned } from 'better-auth/plugins'
+import { deviceAuthorization, haveIBeenPwned, twoFactor } from 'better-auth/plugins'
 import { hibpFailOpenPlugin } from './breach-check.js'
 import { deviceSessionCookiePlugin } from './device-session-cookie.js'
 import type { EmailSender } from './email-sender.js'
@@ -278,6 +278,34 @@ export function resolveGoogleClientSecret(env: NodeJS.ProcessEnv = process.env):
   return DEV_ONLY_GOOGLE_CLIENT_SECRET
 }
 
+/**
+ * REQ-008 (Apple half) — the honest feature flag. Apple Sign-In is built and wired but must
+ * stay OFF until BOTH preconditions hold: a real Apple Developer account *and* a shipped iOS
+ * build (App Store rule: offering Google sign-in on iOS obligates Sign in with Apple). Until
+ * then the flag defaults to off — an explicit opt-in (`APPLE_SIGN_IN_ENABLED === 'true'`), never
+ * a "flip later" placeholder that would silently light up on a credentials-less deployment.
+ * This is the flag the flag-flip test proves: the button appears only when this returns true
+ * AND credentials exist; the flag alone (without credentials) keeps it off too.
+ */
+export function resolveAppleSignInEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env.APPLE_SIGN_IN_ENABLED === 'true'
+}
+
+/** Resolves the Apple OAuth client ID (REQ-008). Unlike Google there is no dev-only fallback —
+ *  Apple is gated off by default, so a placeholder would be dead config; an explicit value is
+ *  required whenever the flag flips on. */
+export function resolveAppleClientId(env: NodeJS.ProcessEnv = process.env): string | undefined {
+  const id = env.APPLE_CLIENT_ID
+  return id && id.length > 0 ? id : undefined
+}
+
+/** Resolves the Apple OAuth client secret (a signed JWT from the Apple Developer portal, not a
+ *  static string like Google's). Explicit-only, same reasoning as resolveAppleClientId. */
+export function resolveAppleClientSecret(env: NodeJS.ProcessEnv = process.env): string | undefined {
+  const secret = env.APPLE_CLIENT_SECRET
+  return secret && secret.length > 0 ? secret : undefined
+}
+
 export interface CreateBetterAuthOptions {
   prisma: PrismaClient
   secret: string
@@ -297,6 +325,16 @@ export interface CreateBetterAuthOptions {
   googleClientId?: string | undefined
   /** Google OAuth client secret (REQ-008). Empty/undefined = Google sign-in disabled. */
   googleClientSecret?: string | undefined
+  /**
+   * Apple Sign-In feature flag (REQ-008). Even when set, Apple stays off unless the client
+   * credentials are also present. Defaults to false — the "no Apple Developer account / no iOS
+   * build yet" state the requirement says must keep the button hidden.
+   */
+  appleSignInEnabled?: boolean
+  /** Apple OAuth client ID (REQ-008). Empty/undefined = Apple sign-in disabled regardless of flag. */
+  appleClientId?: string | undefined
+  /** Apple OAuth client secret (REQ-008). Empty/undefined = Apple sign-in disabled regardless of flag. */
+  appleClientSecret?: string | undefined
   /**
    * The API's own trusted reverse-proxy addresses (`resolveTrustedProxies()`,
    * the one source both better-auth's `advanced.ipAddress.trustedProxies` and
@@ -350,6 +388,9 @@ function buildOptions(options: CreateBetterAuthOptions & { rateLimitStorage: Res
     webAppUrl,
     googleClientId,
     googleClientSecret,
+    appleSignInEnabled,
+    appleClientId,
+    appleClientSecret,
     trustedProxies,
     rateLimitStorage,
   } = options
@@ -365,6 +406,17 @@ function buildOptions(options: CreateBetterAuthOptions & { rateLimitStorage: Res
     socialProviders.google = {
       clientId: googleClientId,
       clientSecret: googleClientSecret,
+    }
+  }
+  // Apple (REQ-008): built and wired, but triple-gated — the flag (no Apple Developer account
+  // / no iOS build yet) AND both credentials. The flag alone is not enough (a credentials-less
+  // deployment must not light the button), and credentials alone are not enough (the flag is
+  // the honest "not yet" — see resolveAppleSignInEnabled). When all three hold, better-auth's
+  // `/sign-in/social` accepts `provider: 'apple'` and the capability probe advertises it.
+  if (appleSignInEnabled && appleClientId && appleClientSecret) {
+    socialProviders.apple = {
+      clientId: appleClientId,
+      clientSecret: appleClientSecret,
     }
   }
 
@@ -434,7 +486,16 @@ function buildOptions(options: CreateBetterAuthOptions & { rateLimitStorage: Res
     // re-implement the signed-cookie format (the deleted session-cookie.ts). Its
     // after-hook fires for the server-side `auth.api.deviceToken()` call exactly as
     // it would for the (disabled) HTTP route — see device-session-cookie.ts.
-    plugins: [haveIBeenPwned(), hibpFailOpenPlugin, deviceAuthorizationPlugin, deviceSessionCookiePlugin],
+    //
+    // twoFactor() (REQ-007): opt-in TOTP 2FA. The plugin's own HTTP routes
+    // (`/api/auth/two-factor/*`) stay enabled — unlike the device plugin there is no
+    // bearer-token-on-body hazard to disable them for; they already carry
+    // `sessionMiddleware` (enable/get-totp-uri), `sensitiveSessionMiddleware`
+    // (disable) and a per-route rate limit (window 10s / max 3, the plugin's own
+    // `rateLimit` array), so wiring them is the framework-standard path, not an
+    // interposition the way ADR-0024 was. `issuer` is what the authenticator app
+    // shows; TOTP defaults (6 digits / 30s) are the plugin's own and left alone.
+    plugins: [haveIBeenPwned(), hibpFailOpenPlugin, deviceAuthorizationPlugin, deviceSessionCookiePlugin, twoFactor({ issuer: 'SteuerEule' })],
     // A browser must never reach the plugin's own HTTP routes (see the constant's own
     // doc comment above for why) — this is what actually enforces that; the
     // server-side `auth.api.*` calls this app makes are untouched by it.

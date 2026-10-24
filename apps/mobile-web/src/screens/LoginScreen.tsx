@@ -25,6 +25,7 @@ import { authErrorKey } from '../auth/authErrors'
 import { useSocialSignInAvailable } from '../auth/useSocialSignInAvailable'
 import { useEmailVerified } from '../auth/useEmailVerified'
 import { useDeviceQrCode } from '../auth/useDeviceQrCode'
+import { useTwoFactor } from '../auth/useTwoFactor'
 import { PageHeader } from './login/PageHeader'
 import { DeviceQrColumn } from './login/DeviceQrColumn'
 import { makeLoginStyles } from './login/loginStyles'
@@ -47,6 +48,7 @@ type Stage =
   | { readonly kind: 'form' }
   | { readonly kind: 'submitting' }
   | { readonly kind: 'unverified'; readonly email: string }
+  | { readonly kind: 'two-factor'; readonly email: string }
 
 export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true }: LoginScreenProps) {
   const t = useTheme()
@@ -112,6 +114,14 @@ export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true }
         setFehler(tr(`auth.${authErrorKey(error)}`))
         return
       }
+      // REQ-007 — better-auth answers a credential sign-in with `twoFactorRedirect: true`
+      // when the account has a second factor pending: the primary factor succeeded but no
+      // session was issued. Read with a narrow cast (the client plugin's `$InferServerPlugin`
+      // is empty, so the client type doesn't carry this field the server returns).
+      if (isTwoFactorChallenge(data)) {
+        setStage({ kind: 'two-factor', email: mail })
+        return
+      }
       if (data.user.emailVerified) {
         // Reset before navigating away — a real loading state must never be left dangling.
         setStage({ kind: 'form' })
@@ -133,6 +143,15 @@ export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true }
         <Button onPress={onDone} style={styles.cta}>
           {tr('login.continue')}
         </Button>
+      </ScrollView>
+    )
+  }
+
+  if (stage.kind === 'two-factor') {
+    return (
+      <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} keyboardShouldPersistTaps="handled" testID="screen-container">
+        <PageHeader tr={tr} t={t} showDivider={false} />
+        <TwoFactorChallenge email={stage.email} onDone={onDone} />
       </ScrollView>
     )
   }
@@ -223,5 +242,52 @@ export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true }
         />
       </View>
     </ScrollView>
+  )
+}
+
+/** REQ-007 — better-auth's `twoFactorRedirect` signal. A narrow cast: the client plugin's
+ *  `$InferServerPlugin` is empty, so the client type doesn't carry this field the server
+ *  returns on a credential sign-in with 2FA pending. */
+function isTwoFactorChallenge(data: unknown): data is { twoFactorRedirect: true } {
+  return typeof data === 'object' && data !== null && (data as { twoFactorRedirect?: unknown }).twoFactorRedirect === true
+}
+
+/** The 2FA challenge after a successful primary factor — a code input that completes sign-in. */
+function TwoFactorChallenge({ email, onDone }: { readonly email: string; readonly onDone: () => void }) {
+  const { t: tr } = useTranslation(APP_NS)
+  const t = useTheme()
+  const twoFactor = useTwoFactor()
+  const [code, setCode] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  async function submit() {
+    if (!code) return
+    setBusy(true)
+    setError('')
+    const err = await twoFactor.verifyTotp(code)
+    if (err) {
+      setError(err)
+      setBusy(false)
+      return
+    }
+    onDone()
+  }
+
+  return (
+    <View style={{ gap: t.space.s4 }}>
+      <Text style={{ fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size['2xl'], color: t.color.tinte }}>
+        {tr('login.twoFactor.heading')}
+      </Text>
+      <Text style={{ fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte2 }}>
+        {tr('login.twoFactor.body', { email })}
+      </Text>
+      <Feld label={tr('login.twoFactor.codeLabel')} fehler={error}>
+        <Input type="text" value={code} onChange={setCode} placeholder="123456" onSubmit={() => void submit()} />
+      </Feld>
+      <Button onPress={() => void submit()} disabled={busy || !code}>
+        {busy ? tr('login.submitting') : tr('login.twoFactor.submit')}
+      </Button>
+    </View>
   )
 }

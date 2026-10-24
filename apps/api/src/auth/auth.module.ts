@@ -15,6 +15,9 @@ import { resolveTrustedProxies } from '../config/trusted-proxies.js'
 import { BETTER_AUTH_BUNDLE } from './auth.tokens.js'
 import {
   createBetterAuth,
+  resolveAppleClientId,
+  resolveAppleClientSecret,
+  resolveAppleSignInEnabled,
   resolveBetterAuthSecret,
   resolveBetterAuthUrl,
   resolveGoogleClientId,
@@ -52,6 +55,11 @@ import { AuthCapabilitiesController } from './auth-capabilities.controller.js'
           // Google OAuth (REQ-008): credentials from env, dev-only fallback outside prod.
           googleClientId: resolveGoogleClientId(),
           googleClientSecret: resolveGoogleClientSecret(),
+          // Apple Sign-In (REQ-008): triple-gated (flag + both credentials), no dev fallback —
+          // stays off until an Apple Developer account and a shipped iOS build both exist.
+          appleSignInEnabled: resolveAppleSignInEnabled(),
+          appleClientId: resolveAppleClientId(),
+          appleClientSecret: resolveAppleClientSecret(),
           // #241: which reverse-proxy hops to trust when reading X-Forwarded-For —
           // governs Session.ipAddress and better-auth's own built-in rate limiter.
           trustedProxies: resolveTrustedProxies(),

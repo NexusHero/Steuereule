@@ -22,7 +22,7 @@ function makeTestQueryClient() {
 }
 
 function renderProfil(
-  opts: { lng?: 'de' | 'en'; queryClient?: QueryClient; onOpenDatenschutz?: () => void; onSignedOut?: () => void } = {},
+  opts: { lng?: 'de' | 'en'; queryClient?: QueryClient; onOpenDatenschutz?: () => void; onOpenSicherheit?: () => void; onSignedOut?: () => void } = {},
 ) {
   const i18n = createAppI18n(opts.lng ?? 'de')
   const queryClient = opts.queryClient ?? makeTestQueryClient()
@@ -32,7 +32,11 @@ function renderProfil(
       <I18nextProvider i18n={i18n}>
         <ThemeProvider mode="light">
           <AuthClientProvider client={authClient}>
-            <ProfilScreen onOpenDatenschutz={opts.onOpenDatenschutz ?? (() => {})} onSignedOut={opts.onSignedOut ?? (() => {})} />
+            <ProfilScreen
+              onOpenDatenschutz={opts.onOpenDatenschutz ?? (() => {})}
+              onOpenSicherheit={opts.onOpenSicherheit ?? (() => {})}
+              onSignedOut={opts.onSignedOut ?? (() => {})}
+            />
           </AuthClientProvider>
         </ThemeProvider>
       </I18nextProvider>

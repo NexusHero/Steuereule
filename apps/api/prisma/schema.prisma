@@ -96,10 +96,16 @@ model User {
   email         String    @unique
   emailVerified Boolean   @default(false)
   image         String?
+  /// Opt-in TOTP 2FA flag (REQ-007). Written only by better-auth's `two-factor`
+  /// plugin (`enableTwoFactor`/`disableTwoFactor` set it, `verifyTOTP` flips it true
+  /// after the one-code confirmation), never by this app's own controllers — the
+  /// plugin owns the field exactly as it owns `twoFactor.secret`.
+  twoFactorEnabled Boolean @default(false)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   sessions      Session[]
   accounts      Account[]
+  twoFactors    TwoFactor[]
 }
 
 /// DB-backed, server-revocable session (ADR-0012 §3). Read on every
@@ -145,6 +151,37 @@ model Verification {
   expiresAt  DateTime
   createdAt  DateTime? @default(now())
   updatedAt  DateTime? @updatedAt
+}
+
+/// One row per user with opt-in TOTP 2FA (REQ-007). Owned end-to-end by better-auth's
+/// `two-factor` plugin (its canonical shape from `schema.mjs`, unrenamed, so no
+/// `schema.twoFactor.fields.*` override is needed): `secret`/`backupCodes` are written
+/// by the plugin (the TOTP secret is encrypted at rest by better-auth via the instance
+/// `secret`, never returned), `verified` is the "code confirmed?" gate the plugin flips
+/// in `verifyTOTP`, and `failedVerificationCount`/`lockedUntil` back the plugin's own
+/// sign-in brute-force lockout (5 attempts → locked) — deliberately NOT a hand-rolled
+/// limiter (ADR-0035: no bespoke machinery where the framework answers). The plugin's
+/// own HTTP routes (`/api/auth/two-factor/*`) stay enabled: they already carry
+/// session/`sensitiveSessionMiddleware` guards and a per-route rate limit (window 10s,
+/// max 3), so there is nothing for a Nest controller to interpose the way ADR-0024 did
+/// for the device plugin's bearer-token route.
+model TwoFactor {
+  id                     String    @id @default(uuid())
+  /// The TOTP secret — ciphertext (better-auth's `symmetricEncrypt`), `returned: false`.
+  secret                 String
+  /// Encrypted backup codes (`storeBackupCodes: "encrypted"` default).
+  backupCodes            String
+  userId                 String
+  user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// "Code confirmed" — false after `enableTwoFactor`, true after `verifyTOTP`.
+  verified               Boolean   @default(true)
+  failedVerificationCount Int      @default(0)
+  lockedUntil            DateTime?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([secret])
 }
 
 /// One row per (userId, steuerjahr) — the raw inputs behind the Cockpit's refund

@@ -88,6 +88,7 @@ const EXPECTED_CURSORS: Record<string, string> = {
   InterviewAnswer: 'id',
   DeviceCode: 'id',
   LegalHold: 'id',
+  TwoFactor: 'id',
 }
 
 describe('encrypted/hashed field set (#325) — derived from Prisma.dmmf, not comment text', () => {

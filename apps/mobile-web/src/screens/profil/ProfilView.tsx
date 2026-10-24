@@ -15,10 +15,11 @@ interface ProfilViewProps {
   readonly justSaved: boolean
   readonly bp: Breakpoint
   readonly onOpenDatenschutz: () => void
+  readonly onOpenSicherheit: () => void
   readonly onSignedOut: () => void
 }
 
-export function ProfilView({ profil, onEdit, justSaved, bp, onOpenDatenschutz, onSignedOut }: ProfilViewProps) {
+export function ProfilView({ profil, onEdit, justSaved, bp, onOpenDatenschutz, onOpenSicherheit, onSignedOut }: ProfilViewProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeProfilStyles(t)
@@ -52,6 +53,13 @@ export function ProfilView({ profil, onEdit, justSaved, bp, onOpenDatenschutz, o
       <Card style={styles.datenCard}>
         <Pressable accessibilityRole="button" onPress={onOpenDatenschutz} style={styles.datenRow}>
           <Text style={styles.datenRowLabel}>{tr('profil.deineDaten.rowLabel')}</Text>
+          <Text style={styles.datenRowArrow} aria-hidden={true}>→</Text>
+        </Pressable>
+      </Card>
+
+      <Card style={styles.datenCard}>
+        <Pressable accessibilityRole="button" onPress={onOpenSicherheit} style={styles.datenRow}>
+          <Text style={styles.datenRowLabel}>{tr('profil.sicherheit.rowLabel')}</Text>
           <Text style={styles.datenRowArrow} aria-hidden={true}>→</Text>
         </Pressable>
       </Card>

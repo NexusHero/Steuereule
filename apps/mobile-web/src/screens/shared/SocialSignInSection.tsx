@@ -13,12 +13,14 @@
 // each hand-roll. Error handling stays with the host via `onError` (each screen shows the
 // translated error in its own field), success via `onSignedIn`.
 import { View, Text, type ViewStyle, type TextStyle } from 'react-native'
+import type { ReactElement } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, useTheme, type UiTheme } from '@steuereule/ui'
 import { APP_NS } from '../../i18n/resources'
-import { useSocialSignIn } from '../../auth/useSocialSignIn'
+import { useSocialSignIn, type SocialProvider } from '../../auth/useSocialSignIn'
 import { useSocialSignInAvailable } from '../../auth/useSocialSignInAvailable'
 import { GoogleG } from '../../icons/GoogleG'
+import { AppleG } from '../../icons/AppleG'
 
 interface SocialSignInSectionProps {
   /** Whether the host screen is mid-submit — the provider button joins that disabled state. */
@@ -36,20 +38,27 @@ export function SocialSignInSection({ disabled, onSignedIn, onError, showUnknown
   const styles = makeStyles(t)
   const { signIn, isSubmitting } = useSocialSignIn()
   const googleAvailable = useSocialSignInAvailable('google')
+  const appleAvailable = useSocialSignInAvailable('apple')
 
-  async function handleSignIn() {
-    const error = await signIn('google')
+  async function handleSignIn(provider: SocialProvider) {
+    const error = await signIn(provider)
     if (error) onError(error)
     else onSignedIn()
   }
 
-  if (googleAvailable === 'available') {
+  const providerButton = (provider: SocialProvider, label: string, icon: ReactElement, key: string) => (
+    <Button key={key} variante="ghost" onPress={() => void handleSignIn(provider)} disabled={isSubmitting || disabled}>
+      {icon} {label}
+    </Button>
+  )
+
+  const anyAvailable = googleAvailable === 'available' || appleAvailable === 'available'
+  if (anyAvailable) {
     return (
       <>
         <View style={styles.socialButtons}>
-          <Button variante="ghost" onPress={() => void handleSignIn()} disabled={isSubmitting || disabled}>
-            <GoogleG /> {tr('login.google')}
-          </Button>
+          {googleAvailable === 'available' ? providerButton('google', tr('login.google'), <GoogleG />, 'google') : null}
+          {appleAvailable === 'available' ? providerButton('apple', tr('login.apple'), <AppleG />, 'apple') : null}
         </View>
         <SocialDivider />
       </>

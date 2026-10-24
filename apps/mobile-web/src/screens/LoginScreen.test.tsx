@@ -106,15 +106,27 @@ describe('LoginScreen', () => {
   })
 
   // REQ-008 — Google social sign-in is now live. The button renders and triggers the
-  // better-auth social sign-in flow. Apple sign-in (#45) remains hidden (backlog-gated).
+  // better-auth social sign-in flow. Apple sign-in is wired but flagged off (no Apple
+  // Developer account / no iOS build yet) — see the two tests below.
   it('renders the Google social sign-in button (REQ-008, DS auth.html ghost variant)', async () => {
     renderLogin()
     expect(await screen.findByText('Weiter mit Google')).toBeTruthy()
   })
 
-  it('does not render the Apple social button (REQ-008b, backlog-gated until iOS build)', () => {
+  it('does not render the Apple social button while the flag is off (REQ-008, no Apple Dev account / iOS build yet)', () => {
     renderLogin()
     expect(screen.queryByText(/Apple/)).toBeNull()
+  })
+
+  it('renders the Apple social button only once the deployment flips its flag (capability probe answers "apple")', async () => {
+    server.use(
+      http.get(`${BASE_URL}/v1/auth/capabilities`, () =>
+        HttpResponse.json({ socialProviders: ['google', 'apple'] }, { status: 200 }),
+      ),
+    )
+    renderLogin()
+    expect(await screen.findByText('Weiter mit Apple')).toBeTruthy()
+    expect(screen.getByText('Weiter mit Google')).toBeTruthy()
   })
 
   it('renders the "or with email" divider between social and email form (DS auth.html)', async () => {
@@ -193,6 +205,32 @@ describe('LoginScreen', () => {
 
     await waitFor(() => expect(onDone).toHaveBeenCalledOnce())
     expect(receivedBody).toMatchObject({ email: 'a@b.de', password: 'geheim1' })
+  })
+
+  it('shows the 2FA challenge after the primary factor succeeds (REQ-007)', async () => {
+    server.use(
+      http.post(`${BASE_URL}/api/auth/sign-in/email`, () =>
+        HttpResponse.json({ twoFactorRedirect: true, twoFactorMethods: ['totp'] }),
+      ),
+      http.post(`${BASE_URL}/api/auth/two-factor/verify-totp`, async ({ request }) => {
+        const body = (await request.json()) as { code: string }
+        if (body.code !== '123456') return HttpResponse.json({ message: 'Invalid code' }, { status: 401 })
+        return HttpResponse.json({ token: 'tok_1', user: { id: 'u1', email: 'a@b.de', emailVerified: true, name: '' } })
+      }),
+    )
+    const onDone = vi.fn()
+    renderLogin({ onDone })
+    fillCredentials('a@b.de', 'geheim1')
+    fireEvent.click(screen.getByText('Einloggen'))
+
+    // Primary factor succeeded but no session was issued — a 2FA challenge appears instead.
+    await screen.findByText('Zweiter Faktor')
+    expect(onDone).not.toHaveBeenCalled()
+
+    fireEvent.change(screen.getByPlaceholderText('123456'), { target: { value: '123456' } })
+    fireEvent.click(screen.getByText('Bestätigen'))
+
+    await waitFor(() => expect(onDone).toHaveBeenCalledOnce())
   })
 
   it('shows the honest, generic loading state while the sign-in request is in flight', async () => {

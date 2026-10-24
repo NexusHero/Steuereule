@@ -1,6 +1,6 @@
 import type { PrismaClient } from '@prisma/client'
 import { describe, expect, it, vi } from 'vitest'
-import { createBetterAuth, resolveBetterAuthSecret, resolveBetterAuthUrl, resolveGoogleClientId, resolveGoogleClientSecret } from '../src/auth/better-auth.js'
+import { createBetterAuth, resolveAppleClientId, resolveAppleClientSecret, resolveAppleSignInEnabled, resolveBetterAuthSecret, resolveBetterAuthUrl, resolveGoogleClientId, resolveGoogleClientSecret } from '../src/auth/better-auth.js'
 import type { EmailSender } from '../src/auth/email-sender.js'
 
 function fakeEmailSender(): EmailSender {
@@ -129,5 +129,57 @@ describe('createBetterAuth — enabledSocialProviders', () => {
   it('reports nothing when only one half of the pair is set (a half-configured provider is not usable)', () => {
     const bundle = createBetterAuth({ ...base, googleClientId: 'id', googleClientSecret: undefined })
     expect(bundle.enabledSocialProviders).toEqual([])
+  })
+
+  // REQ-008 (Apple half) — the flag-flip condition. Apple is triple-gated: the feature flag
+  // AND both credentials. A flag alone (no credentials) must not light the button, credentials
+  // alone (no flag) must not light it either — the flag is the honest "not yet" until an Apple
+  // Developer account + a shipped iOS build exist. Google is unaffected throughout.
+  it('keeps Apple off when the flag is false, even with credentials present', () => {
+    const bundle = createBetterAuth({ ...base, appleSignInEnabled: false, appleClientId: 'id', appleClientSecret: 'secret' })
+    expect(bundle.enabledSocialProviders).toEqual([])
+  })
+
+  it('keeps Apple off when the flag is true but credentials are absent', () => {
+    const bundle = createBetterAuth({ ...base, appleSignInEnabled: true, appleClientId: undefined, appleClientSecret: undefined })
+    expect(bundle.enabledSocialProviders).toEqual([])
+  })
+
+  it('lights Apple only when the flag flips on AND both credentials exist', () => {
+    const bundle = createBetterAuth({ ...base, appleSignInEnabled: true, appleClientId: 'id', appleClientSecret: 'secret' })
+    expect(bundle.enabledSocialProviders).toEqual(['apple'])
+  })
+
+  it('keeps Google green alongside a flipped-on Apple', () => {
+    const bundle = createBetterAuth({
+      ...base,
+      googleClientId: 'gid',
+      googleClientSecret: 'gsecret',
+      appleSignInEnabled: true,
+      appleClientId: 'aid',
+      appleClientSecret: 'asecret',
+    })
+    expect(bundle.enabledSocialProviders).toEqual(['google', 'apple'])
+  })
+})
+
+describe('resolveAppleSignInEnabled', () => {
+  it('is off by default — never lit by a credentials-less or absent-flag deployment', () => {
+    expect(resolveAppleSignInEnabled({})).toBe(false)
+    expect(resolveAppleSignInEnabled({ APPLE_SIGN_IN_ENABLED: 'false' })).toBe(false)
+    expect(resolveAppleSignInEnabled({ APPLE_SIGN_IN_ENABLED: '1' })).toBe(false)
+  })
+
+  it('is on only on the explicit opt-in value', () => {
+    expect(resolveAppleSignInEnabled({ APPLE_SIGN_IN_ENABLED: 'true' })).toBe(true)
+  })
+})
+
+describe('resolveAppleClientId / resolveAppleClientSecret', () => {
+  it('returns explicit values and nothing else (no dev-only fallback — Apple is gated off)', () => {
+    expect(resolveAppleClientId({ APPLE_CLIENT_ID: 'com.steuereule.app' })).toBe('com.steuereule.app')
+    expect(resolveAppleClientId({ NODE_ENV: 'test' })).toBeUndefined()
+    expect(resolveAppleClientSecret({ APPLE_CLIENT_SECRET: 'signed-jwt' })).toBe('signed-jwt')
+    expect(resolveAppleClientSecret({})).toBeUndefined()
   })
 })

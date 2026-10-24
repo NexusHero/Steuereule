@@ -19,6 +19,9 @@ export const appResources = {
         // REQ-008: Google sign-in is now live (matching DS auth.html's "Weiter mit Google" ghost button).
         // Apple sign-in (#45) stays hidden until its gate opens.
         google: 'Weiter mit Google',
+        // REQ-008 (Apple half) — the button is wired but only ever rendered when the deployment
+        // flips its flag (an Apple Developer account + a shipped iOS build). See useSocialSignInAvailable.
+        apple: 'Weiter mit Apple',
         // #283 §3(a) — the DS's own honest fallback for a provider the deployment genuinely
         // doesn't have configured (auth.html), shown in the button's own place rather than
         // silence. `googleUnknown` is the distinct case: the probe itself can't currently answer
@@ -44,6 +47,13 @@ export const appResources = {
         // screen before Onboarding collects the Steuer-ID and could be misread as "no
         // identifying data needed yet".
         guestNote: 'Gast-Modus: deine Angaben werden sicher verschlüsselt gespeichert.',
+        // REQ-007 — 2FA challenge shown after the primary factor (email+password) succeeds.
+        twoFactor: {
+          heading: 'Zweiter Faktor',
+          body: 'Dein Konto ({{email}}) ist mit einem zweiten Faktor geschützt. Gib den Code aus deiner Authenticator-App ein.',
+          codeLabel: 'Code aus der Authenticator-App',
+          submit: 'Bestätigen',
+        },
         errEmail: 'Das sieht noch nicht nach einer E-Mail aus.',
         errPass: 'Mindestens 6 Zeichen fürs Passwort.',
         // #283 AC-A — the single shared alert for a genuine, transport-level API outage (not a
@@ -302,6 +312,9 @@ export const appResources = {
         deineDaten: {
           rowLabel: 'So schützen wir deine Daten (DSGVO)',
         },
+        sicherheit: {
+          rowLabel: 'Sicherheit (Zwei-Faktor)',
+        },
         // #238, Decision 6 — every session on the account, not just QR-authorized ones. No
         // region here (see DeviceListSection.tsx's header comment) — Musti's ADR-0021 control
         // test showed the only deployment-config candidate for a trustworthy client IP still
@@ -335,6 +348,45 @@ export const appResources = {
           revoking: 'Wird abgemeldet …',
           revokeError: 'Das hat nicht geklappt. Versuch es noch einmal.',
         },
+      },
+      // REQ-007 — Sicherheit (2FA), reached from Profil. Wording stays honest: enabling shows a
+      // QR + backup codes and requires confirming one code; disabling requires the password again.
+      sicherheit: {
+        title: 'Sicherheit',
+        back: 'Zurück zu Profil',
+        loading: 'Wird geladen …',
+        requiresAccount: 'Zwei-Faktor-Authentifizierung gibt es nur für ein echtes Konto — im Gast-Modus ist sie nicht verfügbar.',
+        password: 'Passwort',
+        busy: 'Wird geprüft …',
+        enabled: 'Zwei-Faktor-Authentifizierung ist jetzt aktiv.',
+        disabled: 'Zwei-Faktor-Authentifizierung ist aus.',
+        twoFactor: {
+          title: 'Zwei-Faktor-Authentifizierung',
+          on: 'Aktiv',
+          off: 'Aus',
+          body: 'Ein zweiter Faktor schützt dein Konto zusätzlich zum Passwort. Beim Anmelden wirst du nach dem Code aus deiner Authenticator-App gefragt.',
+        },
+        enable: {
+          explainer: 'Schütze dein Konto mit einem zusätzlichen Faktor. Du bestätigst die Aktivierung mit einem Code aus deiner Authenticator-App.',
+          start: 'Zwei-Faktor aktivieren',
+          passwordTitle: 'Passwort bestätigen',
+          confirm: 'Weiter',
+          setupTitle: 'In deine Authenticator-App eintragen',
+          qrLabel: 'QR-Code zum Einrichten der Zwei-Faktor-Authentifizierung',
+          backupCodes: 'Backup-Codes (gut aufbewahren — für den Fall, dass du die App nicht zur Hand hast):',
+          codeLabel: 'Code aus der App',
+          verify: 'Code bestätigen',
+        },
+        disable: {
+          explainer: 'Der zweite Faktor wird entfernt. Dafür musst du dein Passwort erneut eingeben.',
+          start: 'Zwei-Faktor deaktivieren',
+          passwordTitle: 'Passwort bestätigen',
+          confirm: 'Deaktivieren',
+        },
+        errWrongCode: 'Dieser Code ist nicht richtig. Prüf die App und versuch es noch mal.',
+        errWrongPassword: 'Das Passwort ist nicht richtig.',
+        errTooManyAttempts: 'Zu viele Versuche. Bitte fordere einen neuen Code an.',
+        errLocked: 'Zu viele Fehlversuche — dein Konto ist vorübergehend gesperrt. Versuch es später noch mal.',
       },
       // REQ-011 (ADR-0013) — Datenschutz screen: DSGVO export (Art. 15/20) + account deletion
       // (Art. 17), reached from Profil. The delete copy is corrected, not ported from the DS
@@ -541,6 +593,7 @@ export const appResources = {
         subtitle: 'Your tax year is waiting — pick up where you left off.',
         // REQ-008: Google sign-in is now live.
         google: 'Continue with Google',
+        apple: 'Continue with Apple',
         googleNotConfigured: "Google isn't set up on this device — the other ways are still open to you.",
         googleUnknown: "We can't tell right now whether Google is available.",
         orEmail: 'or with email',
@@ -554,6 +607,13 @@ export const appResources = {
         guest: 'Look around as a guest',
         // See the `de` entry above for the provenance note (steuereule#65).
         guestNote: 'Guest mode: your details are saved securely, encrypted.',
+        // REQ-007 — 2FA challenge shown after the primary factor (email+password) succeeds.
+        twoFactor: {
+          heading: 'Second factor',
+          body: 'Your account ({{email}}) is protected by a second factor. Enter the code from your authenticator app.',
+          codeLabel: 'Code from your authenticator app',
+          submit: 'Confirm',
+        },
         errEmail: "That doesn't look like an email yet.",
         errPass: 'At least 6 characters for the password.',
         apiUnreachable: {
@@ -758,6 +818,9 @@ export const appResources = {
         deineDaten: {
           rowLabel: 'How we protect your data (GDPR)',
         },
+        sicherheit: {
+          rowLabel: 'Security (two-factor)',
+        },
         devices: {
           heading: 'Signed-in devices',
           loading: 'Loading devices …',
@@ -779,6 +842,44 @@ export const appResources = {
           revoking: 'Signing out …',
           revokeError: "That didn't work. Please try again.",
         },
+      },
+      // REQ-007 — Sicherheit (2FA), reached from Profil.
+      sicherheit: {
+        title: 'Security',
+        back: 'Back to profile',
+        loading: 'Loading …',
+        requiresAccount: 'Two-factor authentication requires a real account — it is not available in guest mode.',
+        password: 'Password',
+        busy: 'Checking …',
+        enabled: 'Two-factor authentication is now on.',
+        disabled: 'Two-factor authentication is off.',
+        twoFactor: {
+          title: 'Two-factor authentication',
+          on: 'On',
+          off: 'Off',
+          body: 'A second factor protects your account in addition to your password. When you sign in, you are asked for the code from your authenticator app.',
+        },
+        enable: {
+          explainer: 'Protect your account with an extra factor. You confirm activation with a code from your authenticator app.',
+          start: 'Enable two-factor',
+          passwordTitle: 'Confirm your password',
+          confirm: 'Continue',
+          setupTitle: 'Add to your authenticator app',
+          qrLabel: 'QR code to set up two-factor authentication',
+          backupCodes: 'Backup codes (keep them safe — for when you don\u2019t have the app to hand):',
+          codeLabel: 'Code from the app',
+          verify: 'Confirm code',
+        },
+        disable: {
+          explainer: 'The second factor will be removed. You must enter your password again to do this.',
+          start: 'Disable two-factor',
+          passwordTitle: 'Confirm your password',
+          confirm: 'Disable',
+        },
+        errWrongCode: "That code isn't right. Check the app and try again.",
+        errWrongPassword: "That password isn't right.",
+        errTooManyAttempts: 'Too many attempts. Please request a new code.',
+        errLocked: 'Too many failed attempts — your account is temporarily locked. Try again later.',
       },
       datenschutz: {
         back: 'Back',
