@@ -53,6 +53,18 @@ function toAnswers(rows: InterviewAnswerRecord[]): Answers {
   return answers as Answers
 }
 
+/**
+ * The entries this write endpoint admits today (ADR-0033 D3's server admission policy):
+ * Minimal-Gate (REQ-015/#318) and segment-ch (REQ-017, this ticket) — deliberately NOT
+ * Segment 2, which stays "declared, not yet admitted server-side" (see the core header in
+ * packages/core/src/interview.ts). Segment 2's server admission is R2's deliberate opt-in,
+ * not something this endpoint inherits as a side effect of `entryForStep` being generic
+ * over every entry. Adding an entry here is a reviewed decision with its own acceptance
+ * test, never a silent default. The Angestellte entries (lebenslagen, sonderausgaben)
+ * joined the allowlist with ticket 08's merge — Segment 2 remains the only closed entry.
+ */
+const ADMITTED_ENTRY_IDS: readonly EntryId[] = ['minimal-gate', 'lebenslagen', 'sonderausgaben', 'segment-ch']
+
 @Injectable()
 export class InterviewService {
   // Explicit tokens — see the comment on ProfileController's constructor.
@@ -80,7 +92,6 @@ export class InterviewService {
       throw new BadRequestException(`"${eintrag}" is not a known catalogue entry.`)
     }
     const entry = ENTRIES[entryId as EntryId]
-
     return {
       answers: answers as Record<string, string>,
       nextStep: nextStepFor(entry, answers),
@@ -95,8 +106,13 @@ export class InterviewService {
     // client-supplied scope; an unrecognized id falls out as a regular 409 with no separate
     // id-whitelist needed (see PostAnswerDto). Minimal-Gate ids keep their #318 behaviour exactly
     // — isReachableFor(ENTRIES['minimal-gate'], …) is the same admission isReachable() did before.
+    // ADMITTED_ENTRY_IDS scopes WHICH entries may write: every merged vertical's entry
+    // (minimal-gate, lebenslagen, sonderausgaben, segment-ch). Segment 2 stays closed —
+    // core interview.ts still names it "not yet admitted server-side" (R2's opt-in).
     const entryId = entryForStep(dto.questionId as never)
-    if (entryId === undefined) throw new UnreachableAnswerError(dto.questionId)
+    if (entryId === undefined || !ADMITTED_ENTRY_IDS.includes(entryId)) {
+      throw new UnreachableAnswerError(dto.questionId)
+    }
 
     const entry = ENTRIES[entryId]
     if (!isReachableFor(entry, answers, dto.questionId as never)) throw new UnreachableAnswerError(dto.questionId)

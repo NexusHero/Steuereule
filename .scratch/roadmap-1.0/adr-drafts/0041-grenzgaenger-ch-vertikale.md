@@ -3,6 +3,8 @@
 - **Status:** Draft — not yet promoted to `docs/adr/`
 - **Date:** 2026-10-24
 - **Deciders:** Robin (backend, Ticket 09) — draft; promotion needs Musti review
+- **Nummer offen:** `0041` kollidiert mit t08s `0041-lstb-angestellte-vertikale.md` — die
+  endgültige Nummer wird bei Promotion vergeben (0041/0042), nicht hier festgeschrieben.
 - **Implements** Produkt-ADR-029 (volle CH-Tiefe), Produkt-ADR-012 (Wechselkurs), Produkt-ADR-013
   (nur Schweiz, 45-Tage-Regel), Produkt-ADR-036 (Scan-Fallback-Maske, CHF führt)
 - **Builds on** ADR-0008 (Feldverschlüsselung), ADR-0033 (Interview-Engine/Entries), ADR-0035
@@ -31,12 +33,18 @@ and whose document set is the CH-Lohnausweis, the Quellensteuer-Abrechnung, the 
    a re-asked question. Server admission is **entry-aware**: `postAnswer` derives the owning entry
    from the bare questionId (`entryForStep`) and validates reachability within it (`isReachableFor`)
    — the D3 design ADR-0033 already built, applied uniformly, so the CH entry is server-validated
-   exactly like the Minimal-Gate (REQ-015's pattern), with no second code path.
+   exactly like the Minimal-Gate (REQ-015's pattern), with no second code path. Admission is scoped
+   by an **explicit allowlist** (`minimal-gate` + `segment-ch`): Segment 2 stays *declared, not yet
+   admitted server-side* (that is R2's deliberate opt-in, `interview.ts` header), so the generic
+   `entryForStep` does NOT silently open it — see Consequences.
 
 3. **Wechselkurs-Kern (`wechselkurs.ts`)** — amtlich (BMF-Monatskurs) is the default and needs no
    Beleg; tatsächlich is representable **only with a Beleg** ("ohne Beleg kein tatsächlicher Kurs").
-   This is a type-level invariant, not a UI reminder. CHF→EUR conversion carries provenance
-   (Kurs + Modus + Monat); the BMF rate *source* stays a later backend slice (ADR-012).
+   This is a **factory invariant** (enforced by `tatsaechlicherKurs`) plus a **plausibility check
+   for persisted data** (`pruefeGrenzgaenger`) — deliberately NOT a type-level invariant: the
+   `Wechselkurs` type keeps `belegId` as a plain optional field rather than a discriminated
+   union. CHF→EUR conversion carries provenance (Kurs + Modus + Monat); the BMF rate *source*
+   stays a later backend slice (ADR-012).
 
 4. **CH-Posten → deterministischer Kern (`grenzgaenger.ts`)** — the guided Lohnausweis mask (ADR-036,
    Ziffern 1–15 in paper order) maps the posten-relevant Ziffern (8 Bruttolohn, 10 PK, 12 Quellensteuer)
@@ -53,6 +61,11 @@ and whose document set is the CH-Lohnausweis, the Quellensteuer-Abrechnung, the 
 - **`TaxYear.openItems` stays the Minimal-Gate's count** — the Cockpit's projection. The CH entry's
   own remaining is served by `nextStepFor(segment-ch)`; folding it into the Cockpit count is the CH
   screen's work, coordinated with Ticket 08, not this slice.
+- **Admission boundary (Segment 2 stays out) and GET:** `postAnswer` admits only the allowlisted
+  entries `minimal-gate` + `segment-ch`; a Segment-2 id is refused 409 (pinned by a service test).
+  `getState` is deliberately still Minimal-Gate-only — a CH answer surfaces the Minimal-Gate's
+  `nextStep` there; the CH screen gets its next step from the POST response's `nextStepFor(segment-ch)`,
+  and a fully entry-aware GET is follow-up work, not this slice.
 - **Security posture (CH data is Steuerdaten):** `art` is a plain discriminator (not joinable PII);
   `dateiname` is field-encrypted (ADR-0008 — filenames carry PII); interview answer **values** are
   field-encrypted at rest (ADR-0008) and WRITE/READ access is audited (REQ-004). What this slice
@@ -66,8 +79,12 @@ and whose document set is the CH-Lohnausweis, the Quellensteuer-Abrechnung, the 
 ## Alternatives considered
 
 - **A separate CH interview controller/service.** Rejected: would duplicate the admission logic; the
-  entry-aware write path over `entryForStep`/`isReachableFor` is the ADR-0033 D3 design and admits every
-  entry uniformly.
+  entry-aware write path over `entryForStep`/`isReachableFor` is the ADR-0033 D3 design. Admission is
+  then narrowed to an explicit allowlist (`minimal-gate` + `segment-ch`), so the D3 engine is reused
+  *without* silently admitting Segment 2.
+- **Admit every entry uniformly (no allowlist).** Rejected: that would silently open Segment 2 on the
+  shared endpoint — Segment 2's server admission is R2's deliberate opt-in (`interview.ts` header),
+  not something this ticket inherits as a side effect of `entryForStep` being generic.
 - **Store the Grenzgänger-Status as a column.** Rejected: a derived fact is recomputed, never persisted
   (same instinct as ADR-014/048's estimate range and the Beleg Zuordnung state).
 - **Fold deductions/credits into the core `Posten` now.** Rejected: the core's `Posten` is income-only;
