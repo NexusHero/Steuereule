@@ -1098,6 +1098,12 @@
             "example": "miete-januar.pdf",
             "description": "Original filename (decrypted for the owner)."
           },
+          "art": {
+            "type": "string",
+            "nullable": true,
+            "example": "Lohnausweis",
+            "description": "Document type (ADR-029) — null is the generic receipt."
+          },
           "belegdatum": {
             "type": "string",
             "nullable": true,
@@ -1122,6 +1128,7 @@
         "required": [
           "id",
           "dateiname",
+          "art",
           "belegdatum",
           "zahlungsdatum",
           "zuordnung"
@@ -1134,6 +1141,20 @@
             "type": "string",
             "example": "miete-januar.pdf",
             "description": "Original filename/storage key — field-encrypted at rest (ADR-0008)."
+          },
+          "art": {
+            "type": "string",
+            "enum": [
+              "Lohnausweis",
+              "Quellensteuer",
+              "Pensionskasse",
+              "Saeule3a",
+              "Krankenkasse",
+              "Familienzulage",
+              "Sonstiges"
+            ],
+            "example": "Lohnausweis",
+            "description": "Document type (ADR-029). Omitted = null (not classified); pass 'Sonstiges' to classify a generic receipt explicitly."
           },
           "belegdatum": {
             "type": "string",
