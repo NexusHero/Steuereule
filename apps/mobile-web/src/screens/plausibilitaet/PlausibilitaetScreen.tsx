@@ -11,7 +11,7 @@
 // correspondingly absent until the werktage persistence slice lands.
 import { ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
+import { Button, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
 import {
   angestellteAusDaten,
   angestelltenStand,
@@ -33,10 +33,12 @@ import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 
 export interface PlausibilitaetScreenProps {
   readonly onBack?: () => void
+  /** Ticket 10.2 — advance to the Veranlagungsartenvergleich (the next screen in the flow). */
+  readonly onDone?: () => void
   readonly taxYear?: number
 }
 
-export function PlausibilitaetScreen({ onBack, taxYear = CURRENT_TAX_YEAR }: PlausibilitaetScreenProps) {
+export function PlausibilitaetScreen({ onBack, onDone, taxYear = CURRENT_TAX_YEAR }: PlausibilitaetScreenProps) {
   const bp = useBreakpoint()
   const t = useTheme()
   const styles = makeStyles(t)
@@ -106,6 +108,15 @@ export function PlausibilitaetScreen({ onBack, taxYear = CURRENT_TAX_YEAR }: Pla
           ))}
         </View>
       ) : null}
+
+      {/* Ticket 10.2 — the Veranlagungsartenvergleich follows the Plausibilitäts-Screen
+          (ADR-0034: the comparison screen may only appear once at least one real path can
+          reach `eindeutig` — which the core now delivers). */}
+      {onDone ? (
+        <Button onPress={onDone} style={styles.doneCta}>
+          {tr('plausibilitaet.weiterZumVergleich')}
+        </Button>
+      ) : null}
     </ScrollView>
   )
 }
@@ -166,5 +177,6 @@ function makeStyles(t: UiTheme) {
   const blockHeading: TextStyle = { color: t.color.tinte, fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size.m, marginBottom: t.space.s2 }
   const widerspruchItem: TextStyle = { color: t.color.fehler, fontFamily: t.font.text, fontSize: t.size.s, marginBottom: t.space.s1 }
   const hinweisItem: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.s, marginBottom: t.space.s1 }
-  return { screen, wideScreen, headerRow, heading, werktageNote, einreichbar, nichtEinreichbar, block, blockHeading, widerspruchItem, hinweisItem }
+  const doneCta: ViewStyle = { marginTop: t.space.s4 }
+  return { screen, wideScreen, headerRow, heading, werktageNote, einreichbar, nichtEinreichbar, block, blockHeading, widerspruchItem, hinweisItem, doneCta }
 }
