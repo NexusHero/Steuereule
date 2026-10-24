@@ -1,4 +1,4 @@
-# ADR-0043 — Rentner-Vertikale: Rentenart, gesetzliche Tabellen, Anlage-R-Faltung (Entwurf)
+# ADR-0044 — Rentner-Vertikale: Rentenart, gesetzliche Tabellen, Anlage-R-Faltung (Entwurf)
 
 - **Status:** Accepted — promoted 2026-10-24 (reviewed as part of the ticket reviews; Musti)
 - **Date:** 2026-10-24
