@@ -27,6 +27,7 @@ import { LstbScreen } from './src/screens/lstb/LstbScreen'
 import { KatalogScreen } from './src/screens/katalog/KatalogScreen'
 import { ArbeitstageScreen } from './src/screens/arbeitstage/ArbeitstageScreen'
 import { PlausibilitaetScreen } from './src/screens/plausibilitaet/PlausibilitaetScreen'
+import { GrenzgaengerScreen } from './src/screens/grenzgaenger/GrenzgaengerScreen'
 import { ProfilScreen } from './src/screens/ProfilScreen'
 import { DatenschutzScreen } from './src/screens/DatenschutzScreen'
 import { SicherheitScreen } from './src/screens/security/SicherheitScreen'
@@ -231,7 +232,14 @@ function TabbedShell({ tab, onTabChange, onSignedOut }: TabbedShellProps) {
   // legitimate, honest way out — no separate "exit" affordance is invented for it (the DS
   // reference has none, and #318 doesn't ask for one).
   const [cockpitView, setCockpitView] = useState<
-    'main' | 'interview' | 'lstb' | 'katalog-lebenslagen' | 'katalog-sonderausgaben' | 'arbeitstage' | 'plausibilitaet'
+    | 'main'
+    | 'interview'
+    | 'lstb'
+    | 'katalog-lebenslagen'
+    | 'katalog-sonderausgaben'
+    | 'arbeitstage'
+    | 'plausibilitaet'
+    | 'ch'
   >('main')
 
   // The active tab's icon sits on the lime pill and needs the ink colour to stay legible;
@@ -263,7 +271,13 @@ function TabbedShell({ tab, onTabChange, onSignedOut }: TabbedShellProps) {
   return (
     <View style={{ flex: 1 }}>
       {tab === 'cockpit' && cockpitView === 'main' ? <CockpitScreen onOpenInterview={() => setCockpitView('interview')} /> : null}
-      {tab === 'cockpit' && cockpitView === 'interview' ? <InterviewScreen onDone={() => setCockpitView('lstb')} /> : null}
+      {tab === 'cockpit' && cockpitView === 'interview' ? (
+        // The Minimal-Gate routes to the Grenzgänger-CH screen when it declares work in CH —
+        // the `ausland` answer decides which vertical continues (ADR-029); otherwise the
+        // Angestellte vertical continues with the LStB mask (ticket 15).
+        <InterviewScreen onDone={(answers) => setCockpitView(answers.ausland === 'Ja, in die Schweiz' ? 'ch' : 'lstb')} />
+      ) : null}
+      {tab === 'cockpit' && cockpitView === 'ch' ? <GrenzgaengerScreen onDone={() => setCockpitView('main')} /> : null}
       {tab === 'cockpit' && cockpitView === 'lstb' ? (
         <LstbScreen onDone={() => setCockpitView('katalog-lebenslagen')} onBack={() => setCockpitView('main')} />
       ) : null}

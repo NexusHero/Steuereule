@@ -483,3 +483,71 @@ model Lstb {
 
   @@unique([userId, steuerjahr])
 }
+
+/// One row per (userId, steuerjahr) — the CH-Lohnausweis guided-mask data (ADR-036 Scan-Fallback,
+/// Grenzgänger-CH vertical, ticket 16). The user transcribes the 15 printed Ziffern (Formular 11,
+/// ESTV) field by field in paper order; the photo stays stored as a Beleg (ADR-007), and Scan/OCR is
+/// a later slice (ADR-045). Each CHF field's stored string encodes its honest state
+/// (packages/core/src/grenzgaenger.ts is the ONE place that maps): `null` = `offen` (not reached
+/// yet), the reserved marker `unklar` = "looked but could not read", any other string = a whole-CHF
+/// amount (`erfasst`). `bemerkungen` (Ziffer 15) is Freitext and stores its text directly. The
+/// figures are field-encrypted at rest (ADR-0008): actual income is the most sensitive personal
+/// fact a tax app holds, joinable to Profile's Steuer-ID via the same userId. The Wechselkurs
+/// (ADR-012) and the optional Säule 3a / Krankenkasse amounts (ADR-029 points 4–5) live on the same
+/// row — the fold (grenzgaengerStand) reads them all, so a partial re-read resumes without losing
+/// the Kurs the CHF→EUR conversion was made with. The Wechselkurs columns stay in the clear: the
+/// BMF rate is public and the fold needs them without decrypting.
+model ChLohnausweis {
+  id                        String   @id @default(uuid())
+  /// Scoping key — same trusted userId as Profile.userId (ADR-0007). Never read from the
+  /// request path/query/body.
+  userId                    String
+  /// The tax year these figures belong to (same granularity as TaxYear/Lstb).
+  steuerjahr                Int
+  /// Ziffer 1 — Lohn (Grundlohn). Encrypted at rest; null=offen, "unklar"=unreadable.
+  lohn                      String? /// @encrypted?mode=strict
+  /// Ziffer 2 — Gehaltsnebenleistungen. Encrypted at rest.
+  gehaltsnebenleistungen    String? /// @encrypted?mode=strict
+  /// Ziffer 3 — Unregelmäßige Leistungen. Encrypted at rest.
+  unregelmaessigeLeistungen String? /// @encrypted?mode=strict
+  /// Ziffer 4 — Kapitalleistungen. Encrypted at rest.
+  kapitalleistungen         String? /// @encrypted?mode=strict
+  /// Ziffer 5 — Beteiligungsrechte. Encrypted at rest.
+  beteiligungsrechte        String? /// @encrypted?mode=strict
+  /// Ziffer 6 — Sitzungsgelder. Encrypted at rest.
+  sitzungsgelder            String? /// @encrypted?mode=strict
+  /// Ziffer 7 — Andere Leistungen. Encrypted at rest.
+  andereLeistungen          String? /// @encrypted?mode=strict
+  /// Ziffer 8 — Total Bruttolohn (postenRelevant: Einkünfte). Encrypted at rest.
+  bruttolohnTotal           String? /// @encrypted?mode=strict
+  /// Ziffer 9 — AHV/IV/EO/ALV/NBUV (1. Säule). Encrypted at rest.
+  ahvBeitraege              String? /// @encrypted?mode=strict
+  /// Ziffer 10 — berufliche Vorsorge (2. Säule / PK, postenRelevant: Vorsorgeaufwand). Encrypted.
+  beruflicheVorsorge        String? /// @encrypted?mode=strict
+  /// Ziffer 11 — Nettolohn. Encrypted at rest.
+  nettolohn                 String? /// @encrypted?mode=strict
+  /// Ziffer 12 — Quellensteuerabzug (postenRelevant: Anrechnung). Encrypted at rest.
+  quellensteuer             String? /// @encrypted?mode=strict
+  /// Ziffer 13 — Spesen. Encrypted at rest.
+  spesen                    String? /// @encrypted?mode=strict
+  /// Ziffer 14 — Weitere Nebenleistungen. Encrypted at rest.
+  weitereNebenleistungen    String? /// @encrypted?mode=strict
+  /// Ziffer 15 — Bemerkungen (Freitext). Encrypted at rest (free text can carry PII).
+  bemerkungen               String? /// @encrypted?mode=strict
+  /// Säule 3a (ADR-029 point 4) — optional whole-CHF amount, null = not entered. Encrypted.
+  saeule3aChf               String? /// @encrypted?mode=strict
+  /// CH-Krankenkasse (ADR-029 point 5) — optional whole-CHF amount, null = not entered. Encrypted.
+  krankenkasseChf           String? /// @encrypted?mode=strict
+  /// Wechselkurs-Monat (yyyy-mm) the CHF→EUR conversion applies to (ADR-012).
+  wechselkursMonat          String?
+  /// Wechselkurs-Kurs (EUR per 1 CHF, strictly positive) — public BMF rate, clear.
+  wechselkursKurs           Float?
+  /// Wechselkurs-Modus (amtlich | tatsaechlich). Clear.
+  wechselkursModus          String?
+  /// Beleg id for a tatsächlicher Kurs (ADR-012: "ohne Beleg kein tatsächlicher Kurs"). Clear.
+  wechselkursBelegId        String?
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  @@unique([userId, steuerjahr])
+}

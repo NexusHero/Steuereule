@@ -31,8 +31,10 @@ import { type PostErrorKind } from './PostErrorNotice'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 
 export interface InterviewScreenProps {
-  /** Fires exactly once, when `nextStep(answers)` first reaches `{ kind: 'done' }`. */
-  readonly onDone: () => void
+  /** Fires exactly once, when `nextStep(answers)` first reaches `{ kind: 'done' }`, carrying the
+   *  final answers so the composition root can route on them (e.g. the CH vertical when
+   *  `ausland === 'Ja, in die Schweiz'`). */
+  readonly onDone: (answers: Answers) => void
   readonly taxYear?: number
 }
 
@@ -67,7 +69,7 @@ export function InterviewScreen({ onDone, taxYear = CURRENT_TAX_YEAR }: Intervie
   // `current?.kind` flips from a question/gate to 'done' exactly once — once reached, this
   // component renders nothing and offers no further interaction, so the effect cannot re-fire.
   useEffect(() => {
-    if (current?.kind === 'done') onDone()
+    if (current?.kind === 'done') onDone(answers)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current?.kind])
 

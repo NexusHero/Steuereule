@@ -2,12 +2,16 @@ import { describe, expect, it } from 'vitest'
 import { amtlicherMonatskurs } from './wechselkurs'
 import {
   bruttolohnAlsKernposten,
+  chPostenAlsKernposten,
   chPostenAusLohnausweis,
+  deserialisiereLohnausweisFeld,
+  grenzgaengerStand,
   grenzgaengerStatus,
   krankenkasseAbzug,
   LOHNAUSWEIS_FELDER,
   offeneLohnausweisFelder,
   saeule3aAbzug,
+  serialisiereLohnausweisFeld,
   zulagenVerrechnen,
   type LohnausweisWerte,
 } from './grenzgaenger'
@@ -142,6 +146,7 @@ describe('bruttolohnAlsKernposten — the ONE line that maps onto the core incom
     expect(bruttolohnAlsKernposten(bruttolohn!)).toEqual({
       id: 'ch-lohnausweis-bruttolohn-total',
       einkunftsart: 'Grenzgänger',
+      rolle: 'einnahme',
       betrag: 79061, // 79060.8 rounded to whole euros
       quelle: { art: 'beleg', belegId: 'lohnausweis' },
     })
@@ -150,5 +155,109 @@ describe('bruttolohnAlsKernposten — the ONE line that maps onto the core incom
   it('a non-income line (Quellensteuer/PK) returns null — not representable as an income Posten', () => {
     const posten = chPostenAusLohnausweis({ 'berufliche-vorsorge': 5000 }, KURS)
     expect(bruttolohnAlsKernposten(posten[0]!)).toBeNull()
+  })
+})
+
+describe('chPostenAlsKernposten — ADR-029/0015-Lehre, Vorsorge + Anrechnung folding', () => {
+  it('maps PK to a vorsorgeaufwand Posten, Quellensteuer to anrechnung, whole euros', () => {
+    const [pk, qst] = chPostenAusLohnausweis({ 'berufliche-vorsorge': 5000, quellensteuer: 3780 }, KURS)
+    expect(chPostenAlsKernposten(pk!)).toMatchObject({
+      id: 'ch-lohnausweis-berufliche-vorsorge',
+      einkunftsart: 'Grenzgänger',
+      rolle: 'vorsorgeaufwand',
+      betrag: 4706,
+      quelle: { art: 'beleg', belegId: 'lohnausweis' },
+    })
+    expect(chPostenAlsKernposten(qst!)).toMatchObject({
+      id: 'ch-lohnausweis-quellensteuer',
+      einkunftsart: 'Grenzgänger',
+      rolle: 'anrechnung',
+      betrag: 3558, // 3557.74 rounded to whole euros
+      quelle: { art: 'beleg', belegId: 'lohnausweis' },
+    })
+  })
+
+  it('maps Säule 3a and Krankenkasse to vorsorgeaufwand with `eingabe` origin', () => {
+    expect(chPostenAlsKernposten(saeule3aAbzug(7000, KURS))).toMatchObject({
+      rolle: 'vorsorgeaufwand',
+      betrag: 6588,
+      quelle: { art: 'eingabe' },
+    })
+    expect(chPostenAlsKernposten(krankenkasseAbzug(3000, KURS))).toMatchObject({
+      rolle: 'vorsorgeaufwand',
+      betrag: 2824, // 2823.6 rounded
+      quelle: { art: 'eingabe' },
+    })
+  })
+
+  it('AHV (1. Säule) has no role yet — its DBA treatment is open', () => {
+    const ahv: Parameters<typeof chPostenAlsKernposten>[0] = {
+      id: 'ch-ahv',
+      art: 'AHV',
+      betragChf: 4000,
+      wechselkurs: KURS,
+      betragEur: 3764.8,
+    }
+    expect(chPostenAlsKernposten(ahv)).toBeNull()
+  })
+})
+
+describe('grenzgaengerStand — ADR-029 fold through the deterministic core', () => {
+  const werte: LohnausweisWerte = { 'bruttolohn-total': 84000, 'berufliche-vorsorge': 5000, quellensteuer: 3780 }
+
+  it('folds Bruttolohn→einnahmen, PK→vorsorgeaufwand, Quellensteuer→anrechnung, 3a/KK into vorsorgeaufwand', () => {
+    const stand = grenzgaengerStand({
+      lohnausweis: werte,
+      saeule3aChf: 7000,
+      krankenkasseChf: 3000,
+      status: 'echter-grenzgaenger',
+      wechselkurs: KURS,
+      gegated: [],
+    })
+    expect(stand).toEqual({
+      kind: 'bestimmt',
+      einnahmen: 79061,
+      vorsorgeaufwand: 4706 + 6588 + 2824, // PK + 3a + KK
+      anrechnung: 3558,
+    })
+  })
+
+  it('a required-but-empty field is `offen`, never a fabricated zero (ADR-032 honesty)', () => {
+    const stand = grenzgaengerStand({ lohnausweis: { 'bruttolohn-total': 84000 }, status: 'echter-grenzgaenger', wechselkurs: KURS, gegated: [] })
+    expect(stand.kind).toBe('offen')
+    if (stand.kind === 'offen') {
+      expect(stand.offenePosten).toBe(2) // PK + Quellensteuer still open
+      expect(stand.vorsorgeaufwand).toBe(0)
+      expect(stand.anrechnung).toBe(0)
+    }
+  })
+
+  it('an absent optional 3a/KK is not folded at all — no zero Posten', () => {
+    const stand = grenzgaengerStand({ lohnausweis: werte, status: 'echter-grenzgaenger', wechselkurs: KURS, gegated: [] })
+    expect(stand.kind).toBe('bestimmt')
+    if (stand.kind === 'bestimmt') expect(stand.vorsorgeaufwand).toBe(4706)
+  })
+
+  it('passes gated Einkunftsarten through as an honest blocker', () => {
+    const stand = grenzgaengerStand({ lohnausweis: werte, status: 'echter-grenzgaenger', wechselkurs: KURS, gegated: ['Kapital'] })
+    expect(stand.kind).toBe('offen')
+    if (stand.kind === 'offen') expect(stand.gegated).toEqual(['Kapital'])
+  })
+})
+
+describe('Lohnausweis-mask persistence encoding — one truth (ADR-0033)', () => {
+  it('round-trips offen / unklar / erfasst', () => {
+    expect(serialisiereLohnausweisFeld(null)).toBeNull()
+    expect(serialisiereLohnausweisFeld('unklar')).toBe('unklar')
+    expect(serialisiereLohnausweisFeld(84000)).toBe('84000')
+    expect(deserialisiereLohnausweisFeld(null)).toBeNull()
+    expect(deserialisiereLohnausweisFeld('unklar')).toBe('unklar')
+    expect(deserialisiereLohnausweisFeld('84000')).toBe(84000)
+  })
+
+  it('rejects an invalid amount and a corrupt stored value', () => {
+    expect(() => serialisiereLohnausweisFeld(-1)).toThrow(RangeError)
+    expect(() => serialisiereLohnausweisFeld(1.5)).toThrow(RangeError)
+    expect(() => deserialisiereLohnausweisFeld('kaputt')).toThrow(Error)
   })
 })

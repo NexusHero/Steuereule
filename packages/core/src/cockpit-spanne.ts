@@ -71,8 +71,12 @@ function spanneAusZahlen(summe: number, offenePosten: number, konflikte: number,
  * `baseEstimate` to the kernel's own settled `summe`.
  */
 export function cockpitSpanne(stand: Berechnungsstand): CockpitSpanne {
-  if (stand.kind === 'bestimmt') return { kind: 'bestimmt', wert: stand.summe }
-  return spanneAusZahlen(stand.summe, stand.offenePosten, stand.konflikte, stand.gegated)
+  // Union with ticket 16: `berechne` now returns three buckets (einnahmen/vorsorgeaufwand/
+  // anrechnung), never a single sum. The Cockpit spanne derives from the EINNAHMEN bucket —
+  // vorsorgeaufwand/anrechnung stay separate honest buckets whose aggregation is Phase-2
+  // formula work, deliberately not subtracted here.
+  if (stand.kind === 'bestimmt') return { kind: 'bestimmt', wert: stand.einnahmen }
+  return spanneAusZahlen(stand.einnahmen, stand.offenePosten, stand.konflikte, stand.gegated)
 }
 
 /**

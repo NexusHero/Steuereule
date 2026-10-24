@@ -141,4 +141,26 @@ export default defineConfig({
       },
     },
   },
+  // REQ-021 (ticket 16) — the CH-Lohnausweis guided mask + fold: GET the re-entry state, PUT one
+  // CHF field, the Bemerkungen, the optional Vorsorge (3a/KK) and the Wechselkurs. Same
+  // `ch-lohnausweis` OpenAPI tag all five endpoints share.
+  'ch-lohnausweis': {
+    input: { target: '../../apps/api/openapi.json', filters: { tags: ['ch-lohnausweis'] } },
+    output: {
+      target: './src/generated/ch-lohnausweis.ts',
+      mode: 'split',
+      client: 'react-query',
+      httpClient: 'fetch',
+      mock: true,
+      override: {
+        mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        // `LohnausweisFeldDto.wert`, `ChPostenDto.ziffer`, `WechselkursDto.belegId` and the
+        // `BerechnungsstandDto`'s offen-variant fields are genuinely absent on some responses, so
+        // orval's default faker would emit `arrayElement([value, undefined])` and fail under
+        // `exactOptionalPropertyTypes: true` (TS2375). `mock.required: true` keeps every mocked
+        // property populated — same override the interview/lstb targets carry.
+        mock: { required: true },
+      },
+    },
+  },
 })
