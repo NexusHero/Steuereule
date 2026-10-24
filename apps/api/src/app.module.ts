@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common'
 import { ThrottlerModule } from '@nestjs/throttler'
 import { AccountModule } from './account/account.module.js'
 import { AuthModule } from './auth/auth.module.js'
+import { BelegModule } from './beleg/beleg.module.js'
 import { CockpitModule } from './cockpit/cockpit.module.js'
 import { DeviceModule } from './device/device.module.js'
 import { HealthModule } from './health/health.module.js'
@@ -20,6 +21,7 @@ import { ProfileModule } from './profile/profile.module.js'
     ProfileModule,
     CockpitModule,
     InterviewModule,
+    BelegModule,
     AccountModule,
     DeviceModule,
     HealthModule,

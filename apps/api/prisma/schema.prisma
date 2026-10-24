@@ -351,3 +351,40 @@ model LegalHold {
 
   @@index([userId])
 }
+
+/// One row per uploaded receipt (ADR-007/008). Lands UNBOUND (no year): the user
+/// photographs a receipt at the moment of receipt, not while filing. The extraction
+/// SUGGESTS a Steuerjahr — payment date over invoice date (§ 11 EStG Zufluss/Abfluss:
+/// the payment date fixes the year, not the invoice date) — and a tap confirms.
+/// Assigning a year that contradicts the date-derived suggestion yields a visible
+/// KONFLIKT state, never a silent overwrite (ADR-008). Scan/OCR is out of scope here
+/// (ADR-036/045, later slices) — this model stores the DATA interface only: dates,
+/// filename, confirmed year. The Zuordnung STATE is deliberately not a column: it is
+/// derived on every read from (steuerjahr, belegdatum, zahlungsdatum) via
+/// @steuereule/core's `zuordnungAusDaten` (ADR-014/048 determinism boundary — a stored
+/// copy of a derivable state could only drift). `dateiname` is field-encrypted at rest
+/// (ADR-0008): filenames can carry PII, and the column is joinable to Profile's
+/// Steuer-ID via the same userId. The dates stay in the clear — the suggestion rule and
+/// the (userId, steuerjahr) index need them without decrypting, and a date alone is not
+/// a tax identifier (the ADR-0008 ruling that put InterviewAnswer.value in the clear was
+/// about uniqueness/lookup; here it is about the derived-state rule, same instinct).
+model Beleg {
+  id            String    @id @default(uuid())
+  /// Scoping key — same trusted userId as Profile.userId (ADR-0007). Never read from the
+  /// request path/query/body.
+  userId        String
+  /// Original filename/storage key. Encrypted at rest (ADR-0008).
+  dateiname     String    /// @encrypted?mode=strict
+  /// Invoice date (Rechnungsdatum). Clear — the suggestion rule reads it without decrypting.
+  belegdatum    DateTime?
+  /// Payment date (Zahlungsdatum) — § 11 Zufluss fixes the year, not the invoice date.
+  zahlungsdatum DateTime?
+  /// The CONFIRMED year (a tap has happened). Null while unbound/suggested. The
+  /// suggestion itself is derived, never stored.
+  steuerjahr    Int?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([userId, steuerjahr])
+}
