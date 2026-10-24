@@ -15,8 +15,12 @@ import {
   getInterviewControllerGetInterviewMockHandler,
   getLstbControllerGetLstbMockHandler,
   getBelegControllerListMockHandler,
+  getChLohnausweisControllerGetMockHandler,
+  getChLohnausweisControllerSetFeldMockHandler,
+  getChLohnausweisControllerSetWechselkursMockHandler,
 } from '@steuereule/api-client/msw'
-import type { ProfileResponseDto, AuthCapabilitiesDto, DeviceCodeResponseDto, InterviewStateDto, LstbResponseDto } from '@steuereule/api-client'
+import { LOHNAUSWEIS_FELDER } from '@steuereule/core'
+import type { ProfileResponseDto, AuthCapabilitiesDto, DeviceCodeResponseDto, InterviewStateDto, LstbResponseDto, ChLohnausweisResponseDto } from '@steuereule/api-client'
 
 export const EMPTY_PROFILE_RESPONSE: ProfileResponseDto = {
   firstName: null,
@@ -75,6 +79,20 @@ export const EMPTY_LSTB_RESPONSE: LstbResponseDto = {
   zustand: { kind: 'unvollstaendig', offen: ['bruttoarbeitslohn', 'lohnsteuer', 'sozialversicherung'], unklar: [] },
 }
 
+/**
+ * Default `GET .../ch-lohnausweis` answer (REQ-021, ticket 16): a brand-new tax year with every
+ * CHF field `offen`, no Wechselkurs and no derived status/fold — matching the real API's honest
+ * empty-mask shape, pinned (not the generated faker) for the same reason as `EMPTY_LSTB_RESPONSE`.
+ */
+export const EMPTY_CH_LOHNAUSWEIS_RESPONSE: ChLohnausweisResponseDto = {
+  felder: LOHNAUSWEIS_FELDER.filter((f) => f.art === 'chf-betrag').map((f) => ({ id: f.id, ziffer: f.ziffer, kind: 'offen' as const })),
+  bemerkungen: null,
+  wechselkurs: null,
+  status: null,
+  posten: [],
+  stand: null,
+}
+
 export const server = setupServer(
   getProfileControllerGetProfileMockHandler(EMPTY_PROFILE_RESPONSE),
   getProfileControllerPutProfileMockHandler(),
@@ -88,6 +106,11 @@ export const server = setupServer(
   http.put('*/v1/steuerjahre/:jahr/lstb/:feld', () =>
     HttpResponse.json(EMPTY_LSTB_RESPONSE, { status: 200 }),
   ),
+  // REQ-021 (ticket 16) — the CH-Lohnausweis guided mask + fold: empty `offen` mask by default,
+  // same "fresh tax year" honesty as the interview/LStB defaults.
+  getChLohnausweisControllerGetMockHandler(EMPTY_CH_LOHNAUSWEIS_RESPONSE),
+  getChLohnausweisControllerSetFeldMockHandler(),
+  getChLohnausweisControllerSetWechselkursMockHandler(),
   // Default `POST .../interview/antworten` answer: a generic 200 — InterviewScreen renders the
   // next step from the local graph, not from this response body (#318 task 2's own "the graph
   // stays local" brief), so the exact `nextStep`/`openItems` values here are never asserted on

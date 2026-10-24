@@ -50,3 +50,16 @@ export {
   getBelegControllerSetZuordnungMockHandler,
   getSteuerEuleAPIMock as getBelegApiMock,
 } from './generated/belege.msw'
+export {
+  getChLohnausweisControllerGetResponseMock,
+  getChLohnausweisControllerGetMockHandler,
+  getChLohnausweisControllerSetFeldResponseMock,
+  getChLohnausweisControllerSetFeldMockHandler,
+  getChLohnausweisControllerSetBemerkungenResponseMock,
+  getChLohnausweisControllerSetBemerkungenMockHandler,
+  getChLohnausweisControllerSetVorsorgeResponseMock,
+  getChLohnausweisControllerSetVorsorgeMockHandler,
+  getChLohnausweisControllerSetWechselkursResponseMock,
+  getChLohnausweisControllerSetWechselkursMockHandler,
+  getSteuerEuleAPIMock as getChLohnausweisApiMock,
+} from './generated/ch-lohnausweis.msw'
