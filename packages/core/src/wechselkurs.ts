@@ -9,7 +9,7 @@
 // consistent within one Monat (ADR-012).
 // Pure, no I/O (ADR-0004) — the BMF rate SOURCE is a later backend slice (ADR-012
 // "API-Quelle für BMF-Kurse ist Backend-Aufgabe"); this module takes the rate as an input.
-import type { Quelle } from './berechnung.js'
+import type { Quelle } from './berechnung'
 
 /** The two modes ADR-012 allows: amtlich (rule-default) vs tatsächlich (requires a Beleg). */
 export type WechselkursModus = 'amtlich' | 'tatsaechlich'
