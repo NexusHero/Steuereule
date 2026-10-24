@@ -11,5 +11,8 @@ import { ChLohnausweisService } from './ch-lohnausweis.service.js'
   imports: [PrismaModule, AuditModule, InterviewModule],
   controllers: [ChLohnausweisController],
   providers: [ChLohnausweisService, { provide: CH_LOHNAUSWEIS_REPOSITORY, useClass: PrismaChLohnausweisRepository }],
+  // Exported so the Bescheid service (ticket 10.3) can fold the CH line items through the SAME
+  // field-encryption seam its own service uses — never a second Prisma read path.
+  exports: [CH_LOHNAUSWEIS_REPOSITORY],
 })
 export class ChLohnausweisModule {}

@@ -28,6 +28,7 @@ import { KatalogScreen } from './src/screens/katalog/KatalogScreen'
 import { ArbeitstageScreen } from './src/screens/arbeitstage/ArbeitstageScreen'
 import { PlausibilitaetScreen } from './src/screens/plausibilitaet/PlausibilitaetScreen'
 import { BelegeScreen } from './src/screens/belege/BelegeScreen'
+import { BescheidScreen } from './src/screens/bescheid/BescheidScreen'
 import { GrenzgaengerScreen } from './src/screens/grenzgaenger/GrenzgaengerScreen'
 import { ProfilScreen } from './src/screens/ProfilScreen'
 import { DatenschutzScreen } from './src/screens/DatenschutzScreen'
@@ -241,6 +242,7 @@ function TabbedShell({ tab, onTabChange, onSignedOut }: TabbedShellProps) {
     | 'arbeitstage'
     | 'plausibilitaet'
     | 'ch'
+    | 'bescheid'
   >('main')
 
   // The active tab's icon sits on the lime pill and needs the ink colour to stay legible;
@@ -276,7 +278,7 @@ function TabbedShell({ tab, onTabChange, onSignedOut }: TabbedShellProps) {
 
   return (
     <View style={{ flex: 1 }}>
-      {tab === 'cockpit' && cockpitView === 'main' ? <CockpitScreen onOpenInterview={() => setCockpitView('interview')} /> : null}
+      {tab === 'cockpit' && cockpitView === 'main' ? <CockpitScreen onOpenInterview={() => setCockpitView('interview')} onOpenBescheid={() => setCockpitView('bescheid')} /> : null}
       {tab === 'cockpit' && cockpitView === 'interview' ? (
         // The Minimal-Gate routes to the Grenzgänger-CH screen when it declares work in CH —
         // the `ausland` answer decides which vertical continues (ADR-029); otherwise the
@@ -298,6 +300,9 @@ function TabbedShell({ tab, onTabChange, onSignedOut }: TabbedShellProps) {
       ) : null}
       {tab === 'cockpit' && cockpitView === 'plausibilitaet' ? (
         <PlausibilitaetScreen onBack={() => setCockpitView('main')} />
+      ) : null}
+      {tab === 'cockpit' && cockpitView === 'bescheid' ? (
+        <BescheidScreen onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
       ) : null}
       {tab === 'belege' ? <BelegeScreen /> : null}
       {tab === 'profil' && profilView === 'main' ? (
