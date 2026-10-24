@@ -11,10 +11,16 @@
 // `consume` mirrors better-auth's own `decideConsume`
 // (`better-auth/dist/api/rate-limiter/index.mjs`) — read-decide-write in one
 // synchronous step, so two concurrent requests cannot both pass a stale read. It is
-// implemented here (rather than leaving `consume` absent and letting better-auth's
-// non-atomic `legacyConsume` fall back to `get`/`set`) because dropping the atomic
-// increment would silently weaken the concurrency guarantee the removed DB-backed
-// limiter had.
+// implemented here because dropping the atomic increment would silently weaken the
+// concurrency guarantee the removed DB-backed limiter had.
+//
+// better-auth ^1.7 breaking change (ticket 14, upgrade): the
+// `BetterAuthRateLimitStorage` contract is now `consume(key, rule)` ONLY — the
+// separate `get`/`set` shape this file previously implemented "for interface
+// completeness" is gone from the type (`@better-auth/core` `init-options.d.mts`:
+// "Better Auth no longer accepts separate `get`/`set` rate-limit storage"). Those
+// methods are removed here accordingly; the `legacyConsume` fallback they served no
+// longer exists in the 1.7 dist.
 //
 // Known limitation (deliberate, not fixed here): the `Map` below grows unbounded in a
 // long-lived process — one entry per seen `${ip}|${path}` key. better-auth's built-in
@@ -38,15 +44,6 @@ export function createResettableRateLimitStorage(): ResettableRateLimitStorage {
   const store = new Map<string, { key: string; count: number; lastRequest: number }>()
 
   return {
-    // `get`/`set` are only reached by better-auth's non-atomic `legacyConsume`
-    // fallback, which is not used while `consume` is present — kept for interface
-    // completeness.
-    async get(key) {
-      return store.get(key) ?? null
-    },
-    async set(key, value) {
-      store.set(key, { key: value.key, count: value.count, lastRequest: value.lastRequest })
-    },
     async consume(key, rule) {
       const now = Date.now()
       const windowMs = rule.window * 1000

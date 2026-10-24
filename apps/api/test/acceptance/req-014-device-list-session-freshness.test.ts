@@ -148,11 +148,16 @@ describe('REQ-014 — device list session freshness (list-sessions must not requ
   })
 
   // ADR-0027's pinned trade-off (Musti's #299 review, F2): `/unlink-account` is the OTHER real
-  // consumer of `freshSessionMiddleware` in better-auth 1.6.24 (`dist/api/routes/account.mjs:229`)
-  // — setting `session.freshAge: 0` removes its freshness requirement too, not only
+  // consumer of `freshSessionMiddleware` in better-auth (`dist/api/routes/account.mjs`, re-verified
+  // against 1.7.12) — setting `session.freshAge: 0` removes its freshness requirement too, not only
   // `list-sessions`'s. This asserts the ACCEPTED post-fix behaviour (unlink succeeds on an aged
   // session) so that trade-off is a recorded decision a future change can deliberately revisit,
   // not an unexamined side effect nobody wrote a test against.
+  //
+  // better-auth ^1.7 breaking change (ticket 14): `/unlink-account`'s body no longer accepts
+  // `providerId` — the selector is now the local `account.id` (`accountId: z.string()`,
+  // `account.mjs:262`, "Remove `providerId` from every account selector" in the 1.7 upgrade
+  // guide). The body below sends that local id, not the provider-side `accountId`.
   it('[regression guard, ADR-0027] session.freshAge: 0 also removes /unlink-account\'s freshness requirement — asserted, not merely stated', async () => {
     const signUp = await fetch(`${baseUrl}/api/auth/sign-up/email`, {
       method: 'POST',
@@ -183,10 +188,14 @@ describe('REQ-014 — device list session freshness (list-sessions must not requ
       data: { createdAt: new Date(Date.now() - PAST_DEFAULT_FRESH_AGE_MS) },
     })
 
+    const linkedAccount = await prisma.account.findFirstOrThrow({
+      where: { user: { email: 'req014-unlink@example.com' } },
+    })
+
     const unlink = await fetch(`${baseUrl}/api/auth/unlink-account`, {
       method: 'POST',
       headers: { cookie, 'content-type': 'application/json', ...TRUSTED_ORIGIN_HEADERS },
-      body: JSON.stringify({ providerId: 'google' }),
+      body: JSON.stringify({ accountId: linkedAccount.id }),
     })
     expect(unlink.status).toBe(200)
     expect(await unlink.json()).toEqual({ status: true })

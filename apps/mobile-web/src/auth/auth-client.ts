@@ -14,6 +14,7 @@
 // second, driftable copy of that default; see better-auth's `getClientConfig`.
 import { createAuthClient } from 'better-auth/react'
 import { twoFactorClient } from 'better-auth/client/plugins'
+import { passkeyClient } from '@better-auth/passkey/client'
 
 /** Mount point ADR-0012 §1 fixes for better-auth on the API (Fastify catch-all, outside Nest). */
 const AUTH_BASE_PATH = '/api/auth'
@@ -27,7 +28,13 @@ export function createAppAuthClient(baseUrl: string): ReturnType<typeof createAu
     // signal better-auth answers a credential sign-in with when 2FA is pending. No
     // `onTwoFactorRedirect`/`twoFactorPage` option: LoginScreen handles the challenge
     // itself (it must, to keep the challenge inline rather than bounce to a page).
-    plugins: [twoFactorClient()],
+    // passkeyClient() (REQ-007 passkey half, ticket 14) exposes
+    // `authClient.passkey.addPasskey` and `authClient.signIn.passkey` — the browser WebAuthn
+    // ceremony (`navigator.credentials`) is driven by `@simplewebauthn/browser` inside the
+    // plugin. Web only; native has no `navigator.credentials` (REQ-007 register row). The
+    // plugin's list/delete routes (`/passkey/list-user-passkeys`, `/passkey/delete-passkey`)
+    // are NOT wrapped as client methods — `usePasskey` reaches them via `authClient.$fetch`.
+    plugins: [twoFactorClient(), passkeyClient()],
     // Pinned explicitly rather than inherited (#194, ADR-0012 amendment) — an honesty
     // behaviour shouldn't rest on an undocumented dependency default.
     sessionOptions: { refetchOnWindowFocus: true },

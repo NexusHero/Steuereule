@@ -11,13 +11,14 @@
 // carry the server's `user.twoFactorEnabled` field — the *value* is present at runtime
 // (the plugin returns it), only the client type is blind to it. The cast is scoped to this
 // one field and asserted as a boolean, never a structural assumption about the whole user.
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ScrollView, View, Text, Pressable, ActivityIndicator } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Button, Card, Input, Feld, Pill, useTheme, useBreakpoint } from '@steuereule/ui'
 import { APP_NS } from '../../i18n/resources'
 import { useAccountSession } from '../../auth/useAccountSession'
 import { useTwoFactor, type TotpSetup } from '../../auth/useTwoFactor'
+import { usePasskey, type PasskeyInfo } from '../../auth/usePasskey'
 import { QrMark } from '../../marks/QrMark'
 import { makeSicherheitStyles } from './styles'
 
@@ -37,14 +38,73 @@ export function SicherheitScreen({ onZurueck }: SicherheitScreenProps) {
   const { t: tr } = useTranslation(APP_NS)
   const { state: sessionState } = useAccountSession()
   const twoFactor = useTwoFactor()
+  const passkey = usePasskey()
 
   const [stage, setStage] = useState<Stage>({ kind: 'idle' })
   const [password, setPassword] = useState('')
   const [code, setCode] = useState('')
   const [status, setStatus] = useState<string | null>(null)
+  // Passkey list state (REQ-007 passkey half, ticket 14). `null` = not yet loaded, `string` is
+  // held in `passkeyError`; the list itself is `PasskeyInfo[]`.
+  const [passkeys, setPasskeys] = useState<PasskeyInfo[] | null>(null)
+  const [passkeyError, setPasskeyError] = useState<string | null>(null)
+  const [passkeyStatus, setPasskeyStatus] = useState<string | null>(null)
+  const [passkeyBusy, setPasskeyBusy] = useState(false)
 
   const twoFactorEnabled = sessionState.status === 'signed-in' ? readTwoFactorEnabled(sessionState.session) : false
   const styles = makeSicherheitStyles(t)
+
+  // Load the passkey list once per sign-in state (not per render — `passkey.list` closes over a
+  // stable client, so its identity changing between renders is irrelevant to correctness).
+  useEffect(() => {
+    if (sessionState.status !== 'signed-in') return
+    let cancelled = false
+    void passkey.list().then((result) => {
+      if (cancelled) return
+      if (typeof result === 'string') setPasskeyError(result)
+      else setPasskeys(result)
+    })
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionState.status])
+
+  async function refreshPasskeys() {
+    const result = await passkey.list()
+    if (typeof result === 'string') setPasskeyError(result)
+    else setPasskeys(result)
+  }
+
+  async function submitAddPasskey() {
+    if (passkeyBusy) return
+    setPasskeyBusy(true)
+    setPasskeyError(null)
+    // Empty name: the OS/authenticator UI labels the credential; the plugin stores no label when
+    // none is supplied (see usePasskey — the server trims and drops whitespace-only names).
+    const error = await passkey.add('')
+    setPasskeyBusy(false)
+    if (error) {
+      setPasskeyError(error)
+      return
+    }
+    setPasskeyStatus(tr('sicherheit.passkey.added'))
+    await refreshPasskeys()
+  }
+
+  async function submitRemovePasskey(id: string) {
+    if (passkeyBusy) return
+    setPasskeyBusy(true)
+    setPasskeyError(null)
+    const error = await passkey.remove(id)
+    setPasskeyBusy(false)
+    if (error) {
+      setPasskeyError(error)
+      return
+    }
+    setPasskeyStatus(tr('sicherheit.passkey.removed'))
+    await refreshPasskeys()
+  }
 
   async function submitEnablePassword() {
     if (!password) return
@@ -170,6 +230,45 @@ export function SicherheitScreen({ onZurueck }: SicherheitScreenProps) {
               </Button>
             </Card>
           ) : null}
+
+          <Card style={styles.card}>
+            <View style={styles.statusRow}>
+              <Text style={styles.sectionTitle}>{tr('sicherheit.passkey.title')}</Text>
+              <Pill>{passkeys === null ? tr('sicherheit.passkey.loading') : tr('sicherheit.passkey.count', { count: passkeys.length })}</Pill>
+            </View>
+            <Text style={styles.sectionBody}>{tr('sicherheit.passkey.body')}</Text>
+            <Text style={styles.sectionBody}>{tr('sicherheit.passkey.webOnly')}</Text>
+
+            {passkeyError ? (
+              <Text style={styles.status} accessibilityLiveRegion="polite">
+                {passkeyError}
+              </Text>
+            ) : null}
+            {passkeyStatus ? (
+              <Text style={styles.status} accessibilityLiveRegion="polite">
+                {passkeyStatus}
+              </Text>
+            ) : null}
+
+            {passkeys !== null && passkeys.length === 0 ? (
+              <Text style={styles.sectionBody}>{tr('sicherheit.passkey.empty')}</Text>
+            ) : null}
+
+            {passkeys !== null && passkeys.length > 0
+              ? passkeys.map((p) => (
+                  <View key={p.id} style={styles.statusRow}>
+                    <Text style={styles.sectionBody}>{p.name ?? tr('sicherheit.passkey.unnamed')}</Text>
+                    <Button variante="ghost" onPress={() => void submitRemovePasskey(p.id)} disabled={passkeyBusy}>
+                      {tr('sicherheit.passkey.remove')}
+                    </Button>
+                  </View>
+                ))
+              : null}
+
+            <Button onPress={() => void submitAddPasskey()} disabled={passkeyBusy}>
+              {passkeyBusy ? tr('sicherheit.busy') : tr('sicherheit.passkey.add')}
+            </Button>
+          </Card>
         </>
       )}
     </ScrollView>

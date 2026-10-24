@@ -96,4 +96,9 @@ export const server = setupServer(
   // section it isn't testing; DeviceListSection's own suite overrides with real session rows
   // (and with an error response, for its own honest-failure test) via `server.use(...)`.
   http.get('*/api/auth/list-sessions', () => HttpResponse.json([])),
+  // REQ-007 passkey half (ticket 14) — the security screen's `list-user-passkeys` read. Defaults
+  // to an empty list (a fresh account genuinely has no passkeys) so every SicherheitScreen test
+  // stays undisturbed by the passkey section; the passkey suite overrides with real rows (and
+  // with the delete route) via `server.use(...)`.
+  http.get('*/api/auth/passkey/list-user-passkeys', () => HttpResponse.json([])),
 )
