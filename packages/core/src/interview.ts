@@ -145,6 +145,14 @@ export type SonderausgabeQuestionId =
   | 'riester'
   | 'riester-betrag'
 
+/**
+ * The Grenzgänger-CH entry's two questions (ADR-013/036). CHF amounts are entered via the
+ * Lohnausweis mask (grenzgaenger.ts), NOT the interview — these two capture the Wohnsitz and
+ * the 45-Tage-Regel's input (Nichtrückkehrtage). No gate: the Grenzgänger-Status is a DERIVED
+ * fact (`grenzgaengerStatus`), not a question to re-ask.
+ */
+export type SegmentChQuestionId = 'ch-wohnsitz' | 'ch-nichtrueckkehrtage'
+
 // ---- Back-compat tier (#318, UNCHANGED) -----------------------------------------------------
 
 /** The Minimal-Gate's own question ids. Byte-identical to #318 — see the header comment. */
@@ -173,6 +181,7 @@ export type EntryQuestionId =
   | SegmentTwoQuestionId
   | LebenslageQuestionId
   | SonderausgabeQuestionId
+  | SegmentChQuestionId
 export type EntryGateId = MinimalGateGateId | SegmentTwoGateId
 
 /** Any step declared in ANY entry — the generic engine's own domain (D1/D3). */
@@ -234,6 +243,12 @@ export const JA_NEIN_VALUES = ['Ja', 'Nein'] as const
  * steuerfrei — so it carries no follow-up amount; Midijob/Nebenjob open the Brutto follow-up).
  */
 export const NEBENJOB_VALUES = ['Nein', 'Minijob', 'Midijob', 'Nebenjob'] as const
+
+/** Accepted values for `ch-wohnsitz` (ADR-013 — a Grenzgänger lives in DE and works in CH; a CH-Wohnsitz is a resident). */
+export const CH_WOHNSITZ_VALUES = ['Deutschland', 'Schweiz'] as const
+
+/** The Wohnsitz fact the CH entry collects — byte-equal to `CH_WOHNSITZ_VALUES`. */
+export type ChWohnsitz = (typeof CH_WOHNSITZ_VALUES)[number]
 
 /** The Minimal-Gate's questions, in the order product ADR-016 fixes them. Unchanged from #318. */
 export const QUESTION_ORDER: readonly MinimalGateQuestionId[] = ['job', 'ausland', 'kinder']
@@ -429,10 +444,17 @@ export const QUESTIONS: Readonly<Record<EntryStepId, QuestionDeclaration>> = {
   'kv-pv-betrag': { id: 'kv-pv-betrag', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
   riester: { id: 'riester', kind: 'question', form: { kind: 'enum', values: JA_NEIN_VALUES }, followUps: { Ja: ['riester-betrag'] } },
   'riester-betrag': { id: 'riester-betrag', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
+
+  // ---- Grenzgänger-CH (segment-ch, ADR-013/036) ----------------------------------------
+  'ch-wohnsitz': { id: 'ch-wohnsitz', kind: 'question', form: { kind: 'enum', values: CH_WOHNSITZ_VALUES } },
+  // The 45-Tage-Zähler input (ADR-013): Nichtrückkehrtage. The range 0–365 is the calendar
+  // year's bound — the same open-placeholder stance as `weg`/`tage` (review F6); the DERIVED
+  // rule (grenzgaengerStatus, >45 ends Grenzgänger status) is the sourced part, not this range.
+  'ch-nichtrueckkehrtage': { id: 'ch-nichtrueckkehrtage', kind: 'question', form: { kind: 'integer', min: 0, max: 365 } },
 }
 
 /** D1 — the entries that exist today. `EntryId` grows as later Lebenslagen arrive (ADR-0031 §3). */
-export type EntryId = 'minimal-gate' | 'segment-2' | 'lebenslagen' | 'sonderausgaben'
+export type EntryId = 'minimal-gate' | 'segment-2' | 'lebenslagen' | 'sonderausgaben' | 'segment-ch'
 
 export interface CatalogueEntry {
   readonly id: EntryId
@@ -459,6 +481,7 @@ export const ENTRIES: Readonly<Record<EntryId, CatalogueEntry>> = {
     id: 'sonderausgaben',
     steps: ['spenden', 'kv-pv', 'riester'],
   },
+  'segment-ch': { id: 'segment-ch', steps: ['ch-wohnsitz', 'ch-nichtrueckkehrtage'] },
 }
 
 function targetId(target: FollowUpTarget): EntryStepId {
