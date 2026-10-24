@@ -8,10 +8,10 @@
 // Zulagen amounts come FROM the Lohnausweis/Nachweise (data), never from a guessed rate —
 // "KEINE Schätzungen, offen wo unklar" (ADR-032 honesty). What is not computable is modelled
 // as OFFEN, never as a point value.
-import type { Einkunftsart } from './einkunftsarten.js'
-import type { Posten } from './berechnung.js'
-import { chfNachEur, type Wechselkurs } from './wechselkurs.js'
-import { CH_WOHNSITZ_VALUES, type ChWohnsitz } from './interview.js'
+import type { Einkunftsart } from './einkunftsarten'
+import type { Posten } from './berechnung'
+import { chfNachEur, type Wechselkurs } from './wechselkurs'
+import { CH_WOHNSITZ_VALUES, type ChWohnsitz } from './interview'
 
 // Re-exported so the domain stays importable from one place; the Wohnsitz vocabulary itself
 // lives in interview.ts (the persisted answer values — ADR-0033's one-rule instinct).

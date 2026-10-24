@@ -12,8 +12,8 @@ import {
   type ChWohnsitz,
   type LohnausweisFeldId,
   type LohnausweisWerte,
-} from './grenzgaenger.js'
-import type { Wechselkurs } from './wechselkurs.js'
+} from './grenzgaenger'
+import type { Wechselkurs } from './wechselkurs'
 
 /** The three grades ADR-008/M2 distinguishes. `offen` = a required fact is missing. */
 export type PlausibilitaetsGrad = 'widerspruch' | 'hinweis' | 'offen'
