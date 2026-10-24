@@ -388,3 +388,34 @@ model Beleg {
   @@index([userId])
   @@index([userId, steuerjahr])
 }
+
+/// One row per (userId, steuerjahr) — the LStB (Lohnsteuerbescheinigung) guided-mask data for the
+/// Angestellte-Vertikale (ticket 08, ADR-036 Scan-Fallback). The user transcribes the three printed
+/// figures (Bruttoarbeitslohn, einbehaltene Lohnsteuer, SV-Arbeitnehmeranteil) field by field; the
+/// photo stays stored as a Beleg (ADR-007), and Scan/OCR is a later slice (ADR-045). Each field's
+/// stored string encodes its honest state (packages/core/src/lstb.ts is the ONE place that maps):
+/// `null` = `offen` (not reached yet), the reserved marker `unklar` = "looked but could not read",
+/// any other string = a whole-euro amount (`erfasst`). The derived `LstbZustand`
+/// (unvollstaendig / widerspruch / vollstaendig) is recomputed on every read via @steuereule/core's
+/// `lstbZustand`, never stored (ADR-014/048 determinism boundary). The figures are field-encrypted
+/// at rest (ADR-0008): actual income is the most sensitive personal fact a tax app holds, joinable
+/// to Profile's Steuer-ID via the same userId — unlike TaxYear (counts only) or the Beleg dates
+/// (needed clear for the suggestion rule).
+model Lstb {
+  id                 String   @id @default(uuid())
+  /// Scoping key — same trusted userId as Profile.userId (ADR-0007). Never read from the
+  /// request path/query/body.
+  userId             String
+  /// The tax year these figures belong to (same granularity as TaxYear/InterviewAnswer).
+  steuerjahr         Int
+  /// Bruttoarbeitslohn (Zeile 3). Encrypted at rest (ADR-0008); null=offen, "unklar"=unreadable.
+  bruttoarbeitslohn  String?  /// @encrypted?mode=strict
+  /// Einbehaltene Lohnsteuer (Zeile 4). Encrypted at rest; same state encoding.
+  lohnsteuer         String?  /// @encrypted?mode=strict
+  /// Arbeitnehmer-Anteil der SV-Beiträge (Zeilen 22/23). Encrypted at rest; same state encoding.
+  sozialversicherung String?  /// @encrypted?mode=strict
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([userId, steuerjahr])
+}

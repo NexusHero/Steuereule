@@ -38,3 +38,10 @@ export {
   getInterviewControllerPostAnswerMockHandler,
   getSteuerEuleAPIMock as getInterviewApiMock,
 } from './generated/interview.msw'
+export {
+  getLstbControllerGetLstbResponseMock,
+  getLstbControllerGetLstbMockHandler,
+  getLstbControllerSetFeldResponseMock,
+  getLstbControllerSetFeldMockHandler,
+  getSteuerEuleAPIMock as getLstbApiMock,
+} from './generated/lstb.msw'

@@ -124,6 +124,21 @@
         "operationId": "InterviewController_getInterview",
         "parameters": [
           {
+            "name": "eintrag",
+            "required": false,
+            "in": "query",
+            "description": "The catalogue entry to re-enter; absent → the Minimal-Gate.",
+            "schema": {
+              "enum": [
+                "minimal-gate",
+                "segment-2",
+                "lebenslagen",
+                "sonderausgaben"
+              ],
+              "type": "string"
+            }
+          },
+          {
             "name": "jahr",
             "required": true,
             "in": "path",
@@ -202,6 +217,96 @@
         },
         "tags": [
           "interview"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/lstb": {
+      "get": {
+        "operationId": "LstbController_getLstb",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr) — validated to a sensible window (ParseSteuerjahrPipe, same as Cockpit).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The caller’s LStB mask state for this tax year — re-entry.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LstbResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "lstb"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/lstb/{feld}": {
+      "put": {
+        "operationId": "LstbController_setFeld",
+        "parameters": [
+          {
+            "name": "feld",
+            "required": true,
+            "in": "path",
+            "description": "One of bruttoarbeitslohn | lohnsteuer | sozialversicherung (ParseLstbFeldPipe).",
+            "schema": {
+              "example": "bruttoarbeitslohn",
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr) — validated to a sensible window (ParseSteuerjahrPipe, same as Cockpit).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LstbFeldDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated mask and its derived zustand.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LstbResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "lstb"
         ]
       }
     },
@@ -821,6 +926,129 @@
         "required": [
           "nextStep",
           "openItems"
+        ]
+      },
+      "LstbFeldDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "erfasst",
+              "offen",
+              "unklar"
+            ],
+            "description": "The field’s capture state."
+          },
+          "wert": {
+            "type": "number",
+            "example": 50000,
+            "description": "The whole-euro amount — present only when kind === \"erfasst\" (validated in the service via @steuereule/core)."
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "LstbWiderspruchDto": {
+        "type": "object",
+        "properties": {
+          "art": {
+            "type": "string",
+            "enum": [
+              "lohnsteuer-uebersteigt-brutto",
+              "sozialversicherung-uebersteigt-brutto"
+            ],
+            "example": "lohnsteuer-uebersteigt-brutto"
+          },
+          "lohnsteuer": {
+            "type": "number",
+            "description": "The einbehaltene Lohnsteuer (only when art is lohnsteuer-uebersteigt-brutto)."
+          },
+          "bruttoarbeitslohn": {
+            "type": "number",
+            "description": "The Bruttoarbeitslohn (both arts)."
+          },
+          "sozialversicherung": {
+            "type": "number",
+            "description": "The SV-Arbeitnehmeranteil (only when art is sozialversicherung-uebersteigt-brutto)."
+          }
+        },
+        "required": [
+          "art"
+        ]
+      },
+      "LstbZustandDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "unvollstaendig",
+              "widerspruch",
+              "vollstaendig"
+            ],
+            "example": "unvollstaendig"
+          },
+          "offen": {
+            "description": "Fields not yet reached (only when kind is unvollstaendig).",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "unklar": {
+            "description": "Fields looked at but unreadable (only when kind is unvollstaendig).",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "widersprueche": {
+            "description": "The named contradictions (only when kind is widerspruch).",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LstbWiderspruchDto"
+            }
+          },
+          "bruttoarbeitslohn": {
+            "type": "number",
+            "description": "Bruttoarbeitslohn, whole euros (only when kind is vollstaendig)."
+          },
+          "lohnsteuer": {
+            "type": "number",
+            "description": "Einbehaltene Lohnsteuer, whole euros (only when kind is vollstaendig)."
+          },
+          "sozialversicherung": {
+            "type": "number",
+            "description": "SV-Arbeitnehmeranteil, whole euros (only when kind is vollstaendig)."
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "LstbResponseDto": {
+        "type": "object",
+        "properties": {
+          "bruttoarbeitslohn": {
+            "$ref": "#/components/schemas/LstbFeldDto"
+          },
+          "lohnsteuer": {
+            "$ref": "#/components/schemas/LstbFeldDto"
+          },
+          "sozialversicherung": {
+            "$ref": "#/components/schemas/LstbFeldDto"
+          },
+          "zustand": {
+            "$ref": "#/components/schemas/LstbZustandDto"
+          }
+        },
+        "required": [
+          "bruttoarbeitslohn",
+          "lohnsteuer",
+          "sozialversicherung",
+          "zustand"
         ]
       },
       "ZuordnungDto": {

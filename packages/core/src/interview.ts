@@ -112,6 +112,39 @@ export type SegmentTwoQuestionId =
 /** Segment 2's two honesty gates (product ADR-032/033) — both passable, neither terminal. */
 export type SegmentTwoGateId = 'krypto-gate' | 'vermietung-gate'
 
+// ---- Angestellte-Vertikale (Ticket 08, Phase 1a) --------------------------------------------
+// The 5 Lebenslagen (product ADR-031) and the Sonderausgaben catalogue (ADR-016/035) arrive as
+// MORE catalogue entries over the SAME engine — one walker, one registry (ADR-0031 §3). Only the
+// amount follow-ups carry their parent's name (dhf-miete, umzug-kosten, spenden-betrag, …); the
+// top-level ids are deliberately naked (dhf, umzug, spenden, …). That naming is a mnemonic, NOT a
+// namespace — the collision-safety against a parallel vertical (Grenzgänger-CH, ticket 09) adding
+// ids to this CLOSED `EntryStepId` union comes structurally from `buildStepIndex` throwing when two
+// entries ever claim the same id (D3), not from any id-naming scheme. Nothing here renames or
+// reshapes Segment 1/2 — it only widens the unions the engine already walks over, exactly as
+// ADR-0031 §3 prescribes ("a catalogue entry is a named set of question ids, not a second code path").
+
+/** The 5 Lebenslagen's own question ids (product ADR-031, Werbungskosten/Lebenslagen). */
+export type LebenslageQuestionId =
+  | 'dhf'
+  | 'dhf-miete'
+  | 'umzug'
+  | 'umzug-kosten'
+  | 'abfindung'
+  | 'abfindung-betrag'
+  | 'lohnersatz'
+  | 'lohnersatz-betrag'
+  | 'nebenjob'
+  | 'nebenjob-brutto'
+
+/** The Sonderausgaben catalogue's own question ids (ADR-016/035: Spenden, KV/PV, Riester). */
+export type SonderausgabeQuestionId =
+  | 'spenden'
+  | 'spenden-betrag'
+  | 'kv-pv'
+  | 'kv-pv-betrag'
+  | 'riester'
+  | 'riester-betrag'
+
 // ---- Back-compat tier (#318, UNCHANGED) -----------------------------------------------------
 
 /** The Minimal-Gate's own question ids. Byte-identical to #318 — see the header comment. */
@@ -135,7 +168,11 @@ export type Step =
 
 // ---- Catalogue tier (#321, every entry) -----------------------------------------------------
 
-export type EntryQuestionId = MinimalGateQuestionId | SegmentTwoQuestionId
+export type EntryQuestionId =
+  | MinimalGateQuestionId
+  | SegmentTwoQuestionId
+  | LebenslageQuestionId
+  | SonderausgabeQuestionId
 export type EntryGateId = MinimalGateGateId | SegmentTwoGateId
 
 /** Any step declared in ANY entry — the generic engine's own domain (D1/D3). */
@@ -182,6 +219,21 @@ export const KAP_DEPOT_VALUES = ['Deutscher Broker', 'Ausländischer Broker', 'K
 
 /** Accepted values for `vermietung-art` (Produkt-ADR-033 — several objects ship; sale/furnished-short-term gates). */
 export const VERMIETUNG_ART_VALUES = ['Einfach', 'Mehrere', 'Verkauf oder möbliert'] as const
+
+/**
+ * Accepted values for a Lebenslage/Sonderausgabe "trifft zu?" question (product ADR-031/016 —
+ * the on-demand catalogue's guided questions). Byte-equal to `PARTNER_VALUES`/`FORTBILDUNG_VALUES`
+ * by design, but declared as its own named constant so a future wording change to one of those
+ * does not silently rewrite the catalogue's semantics (same reason each Segment-1 value set is
+ * its own constant rather than a shared `['Ja', 'Nein']`).
+ */
+export const JA_NEIN_VALUES = ['Ja', 'Nein'] as const
+
+/**
+ * Accepted values for `nebenjob` (product ADR-031: Minijob is "nur erklären, nicht erfassen" —
+ * steuerfrei — so it carries no follow-up amount; Midijob/Nebenjob open the Brutto follow-up).
+ */
+export const NEBENJOB_VALUES = ['Nein', 'Minijob', 'Midijob', 'Nebenjob'] as const
 
 /** The Minimal-Gate's questions, in the order product ADR-016 fixes them. Unchanged from #318. */
 export const QUESTION_ORDER: readonly MinimalGateQuestionId[] = ['job', 'ausland', 'kinder']
@@ -327,10 +379,60 @@ export const QUESTIONS: Readonly<Record<EntryStepId, QuestionDeclaration>> = {
     },
   },
   'vermietung-gate': { id: 'vermietung-gate', kind: 'gate', form: { kind: 'enum', values: [GATE_ACKNOWLEDGED] } },
+
+  // ---- Angestellte-Vertikale — 5 Lebenslagen (product ADR-031, ticket 08) -----------------
+  // Each Lebenslage is a "trifft zu?" gate-question whose `Ja` opens ONE integer follow-up (the
+  // primary amount). The tax FORMULAS behind them (Fünftelregelung for Abfindung,
+  // Progressionsvorbehalt for Lohnersatz, zumutbare Belastung, …) are deliberately NOT here —
+  // they are later slices' work (same honesty as berechnung.ts's header); this slice captures
+  // the DECLARATION and the primary value, which is what the Rechenkern folds. All integer ranges
+  // are open placeholders (no cited ruling yet — same caveat as `weg`/`tage` above, review F6).
+  dhf: { id: 'dhf', kind: 'question', form: { kind: 'enum', values: JA_NEIN_VALUES }, followUps: { Ja: ['dhf-miete'] } },
+  'dhf-miete': { id: 'dhf-miete', kind: 'question', form: { kind: 'integer', min: 0, max: 10000 } },
+  umzug: { id: 'umzug', kind: 'question', form: { kind: 'enum', values: JA_NEIN_VALUES }, followUps: { Ja: ['umzug-kosten'] } },
+  'umzug-kosten': { id: 'umzug-kosten', kind: 'question', form: { kind: 'integer', min: 0, max: 100000 } },
+  abfindung: {
+    id: 'abfindung',
+    kind: 'question',
+    form: { kind: 'enum', values: JA_NEIN_VALUES },
+    followUps: { Ja: ['abfindung-betrag'] },
+  },
+  'abfindung-betrag': { id: 'abfindung-betrag', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
+  lohnersatz: {
+    id: 'lohnersatz',
+    kind: 'question',
+    form: { kind: 'enum', values: JA_NEIN_VALUES },
+    followUps: { Ja: ['lohnersatz-betrag'] },
+  },
+  'lohnersatz-betrag': { id: 'lohnersatz-betrag', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
+  nebenjob: {
+    id: 'nebenjob',
+    kind: 'question',
+    form: { kind: 'enum', values: NEBENJOB_VALUES },
+    followUps: {
+      // Minijob is steuerfrei and intentionally carries no amount (product ADR-031); Midijob and
+      // Nebenjob both open the Brutto follow-up. `Nein` closes the branch (no follow-up).
+      Midijob: ['nebenjob-brutto'],
+      Nebenjob: ['nebenjob-brutto'],
+    },
+  },
+  'nebenjob-brutto': { id: 'nebenjob-brutto', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
+
+  // ---- Angestellte-Vertikale — Sonderausgaben-Katalog (ADR-016/035, ticket 08) ------------
+  // Spenden, KV/PV-Beiträge and Riester are the catalogue's first entries. Same shape as the
+  // Lebenslagen: a "trifft zu?" question whose `Ja` opens the amount. The bounds (Riester's
+  // Anlage-AV cap, the 20%-Spendenabzug, …) are later slices' tax formulas — here only the
+  // DECLARATION + amount are captured and folded honestly (gated when the cap is not yet computed).
+  spenden: { id: 'spenden', kind: 'question', form: { kind: 'enum', values: JA_NEIN_VALUES }, followUps: { Ja: ['spenden-betrag'] } },
+  'spenden-betrag': { id: 'spenden-betrag', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
+  'kv-pv': { id: 'kv-pv', kind: 'question', form: { kind: 'enum', values: JA_NEIN_VALUES }, followUps: { Ja: ['kv-pv-betrag'] } },
+  'kv-pv-betrag': { id: 'kv-pv-betrag', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
+  riester: { id: 'riester', kind: 'question', form: { kind: 'enum', values: JA_NEIN_VALUES }, followUps: { Ja: ['riester-betrag'] } },
+  'riester-betrag': { id: 'riester-betrag', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
 }
 
-/** D1 — the two entries that exist today. `EntryId` grows as later Lebenslagen arrive (ADR-0031 §3). */
-export type EntryId = 'minimal-gate' | 'segment-2'
+/** D1 — the entries that exist today. `EntryId` grows as later Lebenslagen arrive (ADR-0031 §3). */
+export type EntryId = 'minimal-gate' | 'segment-2' | 'lebenslagen' | 'sonderausgaben'
 
 export interface CatalogueEntry {
   readonly id: EntryId
@@ -346,6 +448,17 @@ export interface CatalogueEntry {
 export const ENTRIES: Readonly<Record<EntryId, CatalogueEntry>> = {
   'minimal-gate': { id: 'minimal-gate', steps: ['job', 'ausland', 'kinder'] },
   'segment-2': { id: 'segment-2', steps: ['partner', 'homeoffice', 'weg', 'tage', 'fortbildung', 'einkuenfte'] },
+  // Angestellte-Vertikale (ticket 08). The follow-up-only branch questions (dhf-miete, …) are
+  // deliberately NOT listed here — they are reachable only via their parent's `followUps` (D2,
+  // ADR-0031 §4). Only the top-level "trifft zu?" questions order the entry.
+  lebenslagen: {
+    id: 'lebenslagen',
+    steps: ['dhf', 'umzug', 'abfindung', 'lohnersatz', 'nebenjob'],
+  },
+  sonderausgaben: {
+    id: 'sonderausgaben',
+    steps: ['spenden', 'kv-pv', 'riester'],
+  },
 }
 
 function targetId(target: FollowUpTarget): EntryStepId {

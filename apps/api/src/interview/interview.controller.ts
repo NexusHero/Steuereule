@@ -1,10 +1,11 @@
-import { Body, Controller, Get, HttpCode, Inject, Param, Post, UseGuards } from '@nestjs/common'
+import { Body, Controller, Get, HttpCode, Inject, Param, Post, Query, UseGuards } from '@nestjs/common'
 import {
   ApiBadRequestResponse,
   ApiBody,
   ApiConflictResponse,
   ApiOkResponse,
   ApiParam,
+  ApiQuery,
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger'
@@ -40,11 +41,19 @@ export class InterviewController {
   })
   @ApiOkResponse({ type: InterviewStateDto, description: 'The caller’s Minimal-Gate state for this tax year — re-entry.' })
   @ApiUnauthorizedResponse({ description: 'Guest session — this endpoint requires a signed-in account.' })
+  // R2 — explicit @ApiQuery(): a @Query() param's shape needs this spelled out under the
+  // tsx/esbuild openapi:spec generation (see generate-openapi-spec.ts), or the `eintrag`
+  // re-entry parameter would silently vanish from the generated client.
+  @ApiQuery({ name: 'eintrag', required: false, enum: ['minimal-gate', 'segment-2', 'lebenslagen', 'sonderausgaben'], description: 'The catalogue entry to re-enter; absent → the Minimal-Gate.' })
   getInterview(
     @CurrentUser() userId: string,
     @Param('jahr', ParseSteuerjahrPipe) jahr: number,
+    // R2 — re-entry for an on-demand catalogue entry (Segment 2 / Lebenslagen / Sonderausgaben).
+    // Absent → the Minimal-Gate (Segment 1), unchanged from #318. The value is validated against
+    // the closed EntryId union; an unknown id falls out as a 400 (no separate hand-maintained list).
+    @Query('eintrag') eintrag?: string,
   ): Promise<InterviewStateDto> {
-    return this.interviewService.getState(userId, jahr)
+    return this.interviewService.getState(userId, jahr, eintrag)
   }
 
   @Post(':jahr/interview/antworten')

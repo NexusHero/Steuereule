@@ -25,6 +25,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  InterviewControllerGetInterviewParams,
   InterviewStateDto,
   PostAnswerDto,
   PostAnswerResponseDto
@@ -71,17 +72,26 @@ export type interviewControllerGetInterviewResponseError = (interviewControllerG
 
 export type interviewControllerGetInterviewResponse = (interviewControllerGetInterviewResponseSuccess | interviewControllerGetInterviewResponseError)
 
-export const getInterviewControllerGetInterviewUrl = (jahr: number,) => {
+export const getInterviewControllerGetInterviewUrl = (jahr: number,
+    params?: InterviewControllerGetInterviewParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/v1/steuerjahre/${jahr}/interview`
+  return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/interview?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/interview`
 }
 
-export const interviewControllerGetInterview = async (jahr: number, options?: RequestInit): Promise<interviewControllerGetInterviewResponse> => {
+export const interviewControllerGetInterview = async (jahr: number,
+    params?: InterviewControllerGetInterviewParams, options?: RequestInit): Promise<interviewControllerGetInterviewResponse> => {
 
-  return httpClient<interviewControllerGetInterviewResponse>(getInterviewControllerGetInterviewUrl(jahr),
+  return httpClient<interviewControllerGetInterviewResponse>(getInterviewControllerGetInterviewUrl(jahr,params),
   {
     ...options,
     method: 'GET'
@@ -94,23 +104,25 @@ export const interviewControllerGetInterview = async (jahr: number, options?: Re
 
 
 
-export const getInterviewControllerGetInterviewQueryKey = (jahr: number,) => {
+export const getInterviewControllerGetInterviewQueryKey = (jahr: number,
+    params?: InterviewControllerGetInterviewParams,) => {
     return [
-    `/v1/steuerjahre/${jahr}/interview`
+    `/v1/steuerjahre/${jahr}/interview`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getInterviewControllerGetInterviewQueryOptions = <TData = Awaited<ReturnType<typeof interviewControllerGetInterview>>, TError = void>(jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof interviewControllerGetInterview>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export const getInterviewControllerGetInterviewQueryOptions = <TData = Awaited<ReturnType<typeof interviewControllerGetInterview>>, TError = void>(jahr: number,
+    params?: InterviewControllerGetInterviewParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof interviewControllerGetInterview>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getInterviewControllerGetInterviewQueryKey(jahr);
+  const queryKey =  queryOptions?.queryKey ?? getInterviewControllerGetInterviewQueryKey(jahr,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof interviewControllerGetInterview>>> = ({ signal }) => interviewControllerGetInterview(jahr, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof interviewControllerGetInterview>>> = ({ signal }) => interviewControllerGetInterview(jahr,params, { signal, ...requestOptions });
 
 
 
@@ -124,7 +136,8 @@ export type InterviewControllerGetInterviewQueryError = void
 
 
 export function useInterviewControllerGetInterview<TData = Awaited<ReturnType<typeof interviewControllerGetInterview>>, TError = void>(
- jahr: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof interviewControllerGetInterview>>, TError, TData>> & Pick<
+ jahr: number,
+    params: undefined |  InterviewControllerGetInterviewParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof interviewControllerGetInterview>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof interviewControllerGetInterview>>,
           TError,
@@ -134,7 +147,8 @@ export function useInterviewControllerGetInterview<TData = Awaited<ReturnType<ty
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useInterviewControllerGetInterview<TData = Awaited<ReturnType<typeof interviewControllerGetInterview>>, TError = void>(
- jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof interviewControllerGetInterview>>, TError, TData>> & Pick<
+ jahr: number,
+    params?: InterviewControllerGetInterviewParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof interviewControllerGetInterview>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof interviewControllerGetInterview>>,
           TError,
@@ -144,16 +158,18 @@ export function useInterviewControllerGetInterview<TData = Awaited<ReturnType<ty
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useInterviewControllerGetInterview<TData = Awaited<ReturnType<typeof interviewControllerGetInterview>>, TError = void>(
- jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof interviewControllerGetInterview>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ jahr: number,
+    params?: InterviewControllerGetInterviewParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof interviewControllerGetInterview>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 
 export function useInterviewControllerGetInterview<TData = Awaited<ReturnType<typeof interviewControllerGetInterview>>, TError = void>(
- jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof interviewControllerGetInterview>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ jahr: number,
+    params?: InterviewControllerGetInterviewParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof interviewControllerGetInterview>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getInterviewControllerGetInterviewQueryOptions(jahr,options)
+  const queryOptions = getInterviewControllerGetInterviewQueryOptions(jahr,params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
