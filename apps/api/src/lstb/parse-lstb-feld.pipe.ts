@@ -1,12 +1,10 @@
 // Validates the `:feld` path segment of `PUT /v1/steuerjahre/{jahr}/lstb/{feld}` against
-// the three LStB field ids. Deliberately NOT importing the id list from @steuereule/core
-// (the core exports the *type* `LstbFeldId`, not a runtime list) — the three ids are a
-// closed, product-fixed set (the LStB's printed figures), and a wrong id must be a 400 at
-// the boundary, never a Prisma column-miss deep in the repository.
+// the three LStB field ids, read from the SAME runtime list the core fold iterates
+// (`LSTB_FELDER` in @steuereule/core) — one source, so the closed, product-fixed set (the
+// LStB's printed figures) cannot drift between the fold and the boundary. A wrong id must be
+// a 400 at the boundary, never a Prisma column-miss deep in the repository.
 import { BadRequestException, Injectable, type PipeTransform } from '@nestjs/common'
-import type { LstbFeldId } from '@steuereule/core'
-
-const LSTB_FELDER: readonly LstbFeldId[] = ['bruttoarbeitslohn', 'lohnsteuer', 'sozialversicherung']
+import { LSTB_FELDER, type LstbFeldId } from '@steuereule/core'
 
 @Injectable()
 export class ParseLstbFeldPipe implements PipeTransform<unknown, LstbFeldId> {

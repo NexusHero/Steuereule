@@ -8,7 +8,7 @@ import {
 } from './plausibilitaet'
 import { angestelltenStand, type AngestelltenStand } from './angestellte'
 import { lstbZustand } from './lstb'
-import { berechneArbeitstage, type ArbeitstageErgebnis } from './arbeitstage'
+import { berechneWerktage, type WerktageErgebnis } from './werktage'
 
 /** Narrows to the blocker list (empty when einreichbar — the guard, not a cast). */
 function widersprueche(r: PlausibilitaetsErgebnis): readonly Widerspruch[] {
@@ -22,7 +22,7 @@ function hinweise(r: PlausibilitaetsErgebnis): readonly Hinweis[] {
 
 function eingaben(over: {
   lstb?: ReturnType<typeof lstbZustand>
-  arbeitstage?: ArbeitstageErgebnis
+  werktage?: WerktageErgebnis
   stand?: AngestelltenStand
   erfasstNichtGerechnet?: number
 } = {}): PlausibilitaetsEingaben {
@@ -30,7 +30,7 @@ function eingaben(over: {
     lstb:
       over.lstb ??
       lstbZustand({ bruttoarbeitslohn: { kind: 'erfasst', wert: 50000 }, lohnsteuer: { kind: 'erfasst', wert: 9000 }, sozialversicherung: { kind: 'erfasst', wert: 10000 } }),
-    arbeitstage: over.arbeitstage ?? berechneArbeitstage({ jahr: 2026, arbeitstage: [1, 2, 3, 4, 5], urlaubstage: 30, krankheitstage: 5, homeofficeTage: 40 }),
+    werktage: over.werktage ?? berechneWerktage({ jahr: 2026, werktage: [1, 2, 3, 4, 5], urlaubstage: 30, krankheitstage: 5, homeofficeTage: 40 }),
     stand:
       over.stand ??
       angestelltenStand({ einnahmen: 50000, werbungskosten: 1200, sonderausgaben: 3000, offenePosten: 0, konflikte: 0, gegated: [] }),
@@ -60,9 +60,9 @@ describe('pruefePlausibilitaet (M2)', () => {
     expect(widersprueche(pruefePlausibilitaet(eingaben({ lstb: zustand })))).toContainEqual({ art: 'lstb-widerspruch' })
   })
 
-  it('an Arbeitstage contradiction blocks', () => {
-    const arbeit = berechneArbeitstage({ jahr: 2026, arbeitstage: [1], urlaubstage: 0, krankheitstage: 0, homeofficeTage: 99 })
-    expect(widersprueche(pruefePlausibilitaet(eingaben({ arbeitstage: arbeit })))).toContainEqual({ art: 'arbeitstage-widerspruch' })
+  it('a werktage contradiction blocks', () => {
+    const arbeit = berechneWerktage({ jahr: 2026, werktage: [1], urlaubstage: 0, krankheitstage: 0, homeofficeTage: 99 })
+    expect(widersprueche(pruefePlausibilitaet(eingaben({ werktage: arbeit })))).toContainEqual({ art: 'werktage-widerspruch' })
   })
 
   it('a gated Einkunftsart blocks, naming it', () => {

@@ -11,6 +11,14 @@
   Server validiert), ADR-0032 (nichts verspricht mehr als der Slice liefert)
 - **Context tags:** architecture, lstb, interview, catalog, honesty principle, encryption
 
+> **⚠ Nummern-Kollision (offen — hier NICHT auflösen):** `0041` ist auch vom parallelen
+> Grenzgänger-CH-Zweig (Ticket 09) belegt, der in seinem eigenen Worktree (nicht in diesem Branch)
+> den Entwurf `0041-grenzgaenger-ch-vertikale.md` führt. Beim Merge sind dieser Entwurf und der
+> t09-Entwurf auf `0041`/`0042` aufzulösen; die endgültige Nummer ist DANN in diesem Titel und allen
+> Verweisen nachzuziehen. Dieser Entwurf behält `0041` bewusst bei, damit beide Branches textuell
+> mergebar bleiben; der `adr-check-ignore`-Marker im Titel trägt den Entwurf bis zu dieser
+> Umnummerierung durch den ADR-Nummern-Check.
+
 ## Context
 
 Phase 1a (Ticket 08) baut die Angestellte-Vertikale auf dem geteilten Kern (Phase 0.4). Zwei
@@ -59,9 +67,12 @@ Ehrlichkeits-Grundsatz (ADR-0032/ADR-032) auf der Persistenz-Seite umsetzen müs
    Upsert (REQ-004), READ-Audit nur bei vorhandener Zeile.
 
 5. **Katalog-Einträge: ein Walker, eine Registry (ADR-0031 §3).** `ENTRIES['lebenslagen']` und
-   `ENTRIES['sonderausgaben']` sind Einträge desselben `CatalogueEntry`-Typs; die Frage-Ids sind
-   präfixiert/namespaced (`dhf-`, `umzug-`, `spenden-`, …), damit die parallele
-   Grenzgänger-CH-Vertikale (Ticket 09) additiv merged statt kollidiert. Der Server leitet den
+   `ENTRIES['sonderausgaben']` sind Einträge desselben `CatalogueEntry`-Typs; nur die
+   Betrags-Follow-ups sind namensgeprägt (`dhf-miete`, `umzug-kosten`, `spenden-betrag`, …), die
+   Top-Level-Ids (`dhf`, `umzug`, `spenden`, …) sind bewusst nackt — das ist ein Namens-Merkmal,
+   kein Namespace. Die Kollisionssicherheit gegen die parallele Grenzgänger-CH-Vertikale (Ticket 09) kommt
+   strukturell aus der geschlossenen `EntryStepId`-Union plus dem `buildStepIndex`-Throw (D3), nicht
+   aus der Benennung: ein zweiter Claim derselben Id lässt sich so nicht bauen. Der Server leitet den
    besitzenden Eintrag aus der nackten `questionId` ab (`entryForStep`, D3 in `interview.ts`),
    statt einem Client-gelieferten Scope zu vertrauen — dieselbe Admission, nur der Eintrag
    unterscheidet sich. Das `eintrag`-Query auf dem GET ist die Wiedereinstiegs-Oberfläche; ein

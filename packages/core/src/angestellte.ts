@@ -1,7 +1,7 @@
 // Angestellte-Vertikale — the deterministic fold (ticket 08). This is the "eine Wahrheit" for the
 // Angestellte case: the Cockpit's real figures come from here, folded through the SAME core the
 // interview/Beleg slices already use (ADR-014/048 determinism boundary), never a second calc path
-// in the API or the client. It folds the captured facts — LStB Brutto, the Arbeitstage-derived
+// in the API or the client. It folds the captured facts — LStB Brutto, the werktage-derived
 // Pendlerpauschale, the Lebenslagen amounts and the Sonderausgaben — into Einnahmen, Werbungskosten
 // and Sonderausgaben, and reports either a determined "Einkünfte" figure or an honest `offen`
 // result naming what stands in the way (open inputs, conflicts, gated Einkunftsarten) — the exact
@@ -75,7 +75,7 @@ export interface AngestellteEingaben {
   readonly sonderausgaben: number
   /** Still-unresolved inputs (open LStB fields, open catalogue branches, …). */
   readonly offenePosten: number
-  /** Visible contradictions (LStB widerspruch, Arbeitstage widerspruch, …). */
+  /** Visible contradictions (LStB widerspruch, werktage widerspruch, …). */
   readonly konflikte: number
   /** Declared-but-not-computable Einkunftsarten (ADR-028/032/033), from `gatedEinkunftsarten`. */
   readonly gegated: readonly Einkunftsart[]

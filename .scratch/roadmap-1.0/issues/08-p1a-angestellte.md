@@ -15,7 +15,8 @@ Plausibilitäts-Prüfung vor Abgabe (M2). Demoable auf der echten URL (Phase-DoD
 - [x] Interview-Flow für die 5 Lebenslagen auf der Interview-Engine (0.4), on-demand-Katalog
       für Sonderausgaben (ADR-031)
 - [ ] Arbeitstage-/Wegstrecken-Assistent mit Kalenderlogik (M4); Günstigerprüfungs-Vorbereitung
-      aus ADR-M1 erst in Phase 2 — hier nur die Datengrundlage *(core `arbeitstage.ts` fertig,
+      aus ADR-M1 erst in Phase 2 — hier nur die Datengrundlage *(core `werktage.ts` fertig, ehrlich
+      „vor Feiertagen" benannt: gesetzliche Feiertage = Folge-Slice (Feiertagskalender),
       API/UI-Anbindung Folge-Slice)*
 - [ ] Berechnung über den deterministischen Kern (0.4); Cockpit-Werte stammen aus demselben
       Kern (eine Wahrheit, kein zweiter Rechenweg) *(core `angestellte.ts`-Faltung fertig,

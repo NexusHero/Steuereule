@@ -6,7 +6,7 @@
 // already holds, in a shape a screen can render as a list (ADR-0032: nothing on screen promises
 // more than the slice delivers).
 import type { LstbFeldId, LstbZustand } from './lstb.js'
-import type { ArbeitstageErgebnis } from './arbeitstage.js'
+import type { WerktageErgebnis } from './werktage.js'
 import type { AngestelltenStand } from './angestellte.js'
 import type { Einkunftsart } from './einkunftsarten.js'
 
@@ -15,7 +15,7 @@ export type Widerspruch =
   | { readonly art: 'lstb-offen'; readonly felder: readonly LstbFeldId[] }
   | { readonly art: 'lstb-unklar'; readonly felder: readonly LstbFeldId[] }
   | { readonly art: 'lstb-widerspruch' }
-  | { readonly art: 'arbeitstage-widerspruch' }
+  | { readonly art: 'werktage-widerspruch' }
   | { readonly art: 'gated-einkunftsart'; readonly einkunftsart: Einkunftsart }
 
 /** A warning — shown, never blocks. */
@@ -25,7 +25,7 @@ export type Hinweis =
 
 export interface PlausibilitaetsEingaben {
   readonly lstb: LstbZustand
-  readonly arbeitstage: ArbeitstageErgebnis
+  readonly werktage: WerktageErgebnis
   readonly stand: AngestelltenStand
   /** Captured-but-not-folded amounts (DHF-Miete + Abfindung + Lohnersatz), whole euros. */
   readonly erfasstNichtGerechnet: number
@@ -37,7 +37,7 @@ export type PlausibilitaetsErgebnis =
 
 /**
  * The one check. `einreichbar` iff there are zero Widersprüche — a Hinweis alone never blocks.
- * The Widerspruch set is derived from the same `lstbZustand`/`berechneArbeitstage`/
+ * The Widerspruch set is derived from the same `lstbZustand`/`berechneWerktage`/
  * `angestelltenStand` results the Cockpit and the guided masks already show, so the Prüfung can
  * never contradict what the user saw on the way in (one truth, ADR-014/048).
  */
@@ -54,8 +54,8 @@ export function pruefePlausibilitaet(eingaben: PlausibilitaetsEingaben): Plausib
     widersprueche.push({ art: 'lstb-widerspruch' })
   }
 
-  if (eingaben.arbeitstage.kind === 'widerspruch') {
-    widersprueche.push({ art: 'arbeitstage-widerspruch' })
+  if (eingaben.werktage.kind === 'widerspruch') {
+    widersprueche.push({ art: 'werktage-widerspruch' })
   }
 
   // A declared-but-gated Einkunftsart (Gewerbe/Krypto/Verkauf-möbliert) blocks: 1.0 cannot compute

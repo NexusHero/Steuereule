@@ -114,12 +114,14 @@ export type SegmentTwoGateId = 'krypto-gate' | 'vermietung-gate'
 
 // ---- Angestellte-Vertikale (Ticket 08, Phase 1a) --------------------------------------------
 // The 5 Lebenslagen (product ADR-031) and the Sonderausgaben catalogue (ADR-016/035) arrive as
-// MORE catalogue entries over the SAME engine — one walker, one registry (ADR-0031 §3). Their
-// ids are deliberately namespaced/prefixed (dhf-, umzug-, spenden-, …) so that a parallel
-// vertical (Grenzgänger-CH, ticket 09) adding its own ids to this closed union merges additively
-// rather than colliding. Nothing here renames or reshapes Segment 1/2 — it only widens the unions
-// the engine already walks over, exactly as ADR-0031 §3 prescribes ("a catalogue entry is a named
-// set of question ids, not a second code path").
+// MORE catalogue entries over the SAME engine — one walker, one registry (ADR-0031 §3). Only the
+// amount follow-ups carry their parent's name (dhf-miete, umzug-kosten, spenden-betrag, …); the
+// top-level ids are deliberately naked (dhf, umzug, spenden, …). That naming is a mnemonic, NOT a
+// namespace — the collision-safety against a parallel vertical (Grenzgänger-CH, ticket 09) adding
+// ids to this CLOSED `EntryStepId` union comes structurally from `buildStepIndex` throwing when two
+// entries ever claim the same id (D3), not from any id-naming scheme. Nothing here renames or
+// reshapes Segment 1/2 — it only widens the unions the engine already walks over, exactly as
+// ADR-0031 §3 prescribes ("a catalogue entry is a named set of question ids, not a second code path").
 
 /** The 5 Lebenslagen's own question ids (product ADR-031, Werbungskosten/Lebenslagen). */
 export type LebenslageQuestionId =

@@ -13,7 +13,7 @@
 // The three fields are the LStB's own printed figures: Bruttoarbeitslohn (Zeile 3),
 // einbehaltene Lohnsteuer (Zeile 4) and the Arbeitnehmer-Anteil der SV-Beiträge (Zeilen 22/23
 // zusammengefasst). Werbungskosten are NOT printed on the LStB — they live in the Angestellte
-// fold (angestellte.ts), fed by the Arbeitstage-Rechner and the Lebenslagen catalogue. Pure,
+// fold (angestellte.ts), fed by the Werktage-Rechner and the Lebenslagen catalogue. Pure,
 // deterministic, dependency-free (ADR-0004).
 
 /** The three LStB-printed fields the guided mask captures. */
@@ -88,7 +88,11 @@ export type LstbZustand =
       readonly sozialversicherung: number
     }
 
-const FELDER: readonly LstbFeldId[] = ['bruttoarbeitslohn', 'lohnsteuer', 'sozialversicherung']
+/**
+ * The three LStB field ids as a runtime list — the single source both the core fold and the API's
+ * `:feld` boundary validation read from, so the closed set cannot drift between the two.
+ */
+export const LSTB_FELDER: readonly LstbFeldId[] = ['bruttoarbeitslohn', 'lohnsteuer', 'sozialversicherung']
 
 function widersprueche(daten: LstbDaten): readonly LstbWiderspruch[] {
   // Reachable only when all three are `erfasst` (the caller checks that first) — the casts are
@@ -112,7 +116,7 @@ export function lstbZustand(daten: LstbDaten): LstbZustand {
   const unklar: LstbFeldId[] = []
   let alleErfasst = true
 
-  for (const feld of FELDER) {
+  for (const feld of LSTB_FELDER) {
     const zustand = daten[feld]
     if (zustand.kind === 'offen') {
       alleErfasst = false
