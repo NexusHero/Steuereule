@@ -13,8 +13,9 @@ import {
   getCockpitControllerGetCockpitSummaryMockHandler,
   getDeviceControllerRequestCodeMockHandler,
   getInterviewControllerGetInterviewMockHandler,
+  getLstbControllerGetLstbMockHandler,
 } from '@steuereule/api-client/msw'
-import type { ProfileResponseDto, AuthCapabilitiesDto, DeviceCodeResponseDto, InterviewStateDto } from '@steuereule/api-client'
+import type { ProfileResponseDto, AuthCapabilitiesDto, DeviceCodeResponseDto, InterviewStateDto, LstbResponseDto } from '@steuereule/api-client'
 
 export const EMPTY_PROFILE_RESPONSE: ProfileResponseDto = {
   firstName: null,
@@ -60,11 +61,32 @@ export const DEVICE_CODE_RESPONSE: DeviceCodeResponseDto = {
  */
 export const EMPTY_INTERVIEW_STATE: InterviewStateDto = { answers: {}, nextStep: { kind: 'question', id: 'job' }, openItems: 3 }
 
+/**
+ * Default `GET .../lstb` answer (REQ-016, ticket 08): a brand-new tax year with every field
+ * `offen`, matching the real API's honest empty-mask shape — pinned, not the generated
+ * factory's random faker data, same reasoning as `EMPTY_INTERVIEW_STATE` above. Tests that
+ * need mid-mask re-entry or a widerspruch override with `server.use(...)`.
+ */
+export const EMPTY_LSTB_RESPONSE: LstbResponseDto = {
+  bruttoarbeitslohn: { kind: 'offen' },
+  lohnsteuer: { kind: 'offen' },
+  sozialversicherung: { kind: 'offen' },
+  zustand: { kind: 'unvollstaendig', offen: ['bruttoarbeitslohn', 'lohnsteuer', 'sozialversicherung'], unklar: [] },
+}
+
 export const server = setupServer(
   getProfileControllerGetProfileMockHandler(EMPTY_PROFILE_RESPONSE),
   getProfileControllerPutProfileMockHandler(),
   getAuthCapabilitiesControllerGetCapabilitiesMockHandler(CAPABILITIES_WITH_GOOGLE),
   getInterviewControllerGetInterviewMockHandler(EMPTY_INTERVIEW_STATE),
+  // REQ-016 (ticket 08) — the LStB guided mask: empty `offen` mask by default, same "fresh
+  // tax year" honesty as the interview default. The PUT defaults to a generic 200 (the
+  // response body is never asserted by a test that doesn't override it); tests proving the
+  // widerspruch/unreadable states override with `server.use(...)`.
+  getLstbControllerGetLstbMockHandler(EMPTY_LSTB_RESPONSE),
+  http.put('*/v1/steuerjahre/:jahr/lstb/:feld', () =>
+    HttpResponse.json(EMPTY_LSTB_RESPONSE, { status: 200 }),
+  ),
   // Default `POST .../interview/antworten` answer: a generic 200 — InterviewScreen renders the
   // next step from the local graph, not from this response body (#318 task 2's own "the graph
   // stays local" brief), so the exact `nextStep`/`openItems` values here are never asserted on

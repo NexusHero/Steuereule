@@ -48,3 +48,20 @@ export interface PostAnswerResponseDto {
   openItems: number;
 }
 
+export type InterviewControllerGetInterviewParams = {
+/**
+ * The catalogue entry to re-enter; absent → the Minimal-Gate.
+ */
+eintrag?: InterviewControllerGetInterviewEintrag;
+};
+
+export type InterviewControllerGetInterviewEintrag = typeof InterviewControllerGetInterviewEintrag[keyof typeof InterviewControllerGetInterviewEintrag];
+
+
+export const InterviewControllerGetInterviewEintrag = {
+  'minimal-gate': 'minimal-gate',
+  'segment-2': 'segment-2',
+  lebenslagen: 'lebenslagen',
+  sonderausgaben: 'sonderausgaben',
+} as const;
+

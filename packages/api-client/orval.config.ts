@@ -113,4 +113,26 @@ export default defineConfig({
       },
     },
   },
+  // REQ-016 (ticket 08) — the LStB guided mask (ADR-036 Scan-Fallback): GET the re-entry
+  // state, PUT one field's honest state (offen/unklar/erfasst). Same `lstb` OpenAPI tag
+  // both endpoints share.
+  lstb: {
+    input: { target: '../../apps/api/openapi.json', filters: { tags: ['lstb'] } },
+    output: {
+      target: './src/generated/lstb.ts',
+      mode: 'split',
+      client: 'react-query',
+      httpClient: 'fetch',
+      mock: true,
+      override: {
+        mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        // `LstbFeldDto.wert`/`LstbZustandDto`'s optional fields are genuinely absent on
+        // some variants, so orval's default faker would emit `arrayElement([value, undefined])`
+        // and fail under `exactOptionalPropertyTypes: true` (TS2375). `mock.required: true`
+        // makes every mocked property always populated — same override the interview target
+        // carries for `StepDto.id`, and the real TYPE stays optional in lstb.schemas.ts.
+        mock: { required: true },
+      },
+    },
+  },
 })

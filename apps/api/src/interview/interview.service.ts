@@ -1,14 +1,27 @@
-// Application logic for the Minimal-Gate (#318, REQ-015): userId+steuerjahr-scoped
-// read/write, then the graph -> response mapping. Trusts that `userId` was produced
-// by UserContextGuard + @RequiresAccount() (never accepts it from a param/body) —
-// mirrors ProfileService/CockpitService's shape.
+// Application logic for the interview catalogue (#318 REQ-015 Minimal-Gate; R2 — the on-demand
+// catalogue entries: Segment 2 + Lebenslagen + Sonderausgaben, ticket 08). userId+steuerjahr-scoped
+// read/write, then the graph -> response mapping. Trusts that `userId` was produced by
+// UserContextGuard + @RequiresAccount() (never accepts it from a param/body) — mirrors
+// ProfileService/CockpitService's shape.
 //
-// The ONLY graph consulted here is @steuereule/core's (ADR-0033) — nextStep(),
-// isReachable(), isValidAnswer(), remainingSteps() are imported, never reimplemented.
-// This is what makes admission a real, server-side control (#318 P2) rather than the
-// ADR-0021 defect class ("a mechanism that appears to control behaviour and does not").
+// The ONLY graph consulted here is @steuereule/core's (ADR-0033) — entryForStep/isReachableFor/
+// isValidAnswer/nextStepFor/remainingStepsFor are imported, never reimplemented. This is what makes
+// admission a real, server-side control (#318 P2) rather than the ADR-0021 defect class. R2 derives
+// the owning catalogue entry from a bare questionId (entryForStep, D3 in interview.ts) instead of
+// trusting a client-supplied scope — so a Lebenslagen write and a Minimal-Gate write are admitted by
+// the SAME engine, differing only in which entry the id belongs to.
 import { BadRequestException, ConflictException, Inject, Injectable } from '@nestjs/common'
-import { isReachable, isValidAnswer, nextStep, remainingSteps, type Answers, type StepId } from '@steuereule/core'
+import {
+  ENTRIES,
+  entryForStep,
+  isReachableFor,
+  isValidAnswer,
+  nextStepFor,
+  remainingSteps,
+  remainingStepsFor,
+  type Answers,
+  type EntryId,
+} from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
 import {
   INTERVIEW_ANSWER_REPOSITORY,
@@ -47,7 +60,7 @@ export class InterviewService {
     @Inject(AuditService) private readonly auditService: AuditService,
   ) {}
 
-  async getState(userId: string, steuerjahr: number): Promise<InterviewStateDto> {
+  async getState(userId: string, steuerjahr: number, eintrag?: string): Promise<InterviewStateDto> {
     const rows = await this.repository.findAllForUserAndYear(userId, steuerjahr)
     const answers = toAnswers(rows)
 
@@ -58,26 +71,42 @@ export class InterviewService {
       await this.auditService.append({ userId, action: 'READ', resource: 'interview' })
     }
 
+    // R2 — `eintrag` names the catalogue entry to re-enter; absent → the Minimal-Gate. `Object.hasOwn`
+    // guards against both an unknown id AND an inherited `Object.prototype` key (`constructor`, …),
+    // the same fix as interview.ts's `branchFor`/`isValidAnswer` (F9/F11). An unknown id is a 400.
+    const entryId = eintrag ?? 'minimal-gate'
+    if (!Object.hasOwn(ENTRIES, entryId)) {
+      throw new BadRequestException(`"${eintrag}" is not a known catalogue entry.`)
+    }
+    const entry = ENTRIES[entryId as EntryId]
+
     return {
       answers: answers as Record<string, string>,
-      nextStep: nextStep(answers),
-      openItems: remainingSteps(answers),
+      nextStep: nextStepFor(entry, answers),
+      openItems: remainingStepsFor(entry, answers),
     }
   }
 
   async postAnswer(userId: string, steuerjahr: number, dto: PostAnswerDto): Promise<PostAnswerResponseDto> {
     const rows = await this.repository.findAllForUserAndYear(userId, steuerjahr)
     const answers = toAnswers(rows)
-    // Safe cast: isReachable/isValidAnswer are total over `string` — any id outside
-    // the graph's own StepId union is simply never reachable (see interview.ts's own
-    // "smuggled answer" handling), so an unrecognized questionId falls out as a
-    // regular 409, with no separate id-whitelist needed here (see PostAnswerDto).
-    const questionId = dto.questionId as StepId
+    // R2 — derive the owning entry from the bare questionId (D3) rather than trusting a
+    // client-supplied scope; an unrecognized id falls out as a regular 409 with no separate
+    // id-whitelist needed (see PostAnswerDto). Minimal-Gate ids keep their #318 behaviour exactly
+    // — isReachableFor(ENTRIES['minimal-gate'], …) is the same admission isReachable() did before.
+    const entryId = entryForStep(dto.questionId as never)
+    if (entryId === undefined) throw new UnreachableAnswerError(dto.questionId)
 
-    if (!isReachable(answers, questionId)) throw new UnreachableAnswerError(dto.questionId)
-    if (!isValidAnswer(questionId, dto.value)) throw new InvalidAnswerValueError(dto.questionId)
+    const entry = ENTRIES[entryId]
+    if (!isReachableFor(entry, answers, dto.questionId as never)) throw new UnreachableAnswerError(dto.questionId)
+    if (!isValidAnswer(dto.questionId as never, dto.value)) throw new InvalidAnswerValueError(dto.questionId)
 
-    const updatedAnswers: Answers = { ...answers, [questionId]: dto.value }
+    const updatedAnswers: Answers = { ...answers, [dto.questionId]: dto.value }
+    // TaxYear.openItems stays the Minimal-Gate's own count (unchanged from #318, so REQ-015's
+    // vertical P6 stays green); the ENTRY-scoped count is what this response reports, so a
+    // catalogue screen can show its own progress without perturbing the Cockpit's Minimal-Gate
+    // number. Folding every entry's count into one openItems figure is a follow-up (product call:
+    // which on-demand entries count as "open" before the user has opened them).
     const openItems = remainingSteps(updatedAnswers)
 
     await this.repository.write({
@@ -88,6 +117,6 @@ export class InterviewService {
       openItems,
     })
 
-    return { nextStep: nextStep(updatedAnswers), openItems }
+    return { nextStep: nextStepFor(entry, updatedAnswers), openItems: remainingStepsFor(entry, updatedAnswers) }
   }
 }
