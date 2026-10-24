@@ -45,3 +45,8 @@ export {
   getLstbControllerSetFeldMockHandler,
   getSteuerEuleAPIMock as getLstbApiMock,
 } from './generated/lstb.msw'
+export {
+  getBelegControllerListMockHandler,
+  getBelegControllerSetZuordnungMockHandler,
+  getSteuerEuleAPIMock as getBelegApiMock,
+} from './generated/belege.msw'

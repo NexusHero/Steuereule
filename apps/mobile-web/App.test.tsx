@@ -220,9 +220,9 @@ describe('App', () => {
     await completeOnboarding()
     await screen.findByText('Cockpit')
 
-    // The DS reference lists five tabs; Belege, Berater and Jahr have no screen yet, so
-    // offering them would be a dead affordance (the honesty rule).
-    expect(screen.queryByText('Belege')).toBeNull()
+    // Belege landed its screen (Ticket 10 Slice 1), so it is a real tab now; Berater and Jahr
+    // still have no screen, so offering them would be a dead affordance (the honesty rule).
+    expect(screen.getByText('Belege')).toBeTruthy()
     expect(screen.queryByText('Berater')).toBeNull()
     expect(screen.queryByText('Jahr')).toBeNull()
   })

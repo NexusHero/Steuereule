@@ -23,6 +23,7 @@ import { RegistrierungScreen } from './src/screens/RegistrierungScreen'
 import { OnboardingScreen } from './src/screens/OnboardingScreen'
 import { CockpitScreen } from './src/screens/cockpit/CockpitScreen'
 import { InterviewScreen } from './src/screens/interview/InterviewScreen'
+import { BelegeScreen } from './src/screens/belege/BelegeScreen'
 import { ProfilScreen } from './src/screens/ProfilScreen'
 import { DatenschutzScreen } from './src/screens/DatenschutzScreen'
 import { SicherheitScreen } from './src/screens/security/SicherheitScreen'
@@ -85,7 +86,7 @@ const linking: LinkingOptions<RootStackParamList> = {
 }
 
 /** Only the tabs that have a real screen behind them. Grows as screens land. */
-type Tab = 'cockpit' | 'profil'
+type Tab = 'cockpit' | 'belege' | 'profil'
 
 /**
  * Composition root only — this is the one file in `apps/mobile-web` allowed to import
@@ -239,6 +240,11 @@ function TabbedShell({ tab, onTabChange, onSignedOut }: TabbedShellProps) {
       icon: <TabIcon path={TAB_ICON_PATHS.cockpit} color={iconColor('cockpit')} />,
     },
     {
+      id: 'belege',
+      label: tr('tabs.belege'),
+      icon: <TabIcon path={TAB_ICON_PATHS.belege} color={iconColor('belege')} />,
+    },
+    {
       id: 'profil',
       label: tr('tabs.profil'),
       icon: <TabIcon path={TAB_ICON_PATHS.profil} color={iconColor('profil')} />,
@@ -258,6 +264,7 @@ function TabbedShell({ tab, onTabChange, onSignedOut }: TabbedShellProps) {
     <View style={{ flex: 1 }}>
       {tab === 'cockpit' && cockpitView === 'main' ? <CockpitScreen onOpenInterview={() => setCockpitView('interview')} /> : null}
       {tab === 'cockpit' && cockpitView === 'interview' ? <InterviewScreen onDone={() => setCockpitView('main')} /> : null}
+      {tab === 'belege' ? <BelegeScreen /> : null}
       {tab === 'profil' && profilView === 'main' ? (
         <ProfilScreen onOpenDatenschutz={() => setProfilView('datenschutz')} onOpenSicherheit={() => setProfilView('sicherheit')} onSignedOut={onSignedOut} />
       ) : null}

@@ -113,6 +113,29 @@ export default defineConfig({
       },
     },
   },
+  // Ticket 10 (Phase 2, Slice 1) — the Beleg-Posteingang (ADR-007/008): GET the inbox,
+  // POST an unbound Beleg (metadata, no binary — ADR-036/045 later), POST the Zuordnung
+  // tap. Same `belege` OpenAPI tag all three endpoints share.
+  belege: {
+    input: { target: '../../apps/api/openapi.json', filters: { tags: ['belege'] } },
+    output: {
+      target: './src/generated/belege.ts',
+      mode: 'split',
+      client: 'react-query',
+      httpClient: 'fetch',
+      mock: true,
+      override: {
+        mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        // `ZuordnungDto`'s optional fields (`steuerjahr`/`vorschlagsJahr`/`herkunft`) are
+        // genuinely absent on some variants, so orval's default faker would emit
+        // `arrayElement([value, undefined])` and fail under `exactOptionalPropertyTypes: true`
+        // (TS2375). `mock.required: true` makes every mocked property always populated —
+        // same override the interview/lstb targets carry; the real TYPE stays optional in
+        // belege.schemas.ts.
+        mock: { required: true },
+      },
+    },
+  },
   // REQ-016 (ticket 08) — the LStB guided mask (ADR-036 Scan-Fallback): GET the re-entry
   // state, PUT one field's honest state (offen/unklar/erfasst). Same `lstb` OpenAPI tag
   // both endpoints share.

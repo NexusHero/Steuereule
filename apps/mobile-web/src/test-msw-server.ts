@@ -14,6 +14,7 @@ import {
   getDeviceControllerRequestCodeMockHandler,
   getInterviewControllerGetInterviewMockHandler,
   getLstbControllerGetLstbMockHandler,
+  getBelegControllerListMockHandler,
 } from '@steuereule/api-client/msw'
 import type { ProfileResponseDto, AuthCapabilitiesDto, DeviceCodeResponseDto, InterviewStateDto, LstbResponseDto } from '@steuereule/api-client'
 
@@ -100,6 +101,11 @@ export const server = setupServer(
   // tests that merely pass through Cockpit don't each have to stub it; CockpitScreen's own
   // suite overrides it with real figures where the numbers are the point.
   getCockpitControllerGetCockpitSummaryMockHandler(null),
+  // Ticket 10 (Slice 1) — the Beleg-Posteingang: a fresh guest genuinely has no Belege yet,
+  // so the default inbox is the honest empty list. Present by default so shell-level tests
+  // that pass through the Belege tab don't each have to stub it; BelegeScreen's own suite
+  // overrides it with real Belege where the Zuordnung states are the point.
+  getBelegControllerListMockHandler([]),
   getDeviceControllerRequestCodeMockHandler(DEVICE_CODE_RESPONSE),
   // Task 6's polling default — "still pending" (RFC 8628 `authorization_pending`, HTTP 400,
   // the exact shape `translateDeviceApiError` relays), not the generated mock's 200 `AckResponseDto`:
