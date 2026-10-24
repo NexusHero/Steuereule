@@ -20,8 +20,12 @@ import { ENCRYPTED_PRISMA } from '../../src/prisma/encrypted-prisma.provider.js'
 import { PrismaService } from '../../src/prisma/prisma.service.js'
 import { PROFILE_REPOSITORY } from '../../src/profile/profile.repository.js'
 import { TAX_YEAR_REPOSITORY } from '../../src/cockpit/tax-year.repository.js'
+import { INTERVIEW_ANSWER_REPOSITORY } from '../../src/interview/interview-answer.repository.js'
+import { LSTB_REPOSITORY } from '../../src/lstb/lstb.repository.js'
 import { FakeAccountIdentityRepository } from '../fakes/fake-account-identity.repository.js'
 import { FakeAuditRepository } from '../fakes/fake-audit.repository.js'
+import { FakeInterviewAnswerRepository } from '../fakes/fake-interview-answer.repository.js'
+import { FakeLstbRepository } from '../fakes/fake-lstb.repository.js'
 import { FakePdfRenderer } from '../fakes/fake-pdf-renderer.js'
 import { FakeProfileRepository } from '../fakes/fake-profile.repository.js'
 import { FakeTaxYearRepository } from '../fakes/fake-tax-year.repository.js'
@@ -34,12 +38,16 @@ export async function buildTestApp(options?: {
   app: NestFastifyApplication
   repository: FakeProfileRepository
   taxYearRepository: FakeTaxYearRepository
+  lstbRepository: FakeLstbRepository
+  interviewRepository: FakeInterviewAnswerRepository
   accountIdentityRepository: FakeAccountIdentityRepository
   pdfRenderer: FakePdfRenderer
   auditRepository: FakeAuditRepository
 }> {
   const repository = new FakeProfileRepository()
   const taxYearRepository = new FakeTaxYearRepository()
+  const lstbRepository = new FakeLstbRepository()
+  const interviewRepository = new FakeInterviewAnswerRepository()
   const accountIdentityRepository = new FakeAccountIdentityRepository()
   const pdfRenderer = new FakePdfRenderer()
   const auditRepository = new FakeAuditRepository()
@@ -84,6 +92,10 @@ export async function buildTestApp(options?: {
     .useValue(repository)
     .overrideProvider(TAX_YEAR_REPOSITORY)
     .useValue(taxYearRepository)
+    .overrideProvider(LSTB_REPOSITORY)
+    .useValue(lstbRepository)
+    .overrideProvider(INTERVIEW_ANSWER_REPOSITORY)
+    .useValue(interviewRepository)
     .overrideProvider(ACCOUNT_IDENTITY_REPOSITORY)
     .useValue(accountIdentityRepository)
     .overrideProvider(PDF_RENDERER)
@@ -115,7 +127,7 @@ export async function buildTestApp(options?: {
   await app.init()
   await app.getHttpAdapter().getInstance().ready()
 
-  return { app, repository, taxYearRepository, accountIdentityRepository, pdfRenderer, auditRepository }
+  return { app, repository, taxYearRepository, lstbRepository, interviewRepository, accountIdentityRepository, pdfRenderer, auditRepository }
 }
 
 /** Pulls the `name=value` pair out of a Set-Cookie response header, for reuse on the next request. */

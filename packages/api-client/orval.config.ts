@@ -51,6 +51,12 @@ export default defineConfig({
       mock: true,
       override: {
         mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        // `CockpitStandDto`'s optional fields are genuinely absent on most variants (kind fixes
+        // which ones are present), so orval's default faker would emit `arrayElement([value,
+        // undefined])` and fail under `exactOptionalPropertyTypes: true` (TS2375). `mock.required:
+        // true` makes every mocked property always populated — the same override the interview/lstb
+        // targets carry; the real TYPE stays optional in cockpit.schemas.ts.
+        mock: { required: true },
       },
     },
   },

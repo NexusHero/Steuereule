@@ -1,8 +1,8 @@
-// REQ-001 (steuereule#3, T6/#93) — Cockpit hero card: refund estimate range + "N Angaben offen",
-// honest loading/empty/error states, i18n de/en, exactly one primary action. Exercises the real
+// REQ-001 (steuereule#3, T6/#93) + ticket 15 (Cockpit-Echtdaten) — Cockpit hero card: the
+// deterministic stand (point / range / gated) from the core, "N Fragen offen", honest
+// loading/empty/error states, i18n de/en, exactly one primary action. Exercises the real
 // generated `useCockpitControllerGetCockpitSummary` hook (@steuereule/api-client) against
-// `GET /v1/steuerjahre/{jahr}/cockpit`, with MSW mocking the wire shape (contract-pinned to
-// docs/runtime/req-001-cockpit-read.md; the real endpoint landed in #119).
+// `GET /v1/steuerjahre/{jahr}/cockpit`, with MSW mocking the wire shape.
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
@@ -19,7 +19,7 @@ const COCKPIT_URL = `*/v1/steuerjahre/${TAX_YEAR}/cockpit`
 
 const LOADED_SUMMARY: CockpitSummaryDto = {
   taxYear: TAX_YEAR,
-  estimate: { from: 1047, to: 1767 },
+  stand: { kind: 'spanne', von: 49880, bis: 50120, offenePosten: 2, konflikte: 0 },
   openItems: 6,
 }
 
@@ -54,60 +54,79 @@ describe('CockpitScreen', () => {
     renderCockpit()
     expect(screen.getByLabelText('Dein Cockpit wird geladen …')).toBeTruthy()
 
-    await screen.findByText('Voraussichtliche Erstattung')
+    await screen.findByText('Erfasstes Einkommen')
     expect(screen.queryByLabelText('Dein Cockpit wird geladen …')).toBeNull()
   })
 
-  it('renders the estimate range, tabular-nums, from the API (never hard-coded)', async () => {
+  it('renders the spanne from the API (never hard-coded)', async () => {
     mockCockpit(LOADED_SUMMARY)
     renderCockpit()
 
-    expect(await screen.findByText('1.047–1.767 €')).toBeTruthy()
+    expect(await screen.findByText('49.880–50.120 €')).toBeTruthy()
   })
 
-  it('shows the plural "N Angaben offen" copy read from the API', async () => {
+  it('renders a settled point value with no range dashes (ADR-015)', async () => {
+    mockCockpit({ taxYear: TAX_YEAR, stand: { kind: 'bestimmt', wert: 50000 }, openItems: 0 })
+    renderCockpit()
+
+    expect(await screen.findByText('50.000 €')).toBeTruthy()
+    expect(screen.queryByText(/–/)).toBeNull()
+  })
+
+  it('renders the gated stand honestly, naming the gated Einkunftsart, never a fake number (ADR-032)', async () => {
+    mockCockpit({ taxYear: TAX_YEAR, stand: { kind: 'gated', summe: 50000, gegated: ['Gewerbe'] }, openItems: 0 })
+    renderCockpit()
+
+    expect(await screen.findByText('Ehrlich: dafür sind wir noch nicht gut genug.')).toBeTruthy()
+    expect(screen.getByText('Gewerbe kann SteuerEule in Version 1 noch nicht rechnen. Dein erfasstes Einkommen bleibt sichtbar — abgegeben wird erst, wenn alles drin ist.')).toBeTruthy()
+  })
+
+  it('shows the plural "N Fragen offen" copy read from the API', async () => {
     mockCockpit(LOADED_SUMMARY)
     renderCockpit()
 
-    expect(await screen.findByText('6 Angaben offen')).toBeTruthy()
+    expect(await screen.findByText('6 Fragen offen')).toBeTruthy()
   })
 
-  it('shows the singular "1 Angabe offen" copy when exactly one item is open', async () => {
+  it('shows the singular "1 Frage offen" copy when exactly one item is open', async () => {
     mockCockpit({ ...LOADED_SUMMARY, openItems: 1 })
     renderCockpit()
 
-    expect(await screen.findByText('1 Angabe offen')).toBeTruthy()
+    expect(await screen.findByText('1 Frage offen')).toBeTruthy()
+  })
+
+  it('shows the "N LStB-Felder offen" line from the spanne', async () => {
+    mockCockpit(LOADED_SUMMARY)
+    renderCockpit()
+
+    expect(await screen.findByText('2 LStB-Felder offen')).toBeTruthy()
   })
 
   it('reveals provenance (Herkunft) on tap, consistent with the shown range', async () => {
     mockCockpit(LOADED_SUMMARY)
     renderCockpit()
 
-    await screen.findByText('Voraussichtliche Erstattung')
+    await screen.findByText('Erfasstes Einkommen')
     fireEvent.click(screen.getByText('Herkunft'))
     expect(screen.getByText('Spannen-Regel · ADR-015')).toBeTruthy()
-    expect(screen.getByText('6 offene Angaben × 60 € Unsicherheit')).toBeTruthy()
+    expect(screen.getByText('2 offene Felder × 60 € Unsicherheit')).toBeTruthy()
   })
 
   it('shows the appbar title and tax year pill', async () => {
     mockCockpit(LOADED_SUMMARY)
     renderCockpit()
 
-    await screen.findByText('Voraussichtliche Erstattung')
+    await screen.findByText('Erfasstes Einkommen')
     expect(screen.getByText('Steuerjahr')).toBeTruthy()
     expect(screen.getByText('2026')).toBeTruthy()
   })
 
-  // REQ-015/#318 task 2 — the revisit this file itself announced (`:16-17`'s old comment):
-  // "Fragen beantworten" is now the one primary action while items are open, routing to the
-  // real Minimal-Gate; "Aktualisieren" demotes to the secondary slot alongside it rather than
-  // disappearing (one primary action per screen, design-system CLAUDE.md — not "one action").
   it('shows "Fragen beantworten" as the primary CTA while items are open, and reaches the Minimal-Gate', async () => {
     mockCockpit(LOADED_SUMMARY)
     const onOpenInterview = vi.fn()
     renderCockpit({ onOpenInterview })
 
-    await screen.findByText('Voraussichtliche Erstattung')
+    await screen.findByText('Erfasstes Einkommen')
     expect(screen.getByText('Fragen beantworten')).toBeTruthy()
     expect(screen.getAllByText('Aktualisieren')).toHaveLength(1)
 
@@ -119,7 +138,7 @@ describe('CockpitScreen', () => {
     mockCockpit({ ...LOADED_SUMMARY, openItems: 0 })
     renderCockpit()
 
-    await screen.findByText('Voraussichtliche Erstattung')
+    await screen.findByText('Erfasstes Einkommen')
     expect(screen.queryByText('Fragen beantworten')).toBeNull()
     expect(screen.getAllByText('Aktualisieren')).toHaveLength(1)
   })
@@ -134,16 +153,16 @@ describe('CockpitScreen', () => {
     )
     renderCockpit()
 
-    await screen.findByText('1 Angabe offen')
+    await screen.findByText('1 Frage offen')
     fireEvent.click(screen.getByText('Aktualisieren'))
-    await screen.findByText('2 Angaben offen')
+    await screen.findByText('2 Fragen offen')
     expect(calls).toBe(2)
   })
 
   it('shows the "Wird aktualisiert …" label while a refresh is in flight, from the loaded state', async () => {
     mockCockpit(LOADED_SUMMARY)
     renderCockpit()
-    await screen.findByText('Voraussichtliche Erstattung')
+    await screen.findByText('Erfasstes Einkommen')
 
     let release: (() => void) | undefined
     const pending = new Promise<void>((resolve) => {
@@ -192,15 +211,10 @@ describe('CockpitScreen', () => {
     expect(
       screen.getByText('Für dieses Steuerjahr liegen noch keine Angaben vor. Sobald deine Daten da sind, zeigen wir dir hier deine Erstattung.'),
     ).toBeTruthy()
-    expect(screen.queryByText('Voraussichtliche Erstattung')).toBeNull()
+    expect(screen.queryByText('Erfasstes Einkommen')).toBeNull()
     expect(screen.getAllByText('Aktualisieren')).toHaveLength(1)
   })
 
-  // Found by actually driving this screen against a fresh account (real API, real Postgres,
-  // #318 task 2's own live-proof run): a brand-new account has no `TaxYear` row at all, so
-  // Cockpit shows this exact empty state — without a CTA here, such an account could never
-  // reach the Minimal-Gate from Cockpit. This IS "no interview answers yet" (REQ-015's GWT
-  // opening clause), so the CTA belongs here too, not only once a summary already exists.
   it('offers "Fragen beantworten" from the empty state too — the only way a brand-new account ever reaches the Minimal-Gate', async () => {
     mockCockpit(null)
     const onOpenInterview = vi.fn()
@@ -217,11 +231,11 @@ describe('CockpitScreen', () => {
 
     await screen.findByText('Das hat nicht geklappt.')
     expect(screen.getByText('Dein Cockpit konnte nicht geladen werden. Prüf die Verbindung und versuch es noch mal.')).toBeTruthy()
-    expect(screen.queryByText('Voraussichtliche Erstattung')).toBeNull()
+    expect(screen.queryByText('Erfasstes Einkommen')).toBeNull()
 
     mockCockpit(LOADED_SUMMARY)
     fireEvent.click(screen.getByText('Noch mal versuchen'))
-    await screen.findByText('Voraussichtliche Erstattung')
+    await screen.findByText('Erfasstes Einkommen')
   })
 
   it('treats a non-200 response as an honest error, not a silent empty/loaded fallthrough', async () => {
@@ -235,8 +249,8 @@ describe('CockpitScreen', () => {
     mockCockpit(LOADED_SUMMARY)
     renderCockpit({ lng: 'en' })
 
-    expect(await screen.findByText('Estimated refund')).toBeTruthy()
-    expect(screen.getByText('6 items still open')).toBeTruthy()
+    expect(await screen.findByText('Recorded income')).toBeTruthy()
+    expect(screen.getByText('6 questions still open')).toBeTruthy()
     expect(screen.getByText('Tax year')).toBeTruthy()
     expect(screen.getByText('Answer questions')).toBeTruthy()
   })

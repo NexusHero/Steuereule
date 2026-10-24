@@ -5,17 +5,37 @@
  * Onboarding profile endpoints (steuereule#29)
  * OpenAPI spec version: 1.0
  */
-export interface EstimateRangeDto {
-  /** Lower bound of the estimate range, in whole euro. */
-  from: number;
-  /** Upper bound of the estimate range, in whole euro. */
-  to: number;
+export type CockpitStandDtoKind = typeof CockpitStandDtoKind[keyof typeof CockpitStandDtoKind];
+
+
+export const CockpitStandDtoKind = {
+  bestimmt: 'bestimmt',
+  spanne: 'spanne',
+  gated: 'gated',
+} as const;
+
+export interface CockpitStandDto {
+  kind: CockpitStandDtoKind;
+  /** The settled point value (only when kind === "bestimmt"). */
+  wert?: number;
+  /** Lower bound (only when kind === "spanne"). */
+  von?: number;
+  /** Upper bound (only when kind === "spanne"). */
+  bis?: number;
+  /** Still-open required line items (only when kind === "spanne"). */
+  offenePosten?: number;
+  /** Open posten conflicts, ADR-008 (only when kind === "spanne"). */
+  konflikte?: number;
+  /** The settled partial sum (only when kind === "gated"). */
+  summe?: number;
+  /** The gated Einkunftsarten (only when kind === "gated"). */
+  gegated?: string[];
 }
 
 export interface CockpitSummaryDto {
   taxYear: number;
-  estimate: EstimateRangeDto;
-  /** Count of still-open interview/receipt items. */
+  stand: CockpitStandDto;
+  /** Minimal-Gate questions still open (REQ-015 remainingSteps). */
   openItems: number;
 }
 

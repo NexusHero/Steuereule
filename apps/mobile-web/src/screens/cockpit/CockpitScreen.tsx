@@ -12,7 +12,7 @@ import { ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-na
 import { useTranslation } from 'react-i18next'
 import { Button, Card, HerkunftsChip, Pill, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme, type Breakpoint } from '@steuereule/ui'
 import { formatEuro, formatEuroRange, UNCERTAINTY_PER_ITEM } from '@steuereule/core'
-import { useCockpitControllerGetCockpitSummary, type CockpitSummaryDto } from '@steuereule/api-client'
+import { useCockpitControllerGetCockpitSummary, type CockpitStandDto, type CockpitSummaryDto } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
@@ -119,7 +119,7 @@ function CockpitLoaded({ summary, taxYear, onRefresh, isRefreshing, onOpenInterv
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
-  const { openItems } = summary
+  const { openItems, stand } = summary
   // One primary action per screen (design-system CLAUDE.md): while there's something to
   // resolve, that's it — "Aktualisieren" moves to the secondary/ghost slot. With nothing open,
   // refresh is the only honest action, so it keeps the primary slot.
@@ -130,14 +130,13 @@ function CockpitLoaded({ summary, taxYear, onRefresh, isRefreshing, onOpenInterv
       <Appbar taxYear={taxYear} />
       <Card variant="nacht">
         <Text style={styles.heroLabel}>{tr('cockpit.hero.label')}</Text>
-        <Text style={styles.heroValue}>{formatEuroRange(summary.estimate.from, summary.estimate.to)}</Text>
+        {stand.kind === 'gated' ? (
+          <GatedHero stand={stand} />
+        ) : (
+          <NumericHero stand={stand} />
+        )}
         <Text style={styles.openItems}>{tr('cockpit.hero.openItems', { count: openItems })}</Text>
-        <HerkunftsChip
-          quelle={{
-            regel: tr('cockpit.hero.herkunftRegel'),
-            rechenweg: tr('cockpit.hero.herkunftRechenweg', { count: openItems, perItem: formatEuro(UNCERTAINTY_PER_ITEM) }),
-          }}
-        />
+        <Text style={styles.refundLater}>{tr('cockpit.hero.refundLater')}</Text>
       </Card>
       {hasOpenItems ? (
         <Button onPress={onOpenInterview} style={styles.cta}>
@@ -153,6 +152,45 @@ function CockpitLoaded({ summary, taxYear, onRefresh, isRefreshing, onOpenInterv
         {isRefreshing ? tr('cockpit.refreshing') : tr('cockpit.refresh')}
       </Button>
     </ScrollView>
+  )
+}
+
+/** The deterministic number, as a point value or a range, with its provenance (ADR-015). */
+function NumericHero({ stand }: { readonly stand: CockpitStandDto }) {
+  const { t: tr } = useTranslation(APP_NS)
+  const styles = makeStyles(useTheme())
+  const rechenweg =
+    stand.kind === 'spanne'
+      ? tr('cockpit.hero.herkunftRechenweg', { count: stand.offenePosten ?? 0, perItem: formatEuro(UNCERTAINTY_PER_ITEM) })
+      : undefined
+  const quelle = rechenweg === undefined ? { regel: tr('cockpit.hero.herkunftRegel') } : { regel: tr('cockpit.hero.herkunftRegel'), rechenweg }
+  return (
+    <>
+      <Text style={styles.heroValue}>
+        {stand.kind === 'bestimmt' ? formatEuro(stand.wert ?? 0) : formatEuroRange(stand.von ?? 0, stand.bis ?? 0)}
+      </Text>
+      {stand.kind === 'spanne' && (stand.offenePosten ?? 0) > 0 ? (
+        <Text style={styles.offenePosten}>{tr('cockpit.hero.offenePosten', { count: stand.offenePosten ?? 0 })}</Text>
+      ) : null}
+      <HerkunftsChip quelle={quelle} />
+    </>
+  )
+}
+
+/** ADR-032 — a gated Einkunftsart is named, never widened into a fake numeric range. */
+function GatedHero({ stand }: { readonly stand: CockpitStandDto }) {
+  const t = useTheme()
+  const { t: tr } = useTranslation(APP_NS)
+  const styles = makeStyles(t)
+  return (
+    <>
+      <Text style={styles.gatedHeading}>{tr('cockpit.hero.gatedHeading')}</Text>
+      {(stand.gegated ?? []).map((name) => (
+        <Text key={name} style={styles.gatedBody}>
+          {tr('cockpit.hero.gatedBody', { name })}
+        </Text>
+      ))}
+    </>
   )
 }
 
@@ -224,6 +262,33 @@ function makeStyles(t: UiTheme) {
     marginTop: t.space.s2,
     marginBottom: t.space.s3,
   }
+  const offenePosten: TextStyle = {
+    color: t.color.nachtText,
+    opacity: 0.85,
+    fontFamily: t.font.text,
+    fontSize: t.size.s,
+    marginTop: t.space.s2,
+  }
+  const refundLater: TextStyle = {
+    color: t.color.nachtText,
+    opacity: 0.6,
+    fontFamily: t.font.text,
+    fontSize: t.size.xs,
+    marginTop: t.space.s2,
+  }
+  const gatedHeading: TextStyle = {
+    fontFamily: t.font.display,
+    fontWeight: t.weight.schwer,
+    fontSize: t.size.xl,
+    color: t.color.funke,
+    marginBottom: t.space.s2,
+  }
+  const gatedBody: TextStyle = {
+    color: t.color.nachtText,
+    fontFamily: t.font.text,
+    fontSize: t.size.m,
+    marginBottom: t.space.s2,
+  }
 
-  return { screen, wideScreen, appbar, appbarTitle, heading, help, cta, secondaryCta, emptyBlock, heroLabel, heroValue, openItems }
+  return { screen, wideScreen, appbar, appbarTitle, heading, help, cta, secondaryCta, emptyBlock, heroLabel, heroValue, openItems, offenePosten, refundLater, gatedHeading, gatedBody }
 }

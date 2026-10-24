@@ -7,6 +7,8 @@ import type { NestFastifyApplication } from '@nestjs/platform-fastify'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { resolveGuestSessionSecret, verifyGuestSession } from '../src/auth/guest-session.js'
 import { buildTestApp, extractSessionCookie } from './support/build-test-app.js'
+import type { FakeInterviewAnswerRepository } from './fakes/fake-interview-answer.repository.js'
+import type { FakeLstbRepository } from './fakes/fake-lstb.repository.js'
 import type { FakeTaxYearRepository } from './fakes/fake-tax-year.repository.js'
 
 process.env.GUEST_SESSION_SECRET = 'cockpit-http-test-secret'
@@ -24,11 +26,15 @@ function userIdFromCookie(cookie: string): string {
 describe('GET /v1/steuerjahre/:jahr/cockpit', () => {
   let app: NestFastifyApplication
   let taxYearRepository: FakeTaxYearRepository
+  let lstbRepository: FakeLstbRepository
+  let interviewRepository: FakeInterviewAnswerRepository
 
   beforeEach(async () => {
     const built = await buildTestApp()
     app = built.app
     taxYearRepository = built.taxYearRepository
+    lstbRepository = built.lstbRepository
+    interviewRepository = built.interviewRepository
   })
 
   afterEach(async () => {
@@ -42,17 +48,15 @@ describe('GET /v1/steuerjahre/:jahr/cockpit', () => {
     expect(response.json()).toBeNull()
   })
 
-  it('REQ-001 returns the CockpitSummaryDto shape the frozen frontend contract expects', async () => {
+  it('REQ-001 returns the CockpitSummaryDto shape the frozen frontend contract expects (now the deterministic stand)', async () => {
     const first = await app.inject({ method: 'GET', url: '/v1/steuerjahre/2026/cockpit' })
     const cookie = extractSessionCookie(first.headers['set-cookie'])!
-    // Seed directly through the repository (bypassing HTTP — there's no write endpoint
-    // for TaxYear, this data always arrives via the Prisma seed, ADR-0003).
-    taxYearRepository.seed(userIdFromCookie(cookie), {
-      steuerjahr: 2026,
-      baseEstimate: 1407,
-      openItems: 3,
-      openConflicts: 0,
-    })
+    const userId = userIdFromCookie(cookie)
+    // Seed the real facts the Cockpit now folds (ticket 15): a tax-year projection, the
+    // Angestellte declaration, and an LStB with two fields still open.
+    taxYearRepository.seed(userId, { steuerjahr: 2026, openItems: 3 })
+    interviewRepository.seed(userId, 2026, { job: 'Angestellt' })
+    lstbRepository.seed({ userId, steuerjahr: 2026, bruttoarbeitslohn: '50000', lohnsteuer: null, sozialversicherung: null })
 
     const response = await app.inject({
       method: 'GET',
@@ -63,14 +67,15 @@ describe('GET /v1/steuerjahre/:jahr/cockpit', () => {
     expect(response.statusCode).toBe(200)
     expect(response.json()).toEqual({
       taxYear: 2026,
-      estimate: { from: 1227, to: 1587 },
+      // 2 open LStB fields × 60 uncertainty around the settled 50000.
+      stand: { kind: 'spanne', von: 49880, bis: 50120, offenePosten: 2, konflikte: 0 },
       openItems: 3,
     })
   })
 
   it('REQ-001 scopes strictly to the caller’s userId via UserContextGuard, never a client-supplied id', async () => {
     const seededUserId = 'attacker-does-not-control-this'
-    taxYearRepository.seed(seededUserId, { steuerjahr: 2026, baseEstimate: 1407, openItems: 3, openConflicts: 0 })
+    taxYearRepository.seed(seededUserId, { steuerjahr: 2026, openItems: 3 })
 
     // A fresh request has no cookie — the guard mints a brand-new guest userId, which
     // can never equal `seededUserId`, so the seeded row must not be visible.
@@ -83,12 +88,7 @@ describe('GET /v1/steuerjahre/:jahr/cockpit', () => {
   it('REQ-001 scopes strictly to steuerjahr: a seeded 2026 row never answers for 2025', async () => {
     const first = await app.inject({ method: 'GET', url: '/v1/steuerjahre/2026/cockpit' })
     const cookie = extractSessionCookie(first.headers['set-cookie'])!
-    taxYearRepository.seed(userIdFromCookie(cookie), {
-      steuerjahr: 2026,
-      baseEstimate: 1407,
-      openItems: 3,
-      openConflicts: 0,
-    })
+    taxYearRepository.seed(userIdFromCookie(cookie), { steuerjahr: 2026, openItems: 3 })
 
     const response = await app.inject({ method: 'GET', url: '/v1/steuerjahre/2025/cockpit', headers: { cookie } })
 
