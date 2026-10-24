@@ -586,7 +586,7 @@ function buildOptions(options: CreateBetterAuthOptions & { rateLimitStorage: Res
     // `GET /list-sessions` bug this app hit (#299/REQ-014) and the decision recorded in
     // full in **ADR-0027**, not restated here. Short version: `freshAge: 0` is correct
     // and deliberate, not merely convenient — see the ADR for the exhaustive consumer
-    // list (exactly two endpoints in better-auth 1.6.24, measured against the installed
+    // list (exactly two endpoints in better-auth 1.7.12, measured against the installed
     // dist), the accepted loss on `/unlink-account`, and the re-evaluation trigger.
     session: {
       freshAge: 0,

@@ -1,7 +1,7 @@
 // Makes better-auth's device-authorization `/device/token` endpoint set its own
 // session cookie — the framework-standard behaviour every other credential
 // endpoint (sign-in/sign-up) already has. The upstream plugin (better-auth
-// 1.6.24) creates the session and stashes it on `ctx.context.newSession`, but
+// 1.7.12) creates the session and stashes it on `ctx.context.newSession`, but
 // returns the raw `access_token` in the JSON body instead of calling
 // `setSessionCookie` — a browser must never hold that Bearer token (ADR-0008/0012).
 //
