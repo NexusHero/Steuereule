@@ -208,4 +208,25 @@ export default defineConfig({
       },
     },
   },
+  // REQ-023 (ticket 10.3) — Bescheidprüfung: GET the re-entry state, PUT one figure, the
+  // Bescheiddatum, a (server-validated) status transition and the Einspruch. Same `bescheid`
+  // OpenAPI tag all five endpoints share.
+  bescheid: {
+    input: { target: '../../apps/api/openapi.json', filters: { tags: ['bescheid'] } },
+    output: {
+      target: './src/generated/bescheid.ts',
+      mode: 'split',
+      client: 'react-query',
+      httpClient: 'fetch',
+      mock: true,
+      override: {
+        mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        // `BescheidFeldDto.wert` and `BescheidFristDto.verbleibendeTage` are genuinely absent on
+        // some responses, so orval's default faker would emit `arrayElement([value, undefined])`
+        // and fail under `exactOptionalPropertyTypes: true` (TS2375). `mock.required: true` keeps
+        // every mocked property populated — same override the interview/lstb/ch targets carry.
+        mock: { required: true },
+      },
+    },
+  },
 })

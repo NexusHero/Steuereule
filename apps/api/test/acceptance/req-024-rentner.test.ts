@@ -25,7 +25,7 @@ const STEUERJAHR = 2026
 
 type RenteRow = { userId: string; jahresbetrag: string | null }
 
-describe('REQ-022 — the Rentner vertical (Anlage R), against the real server', () => {
+describe('REQ-024 — the Rentner vertical (Anlage R), against the real server', () => {
   let app: NestFastifyApplication
   let baseUrl: string
   let prisma: PrismaClient

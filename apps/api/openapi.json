@@ -759,6 +759,219 @@
         ]
       }
     },
+    "/v1/steuerjahre/{jahr}/bescheid": {
+      "get": {
+        "operationId": "BescheidController_get",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The caller’s Bescheid — re-entry (fields + Abgleich + Frist).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BescheidResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "bescheid"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/bescheid/feld/{feld}": {
+      "put": {
+        "operationId": "BescheidController_setFeld",
+        "parameters": [
+          {
+            "name": "feld",
+            "required": true,
+            "in": "path",
+            "description": "One of the five Bescheid figures (ParseBescheidFeldPipe).",
+            "schema": {
+              "example": "einnahmen",
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutBescheidFeldDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated Bescheid and its derived Abgleich + Frist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BescheidResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "bescheid"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/bescheid/datum": {
+      "put": {
+        "operationId": "BescheidController_setDatum",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetBescheidDatumDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated Bescheid (Bescheiddatum + Frist).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BescheidResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "bescheid"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/bescheid/status": {
+      "put": {
+        "operationId": "BescheidController_setStatus",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetBescheidStatusDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The Bescheid after the validated transition.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BescheidResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "bescheid"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/bescheid/einspruch": {
+      "put": {
+        "operationId": "BescheidController_setEinspruch",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetEinspruchDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The Bescheid after filing the Einspruch (validated transition).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BescheidResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "bescheid"
+        ]
+      }
+    },
     "/v1/account": {
       "delete": {
         "operationId": "AccountDeletionController_deleteAccount",
@@ -2028,6 +2241,7 @@
               "Krankenkasse",
               "Familienzulage",
               "Rentenbezugsmitteilung",
+              "Steuerbescheid",
               "Sonstiges"
             ],
             "example": "Lohnausweis",
@@ -2064,6 +2278,239 @@
         },
         "required": [
           "steuerjahr"
+        ]
+      },
+      "BescheidFeldDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The machine field id (BescheidFeld)."
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "erfasst",
+              "offen",
+              "unklar"
+            ],
+            "description": "The field’s capture state."
+          },
+          "wert": {
+            "type": "number",
+            "example": 50000,
+            "description": "The whole-euro amount — present only when kind === \"erfasst\" (erstattung may be negative)."
+          }
+        },
+        "required": [
+          "id",
+          "kind"
+        ]
+      },
+      "BescheidAbweichungDto": {
+        "type": "object",
+        "properties": {
+          "feld": {
+            "type": "string",
+            "enum": [
+              "einnahmen",
+              "vorsorgeaufwand",
+              "anrechnung"
+            ]
+          },
+          "bescheid": {
+            "type": "number",
+            "description": "The Bescheid figure (whole euros)."
+          },
+          "berechnet": {
+            "type": "number",
+            "description": "The computed figure (whole euros)."
+          },
+          "differenz": {
+            "type": "number",
+            "description": "bescheid − berechnet."
+          }
+        },
+        "required": [
+          "feld",
+          "bescheid",
+          "berechnet",
+          "differenz"
+        ]
+      },
+      "BescheidAbgleichDto": {
+        "type": "object",
+        "properties": {
+          "abweichungen": {
+            "description": "The deviations (empty = alles stimmt überein).",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BescheidAbweichungDto"
+            }
+          },
+          "berechnungUnvollstaendig": {
+            "type": "boolean",
+            "description": "The computed side is incomplete (berechne returned \"offen\")."
+          }
+        },
+        "required": [
+          "abweichungen",
+          "berechnungUnvollstaendig"
+        ]
+      },
+      "BescheidFristDto": {
+        "type": "object",
+        "properties": {
+          "bescheiddatum": {
+            "type": "string",
+            "nullable": true,
+            "description": "Bescheiddatum (ISO yyyy-mm-dd), null until set."
+          },
+          "fristEnde": {
+            "type": "string",
+            "nullable": true,
+            "description": "Einspruchsfrist-Ende (Bescheiddatum + 1 Monat), null until the datum is set."
+          },
+          "verbleibendeTage": {
+            "type": "number",
+            "nullable": true,
+            "description": "Whole days left (negative = abgelaufen), null until the datum is set."
+          }
+        },
+        "required": [
+          "bescheiddatum",
+          "fristEnde",
+          "verbleibendeTage"
+        ]
+      },
+      "BescheidResponseDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "eingegangen",
+              "geprüft",
+              "einspruch-eingelegt"
+            ],
+            "description": "The bescheid-phase sub-state."
+          },
+          "bescheiddatum": {
+            "type": "string",
+            "nullable": true,
+            "description": "Bescheiddatum (ISO yyyy-mm-dd)."
+          },
+          "einspruchGrund": {
+            "type": "string",
+            "nullable": true,
+            "description": "Einspruch-Grund (closed set), null until filed."
+          },
+          "felder": {
+            "description": "The five figures, in paper order.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BescheidFeldDto"
+            }
+          },
+          "abgleich": {
+            "description": "The Abgleich (Bescheid vs. berechnet).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BescheidAbgleichDto"
+              }
+            ]
+          },
+          "frist": {
+            "description": "The § 355 AO Einspruchsfrist.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BescheidFristDto"
+              }
+            ]
+          },
+          "naechsteZustaende": {
+            "description": "The legal next sub-states (for the UI to offer only what is legal).",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "status",
+          "bescheiddatum",
+          "einspruchGrund",
+          "felder",
+          "abgleich",
+          "frist",
+          "naechsteZustaende"
+        ]
+      },
+      "PutBescheidFeldDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "erfasst",
+              "offen",
+              "unklar"
+            ],
+            "description": "The field’s capture state."
+          },
+          "wert": {
+            "type": "number",
+            "example": 50000,
+            "description": "The whole-euro amount — present only when kind === \"erfasst\". Sign/validity per field is validated via @steuereule/core (erstattung may be negative)."
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "SetBescheidDatumDto": {
+        "type": "object",
+        "properties": {
+          "datum": {
+            "type": "string",
+            "nullable": true,
+            "example": "2026-04-15",
+            "description": "Bescheiddatum (ISO yyyy-mm-dd)."
+          }
+        }
+      },
+      "SetBescheidStatusDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "eingegangen",
+              "geprüft",
+              "einspruch-eingelegt"
+            ],
+            "description": "The target sub-state."
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "SetEinspruchDto": {
+        "type": "object",
+        "properties": {
+          "grund": {
+            "type": "string",
+            "enum": [
+              "betrag-falsch",
+              "beleg-nicht-beruecksichtigt",
+              "sonstiges"
+            ],
+            "description": "The Einspruch-Grund (closed set)."
+          }
+        },
+        "required": [
+          "grund"
         ]
       },
       "DeleteAccountRequestDto": {

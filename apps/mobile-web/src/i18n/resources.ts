@@ -760,6 +760,8 @@ export const appResources = {
         // itself named): the one primary action while items are open, demoting "Aktualisieren" to
         // the secondary slot (one primary action per screen, design-system CLAUDE.md).
         answerQuestions: 'Fragen beantworten',
+        // REQ-023 — the Bescheidprüfung entry (eigener Bereich, ticket 10.3).
+        checkBescheid: 'Bescheid prüfen',
       },
       // Ticket 10 (Phase 2, Slice 1) — Beleg-Posteingang (ADR-007/008). The upload affordance is
       // deliberately a HONEST placeholder, not a scan/PDF button: binary storage is a follow-up
@@ -818,11 +820,68 @@ export const appResources = {
           zahlungsdatum: 'Zahlungsdatum',
         },
       },
+      // REQ-023 (ticket 10.3) — Bescheidprüfung: der Steuerbescheid wird Feld für Feld
+      // eingetippt (ADR-036), gegen den Kern abgeglichen (Diff, nie still) und nach dem Bescheid
+      // gibt es den Einspruch-Flow (§ 355 AO). KEIN „Korrigieren" nach dem Bescheid (ADR-009/032).
+      bescheid: {
+        back: 'Zurück',
+        heading: 'Dein Steuerbescheid',
+        help: 'Übertrag die Beträge aus deinem Steuerbescheid — Feld für Feld, wie auf dem Papier.',
+        loading: 'Dein Bescheid wird geladen …',
+        loadError: {
+          heading: 'Das hat nicht geklappt.',
+          message: 'Dein Bescheid konnte nicht geladen werden. Prüf die Verbindung und versuch es noch mal.',
+          retry: 'Noch mal versuchen',
+        },
+        felder: {
+          einnahmen: 'Einkünfte laut Bescheid',
+          vorsorgeaufwand: 'Vorsorgeaufwendungen laut Bescheid',
+          anrechnung: 'Anrechenbare Steuern laut Bescheid',
+          festgesetzteSteuer: 'Festgesetzte Einkommensteuer',
+          erstattung: 'Erstattung / Nachzahlung',
+        },
+        feld: {
+          placeholder: 'Ganzzahlige Euro',
+          unklar: 'unlesbar',
+        },
+        datum: {
+          label: 'Bescheiddatum (JJJJ-MM-TT)',
+        },
+        frist: {
+          nochKeinDatum: 'Trag das Bescheiddatum ein, damit wir deine Einspruchsfrist zählen.',
+          heading: 'Einspruchsfrist',
+          verbleibend: 'Noch {{tage}} Tage — bis {{ende}}.',
+          abgelaufen: 'Die Einspruchsfrist (bis {{ende}}) ist abgelaufen.',
+        },
+        abgleich: {
+          heading: 'Abgleich mit deiner Berechnung',
+          stimmt: 'Alles stimmt überein ✓',
+          unvollstaendig: 'Ehrlich: deine Berechnung ist noch nicht vollständig — der Abgleich ist vorläufig.',
+          zeile: 'Bescheid: {{bescheid}} · berechnet: {{berechnet}}',
+        },
+        status: {
+          heading: 'Stand',
+          eingegangen: 'Bescheid eingegangen',
+          geprüft: 'Geprüft',
+          'einspruch-eingelegt': 'Einspruch eingelegt',
+          alsGeprueft: 'Als geprüft markieren',
+        },
+        einspruch: {
+          heading: 'Einspruch',
+          help: 'Weicht der Bescheid von deiner Berechnung ab, kannst du innerhalb der Frist Einspruch einlegen. Wähl den Grund:',
+          eingelegt: 'Einspruch eingelegt: {{grund}}.',
+          grund: {
+            'betrag-falsch': 'Ein Betrag ist falsch',
+            'beleg-nicht-beruecksichtigt': 'Ein Beleg wurde nicht berücksichtigt',
+            sonstiges: 'Sonstiges',
+          },
+        },
+        done: 'Fertig',
+      },
       grenzgaenger: {
         back: 'Zurück',
         weiter: 'Weiter',
-        loading: 'Deine Angaben werden geladen …',
-        loadError: {
+        loading: 'Deine Angaben werden geladen …',        loadError: {
           heading: 'Das hat nicht geklappt.',
           message: 'Deine Angaben konnten nicht geladen werden. Prüf die Verbindung und versuch es noch mal.',
           retry: 'Noch mal versuchen',
@@ -1519,6 +1578,7 @@ export const appResources = {
         refresh: 'Refresh',
         refreshing: 'Refreshing …',
         answerQuestions: 'Answer questions',
+        checkBescheid: 'Review assessment',
       },
       // Ticket 10 (Phase 2, Slice 1) — Beleg-Posteingang (ADR-007/008). See the `de` block for
       // why the upload affordance is an honest placeholder, not a fake scan button.
@@ -1576,6 +1636,61 @@ export const appResources = {
         },
       },
     },
+      bescheid: {
+        back: 'Back',
+        heading: 'Your tax assessment',
+        help: 'Copy the figures from your tax assessment — field by field, like on the paper.',
+        loading: 'Loading your assessment …',
+        loadError: {
+          heading: "That didn't work.",
+          message: "Your assessment couldn't be loaded. Check your connection and try again.",
+          retry: 'Try again',
+        },
+        felder: {
+          einnahmen: 'Income per assessment',
+          vorsorgeaufwand: 'Pension expenses per assessment',
+          anrechnung: 'Creditable taxes per assessment',
+          festgesetzteSteuer: 'Assessed income tax',
+          erstattung: 'Refund / additional payment',
+        },
+        feld: {
+          placeholder: 'Whole euros',
+          unklar: 'unreadable',
+        },
+        datum: {
+          label: 'Assessment date (YYYY-MM-DD)',
+        },
+        frist: {
+          nochKeinDatum: 'Enter the assessment date so we can count your appeal deadline.',
+          heading: 'Appeal deadline',
+          verbleibend: '{{tage}} days left — until {{ende}}.',
+          abgelaufen: 'The appeal deadline (until {{ende}}) has passed.',
+        },
+        abgleich: {
+          heading: 'Comparison with your calculation',
+          stimmt: 'Everything matches ✓',
+          unvollstaendig: 'Honest: your calculation is not complete yet — the comparison is provisional.',
+          zeile: 'Assessment: {{bescheid}} · calculated: {{berechnet}}',
+        },
+        status: {
+          heading: 'Status',
+          eingegangen: 'Assessment received',
+          geprüft: 'Reviewed',
+          'einspruch-eingelegt': 'Appeal filed',
+          alsGeprueft: 'Mark as reviewed',
+        },
+        einspruch: {
+          heading: 'Appeal',
+          help: 'If the assessment deviates from your calculation, you can appeal within the deadline. Choose the reason:',
+          eingelegt: 'Appeal filed: {{grund}}.',
+          grund: {
+            'betrag-falsch': 'An amount is wrong',
+            'beleg-nicht-beruecksichtigt': 'A receipt was not considered',
+            sonstiges: 'Other',
+          },
+        },
+        done: 'Done',
+      },
       grenzgaenger: {
         back: 'Back',
         weiter: 'Continue',
