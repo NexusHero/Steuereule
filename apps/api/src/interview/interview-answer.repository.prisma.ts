@@ -49,10 +49,10 @@ export class PrismaInterviewAnswerRepository implements InterviewAnswerRepositor
    * TaxYear has never had a write path before this (see #318) — `create` seeds
    * `baseEstimate: 0`, an honest zero rather than an invented estimate: computing a
    * real estimate from interview answers is explicitly out of this slice's scope
-   * (ADR-0032, D1), so there is nothing truthful to put there yet. A later slice that
-   * does compute a real baseEstimate writes it through its own path; this upsert's
-   * `update` branch only ever touches `openItems`, never clobbering a baseEstimate
-   * that slice may since have set.
+   * (ADR-0032, D1), so there is nothing truthful to put there yet. `baseEstimate` is
+   * VESTIGIAL as of ticket 15 (see schema.prisma) — kept only to satisfy the upsert's
+   * required column; no later slice will write a real value through this path. This
+   * upsert's `update` branch only ever touches `openItems`.
    */
   async write(params: WriteAnswerParams): Promise<void> {
     const { userId, steuerjahr, questionId, value, openItems } = params

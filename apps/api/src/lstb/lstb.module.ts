@@ -10,5 +10,8 @@ import { LstbService } from './lstb.service.js'
   imports: [PrismaModule, AuditModule],
   controllers: [LstbController],
   providers: [LstbService, { provide: LSTB_REPOSITORY, useClass: PrismaLstbRepository }],
+  // Exported so the Cockpit (ticket 15) can aggregate the LStB figures through the SAME
+  // field-encryption seam its own service uses — never a second Prisma read path.
+  exports: [LSTB_REPOSITORY],
 })
 export class LstbModule {}

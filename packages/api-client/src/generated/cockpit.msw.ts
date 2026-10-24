@@ -22,7 +22,7 @@ import type {
 } from './cockpit.schemas';
 
 
-export const getCockpitControllerGetCockpitSummaryResponseMock = (): CockpitSummaryDto | null => ({...{taxYear: faker.number.float({fractionDigits: 2}), estimate: {from: faker.number.float({fractionDigits: 2}), to: faker.number.float({fractionDigits: 2})}, openItems: faker.number.float({fractionDigits: 2})},})
+export const getCockpitControllerGetCockpitSummaryResponseMock = (): CockpitSummaryDto | null => ({...{taxYear: faker.number.float({fractionDigits: 2}), stand: {kind: faker.helpers.arrayElement(['bestimmt','spanne','gated'] as const), wert: faker.number.float({fractionDigits: 2}), von: faker.number.float({fractionDigits: 2}), bis: faker.number.float({fractionDigits: 2}), offenePosten: faker.number.float({fractionDigits: 2}), konflikte: faker.number.float({fractionDigits: 2}), summe: faker.number.float({fractionDigits: 2}), gegated: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}})))}, openItems: faker.number.float({fractionDigits: 2})},})
 
 
 export const getCockpitControllerGetCockpitSummaryMockHandler = (overrideResponse?: CockpitSummaryDto | null | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<CockpitSummaryDto | null> | CockpitSummaryDto | null), options?: RequestHandlerOptions) => {

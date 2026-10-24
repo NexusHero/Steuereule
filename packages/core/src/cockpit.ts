@@ -4,10 +4,18 @@
 // Pure, deterministic, dependency-free (ultimate-dev-process §3.3/§3.4). Identifiers and
 // messages are English (dev-process language); this module has no customer-facing text.
 
-/** Uncertainty added to the range per still-open interview/receipt item, in euro. */
+/**
+ * Uncertainty added to the range per still-open interview/receipt item, in euro.
+ * PLACEHOLDER — not yet sourced: ADR-015 (research) names the "range narrows" rule but no
+ * factor. This is a deliberate stand-in constant until a Fach-Review pins a real figure;
+ * it is NOT an invented precision, only the widening rule's placeholder magnitude.
+ */
 export const UNCERTAINTY_PER_ITEM = 60
 
-/** Uncertainty added per open posten conflict (ADR-008 "± offen"), in euro. */
+/**
+ * Uncertainty added per open posten conflict (ADR-008 "± offen"), in euro.
+ * PLACEHOLDER — not yet sourced: same open question as UNCERTAINTY_PER_ITEM.
+ */
 export const UNCERTAINTY_PER_CONFLICT = 100
 
 export interface EstimateRange {

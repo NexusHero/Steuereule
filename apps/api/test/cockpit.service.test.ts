@@ -1,61 +1,104 @@
-// REQ-001 — pure service logic: userId+steuerjahr scoping and the derived-range
-// mapping, against the fake repository (no HTTP, no DB). Mirrors profile.service.test.ts.
+// REQ-001 + ticket 15 (Cockpit-Echtdaten) — pure service logic: userId+steuerjahr scoping and
+// the honest fold → wire mapping, against the fake repositories (no HTTP, no DB). The
+// Schätz-Platzhalter is gone: the stand now derives from @steuereule/core's cockpitSpanneAusEingaben
+// over the real LStB + interview figures. Mirrors profile.service.test.ts.
 import { beforeEach, describe, expect, it } from 'vitest'
-import { cockpitRange } from '@steuereule/core'
 import { CockpitService } from '../src/cockpit/cockpit.service.js'
+import { FakeInterviewAnswerRepository } from './fakes/fake-interview-answer.repository.js'
+import { FakeLstbRepository } from './fakes/fake-lstb.repository.js'
 import { FakeTaxYearRepository } from './fakes/fake-tax-year.repository.js'
 
 describe('CockpitService', () => {
-  let repository: FakeTaxYearRepository
+  let taxYear: FakeTaxYearRepository
+  let lstb: FakeLstbRepository
+  let interview: FakeInterviewAnswerRepository
   let service: CockpitService
 
   beforeEach(() => {
-    repository = new FakeTaxYearRepository()
-    service = new CockpitService(repository)
+    taxYear = new FakeTaxYearRepository()
+    lstb = new FakeLstbRepository()
+    interview = new FakeInterviewAnswerRepository()
+    service = new CockpitService(taxYear, lstb, interview)
   })
 
   it('REQ-001 returns null for a userId/steuerjahr with nothing seeded — the honest empty state', async () => {
     await expect(service.getSummary('user-a', 2026)).resolves.toBeNull()
   })
 
-  it('REQ-001 computes the estimate range via @steuereule/core’s cockpitRange, never re-deriving it', async () => {
-    repository.seed('user-a', { steuerjahr: 2026, baseEstimate: 1407, openItems: 3, openConflicts: 0 })
+  it('derives a point value from the settled LStB Bruttoarbeitslohn once nothing is open (ADR-015)', async () => {
+    taxYear.seed('user-a', { steuerjahr: 2026, openItems: 0 })
+    interview.seed('user-a', 2026, { job: 'Angestellt' })
+    lstb.seed({ userId: 'user-a', steuerjahr: 2026, bruttoarbeitslohn: '50000', lohnsteuer: '8000', sozialversicherung: '9000' })
 
     const summary = await service.getSummary('user-a', 2026)
 
-    expect(summary).toEqual({
-      taxYear: 2026,
-      estimate: cockpitRange({ estimate: 1407, openItems: 3, openConflicts: 0 }),
-      openItems: 3,
-    })
-    expect(summary!.estimate).toEqual({ from: 1227, to: 1587 })
+    expect(summary).toEqual({ taxYear: 2026, stand: { kind: 'bestimmt', wert: 50000 }, openItems: 0 })
   })
 
-  it('REQ-001 collapses to a point value once nothing is open (ADR-015)', async () => {
-    repository.seed('user-a', { steuerjahr: 2026, baseEstimate: 1444, openItems: 0, openConflicts: 0 })
+  it('widens into a spanne when LStB fields are still open, around the settled partial sum', async () => {
+    taxYear.seed('user-a', { steuerjahr: 2026, openItems: 2 })
+    interview.seed('user-a', 2026, { job: 'Angestellt' })
+    // Only the Bruttoarbeitslohn is entered; lohnsteuer + sozialversicherung remain open.
+    lstb.seed({ userId: 'user-a', steuerjahr: 2026, bruttoarbeitslohn: '50000', lohnsteuer: null, sozialversicherung: null })
 
     const summary = await service.getSummary('user-a', 2026)
 
-    expect(summary!.estimate).toEqual({ from: 1444, to: 1444 })
+    expect(summary?.stand.kind).toBe('spanne')
+    // 2 open LStB fields × 60 = 120 uncertainty around the settled 50000.
+    expect(summary?.stand).toEqual({ kind: 'spanne', von: 49880, bis: 50120, offenePosten: 2, konflikte: 0 })
   })
 
-  it('REQ-001 factors open conflicts into the range, not just open items', async () => {
-    repository.seed('user-a', { steuerjahr: 2026, baseEstimate: 1000, openItems: 1, openConflicts: 2 })
+  it('names the LStB widerspruch as a conflict, widening more than an item (ADR-008)', async () => {
+    taxYear.seed('user-a', { steuerjahr: 2026, openItems: 0 })
+    interview.seed('user-a', 2026, { job: 'Angestellt' })
+    // lohnsteuer (60000) exceeds the Bruttoarbeitslohn (50000) — a named widerspruch, never fixed.
+    lstb.seed({ userId: 'user-a', steuerjahr: 2026, bruttoarbeitslohn: '50000', lohnsteuer: '60000', sozialversicherung: '0' })
 
     const summary = await service.getSummary('user-a', 2026)
 
-    // 1 item * 60 + 2 conflicts * 100 = 260
-    expect(summary!.estimate).toEqual({ from: 740, to: 1260 })
+    expect(summary?.stand).toEqual({ kind: 'spanne', von: 50000 - 100, bis: 50000 + 100, offenePosten: 0, konflikte: 1 })
+  })
+
+  it('reports a gated Einkunftsart honestly, naming it rather than widening into a fake range (ADR-032)', async () => {
+    taxYear.seed('user-a', { steuerjahr: 2026, openItems: 0 })
+    // Beides declares Gewerbe — gated in 1.0; the Angestellte income is still settled.
+    interview.seed('user-a', 2026, { job: 'Beides' })
+    lstb.seed({ userId: 'user-a', steuerjahr: 2026, bruttoarbeitslohn: '50000', lohnsteuer: '8000', sozialversicherung: '9000' })
+
+    const summary = await service.getSummary('user-a', 2026)
+
+    expect(summary?.stand).toEqual({ kind: 'gated', summe: 50000, gegated: ['Gewerbe'] })
+  })
+
+  it('does not count LStB fields as open for a non-Angestellte person (Rente has no LStB)', async () => {
+    taxYear.seed('user-a', { steuerjahr: 2026, openItems: 0 })
+    interview.seed('user-a', 2026, { job: 'Rente' })
+    // A pensioner has no LStB to transcribe, so the (absent) LStB must not widen the range.
+    const summary = await service.getSummary('user-a', 2026)
+
+    expect(summary?.stand).toEqual({ kind: 'bestimmt', wert: 0 })
+  })
+
+  it('adds the declared Nebenjob Brutto to the settled income sum', async () => {
+    taxYear.seed('user-a', { steuerjahr: 2026, openItems: 0 })
+    interview.seed('user-a', 2026, { job: 'Angestellt', nebenjob: 'Nebenjob', 'nebenjob-brutto': '4000' })
+    lstb.seed({ userId: 'user-a', steuerjahr: 2026, bruttoarbeitslohn: '50000', lohnsteuer: '8000', sozialversicherung: '9000' })
+
+    const summary = await service.getSummary('user-a', 2026)
+
+    expect(summary?.stand).toEqual({ kind: 'bestimmt', wert: 54000 })
   })
 
   it('REQ-001 strictly scopes per userId: user-b never sees user-a’s tax year', async () => {
-    repository.seed('user-a', { steuerjahr: 2026, baseEstimate: 1407, openItems: 3, openConflicts: 0 })
+    taxYear.seed('user-a', { steuerjahr: 2026, openItems: 0 })
+    interview.seed('user-a', 2026, { job: 'Angestellt' })
+    lstb.seed({ userId: 'user-a', steuerjahr: 2026, bruttoarbeitslohn: '50000', lohnsteuer: '8000', sozialversicherung: '9000' })
 
     await expect(service.getSummary('user-b', 2026)).resolves.toBeNull()
   })
 
   it('REQ-001 strictly scopes per steuerjahr: the same userId with only 2026 seeded returns null for 2025', async () => {
-    repository.seed('user-a', { steuerjahr: 2026, baseEstimate: 1407, openItems: 3, openConflicts: 0 })
+    taxYear.seed('user-a', { steuerjahr: 2026, openItems: 0 })
 
     await expect(service.getSummary('user-a', 2025)).resolves.toBeNull()
   })

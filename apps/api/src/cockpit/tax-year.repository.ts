@@ -2,11 +2,13 @@
 // on this interface, not on Prisma directly, so unit tests can swap in a fake that
 // still honours the real per-(userId, steuerjahr) uniqueness constraint (ADR-0004:
 // no mocking Prisma into meaninglessness) — mirrors ProfileRepository.
+//
+// Ticket 15: the `baseEstimate` Schätz-Platzhalter is gone from this seam — the Cockpit
+// now folds the real LStB/interview figures through @steuereule/core, so the only tax-year
+// fact this seam still carries is the Minimal-Gate's `openItems` projection (REQ-015).
 export interface TaxYearRecord {
   steuerjahr: number
-  baseEstimate: number
   openItems: number
-  openConflicts: number
 }
 
 export const TAX_YEAR_REPOSITORY = Symbol('TAX_YEAR_REPOSITORY')

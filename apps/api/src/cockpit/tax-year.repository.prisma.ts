@@ -18,9 +18,7 @@ export class PrismaTaxYearRepository implements TaxYearRepository {
     if (!row) return null
     return {
       steuerjahr: row.steuerjahr,
-      baseEstimate: row.baseEstimate,
       openItems: row.openItems,
-      openConflicts: row.openConflicts,
     }
   }
 }

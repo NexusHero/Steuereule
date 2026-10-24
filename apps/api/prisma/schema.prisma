@@ -261,8 +261,12 @@ model TaxYear {
   /// The tax year shown in the Cockpit (e.g. 2026). Part of the request path, but the
   /// row lookup is always userId-scoped first (`@@unique([userId, steuerjahr])`).
   steuerjahr    Int
-  /// Base estimate before the range is spread, in whole euro (>= 0) — "Basis vor
-  /// Berater-Funden" (successor of demo-daten.js's `schaetzung`).
+  /// Base estimate before the range is spread, in whole euro (>= 0). VESTIGIAL as of
+  /// ticket 15 (Cockpit-Echtdaten): the Cockpit no longer reads this column — the spanne is
+  /// now derived from @steuereule/core's `berechne`+`cockpitSpanne` over the real LStB/interview
+  /// figures. Kept as a required column (no default) only so the existing write path
+  /// (interview-answer.repository.prisma.ts) can keep seeding an honest `0`; a follow-up
+  /// migration may drop it once every writer stops needing it.
   baseEstimate  Int
   /// Number of still-open interview/receipt items (>= 0).
   openItems     Int

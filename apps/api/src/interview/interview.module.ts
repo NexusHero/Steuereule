@@ -10,9 +10,10 @@ import { InterviewService } from './interview.service.js'
   imports: [PrismaModule, AuditModule],
   controllers: [InterviewController],
   providers: [InterviewService, { provide: INTERVIEW_ANSWER_REPOSITORY, useClass: PrismaInterviewAnswerRepository }],
-  // Exported so the CH-Lohnausweis fold (ticket 16) can read the stored answers it derives the
-  // Grenzgänger-Status and the gated Einkunftsarten from (grenzgaengerStand) without re-reading
-  // raw rows — the interview repository stays the one read path for InterviewAnswer.
+  // Exported for BOTH consumers of the one read path (InterviewAnswer goes through the same
+  // field-encryption + integrity-checked seam): the Cockpit (ticket 15) reads the answers for
+  // its span, and the CH-Lohnausweis fold (ticket 16) derives Grenzgänger-Status + gated
+  // Einkunftsarten (grenzgaengerStand) — neither re-reads raw rows.
   exports: [INTERVIEW_ANSWER_REPOSITORY],
 })
 export class InterviewModule {}

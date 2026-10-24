@@ -166,7 +166,7 @@ describe('App', () => {
     async () => {
       server.use(
         http.get(`${API_BASE_URL}/v1/steuerjahre/2026/cockpit`, () =>
-          HttpResponse.json({ taxYear: 2026, estimate: { from: 100, to: 300 }, openItems: 3 }, { status: 200 }),
+          HttpResponse.json({ taxYear: 2026, stand: { kind: 'spanne', von: 100, bis: 300, offenePosten: 3, konflikte: 0 }, openItems: 3 }, { status: 200 }),
         ),
         http.get(`${API_BASE_URL}/v1/steuerjahre/2026/interview`, () =>
           HttpResponse.json({ answers: {}, nextStep: { kind: 'question', id: 'job' }, openItems: 3 }, { status: 200 }),
@@ -182,7 +182,7 @@ describe('App', () => {
       fireEvent.click(screen.getByText('Erstmal als Gast umschauen'))
       await completeOnboarding()
 
-      await screen.findByText('3 Angaben offen')
+      await screen.findByText('3 Fragen offen')
       fireEvent.click(screen.getByText('Fragen beantworten'))
 
       // Inside the Minimal-Gate: the job question, real client and server wiring (#318 task 2).
@@ -197,17 +197,21 @@ describe('App', () => {
       // next Cockpit render reads it, not a value carried over in memory.
       server.use(
         http.get(`${API_BASE_URL}/v1/steuerjahre/2026/cockpit`, () =>
-          HttpResponse.json({ taxYear: 2026, estimate: { from: 100, to: 300 }, openItems: 2 }, { status: 200 }),
+          HttpResponse.json({ taxYear: 2026, stand: { kind: 'spanne', von: 100, bis: 300, offenePosten: 3, konflikte: 0 }, openItems: 2 }, { status: 200 }),
         ),
       )
       fireEvent.click(screen.getByText('Nein')) // ausland: no gate
       await screen.findByText('Kindergeld, Freibeträge, Betreuungskosten — die Günstigerprüfung Kindergeld vs. Freibetrag läuft automatisch.') // kinder question
       fireEvent.click(screen.getByText('2 oder mehr')) // completes the Minimal-Gate
 
-      // onDone returns to Cockpit; its query was invalidated by the last successful write, so
-      // this is a real re-fetch landing on the lower count, not a stale in-memory value.
-      await screen.findByText('2 Angaben offen')
-      expect(screen.queryByText('3 Angaben offen')).toBeNull()
+      // onDone now leads to the LStB mask (the Angestellte vertical's next step, ticket 15).
+      await screen.findByText('Deine Lohnsteuerbescheinigung')
+
+      // Back from the LStB mask returns to Cockpit; its query was invalidated by the last
+      // successful write, so this is a real re-fetch landing on the lower count, not stale memory.
+      fireEvent.click(screen.getByLabelText('Zurück'))
+      await screen.findByText('2 Fragen offen')
+      expect(screen.queryByText('3 Fragen offen')).toBeNull()
     },
     15_000,
   )

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { angestellteAusAntworten, angestelltenStand, type AngestellteEingaben } from './angestellte'
+import { angestellteAusAntworten, angestellteAusDaten, angestelltenStand, type AngestellteEingaben } from './angestellte'
 import { ENTRIES, entryForStep, isReachableFor, nextStepFor, remainingStepsFor, type Answers } from './interview'
+import { LEERES_LSTB, type LstbDaten } from './lstb'
 
 const EINGABEN: AngestellteEingaben = {
   einnahmen: 50000,
@@ -90,6 +91,62 @@ describe('angestelltenStand — the deterministic fold', () => {
   it('rejects negative or non-integer inputs', () => {
     expect(() => angestelltenStand({ ...EINGABEN, einnahmen: -1 })).toThrow(RangeError)
     expect(() => angestelltenStand({ ...EINGABEN, sonderausgaben: 1.5 })).toThrow(RangeError)
+  })
+})
+
+describe('angestellteAusDaten — the ONE fold shared by Cockpit API + Plausibilitäts-Screen (ticket 15 review F2)', () => {
+  const VOLLSTAENDIG: LstbDaten = {
+    bruttoarbeitslohn: { kind: 'erfasst', wert: 50000 },
+    lohnsteuer: { kind: 'erfasst', wert: 8000 },
+    sozialversicherung: { kind: 'erfasst', wert: 9000 },
+  }
+
+  it('empty answers + empty LStB fold to all-zero facts, nothing gated', () => {
+    expect(angestellteAusDaten(LEERES_LSTB, {})).toEqual({
+      einnahmen: 0,
+      werbungskosten: 0,
+      sonderausgaben: 0,
+      offenePosten: 0,
+      konflikte: 0,
+      gegated: [],
+      erfasstNichtGerechnet: 0,
+    })
+  })
+
+  it('sums LStB Brutto (Angestellte vertical only) + declared Nebenjob-Brutto', () => {
+    expect(angestellteAusDaten(VOLLSTAENDIG, { job: 'Angestellt', nebenjob: 'Nebenjob', 'nebenjob-brutto': '4000' }).einnahmen).toBe(54000)
+    // A pensioner has no LStB to transcribe, so the (present) LStB must not fold into income.
+    expect(angestellteAusDaten(VOLLSTAENDIG, { job: 'Rente' }).einnahmen).toBe(0)
+  })
+
+  it('counts open LStB fields only for the Angestellte vertical', () => {
+    const offen: LstbDaten = { bruttoarbeitslohn: { kind: 'erfasst', wert: 50000 }, lohnsteuer: { kind: 'offen' }, sozialversicherung: { kind: 'offen' } }
+    expect(angestellteAusDaten(offen, { job: 'Angestellt' }).offenePosten).toBe(2)
+    expect(angestellteAusDaten(offen, { job: 'Rente' }).offenePosten).toBe(0)
+  })
+
+  it('counts a declared Nebenjob without Brutto as an open Posten (never Minijob)', () => {
+    expect(angestellteAusDaten(VOLLSTAENDIG, { job: 'Angestellt', nebenjob: 'Nebenjob' }).offenePosten).toBe(1)
+    expect(angestellteAusDaten(VOLLSTAENDIG, { job: 'Angestellt', nebenjob: 'Minijob' }).offenePosten).toBe(0)
+  })
+
+  it('counts an LStB widerspruch as a conflict (ADR-008)', () => {
+    const widerspruch: LstbDaten = { bruttoarbeitslohn: { kind: 'erfasst', wert: 50000 }, lohnsteuer: { kind: 'erfasst', wert: 60000 }, sozialversicherung: { kind: 'erfasst', wert: 0 } }
+    expect(angestellteAusDaten(widerspruch, { job: 'Angestellt' }).konflikte).toBe(1)
+  })
+
+  it('names a gated Einkunftsart and sums the captured-but-not-folded amounts', () => {
+    const fakten = angestellteAusDaten(VOLLSTAENDIG, {
+      job: 'Beides',
+      dhf: 'Ja',
+      'dhf-miete': '650',
+      abfindung: 'Ja',
+      'abfindung-betrag': '20000',
+      lohnersatz: 'Ja',
+      'lohnersatz-betrag': '4000',
+    })
+    expect(fakten.gegated).toEqual(['Gewerbe'])
+    expect(fakten.erfasstNichtGerechnet).toBe(650 + 20000 + 4000)
   })
 })
 

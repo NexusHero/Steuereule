@@ -2,7 +2,7 @@ import { Controller, Get, Inject, Param, UseGuards } from '@nestjs/common'
 import { ApiExtraModels, ApiOkResponse, ApiParam, ApiTags, getSchemaPath } from '@nestjs/swagger'
 import { CurrentUser } from '../auth/current-user.decorator.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
-import { CockpitSummaryDto, EstimateRangeDto } from './dto/cockpit-summary.dto.js'
+import { CockpitStandDto, CockpitSummaryDto } from './dto/cockpit-summary.dto.js'
 import { CockpitService } from './cockpit.service.js'
 import { ParseSteuerjahrPipe } from './parse-steuerjahr.pipe.js'
 
@@ -28,7 +28,7 @@ export class CockpitController {
   // `allOf: [$ref]` is the standard indirection that makes `nullable: true` legal
   // alongside it, and ApiExtraModels registers CockpitSummaryDto's schema so
   // getSchemaPath can reference it here.
-  @ApiExtraModels(CockpitSummaryDto, EstimateRangeDto)
+  @ApiExtraModels(CockpitSummaryDto, CockpitStandDto)
   @ApiOkResponse({
     description:
       'The caller’s Cockpit summary for the given tax year, or null when nothing has been seeded/entered yet for it (the honest empty state, not a 404).',

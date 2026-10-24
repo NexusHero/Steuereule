@@ -3,6 +3,7 @@
 // three-digit product log, not docs/adr/; see ADR-0033 on the citation form). No I/O, no LLM.
 export * from './format'
 export * from './cockpit'
+export * from './cockpit-spanne'
 export * from './steuer-id'
 export * from './interview'
 export * from './einkunftsarten'
