@@ -3,6 +3,7 @@
 import type { NestFastifyApplication } from '@nestjs/platform-fastify'
 import { PrismaClient } from '@prisma/client'
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
+import { resetRateLimiters } from '../support/reset-rate-limiters.js'
 
 process.env.GUEST_SESSION_SECRET = 'req-005-secret'
 process.env.BETTER_AUTH_SECRET = 'req-005-better-auth-secret-0123456789'
@@ -32,15 +33,11 @@ describe('REQ-005 — email/password signup + async verification, against the re
   })
 
   afterEach(async () => {
+    resetRateLimiters(app)
     vi.unstubAllGlobals()
     await prisma.session.deleteMany()
     await prisma.account.deleteMany()
     await prisma.user.deleteMany()
-    // See req-009's afterEach: no forwarded client IP in this environment means
-    // login rate limiting (REQ-010) falls back to one shared bucket across every
-    // caller, including other acceptance files hitting the same Postgres — clean it
-    // up so repeated signups here never trip it for an unrelated reason.
-    await prisma.rateLimit.deleteMany()
   })
 
   afterAll(async () => {

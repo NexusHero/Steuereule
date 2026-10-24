@@ -19,13 +19,24 @@ import { mountBetterAuthHandler } from './auth/mount-better-auth.js'
 import { validationExceptionFactory } from './common/validation-exception-factory.js'
 import { assertDatabaseReachable } from './config/assert-database-reachable.js'
 import { assertEnvNotFileSourced } from './config/assert-env-not-file-sourced.js'
+import { resolveTrustedProxies } from './config/trusted-proxies.js'
 import { buildCorsOptions } from './cors/build-cors-options.js'
 import { registerHelmet } from './security/register-helmet.js'
 
 export async function buildApp(): Promise<NestFastifyApplication> {
-  const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter(), {
-    logger: ['error', 'warn'],
-  })
+  // Fastify `trustProxy` and better-auth's `advanced.ipAddress.trustedProxies`
+  // consume the *same* resolver (resolveTrustedProxies) — one config source for
+  // "which reverse-proxy hops to trust", so `request.ip` (device endpoints,
+  // throttler keys) and better-auth's `getIp()` can never drift apart. Throws in
+  // production when unset, the same fail-closed posture the resolver already gives
+  // better-auth.
+  const app = await NestFactory.create<NestFastifyApplication>(
+    AppModule,
+    new FastifyAdapter({ trustProxy: resolveTrustedProxies() }),
+    {
+      logger: ['error', 'warn'],
+    },
+  )
 
   // Credentialed cross-origin CORS (ADR-0011): the guest-session userId travels in an
   // httpOnly cookie, so the live demo's web origin must be granted `credentials: true`

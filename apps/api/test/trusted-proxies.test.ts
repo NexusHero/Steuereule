@@ -3,6 +3,8 @@
 // A pure function taking `env` as a parameter, same shape as every other resolve*(env)
 // test in this codebase (resolveBetterAuthSecret/resolveBetterAuthUrl in
 // better-auth.test.ts) — no server, no DB needed.
+import proxyaddr from '@fastify/proxy-addr'
+import type { IncomingMessage } from 'node:http'
 import { describe, expect, it } from 'vitest'
 import { resolveTrustedProxies } from '../src/config/trusted-proxies.js'
 
@@ -50,21 +52,21 @@ describe('resolveTrustedProxies', () => {
     expect(() => resolveTrustedProxies({ TRUSTED_PROXIES: '::1/129' })).toThrow(/invalid entries: ::1\/129/)
   })
 
-  // No floor on prefix breadth is built here (#241, Musti's review). Measured, not
-  // assumed: @fastify/proxy-addr@5.1.0 throws only on the *exact* range `0.0.0.0/0`;
-  // `0.0.0.0/1`/`::/1` pass through it silently and return the attacker-controlled
-  // leftmost value, while `/2`/`/8` were harmless in the one setup measured so far.
-  // That failure mode belongs to proxy-addr/Fastify's `trustProxy`, which this ticket
-  // does not wire (#238's own follow-up, consuming this resolver's output) —
-  // better-auth's own algorithm, the only consumer wired here, fails the *opposite*
-  // direction on an overly-broad range (converges toward `null`, not an
-  // attacker-chosen value), so there is no failing case against THIS ticket's actual
-  // consumer to justify a guard here yet. This test records that as a deliberate,
-  // named deferral to #238 — not an oversight, and not "Musti checked this and it's
-  // fine everywhere" (an earlier draft of this comment said exactly that, incorrectly
-  // generalising a narrower, explicitly-scoped measurement; corrected here).
-  it('does not reject an overly broad range on its own — that guard belongs to #238’s Fastify/proxy-addr consumer, proven by a failing case there first', () => {
-    expect(resolveTrustedProxies({ TRUSTED_PROXIES: '0.0.0.0/1' })).toEqual(['0.0.0.0/1'])
+  // The breadth floor (#241, Musti's review) — a trusted range broad enough to cover
+  // the socket peer makes Fastify's `@fastify/proxy-addr` return the attacker-controlled
+  // leftmost `X-Forwarded-For` value (fail-open): `trustProxy: ['0.0.0.0/1']`, peer
+  // `127.0.0.1`, XFF `203.0.113.66, 127.0.0.1` → `203.0.113.66`. `/0` and `/1` are the
+  // two lengths that fail open; `/2` and narrower leave the loopback peer outside the
+  // trusted set and fail closed instead. The guard lives here, once, so both better-auth
+  // and Fastify consume a value that is safe for both.
+  it('rejects an overly broad range (/0 or /1) that would make Fastify fail open on a spoofed leftmost value', () => {
+    expect(() => resolveTrustedProxies({ TRUSTED_PROXIES: '0.0.0.0/0' })).toThrow(/overly broad entries: 0\.0\.0\.0\/0/)
+    expect(() => resolveTrustedProxies({ TRUSTED_PROXIES: '0.0.0.0/1' })).toThrow(/overly broad entries: 0\.0\.0\.0\/1/)
+    expect(() => resolveTrustedProxies({ TRUSTED_PROXIES: '::/1' })).toThrow(/overly broad entries: ::\/1/)
+  })
+
+  it('accepts a /2 range — the first length narrow enough to keep the socket peer outside the trusted set', () => {
+    expect(resolveTrustedProxies({ TRUSTED_PROXIES: '0.0.0.0/2' })).toEqual(['0.0.0.0/2'])
   })
 })
 
@@ -86,5 +88,31 @@ describe('resolveTrustedProxies — F1 regression: node:net’s isIP, not a hand
 
   it('accepts a real IPv4-mapped IPv6 address — better-auth’s own ip.mjs handles this shape explicitly (extractIPv4FromMapped)', () => {
     expect(resolveTrustedProxies({ TRUSTED_PROXIES: '::ffff:1.2.3.4' })).toEqual(['::ffff:1.2.3.4'])
+  })
+})
+
+// The breadth floor's reason, re-proven against the real resolver instead of re-stated as a
+// comment. Until Ticket 02 the `/1`-vs-`/2` fail-open boundary was only documented as
+// "measured against @fastify/proxy-addr@5.1.0" (`trusted-proxies.ts`); this pins that
+// measurement as a re-executed test against the exact library Fastify's `trustProxy` runs,
+// so a proxy-addr upgrade that shifts the boundary turns this red instead of silently
+// invalidating `MIN_TRUSTED_PROXY_PREFIX_LENGTH`. The full-adapter integration test (real
+// `FastifyAdapter` + spoofed XFF) is follow-up work — Ticket 13.
+describe('@fastify/proxy-addr fail-open threshold — why the breadth guard floors at /2', () => {
+  // A minimal request carrying only what `@fastify/forwarded` (which proxy-addr reads)
+  // actually touches: the `X-Forwarded-For` header and the socket peer address.
+  function requestWith(xff: string | undefined, remoteAddress: string): IncomingMessage {
+    return {
+      headers: xff === undefined ? {} : { 'x-forwarded-for': xff },
+      socket: { remoteAddress },
+    } as unknown as IncomingMessage
+  }
+
+  it('/1 covers the socket peer, so proxy-addr returns the attacker-controlled leftmost XFF value (fail-open)', () => {
+    expect(proxyaddr(requestWith('203.0.113.66, 127.0.0.1', '127.0.0.1'), ['0.0.0.0/1'])).toBe('203.0.113.66')
+  })
+
+  it('/2 leaves the socket peer outside the trusted set, so proxy-addr returns the peer itself (fail-closed)', () => {
+    expect(proxyaddr(requestWith('203.0.113.66, 127.0.0.1', '127.0.0.1'), ['0.0.0.0/2'])).toBe('127.0.0.1')
   })
 })

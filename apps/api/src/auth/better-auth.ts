@@ -14,8 +14,10 @@ import { betterAuth, type Auth, type BetterAuthOptions } from 'better-auth'
 import { getCookies } from 'better-auth/cookies'
 import { deviceAuthorization, haveIBeenPwned } from 'better-auth/plugins'
 import { hibpFailOpenPlugin } from './breach-check.js'
+import { deviceSessionCookiePlugin } from './device-session-cookie.js'
 import type { EmailSender } from './email-sender.js'
 import { createGuestAccountUpgradeHook } from './guest-account-upgrade.js'
+import { createResettableRateLimitStorage, type ResettableRateLimitStorage } from './rate-limit-storage.js'
 
 const DEV_ONLY_FALLBACK_SECRET = 'dev-only-insecure-better-auth-secret-do-not-use-in-production'
 const DEV_ONLY_FALLBACK_URL = 'http://localhost:3000'
@@ -183,13 +185,12 @@ export function assertDeviceAuthorizationDisabledPathsComplete(plugin: DeviceAut
 }
 
 /**
- * The session cookie's own static attributes (name aside) — extracted to one place
- * so `advanced.defaultCookieAttributes` below and `/v1/device/token`'s hand-built
- * `Set-Cookie` (task 2, ADR-0024 — the plugin's own `/device/token` route never
- * calls `setSessionCookie`, so this app must construct that cookie itself) can never
- * silently drift apart. `path: '/'` matches `createCookie()`'s own base default
- * (`better-auth/dist/cookies/index.mjs`) — not set via `defaultCookieAttributes`
- * today, but pinned here explicitly since task 2 depends on it.
+ * The session cookie's own static attributes (name aside), fed to better-auth as
+ * `advanced.defaultCookieAttributes` so every cookie it sets — including the
+ * device-issued session cookie (see device-session-cookie.ts) — carries them.
+ * `path: '/'` matches `createCookie()`'s own base default
+ * (`better-auth/dist/cookies/index.mjs`), pinned explicitly so the attribute set
+ * is a single, reviewable source rather than split across call sites.
  */
 export const SESSION_COOKIE_ATTRIBUTES = {
   httpOnly: true,
@@ -297,15 +298,19 @@ export interface CreateBetterAuthOptions {
   /** Google OAuth client secret (REQ-008). Empty/undefined = Google sign-in disabled. */
   googleClientSecret?: string | undefined
   /**
-   * The API's own trusted reverse-proxy addresses (#241,
-   * `resolveTrustedProxies()`), fed straight through to better-auth's
-   * `advanced.ipAddress.trustedProxies`. Governs `getIp()` — and therefore both
-   * `Session.ipAddress` and better-auth's own built-in rate limiter — which
-   * otherwise trust `X-Forwarded-For` verbatim. Empty means "no proxy configured",
-   * the same runtime posture this app has always had; see trusted-proxies.ts's own
-   * header comment for the full reasoning (including what this can and cannot fix).
+   * The API's own trusted reverse-proxy addresses (`resolveTrustedProxies()`,
+   * the one source both better-auth's `advanced.ipAddress.trustedProxies` and
+   * Fastify's `trustProxy` consume). Governs `getIp()` — and therefore both
+   * `Session.ipAddress` and better-auth's own built-in rate limiter. Empty means
+   * "no proxy configured".
    */
   trustedProxies: string[]
+  /**
+   * The rate-limit storage backing better-auth's built-in limiter. Optional: the
+   * factory defaults to a fresh `createResettableRateLimitStorage()` so tests can
+   * inject one and clear it between cases (see rate-limit-storage.ts).
+   */
+  rateLimitStorage?: ResettableRateLimitStorage
 }
 
 export interface BetterAuthBundle {
@@ -324,24 +329,18 @@ export interface BetterAuthBundle {
    * server would reject. Empty when none are configured.
    */
   enabledSocialProviders: readonly string[]
-  /**
-   * The device-issued session's lifetime, in seconds (#238 task 2, ADR-0024) — one
-   * fixed value; NexusHero dropped the "just for now" vs "trust this device"
-   * session-scope choice, so there is no second, shorter variant to compute.
-   * Computed the exact same way better-auth's own context does internally
-   * (`options.session?.expiresIn || 60 * 60 * 24 * 7`,
-   * `better-auth/dist/context/create-context.mjs`'s `sessionConfig.expiresIn`), so
-   * `/v1/device/token`'s hand-built `Set-Cookie` `Max-Age` can never drift from what
-   * better-auth itself would have used, without needing to configure
-   * `session.expiresIn` twice.
-   */
-  sessionExpiresInSeconds: number
+  /** The rate-limit storage this instance uses — exposed so acceptance tests can
+   *  clear the in-memory counters between cases (the removed `RateLimit` table was
+   *  cleared the same way). */
+  rateLimitStorage: ResettableRateLimitStorage
 }
 
 /** Builds the shared better-auth config object once — passed to both `betterAuth()`
  *  (to construct the real instance) and `getCookies()` (to derive the session cookie
- *  name), so the two can never see different config. */
-function buildOptions(options: CreateBetterAuthOptions): BetterAuthOptions {
+ *  name), so the two can never see different config. `rateLimitStorage` is required
+ *  here: `createBetterAuth` resolves it (creating one if the caller didn't inject
+ *  one) before calling in. */
+function buildOptions(options: CreateBetterAuthOptions & { rateLimitStorage: ResettableRateLimitStorage }): BetterAuthOptions {
   const {
     prisma,
     secret,
@@ -352,6 +351,7 @@ function buildOptions(options: CreateBetterAuthOptions): BetterAuthOptions {
     googleClientId,
     googleClientSecret,
     trustedProxies,
+    rateLimitStorage,
   } = options
 
   // Google social provider is enabled only when both credentials are provided (REQ-008).
@@ -429,44 +429,41 @@ function buildOptions(options: CreateBetterAuthOptions): BetterAuthOptions {
     // `verification_uri_complete`; every prior test supplied its own path and so never
     // saw a real one. `/device` matches the plugin's own default path name — the
     // frontend router's own route for it, reserved but not yet built.
-    plugins: [haveIBeenPwned(), hibpFailOpenPlugin, deviceAuthorizationPlugin],
+    // deviceSessionCookiePlugin (ADR-0035): makes `/device/token` set its own
+    // session cookie via better-auth's `setSessionCookie`, so the app never has to
+    // re-implement the signed-cookie format (the deleted session-cookie.ts). Its
+    // after-hook fires for the server-side `auth.api.deviceToken()` call exactly as
+    // it would for the (disabled) HTTP route — see device-session-cookie.ts.
+    plugins: [haveIBeenPwned(), hibpFailOpenPlugin, deviceAuthorizationPlugin, deviceSessionCookiePlugin],
     // A browser must never reach the plugin's own HTTP routes (see the constant's own
     // doc comment above for why) — this is what actually enforces that; the
     // server-side `auth.api.*` calls this app makes are untouched by it.
     disabledPaths: DEVICE_AUTHORIZATION_DISABLED_PATHS,
     rateLimit: {
       enabled: true,
-      // Backed by the DB (the RateLimit table, ADR-0012 §5), not in-memory — a limit
-      // that resets per pod is trivially bypassed on a horizontally scaled deployment.
-      storage: 'database',
+      // In-memory, not DB-backed: the `RateLimit` table better-auth's `storage:
+      // 'database'` used was removed with the three hand-rolled limiters (ADR-0035
+      // — `@nestjs/throttler` replaces them and the table). An in-memory counter
+      // resets per pod, which a horizontally-scaled deployment can spread across;
+      // that cross-pod gap is the same documented deviation as the throttler
+      // limiter (see rate-limit.ts) and is re-closed once the infra track's Redis
+      // dependency lands. The storage is the resettable one from
+      // rate-limit-storage.ts (atomic `consume`, plus a `clear()` tests use).
+      customStorage: rateLimitStorage,
       // better-auth's own built-in special-path rules (window 10s/max 3) already cover
       // /sign-in*, /sign-up*, /change-password, /change-email — but NOT /verify-password,
       // which otherwise falls back to the generic default (window 10s/max 100, far too
-      // loose for a password-guessing surface). ADR-0013 §6 requires DELETE /v1/account's
-      // fresh-auth re-verification step to be "rate-limited via the existing DB-backed
-      // RateLimit table — no new mechanism": `customRules` is that same built-in
-      // extension point (still the one shared DB-backed limiter/table), just naming one
-      // more path at the same strictness better-auth already applies to sign-in. Caught
-      // by the real-Postgres REQ-011 acceptance test before this reached review — 12
-      // wrong-password DELETE attempts never tripped 429 under the bare default.
+      // loose for a password-guessing surface). `customRules` names /verify-password at
+      // the same strictness better-auth already applies to sign-in. This governs the
+      // mounted `/api/auth/verify-password` HTTP route only; the app's own DELETE
+      // /v1/account re-verification (which calls `auth.api.verifyPassword()` in-process,
+      // bypassing the router-bound limiter) is throttled separately by `@nestjs/throttler`
+      // (see rate-limit.ts).
       //
-      // '/device' (ADR-0024): named here per the ADR, at the strictness a guessable
-      // 40-bit code deserves — but be clear-eyed about what it actually covers. This
-      // is better-auth's *router-bound* limiter (`onRequestRateLimit` in its
-      // `onRequest` hook, `api/index.mjs`); it only ever runs for a request that
-      // reaches the plugin's HTTP router, and `/device` is one of the five paths
-      // `disabledPaths` 404s before that limiter is even consulted (disabledPaths is
-      // checked first — same file, same hook). It also never fires for a direct
-      // `auth.api.*` in-process call, which is exactly the gap
-      // `verify-password-rate-limit.ts` documents and works around for
-      // `/verify-password`'s own in-process caller (`FreshAuthChecker`). The rule
-      // stays here because it is genuinely harmless and keeps the ADR's stated
-      // config real rather than aspirational — but it is NOT what protects
-      // `/v1/device/pending`, our own Nest endpoint that calls
-      // `auth.api.deviceVerify()` server-side and is the actual externally-reachable
-      // surface a code-guessing attacker would hit. That endpoint (task 2) needs its
-      // own DB-backed limiter in the `verify-password-rate-limit.ts` shape, keyed per
-      // IP, same window/max — tracked there, not solved by this entry alone.
+      // '/device' (ADR-0024): named here per the ADR, but it is inert — the plugin's own
+      // `/device` route is 404'd by `disabledPaths` before this router-bound limiter is
+      // consulted. The device-code/pending surfaces are protected by `@nestjs/throttler`
+      // on our own Nest endpoints instead (see rate-limit.ts).
       customRules: {
         '/verify-password': { window: 10, max: 3 },
         '/device': { window: 60, max: 10 },
@@ -491,13 +488,11 @@ function buildOptions(options: CreateBetterAuthOptions): BetterAuthOptions {
       // it explicitly to `false` here makes the check deterministic across every
       // environment, dev/test/prod alike.
       disableOriginCheck: false,
-      // #241: which hops to strip from a forwarded IP chain before trusting what's
-      // left — governs both Session.ipAddress and better-auth's own built-in rate
-      // limiter (both read via its `getIp()`). Empty (today's default outside
-      // production) is today's actual shipped posture, unchanged by introducing
-      // this seam; see resolveTrustedProxies()/trusted-proxies.ts for the full
-      // reasoning, including the single-value X-Forwarded-For bypass this can NOT
-      // close by itself.
+      // Which hops to strip from a forwarded IP chain before trusting what's left
+      // (#241) — governs both Session.ipAddress and better-auth's own built-in rate
+      // limiter (both read via its `getIp()`). The same value also feeds Fastify's
+      // `trustProxy` (main.ts); see resolveTrustedProxies() for the single-source
+      // reasoning and the single-value X-Forwarded-For bypass no value here closes.
       ipAddress: {
         trustedProxies,
       },
@@ -527,13 +522,10 @@ function buildOptions(options: CreateBetterAuthOptions): BetterAuthOptions {
 }
 
 export function createBetterAuth(options: CreateBetterAuthOptions): BetterAuthBundle {
-  const authOptions = buildOptions(options)
+  const rateLimitStorage = options.rateLimitStorage ?? createResettableRateLimitStorage()
+  const authOptions = buildOptions({ ...options, rateLimitStorage })
   const auth = betterAuth(authOptions)
   const sessionCookieName = getCookies(authOptions).sessionToken.name
   const enabledSocialProviders = Object.keys(authOptions.socialProviders ?? {})
-  // Mirrors `sessionConfig.expiresIn`'s exact default expression
-  // (`context/create-context.mjs`) — we never set `session.expiresIn` ourselves, so
-  // this is always the 7-day default today, but stays correct if that ever changes.
-  const sessionExpiresInSeconds = authOptions.session?.expiresIn || 60 * 60 * 24 * 7
-  return { auth, sessionCookieName, enabledSocialProviders, sessionExpiresInSeconds }
+  return { auth, sessionCookieName, enabledSocialProviders, rateLimitStorage }
 }

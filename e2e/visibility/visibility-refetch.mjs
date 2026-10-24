@@ -47,10 +47,11 @@
 //
 // SHARED-RATE-LIMIT BUCKET (Musti's #223 review, F1/F2/F5 — read this before adding a call).
 // better-auth's built-in `/sign-up*`/`/sign-in*` rule (window=10s/max=3,
-// apps/api/src/auth/better-auth.ts:169-187, a real REQ-010 control) is enforced per PATH, keyed
-// `no-trusted-ip|<path>` — this environment can't resolve a client IP (the API logs that
-// directly), so every script in the `Browser gates` job shares ONE bucket per path, not one per
-// script (`e2e/responsive/banner-ds-qa.mjs`'s header documents the same mechanics — keep the two
+// apps/api/src/auth/better-auth.ts, a real REQ-010 control) is enforced per PATH. Since Ticket 02
+// the limiter is in-memory (`apps/api/src/auth/rate-limit-storage.ts`, key `${ip}|${path}`), and
+// this environment's requests all resolve to the one socket peer — so every script in the
+// `Browser gates` job shares ONE bucket per path, not one per script
+// (`e2e/responsive/banner-ds-qa.mjs`'s header documents the same mechanics — keep the two
 // descriptions in sync if either changes). The bucket is a ROLLING window keyed on `lastRequest`,
 // not a per-job quota: `count` resets after any gap longer than 10s, and `lastRequest` advances on
 // every allowed call. The rule to keep in mind when adding a call on this path is about GAPS —
@@ -60,20 +61,19 @@
 // This script does NOT clear the bucket (a prior version did, via `DELETE FROM "RateLimit"` —
 // reverted: clearing a REQ-010 control to make a gate pass is exactly the inversion this project
 // exists to prevent, and it would suppress the limiter for every later caller in the same job
-// too, not just this script). Instead it PACES itself: `waitForRateLimitHeadroom` reads the
-// bucket's current state (never deletes it) and waits out the remainder of the window if the
-// path is already at its cap, so this script's own sign-up/sign-in calls behave like a
-// well-behaved rate-limited client rather than relying on lucky timing against whatever ran
+// too, not just this script). Instead it PACES itself: `waitForRateLimitHeadroom` (now the
+// client-side mirror in `../harness/rate-limit.mjs`, since Ticket 13 removed the table it used to
+// read) waits out the window before spending, so this script's own sign-up/sign-in calls behave
+// like a well-behaved rate-limited client rather than relying on lucky timing against whatever ran
 // immediately before it in the job — a claim `assertRequestCount` below now actually checks,
 // rather than merely intends. `banner-ds-qa.mjs` now paces itself the same way (#336 CI
 // investigation, Salih — see that file's own header for the full account): it used to rely on a
-// reduced call count plus a fail-fast 429 guard instead of reading the bucket (Musti's #223
+// reduced call count plus a fail-fast 429 guard instead of pacing (Musti's #223
 // ruling — the DS check never touches Postgres), and that held only as long as
 // `breakpoint-layout.mjs`'s own CockpitScreen flows stayed slow enough to leave the bucket a
 // >10s gap before `banner-ds-qa.mjs`'s turn. #336's faster query-retry defaults shrank that gap
 // below 10s and reproduced the 429 twice in CI; `banner-ds-qa.mjs` now imports the same
-// `../harness/rate-limit.mjs` pacer this file does and reads `DATABASE_URL` for it, read-only,
-// same as here.
+// `../harness/rate-limit.mjs` pacer this file does.
 //
 // WHAT THE PACER DOES NOT COVER (Musti's #223 review, F8). `waitForRateLimitHeadroom` absorbs a
 // regression at or below the cap: if a bug made RegistrierungScreen fire three sign-ups on one
@@ -127,9 +127,10 @@
 // focus-refetch throttle (a different limiter, see the FINDING comment on that function below) —
 // if `FOCUS_REFETCH_RATE_LIMIT_SECONDS` ever drops, this gap shrinks with it and nothing here
 // would notice. The designed backstop is `waitForRateLimitHeadroom` immediately before page2's
-// sign-in click (below) — real because it reads the shared `RateLimit` row directly and is
-// therefore cross-process: it sees whatever `banner-ds-qa.mjs` or an earlier call in this same
-// file already spent, not just this file's own count.
+// sign-in click (below) — which, since Ticket 13, tracks this file's own spend in-process and
+// waits out a full window before its first spend on the shared bucket rather than assuming the
+// bucket starts empty (whatever `banner-ds-qa.mjs` or an earlier call in this same file already
+// spent is no longer readable, so the pacer is conservative about it).
 //
 // Assumes the caller has already booted the same stack as `e2e/cross-origin/run.mjs` /
 // `e2e/responsive/breakpoint-layout.mjs` (real Postgres, the compiled API, the exported web
@@ -146,15 +147,18 @@
 
 import { chromium } from 'playwright-core'
 import { execSync } from 'node:child_process'
+import { waitForBucketHeadroom } from '../harness/rate-limit.mjs'
 
 const WEB_ORIGIN = requireEnv('WEB_ORIGIN')
 const API_ORIGIN = requireEnv('API_ORIGIN')
 const DATABASE_URL = requireEnv('DATABASE_URL')
 
-// Must match better-auth's own built-in special-path rule (better-auth.ts:169-187) — see the
-// shared-rate-limit-bucket header comment above.
-const RATE_LIMIT_WINDOW_MS = 10_000
-const RATE_LIMIT_MAX = 3
+// Must match better-auth's own built-in special-path rule (better-auth.ts) — see the
+// shared-rate-limit-bucket header comment above. `shared: true`: the bucket is spent by every
+// other script in this job (one in-memory bucket), so this process waits out a full window before
+// its first spend rather than assuming it starts empty (see rate-limit.mjs — Ticket 13 moved the
+// pacer off the removed `RateLimit` table onto a client-side mirror).
+const AUTH_BUCKET = { windowMs: 10_000, max: 3, shared: true }
 
 // One password for every account this file creates or signs into (Musti's #237 review, F2 —
 // hoisted after `testRegistrierungScreen`'s own literal and `testLoginScreen`'s independently
@@ -211,39 +215,15 @@ function sql(query) {
 }
 
 /**
- * Reads (never mutates) the shared per-path rate-limit bucket's current state. `null` when the
- * path has no row yet — a fresh bucket, nothing to wait for. See the shared-rate-limit-bucket
- * header comment for why this exists instead of clearing the table.
- */
-function readRateLimitBucket(path) {
-  const row = sql(`SELECT count, "lastRequest" FROM "RateLimit" WHERE key = 'no-trusted-ip|${path}'`)
-  if (!row) return null
-  const [countStr, lastRequestStr] = row.split('|')
-  const count = Number(countStr)
-  const lastRequest = Number(lastRequestStr)
-  if (!Number.isFinite(count) || !Number.isFinite(lastRequest)) return null
-  return { count, lastRequest }
-}
-
-/**
- * Waits out the remainder of the rolling window if `path`'s shared bucket is already at its cap
- * — a real, bounded wait (event-driven arithmetic on the bucket's own `lastRequest`, not a guess)
- * rather than deleting the row. A well-behaved rate-limited client waits; it doesn't reset the
- * limiter for whoever calls next.
+ * Paces the shared per-path rate-limit bucket before spending a call on `path` — a real, bounded
+ * wait rather than clearing the limiter. A well-behaved rate-limited client waits; it doesn't
+ * reset the limiter for whoever calls next. Ticket 13 moved this off the removed `RateLimit` table
+ * onto the client-side mirror in `../harness/rate-limit.mjs` (`waitForBucketHeadroom`), which
+ * tracks this process's own spend and — because the shared bucket is unreadable across processes —
+ * waits out a full window before its first spend on it.
  */
 async function waitForRateLimitHeadroom(path) {
-  const bucket = readRateLimitBucket(path)
-  if (!bucket) return
-  const elapsed = Date.now() - bucket.lastRequest
-  if (bucket.count >= RATE_LIMIT_MAX && elapsed < RATE_LIMIT_WINDOW_MS) {
-    const waitMs = RATE_LIMIT_WINDOW_MS - elapsed + 250
-    console.log(
-      `[visibility-refetch] ${path}'s shared bucket is at ${bucket.count}/${RATE_LIMIT_MAX} ` +
-        `(${elapsed}ms since its last call) — waiting ${waitMs}ms for the rolling window to lapse ` +
-        `rather than clearing it.`,
-    )
-    await new Promise((resolvePromise) => setTimeout(resolvePromise, waitMs))
-  }
+  await waitForBucketHeadroom(AUTH_BUCKET, path, 'visibility-refetch')
 }
 
 /**

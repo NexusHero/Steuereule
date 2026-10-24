@@ -13,6 +13,7 @@
 import type { NestFastifyApplication } from '@nestjs/platform-fastify'
 import { PrismaClient } from '@prisma/client'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { resetRateLimiters } from '../support/reset-rate-limiters.js'
 
 async function bootApp(port: number): Promise<{ app: NestFastifyApplication; baseUrl: string; prisma: PrismaClient }> {
   const { buildApp } = await import('../../src/main.js')
@@ -28,7 +29,6 @@ async function cleanUp(prisma: PrismaClient): Promise<void> {
   await prisma.session.deleteMany()
   await prisma.account.deleteMany()
   await prisma.user.deleteMany()
-  await prisma.rateLimit.deleteMany()
 }
 
 // better-auth's built-in special rule for /sign-in* (getDefaultSpecialRules,
@@ -86,6 +86,7 @@ describe('#241 A1 — TRUSTED_PROXIES unset: today’s live bypass, kept as a pe
   })
 
   afterEach(async () => {
+    resetRateLimiters(app)
     await cleanUp(prisma)
   })
 
@@ -138,6 +139,7 @@ describe('#241 A2/A3 — TRUSTED_PROXIES configured: the fix, proven against a s
   })
 
   afterEach(async () => {
+    resetRateLimiters(app)
     await cleanUp(prisma)
   })
 
@@ -163,20 +165,15 @@ describe('#241 A2/A3 — TRUSTED_PROXIES configured: the fix, proven against a s
 
     // The discriminating half, and the reason "429 appeared somewhere" alone isn't
     // enough here (measured, not assumed): a 2+-value header with NO trustedProxies
-    // configured does NOT make the limiter fail open — it collapses onto a shared
-    // sentinel key ('no-trusted-ip', or '127.0.0.1' under this test env's own
-    // isTest()-driven fallback in getIp()) that is equally stable across every
-    // caller, and THAT also trips 429 after the same three attempts — a different,
-    // real problem (one global bucket for every unresolvable caller), but one that
-    // would make "429 appeared" pass for entirely the wrong reason if that were the
-    // only check. Asserting the literal key is what actually proves the fix: it
-    // must be keyed on the real, correctly-stripped client IP, not a fallback
-    // sentinel that happens to be stable too. RateLimit.key is the literal
-    // `${ip}|${path}` string better-auth's own createRateLimitKey builds
-    // (better-auth/dist/api/rate-limiter/index.mjs) — read directly off the row, not
-    // reconstructed by this test.
-    const rateLimitRow = await prisma.rateLimit.findFirst({ where: { key: { contains: '/sign-in/email' } } })
-    expect(rateLimitRow?.key).toBe(`${SIMULATED_REAL_CLIENT}|/sign-in/email`)
+    // configured collapses onto a shared sentinel key that is equally stable across
+    // every caller, and THAT also trips 429 after the same three attempts. This used
+    // to be proven by reading better-auth's `RateLimit.key` off the (now-removed)
+    // table; with better-auth's in-memory storage the equivalent proof is a fresh
+    // *different* client in the same window: it must NOT be throttled. A 401 here
+    // means the bucket was keyed on the correctly-resolved per-client IP
+    // (`SIMULATED_REAL_CLIENT`), not a shared fallback sentinel that would also 429.
+    const otherClient = await attemptSignIn(baseUrl, `198.51.100.9, 203.0.113.51`)
+    expect(otherClient).toBe(401)
   })
 
   it('A3: a session created via the real sign-up/sign-in flow with a spoofed leading hop does not carry the spoofed IP', async () => {

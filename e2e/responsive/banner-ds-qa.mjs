@@ -13,10 +13,10 @@
 // Both screens' unverified banner is reached purely by driving the real UI (a real sign-up
 // through RegistrierungScreen, then a real sign-in with that same account through LoginScreen in
 // a fresh browser context) — this file does not touch `API_ORIGIN` and makes no assertions
-// through the API directly. It DOES now read `DATABASE_URL` (read-only, see the SELF-PACING
-// section below) to pace its own two auth calls against the real shared rate-limit bucket rather
-// than trusting a fixed call count to stay safe; that is Postgres access purely for pacing, not
-// for the DS assertions themselves. Only the LIGHT theme is checked — `App.tsx` hardcodes
+// through the API directly. As of Ticket 13 it no longer reads `DATABASE_URL` either: the
+// `RateLimit` table the pacing used to read is gone, so it paces its own two auth calls against
+// the shared bucket via the client-side mirror in `../harness/rate-limit.mjs` (see the SELF-PACING
+// section below). Only the LIGHT theme is checked — `App.tsx` hardcodes
 // `ThemeProvider mode="light"` with no reachable switch, so a dark-theme check would have to
 // instantiate `ThemeProvider mode="dark"` itself, which is a component test on the wrong side of
 // this harness (Musti's #223 ruling, tracked separately as #226 — deliberately out of scope
@@ -55,14 +55,16 @@
 // always found a nearly-empty bucket. The fix is not "wait longer" (a sleep) or "raise the bucket"
 // — the pacer already exists (`e2e/harness/rate-limit.mjs`, `waitForBucketHeadroom`) and every
 // other multi-call script in this job (`device-authorization.mjs`, `return-visit.mjs`,
-// `no-client-persistence.mjs`) already reads the REAL bucket state before spending a call rather
-// than trusting whatever gap the previous script happened to leave. This file now does the same:
-// it reads (never clears, never writes) the `RateLimit` row for the exact path it is about to
-// call and waits out the remainder of the window if it is already at cap. Musti's #223 ruling
+// `no-client-persistence.mjs`) already paces before spending a call rather than trusting whatever
+// gap the previous script happened to leave. This file now does the same. Ticket 13 changed the
+// pacer's substrate: it no longer reads the (removed) `RateLimit` row, it mirrors the limiter's
+// window/max in-process and — because the shared bucket is unreadable from a separate process —
+// waits out a full window before its first spend on it (never clears, never loosens anything).
+// Musti's #223 ruling
 // that "the DS check never touches Postgres" held while a fixed call count was a reliable proxy
 // for bucket headroom; it stopped being one the moment something upstream in the SAME job could
-// change how much real time that count spans. `DATABASE_URL` is already present in this job's
-// `env:` block for every step (ci.yml), so this costs nothing new to provision.
+// change how much real time that count spans — and it now holds again, for the cleaner reason that
+// the pacing no longer needs Postgres at all.
 //
 // The original version of this script created one fresh account per breakpoint (3 sign-ups + 3
 // sign-ins) landing immediately after `breakpoint-layout.mjs`'s own 3 sign-ups with no gap between
@@ -83,7 +85,7 @@
 //
 // If a REQ-010 CI-only carve-out is ever wanted for the rate limiter itself, that is a call for
 // Suhay/the stakeholder to make explicitly — this script does not take it unilaterally, and does
-// not delete or otherwise weaken the `RateLimit` table.
+// not delete, clear, or otherwise weaken the limiter.
 //
 // Locator note: neither banner nor its heading carries a `testID` on either screen — both use
 // `accessibilityRole="alert"` only (confirmed directly against RegistrierungScreen.tsx /
@@ -96,18 +98,18 @@
 
 import { chromium } from 'playwright-core'
 import { guardAgainst429 } from '../harness/browser.mjs'
-import { makeSql } from '../harness/stack.mjs'
-import { fail, readBucketByExactKey, waitForBucketHeadroom } from '../harness/rate-limit.mjs'
+import { fail, waitForBucketHeadroom } from '../harness/rate-limit.mjs'
 
 const WEB_ORIGIN = requireEnv('WEB_ORIGIN')
-const sql = makeSql(requireEnv('DATABASE_URL'))
 
-// better-auth's own built-in rule (apps/api/src/auth/better-auth.ts:169-187) — same constant
-// every other self-pacing script in this job uses (`return-visit.mjs`, `no-client-persistence.mjs`).
-const AUTH_BUCKET = { windowMs: 10_000, max: 3 }
+// better-auth's own built-in rule (apps/api/src/auth/better-auth.ts) — same constant every other
+// self-pacing script in this job uses (`return-visit.mjs`, `no-client-persistence.mjs`). `shared:
+// true`: this bucket is spent by every other script in the job (one in-memory bucket), so this
+// process waits out a full window before its first spend rather than assuming it starts empty.
+const AUTH_BUCKET = { windowMs: 10_000, max: 3, shared: true }
 
-function waitForRateLimit(bucket, config, label) {
-  return waitForBucketHeadroom(bucket, config, label, 'banner-ds-qa')
+function waitForRateLimit(config, label) {
+  return waitForBucketHeadroom(config, label, 'banner-ds-qa')
 }
 
 const BREAKPOINTS = [
@@ -246,9 +248,9 @@ async function checkRegistrierung(browser, email) {
     await page.getByText(COPY.register, { exact: true }).click()
     await page.getByPlaceholder(COPY.registrierungEmailPlaceholder).fill(email)
     await page.getByPlaceholder(COPY.registrierungPasswordPlaceholder).fill(PASSWORD)
-    // Read the real bucket right before spending the call — never assumed safe from a fixed
-    // call count (see the header comment's #336 section).
-    await waitForRateLimit(readBucketByExactKey(sql, 'no-trusted-ip|/sign-up/email'), AUTH_BUCKET, 'sign-up/email')
+    // Pace right before spending the call — never assumed safe from a fixed call count (see the
+    // header comment's #336 section).
+    await waitForRateLimit(AUTH_BUCKET, 'sign-up/email')
     await page.getByRole('button', { name: COPY.registrierungSubmit }).click()
     await page.getByText(COPY.registrierungSuccessHeading).waitFor({ state: 'visible', timeout: 10_000 })
     await measureBannerAcrossBreakpoints(page, 'RegistrierungScreen')
@@ -267,9 +269,9 @@ async function checkLogin(browser, email) {
     await skipSplash(page)
     await page.getByPlaceholder(COPY.loginEmailPlaceholder).fill(email)
     await page.getByPlaceholder(COPY.loginPasswordPlaceholder).fill(PASSWORD)
-    // Read the real bucket right before spending the call — never assumed safe from a fixed
-    // call count (see the header comment's #336 section).
-    await waitForRateLimit(readBucketByExactKey(sql, 'no-trusted-ip|/sign-in/email'), AUTH_BUCKET, 'sign-in/email')
+    // Pace right before spending the call — never assumed safe from a fixed call count (see the
+    // header comment's #336 section).
+    await waitForRateLimit(AUTH_BUCKET, 'sign-in/email')
     await page.getByRole('button', { name: COPY.loginSubmit }).click()
     await page.getByText(COPY.verifyHeading).waitFor({ state: 'visible', timeout: 10_000 })
     await measureBannerAcrossBreakpoints(page, 'LoginScreen')

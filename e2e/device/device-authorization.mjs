@@ -97,13 +97,14 @@
 //      on either side of this one without breaking anything — whichever runs second just waits
 //      out whatever the first left behind. This file happens to run before that one today for the
 //      simplest reason available (it was here first), not because that ordering is load-bearing.
-//   2. It paces itself against both device buckets (`device-code:<ip>`, `device-pending:<ip>`,
-//      `apps/api/src/device/device-{code,pending}-rate-limit.ts`, window 60s/max 10 each) AND the
-//      shared better-auth sign-up/sign-in bucket (`no-trusted-ip|<path>`, window 10s/max 3,
-//      already documented by `visibility-refetch.mjs`'s header) — via `waitForBucketHeadroom`
-//      (`../harness/rate-limit.mjs`, imported above and shared with `session/return-visit.mjs`
-//      since Musti's #300 review, G2 — see that module's own header), which READS the real
-//      `RateLimit` row and never deletes it (see #3).
+//   2. It paces itself against both device buckets (`@nestjs/throttler`, IP-keyed, window 60s/max
+//      10 each — `apps/api/src/rate-limit/rate-limit.ts`) AND the shared better-auth sign-up/
+//      sign-in bucket (window 10s/max 3, in-memory `rate-limit-storage.ts`) — via
+//      `waitForBucketHeadroom` (`../harness/rate-limit.mjs`, imported above and shared with
+//      `session/return-visit.mjs` since Musti's #300 review, G2 — see that module's own header),
+//      which mirrors the limiter's own window/max and never clears it (see #3). Since Ticket 02
+//      dropped the `RateLimit` table, the pacer no longer reads a DB row — it tracks this script's
+//      own spend and, for the shared auth bucket, waits out a full window before first use.
 //   3. `guardAgainst429` fails loudly and immediately on any 429 from `/api/auth/*` or
 //      `/v1/device/*`, so a bucket exhaustion is reported as its own cause, not as a mystery
 //      timeout several assertions later.
@@ -112,9 +113,9 @@
 //      absorbs a regression AT OR BELOW the cap silently, so an exact per-flow count is the only
 //      thing that names a same-flow regression that a shared, job-wide bucket reading cannot.
 //
-// The `RateLimit` table is READ, never cleared or truncated by this file — clearing a REQ-010
-// control to make a gate pass was tried once elsewhere in this repo and reverted; that
-// reasoning applies here unchanged (see `e2e/visibility/visibility-refetch.mjs`'s own header).
+// No rate-limit control is cleared, loosened, or truncated by this file — clearing a REQ-010
+// control to make a gate pass was tried once elsewhere in this repo and reverted; that reasoning
+// applies here unchanged (see `e2e/visibility/visibility-refetch.mjs`'s own header).
 //
 // TWO BROWSER CONTEXTS, NOT TWO PAGES (Musti's #238 gate spec, #1 — see
 // `e2e/harness/browser.mjs`'s `newContextAtBreakpoint` for the full reasoning): A and B are
@@ -137,11 +138,16 @@ import {
   probeColourAtPoint,
 } from '../harness/browser.mjs'
 import { startStack } from '../harness/stack.mjs'
-import { fail, readBucketByExactKey, readBucketByPrefix, waitForBucketHeadroom } from '../harness/rate-limit.mjs'
+import { fail, waitForBucketHeadroom } from '../harness/rate-limit.mjs'
 
-const AUTH_BUCKET = { windowMs: 10_000, max: 3 } // better-auth's own built-in rule
-const DEVICE_CODE_BUCKET = { windowMs: 60_000, max: 10 } // device-code-rate-limit.ts
-const DEVICE_PENDING_BUCKET = { windowMs: 60_000, max: 10 } // device-pending-rate-limit.ts
+// `shared: true` on AUTH_BUCKET: the sign-up/sign-in bucket is spent by every other script in the
+// `Browser gates` job (same API process, one in-memory bucket), so this process cannot read its
+// live state and waits out a full window before its first spend (see rate-limit.mjs). The device
+// buckets are NOT shared in the collision sense: 60s window + multi-minute scripts means no
+// script starts within one window of the previous script's last mint.
+const AUTH_BUCKET = { windowMs: 10_000, max: 3, shared: true } // better-auth's own built-in rule
+const DEVICE_CODE_BUCKET = { windowMs: 60_000, max: 10 } // @nestjs/throttler (rate-limit.ts)
+const DEVICE_PENDING_BUCKET = { windowMs: 60_000, max: 10 } // @nestjs/throttler (rate-limit.ts)
 
 const TEST_PASSWORD = 'Sicheres-Passwort-1!'
 
@@ -189,14 +195,15 @@ function coloursMatch(observed, expected, tolerance = COLOUR_TOLERANCE) {
   return Math.abs(observed.r - expected.r) <= tolerance && Math.abs(observed.g - expected.g) <= tolerance && Math.abs(observed.b - expected.b) <= tolerance
 }
 
-// `fail`, `readBucketByExactKey`, `readBucketByPrefix`, `waitForBucketHeadroom` now come from
-// `../harness/rate-limit.mjs` (Musti's #300 review, G2 — this file's own copies were byte-
-// identical to `session/return-visit.mjs`'s, which grew its own before this shared module
-// existed; both migrated onto the one canonical copy together). `waitForRateLimit` below is a
-// thin, script-local wrapper supplying this file's own `scriptTag` so every call site below
-// doesn't have to repeat `'device-authorization'`.
-function waitForRateLimit(bucket, config, label) {
-  return waitForBucketHeadroom(bucket, config, label, 'device-authorization')
+// `fail`, `waitForBucketHeadroom` come from `../harness/rate-limit.mjs` (Musti's #300 review, G2 —
+// this file's own copies were byte-identical to `session/return-visit.mjs`'s, which grew its own
+// before this shared module existed; both migrated onto the one canonical copy together). The
+// `readBucketByExactKey`/`readBucketByPrefix` DB-reads this file used to pass to the pacer are
+// gone with the `RateLimit` table (Ticket 13) — the pacer now tracks spend itself. `waitForRateLimit`
+// below is a thin, script-local wrapper supplying this file's own `scriptTag` so every call site
+// below doesn't have to repeat `'device-authorization'`.
+function waitForRateLimit(config, label) {
+  return waitForBucketHeadroom(config, label, 'device-authorization')
 }
 
 function countRequestsTo(page, method, pathSubstring) {
@@ -298,7 +305,7 @@ async function main() {
     const codeRequests = countRequestsTo(pageA, 'POST', '/v1/device/code')
 
     const codeResponsePromise = pageA.waitForResponse((r) => r.request().method() === 'POST' && r.url().includes('/v1/device/code'))
-    await waitForRateLimit(readBucketByPrefix(sql, 'device-code'), DEVICE_CODE_BUCKET, 'device-code')
+    await waitForRateLimit(DEVICE_CODE_BUCKET, 'device-code')
     await skipSplash(pageA, webOrigin)
 
     // Musti's #263 review (F2) used to sample the QR column's own owl-entrance animation right
@@ -325,7 +332,7 @@ async function main() {
     guardAgainst429(pageB, fail, '/v1/device/')
 
     const email = `device-auth-${Date.now()}@beispiel.de`
-    await waitForRateLimit(readBucketByExactKey(sql, 'no-trusted-ip|/sign-up/email'), AUTH_BUCKET, 'sign-up/email')
+    await waitForRateLimit(AUTH_BUCKET, 'sign-up/email')
     await signUpOutOfBand(apiOrigin, webOrigin, email, TEST_PASSWORD)
     // Pre-verified — REQ-014 describes "an account holder already signed in on their phone", not
     // a fresh unverified sign-up; verifying here keeps the flow on its own critical path instead
@@ -337,7 +344,7 @@ async function main() {
     await skipSplash(pageB, webOrigin)
     await pageB.getByPlaceholder(COPY.loginEmailPlaceholder).fill(email)
     await pageB.getByPlaceholder(COPY.loginPasswordPlaceholder).fill(TEST_PASSWORD)
-    await waitForRateLimit(readBucketByExactKey(sql, 'no-trusted-ip|/sign-in/email'), AUTH_BUCKET, 'sign-in/email')
+    await waitForRateLimit(AUTH_BUCKET, 'sign-in/email')
     await pageB.getByRole('button', { name: COPY.loginSubmit }).click()
     await pageB.getByPlaceholder(COPY.onboardingFirstNamePlaceholder).waitFor({ state: 'visible', timeout: 10_000 })
     assertRequestCount(signInRequests, '/sign-in/email', 1, 'Context B real sign-in')
@@ -346,7 +353,7 @@ async function main() {
 
     const pendingRequests = countRequestsTo(pageB, 'GET', '/v1/device/pending')
     const pendingResponsePromise = pageB.waitForResponse((r) => r.request().method() === 'GET' && r.url().includes('/v1/device/pending'))
-    await waitForRateLimit(readBucketByPrefix(sql, 'device-pending'), DEVICE_PENDING_BUCKET, 'device-pending')
+    await waitForRateLimit(DEVICE_PENDING_BUCKET, 'device-pending')
     await pageB.goto(deviceCode.verificationUriComplete)
     const pendingResponse = await pendingResponsePromise
     if (pendingResponse.status() !== 200) fail(`GET /v1/device/pending returned ${pendingResponse.status()}, expected 200.`)
@@ -410,8 +417,8 @@ async function main() {
     }
     console.log('[device-authorization] probeColourAtPoint: reads the approve button\'s real painted fill, and correctly does NOT read it at an unrelated coordinate.')
 
-    // --- Approve. `device.service.ts#approve` calls no `consume*RateLimit` at all (checked
-    // directly — unlike requestCode/getPending, approve() has no db-rate-limit guard), so there
+    // --- Approve. `device.service.ts#approve` carries no `@Throttle` guard at all (checked
+    // directly — unlike requestCode/getPending, approve() has no throttler guard), so there
     // is no bucket to pace against here; nothing to wait for before this click. ---
     const approveRequests = countRequestsTo(pageB, 'POST', '/v1/device/approve')
     const approveResponsePromise = pageB.waitForResponse((r) => r.request().method() === 'POST' && r.url().includes('/v1/device/approve'))

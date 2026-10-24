@@ -46,15 +46,22 @@ export interface DeviceAuthorizationApi {
    *  incidental: `internalAdapter.createSession` reads `ipAddress`/`userAgent` off
    *  the current request context (`db/internal-adapter.mjs:163-166,177-178`) via
    *  these same headers — omit them and every QR-issued session shows a blank
-   *  device in the list AC-5 exists to populate. */
+   *  device in the list AC-5 exists to populate. Called with `returnHeaders: true`
+   *  so the device-session-cookie plugin's `setSessionCookie` output (the signed
+   *  session cookie) comes back for the controller to write, rather than being
+   *  dropped by the plain `auth.api.*` dispatch. */
   deviceToken(input: {
     headers: Headers
     body: { grant_type: 'urn:ietf:params:oauth:grant-type:device_code'; device_code: string; client_id: string }
+    returnHeaders: true
   }): Promise<{
-    access_token: string
-    token_type: string
-    expires_in: number
-    scope: string
+    headers: Headers
+    response: {
+      access_token: string
+      token_type: string
+      expires_in: number
+      scope: string
+    }
   }>
 }
 

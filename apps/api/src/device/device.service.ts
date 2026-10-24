@@ -11,17 +11,12 @@
 // step). Minting a code needs no identity of its own.
 import { BadRequestException, Inject, Injectable } from '@nestjs/common'
 import { BETTER_AUTH_BUNDLE, type BetterAuthBundle } from '../auth/auth.tokens.js'
-import { resolveBetterAuthSecret } from '../auth/better-auth.js'
-import { PrismaService } from '../prisma/prisma.service.js'
 import { deviceAuthorizationApi } from './device-authorization-api.js'
 import { translateDeviceApiError } from './device-api-error.js'
-import { consumeDeviceCodeRateLimit } from './device-code-rate-limit.js'
 import { DEVICE_CODE_REPOSITORY, type DeviceCodeRepository } from './device-code.repository.js'
-import { consumeDevicePendingRateLimit } from './device-pending-rate-limit.js'
 import type { DeviceCodeResponseDto } from './dto/device-code-response.dto.js'
 import type { DevicePendingResponseDto } from './dto/device-pending-response.dto.js'
 import { REGION_RESOLVER, type RegionResolver } from './region/region-resolver.js'
-import { signBetterAuthCookieValue } from './session-cookie.js'
 
 /** This app is the device flow's one and only first-party client — no third-party
  *  integrator ever calls `/v1/device/code`, so a single fixed `client_id` is correct
@@ -35,15 +30,14 @@ export interface DeviceCodeRequestOrigin {
 }
 
 /** What `/v1/device/token`'s controller needs to actually set the session cookie —
- *  Fastify specifics (the real `reply.setCookie()` call) stay in the controller,
- *  mirroring every other controller in this app (e.g. AccountDeletionController).
- *  One fixed session lifetime (NexusHero dropped the session-scope choice — no
- *  "just for now" vs "trust this device" distinction, no `grantScope` column, one
- *  `Max-Age` always) — the plugin's own default already matches what this app wants. */
+ *  the fully-serialised `Set-Cookie` value(s) better-auth's own `setSessionCookie`
+ *  produced (via the device-session-cookie plugin's after-hook). Fastify specifics
+ *  (the real header write) stay in the controller, mirroring every other controller
+ *  in this app (e.g. AccountDeletionController). One fixed session lifetime
+ *  (NexusHero dropped the session-scope choice) — the plugin's own default.
+ */
 export interface DeviceTokenExchangeResult {
-  cookieName: string
-  cookieValue: string
-  maxAge: number
+  setCookies: string[]
 }
 
 @Injectable()
@@ -53,18 +47,13 @@ export class DeviceService {
     @Inject(BETTER_AUTH_BUNDLE) private readonly betterAuth: BetterAuthBundle,
     @Inject(DEVICE_CODE_REPOSITORY) private readonly repository: DeviceCodeRepository,
     @Inject(REGION_RESOLVER) private readonly regionResolver: RegionResolver,
-    @Inject(PrismaService) private readonly prisma: PrismaService,
   ) {}
 
   async requestCode(origin: DeviceCodeRequestOrigin): Promise<DeviceCodeResponseDto> {
-    // Keyed on the same `request.ip` the controller already documents as the raw
-    // socket peer (no `trustProxy` configured yet): behind a reverse proxy, every
-    // caller collapses onto one shared key and this limiter throttles everyone
-    // together rather than per real client — the existing `trustProxy` deployment
-    // follow-up (device.controller.ts) is load-bearing for this limiter too, not
-    // merely cosmetic.
-    await consumeDeviceCodeRateLimit(this.prisma, `device-code:${origin.ip ?? 'no-ip'}`)
-
+    // Rate limiting for this endpoint is enforced at the HTTP layer by
+    // `@nestjs/throttler` (device.controller.ts) — IP-keyed, 60s/10, the
+    // write-amplification bound from PR #239. Nothing service-side needs to count
+    // here anymore (the removed device-code-rate-limit.ts did).
     const result = await deviceAuthorizationApi(this.betterAuth.auth).deviceCode({
       body: { client_id: DEVICE_AUTHORIZATION_CLIENT_ID },
     })
@@ -101,12 +90,7 @@ export class DeviceService {
    * would apply anyway — see better-auth.ts's `DEVICE_AUTHORIZATION_DISABLED_PATHS`
    * comment for the full finding.
    */
-  async getPending(userCode: string, headers: Headers, clientIp: string | null): Promise<DevicePendingResponseDto> {
-    // The actual externally-reachable guessing surface (see better-auth.ts's
-    // customRules['/device'] comment for why that config entry alone doesn't cover
-    // this) — window 60s / max 10 per IP, same intensity ADR-0024 specifies.
-    await consumeDevicePendingRateLimit(this.prisma, `device-pending:${clientIp ?? 'no-ip'}`)
-
+  async getPending(userCode: string, headers: Headers): Promise<DevicePendingResponseDto> {
     try {
       await deviceAuthorizationApi(this.betterAuth.auth).deviceVerify({ headers, query: { user_code: userCode } })
     } catch (error) {
@@ -155,13 +139,12 @@ export class DeviceService {
    * (see DeviceAuthorizationApi.deviceToken's own doc comment): omit them and every
    * QR-issued session shows a blank device in the list AC-5 exists to populate.
    *
-   * The plugin's own `/device/token` route never sets a session cookie at all — it
-   * returns a Bearer token in the JSON body (Musti's #238 review, finding (a)),
-   * which ADR-0008/0012 forbid a browser from holding. This constructs the *same*
-   * cookie better-auth's own `setSessionCookie` would have, in the exact signed
-   * wire format `auth.api.getSession()` already knows how to read back (see
-   * session-cookie.ts) — one fixed lifetime, the plugin's own default (no
-   * session-scope choice to apply; NexusHero dropped that distinction).
+   * The plugin's own `/device/token` route returns a Bearer token in the JSON body
+   * (ADR-0008/0012 forbid a browser from holding one), so the device-session-cookie
+   * plugin (better-auth.ts) adds an after-hook that calls better-auth's own
+   * `setSessionCookie` for this route. We dispatch with `returnHeaders: true` and
+   * hand the resulting `Set-Cookie` value(s) to the controller, verbatim — the
+   * signed format is better-auth's, never re-implemented here.
    */
   async exchangeToken(deviceCode: string, headers: Headers): Promise<DeviceTokenExchangeResult> {
     let result: Awaited<ReturnType<ReturnType<typeof deviceAuthorizationApi>['deviceToken']>>
@@ -173,15 +156,21 @@ export class DeviceService {
           device_code: deviceCode,
           client_id: DEVICE_AUTHORIZATION_CLIENT_ID,
         },
+        returnHeaders: true,
       })
     } catch (error) {
       translateDeviceApiError(error)
     }
 
-    return {
-      cookieName: this.betterAuth.sessionCookieName,
-      cookieValue: signBetterAuthCookieValue(result.access_token, resolveBetterAuthSecret()),
-      maxAge: this.betterAuth.sessionExpiresInSeconds,
+    const setCookies = result.headers.getSetCookie()
+    if (setCookies.length === 0) {
+      // The after-hook is load-bearing: without it (a better-auth bump that drops
+      // `newSession`, or a plugin ordering change) there is no session cookie, and a
+      // silent `{ success: true }` with no cookie would leave the desktop
+      // authenticated as nothing. Fail loudly rather than mint an unusable session.
+      throw new BadRequestException({ error: 'server_error', error_description: 'No session cookie was issued' })
     }
+
+    return { setCookies }
   }
 }

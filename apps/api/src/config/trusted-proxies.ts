@@ -1,62 +1,37 @@
-// The trusted-proxy resolver (#241) — deployment topology for the API's own reverse
-// proxy/load balancer, mirroring the existing `resolve*(env)` idiom
-// (resolveBetterAuthSecret / resolveBetterAuthUrl / resolveGoogleClientId in
-// ./better-auth.ts). Deliberately here, in apps/api/src/config/, not in
-// @steuereule/core: this is deployment-specific infrastructure knowledge for this one
-// API process, not a shared domain rule the frontend or any other consumer needs.
+// The one source of "which reverse-proxy hops to trust" for the API process.
+// Fastify's `trustProxy` (governs `request.ip`, the device endpoints and the
+// throttler's IP key) and better-auth's `advanced.ipAddress.trustedProxies`
+// (governs `getIp()`, `Session.ipAddress` and better-auth's own rate limiter)
+// both consume `resolveTrustedProxies()` — never two independently-drifting env
+// reads for the same underlying fact (the deployment's proxy addresses).
 //
-// One resolver, consumed by every IP-trust-dependent subsystem — never one env var
-// per subsystem. #241 wires this into better-auth's own `advanced.ipAddress.trustedProxies`
-// (governs Session.ipAddress and better-auth's built-in rate limiter, both keyed by
-// `getIp()`, which reads X-Forwarded-For). Fastify's own `trustProxy` (governs
-// `request.ip`, used by #238's device endpoints including the mint rate limiter) is
-// NOT wired here — that is #238's own follow-up — but it MUST consume this same
-// resolver's output when it lands, not a second, independently-drifting env var for
-// the same underlying fact (deployment reverse-proxy addresses do not change
-// depending on which subsystem is asking).
+// The fail-open/fail-closed asymmetry that motivated this seam (#241, ADR-0035):
+// better-auth's `getIPFromHeader` strips trusted hops from the right and returns
+// `null` (a shared bucket) when every hop is trusted — fail-CLOSED; Fastify's
+// `@fastify/proxy-addr` returns the LEFTMOST address once the trusted set covers
+// the right end — fail-OPEN if the trusted range is broad enough to cover the
+// socket peer (measured: `trustProxy: ['0.0.0.0/1']`, peer `127.0.0.1`, XFF
+// `203.0.113.66, 127.0.0.1` → returns the spoofed `203.0.113.66`). The SAME value
+// is safe for one consumer and dangerous for the other, so validation lives here,
+// once. The breadth guard below closes the fail-open case: a trusted range broad
+// enough to swallow the socket peer (`/0`, `/1`) is rejected at config time.
 //
-// The asymmetry that makes shared validation matter (Musti's #241 review, confirmed by
-// direct measurement against the real modules, not derived):
-//   - better-auth's own IP-header parser (`getIPFromHeader`,
-//     `@better-auth/core/utils/ip`) strips trusted hops from the right; if every hop in
-//     the chain is trusted, the loop exhausts and it returns `null` (a single shared
-//     bucket) — too STRICT. Fail-CLOSED.
-//   - Fastify's `@fastify/proxy-addr` (used by `trustProxy`, not wired here) returns the
-//     LEFTMOST address once the trusted set covers the right end of the chain — fully
-//     attacker-steerable if the trusted range is too broad. Fail-OPEN. Measured directly
-//     (`@fastify/proxy-addr@5.1.0`, peer `127.0.0.1`, XFF `203.0.113.66, 127.0.0.1`,
-//     `trustProxy: ["127.0.0.0/8"]` → returns the spoofed `203.0.113.66`).
-// The SAME value is safe for one subsystem and dangerous for the other depending on how
-// broadly it's drawn — exactly why validation belongs here, once, rather than being
-// duplicated (and inevitably drifting) at each call site.
-//
-// A single-value X-Forwarded-For sent directly by an attacker is NOT closable by this
-// resolver, at any configured value (#241, Musti's review — measured against the real
-// module): with `trustedProxies` unset, a lone spoofed value is trusted verbatim; with
-// `trustedProxies` configured, that same lone value still isn't matched against
-// anything (there's nothing to its right to strip), so it is *still* returned as the
-// resolved client. The only real defence against that is a network property — the app
-// being unreachable except through the real proxy (#292, successor to the closed
-// #246 — the deployment that would supply it still does not exist) — not an application
-// configuration value. Nothing built against this resolver should imply otherwise.
+// A single-value `X-Forwarded-For` sent directly by an attacker is NOT closable
+// by any configured value here — only the network property of the app being
+// unreachable except through the real proxy is (#292). Nothing built on this
+// resolver implies otherwise.
 import { isIP } from 'node:net'
 
 const CIDR_PREFIX_PATTERN = /^\d+$/
 
-// A floor on how broad a configured range may be is explicitly NOT built here (#241,
-// Musti's review). Measured, not assumed: `@fastify/proxy-addr@5.1.0` throws only on
-// the exact range `0.0.0.0/0` — `0.0.0.0/1` and `::/1` pass through it silently and
-// return the attacker-controlled leftmost value (peer `127.0.0.1`, XFF
-// `203.0.113.66, 127.0.0.1`, `trustProxy: ["0.0.0.0/1"]` → `203.0.113.66`, the spoof).
-// That failure belongs to `@fastify/proxy-addr`/Fastify's `trustProxy`, which this
-// ticket does NOT wire up (that's #238's own follow-up, consuming this resolver's
-// output). better-auth's own algorithm — the only consumer this ticket actually wires
-// — fails the opposite direction on an overly-broad range (converges toward `null`, a
-// shared bucket, not an attacker-chosen value), so a breadth guard sized for
-// proxy-addr's failure mode has no real test to go red against here yet. #238 must
-// add that guard, with its own justified floor and a red test at the real boundary
-// proxy-addr actually has (`/1` unsafe, `/2`/`/8` safe in the one setup measured so
-// far) — named explicitly as that ticket's own follow-up, not silently dropped.
+// Below this prefix length a trusted range covers so much of the address space
+// that `@fastify/proxy-addr` treats the socket peer as trusted and returns the
+// attacker-controlled leftmost `X-Forwarded-For` value (fail-open). `/0` and `/1`
+// are the two lengths that do this for both address families (measured against
+// `@fastify/proxy-addr@5.1.0`); `/2` and narrower leave the loopback/socket peer
+// outside the trusted set and fail closed instead.
+const MIN_TRUSTED_PROXY_PREFIX_LENGTH = 2
+
 /** Whether `entry` is a syntactically valid IP address or `IP/prefix` CIDR range. */
 function isValidTrustedProxyEntry(entry: string): boolean {
   const slashIndex = entry.lastIndexOf('/')
@@ -71,30 +46,26 @@ function isValidTrustedProxyEntry(entry: string): boolean {
   return prefix >= 0 && prefix <= maxPrefix
 }
 
+/** Whether `entry` is a CIDR range whose prefix is broad enough to be unsafe for
+ *  `@fastify/proxy-addr` (fail-open) — never a bare IP (an exact host is narrow
+ *  by construction). */
+function isOverlyBroadTrustedProxyEntry(entry: string): boolean {
+  const slashIndex = entry.lastIndexOf('/')
+  if (slashIndex === -1) return false
+  const prefix = Number(entry.slice(slashIndex + 1))
+  return prefix < MIN_TRUSTED_PROXY_PREFIX_LENGTH
+}
+
 /**
  * Resolves the API's own reverse-proxy trust configuration for `TRUSTED_PROXIES`.
  *
- * - Unset outside production: returns `[]` — matches today's actual shipped
- *   behaviour (no `trustedProxies` configured anywhere), so introducing this seam
- *   changes nothing about the current runtime posture until a real value is set.
- * - Unset in production: **throws**. Not because an empty value makes anything
- *   spoofable (it doesn't — `getIp()` already defaults to this exact posture) but
- *   because the degraded state is invisible otherwise: a shared rate-limit bucket
- *   looks identical to a working per-IP limiter until someone measures it (ADR-0021).
- *   Throwing at boot is the loud version of that measurement.
- * - `TRUSTED_PROXIES=none`: an explicit, deliberate "no proxy in front of this
- *   deployment" — resolves to `[]`, same runtime effect as unset, but recorded as a
- *   choice rather than an omission. Valid in production; boots.
- * - Otherwise: a comma-separated list of IP/CIDR entries, validated syntactically.
- *   Any invalid entry throws — see `isValidTrustedProxyEntry`'s own comment for why
- *   this resolver validates rather than warning.
- *
- * The real production value (the deployment's actual proxy CIDR ranges) is explicitly
- * NOT part of this ticket's Definition of Done — it is #277's, and #277 is blocked on
- * #292 (successor to the closed #246), the still-missing deployment pipeline. This
- * resolver's production-throw exists so that gap cannot stay silently open once a
- * deployment lands: the API will refuse to boot in production without an explicit
- * answer, at the moment the answer becomes knowable.
+ * - Unset outside production: `[]` — today's actual posture (no proxy trusted).
+ * - Unset in production: throws — the degraded state (a shared rate-limit bucket)
+ *   is invisible otherwise (ADR-0021), so a missing answer refuses to boot.
+ * - `none`: an explicit "no proxy in front of this deployment" — resolves `[]`,
+ *   valid in production.
+ * - Otherwise: a comma-separated list of IP/CIDR entries, validated syntactically
+ *   AND for breadth (see `isOverlyBroadTrustedProxyEntry`); any invalid entry throws.
  */
 export function resolveTrustedProxies(env: NodeJS.ProcessEnv = process.env): string[] {
   const raw = env.TRUSTED_PROXIES
@@ -124,6 +95,16 @@ export function resolveTrustedProxies(env: NodeJS.ProcessEnv = process.env): str
     throw new Error(
       `TRUSTED_PROXIES contains invalid entries: ${invalid.join(', ')} — each entry must be an IP address ` +
         'or CIDR range (e.g. "10.0.0.1" or "10.0.0.0/24"), or the literal value "none".',
+    )
+  }
+
+  const tooBroad = entries.filter(isOverlyBroadTrustedProxyEntry)
+  if (tooBroad.length > 0) {
+    throw new Error(
+      `TRUSTED_PROXIES contains overly broad entries: ${tooBroad.join(', ')} — a range with a ` +
+        `prefix shorter than /${MIN_TRUSTED_PROXY_PREFIX_LENGTH} makes Fastify's proxy-addr treat the ` +
+        'socket peer as trusted and return the attacker-controlled leftmost X-Forwarded-For value ' +
+        '(fail-open, #241). Narrow the range to the deployment’s actual proxy CIDR.',
     )
   }
 

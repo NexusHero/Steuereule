@@ -10,6 +10,7 @@
 import type { NestFastifyApplication } from '@nestjs/platform-fastify'
 import { PrismaClient } from '@prisma/client'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { resetRateLimiters } from '../support/reset-rate-limiters.js'
 
 process.env.GUEST_SESSION_SECRET = 'req-011-secret'
 process.env.BETTER_AUTH_SECRET = 'req-011-better-auth-secret-0123456789'
@@ -38,6 +39,7 @@ describe('REQ-011 T1 — DELETE /v1/account, against the real server (ADR-0013)'
   })
 
   afterEach(async () => {
+    resetRateLimiters(app)
     await prisma.session.deleteMany()
     await prisma.account.deleteMany()
     await prisma.verification.deleteMany()
@@ -45,9 +47,6 @@ describe('REQ-011 T1 — DELETE /v1/account, against the real server (ADR-0013)'
     await prisma.profile.deleteMany()
     await prisma.legalHold.deleteMany()
     await prisma.$executeRawUnsafe(`DELETE FROM "TaxDataAccessLog"`)
-    // See req-005/req-009/req-010's afterEach: no forwarded client IP means the
-    // rate limiter shares one bucket across every caller in this environment.
-    await prisma.rateLimit.deleteMany()
   })
 
   afterAll(async () => {
@@ -310,7 +309,7 @@ describe('REQ-011 T1 — DELETE /v1/account, against the real server (ADR-0013)'
     expect(await prisma.profile.findUnique({ where: { userId } })).toBeNull()
   })
 
-  it('repeated wrong-password delete attempts trip the same DB-backed rate limit as login (no new mechanism)', async () => {
+  it('repeated wrong-password delete attempts trip the throttler limit on the re-verification step', async () => {
     const { cookie } = await signUp('req011-rate-limited@example.com')
     await makeSessionStale(cookie)
 
@@ -320,8 +319,8 @@ describe('REQ-011 T1 — DELETE /v1/account, against the real server (ADR-0013)'
       attempts.push(response.status)
     }
 
+    // 3 wrong passwords are allowed per account per 10s (VERIFY_PASSWORD_THROTTLE),
+    // then the throttler answers 429 before the fresh-auth check runs again.
     expect(attempts).toContain(429)
-    const rows = await prisma.rateLimit.findMany()
-    expect(rows.length).toBeGreaterThan(0)
   })
 })

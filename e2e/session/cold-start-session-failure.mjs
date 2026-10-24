@@ -30,8 +30,8 @@
 //
 // NO RATE-LIMIT BUDGET SPENT: every row below navigates straight to `/device` with
 // `showDeviceQr={false}` on the embedded LoginScreen (AC-2/AC-7's own "no second device code next
-// to sign in to approve this one" rule) and never submits a sign-in/sign-up form — no
-// `no-trusted-ip|*` bucket, no `device-code:*` bucket. This file's ordering relative to every other
+// to sign in to approve this one" rule) and never submits a sign-in/sign-up form — no shared
+// sign-up/sign-in bucket, no device-code bucket. This file's ordering relative to every other
 // step in the `Browser gates` job is therefore unconstrained; it is wired in CI after the existing
 // steps for the usual "least risk to an already-proven step" reason, not because anything here
 // requires it.

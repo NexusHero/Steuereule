@@ -6,6 +6,7 @@ import http from 'node:http'
 import type { NestFastifyApplication } from '@nestjs/platform-fastify'
 import { PrismaClient } from '@prisma/client'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { resetRateLimiters } from '../support/reset-rate-limiters.js'
 
 process.env.GUEST_SESSION_SECRET = 'req-014-secret'
 process.env.BETTER_AUTH_SECRET = 'req-014-better-auth-secret-0123456789'
@@ -42,7 +43,7 @@ describe('REQ-014 task 0 — device-authorization plugin registration, against t
 
   afterEach(async () => {
     await prisma.$executeRawUnsafe(`DELETE FROM "DeviceCode"`)
-    await prisma.rateLimit.deleteMany()
+    resetRateLimiters(app)
   })
 
   afterAll(async () => {

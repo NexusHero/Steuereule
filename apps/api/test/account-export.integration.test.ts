@@ -7,6 +7,7 @@
 import type { NestFastifyApplication } from '@nestjs/platform-fastify'
 import { PrismaClient } from '@prisma/client'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { resetRateLimiters } from './support/reset-rate-limiters.js'
 
 process.env.GUEST_SESSION_SECRET = 'account-export-integration-secret'
 process.env.BETTER_AUTH_SECRET = 'account-export-integration-better-auth-secret-0123456789'
@@ -45,16 +46,15 @@ describe('GET /v1/account/export — real Postgres', () => {
     await prisma.user.deleteMany()
     await prisma.profile.deleteMany()
     await prisma.$executeRawUnsafe(`DELETE FROM "TaxDataAccessLog"`)
-    await prisma.rateLimit.deleteMany()
   })
 
   afterEach(async () => {
+    resetRateLimiters(app)
     await prisma.session.deleteMany()
     await prisma.account.deleteMany()
     await prisma.user.deleteMany()
     await prisma.profile.deleteMany()
     await prisma.$executeRawUnsafe(`DELETE FROM "TaxDataAccessLog"`)
-    await prisma.rateLimit.deleteMany()
   })
 
   afterAll(async () => {

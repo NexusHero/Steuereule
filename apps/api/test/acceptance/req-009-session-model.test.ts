@@ -6,6 +6,7 @@
 import type { NestFastifyApplication } from '@nestjs/platform-fastify'
 import { PrismaClient } from '@prisma/client'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { resetRateLimiters } from '../support/reset-rate-limiters.js'
 
 process.env.GUEST_SESSION_SECRET = 'req-009-secret'
 process.env.BETTER_AUTH_SECRET = 'req-009-better-auth-secret-0123456789'
@@ -46,17 +47,11 @@ describe('REQ-009 — session/token storage model, against the real server', () 
   })
 
   afterEach(async () => {
+    resetRateLimiters(app)
     await prisma.session.deleteMany()
     await prisma.account.deleteMany()
     await prisma.user.deleteMany()
     await prisma.profile.deleteMany()
-    // The sandbox/CI test runner calls sign-up-email over plain loopback HTTP with no
-    // forwarded client IP, so better-auth's login rate limiter (REQ-010) falls back to
-    // one shared bucket for every caller (a real, logged warning — "Rate limiting
-    // could not determine a client IP"). Left uncleaned, repeated signups across
-    // these tests (and other acceptance files sharing this same Postgres) would trip
-    // that bucket and fail this suite for an unrelated reason.
-    await prisma.rateLimit.deleteMany()
   })
 
   afterAll(async () => {

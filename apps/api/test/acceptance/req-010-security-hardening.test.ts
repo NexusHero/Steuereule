@@ -5,6 +5,7 @@
 import type { NestFastifyApplication } from '@nestjs/platform-fastify'
 import { PrismaClient } from '@prisma/client'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { resetRateLimiters } from '../support/reset-rate-limiters.js'
 
 process.env.GUEST_SESSION_SECRET = 'req-010-secret'
 process.env.BETTER_AUTH_SECRET = 'req-010-better-auth-secret-0123456789'
@@ -26,10 +27,10 @@ describe('REQ-010 — security hardening, against the real server', () => {
   })
 
   afterEach(async () => {
+    resetRateLimiters(app)
     await prisma.session.deleteMany()
     await prisma.account.deleteMany()
     await prisma.user.deleteMany()
-    await prisma.rateLimit.deleteMany()
   })
 
   afterAll(async () => {
@@ -81,7 +82,7 @@ describe('REQ-010 — security hardening, against the real server', () => {
     expect(response.status).toBe(200)
   })
 
-  it('repeated failed logins from the same account trip the DB-backed rate limit rather than being unbounded', async () => {
+  it('repeated failed logins from the same account trip better-auth\'s built-in rate limit rather than being unbounded', async () => {
     await fetch(`${baseUrl}/api/auth/sign-up/email`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -99,9 +100,5 @@ describe('REQ-010 — security hardening, against the real server', () => {
     }
 
     expect(attempts).toContain(429)
-    // Proves the counter is actually DB-backed (ADR-0012 §5), not an
-    // in-memory-only structure invisible to inspection.
-    const rows = await prisma.rateLimit.findMany()
-    expect(rows.length).toBeGreaterThan(0)
   })
 })

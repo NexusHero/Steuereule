@@ -1,8 +1,9 @@
-import { Body, Controller, Get, HttpCode, Inject, Post, Query, Req, Res } from '@nestjs/common'
+import { Body, Controller, Get, HttpCode, Inject, Post, Query, Req, Res, UseGuards } from '@nestjs/common'
 import { ApiBody, ApiCreatedResponse, ApiOkResponse, ApiQuery, ApiTags } from '@nestjs/swagger'
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler'
 import { fromNodeHeaders } from 'better-auth/node'
 import type { FastifyReply, FastifyRequest } from 'fastify'
-import { SESSION_COOKIE_ATTRIBUTES } from '../auth/better-auth.js'
+import { DEVICE_CODE_THROTTLE, DEVICE_PENDING_THROTTLE } from '../rate-limit/rate-limit.js'
 import { AckResponseDto } from './dto/ack-response.dto.js'
 import { ApproveDeviceRequestDto } from './dto/approve-device-request.dto.js'
 import { DeviceCodeResponseDto } from './dto/device-code-response.dto.js'
@@ -20,18 +21,17 @@ export class DeviceController {
   // No @UseGuards(UserContextGuard) — see device.service.ts's header comment: the
   // desktop calling this has no identity of its own yet.
   @Post('code')
+  // @nestjs/throttler, IP-keyed, 60s/10 (write-amplification bound, PR #239). The
+  // guard runs on the raw socket peer unless `trustProxy` is configured — see
+  // main.ts / resolveTrustedProxies for the single config source both this and
+  // better-auth consume.
+  @Throttle({ default: DEVICE_CODE_THROTTLE })
+  @UseGuards(ThrottlerGuard)
   @ApiCreatedResponse({ type: DeviceCodeResponseDto, description: 'A freshly minted device/user code pair, valid for 2 minutes (ADR-0024).' })
   requestCode(@Req() request: FastifyRequest): Promise<DeviceCodeResponseDto> {
     const userAgentHeader = request.headers['user-agent']
     return this.deviceService.requestCode({
       userAgent: Array.isArray(userAgentHeader) ? (userAgentHeader[0] ?? null) : (userAgentHeader ?? null),
-      // Fastify's own `request.ip` (raw socket peer, no `trustProxy` configured yet)
-      // — a known, out-of-scope-for-#238 limitation behind a reverse proxy (the
-      // deployed demo would need `trustProxy` + a trusted `X-Forwarded-For` reader to
-      // see the real client address); tracked as a deployment follow-up, not silently
-      // presented as solved here. Wrong/proxy-shaped IPs still resolve safely — task
-      // 0b's RegionResolver treats anything private/unroutable as "unknown", never a
-      // guess.
       ip: request.ip ?? null,
     })
   }
@@ -41,6 +41,9 @@ export class DeviceController {
   // auth.api.deviceVerify() inside the service. A phone with no session at all can
   // still call this (AC-2's no-session detour): the code simply stays unclaimed.
   @Get('pending')
+  // @nestjs/throttler, IP-keyed, 60s/10 (the code-guessing surface, ADR-0024).
+  @Throttle({ default: DEVICE_PENDING_THROTTLE })
+  @UseGuards(ThrottlerGuard)
   // Explicit @ApiQuery(): Nest's Swagger plugin otherwise infers a @Query() DTO's shape
   // from reflected `design:paramtypes` metadata, which esbuild/tsx never emit (same gap
   // ProfileController's @ApiBody() comment documents for request bodies) — without this
@@ -49,7 +52,7 @@ export class DeviceController {
   @ApiQuery({ name: 'userCode', type: String, required: true, example: 'K7QX-9F2M' })
   @ApiOkResponse({ type: DevicePendingResponseDto, description: 'The match-verification payload for a pending device-authorization request (ADR-0024).' })
   getPending(@Query() query: DevicePendingQueryDto, @Req() request: FastifyRequest): Promise<DevicePendingResponseDto> {
-    return this.deviceService.getPending(query.userCode, fromNodeHeaders(request.headers), request.ip ?? null)
+    return this.deviceService.getPending(query.userCode, fromNodeHeaders(request.headers))
   }
 
   // No @UseGuards(UserContextGuard) — the plugin's own deviceApprove already
@@ -82,7 +85,12 @@ export class DeviceController {
     @Res({ passthrough: true }) reply: FastifyReply,
   ): Promise<AckResponseDto> {
     const result = await this.deviceService.exchangeToken(dto.deviceCode, fromNodeHeaders(request.headers))
-    reply.setCookie(result.cookieName, result.cookieValue, { ...SESSION_COOKIE_ATTRIBUTES, maxAge: result.maxAge })
+    // better-auth's own `setSessionCookie` already produced the full, signed
+    // `Set-Cookie` value(s) (via the device-session-cookie plugin) — write them to
+    // the response verbatim, never re-serialising or re-signing here.
+    for (const cookie of result.setCookies) {
+      reply.raw.appendHeader('set-cookie', cookie)
+    }
     return { success: true }
   }
 }

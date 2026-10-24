@@ -3,6 +3,7 @@
 import type { NestFastifyApplication } from '@nestjs/platform-fastify'
 import { PrismaClient } from '@prisma/client'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { resetRateLimiters } from '../support/reset-rate-limiters.js'
 
 const GUEST_SESSION_SECRET = 'req-006-secret'
 process.env.GUEST_SESSION_SECRET = GUEST_SESSION_SECRET
@@ -32,14 +33,12 @@ describe('REQ-006 — guest -> account upgrade, against the real server', () => 
   })
 
   afterEach(async () => {
+    resetRateLimiters(app)
     await prisma.session.deleteMany()
     await prisma.account.deleteMany()
     await prisma.user.deleteMany()
     await prisma.profile.deleteMany()
     await prisma.$executeRawUnsafe(`DELETE FROM "TaxDataAccessLog"`)
-    // See req-005/req-009's afterEach: no forwarded client IP means the login rate
-    // limiter shares one bucket across every caller in this environment.
-    await prisma.rateLimit.deleteMany()
   })
 
   afterAll(async () => {
