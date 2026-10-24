@@ -45,3 +45,16 @@ export {
   getLstbControllerSetFeldMockHandler,
   getSteuerEuleAPIMock as getLstbApiMock,
 } from './generated/lstb.msw'
+export {
+  getChLohnausweisControllerGetResponseMock,
+  getChLohnausweisControllerGetMockHandler,
+  getChLohnausweisControllerSetFeldResponseMock,
+  getChLohnausweisControllerSetFeldMockHandler,
+  getChLohnausweisControllerSetBemerkungenResponseMock,
+  getChLohnausweisControllerSetBemerkungenMockHandler,
+  getChLohnausweisControllerSetVorsorgeResponseMock,
+  getChLohnausweisControllerSetVorsorgeMockHandler,
+  getChLohnausweisControllerSetWechselkursResponseMock,
+  getChLohnausweisControllerSetWechselkursMockHandler,
+  getSteuerEuleAPIMock as getChLohnausweisApiMock,
+} from './generated/ch-lohnausweis.msw'

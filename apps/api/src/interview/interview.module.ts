@@ -10,5 +10,9 @@ import { InterviewService } from './interview.service.js'
   imports: [PrismaModule, AuditModule],
   controllers: [InterviewController],
   providers: [InterviewService, { provide: INTERVIEW_ANSWER_REPOSITORY, useClass: PrismaInterviewAnswerRepository }],
+  // Exported so the CH-Lohnausweis fold (ticket 16) can read the stored answers it derives the
+  // Grenzgänger-Status and the gated Einkunftsarten from (grenzgaengerStand) without re-reading
+  // raw rows — the interview repository stays the one read path for InterviewAnswer.
+  exports: [INTERVIEW_ANSWER_REPOSITORY],
 })
 export class InterviewModule {}
