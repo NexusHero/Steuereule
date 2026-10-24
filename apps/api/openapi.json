@@ -1740,6 +1740,11 @@
             "type": "number",
             "example": 2026,
             "description": "The calendar year to confirm/assign."
+          },
+          "vorschlagVerworfen": {
+            "type": "boolean",
+            "default": false,
+            "description": "ADR-008 \"bei meinem Jahr bleiben\": persist the dismissal of a contradicting date-derived suggestion, keeping `steuerjahr`. Omitted/false = a normal assignment."
           }
         },
         "required": [

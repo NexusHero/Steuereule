@@ -27,6 +27,7 @@ import { LstbScreen } from './src/screens/lstb/LstbScreen'
 import { KatalogScreen } from './src/screens/katalog/KatalogScreen'
 import { ArbeitstageScreen } from './src/screens/arbeitstage/ArbeitstageScreen'
 import { PlausibilitaetScreen } from './src/screens/plausibilitaet/PlausibilitaetScreen'
+import { BelegeScreen } from './src/screens/belege/BelegeScreen'
 import { GrenzgaengerScreen } from './src/screens/grenzgaenger/GrenzgaengerScreen'
 import { ProfilScreen } from './src/screens/ProfilScreen'
 import { DatenschutzScreen } from './src/screens/DatenschutzScreen'
@@ -90,7 +91,7 @@ const linking: LinkingOptions<RootStackParamList> = {
 }
 
 /** Only the tabs that have a real screen behind them. Grows as screens land. */
-type Tab = 'cockpit' | 'profil'
+type Tab = 'cockpit' | 'belege' | 'profil'
 
 /**
  * Composition root only — this is the one file in `apps/mobile-web` allowed to import
@@ -253,6 +254,11 @@ function TabbedShell({ tab, onTabChange, onSignedOut }: TabbedShellProps) {
       icon: <TabIcon path={TAB_ICON_PATHS.cockpit} color={iconColor('cockpit')} />,
     },
     {
+      id: 'belege',
+      label: tr('tabs.belege'),
+      icon: <TabIcon path={TAB_ICON_PATHS.belege} color={iconColor('belege')} />,
+    },
+    {
       id: 'profil',
       label: tr('tabs.profil'),
       icon: <TabIcon path={TAB_ICON_PATHS.profil} color={iconColor('profil')} />,
@@ -293,6 +299,7 @@ function TabbedShell({ tab, onTabChange, onSignedOut }: TabbedShellProps) {
       {tab === 'cockpit' && cockpitView === 'plausibilitaet' ? (
         <PlausibilitaetScreen onBack={() => setCockpitView('main')} />
       ) : null}
+      {tab === 'belege' ? <BelegeScreen /> : null}
       {tab === 'profil' && profilView === 'main' ? (
         <ProfilScreen onOpenDatenschutz={() => setProfilView('datenschutz')} onOpenSicherheit={() => setProfilView('sicherheit')} onSignedOut={onSignedOut} />
       ) : null}

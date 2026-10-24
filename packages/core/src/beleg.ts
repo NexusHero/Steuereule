@@ -28,6 +28,11 @@ export interface BelegDaten {
   readonly zahlungsdatum?: string
   /** The CONFIRMED year (a tap has happened). `null` while not confirmed. */
   readonly steuerjahr: number | null
+  /** ADR-008 "bei meinem Jahr bleiben": whether the user explicitly dismissed the date-derived
+   *  suggestion to keep their own confirmed year. A persisted fact (not the derived state), so
+   *  `zuordnungAusDaten` can resolve the `konflikt` to `zugeordnet` without silently
+   *  overwriting the dates that still contradict the year. */
+  readonly vorschlagVerworfen: boolean
 }
 
 export type VorschlagsHerkunft = 'zahlungsdatum' | 'belegdatum'
@@ -74,7 +79,10 @@ export type BelegZuordnung =
 export function zuordnungAusDaten(daten: BelegDaten): BelegZuordnung {
   const vorschlag = steuerjahrVorschlag(daten)
   if (daten.steuerjahr !== null) {
-    if (vorschlag !== null && vorschlag.steuerjahr !== daten.steuerjahr) {
+    // ADR-008: a confirmed year that contradicts the date-derived suggestion is a visible
+    // `konflikt` — unless the user has explicitly dismissed the suggestion ("bei meinem Jahr
+    // bleiben"), which resolves it to `zugeordnet` on their own confirmed year.
+    if (!daten.vorschlagVerworfen && vorschlag !== null && vorschlag.steuerjahr !== daten.steuerjahr) {
       return { kind: 'konflikt', zugeordnet: daten.steuerjahr, vorschlag }
     }
     return { kind: 'zugeordnet', steuerjahr: daten.steuerjahr }
@@ -94,5 +102,18 @@ export function ordneZu(daten: BelegDaten, steuerjahr: number): BelegDaten {
   if (!Number.isInteger(steuerjahr)) {
     throw new RangeError('steuerjahr must be an integer calendar year')
   }
-  return { ...daten, steuerjahr }
+  // A fresh explicit assignment re-opens the decision: it clears any prior dismissal of the
+  // suggestion, so the derived state re-derives the conflict honestly from the new year.
+  return { ...daten, steuerjahr, vorschlagVerworfen: false }
+}
+
+/**
+ * ADR-008 — the "bei meinem Jahr bleiben" resolution of a `konflikt`. Persists the fact that
+ * the user dismissed the date-derived suggestion, keeping their own confirmed year. Only
+ * meaningful while a confirmed year contradicts the suggestion (the UI offers it in exactly
+ * that state); like `ordneZu` it is a pure fact-setter — the resolution is *derived* on the
+ * next read, never a stored Zuordnung state.
+ */
+export function verwerfeVorschlag(daten: BelegDaten): BelegDaten {
+  return { ...daten, vorschlagVerworfen: true }
 }

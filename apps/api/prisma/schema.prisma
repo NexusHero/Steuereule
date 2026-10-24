@@ -446,6 +446,11 @@ model Beleg {
   /// The CONFIRMED year (a tap has happened). Null while unbound/suggested. The
   /// suggestion itself is derived, never stored.
   steuerjahr    Int?
+  /// ADR-008 "bei meinem Jahr bleiben": whether the user explicitly dismissed the
+  /// date-derived suggestion to keep their own confirmed year — a persisted FACT (not the
+  /// derived state), so `zuordnungAusDaten` can resolve the conflict without silently
+  /// overwriting the contradicting dates.
+  vorschlagVerworfen Boolean  @default(false)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 

@@ -2,7 +2,7 @@
 // the derived-zuordnung contract without a database. `create`/`setSteuerjahr` mirror the
 // real repository's return shapes; the derived Zuordnung state is left to BelegService (as
 // in production, the repository stores facts, never the derived state — ADR-014/048).
-import type { BelegRecord, BelegRepository, CreateBelegData } from '../../src/beleg/beleg.repository.js'
+import type { BelegRecord, BelegRepository, CreateBelegData, SetZuordnungData } from '../../src/beleg/beleg.repository.js'
 
 export class FakeBelegRepository implements BelegRepository {
   private readonly rows: BelegRecord[] = []
@@ -30,6 +30,7 @@ export class FakeBelegRepository implements BelegRepository {
       ...(data.belegdatum !== undefined ? { belegdatum: data.belegdatum } : {}),
       ...(data.zahlungsdatum !== undefined ? { zahlungsdatum: data.zahlungsdatum } : {}),
       steuerjahr: null,
+      vorschlagVerworfen: false,
       createdAt: now,
       updatedAt: now,
     }
@@ -37,10 +38,15 @@ export class FakeBelegRepository implements BelegRepository {
     return Promise.resolve(record)
   }
 
-  setSteuerjahr(userId: string, id: string, steuerjahr: number): Promise<BelegRecord | null> {
+  setZuordnung(userId: string, id: string, data: SetZuordnungData): Promise<BelegRecord | null> {
     const index = this.rows.findIndex((row) => row.userId === userId && row.id === id)
     if (index === -1) return Promise.resolve(null)
-    const updated: BelegRecord = { ...this.rows[index]!, steuerjahr, updatedAt: new Date() }
+    const updated: BelegRecord = {
+      ...this.rows[index]!,
+      steuerjahr: data.steuerjahr,
+      vorschlagVerworfen: data.vorschlagVerworfen,
+      updatedAt: new Date(),
+    }
     this.rows[index] = updated
     return Promise.resolve(updated)
   }
