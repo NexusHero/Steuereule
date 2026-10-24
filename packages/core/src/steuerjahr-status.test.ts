@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { istUebergangErlaubt, naechsteZustaende, type SteuerjahrStatus } from './steuerjahr-status'
+import {
+  istBescheidUebergangErlaubt,
+  istUebergangErlaubt,
+  naechsteBescheidZustaende,
+  naechsteZustaende,
+  type BescheidStatus,
+  type SteuerjahrStatus,
+} from './steuerjahr-status'
 
 // ADR-018 — the lifecycle state machine. The two REAL edge states (rueckfrage,
 // extern-erledigt) are what this suite exists to pin down: they must be genuine states
@@ -86,5 +93,35 @@ describe('illegal jumps are rejected', () => {
     ['rueckfrage', 'entwurf'],
   ] as const)('%s → %s is illegal', (von, nach) => {
     expect(istUebergangErlaubt(von, nach)).toBe(false)
+  })
+})
+
+describe('the bescheid phase sub-state machine (ADR-009, ticket 10.3)', () => {
+  const happyPath: readonly [BescheidStatus, BescheidStatus][] = [
+    ['eingegangen', 'geprüft'],
+    ['geprüft', 'einspruch-eingelegt'],
+  ]
+
+  it.each(happyPath)('%s → %s is legal', (von, nach) => {
+    expect(istBescheidUebergangErlaubt(von, nach)).toBe(true)
+  })
+
+  it('einspruch-eingelegt is terminal within the phase', () => {
+    expect(naechsteBescheidZustaende('einspruch-eingelegt')).toEqual([])
+  })
+
+  it('kein stiller Übergang — illegal jumps are rejected', () => {
+    expect(istBescheidUebergangErlaubt('eingegangen', 'einspruch-eingelegt')).toBe(false) // must be geprüft first
+    expect(istBescheidUebergangErlaubt('geprüft', 'eingegangen')).toBe(false) // no re-open
+    expect(istBescheidUebergangErlaubt('einspruch-eingelegt', 'geprüft')).toBe(false)
+    expect(istBescheidUebergangErlaubt('einspruch-eingelegt', 'eingegangen')).toBe(false)
+  })
+
+  it.each([
+    ['eingegangen', 'eingegangen'],
+    ['geprüft', 'geprüft'],
+    ['einspruch-eingelegt', 'einspruch-eingelegt'],
+  ] as const)('%s → %s (Selbstschleife) is forbidden — a state never re-enters itself', (von, nach) => {
+    expect(istBescheidUebergangErlaubt(von, nach)).toBe(false)
   })
 })
