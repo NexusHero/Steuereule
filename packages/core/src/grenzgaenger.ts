@@ -3,13 +3,15 @@
 //     wie auf dem Papier, Feld für Feld" — Scan/OCR is OUT of scope, ADR-045);
 // (2) the Grenzgänger-Status (ADR-013: nur Schweiz, 45-Tage-Regel);
 // (3) the CH line items → the deterministic core, each amount CHF→EUR via a Wechselkurs with
-//     provenance "Lohnausweis Ziffer n × Kurs" (ADR-029/012/036).
+//     provenance "Lohnausweis Ziffer n × Kurs" (ADR-029/012/036). The Vorsorgeaufwand
+//     (PK/3a/KK) and the Quellensteuer-Anrechnung fold into the core's role-aware `berechne`
+//     (ADR-0015-Lehre, coordinated with the Angestellte vertical).
 // Pure, no I/O (ADR-0004). No tax FORMULA is invented here: the Quellensteuer/ PK/ 3a/ KK/
 // Zulagen amounts come FROM the Lohnausweis/Nachweise (data), never from a guessed rate —
 // "KEINE Schätzungen, offen wo unklar" (ADR-032 honesty). What is not computable is modelled
 // as OFFEN, never as a point value.
 import type { Einkunftsart } from './einkunftsarten'
-import type { Posten } from './berechnung'
+import { berechne, type Berechnungsstand, type Posten } from './berechnung'
 import { chfNachEur, type Wechselkurs } from './wechselkurs'
 import { CH_WOHNSITZ_VALUES, type ChWohnsitz } from './interview'
 
@@ -94,6 +96,18 @@ export const LOHNAUSWEIS_FELDER: readonly LohnausweisFeld[] = [
 
 /** The CHF amounts a user typed into the mask, sparse (a missing key = "not yet entered"). */
 export type LohnausweisWerte = Partial<Record<LohnausweisFeldId, number>>
+
+/** The 14 CHF-betrag field ids — Ziffer 15 `bemerkungen` (Freitext) is deliberately excluded. */
+export type LohnausweisBetragFeldId = Exclude<LohnausweisFeldId, 'bemerkungen'>
+
+/**
+ * The 14 CHF-betrag field ids in paper order (Ziffer 15 `bemerkungen` is Freitext and excluded) —
+ * the single source both the core fold and the API's `:feld` boundary validation read from, so
+ * the closed set cannot drift between the two (ADR-0033's one-rule instinct, same as LSTB_FELDER).
+ */
+export const LOHNAUSWEIS_BETRAG_FELDER: readonly LohnausweisBetragFeldId[] = LOHNAUSWEIS_FELDER.filter(
+  (feld) => feld.art === 'chf-betrag',
+).map((feld) => feld.id) as readonly LohnausweisBetragFeldId[]
 
 /**
  * The required-but-empty Lohnausweis fields — the honest "offen" list. Always required:
@@ -200,22 +214,145 @@ export function zulagenVerrechnen(chZulagenEur: number, deKindergeldEur: number)
 }
 
 /**
- * ADR-029 "automatisch auf Anlage N-Gre gemappt" — the ONE line that maps onto the core's
- * income-only Posten model: the Bruttolohn becomes a `Posten` of Einkunftsart `Grenzgänger`.
- * The deduction/credit lines (PK, Quellensteuer, 3a, KK, Zulagen) are NOT representable as the
- * core's income Posten today — extending the core with Vorsorgeaufwand/Anrechnung is the
- * tax-formula slice's shared work (ADR-0015-Lehre, coordinated with the Angestellten vertical).
- * Returns null for any non-income line (the caller keeps the full ChPosten for its provenance).
+ * ADR-029 "automatisch auf Anlage N-Gre gemappt" — the ONE income line, expressed over the
+ * core's income Posten (kept for Slice-1 callers). The general mapping — which also folds the
+ * deduction/credit lines (PK/Quellensteuer/3a/KK) into the core's now role-aware `Posten` model
+ * — is `chPostenAlsKernposten` below. Returns null for any non-income line.
  */
 export function bruttolohnAlsKernposten(posten: ChPosten): Posten | null {
   if (posten.art !== 'Bruttolohn') return null
-  const einkunftsart: Einkunftsart = 'Grenzgänger'
+  return chPostenAlsKernposten(posten)
+}
+
+/**
+ * ADR-029 + ADR-0015-Lehre — map a CH line item onto the core's `Posten` model with the role the
+ * fold needs. Bruttolohn is Einnahme; Pensionskasse/Säule 3a/Krankenkasse are Vorsorgeaufwand
+ * (deductions, never summed into income); Quellensteuer is Anrechnung (credit). AHV (1. Säule) and
+ * Familienzulage have NO role here — AHV's DBA treatment is open and Zulagen are netted via
+ * `zulagenVerrechnen`, not a `>= 0` Posten — so they return null (the caller keeps the ChPosten for
+ * provenance and surfaces them separately, never as a fabricated zero).
+ */
+export function chPostenAlsKernposten(posten: ChPosten): Posten | null {
+  let rolle: Posten['rolle']
+  let quelle: Posten['quelle']
+  switch (posten.art) {
+    case 'Bruttolohn':
+      rolle = 'einnahme'
+      quelle = { art: 'beleg', belegId: 'lohnausweis' }
+      break
+    case 'Pensionskasse':
+      rolle = 'vorsorgeaufwand'
+      quelle = { art: 'beleg', belegId: 'lohnausweis' }
+      break
+    case 'Quellensteuer':
+      rolle = 'anrechnung'
+      quelle = { art: 'beleg', belegId: 'lohnausweis' }
+      break
+    case 'Saeule3a':
+    case 'Krankenkasse':
+      rolle = 'vorsorgeaufwand'
+      // 3a/KK amounts are captured (Nachweis), not read off the Lohnausweis — `eingabe` is the
+      // honest origin until the Beleg-inbox (t10) links a concrete Nachweis.
+      quelle = { art: 'eingabe' }
+      break
+    case 'AHV':
+    case 'Familienzulage':
+      return null
+  }
   return {
     id: posten.id,
-    einkunftsart,
+    einkunftsart: 'Grenzgänger',
+    rolle,
     betrag: Math.round(posten.betragEur),
-    // The amount's origin is the Lohnausweis (a Beleg); the Kurs provenance stays on the
-    // ChPosten (the core Posten model has no slot for a compound "value × rate" origin).
-    quelle: { art: 'beleg', belegId: 'lohnausweis' },
+    // The amount's origin; the Kurs provenance stays on the ChPosten (the core Posten model has
+    // no slot for a compound "value × rate" origin).
+    quelle,
   }
+}
+
+/** The CH line items to fold, plus the honest open/gated facts that may block a determined result. */
+export interface GrenzgaengerBerechnungsInput {
+  /** The Lohnausweis CHF values (sparse: a missing key = "not yet entered"). */
+  readonly lohnausweis: LohnausweisWerte
+  /** Säule 3a (ADR-029 point 4) — absent = not entered → no Posten (never a fabricated zero). */
+  readonly saeule3aChf?: number
+  /** CH-Krankenkasse (ADR-029 point 5) — absent = not entered → no Posten. */
+  readonly krankenkasseChf?: number
+  readonly status: GrenzgaengerStatus
+  readonly wechselkurs: Wechselkurs
+  /** Declared-but-not-computable Einkunftsarten (ADR-028/032/033), passed through unchanged. */
+  readonly gegated: readonly Einkunftsart[]
+}
+
+/**
+ * The CH line items for display + fold: the Lohnausweis postenRelevant fields, plus the optional
+ * Säule 3a and Krankenkasse amounts (absent = not entered → no line item, never a fabricated zero).
+ */
+export function grenzgaengerChPosten(input: {
+  readonly lohnausweis: LohnausweisWerte
+  readonly saeule3aChf?: number
+  readonly krankenkasseChf?: number
+  readonly wechselkurs: Wechselkurs
+}): readonly ChPosten[] {
+  const posten: ChPosten[] = [...chPostenAusLohnausweis(input.lohnausweis, input.wechselkurs)]
+  if (input.saeule3aChf !== undefined) posten.push(saeule3aAbzug(input.saeule3aChf, input.wechselkurs))
+  if (input.krankenkasseChf !== undefined) posten.push(krankenkasseAbzug(input.krankenkasseChf, input.wechselkurs))
+  return posten
+}
+
+/**
+ * ADR-029 + ADR-0015-Lehre — fold the CH line items through the deterministic core (`berechne`).
+ * Bruttolohn folds into `einnahmen`, PK/3a/KK into `vorsorgeaufwand`, Quellensteuer into
+ * `anrechnung`; the required-but-empty Lohnausweis fields are the honest `offenePosten` count, and
+ * nothing is estimated (a missing optional amount is absent, never a zero). Familienzulagen are
+ * deliberately NOT folded here — they are a signed NET (zulagenVerrechnen), not a `>= 0` Posten.
+ */
+export function grenzgaengerStand(input: GrenzgaengerBerechnungsInput): Berechnungsstand {
+  const kernposten = grenzgaengerChPosten(input)
+    .map(chPostenAlsKernposten)
+    .filter((p): p is Posten => p !== null)
+  const offenePosten = offeneLohnausweisFelder(input.lohnausweis, input.status).length
+  return berechne({ posten: kernposten, offenePosten, konflikte: [], gegated: input.gegated })
+}
+
+// --------------------------------------------------------------------------------------------
+// Lohnausweis-mask persistence encoding — the one place the "offen / unklar / erfasst" states
+// map to a stored string, so the API repository and its tests cannot drift from each other
+// (ADR-0033's one-rule instinct, same as lstb.ts). The stored column is a nullable string:
+// `null` is `offen`, the reserved marker is `unklar`, any other string is a whole-CHF amount
+// (`erfasst`). `bemerkungen` (Ziffer 15) is Freitext and keeps the same encoding (the marker can
+// never collide with a real value because erfasst amounts are non-negative integers and the
+// marker is not a number).
+// --------------------------------------------------------------------------------------------
+
+/** The reserved stored value for a field the user looked at and could not read ("unklar"). */
+export const LOHNAUSWEIS_UNKLAR = 'unklar'
+
+/** A value entered into the mask must be a non-negative whole-CHF amount (ADR-036: CHF führt). */
+export function istGueltigerLohnausweisBetrag(wert: number): boolean {
+  return Number.isFinite(wert) && Number.isInteger(wert) && wert >= 0
+}
+
+/** A field state → its stored string (`null` for `offen`). */
+export function serialisiereLohnausweisFeld(wert: number | null | typeof LOHNAUSWEIS_UNKLAR): string | null {
+  if (wert === null) return null
+  if (wert === LOHNAUSWEIS_UNKLAR) return LOHNAUSWEIS_UNKLAR
+  if (!istGueltigerLohnausweisBetrag(wert)) {
+    throw new RangeError(`lohnausweis: erfasst value must be a non-negative integer`)
+  }
+  return String(wert)
+}
+
+/**
+ * A stored string → the field's CHF value (`null` = offen, the marker = unklar, else an amount).
+ * A value that is neither is corruption — throw, don't guess.
+ */
+export function deserialisiereLohnausweisFeld(value: string | null): number | null | typeof LOHNAUSWEIS_UNKLAR {
+  if (value === null) return null
+  if (value === LOHNAUSWEIS_UNKLAR) return LOHNAUSWEIS_UNKLAR
+  const wert = Number(value)
+  if (!istGueltigerLohnausweisBetrag(wert)) {
+    throw new Error(`lohnausweis: stored value "${value}" is neither offen, unklar, nor a valid amount`)
+  }
+  return wert
 }

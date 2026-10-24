@@ -18,10 +18,24 @@ export type Quelle =
   | { readonly art: 'ki-vorschlag'; readonly vorschlagId: string; readonly belegId?: string }
   | { readonly art: 'regel'; readonly regel: string }
 
+/**
+ * ADR-029/0015-Lehre — which bucket a Posten folds into. `einnahme` is the historical meaning
+ * (income), the only role the core had before the Grenzgänger vertical added deductions and
+ * credits. `vorsorgeaufwand` (PK/3a/KK) and `anrechnung` (Quellensteuer) are NOT income — they
+ * must not be summed into the same figure as Einnahmen. The fold reports each bucket separately,
+ * never subtracted here (the aggregation of Vorsorgeaufwand against income is a later
+ * tax-formula slice's work, the same "partial truth stated as a partial truth" honesty as
+ * `angestellte.ts`'s sonderausgaben).
+ */
+export type Rolle = 'einnahme' | 'vorsorgeaufwand' | 'anrechnung'
+
 /** A settled line item (one amount, one origin). Whole euros, >= 0. */
 export interface Posten {
   readonly id: string
+  /** The Anlage/Einkunftsart the line belongs to — kept meaningful even for Vorsorge/Anrechnung. */
   readonly einkunftsart: Einkunftsart
+  /** Which bucket the amount folds into. Absent = `einnahme` (income), the pre-CH meaning. */
+  readonly rolle?: Rolle
   readonly betrag: number
   readonly quelle: Quelle
 }
@@ -51,15 +65,23 @@ export interface BerechnungsInput {
 
 /**
  * The honest fold result. `bestimmt` is reachable ONLY when nothing is open, conflicting
- * or gated; otherwise `offen` names exactly what stands in the way. The `summe` in the
- * `offen` variant is the sum of SETTLED Posten only — a partial truth stated as a partial
- * truth, never inflated into a point value (ADR-015/032).
+ * or gated; otherwise `offen` names exactly what stands in the way. The three buckets
+ * (`einnahmen`, `vorsorgeaufwand`, `anrechnung`) are each the sum of SETTLED Posten of that
+ * role only — a partial truth stated as a partial truth, never inflated into a point value
+ * (ADR-015/032). Vorsorgeaufwand is reported separately, never subtracted here (see `Rolle`).
  */
 export type Berechnungsstand =
-  | { readonly kind: 'bestimmt'; readonly summe: number }
+  | {
+      readonly kind: 'bestimmt'
+      readonly einnahmen: number
+      readonly vorsorgeaufwand: number
+      readonly anrechnung: number
+    }
   | {
       readonly kind: 'offen'
-      readonly summe: number
+      readonly einnahmen: number
+      readonly vorsorgeaufwand: number
+      readonly anrechnung: number
       readonly offenePosten: number
       readonly konflikte: number
       readonly gegated: readonly Einkunftsart[]
@@ -76,15 +98,36 @@ function validate(input: BerechnungsInput): void {
   }
 }
 
-/** Fold the Posten: a determined sum, or an honest "offen" result naming what blocks it. */
+function rolleVon(posten: Posten): Rolle {
+  return posten.rolle ?? 'einnahme'
+}
+
+/** Fold the Posten by role: three determined buckets, or an honest "offen" result naming what blocks it. */
 export function berechne(input: BerechnungsInput): Berechnungsstand {
   validate(input)
-  const summe = input.posten.reduce((acc, posten) => acc + posten.betrag, 0)
+  let einnahmen = 0
+  let vorsorgeaufwand = 0
+  let anrechnung = 0
+  for (const posten of input.posten) {
+    switch (rolleVon(posten)) {
+      case 'einnahme':
+        einnahmen += posten.betrag
+        break
+      case 'vorsorgeaufwand':
+        vorsorgeaufwand += posten.betrag
+        break
+      case 'anrechnung':
+        anrechnung += posten.betrag
+        break
+    }
+  }
   const offen = input.offenePosten > 0 || input.konflikte.length > 0 || input.gegated.length > 0
-  if (!offen) return { kind: 'bestimmt', summe }
+  if (!offen) return { kind: 'bestimmt', einnahmen, vorsorgeaufwand, anrechnung }
   return {
     kind: 'offen',
-    summe,
+    einnahmen,
+    vorsorgeaufwand,
+    anrechnung,
     offenePosten: input.offenePosten,
     konflikte: input.konflikte.length,
     gegated: input.gegated,
