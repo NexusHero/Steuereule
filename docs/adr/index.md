@@ -55,6 +55,12 @@ The ADRs **justify** the architecture; the [living arc42 document](../arc42/READ
 | 0034 | The Veranlagungsartenvergleich returns a bounded comparison, never a bare verdict — and it is not a Günstigerprüfung (#340 F3, #321) | Accepted |
 | 0035 | Foundation consolidation: framework standard over bespoke machinery, one product over slices, shared tax domain core, mantle completion in the foundation | Accepted |
 | 0036 | Definition of Done: four levels (ticket · REQ · phase · 1.0), posture line, exception process | Accepted |
+| 0037 | Einkunftsarten-/Steuerjahr-Modell in `packages/core` (ADR-006/010/030) | Accepted |
+| 0038 | Berechnungs-Kern mit KI-Port (determinism boundary, ADR-014/048) | Accepted |
+| 0039 | Steuerjahr-Zustandsmaschine (ADR-018: Rückfrage/Extern-erledigt) | Accepted |
+| 0040 | Beleg-Posteingang (ADR-007/008: Zuordnung als Vorschlag, Konflikt sichtbar) | Accepted |
+| 0041 | LStB-/Angestellte-Vertikale (Scan-Fallback-Maske, Katalog-Admission) | Accepted |
+| 0042 | Grenzgänger-CH-Vertikale (Belegart-Vokabular, Wechselkurs-Kern, segment-ch) | Accepted |
 
 See also the [Tech Radar](./tech-radar.md).
 

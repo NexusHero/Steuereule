@@ -1,6 +1,6 @@
-# ADR-0041 — Angestellte-Vertikale: LStB-Scan-Fallback-Maske + On-Demand-Katalog-Einträge (Entwurf) <!-- adr-check-ignore -->
+# ADR-0041 — Angestellte-Vertikale: LStB-Scan-Fallback-Maske + On-Demand-Katalog-Einträge (Entwurf) 
 
-- **Status:** Draft — not yet promoted to `docs/adr/`
+- **Status:** Accepted — promoted 2026-10-24 (reviewed as part of the ticket reviews; Musti)
 - **Date:** 2026-10-24
 - **Deciders:** Kaan (backend/FE, Ticket 08) — draft; promotion needs Musti review
 - **Implements** Produkt-ADR-036 (Scan-Fallback-Maske statt OCR), Produkt-ADR-031 (5 Lebenslagen),

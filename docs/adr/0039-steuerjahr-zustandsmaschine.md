@@ -1,6 +1,6 @@
-# ADR-0039 — Steuerjahr-Zustandsmaschine (Entwurf) <!-- adr-check-ignore -->
+# ADR-0039 — Steuerjahr-Zustandsmaschine (Entwurf) 
 
-- **Status:** Draft — not yet promoted to `docs/adr/`
+- **Status:** Accepted — promoted 2026-10-24 (reviewed as part of the ticket reviews; Musti)
 - **Date:** 2026-10-24
 - **Deciders:** Robin (backend, Ticket 04) — draft; promotion needs Musti review
 - **Implements** Produkt-ADR-018 (Zustandsmaschine: vier Randzustände, zwei davon echte Zustände)
