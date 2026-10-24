@@ -13,6 +13,7 @@ describe('BELEGARTEN — the CH document types (ADR-029)', () => {
       'Saeule3a',
       'Krankenkasse',
       'Familienzulage',
+      'Steuerbescheid',
       'Sonstiges',
     ])
   })
@@ -21,6 +22,7 @@ describe('BELEGARTEN — the CH document types (ADR-029)', () => {
 describe('isBelegart — total over string', () => {
   it('accepts a declared Belegart', () => {
     expect(isBelegart('Lohnausweis')).toBe(true)
+    expect(isBelegart('Steuerbescheid')).toBe(true)
     expect(isBelegart('Sonstiges')).toBe(true)
   })
 
