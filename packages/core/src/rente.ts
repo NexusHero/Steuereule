@@ -13,8 +13,8 @@
 // Pure, no I/O (ADR-0004). No tax FORMULA is invented here: the Besteuerungs-/Ertragsanteil
 // percentages come FROM the statute (verbatim tables, not derived arithmetic), and the taxable
 // share is Jahresbetrag × Anteil — the tariff/Günstigerprüfung over that share is a later slice.
-import { berechne, type Berechnungsstand, type Posten } from './berechnung.js'
-import type { Einkunftsart } from './einkunftsarten.js'
+import { berechne, type Berechnungsstand, type Posten } from './berechnung'
+import type { Einkunftsart } from './einkunftsarten'
 
 // --- Rentenart-Vokabular (product ADR-036 §3) ------------------------------------------------
 
