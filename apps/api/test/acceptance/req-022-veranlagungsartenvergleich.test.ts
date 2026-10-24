@@ -138,6 +138,23 @@ describe('REQ-022 — the Veranlagungsartenvergleich, against the real server', 
     })
   })
 
+  it('GWT — lohnersatz "Ja" without a captured amount is honest `unbestimmt`, never `eindeutig`', async () => {
+    const { cookie } = await signUp('lohnersatz-ja-ohne-betrag@example.com')
+    await seed(cookie, true) // dhf/umzug/abfindung/lohnersatz answered — makes `lohnersatz` reachable
+    // Overwrite lohnersatz to "Ja" but never answer the `lohnersatz-betrag` follow-up: the
+    // Progressionsvorbehalt is still undetermined. The service must not manufacture `betrag: 0`
+    // (ADR-0032) and reach `eindeutig`.
+    expect((await postAnswer(cookie, 'lohnersatz', 'Ja')).status).toBe(200)
+    expect((await putLstb(cookie, 'bruttoarbeitslohn', 100000)).status).toBe(200)
+
+    const response = await getVergleich(cookie, '?verheiratet=true&zveB=0')
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      kind: 'unbestimmt',
+      unschaerfe: { kind: 'unbestimmt', grund: 'progressionsvorbehalt-nicht-eingegeben' },
+    })
+  })
+
   it('returns null (honest empty state) when no tax year is seeded yet', async () => {
     const { cookie } = await signUp('empty@example.com')
     const response = await getVergleich(cookie, '?verheiratet=true&zveB=0')

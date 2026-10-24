@@ -53,9 +53,20 @@ function intAus(value: string | undefined): number {
   return Number.isFinite(n) ? n : 0
 }
 
-/** The `lohnersatz` catalogue answer → the core's Progressionsvorbehalt input. */
+/**
+ * The `lohnersatz` catalogue answer → the core's Progressionsvorbehalt input.
+ *
+ * `'Ja'` is a *complete* Progressionsvorbehalt input only when a positive amount was actually
+ * captured. A `'Ja'` with a missing/empty/non-numeric/`<=0` amount (mid-flow, aborted, or never
+ * opened) is NOT `{ betrag: 0 }` — `intAus`'s absent→0 default would manufacture a zero Lohnersatz
+ * and let `progressionsvorbehaltSchranke` return `obergrenze: 0`, which could flip an honest
+ * `unbestimmt` into a false `eindeutig`. ADR-0032: never fabricate a null value.
+ */
 function progressionsvorbehaltAus(answers: Answers): ProgressionsvorbehaltEingabe {
-  if (answers.lohnersatz === 'Ja') return { art: 'lohnersatzleistungen', betrag: intAus(answers['lohnersatz-betrag']) }
+  if (answers.lohnersatz === 'Ja') {
+    const betrag = intAus(answers['lohnersatz-betrag'])
+    return betrag > 0 ? { art: 'lohnersatzleistungen', betrag } : { art: 'nicht-angegeben' }
+  }
   if (answers.lohnersatz === 'Nein') return { art: 'keine' }
   return { art: 'nicht-angegeben' }
 }
