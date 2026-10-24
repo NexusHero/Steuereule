@@ -18,6 +18,8 @@ export interface BelegRecord {
   zahlungsdatum?: string
   /** The CONFIRMED year; null while unbound/suggested. */
   steuerjahr: number | null
+  /** ADR-008 "bei meinem Jahr bleiben": whether the contradicting suggestion was dismissed. */
+  vorschlagVerworfen: boolean
   createdAt: Date
   updatedAt: Date
 }
@@ -29,6 +31,12 @@ export interface CreateBelegData {
   zahlungsdatum?: string
 }
 
+/** The one assignment write: confirm a year, optionally dismissing a contradicting suggestion. */
+export interface SetZuordnungData {
+  steuerjahr: number
+  vorschlagVerworfen: boolean
+}
+
 export const BELEG_REPOSITORY = Symbol('BELEG_REPOSITORY')
 
 export interface BelegRepository {
@@ -38,6 +46,7 @@ export interface BelegRepository {
   findByIdForUser(userId: string, id: string): Promise<BelegRecord | null>
   /** Create an unbound Beleg, appending its WRITE audit entry atomically (REQ-004). */
   create(userId: string, data: CreateBelegData): Promise<BelegRecord>
-  /** Set the confirmed year, appending its WRITE audit entry atomically (REQ-004). */
-  setSteuerjahr(userId: string, id: string, steuerjahr: number): Promise<BelegRecord | null>
+  /** Set the confirmed year (optionally dismissing a contradicting suggestion), appending its
+   *  WRITE audit entry atomically (REQ-004). */
+  setZuordnung(userId: string, id: string, data: SetZuordnungData): Promise<BelegRecord | null>
 }

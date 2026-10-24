@@ -6,7 +6,7 @@ export const appResources = {
   de: {
     [APP_NS]: {
       brand: { steuer: 'Steuer', eule: 'Eule' },
-      tabs: { cockpit: 'Cockpit', profil: 'Profil' },
+      tabs: { cockpit: 'Cockpit', belege: 'Belege', profil: 'Profil' },
       splash: {
         greeting: 'Steuern? Zack, erledigt.',
         skipLabel: 'Weiter zur App',
@@ -594,10 +594,62 @@ export const appResources = {
         // the secondary slot (one primary action per screen, design-system CLAUDE.md).
         answerQuestions: 'Fragen beantworten',
       },
-      // REQ-021 (ticket 16) — the Grenzgänger-CH screen: the two CH-interview questions (ADR-013)
-      // then the guided Lohnausweis mask (ADR-036, Ziffern 1–15, CHF führt). Values stay the German
-      // domain vocabulary; only the labels are translated. The derived Grenzgänger-Status and the
-      // fold (Einnahmen/Vorsorgeaufwand/Anrechnung) are shown, never recomputed here.
+      // Ticket 10 (Phase 2, Slice 1) — Beleg-Posteingang (ADR-007/008). The upload affordance is
+      // deliberately a HONEST placeholder, not a scan/PDF button: binary storage is a follow-up
+      // (ADR-036/045), so a button that promises a stored file would be exactly the fake the
+      // honesty rule (ADR-032 §2) forbids.
+      belege: {
+        appbarTitle: 'Belege',
+        loading: 'Deine Belege werden geladen …',
+        loadError: {
+          heading: 'Das hat nicht geklappt.',
+          message: 'Deine Belege konnten nicht geladen werden. Prüf die Verbindung und versuch es noch mal.',
+          retry: 'Noch mal versuchen',
+        },
+        offen_one: '{{count}} offen',
+        offen_other: '{{count}} offen',
+        empty: {
+          heading: 'Noch keine Belege.',
+          message: 'Wirf Belege übers ganze Jahr rein — hier landen sie und warten auf das richtige Steuerjahr.',
+        },
+        scanFolgt: {
+          heading: 'Wirf alles rein — wir sortieren',
+          body: 'Das Scannen und Fotografieren der Belege folgt noch. Sobald es da ist, landen deine Belege hier und ordnen sich automatisch dem richtigen Steuerjahr zu.',
+        },
+        zuordnung: {
+          ungebunden: 'Unzugeordnet',
+          vorgeschlagen: 'Vorschlag: {{jahr}}',
+          zugeordnet: 'Zugeordnet: {{jahr}}',
+          regelZahlungsdatum: 'Regel: Zahlungsdatum',
+          regelBelegdatum: 'Regel: Belegdatum',
+          confirm: 'Zuordnen zu {{jahr}}',
+          otherYear: 'Anderes Jahr',
+          otherYearLabel: 'Steuerjahr',
+          otherYearConfirm: 'Diesem Jahr zuordnen',
+          otherYearCancel: 'Abbrechen',
+          yearInvalid: 'Bitte ein Jahr mit vier Ziffern eingeben.',
+          konflikt: {
+            heading: 'Zwei Jahre für diesen Beleg — du entscheidest.',
+            body: 'Zugeordnet: {{zugeordnet}} · Vorschlag: {{vorschlag}}. Bis das geklärt ist, zählt dieser Beleg nicht.',
+            resolve: 'Vorschlag {{jahr}} übernehmen',
+            keep: 'Bei {{jahr}} bleiben',
+          },
+        },
+        art: {
+          generic: 'Beleg',
+          lohnausweis: 'Lohnausweis',
+          quellensteuer: 'Quellensteuer',
+          pensionskasse: 'Pensionskasse',
+          saeule3a: 'Säule 3a',
+          krankenkasse: 'Krankenkasse',
+          familienzulage: 'Familienzulage',
+          sonstiges: 'Sonstiges',
+        },
+        datum: {
+          belegdatum: 'Belegdatum',
+          zahlungsdatum: 'Zahlungsdatum',
+        },
+      },
       grenzgaenger: {
         back: 'Zurück',
         weiter: 'Weiter',
@@ -674,7 +726,7 @@ export const appResources = {
   en: {
     [APP_NS]: {
       brand: { steuer: 'Steuer', eule: 'Eule' },
-      tabs: { cockpit: 'Cockpit', profil: 'Profile' },
+      tabs: { cockpit: 'Cockpit', belege: 'Receipts', profil: 'Profile' },
       splash: {
         greeting: 'Taxes? Sorted, just like that.',
         skipLabel: 'Continue to the app',
@@ -1150,6 +1202,61 @@ export const appResources = {
         refreshing: 'Refreshing …',
         answerQuestions: 'Answer questions',
       },
+      // Ticket 10 (Phase 2, Slice 1) — Beleg-Posteingang (ADR-007/008). See the `de` block for
+      // why the upload affordance is an honest placeholder, not a fake scan button.
+      belege: {
+        appbarTitle: 'Receipts',
+        loading: 'Loading your receipts …',
+        loadError: {
+          heading: "That didn't work.",
+          message: "Your receipts couldn't be loaded. Check your connection and try again.",
+          retry: 'Try again',
+        },
+        offen_one: '{{count}} open',
+        offen_other: '{{count}} open',
+        empty: {
+          heading: 'No receipts yet.',
+          message: 'Throw receipts in all year round — they land here and wait for the right tax year.',
+        },
+        scanFolgt: {
+          heading: 'Throw everything in — we sort it',
+          body: 'Scanning and photographing receipts is still to come. Once it is here, your receipts land in this inbox and sort themselves into the right tax year.',
+        },
+        zuordnung: {
+          ungebunden: 'Unassigned',
+          vorgeschlagen: 'Suggestion: {{jahr}}',
+          zugeordnet: 'Assigned: {{jahr}}',
+          regelZahlungsdatum: 'Rule: payment date',
+          regelBelegdatum: 'Rule: invoice date',
+          confirm: 'Assign to {{jahr}}',
+          otherYear: 'Different year',
+          otherYearLabel: 'Tax year',
+          otherYearConfirm: 'Assign to this year',
+          otherYearCancel: 'Cancel',
+          yearInvalid: 'Please enter a four-digit year.',
+          konflikt: {
+            heading: 'Two years for this receipt — you decide.',
+            body: 'Assigned: {{zugeordnet}} · Suggestion: {{vorschlag}}. Until resolved, this receipt does not count.',
+            resolve: 'Adopt suggestion {{jahr}}',
+            keep: 'Keep {{jahr}}',
+          },
+        },
+        art: {
+          generic: 'Receipt',
+          lohnausweis: 'Salary statement',
+          quellensteuer: 'Withholding tax',
+          pensionskasse: 'Pension fund',
+          saeule3a: 'Pillar 3a',
+          krankenkasse: 'Health insurance',
+          familienzulage: 'Family allowance',
+          sonstiges: 'Other',
+        },
+        datum: {
+          belegdatum: 'Invoice date',
+          zahlungsdatum: 'Payment date',
+        },
+      },
+    },
       grenzgaenger: {
         back: 'Back',
         weiter: 'Continue',
@@ -1221,7 +1328,6 @@ export const appResources = {
           done: 'Done',
         },
       },
-    },
   },
 } as const
 

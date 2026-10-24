@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { isBelegart } from '@steuereule/core'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
-import type { BelegRecord, BelegRepository, CreateBelegData } from './beleg.repository.js'
+import type { BelegRecord, BelegRepository, CreateBelegData, SetZuordnungData } from './beleg.repository.js'
 
 /** A Date → ISO yyyy-mm-dd, dropping the time-of-day Prisma's TIMESTAMP(3) also stores. */
 function toIsoDate(value: Date): string {
@@ -17,6 +17,7 @@ function toRecord(row: {
   belegdatum: Date | null
   zahlungsdatum: Date | null
   steuerjahr: number | null
+  vorschlagVerworfen: boolean
   createdAt: Date
   updatedAt: Date
 }): BelegRecord {
@@ -31,6 +32,7 @@ function toRecord(row: {
     ...(row.belegdatum !== null ? { belegdatum: toIsoDate(row.belegdatum) } : {}),
     ...(row.zahlungsdatum !== null ? { zahlungsdatum: toIsoDate(row.zahlungsdatum) } : {}),
     steuerjahr: row.steuerjahr,
+    vorschlagVerworfen: row.vorschlagVerworfen,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   }
@@ -78,12 +80,15 @@ export class PrismaBelegRepository implements BelegRepository {
     return toRecord(row)
   }
 
-  async setSteuerjahr(userId: string, id: string, steuerjahr: number): Promise<BelegRecord | null> {
+  async setZuordnung(userId: string, id: string, data: SetZuordnungData): Promise<BelegRecord | null> {
     const row = await this.prisma.beleg.findFirst({ where: { id, userId } })
     if (row === null) return null
 
     const [updated] = await this.prisma.$transaction([
-      this.prisma.beleg.update({ where: { id }, data: { steuerjahr } }),
+      this.prisma.beleg.update({
+        where: { id },
+        data: { steuerjahr: data.steuerjahr, vorschlagVerworfen: data.vorschlagVerworfen },
+      }),
       this.prisma.taxDataAccessLog.create({
         data: { userId, action: 'WRITE', resource: 'beleg' },
       }),

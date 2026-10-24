@@ -14,6 +14,7 @@ import {
   getDeviceControllerRequestCodeMockHandler,
   getInterviewControllerGetInterviewMockHandler,
   getLstbControllerGetLstbMockHandler,
+  getBelegControllerListMockHandler,
   getChLohnausweisControllerGetMockHandler,
   getChLohnausweisControllerSetFeldMockHandler,
   getChLohnausweisControllerSetWechselkursMockHandler,
@@ -82,7 +83,6 @@ export const EMPTY_LSTB_RESPONSE: LstbResponseDto = {
  * Default `GET .../ch-lohnausweis` answer (REQ-021, ticket 16): a brand-new tax year with every
  * CHF field `offen`, no Wechselkurs and no derived status/fold — matching the real API's honest
  * empty-mask shape, pinned (not the generated faker) for the same reason as `EMPTY_LSTB_RESPONSE`.
- * Tests that need a mid-mask re-entry or a folded result override with `server.use(...)`.
  */
 export const EMPTY_CH_LOHNAUSWEIS_RESPONSE: ChLohnausweisResponseDto = {
   felder: LOHNAUSWEIS_FELDER.filter((f) => f.art === 'chf-betrag').map((f) => ({ id: f.id, ziffer: f.ziffer, kind: 'offen' as const })),
@@ -107,9 +107,7 @@ export const server = setupServer(
     HttpResponse.json(EMPTY_LSTB_RESPONSE, { status: 200 }),
   ),
   // REQ-021 (ticket 16) — the CH-Lohnausweis guided mask + fold: empty `offen` mask by default,
-  // same "fresh tax year" honesty as the interview/LStB defaults. The PUT defaults to a generic
-  // 200 (the response body is only ever asserted by tests that override it); tests proving the
-  // fold/status override with `server.use(...)`.
+  // same "fresh tax year" honesty as the interview/LStB defaults.
   getChLohnausweisControllerGetMockHandler(EMPTY_CH_LOHNAUSWEIS_RESPONSE),
   getChLohnausweisControllerSetFeldMockHandler(),
   getChLohnausweisControllerSetWechselkursMockHandler(),
@@ -126,6 +124,11 @@ export const server = setupServer(
   // tests that merely pass through Cockpit don't each have to stub it; CockpitScreen's own
   // suite overrides it with real figures where the numbers are the point.
   getCockpitControllerGetCockpitSummaryMockHandler(null),
+  // Ticket 10 (Slice 1) — the Beleg-Posteingang: a fresh guest genuinely has no Belege yet,
+  // so the default inbox is the honest empty list. Present by default so shell-level tests
+  // that pass through the Belege tab don't each have to stub it; BelegeScreen's own suite
+  // overrides it with real Belege where the Zuordnung states are the point.
+  getBelegControllerListMockHandler([]),
   getDeviceControllerRequestCodeMockHandler(DEVICE_CODE_RESPONSE),
   // Task 6's polling default — "still pending" (RFC 8628 `authorization_pending`, HTTP 400,
   // the exact shape `translateDeviceApiError` relays), not the generated mock's 200 `AckResponseDto`:

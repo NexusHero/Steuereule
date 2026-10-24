@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ordneZu, steuerjahrVorschlag, zuordnungAusDaten, type BelegDaten } from './beleg'
+import { ordneZu, steuerjahrVorschlag, verwerfeVorschlag, zuordnungAusDaten, type BelegDaten } from './beleg'
 
 // ADR-007/008 — the receipt inbox. The load-bearing properties: (1) a Beleg lands unbound,
 // (2) the year suggestion prefers the payment date over the invoice date (§ 11 EStG
@@ -12,6 +12,7 @@ function beleg(overrides: Partial<BelegDaten> = {}): BelegDaten {
     userId: 'person-1',
     dateiname: 'miete-januar.pdf',
     steuerjahr: null,
+    vorschlagVerworfen: false,
     ...overrides,
   }
 }
@@ -66,6 +67,13 @@ describe('zuordnungAusDaten — the derived state', () => {
       vorschlag: { steuerjahr: 2026, herkunft: 'zahlungsdatum' },
     })
   })
+
+  it('a dismissed suggestion resolves the conflict to zugeordnet on the user’s own year (ADR-008 "bei meinem Jahr bleiben")', () => {
+    const daten = beleg({ zahlungsdatum: '2026-01-15', steuerjahr: 2025, vorschlagVerworfen: true })
+    expect(zuordnungAusDaten(daten)).toEqual({ kind: 'zugeordnet', steuerjahr: 2025 })
+    // The contradicting dates are untouched — nothing was silently overwritten.
+    expect(daten.zahlungsdatum).toBe('2026-01-15')
+  })
 })
 
 describe('ordneZu — the one assignment operation (tap or manual), conflict is derived, never silent', () => {
@@ -95,5 +103,29 @@ describe('ordneZu — the one assignment operation (tap or manual), conflict is 
 
   it('rejects a non-integer year', () => {
     expect(() => ordneZu(beleg(), 2026.5)).toThrow(RangeError)
+  })
+
+  it('a fresh assignment clears a prior dismissal, re-opening the decision', () => {
+    const dismissed = beleg({ zahlungsdatum: '2026-01-15', steuerjahr: 2025, vorschlagVerworfen: true })
+    expect(zuordnungAusDaten(dismissed)).toEqual({ kind: 'zugeordnet', steuerjahr: 2025 })
+    // Re-assign to a different year → the dismissal is cleared and the conflict re-derives.
+    const reassigned = ordneZu(dismissed, 2024)
+    expect(zuordnungAusDaten(reassigned)).toEqual({
+      kind: 'konflikt',
+      zugeordnet: 2024,
+      vorschlag: { steuerjahr: 2026, herkunft: 'zahlungsdatum' },
+    })
+  })
+})
+
+describe('verwerfeVorschlag — the "bei meinem Jahr bleiben" resolution (ADR-008)', () => {
+  it('persists the dismissal and keeps the confirmed year, resolving the conflict', () => {
+    const daten = beleg({ zahlungsdatum: '2026-01-15', steuerjahr: 2025 })
+    const verworfen = verwerfeVorschlag(daten)
+    expect(verworfen.vorschlagVerworfen).toBe(true)
+    expect(verworfen.steuerjahr).toBe(2025)
+    expect(zuordnungAusDaten(verworfen)).toEqual({ kind: 'zugeordnet', steuerjahr: 2025 })
+    // The facts that caused the conflict are still there — nothing was silently discarded.
+    expect(verworfen.zahlungsdatum).toBe('2026-01-15')
   })
 })

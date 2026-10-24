@@ -92,6 +92,15 @@ describe('BelegService', () => {
       })
     })
 
+    it('dismissing a contradicting suggestion (vorschlagVerworfen) resolves the conflict to zugeordnet (ADR-008 "bei meinem Jahr bleiben")', async () => {
+      const created = await service.create(USER_ID, { dateiname: 'a.pdf', zahlungsdatum: '2026-01-15' })
+      const conflict = await service.setZuordnung(USER_ID, created.id, { steuerjahr: 2025 })
+      expect(conflict.zuordnung).toMatchObject({ kind: 'konflikt', steuerjahr: 2025 })
+
+      const resolved = await service.setZuordnung(USER_ID, created.id, { steuerjahr: 2025, vorschlagVerworfen: true })
+      expect(resolved.zuordnung).toEqual({ kind: 'zugeordnet', steuerjahr: 2025 })
+    })
+
     it('a foreign or missing id throws NotFound, never leaks existence', async () => {
       await expect(service.setZuordnung(USER_ID, 'not-mine', { steuerjahr: 2026 })).rejects.toThrow(/does not exist/)
     })
