@@ -256,7 +256,21 @@ function wertAusDto(feld: Parameters<BescheidRepository['setFeld']>[2], dto: Put
   return serialisiereBescheidFeld(feld, dto.wert)
 }
 
-/** Today's ISO yyyy-mm-dd (UTC) — the Fristen-Countdown's reference point, recomputed per read. */
-function heuteIso(): string {
-  return new Date().toISOString().slice(0, 10)
+/** Today's German calendar day (Europe/Berlin) as ISO yyyy-mm-dd — the Fristen-Countdown's
+ *  reference point, recomputed per read. NOT UTC: between 00:00 and 02:00 CEST (01:00 CET) the
+ *  UTC date lags Berlin by one day, so a UTC reference would show "0 Tage" on the very day the
+ *  § 355 AO Einspruchsfrist has already run out (§ 355 runs on German calendar days — the same
+ *  honesty as the § 108 Abs. 3-AO note in the core). `jetzt` is injectable for the
+ *  midnight-boundary test. */
+export function heuteIso(jetzt: Date = new Date()): string {
+  const teile = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Europe/Berlin',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(jetzt)
+  const jahr = teile.find((p) => p.type === 'year')!.value
+  const monat = teile.find((p) => p.type === 'month')!.value
+  const tag = teile.find((p) => p.type === 'day')!.value
+  return `${jahr}-${monat}-${tag}`
 }

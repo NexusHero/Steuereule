@@ -62,6 +62,10 @@ export function naechsteZustaende(von: SteuerjahrStatus): readonly SteuerjahrSta
 // WITHIN this phase (the Finanzamt's response to the Einspruch is a later slice, not modelled).
 export type BescheidStatus = 'eingegangen' | 'geprüft' | 'einspruch-eingelegt'
 
+// No self-loops: each entry is a FORWARD progression only — `eingegangen → eingegangen`,
+// `geprüft → geprüft` and `einspruch-eingelegt → einspruch-eingelegt` are all forbidden (the
+// absence from this map IS the decision, pinned by steuerjahr-status.test.ts). A move is always
+// an explicit, server-validated step; re-entering the same sub-state is never a legal write.
 const BESCHEID_UEBERGAENGE: Readonly<Record<BescheidStatus, readonly BescheidStatus[]>> = {
   eingegangen: ['geprüft'],
   geprüft: ['einspruch-eingelegt'],

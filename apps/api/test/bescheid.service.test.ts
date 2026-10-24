@@ -4,7 +4,7 @@
 // bescheid.integration.test.ts and the acceptance tier (req-023-bescheidpruefung.test.ts).
 import { beforeEach, describe, expect, it } from 'vitest'
 import { AuditService } from '../src/audit/audit.service.js'
-import { BescheidService } from '../src/bescheid/bescheid.service.js'
+import { BescheidService, heuteIso } from '../src/bescheid/bescheid.service.js'
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
 import { FakeBescheidRepository } from './fakes/fake-bescheid.repository.js'
 import { FakeChLohnausweisRepository } from './fakes/fake-ch-lohnausweis.repository.js'
@@ -131,5 +131,18 @@ describe('BescheidService', () => {
       const mine = await service.getState(USER_ID, JAHR)
       expect(mine.felder[0]).toEqual({ id: 'einnahmen', kind: 'offen' })
     })
+  })
+})
+
+describe('heuteIso — the Fristen-Countdown reference day (Europe/Berlin, not UTC)', () => {
+  it('returns the Berlin calendar day for a noon instant', () => {
+    // 12:00 UTC = 13:00 Berlin — the same calendar day.
+    expect(heuteIso(new Date('2026-01-01T12:00:00Z'))).toBe('2026-01-01')
+  })
+
+  it('rolls into the Berlin calendar day across the UTC midnight boundary', () => {
+    // 23:30 UTC on 01.01 is already 00:30 on 02.01 in Berlin (CET, UTC+1). A UTC reference day
+    // would still say 01.01 and under-count the Einspruchsfrist by one day.
+    expect(heuteIso(new Date('2026-01-01T23:30:00Z'))).toBe('2026-01-02')
   })
 })

@@ -116,4 +116,12 @@ describe('the bescheid phase sub-state machine (ADR-009, ticket 10.3)', () => {
     expect(istBescheidUebergangErlaubt('einspruch-eingelegt', 'geprüft')).toBe(false)
     expect(istBescheidUebergangErlaubt('einspruch-eingelegt', 'eingegangen')).toBe(false)
   })
+
+  it.each([
+    ['eingegangen', 'eingegangen'],
+    ['geprüft', 'geprüft'],
+    ['einspruch-eingelegt', 'einspruch-eingelegt'],
+  ] as const)('%s → %s (Selbstschleife) is forbidden — a state never re-enters itself', (von, nach) => {
+    expect(istBescheidUebergangErlaubt(von, nach)).toBe(false)
+  })
 })
