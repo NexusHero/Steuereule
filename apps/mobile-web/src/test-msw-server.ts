@@ -18,9 +18,10 @@ import {
   getChLohnausweisControllerGetMockHandler,
   getChLohnausweisControllerSetFeldMockHandler,
   getChLohnausweisControllerSetWechselkursMockHandler,
+  getRenteControllerGetMockHandler,
 } from '@steuereule/api-client/msw'
 import { LOHNAUSWEIS_FELDER } from '@steuereule/core'
-import type { ProfileResponseDto, AuthCapabilitiesDto, DeviceCodeResponseDto, InterviewStateDto, LstbResponseDto, ChLohnausweisResponseDto } from '@steuereule/api-client'
+import type { ProfileResponseDto, AuthCapabilitiesDto, DeviceCodeResponseDto, InterviewStateDto, LstbResponseDto, ChLohnausweisResponseDto, RenteResponseDto } from '@steuereule/api-client'
 
 export const EMPTY_PROFILE_RESPONSE: ProfileResponseDto = {
   firstName: null,
@@ -93,6 +94,21 @@ export const EMPTY_CH_LOHNAUSWEIS_RESPONSE: ChLohnausweisResponseDto = {
   stand: null,
 }
 
+/**
+ * Default `GET .../rente` answer (REQ-022, ticket 10.4): a brand-new tax year with no Rentenart
+ * chosen, every field `offen`, no taxable posten and an `offen` fold — matching the real API's
+ * honest empty-mask shape, pinned (not the generated faker) for the same reason as
+ * `EMPTY_LSTB_RESPONSE`.
+ */
+export const EMPTY_RENTE_RESPONSE: RenteResponseDto = {
+  art: null,
+  jahresbetrag: { kind: 'offen' },
+  rentenbeginnJahr: { kind: 'offen' },
+  alterBeiRentenbeginn: { kind: 'offen' },
+  posten: [],
+  stand: { kind: 'offen', einnahmen: 0, vorsorgeaufwand: 0, anrechnung: 0, offenePosten: 1, konflikte: 0, gegated: [] },
+}
+
 export const server = setupServer(
   getProfileControllerGetProfileMockHandler(EMPTY_PROFILE_RESPONSE),
   getProfileControllerPutProfileMockHandler(),
@@ -111,6 +127,12 @@ export const server = setupServer(
   getChLohnausweisControllerGetMockHandler(EMPTY_CH_LOHNAUSWEIS_RESPONSE),
   getChLohnausweisControllerSetFeldMockHandler(),
   getChLohnausweisControllerSetWechselkursMockHandler(),
+  // REQ-022 (ticket 10.4) — the Rentner guided mask: empty `offen` mask by default, same
+  // "fresh tax year" honesty as the LStB/CH defaults. The PUTs default to a generic 200 (the
+  // response body is never asserted by a test that doesn't override it).
+  getRenteControllerGetMockHandler(EMPTY_RENTE_RESPONSE),
+  http.put('*/v1/steuerjahre/:jahr/rente/art', () => HttpResponse.json(EMPTY_RENTE_RESPONSE, { status: 200 })),
+  http.put('*/v1/steuerjahre/:jahr/rente/:feld', () => HttpResponse.json(EMPTY_RENTE_RESPONSE, { status: 200 })),
   // Default `POST .../interview/antworten` answer: a generic 200 — InterviewScreen renders the
   // next step from the local graph, not from this response body (#318 task 2's own "the graph
   // stays local" brief), so the exact `nextStep`/`openItems` values here are never asserted on

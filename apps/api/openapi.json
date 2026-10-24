@@ -527,6 +527,141 @@
         ]
       }
     },
+    "/v1/steuerjahre/{jahr}/rente": {
+      "get": {
+        "operationId": "RenteController_get",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr) — validated to a sensible window (ParseSteuerjahrPipe, same as Cockpit).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The caller’s Rentner mask + fold for this tax year — re-entry.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RenteResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "rente"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/rente/art": {
+      "put": {
+        "operationId": "RenteController_setRentenart",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutRentenartDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated mask and its derived fold.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RenteResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "rente"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/rente/{feld}": {
+      "put": {
+        "operationId": "RenteController_setFeld",
+        "parameters": [
+          {
+            "name": "feld",
+            "required": true,
+            "in": "path",
+            "description": "One of jahresbetrag | rentenbeginnJahr | alterBeiRentenbeginn (ParseRenteFeldPipe).",
+            "schema": {
+              "example": "jahresbetrag",
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr) — validated to a sensible window (ParseSteuerjahrPipe, same as Cockpit).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutRenteFeldDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated mask and its derived fold.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RenteResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "rente"
+        ]
+      }
+    },
     "/v1/belege": {
       "get": {
         "operationId": "BelegController_list",
@@ -1613,6 +1748,185 @@
           "modus"
         ]
       },
+      "RenteFeldDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "erfasst",
+              "offen",
+              "unklar"
+            ],
+            "description": "The field’s capture state."
+          },
+          "wert": {
+            "type": "number",
+            "example": 20000,
+            "description": "The value — present only when kind === \"erfasst\" (validated via @steuereule/core)."
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "RentePostenDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "rente",
+            "description": "The stable posten id."
+          },
+          "betrag": {
+            "type": "number",
+            "example": 16000,
+            "description": "The taxable share (whole euros)."
+          },
+          "herkunft": {
+            "type": "string",
+            "description": "The § 22 Nr. 1 Satz 3 EStG rule citation (Herkunft)."
+          }
+        },
+        "required": [
+          "id",
+          "betrag",
+          "herkunft"
+        ]
+      },
+      "RenteStandDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "bestimmt",
+              "offen"
+            ],
+            "description": "Determined, or open (naming what blocks)."
+          },
+          "einnahmen": {
+            "type": "number",
+            "description": "Sum of Einnahme Posten (whole euros)."
+          },
+          "vorsorgeaufwand": {
+            "type": "number",
+            "description": "Sum of Vorsorgeaufwand Posten (whole euros)."
+          },
+          "anrechnung": {
+            "type": "number",
+            "description": "Sum of Anrechnung Posten (whole euros)."
+          },
+          "offenePosten": {
+            "type": "number",
+            "description": "Required-but-empty line items (only when offen)."
+          },
+          "konflikte": {
+            "type": "number",
+            "description": "Open conflicts (only when offen)."
+          },
+          "gegated": {
+            "description": "Gated Einkunftsarten (only when offen).",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "kind",
+          "einnahmen",
+          "vorsorgeaufwand",
+          "anrechnung"
+        ]
+      },
+      "RenteResponseDto": {
+        "type": "object",
+        "properties": {
+          "art": {
+            "type": "string",
+            "enum": [
+              "GesetzlicheRente",
+              "Betriebsrente",
+              "PrivateRentenversicherung",
+              "WitwenWaisenrente",
+              "AuslaendischeRente"
+            ],
+            "nullable": true,
+            "description": "The chosen Rentenart (product ADR-036 §3), null when not yet chosen."
+          },
+          "jahresbetrag": {
+            "$ref": "#/components/schemas/RenteFeldDto"
+          },
+          "rentenbeginnJahr": {
+            "$ref": "#/components/schemas/RenteFeldDto"
+          },
+          "alterBeiRentenbeginn": {
+            "$ref": "#/components/schemas/RenteFeldDto"
+          },
+          "posten": {
+            "description": "The taxable posten (empty while not determinable).",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RentePostenDto"
+            }
+          },
+          "stand": {
+            "$ref": "#/components/schemas/RenteStandDto"
+          }
+        },
+        "required": [
+          "art",
+          "jahresbetrag",
+          "rentenbeginnJahr",
+          "alterBeiRentenbeginn",
+          "posten",
+          "stand"
+        ]
+      },
+      "PutRentenartDto": {
+        "type": "object",
+        "properties": {
+          "art": {
+            "type": "string",
+            "enum": [
+              "GesetzlicheRente",
+              "Betriebsrente",
+              "PrivateRentenversicherung",
+              "WitwenWaisenrente",
+              "AuslaendischeRente"
+            ],
+            "nullable": true,
+            "example": "GesetzlicheRente",
+            "description": "One of the five Rentenarten (product ADR-036 §3), or null to clear."
+          }
+        },
+        "required": [
+          "art"
+        ]
+      },
+      "PutRenteFeldDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "erfasst",
+              "offen",
+              "unklar"
+            ],
+            "description": "The field’s capture state."
+          },
+          "wert": {
+            "type": "number",
+            "example": 20000,
+            "description": "The value — present only when kind === \"erfasst\" (validated via @steuereule/core)."
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
       "ZuordnungDto": {
         "type": "object",
         "properties": {
@@ -1713,6 +2027,7 @@
               "Saeule3a",
               "Krankenkasse",
               "Familienzulage",
+              "Rentenbezugsmitteilung",
               "Sonstiges"
             ],
             "example": "Lohnausweis",

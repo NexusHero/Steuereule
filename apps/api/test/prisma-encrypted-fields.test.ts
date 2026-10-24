@@ -85,6 +85,9 @@ const EXPECTED_ENCRYPTED_FIELDS: ExpectedEncryptedField[] = [
   { model: 'ChLohnausweis', field: 'bemerkungen', encrypt: true, strictDecryption: true },
   { model: 'ChLohnausweis', field: 'saeule3aChf', encrypt: true, strictDecryption: true },
   { model: 'ChLohnausweis', field: 'krankenkasseChf', encrypt: true, strictDecryption: true },
+  { model: 'Rente', field: 'jahresbetrag', encrypt: true, strictDecryption: true },
+  { model: 'Rente', field: 'rentenbeginnJahr', encrypt: true, strictDecryption: true },
+  { model: 'Rente', field: 'alterBeiRentenbeginn', encrypt: true, strictDecryption: true },
 ].sort(byModelField)
 
 // prisma-field-encryption's hash annotation (`@encryption:hash(field)`, dist/dmmf.js:79)
@@ -114,6 +117,7 @@ const EXPECTED_CURSORS: Record<string, string> = {
   Beleg: 'id',
   Lstb: 'id',
   ChLohnausweis: 'id',
+  Rente: 'id',
 }
 
 describe('encrypted/hashed field set (#325) — derived from Prisma.dmmf, not comment text', () => {

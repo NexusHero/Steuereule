@@ -36,6 +36,7 @@ const ART_LABEL_KEYS: Readonly<Record<string, string>> = {
   Saeule3a: 'belege.art.saeule3a',
   Krankenkasse: 'belege.art.krankenkasse',
   Familienzulage: 'belege.art.familienzulage',
+  Rentenbezugsmitteilung: 'belege.art.rentenbezugsmitteilung',
   Sonstiges: 'belege.art.sonstiges',
 }
 

@@ -186,4 +186,26 @@ export default defineConfig({
       },
     },
   },
+  // REQ-022 (ticket 10.4) — the Rentner guided mask + fold: GET the re-entry state, PUT the
+  // Rentenart choice and PUT one field (jahresbetrag / rentenbeginnJahr / alterBeiRentenbeginn).
+  // Same `rente` OpenAPI tag all three endpoints share.
+  rente: {
+    input: { target: '../../apps/api/openapi.json', filters: { tags: ['rente'] } },
+    output: {
+      target: './src/generated/rente.ts',
+      mode: 'split',
+      client: 'react-query',
+      httpClient: 'fetch',
+      mock: true,
+      override: {
+        mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        // `RenteFeldDto.wert`, `RentePostenDto`/`RenteStandDto` optional fields and the nullable
+        // `art` are genuinely absent on some responses, so orval's default faker would emit
+        // `arrayElement([value, undefined])` and fail under `exactOptionalPropertyTypes: true`
+        // (TS2375). `mock.required: true` keeps every mocked property populated — same override
+        // the interview/lstb/ch-lohnausweis targets carry.
+        mock: { required: true },
+      },
+    },
+  },
 })

@@ -17,6 +17,7 @@ export type Belegart =
   | 'Saeule3a' // Nachweis gebundene Selbstvorsorge (Säule 3a, Formular 21 EDP)
   | 'Krankenkasse' // CH-Krankenkassen-Nachweis (Basisvorsorge)
   | 'Familienzulage' // Familienzulagen-Nachweis (Kinderzulage)
+  | 'Rentenbezugsmitteilung' // Rentenbezugsmitteilung (product ADR-034 — the Rentner vertical's Beleg)
   | 'Sonstiges' // explicitly classified generic receipt — NOT `null`, which is "not yet classified"
 
 /** Canonical order for display — `BELEGARTEN` returned in this order, a deterministic array. */
@@ -27,6 +28,7 @@ export const BELEGARTEN: readonly Belegart[] = [
   'Saeule3a',
   'Krankenkasse',
   'Familienzulage',
+  'Rentenbezugsmitteilung',
   'Sonstiges',
 ]
 
