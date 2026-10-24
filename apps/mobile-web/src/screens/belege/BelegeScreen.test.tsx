@@ -159,7 +159,7 @@ describe('BelegeScreen', () => {
     fireEvent.click(screen.getByText('Zuordnen zu 2026'))
 
     await screen.findByText('Zugeordnet: 2026')
-    expect(posted).toEqual({ id: 'b-vorschlag', body: { steuerjahr: 2026 } })
+    expect(posted).toEqual({ id: 'b-vorschlag', body: { steuerjahr: 2026, vorschlagVerworfen: false } })
   })
 
   it('shows a CONFLICT (both years) when a different year is assigned, never a silent overwrite (ADR-008)', async () => {
@@ -185,7 +185,7 @@ describe('BelegeScreen', () => {
 
     await screen.findByText('Zwei Jahre für diesen Beleg — du entscheidest.')
     expect(screen.getByText(/Zugeordnet: 2025 · Vorschlag: 2026/)).toBeTruthy()
-    expect(posted).toEqual({ steuerjahr: 2025 })
+    expect(posted).toEqual({ steuerjahr: 2025, vorschlagVerworfen: false })
   })
 
   it('rejects a non-four-digit year in the manual override instead of POSTing it', async () => {
@@ -224,7 +224,28 @@ describe('BelegeScreen', () => {
     await screen.findByText('Zwei Jahre für diesen Beleg — du entscheidest.')
     fireEvent.click(screen.getByText('Vorschlag 2026 übernehmen'))
     await screen.findByText('Zugeordnet: 2026')
-    expect(posted).toEqual({ steuerjahr: 2026 })
+    expect(posted).toEqual({ steuerjahr: 2026, vorschlagVerworfen: false })
+  })
+
+  it('resolves a conflict by keeping the user’s own year (ADR-008 "bei meinem Jahr bleiben" — no dead end)', async () => {
+    let list: BelegResponseDto[] = [KONFLIKT]
+    let posted: unknown = null
+    server.use(
+      http.get(BELEGE_URL, () => HttpResponse.json(list, { status: 200 })),
+      http.post('*/v1/belege/:id/zuordnung', async ({ request }) => {
+        posted = await request.json()
+        // The API's real derived state: dismissing the suggestion resolves to zugeordnet on the
+        // user's own confirmed year (2025), the contradicting suggestion no longer a conflict.
+        list = [{ ...KONFLIKT, zuordnung: { kind: 'zugeordnet', steuerjahr: 2025 } }]
+        return HttpResponse.json(list[0], { status: 200 })
+      }),
+    )
+    renderBelege()
+
+    await screen.findByText('Zwei Jahre für diesen Beleg — du entscheidest.')
+    fireEvent.click(screen.getByText('Bei 2025 bleiben'))
+    await screen.findByText('Zugeordnet: 2025')
+    expect(posted).toEqual({ steuerjahr: 2025, vorschlagVerworfen: true })
   })
 
   it('shows a retryable error state on a genuine network failure, and recovers on retry', async () => {
@@ -252,6 +273,7 @@ describe('BelegeScreen', () => {
     expect(screen.getByText('Suggestion: 2026')).toBeTruthy()
     expect(screen.getByText('Two years for this receipt — you decide.')).toBeTruthy()
     expect(screen.getByText('Adopt suggestion 2026')).toBeTruthy()
+    expect(screen.getByText('Keep 2025')).toBeTruthy()
   })
 
   it('refetches the inbox after a successful assignment so the derived state never goes stale', async () => {

@@ -135,6 +135,31 @@ describe('POST/GET /v1/belege — real Postgres (ADR-007/008)', () => {
     })
   })
 
+  it('dismissing a contradicting suggestion resolves the conflict to zugeordnet on the user’s own year (ADR-008 "bei meinem Jahr bleiben")', async () => {
+    const first = await app.inject({ method: 'GET', url: '/v1/belege' })
+    const cookie = extractSessionCookie(first.headers['set-cookie'])!
+    const created = await createBeleg(cookie, { dateiname: 'a.pdf', zahlungsdatum: '2026-01-15' })
+    const id = created.body.id as string
+
+    const conflict = await app.inject({
+      method: 'POST',
+      url: `/v1/belege/${id}/zuordnung`,
+      headers: { cookie },
+      payload: { steuerjahr: 2025 },
+    })
+    expect(conflict.json().zuordnung).toMatchObject({ kind: 'konflikt', steuerjahr: 2025, vorschlagsJahr: 2026 })
+
+    // "bei meinem Jahr bleiben": keep 2025, dismiss the 2026 suggestion → zugeordnet, no dead end.
+    const resolved = await app.inject({
+      method: 'POST',
+      url: `/v1/belege/${id}/zuordnung`,
+      headers: { cookie },
+      payload: { steuerjahr: 2025, vorschlagVerworfen: true },
+    })
+    expect(resolved.statusCode).toBe(200)
+    expect(resolved.json().zuordnung).toEqual({ kind: 'zugeordnet', steuerjahr: 2025 })
+  })
+
   it('cross-user isolation: user B never sees or reassigns user A’s Beleg', async () => {
     const first = await app.inject({ method: 'GET', url: '/v1/belege' })
     const cookieA = extractSessionCookie(first.headers['set-cookie'])!

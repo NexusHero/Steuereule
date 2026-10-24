@@ -632,6 +632,7 @@ export const appResources = {
             heading: 'Zwei Jahre für diesen Beleg — du entscheidest.',
             body: 'Zugeordnet: {{zugeordnet}} · Vorschlag: {{vorschlag}}. Bis das geklärt ist, zählt dieser Beleg nicht.',
             resolve: 'Vorschlag {{jahr}} übernehmen',
+            keep: 'Bei {{jahr}} bleiben',
           },
         },
         art: {
@@ -1166,6 +1167,7 @@ export const appResources = {
             heading: 'Two years for this receipt — you decide.',
             body: 'Assigned: {{zugeordnet}} · Suggestion: {{vorschlag}}. Until resolved, this receipt does not count.',
             resolve: 'Adopt suggestion {{jahr}}',
+            keep: 'Keep {{jahr}}',
           },
         },
         art: {

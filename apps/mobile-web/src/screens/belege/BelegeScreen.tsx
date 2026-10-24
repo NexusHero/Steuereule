@@ -72,11 +72,13 @@ export function BelegeScreen() {
   const offen = belege.filter((b) => b.zuordnung.kind !== 'zugeordnet').length
 
   // The one assignment operation (ADR-007 "ein Tap bestätigt", or a manual year that may
-  // contradict the suggestion → the server's derived state reports `konflikt`, ADR-008). On
-  // success the list is refetched so the derived state never goes stale client-side.
-  function ordneZu(id: string, steuerjahr: number) {
+  // contradict the suggestion → the server's derived state reports `konflikt`, ADR-008).
+  // `vorschlagVerworfen` is ADR-008's "bei meinem Jahr bleiben": persist the dismissal of a
+  // contradicting suggestion, keeping `steuerjahr`. On success the list is refetched so the
+  // derived state never goes stale client-side.
+  function ordneZu(id: string, steuerjahr: number, vorschlagVerworfen = false) {
     setZuordnung.mutate(
-      { id, data: { steuerjahr } },
+      { id, data: { steuerjahr, vorschlagVerworfen } },
       {
         onSuccess: (response) => {
           if (response.status === 200) {
@@ -140,7 +142,7 @@ function Empty() {
 
 interface BelegCardProps {
   readonly beleg: BelegResponseDto
-  readonly onZuordnen: (id: string, steuerjahr: number) => void
+  readonly onZuordnen: (id: string, steuerjahr: number, vorschlagVerworfen?: boolean) => void
 }
 
 function BelegCard({ beleg, onZuordnen }: BelegCardProps) {
@@ -202,16 +204,23 @@ function ZuordnungSection({ beleg, onZuordnen }: BelegCardProps) {
     )
   }
   // konflikt — ADR-008: beide Jahre sichtbar, Amber statt Rot (Konflikt ist normal, kein Fehler),
-  // Auflösung nur über eine explizite Wahl.
+  // Auflösung nur über eine explizite Wahl — und in BEIDE Richtungen, keine Sackgasse: entweder
+  // den Vorschlag übernehmen (`resolve`) oder beim eigenen Jahr bleiben und den Vorschlag
+  // verwerfen (`keep`, vorschlagVerworfen). Beide Pfade führen aus dem Konflikt-Zustand heraus.
   return (
     <View style={s.konfliktBox}>
       <Text style={s.konfliktHeading}>{tr('belege.zuordnung.konflikt.heading')}</Text>
       <Text style={s.konfliktBody}>
         {tr('belege.zuordnung.konflikt.body', { zugeordnet: z.steuerjahr, vorschlag: z.vorschlagsJahr })}
       </Text>
-      <Button variante="leise" onPress={() => onZuordnen(beleg.id, z.vorschlagsJahr ?? 0)}>
-        {tr('belege.zuordnung.konflikt.resolve', { jahr: z.vorschlagsJahr })}
-      </Button>
+      <View style={s.actionRow}>
+        <Button onPress={() => onZuordnen(beleg.id, z.vorschlagsJahr ?? 0)}>
+          {tr('belege.zuordnung.konflikt.resolve', { jahr: z.vorschlagsJahr })}
+        </Button>
+        <Button variante="leise" onPress={() => onZuordnen(beleg.id, z.steuerjahr ?? 0, true)}>
+          {tr('belege.zuordnung.konflikt.keep', { jahr: z.steuerjahr })}
+        </Button>
+      </View>
     </View>
   )
 }

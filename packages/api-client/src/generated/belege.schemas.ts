@@ -89,5 +89,7 @@ export interface CreateBelegDto {
 export interface SetZuordnungDto {
   /** The calendar year to confirm/assign. */
   steuerjahr: number;
+  /** ADR-008 "bei meinem Jahr bleiben": persist the dismissal of a contradicting date-derived suggestion, keeping `steuerjahr`. Omitted/false = a normal assignment. */
+  vorschlagVerworfen?: boolean;
 }
 

@@ -19,6 +19,19 @@ angefasst.
 10.2 … 10.8 ──► 10.9 (Eulen-Modus: braucht die Fakten, über die er räsoniert)
 ```
 
+Der Graph oben zeigt **nur Ticket→Ticket-Kanten**. Die geteilten **ADR-Promotion-Abhängigkeiten**
+sind echte Blocker und stehen deshalb als eigene Knoten (nicht nur als Prosa):
+
+```
+Draft-Promotionen (Robin-Entwürfe, `adr-check-ignore` — noch nicht in `docs/adr/`):
+  `0037` (Einkunftsarten + Steuerjahr-Modell)     ──► 10.4, 10.5, 10.6, 10.8
+  `0038` (`berechne`/`PostenKonflikt`/`ki-port`)   ──► 10.2, 10.3, 10.9 (Eulen-Port)
+  `0039` (Steuerjahr-Zustandsmaschine)             ──► 10.3, 10.7
+  `0040` (Beleg-Posteingang)                       ──► 10.1 (umgesetzt; Jahr-Konflikt-Semantik offen)
+Kern-Modul-Kante (Code, kein ADR — ADR-0034 ist promotet, das Modul nicht):
+  Tarif-Modul (`veranlagungsartenvergleich`/§ 32a) ──► 10.2 (nur auf `origin/kaan/321`, ungemerged)
+```
+
 - **10.1** ist die einzige Wurzel ohne In-Track-Dep (Beleg-API fertig, Screen unbestritten).
 - **15 (Cockpit/Kern)** ist die geteilte Abhängigkeit fast alles anderen: 10.2, 10.3, 10.4,
   10.5, 10.6, 10.7, 10.8 brauchen den deterministischen Posten-Kern (`berechne`/`tarif.ts`),

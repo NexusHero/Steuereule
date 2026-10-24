@@ -71,7 +71,10 @@ export class BelegService {
   }
 
   async setZuordnung(userId: string, id: string, dto: SetZuordnungDto): Promise<BelegResponseDto> {
-    const record = await this.repository.setSteuerjahr(userId, id, dto.steuerjahr)
+    const record = await this.repository.setZuordnung(userId, id, {
+      steuerjahr: dto.steuerjahr,
+      vorschlagVerworfen: dto.vorschlagVerworfen ?? false,
+    })
     if (record === null) {
       // Honest 404, never a 403: a missing/foreign id is indistinguishable from "not yours"
       // and must not leak the existence of another user's Beleg.
