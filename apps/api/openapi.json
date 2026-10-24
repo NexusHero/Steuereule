@@ -133,7 +133,8 @@
                 "minimal-gate",
                 "segment-2",
                 "lebenslagen",
-                "sonderausgaben"
+                "sonderausgaben",
+                "segment-ch"
               ],
               "type": "string"
             }
@@ -307,6 +308,222 @@
         },
         "tags": [
           "lstb"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/ch-lohnausweis": {
+      "get": {
+        "operationId": "ChLohnausweisController_get",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr) — validated to a sensible window (ParseSteuerjahrPipe, same as Cockpit).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The caller’s CH-Lohnausweis mask + fold for this tax year — re-entry.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChLohnausweisResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "ch-lohnausweis"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/ch-lohnausweis/{feld}": {
+      "put": {
+        "operationId": "ChLohnausweisController_setFeld",
+        "parameters": [
+          {
+            "name": "feld",
+            "required": true,
+            "in": "path",
+            "description": "One of the 14 CHF-betrag Lohnausweis fields (ParseLohnausweisFeldPipe).",
+            "schema": {
+              "example": "bruttolohn-total",
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr) — validated to a sensible window (ParseSteuerjahrPipe, same as Cockpit).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutLohnausweisFeldDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated mask and its derived fold.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChLohnausweisResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "ch-lohnausweis"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/ch-lohnausweis/bemerkungen": {
+      "put": {
+        "operationId": "ChLohnausweisController_setBemerkungen",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutBemerkungenDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated mask and its derived fold.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChLohnausweisResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "ch-lohnausweis"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/ch-lohnausweis/vorsorge": {
+      "put": {
+        "operationId": "ChLohnausweisController_setVorsorge",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutVorsorgeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated mask and its derived fold.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChLohnausweisResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "ch-lohnausweis"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/ch-lohnausweis/wechselkurs": {
+      "put": {
+        "operationId": "ChLohnausweisController_setWechselkurs",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutWechselkursDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated mask and its derived fold.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChLohnausweisResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "ch-lohnausweis"
         ]
       }
     },
@@ -1049,6 +1266,313 @@
           "lohnsteuer",
           "sozialversicherung",
           "zustand"
+        ]
+      },
+      "LohnausweisFeldDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The machine field id (LohnausweisFeldId)."
+          },
+          "ziffer": {
+            "type": "string",
+            "description": "The box number on the paper (1–15)."
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "erfasst",
+              "offen",
+              "unklar"
+            ],
+            "description": "The field’s capture state."
+          },
+          "wert": {
+            "type": "number",
+            "example": 84000,
+            "description": "The whole-CHF amount — present only when kind === \"erfasst\"."
+          }
+        },
+        "required": [
+          "id",
+          "ziffer",
+          "kind"
+        ]
+      },
+      "WechselkursDto": {
+        "type": "object",
+        "properties": {
+          "monat": {
+            "type": "string",
+            "example": "2026-01",
+            "description": "yyyy-mm the rate applies to."
+          },
+          "kurs": {
+            "type": "number",
+            "example": 0.9412,
+            "description": "EUR per 1 CHF, strictly positive."
+          },
+          "modus": {
+            "type": "string",
+            "enum": [
+              "amtlich",
+              "tatsaechlich"
+            ],
+            "description": "The rate mode (ADR-012)."
+          },
+          "belegId": {
+            "type": "string",
+            "description": "Beleg id — required iff modus === \"tatsaechlich\"."
+          }
+        },
+        "required": [
+          "monat",
+          "kurs",
+          "modus"
+        ]
+      },
+      "ChPostenDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Stable line-item id."
+          },
+          "art": {
+            "type": "string",
+            "enum": [
+              "Bruttolohn",
+              "Quellensteuer",
+              "Pensionskasse",
+              "Saeule3a",
+              "Krankenkasse"
+            ],
+            "description": "The CH line-item kind."
+          },
+          "ziffer": {
+            "type": "string",
+            "description": "The Lohnausweis Ziffer (when from the Lohnausweis)."
+          },
+          "betragChf": {
+            "type": "number",
+            "description": "CHF amount as entered (ADR-036: CHF führt)."
+          },
+          "betragEur": {
+            "type": "number",
+            "description": "EUR amount = chfNachEur(betragChf, kurs), rounded to cents."
+          },
+          "rolle": {
+            "type": "string",
+            "enum": [
+              "einnahme",
+              "vorsorgeaufwand",
+              "anrechnung"
+            ],
+            "description": "The fold bucket (Rolle)."
+          },
+          "wechselkurs": {
+            "description": "The Kurs the conversion was made with.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WechselkursDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "art",
+          "betragChf",
+          "betragEur",
+          "rolle",
+          "wechselkurs"
+        ]
+      },
+      "BerechnungsstandDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "bestimmt",
+              "offen"
+            ],
+            "description": "Determined, or open (naming what blocks)."
+          },
+          "einnahmen": {
+            "type": "number",
+            "description": "Sum of Einnahme Posten (whole euros)."
+          },
+          "vorsorgeaufwand": {
+            "type": "number",
+            "description": "Sum of Vorsorgeaufwand Posten (whole euros)."
+          },
+          "anrechnung": {
+            "type": "number",
+            "description": "Sum of Anrechnung Posten (whole euros)."
+          },
+          "offenePosten": {
+            "type": "number",
+            "description": "Required-but-empty line items (only when offen)."
+          },
+          "konflikte": {
+            "type": "number",
+            "description": "Open conflicts (only when offen)."
+          },
+          "gegated": {
+            "description": "Gated Einkunftsarten (only when offen).",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "kind",
+          "einnahmen",
+          "vorsorgeaufwand",
+          "anrechnung"
+        ]
+      },
+      "ChLohnausweisResponseDto": {
+        "type": "object",
+        "properties": {
+          "felder": {
+            "description": "The 14 CHF-betrag fields, in paper order (Ziffern 1–14).",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LohnausweisFeldDto"
+            }
+          },
+          "bemerkungen": {
+            "type": "string",
+            "nullable": true,
+            "description": "Ziffer 15 Bemerkungen (Freitext), null when not entered."
+          },
+          "wechselkurs": {
+            "nullable": true,
+            "description": "The Wechselkurs, null when not yet set.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WechselkursDto"
+              }
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "echter-grenzgaenger",
+              "kein-grenzgaenger"
+            ],
+            "nullable": true,
+            "description": "The derived Grenzgänger-Status (ADR-013); null while ch-wohnsitz is unanswered."
+          },
+          "posten": {
+            "description": "The folded CH line items (empty until the Kurs + status exist).",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChPostenDto"
+            }
+          },
+          "stand": {
+            "nullable": true,
+            "description": "The fold result, null until foldable.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/BerechnungsstandDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "felder",
+          "bemerkungen",
+          "wechselkurs",
+          "status",
+          "posten",
+          "stand"
+        ]
+      },
+      "PutLohnausweisFeldDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "erfasst",
+              "offen",
+              "unklar"
+            ],
+            "description": "The field’s capture state."
+          },
+          "wert": {
+            "type": "number",
+            "example": 84000,
+            "description": "The whole-CHF amount — present only when kind === \"erfasst\" (validated via @steuereule/core)."
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "PutBemerkungenDto": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "nullable": true,
+            "description": "The free-text remark, or null to clear."
+          }
+        }
+      },
+      "PutVorsorgeDto": {
+        "type": "object",
+        "properties": {
+          "saeule3aChf": {
+            "type": "number",
+            "nullable": true,
+            "description": "Säule 3a whole-CHF amount, or null to clear."
+          },
+          "krankenkasseChf": {
+            "type": "number",
+            "nullable": true,
+            "description": "Krankenkasse whole-CHF amount, or null to clear."
+          }
+        }
+      },
+      "PutWechselkursDto": {
+        "type": "object",
+        "properties": {
+          "monat": {
+            "type": "string",
+            "example": "2026-01",
+            "description": "yyyy-mm the rate applies to."
+          },
+          "kurs": {
+            "type": "number",
+            "example": 0.9412,
+            "description": "EUR per 1 CHF, strictly positive."
+          },
+          "modus": {
+            "type": "string",
+            "enum": [
+              "amtlich",
+              "tatsaechlich"
+            ],
+            "description": "The rate mode (ADR-012)."
+          },
+          "belegId": {
+            "type": "string",
+            "description": "Beleg id — required iff modus === \"tatsaechlich\"."
+          }
+        },
+        "required": [
+          "monat",
+          "kurs",
+          "modus"
         ]
       },
       "ZuordnungDto": {

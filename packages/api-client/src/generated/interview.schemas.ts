@@ -63,5 +63,6 @@ export const InterviewControllerGetInterviewEintrag = {
   'segment-2': 'segment-2',
   lebenslagen: 'lebenslagen',
   sonderausgaben: 'sonderausgaben',
+  'segment-ch': 'segment-ch',
 } as const;
 
