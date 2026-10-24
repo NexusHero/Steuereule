@@ -1,6 +1,6 @@
-# ADR-0038 — Deterministischer Berechnungs-Kern + KI-Port (Entwurf) <!-- adr-check-ignore -->
+# ADR-0038 — Deterministischer Berechnungs-Kern + KI-Port (Entwurf) 
 
-- **Status:** Draft — not yet promoted to `docs/adr/`
+- **Status:** Accepted — promoted 2026-10-24 (reviewed as part of the ticket reviews; Musti)
 - **Date:** 2026-10-24
 - **Deciders:** Robin (backend, Ticket 04) — draft; promotion needs Musti review
 - **Implements** Produkt-ADR-014 (KI schlägt vor, legt nie selbst an), Produkt-ADR-015 (Spanne,

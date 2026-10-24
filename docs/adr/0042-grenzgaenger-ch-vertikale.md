@@ -1,6 +1,6 @@
-# ADR-0041 — Grenzgänger-CH-Vertikale: Belegart, CH-Interview-Entry, Wechselkurs-Kern (Entwurf) <!-- adr-check-ignore -->
+# ADR-0042 — Grenzgänger-CH-Vertikale: Belegart, CH-Interview-Entry, Wechselkurs-Kern (Entwurf) 
 
-- **Status:** Draft — not yet promoted to `docs/adr/`
+- **Status:** Accepted — promoted 2026-10-24 (reviewed as part of the ticket reviews; Musti)
 - **Date:** 2026-10-24
 - **Deciders:** Robin (backend, Ticket 09) — draft; promotion needs Musti review
 - **Nummer offen:** `0041` kollidiert mit t08s `0041-lstb-angestellte-vertikale.md` — die
