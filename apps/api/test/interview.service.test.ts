@@ -190,4 +190,49 @@ describe('InterviewService', () => {
       ).rejects.toBeInstanceOf(UnreachableAnswerError)
     })
   })
+
+  describe('postAnswer — Grenzgänger-CH entry (segment-ch, ADR-013/036) on the same engine', () => {
+    it('admits ch-wohnsitz as the CH entry’s first question and returns the CH next step, without touching the Minimal-Gate’s openItems', async () => {
+      const result = await service.postAnswer(USER_ID, STEUERJAHR, { questionId: 'ch-wohnsitz', value: 'Deutschland' })
+
+      expect(result).toEqual({ nextStep: { kind: 'question', id: 'ch-nichtrueckkehrtage' }, openItems: 3 })
+      await expect(repository.findAllForUserAndYear(USER_ID, STEUERJAHR)).resolves.toEqual([
+        { questionId: 'ch-wohnsitz', value: 'Deutschland' },
+      ])
+    })
+
+    it('rejects (409) ch-nichtrueckkehrtage before ch-wohnsitz is answered — order is enforced, not just client-shown', async () => {
+      await expect(
+        service.postAnswer(USER_ID, STEUERJAHR, { questionId: 'ch-nichtrueckkehrtage', value: '20' }),
+      ).rejects.toBeInstanceOf(UnreachableAnswerError)
+
+      expect(repository.writes).toEqual([])
+    })
+
+    it('rejects (400) a value outside the accepted set for ch-wohnsitz', async () => {
+      await expect(
+        service.postAnswer(USER_ID, STEUERJAHR, { questionId: 'ch-wohnsitz', value: 'Frankreich' }),
+      ).rejects.toBeInstanceOf(InvalidAnswerValueError)
+
+      expect(repository.writes).toEqual([])
+    })
+
+    it('rejects (400) a non-integer for ch-nichtrueckkehrtage (its integer form, D5)', async () => {
+      await service.postAnswer(USER_ID, STEUERJAHR, { questionId: 'ch-wohnsitz', value: 'Deutschland' })
+      await expect(
+        service.postAnswer(USER_ID, STEUERJAHR, { questionId: 'ch-nichtrueckkehrtage', value: 'sieben' }),
+      ).rejects.toBeInstanceOf(InvalidAnswerValueError)
+    })
+
+    it('the CH entry reaches done after both answers, independent of the Minimal-Gate', async () => {
+      await service.postAnswer(USER_ID, STEUERJAHR, { questionId: 'ch-wohnsitz', value: 'Schweiz' })
+      const result = await service.postAnswer(USER_ID, STEUERJAHR, { questionId: 'ch-nichtrueckkehrtage', value: '0' })
+
+      expect(result).toEqual({ nextStep: { kind: 'done' }, openItems: 3 })
+      await expect(repository.findAllForUserAndYear(USER_ID, STEUERJAHR)).resolves.toEqual([
+        { questionId: 'ch-wohnsitz', value: 'Schweiz' },
+        { questionId: 'ch-nichtrueckkehrtage', value: '0' },
+      ])
+    })
+  })
 })

@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common'
+import { isBelegart } from '@steuereule/core'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
 import type { BelegRecord, BelegRepository, CreateBelegData } from './beleg.repository.js'
 
@@ -12,6 +13,7 @@ function toRecord(row: {
   id: string
   userId: string
   dateiname: string
+  art: string | null
   belegdatum: Date | null
   zahlungsdatum: Date | null
   steuerjahr: number | null
@@ -22,6 +24,10 @@ function toRecord(row: {
     id: row.id,
     userId: row.userId,
     dateiname: row.dateiname,
+    // The write path validates `art` against @steuereule/core's BELEGARTEN (CreateBelegDto
+    // @IsIn), so a stored value is a Belegart by construction — the guard is defence in depth,
+    // not the primary control (the column is a plain discriminator, not a tax fact).
+    ...(row.art !== null ? { art: (isBelegart(row.art) ? row.art : (() => { throw new Error(`corrupt Beleg.art: ${row.art}`) })()) } : {}),
     ...(row.belegdatum !== null ? { belegdatum: toIsoDate(row.belegdatum) } : {}),
     ...(row.zahlungsdatum !== null ? { zahlungsdatum: toIsoDate(row.zahlungsdatum) } : {}),
     steuerjahr: row.steuerjahr,
@@ -60,6 +66,7 @@ export class PrismaBelegRepository implements BelegRepository {
         data: {
           userId,
           dateiname: data.dateiname,
+          ...(data.art !== undefined ? { art: data.art } : {}),
           ...(data.belegdatum !== undefined ? { belegdatum: fromIsoDate(data.belegdatum) } : {}),
           ...(data.zahlungsdatum !== undefined ? { zahlungsdatum: fromIsoDate(data.zahlungsdatum) } : {}),
         },

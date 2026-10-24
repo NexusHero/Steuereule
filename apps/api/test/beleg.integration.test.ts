@@ -194,6 +194,22 @@ describe('POST/GET /v1/belege — real Postgres (ADR-007/008)', () => {
     expect(reads.filter((r) => r.resource === 'beleg')).toHaveLength(1) // the non-empty list
   })
 
+  it('a CH document type (ADR-029) persists and reads back; an invalid art is rejected with 400', async () => {
+    const first = await app.inject({ method: 'GET', url: '/v1/belege' })
+    const cookie = extractSessionCookie(first.headers['set-cookie'])!
+
+    const created = await createBeleg(cookie, { dateiname: 'lohnausweis.pdf', art: 'Lohnausweis' })
+    expect(created.statusCode).toBe(201)
+    expect(created.body).toMatchObject({ dateiname: 'lohnausweis.pdf', art: 'Lohnausweis' })
+
+    const list = await app.inject({ method: 'GET', url: '/v1/belege', headers: { cookie } })
+    expect(list.json()[0]).toMatchObject({ art: 'Lohnausweis' })
+
+    const invalid = await createBeleg(cookie, { dateiname: 'x.pdf', art: 'LStB' })
+    expect(invalid.statusCode).toBe(400)
+    await expect(prisma.beleg.count()).resolves.toBe(1)
+  })
+
   it('rejects a malformed date with 400 and persists nothing', async () => {
     const first = await app.inject({ method: 'GET', url: '/v1/belege' })
     const cookie = extractSessionCookie(first.headers['set-cookie'])!
