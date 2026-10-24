@@ -10,6 +10,7 @@
 // The Zuordnung state is DERIVED from the persisted facts, never stored — same instinct
 // as TaxYear's estimate range being recomputed rather than persisted (ADR-014/048): the
 // suggestion is a pure function of the dates, so a stored copy could only drift.
+import type { Belegart } from './belegart.js'
 
 export interface BelegDaten {
   readonly id: string
@@ -17,6 +18,10 @@ export interface BelegDaten {
   readonly userId: string
   /** Original filename / storage key. Sensitive (PII can live in filenames) — encrypted at rest. */
   readonly dateiname: string
+  /** The document type (ADR-029 — Lohnausweis/Quellensteuer/PK/3a/KK/Zulagen/…). Absent = the
+   *  pre-CH generic receipt; the CH vertical and the Angestellten vertical share one vocabulary
+   *  (belegart.ts), and the Zuordnung semantics below are identical for every art. */
+  readonly art?: Belegart
   /** Invoice date, ISO yyyy-mm-dd. */
   readonly belegdatum?: string
   /** Payment date, ISO yyyy-mm-dd — § 11 Zufluss fixes the year, not the invoice date. */
