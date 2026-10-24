@@ -106,6 +106,7 @@ model User {
   sessions      Session[]
   accounts      Account[]
   twoFactors    TwoFactor[]
+  passkeys      Passkey[]
 }
 
 /// DB-backed, server-revocable session (ADR-0012 §3). Read on every
@@ -189,6 +190,58 @@ model TwoFactor {
 
   @@index([userId])
   @@index([secret])
+}
+
+/// One row per registered WebAuthn passkey (REQ-007 passkey half, ticket 14). Owned
+/// end-to-end by better-auth's `@better-auth/passkey` plugin (its canonical shape from
+/// `src/schema.ts`, unrenamed, so no `schema.passkey.fields.*` override is needed):
+/// `credentialID`/`publicKey`/`counter` are the WebAuthn credential the plugin verifies
+/// against on sign-in (`verifyAuthenticationResponse` re-reads the stored public key and
+/// bumps `counter` — the clone-detection signal), `deviceType`/`backedUp`/`aaguid`/
+/// `transports` are the attestation metadata the plugin persists for display/management,
+/// and `name` is the optional user label. `deviceType` is a plain `String`, not a Prisma
+/// enum — the plugin writes the SimpleWebAuthn `CredentialDeviceType` union
+/// (`"singleDevice" | "multiDevice"`) and a version bump adding a value must never fail a
+/// CHECK constraint this schema didn't anticipate (same rule as DeviceCode.status).
+///
+/// Honest boundary (ticket 14, not silently dropped): the plugin implements passkeys as a
+/// *passwordless sign-in method* (`POST /passkey/verify-authentication` mints a session),
+/// NOT as a second factor inside better-auth's `two-factor` challenge flow — `twoFactorMethods`
+/// only ever contains `totp`/`otp`. And `deletePasskey` is session- and ownership-gated but
+/// does NOT require a password re-authentication the way TOTP's `disable` does (the plugin's
+/// route uses `sessionMiddleware`, not `sensitiveSessionMiddleware`). Both are documented in
+/// REQ-007's register row, not papered over with bespoke interposition (ADR-0035: no Eigenbau).
+model Passkey {
+  id           String   @id @default(uuid())
+  /// Optional user-facing label; empty until the user names the credential.
+  name         String?
+  /// The credential's public key, base64-encoded (better-auth `base64.encode` of the
+  /// COSE public key) — the verification half on sign-in.
+  publicKey    String
+  /// Scoping key — same trusted userId as every other model (ADR-0007). Never read from
+  /// the request body/path.
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// WebAuthn credential ID (the raw ID bytes, base64url-encoded in responses) — the
+  /// lookup key the plugin uses to find the stored credential on sign-in.
+  credentialID String
+  /// Signature counter from the last successful authentication — clone detection.
+  counter      Int
+  /// "singleDevice" | "multiDevice" (SimpleWebAuthn CredentialDeviceType) — plain string,
+  /// see the model comment for why not an enum.
+  deviceType   String
+  /// Whether the credential is synced/backed up to the platform's cloud.
+  backedUp     Boolean
+  /// Comma-joined transport hints (e.g. "internal,hybrid") — display/allowCredentials only.
+  transports   String?
+  /// The authenticator model's AAGUID (attestation metadata); all-zero/absent for
+  /// privacy-preserving platforms under `attestation: "none"`.
+  aaguid       String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId])
+  @@index([credentialID])
 }
 
 /// One row per (userId, steuerjahr) — the raw inputs behind the Cockpit's refund

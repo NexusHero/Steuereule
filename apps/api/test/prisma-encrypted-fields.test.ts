@@ -93,6 +93,7 @@ const EXPECTED_CURSORS: Record<string, string> = {
   DeviceCode: 'id',
   LegalHold: 'id',
   TwoFactor: 'id',
+  Passkey: 'id',
   Beleg: 'id',
   Lstb: 'id',
 }

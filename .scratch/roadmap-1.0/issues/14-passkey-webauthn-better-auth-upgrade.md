@@ -11,26 +11,34 @@ Schritt, die Passkey-Integration danach das Plugin-Wiring.
 (das Core-Upgrade ist ein Framework-Schritt; dieses Ticket trägt die Passkey-Integration darauf —
 oder wartet auf einen separaten Upgrade-Ticket-Zwischenschritt).
 
-**Status:** ready-for-agent
+**Status:** done (2026-10-24) — the passkey half of REQ-007 landed on the better-auth ^1.7.12 core
+upgrade, with two ACs documented as *not met by the plugin* rather than interposed (ADR-0035: no
+Eigenbau). See the register row (REQ-007) for the exact boundaries.
 
-- [ ] better-auth-Core auf ^1.7 angehoben (pnpm-lock, alle Auth-Pfade grün) — direkt hier oder
-      als eigener Upgrade-Zwischenschritt, auf den dieses Ticket dann wartet
-- [ ] `@better-auth/passkey` installiert und als Plugin registriert: Server-seitig im
+- [x] better-auth-Core auf ^1.7 angehoben (pnpm-lock, alle Auth-Pfade grün) — direkt hier, auf
+      1.7.12. Breaking-Change-Anpassungen im Commit dokumentiert (rate-limit storage `consume`-only
+      contract, `/unlink-account` `accountId` statt `providerId`).
+- [x] `@better-auth/passkey` installiert und als Plugin registriert: Server-seitig im
       `better-auth.ts`-Plugin-Array, Client-seitig als `passkeyClient()` im
-      `createAppAuthClient` (`apps/mobile-web/src/auth/auth-client.ts`)
-- [ ] REQ-007-Passkey-Klauseln am Acceptance-Tier gegen den echten Server (Muster
-      `apps/api/test/acceptance/req-007-totp.test.ts`, real Postgres + real Socket):
-  - opt-in: ein Konto startet ohne Passkey; Hinzufügen ist freiwillig, nie Pflicht
-  - Registrierung eines Passkeys (Challenge/Attestation über das Plugin)
-  - Login-Prompt nach Primärfaktor: `twoFactorRedirect` + `twoFactorMethods` enthält `passkey`
-  - Entfernung eines Passkeys nur nach Re-Authentifizierung (falsches Passwort wird abgewiesen)
-- [ ] Register REQ-007-Passkey-Klausel von „blocked on ^1.7" auf „Done" mit Test-Zitaten
-      umgestellt; Traceability-State nachgezogen (das `twoFactorRedirect`-Prompt-Zitat der
-      TOTP-Hälfte gilt dann für `passkey` mit)
-- [ ] REQ-009-Nachklapp (falls hier, nicht eigenes natives Ticket): der `@better-auth/expo`
-      `expoClient` konsumiert den vorbereiteten `SessionTokenStorage`-Seam aus
-      `apps/mobile-web/src/auth/native-secure-store.ts` — damit ist der Seam kein reiner
-      Vorbereitungs-Integrationspunkt mehr. Sonst: dieses Ticket referenziert das native Ticket.
+      `createAppAuthClient` (`apps/mobile-web/src/auth/auth-client.ts`).
+- [x] REQ-007-Passkey-Klauseln am Acceptance-Tier gegen den echten Server (`apps/api/test/acceptance/req-007-passkey.test.ts`,
+      real Postgres + real Socket, real-WebAuthn-crypto mock authenticator):
+  - opt-in: ein Konto startet ohne Passkey; Hinzufügen ist freiwillig, nie Pflicht — **bewiesen**
+  - Registrierung eines Passkeys (Challenge/Attestation über das Plugin) — **bewiesen**
+  - Login-Prompt nach Primärfaktor: `twoFactorRedirect` + `twoFactorMethods` enthält `passkey` —
+    **NOT met by the plugin** (ADR-0035: no Eigenbau): `@better-auth/passkey` implementiert
+    Passkeys als *passwordless sign-in*, nicht als Zweitfaktor; `twoFactorMethods` trägt nie
+    `passkey`. Der Test pinnt das als Boundary (Email+Passwort-Login promptet nicht nach Passkey).
+  - Entfernung eines Passkeys nur nach Re-Authentifizierung — **NOT met by the plugin**:
+    `deletePasskey` ist session- und ownership-gated, aber ohne Passwort-Re-Auth (anders als
+    TOTPs `disable`). Der Test sendet `{ id }` ohne Passwort und es gelingt — die Plugin-Coverage,
+    dokumentiert statt interponiert.
+- [x] Register REQ-007-Passkey-Klausel von „blocked on ^1.7" auf „Done" mit Test-Zitaten
+      umgestellt; Traceability-State nachgezogen (inkl. der zwei Boundary-Klauseln oben).
+      `pnpm register-check` grün.
+- [ ] REQ-009-Nachklapp (nicht hier): der `@better-auth/expo` `expoClient` konsumiert den
+      vorbereiteten `SessionTokenStorage`-Seam aus `apps/mobile-web/src/auth/native-secure-store.ts` —
+      bleibt offen als natives Folge-Ticket (kein nativer Build in diesem Ticket).
 
 **Bekannte Grenze (nicht Teil dieses Tickets):** `TwoFactor.verified` ist in better-auths
 kanonischem Schema `@default(true)`; die für den Nutzer sichtbare Flag ist `User.twoFactorEnabled`,

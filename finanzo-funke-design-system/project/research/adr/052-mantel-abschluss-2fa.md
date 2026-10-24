@@ -36,3 +36,11 @@ präzisiert worden, nicht durch dieses Amendment).
   ^1.7-Core-Upgrade) und ist als Folge-Ticket
   **14** (`.scratch/roadmap-1.0/issues/14-passkey-webauthn-better-auth-upgrade.md`)
   geführt — kein Eigenbau (Engineering-ADR-0035 D3).
+- **Amendment (2026-10-24, Ticket 14):** Der Passkey-Teil von REQ-007 ist mit
+  better-auth 1.7.12 + `@better-auth/passkey` geliefert — und verhält sich
+  **passwordless** (Primärfaktor), nicht als Zweitfaktor: `twoFactorMethods` trägt
+  nie `passkey`, und `deletePasskey` verlangt keine Re-Authentifizierung (beides
+  per Acceptance-Test gepinnt, Register-Vermerk „not met by the plugin", ADR-0035-
+  Abweichung sichtbar dokumentiert). Dieser ADR („2FA als Zweitfaktor") ist damit
+  für den Passkey-Punkt präzisiert, nicht aufgehoben: TOTP bleibt der opt-in
+  Zweitfaktor; Passkey ist ein opt-in passwordless Sign-in.

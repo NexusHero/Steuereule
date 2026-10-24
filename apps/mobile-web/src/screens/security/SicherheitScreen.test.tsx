@@ -123,4 +123,30 @@ describe('SicherheitScreen (REQ-007)', () => {
     await screen.findByText('Zwei-Faktor-Authentifizierung ist aus.')
     expect(disableCalled).toBe(true)
   })
+
+  it('lists a registered passkey and removes it (web-only section)', async () => {
+    let deleteCalled = false
+    server.use(
+      http.get('*/api/auth/get-session', () => HttpResponse.json(signedInSession(false))),
+      http.get('*/api/auth/passkey/list-user-passkeys', () =>
+        HttpResponse.json([{ id: 'pk-1', name: 'Mein Laptop', deviceType: 'singleDevice', createdAt: new Date().toISOString() }]),
+      ),
+      http.post('*/api/auth/passkey/delete-passkey', async ({ request }) => {
+        deleteCalled = true
+        const body = (await request.json()) as { id: string }
+        expect(body.id).toBe('pk-1')
+        return HttpResponse.json({ status: true })
+      }),
+    )
+    renderSicherheit()
+
+    await screen.findByText('Passkeys')
+    // The honest web-only disclosure renders — native is follow-up work, not silently claimed.
+    expect(screen.getByText(/Passkeys funktionieren im Browser/)).toBeTruthy()
+    expect(screen.getByText('Mein Laptop')).toBeTruthy()
+
+    fireEvent.click(screen.getByText('Entfernen'))
+    await screen.findByText('Passkey wurde entfernt.')
+    expect(deleteCalled).toBe(true)
+  })
 })

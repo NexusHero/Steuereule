@@ -10,6 +10,7 @@
 // — no second DB client, no second DATABASE_URL.
 import type { PrismaClient } from '@prisma/client'
 import { prismaAdapter } from '@better-auth/prisma-adapter'
+import { passkey } from '@better-auth/passkey'
 import { betterAuth, type Auth, type BetterAuthOptions } from 'better-auth'
 import { getCookies } from 'better-auth/cookies'
 import { deviceAuthorization, haveIBeenPwned, twoFactor } from 'better-auth/plugins'
@@ -492,11 +493,32 @@ function buildOptions(options: CreateBetterAuthOptions & { rateLimitStorage: Res
     // bearer-token-on-body hazard to disable them for; they already carry
     // `sessionMiddleware` (enable/get-totp-uri), `sensitiveSessionMiddleware`
     // (disable) and a per-route rate limit (window 10s / max 3, the plugin's own
-    // `rateLimit` array — read from the installed 1.6.24 dist, not separately tested),
+    // `rateLimit` array — read from the installed 1.7.12 dist, not separately tested),
     // so wiring them is the framework-standard path, not an
     // interposition the way ADR-0024 was. `issuer` is what the authenticator app
     // shows; TOTP defaults (6 digits / 30s) are the plugin's own and left alone.
-    plugins: [haveIBeenPwned(), hibpFailOpenPlugin, deviceAuthorizationPlugin, deviceSessionCookiePlugin, twoFactor({ issuer: 'SteuerEule' })],
+    //
+    // passkey() (REQ-007 passkey half, ticket 14): WebAuthn via
+    // `@better-auth/passkey` (SimpleWebAuthn underneath). The plugin's own HTTP
+    // routes stay enabled — same reasoning as twoFactor above (session middleware on
+    // the sensitive ones, no bearer-token-on-body hazard) — so this is plugin wiring,
+    // not the interposition ADR-0024 was for the device plugin. `rpName` is the
+    // human-readable RP name shown in the OS/authenticator UI; `rpID`/`origin` are
+    // left at the plugin's own defaults (baseURL hostname + the request's Origin
+    // header), the framework-standard answer rather than a second hand-derived copy.
+    //
+    // Honest boundary, stated here and in the register (REQ-007) rather than papered
+    // over (ADR-0035: no Eigenbau):
+    //  - The plugin implements passkeys as a *passwordless sign-in method*
+    //    (`POST /passkey/verify-authentication` mints a session), NOT as a second
+    //    factor inside better-auth's `two-factor` challenge flow. `twoFactorMethods`
+    //    only ever carries `totp`/`otp`; a passkey login is its own primary-factor
+    //    alternative, not a "prompt after email+password".
+    //  - `deletePasskey` is session- AND ownership-gated (`sessionMiddleware` +
+    //    `requireResourceOwnership`) but does NOT require a password re-authentication
+    //    the way TOTP's `disable` does. That is the plugin's own coverage, recorded as
+    //    such; forcing re-auth would mean bespoke interposition on the plugin's route.
+    plugins: [haveIBeenPwned(), hibpFailOpenPlugin, deviceAuthorizationPlugin, deviceSessionCookiePlugin, twoFactor({ issuer: 'SteuerEule' }), passkey({ rpName: 'SteuerEule' })],
     // A browser must never reach the plugin's own HTTP routes (see the constant's own
     // doc comment above for why) — this is what actually enforces that; the
     // server-side `auth.api.*` calls this app makes are untouched by it.
@@ -564,7 +586,7 @@ function buildOptions(options: CreateBetterAuthOptions & { rateLimitStorage: Res
     // `GET /list-sessions` bug this app hit (#299/REQ-014) and the decision recorded in
     // full in **ADR-0027**, not restated here. Short version: `freshAge: 0` is correct
     // and deliberate, not merely convenient — see the ADR for the exhaustive consumer
-    // list (exactly two endpoints in better-auth 1.6.24, measured against the installed
+    // list (exactly two endpoints in better-auth 1.7.12, measured against the installed
     // dist), the accepted loss on `/unlink-account`, and the re-evaluation trigger.
     session: {
       freshAge: 0,
