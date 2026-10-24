@@ -114,10 +114,10 @@ export type ChPostenArt =
   | 'Bruttolohn' // Einkünfte (income)
   | 'Quellensteuer' // Anrechnung (credit against the German tax)
   | 'Pensionskasse' // Vorsorgeaufwand (2. Säule)
-  | 'AHV' // 1. Säule — captured, DBA treatment open
+  | 'AHV' // 1. Säule — future-facing, no producer in this slice (ahv-beitraege is postenRelevant: false)
   | 'Saeule3a' // gebundene Selbstvorsorge, limited deductibility (honest bound)
   | 'Krankenkasse' // Basisvorsorge
-  | 'Familienzulage' // netted with Kindergeld (ADR-029 point 6)
+  | 'Familienzulage' // future-facing, no producer in this slice (zulagenVerrechnen returns a number, not a ChPosten)
 
 /**
  * A CH line item with full provenance — ADR-029's "Herkunft pro Wert 'Lohnausweis Ziffer n
@@ -142,6 +142,10 @@ function feldZuPostenArt(feld: LohnausweisFeldId): ChPostenArt {
     case 'berufliche-vorsorge':
       return 'Pensionskasse'
     case 'ahv-beitraege':
+      // Future-facing, no producer in this slice: `ahv-beitraege` is `postenRelevant: false`,
+      // so `chPostenAusLohnausweis` never reaches this arm today. Kept (not dead-ended to the
+      // default's throw) so the 1. Säule → 'AHV' mapping is explicit groundwork, not a silent
+      // fall-through the moment its DBA treatment (ADR-029) is decided.
       return 'AHV'
     default:
       // Unreachable for a postenRelevant field; total so a new field can never silently map.

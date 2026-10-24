@@ -2,8 +2,11 @@
 // The Grenzgänger thinks in CHF, the Finanzamt gets EUR (ADR-036); the conversion carries
 // its provenance (Kurs + Modus). The amtliche BMF-Monatskurs is the DEFAULT and needs no
 // Beleg; the tatsächliche Kurs (from a Kontoauszug) is only representable WITH a Beleg —
-// "ohne Beleg kein tatsächlicher Kurs" (ADR-012) is a type-level invariant here, not a
-// UI reminder. Mischbetrieb is allowed per Monat but consistent within one Monat (ADR-012).
+// "ohne Beleg kein tatsächlicher Kurs" (ADR-012) is a FACTORY invariant here (enforced by
+// `tatsaechlicherKurs`, plus a plausibility check for PERSISTED data), not a type-level one:
+// `Wechselkurs.belegId` is a plain optional field, so the TYPE itself does not reject
+// `{ modus: 'tatsaechlich' }` without a Beleg. Mischbetrieb is allowed per Monat but
+// consistent within one Monat (ADR-012).
 // Pure, no I/O (ADR-0004) — the BMF rate SOURCE is a later backend slice (ADR-012
 // "API-Quelle für BMF-Kurse ist Backend-Aufgabe"); this module takes the rate as an input.
 import type { Quelle } from './berechnung.js'
@@ -18,7 +21,9 @@ export interface Wechselkurs {
   /** EUR per 1 CHF, strictly positive. */
   readonly kurs: number
   readonly modus: WechselkursModus
-  /** Present iff `modus === 'tatsaechlich'` — the Kontoauszug Beleg (ADR-012). */
+  /** Present iff `modus === 'tatsaechlich'` — the Kontoauszug Beleg (ADR-012). Optional in
+   *  the TYPE (a persisted/constructed object can omit it); enforced by `tatsaechlicherKurs`
+   *  at construction and by `pruefeGrenzgaenger` for persisted data. */
   readonly belegId?: string
 }
 
@@ -37,7 +42,9 @@ export function amtlicherMonatskurs(monat: string, kurs: number): Wechselkurs {
 
 /**
  * The tatsächliche Kurs — representable ONLY with a Beleg. `belegId` is mandatory, so
- * "tatsächlich ohne Beleg" cannot be constructed (ADR-012's rule is a type, not a hope).
+ * "tatsächlich ohne Beleg" cannot be constructed through this factory (ADR-012's rule is a
+ * factory invariant, not a type-level one — the `Wechselkurs` type itself stays permissive;
+ * see the header comment and `pruefeGrenzgaenger` for the persisted-data check).
  */
 export function tatsaechlicherKurs(monat: string, kurs: number, belegId: string): Wechselkurs {
   validate(monat, kurs)

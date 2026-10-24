@@ -24,7 +24,7 @@ export class CreateBelegDto {
     type: String,
     enum: BELEGARTEN,
     example: 'Lohnausweis',
-    description: 'Document type (ADR-029). Omitted = the generic pre-CH receipt (Sonstiges).',
+    description: 'Document type (ADR-029). Omitted = null (not classified); pass \'Sonstiges\' to classify a generic receipt explicitly.',
   })
   @IsOptional()
   @IsString()

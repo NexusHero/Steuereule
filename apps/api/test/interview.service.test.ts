@@ -235,4 +235,27 @@ describe('InterviewService', () => {
       ])
     })
   })
+
+  describe('postAnswer — Segment 2 stays NOT admitted server-side (the allowlist, not `entryForStep`)', () => {
+    // `entryForStep` is generic over every entry in core, so WITHOUT the ADMITTED_ENTRY_IDS
+    // allowlist a Segment-2 id would slip through on the same endpoint. This pins the actual
+    // admission boundary: Segment 2 remains "declared, not yet admitted server-side — that is
+    // R2's job" (packages/core/src/interview.ts header), refused here with 409 and no row write.
+    it('rejects (409) a Segment-2 id (partner) and writes nothing', async () => {
+      await expect(
+        service.postAnswer(USER_ID, STEUERJAHR, { questionId: 'partner', value: 'Ja' }),
+      ).rejects.toBeInstanceOf(UnreachableAnswerError)
+
+      expect(repository.writes).toEqual([])
+      await expect(repository.findAllForUserAndYear(USER_ID, STEUERJAHR)).resolves.toEqual([])
+    })
+
+    it('rejects (409) a Segment-2 follow-up id (kap-depot) and writes nothing', async () => {
+      await expect(
+        service.postAnswer(USER_ID, STEUERJAHR, { questionId: 'kap-depot', value: 'Krypto' }),
+      ).rejects.toBeInstanceOf(UnreachableAnswerError)
+
+      expect(repository.writes).toEqual([])
+    })
+  })
 })
