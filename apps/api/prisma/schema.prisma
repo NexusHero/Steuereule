@@ -159,12 +159,15 @@ model Verification {
 /// by the plugin (the TOTP secret is encrypted at rest by better-auth via the instance
 /// `secret`, never returned), `verified` is the "code confirmed?" gate the plugin flips
 /// in `verifyTOTP`, and `failedVerificationCount`/`lockedUntil` back the plugin's own
-/// sign-in brute-force lockout (5 attempts → locked) — deliberately NOT a hand-rolled
-/// limiter (ADR-0035: no bespoke machinery where the framework answers). The plugin's
-/// own HTTP routes (`/api/auth/two-factor/*`) stay enabled: they already carry
-/// session/`sensitiveSessionMiddleware` guards and a per-route rate limit (window 10s,
-/// max 3), so there is nothing for a Nest controller to interpose the way ADR-0024 did
-/// for the device plugin's bearer-token route.
+/// sign-in brute-force lockout (`accountLockout` defaults `maxFailedAttempts` 10,
+/// `durationSeconds` 900 — read from the installed 1.6.24 dist, not re-pinned here) —
+/// deliberately NOT a hand-rolled limiter (ADR-0035: no bespoke machinery where the
+/// framework answers). The plugin's own HTTP routes (`/api/auth/two-factor/*`) stay
+/// enabled: they already carry session/`sensitiveSessionMiddleware` guards and a
+/// per-route rate limit (the plugin's own `rateLimit` array, window 10s / max 3 — read
+/// from the installed 1.6.24 dist, not separately tested), so there is nothing for a
+/// Nest controller to interpose the way ADR-0024 did for the device plugin's
+/// bearer-token route.
 model TwoFactor {
   id                     String    @id @default(uuid())
   /// The TOTP secret — ciphertext (better-auth's `symmetricEncrypt`), `returned: false`.
@@ -173,7 +176,11 @@ model TwoFactor {
   backupCodes            String
   userId                 String
   user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  /// "Code confirmed" — false after `enableTwoFactor`, true after `verifyTOTP`.
+  /// "Code confirmed" — better-auth's canonical schema defaults this to `true`
+  /// (`@default(true)`); the plugin writes it explicitly: `false` on a fresh
+  /// `enableTwoFactor`, `true` on `verifyTOTP` (the DB default only governs rows not
+  /// created through the plugin). The user-visible "2FA on" flag is
+  /// `User.twoFactorEnabled`, not this field.
   verified               Boolean   @default(true)
   failedVerificationCount Int      @default(0)
   lockedUntil            DateTime?

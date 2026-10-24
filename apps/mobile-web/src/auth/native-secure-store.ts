@@ -3,13 +3,18 @@
 // module that imports the native package; the seam itself is dependency-injected so jsdom
 // tests exercise it with a mock and never load the native module.
 //
-// Not wired into better-auth's client yet: better-auth 1.6.24 has no native session client
-// (its `@better-auth/expo` package, whose `expoClient({ storage: SecureStore })` consumes a
-// storage object of exactly this shape, is unavailable on 1.6.24 — see REQ-009's register
-// row). This file is the layer that upgrade consumes; until then it is proven by unit test
-// with a mock, NOT by a real iOS/Android device. Honest, not dead: it is the platform's
-// token store, and the web fallback (session-token-storage.ts) is the already-shipped cookie
-// flow — the two are the complete REQ-009 surface.
+// Honest status: this is a *prepared integration point*, not a wired production path. No
+// production call site instantiates `createNativeSessionTokenStorage()` /
+// `resolveSessionTokenStorage()` today — deliberately, because the native client does not
+// exist yet (no Expo client / dev build). The seam's contract (set → setItemAsync,
+// get → getItemAsync, remove → deleteItemAsync) is proven by a delegation unit test with a
+// mock, NOT by a real iOS/Android keychain round trip. The native build that will consume
+// this storage object arrives with better-auth ^1.7's `@better-auth/expo`
+// `expoClient({ storage })` — gated on follow-up ticket 14
+// (`.scratch/roadmap-1.0/issues/14-passkey-webauthn-better-auth-upgrade.md`) or a dedicated
+// native ticket. The shipped *web* session flow is better-auth's own `createAuthClient`
+// (`credentials: 'include'` cookie flow, auth-client.ts), which never instantiates this
+// module nor the web no-op in session-token-storage.ts.
 import * as SecureStore from 'expo-secure-store'
 import { createSecureStoreSessionTokenStorage, type SessionTokenStorage } from './session-token-storage'
 

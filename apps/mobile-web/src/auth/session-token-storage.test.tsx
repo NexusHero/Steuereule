@@ -1,13 +1,17 @@
-// REQ-009 (Expo half) — proves the two load-bearing claims about where a session token lives:
-// (1) on native the token is written to SecureStore (the OS keychain/keystore), never a plain
-// store, and (2) the web fallback writes nothing to any client store — the cookie is the only
-// copy. The `SecureStoreLike` seam is injected, so "SecureStore is used" is asserted by handing
-// a mock and checking the call, not by importing the native module into jsdom (ADR-0028: prove
-// the effect, not the mechanism).
+// REQ-009 (Expo half) — proves the delegation *contract* of the session-token-storage seam,
+// not production usage: (1) the native storage delegates set/get/remove to the injected
+// `SecureStoreLike` (set → setItemAsync), so a future native client that hands it the real
+// `expo-secure-store` gets keychain/keystore writes and never a plain store; and (2) the web
+// fallback writes nothing to any client store — the cookie is the only copy. The seam is
+// injected, so "set → setItemAsync" is asserted by handing a mock and checking the call, not by
+// importing the native module into jsdom (ADR-0028: prove the effect, not the mechanism).
 //
-// Device-verification boundary (stated honestly, not hidden): this proves the *seam* by unit
-// test with a mock. A real keychain round trip needs a shipped native build + the better-auth
-// ^1.7 `expoClient` — out of scope here and gated in REQ-009's register row.
+// Device-verification boundary (stated honestly, not hidden): this proves the *seam contract*
+// by unit test with a mock. It does NOT prove the shipped app calls it — `createNativeSession
+// TokenStorage()` / `resolveSessionTokenStorage()` have no production call site today (the
+// native client does not exist yet; gated on better-auth ^1.7 `expoClient`, follow-up ticket
+// 14). A real keychain round trip needs a shipped native build — out of scope here and gated in
+// REQ-009's register row.
 import { describe, expect, it, vi, afterEach } from 'vitest'
 import {
   createSecureStoreSessionTokenStorage,

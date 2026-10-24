@@ -33,5 +33,6 @@ präzisiert worden, nicht durch dieses Amendment).
 - Implementierungs-Hinweis (Stand der Umsetzung, nicht dieser Entscheidung):
   TOTP über better-auths `twoFactor`-Plugin; Passkey/WebAuthn ist in better-auth
   1.6.24 **nicht** enthalten (`@better-auth/passkey` verlangt ein better-auth
-  ^1.7-Core-Upgrade) und ist als Folge-Ticket geführt — kein Eigenbau
-  (Engineering-ADR-0035 D3).
+  ^1.7-Core-Upgrade) und ist als Folge-Ticket
+  **14** (`.scratch/roadmap-1.0/issues/14-passkey-webauthn-better-auth-upgrade.md`)
+  geführt — kein Eigenbau (Engineering-ADR-0035 D3).

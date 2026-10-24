@@ -492,7 +492,8 @@ function buildOptions(options: CreateBetterAuthOptions & { rateLimitStorage: Res
     // bearer-token-on-body hazard to disable them for; they already carry
     // `sessionMiddleware` (enable/get-totp-uri), `sensitiveSessionMiddleware`
     // (disable) and a per-route rate limit (window 10s / max 3, the plugin's own
-    // `rateLimit` array), so wiring them is the framework-standard path, not an
+    // `rateLimit` array — read from the installed 1.6.24 dist, not separately tested),
+    // so wiring them is the framework-standard path, not an
     // interposition the way ADR-0024 was. `issuer` is what the authenticator app
     // shows; TOTP defaults (6 digits / 30s) are the plugin's own and left alone.
     plugins: [haveIBeenPwned(), hibpFailOpenPlugin, deviceAuthorizationPlugin, deviceSessionCookiePlugin, twoFactor({ issuer: 'SteuerEule' })],

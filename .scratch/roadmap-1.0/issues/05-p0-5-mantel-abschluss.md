@@ -13,11 +13,14 @@ starten.
       Faktoren; Login-Prompt nach Primärfaktor; Faktor-Entfernung nur nach
       Re-Authentifizierung; Acceptance-Test auf Register-Tier. **TOTP: Done (Akzeptanztest
       real Postgres). Passkey: blocked auf better-auth ^1.7 (kein WebAuthn in 1.6.24,
-      `@better-auth/passkey` peer-depends ^1.7 — kein Eigenbau).**
+      `@better-auth/passkey` peer-depends ^1.7 — kein Eigenbau), geführt als Folge-Ticket
+      14 (`.scratch/roadmap-1.0/issues/14-passkey-webauthn-better-auth-upgrade.md`).**
 - [x] REQ-009: Expo/RN-Hälfte — Session-Token nur in `SecureStore`, nie `AsyncStorage`;
       server-seitige Revocation invalidisiert beim nächsten Zugriff; Test beweist beides.
-      **SecureStore-Seam (expo-secure-store + Web-Cookie-Fallback) unit/mock-tested — nicht
-      device-verifiziert; native Session-Verdrahtung gated auf better-auth ^1.7 `expoClient`.**
+      **SecureStore-Seam (expo-secure-store + Web-Cookie-Fallback) contract-tested
+      (unit/mock, set → setItemAsync) — kein Produktions-Callsite, wird erst vom nativen
+      Build verdrahtet; NOT device-verified; native Session-Verdrahtung gated auf
+      better-auth ^1.7 `expoClient`, Folge-Ticket 14.**
 - [x] REQ-008: Apple-Wiring code-komplett, aber flagged off (kein Apple-Dev-Account/
       iOS-Build ⇒ Button verborgen); Flag-Flip-Bedingung getestet; Google bleibt grün.
       **Done: Triple-Gate (Flag + beide Credentials), Flag-Flip-Test grün, Google grün.**
