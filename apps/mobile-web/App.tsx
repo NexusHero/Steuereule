@@ -25,6 +25,7 @@ import { CockpitScreen } from './src/screens/cockpit/CockpitScreen'
 import { InterviewScreen } from './src/screens/interview/InterviewScreen'
 import { ProfilScreen } from './src/screens/ProfilScreen'
 import { DatenschutzScreen } from './src/screens/DatenschutzScreen'
+import { SicherheitScreen } from './src/screens/security/SicherheitScreen'
 import { DeviceScreen } from './src/screens/device/DeviceScreen'
 
 const i18n = createAppI18n('de')
@@ -217,7 +218,7 @@ function TabbedShell({ tab, onTabChange, onSignedOut }: TabbedShellProps) {
   // Datenschutz (REQ-011) is a screen reached *from* Profil, not a tab of its own (TAB_ORDNUNG
   // groups it with Profil in the DS reference) — so it's a sub-view owned by this shell, the
   // same way OnboardingScreen owns its own step state, rather than a sixth `Tab` value.
-  const [profilView, setProfilView] = useState<'main' | 'datenschutz'>('main')
+  const [profilView, setProfilView] = useState<'main' | 'datenschutz' | 'sicherheit'>('main')
   // The Minimal-Gate (REQ-015/#318 task 2) is reached from Cockpit's own CTA the same way —
   // a sub-view of the Cockpit tab, not a top-level route (ADR-0023: only the composition root
   // touches `@react-navigation/*`, and this is exactly the Datenschutz precedent applied here).
@@ -258,10 +259,13 @@ function TabbedShell({ tab, onTabChange, onSignedOut }: TabbedShellProps) {
       {tab === 'cockpit' && cockpitView === 'main' ? <CockpitScreen onOpenInterview={() => setCockpitView('interview')} /> : null}
       {tab === 'cockpit' && cockpitView === 'interview' ? <InterviewScreen onDone={() => setCockpitView('main')} /> : null}
       {tab === 'profil' && profilView === 'main' ? (
-        <ProfilScreen onOpenDatenschutz={() => setProfilView('datenschutz')} onSignedOut={onSignedOut} />
+        <ProfilScreen onOpenDatenschutz={() => setProfilView('datenschutz')} onOpenSicherheit={() => setProfilView('sicherheit')} onSignedOut={onSignedOut} />
       ) : null}
       {tab === 'profil' && profilView === 'datenschutz' ? (
         <DatenschutzScreen onZurueck={() => setProfilView('main')} onAccountDeleted={onSignedOut} />
+      ) : null}
+      {tab === 'profil' && profilView === 'sicherheit' ? (
+        <SicherheitScreen onZurueck={() => setProfilView('main')} />
       ) : null}
       {/* Datenschutz is a drill-down screen (its own back button, like Onboarding/Login), not
           a peer of the tabs — hiding the bar here matches that and avoids a confusing second

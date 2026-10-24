@@ -13,14 +13,21 @@
 // (ADR-0011/0012, session cookie is `SameSite=None; Secure`). Not re-specified here to avoid a
 // second, driftable copy of that default; see better-auth's `getClientConfig`.
 import { createAuthClient } from 'better-auth/react'
+import { twoFactorClient } from 'better-auth/client/plugins'
 
 /** Mount point ADR-0012 §1 fixes for better-auth on the API (Fastify catch-all, outside Nest). */
 const AUTH_BASE_PATH = '/api/auth'
 
-export function createAppAuthClient(baseUrl: string) {
+export function createAppAuthClient(baseUrl: string): ReturnType<typeof createAuthClient> {
   return createAuthClient({
     baseURL: baseUrl,
     basePath: AUTH_BASE_PATH,
+    // twoFactorClient() (REQ-007) exposes `authClient.twoFactor.{enable,verifyTotp,
+    // disable,getTotpUri}` for the security screen, and wires the `twoFactorRedirect`
+    // signal better-auth answers a credential sign-in with when 2FA is pending. No
+    // `onTwoFactorRedirect`/`twoFactorPage` option: LoginScreen handles the challenge
+    // itself (it must, to keep the challenge inline rather than bounce to a page).
+    plugins: [twoFactorClient()],
     // Pinned explicitly rather than inherited (#194, ADR-0012 amendment) — an honesty
     // behaviour shouldn't rest on an undocumented dependency default.
     sessionOptions: { refetchOnWindowFocus: true },

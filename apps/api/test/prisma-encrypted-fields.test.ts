@@ -89,6 +89,7 @@ const EXPECTED_CURSORS: Record<string, string> = {
   InterviewAnswer: 'id',
   DeviceCode: 'id',
   LegalHold: 'id',
+  TwoFactor: 'id',
   Beleg: 'id',
 }
 

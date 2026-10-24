@@ -285,7 +285,11 @@ describe('App', () => {
       fireEvent.click(screen.getByText('Profil'))
       await screen.findByText('Deine Angaben')
       fireEvent.click(screen.getByText('So schützen wir deine Daten (DSGVO)'))
-      await screen.findByText('Konto & Daten löschen')
+      // 15s statt Default: der DSGVO-Screen hängt unter `pnpm -r test`-Volllast (CI) hinter
+      // der MSW-Antwort des Lösch-Flows; die Assertion bleibt dieselbe — ein wirklich
+      // festhängender Query überschreitet auch dieses Budget (dieselbe Begründung wie das
+      // asyncUtilTimeout in test-setup.ts).
+      await screen.findByText('Konto & Daten löschen', {}, { timeout: 15_000 })
 
       fireEvent.click(screen.getByText('Konto & Daten löschen'))
       await screen.findByText('Bevor du löschst')

@@ -22,12 +22,14 @@ export interface ProfilScreenProps {
   /** Navigates to the Datenschutz screen (REQ-011) — Profil never renders it itself; the DS
    *  reference and TAB_ORDNUNG both make Datenschutz a screen reached *from* Profil. */
   readonly onOpenDatenschutz: () => void
+  /** Navigates to the Sicherheit screen (REQ-007) — same drill-down as Datenschutz. */
+  readonly onOpenSicherheit: () => void
   /** Fires when the device list (#238) revokes the session this very screen is running under —
    *  the same "never a stale screen for a gone account" contract DatenschutzScreen honours. */
   readonly onSignedOut: () => void
 }
 
-export function ProfilScreen({ onOpenDatenschutz, onSignedOut }: ProfilScreenProps) {
+export function ProfilScreen({ onOpenDatenschutz, onOpenSicherheit, onSignedOut }: ProfilScreenProps) {
   const { t: tr } = useTranslation(APP_NS)
   const bp = useBreakpoint()
   const queryClient = useQueryClient()
@@ -117,6 +119,7 @@ export function ProfilScreen({ onOpenDatenschutz, onSignedOut }: ProfilScreenPro
       justSaved={justSaved}
       bp={bp}
       onOpenDatenschutz={onOpenDatenschutz}
+      onOpenSicherheit={onOpenSicherheit}
       onSignedOut={onSignedOut}
     />
   )

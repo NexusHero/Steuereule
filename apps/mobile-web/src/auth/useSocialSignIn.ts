@@ -8,8 +8,10 @@ import { APP_NS } from '../i18n/resources'
 import { useAuthClient } from './AuthClientProvider'
 import { authErrorKey } from './authErrors'
 
-/** Providers the app can actually sign in with today. Apple (#45) is deliberately absent. */
-export type SocialProvider = 'google'
+/** Providers the app can actually sign in with. Apple is wired but stays gated off by the
+ *  server's capability probe (REQ-008): `signIn('apple')` is only ever offered when the
+ *  deployment flips its flag AND has credentials — `useSocialSignInAvailable` hides it otherwise. */
+export type SocialProvider = 'google' | 'apple'
 
 /** Where better-auth sends the browser back to once the provider round trip succeeds. */
 const CALLBACK_URL = '/'

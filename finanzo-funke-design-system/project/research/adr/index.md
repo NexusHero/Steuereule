@@ -31,7 +31,7 @@ Architecture/Design Decision Records. Format: Kontext → Entscheidung → Konse
 | 024 | Push nur ereignisbasiert + eine Saison-Erinnerung | Akzeptiert |
 | 025 | Barrierefreiheit: Stand eingefroren, keine Änderungen in 1.0 | Akzeptiert |
 | 026 | Export: PDF-Bericht pro Steuerjahr, jederzeit | Akzeptiert |
-| 027 | Identität erst bei Abgabe; Multi-Device ohne Verwaltung | Akzeptiert |
+| 027 | Identität erst bei Abgabe; Multi-Device ohne Verwaltung — **„keine 2FA in 1.0" superseded durch 052 (2FA-Punkt)** | Akzeptiert |
 | 028 | Gewerbe-Gate bleibt in 1.0 | Bestätigt |
 | 029 | Grenzgänger CH: volle Tiefe (Lohnausweis-Scan, Quellensteuer, PK, 3a, KK, Zulagen) | Akzeptiert |
 | 030 | Einkunftsarten frei kombinierbar — Kombination wird getestet | Akzeptiert |
@@ -56,6 +56,7 @@ Architecture/Design Decision Records. Format: Kontext → Entscheidung → Konse
 | 049 | Deployment: k3s auf Hetzner (EU) + managed Postgres | Akzeptiert |
 | 050 | Styling-Engine & Token-Pipeline: RN StyleSheet + Style Dictionary | Akzeptiert |
 | 051 | Roadmap 1.0: Ziel, Tracks, Phasen, Zeitrahmen, Agenten-Besatzung (Master: docs/roadmap-1.0.md) | Akzeptiert |
+| 052 | Mantel-Abschluss: TOTP/Passkey als opt-in Zweitfaktor (Amendment zu ADR-027(b)) | Akzeptiert |
 
 _Neue ADRs entstehen aus der Grilling-Session als `research/adr/NNN-titel.md`._
 

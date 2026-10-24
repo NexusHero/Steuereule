@@ -18,7 +18,7 @@
 
 # ADR-027 — Identität erst bei echter Abgabe; Multi-Device ohne Verwaltung
 
-**Status:** Akzeptiert (Grilling R4) · 2026-07-22
+**Status:** Akzeptiert (Grilling R4) · 2026-07-22 · **Teil (b) „keine 2FA in 1.0" superseded durch ADR-052 (nur 2FA-Punkt, 2026-10-24)**
 
 **Entscheidung:** (a) E-Mail/Google/Apple-Login reicht für 1.0; Identitätsprüfung (IdNr-Abgleich, Zertifikat) kommt erst mit der echten ELSTER-Abgabe (2.0). (b) Multi-Device ohne Geräteverwaltung — wer eingeloggt ist, ist drin; keine Session-Liste, kein Remote-Logout, keine 2FA in 1.0.
 
