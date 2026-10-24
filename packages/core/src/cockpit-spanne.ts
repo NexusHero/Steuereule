@@ -12,9 +12,9 @@
 // This is a NEW module by design (ticket 15): the Angestellte/Cockpit Spannen-Ableitung must not
 // edit `berechnung.ts`, which the parallel Vorsorge-Faltung (ticket 16) also imports. Pure,
 // deterministic, dependency-free (ADR-0004); imports only from the core's own modules.
-import { berechne, type BerechnungsInput, type Berechnungsstand } from './berechnung.js'
-import type { Einkunftsart } from './einkunftsarten.js'
-import { UNCERTAINTY_PER_CONFLICT, UNCERTAINTY_PER_ITEM } from './cockpit.js'
+import { berechne, type BerechnungsInput, type Berechnungsstand } from './berechnung'
+import type { Einkunftsart } from './einkunftsarten'
+import { UNCERTAINTY_PER_CONFLICT, UNCERTAINTY_PER_ITEM } from './cockpit'
 
 /**
  * The honest Cockpit spanne. A discriminated union, never a bare `{from,to}`:

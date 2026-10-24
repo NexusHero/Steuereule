@@ -12,9 +12,9 @@
 // Progressionsvorbehalt (Lohnersatz) are later slices. This module folds only what is captured AND
 // foldable; Abfindung/Lohnersatz/DHF-Miete are captured but surfaced as "not yet computed", never
 // silently dropped or guessed (ADR-032). Pure, deterministic, dependency-free (ADR-0004).
-import type { Answers } from './interview.js'
-import { gatedEinkunftsarten, type Einkunftsart } from './einkunftsarten.js'
-import { lstbZustand, type LstbDaten } from './lstb.js'
+import type { Answers } from './interview'
+import { gatedEinkunftsarten, type Einkunftsart } from './einkunftsarten'
+import { lstbZustand, type LstbDaten } from './lstb'
 
 /**
  * The interview-catalogue-derived figures for the Angestellte case, already categorised into
