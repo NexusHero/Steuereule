@@ -37,6 +37,17 @@ describe('BelegService', () => {
       })
       expect(beleg.zuordnung).toEqual({ kind: 'vorgeschlagen', steuerjahr: 2026, herkunft: 'zahlungsdatum' })
     })
+
+    it('a CH document type (ADR-029) is carried through and read back on the response', async () => {
+      const beleg = await service.create(USER_ID, { dateiname: 'lohnausweis.pdf', art: 'Lohnausweis' })
+      expect(beleg.art).toBe('Lohnausweis')
+      expect(beleg.zuordnung).toEqual({ kind: 'ungebunden' })
+    })
+
+    it('an omitted art is read back as null (the generic pre-CH receipt)', async () => {
+      const beleg = await service.create(USER_ID, { dateiname: 'quittung.pdf' })
+      expect(beleg.art).toBeNull()
+    })
   })
 
   describe('list — the inbox, scoped to userId', () => {

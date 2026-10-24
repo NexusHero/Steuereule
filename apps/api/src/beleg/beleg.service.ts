@@ -35,6 +35,7 @@ function toBelegResponse(record: BelegRecord): BelegResponseDto {
   return {
     id: record.id,
     dateiname: record.dateiname,
+    art: record.art ?? null,
     belegdatum: record.belegdatum ?? null,
     zahlungsdatum: record.zahlungsdatum ?? null,
     zuordnung: toZuordnungDto(zuordnungAusDaten(record)),
@@ -62,6 +63,7 @@ export class BelegService {
   async create(userId: string, dto: CreateBelegDto): Promise<BelegResponseDto> {
     const record = await this.repository.create(userId, {
       dateiname: dto.dateiname,
+      ...(dto.art !== undefined ? { art: dto.art } : {}),
       ...(dto.belegdatum !== undefined ? { belegdatum: dto.belegdatum } : {}),
       ...(dto.zahlungsdatum !== undefined ? { zahlungsdatum: dto.zahlungsdatum } : {}),
     })

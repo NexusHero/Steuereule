@@ -26,6 +26,7 @@ export class FakeBelegRepository implements BelegRepository {
       id: `beleg-${this.seq++}`,
       userId,
       dateiname: data.dateiname,
+      ...(data.art !== undefined ? { art: data.art } : {}),
       ...(data.belegdatum !== undefined ? { belegdatum: data.belegdatum } : {}),
       ...(data.zahlungsdatum !== undefined ? { zahlungsdatum: data.zahlungsdatum } : {}),
       steuerjahr: null,

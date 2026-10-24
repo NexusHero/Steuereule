@@ -428,6 +428,12 @@ model Beleg {
   userId        String
   /// Original filename/storage key. Encrypted at rest (ADR-0008).
   dateiname     String    /// @encrypted?mode=strict
+  /// Document type (ADR-029): one of belegart.ts's `Belegart` values (Lohnausweis,
+  /// Quellensteuer, Pensionskasse, Saeule3a, Krankenkasse, Familienzulage, Sonstiges) —
+  /// null is the pre-CH undifferentiated receipt. A plain discriminator, not a tax fact:
+  /// left in the clear (no field-level protection, same reasoning as the dates) so the
+  /// inbox can group by it without decrypting.
+  art           String?
   /// Invoice date (Rechnungsdatum). Clear — the suggestion rule reads it without decrypting.
   belegdatum    DateTime?
   /// Payment date (Zahlungsdatum) — § 11 Zufluss fixes the year, not the invoice date.

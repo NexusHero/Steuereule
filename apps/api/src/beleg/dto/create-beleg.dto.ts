@@ -1,7 +1,8 @@
 // `type:` given explicitly on every @ApiProperty() — see PutProfileDto's comment for
 // why (esbuild/tsx emit no `design:*` metadata, so @nestjs/swagger can't infer these).
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
-import { IsNotEmpty, IsOptional, IsString, Matches } from 'class-validator'
+import { IsIn, IsNotEmpty, IsOptional, IsString, Matches } from 'class-validator'
+import { BELEGARTEN, type Belegart } from '@steuereule/core'
 
 // The exact date shape @steuereule/core's `jahrAusDatum` parses (`^\d{4}-\d{2}-\d{2}$`) —
 // a date-only ISO yyyy-mm-dd, no time component, no other separator. Keeping the DTO and
@@ -18,6 +19,17 @@ export class CreateBelegDto {
   @IsString()
   @IsNotEmpty()
   dateiname!: string
+
+  @ApiPropertyOptional({
+    type: String,
+    enum: BELEGARTEN,
+    example: 'Lohnausweis',
+    description: 'Document type (ADR-029). Omitted = the generic pre-CH receipt (Sonstiges).',
+  })
+  @IsOptional()
+  @IsString()
+  @IsIn([...BELEGARTEN])
+  art?: Belegart
 
   @ApiPropertyOptional({
     type: String,

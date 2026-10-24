@@ -8,8 +8,8 @@
 // isValidAnswer/nextStepFor/remainingStepsFor are imported, never reimplemented. This is what makes
 // admission a real, server-side control (#318 P2) rather than the ADR-0021 defect class. R2 derives
 // the owning catalogue entry from a bare questionId (entryForStep, D3 in interview.ts) instead of
-// trusting a client-supplied scope — so a Lebenslagen write and a Minimal-Gate write are admitted by
-// the SAME engine, differing only in which entry the id belongs to.
+// trusting a client-supplied scope — so a Lebenslagen write, a segment-ch write and a Minimal-Gate
+// write are admitted by the SAME engine, differing only in which entry the id belongs to.
 import { BadRequestException, ConflictException, Inject, Injectable } from '@nestjs/common'
 import {
   ENTRIES,
@@ -21,6 +21,7 @@ import {
   remainingStepsFor,
   type Answers,
   type EntryId,
+  type EntryStepId,
 } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
 import {

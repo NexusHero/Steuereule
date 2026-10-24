@@ -4,10 +4,14 @@
 // ProfileRepository. The record carries only the persisted FACTS; the derived
 // Zuordnung state (ungebunden/vorgeschlagen/zugeordnet/konflikt) is computed by
 // @steuereule/core's `zuordnungAusDaten`, never stored (ADR-014/048).
+import type { Belegart } from '@steuereule/core'
+
 export interface BelegRecord {
   id: string
   userId: string
   dateiname: string
+  /** Document type (ADR-029); absent = the generic pre-CH receipt. */
+  art?: Belegart
   /** Invoice date, ISO yyyy-mm-dd (absent when not yet extracted). */
   belegdatum?: string
   /** Payment date, ISO yyyy-mm-dd — § 11 Zufluss fixes the year, not the invoice date. */
@@ -20,6 +24,7 @@ export interface BelegRecord {
 
 export interface CreateBelegData {
   dateiname: string
+  art?: Belegart
   belegdatum?: string
   zahlungsdatum?: string
 }
