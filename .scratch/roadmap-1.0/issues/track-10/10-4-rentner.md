@@ -14,8 +14,13 @@ eigener Dokumenttyp in der Inbox.
 
 **Status:** ready-for-agent
 
-- [ ] `Rente` als Einkunftsart im Kern (ADR-037-Entwurf), Besteuerungsanteil nach Rentenbeginn-Jahr
-- [ ] Rentenbezugsmitteilung als Dokumenttyp in der Beleg-Inbox (10.1-Vokabular)
-- [ ] Anlage-R-Posten in `berechne` mit Herkunft, offen wo offen — kein fabricated zero (ADR-032)
-- [ ] Kombinierbarkeit Rente+Vermietung+Kapital+Grenzgänger explizit getestet (ADR-030/034)
-- [ ] TDD, typecheck + lint grün, Posture-Zeile
+- [x] `Rente` als Einkunftsart im Kern (ADR-037-Entwurf), Besteuerungsanteil nach Rentenbeginn-Jahr
+- [x] Rentenbezugsmitteilung als Dokumenttyp in der Beleg-Inbox (10.1-Vokabular)
+- [x] Anlage-R-Posten in `berechne` mit Herkunft, offen wo offen — kein fabricated zero (ADR-032)
+- [x] Kombinierbarkeit Rente+Vermietung+Kapital+Grenzgänger explizit getestet (ADR-030/034)
+- [x] TDD, typecheck + lint grün, Posture-Zeile
+
+**Register-REQ: `REQ-022`** (nächste freie Nummer nach 021). Kollisionsvermerk: 10.2
+(Günstigerprüfung) und 10.3 (Bescheidprüfung) belegen parallel ggf. ebenfalls 022/023 — beim Merge
+auflösen (wer 023 bekommt, entscheidet die Merge-Reihenfolge; REQ-Nummern sind stabil und werden nie
+wiederverwendet).

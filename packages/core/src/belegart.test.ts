@@ -5,7 +5,7 @@ import { BELEGARTEN, isBelegart } from './belegart'
 // types; the pre-CH generic receipt is `Sonstiges`. The set is shared and extensible.
 
 describe('BELEGARTEN — the CH document types (ADR-029)', () => {
-  it('lists the CH sources and the generic fallback in canonical order', () => {
+  it('lists the CH sources, the Rentenbezugsmitteilung and the generic fallback in canonical order', () => {
     expect(BELEGARTEN).toEqual([
       'Lohnausweis',
       'Quellensteuer',
@@ -13,6 +13,7 @@ describe('BELEGARTEN — the CH document types (ADR-029)', () => {
       'Saeule3a',
       'Krankenkasse',
       'Familienzulage',
+      'Rentenbezugsmitteilung',
       'Steuerbescheid',
       'Sonstiges',
     ])
@@ -22,6 +23,7 @@ describe('BELEGARTEN — the CH document types (ADR-029)', () => {
 describe('isBelegart — total over string', () => {
   it('accepts a declared Belegart', () => {
     expect(isBelegart('Lohnausweis')).toBe(true)
+    expect(isBelegart('Rentenbezugsmitteilung')).toBe(true)
     expect(isBelegart('Steuerbescheid')).toBe(true)
     expect(isBelegart('Sonstiges')).toBe(true)
   })

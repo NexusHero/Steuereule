@@ -79,6 +79,11 @@ describe('einkunftsartenFromAnswers — the onboarding-shorthand → Einkunftsar
     expect(einkunftsartenFromAnswers(answers)).toEqual(['Vermietung', 'Rente', 'Grenzgänger'])
   })
 
+  it('ADR-030/034 — Rente + Vermietung + Kapital + Grenzgänger all combine freely (ticket 10.4)', () => {
+    const answers: Answers = { job: 'Rente', ausland: 'Ja, in die Schweiz', einkuenfte: 'Beides' }
+    expect(einkunftsartenFromAnswers(answers)).toEqual(['Vermietung', 'Kapital', 'Rente', 'Grenzgänger'])
+  })
+
   it('returns a deterministic, deduplicated, canonical-order set', () => {
     // "Beides" adds two Einkunftsarten from one answer; the result must carry no duplicates
     // and follow EINKUNFTSARTEN order regardless of how many answers contributed.

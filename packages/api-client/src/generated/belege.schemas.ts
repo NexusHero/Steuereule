@@ -72,6 +72,7 @@ export const CreateBelegDtoArt = {
   Saeule3a: 'Saeule3a',
   Krankenkasse: 'Krankenkasse',
   Familienzulage: 'Familienzulage',
+  Rentenbezugsmitteilung: 'Rentenbezugsmitteilung',
   Steuerbescheid: 'Steuerbescheid',
   Sonstiges: 'Sonstiges',
 } as const;

@@ -557,6 +557,42 @@ model ChLohnausweis {
   @@unique([userId, steuerjahr])
 }
 
+/// One row per (userId, steuerjahr) — the Rentner guided-mask data (product ADR-034, Anlage R,
+/// ticket 10.4). The user transcribes their Rentenbezugsmitteilung: the Rentenart (product ADR-036
+/// §3 — one of the five 1.0 kinds), the Jahresbetrag, and either the Rentenbeginn-Jahr
+/// (Besteuerungsanteil path) or the Rentenbeginn-Lebensalter (Ertragsanteil path for the private
+/// Rentenversicherung). Scan/OCR is a later slice (ADR-045). Each field's stored string encodes its
+/// honest state (packages/core/src/rente.ts is the ONE place that maps): `null` = `offen` (not
+/// reached yet), the reserved marker `unklar` = "looked but could not read", any other string = a
+/// non-negative integer (`erfasst`). The taxable share (Jahresbetrag × Besteuerungs-/Ertragsanteil)
+/// is recomputed on every read via @steuereule/core's `renteAlsKernposten`, never stored
+/// (ADR-014/048 determinism boundary). `rentenart` is a plain discriminator (null = not yet chosen),
+/// left in the clear like Beleg.art — the five values are not joinable PII and the screen needs them
+/// to render the picker without decrypting. The three figures are field-encrypted at rest (ADR-0008):
+/// actual income is the most sensitive personal fact a tax app holds, and the Rentenbeginn-Jahr /
+/// -Lebensalter are personal facts that fix the tax treatment, joinable to Profile's Steuer-ID via
+/// the same userId.
+model Rente {
+  id                   String   @id @default(uuid())
+  /// Scoping key — same trusted userId as Profile.userId (ADR-0007). Never read from the
+  /// request path/query/body.
+  userId               String
+  /// The tax year these figures belong to (same granularity as TaxYear/Lstb/ChLohnausweis).
+  steuerjahr           Int
+  /// One of rente.ts's five `Rentenart` values, null = not yet chosen. Clear (plain discriminator).
+  rentenart            String?
+  /// Jahresbetrag der Rente (whole euros). Encrypted at rest; null=offen, "unklar"=unreadable.
+  jahresbetrag         String? /// @encrypted?mode=strict
+  /// Jahr des Rentenbeginns — fixes the Besteuerungsanteil (aa). Encrypted at rest; same encoding.
+  rentenbeginnJahr     String? /// @encrypted?mode=strict
+  /// Vollendetes Lebensjahr bei Rentenbeginn — fixes the Ertragsanteil (bb). Encrypted at rest.
+  alterBeiRentenbeginn String? /// @encrypted?mode=strict
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@unique([userId, steuerjahr])
+}
+
 /// One row per (userId, steuerjahr) — the Steuerbescheid (Bescheidprüfung 1.0, ticket 10.3,
 /// ADR-009). The Bescheid arrives as a Beleg (art `Steuerbescheid`) and its five figures are
 /// transcribed field by field (guided mask, ADR-036 — Scan/OCR is OUT of scope, ADR-045); the

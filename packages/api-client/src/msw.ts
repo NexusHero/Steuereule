@@ -64,6 +64,15 @@ export {
   getSteuerEuleAPIMock as getChLohnausweisApiMock,
 } from './generated/ch-lohnausweis.msw'
 export {
+  getRenteControllerGetResponseMock,
+  getRenteControllerGetMockHandler,
+  getRenteControllerSetRentenartResponseMock,
+  getRenteControllerSetRentenartMockHandler,
+  getRenteControllerSetFeldResponseMock,
+  getRenteControllerSetFeldMockHandler,
+  getSteuerEuleAPIMock as getRenteApiMock,
+} from './generated/rente.msw'
+export {
   getVeranlagungsartenvergleichControllerGetVergleichResponseMock,
   getVeranlagungsartenvergleichControllerGetVergleichMockHandler,
   getSteuerEuleAPIMock as getVeranlagungsartenvergleichApiMock,

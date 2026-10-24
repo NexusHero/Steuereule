@@ -31,6 +31,7 @@ import { VeranlagungsartenvergleichScreen } from './src/screens/veranlagungsarte
 import { BelegeScreen } from './src/screens/belege/BelegeScreen'
 import { BescheidScreen } from './src/screens/bescheid/BescheidScreen'
 import { GrenzgaengerScreen } from './src/screens/grenzgaenger/GrenzgaengerScreen'
+import { RentnerScreen } from './src/screens/rente/RentnerScreen'
 import { ProfilScreen } from './src/screens/ProfilScreen'
 import { DatenschutzScreen } from './src/screens/DatenschutzScreen'
 import { SicherheitScreen } from './src/screens/security/SicherheitScreen'
@@ -238,6 +239,7 @@ function TabbedShell({ tab, onTabChange, onSignedOut }: TabbedShellProps) {
     | 'main'
     | 'interview'
     | 'lstb'
+    | 'rente'
     | 'katalog-lebenslagen'
     | 'katalog-sonderausgaben'
     | 'arbeitstage'
@@ -282,10 +284,15 @@ function TabbedShell({ tab, onTabChange, onSignedOut }: TabbedShellProps) {
     <View style={{ flex: 1 }}>
       {tab === 'cockpit' && cockpitView === 'main' ? <CockpitScreen onOpenInterview={() => setCockpitView('interview')} onOpenBescheid={() => setCockpitView('bescheid')} /> : null}
       {tab === 'cockpit' && cockpitView === 'interview' ? (
-        // The Minimal-Gate routes to the Grenzgänger-CH screen when it declares work in CH —
-        // the `ausland` answer decides which vertical continues (ADR-029); otherwise the
-        // Angestellte vertical continues with the LStB mask (ticket 15).
-        <InterviewScreen onDone={(answers) => setCockpitView(answers.ausland === 'Ja, in die Schweiz' ? 'ch' : 'lstb')} />
+        // The Minimal-Gate routes to the right vertical from the answers — Rente (product
+        // ADR-034) goes to the Rentner mask, work in CH (ADR-029) to the Grenzgänger screen,
+        // otherwise the Angestellte vertical continues with the LStB mask (ticket 15).
+        <InterviewScreen
+          onDone={(answers) => setCockpitView(answers.job === 'Rente' ? 'rente' : answers.ausland === 'Ja, in die Schweiz' ? 'ch' : 'lstb')}
+        />
+      ) : null}
+      {tab === 'cockpit' && cockpitView === 'rente' ? (
+        <RentnerScreen onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
       ) : null}
       {tab === 'cockpit' && cockpitView === 'ch' ? <GrenzgaengerScreen onDone={() => setCockpitView('main')} /> : null}
       {tab === 'cockpit' && cockpitView === 'lstb' ? (

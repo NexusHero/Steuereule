@@ -600,6 +600,41 @@ export const appResources = {
         },
         weiter: 'Weiter',
       },
+      // REQ-022 (ticket 10.4) — the Rentner guided mask (product ADR-034, Anlage R). The
+      // Rentenart values are the German domain vocabulary; only the labels live here (ADR-0033).
+      rente: {
+        back: 'Zurück',
+        heading: 'Deine Rente',
+        help: 'Übertrag die Angaben aus deiner Rentenbezugsmitteilung — Rentenart, Jahresbetrag und Rentenbeginn.',
+        loading: 'Deine Rente wird geladen …',
+        loadError: {
+          heading: 'Das hat nicht geklappt.',
+          message: 'Deine Rente konnte nicht geladen werden. Prüf die Verbindung und versuch es noch mal.',
+          retry: 'Noch mal versuchen',
+        },
+        artHeading: 'Welche Rente beziehst du?',
+        arten: {
+          GesetzlicheRente: 'Gesetzliche Rente',
+          Betriebsrente: 'Betriebsrente / PK',
+          PrivateRentenversicherung: 'Private Rentenversicherung',
+          WitwenWaisenrente: 'Witwen-/Waisenrente',
+          AuslaendischeRente: 'Ausländische Rente (CH AHV)',
+        },
+        felder: {
+          jahresbetrag: 'Jahresbetrag der Rente',
+          rentenbeginnJahr: 'Jahr des Rentenbeginns',
+          alterBeiRentenbeginn: 'Alter bei Rentenbeginn',
+        },
+        feld: {
+          placeholder: 'Ganzzahliger Wert',
+          unklar: 'unlesbar',
+        },
+        posten: {
+          heading: 'Steuerpflichtiger Anteil',
+          offen: 'Noch nicht ermittelbar — trag die fehlenden Angaben ein.',
+        },
+        weiter: 'Weiter',
+      },
       // REQ-017 (ticket 08) — the on-demand catalogue (Lebenslagen + Sonderausgaben), walked by
       // the same engine as the Minimal-Gate. Question ids are the German domain vocabulary;
       // only the labels live here (the values persist byte-equal, ADR-0033).
@@ -778,6 +813,7 @@ export const appResources = {
           saeule3a: 'Säule 3a',
           krankenkasse: 'Krankenkasse',
           familienzulage: 'Familienzulage',
+          rentenbezugsmitteilung: 'Rentenbezugsmitteilung',
           sonstiges: 'Sonstiges',
         },
         datum: {
@@ -1429,6 +1465,40 @@ export const appResources = {
         },
         weiter: 'Continue',
       },
+      // REQ-022 (ticket 10.4) — the Rentner guided mask (product ADR-034, Anlage R).
+      rente: {
+        back: 'Back',
+        heading: 'Your pension',
+        help: 'Copy the figures from your pension notification (Rentenbezugsmitteilung) — pension type, annual amount and start.',
+        loading: 'Loading your pension …',
+        loadError: {
+          heading: "That didn't work.",
+          message: "Your pension couldn't be loaded. Check your connection and try again.",
+          retry: 'Try again',
+        },
+        artHeading: 'Which pension do you receive?',
+        arten: {
+          GesetzlicheRente: 'Statutory pension',
+          Betriebsrente: 'Company pension',
+          PrivateRentenversicherung: 'Private pension plan',
+          WitwenWaisenrente: 'Widow\u2019s/orphan\u2019s pension',
+          AuslaendischeRente: 'Foreign pension (CH AHV)',
+        },
+        felder: {
+          jahresbetrag: 'Annual pension amount',
+          rentenbeginnJahr: 'Year the pension started',
+          alterBeiRentenbeginn: 'Age when the pension started',
+        },
+        feld: {
+          placeholder: 'Whole number',
+          unklar: 'unreadable',
+        },
+        posten: {
+          heading: 'Taxable share',
+          offen: 'Not yet determinable — enter the missing figures.',
+        },
+        weiter: 'Continue',
+      },
       katalog: {
         back: 'Back',
         loading: 'Loading …',
@@ -1588,6 +1658,7 @@ export const appResources = {
           saeule3a: 'Pillar 3a',
           krankenkasse: 'Health insurance',
           familienzulage: 'Family allowance',
+          rentenbezugsmitteilung: 'Pension notification',
           sonstiges: 'Other',
         },
         datum: {

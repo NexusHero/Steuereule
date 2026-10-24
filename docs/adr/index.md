@@ -61,8 +61,8 @@ The ADRs **justify** the architecture; the [living arc42 document](../arc42/READ
 | 0040 | Beleg-Posteingang (ADR-007/008: Zuordnung als Vorschlag, Konflikt sichtbar) | Accepted |
 | 0041 | LStB-/Angestellte-Vertikale (Scan-Fallback-Maske, Katalog-Admission) | Accepted |
 | 0042 | Grenzgänger-CH-Vertikale (Belegart-Vokabular, Wechselkurs-Kern, segment-ch) | Accepted |
+| 0044 | Rentner-Vertikale (Rentenart, gesetzliche Tabellen, Anlage-R-Faltung) | Accepted |
 | 0043 | Veranlagungsartenvergleich-Verfeinerung: Soli/KiSt eingefaltet, Unschärfe nur noch der Progressionsvorbehalt | Accepted |
-=======
 
 See also the [Tech Radar](./tech-radar.md).
 

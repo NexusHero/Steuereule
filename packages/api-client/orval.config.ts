@@ -186,8 +186,23 @@ export default defineConfig({
       },
     },
   },
-  // REQ-022 (ticket 10.2) — the Veranlagungsartenvergleich (ADR-0034): GET Einzel- vs.
-  // Zusammenveranlagung as a bounded comparison. Same `veranlagungsartenvergleich` OpenAPI tag.
+  // REQ-022 (ticket 10.4) — the Rentner guided mask + fold: GET the re-entry state, PUT the
+  // Rentenart choice and PUT one field (jahresbetrag / rentenbeginnJahr / alterBeiRentenbeginn).
+  // Same `rente` OpenAPI tag all three endpoints share.
+  rente: {
+    input: { target: '../../apps/api/openapi.json', filters: { tags: ['rente'] } },
+    output: {
+      target: './src/generated/rente.ts',
+      mode: 'split',
+      client: 'react-query',
+      httpClient: 'fetch',
+      mock: true,
+      override: {
+        mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        mock: { required: true },
+      },
+    },
+  },
   'veranlagungsartenvergleich': {
     input: { target: '../../apps/api/openapi.json', filters: { tags: ['veranlagungsartenvergleich'] } },
     output: {
@@ -198,18 +213,10 @@ export default defineConfig({
       mock: true,
       override: {
         mutator: { path: './src/http-client.ts', name: 'httpClient' },
-        // The response's optional fields (empfehlung/einzel/zusammen/delta/unschaerfe/herkunft/
-        // grund) are genuinely absent on some `kind` variants, so orval's default faker would emit
-        // `arrayElement([value, undefined])` and fail under `exactOptionalPropertyTypes: true`
-        // (TS2375). `mock.required: true` keeps every mocked property populated — same override the
-        // interview/lstb/belege/ch-lohnausweis targets carry; the real TYPE stays optional.
         mock: { required: true },
       },
     },
   },
-  // REQ-023 (ticket 10.3) — Bescheidprüfung: GET the re-entry state, PUT one figure, the
-  // Bescheiddatum, a (server-validated) status transition and the Einspruch. Same `bescheid`
-  // OpenAPI tag all five endpoints share.
   bescheid: {
     input: { target: '../../apps/api/openapi.json', filters: { tags: ['bescheid'] } },
     output: {
@@ -220,10 +227,6 @@ export default defineConfig({
       mock: true,
       override: {
         mutator: { path: './src/http-client.ts', name: 'httpClient' },
-        // `BescheidFeldDto.wert` and `BescheidFristDto.verbleibendeTage` are genuinely absent on
-        // some responses, so orval's default faker would emit `arrayElement([value, undefined])`
-        // and fail under `exactOptionalPropertyTypes: true` (TS2375). `mock.required: true` keeps
-        // every mocked property populated — same override the interview/lstb/ch targets carry.
         mock: { required: true },
       },
     },
