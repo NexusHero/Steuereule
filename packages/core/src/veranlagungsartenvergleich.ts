@@ -32,7 +32,7 @@ import {
   splittingTarif,
   type IncomeTaxYear,
   type KirchensteuerFaktor,
-} from './tarif.js'
+} from './tarif'
 
 /**
  * Die Eingabe für den Progressionsvorbehalt (§32b EStG) — der einzige ausgeschlossene Faktor,
