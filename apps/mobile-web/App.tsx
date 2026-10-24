@@ -27,6 +27,7 @@ import { LstbScreen } from './src/screens/lstb/LstbScreen'
 import { KatalogScreen } from './src/screens/katalog/KatalogScreen'
 import { ArbeitstageScreen } from './src/screens/arbeitstage/ArbeitstageScreen'
 import { PlausibilitaetScreen } from './src/screens/plausibilitaet/PlausibilitaetScreen'
+import { VeranlagungsartenvergleichScreen } from './src/screens/veranlagungsartenvergleich/VeranlagungsartenvergleichScreen'
 import { BelegeScreen } from './src/screens/belege/BelegeScreen'
 import { BescheidScreen } from './src/screens/bescheid/BescheidScreen'
 import { GrenzgaengerScreen } from './src/screens/grenzgaenger/GrenzgaengerScreen'
@@ -243,6 +244,7 @@ function TabbedShell({ tab, onTabChange, onSignedOut }: TabbedShellProps) {
     | 'katalog-sonderausgaben'
     | 'arbeitstage'
     | 'plausibilitaet'
+    | 'veranlagungsartenvergleich'
     | 'ch'
     | 'bescheid'
   >('main')
@@ -306,7 +308,10 @@ function TabbedShell({ tab, onTabChange, onSignedOut }: TabbedShellProps) {
         <ArbeitstageScreen onDone={() => setCockpitView('plausibilitaet')} onBack={() => setCockpitView('katalog-sonderausgaben')} />
       ) : null}
       {tab === 'cockpit' && cockpitView === 'plausibilitaet' ? (
-        <PlausibilitaetScreen onBack={() => setCockpitView('main')} />
+        <PlausibilitaetScreen onBack={() => setCockpitView('main')} onDone={() => setCockpitView('veranlagungsartenvergleich')} />
+      ) : null}
+      {tab === 'cockpit' && cockpitView === 'veranlagungsartenvergleich' ? (
+        <VeranlagungsartenvergleichScreen onBack={() => setCockpitView('plausibilitaet')} onDone={() => setCockpitView('main')} />
       ) : null}
       {tab === 'cockpit' && cockpitView === 'bescheid' ? (
         <BescheidScreen onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />

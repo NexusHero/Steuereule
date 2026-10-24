@@ -72,3 +72,8 @@ export {
   getRenteControllerSetFeldMockHandler,
   getSteuerEuleAPIMock as getRenteApiMock,
 } from './generated/rente.msw'
+export {
+  getVeranlagungsartenvergleichControllerGetVergleichResponseMock,
+  getVeranlagungsartenvergleichControllerGetVergleichMockHandler,
+  getSteuerEuleAPIMock as getVeranlagungsartenvergleichApiMock,
+} from './generated/veranlagungsartenvergleich.msw'
