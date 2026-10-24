@@ -1088,6 +1088,73 @@
           "health"
         ]
       }
+    },
+    "/v1/steuerjahre/{jahr}/veranlagungsartenvergleich": {
+      "get": {
+        "operationId": "VeranlagungsartenvergleichController_getVergleich",
+        "parameters": [
+          {
+            "name": "kirchensteuerFaktor",
+            "required": false,
+            "in": "query",
+            "description": "§51a EStG Kirchensteuer factor (0, 0.08, 0.09). Defaults to 0 — M1 collects none.",
+            "schema": {
+              "example": 0,
+              "type": "number"
+            }
+          },
+          {
+            "name": "zveB",
+            "required": false,
+            "in": "query",
+            "description": "The partner zvE-basis (whole euros). M1 does not yet collect the partner’s income, so it is an explicit input, never a fabricated zero. Required once the comparison applies (married + income recorded).",
+            "schema": {
+              "example": 40000,
+              "type": "number"
+            }
+          },
+          {
+            "name": "verheiratet",
+            "required": false,
+            "in": "query",
+            "description": "The married flag (ADR-0034 gate: only a married couple can choose Einzel- vs. Zusammenveranlagung). M1 does not persist it yet (the Segment-2 `partner` question is declared but not admitted server-side), so it is an explicit input.",
+            "schema": {
+              "example": true,
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr) to compare — validated to a sensible window (2000..currentYear+1), never just \"parses as a number\".",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The Veranlagungsartenvergleich for the given tax year (Einzel- vs. Zusammenveranlagung, ADR-0034), or null when no tax year has been seeded yet (the honest empty state, not a 404).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/VeranlagungsartenvergleichDto"
+                    }
+                  ],
+                  "nullable": true
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "veranlagungsartenvergleich"
+        ]
+      }
     }
   },
   "info": {
@@ -2530,6 +2597,130 @@
         },
         "required": [
           "status"
+        ]
+      },
+      "UnschaerfeDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "bestimmt",
+              "unbestimmt"
+            ],
+            "example": "bestimmt"
+          },
+          "obergrenze": {
+            "type": "number",
+            "example": 0,
+            "description": "The computed bound (only when kind === \"bestimmt\")."
+          },
+          "grund": {
+            "type": "string",
+            "enum": [
+              "progressionsvorbehalt-nicht-eingegeben"
+            ],
+            "description": "Why no bound exists (only when kind === \"unbestimmt\")."
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "VergleichsHerkunftDto": {
+        "type": "object",
+        "properties": {
+          "zveA": {
+            "type": "number",
+            "example": 60000,
+            "description": "The primary zvE-basis (Einnahmen from @steuereule/core — layer 3 open, no real zvE yet)."
+          },
+          "zveB": {
+            "type": "number",
+            "example": 40000,
+            "description": "The partner zvE-basis (query param — M1 does not yet collect it)."
+          },
+          "bestandteile": {
+            "example": [
+              "einkommensteuer",
+              "solidaritaetszuschlag"
+            ],
+            "description": "Which tax components are folded into both amounts.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "zveA",
+          "zveB",
+          "bestandteile"
+        ]
+      },
+      "VeranlagungsartenvergleichDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "eindeutig",
+              "zu-knapp",
+              "unbestimmt",
+              "nicht-anwendbar"
+            ],
+            "example": "eindeutig"
+          },
+          "empfehlung": {
+            "type": "string",
+            "enum": [
+              "einzel",
+              "zusammen"
+            ],
+            "description": "The recommendation (only when kind === \"eindeutig\")."
+          },
+          "einzel": {
+            "type": "number",
+            "example": 21442,
+            "description": "Full assessed tax, single filing (only when kind !== \"nicht-anwendbar\")."
+          },
+          "zusammen": {
+            "type": "number",
+            "example": 21096,
+            "description": "Full assessed tax, joint filing (only when kind !== \"nicht-anwendbar\")."
+          },
+          "delta": {
+            "type": "number",
+            "example": -346,
+            "description": "zusammen − einzel (only when kind !== \"nicht-anwendbar\")."
+          },
+          "unschaerfe": {
+            "description": "The computed margin (only when kind !== \"nicht-anwendbar\").",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UnschaerfeDto"
+              }
+            ]
+          },
+          "herkunft": {
+            "description": "Origin metadata on both numbers (only when kind !== \"nicht-anwendbar\").",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/VergleichsHerkunftDto"
+              }
+            ]
+          },
+          "grund": {
+            "type": "string",
+            "enum": [
+              "nicht-verheiratet",
+              "keine-einnahmen"
+            ],
+            "description": "Why the comparison does not apply (only when kind === \"nicht-anwendbar\")."
+          }
+        },
+        "required": [
+          "kind"
         ]
       }
     }

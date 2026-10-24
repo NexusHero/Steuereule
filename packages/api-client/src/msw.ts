@@ -63,3 +63,8 @@ export {
   getChLohnausweisControllerSetWechselkursMockHandler,
   getSteuerEuleAPIMock as getChLohnausweisApiMock,
 } from './generated/ch-lohnausweis.msw'
+export {
+  getVeranlagungsartenvergleichControllerGetVergleichResponseMock,
+  getVeranlagungsartenvergleichControllerGetVergleichMockHandler,
+  getSteuerEuleAPIMock as getVeranlagungsartenvergleichApiMock,
+} from './generated/veranlagungsartenvergleich.msw'
