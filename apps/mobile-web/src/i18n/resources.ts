@@ -635,6 +635,51 @@ export const appResources = {
         },
         weiter: 'Weiter',
       },
+      // REQ-026 (ticket 10.6) — the Vermietung guided mask (product ADR-033, Anlage V einfach).
+      vermietung: {
+        back: 'Zurück',
+        heading: 'Deine Vermietung',
+        help: 'Erfass deine ganzjährig vermieteten Objekte — je Objekt eine Anlage V mit linearer AfA.',
+        loading: 'Deine Vermietung wird geladen …',
+        loadError: {
+          heading: 'Das hat nicht geklappt.',
+          message: 'Deine Vermietung konnte nicht geladen werden. Prüf die Verbindung und versuch es noch mal.',
+          retry: 'Noch mal versuchen',
+        },
+        einordnung: {
+          berechenbar: 'Ganzjährig vermietete Objekte rechnen wir: je Objekt eine Anlage V, lineare AfA nach § 7 Abs. 4 EStG.',
+          verkaufOderMoebliert: 'Verkauf oder möbliert-auf-Zeit bleibt in 1.0 ehrlich außen vor: Fristen und Abgrenzung rechnen wir noch nicht. Kein halbes Feature.',
+          unbekannt: 'Sag uns im Interview zuerst, ob du vermietest — und ob du verkauft oder möbliert-auf-Zeit vermietest.',
+        },
+        felder: {
+          mieteinnahmen: 'Mieteinnahmen (Jahreskaltmiete)',
+          anschaffungskosten: 'Anschaffungskosten (Gebäudeanteil)',
+          baujahr: 'Baujahr (Fertigstellung)',
+          werbungskosten: 'Laufende Werbungskosten',
+        },
+        feld: {
+          placeholder: 'Ganzzahliger Wert',
+          unklar: 'unlesbar',
+        },
+        objektHeading: 'Objekt {{index}}',
+        addObjekt: 'Weiteres Objekt hinzufügen',
+        fakten: {
+          leer: 'Noch nichts erfasst — trag die Felder ein.',
+          miete: 'Mieteinnahmen: {{betrag}}',
+          werbungskosten: 'Werbungskosten: {{betrag}}',
+          afa: 'Lineare AfA: {{betrag}}',
+          offen: 'Noch offen: {{count}} Angabe(n) fehlen.',
+        },
+        stand: {
+          heading: 'Summe über alle Objekte',
+          einnahmen: 'Mieteinnahmen: {{betrag}}',
+          werbungskosten: 'Werbungskosten: {{betrag}}',
+          afa: 'Lineare AfA: {{betrag}}',
+          offen: 'Noch offen: {{count}} Angabe(n) — die Summen zeigen nur das Erfasste.',
+          gated: 'Ehrlich: Verkauf oder möbliert rechnen wir in 1.0 noch nicht.',
+        },
+        weiter: 'Weiter',
+      },
       // REQ-017 (ticket 08) — the on-demand catalogue (Lebenslagen + Sonderausgaben), walked by
       // the same engine as the Minimal-Gate. Question ids are the German domain vocabulary;
       // only the labels live here (the values persist byte-equal, ADR-0033).
@@ -763,6 +808,7 @@ export const appResources = {
         answerQuestions: 'Fragen beantworten',
         // REQ-023 — the Bescheidprüfung entry (eigener Bereich, ticket 10.3).
         checkBescheid: 'Bescheid prüfen',
+        checkVermietung: 'Vermietung prüfen',
       },
       // Ticket 10 (Phase 2, Slice 1) — Beleg-Posteingang (ADR-007/008). The upload affordance is
       // deliberately a HONEST placeholder, not a scan/PDF button: binary storage is a follow-up
@@ -1499,6 +1545,51 @@ export const appResources = {
         },
         weiter: 'Continue',
       },
+      // REQ-026 (ticket 10.6) — the Vermietung guided mask (product ADR-033, Anlage V einfach). EN.
+      vermietung: {
+        back: 'Back',
+        heading: 'Your rental property',
+        help: 'Enter your year-round rented objects — one Anlage V each, with linear depreciation.',
+        loading: 'Loading your rental property …',
+        loadError: {
+          heading: "That didn't work.",
+          message: "Your rental property couldn't be loaded. Check your connection and try again.",
+          retry: 'Try again',
+        },
+        einordnung: {
+          berechenbar: 'Year-round rented objects we compute: one Anlage V each, linear depreciation per § 7 Abs. 4 EStG.',
+          verkaufOderMoebliert: 'Sale or furnished short-term rental honestly stays out of 1.0: deadlines and delineation are not computed yet. No half feature.',
+          unbekannt: 'First tell us in the interview whether you rent out property — and whether you sold or rent furnished short-term.',
+        },
+        felder: {
+          mieteinnahmen: 'Rental income (annual cold rent)',
+          anschaffungskosten: 'Acquisition costs (building share)',
+          baujahr: 'Year of construction (completion)',
+          werbungskosten: 'Running income-related expenses',
+        },
+        feld: {
+          placeholder: 'Whole number',
+          unklar: 'unreadable',
+        },
+        objektHeading: 'Object {{index}}',
+        addObjekt: 'Add another object',
+        fakten: {
+          leer: 'Nothing entered yet — fill in the fields.',
+          miete: 'Rental income: {{betrag}}',
+          werbungskosten: 'Income-related expenses: {{betrag}}',
+          afa: 'Linear depreciation: {{betrag}}',
+          offen: 'Still open: {{count}} figure(s) missing.',
+        },
+        stand: {
+          heading: 'Total across all objects',
+          einnahmen: 'Rental income: {{betrag}}',
+          werbungskosten: 'Income-related expenses: {{betrag}}',
+          afa: 'Linear depreciation: {{betrag}}',
+          offen: 'Still open: {{count}} figure(s) — the totals show only what was entered.',
+          gated: 'Honestly: sale or furnished short-term rental is not computed in 1.0.',
+        },
+        weiter: 'Continue',
+      },
       katalog: {
         back: 'Back',
         loading: 'Loading …',
@@ -1610,6 +1701,7 @@ export const appResources = {
         refreshing: 'Refreshing …',
         answerQuestions: 'Answer questions',
         checkBescheid: 'Review assessment',
+        checkVermietung: 'Review rental property',
       },
       // Ticket 10 (Phase 2, Slice 1) — Beleg-Posteingang (ADR-007/008). See the `de` block for
       // why the upload affordance is an honest placeholder, not a fake scan button.

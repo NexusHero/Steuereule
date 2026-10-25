@@ -9,8 +9,13 @@ Objekte (je Objekt eine Anlage V, lineare AfA). **Verkauf und möbliert-auf-Zeit
 
 **Status:** ready-for-agent
 
-- [ ] `Vermietung` als Einkunftsart; mehrere Objekte je eine Anlage V, lineare AfA
-- [ ] Werbungskosten je Objekt mit Herkunft; offen wo offen — kein fabricated zero (ADR-032)
-- [ ] Verkauf/möbliert-auf-Zeit: ehrliches Gate (kein halbes Feature, ADR-033)
-- [ ] Kombinierbarkeit Vermietung+Rente+Kapital+Grenzgänger explizit getestet (ADR-030)
-- [ ] TDD, typecheck + lint grün, Posture-Zeile
+- [x] `Vermietung` als Einkunftsart; mehrere Objekte je eine Anlage V, lineare AfA
+- [x] Werbungskosten je Objekt mit Herkunft; offen wo offen — kein fabricated zero (ADR-032)
+- [x] Verkauf/möbliert-auf-Zeit: ehrliches Gate (kein halbes Feature, ADR-033)
+- [x] Kombinierbarkeit Vermietung+Rente+Kapital+Grenzgänger explizit getestet (ADR-030)
+- [x] TDD, typecheck + lint grün, Posture-Zeile
+
+**Register-REQ: `REQ-026`** (nächste freie Nummer nach 024; 10.5 belegt 025 auf dem Parallel-Branch —
+beim Merge prüfen, REQ-Nummern sind stabil und werden nie wiederverwendet). **ADR-0046**
+(Vermietung-Vertikale, Draft — Promotion im Ticket-Review; 0048 gehört 10.5 auf dem
+Parallel-Branch, 0045 ist vom Value-First-Funnel belegt).

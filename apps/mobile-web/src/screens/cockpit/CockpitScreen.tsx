@@ -25,9 +25,11 @@ export interface CockpitScreenProps {
   readonly onOpenInterview?: () => void
   /** Opens the Bescheidprüfung (REQ-023/ticket 10.3) — same composition-root wiring. */
   readonly onOpenBescheid?: () => void
+  /** Opens the Vermietung guided mask (REQ-026/ticket 10.6) — same wiring. */
+  readonly onOpenVermietung?: () => void
 }
 
-export function CockpitScreen({ taxYear = CURRENT_TAX_YEAR, onOpenInterview = () => {}, onOpenBescheid = () => {} }: CockpitScreenProps) {
+export function CockpitScreen({ taxYear = CURRENT_TAX_YEAR, onOpenInterview = () => {}, onOpenBescheid = () => {}, onOpenVermietung = () => {} }: CockpitScreenProps) {
   const bp = useBreakpoint()
   const { t: tr } = useTranslation(APP_NS)
   const query = useCockpitControllerGetCockpitSummary(taxYear)
@@ -50,7 +52,7 @@ export function CockpitScreen({ taxYear = CURRENT_TAX_YEAR, onOpenInterview = ()
   const onRefresh = () => void query.refetch()
 
   if (summary === null) {
-    return <CockpitEmpty taxYear={taxYear} onRefresh={onRefresh} isRefreshing={query.isFetching} onOpenInterview={onOpenInterview} onOpenBescheid={onOpenBescheid} bp={bp} />
+    return <CockpitEmpty taxYear={taxYear} onRefresh={onRefresh} isRefreshing={query.isFetching} onOpenInterview={onOpenInterview} onOpenBescheid={onOpenBescheid} onOpenVermietung={onOpenVermietung} bp={bp} />
   }
   return (
     <CockpitLoaded
@@ -60,6 +62,7 @@ export function CockpitScreen({ taxYear = CURRENT_TAX_YEAR, onOpenInterview = ()
       isRefreshing={query.isFetching}
       onOpenInterview={onOpenInterview}
       onOpenBescheid={onOpenBescheid}
+      onOpenVermietung={onOpenVermietung}
       bp={bp}
     />
   )
@@ -83,10 +86,11 @@ interface CockpitEmptyProps {
   readonly isRefreshing: boolean
   readonly onOpenInterview: () => void
   readonly onOpenBescheid: () => void
+  readonly onOpenVermietung: () => void
   readonly bp: Breakpoint
 }
 
-function CockpitEmpty({ taxYear, onRefresh, isRefreshing, onOpenInterview, onOpenBescheid, bp }: CockpitEmptyProps) {
+function CockpitEmpty({ taxYear, onRefresh, isRefreshing, onOpenInterview, onOpenBescheid, onOpenVermietung, bp }: CockpitEmptyProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
@@ -105,6 +109,9 @@ function CockpitEmpty({ taxYear, onRefresh, isRefreshing, onOpenInterview, onOpe
         <Button variante="ghost" onPress={onOpenBescheid} style={styles.secondaryCta}>
           {tr('cockpit.checkBescheid')}
         </Button>
+        <Button variante="ghost" onPress={onOpenVermietung} style={styles.secondaryCta}>
+          {tr('cockpit.checkVermietung')}
+        </Button>
         <Button variante="ghost" onPress={onRefresh} disabled={isRefreshing} style={styles.secondaryCta}>
           {isRefreshing ? tr('cockpit.refreshing') : tr('cockpit.refresh')}
         </Button>
@@ -120,10 +127,11 @@ interface CockpitLoadedProps {
   readonly isRefreshing: boolean
   readonly onOpenInterview: () => void
   readonly onOpenBescheid: () => void
+  readonly onOpenVermietung: () => void
   readonly bp: Breakpoint
 }
 
-function CockpitLoaded({ summary, taxYear, onRefresh, isRefreshing, onOpenInterview, onOpenBescheid, bp }: CockpitLoadedProps) {
+function CockpitLoaded({ summary, taxYear, onRefresh, isRefreshing, onOpenInterview, onOpenBescheid, onOpenVermietung, bp }: CockpitLoadedProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
@@ -157,6 +165,13 @@ function CockpitLoaded({ summary, taxYear, onRefresh, isRefreshing, onOpenInterv
         style={styles.secondaryCta}
       >
         {tr('cockpit.checkBescheid')}
+      </Button>
+      <Button
+        variante="ghost"
+        onPress={onOpenVermietung}
+        style={styles.secondaryCta}
+      >
+        {tr('cockpit.checkVermietung')}
       </Button>
       <Button
         variante={hasOpenItems ? 'ghost' : 'primaer'}

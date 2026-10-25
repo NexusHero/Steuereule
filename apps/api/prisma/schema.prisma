@@ -593,6 +593,44 @@ model Rente {
   @@unique([userId, steuerjahr])
 }
 
+/// One row per (userId, steuerjahr, id) — ONE Vermietungsobjekt of the guided mask (ticket 10.6,
+/// product ADR-033, Anlage V einfach). Several ganzjährig vermietete objects, each its own
+/// Anlage V, each its own row here (the list nature of Vermietung is the reason this is a
+/// separate model, not a JSON column — the field-encrypted-column pattern needs one row per
+/// fact). The user transcribes the Jahreskaltmiete (Mieteinnahmen), the Gebäude-
+/// Anschaffungskosten, the Baujahr (fixes the § 7 Abs. 4 Satz 1 EStG AfA-Satz: 2,5 %/2 %/3 %)
+/// and the laufenden Werbungskosten — each honestly `offen`/`unklar`/`erfasst`, never silently
+/// guessed (ADR-032); Werbungskosten may be entered as 0, but that 0 is the user's entry, never
+/// a kernel-invented zero. Each field's stored string encodes its honest state
+/// (packages/core/src/vermietung.ts is the ONE place that maps): `null` = `offen`, the reserved
+/// marker `unklar` = "looked but could not read", any other string = a non-negative integer
+/// (`erfasst`). The derived facts (Einnahme-Posten, Werbungskosten-Summe, lineare AfA with its
+/// § 7 Abs. 4 Herkunft) are recomputed on every read via @steuereule/core
+/// (vermietungsobjektFakten/vermietungStand), never stored (ADR-014/048 determinism boundary).
+/// All four figures are field-encrypted at rest (ADR-0008): rental income and acquisition costs
+/// are among the most sensitive personal facts a tax app holds, joinable to Profile's Steuer-ID
+/// via the same userId.
+model Vermietungsobjekt {
+  id                 String   @id @default(uuid())
+  /// Scoping key — same trusted userId as Profile.userId (ADR-0007). Never read from the
+  /// request path/query/body.
+  userId             String
+  /// The tax year these figures belong to (same granularity as Lstb/ChLohnausweis/Rente).
+  steuerjahr         Int
+  /// Jahreskaltmiete (whole euros). Encrypted at rest; null=offen, "unklar"=unreadable.
+  mieteinnahmen      String? /// @encrypted?mode=strict
+  /// Gebäude-Anschaffungskosten (whole euros). Encrypted at rest; same encoding.
+  anschaffungskosten String? /// @encrypted?mode=strict
+  /// Baujahr (Fertigstellung) — fixes the § 7 Abs. 4 Satz 1 AfA-Satz. Encrypted at rest.
+  baujahr            String? /// @encrypted?mode=strict
+  /// Laufende Werbungskosten (whole euros). Encrypted at rest; same encoding.
+  werbungskosten     String? /// @encrypted?mode=strict
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([userId, steuerjahr])
+}
+
 /// One row per (userId, steuerjahr) — the Steuerbescheid (Bescheidprüfung 1.0, ticket 10.3,
 /// ADR-009). The Bescheid arrives as a Beleg (art `Steuerbescheid`) and its five figures are
 /// transcribed field by field (guided mask, ADR-036 — Scan/OCR is OUT of scope, ADR-045); the

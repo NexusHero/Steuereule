@@ -13,6 +13,7 @@ import { LstbModule } from './lstb/lstb.module.js'
 import { ProfileModule } from './profile/profile.module.js'
 import { RenteModule } from './rente/rente.module.js'
 import { VeranlagungsartenvergleichModule } from './veranlagungsartenvergleich/veranlagungsartenvergleich.module.js'
+import { VermietungModule } from './vermietung/vermietung.module.js'
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { VeranlagungsartenvergleichModule } from './veranlagungsartenvergleich/v
     DeviceModule,
     HealthModule,
     VeranlagungsartenvergleichModule,
+    VermietungModule,
   ],
 })
 export class AppModule {}

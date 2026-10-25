@@ -231,4 +231,24 @@ export default defineConfig({
       },
     },
   },
+  // REQ-026 (ticket 10.6) — the Vermietung guided mask + fold (several objects, each an
+  // Anlage V): GET the re-entry state, POST a fresh object, PUT one field. Same `vermietung`
+  // OpenAPI tag all three endpoints share.
+  vermietung: {
+    input: { target: '../../apps/api/openapi.json', filters: { tags: ['vermietung'] } },
+    output: {
+      target: './src/generated/vermietung.ts',
+      mode: 'split',
+      client: 'react-query',
+      httpClient: 'fetch',
+      mock: true,
+      override: {
+        mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        // `VermietungFeldDto.wert` and the nullable fakten fields (`einnahmen`/`werbungskosten`/
+        // `afa` are `| null`, never `undefined` — nullable, not optional) need every mocked
+        // property populated — same override the interview/rente targets carry.
+        mock: { required: true },
+      },
+    },
+  },
 })
