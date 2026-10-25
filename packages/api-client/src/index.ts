@@ -26,6 +26,23 @@ export * from './generated/rente'
 export * from './generated/rente.schemas'
 export * from './generated/veranlagungsartenvergleich'
 export * from './generated/veranlagungsartenvergleich.schemas'
+export * from './generated/kapital'
+// kapital.schemas is re-exported explicitly rather than `export *`: orval emits its own copy of
+// `UnschaerfeDto`/`UnschaerfeDtoKind`/`UnschaerfeDtoGrund` here (the Günstigerprüfung DTO reuses
+// the Veranlagungsartenvergleich's margin type), which would collide with the identical names
+// already re-exported above. Those three are the SAME ADR-0034 margin — consumers get them from
+// `veranlagungsartenvergleich.schemas`; everything else is named here.
+export type {
+  KapitalFeldDto,
+  DepotEinordnungDto,
+  KapitalPostenDto,
+  KapitalStandDto,
+  KapitalResponseDto,
+  PutKapitalFeldDto,
+  GuenstigerpruefungDto,
+  GuenstigerpruefungHerkunftDto,
+  KapitalControllerGetGuenstigerpruefungParams,
+} from './generated/kapital.schemas'
 export * from './generated/bescheid'
 export * from './generated/bescheid.schemas'
 export { configureApiClient, resetApiClientConfig, getApiClientBaseUrl, type ApiClientConfig } from './http-client'

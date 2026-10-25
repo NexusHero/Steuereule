@@ -217,6 +217,23 @@ export default defineConfig({
       },
     },
   },
+  // REQ-025 (ticket 10.5) — the Kapital guided mask + depot-Einordnung + the § 32d Abs. 6
+  // Günstigerprüfung: GET the re-entry state, PUT the Kapitalerträge field, GET the bounded
+  // comparison. Same `kapital` OpenAPI tag all three endpoints share.
+  kapital: {
+    input: { target: '../../apps/api/openapi.json', filters: { tags: ['kapital'] } },
+    output: {
+      target: './src/generated/kapital.ts',
+      mode: 'split',
+      client: 'react-query',
+      httpClient: 'fetch',
+      mock: true,
+      override: {
+        mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        mock: { required: true },
+      },
+    },
+  },
   bescheid: {
     input: { target: '../../apps/api/openapi.json', filters: { tags: ['bescheid'] } },
     output: {

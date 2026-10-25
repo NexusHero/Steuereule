@@ -77,3 +77,12 @@ export {
   getVeranlagungsartenvergleichControllerGetVergleichMockHandler,
   getSteuerEuleAPIMock as getVeranlagungsartenvergleichApiMock,
 } from './generated/veranlagungsartenvergleich.msw'
+export {
+  getKapitalControllerGetResponseMock,
+  getKapitalControllerGetMockHandler,
+  getKapitalControllerSetFeldResponseMock,
+  getKapitalControllerSetFeldMockHandler,
+  getKapitalControllerGetGuenstigerpruefungResponseMock,
+  getKapitalControllerGetGuenstigerpruefungMockHandler,
+  getSteuerEuleAPIMock as getKapitalApiMock,
+} from './generated/kapital.msw'

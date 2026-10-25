@@ -18,6 +18,7 @@ export type Belegart =
   | 'Krankenkasse' // CH-Krankenkassen-Nachweis (Basisvorsorge)
   | 'Familienzulage' // Familienzulagen-Nachweis (Kinderzulage)
   | 'Rentenbezugsmitteilung' // Rentenbezugsmitteilung (product ADR-034 — the Rentner vertical's Beleg)
+  | 'Steuerbescheinigung' // Jahressteuerbescheinigung der Bank (ticket 10.5 — the Kapital vertical's Beleg)
   | 'Steuerbescheid' // der Steuerbescheid (ticket 10.3) — das Bescheid-PDF landet hier; Beträge manuell (ADR-036)
   | 'Sonstiges' // explicitly classified generic receipt — NOT `null`, which is "not yet classified"
 
@@ -30,6 +31,7 @@ export const BELEGARTEN: readonly Belegart[] = [
   'Krankenkasse',
   'Familienzulage',
   'Rentenbezugsmitteilung',
+  'Steuerbescheinigung',
   'Steuerbescheid',
   'Sonstiges',
 ]

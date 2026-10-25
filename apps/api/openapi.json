@@ -662,6 +662,143 @@
         ]
       }
     },
+    "/v1/steuerjahre/{jahr}/kapital": {
+      "get": {
+        "operationId": "KapitalController_get",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr) — validated to a sensible window (ParseSteuerjahrPipe, same as Cockpit).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The caller’s Kapital mask + depot-Einordnung + fold for this tax year — re-entry.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KapitalResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "kapital"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/kapital/{feld}": {
+      "put": {
+        "operationId": "KapitalController_setFeld",
+        "parameters": [
+          {
+            "name": "feld",
+            "required": true,
+            "in": "path",
+            "description": "The Kapital field id (ParseKapitalFeldPipe — today only `kapitalertraege`).",
+            "schema": {
+              "example": "kapitalertraege",
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutKapitalFeldDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated mask and its derived fold.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KapitalResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "kapital"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/kapital/guenstigerpruefung": {
+      "get": {
+        "operationId": "KapitalController_getGuenstigerpruefung",
+        "parameters": [
+          {
+            "name": "kirchensteuerFaktor",
+            "required": false,
+            "in": "query",
+            "description": "§51a EStG Kirchensteuer factor (0, 0.08, 0.09). Defaults to 0 — M1 collects none.",
+            "schema": {
+              "example": 0,
+              "type": "number"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The § 32d Abs. 6 Günstigerprüfung for the given tax year (Abgeltungsteuer vs. persönlicher Satz, ADR-0034-Muster, Einzelveranlagung in M1), or null when no tax year has been seeded yet (the honest empty state, not a 404).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/GuenstigerpruefungDto"
+                    }
+                  ],
+                  "nullable": true
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "kapital"
+        ]
+      }
+    },
     "/v1/belege": {
       "get": {
         "operationId": "BelegController_list",
@@ -2206,6 +2343,308 @@
           "kind"
         ]
       },
+      "KapitalFeldDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "erfasst",
+              "offen",
+              "unklar"
+            ],
+            "description": "The field’s capture state."
+          },
+          "wert": {
+            "type": "number",
+            "example": 2500,
+            "description": "The value — present only when kind === \"erfasst\" (validated via @steuereule/core)."
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "DepotEinordnungDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "deutscher-broker",
+              "auslaendischer-broker",
+              "krypto",
+              "unbekannt"
+            ],
+            "example": "deutscher-broker",
+            "description": "deutscher-broker = Abgeltungsteuer was withheld (Günstigerprüfung applies); auslaendischer-broker = no German tax withheld — KAP-Pflicht, personal tariff; krypto = gated in 1.0 (product ADR-032 §2); unbekannt = kap-depot not answered."
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "KapitalPostenDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "kapital",
+            "description": "The stable posten id."
+          },
+          "betrag": {
+            "type": "number",
+            "example": 2500,
+            "description": "The Kapitalerträge (whole euros)."
+          },
+          "herkunft": {
+            "type": "string",
+            "example": "eingabe",
+            "description": "The Herkunft (Quelle art) of the amount."
+          }
+        },
+        "required": [
+          "id",
+          "betrag",
+          "herkunft"
+        ]
+      },
+      "KapitalStandDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "bestimmt",
+              "offen"
+            ],
+            "description": "Determined, or open (naming what blocks)."
+          },
+          "einnahmen": {
+            "type": "number",
+            "description": "Sum of Einnahme Posten (whole euros)."
+          },
+          "vorsorgeaufwand": {
+            "type": "number",
+            "description": "Sum of Vorsorgeaufwand Posten (whole euros)."
+          },
+          "anrechnung": {
+            "type": "number",
+            "description": "Sum of Anrechnung Posten (whole euros)."
+          },
+          "offenePosten": {
+            "type": "number",
+            "description": "Required-but-empty line items (only when offen)."
+          },
+          "konflikte": {
+            "type": "number",
+            "description": "Open conflicts (only when offen)."
+          },
+          "gegated": {
+            "description": "Gated Einkunftsarten (only when offen).",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "kind",
+          "einnahmen",
+          "vorsorgeaufwand",
+          "anrechnung"
+        ]
+      },
+      "KapitalResponseDto": {
+        "type": "object",
+        "properties": {
+          "kapitalertraege": {
+            "$ref": "#/components/schemas/KapitalFeldDto"
+          },
+          "depot": {
+            "$ref": "#/components/schemas/DepotEinordnungDto"
+          },
+          "posten": {
+            "description": "The Kapital-Posten (empty while not determinable).",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KapitalPostenDto"
+            }
+          },
+          "stand": {
+            "$ref": "#/components/schemas/KapitalStandDto"
+          }
+        },
+        "required": [
+          "kapitalertraege",
+          "depot",
+          "posten",
+          "stand"
+        ]
+      },
+      "PutKapitalFeldDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "erfasst",
+              "offen",
+              "unklar"
+            ],
+            "description": "The field’s capture state."
+          },
+          "wert": {
+            "type": "number",
+            "example": 2500,
+            "description": "The value — present only when kind === \"erfasst\" (validated via @steuereule/core)."
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "UnschaerfeDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "bestimmt",
+              "unbestimmt"
+            ],
+            "example": "bestimmt"
+          },
+          "obergrenze": {
+            "type": "number",
+            "example": 0,
+            "description": "The computed bound (only when kind === \"bestimmt\")."
+          },
+          "grund": {
+            "type": "string",
+            "enum": [
+              "progressionsvorbehalt-nicht-eingegeben"
+            ],
+            "description": "Why no bound exists (only when kind === \"unbestimmt\")."
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "GuenstigerpruefungHerkunftDto": {
+        "type": "object",
+        "properties": {
+          "kapitalertraege": {
+            "type": "number",
+            "example": 20000,
+            "description": "The Kapitalerträge (whole euros) — the basis of both amounts."
+          },
+          "uebrigesZvE": {
+            "type": "number",
+            "example": 60000,
+            "description": "The übrige zvE-basis (Einnahmen-Basis from @steuereule/core — layer 3 open, no real zvE yet)."
+          },
+          "sparerpauschbetrag": {
+            "type": "number",
+            "example": 1000,
+            "description": "The applied Sparerpauschbetrag (§ 20 Abs. 9 EStG)."
+          },
+          "veranlagung": {
+            "type": "string",
+            "enum": [
+              "einzel",
+              "zusammen"
+            ],
+            "description": "Which Veranlagungsart both amounts compute."
+          },
+          "bestandteile": {
+            "example": [
+              "einkommensteuer",
+              "solidaritaetszuschlag"
+            ],
+            "description": "Which tax components are folded into both amounts.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "kapitalertraege",
+          "uebrigesZvE",
+          "sparerpauschbetrag",
+          "veranlagung",
+          "bestandteile"
+        ]
+      },
+      "GuenstigerpruefungDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "eindeutig",
+              "zu-knapp",
+              "unbestimmt",
+              "nicht-anwendbar"
+            ],
+            "example": "eindeutig"
+          },
+          "empfehlung": {
+            "type": "string",
+            "enum": [
+              "abgeltung",
+              "persoenlich"
+            ],
+            "description": "The recommendation (only when kind === \"eindeutig\")."
+          },
+          "abgeltung": {
+            "type": "number",
+            "example": 4750,
+            "description": "Abgeltungsteuer + Soli + KiSt-Ermäßigung (only when kind !== \"nicht-anwendbar\")."
+          },
+          "persoenlich": {
+            "type": "number",
+            "example": 8482,
+            "description": "The personal (tariff) tax on the capital income (only when kind !== \"nicht-anwendbar\")."
+          },
+          "delta": {
+            "type": "number",
+            "example": 3732,
+            "description": "persoenlich − abgeltung (only when kind !== \"nicht-anwendbar\")."
+          },
+          "unschaerfe": {
+            "description": "The computed margin (only when kind !== \"nicht-anwendbar\").",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UnschaerfeDto"
+              }
+            ]
+          },
+          "herkunft": {
+            "description": "Origin metadata on both numbers (only when kind !== \"nicht-anwendbar\").",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GuenstigerpruefungHerkunftDto"
+              }
+            ]
+          },
+          "grund": {
+            "type": "string",
+            "enum": [
+              "keine-abgeltung-einbehalten",
+              "krypto-gegated",
+              "kap-depot-nicht-beantwortet",
+              "keine-kapitalertraege"
+            ],
+            "description": "Why the Günstigerprüfung does not apply (only when kind === \"nicht-anwendbar\")."
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
       "ZuordnungDto": {
         "type": "object",
         "properties": {
@@ -2307,6 +2746,7 @@
               "Krankenkasse",
               "Familienzulage",
               "Rentenbezugsmitteilung",
+              "Steuerbescheinigung",
               "Steuerbescheid",
               "Sonstiges"
             ],
@@ -2912,34 +3352,6 @@
         },
         "required": [
           "status"
-        ]
-      },
-      "UnschaerfeDto": {
-        "type": "object",
-        "properties": {
-          "kind": {
-            "type": "string",
-            "enum": [
-              "bestimmt",
-              "unbestimmt"
-            ],
-            "example": "bestimmt"
-          },
-          "obergrenze": {
-            "type": "number",
-            "example": 0,
-            "description": "The computed bound (only when kind === \"bestimmt\")."
-          },
-          "grund": {
-            "type": "string",
-            "enum": [
-              "progressionsvorbehalt-nicht-eingegeben"
-            ],
-            "description": "Why no bound exists (only when kind === \"unbestimmt\")."
-          }
-        },
-        "required": [
-          "kind"
         ]
       },
       "VergleichsHerkunftDto": {

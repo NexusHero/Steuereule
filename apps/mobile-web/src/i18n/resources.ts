@@ -661,6 +661,51 @@ export const appResources = {
         },
         weiter: 'Weiter',
       },
+      // REQ-025 (ticket 10.5) — the Kapital guided mask + § 32d Abs. 6 Günstigerprüfung
+      // (product ADR-032, Anlage KAP). The depot kinds are the server-derived Einordnung;
+      // only the labels live here (ADR-0033).
+      kapital: {
+        back: 'Zurück',
+        heading: 'Kapital & Depot',
+        help: 'Übertrag deine Kapitalerträge aus der Jahressteuerbescheinigung deiner Bank.',
+        loading: 'Deine Kapitalerträge werden geladen …',
+        loadError: {
+          heading: 'Das hat nicht geklappt.',
+          message: 'Deine Kapitalerträge konnten nicht geladen werden. Prüf die Verbindung und versuch es noch mal.',
+          retry: 'Noch mal versuchen',
+        },
+        depot: {
+          deutscherBroker: 'Deine Bank hat Abgeltungsteuer einbehalten. Unten rechnen wir ehrlich nach, ob die Abgeltungsteuer oder dein persönlicher Steuersatz günstiger ist.',
+          auslaendischerBroker: 'Ausländischer Broker: Es wurde keine deutsche Steuer abgeführt. Diese Kapitalerträge musst du in Anlage KAP erklären — sie werden mit deinem persönlichen Steuersatz versteuert. Wir erfinden hier keine Abgeltungsteuer.',
+          krypto: 'Krypto bleibt in 1.0 ehrlich außen vor: Haltefristen und Anschaffungskosten rechnen wir noch nicht. Kein halbes Feature.',
+          unbekannt: 'Sag uns im Interview zuerst, ob dein Depot bei einem deutschen oder ausländischen Broker liegt.',
+        },
+        feld: {
+          label: 'Kapitalerträge (Einkünfte aus Kapitalvermögen)',
+          placeholder: 'Ganzzahliger Wert',
+          unklar: 'unlesbar',
+        },
+        posten: {
+          heading: 'Deine Kapitalerträge',
+          herkunft: 'Eingabe aus deiner Jahressteuerbescheinigung',
+          offen: 'Noch nicht ermittelbar — trag deine Kapitalerträge ein.',
+        },
+        guenstigerpruefung: {
+          heading: 'Günstigerprüfung (§ 32d Abs. 6 EStG)',
+          eindeutigAbgeltung: 'Die Abgeltungsteuer ist günstiger.',
+          eindeutigPersoenlich: 'Dein persönlicher Steuersatz ist günstiger.',
+          zuKnapp: 'Zu knapp, um das zu sagen.',
+          unbestimmt: 'Das können wir noch nicht sagen.',
+          abgeltung: 'Abgeltungsteuer (25 % + Soli)',
+          persoenlich: 'Persönlicher Steuersatz (Tarif)',
+          progressionsvorbehaltHinweis: 'Ehrlich: der Progressionsvorbehalt (Lohnersatz) ist hier noch nicht berücksichtigt.',
+          keineAbgeltungEinbehalten: 'Keine Abgeltungsteuer einbehalten — die Günstigerprüfung stellt sich hier nicht.',
+          kryptoGegated: 'Krypto bleibt 2.0 — keine Günstigerprüfung für Krypto.',
+          kapDepotNichtBeantwortet: 'Erst die Depot-Frage im Interview beantworten — dann wissen wir, ob die Günstigerprüfung anwendbar ist.',
+          keineKapitalertraege: 'Trag zuerst deine Kapitalerträge ein — dann rechnen wir den Vergleich.',
+        },
+        weiter: 'Weiter',
+      },
       // REQ-017 (ticket 08) — the on-demand catalogue (Lebenslagen + Sonderausgaben), walked by
       // the same engine as the Minimal-Gate. Question ids are the German domain vocabulary;
       // only the labels live here (the values persist byte-equal, ADR-0033).
@@ -789,6 +834,7 @@ export const appResources = {
         answerQuestions: 'Fragen beantworten',
         // REQ-023 — the Bescheidprüfung entry (eigener Bereich, ticket 10.3).
         checkBescheid: 'Bescheid prüfen',
+        checkKapital: 'Kapital & Depot prüfen',
       },
       // Ticket 10 (Phase 2, Slice 1) — Beleg-Posteingang (ADR-007/008). The upload affordance is
       // deliberately a HONEST placeholder, not a scan/PDF button: binary storage is a follow-up
@@ -1551,6 +1597,49 @@ export const appResources = {
         },
         weiter: 'Continue',
       },
+      // REQ-025 (ticket 10.5) — the Kapital guided mask + § 32d Abs. 6 Günstigerprüfung (EN).
+      kapital: {
+        back: 'Back',
+        heading: 'Capital & brokerage',
+        help: 'Copy your capital income from your bank\u2019s annual tax certificate (Jahressteuerbescheinigung).',
+        loading: 'Loading your capital income …',
+        loadError: {
+          heading: "That didn't work.",
+          message: "Your capital income couldn't be loaded. Check your connection and try again.",
+          retry: 'Try again',
+        },
+        depot: {
+          deutscherBroker: 'Your bank withheld withholding tax (Abgeltungsteuer). Below we honestly compare it with your personal tax rate.',
+          auslaendischerBroker: 'Foreign broker: no German tax was withheld. You must declare this income in Anlage KAP — it is taxed at your personal rate. We never invent a withholding tax here.',
+          krypto: 'Crypto honestly stays out of 1.0: holding periods and acquisition costs are not computed yet. No half feature.',
+          unbekannt: 'First tell us in the interview whether your brokerage is German or foreign.',
+        },
+        feld: {
+          label: 'Capital income (Einkünfte aus Kapitalvermögen)',
+          placeholder: 'Whole number',
+          unklar: 'unreadable',
+        },
+        posten: {
+          heading: 'Your capital income',
+          herkunft: 'Entered from your Jahressteuerbescheinigung',
+          offen: 'Not yet determinable — enter your capital income.',
+        },
+        guenstigerpruefung: {
+          heading: 'Günstigerprüfung (§ 32d Abs. 6 EStG)',
+          eindeutigAbgeltung: 'The flat withholding tax is cheaper.',
+          eindeutigPersoenlich: 'Your personal tax rate is cheaper.',
+          zuKnapp: 'Too close to call.',
+          unbestimmt: "We can't say that yet.",
+          abgeltung: 'Withholding tax (25 % + solidarity surcharge)',
+          persoenlich: 'Personal tariff',
+          progressionsvorbehaltHinweis: 'Honestly: the progression proviso (wage replacement benefits) is not factored in yet.',
+          keineAbgeltungEinbehalten: 'No withholding tax was withheld — the comparison does not arise.',
+          kryptoGegated: 'Crypto stays 2.0 — no comparison for crypto.',
+          kapDepotNichtBeantwortet: 'Answer the brokerage question in the interview first — then we know whether the comparison applies.',
+          keineKapitalertraege: 'Enter your capital income first — then we compute the comparison.',
+        },
+        weiter: 'Continue',
+      },
       katalog: {
         back: 'Back',
         loading: 'Loading …',
@@ -1662,6 +1751,7 @@ export const appResources = {
         refreshing: 'Refreshing …',
         answerQuestions: 'Answer questions',
         checkBescheid: 'Review assessment',
+        checkKapital: 'Review capital & brokerage',
       },
       // Ticket 10 (Phase 2, Slice 1) — Beleg-Posteingang (ADR-007/008). See the `de` block for
       // why the upload affordance is an honest placeholder, not a fake scan button.

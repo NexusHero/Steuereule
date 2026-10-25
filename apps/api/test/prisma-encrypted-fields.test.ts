@@ -88,6 +88,7 @@ const EXPECTED_ENCRYPTED_FIELDS: ExpectedEncryptedField[] = [
   { model: 'Rente', field: 'jahresbetrag', encrypt: true, strictDecryption: true },
   { model: 'Rente', field: 'rentenbeginnJahr', encrypt: true, strictDecryption: true },
   { model: 'Rente', field: 'alterBeiRentenbeginn', encrypt: true, strictDecryption: true },
+  { model: 'Kapital', field: 'kapitalertraege', encrypt: true, strictDecryption: true },
   { model: 'Bescheid', field: 'einnahmen', encrypt: true, strictDecryption: true },
   { model: 'Bescheid', field: 'vorsorgeaufwand', encrypt: true, strictDecryption: true },
   { model: 'Bescheid', field: 'anrechnung', encrypt: true, strictDecryption: true },
@@ -123,6 +124,7 @@ const EXPECTED_CURSORS: Record<string, string> = {
   Lstb: 'id',
   ChLohnausweis: 'id',
   Rente: 'id',
+  Kapital: 'id',
   Bescheid: 'id',
 }
 
