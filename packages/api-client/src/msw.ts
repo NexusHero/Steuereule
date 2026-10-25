@@ -95,3 +95,7 @@ export {
   getVermietungControllerSetFeldMockHandler,
   getSteuerEuleAPIMock as getVermietungApiMock,
 } from './generated/vermietung.msw'
+  getFristenControllerGetFristenResponseMock,
+  getFristenControllerGetFristenMockHandler,
+  getSteuerEuleAPIMock as getFristenApiMock,
+} from './generated/fristen.msw'

@@ -64,7 +64,7 @@ The ADRs **justify** the architecture; the [living arc42 document](../arc42/READ
 | 0044 | Rentner-Vertikale (Rentenart, gesetzliche Tabellen, Anlage-R-Faltung) | Accepted |
 | 0045 | Value-First-Funnel: Gast darf das Minimal-Gate, Steuer-ID wird optional, Upgrade nimmt Interview-Antworten mit | Accepted |
 | 0046 | Vermietung-Vertikale: mehrere Objekte je Anlage V, lineare AfA, Verkauf/möbliert-Gate | Draft |
-| 0043 | Veranlagungsartenvergleich-Verfeinerung: Soli/KiSt eingefaltet, Unschärfe nur noch der Progressionsvorbehalt | Accepted |
+| 0047 | Fristen-/Verspätungszuschlag-Warnmodus: Abgabefrist-Regelwerk, 60-Tage-Banner, kein verspätet-Status | Draft || 0043 | Veranlagungsartenvergleich-Verfeinerung: Soli/KiSt eingefaltet, Unschärfe nur noch der Progressionsvorbehalt | Accepted |
 | 0048 | Kapital-Vertikale: Depot-Einordnung, Kapitalerträge-Maske, § 32d-Günstigerprüfung (bounded comparison) | Draft |
 
 See also the [Tech Radar](./tech-radar.md).
