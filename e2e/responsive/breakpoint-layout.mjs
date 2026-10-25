@@ -296,8 +296,13 @@ async function continueAsGuestThroughOnboarding(page) {
   // Minimal-Gate: job -> ausland -> kinder (the funnel's guest may answer Segment 1).
   await page.getByText(COPY.job).waitFor({ state: 'visible', timeout: 10_000 })
   await page.getByText(COPY.job).click()
-  await page.getByText(COPY.nein).click() // ausland: no gate
-  await page.getByText(COPY.kinder).click() // completes the Minimal-Gate
+  // The gate answers are clicked with `force: true`: this is a LAYOUT-measurement gate, not an
+  // interaction-fidelity gate (the interaction logic is pinned by the jsdom suites). At the `m`/
+  // `l` breakpoints Playwright's stability check has been observed to never settle (the harness
+  // sets those viewports in two resize steps, and the shell re-lays out while the breakpoint hook
+  // settles) — the buttons themselves are fine.
+  await page.getByText(COPY.nein).click({ force: true }) // ausland: no gate
+  await page.getByText(COPY.kinder).click({ force: true }) // completes the Minimal-Gate
 
   // Konto-Wand — the honest next step for a guest; "Später" reaches the Cockpit.
   await page.getByText(COPY.kontoWandLater).waitFor({ state: 'visible', timeout: 10_000 })
