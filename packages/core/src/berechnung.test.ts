@@ -34,7 +34,7 @@ describe('berechne — the honest fold', () => {
 
   it('is `offen` and NAMES the open count when a required Posten is still empty', () => {
     const stand = berechne(input({ posten: [angestellt], offenePosten: 2 }))
-    expect(stand).toEqual({ kind: 'offen', einnahmen: 1407, vorsorgeaufwand: 0, anrechnung: 0, offenePosten: 2, konflikte: 0, gegated: [] })
+    expect(stand).toEqual({ kind: 'offen', einnahmen: 1407, vorsorgeaufwand: 0, anrechnung: 0, offenePosten: 2, konflikte: 0, gegated: [], unbestaetigte: 0, unbestaetigteSumme: 0 })
   })
 
   it('is `offen` and names a conflict count, and the conflicting Posten is NOT in the sum (ADR-008)', () => {
@@ -47,12 +47,12 @@ describe('berechne — the honest fold', () => {
       ],
     }
     const stand = berechne(input({ posten: [angestellt], konflikte: [konflikt] }))
-    expect(stand).toEqual({ kind: 'offen', einnahmen: 1407, vorsorgeaufwand: 0, anrechnung: 0, offenePosten: 0, konflikte: 1, gegated: [] })
+    expect(stand).toEqual({ kind: 'offen', einnahmen: 1407, vorsorgeaufwand: 0, anrechnung: 0, offenePosten: 0, konflikte: 1, gegated: [], unbestaetigte: 0, unbestaetigteSumme: 0 })
   })
 
   it('is `offen` and names the gated Einkunftsarten (ADR-032: declared but not computable)', () => {
     const stand = berechne(input({ posten: [angestellt], gegated: ['Gewerbe'] }))
-    expect(stand).toEqual({ kind: 'offen', einnahmen: 1407, vorsorgeaufwand: 0, anrechnung: 0, offenePosten: 0, konflikte: 0, gegated: ['Gewerbe'] })
+    expect(stand).toEqual({ kind: 'offen', einnahmen: 1407, vorsorgeaufwand: 0, anrechnung: 0, offenePosten: 0, konflikte: 0, gegated: ['Gewerbe'], unbestaetigte: 0, unbestaetigteSumme: 0 })
   })
 
   it('`bestimmt` collapses the moment the last blocker clears — the honest point value (ADR-015)', () => {

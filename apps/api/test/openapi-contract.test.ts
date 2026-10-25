@@ -87,7 +87,7 @@ describe('OpenAPI contract for GET /v1/steuerjahre/{jahr}/cockpit (REQ-001)', ()
     expect(schema).toBeDefined()
     const properties = (schema as { properties?: Record<string, unknown> }).properties ?? {}
     expect(Object.keys(properties).sort()).toEqual(
-      ['bis', 'gegated', 'kind', 'konflikte', 'offenePosten', 'summe', 'von', 'wert'].sort(),
+      ['bis', 'gegated', 'kind', 'konflikte', 'offenePosten', 'summe', 'unbestaetigte', 'unbestaetigteSumme', 'von', 'wert'].sort(),
     )
   })
 })

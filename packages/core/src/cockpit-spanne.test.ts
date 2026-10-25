@@ -14,18 +14,18 @@ describe('cockpitSpanne', () => {
     const stand = berechne({ posten: [{ id: 'p1', einkunftsart: 'Nichtselbstständig', betrag: 1407, quelle: { art: 'eingabe' } }], offenePosten: 3, konflikte: [], gegated: [] })
     expect(stand.kind).toBe('offen')
     const spread = 3 * UNCERTAINTY_PER_ITEM
-    expect(cockpitSpanne(stand)).toStrictEqual({ kind: 'spanne', von: 1407 - spread, bis: 1407 + spread, offenePosten: 3, konflikte: 0 })
+    expect(cockpitSpanne(stand)).toStrictEqual({ kind: 'spanne', von: 1407 - spread, bis: 1407 + spread, offenePosten: 3, konflikte: 0, unbestaetigte: 0, unbestaetigteSumme: 0 })
   })
 
   it('a conflict widens more than an item (ADR-008 ± offen)', () => {
     const stand = berechne({ posten: [{ id: 'p1', einkunftsart: 'Nichtselbstständig', betrag: 1000, quelle: { art: 'eingabe' } }], offenePosten: 0, konflikte: [{ postenId: 'c1', einkunftsart: 'Nichtselbstständig', quellen: [{ art: 'eingabe', betrag: 100 }, { art: 'beleg', belegId: 'b1', betrag: 200 }] }], gegated: [] })
-    expect(cockpitSpanne(stand)).toStrictEqual({ kind: 'spanne', von: 1000 - UNCERTAINTY_PER_CONFLICT, bis: 1000 + UNCERTAINTY_PER_CONFLICT, offenePosten: 0, konflikte: 1 })
+    expect(cockpitSpanne(stand)).toStrictEqual({ kind: 'spanne', von: 1000 - UNCERTAINTY_PER_CONFLICT, bis: 1000 + UNCERTAINTY_PER_CONFLICT, offenePosten: 0, konflikte: 1, unbestaetigte: 0, unbestaetigteSumme: 0 })
   })
 
   it('items and conflicts add up', () => {
     const stand = berechne({ posten: [{ id: 'p1', einkunftsart: 'Nichtselbstständig', betrag: 1000, quelle: { art: 'eingabe' } }], offenePosten: 2, konflikte: [{ postenId: 'c1', einkunftsart: 'Nichtselbstständig', quellen: [{ art: 'eingabe', betrag: 1 }, { art: 'beleg', belegId: 'b1', betrag: 2 }] }], gegated: [] })
     const spread = 2 * UNCERTAINTY_PER_ITEM + 1 * UNCERTAINTY_PER_CONFLICT
-    expect(cockpitSpanne(stand)).toStrictEqual({ kind: 'spanne', von: 1000 - spread, bis: 1000 + spread, offenePosten: 2, konflikte: 1 })
+    expect(cockpitSpanne(stand)).toStrictEqual({ kind: 'spanne', von: 1000 - spread, bis: 1000 + spread, offenePosten: 2, konflikte: 1, unbestaetigte: 0, unbestaetigteSumme: 0 })
   })
 
   it('a gated Einkunftsart is named, never widened into a fake range (ADR-032)', () => {
@@ -52,7 +52,7 @@ describe('spanneAusBerechnung', () => {
       gegated: [],
     }
     const spread = 3 * UNCERTAINTY_PER_ITEM
-    expect(spanneAusBerechnung(input)).toStrictEqual({ kind: 'spanne', von: 1407 - spread, bis: 1407 + spread, offenePosten: 3, konflikte: 0 })
+    expect(spanneAusBerechnung(input)).toStrictEqual({ kind: 'spanne', von: 1407 - spread, bis: 1407 + spread, offenePosten: 3, konflikte: 0, unbestaetigte: 0, unbestaetigteSumme: 0 })
   })
 })
 
@@ -69,6 +69,8 @@ describe('cockpitSpanneAusEingaben', () => {
       bis: 1000 + spread,
       offenePosten: 2,
       konflikte: 1,
+      unbestaetigte: 0,
+      unbestaetigteSumme: 0,
     })
   })
 

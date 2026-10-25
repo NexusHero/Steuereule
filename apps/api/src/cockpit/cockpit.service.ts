@@ -21,6 +21,7 @@ import {
 } from '@steuereule/core'
 import { INTERVIEW_ANSWER_REPOSITORY, type InterviewAnswerRecord, type InterviewAnswerRepository } from '../interview/interview-answer.repository.js'
 import { LSTB_REPOSITORY, type LstbRecord, type LstbRepository } from '../lstb/lstb.repository.js'
+import { UEBERNAHME_REPOSITORY, type UebernahmeRepository } from '../uebernahme/uebernahme.repository.js'
 import { TAX_YEAR_REPOSITORY, type TaxYearRepository } from './tax-year.repository.js'
 import type { CockpitStandDto, CockpitSummaryDto } from './dto/cockpit-summary.dto.js'
 
@@ -47,7 +48,15 @@ function toStandDto(stand: CockpitSpanne): CockpitStandDto {
     case 'bestimmt':
       return { kind: 'bestimmt', wert: stand.wert }
     case 'spanne':
-      return { kind: 'spanne', von: stand.von, bis: stand.bis, offenePosten: stand.offenePosten, konflikte: stand.konflikte }
+      return {
+        kind: 'spanne',
+        von: stand.von,
+        bis: stand.bis,
+        offenePosten: stand.offenePosten,
+        konflikte: stand.konflikte,
+        unbestaetigte: stand.unbestaetigte,
+        unbestaetigteSumme: stand.unbestaetigteSumme,
+      }
     case 'gated':
       return { kind: 'gated', summe: stand.summe, gegated: [...stand.gegated] }
   }
@@ -62,6 +71,7 @@ export class CockpitService {
     @Inject(TAX_YEAR_REPOSITORY) private readonly taxYearRepository: TaxYearRepository,
     @Inject(LSTB_REPOSITORY) private readonly lstbRepository: LstbRepository,
     @Inject(INTERVIEW_ANSWER_REPOSITORY) private readonly interviewRepository: InterviewAnswerRepository,
+    @Inject(UEBERNAHME_REPOSITORY) private readonly uebernahmeRepository: UebernahmeRepository,
   ) {}
 
   async getSummary(userId: string, steuerjahr: number): Promise<CockpitSummaryDto | null> {
@@ -70,13 +80,26 @@ export class CockpitService {
     // never a synthesized zero row.
     if (!record) return null
 
-    const [lstbRecord, interviewRows] = await Promise.all([
+    const [lstbRecord, interviewRows, uebernahmen] = await Promise.all([
       this.lstbRepository.findForUserAndYear(userId, steuerjahr),
       this.interviewRepository.findAllForUserAndYear(userId, steuerjahr),
+      this.uebernahmeRepository.listForUserAndYear(userId, steuerjahr),
     ])
 
     const daten = datenAusRecord(lstbRecord)
     const answers = toAnswers(interviewRows)
+
+    // ADR-021: eine UNBESTÄTIGTE Übernahme (M1: die kopierte LStB-Zeile) zählt in die Spanne —
+    // ihre erfasste Bruttosumme ist die Unsicherheit, die sie beiträgt (ruhig, kein Konflikt).
+    let unbestaetigte = 0
+    let unbestaetigteSumme = 0
+    for (const kennzeichnung of uebernahmen) {
+      if (kennzeichnung.bestaetigt) continue
+      if (kennzeichnung.postenKey === 'lstb' && daten.bruttoarbeitslohn.kind === 'erfasst') {
+        unbestaetigte += 1
+        unbestaetigteSumme += daten.bruttoarbeitslohn.wert
+      }
+    }
 
     // The one and only place the stand is derived — @steuereule/core's cockpitSpanneAusEingaben,
     // never re-derived here (determinism boundary, ADR-014/048/015). The settled income + open/
@@ -87,6 +110,8 @@ export class CockpitService {
       offenePosten: fakten.offenePosten,
       konflikte: fakten.konflikte,
       gegated: fakten.gegated,
+      unbestaetigte,
+      unbestaetigteSumme,
     })
 
     return { taxYear: record.steuerjahr, stand: toStandDto(stand), openItems: record.openItems }

@@ -68,7 +68,7 @@ describe('GET /v1/steuerjahre/:jahr/cockpit', () => {
     expect(response.json()).toEqual({
       taxYear: 2026,
       // 2 open LStB fields × 60 uncertainty around the settled 50000.
-      stand: { kind: 'spanne', von: 49880, bis: 50120, offenePosten: 2, konflikte: 0 },
+      stand: { kind: 'spanne', von: 49880, bis: 50120, offenePosten: 2, konflikte: 0, unbestaetigte: 0, unbestaetigteSumme: 0 },
       openItems: 3,
     })
   })

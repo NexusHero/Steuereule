@@ -7,18 +7,21 @@ import { CockpitService } from '../src/cockpit/cockpit.service.js'
 import { FakeInterviewAnswerRepository } from './fakes/fake-interview-answer.repository.js'
 import { FakeLstbRepository } from './fakes/fake-lstb.repository.js'
 import { FakeTaxYearRepository } from './fakes/fake-tax-year.repository.js'
+import { FakeUebernahmeRepository } from './fakes/fake-uebernahme.repository.js'
 
 describe('CockpitService', () => {
   let taxYear: FakeTaxYearRepository
   let lstb: FakeLstbRepository
   let interview: FakeInterviewAnswerRepository
+  let uebernahme: FakeUebernahmeRepository
   let service: CockpitService
 
   beforeEach(() => {
     taxYear = new FakeTaxYearRepository()
     lstb = new FakeLstbRepository()
     interview = new FakeInterviewAnswerRepository()
-    service = new CockpitService(taxYear, lstb, interview)
+    uebernahme = new FakeUebernahmeRepository()
+    service = new CockpitService(taxYear, lstb, interview, uebernahme)
   })
 
   it('REQ-001 returns null for a userId/steuerjahr with nothing seeded — the honest empty state', async () => {
@@ -45,7 +48,38 @@ describe('CockpitService', () => {
 
     expect(summary?.stand.kind).toBe('spanne')
     // 2 open LStB fields × 60 = 120 uncertainty around the settled 50000.
-    expect(summary?.stand).toEqual({ kind: 'spanne', von: 49880, bis: 50120, offenePosten: 2, konflikte: 0 })
+    expect(summary?.stand).toEqual({ kind: 'spanne', von: 49880, bis: 50120, offenePosten: 2, konflikte: 0, unbestaetigte: 0, unbestaetigteSumme: 0 })
+  })
+
+  it('ADR-021: eine unbestätigte Übernahme zählt in die Spanne — ruhig benannt, kein Konflikt', async () => {
+    taxYear.seed('user-a', { steuerjahr: 2026, openItems: 0 })
+    interview.seed('user-a', 2026, { job: 'Angestellt' })
+    lstb.seed({ userId: 'user-a', steuerjahr: 2026, bruttoarbeitslohn: '50000', lohnsteuer: '8000', sozialversicherung: '9000' })
+    uebernahme.seed({ userId: 'user-a', steuerjahr: 2026, vorjahr: 2025, postenKey: 'lstb', bestaetigt: false })
+
+    const summary = await service.getSummary('user-a', 2026)
+
+    // Der Punktwert ist versagt; die Spanne trägt die übernommenen 50.000 € als Unsicherheit.
+    expect(summary?.stand).toEqual({
+      kind: 'spanne',
+      von: 0,
+      bis: 100000,
+      offenePosten: 0,
+      konflikte: 0,
+      unbestaetigte: 1,
+      unbestaetigteSumme: 50000,
+    })
+  })
+
+  it('ADR-021: eine BESTÄTIGTE Übernahme ergibt wieder den Punktwert', async () => {
+    taxYear.seed('user-a', { steuerjahr: 2026, openItems: 0 })
+    interview.seed('user-a', 2026, { job: 'Angestellt' })
+    lstb.seed({ userId: 'user-a', steuerjahr: 2026, bruttoarbeitslohn: '50000', lohnsteuer: '8000', sozialversicherung: '9000' })
+    uebernahme.seed({ userId: 'user-a', steuerjahr: 2026, vorjahr: 2025, postenKey: 'lstb', bestaetigt: true })
+
+    const summary = await service.getSummary('user-a', 2026)
+
+    expect(summary?.stand).toEqual({ kind: 'bestimmt', wert: 50000 })
   })
 
   it('names the LStB widerspruch as a conflict, widening more than an item (ADR-008)', async () => {
@@ -56,7 +90,7 @@ describe('CockpitService', () => {
 
     const summary = await service.getSummary('user-a', 2026)
 
-    expect(summary?.stand).toEqual({ kind: 'spanne', von: 50000 - 100, bis: 50000 + 100, offenePosten: 0, konflikte: 1 })
+    expect(summary?.stand).toEqual({ kind: 'spanne', von: 50000 - 100, bis: 50000 + 100, offenePosten: 0, konflikte: 1, unbestaetigte: 0, unbestaetigteSumme: 0 })
   })
 
   it('reports a gated Einkunftsart honestly, naming it rather than widening into a fake range (ADR-032)', async () => {

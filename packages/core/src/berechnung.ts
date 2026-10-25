@@ -11,12 +11,15 @@
 // hope.
 import type { Einkunftsart } from './einkunftsarten.js'
 
-/** "Jede Zahl trägt Herkunft" (ADR-014/015) — a Posten amount is never bare. */
+/** "Jede Zahl trägt Herkunft" (ADR-014/015) — a Posten amount is never bare.
+ * `uebernahme` (ADR-021): the Jahresübernahme's copied Posten — its origin is the previous
+ * year's fact, and it stays UNBESTÄTIGT until the user taps it or a Beleg covers it. */
 export type Quelle =
   | { readonly art: 'eingabe' }
   | { readonly art: 'beleg'; readonly belegId: string }
   | { readonly art: 'ki-vorschlag'; readonly vorschlagId: string; readonly belegId?: string }
   | { readonly art: 'regel'; readonly regel: string }
+  | { readonly art: 'uebernahme'; readonly vorjahr: number }
 
 /**
  * ADR-029/0015-Lehre — which bucket a Posten folds into. `einnahme` is the historical meaning
@@ -38,6 +41,12 @@ export interface Posten {
   readonly rolle?: Rolle
   readonly betrag: number
   readonly quelle: Quelle
+  /**
+   * ADR-021 — true when the Jahresübernahme copied this Posten and the user has not yet
+   * confirmed it (tapped it / a Beleg covers it). Unbestätigte zählen in die SPANNE, nie in den
+   * Punktwert; their tone is calm (grey), never a conflict. Absent = confirmed.
+   */
+  readonly unbestaetigt?: boolean
 }
 
 /**
@@ -64,11 +73,15 @@ export interface BerechnungsInput {
 }
 
 /**
- * The honest fold result. `bestimmt` is reachable ONLY when nothing is open, conflicting
- * or gated; otherwise `offen` names exactly what stands in the way. The three buckets
- * (`einnahmen`, `vorsorgeaufwand`, `anrechnung`) are each the sum of SETTLED Posten of that
- * role only — a partial truth stated as a partial truth, never inflated into a point value
+ * The honest fold result. `bestimmt` is reachable ONLY when nothing is open, conflicting,
+ * gated or unbestätigt; otherwise `offen` names exactly what stands in the way. The three
+ * buckets (`einnahmen`, `vorsorgeaufwand`, `anrechnung`) are each the sum of SETTLED Posten of
+ * that role only — a partial truth stated as a partial truth, never inflated into a point value
  * (ADR-015/032). Vorsorgeaufwand is reported separately, never subtracted here (see `Rolle`).
+ *
+ * ADR-021: unbestätigte (übernommene) Posten blockieren den Punktwert NICHT hart — sie zählen in
+ * die SPANNE (`unbestaetigte` = Anzahl, `unbestaetigteSumme` = ihre Einnahmen-Summe), ruhig
+ * benannt, nie als Konflikt.
  */
 export type Berechnungsstand =
   | {
@@ -85,6 +98,10 @@ export type Berechnungsstand =
       readonly offenePosten: number
       readonly konflikte: number
       readonly gegated: readonly Einkunftsart[]
+      /** ADR-021 — Anzahl der übernommenen, noch unbestätigten Posten. */
+      readonly unbestaetigte: number
+      /** ADR-021 — Einnahmen-Summe der unbestätigten Posten (die Spanne trägt sie als Unsicherheit). */
+      readonly unbestaetigteSumme: number
     }
 
 function validate(input: BerechnungsInput): void {
@@ -108,6 +125,8 @@ export function berechne(input: BerechnungsInput): Berechnungsstand {
   let einnahmen = 0
   let vorsorgeaufwand = 0
   let anrechnung = 0
+  let unbestaetigte = 0
+  let unbestaetigteSumme = 0
   for (const posten of input.posten) {
     switch (rolleVon(posten)) {
       case 'einnahme':
@@ -120,8 +139,15 @@ export function berechne(input: BerechnungsInput): Berechnungsstand {
         anrechnung += posten.betrag
         break
     }
+    // ADR-021: unbestätigte Posten zählen MIT in die Buckets (sie sind echte Zahlen), werden
+    // aber separat gezählt — der Punktwert bleibt versagt, die Spanne trägt sie als Unsicherheit.
+    if (posten.unbestaetigt === true) {
+      unbestaetigte += 1
+      if (rolleVon(posten) === 'einnahme') unbestaetigteSumme += posten.betrag
+    }
   }
-  const offen = input.offenePosten > 0 || input.konflikte.length > 0 || input.gegated.length > 0
+  const offen =
+    input.offenePosten > 0 || input.konflikte.length > 0 || input.gegated.length > 0 || unbestaetigte > 0
   if (!offen) return { kind: 'bestimmt', einnahmen, vorsorgeaufwand, anrechnung }
   return {
     kind: 'offen',
@@ -131,6 +157,8 @@ export function berechne(input: BerechnungsInput): Berechnungsstand {
     offenePosten: input.offenePosten,
     konflikte: input.konflikte.length,
     gegated: input.gegated,
+    unbestaetigte,
+    unbestaetigteSumme,
   }
 }
 

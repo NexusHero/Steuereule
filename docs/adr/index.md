@@ -67,6 +67,7 @@ The ADRs **justify** the architecture; the [living arc42 document](../arc42/READ
 | 0047 | Fristen-/Verspätungszuschlag-Warnmodus: Abgabefrist-Regelwerk, 60-Tage-Banner, kein verspätet-Status | Draft |
 | 0043 | Veranlagungsartenvergleich-Verfeinerung: Soli/KiSt eingefaltet, Unschärfe nur noch der Progressionsvorbehalt | Accepted |
 | 0048 | Kapital-Vertikale: Depot-Einordnung, Kapitalerträge-Maske, § 32d-Günstigerprüfung (bounded comparison) | Draft |
+| 0049 | Jahresübernahme M1: Quelle `uebernahme`, unbestätigte Posten zählen in die Spanne, generische Kennzeichnungs-Schicht | Draft |
 
 See also the [Tech Radar](./tech-radar.md).
 

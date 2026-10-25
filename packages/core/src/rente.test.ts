@@ -189,7 +189,7 @@ describe('renteStand — the fold into the deterministic core', () => {
 
   it('an open rente is offen with one open posten — never a fabricated zero', () => {
     const stand = renteStand(rente(), [])
-    expect(stand).toEqual({ kind: 'offen', einnahmen: 0, vorsorgeaufwand: 0, anrechnung: 0, offenePosten: 1, konflikte: 0, gegated: [] })
+    expect(stand).toEqual({ kind: 'offen', einnahmen: 0, vorsorgeaufwand: 0, anrechnung: 0, offenePosten: 1, konflikte: 0, gegated: [], unbestaetigte: 0, unbestaetigteSumme: 0 })
   })
 
   it('a gated Einkunftsart is named, keeping the result offen (ADR-030/034 combinability)', () => {
@@ -197,7 +197,7 @@ describe('renteStand — the fold into the deterministic core', () => {
       rente({ art: 'GesetzlicheRente', jahresbetrag: { kind: 'erfasst', wert: 20000 }, rentenbeginnJahr: { kind: 'erfasst', wert: 2020 } }),
       ['Gewerbe'],
     )
-    expect(stand).toEqual({ kind: 'offen', einnahmen: 16000, vorsorgeaufwand: 0, anrechnung: 0, offenePosten: 0, konflikte: 0, gegated: ['Gewerbe'] })
+    expect(stand).toEqual({ kind: 'offen', einnahmen: 16000, vorsorgeaufwand: 0, anrechnung: 0, offenePosten: 0, konflikte: 0, gegated: ['Gewerbe'], unbestaetigte: 0, unbestaetigteSumme: 0 })
   })
 })
 

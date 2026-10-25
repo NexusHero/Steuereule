@@ -31,6 +31,12 @@ export class CockpitStandDto {
   @ApiPropertyOptional({ type: Number, example: 1, description: 'Open posten conflicts, ADR-008 (only when kind === "spanne").' })
   konflikte?: number
 
+  @ApiPropertyOptional({ type: Number, example: 1, description: 'Übernommene, noch unbestätigte Posten (ADR-021, only when kind === "spanne").' })
+  unbestaetigte?: number
+
+  @ApiPropertyOptional({ type: Number, example: 50000, description: 'Einnahmen-Summe der unbestätigten Posten (ADR-021, only when kind === "spanne").' })
+  unbestaetigteSumme?: number
+
   @ApiPropertyOptional({ type: Number, example: 0, description: 'The settled partial sum (only when kind === "gated").' })
   summe?: number
 
