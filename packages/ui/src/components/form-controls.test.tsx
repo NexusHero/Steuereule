@@ -30,6 +30,20 @@ describe('Input', () => {
     const el = screen.getByTestId('mono') as HTMLElement
     expect(el.style.fontFamily).toContain('Space Mono')
   })
+
+  it('suppresses default browser focus outline and forwards onFocus / onBlur', () => {
+    const onFocus = vi.fn()
+    const onBlur = vi.fn()
+    renderUi(<Input value="" onChange={() => {}} testID="input-focus" onFocus={onFocus} onBlur={onBlur} />)
+    const el = screen.getByTestId('input-focus') as HTMLElement
+    expect(el.style.outlineStyle).toBe('none')
+
+    fireEvent.focus(el)
+    expect(onFocus).toHaveBeenCalledOnce()
+
+    fireEvent.blur(el)
+    expect(onBlur).toHaveBeenCalledOnce()
+  })
 })
 
 describe('Feld', () => {

@@ -29,7 +29,13 @@ export function makeOnboardingStyles(t: UiTheme) {
     marginBottom: t.space.s2,
     textAlign: 'center',
   }
-  const mark: TextStyle = { color: t.color.funkeTinte }
+  const mark: TextStyle = {
+    backgroundColor: t.color.funke,
+    color: t.color.tinte,
+    paddingHorizontal: t.space.s2,
+    borderRadius: t.radius.s,
+    overflow: 'hidden',
+  }
   const help: TextStyle = {
     color: t.color.tinte2,
     fontFamily: t.font.text,

@@ -36,6 +36,8 @@ import { ProfilScreen } from './src/screens/ProfilScreen'
 import { DatenschutzScreen } from './src/screens/DatenschutzScreen'
 import { SicherheitScreen } from './src/screens/security/SicherheitScreen'
 import { DeviceScreen } from './src/screens/device/DeviceScreen'
+import { KontoWandScreen, pfadAusAntworten, type FunnelPfad } from './src/screens/funnel/KontoWandScreen'
+import { useAccountSession } from './src/auth/useAccountSession'
 
 const i18n = createAppI18n('de')
 // Defaults live in ./src/query-client so they can be asserted; a bare `new QueryClient()` left
@@ -66,7 +68,8 @@ type RootStackParamList = {
   Login: undefined
   Registrierung: undefined
   Onboarding: undefined
-  App: undefined
+  /** ADR-0045: `start: 'interview'` opens the Minimal-Gate directly (the guest's value-first entry). */
+  App: { start?: 'interview' } | undefined
   Device: { user_code?: string } | undefined
 }
 
@@ -148,8 +151,11 @@ function SplashRoute({ navigation }: NativeStackScreenProps<RootStackParamList, 
 function LoginRoute({ navigation }: NativeStackScreenProps<RootStackParamList, 'Login'>) {
   return (
     <LoginScreen
-      onDone={() => navigation.replace('Onboarding')}
-      onGuest={() => navigation.replace('Onboarding')}
+      // ADR-0045 (value-first funnel): a returning account goes straight to the app (its
+      // profile already exists; Profil edits it), and a guest goes straight into the three
+      // Minimal-Gate questions — no name/Steuer-ID form before the user has seen any value.
+      onDone={() => navigation.replace('App')}
+      onGuest={() => navigation.replace('App', { start: 'interview' })}
       onRegister={() => navigation.replace('Registrierung')}
     />
   )
@@ -180,13 +186,18 @@ function DeviceRoute({ route }: NativeStackScreenProps<RootStackParamList, 'Devi
 // Cockpit (REQ-001) is where onboarding lands, matching the DS reference's own default tab. Tab
 // state stays local to this route, exactly as it lived on `App` before — the tab bar was never a
 // `Stage` transition, so it stays in-memory rather than gaining a URL of its own here.
-function AppRoute({ navigation }: NativeStackScreenProps<RootStackParamList, 'App'>) {
+function AppRoute({ navigation, route }: NativeStackScreenProps<RootStackParamList, 'App'>) {
   const [tab, setTab] = useState<Tab>('cockpit')
 
   return (
     <TabbedShell
       tab={tab}
       onTabChange={setTab}
+      startInInterview={route.params?.start === 'interview'}
+      // ADR-0045: the Konto-Wand's two ways to an account. Registrierung -> Onboarding (name,
+      // Steuer-ID skippable) -> App; the guest's interview answers move over on that sign-up.
+      onRegister={() => navigation.replace('Registrierung')}
+      onLogin={() => navigation.replace('Login')}
       onSignedOut={() => {
         // REQ-011 (ADR-0013): the server already cleared the session cookie on a
         // successful DELETE /v1/account — the client must not keep showing a screen
@@ -218,11 +229,19 @@ interface TabbedShellProps {
   readonly tab: Tab
   readonly onTabChange: (tab: Tab) => void
   readonly onSignedOut: () => void
+  /** ADR-0045 — open the Minimal-Gate first instead of the Cockpit (guest entry). */
+  readonly startInInterview?: boolean
+  readonly onRegister?: () => void
+  readonly onLogin?: () => void
 }
 
-function TabbedShell({ tab, onTabChange, onSignedOut }: TabbedShellProps) {
+function TabbedShell({ tab, onTabChange, onSignedOut, startInInterview = false, onRegister = () => {}, onLogin = () => {} }: TabbedShellProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
+  // ADR-0045: only a real account session continues into the (account-only) verticals after
+  // the Minimal-Gate; anyone else — a guest, or a session we can't confirm — sees the Konto-Wand.
+  const { state: sessionState } = useAccountSession()
+  const [funnelPfad, setFunnelPfad] = useState<FunnelPfad>('angestellte')
 
   // Datenschutz (REQ-011) is a screen reached *from* Profil, not a tab of its own (TAB_ORDNUNG
   // groups it with Profil in the DS reference) — so it's a sub-view owned by this shell, the
@@ -247,7 +266,8 @@ function TabbedShell({ tab, onTabChange, onSignedOut }: TabbedShellProps) {
     | 'veranlagungsartenvergleich'
     | 'ch'
     | 'bescheid'
-  >('main')
+    | 'konto-wand'
+  >(startInInterview ? 'interview' : 'main')
 
   // The active tab's icon sits on the lime pill and needs the ink colour to stay legible;
   // the others sit on card white. Mirrors `.fk-tab`/`.fk-tab[aria-current]` in the DS.
@@ -288,8 +308,19 @@ function TabbedShell({ tab, onTabChange, onSignedOut }: TabbedShellProps) {
         // ADR-034) goes to the Rentner mask, work in CH (ADR-029) to the Grenzgänger screen,
         // otherwise the Angestellte vertical continues with the LStB mask (ticket 15).
         <InterviewScreen
-          onDone={(answers) => setCockpitView(answers.job === 'Rente' ? 'rente' : answers.ausland === 'Ja, in die Schweiz' ? 'ch' : 'lstb')}
+          onDone={(answers) => {
+            const pfad = pfadAusAntworten(answers)
+            if (sessionState.status !== 'signed-in') {
+              setFunnelPfad(pfad)
+              setCockpitView('konto-wand')
+              return
+            }
+            setCockpitView(pfad === 'rente' ? 'rente' : pfad === 'ch' ? 'ch' : 'lstb')
+          }}
         />
+      ) : null}
+      {tab === 'cockpit' && cockpitView === 'konto-wand' ? (
+        <KontoWandScreen pfad={funnelPfad} onRegister={onRegister} onLogin={onLogin} onLater={() => setCockpitView('main')} />
       ) : null}
       {tab === 'cockpit' && cockpitView === 'rente' ? (
         <RentnerScreen onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />

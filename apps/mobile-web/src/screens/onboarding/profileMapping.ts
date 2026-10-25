@@ -37,15 +37,17 @@ export function toOnboardingProfil(dto: ProfileResponseDto): OnboardingProfil {
 /**
  * Screen state -> PUT payload. Strips the display-only grouping spaces/slashes the
  * onboarding masks add (formatSteuerId/formatSteuerNr) back down to the bare digits the
- * API's shared validators (@steuereule/core) expect; an empty Steuernummer is omitted
- * entirely rather than sent as `''` (the field is optional, not "present but blank").
+ * API's shared validators (@steuereule/core) expect; an empty Steuer-ID or Steuernummer is
+ * omitted entirely rather than sent as `''` (both optional, not "present but blank").
  */
 export function toPutProfileDto(profil: OnboardingProfil): PutProfileDto {
   const steuernummer = profil.steuerNr.replace(/\D/g, '')
+  // ADR-0045: a skipped Steuer-ID is omitted (server stores null = "not given yet"), never `''`.
+  const steuerId = profil.steuerId.replace(/\D/g, '')
   return {
     firstName: profil.vorname.trim(),
     lastName: profil.nachname.trim(),
-    steuerId: profil.steuerId.replace(/\D/g, ''),
+    ...(steuerId ? { steuerId } : {}),
     ...(steuernummer ? { steuernummer } : {}),
   }
 }

@@ -24,7 +24,8 @@ export function OnboardingSummary({ profil, onSubmit, onEdit, isSubmitting, subm
   const rows: ReadonlyArray<readonly [string, string, boolean]> = [
     [tr('onboarding.summary.rowFirstName'), profil.vorname, false],
     [tr('onboarding.summary.rowLastName'), profil.nachname, false],
-    [tr('onboarding.summary.rowSteuerId'), profil.steuerId, true],
+    // ADR-0045: the Steuer-ID may be skipped in step 2 and added later from Profil.
+    [tr('onboarding.summary.rowSteuerId'), profil.steuerId || tr('onboarding.summary.steuerIdLater'), true],
     [tr('onboarding.summary.rowSteuerNr'), profil.steuerNr || tr('onboarding.summary.steuerNrLater'), true],
   ]
 

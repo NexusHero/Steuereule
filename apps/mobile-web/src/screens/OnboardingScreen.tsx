@@ -168,6 +168,8 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
             <Pill>{tr('onboarding.step2.counter', { count: idDigits })}</Pill>
             {steuerIdOk ? <Sticker>{tr('onboarding.step2.confirmed')}</Sticker> : null}
           </View>
+          {/* ADR-0045: hardly anyone knows their Steuer-ID by heart — skipping must never be a dead end. */}
+          <Chip style={{ marginTop: t.space.s3 }} onPress={() => { set('steuerId')(''); weiter(); }}>{tr('onboarding.step2.later')}</Chip>
         </>
       ) : null}
 

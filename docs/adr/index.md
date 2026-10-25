@@ -62,6 +62,7 @@ The ADRs **justify** the architecture; the [living arc42 document](../arc42/READ
 | 0041 | LStB-/Angestellte-Vertikale (Scan-Fallback-Maske, Katalog-Admission) | Accepted |
 | 0042 | Grenzgänger-CH-Vertikale (Belegart-Vokabular, Wechselkurs-Kern, segment-ch) | Accepted |
 | 0044 | Rentner-Vertikale (Rentenart, gesetzliche Tabellen, Anlage-R-Faltung) | Accepted |
+| 0045 | Value-First-Funnel: Gast darf das Minimal-Gate, Steuer-ID wird optional, Upgrade nimmt Interview-Antworten mit | Accepted |
 | 0043 | Veranlagungsartenvergleich-Verfeinerung: Soli/KiSt eingefaltet, Unschärfe nur noch der Progressionsvorbehalt | Accepted |
 
 See also the [Tech Radar](./tech-radar.md).

@@ -180,7 +180,7 @@ export const appResources = {
           titleBefore: 'Wer bist ',
           titleMark: 'du',
           titleAfter: '?',
-          help: 'Genau wie im Ausweis — damit die Maske exakt stimmt.',
+          help: 'Genau wie im Perso — damit beim Finanzamt alles passt.',
           firstNameLabel: 'Vorname',
           firstNamePlaceholder: 'Kim',
           lastNameLabel: 'Nachname',
@@ -195,6 +195,7 @@ export const appResources = {
           placeholder: '12 345 678 901',
           counter: '{{count}}/11 Ziffern',
           confirmed: 'sitzt ✓',
+          later: 'Hab ich gerade nicht da — später im Profil',
         },
         step3: {
           titleBefore: 'Noch die ',
@@ -215,6 +216,7 @@ export const appResources = {
           rowSteuerId: 'Steuer-ID',
           rowSteuerNr: 'Steuernummer',
           steuerNrLater: 'später',
+          steuerIdLater: 'später',
           cta: 'Weiter',
           submitting: 'Wird gespeichert …',
           submitError: {
@@ -228,6 +230,30 @@ export const appResources = {
       // #238 — the match-verification screen a phone lands on after opening the QR/link
       // (`/device?user_code=…`). Match-verification, not one-tap: the question is whether
       // the code is currently on the *other* screen, never "approve?".
+      funnel: {
+        kontoWand: {
+          sticker: 'Weg gefunden',
+          titleBefore: 'Dein Weg: ',
+          titleAfter: '',
+          pfad: { angestellte: 'Angestellte', rente: 'Rente', ch: 'Grenzgänger CH' },
+          help: 'Drei Antworten, und wir wissen, welche Erklärung zu dir passt. So geht es weiter:',
+          nextLabel: 'Als Nächstes',
+          schritte: {
+            lstb: 'Lohnsteuerbescheinigung abtippen oder scannen',
+            lebenslagen: 'Umzug, Nebenjob, Abfindung? Kurz abhaken',
+            sonderausgaben: 'Spenden, Versicherungen, Riester',
+            rentenbescheid: 'Rentenbezugsmitteilung übernehmen',
+            kvpv: 'Kranken- und Pflegeversicherung prüfen',
+            lohnausweis: 'Schweizer Lohnausweis übernehmen',
+            nichtrueckkehrtage: 'Nichtrückkehrtage zählen',
+          },
+          honest: 'Eine Erstattung zeigen wir erst, wenn wir sie wirklich rechnen können — nicht vorher.',
+          register: 'Konto anlegen und weitermachen',
+          login: 'Ich hab schon ein Konto',
+          later: 'Später — erst mal ins Cockpit',
+          note: 'Deine Antworten wandern mit ins Konto. Bis dahin liegen sie verschlüsselt in deiner Gast-Sitzung.',
+        },
+      },
       device: {
         sessionChecking: 'Wir prüfen deine Anmeldung …',
         // #349 — distinct from both `missingCode` (we know there's no code) and the embedded
@@ -1114,6 +1140,7 @@ export const appResources = {
           placeholder: '12 345 678 901',
           counter: '{{count}}/11 digits',
           confirmed: 'locked in ✓',
+          later: "Don't have it right now — add it later in Profile",
         },
         step3: {
           titleBefore: 'Now the ',
@@ -1134,6 +1161,7 @@ export const appResources = {
           rowSteuerId: 'Steuer-ID',
           rowSteuerNr: 'Steuernummer',
           steuerNrLater: 'later',
+          steuerIdLater: 'later',
           cta: 'Continue',
           submitting: 'Saving …',
           submitError: {
@@ -1142,6 +1170,30 @@ export const appResources = {
           },
           changeDetails: 'Edit details',
           footerNote: 'Saved securely — you can come back to it any time.',
+        },
+      },
+      funnel: {
+        kontoWand: {
+          sticker: 'Path found',
+          titleBefore: 'Your path: ',
+          titleAfter: '',
+          pfad: { angestellte: 'Employee', rente: 'Pension', ch: 'Swiss cross-border' },
+          help: 'Three answers, and we know which return fits you. Here is what comes next:',
+          nextLabel: 'Up next',
+          schritte: {
+            lstb: 'Type in or scan your Lohnsteuerbescheinigung',
+            lebenslagen: 'Moved, side job, severance? Tick it off',
+            sonderausgaben: 'Donations, insurance, Riester',
+            rentenbescheid: 'Take over your pension statement',
+            kvpv: 'Check health and care insurance',
+            lohnausweis: 'Take over your Swiss Lohnausweis',
+            nichtrueckkehrtage: 'Count your non-return days',
+          },
+          honest: 'We only show a refund once we can actually calculate it — not before.',
+          register: 'Create account and continue',
+          login: 'I already have an account',
+          later: 'Later — take me to the Cockpit',
+          note: 'Your answers move into your account. Until then they sit encrypted in your guest session.',
         },
       },
       device: {
