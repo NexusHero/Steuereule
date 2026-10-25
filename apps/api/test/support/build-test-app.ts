@@ -22,15 +22,21 @@ import { PROFILE_REPOSITORY } from '../../src/profile/profile.repository.js'
 import { TAX_YEAR_REPOSITORY } from '../../src/cockpit/tax-year.repository.js'
 import { INTERVIEW_ANSWER_REPOSITORY } from '../../src/interview/interview-answer.repository.js'
 import { LSTB_REPOSITORY } from '../../src/lstb/lstb.repository.js'
+import { RENTE_REPOSITORY } from '../../src/rente/rente.repository.js'
+import { KAPITAL_REPOSITORY } from '../../src/kapital/kapital.repository.js'
+import { VERMIETUNG_REPOSITORY } from '../../src/vermietung/vermietung.repository.js'
 import { UEBERNAHME_REPOSITORY } from '../../src/uebernahme/uebernahme.repository.js'
 import { FakeAccountIdentityRepository } from '../fakes/fake-account-identity.repository.js'
 import { FakeAuditRepository } from '../fakes/fake-audit.repository.js'
 import { FakeInterviewAnswerRepository } from '../fakes/fake-interview-answer.repository.js'
+import { FakeKapitalRepository } from '../fakes/fake-kapital.repository.js'
 import { FakeLstbRepository } from '../fakes/fake-lstb.repository.js'
 import { FakePdfRenderer } from '../fakes/fake-pdf-renderer.js'
 import { FakeProfileRepository } from '../fakes/fake-profile.repository.js'
+import { FakeRenteRepository } from '../fakes/fake-rente.repository.js'
 import { FakeTaxYearRepository } from '../fakes/fake-tax-year.repository.js'
 import { FakeUebernahmeRepository } from '../fakes/fake-uebernahme.repository.js'
+import { FakeVermietungRepository } from '../fakes/fake-vermietung.repository.js'
 
 export async function buildTestApp(options?: {
   /** Overrides the default always-succeeding DATABASE_REACHABILITY_CHECK stub — the one
@@ -51,6 +57,9 @@ export async function buildTestApp(options?: {
   const lstbRepository = new FakeLstbRepository()
   const interviewRepository = new FakeInterviewAnswerRepository()
   const uebernahmeRepository = new FakeUebernahmeRepository()
+  const renteRepository = new FakeRenteRepository()
+  const kapitalRepository = new FakeKapitalRepository()
+  const vermietungRepository = new FakeVermietungRepository()
   const accountIdentityRepository = new FakeAccountIdentityRepository()
   const pdfRenderer = new FakePdfRenderer()
   const auditRepository = new FakeAuditRepository()
@@ -101,6 +110,12 @@ export async function buildTestApp(options?: {
     .useValue(interviewRepository)
     .overrideProvider(UEBERNAHME_REPOSITORY)
     .useValue(uebernahmeRepository)
+    .overrideProvider(RENTE_REPOSITORY)
+    .useValue(renteRepository)
+    .overrideProvider(KAPITAL_REPOSITORY)
+    .useValue(kapitalRepository)
+    .overrideProvider(VERMIETUNG_REPOSITORY)
+    .useValue(vermietungRepository)
     .overrideProvider(ACCOUNT_IDENTITY_REPOSITORY)
     .useValue(accountIdentityRepository)
     .overrideProvider(PDF_RENDERER)

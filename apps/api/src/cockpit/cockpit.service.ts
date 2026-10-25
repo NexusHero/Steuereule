@@ -20,10 +20,25 @@ import {
   type LstbDaten,
 } from '@steuereule/core'
 import { INTERVIEW_ANSWER_REPOSITORY, type InterviewAnswerRecord, type InterviewAnswerRepository } from '../interview/interview-answer.repository.js'
+import { KAPITAL_REPOSITORY, type KapitalRepository } from '../kapital/kapital.repository.js'
 import { LSTB_REPOSITORY, type LstbRecord, type LstbRepository } from '../lstb/lstb.repository.js'
+import { RENTE_REPOSITORY, type RenteRepository } from '../rente/rente.repository.js'
 import { UEBERNAHME_REPOSITORY, type UebernahmeRepository } from '../uebernahme/uebernahme.repository.js'
+import { VERMIETUNG_REPOSITORY, type VermietungRepository } from '../vermietung/vermietung.repository.js'
 import { TAX_YEAR_REPOSITORY, type TaxYearRepository } from './tax-year.repository.js'
 import type { CockpitStandDto, CockpitSummaryDto } from './dto/cockpit-summary.dto.js'
+
+/**
+ * The ONE encoding (packages/core/src/lstb.ts): a stored field string is `erfasst` when it is a
+ * plain non-negative integer (whole euros), anything else (`null`/`unklar`/`0`) is not a settled
+ * fact. A settled value parses to its number, anything else yields null — never a fabricated
+ * zero (ADR-032).
+ */
+function erfassterWert(raw: string | null): number | null {
+  if (raw === null || raw === 'unklar') return null
+  if (!/^\d+$/.test(raw)) return null
+  return Number(raw)
+}
 
 /** A stored LStB row (or none) → the core's LstbDaten, via the ONE encoding in core/lstb.ts. */
 function datenAusRecord(record: LstbRecord | null): LstbDaten {
@@ -72,6 +87,9 @@ export class CockpitService {
     @Inject(LSTB_REPOSITORY) private readonly lstbRepository: LstbRepository,
     @Inject(INTERVIEW_ANSWER_REPOSITORY) private readonly interviewRepository: InterviewAnswerRepository,
     @Inject(UEBERNAHME_REPOSITORY) private readonly uebernahmeRepository: UebernahmeRepository,
+    @Inject(RENTE_REPOSITORY) private readonly renteRepository: RenteRepository,
+    @Inject(KAPITAL_REPOSITORY) private readonly kapitalRepository: KapitalRepository,
+    @Inject(VERMIETUNG_REPOSITORY) private readonly vermietungRepository: VermietungRepository,
   ) {}
 
   async getSummary(userId: string, steuerjahr: number): Promise<CockpitSummaryDto | null> {
@@ -80,24 +98,41 @@ export class CockpitService {
     // never a synthesized zero row.
     if (!record) return null
 
-    const [lstbRecord, interviewRows, uebernahmen] = await Promise.all([
+    const [lstbRecord, interviewRows, uebernahmen, renteRecord, kapitalRecord, vermietungRecords] = await Promise.all([
       this.lstbRepository.findForUserAndYear(userId, steuerjahr),
       this.interviewRepository.findAllForUserAndYear(userId, steuerjahr),
       this.uebernahmeRepository.listForUserAndYear(userId, steuerjahr),
+      this.renteRepository.findForUserAndYear(userId, steuerjahr),
+      this.kapitalRepository.findForUserAndYear(userId, steuerjahr),
+      this.vermietungRepository.listForUserAndYear(userId, steuerjahr),
     ])
 
     const daten = datenAusRecord(lstbRecord)
     const answers = toAnswers(interviewRows)
 
-    // ADR-021: eine UNBESTÄTIGTE Übernahme (M1: die kopierte LStB-Zeile) zählt in die Spanne —
-    // ihre erfasste Bruttosumme ist die Unsicherheit, die sie beiträgt (ruhig, kein Konflikt).
+    // ADR-021: UNBESTÄTIGTE Übernahmen zählen in die Spanne — je kopierter Fakt ein Posten,
+    // seine erfasste Summe ist die Unsicherheit, die er beiträgt (ruhig, kein Konflikt). Die
+    // Kennzeichnung benennt den Fakt (`lstb`, `rente`, `kapital`, `vermietung-<id>`); der Wert
+    // kommt aus der kopierten Zeile selbst — immer der erfasste Betrag, nie ein fabricated zero.
     let unbestaetigte = 0
     let unbestaetigteSumme = 0
     for (const kennzeichnung of uebernahmen) {
       if (kennzeichnung.bestaetigt) continue
+      let wert: number | null = null
       if (kennzeichnung.postenKey === 'lstb' && daten.bruttoarbeitslohn.kind === 'erfasst') {
+        wert = daten.bruttoarbeitslohn.wert
+      } else if (kennzeichnung.postenKey === 'rente') {
+        wert = erfassterWert(renteRecord?.jahresbetrag ?? null)
+      } else if (kennzeichnung.postenKey === 'kapital') {
+        wert = erfassterWert(kapitalRecord?.kapitalertraege ?? null)
+      } else if (kennzeichnung.postenKey.startsWith('vermietung-')) {
+        const objektId = kennzeichnung.postenKey.slice('vermietung-'.length)
+        const objekt = vermietungRecords.find((o) => o.id === objektId)
+        wert = erfassterWert(objekt?.mieteinnahmen ?? null)
+      }
+      if (wert !== null) {
         unbestaetigte += 1
-        unbestaetigteSumme += daten.bruttoarbeitslohn.wert
+        unbestaetigteSumme += wert
       }
     }
 

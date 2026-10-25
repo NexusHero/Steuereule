@@ -42,6 +42,9 @@ describe('REQ-028 — die Jahresübernahme (ADR-021), against the real server', 
     resetRateLimiters(app)
     await prisma.$executeRawUnsafe(`DELETE FROM "UebernahmeKennzeichnung"`)
     await prisma.$executeRawUnsafe(`DELETE FROM "Lstb"`)
+    await prisma.$executeRawUnsafe(`DELETE FROM "Rente"`)
+    await prisma.$executeRawUnsafe(`DELETE FROM "Kapital"`)
+    await prisma.$executeRawUnsafe(`DELETE FROM "Vermietungsobjekt"`)
     await prisma.$executeRawUnsafe(`DELETE FROM "InterviewAnswer"`)
     await prisma.taxYear.deleteMany()
     await prisma.$executeRawUnsafe(`DELETE FROM "TaxDataAccessLog"`)
@@ -138,11 +141,100 @@ describe('REQ-028 — die Jahresübernahme (ADR-021), against the real server', 
     expect(fremd.status).toBe(404)
   })
 
-  it('ohne Vorjahres-LStB ist die Übernahme ein 404 — nie eine erfundene Kopie', async () => {
+  it('ein Vorjahr ohne EINEN einzigen übernehmbaren Fakt ist ein 404 — nie eine erfundene Kopie', async () => {
     const { cookie } = await signUp('leeres-vorjahr@example.com')
 
     const response = await fetch(`${baseUrl}/v1/steuerjahre/${ZIELJAHR}/uebernahme?von=${VORJAHR}`, { method: 'POST', headers: { cookie } })
     expect(response.status).toBe(404)
+  })
+
+  it('M2: eine Übernahme mit NUR Rente (kein LStB) kopiert die Rente — der Fakt zählt, nicht die Anlage', async () => {
+    const { cookie } = await signUp('nur-rente@example.com')
+    await fetch(`${baseUrl}/v1/steuerjahre/${VORJAHR}/rente/art`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify({ art: 'GesetzlicheRente' }),
+    })
+    await fetch(`${baseUrl}/v1/steuerjahre/${VORJAHR}/rente/jahresbetrag`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify({ kind: 'erfasst', wert: 12000 }),
+    })
+
+    const response = await fetch(`${baseUrl}/v1/steuerjahre/${ZIELJAHR}/uebernahme?von=${VORJAHR}`, { method: 'POST', headers: { cookie } })
+    expect(response.status).toBe(200)
+    const body = (await response.json()) as { kennzeichnungen: Array<{ postenKey: string; vorjahr: number; bestaetigt: boolean }> }
+    expect(body.kennzeichnungen).toEqual([{ postenKey: 'rente', vorjahr: VORJAHR, bestaetigt: false }])
+
+    const renteZiel = await fetch(`${baseUrl}/v1/steuerjahre/${ZIELJAHR}/rente`, { headers: { cookie } })
+    const renteBody = (await renteZiel.json()) as { art: string | null; jahresbetrag: { kind: string; wert?: number } }
+    expect(renteBody.art).toBe('GesetzlicheRente')
+    expect(renteBody.jahresbetrag).toEqual({ kind: 'erfasst', wert: 12000 })
+  })
+
+  it('M2 GWT: die Übernahme kopiert ALLE Fakten (LStB+Rente+Kapital+2 Objekte), die Spanne trägt die Gesamtsumme, Bestätigen je Fakt gibt den Punktwert', async () => {
+    const { cookie, userId } = await signUp('m2-alles@example.com')
+    await putLstb(cookie, VORJAHR, 'bruttoarbeitslohn', 50000)
+    await putLstb(cookie, VORJAHR, 'lohnsteuer', 8000)
+    await putLstb(cookie, VORJAHR, 'sozialversicherung', 9000)
+    await fetch(`${baseUrl}/v1/steuerjahre/${VORJAHR}/rente/art`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify({ art: 'GesetzlicheRente' }),
+    })
+    await fetch(`${baseUrl}/v1/steuerjahre/${VORJAHR}/rente/jahresbetrag`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify({ kind: 'erfasst', wert: 12000 }),
+    })
+    await fetch(`${baseUrl}/v1/steuerjahre/${VORJAHR}/kapital/kapitalertraege`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify({ kind: 'erfasst', wert: 3000 }),
+    })
+    const objekt1 = await fetch(`${baseUrl}/v1/steuerjahre/${VORJAHR}/vermietung/objekte`, { method: 'POST', headers: { cookie } })
+    const objekt1Body = (await objekt1.json()) as { objekte: Array<{ id: string }> }
+    const putMiete = await fetch(`${baseUrl}/v1/steuerjahre/${VORJAHR}/vermietung/objekte/${objekt1Body.objekte[0]!.id}/mieteinnahmen`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json', cookie },
+      body: JSON.stringify({ kind: 'erfasst', wert: 9600 }),
+    })
+    expect(putMiete.status).toBe(200)
+    for (const [q, v] of [['job', 'Angestellt'], ['ausland', 'Nein'], ['kinder', 'Nein']] as const) {
+      expect((await postAnswer(cookie, ZIELJAHR, q, v)).status).toBe(200)
+    }
+
+    const response = await fetch(`${baseUrl}/v1/steuerjahre/${ZIELJAHR}/uebernahme?von=${VORJAHR}`, { method: 'POST', headers: { cookie } })
+    expect(response.status).toBe(200)
+    const body = (await response.json()) as { kennzeichnungen: Array<{ postenKey: string; vorjahr: number; bestaetigt: boolean }> }
+    const keys = body.kennzeichnungen.map((k) => k.postenKey)
+    expect(keys).toContain('lstb')
+    expect(keys).toContain('rente')
+    expect(keys).toContain('kapital')
+    expect(keys.filter((k) => k.startsWith('vermietung-'))).toHaveLength(1)
+    expect(body.kennzeichnungen.every((k) => k.vorjahr === VORJAHR && k.bestaetigt === false)).toBe(true)
+
+    // Die Spanne trägt die Gesamtsumme aller unbestätigten Fakten: 50000+12000+3000+9600 = 74600.
+    const cockpit = await fetch(`${baseUrl}/v1/steuerjahre/${ZIELJAHR}/cockpit`, { headers: { cookie } })
+    const cockpitBody = (await cockpit.json()) as { stand: { kind: string; von: number; bis: number; unbestaetigte?: number; unbestaetigteSumme?: number } }
+    expect(cockpitBody.stand).toMatchObject({ kind: 'spanne', unbestaetigte: 4, unbestaetigteSumme: 74600 })
+    expect(cockpitBody.stand.von).toBe(0)
+    expect(cockpitBody.stand.bis).toBe(50000 + 74600)
+
+    // Bestätigen je Fakt → Punktwert.
+    for (const key of ['lstb', 'rente', 'kapital', keys.find((k) => k.startsWith('vermietung-'))!]) {
+      const bestaetigt = await fetch(`${baseUrl}/v1/steuerjahre/${ZIELJAHR}/uebernahme/${key}/bestaetigen`, { method: 'PUT', headers: { cookie } })
+      expect(bestaetigt.status).toBe(200)
+    }
+    const cockpit2 = await fetch(`${baseUrl}/v1/steuerjahre/${ZIELJAHR}/cockpit`, { headers: { cookie } })
+    const cockpit2Body = (await cockpit2.json()) as { stand: { kind: string; wert?: number } }
+    expect(cockpit2Body.stand).toEqual({ kind: 'bestimmt', wert: 50000 })
+
+    // Ciphertext at rest (ADR-0008): auch die kopierten Rente-/Kapital-Zahlen sind KEIN Klartext.
+    const renteRows = await prisma.$queryRaw<Array<{ jahresbetrag: string | null }>>`SELECT "jahresbetrag" FROM "Rente" WHERE "userId" = ${userId} AND "steuerjahr" = ${ZIELJAHR}`
+    expect(renteRows[0]?.jahresbetrag).not.toBe('12000')
+    const kapitalRows = await prisma.$queryRaw<Array<{ kapitalertraege: string | null }>>`SELECT "kapitalertraege" FROM "Kapital" WHERE "userId" = ${userId} AND "steuerjahr" = ${ZIELJAHR}`
+    expect(kapitalRows[0]?.kapitalertraege).not.toBe('3000')
   })
 
   it('die Endpoints verlangen ein echtes Konto — ein Gast bekommt 401', async () => {
