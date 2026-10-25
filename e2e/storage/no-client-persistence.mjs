@@ -197,7 +197,11 @@ async function main() {
     await page.getByText(COPY.profilEdit).click()
     await page.getByPlaceholder(COPY.onboardingFirstNamePlaceholder).fill('Kim')
     await page.getByPlaceholder(COPY.profilLastNamePlaceholder).fill('Yilmaz')
-    await page.getByText(COPY.profilSave).click()
+    // `force: true`: this gate asserts STORAGE, not click-stability. Playwright's stability check
+    // has been observed to never settle on the Profil save button (same class as the
+    // breakpoint-layout Minimal-Gate options — see its force-click note); the interaction logic
+    // itself is pinned by the jsdom suites.
+    await page.getByText(COPY.profilSave).click({ force: true })
     await page.getByText(COPY.profilSaved, { exact: true }).waitFor({ state: 'visible', timeout: 10_000 }).catch(() => {
       fail('Flow 2: Profil save never showed the "Gespeichert." confirmation within 10s.')
     })
@@ -214,7 +218,7 @@ async function main() {
     // every other input: by its own placeholder.
     await page.getByText(COPY.profilEdit).click()
     await page.getByPlaceholder(COPY.profilLastNamePlaceholder).fill('Yilmaz-Geändert')
-    await page.getByText(COPY.profilSave).click()
+    await page.getByText(COPY.profilSave).click({ force: true })
     await page.getByText(COPY.profilSaved, { exact: true }).waitFor({ state: 'visible', timeout: 10_000 }).catch(() => {
       fail('Flow 2: the second Profil save never showed the "Gespeichert." confirmation within 10s.')
     })
