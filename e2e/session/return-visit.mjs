@@ -134,7 +134,7 @@ import { join } from 'node:path'
 import { launchBrowser, closeBrowser, newContextAtBreakpoint, guardAgainst429, sampleComputedStyleOverFrames, newReducedMotionContext } from '../harness/browser.mjs'
 import { startStack } from '../harness/stack.mjs'
 import { fail, waitForBucketHeadroom } from '../harness/rate-limit.mjs'
-import { FLOW_COPY, skipSplash, signUpOutOfBand, completeOnboarding } from '../harness/flows.mjs'
+import { FLOW_COPY, skipSplash, signUpOutOfBand } from '../harness/flows.mjs'
 
 // `shared: true`: the sign-up/sign-in bucket is spent by every other script in the `Browser gates`
 // job (same API process, one in-memory bucket), so this process cannot read its live state and
@@ -191,9 +191,10 @@ function waitForRateLimit(config, label) {
   return waitForBucketHeadroom(config, label, 'return-visit')
 }
 
-// `skipSplash`, `signUpOutOfBand`, `completeOnboarding` are imported from `../harness/flows.mjs`
+// `skipSplash`, `signUpOutOfBand` are imported from `../harness/flows.mjs`
 // above (Musti's #331 review, F6) — this file and `storage/no-client-persistence.mjs` are its two
-// real callers as of the same change that introduced it.
+// real callers as of the same change that introduced it. The onboarding drive sequences were
+// removed with ADR-0045 (guests AND returning accounts land straight in the app).
 
 /**
  * Whether the Google button SHOULD render, asked the exact way `useSocialSignInAvailable` itself
@@ -384,8 +385,8 @@ async function testSignedInReload(browser, apiOrigin, webOrigin, sql) {
     await page.getByPlaceholder(COPY.loginEmailPlaceholder).fill(email)
     await page.getByPlaceholder(COPY.loginPasswordPlaceholder).fill(TEST_PASSWORD)
     await page.getByRole('button', { name: COPY.loginSubmit }).click()
-    await page.waitForURL((u) => u.pathname === '/onboarding', { timeout: 10_000 })
-    await completeOnboarding(page)
+    // ADR-0045: a signed-in account goes straight to the app (no onboarding) — the tab shell is
+    // the sign-in marker here.
     await page.waitForURL((u) => u.pathname === '/app', { timeout: 10_000 })
     await page.getByRole('tab', { name: COPY.profilTab }).waitFor({ state: 'visible', timeout: 5_000 })
     const identityAfterSignIn = await getSessionEmail(page, apiOrigin)

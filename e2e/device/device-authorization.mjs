@@ -167,11 +167,6 @@ const COPY = {
   unknownRegion: 'Region unbekannt',
   approveConfirm: 'Ja, das ist mein Code',
   approvedHeading: 'Erledigt',
-  onboardingFirstNamePlaceholder: 'Kim',
-  onboardingLastNamePlaceholder: 'Yilmaz',
-  onboardingSteuerIdPlaceholder: '12 345 678 901',
-  onboardingWeiter: 'Weiter',
-  onboardingSteuerNrLater: 'Hab ich nicht zur Hand — später',
   profilTab: 'Profil',
   devicesSignOut: 'Abmelden',
   devicesCurrentBadge: 'Dieses Gerät',
@@ -280,16 +275,8 @@ function expectedLabelFromRealUserAgent(userAgent) {
 // header comment for the full account, including the real-stack re-run that confirmed the rest
 // of this gate's flow was never affected). Not restored as a no-op or a permanently-skipped
 // call: an assertion with nothing left to assert is dead code, not a weakened check.
-
-async function completeOnboarding(page) {
-  await page.getByPlaceholder(COPY.onboardingFirstNamePlaceholder).fill('Kim')
-  await page.getByPlaceholder(COPY.onboardingLastNamePlaceholder).fill('Yilmaz')
-  await page.getByRole('button', { name: COPY.onboardingWeiter }).click()
-  await page.getByPlaceholder(COPY.onboardingSteuerIdPlaceholder).fill('12345678901')
-  await page.getByRole('button', { name: COPY.onboardingWeiter }).click()
-  await page.getByText(COPY.onboardingSteuerNrLater).click()
-  await page.getByRole('button', { name: COPY.onboardingWeiter }).click()
-}
+// `completeOnboarding` lived here too — removed with ADR-0045: a signed-in account goes straight
+// to the app (no onboarding), so Context B's sign-in marker is the tab shell, not the name field.
 
 async function main() {
   const { apiOrigin, webOrigin, sql } = await startStack()
@@ -346,10 +333,11 @@ async function main() {
     await pageB.getByPlaceholder(COPY.loginPasswordPlaceholder).fill(TEST_PASSWORD)
     await waitForRateLimit(AUTH_BUCKET, 'sign-in/email')
     await pageB.getByRole('button', { name: COPY.loginSubmit }).click()
-    await pageB.getByPlaceholder(COPY.onboardingFirstNamePlaceholder).waitFor({ state: 'visible', timeout: 10_000 })
+    // ADR-0045 (value-first funnel): a signed-in account goes straight to the app — no
+    // onboarding. The tab shell (Profil tab visible) IS the proof of a real sign-in here.
+    await pageB.getByRole('tab', { name: COPY.profilTab }).waitFor({ state: 'visible', timeout: 10_000 })
     assertRequestCount(signInRequests, '/sign-in/email', 1, 'Context B real sign-in')
-    await completeOnboarding(pageB)
-    console.log('[device-authorization] Context B signed in for real and completed onboarding.')
+    console.log('[device-authorization] Context B signed in for real (landed in the app shell, ADR-0045 funnel).')
 
     const pendingRequests = countRequestsTo(pageB, 'GET', '/v1/device/pending')
     const pendingResponsePromise = pageB.waitForResponse((r) => r.request().method() === 'GET' && r.url().includes('/v1/device/pending'))
