@@ -5,15 +5,21 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { CockpitService } from '../src/cockpit/cockpit.service.js'
 import { FakeInterviewAnswerRepository } from './fakes/fake-interview-answer.repository.js'
+import { FakeKapitalRepository } from './fakes/fake-kapital.repository.js'
 import { FakeLstbRepository } from './fakes/fake-lstb.repository.js'
+import { FakeRenteRepository } from './fakes/fake-rente.repository.js'
 import { FakeTaxYearRepository } from './fakes/fake-tax-year.repository.js'
 import { FakeUebernahmeRepository } from './fakes/fake-uebernahme.repository.js'
+import { FakeVermietungRepository } from './fakes/fake-vermietung.repository.js'
 
 describe('CockpitService', () => {
   let taxYear: FakeTaxYearRepository
   let lstb: FakeLstbRepository
   let interview: FakeInterviewAnswerRepository
   let uebernahme: FakeUebernahmeRepository
+  let rente: FakeRenteRepository
+  let kapital: FakeKapitalRepository
+  let vermietung: FakeVermietungRepository
   let service: CockpitService
 
   beforeEach(() => {
@@ -21,7 +27,10 @@ describe('CockpitService', () => {
     lstb = new FakeLstbRepository()
     interview = new FakeInterviewAnswerRepository()
     uebernahme = new FakeUebernahmeRepository()
-    service = new CockpitService(taxYear, lstb, interview, uebernahme)
+    rente = new FakeRenteRepository()
+    kapital = new FakeKapitalRepository()
+    vermietung = new FakeVermietungRepository()
+    service = new CockpitService(taxYear, lstb, interview, uebernahme, rente, kapital, vermietung)
   })
 
   it('REQ-001 returns null for a userId/steuerjahr with nothing seeded — the honest empty state', async () => {
@@ -79,6 +88,45 @@ describe('CockpitService', () => {
 
     const summary = await service.getSummary('user-a', 2026)
 
+    expect(summary?.stand).toEqual({ kind: 'bestimmt', wert: 50000 })
+  })
+
+  it('ADR-021 M2: unbestätigte Rente/Kapital/Vermietung zählen MIT — jede erfasste Summe weitet die Spanne', async () => {
+    taxYear.seed('user-a', { steuerjahr: 2026, openItems: 0 })
+    interview.seed('user-a', 2026, { job: 'Angestellt' })
+    lstb.seed({ userId: 'user-a', steuerjahr: 2026, bruttoarbeitslohn: '50000', lohnsteuer: '8000', sozialversicherung: '9000' })
+    uebernahme.seed({ userId: 'user-a', steuerjahr: 2026, vorjahr: 2025, postenKey: 'lstb', bestaetigt: false })
+    uebernahme.seed({ userId: 'user-a', steuerjahr: 2026, vorjahr: 2025, postenKey: 'rente', bestaetigt: false })
+    uebernahme.seed({ userId: 'user-a', steuerjahr: 2026, vorjahr: 2025, postenKey: 'kapital', bestaetigt: false })
+    uebernahme.seed({ userId: 'user-a', steuerjahr: 2026, vorjahr: 2025, postenKey: 'vermietung-obj-1', bestaetigt: false })
+    rente.seed({ userId: 'user-a', steuerjahr: 2026, rentenart: 'GesetzlicheRente', jahresbetrag: '12000', rentenbeginnJahr: '2020', alterBeiRentenbeginn: null })
+    kapital.seed({ userId: 'user-a', steuerjahr: 2026, kapitalertraege: '3000' })
+    vermietung.seed({ id: 'obj-1', userId: 'user-a', steuerjahr: 2026, mieteinnahmen: '9600', anschaffungskosten: '100000', baujahr: '1995', werbungskosten: '1200' })
+
+    const summary = await service.getSummary('user-a', 2026)
+
+    // 4 unbestätigte Fakten: 50000 + 12000 + 3000 + 9600 = 74600 als Unsicherheit.
+    expect(summary?.stand).toEqual({
+      kind: 'spanne',
+      von: 0,
+      bis: 50000 + 74600,
+      offenePosten: 0,
+      konflikte: 0,
+      unbestaetigte: 4,
+      unbestaetigteSumme: 74600,
+    })
+  })
+
+  it('ADR-021 M2: ein offenes kopiertes Feld trägt keine Summe — offen bleibt offen, nie ein fabricated zero', async () => {
+    taxYear.seed('user-a', { steuerjahr: 2026, openItems: 0 })
+    interview.seed('user-a', 2026, { job: 'Angestellt' })
+    lstb.seed({ userId: 'user-a', steuerjahr: 2026, bruttoarbeitslohn: '50000', lohnsteuer: '8000', sozialversicherung: '9000' })
+    uebernahme.seed({ userId: 'user-a', steuerjahr: 2026, vorjahr: 2025, postenKey: 'kapital', bestaetigt: false })
+    kapital.seed({ userId: 'user-a', steuerjahr: 2026, kapitalertraege: null })
+
+    const summary = await service.getSummary('user-a', 2026)
+
+    // Der offene kopierte Fakt zählt NICHT in die Spanne — die LStB (nicht übernommen) bleibt bestimmt.
     expect(summary?.stand).toEqual({ kind: 'bestimmt', wert: 50000 })
   })
 

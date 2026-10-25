@@ -20,5 +20,8 @@ import { KapitalService } from './kapital.service.js'
     // CockpitModule) because CockpitModule does not export it; one Prisma read path either way.
     { provide: TAX_YEAR_REPOSITORY, useClass: PrismaTaxYearRepository },
   ],
+  // Exported so the Jahresübernahme (ticket 10.8 M2) can copy the Kapital row through the SAME
+  // field-encryption seam its own service uses — never a second Prisma read path.
+  exports: [KAPITAL_REPOSITORY],
 })
 export class KapitalModule {}

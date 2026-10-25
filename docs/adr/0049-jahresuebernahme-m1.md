@@ -1,7 +1,7 @@
-# ADR-0049 — Jahresübernahme M1: Quelle `uebernahme`, unbestätigte Posten zählen in die Spanne, Kennzeichnungs-Schicht (Entwurf)
+# ADR-0049 — Jahresübernahme: Quelle `uebernahme`, unbestätigte Posten zählen in die Spanne, Kennzeichnungs-Schicht (Entwurf)
 
 - **Status:** Draft — promotion needs Musti review (ticket 10.8 review)
-- **Date:** 2026-10-25
+- **Date:** 2026-10-25 (M2-Erweiterung: Übernahme ALLER Fakten, Cockpit summiert alle unbestätigten Beträge)
 - **Deciders:** Suhay (agent, Ticket 10.8) — draft; promotion needs Musti review
 - **Implements** Produkt-ADR-021 (Jahresübernahme: alles kopieren, aber als „unbestätigt"
   markiert), Produkt-ADR-022 (Jahresbezug der Herkunft)
@@ -16,7 +16,8 @@ trägt die Herkunft „Übernahme aus {Vorjahr}" und gilt als **unbestätigt**, 
 durch einen Beleg gedeckt wird; unbestätigte zählen in die Spanne, nicht in den Punktwert — ein
 ruhiger, grauer Ton, nie ein Konflikt (ADR-008 ist für Widersprüche da). Der Ticket-Umfang
 (Jahresübernahme + bis 4 Rückjahre + prominente Jahr-Auswahl + Jahresregelwerke) ist zu groß für
-einen Schnitt — dieser Entwurf legt die M1-Grenze fest.
+einen Schnitt — dieser Entwurf legt die Schnitte fest: M1 (LStB-Tracer, gemergt) → M2 (alle
+Fakten + Cockpit-Summen, dieser Stand) → Rest (ADR-022-UI, benannte Follow-ups).
 
 ## Decision
 
@@ -39,13 +40,20 @@ einen Schnitt — dieser Entwurf legt die M1-Grenze fest.
    Ein zweiter Kopierversuch ist ein 409 (DB-Unique als zweite Kontrolle), eine Bestätigung ohne
    Kennzeichnung ein 404.
 
-4. **M1-Grenze (ehrlich benannt):** kopiert wird NUR die LStB-Zeile (Tracer-Bullet) — Rente/
-   Kapital/Vermietung, die 4 Rückjahre-UI, die prominente Jahr-Auswahl, die gesammelte
-   Prüf-Screen-Sammlung UND der ruhige Cockpit-Hinweis („X € aus dem Vorjahr — bitte einmal
-   bestätigen") sind benannte Follow-ups; die Kennzeichnungs-Schicht trägt ihre Schlüssel schon.
-   Die Cockpit-Spanne integriert die unbestätigte LStB-Summe serverseitig (`unbestaetigte`/
-   `unbestaetigteSumme` fließen im DTO), der Screen konsumiert sie noch nicht — ehrlich
-   benannt, nicht stillschweigend weggelassen.
+4. **M2 (die Übernahme ALLER Fakten):** `POST …/uebernahme` kopiert LStB, Rente, Kapital und
+   jedes Vermietungsobjekt — je Fakt eine Kennzeichnung (`lstb`, `rente`, `kapital`,
+   `vermietung-<objektId>`); ein bereits übernommenes Jahr ist ein 409 (nie eine Halbkopie), ein
+   Vorjahr ohne EINEN einzigen übernehmbaren Fakt ein 404 („Nothing to take over" — der Fakt
+   zählt, nicht die Anlage). Die Cockpit-Spanne summiert ALLE unbestätigten erfassten Beträge
+   (LStB-Brutto + Rente-Jahresbetrag + Kapitalerträge + je Objekt die Mieteinnahmen); ein offenes
+   kopiertes Feld trägt keine Summe — offen bleibt offen, nie ein fabricated zero (ADR-032).
+
+5. **Rest-Grenze (ehrlich benannt):** die 4 Rückjahre-UI, die prominente Jahr-Auswahl, die
+   gesammelte Prüf-Screen-Sammlung, der ruhige Cockpit-Hinweis („X € aus dem Vorjahr — bitte
+   einmal bestätigen") und die Herkunfts-Chips mit Jahresbezug sind benannte Follow-ups; die
+   Kennzeichnungs-Schicht trägt ihre Schlüssel schon. Die Cockpit-Spanne integriert die
+   unbestätigten Summen serverseitig (`unbestaetigte`/`unbestaetigteSumme` fließen im DTO), der
+   Screen konsumiert sie noch nicht — ehrlich benannt, nicht stillschweigend weggelassen.
 
 ## Consequences
 
