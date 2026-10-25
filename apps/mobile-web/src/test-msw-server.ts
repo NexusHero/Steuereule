@@ -21,9 +21,10 @@ import {
   getRenteControllerGetMockHandler,
   getKapitalControllerGetMockHandler,
   getKapitalControllerGetGuenstigerpruefungMockHandler,
+  getVermietungControllerGetMockHandler,
 } from '@steuereule/api-client/msw'
 import { LOHNAUSWEIS_FELDER } from '@steuereule/core'
-import type { ProfileResponseDto, AuthCapabilitiesDto, DeviceCodeResponseDto, InterviewStateDto, LstbResponseDto, ChLohnausweisResponseDto, RenteResponseDto, KapitalResponseDto } from '@steuereule/api-client'
+import type { ProfileResponseDto, AuthCapabilitiesDto, DeviceCodeResponseDto, InterviewStateDto, LstbResponseDto, ChLohnausweisResponseDto, RenteResponseDto, KapitalResponseDto, VermietungResponseDto } from '@steuereule/api-client'
 
 export const EMPTY_PROFILE_RESPONSE: ProfileResponseDto = {
   firstName: null,
@@ -125,6 +126,17 @@ export const EMPTY_KAPITAL_RESPONSE: KapitalResponseDto = {
   stand: { kind: 'offen', einnahmen: 0, vorsorgeaufwand: 0, anrechnung: 0, offenePosten: 1, konflikte: 0, gegated: [] },
 }
 
+/**
+ * Default `GET .../vermietung` answer (REQ-026, ticket 10.6): a brand-new tax year with no
+ * objects, einordnung unbekannt and an empty fold — matching the real API's honest empty-mask
+ * shape, pinned (not the generated faker) for the same reason as `EMPTY_RENTE_RESPONSE`.
+ */
+export const EMPTY_VERMIETUNG_RESPONSE: VermietungResponseDto = {
+  einordnung: { kind: 'unbekannt' },
+  objekte: [],
+  stand: { kind: 'bestimmt', einnahmen: 0, vorsorgeaufwand: 0, anrechnung: 0, werbungskosten: 0, afa: 0, offenePosten: 0, konflikte: 0 },
+}
+
 export const server = setupServer(
   getProfileControllerGetProfileMockHandler(EMPTY_PROFILE_RESPONSE),
   getProfileControllerPutProfileMockHandler(),
@@ -154,6 +166,12 @@ export const server = setupServer(
   getKapitalControllerGetMockHandler(EMPTY_KAPITAL_RESPONSE),
   http.put('*/v1/steuerjahre/:jahr/kapital/:feld', () => HttpResponse.json(EMPTY_KAPITAL_RESPONSE, { status: 200 })),
   getKapitalControllerGetGuenstigerpruefungMockHandler(null),
+  // REQ-026 (ticket 10.6) — the Vermietung guided mask: empty object list by default, same
+  // "fresh tax year" honesty as the Rente defaults. The POST/PUTs default to a generic 200
+  // (the response body is never asserted by a test that doesn't override it).
+  getVermietungControllerGetMockHandler(EMPTY_VERMIETUNG_RESPONSE),
+  http.post('*/v1/steuerjahre/:jahr/vermietung/objekte', () => HttpResponse.json(EMPTY_VERMIETUNG_RESPONSE, { status: 201 })),
+  http.put('*/v1/steuerjahre/:jahr/vermietung/objekte/:objektId/:feld', () => HttpResponse.json(EMPTY_VERMIETUNG_RESPONSE, { status: 200 })),
   // Default `POST .../interview/antworten` answer: a generic 200 — InterviewScreen renders the
   // next step from the local graph, not from this response body (#318 task 2's own "the graph
   // stays local" brief), so the exact `nextStep`/`openItems` values here are never asserted on

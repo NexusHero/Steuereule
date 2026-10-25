@@ -45,4 +45,6 @@ export type {
 } from './generated/kapital.schemas'
 export * from './generated/bescheid'
 export * from './generated/bescheid.schemas'
+export * from './generated/vermietung'
+export * from './generated/vermietung.schemas'
 export { configureApiClient, resetApiClientConfig, getApiClientBaseUrl, type ApiClientConfig } from './http-client'

@@ -86,3 +86,12 @@ export {
   getKapitalControllerGetGuenstigerpruefungMockHandler,
   getSteuerEuleAPIMock as getKapitalApiMock,
 } from './generated/kapital.msw'
+export {
+  getVermietungControllerGetResponseMock,
+  getVermietungControllerGetMockHandler,
+  getVermietungControllerCreateResponseMock,
+  getVermietungControllerCreateMockHandler,
+  getVermietungControllerSetFeldResponseMock,
+  getVermietungControllerSetFeldMockHandler,
+  getSteuerEuleAPIMock as getVermietungApiMock,
+} from './generated/vermietung.msw'

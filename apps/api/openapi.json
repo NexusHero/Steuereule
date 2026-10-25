@@ -1427,6 +1427,141 @@
           "veranlagungsartenvergleich"
         ]
       }
+    },
+    "/v1/steuerjahre/{jahr}/vermietung": {
+      "get": {
+        "operationId": "VermietungController_get",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr) — validated to a sensible window (ParseSteuerjahrPipe, same as Cockpit).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The caller’s Vermietung objects + fold for this tax year — re-entry.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VermietungResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "vermietung"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/vermietung/objekte": {
+      "post": {
+        "operationId": "VermietungController_create",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr) — validated to a sensible window (ParseSteuerjahrPipe, same as Cockpit).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "A fresh object (all fields offen) was created; the response carries the updated list + fold.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VermietungResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "vermietung"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/vermietung/objekte/{objektId}/{feld}": {
+      "put": {
+        "operationId": "VermietungController_setFeld",
+        "parameters": [
+          {
+            "name": "feld",
+            "required": true,
+            "in": "path",
+            "description": "One of mieteinnahmen | anschaffungskosten | baujahr | werbungskosten (ParseVermietungFeldPipe).",
+            "schema": {
+              "example": "mieteinnahmen",
+              "type": "string"
+            }
+          },
+          {
+            "name": "objektId",
+            "required": true,
+            "in": "path",
+            "description": "The object id (assigned by POST …/objekte).",
+            "schema": {
+              "example": "9c3f…",
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr) — validated to a sensible window (ParseSteuerjahrPipe, same as Cockpit).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutVermietungFeldDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated objects and their derived fold.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VermietungResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "vermietung"
+        ]
+      }
     }
   },
   "info": {
@@ -3444,6 +3579,240 @@
               "keine-einnahmen"
             ],
             "description": "Why the comparison does not apply (only when kind === \"nicht-anwendbar\")."
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "VermietungEinordnungDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "einfach",
+              "mehrere",
+              "verkauf-oder-moebliert",
+              "unbekannt"
+            ],
+            "example": "einfach",
+            "description": "einfach/mehrere = ganzjährig vermietete Objekte, je Objekt eine Anlage V (computable); verkauf-oder-moebliert = gated in 1.0 (ADR-033); unbekannt = vermietung-art not answered."
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "VermietungFeldDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "erfasst",
+              "offen",
+              "unklar"
+            ],
+            "description": "The field’s capture state."
+          },
+          "wert": {
+            "type": "number",
+            "example": 12000,
+            "description": "The value — present only when kind === \"erfasst\" (validated via @steuereule/core)."
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "VermietungAfADto": {
+        "type": "object",
+        "properties": {
+          "betrag": {
+            "type": "number",
+            "example": 4000,
+            "description": "Anschaffungskosten × AfA-Satz, rounded to whole euros."
+          },
+          "herkunft": {
+            "type": "string",
+            "example": "§ 7 Abs. 4 Satz 1 EStG — lineare AfA 2 % bei Baujahr 1990",
+            "description": "The statutory citation that produced the percentage."
+          }
+        },
+        "required": [
+          "betrag",
+          "herkunft"
+        ]
+      },
+      "VermietungsobjektFaktenDto": {
+        "type": "object",
+        "properties": {
+          "einnahmen": {
+            "type": "number",
+            "nullable": true,
+            "example": 12000,
+            "description": "The captured Mieteinnahmen, or null while open."
+          },
+          "werbungskosten": {
+            "type": "number",
+            "nullable": true,
+            "example": 1500,
+            "description": "The captured Werbungskosten (0 = the user entered 0), or null while open."
+          },
+          "afa": {
+            "nullable": true,
+            "description": "The computed lineare AfA with its § 7 Abs. 4 Herkunft, or null while open.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/VermietungAfADto"
+              }
+            ]
+          },
+          "offenePosten": {
+            "type": "number",
+            "example": 0,
+            "description": "The blocked results of this object (Mieteinnahmen/AfA/Werbungskosten — max 3)."
+          }
+        },
+        "required": [
+          "einnahmen",
+          "werbungskosten",
+          "afa",
+          "offenePosten"
+        ]
+      },
+      "VermietungsobjektDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "9c3f…",
+            "description": "The stable object id (assigned by the API on create)."
+          },
+          "mieteinnahmen": {
+            "$ref": "#/components/schemas/VermietungFeldDto"
+          },
+          "anschaffungskosten": {
+            "$ref": "#/components/schemas/VermietungFeldDto"
+          },
+          "baujahr": {
+            "$ref": "#/components/schemas/VermietungFeldDto"
+          },
+          "werbungskosten": {
+            "$ref": "#/components/schemas/VermietungFeldDto"
+          },
+          "fakten": {
+            "$ref": "#/components/schemas/VermietungsobjektFaktenDto"
+          }
+        },
+        "required": [
+          "id",
+          "mieteinnahmen",
+          "anschaffungskosten",
+          "baujahr",
+          "werbungskosten",
+          "fakten"
+        ]
+      },
+      "VermietungStandDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "bestimmt",
+              "offen"
+            ],
+            "description": "Determined, or open (naming what blocks)."
+          },
+          "einnahmen": {
+            "type": "number",
+            "description": "Sum of the Mieteinnahmen Einnahme-Posten (whole euros)."
+          },
+          "vorsorgeaufwand": {
+            "type": "number",
+            "description": "Sum of Vorsorgeaufwand Posten (whole euros)."
+          },
+          "anrechnung": {
+            "type": "number",
+            "description": "Sum of Anrechnung Posten (whole euros)."
+          },
+          "werbungskosten": {
+            "type": "number",
+            "description": "Sum of CAPTURED Werbungskosten — reported, never subtracted (partial truth as a partial truth)."
+          },
+          "afa": {
+            "type": "number",
+            "description": "Sum of the computed lineare AfA."
+          },
+          "offenePosten": {
+            "type": "number",
+            "description": "Required-but-empty results across all objects."
+          },
+          "konflikte": {
+            "type": "number",
+            "description": "Open conflicts (always 0 this slice)."
+          },
+          "gegated": {
+            "description": "Gated Einkunftsarten (only when offen).",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "kind",
+          "einnahmen",
+          "vorsorgeaufwand",
+          "anrechnung",
+          "werbungskosten",
+          "afa",
+          "offenePosten",
+          "konflikte"
+        ]
+      },
+      "VermietungResponseDto": {
+        "type": "object",
+        "properties": {
+          "einordnung": {
+            "$ref": "#/components/schemas/VermietungEinordnungDto"
+          },
+          "objekte": {
+            "description": "The objects, oldest first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VermietungsobjektDto"
+            }
+          },
+          "stand": {
+            "$ref": "#/components/schemas/VermietungStandDto"
+          }
+        },
+        "required": [
+          "einordnung",
+          "objekte",
+          "stand"
+        ]
+      },
+      "PutVermietungFeldDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "erfasst",
+              "offen",
+              "unklar"
+            ],
+            "description": "The field’s capture state."
+          },
+          "wert": {
+            "type": "number",
+            "example": 12000,
+            "description": "The value — present only when kind === \"erfasst\" (validated via @steuereule/core)."
           }
         },
         "required": [
