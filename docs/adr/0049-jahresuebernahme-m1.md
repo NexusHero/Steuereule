@@ -40,10 +40,12 @@ einen Schnitt — dieser Entwurf legt die M1-Grenze fest.
    Kennzeichnung ein 404.
 
 4. **M1-Grenze (ehrlich benannt):** kopiert wird NUR die LStB-Zeile (Tracer-Bullet) — Rente/
-   Kapital/Vermietung, die 4 Rückjahre-UI, die prominente Jahr-Auswahl und die gesammelte
-   Prüf-Screen-Sammlung sind benannte Follow-ups; die Kennzeichnungs-Schicht trägt ihre
-   Schlüssel schon. Die Cockpit-Spanne integriert die unbestätigte LStB-Summe; der Screen zeigt
-   den ruhigen Hinweis, sobald die DTO-Felder fließen.
+   Kapital/Vermietung, die 4 Rückjahre-UI, die prominente Jahr-Auswahl, die gesammelte
+   Prüf-Screen-Sammlung UND der ruhige Cockpit-Hinweis („X € aus dem Vorjahr — bitte einmal
+   bestätigen") sind benannte Follow-ups; die Kennzeichnungs-Schicht trägt ihre Schlüssel schon.
+   Die Cockpit-Spanne integriert die unbestätigte LStB-Summe serverseitig (`unbestaetigte`/
+   `unbestaetigteSumme` fließen im DTO), der Screen konsumiert sie noch nicht — ehrlich
+   benannt, nicht stillschweigend weggelassen.
 
 ## Consequences
 

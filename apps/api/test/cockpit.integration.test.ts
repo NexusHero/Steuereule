@@ -96,7 +96,7 @@ describe('GET /v1/steuerjahre/:jahr/cockpit — real Postgres (REQ-001 + ticket 
     expect(response.json()).toEqual({
       taxYear: 2026,
       // 2 open LStB fields × 60 uncertainty around the settled 50000.
-      stand: { kind: 'spanne', von: 49880, bis: 50120, offenePosten: 2, konflikte: 0 },
+      stand: { kind: 'spanne', von: 49880, bis: 50120, offenePosten: 2, konflikte: 0, unbestaetigte: 0, unbestaetigteSumme: 0 },
       openItems: 2,
     })
   })
@@ -120,7 +120,7 @@ describe('GET /v1/steuerjahre/:jahr/cockpit — real Postgres (REQ-001 + ticket 
     // userA declared Angestellt but has not started the LStB yet → all three fields open.
     expect(userAResponse.json()).toEqual({
       taxYear: 2026,
-      stand: { kind: 'spanne', von: 0, bis: 180, offenePosten: 3, konflikte: 0 },
+      stand: { kind: 'spanne', von: 0, bis: 180, offenePosten: 3, konflikte: 0, unbestaetigte: 0, unbestaetigteSumme: 0 },
       openItems: 2,
     })
   })
