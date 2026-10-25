@@ -19,9 +19,10 @@ import {
   getChLohnausweisControllerSetFeldMockHandler,
   getChLohnausweisControllerSetWechselkursMockHandler,
   getRenteControllerGetMockHandler,
+  getFristenControllerGetFristenMockHandler,
 } from '@steuereule/api-client/msw'
 import { LOHNAUSWEIS_FELDER } from '@steuereule/core'
-import type { ProfileResponseDto, AuthCapabilitiesDto, DeviceCodeResponseDto, InterviewStateDto, LstbResponseDto, ChLohnausweisResponseDto, RenteResponseDto } from '@steuereule/api-client'
+import type { ProfileResponseDto, AuthCapabilitiesDto, DeviceCodeResponseDto, InterviewStateDto, LstbResponseDto, ChLohnausweisResponseDto, RenteResponseDto, FristenResponseDto } from '@steuereule/api-client'
 
 export const EMPTY_PROFILE_RESPONSE: ProfileResponseDto = {
   firstName: null,
@@ -109,6 +110,19 @@ export const EMPTY_RENTE_RESPONSE: RenteResponseDto = {
   stand: { kind: 'offen', einnahmen: 0, vorsorgeaufwand: 0, anrechnung: 0, offenePosten: 1, konflikte: 0, gegated: [] },
 }
 
+/**
+ * Default `GET .../fristen` answer (REQ-027, ticket 10.7): `keine` — the honest no-banner state
+ * (the account is far from the frist), pinned not faked for the same reason as the other
+ * EMPTY_* responses.
+ */
+export const EMPTY_FRISTEN_RESPONSE: FristenResponseDto = {
+  abgabefrist: '2027-07-31',
+  heute: '2026-10-25',
+  stufe: 'keine',
+  verbleibendeTage: 279,
+  verspaetungszuschlag: { mindestsatzEur: 25, prozentProMonat: 0.25 },
+}
+
 export const server = setupServer(
   getProfileControllerGetProfileMockHandler(EMPTY_PROFILE_RESPONSE),
   getProfileControllerPutProfileMockHandler(),
@@ -133,6 +147,10 @@ export const server = setupServer(
   getRenteControllerGetMockHandler(EMPTY_RENTE_RESPONSE),
   http.put('*/v1/steuerjahre/:jahr/rente/art', () => HttpResponse.json(EMPTY_RENTE_RESPONSE, { status: 200 })),
   http.put('*/v1/steuerjahre/:jahr/rente/:feld', () => HttpResponse.json(EMPTY_RENTE_RESPONSE, { status: 200 })),
+  // REQ-027 (ticket 10.7) — der Fristen-Warnmodus: `keine` by default (the honest no-banner
+  // state, ADR-0039 — a fresh account far from the frist shows nothing), pinned not faked;
+  // banner tests override with `server.use(...)`.
+  getFristenControllerGetFristenMockHandler(EMPTY_FRISTEN_RESPONSE),
   // Default `POST .../interview/antworten` answer: a generic 200 — InterviewScreen renders the
   // next step from the local graph, not from this response body (#318 task 2's own "the graph
   // stays local" brief), so the exact `nextStep`/`openItems` values here are never asserted on

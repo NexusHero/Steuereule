@@ -231,4 +231,20 @@ export default defineConfig({
       },
     },
   },
+  // REQ-027 (ticket 10.7) — the Fristen-/Verspätungszuschlag-Warnmodus: GET the honest
+  // Fristen-Fakt (ADR-0039). Same `fristen` OpenAPI tag the one endpoint carries.
+  fristen: {
+    input: { target: '../../apps/api/openapi.json', filters: { tags: ['fristen'] } },
+    output: {
+      target: './src/generated/fristen.ts',
+      mode: 'split',
+      client: 'react-query',
+      httpClient: 'fetch',
+      mock: true,
+      override: {
+        mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        mock: { required: true },
+      },
+    },
+  },
 })

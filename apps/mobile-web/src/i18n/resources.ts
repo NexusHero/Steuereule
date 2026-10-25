@@ -635,6 +635,12 @@ export const appResources = {
         },
         weiter: 'Weiter',
       },
+      // REQ-027 (ticket 10.7) — der Fristen-Warnmodus (§ 149/§ 152 AO). Nüchtern (ADR-023),
+      // ein Banner, NIE ein Status (ADR-0039).
+      fristen: {
+        warnung: 'Abgabefrist: {{frist}} (noch {{tage}} Tage). Bei Verspätung fällt ein Verspätungszuschlag an — mindestens {{mindestsatz}} pro Monat (§ 152 AO).',
+        abgelaufen: 'Die Abgabefrist {{frist}} ist um {{tage}} Tage überschritten. Verspätungszuschlag (§ 152 AO): mindestens {{mindestsatz}} pro Monat — reich die Erklärung bald ein.',
+      },
       // REQ-017 (ticket 08) — the on-demand catalogue (Lebenslagen + Sonderausgaben), walked by
       // the same engine as the Minimal-Gate. Question ids are the German domain vocabulary;
       // only the labels live here (the values persist byte-equal, ADR-0033).
@@ -1498,6 +1504,12 @@ export const appResources = {
           offen: 'Not yet determinable — enter the missing figures.',
         },
         weiter: 'Continue',
+      },
+      // REQ-027 (ticket 10.7) — the deadline warning mode (§ 149/§ 152 AO). Sober (ADR-023),
+      // a banner, NEVER a status (ADR-0039).
+      fristen: {
+        warnung: 'Filing deadline: {{frist}} ({{tage}} days left). Late filing incurs a late-filing surcharge — at least {{mindestsatz}} per month (§ 152 AO).',
+        abgelaufen: 'The filing deadline {{frist}} passed {{tage}} days ago. Late-filing surcharge (§ 152 AO): at least {{mindestsatz}} per month — file soon.',
       },
       katalog: {
         back: 'Back',

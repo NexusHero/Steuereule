@@ -77,3 +77,8 @@ export {
   getVeranlagungsartenvergleichControllerGetVergleichMockHandler,
   getSteuerEuleAPIMock as getVeranlagungsartenvergleichApiMock,
 } from './generated/veranlagungsartenvergleich.msw'
+export {
+  getFristenControllerGetFristenResponseMock,
+  getFristenControllerGetFristenMockHandler,
+  getSteuerEuleAPIMock as getFristenApiMock,
+} from './generated/fristen.msw'

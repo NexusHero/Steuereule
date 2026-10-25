@@ -1290,6 +1290,41 @@
           "veranlagungsartenvergleich"
         ]
       }
+    },
+    "/v1/steuerjahre/{jahr}/fristen": {
+      "get": {
+        "operationId": "FristenController_getFristen",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr) — validated to a sensible window (ParseSteuerjahrPipe, same as Cockpit); the Abgabefrist itself throws a 400 for a year outside the per-year Regelwerk (ADR-022).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The honest Fristen-Fakt (ADR-0039) — a banner input, never a tax status.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FristenResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "fristen"
+        ]
+      }
     }
   },
   "info": {
@@ -3036,6 +3071,64 @@
         },
         "required": [
           "kind"
+        ]
+      },
+      "VerspaetungszuschlagDto": {
+        "type": "object",
+        "properties": {
+          "mindestsatzEur": {
+            "type": "number",
+            "example": 25,
+            "description": "§ 152 Abs. 2 Satz 2 AO — der Mindestzuschlag je angefangenem Monat, in Euro."
+          },
+          "prozentProMonat": {
+            "type": "number",
+            "example": 0.25,
+            "description": "§ 152 Abs. 2 Satz 1 AO — 0,25 % der festgesetzten Steuer je angefangenem Monat."
+          }
+        },
+        "required": [
+          "mindestsatzEur",
+          "prozentProMonat"
+        ]
+      },
+      "FristenResponseDto": {
+        "type": "object",
+        "properties": {
+          "abgabefrist": {
+            "type": "string",
+            "example": "2027-07-31",
+            "description": "Die Abgabefrist (§ 149 Abs. 2 AO), ISO yyyy-mm-dd."
+          },
+          "heute": {
+            "type": "string",
+            "example": "2027-06-01",
+            "description": "Der Server-Stichtag in Europe/Berlin, ISO yyyy-mm-dd."
+          },
+          "stufe": {
+            "type": "string",
+            "enum": [
+              "keine",
+              "warnung",
+              "abgelaufen"
+            ],
+            "description": "keine | warnung (ab 60 Tage vor der Frist) | abgelaufen."
+          },
+          "verbleibendeTage": {
+            "type": "number",
+            "example": 60,
+            "description": "Whole days from heute (exclusive) to the frist; negative = abgelaufen."
+          },
+          "verspaetungszuschlag": {
+            "$ref": "#/components/schemas/VerspaetungszuschlagDto"
+          }
+        },
+        "required": [
+          "abgabefrist",
+          "heute",
+          "stufe",
+          "verbleibendeTage",
+          "verspaetungszuschlag"
         ]
       }
     }

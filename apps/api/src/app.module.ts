@@ -4,6 +4,7 @@ import { AccountModule } from './account/account.module.js'
 import { AuthModule } from './auth/auth.module.js'
 import { BelegModule } from './beleg/beleg.module.js'
 import { BescheidModule } from './bescheid/bescheid.module.js'
+import { FristenModule } from './fristen/fristen.module.js'
 import { ChLohnausweisModule } from './ch-lohnausweis/ch-lohnausweis.module.js'
 import { CockpitModule } from './cockpit/cockpit.module.js'
 import { DeviceModule } from './device/device.module.js'
@@ -35,6 +36,7 @@ import { VeranlagungsartenvergleichModule } from './veranlagungsartenvergleich/v
     DeviceModule,
     HealthModule,
     VeranlagungsartenvergleichModule,
+    FristenModule,
   ],
 })
 export class AppModule {}

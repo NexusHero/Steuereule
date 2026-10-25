@@ -11,6 +11,7 @@
 import { ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Button, Card, HerkunftsChip, Pill, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme, type Breakpoint } from '@steuereule/ui'
+import { FristenBanner } from '../fristen/FristenBanner'
 import { formatEuro, formatEuroRange, UNCERTAINTY_PER_ITEM } from '@steuereule/core'
 import { useCockpitControllerGetCockpitSummary, type CockpitStandDto, type CockpitSummaryDto } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
@@ -93,6 +94,9 @@ function CockpitEmpty({ taxYear, onRefresh, isRefreshing, onOpenInterview, onOpe
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
       <Appbar taxYear={taxYear} />
+      {/* REQ-027 (ticket 10.7) — der Fristen-Warnmodus: ein Banner, NIE ein Status (ADR-0039);
+          rendert nichts bei `keine`. */}
+      <FristenBanner taxYear={taxYear} />
       <View style={styles.emptyBlock}>
         <Text style={styles.heading}>{tr('cockpit.empty.heading')}</Text>
         <Text style={styles.help}>{tr('cockpit.empty.message')}</Text>
@@ -136,6 +140,8 @@ function CockpitLoaded({ summary, taxYear, onRefresh, isRefreshing, onOpenInterv
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
       <Appbar taxYear={taxYear} />
+      {/* REQ-027 (ticket 10.7) — der Fristen-Warnmodus: ein Banner, NIE ein Status (ADR-0039). */}
+      <FristenBanner taxYear={taxYear} />
       <Card variant="nacht">
         <Text style={styles.heroLabel}>{tr('cockpit.hero.label')}</Text>
         {stand.kind === 'gated' ? (
