@@ -38,20 +38,51 @@ export async function upgradeGuestToAccount(
       tx.profile.findUnique({ where: { userId: accountUserId } }),
     ])
 
-    // Guest has no profile: nothing to carry over — not an error, just a no-op.
-    if (!guestProfile) return
+    // Guest has no profile: nothing to carry over for it — not an error, just a no-op.
     // Account already owns a profile: its data wins; the guest's profile is left
     // under the guest id, never silently merged/clobbered (Profile.userId is
     // @unique anyway — a blind re-key here would violate that constraint).
-    if (accountProfile) return
+    if (guestProfile && !accountProfile) {
+      await tx.profile.update({ where: { userId: guestUserId }, data: { userId: accountUserId } })
+      // Sanctioned append-only exception (ADR-0012 §4): this UPDATE transfers
+      // *ownership* of already-recorded facts to the account that inherits them; it
+      // does not alter what was recorded. Any future DB-level append-only enforcement
+      // must whitelist this one migration path.
+      await tx.taxDataAccessLog.updateMany({ where: { userId: guestUserId }, data: { userId: accountUserId } })
+      await tx.taxDataAccessLog.create({ data: { userId: accountUserId, action: 'WRITE', resource: 'profile' } })
+    }
 
-    await tx.profile.update({ where: { userId: guestUserId }, data: { userId: accountUserId } })
-    // Sanctioned append-only exception (ADR-0012 §4): this UPDATE transfers
-    // *ownership* of already-recorded facts to the account that inherits them; it
-    // does not alter what was recorded. Any future DB-level append-only enforcement
-    // must whitelist this one migration path.
-    await tx.taxDataAccessLog.updateMany({ where: { userId: guestUserId }, data: { userId: accountUserId } })
-    await tx.taxDataAccessLog.create({ data: { userId: accountUserId, action: 'WRITE', resource: 'profile' } })
+    // ADR-0045 (value-first funnel): a guest may now answer the Minimal-Gate before signing
+    // up, so its InterviewAnswer rows and the TaxYear row they seed must travel with it —
+    // otherwise registering would silently throw away exactly the answers that motivated it.
+    // Same conflict rule as Profile, applied per Steuerjahr: if the account already has ANY
+    // interview answer or a TaxYear for that year, the account's data wins and the guest's
+    // rows for that year stay under the guest id — never merged question-by-question (a mixed
+    // answer set could be unreachable under the core graph).
+    const guestYears = await tx.interviewAnswer.findMany({
+      where: { userId: guestUserId },
+      select: { steuerjahr: true },
+      distinct: ['steuerjahr'],
+    })
+    let movedInterview = false
+    for (const { steuerjahr } of guestYears) {
+      const [accountAnswers, accountTaxYear] = await Promise.all([
+        tx.interviewAnswer.count({ where: { userId: accountUserId, steuerjahr } }),
+        tx.taxYear.count({ where: { userId: accountUserId, steuerjahr } }),
+      ])
+      if (accountAnswers > 0 || accountTaxYear > 0) continue
+
+      await tx.interviewAnswer.updateMany({ where: { userId: guestUserId, steuerjahr }, data: { userId: accountUserId } })
+      await tx.taxYear.updateMany({ where: { userId: guestUserId, steuerjahr }, data: { userId: accountUserId } })
+      movedInterview = true
+    }
+    if (movedInterview) {
+      // Ownership transfer of the guest's *interview* access entries only (same sanctioned
+      // exception as above; a profile that stayed with the guest keeps its own entries),
+      // plus one WRITE recording that the account now holds these answers.
+      await tx.taxDataAccessLog.updateMany({ where: { userId: guestUserId, resource: 'interview' }, data: { userId: accountUserId } })
+      await tx.taxDataAccessLog.create({ data: { userId: accountUserId, action: 'WRITE', resource: 'interview' } })
+    }
   })
 }
 

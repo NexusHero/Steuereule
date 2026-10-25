@@ -9,9 +9,8 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger'
-import { CurrentUser } from '../auth/current-user.decorator.js'
-import { RequiresAccount } from '../auth/requires-account.guard.js'
-import { UserContextGuard } from '../auth/user-context.guard.js'
+import { CurrentUser, CurrentUserKind } from '../auth/current-user.decorator.js'
+import { UserContextGuard, type UserIdKind } from '../auth/user-context.guard.js'
 // Reused directly, not duplicated — same lesson as REQ-001's R1 (see the pipe's own
 // header comment): `jahr` is always validated against a sensible tax-year window,
 // never just "parses as a number".
@@ -29,10 +28,10 @@ export class InterviewController {
   constructor(@Inject(InterviewService) private readonly interviewService: InterviewService) {}
 
   @Get(':jahr/interview')
-  // #318 — no guest path: requires a real account session, not #317's eventual
-  // generalisation. userId still comes only from @CurrentUser(); this only narrows
-  // WHO may call the route, it never changes where the id comes from.
-  @RequiresAccount()
+  // ADR-0045 (value-first funnel) — a guest may read/answer the Minimal-Gate (Segment 1);
+  // every other catalogue entry still needs a real account session. The per-entry decision
+  // lives in InterviewService (it is the one place that knows which entry a request
+  // targets); userId still comes only from @CurrentUser(), the kind only from the guard.
   @ApiParam({
     name: 'jahr',
     type: Number,
@@ -40,20 +39,21 @@ export class InterviewController {
     description: 'The tax year (Steuerjahr) — validated to a sensible window (ParseSteuerjahrPipe, same as Cockpit).',
   })
   @ApiOkResponse({ type: InterviewStateDto, description: 'The caller’s Minimal-Gate state for this tax year — re-entry.' })
-  @ApiUnauthorizedResponse({ description: 'Guest session — this endpoint requires a signed-in account.' })
+  @ApiUnauthorizedResponse({ description: 'Guest session targeting a catalogue entry other than the Minimal-Gate — that requires a signed-in account (ADR-0045).' })
   // R2 — explicit @ApiQuery(): a @Query() param's shape needs this spelled out under the
   // tsx/esbuild openapi:spec generation (see generate-openapi-spec.ts), or the `eintrag`
   // re-entry parameter would silently vanish from the generated client.
   @ApiQuery({ name: 'eintrag', required: false, enum: ['minimal-gate', 'segment-2', 'lebenslagen', 'sonderausgaben', 'segment-ch'], description: 'The catalogue entry to re-enter; absent → the Minimal-Gate.' })
   getInterview(
     @CurrentUser() userId: string,
+    @CurrentUserKind() kind: UserIdKind,
     @Param('jahr', ParseSteuerjahrPipe) jahr: number,
     // R2 — re-entry for an on-demand catalogue entry (Segment 2 / Lebenslagen / Sonderausgaben).
     // Absent → the Minimal-Gate (Segment 1), unchanged from #318. The value is validated against
     // the closed EntryId union; an unknown id falls out as a 400 (no separate hand-maintained list).
     @Query('eintrag') eintrag?: string,
   ): Promise<InterviewStateDto> {
-    return this.interviewService.getState(userId, jahr, eintrag)
+    return this.interviewService.getState(userId, jahr, eintrag, kind)
   }
 
   @Post(':jahr/interview/antworten')
@@ -62,7 +62,7 @@ export class InterviewController {
   // the documented @ApiOkResponse and device.controller.ts's own POST /approve,
   // /token precedent.
   @HttpCode(200)
-  @RequiresAccount()
+  // ADR-0045 — same split as GET: guests may write Minimal-Gate answers only.
   @ApiParam({
     name: 'jahr',
     type: Number,
@@ -75,12 +75,13 @@ export class InterviewController {
   @ApiOkResponse({ type: PostAnswerResponseDto, description: 'The next step and open-items count after this write.' })
   @ApiBadRequestResponse({ description: 'value is not an accepted answer for questionId — nothing was persisted.' })
   @ApiConflictResponse({ description: 'questionId is not reachable given the answers stored so far — nothing was persisted.' })
-  @ApiUnauthorizedResponse({ description: 'Guest session — this endpoint requires a signed-in account.' })
+  @ApiUnauthorizedResponse({ description: 'Guest session targeting a catalogue entry other than the Minimal-Gate — that requires a signed-in account (ADR-0045).' })
   postAnswer(
     @CurrentUser() userId: string,
+    @CurrentUserKind() kind: UserIdKind,
     @Param('jahr', ParseSteuerjahrPipe) jahr: number,
     @Body() dto: PostAnswerDto,
   ): Promise<PostAnswerResponseDto> {
-    return this.interviewService.postAnswer(userId, jahr, dto)
+    return this.interviewService.postAnswer(userId, jahr, dto, kind)
   }
 }

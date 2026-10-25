@@ -4,7 +4,7 @@
 //
 // Covers the ticket's Given–When–Then in full, plus its named red-proof table:
 //   P2 — a POST of an unreachable answer is rejected and no row is created
-//   P3 — a guest (no account session) gets 401 on both endpoints, no row created
+//   P3 — (ADR-0045) a guest may use the Minimal-Gate; any other catalogue entry is 401
 //   P4 — user B can neither read nor write user A's answers
 //   P5 — `value` is ciphertext at rest, checked by raw SQL, never the Prisma client
 //   P6 — vertical: real Postgres, real socket, three answers, rows + TaxYear.openItems
@@ -220,34 +220,54 @@ describe('REQ-015 — the Minimal-Gate, against the real server', () => {
     })
   })
 
-  describe('P3 — no guest path: @RequiresAccount() rejects a guest with 401 on both endpoints', () => {
-    it('GET without an account session is 401', async () => {
-      const response = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview`)
-      expect(response.status).toBe(401)
+  describe('P3 (ADR-0045) — guests may use the Minimal-Gate, never any other catalogue entry', () => {
+    async function mintGuestCookie(): Promise<string> {
+      // A guest cookie is minted by any unauthenticated GET on a route behind UserContextGuard.
+      const guestProbe = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/cockpit`)
+      return guestProbe.headers.get('set-cookie')!.split(';')[0]!
+    }
+
+    it('a guest reads the empty Minimal-Gate state (200), same shape as an account', async () => {
+      const guestCookie = await mintGuestCookie()
+      const response = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview`, { headers: { cookie: guestCookie } })
+      expect(response.status).toBe(200)
+      expect(await response.json()).toEqual({ answers: {}, nextStep: { kind: 'question', id: 'job' }, openItems: 3 })
     })
 
-    it('POST without an account session is 401 and creates no row', async () => {
-      const response = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
+    it('a guest answers the Minimal-Gate: the row persists encrypted under the guest id, and the server still enforces the graph', async () => {
+      const guestCookie = await mintGuestCookie()
+      const ok = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: { 'content-type': 'application/json', cookie: guestCookie },
         body: JSON.stringify({ questionId: 'job', value: 'Angestellt' }),
       })
-      expect(response.status).toBe(401)
-
+      expect(ok.status).toBe(200)
       const rows = await prisma.$queryRaw<InterviewAnswerRow[]>`SELECT "userId", "steuerjahr", "questionId", "value" FROM "InterviewAnswer"`
-      expect(rows).toEqual([])
+      expect(rows).toHaveLength(1)
+      expect(rows[0]!.value).not.toBe('Angestellt') // ciphertext at rest, same as an account's row
+
+      // P2 still holds for guests: an unreachable answer is a 409, nothing persisted.
+      const unreachable = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', cookie: guestCookie },
+        body: JSON.stringify({ questionId: 'kinder', value: '1 Kind' }),
+      })
+      expect(unreachable.status).toBe(409)
     })
 
-    it('a guest COOKIE (no real account session) is also rejected with 401, not silently treated as an account', async () => {
-      // A guest cookie is minted by any unauthenticated GET on a route behind
-      // UserContextGuard — the cockpit endpoint mints one without touching interview.
-      const guestProbe = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/cockpit`)
-      const guestCookie = guestProbe.headers.get('set-cookie')!.split(';')[0]!
+    it('a guest is refused (401) any catalogue entry beyond the Minimal-Gate, on GET and POST', async () => {
+      const guestCookie = await mintGuestCookie()
+      const get = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview?eintrag=lebenslagen`, { headers: { cookie: guestCookie } })
+      expect(get.status).toBe(401)
 
-      const response = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview`, {
-        headers: { cookie: guestCookie },
+      const post = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', cookie: guestCookie },
+        body: JSON.stringify({ questionId: 'dhf', value: 'Nein' }),
       })
-      expect(response.status).toBe(401)
+      expect(post.status).toBe(401)
+      const rows = await prisma.$queryRaw<InterviewAnswerRow[]>`SELECT "userId", "steuerjahr", "questionId", "value" FROM "InterviewAnswer"`
+      expect(rows).toEqual([])
     })
   })
 

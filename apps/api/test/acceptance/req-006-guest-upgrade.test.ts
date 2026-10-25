@@ -38,6 +38,8 @@ describe('REQ-006 — guest -> account upgrade, against the real server', () => 
     await prisma.account.deleteMany()
     await prisma.user.deleteMany()
     await prisma.profile.deleteMany()
+    await prisma.$executeRawUnsafe(`DELETE FROM "InterviewAnswer"`)
+    await prisma.taxYear.deleteMany()
     await prisma.$executeRawUnsafe(`DELETE FROM "TaxDataAccessLog"`)
   })
 
@@ -162,5 +164,94 @@ describe('REQ-006 — guest -> account upgrade, against the real server', () => 
 
     const profiles = await prisma.profile.findMany({ where: { userId: user.id } })
     expect(profiles).toHaveLength(1)
+  })
+
+  // ADR-0045 (value-first funnel) — a guest answers the Minimal-Gate over real HTTP BEFORE
+  // signing up; the sign-up must carry those answers (and the TaxYear row they seeded) over.
+  describe('ADR-0045 — interview answers travel with the guest', () => {
+    const STEUERJAHR = 2026
+
+    async function guestAnswers(): Promise<{ guestUserId: string; guestCookie: string }> {
+      const { newGuestUserId, signGuestSession } = await import('../../src/auth/guest-session.js')
+      const guestUserId = newGuestUserId()
+      const guestCookie = `se_guest_session=${signGuestSession(guestUserId, GUEST_SESSION_SECRET)}`
+      for (const [questionId, value] of [['job', 'Angestellt'], ['ausland', 'Nein'], ['kinder', '1 Kind']] as const) {
+        const response = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', cookie: guestCookie },
+          body: JSON.stringify({ questionId, value }),
+        })
+        expect(response.status).toBe(200)
+      }
+      return { guestUserId, guestCookie }
+    }
+
+    it('a guest who answered the Minimal-Gate signs up: answers + TaxYear move to the account, readable via the API', async () => {
+      const { guestUserId, guestCookie } = await guestAnswers()
+
+      const signUp = await fetch(`${baseUrl}/api/auth/sign-up/email`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', cookie: guestCookie, ...TRUSTED_ORIGIN_HEADERS },
+        body: JSON.stringify({ email: 'req006-interview@example.com', password: 'a-fine-strong-password-1', name: 'Funnel' }),
+      })
+      expect(signUp.status).toBe(200)
+      const { user } = (await signUp.json()) as { user: { id: string } }
+      const accountCookie = signUp.headers.getSetCookie().find((c) => !c.startsWith('se_guest_session='))!.split(';')[0]!
+
+      await expect(prisma.interviewAnswer.count({ where: { userId: guestUserId } })).resolves.toBe(0)
+      await expect(prisma.interviewAnswer.count({ where: { userId: user.id } })).resolves.toBe(3)
+      await expect(prisma.taxYear.count({ where: { userId: user.id, steuerjahr: STEUERJAHR } })).resolves.toBe(1)
+
+      const state = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview`, { headers: { cookie: accountCookie } })
+      expect(state.status).toBe(200)
+      expect(await state.json()).toEqual({
+        answers: { job: 'Angestellt', ausland: 'Nein', kinder: '1 Kind' },
+        nextStep: { kind: 'done' },
+        openItems: 0,
+      })
+    })
+
+    it('an account that already answered that year is never mixed with a stray guest’s answers (guest rows left untouched)', async () => {
+      const signUp = await fetch(`${baseUrl}/api/auth/sign-up/email`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', ...TRUSTED_ORIGIN_HEADERS },
+        body: JSON.stringify({ email: 'req006-interview-returning@example.com', password: 'a-fine-strong-password-1', name: 'Returning' }),
+      })
+      const { user } = (await signUp.json()) as { user: { id: string } }
+      const accountCookie = signUp.headers.get('set-cookie')!.split(';')[0]!
+      const own = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', cookie: accountCookie },
+        body: JSON.stringify({ questionId: 'job', value: 'Rente' }),
+      })
+      expect(own.status).toBe(200)
+
+      const { guestUserId, guestCookie } = await guestAnswers()
+      const signIn = await fetch(`${baseUrl}/api/auth/sign-in/email`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', cookie: guestCookie, ...TRUSTED_ORIGIN_HEADERS },
+        body: JSON.stringify({ email: 'req006-interview-returning@example.com', password: 'a-fine-strong-password-1' }),
+      })
+      expect(signIn.status).toBe(200)
+
+      await expect(prisma.interviewAnswer.count({ where: { userId: user.id } })).resolves.toBe(1)
+      await expect(prisma.interviewAnswer.count({ where: { userId: guestUserId } })).resolves.toBe(3)
+    })
+
+    it('re-running the migration after the interview already moved duplicates nothing', async () => {
+      const { guestUserId, guestCookie } = await guestAnswers()
+      const signUp = await fetch(`${baseUrl}/api/auth/sign-up/email`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', cookie: guestCookie, ...TRUSTED_ORIGIN_HEADERS },
+        body: JSON.stringify({ email: 'req006-interview-idem@example.com', password: 'a-fine-strong-password-1', name: 'Idem' }),
+      })
+      const { user } = (await signUp.json()) as { user: { id: string } }
+
+      const { upgradeGuestToAccount } = await import('../../src/auth/guest-account-upgrade.js')
+      await upgradeGuestToAccount(prisma, guestUserId, user.id)
+
+      await expect(prisma.interviewAnswer.count({ where: { userId: user.id } })).resolves.toBe(3)
+      await expect(prisma.taxYear.count({ where: { userId: user.id } })).resolves.toBe(1)
+    })
   })
 })
