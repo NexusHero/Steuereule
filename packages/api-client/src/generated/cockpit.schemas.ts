@@ -26,6 +26,10 @@ export interface CockpitStandDto {
   offenePosten?: number;
   /** Open posten conflicts, ADR-008 (only when kind === "spanne"). */
   konflikte?: number;
+  /** Übernommene, noch unbestätigte Posten (ADR-021, only when kind === "spanne"). */
+  unbestaetigte?: number;
+  /** Einnahmen-Summe der unbestätigten Posten (ADR-021, only when kind === "spanne"). */
+  unbestaetigteSumme?: number;
   /** The settled partial sum (only when kind === "gated"). */
   summe?: number;
   /** The gated Einkunftsarten (only when kind === "gated"). */

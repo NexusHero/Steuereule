@@ -130,6 +130,7 @@ const EXPECTED_CURSORS: Record<string, string> = {
   Rente: 'id',
   Kapital: 'id',
   Vermietungsobjekt: 'id',
+  UebernahmeKennzeichnung: 'id',
   Bescheid: 'id',
 }
 

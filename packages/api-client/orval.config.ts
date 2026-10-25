@@ -284,4 +284,20 @@ export default defineConfig({
       },
     },
   },
+  // REQ-028 (ticket 10.8) — die Jahresübernahme (ADR-021): GET the Kennzeichnungen, POST the
+  // copy, PUT the Bestätigung. Same `uebernahme` OpenAPI tag the three endpoints share.
+  uebernahme: {
+    input: { target: '../../apps/api/openapi.json', filters: { tags: ['uebernahme'] } },
+    output: {
+      target: './src/generated/uebernahme.ts',
+      mode: 'split',
+      client: 'react-query',
+      httpClient: 'fetch',
+      mock: true,
+      override: {
+        mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        mock: { required: true },
+      },
+    },
+  },
 })

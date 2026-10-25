@@ -311,6 +311,129 @@
         ]
       }
     },
+    "/v1/steuerjahre/{jahr}/uebernahme": {
+      "get": {
+        "operationId": "UebernahmeController_get",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The target tax year (Steuerjahr) — validated to a sensible window (ParseSteuerjahrPipe, same as Cockpit).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The take-over Kennzeichnungen of this tax year.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UebernahmeResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "uebernahme"
+        ]
+      },
+      "post": {
+        "operationId": "UebernahmeController_uebernehme",
+        "parameters": [
+          {
+            "name": "von",
+            "required": true,
+            "in": "query",
+            "description": "The source year to copy from (M1: the LStB row). Must be strictly before the target year.",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The target tax year (Steuerjahr).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The LStB was copied (UNBESTÄTIGT, ADR-021) and the Kennzeichnung recorded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UebernahmeResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "uebernahme"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/uebernahme/{postenKey}/bestaetigen": {
+      "put": {
+        "operationId": "UebernahmeController_bestaetige",
+        "parameters": [
+          {
+            "name": "postenKey",
+            "required": true,
+            "in": "path",
+            "description": "The stable key of the copied fact (M1: lstb).",
+            "schema": {
+              "example": "lstb",
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The target tax year (Steuerjahr).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The Kennzeichnung is confirmed (ADR-021: angetippt/Beleg).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UebernahmeResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "uebernahme"
+        ]
+      }
+    },
     "/v1/steuerjahre/{jahr}/ch-lohnausweis": {
       "get": {
         "operationId": "ChLohnausweisController_get",
@@ -1762,6 +1885,16 @@
             "example": 1,
             "description": "Open posten conflicts, ADR-008 (only when kind === \"spanne\")."
           },
+          "unbestaetigte": {
+            "type": "number",
+            "example": 1,
+            "description": "Übernommene, noch unbestätigte Posten (ADR-021, only when kind === \"spanne\")."
+          },
+          "unbestaetigteSumme": {
+            "type": "number",
+            "example": 50000,
+            "description": "Einnahmen-Summe der unbestätigten Posten (ADR-021, only when kind === \"spanne\")."
+          },
           "summe": {
             "type": "number",
             "example": 0,
@@ -2022,6 +2155,46 @@
         "required": [
           "nextStep",
           "openItems"
+        ]
+      },
+      "UebernahmeKennzeichnungDto": {
+        "type": "object",
+        "properties": {
+          "postenKey": {
+            "type": "string",
+            "example": "lstb",
+            "description": "Der stabile Schlüssel des kopierten Fakts (M1: lstb)."
+          },
+          "vorjahr": {
+            "type": "number",
+            "example": 2025,
+            "description": "Das Quelljahr der Kopie — der Jahresbezug der Herkunft (ADR-022)."
+          },
+          "bestaetigt": {
+            "type": "boolean",
+            "example": false,
+            "description": "false = UNBESTÄTIGT (kopiert, noch nicht angetippt), true = bestätigt (ADR-021)."
+          }
+        },
+        "required": [
+          "postenKey",
+          "vorjahr",
+          "bestaetigt"
+        ]
+      },
+      "UebernahmeResponseDto": {
+        "type": "object",
+        "properties": {
+          "kennzeichnungen": {
+            "description": "Die Übernahme-Kennzeichnungen, älteste zuerst.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UebernahmeKennzeichnungDto"
+            }
+          }
+        },
+        "required": [
+          "kennzeichnungen"
         ]
       },
       "LohnausweisFeldDto": {

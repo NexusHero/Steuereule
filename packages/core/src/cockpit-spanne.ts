@@ -32,6 +32,10 @@ export type CockpitSpanne =
       readonly bis: number
       readonly offenePosten: number
       readonly konflikte: number
+      /** ADR-021 — Anzahl der übernommenen, noch unbestätigten Posten (ruhiger Ton, kein Konflikt). */
+      readonly unbestaetigte: number
+      /** ADR-021 — Einnahmen-Summe der unbestätigten Posten (trägt die Spanne als Unsicherheit). */
+      readonly unbestaetigteSumme: number
     }
   | { readonly kind: 'gated'; readonly summe: number; readonly gegated: readonly Einkunftsart[] }
 
@@ -45,22 +49,37 @@ export interface CockpitSpanneEingaben {
   readonly konflikte: number
   /** Declared-but-uncomputable Einkunftsarten (ADR-028/032/033). */
   readonly gegated: readonly Einkunftsart[]
+  /** ADR-021 — Anzahl der übernommenen, noch unbestätigten Posten. */
+  readonly unbestaetigte?: number
+  /** ADR-021 — Einnahmen-Summe der unbestätigten Posten. */
+  readonly unbestaetigteSumme?: number
 }
 
-function spanneAusZahlen(summe: number, offenePosten: number, konflikte: number, gegated: readonly Einkunftsart[]): CockpitSpanne {
+function spanneAusZahlen(
+  summe: number,
+  offenePosten: number,
+  konflikte: number,
+  gegated: readonly Einkunftsart[],
+  unbestaetigte = 0,
+  unbestaetigteSumme = 0,
+): CockpitSpanne {
   // Gated first: a declared-but-uncomputable Einkunftsart (Gewerbe, Krypto-Kapital, Verkauf-
   // Vermietung) means the range's own bound is unknowable, so it is named rather than faked
   // (ADR-032). The settled sum is still carried so a partial truth is not discarded.
   if (gegated.length > 0) return { kind: 'gated', summe, gegated }
-  if (offenePosten === 0 && konflikte === 0) return { kind: 'bestimmt', wert: summe }
+  if (offenePosten === 0 && konflikte === 0 && unbestaetigte === 0) return { kind: 'bestimmt', wert: summe }
 
-  const uncertainty = offenePosten * UNCERTAINTY_PER_ITEM + konflikte * UNCERTAINTY_PER_CONFLICT
+  // ADR-021: unbestätigte Posten zählen in die Spanne — ihre Summe ist die Unsicherheit, die sie
+  // beitragen (ruhig benannt, nie ein Konflikt).
+  const uncertainty = offenePosten * UNCERTAINTY_PER_ITEM + konflikte * UNCERTAINTY_PER_CONFLICT + unbestaetigteSumme
   return {
     kind: 'spanne',
     von: Math.max(0, summe - uncertainty),
     bis: summe + uncertainty,
     offenePosten,
     konflikte,
+    unbestaetigte,
+    unbestaetigteSumme,
   }
 }
 
@@ -76,7 +95,14 @@ export function cockpitSpanne(stand: Berechnungsstand): CockpitSpanne {
   // vorsorgeaufwand/anrechnung stay separate honest buckets whose aggregation is Phase-2
   // formula work, deliberately not subtracted here.
   if (stand.kind === 'bestimmt') return { kind: 'bestimmt', wert: stand.einnahmen }
-  return spanneAusZahlen(stand.einnahmen, stand.offenePosten, stand.konflikte, stand.gegated)
+  return spanneAusZahlen(
+    stand.einnahmen,
+    stand.offenePosten,
+    stand.konflikte,
+    stand.gegated,
+    stand.unbestaetigte,
+    stand.unbestaetigteSumme,
+  )
 }
 
 /**
@@ -86,7 +112,14 @@ export function cockpitSpanne(stand: Berechnungsstand): CockpitSpanne {
  * in exactly one place.
  */
 export function cockpitSpanneAusEingaben(eingaben: CockpitSpanneEingaben): CockpitSpanne {
-  return spanneAusZahlen(eingaben.summe, eingaben.offenePosten, eingaben.konflikte, eingaben.gegated)
+  return spanneAusZahlen(
+    eingaben.summe,
+    eingaben.offenePosten,
+    eingaben.konflikte,
+    eingaben.gegated,
+    eingaben.unbestaetigte ?? 0,
+    eingaben.unbestaetigteSumme ?? 0,
+  )
 }
 
 /** Convenience: fold a full `BerechnungsInput` through `berechne`, then derive the spanne. */

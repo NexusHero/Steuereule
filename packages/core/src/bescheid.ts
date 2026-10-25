@@ -117,9 +117,11 @@ export function bescheidBerechnungsstand(angestellte: AngestellteFakten, ch: Ber
   const offenePosten = angestellte.offenePosten + (ch?.kind === 'offen' ? ch.offenePosten : 0)
   const konflikte = angestellte.konflikte + (ch?.kind === 'offen' ? ch.konflikte : 0)
   const gegated = [...new Set([...angestellte.gegated, ...(ch?.kind === 'offen' ? ch.gegated : [])])]
-  const offen = offenePosten > 0 || konflikte > 0 || gegated.length > 0
+  const unbestaetigte = ch?.kind === 'offen' ? ch.unbestaetigte : 0
+  const unbestaetigteSumme = ch?.kind === 'offen' ? ch.unbestaetigteSumme : 0
+  const offen = offenePosten > 0 || konflikte > 0 || gegated.length > 0 || unbestaetigte > 0
   return offen
-    ? { kind: 'offen', einnahmen, vorsorgeaufwand, anrechnung, offenePosten, konflikte, gegated }
+    ? { kind: 'offen', einnahmen, vorsorgeaufwand, anrechnung, offenePosten, konflikte, gegated, unbestaetigte, unbestaetigteSumme }
     : { kind: 'bestimmt', einnahmen, vorsorgeaufwand, anrechnung }
 }
 

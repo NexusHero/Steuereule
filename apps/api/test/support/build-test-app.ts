@@ -22,6 +22,7 @@ import { PROFILE_REPOSITORY } from '../../src/profile/profile.repository.js'
 import { TAX_YEAR_REPOSITORY } from '../../src/cockpit/tax-year.repository.js'
 import { INTERVIEW_ANSWER_REPOSITORY } from '../../src/interview/interview-answer.repository.js'
 import { LSTB_REPOSITORY } from '../../src/lstb/lstb.repository.js'
+import { UEBERNAHME_REPOSITORY } from '../../src/uebernahme/uebernahme.repository.js'
 import { FakeAccountIdentityRepository } from '../fakes/fake-account-identity.repository.js'
 import { FakeAuditRepository } from '../fakes/fake-audit.repository.js'
 import { FakeInterviewAnswerRepository } from '../fakes/fake-interview-answer.repository.js'
@@ -29,6 +30,7 @@ import { FakeLstbRepository } from '../fakes/fake-lstb.repository.js'
 import { FakePdfRenderer } from '../fakes/fake-pdf-renderer.js'
 import { FakeProfileRepository } from '../fakes/fake-profile.repository.js'
 import { FakeTaxYearRepository } from '../fakes/fake-tax-year.repository.js'
+import { FakeUebernahmeRepository } from '../fakes/fake-uebernahme.repository.js'
 
 export async function buildTestApp(options?: {
   /** Overrides the default always-succeeding DATABASE_REACHABILITY_CHECK stub — the one
@@ -48,6 +50,7 @@ export async function buildTestApp(options?: {
   const taxYearRepository = new FakeTaxYearRepository()
   const lstbRepository = new FakeLstbRepository()
   const interviewRepository = new FakeInterviewAnswerRepository()
+  const uebernahmeRepository = new FakeUebernahmeRepository()
   const accountIdentityRepository = new FakeAccountIdentityRepository()
   const pdfRenderer = new FakePdfRenderer()
   const auditRepository = new FakeAuditRepository()
@@ -96,6 +99,8 @@ export async function buildTestApp(options?: {
     .useValue(lstbRepository)
     .overrideProvider(INTERVIEW_ANSWER_REPOSITORY)
     .useValue(interviewRepository)
+    .overrideProvider(UEBERNAHME_REPOSITORY)
+    .useValue(uebernahmeRepository)
     .overrideProvider(ACCOUNT_IDENTITY_REPOSITORY)
     .useValue(accountIdentityRepository)
     .overrideProvider(PDF_RENDERER)

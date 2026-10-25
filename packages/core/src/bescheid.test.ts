@@ -50,7 +50,7 @@ describe('gleicheBescheidAb — Abgleich Bescheid vs. berechne', () => {
   })
 
   it('flags an incomplete computed side (berechne "offen") as a partial truth', () => {
-    const offenerStand = { kind: 'offen' as const, einnahmen: 50_000, vorsorgeaufwand: 4_000, anrechnung: 1_000, offenePosten: 2, konflikte: 0, gegated: [] }
+    const offenerStand = { kind: 'offen' as const, einnahmen: 50_000, vorsorgeaufwand: 4_000, anrechnung: 1_000, offenePosten: 2, konflikte: 0, gegated: [], unbestaetigte: 0, unbestaetigteSumme: 0 }
     const ab = gleicheBescheidAb({ einnahmen: 50_000 }, offenerStand)
     expect(ab.berechnungUnvollstaendig).toBe(true)
     expect(ab.abweichungen).toEqual([])
@@ -80,7 +80,7 @@ describe('bescheidBerechnungsstand — the merged computed side', () => {
   })
 
   it('is offen when either side is open', () => {
-    const chOffen = { kind: 'offen' as const, einnahmen: 80_000, vorsorgeaufwand: 7_000, anrechnung: 3_600, offenePosten: 1, konflikte: 0, gegated: [] }
+    const chOffen = { kind: 'offen' as const, einnahmen: 80_000, vorsorgeaufwand: 7_000, anrechnung: 3_600, offenePosten: 1, konflikte: 0, gegated: [], unbestaetigte: 0, unbestaetigteSumme: 0 }
     const stand = bescheidBerechnungsstand({ ...angestellte, offenePosten: 2 }, chOffen)
     expect(stand.kind).toBe('offen')
     if (stand.kind === 'offen') expect(stand.offenePosten).toBe(3)
