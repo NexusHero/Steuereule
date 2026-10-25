@@ -593,6 +593,35 @@ model Rente {
   @@unique([userId, steuerjahr])
 }
 
+/// One row per (userId, steuerjahr) — the Kapital guided-mask data (ticket 10.5, product
+/// ADR-032, Anlage KAP). The user transcribes their Jahressteuerbescheinigung: the
+/// Kapitalerträge (Einkünfte aus Kapitalvermögen, whole euros). The depot kind (Deutscher /
+/// Ausländischer Broker / Krypto) is NOT a column — it is the persisted interview answer
+/// `kap-depot`, read through the interview repository on every request (one source, no
+/// denormalized copy that can drift). The stored string encodes its honest state
+/// (packages/core/src/kapital.ts is the ONE place that maps): `null` = `offen` (not reached
+/// yet), the reserved marker `unklar` = "looked but could not read", any other string = a
+/// non-negative integer (`erfasst`). The derived Kapital-Posten and the § 32d Abs. 6
+/// Günstigerprüfung are recomputed on every read via @steuereule/core (kapitalStand /
+/// guenstigerpruefung), never stored (ADR-014/048 determinism boundary). The figure is
+/// field-encrypted at rest (ADR-0008): actual capital income is among the most sensitive
+/// personal facts a tax app holds, joinable to Profile's Steuer-ID via the same userId.
+model Kapital {
+  id              String   @id @default(uuid())
+  /// Scoping key — same trusted userId as Profile.userId (ADR-0007). Never read from the
+  /// request path/query/body.
+  userId          String
+  /// The tax year these figures belong to (same granularity as Lstb/ChLohnausweis/Rente).
+  steuerjahr      Int
+  /// Kapitalerträge (Einkünfte aus Kapitalvermögen, whole euros). Encrypted at rest;
+  /// null=offen, "unklar"=unreadable.
+  kapitalertraege String? /// @encrypted?mode=strict
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([userId, steuerjahr])
+}
+
 /// One row per (userId, steuerjahr) — the Steuerbescheid (Bescheidprüfung 1.0, ticket 10.3,
 /// ADR-009). The Bescheid arrives as a Beleg (art `Steuerbescheid`) and its five figures are
 /// transcribed field by field (guided mask, ADR-036 — Scan/OCR is OUT of scope, ADR-045); the

@@ -63,6 +63,7 @@ The ADRs **justify** the architecture; the [living arc42 document](../arc42/READ
 | 0042 | Grenzgänger-CH-Vertikale (Belegart-Vokabular, Wechselkurs-Kern, segment-ch) | Accepted |
 | 0044 | Rentner-Vertikale (Rentenart, gesetzliche Tabellen, Anlage-R-Faltung) | Accepted |
 | 0043 | Veranlagungsartenvergleich-Verfeinerung: Soli/KiSt eingefaltet, Unschärfe nur noch der Progressionsvorbehalt | Accepted |
+| 0048 | Kapital-Vertikale: Depot-Einordnung, Kapitalerträge-Maske, § 32d-Günstigerprüfung (bounded comparison) | Draft |
 
 See also the [Tech Radar](./tech-radar.md).
 

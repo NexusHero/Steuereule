@@ -9,6 +9,7 @@ import { CockpitModule } from './cockpit/cockpit.module.js'
 import { DeviceModule } from './device/device.module.js'
 import { HealthModule } from './health/health.module.js'
 import { InterviewModule } from './interview/interview.module.js'
+import { KapitalModule } from './kapital/kapital.module.js'
 import { LstbModule } from './lstb/lstb.module.js'
 import { ProfileModule } from './profile/profile.module.js'
 import { RenteModule } from './rente/rente.module.js'
@@ -29,6 +30,7 @@ import { VeranlagungsartenvergleichModule } from './veranlagungsartenvergleich/v
     LstbModule,
     ChLohnausweisModule,
     RenteModule,
+    KapitalModule,
     BelegModule,
     BescheidModule,
     AccountModule,

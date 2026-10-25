@@ -17,9 +17,14 @@ die ehrliche Gate-Aussage, ADR-032 §2).
 
 **Status:** ready-for-agent
 
-- [ ] `Kapital` als Einkunftsart; Depot-Posten mit Herkunft (Beleg/KI-Vorschlag)
-- [ ] § 32d-Günstigerprüfung: Abgeltungsteuer vs. persönlicher Satz, mit Unschärfe-Bound (ADR-0034-
+- [x] `Kapital` als Einkunftsart; Depot-Posten mit Herkunft (Beleg/KI-Vorschlag)
+- [x] § 32d-Günstigerprüfung: Abgeltungsteuer vs. persönlicher Satz, mit Unschärfe-Bound (ADR-0034-
       Muster), nie ein nacktes Urteil
-- [ ] Ausländischer Broker → KAP-Pflicht ehrlich benannt (keine Steuer abgeführt)
-- [ ] Krypto-Gate: ehrliche Aussage, kein halbes Feature (ADR-032)
-- [ ] TDD, typecheck + lint grün, Posture-Zeile
+- [x] Ausländischer Broker → KAP-Pflicht ehrlich benannt (keine Steuer abgeführt)
+- [x] Krypto-Gate: ehrliche Aussage, kein halbes Feature (ADR-032)
+- [x] TDD, typecheck + lint grün, Posture-Zeile
+
+**Register-REQ: `REQ-025`** (nächste freie Nummer nach 024). Kollisionsvermerk: 10.2/10.3/10.4
+belegen 022/023/024 — beim Merge prüfen (10.6 nimmt 026; REQ-Nummern sind stabil und werden nie
+wiederverwendet). **ADR-0048** (Kapital-Vertikale, Draft — Promotion im Ticket-Review; 0045 ist
+vom Value-First-Funnel-Branch belegt, 0046/0047 von 10.6/10.7 — deshalb 0048).

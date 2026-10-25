@@ -30,6 +30,7 @@ import { PlausibilitaetScreen } from './src/screens/plausibilitaet/Plausibilitae
 import { VeranlagungsartenvergleichScreen } from './src/screens/veranlagungsartenvergleich/VeranlagungsartenvergleichScreen'
 import { BelegeScreen } from './src/screens/belege/BelegeScreen'
 import { BescheidScreen } from './src/screens/bescheid/BescheidScreen'
+import { KapitalScreen } from './src/screens/kapital/KapitalScreen'
 import { GrenzgaengerScreen } from './src/screens/grenzgaenger/GrenzgaengerScreen'
 import { RentnerScreen } from './src/screens/rente/RentnerScreen'
 import { ProfilScreen } from './src/screens/ProfilScreen'
@@ -247,6 +248,7 @@ function TabbedShell({ tab, onTabChange, onSignedOut }: TabbedShellProps) {
     | 'veranlagungsartenvergleich'
     | 'ch'
     | 'bescheid'
+    | 'kapital'
   >('main')
 
   // The active tab's icon sits on the lime pill and needs the ink colour to stay legible;
@@ -282,7 +284,7 @@ function TabbedShell({ tab, onTabChange, onSignedOut }: TabbedShellProps) {
 
   return (
     <View style={{ flex: 1 }}>
-      {tab === 'cockpit' && cockpitView === 'main' ? <CockpitScreen onOpenInterview={() => setCockpitView('interview')} onOpenBescheid={() => setCockpitView('bescheid')} /> : null}
+      {tab === 'cockpit' && cockpitView === 'main' ? <CockpitScreen onOpenInterview={() => setCockpitView('interview')} onOpenBescheid={() => setCockpitView('bescheid')} onOpenKapital={() => setCockpitView('kapital')} /> : null}
       {tab === 'cockpit' && cockpitView === 'interview' ? (
         // The Minimal-Gate routes to the right vertical from the answers — Rente (product
         // ADR-034) goes to the Rentner mask, work in CH (ADR-029) to the Grenzgänger screen,
@@ -315,6 +317,9 @@ function TabbedShell({ tab, onTabChange, onSignedOut }: TabbedShellProps) {
       ) : null}
       {tab === 'cockpit' && cockpitView === 'bescheid' ? (
         <BescheidScreen onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
+      ) : null}
+      {tab === 'cockpit' && cockpitView === 'kapital' ? (
+        <KapitalScreen onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
       ) : null}
       {tab === 'belege' ? <BelegeScreen /> : null}
       {tab === 'profil' && profilView === 'main' ? (

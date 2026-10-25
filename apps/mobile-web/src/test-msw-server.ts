@@ -19,9 +19,11 @@ import {
   getChLohnausweisControllerSetFeldMockHandler,
   getChLohnausweisControllerSetWechselkursMockHandler,
   getRenteControllerGetMockHandler,
+  getKapitalControllerGetMockHandler,
+  getKapitalControllerGetGuenstigerpruefungMockHandler,
 } from '@steuereule/api-client/msw'
 import { LOHNAUSWEIS_FELDER } from '@steuereule/core'
-import type { ProfileResponseDto, AuthCapabilitiesDto, DeviceCodeResponseDto, InterviewStateDto, LstbResponseDto, ChLohnausweisResponseDto, RenteResponseDto } from '@steuereule/api-client'
+import type { ProfileResponseDto, AuthCapabilitiesDto, DeviceCodeResponseDto, InterviewStateDto, LstbResponseDto, ChLohnausweisResponseDto, RenteResponseDto, KapitalResponseDto } from '@steuereule/api-client'
 
 export const EMPTY_PROFILE_RESPONSE: ProfileResponseDto = {
   firstName: null,
@@ -109,6 +111,20 @@ export const EMPTY_RENTE_RESPONSE: RenteResponseDto = {
   stand: { kind: 'offen', einnahmen: 0, vorsorgeaufwand: 0, anrechnung: 0, offenePosten: 1, konflikte: 0, gegated: [] },
 }
 
+/**
+ * Default `GET .../kapital` answer (REQ-025, ticket 10.5): a brand-new tax year with the field
+ * `offen`, no depot answer (`unbekannt`), no posten and an `offen` fold — matching the real
+ * API's honest empty-mask shape, pinned (not the generated faker) for the same reason as
+ * `EMPTY_RENTE_RESPONSE`. The Günstigerprüfung defaults to `null` (no tax year seeded — the
+ * honest empty state).
+ */
+export const EMPTY_KAPITAL_RESPONSE: KapitalResponseDto = {
+  kapitalertraege: { kind: 'offen' },
+  depot: { kind: 'unbekannt' },
+  posten: [],
+  stand: { kind: 'offen', einnahmen: 0, vorsorgeaufwand: 0, anrechnung: 0, offenePosten: 1, konflikte: 0, gegated: [] },
+}
+
 export const server = setupServer(
   getProfileControllerGetProfileMockHandler(EMPTY_PROFILE_RESPONSE),
   getProfileControllerPutProfileMockHandler(),
@@ -133,6 +149,11 @@ export const server = setupServer(
   getRenteControllerGetMockHandler(EMPTY_RENTE_RESPONSE),
   http.put('*/v1/steuerjahre/:jahr/rente/art', () => HttpResponse.json(EMPTY_RENTE_RESPONSE, { status: 200 })),
   http.put('*/v1/steuerjahre/:jahr/rente/:feld', () => HttpResponse.json(EMPTY_RENTE_RESPONSE, { status: 200 })),
+  // REQ-025 (ticket 10.5) — the Kapital guided mask + Günstigerprüfung: empty `offen` mask and
+  // a null comparison by default, same "fresh tax year" honesty as the Rente defaults.
+  getKapitalControllerGetMockHandler(EMPTY_KAPITAL_RESPONSE),
+  http.put('*/v1/steuerjahre/:jahr/kapital/:feld', () => HttpResponse.json(EMPTY_KAPITAL_RESPONSE, { status: 200 })),
+  getKapitalControllerGetGuenstigerpruefungMockHandler(null),
   // Default `POST .../interview/antworten` answer: a generic 200 — InterviewScreen renders the
   // next step from the local graph, not from this response body (#318 task 2's own "the graph
   // stays local" brief), so the exact `nextStep`/`openItems` values here are never asserted on
