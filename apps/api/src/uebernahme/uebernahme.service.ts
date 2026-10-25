@@ -26,6 +26,9 @@ export const UEBERNAHME_POSTEN_KEYS = {
   vermietung: (objektId: string) => `vermietung-${objektId}`,
 } as const
 
+/** ADR-022: die Übernahme unterstützt höchstens 4 Rückjahre — nie eine stille Alt-Kopie. */
+export const MAX_RUECKJAHRE = 4
+
 @Injectable()
 export class UebernahmeService {
   constructor(
@@ -60,6 +63,10 @@ export class UebernahmeService {
   async uebernehme(userId: string, steuerjahr: number, vorjahr: number): Promise<UebernahmeResponseDto> {
     if (!Number.isInteger(vorjahr) || vorjahr < 1 || vorjahr >= steuerjahr) {
       throw new BadRequestException('von must be a whole year strictly before the target year.')
+    }
+    // ADR-022: bis zu 4 Rückjahre werden unterstützt und beworben — nie eine stille Alt-Kopie.
+    if (vorjahr < steuerjahr - MAX_RUECKJAHRE) {
+      throw new BadRequestException(`von is more than ${MAX_RUECKJAHRE} years back — at most 4 previous years are supported.`)
     }
     const existing = await this.repository.listForUserAndYear(userId, steuerjahr)
     if (existing.length > 0) {

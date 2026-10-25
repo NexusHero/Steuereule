@@ -887,6 +887,20 @@ export const appResources = {
         checkBescheid: 'Bescheid prüfen',
         checkKapital: 'Kapital & Depot prüfen',
         checkVermietung: 'Vermietung prüfen',
+        // Ticket 10.8 M3 (ADR-022) — die Jahr-Auswahl: das gewählte Steuerjahr, bis 4 Rückjahre.
+        jahrAuswahl: 'Steuerjahr wählen',
+        // Ticket 10.8 (ADR-021) — der ruhige Übernahme-Hinweis: unbestätigte Posten zählen in
+        // die Spanne, nie in den Punktwert; bestätigt wird einzeln (angetippt/Beleg deckt).
+        uebernahme: {
+          hinweis_one: '{{summe}} aus dem Vorjahr wartet auf deine Bestätigung.',
+          hinweis_other: '{{summe}} aus dem Vorjahr warten auf deine Bestätigung.',
+          hinweisOhneSumme: 'Aus dem Vorjahr übernommen — bitte einmal bestätigen.',
+          bestaetigen: 'Bestätigen',
+          postenLstb: 'Lohnsteuerbescheinigung',
+          postenRente: 'Rente',
+          postenKapital: 'Kapitalerträge',
+          postenVermietung: 'Vermietung',
+        },
       },
       // Ticket 10 (Phase 2, Slice 1) — Beleg-Posteingang (ADR-007/008). The upload affordance is
       // deliberately a HONEST placeholder, not a scan/PDF button: binary storage is a follow-up
@@ -1856,6 +1870,17 @@ export const appResources = {
         checkBescheid: 'Review assessment',
         checkKapital: 'Review capital & brokerage',
         checkVermietung: 'Review rental property',
+        jahrAuswahl: 'Choose tax year',
+        uebernahme: {
+          hinweis_one: '{{summe}} from the previous year is waiting for your confirmation.',
+          hinweis_other: '{{summe}} from the previous year are waiting for your confirmation.',
+          hinweisOhneSumme: 'Taken over from the previous year — please confirm once.',
+          bestaetigen: 'Confirm',
+          postenLstb: 'Wage tax statement',
+          postenRente: 'Pension',
+          postenKapital: 'Capital gains',
+          postenVermietung: 'Rental property',
+        },
       },
       // Ticket 10 (Phase 2, Slice 1) — Beleg-Posteingang (ADR-007/008). See the `de` block for
       // why the upload affordance is an honest placeholder, not a fake scan button.

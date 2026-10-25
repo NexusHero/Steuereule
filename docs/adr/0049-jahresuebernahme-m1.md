@@ -1,7 +1,7 @@
 # ADR-0049 — Jahresübernahme: Quelle `uebernahme`, unbestätigte Posten zählen in die Spanne, Kennzeichnungs-Schicht (Entwurf)
 
 - **Status:** Draft — promotion needs Musti review (ticket 10.8 review)
-- **Date:** 2026-10-25 (M2-Erweiterung: Übernahme ALLER Fakten, Cockpit summiert alle unbestätigten Beträge)
+- **Date:** 2026-10-25 (M2: Übernahme ALLER Fakten; M3: Jahr-Auswahl + Hinweis + 4-Rückjahre-Validierung)
 - **Deciders:** Suhay (agent, Ticket 10.8) — draft; promotion needs Musti review
 - **Implements** Produkt-ADR-021 (Jahresübernahme: alles kopieren, aber als „unbestätigt"
   markiert), Produkt-ADR-022 (Jahresbezug der Herkunft)
@@ -48,12 +48,20 @@ Fakten + Cockpit-Summen, dieser Stand) → Rest (ADR-022-UI, benannte Follow-ups
    (LStB-Brutto + Rente-Jahresbetrag + Kapitalerträge + je Objekt die Mieteinnahmen); ein offenes
    kopiertes Feld trägt keine Summe — offen bleibt offen, nie ein fabricated zero (ADR-032).
 
-5. **Rest-Grenze (ehrlich benannt):** die 4 Rückjahre-UI, die prominente Jahr-Auswahl, die
-   gesammelte Prüf-Screen-Sammlung, der ruhige Cockpit-Hinweis („X € aus dem Vorjahr — bitte
-   einmal bestätigen") und die Herkunfts-Chips mit Jahresbezug sind benannte Follow-ups; die
-   Kennzeichnungs-Schicht trägt ihre Schlüssel schon. Die Cockpit-Spanne integriert die
-   unbestätigten Summen serverseitig (`unbestaetigte`/`unbestaetigteSumme` fließen im DTO), der
-   Screen konsumiert sie noch nicht — ehrlich benannt, nicht stillschweigend weggelassen.
+5. **M3 (ADR-022-UI):** die Cockpit-Appbar trägt eine prominente Jahr-Auswahl (Chips, aktuelles
+   Jahr + bis 4 Rückjahre) — Screen-State, der Cockpit-Query läuft pro gewähltem Jahr (nie
+   „aktuelle" Werte); der ruhige Übernahme-Hinweis erscheint im Cockpit, sobald unbestätigte
+   Kennzeichnungen da sind — die Summe, die die Spanne trägt, wird ehrlich zitiert, jede Zeile
+   trägt ihre Herkunft mit Jahresbezug („Lohnsteuerbescheinigung · Übernahme aus 2025",
+   `uebernahmeHerkunft` aus dem Kern) und wird einzeln bestätigt (PUT bestaetigen → Refetch,
+   der Hinweis verschwindet ehrlich). Die Übernahme validiert `von >= steuerjahr - 4`
+   (MAX_RUECKJAHRE = 4, ein älteres Jahr ist ein 400 — nie eine stille Alt-Kopie).
+
+6. **Rest-Grenze (ehrlich benannt):** der Jahr-Auswahl-Einstieg im ONBOARDING (die Chips leben
+   bisher nur im Cockpit), die gesammelte Prüf-Screen-Sammlung, die Herkunfts-Chips in den
+   Detail-Screens (LStB/Rente/Kapital/Vermietung) und die Jahresregelwerke-UI (Pauschalen/
+   Freibeträge pro Jahr — das Muster liegt seit 10.7: per-Jahr-Tabellen, nie „aktuelle" Werte)
+   sind benannte Follow-ups; die Kennzeichnungs-Schicht trägt ihre Schlüssel schon.
 
 ## Consequences
 

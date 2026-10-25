@@ -9,7 +9,7 @@ Backend-Konfiguration pro Jahr, die UI zeigt immer die Regeln des gewählten Jah
 **Blocked by:** **15** (Posten-Kern für den `unbestätigt`-Zustand + Kern-Regelwerke) ·
 Engineering-Entwurf 0037 (Steuerjahr-/Jahr-Modell), promotet. Kein Dep auf 10.1.
 
-**Status:** in-progress — **M1+M2 fertig** (Kern + Kennzeichnungs-Schicht + ALLE Fakten + Cockpit-Summen); ADR-022-UI-Follow-ups benannt
+**Status:** in-progress — **M1+M2+M3 fertig** (Kern + Kennzeichnungs-Schicht + ALLE Fakten + Cockpit-Summen + Jahr-Auswahl + Hinweis); Rest-Follow-ups benannt (Onboarding-Einstieg, Prüf-Screen, Detail-Chips, Regelwerke-UI)
 
 - [x] **M1:** Neues Jahr = Kopie des Vorjahrs, jeder Posten mit `unbestätigt`-Herkunft (grau, ruhiger Ton)
       — Kern: `Quelle.uebernahme {vorjahr}` + `Posten.unbestaetigt` (berechnung.ts), Kopier-/Bestätigungs-Vertrag
@@ -20,7 +20,13 @@ Engineering-Entwurf 0037 (Steuerjahr-/Jahr-Modell), promotet. Kein Dep auf 10.1.
 - [x] **M1:** Unbestätigte Posten zählen in die Spanne, nicht in den Punktwert —
       `berechne` versagt den Punktwert und benennt `unbestaetigte`/`unbestaetigteSumme` ruhig (nie Konflikt, ADR-008);
       `cockpitSpanne` trägt die Summe als Unsicherheit; CockpitService integriert die Kennzeichnung. **Prüf-Screen-Sammlung = Follow-up.**
-- [ ] Bis 4 Rückjahre; Jahr-Auswahl prominenter Einstieg (Onboarding + Cockpit) — **Follow-up (ADR-022-UI)**
+- [x] **M3 (ADR-022-UI, Cockpit):** Jahr-Auswahl im Cockpit (Chips aktuell + 4 Rückjahre, Query je Jahr — nie
+      „aktuelle" Werte) + ruhiger Übernahme-Hinweis (Summe zitiert, Herkunft „Übernahme aus {vorjahr}" je Zeile,
+      einzeln bestätigt → Hinweis verschwindet ehrlich) + `von >= steuerjahr-4`-Validierung (400, nie eine stille
+      Alt-Kopie). **Follow-up:** Jahr-Auswahl-Einstieg im Onboarding, Prüf-Screen-Sammlung, Herkunfts-Chips in den
+      Detail-Screens, Jahresregelwerke-UI (Pauschalen/Freibeträge pro Jahr).
+- [ ] Bis 4 Rückjahre; Jahr-Auswahl prominenter Einstieg (Onboarding + Cockpit) — **Follow-up:** Onboarding-Einstieg
+      (der Cockpit-Teil ist mit M3 da)
 - [ ] Jahresregelwerke pro Jahr: UI zeigt Regeln des gewählten Jahres, nie „aktuelle" Werte (ADR-022) —
       **Follow-up** (der Fristen-Baustein 10.7 setzt das Muster: per-Jahr-Tabellen, nie "aktuelle" Werte)
 - [ ] Herkunfts-Chips mit Jahresbezug („Pauschale 2023: 1.230 €") — **Follow-up** (`uebernahmeHerkunft(vorjahr)` im Kern liegt bereit)
