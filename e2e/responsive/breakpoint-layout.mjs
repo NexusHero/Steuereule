@@ -326,7 +326,11 @@ async function measureCockpitEmpty(browser, width, label) {
   try {
     const page = await context.newPage()
     await skipSplash(page)
-    await continueAsGuestThroughOnboarding(page)
+    // ADR-0045: the guest lands in the Minimal-Gate; the Cockpit tab is reachable from there
+    // WITHOUT answering (the tab bar stays visible) — that is the genuinely fresh, empty state.
+    await page.getByText(COPY.guest).click()
+    await page.getByText(COPY.job).waitFor({ state: 'visible', timeout: 10_000 })
+    await page.getByText('Cockpit').click()
     // A fresh guest genuinely has no tax year yet — confirm the Empty state (not
     // Loaded, which would coincidentally pass the same width assertion for an
     // unrelated, already-correct call site and mask a real regression here).

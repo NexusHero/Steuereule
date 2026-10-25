@@ -72,6 +72,11 @@ const COPY = {
   registrierungPasswordPlaceholder: 'Mindestens 6 Zeichen',
   registrierungSubmit: 'Konto anlegen',
   registrierungSuccessCta: 'Weiter zum Onboarding →',
+  // ADR-0045 (value-first funnel): the guest lands in the Minimal-Gate, then the Konto-Wand.
+  job: 'Angestellt',
+  nein: 'Nein',
+  kinder: '2 oder mehr',
+  kontoWandLater: 'Später — erst mal ins Cockpit',
   loginEmailPlaceholder: 'du@beispiel.de',
   loginPasswordPlaceholder: '••••••••',
   loginSubmit: 'Einloggen',
@@ -112,67 +117,49 @@ async function guestFlow(browser, webOrigin, target) {
 
     await page.getByText(COPY.guest).click()
 
-    // FOUND FIXING THE ADR-0021 CONTROL PROOF (2026-08-05): OnboardingScreen's own step 1 (name
-    // entry, the very field below) is ALREADY gated behind its first real request to the API
-    // (`useProfileControllerGetProfile()` — GET /v1/profile) — `OnboardingScreen.tsx`'s own
-    // `profileQuery.isPending`/`.isError` early returns render `OnboardingLoading`/
-    // `OnboardingLoadError` INSTEAD of the step-1 form, not just step 2 as this script's first
-    // version assumed. A wrong EXPO_PUBLIC_API_BASE_URL therefore fails here, at the FIRST
-    // field, not the second — this script's own earlier version filled `firstNamePlaceholder`
-    // unconditionally and only raced load-error against the *second* field, so on a real
-    // API-unreachable break it produced a bare, undiagnostic `locator.fill: Timeout 30000ms
-    // exceeded` instead of naming the cause. Fixed by racing load-error against the FIRST
-    // field instead — the same pattern already used for step 2 below, just moved to where the
-    // gating actually is.
-    const nameLoadError = page.getByText(COPY.onboardingLoadErrorHeading)
-    const firstNameField = page.getByPlaceholder(COPY.firstNamePlaceholder)
+    // ADR-0045 (value-first funnel): the guest no longer lands on Onboarding — the funnel is
+    // Minimal-Gate -> Konto-Wand -> "Später" -> Cockpit. The Minimal-Gate's first paint is gated
+    // behind its own real GET /v1/steuerjahre/{jahr}/interview, so an unreachable API fails HERE
+    // (the same diagnostic class the onboarding step-1 field used to carry — see the control-
+    // proof note above, now anchored to the interview instead of the name field).
+    const loadError = page.getByText(COPY.onboardingLoadErrorHeading)
+    const jobQuestion = page.getByText(COPY.job)
     await Promise.race([
-      nameLoadError.waitFor({ state: 'visible', timeout: 15_000 }).catch(() => {}),
-      firstNameField.waitFor({ state: 'visible', timeout: 15_000 }).catch(() => {}),
+      loadError.waitFor({ state: 'visible', timeout: 15_000 }).catch(() => {}),
+      jobQuestion.waitFor({ state: 'visible', timeout: 15_000 }).catch(() => {}),
     ])
-    if (await nameLoadError.count()) {
+    if (await loadError.count()) {
       fail(
-        `Guest flow: onboarding shows "${COPY.onboardingLoadErrorHeading}" on its very first step — the ` +
+        `Guest flow: the Minimal-Gate shows "${COPY.onboardingLoadErrorHeading}" on its first paint — the ` +
           'exact error the stakeholder reported. The browser could not reach the API from the exported web ' +
           'bundle (stale EXPO_PUBLIC_API_BASE_URL baked into the bundle, or a CORS_ALLOWED_ORIGINS/WEB_APP_URL ' +
           'mismatch against the real published origin — see this file\'s own header comment).',
       )
     }
-    if (!(await firstNameField.count())) {
-      fail('Guest flow: neither onboarding step 1 nor the load-error state appeared within 15s.')
+    if (!(await jobQuestion.count())) {
+      fail('Guest flow: neither the Minimal-Gate nor the load-error state appeared within 15s.')
     }
 
-    await firstNameField.fill('Kim')
-    await page.getByPlaceholder(COPY.lastNamePlaceholder).fill('Yilmaz')
-    await page.getByRole('button', { name: COPY.weiter }).click()
+    // Answer the Minimal-Gate — each answer is a real POST, so API reachability is proven end
+    // to end (the same "the flow genuinely completed" standard the onboarding walk used to hold).
+    await jobQuestion.click()
+    await page.getByText(COPY.nein).click() // ausland: no gate
+    await page.getByText(COPY.kinder).click() // completes the Minimal-Gate
 
-    // Step 2 (Steuer-ID) needs no SECOND network round-trip of its own (the profile is already
-    // loaded in memory at this point) — but kept as a race, not a bare fill, for the same
-    // reason: a regression here should name itself, not time out silently.
-    const loadError = page.getByText(COPY.onboardingLoadErrorHeading)
-    const steuerIdField = page.getByPlaceholder(COPY.steuerIdPlaceholder)
-    await Promise.race([
-      loadError.waitFor({ state: 'visible', timeout: 15_000 }).catch(() => {}),
-      steuerIdField.waitFor({ state: 'visible', timeout: 15_000 }).catch(() => {}),
-    ])
-    if (await loadError.count()) {
-      fail(
-        `Guest flow: onboarding shows "${COPY.onboardingLoadErrorHeading}" after step 1 — unexpected, ` +
-          'since the profile was already loaded once to reach step 1 at all.',
-      )
-    }
-    if (!(await steuerIdField.count())) {
-      fail('Guest flow: neither onboarding step 2 nor the load-error state appeared within 15s.')
-    }
+    // The Konto-Wand is the funnel's honest next step for a guest; "Später" reaches the Cockpit.
+    await page.getByText(COPY.kontoWandLater).waitFor({ state: 'visible', timeout: 15_000 }).catch(async () => {
+      const loadError2 = page.getByText(COPY.onboardingLoadErrorHeading)
+      if (await loadError2.count()) {
+        fail(`Guest flow: the Konto-Wand shows "${COPY.onboardingLoadErrorHeading}" — the API became unreachable mid-flow.`)
+      }
+      fail('Guest flow: the Konto-Wand did not appear after the Minimal-Gate within 15s.')
+    })
+    await page.getByText(COPY.kontoWandLater).click()
 
-    await steuerIdField.fill('12345678901')
-    await page.getByRole('button', { name: COPY.weiter }).click()
-    await page.getByText(COPY.steuerNrLater).click()
-    await page.getByRole('button', { name: COPY.weiter }).click()
-
-    // Reaching this point means the real PUT /v1/profile against whatever is serving API_ORIGIN
-    // succeeded — the guest flow genuinely completed, not merely "didn't show an error". Whether
-    // that server is a container is `target`'s business to state, not this comment's to assume.
+    // Reaching this point means three real interview POSTs against whatever is serving
+    // API_ORIGIN succeeded — the guest flow genuinely completed, not merely "didn't show an
+    // error". Whether that server is a container is `target`'s business to state, not this
+    // comment's to assume.
     await page.getByRole('tab', { name: COPY.tabCockpit }).waitFor({ state: 'visible', timeout: 15_000 }).catch(async () => {
       // Fallback locator, in case the accessibilityRole="tab" -> role="tab" mapping ever
       // changes shape (packages/ui/src/components/TabBar.tsx) — either way, something past
