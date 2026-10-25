@@ -51,19 +51,12 @@ export type fristenControllerGetFristenResponse200 = {
   status: 200
 }
 
-export type fristenControllerGetFristenResponse401 = {
-  data: void
-  status: 401
-}
-
 export type fristenControllerGetFristenResponseSuccess = (fristenControllerGetFristenResponse200) & {
   headers: Headers;
 };
-export type fristenControllerGetFristenResponseError = (fristenControllerGetFristenResponse401) & {
-  headers: Headers;
-};
+;
 
-export type fristenControllerGetFristenResponse = (fristenControllerGetFristenResponseSuccess | fristenControllerGetFristenResponseError)
+export type fristenControllerGetFristenResponse = (fristenControllerGetFristenResponseSuccess)
 
 export const getFristenControllerGetFristenUrl = (jahr: number,) => {
 
@@ -95,7 +88,7 @@ export const getFristenControllerGetFristenQueryKey = (jahr: number,) => {
     }
 
 
-export const getFristenControllerGetFristenQueryOptions = <TData = Awaited<ReturnType<typeof fristenControllerGetFristen>>, TError = void>(jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof fristenControllerGetFristen>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export const getFristenControllerGetFristenQueryOptions = <TData = Awaited<ReturnType<typeof fristenControllerGetFristen>>, TError = unknown>(jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof fristenControllerGetFristen>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -114,10 +107,10 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type FristenControllerGetFristenQueryResult = NonNullable<Awaited<ReturnType<typeof fristenControllerGetFristen>>>
-export type FristenControllerGetFristenQueryError = void
+export type FristenControllerGetFristenQueryError = unknown
 
 
-export function useFristenControllerGetFristen<TData = Awaited<ReturnType<typeof fristenControllerGetFristen>>, TError = void>(
+export function useFristenControllerGetFristen<TData = Awaited<ReturnType<typeof fristenControllerGetFristen>>, TError = unknown>(
  jahr: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof fristenControllerGetFristen>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof fristenControllerGetFristen>>,
@@ -127,7 +120,7 @@ export function useFristenControllerGetFristen<TData = Awaited<ReturnType<typeof
       >, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useFristenControllerGetFristen<TData = Awaited<ReturnType<typeof fristenControllerGetFristen>>, TError = void>(
+export function useFristenControllerGetFristen<TData = Awaited<ReturnType<typeof fristenControllerGetFristen>>, TError = unknown>(
  jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof fristenControllerGetFristen>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof fristenControllerGetFristen>>,
@@ -137,12 +130,12 @@ export function useFristenControllerGetFristen<TData = Awaited<ReturnType<typeof
       >, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useFristenControllerGetFristen<TData = Awaited<ReturnType<typeof fristenControllerGetFristen>>, TError = void>(
+export function useFristenControllerGetFristen<TData = Awaited<ReturnType<typeof fristenControllerGetFristen>>, TError = unknown>(
  jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof fristenControllerGetFristen>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 
-export function useFristenControllerGetFristen<TData = Awaited<ReturnType<typeof fristenControllerGetFristen>>, TError = void>(
+export function useFristenControllerGetFristen<TData = Awaited<ReturnType<typeof fristenControllerGetFristen>>, TError = unknown>(
  jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof fristenControllerGetFristen>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {

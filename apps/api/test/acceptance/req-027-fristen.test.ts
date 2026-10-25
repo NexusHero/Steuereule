@@ -113,8 +113,13 @@ describe('REQ-027 — the Fristen-Warnmodus (§ 149/§ 152 AO), against the real
     expect(response.status).toBe(400)
   })
 
-  it('the endpoint requires a real account session — a guest gets 401', async () => {
-    const response = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/fristen`, { headers: TRUSTED_ORIGIN_HEADERS })
-    expect(response.status).toBe(401)
+  it('is readable for a guest too — statutory facts, never user data (ADR-0045 value-first: the guest Cockpit shows the banner)', async () => {
+    const guestProbe = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/cockpit`)
+    const guestCookie = guestProbe.headers.get('set-cookie')!.split(';')[0]!
+
+    const response = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/fristen`, { headers: { cookie: guestCookie } })
+    expect(response.status).toBe(200)
+    const body = (await response.json()) as { abgabefrist: string }
+    expect(body.abgabefrist).toBe('2027-07-31')
   })
 })

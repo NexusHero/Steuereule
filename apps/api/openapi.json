@@ -1580,7 +1580,7 @@
         ],
         "responses": {
           "200": {
-            "description": "The honest Fristen-Fakt (ADR-0039) — a banner input, never a tax status.",
+            "description": "The honest Fristen-Fakt (ADR-0039) — a banner input, never a tax status. Readable for guests (statutory facts, not user data).",
             "content": {
               "application/json": {
                 "schema": {
@@ -1588,9 +1588,6 @@
                 }
               }
             }
-          },
-          "401": {
-            "description": "Guest session — this endpoint requires a signed-in account."
           }
         },
         "tags": [
