@@ -38,7 +38,8 @@ export interface ExportAccountDto {
 export interface ExportProfileDto {
   firstName: string;
   lastName: string;
-  steuerId: string;
+  /** @nullable */
+  steuerId: string | null;
   /** @nullable */
   steuernummer: string | null;
   createdAt: string;

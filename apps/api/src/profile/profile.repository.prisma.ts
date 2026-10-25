@@ -34,7 +34,9 @@ export class PrismaProfileRepository implements ProfileRepository {
   async findByUserId(userId: string): Promise<ProfileRecord | null> {
     const row = await this.prisma.profile.findUnique({ where: { userId } })
     if (!row) return null
-    if (!isValidSteuerId(row.steuerId)) throw new ProfileIntegrityError('steuerId')
+    // ADR-0045: null = "not given yet" (a legitimate state); any non-null value must still
+    // shape-validate, so a pass-through/corrupted ciphertext keeps failing loudly (REQ-003.5).
+    if (row.steuerId !== null && !isValidSteuerId(row.steuerId)) throw new ProfileIntegrityError('steuerId')
     if (!isValidSteuernummer(row.steuernummer ?? undefined)) throw new ProfileIntegrityError('steuernummer')
     return toRecord(row)
   }
@@ -69,7 +71,7 @@ export class PrismaProfileRepository implements ProfileRepository {
 function toRecord(row: {
   firstName: string
   lastName: string
-  steuerId: string
+  steuerId: string | null
   steuernummer: string | null
   createdAt: Date
   updatedAt: Date

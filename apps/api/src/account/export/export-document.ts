@@ -16,7 +16,7 @@ export interface ExportAccountSection {
 export interface ExportProfileSection {
   firstName: string
   lastName: string
-  steuerId: string
+  steuerId: string | null
   steuernummer: string | null
   createdAt: string
   updatedAt: string

@@ -28,8 +28,8 @@ export class ExportProfileDto {
   @ApiProperty({ type: String, example: 'Beispiel' })
   lastName!: string
 
-  @ApiProperty({ type: String, example: '02476291358' })
-  steuerId!: string
+  @ApiProperty({ type: String, nullable: true, example: '02476291358' })
+  steuerId!: string | null
 
   @ApiProperty({ type: String, nullable: true, example: '18181508155' })
   steuernummer!: string | null

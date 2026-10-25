@@ -60,6 +60,14 @@ describe('ProfileService', () => {
     )
   })
 
+  it('ADR-0045 — stores a missing steuerId as null ("not given yet"), keeping the name', async () => {
+    const { steuerId: _omitted, ...payloadWithoutSteuerId } = validPayload()
+    await service.saveProfile('user-a', payloadWithoutSteuerId)
+    await expect(service.getProfile('user-a')).resolves.toEqual(
+      expect.objectContaining({ firstName: validPayload().firstName, steuerId: null }),
+    )
+  })
+
   it('PUT is idempotent — saving the same payload twice yields the same stored state', async () => {
     await service.saveProfile('user-a', validPayload())
     const second = await service.saveProfile('user-a', validPayload())

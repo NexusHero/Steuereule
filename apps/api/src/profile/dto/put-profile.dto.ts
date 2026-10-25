@@ -15,14 +15,15 @@ export class PutProfileDto {
   @IsNotBlank()
   lastName!: string
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     type: String,
     example: '02476291358',
-    description: 'Steuerliche Identifikationsnummer — exactly 11 digits.',
+    description: 'Steuerliche Identifikationsnummer — exactly 11 digits if present. Optional since ADR-0045 (value-first funnel): omitted = not given yet, stored as null.',
   })
+  @IsOptional()
   @IsString()
   @IsSteuerId()
-  steuerId!: string
+  steuerId?: string
 
   @ApiPropertyOptional({
     type: String,

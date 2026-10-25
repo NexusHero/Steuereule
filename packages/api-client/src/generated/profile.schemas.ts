@@ -21,8 +21,8 @@ export interface PutProfileDto {
   firstName: string;
   /** Non-empty last name. */
   lastName: string;
-  /** Steuerliche Identifikationsnummer — exactly 11 digits. */
-  steuerId: string;
+  /** Steuerliche Identifikationsnummer — exactly 11 digits if present. Optional since ADR-0045 (value-first funnel): omitted = not given yet, stored as null. */
+  steuerId?: string;
   /** Steuernummer — optional; 1-13 digits (no separators) if present. */
   steuernummer?: string;
 }

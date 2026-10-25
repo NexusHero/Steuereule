@@ -29,7 +29,7 @@ function renderProfileSection(profile: ExportDocument['profile']): string {
       <tbody>
         <tr><th>Vorname</th><td>${escapeHtml(profile.firstName)}</td></tr>
         <tr><th>Nachname</th><td>${escapeHtml(profile.lastName)}</td></tr>
-        <tr><th>Steuerliche Identifikationsnummer</th><td>${escapeHtml(profile.steuerId)}</td></tr>
+        <tr><th>Steuerliche Identifikationsnummer</th><td>${escapeHtml(profile.steuerId ?? '—')}</td></tr>
         <tr><th>Steuernummer</th><td>${profile.steuernummer ? escapeHtml(profile.steuernummer) : '—'}</td></tr>
         <tr><th>Angelegt am</th><td>${formatGermanTimestamp(profile.createdAt)}</td></tr>
         <tr><th>Zuletzt geändert am</th><td>${formatGermanTimestamp(profile.updatedAt)}</td></tr>

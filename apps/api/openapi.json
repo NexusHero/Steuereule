@@ -252,7 +252,7 @@
             }
           },
           "401": {
-            "description": "Guest session — this endpoint requires a signed-in account."
+            "description": "Guest session targeting a catalogue entry other than the Minimal-Gate — that requires a signed-in account (ADR-0045)."
           }
         },
         "tags": [
@@ -300,7 +300,7 @@
             "description": "value is not an accepted answer for questionId — nothing was persisted."
           },
           "401": {
-            "description": "Guest session — this endpoint requires a signed-in account."
+            "description": "Guest session targeting a catalogue entry other than the Minimal-Gate — that requires a signed-in account (ADR-0045)."
           },
           "409": {
             "description": "questionId is not reachable given the answers stored so far — nothing was persisted."
@@ -1367,7 +1367,7 @@
           "steuerId": {
             "type": "string",
             "example": "02476291358",
-            "description": "Steuerliche Identifikationsnummer — exactly 11 digits."
+            "description": "Steuerliche Identifikationsnummer — exactly 11 digits if present. Optional since ADR-0045 (value-first funnel): omitted = not given yet, stored as null."
           },
           "steuernummer": {
             "type": "string",
@@ -1377,8 +1377,7 @@
         },
         "required": [
           "firstName",
-          "lastName",
-          "steuerId"
+          "lastName"
         ]
       },
       "ValidationFieldErrorDto": {
@@ -2695,6 +2694,7 @@
           },
           "steuerId": {
             "type": "string",
+            "nullable": true,
             "example": "02476291358"
           },
           "steuernummer": {

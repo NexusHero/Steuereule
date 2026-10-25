@@ -4,7 +4,8 @@
 export interface ProfileRecord {
   firstName: string
   lastName: string
-  steuerId: string
+  /** null = not given yet (ADR-0045 — added later from Profil). */
+  steuerId: string | null
   steuernummer: string | null
   /**
    * Row timestamps — optional because the write side (ProfileService.saveProfile's

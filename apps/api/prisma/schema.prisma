@@ -37,14 +37,16 @@ model Profile {
   firstName    String
   lastName     String
   /// Steuerliche Identifikationsnummer — exactly 11 digits (validated server-side
-  /// via @steuereule/core's isValidSteuerId before this is ever written).
+  /// via @steuereule/core's isValidSteuerId before this is ever written). Nullable
+  /// since ADR-0045 (value-first funnel): a user may save their name now and add the
+  /// Steuer-ID later from Profil; null means "not given yet", never a blank string.
   /// Field-encrypted at rest (ADR-0008, prisma-field-encryption, AES-256-GCM,
   /// randomized nonce per write — ciphertext is longer than the plaintext digit
   /// string, so the column stays `String`, no type migration needed). `mode=strict`
   /// so a tampered/corrupted ciphertext throws on read instead of silently passing
   /// through as clear text or null (REQ-003.5) — safe once every existing row is
   /// encrypted, which is true from this migration onward.
-  steuerId     String /// @encrypted?mode=strict
+  steuerId     String? /// @encrypted?mode=strict
   /// Optional — 1-13 digits if present (isValidSteuernummer). Field-encrypted at
   /// rest for the same reason as steuerId.
   steuernummer String? /// @encrypted?mode=strict
