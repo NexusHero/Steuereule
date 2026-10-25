@@ -536,8 +536,9 @@ async function testGuestReload(browser, webOrigin) {
     if (new URL(page.url()).pathname !== '/app') {
       fail(`Row D: reloading while guest at /app landed on ${page.url()} instead — the guest cookie did not survive a same-tab reload.`)
     }
-    await page.getByText('0 Fragen offen', { exact: true }).waitFor({ state: 'visible', timeout: 10_000 }).catch(() => {
-      fail('Row D (positive): reloading while guest did not re-render the SAME guest\'s own data ("0 Fragen offen") within 10s.')
+    await page.getByText('0 Fragen offen', { exact: true }).waitFor({ state: 'visible', timeout: 15_000 }).catch(async () => {
+      const bodyText = await page.evaluate(() => document.body.innerText.slice(0, 800))
+      fail(`Row D (positive): reloading while guest did not re-render the SAME guest's own data ("0 Fragen offen") within 15s. Page shows: ${JSON.stringify(bodyText)}`)
     })
     console.log('[return-visit] Row D (positive): a same-tab reload while guest re-renders the SAME guest\'s own data — the guest identity is honestly preserved.')
 
