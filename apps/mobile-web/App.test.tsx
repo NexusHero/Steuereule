@@ -32,7 +32,7 @@ function setViewportWidth(width: number) {
   window.dispatchEvent(new Event('resize'))
 }
 
-/** Walks guest onboarding to completion — the only way into the tabbed shell. */
+/** Walks guest onboarding to completion — the only way into the tabbed shell pre-funnel. */
 async function completeOnboarding() {
   await screen.findByPlaceholderText('Kim')
   fireEvent.change(screen.getByPlaceholderText('Kim'), { target: { value: 'Kim' } })
@@ -49,6 +49,28 @@ async function completeOnboarding() {
   // one, and clicking before it exists is how this silently stalled on the summary.
   await screen.findByText('Deine Maske')
   fireEvent.click(screen.getByText('Weiter'))
+}
+
+/**
+ * Walks the ADR-0045 value-first funnel to the Cockpit: guest -> Minimal-Gate (three answers)
+ * -> Konto-Wand -> "Später" -> Cockpit. The guest no longer lands on Onboarding — the funnel
+ * moved value first (ADR-0045).
+ */
+async function enterAsGuestThroughInterview() {
+  fireEvent.click(screen.getByLabelText('Weiter zur App'))
+  fireEvent.click(screen.getByText('Erstmal als Gast umschauen'))
+
+  // The guest lands directly in the Minimal-Gate (start: 'interview').
+  await screen.findByText('Angestellt')
+  fireEvent.click(screen.getByText('Angestellt'))
+  await screen.findByText('Grenzgänger haben Sonderregeln — in die Schweiz können wir sie komplett, inklusive 60-Tage-Tracking.')
+  fireEvent.click(screen.getByText('Nein'))
+  await screen.findByText('Kindergeld, Freibeträge, Betreuungskosten — die Günstigerprüfung Kindergeld vs. Freibetrag läuft automatisch.')
+  fireEvent.click(screen.getByText('2 oder mehr'))
+
+  // The Konto-Wand is the honest next step for a guest — "Später" reaches the Cockpit.
+  await screen.findByText('Später — erst mal ins Cockpit')
+  fireEvent.click(screen.getByText('Später — erst mal ins Cockpit'))
 }
 
 // App.tsx constructs the better-auth client once, at module top level (correct for the real
@@ -120,12 +142,13 @@ describe('App', () => {
     expect(await screen.findByText('Konto anlegen')).toBeTruthy()
   })
 
-  it('goes from Login straight to Onboarding via guest mode, unchanged from before this slice', async () => {
+  it('goes from Login straight into the value-first funnel as a guest — no forced onboarding (ADR-0045)', async () => {
     const { default: App } = await import('./App')
     render(<App />)
     fireEvent.click(screen.getByLabelText('Weiter zur App'))
     fireEvent.click(screen.getByText('Erstmal als Gast umschauen'))
-    await screen.findByPlaceholderText('Kim')
+    // ADR-0045: the guest lands in the Minimal-Gate (value first), not on Onboarding.
+    await screen.findByText('Angestellt')
   })
   // The point of the tab bar slice: Profil (REQ-013) shipped, but Cockpit took the
   // post-onboarding home slot, leaving Profil with no route at all in the running app. This
@@ -135,14 +158,9 @@ describe('App', () => {
     async () => {
       const { default: App } = await import('./App')
       render(<App />)
-      fireEvent.click(screen.getByLabelText('Weiter zur App'))
-      fireEvent.click(screen.getByText('Erstmal als Gast umschauen'))
+      await enterAsGuestThroughInterview()
 
-      // Guest onboarding, filled the way OnboardingScreen actually requires, to land in
-      // the tabbed shell: name -> Steuer-ID -> summary -> save.
-      await completeOnboarding()
-
-      // Cockpit is the default tab, matching the DS reference.
+      // Cockpit is the default tab after "Später", matching the DS reference.
       await screen.findByText('Cockpit')
 
       fireEvent.click(screen.getByText('Profil'))
@@ -180,7 +198,9 @@ describe('App', () => {
       render(<App />)
       fireEvent.click(screen.getByLabelText('Weiter zur App'))
       fireEvent.click(screen.getByText('Erstmal als Gast umschauen'))
-      await completeOnboarding()
+      // The guest lands in the Minimal-Gate (ADR-0045); switch to Cockpit to drive the CTA.
+      await screen.findByText('Angestellt')
+      fireEvent.click(screen.getByText('Cockpit'))
 
       await screen.findByText('3 Fragen offen')
       fireEvent.click(screen.getByText('Fragen beantworten'))
@@ -204,12 +224,11 @@ describe('App', () => {
       await screen.findByText('Kindergeld, Freibeträge, Betreuungskosten — die Günstigerprüfung Kindergeld vs. Freibetrag läuft automatisch.') // kinder question
       fireEvent.click(screen.getByText('2 oder mehr')) // completes the Minimal-Gate
 
-      // onDone now leads to the LStB mask (the Angestellte vertical's next step, ticket 15).
-      await screen.findByText('Deine Lohnsteuerbescheinigung')
-
-      // Back from the LStB mask returns to Cockpit; its query was invalidated by the last
-      // successful write, so this is a real re-fetch landing on the lower count, not stale memory.
-      fireEvent.click(screen.getByLabelText('Zurück'))
+      // ADR-0045: a guest's onDone leads to the Konto-Wand — "Später" reaches the Cockpit,
+      // whose query was invalidated by the last successful write (a real re-fetch, not stale
+      // memory).
+      await screen.findByText('Später — erst mal ins Cockpit')
+      fireEvent.click(screen.getByText('Später — erst mal ins Cockpit'))
       await screen.findByText('2 Fragen offen')
       expect(screen.queryByText('3 Fragen offen')).toBeNull()
     },
@@ -219,9 +238,7 @@ describe('App', () => {
   it('offers only the tabs that have a screen behind them', async () => {
     const { default: App } = await import('./App')
     render(<App />)
-    fireEvent.click(screen.getByLabelText('Weiter zur App'))
-    fireEvent.click(screen.getByText('Erstmal als Gast umschauen'))
-    await completeOnboarding()
+    await enterAsGuestThroughInterview()
     await screen.findByText('Cockpit')
 
     // Belege landed its screen (Ticket 10 Slice 1), so it is a real tab now; Berater and Jahr
@@ -239,9 +256,7 @@ describe('App', () => {
       server.use(http.get(`${API_BASE_URL}/api/auth/get-session`, () => HttpResponse.json(null)))
       const { default: App } = await import('./App')
       render(<App />)
-      fireEvent.click(screen.getByLabelText('Weiter zur App'))
-      fireEvent.click(screen.getByText('Erstmal als Gast umschauen'))
-      await completeOnboarding()
+      await enterAsGuestThroughInterview()
       await screen.findByText('Cockpit')
 
       fireEvent.click(screen.getByText('Profil'))
