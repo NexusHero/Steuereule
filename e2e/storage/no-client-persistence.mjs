@@ -68,7 +68,7 @@
 import { launchBrowser, closeBrowser, newContextAtBreakpoint, guardAgainst429 } from '../harness/browser.mjs'
 import { startStack } from '../harness/stack.mjs'
 import { fail, waitForBucketHeadroom } from '../harness/rate-limit.mjs'
-import { FLOW_COPY, skipSplash, signUpOutOfBand, fillOnboardingThroughSummary } from '../harness/flows.mjs'
+import { FLOW_COPY, skipSplash, signUpOutOfBand } from '../harness/flows.mjs'
 
 // `shared: true`: the sign-up/sign-in bucket is spent by every other script in the `Browser gates`
 // job (one in-memory bucket), so this process cannot read its live state and waits out a full
@@ -78,19 +78,20 @@ const TEST_PASSWORD = 'Sicheres-Passwort-1!'
 
 // German copy (app boots in `de`, ADR-0006), lifted from apps/mobile-web/src/i18n/resources.ts —
 // the same lifted-not-imported convention every other e2e script in this directory follows. The
-// splash/login/onboarding/profil-tab keys live in `FLOW_COPY` (`../harness/flows.mjs`, Musti's
-// #331 review, F6) alongside the drive sequences (`skipSplash`, `signUpOutOfBand`,
-// `fillOnboardingThroughSummary`) that read them — spread in here so `COPY.xyz` keeps working for
-// every call site below; only this file's own Profil-screen strings are added locally.
+// splash/login/profil-tab keys live in `FLOW_COPY` (`../harness/flows.mjs`, Musti's
+// #331 review, F6) alongside the drive sequences (`skipSplash`, `signUpOutOfBand`) that read
+// them — spread in here so `COPY.xyz` keeps working for every call site below; only this file's
+// own Profil-screen strings are added locally.
 const COPY = {
   ...FLOW_COPY,
   profilEdit: 'Bearbeiten',
   profilSave: 'Speichern',
   profilSaved: 'Gespeichert.',
-  // A separate key from `onboardingLastNamePlaceholder` even though the VALUE is identical
-  // ('Yilmaz', apps/mobile-web/src/i18n/resources.ts:273) — Musti's #331 review, F7: naming this
-  // field after the OTHER screen's copy needed four lines of comment to explain why that was
-  // still correct, which is the tell that the name was doing the work a name should do instead.
+  // A separate key from `onboardingFirstNamePlaceholder` even though the VALUE is identical
+  // ('Kim', apps/mobile-web/src/i18n/resources.ts:185, the Profil edit form's own first-name
+  // placeholder) — Musti's #331 review, F7: naming this field after the OTHER screen's copy would
+  // need four lines of comment to explain why that is still correct, which is the tell that the
+  // name was doing the work a name should do instead.
   profilLastNamePlaceholder: 'Yilmaz',
 }
 
@@ -171,59 +172,60 @@ async function main() {
     console.log(`[no-client-persistence] baseline (fresh page load, before sign-in) — ${describeDump(baseline)}`)
     findings.push(...findWritesSinceReference(baseline, EMPTY_DUMP, 'baseline (fresh page load, before sign-in)'))
 
-    // --- Flow 1: fresh account, Onboarding through to save ---
+    // --- Flow 1: fresh account, real sign-in — ADR-0045 lands straight in the app shell ---
     await waitForRateLimit(AUTH_BUCKET, 'sign-in/email')
     await page.getByPlaceholder(COPY.loginEmailPlaceholder).fill(email)
     await page.getByPlaceholder(COPY.loginPasswordPlaceholder).fill(TEST_PASSWORD)
     await page.getByRole('button', { name: COPY.loginSubmit }).click()
-    await page.waitForURL((u) => u.pathname === '/onboarding', { timeout: 15_000 }).catch(() => {
-      fail('Flow 1: real sign-in for a brand-new account never reached /onboarding within 15s.')
-    })
-
-    const firstNameField = page.getByPlaceholder(COPY.onboardingFirstNamePlaceholder)
-    await firstNameField.waitFor({ state: 'visible', timeout: 10_000 })
-    if ((await firstNameField.inputValue()) !== '') {
-      fail('Flow 1: the fresh-account first-name field was not empty on mount — this run did not exercise the empty-state path it is meant to.')
-    }
-
-    await fillOnboardingThroughSummary(page)
-
-    const midFlow = await dumpStorage(page)
-    console.log(`[no-client-persistence] mid-flow checkpoint (Onboarding summary reached, before the final save submit) — ${describeDump(midFlow)}`)
-    findings.push(...findWritesSinceReference(midFlow, baseline, 'mid-flow (before Onboarding save submit)'))
-
-    await page.getByRole('button', { name: COPY.onboardingWeiter }).click()
     await page.waitForURL((u) => u.pathname === '/app', { timeout: 15_000 }).catch(() => {
-      fail('Flow 1: the Onboarding final save submit never reached /app within 15s.')
+      fail('Flow 1: real sign-in for a brand-new account never reached /app within 15s.')
     })
+    await page.getByRole('tab', { name: COPY.profilTab }).waitFor({ state: 'visible', timeout: 10_000 })
 
-    const afterOnboardingSave = await dumpStorage(page)
-    console.log(`[no-client-persistence] Flow 1 — Onboarding through save, fresh account — ${describeDump(afterOnboardingSave)}`)
-    findings.push(...findWritesSinceReference(afterOnboardingSave, baseline, 'Flow 1 (after Onboarding save)'))
+    const afterSignIn = await dumpStorage(page)
+    console.log(`[no-client-persistence] Flow 1 — sign-in lands in the app shell (ADR-0045) — ${describeDump(afterSignIn)}`)
+    findings.push(...findWritesSinceReference(afterSignIn, baseline, 'Flow 1 (after sign-in, app shell)'))
 
-    // --- Flow 2: Profil view -> edit -> save, same now-provisioned account ---
+    // --- Flow 2: Profil view -> edit -> save, same now-provisioned account. The funnel (ADR-0045)
+    // moved the name entry from Onboarding to Profil — the storage checkpoints follow the flow. ---
     await page.getByRole('tab', { name: COPY.profilTab }).click()
-    await page.getByText('Kim Yilmaz', { exact: true }).waitFor({ state: 'visible', timeout: 10_000 }).catch(() => {
-      fail('Flow 2: Profil view never rendered the just-saved "Kim Yilmaz" within 10s.')
-    })
 
     const profilView = await dumpStorage(page)
     console.log(`[no-client-persistence] Flow 2 checkpoint (Profil view, before edit) — ${describeDump(profilView)}`)
     findings.push(...findWritesSinceReference(profilView, baseline, 'Flow 2 (Profil view, before edit)'))
 
     await page.getByText(COPY.profilEdit).click()
-    // Real Playwright has no `getByDisplayValue` (that is a Testing-Library API, not this
-    // library's), so the field is located the same honest way the rest of this script locates
-    // every other input: by its own placeholder.
-    await page.getByPlaceholder(COPY.profilLastNamePlaceholder).fill('Yilmaz-Geändert')
-    await page.getByText(COPY.profilSave).click()
-    await page.getByText(COPY.profilSaved, { exact: true }).waitFor({ state: 'visible', timeout: 10_000 }).catch(() => {
-      fail('Flow 2: Profil save never showed the "Gespeichert." confirmation within 10s.')
+    await page.getByPlaceholder(COPY.onboardingFirstNamePlaceholder).fill('Kim')
+    await page.getByPlaceholder(COPY.profilLastNamePlaceholder).fill('Yilmaz')
+    // `force: true`: this gate asserts STORAGE, not click-stability (same class as the
+    // breakpoint-layout Minimal-Gate options — see its force-click note); the interaction logic
+    // itself is pinned by the jsdom suites.
+    await page.getByText(COPY.profilSave).click({ force: true })
+    await page.getByText(COPY.profilSaved, { exact: true }).waitFor({ state: 'visible', timeout: 10_000 }).catch(async () => {
+      const bodyText = await page.evaluate(() => document.body.innerText.slice(-700))
+      fail(`Flow 2: Profil save never showed the "Gespeichert." confirmation within 10s. Page shows: ${JSON.stringify(bodyText)}`)
+    })
+    await page.getByText('Kim Yilmaz', { exact: true }).waitFor({ state: 'visible', timeout: 10_000 }).catch(() => {
+      fail('Flow 2: Profil view never rendered the just-saved "Kim Yilmaz" within 10s.')
     })
 
     const afterProfilSave = await dumpStorage(page)
-    console.log(`[no-client-persistence] Flow 2 — Profil view -> edit -> save — ${describeDump(afterProfilSave)}`)
-    findings.push(...findWritesSinceReference(afterProfilSave, baseline, 'Flow 2 (after Profil save)'))
+    console.log(`[no-client-persistence] Flow 2 — Profil name entry -> save — ${describeDump(afterProfilSave)}`)
+    findings.push(...findWritesSinceReference(afterProfilSave, baseline, 'Flow 2 (after Profil name save)'))
+
+    // Real Playwright has no `getByDisplayValue` (that is a Testing-Library API, not this
+    // library's), so the field is located the same honest way the rest of this script locates
+    // every other input: by its own placeholder.
+    await page.getByText(COPY.profilEdit).click()
+    await page.getByPlaceholder(COPY.profilLastNamePlaceholder).fill('Yilmaz-Geändert')
+    await page.getByText(COPY.profilSave).click({ force: true })
+    await page.getByText(COPY.profilSaved, { exact: true }).waitFor({ state: 'visible', timeout: 10_000 }).catch(() => {
+      fail('Flow 2: the second Profil save never showed the "Gespeichert." confirmation within 10s.')
+    })
+
+    const afterProfilSave2 = await dumpStorage(page)
+    console.log(`[no-client-persistence] Flow 2 — Profil view -> edit -> save — ${describeDump(afterProfilSave2)}`)
+    findings.push(...findWritesSinceReference(afterProfilSave2, baseline, 'Flow 2 (after second Profil save)'))
 
     await ctx.close()
 
@@ -238,8 +240,8 @@ async function main() {
     }
 
     console.log(
-      '[no-client-persistence] PASS — real Chromium, real seeded stack: Onboarding-through-save (fresh account, ' +
-        'empty-state path) and Profil view->edit->save both leave localStorage AND sessionStorage exactly as they ' +
+      '[no-client-persistence] PASS — real Chromium, real seeded stack: sign-in-through-app-shell (fresh account, ' +
+        'ADR-0045 funnel) and Profil view->edit->save both leave localStorage AND sessionStorage exactly as they ' +
         'started (no new key, no changed value, relative to the pre-sign-in baseline) at every one of the five ' +
         'checkpoints enumerated above. This closes, by observation, the one bound #323\'s own fix disclosed: ' +
         "vi.stubGlobal's per-test, post-import installation cannot see a write at module-import time — a real " +

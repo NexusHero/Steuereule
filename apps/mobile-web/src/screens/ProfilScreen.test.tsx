@@ -130,7 +130,7 @@ describe('ProfilScreen', () => {
     expect(screen.getByDisplayValue('123/456/7890')).toBeTruthy()
   })
 
-  it('keeps Speichern from saving until the name fields are filled and the Steuer-ID is valid', async () => {
+  it('keeps Speichern from saving until the name fields are filled — the Steuer-ID is optional (ADR-0045)', async () => {
     mockSavedProfile()
     let putCalls = 0
     server.use(http.put('*/v1/profile', () => { putCalls += 1; return HttpResponse.error() }))
@@ -145,6 +145,31 @@ describe('ProfilScreen', () => {
     fireEvent.change(screen.getByDisplayValue(''), { target: { value: 'Anna' } })
     fireEvent.click(screen.getByText('Speichern'))
     await waitFor(() => expect(putCalls).toBe(1))
+  })
+
+  it('saves a profile WITHOUT a Steuer-ID — ADR-0045: null is "not given yet", never a dead end', async () => {
+    server.use(
+      http.get('*/v1/profile', () =>
+        HttpResponse.json({ firstName: 'Anna', lastName: 'Beispiel', steuerId: null, steuernummer: null }, { status: 200 }),
+      ),
+    )
+    let receivedBody: unknown
+    server.use(
+      http.put('*/v1/profile', async ({ request }) => {
+        receivedBody = await request.json()
+        return HttpResponse.json({ firstName: 'Anna', lastName: 'Neu', steuerId: null, steuernummer: null }, { status: 200 })
+      }),
+    )
+    renderProfil()
+    await screen.findByText('Anna Beispiel')
+    fireEvent.click(screen.getByText('Bearbeiten'))
+
+    fireEvent.change(screen.getByDisplayValue('Beispiel'), { target: { value: 'Neu' } })
+    fireEvent.click(screen.getByText('Speichern'))
+
+    await screen.findByText('Anna Neu')
+    expect(receivedBody).toEqual({ firstName: 'Anna', lastName: 'Neu' })
+    expect(screen.getByText('Gespeichert.')).toBeTruthy()
   })
 
   it('saves via PUT /v1/profile and returns to the view state reflecting the server response', async () => {

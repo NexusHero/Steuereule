@@ -132,6 +132,20 @@ describe('PROFILE /v1/profile — real Postgres', () => {
     await expect(prisma.profile.count()).resolves.toBe(1)
   })
 
+  it('ADR-0045 — PUT without steuerId stores NULL (not an encrypted blank) and reads back as null, name kept', async () => {
+    const { steuerId: _skipped, ...withoutSteuerId } = VALID_PAYLOAD
+    const put = await app.inject({ method: 'PUT', url: '/v1/profile', payload: withoutSteuerId })
+    expect(put.statusCode).toBe(200)
+    const cookie = extractSessionCookie(put.headers['set-cookie'])!
+
+    const raw = await prisma.$queryRaw<{ steuerId: string | null }[]>`SELECT "steuerId" FROM "Profile"`
+    expect(raw).toEqual([{ steuerId: null }])
+
+    const get = await app.inject({ method: 'GET', url: '/v1/profile', headers: { cookie } })
+    expect(get.statusCode).toBe(200)
+    expect(get.json()).toEqual({ ...withoutSteuerId, steuerId: null })
+  })
+
   it('an invalid payload (10-digit steuerId) returns 400 and writes zero rows', async () => {
     const response = await app.inject({
       method: 'PUT',

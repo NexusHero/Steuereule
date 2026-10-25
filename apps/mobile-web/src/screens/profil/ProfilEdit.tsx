@@ -26,7 +26,9 @@ export function ProfilEdit({ draft, onChange, onSave, onCancel, isSaving, saveEr
   const styles = makeProfilStyles(t)
   const idDigits = countDigits(draft.steuerId)
   const steuerIdOk = isValidSteuerId(draft.steuerId.replace(/\D/g, ''))
-  const canSave = draft.vorname.trim() !== '' && draft.nachname.trim() !== '' && steuerIdOk
+  // ADR-0045: the Steuer-ID is OPTIONAL (null = "not given yet") — the save must not require it.
+  // The server validates it only when present; the confirmed-sticker below is the display side.
+  const canSave = draft.vorname.trim() !== '' && draft.nachname.trim() !== ''
 
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} keyboardShouldPersistTaps="handled" testID="screen-container">

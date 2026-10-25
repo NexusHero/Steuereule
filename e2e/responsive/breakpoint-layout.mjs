@@ -96,6 +96,11 @@ const COPY = {
   registrierungPasswordPlaceholder: 'Mindestens 6 Zeichen',
   registrierungSubmit: 'Konto anlegen',
   registrierungSuccessCta: 'Weiter zum Onboarding →',
+  // ADR-0045 (value-first funnel): a guest lands in the Minimal-Gate, then the Konto-Wand.
+  job: 'Angestellt',
+  nein: 'Nein',
+  kinder: '2 oder mehr',
+  kontoWandLater: 'Später — erst mal ins Cockpit',
 }
 
 function requireEnv(name) {
@@ -282,22 +287,26 @@ async function skipSplash(page) {
 }
 
 async function continueAsGuestThroughOnboarding(page) {
+  // ADR-0045 (value-first funnel): the guest no longer lands on Onboarding — the funnel is
+  // Minimal-Gate (three answers) -> Konto-Wand -> "Später" -> Cockpit. The helper name stays
+  // (its three call sites only need "a fresh guest session reaches the Cockpit"), but the
+  // walk is the funnel's.
   await page.getByText(COPY.guest).click()
 
-  // Step 1 — name
-  await page.getByPlaceholder(COPY.firstNamePlaceholder).fill('Kim')
-  await page.getByPlaceholder(COPY.lastNamePlaceholder).fill('Yilmaz')
-  await page.getByRole('button', { name: COPY.weiter }).click()
+  // Minimal-Gate: job -> ausland -> kinder (the funnel's guest may answer Segment 1).
+  await page.getByText(COPY.job).waitFor({ state: 'visible', timeout: 10_000 })
+  await page.getByText(COPY.job).click()
+  // The gate answers are clicked with `force: true`: this is a LAYOUT-measurement gate, not an
+  // interaction-fidelity gate (the interaction logic is pinned by the jsdom suites). At the `m`/
+  // `l` breakpoints Playwright's stability check has been observed to never settle (the harness
+  // sets those viewports in two resize steps, and the shell re-lays out while the breakpoint hook
+  // settles) — the buttons themselves are fine.
+  await page.getByText(COPY.nein).click({ force: true }) // ausland: no gate
+  await page.getByText(COPY.kinder).click({ force: true }) // completes the Minimal-Gate
 
-  // Step 2 — Steuer-ID (any shape-valid 11-digit value; @steuereule/core's own rule)
-  await page.getByPlaceholder(COPY.steuerIdPlaceholder).fill('12345678901')
-  await page.getByRole('button', { name: COPY.weiter }).click()
-
-  // Step 3 — Steuernummer, skipped via the DS's own "later" idiom (Chip)
-  await page.getByText(COPY.steuerNrLater).click()
-
-  // Summary — submit (real PUT /v1/profile)
-  await page.getByRole('button', { name: COPY.weiter }).click()
+  // Konto-Wand — the honest next step for a guest; "Später" reaches the Cockpit.
+  await page.getByText(COPY.kontoWandLater).waitFor({ state: 'visible', timeout: 10_000 })
+  await page.getByText(COPY.kontoWandLater).click()
 }
 
 async function measureCockpitLoadError(browser, width, label) {
@@ -322,7 +331,11 @@ async function measureCockpitEmpty(browser, width, label) {
   try {
     const page = await context.newPage()
     await skipSplash(page)
-    await continueAsGuestThroughOnboarding(page)
+    // ADR-0045: the guest lands in the Minimal-Gate; the Cockpit tab is reachable from there
+    // WITHOUT answering (the tab bar stays visible) — that is the genuinely fresh, empty state.
+    await page.getByText(COPY.guest).click()
+    await page.getByText(COPY.job).waitFor({ state: 'visible', timeout: 10_000 })
+    await page.getByText('Cockpit').click()
     // A fresh guest genuinely has no tax year yet — confirm the Empty state (not
     // Loaded, which would coincidentally pass the same width assertion for an
     // unrelated, already-correct call site and mask a real regression here).

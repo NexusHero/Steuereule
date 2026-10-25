@@ -1,5 +1,5 @@
 // Shared drive sequences used by more than one real-stack gate script — splash dismissal, an
-// out-of-band sign-up, and the onboarding form fill — plus the German copy those sequences need.
+// out-of-band sign-up — plus the German copy those sequences need.
 //
 // WHY THIS FILE EXISTS (Musti's #331 review, F6). `session/return-visit.mjs` and
 // `storage/no-client-persistence.mjs` had each grown a byte-identical (or near-identical) copy of
@@ -13,13 +13,11 @@
 // duplicate)." `no-client-persistence.mjs` was the second copy the day it landed; this file is the
 // one canonical version, imported by both callers as of the same change that introduces it.
 //
-// `completeOnboarding` and `fillOnboardingThroughSummary` are two different functions, not one
-// with a flag: `no-client-persistence.mjs` needs to pause AFTER the summary screen is reached but
-// BEFORE the final save submit (its own mid-flow storage checkpoint sits exactly there), while
-// `return-visit.mjs` only ever needs to get through onboarding in one call. `completeOnboarding`
-// is `fillOnboardingThroughSummary` plus that final submit — the shared prefix lives once, the
-// point where a caller needs to stop early is expressed by which function it calls, not by a
-// parameter threading a "stop here" flag through the shared code.
+// `completeOnboarding`/`fillOnboardingThroughSummary` were removed with ADR-0045 (value-first
+// funnel): a guest AND a returning signed-in account go straight to the app — the onboarding walk
+// no longer exists for either of the two callers (registration via the UI is the one remaining
+// onboarding path, and no real-stack gate drives it). Dead drive sequences are deleted, not kept
+// as no-ops — the same ruling the #283/C3 removal note quotes.
 
 import { fail } from './rate-limit.mjs'
 
@@ -28,11 +26,9 @@ export const FLOW_COPY = {
   loginEmailPlaceholder: 'du@beispiel.de',
   loginPasswordPlaceholder: '••••••••',
   loginSubmit: 'Einloggen',
+  // ADR-0045: the onboarding walk is gone for guests/returning accounts; this placeholder is the
+  // SAME string the Profil edit form uses for the first name (i18n `profil.firstNamePlaceholder`).
   onboardingFirstNamePlaceholder: 'Kim',
-  onboardingLastNamePlaceholder: 'Yilmaz',
-  onboardingSteuerIdPlaceholder: '12 345 678 901',
-  onboardingWeiter: 'Weiter',
-  onboardingSteuerNrLater: 'Hab ich nicht zur Hand — später',
   profilTab: 'Profil',
 }
 
@@ -54,24 +50,4 @@ export async function signUpOutOfBand(apiOrigin, webOrigin, email, password) {
     body: JSON.stringify({ name: '', email, password }),
   })
   if (!res.ok) fail(`out-of-band sign-up failed for ${email}: ${res.status} ${await res.text()}`)
-}
-
-/** Fills the onboarding form through the summary screen (name -> Weiter -> Steuer-ID -> Weiter ->
- *  "später" for the Steuernummer) but does NOT submit the final save. Callers that need to inspect
- *  page/storage state before that submit happens (`no-client-persistence.mjs`'s mid-flow
- *  checkpoint) call this directly; `completeOnboarding` below is this plus the final submit. */
-export async function fillOnboardingThroughSummary(page) {
-  await page.getByPlaceholder(FLOW_COPY.onboardingFirstNamePlaceholder).fill('Kim')
-  await page.getByPlaceholder(FLOW_COPY.onboardingLastNamePlaceholder).fill('Yilmaz')
-  await page.getByRole('button', { name: FLOW_COPY.onboardingWeiter }).click()
-  await page.getByPlaceholder(FLOW_COPY.onboardingSteuerIdPlaceholder).fill('12345678901')
-  await page.getByRole('button', { name: FLOW_COPY.onboardingWeiter }).click()
-  await page.getByText(FLOW_COPY.onboardingSteuerNrLater).click()
-}
-
-/** Fills onboarding through the summary (above) and submits the final save — the shape every
- *  caller that just needs to GET THROUGH onboarding, without inspecting anything mid-flow, wants. */
-export async function completeOnboarding(page) {
-  await fillOnboardingThroughSummary(page)
-  await page.getByRole('button', { name: FLOW_COPY.onboardingWeiter }).click()
 }

@@ -33,7 +33,8 @@ export class ProfileService {
     const record = await this.repository.upsert(userId, {
       firstName: dto.firstName.trim(),
       lastName: dto.lastName.trim(),
-      steuerId: dto.steuerId,
+      // ADR-0045: omitted = not given yet → null (PUT replaces the whole profile, same as steuernummer).
+      steuerId: dto.steuerId ?? null,
       steuernummer: dto.steuernummer ?? null,
     })
     return toResponseDto(record)

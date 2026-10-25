@@ -11,6 +11,7 @@
 import { ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Button, Card, HerkunftsChip, Pill, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme, type Breakpoint } from '@steuereule/ui'
+import { FristenBanner } from '../fristen/FristenBanner'
 import { formatEuro, formatEuroRange, UNCERTAINTY_PER_ITEM } from '@steuereule/core'
 import { useCockpitControllerGetCockpitSummary, type CockpitStandDto, type CockpitSummaryDto } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
@@ -25,9 +26,13 @@ export interface CockpitScreenProps {
   readonly onOpenInterview?: () => void
   /** Opens the Bescheidprüfung (REQ-023/ticket 10.3) — same composition-root wiring. */
   readonly onOpenBescheid?: () => void
+  /** Opens the Kapital guided mask + Günstigerprüfung (REQ-025/ticket 10.5) — same wiring. */
+  readonly onOpenKapital?: () => void
+  /** Opens the Vermietung guided mask (REQ-026/ticket 10.6) — same wiring. */
+  readonly onOpenVermietung?: () => void
 }
 
-export function CockpitScreen({ taxYear = CURRENT_TAX_YEAR, onOpenInterview = () => {}, onOpenBescheid = () => {} }: CockpitScreenProps) {
+export function CockpitScreen({ taxYear = CURRENT_TAX_YEAR, onOpenInterview = () => {}, onOpenBescheid = () => {}, onOpenKapital = () => {}, onOpenVermietung = () => {} }: CockpitScreenProps) {
   const bp = useBreakpoint()
   const { t: tr } = useTranslation(APP_NS)
   const query = useCockpitControllerGetCockpitSummary(taxYear)
@@ -50,7 +55,7 @@ export function CockpitScreen({ taxYear = CURRENT_TAX_YEAR, onOpenInterview = ()
   const onRefresh = () => void query.refetch()
 
   if (summary === null) {
-    return <CockpitEmpty taxYear={taxYear} onRefresh={onRefresh} isRefreshing={query.isFetching} onOpenInterview={onOpenInterview} onOpenBescheid={onOpenBescheid} bp={bp} />
+    return <CockpitEmpty taxYear={taxYear} onRefresh={onRefresh} isRefreshing={query.isFetching} onOpenInterview={onOpenInterview} onOpenBescheid={onOpenBescheid} onOpenKapital={onOpenKapital} onOpenVermietung={onOpenVermietung} bp={bp} />
   }
   return (
     <CockpitLoaded
@@ -60,6 +65,8 @@ export function CockpitScreen({ taxYear = CURRENT_TAX_YEAR, onOpenInterview = ()
       isRefreshing={query.isFetching}
       onOpenInterview={onOpenInterview}
       onOpenBescheid={onOpenBescheid}
+      onOpenKapital={onOpenKapital}
+      onOpenVermietung={onOpenVermietung}
       bp={bp}
     />
   )
@@ -83,16 +90,21 @@ interface CockpitEmptyProps {
   readonly isRefreshing: boolean
   readonly onOpenInterview: () => void
   readonly onOpenBescheid: () => void
+  readonly onOpenKapital: () => void
+  readonly onOpenVermietung: () => void
   readonly bp: Breakpoint
 }
 
-function CockpitEmpty({ taxYear, onRefresh, isRefreshing, onOpenInterview, onOpenBescheid, bp }: CockpitEmptyProps) {
+function CockpitEmpty({ taxYear, onRefresh, isRefreshing, onOpenInterview, onOpenBescheid, onOpenKapital, onOpenVermietung, bp }: CockpitEmptyProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
       <Appbar taxYear={taxYear} />
+      {/* REQ-027 (ticket 10.7) — der Fristen-Warnmodus: ein Banner, NIE ein Status (ADR-0039);
+          rendert nichts bei `keine`. */}
+      <FristenBanner taxYear={taxYear} />
       <View style={styles.emptyBlock}>
         <Text style={styles.heading}>{tr('cockpit.empty.heading')}</Text>
         <Text style={styles.help}>{tr('cockpit.empty.message')}</Text>
@@ -104,6 +116,12 @@ function CockpitEmpty({ taxYear, onRefresh, isRefreshing, onOpenInterview, onOpe
         </Button>
         <Button variante="ghost" onPress={onOpenBescheid} style={styles.secondaryCta}>
           {tr('cockpit.checkBescheid')}
+        </Button>
+        <Button variante="ghost" onPress={onOpenKapital} style={styles.secondaryCta}>
+          {tr('cockpit.checkKapital')}
+        </Button>
+        <Button variante="ghost" onPress={onOpenVermietung} style={styles.secondaryCta}>
+          {tr('cockpit.checkVermietung')}
         </Button>
         <Button variante="ghost" onPress={onRefresh} disabled={isRefreshing} style={styles.secondaryCta}>
           {isRefreshing ? tr('cockpit.refreshing') : tr('cockpit.refresh')}
@@ -120,10 +138,12 @@ interface CockpitLoadedProps {
   readonly isRefreshing: boolean
   readonly onOpenInterview: () => void
   readonly onOpenBescheid: () => void
+  readonly onOpenKapital: () => void
+  readonly onOpenVermietung: () => void
   readonly bp: Breakpoint
 }
 
-function CockpitLoaded({ summary, taxYear, onRefresh, isRefreshing, onOpenInterview, onOpenBescheid, bp }: CockpitLoadedProps) {
+function CockpitLoaded({ summary, taxYear, onRefresh, isRefreshing, onOpenInterview, onOpenBescheid, onOpenKapital, onOpenVermietung, bp }: CockpitLoadedProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
@@ -136,6 +156,8 @@ function CockpitLoaded({ summary, taxYear, onRefresh, isRefreshing, onOpenInterv
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
       <Appbar taxYear={taxYear} />
+      {/* REQ-027 (ticket 10.7) — der Fristen-Warnmodus: ein Banner, NIE ein Status (ADR-0039). */}
+      <FristenBanner taxYear={taxYear} />
       <Card variant="nacht">
         <Text style={styles.heroLabel}>{tr('cockpit.hero.label')}</Text>
         {stand.kind === 'gated' ? (
@@ -157,6 +179,20 @@ function CockpitLoaded({ summary, taxYear, onRefresh, isRefreshing, onOpenInterv
         style={styles.secondaryCta}
       >
         {tr('cockpit.checkBescheid')}
+      </Button>
+      <Button
+        variante="ghost"
+        onPress={onOpenKapital}
+        style={styles.secondaryCta}
+      >
+        {tr('cockpit.checkKapital')}
+      </Button>
+      <Button
+        variante="ghost"
+        onPress={onOpenVermietung}
+        style={styles.secondaryCta}
+      >
+        {tr('cockpit.checkVermietung')}
       </Button>
       <Button
         variante={hasOpenItems ? 'ghost' : 'primaer'}

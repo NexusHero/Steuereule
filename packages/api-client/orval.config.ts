@@ -217,10 +217,63 @@ export default defineConfig({
       },
     },
   },
+  // REQ-025 (ticket 10.5) — the Kapital guided mask + depot-Einordnung + the § 32d Abs. 6
+  // Günstigerprüfung: GET the re-entry state, PUT the Kapitalerträge field, GET the bounded
+  // comparison. Same `kapital` OpenAPI tag all three endpoints share.
+  kapital: {
+    input: { target: '../../apps/api/openapi.json', filters: { tags: ['kapital'] } },
+    output: {
+      target: './src/generated/kapital.ts',
+      mode: 'split',
+      client: 'react-query',
+      httpClient: 'fetch',
+      mock: true,
+      override: {
+        mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        mock: { required: true },
+      },
+    },
+  },
   bescheid: {
     input: { target: '../../apps/api/openapi.json', filters: { tags: ['bescheid'] } },
     output: {
       target: './src/generated/bescheid.ts',
+      mode: 'split',
+      client: 'react-query',
+      httpClient: 'fetch',
+      mock: true,
+      override: {
+        mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        mock: { required: true },
+      },
+    },
+  },
+  // REQ-026 (ticket 10.6) — the Vermietung guided mask + fold (several objects, each an
+  // Anlage V): GET the re-entry state, POST a fresh object, PUT one field. Same `vermietung`
+  // OpenAPI tag all three endpoints share.
+  vermietung: {
+    input: { target: '../../apps/api/openapi.json', filters: { tags: ['vermietung'] } },
+    output: {
+      target: './src/generated/vermietung.ts',
+      mode: 'split',
+      client: 'react-query',
+      httpClient: 'fetch',
+      mock: true,
+      override: {
+        mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        // `VermietungFeldDto.wert` and the nullable fakten fields (`einnahmen`/`werbungskosten`/
+        // `afa` are `| null`, never `undefined` — nullable, not optional) need every mocked
+        // property populated — same override the interview/rente targets carry.
+        mock: { required: true },
+      },
+    },
+  },
+  // REQ-027 (ticket 10.7) — the Fristen-/Verspätungszuschlag-Warnmodus: GET the honest
+  // Fristen-Fakt (ADR-0039). Same `fristen` OpenAPI tag the one endpoint carries.
+  fristen: {
+    input: { target: '../../apps/api/openapi.json', filters: { tags: ['fristen'] } },
+    output: {
+      target: './src/generated/fristen.ts',
       mode: 'split',
       client: 'react-query',
       httpClient: 'fetch',

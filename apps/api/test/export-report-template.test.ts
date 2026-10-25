@@ -155,6 +155,13 @@ describe('buildExportReportHtml — HTML-injection escaping (T1, every user-cont
     expect(html).toContain('—')
   })
 
+  it('a profile with steuerId: null (ADR-0045 — not given yet) renders the "—" row, never "null"', () => {
+    const document = baseDocument({ profile: { ...baseDocument().profile!, steuerId: null, steuernummer: '18181508155' } })
+    const html = buildExportReportHtml(document)
+    expect(html).toMatch(/Steuerliche Identifikationsnummer<\/th><td>—<\/td>/)
+    expect(html).not.toContain('>null<')
+  })
+
   it('a document with no saved Profile (null) still renders safely — no crash, honest-empty branch taken', () => {
     const document = baseDocument({ profile: null, account: { ...baseDocument().account, name: SCRIPT_PAYLOAD } })
     const html = buildExportReportHtml(document)

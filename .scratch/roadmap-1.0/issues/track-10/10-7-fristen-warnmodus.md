@@ -11,8 +11,14 @@ eigene Fristen; das Warnmodell teilt sich den Jahr-/Frist-Begriff).
 
 **Status:** ready-for-agent
 
-- [ ] Abgabefrist je Steuerjahr bestimmt (Regelwerk pro Jahr, ADR-022) — nie „aktuelle" Werte
-- [ ] Warnbanner ab 60 Tage vor Frist, mit Betrags-/Frist-Angabe, nüchtern (ADR-023)
-- [ ] Verpasste Frist: `entwurf` + Banner, KEIN `verspätet`-Status (Entwurf 0039)
+- [x] Abgabefrist je Steuerjahr bestimmt (Regelwerk pro Jahr, ADR-022) — nie „aktuelle" Werte
+- [x] Warnbanner ab 60 Tage vor Frist, mit Betrags-/Frist-Angabe, nüchtern (ADR-023)
+- [x] Verpasste Frist: `entwurf` + Banner, KEIN `verspätet`-Status (Entwurf 0039)
 - [ ] Rückwirkende Jahre (bis 4) bekommen ihre eigenen Fristen (mit 10.8)
-- [ ] TDD, typecheck + lint grün, Posture-Zeile
+- [x] TDD, typecheck + lint grün, Posture-Zeile
+
+**Register-REQ: `REQ-027`** (nächste freie Nummer nach 024; 10.5/10.6 belegen 025/026 auf den
+Parallel-Branches — beim Merge prüfen, REQ-Nummern sind stabil und werden nie wiederverwendet).
+**ADR-0047** (Fristen-Warnmodus, Draft — Promotion im Ticket-Review; 0046/0048 gehören
+10.6/10.5 auf den Parallel-Branches, 0045 ist vom Value-First-Funnel belegt). Rückwirkende
+Jahre (Häkchen 4) sind explizit MIT 10.8 — hier nicht gebaut.

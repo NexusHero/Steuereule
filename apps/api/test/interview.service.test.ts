@@ -1,15 +1,17 @@
 // Fast, no-DB unit tier (ADR-0004): InterviewService against FakeInterviewAnswerRepository
 // + FakeAuditRepository. Mirrors profile.service.test.ts/cockpit.service.test.ts.
 //
-// The full HTTP + real-account-session + real-Postgres proof (guard wiring, 401 for a
-// guest, ciphertext at rest, TaxYear.openItems) lives in
-// test/acceptance/req-015-minimal-gate.test.ts — @RequiresAccount() needs a genuine
-// better-auth session, which this fast tier has no honest way to fabricate. This file
+// The full HTTP + real-account-session + real-Postgres proof (guest vs. account wiring,
+// ciphertext at rest, TaxYear.openItems) lives in
+// test/acceptance/req-015-minimal-gate.test.ts — a genuine better-auth session is something
+// this fast tier has no honest way to fabricate. The ADR-0045 guest split itself (which
+// entries a guest may use) is pure service logic and is covered below. This file
 // covers the admission logic (#318 P2) and response shapes at the service layer, where
 // a real Postgres round-trip buys nothing extra.
 import { beforeEach, describe, expect, it } from 'vitest'
 import { GATE_ACKNOWLEDGED } from '@steuereule/core'
 import { AuditService } from '../src/audit/audit.service.js'
+import { GuestCannotUseThisEndpointError } from '../src/auth/requires-account.guard.js'
 import { InvalidAnswerValueError, InterviewService, UnreachableAnswerError } from '../src/interview/interview.service.js'
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
 import { FakeInterviewAnswerRepository } from './fakes/fake-interview-answer.repository.js'
@@ -259,6 +261,38 @@ describe('InterviewService', () => {
       ).rejects.toBeInstanceOf(UnreachableAnswerError)
 
       expect(repository.writes).toEqual([])
+    })
+  })
+
+  describe('ADR-0045 — guests may use the Minimal-Gate only', () => {
+    it('a guest reads and answers the Minimal-Gate exactly like an account', async () => {
+      await expect(service.getState(USER_ID, STEUERJAHR, undefined, 'guest')).resolves.toEqual({
+        answers: {},
+        nextStep: { kind: 'question', id: 'job' },
+        openItems: 3,
+      })
+      await expect(service.postAnswer(USER_ID, STEUERJAHR, { questionId: 'job', value: 'Angestellt' }, 'guest')).resolves.toEqual({
+        nextStep: { kind: 'question', id: 'ausland' },
+        openItems: 2,
+      })
+    })
+
+    it('a guest is refused any other catalogue entry on GET, before storage is read', async () => {
+      await expect(service.getState(USER_ID, STEUERJAHR, 'lebenslagen', 'guest')).rejects.toBeInstanceOf(GuestCannotUseThisEndpointError)
+      expect(auditRepository.all()).toEqual([])
+    })
+
+    it('a guest is refused a write to any other catalogue entry, and nothing is persisted', async () => {
+      repository.seed(USER_ID, STEUERJAHR, { job: 'Angestellt', ausland: 'Nein', kinder: 'Nein' })
+      await expect(service.postAnswer(USER_ID, STEUERJAHR, { questionId: 'dhf', value: 'Nein' }, 'guest')).rejects.toBeInstanceOf(
+        GuestCannotUseThisEndpointError,
+      )
+      const state = await service.getState(USER_ID, STEUERJAHR)
+      expect(state.answers).toEqual({ job: 'Angestellt', ausland: 'Nein', kinder: 'Nein' })
+    })
+
+    it('an unknown entry is still a 400 for a guest, not masked as a 401', async () => {
+      await expect(service.getState(USER_ID, STEUERJAHR, 'nope', 'guest')).rejects.toThrow('is not a known catalogue entry')
     })
   })
 })

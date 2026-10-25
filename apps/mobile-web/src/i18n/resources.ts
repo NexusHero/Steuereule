@@ -180,7 +180,7 @@ export const appResources = {
           titleBefore: 'Wer bist ',
           titleMark: 'du',
           titleAfter: '?',
-          help: 'Genau wie im Ausweis — damit die Maske exakt stimmt.',
+          help: 'Genau wie im Perso — damit beim Finanzamt alles passt.',
           firstNameLabel: 'Vorname',
           firstNamePlaceholder: 'Kim',
           lastNameLabel: 'Nachname',
@@ -195,6 +195,7 @@ export const appResources = {
           placeholder: '12 345 678 901',
           counter: '{{count}}/11 Ziffern',
           confirmed: 'sitzt ✓',
+          later: 'Hab ich gerade nicht da — später im Profil',
         },
         step3: {
           titleBefore: 'Noch die ',
@@ -215,6 +216,7 @@ export const appResources = {
           rowSteuerId: 'Steuer-ID',
           rowSteuerNr: 'Steuernummer',
           steuerNrLater: 'später',
+          steuerIdLater: 'später',
           cta: 'Weiter',
           submitting: 'Wird gespeichert …',
           submitError: {
@@ -228,6 +230,30 @@ export const appResources = {
       // #238 — the match-verification screen a phone lands on after opening the QR/link
       // (`/device?user_code=…`). Match-verification, not one-tap: the question is whether
       // the code is currently on the *other* screen, never "approve?".
+      funnel: {
+        kontoWand: {
+          sticker: 'Weg gefunden',
+          titleBefore: 'Dein Weg: ',
+          titleAfter: '',
+          pfad: { angestellte: 'Angestellte', rente: 'Rente', ch: 'Grenzgänger CH' },
+          help: 'Drei Antworten, und wir wissen, welche Erklärung zu dir passt. So geht es weiter:',
+          nextLabel: 'Als Nächstes',
+          schritte: {
+            lstb: 'Lohnsteuerbescheinigung abtippen oder scannen',
+            lebenslagen: 'Umzug, Nebenjob, Abfindung? Kurz abhaken',
+            sonderausgaben: 'Spenden, Versicherungen, Riester',
+            rentenbescheid: 'Rentenbezugsmitteilung übernehmen',
+            kvpv: 'Kranken- und Pflegeversicherung prüfen',
+            lohnausweis: 'Schweizer Lohnausweis übernehmen',
+            nichtrueckkehrtage: 'Nichtrückkehrtage zählen',
+          },
+          honest: 'Eine Erstattung zeigen wir erst, wenn wir sie wirklich rechnen können — nicht vorher.',
+          register: 'Konto anlegen und weitermachen',
+          login: 'Ich hab schon ein Konto',
+          later: 'Später — erst mal ins Cockpit',
+          note: 'Deine Antworten wandern mit ins Konto. Bis dahin liegen sie verschlüsselt in deiner Gast-Sitzung.',
+        },
+      },
       device: {
         sessionChecking: 'Wir prüfen deine Anmeldung …',
         // #349 — distinct from both `missingCode` (we know there's no code) and the embedded
@@ -635,6 +661,102 @@ export const appResources = {
         },
         weiter: 'Weiter',
       },
+      // REQ-025 (ticket 10.5) — the Kapital guided mask + § 32d Abs. 6 Günstigerprüfung
+      // (product ADR-032, Anlage KAP). The depot kinds are the server-derived Einordnung;
+      // only the labels live here (ADR-0033).
+      kapital: {
+        back: 'Zurück',
+        heading: 'Kapital & Depot',
+        help: 'Übertrag deine Kapitalerträge aus der Jahressteuerbescheinigung deiner Bank.',
+        loading: 'Deine Kapitalerträge werden geladen …',
+        loadError: {
+          heading: 'Das hat nicht geklappt.',
+          message: 'Deine Kapitalerträge konnten nicht geladen werden. Prüf die Verbindung und versuch es noch mal.',
+          retry: 'Noch mal versuchen',
+        },
+        depot: {
+          deutscherBroker: 'Deine Bank hat Abgeltungsteuer einbehalten. Unten rechnen wir ehrlich nach, ob die Abgeltungsteuer oder dein persönlicher Steuersatz günstiger ist.',
+          auslaendischerBroker: 'Ausländischer Broker: Es wurde keine deutsche Steuer abgeführt. Diese Kapitalerträge musst du in Anlage KAP erklären — sie werden mit deinem persönlichen Steuersatz versteuert. Wir erfinden hier keine Abgeltungsteuer.',
+          krypto: 'Krypto bleibt in 1.0 ehrlich außen vor: Haltefristen und Anschaffungskosten rechnen wir noch nicht. Kein halbes Feature.',
+          unbekannt: 'Sag uns im Interview zuerst, ob dein Depot bei einem deutschen oder ausländischen Broker liegt.',
+        },
+        feld: {
+          label: 'Kapitalerträge (Einkünfte aus Kapitalvermögen)',
+          placeholder: 'Ganzzahliger Wert',
+          unklar: 'unlesbar',
+        },
+        posten: {
+          heading: 'Deine Kapitalerträge',
+          herkunft: 'Eingabe aus deiner Jahressteuerbescheinigung',
+          offen: 'Noch nicht ermittelbar — trag deine Kapitalerträge ein.',
+        },
+        guenstigerpruefung: {
+          heading: 'Günstigerprüfung (§ 32d Abs. 6 EStG)',
+          eindeutigAbgeltung: 'Die Abgeltungsteuer ist günstiger.',
+          eindeutigPersoenlich: 'Dein persönlicher Steuersatz ist günstiger.',
+          zuKnapp: 'Zu knapp, um das zu sagen.',
+          unbestimmt: 'Das können wir noch nicht sagen.',
+          abgeltung: 'Abgeltungsteuer (25 % + Soli)',
+          persoenlich: 'Persönlicher Steuersatz (Tarif)',
+          progressionsvorbehaltHinweis: 'Ehrlich: der Progressionsvorbehalt (Lohnersatz) ist hier noch nicht berücksichtigt.',
+          keineAbgeltungEinbehalten: 'Keine Abgeltungsteuer einbehalten — die Günstigerprüfung stellt sich hier nicht.',
+          kryptoGegated: 'Krypto bleibt 2.0 — keine Günstigerprüfung für Krypto.',
+          kapDepotNichtBeantwortet: 'Erst die Depot-Frage im Interview beantworten — dann wissen wir, ob die Günstigerprüfung anwendbar ist.',
+          keineKapitalertraege: 'Trag zuerst deine Kapitalerträge ein — dann rechnen wir den Vergleich.',
+        },
+        weiter: 'Weiter',
+      },
+      // REQ-026 (ticket 10.6) — the Vermietung guided mask (product ADR-033, Anlage V einfach).
+      vermietung: {
+        back: 'Zurück',
+        heading: 'Deine Vermietung',
+        help: 'Erfass deine ganzjährig vermieteten Objekte — je Objekt eine Anlage V mit linearer AfA.',
+        loading: 'Deine Vermietung wird geladen …',
+        loadError: {
+          heading: 'Das hat nicht geklappt.',
+          message: 'Deine Vermietung konnte nicht geladen werden. Prüf die Verbindung und versuch es noch mal.',
+          retry: 'Noch mal versuchen',
+        },
+        einordnung: {
+          berechenbar: 'Ganzjährig vermietete Objekte rechnen wir: je Objekt eine Anlage V, lineare AfA nach § 7 Abs. 4 EStG.',
+          verkaufOderMoebliert: 'Verkauf oder möbliert-auf-Zeit bleibt in 1.0 ehrlich außen vor: Fristen und Abgrenzung rechnen wir noch nicht. Kein halbes Feature.',
+          unbekannt: 'Sag uns im Interview zuerst, ob du vermietest — und ob du verkauft oder möbliert-auf-Zeit vermietest.',
+        },
+        felder: {
+          mieteinnahmen: 'Mieteinnahmen (Jahreskaltmiete)',
+          anschaffungskosten: 'Anschaffungskosten (Gebäudeanteil)',
+          baujahr: 'Baujahr (Fertigstellung)',
+          werbungskosten: 'Laufende Werbungskosten',
+        },
+        feld: {
+          placeholder: 'Ganzzahliger Wert',
+          unklar: 'unlesbar',
+        },
+        objektHeading: 'Objekt {{index}}',
+        addObjekt: 'Weiteres Objekt hinzufügen',
+        fakten: {
+          leer: 'Noch nichts erfasst — trag die Felder ein.',
+          miete: 'Mieteinnahmen: {{betrag}}',
+          werbungskosten: 'Werbungskosten: {{betrag}}',
+          afa: 'Lineare AfA: {{betrag}}',
+          offen: 'Noch offen: {{count}} Angabe(n) fehlen.',
+        },
+        stand: {
+          heading: 'Summe über alle Objekte',
+          einnahmen: 'Mieteinnahmen: {{betrag}}',
+          werbungskosten: 'Werbungskosten: {{betrag}}',
+          afa: 'Lineare AfA: {{betrag}}',
+          offen: 'Noch offen: {{count}} Angabe(n) — die Summen zeigen nur das Erfasste.',
+          gated: 'Ehrlich: Verkauf oder möbliert rechnen wir in 1.0 noch nicht.',
+        },
+        weiter: 'Weiter',
+      },
+      // REQ-027 (ticket 10.7) — der Fristen-Warnmodus (§ 149/§ 152 AO). Nüchtern (ADR-023),
+      // ein Banner, NIE ein Status (ADR-0039).
+      fristen: {
+        warnung: 'Abgabefrist: {{frist}} (noch {{tage}} Tage). Bei Verspätung fällt ein Verspätungszuschlag an — mindestens {{mindestsatz}} pro Monat (§ 152 AO).',
+        abgelaufen: 'Die Abgabefrist {{frist}} ist um {{tage}} Tage überschritten. Verspätungszuschlag (§ 152 AO): mindestens {{mindestsatz}} pro Monat — reich die Erklärung bald ein.',
+      },
       // REQ-017 (ticket 08) — the on-demand catalogue (Lebenslagen + Sonderausgaben), walked by
       // the same engine as the Minimal-Gate. Question ids are the German domain vocabulary;
       // only the labels live here (the values persist byte-equal, ADR-0033).
@@ -763,6 +885,8 @@ export const appResources = {
         answerQuestions: 'Fragen beantworten',
         // REQ-023 — the Bescheidprüfung entry (eigener Bereich, ticket 10.3).
         checkBescheid: 'Bescheid prüfen',
+        checkKapital: 'Kapital & Depot prüfen',
+        checkVermietung: 'Vermietung prüfen',
       },
       // Ticket 10 (Phase 2, Slice 1) — Beleg-Posteingang (ADR-007/008). The upload affordance is
       // deliberately a HONEST placeholder, not a scan/PDF button: binary storage is a follow-up
@@ -1114,6 +1238,7 @@ export const appResources = {
           placeholder: '12 345 678 901',
           counter: '{{count}}/11 digits',
           confirmed: 'locked in ✓',
+          later: "Don't have it right now — add it later in Profile",
         },
         step3: {
           titleBefore: 'Now the ',
@@ -1134,6 +1259,7 @@ export const appResources = {
           rowSteuerId: 'Steuer-ID',
           rowSteuerNr: 'Steuernummer',
           steuerNrLater: 'later',
+          steuerIdLater: 'later',
           cta: 'Continue',
           submitting: 'Saving …',
           submitError: {
@@ -1142,6 +1268,30 @@ export const appResources = {
           },
           changeDetails: 'Edit details',
           footerNote: 'Saved securely — you can come back to it any time.',
+        },
+      },
+      funnel: {
+        kontoWand: {
+          sticker: 'Path found',
+          titleBefore: 'Your path: ',
+          titleAfter: '',
+          pfad: { angestellte: 'Employee', rente: 'Pension', ch: 'Swiss cross-border' },
+          help: 'Three answers, and we know which return fits you. Here is what comes next:',
+          nextLabel: 'Up next',
+          schritte: {
+            lstb: 'Type in or scan your Lohnsteuerbescheinigung',
+            lebenslagen: 'Moved, side job, severance? Tick it off',
+            sonderausgaben: 'Donations, insurance, Riester',
+            rentenbescheid: 'Take over your pension statement',
+            kvpv: 'Check health and care insurance',
+            lohnausweis: 'Take over your Swiss Lohnausweis',
+            nichtrueckkehrtage: 'Count your non-return days',
+          },
+          honest: 'We only show a refund once we can actually calculate it — not before.',
+          register: 'Create account and continue',
+          login: 'I already have an account',
+          later: 'Later — take me to the Cockpit',
+          note: 'Your answers move into your account. Until then they sit encrypted in your guest session.',
         },
       },
       device: {
@@ -1499,6 +1649,100 @@ export const appResources = {
         },
         weiter: 'Continue',
       },
+      // REQ-025 (ticket 10.5) — the Kapital guided mask + § 32d Abs. 6 Günstigerprüfung (EN).
+      kapital: {
+        back: 'Back',
+        heading: 'Capital & brokerage',
+        help: 'Copy your capital income from your bank\u2019s annual tax certificate (Jahressteuerbescheinigung).',
+        loading: 'Loading your capital income …',
+        loadError: {
+          heading: "That didn't work.",
+          message: "Your capital income couldn't be loaded. Check your connection and try again.",
+          retry: 'Try again',
+        },
+        depot: {
+          deutscherBroker: 'Your bank withheld withholding tax (Abgeltungsteuer). Below we honestly compare it with your personal tax rate.',
+          auslaendischerBroker: 'Foreign broker: no German tax was withheld. You must declare this income in Anlage KAP — it is taxed at your personal rate. We never invent a withholding tax here.',
+          krypto: 'Crypto honestly stays out of 1.0: holding periods and acquisition costs are not computed yet. No half feature.',
+          unbekannt: 'First tell us in the interview whether your brokerage is German or foreign.',
+        },
+        feld: {
+          label: 'Capital income (Einkünfte aus Kapitalvermögen)',
+          placeholder: 'Whole number',
+          unklar: 'unreadable',
+        },
+        posten: {
+          heading: 'Your capital income',
+          herkunft: 'Entered from your Jahressteuerbescheinigung',
+          offen: 'Not yet determinable — enter your capital income.',
+        },
+        guenstigerpruefung: {
+          heading: 'Günstigerprüfung (§ 32d Abs. 6 EStG)',
+          eindeutigAbgeltung: 'The flat withholding tax is cheaper.',
+          eindeutigPersoenlich: 'Your personal tax rate is cheaper.',
+          zuKnapp: 'Too close to call.',
+          unbestimmt: "We can't say that yet.",
+          abgeltung: 'Withholding tax (25 % + solidarity surcharge)',
+          persoenlich: 'Personal tariff',
+          progressionsvorbehaltHinweis: 'Honestly: the progression proviso (wage replacement benefits) is not factored in yet.',
+          keineAbgeltungEinbehalten: 'No withholding tax was withheld — the comparison does not arise.',
+          kryptoGegated: 'Crypto stays 2.0 — no comparison for crypto.',
+          kapDepotNichtBeantwortet: 'Answer the brokerage question in the interview first — then we know whether the comparison applies.',
+          keineKapitalertraege: 'Enter your capital income first — then we compute the comparison.',
+        },
+        weiter: 'Continue',
+      },
+      // REQ-026 (ticket 10.6) — the Vermietung guided mask (product ADR-033, Anlage V einfach). EN.
+      vermietung: {
+        back: 'Back',
+        heading: 'Your rental property',
+        help: 'Enter your year-round rented objects — one Anlage V each, with linear depreciation.',
+        loading: 'Loading your rental property …',
+        loadError: {
+          heading: "That didn't work.",
+          message: "Your rental property couldn't be loaded. Check your connection and try again.",
+          retry: 'Try again',
+        },
+        einordnung: {
+          berechenbar: 'Year-round rented objects we compute: one Anlage V each, linear depreciation per § 7 Abs. 4 EStG.',
+          verkaufOderMoebliert: 'Sale or furnished short-term rental honestly stays out of 1.0: deadlines and delineation are not computed yet. No half feature.',
+          unbekannt: 'First tell us in the interview whether you rent out property — and whether you sold or rent furnished short-term.',
+        },
+        felder: {
+          mieteinnahmen: 'Rental income (annual cold rent)',
+          anschaffungskosten: 'Acquisition costs (building share)',
+          baujahr: 'Year of construction (completion)',
+          werbungskosten: 'Running income-related expenses',
+        },
+        feld: {
+          placeholder: 'Whole number',
+          unklar: 'unreadable',
+        },
+        objektHeading: 'Object {{index}}',
+        addObjekt: 'Add another object',
+        fakten: {
+          leer: 'Nothing entered yet — fill in the fields.',
+          miete: 'Rental income: {{betrag}}',
+          werbungskosten: 'Income-related expenses: {{betrag}}',
+          afa: 'Linear depreciation: {{betrag}}',
+          offen: 'Still open: {{count}} figure(s) missing.',
+        },
+        stand: {
+          heading: 'Total across all objects',
+          einnahmen: 'Rental income: {{betrag}}',
+          werbungskosten: 'Income-related expenses: {{betrag}}',
+          afa: 'Linear depreciation: {{betrag}}',
+          offen: 'Still open: {{count}} figure(s) — the totals show only what was entered.',
+          gated: 'Honestly: sale or furnished short-term rental is not computed in 1.0.',
+        },
+        weiter: 'Continue',
+      },
+      // REQ-027 (ticket 10.7) — the deadline warning mode (§ 149/§ 152 AO). Sober (ADR-023),
+      // a banner, NEVER a status (ADR-0039).
+      fristen: {
+        warnung: 'Filing deadline: {{frist}} ({{tage}} days left). Late filing incurs a late-filing surcharge — at least {{mindestsatz}} per month (§ 152 AO).',
+        abgelaufen: 'The filing deadline {{frist}} passed {{tage}} days ago. Late-filing surcharge (§ 152 AO): at least {{mindestsatz}} per month — file soon.',
+      },
       katalog: {
         back: 'Back',
         loading: 'Loading …',
@@ -1610,6 +1854,8 @@ export const appResources = {
         refreshing: 'Refreshing …',
         answerQuestions: 'Answer questions',
         checkBescheid: 'Review assessment',
+        checkKapital: 'Review capital & brokerage',
+        checkVermietung: 'Review rental property',
       },
       // Ticket 10 (Phase 2, Slice 1) — Beleg-Posteingang (ADR-007/008). See the `de` block for
       // why the upload affordance is an honest placeholder, not a fake scan button.

@@ -19,9 +19,13 @@ import {
   getChLohnausweisControllerSetFeldMockHandler,
   getChLohnausweisControllerSetWechselkursMockHandler,
   getRenteControllerGetMockHandler,
+  getKapitalControllerGetMockHandler,
+  getKapitalControllerGetGuenstigerpruefungMockHandler,
+  getVermietungControllerGetMockHandler,
+  getFristenControllerGetFristenMockHandler,
 } from '@steuereule/api-client/msw'
 import { LOHNAUSWEIS_FELDER } from '@steuereule/core'
-import type { ProfileResponseDto, AuthCapabilitiesDto, DeviceCodeResponseDto, InterviewStateDto, LstbResponseDto, ChLohnausweisResponseDto, RenteResponseDto } from '@steuereule/api-client'
+import type { ProfileResponseDto, AuthCapabilitiesDto, DeviceCodeResponseDto, InterviewStateDto, LstbResponseDto, ChLohnausweisResponseDto, RenteResponseDto, KapitalResponseDto, VermietungResponseDto, FristenResponseDto } from '@steuereule/api-client'
 
 export const EMPTY_PROFILE_RESPONSE: ProfileResponseDto = {
   firstName: null,
@@ -109,6 +113,44 @@ export const EMPTY_RENTE_RESPONSE: RenteResponseDto = {
   stand: { kind: 'offen', einnahmen: 0, vorsorgeaufwand: 0, anrechnung: 0, offenePosten: 1, konflikte: 0, gegated: [] },
 }
 
+/**
+ * Default `GET .../kapital` answer (REQ-025, ticket 10.5): a brand-new tax year with the field
+ * `offen`, no depot answer (`unbekannt`), no posten and an `offen` fold — matching the real
+ * API's honest empty-mask shape, pinned (not the generated faker) for the same reason as
+ * `EMPTY_RENTE_RESPONSE`. The Günstigerprüfung defaults to `null` (no tax year seeded — the
+ * honest empty state).
+ */
+export const EMPTY_KAPITAL_RESPONSE: KapitalResponseDto = {
+  kapitalertraege: { kind: 'offen' },
+  depot: { kind: 'unbekannt' },
+  posten: [],
+  stand: { kind: 'offen', einnahmen: 0, vorsorgeaufwand: 0, anrechnung: 0, offenePosten: 1, konflikte: 0, gegated: [] },
+}
+
+/**
+ * Default `GET .../vermietung` answer (REQ-026, ticket 10.6): a brand-new tax year with no
+ * objects, einordnung unbekannt and an empty fold — matching the real API's honest empty-mask
+ * shape, pinned (not the generated faker) for the same reason as `EMPTY_RENTE_RESPONSE`.
+ */
+export const EMPTY_VERMIETUNG_RESPONSE: VermietungResponseDto = {
+  einordnung: { kind: 'unbekannt' },
+  objekte: [],
+  stand: { kind: 'bestimmt', einnahmen: 0, vorsorgeaufwand: 0, anrechnung: 0, werbungskosten: 0, afa: 0, offenePosten: 0, konflikte: 0 },
+}
+
+/**
+ * Default `GET .../fristen` answer (REQ-027, ticket 10.7): `keine` — the honest no-banner state
+ * (the account is far from the frist), pinned not faked for the same reason as the other
+ * EMPTY_* responses.
+ */
+export const EMPTY_FRISTEN_RESPONSE: FristenResponseDto = {
+  abgabefrist: '2027-07-31',
+  heute: '2026-10-25',
+  stufe: 'keine',
+  verbleibendeTage: 279,
+  verspaetungszuschlag: { mindestsatzEur: 25, prozentProMonat: 0.25 },
+}
+
 export const server = setupServer(
   getProfileControllerGetProfileMockHandler(EMPTY_PROFILE_RESPONSE),
   getProfileControllerPutProfileMockHandler(),
@@ -133,6 +175,21 @@ export const server = setupServer(
   getRenteControllerGetMockHandler(EMPTY_RENTE_RESPONSE),
   http.put('*/v1/steuerjahre/:jahr/rente/art', () => HttpResponse.json(EMPTY_RENTE_RESPONSE, { status: 200 })),
   http.put('*/v1/steuerjahre/:jahr/rente/:feld', () => HttpResponse.json(EMPTY_RENTE_RESPONSE, { status: 200 })),
+  // REQ-025 (ticket 10.5) — the Kapital guided mask + Günstigerprüfung: empty `offen` mask and
+  // a null comparison by default, same "fresh tax year" honesty as the Rente defaults.
+  getKapitalControllerGetMockHandler(EMPTY_KAPITAL_RESPONSE),
+  http.put('*/v1/steuerjahre/:jahr/kapital/:feld', () => HttpResponse.json(EMPTY_KAPITAL_RESPONSE, { status: 200 })),
+  getKapitalControllerGetGuenstigerpruefungMockHandler(null),
+  // REQ-026 (ticket 10.6) — the Vermietung guided mask: empty object list by default, same
+  // "fresh tax year" honesty as the Rente defaults. The POST/PUTs default to a generic 200
+  // (the response body is never asserted by a test that doesn't override it).
+  getVermietungControllerGetMockHandler(EMPTY_VERMIETUNG_RESPONSE),
+  http.post('*/v1/steuerjahre/:jahr/vermietung/objekte', () => HttpResponse.json(EMPTY_VERMIETUNG_RESPONSE, { status: 201 })),
+  http.put('*/v1/steuerjahre/:jahr/vermietung/objekte/:objektId/:feld', () => HttpResponse.json(EMPTY_VERMIETUNG_RESPONSE, { status: 200 })),
+  // REQ-027 (ticket 10.7) — der Fristen-Warnmodus: `keine` by default (the honest no-banner
+  // state, ADR-0039 — a fresh account far from the frist shows nothing), pinned not faked;
+  // banner tests override with `server.use(...)`.
+  getFristenControllerGetFristenMockHandler(EMPTY_FRISTEN_RESPONSE),
   // Default `POST .../interview/antworten` answer: a generic 200 — InterviewScreen renders the
   // next step from the local graph, not from this response body (#318 task 2's own "the graph
   // stays local" brief), so the exact `nextStep`/`openItems` values here are never asserted on

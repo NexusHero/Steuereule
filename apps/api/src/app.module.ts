@@ -4,15 +4,18 @@ import { AccountModule } from './account/account.module.js'
 import { AuthModule } from './auth/auth.module.js'
 import { BelegModule } from './beleg/beleg.module.js'
 import { BescheidModule } from './bescheid/bescheid.module.js'
+import { FristenModule } from './fristen/fristen.module.js'
 import { ChLohnausweisModule } from './ch-lohnausweis/ch-lohnausweis.module.js'
 import { CockpitModule } from './cockpit/cockpit.module.js'
 import { DeviceModule } from './device/device.module.js'
 import { HealthModule } from './health/health.module.js'
 import { InterviewModule } from './interview/interview.module.js'
+import { KapitalModule } from './kapital/kapital.module.js'
 import { LstbModule } from './lstb/lstb.module.js'
 import { ProfileModule } from './profile/profile.module.js'
 import { RenteModule } from './rente/rente.module.js'
 import { VeranlagungsartenvergleichModule } from './veranlagungsartenvergleich/veranlagungsartenvergleich.module.js'
+import { VermietungModule } from './vermietung/vermietung.module.js'
 
 @Module({
   imports: [
@@ -29,12 +32,14 @@ import { VeranlagungsartenvergleichModule } from './veranlagungsartenvergleich/v
     LstbModule,
     ChLohnausweisModule,
     RenteModule,
+    KapitalModule,
     BelegModule,
     BescheidModule,
     AccountModule,
     DeviceModule,
     HealthModule,
     VeranlagungsartenvergleichModule,
-  ],
+    VermietungModule,
+    FristenModule,  ],
 })
 export class AppModule {}

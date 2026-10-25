@@ -1,7 +1,8 @@
 // Application logic for the interview catalogue (#318 REQ-015 Minimal-Gate; R2 — the on-demand
 // catalogue entries: Segment 2 + Lebenslagen + Sonderausgaben, ticket 08). userId+steuerjahr-scoped
 // read/write, then the graph -> response mapping. Trusts that `userId` was produced by
-// UserContextGuard + @RequiresAccount() (never accepts it from a param/body) — mirrors
+// UserContextGuard (never accepts it from a param/body); since ADR-0045 a guest may use the
+// Minimal-Gate, every other entry still requires an account (assertGuestMayUse) — mirrors
 // ProfileService/CockpitService's shape.
 //
 // The ONLY graph consulted here is @steuereule/core's (ADR-0033) — entryForStep/isReachableFor/
@@ -23,6 +24,8 @@ import {
   type EntryId,
 } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
+import { GuestCannotUseThisEndpointError } from '../auth/requires-account.guard.js'
+import type { UserIdKind } from '../auth/user-context.guard.js'
 import {
   INTERVIEW_ANSWER_REPOSITORY,
   type InterviewAnswerRecord,
@@ -64,6 +67,20 @@ function toAnswers(rows: InterviewAnswerRecord[]): Answers {
  */
 const ADMITTED_ENTRY_IDS: readonly EntryId[] = ['minimal-gate', 'lebenslagen', 'sonderausgaben', 'segment-ch']
 
+/**
+ * ADR-0045 (value-first funnel) — the entries a GUEST may read/write. Only the Minimal-Gate:
+ * three questions, before any account exists, so the user sees their path first. Every other
+ * entry feeds an account-only vertical (LStB / CH / Rente) and keeps the account wall — a guest
+ * request for one is a 401, exactly what @RequiresAccount() returned before.
+ */
+const GUEST_ADMITTED_ENTRY_IDS: readonly EntryId[] = ['minimal-gate']
+
+function assertGuestMayUse(kind: UserIdKind, entryId: EntryId): void {
+  if (kind === 'guest' && !GUEST_ADMITTED_ENTRY_IDS.includes(entryId)) {
+    throw new GuestCannotUseThisEndpointError()
+  }
+}
+
 @Injectable()
 export class InterviewService {
   // Explicit tokens — see the comment on ProfileController's constructor.
@@ -72,7 +89,12 @@ export class InterviewService {
     @Inject(AuditService) private readonly auditService: AuditService,
   ) {}
 
-  async getState(userId: string, steuerjahr: number, eintrag?: string): Promise<InterviewStateDto> {
+  async getState(userId: string, steuerjahr: number, eintrag?: string, kind: UserIdKind = 'session'): Promise<InterviewStateDto> {
+    // ADR-0045 — decide the guest split BEFORE touching storage. An unknown id is still the 400
+    // below; only a known, non-Minimal-Gate entry is refused to a guest here.
+    const requestedEntry = eintrag ?? 'minimal-gate'
+    if (Object.hasOwn(ENTRIES, requestedEntry)) assertGuestMayUse(kind, requestedEntry as EntryId)
+
     const rows = await this.repository.findAllForUserAndYear(userId, steuerjahr)
     const answers = toAnswers(rows)
 
@@ -98,7 +120,7 @@ export class InterviewService {
     }
   }
 
-  async postAnswer(userId: string, steuerjahr: number, dto: PostAnswerDto): Promise<PostAnswerResponseDto> {
+  async postAnswer(userId: string, steuerjahr: number, dto: PostAnswerDto, kind: UserIdKind = 'session'): Promise<PostAnswerResponseDto> {
     const rows = await this.repository.findAllForUserAndYear(userId, steuerjahr)
     const answers = toAnswers(rows)
     // R2 — derive the owning entry from the bare questionId (D3) rather than trusting a
@@ -112,6 +134,7 @@ export class InterviewService {
     if (entryId === undefined || !ADMITTED_ENTRY_IDS.includes(entryId)) {
       throw new UnreachableAnswerError(dto.questionId)
     }
+    assertGuestMayUse(kind, entryId)
 
     const entry = ENTRIES[entryId]
     if (!isReachableFor(entry, answers, dto.questionId as never)) throw new UnreachableAnswerError(dto.questionId)

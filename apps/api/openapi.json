@@ -252,7 +252,7 @@
             }
           },
           "401": {
-            "description": "Guest session — this endpoint requires a signed-in account."
+            "description": "Guest session targeting a catalogue entry other than the Minimal-Gate — that requires a signed-in account (ADR-0045)."
           }
         },
         "tags": [
@@ -300,7 +300,7 @@
             "description": "value is not an accepted answer for questionId — nothing was persisted."
           },
           "401": {
-            "description": "Guest session — this endpoint requires a signed-in account."
+            "description": "Guest session targeting a catalogue entry other than the Minimal-Gate — that requires a signed-in account (ADR-0045)."
           },
           "409": {
             "description": "questionId is not reachable given the answers stored so far — nothing was persisted."
@@ -659,6 +659,143 @@
         },
         "tags": [
           "rente"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/kapital": {
+      "get": {
+        "operationId": "KapitalController_get",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr) — validated to a sensible window (ParseSteuerjahrPipe, same as Cockpit).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The caller’s Kapital mask + depot-Einordnung + fold for this tax year — re-entry.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KapitalResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "kapital"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/kapital/{feld}": {
+      "put": {
+        "operationId": "KapitalController_setFeld",
+        "parameters": [
+          {
+            "name": "feld",
+            "required": true,
+            "in": "path",
+            "description": "The Kapital field id (ParseKapitalFeldPipe — today only `kapitalertraege`).",
+            "schema": {
+              "example": "kapitalertraege",
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutKapitalFeldDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated mask and its derived fold.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KapitalResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "kapital"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/kapital/guenstigerpruefung": {
+      "get": {
+        "operationId": "KapitalController_getGuenstigerpruefung",
+        "parameters": [
+          {
+            "name": "kirchensteuerFaktor",
+            "required": false,
+            "in": "query",
+            "description": "§51a EStG Kirchensteuer factor (0, 0.08, 0.09). Defaults to 0 — M1 collects none.",
+            "schema": {
+              "example": 0,
+              "type": "number"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The § 32d Abs. 6 Günstigerprüfung for the given tax year (Abgeltungsteuer vs. persönlicher Satz, ADR-0034-Muster, Einzelveranlagung in M1), or null when no tax year has been seeded yet (the honest empty state, not a 404).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/GuenstigerpruefungDto"
+                    }
+                  ],
+                  "nullable": true
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "kapital"
         ]
       }
     },
@@ -1290,6 +1427,173 @@
           "veranlagungsartenvergleich"
         ]
       }
+    },
+    "/v1/steuerjahre/{jahr}/vermietung": {
+      "get": {
+        "operationId": "VermietungController_get",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr) — validated to a sensible window (ParseSteuerjahrPipe, same as Cockpit).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The caller’s Vermietung objects + fold for this tax year — re-entry.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VermietungResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "vermietung"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/vermietung/objekte": {
+      "post": {
+        "operationId": "VermietungController_create",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr) — validated to a sensible window (ParseSteuerjahrPipe, same as Cockpit).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "A fresh object (all fields offen) was created; the response carries the updated list + fold.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VermietungResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "vermietung"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/vermietung/objekte/{objektId}/{feld}": {
+      "put": {
+        "operationId": "VermietungController_setFeld",
+        "parameters": [
+          {
+            "name": "feld",
+            "required": true,
+            "in": "path",
+            "description": "One of mieteinnahmen | anschaffungskosten | baujahr | werbungskosten (ParseVermietungFeldPipe).",
+            "schema": {
+              "example": "mieteinnahmen",
+              "type": "string"
+            }
+          },
+          {
+            "name": "objektId",
+            "required": true,
+            "in": "path",
+            "description": "The object id (assigned by POST …/objekte).",
+            "schema": {
+              "example": "9c3f…",
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr) — validated to a sensible window (ParseSteuerjahrPipe, same as Cockpit).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutVermietungFeldDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated objects and their derived fold.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VermietungResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "vermietung"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/fristen": {
+      "get": {
+        "operationId": "FristenController_getFristen",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr) — validated to a sensible window (ParseSteuerjahrPipe, same as Cockpit); the Abgabefrist itself throws a 400 for a year outside the per-year Regelwerk (ADR-022).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The honest Fristen-Fakt (ADR-0039) — a banner input, never a tax status. Readable for guests (statutory facts, not user data).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FristenResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "fristen"
+        ]
+      }
     }
   },
   "info": {
@@ -1367,7 +1671,7 @@
           "steuerId": {
             "type": "string",
             "example": "02476291358",
-            "description": "Steuerliche Identifikationsnummer — exactly 11 digits."
+            "description": "Steuerliche Identifikationsnummer — exactly 11 digits if present. Optional since ADR-0045 (value-first funnel): omitted = not given yet, stored as null."
           },
           "steuernummer": {
             "type": "string",
@@ -1377,8 +1681,7 @@
         },
         "required": [
           "firstName",
-          "lastName",
-          "steuerId"
+          "lastName"
         ]
       },
       "ValidationFieldErrorDto": {
@@ -2207,6 +2510,308 @@
           "kind"
         ]
       },
+      "KapitalFeldDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "erfasst",
+              "offen",
+              "unklar"
+            ],
+            "description": "The field’s capture state."
+          },
+          "wert": {
+            "type": "number",
+            "example": 2500,
+            "description": "The value — present only when kind === \"erfasst\" (validated via @steuereule/core)."
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "DepotEinordnungDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "deutscher-broker",
+              "auslaendischer-broker",
+              "krypto",
+              "unbekannt"
+            ],
+            "example": "deutscher-broker",
+            "description": "deutscher-broker = Abgeltungsteuer was withheld (Günstigerprüfung applies); auslaendischer-broker = no German tax withheld — KAP-Pflicht, personal tariff; krypto = gated in 1.0 (product ADR-032 §2); unbekannt = kap-depot not answered."
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "KapitalPostenDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "kapital",
+            "description": "The stable posten id."
+          },
+          "betrag": {
+            "type": "number",
+            "example": 2500,
+            "description": "The Kapitalerträge (whole euros)."
+          },
+          "herkunft": {
+            "type": "string",
+            "example": "eingabe",
+            "description": "The Herkunft (Quelle art) of the amount."
+          }
+        },
+        "required": [
+          "id",
+          "betrag",
+          "herkunft"
+        ]
+      },
+      "KapitalStandDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "bestimmt",
+              "offen"
+            ],
+            "description": "Determined, or open (naming what blocks)."
+          },
+          "einnahmen": {
+            "type": "number",
+            "description": "Sum of Einnahme Posten (whole euros)."
+          },
+          "vorsorgeaufwand": {
+            "type": "number",
+            "description": "Sum of Vorsorgeaufwand Posten (whole euros)."
+          },
+          "anrechnung": {
+            "type": "number",
+            "description": "Sum of Anrechnung Posten (whole euros)."
+          },
+          "offenePosten": {
+            "type": "number",
+            "description": "Required-but-empty line items (only when offen)."
+          },
+          "konflikte": {
+            "type": "number",
+            "description": "Open conflicts (only when offen)."
+          },
+          "gegated": {
+            "description": "Gated Einkunftsarten (only when offen).",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "kind",
+          "einnahmen",
+          "vorsorgeaufwand",
+          "anrechnung"
+        ]
+      },
+      "KapitalResponseDto": {
+        "type": "object",
+        "properties": {
+          "kapitalertraege": {
+            "$ref": "#/components/schemas/KapitalFeldDto"
+          },
+          "depot": {
+            "$ref": "#/components/schemas/DepotEinordnungDto"
+          },
+          "posten": {
+            "description": "The Kapital-Posten (empty while not determinable).",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KapitalPostenDto"
+            }
+          },
+          "stand": {
+            "$ref": "#/components/schemas/KapitalStandDto"
+          }
+        },
+        "required": [
+          "kapitalertraege",
+          "depot",
+          "posten",
+          "stand"
+        ]
+      },
+      "PutKapitalFeldDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "erfasst",
+              "offen",
+              "unklar"
+            ],
+            "description": "The field’s capture state."
+          },
+          "wert": {
+            "type": "number",
+            "example": 2500,
+            "description": "The value — present only when kind === \"erfasst\" (validated via @steuereule/core)."
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "UnschaerfeDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "bestimmt",
+              "unbestimmt"
+            ],
+            "example": "bestimmt"
+          },
+          "obergrenze": {
+            "type": "number",
+            "example": 0,
+            "description": "The computed bound (only when kind === \"bestimmt\")."
+          },
+          "grund": {
+            "type": "string",
+            "enum": [
+              "progressionsvorbehalt-nicht-eingegeben"
+            ],
+            "description": "Why no bound exists (only when kind === \"unbestimmt\")."
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "GuenstigerpruefungHerkunftDto": {
+        "type": "object",
+        "properties": {
+          "kapitalertraege": {
+            "type": "number",
+            "example": 20000,
+            "description": "The Kapitalerträge (whole euros) — the basis of both amounts."
+          },
+          "uebrigesZvE": {
+            "type": "number",
+            "example": 60000,
+            "description": "The übrige zvE-basis (Einnahmen-Basis from @steuereule/core — layer 3 open, no real zvE yet)."
+          },
+          "sparerpauschbetrag": {
+            "type": "number",
+            "example": 1000,
+            "description": "The applied Sparerpauschbetrag (§ 20 Abs. 9 EStG)."
+          },
+          "veranlagung": {
+            "type": "string",
+            "enum": [
+              "einzel",
+              "zusammen"
+            ],
+            "description": "Which Veranlagungsart both amounts compute."
+          },
+          "bestandteile": {
+            "example": [
+              "einkommensteuer",
+              "solidaritaetszuschlag"
+            ],
+            "description": "Which tax components are folded into both amounts.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "kapitalertraege",
+          "uebrigesZvE",
+          "sparerpauschbetrag",
+          "veranlagung",
+          "bestandteile"
+        ]
+      },
+      "GuenstigerpruefungDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "eindeutig",
+              "zu-knapp",
+              "unbestimmt",
+              "nicht-anwendbar"
+            ],
+            "example": "eindeutig"
+          },
+          "empfehlung": {
+            "type": "string",
+            "enum": [
+              "abgeltung",
+              "persoenlich"
+            ],
+            "description": "The recommendation (only when kind === \"eindeutig\")."
+          },
+          "abgeltung": {
+            "type": "number",
+            "example": 4750,
+            "description": "Abgeltungsteuer + Soli + KiSt-Ermäßigung (only when kind !== \"nicht-anwendbar\")."
+          },
+          "persoenlich": {
+            "type": "number",
+            "example": 8482,
+            "description": "The personal (tariff) tax on the capital income (only when kind !== \"nicht-anwendbar\")."
+          },
+          "delta": {
+            "type": "number",
+            "example": 3732,
+            "description": "persoenlich − abgeltung (only when kind !== \"nicht-anwendbar\")."
+          },
+          "unschaerfe": {
+            "description": "The computed margin (only when kind !== \"nicht-anwendbar\").",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UnschaerfeDto"
+              }
+            ]
+          },
+          "herkunft": {
+            "description": "Origin metadata on both numbers (only when kind !== \"nicht-anwendbar\").",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GuenstigerpruefungHerkunftDto"
+              }
+            ]
+          },
+          "grund": {
+            "type": "string",
+            "enum": [
+              "keine-abgeltung-einbehalten",
+              "krypto-gegated",
+              "kap-depot-nicht-beantwortet",
+              "keine-kapitalertraege"
+            ],
+            "description": "Why the Günstigerprüfung does not apply (only when kind === \"nicht-anwendbar\")."
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
       "ZuordnungDto": {
         "type": "object",
         "properties": {
@@ -2308,6 +2913,7 @@
               "Krankenkasse",
               "Familienzulage",
               "Rentenbezugsmitteilung",
+              "Steuerbescheinigung",
               "Steuerbescheid",
               "Sonstiges"
             ],
@@ -2695,6 +3301,7 @@
           },
           "steuerId": {
             "type": "string",
+            "nullable": true,
             "example": "02476291358"
           },
           "steuernummer": {
@@ -2914,34 +3521,6 @@
           "status"
         ]
       },
-      "UnschaerfeDto": {
-        "type": "object",
-        "properties": {
-          "kind": {
-            "type": "string",
-            "enum": [
-              "bestimmt",
-              "unbestimmt"
-            ],
-            "example": "bestimmt"
-          },
-          "obergrenze": {
-            "type": "number",
-            "example": 0,
-            "description": "The computed bound (only when kind === \"bestimmt\")."
-          },
-          "grund": {
-            "type": "string",
-            "enum": [
-              "progressionsvorbehalt-nicht-eingegeben"
-            ],
-            "description": "Why no bound exists (only when kind === \"unbestimmt\")."
-          }
-        },
-        "required": [
-          "kind"
-        ]
-      },
       "VergleichsHerkunftDto": {
         "type": "object",
         "properties": {
@@ -3036,6 +3615,298 @@
         },
         "required": [
           "kind"
+        ]
+      },
+      "VermietungEinordnungDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "einfach",
+              "mehrere",
+              "verkauf-oder-moebliert",
+              "unbekannt"
+            ],
+            "example": "einfach",
+            "description": "einfach/mehrere = ganzjährig vermietete Objekte, je Objekt eine Anlage V (computable); verkauf-oder-moebliert = gated in 1.0 (ADR-033); unbekannt = vermietung-art not answered."
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "VermietungFeldDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "erfasst",
+              "offen",
+              "unklar"
+            ],
+            "description": "The field’s capture state."
+          },
+          "wert": {
+            "type": "number",
+            "example": 12000,
+            "description": "The value — present only when kind === \"erfasst\" (validated via @steuereule/core)."
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "VermietungAfADto": {
+        "type": "object",
+        "properties": {
+          "betrag": {
+            "type": "number",
+            "example": 4000,
+            "description": "Anschaffungskosten × AfA-Satz, rounded to whole euros."
+          },
+          "herkunft": {
+            "type": "string",
+            "example": "§ 7 Abs. 4 Satz 1 EStG — lineare AfA 2 % bei Baujahr 1990",
+            "description": "The statutory citation that produced the percentage."
+          }
+        },
+        "required": [
+          "betrag",
+          "herkunft"
+        ]
+      },
+      "VermietungsobjektFaktenDto": {
+        "type": "object",
+        "properties": {
+          "einnahmen": {
+            "type": "number",
+            "nullable": true,
+            "example": 12000,
+            "description": "The captured Mieteinnahmen, or null while open."
+          },
+          "werbungskosten": {
+            "type": "number",
+            "nullable": true,
+            "example": 1500,
+            "description": "The captured Werbungskosten (0 = the user entered 0), or null while open."
+          },
+          "afa": {
+            "nullable": true,
+            "description": "The computed lineare AfA with its § 7 Abs. 4 Herkunft, or null while open.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/VermietungAfADto"
+              }
+            ]
+          },
+          "offenePosten": {
+            "type": "number",
+            "example": 0,
+            "description": "The blocked results of this object (Mieteinnahmen/AfA/Werbungskosten — max 3)."
+          }
+        },
+        "required": [
+          "einnahmen",
+          "werbungskosten",
+          "afa",
+          "offenePosten"
+        ]
+      },
+      "VermietungsobjektDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "9c3f…",
+            "description": "The stable object id (assigned by the API on create)."
+          },
+          "mieteinnahmen": {
+            "$ref": "#/components/schemas/VermietungFeldDto"
+          },
+          "anschaffungskosten": {
+            "$ref": "#/components/schemas/VermietungFeldDto"
+          },
+          "baujahr": {
+            "$ref": "#/components/schemas/VermietungFeldDto"
+          },
+          "werbungskosten": {
+            "$ref": "#/components/schemas/VermietungFeldDto"
+          },
+          "fakten": {
+            "$ref": "#/components/schemas/VermietungsobjektFaktenDto"
+          }
+        },
+        "required": [
+          "id",
+          "mieteinnahmen",
+          "anschaffungskosten",
+          "baujahr",
+          "werbungskosten",
+          "fakten"
+        ]
+      },
+      "VermietungStandDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "bestimmt",
+              "offen"
+            ],
+            "description": "Determined, or open (naming what blocks)."
+          },
+          "einnahmen": {
+            "type": "number",
+            "description": "Sum of the Mieteinnahmen Einnahme-Posten (whole euros)."
+          },
+          "vorsorgeaufwand": {
+            "type": "number",
+            "description": "Sum of Vorsorgeaufwand Posten (whole euros)."
+          },
+          "anrechnung": {
+            "type": "number",
+            "description": "Sum of Anrechnung Posten (whole euros)."
+          },
+          "werbungskosten": {
+            "type": "number",
+            "description": "Sum of CAPTURED Werbungskosten — reported, never subtracted (partial truth as a partial truth)."
+          },
+          "afa": {
+            "type": "number",
+            "description": "Sum of the computed lineare AfA."
+          },
+          "offenePosten": {
+            "type": "number",
+            "description": "Required-but-empty results across all objects."
+          },
+          "konflikte": {
+            "type": "number",
+            "description": "Open conflicts (always 0 this slice)."
+          },
+          "gegated": {
+            "description": "Gated Einkunftsarten (only when offen).",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "kind",
+          "einnahmen",
+          "vorsorgeaufwand",
+          "anrechnung",
+          "werbungskosten",
+          "afa",
+          "offenePosten",
+          "konflikte"
+        ]
+      },
+      "VermietungResponseDto": {
+        "type": "object",
+        "properties": {
+          "einordnung": {
+            "$ref": "#/components/schemas/VermietungEinordnungDto"
+          },
+          "objekte": {
+            "description": "The objects, oldest first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VermietungsobjektDto"
+            }
+          },
+          "stand": {
+            "$ref": "#/components/schemas/VermietungStandDto"
+          }
+        },
+        "required": [
+          "einordnung",
+          "objekte",
+          "stand"
+        ]
+      },
+      "PutVermietungFeldDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "erfasst",
+              "offen",
+              "unklar"
+            ],
+            "description": "The field’s capture state."
+          },
+          "wert": {
+            "type": "number",
+            "example": 12000,
+            "description": "The value — present only when kind === \"erfasst\" (validated via @steuereule/core)."
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "VerspaetungszuschlagDto": {
+        "type": "object",
+        "properties": {
+          "mindestsatzEur": {
+            "type": "number",
+            "example": 25,
+            "description": "§ 152 Abs. 2 Satz 2 AO — der Mindestzuschlag je angefangenem Monat, in Euro."
+          },
+          "prozentProMonat": {
+            "type": "number",
+            "example": 0.25,
+            "description": "§ 152 Abs. 2 Satz 1 AO — 0,25 % der festgesetzten Steuer je angefangenem Monat."
+          }
+        },
+        "required": [
+          "mindestsatzEur",
+          "prozentProMonat"
+        ]
+      },
+      "FristenResponseDto": {
+        "type": "object",
+        "properties": {
+          "abgabefrist": {
+            "type": "string",
+            "example": "2027-07-31",
+            "description": "Die Abgabefrist (§ 149 Abs. 2 AO), ISO yyyy-mm-dd."
+          },
+          "heute": {
+            "type": "string",
+            "example": "2027-06-01",
+            "description": "Der Server-Stichtag in Europe/Berlin, ISO yyyy-mm-dd."
+          },
+          "stufe": {
+            "type": "string",
+            "enum": [
+              "keine",
+              "warnung",
+              "abgelaufen"
+            ],
+            "description": "keine | warnung (ab 60 Tage vor der Frist) | abgelaufen."
+          },
+          "verbleibendeTage": {
+            "type": "number",
+            "example": 60,
+            "description": "Whole days from heute (exclusive) to the frist; negative = abgelaufen."
+          },
+          "verspaetungszuschlag": {
+            "$ref": "#/components/schemas/VerspaetungszuschlagDto"
+          }
+        },
+        "required": [
+          "abgabefrist",
+          "heute",
+          "stufe",
+          "verbleibendeTage",
+          "verspaetungszuschlag"
         ]
       }
     }

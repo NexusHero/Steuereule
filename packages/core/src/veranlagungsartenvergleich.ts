@@ -122,7 +122,13 @@ export interface VeranlagungsartenvergleichEingaben {
 /** §32a Abs. 1 Nr. 5 — der Spitzengrenzsteuersatz, die obere Schranke des Progressionsvorbehalts. */
 const MAX_GRENZSTEUERSATZ = 0.45
 
-function progressionsvorbehaltSchranke(pv: ProgressionsvorbehaltEingabe): Unschaerfe {
+/**
+ * ADR-0034 Entscheidung 3 — the computed margin the Progressionsvorbehalt (§32b EStG) can move
+ * `delta` by. Shared: the § 32d Abs. 6 Günstigerprüfung (guenstigerpruefung.ts, ticket 10.5)
+ * excludes the SAME single flip-capable factor and reuses this one definition (ADR-0033's
+ * one-rule instinct) — the bound is the Schranke, never a chosen threshold.
+ */
+export function progressionsvorbehaltSchranke(pv: ProgressionsvorbehaltEingabe): Unschaerfe {
   switch (pv.art) {
     case 'keine':
       return { kind: 'bestimmt', obergrenze: 0 }

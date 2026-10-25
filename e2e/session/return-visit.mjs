@@ -134,7 +134,7 @@ import { join } from 'node:path'
 import { launchBrowser, closeBrowser, newContextAtBreakpoint, guardAgainst429, sampleComputedStyleOverFrames, newReducedMotionContext } from '../harness/browser.mjs'
 import { startStack } from '../harness/stack.mjs'
 import { fail, waitForBucketHeadroom } from '../harness/rate-limit.mjs'
-import { FLOW_COPY, skipSplash, signUpOutOfBand, completeOnboarding } from '../harness/flows.mjs'
+import { FLOW_COPY, skipSplash, signUpOutOfBand } from '../harness/flows.mjs'
 
 // `shared: true`: the sign-up/sign-in bucket is spent by every other script in the `Browser gates`
 // job (same API process, one in-memory bucket), so this process cannot read its live state and
@@ -155,6 +155,11 @@ const COPY = {
   ...FLOW_COPY,
   loginGoogle: 'Weiter mit Google',
   loginGuest: 'Erstmal als Gast umschauen',
+  // ADR-0045 (value-first funnel): a guest lands in the Minimal-Gate, then the Konto-Wand.
+  job: 'Angestellt',
+  nein: 'Nein',
+  kinder: '2 oder mehr',
+  kontoWandLater: 'Später — erst mal ins Cockpit',
   // #283/#298 AC-A (landed on `main` while this file was in review, see this file's own PR
   // thread) — a genuine, transport-level API outage now shows exactly ONE shared alert, not
   // three independent messages. This directly closes the bug CLASS #295 reported (three
@@ -186,9 +191,10 @@ function waitForRateLimit(config, label) {
   return waitForBucketHeadroom(config, label, 'return-visit')
 }
 
-// `skipSplash`, `signUpOutOfBand`, `completeOnboarding` are imported from `../harness/flows.mjs`
+// `skipSplash`, `signUpOutOfBand` are imported from `../harness/flows.mjs`
 // above (Musti's #331 review, F6) — this file and `storage/no-client-persistence.mjs` are its two
-// real callers as of the same change that introduced it.
+// real callers as of the same change that introduced it. The onboarding drive sequences were
+// removed with ADR-0045 (guests AND returning accounts land straight in the app).
 
 /**
  * Whether the Google button SHOULD render, asked the exact way `useSocialSignInAvailable` itself
@@ -379,8 +385,8 @@ async function testSignedInReload(browser, apiOrigin, webOrigin, sql) {
     await page.getByPlaceholder(COPY.loginEmailPlaceholder).fill(email)
     await page.getByPlaceholder(COPY.loginPasswordPlaceholder).fill(TEST_PASSWORD)
     await page.getByRole('button', { name: COPY.loginSubmit }).click()
-    await page.waitForURL((u) => u.pathname === '/onboarding', { timeout: 10_000 })
-    await completeOnboarding(page)
+    // ADR-0045: a signed-in account goes straight to the app (no onboarding) — the tab shell is
+    // the sign-in marker here.
     await page.waitForURL((u) => u.pathname === '/app', { timeout: 10_000 })
     await page.getByRole('tab', { name: COPY.profilTab }).waitFor({ state: 'visible', timeout: 5_000 })
     const identityAfterSignIn = await getSessionEmail(page, apiOrigin)
@@ -503,21 +509,27 @@ async function testCloseAndReopenReLogin(apiOrigin, webOrigin, sql) {
 }
 
 /** Row D — guest, same-tab reload, the guest stays honestly a guest (ADR-0007: identity only at
- *  filing). Calibrated against clearing the guest cookie (negative control): that MUST produce a
- *  fresh, empty guest identity, not the same one — otherwise the positive assertion below would
- *  pass even if the guest cookie were silently ignored altogether. */
+ *  filing). The guest's own data marker changed with ADR-0045 (value-first funnel): a guest no
+ *  longer reaches Onboarding — the Minimal-Gate answers ARE the guest's own data now. Positive:
+ *  a reload lands on the Konto-Wand (the funnel remembers the answered guest) and "Später" still
+ *  reaches the answered Cockpit ("0 Fragen offen"). Calibrated against clearing the guest cookie
+ *  (negative control): that MUST produce a fresh, empty guest — the empty job question, never the
+ *  answered state — otherwise the positive assertion below would pass even if the guest cookie
+ *  were silently ignored altogether. */
 async function testGuestReload(browser, webOrigin) {
   const ctx = await newContextAtBreakpoint(browser, 's')
   try {
     const page = await ctx.newPage()
     await skipSplash(page, webOrigin)
     await page.getByText(COPY.loginGuest, { exact: true }).click()
-    await page.waitForURL((u) => u.pathname === '/onboarding', { timeout: 10_000 })
-    await completeOnboarding(page)
-    await page.waitForURL((u) => u.pathname === '/app', { timeout: 10_000 })
-    await page.getByRole('tab', { name: COPY.profilTab }).click()
-    await page.getByText('Kim Yilmaz', { exact: true }).waitFor({ state: 'visible', timeout: 10_000 })
-    console.log('[return-visit] Row D: guest onboarding completed, own data ("Kim Yilmaz") renders in Profil.')
+    // ADR-0045: the guest lands in the Minimal-Gate, not Onboarding.
+    await page.getByText(COPY.job).waitFor({ state: 'visible', timeout: 10_000 })
+    await page.getByText(COPY.job).click()
+    await page.getByText(COPY.nein).click() // ausland: no gate
+    await page.getByText(COPY.kinder).click() // completes the Minimal-Gate
+    await page.getByText(COPY.kontoWandLater).click() // Konto-Wand -> "Später" -> Cockpit
+    await page.getByText('0 Fragen offen', { exact: true }).waitFor({ state: 'visible', timeout: 10_000 })
+    console.log('[return-visit] Row D: guest answered the Minimal-Gate, own data ("0 Fragen offen") renders in the Cockpit.')
 
     // --- positive: reload while guest ---
     await page.reload({ waitUntil: 'networkidle' })
@@ -525,25 +537,36 @@ async function testGuestReload(browser, webOrigin) {
     if (new URL(page.url()).pathname !== '/app') {
       fail(`Row D: reloading while guest at /app landed on ${page.url()} instead — the guest cookie did not survive a same-tab reload.`)
     }
-    await page.getByRole('tab', { name: COPY.profilTab }).click()
-    await page.getByText('Kim Yilmaz', { exact: true }).waitFor({ state: 'visible', timeout: 10_000 }).catch(() => {
-      fail('Row D (positive): reloading while guest did not re-render the SAME guest\'s own data ("Kim Yilmaz") within 10s.')
+    // ADR-0045: the funnel REMEMBERS a guest who has answered — the boot restores the interview
+    // entry, sees the stored answers and lands on the Konto-Wand. That IS the proof the SAME
+    // guest's data survived the reload (a fresh guest would see the empty job question instead).
+    await page.getByText(COPY.kontoWandLater).waitFor({ state: 'visible', timeout: 15_000 }).catch(async () => {
+      const bodyText = await page.evaluate(() => document.body.innerText.slice(0, 800))
+      fail(`Row D (positive): reloading while guest did not land on the Konto-Wand (the answered-guest marker) within 15s. Page shows: ${JSON.stringify(bodyText)}`)
     })
-    console.log('[return-visit] Row D (positive): a same-tab reload while guest re-renders the SAME guest\'s own data — the guest identity is honestly preserved.')
+    // And the data is genuinely there — "Später" reaches the answered Cockpit again.
+    await page.getByText(COPY.kontoWandLater).click()
+    await page.getByText('0 Fragen offen', { exact: true }).waitFor({ state: 'visible', timeout: 15_000 }).catch(() => {
+      fail('Row D (positive): after the Konto-Wand "Später", the Cockpit did not re-render the SAME guest\'s own data ("0 Fragen offen") within 15s.')
+    })
+    console.log('[return-visit] Row D (positive): a same-tab reload while guest lands on the Konto-Wand and re-renders the SAME guest\'s own data — the guest identity is honestly preserved.')
 
     // --- negative control: guest cookie cleared, THEN reload ---
     await ctx.clearCookies()
     await page.reload({ waitUntil: 'networkidle' })
     await page.waitForTimeout(500)
-    await page.getByRole('tab', { name: COPY.profilTab }).click()
-    const staleGuestDataStillShown = await page.getByText('Kim Yilmaz', { exact: true }).isVisible({ timeout: 5_000 }).catch(() => false)
+    const staleGuestDataStillShown = await page.getByText(COPY.kontoWandLater).isVisible({ timeout: 5_000 }).catch(() => false)
     if (staleGuestDataStillShown) {
       fail(
-        'Row D (control): clearing the guest cookie and reloading STILL shows the previous guest\'s own data ' +
-          '("Kim Yilmaz") — the positive assertion above cannot be trusted; it would have passed even if the ' +
-          'guest cookie were silently ignored. Also a real data-scoping concern on its own (REQ-002).',
+        'Row D (control): clearing the guest cookie and reloading STILL lands on the Konto-Wand — the previous guest\'s ' +
+          'answered state leaked into a fresh guest session. The positive assertion above cannot be trusted; this is also ' +
+          'a real data-scoping concern on its own (REQ-002).',
       )
     }
+    // A fresh guest has no answers: the interview shows the FIRST question — never the answered state.
+    await page.getByText(COPY.job).waitFor({ state: 'visible', timeout: 10_000 }).catch(() => {
+      fail('Row D (control): after the cookie clear the fresh guest did not see the empty job question — the positive assertion above is not calibrated.')
+    })
     console.log('[return-visit] Row D (control): clearing the guest cookie correctly produces a fresh, empty guest identity on reload — the positive assertion above is real, not vacuous.')
   } finally {
     await ctx.close()

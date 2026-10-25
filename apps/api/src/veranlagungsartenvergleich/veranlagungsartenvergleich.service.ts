@@ -54,7 +54,9 @@ function intAus(value: string | undefined): number {
 }
 
 /**
- * The `lohnersatz` catalogue answer → the core's Progressionsvorbehalt input.
+ * The `lohnersatz` catalogue answer → the core's Progressionsvorbehalt input. Shared: the
+ * § 32d Abs. 6 Günstigerprüfung (kapital.service.ts, ticket 10.5) reads the SAME answers and
+ * must map them the SAME way — one definition, never two (ADR-0033's one-rule instinct).
  *
  * `'Ja'` is a *complete* Progressionsvorbehalt input only when a positive amount was actually
  * captured. A `'Ja'` with a missing/empty/non-numeric/`<=0` amount (mid-flow, aborted, or never
@@ -62,7 +64,7 @@ function intAus(value: string | undefined): number {
  * and let `progressionsvorbehaltSchranke` return `obergrenze: 0`, which could flip an honest
  * `unbestimmt` into a false `eindeutig`. ADR-0032: never fabricate a null value.
  */
-function progressionsvorbehaltAus(answers: Answers): ProgressionsvorbehaltEingabe {
+export function progressionsvorbehaltAus(answers: Answers): ProgressionsvorbehaltEingabe {
   if (answers.lohnersatz === 'Ja') {
     const betrag = intAus(answers['lohnersatz-betrag'])
     return betrag > 0 ? { art: 'lohnersatzleistungen', betrag } : { art: 'nicht-angegeben' }

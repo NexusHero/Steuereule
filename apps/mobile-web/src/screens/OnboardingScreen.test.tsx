@@ -44,7 +44,7 @@ describe('OnboardingScreen', () => {
 
   it('renders step 1 in German by default', async () => {
     renderOnboarding()
-    await screen.findByText('Genau wie im Ausweis — damit die Maske exakt stimmt.')
+    await screen.findByText('Genau wie im Perso — damit beim Finanzamt alles passt.')
     expect(screen.getByText('Vorname')).toBeTruthy()
     expect(screen.getByText('Nachname')).toBeTruthy()
   })
