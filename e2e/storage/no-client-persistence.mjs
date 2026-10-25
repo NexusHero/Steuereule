@@ -201,9 +201,21 @@ async function main() {
     // has been observed to never settle on the Profil save button (same class as the
     // breakpoint-layout Minimal-Gate options — see its force-click note); the interaction logic
     // itself is pinned by the jsdom suites.
+    const saveBoxes = await page.evaluate(async () => {
+      const el = [...document.querySelectorAll('div')].find((d) => d.textContent === 'Speichern')
+      const boxes = []
+      for (let i = 0; i < 10; i++) {
+        const r = el.getBoundingClientRect()
+        boxes.push(`${r.x.toFixed(1)},${r.y.toFixed(1)},${r.width.toFixed(1)},${r.height.toFixed(1)}`)
+        await new Promise((res) => requestAnimationFrame(res))
+      }
+      return boxes
+    })
+    console.log(`[no-client-persistence] Flow 2 Speichern boxes over 10 frames: ${JSON.stringify(saveBoxes)}`)
     await page.getByText(COPY.profilSave).click({ force: true })
-    await page.getByText(COPY.profilSaved, { exact: true }).waitFor({ state: 'visible', timeout: 10_000 }).catch(() => {
-      fail('Flow 2: Profil save never showed the "Gespeichert." confirmation within 10s.')
+    await page.getByText(COPY.profilSaved, { exact: true }).waitFor({ state: 'visible', timeout: 10_000 }).catch(async () => {
+      const bodyText = await page.evaluate(() => document.body.innerText.slice(-700))
+      fail(`Flow 2: Profil save never showed the "Gespeichert." confirmation within 10s. Page shows: ${JSON.stringify(bodyText)}`)
     })
     await page.getByText('Kim Yilmaz', { exact: true }).waitFor({ state: 'visible', timeout: 10_000 }).catch(() => {
       fail('Flow 2: Profil view never rendered the just-saved "Kim Yilmaz" within 10s.')
