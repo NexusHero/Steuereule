@@ -23,9 +23,11 @@ import {
   getKapitalControllerGetGuenstigerpruefungMockHandler,
   getVermietungControllerGetMockHandler,
   getFristenControllerGetFristenMockHandler,
+  getUebernahmeControllerGetMockHandler,
+  getUebernahmeControllerBestaetigeMockHandler,
 } from '@steuereule/api-client/msw'
 import { LOHNAUSWEIS_FELDER } from '@steuereule/core'
-import type { ProfileResponseDto, AuthCapabilitiesDto, DeviceCodeResponseDto, InterviewStateDto, LstbResponseDto, ChLohnausweisResponseDto, RenteResponseDto, KapitalResponseDto, VermietungResponseDto, FristenResponseDto } from '@steuereule/api-client'
+import type { ProfileResponseDto, AuthCapabilitiesDto, DeviceCodeResponseDto, InterviewStateDto, LstbResponseDto, ChLohnausweisResponseDto, RenteResponseDto, KapitalResponseDto, VermietungResponseDto, FristenResponseDto, UebernahmeResponseDto } from '@steuereule/api-client'
 
 export const EMPTY_PROFILE_RESPONSE: ProfileResponseDto = {
   firstName: null,
@@ -151,6 +153,15 @@ export const EMPTY_FRISTEN_RESPONSE: FristenResponseDto = {
   verspaetungszuschlag: { mindestsatzEur: 25, prozentProMonat: 0.25 },
 }
 
+/**
+ * Default `GET .../uebernahme` answer (ticket 10.8, ADR-021): keine Kennzeichnungen — der
+ * ruhige Übernahme-Hinweis erscheint nur, wenn welche da sind, gepinnt (nicht der generierte
+ * Faker) aus demselben Grund wie die anderen EMPTY_*-Antworten.
+ */
+export const EMPTY_UEBERNAHME_RESPONSE: UebernahmeResponseDto = {
+  kennzeichnungen: [],
+}
+
 export const server = setupServer(
   getProfileControllerGetProfileMockHandler(EMPTY_PROFILE_RESPONSE),
   getProfileControllerPutProfileMockHandler(),
@@ -190,6 +201,11 @@ export const server = setupServer(
   // state, ADR-0039 — a fresh account far from the frist shows nothing), pinned not faked;
   // banner tests override with `server.use(...)`.
   getFristenControllerGetFristenMockHandler(EMPTY_FRISTEN_RESPONSE),
+  // Ticket 10.8 (ADR-021) — die Jahresübernahme: leer by default (keine Kennzeichnungen — der
+  // ruhige Hinweis erscheint nur, wenn welche da sind); das Bestätigen defaultet auf ein
+  // generisches 200 (Tests, die den Fluss prüfen, überschreiben mit `server.use(...)`).
+  getUebernahmeControllerGetMockHandler(EMPTY_UEBERNAHME_RESPONSE),
+  getUebernahmeControllerBestaetigeMockHandler(),
   // Default `POST .../interview/antworten` answer: a generic 200 — InterviewScreen renders the
   // next step from the local graph, not from this response body (#318 task 2's own "the graph
   // stays local" brief), so the exact `nextStep`/`openItems` values here are never asserted on

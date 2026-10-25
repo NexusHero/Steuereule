@@ -93,6 +93,20 @@ describe('UebernahmeService', () => {
     await expect(service.uebernehme(USER_ID, ZIELJAHR, 2027)).rejects.toThrow('strictly before')
   })
 
+  it('ADR-022: höchstens 4 Rückjahre — ein älteres von-Jahr ist ein 400, nie eine stille Alt-Kopie', async () => {
+    lstb.seed({ userId: USER_ID, steuerjahr: 2021, bruttoarbeitslohn: '50000', lohnsteuer: null, sozialversicherung: null })
+
+    await expect(service.uebernehme(USER_ID, ZIELJAHR, 2021)).rejects.toThrow('at most 4 previous years')
+  })
+
+  it('ADR-022: genau 4 Rückjahre sind erlaubt', async () => {
+    lstb.seed({ userId: USER_ID, steuerjahr: 2022, bruttoarbeitslohn: '50000', lohnsteuer: null, sozialversicherung: null })
+
+    const response = await service.uebernehme(USER_ID, ZIELJAHR, 2022)
+
+    expect(response.kennzeichnungen).toEqual([{ postenKey: 'lstb', vorjahr: 2022, bestaetigt: false }])
+  })
+
   it('bestaetige dreht das Flag (ADR-021: angetippt), ohne Kennzeichnung ist es ein 404', async () => {
     lstb.seed({ userId: USER_ID, steuerjahr: 2025, bruttoarbeitslohn: '50000', lohnsteuer: null, sozialversicherung: null })
     await service.uebernehme(USER_ID, ZIELJAHR, 2025)

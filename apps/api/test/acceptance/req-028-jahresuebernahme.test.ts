@@ -148,6 +148,13 @@ describe('REQ-028 — die Jahresübernahme (ADR-021), against the real server', 
     expect(response.status).toBe(404)
   })
 
+  it('ADR-022: ein von mehr als 4 Jahre zurück ist ein 400 — nie eine stille Alt-Kopie', async () => {
+    const { cookie } = await signUp('zu-alt@example.com')
+
+    const response = await fetch(`${baseUrl}/v1/steuerjahre/${ZIELJAHR}/uebernahme?von=2021`, { method: 'POST', headers: { cookie } })
+    expect(response.status).toBe(400)
+  })
+
   it('M2: eine Übernahme mit NUR Rente (kein LStB) kopiert die Rente — der Fakt zählt, nicht die Anlage', async () => {
     const { cookie } = await signUp('nur-rente@example.com')
     await fetch(`${baseUrl}/v1/steuerjahre/${VORJAHR}/rente/art`, {

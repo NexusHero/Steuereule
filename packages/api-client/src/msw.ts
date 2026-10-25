@@ -100,3 +100,12 @@ export {
   getFristenControllerGetFristenMockHandler,
   getSteuerEuleAPIMock as getFristenApiMock,
 } from './generated/fristen.msw'
+export {
+  getUebernahmeControllerGetResponseMock,
+  getUebernahmeControllerGetMockHandler,
+  getUebernahmeControllerUebernehmeResponseMock,
+  getUebernahmeControllerUebernehmeMockHandler,
+  getUebernahmeControllerBestaetigeResponseMock,
+  getUebernahmeControllerBestaetigeMockHandler,
+  getSteuerEuleAPIMock as getUebernahmeApiMock,
+} from './generated/uebernahme.msw'

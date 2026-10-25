@@ -264,4 +264,89 @@ describe('CockpitScreen', () => {
     renderCockpit({ lng: 'en' })
     await screen.findByText("That didn't work.")
   })
+
+  // --- Ticket 10.8 M3 (ADR-022/021) — Jahr-Auswahl + Übernahme-Hinweis --------------------
+
+  it('ADR-022: die Jahr-Auswahl zeigt das aktuelle Jahr und 4 Rückjahre; ein Klick lädt das gewählte Jahr', async () => {
+    mockCockpit(LOADED_SUMMARY)
+    server.use(
+      http.get('*/v1/steuerjahre/2025/cockpit', () =>
+        HttpResponse.json({ taxYear: 2025, stand: { kind: 'bestimmt', wert: 42000 }, openItems: 0 }),
+      ),
+    )
+    renderCockpit()
+
+    // Alle 5 Jahre wählbar, das aktuelle aktiv.
+    await screen.findByText('Erfasstes Einkommen')
+    for (const y of [2022, 2023, 2024, 2025, 2026]) {
+      expect(screen.getByTestId(`jahr-${y}`)).toBeTruthy()
+    }
+
+    // Klick auf 2025 → der Cockpit lädt das gewählte Jahr (nie „aktuelle" Werte, ADR-022).
+    fireEvent.click(screen.getByTestId('jahr-2025'))
+    expect(await screen.findByText('42.000 €')).toBeTruthy()
+  })
+
+  it('ADR-021: der ruhige Übernahme-Hinweis zitiert die Summe und die Herkunft mit Jahresbezug', async () => {
+    mockCockpit({
+      taxYear: TAX_YEAR,
+      stand: { kind: 'spanne', von: 0, bis: 100000 + 53000, offenePosten: 0, konflikte: 0, unbestaetigte: 2, unbestaetigteSumme: 53000 },
+      openItems: 0,
+    })
+    server.use(
+      http.get('*/v1/steuerjahre/2026/uebernahme', () =>
+        HttpResponse.json({
+          kennzeichnungen: [
+            { postenKey: 'lstb', vorjahr: 2025, bestaetigt: false },
+            { postenKey: 'kapital', vorjahr: 2025, bestaetigt: false },
+          ],
+        }),
+      ),
+    )
+    renderCockpit()
+
+    expect(await screen.findByText('53.000 € aus dem Vorjahr warten auf deine Bestätigung.')).toBeTruthy()
+    expect(screen.getByText('Lohnsteuerbescheinigung · Übernahme aus 2025')).toBeTruthy()
+    expect(screen.getByText('Kapitalerträge · Übernahme aus 2025')).toBeTruthy()
+    expect(screen.getAllByText('Bestätigen')).toHaveLength(2)
+  })
+
+  it('ADR-021: Bestätigen ruft den Endpoint, der Hinweis verschwindet ehrlich nach dem Refetch', async () => {
+    let bestaetigt = false
+    server.use(
+      http.get('*/v1/steuerjahre/2026/cockpit', () =>
+        HttpResponse.json(
+          bestaetigt
+            ? { taxYear: TAX_YEAR, stand: { kind: 'bestimmt', wert: 50000 }, openItems: 0 }
+            : { taxYear: TAX_YEAR, stand: { kind: 'spanne', von: 0, bis: 100000, offenePosten: 0, konflikte: 0, unbestaetigte: 1, unbestaetigteSumme: 50000 }, openItems: 0 },
+        ),
+      ),
+      http.get('*/v1/steuerjahre/2026/uebernahme', () =>
+        HttpResponse.json({
+          kennzeichnungen: [{ postenKey: 'lstb', vorjahr: 2025, bestaetigt }],
+        }),
+      ),
+      http.put('*/v1/steuerjahre/2026/uebernahme/lstb/bestaetigen', () => {
+        bestaetigt = true
+        return HttpResponse.json({ kennzeichnungen: [{ postenKey: 'lstb', vorjahr: 2025, bestaetigt: true }] })
+      }),
+    )
+    renderCockpit()
+
+    await screen.findByText('50.000 € aus dem Vorjahr wartet auf deine Bestätigung.')
+    fireEvent.click(screen.getByTestId('bestaetige-lstb'))
+
+    // Nach der Bestätigung: Punktwert statt Spanne, kein Hinweis mehr.
+    expect(await screen.findByText('50.000 €')).toBeTruthy()
+    expect(screen.queryByText(/aus dem Vorjahr/)).toBeNull()
+    expect(screen.queryByTestId('uebernahme-hinweis')).toBeNull()
+  })
+
+  it('ADR-021: ohne Kennzeichnungen erscheint kein Hinweis — auch bei offener Spanne', async () => {
+    mockCockpit(LOADED_SUMMARY)
+    renderCockpit()
+
+    await screen.findByText('49.880–50.120 €')
+    expect(screen.queryByTestId('uebernahme-hinweis')).toBeNull()
+  })
 })

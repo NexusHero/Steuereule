@@ -8,15 +8,29 @@
 // loading spinner, a real "noch keine Angaben" empty state, and a retryable error state — never
 // mock/fallback data. Loading/error now render through the shared `LoadingState`/`ErrorState`
 // (Phase 0.3 AC-3) instead of this screen's own private copies.
+import { useState } from 'react'
 import { ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { Button, Card, HerkunftsChip, Pill, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme, type Breakpoint } from '@steuereule/ui'
+import { Button, Card, Chip, HerkunftsChip, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme, type Breakpoint } from '@steuereule/ui'
 import { FristenBanner } from '../fristen/FristenBanner'
-import { formatEuro, formatEuroRange, UNCERTAINTY_PER_ITEM } from '@steuereule/core'
-import { useCockpitControllerGetCockpitSummary, type CockpitStandDto, type CockpitSummaryDto } from '@steuereule/api-client'
+import { formatEuro, formatEuroRange, uebernahmeHerkunft, UNCERTAINTY_PER_ITEM } from '@steuereule/core'
+import {
+  useCockpitControllerGetCockpitSummary,
+  useUebernahmeControllerGet,
+  useUebernahmeControllerBestaetige,
+  type CockpitStandDto,
+  type CockpitSummaryDto,
+  type UebernahmeKennzeichnungDto,
+} from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
+
+/** ADR-022: die Jahr-Auswahl zeigt das aktuelle Jahr und bis zu 4 Rückjahre („Hol dir 4 Jahre"). */
+const JAHRE_ZURUECK = 4
+
+/** The selectable years, newest first: CURRENT_TAX_YEAR … CURRENT_TAX_YEAR - 4. */
+const AUSWAHL_JAHRE = Array.from({ length: JAHRE_ZURUECK + 1 }, (_, i) => CURRENT_TAX_YEAR - i)
 
 export interface CockpitScreenProps {
   readonly taxYear?: number
@@ -35,7 +49,20 @@ export interface CockpitScreenProps {
 export function CockpitScreen({ taxYear = CURRENT_TAX_YEAR, onOpenInterview = () => {}, onOpenBescheid = () => {}, onOpenKapital = () => {}, onOpenVermietung = () => {} }: CockpitScreenProps) {
   const bp = useBreakpoint()
   const { t: tr } = useTranslation(APP_NS)
-  const query = useCockpitControllerGetCockpitSummary(taxYear)
+  // ADR-022 — die prominente Jahr-Auswahl: das gewählte Jahr ist SCREEN-State (kein globaler
+  // Kontext; ehrlich benannt), der Cockpit-Query läuft pro Jahr (der Query-Key trägt das Jahr).
+  const [jahr, setJahr] = useState(taxYear)
+  const query = useCockpitControllerGetCockpitSummary(jahr)
+  // Ticket 10.8 (ADR-021) — die Übernahme-Kennzeichnungen des gewählten Jahres; der Hinweis
+  // erscheint nur, wenn sie da sind (ein fehlender Query bricht den Cockpit nie).
+  const uebernahmeQuery = useUebernahmeControllerGet(jahr)
+  const bestaetige = useUebernahmeControllerBestaetige()
+
+  const onBestaetige = async (postenKey: string) => {
+    await bestaetige.mutateAsync({ jahr, postenKey })
+    void query.refetch()
+    void uebernahmeQuery.refetch()
+  }
 
   if (query.isPending) {
     return <LoadingState bp={bp} label={tr('cockpit.loading')} />
@@ -55,12 +82,16 @@ export function CockpitScreen({ taxYear = CURRENT_TAX_YEAR, onOpenInterview = ()
   const onRefresh = () => void query.refetch()
 
   if (summary === null) {
-    return <CockpitEmpty taxYear={taxYear} onRefresh={onRefresh} isRefreshing={query.isFetching} onOpenInterview={onOpenInterview} onOpenBescheid={onOpenBescheid} onOpenKapital={onOpenKapital} onOpenVermietung={onOpenVermietung} bp={bp} />
+    return <CockpitEmpty jahr={jahr} onJahrWechsel={setJahr} onRefresh={onRefresh} isRefreshing={query.isFetching} onOpenInterview={onOpenInterview} onOpenBescheid={onOpenBescheid} onOpenKapital={onOpenKapital} onOpenVermietung={onOpenVermietung} bp={bp} />
   }
   return (
     <CockpitLoaded
       summary={summary}
-      taxYear={taxYear}
+      jahr={jahr}
+      onJahrWechsel={setJahr}
+      uebernahme={uebernahmeQuery.data?.status === 200 ? uebernahmeQuery.data.data.kennzeichnungen : null}
+      onBestaetige={onBestaetige}
+      isBestaetigend={bestaetige.isPending}
       onRefresh={onRefresh}
       isRefreshing={query.isFetching}
       onOpenInterview={onOpenInterview}
@@ -72,20 +103,29 @@ export function CockpitScreen({ taxYear = CURRENT_TAX_YEAR, onOpenInterview = ()
   )
 }
 
-function Appbar({ taxYear }: { readonly taxYear: number }) {
+function Appbar({ jahr, onJahrWechsel }: { readonly jahr: number; readonly onJahrWechsel: (jahr: number) => void }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
   return (
     <View style={styles.appbar}>
       <Text style={styles.appbarTitle}>{tr('cockpit.appbarTitle')}</Text>
-      <Pill>{String(taxYear)}</Pill>
+      {/* ADR-022 — bis 4 Rückjahre, aktiv beworben: das gewählte Jahr ist gefüllt, der Rest
+          wählbar. */}
+      <View style={styles.jahrReihe} accessibilityLabel={tr('cockpit.jahrAuswahl')}>
+        {AUSWAHL_JAHRE.map((y) => (
+          <Chip key={y} aktiv={y === jahr} onPress={() => onJahrWechsel(y)} testID={`jahr-${y}`}>
+            {String(y)}
+          </Chip>
+        ))}
+      </View>
     </View>
   )
 }
 
 interface CockpitEmptyProps {
-  readonly taxYear: number
+  readonly jahr: number
+  readonly onJahrWechsel: (jahr: number) => void
   readonly onRefresh: () => void
   readonly isRefreshing: boolean
   readonly onOpenInterview: () => void
@@ -95,16 +135,16 @@ interface CockpitEmptyProps {
   readonly bp: Breakpoint
 }
 
-function CockpitEmpty({ taxYear, onRefresh, isRefreshing, onOpenInterview, onOpenBescheid, onOpenKapital, onOpenVermietung, bp }: CockpitEmptyProps) {
+function CockpitEmpty({ jahr, onJahrWechsel, onRefresh, isRefreshing, onOpenInterview, onOpenBescheid, onOpenKapital, onOpenVermietung, bp }: CockpitEmptyProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
-      <Appbar taxYear={taxYear} />
+      <Appbar jahr={jahr} onJahrWechsel={onJahrWechsel} />
       {/* REQ-027 (ticket 10.7) — der Fristen-Warnmodus: ein Banner, NIE ein Status (ADR-0039);
           rendert nichts bei `keine`. */}
-      <FristenBanner taxYear={taxYear} />
+      <FristenBanner taxYear={jahr} />
       <View style={styles.emptyBlock}>
         <Text style={styles.heading}>{tr('cockpit.empty.heading')}</Text>
         <Text style={styles.help}>{tr('cockpit.empty.message')}</Text>
@@ -131,9 +171,66 @@ function CockpitEmpty({ taxYear, onRefresh, isRefreshing, onOpenInterview, onOpe
   )
 }
 
+/**
+ * Der Label-Name eines kopierten Fakts (ADR-021) — die Kennzeichnungs-Schlüssel der
+ * Jahresübernahme (M2: lstb/rente/kapital/vermietung-<id>).
+ */
+function postenLabel(tr: ReturnType<typeof useTranslation>['t'], postenKey: string): string {
+  if (postenKey === 'lstb') return tr('cockpit.uebernahme.postenLstb')
+  if (postenKey === 'rente') return tr('cockpit.uebernahme.postenRente')
+  if (postenKey === 'kapital') return tr('cockpit.uebernahme.postenKapital')
+  if (postenKey.startsWith('vermietung-')) return tr('cockpit.uebernahme.postenVermietung')
+  return postenKey
+}
+
+interface UebernahmeHinweisProps {
+  readonly uebernahme: readonly UebernahmeKennzeichnungDto[] | null
+  readonly stand: CockpitStandDto
+  readonly onBestaetige: (postenKey: string) => void
+  readonly isBestaetigend: boolean
+}
+
+/**
+ * Ticket 10.8 (ADR-021) — der ruhige Übernahme-Hinweis: unbestätigte, kopierte Posten warten auf
+ * EIN Antippen (oder einen Beleg). Grau und ruhig benannt, nie ein Konflikt (ADR-008 ist für
+ * Widersprüche); die Summe, die die Spanne trägt, wird ehrlich zitiert; jede Kennzeichnung trägt
+ * ihre Herkunft mit Jahresbezug (ADR-022) und wird einzeln bestätigt.
+ */
+function UebernahmeHinweis({ uebernahme, stand, onBestaetige, isBestaetigend }: UebernahmeHinweisProps) {
+  const t = useTheme()
+  const { t: tr } = useTranslation(APP_NS)
+  const styles = makeStyles(t)
+  const unbestaetigte = (uebernahme ?? []).filter((k) => !k.bestaetigt)
+  if (unbestaetigte.length === 0) return null
+  const summe = stand.kind === 'spanne' ? (stand.unbestaetigteSumme ?? 0) : 0
+
+  return (
+    <Card variant="default" testID="uebernahme-hinweis">
+      <Text style={styles.help}>
+        {summe > 0 ? tr('cockpit.uebernahme.hinweis', { count: unbestaetigte.length, summe: formatEuro(summe) }) : tr('cockpit.uebernahme.hinweisOhneSumme')}
+      </Text>
+      {unbestaetigte.map((k) => (
+        <View key={k.postenKey} style={styles.uebernahmeZeile}>
+          <Text style={styles.uebernahmeZeileText}>
+            {postenLabel(tr, k.postenKey)} · {uebernahmeHerkunft(k.vorjahr)}
+          </Text>
+          <Button variante="ghost" onPress={() => onBestaetige(k.postenKey)} disabled={isBestaetigend} testID={`bestaetige-${k.postenKey}`}>
+            {tr('cockpit.uebernahme.bestaetigen')}
+          </Button>
+        </View>
+      ))}
+    </Card>
+  )
+}
+
 interface CockpitLoadedProps {
   readonly summary: CockpitSummaryDto
-  readonly taxYear: number
+  readonly jahr: number
+  readonly onJahrWechsel: (jahr: number) => void
+  /** Die Übernahme-Kennzeichnungen des Jahres, oder null wenn der Query noch lief/scheiterte. */
+  readonly uebernahme: readonly UebernahmeKennzeichnungDto[] | null
+  readonly onBestaetige: (postenKey: string) => void
+  readonly isBestaetigend: boolean
   readonly onRefresh: () => void
   readonly isRefreshing: boolean
   readonly onOpenInterview: () => void
@@ -143,7 +240,7 @@ interface CockpitLoadedProps {
   readonly bp: Breakpoint
 }
 
-function CockpitLoaded({ summary, taxYear, onRefresh, isRefreshing, onOpenInterview, onOpenBescheid, onOpenKapital, onOpenVermietung, bp }: CockpitLoadedProps) {
+function CockpitLoaded({ summary, jahr, onJahrWechsel, uebernahme, onBestaetige, isBestaetigend, onRefresh, isRefreshing, onOpenInterview, onOpenBescheid, onOpenKapital, onOpenVermietung, bp }: CockpitLoadedProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
@@ -155,9 +252,12 @@ function CockpitLoaded({ summary, taxYear, onRefresh, isRefreshing, onOpenInterv
 
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
-      <Appbar taxYear={taxYear} />
+      <Appbar jahr={jahr} onJahrWechsel={onJahrWechsel} />
       {/* REQ-027 (ticket 10.7) — der Fristen-Warnmodus: ein Banner, NIE ein Status (ADR-0039). */}
-      <FristenBanner taxYear={taxYear} />
+      <FristenBanner taxYear={jahr} />
+      {/* Ticket 10.8 (ADR-021) — der ruhige Übernahme-Hinweis: unbestätigte Posten aus der
+          Jahresübernahme, einzeln bestätigt. Grau und ruhig, nie ein Konflikt. */}
+      <UebernahmeHinweis uebernahme={uebernahme} stand={stand} onBestaetige={onBestaetige} isBestaetigend={isBestaetigend} />
       <Card variant="nacht">
         <Text style={styles.heroLabel}>{tr('cockpit.hero.label')}</Text>
         {stand.kind === 'gated' ? (
@@ -269,6 +369,27 @@ function makeStyles(t: UiTheme) {
     fontSize: t.size['2xl'],
     color: t.color.tinte,
   }
+  // ADR-022 — die Jahr-Auswahl: eine Chip-Reihe, das gewählte Jahr gefüllt (aktiv).
+  const jahrReihe: ViewStyle = {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end',
+    gap: t.space.s1,
+    maxWidth: '55%',
+  }
+  const uebernahmeZeile: ViewStyle = {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: t.space.s3,
+    marginTop: t.space.s3,
+  }
+  const uebernahmeZeileText: TextStyle = {
+    flex: 1,
+    flexWrap: 'wrap',
+    color: t.color.tinte,
+    fontSize: t.size.s,
+  }
   const heading: TextStyle = {
     fontFamily: t.font.display,
     fontWeight: t.weight.schwer,
@@ -341,5 +462,5 @@ function makeStyles(t: UiTheme) {
     marginBottom: t.space.s2,
   }
 
-  return { screen, wideScreen, appbar, appbarTitle, heading, help, cta, secondaryCta, emptyBlock, heroLabel, heroValue, openItems, offenePosten, refundLater, gatedHeading, gatedBody }
+  return { screen, wideScreen, appbar, appbarTitle, jahrReihe, uebernahmeZeile, uebernahmeZeileText, heading, help, cta, secondaryCta, emptyBlock, heroLabel, heroValue, openItems, offenePosten, refundLater, gatedHeading, gatedBody }
 }
