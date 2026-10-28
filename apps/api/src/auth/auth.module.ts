@@ -24,6 +24,7 @@ import {
   resolveGoogleClientSecret,
   resolveWebAppUrl,
 } from './better-auth.js'
+import { BrevoEmailSender, resolveBrevoConfig } from './brevo-email-sender.js'
 import { EMAIL_SENDER, type EmailSender } from './email-sender.js'
 import { LoggingEmailSender } from './logging-email-sender.js'
 import { RequiresAccountGuard } from './requires-account.guard.js'
@@ -35,7 +36,15 @@ import { AuthCapabilitiesController } from './auth-capabilities.controller.js'
   imports: [PrismaModule],
   controllers: [AuthCapabilitiesController],
   providers: [
-    { provide: EMAIL_SENDER, useClass: LoggingEmailSender },
+    // Brevo when configured; the logging stand-in only outside production —
+    // resolveBrevoConfig() refuses to boot a production process without a provider.
+    {
+      provide: EMAIL_SENDER,
+      useFactory: (): EmailSender => {
+        const brevo = resolveBrevoConfig()
+        return brevo ? new BrevoEmailSender(brevo) : new LoggingEmailSender()
+      },
+    },
     {
       provide: BETTER_AUTH_BUNDLE,
       inject: [PrismaService, EMAIL_SENDER],

@@ -44,6 +44,29 @@ export interface DeleteAccountTestHooks {
   simulateFailureAfterProfileStep?: () => void
 }
 
+type TransactionClient = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0]
+
+interface UserKeyedTable {
+  count(args: { where: { userId: string } }): Promise<number>
+  deleteMany(args: { where: { userId: string } }): Promise<{ count: number }>
+}
+
+/** Add a new userId-keyed tax-data model here in the same commit that adds it. */
+export function taxDataTables(tx: TransactionClient): UserKeyedTable[] {
+  return [
+    tx.taxYear,
+    tx.interviewAnswer,
+    tx.beleg,
+    tx.lstb,
+    tx.chLohnausweis,
+    tx.rente,
+    tx.kapital,
+    tx.vermietungsobjekt,
+    tx.bescheid,
+    tx.uebernahmeKennzeichnung,
+  ]
+}
+
 /**
  * Tears down a user's account in one Prisma `$transaction` — all-or-nothing (ADR-0013
  * §3). Consults `LegalHold` first; a hold on "profile" exempts the Profile row from
@@ -76,6 +99,21 @@ export async function deleteAccountTransaction(
     }
 
     hooks.simulateFailureAfterProfileStep?.()
+
+    // Every userId-keyed tax-data table. None of them carries a FK to User (guest rows
+    // exist before any User does), so nothing cascades — each one is deleted
+    // explicitly, or Art. 17 erasure silently leaves the person's tax figures behind.
+    // A hold on "taxData" exempts all of them together (Art. 17(3)(b) retention).
+    if (heldResources.has('taxData')) {
+      for (const table of taxDataTables(tx)) {
+        retainedUnderLegalHold += await table.count({ where: { userId } })
+      }
+    } else {
+      for (const table of taxDataTables(tx)) {
+        await table.deleteMany({ where: { userId } })
+      }
+    }
+    await tx.deviceCode.deleteMany({ where: { userId } })
 
     let retainedAnonymisedAuditRows = 0
     if (heldResources.has('auditLog')) {
