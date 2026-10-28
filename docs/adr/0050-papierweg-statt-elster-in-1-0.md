@@ -73,7 +73,27 @@ amtlich vorgeschriebene Vordruck verwendet wird (§ 150 Abs. 1 AO). Das BMF-Schr
 - Die Übersetzung „zahlen bei Abgabe" → „zahlen beim Ausdruck" ändert für den Nutzer den Moment,
   nicht das Prinzip: gezahlt wird erst, wenn das Ergebnis da ist.
 
+## Umsetzung der Vorlagen (2026-10-28, gleicher PR)
+
+- Die Vorlagen 2025 kamen vom Stakeholder als ZIP aus dem Formular-Management-System:
+  amtliche Internet-Vordrucke (Formularschlüssel `…NET`, Barcodes, bereits grau gerastert),
+  **ohne Formularfelder**. Sie liegen unverändert unter `apps/api/assets/vordrucke/2025/`,
+  gepinnt per SHA-256 (`apps/api/src/ausdruck/vordrucke-2025.json`). Anlage R und V fehlen noch.
+- Feldpositionen werden nicht getippt, sondern mit `scripts/vordrucke/vermessen.mjs` aus den
+  Vorlagen vermessen: Anker ist ein gedrucktes Wort (Label, Kennzahl, Zeilennummer), Ziel der
+  weiße Eingabekasten bzw. Rahmen, den das Formular selbst zeichnet. Das Ergebnis
+  (`felder-2025.json`) trägt die SHA-256 jeder Vorlage; ein Tausch ohne Neuvermessung wird rot.
+- Die Vorlagenseiten werden unverändert übernommen, nur Werte werden aufgedruckt. Damit bleibt
+  der Ausdruck so nah wie möglich am amtlichen Internet-Vordruck; die rechtliche Einordnung
+  (Punkt 2, „offen") ist davon unberührt und weiter vor dem ersten Verkauf zu klären.
+- Für den Hauptvordruck braucht es Angaben, die die App vorher nicht erfasste (Anschrift,
+  Geburtsdatum, Religion, Familienstand, IBAN, Finanzamt): eigenes, verschlüsseltes Modell
+  `Stammdaten` (REQ-030); die Religion nur mit Einwilligung nach Art. 9 DSGVO.
+- Bewusst leer bzw. gesperrt: Lohnsteuer Kz 140 (App kennt nur ganze Euro, eDaten liegen vor);
+  Verheiratete, bis Veranlagungsart und Person B erfasst werden.
+
 ## Decision history
 
+- 2026-10-28: Vorlagen 2025 eingecheckt, Stammdaten erfasst, Ausdruck ESt 1 A + Anlage N gebaut.
 - 2026-10-28: Stakeholder-Entscheidung im 1.0-Readiness-Review; umgesetzt im PR
   „1.0-Readiness: Papierweg, Zahlung, E-Mail, Recht, DSGVO-Lücken".

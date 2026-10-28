@@ -11,10 +11,12 @@ sobald das Zertifikat (Ticket 07) vorliegt; bis dahin Beta kostenlos (ADR-017).
 
 **Umgeplant durch ADR-0050 (2026-10-28):** ELSTER ist kein 1.0-Kriterium mehr; 1.0 gibt auf Papier ab.
 
-- [ ] **Formular-Ausdruck** pro Steuerjahr auf amtlichen Vordruck-Vorlagen (ESt 1 A + belegte
-      Anlagen), Regeln nach BMF-Schreiben vom 12.08.2022; Vorlagen liegen unter
-      `apps/api/assets/vordrucke/<jahr>/` (NexusHero beschafft sie), jede Feldposition gegen die
-      Vorlage getestet; Download hinter `FreischaltungService.status()` — **wartet auf die Vorlagen**
+- [x] **Formular-Ausdruck 2025, erster Schnitt:** ESt 1 A + Anlage N auf den amtlichen
+      Vorlagen (vermessen, nicht getippt), Stammdaten-Erfassung (REQ-030), Download hinter der
+      Freischaltung (REQ-031), Ausdruck-Seite im Web
+- [ ] Ausdruck, weitere Anlagen: R und V (Vorlagen fehlen noch), KAP, Kind, N-Gre,
+      Vorsorgeaufwand (braucht aufgeteilte SV-Beiträge), Sonderausgaben
+- [ ] Verheiratete: Veranlagungsart + Person B erfassen, dann Zeilen 19–24 ausdrucken
 - [ ] Klärung durch Steuerberater/Finanzamt: befülltes Portal-PDF („NET") vs. nichtamtlicher
       Vordruck (Graurasterung, Herstellerangabe)
 - [x] Bezahlte Freischaltung pro Steuerjahr (Stripe Checkout, Webhook-Signatur, § 356 Abs. 5 BGB) — REQ-029
