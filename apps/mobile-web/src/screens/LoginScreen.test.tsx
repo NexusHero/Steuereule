@@ -10,6 +10,7 @@ import { createAppI18n } from '../i18n/app-i18n'
 import { createAppAuthClient } from '../auth/auth-client'
 import { AuthClientProvider } from '../auth/AuthClientProvider'
 import { LoginScreen } from './LoginScreen'
+import type { RechtlicheSeite } from './rechtliches/texte'
 
 const BASE_URL = 'http://localhost:3000'
 
@@ -50,6 +51,7 @@ function renderLogin(
     // `undefined` is what actually drives LoginScreen's own conditional rendering.
     omitGuestAndRegister?: boolean
     showDeviceQr?: boolean
+    onRechtliches?: (seite: RechtlicheSeite) => void
   } = {},
 ) {
   const i18n = createAppI18n(opts.lng ?? 'de')
@@ -61,6 +63,7 @@ function renderLogin(
   const optionalProps = {
     ...(opts.omitGuestAndRegister ? {} : { onGuest: opts.onGuest ?? (() => {}), onRegister: opts.onRegister ?? (() => {}) }),
     ...(opts.showDeviceQr === undefined ? {} : { showDeviceQr: opts.showDeviceQr }),
+    ...(opts.onRechtliches ? { onRechtliches: opts.onRechtliches } : {}),
   }
   return render(
     <QueryClientProvider client={queryClient}>
@@ -1418,5 +1421,21 @@ describe('LoginScreen', () => {
       expect(screen.queryByLabelText('QR-Code zum Anmelden mit dem Handy')).toBeNull()
       expect(deviceCodeRequests).toBe(0)
     })
+  })
+})
+
+describe('LoginScreen — legal footer (ADR-0050, § 5 DDG)', () => {
+  it('links Impressum and Datenschutzerklärung from the public entry screen', () => {
+    const onRechtliches = vi.fn()
+    renderLogin({ onRechtliches })
+    fireEvent.click(screen.getByText('Impressum'))
+    expect(onRechtliches).toHaveBeenCalledWith('impressum')
+    fireEvent.click(screen.getByText('Datenschutzerklärung'))
+    expect(onRechtliches).toHaveBeenCalledWith('datenschutz')
+  })
+
+  it('stays hidden when embedded without the callback (device approval)', () => {
+    renderLogin({ omitGuestAndRegister: true })
+    expect(screen.queryByText('Impressum')).toBeNull()
   })
 })

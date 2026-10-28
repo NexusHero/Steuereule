@@ -38,6 +38,8 @@ import { ProfilScreen } from './src/screens/ProfilScreen'
 import { DatenschutzScreen } from './src/screens/DatenschutzScreen'
 import { SicherheitScreen } from './src/screens/security/SicherheitScreen'
 import { DeviceScreen } from './src/screens/device/DeviceScreen'
+import { RechtlichesScreen } from './src/screens/rechtliches/RechtlichesScreen'
+import { betreiberAusUmgebung, RECHTLICHE_SEITEN, type RechtlicheSeite } from './src/screens/rechtliches/texte'
 import { KontoWandScreen, pfadAusAntworten, type FunnelPfad } from './src/screens/funnel/KontoWandScreen'
 import { useAccountSession } from './src/auth/useAccountSession'
 
@@ -73,6 +75,7 @@ type RootStackParamList = {
   /** ADR-0045: `start: 'interview'` opens the Minimal-Gate directly (the guest's value-first entry). */
   App: { start?: 'interview' } | undefined
   Device: { user_code?: string } | undefined
+  Rechtliches: { seite: RechtlicheSeite }
 }
 
 const RootStack = createNativeStackNavigator<RootStackParamList>()
@@ -94,6 +97,7 @@ const linking: LinkingOptions<RootStackParamList> = {
       Onboarding: 'onboarding',
       App: 'app',
       Device: 'device',
+      Rechtliches: 'rechtliches/:seite',
     },
   },
 }
@@ -124,6 +128,7 @@ export default function App() {
                     <RootStack.Screen name="Onboarding" component={OnboardingRoute} />
                     <RootStack.Screen name="App" component={AppRoute} />
                     <RootStack.Screen name="Device" component={DeviceRoute} />
+                    <RootStack.Screen name="Rechtliches" component={RechtlichesRoute} />
                   </RootStack.Navigator>
                 </NavigationContainer>
                 <StatusBar style="dark" />
@@ -159,6 +164,7 @@ function LoginRoute({ navigation }: NativeStackScreenProps<RootStackParamList, '
       onDone={() => navigation.replace('App')}
       onGuest={() => navigation.replace('App', { start: 'interview' })}
       onRegister={() => navigation.replace('Registrierung')}
+      onRechtliches={(seite) => navigation.navigate('Rechtliches', { seite })}
     />
   )
 }
@@ -181,6 +187,31 @@ function OnboardingRoute({ navigation }: NativeStackScreenProps<RootStackParamLi
 // #238 AC-1: a real route, resolving the URL a phone's camera actually opens. No `navigation`
 // use inside `DeviceScreen` itself (AC-2/AC-7's embedded-Login mechanism deliberately never
 // navigates) — this wrapper's only job is handing the parsed `user_code` param down.
+// ADR-0050: `navigate` (not `replace`) so "Zurück" returns to wherever the link was tapped; a
+// legal page opened directly by URL has no history and falls back to Login. An unknown
+// `seite` from a hand-typed URL shows the Impressum rather than a blank screen.
+// Each EXPO_PUBLIC_* is spelled out: Expo inlines only direct `process.env.EXPO_PUBLIC_X`
+// reads at build time — passing `process.env` itself would leave the web bundle empty.
+const BETREIBER = betreiberAusUmgebung({
+  EXPO_PUBLIC_BETREIBER_NAME: process.env.EXPO_PUBLIC_BETREIBER_NAME,
+  EXPO_PUBLIC_BETREIBER_ANSCHRIFT: process.env.EXPO_PUBLIC_BETREIBER_ANSCHRIFT,
+  EXPO_PUBLIC_BETREIBER_EMAIL: process.env.EXPO_PUBLIC_BETREIBER_EMAIL,
+  EXPO_PUBLIC_BETREIBER_VERTRETEN: process.env.EXPO_PUBLIC_BETREIBER_VERTRETEN,
+  EXPO_PUBLIC_BETREIBER_USTID: process.env.EXPO_PUBLIC_BETREIBER_USTID,
+})
+
+function RechtlichesRoute({ navigation, route }: NativeStackScreenProps<RootStackParamList, 'Rechtliches'>) {
+  const seite = RECHTLICHE_SEITEN.includes(route.params?.seite) ? route.params.seite : 'impressum'
+  return (
+    <RechtlichesScreen
+      seite={seite}
+      betreiber={BETREIBER}
+      onZurueck={() => (navigation.canGoBack() ? navigation.goBack() : navigation.replace('Login'))}
+      onSeite={(naechste) => navigation.setParams({ seite: naechste })}
+    />
+  )
+}
+
 function DeviceRoute({ route }: NativeStackScreenProps<RootStackParamList, 'Device'>) {
   return <DeviceScreen userCode={route.params?.user_code} />
 }

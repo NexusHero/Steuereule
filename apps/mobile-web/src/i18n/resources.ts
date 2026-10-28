@@ -438,6 +438,12 @@ export const appResources = {
       // server-side; the access-log record is anonymised and *retained* (Art. 30), never
       // deleted; anything under active Löschschutz is retained under legal obligation; the
       // export offers JSON and PDF, never "Belege (ZIP)" — no receipts model exists yet.
+      // ADR-0050: Impressum, Datenschutzerklärung, AGB, Hinweise. The page bodies are German
+      // only (screens/rechtliches/texte.ts — the binding text); only the chrome is localised.
+      rechtliches: {
+        back: 'Zurück',
+        links: 'Rechtliches',
+      },
       datenschutz: {
         back: 'Zurück',
         title: 'Datenschutz',
@@ -1464,6 +1470,10 @@ export const appResources = {
         errWrongPassword: "That password isn't right.",
         errTooManyAttempts: 'Too many attempts. Please request a new code.',
         errLocked: 'Too many failed attempts — your account is temporarily locked. Try again later.',
+      },
+      rechtliches: {
+        back: 'Back',
+        links: 'Legal',
       },
       datenschutz: {
         back: 'Back',
