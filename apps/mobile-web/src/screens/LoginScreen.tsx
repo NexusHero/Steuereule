@@ -31,6 +31,8 @@ import { DeviceQrColumn } from './login/DeviceQrColumn'
 import { makeLoginStyles } from './login/loginStyles'
 import { SocialSignInSection } from './shared/SocialSignInSection'
 import { EmailVerificationBanner } from './shared/EmailVerificationBanner'
+import { RechtlichesLinks } from './rechtliches/RechtlichesLinks'
+import type { RechtlicheSeite } from './rechtliches/texte'
 
 export interface LoginScreenProps {
   readonly onDone: () => void
@@ -42,6 +44,9 @@ export interface LoginScreenProps {
   /** False when embedded (#238 AC-7) — a second, unrelated device-login column has no
    *  place next to "sign in to approve this code". Defaults to `true`. */
   readonly showDeviceQr?: boolean
+  /** Opens a legal page (ADR-0050). Omit when embedded (device approval), where the host
+   *  screen already sits behind the public entry that carries these links. */
+  readonly onRechtliches?: (seite: RechtlicheSeite) => void
 }
 
 type Stage =
@@ -50,7 +55,7 @@ type Stage =
   | { readonly kind: 'unverified'; readonly email: string }
   | { readonly kind: 'two-factor'; readonly email: string }
 
-export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true }: LoginScreenProps) {
+export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true, onRechtliches }: LoginScreenProps) {
   const t = useTheme()
   const bp = useBreakpoint()
   const { t: tr } = useTranslation(APP_NS)
@@ -211,6 +216,8 @@ export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true }
           <Text style={styles.guestNote}>{tr('login.guestNote')}</Text>
         </View>
       ) : null}
+
+      {onRechtliches ? <RechtlichesLinks onSeite={onRechtliches} /> : null}
     </View>
   )
 

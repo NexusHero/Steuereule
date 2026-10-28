@@ -1717,6 +1717,212 @@
           "fristen"
         ]
       }
+    },
+    "/v1/steuerjahre/{jahr}/freischaltung": {
+      "get": {
+        "operationId": "FreischaltungController_status",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FreischaltungStatusDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — paying requires a signed-in account."
+          }
+        },
+        "tags": [
+          "freischaltung"
+        ]
+      }
+    },
+    "/v1/stammdaten": {
+      "get": {
+        "operationId": "StammdatenController_lese",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "All null with every required field in `fehlend` when nothing is saved yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StammdatenResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "stammdaten"
+        ]
+      },
+      "put": {
+        "operationId": "StammdatenController_speichere",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutStammdatenDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StammdatenResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid field, or a religion without explicit consent (Art. 9 DSGVO)."
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "stammdaten"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/ausdruck/pruefung": {
+      "get": {
+        "operationId": "AusdruckController_pruefung",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Everything that would stop the printout — checked before anyone pays.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AusdruckPruefungDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "404": {
+            "description": "No measured templates exist for this tax year."
+          }
+        },
+        "tags": [
+          "ausdruck"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/ausdruck/checkout": {
+      "post": {
+        "operationId": "AusdruckController_checkout",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The hosted Stripe Checkout page to redirect to.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckoutResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "422": {
+            "description": "`fehlend`: the printout could not be delivered yet, so payment is not offered."
+          },
+          "503": {
+            "description": "Payment is not configured on this environment."
+          }
+        },
+        "tags": [
+          "ausdruck"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/ausdruck": {
+      "get": {
+        "operationId": "AusdruckController_ausdruck",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The filled Vordrucke (ESt 1 A + used Anlagen) as one PDF to print, sign and hand in."
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "402": {
+            "description": "The Ausdruck for this tax year is not unlocked (ADR-0050)."
+          },
+          "404": {
+            "description": "No measured templates exist for this tax year."
+          },
+          "422": {
+            "description": "`fehlend`: what the Hauptvordruck still needs; `zuLang`: a value too long for its field."
+          }
+        },
+        "tags": [
+          "ausdruck"
+        ]
+      }
     }
   },
   "info": {
@@ -3734,6 +3940,46 @@
           "updatedAt"
         ]
       },
+      "ExportTaxDataEntryDto": {
+        "type": "object",
+        "properties": {
+          "bereich": {
+            "type": "string",
+            "example": "Kapitalerträge"
+          },
+          "steuerjahr": {
+            "type": "number",
+            "nullable": true,
+            "example": 2025
+          },
+          "felder": {
+            "type": "object",
+            "additionalProperties": {
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                }
+              ],
+              "nullable": true
+            },
+            "example": {
+              "kapitalertraege": "1200",
+              "updatedAt": "2026-02-01T09:30:00.000Z"
+            }
+          }
+        },
+        "required": [
+          "bereich",
+          "steuerjahr",
+          "felder"
+        ]
+      },
       "ExportAccessLogEntryDto": {
         "type": "object",
         "properties": {
@@ -3780,11 +4026,10 @@
             ]
           },
           "taxData": {
-            "example": [],
-            "description": "Always empty until a tax-year model exists.",
+            "description": "Every stored tax-data row, decrypted (Art. 15/20); empty when the caller has none.",
             "type": "array",
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/ExportTaxDataEntryDto"
             }
           },
           "accessLog": {
@@ -4080,6 +4325,270 @@
           "stufe",
           "verbleibendeTage",
           "verspaetungszuschlag"
+        ]
+      },
+      "FreischaltungStatusDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "freigeschaltet",
+              "offen",
+              "nicht-verfuegbar"
+            ],
+            "description": "freigeschaltet = paid for this tax year; offen = payable; nicht-verfuegbar = payment is not configured on this environment."
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "StammdatenResponseDto": {
+        "type": "object",
+        "properties": {
+          "geburtsdatum": {
+            "type": "string",
+            "nullable": true
+          },
+          "strasse": {
+            "type": "string",
+            "nullable": true
+          },
+          "hausnummer": {
+            "type": "string",
+            "nullable": true
+          },
+          "hausnummerZusatz": {
+            "type": "string",
+            "nullable": true
+          },
+          "plz": {
+            "type": "string",
+            "nullable": true
+          },
+          "wohnort": {
+            "type": "string",
+            "nullable": true
+          },
+          "beruf": {
+            "type": "string",
+            "nullable": true
+          },
+          "religion": {
+            "type": "string",
+            "enum": [
+              "VD",
+              "EV",
+              "RK",
+              "AK",
+              "FA",
+              "FB",
+              "FG",
+              "FM",
+              "FS",
+              "IB",
+              "IL",
+              "IS",
+              "IW",
+              "JD",
+              "JH"
+            ],
+            "nullable": true
+          },
+          "familienstand": {
+            "type": "string",
+            "enum": [
+              "ledig",
+              "verheiratet",
+              "verwitwet",
+              "geschieden",
+              "dauernd-getrennt"
+            ],
+            "nullable": true
+          },
+          "familienstandSeit": {
+            "type": "string",
+            "nullable": true
+          },
+          "iban": {
+            "type": "string",
+            "nullable": true
+          },
+          "kontoinhaber": {
+            "type": "string",
+            "nullable": true
+          },
+          "finanzamt": {
+            "type": "string",
+            "nullable": true
+          },
+          "telefon": {
+            "type": "string",
+            "nullable": true
+          },
+          "fehlend": {
+            "description": "Fields the Hauptvordruck needs that are still empty — the honest gap list for the Ausdruck.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "geburtsdatum",
+          "strasse",
+          "hausnummer",
+          "hausnummerZusatz",
+          "plz",
+          "wohnort",
+          "beruf",
+          "religion",
+          "familienstand",
+          "familienstandSeit",
+          "iban",
+          "kontoinhaber",
+          "finanzamt",
+          "telefon",
+          "fehlend"
+        ]
+      },
+      "PutStammdatenDto": {
+        "type": "object",
+        "properties": {
+          "geburtsdatum": {
+            "type": "string",
+            "nullable": true,
+            "example": "1990-04-12",
+            "description": "YYYY-MM-DD"
+          },
+          "strasse": {
+            "type": "string",
+            "nullable": true,
+            "example": "Musterstraße"
+          },
+          "hausnummer": {
+            "type": "string",
+            "nullable": true,
+            "example": "12"
+          },
+          "hausnummerZusatz": {
+            "type": "string",
+            "nullable": true,
+            "example": "a"
+          },
+          "plz": {
+            "type": "string",
+            "nullable": true,
+            "example": "01067",
+            "description": "Five digits (Inland)."
+          },
+          "wohnort": {
+            "type": "string",
+            "nullable": true,
+            "example": "Dresden"
+          },
+          "beruf": {
+            "type": "string",
+            "nullable": true,
+            "example": "Ingenieurin"
+          },
+          "religion": {
+            "type": "string",
+            "enum": [
+              "VD",
+              "EV",
+              "RK",
+              "AK",
+              "FA",
+              "FB",
+              "FG",
+              "FM",
+              "FS",
+              "IB",
+              "IL",
+              "IS",
+              "IW",
+              "JD",
+              "JH"
+            ],
+            "nullable": true,
+            "description": "Religionsschlüssel per ESt 1 A guide (VD = none). Art. 9 DSGVO: requires religionEinwilligung = true."
+          },
+          "religionEinwilligung": {
+            "type": "boolean",
+            "description": "Explicit consent to store the religion (Art. 9 Abs. 2 lit. a DSGVO)."
+          },
+          "familienstand": {
+            "type": "string",
+            "enum": [
+              "ledig",
+              "verheiratet",
+              "verwitwet",
+              "geschieden",
+              "dauernd-getrennt"
+            ],
+            "nullable": true
+          },
+          "familienstandSeit": {
+            "type": "string",
+            "nullable": true,
+            "example": "2018-06-01",
+            "description": "YYYY-MM-DD; not for ledig."
+          },
+          "iban": {
+            "type": "string",
+            "nullable": true,
+            "example": "DE89370400440532013000",
+            "description": "Mod-97-checked; stored without spaces."
+          },
+          "kontoinhaber": {
+            "type": "string",
+            "nullable": true,
+            "example": "Anna Beispiel",
+            "description": "Only when the account holder is someone else."
+          },
+          "finanzamt": {
+            "type": "string",
+            "nullable": true,
+            "example": "Dresden-Nord"
+          },
+          "telefon": {
+            "type": "string",
+            "nullable": true,
+            "example": "0351 1234567"
+          }
+        }
+      },
+      "AusdruckPruefungDto": {
+        "type": "object",
+        "properties": {
+          "fehlend": {
+            "example": [
+              "iban",
+              "anlageV"
+            ],
+            "description": "What stops the printout: missing Stammdaten keys, `ehegatte` (married, not yet supported), or an Anlage that is not printable yet (`anlageV`, `anlageKap`, `anlageNGre`, `anlageRAvBav`, `anlageRAus`). Empty = printable.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "fehlend"
+        ]
+      },
+      "CheckoutResponseDto": {
+        "type": "object",
+        "properties": {
+          "checkoutUrl": {
+            "type": "string",
+            "example": "https://checkout.stripe.com/c/pay/cs_test_…"
+          }
+        },
+        "required": [
+          "checkoutUrl"
         ]
       }
     }

@@ -52,7 +52,7 @@ Die meisten Steuer-Programme in Deutschland leiden unter zwei Krankheiten:
 - **Konto & Geräte** — E-Mail-Login, Google-Sign-in-Plumbing (#170), QR-Gerätefreigabe für den Desktop-Login ohne Passwort, Sitzungen einzeln widerrufbar.
 - **DSGVO by Design** — Voller Datenexport (JSON/PDF mit Headless-Chromium) nach Art. 15/20 und Konto-Löschung nach Art. 17 inklusive Pflicht-Export-Angebot.
 
-> **Was bewusst noch in Arbeit ist:** Die echte ELSTER-Übermittlung wartet auf das Hersteller-Zertifikat. 2FA/Passkeys und Apple Sign-In sind in Entwicklung — Details im [Requirements-Register](docs/requirements/register.md).
+> **Was bewusst noch in Arbeit ist:** 1.0 gibt auf Papier ab ([ADR-0050](docs/adr/0050-papierweg-statt-elster-in-1-0.md)): Der Formular-Ausdruck auf amtlichen Vordrucken ist der nächste Schritt, die bezahlte Freischaltung dafür steht. Eine ELSTER-Übermittlung folgt nach 1.0, sobald das Hersteller-Zertifikat vorliegt. Apple Sign-In bleibt bis zu einem iOS-Build abgeschaltet — Details im [Requirements-Register](docs/requirements/register.md).
 
 ---
 

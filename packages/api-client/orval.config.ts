@@ -300,4 +300,51 @@ export default defineConfig({
       },
     },
   },
+  // ADR-0050 — the paid unlock per tax year (Papierweg, paid on print). The Stripe webhook
+  // is excluded from the spec (`@ApiExcludeEndpoint`): Stripe calls it, the app never does.
+  freischaltung: {
+    input: { target: '../../apps/api/openapi.json', filters: { tags: ['freischaltung'] } },
+    output: {
+      target: './src/generated/freischaltung.ts',
+      mode: 'split',
+      client: 'react-query',
+      httpClient: 'fetch',
+      mock: true,
+      override: {
+        mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        mock: { required: true },
+      },
+    },
+  },
+  // ADR-0050 — Erklärungs-Stammdaten for the Hauptvordruck ESt 1 A.
+  stammdaten: {
+    input: { target: '../../apps/api/openapi.json', filters: { tags: ['stammdaten'] } },
+    output: {
+      target: './src/generated/stammdaten.ts',
+      mode: 'split',
+      client: 'react-query',
+      httpClient: 'fetch',
+      mock: true,
+      override: {
+        mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        mock: { required: true },
+      },
+    },
+  },
+  // ADR-0050 — Formular-Ausdruck: pre-check and checkout (the PDF itself is downloaded with
+  // a plain credentialed fetch, like the DSGVO export, not through this client).
+  ausdruck: {
+    input: { target: '../../apps/api/openapi.json', filters: { tags: ['ausdruck'] } },
+    output: {
+      target: './src/generated/ausdruck.ts',
+      mode: 'split',
+      client: 'react-query',
+      httpClient: 'fetch',
+      mock: true,
+      override: {
+        mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        mock: { required: true },
+      },
+    },
+  },
 })

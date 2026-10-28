@@ -17,6 +17,7 @@ import { AppModule } from './app.module.js'
 import { BETTER_AUTH_BUNDLE, type BetterAuthBundle } from './auth/auth.tokens.js'
 import { mountBetterAuthHandler } from './auth/mount-better-auth.js'
 import { validationExceptionFactory } from './common/validation-exception-factory.js'
+import { assertDatabaseMigrated } from './config/assert-database-migrated.js'
 import { assertDatabaseReachable } from './config/assert-database-reachable.js'
 import { assertEnvNotFileSourced } from './config/assert-env-not-file-sourced.js'
 import { resolveTrustedProxies } from './config/trusted-proxies.js'
@@ -35,6 +36,8 @@ export async function buildApp(): Promise<NestFastifyApplication> {
     new FastifyAdapter({ trustProxy: resolveTrustedProxies() }),
     {
       logger: ['error', 'warn'],
+      // The Stripe webhook verifies its signature over the exact raw bytes.
+      rawBody: true,
     },
   )
 
@@ -102,6 +105,10 @@ async function bootstrap(): Promise<void> {
   // request, so the checked-in `DATABASE_URL` being absent or unreachable is a boot
   // failure here, not a 500 on someone's first click.
   await assertDatabaseReachable()
+
+  // Third finding, strictly after reachability (#289): it needs a working connection,
+  // and "not migrated" is a different operator action than "not reachable".
+  await assertDatabaseMigrated()
 
   const app = await buildApp()
   const port = Number(process.env.PORT ?? 3000)

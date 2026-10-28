@@ -22,7 +22,14 @@ function makeTestQueryClient() {
 }
 
 function renderProfil(
-  opts: { lng?: 'de' | 'en'; queryClient?: QueryClient; onOpenDatenschutz?: () => void; onOpenSicherheit?: () => void; onSignedOut?: () => void } = {},
+  opts: {
+    lng?: 'de' | 'en'
+    queryClient?: QueryClient
+    onOpenDatenschutz?: () => void
+    onOpenSicherheit?: () => void
+    onOpenStammdaten?: () => void
+    onSignedOut?: () => void
+  } = {},
 ) {
   const i18n = createAppI18n(opts.lng ?? 'de')
   const queryClient = opts.queryClient ?? makeTestQueryClient()
@@ -35,6 +42,7 @@ function renderProfil(
             <ProfilScreen
               onOpenDatenschutz={opts.onOpenDatenschutz ?? (() => {})}
               onOpenSicherheit={opts.onOpenSicherheit ?? (() => {})}
+              {...(opts.onOpenStammdaten ? { onOpenStammdaten: opts.onOpenStammdaten } : {})}
               onSignedOut={opts.onSignedOut ?? (() => {})}
             />
           </AuthClientProvider>
@@ -316,5 +324,15 @@ describe('ProfilScreen', () => {
       await screen.findByText('Anna Beispiel')
       expect(screen.getByText('How we protect your data (GDPR)')).toBeTruthy()
     })
+  })
+})
+
+describe('ProfilScreen — Erklärungs-Stammdaten entry (ADR-0050)', () => {
+  it('opens the Stammdaten drill-down from its own row', async () => {
+    mockSavedProfile()
+    const onOpenStammdaten = vi.fn()
+    renderProfil({ onOpenStammdaten })
+    fireEvent.click(await screen.findByText('Angaben für die Steuererklärung'))
+    expect(onOpenStammdaten).toHaveBeenCalled()
   })
 })

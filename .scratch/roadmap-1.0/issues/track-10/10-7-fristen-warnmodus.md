@@ -9,7 +9,7 @@ Steuer-Status aussehen).
 (Zustandsmaschine: Abgabe-/Frist-Bezug), promotet. **Soft-Dep:** 10.8 (rückwirkende Jahre haben
 eigene Fristen; das Warnmodell teilt sich den Jahr-/Frist-Begriff).
 
-**Status:** ready-for-agent
+**Status:** done — gemergt als #376 (69385df)
 
 - [x] Abgabefrist je Steuerjahr bestimmt (Regelwerk pro Jahr, ADR-022) — nie „aktuelle" Werte
 - [x] Warnbanner ab 60 Tage vor Frist, mit Betrags-/Frist-Angabe, nüchtern (ADR-023)

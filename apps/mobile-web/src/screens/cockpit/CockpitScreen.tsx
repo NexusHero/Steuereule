@@ -44,9 +44,11 @@ export interface CockpitScreenProps {
   readonly onOpenKapital?: () => void
   /** Opens the Vermietung guided mask (REQ-026/ticket 10.6) — same wiring. */
   readonly onOpenVermietung?: () => void
+  /** ADR-0050: opens the Formular-Ausdruck for the year shown. Omitted = no entry rendered. */
+  readonly onOpenAusdruck?: (jahr: number) => void
 }
 
-export function CockpitScreen({ taxYear = CURRENT_TAX_YEAR, onOpenInterview = () => {}, onOpenBescheid = () => {}, onOpenKapital = () => {}, onOpenVermietung = () => {} }: CockpitScreenProps) {
+export function CockpitScreen({ taxYear = CURRENT_TAX_YEAR, onOpenInterview = () => {}, onOpenBescheid = () => {}, onOpenKapital = () => {}, onOpenVermietung = () => {}, onOpenAusdruck }: CockpitScreenProps) {
   const bp = useBreakpoint()
   const { t: tr } = useTranslation(APP_NS)
   // ADR-022 — die prominente Jahr-Auswahl: das gewählte Jahr ist SCREEN-State (kein globaler
@@ -98,6 +100,7 @@ export function CockpitScreen({ taxYear = CURRENT_TAX_YEAR, onOpenInterview = ()
       onOpenBescheid={onOpenBescheid}
       onOpenKapital={onOpenKapital}
       onOpenVermietung={onOpenVermietung}
+      {...(onOpenAusdruck ? { onOpenAusdruck: () => onOpenAusdruck(jahr) } : {})}
       bp={bp}
     />
   )
@@ -132,6 +135,7 @@ interface CockpitEmptyProps {
   readonly onOpenBescheid: () => void
   readonly onOpenKapital: () => void
   readonly onOpenVermietung: () => void
+  readonly onOpenAusdruck?: () => void
   readonly bp: Breakpoint
 }
 
@@ -237,10 +241,11 @@ interface CockpitLoadedProps {
   readonly onOpenBescheid: () => void
   readonly onOpenKapital: () => void
   readonly onOpenVermietung: () => void
+  readonly onOpenAusdruck?: () => void
   readonly bp: Breakpoint
 }
 
-function CockpitLoaded({ summary, jahr, onJahrWechsel, uebernahme, onBestaetige, isBestaetigend, onRefresh, isRefreshing, onOpenInterview, onOpenBescheid, onOpenKapital, onOpenVermietung, bp }: CockpitLoadedProps) {
+function CockpitLoaded({ summary, jahr, onJahrWechsel, uebernahme, onBestaetige, isBestaetigend, onRefresh, isRefreshing, onOpenInterview, onOpenBescheid, onOpenKapital, onOpenVermietung, onOpenAusdruck, bp }: CockpitLoadedProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
@@ -294,6 +299,11 @@ function CockpitLoaded({ summary, jahr, onJahrWechsel, uebernahme, onBestaetige,
       >
         {tr('cockpit.checkVermietung')}
       </Button>
+      {onOpenAusdruck ? (
+        <Button variante="ghost" onPress={onOpenAusdruck} style={styles.secondaryCta} testID="cockpit-ausdruck">
+          {tr('ausdruck.cockpitCta')}
+        </Button>
+      ) : null}
       <Button
         variante={hasOpenItems ? 'ghost' : 'primaer'}
         onPress={onRefresh}

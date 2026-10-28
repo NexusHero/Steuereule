@@ -27,7 +27,7 @@ Die Qualitätslatte (D3): **professionelles Engineering statt AI-Blähe.**
 |---|---|---|
 | **Code** | Phasen 0–3 unten | sofort |
 | **Infra** | #292: k3s/Hetzner + managed EU-Postgres + Redis, CI/CD, Observability, Backups/DR, arm64-Verifikation (D7) | parallel zur Phase 0 |
-| **ELSTER (extern)** | Hersteller-Zertifikat beantragen — langer Behörden-Vorlauf, läuft ab sofort (D8) | sofort, Owner: NexusHero |
+| **ELSTER (extern)** | Hersteller-Zertifikat beantragen — langer Behörden-Vorlauf (D8). **Seit [ADR-0050](adr/0050-papierweg-statt-elster-in-1-0.md) kein 1.0-Kriterium mehr**: 1.0 gibt auf Papier ab, ELSTER folgt als 1.x | läuft weiter, Owner: NexusHero |
 
 ## Phasen
 
@@ -65,8 +65,9 @@ rückwirkende Jahre (ADR-022) · Eulen-KI-Modus (ADR-037–041).
 Abgabe-bereit-Paket (PDF-Export, Bescheid-Vorbereitung) · Marketing-Website (M9, separat, ADR-044) ·
 DSGVO-Final-Audit vor dem ersten echten Konto · **#170: echte Google-Credentials — echter
 OAuth-Handshake statt Platzhalter** · REQ-010 schließt mit der #292-Netzwerk-Eigenschaft ·
-Pre-Go-Live-Lasttest · **ELSTER-Übermittlung aktiviert sich bei Zertifikats-Eingang** (ADR-005/-017);
-bis dahin Beta kostenlos und abgabe-bereit ohne Übermittlung.
+Pre-Go-Live-Lasttest · **Formular-Ausdruck auf amtlichen Vordruck-Vorlagen, bezahlt pro Steuerjahr
+beim Ausdruck** ([ADR-0050](adr/0050-papierweg-statt-elster-in-1-0.md)) · Rechtsseiten anwaltlich
+geprüft. Die ELSTER-Übermittlung ist kein 1.0-Kriterium mehr; sie folgt als 1.x bei Zertifikats-Eingang.
 
 ## Definition of Done — vier Ebenen (D13–D20)
 
@@ -103,7 +104,9 @@ PR-Checkliste + Review-Haken; Ausnahmen sichtbar + genehmigt + begründet + mit 
 4. DSGVO-Final-Audit vor dem ersten echten Konto.
 5. Pre-Go-Live-Lasttest bestanden.
 6. Kein „AI-Geruch": Eigenbau-Liste aus Phase 0.2 ersetzt, Kommentar-Disziplin repo-weit.
-7. ELSTER-Übermittlung aktiviert, sobald das Hersteller-Zertifikat vorliegt (externer Track).
+7. ~~ELSTER-Übermittlung aktiviert~~ → **Papierweg** ([ADR-0050](adr/0050-papierweg-statt-elster-in-1-0.md)):
+   Formular-Ausdruck nach BMF-Schreiben vom 12.08.2022, Freischaltung pro Steuerjahr bezahlt,
+   Rechtsseiten anwaltlich geprüft. ELSTER folgt als 1.x.
 
 **Ausnahmen (D20):** Musti genehmigt DoD-Abweichungen; sichtbar im PR **und** Register mit Grund
 und Nachhol-Ticket; NexusHero behält Veto. An den 1.0-Kernkriterien (2 und 3) gibt es keine
@@ -171,7 +174,9 @@ Zustands-Korrekturen:
 - **Foundation ist groß** (D9) → interne Reihenfolge 0.1 → 0.5 ist Pflicht, WIP-Limit gilt.
 - **Parallele Vertikalen** (D5) → Divergenz-Risiko am Kern; Gegenmittel: gemeinsames
   Kern-Review-Gate; Review-Kapazität ist der Engpass (ADR-0015).
-- **ELSTER-Zertifikat** → externe Timeline; Fallback definiert (abgabe-bereit ohne Übermittlung).
+- **ELSTER-Zertifikat** → externe Timeline; seit ADR-0050 nicht mehr auf dem 1.0-Pfad.
+- **Vordruck-Vorlagen** (ADR-0050) → pro Steuerjahr zu beschaffen und nachzuziehen; ob ein befülltes
+  Portal-PDF als amtlicher Vordruck gilt, ist vor dem ersten Verkauf zu klären.
 - **1.0-Umfang ist sehr groß** → wenn Kapazität reißt, bleiben Rentner/Kapital/Vermietung
   ehrlich „gegated" — Entscheidung bleibt bei NexusHero, sichtbar im Register.
 - **DoD-Proliferation** → vier Ebenen tragen Verwaltung; die REQ-Ebene ist die semantische
@@ -188,7 +193,7 @@ Zustands-Korrekturen:
 | D5 | Angestellte und Grenzgänger-CH parallel in zwei Tracks |
 | D6 | Foundation enthält den geteilten Steuer-Domänenkern |
 | D7 | Infrastruktur (#292) als dritter Track ab Foundation |
-| D8 | ELSTER-Zertifikat sofort beantragen; 1.0 shippt „abgabe-bereit" |
+| D8 | ELSTER-Zertifikat sofort beantragen; 1.0 shippt „abgabe-bereit" — **amended by ADR-0050**: 1.0 gibt auf Papier ab, ELSTER folgt als 1.x |
 | D9 | Mantel-REQs 007/008/009 in der Foundation |
 | D10 | Planform: Roadmap-Doc im Repo + GitHub-Tickets + progress.db |
 | D11 | Crew-Prozess unverändert; Plan liefert neue ADRs |

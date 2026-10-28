@@ -7,7 +7,7 @@ Hersteller-Zertifikat (M11) wird **sofort** beantragt und läuft parallel zu all
 
 **Blocked by:** None — can start immediately.
 
-**Status:** owner-assigned (NexusHero) — externer Track, kein Agent-Ticket.
+**Status:** owner-assigned (NexusHero) — externer Track, kein Agent-Ticket. **Seit ADR-0050 (2026-10-28) nicht mehr auf dem 1.0-Pfad:** 1.0 gibt auf Papier ab; die Übermittlung wird ein 1.x-Ticket, sobald das Zertifikat vorliegt.
 
 - [ ] Antrag auf Hersteller-Zertifizierung gestellt (ELSTER-Entwicklerprogramm/ERiC)
 - [ ] Anforderungen der Finanzverwaltung an Hosting/DSGVO/Datenschutz-Folgeabschätzung

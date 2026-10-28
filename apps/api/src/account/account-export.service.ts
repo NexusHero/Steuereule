@@ -14,6 +14,7 @@ import { ACCOUNT_IDENTITY_REPOSITORY, type AccountIdentityRepository } from './a
 import type { ExportDocument } from './export/export-document.js'
 import { buildExportReportHtml } from './export/export-report-template.js'
 import { PDF_RENDERER, type PdfRenderer } from './export/pdf-renderer.js'
+import { TAX_DATA_EXPORT_REPOSITORY, type TaxDataExportRepository } from './tax-data-export.repository.js'
 
 @Injectable()
 export class AccountExportService {
@@ -23,6 +24,7 @@ export class AccountExportService {
     @Inject(ACCOUNT_IDENTITY_REPOSITORY) private readonly accountIdentityRepository: AccountIdentityRepository,
     @Inject(AuditService) private readonly auditService: AuditService,
     @Inject(PDF_RENDERER) private readonly pdfRenderer: PdfRenderer,
+    @Inject(TAX_DATA_EXPORT_REPOSITORY) private readonly taxDataExportRepository: TaxDataExportRepository,
   ) {}
 
   /**
@@ -36,9 +38,10 @@ export class AccountExportService {
     const account = await this.accountIdentityRepository.findByUserId(userId)
     if (!account) return null
 
-    const [profileRecord, accessLog] = await Promise.all([
+    const [profileRecord, accessLog, taxData] = await Promise.all([
       this.profileRepository.findByUserId(userId),
       this.auditService.findOwnRows(userId),
+      this.taxDataExportRepository.findAllForUser(userId),
     ])
 
     return {
@@ -65,7 +68,7 @@ export class AccountExportService {
             updatedAt: (profileRecord.updatedAt ?? new Date()).toISOString(),
           }
         : null,
-      taxData: [],
+      taxData,
       accessLog: accessLog.map((row) => ({
         action: row.action,
         resource: row.resource,

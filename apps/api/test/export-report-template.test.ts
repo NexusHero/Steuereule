@@ -96,6 +96,20 @@ describe('buildExportReportHtml — HTML-injection escaping (T1, every user-cont
         accessLog: [{ action: 'READ', resource: payload, createdAt: '2026-01-16T10:05:00.000Z' }],
       }),
     ],
+    [
+      'taxData[].felder value (e.g. a Beleg file name)',
+      (doc: ExportDocument, payload: string) => ({
+        ...doc,
+        taxData: [{ bereich: 'Beleg', steuerjahr: null, felder: { dateiname: payload } }],
+      }),
+    ],
+    [
+      'taxData[].felder key',
+      (doc: ExportDocument, payload: string) => ({
+        ...doc,
+        taxData: [{ bereich: 'Beleg', steuerjahr: 2025, felder: { [payload]: 'x' } }],
+      }),
+    ],
   ] as const)('escapes a <script> payload injected via %s', (_label, withPayload) => {
     const document = withPayload(baseDocument(), SCRIPT_PAYLOAD) as ExportDocument
     const html = buildExportReportHtml(document)
