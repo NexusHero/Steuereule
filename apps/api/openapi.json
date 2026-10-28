@@ -1788,6 +1788,65 @@
           "freischaltung"
         ]
       }
+    },
+    "/v1/stammdaten": {
+      "get": {
+        "operationId": "StammdatenController_lese",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "All null with every required field in `fehlend` when nothing is saved yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StammdatenResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "stammdaten"
+        ]
+      },
+      "put": {
+        "operationId": "StammdatenController_speichere",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutStammdatenDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StammdatenResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid field, or a religion without explicit consent (Art. 9 DSGVO)."
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "stammdaten"
+        ]
+      }
     }
   },
   "info": {
@@ -4220,6 +4279,222 @@
         "required": [
           "checkoutUrl"
         ]
+      },
+      "StammdatenResponseDto": {
+        "type": "object",
+        "properties": {
+          "geburtsdatum": {
+            "type": "string",
+            "nullable": true
+          },
+          "strasse": {
+            "type": "string",
+            "nullable": true
+          },
+          "hausnummer": {
+            "type": "string",
+            "nullable": true
+          },
+          "hausnummerZusatz": {
+            "type": "string",
+            "nullable": true
+          },
+          "plz": {
+            "type": "string",
+            "nullable": true
+          },
+          "wohnort": {
+            "type": "string",
+            "nullable": true
+          },
+          "beruf": {
+            "type": "string",
+            "nullable": true
+          },
+          "religion": {
+            "type": "string",
+            "enum": [
+              "VD",
+              "EV",
+              "RK",
+              "AK",
+              "FA",
+              "FB",
+              "FG",
+              "FM",
+              "FS",
+              "IB",
+              "IL",
+              "IS",
+              "IW",
+              "JD",
+              "JH"
+            ],
+            "nullable": true
+          },
+          "familienstand": {
+            "type": "string",
+            "enum": [
+              "ledig",
+              "verheiratet",
+              "verwitwet",
+              "geschieden",
+              "dauernd-getrennt"
+            ],
+            "nullable": true
+          },
+          "familienstandSeit": {
+            "type": "string",
+            "nullable": true
+          },
+          "iban": {
+            "type": "string",
+            "nullable": true
+          },
+          "kontoinhaber": {
+            "type": "string",
+            "nullable": true
+          },
+          "finanzamt": {
+            "type": "string",
+            "nullable": true
+          },
+          "telefon": {
+            "type": "string",
+            "nullable": true
+          },
+          "fehlend": {
+            "description": "Fields the Hauptvordruck needs that are still empty — the honest gap list for the Ausdruck.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "geburtsdatum",
+          "strasse",
+          "hausnummer",
+          "hausnummerZusatz",
+          "plz",
+          "wohnort",
+          "beruf",
+          "religion",
+          "familienstand",
+          "familienstandSeit",
+          "iban",
+          "kontoinhaber",
+          "finanzamt",
+          "telefon",
+          "fehlend"
+        ]
+      },
+      "PutStammdatenDto": {
+        "type": "object",
+        "properties": {
+          "geburtsdatum": {
+            "type": "string",
+            "nullable": true,
+            "example": "1990-04-12",
+            "description": "YYYY-MM-DD"
+          },
+          "strasse": {
+            "type": "string",
+            "nullable": true,
+            "example": "Musterstraße"
+          },
+          "hausnummer": {
+            "type": "string",
+            "nullable": true,
+            "example": "12"
+          },
+          "hausnummerZusatz": {
+            "type": "string",
+            "nullable": true,
+            "example": "a"
+          },
+          "plz": {
+            "type": "string",
+            "nullable": true,
+            "example": "01067",
+            "description": "Five digits (Inland)."
+          },
+          "wohnort": {
+            "type": "string",
+            "nullable": true,
+            "example": "Dresden"
+          },
+          "beruf": {
+            "type": "string",
+            "nullable": true,
+            "example": "Ingenieurin"
+          },
+          "religion": {
+            "type": "string",
+            "enum": [
+              "VD",
+              "EV",
+              "RK",
+              "AK",
+              "FA",
+              "FB",
+              "FG",
+              "FM",
+              "FS",
+              "IB",
+              "IL",
+              "IS",
+              "IW",
+              "JD",
+              "JH"
+            ],
+            "nullable": true,
+            "description": "Religionsschlüssel per ESt 1 A guide (VD = none). Art. 9 DSGVO: requires religionEinwilligung = true."
+          },
+          "religionEinwilligung": {
+            "type": "boolean",
+            "description": "Explicit consent to store the religion (Art. 9 Abs. 2 lit. a DSGVO)."
+          },
+          "familienstand": {
+            "type": "string",
+            "enum": [
+              "ledig",
+              "verheiratet",
+              "verwitwet",
+              "geschieden",
+              "dauernd-getrennt"
+            ],
+            "nullable": true
+          },
+          "familienstandSeit": {
+            "type": "string",
+            "nullable": true,
+            "example": "2018-06-01",
+            "description": "YYYY-MM-DD; not for ledig."
+          },
+          "iban": {
+            "type": "string",
+            "nullable": true,
+            "example": "DE89370400440532013000",
+            "description": "Mod-97-checked; stored without spaces."
+          },
+          "kontoinhaber": {
+            "type": "string",
+            "nullable": true,
+            "example": "Anna Beispiel",
+            "description": "Only when the account holder is someone else."
+          },
+          "finanzamt": {
+            "type": "string",
+            "nullable": true,
+            "example": "Dresden-Nord"
+          },
+          "telefon": {
+            "type": "string",
+            "nullable": true,
+            "example": "0351 1234567"
+          }
+        }
       }
     }
   }

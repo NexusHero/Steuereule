@@ -16,6 +16,7 @@ import { KapitalModule } from './kapital/kapital.module.js'
 import { LstbModule } from './lstb/lstb.module.js'
 import { ProfileModule } from './profile/profile.module.js'
 import { RenteModule } from './rente/rente.module.js'
+import { StammdatenModule } from './stammdaten/stammdaten.module.js'
 import { VeranlagungsartenvergleichModule } from './veranlagungsartenvergleich/veranlagungsartenvergleich.module.js'
 import { VermietungModule } from './vermietung/vermietung.module.js'
 
@@ -45,6 +46,7 @@ import { VermietungModule } from './vermietung/vermietung.module.js'
     FristenModule,
     UebernahmeModule,
     FreischaltungModule,
+    StammdatenModule,
   ],
 })
 export class AppModule {}

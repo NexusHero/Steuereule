@@ -316,4 +316,19 @@ export default defineConfig({
       },
     },
   },
+  // ADR-0050 — Erklärungs-Stammdaten for the Hauptvordruck ESt 1 A.
+  stammdaten: {
+    input: { target: '../../apps/api/openapi.json', filters: { tags: ['stammdaten'] } },
+    output: {
+      target: './src/generated/stammdaten.ts',
+      mode: 'split',
+      client: 'react-query',
+      httpClient: 'fetch',
+      mock: true,
+      override: {
+        mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        mock: { required: true },
+      },
+    },
+  },
 })

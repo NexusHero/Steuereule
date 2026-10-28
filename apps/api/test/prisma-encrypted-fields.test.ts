@@ -61,6 +61,20 @@ function byModelField(a: ExpectedField, b: ExpectedField): number {
 // commit as any intentional change to what schema.prisma encrypts — that is the
 // entire point: an unintended change to this set, from any cause, must go red here.
 const EXPECTED_ENCRYPTED_FIELDS: ExpectedEncryptedField[] = [
+  { model: 'Stammdaten', field: 'geburtsdatum', encrypt: true, strictDecryption: true },
+  { model: 'Stammdaten', field: 'strasse', encrypt: true, strictDecryption: true },
+  { model: 'Stammdaten', field: 'hausnummer', encrypt: true, strictDecryption: true },
+  { model: 'Stammdaten', field: 'hausnummerZusatz', encrypt: true, strictDecryption: true },
+  { model: 'Stammdaten', field: 'plz', encrypt: true, strictDecryption: true },
+  { model: 'Stammdaten', field: 'wohnort', encrypt: true, strictDecryption: true },
+  { model: 'Stammdaten', field: 'beruf', encrypt: true, strictDecryption: true },
+  { model: 'Stammdaten', field: 'religion', encrypt: true, strictDecryption: true },
+  { model: 'Stammdaten', field: 'familienstand', encrypt: true, strictDecryption: true },
+  { model: 'Stammdaten', field: 'familienstandSeit', encrypt: true, strictDecryption: true },
+  { model: 'Stammdaten', field: 'iban', encrypt: true, strictDecryption: true },
+  { model: 'Stammdaten', field: 'kontoinhaber', encrypt: true, strictDecryption: true },
+  { model: 'Stammdaten', field: 'finanzamt', encrypt: true, strictDecryption: true },
+  { model: 'Stammdaten', field: 'telefon', encrypt: true, strictDecryption: true },
   { model: 'Profile', field: 'steuerId', encrypt: true, strictDecryption: true },
   { model: 'Profile', field: 'steuernummer', encrypt: true, strictDecryption: true },
   { model: 'InterviewAnswer', field: 'value', encrypt: true, strictDecryption: true },
@@ -133,6 +147,7 @@ const EXPECTED_CURSORS: Record<string, string> = {
   UebernahmeKennzeichnung: 'id',
   Bescheid: 'id',
   Freischaltung: 'id',
+  Stammdaten: 'id',
 }
 
 describe('encrypted/hashed field set (#325) — derived from Prisma.dmmf, not comment text', () => {
