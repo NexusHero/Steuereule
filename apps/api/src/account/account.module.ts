@@ -13,6 +13,8 @@ import { ACCOUNT_IDENTITY_REPOSITORY } from './account-identity.repository.js'
 import { PrismaAccountIdentityRepository } from './account-identity.repository.prisma.js'
 import { PDF_RENDERER } from './export/pdf-renderer.js'
 import { PlaywrightPdfRenderer } from './export/pdf-renderer.playwright.js'
+import { TAX_DATA_EXPORT_REPOSITORY } from './tax-data-export.repository.js'
+import { PrismaTaxDataExportRepository } from './tax-data-export.repository.prisma.js'
 
 // The shared `v1/account` module (REQ-011/ADR-0013), owned jointly by two parallel
 // tracks under one Controller('v1/account') base:
@@ -35,6 +37,7 @@ import { PlaywrightPdfRenderer } from './export/pdf-renderer.playwright.js'
     { provide: ACCOUNT_DELETION_REPOSITORY, useClass: PrismaAccountDeletionRepository },
     { provide: ACCOUNT_IDENTITY_REPOSITORY, useClass: PrismaAccountIdentityRepository },
     { provide: PDF_RENDERER, useClass: PlaywrightPdfRenderer },
+    { provide: TAX_DATA_EXPORT_REPOSITORY, useClass: PrismaTaxDataExportRepository },
   ],
 })
 export class AccountModule {}

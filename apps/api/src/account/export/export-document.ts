@@ -28,14 +28,24 @@ export interface ExportAccessLogEntry {
   createdAt: string
 }
 
+export type ExportTaxDataValue = string | number | boolean | null
+
+/** One stored tax-data row: its area (e.g. "Kapitalerträge"), tax year (null for a
+ *  Beleg not yet assigned to one), and its fields with technical keys removed. */
+export interface ExportTaxDataEntry {
+  bereich: string
+  steuerjahr: number | null
+  felder: Record<string, ExportTaxDataValue>
+}
+
 export interface ExportDocument {
   schemaVersion: '1.0'
   exportedAt: string
   account: ExportAccountSection
   /** null — honest — when the caller has never saved a Profile (ADR-0013 §4). */
   profile: ExportProfileSection | null
-  /** Honest empty set until a tax-year model exists (ADR-0013 §4) — never a silent omission. */
-  taxData: []
+  /** Every stored tax-data row, decrypted; [] — honest — when the caller has none. */
+  taxData: ExportTaxDataEntry[]
   /** The caller's own TaxDataAccessLog rows, oldest first. */
   accessLog: ExportAccessLogEntry[]
 }

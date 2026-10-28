@@ -36,6 +36,8 @@ export async function buildApp(): Promise<NestFastifyApplication> {
     new FastifyAdapter({ trustProxy: resolveTrustedProxies() }),
     {
       logger: ['error', 'warn'],
+      // The Stripe webhook verifies its signature over the exact raw bytes.
+      rawBody: true,
     },
   )
 

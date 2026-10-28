@@ -3,9 +3,9 @@
 // self-contained: no external stylesheet/font/network fetch, since PdfRenderer must
 // never need network access to lay a page out. Print-styled for A4.
 //
-// Honesty (ADR-0013 §8): this copy states plainly that no tax data is held yet — it
-// never claims a "Belege ZIP" or anything else not actually true of this slice.
-import type { ExportDocument } from './export-document.js'
+// Honesty (ADR-0013 §8): it renders exactly the stored rows and says so plainly when
+// there are none — it never claims a "Belege ZIP" or anything else not actually held.
+import type { ExportDocument, ExportTaxDataValue } from './export-document.js'
 
 function escapeHtml(value: string): string {
   return value
@@ -35,6 +35,27 @@ function renderProfileSection(profile: ExportDocument['profile']): string {
         <tr><th>Zuletzt geändert am</th><td>${formatGermanTimestamp(profile.updatedAt)}</td></tr>
       </tbody>
     </table>`
+}
+
+function formatTaxValue(value: ExportTaxDataValue): string {
+  if (value === null) return '—'
+  if (typeof value === 'boolean') return value ? 'Ja' : 'Nein'
+  return escapeHtml(String(value))
+}
+
+function renderTaxDataSection(entries: ExportDocument['taxData']): string {
+  if (entries.length === 0) {
+    return '<p class="honest-note">Es sind keine steuerlichen Daten gespeichert.</p>'
+  }
+  return entries
+    .map((entry) => {
+      const jahr = entry.steuerjahr === null ? 'ohne Steuerjahr' : `Steuerjahr ${entry.steuerjahr}`
+      const rows = Object.entries(entry.felder)
+        .map(([feld, wert]) => `<tr><th>${escapeHtml(feld)}</th><td>${formatTaxValue(wert)}</td></tr>`)
+        .join('')
+      return `<h3>${escapeHtml(entry.bereich)} · ${jahr}</h3><table><tbody>${rows}</tbody></table>`
+    })
+    .join('')
 }
 
 function renderAccessLogRows(entries: ExportDocument['accessLog']): string {
@@ -92,10 +113,7 @@ export function buildExportReportHtml(document: ExportDocument): string {
     ${renderProfileSection(document.profile)}
 
     <h2>Steuerliche Daten</h2>
-    <p class="honest-note">
-      Es sind aktuell keine steuerlichen Daten hinterlegt — dieser Bereich ist ehrlich leer,
-      solange kein Steuerjahr-Modell existiert.
-    </p>
+    ${renderTaxDataSection(document.taxData)}
 
     <h2>Zugriffsprotokoll (eigene Zugriffe)</h2>
     <table>

@@ -1717,6 +1717,77 @@
           "fristen"
         ]
       }
+    },
+    "/v1/steuerjahre/{jahr}/freischaltung": {
+      "get": {
+        "operationId": "FreischaltungController_status",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FreischaltungStatusDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — paying requires a signed-in account."
+          }
+        },
+        "tags": [
+          "freischaltung"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/freischaltung/checkout": {
+      "post": {
+        "operationId": "FreischaltungController_checkout",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The hosted Stripe Checkout page to redirect to.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckoutResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — paying requires a signed-in account."
+          },
+          "503": {
+            "description": "Payment is not configured on this environment."
+          }
+        },
+        "tags": [
+          "freischaltung"
+        ]
+      }
     }
   },
   "info": {
@@ -3734,6 +3805,46 @@
           "updatedAt"
         ]
       },
+      "ExportTaxDataEntryDto": {
+        "type": "object",
+        "properties": {
+          "bereich": {
+            "type": "string",
+            "example": "Kapitalerträge"
+          },
+          "steuerjahr": {
+            "type": "number",
+            "nullable": true,
+            "example": 2025
+          },
+          "felder": {
+            "type": "object",
+            "additionalProperties": {
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                }
+              ],
+              "nullable": true
+            },
+            "example": {
+              "kapitalertraege": "1200",
+              "updatedAt": "2026-02-01T09:30:00.000Z"
+            }
+          }
+        },
+        "required": [
+          "bereich",
+          "steuerjahr",
+          "felder"
+        ]
+      },
       "ExportAccessLogEntryDto": {
         "type": "object",
         "properties": {
@@ -3780,11 +3891,10 @@
             ]
           },
           "taxData": {
-            "example": [],
-            "description": "Always empty until a tax-year model exists.",
+            "description": "Every stored tax-data row, decrypted (Art. 15/20); empty when the caller has none.",
             "type": "array",
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/ExportTaxDataEntryDto"
             }
           },
           "accessLog": {
@@ -4080,6 +4190,35 @@
           "stufe",
           "verbleibendeTage",
           "verspaetungszuschlag"
+        ]
+      },
+      "FreischaltungStatusDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "freigeschaltet",
+              "offen",
+              "nicht-verfuegbar"
+            ],
+            "description": "freigeschaltet = paid for this tax year; offen = payable; nicht-verfuegbar = payment is not configured on this environment."
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "CheckoutResponseDto": {
+        "type": "object",
+        "properties": {
+          "checkoutUrl": {
+            "type": "string",
+            "example": "https://checkout.stripe.com/c/pay/cs_test_…"
+          }
+        },
+        "required": [
+          "checkoutUrl"
         ]
       }
     }

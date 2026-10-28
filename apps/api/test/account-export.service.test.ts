@@ -8,6 +8,7 @@ import { FakeAccountIdentityRepository } from './fakes/fake-account-identity.rep
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
 import { FakePdfRenderer } from './fakes/fake-pdf-renderer.js'
 import { FakeProfileRepository } from './fakes/fake-profile.repository.js'
+import { FakeTaxDataExportRepository } from './fakes/fake-tax-data-export.repository.js'
 
 function buildService() {
   const profileRepository = new FakeProfileRepository()
@@ -15,8 +16,15 @@ function buildService() {
   const auditRepository = new FakeAuditRepository()
   const auditService = new AuditService(auditRepository)
   const pdfRenderer = new FakePdfRenderer()
-  const service = new AccountExportService(profileRepository, accountIdentityRepository, auditService, pdfRenderer)
-  return { service, profileRepository, accountIdentityRepository, auditRepository, pdfRenderer }
+  const taxDataExportRepository = new FakeTaxDataExportRepository()
+  const service = new AccountExportService(
+    profileRepository,
+    accountIdentityRepository,
+    auditService,
+    pdfRenderer,
+    taxDataExportRepository,
+  )
+  return { service, profileRepository, accountIdentityRepository, auditRepository, pdfRenderer, taxDataExportRepository }
 }
 
 const ACCOUNT_IDENTITY = {
@@ -37,6 +45,16 @@ const PROFILE = {
 }
 
 describe('AccountExportService.assemble', () => {
+  it('includes the caller’s stored tax data (Art. 15/20) — never a hard-coded empty set', async () => {
+    const { service, accountIdentityRepository, taxDataExportRepository } = buildService()
+    accountIdentityRepository.seed('user-1', ACCOUNT_IDENTITY)
+    const entry = { bereich: 'Kapitalerträge', steuerjahr: 2025, felder: { kapitalertraege: '1200' } }
+    taxDataExportRepository.seed('user-1', [entry])
+
+    const document = await service.assemble('user-1')
+    expect(document!.taxData).toEqual([entry])
+  })
+
   it('returns null when the caller has no better-auth account yet (a guest that never signed up)', async () => {
     const { service } = buildService()
     await expect(service.assemble('some-guest-user-id')).resolves.toBeNull()

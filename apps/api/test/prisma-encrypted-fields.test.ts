@@ -132,6 +132,7 @@ const EXPECTED_CURSORS: Record<string, string> = {
   Vermietungsobjekt: 'id',
   UebernahmeKennzeichnung: 'id',
   Bescheid: 'id',
+  Freischaltung: 'id',
 }
 
 describe('encrypted/hashed field set (#325) — derived from Prisma.dmmf, not comment text', () => {

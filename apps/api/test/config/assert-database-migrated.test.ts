@@ -61,7 +61,10 @@ describe('assertDatabaseMigrated', () => {
       env,
       expected: ['a'],
       createClient: () => clientReturning(failing),
-    }).catch((caught: unknown) => caught as Error)
+    }).then(
+      () => new Error('expected a rejection'),
+      (caught: unknown) => caught as Error,
+    )
 
     expect(error).toBeInstanceOf(Error)
     expect(error.message).toMatch(/Cannot read the applied-migration record/)

@@ -25,9 +25,10 @@ describe('BrevoEmailSender', () => {
     await new BrevoEmailSender(config, impl).sendVerificationEmail(email)
 
     expect(calls).toHaveLength(1)
-    expect(calls[0].url).toBe(BREVO_SEND_URL)
-    expect((calls[0].init.headers as Record<string, string>)['api-key']).toBe('xkeysib-test')
-    const body = JSON.parse(String(calls[0].init.body))
+    const [call] = calls
+    expect(call!.url).toBe(BREVO_SEND_URL)
+    expect((call!.init.headers as Record<string, string>)['api-key']).toBe('xkeysib-test')
+    const body = JSON.parse(String(call!.init.body))
     expect(body.to).toEqual([{ email: 'nutzer@example.de' }])
     expect(body.sender).toEqual({ email: 'hallo@steuereule.de', name: 'SteuerEule' })
     expect(body.subject).toBe(email.subject)
@@ -38,9 +39,10 @@ describe('BrevoEmailSender', () => {
 
   it('throws on a rejected delivery, naming the status but never the recipient', async () => {
     const { impl } = recordingFetch(401)
-    const error = await new BrevoEmailSender(config, impl)
-      .sendPasswordResetEmail(email)
-      .catch((caught: unknown) => caught as Error)
+    const error = await new BrevoEmailSender(config, impl).sendPasswordResetEmail(email).then(
+      () => new Error('expected a rejection'),
+      (caught: unknown) => caught as Error,
+    )
     expect(error.message).toMatch(/HTTP 401/)
     expect(error.message).not.toContain('nutzer@example.de')
   })

@@ -109,6 +109,7 @@ model User {
   accounts      Account[]
   twoFactors    TwoFactor[]
   passkeys      Passkey[]
+  freischaltungen Freischaltung[]
 }
 
 /// DB-backed, server-revocable session (ADR-0012 §3). Read on every
@@ -731,5 +732,26 @@ model UebernahmeKennzeichnung {
   updatedAt  DateTime @updatedAt
 
   @@unique([userId, steuerjahr, postenKey])
+  @@index([userId, steuerjahr])
+}
+
+/// Paid unlock of one tax year's Formular-Ausdruck (ADR-0050: Papierweg, paid on print).
+/// One row per Stripe Checkout Session; `bezahlt` is set only by the signature-verified
+/// webhook, never by the browser's return redirect. Account-only (a guest cannot pay),
+/// so it carries a real FK and cascades with the User on Art. 17 erasure — Stripe keeps
+/// the accounting record (§ 147 AO) on its side, this row is only the entitlement.
+model Freischaltung {
+  id                      String    @id @default(uuid())
+  userId                  String
+  steuerjahr              Int
+  /// "offen" until the webhook confirms payment, then "bezahlt".
+  status                  String    @default("offen")
+  stripeCheckoutSessionId String    @unique
+  betragCent              Int?
+  bezahltAm               DateTime?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+  user                    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId, steuerjahr])
 }

@@ -300,4 +300,20 @@ export default defineConfig({
       },
     },
   },
+  // ADR-0050 — the paid unlock per tax year (Papierweg, paid on print). The Stripe webhook
+  // is excluded from the spec (`@ApiExcludeEndpoint`): Stripe calls it, the app never does.
+  freischaltung: {
+    input: { target: '../../apps/api/openapi.json', filters: { tags: ['freischaltung'] } },
+    output: {
+      target: './src/generated/freischaltung.ts',
+      mode: 'split',
+      client: 'react-query',
+      httpClient: 'fetch',
+      mock: true,
+      override: {
+        mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        mock: { required: true },
+      },
+    },
+  },
 })
