@@ -832,7 +832,9 @@ export const appResources = {
           retry: 'Noch mal versuchen',
         },
         heading: 'Prüfung vor Abgabe',
-        einreichbar: 'Alles klar — du kannst abgeben.',
+        // ADR-0050: no Ausdruck exists yet, so "du kannst abgeben" would promise an action the
+        // app cannot perform — the check states what it found, not what to do next.
+        einreichbar: 'Alles klar — keine Widersprüche, nichts mehr offen.',
         nichtEinreichbar: 'Da ist noch etwas offen:',
         weiterZumVergleich: 'Weiter zum Veranlagungsartenvergleich',
         // Ticket 15 review F3 — the werktage/Pendlerpauschale check is not run this slice; the
@@ -1831,7 +1833,7 @@ export const appResources = {
           retry: 'Try again',
         },
         heading: 'Check before filing',
-        einreichbar: "All clear — you're ready to file.",
+        einreichbar: 'All clear — no contradictions, nothing left open.',
         nichtEinreichbar: 'Something is still open:',
         weiterZumVergleich: 'Continue to the assessment-type comparison',
         werktageNote: "Honestly: the work-days and commuting-allowance check comes in a later step.",
