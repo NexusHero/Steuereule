@@ -30,6 +30,14 @@
     { "id": "anlN.vorname", "formular": "anlage-n", "seite": 1, "anker": "Vorname", "zeile": 2, "lage": "unter", "art": "text" },
     { "id": "anlN.steuernummer", "formular": "anlage-n", "seite": 1, "anker": "Steuernummer", "zeile": 3, "lage": "rechts", "art": "text" },
     { "id": "anlN.personA", "formular": "anlage-n", "seite": 1, "anker": "Steuerpflichtige", "lage": "links", "art": "kreuz" },
-    { "id": "anlN.kz110", "formular": "anlage-n", "seite": 1, "anker": "110", "zeile": 5, "lage": "rechts", "art": "euro" }
+    { "id": "anlN.kz110", "formular": "anlage-n", "seite": 1, "anker": "110", "zeile": 5, "lage": "rechts", "art": "euro" },
+
+    { "id": "anlR.name", "formular": "anlage-r", "seite": 1, "anker": "Name", "zeile": 1, "lage": "unter", "art": "text" },
+    { "id": "anlR.vorname", "formular": "anlage-r", "seite": 1, "anker": "Vorname", "zeile": 2, "lage": "unter", "art": "text" },
+    { "id": "anlR.steuernummer", "formular": "anlage-r", "seite": 1, "anker": "Steuernummer", "zeile": 3, "lage": "rechts", "art": "text" },
+    { "id": "anlR.lfdNr", "formular": "anlage-r", "seite": 1, "anker": "Anlage", "zeile": 3, "lage": "rechts", "art": "text" },
+    { "id": "anlR.personA", "formular": "anlage-r", "seite": 1, "anker": "Steuerpflichtige", "lage": "links", "art": "kreuz" },
+    { "id": "anlR.kz101", "formular": "anlage-r", "seite": 1, "anker": "101", "zeile": 4, "lage": "rechts", "art": "euro" },
+    { "id": "anlR.kz131", "formular": "anlage-r", "seite": 1, "anker": "131", "zeile": 13, "lage": "rechts", "art": "euro" }
   ]
 }

@@ -4,33 +4,15 @@ import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@steuereule/ui'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
-import type { StammdatenResponseDto } from '@steuereule/api-client'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { AusdruckScreen } from './AusdruckScreen'
 
-const VOLLSTAENDIG: StammdatenResponseDto = {
-  geburtsdatum: '1990-04-12',
-  strasse: 'Musterstraße',
-  hausnummer: '12',
-  hausnummerZusatz: null,
-  plz: '01067',
-  wohnort: 'Dresden',
-  beruf: null,
-  religion: 'VD',
-  familienstand: 'ledig',
-  familienstandSeit: null,
-  iban: 'DE89370400440532013000',
-  kontoinhaber: null,
-  finanzamt: 'Dresden-Nord',
-  telefon: null,
-  fehlend: [],
-}
 
-function mock(status: string, stammdaten = VOLLSTAENDIG) {
+function mock(status: string, fehlend: string[] = []) {
   server.use(
     http.get('*/v1/steuerjahre/2025/freischaltung', () => HttpResponse.json({ status })),
-    http.get('*/v1/stammdaten', () => HttpResponse.json(stammdaten)),
+    http.get('*/v1/steuerjahre/2025/ausdruck/pruefung', () => HttpResponse.json({ fehlend })),
   )
 }
 
@@ -55,7 +37,7 @@ describe('AusdruckScreen (ADR-0050)', () => {
   it('payable: the checkout button hands the browser to the hosted Stripe page', async () => {
     mock('offen')
     server.use(
-      http.post('*/v1/steuerjahre/2025/freischaltung/checkout', () =>
+      http.post('*/v1/steuerjahre/2025/ausdruck/checkout', () =>
         HttpResponse.json({ checkoutUrl: 'https://checkout.stripe.com/c/pay/cs_test_1' }),
       ),
     )
@@ -82,7 +64,7 @@ describe('AusdruckScreen (ADR-0050)', () => {
   })
 
   it('missing details: names it, links to the form, and does not let you pay first', async () => {
-    mock('offen', { ...VOLLSTAENDIG, iban: null, fehlend: ['iban'] })
+    mock('offen', ['iban'])
     const { onAngabenErgaenzen } = renderScreen()
     fireEvent.click(await screen.findByText('Angaben ergänzen'))
     expect(onAngabenErgaenzen).toHaveBeenCalled()
@@ -90,9 +72,17 @@ describe('AusdruckScreen (ADR-0050)', () => {
   })
 
   it('married: says plainly the printout is not available yet, instead of choosing a Veranlagungsart', async () => {
-    mock('offen', { ...VOLLSTAENDIG, familienstand: 'verheiratet' })
+    mock('offen', ['ehegatte'])
     renderScreen()
     expect(await screen.findByText(/Für Verheiratete ist der Ausdruck noch nicht möglich/)).toBeTruthy()
+  })
+
+  it('an Anlage that is not printable yet is named, and paying is not offered', async () => {
+    mock('offen', ['anlageV'])
+    renderScreen()
+    expect(await screen.findByText(/Für deine Vermietung \(Anlage V\) gibt es den Ausdruck noch nicht/)).toBeTruthy()
+    expect(screen.getByTestId('ausdruck-bezahlen').getAttribute('aria-disabled')).toBe('true')
+    expect(screen.queryByText('Angaben ergänzen')).toBeNull()
   })
 
   it('payment not configured on this environment: says so, offers nothing to click', async () => {

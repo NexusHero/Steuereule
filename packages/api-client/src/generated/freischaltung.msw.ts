@@ -18,14 +18,11 @@ import type {
 } from 'msw';
 
 import type {
-  CheckoutResponseDto,
   FreischaltungStatusDto
 } from './freischaltung.schemas';
 
 
 export const getFreischaltungControllerStatusResponseMock = (overrideResponse: Partial<Extract<FreischaltungStatusDto, object>> = {}): FreischaltungStatusDto => ({status: faker.helpers.arrayElement(['freigeschaltet','offen','nicht-verfuegbar'] as const), ...overrideResponse})
-
-export const getFreischaltungControllerCheckoutResponseMock = (overrideResponse: Partial<Extract<CheckoutResponseDto, object>> = {}): CheckoutResponseDto => ({checkoutUrl: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
 
 
 export const getFreischaltungControllerStatusMockHandler = (overrideResponse?: FreischaltungStatusDto | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<FreischaltungStatusDto> | FreischaltungStatusDto), options?: RequestHandlerOptions) => {
@@ -39,19 +36,6 @@ export const getFreischaltungControllerStatusMockHandler = (overrideResponse?: F
       })
   }, options)
 }
-
-export const getFreischaltungControllerCheckoutMockHandler = (overrideResponse?: CheckoutResponseDto | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<CheckoutResponseDto> | CheckoutResponseDto), options?: RequestHandlerOptions) => {
-  return http.post('*/v1/steuerjahre/:jahr/freischaltung/checkout', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
-
-
-    return HttpResponse.json(overrideResponse !== undefined
-    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
-    : getFreischaltungControllerCheckoutResponseMock(),
-      { status: 200
-      })
-  }, options)
-}
 export const getSteuerEuleAPIMock = () => [
-  getFreischaltungControllerStatusMockHandler(),
-  getFreischaltungControllerCheckoutMockHandler()
+  getFreischaltungControllerStatusMockHandler()
 ]

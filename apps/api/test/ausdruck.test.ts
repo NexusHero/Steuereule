@@ -79,6 +79,30 @@ describe('ausdruckWerte', () => {
     expect(fehlend).toEqual(['ehegatte'])
   })
 
+  it('a gesetzliche Rente goes to Anlage R Zeile 4 (Kz 101), a private one to Zeile 13 (Kz 131)', () => {
+    const gesetzlich = ausdruckWerte({ ...FAKTEN, rente: { rentenart: 'GesetzlicheRente', jahresbetrag: '14400' } }).werte
+    expect(gesetzlich).toMatchObject({ 'anlR.kz101': '14400', 'anlR.personA': true, 'anlR.lfdNr': '1', 'anlR.name': 'Beispiel' })
+    expect(gesetzlich['anlR.kz131']).toBeUndefined()
+
+    const privat = ausdruckWerte({ ...FAKTEN, rente: { rentenart: 'PrivateRentenversicherung', jahresbetrag: '2400' } }).werte
+    expect(privat['anlR.kz131']).toBe('2400')
+    expect(privat['anlR.kz101']).toBeUndefined()
+  })
+
+  it('a pension that belongs on another Vordruck (bAV, ausländisch) blocks instead of being dropped', () => {
+    expect(ausdruckWerte({ ...FAKTEN, rente: { rentenart: 'Betriebsrente', jahresbetrag: '3000' } }).fehlend).toEqual([
+      'anlageRAvBav',
+    ])
+    expect(ausdruckWerte({ ...FAKTEN, rente: { rentenart: 'AuslaendischeRente', jahresbetrag: '3000' } }).fehlend).toEqual([
+      'anlageRAus',
+    ])
+  })
+
+  it('recorded Vermietung/Kapital/CH income without a printable Anlage blocks the printout, naming it', () => {
+    const { fehlend } = ausdruckWerte({ ...FAKTEN, nochNichtDruckbar: ['anlageV', 'anlageKap', 'anlageNGre'] })
+    expect(fehlend).toEqual(['anlageV', 'anlageKap', 'anlageNGre'])
+  })
+
   it('formats dates with points, as the form asks', () => {
     expect(datumFuerVordruck('2025-12-31')).toBe('31.12.2025')
   })
@@ -99,6 +123,12 @@ describe('rendereVordrucke (real templates)', () => {
     // DIN A4 portrait, unscaled (BMF: < 5 % deviation allowed, we keep 0).
     const { width, height } = dokument.getPage(0).getSize()
     expect([Math.round(width), Math.round(height)]).toEqual([595, 842])
+  })
+
+  it('with a pension, Anlage R follows Anlage N: 2 + 4 + 2 pages', async () => {
+    const { werte } = ausdruckWerte({ ...FAKTEN, rente: { rentenart: 'GesetzlicheRente', jahresbetrag: '14400' } })
+    const pdf = await rendereVordrucke(FELDSAETZE[2025]!, werte, { vorlagenVerzeichnis: VORLAGEN })
+    expect((await PDFDocument.load(pdf)).getPageCount()).toBe(8)
   })
 
   it('without Anlage N entries only the Hauptvordruck is handed out', async () => {

@@ -7,9 +7,9 @@ import { Pressable, ScrollView, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Button, Card, useBreakpoint, useTheme } from '@steuereule/ui'
 import {
-  useFreischaltungControllerCheckout,
+  useAusdruckControllerCheckout,
+  useAusdruckControllerPruefung,
   useFreischaltungControllerStatus,
-  useStammdatenControllerLese,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { makeDatenschutzStyles } from '../datenschutz/styles'
@@ -31,13 +31,15 @@ export function AusdruckScreen({ jahr, zahlung, onZurueck, onAngabenErgaenzen, o
   const styles = makeDatenschutzStyles(theme)
   const { t } = useTranslation(APP_NS)
   const status = useFreischaltungControllerStatus(jahr)
-  const stammdaten = useStammdatenControllerLese()
-  const checkout = useFreischaltungControllerCheckout()
+  // The server's own pre-check: Stammdaten gaps, married, and Anlagen not printable yet —
+  // shown before paying, so nobody pays for a printout that cannot be delivered.
+  const pruefung = useAusdruckControllerPruefung(jahr)
+  const checkout = useAusdruckControllerCheckout()
   const [meldung, setMeldung] = useState<{ art: 'ok' | 'fehler'; text: string } | null>(null)
   const [laedt, setLaedt] = useState(false)
 
-  if (status.isPending || stammdaten.isPending) return <LoadingState bp={bp} label={t('ausdruck.loading')} />
-  if (status.data?.status !== 200 || stammdaten.data?.status !== 200) {
+  if (status.isPending || pruefung.isPending) return <LoadingState bp={bp} label={t('ausdruck.loading')} />
+  if (status.data?.status !== 200 || pruefung.data?.status !== 200) {
     return (
       <ErrorState
         bp={bp}
@@ -46,15 +48,18 @@ export function AusdruckScreen({ jahr, zahlung, onZurueck, onAngabenErgaenzen, o
         retryLabel={t('ausdruck.loadError.retry')}
         onRetry={() => {
           void status.refetch()
-          void stammdaten.refetch()
+          void pruefung.refetch()
         }}
       />
     )
   }
 
   const freischaltung = status.data.data.status
-  const fehlend = stammdaten.data.data.fehlend
-  const verheiratet = stammdaten.data.data.familienstand === 'verheiratet'
+  const fehlend = pruefung.data.data.fehlend
+  const verheiratet = fehlend.includes('ehegatte')
+  const anlagen = fehlend.filter((key) => key.startsWith('anlage'))
+  const stammdatenFehlen = fehlend.some((key) => key !== 'ehegatte' && !key.startsWith('anlage'))
+  const gesperrt = fehlend.length > 0
 
   function bezahlen() {
     setMeldung(null)
@@ -76,7 +81,7 @@ export function AusdruckScreen({ jahr, zahlung, onZurueck, onAngabenErgaenzen, o
     try {
       const ergebnis = await ladeAusdruck(jahr)
       setMeldung(ergebnis.ok ? { art: 'ok', text: t('ausdruck.heruntergeladen') } : { art: 'fehler', text: t('ausdruck.fehler') })
-      if (!ergebnis.ok && ergebnis.status === 422) void stammdaten.refetch()
+      if (!ergebnis.ok && ergebnis.status === 422) void pruefung.refetch()
     } catch {
       setMeldung({ art: 'fehler', text: t('ausdruck.fehler') })
     } finally {
@@ -94,11 +99,17 @@ export function AusdruckScreen({ jahr, zahlung, onZurueck, onAngabenErgaenzen, o
       </View>
       <Text style={styles.sectionBody}>{t('ausdruck.intro')}</Text>
 
-      {verheiratet || fehlend.length > 0 ? (
+      {gesperrt ? (
         <Card style={{ marginBottom: theme.space.s4 }}>
           <Text style={styles.sectionTitle}>{t('ausdruck.fehlendTitel')}</Text>
-          <Text style={styles.sectionBody}>{verheiratet ? t('ausdruck.fehlendEhegatte') : t('ausdruck.fehlendAngaben')}</Text>
-          {fehlend.length > 0 ? (
+          {stammdatenFehlen ? <Text style={styles.sectionBody}>{t('ausdruck.fehlendAngaben')}</Text> : null}
+          {verheiratet ? <Text style={styles.sectionBody}>{t('ausdruck.fehlendEhegatte')}</Text> : null}
+          {anlagen.map((anlage) => (
+            <Text key={anlage} style={styles.sectionBody}>
+              {t('ausdruck.anlageNochNicht', { anlage: t(`ausdruck.anlagen.${anlage}`) })}
+            </Text>
+          ))}
+          {stammdatenFehlen ? (
             <Button variante="ghost" onPress={onAngabenErgaenzen}>
               {t('ausdruck.angabenErgaenzen')}
             </Button>
@@ -123,7 +134,7 @@ export function AusdruckScreen({ jahr, zahlung, onZurueck, onAngabenErgaenzen, o
 
       {freischaltung === 'offen' && zahlung !== 'erfolg' ? (
         <View style={{ gap: theme.space.s2 }}>
-          <Button onPress={bezahlen} disabled={checkout.isPending || verheiratet || fehlend.length > 0} testID="ausdruck-bezahlen">
+          <Button onPress={bezahlen} disabled={checkout.isPending || gesperrt} testID="ausdruck-bezahlen">
             {t('ausdruck.freischalten')}
           </Button>
           <Text style={styles.hint}>{t('ausdruck.freischaltenHinweis')}</Text>
@@ -131,7 +142,7 @@ export function AusdruckScreen({ jahr, zahlung, onZurueck, onAngabenErgaenzen, o
       ) : null}
 
       {freischaltung === 'freigeschaltet' ? (
-        <Button onPress={() => void herunterladen()} disabled={laedt || verheiratet || fehlend.length > 0} testID="ausdruck-herunterladen">
+        <Button onPress={() => void herunterladen()} disabled={laedt || gesperrt} testID="ausdruck-herunterladen">
           {t('ausdruck.herunterladen')}
         </Button>
       ) : null}

@@ -14,8 +14,12 @@ sobald das Zertifikat (Ticket 07) vorliegt; bis dahin Beta kostenlos (ADR-017).
 - [x] **Formular-Ausdruck 2025, erster Schnitt:** ESt 1 A + Anlage N auf den amtlichen
       Vorlagen (vermessen, nicht getippt), Stammdaten-Erfassung (REQ-030), Download hinter der
       Freischaltung (REQ-031), Ausdruck-Seite im Web
-- [ ] Ausdruck, weitere Anlagen: R und V (Vorlagen fehlen noch), KAP, Kind, N-Gre,
-      Vorsorgeaufwand (braucht aufgeteilte SV-Beiträge), Sonderausgaben
+- [x] Ausdruck Anlage R (gesetzliche/Witwen-/private Rente); Sperre + Vorprüfung vor der Zahlung
+      für noch nicht druckbare Anlagen
+- [ ] Ausdruck Anlage V — braucht Objekt-Anschrift, Wohnfläche und aufgeschlüsselte
+      Werbungskosten (heute nur eine Summe); Vorlage liegt vor
+- [ ] Ausdruck weitere Anlagen: KAP, Kind, N-Gre, R-AV/bAV, R-AUS (Vorlagen fehlen für die
+      beiden R-Varianten), Vorsorgeaufwand (aufgeteilte SV-Beiträge), Sonderausgaben
 - [ ] Verheiratete: Veranlagungsart + Person B erfassen, dann Zeilen 19–24 ausdrucken
 - [ ] Klärung durch Steuerberater/Finanzamt: befülltes Portal-PDF („NET") vs. nichtamtlicher
       Vordruck (Graurasterung, Herstellerangabe)

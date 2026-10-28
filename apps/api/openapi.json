@@ -1752,43 +1752,6 @@
         ]
       }
     },
-    "/v1/steuerjahre/{jahr}/freischaltung/checkout": {
-      "post": {
-        "operationId": "FreischaltungController_checkout",
-        "parameters": [
-          {
-            "name": "jahr",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "example": 2025,
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "The hosted Stripe Checkout page to redirect to.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CheckoutResponseDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Guest session — paying requires a signed-in account."
-          },
-          "503": {
-            "description": "Payment is not configured on this environment."
-          }
-        },
-        "tags": [
-          "freischaltung"
-        ]
-      }
-    },
     "/v1/stammdaten": {
       "get": {
         "operationId": "StammdatenController_lese",
@@ -1845,6 +1808,83 @@
         },
         "tags": [
           "stammdaten"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/ausdruck/pruefung": {
+      "get": {
+        "operationId": "AusdruckController_pruefung",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Everything that would stop the printout — checked before anyone pays.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AusdruckPruefungDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "404": {
+            "description": "No measured templates exist for this tax year."
+          }
+        },
+        "tags": [
+          "ausdruck"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/ausdruck/checkout": {
+      "post": {
+        "operationId": "AusdruckController_checkout",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The hosted Stripe Checkout page to redirect to.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckoutResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "422": {
+            "description": "`fehlend`: the printout could not be delivered yet, so payment is not offered."
+          },
+          "503": {
+            "description": "Payment is not configured on this environment."
+          }
+        },
+        "tags": [
+          "ausdruck"
         ]
       }
     },
@@ -4304,18 +4344,6 @@
           "status"
         ]
       },
-      "CheckoutResponseDto": {
-        "type": "object",
-        "properties": {
-          "checkoutUrl": {
-            "type": "string",
-            "example": "https://checkout.stripe.com/c/pay/cs_test_…"
-          }
-        },
-        "required": [
-          "checkoutUrl"
-        ]
-      },
       "StammdatenResponseDto": {
         "type": "object",
         "properties": {
@@ -4531,6 +4559,37 @@
             "example": "0351 1234567"
           }
         }
+      },
+      "AusdruckPruefungDto": {
+        "type": "object",
+        "properties": {
+          "fehlend": {
+            "example": [
+              "iban",
+              "anlageV"
+            ],
+            "description": "What stops the printout: missing Stammdaten keys, `ehegatte` (married, not yet supported), or an Anlage that is not printable yet (`anlageV`, `anlageKap`, `anlageNGre`, `anlageRAvBav`, `anlageRAus`). Empty = printable.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "fehlend"
+        ]
+      },
+      "CheckoutResponseDto": {
+        "type": "object",
+        "properties": {
+          "checkoutUrl": {
+            "type": "string",
+            "example": "https://checkout.stripe.com/c/pay/cs_test_…"
+          }
+        },
+        "required": [
+          "checkoutUrl"
+        ]
       }
     }
   }

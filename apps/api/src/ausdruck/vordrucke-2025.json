@@ -89,6 +89,14 @@
       "2025AnlN034NET"
     ]
   },
+  "anlage-r": {
+    "datei": "anlage-r.pdf",
+    "sha256": "a6dc35f16b34e0c3e1bca3cc90b256380ec5276326b39e793e1ba55df81969a8",
+    "formularschluessel": [
+      "2025AnlR121NET",
+      "2025AnlR122NET"
+    ]
+  },
   "anlage-so": {
     "datei": "anlage-so.pdf",
     "sha256": "5c7541b3b21f0e1f264217fa3bee6d3084eecd9a99e47ebcad4ab5e4cc4d9f74",
@@ -112,6 +120,16 @@
     "formularschluessel": [
       "2025AnlSonstiges411NET",
       "2025AnlSonstiges412NET"
+    ]
+  },
+  "anlage-v": {
+    "datei": "anlage-v.pdf",
+    "sha256": "a9d620a12496de42e08be50626fd8e988eaaba972b6d2bad148008a24823cc98",
+    "formularschluessel": [
+      "2025AnlV101NET",
+      "2025AnlV102NET",
+      "2025AnlV103NET",
+      "2025AnlV104NET"
     ]
   },
   "anlage-vorsorgeaufwand": {

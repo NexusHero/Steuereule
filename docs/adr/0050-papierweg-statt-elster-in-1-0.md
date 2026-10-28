@@ -78,7 +78,7 @@ amtlich vorgeschriebene Vordruck verwendet wird (§ 150 Abs. 1 AO). Das BMF-Schr
 - Die Vorlagen 2025 kamen vom Stakeholder als ZIP aus dem Formular-Management-System:
   amtliche Internet-Vordrucke (Formularschlüssel `…NET`, Barcodes, bereits grau gerastert),
   **ohne Formularfelder**. Sie liegen unverändert unter `apps/api/assets/vordrucke/2025/`,
-  gepinnt per SHA-256 (`apps/api/src/ausdruck/vordrucke-2025.json`). Anlage R und V fehlen noch.
+  gepinnt per SHA-256 (`apps/api/src/ausdruck/vordrucke-2025.json`). Anlage R und V wurden nachgeliefert.
 - Feldpositionen werden nicht getippt, sondern mit `scripts/vordrucke/vermessen.mjs` aus den
   Vorlagen vermessen: Anker ist ein gedrucktes Wort (Label, Kennzahl, Zeilennummer), Ziel der
   weiße Eingabekasten bzw. Rahmen, den das Formular selbst zeichnet. Das Ergebnis
@@ -91,6 +91,11 @@ amtlich vorgeschriebene Vordruck verwendet wird (§ 150 Abs. 1 AO). Das BMF-Schr
   `Stammdaten` (REQ-030); die Religion nur mit Einwilligung nach Art. 9 DSGVO.
 - Bewusst leer bzw. gesperrt: Lohnsteuer Kz 140 (App kennt nur ganze Euro, eDaten liegen vor);
   Verheiratete, bis Veranlagungsart und Person B erfasst werden.
+- **Keine unvollständige Erklärung:** Hat jemand Einkünfte erfasst, deren Anlage noch nicht druckbar
+  ist (V, KAP, N-Gre, Betriebsrente → R-AV/bAV, ausländische Rente → R-AUS), sperrt der Ausdruck
+  mit Namen. Die Vorprüfung (`GET …/ausdruck/pruefung`) zeigt das **vor** der Zahlung, und der
+  Checkout liegt beim Ausdruck (`POST …/ausdruck/checkout`) und verweigert sich, solange etwas
+  fehlt — niemand bezahlt einen Ausdruck, der nicht geliefert werden kann.
 
 ## Decision history
 

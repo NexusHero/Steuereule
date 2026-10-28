@@ -31,7 +31,7 @@ const SCHRIFTGROESSE = 10
 const INNENABSTAND = 3
 
 // Order in which forms are handed in: Hauptvordruck first, then the Anlagen.
-const REIHENFOLGE = ['est-1-a', 'anlage-n']
+const REIHENFOLGE = ['est-1-a', 'anlage-n', 'anlage-r']
 
 export const FELDSAETZE: Readonly<Record<number, Feldsatz>> = { 2025: felder2025 as Feldsatz }
 

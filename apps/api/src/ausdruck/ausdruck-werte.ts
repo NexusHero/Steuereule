@@ -23,6 +23,26 @@ export interface AusdruckFakten {
   } | null
   /** LStB Bruttoarbeitslohn in whole euros as stored ("unklar" or null = not usable). */
   bruttoarbeitslohn: string | null
+  /** The tax year's pension as stored (Rentenart + Jahresbetrag in whole euros), or null. */
+  rente?: { rentenart: string | null; jahresbetrag: string | null } | null
+  /** Facts the user recorded for verticals whose Anlage is not printable yet. */
+  nochNichtDruckbar?: readonly ('anlageV' | 'anlageKap' | 'anlageNGre')[]
+}
+
+/** Anlage R line per Rentenart. Gesetzliche and Witwen-/Waisenrente go through the
+ *  Besteuerungsanteil (Zeile 4) — the same table the core taxes them with; the private
+ *  Rentenversicherung through the Ertragsanteil (Zeile 13). */
+const RENTE_KENNZAHL: Record<string, string> = {
+  GesetzlicheRente: 'anlR.kz101',
+  WitwenWaisenrente: 'anlR.kz101',
+  PrivateRentenversicherung: 'anlR.kz131',
+}
+
+/** Pensions that belong on a form we hold no template for. Printing the return without
+ *  them would hand in an incomplete Erklärung, so the printout waits instead. */
+const RENTE_ANDERER_VORDRUCK: Record<string, string> = {
+  Betriebsrente: 'anlageRAvBav',
+  AuslaendischeRente: 'anlageRAus',
 }
 
 export interface AusdruckWerte {
@@ -100,6 +120,25 @@ export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
     setze('anlN.name', profil.lastName)
     setze('anlN.vorname', profil.firstName)
     setze('anlN.steuernummer', profil.steuernummer)
+  }
+
+  // Recorded income without a printable Anlage would make the return silently incomplete:
+  // the printout waits and names which Anlage is missing.
+  fehlend.push(...(fakten.nochNichtDruckbar ?? []))
+
+  const rente = fakten.rente
+  if (rente?.rentenart) {
+    const andererVordruck = RENTE_ANDERER_VORDRUCK[rente.rentenart]
+    if (andererVordruck) fehlend.push(andererVordruck)
+    const kennzahl = RENTE_KENNZAHL[rente.rentenart]
+    if (kennzahl && rente.jahresbetrag !== null && /^\d+$/.test(rente.jahresbetrag)) {
+      werte[kennzahl] = rente.jahresbetrag
+      werte['anlR.personA'] = true
+      werte['anlR.lfdNr'] = '1'
+      setze('anlR.name', profil.lastName)
+      setze('anlR.vorname', profil.firstName)
+      setze('anlR.steuernummer', profil.steuernummer)
+    }
   }
 
   return { werte, fehlend }

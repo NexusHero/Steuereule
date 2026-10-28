@@ -6,26 +6,21 @@
  * OpenAPI spec version: 1.0
  */
 import {
-  useMutation,
   useQuery
 } from '@tanstack/react-query';
 import type {
   DataTag,
   DefinedInitialDataOptions,
   DefinedUseQueryResult,
-  MutationFunction,
   QueryClient,
   QueryFunction,
   QueryKey,
   UndefinedInitialDataOptions,
-  UseMutationOptions,
-  UseMutationResult,
   UseQueryOptions,
   UseQueryResult
 } from '@tanstack/react-query';
 
 import type {
-  CheckoutResponseDto,
   FreischaltungStatusDto
 } from './freischaltung.schemas';
 
@@ -164,93 +159,4 @@ export function useFreischaltungControllerStatus<TData = Awaited<ReturnType<type
 
 
 
-
-export type freischaltungControllerCheckoutResponse200 = {
-  data: CheckoutResponseDto
-  status: 200
-}
-
-export type freischaltungControllerCheckoutResponse401 = {
-  data: void
-  status: 401
-}
-
-export type freischaltungControllerCheckoutResponse503 = {
-  data: void
-  status: 503
-}
-
-export type freischaltungControllerCheckoutResponseSuccess = (freischaltungControllerCheckoutResponse200) & {
-  headers: Headers;
-};
-export type freischaltungControllerCheckoutResponseError = (freischaltungControllerCheckoutResponse401 | freischaltungControllerCheckoutResponse503) & {
-  headers: Headers;
-};
-
-export type freischaltungControllerCheckoutResponse = (freischaltungControllerCheckoutResponseSuccess | freischaltungControllerCheckoutResponseError)
-
-export const getFreischaltungControllerCheckoutUrl = (jahr: number,) => {
-
-
-
-
-  return `/v1/steuerjahre/${jahr}/freischaltung/checkout`
-}
-
-export const freischaltungControllerCheckout = async (jahr: number, options?: RequestInit): Promise<freischaltungControllerCheckoutResponse> => {
-
-  return httpClient<freischaltungControllerCheckoutResponse>(getFreischaltungControllerCheckoutUrl(jahr),
-  {
-    ...options,
-    method: 'POST'
-
-
-  }
-);}
-
-
-
-
-
-export const getFreischaltungControllerCheckoutMutationOptions = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof freischaltungControllerCheckout>>, TError,{jahr: number}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof freischaltungControllerCheckout>>, TError,{jahr: number}, TContext> => {
-
-const mutationKey = ['freischaltungControllerCheckout'];
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof freischaltungControllerCheckout>>, {jahr: number}> = (props) => {
-          const {jahr} = props ?? {};
-
-          return  freischaltungControllerCheckout(jahr,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type FreischaltungControllerCheckoutMutationResult = NonNullable<Awaited<ReturnType<typeof freischaltungControllerCheckout>>>
-
-    export type FreischaltungControllerCheckoutMutationError = void
-
-    export const useFreischaltungControllerCheckout = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof freischaltungControllerCheckout>>, TError,{jahr: number}, TContext>, request?: SecondParameter<typeof httpClient>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof freischaltungControllerCheckout>>,
-        TError,
-        {jahr: number},
-        TContext
-      > => {
-      return useMutation(getFreischaltungControllerCheckoutMutationOptions(options), queryClient);
-    }
 

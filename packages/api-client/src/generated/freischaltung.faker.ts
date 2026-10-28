@@ -10,12 +10,9 @@ import {
 } from '@faker-js/faker';
 
 import type {
-  CheckoutResponseDto,
   FreischaltungStatusDto
 } from './freischaltung.schemas';
 
 
 export const getFreischaltungControllerStatusResponseMock = (overrideResponse: Partial<Extract<FreischaltungStatusDto, object>> = {}): FreischaltungStatusDto => ({status: faker.helpers.arrayElement(['freigeschaltet','offen','nicht-verfuegbar'] as const), ...overrideResponse})
-
-export const getFreischaltungControllerCheckoutResponseMock = (overrideResponse: Partial<Extract<CheckoutResponseDto, object>> = {}): CheckoutResponseDto => ({checkoutUrl: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
 

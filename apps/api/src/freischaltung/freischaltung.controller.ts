@@ -3,7 +3,6 @@ import {
   ApiExcludeEndpoint,
   ApiOkResponse,
   ApiParam,
-  ApiServiceUnavailableResponse,
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger'
@@ -12,7 +11,7 @@ import { CurrentUser } from '../auth/current-user.decorator.js'
 import { RequiresAccount } from '../auth/requires-account.guard.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
 import { ParseSteuerjahrPipe } from '../cockpit/parse-steuerjahr.pipe.js'
-import { CheckoutResponseDto, FreischaltungStatusDto } from './dto/freischaltung.dto.js'
+import { FreischaltungStatusDto } from './dto/freischaltung.dto.js'
 import { FreischaltungService } from './freischaltung.service.js'
 
 @ApiTags('freischaltung')
@@ -31,18 +30,6 @@ export class FreischaltungController {
     @Param('jahr', ParseSteuerjahrPipe) jahr: number,
   ): Promise<FreischaltungStatusDto> {
     return { status: await this.service.status(userId, jahr) }
-  }
-
-  @Post('v1/steuerjahre/:jahr/freischaltung/checkout')
-  @HttpCode(200)
-  @UseGuards(UserContextGuard)
-  @RequiresAccount()
-  @ApiParam({ name: 'jahr', type: Number, example: 2025 })
-  @ApiOkResponse({ type: CheckoutResponseDto, description: 'The hosted Stripe Checkout page to redirect to.' })
-  @ApiUnauthorizedResponse({ description: 'Guest session — paying requires a signed-in account.' })
-  @ApiServiceUnavailableResponse({ description: 'Payment is not configured on this environment.' })
-  checkout(@CurrentUser() userId: string, @Param('jahr', ParseSteuerjahrPipe) jahr: number): Promise<CheckoutResponseDto> {
-    return this.service.starteCheckout(userId, jahr)
   }
 
   // Called by Stripe, not by the app: no session, authenticity comes from the

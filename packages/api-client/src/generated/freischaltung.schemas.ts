@@ -22,7 +22,3 @@ export interface FreischaltungStatusDto {
   status: FreischaltungStatusDtoStatus;
 }
 
-export interface CheckoutResponseDto {
-  checkoutUrl: string;
-}
-
