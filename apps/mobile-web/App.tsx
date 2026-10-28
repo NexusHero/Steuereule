@@ -1,7 +1,7 @@
 // App root — the entry the whole thing boots into. Providers (i18n + Funke theme + TanStack
 // Query) wrap the first screen. The Profile API origin is configured here, once, from the
 // environment (12-Factor III) — the typed client itself carries no hard-coded host.
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { View } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
 import { I18nextProvider, useTranslation } from 'react-i18next'
@@ -40,6 +40,7 @@ import { SicherheitScreen } from './src/screens/security/SicherheitScreen'
 import { DeviceScreen } from './src/screens/device/DeviceScreen'
 import { RechtlichesScreen } from './src/screens/rechtliches/RechtlichesScreen'
 import { StammdatenScreen } from './src/screens/stammdaten/StammdatenScreen'
+import { AusdruckScreen } from './src/screens/ausdruck/AusdruckScreen'
 import { betreiberAusUmgebung, RECHTLICHE_SEITEN, type RechtlicheSeite } from './src/screens/rechtliches/texte'
 import { KontoWandScreen, pfadAusAntworten, type FunnelPfad } from './src/screens/funnel/KontoWandScreen'
 import { useAccountSession } from './src/auth/useAccountSession'
@@ -77,6 +78,8 @@ type RootStackParamList = {
   App: { start?: 'interview' } | undefined
   Device: { user_code?: string } | undefined
   Rechtliches: { seite: RechtlicheSeite }
+  /** ADR-0050 — also the Stripe checkout's return URL (`?zahlung=erfolg|abbruch`). */
+  Ausdruck: { jahr: string; zahlung?: string }
 }
 
 const RootStack = createNativeStackNavigator<RootStackParamList>()
@@ -99,6 +102,7 @@ const linking: LinkingOptions<RootStackParamList> = {
       App: 'app',
       Device: 'device',
       Rechtliches: 'rechtliches/:seite',
+      Ausdruck: 'app/steuerjahr/:jahr/ausdruck',
     },
   },
 }
@@ -130,6 +134,7 @@ export default function App() {
                     <RootStack.Screen name="App" component={AppRoute} />
                     <RootStack.Screen name="Device" component={DeviceRoute} />
                     <RootStack.Screen name="Rechtliches" component={RechtlichesRoute} />
+                    <RootStack.Screen name="Ausdruck" component={AusdruckRoute} />
                   </RootStack.Navigator>
                 </NavigationContainer>
                 <StatusBar style="dark" />
@@ -213,6 +218,28 @@ function RechtlichesRoute({ navigation, route }: NativeStackScreenProps<RootStac
   )
 }
 
+// ADR-0050: "Angaben ergänzen" opens the Stammdaten form in place, so returning from it lands
+// back on the Ausdruck with the refreshed gap list instead of somewhere in the tab shell.
+function AusdruckRoute({ navigation, route }: NativeStackScreenProps<RootStackParamList, 'Ausdruck'>) {
+  const [ansicht, setAnsicht] = useState<'ausdruck' | 'stammdaten'>('ausdruck')
+  const jahr = Number(route.params?.jahr)
+  // A hand-typed URL with no valid year has nothing to show: back to the Cockpit.
+  useEffect(() => {
+    if (!Number.isInteger(jahr)) navigation.replace('App')
+  }, [jahr, navigation])
+  if (!Number.isInteger(jahr)) return null
+  if (ansicht === 'stammdaten') return <StammdatenScreen onZurueck={() => setAnsicht('ausdruck')} />
+  const zahlung = route.params?.zahlung
+  return (
+    <AusdruckScreen
+      jahr={jahr}
+      {...(zahlung === 'erfolg' || zahlung === 'abbruch' ? { zahlung } : {})}
+      onZurueck={() => (navigation.canGoBack() ? navigation.goBack() : navigation.replace('App'))}
+      onAngabenErgaenzen={() => setAnsicht('stammdaten')}
+    />
+  )
+}
+
 function DeviceRoute({ route }: NativeStackScreenProps<RootStackParamList, 'Device'>) {
   return <DeviceScreen userCode={route.params?.user_code} />
 }
@@ -232,6 +259,7 @@ function AppRoute({ navigation, route }: NativeStackScreenProps<RootStackParamLi
       // Steuer-ID skippable) -> App; the guest's interview answers move over on that sign-up.
       onRegister={() => navigation.replace('Registrierung')}
       onLogin={() => navigation.replace('Login')}
+      onOpenAusdruck={(jahr) => navigation.navigate('Ausdruck', { jahr: String(jahr) })}
       onSignedOut={() => {
         // REQ-011 (ADR-0013): the server already cleared the session cookie on a
         // successful DELETE /v1/account — the client must not keep showing a screen
@@ -267,9 +295,11 @@ interface TabbedShellProps {
   readonly startInInterview?: boolean
   readonly onRegister?: () => void
   readonly onLogin?: () => void
+  /** ADR-0050: the Formular-Ausdruck is its own route (the Stripe checkout returns to it). */
+  readonly onOpenAusdruck?: (jahr: number) => void
 }
 
-function TabbedShell({ tab, onTabChange, onSignedOut, startInInterview = false, onRegister = () => {}, onLogin = () => {} }: TabbedShellProps) {
+function TabbedShell({ tab, onTabChange, onSignedOut, startInInterview = false, onRegister = () => {}, onLogin = () => {}, onOpenAusdruck }: TabbedShellProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   // ADR-0045: only a real account session continues into the (account-only) verticals after
@@ -338,7 +368,13 @@ function TabbedShell({ tab, onTabChange, onSignedOut, startInInterview = false, 
 
   return (
     <View style={{ flex: 1 }}>
-      {tab === 'cockpit' && cockpitView === 'main' ? <CockpitScreen onOpenInterview={() => setCockpitView('interview')} onOpenBescheid={() => setCockpitView('bescheid')} onOpenKapital={() => setCockpitView('kapital')} onOpenVermietung={() => setCockpitView('vermietung')} /> : null}
+      {tab === 'cockpit' && cockpitView === 'main' ? <CockpitScreen
+          onOpenInterview={() => setCockpitView('interview')}
+          onOpenBescheid={() => setCockpitView('bescheid')}
+          onOpenKapital={() => setCockpitView('kapital')}
+          onOpenVermietung={() => setCockpitView('vermietung')}
+          {...(onOpenAusdruck ? { onOpenAusdruck } : {})}
+        /> : null}
       {tab === 'cockpit' && cockpitView === 'interview' ? (
         // The Minimal-Gate routes to the right vertical from the answers — Rente (product
         // ADR-034) goes to the Rentner mask, work in CH (ADR-029) to the Grenzgänger screen,
