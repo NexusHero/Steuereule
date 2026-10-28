@@ -39,6 +39,7 @@ import { DatenschutzScreen } from './src/screens/DatenschutzScreen'
 import { SicherheitScreen } from './src/screens/security/SicherheitScreen'
 import { DeviceScreen } from './src/screens/device/DeviceScreen'
 import { RechtlichesScreen } from './src/screens/rechtliches/RechtlichesScreen'
+import { StammdatenScreen } from './src/screens/stammdaten/StammdatenScreen'
 import { betreiberAusUmgebung, RECHTLICHE_SEITEN, type RechtlicheSeite } from './src/screens/rechtliches/texte'
 import { KontoWandScreen, pfadAusAntworten, type FunnelPfad } from './src/screens/funnel/KontoWandScreen'
 import { useAccountSession } from './src/auth/useAccountSession'
@@ -279,7 +280,7 @@ function TabbedShell({ tab, onTabChange, onSignedOut, startInInterview = false, 
   // Datenschutz (REQ-011) is a screen reached *from* Profil, not a tab of its own (TAB_ORDNUNG
   // groups it with Profil in the DS reference) — so it's a sub-view owned by this shell, the
   // same way OnboardingScreen owns its own step state, rather than a sixth `Tab` value.
-  const [profilView, setProfilView] = useState<'main' | 'datenschutz' | 'sicherheit'>('main')
+  const [profilView, setProfilView] = useState<'main' | 'datenschutz' | 'sicherheit' | 'stammdaten'>('main')
   // The Minimal-Gate (REQ-015/#318 task 2) is reached from Cockpit's own CTA the same way —
   // a sub-view of the Cockpit tab, not a top-level route (ADR-0023: only the composition root
   // touches `@react-navigation/*`, and this is exactly the Datenschutz precedent applied here).
@@ -390,11 +391,17 @@ function TabbedShell({ tab, onTabChange, onSignedOut, startInInterview = false, 
       ) : null}
       {tab === 'belege' ? <BelegeScreen /> : null}
       {tab === 'profil' && profilView === 'main' ? (
-        <ProfilScreen onOpenDatenschutz={() => setProfilView('datenschutz')} onOpenSicherheit={() => setProfilView('sicherheit')} onSignedOut={onSignedOut} />
+        <ProfilScreen
+          onOpenDatenschutz={() => setProfilView('datenschutz')}
+          onOpenSicherheit={() => setProfilView('sicherheit')}
+          onOpenStammdaten={() => setProfilView('stammdaten')}
+          onSignedOut={onSignedOut}
+        />
       ) : null}
       {tab === 'profil' && profilView === 'datenschutz' ? (
         <DatenschutzScreen onZurueck={() => setProfilView('main')} onAccountDeleted={onSignedOut} />
       ) : null}
+      {tab === 'profil' && profilView === 'stammdaten' ? <StammdatenScreen onZurueck={() => setProfilView('main')} /> : null}
       {tab === 'profil' && profilView === 'sicherheit' ? (
         <SicherheitScreen onZurueck={() => setProfilView('main')} />
       ) : null}

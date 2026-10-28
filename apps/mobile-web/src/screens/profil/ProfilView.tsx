@@ -16,10 +16,12 @@ interface ProfilViewProps {
   readonly bp: Breakpoint
   readonly onOpenDatenschutz: () => void
   readonly onOpenSicherheit: () => void
+  /** ADR-0050: the Erklärungs-Stammdaten (ESt 1 A page 1). Optional so existing embeds stay valid. */
+  readonly onOpenStammdaten?: () => void
   readonly onSignedOut: () => void
 }
 
-export function ProfilView({ profil, onEdit, justSaved, bp, onOpenDatenschutz, onOpenSicherheit, onSignedOut }: ProfilViewProps) {
+export function ProfilView({ profil, onEdit, justSaved, bp, onOpenDatenschutz, onOpenSicherheit, onOpenStammdaten, onSignedOut }: ProfilViewProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeProfilStyles(t)
@@ -48,6 +50,15 @@ export function ProfilView({ profil, onEdit, justSaved, bp, onOpenDatenschutz, o
         <Text style={styles.savedNotice} accessibilityLiveRegion="polite">
           {tr('profil.savedNotice')}
         </Text>
+      ) : null}
+
+      {onOpenStammdaten ? (
+        <Card style={styles.datenCard}>
+          <Pressable accessibilityRole="button" onPress={onOpenStammdaten} style={styles.datenRow}>
+            <Text style={styles.datenRowLabel}>{tr('stammdaten.rowLabel')}</Text>
+            <Text style={styles.datenRowArrow} aria-hidden={true}>→</Text>
+          </Pressable>
+        </Card>
       ) : null}
 
       <Card style={styles.datenCard}>
