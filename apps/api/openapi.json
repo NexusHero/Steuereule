@@ -1847,6 +1847,42 @@
           "stammdaten"
         ]
       }
+    },
+    "/v1/steuerjahre/{jahr}/ausdruck": {
+      "get": {
+        "operationId": "AusdruckController_ausdruck",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The filled Vordrucke (ESt 1 A + used Anlagen) as one PDF to print, sign and hand in."
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "402": {
+            "description": "The Ausdruck for this tax year is not unlocked (ADR-0050)."
+          },
+          "404": {
+            "description": "No measured templates exist for this tax year."
+          },
+          "422": {
+            "description": "`fehlend`: what the Hauptvordruck still needs; `zuLang`: a value too long for its field."
+          }
+        },
+        "tags": [
+          "ausdruck"
+        ]
+      }
     }
   },
   "info": {

@@ -1,0 +1,35 @@
+{
+  "beschreibung": "Feld-Anker für den Formular-Ausdruck 2025 (ADR-0050). Jeder Anker ist ein auf dem Vordruck gedrucktes Wort; scripts/vordrucke/vermessen.mjs löst ihn zum weißen Eingabekasten auf. lage: unter = Kasten unter dem Label-Reiter, rechts/links = nächster Kasten daneben, in = kleinster Kasten um den Anker.",
+  "felder": [
+    { "id": "est1a.einkommensteuererklaerung", "formular": "est-1-a", "seite": 1, "anker": "Einkommensteuererklärung", "lage": "links", "art": "kreuz" },
+    { "id": "est1a.steuernummer", "formular": "est-1-a", "seite": 1, "anker": "Steuernummer", "zeile": 4, "lage": "rechts", "art": "text" },
+    { "id": "est1a.finanzamt", "formular": "est-1-a", "seite": 1, "anker": "5", "zeile": 5, "lage": "rechts", "art": "text" },
+    { "id": "est1a.telefon", "formular": "est-1-a", "seite": 1, "anker": "7", "zeile": 7, "lage": "rechts", "art": "text" },
+    { "id": "est1a.idnr", "formular": "est-1-a", "seite": 1, "anker": "Identifikationsnummer", "zeile": 8, "lage": "unter", "art": "text" },
+    { "id": "est1a.geburtsdatum", "formular": "est-1-a", "seite": 1, "anker": "Geburtsdatum", "zeile": 8, "lage": "unter", "art": "text" },
+    { "id": "est1a.name", "formular": "est-1-a", "seite": 1, "anker": "Name", "zeile": 9, "lage": "unter", "art": "text" },
+    { "id": "est1a.vorname", "formular": "est-1-a", "seite": 1, "anker": "Vorname", "zeile": 10, "lage": "unter", "art": "text" },
+    { "id": "est1a.religion", "formular": "est-1-a", "seite": 1, "anker": "Religion", "zeile": 11, "lage": "rechts", "art": "text" },
+    { "id": "est1a.beruf", "formular": "est-1-a", "seite": 1, "anker": "Ausgeübter", "zeile": 12, "lage": "unter", "art": "text" },
+    { "id": "est1a.strasse", "formular": "est-1-a", "seite": 1, "anker": "Straße", "zeile": 13, "lage": "unter", "art": "text" },
+    { "id": "est1a.hausnummer", "formular": "est-1-a", "seite": 1, "anker": "Hausnummer", "zeile": 14, "lage": "unter", "art": "text" },
+    { "id": "est1a.hausnummerZusatz", "formular": "est-1-a", "seite": 1, "anker": "Hausnummerzusatz", "zeile": 14, "lage": "unter", "art": "text" },
+    { "id": "est1a.plz", "formular": "est-1-a", "seite": 1, "anker": "Postleitzahl", "zeile": 15, "lage": "unter", "art": "text", "vorkommen": 1 },
+    { "id": "est1a.wohnort", "formular": "est-1-a", "seite": 1, "anker": "Wohnort", "zeile": 16, "lage": "unter", "art": "text" },
+    { "id": "est1a.verheiratetSeit", "formular": "est-1-a", "seite": 1, "anker": "Verheiratet", "zeile": 18, "lage": "unter", "art": "text" },
+    { "id": "est1a.verwitwetSeit", "formular": "est-1-a", "seite": 1, "anker": "Verwitwet", "zeile": 18, "lage": "unter", "art": "text" },
+    { "id": "est1a.geschiedenSeit", "formular": "est-1-a", "seite": 1, "anker": "Geschieden", "zeile": 18, "lage": "unter", "art": "text" },
+    { "id": "est1a.getrenntSeit", "formular": "est-1-a", "seite": 1, "anker": "Dauernd", "zeile": 18, "lage": "unter", "art": "text" },
+    { "id": "est1a.kopfSeite2", "formular": "est-1-a", "seite": 2, "anker": "Steuernummer,", "lage": "gerahmt", "art": "text", "beginnNach": "-" },
+    { "id": "est1a.ibanInland", "formular": "est-1-a", "seite": 2, "anker": "IBAN", "zeile": 30, "lage": "unter", "art": "text", "beginnNach": "E" },
+    { "id": "est1a.ibanAusland", "formular": "est-1-a", "seite": 2, "anker": "IBAN", "zeile": 31, "lage": "unter", "art": "text" },
+    { "id": "est1a.kontoinhaberSelbst", "formular": "est-1-a", "seite": 2, "anker": "Steuerpflichtige", "zeile": 33, "lage": "links", "art": "kreuz" },
+    { "id": "est1a.kontoinhaberName", "formular": "est-1-a", "seite": 2, "anker": "Name", "zeile": 33, "lage": "unter", "art": "text" },
+
+    { "id": "anlN.name", "formular": "anlage-n", "seite": 1, "anker": "Name", "zeile": 1, "lage": "unter", "art": "text" },
+    { "id": "anlN.vorname", "formular": "anlage-n", "seite": 1, "anker": "Vorname", "zeile": 2, "lage": "unter", "art": "text" },
+    { "id": "anlN.steuernummer", "formular": "anlage-n", "seite": 1, "anker": "Steuernummer", "zeile": 3, "lage": "rechts", "art": "text" },
+    { "id": "anlN.personA", "formular": "anlage-n", "seite": 1, "anker": "Steuerpflichtige", "lage": "links", "art": "kreuz" },
+    { "id": "anlN.kz110", "formular": "anlage-n", "seite": 1, "anker": "110", "zeile": 5, "lage": "rechts", "art": "euro" }
+  ]
+}

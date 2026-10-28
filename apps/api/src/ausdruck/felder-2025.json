@@ -1,0 +1,359 @@
+{
+  "jahr": 2025,
+  "vorlagen": {
+    "est-1-a": "06f16a2ac593580b43ec425855cc3c6f3af4ce5d4913a7667fe1a14548ad76f7",
+    "anlage-n": "1fa758ad0212610433566e9cbf52de2330052a692a9e4412e7cdd324c853d3f4"
+  },
+  "felder": [
+    {
+      "id": "est1a.einkommensteuererklaerung",
+      "formular": "est-1-a",
+      "seite": 1,
+      "art": "kreuz",
+      "kasten": {
+        "x": 61.7,
+        "y": 754.3,
+        "breite": 12.1,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "est1a.steuernummer",
+      "formular": "est-1-a",
+      "seite": 1,
+      "art": "text",
+      "kasten": {
+        "x": 147,
+        "y": 691.3,
+        "breite": 182.9,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "est1a.finanzamt",
+      "formular": "est-1-a",
+      "seite": 1,
+      "art": "text",
+      "kasten": {
+        "x": 61.7,
+        "y": 658.4,
+        "breite": 311.1,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "est1a.telefon",
+      "formular": "est-1-a",
+      "seite": 1,
+      "art": "text",
+      "kasten": {
+        "x": 332.1,
+        "y": 561.6,
+        "breite": 226.2,
+        "hoehe": 15.9
+      }
+    },
+    {
+      "id": "est1a.idnr",
+      "formular": "est-1-a",
+      "seite": 1,
+      "art": "text",
+      "kasten": {
+        "x": 61.7,
+        "y": 504,
+        "breite": 161.3,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "est1a.geburtsdatum",
+      "formular": "est-1-a",
+      "seite": 1,
+      "art": "text",
+      "kasten": {
+        "x": 304.4,
+        "y": 504,
+        "breite": 111.6,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "est1a.name",
+      "formular": "est-1-a",
+      "seite": 1,
+      "art": "text",
+      "kasten": {
+        "x": 61.7,
+        "y": 472.6,
+        "breite": 353.9,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "est1a.vorname",
+      "formular": "est-1-a",
+      "seite": 1,
+      "art": "text",
+      "kasten": {
+        "x": 61.7,
+        "y": 446.3,
+        "breite": 353.9,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "est1a.religion",
+      "formular": "est-1-a",
+      "seite": 1,
+      "art": "text",
+      "kasten": {
+        "x": 531.4,
+        "y": 420.1,
+        "breite": 26.2,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "est1a.beruf",
+      "formular": "est-1-a",
+      "seite": 1,
+      "art": "text",
+      "kasten": {
+        "x": 61.7,
+        "y": 393.8,
+        "breite": 353.9,
+        "hoehe": 15.9
+      }
+    },
+    {
+      "id": "est1a.strasse",
+      "formular": "est-1-a",
+      "seite": 1,
+      "art": "text",
+      "kasten": {
+        "x": 61.7,
+        "y": 367.7,
+        "breite": 353.9,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "est1a.hausnummer",
+      "formular": "est-1-a",
+      "seite": 1,
+      "art": "text",
+      "kasten": {
+        "x": 61.4,
+        "y": 341.4,
+        "breite": 54.9,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "est1a.hausnummerZusatz",
+      "formular": "est-1-a",
+      "seite": 1,
+      "art": "text",
+      "kasten": {
+        "x": 132.9,
+        "y": 341.4,
+        "breite": 83.2,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "est1a.plz",
+      "formular": "est-1-a",
+      "seite": 1,
+      "art": "text",
+      "kasten": {
+        "x": 61.7,
+        "y": 315.2,
+        "breite": 68.9,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "est1a.wohnort",
+      "formular": "est-1-a",
+      "seite": 1,
+      "art": "text",
+      "kasten": {
+        "x": 61.7,
+        "y": 288.9,
+        "breite": 353.9,
+        "hoehe": 15.9
+      }
+    },
+    {
+      "id": "est1a.verheiratetSeit",
+      "formular": "est-1-a",
+      "seite": 1,
+      "art": "text",
+      "kasten": {
+        "x": 61.7,
+        "y": 229,
+        "breite": 111.6,
+        "hoehe": 15.9
+      }
+    },
+    {
+      "id": "est1a.verwitwetSeit",
+      "formular": "est-1-a",
+      "seite": 1,
+      "art": "text",
+      "kasten": {
+        "x": 189.8,
+        "y": 229,
+        "breite": 111.4,
+        "hoehe": 15.9
+      }
+    },
+    {
+      "id": "est1a.geschiedenSeit",
+      "formular": "est-1-a",
+      "seite": 1,
+      "art": "text",
+      "kasten": {
+        "x": 317.8,
+        "y": 229,
+        "breite": 111.8,
+        "hoehe": 15.9
+      }
+    },
+    {
+      "id": "est1a.getrenntSeit",
+      "formular": "est-1-a",
+      "seite": 1,
+      "art": "text",
+      "kasten": {
+        "x": 446,
+        "y": 229,
+        "breite": 111.6,
+        "hoehe": 15.9
+      }
+    },
+    {
+      "id": "est1a.kopfSeite2",
+      "formular": "est-1-a",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 52.9,
+        "y": 811.7,
+        "breite": 439.4,
+        "hoehe": 18.4
+      },
+      "textAb": 297.1
+    },
+    {
+      "id": "est1a.ibanInland",
+      "formular": "est-1-a",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 39.1,
+        "y": 617.1,
+        "breite": 322,
+        "hoehe": 15.8
+      },
+      "textAb": 65.4
+    },
+    {
+      "id": "est1a.ibanAusland",
+      "formular": "est-1-a",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 39.1,
+        "y": 590.9,
+        "breite": 482,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "est1a.kontoinhaberSelbst",
+      "formular": "est-1-a",
+      "seite": 2,
+      "art": "kreuz",
+      "kasten": {
+        "x": 39.1,
+        "y": 524.9,
+        "breite": 12.1,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "est1a.kontoinhaberName",
+      "formular": "est-1-a",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 284.9,
+        "y": 524.9,
+        "breite": 240.1,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlN.name",
+      "formular": "anlage-n",
+      "seite": 1,
+      "art": "text",
+      "kasten": {
+        "x": 61.7,
+        "y": 770.7,
+        "breite": 353.9,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlN.vorname",
+      "formular": "anlage-n",
+      "seite": 1,
+      "art": "text",
+      "kasten": {
+        "x": 61.7,
+        "y": 744.4,
+        "breite": 353.9,
+        "hoehe": 15.9
+      }
+    },
+    {
+      "id": "anlN.steuernummer",
+      "formular": "anlage-n",
+      "seite": 1,
+      "art": "text",
+      "kasten": {
+        "x": 132.9,
+        "y": 724.3,
+        "breite": 182.8,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlN.personA",
+      "formular": "anlage-n",
+      "seite": 1,
+      "art": "kreuz",
+      "kasten": {
+        "x": 430.3,
+        "y": 712.3,
+        "breite": 12.1,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlN.kz110",
+      "formular": "anlage-n",
+      "seite": 1,
+      "art": "euro",
+      "kasten": {
+        "x": 233.9,
+        "y": 575.2,
+        "breite": 116.5,
+        "hoehe": 15.8
+      }
+    }
+  ]
+}

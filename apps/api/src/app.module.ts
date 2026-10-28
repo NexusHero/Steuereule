@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common'
 import { ThrottlerModule } from '@nestjs/throttler'
 import { AccountModule } from './account/account.module.js'
+import { AusdruckModule } from './ausdruck/ausdruck.module.js'
 import { AuthModule } from './auth/auth.module.js'
 import { BelegModule } from './beleg/beleg.module.js'
 import { BescheidModule } from './bescheid/bescheid.module.js'
@@ -47,6 +48,7 @@ import { VermietungModule } from './vermietung/vermietung.module.js'
     UebernahmeModule,
     FreischaltungModule,
     StammdatenModule,
+    AusdruckModule,
   ],
 })
 export class AppModule {}
