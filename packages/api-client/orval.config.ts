@@ -285,11 +285,27 @@ export default defineConfig({
     },
   },
   // REQ-028 (ticket 10.8) — die Jahresübernahme (ADR-021): GET the Kennzeichnungen, POST the
-  // copy, PUT the Bestätigung. Same `uebernahme` OpenAPI tag the three endpoints share.
+  // copy. Confirming moved to the `bestaetigung` tag (REQ-032).
   uebernahme: {
     input: { target: '../../apps/api/openapi.json', filters: { tags: ['uebernahme'] } },
     output: {
       target: './src/generated/uebernahme.ts',
+      mode: 'split',
+      client: 'react-query',
+      httpClient: 'fetch',
+      mock: true,
+      override: {
+        mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        mock: { required: true },
+      },
+    },
+  },
+  // REQ-032 (ADR-0052 §6/§7) — Herkunft und Bestätigung: the overview per Anlage, confirming an
+  // Anlage, deciding on a proposal.
+  bestaetigung: {
+    input: { target: '../../apps/api/openapi.json', filters: { tags: ['bestaetigung'] } },
+    output: {
+      target: './src/generated/bestaetigung.ts',
       mode: 'split',
       client: 'react-query',
       httpClient: 'fetch',

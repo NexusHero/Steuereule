@@ -23,8 +23,10 @@ import {
   type RentenDaten,
   type RentenFeldId,
   type RentenFeldZustand,
+  kennzeichnungsKey,
 } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
+import { KENNZEICHNUNG_REPOSITORY, type KennzeichnungRepository } from '../kennzeichnung/kennzeichnung.repository.js'
 import {
   INTERVIEW_ANSWER_REPOSITORY,
   type InterviewAnswerRepository,
@@ -81,6 +83,8 @@ export class RenteService {
     @Inject(RENTE_REPOSITORY) private readonly repository: RenteRepository,
     @Inject(INTERVIEW_ANSWER_REPOSITORY) private readonly interviewRepository: InterviewAnswerRepository,
     @Inject(AuditService) private readonly auditService: AuditService,
+    // ADR-0052 §6: a value the user writes themselves is theirs — its marker (and any proposal) goes.
+    @Inject(KENNZEICHNUNG_REPOSITORY) private readonly kennzeichnungen: KennzeichnungRepository,
   ) {}
 
   private async antworten(userId: string, steuerjahr: number): Promise<Answers> {
@@ -139,6 +143,7 @@ export class RenteService {
     // defense in depth behind the explicit 400 in `zustandAusDto`.
     setzeRentenFeld(daten, feld, zustand)
     const next = await this.repository.setFeld(userId, steuerjahr, feld, serialisiereRentenFeld(zustand))
+    await this.kennzeichnungen.entferne(userId, steuerjahr, [kennzeichnungsKey('rente', feld)])
     return this.toResponse(userId, steuerjahr, next)
   }
 
@@ -148,6 +153,7 @@ export class RenteService {
       throw new BadRequestException('art must be one of the five Rentenarten, or null.')
     }
     const record = await this.repository.setRentenart(userId, steuerjahr, art)
+    await this.kennzeichnungen.entferne(userId, steuerjahr, [kennzeichnungsKey('rente', 'rentenart')])
     return this.toResponse(userId, steuerjahr, record)
   }
 }

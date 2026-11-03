@@ -31,11 +31,13 @@ export interface AusdruckScreenProps {
   readonly onKapitalErgaenzen: () => void
   /** Opens the Grenzgänger screen, where the Lohnausweis and the N-Gre facts are completed. */
   readonly onGrenzgaengerErgaenzen: () => void
+  /** REQ-032: opens „Prüfen & bestätigen“, where unconfirmed values are confirmed per Anlage. */
+  readonly onBestaetigen: () => void
   /** Hands the browser to the hosted checkout page. Injected so tests never leave the page. */
   readonly oeffneCheckout?: (url: string) => void
 }
 
-export function AusdruckScreen({ jahr, zahlung, onZurueck, onAngabenErgaenzen, onRiesterErgaenzen, onKinderErgaenzen, onVermietungErgaenzen, onKapitalErgaenzen, onGrenzgaengerErgaenzen, oeffneCheckout = (url) => window.location.assign(url) }: AusdruckScreenProps) {
+export function AusdruckScreen({ jahr, zahlung, onZurueck, onAngabenErgaenzen, onRiesterErgaenzen, onKinderErgaenzen, onVermietungErgaenzen, onKapitalErgaenzen, onGrenzgaengerErgaenzen, onBestaetigen, oeffneCheckout = (url) => window.location.assign(url) }: AusdruckScreenProps) {
   const bp = useBreakpoint()
   const theme = useTheme()
   const styles = makeDatenschutzStyles(theme)
@@ -73,8 +75,11 @@ export function AusdruckScreen({ jahr, zahlung, onZurueck, onAngabenErgaenzen, o
   const kapital = fehlend.includes('kapital')
   const grenzgaenger = fehlend.includes('grenzgaenger')
   const anlagen = fehlend.filter((key) => key.startsWith('anlage'))
+  // REQ-032: `unbestaetigt.<anlage>` — values someone else entered that the user has not confirmed yet.
+  const unbestaetigt = fehlend.filter((key) => key.startsWith('unbestaetigt.') && key !== 'unbestaetigt.personB').map((key) => key.slice('unbestaetigt.'.length))
+  const personBUnbestaetigt = fehlend.includes('unbestaetigt.personB')
   const eigenerWeg = new Set(['ehegatte', 'riester', 'kinder', 'vermietung', 'kapital', 'grenzgaenger'])
-  const stammdatenFehlen = fehlend.some((key) => !eigenerWeg.has(key) && !key.startsWith('anlage'))
+  const stammdatenFehlen = fehlend.some((key) => !eigenerWeg.has(key) && !key.startsWith('anlage') && !key.startsWith('unbestaetigt.'))
   const gesperrt = fehlend.length > 0
 
   function bezahlen() {
@@ -125,6 +130,17 @@ export function AusdruckScreen({ jahr, zahlung, onZurueck, onAngabenErgaenzen, o
               {t('ausdruck.anlageNochNicht', { anlage: t(`ausdruck.anlagen.${anlage}`) })}
             </Text>
           ))}
+          {unbestaetigt.length > 0 ? (
+            <>
+              <Text style={styles.sectionBody}>
+                {t('ausdruck.fehlendUnbestaetigt', { anlagen: unbestaetigt.map((a) => t(`bestaetigung.anlagen.${a}`)).join(', ') })}
+              </Text>
+              <Button variante="ghost" onPress={onBestaetigen}>
+                {t('ausdruck.bestaetigungOeffnen')}
+              </Button>
+            </>
+          ) : null}
+          {personBUnbestaetigt ? <Text style={styles.sectionBody}>{t('ausdruck.fehlendPersonB')}</Text> : null}
           {stammdatenFehlen || verheiratet ? (
             <Button variante="ghost" onPress={onAngabenErgaenzen}>
               {t('ausdruck.angabenErgaenzen')}

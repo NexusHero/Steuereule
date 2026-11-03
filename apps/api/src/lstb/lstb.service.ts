@@ -19,8 +19,10 @@ import {
   type LstbFeldZustand,
   type LstbZustand,
   type LstbWiderspruch,
+  kennzeichnungsKey,
 } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
+import { KENNZEICHNUNG_REPOSITORY, type KennzeichnungRepository } from '../kennzeichnung/kennzeichnung.repository.js'
 import { LSTB_REPOSITORY, type LstbRecord, type LstbRepository } from './lstb.repository.js'
 import type { LstbFeldDto } from './dto/lstb-feld.dto.js'
 import type { LstbResponseDto } from './dto/lstb-response.dto.js'
@@ -93,6 +95,8 @@ export class LstbService {
   constructor(
     @Inject(LSTB_REPOSITORY) private readonly repository: LstbRepository,
     @Inject(AuditService) private readonly auditService: AuditService,
+    // ADR-0052 §6: a value the user writes themselves is theirs — its marker (and any proposal) goes.
+    @Inject(KENNZEICHNUNG_REPOSITORY) private readonly kennzeichnungen: KennzeichnungRepository,
   ) {}
 
   async getState(userId: string, steuerjahr: number): Promise<LstbResponseDto> {
@@ -114,6 +118,7 @@ export class LstbService {
     // to fire on the happy path.
     const next = setzeLstbFeld(daten, feld, zustand)
     await this.repository.setFeld(userId, steuerjahr, feld, serialisiereLstbFeld(zustand))
+    await this.kennzeichnungen.entferne(userId, steuerjahr, [kennzeichnungsKey('lstb', feld)])
     return toResponse(next)
   }
 }

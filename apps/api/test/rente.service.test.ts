@@ -3,6 +3,7 @@
 // real-Postgres proof (ciphertext at rest, audit atomicity, cross-user isolation, the real fold
 // through Prisma) lives in test/acceptance/req-022-rentner.test.ts.
 import { beforeEach, describe, expect, it } from 'vitest'
+import { FakeKennzeichnungRepository } from './fakes/fake-kennzeichnung.repository.js'
 import { AuditService } from '../src/audit/audit.service.js'
 import { RenteService } from '../src/rente/rente.service.js'
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
@@ -13,6 +14,7 @@ const USER_ID = 'user-1'
 const STEUERJAHR = 2026
 
 describe('RenteService', () => {
+  let kennzeichnungen: FakeKennzeichnungRepository
   let repository: FakeRenteRepository
   let interviewRepository: FakeInterviewAnswerRepository
   let auditRepository: FakeAuditRepository
@@ -22,7 +24,8 @@ describe('RenteService', () => {
     repository = new FakeRenteRepository()
     interviewRepository = new FakeInterviewAnswerRepository()
     auditRepository = new FakeAuditRepository()
-    service = new RenteService(repository, interviewRepository, new AuditService(auditRepository))
+    kennzeichnungen = new FakeKennzeichnungRepository()
+    service = new RenteService(repository, interviewRepository, new AuditService(auditRepository), kennzeichnungen)
   })
 
   describe('getState — the honest empty mask', () => {
@@ -127,5 +130,16 @@ describe('RenteService', () => {
     it('rejects an undeclared Rentenart (400)', async () => {
       await expect(service.setRentenart(USER_ID, STEUERJAHR, { art: 'Rente' as never })).rejects.toThrow(/five Rentenarten/)
     })
+  })
+
+  it('ADR-0052 §6: a user write drops the marker of exactly that field (incl. the Rentenart)', async () => {
+    await kennzeichnungen.speichere('user-1', 2025, { key: 'rente.jahresbetrag', herkunft: { art: 'uebernahme', vorjahr: 2024 }, bestaetigt: false, vorschlag: null })
+    await kennzeichnungen.speichere('user-1', 2025, { key: 'rente.rentenart', herkunft: { art: 'uebernahme', vorjahr: 2024 }, bestaetigt: false, vorschlag: null })
+    await kennzeichnungen.speichere('user-1', 2025, { key: 'rente.rentenbeginnJahr', herkunft: { art: 'uebernahme', vorjahr: 2024 }, bestaetigt: false, vorschlag: null })
+
+    await service.setFeld('user-1', 2025, 'jahresbetrag', { kind: 'erfasst', wert: 12000 })
+    await service.setRentenart('user-1', 2025, { art: 'GesetzlicheRente' })
+
+    expect(kennzeichnungen.alle().map((k) => k.key)).toEqual(['rente.rentenbeginnJahr'])
   })
 })

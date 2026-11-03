@@ -3,10 +3,10 @@
 // binds to (Musti's #249 R2 ruling).
 //
 // Covers the M1 core: ein neues Steuerjahr kopiert die LStB-Zeile des Vorjahrs (die gespeicherten
-// Feld-Strings unverändert — die ehrlichen Zustände reisen mit), die Kennzeichnung markiert sie
-// UNBESTÄTIGT (ADR-021); die Cockpit-Spanne trägt die übernommene Bruttosumme als Unsicherheit
+// Feld-Strings unverändert — die ehrlichen Zustände reisen mit), die Kennzeichnung markiert jedes
+// kopierte Feld UNBESTÄTIGT (ADR-021, je Feld seit ADR-0052 §6); die Cockpit-Spanne trägt die übernommene Bruttosumme als Unsicherheit
 // und versagt den Punktwert, bis bestätigt wird (ruhig, kein Konflikt); ein zweiter Kopierversuch
-// ist ein 409, eine Bestätigung ohne Kennzeichnung ein 404, Gäste bekommen 401; die kopierten
+// ist ein 409, Gäste bekommen 401; bestätigt wird je Anlage (REQ-032); die kopierten
 // Zahlen sind ciphertext at rest (ADR-0008).
 import type { NestFastifyApplication } from '@nestjs/platform-fastify'
 import { PrismaClient } from '@prisma/client'
@@ -40,7 +40,7 @@ describe('REQ-028 — die Jahresübernahme (ADR-021), against the real server', 
 
   afterEach(async () => {
     resetRateLimiters(app)
-    await prisma.$executeRawUnsafe(`DELETE FROM "UebernahmeKennzeichnung"`)
+    await prisma.$executeRawUnsafe(`DELETE FROM "Kennzeichnung"`)
     await prisma.$executeRawUnsafe(`DELETE FROM "Lstb"`)
     await prisma.$executeRawUnsafe(`DELETE FROM "Rente"`)
     await prisma.$executeRawUnsafe(`DELETE FROM "Kapital"`)
@@ -100,7 +100,9 @@ describe('REQ-028 — die Jahresübernahme (ADR-021), against the real server', 
 
       const response = await fetch(`${baseUrl}/v1/steuerjahre/${ZIELJAHR}/uebernahme?von=${VORJAHR}`, { method: 'POST', headers: { cookie } })
       expect(response.status).toBe(200)
-      expect(await response.json()).toEqual({ kennzeichnungen: [{ postenKey: 'lstb', vorjahr: VORJAHR, bestaetigt: false }] })
+      expect(await response.json()).toEqual({
+        kennzeichnungen: ['lstb.bruttoarbeitslohn', 'lstb.lohnsteuer', 'lstb.sozialversicherung'].map((postenKey) => ({ postenKey, vorjahr: VORJAHR, bestaetigt: false })),
+      })
 
       // Die kopierte Zeile trägt die Feld-Strings unverändert (die ehrlichen Zustände reisen mit).
       const lstbZiel = await fetch(`${baseUrl}/v1/steuerjahre/${ZIELJAHR}/lstb`, { headers: { cookie } })
@@ -114,10 +116,11 @@ describe('REQ-028 — die Jahresübernahme (ADR-021), against the real server', 
       expect(cockpitBody.stand.von).toBe(0)
       expect(cockpitBody.stand.bis).toBe(100000)
 
-      // Bestätigen (ADR-021: angetippt) → Punktwert.
-      const bestaetigt = await fetch(`${baseUrl}/v1/steuerjahre/${ZIELJAHR}/uebernahme/lstb/bestaetigen`, { method: 'PUT', headers: { cookie } })
+      // Anlage N bestätigen (REQ-032) → Punktwert.
+      const bestaetigt = await fetch(`${baseUrl}/v1/steuerjahre/${ZIELJAHR}/bestaetigung/anlagen/anlageN`, { method: 'PUT', headers: { cookie } })
       expect(bestaetigt.status).toBe(200)
-      expect(await bestaetigt.json()).toEqual({ kennzeichnungen: [{ postenKey: 'lstb', vorjahr: VORJAHR, bestaetigt: true }] })
+      const zustand = await fetch(`${baseUrl}/v1/steuerjahre/${ZIELJAHR}/uebernahme`, { headers: { cookie } })
+      expect(((await zustand.json()) as { kennzeichnungen: Array<{ bestaetigt: boolean }> }).kennzeichnungen.every((k) => k.bestaetigt)).toBe(true)
 
       const cockpit2 = await fetch(`${baseUrl}/v1/steuerjahre/${ZIELJAHR}/cockpit`, { headers: { cookie } })
       const cockpit2Body = (await cockpit2.json()) as { stand: { kind: string; wert?: number } }
@@ -129,16 +132,13 @@ describe('REQ-028 — die Jahresübernahme (ADR-021), against the real server', 
     },
   )
 
-  it('ein zweiter Kopierversuch ist ein 409, eine Bestätigung ohne Kennzeichnung ein 404', async () => {
+  it('ein zweiter Kopierversuch ist ein 409', async () => {
     const { cookie } = await signUp('idempotenz@example.com')
     await putLstb(cookie, VORJAHR, 'bruttoarbeitslohn', 50000)
     await fetch(`${baseUrl}/v1/steuerjahre/${ZIELJAHR}/uebernahme?von=${VORJAHR}`, { method: 'POST', headers: { cookie } })
 
     const zweiter = await fetch(`${baseUrl}/v1/steuerjahre/${ZIELJAHR}/uebernahme?von=${VORJAHR}`, { method: 'POST', headers: { cookie } })
     expect(zweiter.status).toBe(409)
-
-    const fremd = await fetch(`${baseUrl}/v1/steuerjahre/${ZIELJAHR}/uebernahme/gibt-es-nicht/bestaetigen`, { method: 'PUT', headers: { cookie } })
-    expect(fremd.status).toBe(404)
   })
 
   it('ein Vorjahr ohne EINEN einzigen übernehmbaren Fakt ist ein 404 — nie eine erfundene Kopie', async () => {
@@ -171,7 +171,10 @@ describe('REQ-028 — die Jahresübernahme (ADR-021), against the real server', 
     const response = await fetch(`${baseUrl}/v1/steuerjahre/${ZIELJAHR}/uebernahme?von=${VORJAHR}`, { method: 'POST', headers: { cookie } })
     expect(response.status).toBe(200)
     const body = (await response.json()) as { kennzeichnungen: Array<{ postenKey: string; vorjahr: number; bestaetigt: boolean }> }
-    expect(body.kennzeichnungen).toEqual([{ postenKey: 'rente', vorjahr: VORJAHR, bestaetigt: false }])
+    expect(body.kennzeichnungen).toEqual([
+      { postenKey: 'rente.jahresbetrag', vorjahr: VORJAHR, bestaetigt: false },
+      { postenKey: 'rente.rentenart', vorjahr: VORJAHR, bestaetigt: false },
+    ])
 
     const renteZiel = await fetch(`${baseUrl}/v1/steuerjahre/${ZIELJAHR}/rente`, { headers: { cookie } })
     const renteBody = (await renteZiel.json()) as { art: string | null; jahresbetrag: { kind: string; wert?: number } }
@@ -179,7 +182,7 @@ describe('REQ-028 — die Jahresübernahme (ADR-021), against the real server', 
     expect(renteBody.jahresbetrag).toEqual({ kind: 'erfasst', wert: 12000 })
   })
 
-  it('M2 GWT: die Übernahme kopiert ALLE Fakten (LStB+Rente+Kapital+2 Objekte), die Spanne trägt die Gesamtsumme, Bestätigen je Fakt gibt den Punktwert', async () => {
+  it('M2 GWT: die Übernahme kopiert ALLE Fakten (LStB+Rente+Kapital+2 Objekte), die Spanne trägt die Gesamtsumme, Bestätigen je Anlage gibt den Punktwert', async () => {
     const { cookie, userId } = await signUp('m2-alles@example.com')
     await putLstb(cookie, VORJAHR, 'bruttoarbeitslohn', 50000)
     await putLstb(cookie, VORJAHR, 'lohnsteuer', 8000)
@@ -215,10 +218,10 @@ describe('REQ-028 — die Jahresübernahme (ADR-021), against the real server', 
     expect(response.status).toBe(200)
     const body = (await response.json()) as { kennzeichnungen: Array<{ postenKey: string; vorjahr: number; bestaetigt: boolean }> }
     const keys = body.kennzeichnungen.map((k) => k.postenKey)
-    expect(keys).toContain('lstb')
-    expect(keys).toContain('rente')
-    expect(keys).toContain('kapital')
-    expect(keys.filter((k) => k.startsWith('vermietung-'))).toHaveLength(1)
+    expect(keys).toContain('lstb.bruttoarbeitslohn')
+    expect(keys).toContain('rente.jahresbetrag')
+    expect(keys).toContain('kapital.kapitalertraege')
+    expect(keys.filter((k) => k.startsWith('vermietung:'))).toEqual([expect.stringMatching(/^vermietung:[^.]+\.mieteinnahmen$/)])
     expect(body.kennzeichnungen.every((k) => k.vorjahr === VORJAHR && k.bestaetigt === false)).toBe(true)
 
     // Die Spanne trägt die Gesamtsumme aller unbestätigten Fakten: 50000+12000+3000+9600 = 74600.
@@ -228,9 +231,9 @@ describe('REQ-028 — die Jahresübernahme (ADR-021), against the real server', 
     expect(cockpitBody.stand.von).toBe(0)
     expect(cockpitBody.stand.bis).toBe(50000 + 74600)
 
-    // Bestätigen je Fakt → Punktwert.
-    for (const key of ['lstb', 'rente', 'kapital', keys.find((k) => k.startsWith('vermietung-'))!]) {
-      const bestaetigt = await fetch(`${baseUrl}/v1/steuerjahre/${ZIELJAHR}/uebernahme/${key}/bestaetigen`, { method: 'PUT', headers: { cookie } })
+    // Bestätigen je Anlage (REQ-032) → Punktwert.
+    for (const anlage of ['anlageN', 'anlageR', 'anlageKap', 'anlageV']) {
+      const bestaetigt = await fetch(`${baseUrl}/v1/steuerjahre/${ZIELJAHR}/bestaetigung/anlagen/${anlage}`, { method: 'PUT', headers: { cookie } })
       expect(bestaetigt.status).toBe(200)
     }
     const cockpit2 = await fetch(`${baseUrl}/v1/steuerjahre/${ZIELJAHR}/cockpit`, { headers: { cookie } })

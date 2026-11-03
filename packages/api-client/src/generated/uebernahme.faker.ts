@@ -18,5 +18,3 @@ export const getUebernahmeControllerGetResponseMock = (overrideResponse: Partial
 
 export const getUebernahmeControllerUebernehmeResponseMock = (overrideResponse: Partial<Extract<UebernahmeResponseDto, object>> = {}): UebernahmeResponseDto => ({kennzeichnungen: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({postenKey: faker.string.alpha({length: {min: 10, max: 20}}), vorjahr: faker.number.float({fractionDigits: 2}), bestaetigt: faker.datatype.boolean()})), ...overrideResponse})
 
-export const getUebernahmeControllerBestaetigeResponseMock = (overrideResponse: Partial<Extract<UebernahmeResponseDto, object>> = {}): UebernahmeResponseDto => ({kennzeichnungen: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({postenKey: faker.string.alpha({length: {min: 10, max: 20}}), vorjahr: faker.number.float({fractionDigits: 2}), bestaetigt: faker.datatype.boolean()})), ...overrideResponse})
-

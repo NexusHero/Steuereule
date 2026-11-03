@@ -23,7 +23,7 @@ import { INTERVIEW_ANSWER_REPOSITORY, type InterviewAnswerRecord, type Interview
 import { KAPITAL_REPOSITORY, type KapitalRepository } from '../kapital/kapital.repository.js'
 import { LSTB_REPOSITORY, type LstbRecord, type LstbRepository } from '../lstb/lstb.repository.js'
 import { RENTE_REPOSITORY, type RenteRepository } from '../rente/rente.repository.js'
-import { UEBERNAHME_REPOSITORY, type UebernahmeRepository } from '../uebernahme/uebernahme.repository.js'
+import { KENNZEICHNUNG_REPOSITORY, type KennzeichnungRepository } from '../kennzeichnung/kennzeichnung.repository.js'
 import { VERMIETUNG_REPOSITORY, type VermietungRepository } from '../vermietung/vermietung.repository.js'
 import { TAX_YEAR_REPOSITORY, type TaxYearRepository } from './tax-year.repository.js'
 import type { CockpitStandDto, CockpitSummaryDto } from './dto/cockpit-summary.dto.js'
@@ -86,7 +86,7 @@ export class CockpitService {
     @Inject(TAX_YEAR_REPOSITORY) private readonly taxYearRepository: TaxYearRepository,
     @Inject(LSTB_REPOSITORY) private readonly lstbRepository: LstbRepository,
     @Inject(INTERVIEW_ANSWER_REPOSITORY) private readonly interviewRepository: InterviewAnswerRepository,
-    @Inject(UEBERNAHME_REPOSITORY) private readonly uebernahmeRepository: UebernahmeRepository,
+    @Inject(KENNZEICHNUNG_REPOSITORY) private readonly kennzeichnungRepository: KennzeichnungRepository,
     @Inject(RENTE_REPOSITORY) private readonly renteRepository: RenteRepository,
     @Inject(KAPITAL_REPOSITORY) private readonly kapitalRepository: KapitalRepository,
     @Inject(VERMIETUNG_REPOSITORY) private readonly vermietungRepository: VermietungRepository,
@@ -98,10 +98,10 @@ export class CockpitService {
     // never a synthesized zero row.
     if (!record) return null
 
-    const [lstbRecord, interviewRows, uebernahmen, renteRecord, kapitalRecord, vermietungRecords] = await Promise.all([
+    const [lstbRecord, interviewRows, kennzeichnungen, renteRecord, kapitalRecord, vermietungRecords] = await Promise.all([
       this.lstbRepository.findForUserAndYear(userId, steuerjahr),
       this.interviewRepository.findAllForUserAndYear(userId, steuerjahr),
-      this.uebernahmeRepository.listForUserAndYear(userId, steuerjahr),
+      this.kennzeichnungRepository.listForUserAndYears(userId, [steuerjahr]),
       this.renteRepository.findForUserAndYear(userId, steuerjahr),
       this.kapitalRepository.findForUserAndYear(userId, steuerjahr),
       this.vermietungRepository.listForUserAndYear(userId, steuerjahr),
@@ -110,23 +110,24 @@ export class CockpitService {
     const daten = datenAusRecord(lstbRecord)
     const answers = toAnswers(interviewRows)
 
-    // ADR-021: UNBESTÄTIGTE Übernahmen zählen in die Spanne — je kopierter Fakt ein Posten,
-    // seine erfasste Summe ist die Unsicherheit, die er beiträgt (ruhig, kein Konflikt). Die
-    // Kennzeichnung benennt den Fakt (`lstb`, `rente`, `kapital`, `vermietung-<id>`); der Wert
-    // kommt aus der kopierten Zeile selbst — immer der erfasste Betrag, nie ein fabricated zero.
+    // ADR-021/ADR-0052 §6: ein Fakt mit mindestens einem UNBESTÄTIGTEN Feld zählt in die Spanne,
+    // seine erfasste Summe ist die Unsicherheit, die er beiträgt (ruhig, kein Konflikt). Der Wert
+    // kommt aus der Fakt-Zeile selbst — immer der erfasste Betrag, nie ein fabricated zero.
+    const unbestaetigteFakten = new Set(
+      kennzeichnungen.filter((k) => !k.bestaetigt).map((k) => k.key.slice(0, k.key.indexOf('.'))),
+    )
     let unbestaetigte = 0
     let unbestaetigteSumme = 0
-    for (const kennzeichnung of uebernahmen) {
-      if (kennzeichnung.bestaetigt) continue
+    for (const fakt of unbestaetigteFakten) {
       let wert: number | null = null
-      if (kennzeichnung.postenKey === 'lstb' && daten.bruttoarbeitslohn.kind === 'erfasst') {
+      if (fakt === 'lstb' && daten.bruttoarbeitslohn.kind === 'erfasst') {
         wert = daten.bruttoarbeitslohn.wert
-      } else if (kennzeichnung.postenKey === 'rente') {
+      } else if (fakt === 'rente') {
         wert = erfassterWert(renteRecord?.jahresbetrag ?? null)
-      } else if (kennzeichnung.postenKey === 'kapital') {
+      } else if (fakt === 'kapital') {
         wert = erfassterWert(kapitalRecord?.kapitalertraege ?? null)
-      } else if (kennzeichnung.postenKey.startsWith('vermietung-')) {
-        const objektId = kennzeichnung.postenKey.slice('vermietung-'.length)
+      } else if (fakt.startsWith('vermietung:')) {
+        const objektId = fakt.slice('vermietung:'.length)
         const objekt = vermietungRecords.find((o) => o.id === objektId)
         wert = erfassterWert(objekt?.mieteinnahmen ?? null)
       }

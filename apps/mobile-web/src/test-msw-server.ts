@@ -24,14 +24,14 @@ import {
   getVermietungControllerGetMockHandler,
   getFristenControllerGetFristenMockHandler,
   getUebernahmeControllerGetMockHandler,
-  getUebernahmeControllerBestaetigeMockHandler,
+  getBestaetigungControllerGetMockHandler,
   getKinderControllerListMockHandler,
   getKopplungControllerGetMockHandler,
   getEulenModusControllerGetEinstellungMockHandler,
   getEulenModusControllerGetKartenMockHandler,
 } from '@steuereule/api-client/msw'
 import { LOHNAUSWEIS_FELDER } from '@steuereule/core'
-import type { ProfileResponseDto, AuthCapabilitiesDto, DeviceCodeResponseDto, InterviewStateDto, LstbResponseDto, ChLohnausweisResponseDto, RenteResponseDto, KapitalResponseDto, VermietungResponseDto, FristenResponseDto, UebernahmeResponseDto, KinderResponseDto, KopplungResponseDto, EulenEinstellungResponseDto, EulenKartenResponseDto } from '@steuereule/api-client'
+import type { ProfileResponseDto, AuthCapabilitiesDto, DeviceCodeResponseDto, InterviewStateDto, LstbResponseDto, ChLohnausweisResponseDto, RenteResponseDto, KapitalResponseDto, VermietungResponseDto, FristenResponseDto, UebernahmeResponseDto, BestaetigungResponseDto, KinderResponseDto, KopplungResponseDto, EulenEinstellungResponseDto, EulenKartenResponseDto } from '@steuereule/api-client'
 
 export const EMPTY_PROFILE_RESPONSE: ProfileResponseDto = {
   firstName: null,
@@ -181,6 +181,9 @@ export const EMPTY_UEBERNAHME_RESPONSE: UebernahmeResponseDto = {
   kennzeichnungen: [],
 }
 
+/** Default `GET .../bestaetigung` answer (REQ-032): nothing to confirm — no hint, nothing blocked. */
+export const EMPTY_BESTAETIGUNG_RESPONSE: BestaetigungResponseDto = { anlagen: [] }
+
 export const EMPTY_KINDER_RESPONSE: KinderResponseDto = {
   kinder: [],
   anzahl: 0,
@@ -256,7 +259,7 @@ export const server = setupServer(
   // ruhige Hinweis erscheint nur, wenn welche da sind); das Bestätigen defaultet auf ein
   // generisches 200 (Tests, die den Fluss prüfen, überschreiben mit `server.use(...)`).
   getUebernahmeControllerGetMockHandler(EMPTY_UEBERNAHME_RESPONSE),
-  getUebernahmeControllerBestaetigeMockHandler(),
+  getBestaetigungControllerGetMockHandler(EMPTY_BESTAETIGUNG_RESPONSE),
   // Default `POST .../interview/antworten` answer: a generic 200 — InterviewScreen renders the
   // next step from the local graph, not from this response body (#318 task 2's own "the graph
   // stays local" brief), so the exact `nextStep`/`openItems` values here are never asserted on

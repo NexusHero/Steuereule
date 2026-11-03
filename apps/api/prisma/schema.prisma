@@ -729,31 +729,38 @@ model Bescheid {
   @@index([userId])
 }
 
-/// One row per (userId, steuerjahr, postenKey) — die Jahresübernahme-Kennzeichnung (ticket 10.8,
-/// Produkt-ADR-021). Ein neues Steuerjahr KOPIERT die Fakten des Vorjahrs; jede kopierte Zeile
-/// bekommt hier eine Kennzeichnung mit `vorjahr` (die Herkunft „Übernahme aus {vorjahr}") und
-/// `bestaetigt = false` — UNBESTÄTIGT, bis der Nutzer den Posten antippt (PUT bestaetigen) oder
-/// ein Beleg ihn deckt (Zuordnung). Unbestätigte zählen in die Cockpit-Spanne, nie in den
-/// Punktwert — ruhiger Ton, kein Konflikt (ADR-008 ist für Widersprüche). Die Fakten selbst
-/// bleiben in ihren eigenen Modellen (Lstb/Rente/Kapital/Vermietungsobjekt); dieses Modell ist
-/// die generische Kennzeichnungs-Schicht, damit kein Fakten-Modell eine eigene unbestaetigt-
-/// Spalte braucht (und die Übernahme später beliebige Posten-Schlüssel tragen kann). M1 trägt
-/// nur `lstb` — die übrigen Vertikalen sind benannte Follow-ups.
-model UebernahmeKennzeichnung {
-  id         String   @id @default(uuid())
+/// Die Kennzeichnungs-Schicht (ADR-0049, verallgemeinert durch ADR-0052 §6/§7): eine Zeile je
+/// Feld, das NICHT der Nutzer selbst eingetragen hat (Jahresübernahme, Assistent, Beleg) — oder das
+/// einen offenen Vorschlag trägt. Keine Zeile = vom Nutzer eingetragen = bestätigt. Die Fakten
+/// selbst bleiben in ihren Modellen; Vorprüfung, Ausdruck und Bezahlung behandeln `bestaetigt =
+/// false` wie offen. Ein Wert des Nutzers wird nie überschrieben: der fremde Wert landet als
+/// Vorschlag (`vorschlag*`), der neueste ersetzt einen älteren.
+model Kennzeichnung {
+  id                    String   @id @default(uuid())
   /// Scoping key — same trusted userId as Profile.userId (ADR-0007). Never read from the
   /// request path/query/body.
-  userId     String
-  /// The tax year the copied fact now belongs to (the TARGET year).
-  steuerjahr Int
-  /// The source year the fact was copied from — the Herkunft's Jahresbezug (ADR-022).
-  vorjahr    Int
-  /// The stable key of the copied fact (M1: 'lstb'; later 'rente', 'vermietung-<id>', …).
-  postenKey  String
-  /// false = UNBESTÄTIGT (copied, not yet tapped/covered); true = confirmed. Clear.
-  bestaetigt Boolean  @default(false)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  userId                String
+  /// The tax year of the field; 0 for year-independent masks (Profil, Stammdaten).
+  steuerjahr            Int
+  /// `<maske>[:<instanz>].<feld>`, e.g. `lstb.bruttoarbeitslohn`, `vermietung:<id>.mieteinnahmen`.
+  postenKey             String
+  /// The Anlage the field is confirmed with (core `anlageVon`), kept for per-Anlage queries.
+  anlage                String
+  /// Herkunft of the current value: nutzer | uebernahme | assistent | beleg.
+  herkunftArt           String
+  herkunftName          String?
+  herkunftBelegId       String?
+  vorjahr               Int?
+  /// false = UNBESTÄTIGT; true = the user confirmed the Anlage or chose the value.
+  bestaetigt            Boolean  @default(false)
+  /// Null when there is no open proposal.
+  vorschlagHerkunftArt  String?
+  vorschlagHerkunftName String?
+  vorschlagBelegId      String?
+  vorschlagVorjahr      Int?
+  vorschlagWert         String?  /// @encrypted?mode=strict
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
   @@unique([userId, steuerjahr, postenKey])
   @@index([userId, steuerjahr])

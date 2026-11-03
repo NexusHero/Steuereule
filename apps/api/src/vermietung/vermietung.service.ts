@@ -20,8 +20,10 @@ import {
   type Answers,
   type VermietungFeldId,
   type VermietungFeldZustand,
+  kennzeichnungsKey,
 } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
+import { KENNZEICHNUNG_REPOSITORY, type KennzeichnungRepository } from '../kennzeichnung/kennzeichnung.repository.js'
 import {
   INTERVIEW_ANSWER_REPOSITORY,
   type InterviewAnswerRecord,
@@ -108,6 +110,8 @@ export class VermietungService {
     @Inject(VERMIETUNG_REPOSITORY) private readonly repository: VermietungRepository,
     @Inject(INTERVIEW_ANSWER_REPOSITORY) private readonly interviewRepository: InterviewAnswerRepository,
     @Inject(AuditService) private readonly auditService: AuditService,
+    // ADR-0052 §6: a value the user writes themselves is theirs — its marker (and any proposal) goes.
+    @Inject(KENNZEICHNUNG_REPOSITORY) private readonly kennzeichnungen: KennzeichnungRepository,
   ) {}
 
   private async antworten(userId: string, steuerjahr: number): Promise<Answers> {
@@ -175,6 +179,7 @@ export class VermietungService {
     if (record === null) {
       throw new NotFoundException('No such Vermietungsobjekt for this account and tax year.')
     }
+    await this.kennzeichnungen.entferne(userId, steuerjahr, [kennzeichnungsKey('vermietung', feld, objektId)])
     // `setzeVermietungFeld` is the core's own invariant guard (throws on an invalid `erfasst`) —
     // defense in depth behind the explicit 400 in `zustandAusDto`.
     const daten = datenAusRecord(record)

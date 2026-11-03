@@ -13,14 +13,13 @@ import { ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-na
 import { useTranslation } from 'react-i18next'
 import { Button, Card, Chip, HerkunftsChip, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme, type Breakpoint } from '@steuereule/ui'
 import { FristenBanner } from '../fristen/FristenBanner'
-import { formatEuro, formatEuroRange, uebernahmeHerkunft, UNCERTAINTY_PER_ITEM } from '@steuereule/core'
+import { formatEuro, formatEuroRange, UNCERTAINTY_PER_ITEM } from '@steuereule/core'
 import {
   useCockpitControllerGetCockpitSummary,
-  useUebernahmeControllerGet,
-  useUebernahmeControllerBestaetige,
+  useBestaetigungControllerGet,
+  type AnlageBestaetigungDto,
   type CockpitStandDto,
   type CockpitSummaryDto,
-  type UebernahmeKennzeichnungDto,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
@@ -50,6 +49,8 @@ export interface CockpitScreenProps {
   readonly onOpenEulenModus?: (jahr: number) => void
   /** ADR-0050: opens the Formular-Ausdruck for the year shown. Omitted = no entry rendered. */
   readonly onOpenAusdruck?: (jahr: number) => void
+  /** REQ-032: opens „Prüfen & bestätigen“ for the year shown. */
+  readonly onOpenBestaetigung?: (jahr: number) => void
 }
 
 export function CockpitScreen({
@@ -61,6 +62,7 @@ export function CockpitScreen({
   onOpenKinder,
   onOpenEulenModus,
   onOpenAusdruck,
+  onOpenBestaetigung,
 }: CockpitScreenProps) {
   const bp = useBreakpoint()
   const { t: tr } = useTranslation(APP_NS)
@@ -68,16 +70,9 @@ export function CockpitScreen({
   // Kontext; ehrlich benannt), der Cockpit-Query läuft pro Jahr (der Query-Key trägt das Jahr).
   const [jahr, setJahr] = useState(taxYear)
   const query = useCockpitControllerGetCockpitSummary(jahr)
-  // Ticket 10.8 (ADR-021) — die Übernahme-Kennzeichnungen des gewählten Jahres; der Hinweis
-  // erscheint nur, wenn sie da sind (ein fehlender Query bricht den Cockpit nie).
-  const uebernahmeQuery = useUebernahmeControllerGet(jahr)
-  const bestaetige = useUebernahmeControllerBestaetige()
-
-  const onBestaetige = async (postenKey: string) => {
-    await bestaetige.mutateAsync({ jahr, postenKey })
-    void query.refetch()
-    void uebernahmeQuery.refetch()
-  }
+  // REQ-032 — was im gewählten Jahr noch zu bestätigen ist; der Hinweis erscheint nur, wenn es
+  // etwas gibt (ein fehlender Query bricht den Cockpit nie).
+  const bestaetigungQuery = useBestaetigungControllerGet(jahr)
 
   if (query.isPending) {
     return <LoadingState bp={bp} label={tr('cockpit.loading')} />
@@ -119,9 +114,8 @@ export function CockpitScreen({
       summary={summary}
       jahr={jahr}
       onJahrWechsel={setJahr}
-      uebernahme={uebernahmeQuery.data?.status === 200 ? uebernahmeQuery.data.data.kennzeichnungen : null}
-      onBestaetige={onBestaetige}
-      isBestaetigend={bestaetige.isPending}
+      bestaetigung={bestaetigungQuery.data?.status === 200 ? bestaetigungQuery.data.data.anlagen : null}
+      {...(onOpenBestaetigung ? { onOpenBestaetigung: () => onOpenBestaetigung(jahr) } : {})}
       onRefresh={onRefresh}
       isRefreshing={query.isFetching}
       onOpenInterview={onOpenInterview}
@@ -217,54 +211,45 @@ function CockpitEmpty({ jahr, onJahrWechsel, onRefresh, isRefreshing, onOpenInte
   )
 }
 
-/**
- * Der Label-Name eines kopierten Fakts (ADR-021) — die Kennzeichnungs-Schlüssel der
- * Jahresübernahme (M2: lstb/rente/kapital/vermietung-<id>).
- */
-function postenLabel(tr: ReturnType<typeof useTranslation>['t'], postenKey: string): string {
-  if (postenKey === 'lstb') return tr('cockpit.uebernahme.postenLstb')
-  if (postenKey === 'rente') return tr('cockpit.uebernahme.postenRente')
-  if (postenKey === 'kapital') return tr('cockpit.uebernahme.postenKapital')
-  if (postenKey.startsWith('vermietung-')) return tr('cockpit.uebernahme.postenVermietung')
-  return postenKey
-}
-
-interface UebernahmeHinweisProps {
-  readonly uebernahme: readonly UebernahmeKennzeichnungDto[] | null
+interface BestaetigungHinweisProps {
+  readonly anlagen: readonly AnlageBestaetigungDto[] | null
   readonly stand: CockpitStandDto
-  readonly onBestaetige: (postenKey: string) => void
-  readonly isBestaetigend: boolean
+  readonly onOpenBestaetigung?: () => void
 }
 
 /**
- * Ticket 10.8 (ADR-021) — der ruhige Übernahme-Hinweis: unbestätigte, kopierte Posten warten auf
- * EIN Antippen (oder einen Beleg). Grau und ruhig benannt, nie ein Konflikt (ADR-008 ist für
- * Widersprüche); die Summe, die die Spanne trägt, wird ehrlich zitiert; jede Kennzeichnung trägt
- * ihre Herkunft mit Jahresbezug (ADR-022) und wird einzeln bestätigt.
+ * REQ-032 (ADR-0052 §6, vorher ADR-021) — der ruhige Bestätigungs-Hinweis: Werte, die nicht der
+ * Nutzer selbst eingetragen hat, warten auf die Bestätigung je Anlage. Grau und ruhig benannt, nie
+ * ein Konflikt (ADR-008 ist für Widersprüche); die Summe, die die Spanne trägt, wird ehrlich zitiert.
  */
-function UebernahmeHinweis({ uebernahme, stand, onBestaetige, isBestaetigend }: UebernahmeHinweisProps) {
+function BestaetigungHinweis({ anlagen, stand, onOpenBestaetigung }: BestaetigungHinweisProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
-  const unbestaetigte = (uebernahme ?? []).filter((k) => !k.bestaetigt)
-  if (unbestaetigte.length === 0) return null
+  const offen = (anlagen ?? []).filter((a) => a.unbestaetigt > 0)
+  if (offen.length === 0) return null
   const summe = stand.kind === 'spanne' ? (stand.unbestaetigteSumme ?? 0) : 0
 
   return (
-    <Card variant="default" testID="uebernahme-hinweis">
+    <Card variant="default" testID="bestaetigung-hinweis">
       <Text style={styles.help}>
-        {summe > 0 ? tr('cockpit.uebernahme.hinweis', { count: unbestaetigte.length, summe: formatEuro(summe) }) : tr('cockpit.uebernahme.hinweisOhneSumme')}
+        {summe > 0 ? tr('cockpit.bestaetigung.hinweis', { count: offen.reduce((n, a) => n + a.unbestaetigt, 0), summe: formatEuro(summe) }) : tr('cockpit.bestaetigung.hinweisOhneSumme')}
       </Text>
-      {unbestaetigte.map((k) => (
-        <View key={k.postenKey} style={styles.uebernahmeZeile}>
+      {offen.map((a) => (
+        <View key={a.anlage} style={styles.uebernahmeZeile}>
           <Text style={styles.uebernahmeZeileText}>
-            {postenLabel(tr, k.postenKey)} · {uebernahmeHerkunft(k.vorjahr)}
+            {tr('cockpit.bestaetigung.anlage', {
+              anlage: tr(`bestaetigung.anlagen.${a.anlage}`),
+              anzahl: tr('bestaetigung.unbestaetigt', { count: a.unbestaetigt }),
+            })}
           </Text>
-          <Button variante="ghost" onPress={() => onBestaetige(k.postenKey)} disabled={isBestaetigend} testID={`bestaetige-${k.postenKey}`}>
-            {tr('cockpit.uebernahme.bestaetigen')}
-          </Button>
         </View>
       ))}
+      {onOpenBestaetigung ? (
+        <Button variante="ghost" onPress={onOpenBestaetigung} testID="bestaetigung-oeffnen">
+          {tr('cockpit.bestaetigung.pruefen')}
+        </Button>
+      ) : null}
     </Card>
   )
 }
@@ -273,10 +258,9 @@ interface CockpitLoadedProps {
   readonly summary: CockpitSummaryDto
   readonly jahr: number
   readonly onJahrWechsel: (jahr: number) => void
-  /** Die Übernahme-Kennzeichnungen des Jahres, oder null wenn der Query noch lief/scheiterte. */
-  readonly uebernahme: readonly UebernahmeKennzeichnungDto[] | null
-  readonly onBestaetige: (postenKey: string) => void
-  readonly isBestaetigend: boolean
+  /** Was im Jahr noch zu bestätigen ist, oder null wenn der Query noch lief/scheiterte. */
+  readonly bestaetigung: readonly AnlageBestaetigungDto[] | null
+  readonly onOpenBestaetigung?: () => void
   readonly onRefresh: () => void
   readonly isRefreshing: boolean
   readonly onOpenInterview: () => void
@@ -289,7 +273,7 @@ interface CockpitLoadedProps {
   readonly bp: Breakpoint
 }
 
-function CockpitLoaded({ summary, jahr, onJahrWechsel, uebernahme, onBestaetige, isBestaetigend, onRefresh, isRefreshing, onOpenInterview, onOpenBescheid, onOpenKapital, onOpenVermietung, onOpenKinder, onOpenEulenModus, onOpenAusdruck, bp }: CockpitLoadedProps) {
+function CockpitLoaded({ summary, jahr, onJahrWechsel, bestaetigung, onOpenBestaetigung, onRefresh, isRefreshing, onOpenInterview, onOpenBescheid, onOpenKapital, onOpenVermietung, onOpenKinder, onOpenEulenModus, onOpenAusdruck, bp }: CockpitLoadedProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
@@ -306,7 +290,7 @@ function CockpitLoaded({ summary, jahr, onJahrWechsel, uebernahme, onBestaetige,
       <FristenBanner taxYear={jahr} />
       {/* Ticket 10.8 (ADR-021) — der ruhige Übernahme-Hinweis: unbestätigte Posten aus der
           Jahresübernahme, einzeln bestätigt. Grau und ruhig, nie ein Konflikt. */}
-      <UebernahmeHinweis uebernahme={uebernahme} stand={stand} onBestaetige={onBestaetige} isBestaetigend={isBestaetigend} />
+      <BestaetigungHinweis anlagen={bestaetigung} stand={stand} {...(onOpenBestaetigung ? { onOpenBestaetigung } : {})} />
       <Card variant="nacht">
         <Text style={styles.heroLabel}>{tr('cockpit.hero.label')}</Text>
         {stand.kind === 'gated' ? (

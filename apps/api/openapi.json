@@ -312,129 +312,6 @@
         ]
       }
     },
-    "/v1/steuerjahre/{jahr}/uebernahme": {
-      "get": {
-        "operationId": "UebernahmeController_get",
-        "parameters": [
-          {
-            "name": "jahr",
-            "required": true,
-            "in": "path",
-            "description": "The target tax year (Steuerjahr) — validated to a sensible window (ParseSteuerjahrPipe, same as Cockpit).",
-            "schema": {
-              "example": 2026,
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "The take-over Kennzeichnungen of this tax year.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UebernahmeResponseDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Guest session — this endpoint requires a signed-in account."
-          }
-        },
-        "tags": [
-          "uebernahme"
-        ]
-      },
-      "post": {
-        "operationId": "UebernahmeController_uebernehme",
-        "parameters": [
-          {
-            "name": "von",
-            "required": true,
-            "in": "query",
-            "description": "The source year to copy from (M1: the LStB row). Must be strictly before the target year.",
-            "schema": {
-              "example": 2025,
-              "type": "number"
-            }
-          },
-          {
-            "name": "jahr",
-            "required": true,
-            "in": "path",
-            "description": "The target tax year (Steuerjahr).",
-            "schema": {
-              "example": 2026,
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "The LStB was copied (UNBESTÄTIGT, ADR-021) and the Kennzeichnung recorded.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UebernahmeResponseDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Guest session — this endpoint requires a signed-in account."
-          }
-        },
-        "tags": [
-          "uebernahme"
-        ]
-      }
-    },
-    "/v1/steuerjahre/{jahr}/uebernahme/{postenKey}/bestaetigen": {
-      "put": {
-        "operationId": "UebernahmeController_bestaetige",
-        "parameters": [
-          {
-            "name": "postenKey",
-            "required": true,
-            "in": "path",
-            "description": "The stable key of the copied fact (M1: lstb).",
-            "schema": {
-              "example": "lstb",
-              "type": "string"
-            }
-          },
-          {
-            "name": "jahr",
-            "required": true,
-            "in": "path",
-            "description": "The target tax year (Steuerjahr).",
-            "schema": {
-              "example": 2026,
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "The Kennzeichnung is confirmed (ADR-021: angetippt/Beleg).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UebernahmeResponseDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Guest session — this endpoint requires a signed-in account."
-          }
-        },
-        "tags": [
-          "uebernahme"
-        ]
-      }
-    },
     "/v1/steuerjahre/{jahr}/rente": {
       "get": {
         "operationId": "RenteController_get",
@@ -1814,6 +1691,228 @@
         ]
       }
     },
+    "/v1/steuerjahre/{jahr}/uebernahme": {
+      "get": {
+        "operationId": "UebernahmeController_get",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The target tax year (Steuerjahr) — validated to a sensible window (ParseSteuerjahrPipe, same as Cockpit).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The take-over Kennzeichnungen of this tax year.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UebernahmeResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "uebernahme"
+        ]
+      },
+      "post": {
+        "operationId": "UebernahmeController_uebernehme",
+        "parameters": [
+          {
+            "name": "von",
+            "required": true,
+            "in": "query",
+            "description": "The source year to copy from (M1: the LStB row). Must be strictly before the target year.",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The target tax year (Steuerjahr).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The LStB was copied (UNBESTÄTIGT, ADR-021) and the Kennzeichnung recorded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UebernahmeResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "uebernahme"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/bestaetigung": {
+      "get": {
+        "operationId": "BestaetigungController_get",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (ParseSteuerjahrPipe, same as Cockpit).",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Per Anlage: the unconfirmed values and open proposals, with their Herkunft.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BestaetigungResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "bestaetigung"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/bestaetigung/anlagen/{anlage}": {
+      "put": {
+        "operationId": "BestaetigungController_bestaetigeAnlage",
+        "parameters": [
+          {
+            "name": "anlage",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "enum": [
+                "hauptvordruck",
+                "anlageN",
+                "anlageNGre",
+                "anlageR",
+                "anlageKap",
+                "anlageV",
+                "anlageKind"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (ParseSteuerjahrPipe, same as Cockpit).",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "All values of the Anlage are confirmed; the remaining overview.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BestaetigungResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "bestaetigung"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/bestaetigung/vorschlaege/{key}": {
+      "put": {
+        "operationId": "BestaetigungController_entscheideVorschlag",
+        "parameters": [
+          {
+            "name": "key",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": "lstb.bruttoarbeitslohn",
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (ParseSteuerjahrPipe, same as Cockpit).",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VorschlagEntscheidungDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The proposal was accepted (written, confirmed) or discarded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BestaetigungResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "404": {
+            "description": "No open proposal for this field."
+          }
+        },
+        "tags": [
+          "bestaetigung"
+        ]
+      }
+    },
     "/v1/steuerjahre/{jahr}/freischaltung": {
       "get": {
         "operationId": "FreischaltungController_status",
@@ -2934,46 +3033,6 @@
         "required": [
           "nextStep",
           "openItems"
-        ]
-      },
-      "UebernahmeKennzeichnungDto": {
-        "type": "object",
-        "properties": {
-          "postenKey": {
-            "type": "string",
-            "example": "lstb",
-            "description": "Der stabile Schlüssel des kopierten Fakts (M1: lstb)."
-          },
-          "vorjahr": {
-            "type": "number",
-            "example": 2025,
-            "description": "Das Quelljahr der Kopie — der Jahresbezug der Herkunft (ADR-022)."
-          },
-          "bestaetigt": {
-            "type": "boolean",
-            "example": false,
-            "description": "false = UNBESTÄTIGT (kopiert, noch nicht angetippt), true = bestätigt (ADR-021)."
-          }
-        },
-        "required": [
-          "postenKey",
-          "vorjahr",
-          "bestaetigt"
-        ]
-      },
-      "UebernahmeResponseDto": {
-        "type": "object",
-        "properties": {
-          "kennzeichnungen": {
-            "description": "Die Übernahme-Kennzeichnungen, älteste zuerst.",
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/UebernahmeKennzeichnungDto"
-            }
-          }
-        },
-        "required": [
-          "kennzeichnungen"
         ]
       },
       "RenteFeldDto": {
@@ -5089,6 +5148,223 @@
           "stufe",
           "verbleibendeTage",
           "verspaetungszuschlag"
+        ]
+      },
+      "UebernahmeKennzeichnungDto": {
+        "type": "object",
+        "properties": {
+          "postenKey": {
+            "type": "string",
+            "example": "lstb.bruttoarbeitslohn",
+            "description": "Der Kennzeichnungs-Key des kopierten Felds (ADR-0052 §6)."
+          },
+          "vorjahr": {
+            "type": "number",
+            "example": 2025,
+            "description": "Das Quelljahr der Kopie — der Jahresbezug der Herkunft (ADR-022)."
+          },
+          "bestaetigt": {
+            "type": "boolean",
+            "example": false,
+            "description": "false = UNBESTÄTIGT (kopiert, Anlage noch nicht bestätigt), true = bestätigt (ADR-021)."
+          }
+        },
+        "required": [
+          "postenKey",
+          "vorjahr",
+          "bestaetigt"
+        ]
+      },
+      "UebernahmeResponseDto": {
+        "type": "object",
+        "properties": {
+          "kennzeichnungen": {
+            "description": "Die Übernahme-Kennzeichnungen, älteste zuerst.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UebernahmeKennzeichnungDto"
+            }
+          }
+        },
+        "required": [
+          "kennzeichnungen"
+        ]
+      },
+      "HerkunftDto": {
+        "type": "object",
+        "properties": {
+          "art": {
+            "type": "string",
+            "enum": [
+              "nutzer",
+              "uebernahme",
+              "assistent",
+              "beleg"
+            ],
+            "example": "assistent"
+          },
+          "name": {
+            "type": "string",
+            "example": "Claude",
+            "description": "Name des Assistenten (art = assistent)."
+          },
+          "belegId": {
+            "type": "string",
+            "description": "Der Beleg, aus dem der Wert stammt."
+          },
+          "vorjahr": {
+            "type": "number",
+            "example": 2024,
+            "description": "Quelljahr der Jahresübernahme (art = uebernahme)."
+          }
+        },
+        "required": [
+          "art"
+        ]
+      },
+      "VorschlagDto": {
+        "type": "object",
+        "properties": {
+          "wert": {
+            "type": "string",
+            "nullable": true,
+            "example": "4800",
+            "description": "Der vorgeschlagene Feld-Wert (null = leeren)."
+          },
+          "herkunft": {
+            "$ref": "#/components/schemas/HerkunftDto"
+          }
+        },
+        "required": [
+          "wert",
+          "herkunft"
+        ]
+      },
+      "KennzeichnungWertDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "example": "lstb.bruttoarbeitslohn"
+          },
+          "maske": {
+            "type": "string",
+            "enum": [
+              "profil",
+              "stammdaten",
+              "kopplung",
+              "interview",
+              "lstb",
+              "chLohnausweis",
+              "rente",
+              "kapital",
+              "vermietung",
+              "kind"
+            ],
+            "example": "lstb"
+          },
+          "instanz": {
+            "type": "string",
+            "nullable": true,
+            "description": "Instanz (Vermietungsobjekt, Kind) oder null."
+          },
+          "feld": {
+            "type": "string",
+            "example": "bruttoarbeitslohn"
+          },
+          "wert": {
+            "type": "string",
+            "nullable": true,
+            "example": "4750",
+            "description": "Der aktuell gespeicherte Feld-Wert (null = offen, \"unklar\")."
+          },
+          "herkunft": {
+            "$ref": "#/components/schemas/HerkunftDto"
+          },
+          "bestaetigt": {
+            "type": "boolean"
+          },
+          "vorschlag": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/VorschlagDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "key",
+          "maske",
+          "instanz",
+          "feld",
+          "wert",
+          "herkunft",
+          "bestaetigt",
+          "vorschlag"
+        ]
+      },
+      "AnlageBestaetigungDto": {
+        "type": "object",
+        "properties": {
+          "anlage": {
+            "type": "string",
+            "enum": [
+              "hauptvordruck",
+              "anlageN",
+              "anlageNGre",
+              "anlageR",
+              "anlageKap",
+              "anlageV",
+              "anlageKind"
+            ],
+            "example": "anlageN"
+          },
+          "unbestaetigt": {
+            "type": "number",
+            "description": "Wie viele Werte dieser Anlage noch unbestätigt sind."
+          },
+          "werte": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KennzeichnungWertDto"
+            }
+          }
+        },
+        "required": [
+          "anlage",
+          "unbestaetigt",
+          "werte"
+        ]
+      },
+      "BestaetigungResponseDto": {
+        "type": "object",
+        "properties": {
+          "anlagen": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AnlageBestaetigungDto"
+            }
+          }
+        },
+        "required": [
+          "anlagen"
+        ]
+      },
+      "VorschlagEntscheidungDto": {
+        "type": "object",
+        "properties": {
+          "entscheidung": {
+            "type": "string",
+            "enum": [
+              "annehmen",
+              "verwerfen"
+            ]
+          }
+        },
+        "required": [
+          "entscheidung"
         ]
       },
       "FreischaltungStatusDto": {

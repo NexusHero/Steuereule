@@ -38,8 +38,10 @@ import {
   type KirchensteuerFaktor,
   type LstbDaten,
   type Posten,
+  kennzeichnungsKey,
 } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
+import { KENNZEICHNUNG_REPOSITORY, type KennzeichnungRepository } from '../kennzeichnung/kennzeichnung.repository.js'
 import {
   INTERVIEW_ANSWER_REPOSITORY,
   type InterviewAnswerRepository,
@@ -179,6 +181,8 @@ export class KapitalService {
     @Inject(LSTB_REPOSITORY) private readonly lstbRepository: LstbRepository,
     @Inject(TAX_YEAR_REPOSITORY) private readonly taxYearRepository: TaxYearRepository,
     @Inject(AuditService) private readonly auditService: AuditService,
+    // ADR-0052 §6: a value the user writes themselves is theirs — its marker (and any proposal) goes.
+    @Inject(KENNZEICHNUNG_REPOSITORY) private readonly kennzeichnungen: KennzeichnungRepository,
   ) {}
 
   private async antworten(userId: string, steuerjahr: number): Promise<Answers> {
@@ -226,6 +230,7 @@ export class KapitalService {
     // defense in depth behind the explicit 400 in `zustandAusDto`.
     setzeKapitalFeld(daten, feld, zustand)
     const next = await this.repository.setFeld(userId, steuerjahr, feld, serialisiereKapitalFeld(zustand))
+    await this.kennzeichnungen.entferne(userId, steuerjahr, [kennzeichnungsKey('kapital', feld)])
     return this.toResponse(userId, steuerjahr, next)
   }
 

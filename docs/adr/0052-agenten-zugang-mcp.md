@@ -1,7 +1,7 @@
 # ADR-0052 — Agenten-Zugang: der eigene KI-Assistent des Nutzers füllt die Erklärung aus (MCP)
 
-- **Status:** Proposed — Entwurf aus der Grilling-Session mit NexusHero am 2026-11-05; Review durch
-  Musti steht aus
+- **Status:** Accepted (Stakeholder-Entscheidung NexusHero, 2026-11-03) — Entwurf aus der
+  Grilling-Session mit NexusHero; Musti-Review läuft auf den Slice-PRs
 - **Date:** 2026-11-05
 - **Deciders:** NexusHero (Stakeholder) — Entscheidungen; Musti — Architektur-Review
 - **Ändert / ergänzt:** Produkt-ADR-014/048 (KI schlägt vor, nie direkt), ADR-0051 (keine
@@ -137,3 +137,32 @@ In Abhängigkeitsreihenfolge; Details im Roadmap-Ticket `17-agenten-zugang-mcp.m
 - **Werkzeuge aus der OpenAPI generieren.** Rund 80 technische Werkzeuge überfordern viele Modelle
   und legen Interna offen.
 - **Bekannte Anbieter blockieren.** Über den frei wählbaren Client-Namen trivial zu umgehen.
+
+## Amendment 1 (2026-11-03) — Umsetzung 17.1: Herkunft und Bestätigung (#384, REQ-032)
+
+Stakeholder-Entscheidungen (NexusHero, Refinement 17.1):
+
+- Unbestätigte Werte sperren Vorprüfung, Ausdruck und Bezahlung **unabhängig von der Herkunft** —
+  auch bestehende, nicht bestätigte Jahresübernahmen.
+- „Der Nutzer gewinnt“ (§7) gilt für **jeden** Nicht-Nutzer-Schreiber, auch für die Jahresübernahme:
+  sie überschreibt keinen im Zieljahr eingetragenen Wert mehr, sondern legt einen Vorschlag ab.
+- Bestätigt wird auf einem eigenen Screen „Prüfen & bestätigen“ (aus dem Cockpit-Hinweis und der
+  Ausdruck-Vorprüfung erreichbar); der Einzel-Bestätigen-Knopf der Übernahme entfällt.
+- Je Feld gibt es höchstens einen offenen Vorschlag; der neueste ersetzt den älteren.
+
+Technischer Schnitt (folgt aus §6/§7, ohne neue Abhängigkeit):
+
+- Die Tabelle `UebernahmeKennzeichnung` (ADR-0049) wird zur generischen `Kennzeichnung` umbenannt
+  und je **Feld** geführt (`<maske>[:<instanz>].<feld>`); bestehende Fakt-Kennzeichnungen werden
+  per Migration auf ihre Felder aufgefächert. Keine Zeile = vom Nutzer eingetragen = bestätigt.
+  Profil und Stammdaten sind jahresunabhängig und liegen unter Steuerjahr 0.
+- Der Vorschlagswert ist verschlüsselt (`mode=strict`), weil er alles tragen kann, was eine Maske
+  speichert. Herkunft und Bestätigung sind Teil von Export und Löschung.
+- Ändert der Nutzer einen Wert selbst, gilt er als bestätigt (die Kennzeichnung entfällt). Ein
+  offener Vorschlag auf einem bestätigten Wert sperrt nicht — er ist kein Wert der Erklärung.
+- Bei Zusammenveranlagung sperren auch unbestätigte Werte von Person B (`unbestaetigt.personB`);
+  Person B bestätigt in der eigenen App.
+- Die Entscheidung über Schreiben oder Vorschlag liegt im Core (`kennzeichnung.ts`); die API liest
+  und schreibt Felder nur über die Repositories der Masken. 17.1 verdrahtet die Masken, die ein
+  Nicht-Nutzer heute füllen kann (LStB, Rente, Kapital, Vermietung); die übrigen Masken bekommen
+  Schreibweg und Nutzer-Hook mit dem Assistenten (17.3).
