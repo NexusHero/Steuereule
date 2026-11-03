@@ -29,9 +29,12 @@ sobald das Zertifikat (Ticket 07) vorliegt; bis dahin Beta kostenlos (ADR-017).
 - [x] Anlage Kind für minderjährige Kinder in Zusammenveranlagung: Familienkasse (Z. 7), Wohnsitz im
       Inland vom–bis (Z. 8), Kindschaftsverhältnis zu A und B (Kz 02/03); Nachname nur bei Abweichung.
       Fehlende Angaben sperren mit Weg zum Kinder-Screen (dort jetzt auch Bearbeiten).
-- [ ] Anlage Kind, noch ehrlich gesperrt: Elternteil außerhalb dieser Erklärung (Z. 11–15, betrifft
-      Alleinerziehende und Einzelveranlagung), volljährige Kinder (Z. 16 ff.), Wohnsitz im Ausland (Z. 9);
-      Kinderbetreuungskosten werden nicht erfasst
+- [x] Anlage Kind, anderer Elternteil außerhalb dieser Erklärung (Alleinerziehende, Einzelveranlagung,
+      Stiefkind): Z. 11/12 mit Dauer des Kindschaftsverhältnisses, Z. 14 (verstorben, Kz 06),
+      Z. 15 (nicht zu ermitteln, Kz 05)
+- [ ] Anlage Kind, noch ehrlich gesperrt: anderer Elternteil im Ausland (Z. 13), volljährige Kinder
+      (Z. 16 ff.), Wohnsitz des Kindes im Ausland (Z. 9); Kinderbetreuungskosten und der
+      Entlastungsbetrag für Alleinerziehende (§ 24b EStG) werden nicht erfasst
 - [x] Verheiratete: Veranlagungsart + Person B erfassen, dann Zeilen 19–24 ausdrucken
 - [ ] Klärung durch Steuerberater/Finanzamt: befülltes Portal-PDF („NET") vs. nichtamtlicher
       Vordruck (Graurasterung, Herstellerangabe)

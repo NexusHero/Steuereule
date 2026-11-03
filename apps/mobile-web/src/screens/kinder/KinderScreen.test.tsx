@@ -113,4 +113,33 @@ describe('KinderScreen', () => {
     })
     await waitFor(() => expect(screen.queryByText(/Für den Ausdruck fehlen noch Angaben/)).toBeNull())
   })
+
+  it('captures the other parent for single parents (Anlage Kind Zeilen 11–15)', async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined)
+    renderKinder({ onSaveKind: onSave })
+
+    fireEvent.click(screen.getByLabelText('Kind Lina bearbeiten'))
+    expect(screen.queryByLabelText('Name des anderen Elternteils')).toBeNull()
+    fireEvent.click(screen.getByTestId('kind-ae-Inland'))
+    fireEvent.change(screen.getByLabelText('Name des anderen Elternteils'), { target: { value: 'Muster, Max' } })
+    fireEvent.change(screen.getByLabelText('Geburtsdatum des anderen Elternteils'), { target: { value: '1984-02-11' } })
+    fireEvent.change(screen.getByLabelText('Adresse des anderen Elternteils'), { target: { value: 'Hauptstraße 3, 01067 Dresden' } })
+    fireEvent.click(screen.getByTestId('kind-ae-art-1'))
+    expect(screen.queryByLabelText('Todestag des anderen Elternteils')).toBeNull()
+    fireEvent.click(screen.getByTestId('kind-speichern'))
+
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalledWith(
+        'kind-1',
+        expect.objectContaining({
+          andererElternteil: 'Inland',
+          andererElternteilName: 'Muster, Max',
+          andererElternteilGeburtsdatum: '1984-02-11',
+          andererElternteilAdresse: 'Hauptstraße 3, 01067 Dresden',
+          andererElternteilArt: '1',
+          andererElternteilVerstorbenAm: null,
+        }),
+      )
+    })
+  })
 })

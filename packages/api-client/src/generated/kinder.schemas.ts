@@ -29,6 +29,30 @@ export const KindResponseDtoKindschaftsverhaeltnisB = {
   NUMBER_3: '3',
 } as const;
 
+/**
+ * @nullable
+ */
+export type KindResponseDtoAndererElternteil = typeof KindResponseDtoAndererElternteil[keyof typeof KindResponseDtoAndererElternteil] | null;
+
+
+export const KindResponseDtoAndererElternteil = {
+  Inland: 'Inland',
+  Ausland: 'Ausland',
+  Verstorben: 'Verstorben',
+  Unbekannt: 'Unbekannt',
+} as const;
+
+/**
+ * @nullable
+ */
+export type KindResponseDtoAndererElternteilArt = typeof KindResponseDtoAndererElternteilArt[keyof typeof KindResponseDtoAndererElternteilArt] | null;
+
+
+export const KindResponseDtoAndererElternteilArt = {
+  NUMBER_1: '1',
+  NUMBER_2: '2',
+} as const;
+
 export interface KindResponseDto {
   id: string;
   lfdNr: number;
@@ -47,6 +71,18 @@ export interface KindResponseDto {
   familienkasse: string | null;
   /** @nullable */
   wohnsitzInlandGanzjaehrig: boolean | null;
+  /** @nullable */
+  andererElternteil: KindResponseDtoAndererElternteil;
+  /** @nullable */
+  andererElternteilName: string | null;
+  /** @nullable */
+  andererElternteilGeburtsdatum: string | null;
+  /** @nullable */
+  andererElternteilAdresse: string | null;
+  /** @nullable */
+  andererElternteilArt: KindResponseDtoAndererElternteilArt;
+  /** @nullable */
+  andererElternteilVerstorbenAm: string | null;
 }
 
 export interface KinderResponseDto {
@@ -82,6 +118,31 @@ export const CreateKindDtoKindschaftsverhaeltnisB = {
   NUMBER_3: '3',
 } as const;
 
+/**
+ * The other parent outside this return (Zeilen 11–15).
+ * @nullable
+ */
+export type CreateKindDtoAndererElternteil = typeof CreateKindDtoAndererElternteil[keyof typeof CreateKindDtoAndererElternteil] | null;
+
+
+export const CreateKindDtoAndererElternteil = {
+  Inland: 'Inland',
+  Ausland: 'Ausland',
+  Verstorben: 'Verstorben',
+  Unbekannt: 'Unbekannt',
+} as const;
+
+/**
+ * @nullable
+ */
+export type CreateKindDtoAndererElternteilArt = typeof CreateKindDtoAndererElternteilArt[keyof typeof CreateKindDtoAndererElternteilArt] | null;
+
+
+export const CreateKindDtoAndererElternteilArt = {
+  NUMBER_1: '1',
+  NUMBER_2: '2',
+} as const;
+
 export interface CreateKindDto {
   /**
      * Kz 02: 1 = leiblich/adoptiert, 2 = Pflegekind, 3 = Enkel-/Stiefkind
@@ -100,6 +161,21 @@ export interface CreateKindDto {
      * @nullable
      */
   wohnsitzInlandGanzjaehrig?: boolean | null;
+  /**
+     * The other parent outside this return (Zeilen 11–15).
+     * @nullable
+     */
+  andererElternteil?: CreateKindDtoAndererElternteil;
+  /** @nullable */
+  andererElternteilName?: string | null;
+  /** @nullable */
+  andererElternteilGeburtsdatum?: string | null;
+  /** @nullable */
+  andererElternteilAdresse?: string | null;
+  /** @nullable */
+  andererElternteilArt?: CreateKindDtoAndererElternteilArt;
+  /** @nullable */
+  andererElternteilVerstorbenAm?: string | null;
   vorname: string;
   nachname: string;
   /** ISO date YYYY-MM-DD */
@@ -134,6 +210,31 @@ export const UpdateKindDtoKindschaftsverhaeltnisB = {
   NUMBER_3: '3',
 } as const;
 
+/**
+ * The other parent outside this return (Zeilen 11–15).
+ * @nullable
+ */
+export type UpdateKindDtoAndererElternteil = typeof UpdateKindDtoAndererElternteil[keyof typeof UpdateKindDtoAndererElternteil] | null;
+
+
+export const UpdateKindDtoAndererElternteil = {
+  Inland: 'Inland',
+  Ausland: 'Ausland',
+  Verstorben: 'Verstorben',
+  Unbekannt: 'Unbekannt',
+} as const;
+
+/**
+ * @nullable
+ */
+export type UpdateKindDtoAndererElternteilArt = typeof UpdateKindDtoAndererElternteilArt[keyof typeof UpdateKindDtoAndererElternteilArt] | null;
+
+
+export const UpdateKindDtoAndererElternteilArt = {
+  NUMBER_1: '1',
+  NUMBER_2: '2',
+} as const;
+
 export interface UpdateKindDto {
   /**
      * Kz 02: 1 = leiblich/adoptiert, 2 = Pflegekind, 3 = Enkel-/Stiefkind
@@ -152,6 +253,21 @@ export interface UpdateKindDto {
      * @nullable
      */
   wohnsitzInlandGanzjaehrig?: boolean | null;
+  /**
+     * The other parent outside this return (Zeilen 11–15).
+     * @nullable
+     */
+  andererElternteil?: UpdateKindDtoAndererElternteil;
+  /** @nullable */
+  andererElternteilName?: string | null;
+  /** @nullable */
+  andererElternteilGeburtsdatum?: string | null;
+  /** @nullable */
+  andererElternteilAdresse?: string | null;
+  /** @nullable */
+  andererElternteilArt?: UpdateKindDtoAndererElternteilArt;
+  /** @nullable */
+  andererElternteilVerstorbenAm?: string | null;
   vorname?: string;
   nachname?: string;
   geburtsdatum?: string;

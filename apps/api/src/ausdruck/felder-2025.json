@@ -1048,6 +1048,102 @@
       }
     },
     {
+      "id": "anlKind.aeName",
+      "formular": "anlage-kind",
+      "seite": 1,
+      "art": "text",
+      "kasten": {
+        "x": 61.7,
+        "y": 401.4,
+        "breite": 210.6,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlKind.aeGeburtsdatum",
+      "formular": "anlage-kind",
+      "seite": 1,
+      "art": "text",
+      "kasten": {
+        "x": 289.4,
+        "y": 401.4,
+        "breite": 110.7,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlKind.aeVon",
+      "formular": "anlage-kind",
+      "seite": 1,
+      "art": "text",
+      "kasten": {
+        "x": 431.7,
+        "y": 401.4,
+        "breite": 54.7,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlKind.aeBis",
+      "formular": "anlage-kind",
+      "seite": 1,
+      "art": "text",
+      "kasten": {
+        "x": 500.6,
+        "y": 401.4,
+        "breite": 54.7,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlKind.aeAdresse",
+      "formular": "anlage-kind",
+      "seite": 1,
+      "art": "text",
+      "kasten": {
+        "x": 61.7,
+        "y": 375.1,
+        "breite": 355.1,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlKind.aeArt",
+      "formular": "anlage-kind",
+      "seite": 1,
+      "art": "text",
+      "kasten": {
+        "x": 431.7,
+        "y": 375.1,
+        "breite": 12.1,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlKind.kz06",
+      "formular": "anlage-kind",
+      "seite": 1,
+      "art": "text",
+      "kasten": {
+        "x": 431.7,
+        "y": 327.2,
+        "breite": 111.7,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlKind.kz05",
+      "formular": "anlage-kind",
+      "seite": 1,
+      "art": "text",
+      "kasten": {
+        "x": 431.7,
+        "y": 306.2,
+        "breite": 12.1,
+        "hoehe": 15.8
+      }
+    },
+    {
       "id": "anlSo.name",
       "formular": "anlage-sonderausgaben",
       "seite": 1,

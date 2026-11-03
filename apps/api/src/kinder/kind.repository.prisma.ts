@@ -27,6 +27,12 @@ function toRecord(row: {
     kindschaftsverhaeltnisB: row.kindschaftsverhaeltnisB,
     familienkasse: row.familienkasse,
     wohnsitzInlandGanzjaehrig: row.wohnsitzInlandGanzjaehrig,
+    andererElternteil: row.andererElternteil,
+    andererElternteilName: row.andererElternteilName,
+    andererElternteilGeburtsdatum: row.andererElternteilGeburtsdatum,
+    andererElternteilAdresse: row.andererElternteilAdresse,
+    andererElternteilArt: row.andererElternteilArt,
+    andererElternteilVerstorbenAm: row.andererElternteilVerstorbenAm,
   }
 }
 
@@ -69,6 +75,12 @@ export class PrismaKindRepository implements KindRepository {
           kindschaftsverhaeltnisB: data.kindschaftsverhaeltnisB ?? null,
           familienkasse: data.familienkasse ?? null,
           wohnsitzInlandGanzjaehrig: data.wohnsitzInlandGanzjaehrig ?? null,
+          andererElternteil: data.andererElternteil ?? null,
+          andererElternteilName: data.andererElternteilName ?? null,
+          andererElternteilGeburtsdatum: data.andererElternteilGeburtsdatum ?? null,
+          andererElternteilAdresse: data.andererElternteilAdresse ?? null,
+          andererElternteilArt: data.andererElternteilArt ?? null,
+          andererElternteilVerstorbenAm: data.andererElternteilVerstorbenAm ?? null,
         },
       }),
       this.prisma.taxDataAccessLog.create({
@@ -103,6 +115,12 @@ export class PrismaKindRepository implements KindRepository {
     if (data.kindschaftsverhaeltnisB !== undefined) updateData.kindschaftsverhaeltnisB = data.kindschaftsverhaeltnisB
     if (data.familienkasse !== undefined) updateData.familienkasse = data.familienkasse
     if (data.wohnsitzInlandGanzjaehrig !== undefined) updateData.wohnsitzInlandGanzjaehrig = data.wohnsitzInlandGanzjaehrig
+    if (data.andererElternteil !== undefined) updateData.andererElternteil = data.andererElternteil
+    if (data.andererElternteilName !== undefined) updateData.andererElternteilName = data.andererElternteilName
+    if (data.andererElternteilGeburtsdatum !== undefined) updateData.andererElternteilGeburtsdatum = data.andererElternteilGeburtsdatum
+    if (data.andererElternteilAdresse !== undefined) updateData.andererElternteilAdresse = data.andererElternteilAdresse
+    if (data.andererElternteilArt !== undefined) updateData.andererElternteilArt = data.andererElternteilArt
+    if (data.andererElternteilVerstorbenAm !== undefined) updateData.andererElternteilVerstorbenAm = data.andererElternteilVerstorbenAm
 
     const [row] = await this.prisma.$transaction([
       this.prisma.kind.update({ where: { id }, data: updateData }),

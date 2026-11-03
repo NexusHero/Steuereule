@@ -5217,6 +5217,40 @@
           "wohnsitzInlandGanzjaehrig": {
             "type": "boolean",
             "nullable": true
+          },
+          "andererElternteil": {
+            "type": "string",
+            "enum": [
+              "Inland",
+              "Ausland",
+              "Verstorben",
+              "Unbekannt"
+            ],
+            "nullable": true
+          },
+          "andererElternteilName": {
+            "type": "string",
+            "nullable": true
+          },
+          "andererElternteilGeburtsdatum": {
+            "type": "string",
+            "nullable": true
+          },
+          "andererElternteilAdresse": {
+            "type": "string",
+            "nullable": true
+          },
+          "andererElternteilArt": {
+            "type": "string",
+            "enum": [
+              "1",
+              "2"
+            ],
+            "nullable": true
+          },
+          "andererElternteilVerstorbenAm": {
+            "type": "string",
+            "nullable": true
           }
         },
         "required": [
@@ -5228,7 +5262,13 @@
           "kindschaftsverhaeltnis",
           "kindschaftsverhaeltnisB",
           "familienkasse",
-          "wohnsitzInlandGanzjaehrig"
+          "wohnsitzInlandGanzjaehrig",
+          "andererElternteil",
+          "andererElternteilName",
+          "andererElternteilGeburtsdatum",
+          "andererElternteilAdresse",
+          "andererElternteilArt",
+          "andererElternteilVerstorbenAm"
         ]
       },
       "KinderResponseDto": {
@@ -5293,6 +5333,45 @@
             "nullable": true,
             "description": "The child lived in Germany all year (Zeile 8)."
           },
+          "andererElternteil": {
+            "type": "string",
+            "enum": [
+              "Inland",
+              "Ausland",
+              "Verstorben",
+              "Unbekannt"
+            ],
+            "nullable": true,
+            "description": "The other parent outside this return (Zeilen 11–15)."
+          },
+          "andererElternteilName": {
+            "type": "string",
+            "nullable": true,
+            "example": "Muster, Max"
+          },
+          "andererElternteilGeburtsdatum": {
+            "type": "string",
+            "nullable": true,
+            "example": "1984-02-11"
+          },
+          "andererElternteilAdresse": {
+            "type": "string",
+            "nullable": true,
+            "example": "Hauptstraße 3, 01067 Dresden"
+          },
+          "andererElternteilArt": {
+            "type": "string",
+            "enum": [
+              "1",
+              "2"
+            ],
+            "nullable": true
+          },
+          "andererElternteilVerstorbenAm": {
+            "type": "string",
+            "nullable": true,
+            "example": "2025-06-30"
+          },
           "vorname": {
             "type": "string",
             "example": "Lina"
@@ -5353,6 +5432,45 @@
             "type": "boolean",
             "nullable": true,
             "description": "The child lived in Germany all year (Zeile 8)."
+          },
+          "andererElternteil": {
+            "type": "string",
+            "enum": [
+              "Inland",
+              "Ausland",
+              "Verstorben",
+              "Unbekannt"
+            ],
+            "nullable": true,
+            "description": "The other parent outside this return (Zeilen 11–15)."
+          },
+          "andererElternteilName": {
+            "type": "string",
+            "nullable": true,
+            "example": "Muster, Max"
+          },
+          "andererElternteilGeburtsdatum": {
+            "type": "string",
+            "nullable": true,
+            "example": "1984-02-11"
+          },
+          "andererElternteilAdresse": {
+            "type": "string",
+            "nullable": true,
+            "example": "Hauptstraße 3, 01067 Dresden"
+          },
+          "andererElternteilArt": {
+            "type": "string",
+            "enum": [
+              "1",
+              "2"
+            ],
+            "nullable": true
+          },
+          "andererElternteilVerstorbenAm": {
+            "type": "string",
+            "nullable": true,
+            "example": "2025-06-30"
           },
           "vorname": {
             "type": "string",

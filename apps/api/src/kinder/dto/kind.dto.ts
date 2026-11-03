@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
-import { KINDSCHAFTSVERHAELTNISSE } from '@steuereule/core'
+import { ANDERE_KINDSCHAFTSVERHAELTNISSE, ANDERER_ELTERNTEIL_STATUS, KINDSCHAFTSVERHAELTNISSE } from '@steuereule/core'
 import { IsBoolean, IsIn, IsNotEmpty, IsOptional, IsString, Matches, MaxLength } from 'class-validator'
 
 /** The Anlage-Kind facts beyond the child's identity (Zeilen 7, 8, 10) — optional on write. */
@@ -24,6 +24,38 @@ class KindAngabenDto {
   @IsOptional()
   @IsBoolean()
   wohnsitzInlandGanzjaehrig?: boolean | null
+
+  @ApiPropertyOptional({ enum: ANDERER_ELTERNTEIL_STATUS, nullable: true, description: 'The other parent outside this return (Zeilen 11–15).' })
+  @IsOptional()
+  @IsIn(ANDERER_ELTERNTEIL_STATUS)
+  andererElternteil?: string | null
+
+  @ApiPropertyOptional({ type: String, nullable: true, example: 'Muster, Max' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  andererElternteilName?: string | null
+
+  @ApiPropertyOptional({ type: String, nullable: true, example: '1984-02-11' })
+  @IsOptional()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  andererElternteilGeburtsdatum?: string | null
+
+  @ApiPropertyOptional({ type: String, nullable: true, example: 'Hauptstraße 3, 01067 Dresden' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(150)
+  andererElternteilAdresse?: string | null
+
+  @ApiPropertyOptional({ enum: ANDERE_KINDSCHAFTSVERHAELTNISSE, nullable: true })
+  @IsOptional()
+  @IsIn(ANDERE_KINDSCHAFTSVERHAELTNISSE)
+  andererElternteilArt?: string | null
+
+  @ApiPropertyOptional({ type: String, nullable: true, example: '2025-06-30' })
+  @IsOptional()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  andererElternteilVerstorbenAm?: string | null
 }
 
 export class CreateKindDto extends KindAngabenDto {
@@ -123,6 +155,24 @@ export class KindResponseDto {
 
   @ApiProperty({ type: Boolean, nullable: true })
   wohnsitzInlandGanzjaehrig!: boolean | null
+
+  @ApiProperty({ enum: ANDERER_ELTERNTEIL_STATUS, nullable: true })
+  andererElternteil!: string | null
+
+  @ApiProperty({ type: String, nullable: true })
+  andererElternteilName!: string | null
+
+  @ApiProperty({ type: String, nullable: true })
+  andererElternteilGeburtsdatum!: string | null
+
+  @ApiProperty({ type: String, nullable: true })
+  andererElternteilAdresse!: string | null
+
+  @ApiProperty({ enum: ANDERE_KINDSCHAFTSVERHAELTNISSE, nullable: true })
+  andererElternteilArt!: string | null
+
+  @ApiProperty({ type: String, nullable: true })
+  andererElternteilVerstorbenAm!: string | null
 }
 
 export class KinderResponseDto {

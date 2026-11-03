@@ -31,19 +31,45 @@ export interface KindFakten {
   kindschaftsverhaeltnisB?: string | null
   familienkasse?: string | null
   wohnsitzInlandGanzjaehrig?: boolean | null
+  andererElternteil?: string | null
+  andererElternteilName?: string | null
+  andererElternteilGeburtsdatum?: string | null
+  andererElternteilAdresse?: string | null
+  andererElternteilArt?: string | null
+  andererElternteilVerstorbenAm?: string | null
+}
+
+/** Zeilen 11–15 are for a parent outside this return — anyone but a joint return of both parents. */
+function brauchtAnderenElternteil(k: KindFakten, zusammen: boolean): boolean {
+  return !zusammen || !k.kindschaftsverhaeltnisB
+}
+
+function andererElternteilLuecke(k: KindFakten): string | null {
+  const bekannt = Boolean(k.andererElternteilName && k.andererElternteilGeburtsdatum && k.andererElternteilArt)
+  switch (k.andererElternteil) {
+    case 'Unbekannt':
+      return null
+    case 'Ausland':
+      return 'anlageKindAndererElternteilAusland'
+    case 'Inland':
+      return bekannt && k.andererElternteilAdresse ? null : 'kinder'
+    case 'Verstorben':
+      return bekannt && k.andererElternteilVerstorbenAm ? null : 'kinder'
+    default:
+      return 'kinder'
+  }
 }
 
 /**
  * Why a child's Anlage Kind cannot be printed, or null. Missing details are the user's to add
- * ('kinder'); the other three are cases this printout does not cover yet: a parent outside this
- * return (Zeilen 11–15), a child of age (Zeilen 16 ff.) and a home abroad (Zeile 9).
+ * ('kinder'); the rest are cases this printout does not cover yet: a child of age (Zeilen 16 ff.),
+ * a home abroad (Zeile 9) and the other parent abroad (Zeile 13).
  */
 function kindLuecke(k: KindFakten, steuerjahr: number, zusammen: boolean): string | null {
   if (!k.idnr || !k.kindschaftsverhaeltnis || !k.familienkasse || k.wohnsitzInlandGanzjaehrig == null) return 'kinder'
   if (!k.wohnsitzInlandGanzjaehrig) return 'anlageKindAusland'
   if (k.geburtsdatum && Number(k.geburtsdatum.slice(0, 4)) <= steuerjahr - 18) return 'anlageKindVolljaehrig'
-  if (!zusammen || !k.kindschaftsverhaeltnisB) return 'anlageKindAndererElternteil'
-  return null
+  return brauchtAnderenElternteil(k, zusammen) ? andererElternteilLuecke(k) : null
 }
 
 export interface VermietungFakten {
@@ -355,13 +381,30 @@ export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
       if (k.geburtsdatum) kWerte['anlKind.geburtsdatum'] = deutschesDatum(k.geburtsdatum)
       if (k.kindergeldAnspruchEur) kWerte['anlKind.kindergeld'] = k.kindergeldAnspruchEur
       if (k.familienkasse) kWerte['anlKind.familienkasse'] = k.familienkasse
+      const beginn = k.geburtsdatum?.startsWith(`${fakten.steuerjahr}-`) ? k.geburtsdatum : `${fakten.steuerjahr}-01-01`
+      const ende = `${fakten.steuerjahr}-12-31`
       if (k.wohnsitzInlandGanzjaehrig) {
-        const imJahrGeboren = k.geburtsdatum?.startsWith(`${fakten.steuerjahr}-`)
-        kWerte['anlKind.inlandVon'] = imJahrGeboren ? deutschesDatum(k.geburtsdatum!) : `01.01.${fakten.steuerjahr}`
-        kWerte['anlKind.inlandBis'] = `31.12.${fakten.steuerjahr}`
+        kWerte['anlKind.inlandVon'] = deutschesDatum(beginn)
+        kWerte['anlKind.inlandBis'] = deutschesDatum(ende)
       }
       if (k.kindschaftsverhaeltnis) kWerte['anlKind.kz02'] = k.kindschaftsverhaeltnis
       if (zusammen && k.kindschaftsverhaeltnisB) kWerte['anlKind.kz03'] = k.kindschaftsverhaeltnisB
+      if (brauchtAnderenElternteil(k, zusammen)) {
+        if (k.andererElternteil === 'Unbekannt') kWerte['anlKind.kz05'] = '1'
+        if (k.andererElternteil === 'Inland' || k.andererElternteil === 'Verstorben') {
+          if (k.andererElternteilName) kWerte['anlKind.aeName'] = k.andererElternteilName
+          if (k.andererElternteilGeburtsdatum) kWerte['anlKind.aeGeburtsdatum'] = deutschesDatum(k.andererElternteilGeburtsdatum)
+          if (k.andererElternteilAdresse) kWerte['anlKind.aeAdresse'] = k.andererElternteilAdresse
+          if (k.andererElternteilArt) kWerte['anlKind.aeArt'] = k.andererElternteilArt
+          const tod = k.andererElternteil === 'Verstorben' ? k.andererElternteilVerstorbenAm : null
+          if (tod) kWerte['anlKind.kz06'] = deutschesDatum(tod)
+          const bis = tod && tod < ende ? tod : ende
+          if (bis >= beginn) {
+            kWerte['anlKind.aeVon'] = deutschesDatum(beginn)
+            kWerte['anlKind.aeBis'] = deutschesDatum(bis)
+          }
+        }
+      }
       return kWerte
     })
     for (const kind of fakten.kinder) {

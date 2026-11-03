@@ -167,6 +167,12 @@ export class AusdruckService {
       kindschaftsverhaeltnisB: k.kindschaftsverhaeltnisB,
       familienkasse: k.familienkasse,
       wohnsitzInlandGanzjaehrig: k.wohnsitzInlandGanzjaehrig,
+      andererElternteil: k.andererElternteil,
+      andererElternteilName: k.andererElternteilName,
+      andererElternteilGeburtsdatum: k.andererElternteilGeburtsdatum,
+      andererElternteilAdresse: k.andererElternteilAdresse,
+      andererElternteilArt: k.andererElternteilArt,
+      andererElternteilVerstorbenAm: k.andererElternteilVerstorbenAm,
     }))
 
     return ausdruckWerte({

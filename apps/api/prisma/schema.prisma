@@ -808,6 +808,13 @@ model Kind {
   kindschaftsverhaeltnisB String?
   familienkasse           String?  /// @encrypted?mode=strict
   wohnsitzInlandGanzjaehrig Boolean?
+  /// Anlage Kind Zeilen 11–15: the other parent when not part of this return.
+  andererElternteil              String?
+  andererElternteilName          String?  /// @encrypted?mode=strict
+  andererElternteilGeburtsdatum  String?  /// @encrypted?mode=strict
+  andererElternteilAdresse       String?  /// @encrypted?mode=strict
+  andererElternteilArt           String?
+  andererElternteilVerstorbenAm  String?  /// @encrypted?mode=strict
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 

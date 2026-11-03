@@ -237,11 +237,71 @@ describe('ausdruckWerte', () => {
     })
 
     it('cases the printout cannot cover yet are named, never printed half', () => {
-      expect(ausdruckWerte({ ...FAKTEN, kinder: [KIND] }).fehlend).toEqual(['anlageKindAndererElternteil'])
-      expect(ausdruckWerte({ ...ZUSAMMEN, kinder: [{ ...KIND, kindschaftsverhaeltnisB: null }] }).fehlend).toEqual(['anlageKindAndererElternteil'])
       expect(ausdruckWerte({ ...ZUSAMMEN, kinder: [{ ...KIND, wohnsitzInlandGanzjaehrig: false }] }).fehlend).toEqual(['anlageKindAusland'])
       expect(ausdruckWerte({ ...ZUSAMMEN, kinder: [{ ...KIND, geburtsdatum: '2007-02-01' }] }).fehlend).toEqual(['anlageKindVolljaehrig'])
       expect(ausdruckWerte({ ...ZUSAMMEN, kinder: [KIND, { ...KIND, wohnsitzInlandGanzjaehrig: false }, { ...KIND, wohnsitzInlandGanzjaehrig: false }] }).fehlend).toEqual(['anlageKindAusland'])
+    })
+  })
+
+  describe('Anlage Kind — the other parent outside this return (Zeilen 11–15)', () => {
+    const KIND_ALLEIN = {
+      vorname: 'Lina',
+      nachname: 'Beispiel',
+      geburtsdatum: '2016-03-10',
+      idnr: '11111111111',
+      kindergeldAnspruchEur: '3060',
+      kindschaftsverhaeltnis: '1',
+      kindschaftsverhaeltnisB: null,
+      familienkasse: 'Familienkasse Sachsen',
+      wohnsitzInlandGanzjaehrig: true,
+      andererElternteil: 'Inland',
+      andererElternteilName: 'Muster, Max',
+      andererElternteilGeburtsdatum: '1984-02-11',
+      andererElternteilAdresse: 'Hauptstraße 3, 01067 Dresden',
+      andererElternteilArt: '1',
+      andererElternteilVerstorbenAm: null,
+    }
+    const anlage = (fakten: AusdruckFakten) => ausdruckWerte(fakten).instanzen!['anlage-kind']![0]!
+
+    it('a single parent prints the other parent with the year as the relationship period', () => {
+      expect(ausdruckWerte({ ...FAKTEN, kinder: [KIND_ALLEIN] }).fehlend).toEqual([])
+      expect(anlage({ ...FAKTEN, kinder: [KIND_ALLEIN] })).toMatchObject({
+        'anlKind.aeName': 'Muster, Max',
+        'anlKind.aeGeburtsdatum': '11.02.1984',
+        'anlKind.aeVon': '01.01.2025',
+        'anlKind.aeBis': '31.12.2025',
+        'anlKind.aeAdresse': 'Hauptstraße 3, 01067 Dresden',
+        'anlKind.aeArt': '1',
+      })
+    })
+
+    it('a deceased parent ends the period at the date of death (Zeile 14, Kz 06)', () => {
+      const werte = anlage({ ...FAKTEN, kinder: [{ ...KIND_ALLEIN, andererElternteil: 'Verstorben', andererElternteilVerstorbenAm: '2025-06-30' }] })
+      expect(werte).toMatchObject({ 'anlKind.kz06': '30.06.2025', 'anlKind.aeBis': '30.06.2025' })
+    })
+
+    it('a parent who cannot be ascertained is Zeile 15 alone (Kz 05 = 1)', () => {
+      const fakten = { ...FAKTEN, kinder: [{ ...KIND_ALLEIN, andererElternteil: 'Unbekannt', andererElternteilName: null, andererElternteilGeburtsdatum: null, andererElternteilAdresse: null, andererElternteilArt: null }] }
+      expect(ausdruckWerte(fakten).fehlend).toEqual([])
+      expect(anlage(fakten)['anlKind.kz05']).toBe('1')
+      expect(anlage(fakten)['anlKind.aeName']).toBeUndefined()
+    })
+
+    it('missing details block as "kinder"; a parent abroad (Zeile 13) is named as not printable yet', () => {
+      expect(ausdruckWerte({ ...FAKTEN, kinder: [{ ...KIND_ALLEIN, andererElternteil: null }] }).fehlend).toEqual(['kinder'])
+      expect(ausdruckWerte({ ...FAKTEN, kinder: [{ ...KIND_ALLEIN, andererElternteilAdresse: null }] }).fehlend).toEqual(['kinder'])
+      expect(ausdruckWerte({ ...FAKTEN, kinder: [{ ...KIND_ALLEIN, andererElternteil: 'Verstorben' }] }).fehlend).toEqual(['kinder'])
+      expect(ausdruckWerte({ ...FAKTEN, kinder: [{ ...KIND_ALLEIN, andererElternteil: 'Ausland' }] }).fehlend).toEqual(['anlageKindAndererElternteilAusland'])
+    })
+
+    it('in a joint return where both are parents, the other-parent lines stay empty', () => {
+      const zusammen: AusdruckFakten = {
+        ...FAKTEN,
+        stammdaten: { ...FAKTEN.stammdaten!, familienstand: 'verheiratet', familienstandSeit: '2015-05-15' },
+        kopplung: { veranlagungsart: 'zusammen', personB: { firstName: 'Bernd', lastName: 'Beispiel', steuerId: '12345678902', geburtsdatum: '1988-11-20', religion: 'VD', beruf: 'Lehrer' } },
+        kinder: [{ ...KIND_ALLEIN, kindschaftsverhaeltnisB: '1' }],
+      }
+      expect(Object.keys(anlage(zusammen)).filter((id) => id.startsWith('anlKind.ae'))).toEqual([])
     })
   })
 

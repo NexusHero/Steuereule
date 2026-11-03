@@ -4,6 +4,12 @@ export interface KindAngaben {
   kindschaftsverhaeltnisB: string | null
   familienkasse: string | null
   wohnsitzInlandGanzjaehrig: boolean | null
+  andererElternteil: string | null
+  andererElternteilName: string | null
+  andererElternteilGeburtsdatum: string | null
+  andererElternteilAdresse: string | null
+  andererElternteilArt: string | null
+  andererElternteilVerstorbenAm: string | null
 }
 
 export interface KindRecord extends KindAngaben {

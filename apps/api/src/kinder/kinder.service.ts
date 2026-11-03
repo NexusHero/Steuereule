@@ -28,6 +28,12 @@ function toDto(r: KindRecord): KindResponseDto {
     kindschaftsverhaeltnisB: r.kindschaftsverhaeltnisB,
     familienkasse: r.familienkasse,
     wohnsitzInlandGanzjaehrig: r.wohnsitzInlandGanzjaehrig,
+    andererElternteil: r.andererElternteil,
+    andererElternteilName: r.andererElternteilName,
+    andererElternteilGeburtsdatum: r.andererElternteilGeburtsdatum,
+    andererElternteilAdresse: r.andererElternteilAdresse,
+    andererElternteilArt: r.andererElternteilArt,
+    andererElternteilVerstorbenAm: r.andererElternteilVerstorbenAm,
   }
 }
 

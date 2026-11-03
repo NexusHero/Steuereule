@@ -8,7 +8,10 @@ import {
   formatEuro,
   kindergeldAnspruchMonat,
   kinderStand,
+  ANDERE_KINDSCHAFTSVERHAELTNISSE,
+  ANDERER_ELTERNTEIL_STATUS,
   KINDSCHAFTSVERHAELTNISSE,
+  type AndererElternteilStatus,
   type Kindschaftsverhaeltnis,
 } from '@steuereule/core'
 import {
@@ -35,6 +38,12 @@ export interface KindItem {
   kindschaftsverhaeltnisB?: Kindschaftsverhaeltnis | null
   familienkasse?: string | null
   wohnsitzInlandGanzjaehrig?: boolean | null
+  andererElternteil?: AndererElternteilStatus | null
+  andererElternteilName?: string | null
+  andererElternteilGeburtsdatum?: string | null
+  andererElternteilAdresse?: string | null
+  andererElternteilArt?: '1' | '2' | null
+  andererElternteilVerstorbenAm?: string | null
 }
 
 /** What the form writes: the identity plus the Anlage-Kind facts (Zeilen 7, 8, 10). */
@@ -48,6 +57,19 @@ export interface KindEingabe {
   kindschaftsverhaeltnisB: Kindschaftsverhaeltnis | null
   familienkasse: string | null
   wohnsitzInlandGanzjaehrig: boolean | null
+  andererElternteil: AndererElternteilStatus | null
+  andererElternteilName: string | null
+  andererElternteilGeburtsdatum: string | null
+  andererElternteilAdresse: string | null
+  andererElternteilArt: '1' | '2' | null
+  andererElternteilVerstorbenAm: string | null
+}
+
+const ANDERER_ELTERNTEIL_LABEL: Record<AndererElternteilStatus, string> = {
+  Inland: 'Lebt in Deutschland',
+  Ausland: 'Lebt im Ausland',
+  Verstorben: 'Ist verstorben',
+  Unbekannt: 'Nicht zu ermitteln',
 }
 
 const KINDSCHAFT_LABEL: Record<Kindschaftsverhaeltnis, string> = {
@@ -151,6 +173,12 @@ function KinderScreenView({
   const [verhaeltnisB, setVerhaeltnisB] = useState<Kindschaftsverhaeltnis | null>(null)
   const [familienkasse, setFamilienkasse] = useState('')
   const [inland, setInland] = useState<boolean | null>(null)
+  const [ae, setAe] = useState<AndererElternteilStatus | null>(null)
+  const [aeName, setAeName] = useState('')
+  const [aeGeburtsdatum, setAeGeburtsdatum] = useState('')
+  const [aeAdresse, setAeAdresse] = useState('')
+  const [aeArt, setAeArt] = useState<'1' | '2' | null>(null)
+  const [aeVerstorbenAm, setAeVerstorbenAm] = useState('')
   const [bearbeitet, setBearbeitet] = useState<string | null>(null)
   const [formOpen, setFormOpen] = useState(initialKinder.length === 0)
 
@@ -176,8 +204,17 @@ function KinderScreenView({
     setVerhaeltnisB(k?.kindschaftsverhaeltnisB ?? null)
     setFamilienkasse(k?.familienkasse ?? '')
     setInland(k?.wohnsitzInlandGanzjaehrig ?? null)
+    setAe(k?.andererElternteil ?? null)
+    setAeName(k?.andererElternteilName ?? '')
+    setAeGeburtsdatum(k?.andererElternteilGeburtsdatum ?? '')
+    setAeAdresse(k?.andererElternteilAdresse ?? '')
+    setAeArt(k?.andererElternteilArt ?? null)
+    setAeVerstorbenAm(k?.andererElternteilVerstorbenAm ?? '')
     setBearbeitet(k?.id ?? null)
   }
+
+  // Name, birth date and kind of relationship are asked only for a known parent (Zeilen 11/12).
+  const aeBekannt = ae === 'Inland' || ae === 'Verstorben'
 
   async function handleSave() {
     if (!vorname.trim() || !nachname.trim() || !geburtsdatum.trim()) return
@@ -191,6 +228,12 @@ function KinderScreenView({
       kindschaftsverhaeltnisB: verhaeltnisB,
       familienkasse: familienkasse.trim() || null,
       wohnsitzInlandGanzjaehrig: inland,
+      andererElternteil: ae,
+      andererElternteilName: aeBekannt ? aeName.trim() || null : null,
+      andererElternteilGeburtsdatum: aeBekannt ? aeGeburtsdatum.trim() || null : null,
+      andererElternteilAdresse: aeBekannt ? aeAdresse.trim() || null : null,
+      andererElternteilArt: aeBekannt ? aeArt : null,
+      andererElternteilVerstorbenAm: ae === 'Verstorben' ? aeVerstorbenAm.trim() || null : null,
     }
     if (bearbeitet) {
       if (onSaveKind) await onSaveKind(bearbeitet, payload)
@@ -353,6 +396,47 @@ function KinderScreenView({
               </Chip>
             </View>
           </Feld>
+          <Feld label="Der andere Elternteil (nicht nötig, wenn ihr beide Eltern seid und zusammen veranlagt werdet)">
+            <View style={styles.chips}>
+              {ANDERER_ELTERNTEIL_STATUS.map((status) => (
+                <Chip key={status} aktiv={ae === status} onPress={() => setAe(status)} testID={`kind-ae-${status}`}>
+                  {ANDERER_ELTERNTEIL_LABEL[status]}
+                </Chip>
+              ))}
+            </View>
+          </Feld>
+          {aeBekannt ? (
+            <>
+              <Feld label="Name, Vorname">
+                <Input value={aeName} onChange={setAeName} placeholder="z.B. Muster, Max" accessibilityLabel="Name des anderen Elternteils" />
+              </Feld>
+              <Feld label="Geburtsdatum (JJJJ-MM-TT)">
+                <Input
+                  value={aeGeburtsdatum}
+                  onChange={setAeGeburtsdatum}
+                  placeholder="z.B. 1984-02-11"
+                  accessibilityLabel="Geburtsdatum des anderen Elternteils"
+                />
+              </Feld>
+              <Feld label={ae === 'Inland' ? 'Adresse' : 'Letzte bekannte Adresse (optional)'}>
+                <Input value={aeAdresse} onChange={setAeAdresse} accessibilityLabel="Adresse des anderen Elternteils" />
+              </Feld>
+              <Feld label="Kindschaftsverhältnis zum anderen Elternteil">
+                <View style={styles.chips}>
+                  {ANDERE_KINDSCHAFTSVERHAELTNISSE.map((wert) => (
+                    <Chip key={wert} aktiv={aeArt === wert} onPress={() => setAeArt(wert)} testID={`kind-ae-art-${wert}`}>
+                      {KINDSCHAFT_LABEL[wert]}
+                    </Chip>
+                  ))}
+                </View>
+              </Feld>
+              {ae === 'Verstorben' ? (
+                <Feld label="Todestag (JJJJ-MM-TT)">
+                  <Input value={aeVerstorbenAm} onChange={setAeVerstorbenAm} accessibilityLabel="Todestag des anderen Elternteils" />
+                </Feld>
+              ) : null}
+            </>
+          ) : null}
           <Button onPress={handleSave} style={styles.addButton} testID="kind-speichern">
             {tr('kinder.save', 'Kind speichern')}
           </Button>

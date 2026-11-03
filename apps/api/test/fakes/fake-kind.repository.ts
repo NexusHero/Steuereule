@@ -44,6 +44,12 @@ export class FakeKindRepository implements KindRepository {
       kindschaftsverhaeltnisB: data.kindschaftsverhaeltnisB ?? null,
       familienkasse: data.familienkasse ?? null,
       wohnsitzInlandGanzjaehrig: data.wohnsitzInlandGanzjaehrig ?? null,
+      andererElternteil: data.andererElternteil ?? null,
+      andererElternteilName: data.andererElternteilName ?? null,
+      andererElternteilGeburtsdatum: data.andererElternteilGeburtsdatum ?? null,
+      andererElternteilAdresse: data.andererElternteilAdresse ?? null,
+      andererElternteilArt: data.andererElternteilArt ?? null,
+      andererElternteilVerstorbenAm: data.andererElternteilVerstorbenAm ?? null,
     }
     this.store.set(record.id, record)
     return Promise.resolve(record)

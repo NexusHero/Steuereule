@@ -150,8 +150,10 @@ function findeKasten(daten, feld, anker) {
     .filter((k) => ueberlappenVertikal(k, anker))
     .filter((k) => (feld.lage === 'rechts' ? k.x0 >= anker.x1 - 1 : k.x1 <= anker.x0 + 1))
     .sort((a, b) => (feld.lage === 'rechts' ? a.x0 - b.x0 : b.x1 - a.x1))
-  if (seitlich.length === 0) throw new Error(`${feld.id}: no white box ${feld.lage} of "${feld.anker}"`)
-  return seitlich[0]
+  // Two boxes behind one Kennzahl (vom / bis): `nr` counts outward from the anchor.
+  const nr = feld.nr ?? 1
+  if (seitlich.length < nr) throw new Error(`${feld.id}: no white box no. ${nr} ${feld.lage} of "${feld.anker}"`)
+  return seitlich[nr - 1]
 }
 
 const vorlagen = {}

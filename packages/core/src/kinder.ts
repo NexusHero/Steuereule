@@ -5,6 +5,16 @@ import { istGueltigesDatum } from './stammdaten.js'
 export const KINDSCHAFTSVERHAELTNISSE = ['1', '2', '3'] as const
 export type Kindschaftsverhaeltnis = (typeof KINDSCHAFTSVERHAELTNISSE)[number]
 
+/** Anlage Kind Zeile 12: a person outside this return can only be 1 (leiblich/adoptiert) or 2 (Pflege). */
+export const ANDERE_KINDSCHAFTSVERHAELTNISSE = ['1', '2'] as const
+
+/**
+ * The child's other parent when that parent is not part of this return (Zeilen 11–15): known
+ * and living in Germany, abroad (Zeile 13), deceased (Zeile 14) or not ascertainable (Zeile 15).
+ */
+export const ANDERER_ELTERNTEIL_STATUS = ['Inland', 'Ausland', 'Verstorben', 'Unbekannt'] as const
+export type AndererElternteilStatus = (typeof ANDERER_ELTERNTEIL_STATUS)[number]
+
 export interface KindDaten {
   readonly id: string
   readonly vorname: string
