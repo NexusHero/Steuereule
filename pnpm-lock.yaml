@@ -231,6 +231,15 @@ importers:
         specifier: ^7.0.0
         version: 7.0.2
 
+  apps/website:
+    devDependencies:
+      vite:
+        specifier: ^5.4.11
+        version: 5.4.21(@types/node@22.20.1)(lightningcss@1.27.0)(terser@5.49.0)
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.20.1)(jsdom@25.0.1)(lightningcss@1.27.0)(msw@2.15.0(@types/node@22.20.1)(typescript@7.0.2))(terser@5.49.0)
+
   e2e:
     devDependencies:
       playwright-core:
