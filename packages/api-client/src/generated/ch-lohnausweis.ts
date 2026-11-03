@@ -28,6 +28,7 @@ import type {
   ChLohnausweisResponseDto,
   PutBemerkungenDto,
   PutLohnausweisFeldDto,
+  PutNGreDto,
   PutVorsorgeDto,
   PutWechselkursDto
 } from './ch-lohnausweis.schemas';
@@ -409,6 +410,84 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getChLohnausweisControllerSetVorsorgeMutationOptions(options), queryClient);
+    }
+
+export type chLohnausweisControllerSetNGreResponse200 = {
+  data: ChLohnausweisResponseDto
+  status: 200
+}
+
+export type chLohnausweisControllerSetNGreResponseSuccess = (chLohnausweisControllerSetNGreResponse200) & {
+  headers: Headers;
+};
+;
+
+export type chLohnausweisControllerSetNGreResponse = (chLohnausweisControllerSetNGreResponseSuccess)
+
+export const getChLohnausweisControllerSetNGreUrl = (jahr: number,) => {
+
+
+
+
+  return `/v1/steuerjahre/${jahr}/ch-lohnausweis/n-gre`
+}
+
+export const chLohnausweisControllerSetNGre = async (jahr: number,
+    putNGreDto: PutNGreDto, options?: RequestInit): Promise<chLohnausweisControllerSetNGreResponse> => {
+
+  return httpClient<chLohnausweisControllerSetNGreResponse>(getChLohnausweisControllerSetNGreUrl(jahr),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(putNGreDto)
+  }
+);}
+
+
+
+
+
+export const getChLohnausweisControllerSetNGreMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof chLohnausweisControllerSetNGre>>, TError,{jahr: number;data: PutNGreDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof chLohnausweisControllerSetNGre>>, TError,{jahr: number;data: PutNGreDto}, TContext> => {
+
+const mutationKey = ['chLohnausweisControllerSetNGre'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof chLohnausweisControllerSetNGre>>, {jahr: number;data: PutNGreDto}> = (props) => {
+          const {jahr,data} = props ?? {};
+
+          return  chLohnausweisControllerSetNGre(jahr,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ChLohnausweisControllerSetNGreMutationResult = NonNullable<Awaited<ReturnType<typeof chLohnausweisControllerSetNGre>>>
+    export type ChLohnausweisControllerSetNGreMutationBody = PutNGreDto
+    export type ChLohnausweisControllerSetNGreMutationError = unknown
+
+    export const useChLohnausweisControllerSetNGre = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof chLohnausweisControllerSetNGre>>, TError,{jahr: number;data: PutNGreDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof chLohnausweisControllerSetNGre>>,
+        TError,
+        {jahr: number;data: PutNGreDto},
+        TContext
+      > => {
+      return useMutation(getChLohnausweisControllerSetNGreMutationOptions(options), queryClient);
     }
 
 export type chLohnausweisControllerSetWechselkursResponse200 = {

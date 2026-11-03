@@ -1069,6 +1069,48 @@
         ]
       }
     },
+    "/v1/steuerjahre/{jahr}/ch-lohnausweis/n-gre": {
+      "put": {
+        "operationId": "ChLohnausweisController_setNGre",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr).",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutNGreDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated mask including the Anlage-N-Gre facts.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChLohnausweisResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "ch-lohnausweis"
+        ]
+      }
+    },
     "/v1/steuerjahre/{jahr}/ch-lohnausweis/wechselkurs": {
       "put": {
         "operationId": "ChLohnausweisController_setWechselkurs",
@@ -3894,6 +3936,53 @@
           "anrechnung"
         ]
       },
+      "NGreAngabenDto": {
+        "type": "object",
+        "properties": {
+          "arbeitgeberName": {
+            "type": "string",
+            "nullable": true
+          },
+          "arbeitgeberStrasse": {
+            "type": "string",
+            "nullable": true
+          },
+          "arbeitgeberPlzOrt": {
+            "type": "string",
+            "nullable": true
+          },
+          "familienzulagenChf": {
+            "type": "number",
+            "nullable": true
+          },
+          "krankentaggeldChf": {
+            "type": "number",
+            "nullable": true
+          },
+          "pkArbeitnehmerChf": {
+            "type": "number",
+            "nullable": true
+          },
+          "pkArbeitgeberChf": {
+            "type": "number",
+            "nullable": true
+          },
+          "sonderfaelle": {
+            "type": "boolean",
+            "nullable": true
+          }
+        },
+        "required": [
+          "arbeitgeberName",
+          "arbeitgeberStrasse",
+          "arbeitgeberPlzOrt",
+          "familienzulagenChf",
+          "krankentaggeldChf",
+          "pkArbeitnehmerChf",
+          "pkArbeitgeberChf",
+          "sonderfaelle"
+        ]
+      },
       "ChLohnausweisResponseDto": {
         "type": "object",
         "properties": {
@@ -3944,6 +4033,14 @@
                 "$ref": "#/components/schemas/BerechnungsstandDto"
               }
             ]
+          },
+          "nGre": {
+            "description": "The Anlage-N-Gre facts beyond the Lohnausweis.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NGreAngabenDto"
+              }
+            ]
           }
         },
         "required": [
@@ -3952,7 +4049,8 @@
           "wechselkurs",
           "status",
           "posten",
-          "stand"
+          "stand",
+          "nGre"
         ]
       },
       "PutLohnausweisFeldDto": {
@@ -3999,6 +4097,51 @@
             "type": "number",
             "nullable": true,
             "description": "Krankenkasse whole-CHF amount, or null to clear."
+          }
+        }
+      },
+      "PutNGreDto": {
+        "type": "object",
+        "properties": {
+          "arbeitgeberName": {
+            "type": "string",
+            "nullable": true,
+            "description": "Arbeitgeber, Zeile 89."
+          },
+          "arbeitgeberStrasse": {
+            "type": "string",
+            "nullable": true,
+            "description": "Arbeitgeber, Zeile 90."
+          },
+          "arbeitgeberPlzOrt": {
+            "type": "string",
+            "nullable": true,
+            "description": "Arbeitgeber, Zeile 91."
+          },
+          "familienzulagenChf": {
+            "type": "number",
+            "nullable": true,
+            "description": "Whole CHF — Kinder-/Ausbildungszulagen in Ziffer 8 (Zeilen 8/76)."
+          },
+          "krankentaggeldChf": {
+            "type": "number",
+            "nullable": true,
+            "description": "Whole CHF — employee Krankentaggeld contributions (Zeile 80)."
+          },
+          "pkArbeitnehmerChf": {
+            "type": "number",
+            "nullable": true,
+            "description": "Whole CHF — Säule 2a Obligatorium, employee (Zeile 84)."
+          },
+          "pkArbeitgeberChf": {
+            "type": "number",
+            "nullable": true,
+            "description": "Whole CHF — Säule 2a Obligatorium, employer (Zeile 87)."
+          },
+          "sonderfaelle": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Any of N-Gre Zeilen 7, 9–14 or 16–22 applies."
           }
         }
       },

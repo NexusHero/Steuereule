@@ -3,7 +3,7 @@
 // satisfies the interface; the Bescheid service never calls them (ADR-0004: honour the real
 // per-(userId, steuerjahr) one-row contract without a database).
 import type { LohnausweisBetragFeldId } from '@steuereule/core'
-import type { ChLohnausweisRecord, ChLohnausweisRepository } from '../../src/ch-lohnausweis/ch-lohnausweis.repository.js'
+import { LEERE_N_GRE, type ChLohnausweisRecord, type ChLohnausweisRepository, type NGreAngaben } from '../../src/ch-lohnausweis/ch-lohnausweis.repository.js'
 
 function key(userId: string, steuerjahr: number): string {
   return `${userId}::${steuerjahr}`
@@ -29,6 +29,7 @@ export class FakeChLohnausweisRepository implements ChLohnausweisRepository {
       wechselkursKurs: null,
       wechselkursModus: null,
       wechselkursBelegId: null,
+      nGre: LEERE_N_GRE,
     }
   }
 
@@ -56,6 +57,14 @@ export class FakeChLohnausweisRepository implements ChLohnausweisRepository {
     const k = key(userId, steuerjahr)
     const existing = this.store.get(k) ?? this.leer(userId, steuerjahr)
     const updated = { ...existing, saeule3aChf, krankenkasseChf }
+    this.store.set(k, updated)
+    return Promise.resolve(updated)
+  }
+
+  setNGre(userId: string, steuerjahr: number, angaben: Partial<NGreAngaben>): Promise<ChLohnausweisRecord> {
+    const k = key(userId, steuerjahr)
+    const existing = this.store.get(k) ?? this.leer(userId, steuerjahr)
+    const updated = { ...existing, nGre: { ...existing.nGre, ...angaben } }
     this.store.set(k, updated)
     return Promise.resolve(updated)
   }

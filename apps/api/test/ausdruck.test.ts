@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs'
 import { deutschesDatum } from '@steuereule/core'
 import { PDFDocument } from 'pdf-lib'
 import { describe, expect, it } from 'vitest'
-import { ausdruckWerte, type AusdruckFakten } from '../src/ausdruck/ausdruck-werte.js'
+import { ausdruckWerte, type AusdruckFakten, type ChLohnausweisFakten } from '../src/ausdruck/ausdruck-werte.js'
 import felder2025 from '../src/ausdruck/felder-2025.json' with { type: 'json' }
 import manifest from '../src/ausdruck/vordrucke-2025.json' with { type: 'json' }
 import { FELDSAETZE, rendereVordrucke, UeberlaufFehler } from '../src/ausdruck/vordruck-renderer.js'
@@ -192,13 +192,62 @@ describe('ausdruckWerte', () => {
     })
   })
 
-  it('Anlage N-Gre is named as not printable yet and writes nothing — it needs Kz 116/117, the employer and Zeilen 75–88', () => {
-    const { werte, fehlend } = ausdruckWerte({
-      ...FAKTEN,
-      chLohnausweis: { bruttolohnEur: '65000', abzugssteuerEur: '2900', vorsorgeEur: '4100', nichtrueckkehrtage: '12' },
+  describe('Anlage N-Gre', () => {
+    const CH: ChLohnausweisFakten = {
+      status: 'echter-grenzgaenger',
+      kurs: 1.065,
+      bruttolohnChf: '100000',
+      ahvBeitraegeChf: '6600',
+      quellensteuerChf: '4500',
+      arbeitgeberName: 'Muster AG',
+      arbeitgeberStrasse: 'Bahnhofstrasse 1',
+      arbeitgeberPlzOrt: '4051 Basel',
+      familienzulagenChf: '2400',
+      krankentaggeldChf: '300',
+      pkArbeitnehmerChf: '5000',
+      pkArbeitgeberChf: '6000',
+      sonderfaelle: false,
+    }
+    const ngre = (ch: Partial<ChLohnausweisFakten>) => ausdruckWerte({ ...FAKTEN, chLohnausweis: { ...CH, ...ch } })
+
+    it('prints Kz 117, the wage in CHF and EUR, Kz 116, the Abzugssteuer and the employer', () => {
+      const { werte, fehlend } = ngre({})
+      expect(fehlend).toEqual([])
+      expect(werte).toMatchObject({
+        'anlNGre.personA': true,
+        'anlNGre.kz117': '3',
+        'anlNGre.beruf': 'Ingenieurin',
+        'anlNGre.z6Chf': '100000',
+        'anlNGre.z6Eur': '106500',
+        'anlNGre.z8Chf': '2400',
+        'anlNGre.z15Chf': '97600',
+        'anlNGre.z23Chf': '97600',
+        'anlNGre.z23Eur': String(106500 - 2556),
+        'anlNGre.z25Chf': '4500',
+        'anlNGre.arbeitgeberName': 'Muster AG',
+        'anlNGre.arbeitgeberPlzOrt': '4051 Basel',
+      })
     })
-    expect(fehlend).toEqual(['anlageNGre'])
-    expect(Object.keys(werte).filter((id) => id.startsWith('anlNGre.'))).toEqual([])
+
+    it('prints the split of the Swiss social contributions (Zeilen 75–88, Kz 300 / 304)', () => {
+      expect(ngre({}).werte).toMatchObject({
+        'anlNGre.z77Chf': '97600',
+        'anlNGre.z82Chf': String(244 + 1074 + 300 + 177),
+        'anlNGre.z85Chf': '9929',
+        'anlNGre.z88Chf': '10929',
+      })
+    })
+
+    it('missing facts block as "grenzgaenger"; cases the printout cannot cover are named', () => {
+      expect(ngre({ kurs: null }).fehlend).toEqual(['grenzgaenger'])
+      expect(ngre({ pkArbeitgeberChf: null }).fehlend).toEqual(['grenzgaenger'])
+      expect(ngre({ arbeitgeberName: null }).fehlend).toEqual(['grenzgaenger'])
+      expect(ngre({ sonderfaelle: null }).fehlend).toEqual(['grenzgaenger'])
+      expect(ngre({ status: null }).fehlend).toEqual(['grenzgaenger'])
+      expect(ngre({ sonderfaelle: true }).fehlend).toEqual(['anlageNGreSonderfall'])
+      expect(ngre({ status: 'kein-grenzgaenger' }).fehlend).toEqual(['anlageNGreKeinGrenzgaenger'])
+      expect(Object.keys(ngre({ kurs: null }).werte).some((id) => id.startsWith('anlNGre.'))).toBe(false)
+    })
   })
 
   it('fills Anlage Sonderausgaben and AV', () => {
@@ -556,7 +605,11 @@ describe('rendereVordrucke (real templates)', () => {
     ...FAKTEN,
     rente: { rentenart: 'GesetzlicheRente', jahresbetrag: '12000' },
     kapital: { depot: 'deutscher-broker', kapitalertraege: '1000', sparerPauschbetrag: '1000', kapitalertragsteuer: '0', solidaritaetszuschlag: '0', kirchensteuer: '0' },
-    chLohnausweis: { bruttolohnEur: '50000', abzugssteuerEur: '2250', vorsorgeEur: '4100', nichtrueckkehrtage: '12' },
+    chLohnausweis: {
+      status: 'echter-grenzgaenger', kurs: 1.065, bruttolohnChf: '50000', ahvBeitraegeChf: '3300', quellensteuerChf: '2250',
+      arbeitgeberName: 'Muster AG', arbeitgeberStrasse: 'Bahnhofstrasse 1', arbeitgeberPlzOrt: '4051 Basel',
+      familienzulagenChf: '0', krankentaggeldChf: '150', pkArbeitnehmerChf: '2500', pkArbeitgeberChf: '3000', sonderfaelle: false,
+    },
     sonderausgaben: { spenden: '200' },
     riester: { art: 'Unmittelbar', einnahmenVorjahr: '40000' },
     alleinerziehend: { weiterePerson: 'Nein', haushaltsgemeinschaft: 'Nein' },

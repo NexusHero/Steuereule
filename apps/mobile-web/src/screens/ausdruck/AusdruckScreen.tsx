@@ -29,11 +29,13 @@ export interface AusdruckScreenProps {
   readonly onVermietungErgaenzen: () => void
   /** Opens the Kapital screen, where the Anlage-KAP facts are completed. */
   readonly onKapitalErgaenzen: () => void
+  /** Opens the Grenzgänger screen, where the Lohnausweis and the N-Gre facts are completed. */
+  readonly onGrenzgaengerErgaenzen: () => void
   /** Hands the browser to the hosted checkout page. Injected so tests never leave the page. */
   readonly oeffneCheckout?: (url: string) => void
 }
 
-export function AusdruckScreen({ jahr, zahlung, onZurueck, onAngabenErgaenzen, onRiesterErgaenzen, onKinderErgaenzen, onVermietungErgaenzen, onKapitalErgaenzen, oeffneCheckout = (url) => window.location.assign(url) }: AusdruckScreenProps) {
+export function AusdruckScreen({ jahr, zahlung, onZurueck, onAngabenErgaenzen, onRiesterErgaenzen, onKinderErgaenzen, onVermietungErgaenzen, onKapitalErgaenzen, onGrenzgaengerErgaenzen, oeffneCheckout = (url) => window.location.assign(url) }: AusdruckScreenProps) {
   const bp = useBreakpoint()
   const theme = useTheme()
   const styles = makeDatenschutzStyles(theme)
@@ -69,8 +71,9 @@ export function AusdruckScreen({ jahr, zahlung, onZurueck, onAngabenErgaenzen, o
   const kinder = fehlend.includes('kinder')
   const vermietung = fehlend.includes('vermietung')
   const kapital = fehlend.includes('kapital')
+  const grenzgaenger = fehlend.includes('grenzgaenger')
   const anlagen = fehlend.filter((key) => key.startsWith('anlage'))
-  const eigenerWeg = new Set(['ehegatte', 'riester', 'kinder', 'vermietung', 'kapital'])
+  const eigenerWeg = new Set(['ehegatte', 'riester', 'kinder', 'vermietung', 'kapital', 'grenzgaenger'])
   const stammdatenFehlen = fehlend.some((key) => !eigenerWeg.has(key) && !key.startsWith('anlage'))
   const gesperrt = fehlend.length > 0
 
@@ -132,6 +135,14 @@ export function AusdruckScreen({ jahr, zahlung, onZurueck, onAngabenErgaenzen, o
               <Text style={styles.sectionBody}>{t('ausdruck.fehlendKinder')}</Text>
               <Button variante="ghost" onPress={onKinderErgaenzen}>
                 {t('ausdruck.kinderErgaenzen')}
+              </Button>
+            </>
+          ) : null}
+          {grenzgaenger ? (
+            <>
+              <Text style={styles.sectionBody}>{t('ausdruck.fehlendGrenzgaenger')}</Text>
+              <Button variante="ghost" onPress={onGrenzgaengerErgaenzen}>
+                {t('ausdruck.grenzgaengerErgaenzen')}
               </Button>
             </>
           ) : null}

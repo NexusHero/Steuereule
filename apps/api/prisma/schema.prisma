@@ -546,6 +546,17 @@ model ChLohnausweis {
   saeule3aChf               String? /// @encrypted?mode=strict
   /// CH-Krankenkasse (ADR-029 point 5) — optional whole-CHF amount, null = not entered. Encrypted.
   krankenkasseChf           String? /// @encrypted?mode=strict
+  /// Anlage N-Gre: employer (Zeilen 89–91), Familienzulagen (Z. 8/76), Krankentaggeld (Z. 80),
+  /// Säule 2a Obligatorium employee/employer (Z. 84/87); whole CHF, null = not entered.
+  arbeitgeberName           String? /// @encrypted?mode=strict
+  arbeitgeberStrasse        String? /// @encrypted?mode=strict
+  arbeitgeberPlzOrt         String? /// @encrypted?mode=strict
+  familienzulagenChf        String? /// @encrypted?mode=strict
+  krankentaggeldChf         String? /// @encrypted?mode=strict
+  pkArbeitnehmerChf         String? /// @encrypted?mode=strict
+  pkArbeitgeberChf          String? /// @encrypted?mode=strict
+  /// Any of N-Gre Zeilen 7, 9–14, 16–22 applies — not printable yet.
+  nGreSonderfaelle          Boolean?
   /// Wechselkurs-Monat (yyyy-mm) the CHF→EUR conversion applies to (ADR-012).
   wechselkursMonat          String?
   /// Wechselkurs-Kurs (EUR per 1 CHF, strictly positive) — public BMF rate, clear.

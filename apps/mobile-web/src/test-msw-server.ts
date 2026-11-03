@@ -102,6 +102,16 @@ export const EMPTY_CH_LOHNAUSWEIS_RESPONSE: ChLohnausweisResponseDto = {
   status: null,
   posten: [],
   stand: null,
+  nGre: {
+    arbeitgeberName: null,
+    arbeitgeberStrasse: null,
+    arbeitgeberPlzOrt: null,
+    familienzulagenChf: null,
+    krankentaggeldChf: null,
+    pkArbeitnehmerChf: null,
+    pkArbeitgeberChf: null,
+    sonderfaelle: null,
+  }
 }
 
 /**

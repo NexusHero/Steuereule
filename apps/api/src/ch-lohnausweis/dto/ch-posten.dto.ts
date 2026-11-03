@@ -1,6 +1,6 @@
 // `type:` given explicitly — see PutProfileDto's comment for why.
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
-import { IsInt, IsOptional, IsString, Min } from 'class-validator'
+import { IsBoolean, IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validator'
 import { WechselkursDto } from './wechselkurs.dto.js'
 
 /**
@@ -52,4 +52,81 @@ export class PutBemerkungenDto {
   @IsOptional()
   @IsString()
   text?: string | null
+}
+
+/** The PUT body for the Anlage-N-Gre facts beyond the Lohnausweis (absent = unchanged, null = clear). */
+export class PutNGreDto {
+  @ApiPropertyOptional({ type: String, nullable: true, description: 'Arbeitgeber, Zeile 89.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  arbeitgeberName?: string | null
+
+  @ApiPropertyOptional({ type: String, nullable: true, description: 'Arbeitgeber, Zeile 90.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  arbeitgeberStrasse?: string | null
+
+  @ApiPropertyOptional({ type: String, nullable: true, description: 'Arbeitgeber, Zeile 91.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  arbeitgeberPlzOrt?: string | null
+
+  @ApiPropertyOptional({ type: Number, nullable: true, description: 'Whole CHF — Kinder-/Ausbildungszulagen in Ziffer 8 (Zeilen 8/76).' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  familienzulagenChf?: number | null
+
+  @ApiPropertyOptional({ type: Number, nullable: true, description: 'Whole CHF — employee Krankentaggeld contributions (Zeile 80).' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  krankentaggeldChf?: number | null
+
+  @ApiPropertyOptional({ type: Number, nullable: true, description: 'Whole CHF — Säule 2a Obligatorium, employee (Zeile 84).' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  pkArbeitnehmerChf?: number | null
+
+  @ApiPropertyOptional({ type: Number, nullable: true, description: 'Whole CHF — Säule 2a Obligatorium, employer (Zeile 87).' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  pkArbeitgeberChf?: number | null
+
+  @ApiPropertyOptional({ type: Boolean, nullable: true, description: 'Any of N-Gre Zeilen 7, 9–14 or 16–22 applies.' })
+  @IsOptional()
+  @IsBoolean()
+  sonderfaelle?: boolean | null
+}
+
+/** The stored Anlage-N-Gre facts (null = not entered). */
+export class NGreAngabenDto {
+  @ApiProperty({ type: String, nullable: true })
+  arbeitgeberName!: string | null
+
+  @ApiProperty({ type: String, nullable: true })
+  arbeitgeberStrasse!: string | null
+
+  @ApiProperty({ type: String, nullable: true })
+  arbeitgeberPlzOrt!: string | null
+
+  @ApiProperty({ type: Number, nullable: true })
+  familienzulagenChf!: number | null
+
+  @ApiProperty({ type: Number, nullable: true })
+  krankentaggeldChf!: number | null
+
+  @ApiProperty({ type: Number, nullable: true })
+  pkArbeitnehmerChf!: number | null
+
+  @ApiProperty({ type: Number, nullable: true })
+  pkArbeitgeberChf!: number | null
+
+  @ApiProperty({ type: Boolean, nullable: true })
+  sonderfaelle!: boolean | null
 }

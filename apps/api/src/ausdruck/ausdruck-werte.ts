@@ -3,7 +3,10 @@
 // Lohnsteuer's cents) is left empty rather than printed with a false precision.
 import {
   afaSatzProzent,
+  anlageNGreBetraege,
   deutschesDatum,
+  type GrenzgaengerStatus,
+  type NGreZeile,
   kapitalPflichtfelder,
   type KapitalDepotEinordnung,
   type KapitalFeldId,
@@ -123,11 +126,34 @@ function vermietungAfa(obj: VermietungFakten): { satz: number; betrag: number } 
 /** The Kapital facts as stored, plus the depot answer that decides the KAP line (ADR-032). */
 export type KapitalFakten = { depot: KapitalDepotEinordnung['kind'] } & Partial<Record<KapitalFeldId, string | null>>
 
+/** The Lohnausweis Ziffern and the N-Gre facts as stored (whole CHF strings), plus status and Kurs. */
 export interface ChLohnausweisFakten {
-  bruttolohnEur: string | null
-  abzugssteuerEur?: string | null
-  vorsorgeEur?: string | null
-  nichtrueckkehrtage?: string | null
+  status: GrenzgaengerStatus | null
+  kurs: number | null
+  bruttolohnChf: string | null
+  ahvBeitraegeChf: string | null
+  quellensteuerChf: string | null
+  arbeitgeberName: string | null
+  arbeitgeberStrasse: string | null
+  arbeitgeberPlzOrt: string | null
+  familienzulagenChf: string | null
+  krankentaggeldChf: string | null
+  pkArbeitnehmerChf: string | null
+  pkArbeitgeberChf: string | null
+  sonderfaelle: boolean | null
+}
+
+function nGreLuecke(ch: ChLohnausweisFakten): string | null {
+  if (ch.status === 'kein-grenzgaenger') return 'anlageNGreKeinGrenzgaenger'
+  if (ch.sonderfaelle) return 'anlageNGreSonderfall'
+  const betraege = [ch.bruttolohnChf, ch.ahvBeitraegeChf, ch.quellensteuerChf, ch.familienzulagenChf, ch.krankentaggeldChf, ch.pkArbeitnehmerChf, ch.pkArbeitgeberChf]
+  const vollstaendig =
+    ch.status !== null &&
+    ch.sonderfaelle === false &&
+    ch.kurs !== null &&
+    betraege.every((wert) => ganzeZahl(wert) !== null) &&
+    Boolean(ch.arbeitgeberName && ch.arbeitgeberStrasse && ch.arbeitgeberPlzOrt)
+  return vollstaendig ? null : 'grenzgaenger'
 }
 
 export interface SonderausgabenFakten {
@@ -379,10 +405,38 @@ export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
     }
   }
 
-  // Anlage N-Gre (Grenzgänger Schweiz) is not printable yet: the form needs the country key
-  // (Kz 117), the taxable wage after Zeilen 7–22 (Kz 116), the employer (Zeilen 89–91) and the
-  // split of the Swiss social contributions (Zeilen 75–88), none of which is captured.
-  if (fakten.chLohnausweis?.bruttolohnEur) fehlend.push('anlageNGre')
+  // Anlage N-Gre (Grenzgänger Schweiz, Lohn in CHF): wage lines and the split of the Swiss
+  // social contributions; Zeilen 7, 9–14 and 16–22 are covered only when none of them applies.
+  const ch = fakten.chLohnausweis
+  if (ch && ch.bruttolohnChf !== null) {
+    const luecke = nGreLuecke(ch)
+    if (luecke) fehlend.push(luecke)
+    else {
+      werte['anlNGre.personA'] = true
+      setze('anlNGre.name', profil.lastName)
+      setze('anlNGre.vorname', profil.firstName)
+      setze('anlNGre.steuernummer', profil.steuernummer)
+      werte['anlNGre.kz117'] = '3'
+      setze('anlNGre.beruf', sd?.beruf ?? null)
+      const { chf, eur } = anlageNGreBetraege({
+        bruttolohnChf: Number(ch.bruttolohnChf),
+        familienzulagenChf: Number(ch.familienzulagenChf),
+        ahvBeitraegeChf: Number(ch.ahvBeitraegeChf),
+        quellensteuerChf: Number(ch.quellensteuerChf),
+        krankentaggeldChf: Number(ch.krankentaggeldChf),
+        pkArbeitnehmerChf: Number(ch.pkArbeitnehmerChf),
+        pkArbeitgeberChf: Number(ch.pkArbeitgeberChf),
+        kurs: ch.kurs!,
+      })
+      for (const zeile of Object.keys(chf) as NGreZeile[]) {
+        werte[`anlNGre.${zeile}Chf`] = String(chf[zeile])
+        werte[`anlNGre.${zeile}Eur`] = String(eur[zeile])
+      }
+      setze('anlNGre.arbeitgeberName', ch.arbeitgeberName)
+      setze('anlNGre.arbeitgeberStrasse', ch.arbeitgeberStrasse)
+      setze('anlNGre.arbeitgeberPlzOrt', ch.arbeitgeberPlzOrt)
+    }
+  }
 
   // Anlage V (Vermietung)
   if (fakten.vermietung && fakten.vermietung.length > 0) {

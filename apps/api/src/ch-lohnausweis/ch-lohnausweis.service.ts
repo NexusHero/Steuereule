@@ -33,12 +33,14 @@ import {
 } from '../interview/interview-answer.repository.js'
 import {
   CH_LOHNAUSWEIS_REPOSITORY,
+  LEERE_N_GRE,
   type ChLohnausweisRecord,
   type ChLohnausweisRepository,
+  type NGreAngaben,
 } from './ch-lohnausweis.repository.js'
 import type { LohnausweisFeldDto, PutLohnausweisFeldDto } from './dto/lohnausweis-feld.dto.js'
 import type { PutWechselkursDto, WechselkursDto } from './dto/wechselkurs.dto.js'
-import type { ChPostenDto, PutBemerkungenDto, PutVorsorgeDto } from './dto/ch-posten.dto.js'
+import type { ChPostenDto, NGreAngabenDto, PutBemerkungenDto, PutNGreDto, PutVorsorgeDto } from './dto/ch-posten.dto.js'
 import type { BerechnungsstandDto, ChLohnausweisResponseDto } from './dto/ch-lohnausweis-response.dto.js'
 
 /** A stored row's 14 field strings → the wire field states + the fold's sparse `LohnausweisWerte`. */
@@ -126,6 +128,20 @@ function statusAusAnswers(answers: Answers): GrenzgaengerStatus | null {
   return grenzgaengerStatus(wohnsitz, tage)
 }
 
+function nGreZuDto(n: NGreAngaben): NGreAngabenDto {
+  const zahl = (wert: string | null): number | null => (wert === null ? null : Number(wert))
+  return {
+    arbeitgeberName: n.arbeitgeberName,
+    arbeitgeberStrasse: n.arbeitgeberStrasse,
+    arbeitgeberPlzOrt: n.arbeitgeberPlzOrt,
+    familienzulagenChf: zahl(n.familienzulagenChf),
+    krankentaggeldChf: zahl(n.krankentaggeldChf),
+    pkArbeitnehmerChf: zahl(n.pkArbeitnehmerChf),
+    pkArbeitgeberChf: zahl(n.pkArbeitgeberChf),
+    sonderfaelle: n.nGreSonderfaelle,
+  }
+}
+
 @Injectable()
 export class ChLohnausweisService {
   constructor(
@@ -182,6 +198,7 @@ export class ChLohnausweisService {
       status,
       posten,
       stand,
+      nGre: nGreZuDto(record?.nGre ?? LEERE_N_GRE),
     }
   }
 
@@ -214,6 +231,18 @@ export class ChLohnausweisService {
     const saeule3aChf = this.serialisiereOptional(dto.saeule3aChf)
     const krankenkasseChf = this.serialisiereOptional(dto.krankenkasseChf)
     const record = await this.repository.setVorsorge(userId, steuerjahr, saeule3aChf, krankenkasseChf)
+    return this.toResponse(userId, steuerjahr, record)
+  }
+
+  async setNGre(userId: string, steuerjahr: number, dto: PutNGreDto): Promise<ChLohnausweisResponseDto> {
+    const { sonderfaelle, ...rest } = dto
+    const angaben: Partial<NGreAngaben> = {}
+    for (const [feld, wert] of Object.entries(rest)) {
+      if (wert === undefined) continue
+      angaben[feld as Exclude<keyof NGreAngaben, 'nGreSonderfaelle'>] = wert === null ? null : String(wert)
+    }
+    if (sonderfaelle !== undefined) angaben.nGreSonderfaelle = sonderfaelle
+    const record = await this.repository.setNGre(userId, steuerjahr, angaben)
     return this.toResponse(userId, steuerjahr, record)
   }
 

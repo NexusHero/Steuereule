@@ -177,6 +177,33 @@ describe('REQ-021 — the CH-Posten folding (Vorsorge + Quellensteuer-Anrechnung
     })
   })
 
+  it('stores the Anlage-N-Gre facts beyond the Lohnausweis (PUT .../n-gre) and returns them', async () => {
+    const { cookie } = await signUp('n-gre@example.com')
+    const put = await putFeld(cookie, 'n-gre', {
+      arbeitgeberName: 'Muster AG',
+      arbeitgeberStrasse: 'Bahnhofstrasse 1',
+      arbeitgeberPlzOrt: '4051 Basel',
+      familienzulagenChf: 2400,
+      krankentaggeldChf: 300,
+      pkArbeitnehmerChf: 5000,
+      pkArbeitgeberChf: 6000,
+      sonderfaelle: false,
+    })
+    expect(put.status).toBe(200)
+    const body = (await (await get(cookie)).json()) as { nGre: Record<string, unknown> }
+    expect(body.nGre).toEqual({
+      arbeitgeberName: 'Muster AG',
+      arbeitgeberStrasse: 'Bahnhofstrasse 1',
+      arbeitgeberPlzOrt: '4051 Basel',
+      familienzulagenChf: 2400,
+      krankentaggeldChf: 300,
+      pkArbeitnehmerChf: 5000,
+      pkArbeitgeberChf: 6000,
+      sonderfaelle: false,
+    })
+    expect((await putFeld(cookie, 'n-gre', { familienzulagenChf: -1 })).status).toBe(400)
+  })
+
   it('a tatsächlicher Kurs without a Beleg is rejected (ADR-012: "ohne Beleg kein tatsächlicher Kurs")', async () => {
     const { cookie } = await signUp('tatsaechlich@example.com')
 

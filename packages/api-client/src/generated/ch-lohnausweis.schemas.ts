@@ -133,6 +133,25 @@ export interface BerechnungsstandDto {
   gegated?: string[];
 }
 
+export interface NGreAngabenDto {
+  /** @nullable */
+  arbeitgeberName: string | null;
+  /** @nullable */
+  arbeitgeberStrasse: string | null;
+  /** @nullable */
+  arbeitgeberPlzOrt: string | null;
+  /** @nullable */
+  familienzulagenChf: number | null;
+  /** @nullable */
+  krankentaggeldChf: number | null;
+  /** @nullable */
+  pkArbeitnehmerChf: number | null;
+  /** @nullable */
+  pkArbeitgeberChf: number | null;
+  /** @nullable */
+  sonderfaelle: boolean | null;
+}
+
 export interface ChLohnausweisResponseDto {
   /** The 14 CHF-betrag fields, in paper order (Ziffern 1–14). */
   felder: LohnausweisFeldDto[];
@@ -158,6 +177,8 @@ export interface ChLohnausweisResponseDto {
      * @nullable
      */
   stand: BerechnungsstandDto | null;
+  /** The Anlage-N-Gre facts beyond the Lohnausweis. */
+  nGre: NGreAngabenDto;
 }
 
 /**
@@ -198,6 +219,49 @@ export interface PutVorsorgeDto {
      * @nullable
      */
   krankenkasseChf?: number | null;
+}
+
+export interface PutNGreDto {
+  /**
+     * Arbeitgeber, Zeile 89.
+     * @nullable
+     */
+  arbeitgeberName?: string | null;
+  /**
+     * Arbeitgeber, Zeile 90.
+     * @nullable
+     */
+  arbeitgeberStrasse?: string | null;
+  /**
+     * Arbeitgeber, Zeile 91.
+     * @nullable
+     */
+  arbeitgeberPlzOrt?: string | null;
+  /**
+     * Whole CHF — Kinder-/Ausbildungszulagen in Ziffer 8 (Zeilen 8/76).
+     * @nullable
+     */
+  familienzulagenChf?: number | null;
+  /**
+     * Whole CHF — employee Krankentaggeld contributions (Zeile 80).
+     * @nullable
+     */
+  krankentaggeldChf?: number | null;
+  /**
+     * Whole CHF — Säule 2a Obligatorium, employee (Zeile 84).
+     * @nullable
+     */
+  pkArbeitnehmerChf?: number | null;
+  /**
+     * Whole CHF — Säule 2a Obligatorium, employer (Zeile 87).
+     * @nullable
+     */
+  pkArbeitgeberChf?: number | null;
+  /**
+     * Any of N-Gre Zeilen 7, 9–14 or 16–22 applies.
+     * @nullable
+     */
+  sonderfaelle?: boolean | null;
 }
 
 /**

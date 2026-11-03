@@ -48,8 +48,12 @@ sobald das Zertifikat (Ticket 07) vorliegt; bis dahin Beta kostenlos (ADR-017).
 - [x] Probeausdruck-Prüfung ESt 1 A, N, R: in Ordnung. Anlage N-Gre war nicht druckbar: zwei
       geschriebene Felder (Vorsorge, Nichtrückkehrtage) waren nie vermessen → Serverfehler beim
       Download nach der Zahlung. Jetzt ehrlich gesperrt („anlageNGre“) + Render-Test mit allen Fakten
-- [ ] Anlage N-Gre vollständig: Kz 117 (Land/Währung), Beruf, Zeile 6 CHF+EUR, Zeilen 7–23 bis Kz 116,
-      Arbeitgeber (Z. 89–91), Sozialabgaben-Aufteilung (Z. 75–88), Abzugssteuer (Z. 25)
+- [x] Anlage N-Gre für den Regelfall: Kz 117 = 3, Beruf, Z. 6/8/15/23 (Kz 116)/25 in CHF und EUR,
+      Sozialabgaben Z. 75–88 mit den Sätzen des Vordrucks (NBUV als Rest von Ziffer 9), Arbeitgeber
+      Z. 89–91. Neue Erfassung im Grenzgänger-Screen (PUT ch-lohnausweis/n-gre). Ehrlich gesperrt:
+      Sonderfälle der Z. 7, 9–14, 16–22 und „kein Grenzgänger“
+- [ ] Klären: Nichtrückkehrtage-Grenze im Core ist 45 (ADR-0042); Art. 15a Abs. 2 DBA-CH nennt 60
+      Arbeitstage (45 ist die Regel des DBA-Frankreich)
 - [ ] Anlage Kind, noch ehrlich gesperrt: anderer Elternteil im Ausland (Z. 13), volljährige Kinder
       (Z. 16 ff.), Wohnsitz des Kindes im Ausland (Z. 9); Kinderbetreuungskosten werden nicht erfasst
 - [x] Verheiratete: Veranlagungsart + Person B erfassen, dann Zeilen 19–24 ausdrucken

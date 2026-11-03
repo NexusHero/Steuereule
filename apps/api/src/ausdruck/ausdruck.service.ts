@@ -9,7 +9,7 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common'
-import { ordneKapDepotEin } from '@steuereule/core'
+import { CH_WOHNSITZ_VALUES, grenzgaengerStatus, ordneKapDepotEin, type ChWohnsitz, type GrenzgaengerStatus } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
 import { CH_LOHNAUSWEIS_REPOSITORY, type ChLohnausweisRepository } from '../ch-lohnausweis/ch-lohnausweis.repository.js'
 import { FreischaltungService } from '../freischaltung/freischaltung.service.js'
@@ -27,13 +27,13 @@ import { FELDSAETZE, rendereVordrucke, UeberlaufFehler } from './vordruck-render
 
 export const VORLAGEN_BASIS = Symbol('VORLAGEN_BASIS')
 
-function chfZuEurString(rawChf: string | null | undefined, kurs: number | null | undefined): string | null {
-  if (!rawChf || !/^\d+$/.test(rawChf)) return null
-  const chf = Number(rawChf)
-  if (kurs && kurs > 0) {
-    return String(Math.round(chf * kurs))
-  }
-  return rawChf
+/** The Grenzgänger-Status from the CH interview answers, or null while unanswered. */
+function grenzgaengerStatusAus(answers: Record<string, string>): GrenzgaengerStatus | null {
+  const wohnsitz = answers['ch-wohnsitz']
+  const tage = answers['ch-nichtrueckkehrtage']
+  if (!(CH_WOHNSITZ_VALUES as readonly string[]).includes(wohnsitz ?? '')) return null
+  if (wohnsitz === 'Schweiz') return 'kein-grenzgaenger'
+  return tage && /^\d+$/.test(tage) ? grenzgaengerStatus(wohnsitz as ChWohnsitz, Number(tage)) : null
 }
 
 @Injectable()
@@ -193,10 +193,19 @@ export class AusdruckService {
         : null,
       chLohnausweis: ch
         ? {
-            bruttolohnEur: chfZuEurString(ch.felder['bruttolohn-total'], ch.wechselkursKurs),
-            abzugssteuerEur: chfZuEurString(ch.felder['quellensteuer'], ch.wechselkursKurs),
-            vorsorgeEur: chfZuEurString(ch.felder['berufliche-vorsorge'], ch.wechselkursKurs),
-            nichtrueckkehrtage: answers['ch-nichtrueckkehrtage'] ?? null,
+            status: grenzgaengerStatusAus(answers),
+            kurs: ch.wechselkursKurs,
+            bruttolohnChf: ch.felder['bruttolohn-total'],
+            ahvBeitraegeChf: ch.felder['ahv-beitraege'],
+            quellensteuerChf: ch.felder['quellensteuer'],
+            arbeitgeberName: ch.nGre.arbeitgeberName,
+            arbeitgeberStrasse: ch.nGre.arbeitgeberStrasse,
+            arbeitgeberPlzOrt: ch.nGre.arbeitgeberPlzOrt,
+            familienzulagenChf: ch.nGre.familienzulagenChf,
+            krankentaggeldChf: ch.nGre.krankentaggeldChf,
+            pkArbeitnehmerChf: ch.nGre.pkArbeitnehmerChf,
+            pkArbeitgeberChf: ch.nGre.pkArbeitgeberChf,
+            sonderfaelle: ch.nGre.nGreSonderfaelle,
           }
         : null,
       vermietung: vermietungFakten.length > 0 ? vermietungFakten : null,
