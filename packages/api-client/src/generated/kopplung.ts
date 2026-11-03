@@ -176,10 +176,15 @@ export type kopplungControllerSetResponse401 = {
   status: 401
 }
 
+export type kopplungControllerSetResponse403 = {
+  data: void
+  status: 403
+}
+
 export type kopplungControllerSetResponseSuccess = (kopplungControllerSetResponse200) & {
   headers: Headers;
 };
-export type kopplungControllerSetResponseError = (kopplungControllerSetResponse401) & {
+export type kopplungControllerSetResponseError = (kopplungControllerSetResponse401 | kopplungControllerSetResponse403) & {
   headers: Headers;
 };
 
@@ -261,10 +266,15 @@ export type kopplungControllerUpdatePersonBResponse401 = {
   status: 401
 }
 
+export type kopplungControllerUpdatePersonBResponse403 = {
+  data: void
+  status: 403
+}
+
 export type kopplungControllerUpdatePersonBResponseSuccess = (kopplungControllerUpdatePersonBResponse200) & {
   headers: Headers;
 };
-export type kopplungControllerUpdatePersonBResponseError = (kopplungControllerUpdatePersonBResponse401) & {
+export type kopplungControllerUpdatePersonBResponseError = (kopplungControllerUpdatePersonBResponse401 | kopplungControllerUpdatePersonBResponse403) & {
   headers: Headers;
 };
 

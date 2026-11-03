@@ -212,7 +212,11 @@ function SteuerjahrKopplungSection({ taxYear }: { readonly taxYear: number }) {
           </Chip>
         </View>
       </Feld>
-      {veranlagungsart === 'zusammen' ? (
+      {veranlagungsart === 'zusammen' && current?.personBHatEigenesKonto ? (
+        <Text style={{ fontSize: theme.size.s, color: theme.color.tinte2 }}>
+          {`${[personB?.firstName, personB?.lastName].filter(Boolean).join(' ') || 'Person B'} pflegt die Angaben im eigenen Konto.`}
+        </Text>
+      ) : veranlagungsart === 'zusammen' ? (
         <View>
           {current?.einladungsCode ? (
             <Text style={{ fontFamily: theme.font.mono, fontSize: theme.size.xs, color: theme.color.tinte2, marginBottom: theme.space.s2 }}>

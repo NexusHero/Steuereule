@@ -14,6 +14,31 @@ export const KopplungResponseDtoVeranlagungsart = {
   zusammen: 'zusammen',
 } as const;
 
+/**
+ * Art. 9 DSGVO: requires religionEinwilligung = true, like the own Stammdaten.
+ * @nullable
+ */
+export type KopplungPersonBDtoReligion = typeof KopplungPersonBDtoReligion[keyof typeof KopplungPersonBDtoReligion] | null;
+
+
+export const KopplungPersonBDtoReligion = {
+  VD: 'VD',
+  EV: 'EV',
+  RK: 'RK',
+  AK: 'AK',
+  FA: 'FA',
+  FB: 'FB',
+  FG: 'FG',
+  FM: 'FM',
+  FS: 'FS',
+  IB: 'IB',
+  IL: 'IL',
+  IS: 'IS',
+  IW: 'IW',
+  JD: 'JD',
+  JH: 'JH',
+} as const;
+
 export interface KopplungPersonBDto {
   /** @nullable */
   firstName?: string | null;
@@ -23,8 +48,13 @@ export interface KopplungPersonBDto {
   steuerId?: string | null;
   /** @nullable */
   geburtsdatum?: string | null;
-  /** @nullable */
-  religion?: string | null;
+  /**
+     * Art. 9 DSGVO: requires religionEinwilligung = true, like the own Stammdaten.
+     * @nullable
+     */
+  religion?: KopplungPersonBDtoReligion;
+  /** Explicit consent to store the religion (Art. 9 Abs. 2 lit. a DSGVO). */
+  religionEinwilligung?: boolean;
   /** @nullable */
   beruf?: string | null;
 }
@@ -35,6 +65,8 @@ export interface KopplungResponseDto {
   personBUserId?: string | null;
   /** @nullable */
   einladungsCode?: string | null;
+  /** Person B joined with an own account and maintains their data there — Person A cannot edit it. */
+  personBHatEigenesKonto?: boolean;
   /** @nullable */
   personB?: KopplungPersonBDto | null;
 }
@@ -49,6 +81,5 @@ export const SetKopplungDtoVeranlagungsart = {
 
 export interface SetKopplungDto {
   veranlagungsart: SetKopplungDtoVeranlagungsart;
-  personBUserId?: string;
 }
 

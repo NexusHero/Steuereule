@@ -2216,6 +2216,9 @@
           },
           "401": {
             "description": "Requires account."
+          },
+          "403": {
+            "description": "Only Person A sets the Veranlagungsart."
           }
         },
         "tags": [
@@ -2260,6 +2263,9 @@
           },
           "401": {
             "description": "Requires account."
+          },
+          "403": {
+            "description": "Person B joined with an own account; only they edit their data."
           }
         },
         "tags": [
@@ -2276,7 +2282,7 @@
             "required": true,
             "in": "path",
             "schema": {
-              "example": "A1B2C3D4",
+              "example": "9F3A0C71B2E4D658",
               "type": "string"
             }
           },
@@ -5305,8 +5311,29 @@
           },
           "religion": {
             "type": "string",
+            "enum": [
+              "VD",
+              "EV",
+              "RK",
+              "AK",
+              "FA",
+              "FB",
+              "FG",
+              "FM",
+              "FS",
+              "IB",
+              "IL",
+              "IS",
+              "IW",
+              "JD",
+              "JH"
+            ],
             "nullable": true,
-            "example": "ev"
+            "description": "Art. 9 DSGVO: requires religionEinwilligung = true, like the own Stammdaten."
+          },
+          "religionEinwilligung": {
+            "type": "boolean",
+            "description": "Explicit consent to store the religion (Art. 9 Abs. 2 lit. a DSGVO)."
           },
           "beruf": {
             "type": "string",
@@ -5335,7 +5362,11 @@
           "einladungsCode": {
             "type": "string",
             "nullable": true,
-            "example": "ABCDEF"
+            "example": "9F3A0C71B2E4D658"
+          },
+          "personBHatEigenesKonto": {
+            "type": "boolean",
+            "description": "Person B joined with an own account and maintains their data there — Person A cannot edit it."
           },
           "personB": {
             "nullable": true,
@@ -5361,10 +5392,6 @@
               "zusammen"
             ],
             "example": "zusammen"
-          },
-          "personBUserId": {
-            "type": "string",
-            "example": "uuid-person-b"
           }
         },
         "required": [

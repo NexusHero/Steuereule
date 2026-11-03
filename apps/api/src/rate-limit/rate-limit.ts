@@ -32,14 +32,18 @@ export const DEVICE_PENDING_THROTTLE = { ttl: 60_000, limit: 10 } as const
 // than `req.ip`.
 export const VERIFY_PASSWORD_THROTTLE = { ttl: 10_000, limit: 3 } as const
 
+// POST /v1/steuerjahre/:jahr/kopplung/beitreten/:code — the invite code is the only
+// credential that links two accounts, so guessing is bounded per account.
+export const KOPPLUNG_BEITRITT_THROTTLE = { ttl: 60_000, limit: 5 } as const
+
 /**
- * Keys the DELETE /v1/account throttle on the userId UserContextGuard already
+ * Keys an account-scoped throttle (DELETE /v1/account, Kopplung-Beitritt) on the userId UserContextGuard already
  * resolved, falling back to the socket IP only for the (impossible, guarded)
  * case where no guard ran first. The account-deletion controller registers the
  * ThrottlerGuard at route scope, so UserContextGuard (controller scope) runs
  * before it and `request[USER_ID_REQUEST_KEY]` is already set.
  */
-export const verifyPasswordTracker: ThrottlerGetTrackerFunction = (req) => {
+export const accountKeyedTracker: ThrottlerGetTrackerFunction = (req) => {
   const userId = (req as RequestWithUserId)[USER_ID_REQUEST_KEY]
   return userId ?? (req as { ip?: string }).ip ?? 'no-ip'
 }

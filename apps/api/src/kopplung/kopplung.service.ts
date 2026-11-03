@@ -1,10 +1,41 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common'
+import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common'
 import { randomBytes } from 'node:crypto'
 import { AuditService } from '../audit/audit.service.js'
 import { PROFILE_REPOSITORY, type ProfileRepository } from '../profile/profile.repository.js'
-import { STAMMDATEN_REPOSITORY, type StammdatenRepository } from '../stammdaten/stammdaten.repository.js'
-import { KOPPLUNG_REPOSITORY, type KopplungRepository } from './kopplung.repository.js'
+import {
+  STAMMDATEN_FELDER,
+  STAMMDATEN_REPOSITORY,
+  type StammdatenRecord,
+  type StammdatenRepository,
+} from '../stammdaten/stammdaten.repository.js'
+import { KOPPLUNG_REPOSITORY, type KopplungRepository, type SteuerjahrKopplungRecord } from './kopplung.repository.js'
 import type { KopplungPersonBDto, KopplungResponseDto, SetKopplungDto } from './dto/kopplung.dto.js'
+
+// Until the partner joins with the invite code, Person A fills in Person B's data on a
+// shadow id. Once a real account sits there, that data is the partner's own and only the
+// partner may change it.
+const SCHATTEN_PRAEFIX = 'spouse_'
+
+function schattenId(userId: string, steuerjahr: number): string {
+  return `${SCHATTEN_PRAEFIX}${userId}_${steuerjahr}`
+}
+
+function hatEigenesKonto(row: SteuerjahrKopplungRecord): boolean {
+  return row.personBUserId !== '' && !row.personBUserId.startsWith(SCHATTEN_PRAEFIX)
+}
+
+// 64 bits: the code is the only credential that links two accounts, and it does not expire.
+function neuerEinladungsCode(): string {
+  return randomBytes(8).toString('hex').toUpperCase()
+}
+
+function leereStammdaten(): StammdatenRecord {
+  const werte = Object.fromEntries(STAMMDATEN_FELDER.map((feld) => [feld, null])) as Omit<
+    StammdatenRecord,
+    'religionEinwilligungAm'
+  >
+  return { ...werte, religionEinwilligungAm: null }
+}
 
 @Injectable()
 export class KopplungService {
@@ -43,58 +74,49 @@ export class KopplungService {
       veranlagungsart: row.veranlagungsart,
       personBUserId: row.personBUserId,
       einladungsCode: row.einladungsCode,
+      personBHatEigenesKonto: hatEigenesKonto(row),
       personB,
     }
   }
 
   async set(userId: string, steuerjahr: number, dto: SetKopplungDto): Promise<KopplungResponseDto> {
-    let personBUserId = dto.personBUserId
-    let einladungsCode: string | null = null
-
-    if (dto.veranlagungsart === 'zusammen') {
-      if (!personBUserId) {
-        // If no explicit personBUserId is provided, check if existing row has one or create shadow
-        const existing = await this.repository.findByUserAndYear(userId, steuerjahr)
-        if (existing?.personBUserId) {
-          personBUserId = existing.personBUserId
-          einladungsCode = existing.einladungsCode
-        } else {
-          // Generate a shadow ID for 1-account switching mode + invite code
-          personBUserId = `spouse_${userId}_${steuerjahr}`
-          einladungsCode = randomBytes(4).toString('hex').toUpperCase()
-        }
-      }
-    } else {
-      personBUserId = ''
+    const existing = await this.repository.findByUserAndYear(userId, steuerjahr)
+    if (existing && existing.personAUserId !== userId) {
+      throw new ForbiddenException('Die Veranlagungsart legt Person A fest.')
     }
 
-    await this.repository.upsert(userId, steuerjahr, {
-      personBUserId: personBUserId || '',
-      veranlagungsart: dto.veranlagungsart,
-      einladungsCode,
-    })
+    if (dto.veranlagungsart === 'zusammen') {
+      const bleibt = existing?.veranlagungsart === 'zusammen' && existing.personBUserId !== ''
+      await this.repository.upsert(userId, steuerjahr, {
+        veranlagungsart: 'zusammen',
+        personBUserId: bleibt ? existing.personBUserId : schattenId(userId, steuerjahr),
+        einladungsCode: bleibt ? existing.einladungsCode : neuerEinladungsCode(),
+      })
+    } else {
+      await this.repository.upsert(userId, steuerjahr, {
+        veranlagungsart: 'einzel',
+        personBUserId: '',
+        einladungsCode: null,
+      })
+    }
 
     return this.get(userId, steuerjahr)
   }
 
-  async updatePersonB(
-    userId: string,
-    steuerjahr: number,
-    data: {
-      firstName?: string | null
-      lastName?: string | null
-      steuerId?: string | null
-      geburtsdatum?: string | null
-      religion?: string | null
-      beruf?: string | null
-    },
-  ): Promise<KopplungResponseDto> {
+  async updatePersonB(userId: string, steuerjahr: number, data: KopplungPersonBDto): Promise<KopplungResponseDto> {
     const row = await this.repository.findByUserAndYear(userId, steuerjahr)
     if (!row || row.veranlagungsart !== 'zusammen' || !row.personBUserId) {
       throw new BadRequestException('Keine aktive Zusammenveranlagung.')
     }
+    if (row.personAUserId !== userId || hatEigenesKonto(row)) {
+      throw new ForbiddenException('Person B pflegt ihre Angaben im eigenen Konto.')
+    }
+    // Art. 9 DSGVO, same rule as the own Stammdaten: no religion without explicit consent.
+    if (data.religion && data.religionEinwilligung !== true) {
+      throw new BadRequestException('religion requires religionEinwilligung = true (Art. 9 DSGVO)')
+    }
 
-    const spouseUserId = row.personAUserId === userId ? row.personBUserId : row.personAUserId
+    const spouseUserId = row.personBUserId
 
     if (data.firstName !== undefined || data.lastName !== undefined || data.steuerId !== undefined) {
       const existing = await this.profileRepository.findByUserId(spouseUserId)
@@ -107,23 +129,16 @@ export class KopplungService {
     }
 
     if (data.geburtsdatum !== undefined || data.religion !== undefined || data.beruf !== undefined) {
-      const sd = await this.stammdatenRepository.findByUserId(spouseUserId)
+      const bisher = (await this.stammdatenRepository.findByUserId(spouseUserId)) ?? leereStammdaten()
+      const religion = data.religion !== undefined ? data.religion : bisher.religion
       await this.stammdatenRepository.speichere(spouseUserId, {
-        geburtsdatum: data.geburtsdatum ?? sd?.geburtsdatum ?? null,
-        strasse: sd?.strasse ?? null,
-        hausnummer: sd?.hausnummer ?? null,
-        hausnummerZusatz: sd?.hausnummerZusatz ?? null,
-        plz: sd?.plz ?? null,
-        wohnort: sd?.wohnort ?? null,
-        religion: data.religion ?? sd?.religion ?? null,
-        beruf: data.beruf ?? sd?.beruf ?? null,
+        ...bisher,
+        geburtsdatum: data.geburtsdatum ?? bisher.geburtsdatum,
+        beruf: data.beruf ?? bisher.beruf,
+        religion,
         familienstand: 'verheiratet',
-        familienstandSeit: sd?.familienstandSeit ?? null,
-        iban: sd?.iban ?? null,
-        kontoinhaber: sd?.kontoinhaber ?? null,
-        finanzamt: sd?.finanzamt ?? null,
-        telefon: sd?.telefon ?? null,
-        religionEinwilligungAm: sd?.religionEinwilligungAm ?? new Date(),
+        religionEinwilligungAm:
+          religion === null ? null : data.religion ? new Date() : bisher.religionEinwilligungAm,
       })
     }
 

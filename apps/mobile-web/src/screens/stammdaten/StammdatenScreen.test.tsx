@@ -4,7 +4,7 @@ import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@steuereule/ui'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
-import type { StammdatenResponseDto } from '@steuereule/api-client'
+import type { KopplungResponseDto, StammdatenResponseDto } from '@steuereule/api-client'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
 import { StammdatenScreen } from './StammdatenScreen'
@@ -101,5 +101,38 @@ describe('StammdatenScreen (ADR-0050)', () => {
     eingabe('stammdaten-iban', 'DE00')
     fireEvent.click(screen.getByTestId('stammdaten-speichern'))
     expect(await screen.findByText('Bitte prüf deine Eingaben — z. B. Datum, Postleitzahl oder IBAN.')).toBeTruthy()
+  })
+
+  describe('Kopplung (Zusammenveranlagung)', () => {
+    const VERHEIRATET: StammdatenResponseDto = { ...LEER, familienstand: 'verheiratet' }
+    const ZUSAMMEN: KopplungResponseDto = {
+      veranlagungsart: 'zusammen',
+      personBUserId: 'spouse_user-a_2025',
+      einladungsCode: '9F3A0C71B2E4D658',
+      personBHatEigenesKonto: false,
+      personB: { firstName: 'Bea', lastName: 'Muster', steuerId: null, geburtsdatum: null, religion: null, beruf: null },
+    }
+
+    it('lets Person A fill in a partner who has no own account yet', async () => {
+      server.use(
+        http.get('*/v1/stammdaten', () => HttpResponse.json(VERHEIRATET)),
+        http.get('*/v1/steuerjahre/:jahr/kopplung', () => HttpResponse.json(ZUSAMMEN)),
+      )
+      renderScreen()
+      expect(await screen.findByTestId('personb-vorname')).toBeTruthy()
+    })
+
+    it("shows a joined partner's data read-only — it is theirs to change", async () => {
+      server.use(
+        http.get('*/v1/stammdaten', () => HttpResponse.json(VERHEIRATET)),
+        http.get('*/v1/steuerjahre/:jahr/kopplung', () =>
+          HttpResponse.json({ ...ZUSAMMEN, personBUserId: 'user-b', einladungsCode: null, personBHatEigenesKonto: true }),
+        ),
+      )
+      renderScreen()
+      expect(await screen.findByText(/Bea Muster pflegt die Angaben im eigenen Konto/)).toBeTruthy()
+      expect(screen.queryByTestId('personb-vorname')).toBeNull()
+      expect(screen.queryByTestId('personb-speichern')).toBeNull()
+    })
   })
 })
