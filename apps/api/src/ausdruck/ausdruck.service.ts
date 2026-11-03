@@ -189,7 +189,6 @@ export class AusdruckService {
       kopplung: kopplung ? { veranlagungsart: kopplung.veranlagungsart, personB: personBFakten } : null,
       sonderausgaben: answers['spenden-betrag'] ? { spenden: answers['spenden-betrag'] } : null,
       riester: answers['riester'] === 'Ja' || Boolean(answers['riester-betrag']),
-      vorsorgeaufwand: answers['kv-pv-betrag'] ? { kvPv: answers['kv-pv-betrag'] } : null,
     })
   }
 }

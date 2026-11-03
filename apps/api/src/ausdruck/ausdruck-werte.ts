@@ -57,10 +57,6 @@ export interface SonderausgabenFakten {
   spenden?: string | null
 }
 
-export interface VorsorgeaufwandFakten {
-  kvPv?: string | null
-}
-
 export interface AusdruckFakten {
   profil: { firstName: string | null; lastName: string | null; steuerId: string | null; steuernummer: string | null }
   stammdaten: {
@@ -90,7 +86,6 @@ export interface AusdruckFakten {
   kinder?: readonly KindFakten[] | null
   sonderausgaben?: SonderausgabenFakten | null
   riester?: boolean | null
-  vorsorgeaufwand?: VorsorgeaufwandFakten | null
 }
 
 /** Anlage R line per Rentenart. Gesetzliche and Witwen-/Waisenrente go through the
@@ -353,13 +348,9 @@ export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
     werte['anlAv.personA'] = true
   }
 
-  // Anlage Vorsorgeaufwand
-  if (fakten.vorsorgeaufwand?.kvPv && /^\d+$/.test(fakten.vorsorgeaufwand.kvPv)) {
-    setze('anlVor.name', profil.lastName)
-    setze('anlVor.vorname', profil.firstName)
-    setze('anlVor.steuernummer', profil.steuernummer)
-    werte['anlVor.kvPv'] = fakten.vorsorgeaufwand.kvPv
-  }
+  // Anlage Vorsorgeaufwand stays unprinted: the employee lines (LStB Nr. 22/23/25/26/27) are
+  // ⓔ-Zeilen the Finanzamt already has, and a figure there overrides the transmitted one. The
+  // interview's single KV+PV sum fits none of the form's separate lines.
 
   const ergebnis: AusdruckWerte = { werte, fehlend }
   if (Object.keys(instanzen).length > 0) ergebnis.instanzen = instanzen

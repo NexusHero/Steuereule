@@ -1118,18 +1118,6 @@
         "breite": 183.1,
         "hoehe": 15.8
       }
-    },
-    {
-      "id": "anlVor.kvPv",
-      "formular": "anlage-vorsorgeaufwand",
-      "seite": 1,
-      "art": "euro",
-      "kasten": {
-        "x": 350.1,
-        "y": 381.8,
-        "breite": 70.9,
-        "hoehe": 15.9
-      }
     }
   ]
 }

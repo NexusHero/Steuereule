@@ -103,7 +103,6 @@
 
     { "id": "anlVor.name", "formular": "anlage-vorsorgeaufwand", "seite": 1, "anker": "Name", "zeile": 1, "lage": "unter", "art": "text" },
     { "id": "anlVor.vorname", "formular": "anlage-vorsorgeaufwand", "seite": 1, "anker": "Vorname", "zeile": 2, "lage": "unter", "art": "text" },
-    { "id": "anlVor.steuernummer", "formular": "anlage-vorsorgeaufwand", "seite": 1, "anker": "Steuernummer", "zeile": 3, "lage": "rechts", "art": "text" },
-    { "id": "anlVor.kvPv", "formular": "anlage-vorsorgeaufwand", "seite": 1, "anker": "320", "zeile": 11, "lage": "rechts", "art": "euro" }
+    { "id": "anlVor.steuernummer", "formular": "anlage-vorsorgeaufwand", "seite": 1, "anker": "Steuernummer", "zeile": 3, "lage": "rechts", "art": "text" }
   ]
 }

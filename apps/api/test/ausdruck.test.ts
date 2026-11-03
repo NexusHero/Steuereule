@@ -148,14 +148,13 @@ describe('ausdruckWerte', () => {
     expect(werte['est1a.zusammenveranlagung']).toBeUndefined()
   })
 
-  it('fills Anlage KAP, Anlage N-Gre, Anlage Sonderausgaben, AV, and Vorsorgeaufwand', () => {
+  it('fills Anlage KAP, Anlage N-Gre, Anlage Sonderausgaben and AV', () => {
     const { werte } = ausdruckWerte({
       ...FAKTEN,
       kapital: { kapitalertraege: '1500', abzugssteuer: '375' },
       chLohnausweis: { bruttolohnEur: '65000', abzugssteuerEur: '2900' },
       sonderausgaben: { spenden: '450' },
       riester: true,
-      vorsorgeaufwand: { kvPv: '3200' },
     })
     expect(werte).toMatchObject({
       'anlKap.personA': true,
@@ -169,8 +168,12 @@ describe('ausdruckWerte', () => {
       'anlNGre.abzugssteuer': '2900',
       'anlSo.spenden': '450',
       'anlAv.personA': true,
-      'anlVor.kvPv': '3200',
     })
+  })
+
+  it('writes nothing onto Anlage Vorsorgeaufwand: its employee lines are ⓔ-Zeilen the Finanzamt already has', () => {
+    const { werte } = ausdruckWerte(FAKTEN)
+    expect(Object.keys(werte).filter((id) => id.startsWith('anlVor.'))).toEqual([])
   })
 
   it('creates multi-instance values for children and rental properties', () => {
@@ -267,7 +270,7 @@ describe('rendereVordrucke (real templates)', () => {
     ).rejects.toThrow(/Unbekannte Feld-IDs/)
   })
 
-  it('renders all 10 forms cleanly with real templates', async () => {
+  it('renders all 9 printed forms cleanly with real templates', async () => {
     const res = ausdruckWerte({
       ...FAKTEN,
       rente: { rentenart: 'GesetzlicheRente', jahresbetrag: '12000' },
@@ -275,7 +278,6 @@ describe('rendereVordrucke (real templates)', () => {
       chLohnausweis: { bruttolohnEur: '50000' },
       sonderausgaben: { spenden: '200' },
       riester: true,
-      vorsorgeaufwand: { kvPv: '2500' },
       kinder: [
         { vorname: 'Lina', nachname: 'Beispiel', geburtsdatum: '2016-01-01', idnr: '12345678901' },
       ],

@@ -18,8 +18,12 @@ sobald das Zertifikat (Ticket 07) vorliegt; bis dahin Beta kostenlos (ADR-017).
       für noch nicht druckbare Anlagen
 - [x] Ausdruck Anlage V — braucht Objekt-Anschrift, Wohnfläche und aufgeschlüsselte
       Werbungskosten (heute nur eine Summe); Vorlage liegt vor
-- [x] Ausdruck weitere Anlagen: KAP, Kind, N-Gre, Vorsorgeaufwand (aufgeteilte SV-Beiträge),
-      Sonderausgaben, AV (vermessen und implementiert auf amtlichen 2025 BMF-Vorlagen)
+- [x] Ausdruck weitere Anlagen: KAP, Kind, N-Gre, Sonderausgaben (vermessen und implementiert auf
+      amtlichen 2025 BMF-Vorlagen). Anlage Vorsorgeaufwand wird bewusst nicht gedruckt: ihre
+      Arbeitnehmer-Zeilen (LStB Nr. 22/23/25–27) sind ⓔ-Zeilen, die das Finanzamt elektronisch hat;
+      ein Wert dort übersteuert die Meldung. (Vorher landete die KV+PV-Summe aus dem Interview in Kz 320.)
+- [ ] Anlage AV: bisher nur das Kreuz „unmittelbar begünstigt“ (Kz 106); der Vordruck verlangt dann
+      die Zeilen 5–13 (u. a. beitragspflichtige Einnahmen des Vorjahres) — noch nicht erfasst
 - [x] Verheiratete: Veranlagungsart + Person B erfassen, dann Zeilen 19–24 ausdrucken
 - [ ] Klärung durch Steuerberater/Finanzamt: befülltes Portal-PDF („NET") vs. nichtamtlicher
       Vordruck (Graurasterung, Herstellerangabe)
