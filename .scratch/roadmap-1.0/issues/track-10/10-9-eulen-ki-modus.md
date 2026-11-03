@@ -19,7 +19,7 @@ braucht die Beleg-Inbox, Trigger 3 braucht Posten/Jahre) · Engineering-Entwurf 
 (`ki-port.ts`, promotet) · **Produkt-ADR-037–042 müssen akzeptiert werden** (aktuell „Vorgeschlagen")
 · **KI-Datenschutz (ADR-048) ist offen**.
 
-**Status:** completed
+**Status:** in-review — im Entwurfs-PR #380 (53fdb9a, bc6a3f6), noch nicht auf main
 
 - [x] Opt-in als letzter Interview-Schritt; Profil-Schalter zum Abschalten; Stufe 1 unverändert
 - [x] Vier Auslöser, proaktiv nur Gesetzes-Funde ≥ 50 € mit Betrag + Fallbezug; Rest auf Abruf

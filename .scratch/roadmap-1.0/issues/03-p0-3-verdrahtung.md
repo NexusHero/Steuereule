@@ -7,7 +7,7 @@ Session-Quelle und dieselben UI-Zustände.
 
 **Blocked by:** 02 — Phase 0.2: Framework-Ersatz
 
-**Status:** in-review (Frontend-Teil erledigt; `better-auth.ts` gehört zum API-Track)
+**Status:** done — gemergt als #363 (5bc2601)
 
 - [x] Ein Session-/Auth-Kontext (web + device) wird von allen Screens konsumiert; kein
       Pro-Screen-Eigenlogin oder Parallel-Query-State

@@ -9,7 +9,7 @@ erreichbar, `TRUSTED_PROXIES` gesetzt).
 
 **Blocked by:** None — can start immediately (paralleler Track zur Phase 0).
 
-**Status:** ready-for-agent
+**Status:** blocked — Slice 1 (IaC-Skelett) gemergt als #360 (aee3bd9); der Rest wartet auf die fünf Credential-Blocker (Hetzner/DNS, Postgres/Redis, App-Secrets, GHCR-Token, Proxy-CIDR/Let's Encrypt)
 
 - [ ] Cluster + Pipeline: k3s/Hetzner, Deployments für API und Web, managed EU-Postgres,
       Redis, Secrets aus einem Vault/Sealed-Secret-Mechanismus (nie im Repo)

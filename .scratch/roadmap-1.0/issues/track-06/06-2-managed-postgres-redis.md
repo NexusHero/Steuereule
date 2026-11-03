@@ -8,7 +8,7 @@ Die API bekommt `DATABASE_URL`/Redis-URL aus Secrets; Migrationen laufen als Job
 **Blocked by:** 06.1 (Cluster/Netz für Redis und den Zugriff auf Postgres) · Credential-Blöcke
 (managed-Postgres-Instanz + Credentials, Redis-Credentials).
 
-**Status:** ready-for-agent
+**Status:** blocked — wartet auf Credentials: managed Postgres + Redis (EU, PITR)
 
 - [ ] managed Postgres in EU-Region provisioniert; PITR/Verschlüsselung aktiv (ADR-047: „nicht von Hand tragen")
 - [ ] `DATABASE_URL` zeigt auf managed Postgres; `prisma migrate deploy` läuft gegen die echte DB (nie `migrate dev`)

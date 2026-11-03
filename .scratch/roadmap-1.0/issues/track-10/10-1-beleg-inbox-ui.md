@@ -20,8 +20,7 @@ bestehende API-Schnittstelle, kein neuer Binary-Endpoint.
 **Blocked by:** nichts In-Track — die Beleg-API existiert seit P0.4/09 (`beleg.ts`/`belegart.ts`
 in core, `apps/api/src/beleg/*`), und der Belege-Screen wird von t15/t16 nicht angefasst.
 
-**Status:** ready-for-review (Musti-REQUEST-CHANGES-Fixes eingearbeitet: Draft-`0040`-Qualifizierung +
-beidseitige Konflikt-Auflösung — „bei meinem Jahr bleiben")
+**Status:** done — gemergt als #371 (349d085)
 
 - [x] Belege-Tab in der mobile-web-Tab-Bar (Icon `TAB_ICON_PATHS.belege`), ganzjährig sichtbar
 - [x] Inbox rendert `GET /v1/belege` mit ehrlichen Lade-/Leer-/Fehlerzuständen (nie Mock-Daten)

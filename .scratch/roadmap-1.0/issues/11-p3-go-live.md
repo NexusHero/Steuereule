@@ -7,7 +7,7 @@ sobald das Zertifikat (Ticket 07) vorliegt; bis dahin Beta kostenlos (ADR-017).
 
 **Blocked by:** 10 — Phase 2: Verbreiterung
 
-**Status:** ready-for-agent
+**Status:** in-progress — Entwurfs-PR #380 (release-1.0-papierweg); offen: NET-Vordruckfrage, Rechtsprüfung, Google-OAuth #170, DSGVO-Final-Audit, DoD-Abnahme
 
 **Umgeplant durch ADR-0050 (2026-10-28):** ELSTER ist kein 1.0-Kriterium mehr; 1.0 gibt auf Papier ab.
 

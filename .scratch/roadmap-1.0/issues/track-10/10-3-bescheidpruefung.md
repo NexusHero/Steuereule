@@ -11,7 +11,7 @@ kein „Korrigieren"-Button mehr (das Wort wäre eine falsche Zusage, ADR-032).
 Abgleich Bescheid vs. berechnet) · Engineering-Entwurf 0039 (Zustandsmaschine mit
 `bescheid`-Zustand, promotet).
 
-**Status:** ready-for-review (Kaan, Worktree `ticket-10-3-bescheidpruefung`)
+**Status:** done — gemergt als #374 (6d631b1)
 
 - [x] Bescheid-PDF importierbar (Inbox-Dokumenttyp `Steuerbescheid` in `belegart.ts`), manuelle
       Betrag-Eingabe als Fallback (ADR-036 — geführte Maske, offen/unklar/erfasst; Scan/OCR OUT, ADR-045)

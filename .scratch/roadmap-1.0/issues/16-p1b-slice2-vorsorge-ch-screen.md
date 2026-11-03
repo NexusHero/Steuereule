@@ -7,7 +7,7 @@ koordiniert), REQ-021 geht auf Done, und die mobile-web bekommt den CH-Screen
 
 **Blocked by:** 09 gemerged (Slice 1: Belegarten, Wechselkurs, CHF-Kern, segment-ch auf main).
 
-**Status:** in-progress (Robin, 09-Vertikale)
+**Status:** in-progress — gemergt als #369 (9c1f76c) bis auf einen Punkt: CH-Posten erscheinen noch nicht in der Cockpit-Spanne
 
 - [x] Posten-Kern: Vorsorge-Posten (PK/3a/KK/Zulagen) + Quellensteuer-Anrechnung in
       `berechne` gefaltet, mit Herkunft (Lohnausweis Ziffer n × Kurs); offen wo unklar —

@@ -8,7 +8,7 @@ darf von einer konkreten Einkunftsart abhängen.
 
 **Blocked by:** 03 — Phase 0.3: Verdrahtung
 
-**Status:** ready-for-agent
+**Status:** done — gemergt als #364 (726d21d)
 
 - [x] Einkunftsarten-/Steuerjahr-Modell in `packages/core` (ADR-006/-010/-030), UI-frei,
       von API, web und mobile geteilt; Kombinierbarkeit getestet (ADR-030)

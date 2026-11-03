@@ -9,7 +9,7 @@ beide Images, Boot-Smoke, README-Update, multi-arch GHCR.
 **Blocked by:** None — kann sofort starten. Die App-Images (`apps/api/Dockerfile`,
 `apps/mobile-web/Dockerfile`) existieren bereits.
 
-**Status:** ready-for-agent
+**Status:** blocked — braucht den Cluster aus 06.1
 
 - [ ] `docker buildx build --platform linux/arm64` für `api` **und** `web` grün (Prisma-Engine „native" löst auf arm64 auf — der im Dockerfile benannte echte Risikopunkt)
 - [ ] Boot-Smoke auf arm64 (API + web, compose oder k8s) — gemessen, nicht vermutet

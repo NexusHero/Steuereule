@@ -9,7 +9,7 @@ der Abschluss des Tracks — es schließt die in ADR-0026 offen benannte #292-L�
 **Blocked by:** 06.1 (Cluster/Ingress) + 06.4 (Staging/Prod deployt — die Eigenschaft ist nur
 über die echte Topologie beweisbar).
 
-**Status:** ready-for-agent
+**Status:** blocked — wartet auf Credentials: TRUSTED_PROXIES-CIDR + Let's-Encrypt-Konto
 
 - [ ] nginx ingress + cert-manager TLS; die API ist nur über den Proxy erreichbar (API-Port nicht öffentlich)
 - [ ] `TRUSTED_PROXIES` auf den echten Proxy-CIDR gesetzt; der `trusted-proxies.ts`-Resolver lehnt `none` unter prod ab (Phase 0.2-Vorarbeit aktiviert)

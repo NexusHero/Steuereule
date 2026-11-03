@@ -10,7 +10,7 @@ Acceptance-Kern.
 **Blocked by:** 06.1 (Controller-Install) + 06.2 (kennt das konkrete Credential-Set, das es zu
 versiegeln gilt).
 
-**Status:** ready-for-agent
+**Status:** blocked — wartet auf Credentials: die acht App-Secrets inkl. PRISMA_FIELD_ENCRYPTION_KEY
 
 - [ ] Sealed-Secrets-Controller installiert; `kubeseal` versiegelt mind. die acht App-Secrets aus `.env.example`
 - [ ] Kein Secret-Wert liegt unversiegelt im Repo (Beweis: `git grep` über die Secret-Namen)

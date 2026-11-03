@@ -7,7 +7,7 @@ bricht), nicht nur installiert.
 
 **Blocked by:** 06.1 (Cluster).
 
-**Status:** ready-for-agent
+**Status:** blocked — braucht den Cluster aus 06.1
 
 - [ ] Metriken: API, Web, Redis und Postgres in Grafana sichtbar
 - [ ] Logs zentral gesammelt (Loki/Promtail oder Hetzner-eigene Logs — Entscheidung begründet)
