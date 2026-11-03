@@ -1,15 +1,17 @@
 import { Inject, Injectable } from '@nestjs/common'
 import {
+  deutschesDatum,
   einspruchsfristEnde,
   generiereEulenKarten,
+  homeofficeTageAusInterview,
   RECHTSSTAND_DATUM,
   type EulenArchivJahr,
   type EulenEingabeFakten,
   type KiPort,
 } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
-import { BELEG_REPOSITORY, type BelegRepository } from '../beleg/beleg.repository.js'
-import { BESCHEID_REPOSITORY, type BescheidRepository } from '../bescheid/bescheid.repository.js'
+import { BESCHEID_REPOSITORY, type BescheidRecord, type BescheidRepository } from '../bescheid/bescheid.repository.js'
+import { heuteInBerlin } from '../fristen/fristen.service.js'
 import {
   INTERVIEW_ANSWER_REPOSITORY,
   type InterviewAnswerRecord,
@@ -17,8 +19,6 @@ import {
 } from '../interview/interview-answer.repository.js'
 import { KI_PORT, pruefePiiFreiheit } from '../ki/ki.adapter.js'
 import { KIND_REPOSITORY, type KindRepository } from '../kinder/kind.repository.js'
-import { LSTB_REPOSITORY, type LstbRepository } from '../lstb/lstb.repository.js'
-import { datumFuerVordruck } from '../ausdruck/ausdruck-werte.js'
 import {
   EULEN_EINSTELLUNG_REPOSITORY,
   EULEN_KARTEN_VERWURF_REPOSITORY,
@@ -33,14 +33,26 @@ function toAnswerMap(rows: InterviewAnswerRecord[]): Record<string, string> {
   return map
 }
 
-function berechneHomeofficeTage(answers: Record<string, string>): number | null {
-  const ho = answers['homeoffice']
-  if (!ho || ho === 'Nie') return null
-  const arbeitstage = answers['tage'] && /^\d+$/.test(answers['tage']) ? Number(answers['tage']) : 220
-  if (ho === 'Fast immer') return Math.min(arbeitstage, 210)
-  if (ho === '1–2 Tage pro Woche') return Math.min(Math.round(arbeitstage * 0.3), 210)
-  if (/^\d+$/.test(ho)) return Math.min(Number(ho), 210)
-  return null
+function ganzzahl(wert: string | undefined): number | null {
+  return wert && /^\d+$/.test(wert) ? Number(wert) : null
+}
+
+/** The previous year while its Einspruch window is still open and Homeoffice was declared. */
+function archivJahr(
+  bescheid: BescheidRecord | null,
+  antworten: Record<string, string>,
+  heute: string,
+): EulenArchivJahr | null {
+  if (!bescheid?.bescheiddatum || bescheid.status === 'einspruch-eingelegt') return null
+  const fristEnde = einspruchsfristEnde(bescheid.bescheiddatum)
+  const homeofficeTage = homeofficeTageAusInterview(antworten)
+  if (fristEnde < heute || !homeofficeTage) return null
+  return {
+    steuerjahr: bescheid.steuerjahr,
+    bescheidDatum: deutschesDatum(bescheid.bescheiddatum),
+    einspruchMoeglichBis: deutschesDatum(fristEnde),
+    homeofficeTage,
+  }
 }
 
 @Injectable()
@@ -48,8 +60,6 @@ export class EulenModusService {
   constructor(
     @Inject(EULEN_EINSTELLUNG_REPOSITORY) private readonly einstellungRepo: EulenEinstellungRepository,
     @Inject(EULEN_KARTEN_VERWURF_REPOSITORY) private readonly verwurfRepo: EulenKartenVerwurfRepository,
-    @Inject(LSTB_REPOSITORY) private readonly lstbRepo: LstbRepository,
-    @Inject(BELEG_REPOSITORY) private readonly belegRepo: BelegRepository,
     @Inject(KIND_REPOSITORY) private readonly kinderRepo: KindRepository,
     @Inject(INTERVIEW_ANSWER_REPOSITORY) private readonly interviewRepo: InterviewAnswerRepository,
     @Inject(BESCHEID_REPOSITORY) private readonly bescheidRepo: BescheidRepository,
@@ -74,7 +84,7 @@ export class EulenModusService {
     }
   }
 
-  async getKarten(userId: string, steuerjahr: number): Promise<EulenKartenResponseDto> {
+  async getKarten(userId: string, steuerjahr: number, heute = heuteInBerlin()): Promise<EulenKartenResponseDto> {
     const einstellung = await this.einstellungRepo.findByUserId(userId)
     const aktiviert = einstellung?.aktiviert ?? false
     if (!aktiviert) {
@@ -85,9 +95,7 @@ export class EulenModusService {
       }
     }
 
-    const [lstb, belege, kinder, verworfene, interviewRows, vorjahrInterviewRows, vorjahrBescheid] = await Promise.all([
-      this.lstbRepo.findForUserAndYear(userId, steuerjahr),
-      this.belegRepo.findAllForUser(userId),
+    const [kinder, verworfene, interviewRows, vorjahrInterviewRows, vorjahrBescheid] = await Promise.all([
       this.kinderRepo.listForUserAndYear(userId, steuerjahr),
       this.verwurfRepo.listForUserAndYear(userId, steuerjahr),
       this.interviewRepo.findAllForUserAndYear(userId, steuerjahr),
@@ -97,61 +105,26 @@ export class EulenModusService {
 
     const answers = toAnswerMap(interviewRows)
     const vorjahrAnswers = toAnswerMap(vorjahrInterviewRows)
-    const belegeArten = belege
-      .filter((b) => b.steuerjahr === null || b.steuerjahr === steuerjahr)
-      .map((b) => b.art)
-      .filter(Boolean) as string[]
+    const vorjahrSpendenEur = answers['spenden-betrag'] ? null : ganzzahl(vorjahrAnswers['spenden-betrag'])
+    const archiv = archivJahr(vorjahrBescheid, vorjahrAnswers, heute)
 
-    const hatFortbildung =
-      answers['fortbildung'] === 'Ja' ||
-      belegeArten.some((art) => art.toLowerCase().includes('fortbildung'))
-    const fahrtkostenEur =
-      answers['weg'] && /^\d+$/.test(answers['weg']) && Number(answers['weg']) > 0
-        ? Number(answers['weg'])
-        : 0
-
-    const vorjahrSpendenRaw = vorjahrAnswers['spenden-betrag']
-    const aktuelleSpendenRaw = answers['spenden-betrag']
-    const vorjahrSpendenEur =
-      vorjahrSpendenRaw && /^\d+$/.test(vorjahrSpendenRaw) && !aktuelleSpendenRaw
-        ? Number(vorjahrSpendenRaw)
-        : null
-
-    const archivJahre: EulenArchivJahr[] = []
-    if (vorjahrBescheid?.bescheiddatum && vorjahrBescheid.status !== 'einspruch-eingelegt') {
-      const fristIso = einspruchsfristEnde(vorjahrBescheid.bescheiddatum)
-      const vorjahrHo = berechneHomeofficeTage(vorjahrAnswers)
-      if (fristIso && vorjahrHo !== null && vorjahrHo > 0) {
-        archivJahre.push({
-          steuerjahr: steuerjahr - 1,
-          bescheidDatum: datumFuerVordruck(vorjahrBescheid.bescheiddatum),
-          einspruchMoeglichBis: datumFuerVordruck(fristIso),
-          hatHomeofficeOhnePauschale: true,
-        })
-      }
-    }
-
-    // PII-free domain parameters passed to core generator (ADR-0051 § 1)
     const eingabe: EulenEingabeFakten = {
       steuerjahr,
-      bruttoarbeitslohnEur:
-        lstb?.bruttoarbeitslohn && /^\d+$/.test(lstb.bruttoarbeitslohn) ? Number(lstb.bruttoarbeitslohn) : null,
-      fortbildungskostenEur: hatFortbildung ? 100 : null,
-      fahrtkostenEur,
-      homeofficeTage: berechneHomeofficeTage(answers),
+      hatFortbildung: answers['fortbildung'] === 'Ja',
+      homeofficeTage: homeofficeTageAusInterview(answers),
       vorjahrFakten: vorjahrSpendenEur !== null ? { spendenEur: vorjahrSpendenEur } : null,
-      bekannteBelegeArten: belegeArten,
+      kinderLautInterview: answers['kinder'] !== undefined && answers['kinder'] !== 'Nein',
       hatKinderErfasst: kinder.length > 0,
-      archivJahre,
+      archivJahre: archiv ? [archiv] : [],
       verworfeneFingerprints: verworfene,
     }
 
     pruefePiiFreiheit(eingabe)
     const roheKarten = generiereEulenKarten(eingabe)
     const karten = await Promise.all(
-      roheKarten.map(async (karte) => ({
+      roheKarten.map(async ({ quelleId, ...karte }) => ({
         ...karte,
-        quelleUebersetzt: await this.kiPort.erklaereQuelle(karte.quelleUebersetzt),
+        quelleUebersetzt: await this.kiPort.erklaereQuelle(quelleId),
       })),
     )
     await this.auditService.append({ userId, action: 'READ', resource: 'eulen_karten' })

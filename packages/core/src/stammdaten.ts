@@ -60,3 +60,9 @@ export function istGueltigesDatum(value: string): boolean {
   const datum = new Date(Date.UTC(jahr, monat - 1, tag))
   return datum.getUTCFullYear() === jahr && datum.getUTCMonth() === monat - 1 && datum.getUTCDate() === tag
 }
+
+/** YYYY-MM-DD as the German TT.MM.JJJJ the forms and the cards show. */
+export function deutschesDatum(iso: string): string {
+  const [jahr, monat, tag] = iso.split('-')
+  return `${tag}.${monat}.${jahr}`
+}

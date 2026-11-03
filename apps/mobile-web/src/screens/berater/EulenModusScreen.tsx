@@ -3,7 +3,7 @@ import { Pressable, ScrollView, Text, View, type TextStyle, type ViewStyle } fro
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button, Card, Chip, Option, useBreakpoint, useTheme, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
-import { formatEuro, type EulenKarte } from '@steuereule/core'
+import { formatEuro, type EulenKartenAnzeige } from '@steuereule/core'
 import {
   getEulenModusControllerGetEinstellungQueryKey,
   getEulenModusControllerGetKartenQueryKey,
@@ -21,7 +21,7 @@ export interface EulenModusScreenProps {
   readonly onDone?: () => void
   readonly onBack?: () => void
   readonly taxYear?: number
-  readonly initialKarten?: readonly EulenKarte[] | undefined
+  readonly initialKarten?: readonly EulenKartenAnzeige[] | undefined
   readonly onDismissKarte?: ((fingerprint: string) => Promise<void> | void) | undefined
   readonly onAcceptWeg?: ((karteId: string, wegIndex: number) => void) | undefined
   readonly optInAktiviert?: boolean | undefined
@@ -69,7 +69,7 @@ function ConnectedEulenModusScreen({ onDone = () => {}, onBack, taxYear = CURREN
     ])
   }
 
-  const karten: readonly EulenKarte[] = kartenQuery.data.data.karten.map((k) => ({
+  const karten: readonly EulenKartenAnzeige[] = kartenQuery.data.data.karten.map((k) => ({
     ...k,
     betragEur: k.betragEur ?? null,
     ...(k.wege && k.wege.length === 2 ? { wege: [k.wege[0]!, k.wege[1]!] as const } : { wege: undefined }),
@@ -104,14 +104,14 @@ function EulenModusScreenView({
   onAcceptWeg,
   optInAktiviert = true,
   onToggleOptIn,
-}: EulenModusScreenProps & { readonly initialKarten: readonly EulenKarte[] }) {
+}: EulenModusScreenProps & { readonly initialKarten: readonly EulenKartenAnzeige[] }) {
   const bp = useBreakpoint()
   const t = useTheme()
   const styles = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
 
   const [tab, setTab] = useState<'fragen' | 'eule'>('eule')
-  const [karten, setKarten] = useState<readonly EulenKarte[]>(initialKarten)
+  const [karten, setKarten] = useState<readonly EulenKartenAnzeige[]>(initialKarten)
   const [aktiverIndex, setAktiverIndex] = useState(0)
 
   const aktiveKarte = karten[aktiverIndex]

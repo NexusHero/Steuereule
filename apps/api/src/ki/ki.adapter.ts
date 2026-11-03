@@ -1,11 +1,8 @@
-// ADR-048 § 2–3 & ADR-0051 § 2 — Adapter behind KiPort.
-// Enforces:
-//   1. Strict PII scrubbing & assertion before any prompt construction (no names, Steuer-ID, IBAN).
-//   2. Local RAG knowledge base of statutory German tax sources (ADR-039: Rechtsstand 01.01.2025).
-//   3. Strict schema validation on every output (`KiVorschlag` and `QuellenErklaerung`), with
-//      deterministic offline/no-API-key fallback so tests and offline deployments work identically.
+// ADR-048 § 2–3 & ADR-0051 § 2 — the adapter behind KiPort. 1.0 calls no LLM: sources are
+// explained from a curated local store, and Beleg suggestions stay empty until an OCR/LLM
+// slice exists. The PII gate and the output validator are the seams that slice must pass.
 import { Injectable } from '@nestjs/common'
-import { EINKUNFTSARTEN, type Einkunftsart, type KiPort, type KiVorschlag } from '@steuereule/core'
+import { EINKUNFTSARTEN, type Einkunftsart, type EulenQuelleId, type KiPort, type KiVorschlag } from '@steuereule/core'
 
 export const KI_PORT = Symbol('KI_PORT')
 
@@ -17,14 +14,14 @@ export interface RechtsquelleEintrag {
   readonly url: string
 }
 
-/** Curated local RAG store of statutory sources (ADR-039: translated into plain German). */
-export const RECHTSQUELLEN_RAG: Readonly<Record<string, RechtsquelleEintrag>> = {
-  'estg-4-5-6b': {
-    id: 'estg-4-5-6b',
-    paragraph: '§ 4 Abs. 5 Satz 1 Nr. 6b EStG',
+/** Curated statutory sources in plain German (ADR-039). */
+export const RECHTSQUELLEN: Readonly<Record<EulenQuelleId | 'estg-32', RechtsquelleEintrag>> = {
+  'estg-4-5-6c': {
+    id: 'estg-4-5-6c',
+    paragraph: '§ 4 Abs. 5 Satz 1 Nr. 6c EStG',
     rechtsstandDatum: '01.01.2025',
     uebersetzung:
-      'Jahressteuergesetz: Für jeden Kalendertag, an dem die betriebliche oder berufliche Tätigkeit überwiegend in der häuslichen Wohnung ausgeübt wird, kann eine Tagespauschale von 6 € (höchstens 1.260 € im Jahr / 210 Tage) abgezogen werden.',
+      'Für jeden Kalendertag, an dem die berufliche Tätigkeit überwiegend in der häuslichen Wohnung ausgeübt wird, kann eine Tagespauschale von 6 € abgezogen werden, höchstens 1.260 € im Jahr (210 Tage).',
     url: 'https://www.gesetze-im-internet.de/estg/__4.html',
   },
   'estg-9-1-4a': {
@@ -32,7 +29,7 @@ export const RECHTSQUELLEN_RAG: Readonly<Record<string, RechtsquelleEintrag>> = 
     paragraph: '§ 9 Abs. 1 Satz 3 Nr. 4a EStG',
     rechtsstandDatum: '01.01.2025',
     uebersetzung:
-      'Bundesfinanzhof und EStG bestätigen: Fahrtkosten zu Fortbildungsstätten außerhalb der ersten Tätigkeitsstätte sind mit 0,30 € je gefahrenem Kilometer (Hin- und Rückfahrt) als Werbungskosten abziehbar.',
+      'Fahrten im Rahmen einer beruflichen Auswärtstätigkeit – etwa zu einer Fortbildung außerhalb der ersten Tätigkeitsstätte – sind mit 0,30 € je gefahrenem Kilometer (Hin- und Rückfahrt) als Werbungskosten abziehbar.',
     url: 'https://www.gesetze-im-internet.de/estg/__9.html',
   },
   'estg-10b': {
@@ -56,7 +53,7 @@ export const RECHTSQUELLEN_RAG: Readonly<Record<string, RechtsquelleEintrag>> = 
     paragraph: '§ 32 Abs. 6 EStG',
     rechtsstandDatum: '01.01.2025',
     uebersetzung:
-      'Für jedes zu berücksichtigende Kind wird ein Kinderfreibetrag inklusive Freibetrag für den Betreuungs- und Erziehungs- oder Ausbildungsbedarf (2025: 9.540 € bei Zusammenveranlagung) von Amts wegen mit dem Kindergeldanspruch verglichen (Günstigerprüfung).',
+      'Für jedes zu berücksichtigende Kind wird der Kinderfreibetrag samt Freibetrag für den Betreuungs- und Erziehungs- oder Ausbildungsbedarf (2025: 9.600 € bei Zusammenveranlagung) von Amts wegen mit dem Kindergeld verglichen (Günstigerprüfung).',
     url: 'https://www.gesetze-im-internet.de/estg/__32.html',
   },
   'ao-355': {
@@ -71,10 +68,21 @@ export const RECHTSQUELLEN_RAG: Readonly<Record<string, RechtsquelleEintrag>> = 
 
 const IBAN_REGEX = /\b[A-Z]{2}\d{2}[A-Z0-9]{11,30}\b/
 const STEUER_ID_REGEX = /\b\d{11}\b/
+const PERSONEN_SCHLUESSEL = new Set(['firstName', 'lastName', 'vorname', 'nachname', 'steuerId', 'idnr', 'iban', 'strasse', 'telefon'])
+
+function findePersonenSchluessel(wert: unknown): string | null {
+  if (typeof wert !== 'object' || wert === null) return null
+  for (const [schluessel, kind] of Object.entries(wert)) {
+    if (PERSONEN_SCHLUESSEL.has(schluessel)) return schluessel
+    const tiefer = findePersonenSchluessel(kind)
+    if (tiefer) return tiefer
+  }
+  return null
+}
 
 /**
  * Asserts that a payload bound for an external LLM contains zero PII identifiers
- * (no 11-digit Steuer-ID, no IBAN, no forbidden personal keys). Throws if violated (ADR-0051 § 1).
+ * (no 11-digit Steuer-ID, no IBAN, no personal key at any depth). Throws if violated (ADR-0051 § 1).
  */
 export function pruefePiiFreiheit(payload: unknown): void {
   const serialized = JSON.stringify(payload)
@@ -84,13 +92,9 @@ export function pruefePiiFreiheit(payload: unknown): void {
   if (STEUER_ID_REGEX.test(serialized)) {
     throw new Error('PII boundary violation: 11-digit Steuer-ID detected in KI payload.')
   }
-  if (typeof payload === 'object' && payload !== null) {
-    const forbiddenKeys = ['firstName', 'lastName', 'vorname', 'nachname', 'steuerId', 'idnr', 'iban', 'strasse', 'telefon']
-    for (const key of forbiddenKeys) {
-      if (key in payload) {
-        throw new Error(`PII boundary violation: forbidden personal field "${key}" in KI payload.`)
-      }
-    }
+  const schluessel = findePersonenSchluessel(payload)
+  if (schluessel) {
+    throw new Error(`PII boundary violation: forbidden personal field "${schluessel}" in KI payload.`)
   }
 }
 
@@ -126,38 +130,14 @@ export function validiereKiVorschlag(raw: unknown): KiVorschlag {
 
 @Injectable()
 export class RagKiAdapter implements KiPort {
-  /**
-   * Suggests structured line items from a prepared Beleg id (ADR-048 § 2).
-   * Validates the input for PII freedom and validates every output item against `validiereKiVorschlag`.
-   */
   async schlageVorAusBeleg(belegId: string): Promise<readonly KiVorschlag[]> {
     pruefePiiFreiheit({ belegId })
-    // Without raw OCR binary in 1.0 (ADR-045), returns an empty validated list unless seeded.
     return []
   }
 
-  /**
-   * Retrieves and translates a statutory tax source from the local RAG store (ADR-039).
-   * Always includes the statutory paragraph and plain-German explanation.
-   */
   async erklaereQuelle(quelleId: string): Promise<string> {
-    pruefePiiFreiheit({ quelleId })
-    const direkterTreffer = RECHTSQUELLEN_RAG[quelleId]
-    if (direkterTreffer) {
-      return `${direkterTreffer.uebersetzung} (${direkterTreffer.paragraph}, Rechtsstand ${direkterTreffer.rechtsstandDatum})`
-    }
-
-    // Substring / keyword retrieval over the local RAG store
-    const normalized = quelleId.toLowerCase()
-    for (const eintrag of Object.values(RECHTSQUELLEN_RAG)) {
-      if (
-        eintrag.paragraph.toLowerCase().includes(normalized) ||
-        eintrag.uebersetzung.toLowerCase().includes(normalized)
-      ) {
-        return `${eintrag.uebersetzung} (${eintrag.paragraph}, Rechtsstand ${eintrag.rechtsstandDatum})`
-      }
-    }
-
-    return `Gesetzliche Regelung nach aktuellem Einkommensteuergesetz (Rechtsstand 01.01.2025).`
+    if (!Object.hasOwn(RECHTSQUELLEN, quelleId)) throw new Error(`Unbekannte Rechtsquelle "${quelleId}".`)
+    const eintrag = RECHTSQUELLEN[quelleId as EulenQuelleId]
+    return `${eintrag.uebersetzung} (${eintrag.paragraph}, Rechtsstand ${eintrag.rechtsstandDatum})`
   }
 }

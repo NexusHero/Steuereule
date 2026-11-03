@@ -5,9 +5,7 @@ import {
   FakeEulenEinstellungRepository,
   FakeEulenKartenVerwurfRepository,
 } from './fakes/fake-eulen-modus.repository.js'
-import { FakeLstbRepository } from './fakes/fake-lstb.repository.js'
 import { FakeKindRepository } from './fakes/fake-kind.repository.js'
-import { FakeBelegRepository } from './fakes/fake-beleg.repository.js'
 import { FakeInterviewAnswerRepository } from './fakes/fake-interview-answer.repository.js'
 import { FakeBescheidRepository } from './fakes/fake-bescheid.repository.js'
 
@@ -22,13 +20,11 @@ describe('EulenModusService', () => {
     const service = new EulenModusService(
       new FakeEulenEinstellungRepository(),
       new FakeEulenKartenVerwurfRepository(),
-      new FakeLstbRepository(),
-      new FakeBelegRepository(),
       new FakeKindRepository(),
       new FakeInterviewAnswerRepository(),
       new FakeBescheidRepository(),
       new RagKiAdapter(),
-      new FakeAuditService() as any,
+      new FakeAuditService() as never,
     )
 
     const res = await service.getKarten('user-1', 2025)
@@ -39,8 +35,6 @@ describe('EulenModusService', () => {
   it('activates Eulen-Modus, evaluates real interview/bescheid facts, and filters dismissed cards', async () => {
     const einstellungRepo = new FakeEulenEinstellungRepository()
     const verwurfRepo = new FakeEulenKartenVerwurfRepository()
-    const lstbRepo = new FakeLstbRepository()
-    const belegRepo = new FakeBelegRepository()
     const kinderRepo = new FakeKindRepository()
     const interviewRepo = new FakeInterviewAnswerRepository()
     const bescheidRepo = new FakeBescheidRepository()
@@ -50,13 +44,11 @@ describe('EulenModusService', () => {
     const service = new EulenModusService(
       einstellungRepo,
       verwurfRepo,
-      lstbRepo,
-      belegRepo,
       kinderRepo,
       interviewRepo,
       bescheidRepo,
       kiAdapter,
-      audit as any,
+      audit as never,
     )
 
     const userId = 'user-1'
@@ -70,26 +62,28 @@ describe('EulenModusService', () => {
     await interviewRepo.write({ userId, steuerjahr: jahr - 1, questionId: 'homeoffice', value: '1–2 Tage pro Woche', openItems: 0 })
     await bescheidRepo.setDatum(userId, jahr - 1, '2025-10-15')
 
-    // Activate
     const setRes = await service.setEinstellung(userId, true)
     expect(setRes.aktiviert).toBe(true)
     expect(setRes.aktiviertAm).toBeDefined()
 
-    // Get cards
-    const res = await service.getKarten(userId, jahr)
+    const heute = '2025-11-01'
+    const res = await service.getKarten(userId, jahr, heute)
     expect(res.aktiviert).toBe(true)
-    expect(res.karten.length).toBe(4)
+    expect(res.karten.map((k) => k.kategorie)).toEqual(['cockpit_proaktiv', 'archiv_einspruch', 'abruf_frage', 'abruf_frage'])
 
-    // Verify RAG source translation on the first card
     const firstCard = res.karten[0]!
-    expect(firstCard.fingerprint).toBeDefined()
-    expect(firstCard.quelleUebersetzt).toContain('Rechtsstand 01.01.2025')
+    expect(firstCard.betragEur).toBe(1200)
+    expect(firstCard.quelleUebersetzt).toContain('§ 4 Abs. 5 Satz 1 Nr. 6c EStG, Rechtsstand 01.01.2025')
+    expect(res.karten[1]!.einspruchFristBis).toBe('15.11.2025')
+    expect(res.karten[1]!.betragEur).toBe(396)
 
-    // Dismiss first card
+    expect((await service.getKarten(userId, jahr, '2025-11-16')).karten.map((k) => k.kategorie)).not.toContain(
+      'archiv_einspruch',
+    )
+
     await service.verwerfeKarte(userId, jahr, firstCard.fingerprint)
 
-    // Re-query: dismissed card must be filtered out
-    const resAfterDismiss = await service.getKarten(userId, jahr)
+    const resAfterDismiss = await service.getKarten(userId, jahr, heute)
     expect(resAfterDismiss.karten.find((k) => k.fingerprint === firstCard.fingerprint)).toBeUndefined()
     expect(resAfterDismiss.karten.length).toBe(3)
   })

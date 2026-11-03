@@ -3,9 +3,10 @@
 // by scripts/vordrucke/vermessen.mjs — never typed by hand.
 import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
+import { deutschesDatum } from '@steuereule/core'
 import { PDFDocument } from 'pdf-lib'
 import { describe, expect, it } from 'vitest'
-import { ausdruckWerte, datumFuerVordruck, type AusdruckFakten } from '../src/ausdruck/ausdruck-werte.js'
+import { ausdruckWerte, type AusdruckFakten } from '../src/ausdruck/ausdruck-werte.js'
 import felder2025 from '../src/ausdruck/felder-2025.json' with { type: 'json' }
 import manifest from '../src/ausdruck/vordrucke-2025.json' with { type: 'json' }
 import { FELDSAETZE, rendereVordrucke, UeberlaufFehler } from '../src/ausdruck/vordruck-renderer.js'
@@ -104,7 +105,7 @@ describe('ausdruckWerte', () => {
   })
 
   it('formats dates with points, as the form asks', () => {
-    expect(datumFuerVordruck('2025-12-31')).toBe('31.12.2025')
+    expect(deutschesDatum('2025-12-31')).toBe('31.12.2025')
   })
 
   it('married with zusammenveranlagung fills Person B fields and checks completeness', () => {

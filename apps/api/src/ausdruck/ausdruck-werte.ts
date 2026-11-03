@@ -1,6 +1,7 @@
 // From the stored facts to the Vordruck field values (ADR-0050). Pure: no I/O, no rounding
 // beyond what the facts already carry — a value the app does not know exactly (the
 // Lohnsteuer's cents) is left empty rather than printed with a false precision.
+import { deutschesDatum } from '@steuereule/core'
 import type { FeldWerte } from './vordruck-renderer.js'
 
 export interface PersonBFakten {
@@ -127,11 +128,6 @@ const SEIT_FELD: Record<string, string> = {
 }
 
 /** ISO date → TT.MM.JJJJ with the points the form's date format asks for. */
-export function datumFuerVordruck(iso: string): string {
-  const [jahr, monat, tag] = iso.split('-')
-  return `${tag}.${monat}.${jahr}`
-}
-
 export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
   const { profil, stammdaten: sd } = fakten
   const fehlend: string[] = []
@@ -157,7 +153,7 @@ export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
         fehlend.push('personB')
       } else {
         setze('est1a.idnrB', b.steuerId)
-        setze('est1a.geburtsdatumB', datumFuerVordruck(b.geburtsdatum))
+        setze('est1a.geburtsdatumB', deutschesDatum(b.geburtsdatum))
         setze('est1a.nameB', b.lastName)
         setze('est1a.vornameB', b.firstName)
         setze('est1a.religionB', b.religion)
@@ -181,7 +177,7 @@ export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
   if (sd) {
     setze('est1a.finanzamt', sd.finanzamt)
     setze('est1a.telefon', sd.telefon)
-    setze('est1a.geburtsdatum', sd.geburtsdatum ? datumFuerVordruck(sd.geburtsdatum) : null)
+    setze('est1a.geburtsdatum', sd.geburtsdatum ? deutschesDatum(sd.geburtsdatum) : null)
     setze('est1a.religion', sd.religion)
     setze('est1a.beruf', sd.beruf)
     setze('est1a.strasse', sd.strasse)
@@ -190,7 +186,7 @@ export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
     setze('est1a.plz', sd.plz)
     setze('est1a.wohnort', sd.wohnort)
     const seitFeld = sd.familienstand ? SEIT_FELD[sd.familienstand] : undefined
-    if (seitFeld) setze(seitFeld, sd.familienstandSeit ? datumFuerVordruck(sd.familienstandSeit) : null)
+    if (seitFeld) setze(seitFeld, sd.familienstandSeit ? deutschesDatum(sd.familienstandSeit) : null)
     if (sd.iban?.startsWith('DE')) setze('est1a.ibanInland', sd.iban.slice(2))
     else setze('est1a.ibanAusland', sd.iban)
     if (sd.kontoinhaber) setze('est1a.kontoinhaberName', sd.kontoinhaber)
@@ -341,7 +337,7 @@ export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
       if (k.idnr) kWerte['anlKind.idnr'] = k.idnr
       if (k.vorname) kWerte['anlKind.vorname'] = k.vorname
       if (k.nachname) kWerte['anlKind.nachname'] = k.nachname
-      if (k.geburtsdatum) kWerte['anlKind.geburtsdatum'] = datumFuerVordruck(k.geburtsdatum)
+      if (k.geburtsdatum) kWerte['anlKind.geburtsdatum'] = deutschesDatum(k.geburtsdatum)
       if (k.kindergeldAnspruchEur) kWerte['anlKind.kindergeld'] = k.kindergeldAnspruchEur
       return kWerte
     })

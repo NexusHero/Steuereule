@@ -2,11 +2,11 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@steuereule/ui'
-import type { EulenKarte } from '@steuereule/core'
+import type { EulenKartenAnzeige } from '@steuereule/core'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { EulenModusScreen } from './EulenModusScreen'
 
-const KARTEN_FIXTURE: readonly EulenKarte[] = [
+const KARTEN_FIXTURE: readonly EulenKartenAnzeige[] = [
   {
     id: 'k1',
     fingerprint: 'fp-homeoffice-1',

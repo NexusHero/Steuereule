@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import { IsBoolean, IsNotEmpty } from 'class-validator'
-import type { EulenEmpfehlungWeg, EulenKarte } from '@steuereule/core'
+import type { EulenEmpfehlungWeg, EulenKartenAnzeige } from '@steuereule/core'
 
 export class SetEulenEinstellungDto {
   @ApiProperty({ type: Boolean, example: true })
@@ -31,7 +31,7 @@ export class EulenWegDto implements EulenEmpfehlungWeg {
   risiko!: 'sicher' | 'risiko'
 }
 
-export class EulenKarteDto implements EulenKarte {
+export class EulenKarteDto implements EulenKartenAnzeige {
   @ApiProperty({ type: String, example: 'eule-ra-homeoffice-2025' })
   id!: string
 
