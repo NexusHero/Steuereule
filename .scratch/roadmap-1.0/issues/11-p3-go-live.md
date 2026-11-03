@@ -57,6 +57,7 @@ sobald das Zertifikat (Ticket 07) vorliegt; bis dahin Beta kostenlos (ADR-017).
 - [x] Absicherung gegen geänderte Vordrucke: CI-Job „Vordrucke“ (vermessen.mjs --check + Lagebericht
       felder-<jahr>.lage.txt als geprüfte Referenz), Ablauf in docs/process/vordrucke-jahreswechsel.md
 - [x] Bearbeitbare PDF (AcroForm-Felder, ?bearbeitbar=true) als Zusatz zum flachen Ausdruck; ADR-0050 ergänzt
+- [ ] Agenten-Zugang (Ticket 17, ADR-0052) — der Go-Live wartet laut Entscheidung 2026-11-05 darauf
 - [ ] Anlage Kind, noch ehrlich gesperrt: anderer Elternteil im Ausland (Z. 13), volljährige Kinder
       (Z. 16 ff.), Wohnsitz des Kindes im Ausland (Z. 9); Kinderbetreuungskosten werden nicht erfasst
 - [x] Verheiratete: Veranlagungsart + Person B erfassen, dann Zeilen 19–24 ausdrucken
