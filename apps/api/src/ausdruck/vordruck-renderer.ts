@@ -31,7 +31,18 @@ const SCHRIFTGROESSE = 10
 const INNENABSTAND = 3
 
 // Order in which forms are handed in: Hauptvordruck first, then the Anlagen.
-const REIHENFOLGE = ['est-1-a', 'anlage-n', 'anlage-r']
+const REIHENFOLGE = [
+  'est-1-a',
+  'anlage-n',
+  'anlage-r',
+  'anlage-kap',
+  'anlage-n-gre',
+  'anlage-v',
+  'anlage-kind',
+  'anlage-sonderausgaben',
+  'anlage-av',
+  'anlage-vorsorgeaufwand',
+]
 
 export const FELDSAETZE: Readonly<Record<number, Feldsatz>> = { 2025: felder2025 as Feldsatz }
 
@@ -44,28 +55,39 @@ export class UeberlaufFehler extends Error {
 export interface RendererOptionen {
   /** Directory holding `<formular>.pdf` for the Feldsatz's year. */
   vorlagenVerzeichnis: URL
+  /** Repeatable form instances (e.g. multiple children or rental objects). */
+  instanzen?: Record<string, readonly FeldWerte[]> | undefined
 }
 
 export async function rendereVordrucke(feldsatz: Feldsatz, werte: FeldWerte, optionen: RendererOptionen): Promise<Uint8Array> {
   const bekannt = new Map(feldsatz.felder.map((feld) => [feld.id, feld]))
-  const unbekannt = Object.keys(werte).filter((id) => !bekannt.has(id))
-  if (unbekannt.length > 0) throw new Error(`Unbekannte Feld-IDs: ${unbekannt.join(', ')}`)
+  const alleWerte = [werte, ...Object.values(optionen.instanzen ?? {}).flat()]
+  const unbekannt = alleWerte.flatMap((w) => Object.keys(w)).filter((id) => !bekannt.has(id))
+  if (unbekannt.length > 0) throw new Error(`Unbekannte Feld-IDs: ${[...new Set(unbekannt)].join(', ')}`)
 
   const ausgabe = await PDFDocument.create()
   const schrift = await ausgabe.embedFont(StandardFonts.Helvetica)
   const ueberlaeufe: string[] = []
 
   for (const formular of REIHENFOLGE) {
-    const felder = feldsatz.felder.filter((feld) => feld.formular === formular && werte[feld.id] !== undefined)
-    if (felder.length === 0 && formular !== 'est-1-a') continue
-    const vorlage = await PDFDocument.load(readFileSync(new URL(`${formular}.pdf`, optionen.vorlagenVerzeichnis)))
-    const seiten = await ausgabe.copyPages(vorlage, vorlage.getPageIndices())
-    seiten.forEach((seite, index) => {
-      ausgabe.addPage(seite)
-      for (const feld of felder.filter((f) => f.seite === index + 1)) {
-        if (!zeichne(seite, schrift, feld, werte[feld.id]!)) ueberlaeufe.push(feld.id)
-      }
-    })
+    const listenInstanzen = optionen.instanzen?.[formular]
+    const instanzenZuRendern: readonly FeldWerte[] =
+      listenInstanzen && listenInstanzen.length > 0
+        ? listenInstanzen
+        : [werte]
+
+    for (const instanzWerte of instanzenZuRendern) {
+      const felder = feldsatz.felder.filter((feld) => feld.formular === formular && instanzWerte[feld.id] !== undefined)
+      if (felder.length === 0 && formular !== 'est-1-a') continue
+      const vorlage = await PDFDocument.load(readFileSync(new URL(`${formular}.pdf`, optionen.vorlagenVerzeichnis)))
+      const seiten = await ausgabe.copyPages(vorlage, vorlage.getPageIndices())
+      seiten.forEach((seite, index) => {
+        ausgabe.addPage(seite)
+        for (const feld of felder.filter((f) => f.seite === index + 1)) {
+          if (!zeichne(seite, schrift, feld, instanzWerte[feld.id]!)) ueberlaeufe.push(feld.id)
+        }
+      })
+    }
   }
 
   if (ueberlaeufe.length > 0) throw new UeberlaufFehler(ueberlaeufe)

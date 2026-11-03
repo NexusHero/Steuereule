@@ -991,6 +991,8 @@ export const appResources = {
         checkBescheid: 'Bescheid prüfen',
         checkKapital: 'Kapital & Depot prüfen',
         checkVermietung: 'Vermietung prüfen',
+        checkKinder: 'Kinder verwalten',
+        eulenModus: 'Eulen-Modus',
         // Ticket 10.8 M3 (ADR-022) — die Jahr-Auswahl: das gewählte Steuerjahr, bis 4 Rückjahre.
         jahrAuswahl: 'Steuerjahr wählen',
         // Ticket 10.8 (ADR-021) — der ruhige Übernahme-Hinweis: unbestätigte Posten zählen in
@@ -2072,6 +2074,8 @@ export const appResources = {
         checkBescheid: 'Review assessment',
         checkKapital: 'Review capital & brokerage',
         checkVermietung: 'Review rental property',
+        checkKinder: 'Manage children',
+        eulenModus: 'Owl Mode',
         jahrAuswahl: 'Choose tax year',
         uebernahme: {
           hinweis_one: '{{summe}} from the previous year is waiting for your confirmation.',

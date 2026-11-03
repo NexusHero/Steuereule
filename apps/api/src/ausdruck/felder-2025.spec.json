@@ -20,6 +20,16 @@
     { "id": "est1a.verwitwetSeit", "formular": "est-1-a", "seite": 1, "anker": "Verwitwet", "zeile": 18, "lage": "unter", "art": "text" },
     { "id": "est1a.geschiedenSeit", "formular": "est-1-a", "seite": 1, "anker": "Geschieden", "zeile": 18, "lage": "unter", "art": "text" },
     { "id": "est1a.getrenntSeit", "formular": "est-1-a", "seite": 1, "anker": "Dauernd", "zeile": 18, "lage": "unter", "art": "text" },
+
+    { "id": "est1a.zusammenveranlagung", "formular": "est-1-a", "seite": 1, "anker": "Zusammenveranlagung", "zeile": 19, "lage": "links", "art": "kreuz" },
+    { "id": "est1a.einzelveranlagung", "formular": "est-1-a", "seite": 1, "anker": "Einzelveranlagung", "zeile": 19, "lage": "links", "art": "kreuz" },
+    { "id": "est1a.idnrB", "formular": "est-1-a", "seite": 1, "anker": "Identifikationsnummer", "zeile": 20, "lage": "unter", "art": "text" },
+    { "id": "est1a.geburtsdatumB", "formular": "est-1-a", "seite": 1, "anker": "Geburtsdatum", "zeile": 20, "lage": "unter", "art": "text" },
+    { "id": "est1a.nameB", "formular": "est-1-a", "seite": 1, "anker": "Name", "zeile": 21, "lage": "unter", "art": "text" },
+    { "id": "est1a.vornameB", "formular": "est-1-a", "seite": 1, "anker": "Vorname", "zeile": 22, "lage": "unter", "art": "text" },
+    { "id": "est1a.religionB", "formular": "est-1-a", "seite": 1, "anker": "Religion", "zeile": 23, "lage": "rechts", "art": "text" },
+    { "id": "est1a.berufB", "formular": "est-1-a", "seite": 1, "anker": "Ausgeübter", "zeile": 24, "lage": "unter", "art": "text" },
+
     { "id": "est1a.kopfSeite2", "formular": "est-1-a", "seite": 2, "anker": "Steuernummer,", "lage": "gerahmt", "art": "text", "beginnNach": "-" },
     { "id": "est1a.ibanInland", "formular": "est-1-a", "seite": 2, "anker": "IBAN", "zeile": 30, "lage": "unter", "art": "text", "beginnNach": "E" },
     { "id": "est1a.ibanAusland", "formular": "est-1-a", "seite": 2, "anker": "IBAN", "zeile": 31, "lage": "unter", "art": "text" },
@@ -30,6 +40,7 @@
     { "id": "anlN.vorname", "formular": "anlage-n", "seite": 1, "anker": "Vorname", "zeile": 2, "lage": "unter", "art": "text" },
     { "id": "anlN.steuernummer", "formular": "anlage-n", "seite": 1, "anker": "Steuernummer", "zeile": 3, "lage": "rechts", "art": "text" },
     { "id": "anlN.personA", "formular": "anlage-n", "seite": 1, "anker": "Steuerpflichtige", "lage": "links", "art": "kreuz" },
+    { "id": "anlN.personB", "formular": "anlage-n", "seite": 1, "anker": "Ehefrau", "lage": "links", "art": "kreuz" },
     { "id": "anlN.kz110", "formular": "anlage-n", "seite": 1, "anker": "110", "zeile": 5, "lage": "rechts", "art": "euro" },
 
     { "id": "anlR.name", "formular": "anlage-r", "seite": 1, "anker": "Name", "zeile": 1, "lage": "unter", "art": "text" },
@@ -37,7 +48,62 @@
     { "id": "anlR.steuernummer", "formular": "anlage-r", "seite": 1, "anker": "Steuernummer", "zeile": 3, "lage": "rechts", "art": "text" },
     { "id": "anlR.lfdNr", "formular": "anlage-r", "seite": 1, "anker": "Anlage", "zeile": 3, "lage": "rechts", "art": "text" },
     { "id": "anlR.personA", "formular": "anlage-r", "seite": 1, "anker": "Steuerpflichtige", "lage": "links", "art": "kreuz" },
+    { "id": "anlR.personB", "formular": "anlage-r", "seite": 1, "anker": "Ehefrau", "lage": "links", "art": "kreuz" },
     { "id": "anlR.kz101", "formular": "anlage-r", "seite": 1, "anker": "101", "zeile": 4, "lage": "rechts", "art": "euro" },
-    { "id": "anlR.kz131", "formular": "anlage-r", "seite": 1, "anker": "131", "zeile": 13, "lage": "rechts", "art": "euro" }
+    { "id": "anlR.kz131", "formular": "anlage-r", "seite": 1, "anker": "131", "zeile": 13, "lage": "rechts", "art": "euro" },
+
+    { "id": "anlKap.name", "formular": "anlage-kap", "seite": 1, "anker": "Name", "zeile": 1, "lage": "unter", "art": "text" },
+    { "id": "anlKap.vorname", "formular": "anlage-kap", "seite": 1, "anker": "Vorname", "zeile": 2, "lage": "unter", "art": "text" },
+    { "id": "anlKap.steuernummer", "formular": "anlage-kap", "seite": 1, "anker": "Steuernummer", "zeile": 3, "lage": "rechts", "art": "text" },
+    { "id": "anlKap.personA", "formular": "anlage-kap", "seite": 1, "anker": "Steuerpflichtige", "lage": "links", "art": "kreuz" },
+    { "id": "anlKap.personB", "formular": "anlage-kap", "seite": 1, "anker": "Ehefrau", "lage": "links", "art": "kreuz" },
+    { "id": "anlKap.guenstigerpruefung", "formular": "anlage-kap", "seite": 1, "anker": "201/401", "zeile": 4, "lage": "rechts", "art": "kreuz" },
+    { "id": "anlKap.kz210", "formular": "anlage-kap", "seite": 1, "anker": "7", "zeile": 7, "lage": "rechts", "art": "euro" },
+    { "id": "anlKap.kz234", "formular": "anlage-kap", "seite": 2, "anker": "234/434", "zeile": 19, "lage": "rechts", "art": "euro" },
+
+    { "id": "anlNGre.name", "formular": "anlage-n-gre", "seite": 1, "anker": "Name", "zeile": 1, "lage": "unter", "art": "text" },
+    { "id": "anlNGre.vorname", "formular": "anlage-n-gre", "seite": 1, "anker": "Vorname", "zeile": 2, "lage": "unter", "art": "text" },
+    { "id": "anlNGre.steuernummer", "formular": "anlage-n-gre", "seite": 1, "anker": "Steuernummer", "zeile": 3, "lage": "rechts", "art": "text" },
+    { "id": "anlNGre.personA", "formular": "anlage-n-gre", "seite": 1, "anker": "Steuerpflichtige", "lage": "links", "art": "kreuz" },
+    { "id": "anlNGre.personB", "formular": "anlage-n-gre", "seite": 1, "anker": "Ehefrau", "lage": "links", "art": "kreuz" },
+    { "id": "anlNGre.bruttolohnEur", "formular": "anlage-n-gre", "seite": 1, "anker": "EUR", "zeile": 6, "lage": "unter", "art": "euro" },
+    { "id": "anlNGre.abzugssteuer", "formular": "anlage-n-gre", "seite": 1, "anker": "135", "zeile": 25, "vorkommen": 2, "lage": "rechts", "art": "euro" },
+
+    { "id": "anlV.name", "formular": "anlage-v", "seite": 1, "anker": "Name", "zeile": 1, "lage": "unter", "art": "text" },
+    { "id": "anlV.vorname", "formular": "anlage-v", "seite": 1, "anker": "Vorname", "zeile": 2, "lage": "unter", "art": "text" },
+    { "id": "anlV.steuernummer", "formular": "anlage-v", "seite": 1, "anker": "Steuernummer", "zeile": 3, "lage": "rechts", "art": "text" },
+    { "id": "anlV.lfdNr", "formular": "anlage-v", "seite": 1, "anker": "lfd.", "zeile": 3, "lage": "rechts", "art": "text" },
+    { "id": "anlV.strasse", "formular": "anlage-v", "seite": 1, "anker": "Straße,", "zeile": 4, "lage": "unter", "art": "text" },
+    { "id": "anlV.plz", "formular": "anlage-v", "seite": 1, "anker": "Postleitzahl", "zeile": 5, "lage": "unter", "art": "text", "vorkommen": 1 },
+    { "id": "anlV.ort", "formular": "anlage-v", "seite": 1, "anker": "Ort", "zeile": 5, "lage": "unter", "art": "text" },
+    { "id": "anlV.wohnflaeche", "formular": "anlage-v", "seite": 1, "anker": "54", "zeile": 11, "lage": "rechts", "art": "text" },
+    { "id": "anlV.mieteinnahmen", "formular": "anlage-v", "seite": 1, "anker": "14", "zeile": 14, "lage": "rechts", "art": "euro" },
+    { "id": "anlV.afa", "formular": "anlage-v", "seite": 2, "anker": "linear", "zeile": 33, "lage": "rechts", "art": "euro" },
+    { "id": "anlV.werbungskosten", "formular": "anlage-v", "seite": 4, "anker": "Summe", "zeile": 83, "lage": "rechts", "art": "euro" },
+
+    { "id": "anlKind.name", "formular": "anlage-kind", "seite": 1, "anker": "Name", "zeile": 1, "lage": "unter", "art": "text" },
+    { "id": "anlKind.vornameEltern", "formular": "anlage-kind", "seite": 1, "anker": "Vorname", "zeile": 2, "lage": "unter", "art": "text" },
+    { "id": "anlKind.steuernummer", "formular": "anlage-kind", "seite": 1, "anker": "Steuernummer", "zeile": 3, "lage": "rechts", "art": "text" },
+    { "id": "anlKind.lfdNr", "formular": "anlage-kind", "seite": 1, "anker": "lfd.", "zeile": 3, "lage": "rechts", "art": "text" },
+    { "id": "anlKind.idnr", "formular": "anlage-kind", "seite": 1, "anker": "Identifikationsnummer", "zeile": 4, "lage": "rechts", "art": "text" },
+    { "id": "anlKind.vorname", "formular": "anlage-kind", "seite": 1, "anker": "Vorname", "zeile": 5, "lage": "unter", "art": "text" },
+    { "id": "anlKind.nachname", "formular": "anlage-kind", "seite": 1, "anker": "ggf.", "zeile": 5, "lage": "unter", "art": "text" },
+    { "id": "anlKind.geburtsdatum", "formular": "anlage-kind", "seite": 1, "anker": "16", "zeile": 6, "lage": "rechts", "art": "text" },
+    { "id": "anlKind.kindergeld", "formular": "anlage-kind", "seite": 1, "anker": "15", "zeile": 6, "lage": "rechts", "art": "euro" },
+
+    { "id": "anlSo.name", "formular": "anlage-sonderausgaben", "seite": 1, "anker": "Name", "zeile": 1, "lage": "unter", "art": "text" },
+    { "id": "anlSo.vorname", "formular": "anlage-sonderausgaben", "seite": 1, "anker": "Vorname", "zeile": 2, "lage": "unter", "art": "text" },
+    { "id": "anlSo.steuernummer", "formular": "anlage-sonderausgaben", "seite": 1, "anker": "Steuernummer", "zeile": 3, "lage": "rechts", "art": "text" },
+    { "id": "anlSo.spenden", "formular": "anlage-sonderausgaben", "seite": 1, "anker": "123", "zeile": 5, "lage": "rechts", "art": "euro" },
+
+    { "id": "anlAv.name", "formular": "anlage-av", "seite": 1, "anker": "Name", "zeile": 1, "lage": "unter", "art": "text" },
+    { "id": "anlAv.vorname", "formular": "anlage-av", "seite": 1, "anker": "Vorname", "zeile": 2, "lage": "unter", "art": "text" },
+    { "id": "anlAv.steuernummer", "formular": "anlage-av", "seite": 1, "anker": "Steuernummer", "zeile": 3, "lage": "rechts", "art": "text" },
+    { "id": "anlAv.personA", "formular": "anlage-av", "seite": 1, "anker": "106", "zeile": 4, "lage": "rechts", "art": "kreuz" },
+
+    { "id": "anlVor.name", "formular": "anlage-vorsorgeaufwand", "seite": 1, "anker": "Name", "zeile": 1, "lage": "unter", "art": "text" },
+    { "id": "anlVor.vorname", "formular": "anlage-vorsorgeaufwand", "seite": 1, "anker": "Vorname", "zeile": 2, "lage": "unter", "art": "text" },
+    { "id": "anlVor.steuernummer", "formular": "anlage-vorsorgeaufwand", "seite": 1, "anker": "Steuernummer", "zeile": 3, "lage": "rechts", "art": "text" },
+    { "id": "anlVor.kvPv", "formular": "anlage-vorsorgeaufwand", "seite": 1, "anker": "320", "zeile": 11, "lage": "rechts", "art": "euro" }
   ]
 }

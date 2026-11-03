@@ -5,10 +5,18 @@ import { useState } from 'react'
 import { Pressable, ScrollView, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { Button, Chip, Feld, Input, Option, useBreakpoint, useTheme } from '@steuereule/ui'
+import { Button, Card, Chip, Feld, Input, Option, useBreakpoint, useTheme } from '@steuereule/ui'
 import { FAMILIENSTAENDE, RELIGIONSSCHLUESSEL } from '@steuereule/core'
-import { useStammdatenControllerLese, useStammdatenControllerSpeichere } from '@steuereule/api-client'
+import {
+  getKopplungControllerGetQueryKey,
+  useKopplungControllerGet,
+  useKopplungControllerSet,
+  useKopplungControllerUpdatePersonB,
+  useStammdatenControllerLese,
+  useStammdatenControllerSpeichere,
+} from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
+import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { makeDatenschutzStyles } from '../datenschutz/styles'
 import { ErrorState, LoadingState } from '../shared/ScreenState'
 import { zuEntwurf, zuPutDto, type StammdatenEntwurf } from './stammdatenMapping'
@@ -110,6 +118,7 @@ export function StammdatenScreen({ onZurueck }: StammdatenScreenProps) {
         </View>
       </Feld>
       {form.familienstand !== null && form.familienstand !== 'ledig' ? textFeld('familienstandSeit') : null}
+      {form.familienstand === 'verheiratet' ? <SteuerjahrKopplungSection taxYear={CURRENT_TAX_YEAR} /> : null}
 
       <Feld label={t('stammdaten.religion')}>
         <Text style={styles.hint}>{t('stammdaten.religionHinweis')}</Text>
@@ -147,5 +156,89 @@ export function StammdatenScreen({ onZurueck }: StammdatenScreenProps) {
         </Button>
       </View>
     </ScrollView>
+  )
+}
+
+function SteuerjahrKopplungSection({ taxYear }: { readonly taxYear: number }) {
+  const theme = useTheme()
+  const queryClient = useQueryClient()
+  const kopplungQuery = useKopplungControllerGet(taxYear)
+  const setKopplung = useKopplungControllerSet()
+  const updatePersonB = useKopplungControllerUpdatePersonB()
+
+  const current = kopplungQuery.data?.status === 200 ? kopplungQuery.data.data : null
+  const veranlagungsart = current?.veranlagungsart ?? 'keine'
+  const personB = current?.personB
+
+  const [vornameB, setVornameB] = useState(personB?.firstName ?? '')
+  const [nachnameB, setNachnameB] = useState(personB?.lastName ?? '')
+  const [steuerIdB, setSteuerIdB] = useState(personB?.steuerId ?? '')
+  const [geburtsdatumB, setGeburtsdatumB] = useState(personB?.geburtsdatum ?? '')
+  const [berufB, setBerufB] = useState(personB?.beruf ?? '')
+
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: getKopplungControllerGetQueryKey(taxYear) })
+  }
+
+  const wähleArt = (art: 'zusammen' | 'einzel') => {
+    setKopplung.mutate({ jahr: taxYear, data: { veranlagungsart: art } }, { onSuccess: invalidate })
+  }
+
+  const speicherePersonB = () => {
+    updatePersonB.mutate(
+      {
+        jahr: taxYear,
+        data: {
+          firstName: vornameB || null,
+          lastName: nachnameB || null,
+          steuerId: steuerIdB || null,
+          geburtsdatum: geburtsdatumB || null,
+          beruf: berufB || null,
+        },
+      },
+      { onSuccess: invalidate },
+    )
+  }
+
+  return (
+    <Card style={{ marginVertical: theme.space.s3, padding: theme.space.s4 }}>
+      <Feld label="Veranlagungsart & Partner (Person B, Zeile 19–24 ESt 1 A)">
+        <View style={{ flexDirection: 'row', gap: theme.space.s2, marginBottom: theme.space.s3 }}>
+          <Chip aktiv={veranlagungsart === 'zusammen'} onPress={() => wähleArt('zusammen')} testID="kopplung-zusammen">
+            Zusammenveranlagung
+          </Chip>
+          <Chip aktiv={veranlagungsart === 'einzel'} onPress={() => wähleArt('einzel')} testID="kopplung-einzel">
+            Einzelveranlagung
+          </Chip>
+        </View>
+      </Feld>
+      {veranlagungsart === 'zusammen' ? (
+        <View>
+          {current?.einladungsCode ? (
+            <Text style={{ fontFamily: theme.font.mono, fontSize: theme.size.xs, color: theme.color.tinte2, marginBottom: theme.space.s2 }}>
+              {`Einladungscode für Partner-Account: ${current.einladungsCode}`}
+            </Text>
+          ) : null}
+          <Feld label="Vorname Partner (Person B)">
+            <Input value={vornameB || (personB?.firstName ?? '')} onChange={setVornameB} testID="personb-vorname" />
+          </Feld>
+          <Feld label="Nachname Partner (Person B)">
+            <Input value={nachnameB || (personB?.lastName ?? '')} onChange={setNachnameB} testID="personb-nachname" />
+          </Feld>
+          <Feld label="Steuer-ID Partner (11 Ziffern)">
+            <Input type="numeric" value={steuerIdB || (personB?.steuerId ?? '')} onChange={setSteuerIdB} testID="personb-steuerid" />
+          </Feld>
+          <Feld label="Geburtsdatum Partner (JJJJ-MM-TT)">
+            <Input value={geburtsdatumB || (personB?.geburtsdatum ?? '')} onChange={setGeburtsdatumB} testID="personb-geburtsdatum" />
+          </Feld>
+          <Feld label="Beruf Partner">
+            <Input value={berufB || (personB?.beruf ?? '')} onChange={setBerufB} testID="personb-beruf" />
+          </Feld>
+          <Button variante="ghost" onPress={speicherePersonB} testID="personb-speichern">
+            Partner-Angaben übernehmen
+          </Button>
+        </View>
+      ) : null}
+    </Card>
   )
 }

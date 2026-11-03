@@ -347,4 +347,46 @@ export default defineConfig({
       },
     },
   },
+  kinder: {
+    input: { target: '../../apps/api/openapi.json', filters: { tags: ['kinder'] } },
+    output: {
+      target: './src/generated/kinder.ts',
+      mode: 'split',
+      client: 'react-query',
+      httpClient: 'fetch',
+      mock: true,
+      override: {
+        mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        mock: { required: true },
+      },
+    },
+  },
+  kopplung: {
+    input: { target: '../../apps/api/openapi.json', filters: { tags: ['kopplung'] } },
+    output: {
+      target: './src/generated/kopplung.ts',
+      mode: 'split',
+      client: 'react-query',
+      httpClient: 'fetch',
+      mock: true,
+      override: {
+        mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        mock: { required: true },
+      },
+    },
+  },
+  'eulen-modus': {
+    input: { target: '../../apps/api/openapi.json', filters: { tags: ['eulen-modus'] } },
+    output: {
+      target: './src/generated/eulen-modus.ts',
+      mode: 'split',
+      client: 'react-query',
+      httpClient: 'fetch',
+      mock: true,
+      override: {
+        mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        mock: { required: true },
+      },
+    },
+  },
 })

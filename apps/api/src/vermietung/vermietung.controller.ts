@@ -16,6 +16,7 @@ import { ParseSteuerjahrPipe } from '../cockpit/parse-steuerjahr.pipe.js'
 import { ParseVermietungFeldPipe } from './parse-vermietung-feld.pipe.js'
 import { VermietungService } from './vermietung.service.js'
 import { PutVermietungFeldDto } from './dto/vermietung-feld.dto.js'
+import { PutVermietungAdresseDto } from './dto/vermietung-adresse.dto.js'
 import { VermietungResponseDto } from './dto/vermietung-response.dto.js'
 
 @ApiTags('vermietung')
@@ -80,5 +81,22 @@ export class VermietungController {
     @Body() dto: PutVermietungFeldDto,
   ): Promise<VermietungResponseDto> {
     return this.vermietungService.setFeld(userId, jahr, objektId, feld, dto)
+  }
+
+  @Put(':jahr/vermietung/objekte/:objektId/adresse')
+  @HttpCode(200)
+  @RequiresAccount()
+  @ApiParam({ name: 'jahr', type: Number, example: 2026 })
+  @ApiParam({ name: 'objektId', type: String, example: '9c3f…' })
+  @ApiBody({ type: PutVermietungAdresseDto })
+  @ApiOkResponse({ type: VermietungResponseDto })
+  @ApiUnauthorizedResponse({ description: 'Guest session — this endpoint requires a signed-in account.' })
+  setAdresse(
+    @CurrentUser() userId: string,
+    @Param('jahr', ParseSteuerjahrPipe) jahr: number,
+    @Param('objektId') objektId: string,
+    @Body() dto: PutVermietungAdresseDto,
+  ): Promise<VermietungResponseDto> {
+    return this.vermietungService.setAdresse(userId, jahr, objektId, dto)
   }
 }

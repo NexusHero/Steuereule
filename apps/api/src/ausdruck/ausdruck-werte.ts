@@ -3,6 +3,63 @@
 // Lohnsteuer's cents) is left empty rather than printed with a false precision.
 import type { FeldWerte } from './vordruck-renderer.js'
 
+export interface PersonBFakten {
+  firstName: string | null
+  lastName: string | null
+  steuerId: string | null
+  geburtsdatum: string | null
+  religion?: string | null
+  beruf?: string | null
+  bruttoarbeitslohn?: string | null
+  rente?: { rentenart: string | null; jahresbetrag: string | null } | null
+}
+
+export interface KopplungFakten {
+  veranlagungsart: 'einzel' | 'zusammen'
+  personB?: PersonBFakten | null
+}
+
+export interface KindFakten {
+  lfdNr?: string
+  vorname: string | null
+  nachname: string | null
+  geburtsdatum: string | null
+  idnr: string | null
+  kindergeldAnspruchEur?: string | null
+}
+
+export interface VermietungFakten {
+  lfdNr?: string
+  strasse: string | null
+  plz: string | null
+  ort: string | null
+  wohnflaeche: string | null
+  mieteinnahmen: string | null
+  afa: string | null
+  werbungskosten: string | null
+}
+
+export interface KapitalFakten {
+  kapitalertraege: string | null
+  abzugssteuer?: string | null
+  guenstigerpruefung?: boolean
+}
+
+export interface ChLohnausweisFakten {
+  bruttolohnEur: string | null
+  abzugssteuerEur?: string | null
+  vorsorgeEur?: string | null
+  nichtrueckkehrtage?: string | null
+}
+
+export interface SonderausgabenFakten {
+  spenden?: string | null
+}
+
+export interface VorsorgeaufwandFakten {
+  kvPv?: string | null
+}
+
 export interface AusdruckFakten {
   profil: { firstName: string | null; lastName: string | null; steuerId: string | null; steuernummer: string | null }
   stammdaten: {
@@ -27,6 +84,14 @@ export interface AusdruckFakten {
   rente?: { rentenart: string | null; jahresbetrag: string | null } | null
   /** Facts the user recorded for verticals whose Anlage is not printable yet. */
   nochNichtDruckbar?: readonly ('anlageV' | 'anlageKap' | 'anlageNGre')[]
+  kopplung?: KopplungFakten | null
+  kapital?: KapitalFakten | null
+  chLohnausweis?: ChLohnausweisFakten | null
+  vermietung?: readonly VermietungFakten[] | null
+  kinder?: readonly KindFakten[] | null
+  sonderausgaben?: SonderausgabenFakten | null
+  riester?: boolean | null
+  vorsorgeaufwand?: VorsorgeaufwandFakten | null
 }
 
 /** Anlage R line per Rentenart. Gesetzliche and Witwen-/Waisenrente go through the
@@ -47,6 +112,7 @@ const RENTE_ANDERER_VORDRUCK: Record<string, string> = {
 
 export interface AusdruckWerte {
   werte: FeldWerte
+  instanzen?: Record<string, FeldWerte[]>
   /** What the Hauptvordruck cannot do without and is still missing — the Ausdruck refuses until empty. */
   fehlend: string[]
 }
@@ -73,14 +139,33 @@ export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
   if (!profil.firstName) fehlend.push('vorname')
   if (!profil.steuerId) fehlend.push('steuerId')
   for (const feld of PFLICHT_STAMMDATEN) if (!sd?.[feld]) fehlend.push(feld)
-  // Married: Zeile 19 needs the Veranlagungsart and a joint return needs Person B. The app
-  // collects neither yet, and ticking Einzelveranlagung for the user would be a tax
-  // decision (Splitting) made silently — so the printout waits instead.
-  if (sd?.familienstand === 'verheiratet') fehlend.push('ehegatte')
 
   const werte: Record<string, string | true> = {}
+  const instanzen: Record<string, FeldWerte[]> = {}
   const setze = (id: string, wert: string | null | undefined) => {
     if (wert) werte[id] = wert
+  }
+
+  // Married: Zeile 19 needs the Veranlagungsart and a joint return needs Person B facts.
+  if (sd?.familienstand === 'verheiratet') {
+    if (!fakten.kopplung) {
+      fehlend.push('ehegatte')
+    } else if (fakten.kopplung.veranlagungsart === 'zusammen') {
+      werte['est1a.zusammenveranlagung'] = true
+      const b = fakten.kopplung.personB
+      if (!b || !b.lastName || !b.firstName || !b.steuerId || !b.geburtsdatum) {
+        fehlend.push('personB')
+      } else {
+        setze('est1a.idnrB', b.steuerId)
+        setze('est1a.geburtsdatumB', datumFuerVordruck(b.geburtsdatum))
+        setze('est1a.nameB', b.lastName)
+        setze('est1a.vornameB', b.firstName)
+        setze('est1a.religionB', b.religion)
+        setze('est1a.berufB', b.beruf)
+      }
+    } else if (fakten.kopplung.veranlagungsart === 'einzel') {
+      werte['est1a.einzelveranlagung'] = true
+    }
   }
 
   werte['est1a.einkommensteuererklaerung'] = true
@@ -114,12 +199,32 @@ export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
 
   // Anlage N only when there is something for it — a form without any entry is not handed in.
   const brutto = fakten.bruttoarbeitslohn
-  if (brutto !== null && /^\d+$/.test(brutto)) {
-    werte['anlN.kz110'] = brutto
+  const bruttoB = fakten.kopplung?.veranlagungsart === 'zusammen' ? fakten.kopplung.personB?.bruttoarbeitslohn ?? null : null
+  const hatBruttoA = brutto !== null && /^\d+$/.test(brutto)
+  const hatBruttoB = bruttoB !== null && /^\d+$/.test(bruttoB)
+
+  if (hatBruttoA && !hatBruttoB) {
+    werte['anlN.kz110'] = brutto!
     werte['anlN.personA'] = true
     setze('anlN.name', profil.lastName)
     setze('anlN.vorname', profil.firstName)
     setze('anlN.steuernummer', profil.steuernummer)
+  } else if (hatBruttoB) {
+    const nInstanzen: FeldWerte[] = []
+    if (hatBruttoA) {
+      const nA: Record<string, string | true> = { 'anlN.kz110': brutto!, 'anlN.personA': true }
+      if (profil.lastName) nA['anlN.name'] = profil.lastName
+      if (profil.firstName) nA['anlN.vorname'] = profil.firstName
+      if (profil.steuernummer) nA['anlN.steuernummer'] = profil.steuernummer
+      nInstanzen.push(nA)
+    }
+    const b = fakten.kopplung?.personB
+    const nB: Record<string, string | true> = { 'anlN.kz110': bruttoB!, 'anlN.personB': true }
+    if (b?.lastName) nB['anlN.name'] = b.lastName
+    if (b?.firstName) nB['anlN.vorname'] = b.firstName
+    if (profil.steuernummer) nB['anlN.steuernummer'] = profil.steuernummer
+    nInstanzen.push(nB)
+    instanzen['anlage-n'] = nInstanzen
   }
 
   // Recorded income without a printable Anlage would make the return silently incomplete:
@@ -127,19 +232,146 @@ export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
   fehlend.push(...(fakten.nochNichtDruckbar ?? []))
 
   const rente = fakten.rente
+  const renteB = fakten.kopplung?.veranlagungsart === 'zusammen' ? fakten.kopplung.personB?.rente ?? null : null
   if (rente?.rentenart) {
     const andererVordruck = RENTE_ANDERER_VORDRUCK[rente.rentenart]
     if (andererVordruck) fehlend.push(andererVordruck)
-    const kennzahl = RENTE_KENNZAHL[rente.rentenart]
-    if (kennzahl && rente.jahresbetrag !== null && /^\d+$/.test(rente.jahresbetrag)) {
-      werte[kennzahl] = rente.jahresbetrag
-      werte['anlR.personA'] = true
-      werte['anlR.lfdNr'] = '1'
-      setze('anlR.name', profil.lastName)
-      setze('anlR.vorname', profil.firstName)
-      setze('anlR.steuernummer', profil.steuernummer)
+  }
+  if (renteB?.rentenart) {
+    const andererVordruckB = RENTE_ANDERER_VORDRUCK[renteB.rentenart]
+    if (andererVordruckB && !fehlend.includes(andererVordruckB)) fehlend.push(andererVordruckB)
+  }
+
+  const kennzahlA = rente?.rentenart ? RENTE_KENNZAHL[rente.rentenart] : undefined
+  const hatRenteA = Boolean(kennzahlA && rente?.jahresbetrag !== null && rente?.jahresbetrag !== undefined && /^\d+$/.test(rente.jahresbetrag))
+  const kennzahlB = renteB?.rentenart ? RENTE_KENNZAHL[renteB.rentenart] : undefined
+  const hatRenteB = Boolean(kennzahlB && renteB?.jahresbetrag !== null && renteB?.jahresbetrag !== undefined && /^\d+$/.test(renteB.jahresbetrag))
+
+  if (hatRenteA && !hatRenteB) {
+    werte[kennzahlA!] = rente!.jahresbetrag!
+    werte['anlR.personA'] = true
+    werte['anlR.lfdNr'] = '1'
+    setze('anlR.name', profil.lastName)
+    setze('anlR.vorname', profil.firstName)
+    setze('anlR.steuernummer', profil.steuernummer)
+  } else if (hatRenteB) {
+    const rInstanzen: FeldWerte[] = []
+    if (hatRenteA) {
+      const rA: Record<string, string | true> = {
+        [kennzahlA!]: rente!.jahresbetrag!,
+        'anlR.personA': true,
+        'anlR.lfdNr': '1',
+      }
+      if (profil.lastName) rA['anlR.name'] = profil.lastName
+      if (profil.firstName) rA['anlR.vorname'] = profil.firstName
+      if (profil.steuernummer) rA['anlR.steuernummer'] = profil.steuernummer
+      rInstanzen.push(rA)
+    }
+    const b = fakten.kopplung?.personB
+    const rB: Record<string, string | true> = {
+      [kennzahlB!]: renteB!.jahresbetrag!,
+      'anlR.personB': true,
+      'anlR.lfdNr': '1',
+    }
+    if (b?.lastName) rB['anlR.name'] = b.lastName
+    if (b?.firstName) rB['anlR.vorname'] = b.firstName
+    if (profil.steuernummer) rB['anlR.steuernummer'] = profil.steuernummer
+    rInstanzen.push(rB)
+    instanzen['anlage-r'] = rInstanzen
+  }
+
+  // Anlage KAP
+  if (fakten.kapital?.kapitalertraege && /^\d+$/.test(fakten.kapital.kapitalertraege)) {
+    werte['anlKap.personA'] = true
+    setze('anlKap.name', profil.lastName)
+    setze('anlKap.vorname', profil.firstName)
+    setze('anlKap.steuernummer', profil.steuernummer)
+    werte['anlKap.guenstigerpruefung'] = true
+    werte['anlKap.kz210'] = fakten.kapital.kapitalertraege
+    if (fakten.kapital.abzugssteuer && /^\d+$/.test(fakten.kapital.abzugssteuer)) {
+      werte['anlKap.kz234'] = fakten.kapital.abzugssteuer
     }
   }
 
-  return { werte, fehlend }
+  // Anlage N-Gre (Grenzgänger Schweiz)
+  if (fakten.chLohnausweis?.bruttolohnEur && /^\d+$/.test(fakten.chLohnausweis.bruttolohnEur)) {
+    werte['anlNGre.personA'] = true
+    setze('anlNGre.name', profil.lastName)
+    setze('anlNGre.vorname', profil.firstName)
+    setze('anlNGre.steuernummer', profil.steuernummer)
+    werte['anlNGre.bruttolohnEur'] = fakten.chLohnausweis.bruttolohnEur
+    if (fakten.chLohnausweis.abzugssteuerEur && /^\d+$/.test(fakten.chLohnausweis.abzugssteuerEur)) {
+      werte['anlNGre.abzugssteuer'] = fakten.chLohnausweis.abzugssteuerEur
+    }
+    if (fakten.chLohnausweis.vorsorgeEur && /^\d+$/.test(fakten.chLohnausweis.vorsorgeEur)) {
+      werte['anlNGre.vorsorge'] = fakten.chLohnausweis.vorsorgeEur
+    }
+    if (fakten.chLohnausweis.nichtrueckkehrtage && /^\d+$/.test(fakten.chLohnausweis.nichtrueckkehrtage)) {
+      werte['anlNGre.nichtrueckkehrtage'] = fakten.chLohnausweis.nichtrueckkehrtage
+    }
+  }
+
+  // Anlage V (Vermietung)
+  if (fakten.vermietung && fakten.vermietung.length > 0) {
+    instanzen['anlage-v'] = fakten.vermietung.map((obj, i) => {
+      const vWerte: Record<string, string | true> = {}
+      if (profil.lastName) vWerte['anlV.name'] = profil.lastName
+      if (profil.firstName) vWerte['anlV.vorname'] = profil.firstName
+      if (profil.steuernummer) vWerte['anlV.steuernummer'] = profil.steuernummer
+      vWerte['anlV.lfdNr'] = obj.lfdNr ?? String(i + 1)
+      if (obj.strasse) vWerte['anlV.strasse'] = obj.strasse
+      if (obj.plz) vWerte['anlV.plz'] = obj.plz
+      if (obj.ort) vWerte['anlV.ort'] = obj.ort
+      if (obj.wohnflaeche) vWerte['anlV.wohnflaeche'] = obj.wohnflaeche
+      if (obj.mieteinnahmen) vWerte['anlV.mieteinnahmen'] = obj.mieteinnahmen
+      if (obj.afa) vWerte['anlV.afa'] = obj.afa
+      if (obj.werbungskosten) vWerte['anlV.werbungskosten'] = obj.werbungskosten
+      return vWerte
+    })
+  }
+
+  // Anlage Kind
+  if (fakten.kinder && fakten.kinder.length > 0) {
+    instanzen['anlage-kind'] = fakten.kinder.map((k, i) => {
+      const kWerte: Record<string, string | true> = {}
+      if (profil.lastName) kWerte['anlKind.name'] = profil.lastName
+      if (profil.firstName) kWerte['anlKind.vornameEltern'] = profil.firstName
+      if (profil.steuernummer) kWerte['anlKind.steuernummer'] = profil.steuernummer
+      kWerte['anlKind.lfdNr'] = k.lfdNr ?? String(i + 1)
+      if (k.idnr) kWerte['anlKind.idnr'] = k.idnr
+      if (k.vorname) kWerte['anlKind.vorname'] = k.vorname
+      if (k.nachname) kWerte['anlKind.nachname'] = k.nachname
+      if (k.geburtsdatum) kWerte['anlKind.geburtsdatum'] = datumFuerVordruck(k.geburtsdatum)
+      if (k.kindergeldAnspruchEur) kWerte['anlKind.kindergeld'] = k.kindergeldAnspruchEur
+      return kWerte
+    })
+  }
+
+  // Anlage Sonderausgaben
+  if (fakten.sonderausgaben?.spenden && /^\d+$/.test(fakten.sonderausgaben.spenden)) {
+    setze('anlSo.name', profil.lastName)
+    setze('anlSo.vorname', profil.firstName)
+    setze('anlSo.steuernummer', profil.steuernummer)
+    werte['anlSo.spenden'] = fakten.sonderausgaben.spenden
+  }
+
+  // Anlage AV (Riester)
+  if (fakten.riester) {
+    setze('anlAv.name', profil.lastName)
+    setze('anlAv.vorname', profil.firstName)
+    setze('anlAv.steuernummer', profil.steuernummer)
+    werte['anlAv.personA'] = true
+  }
+
+  // Anlage Vorsorgeaufwand
+  if (fakten.vorsorgeaufwand?.kvPv && /^\d+$/.test(fakten.vorsorgeaufwand.kvPv)) {
+    setze('anlVor.name', profil.lastName)
+    setze('anlVor.vorname', profil.firstName)
+    setze('anlVor.steuernummer', profil.steuernummer)
+    werte['anlVor.kvPv'] = fakten.vorsorgeaufwand.kvPv
+  }
+
+  const ergebnis: AusdruckWerte = { werte, fehlend }
+  if (Object.keys(instanzen).length > 0) ergebnis.instanzen = instanzen
+  return ergebnis
 }

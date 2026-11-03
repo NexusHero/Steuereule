@@ -4,7 +4,7 @@ import type { ExportTaxDataEntry, ExportTaxDataValue } from './export/export-doc
 import type { TaxDataExportRepository } from './tax-data-export.repository.js'
 
 // Technical keys carry no information about the person and would only leak internals.
-const OMITTED_FIELDS = new Set(['id', 'userId', 'steuerjahr'])
+const OMITTED_FIELDS = new Set(['id', 'userId', 'personAUserId', 'personBUserId', 'steuerjahr'])
 
 type Row = Record<string, unknown> & { steuerjahr?: number | null }
 
@@ -24,7 +24,7 @@ export class PrismaTaxDataExportRepository implements TaxDataExportRepository {
 
   async findAllForUser(userId: string): Promise<ExportTaxDataEntry[]> {
     const where = { userId }
-    const [steuerjahre, antworten, belege, lstb, ch, rente, kapital, vermietung, bescheide, uebernahme, stammdaten] =
+    const [steuerjahre, antworten, belege, lstb, ch, rente, kapital, vermietung, bescheide, uebernahme, stammdaten, kinder, kopplungen, eulenEinstellung, eulenVerwuerfe] =
       await Promise.all([
         this.prisma.taxYear.findMany({ where }),
         this.prisma.interviewAnswer.findMany({ where }),
@@ -37,6 +37,12 @@ export class PrismaTaxDataExportRepository implements TaxDataExportRepository {
         this.prisma.bescheid.findMany({ where }),
         this.prisma.uebernahmeKennzeichnung.findMany({ where }),
         this.prisma.stammdaten.findMany({ where }),
+        this.prisma.kind.findMany({ where }),
+        this.prisma.steuerjahrKopplung.findMany({
+          where: { OR: [{ personAUserId: userId }, { personBUserId: userId }] },
+        }),
+        this.prisma.eulenEinstellung.findMany({ where }),
+        this.prisma.eulenKartenVerwurf.findMany({ where }),
       ])
 
     const entries = [
@@ -51,6 +57,10 @@ export class PrismaTaxDataExportRepository implements TaxDataExportRepository {
       ...bescheide.map((row) => toExportEntry('Steuerbescheid', row)),
       ...uebernahme.map((row) => toExportEntry('Jahresübernahme', row)),
       ...stammdaten.map((row) => toExportEntry('Erklärungs-Stammdaten', row)),
+      ...kinder.map((row) => toExportEntry('Kind', row)),
+      ...kopplungen.map((row) => toExportEntry('Steuerjahr-Kopplung', row)),
+      ...eulenEinstellung.map((row) => toExportEntry('Eulen-Modus-Einstellung', row)),
+      ...eulenVerwuerfe.map((row) => toExportEntry('Eulen-Modus-Kartenverwurf', row)),
     ]
     // Stable order: by tax year (yearless Belege last), then area.
     return entries.sort(

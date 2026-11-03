@@ -841,6 +841,59 @@
         ]
       }
     },
+    "/v1/steuerjahre/{jahr}/vermietung/objekte/{objektId}/adresse": {
+      "put": {
+        "operationId": "VermietungController_setAdresse",
+        "parameters": [
+          {
+            "name": "objektId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": "9c3f…",
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutVermietungAdresseDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VermietungResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "vermietung"
+        ]
+      }
+    },
     "/v1/steuerjahre/{jahr}/ch-lohnausweis": {
       "get": {
         "operationId": "ChLohnausweisController_get",
@@ -1923,6 +1976,465 @@
           "ausdruck"
         ]
       }
+    },
+    "/v1/steuerjahre/{jahr}/kinder": {
+      "get": {
+        "operationId": "KinderController_list",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KinderResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Requires account."
+          }
+        },
+        "tags": [
+          "kinder"
+        ]
+      },
+      "post": {
+        "operationId": "KinderController_create",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateKindDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KinderResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Requires account."
+          }
+        },
+        "tags": [
+          "kinder"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/kinder/{id}": {
+      "put": {
+        "operationId": "KinderController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateKindDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KinderResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Requires account."
+          }
+        },
+        "tags": [
+          "kinder"
+        ]
+      },
+      "delete": {
+        "operationId": "KinderController_delete",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KinderResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Requires account."
+          }
+        },
+        "tags": [
+          "kinder"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/kopplung": {
+      "get": {
+        "operationId": "KopplungController_get",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KopplungResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Requires account."
+          }
+        },
+        "tags": [
+          "kopplung"
+        ]
+      },
+      "put": {
+        "operationId": "KopplungController_set",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetKopplungDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KopplungResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Requires account."
+          }
+        },
+        "tags": [
+          "kopplung"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/kopplung/person-b": {
+      "put": {
+        "operationId": "KopplungController_updatePersonB",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KopplungPersonBDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KopplungResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Requires account."
+          }
+        },
+        "tags": [
+          "kopplung"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/kopplung/beitreten/{code}": {
+      "post": {
+        "operationId": "KopplungController_joinWithCode",
+        "parameters": [
+          {
+            "name": "code",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": "A1B2C3D4",
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KopplungResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Requires account."
+          }
+        },
+        "tags": [
+          "kopplung"
+        ]
+      }
+    },
+    "/v1/eulen-modus/einstellung": {
+      "get": {
+        "operationId": "EulenModusController_getEinstellung",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EulenEinstellungResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Requires account."
+          }
+        },
+        "tags": [
+          "eulen-modus"
+        ]
+      },
+      "put": {
+        "operationId": "EulenModusController_setEinstellung",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetEulenEinstellungDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EulenEinstellungResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Requires account."
+          }
+        },
+        "tags": [
+          "eulen-modus"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/eulen-karten": {
+      "get": {
+        "operationId": "EulenModusController_getKarten",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EulenKartenResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Requires account."
+          }
+        },
+        "tags": [
+          "eulen-modus"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/eulen-karten/{fingerprint}/verwerfen": {
+      "post": {
+        "operationId": "EulenModusController_verwerfeKarte",
+        "parameters": [
+          {
+            "name": "fingerprint",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": "1234abcd5678efgh",
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Card successfully dismissed."
+          },
+          "401": {
+            "description": "Requires account."
+          }
+        },
+        "tags": [
+          "eulen-modus"
+        ]
+      }
     }
   },
   "info": {
@@ -3002,6 +3514,26 @@
           "werbungskosten": {
             "$ref": "#/components/schemas/VermietungFeldDto"
           },
+          "strasse": {
+            "type": "string",
+            "nullable": true
+          },
+          "hausnummer": {
+            "type": "string",
+            "nullable": true
+          },
+          "plz": {
+            "type": "string",
+            "nullable": true
+          },
+          "ort": {
+            "type": "string",
+            "nullable": true
+          },
+          "wohnflaeche": {
+            "type": "string",
+            "nullable": true
+          },
           "fakten": {
             "$ref": "#/components/schemas/VermietungsobjektFaktenDto"
           }
@@ -3012,6 +3544,11 @@
           "anschaffungskosten",
           "baujahr",
           "werbungskosten",
+          "strasse",
+          "hausnummer",
+          "plz",
+          "ort",
+          "wohnflaeche",
           "fakten"
         ]
       },
@@ -3117,6 +3654,31 @@
         "required": [
           "kind"
         ]
+      },
+      "PutVermietungAdresseDto": {
+        "type": "object",
+        "properties": {
+          "strasse": {
+            "type": "string",
+            "example": "Musterstraße"
+          },
+          "hausnummer": {
+            "type": "string",
+            "example": "12a"
+          },
+          "plz": {
+            "type": "string",
+            "example": "10115"
+          },
+          "ort": {
+            "type": "string",
+            "example": "Berlin"
+          },
+          "wohnflaeche": {
+            "type": "string",
+            "example": "85"
+          }
+        }
       },
       "LohnausweisFeldDto": {
         "type": "object",
@@ -4589,6 +5151,388 @@
         },
         "required": [
           "checkoutUrl"
+        ]
+      },
+      "KindResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "uuid"
+          },
+          "lfdNr": {
+            "type": "number",
+            "example": 1
+          },
+          "vorname": {
+            "type": "string",
+            "example": "Lina"
+          },
+          "nachname": {
+            "type": "string",
+            "example": "Muster"
+          },
+          "geburtsdatum": {
+            "type": "string",
+            "example": "2018-05-12"
+          },
+          "idnr": {
+            "type": "string",
+            "nullable": true,
+            "example": "12345678901"
+          },
+          "kindergeldAnspruchEur": {
+            "type": "string",
+            "nullable": true,
+            "example": "3000"
+          }
+        },
+        "required": [
+          "id",
+          "lfdNr",
+          "vorname",
+          "nachname",
+          "geburtsdatum"
+        ]
+      },
+      "KinderResponseDto": {
+        "type": "object",
+        "properties": {
+          "kinder": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KindResponseDto"
+            }
+          },
+          "anzahl": {
+            "type": "number",
+            "example": 1
+          },
+          "kindergeldSumme": {
+            "type": "number",
+            "example": 3000
+          },
+          "freibetragGesamt": {
+            "type": "number",
+            "example": 9540
+          }
+        },
+        "required": [
+          "kinder",
+          "anzahl",
+          "kindergeldSumme",
+          "freibetragGesamt"
+        ]
+      },
+      "CreateKindDto": {
+        "type": "object",
+        "properties": {
+          "vorname": {
+            "type": "string",
+            "example": "Lina"
+          },
+          "nachname": {
+            "type": "string",
+            "example": "Muster"
+          },
+          "geburtsdatum": {
+            "type": "string",
+            "example": "2018-05-12",
+            "description": "ISO date YYYY-MM-DD"
+          },
+          "idnr": {
+            "type": "string",
+            "example": "12345678901"
+          },
+          "kindergeldAnspruchEur": {
+            "type": "string",
+            "example": "3000"
+          }
+        },
+        "required": [
+          "vorname",
+          "nachname",
+          "geburtsdatum"
+        ]
+      },
+      "UpdateKindDto": {
+        "type": "object",
+        "properties": {
+          "vorname": {
+            "type": "string",
+            "example": "Lina"
+          },
+          "nachname": {
+            "type": "string",
+            "example": "Muster"
+          },
+          "geburtsdatum": {
+            "type": "string",
+            "example": "2018-05-12"
+          },
+          "idnr": {
+            "type": "string",
+            "example": "12345678901"
+          },
+          "kindergeldAnspruchEur": {
+            "type": "string",
+            "example": "3000"
+          }
+        }
+      },
+      "KopplungPersonBDto": {
+        "type": "object",
+        "properties": {
+          "firstName": {
+            "type": "string",
+            "nullable": true,
+            "example": "Erika"
+          },
+          "lastName": {
+            "type": "string",
+            "nullable": true,
+            "example": "Muster"
+          },
+          "steuerId": {
+            "type": "string",
+            "nullable": true,
+            "example": "12345678901"
+          },
+          "geburtsdatum": {
+            "type": "string",
+            "nullable": true,
+            "example": "1985-04-12"
+          },
+          "religion": {
+            "type": "string",
+            "nullable": true,
+            "example": "ev"
+          },
+          "beruf": {
+            "type": "string",
+            "nullable": true,
+            "example": "Angestellte"
+          }
+        }
+      },
+      "KopplungResponseDto": {
+        "type": "object",
+        "properties": {
+          "veranlagungsart": {
+            "type": "string",
+            "enum": [
+              "keine",
+              "einzel",
+              "zusammen"
+            ],
+            "example": "zusammen"
+          },
+          "personBUserId": {
+            "type": "string",
+            "nullable": true,
+            "example": "person-b-user-id"
+          },
+          "einladungsCode": {
+            "type": "string",
+            "nullable": true,
+            "example": "ABCDEF"
+          },
+          "personB": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/KopplungPersonBDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "veranlagungsart"
+        ]
+      },
+      "SetKopplungDto": {
+        "type": "object",
+        "properties": {
+          "veranlagungsart": {
+            "type": "string",
+            "enum": [
+              "einzel",
+              "zusammen"
+            ],
+            "example": "zusammen"
+          },
+          "personBUserId": {
+            "type": "string",
+            "example": "uuid-person-b"
+          }
+        },
+        "required": [
+          "veranlagungsart"
+        ]
+      },
+      "EulenEinstellungResponseDto": {
+        "type": "object",
+        "properties": {
+          "aktiviert": {
+            "type": "boolean",
+            "example": true
+          },
+          "aktiviertAm": {
+            "type": "string",
+            "nullable": true,
+            "example": "2026-11-03T10:00:00Z"
+          }
+        },
+        "required": [
+          "aktiviert"
+        ]
+      },
+      "SetEulenEinstellungDto": {
+        "type": "object",
+        "properties": {
+          "aktiviert": {
+            "type": "boolean",
+            "example": true
+          }
+        },
+        "required": [
+          "aktiviert"
+        ]
+      },
+      "EulenWegDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Tagespauschale ansetzen"
+          },
+          "betragEur": {
+            "type": "number",
+            "example": 300
+          },
+          "beschreibung": {
+            "type": "string",
+            "example": "Einfacher Nachweis ohne separates Arbeitszimmer"
+          },
+          "risiko": {
+            "type": "string",
+            "enum": [
+              "sicher",
+              "risiko"
+            ],
+            "example": "sicher"
+          }
+        },
+        "required": [
+          "name",
+          "betragEur",
+          "beschreibung",
+          "risiko"
+        ]
+      },
+      "EulenKarteDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "eule-ra-homeoffice-2025"
+          },
+          "fingerprint": {
+            "type": "string",
+            "example": "1234abcd5678efgh"
+          },
+          "trigger": {
+            "type": "string",
+            "enum": [
+              "musterluecke",
+              "vorjahresvergleich",
+              "rechtsaenderung",
+              "lebenslage_hinweis"
+            ]
+          },
+          "kategorie": {
+            "type": "string",
+            "enum": [
+              "cockpit_proaktiv",
+              "abruf_frage",
+              "archiv_einspruch"
+            ]
+          },
+          "titel": {
+            "type": "string",
+            "example": "Homeoffice-Tagespauschale 6 €"
+          },
+          "botschaft": {
+            "type": "string",
+            "example": "Du hast 50 Tage im Homeoffice gearbeitet."
+          },
+          "begruendung": {
+            "type": "string",
+            "example": "weil der Gesetzgeber die Pauschale dauerhaft angehoben hat."
+          },
+          "betragEur": {
+            "type": "number",
+            "nullable": true,
+            "example": 300
+          },
+          "rechtsstandDatum": {
+            "type": "string",
+            "example": "01.01.2025"
+          },
+          "quelleUebersetzt": {
+            "type": "string",
+            "example": "Jahressteuergesetz § 4 Abs. 5 Satz 1 Nr. 6b EStG"
+          },
+          "quelleUrl": {
+            "type": "string",
+            "example": "https://..."
+          },
+          "wege": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EulenWegDto"
+            }
+          },
+          "einspruchFristBis": {
+            "type": "string",
+            "example": "01.10.2025"
+          }
+        },
+        "required": [
+          "id",
+          "fingerprint",
+          "trigger",
+          "kategorie",
+          "titel",
+          "botschaft",
+          "begruendung",
+          "rechtsstandDatum",
+          "quelleUebersetzt"
+        ]
+      },
+      "EulenKartenResponseDto": {
+        "type": "object",
+        "properties": {
+          "aktiviert": {
+            "type": "boolean",
+            "example": true
+          },
+          "karten": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EulenKarteDto"
+            }
+          },
+          "rechtsstand": {
+            "type": "string",
+            "example": "01.01.2025"
+          }
+        },
+        "required": [
+          "aktiviert",
+          "karten",
+          "rechtsstand"
         ]
       }
     }

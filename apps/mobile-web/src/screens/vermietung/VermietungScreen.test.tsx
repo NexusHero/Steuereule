@@ -25,6 +25,11 @@ const VOLLES_OBJEKT: VermietungResponseDto = {
       anschaffungskosten: { kind: 'erfasst', wert: 200000 },
       baujahr: { kind: 'erfasst', wert: 1990 },
       werbungskosten: { kind: 'erfasst', wert: 1500 },
+      strasse: null,
+      hausnummer: null,
+      plz: null,
+      ort: null,
+      wohnflaeche: null,
       fakten: {
         einnahmen: 12000,
         werbungskosten: 1500,

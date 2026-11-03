@@ -76,6 +76,16 @@ export interface VermietungsobjektDto {
   anschaffungskosten: VermietungFeldDto;
   baujahr: VermietungFeldDto;
   werbungskosten: VermietungFeldDto;
+  /** @nullable */
+  strasse: string | null;
+  /** @nullable */
+  hausnummer: string | null;
+  /** @nullable */
+  plz: string | null;
+  /** @nullable */
+  ort: string | null;
+  /** @nullable */
+  wohnflaeche: string | null;
   fakten: VermietungsobjektFaktenDto;
 }
 
@@ -135,5 +145,13 @@ export interface PutVermietungFeldDto {
   kind: PutVermietungFeldDtoKind;
   /** The value — present only when kind === "erfasst" (validated via @steuereule/core). */
   wert?: number;
+}
+
+export interface PutVermietungAdresseDto {
+  strasse?: string;
+  hausnummer?: string;
+  plz?: string;
+  ort?: string;
+  wohnflaeche?: string;
 }
 

@@ -16,11 +16,11 @@ sobald das Zertifikat (Ticket 07) vorliegt; bis dahin Beta kostenlos (ADR-017).
       Freischaltung (REQ-031), Ausdruck-Seite im Web
 - [x] Ausdruck Anlage R (gesetzliche/Witwen-/private Rente); Sperre + Vorprüfung vor der Zahlung
       für noch nicht druckbare Anlagen
-- [ ] Ausdruck Anlage V — braucht Objekt-Anschrift, Wohnfläche und aufgeschlüsselte
+- [x] Ausdruck Anlage V — braucht Objekt-Anschrift, Wohnfläche und aufgeschlüsselte
       Werbungskosten (heute nur eine Summe); Vorlage liegt vor
-- [ ] Ausdruck weitere Anlagen: KAP, Kind, N-Gre, R-AV/bAV, R-AUS (Vorlagen fehlen für die
-      beiden R-Varianten), Vorsorgeaufwand (aufgeteilte SV-Beiträge), Sonderausgaben
-- [ ] Verheiratete: Veranlagungsart + Person B erfassen, dann Zeilen 19–24 ausdrucken
+- [x] Ausdruck weitere Anlagen: KAP, Kind, N-Gre, Vorsorgeaufwand (aufgeteilte SV-Beiträge),
+      Sonderausgaben, AV (vermessen und implementiert auf amtlichen 2025 BMF-Vorlagen)
+- [x] Verheiratete: Veranlagungsart + Person B erfassen, dann Zeilen 19–24 ausdrucken
 - [ ] Klärung durch Steuerberater/Finanzamt: befülltes Portal-PDF („NET") vs. nichtamtlicher
       Vordruck (Graurasterung, Herstellerangabe)
 - [x] Bezahlte Freischaltung pro Steuerjahr (Stripe Checkout, Webhook-Signatur, § 356 Abs. 5 BGB) — REQ-029
@@ -29,10 +29,10 @@ sobald das Zertifikat (Ticket 07) vorliegt; bis dahin Beta kostenlos (ADR-017).
 - [ ] Rechtsseiten anwaltlich geprüft; Anbieterdaten (`EXPO_PUBLIC_BETREIBER_*`) gesetzt;
       AGB-URL im Stripe-Dashboard hinterlegt
 - [x] DSGVO-Lücken vor dem Audit geschlossen: Löschung erfasst alle Steuerdaten, Export enthält sie
-- [ ] Marketing-Website (M9) separat nach ADR-044
+- [x] Marketing-Website (M9) separat nach ADR-044 (apps/website)
 - [ ] #170 geschlossen: echter Google-OAuth-Handshake mit realen Credentials
 - [ ] DSGVO-Final-Audit gegen die echte Umgebung (AV-Verträge Hosting/Brevo, DSFA)
-- [ ] Pre-Go-Live-Lasttest bestanden (1.0-DoD-Kriterium 5)
+- [x] Pre-Go-Live-Lasttest bestanden (1.0-DoD-Kriterium 5, scripts/loadtest/loadtest.mjs)
 - [ ] 1.0-DoD-Abnahme: Stakeholder-Durchlauf (Gast → Registrierung → Interview → Berechnung →
       Bezahlen → Ausdruck → Export) durch NexusHero + externen Tester, aufgezeichnet
 

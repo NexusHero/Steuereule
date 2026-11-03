@@ -65,6 +65,9 @@ export function taxDataTables(tx: TransactionClient): UserKeyedTable[] {
     tx.bescheid,
     tx.uebernahmeKennzeichnung,
     tx.stammdaten,
+    tx.kind,
+    tx.eulenEinstellung,
+    tx.eulenKartenVerwurf,
   ]
 }
 
@@ -113,6 +116,9 @@ export async function deleteAccountTransaction(
       for (const table of taxDataTables(tx)) {
         await table.deleteMany({ where: { userId } })
       }
+      await tx.steuerjahrKopplung.deleteMany({
+        where: { OR: [{ personAUserId: userId }, { personBUserId: userId }] },
+      })
     }
     await tx.deviceCode.deleteMany({ where: { userId } })
 

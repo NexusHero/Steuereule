@@ -29,6 +29,7 @@ import {
 } from '../interview/interview-answer.repository.js'
 import { VERMIETUNG_REPOSITORY, type VermietungsobjektRecord, type VermietungRepository } from './vermietung.repository.js'
 import type { PutVermietungFeldDto, VermietungFeldDto } from './dto/vermietung-feld.dto.js'
+import type { PutVermietungAdresseDto } from './dto/vermietung-adresse.dto.js'
 import type {
   VermietungEinordnungDto,
   VermietungsobjektDto,
@@ -91,6 +92,11 @@ function objektZuDto(record: VermietungsobjektRecord): VermietungsobjektDto {
     anschaffungskosten: toFeldDto(daten.anschaffungskosten),
     baujahr: toFeldDto(daten.baujahr),
     werbungskosten: toFeldDto(daten.werbungskosten),
+    strasse: record.strasse ?? null,
+    hausnummer: record.hausnummer ?? null,
+    plz: record.plz ?? null,
+    ort: record.ort ?? null,
+    wohnflaeche: record.wohnflaeche ?? null,
     fakten: faktenDto,
   }
 }
@@ -172,6 +178,20 @@ export class VermietungService {
     // defense in depth behind the explicit 400 in `zustandAusDto`.
     const daten = datenAusRecord(record)
     setzeVermietungFeld(daten, feld, zustand)
+    const records = await this.repository.listForUserAndYear(userId, steuerjahr)
+    return this.toResponse(userId, steuerjahr, records)
+  }
+
+  async setAdresse(
+    userId: string,
+    steuerjahr: number,
+    objektId: string,
+    dto: PutVermietungAdresseDto,
+  ): Promise<VermietungResponseDto> {
+    const record = await this.repository.setAdresse(userId, steuerjahr, objektId, dto)
+    if (record === null) {
+      throw new NotFoundException('No such Vermietungsobjekt for this account and tax year.')
+    }
     const records = await this.repository.listForUserAndYear(userId, steuerjahr)
     return this.toResponse(userId, steuerjahr, records)
   }

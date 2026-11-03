@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="14 16 68 62" width="68" height="62" role="img" aria-label="myDevTime mark">
+  <title>myDevTime mark (untiled)</title>
+  
+  <rect x="18" y="40" width="27" height="16" rx="8" fill="#3654e0"></rect>
+  <rect x="53" y="40" width="25" height="16" rx="8" fill="none" stroke="#94a3b8" stroke-width="2.4" stroke-dasharray="4.2 4"></rect>
+  <line x1="49.5" y1="23" x2="49.5" y2="73" stroke="#3654e0" stroke-width="3.2" stroke-linecap="round"></line>
+  <circle cx="49.5" cy="23" r="4.8" fill="#3654e0"></circle>
+</svg>

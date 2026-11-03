@@ -299,3 +299,39 @@ describe('OpenAPI contract for /v1/device/{pending,approve,token} (#238, task 2,
     expect(Object.keys(properties)).toEqual(['success'])
   })
 })
+
+describe('OpenAPI contract for /v1/steuerjahre/{jahr}/kinder, kopplung, eulen-modus & vermietung/adresse', () => {
+  it('documents GET and POST /v1/steuerjahre/{jahr}/kinder with CreateKindDto and KinderResponseDto', () => {
+    const get = document.paths['/v1/steuerjahre/{jahr}/kinder']?.get
+    const post = document.paths['/v1/steuerjahre/{jahr}/kinder']?.post
+    expect(get?.responses['200']).toBeDefined()
+    expect(post?.responses['201']).toBeDefined()
+    const requestBody = post?.requestBody as { content?: Record<string, { schema?: { $ref?: string } }> } | undefined
+    expect(requestBody?.content?.['application/json']?.schema?.$ref).toBe('#/components/schemas/CreateKindDto')
+  })
+
+  it('documents GET and PUT /v1/steuerjahre/{jahr}/kopplung with SetKopplungDto and KopplungResponseDto', () => {
+    const get = document.paths['/v1/steuerjahre/{jahr}/kopplung']?.get
+    const put = document.paths['/v1/steuerjahre/{jahr}/kopplung']?.put
+    expect(get?.responses['200']).toBeDefined()
+    expect(put?.responses['200']).toBeDefined()
+    const requestBody = put?.requestBody as { content?: Record<string, { schema?: { $ref?: string } }> } | undefined
+    expect(requestBody?.content?.['application/json']?.schema?.$ref).toBe('#/components/schemas/SetKopplungDto')
+  })
+
+  it('documents Eulen-Modus endpoints (/v1/eulen-modus/einstellung and /v1/steuerjahre/{jahr}/eulen-karten)', () => {
+    const getEinstellung = document.paths['/v1/eulen-modus/einstellung']?.get
+    const putEinstellung = document.paths['/v1/eulen-modus/einstellung']?.put
+    const getKarten = document.paths['/v1/steuerjahre/{jahr}/eulen-karten']?.get
+    expect(getEinstellung?.responses['200']).toBeDefined()
+    expect(putEinstellung?.responses['200']).toBeDefined()
+    expect(getKarten?.responses['200']).toBeDefined()
+  })
+
+  it('documents PUT /v1/steuerjahre/{jahr}/vermietung/objekte/{objektId}/adresse with PutVermietungAdresseDto', () => {
+    const put = document.paths['/v1/steuerjahre/{jahr}/vermietung/objekte/{objektId}/adresse']?.put
+    expect(put?.responses['200']).toBeDefined()
+    const requestBody = put?.requestBody as { content?: Record<string, { schema?: { $ref?: string } }> } | undefined
+    expect(requestBody?.content?.['application/json']?.schema?.$ref).toBe('#/components/schemas/PutVermietungAdresseDto')
+  })
+})

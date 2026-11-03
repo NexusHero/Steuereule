@@ -25,6 +25,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  PutVermietungAdresseDto,
   PutVermietungFeldDto,
   VermietungResponseDto
 } from './vermietung.schemas';
@@ -336,5 +337,92 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getVermietungControllerSetFeldMutationOptions(options), queryClient);
+    }
+
+export type vermietungControllerSetAdresseResponse200 = {
+  data: VermietungResponseDto
+  status: 200
+}
+
+export type vermietungControllerSetAdresseResponse401 = {
+  data: void
+  status: 401
+}
+
+export type vermietungControllerSetAdresseResponseSuccess = (vermietungControllerSetAdresseResponse200) & {
+  headers: Headers;
+};
+export type vermietungControllerSetAdresseResponseError = (vermietungControllerSetAdresseResponse401) & {
+  headers: Headers;
+};
+
+export type vermietungControllerSetAdresseResponse = (vermietungControllerSetAdresseResponseSuccess | vermietungControllerSetAdresseResponseError)
+
+export const getVermietungControllerSetAdresseUrl = (jahr: number,
+    objektId: string,) => {
+
+
+
+
+  return `/v1/steuerjahre/${jahr}/vermietung/objekte/${objektId}/adresse`
+}
+
+export const vermietungControllerSetAdresse = async (jahr: number,
+    objektId: string,
+    putVermietungAdresseDto: PutVermietungAdresseDto, options?: RequestInit): Promise<vermietungControllerSetAdresseResponse> => {
+
+  return httpClient<vermietungControllerSetAdresseResponse>(getVermietungControllerSetAdresseUrl(jahr,objektId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(putVermietungAdresseDto)
+  }
+);}
+
+
+
+
+
+export const getVermietungControllerSetAdresseMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof vermietungControllerSetAdresse>>, TError,{jahr: number;objektId: string;data: PutVermietungAdresseDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof vermietungControllerSetAdresse>>, TError,{jahr: number;objektId: string;data: PutVermietungAdresseDto}, TContext> => {
+
+const mutationKey = ['vermietungControllerSetAdresse'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof vermietungControllerSetAdresse>>, {jahr: number;objektId: string;data: PutVermietungAdresseDto}> = (props) => {
+          const {jahr,objektId,data} = props ?? {};
+
+          return  vermietungControllerSetAdresse(jahr,objektId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type VermietungControllerSetAdresseMutationResult = NonNullable<Awaited<ReturnType<typeof vermietungControllerSetAdresse>>>
+    export type VermietungControllerSetAdresseMutationBody = PutVermietungAdresseDto
+    export type VermietungControllerSetAdresseMutationError = void
+
+    export const useVermietungControllerSetAdresse = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof vermietungControllerSetAdresse>>, TError,{jahr: number;objektId: string;data: PutVermietungAdresseDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof vermietungControllerSetAdresse>>,
+        TError,
+        {jahr: number;objektId: string;data: PutVermietungAdresseDto},
+        TContext
+      > => {
+      return useMutation(getVermietungControllerSetAdresseMutationOptions(options), queryClient);
     }
 

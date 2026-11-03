@@ -107,6 +107,16 @@ const EXPECTED_ENCRYPTED_FIELDS: ExpectedEncryptedField[] = [
   { model: 'Vermietungsobjekt', field: 'anschaffungskosten', encrypt: true, strictDecryption: true },
   { model: 'Vermietungsobjekt', field: 'baujahr', encrypt: true, strictDecryption: true },
   { model: 'Vermietungsobjekt', field: 'werbungskosten', encrypt: true, strictDecryption: true },
+  { model: 'Vermietungsobjekt', field: 'strasse', encrypt: true, strictDecryption: true },
+  { model: 'Vermietungsobjekt', field: 'hausnummer', encrypt: true, strictDecryption: true },
+  { model: 'Vermietungsobjekt', field: 'plz', encrypt: true, strictDecryption: true },
+  { model: 'Vermietungsobjekt', field: 'ort', encrypt: true, strictDecryption: true },
+  { model: 'Vermietungsobjekt', field: 'wohnflaeche', encrypt: true, strictDecryption: true },
+  { model: 'Kind', field: 'vorname', encrypt: true, strictDecryption: true },
+  { model: 'Kind', field: 'nachname', encrypt: true, strictDecryption: true },
+  { model: 'Kind', field: 'geburtsdatum', encrypt: true, strictDecryption: true },
+  { model: 'Kind', field: 'idnr', encrypt: true, strictDecryption: true },
+  { model: 'Kind', field: 'kindergeldAnspruchEur', encrypt: true, strictDecryption: true },
   { model: 'Bescheid', field: 'einnahmen', encrypt: true, strictDecryption: true },
   { model: 'Bescheid', field: 'vorsorgeaufwand', encrypt: true, strictDecryption: true },
   { model: 'Bescheid', field: 'anrechnung', encrypt: true, strictDecryption: true },
@@ -148,6 +158,10 @@ const EXPECTED_CURSORS: Record<string, string> = {
   Bescheid: 'id',
   Freischaltung: 'id',
   Stammdaten: 'id',
+  Kind: 'id',
+  SteuerjahrKopplung: 'id',
+  EulenEinstellung: 'id',
+  EulenKartenVerwurf: 'id',
 }
 
 describe('encrypted/hashed field set (#325) — derived from Prisma.dmmf, not comment text', () => {

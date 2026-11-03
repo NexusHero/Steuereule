@@ -657,6 +657,12 @@ model Vermietungsobjekt {
   baujahr            String? /// @encrypted?mode=strict
   /// Laufende Werbungskosten (whole euros). Encrypted at rest; same encoding.
   werbungskosten     String? /// @encrypted?mode=strict
+  /// Lage des Objekts für Anlage V (ADR-0050). Encrypted at rest.
+  strasse            String? /// @encrypted?mode=strict
+  hausnummer         String? /// @encrypted?mode=strict
+  plz                String? /// @encrypted?mode=strict
+  ort                String? /// @encrypted?mode=strict
+  wohnflaeche        String? /// @encrypted?mode=strict
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
@@ -782,4 +788,60 @@ model Stammdaten {
   telefon               String? /// @encrypted?mode=strict
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
+}
+
+/// One row per child for a given tax year (product ADR-031, Anlage Kind, ADR-0050).
+/// Personal facts are field-encrypted at rest (ADR-0008).
+model Kind {
+  id                    String   @id @default(uuid())
+  /// Scoping key — same trusted userId as Profile.userId (ADR-0007).
+  userId                String
+  steuerjahr            Int
+  lfdNr                 Int      @default(1)
+  vorname               String   /// @encrypted?mode=strict
+  nachname              String   /// @encrypted?mode=strict
+  geburtsdatum          String   /// @encrypted?mode=strict
+  idnr                  String?  /// @encrypted?mode=strict
+  kindergeldAnspruchEur String?  /// @encrypted?mode=strict
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([userId, steuerjahr])
+}
+
+/// Coupling of two tax years for joint filing (ADR-006, Zusammenveranlagung).
+model SteuerjahrKopplung {
+  id              String   @id @default(uuid())
+  personAUserId   String
+  personBUserId   String
+  steuerjahr      Int
+  veranlagungsart String   @default("zusammen")
+  einladungsCode  String?  @unique
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([personAUserId, steuerjahr])
+  @@index([personBUserId, steuerjahr])
+}
+
+/// Opt-in setting and consent for Eulen-Modus (product ADR-037, ADR-048).
+model EulenEinstellung {
+  id          String    @id @default(uuid())
+  userId      String    @unique
+  aktiviert   Boolean   @default(false)
+  aktiviertAm DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+/// Dismissed cards in Eulen-Modus (product ADR-041: "Stimmt nicht").
+model EulenKartenVerwurf {
+  id          String   @id @default(uuid())
+  userId      String
+  steuerjahr  Int
+  fingerprint String
+  verworfenAm DateTime @default(now())
+
+  @@unique([userId, steuerjahr, fingerprint])
+  @@index([userId, steuerjahr])
 }

@@ -15,5 +15,6 @@ import { BescheidService } from './bescheid.service.js'
   imports: [PrismaModule, AuditModule, LstbModule, InterviewModule, ChLohnausweisModule],
   controllers: [BescheidController],
   providers: [BescheidService, { provide: BESCHEID_REPOSITORY, useClass: PrismaBescheidRepository }],
+  exports: [BESCHEID_REPOSITORY],
 })
 export class BescheidModule {}

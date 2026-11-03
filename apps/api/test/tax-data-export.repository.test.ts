@@ -20,7 +20,10 @@ describe('PrismaTaxDataExportRepository', () => {
     )
     await new PrismaTaxDataExportRepository(prisma as never).findAllForUser('user-1')
 
-    const erased = new Set(taxDataTables(new Proxy({}, { get: (_t, key) => String(key) }) as never).map(String))
+    const erased = new Set([
+      ...taxDataTables(new Proxy({}, { get: (_t, key) => String(key) }) as never).map(String),
+      'steuerjahrKopplung',
+    ])
     expect([...read].sort()).toEqual([...erased].sort())
   })
 

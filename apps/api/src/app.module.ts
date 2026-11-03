@@ -20,6 +20,9 @@ import { RenteModule } from './rente/rente.module.js'
 import { StammdatenModule } from './stammdaten/stammdaten.module.js'
 import { VeranlagungsartenvergleichModule } from './veranlagungsartenvergleich/veranlagungsartenvergleich.module.js'
 import { VermietungModule } from './vermietung/vermietung.module.js'
+import { KinderModule } from './kinder/kinder.module.js'
+import { KopplungModule } from './kopplung/kopplung.module.js'
+import { EulenModusModule } from './eulen-modus/eulen-modus.module.js'
 
 @Module({
   imports: [
@@ -49,6 +52,9 @@ import { VermietungModule } from './vermietung/vermietung.module.js'
     FreischaltungModule,
     StammdatenModule,
     AusdruckModule,
+    KinderModule,
+    KopplungModule,
+    EulenModusModule,
   ],
 })
 export class AppModule {}

@@ -10,5 +10,6 @@ import { BelegService } from './beleg.service.js'
   imports: [PrismaModule, AuditModule],
   controllers: [BelegController],
   providers: [BelegService, { provide: BELEG_REPOSITORY, useClass: PrismaBelegRepository }],
+  exports: [BELEG_REPOSITORY, BelegService],
 })
 export class BelegModule {}

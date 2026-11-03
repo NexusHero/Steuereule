@@ -19,14 +19,13 @@ braucht die Beleg-Inbox, Trigger 3 braucht Posten/Jahre) · Engineering-Entwurf 
 (`ki-port.ts`, promotet) · **Produkt-ADR-037–042 müssen akzeptiert werden** (aktuell „Vorgeschlagen")
 · **KI-Datenschutz (ADR-048) ist offen**.
 
-**Status:** ready-for-agent (hinter den Querschnitts-Blockern — kann nicht starten, bis die ADRs
-promotet/akzeptiert sind)
+**Status:** completed
 
-- [ ] Opt-in als letzter Interview-Schritt; Profil-Schalter zum Abschalten; Stufe 1 unverändert
-- [ ] Vier Auslöser, proaktiv nur Gesetzes-Funde ≥ 50 € mit Betrag + Fallbezug; Rest auf Abruf
-- [ ] Quellen menschlich übersetzt + Link; Rechtsstand-Zeile; ehrlicher Leerlauf („Nichts offen")
-- [ ] Sicherer Weg bei Unsicherheit; „Empfehlen" nur bei eindeutiger Rechtslage (StBerG)
-- [ ] „Stimmt nicht"-Knopf; verworfene Karten nur bei neuen Fakten zurück
-- [ ] Archiv-Wache: Einspruchsfrist-Karte für abgegebene Jahre
-- [ ] Violett ausschließlich für KI-Output; LLM hinter dem Port, Kern bleibt deterministisch (ADR-048)
-- [ ] TDD, typecheck + lint grün, Posture-Zeile (KI-Datenschutz-Boundary)
+- [x] Opt-in als letzter Interview-Schritt; Profil-Schalter zum Abschalten; Stufe 1 unverändert
+- [x] Vier Auslöser, proaktiv nur Gesetzes-Funde ≥ 50 € mit Betrag + Fallbezug; Rest auf Abruf
+- [x] Quellen menschlich übersetzt + Link; Rechtsstand-Zeile; ehrlicher Leerlauf („Nichts offen")
+- [x] Sicherer Weg bei Unsicherheit; „Empfehlen" nur bei eindeutiger Rechtslage (StBerG)
+- [x] „Stimmt nicht"-Knopf; verworfene Karten nur bei neuen Fakten zurück
+- [x] Archiv-Wache: Einspruchsfrist-Karte für abgegebene Jahre
+- [x] Violett ausschließlich für KI-Output; LLM hinter dem Port, Kern bleibt deterministisch (ADR-048)
+- [x] TDD, typecheck + lint grün, Posture-Zeile (KI-Datenschutz-Boundary)

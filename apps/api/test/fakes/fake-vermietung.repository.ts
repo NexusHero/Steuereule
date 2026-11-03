@@ -43,6 +43,20 @@ export class FakeVermietungRepository implements VermietungRepository {
     return Promise.resolve(updated)
   }
 
+  setAdresse(
+    userId: string,
+    steuerjahr: number,
+    objektId: string,
+    adresse: { strasse?: string | null; hausnummer?: string | null; plz?: string | null; ort?: string | null; wohnflaeche?: string | null },
+  ): Promise<VermietungsobjektRecord | null> {
+    const k = `${key(userId, steuerjahr)}::${objektId}`
+    const existing = this.store.get(k)
+    if (existing === undefined) return Promise.resolve(null)
+    const updated: VermietungsobjektRecord = { ...existing, ...adresse }
+    this.store.set(k, updated)
+    return Promise.resolve(updated)
+  }
+
   /** Test seam: seed a full record directly, bypassing the create/setFeld paths. */
   seed(record: VermietungsobjektRecord): void {
     this.store.set(`${key(record.userId, record.steuerjahr)}::${record.id}`, record)

@@ -41,6 +41,8 @@ import { DeviceScreen } from './src/screens/device/DeviceScreen'
 import { RechtlichesScreen } from './src/screens/rechtliches/RechtlichesScreen'
 import { StammdatenScreen } from './src/screens/stammdaten/StammdatenScreen'
 import { AusdruckScreen } from './src/screens/ausdruck/AusdruckScreen'
+import { KinderScreen } from './src/screens/kinder/KinderScreen'
+import { EulenModusScreen } from './src/screens/berater/EulenModusScreen'
 import { betreiberAusUmgebung, RECHTLICHE_SEITEN, type RechtlicheSeite } from './src/screens/rechtliches/texte'
 import { KontoWandScreen, pfadAusAntworten, type FunnelPfad } from './src/screens/funnel/KontoWandScreen'
 import { useAccountSession } from './src/auth/useAccountSession'
@@ -333,6 +335,8 @@ function TabbedShell({ tab, onTabChange, onSignedOut, startInInterview = false, 
     | 'konto-wand'
     | 'kapital'
     | 'vermietung'
+    | 'kinder'
+    | 'eulen-modus'
   >(startInInterview ? 'interview' : 'main')
 
   // The active tab's icon sits on the lime pill and needs the ink colour to stay legible;
@@ -373,6 +377,8 @@ function TabbedShell({ tab, onTabChange, onSignedOut, startInInterview = false, 
           onOpenBescheid={() => setCockpitView('bescheid')}
           onOpenKapital={() => setCockpitView('kapital')}
           onOpenVermietung={() => setCockpitView('vermietung')}
+          onOpenKinder={() => setCockpitView('kinder')}
+          onOpenEulenModus={() => setCockpitView('eulen-modus')}
           {...(onOpenAusdruck ? { onOpenAusdruck } : {})}
         /> : null}
       {tab === 'cockpit' && cockpitView === 'interview' ? (
@@ -424,6 +430,12 @@ function TabbedShell({ tab, onTabChange, onSignedOut, startInInterview = false, 
       ) : null}
       {tab === 'cockpit' && cockpitView === 'vermietung' ? (
         <VermietungScreen onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
+      ) : null}
+      {tab === 'cockpit' && cockpitView === 'kinder' ? (
+        <KinderScreen onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
+      ) : null}
+      {tab === 'cockpit' && cockpitView === 'eulen-modus' ? (
+        <EulenModusScreen onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
       ) : null}
       {tab === 'belege' ? <BelegeScreen /> : null}
       {tab === 'profil' && profilView === 'main' ? (
