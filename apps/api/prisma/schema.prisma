@@ -619,6 +619,11 @@ model Kapital {
   /// Kapitalerträge (Einkünfte aus Kapitalvermögen, whole euros). Encrypted at rest;
   /// null=offen, "unklar"=unreadable.
   kapitalertraege String? /// @encrypted?mode=strict
+  /// Anlage KAP Zeile 16/17 and the withheld taxes of Zeilen 37–39, same encoding.
+  sparerPauschbetrag    String? /// @encrypted?mode=strict
+  kapitalertragsteuer   String? /// @encrypted?mode=strict
+  solidaritaetszuschlag String? /// @encrypted?mode=strict
+  kirchensteuer         String? /// @encrypted?mode=strict
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

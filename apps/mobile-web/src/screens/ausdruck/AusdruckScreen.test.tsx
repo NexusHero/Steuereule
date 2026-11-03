@@ -22,6 +22,7 @@ function renderScreen(props: { zahlung?: 'erfolg' | 'abbruch'; oeffneCheckout?: 
   const onRiesterErgaenzen = vi.fn()
   const onKinderErgaenzen = vi.fn()
   const onVermietungErgaenzen = vi.fn()
+  const onKapitalErgaenzen = vi.fn()
   render(
     <QueryClientProvider client={queryClient}>
       <I18nextProvider i18n={createAppI18n('de')}>
@@ -33,13 +34,14 @@ function renderScreen(props: { zahlung?: 'erfolg' | 'abbruch'; oeffneCheckout?: 
             onRiesterErgaenzen={onRiesterErgaenzen}
             onKinderErgaenzen={onKinderErgaenzen}
             onVermietungErgaenzen={onVermietungErgaenzen}
+            onKapitalErgaenzen={onKapitalErgaenzen}
             {...props}
           />
         </ThemeProvider>
       </I18nextProvider>
     </QueryClientProvider>,
   )
-  return { onAngabenErgaenzen, onRiesterErgaenzen, onKinderErgaenzen, onVermietungErgaenzen }
+  return { onAngabenErgaenzen, onRiesterErgaenzen, onKinderErgaenzen, onVermietungErgaenzen, onKapitalErgaenzen }
 }
 
 afterEach(() => server.resetHandlers())
@@ -107,6 +109,14 @@ describe('AusdruckScreen (ADR-0050)', () => {
     expect(screen.getByText(/Angaben zu einem volljährigen Kind \(Anlage Kind\) gibt es den Ausdruck noch nicht/)).toBeTruthy()
     fireEvent.click(screen.getByText('Kinder-Angaben ergänzen'))
     expect(onKinderErgaenzen).toHaveBeenCalled()
+  })
+
+  it('missing capital facts lead to the Kapital screen', async () => {
+    mock('offen', ['kapital'])
+    const { onKapitalErgaenzen } = renderScreen()
+    expect(await screen.findByText(/Für die Anlage KAP fehlen noch Angaben/)).toBeTruthy()
+    fireEvent.click(screen.getByText('Kapital-Angaben ergänzen'))
+    expect(onKapitalErgaenzen).toHaveBeenCalled()
   })
 
   it('missing rental facts lead to the Vermietung screen', async () => {

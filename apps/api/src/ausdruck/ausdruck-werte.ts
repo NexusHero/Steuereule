@@ -1,7 +1,13 @@
 // From the stored facts to the Vordruck field values (ADR-0050). Pure: no I/O, no rounding
 // beyond what the facts already carry — a value the app does not know exactly (the
 // Lohnsteuer's cents) is left empty rather than printed with a false precision.
-import { afaSatzProzent, deutschesDatum } from '@steuereule/core'
+import {
+  afaSatzProzent,
+  deutschesDatum,
+  kapitalPflichtfelder,
+  type KapitalDepotEinordnung,
+  type KapitalFeldId,
+} from '@steuereule/core'
 import type { FeldWerte } from './vordruck-renderer.js'
 
 export interface PersonBFakten {
@@ -114,11 +120,8 @@ function vermietungAfa(obj: VermietungFakten): { satz: number; betrag: number } 
   return satz === null ? null : { satz, betrag: Math.round((kosten * satz) / 100) }
 }
 
-export interface KapitalFakten {
-  kapitalertraege: string | null
-  abzugssteuer?: string | null
-  guenstigerpruefung?: boolean
-}
+/** The Kapital facts as stored, plus the depot answer that decides the KAP line (ADR-032). */
+export type KapitalFakten = { depot: KapitalDepotEinordnung['kind'] } & Partial<Record<KapitalFeldId, string | null>>
 
 export interface ChLohnausweisFakten {
   bruttolohnEur: string | null
@@ -348,16 +351,31 @@ export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
     instanzen['anlage-r'] = rInstanzen
   }
 
-  // Anlage KAP
-  if (fakten.kapital?.kapitalertraege && /^\d+$/.test(fakten.kapital.kapitalertraege)) {
-    werte['anlKap.personA'] = true
-    setze('anlKap.name', profil.lastName)
-    setze('anlKap.vorname', profil.firstName)
-    setze('anlKap.steuernummer', profil.steuernummer)
-    werte['anlKap.guenstigerpruefung'] = true
-    werte['anlKap.kz210'] = fakten.kapital.kapitalertraege
-    if (fakten.kapital.abzugssteuer && /^\d+$/.test(fakten.kapital.abzugssteuer)) {
-      werte['anlKap.kz234'] = fakten.kapital.abzugssteuer
+  // Anlage KAP: a German broker's income sits in Zeile 7 with the withheld taxes to credit
+  // (Zeilen 37–39, EUR/Ct); a foreign broker's in Zeile 19, where nothing was withheld.
+  const kapital = fakten.kapital
+  if (kapital && kapital.kapitalertraege != null) {
+    const pflicht = kapitalPflichtfelder(kapital.depot)
+    const vollstaendig = pflicht.every((feld) => ganzeZahl(kapital[feld] ?? null) !== null)
+    if (kapital.depot === 'krypto') fehlend.push('anlageKapKrypto')
+    else if (kapital.depot === 'unbekannt' || !vollstaendig) fehlend.push('kapital')
+    else {
+      werte['anlKap.personA'] = true
+      setze('anlKap.name', profil.lastName)
+      setze('anlKap.vorname', profil.firstName)
+      setze('anlKap.steuernummer', profil.steuernummer)
+      werte['anlKap.guenstigerpruefung'] = '1'
+      if (kapital.depot === 'deutscher-broker') {
+        werte['anlKap.kz210'] = kapital.kapitalertraege
+        werte['anlKap.kz217'] = kapital.sparerPauschbetrag!
+        werte['anlKap.kz280'] = `${kapital.kapitalertragsteuer},00`
+        werte['anlKap.kz281'] = `${kapital.solidaritaetszuschlag},00`
+        werte['anlKap.kz282'] = `${kapital.kirchensteuer},00`
+      } else {
+        werte['anlKap.kz234'] = kapital.kapitalertraege
+        werte['anlKap.kz217'] = '0'
+        werte['anlKap.kz218'] = kapital.sparerPauschbetrag!
+      }
     }
   }
 

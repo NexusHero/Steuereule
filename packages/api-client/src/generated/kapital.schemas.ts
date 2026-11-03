@@ -5,6 +5,17 @@
  * Onboarding profile endpoints (steuereule#29)
  * OpenAPI spec version: 1.0
  */
+export type KapitalResponseDtoPflichtfelderItem = typeof KapitalResponseDtoPflichtfelderItem[keyof typeof KapitalResponseDtoPflichtfelderItem];
+
+
+export const KapitalResponseDtoPflichtfelderItem = {
+  kapitalertraege: 'kapitalertraege',
+  sparerPauschbetrag: 'sparerPauschbetrag',
+  kapitalertragsteuer: 'kapitalertragsteuer',
+  solidaritaetszuschlag: 'solidaritaetszuschlag',
+  kirchensteuer: 'kirchensteuer',
+} as const;
+
 /**
  * The field’s capture state.
  */
@@ -81,6 +92,12 @@ export interface KapitalStandDto {
 
 export interface KapitalResponseDto {
   kapitalertraege: KapitalFeldDto;
+  sparerPauschbetrag: KapitalFeldDto;
+  kapitalertragsteuer: KapitalFeldDto;
+  solidaritaetszuschlag: KapitalFeldDto;
+  kirchensteuer: KapitalFeldDto;
+  /** The fields Anlage KAP needs for this depot. */
+  pflichtfelder: KapitalResponseDtoPflichtfelderItem[];
   depot: DepotEinordnungDto;
   /** The Kapital-Posten (empty while not determinable). */
   posten: KapitalPostenDto[];

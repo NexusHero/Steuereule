@@ -20,6 +20,11 @@ const GP_URL = `*/v1/steuerjahre/${TAX_YEAR}/kapital/guenstigerpruefung`
 
 const DEUTSCHER_BROKER: KapitalResponseDto = {
   kapitalertraege: { kind: 'erfasst', wert: 20000 },
+  sparerPauschbetrag: { kind: 'offen' },
+  kapitalertragsteuer: { kind: 'offen' },
+  solidaritaetszuschlag: { kind: 'offen' },
+  kirchensteuer: { kind: 'offen' },
+  pflichtfelder: ['kapitalertraege', 'sparerPauschbetrag', 'kapitalertragsteuer', 'solidaritaetszuschlag', 'kirchensteuer'],
   depot: { kind: 'deutscher-broker' },
   posten: [{ id: 'kapital', betrag: 20000, herkunft: 'eingabe' }],
   stand: { kind: 'bestimmt', einnahmen: 20000, vorsorgeaufwand: 0, anrechnung: 0 },
@@ -80,6 +85,24 @@ describe('KapitalScreen', () => {
     expect(await screen.findByText('Deine Kapitalerträge')).toBeTruthy()
     expect(screen.getByText('20000 €')).toBeTruthy()
     expect(screen.getByText('Eingabe aus deiner Jahressteuerbescheinigung')).toBeTruthy()
+  })
+
+  it('a German broker also asks the withheld taxes and the used Sparer-Pauschbetrag (Anlage KAP)', async () => {
+    let url = ''
+    server.use(http.get(KAPITAL_URL, () => HttpResponse.json(DEUTSCHER_BROKER, { status: 200 })))
+    server.use(
+      http.put(`${KAPITAL_URL}/:feld`, ({ request }) => {
+        url = request.url
+        return HttpResponse.json(DEUTSCHER_BROKER, { status: 200 })
+      }),
+    )
+    server.use(http.get(GP_URL, () => HttpResponse.json(null, { status: 200 })))
+    renderKapital()
+    expect(await screen.findByText('Bereits genutzter Sparer-Pauschbetrag (laut Steuerbescheinigung, ggf. 0)')).toBeTruthy()
+    const input = screen.getByLabelText(/Einbehaltene Kapitalertragsteuer/)
+    fireEvent.change(input, { target: { value: '4750' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+    await waitFor(() => expect(url).toContain('/kapital/kapitalertragsteuer'))
   })
 
   it('PUTs the captured Kapitalerträge as whole euros', async () => {

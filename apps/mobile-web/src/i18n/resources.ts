@@ -457,6 +457,8 @@ export const appResources = {
         kinderErgaenzen: 'Kinder-Angaben ergänzen',
         fehlendVermietung: 'Für die Anlage V fehlen noch Angaben zu deiner Vermietung: Mieteinnahmen, Werbungskosten (auch 0), Adresse des Objekts und ob die AfA wie im Vorjahr ist.',
         vermietungErgaenzen: 'Vermietungs-Angaben ergänzen',
+        fehlendKapital: 'Für die Anlage KAP fehlen noch Angaben: wo dein Depot liegt, deine Kapitalerträge, der genutzte Sparer-Pauschbetrag und bei einer deutschen Bank die einbehaltenen Steuern.',
+        kapitalErgaenzen: 'Kapital-Angaben ergänzen',
         anlageNochNicht: 'Für deine {{anlage}} gibt es den Ausdruck noch nicht. Ohne sie wäre deine Erklärung unvollständig – deshalb drucken wir noch nicht.',
         anlagen: {
           anlageV: 'Vermietung (Anlage V)',
@@ -468,6 +470,7 @@ export const appResources = {
           anlageKindVolljaehrig: 'Angaben zu einem volljährigen Kind (Anlage Kind)',
           anlageKindAusland: 'Angaben zu einem Kind mit Wohnsitz im Ausland (Anlage Kind)',
           anlageVAfaNeu: 'Abschreibung eines im Jahr gekauften oder geänderten Gebäudes (Anlage V, Zeile 33)',
+          anlageKapKrypto: 'Kryptowerte (private Veräußerungsgeschäfte, Anlage SO)',
         },
         angabenErgaenzen: 'Angaben ergänzen',
         nichtVerfuegbar: 'Die Bezahlung ist auf dieser Umgebung noch nicht eingerichtet.',
@@ -791,6 +794,12 @@ export const appResources = {
           auslaendischerBroker: 'Ausländischer Broker: Es wurde keine deutsche Steuer abgeführt. Diese Kapitalerträge musst du in Anlage KAP erklären — sie werden mit deinem persönlichen Steuersatz versteuert. Wir erfinden hier keine Abgeltungsteuer.',
           krypto: 'Krypto bleibt in 1.0 ehrlich außen vor: Haltefristen und Anschaffungskosten rechnen wir noch nicht. Kein halbes Feature.',
           unbekannt: 'Sag uns im Interview zuerst, ob dein Depot bei einem deutschen oder ausländischen Broker liegt.',
+        },
+        felder: {
+          sparerPauschbetrag: 'Bereits genutzter Sparer-Pauschbetrag (laut Steuerbescheinigung, ggf. 0)',
+          kapitalertragsteuer: 'Einbehaltene Kapitalertragsteuer (laut Steuerbescheinigung, volle Euro – Cent weglassen)',
+          solidaritaetszuschlag: 'Einbehaltener Solidaritätszuschlag (volle Euro, ggf. 0)',
+          kirchensteuer: 'Einbehaltene Kirchensteuer (volle Euro, ggf. 0)',
         },
         feld: {
           label: 'Kapitalerträge (Einkünfte aus Kapitalvermögen)',
@@ -1603,6 +1612,8 @@ export const appResources = {
         kinderErgaenzen: 'Complete child details',
         fehlendVermietung: 'Anlage V still needs details about your rental: rent, expenses (0 counts), the address and whether the depreciation is as last year.',
         vermietungErgaenzen: 'Complete rental details',
+        fehlendKapital: 'Anlage KAP still needs details: where your depot is, your capital income, the allowance used and, at a German bank, the withheld taxes.',
+        kapitalErgaenzen: 'Complete capital details',
         anlageNochNicht: 'There is no printout for your {{anlage}} yet. Without it your return would be incomplete — so we do not print yet.',
         anlagen: {
           anlageV: 'rental income (Anlage V)',
@@ -1614,6 +1625,7 @@ export const appResources = {
           anlageKindVolljaehrig: 'details on a child of age (Anlage Kind)',
           anlageKindAusland: 'details on a child living abroad (Anlage Kind)',
           anlageVAfaNeu: 'depreciation of a building bought or changed in the year (Anlage V, line 33)',
+          anlageKapKrypto: 'crypto assets (private sales, Anlage SO)',
         },
         angabenErgaenzen: 'Complete details',
         nichtVerfuegbar: 'Payment is not set up on this environment yet.',
@@ -1909,6 +1921,12 @@ export const appResources = {
           auslaendischerBroker: 'Foreign broker: no German tax was withheld. You must declare this income in Anlage KAP — it is taxed at your personal rate. We never invent a withholding tax here.',
           krypto: 'Crypto honestly stays out of 1.0: holding periods and acquisition costs are not computed yet. No half feature.',
           unbekannt: 'First tell us in the interview whether your brokerage is German or foreign.',
+        },
+        felder: {
+          sparerPauschbetrag: 'Saver’s allowance already used (per tax certificate, 0 if none)',
+          kapitalertragsteuer: 'Withheld capital gains tax (per tax certificate)',
+          solidaritaetszuschlag: 'Withheld solidarity surcharge (0 if none)',
+          kirchensteuer: 'Withheld church tax (0 if none)',
         },
         feld: {
           label: 'Capital income (Einkünfte aus Kapitalvermögen)',

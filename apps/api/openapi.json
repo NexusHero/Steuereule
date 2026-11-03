@@ -613,7 +613,7 @@
             "name": "feld",
             "required": true,
             "in": "path",
-            "description": "The Kapital field id (ParseKapitalFeldPipe — today only `kapitalertraege`).",
+            "description": "The Kapital field id (ParseKapitalFeldPipe — one of KAPITAL_FELDER).",
             "schema": {
               "example": "kapitalertraege",
               "type": "string"
@@ -3219,6 +3219,32 @@
           "kapitalertraege": {
             "$ref": "#/components/schemas/KapitalFeldDto"
           },
+          "sparerPauschbetrag": {
+            "$ref": "#/components/schemas/KapitalFeldDto"
+          },
+          "kapitalertragsteuer": {
+            "$ref": "#/components/schemas/KapitalFeldDto"
+          },
+          "solidaritaetszuschlag": {
+            "$ref": "#/components/schemas/KapitalFeldDto"
+          },
+          "kirchensteuer": {
+            "$ref": "#/components/schemas/KapitalFeldDto"
+          },
+          "pflichtfelder": {
+            "type": "array",
+            "description": "The fields Anlage KAP needs for this depot.",
+            "items": {
+              "type": "string",
+              "enum": [
+                "kapitalertraege",
+                "sparerPauschbetrag",
+                "kapitalertragsteuer",
+                "solidaritaetszuschlag",
+                "kirchensteuer"
+              ]
+            }
+          },
           "depot": {
             "$ref": "#/components/schemas/DepotEinordnungDto"
           },
@@ -3235,6 +3261,11 @@
         },
         "required": [
           "kapitalertraege",
+          "sparerPauschbetrag",
+          "kapitalertragsteuer",
+          "solidaritaetszuschlag",
+          "kirchensteuer",
+          "pflichtfelder",
           "depot",
           "posten",
           "stand"

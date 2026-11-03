@@ -128,6 +128,11 @@ export const EMPTY_RENTE_RESPONSE: RenteResponseDto = {
  */
 export const EMPTY_KAPITAL_RESPONSE: KapitalResponseDto = {
   kapitalertraege: { kind: 'offen' },
+  sparerPauschbetrag: { kind: 'offen' },
+  kapitalertragsteuer: { kind: 'offen' },
+  solidaritaetszuschlag: { kind: 'offen' },
+  kirchensteuer: { kind: 'offen' },
+  pflichtfelder: ['kapitalertraege'],
   depot: { kind: 'unbekannt' },
   posten: [],
   stand: { kind: 'offen', einnahmen: 0, vorsorgeaufwand: 0, anrechnung: 0, offenePosten: 1, konflikte: 0, gegated: [] },

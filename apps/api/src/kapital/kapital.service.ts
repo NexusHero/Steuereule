@@ -30,6 +30,7 @@ import {
   type Answers,
   type Berechnungsstand,
   type Guenstigerpruefung as GuenstigerpruefungKern,
+  kapitalPflichtfelder,
   type KapitalDaten,
   type KapitalFeldId,
   type KapitalFeldZustand,
@@ -55,7 +56,13 @@ import type { UnschaerfeDto } from '../veranlagungsartenvergleich/dto/veranlagun
 /** A stored row (or none) → the core's KapitalDaten, via the ONE encoding in core/kapital.ts. */
 function datenAusRecord(record: KapitalRecord | null): KapitalDaten {
   if (record === null) return LEERES_KAPITAL
-  return { kapitalertraege: deserialisiereKapitalFeld(record.kapitalertraege) }
+  return {
+    kapitalertraege: deserialisiereKapitalFeld(record.kapitalertraege),
+    sparerPauschbetrag: deserialisiereKapitalFeld(record.sparerPauschbetrag),
+    kapitalertragsteuer: deserialisiereKapitalFeld(record.kapitalertragsteuer),
+    solidaritaetszuschlag: deserialisiereKapitalFeld(record.solidaritaetszuschlag),
+    kirchensteuer: deserialisiereKapitalFeld(record.kirchensteuer),
+  }
 }
 
 /** A stored LStB row (or none) → the core's LstbDaten, via the ONE encoding in core/lstb.ts. */
@@ -191,6 +198,11 @@ export class KapitalService {
 
     return {
       kapitalertraege: toFeldDto(daten.kapitalertraege),
+      sparerPauschbetrag: toFeldDto(daten.sparerPauschbetrag),
+      kapitalertragsteuer: toFeldDto(daten.kapitalertragsteuer),
+      solidaritaetszuschlag: toFeldDto(daten.solidaritaetszuschlag),
+      kirchensteuer: toFeldDto(daten.kirchensteuer),
+      pflichtfelder: [...kapitalPflichtfelder(depot.kind)],
       depot: depotZuDto(depot),
       posten,
       stand: standZuDto(stand),

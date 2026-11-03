@@ -149,20 +149,57 @@ describe('ausdruckWerte', () => {
     expect(werte['est1a.zusammenveranlagung']).toBeUndefined()
   })
 
-  it('fills Anlage KAP, Anlage N-Gre, Anlage Sonderausgaben and AV', () => {
+  describe('Anlage KAP', () => {
+    const DEUTSCH = {
+      depot: 'deutscher-broker',
+      kapitalertraege: '20000',
+      sparerPauschbetrag: '1000',
+      kapitalertragsteuer: '4750',
+      solidaritaetszuschlag: '261',
+      kirchensteuer: '0',
+    }
+    const kap = (kapital: Record<string, string | null>) => ausdruckWerte({ ...FAKTEN, kapital: kapital as never })
+
+    it('a German broker: Zeile 7, the used allowance and the withheld taxes to be credited (Zeilen 37–39)', () => {
+      const { werte, fehlend } = kap(DEUTSCH)
+      expect(fehlend).toEqual([])
+      expect(werte).toMatchObject({
+        'anlKap.personA': true,
+        'anlKap.guenstigerpruefung': '1',
+        'anlKap.kz210': '20000',
+        'anlKap.kz217': '1000',
+        'anlKap.kz280': '4750,00',
+        'anlKap.kz281': '261,00',
+        'anlKap.kz282': '0,00',
+      })
+      expect(werte['anlKap.kz234']).toBeUndefined()
+    })
+
+    it('a foreign broker: Zeile 19, nothing used in KAP (Zeile 16 = 0) and the allowance used elsewhere in Zeile 17', () => {
+      const { werte, fehlend } = kap({ depot: 'auslaendischer-broker', kapitalertraege: '800', sparerPauschbetrag: '200' })
+      expect(fehlend).toEqual([])
+      expect(werte).toMatchObject({ 'anlKap.kz234': '800', 'anlKap.kz217': '0', 'anlKap.kz218': '200' })
+      expect(werte['anlKap.kz210']).toBeUndefined()
+      expect(werte['anlKap.kz280']).toBeUndefined()
+    })
+
+    it('missing facts or an unanswered depot block as "kapital"; Krypto is named as not printable', () => {
+      expect(kap({ ...DEUTSCH, kapitalertragsteuer: null }).fehlend).toEqual(['kapital'])
+      expect(kap({ ...DEUTSCH, sparerPauschbetrag: 'unklar' }).fehlend).toEqual(['kapital'])
+      expect(kap({ ...DEUTSCH, depot: 'unbekannt' }).fehlend).toEqual(['kapital'])
+      expect(kap({ ...DEUTSCH, depot: 'krypto' }).fehlend).toEqual(['anlageKapKrypto'])
+      expect(Object.keys(kap({ ...DEUTSCH, kapitalertraege: null }).werte).some((id) => id.startsWith('anlKap.'))).toBe(false)
+    })
+  })
+
+  it('fills Anlage N-Gre, Anlage Sonderausgaben and AV', () => {
     const { werte } = ausdruckWerte({
       ...FAKTEN,
-      kapital: { kapitalertraege: '1500', abzugssteuer: '375' },
       chLohnausweis: { bruttolohnEur: '65000', abzugssteuerEur: '2900' },
       sonderausgaben: { spenden: '450' },
       riester: { art: 'Unmittelbar', einnahmenVorjahr: '48000' },
     })
     expect(werte).toMatchObject({
-      'anlKap.personA': true,
-      'anlKap.name': 'Beispiel',
-      'anlKap.vorname': 'Anna',
-      'anlKap.kz210': '1500',
-      'anlKap.kz234': '375',
       'anlNGre.personA': true,
       'anlNGre.name': 'Beispiel',
       'anlNGre.bruttolohnEur': '65000',
@@ -506,7 +543,7 @@ describe('rendereVordrucke (real templates)', () => {
     const res = ausdruckWerte({
       ...FAKTEN,
       rente: { rentenart: 'GesetzlicheRente', jahresbetrag: '12000' },
-      kapital: { kapitalertraege: '1000' },
+      kapital: { depot: 'deutscher-broker', kapitalertraege: '1000', sparerPauschbetrag: '1000', kapitalertragsteuer: '0', solidaritaetszuschlag: '0', kirchensteuer: '0' },
       chLohnausweis: { bruttolohnEur: '50000' },
       sonderausgaben: { spenden: '200' },
       riester: { art: 'Unmittelbar', einnahmenVorjahr: '40000' },

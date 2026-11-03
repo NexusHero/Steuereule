@@ -631,7 +631,7 @@
       "id": "anlKap.guenstigerpruefung",
       "formular": "anlage-kap",
       "seite": 1,
-      "art": "kreuz",
+      "art": "text",
       "kasten": {
         "x": 502.9,
         "y": 636.5,
@@ -661,6 +661,66 @@
         "y": 738.4,
         "breite": 116.1,
         "hoehe": 15.9
+      }
+    },
+    {
+      "id": "anlKap.kz217",
+      "formular": "anlage-kap",
+      "seite": 1,
+      "art": "euro",
+      "kasten": {
+        "x": 486.5,
+        "y": 106.1,
+        "breite": 56.9,
+        "hoehe": 15.9
+      }
+    },
+    {
+      "id": "anlKap.kz218",
+      "formular": "anlage-kap",
+      "seite": 1,
+      "art": "euro",
+      "kasten": {
+        "x": 486.5,
+        "y": 53.7,
+        "breite": 56.9,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlKap.kz280",
+      "formular": "anlage-kap",
+      "seite": 3,
+      "art": "euroCent",
+      "kasten": {
+        "x": 413,
+        "y": 755.7,
+        "breite": 143.5,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlKap.kz281",
+      "formular": "anlage-kap",
+      "seite": 3,
+      "art": "euroCent",
+      "kasten": {
+        "x": 413,
+        "y": 735.4,
+        "breite": 143.5,
+        "hoehe": 15.9
+      }
+    },
+    {
+      "id": "anlKap.kz282",
+      "formular": "anlage-kap",
+      "seite": 3,
+      "art": "euroCent",
+      "kasten": {
+        "x": 413,
+        "y": 715.3,
+        "breite": 143.5,
+        "hoehe": 15.8
       }
     },
     {

@@ -9,6 +9,7 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common'
+import { ordneKapDepotEin } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
 import { CH_LOHNAUSWEIS_REPOSITORY, type ChLohnausweisRepository } from '../ch-lohnausweis/ch-lohnausweis.repository.js'
 import { FreischaltungService } from '../freischaltung/freischaltung.service.js'
@@ -180,7 +181,16 @@ export class AusdruckService {
       stammdaten,
       bruttoarbeitslohn: lstb?.bruttoarbeitslohn ?? null,
       rente: rente ? { rentenart: rente.rentenart, jahresbetrag: rente.jahresbetrag } : null,
-      kapital: kapital ? { kapitalertraege: kapital.kapitalertraege } : null,
+      kapital: kapital
+        ? {
+            depot: ordneKapDepotEin(answers['kap-depot']).kind,
+            kapitalertraege: kapital.kapitalertraege,
+            sparerPauschbetrag: kapital.sparerPauschbetrag,
+            kapitalertragsteuer: kapital.kapitalertragsteuer,
+            solidaritaetszuschlag: kapital.solidaritaetszuschlag,
+            kirchensteuer: kapital.kirchensteuer,
+          }
+        : null,
       chLohnausweis: ch
         ? {
             bruttolohnEur: chfZuEurString(ch.felder['bruttolohn-total'], ch.wechselkursKurs),

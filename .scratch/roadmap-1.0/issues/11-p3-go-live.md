@@ -41,6 +41,10 @@ sobald das Zertifikat (Ticket 07) vorliegt; bis dahin Beta kostenlos (ADR-017).
       (linear, Satz, wie Vorjahr, Betrag), Kz 30, Z. 80/Kz 49 (laufende Werbungskosten), Z. 83 inkl.
       AfA, Z. 85 Überschuss, Kz 20. Sperren: fehlende/unklare Angaben → „vermietung“ (Weg zum
       Vermietungs-Screen); im Jahr gekauftes/geändertes Gebäude → „anlageVAfaNeu“
+- [x] Anlage KAP korrigiert: ausländischer Broker jetzt Z. 19 (Kz 234) statt Z. 7; deutscher Broker
+      mit Sparer-Pauschbetrag (Z. 16) und den einbehaltenen Steuern zur Anrechnung (Z. 37–39, EUR/Ct) —
+      ohne sie würden die Erträge doppelt besteuert. Kz 201 als Ziffer. Kapital erfasst dafür vier
+      weitere Felder; fehlt etwas → „kapital“ (Weg zum Kapital-Screen), Krypto → „anlageKapKrypto“
 - [ ] Anlage Kind, noch ehrlich gesperrt: anderer Elternteil im Ausland (Z. 13), volljährige Kinder
       (Z. 16 ff.), Wohnsitz des Kindes im Ausland (Z. 9); Kinderbetreuungskosten werden nicht erfasst
 - [x] Verheiratete: Veranlagungsart + Person B erfassen, dann Zeilen 19–24 ausdrucken
