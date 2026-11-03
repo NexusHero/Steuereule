@@ -102,3 +102,23 @@ amtlich vorgeschriebene Vordruck verwendet wird (§ 150 Abs. 1 AO). Das BMF-Schr
 - 2026-10-28: Vorlagen 2025 eingecheckt, Stammdaten erfasst, Ausdruck ESt 1 A + Anlage N gebaut.
 - 2026-10-28: Stakeholder-Entscheidung im 1.0-Readiness-Review; umgesetzt im PR
   „1.0-Readiness: Papierweg, Zahlung, E-Mail, Recht, DSGVO-Lücken".
+
+## Amendment — 2026-11-05: geprüfte Lage der Felder und bearbeitbare Variante
+
+**Absicherung gegen geänderte Vordrucke.** Die Positionen stammen weiter aus Ankern
+(`felder-<jahr>.spec.json` → `vermessen.mjs`). Neu prüft der CI-Job „Vordrucke“, dass
+`felder-<jahr>.json` dem entspricht, was Vorlagen und Spec ergeben (inkl. Prüfsumme jeder Vorlage),
+und dass der Lagebericht `felder-<jahr>.lage.txt` — Zeile, Beschriftung und Spaltenkopf je Feld —
+unverändert ist. Ein geänderter Bericht verlangt eine menschliche Durchsicht (Ablauf:
+`docs/process/vordrucke-jahreswechsel.md`). Das amtliche FFWP-Format ist verschlüsselt und ohne
+Spezifikation; ein eigener Parser wurde verworfen.
+
+**Bearbeitbare Variante (AcroForm).** `GET …/ausdruck?bearbeitbar=true` liefert dieselben Werte als
+benannte AcroForm-Textfelder über denselben Kästen (`anlKap.kz280`, Instanzen `anlKind.vorname#2`),
+gleiche Sperren und dieselbe Bezahlung. Der Ausdruck selbst bleibt fester Seiteninhalt: Ein mit
+pdf-lib geflachtes Formular hinterlässt verwaiste Objektverweise, die PDF-Leser als defekt melden;
+der direkte Text ist pixelgleich zum bisherigen Ausdruck. Die App weist darauf hin, dass Änderungen
+in der bearbeitbaren Datei von den Angaben in der App abweichen.
+
+- 2026-11-05: Stakeholder-Entscheidung (NexusHero), FFWP verworfen, AcroForm als Zusatz.
+

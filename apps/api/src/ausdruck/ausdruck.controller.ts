@@ -1,10 +1,11 @@
-import { Controller, Get, HttpCode, Inject, Param, Post, Res, UseGuards } from '@nestjs/common'
+import { Controller, Get, HttpCode, Inject, Param, Post, Query, Res, UseGuards } from '@nestjs/common'
 import {
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiParam,
   ApiPaymentRequiredResponse,
   ApiProduces,
+  ApiQuery,
   ApiServiceUnavailableResponse,
   ApiTags,
   ApiUnauthorizedResponse,
@@ -53,6 +54,12 @@ export class AusdruckController {
   @RequiresAccount()
   @ApiParam({ name: 'jahr', type: Number, example: 2025 })
   @ApiProduces('application/pdf')
+  @ApiQuery({
+    name: 'bearbeitbar',
+    required: false,
+    enum: ['true'],
+    description: 'true → the values as named, editable AcroForm fields (for a correction before printing).',
+  })
   @ApiOkResponse({ description: 'The filled Vordrucke (ESt 1 A + used Anlagen) as one PDF to print, sign and hand in.' })
   @ApiNotFoundResponse({ description: 'No measured templates exist for this tax year.' })
   @ApiPaymentRequiredResponse({ description: 'The Ausdruck for this tax year is not unlocked (ADR-0050).' })
@@ -62,9 +69,11 @@ export class AusdruckController {
     @CurrentUser() userId: string,
     @Param('jahr', ParseSteuerjahrPipe) jahr: number,
     @Res({ passthrough: true }) reply: FastifyReply,
+    @Query('bearbeitbar') bearbeitbarParam?: string,
   ): Promise<Buffer> {
-    const pdf = await this.service.erstelle(userId, jahr)
-    reply.header('Content-Disposition', `attachment; filename="steuererklaerung-${jahr}.pdf"`)
+    const bearbeitbar = bearbeitbarParam === 'true'
+    const pdf = await this.service.erstelle(userId, jahr, { bearbeitbar })
+    reply.header('Content-Disposition', `attachment; filename="steuererklaerung-${jahr}${bearbeitbar ? '-bearbeitbar' : ''}.pdf"`)
     reply.type('application/pdf')
     return Buffer.from(pdf)
   }
