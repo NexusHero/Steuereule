@@ -63,7 +63,7 @@ export function taxDataTables(tx: TransactionClient): UserKeyedTable[] {
     tx.kapital,
     tx.vermietungsobjekt,
     tx.bescheid,
-    tx.uebernahmeKennzeichnung,
+    tx.kennzeichnung,
     tx.stammdaten,
     tx.kind,
     tx.eulenEinstellung,

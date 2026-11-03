@@ -1,4 +1,4 @@
-import { BadRequestException, Controller, Get, HttpCode, Inject, Param, Post, Put, Query, UseGuards } from '@nestjs/common'
+import { BadRequestException, Controller, Get, HttpCode, Inject, Param, Post, Query, UseGuards } from '@nestjs/common'
 import { ApiOkResponse, ApiParam, ApiQuery, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger'
 import { CurrentUser } from '../auth/current-user.decorator.js'
 import { RequiresAccount } from '../auth/requires-account.guard.js'
@@ -61,30 +61,5 @@ export class UebernahmeController {
     @Query('von') vonRaw: unknown,
   ): Promise<UebernahmeResponseDto> {
     return this.uebernahmeService.uebernehme(userId, jahr, parseVon(vonRaw))
-  }
-
-  @Put(':jahr/uebernahme/:postenKey/bestaetigen')
-  @HttpCode(200)
-  @RequiresAccount()
-  @ApiParam({
-    name: 'jahr',
-    type: Number,
-    example: 2026,
-    description: 'The target tax year (Steuerjahr).',
-  })
-  @ApiParam({
-    name: 'postenKey',
-    type: String,
-    example: 'lstb',
-    description: 'The stable key of the copied fact (M1: lstb).',
-  })
-  @ApiOkResponse({ type: UebernahmeResponseDto, description: 'The Kennzeichnung is confirmed (ADR-021: angetippt/Beleg).' })
-  @ApiUnauthorizedResponse({ description: 'Guest session — this endpoint requires a signed-in account.' })
-  bestaetige(
-    @CurrentUser() userId: string,
-    @Param('jahr', ParseSteuerjahrPipe) jahr: number,
-    @Param('postenKey') postenKey: string,
-  ): Promise<UebernahmeResponseDto> {
-    return this.uebernahmeService.bestaetige(userId, jahr, postenKey)
   }
 }

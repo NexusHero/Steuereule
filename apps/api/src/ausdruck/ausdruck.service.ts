@@ -9,13 +9,14 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common'
-import { CH_WOHNSITZ_VALUES, grenzgaengerStatus, ordneKapDepotEin, type ChWohnsitz, type GrenzgaengerStatus } from '@steuereule/core'
+import { CH_WOHNSITZ_VALUES, JAHRESUNABHAENGIG, fehlendeBestaetigungen, grenzgaengerStatus, ordneKapDepotEin, type ChWohnsitz, type GrenzgaengerStatus } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
 import { CH_LOHNAUSWEIS_REPOSITORY, type ChLohnausweisRepository } from '../ch-lohnausweis/ch-lohnausweis.repository.js'
 import { FreischaltungService } from '../freischaltung/freischaltung.service.js'
 import { INTERVIEW_ANSWER_REPOSITORY, type InterviewAnswerRepository } from '../interview/interview-answer.repository.js'
 import { KAPITAL_REPOSITORY, type KapitalRepository } from '../kapital/kapital.repository.js'
 import { KIND_REPOSITORY, type KindRepository } from '../kinder/kind.repository.js'
+import { KENNZEICHNUNG_REPOSITORY, type KennzeichnungRepository } from '../kennzeichnung/kennzeichnung.repository.js'
 import { KOPPLUNG_REPOSITORY, type KopplungRepository } from '../kopplung/kopplung.repository.js'
 import { LSTB_REPOSITORY, type LstbRepository } from '../lstb/lstb.repository.js'
 import { PROFILE_REPOSITORY, type ProfileRepository } from '../profile/profile.repository.js'
@@ -49,6 +50,7 @@ export class AusdruckService {
     @Inject(KIND_REPOSITORY) private readonly kinder: KindRepository,
     @Inject(KOPPLUNG_REPOSITORY) private readonly kopplung: KopplungRepository,
     @Inject(INTERVIEW_ANSWER_REPOSITORY) private readonly interview: InterviewAnswerRepository,
+    @Inject(KENNZEICHNUNG_REPOSITORY) private readonly kennzeichnungen: KennzeichnungRepository,
     @Inject(FreischaltungService) private readonly freischaltung: FreischaltungService,
     @Inject(AuditService) private readonly audit: AuditService,
     /** Directory containing one `<jahr>/` folder of templates per supported year. */
@@ -99,7 +101,27 @@ export class AusdruckService {
     }
   }
 
+  /** ADR-0052 §6: unconfirmed values block like missing ones — the user's and, in a joint return, Person B's. */
+  private async unbestaetigt(userId: string, jahr: number, personBUserId: string | null): Promise<string[]> {
+    const jahre = [jahr, JAHRESUNABHAENGIG]
+    const eigene = fehlendeBestaetigungen((await this.kennzeichnungen.listForUserAndYears(userId, jahre)).map((k) => ({ ...k, wert: null })))
+    if (personBUserId === null) return eigene
+    const personB = fehlendeBestaetigungen((await this.kennzeichnungen.listForUserAndYears(personBUserId, jahre)).map((k) => ({ ...k, wert: null })))
+    return personB.length > 0 ? [...eigene, 'unbestaetigt.personB'] : eigene
+  }
+
   private async sammle(userId: string, jahr: number) {
+    const [werte, kopplung] = await Promise.all([this.sammleWerte(userId, jahr), this.kopplung.findByUserAndYear(userId, jahr)])
+    const personBUserId =
+      kopplung?.veranlagungsart === 'zusammen' && kopplung.personBUserId
+        ? kopplung.personAUserId === userId
+          ? kopplung.personBUserId
+          : kopplung.personAUserId
+        : null
+    return { ...werte, fehlend: [...werte.fehlend, ...(await this.unbestaetigt(userId, jahr, personBUserId))] }
+  }
+
+  private async sammleWerte(userId: string, jahr: number) {
     const [profil, stammdaten, lstb, rente, kapital, objekte, ch, kinder, kopplung, interviewRows] = await Promise.all([
       this.profile.findByUserId(userId),
       this.stammdaten.findByUserId(userId),

@@ -26,7 +26,7 @@ import { LSTB_REPOSITORY } from '../../src/lstb/lstb.repository.js'
 import { RENTE_REPOSITORY } from '../../src/rente/rente.repository.js'
 import { KAPITAL_REPOSITORY } from '../../src/kapital/kapital.repository.js'
 import { VERMIETUNG_REPOSITORY } from '../../src/vermietung/vermietung.repository.js'
-import { UEBERNAHME_REPOSITORY } from '../../src/uebernahme/uebernahme.repository.js'
+import { KENNZEICHNUNG_REPOSITORY } from '../../src/kennzeichnung/kennzeichnung.repository.js'
 import { FakeAccountIdentityRepository } from '../fakes/fake-account-identity.repository.js'
 import { FakeAuditRepository } from '../fakes/fake-audit.repository.js'
 import { FakeInterviewAnswerRepository } from '../fakes/fake-interview-answer.repository.js'
@@ -37,7 +37,7 @@ import { FakeTaxDataExportRepository } from '../fakes/fake-tax-data-export.repos
 import { FakeProfileRepository } from '../fakes/fake-profile.repository.js'
 import { FakeRenteRepository } from '../fakes/fake-rente.repository.js'
 import { FakeTaxYearRepository } from '../fakes/fake-tax-year.repository.js'
-import { FakeUebernahmeRepository } from '../fakes/fake-uebernahme.repository.js'
+import { FakeKennzeichnungRepository } from '../fakes/fake-kennzeichnung.repository.js'
 import { FakeVermietungRepository } from '../fakes/fake-vermietung.repository.js'
 
 export async function buildTestApp(options?: {
@@ -59,7 +59,7 @@ export async function buildTestApp(options?: {
   const taxYearRepository = new FakeTaxYearRepository()
   const lstbRepository = new FakeLstbRepository()
   const interviewRepository = new FakeInterviewAnswerRepository()
-  const uebernahmeRepository = new FakeUebernahmeRepository()
+  const kennzeichnungRepository = new FakeKennzeichnungRepository()
   const renteRepository = new FakeRenteRepository()
   const kapitalRepository = new FakeKapitalRepository()
   const vermietungRepository = new FakeVermietungRepository()
@@ -112,8 +112,8 @@ export async function buildTestApp(options?: {
     .useValue(lstbRepository)
     .overrideProvider(INTERVIEW_ANSWER_REPOSITORY)
     .useValue(interviewRepository)
-    .overrideProvider(UEBERNAHME_REPOSITORY)
-    .useValue(uebernahmeRepository)
+    .overrideProvider(KENNZEICHNUNG_REPOSITORY)
+    .useValue(kennzeichnungRepository)
     .overrideProvider(RENTE_REPOSITORY)
     .useValue(renteRepository)
     .overrideProvider(KAPITAL_REPOSITORY)

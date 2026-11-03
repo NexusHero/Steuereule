@@ -3,6 +3,7 @@
 // real-Postgres proof (ciphertext at rest, audit atomicity, cross-user isolation, the real fold
 // through Prisma) lives in test/acceptance/req-026-vermietung.test.ts.
 import { beforeEach, describe, expect, it } from 'vitest'
+import { FakeKennzeichnungRepository } from './fakes/fake-kennzeichnung.repository.js'
 import { AuditService } from '../src/audit/audit.service.js'
 import { VermietungService } from '../src/vermietung/vermietung.service.js'
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
@@ -13,6 +14,7 @@ const USER_ID = 'user-1'
 const STEUERJAHR = 2026
 
 describe('VermietungService', () => {
+  let kennzeichnungen: FakeKennzeichnungRepository
   let repository: FakeVermietungRepository
   let interviewRepository: FakeInterviewAnswerRepository
   let auditRepository: FakeAuditRepository
@@ -22,7 +24,8 @@ describe('VermietungService', () => {
     repository = new FakeVermietungRepository()
     interviewRepository = new FakeInterviewAnswerRepository()
     auditRepository = new FakeAuditRepository()
-    service = new VermietungService(repository, interviewRepository, new AuditService(auditRepository))
+    kennzeichnungen = new FakeKennzeichnungRepository()
+    service = new VermietungService(repository, interviewRepository, new AuditService(auditRepository), kennzeichnungen)
   })
 
   describe('getState — the honest empty state and the Einordnung', () => {
@@ -140,5 +143,15 @@ describe('VermietungService', () => {
       const state = await service.getState(USER_ID, STEUERJAHR)
       expect(state.objekte).toEqual([])
     })
+  })
+
+  it('ADR-0052 §6: a user write drops the marker of exactly that field of that object', async () => {
+    const objekt = await repository.create('user-1', 2025)
+    await kennzeichnungen.speichere('user-1', 2025, { key: `vermietung:${objekt.id}.mieteinnahmen`, herkunft: { art: 'uebernahme', vorjahr: 2024 }, bestaetigt: false, vorschlag: null })
+    await kennzeichnungen.speichere('user-1', 2025, { key: `vermietung:${objekt.id}.baujahr`, herkunft: { art: 'uebernahme', vorjahr: 2024 }, bestaetigt: false, vorschlag: null })
+
+    await service.setFeld('user-1', 2025, objekt.id, 'mieteinnahmen', { kind: 'erfasst', wert: 9000 })
+
+    expect(kennzeichnungen.alle().map((k) => k.key)).toEqual([`vermietung:${objekt.id}.baujahr`])
   })
 })

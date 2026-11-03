@@ -1,23 +1,33 @@
 // Fast, no-DB unit tier (ADR-0004): UebernahmeService against the fake repositories. The copy
 // moves ALL of the previous year's facts (LStB, Rente, Kapital, every Vermietungsobjekt) — the
-// stored field strings travel UNVERÄNDERT (open stays open, ADR-032) — and each copied fact gets
-// an UNBESTÄTIGTE Kennzeichnung (ADR-021). A year that was already taken over is a 409, a source
-// year without ANY take-over-able fact is a 404, a Bestätigung without a Kennzeichnung is a 404.
-// The real-Postgres proofs (ciphertext, audit, idempotence over real HTTP) live in
-// test/acceptance/req-028-jahresuebernahme.test.ts.
+// stored field strings travel UNVERÄNDERT (open stays open, ADR-032) — and every copied value gets
+// an UNBESTÄTIGTE Kennzeichnung (ADR-021) through the generic layer (ADR-0052 §6). A value the
+// user already entered in the target year wins: the copy becomes a proposal (ADR-0052 §7). A year
+// that was already taken over is a 409, a source year without ANY take-over-able fact is a 404.
+// The real-Postgres proofs live in test/acceptance/req-028-jahresuebernahme.test.ts.
 import { beforeEach, describe, expect, it } from 'vitest'
+import { AuditService } from '../src/audit/audit.service.js'
+import { BestaetigungService } from '../src/bestaetigung/bestaetigung.service.js'
+import { feldZugriffAus } from '../src/bestaetigung/feld-zugriff.js'
 import { UebernahmeService } from '../src/uebernahme/uebernahme.service.js'
+import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
 import { FakeKapitalRepository } from './fakes/fake-kapital.repository.js'
+import { FakeKennzeichnungRepository } from './fakes/fake-kennzeichnung.repository.js'
 import { FakeLstbRepository } from './fakes/fake-lstb.repository.js'
 import { FakeRenteRepository } from './fakes/fake-rente.repository.js'
-import { FakeUebernahmeRepository } from './fakes/fake-uebernahme.repository.js'
 import { FakeVermietungRepository } from './fakes/fake-vermietung.repository.js'
 
 const USER_ID = 'user-1'
 const ZIELJAHR = 2026
 
+const LSTB_FELDER_2025 = [
+  { postenKey: 'lstb.bruttoarbeitslohn', vorjahr: 2025, bestaetigt: false },
+  { postenKey: 'lstb.lohnsteuer', vorjahr: 2025, bestaetigt: false },
+  { postenKey: 'lstb.sozialversicherung', vorjahr: 2025, bestaetigt: false },
+]
+
 describe('UebernahmeService', () => {
-  let repository: FakeUebernahmeRepository
+  let repository: FakeKennzeichnungRepository
   let lstb: FakeLstbRepository
   let rente: FakeRenteRepository
   let kapital: FakeKapitalRepository
@@ -25,12 +35,13 @@ describe('UebernahmeService', () => {
   let service: UebernahmeService
 
   beforeEach(() => {
-    repository = new FakeUebernahmeRepository()
+    repository = new FakeKennzeichnungRepository()
     lstb = new FakeLstbRepository()
     rente = new FakeRenteRepository()
     kapital = new FakeKapitalRepository()
     vermietung = new FakeVermietungRepository()
-    service = new UebernahmeService(repository, lstb, rente, kapital, vermietung)
+    const bestaetigung = new BestaetigungService(repository, feldZugriffAus({ lstb, rente, kapital, vermietung }), new AuditService(new FakeAuditRepository()))
+    service = new UebernahmeService(repository, bestaetigung, lstb, rente, kapital, vermietung)
   })
 
   it('kopiert die LStB-Zeile des Vorjahrs unverändert und markiert sie UNBESTÄTIGT (ADR-021)', async () => {
@@ -38,7 +49,7 @@ describe('UebernahmeService', () => {
 
     const response = await service.uebernehme(USER_ID, ZIELJAHR, 2025)
 
-    expect(response).toEqual({ kennzeichnungen: [{ postenKey: 'lstb', vorjahr: 2025, bestaetigt: false }] })
+    expect(response).toEqual({ kennzeichnungen: LSTB_FELDER_2025 })
     // Die kopierten Feld-Strings sind unverändert (die ehrlichen Zustände reisen mit).
     const kopie = await lstb.findForUserAndYear(USER_ID, ZIELJAHR)
     expect(kopie).toMatchObject({ bruttoarbeitslohn: '50000', lohnsteuer: '8000', sozialversicherung: '9000' })
@@ -53,10 +64,12 @@ describe('UebernahmeService', () => {
 
     const response = await service.uebernehme(USER_ID, ZIELJAHR, 2025)
 
-    expect(response.kennzeichnungen).toHaveLength(5)
+    // Je kopiertem, nicht offenem Feld eine Kennzeichnung — offen bleibt offen und unmarkiert.
     const postenKeys = response.kennzeichnungen.map((k) => k.postenKey)
-    expect(postenKeys.filter((k) => k.startsWith('vermietung-'))).toHaveLength(2)
-    expect(postenKeys.filter((k) => ['lstb', 'rente', 'kapital'].includes(k)).sort()).toEqual(['kapital', 'lstb', 'rente'])
+    expect(postenKeys.filter((k) => k.startsWith('lstb.'))).toHaveLength(3)
+    expect(postenKeys.filter((k) => k.startsWith('rente.')).sort()).toEqual(['rente.jahresbetrag', 'rente.rentenart', 'rente.rentenbeginnJahr'])
+    expect(postenKeys.filter((k) => k.startsWith('kapital.'))).toEqual(['kapital.kapitalertraege'])
+    expect(postenKeys.filter((k) => k.startsWith('vermietung:'))).toHaveLength(7)
     expect(response.kennzeichnungen.every((k) => k.bestaetigt === false && k.vorjahr === 2025)).toBe(true)
 
     // Die kopierten Fakten: Rente + Kapital unverändert, zwei Objekte mit allen Feld-Strings.
@@ -85,7 +98,12 @@ describe('UebernahmeService', () => {
 
     const response = await service.uebernehme(USER_ID, ZIELJAHR, 2025)
 
-    expect(response).toEqual({ kennzeichnungen: [{ postenKey: 'rente', vorjahr: 2025, bestaetigt: false }] })
+    expect(response).toEqual({
+      kennzeichnungen: [
+        { postenKey: 'rente.jahresbetrag', vorjahr: 2025, bestaetigt: false },
+        { postenKey: 'rente.rentenart', vorjahr: 2025, bestaetigt: false },
+      ],
+    })
   })
 
   it('ein ungültiges von-Jahr ist ein 400 (nicht ganzzahlig, nicht vor dem Zieljahr)', async () => {
@@ -104,17 +122,30 @@ describe('UebernahmeService', () => {
 
     const response = await service.uebernehme(USER_ID, ZIELJAHR, 2022)
 
-    expect(response.kennzeichnungen).toEqual([{ postenKey: 'lstb', vorjahr: 2022, bestaetigt: false }])
+    expect(response.kennzeichnungen).toEqual([{ postenKey: 'lstb.bruttoarbeitslohn', vorjahr: 2022, bestaetigt: false }])
   })
 
-  it('bestaetige dreht das Flag (ADR-021: angetippt), ohne Kennzeichnung ist es ein 404', async () => {
+  it('ADR-0052 §7: ein im Zieljahr schon eingetragener Wert gewinnt — die Kopie wird ein Vorschlag', async () => {
+    lstb.seed({ userId: USER_ID, steuerjahr: 2025, bruttoarbeitslohn: '50000', lohnsteuer: '8000', sozialversicherung: null })
+    await lstb.setFeld(USER_ID, ZIELJAHR, 'bruttoarbeitslohn', '52000')
+
+    const response = await service.uebernehme(USER_ID, ZIELJAHR, 2025)
+
+    expect((await lstb.findForUserAndYear(USER_ID, ZIELJAHR))?.bruttoarbeitslohn).toBe('52000')
+    expect(response.kennzeichnungen).toEqual([{ postenKey: 'lstb.lohnsteuer', vorjahr: 2025, bestaetigt: false }])
+    expect(await repository.find(USER_ID, ZIELJAHR, 'lstb.bruttoarbeitslohn')).toMatchObject({
+      herkunft: { art: 'nutzer' },
+      bestaetigt: true,
+      vorschlag: { wert: '50000', herkunft: { art: 'uebernahme', vorjahr: 2025 } },
+    })
+  })
+
+  it('ein zweiter Kopierversuch bleibt ein 409, auch wenn die Übernahme nur Vorschläge hinterließ', async () => {
     lstb.seed({ userId: USER_ID, steuerjahr: 2025, bruttoarbeitslohn: '50000', lohnsteuer: null, sozialversicherung: null })
+    await lstb.setFeld(USER_ID, ZIELJAHR, 'bruttoarbeitslohn', '52000')
     await service.uebernehme(USER_ID, ZIELJAHR, 2025)
 
-    const response = await service.bestaetige(USER_ID, ZIELJAHR, 'lstb')
-    expect(response).toEqual({ kennzeichnungen: [{ postenKey: 'lstb', vorjahr: 2025, bestaetigt: true }] })
-
-    await expect(service.bestaetige(USER_ID, ZIELJAHR, 'gibt-es-nicht')).rejects.toThrow('No take-over exists')
+    await expect(service.uebernehme(USER_ID, ZIELJAHR, 2025)).rejects.toThrow('already taken over')
   })
 
   it('ist strikt auf userId und Steuerjahr gescoped', async () => {

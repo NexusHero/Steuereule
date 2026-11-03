@@ -8,6 +8,7 @@ import { BescheidModule } from './bescheid/bescheid.module.js'
 import { FreischaltungModule } from './freischaltung/freischaltung.module.js'
 import { FristenModule } from './fristen/fristen.module.js'
 import { UebernahmeModule } from './uebernahme/uebernahme.module.js'
+import { BestaetigungModule } from './bestaetigung/bestaetigung.module.js'
 import { ChLohnausweisModule } from './ch-lohnausweis/ch-lohnausweis.module.js'
 import { CockpitModule } from './cockpit/cockpit.module.js'
 import { DeviceModule } from './device/device.module.js'
@@ -49,6 +50,7 @@ import { EulenModusModule } from './eulen-modus/eulen-modus.module.js'
     VermietungModule,
     FristenModule,
     UebernahmeModule,
+    BestaetigungModule,
     FreischaltungModule,
     StammdatenModule,
     AusdruckModule,

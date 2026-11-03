@@ -11,11 +11,13 @@ import { StammdatenModule } from '../stammdaten/stammdaten.module.js'
 import { VermietungModule } from '../vermietung/vermietung.module.js'
 import { KinderModule } from '../kinder/kinder.module.js'
 import { KopplungModule } from '../kopplung/kopplung.module.js'
+import { KennzeichnungModule } from '../kennzeichnung/kennzeichnung.module.js'
 import { AusdruckController } from './ausdruck.controller.js'
 import { AusdruckService, VORLAGEN_BASIS } from './ausdruck.service.js'
 
 @Module({
   imports: [
+    KennzeichnungModule,
     AuditModule,
     ChLohnausweisModule,
     FreischaltungModule,

@@ -15,7 +15,7 @@ Refinement je Slice (REQ, Given–When–Then, Risiko-Tier) steht aus
 
 ## Slices (in Abhängigkeitsreihenfolge)
 
-- [ ] #384 **17.1 Herkunft und Bestätigung für jede Maske** — Kennzeichnungs-Schicht aus ADR-0049
+- [x] #384 **17.1 Herkunft und Bestätigung für jede Maske** — Kennzeichnungs-Schicht aus ADR-0049
       verallgemeinern (Herkunft + Bestätigungsstand je Wert); Vorprüfung, Ausdruck und Bezahlung
       behandeln „unbestätigt“ wie offen; Bestätigungs-Screen je Anlage; Konfliktregel „Nutzer
       gewinnt“ (Agent-Wert wird Vorschlag). Tier T1.

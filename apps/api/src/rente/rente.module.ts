@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common'
+import { KennzeichnungModule } from '../kennzeichnung/kennzeichnung.module.js'
 import { AuditModule } from '../audit/audit.module.js'
 import { InterviewModule } from '../interview/interview.module.js'
 import { PrismaModule } from '../prisma/prisma.module.js'
@@ -8,7 +9,7 @@ import { PrismaRenteRepository } from './rente.repository.prisma.js'
 import { RenteService } from './rente.service.js'
 
 @Module({
-  imports: [PrismaModule, AuditModule, InterviewModule],
+  imports: [KennzeichnungModule, PrismaModule, AuditModule, InterviewModule],
   controllers: [RenteController],
   providers: [RenteService, { provide: RENTE_REPOSITORY, useClass: PrismaRenteRepository }],
   // Exported so the Jahresübernahme (ticket 10.8 M2) can copy the Rente row through the SAME

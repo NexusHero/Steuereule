@@ -41,6 +41,7 @@ import { DeviceScreen } from './src/screens/device/DeviceScreen'
 import { RechtlichesScreen } from './src/screens/rechtliches/RechtlichesScreen'
 import { StammdatenScreen } from './src/screens/stammdaten/StammdatenScreen'
 import { AusdruckScreen } from './src/screens/ausdruck/AusdruckScreen'
+import { BestaetigungScreen, type BestaetigungsMaske } from './src/screens/bestaetigung/BestaetigungScreen'
 import { KinderScreen } from './src/screens/kinder/KinderScreen'
 import { EulenModusScreen } from './src/screens/berater/EulenModusScreen'
 import { betreiberAusUmgebung, RECHTLICHE_SEITEN, type RechtlicheSeite } from './src/screens/rechtliches/texte'
@@ -82,6 +83,8 @@ type RootStackParamList = {
   Rechtliches: { seite: RechtlicheSeite }
   /** ADR-0050 — also the Stripe checkout's return URL (`?zahlung=erfolg|abbruch`). */
   Ausdruck: { jahr: string; zahlung?: string }
+  /** REQ-032 — „Prüfen & bestätigen“ for one tax year. */
+  Bestaetigung: { jahr: string }
 }
 
 const RootStack = createNativeStackNavigator<RootStackParamList>()
@@ -105,6 +108,7 @@ const linking: LinkingOptions<RootStackParamList> = {
       Device: 'device',
       Rechtliches: 'rechtliches/:seite',
       Ausdruck: 'app/steuerjahr/:jahr/ausdruck',
+      Bestaetigung: 'app/steuerjahr/:jahr/bestaetigung',
     },
   },
 }
@@ -137,6 +141,7 @@ export default function App() {
                     <RootStack.Screen name="Device" component={DeviceRoute} />
                     <RootStack.Screen name="Rechtliches" component={RechtlichesRoute} />
                     <RootStack.Screen name="Ausdruck" component={AusdruckRoute} />
+                    <RootStack.Screen name="Bestaetigung" component={BestaetigungRoute} />
                   </RootStack.Navigator>
                 </NavigationContainer>
                 <StatusBar style="dark" />
@@ -264,6 +269,30 @@ function AusdruckRoute({ navigation, route }: NativeStackScreenProps<RootStackPa
       onVermietungErgaenzen={() => setAnsicht('vermietung')}
       onKapitalErgaenzen={() => setAnsicht('kapital')}
       onGrenzgaengerErgaenzen={() => setAnsicht('grenzgaenger')}
+      onBestaetigen={() => navigation.navigate('Bestaetigung', { jahr: String(jahr) })}
+    />
+  )
+}
+
+// REQ-032: "einzeln ändern" opens the value's mask in place, so returning lands back on the
+// refreshed list. Only the masks a non-user writer can fill so far have an entry here.
+function BestaetigungRoute({ navigation, route }: NativeStackScreenProps<RootStackParamList, 'Bestaetigung'>) {
+  const [maske, setMaske] = useState<BestaetigungsMaske | null>(null)
+  const jahr = Number(route.params?.jahr)
+  useEffect(() => {
+    if (!Number.isInteger(jahr)) navigation.replace('App')
+  }, [jahr, navigation])
+  if (!Number.isInteger(jahr)) return null
+  const zurueck = () => setMaske(null)
+  if (maske === 'lstb') return <LstbScreen taxYear={jahr} onDone={zurueck} onBack={zurueck} />
+  if (maske === 'rente') return <RentnerScreen taxYear={jahr} onDone={zurueck} onBack={zurueck} />
+  if (maske === 'kapital') return <KapitalScreen taxYear={jahr} onDone={zurueck} onBack={zurueck} />
+  if (maske === 'vermietung') return <VermietungScreen taxYear={jahr} onDone={zurueck} onBack={zurueck} />
+  return (
+    <BestaetigungScreen
+      jahr={jahr}
+      onZurueck={() => (navigation.canGoBack() ? navigation.goBack() : navigation.replace('App'))}
+      onMaskeOeffnen={setMaske}
     />
   )
 }
@@ -288,6 +317,7 @@ function AppRoute({ navigation, route }: NativeStackScreenProps<RootStackParamLi
       onRegister={() => navigation.replace('Registrierung')}
       onLogin={() => navigation.replace('Login')}
       onOpenAusdruck={(jahr) => navigation.navigate('Ausdruck', { jahr: String(jahr) })}
+      onOpenBestaetigung={(jahr) => navigation.navigate('Bestaetigung', { jahr: String(jahr) })}
       onSignedOut={() => {
         // REQ-011 (ADR-0013): the server already cleared the session cookie on a
         // successful DELETE /v1/account — the client must not keep showing a screen
@@ -325,9 +355,11 @@ interface TabbedShellProps {
   readonly onLogin?: () => void
   /** ADR-0050: the Formular-Ausdruck is its own route (the Stripe checkout returns to it). */
   readonly onOpenAusdruck?: (jahr: number) => void
+  /** REQ-032: „Prüfen & bestätigen“ is its own route (reachable from the Cockpit and the Ausdruck). */
+  readonly onOpenBestaetigung?: (jahr: number) => void
 }
 
-function TabbedShell({ tab, onTabChange, onSignedOut, startInInterview = false, onRegister = () => {}, onLogin = () => {}, onOpenAusdruck }: TabbedShellProps) {
+function TabbedShell({ tab, onTabChange, onSignedOut, startInInterview = false, onRegister = () => {}, onLogin = () => {}, onOpenAusdruck, onOpenBestaetigung }: TabbedShellProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   // ADR-0045: only a real account session continues into the (account-only) verticals after
@@ -406,6 +438,7 @@ function TabbedShell({ tab, onTabChange, onSignedOut, startInInterview = false, 
           onOpenKinder={() => setCockpitView('kinder')}
           onOpenEulenModus={() => setCockpitView('eulen-modus')}
           {...(onOpenAusdruck ? { onOpenAusdruck } : {})}
+          {...(onOpenBestaetigung ? { onOpenBestaetigung } : {})}
         /> : null}
       {tab === 'cockpit' && cockpitView === 'interview' ? (
         // The Minimal-Gate routes to the right vertical from the answers — Rente (product

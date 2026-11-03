@@ -24,6 +24,7 @@ function renderScreen(props: { zahlung?: 'erfolg' | 'abbruch'; oeffneCheckout?: 
   const onVermietungErgaenzen = vi.fn()
   const onKapitalErgaenzen = vi.fn()
   const onGrenzgaengerErgaenzen = vi.fn()
+  const onBestaetigen = vi.fn()
   render(
     <QueryClientProvider client={queryClient}>
       <I18nextProvider i18n={createAppI18n('de')}>
@@ -37,13 +38,14 @@ function renderScreen(props: { zahlung?: 'erfolg' | 'abbruch'; oeffneCheckout?: 
             onVermietungErgaenzen={onVermietungErgaenzen}
             onKapitalErgaenzen={onKapitalErgaenzen}
             onGrenzgaengerErgaenzen={onGrenzgaengerErgaenzen}
+            onBestaetigen={onBestaetigen}
             {...props}
           />
         </ThemeProvider>
       </I18nextProvider>
     </QueryClientProvider>,
   )
-  return { onAngabenErgaenzen, onRiesterErgaenzen, onKinderErgaenzen, onVermietungErgaenzen, onKapitalErgaenzen, onGrenzgaengerErgaenzen }
+  return { onAngabenErgaenzen, onRiesterErgaenzen, onKinderErgaenzen, onVermietungErgaenzen, onKapitalErgaenzen, onGrenzgaengerErgaenzen, onBestaetigen }
 }
 
 afterEach(() => server.resetHandlers())
@@ -158,6 +160,26 @@ describe('AusdruckScreen (ADR-0050)', () => {
     expect(await screen.findByText(/Für deine Vermietung \(Anlage V\) gibt es den Ausdruck noch nicht/)).toBeTruthy()
     expect(screen.getByTestId('ausdruck-bezahlen').getAttribute('aria-disabled')).toBe('true')
     expect(screen.queryByText('Angaben ergänzen')).toBeNull()
+  })
+
+  it('REQ-032: unconfirmed values block like missing ones, name their Anlagen and lead to „Prüfen & bestätigen“', async () => {
+    mock('offen', ['unbestaetigt.anlageN', 'unbestaetigt.anlageKap'])
+    const { onBestaetigen } = renderScreen()
+
+    expect(await screen.findByText('Noch nicht bestätigt: Anlage N, Anlage KAP. Prüf die neuen Werte und bestätige sie – erst dann kannst du drucken.')).toBeTruthy()
+    // Not mistaken for missing Stammdaten.
+    expect(screen.queryByText('Ergänze zuerst deine Angaben für die Steuererklärung.')).toBeNull()
+    expect(screen.getByTestId('ausdruck-bezahlen').getAttribute('aria-disabled')).toBe('true')
+    fireEvent.click(screen.getByText('Prüfen & bestätigen'))
+    expect(onBestaetigen).toHaveBeenCalled()
+  })
+
+  it('REQ-032: in a joint return, Person B\'s unconfirmed values are named too', async () => {
+    mock('offen', ['unbestaetigt.personB'])
+    renderScreen()
+
+    expect(await screen.findByText('Die zweite Person eurer gemeinsamen Erklärung muss in der eigenen App noch Werte bestätigen.')).toBeTruthy()
+    expect(screen.queryByText(/Noch nicht bestätigt/)).toBeNull()
   })
 
   it('payment not configured on this environment: says so, offers nothing to click', async () => {

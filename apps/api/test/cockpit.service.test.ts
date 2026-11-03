@@ -9,14 +9,14 @@ import { FakeKapitalRepository } from './fakes/fake-kapital.repository.js'
 import { FakeLstbRepository } from './fakes/fake-lstb.repository.js'
 import { FakeRenteRepository } from './fakes/fake-rente.repository.js'
 import { FakeTaxYearRepository } from './fakes/fake-tax-year.repository.js'
-import { FakeUebernahmeRepository } from './fakes/fake-uebernahme.repository.js'
+import { FakeKennzeichnungRepository } from './fakes/fake-kennzeichnung.repository.js'
 import { FakeVermietungRepository } from './fakes/fake-vermietung.repository.js'
 
 describe('CockpitService', () => {
   let taxYear: FakeTaxYearRepository
   let lstb: FakeLstbRepository
   let interview: FakeInterviewAnswerRepository
-  let uebernahme: FakeUebernahmeRepository
+  let uebernahme: FakeKennzeichnungRepository
   let rente: FakeRenteRepository
   let kapital: FakeKapitalRepository
   let vermietung: FakeVermietungRepository
@@ -26,7 +26,7 @@ describe('CockpitService', () => {
     taxYear = new FakeTaxYearRepository()
     lstb = new FakeLstbRepository()
     interview = new FakeInterviewAnswerRepository()
-    uebernahme = new FakeUebernahmeRepository()
+    uebernahme = new FakeKennzeichnungRepository()
     rente = new FakeRenteRepository()
     kapital = new FakeKapitalRepository()
     vermietung = new FakeVermietungRepository()
@@ -64,7 +64,7 @@ describe('CockpitService', () => {
     taxYear.seed('user-a', { steuerjahr: 2026, openItems: 0 })
     interview.seed('user-a', 2026, { job: 'Angestellt' })
     lstb.seed({ userId: 'user-a', steuerjahr: 2026, bruttoarbeitslohn: '50000', lohnsteuer: '8000', sozialversicherung: '9000' })
-    uebernahme.seed({ userId: 'user-a', steuerjahr: 2026, vorjahr: 2025, postenKey: 'lstb', bestaetigt: false })
+    void uebernahme.speichere('user-a', 2026, { key: 'lstb.bruttoarbeitslohn', herkunft: { art: 'uebernahme', vorjahr: 2025 }, bestaetigt: false, vorschlag: null })
 
     const summary = await service.getSummary('user-a', 2026)
 
@@ -80,11 +80,22 @@ describe('CockpitService', () => {
     })
   })
 
+  it('ADR-0052 §6: ein Fakt mit nur EINEM unbestätigten Feld (nicht der Summe) zählt trotzdem als unbestätigt', async () => {
+    taxYear.seed('user-a', { steuerjahr: 2026, openItems: 0 })
+    interview.seed('user-a', 2026, { job: 'Angestellt' })
+    lstb.seed({ userId: 'user-a', steuerjahr: 2026, bruttoarbeitslohn: '50000', lohnsteuer: '8000', sozialversicherung: '9000' })
+    await uebernahme.speichere('user-a', 2026, { key: 'lstb.lohnsteuer', herkunft: { art: 'assistent', name: 'Claude' }, bestaetigt: false, vorschlag: null })
+
+    const summary = await service.getSummary('user-a', 2026)
+
+    expect(summary?.stand).toMatchObject({ kind: 'spanne', unbestaetigte: 1, unbestaetigteSumme: 50000 })
+  })
+
   it('ADR-021: eine BESTÄTIGTE Übernahme ergibt wieder den Punktwert', async () => {
     taxYear.seed('user-a', { steuerjahr: 2026, openItems: 0 })
     interview.seed('user-a', 2026, { job: 'Angestellt' })
     lstb.seed({ userId: 'user-a', steuerjahr: 2026, bruttoarbeitslohn: '50000', lohnsteuer: '8000', sozialversicherung: '9000' })
-    uebernahme.seed({ userId: 'user-a', steuerjahr: 2026, vorjahr: 2025, postenKey: 'lstb', bestaetigt: true })
+    void uebernahme.speichere('user-a', 2026, { key: 'lstb.bruttoarbeitslohn', herkunft: { art: 'uebernahme', vorjahr: 2025 }, bestaetigt: true, vorschlag: null })
 
     const summary = await service.getSummary('user-a', 2026)
 
@@ -95,10 +106,10 @@ describe('CockpitService', () => {
     taxYear.seed('user-a', { steuerjahr: 2026, openItems: 0 })
     interview.seed('user-a', 2026, { job: 'Angestellt' })
     lstb.seed({ userId: 'user-a', steuerjahr: 2026, bruttoarbeitslohn: '50000', lohnsteuer: '8000', sozialversicherung: '9000' })
-    uebernahme.seed({ userId: 'user-a', steuerjahr: 2026, vorjahr: 2025, postenKey: 'lstb', bestaetigt: false })
-    uebernahme.seed({ userId: 'user-a', steuerjahr: 2026, vorjahr: 2025, postenKey: 'rente', bestaetigt: false })
-    uebernahme.seed({ userId: 'user-a', steuerjahr: 2026, vorjahr: 2025, postenKey: 'kapital', bestaetigt: false })
-    uebernahme.seed({ userId: 'user-a', steuerjahr: 2026, vorjahr: 2025, postenKey: 'vermietung-obj-1', bestaetigt: false })
+    void uebernahme.speichere('user-a', 2026, { key: 'lstb.bruttoarbeitslohn', herkunft: { art: 'uebernahme', vorjahr: 2025 }, bestaetigt: false, vorschlag: null })
+    void uebernahme.speichere('user-a', 2026, { key: 'rente.jahresbetrag', herkunft: { art: 'uebernahme', vorjahr: 2025 }, bestaetigt: false, vorschlag: null })
+    void uebernahme.speichere('user-a', 2026, { key: 'kapital.kapitalertraege', herkunft: { art: 'uebernahme', vorjahr: 2025 }, bestaetigt: false, vorschlag: null })
+    void uebernahme.speichere('user-a', 2026, { key: 'vermietung:obj-1.mieteinnahmen', herkunft: { art: 'uebernahme', vorjahr: 2025 }, bestaetigt: false, vorschlag: null })
     rente.seed({ userId: 'user-a', steuerjahr: 2026, rentenart: 'GesetzlicheRente', jahresbetrag: '12000', rentenbeginnJahr: '2020', alterBeiRentenbeginn: null })
     kapital.seed({ userId: 'user-a', steuerjahr: 2026, kapitalertraege: '3000' })
     vermietung.seed({ id: 'obj-1', userId: 'user-a', steuerjahr: 2026, mieteinnahmen: '9600', anschaffungskosten: '100000', baujahr: '1995', werbungskosten: '1200' })
@@ -121,7 +132,7 @@ describe('CockpitService', () => {
     taxYear.seed('user-a', { steuerjahr: 2026, openItems: 0 })
     interview.seed('user-a', 2026, { job: 'Angestellt' })
     lstb.seed({ userId: 'user-a', steuerjahr: 2026, bruttoarbeitslohn: '50000', lohnsteuer: '8000', sozialversicherung: '9000' })
-    uebernahme.seed({ userId: 'user-a', steuerjahr: 2026, vorjahr: 2025, postenKey: 'kapital', bestaetigt: false })
+    void uebernahme.speichere('user-a', 2026, { key: 'kapital.kapitalertraege', herkunft: { art: 'uebernahme', vorjahr: 2025 }, bestaetigt: false, vorschlag: null })
     kapital.seed({ userId: 'user-a', steuerjahr: 2026, kapitalertraege: null })
 
     const summary = await service.getSummary('user-a', 2026)

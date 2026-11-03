@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common'
+import { KennzeichnungModule } from '../kennzeichnung/kennzeichnung.module.js'
 import { AuditModule } from '../audit/audit.module.js'
 import { InterviewModule } from '../interview/interview.module.js'
 import { LstbModule } from '../lstb/lstb.module.js'
@@ -11,7 +12,7 @@ import { PrismaKapitalRepository } from './kapital.repository.prisma.js'
 import { KapitalService } from './kapital.service.js'
 
 @Module({
-  imports: [PrismaModule, AuditModule, InterviewModule, LstbModule],
+  imports: [KennzeichnungModule, PrismaModule, AuditModule, InterviewModule, LstbModule],
   controllers: [KapitalController],
   providers: [
     KapitalService,

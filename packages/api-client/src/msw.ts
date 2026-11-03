@@ -107,10 +107,17 @@ export {
   getUebernahmeControllerGetMockHandler,
   getUebernahmeControllerUebernehmeResponseMock,
   getUebernahmeControllerUebernehmeMockHandler,
-  getUebernahmeControllerBestaetigeResponseMock,
-  getUebernahmeControllerBestaetigeMockHandler,
   getSteuerEuleAPIMock as getUebernahmeApiMock,
 } from './generated/uebernahme.msw'
+export {
+  getBestaetigungControllerGetResponseMock,
+  getBestaetigungControllerGetMockHandler,
+  getBestaetigungControllerBestaetigeAnlageResponseMock,
+  getBestaetigungControllerBestaetigeAnlageMockHandler,
+  getBestaetigungControllerEntscheideVorschlagResponseMock,
+  getBestaetigungControllerEntscheideVorschlagMockHandler,
+  getSteuerEuleAPIMock as getBestaetigungApiMock,
+} from './generated/bestaetigung.msw'
 export {
   getKinderControllerListResponseMock,
   getKinderControllerListMockHandler,

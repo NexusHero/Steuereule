@@ -6,11 +6,11 @@
  * OpenAPI spec version: 1.0
  */
 export interface UebernahmeKennzeichnungDto {
-  /** Der stabile Schlüssel des kopierten Fakts (M1: lstb). */
+  /** Der Kennzeichnungs-Key des kopierten Felds (ADR-0052 §6). */
   postenKey: string;
   /** Das Quelljahr der Kopie — der Jahresbezug der Herkunft (ADR-022). */
   vorjahr: number;
-  /** false = UNBESTÄTIGT (kopiert, noch nicht angetippt), true = bestätigt (ADR-021). */
+  /** false = UNBESTÄTIGT (kopiert, Anlage noch nicht bestätigt), true = bestätigt (ADR-021). */
   bestaetigt: boolean;
 }
 

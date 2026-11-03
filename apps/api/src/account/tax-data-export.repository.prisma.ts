@@ -24,7 +24,7 @@ export class PrismaTaxDataExportRepository implements TaxDataExportRepository {
 
   async findAllForUser(userId: string): Promise<ExportTaxDataEntry[]> {
     const where = { userId }
-    const [steuerjahre, antworten, belege, lstb, ch, rente, kapital, vermietung, bescheide, uebernahme, stammdaten, kinder, kopplungen, eulenEinstellung, eulenVerwuerfe] =
+    const [steuerjahre, antworten, belege, lstb, ch, rente, kapital, vermietung, bescheide, kennzeichnungen, stammdaten, kinder, kopplungen, eulenEinstellung, eulenVerwuerfe] =
       await Promise.all([
         this.prisma.taxYear.findMany({ where }),
         this.prisma.interviewAnswer.findMany({ where }),
@@ -35,7 +35,7 @@ export class PrismaTaxDataExportRepository implements TaxDataExportRepository {
         this.prisma.kapital.findMany({ where }),
         this.prisma.vermietungsobjekt.findMany({ where }),
         this.prisma.bescheid.findMany({ where }),
-        this.prisma.uebernahmeKennzeichnung.findMany({ where }),
+        this.prisma.kennzeichnung.findMany({ where }),
         this.prisma.stammdaten.findMany({ where }),
         this.prisma.kind.findMany({ where }),
         this.prisma.steuerjahrKopplung.findMany({
@@ -55,7 +55,7 @@ export class PrismaTaxDataExportRepository implements TaxDataExportRepository {
       ...kapital.map((row) => toExportEntry('Kapitalerträge', row)),
       ...vermietung.map((row) => toExportEntry('Vermietungsobjekt', row)),
       ...bescheide.map((row) => toExportEntry('Steuerbescheid', row)),
-      ...uebernahme.map((row) => toExportEntry('Jahresübernahme', row)),
+      ...kennzeichnungen.map((row) => toExportEntry('Herkunft und Bestätigung', row)),
       ...stammdaten.map((row) => toExportEntry('Erklärungs-Stammdaten', row)),
       ...kinder.map((row) => toExportEntry('Kind', row)),
       ...kopplungen.map((row) => toExportEntry('Steuerjahr-Kopplung', row)),

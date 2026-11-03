@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common'
+import { KennzeichnungModule } from '../kennzeichnung/kennzeichnung.module.js'
 import { AuditModule } from '../audit/audit.module.js'
 import { PrismaModule } from '../prisma/prisma.module.js'
 import { LstbController } from './lstb.controller.js'
@@ -7,7 +8,7 @@ import { PrismaLstbRepository } from './lstb.repository.prisma.js'
 import { LstbService } from './lstb.service.js'
 
 @Module({
-  imports: [PrismaModule, AuditModule],
+  imports: [KennzeichnungModule, PrismaModule, AuditModule],
   controllers: [LstbController],
   providers: [LstbService, { provide: LSTB_REPOSITORY, useClass: PrismaLstbRepository }],
   // Exported so the Cockpit (ticket 15) can aggregate the LStB figures through the SAME

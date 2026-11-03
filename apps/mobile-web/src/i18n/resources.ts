@@ -441,6 +441,46 @@ export const appResources = {
       // ADR-0050: Impressum, Datenschutzerklärung, AGB, Hinweise. The page bodies are German
       // only (screens/rechtliches/texte.ts — the binding text); only the chrome is localised.
       // ADR-0050: the paid Formular-Ausdruck — print, sign, hand in. No ELSTER promise anywhere.
+      // REQ-032 (ADR-0052 §6/§7) — „Prüfen & bestätigen“: was nicht der Nutzer selbst eingetragen
+      // hat, wird je Anlage bestätigt oder einzeln geändert; Vorschläge überschreiben nie.
+      bestaetigung: {
+        title: 'Prüfen & bestätigen {{jahr}}',
+        back: 'Zurück',
+        intro: 'Diese Werte hast du nicht selbst eingetragen. Prüf sie je Anlage: bestätigen oder einzeln ändern. Erst danach kannst du ausdrucken und bezahlen.',
+        loading: 'Wird geladen …',
+        loadError: { heading: 'Das hat nicht geklappt.', message: 'Die Werte zum Prüfen konnten nicht geladen werden.', retry: 'Noch mal versuchen' },
+        leer: 'Alles bestätigt. Es gibt nichts mehr zu prüfen.',
+        unbestaetigt_one: '{{count}} Wert unbestätigt',
+        unbestaetigt_other: '{{count}} Werte unbestätigt',
+        nurVorschlaege: 'Alles bestätigt – nur Vorschläge offen',
+        anlageBestaetigen: '{{anlage}} bestätigen',
+        einzelnAendern: 'Einzeln ändern',
+        vorschlag: '{{herkunft}} schlägt {{neu}} statt {{alt}} vor.',
+        vorschlagAnnehmen: 'Übernehmen',
+        vorschlagVerwerfen: 'Verwerfen',
+        leererWert: 'leer',
+        unklar: 'unlesbar',
+        fehler: 'Das hat nicht geklappt. Versuch es noch mal.',
+        anlagen: {
+          hauptvordruck: 'Hauptvordruck (ESt 1 A)',
+          anlageN: 'Anlage N',
+          anlageNGre: 'Anlage N-Gre',
+          anlageR: 'Anlage R',
+          anlageKap: 'Anlage KAP',
+          anlageV: 'Anlage V',
+          anlageKind: 'Anlage Kind',
+        },
+        herkunft: {
+          nutzer: 'Selbst eingetragen',
+          uebernahme: 'Übernahme aus {{vorjahr}}',
+          assistent: 'Assistent: {{name}}',
+          assistentBeleg: 'Assistent: {{name}}, aus Beleg',
+          beleg: 'Aus Beleg',
+        },
+        felder: {
+          rentenart: 'Rentenart',
+        },
+      },
       ausdruck: {
         cockpitCta: 'Steuererklärung ausdrucken',
         title: 'Ausdruck {{jahr}}',
@@ -476,6 +516,9 @@ export const appResources = {
           anlageKapKrypto: 'Kryptowerte (private Veräußerungsgeschäfte, Anlage SO)',
         },
         angabenErgaenzen: 'Angaben ergänzen',
+        fehlendUnbestaetigt: 'Noch nicht bestätigt: {{anlagen}}. Prüf die neuen Werte und bestätige sie – erst dann kannst du drucken.',
+        fehlendPersonB: 'Die zweite Person eurer gemeinsamen Erklärung muss in der eigenen App noch Werte bestätigen.',
+        bestaetigungOeffnen: 'Prüfen & bestätigen',
         nichtVerfuegbar: 'Die Bezahlung ist auf dieser Umgebung noch nicht eingerichtet.',
         freischalten: 'Freischalten und bezahlen',
         freischaltenHinweis: 'Einmal pro Steuerjahr. Den Preis siehst du vor der Zahlung.',
@@ -1025,17 +1068,14 @@ export const appResources = {
         eulenModus: 'Eulen-Modus',
         // Ticket 10.8 M3 (ADR-022) — die Jahr-Auswahl: das gewählte Steuerjahr, bis 4 Rückjahre.
         jahrAuswahl: 'Steuerjahr wählen',
-        // Ticket 10.8 (ADR-021) — der ruhige Übernahme-Hinweis: unbestätigte Posten zählen in
-        // die Spanne, nie in den Punktwert; bestätigt wird einzeln (angetippt/Beleg deckt).
-        uebernahme: {
-          hinweis_one: '{{summe}} aus dem Vorjahr wartet auf deine Bestätigung.',
-          hinweis_other: '{{summe}} aus dem Vorjahr warten auf deine Bestätigung.',
-          hinweisOhneSumme: 'Aus dem Vorjahr übernommen — bitte einmal bestätigen.',
-          bestaetigen: 'Bestätigen',
-          postenLstb: 'Lohnsteuerbescheinigung',
-          postenRente: 'Rente',
-          postenKapital: 'Kapitalerträge',
-          postenVermietung: 'Vermietung',
+        // REQ-032 (ADR-0052 §6) — der ruhige Bestätigungs-Hinweis: unbestätigte Werte zählen in
+        // die Spanne, nie in den Punktwert; bestätigt wird je Anlage auf „Prüfen & bestätigen“.
+        bestaetigung: {
+          hinweis_one: '{{summe}} wartet noch auf deine Bestätigung.',
+          hinweis_other: '{{summe}} warten noch auf deine Bestätigung.',
+          hinweisOhneSumme: 'Neue Werte warten auf deine Bestätigung.',
+          anlage: '{{anlage}} · {{anzahl}}',
+          pruefen: 'Prüfen & bestätigen',
         },
       },
       // Ticket 10 (Phase 2, Slice 1) — Beleg-Posteingang (ADR-007/008). The upload affordance is
@@ -1617,6 +1657,44 @@ export const appResources = {
         errTooManyAttempts: 'Too many attempts. Please request a new code.',
         errLocked: 'Too many failed attempts — your account is temporarily locked. Try again later.',
       },
+      bestaetigung: {
+        title: 'Review & confirm {{jahr}}',
+        back: 'Back',
+        intro: 'You did not enter these values yourself. Review them per form: confirm, or change them one by one. Only then can you print and pay.',
+        loading: 'Loading …',
+        loadError: { heading: 'That did not work.', message: 'The values to review could not be loaded.', retry: 'Try again' },
+        leer: 'Everything is confirmed. There is nothing left to review.',
+        unbestaetigt_one: '{{count}} value unconfirmed',
+        unbestaetigt_other: '{{count}} values unconfirmed',
+        nurVorschlaege: 'All confirmed – only suggestions open',
+        anlageBestaetigen: 'Confirm {{anlage}}',
+        einzelnAendern: 'Change individually',
+        vorschlag: '{{herkunft}} suggests {{neu}} instead of {{alt}}.',
+        vorschlagAnnehmen: 'Accept',
+        vorschlagVerwerfen: 'Discard',
+        leererWert: 'empty',
+        unklar: 'unreadable',
+        fehler: 'That did not work. Please try again.',
+        anlagen: {
+          hauptvordruck: 'Main form (ESt 1 A)',
+          anlageN: 'Anlage N',
+          anlageNGre: 'Anlage N-Gre',
+          anlageR: 'Anlage R',
+          anlageKap: 'Anlage KAP',
+          anlageV: 'Anlage V',
+          anlageKind: 'Anlage Kind',
+        },
+        herkunft: {
+          nutzer: 'Entered by you',
+          uebernahme: 'Carried over from {{vorjahr}}',
+          assistent: 'Assistant: {{name}}',
+          assistentBeleg: 'Assistant: {{name}}, from a receipt',
+          beleg: 'From a receipt',
+        },
+        felder: {
+          rentenart: 'Type of pension',
+        },
+      },
       ausdruck: {
         cockpitCta: 'Print your tax return',
         title: 'Printout {{jahr}}',
@@ -1652,6 +1730,9 @@ export const appResources = {
           anlageKapKrypto: 'crypto assets (private sales, Anlage SO)',
         },
         angabenErgaenzen: 'Complete details',
+        fehlendUnbestaetigt: 'Not confirmed yet: {{anlagen}}. Review the new values and confirm them – only then can you print.',
+        fehlendPersonB: 'The second person on your joint return still has to confirm values in their own app.',
+        bestaetigungOeffnen: 'Review & confirm',
         nichtVerfuegbar: 'Payment is not set up on this environment yet.',
         freischalten: 'Unlock and pay',
         freischaltenHinweis: 'Once per tax year. You see the price before paying.',
@@ -2153,15 +2234,12 @@ export const appResources = {
         checkKinder: 'Manage children',
         eulenModus: 'Owl Mode',
         jahrAuswahl: 'Choose tax year',
-        uebernahme: {
-          hinweis_one: '{{summe}} from the previous year is waiting for your confirmation.',
-          hinweis_other: '{{summe}} from the previous year are waiting for your confirmation.',
-          hinweisOhneSumme: 'Taken over from the previous year — please confirm once.',
-          bestaetigen: 'Confirm',
-          postenLstb: 'Wage tax statement',
-          postenRente: 'Pension',
-          postenKapital: 'Capital gains',
-          postenVermietung: 'Rental property',
+        bestaetigung: {
+          hinweis_one: '{{summe}} is still waiting for your confirmation.',
+          hinweis_other: '{{summe}} are still waiting for your confirmation.',
+          hinweisOhneSumme: 'New values are waiting for your confirmation.',
+          anlage: '{{anlage}} · {{anzahl}}',
+          pruefen: 'Review & confirm',
         },
       },
       // Ticket 10 (Phase 2, Slice 1) — Beleg-Posteingang (ADR-007/008). See the `de` block for

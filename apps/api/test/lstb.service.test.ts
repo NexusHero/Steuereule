@@ -3,6 +3,7 @@
 // real-Postgres proof (ciphertext at rest, audit atomicity, cross-user isolation, the real
 // derived zustand through Prisma) lives in test/acceptance/req-016-lstb-angestellte.test.ts.
 import { beforeEach, describe, expect, it } from 'vitest'
+import { FakeKennzeichnungRepository } from './fakes/fake-kennzeichnung.repository.js'
 import { AuditService } from '../src/audit/audit.service.js'
 import { LstbService } from '../src/lstb/lstb.service.js'
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
@@ -12,6 +13,7 @@ const USER_ID = 'user-1'
 const STEUERJAHR = 2026
 
 describe('LstbService', () => {
+  let kennzeichnungen: FakeKennzeichnungRepository
   let repository: FakeLstbRepository
   let auditRepository: FakeAuditRepository
   let service: LstbService
@@ -19,7 +21,8 @@ describe('LstbService', () => {
   beforeEach(() => {
     repository = new FakeLstbRepository()
     auditRepository = new FakeAuditRepository()
-    service = new LstbService(repository, new AuditService(auditRepository))
+    kennzeichnungen = new FakeKennzeichnungRepository()
+    service = new LstbService(repository, new AuditService(auditRepository), kennzeichnungen)
   })
 
   describe('getState — the honest empty mask', () => {
@@ -106,5 +109,14 @@ describe('LstbService', () => {
         /requires a non-negative whole-euro/,
       )
     })
+  })
+
+  it('ADR-0052 §6: a user write drops the marker of exactly that field — changing it is confirming it', async () => {
+    await kennzeichnungen.speichere('user-1', 2025, { key: 'lstb.lohnsteuer', herkunft: { art: 'assistent', name: 'Claude' }, bestaetigt: false, vorschlag: null })
+    await kennzeichnungen.speichere('user-1', 2025, { key: 'lstb.bruttoarbeitslohn', herkunft: { art: 'assistent', name: 'Claude' }, bestaetigt: false, vorschlag: null })
+
+    await service.setFeld('user-1', 2025, 'lohnsteuer', { kind: 'erfasst', wert: 700 })
+
+    expect(kennzeichnungen.alle().map((k) => k.key)).toEqual(['lstb.bruttoarbeitslohn'])
   })
 })

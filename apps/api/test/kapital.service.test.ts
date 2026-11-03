@@ -4,6 +4,7 @@
 // atomicity, cross-user isolation, the real fold through Prisma) lives in
 // test/acceptance/req-025-kapital.test.ts.
 import { beforeEach, describe, expect, it } from 'vitest'
+import { FakeKennzeichnungRepository } from './fakes/fake-kennzeichnung.repository.js'
 import { AuditService } from '../src/audit/audit.service.js'
 import { KapitalService } from '../src/kapital/kapital.service.js'
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
@@ -16,6 +17,7 @@ const USER_ID = 'user-1'
 const STEUERJAHR = 2026
 
 describe('KapitalService', () => {
+  let kennzeichnungen: FakeKennzeichnungRepository
   let repository: FakeKapitalRepository
   let interviewRepository: FakeInterviewAnswerRepository
   let lstbRepository: FakeLstbRepository
@@ -29,7 +31,8 @@ describe('KapitalService', () => {
     lstbRepository = new FakeLstbRepository()
     taxYearRepository = new FakeTaxYearRepository()
     auditRepository = new FakeAuditRepository()
-    service = new KapitalService(repository, interviewRepository, lstbRepository, taxYearRepository, new AuditService(auditRepository))
+    kennzeichnungen = new FakeKennzeichnungRepository()
+    service = new KapitalService(repository, interviewRepository, lstbRepository, taxYearRepository, new AuditService(auditRepository), kennzeichnungen)
   })
 
   describe('getState — the honest empty mask and the depot-Einordnung', () => {
@@ -178,5 +181,13 @@ describe('KapitalService', () => {
         expect(ergebnis.unschaerfe).toEqual({ kind: 'unbestimmt', grund: 'progressionsvorbehalt-nicht-eingegeben' })
       }
     })
+  })
+
+  it('ADR-0052 §6: a user write drops the marker of exactly that field', async () => {
+    await kennzeichnungen.speichere('user-1', 2025, { key: 'kapital.kapitalertraege', herkunft: { art: 'uebernahme', vorjahr: 2024 }, bestaetigt: false, vorschlag: null })
+
+    await service.setFeld('user-1', 2025, 'kapitalertraege', { kind: 'erfasst', wert: 310 })
+
+    expect(kennzeichnungen.alle()).toEqual([])
   })
 })
