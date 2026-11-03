@@ -7,7 +7,7 @@
 // the exact same `entryForStep`/`isReachableFor`/`isValidAnswer` admission the Minimal-Gate
 // uses — no second code path, no client-trusted gate (ADR-0033 D3, ADR-0021).
 //
-// The Grenzgänger-Status itself (the 45-Tage rule, ADR-013) is a DERIVED fact computed in
+// The Grenzgänger-Status itself (the 60-Tage rule, Art. 15a DBA-CH) is a DERIVED fact computed in
 // packages/core (`grenzgaengerStatus`) — its own tests live in packages/core, not here; this
 // file proves the answers that feed it are persisted, server-validated, and ciphertext at rest.
 import type { NestFastifyApplication } from '@nestjs/platform-fastify'

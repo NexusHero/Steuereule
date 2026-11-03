@@ -3,7 +3,7 @@
 // Hinweise (flags, non-blocking), and offene Pflichtfelder. It covers the CH-specific hazards:
 // a tatsächlicher Kurs without its Beleg, an echter Grenzgänger without Quellensteuer, a
 // Nettolohn that contradicts the Lohnausweis arithmetic, Familienzulagen without children, and
-// the >45-Tage status loss. Pure, no I/O (ADR-0004) — the point CODES are stable identifiers
+// the >60-Tage status loss. Pure, no I/O (ADR-0004) — the point CODES are stable identifiers
 // for the i18n layer; the German text lives there, never here.
 import {
   grenzgaengerStatus,
@@ -45,7 +45,7 @@ export interface GrenzgaengerPlausibilitaetsInput {
 
 /**
  * The CH plausibility check. Derived status is computed here (never trusted from the caller)
- * so the check and the status cannot disagree about the 45-Tage rule.
+ * so the check and the status cannot disagree about the 60-Tage rule.
  */
 export function pruefeGrenzgaenger(input: GrenzgaengerPlausibilitaetsInput): PlausibilitaetsBefund {
   const status = grenzgaengerStatus(input.wohnsitz, input.nichtrueckkehrtage)
@@ -82,7 +82,7 @@ export function pruefeGrenzgaenger(input: GrenzgaengerPlausibilitaetsInput): Pla
     punkte.push({ grad: 'widerspruch', code: 'zulagen-ohne-kinder' })
   }
 
-  // ADR-013 — more than 45 Nichtrückkehrtage ends Grenzgänger status. Not a contradiction (a
+  // Art. 15a Abs. 2 DBA-CH — more than 60 Nichtrückkehrtage ends Grenzgänger status. Not a contradiction (a
   // Wochenaufenthalter is a real case), but a flag the Quellensteuer treatment changed.
   if (input.wohnsitz === 'Deutschland' && input.nichtrueckkehrtage > GRENZGAENGER_NICHTRUECKKEHRTAGE) {
     punkte.push({ grad: 'hinweis', code: 'grenzgaenger-status-verloren' })

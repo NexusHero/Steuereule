@@ -16,19 +16,20 @@ import {
   type LohnausweisWerte,
 } from './grenzgaenger'
 
-// ADR-029/036/013 — the Grenzgänger-CH domain: the 45-Tage rule, the guided Lohnausweis
+// ADR-029/036/013 — the Grenzgänger-CH domain: the 60-Tage rule (Art. 15a Abs. 2 DBA-CH), the guided Lohnausweis
 // mask, and the CH line items (CHF→EUR, provenance-carrying, no invented formula).
 
 const KURS = amtlicherMonatskurs('2026-01', 0.9412)
 
-describe('grenzgaengerStatus — ADR-013 45-Tage-Regel', () => {
-  it('DE-Wohnsitz with ≤ 45 Nichtrückkehrtage is an echter Grenzgänger', () => {
+describe('grenzgaengerStatus — 60-Tage-Regel (Art. 15a Abs. 2 DBA-CH)', () => {
+  it('DE-Wohnsitz with ≤ 60 Nichtrückkehrtage is an echter Grenzgänger — 46 to 60 included', () => {
     expect(grenzgaengerStatus('Deutschland', 0)).toBe('echter-grenzgaenger')
-    expect(grenzgaengerStatus('Deutschland', 45)).toBe('echter-grenzgaenger')
+    expect(grenzgaengerStatus('Deutschland', 46)).toBe('echter-grenzgaenger')
+    expect(grenzgaengerStatus('Deutschland', 60)).toBe('echter-grenzgaenger')
   })
 
-  it('more than 45 Nichtrückkehrtage ends Grenzgänger status', () => {
-    expect(grenzgaengerStatus('Deutschland', 46)).toBe('kein-grenzgaenger')
+  it('more than 60 Nichtrückkehrtage ends Grenzgänger status', () => {
+    expect(grenzgaengerStatus('Deutschland', 61)).toBe('kein-grenzgaenger')
   })
 
   it('a CH-Wohnsitz is never a Grenzgänger', () => {

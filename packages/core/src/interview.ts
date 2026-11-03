@@ -156,7 +156,7 @@ export type AlleinerziehendQuestionId = 'ae-weitere-person' | 'ae-haushaltsgemei
 /**
  * The Grenzgänger-CH entry's two questions (ADR-013/036). CHF amounts are entered via the
  * Lohnausweis mask (grenzgaenger.ts), NOT the interview — these two capture the Wohnsitz and
- * the 45-Tage-Regel's input (Nichtrückkehrtage). No gate: the Grenzgänger-Status is a DERIVED
+ * the 60-Tage-Regel's input (Nichtrückkehrtage). No gate: the Grenzgänger-Status is a DERIVED
  * fact (`grenzgaengerStatus`), not a question to re-ask.
  */
 export type SegmentChQuestionId = 'ch-wohnsitz' | 'ch-nichtrueckkehrtage'
@@ -471,9 +471,9 @@ export const QUESTIONS: Readonly<Record<EntryStepId, QuestionDeclaration>> = {
 
   // ---- Grenzgänger-CH (segment-ch, ADR-013/036) ----------------------------------------
   'ch-wohnsitz': { id: 'ch-wohnsitz', kind: 'question', form: { kind: 'enum', values: CH_WOHNSITZ_VALUES } },
-  // The 45-Tage-Zähler input (ADR-013): Nichtrückkehrtage. The range 0–365 is the calendar
+  // The 60-Tage-Zähler input (Art. 15a DBA-CH): Nichtrückkehrtage. The range 0–365 is the calendar
   // year's bound — the same open-placeholder stance as `weg`/`tage` (review F6); the DERIVED
-  // rule (grenzgaengerStatus, >45 ends Grenzgänger status) is the sourced part, not this range.
+  // rule (grenzgaengerStatus, >60 ends Grenzgänger status) is the sourced part, not this range.
   'ch-nichtrueckkehrtage': { id: 'ch-nichtrueckkehrtage', kind: 'question', form: { kind: 'integer', min: 0, max: 365 } },
 }
 

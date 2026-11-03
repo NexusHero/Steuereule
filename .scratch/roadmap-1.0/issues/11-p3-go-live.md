@@ -52,8 +52,8 @@ sobald das Zertifikat (Ticket 07) vorliegt; bis dahin Beta kostenlos (ADR-017).
       Sozialabgaben Z. 75–88 mit den Sätzen des Vordrucks (NBUV als Rest von Ziffer 9), Arbeitgeber
       Z. 89–91. Neue Erfassung im Grenzgänger-Screen (PUT ch-lohnausweis/n-gre). Ehrlich gesperrt:
       Sonderfälle der Z. 7, 9–14, 16–22 und „kein Grenzgänger“
-- [ ] Klären: Nichtrückkehrtage-Grenze im Core ist 45 (ADR-0042); Art. 15a Abs. 2 DBA-CH nennt 60
-      Arbeitstage (45 ist die Regel des DBA-Frankreich)
+- [x] Nichtrückkehrtage-Grenze auf 60 korrigiert (Art. 15a Abs. 2 DBA-CH; vorher 45 = DBA-Frankreich),
+      ADR-0042 Amendment 2026-11-05. Offen: anteilige Kürzung bei Teilzeit / unterjähriger Beschäftigung
 - [ ] Anlage Kind, noch ehrlich gesperrt: anderer Elternteil im Ausland (Z. 13), volljährige Kinder
       (Z. 16 ff.), Wohnsitz des Kindes im Ausland (Z. 9); Kinderbetreuungskosten werden nicht erfasst
 - [x] Verheiratete: Veranlagungsart + Person B erfassen, dann Zeilen 19–24 ausdrucken
