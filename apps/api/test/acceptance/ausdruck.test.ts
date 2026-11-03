@@ -26,6 +26,8 @@ const STAMMDATEN = {
   finanzamt: 'Dresden-Nord',
 }
 
+const ANLAGE_V_SEITEN = 4
+
 describe('Formular-Ausdruck (ADR-0050), against the real server', () => {
   let app: NestFastifyApplication
   let baseUrl: string
@@ -136,18 +138,34 @@ describe('Formular-Ausdruck (ADR-0050), against the real server', () => {
     await prisma.rente.deleteMany({ where: { userId } })
   })
 
-  it('the pre-check names an Anlage that is not printable yet, and checkout refuses before anyone pays', async () => {
+  it('rented property is printed on Anlage V, one instance per Objekt', async () => {
     const { cookie, userId } = await signUp('ausdruck-vermietung@example.com')
     await vollstaendig(cookie)
-    await prisma.vermietungsobjekt.create({ data: { userId, steuerjahr: 2025 } })
+    await prisma.vermietungsobjekt.create({
+      data: { userId, steuerjahr: 2025, strasse: 'Hauptstraße', hausnummer: '3', plz: '01067', ort: 'Dresden', mieteinnahmen: '9600' },
+    })
+    await bezahle(userId)
 
     const pruefung = await fetch(`${baseUrl}/v1/steuerjahre/2025/ausdruck/pruefung`, { headers: { cookie } })
-    expect(await pruefung.json()).toEqual({ fehlend: ['anlageV'] })
+    expect(await pruefung.json()).toEqual({ fehlend: [] })
+
+    const pdf = await PDFDocument.load(new Uint8Array(await (await ausdruck(cookie)).arrayBuffer()))
+    expect(pdf.getPageCount()).toBe(6 + ANLAGE_V_SEITEN)
+    await prisma.vermietungsobjekt.deleteMany({ where: { userId } })
+  })
+
+  it('the pre-check names an Anlage that is not printable yet, and checkout refuses before anyone pays', async () => {
+    const { cookie, userId } = await signUp('ausdruck-betriebsrente@example.com')
+    await vollstaendig(cookie)
+    await prisma.rente.create({ data: { userId, steuerjahr: 2025, rentenart: 'Betriebsrente', jahresbetrag: '3000' } })
+
+    const pruefung = await fetch(`${baseUrl}/v1/steuerjahre/2025/ausdruck/pruefung`, { headers: { cookie } })
+    expect(await pruefung.json()).toEqual({ fehlend: ['anlageRAvBav'] })
 
     const checkout = await fetch(`${baseUrl}/v1/steuerjahre/2025/ausdruck/checkout`, { method: 'POST', headers: { cookie } })
     expect(checkout.status).toBe(422)
     expect(await prisma.freischaltung.count({ where: { userId } })).toBe(0)
-    await prisma.vermietungsobjekt.deleteMany({ where: { userId } })
+    await prisma.rente.deleteMany({ where: { userId } })
   })
 
   it('a guest session cannot download', async () => {
