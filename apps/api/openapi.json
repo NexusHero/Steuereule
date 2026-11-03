@@ -1989,6 +1989,18 @@
         "operationId": "AusdruckController_ausdruck",
         "parameters": [
           {
+            "name": "bearbeitbar",
+            "required": false,
+            "in": "query",
+            "description": "true → the values as named, editable AcroForm fields (for a correction before printing).",
+            "schema": {
+              "enum": [
+                "true"
+              ],
+              "type": "string"
+            }
+          },
+          {
             "name": "jahr",
             "required": true,
             "in": "path",

@@ -91,11 +91,11 @@ export function AusdruckScreen({ jahr, zahlung, onZurueck, onAngabenErgaenzen, o
     )
   }
 
-  async function herunterladen() {
+  async function herunterladen(bearbeitbar = false) {
     setLaedt(true)
     setMeldung(null)
     try {
-      const ergebnis = await ladeAusdruck(jahr)
+      const ergebnis = await ladeAusdruck(jahr, { bearbeitbar })
       setMeldung(ergebnis.ok ? { art: 'ok', text: t('ausdruck.heruntergeladen') } : { art: 'fehler', text: t('ausdruck.fehler') })
       if (!ergebnis.ok && ergebnis.status === 422) void pruefung.refetch()
     } catch {
@@ -198,9 +198,15 @@ export function AusdruckScreen({ jahr, zahlung, onZurueck, onAngabenErgaenzen, o
       ) : null}
 
       {freischaltung === 'freigeschaltet' ? (
-        <Button onPress={() => void herunterladen()} disabled={laedt || gesperrt} testID="ausdruck-herunterladen">
-          {t('ausdruck.herunterladen')}
-        </Button>
+        <>
+          <Button onPress={() => void herunterladen()} disabled={laedt || gesperrt} testID="ausdruck-herunterladen">
+            {t('ausdruck.herunterladen')}
+          </Button>
+          <Button variante="ghost" onPress={() => void herunterladen(true)} disabled={laedt || gesperrt} testID="ausdruck-herunterladen-bearbeitbar">
+            {t('ausdruck.herunterladenBearbeitbar')}
+          </Button>
+          <Text style={styles.hint}>{t('ausdruck.bearbeitbarHinweis')}</Text>
+        </>
       ) : null}
 
       {meldung ? (

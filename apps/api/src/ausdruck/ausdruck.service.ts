@@ -70,7 +70,7 @@ export class AusdruckService {
     return this.freischaltung.starteCheckout(userId, jahr)
   }
 
-  async erstelle(userId: string, jahr: number): Promise<Uint8Array> {
+  async erstelle(userId: string, jahr: number, { bearbeitbar = false }: { bearbeitbar?: boolean } = {}): Promise<Uint8Array> {
     const feldsatz = FELDSAETZE[jahr]
     if (!feldsatz) throw new NotFoundException(`Für das Steuerjahr ${jahr} liegen noch keine Vordrucke vor.`)
 
@@ -87,6 +87,7 @@ export class AusdruckService {
       const pdf = await rendereVordrucke(feldsatz, werte, {
         vorlagenVerzeichnis: new URL(`${jahr}/`, this.vorlagenBasis),
         instanzen,
+        bearbeitbar,
       })
       await this.audit.append({ userId, action: 'READ', resource: 'ausdruck' })
       return pdf

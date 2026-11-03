@@ -558,6 +558,27 @@ describe('rendereVordrucke (real templates)', () => {
     }
   })
 
+  it('the printout carries no form field — the values are fixed page content', async () => {
+    const pdf = await rendereVordrucke(FELDSAETZE[2025]!, ausdruckWerte(FAKTEN).werte, { vorlagenVerzeichnis: VORLAGEN })
+    expect((await PDFDocument.load(pdf)).getForm().getFields()).toHaveLength(0)
+  })
+
+  it('the editable variant keeps one named AcroForm field per value, instances numbered', async () => {
+    const res = ausdruckWerte({
+      ...FAKTEN,
+      kinder: [
+        { vorname: 'Lina', nachname: 'Beispiel', geburtsdatum: '2016-01-01', idnr: '12345678901' },
+        { vorname: 'Noah', nachname: 'Beispiel', geburtsdatum: '2018-01-01', idnr: '22222222222' },
+      ],
+    })
+    const pdf = await rendereVordrucke(FELDSAETZE[2025]!, res.werte, { vorlagenVerzeichnis: VORLAGEN, instanzen: res.instanzen, bearbeitbar: true })
+    const form = (await PDFDocument.load(pdf)).getForm()
+    expect(form.getTextField('est1a.name').getText()).toBe('Beispiel')
+    expect(form.getTextField('anlN.kz110').getText()).toBe('42000')
+    expect(form.getTextField('anlKind.vorname').getText()).toBe('Lina')
+    expect(form.getTextField('anlKind.vorname#2').getText()).toBe('Noah')
+  })
+
   it('hands out every page of each used form: ESt 1 A (2) + Anlage N (4)', async () => {
     const pdf = await rendereVordrucke(FELDSAETZE[2025]!, ausdruckWerte(FAKTEN).werte, { vorlagenVerzeichnis: VORLAGEN })
     const dokument = await PDFDocument.load(pdf)

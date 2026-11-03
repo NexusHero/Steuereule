@@ -78,6 +78,21 @@ describe('AusdruckScreen (ADR-0050)', () => {
     expect(screen.getByText('• Den Hauptvordruck auf Seite 2 unterschreiben.')).toBeTruthy()
   })
 
+  it('unlocked: also offers an editable PDF, named as such, requested with ?bearbeitbar=true', async () => {
+    mock('freigeschaltet')
+    let angefragt = ''
+    server.use(
+      http.get('*/v1/steuerjahre/2025/ausdruck', ({ request }) => {
+        angefragt = request.url
+        return new HttpResponse(new Uint8Array([37, 80, 68, 70]), { status: 200, headers: { 'content-type': 'application/pdf' } })
+      }),
+    )
+    renderScreen()
+    fireEvent.click(await screen.findByTestId('ausdruck-herunterladen-bearbeitbar'))
+    expect(screen.getByText(/Zum Korrigieren vor dem Druck/)).toBeTruthy()
+    await waitFor(() => expect(angefragt).toContain('/ausdruck?bearbeitbar=true'))
+  })
+
   it('missing details: names it, links to the form, and does not let you pay first', async () => {
     mock('offen', ['iban'])
     const { onAngabenErgaenzen } = renderScreen()

@@ -105,6 +105,20 @@ describe('Formular-Ausdruck (ADR-0050), against the real server', () => {
     expect(await prisma.taxDataAccessLog.count({ where: { userId, resource: 'ausdruck' } })).toBe(1)
   })
 
+  it('the editable variant (?bearbeitbar=true) carries named AcroForm fields, same gates', async () => {
+    const { cookie, userId } = await signUp('ausdruck-bearbeitbar@example.com')
+    await vollstaendig(cookie)
+    const url = `${baseUrl}/v1/steuerjahre/2025/ausdruck?bearbeitbar=true`
+    expect((await fetch(url, { headers: { cookie } })).status).toBe(402)
+    await bezahle(userId)
+
+    const response = await fetch(url, { headers: { cookie } })
+    expect(response.status).toBe(200)
+    expect(response.headers.get('content-disposition')).toContain('steuererklaerung-2025-bearbeitbar.pdf')
+    const form = (await PDFDocument.load(new Uint8Array(await response.arrayBuffer()))).getForm()
+    expect(form.getTextField('est1a.idnr').getText()).toMatch(/^\d{11}$/)
+  })
+
   it('unpaid: 402, nothing rendered', async () => {
     const { cookie } = await signUp('ausdruck-unbezahlt@example.com')
     await vollstaendig(cookie)
