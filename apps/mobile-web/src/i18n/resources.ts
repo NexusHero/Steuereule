@@ -455,6 +455,8 @@ export const appResources = {
         riesterErgaenzen: 'Riester-Angaben ergänzen',
         fehlendKinder: 'Für die Anlage Kind fehlen noch Angaben zu deinen Kindern: Steuer-ID, Kindschaftsverhältnis, Familienkasse, Wohnsitz und gegebenenfalls der andere Elternteil.',
         kinderErgaenzen: 'Kinder-Angaben ergänzen',
+        fehlendVermietung: 'Für die Anlage V fehlen noch Angaben zu deiner Vermietung: Mieteinnahmen, Werbungskosten (auch 0), Adresse des Objekts und ob die AfA wie im Vorjahr ist.',
+        vermietungErgaenzen: 'Vermietungs-Angaben ergänzen',
         anlageNochNicht: 'Für deine {{anlage}} gibt es den Ausdruck noch nicht. Ohne sie wäre deine Erklärung unvollständig – deshalb drucken wir noch nicht.',
         anlagen: {
           anlageV: 'Vermietung (Anlage V)',
@@ -465,6 +467,7 @@ export const appResources = {
           anlageKindAndererElternteilAusland: 'Angaben zu einem anderen Elternteil, der im Ausland lebte (Anlage Kind, Zeile 13)',
           anlageKindVolljaehrig: 'Angaben zu einem volljährigen Kind (Anlage Kind)',
           anlageKindAusland: 'Angaben zu einem Kind mit Wohnsitz im Ausland (Anlage Kind)',
+          anlageVAfaNeu: 'Abschreibung eines im Jahr gekauften oder geänderten Gebäudes (Anlage V, Zeile 33)',
         },
         angabenErgaenzen: 'Angaben ergänzen',
         nichtVerfuegbar: 'Die Bezahlung ist auf dieser Umgebung noch nicht eingerichtet.',
@@ -1598,6 +1601,8 @@ export const appResources = {
         riesterErgaenzen: 'Complete Riester details',
         fehlendKinder: 'Anlage Kind still needs details about your children: tax ID, parent-child relationship, Familienkasse, residence and, if needed, the other parent.',
         kinderErgaenzen: 'Complete child details',
+        fehlendVermietung: 'Anlage V still needs details about your rental: rent, expenses (0 counts), the address and whether the depreciation is as last year.',
+        vermietungErgaenzen: 'Complete rental details',
         anlageNochNicht: 'There is no printout for your {{anlage}} yet. Without it your return would be incomplete — so we do not print yet.',
         anlagen: {
           anlageV: 'rental income (Anlage V)',
@@ -1608,6 +1613,7 @@ export const appResources = {
           anlageKindAndererElternteilAusland: 'details on another parent who lived abroad (Anlage Kind, line 13)',
           anlageKindVolljaehrig: 'details on a child of age (Anlage Kind)',
           anlageKindAusland: 'details on a child living abroad (Anlage Kind)',
+          anlageVAfaNeu: 'depreciation of a building bought or changed in the year (Anlage V, line 33)',
         },
         angabenErgaenzen: 'Complete details',
         nichtVerfuegbar: 'Payment is not set up on this environment yet.',

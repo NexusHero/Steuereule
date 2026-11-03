@@ -36,6 +36,11 @@ sobald das Zertifikat (Ticket 07) vorliegt; bis dahin Beta kostenlos (ADR-017).
       und Kindergeld ganzjährig erhalten (pro Kind), keine weitere volljährige Person (Interview-Eintrag
       „alleinerziehend“) → Kz 42/44 vom–bis, Kz 46/49 = 2. Teilzeiträume und „Ja“ in Z. 47/48 werden
       nicht beantragt (Hinweis im Kinder-Screen)
+- [x] Anlage V korrigiert: Mieteinnahmen standen im Textfeld von Z. 14, die AfA im %-Kasten von Z. 33,
+      die Summe Z. 83 ohne AfA, Z. 85/86 leer. Jetzt Z. 13 (Fläche, Betrag), Kz 01, Z. 32, Z. 33
+      (linear, Satz, wie Vorjahr, Betrag), Kz 30, Z. 80/Kz 49 (laufende Werbungskosten), Z. 83 inkl.
+      AfA, Z. 85 Überschuss, Kz 20. Sperren: fehlende/unklare Angaben → „vermietung“ (Weg zum
+      Vermietungs-Screen); im Jahr gekauftes/geändertes Gebäude → „anlageVAfaNeu“
 - [ ] Anlage Kind, noch ehrlich gesperrt: anderer Elternteil im Ausland (Z. 13), volljährige Kinder
       (Z. 16 ff.), Wohnsitz des Kindes im Ausland (Z. 9); Kinderbetreuungskosten werden nicht erfasst
 - [x] Verheiratete: Veranlagungsart + Person B erfassen, dann Zeilen 19–24 ausdrucken

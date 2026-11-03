@@ -12,7 +12,7 @@ import { useState } from 'react'
 import { ScrollView, View, Text, Pressable, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { Button, Card, Feld, Input, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
+import { Button, Card, Chip, Feld, Input, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
 import { formatEuro, VERMIETUNG_FELDER, type VermietungFeldId } from '@steuereule/core'
 import {
   getVermietungControllerGetQueryKey,
@@ -139,7 +139,7 @@ function ObjektCard({
   readonly objekt: VermietungsobjektDto
   readonly index: number
   readonly onSend: (feld: VermietungFeldId, data: VermietungFeldDto) => void
-  readonly onSendAdresse?: (adresse: { strasse?: string; hausnummer?: string; plz?: string; ort?: string; wohnflaeche?: string }) => void
+  readonly onSendAdresse?: (adresse: PutVermietungAdresseDto) => void
 }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
@@ -207,6 +207,24 @@ function ObjektCard({
             accessibilityLabel="Gesamtwohnfläche"
             onChange={(wohnflaeche) => onSendAdresse?.({ wohnflaeche })}
           />
+        </Feld>
+        <Feld label="Ist die Gebäude-AfA unverändert wie im Vorjahr?">
+          <View style={{ flexDirection: 'row', gap: t.space.s2 }}>
+            <Chip
+              aktiv={objekt.afaWieVorjahr === true}
+              onPress={() => onSendAdresse?.({ afaWieVorjahr: true })}
+              testID="vermietung-afa-wie-vorjahr-ja"
+            >
+              Ja
+            </Chip>
+            <Chip
+              aktiv={objekt.afaWieVorjahr === false}
+              onPress={() => onSendAdresse?.({ afaWieVorjahr: false })}
+              testID="vermietung-afa-wie-vorjahr-nein"
+            >
+              Nein, im Jahr gekauft oder geändert
+            </Chip>
+          </View>
         </Feld>
       </View>
 

@@ -844,22 +844,70 @@
       }
     },
     {
-      "id": "anlV.mieteinnahmen",
+      "id": "anlV.z13Wohnflaeche",
+      "formular": "anlage-v",
+      "seite": 1,
+      "art": "text",
+      "kasten": {
+        "x": 336.6,
+        "y": 342.1,
+        "breite": 54.6,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlV.z13Miete",
       "formular": "anlage-v",
       "seite": 1,
       "art": "euro",
       "kasten": {
-        "x": 61.7,
-        "y": 315.9,
-        "breite": 257,
-        "hoehe": 15.9
+        "x": 427.3,
+        "y": 342.1,
+        "breite": 116.1,
+        "hoehe": 15.8
       }
     },
     {
-      "id": "anlV.afa",
+      "id": "anlV.kz01",
+      "formular": "anlage-v",
+      "seite": 1,
+      "art": "euro",
+      "kasten": {
+        "x": 427.3,
+        "y": 291.2,
+        "breite": 116.1,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlV.z32Einnahmen",
       "formular": "anlage-v",
       "seite": 2,
       "art": "euro",
+      "kasten": {
+        "x": 404.7,
+        "y": 605.9,
+        "breite": 116.4,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlV.z33Linear",
+      "formular": "anlage-v",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 39.1,
+        "y": 491.3,
+        "breite": 12.1,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlV.z33Satz",
+      "formular": "anlage-v",
+      "seite": 2,
+      "art": "text",
       "kasten": {
         "x": 106.6,
         "y": 491.3,
@@ -868,7 +916,79 @@
       }
     },
     {
-      "id": "anlV.werbungskosten",
+      "id": "anlV.z33WieVorjahr",
+      "formular": "anlage-v",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 168.8,
+        "y": 491.3,
+        "breite": 12.1,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlV.z33Afa",
+      "formular": "anlage-v",
+      "seite": 2,
+      "art": "euro",
+      "kasten": {
+        "x": 404,
+        "y": 491.3,
+        "breite": 116.1,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlV.kz30",
+      "formular": "anlage-v",
+      "seite": 2,
+      "art": "euro",
+      "kasten": {
+        "x": 404.7,
+        "y": 417.8,
+        "breite": 116.1,
+        "hoehe": 15.9
+      }
+    },
+    {
+      "id": "anlV.z80Text",
+      "formular": "anlage-v",
+      "seite": 4,
+      "art": "text",
+      "kasten": {
+        "x": 39.1,
+        "y": 391.7,
+        "breite": 348.5,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlV.z80Betrag",
+      "formular": "anlage-v",
+      "seite": 4,
+      "art": "euro",
+      "kasten": {
+        "x": 404.7,
+        "y": 391.7,
+        "breite": 116.1,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlV.kz49",
+      "formular": "anlage-v",
+      "seite": 4,
+      "art": "euro",
+      "kasten": {
+        "x": 404.7,
+        "y": 330.2,
+        "breite": 116.1,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlV.werbungskostenSumme",
       "formular": "anlage-v",
       "seite": 4,
       "art": "euro",
@@ -877,6 +997,30 @@
         "y": 300.9,
         "breite": 116.1,
         "hoehe": 15.9
+      }
+    },
+    {
+      "id": "anlV.ueberschuss",
+      "formular": "anlage-v",
+      "seite": 4,
+      "art": "euro",
+      "kasten": {
+        "x": 404.7,
+        "y": 220.8,
+        "breite": 116.1,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlV.kz20",
+      "formular": "anlage-v",
+      "seite": 4,
+      "art": "euro",
+      "kasten": {
+        "x": 213.8,
+        "y": 182.6,
+        "breite": 116.2,
+        "hoehe": 15.8
       }
     },
     {

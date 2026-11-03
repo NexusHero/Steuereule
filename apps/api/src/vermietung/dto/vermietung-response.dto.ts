@@ -71,6 +71,9 @@ export class VermietungsobjektDto {
   @ApiProperty({ type: String, nullable: true })
   wohnflaeche?: string | null
 
+  @ApiProperty({ type: Boolean, nullable: true })
+  afaWieVorjahr?: boolean | null
+
   @ApiProperty({ type: VermietungsobjektFaktenDto })
   fakten!: VermietungsobjektFaktenDto
 }

@@ -30,6 +30,7 @@ const VOLLES_OBJEKT: VermietungResponseDto = {
       plz: null,
       ort: null,
       wohnflaeche: null,
+      afaWieVorjahr: null,
       fakten: {
         einnahmen: 12000,
         werbungskosten: 1500,
@@ -110,6 +111,20 @@ describe('VermietungScreen', () => {
 
     await waitFor(() => expect(body).toEqual({ kind: 'erfasst', wert: 12000 }))
     expect(url).toContain('/vermietung/objekte/obj-1/mieteinnahmen')
+  })
+
+  it('asks whether the AfA is unchanged from last year (Anlage V Zeile 33) and saves it with the object', async () => {
+    let body: unknown
+    server.use(http.get(VERMIETUNG_URL, () => HttpResponse.json(VOLLES_OBJEKT, { status: 200 })))
+    server.use(
+      http.put(`${VERMIETUNG_URL}/objekte/:objektId/adresse`, async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json(VOLLES_OBJEKT, { status: 200 })
+      }),
+    )
+    renderVermietung()
+    fireEvent.click(await screen.findByTestId('vermietung-afa-wie-vorjahr-ja'))
+    await waitFor(() => expect(body).toEqual({ afaWieVorjahr: true }))
   })
 
   it('names the Verkauf/möbliert gate honestly and hides the add CTA', async () => {

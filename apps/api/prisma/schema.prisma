@@ -663,6 +663,8 @@ model Vermietungsobjekt {
   plz                String? /// @encrypted?mode=strict
   ort                String? /// @encrypted?mode=strict
   wohnflaeche        String? /// @encrypted?mode=strict
+  /// Anlage V Zeile 33: the building AfA is unchanged from last year (1 = wie Vorjahr).
+  afaWieVorjahr      Boolean?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 

@@ -142,7 +142,7 @@ describe('Formular-Ausdruck (ADR-0050), against the real server', () => {
     const { cookie, userId } = await signUp('ausdruck-vermietung@example.com')
     await vollstaendig(cookie)
     await prisma.vermietungsobjekt.create({
-      data: { userId, steuerjahr: 2025, strasse: 'Hauptstraße', hausnummer: '3', plz: '01067', ort: 'Dresden', mieteinnahmen: '9600' },
+      data: { userId, steuerjahr: 2025, strasse: 'Hauptstraße', hausnummer: '3', plz: '01067', ort: 'Dresden', mieteinnahmen: '9600', werbungskosten: '0' },
     })
     await bezahle(userId)
 

@@ -97,6 +97,7 @@ function objektZuDto(record: VermietungsobjektRecord): VermietungsobjektDto {
     plz: record.plz ?? null,
     ort: record.ort ?? null,
     wohnflaeche: record.wohnflaeche ?? null,
+    afaWieVorjahr: record.afaWieVorjahr ?? null,
     fakten: faktenDto,
   }
 }

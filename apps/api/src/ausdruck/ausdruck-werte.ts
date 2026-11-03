@@ -1,7 +1,7 @@
 // From the stored facts to the Vordruck field values (ADR-0050). Pure: no I/O, no rounding
 // beyond what the facts already carry — a value the app does not know exactly (the
 // Lohnsteuer's cents) is left empty rather than printed with a false precision.
-import { deutschesDatum } from '@steuereule/core'
+import { afaSatzProzent, deutschesDatum } from '@steuereule/core'
 import type { FeldWerte } from './vordruck-renderer.js'
 
 export interface PersonBFakten {
@@ -87,8 +87,31 @@ export interface VermietungFakten {
   ort: string | null
   wohnflaeche: string | null
   mieteinnahmen: string | null
-  afa: string | null
+  /** Building cost and year of completion — the AfA base (§ 7 Abs. 4 EStG). */
+  anschaffungskosten: string | null
+  baujahr: string | null
   werbungskosten: string | null
+  afaWieVorjahr: boolean | null
+}
+
+const ganzeZahl = (wert: string | null): number | null => (wert !== null && /^\d+$/.test(wert) ? Number(wert) : null)
+
+/** Why an Anlage V cannot be printed, or null ('unklar' is the mask's "unreadable"). */
+function vermietungLuecke(obj: VermietungFakten): string | null {
+  const unklar = [obj.mieteinnahmen, obj.werbungskosten, obj.anschaffungskosten, obj.baujahr].includes('unklar')
+  if (unklar || ganzeZahl(obj.mieteinnahmen) === null || ganzeZahl(obj.werbungskosten) === null) return 'vermietung'
+  if (!obj.strasse || !obj.plz || !obj.ort) return 'vermietung'
+  if (vermietungAfa(obj) === null) return null
+  if (obj.afaWieVorjahr === null) return 'vermietung'
+  return obj.afaWieVorjahr ? null : 'anlageVAfaNeu'
+}
+
+function vermietungAfa(obj: VermietungFakten): { satz: number; betrag: number } | null {
+  const kosten = ganzeZahl(obj.anschaffungskosten)
+  const baujahr = ganzeZahl(obj.baujahr)
+  if (kosten === null || baujahr === null) return null
+  const satz = afaSatzProzent(baujahr)
+  return satz === null ? null : { satz, betrag: Math.round((kosten * satz) / 100) }
 }
 
 export interface KapitalFakten {
@@ -367,12 +390,39 @@ export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
       if (obj.strasse) vWerte['anlV.strasse'] = obj.strasse
       if (obj.plz) vWerte['anlV.plz'] = obj.plz
       if (obj.ort) vWerte['anlV.ort'] = obj.ort
-      if (obj.wohnflaeche) vWerte['anlV.wohnflaeche'] = obj.wohnflaeche
-      if (obj.mieteinnahmen) vWerte['anlV.mieteinnahmen'] = obj.mieteinnahmen
-      if (obj.afa) vWerte['anlV.afa'] = obj.afa
-      if (obj.werbungskosten) vWerte['anlV.werbungskosten'] = obj.werbungskosten
+      if (obj.wohnflaeche) {
+        vWerte['anlV.wohnflaeche'] = obj.wohnflaeche
+        vWerte['anlV.z13Wohnflaeche'] = obj.wohnflaeche
+      }
+      const miete = ganzeZahl(obj.mieteinnahmen)
+      const laufend = ganzeZahl(obj.werbungskosten)
+      if (miete === null || laufend === null) return vWerte
+      vWerte['anlV.z13Miete'] = String(miete)
+      vWerte['anlV.kz01'] = String(miete)
+      vWerte['anlV.z32Einnahmen'] = String(miete)
+      const afa = vermietungAfa(obj)
+      if (afa && obj.afaWieVorjahr) {
+        vWerte['anlV.z33Linear'] = '1'
+        vWerte['anlV.z33Satz'] = String(afa.satz).replace('.', ',')
+        vWerte['anlV.z33WieVorjahr'] = '1'
+        vWerte['anlV.z33Afa'] = String(afa.betrag)
+        vWerte['anlV.kz30'] = String(afa.betrag)
+      }
+      if (laufend > 0) {
+        vWerte['anlV.z80Text'] = 'Laufende Werbungskosten'
+        vWerte['anlV.z80Betrag'] = String(laufend)
+        vWerte['anlV.kz49'] = String(laufend)
+      }
+      const summe = laufend + (afa && obj.afaWieVorjahr ? afa.betrag : 0)
+      vWerte['anlV.werbungskostenSumme'] = String(summe)
+      vWerte['anlV.ueberschuss'] = String(miete - summe)
+      vWerte['anlV.kz20'] = String(miete - summe)
       return vWerte
     })
+    for (const obj of fakten.vermietung) {
+      const luecke = vermietungLuecke(obj)
+      if (luecke && !fehlend.includes(luecke)) fehlend.push(luecke)
+    }
   }
 
   // Anlage Kind

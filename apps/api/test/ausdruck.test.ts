@@ -361,8 +361,10 @@ describe('ausdruckWerte', () => {
           ort: 'Dresden',
           wohnflaeche: '75',
           mieteinnahmen: '9600',
-          afa: '3000',
+          anschaffungskosten: '150000',
+          baujahr: '1995',
           werbungskosten: '1200',
+          afaWieVorjahr: true,
         },
       ],
     })
@@ -389,9 +391,71 @@ describe('ausdruckWerte', () => {
       'anlV.plz': '01067',
       'anlV.ort': 'Dresden',
       'anlV.wohnflaeche': '75',
-      'anlV.mieteinnahmen': '9600',
-      'anlV.afa': '3000',
-      'anlV.werbungskosten': '1200',
+      'anlV.z13Miete': '9600',
+    })
+  })
+
+  describe('Anlage V', () => {
+    const OBJEKT = {
+      strasse: 'Schulstraße 4',
+      plz: '01067',
+      ort: 'Dresden',
+      wohnflaeche: '75',
+      mieteinnahmen: '9600',
+      anschaffungskosten: '150000',
+      baujahr: '1995',
+      werbungskosten: '1200',
+      afaWieVorjahr: true,
+    }
+    const v = (objekt: Partial<typeof OBJEKT> & Record<string, unknown>) =>
+      ausdruckWerte({ ...FAKTEN, vermietung: [{ ...OBJEKT, ...objekt } as never] })
+
+    it('rents go into the amount column of Zeile 13 and the sums, never a text box', () => {
+      expect(v({}).instanzen!['anlage-v']![0]).toMatchObject({
+        'anlV.z13Wohnflaeche': '75',
+        'anlV.z13Miete': '9600',
+        'anlV.kz01': '9600',
+        'anlV.z32Einnahmen': '9600',
+      })
+    })
+
+    it('the AfA fills Zeile 33 (linear, rate, wie Vorjahr, amount) and Kz 30', () => {
+      expect(v({}).instanzen!['anlage-v']![0]).toMatchObject({
+        'anlV.z33Linear': '1',
+        'anlV.z33Satz': '2',
+        'anlV.z33WieVorjahr': '1',
+        'anlV.z33Afa': '3000',
+        'anlV.kz30': '3000',
+      })
+      expect(v({ baujahr: '1910', anschaffungskosten: '100000' }).instanzen!['anlage-v']![0]!['anlV.z33Satz']).toBe('2,5')
+    })
+
+    it('the sum of Werbungskosten includes the AfA; Zeilen 85/86 always carry the result', () => {
+      expect(v({}).instanzen!['anlage-v']![0]).toMatchObject({
+        'anlV.z80Text': 'Laufende Werbungskosten',
+        'anlV.z80Betrag': '1200',
+        'anlV.kz49': '1200',
+        'anlV.werbungskostenSumme': '4200',
+        'anlV.ueberschuss': '5400',
+        'anlV.kz20': '5400',
+      })
+      expect(v({ mieteinnahmen: '2000' }).instanzen!['anlage-v']![0]).toMatchObject({ 'anlV.ueberschuss': '-2200', 'anlV.kz20': '-2200' })
+    })
+
+    it('without building data there is no AfA line, and no "wie Vorjahr" question', () => {
+      const res = v({ anschaffungskosten: null as never, baujahr: null as never, afaWieVorjahr: null as never })
+      expect(res.fehlend).toEqual([])
+      expect(Object.keys(res.instanzen!['anlage-v']![0]!).filter((id) => id.startsWith('anlV.z33'))).toEqual([])
+      expect(res.instanzen!['anlage-v']![0]!['anlV.werbungskostenSumme']).toBe('1200')
+    })
+
+    it('missing or unreadable facts block as "vermietung"; a changed AfA is named as not printable yet', () => {
+      expect(v({ mieteinnahmen: null as never }).fehlend).toEqual(['vermietung'])
+      expect(v({ werbungskosten: null as never }).fehlend).toEqual(['vermietung'])
+      expect(v({ baujahr: 'unklar' }).fehlend).toEqual(['vermietung'])
+      expect(v({ ort: null as never }).fehlend).toEqual(['vermietung'])
+      expect(v({ afaWieVorjahr: null as never }).fehlend).toEqual(['vermietung'])
+      expect(v({ afaWieVorjahr: false }).fehlend).toEqual(['anlageVAfaNeu'])
     })
   })
 })
@@ -450,7 +514,7 @@ describe('rendereVordrucke (real templates)', () => {
         { vorname: 'Lina', nachname: 'Beispiel', geburtsdatum: '2016-01-01', idnr: '12345678901' },
       ],
       vermietung: [
-        { strasse: 'Musterweg 1', plz: '10115', ort: 'Berlin', wohnflaeche: '60', mieteinnahmen: '8000', afa: '2000', werbungskosten: '500' },
+        { strasse: 'Musterweg 1', plz: '10115', ort: 'Berlin', wohnflaeche: '60', mieteinnahmen: '8000', anschaffungskosten: '100000', baujahr: '2000', werbungskosten: '500', afaWieVorjahr: true },
       ],
     })
     const pdf = await rendereVordrucke(FELDSAETZE[2025]!, res.werte, {

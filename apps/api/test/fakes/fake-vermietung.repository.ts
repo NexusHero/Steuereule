@@ -47,7 +47,7 @@ export class FakeVermietungRepository implements VermietungRepository {
     userId: string,
     steuerjahr: number,
     objektId: string,
-    adresse: { strasse?: string | null; hausnummer?: string | null; plz?: string | null; ort?: string | null; wohnflaeche?: string | null },
+    adresse: { strasse?: string | null; hausnummer?: string | null; plz?: string | null; ort?: string | null; wohnflaeche?: string | null; afaWieVorjahr?: boolean | null },
   ): Promise<VermietungsobjektRecord | null> {
     const k = `${key(userId, steuerjahr)}::${objektId}`
     const existing = this.store.get(k)

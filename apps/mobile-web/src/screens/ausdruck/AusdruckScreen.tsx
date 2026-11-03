@@ -25,11 +25,13 @@ export interface AusdruckScreenProps {
   readonly onRiesterErgaenzen: () => void
   /** Opens the Kinder screen, where the Anlage-Kind details are completed. */
   readonly onKinderErgaenzen: () => void
+  /** Opens the Vermietung screen, where the Anlage-V facts are completed. */
+  readonly onVermietungErgaenzen: () => void
   /** Hands the browser to the hosted checkout page. Injected so tests never leave the page. */
   readonly oeffneCheckout?: (url: string) => void
 }
 
-export function AusdruckScreen({ jahr, zahlung, onZurueck, onAngabenErgaenzen, onRiesterErgaenzen, onKinderErgaenzen, oeffneCheckout = (url) => window.location.assign(url) }: AusdruckScreenProps) {
+export function AusdruckScreen({ jahr, zahlung, onZurueck, onAngabenErgaenzen, onRiesterErgaenzen, onKinderErgaenzen, onVermietungErgaenzen, oeffneCheckout = (url) => window.location.assign(url) }: AusdruckScreenProps) {
   const bp = useBreakpoint()
   const theme = useTheme()
   const styles = makeDatenschutzStyles(theme)
@@ -63,8 +65,9 @@ export function AusdruckScreen({ jahr, zahlung, onZurueck, onAngabenErgaenzen, o
   const verheiratet = fehlend.includes('ehegatte')
   const riester = fehlend.includes('riester')
   const kinder = fehlend.includes('kinder')
+  const vermietung = fehlend.includes('vermietung')
   const anlagen = fehlend.filter((key) => key.startsWith('anlage'))
-  const eigenerWeg = new Set(['ehegatte', 'riester', 'kinder'])
+  const eigenerWeg = new Set(['ehegatte', 'riester', 'kinder', 'vermietung'])
   const stammdatenFehlen = fehlend.some((key) => !eigenerWeg.has(key) && !key.startsWith('anlage'))
   const gesperrt = fehlend.length > 0
 
@@ -126,6 +129,14 @@ export function AusdruckScreen({ jahr, zahlung, onZurueck, onAngabenErgaenzen, o
               <Text style={styles.sectionBody}>{t('ausdruck.fehlendKinder')}</Text>
               <Button variante="ghost" onPress={onKinderErgaenzen}>
                 {t('ausdruck.kinderErgaenzen')}
+              </Button>
+            </>
+          ) : null}
+          {vermietung ? (
+            <>
+              <Text style={styles.sectionBody}>{t('ausdruck.fehlendVermietung')}</Text>
+              <Button variante="ghost" onPress={onVermietungErgaenzen}>
+                {t('ausdruck.vermietungErgaenzen')}
               </Button>
             </>
           ) : null}

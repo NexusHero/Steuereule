@@ -3541,6 +3541,10 @@
             "type": "string",
             "nullable": true
           },
+          "afaWieVorjahr": {
+            "type": "boolean",
+            "nullable": true
+          },
           "fakten": {
             "$ref": "#/components/schemas/VermietungsobjektFaktenDto"
           }
@@ -3556,6 +3560,7 @@
           "plz",
           "ort",
           "wohnflaeche",
+          "afaWieVorjahr",
           "fakten"
         ]
       },
@@ -3684,6 +3689,10 @@
           "wohnflaeche": {
             "type": "string",
             "example": "85"
+          },
+          "afaWieVorjahr": {
+            "type": "boolean",
+            "description": "Anlage V Zeile 33: the building AfA is unchanged from last year."
           }
         }
       },

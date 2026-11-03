@@ -86,6 +86,8 @@ export interface VermietungsobjektDto {
   ort: string | null;
   /** @nullable */
   wohnflaeche: string | null;
+  /** @nullable */
+  afaWieVorjahr: boolean | null;
   fakten: VermietungsobjektFaktenDto;
 }
 
@@ -153,5 +155,7 @@ export interface PutVermietungAdresseDto {
   plz?: string;
   ort?: string;
   wohnflaeche?: string;
+  /** Anlage V Zeile 33: the building AfA is unchanged from last year. */
+  afaWieVorjahr?: boolean;
 }
 

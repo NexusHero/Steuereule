@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger'
-import { IsOptional, IsString, MaxLength } from 'class-validator'
+import { IsBoolean, IsOptional, IsString, MaxLength } from 'class-validator'
 
 export class PutVermietungAdresseDto {
   @ApiPropertyOptional({ type: String, example: 'Musterstraße' })
@@ -31,4 +31,9 @@ export class PutVermietungAdresseDto {
   @IsString()
   @MaxLength(10)
   wohnflaeche?: string
+
+  @ApiPropertyOptional({ type: Boolean, description: 'Anlage V Zeile 33: the building AfA is unchanged from last year.' })
+  @IsOptional()
+  @IsBoolean()
+  afaWieVorjahr?: boolean
 }

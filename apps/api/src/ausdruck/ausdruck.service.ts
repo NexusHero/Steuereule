@@ -9,7 +9,6 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common'
-import { afaSatzProzent } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
 import { CH_LOHNAUSWEIS_REPOSITORY, type ChLohnausweisRepository } from '../ch-lohnausweis/ch-lohnausweis.repository.js'
 import { FreischaltungService } from '../freischaltung/freischaltung.service.js'
@@ -136,25 +135,18 @@ export class AusdruckService {
       }
     }
 
-    const vermietungFakten = objekte.map((obj, i) => {
-      let afaStr: string | null = null
-      if (obj.anschaffungskosten && obj.baujahr && /^\d+$/.test(obj.anschaffungskosten) && /^\d+$/.test(obj.baujahr)) {
-        const satz = afaSatzProzent(Number(obj.baujahr))
-        if (satz !== null) {
-          afaStr = String(Math.round(Number(obj.anschaffungskosten) * (satz / 100)))
-        }
-      }
-      return {
-        lfdNr: String(i + 1),
-        strasse: [obj.strasse, obj.hausnummer].filter(Boolean).join(' ') || null,
-        plz: obj.plz ?? null,
-        ort: obj.ort ?? null,
-        wohnflaeche: obj.wohnflaeche ?? null,
-        mieteinnahmen: obj.mieteinnahmen,
-        afa: afaStr,
-        werbungskosten: obj.werbungskosten,
-      }
-    })
+    const vermietungFakten = objekte.map((obj, i) => ({
+      lfdNr: String(i + 1),
+      strasse: [obj.strasse, obj.hausnummer].filter(Boolean).join(' ') || null,
+      plz: obj.plz ?? null,
+      ort: obj.ort ?? null,
+      wohnflaeche: obj.wohnflaeche ?? null,
+      mieteinnahmen: obj.mieteinnahmen,
+      anschaffungskosten: obj.anschaffungskosten,
+      baujahr: obj.baujahr,
+      werbungskosten: obj.werbungskosten,
+      afaWieVorjahr: obj.afaWieVorjahr ?? null,
+    }))
 
     const kinderFakten = kinder.map((k, i) => ({
       lfdNr: String(i + 1),

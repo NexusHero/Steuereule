@@ -29,6 +29,7 @@ export interface VermietungsobjektRecord {
   plz?: string | null
   ort?: string | null
   wohnflaeche?: string | null
+  afaWieVorjahr?: boolean | null
 }
 
 export const VERMIETUNG_REPOSITORY = Symbol('VERMIETUNG_REPOSITORY')
@@ -54,6 +55,6 @@ export interface VermietungRepository {
     userId: string,
     steuerjahr: number,
     objektId: string,
-    adresse: { strasse?: string | null; hausnummer?: string | null; plz?: string | null; ort?: string | null; wohnflaeche?: string | null },
+    adresse: { strasse?: string | null; hausnummer?: string | null; plz?: string | null; ort?: string | null; wohnflaeche?: string | null; afaWieVorjahr?: boolean | null },
   ): Promise<VermietungsobjektRecord | null>
 }

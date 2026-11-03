@@ -221,10 +221,10 @@ function RechtlichesRoute({ navigation, route }: NativeStackScreenProps<RootStac
 }
 
 // ADR-0050: each gap opens its own form in place (Stammdaten, the Sonderausgaben questions for
-// Riester, the Kinder screen), so returning lands back on the Ausdruck with the refreshed gap
+// Riester, the Kinder and Vermietung screens), so returning lands back on the Ausdruck with the refreshed gap
 // list instead of somewhere in the tab shell.
 function AusdruckRoute({ navigation, route }: NativeStackScreenProps<RootStackParamList, 'Ausdruck'>) {
-  const [ansicht, setAnsicht] = useState<'ausdruck' | 'stammdaten' | 'sonderausgaben' | 'kinder'>('ausdruck')
+  const [ansicht, setAnsicht] = useState<'ausdruck' | 'stammdaten' | 'sonderausgaben' | 'kinder' | 'vermietung'>('ausdruck')
   const jahr = Number(route.params?.jahr)
   // A hand-typed URL with no valid year has nothing to show: back to the Cockpit.
   useEffect(() => {
@@ -232,6 +232,9 @@ function AusdruckRoute({ navigation, route }: NativeStackScreenProps<RootStackPa
   }, [jahr, navigation])
   if (!Number.isInteger(jahr)) return null
   if (ansicht === 'stammdaten') return <StammdatenScreen onZurueck={() => setAnsicht('ausdruck')} />
+  if (ansicht === 'vermietung') {
+    return <VermietungScreen taxYear={jahr} onDone={() => setAnsicht('ausdruck')} onBack={() => setAnsicht('ausdruck')} />
+  }
   if (ansicht === 'kinder') {
     return <KinderScreen taxYear={jahr} onDone={() => setAnsicht('ausdruck')} onBack={() => setAnsicht('ausdruck')} />
   }
@@ -254,6 +257,7 @@ function AusdruckRoute({ navigation, route }: NativeStackScreenProps<RootStackPa
       onAngabenErgaenzen={() => setAnsicht('stammdaten')}
       onRiesterErgaenzen={() => setAnsicht('sonderausgaben')}
       onKinderErgaenzen={() => setAnsicht('kinder')}
+      onVermietungErgaenzen={() => setAnsicht('vermietung')}
     />
   )
 }

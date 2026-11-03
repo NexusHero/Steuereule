@@ -21,6 +21,7 @@ function renderScreen(props: { zahlung?: 'erfolg' | 'abbruch'; oeffneCheckout?: 
   const onAngabenErgaenzen = vi.fn()
   const onRiesterErgaenzen = vi.fn()
   const onKinderErgaenzen = vi.fn()
+  const onVermietungErgaenzen = vi.fn()
   render(
     <QueryClientProvider client={queryClient}>
       <I18nextProvider i18n={createAppI18n('de')}>
@@ -31,13 +32,14 @@ function renderScreen(props: { zahlung?: 'erfolg' | 'abbruch'; oeffneCheckout?: 
             onAngabenErgaenzen={onAngabenErgaenzen}
             onRiesterErgaenzen={onRiesterErgaenzen}
             onKinderErgaenzen={onKinderErgaenzen}
+            onVermietungErgaenzen={onVermietungErgaenzen}
             {...props}
           />
         </ThemeProvider>
       </I18nextProvider>
     </QueryClientProvider>,
   )
-  return { onAngabenErgaenzen, onRiesterErgaenzen, onKinderErgaenzen }
+  return { onAngabenErgaenzen, onRiesterErgaenzen, onKinderErgaenzen, onVermietungErgaenzen }
 }
 
 afterEach(() => server.resetHandlers())
@@ -105,6 +107,14 @@ describe('AusdruckScreen (ADR-0050)', () => {
     expect(screen.getByText(/Angaben zu einem volljährigen Kind \(Anlage Kind\) gibt es den Ausdruck noch nicht/)).toBeTruthy()
     fireEvent.click(screen.getByText('Kinder-Angaben ergänzen'))
     expect(onKinderErgaenzen).toHaveBeenCalled()
+  })
+
+  it('missing rental facts lead to the Vermietung screen', async () => {
+    mock('offen', ['vermietung'])
+    const { onVermietungErgaenzen } = renderScreen()
+    expect(await screen.findByText(/Für die Anlage V fehlen noch Angaben zu deiner Vermietung/)).toBeTruthy()
+    fireEvent.click(screen.getByText('Vermietungs-Angaben ergänzen'))
+    expect(onVermietungErgaenzen).toHaveBeenCalled()
   })
 
   it('an Anlage that is not printable yet is named, and paying is not offered', async () => {
