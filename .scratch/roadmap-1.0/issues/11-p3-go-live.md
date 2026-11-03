@@ -45,6 +45,11 @@ sobald das Zertifikat (Ticket 07) vorliegt; bis dahin Beta kostenlos (ADR-017).
       mit Sparer-Pauschbetrag (Z. 16) und den einbehaltenen Steuern zur Anrechnung (Z. 37–39, EUR/Ct) —
       ohne sie würden die Erträge doppelt besteuert. Kz 201 als Ziffer. Kapital erfasst dafür vier
       weitere Felder; fehlt etwas → „kapital“ (Weg zum Kapital-Screen), Krypto → „anlageKapKrypto“
+- [x] Probeausdruck-Prüfung ESt 1 A, N, R: in Ordnung. Anlage N-Gre war nicht druckbar: zwei
+      geschriebene Felder (Vorsorge, Nichtrückkehrtage) waren nie vermessen → Serverfehler beim
+      Download nach der Zahlung. Jetzt ehrlich gesperrt („anlageNGre“) + Render-Test mit allen Fakten
+- [ ] Anlage N-Gre vollständig: Kz 117 (Land/Währung), Beruf, Zeile 6 CHF+EUR, Zeilen 7–23 bis Kz 116,
+      Arbeitgeber (Z. 89–91), Sozialabgaben-Aufteilung (Z. 75–88), Abzugssteuer (Z. 25)
 - [ ] Anlage Kind, noch ehrlich gesperrt: anderer Elternteil im Ausland (Z. 13), volljährige Kinder
       (Z. 16 ff.), Wohnsitz des Kindes im Ausland (Z. 9); Kinderbetreuungskosten werden nicht erfasst
 - [x] Verheiratete: Veranlagungsart + Person B erfassen, dann Zeilen 19–24 ausdrucken

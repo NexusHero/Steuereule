@@ -192,18 +192,22 @@ describe('ausdruckWerte', () => {
     })
   })
 
-  it('fills Anlage N-Gre, Anlage Sonderausgaben and AV', () => {
+  it('Anlage N-Gre is named as not printable yet and writes nothing — it needs Kz 116/117, the employer and Zeilen 75–88', () => {
+    const { werte, fehlend } = ausdruckWerte({
+      ...FAKTEN,
+      chLohnausweis: { bruttolohnEur: '65000', abzugssteuerEur: '2900', vorsorgeEur: '4100', nichtrueckkehrtage: '12' },
+    })
+    expect(fehlend).toEqual(['anlageNGre'])
+    expect(Object.keys(werte).filter((id) => id.startsWith('anlNGre.'))).toEqual([])
+  })
+
+  it('fills Anlage Sonderausgaben and AV', () => {
     const { werte } = ausdruckWerte({
       ...FAKTEN,
-      chLohnausweis: { bruttolohnEur: '65000', abzugssteuerEur: '2900' },
       sonderausgaben: { spenden: '450' },
       riester: { art: 'Unmittelbar', einnahmenVorjahr: '48000' },
     })
     expect(werte).toMatchObject({
-      'anlNGre.personA': true,
-      'anlNGre.name': 'Beispiel',
-      'anlNGre.bruttolohnEur': '65000',
-      'anlNGre.abzugssteuer': '2900',
       'anlSo.spenden': '450',
       'anlAv.unmittelbar': '1',
       'anlAv.kz100': '48000',
@@ -539,26 +543,47 @@ describe('rendereVordrucke (real templates)', () => {
     ).rejects.toThrow(/Unbekannte Feld-IDs/)
   })
 
-  it('renders all 9 printed forms cleanly with real templates', async () => {
-    const res = ausdruckWerte({
-      ...FAKTEN,
-      rente: { rentenart: 'GesetzlicheRente', jahresbetrag: '12000' },
-      kapital: { depot: 'deutscher-broker', kapitalertraege: '1000', sparerPauschbetrag: '1000', kapitalertragsteuer: '0', solidaritaetszuschlag: '0', kirchensteuer: '0' },
-      chLohnausweis: { bruttolohnEur: '50000' },
-      sonderausgaben: { spenden: '200' },
-      riester: { art: 'Unmittelbar', einnahmenVorjahr: '40000' },
-      kinder: [
-        { vorname: 'Lina', nachname: 'Beispiel', geburtsdatum: '2016-01-01', idnr: '12345678901' },
-      ],
-      vermietung: [
-        { strasse: 'Musterweg 1', plz: '10115', ort: 'Berlin', wohnflaeche: '60', mieteinnahmen: '8000', anschaffungskosten: '100000', baujahr: '2000', werbungskosten: '500', afaWieVorjahr: true },
-      ],
+  // Every fact the printout knows, filled to the last optional detail, in both household shapes:
+  // a field id the mapping writes but nobody measured would only surface as a 500 after payment.
+  const KIND_VOLL = {
+    vorname: 'Lina', nachname: 'Muster', geburtsdatum: '2016-01-01', idnr: '12345678901', kindergeldAnspruchEur: '3060',
+    kindschaftsverhaeltnis: '1', kindschaftsverhaeltnisB: '1', familienkasse: 'Familienkasse Sachsen', wohnsitzInlandGanzjaehrig: true,
+    andererElternteil: 'Verstorben', andererElternteilName: 'Muster, Max', andererElternteilGeburtsdatum: '1984-02-11',
+    andererElternteilAdresse: 'Hauptstraße 3, 01067 Dresden', andererElternteilArt: '1', andererElternteilVerstorbenAm: '2025-06-30',
+    gemeldetBeiMirGanzjaehrig: true, kindergeldAnMichGanzjaehrig: true,
+  }
+  const ALLE_FAKTEN: AusdruckFakten = {
+    ...FAKTEN,
+    rente: { rentenart: 'GesetzlicheRente', jahresbetrag: '12000' },
+    kapital: { depot: 'deutscher-broker', kapitalertraege: '1000', sparerPauschbetrag: '1000', kapitalertragsteuer: '0', solidaritaetszuschlag: '0', kirchensteuer: '0' },
+    chLohnausweis: { bruttolohnEur: '50000', abzugssteuerEur: '2250', vorsorgeEur: '4100', nichtrueckkehrtage: '12' },
+    sonderausgaben: { spenden: '200' },
+    riester: { art: 'Unmittelbar', einnahmenVorjahr: '40000' },
+    alleinerziehend: { weiterePerson: 'Nein', haushaltsgemeinschaft: 'Nein' },
+    kinder: [KIND_VOLL, { ...KIND_VOLL, andererElternteil: 'Unbekannt' }],
+    vermietung: [
+      { strasse: 'Musterweg 1', plz: '10115', ort: 'Berlin', wohnflaeche: '60', mieteinnahmen: '8000', anschaffungskosten: '100000', baujahr: '2000', werbungskosten: '500', afaWieVorjahr: true },
+    ],
+  }
+  const VERHEIRATET: AusdruckFakten = {
+    ...ALLE_FAKTEN,
+    stammdaten: { ...FAKTEN.stammdaten!, familienstand: 'verheiratet', familienstandSeit: '2015-05-15' },
+    kopplung: {
+      veranlagungsart: 'zusammen',
+      personB: {
+        firstName: 'Bernd', lastName: 'Beispiel', steuerId: '12345678902', geburtsdatum: '1988-11-20', religion: 'VD', beruf: 'Lehrer',
+        bruttoarbeitslohn: '54000', rente: { rentenart: 'GesetzlicheRente', jahresbetrag: '9000' },
+      },
+    },
+    kapital: { depot: 'auslaendischer-broker', kapitalertraege: '800', sparerPauschbetrag: '200' },
+    riester: { art: 'Mittelbar', einnahmenVorjahr: null },
+  }
+
+  for (const [fall, fakten] of [['single parent', ALLE_FAKTEN], ['joint return', VERHEIRATET]] as const) {
+    it(`renders every field the mapping writes — ${fall}, all facts`, async () => {
+      const res = ausdruckWerte(fakten)
+      const pdf = await rendereVordrucke(FELDSAETZE[2025]!, res.werte, { vorlagenVerzeichnis: VORLAGEN, instanzen: res.instanzen })
+      expect((await PDFDocument.load(pdf)).getPageCount()).toBeGreaterThan(15)
     })
-    const pdf = await rendereVordrucke(FELDSAETZE[2025]!, res.werte, {
-      vorlagenVerzeichnis: VORLAGEN,
-      instanzen: res.instanzen,
-    })
-    const doc = await PDFDocument.load(pdf)
-    expect(doc.getPageCount()).toBeGreaterThan(15)
-  })
+  }
 })

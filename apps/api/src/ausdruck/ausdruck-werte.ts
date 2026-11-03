@@ -379,23 +379,10 @@ export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
     }
   }
 
-  // Anlage N-Gre (Grenzgänger Schweiz)
-  if (fakten.chLohnausweis?.bruttolohnEur && /^\d+$/.test(fakten.chLohnausweis.bruttolohnEur)) {
-    werte['anlNGre.personA'] = true
-    setze('anlNGre.name', profil.lastName)
-    setze('anlNGre.vorname', profil.firstName)
-    setze('anlNGre.steuernummer', profil.steuernummer)
-    werte['anlNGre.bruttolohnEur'] = fakten.chLohnausweis.bruttolohnEur
-    if (fakten.chLohnausweis.abzugssteuerEur && /^\d+$/.test(fakten.chLohnausweis.abzugssteuerEur)) {
-      werte['anlNGre.abzugssteuer'] = fakten.chLohnausweis.abzugssteuerEur
-    }
-    if (fakten.chLohnausweis.vorsorgeEur && /^\d+$/.test(fakten.chLohnausweis.vorsorgeEur)) {
-      werte['anlNGre.vorsorge'] = fakten.chLohnausweis.vorsorgeEur
-    }
-    if (fakten.chLohnausweis.nichtrueckkehrtage && /^\d+$/.test(fakten.chLohnausweis.nichtrueckkehrtage)) {
-      werte['anlNGre.nichtrueckkehrtage'] = fakten.chLohnausweis.nichtrueckkehrtage
-    }
-  }
+  // Anlage N-Gre (Grenzgänger Schweiz) is not printable yet: the form needs the country key
+  // (Kz 117), the taxable wage after Zeilen 7–22 (Kz 116), the employer (Zeilen 89–91) and the
+  // split of the Swiss social contributions (Zeilen 75–88), none of which is captured.
+  if (fakten.chLohnausweis?.bruttolohnEur) fehlend.push('anlageNGre')
 
   // Anlage V (Vermietung)
   if (fakten.vermietung && fakten.vermietung.length > 0) {
