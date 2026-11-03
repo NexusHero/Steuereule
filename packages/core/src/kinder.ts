@@ -1,5 +1,5 @@
 // Kinder & Anlage Kind (§ 32 EStG, product ADR-031). Pure, deterministic, no I/O.
-import { istGueltigesDatum } from './stammdaten.js'
+import { istGueltigesDatum } from './stammdaten'
 
 /** Anlage Kind Zeile 10: 1 = leibliches Kind / Adoptivkind, 2 = Pflegekind, 3 = Enkelkind / Stiefkind. */
 export const KINDSCHAFTSVERHAELTNISSE = ['1', '2', '3'] as const
