@@ -122,6 +122,29 @@ describe('StammdatenScreen (ADR-0050)', () => {
       expect(await screen.findByTestId('personb-vorname')).toBeTruthy()
     })
 
+    it('names how long the invite code is valid, and when it has expired', async () => {
+      server.use(
+        http.get('*/v1/stammdaten', () => HttpResponse.json(VERHEIRATET)),
+        http.get('*/v1/steuerjahre/:jahr/kopplung', () =>
+          HttpResponse.json({ ...ZUSAMMEN, einladungsCodeGueltigBis: '2999-01-14T10:00:00.000Z' }),
+        ),
+      )
+      renderScreen()
+      expect(await screen.findByText('Einladungscode für Partner-Account: 9F3A0C71B2E4D658 (gültig bis 14.01.2999)')).toBeTruthy()
+    })
+
+    it('says an expired invite code is expired instead of showing it', async () => {
+      server.use(
+        http.get('*/v1/stammdaten', () => HttpResponse.json(VERHEIRATET)),
+        http.get('*/v1/steuerjahre/:jahr/kopplung', () =>
+          HttpResponse.json({ ...ZUSAMMEN, einladungsCodeGueltigBis: '2000-01-01T00:00:00.000Z' }),
+        ),
+      )
+      renderScreen()
+      expect(await screen.findByText(/Einladungscode ist abgelaufen/)).toBeTruthy()
+      expect(screen.queryByText(/9F3A0C71B2E4D658/)).toBeNull()
+    })
+
     it("shows a joined partner's data read-only — it is theirs to change", async () => {
       server.use(
         http.get('*/v1/stammdaten', () => HttpResponse.json(VERHEIRATET)),

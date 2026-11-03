@@ -9,6 +9,7 @@ function toRecord(row: {
   steuerjahr: number
   veranlagungsart: string
   einladungsCode: string | null
+  einladungsCodeGueltigBis: Date | null
 }): SteuerjahrKopplungRecord {
   return {
     id: row.id,
@@ -17,6 +18,7 @@ function toRecord(row: {
     steuerjahr: row.steuerjahr,
     veranlagungsart: row.veranlagungsart as 'einzel' | 'zusammen',
     einladungsCode: row.einladungsCode,
+    einladungsCodeGueltigBis: row.einladungsCodeGueltigBis,
   }
 }
 
@@ -48,6 +50,7 @@ export class PrismaKopplungRepository implements KopplungRepository {
       personBUserId: string
       veranlagungsart: 'einzel' | 'zusammen'
       einladungsCode?: string | null
+      einladungsCodeGueltigBis?: Date | null
     },
   ): Promise<SteuerjahrKopplungRecord> {
     const [row] = await this.prisma.$transaction([
@@ -64,11 +67,13 @@ export class PrismaKopplungRepository implements KopplungRepository {
           steuerjahr,
           veranlagungsart: data.veranlagungsart,
           einladungsCode: data.einladungsCode ?? null,
+          einladungsCodeGueltigBis: data.einladungsCodeGueltigBis ?? null,
         },
         update: {
           personBUserId: data.personBUserId,
           veranlagungsart: data.veranlagungsart,
           ...(data.einladungsCode !== undefined && { einladungsCode: data.einladungsCode }),
+          ...(data.einladungsCodeGueltigBis !== undefined && { einladungsCodeGueltigBis: data.einladungsCodeGueltigBis }),
         },
       }),
       this.prisma.taxDataAccessLog.create({
@@ -81,7 +86,7 @@ export class PrismaKopplungRepository implements KopplungRepository {
   async setPersonB(id: string, personBUserId: string): Promise<SteuerjahrKopplungRecord> {
     const row = await this.prisma.steuerjahrKopplung.update({
       where: { id },
-      data: { personBUserId, einladungsCode: null },
+      data: { personBUserId, einladungsCode: null, einladungsCodeGueltigBis: null },
     })
     return toRecord(row)
   }

@@ -65,6 +65,11 @@ export interface KopplungResponseDto {
   personBUserId?: string | null;
   /** @nullable */
   einladungsCode?: string | null;
+  /**
+     * After this moment the code no longer links.
+     * @nullable
+     */
+  einladungsCodeGueltigBis?: string | null;
   /** Person B joined with an own account and maintains their data there — Person A cannot edit it. */
   personBHatEigenesKonto?: boolean;
   /** @nullable */

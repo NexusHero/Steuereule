@@ -73,6 +73,28 @@ describe('KopplungService', () => {
     await expect(service.joinWithCode('user-c', jahr, einladungsCode!)).rejects.toThrow()
   })
 
+  it('an einladungsCode expires after 14 days; choosing Zusammenveranlagung again mints a fresh one', async () => {
+    const { service } = setup()
+    const erstellt = new Date('2025-03-01T10:00:00Z')
+    const { einladungsCode, einladungsCodeGueltigBis } = await service.set('user-a', jahr, { veranlagungsart: 'zusammen' }, erstellt)
+    expect(einladungsCodeGueltigBis).toBe('2025-03-15T10:00:00.000Z')
+
+    const spaeter = new Date('2025-03-15T10:00:01Z')
+    await expect(service.joinWithCode('user-b', jahr, einladungsCode!, spaeter)).rejects.toThrow(/abgelaufen/)
+
+    const neu = await service.set('user-a', jahr, { veranlagungsart: 'zusammen' }, spaeter)
+    expect(neu.einladungsCode).not.toBe(einladungsCode)
+    expect((await service.joinWithCode('user-b', jahr, neu.einladungsCode!, spaeter)).personBHatEigenesKonto).toBe(true)
+  })
+
+  it('keeps a still-valid einladungsCode when Zusammenveranlagung is chosen again', async () => {
+    const { service } = setup()
+    const erstellt = new Date('2025-03-01T10:00:00Z')
+    const erst = await service.set('user-a', jahr, { veranlagungsart: 'zusammen' }, erstellt)
+    const wieder = await service.set('user-a', jahr, { veranlagungsart: 'zusammen' }, new Date('2025-03-05T10:00:00Z'))
+    expect(wieder.einladungsCode).toBe(erst.einladungsCode)
+  })
+
   it('mints an einladungsCode with at least 64 bits of entropy', async () => {
     const { service } = setup()
     const { einladungsCode } = await service.set('user-a', jahr, { veranlagungsart: 'zusammen' })

@@ -5364,6 +5364,12 @@
             "nullable": true,
             "example": "9F3A0C71B2E4D658"
           },
+          "einladungsCodeGueltigBis": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "After this moment the code no longer links."
+          },
           "personBHatEigenesKonto": {
             "type": "boolean",
             "description": "Person B joined with an own account and maintains their data there — Person A cannot edit it."

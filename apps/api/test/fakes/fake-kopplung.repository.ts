@@ -31,6 +31,7 @@ export class FakeKopplungRepository implements KopplungRepository {
       personBUserId: string
       veranlagungsart: 'einzel' | 'zusammen'
       einladungsCode?: string | null
+      einladungsCodeGueltigBis?: Date | null
     },
   ): Promise<SteuerjahrKopplungRecord> {
     const k = key(personAUserId, steuerjahr)
@@ -43,6 +44,7 @@ export class FakeKopplungRepository implements KopplungRepository {
       steuerjahr,
       veranlagungsart: data.veranlagungsart,
       einladungsCode: data.einladungsCode ?? null,
+      einladungsCodeGueltigBis: data.einladungsCodeGueltigBis ?? null,
     }
     this.store.set(k, record)
     return Promise.resolve(record)
@@ -51,7 +53,7 @@ export class FakeKopplungRepository implements KopplungRepository {
   setPersonB(id: string, personBUserId: string): Promise<SteuerjahrKopplungRecord> {
     for (const [k, r] of this.store.entries()) {
       if (r.id === id) {
-        const updated = { ...r, personBUserId, einladungsCode: null }
+        const updated = { ...r, personBUserId, einladungsCode: null, einladungsCodeGueltigBis: null }
         this.store.set(k, updated)
         return Promise.resolve(updated)
       }

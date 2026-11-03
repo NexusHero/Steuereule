@@ -5,6 +5,7 @@ export interface SteuerjahrKopplungRecord {
   steuerjahr: number
   veranlagungsart: 'einzel' | 'zusammen'
   einladungsCode: string | null
+  einladungsCodeGueltigBis: Date | null
 }
 
 export const KOPPLUNG_REPOSITORY = Symbol('KOPPLUNG_REPOSITORY')
@@ -19,6 +20,7 @@ export interface KopplungRepository {
       personBUserId: string
       veranlagungsart: 'einzel' | 'zusammen'
       einladungsCode?: string | null
+      einladungsCodeGueltigBis?: Date | null
     },
   ): Promise<SteuerjahrKopplungRecord>
   setPersonB(id: string, personBUserId: string): Promise<SteuerjahrKopplungRecord>

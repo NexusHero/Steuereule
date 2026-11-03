@@ -60,6 +60,9 @@ export class KopplungResponseDto {
   @ApiPropertyOptional({ type: String, nullable: true, example: '9F3A0C71B2E4D658' })
   einladungsCode?: string | null
 
+  @ApiPropertyOptional({ type: String, format: 'date-time', nullable: true, description: 'After this moment the code no longer links.' })
+  einladungsCodeGueltigBis?: string | null
+
   @ApiPropertyOptional({
     type: Boolean,
     description: 'Person B joined with an own account and maintains their data there — Person A cannot edit it.',

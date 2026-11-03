@@ -817,6 +817,8 @@ model SteuerjahrKopplung {
   steuerjahr      Int
   veranlagungsart String   @default("zusammen")
   einladungsCode  String?  @unique
+  /// The invite code links two accounts; it stops working after this moment.
+  einladungsCodeGueltigBis DateTime?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

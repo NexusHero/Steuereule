@@ -24,9 +24,18 @@ function hatEigenesKonto(row: SteuerjahrKopplungRecord): boolean {
   return row.personBUserId !== '' && !row.personBUserId.startsWith(SCHATTEN_PRAEFIX)
 }
 
-// 64 bits: the code is the only credential that links two accounts, and it does not expire.
-function neuerEinladungsCode(): string {
-  return randomBytes(8).toString('hex').toUpperCase()
+// 64 bits and 14 days: the code is the only credential that links two accounts.
+const EINLADUNG_GUELTIG_MS = 14 * 24 * 60 * 60 * 1000
+
+function neueEinladung(jetzt: Date): { einladungsCode: string; einladungsCodeGueltigBis: Date } {
+  return {
+    einladungsCode: randomBytes(8).toString('hex').toUpperCase(),
+    einladungsCodeGueltigBis: new Date(jetzt.getTime() + EINLADUNG_GUELTIG_MS),
+  }
+}
+
+function einladungGueltig(row: SteuerjahrKopplungRecord, jetzt: Date): boolean {
+  return row.einladungsCode !== null && row.einladungsCodeGueltigBis !== null && row.einladungsCodeGueltigBis > jetzt
 }
 
 function leereStammdaten(): StammdatenRecord {
@@ -74,12 +83,13 @@ export class KopplungService {
       veranlagungsart: row.veranlagungsart,
       personBUserId: row.personBUserId,
       einladungsCode: row.einladungsCode,
+      einladungsCodeGueltigBis: row.einladungsCodeGueltigBis?.toISOString() ?? null,
       personBHatEigenesKonto: hatEigenesKonto(row),
       personB,
     }
   }
 
-  async set(userId: string, steuerjahr: number, dto: SetKopplungDto): Promise<KopplungResponseDto> {
+  async set(userId: string, steuerjahr: number, dto: SetKopplungDto, jetzt = new Date()): Promise<KopplungResponseDto> {
     const existing = await this.repository.findByUserAndYear(userId, steuerjahr)
     if (existing && existing.personAUserId !== userId) {
       throw new ForbiddenException('Die Veranlagungsart legt Person A fest.')
@@ -87,16 +97,23 @@ export class KopplungService {
 
     if (dto.veranlagungsart === 'zusammen') {
       const bleibt = existing?.veranlagungsart === 'zusammen' && existing.personBUserId !== ''
+      const einladung =
+        bleibt && hatEigenesKonto(existing)
+          ? { einladungsCode: null, einladungsCodeGueltigBis: null }
+          : bleibt && einladungGueltig(existing, jetzt)
+            ? { einladungsCode: existing.einladungsCode, einladungsCodeGueltigBis: existing.einladungsCodeGueltigBis }
+            : neueEinladung(jetzt)
       await this.repository.upsert(userId, steuerjahr, {
         veranlagungsart: 'zusammen',
         personBUserId: bleibt ? existing.personBUserId : schattenId(userId, steuerjahr),
-        einladungsCode: bleibt ? existing.einladungsCode : neuerEinladungsCode(),
+        ...einladung,
       })
     } else {
       await this.repository.upsert(userId, steuerjahr, {
         veranlagungsart: 'einzel',
         personBUserId: '',
         einladungsCode: null,
+        einladungsCodeGueltigBis: null,
       })
     }
 
@@ -145,10 +162,13 @@ export class KopplungService {
     return this.get(userId, steuerjahr)
   }
 
-  async joinWithCode(userId: string, steuerjahr: number, code: string): Promise<KopplungResponseDto> {
+  async joinWithCode(userId: string, steuerjahr: number, code: string, jetzt = new Date()): Promise<KopplungResponseDto> {
     const row = await this.repository.findByEinladungsCode(code)
     if (!row || row.steuerjahr !== steuerjahr) {
       throw new NotFoundException('Ungültiger Einladungscode.')
+    }
+    if (!einladungGueltig(row, jetzt)) {
+      throw new NotFoundException('Der Einladungscode ist abgelaufen.')
     }
     if (row.personAUserId === userId) {
       throw new BadRequestException('Man kann sich nicht mit der eigenen Einladung koppeln.')

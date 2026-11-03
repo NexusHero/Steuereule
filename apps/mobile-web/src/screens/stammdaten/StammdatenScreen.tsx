@@ -6,7 +6,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button, Card, Chip, Feld, Input, Option, useBreakpoint, useTheme } from '@steuereule/ui'
-import { FAMILIENSTAENDE, RELIGIONSSCHLUESSEL } from '@steuereule/core'
+import { deutschesDatum, FAMILIENSTAENDE, RELIGIONSSCHLUESSEL } from '@steuereule/core'
 import {
   getKopplungControllerGetQueryKey,
   useKopplungControllerGet,
@@ -159,6 +159,14 @@ export function StammdatenScreen({ onZurueck }: StammdatenScreenProps) {
   )
 }
 
+function einladungsHinweis(code: string, gueltigBis: string | null): string {
+  if (gueltigBis !== null && new Date(gueltigBis) <= new Date()) {
+    return 'Der Einladungscode ist abgelaufen — wähle erneut Zusammenveranlagung für einen neuen.'
+  }
+  const bis = gueltigBis ? ` (gültig bis ${deutschesDatum(gueltigBis.slice(0, 10))})` : ''
+  return `Einladungscode für Partner-Account: ${code}${bis}`
+}
+
 function SteuerjahrKopplungSection({ taxYear }: { readonly taxYear: number }) {
   const theme = useTheme()
   const queryClient = useQueryClient()
@@ -220,7 +228,7 @@ function SteuerjahrKopplungSection({ taxYear }: { readonly taxYear: number }) {
         <View>
           {current?.einladungsCode ? (
             <Text style={{ fontFamily: theme.font.mono, fontSize: theme.size.xs, color: theme.color.tinte2, marginBottom: theme.space.s2 }}>
-              {`Einladungscode für Partner-Account: ${current.einladungsCode}`}
+              {einladungsHinweis(current.einladungsCode, current.einladungsCodeGueltigBis ?? null)}
             </Text>
           ) : null}
           <Feld label="Vorname Partner (Person B)">
