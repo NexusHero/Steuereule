@@ -14,17 +14,24 @@ describe('kinder', () => {
     expect(istGueltigesKindGeburtsdatum('invalid', 2025)).toBe(false)
   })
 
-  it('statutory Kinderfreibetrag + BEA (§ 32 Abs. 6 EStG)', () => {
-    // 2024: 6.384 + 2.928 = 9.312 €
-    expect(kinderfreibetrag(2024)).toBe(9312)
-    // 2025: 6.612 + 2.928 = 9.540 €
-    expect(kinderfreibetrag(2025)).toBe(9540)
-    // 2026: 6.828 + 2.928 = 9.756 €
-    expect(kinderfreibetrag(2026)).toBe(9756)
+  it('statutory Kinderfreibetrag + BEA (§ 32 Abs. 6 EStG), both parents together', () => {
+    // 2024 after the retroactive raise: 6.612 + 2.928
+    expect(kinderfreibetrag(2024)).toBe(9540)
+    expect(kinderfreibetrag(2025)).toBe(6672 + 2928)
+    expect(kinderfreibetrag(2026)).toBe(6828 + 2928)
   })
 
-  it('monthly Kindergeld standard (§ 66 EStG: 250 € per child per month = 3000 € full year)', () => {
-    expect(kindergeldAnspruchMonat(2025)).toBe(250)
+  it('monthly Kindergeld (§ 66 EStG): 250 € through 2024, 255 € in 2025, 259 € from 2026', () => {
+    expect(kindergeldAnspruchMonat(2024)).toBe(250)
+    expect(kindergeldAnspruchMonat(2025)).toBe(255)
+    expect(kindergeldAnspruchMonat(2026)).toBe(259)
+  })
+
+  it('a child born in the year counts from its birth month (§ 32 Abs. 6 Satz 5, § 66 Abs. 2 EStG)', () => {
+    const neugeboren: KindDaten = { id: 'k', vorname: 'Ida', nachname: 'M', geburtsdatum: '2025-10-20', steuerId: null, kindergeld: null }
+    const stand = kinderStand([neugeboren], 2025)
+    expect(stand.kindergeldSumme).toBe(3 * 255)
+    expect(stand.freibetragGesamt).toBe(Math.round((9600 * 3) / 12))
   })
 
   it('folds child facts into deterministic count and figures', () => {
@@ -49,6 +56,6 @@ describe('kinder', () => {
     const stand = kinderStand(kinder, 2025)
     expect(stand.anzahl).toBe(2)
     expect(stand.kindergeldSumme).toBe(6000)
-    expect(stand.freibetragGesamt).toBe(19080)
+    expect(stand.freibetragGesamt).toBe(2 * 9600)
   })
 })

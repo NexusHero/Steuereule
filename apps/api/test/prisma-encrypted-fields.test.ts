@@ -117,6 +117,7 @@ const EXPECTED_ENCRYPTED_FIELDS: ExpectedEncryptedField[] = [
   { model: 'Kind', field: 'geburtsdatum', encrypt: true, strictDecryption: true },
   { model: 'Kind', field: 'idnr', encrypt: true, strictDecryption: true },
   { model: 'Kind', field: 'kindergeldAnspruchEur', encrypt: true, strictDecryption: true },
+  { model: 'Kind', field: 'familienkasse', encrypt: true, strictDecryption: true },
   { model: 'Bescheid', field: 'einnahmen', encrypt: true, strictDecryption: true },
   { model: 'Bescheid', field: 'vorsorgeaufwand', encrypt: true, strictDecryption: true },
   { model: 'Bescheid', field: 'anrechnung', encrypt: true, strictDecryption: true },

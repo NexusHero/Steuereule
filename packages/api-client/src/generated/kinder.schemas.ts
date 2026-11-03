@@ -5,6 +5,30 @@
  * Onboarding profile endpoints (steuereule#29)
  * OpenAPI spec version: 1.0
  */
+/**
+ * @nullable
+ */
+export type KindResponseDtoKindschaftsverhaeltnis = typeof KindResponseDtoKindschaftsverhaeltnis[keyof typeof KindResponseDtoKindschaftsverhaeltnis] | null;
+
+
+export const KindResponseDtoKindschaftsverhaeltnis = {
+  NUMBER_1: '1',
+  NUMBER_2: '2',
+  NUMBER_3: '3',
+} as const;
+
+/**
+ * @nullable
+ */
+export type KindResponseDtoKindschaftsverhaeltnisB = typeof KindResponseDtoKindschaftsverhaeltnisB[keyof typeof KindResponseDtoKindschaftsverhaeltnisB] | null;
+
+
+export const KindResponseDtoKindschaftsverhaeltnisB = {
+  NUMBER_1: '1',
+  NUMBER_2: '2',
+  NUMBER_3: '3',
+} as const;
+
 export interface KindResponseDto {
   id: string;
   lfdNr: number;
@@ -15,6 +39,14 @@ export interface KindResponseDto {
   idnr?: string | null;
   /** @nullable */
   kindergeldAnspruchEur?: string | null;
+  /** @nullable */
+  kindschaftsverhaeltnis: KindResponseDtoKindschaftsverhaeltnis;
+  /** @nullable */
+  kindschaftsverhaeltnisB: KindResponseDtoKindschaftsverhaeltnisB;
+  /** @nullable */
+  familienkasse: string | null;
+  /** @nullable */
+  wohnsitzInlandGanzjaehrig: boolean | null;
 }
 
 export interface KinderResponseDto {
@@ -24,7 +56,50 @@ export interface KinderResponseDto {
   freibetragGesamt: number;
 }
 
+/**
+ * Kz 02: 1 = leiblich/adoptiert, 2 = Pflegekind, 3 = Enkel-/Stiefkind
+ * @nullable
+ */
+export type CreateKindDtoKindschaftsverhaeltnis = typeof CreateKindDtoKindschaftsverhaeltnis[keyof typeof CreateKindDtoKindschaftsverhaeltnis] | null;
+
+
+export const CreateKindDtoKindschaftsverhaeltnis = {
+  NUMBER_1: '1',
+  NUMBER_2: '2',
+  NUMBER_3: '3',
+} as const;
+
+/**
+ * Kz 03, to the spouse — only for a joint return
+ * @nullable
+ */
+export type CreateKindDtoKindschaftsverhaeltnisB = typeof CreateKindDtoKindschaftsverhaeltnisB[keyof typeof CreateKindDtoKindschaftsverhaeltnisB] | null;
+
+
+export const CreateKindDtoKindschaftsverhaeltnisB = {
+  NUMBER_1: '1',
+  NUMBER_2: '2',
+  NUMBER_3: '3',
+} as const;
+
 export interface CreateKindDto {
+  /**
+     * Kz 02: 1 = leiblich/adoptiert, 2 = Pflegekind, 3 = Enkel-/Stiefkind
+     * @nullable
+     */
+  kindschaftsverhaeltnis?: CreateKindDtoKindschaftsverhaeltnis;
+  /**
+     * Kz 03, to the spouse — only for a joint return
+     * @nullable
+     */
+  kindschaftsverhaeltnisB?: CreateKindDtoKindschaftsverhaeltnisB;
+  /** @nullable */
+  familienkasse?: string | null;
+  /**
+     * The child lived in Germany all year (Zeile 8).
+     * @nullable
+     */
+  wohnsitzInlandGanzjaehrig?: boolean | null;
   vorname: string;
   nachname: string;
   /** ISO date YYYY-MM-DD */
@@ -33,7 +108,50 @@ export interface CreateKindDto {
   kindergeldAnspruchEur?: string;
 }
 
+/**
+ * Kz 02: 1 = leiblich/adoptiert, 2 = Pflegekind, 3 = Enkel-/Stiefkind
+ * @nullable
+ */
+export type UpdateKindDtoKindschaftsverhaeltnis = typeof UpdateKindDtoKindschaftsverhaeltnis[keyof typeof UpdateKindDtoKindschaftsverhaeltnis] | null;
+
+
+export const UpdateKindDtoKindschaftsverhaeltnis = {
+  NUMBER_1: '1',
+  NUMBER_2: '2',
+  NUMBER_3: '3',
+} as const;
+
+/**
+ * Kz 03, to the spouse — only for a joint return
+ * @nullable
+ */
+export type UpdateKindDtoKindschaftsverhaeltnisB = typeof UpdateKindDtoKindschaftsverhaeltnisB[keyof typeof UpdateKindDtoKindschaftsverhaeltnisB] | null;
+
+
+export const UpdateKindDtoKindschaftsverhaeltnisB = {
+  NUMBER_1: '1',
+  NUMBER_2: '2',
+  NUMBER_3: '3',
+} as const;
+
 export interface UpdateKindDto {
+  /**
+     * Kz 02: 1 = leiblich/adoptiert, 2 = Pflegekind, 3 = Enkel-/Stiefkind
+     * @nullable
+     */
+  kindschaftsverhaeltnis?: UpdateKindDtoKindschaftsverhaeltnis;
+  /**
+     * Kz 03, to the spouse — only for a joint return
+     * @nullable
+     */
+  kindschaftsverhaeltnisB?: UpdateKindDtoKindschaftsverhaeltnisB;
+  /** @nullable */
+  familienkasse?: string | null;
+  /**
+     * The child lived in Germany all year (Zeile 8).
+     * @nullable
+     */
+  wohnsitzInlandGanzjaehrig?: boolean | null;
   vorname?: string;
   nachname?: string;
   geburtsdatum?: string;

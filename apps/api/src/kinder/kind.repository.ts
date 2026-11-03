@@ -1,4 +1,12 @@
-export interface KindRecord {
+/** What Anlage Kind needs beyond the child's identity (Zeilen 7, 8, 10). */
+export interface KindAngaben {
+  kindschaftsverhaeltnis: string | null
+  kindschaftsverhaeltnisB: string | null
+  familienkasse: string | null
+  wohnsitzInlandGanzjaehrig: boolean | null
+}
+
+export interface KindRecord extends KindAngaben {
   id: string
   userId: string
   steuerjahr: number
@@ -23,7 +31,7 @@ export interface KindRepository {
       geburtsdatum: string
       idnr?: string | null
       kindergeldAnspruchEur?: string | null
-    },
+    } & Partial<KindAngaben>,
   ): Promise<KindRecord>
   update(
     userId: string,
@@ -35,7 +43,7 @@ export interface KindRepository {
       geburtsdatum?: string
       idnr?: string | null
       kindergeldAnspruchEur?: string | null
-    },
+    } & Partial<KindAngaben>,
   ): Promise<KindRecord | null>
   delete(userId: string, steuerjahr: number, id: string): Promise<boolean>
 }

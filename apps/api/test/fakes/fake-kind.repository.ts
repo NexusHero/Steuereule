@@ -1,4 +1,4 @@
-import type { KindRecord, KindRepository } from '../../src/kinder/kind.repository.js'
+import type { KindAngaben, KindRecord, KindRepository } from '../../src/kinder/kind.repository.js'
 
 function key(userId: string, steuerjahr: number): string {
   return `${userId}::${steuerjahr}`
@@ -26,7 +26,7 @@ export class FakeKindRepository implements KindRepository {
       geburtsdatum: string
       idnr?: string | null
       kindergeldAnspruchEur?: string | null
-    },
+    } & Partial<KindAngaben>,
   ): Promise<KindRecord> {
     this.counter += 1
     const current = [...this.store.values()].filter((r) => key(r.userId, r.steuerjahr) === key(userId, steuerjahr))
@@ -40,6 +40,10 @@ export class FakeKindRepository implements KindRepository {
       geburtsdatum: data.geburtsdatum,
       idnr: data.idnr ?? null,
       kindergeldAnspruchEur: data.kindergeldAnspruchEur ?? null,
+      kindschaftsverhaeltnis: data.kindschaftsverhaeltnis ?? null,
+      kindschaftsverhaeltnisB: data.kindschaftsverhaeltnisB ?? null,
+      familienkasse: data.familienkasse ?? null,
+      wohnsitzInlandGanzjaehrig: data.wohnsitzInlandGanzjaehrig ?? null,
     }
     this.store.set(record.id, record)
     return Promise.resolve(record)
@@ -55,18 +59,12 @@ export class FakeKindRepository implements KindRepository {
       geburtsdatum?: string
       idnr?: string | null
       kindergeldAnspruchEur?: string | null
-    },
+    } & Partial<KindAngaben>,
   ): Promise<KindRecord | null> {
     const record = this.store.get(id)
     if (!record || record.userId !== userId || record.steuerjahr !== steuerjahr) return Promise.resolve(null)
-    const updated: KindRecord = {
-      ...record,
-      ...(data.vorname !== undefined && { vorname: data.vorname }),
-      ...(data.nachname !== undefined && { nachname: data.nachname }),
-      ...(data.geburtsdatum !== undefined && { geburtsdatum: data.geburtsdatum }),
-      ...(data.idnr !== undefined && { idnr: data.idnr }),
-      ...(data.kindergeldAnspruchEur !== undefined && { kindergeldAnspruchEur: data.kindergeldAnspruchEur }),
-    }
+    const angaben = Object.fromEntries(Object.entries(data).filter(([, wert]) => wert !== undefined))
+    const updated: KindRecord = { ...record, ...angaben }
     this.store.set(id, updated)
     return Promise.resolve(updated)
   }

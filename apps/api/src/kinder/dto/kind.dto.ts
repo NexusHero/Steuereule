@@ -1,7 +1,32 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
-import { IsNotEmpty, IsOptional, IsString, Matches, MaxLength } from 'class-validator'
+import { KINDSCHAFTSVERHAELTNISSE } from '@steuereule/core'
+import { IsBoolean, IsIn, IsNotEmpty, IsOptional, IsString, Matches, MaxLength } from 'class-validator'
 
-export class CreateKindDto {
+/** The Anlage-Kind facts beyond the child's identity (Zeilen 7, 8, 10) — optional on write. */
+class KindAngabenDto {
+  @ApiPropertyOptional({ enum: KINDSCHAFTSVERHAELTNISSE, nullable: true, description: 'Kz 02: 1 = leiblich/adoptiert, 2 = Pflegekind, 3 = Enkel-/Stiefkind' })
+  @IsOptional()
+  @IsIn(KINDSCHAFTSVERHAELTNISSE)
+  kindschaftsverhaeltnis?: string | null
+
+  @ApiPropertyOptional({ enum: KINDSCHAFTSVERHAELTNISSE, nullable: true, description: 'Kz 03, to the spouse — only for a joint return' })
+  @IsOptional()
+  @IsIn(KINDSCHAFTSVERHAELTNISSE)
+  kindschaftsverhaeltnisB?: string | null
+
+  @ApiPropertyOptional({ type: String, nullable: true, example: 'Familienkasse Sachsen' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  familienkasse?: string | null
+
+  @ApiPropertyOptional({ type: Boolean, nullable: true, description: 'The child lived in Germany all year (Zeile 8).' })
+  @IsOptional()
+  @IsBoolean()
+  wohnsitzInlandGanzjaehrig?: boolean | null
+}
+
+export class CreateKindDto extends KindAngabenDto {
   @ApiProperty({ type: String, example: 'Lina' })
   @IsNotEmpty()
   @IsString()
@@ -33,7 +58,7 @@ export class CreateKindDto {
   kindergeldAnspruchEur?: string
 }
 
-export class UpdateKindDto {
+export class UpdateKindDto extends KindAngabenDto {
   @ApiPropertyOptional({ type: String, example: 'Lina' })
   @IsOptional()
   @IsString()
@@ -86,6 +111,18 @@ export class KindResponseDto {
 
   @ApiPropertyOptional({ type: String, nullable: true, example: '3000' })
   kindergeldAnspruchEur?: string | null
+
+  @ApiProperty({ enum: KINDSCHAFTSVERHAELTNISSE, nullable: true })
+  kindschaftsverhaeltnis!: string | null
+
+  @ApiProperty({ enum: KINDSCHAFTSVERHAELTNISSE, nullable: true })
+  kindschaftsverhaeltnisB!: string | null
+
+  @ApiProperty({ type: String, nullable: true })
+  familienkasse!: string | null
+
+  @ApiProperty({ type: Boolean, nullable: true })
+  wohnsitzInlandGanzjaehrig!: boolean | null
 }
 
 export class KinderResponseDto {
@@ -98,6 +135,6 @@ export class KinderResponseDto {
   @ApiProperty({ type: Number, example: 3000 })
   kindergeldSumme!: number
 
-  @ApiProperty({ type: Number, example: 9540 })
+  @ApiProperty({ type: Number, example: 9600 })
   freibetragGesamt!: number
 }

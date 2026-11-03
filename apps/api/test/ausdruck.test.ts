@@ -14,6 +14,7 @@ import { FELDSAETZE, rendereVordrucke, UeberlaufFehler } from '../src/ausdruck/v
 const VORLAGEN = new URL('../assets/vordrucke/2025/', import.meta.url)
 
 const FAKTEN: AusdruckFakten = {
+  steuerjahr: 2025,
   profil: { firstName: 'Anna', lastName: 'Beispiel', steuerId: '02476291358', steuernummer: '2010304050' },
   stammdaten: {
     geburtsdatum: '1990-04-12',
@@ -188,6 +189,62 @@ describe('ausdruckWerte', () => {
     expect(Object.keys(werte).filter((id) => id.startsWith('anlVor.'))).toEqual([])
   })
 
+  describe('Anlage Kind', () => {
+    const ZUSAMMEN: AusdruckFakten = {
+      ...FAKTEN,
+      stammdaten: { ...FAKTEN.stammdaten!, familienstand: 'verheiratet', familienstandSeit: '2015-05-15' },
+      kopplung: {
+        veranlagungsart: 'zusammen',
+        personB: { firstName: 'Bernd', lastName: 'Beispiel', steuerId: '12345678902', geburtsdatum: '1988-11-20', religion: 'VD', beruf: 'Lehrer' },
+      },
+    }
+    const KIND = {
+      vorname: 'Lina',
+      nachname: 'Beispiel',
+      geburtsdatum: '2016-03-10',
+      idnr: '11111111111',
+      kindergeldAnspruchEur: '3060',
+      kindschaftsverhaeltnis: '1',
+      kindschaftsverhaeltnisB: '1',
+      familienkasse: 'Familienkasse Sachsen',
+      wohnsitzInlandGanzjaehrig: true,
+    }
+
+    it('prints Familienkasse, Wohnsitz im Inland and both Kindschaftsverhältnisse (Zeilen 7, 8, 10)', () => {
+      const { instanzen, fehlend } = ausdruckWerte({ ...ZUSAMMEN, kinder: [KIND] })
+      expect(fehlend).toEqual([])
+      expect(instanzen!['anlage-kind']![0]).toMatchObject({
+        'anlKind.idnr': '11111111111',
+        'anlKind.vorname': 'Lina',
+        'anlKind.familienkasse': 'Familienkasse Sachsen',
+        'anlKind.inlandVon': '01.01.2025',
+        'anlKind.inlandBis': '31.12.2025',
+        'anlKind.kz02': '1',
+        'anlKind.kz03': '1',
+      })
+      expect(instanzen!['anlage-kind']![0]!['anlKind.nachname']).toBeUndefined()
+    })
+
+    it('a different family name is printed; a child born in the year lives here from its birth', () => {
+      const { instanzen } = ausdruckWerte({ ...ZUSAMMEN, kinder: [{ ...KIND, nachname: 'Muster', geburtsdatum: '2025-08-04' }] })
+      expect(instanzen!['anlage-kind']![0]).toMatchObject({ 'anlKind.nachname': 'Muster', 'anlKind.inlandVon': '04.08.2025' })
+    })
+
+    it('missing details block the printout as "kinder"', () => {
+      for (const luecke of [{ idnr: null }, { kindschaftsverhaeltnis: null }, { familienkasse: null }, { wohnsitzInlandGanzjaehrig: null }]) {
+        expect(ausdruckWerte({ ...ZUSAMMEN, kinder: [{ ...KIND, ...luecke }] }).fehlend).toEqual(['kinder'])
+      }
+    })
+
+    it('cases the printout cannot cover yet are named, never printed half', () => {
+      expect(ausdruckWerte({ ...FAKTEN, kinder: [KIND] }).fehlend).toEqual(['anlageKindAndererElternteil'])
+      expect(ausdruckWerte({ ...ZUSAMMEN, kinder: [{ ...KIND, kindschaftsverhaeltnisB: null }] }).fehlend).toEqual(['anlageKindAndererElternteil'])
+      expect(ausdruckWerte({ ...ZUSAMMEN, kinder: [{ ...KIND, wohnsitzInlandGanzjaehrig: false }] }).fehlend).toEqual(['anlageKindAusland'])
+      expect(ausdruckWerte({ ...ZUSAMMEN, kinder: [{ ...KIND, geburtsdatum: '2007-02-01' }] }).fehlend).toEqual(['anlageKindVolljaehrig'])
+      expect(ausdruckWerte({ ...ZUSAMMEN, kinder: [KIND, { ...KIND, wohnsitzInlandGanzjaehrig: false }, { ...KIND, wohnsitzInlandGanzjaehrig: false }] }).fehlend).toEqual(['anlageKindAusland'])
+    })
+  })
+
   it('creates multi-instance values for children and rental properties', () => {
     const res = ausdruckWerte({
       ...FAKTEN,
@@ -213,7 +270,6 @@ describe('ausdruckWerte', () => {
     expect(instanzen['anlage-kind']).toHaveLength(2)
     expect(instanzen['anlage-kind']![0]).toMatchObject({
       'anlKind.vorname': 'Lina',
-      'anlKind.nachname': 'Beispiel',
       'anlKind.geburtsdatum': '10.03.2015',
       'anlKind.idnr': '11111111111',
       'anlKind.kindergeld': '3000',
@@ -221,7 +277,6 @@ describe('ausdruckWerte', () => {
     })
     expect(instanzen['anlage-kind']![1]).toMatchObject({
       'anlKind.vorname': 'Noah',
-      'anlKind.nachname': 'Beispiel',
       'anlKind.geburtsdatum': '22.07.2018',
       'anlKind.idnr': '22222222222',
       'anlKind.kindergeld': '3000',

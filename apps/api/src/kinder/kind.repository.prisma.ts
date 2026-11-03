@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
-import type { KindRecord, KindRepository } from './kind.repository.js'
+import type { KindAngaben, KindRecord, KindRepository } from './kind.repository.js'
 
 function toRecord(row: {
   id: string
@@ -12,7 +12,7 @@ function toRecord(row: {
   geburtsdatum: string
   idnr: string | null
   kindergeldAnspruchEur: string | null
-}): KindRecord {
+} & KindAngaben): KindRecord {
   return {
     id: row.id,
     userId: row.userId,
@@ -23,6 +23,10 @@ function toRecord(row: {
     geburtsdatum: row.geburtsdatum,
     idnr: row.idnr,
     kindergeldAnspruchEur: row.kindergeldAnspruchEur,
+    kindschaftsverhaeltnis: row.kindschaftsverhaeltnis,
+    kindschaftsverhaeltnisB: row.kindschaftsverhaeltnisB,
+    familienkasse: row.familienkasse,
+    wohnsitzInlandGanzjaehrig: row.wohnsitzInlandGanzjaehrig,
   }
 }
 
@@ -47,7 +51,7 @@ export class PrismaKindRepository implements KindRepository {
       geburtsdatum: string
       idnr?: string | null
       kindergeldAnspruchEur?: string | null
-    },
+    } & Partial<KindAngaben>,
   ): Promise<KindRecord> {
     const count = await this.prisma.kind.count({ where: { userId, steuerjahr } })
     const [row] = await this.prisma.$transaction([
@@ -61,6 +65,10 @@ export class PrismaKindRepository implements KindRepository {
           geburtsdatum: data.geburtsdatum,
           idnr: data.idnr ?? null,
           kindergeldAnspruchEur: data.kindergeldAnspruchEur ?? null,
+          kindschaftsverhaeltnis: data.kindschaftsverhaeltnis ?? null,
+          kindschaftsverhaeltnisB: data.kindschaftsverhaeltnisB ?? null,
+          familienkasse: data.familienkasse ?? null,
+          wohnsitzInlandGanzjaehrig: data.wohnsitzInlandGanzjaehrig ?? null,
         },
       }),
       this.prisma.taxDataAccessLog.create({
@@ -80,17 +88,21 @@ export class PrismaKindRepository implements KindRepository {
       geburtsdatum?: string
       idnr?: string | null
       kindergeldAnspruchEur?: string | null
-    },
+    } & Partial<KindAngaben>,
   ): Promise<KindRecord | null> {
     const existing = await this.prisma.kind.findFirst({ where: { id, userId, steuerjahr } })
     if (existing === null) return null
 
-    const updateData: Record<string, string | null> = {}
+    const updateData: Record<string, string | boolean | null> = {}
     if (data.vorname !== undefined) updateData.vorname = data.vorname
     if (data.nachname !== undefined) updateData.nachname = data.nachname
     if (data.geburtsdatum !== undefined) updateData.geburtsdatum = data.geburtsdatum
     if (data.idnr !== undefined) updateData.idnr = data.idnr
     if (data.kindergeldAnspruchEur !== undefined) updateData.kindergeldAnspruchEur = data.kindergeldAnspruchEur
+    if (data.kindschaftsverhaeltnis !== undefined) updateData.kindschaftsverhaeltnis = data.kindschaftsverhaeltnis
+    if (data.kindschaftsverhaeltnisB !== undefined) updateData.kindschaftsverhaeltnisB = data.kindschaftsverhaeltnisB
+    if (data.familienkasse !== undefined) updateData.familienkasse = data.familienkasse
+    if (data.wohnsitzInlandGanzjaehrig !== undefined) updateData.wohnsitzInlandGanzjaehrig = data.wohnsitzInlandGanzjaehrig
 
     const [row] = await this.prisma.$transaction([
       this.prisma.kind.update({ where: { id }, data: updateData }),

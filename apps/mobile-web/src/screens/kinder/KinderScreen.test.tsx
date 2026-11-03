@@ -34,7 +34,8 @@ describe('KinderScreen', () => {
     expect(screen.getByText('1. Lina Muster')).toBeDefined()
     expect(screen.getByText('Geburtsdatum: 2016-05-12')).toBeDefined()
     expect(screen.getByText('Steuer-ID: 12345678901')).toBeDefined()
-    expect(screen.getByText(/9\.540/)).toBeDefined() // 2025 Freibetrag
+    expect(screen.getByText(/9\.600/)).toBeDefined() // 2025: 6.672 + 2.928
+    expect(screen.getByText(/Für den Ausdruck fehlen noch Angaben/)).toBeDefined()
   })
 
   it('allows adding a new child', async () => {
@@ -52,6 +53,11 @@ describe('KinderScreen', () => {
     fireEvent.change(nachnameInput, { target: { value: 'Muster' } })
     fireEvent.change(geburtsdatumInput, { target: { value: '2019-08-20' } })
 
+    fireEvent.click(screen.getByTestId('kind-verhaeltnis-1'))
+    fireEvent.click(screen.getByTestId('kind-verhaeltnis-b-1'))
+    fireEvent.change(screen.getByLabelText('Familienkasse'), { target: { value: 'Familienkasse Sachsen' } })
+    fireEvent.click(screen.getByTestId('kind-inland-ja'))
+
     const saveBtn = screen.getByTestId('kind-speichern')
     fireEvent.click(saveBtn)
 
@@ -61,6 +67,10 @@ describe('KinderScreen', () => {
           vorname: 'Noah',
           nachname: 'Muster',
           geburtsdatum: '2019-08-20',
+          kindschaftsverhaeltnis: '1',
+          kindschaftsverhaeltnisB: '1',
+          familienkasse: 'Familienkasse Sachsen',
+          wohnsitzInlandGanzjaehrig: true,
         }),
       )
     })
@@ -82,5 +92,25 @@ describe('KinderScreen', () => {
     await waitFor(() => {
       expect(screen.queryByText('1. Lina Muster')).toBeNull()
     })
+  })
+
+  it('completes an existing child for the printout via Bearbeiten', async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined)
+    renderKinder({ onSaveKind: onSave })
+
+    fireEvent.click(screen.getByLabelText('Kind Lina bearbeiten'))
+    expect((screen.getByLabelText('Vorname') as HTMLInputElement).value).toBe('Lina')
+    fireEvent.click(screen.getByTestId('kind-verhaeltnis-1'))
+    fireEvent.change(screen.getByLabelText('Familienkasse'), { target: { value: 'Familienkasse Bayern Süd' } })
+    fireEvent.click(screen.getByTestId('kind-inland-ja'))
+    fireEvent.click(screen.getByTestId('kind-speichern'))
+
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalledWith(
+        'kind-1',
+        expect.objectContaining({ kindschaftsverhaeltnis: '1', familienkasse: 'Familienkasse Bayern Süd', wohnsitzInlandGanzjaehrig: true }),
+      )
+    })
+    await waitFor(() => expect(screen.queryByText(/Für den Ausdruck fehlen noch Angaben/)).toBeNull())
   })
 })

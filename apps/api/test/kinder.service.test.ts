@@ -28,7 +28,7 @@ describe('KinderService', () => {
     })
     expect(res1.anzahl).toBe(1)
     expect(res1.kindergeldSumme).toBe(3000)
-    expect(res1.freibetragGesamt).toBe(9540)
+    expect(res1.freibetragGesamt).toBe(9600)
     expect(res1.kinder[0]!.vorname).toBe('Lina')
 
     const res2 = await service.create(userId, jahr, {
@@ -37,9 +37,8 @@ describe('KinderService', () => {
       geburtsdatum: '2019-09-15',
     })
     expect(res2.anzahl).toBe(2)
-    // 3000 + 250*12 (3000) = 6000
-    expect(res2.kindergeldSumme).toBe(6000)
-    expect(res2.freibetragGesamt).toBe(19080)
+    expect(res2.kindergeldSumme).toBe(3000 + 255 * 12)
+    expect(res2.freibetragGesamt).toBe(2 * 9600)
 
     const updated = await service.update(userId, jahr, res2.kinder[1]!.id, {
       vorname: 'Noah-Elias',
@@ -63,5 +62,25 @@ describe('KinderService', () => {
         geburtsdatum: '2026-01-01',
       }),
     ).rejects.toThrow(/Ungültiges Geburtsdatum/)
+  })
+
+  it('stores the Anlage-Kind facts (Kindschaftsverhältnis, Familienkasse, Wohnsitz) and returns them', async () => {
+    const service = new KinderService(new FakeKindRepository(), new FakeAuditService() as never)
+    const { kinder } = await service.create('user-1', 2025, { vorname: 'Lina', nachname: 'M', geburtsdatum: '2016-05-10' })
+    expect(kinder[0]).toMatchObject({ kindschaftsverhaeltnis: null, familienkasse: null, wohnsitzInlandGanzjaehrig: null })
+
+    const res = await service.update('user-1', 2025, kinder[0]!.id, {
+      kindschaftsverhaeltnis: '1',
+      kindschaftsverhaeltnisB: '1',
+      familienkasse: 'Familienkasse Sachsen',
+      wohnsitzInlandGanzjaehrig: true,
+    })
+    expect(res.kinder[0]).toMatchObject({
+      vorname: 'Lina',
+      kindschaftsverhaeltnis: '1',
+      kindschaftsverhaeltnisB: '1',
+      familienkasse: 'Familienkasse Sachsen',
+      wohnsitzInlandGanzjaehrig: true,
+    })
   })
 })

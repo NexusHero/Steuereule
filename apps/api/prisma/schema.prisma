@@ -803,6 +803,11 @@ model Kind {
   geburtsdatum          String   /// @encrypted?mode=strict
   idnr                  String?  /// @encrypted?mode=strict
   kindergeldAnspruchEur String?  /// @encrypted?mode=strict
+  /// Anlage Kind Zeile 10 (Kz 02 / Kz 03): 1 = leiblich/adoptiert, 2 = Pflegekind, 3 = Enkel-/Stiefkind.
+  kindschaftsverhaeltnis  String?
+  kindschaftsverhaeltnisB String?
+  familienkasse           String?  /// @encrypted?mode=strict
+  wohnsitzInlandGanzjaehrig Boolean?
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 

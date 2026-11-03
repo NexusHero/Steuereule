@@ -27,6 +27,23 @@ export interface KindFakten {
   geburtsdatum: string | null
   idnr: string | null
   kindergeldAnspruchEur?: string | null
+  kindschaftsverhaeltnis?: string | null
+  kindschaftsverhaeltnisB?: string | null
+  familienkasse?: string | null
+  wohnsitzInlandGanzjaehrig?: boolean | null
+}
+
+/**
+ * Why a child's Anlage Kind cannot be printed, or null. Missing details are the user's to add
+ * ('kinder'); the other three are cases this printout does not cover yet: a parent outside this
+ * return (Zeilen 11–15), a child of age (Zeilen 16 ff.) and a home abroad (Zeile 9).
+ */
+function kindLuecke(k: KindFakten, steuerjahr: number, zusammen: boolean): string | null {
+  if (!k.idnr || !k.kindschaftsverhaeltnis || !k.familienkasse || k.wohnsitzInlandGanzjaehrig == null) return 'kinder'
+  if (!k.wohnsitzInlandGanzjaehrig) return 'anlageKindAusland'
+  if (k.geburtsdatum && Number(k.geburtsdatum.slice(0, 4)) <= steuerjahr - 18) return 'anlageKindVolljaehrig'
+  if (!zusammen || !k.kindschaftsverhaeltnisB) return 'anlageKindAndererElternteil'
+  return null
 }
 
 export interface VermietungFakten {
@@ -65,6 +82,7 @@ export interface RiesterFakten {
 }
 
 export interface AusdruckFakten {
+  steuerjahr: number
   profil: { firstName: string | null; lastName: string | null; steuerId: string | null; steuernummer: string | null }
   stammdaten: {
     geburtsdatum: string | null
@@ -324,6 +342,7 @@ export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
 
   // Anlage Kind
   if (fakten.kinder && fakten.kinder.length > 0) {
+    const zusammen = fakten.kopplung?.veranlagungsart === 'zusammen'
     instanzen['anlage-kind'] = fakten.kinder.map((k, i) => {
       const kWerte: Record<string, string | true> = {}
       if (profil.lastName) kWerte['anlKind.name'] = profil.lastName
@@ -332,11 +351,23 @@ export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
       kWerte['anlKind.lfdNr'] = k.lfdNr ?? String(i + 1)
       if (k.idnr) kWerte['anlKind.idnr'] = k.idnr
       if (k.vorname) kWerte['anlKind.vorname'] = k.vorname
-      if (k.nachname) kWerte['anlKind.nachname'] = k.nachname
+      if (k.nachname && k.nachname !== profil.lastName) kWerte['anlKind.nachname'] = k.nachname
       if (k.geburtsdatum) kWerte['anlKind.geburtsdatum'] = deutschesDatum(k.geburtsdatum)
       if (k.kindergeldAnspruchEur) kWerte['anlKind.kindergeld'] = k.kindergeldAnspruchEur
+      if (k.familienkasse) kWerte['anlKind.familienkasse'] = k.familienkasse
+      if (k.wohnsitzInlandGanzjaehrig) {
+        const imJahrGeboren = k.geburtsdatum?.startsWith(`${fakten.steuerjahr}-`)
+        kWerte['anlKind.inlandVon'] = imJahrGeboren ? deutschesDatum(k.geburtsdatum!) : `01.01.${fakten.steuerjahr}`
+        kWerte['anlKind.inlandBis'] = `31.12.${fakten.steuerjahr}`
+      }
+      if (k.kindschaftsverhaeltnis) kWerte['anlKind.kz02'] = k.kindschaftsverhaeltnis
+      if (zusammen && k.kindschaftsverhaeltnisB) kWerte['anlKind.kz03'] = k.kindschaftsverhaeltnisB
       return kWerte
     })
+    for (const kind of fakten.kinder) {
+      const luecke = kindLuecke(kind, fakten.steuerjahr, zusammen)
+      if (luecke && !fehlend.includes(luecke)) fehlend.push(luecke)
+    }
   }
 
   // Anlage Sonderausgaben

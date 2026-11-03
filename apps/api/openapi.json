@@ -5191,6 +5191,32 @@
             "type": "string",
             "nullable": true,
             "example": "3000"
+          },
+          "kindschaftsverhaeltnis": {
+            "type": "string",
+            "enum": [
+              "1",
+              "2",
+              "3"
+            ],
+            "nullable": true
+          },
+          "kindschaftsverhaeltnisB": {
+            "type": "string",
+            "enum": [
+              "1",
+              "2",
+              "3"
+            ],
+            "nullable": true
+          },
+          "familienkasse": {
+            "type": "string",
+            "nullable": true
+          },
+          "wohnsitzInlandGanzjaehrig": {
+            "type": "boolean",
+            "nullable": true
           }
         },
         "required": [
@@ -5198,7 +5224,11 @@
           "lfdNr",
           "vorname",
           "nachname",
-          "geburtsdatum"
+          "geburtsdatum",
+          "kindschaftsverhaeltnis",
+          "kindschaftsverhaeltnisB",
+          "familienkasse",
+          "wohnsitzInlandGanzjaehrig"
         ]
       },
       "KinderResponseDto": {
@@ -5220,7 +5250,7 @@
           },
           "freibetragGesamt": {
             "type": "number",
-            "example": 9540
+            "example": 9600
           }
         },
         "required": [
@@ -5233,6 +5263,36 @@
       "CreateKindDto": {
         "type": "object",
         "properties": {
+          "kindschaftsverhaeltnis": {
+            "type": "string",
+            "enum": [
+              "1",
+              "2",
+              "3"
+            ],
+            "nullable": true,
+            "description": "Kz 02: 1 = leiblich/adoptiert, 2 = Pflegekind, 3 = Enkel-/Stiefkind"
+          },
+          "kindschaftsverhaeltnisB": {
+            "type": "string",
+            "enum": [
+              "1",
+              "2",
+              "3"
+            ],
+            "nullable": true,
+            "description": "Kz 03, to the spouse — only for a joint return"
+          },
+          "familienkasse": {
+            "type": "string",
+            "nullable": true,
+            "example": "Familienkasse Sachsen"
+          },
+          "wohnsitzInlandGanzjaehrig": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "The child lived in Germany all year (Zeile 8)."
+          },
           "vorname": {
             "type": "string",
             "example": "Lina"
@@ -5264,6 +5324,36 @@
       "UpdateKindDto": {
         "type": "object",
         "properties": {
+          "kindschaftsverhaeltnis": {
+            "type": "string",
+            "enum": [
+              "1",
+              "2",
+              "3"
+            ],
+            "nullable": true,
+            "description": "Kz 02: 1 = leiblich/adoptiert, 2 = Pflegekind, 3 = Enkel-/Stiefkind"
+          },
+          "kindschaftsverhaeltnisB": {
+            "type": "string",
+            "enum": [
+              "1",
+              "2",
+              "3"
+            ],
+            "nullable": true,
+            "description": "Kz 03, to the spouse — only for a joint return"
+          },
+          "familienkasse": {
+            "type": "string",
+            "nullable": true,
+            "example": "Familienkasse Sachsen"
+          },
+          "wohnsitzInlandGanzjaehrig": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "The child lived in Germany all year (Zeile 8)."
+          },
           "vorname": {
             "type": "string",
             "example": "Lina"

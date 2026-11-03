@@ -988,6 +988,66 @@
       }
     },
     {
+      "id": "anlKind.familienkasse",
+      "formular": "anlage-kind",
+      "seite": 1,
+      "art": "text",
+      "kasten": {
+        "x": 61.7,
+        "y": 575.1,
+        "breite": 496.6,
+        "hoehe": 15.9
+      }
+    },
+    {
+      "id": "anlKind.inlandVon",
+      "formular": "anlage-kind",
+      "seite": 1,
+      "art": "text",
+      "kasten": {
+        "x": 81.1,
+        "y": 533.9,
+        "breite": 55.7,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlKind.inlandBis",
+      "formular": "anlage-kind",
+      "seite": 1,
+      "art": "text",
+      "kasten": {
+        "x": 150,
+        "y": 533.9,
+        "breite": 55.7,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlKind.kz02",
+      "formular": "anlage-kind",
+      "seite": 1,
+      "art": "text",
+      "kasten": {
+        "x": 189.8,
+        "y": 448.6,
+        "breite": 12.1,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlKind.kz03",
+      "formular": "anlage-kind",
+      "seite": 1,
+      "art": "text",
+      "kasten": {
+        "x": 431.7,
+        "y": 448.6,
+        "breite": 12.1,
+        "hoehe": 15.8
+      }
+    },
+    {
       "id": "anlSo.name",
       "formular": "anlage-sonderausgaben",
       "seite": 1,

@@ -2,13 +2,21 @@ import { useState } from 'react'
 import { Pressable, ScrollView, Text, View, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { Button, Card, Feld, Input, useBreakpoint, useTheme, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
-import { formatEuro } from '@steuereule/core'
+import { Button, Card, Chip, Feld, Input, useBreakpoint, useTheme, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
+import {
+  anspruchsMonate,
+  formatEuro,
+  kindergeldAnspruchMonat,
+  kinderStand,
+  KINDSCHAFTSVERHAELTNISSE,
+  type Kindschaftsverhaeltnis,
+} from '@steuereule/core'
 import {
   getKinderControllerListQueryKey,
   useKinderControllerCreate,
   useKinderControllerDelete,
   useKinderControllerList,
+  useKinderControllerUpdate,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
@@ -23,6 +31,33 @@ export interface KindItem {
   geburtsdatum: string
   idnr?: string | null
   kindergeldAnspruchEur?: string | null
+  kindschaftsverhaeltnis?: Kindschaftsverhaeltnis | null
+  kindschaftsverhaeltnisB?: Kindschaftsverhaeltnis | null
+  familienkasse?: string | null
+  wohnsitzInlandGanzjaehrig?: boolean | null
+}
+
+/** What the form writes: the identity plus the Anlage-Kind facts (Zeilen 7, 8, 10). */
+export interface KindEingabe {
+  vorname: string
+  nachname: string
+  geburtsdatum: string
+  idnr?: string
+  kindergeldAnspruchEur?: string
+  kindschaftsverhaeltnis: Kindschaftsverhaeltnis | null
+  kindschaftsverhaeltnisB: Kindschaftsverhaeltnis | null
+  familienkasse: string | null
+  wohnsitzInlandGanzjaehrig: boolean | null
+}
+
+const KINDSCHAFT_LABEL: Record<Kindschaftsverhaeltnis, string> = {
+  '1': 'Leibliches Kind / Adoptivkind',
+  '2': 'Pflegekind',
+  '3': 'Enkelkind / Stiefkind',
+}
+
+function fehltFuerAusdruck(k: KindItem): boolean {
+  return !k.idnr || !k.kindschaftsverhaeltnis || !k.familienkasse || k.wohnsitzInlandGanzjaehrig == null
 }
 
 export interface KinderScreenProps {
@@ -30,15 +65,8 @@ export interface KinderScreenProps {
   readonly onBack?: () => void
   readonly taxYear?: number
   readonly initialKinder?: readonly KindItem[] | undefined
-  readonly onAddKind?:
-    | ((kind: {
-        vorname: string
-        nachname: string
-        geburtsdatum: string
-        idnr?: string
-        kindergeldAnspruchEur?: string
-      }) => Promise<void> | void)
-    | undefined
+  readonly onAddKind?: ((kind: KindEingabe) => Promise<void> | void) | undefined
+  readonly onSaveKind?: ((id: string, kind: KindEingabe) => Promise<void> | void) | undefined
   readonly onDeleteKind?: ((id: string) => Promise<void> | void) | undefined
 }
 
@@ -55,6 +83,7 @@ function ConnectedKinderScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TA
   const queryClient = useQueryClient()
   const query = useKinderControllerList(taxYear)
   const createKind = useKinderControllerCreate()
+  const updateKind = useKinderControllerUpdate()
   const deleteKind = useKinderControllerDelete()
 
   if (query.isPending) {
@@ -86,6 +115,10 @@ function ConnectedKinderScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TA
         await createKind.mutateAsync({ jahr: taxYear, data })
         await invalidate()
       }}
+      onSaveKind={async (id, data) => {
+        await updateKind.mutateAsync({ jahr: taxYear, id, data })
+        await invalidate()
+      }}
       onDeleteKind={async (id) => {
         await deleteKind.mutateAsync({ jahr: taxYear, id })
         await invalidate()
@@ -100,6 +133,7 @@ function KinderScreenView({
   taxYear = CURRENT_TAX_YEAR,
   initialKinder = [],
   onAddKind,
+  onSaveKind,
   onDeleteKind,
 }: KinderScreenProps & { readonly initialKinder: readonly KindItem[] }) {
   const bp = useBreakpoint()
@@ -113,37 +147,59 @@ function KinderScreenView({
   const [geburtsdatum, setGeburtsdatum] = useState('')
   const [idnr, setIdnr] = useState('')
   const [kindergeld, setKindergeld] = useState('')
+  const [verhaeltnis, setVerhaeltnis] = useState<Kindschaftsverhaeltnis | null>(null)
+  const [verhaeltnisB, setVerhaeltnisB] = useState<Kindschaftsverhaeltnis | null>(null)
+  const [familienkasse, setFamilienkasse] = useState('')
+  const [inland, setInland] = useState<boolean | null>(null)
+  const [bearbeitet, setBearbeitet] = useState<string | null>(null)
   const [formOpen, setFormOpen] = useState(initialKinder.length === 0)
 
-  // § 32 Abs. 6 EStG Freibetrag: 9.540 € for 2025
-  const freibetragProKind = taxYear === 2024 ? 9312 : taxYear === 2026 ? 9756 : 9540
-  const freibetragGesamt = kinder.length * freibetragProKind
-  const kindergeldGesamt = kinder.reduce(
-    (acc, k) => acc + (k.kindergeldAnspruchEur ? Number(k.kindergeldAnspruchEur) : 3000),
-    0,
+  const stand = kinderStand(
+    kinder.map((k) => ({
+      id: k.id,
+      vorname: k.vorname,
+      nachname: k.nachname,
+      geburtsdatum: k.geburtsdatum,
+      steuerId: k.idnr ?? null,
+      kindergeld: k.kindergeldAnspruchEur ? Number(k.kindergeldAnspruchEur) : null,
+    })),
+    taxYear,
   )
 
-  async function handleAdd() {
+  function fuelleFormular(k: KindItem | null) {
+    setVorname(k?.vorname ?? '')
+    setNachname(k?.nachname ?? '')
+    setGeburtsdatum(k?.geburtsdatum ?? '')
+    setIdnr(k?.idnr ?? '')
+    setKindergeld(k?.kindergeldAnspruchEur ?? '')
+    setVerhaeltnis(k?.kindschaftsverhaeltnis ?? null)
+    setVerhaeltnisB(k?.kindschaftsverhaeltnisB ?? null)
+    setFamilienkasse(k?.familienkasse ?? '')
+    setInland(k?.wohnsitzInlandGanzjaehrig ?? null)
+    setBearbeitet(k?.id ?? null)
+  }
+
+  async function handleSave() {
     if (!vorname.trim() || !nachname.trim() || !geburtsdatum.trim()) return
-    const payload = {
+    const payload: KindEingabe = {
       vorname: vorname.trim(),
       nachname: nachname.trim(),
       geburtsdatum: geburtsdatum.trim(),
       ...(idnr.trim() && { idnr: idnr.trim() }),
       ...(kindergeld.trim() && { kindergeldAnspruchEur: kindergeld.trim() }),
+      kindschaftsverhaeltnis: verhaeltnis,
+      kindschaftsverhaeltnisB: verhaeltnisB,
+      familienkasse: familienkasse.trim() || null,
+      wohnsitzInlandGanzjaehrig: inland,
     }
-    if (onAddKind) await onAddKind(payload)
-    const neu: KindItem = {
-      id: `local-${Date.now()}`,
-      lfdNr: kinder.length + 1,
-      ...payload,
+    if (bearbeitet) {
+      if (onSaveKind) await onSaveKind(bearbeitet, payload)
+      setKinder(kinder.map((k) => (k.id === bearbeitet ? { ...k, ...payload } : k)))
+    } else {
+      if (onAddKind) await onAddKind(payload)
+      setKinder([...kinder, { id: `local-${Date.now()}`, lfdNr: kinder.length + 1, ...payload }])
     }
-    setKinder([...kinder, neu])
-    setVorname('')
-    setNachname('')
-    setGeburtsdatum('')
-    setIdnr('')
-    setKindergeld('')
+    fuelleFormular(null)
     setFormOpen(false)
   }
 
@@ -170,11 +226,11 @@ function KinderScreenView({
           <Text style={styles.summaryTitle}>{tr('kinder.summaryTitle', 'Steuerliche Entlastung')}</Text>
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>{tr('kinder.freibetragLabel', 'Kinderfreibetrag Gesamt:')}</Text>
-            <Text style={styles.summaryValue}>{formatEuro(freibetragGesamt)}</Text>
+            <Text style={styles.summaryValue}>{formatEuro(stand.freibetragGesamt)}</Text>
           </View>
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>{tr('kinder.kindergeldLabel', 'Kindergeld Anspruch:')}</Text>
-            <Text style={styles.summaryValue}>{formatEuro(kindergeldGesamt)}</Text>
+            <Text style={styles.summaryValue}>{formatEuro(stand.kindergeldSumme)}</Text>
           </View>
         </Card>
       )}
@@ -185,25 +241,47 @@ function KinderScreenView({
             <Text style={styles.kindName}>
               {`${index + 1}. ${k.vorname} ${k.nachname}`}
             </Text>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`Kind ${k.vorname} löschen`}
-              onPress={() => handleDelete(k.id)}
-            >
-              <Text style={styles.deleteButton}>{tr('kinder.delete', 'Löschen')}</Text>
-            </Pressable>
+            <View style={styles.kindActions}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Kind ${k.vorname} bearbeiten`}
+                onPress={() => {
+                  fuelleFormular(k)
+                  setFormOpen(true)
+                }}
+              >
+                <Text style={styles.editButton}>{tr('kinder.edit', 'Bearbeiten')}</Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Kind ${k.vorname} löschen`}
+                onPress={() => handleDelete(k.id)}
+              >
+                <Text style={styles.deleteButton}>{tr('kinder.delete', 'Löschen')}</Text>
+              </Pressable>
+            </View>
           </View>
           <Text style={styles.kindDetail}>Geburtsdatum: {k.geburtsdatum}</Text>
           {k.idnr && <Text style={styles.kindDetail}>Steuer-ID: {k.idnr}</Text>}
           <Text style={styles.kindDetail}>
-            Kindergeld: {k.kindergeldAnspruchEur ? `${k.kindergeldAnspruchEur} €` : '3.000 € (gesetzlich)'}
+            Kindergeld:{' '}
+            {k.kindergeldAnspruchEur
+              ? `${k.kindergeldAnspruchEur} €`
+              : `${formatEuro(kindergeldAnspruchMonat(taxYear) * anspruchsMonate(k.geburtsdatum, taxYear))} (gesetzlich)`}
           </Text>
+          {fehltFuerAusdruck(k) ? (
+            <Text style={styles.luecke}>
+              {tr('kinder.luecke', 'Für den Ausdruck fehlen noch Angaben (Steuer-ID, Kindschaftsverhältnis, Familienkasse, Wohnsitz).')}
+            </Text>
+          ) : null}
         </Card>
       ))}
 
       {formOpen ? (
         <Card style={styles.formCard}>
-          <Text style={styles.formTitle}>{tr('kinder.addTitle', 'Kind hinzufügen')}</Text>
+          <Text style={styles.formTitle}>
+            {bearbeitet ? tr('kinder.editTitle', 'Kind bearbeiten') : tr('kinder.addTitle', 'Kind hinzufügen')}
+          </Text>
           <Feld label="Vorname">
             <Input value={vorname} onChange={setVorname} placeholder="z.B. Lina" accessibilityLabel="Vorname" />
           </Feld>
@@ -218,7 +296,7 @@ function KinderScreenView({
               accessibilityLabel="Geburtsdatum"
             />
           </Feld>
-          <Feld label="Steuer-Identifikationsnummer (optional)">
+          <Feld label="Steuer-Identifikationsnummer">
             <Input
               value={idnr}
               onChange={setIdnr}
@@ -236,12 +314,59 @@ function KinderScreenView({
               accessibilityLabel="Kindergeld"
             />
           </Feld>
-          <Button onPress={handleAdd} style={styles.addButton} testID="kind-speichern">
+          <Feld label="Kindschaftsverhältnis zu dir">
+            <View style={styles.chips}>
+              {KINDSCHAFTSVERHAELTNISSE.map((wert) => (
+                <Chip key={wert} aktiv={verhaeltnis === wert} onPress={() => setVerhaeltnis(wert)} testID={`kind-verhaeltnis-${wert}`}>
+                  {KINDSCHAFT_LABEL[wert]}
+                </Chip>
+              ))}
+            </View>
+          </Feld>
+          <Feld label="Kindschaftsverhältnis zu deinem Ehepartner (nur bei Zusammenveranlagung)">
+            <View style={styles.chips}>
+              {KINDSCHAFTSVERHAELTNISSE.map((wert) => (
+                <Chip key={wert} aktiv={verhaeltnisB === wert} onPress={() => setVerhaeltnisB(wert)} testID={`kind-verhaeltnis-b-${wert}`}>
+                  {KINDSCHAFT_LABEL[wert]}
+                </Chip>
+              ))}
+              <Chip aktiv={verhaeltnisB === null} onPress={() => setVerhaeltnisB(null)} testID="kind-verhaeltnis-b-keins">
+                Keines
+              </Chip>
+            </View>
+          </Feld>
+          <Feld label="Für das Kindergeld zuständige Familienkasse">
+            <Input
+              value={familienkasse}
+              onChange={setFamilienkasse}
+              placeholder="z.B. Familienkasse Sachsen"
+              accessibilityLabel="Familienkasse"
+            />
+          </Feld>
+          <Feld label={`Hat das Kind ${taxYear} durchgehend in Deutschland gewohnt?`}>
+            <View style={styles.chips}>
+              <Chip aktiv={inland === true} onPress={() => setInland(true)} testID="kind-inland-ja">
+                Ja
+              </Chip>
+              <Chip aktiv={inland === false} onPress={() => setInland(false)} testID="kind-inland-nein">
+                Nein
+              </Chip>
+            </View>
+          </Feld>
+          <Button onPress={handleSave} style={styles.addButton} testID="kind-speichern">
             {tr('kinder.save', 'Kind speichern')}
           </Button>
         </Card>
       ) : (
-        <Button variante="ghost" onPress={() => setFormOpen(true)} style={styles.toggleButton} testID="kind-neu">
+        <Button
+          variante="ghost"
+          onPress={() => {
+            fuelleFormular(null)
+            setFormOpen(true)
+          }}
+          style={styles.toggleButton}
+          testID="kind-neu"
+        >
           + Weiteres Kind hinzufügen
         </Button>
       )}
@@ -327,6 +452,10 @@ function makeStyles(t: UiTheme) {
     fontSize: t.size.s,
     color: t.color.fehler,
   }
+  const kindActions: ViewStyle = { flexDirection: 'row', gap: t.space.s3 }
+  const editButton: TextStyle = { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte }
+  const luecke: TextStyle = { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.fehler, marginTop: t.space.s2 }
+  const chips: ViewStyle = { flexDirection: 'row', flexWrap: 'wrap', gap: t.space.s2 }
   const kindDetail: TextStyle = {
     fontFamily: t.font.text,
     fontSize: t.size.s,
@@ -371,6 +500,10 @@ function makeStyles(t: UiTheme) {
     kindHeader,
     kindName,
     deleteButton,
+    kindActions,
+    editButton,
+    luecke,
+    chips,
     kindDetail,
     formCard,
     formTitle,

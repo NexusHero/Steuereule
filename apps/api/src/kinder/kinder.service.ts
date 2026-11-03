@@ -24,6 +24,10 @@ function toDto(r: KindRecord): KindResponseDto {
     geburtsdatum: r.geburtsdatum,
     idnr: r.idnr,
     kindergeldAnspruchEur: r.kindergeldAnspruchEur,
+    kindschaftsverhaeltnis: r.kindschaftsverhaeltnis,
+    kindschaftsverhaeltnisB: r.kindschaftsverhaeltnisB,
+    familienkasse: r.familienkasse,
+    wohnsitzInlandGanzjaehrig: r.wohnsitzInlandGanzjaehrig,
   }
 }
 

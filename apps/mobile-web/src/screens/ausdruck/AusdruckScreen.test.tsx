@@ -20,6 +20,7 @@ function renderScreen(props: { zahlung?: 'erfolg' | 'abbruch'; oeffneCheckout?: 
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   const onAngabenErgaenzen = vi.fn()
   const onRiesterErgaenzen = vi.fn()
+  const onKinderErgaenzen = vi.fn()
   render(
     <QueryClientProvider client={queryClient}>
       <I18nextProvider i18n={createAppI18n('de')}>
@@ -29,13 +30,14 @@ function renderScreen(props: { zahlung?: 'erfolg' | 'abbruch'; oeffneCheckout?: 
             onZurueck={() => {}}
             onAngabenErgaenzen={onAngabenErgaenzen}
             onRiesterErgaenzen={onRiesterErgaenzen}
+            onKinderErgaenzen={onKinderErgaenzen}
             {...props}
           />
         </ThemeProvider>
       </I18nextProvider>
     </QueryClientProvider>,
   )
-  return { onAngabenErgaenzen, onRiesterErgaenzen }
+  return { onAngabenErgaenzen, onRiesterErgaenzen, onKinderErgaenzen }
 }
 
 afterEach(() => server.resetHandlers())
@@ -94,6 +96,15 @@ describe('AusdruckScreen (ADR-0050)', () => {
     fireEvent.click(screen.getByText('Riester-Angaben ergänzen'))
     expect(onRiesterErgaenzen).toHaveBeenCalled()
     expect(onAngabenErgaenzen).not.toHaveBeenCalled()
+  })
+
+  it('missing child details lead to the Kinder screen; uncovered child cases are named', async () => {
+    mock('offen', ['kinder', 'anlageKindVolljaehrig'])
+    const { onKinderErgaenzen } = renderScreen()
+    expect(await screen.findByText(/Für die Anlage Kind fehlen noch Angaben zu deinen Kindern/)).toBeTruthy()
+    expect(screen.getByText(/Angaben zu einem volljährigen Kind \(Anlage Kind\) gibt es den Ausdruck noch nicht/)).toBeTruthy()
+    fireEvent.click(screen.getByText('Kinder-Angaben ergänzen'))
+    expect(onKinderErgaenzen).toHaveBeenCalled()
   })
 
   it('an Anlage that is not printable yet is named, and paying is not offered', async () => {

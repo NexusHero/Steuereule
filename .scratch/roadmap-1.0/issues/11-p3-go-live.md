@@ -26,6 +26,12 @@ sobald das Zertifikat (Ticket 07) vorliegt; bis dahin Beta kostenlos (ADR-017).
       Kz 100 (beitragspflichtige Einnahmen des Vorjahres) aus zwei neuen Interview-Folgefragen;
       fehlen sie, sperrt der Ausdruck mit Weg zu den Sonderausgaben-Fragen. Offen: Person B (Kz 306/300)
       und die selteneren Zeilen 6–13 (Beamte, Entgeltersatz, Erwerbsminderungsrente u. a.)
+- [x] Anlage Kind für minderjährige Kinder in Zusammenveranlagung: Familienkasse (Z. 7), Wohnsitz im
+      Inland vom–bis (Z. 8), Kindschaftsverhältnis zu A und B (Kz 02/03); Nachname nur bei Abweichung.
+      Fehlende Angaben sperren mit Weg zum Kinder-Screen (dort jetzt auch Bearbeiten).
+- [ ] Anlage Kind, noch ehrlich gesperrt: Elternteil außerhalb dieser Erklärung (Z. 11–15, betrifft
+      Alleinerziehende und Einzelveranlagung), volljährige Kinder (Z. 16 ff.), Wohnsitz im Ausland (Z. 9);
+      Kinderbetreuungskosten werden nicht erfasst
 - [x] Verheiratete: Veranlagungsart + Person B erfassen, dann Zeilen 19–24 ausdrucken
 - [ ] Klärung durch Steuerberater/Finanzamt: befülltes Portal-PDF („NET") vs. nichtamtlicher
       Vordruck (Graurasterung, Herstellerangabe)

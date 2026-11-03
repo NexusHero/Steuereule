@@ -163,9 +163,14 @@ export class AusdruckService {
       geburtsdatum: k.geburtsdatum,
       idnr: k.idnr,
       kindergeldAnspruchEur: k.kindergeldAnspruchEur,
+      kindschaftsverhaeltnis: k.kindschaftsverhaeltnis,
+      kindschaftsverhaeltnisB: k.kindschaftsverhaeltnisB,
+      familienkasse: k.familienkasse,
+      wohnsitzInlandGanzjaehrig: k.wohnsitzInlandGanzjaehrig,
     }))
 
     return ausdruckWerte({
+      steuerjahr: jahr,
       profil: {
         firstName: profil?.firstName ?? null,
         lastName: profil?.lastName ?? null,

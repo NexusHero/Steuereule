@@ -90,6 +90,11 @@
     { "id": "anlKind.nachname", "formular": "anlage-kind", "seite": 1, "anker": "ggf.", "zeile": 5, "lage": "unter", "art": "text" },
     { "id": "anlKind.geburtsdatum", "formular": "anlage-kind", "seite": 1, "anker": "16", "zeile": 6, "lage": "rechts", "art": "text" },
     { "id": "anlKind.kindergeld", "formular": "anlage-kind", "seite": 1, "anker": "15", "zeile": 6, "lage": "rechts", "art": "euro" },
+    { "id": "anlKind.familienkasse", "formular": "anlage-kind", "seite": 1, "anker": "Familienkasse", "zeile": 7, "lage": "unter", "art": "text" },
+    { "id": "anlKind.inlandVon", "formular": "anlage-kind", "seite": 1, "anker": "vom", "zeile": 8, "lage": "unter", "art": "text" },
+    { "id": "anlKind.inlandBis", "formular": "anlage-kind", "seite": 1, "anker": "bis", "zeile": 8, "lage": "unter", "art": "text" },
+    { "id": "anlKind.kz02", "formular": "anlage-kind", "seite": 1, "anker": "02", "zeile": 10, "lage": "rechts", "art": "text" },
+    { "id": "anlKind.kz03", "formular": "anlage-kind", "seite": 1, "anker": "03", "zeile": 10, "lage": "rechts", "art": "text" },
 
     { "id": "anlSo.name", "formular": "anlage-sonderausgaben", "seite": 1, "anker": "Name", "zeile": 1, "lage": "unter", "art": "text" },
     { "id": "anlSo.vorname", "formular": "anlage-sonderausgaben", "seite": 1, "anker": "Vorname", "zeile": 2, "lage": "unter", "art": "text" },
