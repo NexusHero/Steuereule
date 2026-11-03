@@ -7,14 +7,17 @@
 // felder-<jahr>.json together with each template's sha256, so a swapped template cannot
 // silently keep old positions (test/ausdruck-felder.test.ts).
 //
-// Dev-time tool: needs poppler (`pdftotext`, `pdftocairo`) — not a runtime or CI dependency.
+// Dev-time and CI tool (job „Vordrucke“): needs poppler (`pdftotext`, `pdftocairo`), never a runtime
+// dependency. The yearly procedure: docs/process/vordrucke-jahreswechsel.md.
 //
-//   node scripts/vordrucke/vermessen.mjs 2025
+//   node scripts/vordrucke/vermessen.mjs 2025          (writes felder-<jahr>.json)
+//   node scripts/vordrucke/vermessen.mjs 2025 --check  (CI: fails when the checked-in file differs)
 import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { woerter } from './pdf-woerter.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 const jahr = process.argv[2]
@@ -27,18 +30,6 @@ const AUSDRUCK = path.join(ROOT, 'apps/api/src/ausdruck')
 const spec = JSON.parse(readFileSync(path.join(AUSDRUCK, `felder-${jahr}.spec.json`), 'utf8'))
 
 const cache = new Map()
-
-/** Words with their boxes, top-left origin, PDF points. */
-function woerter(datei, seite) {
-  const xml = execFileSync('pdftotext', ['-f', String(seite), '-l', String(seite), '-bbox', datei, '-'], {
-    encoding: 'utf8',
-  })
-  const hoehe = Number(/<page width="[\d.]+" height="([\d.]+)"/.exec(xml)[1])
-  const liste = [...xml.matchAll(/<word xMin="([\d.]+)" yMin="([\d.]+)" xMax="([\d.]+)" yMax="([\d.]+)">([^<]*)<\/word>/g)].map(
-    (m) => ({ x0: +m[1], y0: +m[2], x1: +m[3], y1: +m[4], text: m[5].replaceAll('&amp;', '&') }),
-  )
-  return { hoehe, liste }
-}
 
 /** White, axis-aligned filled rectangles = the form's input boxes (and tick boxes). */
 function weisseKaesten(datei, seite) {
@@ -185,5 +176,15 @@ const felder = spec.felder.map((feld) => {
   }
 })
 
-writeFileSync(path.join(AUSDRUCK, `felder-${jahr}.json`), JSON.stringify({ jahr: Number(jahr), vorlagen, felder }, null, 2) + '\n')
-console.log(`${felder.length} Felder vermessen → apps/api/src/ausdruck/felder-${jahr}.json`)
+const ziel = path.join(AUSDRUCK, `felder-${jahr}.json`)
+const inhalt = JSON.stringify({ jahr: Number(jahr), vorlagen, felder }, null, 2) + '\n'
+if (process.argv.includes('--check')) {
+  if (readFileSync(ziel, 'utf8') !== inhalt) {
+    console.error(`felder-${jahr}.json is not what the templates and the spec measure — run vermessen.mjs ${jahr} and review the diff.`)
+    process.exit(1)
+  }
+  console.log(`${felder.length} Felder: felder-${jahr}.json stimmt mit Vorlagen und Spec überein.`)
+} else {
+  writeFileSync(ziel, inhalt)
+  console.log(`${felder.length} Felder vermessen → apps/api/src/ausdruck/felder-${jahr}.json`)
+}

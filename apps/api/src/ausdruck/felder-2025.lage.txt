@@ -1,0 +1,173 @@
+# Lage der Ausdruck-Felder 2025 — erzeugt von scripts/vordrucke/lagebericht.mjs, nicht von Hand ändern.
+# Feld-ID · Seite · Zeile · ↑ Spaltenkopf über dem Kasten · ← Beschriftung links daneben
+est1a.einkommensteuererklaerung S1 Z1    ↑                              ← 
+est1a.steuernummer             S1 Z4    ↑ Mobilitätsprämie             ← 202500301201 Steuernummer
+est1a.finanzamt                S1 Z5    ↑ An das Finanzamt             ← 
+est1a.telefon                  S1 Z7    ↑ Telefonische Rückfragen tag… ← 
+est1a.idnr                     S1 Z8    ↑ Identifikationsnummer        ← 
+est1a.geburtsdatum             S1 Z8    ↑ Geburtsdatum                 ← Identifikationsnummer
+est1a.name                     S1 Z9    ↑ Name                         ← 
+est1a.vorname                  S1 Z10   ↑ Vorname                      ← 
+est1a.religion                 S1 Z11   ↑ Anleitung                    ← Titel, akademischer Grad Religion am 31.12.2025
+est1a.beruf                    S1 Z12   ↑ Ausgeübter Beruf             ← 
+est1a.strasse                  S1 Z13   ↑ Straße (derzeitige Adresse)  ← 
+est1a.hausnummer               S1 Z14   ↑ Hausnummer                   ← 
+est1a.hausnummerZusatz         S1 Z14   ↑ Hausnummerzusatz             ← Hausnummer
+est1a.plz                      S1 Z15   ↑ Postleitzahl (Inland)        ← 
+est1a.wohnort                  S1 Z16   ↑ Wohnort                      ← 
+est1a.verheiratetSeit          S1 Z18   ↑ gründet seit dem             ← 
+est1a.verwitwetSeit            S1 Z18   ↑ Verwitwet seit dem           ← Verheiratet / Lebenspartnerschaft be- gründet seit dem
+est1a.geschiedenSeit           S1 Z18   ↑ aufgehoben seit dem          ← Verheiratet / Lebenspartnerschaft be- gründet seit dem Verwitwet seit dem
+est1a.getrenntSeit             S1 Z18   ↑ (Tag der Trennung)           ← Verheiratet / Lebenspartnerschaft be- Geschieden / Lebenspartnerschaft gründet seit dem V…
+est1a.zusammenveranlagung      S1 Z19   ↑                              ← 
+est1a.einzelveranlagung        S1 Z19   ↑ Nur                          ← Zusammenveranlagung
+est1a.idnrB                    S1 Z20   ↑ Identifikationsnummer        ← 
+est1a.geburtsdatumB            S1 Z20   ↑ Geburtsdatum                 ← Identifikationsnummer
+est1a.nameB                    S1 Z21   ↑ Name                         ← 
+est1a.vornameB                 S1 Z22   ↑ Vorname                      ← 
+est1a.religionB                S1 Z23   ↑ Anleitung                    ← Titel, akademischer Grad Religion am 31.12.2025
+est1a.berufB                   S1 Z24   ↑ Ausgeübter Beruf             ← 
+est1a.kopfSeite2               S2 Kopf  ↑                              ← 
+est1a.ibanInland               S2 Z30   ↑ IBAN (inländisches Geldinst… ← 
+est1a.ibanAusland              S2 Z31   ↑ IBAN (ausländisches Geldins… ← 
+est1a.kontoinhaberSelbst       S2 Z33   ↑                              ← 
+est1a.kontoinhaberName         S2 Z33   ↑ Name (im Fall der Abtretung… ← Steuerpflichtige Person / Ehefrau / oder: Ehemann / Person A Person B
+anlN.name                      S1 Z1    ↑ Name                         ← 
+anlN.vorname                   S1 Z2    ↑ Vorname                      ← 
+anlN.steuernummer              S1 Z3    ↑                              ← Steuernummer
+anlN.personA                   S1 Z3    ↑ Arbeit                       ← Steuernummer Daten für die mit gekennzeichneten Zeilen liegen im Regelfall vor und müssen…
+anlN.personB                   S1 Kopf  ↑ Arbeit                       ← 202500303201 Daten für die mit gekennzeichneten Zeilen liegen im Regelfall vor und müssen…
+anlN.kz110                     S1 Z5    ↑ EUR                          ← Bruttoarbeitslohn 110 einschließlich Sachbezüge
+anlR.name                      S1 Z1    ↑ Name                         ← 
+anlR.vorname                   S1 Z2    ↑ Vorname                      ← 
+anlR.steuernummer              S1 Z3    ↑                              ← Steuernummer
+anlR.lfdNr                     S1 Z3    ↑                              ← lfd. Nr. der Anlage Steuernummer
+anlR.personA                   S1 Kopf  ↑ Zeilen                       ← Renten und andere Leistungen aus dem Inland – Ohne Leistungen aus Altersvorsorgeverträgen…
+anlR.personB                   S1 Kopf  ↑                              ← – Ohne Leistungen aus Altersvorsorgeverträgen und aus der betrieblichen Altersversor- gun…
+anlR.kz101                     S1 Z4    ↑ EUR                          ← Rentenbetrag 101 (einschließlich Einmalzahlung und Leistungen)
+anlR.kz131                     S1 Z13   ↑ EUR                          ← 131 Rentenbetrag
+anlKap.name                    S1 Z1    ↑ Name                         ← 
+anlKap.vorname                 S1 Z2    ↑ Vorname                      ← 
+anlKap.steuernummer            S1 Z3    ↑                              ← Steuernummer
+anlKap.personA                 S1 Kopf  ↑                              ← 202500305201 Einkünfte aus Kapitalvermögen / Anrechnung von Steuern
+anlKap.personB                 S1 Kopf  ↑                              ← 
+anlKap.guenstigerpruefung      S1 Z4    ↑                              ← Ich beantrage die Günstigerprüfung für sämtliche Kapitalerträge. 201/401 (Bei Zusammenver…
+anlKap.kz210                   S1 Z7    ↑ EUR                          ← 210/410 Kapitalerträge
+anlKap.kz234                   S2 Z19   ↑ EUR                          ← Inländische Kapitalerträge (ohne Beträge laut den Zeilen 26 und 26a) 234/434 Ausländische…
+anlKap.kz217                   S1 Z16   ↑ EUR                          ← In Anspruch genommener Sparer-Pauschbetrag, der auf die in den Zeilen 7 bis 15, 30 und 33…
+anlKap.kz218                   S1 Z17   ↑                              ← In Anspruch genommener Sparer-Pauschbetrag, der auf die in der Anlage KAP nicht erklärten…
+anlKap.kz280                   S3 Z37   ↑ EUR Ct                       ← 280/480 Kapitalertragsteuer
+anlKap.kz281                   S3 Z38   ↑ EUR Ct                       ← Kapitalertragsteuer 281/481 Solidaritätszuschlag
+anlKap.kz282                   S3 Z39   ↑                              ← Solidaritätszuschlag 282/482 Kirchensteuer zur Kapitalertragsteuer
+anlNGre.name                   S1 Z1    ↑ Name                         ← 
+anlNGre.vorname                S1 Z2    ↑ Vorname                      ← 
+anlNGre.steuernummer           S1 Z3    ↑                              ← Steuernummer
+anlNGre.personA                S1 Z3    ↑ Arbeit                       ← Steuernummer 202500316201 (Gilt nur zur Abgabe bei Finanzämtern in Baden-Württemberg und …
+anlNGre.personB                S1 Kopf  ↑ Arbeit                       ← 202500316201 (Gilt nur zur Abgabe bei Finanzämtern in Baden-Württemberg und Bayern) zur E…
+anlNGre.kz117                  S1 Z4    ↑                              ← 117 Grenzgänger nach
+anlNGre.beruf                  S1 Z5    ↑ ausgeübter Beruf             ← 
+anlNGre.z6Chf                  S1 Z6    ↑ CHF                          ← des Arbeitgebers nebst Anlagen (bei Grenzgängern in die Schweiz: laut Zeile 8 des Lohnaus…
+anlNGre.z6Eur                  S1 Z6    ↑ EUR (ggf. umgerechnet *)     ← des Arbeitgebers nebst Anlagen CHF (bei Grenzgängern in die Schweiz: laut Zeile 8 des Loh…
+anlNGre.z8Chf                  S1 Z8    ↑                              ← − Kinder- und Ausbildungszulage
+anlNGre.z8Eur                  S1 Z8    ↑                              ← ,– ,– − − Kinder- und Ausbildungszulage
+anlNGre.z15Chf                 S1 Z15   ↑                              ← = Verbleiben
+anlNGre.z15Eur                 S1 Z15   ↑                              ← ,– = = Verbleiben
+anlNGre.z23Chf                 S1 Z23   ↑                              ← 116 Steuerpflichtiger Arbeitslohn
+anlNGre.z23Eur                 S1 Z23   ↑                              ← ,– 116 116 Steuerpflichtiger Arbeitslohn
+anlNGre.z25Chf                 S1 Z25   ↑ ,–                           ← In der Schweiz erhobene Abzugssteuer 135 (höchstens 4,5 % von Zeile 6)
+anlNGre.z25Eur                 S1 Z25   ↑ ,–                           ← In der Schweiz erhobene Abzugssteuer 135 135 (höchstens 4,5 % von Zeile 6)
+anlNGre.z75Chf                 S4 Z75   ↑ CHF                          ← Bruttoarbeitslohn laut Zeile 6
+anlNGre.z75Eur                 S4 Z75   ↑ EUR (ggf. umgerechnet)       ← CHF ,– Bruttoarbeitslohn laut Zeile 6
+anlNGre.z76Chf                 S4 Z76   ↑ CHF                          ← Versicherungsleistungen bei Unfall, Krankheit, Invalidität; Familienzulagen (z. B. Kinder…
+anlNGre.z76Eur                 S4 Z76   ↑ EUR (ggf. umgerechnet)       ← Versicherungsleistungen bei Unfall, Krankheit, Invalidität; Familienzulagen (z. B. Kinder…
+anlNGre.z77Chf                 S4 Z77   ↑                              ← = Bemessungsgrundlage Sozialabgaben
+anlNGre.z77Eur                 S4 Z77   ↑                              ← ,– = = Bemessungsgrundlage Sozialabgaben
+anlNGre.z78Chf                 S4 Z78   ↑                              ← Erwerbsersatzordnung (EO) (0,25 % von Zeile 77)
+anlNGre.z78Eur                 S4 Z78   ↑                              ← ,– ,– Erwerbsersatzordnung (EO) (0,25 % von Zeile 77)
+anlNGre.z79Chf                 S4 Z79   ↑                              ← Arbeitslosenversicherung (1,1 % für Lohnanteile bis 148.200 CHF / + 157.883 € von Zeile 7…
+anlNGre.z79Eur                 S4 Z79   ↑                              ← Arbeitslosenversicherung (1,1 % für Lohnanteile bis 148.200 CHF / ,– + + 157.883 € von Ze…
+anlNGre.z80Chf                 S4 Z80   ↑                              ← + Beiträge zur Krankentaggeldversicherung
+anlNGre.z80Eur                 S4 Z80   ↑                              ← ,– ,– + + Beiträge zur Krankentaggeldversicherung
+anlNGre.z81Chf                 S4 Z81   ↑                              ← + % der Beiträge zur NBUV
+anlNGre.z81Eur                 S4 Z81   ↑                              ← ,– ,– + + % der Beiträge zur NBUV
+anlNGre.z82Chf                 S4 Z82   ↑                              ← Sonstige Vorsorgeaufwendungen
+anlNGre.z82Eur                 S4 Z82   ↑                              ← 370 / 470 ,– Sonstige Vorsorgeaufwendungen
+anlNGre.z83Chf                 S4 Z83   ↑                              ← AHV / IV 5,05 % von Zeile 77
+anlNGre.z83Eur                 S4 Z83   ↑                              ← ,– ,– AHV / IV 5,05 % von Zeile 77
+anlNGre.z84Chf                 S4 Z84   ↑                              ← + Beiträge des Arbeitnehmers ins Obligatorium (Säule 2a)
+anlNGre.z84Eur                 S4 Z84   ↑                              ← ,– ,– + + Beiträge des Arbeitnehmers ins Obligatorium (Säule 2a)
+anlNGre.z85Chf                 S4 Z85   ↑                              ← Summe Arbeitnehmerbeiträge
+anlNGre.z85Eur                 S4 Z85   ↑                              ← ,– Summe Arbeitnehmerbeiträge 300 / 400
+anlNGre.z86Chf                 S4 Z86   ↑                              ← AHV / IV laut Zeile 83
+anlNGre.z86Eur                 S4 Z86   ↑                              ← ,– 300 / 400 ,– AHV / IV laut Zeile 83
+anlNGre.z87Chf                 S4 Z87   ↑                              ← + Beiträge des Arbeitgebers ins Obligatorium (Säule 2a)
+anlNGre.z87Eur                 S4 Z87   ↑                              ← ,– ,– + + Beiträge des Arbeitgebers ins Obligatorium (Säule 2a)
+anlNGre.z88Chf                 S4 Z88   ↑                              ← Summe Arbeitgeberbeiträge
+anlNGre.z88Eur                 S4 Z88   ↑                              ← ,– Summe Arbeitgeberbeiträge 304 / 404
+anlNGre.arbeitgeberName        S4 Z89   ↑ Name (Bezeichnung)           ← 
+anlNGre.arbeitgeberStrasse     S4 Z90   ↑ Straße und Hausnummer        ← 
+anlNGre.arbeitgeberPlzOrt      S4 Z91   ↑ Postleitzahl, Ort            ← 
+anlV.name                      S1 Z1    ↑ Name                         ← 
+anlV.vorname                   S1 Z2    ↑ Vorname                      ← 
+anlV.steuernummer              S1 Z3    ↑                              ← Steuernummer
+anlV.lfdNr                     S1 Z3    ↑                              ← lfd. Nr. der Anlage Steuernummer
+anlV.strasse                   S1 Z4    ↑ Straße, Hausnummer           ← 
+anlV.plz                       S1 Z5    ↑ Postleitzahl                 ← 
+anlV.ort                       S1 Z5    ↑ Ort                          ← Postleitzahl
+anlV.wohnflaeche               S1 Z11   ↑ 2 = Nein                     ← 54 Gesamtwohnfläche (in m²)
+anlV.z13Wohnflaeche            S1 Z13   ↑ Wohnfläche (in m²)           ← Bezeichnung der Wohneinheit (z. B. Stockwerk, Nummer der Wohnung)
+anlV.z13Miete                  S1 Z13   ↑ EUR                          ← Bezeichnung der Wohneinheit (z. B. Stockwerk, Nummer der Wohnung) Wohnfläche (in m²)
+anlV.kz01                      S1 Z15   ↑                              ← 01 = Summe
+anlV.z32Einnahmen              S2 Z32   ↑ EUR                          ← Summe der Einnahmen aus den Zeilen 15, 18 bis 28 und 31
+anlV.z33Linear                 S2 Z33   ↑                              ← 
+anlV.z33Satz                   S2 Z33   ↑ Zuordnung                    ← 1 = linear 2 = degressiv
+anlV.z33WieVorjahr             S2 Z33   ↑ Gebäude                      ← 1 = linear % 2 = degressiv
+anlV.z33Afa                    S2 Z33   ↑ EUR                          ← 1 = linear 1 = wie Vorjahr % 2 = degressiv 2 = laut Erläuterung
+anlV.kz30                      S2 Z35   ↑                              ← 30 = Abzugsfähige Werbungskosten
+anlV.z80Text                   S4 Z80   ↑ Einzelangaben                ← 
+anlV.z80Betrag                 S4 Z80   ↑ EUR                          ← Einzelangaben
+anlV.kz49                      S4 Z82   ↑                              ← 49 = Abzugsfähige Werbungskosten
+anlV.werbungskostenSumme       S4 Z83   ↑ EUR                          ← Summe der Werbungskosten (Summe der Zeilen 35, 38, 41, 45, 48, 51, 54, 55, 56, 60, 63, 66…
+anlV.ueberschuss               S4 Z85   ↑ EUR                          ← Überschuss (Einnahmen laut Zeile 32 abzüglich Werbungskosten laut Zeile 83) – negativen B…
+anlV.kz20                      S4 Z86   ↑ EUR                          ← 20 Zurechnung des Betrags aus Zeile 85
+anlKind.name                   S1 Z1    ↑ Name                         ← 
+anlKind.vornameEltern          S1 Z2    ↑ Vorname                      ← 
+anlKind.steuernummer           S1 Z3    ↑                              ← Steuernummer
+anlKind.lfdNr                  S1 Z3    ↑                              ← lfd. Nr. der Anlage Steuernummer
+anlKind.idnr                   S1 Z4    ↑                              ← 01 Identifikationsnummer
+anlKind.vorname                S1 Z5    ↑ Vorname                      ← 
+anlKind.nachname               S1 Z5    ↑ ggf. abweichender Familienn… ← Vorname
+anlKind.geburtsdatum           S1 Z6    ↑ Geburtsdatum                 ← 16
+anlKind.kindergeld             S1 Z6    ↑ EUR                          ← Geburtsdatum Anspruch auf Kindergeld oder ver- 16 15 gleichbare Leistungen für 2025
+anlKind.familienkasse          S1 Z7    ↑ Für die Kindergeldfestsetzu… ← 
+anlKind.inlandVon              S1 Z8    ↑ vom                          ← 00
+anlKind.inlandBis              S1 Z8    ↑ bis                          ← vom 00
+anlKind.kz02                   S1 Z10   ↑                              ← Kindschaftsverhältnis zur steuerpflichtigen Person / 02 Ehemann / Person A
+anlKind.kz03                   S1 Z10   ↑                              ← Kindschaftsverhältnis zur 1 = leibliches Kind / Adoptivkind steuerpflichtigen Person / Ki…
+anlKind.aeName                 S1 Z11   ↑ Name, Vorname                ← 
+anlKind.aeGeburtsdatum         S1 Z11   ↑ Geburtsdatum dieser Person   ← Name, Vorname
+anlKind.aeVon                  S1 Z11   ↑ (Zeitraum vom –              ← Name, Vorname Geburtsdatum dieser Person 04
+anlKind.aeBis                  S1 Z11   ↑ Stiefkind                    ← Dauer des Name, Vorname Geburtsdatum dieser Person (Zeitraum vom – bis) 04
+anlKind.aeAdresse              S1 Z12   ↑ Letzte bekannte Adresse      ← 
+anlKind.aeArt                  S1 Z12   ↑ Art                          ← Letzte bekannte Adresse
+anlKind.kz06                   S1 Z14   ↑ vom bis                      ← Der andere Elternteil lebte im Ausland im Zeitraum 06 Das Kindschaftsverhältnis zum ander…
+anlKind.kz05                   S1 Z15   ↑                              ← Das Kindschaftsverhältnis zum anderen Elternteil ist durch dessen Tod erloschen am Der Wo…
+anlKind.kz42Von                S3 Z45   ↑ vom                          ← 42 Das Kind war mit mir in der gemeinsamen Wohnung gemeldet im Zeitraum
+anlKind.kz42Bis                S3 Z45   ↑ bis                          ← vom 42 Das Kind war mit mir in der gemeinsamen Wohnung gemeldet im Zeitraum
+anlKind.kz44Von                S3 Z46   ↑ vom                          ← Das Kind war mit mir in der gemeinsamen Wohnung gemeldet im Zeitraum 44 Für das Kind wurd…
+anlKind.kz44Bis                S3 Z46   ↑ bis                          ← Das Kind war mit mir in der gemeinsamen Wohnung gemeldet im Zeitraum 44 Für das Kind wurd…
+anlKind.kz46                   S3 Z47   ↑                              ← mehrere volljährige Person(en) gemeldet, für die (zeitwei- se) kein Anspruch auf Kinderge…
+anlKind.kz49                   S3 Z48   ↑                              ← einer weiteren volljährigen Person, für die (zeitweise) kein Anspruch auf Kindergeld oder…
+anlSo.name                     S1 Z1    ↑ Name                         ← 
+anlSo.vorname                  S1 Z2    ↑ Vorname                      ← 
+anlSo.steuernummer             S1 Z3    ↑                              ← Steuernummer
+anlSo.spenden                  S1 Z5    ↑ EUR                          ← – zur Förderung steuerbegünstigter Zwecke an Emp- 123 fänger im Inland
+anlAv.name                     S1 Z1    ↑ Name                         ← 
+anlAv.vorname                  S1 Z2    ↑ Vorname                      ← 
+anlAv.steuernummer             S1 Z3    ↑                              ← Steuernummer
+anlAv.unmittelbar              S1 Z4    ↑ Steuerpflichtige             ← 106 Ich bin für das Jahr 2025 unmittelbar begünstigt.
+anlAv.kz100                    S1 Z5    ↑ EUR                          ← Beitragspflichtige Einnahmen i. S. d. inländischen gesetzlichen 100 Rentenversicherung 20…
+anlAv.mittelbar                S1 Z14   ↑                              ← Rentenversicherung 2024 106 Ich bin für das Jahr 2025 mittelbar begünstigt.
+anlVor.name                    S1 Z1    ↑ Name                         ← 
+anlVor.vorname                 S1 Z2    ↑ Vorname                      ← 
+anlVor.steuernummer            S1 Z3    ↑                              ← Steuernummer
