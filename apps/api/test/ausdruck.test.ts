@@ -305,6 +305,47 @@ describe('ausdruckWerte', () => {
     })
   })
 
+  describe('Entlastungsbetrag für Alleinerziehende (Anlage Kind Zeilen 45–48)', () => {
+    const KIND = {
+      vorname: 'Lina',
+      nachname: 'Beispiel',
+      geburtsdatum: '2016-03-10',
+      idnr: '11111111111',
+      kindschaftsverhaeltnis: '1',
+      familienkasse: 'Familienkasse Sachsen',
+      wohnsitzInlandGanzjaehrig: true,
+      andererElternteil: 'Unbekannt',
+      gemeldetBeiMirGanzjaehrig: true,
+      kindergeldAnMichGanzjaehrig: true,
+    }
+    const ALLEIN: AusdruckFakten = { ...FAKTEN, alleinerziehend: { weiterePerson: 'Nein', haushaltsgemeinschaft: 'Nein' } }
+    const ae = (fakten: AusdruckFakten) => {
+      const werte = ausdruckWerte(fakten).instanzen!['anlage-kind']![0]!
+      return Object.fromEntries(Object.entries(werte).filter(([id]) => /anlKind\.kz4[2469]/.test(id)))
+    }
+
+    it('claims it for the year when the child lived and got Kindergeld with a single parent alone', () => {
+      expect(ae({ ...ALLEIN, kinder: [KIND] })).toEqual({
+        'anlKind.kz42Von': '01.01.2025',
+        'anlKind.kz42Bis': '31.12.2025',
+        'anlKind.kz44Von': '01.01.2025',
+        'anlKind.kz44Bis': '31.12.2025',
+        'anlKind.kz46': '2',
+        'anlKind.kz49': '2',
+      })
+      expect(ae({ ...ALLEIN, kinder: [{ ...KIND, geburtsdatum: '2025-05-02' }] })['anlKind.kz42Von']).toBe('02.05.2025')
+    })
+
+    it('claims nothing when a condition fails or is unanswered — never a guessed period', () => {
+      expect(ae({ ...ALLEIN, alleinerziehend: { weiterePerson: 'Ja', haushaltsgemeinschaft: 'Nein' }, kinder: [KIND] })).toEqual({})
+      expect(ae({ ...ALLEIN, alleinerziehend: { weiterePerson: 'Nein', haushaltsgemeinschaft: null }, kinder: [KIND] })).toEqual({})
+      expect(ae({ ...FAKTEN, kinder: [KIND] })).toEqual({})
+      expect(ae({ ...ALLEIN, kinder: [{ ...KIND, kindergeldAnMichGanzjaehrig: false }] })).toEqual({})
+      const verheiratet = { ...ALLEIN, stammdaten: { ...FAKTEN.stammdaten!, familienstand: 'verheiratet' }, kopplung: { veranlagungsart: 'einzel' as const } }
+      expect(ae({ ...verheiratet, kinder: [KIND] })).toEqual({})
+    })
+  })
+
   it('creates multi-instance values for children and rental properties', () => {
     const res = ausdruckWerte({
       ...FAKTEN,

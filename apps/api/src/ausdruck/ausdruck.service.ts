@@ -173,6 +173,8 @@ export class AusdruckService {
       andererElternteilAdresse: k.andererElternteilAdresse,
       andererElternteilArt: k.andererElternteilArt,
       andererElternteilVerstorbenAm: k.andererElternteilVerstorbenAm,
+      gemeldetBeiMirGanzjaehrig: k.gemeldetBeiMirGanzjaehrig,
+      kindergeldAnMichGanzjaehrig: k.kindergeldAnMichGanzjaehrig,
     }))
 
     return ausdruckWerte({
@@ -199,6 +201,10 @@ export class AusdruckService {
       kinder: kinderFakten.length > 0 ? kinderFakten : null,
       kopplung: kopplung ? { veranlagungsart: kopplung.veranlagungsart, personB: personBFakten } : null,
       sonderausgaben: answers['spenden-betrag'] ? { spenden: answers['spenden-betrag'] } : null,
+      alleinerziehend: {
+        weiterePerson: answers['ae-weitere-person'] ?? null,
+        haushaltsgemeinschaft: answers['ae-haushaltsgemeinschaft'] ?? null,
+      },
       riester:
         answers['riester'] === 'Ja'
           ? { art: answers['riester-art'] ?? null, einnahmenVorjahr: answers['riester-einnahmen-vorjahr'] ?? null }

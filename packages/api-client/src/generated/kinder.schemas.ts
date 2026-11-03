@@ -83,6 +83,10 @@ export interface KindResponseDto {
   andererElternteilArt: KindResponseDtoAndererElternteilArt;
   /** @nullable */
   andererElternteilVerstorbenAm: string | null;
+  /** @nullable */
+  gemeldetBeiMirGanzjaehrig: boolean | null;
+  /** @nullable */
+  kindergeldAnMichGanzjaehrig: boolean | null;
 }
 
 export interface KinderResponseDto {
@@ -176,6 +180,16 @@ export interface CreateKindDto {
   andererElternteilArt?: CreateKindDtoAndererElternteilArt;
   /** @nullable */
   andererElternteilVerstorbenAm?: string | null;
+  /**
+     * Zeile 45: the child was registered with the filer all year.
+     * @nullable
+     */
+  gemeldetBeiMirGanzjaehrig?: boolean | null;
+  /**
+     * Zeile 46: the Kindergeld was paid to the filer all year.
+     * @nullable
+     */
+  kindergeldAnMichGanzjaehrig?: boolean | null;
   vorname: string;
   nachname: string;
   /** ISO date YYYY-MM-DD */
@@ -268,6 +282,16 @@ export interface UpdateKindDto {
   andererElternteilArt?: UpdateKindDtoAndererElternteilArt;
   /** @nullable */
   andererElternteilVerstorbenAm?: string | null;
+  /**
+     * Zeile 45: the child was registered with the filer all year.
+     * @nullable
+     */
+  gemeldetBeiMirGanzjaehrig?: boolean | null;
+  /**
+     * Zeile 46: the Kindergeld was paid to the filer all year.
+     * @nullable
+     */
+  kindergeldAnMichGanzjaehrig?: boolean | null;
   vorname?: string;
   nachname?: string;
   geburtsdatum?: string;

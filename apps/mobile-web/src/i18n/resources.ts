@@ -898,6 +898,8 @@ export const appResources = {
           riester: 'Hast du einen Riester-Vertrag?',
           'riester-betrag': 'Riester-Beitrag',
           'riester-art': 'Wie bist du begünstigt?',
+          'ae-weitere-person': 'War außer dir eine weitere volljährige Person in eurer Wohnung gemeldet, für die es kein Kindergeld gab?',
+          'ae-haushaltsgemeinschaft': 'Hast du mit einer weiteren volljährigen Person zusammen gewirtschaftet (z. B. Partner, Mitbewohner), für die es kein Kindergeld gab?',
           'riester-einnahmen-vorjahr': 'Beitragspflichtige Einnahmen im Vorjahr (steht in deiner Renteninformation bzw. der Meldebescheinigung zur Sozialversicherung)',
         },
         options: {
@@ -2008,6 +2010,8 @@ export const appResources = {
           riester: 'Do you have a Riester contract?',
           'riester-betrag': 'Riester contribution',
           'riester-art': 'How are you eligible?',
+          'ae-weitere-person': 'Was another adult registered at your home for whom there was no child benefit?',
+          'ae-haushaltsgemeinschaft': 'Did you share a household with another adult (e.g. partner, flatmate) for whom there was no child benefit?',
           'riester-einnahmen-vorjahr': 'Contributory earnings in the previous year (see your pension statement or social-insurance notice)',
         },
         options: {

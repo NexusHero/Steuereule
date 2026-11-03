@@ -142,4 +142,25 @@ describe('KinderScreen', () => {
       )
     })
   })
+
+  it('asks the per-child Entlastungsbetrag facts and leads to the household questions', async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined)
+    const onAlleinerziehendFragen = vi.fn()
+    renderKinder({ onSaveKind: onSave, onAlleinerziehendFragen })
+
+    fireEvent.click(screen.getByText('Fragen zum Entlastungsbetrag beantworten'))
+    expect(onAlleinerziehendFragen).toHaveBeenCalled()
+
+    fireEvent.click(screen.getByLabelText('Kind Lina bearbeiten'))
+    fireEvent.click(screen.getByTestId('kind-gemeldet-ja'))
+    fireEvent.click(screen.getByTestId('kind-kindergeld-an-mich-ja'))
+    fireEvent.click(screen.getByTestId('kind-speichern'))
+
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalledWith(
+        'kind-1',
+        expect.objectContaining({ gemeldetBeiMirGanzjaehrig: true, kindergeldAnMichGanzjaehrig: true }),
+      )
+    })
+  })
 })

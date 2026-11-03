@@ -33,6 +33,8 @@ function toRecord(row: {
     andererElternteilAdresse: row.andererElternteilAdresse,
     andererElternteilArt: row.andererElternteilArt,
     andererElternteilVerstorbenAm: row.andererElternteilVerstorbenAm,
+    gemeldetBeiMirGanzjaehrig: row.gemeldetBeiMirGanzjaehrig,
+    kindergeldAnMichGanzjaehrig: row.kindergeldAnMichGanzjaehrig,
   }
 }
 
@@ -81,6 +83,8 @@ export class PrismaKindRepository implements KindRepository {
           andererElternteilAdresse: data.andererElternteilAdresse ?? null,
           andererElternteilArt: data.andererElternteilArt ?? null,
           andererElternteilVerstorbenAm: data.andererElternteilVerstorbenAm ?? null,
+          gemeldetBeiMirGanzjaehrig: data.gemeldetBeiMirGanzjaehrig ?? null,
+          kindergeldAnMichGanzjaehrig: data.kindergeldAnMichGanzjaehrig ?? null,
         },
       }),
       this.prisma.taxDataAccessLog.create({
@@ -121,6 +125,8 @@ export class PrismaKindRepository implements KindRepository {
     if (data.andererElternteilAdresse !== undefined) updateData.andererElternteilAdresse = data.andererElternteilAdresse
     if (data.andererElternteilArt !== undefined) updateData.andererElternteilArt = data.andererElternteilArt
     if (data.andererElternteilVerstorbenAm !== undefined) updateData.andererElternteilVerstorbenAm = data.andererElternteilVerstorbenAm
+    if (data.gemeldetBeiMirGanzjaehrig !== undefined) updateData.gemeldetBeiMirGanzjaehrig = data.gemeldetBeiMirGanzjaehrig
+    if (data.kindergeldAnMichGanzjaehrig !== undefined) updateData.kindergeldAnMichGanzjaehrig = data.kindergeldAnMichGanzjaehrig
 
     const [row] = await this.prisma.$transaction([
       this.prisma.kind.update({ where: { id }, data: updateData }),

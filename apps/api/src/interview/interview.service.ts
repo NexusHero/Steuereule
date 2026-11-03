@@ -65,7 +65,7 @@ function toAnswers(rows: InterviewAnswerRecord[]): Answers {
  * test, never a silent default. The Angestellte entries (lebenslagen, sonderausgaben)
  * joined the allowlist with ticket 08's merge — Segment 2 remains the only closed entry.
  */
-const ADMITTED_ENTRY_IDS: readonly EntryId[] = ['minimal-gate', 'lebenslagen', 'sonderausgaben', 'segment-ch']
+const ADMITTED_ENTRY_IDS: readonly EntryId[] = ['minimal-gate', 'lebenslagen', 'sonderausgaben', 'segment-ch', 'alleinerziehend']
 
 /**
  * ADR-0045 (value-first funnel) — the entries a GUEST may read/write. Only the Minimal-Gate:

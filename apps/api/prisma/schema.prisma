@@ -815,6 +815,9 @@ model Kind {
   andererElternteilAdresse       String?  /// @encrypted?mode=strict
   andererElternteilArt           String?
   andererElternteilVerstorbenAm  String?  /// @encrypted?mode=strict
+  /// Entlastungsbetrag für Alleinerziehende (Anlage Kind Zeilen 45/46), whole year only.
+  gemeldetBeiMirGanzjaehrig      Boolean?
+  kindergeldAnMichGanzjaehrig    Boolean?
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 

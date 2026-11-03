@@ -10,6 +10,8 @@ export interface KindAngaben {
   andererElternteilAdresse: string | null
   andererElternteilArt: string | null
   andererElternteilVerstorbenAm: string | null
+  gemeldetBeiMirGanzjaehrig: boolean | null
+  kindergeldAnMichGanzjaehrig: boolean | null
 }
 
 export interface KindRecord extends KindAngaben {

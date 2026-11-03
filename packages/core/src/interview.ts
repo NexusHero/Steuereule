@@ -148,6 +148,12 @@ export type SonderausgabeQuestionId =
   | 'riester-einnahmen-vorjahr'
 
 /**
+ * Anlage Kind Zeilen 47/48 — the household facts behind the Entlastungsbetrag für
+ * Alleinerziehende (§ 24b EStG). They hold for the whole year, not per child.
+ */
+export type AlleinerziehendQuestionId = 'ae-weitere-person' | 'ae-haushaltsgemeinschaft'
+
+/**
  * The Grenzgänger-CH entry's two questions (ADR-013/036). CHF amounts are entered via the
  * Lohnausweis mask (grenzgaenger.ts), NOT the interview — these two capture the Wohnsitz and
  * the 45-Tage-Regel's input (Nichtrückkehrtage). No gate: the Grenzgänger-Status is a DERIVED
@@ -184,6 +190,7 @@ export type EntryQuestionId =
   | LebenslageQuestionId
   | SonderausgabeQuestionId
   | SegmentChQuestionId
+  | AlleinerziehendQuestionId
 export type EntryGateId = MinimalGateGateId | SegmentTwoGateId
 
 /** Any step declared in ANY entry — the generic engine's own domain (D1/D3). */
@@ -458,6 +465,8 @@ export const QUESTIONS: Readonly<Record<EntryStepId, QuestionDeclaration>> = {
     form: { kind: 'enum', values: RIESTER_ART_VALUES },
     followUps: { Unmittelbar: ['riester-einnahmen-vorjahr'], Mittelbar: [] },
   },
+  'ae-weitere-person': { id: 'ae-weitere-person', kind: 'question', form: { kind: 'enum', values: JA_NEIN_VALUES } },
+  'ae-haushaltsgemeinschaft': { id: 'ae-haushaltsgemeinschaft', kind: 'question', form: { kind: 'enum', values: JA_NEIN_VALUES } },
   'riester-einnahmen-vorjahr': { id: 'riester-einnahmen-vorjahr', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
 
   // ---- Grenzgänger-CH (segment-ch, ADR-013/036) ----------------------------------------
@@ -469,7 +478,7 @@ export const QUESTIONS: Readonly<Record<EntryStepId, QuestionDeclaration>> = {
 }
 
 /** D1 — the entries that exist today. `EntryId` grows as later Lebenslagen arrive (ADR-0031 §3). */
-export type EntryId = 'minimal-gate' | 'segment-2' | 'lebenslagen' | 'sonderausgaben' | 'segment-ch'
+export type EntryId = 'minimal-gate' | 'segment-2' | 'lebenslagen' | 'sonderausgaben' | 'segment-ch' | 'alleinerziehend'
 
 export interface CatalogueEntry {
   readonly id: EntryId
@@ -497,6 +506,7 @@ export const ENTRIES: Readonly<Record<EntryId, CatalogueEntry>> = {
     steps: ['spenden', 'kv-pv', 'riester'],
   },
   'segment-ch': { id: 'segment-ch', steps: ['ch-wohnsitz', 'ch-nichtrueckkehrtage'] },
+  alleinerziehend: { id: 'alleinerziehend', steps: ['ae-weitere-person', 'ae-haushaltsgemeinschaft'] },
 }
 
 function targetId(target: FollowUpTarget): EntryStepId {

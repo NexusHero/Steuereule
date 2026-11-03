@@ -224,7 +224,8 @@
                 "segment-2",
                 "lebenslagen",
                 "sonderausgaben",
-                "segment-ch"
+                "segment-ch",
+                "alleinerziehend"
               ],
               "type": "string"
             }
@@ -5251,6 +5252,14 @@
           "andererElternteilVerstorbenAm": {
             "type": "string",
             "nullable": true
+          },
+          "gemeldetBeiMirGanzjaehrig": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "kindergeldAnMichGanzjaehrig": {
+            "type": "boolean",
+            "nullable": true
           }
         },
         "required": [
@@ -5268,7 +5277,9 @@
           "andererElternteilGeburtsdatum",
           "andererElternteilAdresse",
           "andererElternteilArt",
-          "andererElternteilVerstorbenAm"
+          "andererElternteilVerstorbenAm",
+          "gemeldetBeiMirGanzjaehrig",
+          "kindergeldAnMichGanzjaehrig"
         ]
       },
       "KinderResponseDto": {
@@ -5372,6 +5383,16 @@
             "nullable": true,
             "example": "2025-06-30"
           },
+          "gemeldetBeiMirGanzjaehrig": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Zeile 45: the child was registered with the filer all year."
+          },
+          "kindergeldAnMichGanzjaehrig": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Zeile 46: the Kindergeld was paid to the filer all year."
+          },
           "vorname": {
             "type": "string",
             "example": "Lina"
@@ -5471,6 +5492,16 @@
             "type": "string",
             "nullable": true,
             "example": "2025-06-30"
+          },
+          "gemeldetBeiMirGanzjaehrig": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Zeile 45: the child was registered with the filer all year."
+          },
+          "kindergeldAnMichGanzjaehrig": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Zeile 46: the Kindergeld was paid to the filer all year."
           },
           "vorname": {
             "type": "string",

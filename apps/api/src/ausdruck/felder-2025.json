@@ -1144,6 +1144,78 @@
       }
     },
     {
+      "id": "anlKind.kz42Von",
+      "formular": "anlage-kind",
+      "seite": 3,
+      "art": "text",
+      "kasten": {
+        "x": 434,
+        "y": 563.9,
+        "breite": 55.4,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlKind.kz42Bis",
+      "formular": "anlage-kind",
+      "seite": 3,
+      "art": "text",
+      "kasten": {
+        "x": 503.6,
+        "y": 563.9,
+        "breite": 54.1,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlKind.kz44Von",
+      "formular": "anlage-kind",
+      "seite": 3,
+      "art": "text",
+      "kasten": {
+        "x": 434,
+        "y": 543.8,
+        "breite": 55.4,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlKind.kz44Bis",
+      "formular": "anlage-kind",
+      "seite": 3,
+      "art": "text",
+      "kasten": {
+        "x": 503.6,
+        "y": 543.6,
+        "breite": 54.1,
+        "hoehe": 16
+      }
+    },
+    {
+      "id": "anlKind.kz46",
+      "formular": "anlage-kind",
+      "seite": 3,
+      "art": "text",
+      "kasten": {
+        "x": 299.8,
+        "y": 506.2,
+        "breite": 12.1,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlKind.kz49",
+      "formular": "anlage-kind",
+      "seite": 3,
+      "art": "text",
+      "kasten": {
+        "x": 299.8,
+        "y": 468.7,
+        "breite": 12.1,
+        "hoehe": 15.9
+      }
+    },
+    {
       "id": "anlSo.name",
       "formular": "anlage-sonderausgaben",
       "seite": 1,

@@ -103,6 +103,12 @@
     { "id": "anlKind.aeArt", "formular": "anlage-kind", "seite": 1, "anker": "1", "zeile": 12, "lage": "links", "art": "text" },
     { "id": "anlKind.kz06", "formular": "anlage-kind", "seite": 1, "anker": "06", "zeile": 14, "lage": "rechts", "art": "text" },
     { "id": "anlKind.kz05", "formular": "anlage-kind", "seite": 1, "anker": "05", "zeile": 15, "lage": "rechts", "art": "text" },
+    { "id": "anlKind.kz42Von", "formular": "anlage-kind", "seite": 3, "anker": "42", "zeile": 45, "lage": "rechts", "art": "text" },
+    { "id": "anlKind.kz42Bis", "formular": "anlage-kind", "seite": 3, "anker": "42", "zeile": 45, "lage": "rechts", "nr": 2, "art": "text" },
+    { "id": "anlKind.kz44Von", "formular": "anlage-kind", "seite": 3, "anker": "44", "zeile": 46, "lage": "rechts", "art": "text" },
+    { "id": "anlKind.kz44Bis", "formular": "anlage-kind", "seite": 3, "anker": "44", "zeile": 46, "lage": "rechts", "nr": 2, "art": "text" },
+    { "id": "anlKind.kz46", "formular": "anlage-kind", "seite": 3, "anker": "46", "zeile": 47, "lage": "rechts", "art": "text" },
+    { "id": "anlKind.kz49", "formular": "anlage-kind", "seite": 3, "anker": "49", "zeile": 48, "lage": "rechts", "art": "text" },
 
     { "id": "anlSo.name", "formular": "anlage-sonderausgaben", "seite": 1, "anker": "Name", "zeile": 1, "lage": "unter", "art": "text" },
     { "id": "anlSo.vorname", "formular": "anlage-sonderausgaben", "seite": 1, "anker": "Vorname", "zeile": 2, "lage": "unter", "art": "text" },

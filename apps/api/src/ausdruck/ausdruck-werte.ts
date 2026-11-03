@@ -37,6 +37,14 @@ export interface KindFakten {
   andererElternteilAdresse?: string | null
   andererElternteilArt?: string | null
   andererElternteilVerstorbenAm?: string | null
+  gemeldetBeiMirGanzjaehrig?: boolean | null
+  kindergeldAnMichGanzjaehrig?: boolean | null
+}
+
+/** Anlage Kind Zeilen 47/48 — answered once per year in the interview. */
+export interface AlleinerziehendFakten {
+  weiterePerson: string | null
+  haushaltsgemeinschaft: string | null
 }
 
 /** Zeilen 11–15 are for a parent outside this return — anyone but a joint return of both parents. */
@@ -137,6 +145,7 @@ export interface AusdruckFakten {
   kinder?: readonly KindFakten[] | null
   sonderausgaben?: SonderausgabenFakten | null
   riester?: RiesterFakten | null
+  alleinerziehend?: AlleinerziehendFakten | null
 }
 
 /** Anlage R line per Rentenart. Gesetzliche and Witwen-/Waisenrente go through the
@@ -369,6 +378,13 @@ export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
   // Anlage Kind
   if (fakten.kinder && fakten.kinder.length > 0) {
     const zusammen = fakten.kopplung?.veranlagungsart === 'zusammen'
+    // § 24b EStG: only a filer living alone with the child. The printout claims it for whole
+    // years only; a part-year or a 'Ja' in Zeile 47/48 needs periods it does not ask yet.
+    const alleinstehend =
+      !zusammen &&
+      sd?.familienstand !== 'verheiratet' &&
+      fakten.alleinerziehend?.weiterePerson === 'Nein' &&
+      fakten.alleinerziehend.haushaltsgemeinschaft === 'Nein'
     instanzen['anlage-kind'] = fakten.kinder.map((k, i) => {
       const kWerte: Record<string, string | true> = {}
       if (profil.lastName) kWerte['anlKind.name'] = profil.lastName
@@ -389,6 +405,14 @@ export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
       }
       if (k.kindschaftsverhaeltnis) kWerte['anlKind.kz02'] = k.kindschaftsverhaeltnis
       if (zusammen && k.kindschaftsverhaeltnisB) kWerte['anlKind.kz03'] = k.kindschaftsverhaeltnisB
+      if (alleinstehend && k.gemeldetBeiMirGanzjaehrig && k.kindergeldAnMichGanzjaehrig) {
+        kWerte['anlKind.kz42Von'] = deutschesDatum(beginn)
+        kWerte['anlKind.kz42Bis'] = deutschesDatum(ende)
+        kWerte['anlKind.kz44Von'] = deutschesDatum(beginn)
+        kWerte['anlKind.kz44Bis'] = deutschesDatum(ende)
+        kWerte['anlKind.kz46'] = '2'
+        kWerte['anlKind.kz49'] = '2'
+      }
       if (brauchtAnderenElternteil(k, zusammen)) {
         if (k.andererElternteil === 'Unbekannt') kWerte['anlKind.kz05'] = '1'
         if (k.andererElternteil === 'Inland' || k.andererElternteil === 'Verstorben') {

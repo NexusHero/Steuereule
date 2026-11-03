@@ -34,6 +34,8 @@ function toDto(r: KindRecord): KindResponseDto {
     andererElternteilAdresse: r.andererElternteilAdresse,
     andererElternteilArt: r.andererElternteilArt,
     andererElternteilVerstorbenAm: r.andererElternteilVerstorbenAm,
+    gemeldetBeiMirGanzjaehrig: r.gemeldetBeiMirGanzjaehrig,
+    kindergeldAnMichGanzjaehrig: r.kindergeldAnMichGanzjaehrig,
   }
 }
 

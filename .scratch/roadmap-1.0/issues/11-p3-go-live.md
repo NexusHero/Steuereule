@@ -32,9 +32,12 @@ sobald das Zertifikat (Ticket 07) vorliegt; bis dahin Beta kostenlos (ADR-017).
 - [x] Anlage Kind, anderer Elternteil außerhalb dieser Erklärung (Alleinerziehende, Einzelveranlagung,
       Stiefkind): Z. 11/12 mit Dauer des Kindschaftsverhältnisses, Z. 14 (verstorben, Kz 06),
       Z. 15 (nicht zu ermitteln, Kz 05)
+- [x] Entlastungsbetrag für Alleinerziehende (§ 24b EStG, Anlage Kind Z. 45–48): ganzjährig gemeldet
+      und Kindergeld ganzjährig erhalten (pro Kind), keine weitere volljährige Person (Interview-Eintrag
+      „alleinerziehend“) → Kz 42/44 vom–bis, Kz 46/49 = 2. Teilzeiträume und „Ja“ in Z. 47/48 werden
+      nicht beantragt (Hinweis im Kinder-Screen)
 - [ ] Anlage Kind, noch ehrlich gesperrt: anderer Elternteil im Ausland (Z. 13), volljährige Kinder
-      (Z. 16 ff.), Wohnsitz des Kindes im Ausland (Z. 9); Kinderbetreuungskosten und der
-      Entlastungsbetrag für Alleinerziehende (§ 24b EStG) werden nicht erfasst
+      (Z. 16 ff.), Wohnsitz des Kindes im Ausland (Z. 9); Kinderbetreuungskosten werden nicht erfasst
 - [x] Verheiratete: Veranlagungsart + Person B erfassen, dann Zeilen 19–24 ausdrucken
 - [ ] Klärung durch Steuerberater/Finanzamt: befülltes Portal-PDF („NET") vs. nichtamtlicher
       Vordruck (Graurasterung, Herstellerangabe)

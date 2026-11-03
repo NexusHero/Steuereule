@@ -56,6 +56,16 @@ class KindAngabenDto {
   @IsOptional()
   @Matches(/^\d{4}-\d{2}-\d{2}$/)
   andererElternteilVerstorbenAm?: string | null
+
+  @ApiPropertyOptional({ type: Boolean, nullable: true, description: 'Zeile 45: the child was registered with the filer all year.' })
+  @IsOptional()
+  @IsBoolean()
+  gemeldetBeiMirGanzjaehrig?: boolean | null
+
+  @ApiPropertyOptional({ type: Boolean, nullable: true, description: 'Zeile 46: the Kindergeld was paid to the filer all year.' })
+  @IsOptional()
+  @IsBoolean()
+  kindergeldAnMichGanzjaehrig?: boolean | null
 }
 
 export class CreateKindDto extends KindAngabenDto {
@@ -173,6 +183,12 @@ export class KindResponseDto {
 
   @ApiProperty({ type: String, nullable: true })
   andererElternteilVerstorbenAm!: string | null
+
+  @ApiProperty({ type: Boolean, nullable: true })
+  gemeldetBeiMirGanzjaehrig!: boolean | null
+
+  @ApiProperty({ type: Boolean, nullable: true })
+  kindergeldAnMichGanzjaehrig!: boolean | null
 }
 
 export class KinderResponseDto {

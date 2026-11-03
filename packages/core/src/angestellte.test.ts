@@ -193,6 +193,14 @@ describe('Lebenslagen/Sonderausgaben catalogue entries — one walker, one regis
     expect(isReachableFor(entry, { ...vorher, 'riester-art': 'Mittelbar' }, 'riester-einnahmen-vorjahr')).toBe(false)
   })
 
+  it('the Alleinerziehende entry asks the two household questions of Anlage Kind Zeilen 47/48', () => {
+    const entry = ENTRIES.alleinerziehend
+    expect(nextStepFor(entry, {})).toEqual({ kind: 'question', id: 'ae-weitere-person' })
+    expect(nextStepFor(entry, { 'ae-weitere-person': 'Nein' })).toEqual({ kind: 'question', id: 'ae-haushaltsgemeinschaft' })
+    expect(nextStepFor(entry, { 'ae-weitere-person': 'Nein', 'ae-haushaltsgemeinschaft': 'Nein' })).toEqual({ kind: 'done' })
+    expect(entryForStep('ae-haushaltsgemeinschaft')).toBe('alleinerziehend')
+  })
+
   it('nebenjob only opens the Brutto follow-up for Midijob/Nebenjob, not Minijob/Nein', () => {
     const entry = ENTRIES.lebenslagen
     const prefix = { dhf: 'Nein', umzug: 'Nein', abfindung: 'Nein', lohnersatz: 'Nein' } as Answers

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { KatalogScreen } from '../katalog/KatalogScreen'
 import { Pressable, ScrollView, Text, View, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
@@ -44,6 +45,8 @@ export interface KindItem {
   andererElternteilAdresse?: string | null
   andererElternteilArt?: '1' | '2' | null
   andererElternteilVerstorbenAm?: string | null
+  gemeldetBeiMirGanzjaehrig?: boolean | null
+  kindergeldAnMichGanzjaehrig?: boolean | null
 }
 
 /** What the form writes: the identity plus the Anlage-Kind facts (Zeilen 7, 8, 10). */
@@ -63,6 +66,8 @@ export interface KindEingabe {
   andererElternteilAdresse: string | null
   andererElternteilArt: '1' | '2' | null
   andererElternteilVerstorbenAm: string | null
+  gemeldetBeiMirGanzjaehrig: boolean | null
+  kindergeldAnMichGanzjaehrig: boolean | null
 }
 
 const ANDERER_ELTERNTEIL_LABEL: Record<AndererElternteilStatus, string> = {
@@ -90,6 +95,8 @@ export interface KinderScreenProps {
   readonly onAddKind?: ((kind: KindEingabe) => Promise<void> | void) | undefined
   readonly onSaveKind?: ((id: string, kind: KindEingabe) => Promise<void> | void) | undefined
   readonly onDeleteKind?: ((id: string) => Promise<void> | void) | undefined
+  /** Opens the two household questions behind the Entlastungsbetrag (Anlage Kind Zeilen 47/48). */
+  readonly onAlleinerziehendFragen?: (() => void) | undefined
 }
 
 export function KinderScreen(props: KinderScreenProps) {
@@ -107,6 +114,7 @@ function ConnectedKinderScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TA
   const createKind = useKinderControllerCreate()
   const updateKind = useKinderControllerUpdate()
   const deleteKind = useKinderControllerDelete()
+  const [haushaltsfragen, setHaushaltsfragen] = useState(false)
 
   if (query.isPending) {
     return <LoadingState bp={bp} label={tr('kinder.loading', 'Kinder werden geladen …')} />
@@ -127,6 +135,17 @@ function ConnectedKinderScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TA
     await queryClient.invalidateQueries({ queryKey: getKinderControllerListQueryKey(taxYear) })
   }
 
+  if (haushaltsfragen) {
+    return (
+      <KatalogScreen
+        entry="alleinerziehend"
+        taxYear={taxYear}
+        onDone={() => setHaushaltsfragen(false)}
+        onBack={() => setHaushaltsfragen(false)}
+      />
+    )
+  }
+
   return (
     <KinderScreenView
       onDone={onDone}
@@ -145,6 +164,7 @@ function ConnectedKinderScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TA
         await deleteKind.mutateAsync({ jahr: taxYear, id })
         await invalidate()
       }}
+      onAlleinerziehendFragen={() => setHaushaltsfragen(true)}
     />
   )
 }
@@ -157,6 +177,7 @@ function KinderScreenView({
   onAddKind,
   onSaveKind,
   onDeleteKind,
+  onAlleinerziehendFragen,
 }: KinderScreenProps & { readonly initialKinder: readonly KindItem[] }) {
   const bp = useBreakpoint()
   const t = useTheme()
@@ -179,6 +200,8 @@ function KinderScreenView({
   const [aeAdresse, setAeAdresse] = useState('')
   const [aeArt, setAeArt] = useState<'1' | '2' | null>(null)
   const [aeVerstorbenAm, setAeVerstorbenAm] = useState('')
+  const [gemeldet, setGemeldet] = useState<boolean | null>(null)
+  const [kindergeldAnMich, setKindergeldAnMich] = useState<boolean | null>(null)
   const [bearbeitet, setBearbeitet] = useState<string | null>(null)
   const [formOpen, setFormOpen] = useState(initialKinder.length === 0)
 
@@ -210,6 +233,8 @@ function KinderScreenView({
     setAeAdresse(k?.andererElternteilAdresse ?? '')
     setAeArt(k?.andererElternteilArt ?? null)
     setAeVerstorbenAm(k?.andererElternteilVerstorbenAm ?? '')
+    setGemeldet(k?.gemeldetBeiMirGanzjaehrig ?? null)
+    setKindergeldAnMich(k?.kindergeldAnMichGanzjaehrig ?? null)
     setBearbeitet(k?.id ?? null)
   }
 
@@ -234,6 +259,8 @@ function KinderScreenView({
       andererElternteilAdresse: aeBekannt ? aeAdresse.trim() || null : null,
       andererElternteilArt: aeBekannt ? aeArt : null,
       andererElternteilVerstorbenAm: ae === 'Verstorben' ? aeVerstorbenAm.trim() || null : null,
+      gemeldetBeiMirGanzjaehrig: gemeldet,
+      kindergeldAnMichGanzjaehrig: kindergeldAnMich,
     }
     if (bearbeitet) {
       if (onSaveKind) await onSaveKind(bearbeitet, payload)
@@ -437,6 +464,33 @@ function KinderScreenView({
               ) : null}
             </>
           ) : null}
+          <Text style={styles.formTitle}>{tr('kinder.entlastungTitel', 'Entlastungsbetrag für Alleinerziehende')}</Text>
+          <Text style={styles.kindDetail}>
+            {tr(
+              'kinder.entlastungHilfe',
+              'Nur wenn du allein mit dem Kind lebst. Der Ausdruck beantragt ihn für das ganze Jahr; Teilzeiträume kann er noch nicht.',
+            )}
+          </Text>
+          <Feld label={`War das Kind ${taxYear} das ganze Jahr bei dir gemeldet?`}>
+            <View style={styles.chips}>
+              <Chip aktiv={gemeldet === true} onPress={() => setGemeldet(true)} testID="kind-gemeldet-ja">
+                Ja
+              </Chip>
+              <Chip aktiv={gemeldet === false} onPress={() => setGemeldet(false)} testID="kind-gemeldet-nein">
+                Nein
+              </Chip>
+            </View>
+          </Feld>
+          <Feld label={`Wurde das Kindergeld ${taxYear} das ganze Jahr an dich ausgezahlt?`}>
+            <View style={styles.chips}>
+              <Chip aktiv={kindergeldAnMich === true} onPress={() => setKindergeldAnMich(true)} testID="kind-kindergeld-an-mich-ja">
+                Ja
+              </Chip>
+              <Chip aktiv={kindergeldAnMich === false} onPress={() => setKindergeldAnMich(false)} testID="kind-kindergeld-an-mich-nein">
+                Nein
+              </Chip>
+            </View>
+          </Feld>
           <Button onPress={handleSave} style={styles.addButton} testID="kind-speichern">
             {tr('kinder.save', 'Kind speichern')}
           </Button>
@@ -454,6 +508,12 @@ function KinderScreenView({
           + Weiteres Kind hinzufügen
         </Button>
       )}
+
+      {onAlleinerziehendFragen && kinder.length > 0 ? (
+        <Button variante="ghost" onPress={onAlleinerziehendFragen} style={styles.toggleButton}>
+          {tr('kinder.entlastungFragen', 'Fragen zum Entlastungsbetrag beantworten')}
+        </Button>
+      ) : null}
 
       <Button onPress={onDone} style={styles.cta}>
         {tr('kinder.done', 'Weiter')}
