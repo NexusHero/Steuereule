@@ -1,7 +1,7 @@
 # ADR-0052 — Agenten-Zugang: der eigene KI-Assistent des Nutzers füllt die Erklärung aus (MCP)
 
-- **Status:** Proposed — Entwurf aus der Grilling-Session mit NexusHero am 2026-11-05; Review durch
-  Musti steht aus
+- **Status:** Accepted (Stakeholder-Entscheidung NexusHero, 2026-11-03) — Entwurf aus der
+  Grilling-Session mit NexusHero; Musti-Review läuft auf den Slice-PRs
 - **Date:** 2026-11-05
 - **Deciders:** NexusHero (Stakeholder) — Entscheidungen; Musti — Architektur-Review
 - **Ändert / ergänzt:** Produkt-ADR-014/048 (KI schlägt vor, nie direkt), ADR-0051 (keine
