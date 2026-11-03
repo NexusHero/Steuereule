@@ -144,6 +144,8 @@ export type SonderausgabeQuestionId =
   | 'kv-pv-betrag'
   | 'riester'
   | 'riester-betrag'
+  | 'riester-art'
+  | 'riester-einnahmen-vorjahr'
 
 /**
  * The Grenzgänger-CH entry's two questions (ADR-013/036). CHF amounts are entered via the
@@ -237,6 +239,12 @@ export const VERMIETUNG_ART_VALUES = ['Einfach', 'Mehrere', 'Verkauf oder möbli
  * its own constant rather than a shared `['Ja', 'Nein']`).
  */
 export const JA_NEIN_VALUES = ['Ja', 'Nein'] as const
+
+/**
+ * Accepted values for `riester-art` — Anlage AV Zeile 4 (unmittelbar, Kz 106 = 1) or Zeile 14
+ * (mittelbar über den Ehegatten, Kz 106 = 2). Only the direct case needs the prior-year earnings.
+ */
+export const RIESTER_ART_VALUES = ['Unmittelbar', 'Mittelbar'] as const
 
 /**
  * Accepted values for `nebenjob` (product ADR-031: Minijob is "nur erklären, nicht erfassen" —
@@ -442,8 +450,15 @@ export const QUESTIONS: Readonly<Record<EntryStepId, QuestionDeclaration>> = {
   'spenden-betrag': { id: 'spenden-betrag', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
   'kv-pv': { id: 'kv-pv', kind: 'question', form: { kind: 'enum', values: JA_NEIN_VALUES }, followUps: { Ja: ['kv-pv-betrag'] } },
   'kv-pv-betrag': { id: 'kv-pv-betrag', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
-  riester: { id: 'riester', kind: 'question', form: { kind: 'enum', values: JA_NEIN_VALUES }, followUps: { Ja: ['riester-betrag'] } },
+  riester: { id: 'riester', kind: 'question', form: { kind: 'enum', values: JA_NEIN_VALUES }, followUps: { Ja: ['riester-betrag', 'riester-art'] } },
   'riester-betrag': { id: 'riester-betrag', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
+  'riester-art': {
+    id: 'riester-art',
+    kind: 'question',
+    form: { kind: 'enum', values: RIESTER_ART_VALUES },
+    followUps: { Unmittelbar: ['riester-einnahmen-vorjahr'], Mittelbar: [] },
+  },
+  'riester-einnahmen-vorjahr': { id: 'riester-einnahmen-vorjahr', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
 
   // ---- Grenzgänger-CH (segment-ch, ADR-013/036) ----------------------------------------
   'ch-wohnsitz': { id: 'ch-wohnsitz', kind: 'question', form: { kind: 'enum', values: CH_WOHNSITZ_VALUES } },

@@ -99,7 +99,9 @@
     { "id": "anlAv.name", "formular": "anlage-av", "seite": 1, "anker": "Name", "zeile": 1, "lage": "unter", "art": "text" },
     { "id": "anlAv.vorname", "formular": "anlage-av", "seite": 1, "anker": "Vorname", "zeile": 2, "lage": "unter", "art": "text" },
     { "id": "anlAv.steuernummer", "formular": "anlage-av", "seite": 1, "anker": "Steuernummer", "zeile": 3, "lage": "rechts", "art": "text" },
-    { "id": "anlAv.personA", "formular": "anlage-av", "seite": 1, "anker": "106", "zeile": 4, "lage": "rechts", "art": "kreuz" },
+    { "id": "anlAv.unmittelbar", "formular": "anlage-av", "seite": 1, "anker": "106", "zeile": 4, "lage": "rechts", "art": "text" },
+    { "id": "anlAv.kz100", "formular": "anlage-av", "seite": 1, "anker": "100", "zeile": 5, "lage": "rechts", "art": "euro" },
+    { "id": "anlAv.mittelbar", "formular": "anlage-av", "seite": 1, "anker": "106", "zeile": 14, "lage": "rechts", "art": "text" },
 
     { "id": "anlVor.name", "formular": "anlage-vorsorgeaufwand", "seite": 1, "anker": "Name", "zeile": 1, "lage": "unter", "art": "text" },
     { "id": "anlVor.vorname", "formular": "anlage-vorsorgeaufwand", "seite": 1, "anker": "Vorname", "zeile": 2, "lage": "unter", "art": "text" },

@@ -19,16 +19,23 @@ function mock(status: string, fehlend: string[] = []) {
 function renderScreen(props: { zahlung?: 'erfolg' | 'abbruch'; oeffneCheckout?: (url: string) => void } = {}) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   const onAngabenErgaenzen = vi.fn()
+  const onRiesterErgaenzen = vi.fn()
   render(
     <QueryClientProvider client={queryClient}>
       <I18nextProvider i18n={createAppI18n('de')}>
         <ThemeProvider mode="light">
-          <AusdruckScreen jahr={2025} onZurueck={() => {}} onAngabenErgaenzen={onAngabenErgaenzen} {...props} />
+          <AusdruckScreen
+            jahr={2025}
+            onZurueck={() => {}}
+            onAngabenErgaenzen={onAngabenErgaenzen}
+            onRiesterErgaenzen={onRiesterErgaenzen}
+            {...props}
+          />
         </ThemeProvider>
       </I18nextProvider>
     </QueryClientProvider>,
   )
-  return { onAngabenErgaenzen }
+  return { onAngabenErgaenzen, onRiesterErgaenzen }
 }
 
 afterEach(() => server.resetHandlers())
@@ -77,6 +84,16 @@ describe('AusdruckScreen (ADR-0050)', () => {
     expect(await screen.findByText(/Leg in den Stammdaten fest, ob ihr zusammen oder einzeln veranlagt werdet/)).toBeTruthy()
     fireEvent.click(screen.getByText('Angaben ergänzen'))
     expect(onAngabenErgaenzen).toHaveBeenCalled()
+  })
+
+  it('Riester without the Anlage-AV details: names them and leads to the Sonderausgaben questions', async () => {
+    mock('offen', ['riester'])
+    const { onRiesterErgaenzen, onAngabenErgaenzen } = renderScreen()
+    expect(await screen.findByText(/Für deinen Riester-Vertrag fehlen noch Angaben/)).toBeTruthy()
+    expect(screen.queryByText('Angaben ergänzen')).toBeNull()
+    fireEvent.click(screen.getByText('Riester-Angaben ergänzen'))
+    expect(onRiesterErgaenzen).toHaveBeenCalled()
+    expect(onAngabenErgaenzen).not.toHaveBeenCalled()
   })
 
   it('an Anlage that is not printable yet is named, and paying is not offered', async () => {

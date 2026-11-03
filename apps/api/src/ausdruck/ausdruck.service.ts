@@ -188,7 +188,10 @@ export class AusdruckService {
       kinder: kinderFakten.length > 0 ? kinderFakten : null,
       kopplung: kopplung ? { veranlagungsart: kopplung.veranlagungsart, personB: personBFakten } : null,
       sonderausgaben: answers['spenden-betrag'] ? { spenden: answers['spenden-betrag'] } : null,
-      riester: answers['riester'] === 'Ja' || Boolean(answers['riester-betrag']),
+      riester:
+        answers['riester'] === 'Ja'
+          ? { art: answers['riester-art'] ?? null, einnahmenVorjahr: answers['riester-einnahmen-vorjahr'] ?? null }
+          : null,
     })
   }
 }

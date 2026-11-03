@@ -57,6 +57,13 @@ export interface SonderausgabenFakten {
   spenden?: string | null
 }
 
+/** Anlage AV: the contributions come from the provider; the form needs the kind of eligibility. */
+export interface RiesterFakten {
+  art: string | null
+  /** Beitragspflichtige Einnahmen of the previous year (Zeile 5, Kz 100) — only for 'Unmittelbar'. */
+  einnahmenVorjahr: string | null
+}
+
 export interface AusdruckFakten {
   profil: { firstName: string | null; lastName: string | null; steuerId: string | null; steuernummer: string | null }
   stammdaten: {
@@ -85,7 +92,7 @@ export interface AusdruckFakten {
   vermietung?: readonly VermietungFakten[] | null
   kinder?: readonly KindFakten[] | null
   sonderausgaben?: SonderausgabenFakten | null
-  riester?: boolean | null
+  riester?: RiesterFakten | null
 }
 
 /** Anlage R line per Rentenart. Gesetzliche and Witwen-/Waisenrente go through the
@@ -340,12 +347,24 @@ export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
     werte['anlSo.spenden'] = fakten.sonderausgaben.spenden
   }
 
-  // Anlage AV (Riester)
+  // Anlage AV (Riester): Kz 106 takes a digit, 1 = unmittelbar (then Zeile 5 is required),
+  // 2 = mittelbar (Zeile 14). Without that the Anlage would be incomplete, so the printout waits.
   if (fakten.riester) {
-    setze('anlAv.name', profil.lastName)
-    setze('anlAv.vorname', profil.firstName)
-    setze('anlAv.steuernummer', profil.steuernummer)
-    werte['anlAv.personA'] = true
+    const { art, einnahmenVorjahr } = fakten.riester
+    const unmittelbar = art === 'Unmittelbar' && einnahmenVorjahr !== null && /^\d+$/.test(einnahmenVorjahr)
+    if (unmittelbar || art === 'Mittelbar') {
+      setze('anlAv.name', profil.lastName)
+      setze('anlAv.vorname', profil.firstName)
+      setze('anlAv.steuernummer', profil.steuernummer)
+      if (unmittelbar) {
+        werte['anlAv.unmittelbar'] = '1'
+        werte['anlAv.kz100'] = einnahmenVorjahr
+      } else {
+        werte['anlAv.mittelbar'] = '2'
+      }
+    } else {
+      fehlend.push('riester')
+    }
   }
 
   // Anlage Vorsorgeaufwand stays unprinted: the employee lines (LStB Nr. 22/23/25/26/27) are

@@ -154,7 +154,7 @@ describe('ausdruckWerte', () => {
       kapital: { kapitalertraege: '1500', abzugssteuer: '375' },
       chLohnausweis: { bruttolohnEur: '65000', abzugssteuerEur: '2900' },
       sonderausgaben: { spenden: '450' },
-      riester: true,
+      riester: { art: 'Unmittelbar', einnahmenVorjahr: '48000' },
     })
     expect(werte).toMatchObject({
       'anlKap.personA': true,
@@ -167,8 +167,20 @@ describe('ausdruckWerte', () => {
       'anlNGre.bruttolohnEur': '65000',
       'anlNGre.abzugssteuer': '2900',
       'anlSo.spenden': '450',
-      'anlAv.personA': true,
+      'anlAv.unmittelbar': '1',
+      'anlAv.kz100': '48000',
     })
+  })
+
+  it('Anlage AV: mittelbar writes 2 in Zeile 14 and needs no earnings; a direct claim without them blocks', () => {
+    const mittelbar = ausdruckWerte({ ...FAKTEN, riester: { art: 'Mittelbar', einnahmenVorjahr: null } })
+    expect(mittelbar.werte['anlAv.mittelbar']).toBe('2')
+    expect(mittelbar.werte['anlAv.unmittelbar']).toBeUndefined()
+    expect(mittelbar.fehlend).toEqual([])
+
+    expect(ausdruckWerte({ ...FAKTEN, riester: { art: 'Unmittelbar', einnahmenVorjahr: null } }).fehlend).toEqual(['riester'])
+    expect(ausdruckWerte({ ...FAKTEN, riester: { art: null, einnahmenVorjahr: null } }).fehlend).toEqual(['riester'])
+    expect(Object.keys(ausdruckWerte({ ...FAKTEN, riester: { art: null, einnahmenVorjahr: null } }).werte).some((id) => id.startsWith('anlAv.'))).toBe(false)
   })
 
   it('writes nothing onto Anlage Vorsorgeaufwand: its employee lines are ⓔ-Zeilen the Finanzamt already has', () => {
@@ -277,7 +289,7 @@ describe('rendereVordrucke (real templates)', () => {
       kapital: { kapitalertraege: '1000' },
       chLohnausweis: { bruttolohnEur: '50000' },
       sonderausgaben: { spenden: '200' },
-      riester: true,
+      riester: { art: 'Unmittelbar', einnahmenVorjahr: '40000' },
       kinder: [
         { vorname: 'Lina', nachname: 'Beispiel', geburtsdatum: '2016-01-01', idnr: '12345678901' },
       ],

@@ -21,11 +21,13 @@ export interface AusdruckScreenProps {
   readonly zahlung?: 'erfolg' | 'abbruch'
   readonly onZurueck: () => void
   readonly onAngabenErgaenzen: () => void
+  /** Opens the Sonderausgaben questions, where the Anlage-AV details are asked. */
+  readonly onRiesterErgaenzen: () => void
   /** Hands the browser to the hosted checkout page. Injected so tests never leave the page. */
   readonly oeffneCheckout?: (url: string) => void
 }
 
-export function AusdruckScreen({ jahr, zahlung, onZurueck, onAngabenErgaenzen, oeffneCheckout = (url) => window.location.assign(url) }: AusdruckScreenProps) {
+export function AusdruckScreen({ jahr, zahlung, onZurueck, onAngabenErgaenzen, onRiesterErgaenzen, oeffneCheckout = (url) => window.location.assign(url) }: AusdruckScreenProps) {
   const bp = useBreakpoint()
   const theme = useTheme()
   const styles = makeDatenschutzStyles(theme)
@@ -57,8 +59,9 @@ export function AusdruckScreen({ jahr, zahlung, onZurueck, onAngabenErgaenzen, o
   const freischaltung = status.data.data.status
   const fehlend = pruefung.data.data.fehlend
   const verheiratet = fehlend.includes('ehegatte')
+  const riester = fehlend.includes('riester')
   const anlagen = fehlend.filter((key) => key.startsWith('anlage'))
-  const stammdatenFehlen = fehlend.some((key) => key !== 'ehegatte' && !key.startsWith('anlage'))
+  const stammdatenFehlen = fehlend.some((key) => key !== 'ehegatte' && key !== 'riester' && !key.startsWith('anlage'))
   const gesperrt = fehlend.length > 0
 
   function bezahlen() {
@@ -113,6 +116,14 @@ export function AusdruckScreen({ jahr, zahlung, onZurueck, onAngabenErgaenzen, o
             <Button variante="ghost" onPress={onAngabenErgaenzen}>
               {t('ausdruck.angabenErgaenzen')}
             </Button>
+          ) : null}
+          {riester ? (
+            <>
+              <Text style={styles.sectionBody}>{t('ausdruck.fehlendRiester')}</Text>
+              <Button variante="ghost" onPress={onRiesterErgaenzen}>
+                {t('ausdruck.riesterErgaenzen')}
+              </Button>
+            </>
           ) : null}
         </Card>
       ) : null}

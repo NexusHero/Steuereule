@@ -181,6 +181,18 @@ describe('Lebenslagen/Sonderausgaben catalogue entries — one walker, one regis
     expect(isReachableFor(entry, { spenden: 'Ja' }, 'spenden-betrag')).toBe(true)
   })
 
+  it('Riester asks for the kind of eligibility, and the prior-year earnings only when direct (Anlage AV Zeilen 4/5/14)', () => {
+    const entry = ENTRIES.sonderausgaben
+    const vorher = { spenden: 'Nein', 'kv-pv': 'Nein', riester: 'Ja', 'riester-betrag': '600' } as Answers
+    expect(nextStepFor(entry, vorher)).toEqual({ kind: 'question', id: 'riester-art' })
+    expect(nextStepFor(entry, { ...vorher, 'riester-art': 'Unmittelbar' })).toEqual({
+      kind: 'question',
+      id: 'riester-einnahmen-vorjahr',
+    })
+    expect(nextStepFor(entry, { ...vorher, 'riester-art': 'Mittelbar' })).toEqual({ kind: 'done' })
+    expect(isReachableFor(entry, { ...vorher, 'riester-art': 'Mittelbar' }, 'riester-einnahmen-vorjahr')).toBe(false)
+  })
+
   it('nebenjob only opens the Brutto follow-up for Midijob/Nebenjob, not Minijob/Nein', () => {
     const entry = ENTRIES.lebenslagen
     const prefix = { dhf: 'Nein', umzug: 'Nein', abfindung: 'Nein', lohnersatz: 'Nein' } as Answers

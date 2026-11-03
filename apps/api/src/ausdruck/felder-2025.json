@@ -1072,13 +1072,37 @@
       }
     },
     {
-      "id": "anlAv.personA",
+      "id": "anlAv.unmittelbar",
       "formular": "anlage-av",
       "seite": 1,
-      "art": "kreuz",
+      "art": "text",
       "kasten": {
         "x": 328.4,
         "y": 560.2,
+        "breite": 12.1,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlAv.kz100",
+      "formular": "anlage-av",
+      "seite": 1,
+      "art": "euro",
+      "kasten": {
+        "x": 328.4,
+        "y": 519.7,
+        "breite": 85.4,
+        "hoehe": 15.9
+      }
+    },
+    {
+      "id": "anlAv.mittelbar",
+      "formular": "anlage-av",
+      "seite": 1,
+      "art": "text",
+      "kasten": {
+        "x": 328.4,
+        "y": 286.8,
         "breite": 12.1,
         "hoehe": 15.8
       }
