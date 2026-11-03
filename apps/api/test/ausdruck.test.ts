@@ -99,11 +99,6 @@ describe('ausdruckWerte', () => {
     ])
   })
 
-  it('recorded Vermietung/Kapital/CH income without a printable Anlage blocks the printout, naming it', () => {
-    const { fehlend } = ausdruckWerte({ ...FAKTEN, nochNichtDruckbar: ['anlageV', 'anlageKap', 'anlageNGre'] })
-    expect(fehlend).toEqual(['anlageV', 'anlageKap', 'anlageNGre'])
-  })
-
   it('formats dates with points, as the form asks', () => {
     expect(deutschesDatum('2025-12-31')).toBe('31.12.2025')
   })

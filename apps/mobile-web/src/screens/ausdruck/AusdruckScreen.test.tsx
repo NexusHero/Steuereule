@@ -71,10 +71,12 @@ describe('AusdruckScreen (ADR-0050)', () => {
     expect(screen.getByTestId('ausdruck-bezahlen').getAttribute('aria-disabled')).toBe('true')
   })
 
-  it('married: says plainly the printout is not available yet, instead of choosing a Veranlagungsart', async () => {
+  it('married without a chosen Veranlagungsart: points to the Stammdaten where it is chosen', async () => {
     mock('offen', ['ehegatte'])
-    renderScreen()
-    expect(await screen.findByText(/Für Verheiratete ist der Ausdruck noch nicht möglich/)).toBeTruthy()
+    const { onAngabenErgaenzen } = renderScreen()
+    expect(await screen.findByText(/Leg in den Stammdaten fest, ob ihr zusammen oder einzeln veranlagt werdet/)).toBeTruthy()
+    fireEvent.click(screen.getByText('Angaben ergänzen'))
+    expect(onAngabenErgaenzen).toHaveBeenCalled()
   })
 
   it('an Anlage that is not printable yet is named, and paying is not offered', async () => {

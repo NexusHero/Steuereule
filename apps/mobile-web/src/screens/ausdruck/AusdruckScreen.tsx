@@ -109,7 +109,7 @@ export function AusdruckScreen({ jahr, zahlung, onZurueck, onAngabenErgaenzen, o
               {t('ausdruck.anlageNochNicht', { anlage: t(`ausdruck.anlagen.${anlage}`) })}
             </Text>
           ))}
-          {stammdatenFehlen ? (
+          {stammdatenFehlen || verheiratet ? (
             <Button variante="ghost" onPress={onAngabenErgaenzen}>
               {t('ausdruck.angabenErgaenzen')}
             </Button>

@@ -450,7 +450,7 @@ export const appResources = {
         loadError: { heading: 'Das hat nicht geklappt.', message: 'Der Stand konnte nicht geladen werden.', retry: 'Noch mal versuchen' },
         fehlendTitel: 'Dafür fehlt noch etwas',
         fehlendAngaben: 'Ergänze zuerst deine Angaben für die Steuererklärung.',
-        fehlendEhegatte: 'Für Verheiratete ist der Ausdruck noch nicht möglich: Angaben zur Veranlagungsart und zu Person B kommen als Nächstes.',
+        fehlendEhegatte: 'Leg in den Stammdaten fest, ob ihr zusammen oder einzeln veranlagt werdet.',
         anlageNochNicht: 'Für deine {{anlage}} gibt es den Ausdruck noch nicht. Ohne sie wäre deine Erklärung unvollständig – deshalb drucken wir noch nicht.',
         anlagen: {
           anlageV: 'Vermietung (Anlage V)',
@@ -1580,7 +1580,7 @@ export const appResources = {
         loadError: { heading: 'That did not work.', message: 'The status could not be loaded.', retry: 'Try again' },
         fehlendTitel: 'Something is still missing',
         fehlendAngaben: 'Please complete your details for the tax return first.',
-        fehlendEhegatte: 'The printout is not available for married couples yet: the assessment type and person B come next.',
+        fehlendEhegatte: 'Choose in your personal details whether you file jointly or separately.',
         anlageNochNicht: 'There is no printout for your {{anlage}} yet. Without it your return would be incomplete — so we do not print yet.',
         anlagen: {
           anlageV: 'rental income (Anlage V)',

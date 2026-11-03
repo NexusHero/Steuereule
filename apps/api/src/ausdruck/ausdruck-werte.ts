@@ -83,8 +83,6 @@ export interface AusdruckFakten {
   bruttoarbeitslohn: string | null
   /** The tax year's pension as stored (Rentenart + Jahresbetrag in whole euros), or null. */
   rente?: { rentenart: string | null; jahresbetrag: string | null } | null
-  /** Facts the user recorded for verticals whose Anlage is not printable yet. */
-  nochNichtDruckbar?: readonly ('anlageV' | 'anlageKap' | 'anlageNGre')[]
   kopplung?: KopplungFakten | null
   kapital?: KapitalFakten | null
   chLohnausweis?: ChLohnausweisFakten | null
@@ -222,10 +220,6 @@ export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
     nInstanzen.push(nB)
     instanzen['anlage-n'] = nInstanzen
   }
-
-  // Recorded income without a printable Anlage would make the return silently incomplete:
-  // the printout waits and names which Anlage is missing.
-  fehlend.push(...(fakten.nochNichtDruckbar ?? []))
 
   const rente = fakten.rente
   const renteB = fakten.kopplung?.veranlagungsart === 'zusammen' ? fakten.kopplung.personB?.rente ?? null : null
