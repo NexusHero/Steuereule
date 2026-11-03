@@ -181,6 +181,26 @@ describe('Lebenslagen/Sonderausgaben catalogue entries — one walker, one regis
     expect(isReachableFor(entry, { spenden: 'Ja' }, 'spenden-betrag')).toBe(true)
   })
 
+  it('Riester asks for the kind of eligibility, and the prior-year earnings only when direct (Anlage AV Zeilen 4/5/14)', () => {
+    const entry = ENTRIES.sonderausgaben
+    const vorher = { spenden: 'Nein', 'kv-pv': 'Nein', riester: 'Ja', 'riester-betrag': '600' } as Answers
+    expect(nextStepFor(entry, vorher)).toEqual({ kind: 'question', id: 'riester-art' })
+    expect(nextStepFor(entry, { ...vorher, 'riester-art': 'Unmittelbar' })).toEqual({
+      kind: 'question',
+      id: 'riester-einnahmen-vorjahr',
+    })
+    expect(nextStepFor(entry, { ...vorher, 'riester-art': 'Mittelbar' })).toEqual({ kind: 'done' })
+    expect(isReachableFor(entry, { ...vorher, 'riester-art': 'Mittelbar' }, 'riester-einnahmen-vorjahr')).toBe(false)
+  })
+
+  it('the Alleinerziehende entry asks the two household questions of Anlage Kind Zeilen 47/48', () => {
+    const entry = ENTRIES.alleinerziehend
+    expect(nextStepFor(entry, {})).toEqual({ kind: 'question', id: 'ae-weitere-person' })
+    expect(nextStepFor(entry, { 'ae-weitere-person': 'Nein' })).toEqual({ kind: 'question', id: 'ae-haushaltsgemeinschaft' })
+    expect(nextStepFor(entry, { 'ae-weitere-person': 'Nein', 'ae-haushaltsgemeinschaft': 'Nein' })).toEqual({ kind: 'done' })
+    expect(entryForStep('ae-haushaltsgemeinschaft')).toBe('alleinerziehend')
+  })
+
   it('nebenjob only opens the Brutto follow-up for Midijob/Nebenjob, not Minijob/Nein', () => {
     const entry = ENTRIES.lebenslagen
     const prefix = { dhf: 'Nein', umzug: 'Nein', abfindung: 'Nein', lohnersatz: 'Nein' } as Answers

@@ -66,7 +66,7 @@ export class KapitalController {
     name: 'feld',
     type: String,
     example: 'kapitalertraege',
-    description: 'The Kapital field id (ParseKapitalFeldPipe — today only `kapitalertraege`).',
+    description: 'The Kapital field id (ParseKapitalFeldPipe — one of KAPITAL_FELDER).',
   })
   @ApiBody({ type: PutKapitalFeldDto })
   @ApiOkResponse({ type: KapitalResponseDto, description: 'The updated mask and its derived fold.' })

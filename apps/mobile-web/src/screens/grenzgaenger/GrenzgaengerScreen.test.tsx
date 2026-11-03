@@ -5,7 +5,7 @@
 // rendered. The derived Grenzgänger-Status and the fold come from the server's response, never
 // recomputed in the client.
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@steuereule/ui'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -57,6 +57,16 @@ const EMPTY_CH: ChLohnausweisResponseDto = {
   status: null,
   posten: [],
   stand: null,
+  nGre: {
+    arbeitgeberName: null,
+    arbeitgeberStrasse: null,
+    arbeitgeberPlzOrt: null,
+    familienzulagenChf: null,
+    krankentaggeldChf: null,
+    pkArbeitnehmerChf: null,
+    pkArbeitgeberChf: null,
+    sonderfaelle: null,
+  },
 }
 
 /** A folded CH-Lohnausweis: status derived, fold bestimmt (Bruttolohn/PK/Quellensteuer). */
@@ -71,6 +81,16 @@ const FOLDED_CH: ChLohnausweisResponseDto = {
   status: 'echter-grenzgaenger',
   posten: [],
   stand: { kind: 'bestimmt', einnahmen: 79061, vorsorgeaufwand: 4706, anrechnung: 3558 },
+  nGre: {
+    arbeitgeberName: null,
+    arbeitgeberStrasse: null,
+    arbeitgeberPlzOrt: null,
+    familienzulagenChf: null,
+    krankentaggeldChf: null,
+    pkArbeitnehmerChf: null,
+    pkArbeitgeberChf: null,
+    sonderfaelle: null,
+  },
 }
 
 beforeEach(() => {
@@ -141,5 +161,28 @@ describe('GrenzgaengerScreen — the Lohnausweis mask + derived status + fold', 
 
     // Still on the interview step, not the mask.
     await screen.findByText(/Wo wohnst/)
+  })
+})
+
+describe('GrenzgaengerScreen — Anlage N-Gre facts', () => {
+  it('saves the employer, the Vorsorge split and the Sonderfall answer via PUT .../n-gre', async () => {
+    const bodies: unknown[] = []
+    server.use(http.get(INTERVIEW_URL, () => HttpResponse.json(DONE_CH_INTERVIEW, { status: 200 })))
+    server.use(
+      http.put(`${CH_URL}/n-gre`, async ({ request }) => {
+        bodies.push(await request.json())
+        return HttpResponse.json(EMPTY_CH, { status: 200 })
+      }),
+    )
+    renderScreen()
+    const name = await screen.findByTestId('ch-ngre-arbeitgeberName')
+    fireEvent.change(name, { target: { value: 'Muster AG' } })
+    fireEvent.keyDown(name, { key: 'Enter' })
+    const pk = screen.getByTestId('ch-ngre-pkArbeitgeberChf')
+    fireEvent.change(pk, { target: { value: '6000' } })
+    fireEvent.keyDown(pk, { key: 'Enter' })
+    fireEvent.click(screen.getByTestId('ch-ngre-sonderfaelle-nein'))
+
+    await waitFor(() => expect(bodies).toEqual([{ arbeitgeberName: 'Muster AG' }, { pkArbeitgeberChf: 6000 }, { sonderfaelle: false }]))
   })
 })

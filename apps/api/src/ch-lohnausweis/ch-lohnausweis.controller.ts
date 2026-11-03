@@ -16,7 +16,7 @@ import { ParseLohnausweisFeldPipe } from './parse-lohnausweis-feld.pipe.js'
 import { ChLohnausweisService } from './ch-lohnausweis.service.js'
 import { PutLohnausweisFeldDto } from './dto/lohnausweis-feld.dto.js'
 import { PutWechselkursDto } from './dto/wechselkurs.dto.js'
-import { PutBemerkungenDto, PutVorsorgeDto } from './dto/ch-posten.dto.js'
+import { PutBemerkungenDto, PutVorsorgeDto, PutNGreDto } from './dto/ch-posten.dto.js'
 import { ChLohnausweisResponseDto } from './dto/ch-lohnausweis-response.dto.js'
 
 @ApiTags('ch-lohnausweis')
@@ -94,6 +94,20 @@ export class ChLohnausweisController {
     @Body() dto: PutVorsorgeDto,
   ): Promise<ChLohnausweisResponseDto> {
     return this.service.setVorsorge(userId, jahr, dto)
+  }
+
+  @Put(':jahr/ch-lohnausweis/n-gre')
+  @HttpCode(200)
+  @RequiresAccount()
+  @ApiParam({ name: 'jahr', type: Number, example: 2025, description: 'The tax year (Steuerjahr).' })
+  @ApiBody({ type: PutNGreDto })
+  @ApiOkResponse({ type: ChLohnausweisResponseDto, description: 'The updated mask including the Anlage-N-Gre facts.' })
+  setNGre(
+    @CurrentUser() userId: string,
+    @Param('jahr', ParseSteuerjahrPipe) jahr: number,
+    @Body() dto: PutNGreDto,
+  ): Promise<ChLohnausweisResponseDto> {
+    return this.service.setNGre(userId, jahr, dto)
   }
 
   @Put(':jahr/ch-lohnausweis/wechselkurs')

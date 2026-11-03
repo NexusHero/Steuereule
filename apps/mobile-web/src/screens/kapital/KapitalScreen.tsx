@@ -24,6 +24,7 @@ import {
   type KapitalResponseDto,
   type GuenstigerpruefungDto,
 } from '@steuereule/api-client'
+import type { KapitalFeldId } from '@steuereule/core'
 import { APP_NS } from '../../i18n/resources'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
@@ -66,8 +67,8 @@ export function KapitalScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX
     void queryClient.invalidateQueries({ queryKey: getKapitalControllerGetGuenstigerpruefungQueryKey(taxYear) })
   }
 
-  function send(data: KapitalFeldDto) {
-    setFeld.mutate({ jahr: taxYear, feld: 'kapitalertraege', data }, { onSuccess: invalidate })
+  function send(feld: KapitalFeldId, data: KapitalFeldDto) {
+    setFeld.mutate({ jahr: taxYear, feld, data }, { onSuccess: invalidate })
   }
 
   return (
@@ -80,12 +81,15 @@ export function KapitalScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX
 
       <DepotNotice kind={response.depot.kind} />
 
-      <KapitalFeldEditor
-        label={tr('kapital.feld.label')}
-        zustand={response.kapitalertraege}
-        onErfasst={(wert) => send({ kind: 'erfasst', wert })}
-        onUnklar={() => send({ kind: 'unklar' })}
-      />
+      {response.pflichtfelder.map((feld) => (
+        <KapitalFeldEditor
+          key={feld}
+          label={feld === 'kapitalertraege' ? tr('kapital.feld.label') : tr(`kapital.felder.${feld}`)}
+          zustand={response[feld]}
+          onErfasst={(wert) => send(feld, { kind: 'erfasst', wert })}
+          onUnklar={() => send(feld, { kind: 'unklar' })}
+        />
+      ))}
 
       <PostenNotice response={response} />
 

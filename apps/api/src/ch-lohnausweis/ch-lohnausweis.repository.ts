@@ -14,6 +14,29 @@ import type { LohnausweisBetragFeldId } from '@steuereule/core'
 /** The 14 CHF-betrag Lohnausweis fields' stored strings, keyed by field id. */
 export type ChLohnausweisFelder = Record<LohnausweisBetragFeldId, string | null>
 
+/** The Anlage-N-Gre facts beyond the Lohnausweis (strings as stored; null = not entered). */
+export interface NGreAngaben {
+  arbeitgeberName: string | null
+  arbeitgeberStrasse: string | null
+  arbeitgeberPlzOrt: string | null
+  familienzulagenChf: string | null
+  krankentaggeldChf: string | null
+  pkArbeitnehmerChf: string | null
+  pkArbeitgeberChf: string | null
+  nGreSonderfaelle: boolean | null
+}
+
+export const LEERE_N_GRE: NGreAngaben = {
+  arbeitgeberName: null,
+  arbeitgeberStrasse: null,
+  arbeitgeberPlzOrt: null,
+  familienzulagenChf: null,
+  krankentaggeldChf: null,
+  pkArbeitnehmerChf: null,
+  pkArbeitgeberChf: null,
+  nGreSonderfaelle: null,
+}
+
 export interface ChLohnausweisRecord {
   userId: string
   steuerjahr: number
@@ -26,6 +49,7 @@ export interface ChLohnausweisRecord {
   wechselkursKurs: number | null
   wechselkursModus: string | null
   wechselkursBelegId: string | null
+  nGre: NGreAngaben
 }
 
 export const CH_LOHNAUSWEIS_REPOSITORY = Symbol('CH_LOHNAUSWEIS_REPOSITORY')
@@ -42,6 +66,8 @@ export interface ChLohnausweisRepository {
   setBemerkungen(userId: string, steuerjahr: number, text: string | null): Promise<ChLohnausweisRecord>
   /** Upsert the optional Säule 3a and Krankenkasse amounts (null = not entered), scoped to (userId, steuerjahr). */
   setVorsorge(userId: string, steuerjahr: number, saeule3aChf: string | null, krankenkasseChf: string | null): Promise<ChLohnausweisRecord>
+  /** Upsert the Anlage-N-Gre facts (only the given keys), scoped to (userId, steuerjahr). */
+  setNGre(userId: string, steuerjahr: number, angaben: Partial<NGreAngaben>): Promise<ChLohnausweisRecord>
   /** Upsert the Wechselkurs (monat/kurs/modus/belegId), scoped to (userId, steuerjahr). */
   setWechselkurs(
     userId: string,

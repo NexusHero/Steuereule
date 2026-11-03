@@ -52,6 +52,21 @@ export class ExportAccessLogEntryDto {
   createdAt!: string
 }
 
+export class ExportTaxDataEntryDto {
+  @ApiProperty({ type: String, example: 'Kapitalerträge' })
+  bereich!: string
+
+  @ApiProperty({ type: Number, nullable: true, example: 2025 })
+  steuerjahr!: number | null
+
+  @ApiProperty({
+    type: 'object',
+    additionalProperties: { oneOf: [{ type: 'string' }, { type: 'number' }, { type: 'boolean' }], nullable: true },
+    example: { kapitalertraege: '1200', updatedAt: '2026-02-01T09:30:00.000Z' },
+  })
+  felder!: Record<string, string | number | boolean | null>
+}
+
 export class ExportDocumentDto {
   @ApiProperty({ type: String, example: '1.0' })
   schemaVersion!: string
@@ -65,11 +80,11 @@ export class ExportDocumentDto {
   @ApiProperty({ type: ExportProfileDto, nullable: true })
   profile!: ExportProfileDto | null
 
-  // Honest empty set until a tax-year model exists (ADR-0013 §4) — documented as an
-  // always-empty array rather than a generic `type: [Object]`, so the generated FE
-  // client's type is exactly what the server ever actually sends.
-  @ApiProperty({ type: [String], example: [], description: 'Always empty until a tax-year model exists.' })
-  taxData!: []
+  @ApiProperty({
+    type: [ExportTaxDataEntryDto],
+    description: 'Every stored tax-data row, decrypted (Art. 15/20); empty when the caller has none.',
+  })
+  taxData!: ExportTaxDataEntryDto[]
 
   @ApiProperty({ type: [ExportAccessLogEntryDto] })
   accessLog!: ExportAccessLogEntryDto[]

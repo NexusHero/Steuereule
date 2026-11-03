@@ -15,7 +15,7 @@ die ehrliche Gate-Aussage, ADR-032 §2).
 **Blocked by:** **15** (Kern + `berechne` für die § 32d-Günstigerprüfung) · Engineering-Entwurf
 0037 (Einkunftsart-Set `Kapital`), promotet.
 
-**Status:** ready-for-agent
+**Status:** done — gemergt als #376 (69385df)
 
 - [x] `Kapital` als Einkunftsart; Depot-Posten mit Herkunft (Beleg/KI-Vorschlag)
 - [x] § 32d-Günstigerprüfung: Abgeltungsteuer vs. persönlicher Satz, mit Unschärfe-Bound (ADR-0034-

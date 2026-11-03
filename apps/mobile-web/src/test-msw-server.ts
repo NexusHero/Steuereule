@@ -25,9 +25,13 @@ import {
   getFristenControllerGetFristenMockHandler,
   getUebernahmeControllerGetMockHandler,
   getUebernahmeControllerBestaetigeMockHandler,
+  getKinderControllerListMockHandler,
+  getKopplungControllerGetMockHandler,
+  getEulenModusControllerGetEinstellungMockHandler,
+  getEulenModusControllerGetKartenMockHandler,
 } from '@steuereule/api-client/msw'
 import { LOHNAUSWEIS_FELDER } from '@steuereule/core'
-import type { ProfileResponseDto, AuthCapabilitiesDto, DeviceCodeResponseDto, InterviewStateDto, LstbResponseDto, ChLohnausweisResponseDto, RenteResponseDto, KapitalResponseDto, VermietungResponseDto, FristenResponseDto, UebernahmeResponseDto } from '@steuereule/api-client'
+import type { ProfileResponseDto, AuthCapabilitiesDto, DeviceCodeResponseDto, InterviewStateDto, LstbResponseDto, ChLohnausweisResponseDto, RenteResponseDto, KapitalResponseDto, VermietungResponseDto, FristenResponseDto, UebernahmeResponseDto, KinderResponseDto, KopplungResponseDto, EulenEinstellungResponseDto, EulenKartenResponseDto } from '@steuereule/api-client'
 
 export const EMPTY_PROFILE_RESPONSE: ProfileResponseDto = {
   firstName: null,
@@ -98,6 +102,16 @@ export const EMPTY_CH_LOHNAUSWEIS_RESPONSE: ChLohnausweisResponseDto = {
   status: null,
   posten: [],
   stand: null,
+  nGre: {
+    arbeitgeberName: null,
+    arbeitgeberStrasse: null,
+    arbeitgeberPlzOrt: null,
+    familienzulagenChf: null,
+    krankentaggeldChf: null,
+    pkArbeitnehmerChf: null,
+    pkArbeitgeberChf: null,
+    sonderfaelle: null,
+  }
 }
 
 /**
@@ -124,6 +138,11 @@ export const EMPTY_RENTE_RESPONSE: RenteResponseDto = {
  */
 export const EMPTY_KAPITAL_RESPONSE: KapitalResponseDto = {
   kapitalertraege: { kind: 'offen' },
+  sparerPauschbetrag: { kind: 'offen' },
+  kapitalertragsteuer: { kind: 'offen' },
+  solidaritaetszuschlag: { kind: 'offen' },
+  kirchensteuer: { kind: 'offen' },
+  pflichtfelder: ['kapitalertraege'],
   depot: { kind: 'unbekannt' },
   posten: [],
   stand: { kind: 'offen', einnahmen: 0, vorsorgeaufwand: 0, anrechnung: 0, offenePosten: 1, konflikte: 0, gegated: [] },
@@ -162,6 +181,31 @@ export const EMPTY_UEBERNAHME_RESPONSE: UebernahmeResponseDto = {
   kennzeichnungen: [],
 }
 
+export const EMPTY_KINDER_RESPONSE: KinderResponseDto = {
+  kinder: [],
+  anzahl: 0,
+  kindergeldSumme: 0,
+  freibetragGesamt: 0,
+}
+
+export const EMPTY_KOPPLUNG_RESPONSE: KopplungResponseDto = {
+  veranlagungsart: 'keine',
+  personBUserId: null,
+  einladungsCode: null,
+  personB: null,
+}
+
+export const EMPTY_EULEN_EINSTELLUNG_RESPONSE: EulenEinstellungResponseDto = {
+  aktiviert: false,
+  aktiviertAm: null,
+}
+
+export const EMPTY_EULEN_KARTEN_RESPONSE: EulenKartenResponseDto = {
+  aktiviert: false,
+  karten: [],
+  rechtsstand: '01.01.2025',
+}
+
 export const server = setupServer(
   getProfileControllerGetProfileMockHandler(EMPTY_PROFILE_RESPONSE),
   getProfileControllerPutProfileMockHandler(),
@@ -196,7 +240,14 @@ export const server = setupServer(
   // (the response body is never asserted by a test that doesn't override it).
   getVermietungControllerGetMockHandler(EMPTY_VERMIETUNG_RESPONSE),
   http.post('*/v1/steuerjahre/:jahr/vermietung/objekte', () => HttpResponse.json(EMPTY_VERMIETUNG_RESPONSE, { status: 201 })),
+  http.put('*/v1/steuerjahre/:jahr/vermietung/objekte/:objektId/adresse', () => HttpResponse.json(EMPTY_VERMIETUNG_RESPONSE, { status: 200 })),
   http.put('*/v1/steuerjahre/:jahr/vermietung/objekte/:objektId/:feld', () => HttpResponse.json(EMPTY_VERMIETUNG_RESPONSE, { status: 200 })),
+  getKinderControllerListMockHandler(EMPTY_KINDER_RESPONSE),
+  getKopplungControllerGetMockHandler(EMPTY_KOPPLUNG_RESPONSE),
+  http.put('*/v1/steuerjahre/:jahr/kopplung', () => HttpResponse.json(EMPTY_KOPPLUNG_RESPONSE, { status: 200 })),
+  http.put('*/v1/steuerjahre/:jahr/kopplung/person-b', () => HttpResponse.json(EMPTY_KOPPLUNG_RESPONSE, { status: 200 })),
+  getEulenModusControllerGetEinstellungMockHandler(EMPTY_EULEN_EINSTELLUNG_RESPONSE),
+  getEulenModusControllerGetKartenMockHandler(EMPTY_EULEN_KARTEN_RESPONSE),
   // REQ-027 (ticket 10.7) — der Fristen-Warnmodus: `keine` by default (the honest no-banner
   // state, ADR-0039 — a fresh account far from the frist shows nothing), pinned not faked;
   // banner tests override with `server.use(...)`.

@@ -7,7 +7,7 @@ Objekte (je Objekt eine Anlage V, lineare AfA). **Verkauf und möbliert-auf-Zeit
 **Blocked by:** **15** (Kern + `berechne` für die Anlage-V-Posten) · Engineering-Entwurf 0037
 (Einkunftsart-Set `Vermietung`), promotet.
 
-**Status:** ready-for-agent
+**Status:** done — gemergt als #376 (69385df)
 
 - [x] `Vermietung` als Einkunftsart; mehrere Objekte je eine Anlage V, lineare AfA
 - [x] Werbungskosten je Objekt mit Herkunft; offen wo offen — kein fabricated zero (ADR-032)

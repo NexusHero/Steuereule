@@ -109,6 +109,7 @@ model User {
   accounts      Account[]
   twoFactors    TwoFactor[]
   passkeys      Passkey[]
+  freischaltungen Freischaltung[]
 }
 
 /// DB-backed, server-revocable session (ADR-0012 §3). Read on every
@@ -545,6 +546,17 @@ model ChLohnausweis {
   saeule3aChf               String? /// @encrypted?mode=strict
   /// CH-Krankenkasse (ADR-029 point 5) — optional whole-CHF amount, null = not entered. Encrypted.
   krankenkasseChf           String? /// @encrypted?mode=strict
+  /// Anlage N-Gre: employer (Zeilen 89–91), Familienzulagen (Z. 8/76), Krankentaggeld (Z. 80),
+  /// Säule 2a Obligatorium employee/employer (Z. 84/87); whole CHF, null = not entered.
+  arbeitgeberName           String? /// @encrypted?mode=strict
+  arbeitgeberStrasse        String? /// @encrypted?mode=strict
+  arbeitgeberPlzOrt         String? /// @encrypted?mode=strict
+  familienzulagenChf        String? /// @encrypted?mode=strict
+  krankentaggeldChf         String? /// @encrypted?mode=strict
+  pkArbeitnehmerChf         String? /// @encrypted?mode=strict
+  pkArbeitgeberChf          String? /// @encrypted?mode=strict
+  /// Any of N-Gre Zeilen 7, 9–14, 16–22 applies — not printable yet.
+  nGreSonderfaelle          Boolean?
   /// Wechselkurs-Monat (yyyy-mm) the CHF→EUR conversion applies to (ADR-012).
   wechselkursMonat          String?
   /// Wechselkurs-Kurs (EUR per 1 CHF, strictly positive) — public BMF rate, clear.
@@ -618,6 +630,11 @@ model Kapital {
   /// Kapitalerträge (Einkünfte aus Kapitalvermögen, whole euros). Encrypted at rest;
   /// null=offen, "unklar"=unreadable.
   kapitalertraege String? /// @encrypted?mode=strict
+  /// Anlage KAP Zeile 16/17 and the withheld taxes of Zeilen 37–39, same encoding.
+  sparerPauschbetrag    String? /// @encrypted?mode=strict
+  kapitalertragsteuer   String? /// @encrypted?mode=strict
+  solidaritaetszuschlag String? /// @encrypted?mode=strict
+  kirchensteuer         String? /// @encrypted?mode=strict
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -656,6 +673,14 @@ model Vermietungsobjekt {
   baujahr            String? /// @encrypted?mode=strict
   /// Laufende Werbungskosten (whole euros). Encrypted at rest; same encoding.
   werbungskosten     String? /// @encrypted?mode=strict
+  /// Lage des Objekts für Anlage V (ADR-0050). Encrypted at rest.
+  strasse            String? /// @encrypted?mode=strict
+  hausnummer         String? /// @encrypted?mode=strict
+  plz                String? /// @encrypted?mode=strict
+  ort                String? /// @encrypted?mode=strict
+  wohnflaeche        String? /// @encrypted?mode=strict
+  /// Anlage V Zeile 33: the building AfA is unchanged from last year (1 = wie Vorjahr).
+  afaWieVorjahr      Boolean?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
@@ -731,5 +756,127 @@ model UebernahmeKennzeichnung {
   updatedAt  DateTime @updatedAt
 
   @@unique([userId, steuerjahr, postenKey])
+  @@index([userId, steuerjahr])
+}
+
+/// Paid unlock of one tax year's Formular-Ausdruck (ADR-0050: Papierweg, paid on print).
+/// One row per Stripe Checkout Session; `bezahlt` is set only by the signature-verified
+/// webhook, never by the browser's return redirect. Account-only (a guest cannot pay),
+/// so it carries a real FK and cascades with the User on Art. 17 erasure — Stripe keeps
+/// the accounting record (§ 147 AO) on its side, this row is only the entitlement.
+model Freischaltung {
+  id                      String    @id @default(uuid())
+  userId                  String
+  steuerjahr              Int
+  /// "offen" until the webhook confirms payment, then "bezahlt".
+  status                  String    @default("offen")
+  stripeCheckoutSessionId String    @unique
+  betragCent              Int?
+  bezahltAm               DateTime?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+  user                    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, steuerjahr])
+}
+
+/// Erklärungs-Stammdaten for the Hauptvordruck ESt 1 A beyond Profile's name/Steuer-ID
+/// (ADR-0050: the paper return must be complete). Its own model, not Profile columns:
+/// PUT /v1/profile replaces the whole profile and Onboarding uses it, so required ESt-1-A
+/// fields there would break the value-first funnel (ADR-0045). Every personal field is
+/// encrypted at rest; `religion` is a special category (Art. 9 DSGVO) and is stored only
+/// together with the explicit consent timestamp.
+model Stammdaten {
+  id                    String    @id @default(uuid())
+  userId                String    @unique
+  geburtsdatum          String? /// @encrypted?mode=strict
+  strasse               String? /// @encrypted?mode=strict
+  hausnummer            String? /// @encrypted?mode=strict
+  hausnummerZusatz      String? /// @encrypted?mode=strict
+  plz                   String? /// @encrypted?mode=strict
+  wohnort               String? /// @encrypted?mode=strict
+  beruf                 String? /// @encrypted?mode=strict
+  religion              String? /// @encrypted?mode=strict
+  religionEinwilligungAm DateTime?
+  familienstand         String? /// @encrypted?mode=strict
+  familienstandSeit     String? /// @encrypted?mode=strict
+  iban                  String? /// @encrypted?mode=strict
+  kontoinhaber          String? /// @encrypted?mode=strict
+  finanzamt             String? /// @encrypted?mode=strict
+  telefon               String? /// @encrypted?mode=strict
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+}
+
+/// One row per child for a given tax year (product ADR-031, Anlage Kind, ADR-0050).
+/// Personal facts are field-encrypted at rest (ADR-0008).
+model Kind {
+  id                    String   @id @default(uuid())
+  /// Scoping key — same trusted userId as Profile.userId (ADR-0007).
+  userId                String
+  steuerjahr            Int
+  lfdNr                 Int      @default(1)
+  vorname               String   /// @encrypted?mode=strict
+  nachname              String   /// @encrypted?mode=strict
+  geburtsdatum          String   /// @encrypted?mode=strict
+  idnr                  String?  /// @encrypted?mode=strict
+  kindergeldAnspruchEur String?  /// @encrypted?mode=strict
+  /// Anlage Kind Zeile 10 (Kz 02 / Kz 03): 1 = leiblich/adoptiert, 2 = Pflegekind, 3 = Enkel-/Stiefkind.
+  kindschaftsverhaeltnis  String?
+  kindschaftsverhaeltnisB String?
+  familienkasse           String?  /// @encrypted?mode=strict
+  wohnsitzInlandGanzjaehrig Boolean?
+  /// Anlage Kind Zeilen 11–15: the other parent when not part of this return.
+  andererElternteil              String?
+  andererElternteilName          String?  /// @encrypted?mode=strict
+  andererElternteilGeburtsdatum  String?  /// @encrypted?mode=strict
+  andererElternteilAdresse       String?  /// @encrypted?mode=strict
+  andererElternteilArt           String?
+  andererElternteilVerstorbenAm  String?  /// @encrypted?mode=strict
+  /// Entlastungsbetrag für Alleinerziehende (Anlage Kind Zeilen 45/46), whole year only.
+  gemeldetBeiMirGanzjaehrig      Boolean?
+  kindergeldAnMichGanzjaehrig    Boolean?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([userId, steuerjahr])
+}
+
+/// Coupling of two tax years for joint filing (ADR-006, Zusammenveranlagung).
+model SteuerjahrKopplung {
+  id              String   @id @default(uuid())
+  personAUserId   String
+  personBUserId   String
+  steuerjahr      Int
+  veranlagungsart String   @default("zusammen")
+  einladungsCode  String?  @unique
+  /// The invite code links two accounts; it stops working after this moment.
+  einladungsCodeGueltigBis DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([personAUserId, steuerjahr])
+  @@index([personBUserId, steuerjahr])
+}
+
+/// Opt-in setting and consent for Eulen-Modus (product ADR-037, ADR-048).
+model EulenEinstellung {
+  id          String    @id @default(uuid())
+  userId      String    @unique
+  aktiviert   Boolean   @default(false)
+  aktiviertAm DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+/// Dismissed cards in Eulen-Modus (product ADR-041: "Stimmt nicht").
+model EulenKartenVerwurf {
+  id          String   @id @default(uuid())
+  userId      String
+  steuerjahr  Int
+  fingerprint String
+  verworfenAm DateTime @default(now())
+
+  @@unique([userId, steuerjahr, fingerprint])
   @@index([userId, steuerjahr])
 }

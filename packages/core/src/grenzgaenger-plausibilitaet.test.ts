@@ -64,8 +64,9 @@ describe('pruefeGrenzgaenger — M2 CH', () => {
     expect(befund.punkte).toContainEqual({ grad: 'widerspruch', code: 'zulagen-ohne-kinder' })
   })
 
-  it('more than 45 Nichtrückkehrtage is a Hinweis (status loss), not a block', () => {
-    const befund = pruefeGrenzgaenger(input({ nichtrueckkehrtage: 46 }))
+  it('more than 60 Nichtrückkehrtage is a Hinweis (status loss), not a block', () => {
+    expect(pruefeGrenzgaenger(input({ nichtrueckkehrtage: 60 })).punkte).not.toContainEqual({ grad: 'hinweis', code: 'grenzgaenger-status-verloren' })
+    const befund = pruefeGrenzgaenger(input({ nichtrueckkehrtage: 61 }))
     expect(befund.punkte).toContainEqual({ grad: 'hinweis', code: 'grenzgaenger-status-verloren' })
     expect(befund.einreichbar).toBe(true) // a Hinweis never blocks
   })

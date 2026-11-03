@@ -46,6 +46,15 @@ export interface ExportProfileDto {
   updatedAt: string;
 }
 
+export type ExportTaxDataEntryDtoFelder = {[key: string]: string | number | boolean | null};
+
+export interface ExportTaxDataEntryDto {
+  bereich: string;
+  /** @nullable */
+  steuerjahr: number | null;
+  felder: ExportTaxDataEntryDtoFelder;
+}
+
 export interface ExportAccessLogEntryDto {
   action: string;
   resource: string;
@@ -58,8 +67,8 @@ export interface ExportDocumentDto {
   account: ExportAccountDto;
   /** @nullable */
   profile: ExportProfileDto | null;
-  /** Always empty until a tax-year model exists. */
-  taxData: string[];
+  /** Every stored tax-data row, decrypted (Art. 15/20); empty when the caller has none. */
+  taxData: ExportTaxDataEntryDto[];
   accessLog: ExportAccessLogEntryDto[];
 }
 

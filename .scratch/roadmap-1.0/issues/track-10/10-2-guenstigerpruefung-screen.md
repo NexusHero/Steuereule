@@ -20,11 +20,11 @@ promotet sein. **UND — eigene, bisher nicht deklarierte Kante:** das **Tarif-M
 es existiert noch nicht (nur auf dem ungemergten `origin/kaan/321`), und die „zwei Zahlen"
 kommen aus genau diesem Vergleich, nicht aus `berechne`. Kein Dep auf 10.1.
 
-**Status:** ready-for-agent
+**Status:** done — gemergt als #373 (6f4cdae)
 
-- [ ] `veranlagungsartenvergleich` liefert `eindeutig` über mindestens einen echten zvE-Pfad
+- [x] `veranlagungsartenvergleich` liefert `eindeutig` über mindestens einen echten zvE-Pfad
       (Soli/Kirchensteuer berechnet oder `unschaerfe` bestimmt — ADR-0034 Regel 3)
-- [ ] Screen rendert `aussage` zuerst: `eindeutig` zeigt Empfehlung, `zu-knapp`/`unbestimmt`
+- [x] Screen rendert `aussage` zuerst: `eindeutig` zeigt Empfehlung, `zu-knapp`/`unbestimmt`
       zeigt ehrlich „zu knapp, um das zu sagen"/„können wir noch nicht" — nie ein nacktes Urteil
-- [ ] Herkunfts-Chips an beiden Zahlen (welche zvE, welche Unschärfe)
-- [ ] TDD, typecheck + lint grün, ADR-0034-Folge (falls nötig), Posture-Zeile
+- [x] Herkunfts-Chips an beiden Zahlen (welche zvE, welche Unschärfe)
+- [x] TDD, typecheck + lint grün, ADR-0034-Folge (falls nötig), Posture-Zeile

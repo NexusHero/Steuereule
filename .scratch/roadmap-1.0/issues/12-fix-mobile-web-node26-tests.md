@@ -9,7 +9,7 @@ kontrolliert. Fix gehört in die Test-Setup-Schicht, nicht in Produktcode.
 
 **Blocked by:** None — can start immediately.
 
-**Status:** ready-for-agent
+**Status:** done — gemergt als #359 (3441809)
 
 - [x] Ursache diagnostiziert und in der Test-Setup-Schicht behoben (`test-setup.ts` o. ä.);
       kein Produktcode angefasst

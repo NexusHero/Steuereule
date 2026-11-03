@@ -14,7 +14,7 @@ Ausschluss des `/v1/health/*`-Präfixes, #338 F3) — sofern noch offen, hier mi
 **Blocked by:** Credential-Blöcke (Hetzner-API-Token, Domain/DNS, EU-Region) — siehe
 `infra/README.md`. Kein Track-Dep — kann sofort starten, sobald die Credentials vorliegen.
 
-**Status:** ready-for-agent
+**Status:** blocked — wartet auf Credentials: Hetzner-API-Token, Domain/DNS, EU-Region
 
 - [ ] `tofu plan` (oder `terraform plan`) validiert das HCL gegen ein echtes Hetzner-Projekt ohne Fehler
 - [ ] `tofu apply` erzeugt ≥1 k3s-Node in einer EU-Region (fsn1/nbg1/hel1 — ADR-020), nicht nur ein Plan

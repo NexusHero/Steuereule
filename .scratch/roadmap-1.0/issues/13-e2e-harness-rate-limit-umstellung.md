@@ -17,19 +17,19 @@ Tabelle auf das Throttler-Verhalten (ein neues Bucket-Substrat, ggf. gegen den R
 
 **Blocked by:** 02 — Phase 0.2 Framework-Ersatz (gemerged)
 
-**Status:** ready-for-agent
+**Status:** done — miterledigt mit Ticket 02 als #362 (352d153): der Harness liest kein `RateLimit`-SQL mehr
 
-- [ ] `e2e/harness/rate-limit.mjs` liest kein `"RateLimit"`-SQL mehr; `readBucketByExactKey` /
+- [x] `e2e/harness/rate-limit.mjs` liest kein `"RateLimit"`-SQL mehr; `readBucketByExactKey` /
       `readBucketByPrefix` / `waitForBucketHeadroom` werden durch Throttler-Verhaltens-Helfer
       ersetzt oder entfernt (kein toter DB-Read-Pfad, keine „no such table `RateLimit`"-Referenz).
-- [ ] Alle Konsumenten (`e2e/device/device-authorization.mjs`, `e2e/session/return-visit.mjs`,
+- [x] Alle Konsumenten (`e2e/device/device-authorization.mjs`, `e2e/session/return-visit.mjs`,
       `e2e/responsive/breakpoint-layout.mjs`, `e2e/responsive/banner-ds-qa.mjs`,
       `e2e/storage/no-client-persistence.mjs`, …) pacen sich gegen das reale 429-Verhalten statt
       gegen Tabellenzeilen; der „Browser gates"-Job läuft grün.
-- [ ] `e2e/harness/README.md` schreibt die „The `RateLimit` table is never truncated…"-Sektion auf
+- [x] `e2e/harness/README.md` schreibt die „The `RateLimit` table is never truncated…"-Sektion auf
       das neue Substrat um (Bucket-Zustand lesen, nie löschen — jetzt in-memory/Throttler statt
       Tabelle).
-- [ ] Referenz auf das zu beobachtende Verhalten sind die Throttler-Tests aus Ticket 02:
+- [x] Referenz auf das zu beobachtende Verhalten sind die Throttler-Tests aus Ticket 02:
       `apps/api/test/acceptance/req-014-device-code.integration.test.ts` (11. Mint → 429, exakt
       10 Zeilen, andere IP → 201 — die write-amplification-Begrenzung) und
       `apps/api/test/acceptance/req-014-device-approve-token.integration.test.ts` (pending-Limiter

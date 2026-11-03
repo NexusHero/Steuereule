@@ -144,11 +144,19 @@ export type SonderausgabeQuestionId =
   | 'kv-pv-betrag'
   | 'riester'
   | 'riester-betrag'
+  | 'riester-art'
+  | 'riester-einnahmen-vorjahr'
+
+/**
+ * Anlage Kind Zeilen 47/48 — the household facts behind the Entlastungsbetrag für
+ * Alleinerziehende (§ 24b EStG). They hold for the whole year, not per child.
+ */
+export type AlleinerziehendQuestionId = 'ae-weitere-person' | 'ae-haushaltsgemeinschaft'
 
 /**
  * The Grenzgänger-CH entry's two questions (ADR-013/036). CHF amounts are entered via the
  * Lohnausweis mask (grenzgaenger.ts), NOT the interview — these two capture the Wohnsitz and
- * the 45-Tage-Regel's input (Nichtrückkehrtage). No gate: the Grenzgänger-Status is a DERIVED
+ * the 60-Tage-Regel's input (Nichtrückkehrtage). No gate: the Grenzgänger-Status is a DERIVED
  * fact (`grenzgaengerStatus`), not a question to re-ask.
  */
 export type SegmentChQuestionId = 'ch-wohnsitz' | 'ch-nichtrueckkehrtage'
@@ -182,6 +190,7 @@ export type EntryQuestionId =
   | LebenslageQuestionId
   | SonderausgabeQuestionId
   | SegmentChQuestionId
+  | AlleinerziehendQuestionId
 export type EntryGateId = MinimalGateGateId | SegmentTwoGateId
 
 /** Any step declared in ANY entry — the generic engine's own domain (D1/D3). */
@@ -237,6 +246,12 @@ export const VERMIETUNG_ART_VALUES = ['Einfach', 'Mehrere', 'Verkauf oder möbli
  * its own constant rather than a shared `['Ja', 'Nein']`).
  */
 export const JA_NEIN_VALUES = ['Ja', 'Nein'] as const
+
+/**
+ * Accepted values for `riester-art` — Anlage AV Zeile 4 (unmittelbar, Kz 106 = 1) or Zeile 14
+ * (mittelbar über den Ehegatten, Kz 106 = 2). Only the direct case needs the prior-year earnings.
+ */
+export const RIESTER_ART_VALUES = ['Unmittelbar', 'Mittelbar'] as const
 
 /**
  * Accepted values for `nebenjob` (product ADR-031: Minijob is "nur erklären, nicht erfassen" —
@@ -442,19 +457,28 @@ export const QUESTIONS: Readonly<Record<EntryStepId, QuestionDeclaration>> = {
   'spenden-betrag': { id: 'spenden-betrag', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
   'kv-pv': { id: 'kv-pv', kind: 'question', form: { kind: 'enum', values: JA_NEIN_VALUES }, followUps: { Ja: ['kv-pv-betrag'] } },
   'kv-pv-betrag': { id: 'kv-pv-betrag', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
-  riester: { id: 'riester', kind: 'question', form: { kind: 'enum', values: JA_NEIN_VALUES }, followUps: { Ja: ['riester-betrag'] } },
+  riester: { id: 'riester', kind: 'question', form: { kind: 'enum', values: JA_NEIN_VALUES }, followUps: { Ja: ['riester-betrag', 'riester-art'] } },
   'riester-betrag': { id: 'riester-betrag', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
+  'riester-art': {
+    id: 'riester-art',
+    kind: 'question',
+    form: { kind: 'enum', values: RIESTER_ART_VALUES },
+    followUps: { Unmittelbar: ['riester-einnahmen-vorjahr'], Mittelbar: [] },
+  },
+  'ae-weitere-person': { id: 'ae-weitere-person', kind: 'question', form: { kind: 'enum', values: JA_NEIN_VALUES } },
+  'ae-haushaltsgemeinschaft': { id: 'ae-haushaltsgemeinschaft', kind: 'question', form: { kind: 'enum', values: JA_NEIN_VALUES } },
+  'riester-einnahmen-vorjahr': { id: 'riester-einnahmen-vorjahr', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
 
   // ---- Grenzgänger-CH (segment-ch, ADR-013/036) ----------------------------------------
   'ch-wohnsitz': { id: 'ch-wohnsitz', kind: 'question', form: { kind: 'enum', values: CH_WOHNSITZ_VALUES } },
-  // The 45-Tage-Zähler input (ADR-013): Nichtrückkehrtage. The range 0–365 is the calendar
+  // The 60-Tage-Zähler input (Art. 15a DBA-CH): Nichtrückkehrtage. The range 0–365 is the calendar
   // year's bound — the same open-placeholder stance as `weg`/`tage` (review F6); the DERIVED
-  // rule (grenzgaengerStatus, >45 ends Grenzgänger status) is the sourced part, not this range.
+  // rule (grenzgaengerStatus, >60 ends Grenzgänger status) is the sourced part, not this range.
   'ch-nichtrueckkehrtage': { id: 'ch-nichtrueckkehrtage', kind: 'question', form: { kind: 'integer', min: 0, max: 365 } },
 }
 
 /** D1 — the entries that exist today. `EntryId` grows as later Lebenslagen arrive (ADR-0031 §3). */
-export type EntryId = 'minimal-gate' | 'segment-2' | 'lebenslagen' | 'sonderausgaben' | 'segment-ch'
+export type EntryId = 'minimal-gate' | 'segment-2' | 'lebenslagen' | 'sonderausgaben' | 'segment-ch' | 'alleinerziehend'
 
 export interface CatalogueEntry {
   readonly id: EntryId
@@ -482,6 +506,7 @@ export const ENTRIES: Readonly<Record<EntryId, CatalogueEntry>> = {
     steps: ['spenden', 'kv-pv', 'riester'],
   },
   'segment-ch': { id: 'segment-ch', steps: ['ch-wohnsitz', 'ch-nichtrueckkehrtage'] },
+  alleinerziehend: { id: 'alleinerziehend', steps: ['ae-weitere-person', 'ae-haushaltsgemeinschaft'] },
 }
 
 function targetId(target: FollowUpTarget): EntryStepId {

@@ -10,7 +10,7 @@ echte URL. Deploys via OpenTofu-Apply + `kubectl apply -k`.
 bäckt `EXPO_PUBLIC_API_BASE_URL` zur Build-Zeit ein (ADR-0026) — pro Umgebung wird also ein
 eigenes Web-Image gebaut; der Image-Tag muss die Umgebung/API-Origin kodieren.
 
-**Status:** ready-for-agent
+**Status:** blocked — wartet auf Credentials: GHCR-Token mit packages:write
 
 - [ ] GHCR-Images für `api` und `web` gebaut und gepusht (multi-arch nach 06.7)
 - [ ] Staging- und Prod-Overlays getrennt; `kubectl apply -k` deployt beide Umgebungen

@@ -33,7 +33,7 @@ import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 
 export interface KatalogScreenProps {
-  readonly entry: 'lebenslagen' | 'sonderausgaben'
+  readonly entry: 'lebenslagen' | 'sonderausgaben' | 'alleinerziehend'
   readonly onDone?: () => void
   readonly onBack?: () => void
   readonly taxYear?: number

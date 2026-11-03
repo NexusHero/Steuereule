@@ -6,7 +6,7 @@
 - **Nummer offen:** `0041` kollidiert mit t08s `0041-lstb-angestellte-vertikale.md` — die
   endgültige Nummer wird bei Promotion vergeben (0041/0042), nicht hier festgeschrieben.
 - **Implements** Produkt-ADR-029 (volle CH-Tiefe), Produkt-ADR-012 (Wechselkurs), Produkt-ADR-013
-  (nur Schweiz, 45-Tage-Regel), Produkt-ADR-036 (Scan-Fallback-Maske, CHF führt)
+  (nur Schweiz; 45-Tage-Regel — korrigiert auf 60 Tage, siehe Amendment 2026-11-05), Produkt-ADR-036 (Scan-Fallback-Maske, CHF führt)
 - **Builds on** ADR-0008 (Feldverschlüsselung), ADR-0033 (Interview-Engine/Entries), ADR-0035
   (Foundation-Konsolidierung), the Beleg-Posteingang draft 0040
 - **Context tags:** architecture, grenzgänger-ch, wechselkurs, interview-engine, honesty principle, security
@@ -29,7 +29,7 @@ and whose document set is the CH-Lohnausweis, the Quellensteuer-Abrechnung, the 
 
 2. **CH-Interview als eigener Catalogue-Entry (`segment-ch`)** — `ch-wohnsitz` + `ch-nichtrueckkehrtage`
    are a separate entry in `interview.ts`'s catalogue, not questions appended to the Minimal-Gate.
-   The Grenzgänger-Status is a **derived** fact (`grenzgaengerStatus`, 45-Tage-Regel ADR-013), never
+   The Grenzgänger-Status is a **derived** fact (`grenzgaengerStatus`, 60-Tage-Regel — see Amendment), never
    a re-asked question. Server admission is **entry-aware**: `postAnswer` derives the owning entry
    from the bare questionId (`entryForStep`) and validates reachability within it (`isReachableFor`)
    — the D3 design ADR-0033 already built, applied uniformly, so the CH entry is server-validated
@@ -74,7 +74,7 @@ and whose document set is the CH-Lohnausweis, the Quellensteuer-Abrechnung, the 
 - **M2 Plausibilität (`grenzgaenger-plausibilitaet.ts`)** covers the CH hazards structurally: a
   tatsächlicher Kurs without its Beleg (Widerspruch), an echter Grenzgänger without Quellensteuer
   (offen), a Nettolohn contradicting the Lohnausweis arithmetic (Widerspruch), Familienzulagen without
-  children (Widerspruch), and the >45-Tage status loss (Hinweis).
+  children (Widerspruch), and the >60-Tage status loss (Hinweis; was >45, see Amendment).
 
 ## Alternatives considered
 
@@ -92,3 +92,17 @@ and whose document set is the CH-Lohnausweis, the Quellensteuer-Abrechnung, the 
   if done unilaterally here.
 - **Field-encrypt the `art` discriminator.** Rejected: it is not PII/tax fact and the inbox needs it in
   the clear to group by type, same as the dates.
+
+## Amendment — 2026-11-05: the Nichtrückkehrtage limit is 60, not 45
+
+Produkt-ADR-013 and this ADR named a 45-Tage-Regel. For Switzerland the source is Art. 15a Abs. 2
+DBA Deutschland–Schweiz: Grenzgänger status ends only when the person does not return to the
+Wohnsitz on **more than 60 Arbeitstagen** in the Kalenderjahr for professional reasons. 45 days is
+the rule of the DBA Deutschland–Frankreich. With 45, a commuter with 46–60 such days was classed
+`kein-grenzgaenger` — wrong status, wrong Quellensteuer expectation, and since Anlage N-Gre a
+blocked printout.
+
+`GRENZGAENGER_NICHTRUECKKEHRTAGE` is now 60; the Plausibilitäts-Hinweis follows the same constant.
+Ruled by the stakeholder (NexusHero) on 2026-11-05. Not covered and still open: part-time and
+part-year employment, where the 60 days are reduced proportionally (BMF-Schreiben zu Art. 15a).
+

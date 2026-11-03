@@ -7,7 +7,7 @@ Was die Kapazität reißt, bleibt ehrlich gegated (NexusHero-Entscheidung, sicht
 
 **Blocked by:** 08 — Phase 1a: Angestellte-Vertikale · 09 — Phase 1b: Grenzgänger-CH-Vertikale
 
-**Status:** ready-for-agent
+**Status:** in-progress — 10.1–10.7 gemergt (#371, #373–#376), 10.8 M1–M3 gemergt (#377–#379), 10.9 im Entwurfs-PR #380; offen: Follow-ups von 10.7/10.8
 
 - [ ] Beleg-Inbox ganzjährig (M3): Saison-Zustand im Belege-Tab, Upload ohne Jahresbindung,
       Zuordnung als Vorschlag (ADR-007)

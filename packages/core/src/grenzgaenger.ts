@@ -1,7 +1,7 @@
 // ADR-029/036/013 — the Grenzgänger-CH vertical's domain. Three things live here:
 // (1) the guided fallback mask for the CH-Lohnausweis (ADR-036: "die Ziffernliste erscheint
 //     wie auf dem Papier, Feld für Feld" — Scan/OCR is OUT of scope, ADR-045);
-// (2) the Grenzgänger-Status (ADR-013: nur Schweiz, 45-Tage-Regel);
+// (2) the Grenzgänger-Status (ADR-013: nur Schweiz; 60-Tage-Regel, Art. 15a Abs. 2 DBA-CH);
 // (3) the CH line items → the deterministic core, each amount CHF→EUR via a Wechselkurs with
 //     provenance "Lohnausweis Ziffer n × Kurs" (ADR-029/012/036). The Vorsorgeaufwand
 //     (PK/3a/KK) and the Quellensteuer-Anrechnung fold into the core's role-aware `berechne`
@@ -20,16 +20,19 @@ import { CH_WOHNSITZ_VALUES, type ChWohnsitz } from './interview'
 export { CH_WOHNSITZ_VALUES }
 export type { ChWohnsitz }
 
-// --- Grenzgänger-Status (ADR-013 — nur Schweiz, 45-Tage-Regel) ---------------------------
+// --- Grenzgänger-Status (ADR-013 — nur Schweiz, 60-Tage-Regel) ---------------------------
 
-/** The 45-Tage rule (ADR-013): more than 45 Nichtrückkehrtage ends Grenzgänger status. */
-export const GRENZGAENGER_NICHTRUECKKEHRTAGE = 45
+/**
+ * Art. 15a Abs. 2 DBA Deutschland–Schweiz: more than 60 Arbeitstage without returning to the
+ * Wohnsitz end Grenzgänger status. (ADR-013 first said 45 — that is the DBA-Frankreich rule.)
+ */
+export const GRENZGAENGER_NICHTRUECKKEHRTAGE = 60
 
 export type GrenzgaengerStatus = 'echter-grenzgaenger' | 'kein-grenzgaenger'
 
 /**
- * ADR-013's 45-Tage-Zähler. A DE-Wohnsitz with <= 45 Nichtrückkehrtage is an echter
- * Grenzgänger (4,5 % Quellensteuer, ADR-029/013); more than 45 days, or a CH-Wohnsitz, is
+ * The 60-Tage-Zähler. A DE-Wohnsitz with <= 60 Nichtrückkehrtage is an echter
+ * Grenzgänger (4,5 % Quellensteuer, ADR-029/013); more than 60 days, or a CH-Wohnsitz, is
  * not. Throws on a negative/non-integer day count — it is a count of days, not a free number.
  */
 export function grenzgaengerStatus(wohnsitz: ChWohnsitz, nichtrueckkehrtage: number): GrenzgaengerStatus {

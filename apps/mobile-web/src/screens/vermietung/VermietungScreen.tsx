@@ -12,13 +12,15 @@ import { useState } from 'react'
 import { ScrollView, View, Text, Pressable, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { Button, Card, Feld, Input, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
+import { Button, Card, Chip, Feld, Input, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
 import { formatEuro, VERMIETUNG_FELDER, type VermietungFeldId } from '@steuereule/core'
 import {
   getVermietungControllerGetQueryKey,
   useVermietungControllerCreate,
   useVermietungControllerGet,
+  useVermietungControllerSetAdresse,
   useVermietungControllerSetFeld,
+  type PutVermietungAdresseDto,
   type VermietungFeldDto,
   type VermietungResponseDto,
   type VermietungsobjektDto,
@@ -43,6 +45,7 @@ export function VermietungScreen({ onDone = () => {}, onBack, taxYear = CURRENT_
   const query = useVermietungControllerGet(taxYear)
   const createObjekt = useVermietungControllerCreate()
   const setFeld = useVermietungControllerSetFeld()
+  const setAdresse = useVermietungControllerSetAdresse()
 
   if (query.isPending) {
     return <LoadingState bp={bp} label={tr('vermietung.loading')} />
@@ -69,6 +72,10 @@ export function VermietungScreen({ onDone = () => {}, onBack, taxYear = CURRENT_
     setFeld.mutate({ jahr: taxYear, objektId, feld, data }, { onSuccess: invalidate })
   }
 
+  function sendAdresse(objektId: string, data: PutVermietungAdresseDto) {
+    setAdresse.mutate({ jahr: taxYear, objektId, data }, { onSuccess: invalidate })
+  }
+
   function addObjekt() {
     createObjekt.mutate({ jahr: taxYear }, { onSuccess: invalidate })
   }
@@ -84,7 +91,13 @@ export function VermietungScreen({ onDone = () => {}, onBack, taxYear = CURRENT_
       <EinordnungNotice kind={response.einordnung.kind} />
 
       {response.objekte.map((objekt, index) => (
-        <ObjektCard key={objekt.id} objekt={objekt} index={index} onSend={(feld, data) => send(objekt.id, feld, data)} />
+        <ObjektCard
+          key={objekt.id}
+          objekt={objekt}
+          index={index}
+          onSend={(feld, data) => send(objekt.id, feld, data)}
+          onSendAdresse={(data) => sendAdresse(objekt.id, data)}
+        />
       ))}
 
       {response.einordnung.kind === 'verkauf-oder-moebliert' ? null : (
@@ -121,10 +134,12 @@ function ObjektCard({
   objekt,
   index,
   onSend,
+  onSendAdresse,
 }: {
   readonly objekt: VermietungsobjektDto
   readonly index: number
   readonly onSend: (feld: VermietungFeldId, data: VermietungFeldDto) => void
+  readonly onSendAdresse?: (adresse: PutVermietungAdresseDto) => void
 }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
@@ -142,6 +157,77 @@ function ObjektCard({
           onUnklar={() => onSend(feld, { kind: 'unklar' })}
         />
       ))}
+
+      <View style={{ marginTop: t.space.s3, borderTopWidth: t.space.kontur, borderTopColor: t.color.tinte, paddingTop: t.space.s3 }}>
+        <Text style={{ fontFamily: t.font.display, fontWeight: t.weight.fett, fontSize: t.size.m, color: t.color.tinte, marginBottom: t.space.s2 }}>
+          {tr('vermietung.adresseHeading', 'Objektadresse (für Anlage V)')}
+        </Text>
+        <Feld label="Straße & Hausnummer">
+          <Input
+            value={[objekt.strasse, objekt.hausnummer].filter(Boolean).join(' ')}
+            placeholder="Musterstraße 12"
+            accessibilityLabel="Straße und Hausnummer"
+            onChange={(val) => {
+              const parts = val.split(' ')
+              const h = parts.length > 1 ? parts.pop() : ''
+              const hausnummer = h ? h : undefined
+              const strasse = parts.join(' ')
+              onSendAdresse?.({ strasse, ...(hausnummer ? { hausnummer } : {}) })
+            }}
+          />
+        </Feld>
+        <View style={{ flexDirection: 'row', gap: t.space.s2 }}>
+          <View style={{ flex: 1 }}>
+            <Feld label="PLZ">
+              <Input
+                value={objekt.plz ?? ''}
+                placeholder="10115"
+                type="numeric"
+                accessibilityLabel="Postleitzahl"
+                onChange={(plz) => onSendAdresse?.({ plz })}
+              />
+            </Feld>
+          </View>
+          <View style={{ flex: 2 }}>
+            <Feld label="Ort">
+              <Input
+                value={objekt.ort ?? ''}
+                placeholder="Berlin"
+                accessibilityLabel="Ort"
+                onChange={(ort) => onSendAdresse?.({ ort })}
+              />
+            </Feld>
+          </View>
+        </View>
+        <Feld label="Gesamtwohnfläche (m²)">
+          <Input
+            value={objekt.wohnflaeche ?? ''}
+            placeholder="85"
+            type="numeric"
+            accessibilityLabel="Gesamtwohnfläche"
+            onChange={(wohnflaeche) => onSendAdresse?.({ wohnflaeche })}
+          />
+        </Feld>
+        <Feld label="Ist die Gebäude-AfA unverändert wie im Vorjahr?">
+          <View style={{ flexDirection: 'row', gap: t.space.s2 }}>
+            <Chip
+              aktiv={objekt.afaWieVorjahr === true}
+              onPress={() => onSendAdresse?.({ afaWieVorjahr: true })}
+              testID="vermietung-afa-wie-vorjahr-ja"
+            >
+              Ja
+            </Chip>
+            <Chip
+              aktiv={objekt.afaWieVorjahr === false}
+              onPress={() => onSendAdresse?.({ afaWieVorjahr: false })}
+              testID="vermietung-afa-wie-vorjahr-nein"
+            >
+              Nein, im Jahr gekauft oder geändert
+            </Chip>
+          </View>
+        </Feld>
+      </View>
+
       <FaktenNotice objekt={objekt} />
     </Card>
   )

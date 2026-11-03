@@ -10,17 +10,20 @@ import { useState } from 'react'
 import { ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { Button, Card, Input, Feld, Option, Pill, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme, type Breakpoint } from '@steuereule/ui'
+import { Button, Card, Chip, Input, Feld, Option, Pill, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme, type Breakpoint } from '@steuereule/ui'
 import { ENTRIES, LOHNAUSWEIS_FELDER, formatEuro, nextStepFor, type Answers, type EntryQuestionId } from '@steuereule/core'
 import {
   useInterviewControllerGetInterview,
   useInterviewControllerPostAnswer,
   useChLohnausweisControllerGet,
   useChLohnausweisControllerSetFeld,
+  useChLohnausweisControllerSetNGre,
   useChLohnausweisControllerSetWechselkurs,
   getChLohnausweisControllerGetQueryKey,
   type ChLohnausweisResponseDto,
   type PutLohnausweisFeldDto,
+  type NGreAngabenDto,
+  type PutNGreDto,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
@@ -44,6 +47,7 @@ export function GrenzgaengerScreen({ onDone, taxYear = CURRENT_TAX_YEAR }: Grenz
   const postAnswer = useInterviewControllerPostAnswer()
   const setFeld = useChLohnausweisControllerSetFeld()
   const setWechselkurs = useChLohnausweisControllerSetWechselkurs()
+  const setNGre = useChLohnausweisControllerSetNGre()
 
   const [interviewAnswers, setInterviewAnswers] = useState<Answers>({})
   const [seeded, setSeeded] = useState(false)
@@ -107,7 +111,22 @@ export function GrenzgaengerScreen({ onDone, taxYear = CURRENT_TAX_YEAR }: Grenz
     return <ChInterviewStep stepId={step.id} onAnswer={answer} bp={bp} onBack={onDone} />
   }
 
-  return <LohnausweisStep lohnausweis={lohnausweis} taxYear={taxYear} onSetFeld={setFeld.mutate} onSetWechselkurs={setWechselkurs.mutate} onDone={onDone} bp={bp} />
+  return (
+    <LohnausweisStep
+      lohnausweis={lohnausweis}
+      taxYear={taxYear}
+      onSetFeld={setFeld.mutate}
+      onSetWechselkurs={setWechselkurs.mutate}
+      onSetNGre={(data) =>
+        setNGre.mutate(
+          { jahr: taxYear, data },
+          { onSuccess: () => void queryClient.invalidateQueries({ queryKey: getChLohnausweisControllerGetQueryKey(taxYear) }) },
+        )
+      }
+      onDone={onDone}
+      bp={bp}
+    />
+  )
 }
 
 // --- CH-Interview step (two questions, ADR-013) ---------------------------------------------
@@ -183,6 +202,7 @@ function LohnausweisStep({
   taxYear,
   onSetFeld,
   onSetWechselkurs,
+  onSetNGre,
   onDone,
   bp,
 }: {
@@ -190,6 +210,7 @@ function LohnausweisStep({
   readonly taxYear: number
   readonly onSetFeld: (vars: { jahr: number; feld: string; data: PutLohnausweisFeldDto }) => void
   readonly onSetWechselkurs: (vars: { jahr: number; data: { monat: string; kurs: number; modus: 'amtlich' | 'tatsaechlich' } }) => void
+  readonly onSetNGre: (data: PutNGreDto) => void
   readonly onDone: () => void
   readonly bp: Breakpoint
 }) {
@@ -235,6 +256,8 @@ function LohnausweisStep({
         {tr('grenzgaenger.lohnausweis.wechselkurs.amtlich')}
       </Button>
 
+      <NGreAbschnitt nGre={lohnausweis.nGre} onSet={onSetNGre} />
+
       {status !== null ? (
         <Card variant="default" style={styles.statusCard}>
           <Text style={styles.sectionTitle}>{tr('grenzgaenger.lohnausweis.status.label')}</Text>
@@ -266,6 +289,75 @@ function LohnausweisStep({
         {tr('grenzgaenger.lohnausweis.done')}
       </Button>
     </ScrollView>
+  )
+}
+
+const N_GRE_TEXTFELDER = ['arbeitgeberName', 'arbeitgeberStrasse', 'arbeitgeberPlzOrt'] as const
+const N_GRE_BETRAGSFELDER = ['familienzulagenChf', 'krankentaggeldChf', 'pkArbeitnehmerChf', 'pkArbeitgeberChf'] as const
+
+/** What Anlage N-Gre needs beyond the Lohnausweis: employer, Vorsorge split, and the Sonderfall question. */
+function NGreAbschnitt({ nGre, onSet }: { readonly nGre: NGreAngabenDto; readonly onSet: (data: PutNGreDto) => void }) {
+  const t = useTheme()
+  const { t: tr } = useTranslation(APP_NS)
+  const styles = makeStyles(t)
+  return (
+    <>
+      <Text style={styles.sectionTitle}>{tr('grenzgaenger.nGre.title')}</Text>
+      <Text style={styles.help}>{tr('grenzgaenger.nGre.help')}</Text>
+      {N_GRE_TEXTFELDER.map((feld) => (
+        <NGreEingabe
+          key={feld}
+          label={tr(`grenzgaenger.nGre.felder.${feld}`)}
+          initial={nGre[feld] ?? ''}
+          testID={`ch-ngre-${feld}`}
+          onCommit={(text) => onSet({ [feld]: text === '' ? null : text })}
+        />
+      ))}
+      {N_GRE_BETRAGSFELDER.map((feld) => (
+        <NGreEingabe
+          key={feld}
+          label={tr(`grenzgaenger.nGre.felder.${feld}`)}
+          initial={nGre[feld] === null ? '' : String(nGre[feld])}
+          numeric
+          testID={`ch-ngre-${feld}`}
+          onCommit={(text) => {
+            if (text === '') onSet({ [feld]: null })
+            else if (/^(0|[1-9]\d*)$/.test(text)) onSet({ [feld]: Number(text) })
+          }}
+        />
+      ))}
+      <Feld label={tr('grenzgaenger.nGre.sonderfaelle')}>
+        <View style={{ flexDirection: 'row', gap: t.space.s2 }}>
+          <Chip aktiv={nGre.sonderfaelle === false} onPress={() => onSet({ sonderfaelle: false })} testID="ch-ngre-sonderfaelle-nein">
+            {tr('grenzgaenger.nGre.nein')}
+          </Chip>
+          <Chip aktiv={nGre.sonderfaelle === true} onPress={() => onSet({ sonderfaelle: true })} testID="ch-ngre-sonderfaelle-ja">
+            {tr('grenzgaenger.nGre.ja')}
+          </Chip>
+        </View>
+      </Feld>
+    </>
+  )
+}
+
+function NGreEingabe({
+  label,
+  initial,
+  numeric = false,
+  testID,
+  onCommit,
+}: {
+  readonly label: string
+  readonly initial: string
+  readonly numeric?: boolean
+  readonly testID: string
+  readonly onCommit: (text: string) => void
+}) {
+  const [text, setText] = useState(initial)
+  return (
+    <Feld label={label}>
+      <Input type={numeric ? 'numeric' : 'text'} value={text} onChange={setText} onSubmit={() => onCommit(text.trim())} testID={testID} />
+    </Feld>
   )
 }
 

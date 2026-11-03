@@ -8,20 +8,20 @@ Plausibilitäts-Prüfung vor Abgabe (M2). Demoable auf der echten URL (Phase-DoD
 
 **Blocked by:** 05 — Phase 0.5: Mantel-Abschluss · 06 — Infra-Track: #292
 
-**Status:** ready-for-agent
+**Status:** done — Slice 1 gemergt als #366 (23161dd), Slice 2 über Ticket 15 als #370 (9fad4a6)
 
 - [x] LStB-Datenaufnahme (Scan/Import + geführte Fallback-Maske, ADR-036) mit
       ehrlichem Fehler-/Unklar-Zustand
 - [x] Interview-Flow für die 5 Lebenslagen auf der Interview-Engine (0.4), on-demand-Katalog
       für Sonderausgaben (ADR-031)
-- [ ] Arbeitstage-/Wegstrecken-Assistent mit Kalenderlogik (M4); Günstigerprüfungs-Vorbereitung
+- [x] Arbeitstage-/Wegstrecken-Assistent mit Kalenderlogik (M4); Günstigerprüfungs-Vorbereitung
       aus ADR-M1 erst in Phase 2 — hier nur die Datengrundlage *(core `werktage.ts` fertig, ehrlich
       „vor Feiertagen" benannt: gesetzliche Feiertage = Folge-Slice (Feiertagskalender),
       API/UI-Anbindung Folge-Slice)*
-- [ ] Berechnung über den deterministischen Kern (0.4); Cockpit-Werte stammen aus demselben
+- [x] Berechnung über den deterministischen Kern (0.4); Cockpit-Werte stammen aus demselben
       Kern (eine Wahrheit, kein zweiter Rechenweg) *(core `angestellte.ts`-Faltung fertig,
       Cockpit-Echtdaten-Anbindung Folge-Slice)*
-- [ ] Plausibilitäts-Prüfung vor Abgabe (M2): Widersprüche/Hinweise/einreichbar — auf
+- [x] Plausibilitäts-Prüfung vor Abgabe (M2): Widersprüche/Hinweise/einreichbar — auf
       echter Umgebung demoable *(core `plausibilitaet.ts` fertig, Screen/API-Anbindung
       Folge-Slice)*
 - [x] Register: neue Produkt-REQs für die Vertikale angelegt und nach REQ-DoD abgenommen

@@ -7,7 +7,7 @@ wiederhergestellt und die API bootet dagegen. Das ist ein DR-Nachweis, nicht nur
 
 **Blocked by:** 06.2 (Postgres existiert).
 
-**Status:** ready-for-agent
+**Status:** blocked — braucht Cluster und Datenbank aus 06.1/06.2
 
 - [ ] managed-Postgres-PITR/Backups aktiv; RPO/RTO dokumentiert (nicht nur „ist aktiv")
 - [ ] Wiederherstellungs-Test: DB aus Backup wiederhergestellt, API bootet dagegen, Migrationen/Seed laufen — aufgezeichnet als Beweis

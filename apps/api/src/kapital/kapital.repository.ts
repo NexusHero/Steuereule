@@ -17,6 +17,10 @@ export interface KapitalRecord {
   steuerjahr: number
   /** Kapitalerträge (whole euros) — null=offen, "unklar"=unreadable. */
   kapitalertraege: string | null
+  sparerPauschbetrag: string | null
+  kapitalertragsteuer: string | null
+  solidaritaetszuschlag: string | null
+  kirchensteuer: string | null
 }
 
 export const KAPITAL_REPOSITORY = Symbol('KAPITAL_REPOSITORY')

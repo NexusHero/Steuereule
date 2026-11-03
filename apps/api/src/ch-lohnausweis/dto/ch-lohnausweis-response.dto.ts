@@ -2,7 +2,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import { LohnausweisFeldDto } from './lohnausweis-feld.dto.js'
 import { WechselkursDto } from './wechselkurs.dto.js'
-import { ChPostenDto } from './ch-posten.dto.js'
+import { ChPostenDto, NGreAngabenDto } from './ch-posten.dto.js'
 
 /**
  * The derived fold result — @steuereule/core's `Berechnungsstand` as a flat wire shape. `kind`
@@ -61,4 +61,7 @@ export class ChLohnausweisResponseDto {
 
   @ApiProperty({ type: BerechnungsstandDto, nullable: true, description: 'The fold result, null until foldable.' })
   stand!: BerechnungsstandDto | null
+
+  @ApiProperty({ type: NGreAngabenDto, description: 'The Anlage-N-Gre facts beyond the Lohnausweis.' })
+  nGre!: NGreAngabenDto
 }

@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { LOHNAUSWEIS_BETRAG_FELDER, type LohnausweisBetragFeldId } from '@steuereule/core'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
-import type { ChLohnausweisFelder, ChLohnausweisRecord, ChLohnausweisRepository } from './ch-lohnausweis.repository.js'
+import type { ChLohnausweisFelder, ChLohnausweisRecord, ChLohnausweisRepository, NGreAngaben } from './ch-lohnausweis.repository.js'
 
 /** The Lohnausweis field id → Prisma column name (the id's hyphen-free camelCase form). */
 const FELD_SPALTE: Record<LohnausweisBetragFeldId, string> = {
@@ -46,7 +46,7 @@ type ChLohnausweisRow = {
   wechselkursKurs: number | null
   wechselkursModus: string | null
   wechselkursBelegId: string | null
-}
+} & NGreAngaben
 
 function toRecord(row: ChLohnausweisRow): ChLohnausweisRecord {
   const felder = {} as ChLohnausweisFelder
@@ -62,6 +62,16 @@ function toRecord(row: ChLohnausweisRow): ChLohnausweisRecord {
     wechselkursKurs: row.wechselkursKurs,
     wechselkursModus: row.wechselkursModus,
     wechselkursBelegId: row.wechselkursBelegId,
+    nGre: {
+      arbeitgeberName: row.arbeitgeberName,
+      arbeitgeberStrasse: row.arbeitgeberStrasse,
+      arbeitgeberPlzOrt: row.arbeitgeberPlzOrt,
+      familienzulagenChf: row.familienzulagenChf,
+      krankentaggeldChf: row.krankentaggeldChf,
+      pkArbeitnehmerChf: row.pkArbeitnehmerChf,
+      pkArbeitgeberChf: row.pkArbeitgeberChf,
+      nGreSonderfaelle: row.nGreSonderfaelle,
+    },
   }
 }
 
@@ -81,6 +91,14 @@ const EMPTY_CREATE: Record<string, null> = Object.fromEntries([
   ['wechselkursKurs', null],
   ['wechselkursModus', null],
   ['wechselkursBelegId', null],
+  ['arbeitgeberName', null],
+  ['arbeitgeberStrasse', null],
+  ['arbeitgeberPlzOrt', null],
+  ['familienzulagenChf', null],
+  ['krankentaggeldChf', null],
+  ['pkArbeitnehmerChf', null],
+  ['pkArbeitgeberChf', null],
+  ['nGreSonderfaelle', null],
 ])
 
 @Injectable()
@@ -125,6 +143,18 @@ export class PrismaChLohnausweisRepository implements ChLohnausweisRepository {
         where: { userId_steuerjahr: { userId, steuerjahr } },
         create: { userId, steuerjahr, ...EMPTY_CREATE, saeule3aChf, krankenkasseChf },
         update: { saeule3aChf, krankenkasseChf },
+      }),
+      this.prisma.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: 'ch-lohnausweis' } }),
+    ])
+    return toRecord(row as ChLohnausweisRow)
+  }
+
+  async setNGre(userId: string, steuerjahr: number, angaben: Partial<NGreAngaben>): Promise<ChLohnausweisRecord> {
+    const [row] = await this.prisma.$transaction([
+      this.prisma.chLohnausweis.upsert({
+        where: { userId_steuerjahr: { userId, steuerjahr } },
+        create: { userId, steuerjahr, ...EMPTY_CREATE, ...angaben },
+        update: angaben,
       }),
       this.prisma.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: 'ch-lohnausweis' } }),
     ])

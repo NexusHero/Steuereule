@@ -20,14 +20,28 @@ export class FakeKapitalRepository implements KapitalRepository {
   setFeld(userId: string, steuerjahr: number, feld: KapitalFeldId, wert: string | null): Promise<KapitalRecord> {
     const k = key(userId, steuerjahr)
     const existing = this.store.get(k)
-    const record: KapitalRecord = existing ?? { userId, steuerjahr, kapitalertraege: null }
+    const record: KapitalRecord = existing ?? {
+      userId,
+      steuerjahr,
+      kapitalertraege: null,
+      sparerPauschbetrag: null,
+      kapitalertragsteuer: null,
+      solidaritaetszuschlag: null,
+      kirchensteuer: null,
+    }
     const updated: KapitalRecord = { ...record, [feld]: wert }
     this.store.set(k, updated)
     return Promise.resolve(updated)
   }
 
-  /** Test seam: seed a full record directly, bypassing the setter's upsert. */
-  seed(record: KapitalRecord): void {
-    this.store.set(key(record.userId, record.steuerjahr), record)
+  /** Test seam: seed a record directly, bypassing the setter's upsert; unnamed fields are offen. */
+  seed(record: Pick<KapitalRecord, 'userId' | 'steuerjahr' | 'kapitalertraege'> & Partial<KapitalRecord>): void {
+    this.store.set(key(record.userId, record.steuerjahr), {
+      sparerPauschbetrag: null,
+      kapitalertragsteuer: null,
+      solidaritaetszuschlag: null,
+      kirchensteuer: null,
+      ...record,
+    })
   }
 }

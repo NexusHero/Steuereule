@@ -7,13 +7,13 @@ PR-Template verankert. Danach kann jede weitere Änderung nach der neuen DoD abg
 
 **Blocked by:** None — can start immediately.
 
-**Status:** ready-for-agent
+**Status:** done — gemergt als #358 (9584118)
 
-- [ ] `package-lock.json` entfernt **und** in `.gitignore` eingetragen (verhindert
+- [x] `package-lock.json` entfernt **und** in `.gitignore` eingetragen (verhindert
       Neuerzeugung durch `npm install`); `pnpm-lock.yaml` alleiniges Lockfile; CI nutzt pnpm
-- [ ] `.gitignore` vollständig (`.DS_Store` u. a.); untracked Müll entfernt
+- [x] `.gitignore` vollständig (`.DS_Store` u. a.); untracked Müll entfernt
 - [x] `pnpm gate` (typecheck + tests) und `pnpm lint` grün auf `main`
-- [ ] PR-Template enthält die DoD-Checkliste aus ADR-0036 (Posture-Zeile inklusive)
-- [ ] `docs/process/README.md` verlinkt die DoD (vier Ebenen)
+- [x] PR-Template enthält die DoD-Checkliste aus ADR-0036 (Posture-Zeile inklusive)
+- [x] `docs/process/README.md` verlinkt die DoD (vier Ebenen)
 
 _Phasen-Ticket: wird beim Start per `to-spec`/`to-tickets` fein geschnitten (D11)._

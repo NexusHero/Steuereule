@@ -93,6 +93,8 @@ export {
   getVermietungControllerCreateMockHandler,
   getVermietungControllerSetFeldResponseMock,
   getVermietungControllerSetFeldMockHandler,
+  getVermietungControllerSetAdresseResponseMock,
+  getVermietungControllerSetAdresseMockHandler,
   getSteuerEuleAPIMock as getVermietungApiMock,
 } from './generated/vermietung.msw'
 export {
@@ -109,3 +111,35 @@ export {
   getUebernahmeControllerBestaetigeMockHandler,
   getSteuerEuleAPIMock as getUebernahmeApiMock,
 } from './generated/uebernahme.msw'
+export {
+  getKinderControllerListResponseMock,
+  getKinderControllerListMockHandler,
+  getKinderControllerCreateResponseMock,
+  getKinderControllerCreateMockHandler,
+  getKinderControllerUpdateResponseMock,
+  getKinderControllerUpdateMockHandler,
+  getKinderControllerDeleteResponseMock,
+  getKinderControllerDeleteMockHandler,
+  getSteuerEuleAPIMock as getKinderApiMock,
+} from './generated/kinder.msw'
+export {
+  getKopplungControllerGetResponseMock,
+  getKopplungControllerGetMockHandler,
+  getKopplungControllerSetResponseMock,
+  getKopplungControllerSetMockHandler,
+  getKopplungControllerUpdatePersonBResponseMock,
+  getKopplungControllerUpdatePersonBMockHandler,
+  getKopplungControllerJoinWithCodeResponseMock,
+  getKopplungControllerJoinWithCodeMockHandler,
+  getSteuerEuleAPIMock as getKopplungApiMock,
+} from './generated/kopplung.msw'
+export {
+  getEulenModusControllerGetEinstellungResponseMock,
+  getEulenModusControllerGetEinstellungMockHandler,
+  getEulenModusControllerSetEinstellungResponseMock,
+  getEulenModusControllerSetEinstellungMockHandler,
+  getEulenModusControllerGetKartenResponseMock,
+  getEulenModusControllerGetKartenMockHandler,
+  getEulenModusControllerVerwerfeKarteMockHandler,
+  getSteuerEuleAPIMock as getEulenModusApiMock,
+} from './generated/eulen-modus.msw'

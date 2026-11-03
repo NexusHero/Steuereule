@@ -1,6 +1,6 @@
 # ADR-037 — Eulen-Modus: die proaktive Stufe über dem Berater
 
-**Status:** Vorgeschlagen (Grilling KI-Stufe R1–R3) · 2026-07-22
+**Status:** Akzeptiert (Grilling KI-Stufe R1–R3, Ticket 10.9) · 2026-07-22
 
 **Kontext:** Die KI soll vom Vorschlags-Helfer zum Steuerberater-Ersatz wachsen — Gesetze lesen, nachfragen, den Einzelfall beraten — ohne die bestehenden Vertrauensregeln (KI schlägt vor, entscheidet nie; Herkunft an jeder Zahl; Violett nur für KI) zu verlieren.
 

@@ -12,7 +12,7 @@ eigener Dokumenttyp in der Inbox.
 **Blocked by:** **15** (deterministischer Kern + Interview-Katalog) · Engineering-Entwurf 0037
 (Einkunftsart-Set `Rente`), promotet.
 
-**Status:** ready-for-agent
+**Status:** done — gemergt als #375 (6071ee4)
 
 - [x] `Rente` als Einkunftsart im Kern (ADR-037-Entwurf), Besteuerungsanteil nach Rentenbeginn-Jahr
 - [x] Rentenbezugsmitteilung als Dokumenttyp in der Beleg-Inbox (10.1-Vokabular)

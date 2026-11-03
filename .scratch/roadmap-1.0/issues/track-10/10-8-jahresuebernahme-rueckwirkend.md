@@ -9,7 +9,7 @@ Backend-Konfiguration pro Jahr, die UI zeigt immer die Regeln des gewählten Jah
 **Blocked by:** **15** (Posten-Kern für den `unbestätigt`-Zustand + Kern-Regelwerke) ·
 Engineering-Entwurf 0037 (Steuerjahr-/Jahr-Modell), promotet. Kein Dep auf 10.1.
 
-**Status:** in-progress — **M1+M2+M3 fertig** (Kern + Kennzeichnungs-Schicht + ALLE Fakten + Cockpit-Summen + Jahr-Auswahl + Hinweis); Rest-Follow-ups benannt (Onboarding-Einstieg, Prüf-Screen, Detail-Chips, Regelwerke-UI)
+**Status:** in-progress — M1–M3 gemergt (#377, #378, #379); offen: Onboarding-Einstieg, Jahresregelwerke-UI, Herkunfts-Chips mit Jahresbezug
 
 - [x] **M1:** Neues Jahr = Kopie des Vorjahrs, jeder Posten mit `unbestätigt`-Herkunft (grau, ruhiger Ton)
       — Kern: `Quelle.uebernahme {vorjahr}` + `Posten.unbestaetigt` (berechnung.ts), Kopier-/Bestätigungs-Vertrag

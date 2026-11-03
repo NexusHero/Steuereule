@@ -7,7 +7,7 @@ starten.
 
 **Blocked by:** 04 — Phase 0.4: Geteilter Steuer-Domänenkern
 
-**Status:** ready-for-agent
+**Status:** done — gemergt als #365 (e4f4b25)
 
 - [x] REQ-007: TOTP (App-Authenticator, Code-Bestätigung) und WebAuthn-Passkey als opt-in
       Faktoren; Login-Prompt nach Primärfaktor; Faktor-Entfernung nur nach

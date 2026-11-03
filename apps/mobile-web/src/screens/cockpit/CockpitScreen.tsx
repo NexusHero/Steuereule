@@ -44,9 +44,24 @@ export interface CockpitScreenProps {
   readonly onOpenKapital?: () => void
   /** Opens the Vermietung guided mask (REQ-026/ticket 10.6) — same wiring. */
   readonly onOpenVermietung?: () => void
+  /** Opens the Kinder management screen (Anlage Kind). */
+  readonly onOpenKinder?: () => void
+  /** Opens the Eulen-KI mode proactive advice screen. */
+  readonly onOpenEulenModus?: (jahr: number) => void
+  /** ADR-0050: opens the Formular-Ausdruck for the year shown. Omitted = no entry rendered. */
+  readonly onOpenAusdruck?: (jahr: number) => void
 }
 
-export function CockpitScreen({ taxYear = CURRENT_TAX_YEAR, onOpenInterview = () => {}, onOpenBescheid = () => {}, onOpenKapital = () => {}, onOpenVermietung = () => {} }: CockpitScreenProps) {
+export function CockpitScreen({
+  taxYear = CURRENT_TAX_YEAR,
+  onOpenInterview = () => {},
+  onOpenBescheid = () => {},
+  onOpenKapital = () => {},
+  onOpenVermietung = () => {},
+  onOpenKinder,
+  onOpenEulenModus,
+  onOpenAusdruck,
+}: CockpitScreenProps) {
   const bp = useBreakpoint()
   const { t: tr } = useTranslation(APP_NS)
   // ADR-022 — die prominente Jahr-Auswahl: das gewählte Jahr ist SCREEN-State (kein globaler
@@ -82,7 +97,22 @@ export function CockpitScreen({ taxYear = CURRENT_TAX_YEAR, onOpenInterview = ()
   const onRefresh = () => void query.refetch()
 
   if (summary === null) {
-    return <CockpitEmpty jahr={jahr} onJahrWechsel={setJahr} onRefresh={onRefresh} isRefreshing={query.isFetching} onOpenInterview={onOpenInterview} onOpenBescheid={onOpenBescheid} onOpenKapital={onOpenKapital} onOpenVermietung={onOpenVermietung} bp={bp} />
+    return (
+      <CockpitEmpty
+        jahr={jahr}
+        onJahrWechsel={setJahr}
+        onRefresh={onRefresh}
+        isRefreshing={query.isFetching}
+        onOpenInterview={onOpenInterview}
+        onOpenBescheid={onOpenBescheid}
+        onOpenKapital={onOpenKapital}
+        onOpenVermietung={onOpenVermietung}
+        {...(onOpenKinder ? { onOpenKinder } : {})}
+        {...(onOpenEulenModus ? { onOpenEulenModus: () => onOpenEulenModus(jahr) } : {})}
+        {...(onOpenAusdruck ? { onOpenAusdruck: () => onOpenAusdruck(jahr) } : {})}
+        bp={bp}
+      />
+    )
   }
   return (
     <CockpitLoaded
@@ -98,6 +128,9 @@ export function CockpitScreen({ taxYear = CURRENT_TAX_YEAR, onOpenInterview = ()
       onOpenBescheid={onOpenBescheid}
       onOpenKapital={onOpenKapital}
       onOpenVermietung={onOpenVermietung}
+      {...(onOpenKinder ? { onOpenKinder } : {})}
+      {...(onOpenEulenModus ? { onOpenEulenModus: () => onOpenEulenModus(jahr) } : {})}
+      {...(onOpenAusdruck ? { onOpenAusdruck: () => onOpenAusdruck(jahr) } : {})}
       bp={bp}
     />
   )
@@ -132,10 +165,13 @@ interface CockpitEmptyProps {
   readonly onOpenBescheid: () => void
   readonly onOpenKapital: () => void
   readonly onOpenVermietung: () => void
+  readonly onOpenKinder?: () => void
+  readonly onOpenEulenModus?: () => void
+  readonly onOpenAusdruck?: () => void
   readonly bp: Breakpoint
 }
 
-function CockpitEmpty({ jahr, onJahrWechsel, onRefresh, isRefreshing, onOpenInterview, onOpenBescheid, onOpenKapital, onOpenVermietung, bp }: CockpitEmptyProps) {
+function CockpitEmpty({ jahr, onJahrWechsel, onRefresh, isRefreshing, onOpenInterview, onOpenBescheid, onOpenKapital, onOpenVermietung, onOpenKinder, onOpenEulenModus, bp }: CockpitEmptyProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
@@ -163,6 +199,16 @@ function CockpitEmpty({ jahr, onJahrWechsel, onRefresh, isRefreshing, onOpenInte
         <Button variante="ghost" onPress={onOpenVermietung} style={styles.secondaryCta}>
           {tr('cockpit.checkVermietung')}
         </Button>
+        {onOpenKinder ? (
+          <Button variante="ghost" onPress={onOpenKinder} style={styles.secondaryCta} testID="cockpit-empty-kinder">
+            {tr('cockpit.checkKinder')}
+          </Button>
+        ) : null}
+        {onOpenEulenModus ? (
+          <Button variante="ghost" onPress={onOpenEulenModus} style={styles.secondaryCta} testID="cockpit-empty-eulen-modus">
+            {tr('cockpit.eulenModus')}
+          </Button>
+        ) : null}
         <Button variante="ghost" onPress={onRefresh} disabled={isRefreshing} style={styles.secondaryCta}>
           {isRefreshing ? tr('cockpit.refreshing') : tr('cockpit.refresh')}
         </Button>
@@ -237,10 +283,13 @@ interface CockpitLoadedProps {
   readonly onOpenBescheid: () => void
   readonly onOpenKapital: () => void
   readonly onOpenVermietung: () => void
+  readonly onOpenKinder?: () => void
+  readonly onOpenEulenModus?: () => void
+  readonly onOpenAusdruck?: () => void
   readonly bp: Breakpoint
 }
 
-function CockpitLoaded({ summary, jahr, onJahrWechsel, uebernahme, onBestaetige, isBestaetigend, onRefresh, isRefreshing, onOpenInterview, onOpenBescheid, onOpenKapital, onOpenVermietung, bp }: CockpitLoadedProps) {
+function CockpitLoaded({ summary, jahr, onJahrWechsel, uebernahme, onBestaetige, isBestaetigend, onRefresh, isRefreshing, onOpenInterview, onOpenBescheid, onOpenKapital, onOpenVermietung, onOpenKinder, onOpenEulenModus, onOpenAusdruck, bp }: CockpitLoadedProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
@@ -294,6 +343,31 @@ function CockpitLoaded({ summary, jahr, onJahrWechsel, uebernahme, onBestaetige,
       >
         {tr('cockpit.checkVermietung')}
       </Button>
+      {onOpenKinder ? (
+        <Button
+          variante="ghost"
+          onPress={onOpenKinder}
+          style={styles.secondaryCta}
+          testID="cockpit-kinder"
+        >
+          {tr('cockpit.checkKinder')}
+        </Button>
+      ) : null}
+      {onOpenEulenModus ? (
+        <Button
+          variante="ghost"
+          onPress={onOpenEulenModus}
+          style={styles.secondaryCta}
+          testID="cockpit-eulen-modus"
+        >
+          {tr('cockpit.eulenModus')}
+        </Button>
+      ) : null}
+      {onOpenAusdruck ? (
+        <Button variante="ghost" onPress={onOpenAusdruck} style={styles.secondaryCta} testID="cockpit-ausdruck">
+          {tr('ausdruck.cockpitCta')}
+        </Button>
+      ) : null}
       <Button
         variante={hasOpenItems ? 'ghost' : 'primaer'}
         onPress={onRefresh}

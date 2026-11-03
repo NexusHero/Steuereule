@@ -51,7 +51,7 @@ export function describeDatabaseTarget(databaseUrl: string): string {
  */
 export class ProbeTimeoutError extends Error {}
 
-async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+export async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   let timer: NodeJS.Timeout | undefined
   const timeout = new Promise<never>((_resolve, reject) => {
     timer = setTimeout(() => reject(new ProbeTimeoutError(`timed out after ${ms}ms`)), ms)

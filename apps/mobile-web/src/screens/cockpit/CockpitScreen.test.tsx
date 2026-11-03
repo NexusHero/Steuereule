@@ -34,14 +34,26 @@ function mockCockpitError() {
   server.use(http.get(COCKPIT_URL, () => HttpResponse.error()))
 }
 
-function renderCockpit(opts: { lng?: 'de' | 'en'; onOpenInterview?: () => void } = {}) {
+function renderCockpit(opts: {
+  lng?: 'de' | 'en'
+  onOpenInterview?: () => void
+  onOpenKinder?: () => void
+  onOpenEulenModus?: (jahr: number) => void
+  onOpenAusdruck?: (jahr: number) => void
+} = {}) {
   const i18n = createAppI18n(opts.lng ?? 'de')
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={queryClient}>
       <I18nextProvider i18n={i18n}>
         <ThemeProvider mode="light">
-          <CockpitScreen taxYear={TAX_YEAR} onOpenInterview={opts.onOpenInterview ?? (() => {})} />
+          <CockpitScreen
+            taxYear={TAX_YEAR}
+            onOpenInterview={opts.onOpenInterview ?? (() => {})}
+            {...(opts.onOpenKinder ? { onOpenKinder: opts.onOpenKinder } : {})}
+            {...(opts.onOpenEulenModus ? { onOpenEulenModus: opts.onOpenEulenModus } : {})}
+            {...(opts.onOpenAusdruck ? { onOpenAusdruck: opts.onOpenAusdruck } : {})}
+          />
         </ThemeProvider>
       </I18nextProvider>
     </QueryClientProvider>,
@@ -348,5 +360,33 @@ describe('CockpitScreen', () => {
 
     await screen.findByText('49.880–50.120 €')
     expect(screen.queryByTestId('uebernahme-hinweis')).toBeNull()
+  })
+})
+
+describe('CockpitScreen — Formular-Ausdruck entry (ADR-0050)', () => {
+  it('opens the Ausdruck for the year shown', async () => {
+    mockCockpit(LOADED_SUMMARY)
+    const onOpenAusdruck = vi.fn()
+    renderCockpit({ onOpenAusdruck })
+    fireEvent.click(await screen.findByTestId('cockpit-ausdruck'))
+    expect(onOpenAusdruck).toHaveBeenCalledWith(TAX_YEAR)
+  })
+})
+
+describe('CockpitScreen — Kinder & Eulen-Modus entries', () => {
+  it('opens Kinder screen when clicked', async () => {
+    mockCockpit(LOADED_SUMMARY)
+    const onOpenKinder = vi.fn()
+    renderCockpit({ onOpenKinder })
+    fireEvent.click(await screen.findByTestId('cockpit-kinder'))
+    expect(onOpenKinder).toHaveBeenCalled()
+  })
+
+  it('opens Eulen-Modus screen with current tax year when clicked', async () => {
+    mockCockpit(LOADED_SUMMARY)
+    const onOpenEulenModus = vi.fn()
+    renderCockpit({ onOpenEulenModus })
+    fireEvent.click(await screen.findByTestId('cockpit-eulen-modus'))
+    expect(onOpenEulenModus).toHaveBeenCalledWith(TAX_YEAR)
   })
 })

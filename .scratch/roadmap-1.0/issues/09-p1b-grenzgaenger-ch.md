@@ -7,7 +7,7 @@ Beweis, dass der geteilte Kern zwei komplett verschiedene Fallwelten trägt.
 
 **Blocked by:** 05 — Phase 0.5: Mantel-Abschluss · 06 — Infra-Track: #292
 
-**Status:** ready-for-agent
+**Status:** in-progress — Slice 1 auf main (4799f54), Slice 2 über Ticket 16 als #369 (9c1f76c); offen: CH-Posten in der Cockpit-Spanne (Ticket 16)
 
 - [ ] CH-Datenquellen auf der Beleg-Posteingang-Schnitt (0.4): Lohnausweis-Scan,
       Quellensteuer-Belege, PK/3a/KK-Nachweise — Zuordnung als Vorschlag, Konflikt sichtbar

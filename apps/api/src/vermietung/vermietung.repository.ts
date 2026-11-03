@@ -23,6 +23,13 @@ export interface VermietungsobjektRecord {
   baujahr: string | null
   /** Laufende Werbungskosten (whole euros) — same encoding. */
   werbungskosten: string | null
+  /** Address and living area for Anlage V printout */
+  strasse?: string | null
+  hausnummer?: string | null
+  plz?: string | null
+  ort?: string | null
+  wohnflaeche?: string | null
+  afaWieVorjahr?: boolean | null
 }
 
 export const VERMIETUNG_REPOSITORY = Symbol('VERMIETUNG_REPOSITORY')
@@ -41,4 +48,13 @@ export interface VermietungRepository {
    * entry atomically.
    */
   setFeld(userId: string, steuerjahr: number, objektId: string, feld: VermietungFeldId, wert: string | null): Promise<VermietungsobjektRecord | null>
+  /**
+   * Upsert address & area information on the object `objektId`.
+   */
+  setAdresse(
+    userId: string,
+    steuerjahr: number,
+    objektId: string,
+    adresse: { strasse?: string | null; hausnummer?: string | null; plz?: string | null; ort?: string | null; wohnflaeche?: string | null; afaWieVorjahr?: boolean | null },
+  ): Promise<VermietungsobjektRecord | null>
 }

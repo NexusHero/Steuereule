@@ -56,6 +56,24 @@ export class VermietungsobjektDto {
   @ApiProperty({ type: VermietungFeldDto })
   werbungskosten!: VermietungFeldDto
 
+  @ApiProperty({ type: String, nullable: true })
+  strasse?: string | null
+
+  @ApiProperty({ type: String, nullable: true })
+  hausnummer?: string | null
+
+  @ApiProperty({ type: String, nullable: true })
+  plz?: string | null
+
+  @ApiProperty({ type: String, nullable: true })
+  ort?: string | null
+
+  @ApiProperty({ type: String, nullable: true })
+  wohnflaeche?: string | null
+
+  @ApiProperty({ type: Boolean, nullable: true })
+  afaWieVorjahr?: boolean | null
+
   @ApiProperty({ type: VermietungsobjektFaktenDto })
   fakten!: VermietungsobjektFaktenDto
 }

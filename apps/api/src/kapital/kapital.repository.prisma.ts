@@ -4,11 +4,15 @@ import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypte
 import type { KapitalRecord, KapitalRepository } from './kapital.repository.js'
 
 /** The persisted-facts record, narrowed to what the service needs. */
-function toRecord(row: { userId: string; steuerjahr: number; kapitalertraege: string | null }): KapitalRecord {
+function toRecord(row: KapitalRecord): KapitalRecord {
   return {
     userId: row.userId,
     steuerjahr: row.steuerjahr,
     kapitalertraege: row.kapitalertraege,
+    sparerPauschbetrag: row.sparerPauschbetrag,
+    kapitalertragsteuer: row.kapitalertragsteuer,
+    solidaritaetszuschlag: row.solidaritaetszuschlag,
+    kirchensteuer: row.kirchensteuer,
   }
 }
 
@@ -42,9 +46,17 @@ export class PrismaKapitalRepository implements KapitalRepository {
 }
 
 /** The one-keyed update payload for `feld` — typed, never a computed `{[feld]: wert}`. */
-function feldData(feld: KapitalFeldId, wert: string | null): { kapitalertraege?: string | null } {
+function feldData(feld: KapitalFeldId, wert: string | null): Partial<Record<KapitalFeldId, string | null>> {
   switch (feld) {
     case 'kapitalertraege':
       return { kapitalertraege: wert }
+    case 'sparerPauschbetrag':
+      return { sparerPauschbetrag: wert }
+    case 'kapitalertragsteuer':
+      return { kapitalertragsteuer: wert }
+    case 'solidaritaetszuschlag':
+      return { solidaritaetszuschlag: wert }
+    case 'kirchensteuer':
+      return { kirchensteuer: wert }
   }
 }

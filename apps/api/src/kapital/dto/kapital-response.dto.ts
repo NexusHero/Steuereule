@@ -1,5 +1,6 @@
 // `type:` given explicitly — see PutProfileDto's comment for why.
 import { ApiProperty } from '@nestjs/swagger'
+import { KAPITAL_FELDER, type KapitalFeldId } from '@steuereule/core'
 import { KapitalFeldDto } from './kapital-feld.dto.js'
 
 /** The depot-Einordnung (ticket 10.5 AC 3) — what the `kap-depot` answer MEANS for the Steuererklärung. */
@@ -66,6 +67,21 @@ export class KapitalStandDto {
 export class KapitalResponseDto {
   @ApiProperty({ type: KapitalFeldDto })
   kapitalertraege!: KapitalFeldDto
+
+  @ApiProperty({ type: KapitalFeldDto })
+  sparerPauschbetrag!: KapitalFeldDto
+
+  @ApiProperty({ type: KapitalFeldDto })
+  kapitalertragsteuer!: KapitalFeldDto
+
+  @ApiProperty({ type: KapitalFeldDto })
+  solidaritaetszuschlag!: KapitalFeldDto
+
+  @ApiProperty({ type: KapitalFeldDto })
+  kirchensteuer!: KapitalFeldDto
+
+  @ApiProperty({ enum: KAPITAL_FELDER, isArray: true, description: 'The fields Anlage KAP needs for this depot.' })
+  pflichtfelder!: KapitalFeldId[]
 
   @ApiProperty({ type: DepotEinordnungDto })
   depot!: DepotEinordnungDto

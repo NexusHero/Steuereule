@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  kapitalPflichtfelder,
   LEERES_KAPITAL,
   deserialisiereKapitalFeld,
   istGueltigerKapitalBetrag,
@@ -78,7 +79,7 @@ describe('the persistence encoding — the ONE place offen/unklar/erfasst maps t
 
 describe('kapitalAlsKernposten — the fold into the deterministic core', () => {
   it('an erfasst field becomes a Kapital-Posten with Herkunft eingabe', () => {
-    const posten = kapitalAlsKernposten({ kapitalertraege: { kind: 'erfasst', wert: 2500 } })
+    const posten = kapitalAlsKernposten({ ...LEERES_KAPITAL, kapitalertraege: { kind: 'erfasst', wert: 2500 } })
     expect(posten).toEqual({
       id: 'kapital',
       einkunftsart: 'Kapital',
@@ -89,13 +90,13 @@ describe('kapitalAlsKernposten — the fold into the deterministic core', () => 
 
   it('an open or unklar field stays null — OFFEN, never a fabricated zero', () => {
     expect(kapitalAlsKernposten(LEERES_KAPITAL)).toBeNull()
-    expect(kapitalAlsKernposten({ kapitalertraege: { kind: 'unklar' } })).toBeNull()
+    expect(kapitalAlsKernposten({ ...LEERES_KAPITAL, kapitalertraege: { kind: 'unklar' } })).toBeNull()
   })
 })
 
 describe('kapitalStand — the honest Berechnungsstand', () => {
   it('is bestimmt when the field is captured', () => {
-    const stand = kapitalStand({ kapitalertraege: { kind: 'erfasst', wert: 2500 } }, [])
+    const stand = kapitalStand({ ...LEERES_KAPITAL, kapitalertraege: { kind: 'erfasst', wert: 2500 } }, [])
     expect(stand).toEqual({ kind: 'bestimmt', einnahmen: 2500, vorsorgeaufwand: 0, anrechnung: 0 })
   })
 
@@ -106,7 +107,7 @@ describe('kapitalStand — the honest Berechnungsstand', () => {
   })
 
   it('passes gegated through — a Krypto-Anleger reads offen with the gate named', () => {
-    const stand = kapitalStand({ kapitalertraege: { kind: 'erfasst', wert: 2500 } }, ['Kapital'])
+    const stand = kapitalStand({ ...LEERES_KAPITAL, kapitalertraege: { kind: 'erfasst', wert: 2500 } }, ['Kapital'])
     expect(stand.kind).toBe('offen')
     if (stand.kind === 'offen') expect(stand.gegated).toEqual(['Kapital'])
   })
@@ -119,5 +120,16 @@ describe('istGueltigerKapitalBetrag — the one amount guard', () => {
     expect(istGueltigerKapitalBetrag(-1)).toBe(false)
     expect(istGueltigerKapitalBetrag(1.5)).toBe(false)
     expect(istGueltigerKapitalBetrag(Number.NaN)).toBe(false)
+  })
+
+  it('names what Anlage KAP needs per depot — a German broker also the withheld taxes (Zeilen 37–39)', () => {
+    expect(kapitalPflichtfelder('deutscher-broker')).toEqual([
+      'kapitalertraege',
+      'sparerPauschbetrag',
+      'kapitalertragsteuer',
+      'solidaritaetszuschlag',
+      'kirchensteuer',
+    ])
+    expect(kapitalPflichtfelder('auslaendischer-broker')).toEqual(['kapitalertraege', 'sparerPauschbetrag'])
   })
 })

@@ -304,6 +304,39 @@ jobs:
         if: '!cancelled()'
         run: node scripts/checks/adr-check.mjs
 
+  vordrucke:
+    name: Vordrucke — Vermessung und Lage der Ausdruck-Felder
+    runs-on: ubuntu-latest
+    # The Ausdruck writes onto fixed positions of the official PDFs. A swapped template, a spec
+    # that no longer resolves to the checked-in boxes, or a box that now sits next to another
+    # label would print a wrong but plausible-looking return — none of that is visible to the
+    # unit tests, which only see field ids. Node built-ins + poppler only: no pnpm install.
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          # No pnpm in this job (see docs-consistency for why the cache must be off).
+          package-manager-cache: false
+      - name: Install poppler (pdftotext, pdftocairo)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends poppler-utils
+      - name: Vermessung — felder-<jahr>.json equals what templates + spec measure
+        run: |
+          for spec in apps/api/src/ausdruck/felder-*.spec.json; do
+            jahr=$(basename "$spec" | grep -oE '[0-9]{4}')
+            node scripts/vordrucke/vermessen.mjs "$jahr" --check
+          done
+      - name: Lage — felder-<jahr>.lage.txt unchanged (a change needs a human review)
+        if: '!cancelled()'
+        run: |
+          for spec in apps/api/src/ausdruck/felder-*.spec.json; do
+            jahr=$(basename "$spec" | grep -oE '[0-9]{4}')
+            node scripts/vordrucke/lagebericht.mjs "$jahr" --check
+          done
+
   # Placeholder — build the service images once Dockerfiles exist.
   build:
     name: Build

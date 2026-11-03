@@ -86,10 +86,31 @@ export function istGuenstigerpruefungAnwendbar(einordnung: KapitalDepotEinordnun
 // --- Guided mask (Jahressteuerbescheinigung fallback, ADR-036 Scan-Fallback) ------------------
 
 /** The one captured fact of the guided mask. */
-export type KapitalFeldId = 'kapitalertraege'
+export type KapitalFeldId =
+  | 'kapitalertraege'
+  | 'sparerPauschbetrag'
+  | 'kapitalertragsteuer'
+  | 'solidaritaetszuschlag'
+  | 'kirchensteuer'
 
 /** The closed field-id list — the single source the fold and the API's `:feld` boundary both read. */
-export const KAPITAL_FELDER: readonly KapitalFeldId[] = ['kapitalertraege']
+export const KAPITAL_FELDER: readonly KapitalFeldId[] = [
+  'kapitalertraege',
+  'sparerPauschbetrag',
+  'kapitalertragsteuer',
+  'solidaritaetszuschlag',
+  'kirchensteuer',
+]
+
+/**
+ * What Anlage KAP needs per depot (Zeilen 7/16/37–39 for a German broker, 19/17 abroad). The
+ * withheld taxes matter: declared income without them is taxed again with nothing credited.
+ */
+export function kapitalPflichtfelder(depot: KapitalDepotEinordnung['kind']): readonly KapitalFeldId[] {
+  if (depot === 'deutscher-broker') return KAPITAL_FELDER
+  if (depot === 'auslaendischer-broker') return ['kapitalertraege', 'sparerPauschbetrag']
+  return ['kapitalertraege']
+}
 
 /** One field's honest capture state. `wert` is a non-negative integer when `erfasst`. */
 export type KapitalFeldZustand =
@@ -98,13 +119,15 @@ export type KapitalFeldZustand =
   | { readonly kind: 'erfasst'; readonly wert: number }
 
 /** The guided mask's data — the Kapitalerträge (Einkünfte aus Kapitalvermögen) as a transcribed fact. */
-export interface KapitalDaten {
-  readonly kapitalertraege: KapitalFeldZustand
-}
+export type KapitalDaten = { readonly [feld in KapitalFeldId]: KapitalFeldZustand }
 
 /** The guided mask's starting point — the field open, nothing guessed. */
 export const LEERES_KAPITAL: KapitalDaten = {
   kapitalertraege: { kind: 'offen' },
+  sparerPauschbetrag: { kind: 'offen' },
+  kapitalertragsteuer: { kind: 'offen' },
+  solidaritaetszuschlag: { kind: 'offen' },
+  kirchensteuer: { kind: 'offen' },
 }
 
 /** A captured value must be a non-negative integer (whole euros). */

@@ -267,6 +267,62 @@ describe('REQ-011 T1 — DELETE /v1/account, against the real server (ADR-0013)'
     expect(await prisma.user.findUnique({ where: { id: userId } })).toBeNull()
   })
 
+  // Art. 17 covers the tax figures, not only the profile: these tables carry no FK to
+  // User, so before this case they silently survived "Konto löschen".
+  async function seedTaxData(userId: string): Promise<void> {
+    await prisma.taxYear.create({ data: { userId, steuerjahr: 2025, baseEstimate: 0, openItems: 0 } })
+    await prisma.kapital.create({ data: { userId, steuerjahr: 2025 } })
+    await prisma.lstb.create({ data: { userId, steuerjahr: 2025 } })
+    await prisma.vermietungsobjekt.create({ data: { userId, steuerjahr: 2025 } })
+  }
+
+  async function countTaxData(userId: string): Promise<number> {
+    const counts = await Promise.all([
+      prisma.taxYear.count({ where: { userId } }),
+      prisma.kapital.count({ where: { userId } }),
+      prisma.lstb.count({ where: { userId } }),
+      prisma.vermietungsobjekt.count({ where: { userId } }),
+    ])
+    return counts.reduce((sum, count) => sum + count, 0)
+  }
+
+  it('erasure reaches the tax data — every userId-keyed tax table is emptied for that user, and only that user', async () => {
+    const a = await signUp('req011-taxdata-a@example.com')
+    const b = await signUp('req011-taxdata-b@example.com')
+    await seedTaxData(a.userId)
+    await seedTaxData(b.userId)
+
+    const response = await deleteAccount(a.cookie, { confirm: true })
+    expect(response.status).toBe(200)
+
+    expect(await countTaxData(a.userId)).toBe(0)
+    expect(await countTaxData(b.userId)).toBe(4)
+    for (const id of [a.userId, b.userId]) {
+      await prisma.taxYear.deleteMany({ where: { userId: id } })
+      await prisma.kapital.deleteMany({ where: { userId: id } })
+      await prisma.lstb.deleteMany({ where: { userId: id } })
+      await prisma.vermietungsobjekt.deleteMany({ where: { userId: id } })
+    }
+  })
+
+  it('Löschschutz — a hold on "taxData" retains the tax tables while the account is still torn down', async () => {
+    const { userId, cookie } = await signUp('req011-taxdata-hold@example.com')
+    await seedTaxData(userId)
+    await prisma.legalHold.create({
+      data: { userId, resource: 'taxData', holdUntil: new Date(Date.now() + 60 * 60 * 1000) },
+    })
+
+    const response = await deleteAccount(cookie, { confirm: true })
+    const result = (await response.json()) as { retainedUnderLegalHold: number }
+    expect(result.retainedUnderLegalHold).toBeGreaterThanOrEqual(4)
+    expect(await countTaxData(userId)).toBe(4)
+    expect(await prisma.user.findUnique({ where: { id: userId } })).toBeNull()
+    await prisma.taxYear.deleteMany({ where: { userId } })
+    await prisma.kapital.deleteMany({ where: { userId } })
+    await prisma.lstb.deleteMany({ where: { userId } })
+    await prisma.vermietungsobjekt.deleteMany({ where: { userId } })
+  })
+
   it('Löschschutz — an expired hold (holdUntil in the past) does not exempt anything', async () => {
     const { userId, cookie } = await signUp('req011-expired-hold@example.com')
     await saveProfile(cookie, '02476291358')

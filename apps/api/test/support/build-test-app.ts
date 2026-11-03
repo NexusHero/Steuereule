@@ -12,6 +12,7 @@ import { Test } from '@nestjs/testing'
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify'
 import { AppModule } from '../../src/app.module.js'
 import { ACCOUNT_IDENTITY_REPOSITORY } from '../../src/account/account-identity.repository.js'
+import { TAX_DATA_EXPORT_REPOSITORY } from '../../src/account/tax-data-export.repository.js'
 import { PDF_RENDERER } from '../../src/account/export/pdf-renderer.js'
 import { AUDIT_REPOSITORY } from '../../src/audit/audit.repository.js'
 import { validationExceptionFactory } from '../../src/common/validation-exception-factory.js'
@@ -32,6 +33,7 @@ import { FakeInterviewAnswerRepository } from '../fakes/fake-interview-answer.re
 import { FakeKapitalRepository } from '../fakes/fake-kapital.repository.js'
 import { FakeLstbRepository } from '../fakes/fake-lstb.repository.js'
 import { FakePdfRenderer } from '../fakes/fake-pdf-renderer.js'
+import { FakeTaxDataExportRepository } from '../fakes/fake-tax-data-export.repository.js'
 import { FakeProfileRepository } from '../fakes/fake-profile.repository.js'
 import { FakeRenteRepository } from '../fakes/fake-rente.repository.js'
 import { FakeTaxYearRepository } from '../fakes/fake-tax-year.repository.js'
@@ -51,6 +53,7 @@ export async function buildTestApp(options?: {
   accountIdentityRepository: FakeAccountIdentityRepository
   pdfRenderer: FakePdfRenderer
   auditRepository: FakeAuditRepository
+  taxDataExportRepository: FakeTaxDataExportRepository
 }> {
   const repository = new FakeProfileRepository()
   const taxYearRepository = new FakeTaxYearRepository()
@@ -62,6 +65,7 @@ export async function buildTestApp(options?: {
   const vermietungRepository = new FakeVermietungRepository()
   const accountIdentityRepository = new FakeAccountIdentityRepository()
   const pdfRenderer = new FakePdfRenderer()
+  const taxDataExportRepository = new FakeTaxDataExportRepository()
   const auditRepository = new FakeAuditRepository()
 
   // Nest instantiates every provider registered on a module it constructs — including
@@ -120,6 +124,8 @@ export async function buildTestApp(options?: {
     .useValue(accountIdentityRepository)
     .overrideProvider(PDF_RENDERER)
     .useValue(pdfRenderer)
+    .overrideProvider(TAX_DATA_EXPORT_REPOSITORY)
+    .useValue(taxDataExportRepository)
     .overrideProvider(AUDIT_REPOSITORY)
     .useValue(auditRepository)
     .overrideProvider(PrismaService)
@@ -147,7 +153,17 @@ export async function buildTestApp(options?: {
   await app.init()
   await app.getHttpAdapter().getInstance().ready()
 
-  return { app, repository, taxYearRepository, lstbRepository, interviewRepository, accountIdentityRepository, pdfRenderer, auditRepository }
+  return {
+    app,
+    repository,
+    taxYearRepository,
+    lstbRepository,
+    interviewRepository,
+    accountIdentityRepository,
+    pdfRenderer,
+    auditRepository,
+    taxDataExportRepository,
+  }
 }
 
 /** Pulls the `name=value` pair out of a Set-Cookie response header, for reuse on the next request. */

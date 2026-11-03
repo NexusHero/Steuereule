@@ -43,7 +43,7 @@ export class InterviewController {
   // R2 — explicit @ApiQuery(): a @Query() param's shape needs this spelled out under the
   // tsx/esbuild openapi:spec generation (see generate-openapi-spec.ts), or the `eintrag`
   // re-entry parameter would silently vanish from the generated client.
-  @ApiQuery({ name: 'eintrag', required: false, enum: ['minimal-gate', 'segment-2', 'lebenslagen', 'sonderausgaben', 'segment-ch'], description: 'The catalogue entry to re-enter; absent → the Minimal-Gate.' })
+  @ApiQuery({ name: 'eintrag', required: false, enum: ['minimal-gate', 'segment-2', 'lebenslagen', 'sonderausgaben', 'segment-ch', 'alleinerziehend'], description: 'The catalogue entry to re-enter; absent → the Minimal-Gate.' })
   getInterview(
     @CurrentUser() userId: string,
     @CurrentUserKind() kind: UserIdKind,
