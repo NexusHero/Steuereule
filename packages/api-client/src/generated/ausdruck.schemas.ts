@@ -14,3 +14,17 @@ export interface CheckoutResponseDto {
   checkoutUrl: string;
 }
 
+export type AusdruckControllerAusdruckParams = {
+/**
+ * true → the values as named, editable AcroForm fields (for a correction before printing).
+ */
+bearbeitbar?: AusdruckControllerAusdruckBearbeitbar;
+};
+
+export type AusdruckControllerAusdruckBearbeitbar = typeof AusdruckControllerAusdruckBearbeitbar[keyof typeof AusdruckControllerAusdruckBearbeitbar];
+
+
+export const AusdruckControllerAusdruckBearbeitbar = {
+  true: 'true',
+} as const;
+

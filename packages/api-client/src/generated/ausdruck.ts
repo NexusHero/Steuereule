@@ -25,6 +25,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AusdruckControllerAusdruckParams,
   AusdruckPruefungDto,
   CheckoutResponseDto
 } from './ausdruck.schemas';
@@ -298,17 +299,26 @@ export type ausdruckControllerAusdruckResponseError = (ausdruckControllerAusdruc
 
 export type ausdruckControllerAusdruckResponse = (ausdruckControllerAusdruckResponseSuccess | ausdruckControllerAusdruckResponseError)
 
-export const getAusdruckControllerAusdruckUrl = (jahr: number,) => {
+export const getAusdruckControllerAusdruckUrl = (jahr: number,
+    params?: AusdruckControllerAusdruckParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/v1/steuerjahre/${jahr}/ausdruck`
+  return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/ausdruck?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/ausdruck`
 }
 
-export const ausdruckControllerAusdruck = async (jahr: number, options?: RequestInit): Promise<ausdruckControllerAusdruckResponse> => {
+export const ausdruckControllerAusdruck = async (jahr: number,
+    params?: AusdruckControllerAusdruckParams, options?: RequestInit): Promise<ausdruckControllerAusdruckResponse> => {
 
-  return httpClient<ausdruckControllerAusdruckResponse>(getAusdruckControllerAusdruckUrl(jahr),
+  return httpClient<ausdruckControllerAusdruckResponse>(getAusdruckControllerAusdruckUrl(jahr,params),
   {
     ...options,
     method: 'GET'
@@ -321,23 +331,25 @@ export const ausdruckControllerAusdruck = async (jahr: number, options?: Request
 
 
 
-export const getAusdruckControllerAusdruckQueryKey = (jahr: number,) => {
+export const getAusdruckControllerAusdruckQueryKey = (jahr: number,
+    params?: AusdruckControllerAusdruckParams,) => {
     return [
-    `/v1/steuerjahre/${jahr}/ausdruck`
+    `/v1/steuerjahre/${jahr}/ausdruck`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getAusdruckControllerAusdruckQueryOptions = <TData = Awaited<ReturnType<typeof ausdruckControllerAusdruck>>, TError = void>(jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof ausdruckControllerAusdruck>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export const getAusdruckControllerAusdruckQueryOptions = <TData = Awaited<ReturnType<typeof ausdruckControllerAusdruck>>, TError = void>(jahr: number,
+    params?: AusdruckControllerAusdruckParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof ausdruckControllerAusdruck>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getAusdruckControllerAusdruckQueryKey(jahr);
+  const queryKey =  queryOptions?.queryKey ?? getAusdruckControllerAusdruckQueryKey(jahr,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof ausdruckControllerAusdruck>>> = ({ signal }) => ausdruckControllerAusdruck(jahr, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof ausdruckControllerAusdruck>>> = ({ signal }) => ausdruckControllerAusdruck(jahr,params, { signal, ...requestOptions });
 
 
 
@@ -351,7 +363,8 @@ export type AusdruckControllerAusdruckQueryError = void
 
 
 export function useAusdruckControllerAusdruck<TData = Awaited<ReturnType<typeof ausdruckControllerAusdruck>>, TError = void>(
- jahr: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof ausdruckControllerAusdruck>>, TError, TData>> & Pick<
+ jahr: number,
+    params: undefined |  AusdruckControllerAusdruckParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof ausdruckControllerAusdruck>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof ausdruckControllerAusdruck>>,
           TError,
@@ -361,7 +374,8 @@ export function useAusdruckControllerAusdruck<TData = Awaited<ReturnType<typeof 
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAusdruckControllerAusdruck<TData = Awaited<ReturnType<typeof ausdruckControllerAusdruck>>, TError = void>(
- jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof ausdruckControllerAusdruck>>, TError, TData>> & Pick<
+ jahr: number,
+    params?: AusdruckControllerAusdruckParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof ausdruckControllerAusdruck>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof ausdruckControllerAusdruck>>,
           TError,
@@ -371,16 +385,18 @@ export function useAusdruckControllerAusdruck<TData = Awaited<ReturnType<typeof 
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useAusdruckControllerAusdruck<TData = Awaited<ReturnType<typeof ausdruckControllerAusdruck>>, TError = void>(
- jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof ausdruckControllerAusdruck>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ jahr: number,
+    params?: AusdruckControllerAusdruckParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof ausdruckControllerAusdruck>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 
 export function useAusdruckControllerAusdruck<TData = Awaited<ReturnType<typeof ausdruckControllerAusdruck>>, TError = void>(
- jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof ausdruckControllerAusdruck>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ jahr: number,
+    params?: AusdruckControllerAusdruckParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof ausdruckControllerAusdruck>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getAusdruckControllerAusdruckQueryOptions(jahr,options)
+  const queryOptions = getAusdruckControllerAusdruckQueryOptions(jahr,params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

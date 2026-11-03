@@ -10,12 +10,14 @@ export interface AusdruckErgebnis {
   readonly fehlend?: readonly string[]
 }
 
-export async function ladeAusdruck(jahr: number): Promise<AusdruckErgebnis> {
-  const response = await fetch(`${getApiClientBaseUrl()}/v1/steuerjahre/${jahr}/ausdruck`, { credentials: 'include' })
+/** `bearbeitbar`: the same values as editable form fields, for a correction before printing. */
+export async function ladeAusdruck(jahr: number, { bearbeitbar = false }: { bearbeitbar?: boolean } = {}): Promise<AusdruckErgebnis> {
+  const query = bearbeitbar ? '?bearbeitbar=true' : ''
+  const response = await fetch(`${getApiClientBaseUrl()}/v1/steuerjahre/${jahr}/ausdruck${query}`, { credentials: 'include' })
   if (!response.ok) {
     const body = response.status === 422 ? ((await response.json().catch(() => ({}))) as { fehlend?: string[] }) : {}
     return { ok: false, status: response.status, ...(body.fehlend ? { fehlend: body.fehlend } : {}) }
   }
-  triggerBrowserDownload(await response.blob(), `steuererklaerung-${jahr}.pdf`)
+  triggerBrowserDownload(await response.blob(), `steuererklaerung-${jahr}${bearbeitbar ? '-bearbeitbar' : ''}.pdf`)
   return { ok: true, status: response.status }
 }
