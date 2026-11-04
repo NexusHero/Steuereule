@@ -36,8 +36,6 @@ export class AusdruckController {
     return this.service.pruefe(userId, jahr)
   }
 
-  // Lives here, not in Freischaltung: paying is only offered once the printout it buys can
-  // actually be delivered (consumer protection — no paid product that cannot be handed out).
   @Post(':jahr/ausdruck/checkout')
   @HttpCode(200)
   @RequiresAccount()

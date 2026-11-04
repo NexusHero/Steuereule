@@ -1,6 +1,3 @@
-// ADR-048 § 2–3 & ADR-0051 § 2 — the adapter behind KiPort. 1.0 calls no LLM: sources are
-// explained from a curated local store, and Beleg suggestions stay empty until an OCR/LLM
-// slice exists. The PII gate and the output validator are the seams that slice must pass.
 import { Injectable } from '@nestjs/common'
 import { EINKUNFTSARTEN, type Einkunftsart, type EulenQuelleId, type KiPort, type KiVorschlag } from '@steuereule/core'
 
@@ -14,7 +11,6 @@ export interface RechtsquelleEintrag {
   readonly url: string
 }
 
-/** Curated statutory sources in plain German (ADR-039). */
 export const RECHTSQUELLEN: Readonly<Record<EulenQuelleId | 'estg-32', RechtsquelleEintrag>> = {
   'estg-4-5-6c': {
     id: 'estg-4-5-6c',
@@ -80,10 +76,6 @@ function findePersonenSchluessel(wert: unknown): string | null {
   return null
 }
 
-/**
- * Asserts that a payload bound for an external LLM contains zero PII identifiers
- * (no 11-digit Steuer-ID, no IBAN, no personal key at any depth). Throws if violated (ADR-0051 § 1).
- */
 export function pruefePiiFreiheit(payload: unknown): void {
   const serialized = JSON.stringify(payload)
   if (IBAN_REGEX.test(serialized)) {
@@ -98,11 +90,6 @@ export function pruefePiiFreiheit(payload: unknown): void {
   }
 }
 
-/**
- * Runtime schema validator for `KiVorschlag` (ADR-048 § 2: structured output validation).
- * Rejects any suggestion whose Einkunftsart is outside the closed core union or whose amount
- * is not a non-negative integer.
- */
 export function validiereKiVorschlag(raw: unknown): KiVorschlag {
   if (typeof raw !== 'object' || raw === null) {
     throw new Error('Invalid KiVorschlag: not an object.')
@@ -128,6 +115,7 @@ export function validiereKiVorschlag(raw: unknown): KiVorschlag {
   }
 }
 
+/** The adapter behind KiPort. */
 @Injectable()
 export class RagKiAdapter implements KiPort {
   async schlageVorAusBeleg(belegId: string): Promise<readonly KiVorschlag[]> {

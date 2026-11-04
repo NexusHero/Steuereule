@@ -1,11 +1,5 @@
-// Application logic for die Jahresübernahme (ticket 10.8, Produkt-ADR-021). The COPY is done
-// here — the pure contract of the copy (Herkunft „Übernahme aus {vorjahr}", unbestätigt) lives in
-// @steuereule/core's uebernahme.ts; this service moves the FACTS (LStB, Rente, Kapital, every
-// Vermietungsobjekt) through the generic Kennzeichnungs-Schicht (ADR-0052 §6). The take-over is ONE action
-// per target year: a year that was already taken over is a 409 (never a silent duplicate or a
-// half-copy), a source year without ANY take-over-able fact is a 404 (never a fabricated copy),
-// and the copied field strings travel UNVERÄNDERT (open stays open, ADR-032).
-import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common'
+import { Inject, Injectable } from '@nestjs/common'
+import { ConflictError, InvalidInputError, NotFoundError } from '../common/domain-error.js'
 import { LSTB_FELDER, RENTEN_FELDER, VERMIETUNG_FELDER, kennzeichnungsKey, type Herkunft, type Maske } from '@steuereule/core'
 import { BestaetigungService } from '../bestaetigung/bestaetigung.service.js'
 import { KAPITAL_REPOSITORY, type KapitalRepository } from '../kapital/kapital.repository.js'
@@ -13,15 +7,16 @@ import { KENNZEICHNUNG_REPOSITORY, type KennzeichnungRecord, type KennzeichnungR
 import { LSTB_REPOSITORY, type LstbRepository } from '../lstb/lstb.repository.js'
 import { RENTE_REPOSITORY, type RenteRepository } from '../rente/rente.repository.js'
 import { VERMIETUNG_REPOSITORY, type VermietungRepository } from '../vermietung/vermietung.repository.js'
+import { JAHRESUEBERNAHME_REPOSITORY, type JahresuebernahmeRepository } from './jahresuebernahme.repository.js'
 import type { UebernahmeResponseDto } from './dto/uebernahme-response.dto.js'
 
-/** ADR-022: die Übernahme unterstützt höchstens 4 Rückjahre — nie eine stille Alt-Kopie. */
 export const MAX_RUECKJAHRE = 4
 
 function vonUebernahme(r: KennzeichnungRecord): boolean {
   return r.herkunft.art === 'uebernahme' || r.vorschlag?.herkunft.art === 'uebernahme'
 }
 
+/** Application logic for the Jahresübernahme. */
 @Injectable()
 export class UebernahmeService {
   constructor(
@@ -31,9 +26,9 @@ export class UebernahmeService {
     @Inject(RENTE_REPOSITORY) private readonly renteRepository: RenteRepository,
     @Inject(KAPITAL_REPOSITORY) private readonly kapitalRepository: KapitalRepository,
     @Inject(VERMIETUNG_REPOSITORY) private readonly vermietungRepository: VermietungRepository,
+    @Inject(JAHRESUEBERNAHME_REPOSITORY) private readonly jahresuebernahmeRepository: JahresuebernahmeRepository,
   ) {}
 
-  /** The values the take-over itself marked (an open proposal is the user's value, not a copy). */
   private async kennzeichnungen(userId: string, steuerjahr: number): Promise<UebernahmeResponseDto> {
     const records = await this.repository.listForUserAndYears(userId, [steuerjahr])
     return {
@@ -47,23 +42,19 @@ export class UebernahmeService {
     return this.kennzeichnungen(userId, steuerjahr)
   }
 
-  /**
-   * Die Jahresübernahme — EIN Kopier-Schritt pro Zieljahr: alles aus dem Vorjahr wird kopiert
-   * (LStB, Rente, Kapital, jedes Vermietungsobjekt), je Feld über die Kennzeichnungs-Schicht —
-   * unbestätigt (ADR-021), und ein schon eingetragener Wert des Nutzers gewinnt (ADR-0052 §7).
-   * Ein bereits übernommenes Jahr ist ein 409; ein Vorjahr ohne übernehmbaren Fakt ein 404.
-   */
   async uebernehme(userId: string, steuerjahr: number, vorjahr: number): Promise<UebernahmeResponseDto> {
     if (!Number.isInteger(vorjahr) || vorjahr < 1 || vorjahr >= steuerjahr) {
-      throw new BadRequestException('von must be a whole year strictly before the target year.')
+      throw new InvalidInputError('VORJAHR_INVALID', 'von must be a whole year strictly before the target year.')
     }
-    // ADR-022: bis zu 4 Rückjahre werden unterstützt und beworben — nie eine stille Alt-Kopie.
     if (vorjahr < steuerjahr - MAX_RUECKJAHRE) {
-      throw new BadRequestException(`von is more than ${MAX_RUECKJAHRE} years back — at most 4 previous years are supported.`)
+      throw new InvalidInputError('VORJAHR_TOO_FAR_BACK', `von is more than ${MAX_RUECKJAHRE} years back — at most 4 previous years are supported.`)
     }
-    const existing = await this.repository.listForUserAndYears(userId, [steuerjahr])
-    if (existing.some(vonUebernahme)) {
-      throw new ConflictException('This year was already taken over — confirm the copied facts, never copy them twice.')
+    const [alreadyTakenOver, existing] = await Promise.all([
+      this.jahresuebernahmeRepository.findForUserAndYear(userId, steuerjahr),
+      this.repository.listForUserAndYears(userId, [steuerjahr]),
+    ])
+    if (alreadyTakenOver !== null || existing.some(vonUebernahme)) {
+      throw new ConflictError('ALREADY_TAKEN_OVER', 'This tax year was already taken over.')
     }
 
     const [lstbQuelle, renteQuelle, kapitalQuelle, vermietungQuellen] = await Promise.all([
@@ -73,24 +64,24 @@ export class UebernahmeService {
       this.vermietungRepository.listForUserAndYear(userId, vorjahr),
     ])
     if (lstbQuelle === null && renteQuelle === null && kapitalQuelle === null && vermietungQuellen.length === 0) {
-      throw new NotFoundException(`Nothing to take over from ${vorjahr} — no LStB, Rente, Kapital or Vermietung exists.`)
+      throw new NotFoundError('NOTHING_TO_TAKE_OVER', `Nothing to take over from ${vorjahr} — no LStB, Rente, Kapital or Vermietung exists.`)
     }
 
     const herkunft: Herkunft = { art: 'uebernahme', vorjahr }
     const kopiere = async <F extends string>(maske: Maske, felder: readonly F[], quelle: Readonly<Record<F, string | null>>, instanz?: string) => {
-      // Copy the stored field strings unchanged — the honest states travel with them.
       for (const feld of felder) {
         await this.bestaetigung.schreibe(userId, steuerjahr, kennzeichnungsKey(maske, feld, instanz), quelle[feld], herkunft)
       }
     }
     if (lstbQuelle !== null) await kopiere('lstb', LSTB_FELDER, lstbQuelle)
     if (renteQuelle !== null) await kopiere('rente', ['rentenart' as const, ...RENTEN_FELDER], renteQuelle)
-    // The take-over has always carried only the Kapitalerträge (the guided mask's other fields are year-specific).
     if (kapitalQuelle !== null) await kopiere('kapital', ['kapitalertraege' as const], kapitalQuelle)
     for (const objekt of vermietungQuellen) {
       const kopie = await this.vermietungRepository.create(userId, steuerjahr)
       await kopiere('vermietung', VERMIETUNG_FELDER, objekt, kopie.id)
     }
+
+    await this.jahresuebernahmeRepository.record(userId, steuerjahr, vorjahr)
 
     return this.kennzeichnungen(userId, steuerjahr)
   }

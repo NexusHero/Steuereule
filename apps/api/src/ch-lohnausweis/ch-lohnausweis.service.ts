@@ -1,12 +1,5 @@
-// Application logic for the CH-Lohnausweis guided mask + fold (ADR-036/029, Grenzgänger-CH
-// vertical, ticket 16). userId+steuerjahr-scoped read/write, then the honest-state + fold mapping.
-// Trusts that `userId` was produced by UserContextGuard + @RequiresAccount() (never accepts it
-// from a param/body) — mirrors LstbService/InterviewService. The fold is NEVER computed here —
-// @steuereule/core's `grenzgaengerStand`/`grenzgaengerChPosten`/`chPostenAlsKernposten` are
-// imported, never reimplemented (ADR-014/048 determinism boundary). The Grenzgänger-Status and the
-// gated Einkunftsarten are derived from the stored interview answers via the interview repository
-// (the one read path), never trusted from the client.
-import { BadRequestException, Inject, Injectable } from '@nestjs/common'
+import { Inject, Injectable } from '@nestjs/common'
+import { InvalidInputError } from '../common/domain-error.js'
 import {
   LOHNAUSWEIS_FELDER,
   amtlicherMonatskurs,
@@ -43,7 +36,6 @@ import type { PutWechselkursDto, WechselkursDto } from './dto/wechselkurs.dto.js
 import type { ChPostenDto, NGreAngabenDto, PutBemerkungenDto, PutNGreDto, PutVorsorgeDto } from './dto/ch-posten.dto.js'
 import type { BerechnungsstandDto, ChLohnausweisResponseDto } from './dto/ch-lohnausweis-response.dto.js'
 
-/** A stored row's 14 field strings → the wire field states + the fold's sparse `LohnausweisWerte`. */
 function felderAusRecord(record: ChLohnausweisRecord | null): { felder: LohnausweisFeldDto[]; werte: LohnausweisWerte } {
   const felder: LohnausweisFeldDto[] = []
   const werte: LohnausweisWerte = {}
@@ -69,8 +61,6 @@ function wechselkursAusRecord(record: ChLohnausweisRecord | null): Wechselkurs |
   }
   if (record.wechselkursModus === 'amtlich') return amtlicherMonatskurs(record.wechselkursMonat, record.wechselkursKurs)
   if (record.wechselkursBelegId === null) {
-    // A persisted tatsächlicher Kurs without a Beleg violates ADR-012 — report it as not-foldable
-    // rather than fabricating an amtliche fallback (honesty: the core factory refuses to build it).
     return null
   }
   return tatsaechlicherKurs(record.wechselkursMonat, record.wechselkursKurs, record.wechselkursBelegId)
@@ -108,12 +98,11 @@ function postenZuDto(posten: ChPosten): ChPostenDto {
   }
 }
 
-/** The wire field state → the core's stored encoding; a 400 when `erfasst` lacks a valid amount. */
 function wertAusDto(dto: PutLohnausweisFeldDto): string | null {
   if (dto.kind === 'offen') return null
   if (dto.kind === 'unklar') return 'unklar'
   if (dto.wert === undefined || !istGueltigerLohnausweisBetrag(dto.wert)) {
-    throw new BadRequestException('kind "erfasst" requires a non-negative whole-CHF `wert`.')
+    throw new InvalidInputError('FIELD_VALUE_INVALID', 'kind "erfasst" requires a non-negative whole-CHF `wert`.')
   }
   return serialisiereLohnausweisFeld(dto.wert)
 }
@@ -142,6 +131,7 @@ function nGreZuDto(n: NGreAngaben): NGreAngabenDto {
   }
 }
 
+/** Application logic for the CH-Lohnausweis guided mask + fold. */
 @Injectable()
 export class ChLohnausweisService {
   constructor(
@@ -167,8 +157,6 @@ export class ChLohnausweisService {
     const saeule3aChf = record === null || record.saeule3aChf === null ? undefined : Number(record.saeule3aChf)
     const krankenkasseChf = record === null || record.krankenkasseChf === null ? undefined : Number(record.krankenkasseChf)
 
-    // The fold only exists once both the Kurs and the status are known; before that the line
-    // items are honestly empty and `stand` is null (nothing to fold — never a fabricated zero).
     let posten: ChPostenDto[] = []
     let stand: BerechnungsstandDto | null = null
     if (wechselkurs !== null && status !== null) {
@@ -204,8 +192,6 @@ export class ChLohnausweisService {
 
   async getState(userId: string, steuerjahr: number): Promise<ChLohnausweisResponseDto> {
     const record = await this.repository.findForUserAndYear(userId, steuerjahr)
-    // Only log an access when there's something to access (REQ-004.2's pattern) — a GET on a
-    // fresh tax year with no mask started yet appends no READ entry.
     if (record !== null) {
       await this.auditService.append({ userId, action: 'READ', resource: 'ch-lohnausweis' })
     }
@@ -247,9 +233,6 @@ export class ChLohnausweisService {
   }
 
   async setWechselkurs(userId: string, steuerjahr: number, dto: PutWechselkursDto): Promise<ChLohnausweisResponseDto> {
-    // Build through the core factory so "tatsächlich ohne Beleg" and an invalid Kurs are rejected
-    // (ADR-012) — never a silent amtliche fallback. The core throws RangeError; translate to a 400
-    // at the boundary (a client mistake), not a 500.
     let kurs: Wechselkurs
     try {
       kurs =
@@ -258,7 +241,7 @@ export class ChLohnausweisService {
           : tatsaechlicherKurs(dto.monat, dto.kurs, dto.belegId ?? '')
     } catch (error) {
       if (error instanceof RangeError) {
-        throw new BadRequestException(error.message)
+        throw new InvalidInputError('WECHSELKURS_INVALID', error.message)
       }
       throw error
     }
@@ -271,11 +254,10 @@ export class ChLohnausweisService {
     return this.toResponse(userId, steuerjahr, record)
   }
 
-  /** A nullable optional amount → its stored string (null stays null; a value must be valid). */
   private serialisiereOptional(wert: number | null | undefined): string | null {
     if (wert === null || wert === undefined) return null
     if (!istGueltigerLohnausweisBetrag(wert)) {
-      throw new BadRequestException('a whole-CHF amount must be a non-negative integer.')
+      throw new InvalidInputError('FIELD_VALUE_INVALID', 'A whole-CHF amount must be a non-negative integer.')
     }
     return String(wert)
   }

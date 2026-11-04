@@ -1,5 +1,3 @@
-// @steuereule/ui — the Funke design system rebuilt in React-Native primitives (ADR-050). Components
-// read the theme from @steuereule/tokens via ThemeProvider; user-facing strings go through i18n.
 export { ThemeProvider, ThemeContext, type UiTheme, type ThemeProviderProps } from './theme/ThemeProvider'
 export { useTheme } from './theme/useTheme'
 

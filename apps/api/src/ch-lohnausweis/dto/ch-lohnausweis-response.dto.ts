@@ -1,14 +1,9 @@
-// `type:` given explicitly — see PutProfileDto's comment for why.
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import { LohnausweisFeldDto } from './lohnausweis-feld.dto.js'
 import { WechselkursDto } from './wechselkurs.dto.js'
 import { ChPostenDto, NGreAngabenDto } from './ch-posten.dto.js'
 
-/**
- * The derived fold result — @steuereule/core's `Berechnungsstand` as a flat wire shape. `kind`
- * fixes which optional fields are present (same "flat discriminated union" instinct as StepDto).
- * Vorsorgeaufwand is reported separately, never subtracted (see the core's Rolle doc).
- */
+/** The derived fold result. */
 export class BerechnungsstandDto {
   @ApiProperty({ enum: ['bestimmt', 'offen'], description: 'Determined, or open (naming what blocks).' })
   kind!: 'bestimmt' | 'offen'
@@ -32,12 +27,7 @@ export class BerechnungsstandDto {
   gegated?: string[]
 }
 
-/**
- * The response shape for `GET /v1/steuerjahre/{jahr}/ch-lohnausweis` and every PUT: the 14 CHF
- * fields (paper order), the Bemerkungen, the Wechselkurs, the derived Grenzgänger-Status, the
- * folded CH line items and the fold result. Everything came from @steuereule/core, never
- * recomputed in the API — the same "server decides what's true" seam as the interview.
- */
+/** The response shape for `GET /v1/steuerjahre/{jahr}/ch-lohnausweis` and every PUT. */
 export class ChLohnausweisResponseDto {
   @ApiProperty({ type: [LohnausweisFeldDto], description: 'The 14 CHF-betrag fields, in paper order (Ziffern 1–14).' })
   felder!: LohnausweisFeldDto[]

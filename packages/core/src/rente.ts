@@ -1,36 +1,13 @@
-// Rentner-Vertikale (ticket 10.4, product ADR-034 — Anlage R). Three things live here:
-// (1) the closed `Rentenart` vocabulary (product ADR-036 §3: gesetzliche Rente, Betriebsrente/PK DE,
-//     private Rentenversicherung, Witwen-/Waisenrente, ausländische Rente/CH AHV);
-// (2) the two statutory percentage tables that turn a Rentenbeginn-Jahr (Besteuerungsanteil,
-//     § 22 Nr. 1 Satz 3 Buchst. a Doppelbuchst. aa EStG — the Kohorten-Tabelle) or a
-//     Rentenbeginn-Lebensalter (Ertragsanteil, § 22 Nr. 1 Satz 3 Buchst. a Doppelbuchst. bb EStG)
-//     into the taxable share of a pension;
-// (3) the guided-mask data interface (Rentenbezugsmitteilung fallback, same offen/unklar/erfasst
-//     honesty as lstb.ts) and its fold into the deterministic core (`berechne`) with Herkunft —
-//     an amount is never fabricated: a missing Jahresbetrag, a missing Rentenbeginn-Jahr or a year
-//     outside the statutory table is OFFEN, never a guessed zero (product ADR-032 honesty).
-//
-// Pure, no I/O (ADR-0004). No tax FORMULA is invented here: the Besteuerungs-/Ertragsanteil
-// percentages come FROM the statute (verbatim tables, not derived arithmetic), and the taxable
-// share is Jahresbetrag × Anteil — the tariff/Günstigerprüfung over that share is a later slice.
 import { berechne, type Berechnungsstand, type Posten } from './berechnung'
 import type { Einkunftsart } from './einkunftsarten'
 
-// --- Rentenart-Vokabular (product ADR-036 §3) ------------------------------------------------
-
-/**
- * The five pension kinds 1.0 covers (product ADR-036 §3). German domain terms, byte-equal to the
- * product ADR's wording (ADR-0033 citation form) — persisted as-is, UI labels live in i18n, never
- * here. All five are Anlage-R-fähig (product ADR-034).
- */
 export type Rentenart =
-  | 'GesetzlicheRente' // gesetzliche Rentenversicherung (Anlage R)
-  | 'Betriebsrente' // Betriebsrente / bAV / Pensionskasse DE (Anlage R)
-  | 'PrivateRentenversicherung' // private Rentenversicherung — Ertragsanteil (bb)
-  | 'WitwenWaisenrente' // Witwen-/Waisenrente (Anlage R)
-  | 'AuslaendischeRente' // ausländische Rente (CH AHV — der Ex-Grenzgänger-Fall)
+  | 'GesetzlicheRente'
+  | 'Betriebsrente'
+  | 'PrivateRentenversicherung'
+  | 'WitwenWaisenrente'
+  | 'AuslaendischeRente'
 
-/** Canonical order — `RENTENARTEN` returned in this order, a deterministic array. */
 export const RENTENARTEN: readonly Rentenart[] = [
   'GesetzlicheRente',
   'Betriebsrente',
@@ -39,21 +16,10 @@ export const RENTENARTEN: readonly Rentenart[] = [
   'AuslaendischeRente',
 ]
 
-/** Total over `string`: is `value` a declared Rentenart? (mirrors isEinkunftsart's totalism). */
 export function isRentenart(value: string): value is Rentenart {
   return (RENTENARTEN as readonly string[]).includes(value)
 }
 
-// --- Besteuerungsanteil (Kohorten-Tabelle, § 22 Nr. 1 Satz 3 Buchst. a Doppelbuchst. aa EStG) --
-
-/**
- * The statutory Kohorten-Tabelle, verbatim (not derived arithmetic — product ADR-032: no invented
- * percentages). Key = Jahr des Rentenbeginns (2006–2058), value = Besteuerungsanteil in Prozent.
- * The two boundary rules live in `besteuerungsanteilProzent`:
- *   - Rentenbeginn bis einschließlich 2005 → 50 % (the table's first row);
- *   - Rentenbeginn nach 2058 → OFFEN (null): the table ends at 2058 and the Wachstumschancengesetz
- *     already moved that endpoint once (2040 → 2058), so a later year is never guessed.
- */
 const BESTEUERUNGSANTEIL_TABELLE: Readonly<Record<number, number>> = {
   2006: 52, 2007: 54, 2008: 56, 2009: 58, 2010: 60,
   2011: 62, 2012: 64, 2013: 66, 2014: 68, 2015: 70,
@@ -66,12 +32,6 @@ const BESTEUERUNGSANTEIL_TABELLE: Readonly<Record<number, number>> = {
   2055: 98.5, 2056: 99, 2057: 99.5, 2058: 100,
 }
 
-/**
- * § 22 Nr. 1 Satz 3 Buchst. a Doppelbuchst. aa EStG — the Besteuerungsanteil for a pension that
- * started in `rentenbeginnJahr`. Returns the percentage, or `null` (OFFEN) when the year is outside
- * the statutory table — a future/out-of-range year is never guessed. Percentages are whole or
- * half-point values, all exactly representable in IEEE 754.
- */
 export function besteuerungsanteilProzent(rentenbeginnJahr: number): number | null {
   if (!Number.isInteger(rentenbeginnJahr) || rentenbeginnJahr < 0) return null
   if (rentenbeginnJahr <= 2005) return 50
@@ -79,9 +39,6 @@ export function besteuerungsanteilProzent(rentenbeginnJahr: number): number | nu
   return BESTEUERUNGSANTEIL_TABELLE[rentenbeginnJahr] ?? null
 }
 
-// --- Ertragsanteil (Lebensalter-Tabelle, § 22 Nr. 1 Satz 3 Buchst. a Doppelbuchst. bb EStG) ---
-
-/** A [von, bis, prozent] age-band of the Ertragsanteil-Tabelle (vollendetes Lebensjahr). */
 const ERTRAGSANTEIL_TABELLE: readonly (readonly [number, number, number])[] = [
   [0, 1, 59], [2, 3, 58], [4, 5, 57], [6, 8, 56], [9, 10, 55],
   [11, 12, 54], [13, 14, 53], [15, 16, 52], [17, 18, 51], [19, 20, 50],
@@ -97,11 +54,6 @@ const ERTRAGSANTEIL_TABELLE: readonly (readonly [number, number, number])[] = [
   [88, 91, 4], [92, 93, 3], [94, 96, 2],
 ]
 
-/**
- * § 22 Nr. 1 Satz 3 Buchst. a Doppelbuchst. bb EStG — the Ertragsanteil for a private
- * Rentenversicherung, keyed on the vollendetes Lebensjahr at rent begin. `>= 97` is the table's
- * terminal "ab 97" row (1 %); a negative or non-integer age is OFFEN (null), never guessed.
- */
 export function ertragsanteilProzent(vollendetesLebensjahr: number): number | null {
   if (!Number.isInteger(vollendetesLebensjahr) || vollendetesLebensjahr < 0) return null
   if (vollendetesLebensjahr >= 97) return 1
@@ -111,36 +63,20 @@ export function ertragsanteilProzent(vollendetesLebensjahr: number): number | nu
   return null
 }
 
-/**
- * Which statutory table a Rentenart is taxed through. Everything EXCEPT the private
- * Rentenversicherung uses the Besteuerungsanteil (Kohorten-Tabelle by Rentenbeginn-Jahr); the
- * private Rentenversicherung is taxed through the Ertragsanteil (by Rentenbeginn-Lebensalter).
- * CH AHV is a foreign pension comparable to a German statutory pension, so it uses the
- * Besteuerungsanteil too.
- */
 export function verwendetBesteuerungsanteil(art: Rentenart): boolean {
   return art !== 'PrivateRentenversicherung'
 }
 
-// --- Guided mask (Rentenbezugsmitteilung fallback, ADR-036 Scan-Fallback) ---------------------
-
-/** The three captured facts of the guided mask. */
 export type RentenFeldId = 'jahresbetrag' | 'rentenbeginnJahr' | 'alterBeiRentenbeginn'
 
-/** The closed field-id list — the single source the fold and the API's `:feld` boundary both read. */
 export const RENTEN_FELDER: readonly RentenFeldId[] = ['jahresbetrag', 'rentenbeginnJahr', 'alterBeiRentenbeginn']
 
-/** One field's honest capture state. `wert` is a non-negative integer when `erfasst`. */
 export type RentenFeldZustand =
   | { readonly kind: 'offen' }
   | { readonly kind: 'unklar' }
   | { readonly kind: 'erfasst'; readonly wert: number }
 
-/**
- * The guided mask's data. `art` is a CHOICE (null = not yet chosen), the three fields are
- * transcribed facts. `rentenbeginnJahr` feeds the Besteuerungsanteil path, `alterBeiRentenbeginn`
- * feeds the Ertragsanteil path — only the one relevant to the chosen `art` is required by the fold.
- */
+/** The guided mask's data. */
 export interface RentenDaten {
   readonly art: Rentenart | null
   readonly jahresbetrag: RentenFeldZustand
@@ -148,7 +84,6 @@ export interface RentenDaten {
   readonly alterBeiRentenbeginn: RentenFeldZustand
 }
 
-/** The guided mask's starting point — every field open, no art chosen, nothing guessed. */
 export const LEERE_RENTE: RentenDaten = {
   art: null,
   jahresbetrag: { kind: 'offen' },
@@ -156,12 +91,10 @@ export const LEERE_RENTE: RentenDaten = {
   alterBeiRentenbeginn: { kind: 'offen' },
 }
 
-/** A captured value must be a non-negative integer (whole euros / a year / an age). */
 export function istGueltigerRentenBetrag(wert: number): boolean {
   return Number.isFinite(wert) && Number.isInteger(wert) && wert >= 0
 }
 
-/** The one setter for a field — returns a copy with that field replaced, throwing on an invalid erfasst. */
 export function setzeRentenFeld(daten: RentenDaten, feld: RentenFeldId, zustand: RentenFeldZustand): RentenDaten {
   if (zustand.kind === 'erfasst' && !istGueltigerRentenBetrag(zustand.wert)) {
     throw new RangeError(`rente: "${feld}" erfasst value must be a non-negative integer`)
@@ -169,7 +102,6 @@ export function setzeRentenFeld(daten: RentenDaten, feld: RentenFeldId, zustand:
   return { ...daten, [feld]: zustand }
 }
 
-/** The one setter for the rentenart choice — null clears it, anything else must be a declared Rentenart. */
 export function setzeRentenart(daten: RentenDaten, art: Rentenart | null): RentenDaten {
   if (art !== null && !isRentenart(art)) {
     throw new RangeError(`rente: "${art}" is not a declared Rentenart`)
@@ -177,16 +109,8 @@ export function setzeRentenart(daten: RentenDaten, art: Rentenart | null): Rente
   return { ...daten, art }
 }
 
-// --------------------------------------------------------------------------------------------
-// Persistence encoding — the one place the "offen / unklar / erfasst" states map to a stored
-// string (ADR-0033's one-rule instinct, same as lstb.ts). `null` is `offen`, the reserved marker
-// `unklar` is "looked but could not read", any other string is a non-negative integer (`erfasst`).
-// --------------------------------------------------------------------------------------------
-
-/** The reserved stored value for a field the user looked at and could not read ("unklar"). */
 export const RENTE_UNKLAR = 'unklar'
 
-/** A field state → its stored string (`null` for `offen`). */
 export function serialisiereRentenFeld(zustand: RentenFeldZustand): string | null {
   switch (zustand.kind) {
     case 'offen':
@@ -198,7 +122,6 @@ export function serialisiereRentenFeld(zustand: RentenFeldZustand): string | nul
   }
 }
 
-/** A stored string → its field state. A value that is neither is corruption — throw, don't guess. */
 export function deserialisiereRentenFeld(value: string | null): RentenFeldZustand {
   if (value === null) return { kind: 'offen' }
   if (value === RENTE_UNKLAR) return { kind: 'unklar' }
@@ -209,9 +132,6 @@ export function deserialisiereRentenFeld(value: string | null): RentenFeldZustan
   return { kind: 'erfasst', wert }
 }
 
-// --- Fold into the deterministic core --------------------------------------------------------
-
-/** The rule citation for the taxable share's Herkunft (ADR-014/015 "regel" origin). */
 function besteuerungsanteilHerkunft(rentenbeginnJahr: number, prozent: number): string {
   return `§ 22 Nr. 1 Satz 3 Buchst. a Doppelbuchst. aa EStG — Besteuerungsanteil bei Rentenbeginn ${rentenbeginnJahr}: ${prozent} %`
 }
@@ -220,13 +140,6 @@ function ertragsanteilHerkunft(alter: number, prozent: number): string {
   return `§ 22 Nr. 1 Satz 3 Buchst. a Doppelbuchst. bb EStG — Ertragsanteil bei Rentenbeginn mit ${alter} Jahren: ${prozent} %`
 }
 
-/**
- * Map the guided-mask data onto the core's income `Posten` — the taxable share of the Jahresbetrag
- * (Jahresbetrag × Besteuerungs-/Ertragsanteil, rounded to whole euros) with its § 22 Herkunft.
- * Returns null when the rente is not yet determinable: no art chosen, a required field open/unklar,
- * or a Rentenbeginn-Jahr outside the statutory table — the caller reports that as OFFEN, never as a
- * fabricated zero (product ADR-032).
- */
 export function renteAlsKernposten(rente: RentenDaten): Posten | null {
   if (rente.art === null || rente.jahresbetrag.kind !== 'erfasst') return null
   const jahresbetrag = rente.jahresbetrag.wert
@@ -254,12 +167,6 @@ export function renteAlsKernposten(rente: RentenDaten): Posten | null {
   }
 }
 
-/**
- * Fold the guided-mask data through the deterministic core (`berechne`). A determinable rente
- * yields the taxable share in `einnahmen`; an open/unklar/out-of-table rente is OFFEN with one
- * open posten — never a fabricated zero. `gegated` (declared-but-not-computable Einkunftsarten)
- * is passed through unchanged, so a pensioner who also declared Gewerbe/Krypto still reads OFFEN.
- */
 export function renteStand(rente: RentenDaten, gegated: readonly Einkunftsart[]): Berechnungsstand {
   const kernposten = renteAlsKernposten(rente)
   const posten: Posten[] = kernposten === null ? [] : [kernposten]

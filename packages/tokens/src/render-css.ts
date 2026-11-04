@@ -1,8 +1,3 @@
-// Render the normalized tokens back to CSS custom properties for the marketing DOM side
-// (ADR-044/050). Light lives on :root, the dark overrides on [data-theme="dunkel"] — exactly
-// the two blocks the checked-in tokens/colors.css + tokens/dunkel.css already ship. Values are
-// emitted verbatim (they are already CSS-ready, incl. `var(--tinte)` references in shadows).
-
 import type { NormalizedTokens, NormalToken } from './manifest-to-tokens'
 
 const GROUP_ORDER = [
@@ -24,7 +19,6 @@ function line(t: NormalToken): string {
   return `  ${t.cssVar}: ${t.value};`
 }
 
-/** Emit `:root { … }` + `[data-theme="dunkel"] { … }` from the normalized tree. */
 export function renderCss(n: NormalizedTokens): string {
   const rootLines: string[] = []
   for (const group of GROUP_ORDER) {

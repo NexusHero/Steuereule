@@ -27,8 +27,6 @@ function felderAusRow(row: Row): BescheidFelder {
 }
 
 function toRecord(row: Row): BescheidRecord {
-  // `status` is written only by the service, which validates it against the core's closed
-  // BescheidStatus set — a stored value is one by construction; the guard is defence in depth.
   return {
     userId: row.userId,
     steuerjahr: row.steuerjahr,
@@ -39,7 +37,6 @@ function toRecord(row: Row): BescheidRecord {
   }
 }
 
-/** The one-keyed update/insert payload for `feld` — typed, never a computed `{[feld]: wert}`. */
 function feldData(feld: BescheidFeld, wert: string | null): Partial<Row> {
   switch (feld) {
     case 'einnahmen':
@@ -57,8 +54,6 @@ function feldData(feld: BescheidFeld, wert: string | null): Partial<Row> {
 
 @Injectable()
 export class PrismaBescheidRepository implements BescheidRepository {
-  // ENCRYPTED_PRISMA, never plain PrismaService — the five figures are field-encrypted at rest
-  // (ADR-0008): actual income/tax figures are the most sensitive personal facts a tax app holds.
   constructor(@Inject(ENCRYPTED_PRISMA) private readonly prisma: EncryptedPrismaClient) {}
 
   async findForUserAndYear(userId: string, steuerjahr: number): Promise<BescheidRecord | null> {
@@ -68,8 +63,6 @@ export class PrismaBescheidRepository implements BescheidRepository {
 
   async setFeld(userId: string, steuerjahr: number, feld: BescheidFeld, wert: string | null): Promise<BescheidRecord> {
     const [row] = await this.prisma.$transaction([
-      // A fresh row seeds the other four figures as null (`offen`) and the status as `eingegangen`
-      // — an honest empty mask; the upsert's update branch touches only the field being set.
       this.prisma.bescheid.upsert({
         where: { userId_steuerjahr: { userId, steuerjahr } },
         create: {

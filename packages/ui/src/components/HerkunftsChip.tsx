@@ -1,6 +1,3 @@
-// Herkunfts-Chip (fk-chip src) — Muster A: every number is touchable and reveals its origin
-// (Beleg, Regel, Rechenweg). Load-bearing DS rule (design rule 2 / CLAUDE.md). Labels go through
-// i18n (ui namespace); the tax term "Beleg" stays German in both locales (ADR-0006).
 import { Pressable, View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'

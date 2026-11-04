@@ -1,14 +1,3 @@
-// KatalogScreen — the on-demand catalogue entries (REQ-017, ticket 08): the 5 Lebenslagen
-// (ADR-031) and the Sonderausgaben-Katalog (ADR-016/035), walked by the SAME interview engine
-// that runs the Minimal-Gate (ADR-0031 §3: one walker, one registry). The graph stays local
-// (`nextStepFor(ENTRIES[entry], answers)`), every answer is `POST .../interview/antworten`, and a
-// 409 (the client and server disagreeing) resyncs honestly — exactly the Minimal-Gate's own
-// behaviour (ADR-0033: the server decides what's true).
-//
-// Unlike the Minimal-Gate's three enum questions, the catalogue's "Ja" branches open an INTEGER
-// follow-up (the primary amount) — rendered here as a numeric input, never free text. The tax
-// FORMULAS behind the amounts (Fünftelregelung, zumutbare Belastung, …) are later slices; this
-// screen captures the declaration + the primary value, which is what the Rechenkern folds.
 import { useEffect, useState } from 'react'
 import { ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
@@ -97,8 +86,6 @@ export function KatalogScreen({ entry, onDone = () => {}, onBack, taxYear = CURR
             void queryClient.invalidateQueries({ queryKey: getCockpitControllerGetCockpitSummaryQueryKey(taxYear) })
             return
           }
-          // 409/400 — the server rejected a write the local graph believed valid/reachable.
-          // Undo the optimistic step and resync from the server's own GET (ADR-0033).
           setConflict(true)
           setHistory([])
           setSeeded(false)
@@ -149,7 +136,6 @@ export function KatalogScreen({ entry, onDone = () => {}, onBack, taxYear = CURR
   )
 }
 
-/** An integer follow-up (the primary amount): a numeric input, never free text (D5). */
 function IntegerFollowUp({ step, onAnswer }: { readonly step: EntryStepId; readonly onAnswer: (value: string) => void }) {
   const { t: tr } = useTranslation(APP_NS)
   const [text, setText] = useState('')

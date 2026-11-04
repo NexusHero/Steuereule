@@ -13,8 +13,6 @@ import type { KirchensteuerFaktor } from '@steuereule/core'
 import { CurrentUser } from '../auth/current-user.decorator.js'
 import { RequiresAccount } from '../auth/requires-account.guard.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
-// Reused directly, not duplicated — `jahr` is always validated against a sensible tax-year window,
-// never just "parses as a number" (same pipe as Cockpit/Lstb/Rente).
 import { ParseSteuerjahrPipe } from '../cockpit/parse-steuerjahr.pipe.js'
 import { ParseKapitalFeldPipe } from './parse-kapital-feld.pipe.js'
 import { KapitalService } from './kapital.service.js'
@@ -23,10 +21,8 @@ import { KapitalResponseDto } from './dto/kapital-response.dto.js'
 import { GuenstigerpruefungDto, GuenstigerpruefungHerkunftDto } from './dto/guenstigerpruefung-response.dto.js'
 import { UnschaerfeDto } from '../veranlagungsartenvergleich/dto/veranlagungsartenvergleich-response.dto.js'
 
-/** §51a EStG — the closed set of Kirchensteuer factors this API admits (0 = none). */
 const KIST_FAKTOREN: readonly KirchensteuerFaktor[] = [0, 0.08, 0.09]
 
-/** A query `kirchensteuerFaktor` → one of {0, 0.08, 0.09}, defaulting to 0 (M1 collects none). */
 function parseKirchensteuerFaktor(raw: unknown): KirchensteuerFaktor {
   if (raw === undefined) return 0
   const parsed = Number(raw)
@@ -40,7 +36,6 @@ function parseKirchensteuerFaktor(raw: unknown): KirchensteuerFaktor {
 @Controller('v1/steuerjahre')
 @UseGuards(UserContextGuard)
 export class KapitalController {
-  // Explicit token — see the comment on ProfileController's constructor.
   constructor(@Inject(KapitalService) private readonly kapitalService: KapitalService) {}
 
   @Get(':jahr/kapital')
@@ -58,7 +53,6 @@ export class KapitalController {
   }
 
   @Put(':jahr/kapital/:feld')
-  // Upsert-style write on an existing tax-year resource (one row per userId+steuerjahr) → 200.
   @HttpCode(200)
   @RequiresAccount()
   @ApiParam({ name: 'jahr', type: Number, example: 2026, description: 'The tax year (Steuerjahr).' })

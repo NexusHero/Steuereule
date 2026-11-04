@@ -4,7 +4,6 @@ import type { FreischaltungRepository } from './freischaltung.repository.js'
 
 @Injectable()
 export class PrismaFreischaltungRepository implements FreischaltungRepository {
-  // Plain PrismaService: no tax figures here, nothing to encrypt.
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async legeOffeneAn(userId: string, steuerjahr: number, sitzungId: string): Promise<void> {

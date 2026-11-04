@@ -1,13 +1,3 @@
-// Vermietung-Screen (REQ-026, ticket 10.6) — the guided mask for several ganzjährig vermietete
-// objects (product ADR-033, Anlage V einfach). Each object carries four honest fields
-// (Mieteinnahmen, Anschaffungskosten, Baujahr, Werbungskosten — erfasst/offen/unklar, never
-// silently guessed, ADR-032) and its derived facts: the Mieteinnahmen-Posten, the Werbungskosten
-// and the lineare AfA (§ 7 Abs. 4 Satz 1 EStG) with Herkunft — reported, never subtracted (the
-// net calc is a later slice's work). Verkauf/möbliert stays gated (ADR-033 — honest statement,
-// no half feature).
-//
-// The client stays dumb (ADR-0033): every number comes straight from the API (the core decides
-// what is true); each edit is a PUT, each new object a POST.
 import { useState } from 'react'
 import { ScrollView, View, Text, Pressable, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
@@ -115,7 +105,6 @@ export function VermietungScreen({ onDone = () => {}, onBack, taxYear = CURRENT_
   )
 }
 
-/** The server-derived Einordnung — the Verkauf/möbliert gate is named honestly (ADR-033). */
 function EinordnungNotice({ kind }: { readonly kind: VermietungResponseDto['einordnung']['kind'] }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
@@ -129,7 +118,6 @@ function EinordnungNotice({ kind }: { readonly kind: VermietungResponseDto['eino
   return <Text style={styles.notice}>{text}</Text>
 }
 
-/** ONE object: the four field editors plus the derived facts (Miete, Werbungskosten, AfA). */
 function ObjektCard({
   objekt,
   index,
@@ -233,7 +221,6 @@ function ObjektCard({
   )
 }
 
-/** One field: a numeric input when `erfasst`, plus the honest "unlesbar" fallback. */
 function VermietungFeldEditor({
   label,
   zustand,
@@ -275,7 +262,6 @@ function VermietungFeldEditor({
   )
 }
 
-/** The object's derived facts: Mieteinnahmen, Werbungskosten, AfA with its § 7 Abs. 4 Herkunft. */
 function FaktenNotice({ objekt }: { readonly objekt: VermietungsobjektDto }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
@@ -307,7 +293,6 @@ function FaktenNotice({ objekt }: { readonly objekt: VermietungsobjektDto }) {
   )
 }
 
-/** The fold over ALL objects: sums reported, never subtracted (partial truth as a partial truth). */
 function StandNotice({ response }: { readonly response: VermietungResponseDto }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)

@@ -1,9 +1,8 @@
-// `type:` given explicitly — see PutProfileDto's comment for why.
 import { ApiProperty } from '@nestjs/swagger'
 import { KAPITAL_FELDER, type KapitalFeldId } from '@steuereule/core'
 import { KapitalFeldDto } from './kapital-feld.dto.js'
 
-/** The depot-Einordnung (ticket 10.5 AC 3) — what the `kap-depot` answer MEANS for the Steuererklärung. */
+/** The depot-Einordnung — what the `kap-depot` answer MEANS for the Steuererklärung. */
 export class DepotEinordnungDto {
   @ApiProperty({
     type: String,
@@ -17,12 +16,7 @@ export class DepotEinordnungDto {
   kind!: 'deutscher-broker' | 'auslaendischer-broker' | 'krypto' | 'unbekannt'
 }
 
-/**
- * The derived Kapital-Posten — @steuereule/core's `kapitalAlsKernposten` as a flat wire shape.
- * `herkunft` carries the Quelle art (`eingabe` — the guided mask is a manual transcription;
- * the Beleg-/KI-Vorschlag-Herkunft is the Zuordnungs-Slice's work). Empty while the field is
- * not determinable (never a fabricated zero, ADR-032).
- */
+/** The derived Kapital-Posten. */
 export class KapitalPostenDto {
   @ApiProperty({ type: String, example: 'kapital', description: 'The stable posten id.' })
   id!: string
@@ -34,7 +28,7 @@ export class KapitalPostenDto {
   herkunft!: string
 }
 
-/** The derived fold result — @steuereule/core's `Berechnungsstand` as a flat wire shape. */
+/** The derived fold result. */
 export class KapitalStandDto {
   @ApiProperty({ enum: ['bestimmt', 'offen'], description: 'Determined, or open (naming what blocks).' })
   kind!: 'bestimmt' | 'offen'
@@ -58,12 +52,7 @@ export class KapitalStandDto {
   gegated?: string[]
 }
 
-/**
- * The response shape for `GET /v1/steuerjahre/{jahr}/kapital` and `PUT .../kapital/kapitalertraege`:
- * the field state, the depot-Einordnung (derived from the persisted interview answer `kap-depot`,
- * never a column of its own), the derived Kapital-Posten (with Herkunft) and the fold result.
- * Everything came from @steuereule/core, never recomputed in the API.
- */
+/** The response shape for `GET /v1/steuerjahre/{jahr}/kapital` and `PUT .../kapital/kapitalertraege`. */
 export class KapitalResponseDto {
   @ApiProperty({ type: KapitalFeldDto })
   kapitalertraege!: KapitalFeldDto

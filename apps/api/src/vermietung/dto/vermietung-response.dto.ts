@@ -1,8 +1,7 @@
-// `type:` given explicitly — see PutProfileDto's comment for why.
 import { ApiProperty } from '@nestjs/swagger'
 import { VermietungFeldDto } from './vermietung-feld.dto.js'
 
-/** The Vermietung-Einordnung (ticket 10.6 AC 3) — what the `vermietung-art` answer MEANS for 1.0. */
+/** The Vermietung-Einordnung — what the `vermietung-art` answer MEANS for 1.0. */
 export class VermietungEinordnungDto {
   @ApiProperty({
     type: String,
@@ -24,7 +23,7 @@ export class VermietungAfADto {
   herkunft!: string
 }
 
-/** One object's derived facts — @steuereule/core's `vermietungsobjektFakten` as a wire shape. */
+/** One object's derived facts. */
 export class VermietungsobjektFaktenDto {
   @ApiProperty({ type: Number, nullable: true, example: 12000, description: 'The captured Mieteinnahmen, or null while open.' })
   einnahmen!: number | null
@@ -78,7 +77,7 @@ export class VermietungsobjektDto {
   fakten!: VermietungsobjektFaktenDto
 }
 
-/** The derived fold over ALL objects — @steuereule/core's `VermietungStand` as a flat wire shape. */
+/** The derived fold over ALL objects. */
 export class VermietungStandDto {
   @ApiProperty({ enum: ['bestimmt', 'offen'], description: 'Determined, or open (naming what blocks).' })
   kind!: 'bestimmt' | 'offen'
@@ -108,12 +107,7 @@ export class VermietungStandDto {
   gegated?: string[]
 }
 
-/**
- * The response shape for `GET /v1/steuerjahre/{jahr}/vermietung`, `POST …/vermietung/objekte`
- * and every PUT: the Einordnung (derived from the persisted interview answer `vermietung-art`,
- * never a column of its own), the objects (field states + derived facts) and the fold.
- * Everything came from @steuereule/core, never recomputed in the API.
- */
+/** The response shape for `GET /v1/steuerjahre/{jahr}/vermietung`, `POST …/vermietung/objekte` and every PUT. */
 export class VermietungResponseDto {
   @ApiProperty({ type: VermietungEinordnungDto })
   einordnung!: VermietungEinordnungDto

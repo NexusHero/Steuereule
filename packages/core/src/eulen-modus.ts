@@ -1,6 +1,3 @@
-// Eulen-Modus (Ticket 10.9, product ADRs 037–042).
-// Pure, deterministic domain logic for proactive triggers, legal bounds (StBerG),
-// and card lifecycle. No I/O, no LLM calls here (ADR-014/048 determinism boundary).
 import { createHash } from 'node:crypto'
 import type { HOMEOFFICE_VALUES } from './interview'
 
@@ -8,7 +5,6 @@ export type EulenTriggerArt = 'musterluecke' | 'vorjahresvergleich' | 'rechtsaen
 
 export type EulenKartenKategorie = 'cockpit_proaktiv' | 'abruf_frage' | 'archiv_einspruch'
 
-/** Keys of the curated statutory sources the KI adapter explains (ADR-039). */
 export type EulenQuelleId = 'estg-4-5-6c' | 'estg-9-1-4a' | 'estg-10b' | 'estg-10-1-5' | 'ao-355'
 
 export interface EulenEmpfehlungWeg {
@@ -35,7 +31,6 @@ export interface EulenKarte {
   readonly einspruchFristBis?: string | undefined
 }
 
-/** A card as the client receives it: the source is already resolved to text. */
 export type EulenKartenAnzeige = Omit<EulenKarte, 'quelleId'>
 
 export interface EulenArchivJahr {
@@ -56,12 +51,10 @@ export interface EulenEingabeFakten {
   readonly verworfeneFingerprints?: readonly string[]
 }
 
-/** Generates a stable fingerprint so a dismissed card never re-appears without new facts (ADR-041). */
 export function berechneEulenKartenFingerprint(trigger: EulenTriggerArt, keyContext: string): string {
   return createHash('sha256').update(`${trigger}::${keyContext}`).digest('hex').slice(0, 16)
 }
 
-/** Current statutory reference date (ADR-039). */
 export const RECHTSSTAND_DATUM = '01.01.2025'
 
 const HOMEOFFICE_TAGESPAUSCHALE_EUR = 6
@@ -70,14 +63,12 @@ const ANGENOMMENE_ARBEITSTAGE = 220
 
 type HomeofficeAntwort = (typeof HOMEOFFICE_VALUES)[number]
 
-// The interview asks for a rhythm, not a count; '1–2 Tage pro Woche' is read as 1.5 of 5 days.
 const HOMEOFFICE_ANTEIL: Record<HomeofficeAntwort, number> = {
   Nie: 0,
   '1–2 Tage pro Woche': 0.3,
   'Fast immer': 1,
 }
 
-/** Homeoffice days from the interview answers `homeoffice` and `tage`; null when unanswered. */
 export function homeofficeTageAusInterview(antworten: Readonly<Record<string, string>>): number | null {
   const anteil = HOMEOFFICE_ANTEIL[antworten['homeoffice'] as HomeofficeAntwort]
   if (anteil === undefined) return null
@@ -90,15 +81,10 @@ function homeofficePauschaleEur(tage: number): number {
   return Math.min(tage, HOMEOFFICE_HOECHSTTAGE) * HOMEOFFICE_TAGESPAUSCHALE_EUR
 }
 
-/**
- * Evaluates facts against the statutory and pattern rule engine.
- * Pure and deterministic: always returns the exact same cards for identical inputs.
- */
 export function generiereEulenKarten(fakten: EulenEingabeFakten): readonly EulenKarte[] {
   const karten: EulenKarte[] = []
   const verworfen = new Set(fakten.verworfeneFingerprints ?? [])
 
-  // 1. Trigger: Musterlücke (Fortbildung angegeben, Fahrtkosten dazu nirgends erfasst)
   if (fakten.hatFortbildung) {
     const fp = berechneEulenKartenFingerprint('musterluecke', `fortbildung_ohne_fahrt_${fakten.steuerjahr}`)
     if (!verworfen.has(fp)) {
@@ -119,7 +105,6 @@ export function generiereEulenKarten(fakten: EulenEingabeFakten): readonly Eulen
     }
   }
 
-  // 2. Trigger: Vorjahresvergleich (Vorjahr hatte Spenden, aktuelles Jahr nicht)
   if (
     fakten.vorjahrFakten?.spendenEur &&
     fakten.vorjahrFakten.spendenEur > 0
@@ -143,8 +128,6 @@ export function generiereEulenKarten(fakten: EulenEingabeFakten): readonly Eulen
     }
   }
 
-  // 3. Trigger: Rechtsänderung (Homeoffice-Tagespauschale 6 € / max. 1.260 €, JStG 2022)
-  // Betrifft konkreten Fall ab >= 50 € -> Proaktiv ins Cockpit (ADR-038)
   if (fakten.homeofficeTage && fakten.homeofficeTage >= 10) {
     const betrag = homeofficePauschaleEur(fakten.homeofficeTage)
     if (betrag >= 50) {
@@ -182,7 +165,6 @@ export function generiereEulenKarten(fakten: EulenEingabeFakten): readonly Eulen
     }
   }
 
-  // 4. Trigger: Lebenslage aus dem Interview, aber noch kein Kind erfasst
   if (fakten.kinderLautInterview && !fakten.hatKinderErfasst) {
     const fp = berechneEulenKartenFingerprint('lebenslage_hinweis', `kinder_nicht_erfasst_${fakten.steuerjahr}`)
     if (!verworfen.has(fp)) {
@@ -203,7 +185,6 @@ export function generiereEulenKarten(fakten: EulenEingabeFakten): readonly Eulen
     }
   }
 
-  // 5. Trigger: Archiv-Wache (Vorjahr mit Homeoffice, Einspruchsfenster noch offen, ADR-042)
   if (fakten.archivJahre && fakten.archivJahre.length > 0) {
     for (const archiv of fakten.archivJahre) {
       if (archiv.homeofficeTage > 0) {
@@ -229,7 +210,6 @@ export function generiereEulenKarten(fakten: EulenEingabeFakten): readonly Eulen
     }
   }
 
-  // Sorting: 'cockpit_proaktiv' and 'archiv_einspruch' first, then highest betrag
   return karten.sort((a, b) => {
     if (a.kategorie === 'cockpit_proaktiv' && b.kategorie !== 'cockpit_proaktiv') return -1
     if (a.kategorie !== 'cockpit_proaktiv' && b.kategorie === 'cockpit_proaktiv') return 1

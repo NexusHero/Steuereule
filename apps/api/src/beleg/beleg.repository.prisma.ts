@@ -3,12 +3,10 @@ import { isBelegart } from '@steuereule/core'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
 import type { BelegRecord, BelegRepository, CreateBelegData, SetZuordnungData } from './beleg.repository.js'
 
-/** A Date → ISO yyyy-mm-dd, dropping the time-of-day Prisma's TIMESTAMP(3) also stores. */
 function toIsoDate(value: Date): string {
   return value.toISOString().slice(0, 10)
 }
 
-/** The persisted-facts record, with absent dates omitted (exactOptionalPropertyTypes). */
 function toRecord(row: {
   id: string
   userId: string
@@ -25,9 +23,6 @@ function toRecord(row: {
     id: row.id,
     userId: row.userId,
     dateiname: row.dateiname,
-    // The write path validates `art` against @steuereule/core's BELEGARTEN (CreateBelegDto
-    // @IsIn), so a stored value is a Belegart by construction — the guard is defence in depth,
-    // not the primary control (the column is a plain discriminator, not a tax fact).
     ...(row.art !== null ? { art: (isBelegart(row.art) ? row.art : (() => { throw new Error(`corrupt Beleg.art: ${row.art}`) })()) } : {}),
     ...(row.belegdatum !== null ? { belegdatum: toIsoDate(row.belegdatum) } : {}),
     ...(row.zahlungsdatum !== null ? { zahlungsdatum: toIsoDate(row.zahlungsdatum) } : {}),
@@ -38,7 +33,6 @@ function toRecord(row: {
   }
 }
 
-/** A ISO yyyy-mm-dd → Date, so a write side never constructs a partial date object. */
 function fromIsoDate(value: string): Date {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) throw new RangeError(`not a valid date: ${value}`)
@@ -47,9 +41,6 @@ function fromIsoDate(value: string): Date {
 
 @Injectable()
 export class PrismaBelegRepository implements BelegRepository {
-  // ENCRYPTED_PRISMA, never plain PrismaService — `dateiname` is field-encrypted at rest
-  // (ADR-0008), and this is the only place Beleg rows are read/written, so it's the only
-  // place that needs to (transparently) encrypt/decrypt. Mirrors PrismaProfileRepository.
   constructor(@Inject(ENCRYPTED_PRISMA) private readonly prisma: EncryptedPrismaClient) {}
 
   async findAllForUser(userId: string): Promise<BelegRecord[]> {

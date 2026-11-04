@@ -7,10 +7,8 @@ import { ParseSteuerjahrPipe } from '../cockpit/parse-steuerjahr.pipe.js'
 import { VeranlagungsartenvergleichDto, VergleichsHerkunftDto, UnschaerfeDto } from './dto/veranlagungsartenvergleich-response.dto.js'
 import { VeranlagungsartenvergleichService } from './veranlagungsartenvergleich.service.js'
 
-/** §51a EStG — the closed set of Kirchensteuer factors this API admits (0 = none). */
 const KIST_FAKTOREN: readonly KirchensteuerFaktor[] = [0, 0.08, 0.09]
 
-/** A query `verheiratet` → a boolean; absent is treated as "not married" (honest M1 default). */
 function parseVerheiratet(raw: unknown): boolean {
   if (raw === undefined) return false
   if (raw === 'true') return true
@@ -18,7 +16,6 @@ function parseVerheiratet(raw: unknown): boolean {
   throw new BadRequestException('verheiratet must be "true" or "false"')
 }
 
-/** A query `zveB` → a non-negative finite number (the partner's zvE-basis), or undefined when absent. */
 function parseZveB(raw: unknown): number | undefined {
   if (raw === undefined) return undefined
   const parsed = Number(raw)
@@ -28,7 +25,6 @@ function parseZveB(raw: unknown): number | undefined {
   return parsed
 }
 
-/** A query `kirchensteuerFaktor` → one of {0, 0.08, 0.09}, defaulting to 0 (M1 collects none). */
 function parseKirchensteuerFaktor(raw: unknown): KirchensteuerFaktor {
   if (raw === undefined) return 0
   const parsed = Number(raw)
@@ -90,9 +86,6 @@ export class VeranlagungsartenvergleichController {
     const verheiratet = parseVerheiratet(verheiratetRaw)
     const zveB = parseZveB(zveBRaw)
     const kirchensteuerFaktor = parseKirchensteuerFaktor(kirchensteuerFaktorRaw)
-    // zveB may legitimately be absent when the comparison does not apply (single / no income) —
-    // the service is the single place that knows whether it applies, and it surfaces the missing
-    // input as a 400 rather than inventing a partner income.
     return this.service.getVergleich(userId, jahr, verheiratet, zveB, kirchensteuerFaktor)
   }
 }

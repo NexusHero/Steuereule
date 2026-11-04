@@ -37,7 +37,6 @@ function ganzzahl(wert: string | undefined): number | null {
   return wert && /^\d+$/.test(wert) ? Number(wert) : null
 }
 
-/** The previous year while its Einspruch window is still open and Homeoffice was declared. */
 function archivJahr(
   bescheid: BescheidRecord | null,
   antworten: Record<string, string>,

@@ -150,3 +150,12 @@ export {
   getEulenModusControllerVerwerfeKarteMockHandler,
   getSteuerEuleAPIMock as getEulenModusApiMock,
 } from './generated/eulen-modus.msw'
+export {
+  getAssistentenControllerListConnectedResponseMock,
+  getAssistentenControllerListConnectedMockHandler,
+  getAssistentenControllerRevokeResponseMock,
+  getAssistentenControllerRevokeMockHandler,
+  getAssistentenControllerGetClientInfoResponseMock,
+  getAssistentenControllerGetClientInfoMockHandler,
+  getSteuerEuleAPIMock as getAssistentenApiMock,
+} from './generated/assistenten.msw'

@@ -1,6 +1,3 @@
-// DatenschutzScreen's export section (Art. 15 / Art. 20) — the two download rows (JSON, PDF)
-// and their per-format loading/success/error states. Extracted from DatenschutzScreen.tsx so
-// that file stays a screen; the download itself lives in ./exportDownload.
 import { View, Text } from 'react-native'
 import { Button, Card, useTheme } from '@steuereule/ui'
 import { makeDatenschutzStyles } from './styles'

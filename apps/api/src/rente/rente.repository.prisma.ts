@@ -3,7 +3,6 @@ import type { RentenFeldId } from '@steuereule/core'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
 import type { RenteRecord, RenteRepository } from './rente.repository.js'
 
-/** The persisted-facts record, narrowed to what the service needs. */
 function toRecord(row: {
   userId: string
   steuerjahr: number
@@ -22,7 +21,6 @@ function toRecord(row: {
   }
 }
 
-/** The one-keyed update payload for `feld` — typed, never a computed `{[feld]: wert}`. */
 function feldData(
   feld: RentenFeldId,
   wert: string | null,
@@ -39,9 +37,6 @@ function feldData(
 
 @Injectable()
 export class PrismaRenteRepository implements RenteRepository {
-  // ENCRYPTED_PRISMA, never plain PrismaService — the three figures are field-encrypted at rest
-  // (ADR-0008): actual pension income plus the year/age that fix its tax treatment, joinable to
-  // Profile's Steuer-ID via the same userId (see schema.prisma's Rente doc).
   constructor(@Inject(ENCRYPTED_PRISMA) private readonly prisma: EncryptedPrismaClient) {}
 
   async findForUserAndYear(userId: string, steuerjahr: number): Promise<RenteRecord | null> {
@@ -51,8 +46,6 @@ export class PrismaRenteRepository implements RenteRepository {
 
   async setFeld(userId: string, steuerjahr: number, feld: RentenFeldId, wert: string | null): Promise<RenteRecord> {
     const [row] = await this.prisma.$transaction([
-      // A fresh row seeds the other fields as null (`offen`) — an honest empty mask, never a
-      // fabricated figure; the update branch touches only the field being set.
       this.prisma.rente.upsert({
         where: { userId_steuerjahr: { userId, steuerjahr } },
         create: { userId, steuerjahr, rentenart: null, jahresbetrag: null, rentenbeginnJahr: null, alterBeiRentenbeginn: null, ...feldData(feld, wert) },

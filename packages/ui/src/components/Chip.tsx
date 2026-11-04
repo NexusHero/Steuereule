@@ -1,5 +1,3 @@
-// Chip (fk-chip) — interactive pill. Variants: standard (card), src (funke-weich), pro (nacht).
-// `aktiv` fills it with lime. Press drückt auf den Schatten.
 import { Pressable, Text, type ViewStyle, type TextStyle, type StyleProp } from 'react-native'
 import { type ReactNode } from 'react'
 import { useTheme } from '../theme/useTheme'

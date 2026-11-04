@@ -1,7 +1,6 @@
 // ADR-0050 — the paid unlock per tax year, against an in-memory repository and a fake
 // provider. Signature verification itself is proven with real Stripe signatures in
 // stripe-zahlungsanbieter.test.ts; here the fake decides what "verified" means.
-import { ServiceUnavailableException, UnauthorizedException } from '@nestjs/common'
 import { beforeEach, describe, expect, it } from 'vitest'
 import type { FreischaltungRepository } from '../src/freischaltung/freischaltung.repository.js'
 import { FreischaltungService } from '../src/freischaltung/freischaltung.service.js'
@@ -93,18 +92,18 @@ describe('FreischaltungService', () => {
   it('an unverifiable payload is rejected and unlocks nothing', async () => {
     await service.starteCheckout('u1', 2025)
     anbieter.naechstesEreignis = 'ungueltig'
-    await expect(service.verarbeiteWebhook(Buffer.from('{}'), 'forged')).rejects.toBeInstanceOf(UnauthorizedException)
+    await expect(service.verarbeiteWebhook(Buffer.from('{}'), 'forged')).rejects.toMatchObject({ code: 'WEBHOOK_SIGNATURE_INVALID' })
     await expect(service.status('u1', 2025)).resolves.toBe('offen')
   })
 
   it('a missing signature or raw body is rejected before the provider is asked', async () => {
-    await expect(service.verarbeiteWebhook(undefined, 'sig')).rejects.toBeInstanceOf(UnauthorizedException)
-    await expect(service.verarbeiteWebhook(Buffer.from('{}'), undefined)).rejects.toBeInstanceOf(UnauthorizedException)
+    await expect(service.verarbeiteWebhook(undefined, 'sig')).rejects.toMatchObject({ code: 'WEBHOOK_SIGNATURE_MISSING' })
+    await expect(service.verarbeiteWebhook(Buffer.from('{}'), undefined)).rejects.toMatchObject({ code: 'WEBHOOK_SIGNATURE_MISSING' })
   })
 
   it('without a configured provider the state is honestly "nicht-verfuegbar" and checkout refuses', async () => {
     const ohne = new FreischaltungService(repository, null, 'https://app.steuereule.de')
     await expect(ohne.status('u1', 2025)).resolves.toBe('nicht-verfuegbar')
-    await expect(ohne.starteCheckout('u1', 2025)).rejects.toBeInstanceOf(ServiceUnavailableException)
+    await expect(ohne.starteCheckout('u1', 2025)).rejects.toMatchObject({ code: 'PAYMENT_NOT_CONFIGURED' })
   })
 })

@@ -1,6 +1,3 @@
-// From the stored facts to the Vordruck field values (ADR-0050). Pure: no I/O, no rounding
-// beyond what the facts already carry — a value the app does not know exactly (the
-// Lohnsteuer's cents) is left empty rather than printed with a false precision.
 import {
   afaSatzProzent,
   anlageNGreBetraege,
@@ -56,7 +53,6 @@ export interface AlleinerziehendFakten {
   haushaltsgemeinschaft: string | null
 }
 
-/** Zeilen 11–15 are for a parent outside this return — anyone but a joint return of both parents. */
 function brauchtAnderenElternteil(k: KindFakten, zusammen: boolean): boolean {
   return !zusammen || !k.kindschaftsverhaeltnisB
 }
@@ -77,11 +73,6 @@ function andererElternteilLuecke(k: KindFakten): string | null {
   }
 }
 
-/**
- * Why a child's Anlage Kind cannot be printed, or null. Missing details are the user's to add
- * ('kinder'); the rest are cases this printout does not cover yet: a child of age (Zeilen 16 ff.),
- * a home abroad (Zeile 9) and the other parent abroad (Zeile 13).
- */
 function kindLuecke(k: KindFakten, steuerjahr: number, zusammen: boolean): string | null {
   if (!k.idnr || !k.kindschaftsverhaeltnis || !k.familienkasse || k.wohnsitzInlandGanzjaehrig == null) return 'kinder'
   if (!k.wohnsitzInlandGanzjaehrig) return 'anlageKindAusland'
@@ -96,7 +87,6 @@ export interface VermietungFakten {
   ort: string | null
   wohnflaeche: string | null
   mieteinnahmen: string | null
-  /** Building cost and year of completion — the AfA base (§ 7 Abs. 4 EStG). */
   anschaffungskosten: string | null
   baujahr: string | null
   werbungskosten: string | null
@@ -105,7 +95,6 @@ export interface VermietungFakten {
 
 const ganzeZahl = (wert: string | null): number | null => (wert !== null && /^\d+$/.test(wert) ? Number(wert) : null)
 
-/** Why an Anlage V cannot be printed, or null ('unklar' is the mask's "unreadable"). */
 function vermietungLuecke(obj: VermietungFakten): string | null {
   const unklar = [obj.mieteinnahmen, obj.werbungskosten, obj.anschaffungskosten, obj.baujahr].includes('unklar')
   if (unklar || ganzeZahl(obj.mieteinnahmen) === null || ganzeZahl(obj.werbungskosten) === null) return 'vermietung'
@@ -123,10 +112,9 @@ function vermietungAfa(obj: VermietungFakten): { satz: number; betrag: number } 
   return satz === null ? null : { satz, betrag: Math.round((kosten * satz) / 100) }
 }
 
-/** The Kapital facts as stored, plus the depot answer that decides the KAP line (ADR-032). */
 export type KapitalFakten = { depot: KapitalDepotEinordnung['kind'] } & Partial<Record<KapitalFeldId, string | null>>
 
-/** The Lohnausweis Ziffern and the N-Gre facts as stored (whole CHF strings), plus status and Kurs. */
+/** The Lohnausweis Ziffern and the N-Gre facts as stored, plus status and Kurs. */
 export interface ChLohnausweisFakten {
   status: GrenzgaengerStatus | null
   kurs: number | null
@@ -163,7 +151,6 @@ export interface SonderausgabenFakten {
 /** Anlage AV: the contributions come from the provider; the form needs the kind of eligibility. */
 export interface RiesterFakten {
   art: string | null
-  /** Beitragspflichtige Einnahmen of the previous year (Zeile 5, Kz 100) — only for 'Unmittelbar'. */
   einnahmenVorjahr: string | null
 }
 
@@ -186,9 +173,7 @@ export interface AusdruckFakten {
     finanzamt: string | null
     telefon: string | null
   } | null
-  /** LStB Bruttoarbeitslohn in whole euros as stored ("unklar" or null = not usable). */
   bruttoarbeitslohn: string | null
-  /** The tax year's pension as stored (Rentenart + Jahresbetrag in whole euros), or null. */
   rente?: { rentenart: string | null; jahresbetrag: string | null } | null
   kopplung?: KopplungFakten | null
   kapital?: KapitalFakten | null
@@ -200,17 +185,12 @@ export interface AusdruckFakten {
   alleinerziehend?: AlleinerziehendFakten | null
 }
 
-/** Anlage R line per Rentenart. Gesetzliche and Witwen-/Waisenrente go through the
- *  Besteuerungsanteil (Zeile 4) — the same table the core taxes them with; the private
- *  Rentenversicherung through the Ertragsanteil (Zeile 13). */
 const RENTE_KENNZAHL: Record<string, string> = {
   GesetzlicheRente: 'anlR.kz101',
   WitwenWaisenrente: 'anlR.kz101',
   PrivateRentenversicherung: 'anlR.kz131',
 }
 
-/** Pensions that belong on a form we hold no template for. Printing the return without
- *  them would hand in an incomplete Erklärung, so the printout waits instead. */
 const RENTE_ANDERER_VORDRUCK: Record<string, string> = {
   Betriebsrente: 'anlageRAvBav',
   AuslaendischeRente: 'anlageRAus',
@@ -219,7 +199,6 @@ const RENTE_ANDERER_VORDRUCK: Record<string, string> = {
 export interface AusdruckWerte {
   werte: FeldWerte
   instanzen?: Record<string, FeldWerte[]>
-  /** What the Hauptvordruck cannot do without and is still missing — the Ausdruck refuses until empty. */
   fehlend: string[]
 }
 
@@ -232,7 +211,6 @@ const SEIT_FELD: Record<string, string> = {
   'dauernd-getrennt': 'est1a.getrenntSeit',
 }
 
-/** ISO date → TT.MM.JJJJ with the points the form's date format asks for. */
 export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
   const { profil, stammdaten: sd } = fakten
   const fehlend: string[] = []
@@ -247,7 +225,6 @@ export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
     if (wert) werte[id] = wert
   }
 
-  // Married: Zeile 19 needs the Veranlagungsart and a joint return needs Person B facts.
   if (sd?.familienstand === 'verheiratet') {
     if (!fakten.kopplung) {
       fehlend.push('ehegatte')
@@ -298,7 +275,6 @@ export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
     else if (sd.iban) werte['est1a.kontoinhaberSelbst'] = true
   }
 
-  // Anlage N only when there is something for it — a form without any entry is not handed in.
   const brutto = fakten.bruttoarbeitslohn
   const bruttoB = fakten.kopplung?.veranlagungsart === 'zusammen' ? fakten.kopplung.personB?.bruttoarbeitslohn ?? null : null
   const hatBruttoA = brutto !== null && /^\d+$/.test(brutto)
@@ -377,8 +353,6 @@ export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
     instanzen['anlage-r'] = rInstanzen
   }
 
-  // Anlage KAP: a German broker's income sits in Zeile 7 with the withheld taxes to credit
-  // (Zeilen 37–39, EUR/Ct); a foreign broker's in Zeile 19, where nothing was withheld.
   const kapital = fakten.kapital
   if (kapital && kapital.kapitalertraege != null) {
     const pflicht = kapitalPflichtfelder(kapital.depot)
@@ -405,8 +379,6 @@ export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
     }
   }
 
-  // Anlage N-Gre (Grenzgänger Schweiz, Lohn in CHF): wage lines and the split of the Swiss
-  // social contributions; Zeilen 7, 9–14 and 16–22 are covered only when none of them applies.
   const ch = fakten.chLohnausweis
   if (ch && ch.bruttolohnChf !== null) {
     const luecke = nGreLuecke(ch)
@@ -438,7 +410,6 @@ export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
     }
   }
 
-  // Anlage V (Vermietung)
   if (fakten.vermietung && fakten.vermietung.length > 0) {
     instanzen['anlage-v'] = fakten.vermietung.map((obj, i) => {
       const vWerte: Record<string, string | true> = {}
@@ -484,11 +455,8 @@ export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
     }
   }
 
-  // Anlage Kind
   if (fakten.kinder && fakten.kinder.length > 0) {
     const zusammen = fakten.kopplung?.veranlagungsart === 'zusammen'
-    // § 24b EStG: only a filer living alone with the child. The printout claims it for whole
-    // years only; a part-year or a 'Ja' in Zeile 47/48 needs periods it does not ask yet.
     const alleinstehend =
       !zusammen &&
       sd?.familienstand !== 'verheiratet' &&
@@ -546,7 +514,6 @@ export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
     }
   }
 
-  // Anlage Sonderausgaben
   if (fakten.sonderausgaben?.spenden && /^\d+$/.test(fakten.sonderausgaben.spenden)) {
     setze('anlSo.name', profil.lastName)
     setze('anlSo.vorname', profil.firstName)
@@ -554,8 +521,6 @@ export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
     werte['anlSo.spenden'] = fakten.sonderausgaben.spenden
   }
 
-  // Anlage AV (Riester): Kz 106 takes a digit, 1 = unmittelbar (then Zeile 5 is required),
-  // 2 = mittelbar (Zeile 14). Without that the Anlage would be incomplete, so the printout waits.
   if (fakten.riester) {
     const { art, einnahmenVorjahr } = fakten.riester
     const unmittelbar = art === 'Unmittelbar' && einnahmenVorjahr !== null && /^\d+$/.test(einnahmenVorjahr)
@@ -573,10 +538,6 @@ export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
       fehlend.push('riester')
     }
   }
-
-  // Anlage Vorsorgeaufwand stays unprinted: the employee lines (LStB Nr. 22/23/25/26/27) are
-  // ⓔ-Zeilen the Finanzamt already has, and a figure there overrides the transmitted one. The
-  // interview's single KV+PV sum fits none of the form's separate lines.
 
   const ergebnis: AusdruckWerte = { werte, fehlend }
   if (Object.keys(instanzen).length > 0) ergebnis.instanzen = instanzen

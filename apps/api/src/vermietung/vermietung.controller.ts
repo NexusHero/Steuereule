@@ -10,8 +10,6 @@ import {
 import { CurrentUser } from '../auth/current-user.decorator.js'
 import { RequiresAccount } from '../auth/requires-account.guard.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
-// Reused directly, not duplicated — `jahr` is always validated against a sensible tax-year window,
-// never just "parses as a number" (same pipe as Cockpit/Lstb/ChLohnausweis/Rente).
 import { ParseSteuerjahrPipe } from '../cockpit/parse-steuerjahr.pipe.js'
 import { ParseVermietungFeldPipe } from './parse-vermietung-feld.pipe.js'
 import { VermietungService } from './vermietung.service.js'
@@ -23,7 +21,6 @@ import { VermietungResponseDto } from './dto/vermietung-response.dto.js'
 @Controller('v1/steuerjahre')
 @UseGuards(UserContextGuard)
 export class VermietungController {
-  // Explicit token — see the comment on ProfileController's constructor.
   constructor(@Inject(VermietungService) private readonly vermietungService: VermietungService) {}
 
   @Get(':jahr/vermietung')

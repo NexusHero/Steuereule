@@ -1,14 +1,5 @@
-// The Formular-Ausdruck (ADR-0050): the paid, printable return for one tax year. Gates in
-// order — a year we hold measured templates for, a paid unlock, a complete Hauptvordruck —
-// each with its own honest answer instead of a half-filled printout.
-import {
-  HttpException,
-  HttpStatus,
-  Inject,
-  Injectable,
-  NotFoundException,
-  UnprocessableEntityException,
-} from '@nestjs/common'
+import { HttpException, HttpStatus, Inject, Injectable, UnprocessableEntityException } from '@nestjs/common'
+import { NotFoundError } from '../common/domain-error.js'
 import { CH_WOHNSITZ_VALUES, JAHRESUNABHAENGIG, fehlendeBestaetigungen, grenzgaengerStatus, ordneKapDepotEin, type ChWohnsitz, type GrenzgaengerStatus } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
 import { CH_LOHNAUSWEIS_REPOSITORY, type ChLohnausweisRepository } from '../ch-lohnausweis/ch-lohnausweis.repository.js'
@@ -28,7 +19,6 @@ import { FELDSAETZE, rendereVordrucke, UeberlaufFehler } from './vordruck-render
 
 export const VORLAGEN_BASIS = Symbol('VORLAGEN_BASIS')
 
-/** The Grenzgänger-Status from the CH interview answers, or null while unanswered. */
 function grenzgaengerStatusAus(answers: Record<string, string>): GrenzgaengerStatus | null {
   const wohnsitz = answers['ch-wohnsitz']
   const tage = answers['ch-nichtrueckkehrtage']
@@ -37,6 +27,7 @@ function grenzgaengerStatusAus(answers: Record<string, string>): GrenzgaengerSta
   return tage && /^\d+$/.test(tage) ? grenzgaengerStatus(wohnsitz as ChWohnsitz, Number(tage)) : null
 }
 
+/** The Formular-Ausdruck: the paid, printable return for one tax year. */
 @Injectable()
 export class AusdruckService {
   constructor(
@@ -53,17 +44,14 @@ export class AusdruckService {
     @Inject(KENNZEICHNUNG_REPOSITORY) private readonly kennzeichnungen: KennzeichnungRepository,
     @Inject(FreischaltungService) private readonly freischaltung: FreischaltungService,
     @Inject(AuditService) private readonly audit: AuditService,
-    /** Directory containing one `<jahr>/` folder of templates per supported year. */
     @Inject(VORLAGEN_BASIS) private readonly vorlagenBasis: URL,
   ) {}
 
-  /** Everything that would stop the printout, before anyone pays for it. */
   async pruefe(userId: string, jahr: number): Promise<{ fehlend: string[] }> {
-    if (!FELDSAETZE[jahr]) throw new NotFoundException(`Für das Steuerjahr ${jahr} liegen noch keine Vordrucke vor.`)
+    if (!FELDSAETZE[jahr]) throw new NotFoundError('VORDRUCKE_MISSING', `No Vordrucke are available for tax year ${jahr} yet.`)
     return { fehlend: (await this.sammle(userId, jahr)).fehlend }
   }
 
-  /** Paying is only offered for a printout that can actually be delivered. */
   async starteCheckout(userId: string, jahr: number): Promise<{ checkoutUrl: string }> {
     const { fehlend } = await this.pruefe(userId, jahr)
     if (fehlend.length > 0) {
@@ -74,7 +62,7 @@ export class AusdruckService {
 
   async erstelle(userId: string, jahr: number, { bearbeitbar = false }: { bearbeitbar?: boolean } = {}): Promise<Uint8Array> {
     const feldsatz = FELDSAETZE[jahr]
-    if (!feldsatz) throw new NotFoundException(`Für das Steuerjahr ${jahr} liegen noch keine Vordrucke vor.`)
+    if (!feldsatz) throw new NotFoundError('VORDRUCKE_MISSING', `No Vordrucke are available for tax year ${jahr} yet.`)
 
     if ((await this.freischaltung.status(userId, jahr)) !== 'freigeschaltet') {
       throw new HttpException(`Der Ausdruck für ${jahr} ist noch nicht freigeschaltet.`, HttpStatus.PAYMENT_REQUIRED)
@@ -101,7 +89,6 @@ export class AusdruckService {
     }
   }
 
-  /** ADR-0052 §6: unconfirmed values block like missing ones — the user's and, in a joint return, Person B's. */
   private async unbestaetigt(userId: string, jahr: number, personBUserId: string | null): Promise<string[]> {
     const jahre = [jahr, JAHRESUNABHAENGIG]
     const eigene = fehlendeBestaetigungen((await this.kennzeichnungen.listForUserAndYears(userId, jahre)).map((k) => ({ ...k, wert: null })))

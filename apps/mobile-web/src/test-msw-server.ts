@@ -29,6 +29,7 @@ import {
   getKopplungControllerGetMockHandler,
   getEulenModusControllerGetEinstellungMockHandler,
   getEulenModusControllerGetKartenMockHandler,
+  getAssistentenControllerListConnectedMockHandler,
 } from '@steuereule/api-client/msw'
 import { LOHNAUSWEIS_FELDER } from '@steuereule/core'
 import type { ProfileResponseDto, AuthCapabilitiesDto, DeviceCodeResponseDto, InterviewStateDto, LstbResponseDto, ChLohnausweisResponseDto, RenteResponseDto, KapitalResponseDto, VermietungResponseDto, FristenResponseDto, UebernahmeResponseDto, BestaetigungResponseDto, KinderResponseDto, KopplungResponseDto, EulenEinstellungResponseDto, EulenKartenResponseDto } from '@steuereule/api-client'
@@ -301,4 +302,6 @@ export const server = setupServer(
   // stays undisturbed by the passkey section; the passkey suite overrides with real rows (and
   // with the delete route) via `server.use(...)`.
   http.get('*/api/auth/passkey/list-user-passkeys', () => HttpResponse.json([])),
+  // ADR-0052 §10 — connected assistants read defaults to an empty list.
+  getAssistentenControllerListConnectedMockHandler([]),
 )

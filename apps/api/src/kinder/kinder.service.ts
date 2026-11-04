@@ -1,4 +1,5 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common'
+import { Inject, Injectable } from '@nestjs/common'
+import { InvalidInputError, NotFoundError } from '../common/domain-error.js'
 import { istGueltigesKindGeburtsdatum, kinderStand, type KindDaten } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
 import { KIND_REPOSITORY, type KindRecord, type KindRepository } from './kind.repository.js'
@@ -67,7 +68,7 @@ export class KinderService {
 
   async create(userId: string, steuerjahr: number, dto: CreateKindDto): Promise<KinderResponseDto> {
     if (!istGueltigesKindGeburtsdatum(dto.geburtsdatum, steuerjahr)) {
-      throw new BadRequestException('Ungültiges Geburtsdatum für dieses Steuerjahr.')
+      throw new InvalidInputError('GEBURTSDATUM_INVALID', 'The birth date is not valid for this tax year.')
     }
     await this.repository.create(userId, steuerjahr, dto)
     const records = await this.repository.listForUserAndYear(userId, steuerjahr)
@@ -76,11 +77,11 @@ export class KinderService {
 
   async update(userId: string, steuerjahr: number, id: string, dto: UpdateKindDto): Promise<KinderResponseDto> {
     if (dto.geburtsdatum && !istGueltigesKindGeburtsdatum(dto.geburtsdatum, steuerjahr)) {
-      throw new BadRequestException('Ungültiges Geburtsdatum für dieses Steuerjahr.')
+      throw new InvalidInputError('GEBURTSDATUM_INVALID', 'The birth date is not valid for this tax year.')
     }
     const updated = await this.repository.update(userId, steuerjahr, id, dto)
     if (!updated) {
-      throw new NotFoundException(`Kind ${id} nicht gefunden.`)
+      throw new NotFoundError('KIND_NOT_FOUND', `Kind "${id}" does not exist for this account.`)
     }
     const records = await this.repository.listForUserAndYear(userId, steuerjahr)
     return this.toResponse(records, steuerjahr)
@@ -89,7 +90,7 @@ export class KinderService {
   async delete(userId: string, steuerjahr: number, id: string): Promise<KinderResponseDto> {
     const deleted = await this.repository.delete(userId, steuerjahr, id)
     if (!deleted) {
-      throw new NotFoundException(`Kind ${id} nicht gefunden.`)
+      throw new NotFoundError('KIND_NOT_FOUND', `Kind "${id}" does not exist for this account.`)
     }
     const records = await this.repository.listForUserAndYear(userId, steuerjahr)
     return this.toResponse(records, steuerjahr)

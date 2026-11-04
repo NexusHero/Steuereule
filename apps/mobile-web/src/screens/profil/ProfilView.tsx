@@ -1,11 +1,9 @@
-// ProfilScreen's read view — the avatar/name/Steuer-ID summary card, the saved notice, the
-// "Deine Daten" row that reaches Datenschutz, and the device list. Extracted from
-// ProfilScreen.tsx so that file stays a screen.
 import { ScrollView, View, Text, Pressable } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Card, Chip, useTheme, type Breakpoint } from '@steuereule/ui'
 import { APP_NS } from '../../i18n/resources'
 import { makeProfilStyles } from './styles'
+import { AssistentenListSection } from './AssistentenListSection'
 import { DeviceListSection } from '../device/DeviceListSection'
 import type { OnboardingProfil } from '../onboarding/profileMapping'
 
@@ -16,7 +14,6 @@ interface ProfilViewProps {
   readonly bp: Breakpoint
   readonly onOpenDatenschutz: () => void
   readonly onOpenSicherheit: () => void
-  /** ADR-0050: the Erklärungs-Stammdaten (ESt 1 A page 1). Optional so existing embeds stay valid. */
   readonly onOpenStammdaten?: () => void
   readonly onSignedOut: () => void
 }
@@ -75,8 +72,8 @@ export function ProfilView({ profil, onEdit, justSaved, bp, onOpenDatenschutz, o
         </Pressable>
       </Card>
 
-      {/* #238 — every session on the account, not just QR-authorized ones (Decision 6). Its
-          own file carries the region omission's full reasoning. */}
+      <AssistentenListSection />
+
       <DeviceListSection onCurrentSessionRevoked={onSignedOut} />
     </ScrollView>
   )

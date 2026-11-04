@@ -1,7 +1,6 @@
-// `type:` given explicitly — see PutProfileDto's comment for why.
 import { ApiProperty } from '@nestjs/swagger'
 
-/** Die § 152 Abs. 2 AO-Fakten, die das Banner nüchtern nennt (Produkt-ADR-023). */
+/** Die § 152 Abs. 2 AO-Fakten, die das Banner nüchtern nennt. */
 export class VerspaetungszuschlagDto {
   @ApiProperty({ type: Number, example: 25, description: '§ 152 Abs. 2 Satz 2 AO — der Mindestzuschlag je angefangenem Monat, in Euro.' })
   mindestsatzEur!: number
@@ -10,12 +9,7 @@ export class VerspaetungszuschlagDto {
   prozentProMonat!: number
 }
 
-/**
- * The response shape for `GET /v1/steuerjahre/{jahr}/fristen` — the honest Fristen-Fakt for the
- * tax year (ADR-0039): `stufe` is a banner input (`keine` | `warnung` | `abgelaufen`), NEVER a
- * tax status — the Steuerjahr stays `entwurf` even when the frist passed. `heute` is the server's
- * Europe/Berlin date (never the client clock).
- */
+/** The response shape for `GET /v1/steuerjahre/{jahr}/fristen`. */
 export class FristenResponseDto {
   @ApiProperty({ type: String, example: '2027-07-31', description: 'Die Abgabefrist (§ 149 Abs. 2 AO), ISO yyyy-mm-dd.' })
   abgabefrist!: string

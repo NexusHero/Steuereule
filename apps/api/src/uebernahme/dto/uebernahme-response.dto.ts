@@ -1,4 +1,3 @@
-// `type:` given explicitly — see PutProfileDto's comment for why.
 import { ApiProperty } from '@nestjs/swagger'
 
 /** Eine Kennzeichnung: welches Feld aus welchem Vorjahr kopiert wurde, und ob es bestätigt ist. */

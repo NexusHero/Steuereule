@@ -1,10 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger'
 
-/** `GET /v1/device/pending`'s response — the match-verification payload AC-3 needs
- *  (#238 task 2, ADR-0024): the request's *actual* browser/region/time, read fresh
- *  from `DeviceCode`, never hard-coded. `userAgent`/`region` are deliberately raw —
- *  parsing them into a friendly "Chrome on macOS" label is a rendering concern for
- *  task 3's approval screen, not this endpoint's contract. */
+/** `GET /v1/device/pending`'s response. */
 export class DevicePendingResponseDto {
   @ApiProperty({ type: String, example: 'K7QX-9F2M' })
   userCode!: string

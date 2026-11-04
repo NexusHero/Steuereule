@@ -1,7 +1,3 @@
-// `type` is given explicitly on every @ApiProperty() below rather than left to be
-// inferred from `design:type` reflect-metadata: the toolchain (tsx/esbuild, Vitest)
-// does not emit that metadata the way `tsc` does, so an inferred type silently
-// resolves to nothing and @nestjs/swagger reports a spurious circular dependency.
 import { ApiProperty } from '@nestjs/swagger'
 
 export class ValidationFieldErrorDto {

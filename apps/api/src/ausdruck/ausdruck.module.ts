@@ -34,7 +34,6 @@ import { AusdruckService, VORLAGEN_BASIS } from './ausdruck.service.js'
   controllers: [AusdruckController],
   providers: [
     AusdruckService,
-    // Resolves from src/ausdruck and dist/ausdruck alike; the Dockerfile ships the repo.
     { provide: VORLAGEN_BASIS, useValue: new URL('../../assets/vordrucke/', import.meta.url) },
   ],
 })

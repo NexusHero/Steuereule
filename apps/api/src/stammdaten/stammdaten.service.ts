@@ -1,6 +1,5 @@
-// Erklärungs-Stammdaten (ADR-0050). PUT replaces the whole record, like PUT /v1/profile:
-// an omitted field is "not given", stored as null — never a stale value kept by accident.
-import { BadRequestException, Inject, Injectable } from '@nestjs/common'
+import { Inject, Injectable } from '@nestjs/common'
+import { InvalidInputError } from '../common/domain-error.js'
 import { normalisiereIban } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
 import type { PutStammdatenDto, StammdatenResponseDto } from './dto/stammdaten.dto.js'
@@ -12,8 +11,6 @@ import {
   type StammdatenRepository,
 } from './stammdaten.repository.js'
 
-/** What ESt 1 A cannot do without (Zeilen 8–18 and the Bankverbindung). Hausnummer-
- *  Zusatz, Telefon, Kontoinhaber and the Familienstand date are optional on the form. */
 const PFLICHT_FUER_AUSDRUCK: readonly StammdatenFeld[] = [
   'geburtsdatum',
   'strasse',
@@ -26,6 +23,7 @@ const PFLICHT_FUER_AUSDRUCK: readonly StammdatenFeld[] = [
   'finanzamt',
 ]
 
+/** Erklärungs-Stammdaten. */
 @Injectable()
 export class StammdatenService {
   constructor(
@@ -41,16 +39,14 @@ export class StammdatenService {
 
   async speichere(userId: string, dto: PutStammdatenDto, jetzt = new Date()): Promise<StammdatenResponseDto> {
     const religion = dto.religion ?? null
-    // Art. 9 DSGVO: a religion key is only accepted with explicit consent in the same request.
     if (religion !== null && dto.religionEinwilligung !== true) {
-      throw new BadRequestException('religion requires religionEinwilligung = true (Art. 9 DSGVO)')
+      throw new InvalidInputError('RELIGION_CONSENT_REQUIRED', 'religion requires religionEinwilligung = true (Art. 9 DSGVO).')
     }
     const bisher = await this.repository.findByUserId(userId)
     const record = { religionEinwilligungAm: null } as StammdatenRecord
     for (const feld of STAMMDATEN_FELDER) record[feld] = trimOrNull(dto[feld])
     if (record.iban !== null) record.iban = normalisiereIban(record.iban)
     if (record.familienstand === 'ledig') record.familienstandSeit = null
-    // Keep the original consent date while the same religion stays stored.
     record.religionEinwilligungAm =
       religion === null ? null : bisher?.religion === religion ? (bisher.religionEinwilligungAm ?? jetzt) : jetzt
     return toResponse(await this.repository.speichere(userId, record))

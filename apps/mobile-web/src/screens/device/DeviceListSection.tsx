@@ -1,16 +1,3 @@
-// The device list (#238, "Revocation — a device list in Profil"): every session on the
-// account — password-based and QR-authorized alike, not just the ones this slice's QR flow
-// created — each with an honest "Abmelden" (revoke). Derived entirely from ProfilScreen.tsx:18's
-// own Card + Feld + Pill composition, the same one GeraetefreigabeScreen's context block uses —
-// no new packages/ui/src/components/ addition.
-//
-// No region column. Musti's ADR-0021 control test proved the only deployment-config candidate
-// for a trustworthy client IP still returns a spoofable address for a single-value header — the
-// fix removes the trust check rather than replacing it, so `Session.region` was never built.
-// Fail-closed: this list shows Browser, Betriebssystem, and letzte Aktivität only — see the
-// comment at the bottom of `deviceRow` below for exactly where a region row would have gone and
-// why it doesn't exist, so nobody adds it back "for completeness" without re-reading why it's
-// missing. The approval screen's own region is unaffected — see useDeviceSessions.ts's header.
 import { useState } from 'react'
 import { ActivityIndicator, View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
@@ -21,9 +8,6 @@ import { useDeviceSessions, type DeviceSessionRow } from './useDeviceSessions'
 import { reasonOf } from '../../net/failure-reason'
 
 export interface DeviceListSectionProps {
-  /** Fires once the session the app is *currently* running under is the one just revoked —
-   *  ProfilScreen must react like any other sign-out (ADR-0013's own Slice-1-retro lesson:
-   *  never leave a screen rendered for a session that no longer exists). */
   readonly onCurrentSessionRevoked: () => void
 }
 
@@ -69,9 +53,6 @@ export function DeviceListSection({ onCurrentSessionRevoked }: DeviceListSection
       <Card style={styles.card}>
         <Text style={styles.sectionTitle}>{tr('profil.devices.heading')}</Text>
         <Text style={styles.help} accessibilityRole="alert">
-          {/* #306 — the copy follows what the failure actually established, never a default
-              guess. `reasonOf` returns 'unknown' for anything that reached us without a reason,
-              and the 'unknown' string deliberately names no cause at all. */}
           {tr(`profil.devices.loadError.${reasonOf(sessionsQuery.error)}`)}
         </Text>
       </Card>
@@ -102,9 +83,6 @@ export function DeviceListSection({ onCurrentSessionRevoked }: DeviceListSection
               <Feld label={tr('profil.devices.lastActive')}>
                 <Pill>{lastActive ?? tr('profil.devices.unknownTime')}</Pill>
               </Feld>
-              {/* No region row here — see this file's header comment. A region field, even one
-                  rendering "Region unbekannt", would imply Session tracks a region column it
-                  doesn't; the honest state is no field at all, not an always-unknown one. */}
               {session.isCurrent ? <Text style={styles.currentBadge}>{tr('profil.devices.currentDevice')}</Text> : null}
             </View>
             {isRevoking ? (

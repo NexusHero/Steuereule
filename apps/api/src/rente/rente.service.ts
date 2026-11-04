@@ -1,13 +1,5 @@
-// Application logic for the Rentner guided mask + fold (product ADR-034, Anlage R, ticket 10.4).
-// userId+steuerjahr-scoped read/write, then the honest-state + fold mapping. Trusts that `userId`
-// was produced by UserContextGuard + @RequiresAccount() (never accepts it from a param/body) —
-// mirrors LstbService/ChLohnausweisService. The fold is NEVER computed here — @steuereule/core's
-// `renteAlsKernposten`/`renteStand`/`deserialisiereRentenFeld`/`serialisiereRentenFeld`/
-// `setzeRentenFeld`/`setzeRentenart` are imported, never reimplemented (ADR-014/048 determinism
-// boundary). The gated Einkunftsarten are derived from the stored interview answers via the
-// interview repository (the one read path), never trusted from the client — a pensioner who also
-// declared Gewerbe/Krypto still reads OFFEN (ADR-030/034 combinability).
-import { BadRequestException, Inject, Injectable } from '@nestjs/common'
+import { Inject, Injectable } from '@nestjs/common'
+import { InvalidInputError } from '../common/domain-error.js'
 import {
   LEERE_RENTE,
   deserialisiereRentenFeld,
@@ -36,7 +28,6 @@ import type { PutRenteFeldDto, RenteFeldDto } from './dto/rente-feld.dto.js'
 import type { PutRentenartDto } from './dto/rente-art.dto.js'
 import type { RentePostenDto, RenteResponseDto, RenteStandDto } from './dto/rente-response.dto.js'
 
-/** A stored row (or none) → the core's RentenDaten, via the ONE encoding in core/rente.ts. */
 function datenAusRecord(record: RenteRecord | null): RentenDaten {
   if (record === null) return LEERE_RENTE
   return {
@@ -47,12 +38,11 @@ function datenAusRecord(record: RenteRecord | null): RentenDaten {
   }
 }
 
-/** A wire field state → the core's RentenFeldZustand; a 400 when `erfasst` lacks a valid value. */
 function zustandAusDto(dto: PutRenteFeldDto): RentenFeldZustand {
   if (dto.kind === 'offen') return { kind: 'offen' }
   if (dto.kind === 'unklar') return { kind: 'unklar' }
   if (dto.wert === undefined || !istGueltigerRentenBetrag(dto.wert)) {
-    throw new BadRequestException('kind "erfasst" requires a non-negative integer `wert`.')
+    throw new InvalidInputError('FIELD_VALUE_INVALID', 'kind "erfasst" requires a non-negative integer `wert`.')
   }
   return { kind: 'erfasst', wert: dto.wert }
 }
@@ -77,13 +67,13 @@ function postenZuDto(posten: Posten): RentePostenDto {
   }
 }
 
+/** Application logic for the Rentner guided mask + fold. */
 @Injectable()
 export class RenteService {
   constructor(
     @Inject(RENTE_REPOSITORY) private readonly repository: RenteRepository,
     @Inject(INTERVIEW_ANSWER_REPOSITORY) private readonly interviewRepository: InterviewAnswerRepository,
     @Inject(AuditService) private readonly auditService: AuditService,
-    // ADR-0052 §6: a value the user writes themselves is theirs — its marker (and any proposal) goes.
     @Inject(KENNZEICHNUNG_REPOSITORY) private readonly kennzeichnungen: KennzeichnungRepository,
   ) {}
 
@@ -128,7 +118,6 @@ export class RenteService {
 
   async getState(userId: string, steuerjahr: number): Promise<RenteResponseDto> {
     const record = await this.repository.findForUserAndYear(userId, steuerjahr)
-    // Only log an access when there's something to access (REQ-004.2's pattern).
     if (record !== null) {
       await this.auditService.append({ userId, action: 'READ', resource: 'rente' })
     }
@@ -139,8 +128,6 @@ export class RenteService {
     const record = await this.repository.findForUserAndYear(userId, steuerjahr)
     const daten = datenAusRecord(record)
     const zustand = zustandAusDto(dto)
-    // `setzeRentenFeld` is the core's own invariant guard (throws on an invalid `erfasst`) —
-    // defense in depth behind the explicit 400 in `zustandAusDto`.
     setzeRentenFeld(daten, feld, zustand)
     const next = await this.repository.setFeld(userId, steuerjahr, feld, serialisiereRentenFeld(zustand))
     await this.kennzeichnungen.entferne(userId, steuerjahr, [kennzeichnungsKey('rente', feld)])
@@ -150,7 +137,7 @@ export class RenteService {
   async setRentenart(userId: string, steuerjahr: number, dto: PutRentenartDto): Promise<RenteResponseDto> {
     const art = dto.art ?? null
     if (art !== null && !isRentenart(art)) {
-      throw new BadRequestException('art must be one of the five Rentenarten, or null.')
+      throw new InvalidInputError('RENTENART_UNKNOWN', 'art must be one of the five Rentenarten, or null.')
     }
     const record = await this.repository.setRentenart(userId, steuerjahr, art)
     await this.kennzeichnungen.entferne(userId, steuerjahr, [kennzeichnungsKey('rente', 'rentenart')])

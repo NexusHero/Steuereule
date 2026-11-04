@@ -1,14 +1,3 @@
-// LStB-Masken-Screen (REQ-016, ticket 08 / ticket 15) — the guided fallback mask for
-// transcribing a Lohnsteuerbescheinigung (ADR-036 Scan-Fallback). Three fields, each honestly
-// `erfasst` (a whole-euro value was typed), `offen` (not reached yet) or `unklar` ("looked but
-// could not read" — the honest fallback, never a silent guess). A figure exceeding the
-// Bruttoarbeitslohn is a NAMED widerspruch (ADR-008), never silently fixed.
-//
-// The client stays dumb (ADR-0033): every state — the three field states AND the derived
-// `zustand` (unvollstaendig / widerspruch / vollstaendig) — comes straight from
-// `GET /v1/steuerjahre/{jahr}/lstb`, and each edit is `PUT .../lstb/{feld}`. The core's
-// `lstbZustand` decides what is true; this screen only renders it and sends whole-euro values.
-// Scan/OCR is out of scope (ADR-045) — this is the DATA interface only.
 import { useState } from 'react'
 import { ScrollView, View, Text, Pressable, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
@@ -104,11 +93,6 @@ export function LstbScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YE
   )
 }
 
-/**
- * One LStB field: a numeric input when `erfasst`, plus the honest "unklar" fallback. The value is
- * sent as a whole-euro integer — the mask stores whole euros only (the LStB's cents are rounded
- * away at entry, matching the fold in angestellte.ts).
- */
 function LstbFeldEditor({
   label,
   zustand,

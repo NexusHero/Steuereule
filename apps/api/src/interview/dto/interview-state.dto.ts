@@ -1,12 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger'
 import { StepDto } from './step.dto.js'
 
-/**
- * The response shape for `GET /v1/steuerjahre/{jahr}/interview` (#318) — re-entry: a
- * client that reloads mid-interview gets everything it needs to resume without
- * re-deriving anything itself (though it safely could, from `answers` alone, via the
- * same `nextStep()`/`remainingSteps()` it renders from — ADR-0033).
- */
+/** The response shape for `GET /v1/steuerjahre/{jahr}/interview`. */
 export class InterviewStateDto {
   @ApiProperty({
     type: 'object',

@@ -1,48 +1,90 @@
-// The ONLY place userId is established for a request (ADR-0007 gate, extended by
-// ADR-0012 §2). Controllers and services never read userId from the body/query/path/a
-// client-trusted header — they only ever see the value this guard attached, via
-// @CurrentUser(). Precedence (ADR-0012 §2): a verified better-auth session wins; else
-// a valid guest cookie; else mint a fresh guest. Guests/no-cookie stay I/O-free — a
-// DB read happens only when a better-auth session cookie is actually present.
-import { Inject, Injectable, type CanActivate, type ExecutionContext } from '@nestjs/common'
+import { createHash } from 'node:crypto'
+import { Inject, Injectable, Optional, UnauthorizedException, type CanActivate, type ExecutionContext } from '@nestjs/common'
 import { fromNodeHeaders } from 'better-auth/node'
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import { BETTER_AUTH_BUNDLE, type BetterAuthBundle } from './auth.tokens.js'
 import { newGuestUserId, resolveGuestSessionSecret, signGuestSession, verifyGuestSession } from './guest-session.js'
+import { PrismaService } from '../prisma/prisma.service.js'
 
 export const GUEST_SESSION_COOKIE = 'se_guest_session'
 export const USER_ID_REQUEST_KEY = 'userId'
-/**
- * How the request's userId came about — set alongside USER_ID_REQUEST_KEY on every
- * request this guard admits (#318). `newGuestUserId()` is a bare `randomUUID()`
- * (guest-session.ts), indistinguishable from a real account id by string shape alone,
- * so this is the only trustworthy signal a downstream route-scoped check (e.g.
- * @RequiresAccount()) can use to tell a guest from a real, signed-in account.
- */
 export const USER_ID_KIND_REQUEST_KEY = 'userIdKind'
+export const AUTH_CONTEXT_REQUEST_KEY = 'authContext'
 
-const COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 180 // 180 days
+export interface AssistantAuthContext {
+  readonly source: 'assistent'
+  readonly clientId: string
+  readonly clientName: string
+  readonly scopes: readonly string[]
+}
 
-export type UserIdKind = 'session' | 'guest'
+export interface UserAuthContext {
+  readonly source: 'nutzer'
+}
+
+export type AuthContext = AssistantAuthContext | UserAuthContext
+
+const COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 180
+
+export type UserIdKind = 'session' | 'guest' | 'bearer'
 
 export type RequestWithUserId = FastifyRequest & {
   [USER_ID_REQUEST_KEY]?: string
   [USER_ID_KIND_REQUEST_KEY]?: UserIdKind
+  [AUTH_CONTEXT_REQUEST_KEY]?: AuthContext
 }
 
+/** The ONLY place userId is established for a request. */
 @Injectable()
 export class UserContextGuard implements CanActivate {
-  constructor(@Inject(BETTER_AUTH_BUNDLE) private readonly betterAuth: BetterAuthBundle) {}
+  constructor(
+    @Inject(BETTER_AUTH_BUNDLE) private readonly betterAuth: BetterAuthBundle,
+    @Optional() @Inject(PrismaService) private readonly prisma?: PrismaService,
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<RequestWithUserId>()
     const reply = context.switchToHttp().getResponse<FastifyReply>()
 
+    const authHeader = request.headers?.authorization
+    if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+      const rawToken = authHeader.slice(7).trim()
+      if (!rawToken) {
+        throw new UnauthorizedException('Missing bearer token.')
+      }
+      if (!this.prisma) {
+        throw new UnauthorizedException('Database unavailable for bearer token verification.')
+      }
+      const tokenHash = createHash('sha256').update(rawToken).digest('base64url')
+      const tokenRecord = await this.prisma.oauthAccessToken.findUnique({
+        where: { token: tokenHash },
+        include: { client: true },
+      })
+      if (!tokenRecord || !tokenRecord.userId) {
+        throw new UnauthorizedException('Invalid bearer token.')
+      }
+      if (tokenRecord.revoked !== null) {
+        throw new UnauthorizedException('Bearer token has been revoked.')
+      }
+      if (tokenRecord.expiresAt && tokenRecord.expiresAt < new Date()) {
+        throw new UnauthorizedException('Bearer token has expired.')
+      }
+      if (tokenRecord.client?.disabled) {
+        throw new UnauthorizedException('OAuth client has been disabled.')
+      }
+      request[USER_ID_REQUEST_KEY] = tokenRecord.userId
+      request[USER_ID_KIND_REQUEST_KEY] = 'bearer'
+      request[AUTH_CONTEXT_REQUEST_KEY] = {
+        source: 'assistent',
+        clientId: tokenRecord.clientId,
+        clientName: tokenRecord.client?.name ?? 'Assistent',
+        scopes: tokenRecord.scopes,
+      }
+      return true
+    }
+
     const cookies = request.cookies as Record<string, string | undefined> | undefined
 
-    // Rule 1 (ADR-0012 §2): a better-auth session cookie present ⇒ resolve it via a
-    // single indexed DB read. Never minted/touched here — better-auth owns issuing
-    // and revoking its own session cookie entirely through /api/auth/*.
     if (cookies?.[this.betterAuth.sessionCookieName]) {
       const session = await this.betterAuth.auth.api.getSession({
         headers: fromNodeHeaders(request.headers),
@@ -50,13 +92,11 @@ export class UserContextGuard implements CanActivate {
       if (session) {
         request[USER_ID_REQUEST_KEY] = session.user.id
         request[USER_ID_KIND_REQUEST_KEY] = 'session'
+        request[AUTH_CONTEXT_REQUEST_KEY] = { source: 'nutzer' }
         return true
       }
-      // Cookie present but no longer valid (expired/revoked) — fall through to the
-      // guest path below exactly as if it had never been set.
     }
 
-    // Rule 2/3 (unchanged, I/O-free): a valid guest cookie, or mint a fresh one.
     const secret = resolveGuestSessionSecret()
     const token = cookies?.[GUEST_SESSION_COOKIE]
     const verifiedUserId = token ? verifyGuestSession(token, secret) : undefined
@@ -65,22 +105,6 @@ export class UserContextGuard implements CanActivate {
     if (!verifiedUserId) {
       reply.setCookie(GUEST_SESSION_COOKIE, signGuestSession(userId, secret), {
         httpOnly: true,
-        // SameSite=None; Secure (ADR-0011, amending ADR-0007's original `strict`): the
-        // web app and the API run on different origins in both local dev (different
-        // ports on localhost) and the deployed demo (distinct *.fly.dev subdomains).
-        // Local dev is cross-origin but same-site — `SameSite` keys on scheme +
-        // registrable domain, and port isn't part of "site", so `strict` would survive
-        // there unaffected. What genuinely forces `None` is the deployed demo, where
-        // the web app and API sit on different registrable domains (`fly.dev` is a
-        // public suffix, so each subdomain is its own site) — a real cross-site
-        // credentialed request, from which the browser silently drops a
-        // `strict`/`Lax` cookie, leaving the onboarding vertical broken even with CORS
-        // headers correct. `None` is required for that deployed cross-site case and
-        // harmlessly permissive for the same-site local one. `Secure` is required
-        // whenever `SameSite=None` is set (browsers reject the pairing otherwise);
-        // this is safe unconditionally because `http://localhost` is treated as a
-        // secure context by modern browsers even without TLS, and the deployed demo is
-        // HTTPS-only (ADR-0007).
         sameSite: 'none',
         secure: true,
         path: '/',
@@ -90,6 +114,7 @@ export class UserContextGuard implements CanActivate {
 
     request[USER_ID_REQUEST_KEY] = userId
     request[USER_ID_KIND_REQUEST_KEY] = 'guest'
+    request[AUTH_CONTEXT_REQUEST_KEY] = { source: 'nutzer' }
     return true
   }
 }

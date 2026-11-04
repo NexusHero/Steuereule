@@ -10,8 +10,6 @@ import { PrismaBescheidRepository } from './bescheid.repository.prisma.js'
 import { BescheidService } from './bescheid.service.js'
 
 @Module({
-  // The CH-Lohnausweis / Lstb / Interview modules export their repository tokens so BescheidService
-  // can fold the computed "berechnet" side through the SAME seams the Cockpit and CH services use.
   imports: [PrismaModule, AuditModule, LstbModule, InterviewModule, ChLohnausweisModule],
   controllers: [BescheidController],
   providers: [BescheidService, { provide: BESCHEID_REPOSITORY, useClass: PrismaBescheidRepository }],

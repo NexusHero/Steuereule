@@ -9,8 +9,6 @@ import {
 import { CurrentUser } from '../auth/current-user.decorator.js'
 import { RequiresAccount } from '../auth/requires-account.guard.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
-// Reused directly, not duplicated — `jahr` is always validated against a sensible tax-year window,
-// never just "parses as a number" (same pipe as Cockpit/Lstb/ChLohnausweis).
 import { ParseSteuerjahrPipe } from '../cockpit/parse-steuerjahr.pipe.js'
 import { ParseRenteFeldPipe } from './parse-rente-feld.pipe.js'
 import { RenteService } from './rente.service.js'
@@ -22,7 +20,6 @@ import { RenteResponseDto } from './dto/rente-response.dto.js'
 @Controller('v1/steuerjahre')
 @UseGuards(UserContextGuard)
 export class RenteController {
-  // Explicit token — see the comment on ProfileController's constructor.
   constructor(@Inject(RenteService) private readonly renteService: RenteService) {}
 
   @Get(':jahr/rente')
@@ -40,7 +37,6 @@ export class RenteController {
   }
 
   @Put(':jahr/rente/art')
-  // Upsert-style write on an existing tax-year resource (one row per userId+steuerjahr) → 200.
   @HttpCode(200)
   @RequiresAccount()
   @ApiParam({ name: 'jahr', type: Number, example: 2026, description: 'The tax year (Steuerjahr).' })

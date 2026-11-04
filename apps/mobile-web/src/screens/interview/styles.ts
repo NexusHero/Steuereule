@@ -1,7 +1,3 @@
-// InterviewScreen's styles — shared by the question and gate sub-screens so each file stays about
-// what it renders. The loading/error states' centred styles live in ../shared/ScreenState.tsx,
-// the back button in ../shared/BackButton.tsx and the progress bar in ../shared/StepIndicator.tsx
-// (Phase 0.3: no per-screen re-typing).
 import { type ViewStyle, type TextStyle } from 'react-native'
 import { WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
 

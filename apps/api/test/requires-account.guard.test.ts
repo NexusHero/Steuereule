@@ -7,7 +7,8 @@
 // real controller wiring. This file proves the guard's own logic in isolation.
 import type { ExecutionContext } from '@nestjs/common'
 import { describe, expect, it } from 'vitest'
-import { GuestCannotUseThisEndpointError, RequiresAccountGuard } from '../src/auth/requires-account.guard.js'
+import { RequiresAccountGuard } from '../src/auth/requires-account.guard.js'
+import { GuestCannotUseThisEndpointError } from '../src/common/account-required.error.js'
 import { USER_ID_KIND_REQUEST_KEY, USER_ID_REQUEST_KEY, type UserIdKind } from '../src/auth/user-context.guard.js'
 
 function makeContext(kind: UserIdKind | undefined): ExecutionContext {
@@ -23,6 +24,11 @@ describe('RequiresAccountGuard', () => {
     expect(guard.canActivate(makeContext('session'))).toBe(true)
   })
 
+  it('admits a bearer token (OAuth 2.1 assistant access for an account)', () => {
+    const guard = new RequiresAccountGuard()
+    expect(guard.canActivate(makeContext('bearer'))).toBe(true)
+  })
+
   it('rejects a guest with a GuestCannotUseThisEndpointError (401)', () => {
     const guard = new RequiresAccountGuard()
     expect(() => guard.canActivate(makeContext('guest'))).toThrow(GuestCannotUseThisEndpointError)
@@ -33,13 +39,11 @@ describe('RequiresAccountGuard', () => {
     expect(() => guard.canActivate(makeContext(undefined))).toThrow(GuestCannotUseThisEndpointError)
   })
 
-  it('the thrown error is a 401', () => {
+  it('the thrown error is an unauthenticated ACCOUNT_REQUIRED error', () => {
     const guard = new RequiresAccountGuard()
-    try {
-      guard.canActivate(makeContext('guest'))
-      throw new Error('expected canActivate to throw')
-    } catch (error) {
-      expect((error as { getStatus?: () => number }).getStatus?.()).toBe(401)
-    }
+
+    const act = () => guard.canActivate(makeContext('guest'))
+
+    expect(act).toThrow(expect.objectContaining({ kind: 'unauthenticated', code: 'ACCOUNT_REQUIRED' }))
   })
 })

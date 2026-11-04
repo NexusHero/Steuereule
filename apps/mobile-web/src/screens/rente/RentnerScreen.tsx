@@ -1,12 +1,3 @@
-// Rentner-Screen (REQ-022, ticket 10.4) — the guided mask for the Rentenbezugsmitteilung
-// (product ADR-034, Anlage R). The user picks a Rentenart (product ADR-036 §3) and transcribes
-// the Jahresbetrag plus either the Rentenbeginn-Jahr (Besteuerungsanteil path) or the
-// Rentenbeginn-Lebensalter (Ertragsanteil path for the private Rentenversicherung). Each field is
-// honestly `erfasst` / `offen` / `unklar`, never silently guessed (ADR-032).
-//
-// The client stays dumb (ADR-0033): every number — the taxable share AND its § 22 Herkunft — comes
-// straight from `GET /v1/steuerjahre/{jahr}/rente` (the core's `renteAlsKernposten` decides what is
-// true); each edit is a PUT. This screen only renders the field states and sends whole numbers.
 import { useState } from 'react'
 import { ScrollView, View, Text, Pressable, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
@@ -73,8 +64,6 @@ export function RentnerScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX
     setFeld.mutate({ jahr: taxYear, feld, data }, { onSuccess: invalidate })
   }
 
-  // Only the field relevant to the chosen Rentenart is shown — the private Rentenversicherung is
-  // taxed via the Ertragsanteil (Lebensalter), everything else via the Besteuerungsanteil (Jahr).
   const showsRentenbeginnJahr = response.art !== null && response.art !== 'PrivateRentenversicherung'
   const showsAlter = response.art === 'PrivateRentenversicherung'
 
@@ -130,7 +119,6 @@ export function RentnerScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX
   )
 }
 
-/** One Rentner field: a numeric input when `erfasst`, plus the honest "unklar" fallback. */
 function RenteFeldEditor({
   label,
   zustand,
@@ -172,7 +160,6 @@ function RenteFeldEditor({
   )
 }
 
-/** The derived taxable share with its § 22 Herkunft, or the honest "not yet determinable" notice. */
 function PostenNotice({ response }: { readonly response: RenteResponseDto }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)

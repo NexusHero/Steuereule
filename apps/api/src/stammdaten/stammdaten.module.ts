@@ -10,7 +10,6 @@ import { StammdatenService } from './stammdaten.service.js'
   imports: [PrismaModule, AuditModule],
   controllers: [StammdatenController],
   providers: [StammdatenService, { provide: STAMMDATEN_REPOSITORY, useClass: PrismaStammdatenRepository }],
-  // The Ausdruck reads the same record through the same encryption seam.
   exports: [STAMMDATEN_REPOSITORY],
 })
 export class StammdatenModule {}

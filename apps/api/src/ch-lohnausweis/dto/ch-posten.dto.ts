@@ -1,13 +1,8 @@
-// `type:` given explicitly — see PutProfileDto's comment for why.
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import { IsBoolean, IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validator'
 import { WechselkursDto } from './wechselkurs.dto.js'
 
-/**
- * One CH line item with full provenance (ADR-029 "Herkunft pro Wert 'Lohnausweis Ziffer n ×
- * Kurs'") — the wire shape of @steuereule/core's `ChPosten`, plus the fold `rolle` the core's
- * `chPostenAlsKernposten` assigns (einnahme / vorsorgeaufwand / anrechnung).
- */
+/** One CH line item with full provenance. */
 export class ChPostenDto {
   @ApiProperty({ type: String, description: 'Stable line-item id.' })
   id!: string
@@ -31,7 +26,7 @@ export class ChPostenDto {
   wechselkurs!: WechselkursDto
 }
 
-/** The PUT body for the optional Säule 3a / Krankenkasse amounts (null = clear / not entered). */
+/** The PUT body for the optional Säule 3a / Krankenkasse amounts. */
 export class PutVorsorgeDto {
   @ApiPropertyOptional({ type: Number, nullable: true, description: 'Säule 3a whole-CHF amount, or null to clear.' })
   @IsOptional()
@@ -46,7 +41,7 @@ export class PutVorsorgeDto {
   krankenkasseChf?: number | null
 }
 
-/** The PUT body for Ziffer 15 Bemerkungen (Freitext, null to clear). */
+/** The PUT body for Ziffer 15 Bemerkungen. */
 export class PutBemerkungenDto {
   @ApiPropertyOptional({ type: String, nullable: true, description: 'The free-text remark, or null to clear.' })
   @IsOptional()
@@ -54,7 +49,7 @@ export class PutBemerkungenDto {
   text?: string | null
 }
 
-/** The PUT body for the Anlage-N-Gre facts beyond the Lohnausweis (absent = unchanged, null = clear). */
+/** The PUT body for the Anlage-N-Gre facts beyond the Lohnausweis. */
 export class PutNGreDto {
   @ApiPropertyOptional({ type: String, nullable: true, description: 'Arbeitgeber, Zeile 89.' })
   @IsOptional()
@@ -104,7 +99,7 @@ export class PutNGreDto {
   sonderfaelle?: boolean | null
 }
 
-/** The stored Anlage-N-Gre facts (null = not entered). */
+/** The stored Anlage-N-Gre facts. */
 export class NGreAngabenDto {
   @ApiProperty({ type: String, nullable: true })
   arbeitgeberName!: string | null

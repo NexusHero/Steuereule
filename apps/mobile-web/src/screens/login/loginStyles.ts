@@ -1,7 +1,3 @@
-// The Login screen's remaining styles — the screen/column scaffolding and the single shared
-// outage banner — after the QR column's, header's, social slot's and verification banner's own
-// styles moved into their respective files. Kept as a plain factory so the screen's render
-// stays about what it renders, not about how many style keys it carries.
 import { type ViewStyle, type TextStyle } from 'react-native'
 import { WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
 
@@ -20,9 +16,6 @@ export function makeLoginStyles(t: UiTheme) {
     ...screen,
     maxWidth: WIDE_CONTENT_MAX_WIDTH,
   }
-  // Two columns, `m`/`l` only (LoginScreen's single `useBreakpoint` call above already gates
-  // this) — the form keeps its own established width via `formColumn`, the QR column takes the
-  // rest up to the same `WIDE_CONTENT_MAX_WIDTH` every other wide layout in this app uses.
   const wideRow: ViewStyle = {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -37,7 +30,6 @@ export function makeLoginStyles(t: UiTheme) {
   const submittingRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s2 }
   const submittingLabel: TextStyle = { fontFamily: t.font.text, fontWeight: t.weight.schwer, fontSize: t.size.m, color: t.color.tinte }
   const cta: ViewStyle = { marginTop: t.space.s5 }
-  // AC-A's single shared alert — a failure, not a caution or a positive confirmation.
   const outageBanner: ViewStyle = {
     backgroundColor: t.color.fehlerWeich,
     borderWidth: 2,

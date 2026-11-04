@@ -141,6 +141,19 @@ describe('REQ-028 — die Jahresübernahme (ADR-021), against the real server', 
     expect(zweiter.status).toBe(409)
   })
 
+  it('ein zweiter Kopierversuch ist auch dann ein 409, wenn der Nutzer alle übernommenen Felder selbst editiert hat', async () => {
+    const { cookie } = await signUp('alle-felder-editiert@example.com')
+    await putLstb(cookie, VORJAHR, 'bruttoarbeitslohn', 50000)
+    await fetch(`${baseUrl}/v1/steuerjahre/${ZIELJAHR}/uebernahme?von=${VORJAHR}`, { method: 'POST', headers: { cookie } })
+
+    // Nutzer ändert den Wert im Zieljahr selbst -> Kennzeichnung entfällt
+    await putLstb(cookie, ZIELJAHR, 'bruttoarbeitslohn', 60000)
+
+    // Zweiter Versuch ins selbe Jahr muss 409 bleiben (Randfall-Schutz)
+    const zweiter = await fetch(`${baseUrl}/v1/steuerjahre/${ZIELJAHR}/uebernahme?von=${VORJAHR}`, { method: 'POST', headers: { cookie } })
+    expect(zweiter.status).toBe(409)
+  })
+
   it('ein Vorjahr ohne EINEN einzigen übernehmbaren Fakt ist ein 404 — nie eine erfundene Kopie', async () => {
     const { cookie } = await signUp('leeres-vorjahr@example.com')
 

@@ -32,8 +32,6 @@ export class FreischaltungController {
     return { status: await this.service.status(userId, jahr) }
   }
 
-  // Called by Stripe, not by the app: no session, authenticity comes from the
-  // signature over the exact raw bytes (hence rawBody, not the parsed JSON).
   @Post('v1/zahlung/stripe/webhook')
   @HttpCode(200)
   @ApiExcludeEndpoint()

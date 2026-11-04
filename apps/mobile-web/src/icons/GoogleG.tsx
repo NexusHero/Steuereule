@@ -1,5 +1,3 @@
-// Official Google "G" mark (DS Auth.jsx, 20×20, standard brand colors).
-// Matches the design-system reference exactly — no creative interpretation.
 import { Svg, Path } from 'react-native-svg'
 
 export function GoogleG({ size = 20 }: { readonly size?: number } = {}) {

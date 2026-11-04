@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common'
-import { resolveWebAppUrl } from '../auth/better-auth.js'
+import { resolveWebAppUrl } from '../auth/better-auth-env.js'
 import { PrismaModule } from '../prisma/prisma.module.js'
 import { FreischaltungController } from './freischaltung.controller.js'
 import { FREISCHALTUNG_REPOSITORY } from './freischaltung.repository.js'
@@ -23,7 +23,6 @@ import { ZAHLUNGSANBIETER, type Zahlungsanbieter } from './zahlungsanbieter.js'
     },
     { provide: WEB_APP_URL_TOKEN, useFactory: () => resolveWebAppUrl() },
   ],
-  // The Ausdruck (next slice) gates its download on FreischaltungService.status().
   exports: [FreischaltungService],
 })
 export class FreischaltungModule {}

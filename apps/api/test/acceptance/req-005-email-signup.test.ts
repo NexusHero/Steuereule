@@ -1,5 +1,6 @@
 // REQ-005 — email/password account creation + async verification (ADR-0012 §6).
 // Real Postgres, real HTTP against the actual `buildApp()` boot (never `.inject()`).
+import { Logger } from '@nestjs/common'
 import type { NestFastifyApplication } from '@nestjs/platform-fastify'
 import { PrismaClient } from '@prisma/client'
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
@@ -71,12 +72,7 @@ describe('REQ-005 — email/password signup + async verification, against the re
   })
 
   it('following the verification link marks the account verified', async () => {
-    const emailSpy = vi.fn()
-    const originalConsoleLog = console.log
-    console.log = (...args: unknown[]) => {
-      emailSpy(...args)
-      originalConsoleLog(...args)
-    }
+    const emailSpy = vi.spyOn(Logger.prototype, 'warn')
 
     try {
       const signUp = await fetch(`${baseUrl}/api/auth/sign-up/email`, {
@@ -86,7 +82,7 @@ describe('REQ-005 — email/password signup + async verification, against the re
       })
       expect(signUp.status).toBe(200)
 
-      const logLine = emailSpy.mock.calls.map((call) => String(call[0])).find((line) => line.includes('verify-me@example.com'))
+      const logLine = emailSpy.mock.calls.map((call) => String(call[0])).find((line) => line.startsWith('verification link for v***@example.com'))
       expect(logLine).toBeDefined()
       const token = new URL(logLine!.split(': ')[1]!).searchParams.get('token')!
 
@@ -96,7 +92,7 @@ describe('REQ-005 — email/password signup + async verification, against the re
       const user = await prisma.user.findUnique({ where: { email: 'verify-me@example.com' } })
       expect(user?.emailVerified).toBe(true)
     } finally {
-      console.log = originalConsoleLog
+      emailSpy.mockRestore()
     }
   })
 

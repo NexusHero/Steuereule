@@ -1,10 +1,6 @@
-// Theme access for the RN components: resolves @steuereule/tokens into the active mode's colours
-// and shadows plus the mode-invariant scales, and hands them down via context. Default is light.
 import { createContext, useMemo, type ReactNode } from 'react'
 import { theme as tokens, type ThemeMode, type RnShadow } from '@steuereule/tokens'
 
-// Colours and shadows differ between modes, so widen their literal types to string / RnShadow.
-// The scales (space, size, weight, …) are mode-invariant and keep their exact token types.
 type ColorKey = keyof (typeof tokens)['light']['color']
 type ShadowKey = keyof (typeof tokens)['light']['shadow']
 

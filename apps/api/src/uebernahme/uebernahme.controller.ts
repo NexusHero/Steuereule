@@ -7,7 +7,6 @@ import { ParseSteuerjahrPipe } from '../cockpit/parse-steuerjahr.pipe.js'
 import { UebernahmeService } from './uebernahme.service.js'
 import { UebernahmeResponseDto } from './dto/uebernahme-response.dto.js'
 
-/** A query `von` → a whole year, or 400 (the service re-checks it against the target year). */
 function parseVon(raw: unknown): number {
   const parsed = Number(raw)
   if (!Number.isInteger(parsed) || parsed < 1) {
@@ -37,7 +36,6 @@ export class UebernahmeController {
   }
 
   @Post(':jahr/uebernahme')
-  // Upsert-style: the take-over creates the Kennzeichnung and returns the full state → 200.
   @HttpCode(200)
   @RequiresAccount()
   @ApiParam({

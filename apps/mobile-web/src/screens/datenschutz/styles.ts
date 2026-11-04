@@ -1,7 +1,3 @@
-// DatenschutzScreen's styles — shared by the screen and its extracted sections (ExportSection,
-// DeleteSection), which each used to re-read the same style keys off the screen's single
-// `makeStyles`. One factory here, imported everywhere, so a section's own file stays about what
-// it renders rather than re-listing the screen's whole style map.
 import { type ViewStyle, type TextStyle } from 'react-native'
 import { WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
 

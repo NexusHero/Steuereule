@@ -1,7 +1,3 @@
-// `type: String`/`type: Boolean`/`type: [X]` is given explicitly on every @ApiProperty()
-// below — see the comment in profile/dto/put-profile.dto.ts for why we don't rely on
-// inferred design:type metadata (esbuild/tsx emit none). Documents the ADR-0013 frozen
-// JSON export shape exactly — this is what orval regenerates the FE typed client from.
 import { ApiProperty } from '@nestjs/swagger'
 
 export class ExportAccountDto {

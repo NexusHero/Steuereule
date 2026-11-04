@@ -1,13 +1,5 @@
-// Application logic for the Vermietung guided mask + fold (ticket 10.6, product ADR-033,
-// Anlage V einfach). userId+steuerjahr-scoped read/write, then the honest-state + fold mapping.
-// Trusts that `userId` was produced by UserContextGuard + @RequiresAccount() (never accepts it
-// from a param/body) — mirrors RenteService. The fold and the per-object facts are NEVER
-// computed here — @steuereule/core's `vermietungsobjektFakten`/`vermietungsobjektAlsEinnahmePosten`/
-// `vermietungStand` are imported, never reimplemented (ADR-014/048 determinism boundary). The
-// Einordnung is derived from the stored interview answer `vermietung-art` via the interview
-// repository (the one read path), never trusted from the client; the gated Einkunftsarten come
-// from the same answers — a Verkauf/möbliert-Anleger reads OFFEN with the gate named (ADR-033).
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common'
+import { Inject, Injectable } from '@nestjs/common'
+import { InvalidInputError, NotFoundError } from '../common/domain-error.js'
 import {
   deserialisiereVermietungFeld,
   gatedEinkunftsarten,
@@ -26,7 +18,6 @@ import { AuditService } from '../audit/audit.service.js'
 import { KENNZEICHNUNG_REPOSITORY, type KennzeichnungRepository } from '../kennzeichnung/kennzeichnung.repository.js'
 import {
   INTERVIEW_ANSWER_REPOSITORY,
-  type InterviewAnswerRecord,
   type InterviewAnswerRepository,
 } from '../interview/interview-answer.repository.js'
 import { VERMIETUNG_REPOSITORY, type VermietungsobjektRecord, type VermietungRepository } from './vermietung.repository.js'
@@ -39,15 +30,8 @@ import type {
   VermietungResponseDto,
   VermietungStandDto,
 } from './dto/vermietung-response.dto.js'
+import { answersAus } from '../interview/answers.js'
 
-/** Stored interview rows → the core's sparse Answers object. */
-function toAnswers(rows: InterviewAnswerRecord[]): Answers {
-  const answers: Record<string, string> = {}
-  for (const row of rows) answers[row.questionId] = row.value
-  return answers as Answers
-}
-
-/** A stored row → the core's VermietungsobjektDaten, via the ONE encoding in core/vermietung.ts. */
 function datenAusRecord(record: VermietungsobjektRecord) {
   return {
     id: record.id,
@@ -58,12 +42,11 @@ function datenAusRecord(record: VermietungsobjektRecord) {
   }
 }
 
-/** A wire field state → the core's VermietungFeldZustand; a 400 when `erfasst` lacks a valid value. */
 function zustandAusDto(dto: PutVermietungFeldDto): VermietungFeldZustand {
   if (dto.kind === 'offen') return { kind: 'offen' }
   if (dto.kind === 'unklar') return { kind: 'unklar' }
   if (dto.wert === undefined || !istGueltigerVermietungBetrag(dto.wert)) {
-    throw new BadRequestException('kind "erfasst" requires a non-negative integer `wert`.')
+    throw new InvalidInputError('FIELD_VALUE_INVALID', 'kind "erfasst" requires a non-negative integer `wert`.')
   }
   return { kind: 'erfasst', wert: dto.wert }
 }
@@ -104,19 +87,19 @@ function objektZuDto(record: VermietungsobjektRecord): VermietungsobjektDto {
   }
 }
 
+/** Application logic for the Vermietung guided mask + fold. */
 @Injectable()
 export class VermietungService {
   constructor(
     @Inject(VERMIETUNG_REPOSITORY) private readonly repository: VermietungRepository,
     @Inject(INTERVIEW_ANSWER_REPOSITORY) private readonly interviewRepository: InterviewAnswerRepository,
     @Inject(AuditService) private readonly auditService: AuditService,
-    // ADR-0052 §6: a value the user writes themselves is theirs — its marker (and any proposal) goes.
     @Inject(KENNZEICHNUNG_REPOSITORY) private readonly kennzeichnungen: KennzeichnungRepository,
   ) {}
 
   private async antworten(userId: string, steuerjahr: number): Promise<Answers> {
     const rows = await this.interviewRepository.findAllForUserAndYear(userId, steuerjahr)
-    return toAnswers(rows)
+    return answersAus(rows)
   }
 
   private async toResponse(userId: string, steuerjahr: number, records: VermietungsobjektRecord[]): Promise<VermietungResponseDto> {
@@ -160,7 +143,6 @@ export class VermietungService {
 
   async getState(userId: string, steuerjahr: number): Promise<VermietungResponseDto> {
     const records = await this.repository.listForUserAndYear(userId, steuerjahr)
-    // Only log an access when there's something to access (REQ-004.2's pattern).
     if (records.length > 0) {
       await this.auditService.append({ userId, action: 'READ', resource: 'vermietung' })
     }
@@ -177,11 +159,9 @@ export class VermietungService {
     const zustand = zustandAusDto(dto)
     const record = await this.repository.setFeld(userId, steuerjahr, objektId, feld, serialisiereVermietungFeld(zustand))
     if (record === null) {
-      throw new NotFoundException('No such Vermietungsobjekt for this account and tax year.')
+      throw new NotFoundError('VERMIETUNGSOBJEKT_NOT_FOUND', 'No such Vermietungsobjekt for this account and tax year.')
     }
     await this.kennzeichnungen.entferne(userId, steuerjahr, [kennzeichnungsKey('vermietung', feld, objektId)])
-    // `setzeVermietungFeld` is the core's own invariant guard (throws on an invalid `erfasst`) —
-    // defense in depth behind the explicit 400 in `zustandAusDto`.
     const daten = datenAusRecord(record)
     setzeVermietungFeld(daten, feld, zustand)
     const records = await this.repository.listForUserAndYear(userId, steuerjahr)
@@ -196,7 +176,7 @@ export class VermietungService {
   ): Promise<VermietungResponseDto> {
     const record = await this.repository.setAdresse(userId, steuerjahr, objektId, dto)
     if (record === null) {
-      throw new NotFoundException('No such Vermietungsobjekt for this account and tax year.')
+      throw new NotFoundError('VERMIETUNGSOBJEKT_NOT_FOUND', 'No such Vermietungsobjekt for this account and tax year.')
     }
     const records = await this.repository.listForUserAndYear(userId, steuerjahr)
     return this.toResponse(userId, steuerjahr, records)

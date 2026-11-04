@@ -10,7 +10,6 @@ import { ParseSteuerjahrPipe } from './parse-steuerjahr.pipe.js'
 @Controller('v1/steuerjahre')
 @UseGuards(UserContextGuard)
 export class CockpitController {
-  // Explicit token — see the comment on ProfileController's constructor.
   constructor(@Inject(CockpitService) private readonly cockpitService: CockpitService) {}
 
   @Get(':jahr/cockpit')
@@ -20,14 +19,6 @@ export class CockpitController {
     example: 2026,
     description: 'The tax year (Steuerjahr) to summarize — validated to a sensible window (2000..currentYear+1), never just "parses as a number".',
   })
-  // ApiExtraModels + a raw `schema` (rather than plain `type: CockpitSummaryDto`):
-  // the response can genuinely be the JSON literal `null` — "no tax year yet", the
-  // honest empty state (REQ-001), never a 404/204 — and @nestjs/swagger's `type:`
-  // shorthand has no way to express "this DTO, or null" for OpenAPI 3.0, which
-  // disallows sibling keywords (like `nullable`) directly next to a bare `$ref`.
-  // `allOf: [$ref]` is the standard indirection that makes `nullable: true` legal
-  // alongside it, and ApiExtraModels registers CockpitSummaryDto's schema so
-  // getSchemaPath can reference it here.
   @ApiExtraModels(CockpitSummaryDto, CockpitStandDto)
   @ApiOkResponse({
     description:

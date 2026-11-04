@@ -1,22 +1,7 @@
-// Splash (F: splash.html) — the SteuerEule brand draws itself in on first paint, then auto-
-// advances after ~2.4s; the whole screen is one tap target so anyone can skip straight through.
-// `prefers-reduced-motion` is honored: the mark, wordmark and greeting simply appear at rest —
-// no `Animated.timing` ever runs (design-system CLAUDE.md, "immer hinter prefers-reduced-motion").
-//
-// This screen decides nothing about *where* it leads — it only signals "done displaying" via
-// `onAdvance`. There is no session-detection mechanism yet to tell a new visitor from a returning
-// one (that's REQ-009, session storage, still pending), so today `onAdvance` always leads to the
-// same next stage the caller (App.tsx) wires up. A personalised greeting for returning users
-// (the DS reference reads a stashed name from `localStorage`) is intentionally not ported —
-// ADR-0008 forbids client-side persistence of profile data, and without a live session there is
-// nothing honest to greet someone by.
 import { useEffect, useRef } from 'react'
 import { Animated, Easing, Pressable, Text, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useTheme, type UiTheme } from '@steuereule/ui'
-// `duration`/`easing` are mode-invariant motion tokens that `UiTheme` (colour + scales for the
-// active mode) doesn't carry — read straight from @steuereule/tokens rather than adding a
-// cross-cutting field to the shared theme for one screen's animation.
 import { theme as motionTokens } from '@steuereule/tokens'
 import { APP_NS } from '../i18n/resources'
 import { OwlMark } from '../marks/OwlMark'
@@ -28,13 +13,6 @@ export interface SplashScreenProps {
 
 const AUTO_ADVANCE_MS = 2400
 
-// DS reference (splash.html `au-blinzeln`): a single 0.4s ease-in-out blink, lids fully closed
-// (scaleY 1) at 45% of the duration and back open (scaleY 0) by 100% — not symmetric, so it's
-// two `Animated.timing` legs rather than one. This is the one ease-in-out beat in an otherwise
-// `feder`-eased entrance, and it's local to the blink only — not worth a shared motion token for
-// a single split used nowhere else. It fires at 1.3s in the reference — AFTER `fx-wort` (0.9s)
-// and `fx-gruss` (1.1s) — so it's the LAST beat of the entrance (head -> glasses -> wordmark ->
-// greeting -> blink), coincident with the greeting's "Zack" pop, not slotted before the wordmark.
 const BLINK_DURATION_MS = 400
 const BLINK_CLOSE_MS = Math.round(BLINK_DURATION_MS * 0.45)
 const BLINK_OPEN_MS = BLINK_DURATION_MS - BLINK_CLOSE_MS
@@ -45,24 +23,13 @@ export function SplashScreen({ onAdvance }: SplashScreenProps) {
   const reducedMotion = useReducedMotion()
   const styles = makeStyles(t)
 
-  // Every value starts at 1 (fully drawn) so the very first paint is always the static, at-rest
-  // brand — reduced-motion users never see anything else. Only when we learn motion is allowed do
-  // we rewind to 0 and play the entrance once.
   const headAnim = useRef(new Animated.Value(1)).current
   const glassesAnim = useRef(new Animated.Value(1)).current
   const wordAnim = useRef(new Animated.Value(1)).current
   const greetAnim = useRef(new Animated.Value(1)).current
-  // The lid is the odd one out: it doesn't animate "undrawn -> drawn" like the other layers, it
-  // animates "open -> shut -> open" (a blink). Its rest value is 0 (`scaleY(0)`, retracted, eyes
-  // OPEN — the DS reference's at-rest state), which is already correct for the very first paint
-  // and for reduced motion, so unlike the others there's nothing to reset before the entrance.
   const lidAnim = useRef(new Animated.Value(0)).current
   const hasPlayed = useRef(false)
 
-  // A tap-to-skip and the auto-advance timer both want to call `onAdvance` — exactly once,
-  // whichever happens first. `advance` guards against the second firing (e.g. the timer landing
-  // just after a skip tap); it reads the latest `onAdvance` via a ref so the effect below never
-  // needs to re-subscribe when the prop identity changes.
   const onAdvanceRef = useRef(onAdvance)
   onAdvanceRef.current = onAdvance
   const advancedRef = useRef(false)
@@ -85,10 +52,6 @@ export function SplashScreen({ onAdvance }: SplashScreenProps) {
     const stage = (value: Animated.Value) =>
       Animated.timing(value, { toValue: 1, duration: motionTokens.duration.auftritt, easing: feder, useNativeDriver: false })
     const blinkEasing = Easing.inOut(Easing.ease)
-    // The blink plays once, as the LAST beat of the entrance — after the wordmark and the
-    // greeting — matching the DS reference's ordering (head -> glasses -> wordmark -> greeting ->
-    // blink). Built inline, after `stage(greetAnim)` in source order, so the two legs are also the
-    // last two `Animated.timing` calls constructed (see SplashScreen.test.tsx's ordering assertion).
     Animated.sequence([
       stage(headAnim),
       stage(glassesAnim),
@@ -102,8 +65,7 @@ export function SplashScreen({ onAdvance }: SplashScreenProps) {
   useEffect(() => {
     const id = setTimeout(advance, AUTO_ADVANCE_MS)
     return () => clearTimeout(id)
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `advance` reads onAdvance via a ref
-    // by design, precisely so this timer is set up once and never reset by prop identity churn.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const headStyle = {
@@ -114,10 +76,6 @@ export function SplashScreen({ onAdvance }: SplashScreenProps) {
     opacity: glassesAnim,
     transform: [{ translateY: glassesAnim.interpolate({ inputRange: [0, 1], outputRange: [-16, 0] }) }],
   }
-  // `transformOrigin: 'center top'` (RN 0.74+ / react-native-web 0.20, both in use here) makes the
-  // lid hinge from its top edge as it scales, like a real eyelid closing downward over the pupil —
-  // the DS reference's `.au-lid { transform-origin: center top }`. Scaling from the element centre
-  // (RN's default) would close the lid from the middle out, which reads wrong.
   const lidStyle = {
     transform: [{ scaleY: lidAnim }],
     transformOrigin: 'center top' as const,

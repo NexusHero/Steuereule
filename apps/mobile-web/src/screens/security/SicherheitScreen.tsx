@@ -1,16 +1,3 @@
-// Sicherheit (REQ-007) — opt-in TOTP 2FA, reached from Profil (never a top-level tab,
-// same drill-down as Datenschutz). The server does the enforcing (better-auth's
-// `two-factor` plugin: enable → one generated code confirms → the factor is live; disable
-// requires the password again). This screen is only the affordance: it reads the current
-// state from the shared session seam and drives `useTwoFactor`'s calls — it never decides
-// "is 2FA on" from local state (that would let the UI promise a factor the server has
-// already revoked).
-//
-// `twoFactorEnabled` is read from the session user with a narrow cast: better-auth's client
-// plugin declares `$InferServerPlugin: {}`, so the client-side `useSession()` type does not
-// carry the server's `user.twoFactorEnabled` field — the *value* is present at runtime
-// (the plugin returns it), only the client type is blind to it. The cast is scoped to this
-// one field and asserted as a boolean, never a structural assumption about the whole user.
 import { useEffect, useState } from 'react'
 import { ScrollView, View, Text, Pressable, ActivityIndicator } from 'react-native'
 import { useTranslation } from 'react-i18next'
@@ -44,8 +31,6 @@ export function SicherheitScreen({ onZurueck }: SicherheitScreenProps) {
   const [password, setPassword] = useState('')
   const [code, setCode] = useState('')
   const [status, setStatus] = useState<string | null>(null)
-  // Passkey list state (REQ-007 passkey half, ticket 14). `null` = not yet loaded, `string` is
-  // held in `passkeyError`; the list itself is `PasskeyInfo[]`.
   const [passkeys, setPasskeys] = useState<PasskeyInfo[] | null>(null)
   const [passkeyError, setPasskeyError] = useState<string | null>(null)
   const [passkeyStatus, setPasskeyStatus] = useState<string | null>(null)
@@ -54,8 +39,6 @@ export function SicherheitScreen({ onZurueck }: SicherheitScreenProps) {
   const twoFactorEnabled = sessionState.status === 'signed-in' ? readTwoFactorEnabled(sessionState.session) : false
   const styles = makeSicherheitStyles(t)
 
-  // Load the passkey list once per sign-in state (not per render — `passkey.list` closes over a
-  // stable client, so its identity changing between renders is irrelevant to correctness).
   useEffect(() => {
     if (sessionState.status !== 'signed-in') return
     let cancelled = false
@@ -80,8 +63,6 @@ export function SicherheitScreen({ onZurueck }: SicherheitScreenProps) {
     if (passkeyBusy) return
     setPasskeyBusy(true)
     setPasskeyError(null)
-    // Empty name: the OS/authenticator UI labels the credential; the plugin stores no label when
-    // none is supplied (see usePasskey — the server trims and drops whitespace-only names).
     const error = await passkey.add('')
     setPasskeyBusy(false)
     if (error) {
@@ -275,8 +256,6 @@ export function SicherheitScreen({ onZurueck }: SicherheitScreenProps) {
   )
 }
 
-/** Reads the server's `user.twoFactorEnabled` flag off the session user — scoped to this one
- *  field (see the module header for why a cast is needed at all). */
 function readTwoFactorEnabled(session: unknown): boolean {
   if (typeof session !== 'object' || session === null) return false
   const user = (session as { user?: unknown }).user

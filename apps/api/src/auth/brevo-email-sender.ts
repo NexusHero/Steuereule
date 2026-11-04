@@ -1,10 +1,3 @@
-// Production EmailSender (#83, ADR-0012 §6): Brevo's transactional API — EU-hosted
-// (Sendinblue SAS, France), so the address and the token-bearing link never leave
-// the EU. One documented HTTPS call (POST /v3/smtp/email), so plain `fetch` rather
-// than Brevo's SDK: the SDK would add a dependency tree for a single request.
-//
-// Delivery failures throw: better-auth surfaces them on the sign-up/resend call, and
-// a swallowed failure would leave the user waiting for a mail that never comes.
 import type { EmailSender, VerificationEmail } from './email-sender.js'
 
 export const BREVO_SEND_URL = 'https://api.brevo.com/v3/smtp/email'
@@ -17,6 +10,7 @@ export interface BrevoConfig {
 
 type Fetch = (url: string, init: RequestInit) => Promise<Pick<Response, 'ok' | 'status'>>
 
+/** Production EmailSender: Brevo's transactional API — EU-hosted, so the address and the token-bearing link never leave the EU. */
 export class BrevoEmailSender implements EmailSender {
   constructor(
     private readonly config: BrevoConfig,
@@ -59,7 +53,6 @@ export class BrevoEmailSender implements EmailSender {
       }),
     })
     if (!response.ok) {
-      // Status only — Brevo's error body can echo the recipient address back.
       throw new Error(`Brevo rejected the email (HTTP ${response.status})`)
     }
   }
@@ -73,13 +66,6 @@ function escapeHtml(value: string): string {
     .replaceAll('"', '&quot;')
 }
 
-/**
- * `undefined` means "no real provider configured": the dev/CI LoggingEmailSender is
- * used. In production that is a boot failure — an account flow whose verification
- * mail only reaches a log is not a working flow. `EMAIL_DELIVERY=log` records the
- * opposite as a deliberate choice for the local production-shaped stack (same shape
- * as `TRUSTED_PROXIES=none`), never as an omission.
- */
 export function resolveBrevoConfig(env: NodeJS.ProcessEnv = process.env): BrevoConfig | undefined {
   if (env.EMAIL_DELIVERY === 'log') return undefined
   const apiKey = env.BREVO_API_KEY?.trim()

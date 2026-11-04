@@ -14,7 +14,7 @@ export class FakeAuditRepository implements AuditRepository {
   findOwnRows(userId: string): Promise<AuditLogRow[]> {
     const rows = this.rows
       .filter((row) => row.userId === userId)
-      .map(({ action, resource, createdAt }) => ({ action, resource, createdAt }))
+      .map(({ action, resource, source, createdAt }) => ({ action, resource, source: source ?? null, createdAt }))
     return Promise.resolve(rows)
   }
 

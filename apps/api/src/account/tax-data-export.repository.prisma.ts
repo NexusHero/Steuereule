@@ -3,7 +3,6 @@ import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypte
 import type { ExportTaxDataEntry, ExportTaxDataValue } from './export/export-document.js'
 import type { TaxDataExportRepository } from './tax-data-export.repository.js'
 
-// Technical keys carry no information about the person and would only leak internals.
 const OMITTED_FIELDS = new Set(['id', 'userId', 'personAUserId', 'personBUserId', 'steuerjahr'])
 
 type Row = Record<string, unknown> & { steuerjahr?: number | null }
@@ -19,12 +18,11 @@ export function toExportEntry(bereich: string, row: Row): ExportTaxDataEntry {
 
 @Injectable()
 export class PrismaTaxDataExportRepository implements TaxDataExportRepository {
-  // ENCRYPTED_PRISMA so every @encrypted column arrives decrypted (ADR-0008).
   constructor(@Inject(ENCRYPTED_PRISMA) private readonly prisma: EncryptedPrismaClient) {}
 
   async findAllForUser(userId: string): Promise<ExportTaxDataEntry[]> {
     const where = { userId }
-    const [steuerjahre, antworten, belege, lstb, ch, rente, kapital, vermietung, bescheide, kennzeichnungen, stammdaten, kinder, kopplungen, eulenEinstellung, eulenVerwuerfe] =
+    const [steuerjahre, antworten, belege, lstb, ch, rente, kapital, vermietung, bescheide, kennzeichnungen, jahresuebernahmen, stammdaten, kinder, kopplungen, eulenEinstellung, eulenVerwuerfe] =
       await Promise.all([
         this.prisma.taxYear.findMany({ where }),
         this.prisma.interviewAnswer.findMany({ where }),
@@ -36,6 +34,7 @@ export class PrismaTaxDataExportRepository implements TaxDataExportRepository {
         this.prisma.vermietungsobjekt.findMany({ where }),
         this.prisma.bescheid.findMany({ where }),
         this.prisma.kennzeichnung.findMany({ where }),
+        this.prisma.jahresuebernahme.findMany({ where }),
         this.prisma.stammdaten.findMany({ where }),
         this.prisma.kind.findMany({ where }),
         this.prisma.steuerjahrKopplung.findMany({
@@ -56,13 +55,13 @@ export class PrismaTaxDataExportRepository implements TaxDataExportRepository {
       ...vermietung.map((row) => toExportEntry('Vermietungsobjekt', row)),
       ...bescheide.map((row) => toExportEntry('Steuerbescheid', row)),
       ...kennzeichnungen.map((row) => toExportEntry('Herkunft und Bestätigung', row)),
+      ...jahresuebernahmen.map((row) => toExportEntry('Jahresübernahme', row)),
       ...stammdaten.map((row) => toExportEntry('Erklärungs-Stammdaten', row)),
       ...kinder.map((row) => toExportEntry('Kind', row)),
       ...kopplungen.map((row) => toExportEntry('Steuerjahr-Kopplung', row)),
       ...eulenEinstellung.map((row) => toExportEntry('Eulen-Modus-Einstellung', row)),
       ...eulenVerwuerfe.map((row) => toExportEntry('Eulen-Modus-Kartenverwurf', row)),
     ]
-    // Stable order: by tax year (yearless Belege last), then area.
     return entries.sort(
       (a, b) =>
         (a.steuerjahr ?? Number.MAX_SAFE_INTEGER) - (b.steuerjahr ?? Number.MAX_SAFE_INTEGER) ||

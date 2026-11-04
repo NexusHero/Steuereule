@@ -1,11 +1,3 @@
-// ADR-0052 §6/§7 — die Kennzeichnungs-Schicht aus ADR-0049, verallgemeinert auf jede Maske: jeder
-// Wert, den nicht der Nutzer selbst eingetragen hat (Jahresübernahme, Assistent, Beleg), trägt seine
-// Herkunft und bleibt unbestätigt, bis der Nutzer seine Anlage bestätigt. Kein Eintrag heißt: der
-// Nutzer hat den Wert selbst eingetragen (wie `Posten.unbestaetigt`: absent = bestätigt).
-//
-// Pure, no I/O (ADR-0004). Werte sind die gespeicherten Feld-Strings der Masken (`null` = offen),
-// damit ein Vergleich nie an Formatierung scheitert.
-
 export type Herkunft =
   | { readonly art: 'nutzer' }
   | { readonly art: 'uebernahme'; readonly vorjahr: number }
@@ -21,9 +13,7 @@ export interface Kennzeichnung {
   readonly key: string
   readonly herkunft: Herkunft
   readonly bestaetigt: boolean
-  /** Der Wert, auf den sich die Kennzeichnung bezieht (zum Erkennen, ob er sich geändert hat). */
   readonly wert: string | null
-  /** ADR-0052 §7: ein Wert, der einen geschützten Wert nicht überschreiben durfte. */
   readonly vorschlag: Vorschlag | null
 }
 
@@ -46,10 +36,8 @@ const ANLAGE_JE_MASKE: Readonly<Record<Maske, Anlage>> = {
   kind: 'anlageKind',
 }
 
-/** Profil und Stammdaten gelten für alle Jahre; ihre Kennzeichnungen liegen unter diesem Jahr. */
 export const JAHRESUNABHAENGIG = 0
 
-/** `lstb.bruttoarbeitslohn`, oder mit Instanz (ein Objekt, ein Kind) `vermietung:<id>.mieteinnahmen`. */
 export function kennzeichnungsKey(maske: Maske, feld: string, instanz?: string): string {
   if (feld === '' || feld.includes('.') || (instanz !== undefined && (instanz === '' || instanz.includes('.')))) {
     throw new RangeError(`kennzeichnungsKey: invalid field "${feld}" or instance "${instanz ?? ''}"`)
@@ -80,9 +68,7 @@ export function istJahresunabhaengig(key: string): boolean {
 }
 
 export type Schreibentscheidung =
-  /** Wert schreiben; `kennzeichnung: null` heißt: Kennzeichnung entfernen (jetzt Nutzer-Wert). */
   | { readonly art: 'schreiben'; readonly kennzeichnung: Kennzeichnung | null }
-  /** Wert NICHT schreiben, nur den Vorschlag ablegen. */
   | { readonly art: 'vorschlag'; readonly kennzeichnung: Kennzeichnung }
   | { readonly art: 'unveraendert' }
 
@@ -94,12 +80,6 @@ export interface Schreibversuch {
   readonly herkunft: Herkunft
 }
 
-/**
- * ADR-0052 §7 — der Nutzer gewinnt: ein selbst eingetragener (keine Kennzeichnung, aber ein Wert —
- * auch „unklar“) oder bestätigter Wert wird nie überschrieben; der neue Wert wird ein Vorschlag, der
- * neueste ersetzt einen älteren. Ein unbestätigter Wert hat noch niemanden, der für ihn einsteht,
- * und wird ersetzt.
- */
 export function entscheideSchreibung({ key, bestehend, aktuellerWert, neuerWert, herkunft }: Schreibversuch): Schreibentscheidung {
   if (herkunft.art === 'nutzer') return { art: 'schreiben', kennzeichnung: null }
   if (neuerWert === aktuellerWert) return { art: 'unveraendert' }
@@ -111,24 +91,20 @@ export function entscheideSchreibung({ key, bestehend, aktuellerWert, neuerWert,
   return { art: 'schreiben', kennzeichnung: { key, herkunft, bestaetigt: false, vorschlag: null, wert: neuerWert } }
 }
 
-/** Je Anlage mit mindestens einem unbestätigten Wert ein Vorprüfungs-Schlüssel, in Anlagen-Reihenfolge. */
 export function fehlendeBestaetigungen(kennzeichnungen: readonly Kennzeichnung[]): string[] {
   const offen = new Set(kennzeichnungen.filter((k) => !k.bestaetigt).map((k) => anlageVon(k.key)))
   return ANLAGEN.filter((a) => offen.has(a)).map((a) => `unbestaetigt.${a}`)
 }
 
-/** Bestätigt alle Werte einer Anlage; die Herkunft bleibt (ADR-0049 §2). */
 export function bestaetigeAnlage(kennzeichnungen: readonly Kennzeichnung[], anlage: Anlage): Kennzeichnung[] {
   return kennzeichnungen.map((k) => (anlageVon(k.key) === anlage && !k.bestaetigt ? { ...k, bestaetigt: true } : k))
 }
 
-/** Der Nutzer wählt den Vorschlag — damit ist er bestätigt; die Herkunft ist die des Vorschlags. */
 export function nimmVorschlagAn(k: Kennzeichnung): Kennzeichnung {
   if (k.vorschlag === null) throw new RangeError(`nimmVorschlagAn: "${k.key}" has no proposal`)
   return { key: k.key, herkunft: k.vorschlag.herkunft, bestaetigt: true, wert: k.vorschlag.wert, vorschlag: null }
 }
 
-/** Verwirft den Vorschlag; bleibt nichts zu kennzeichnen (Nutzer-Wert), entfällt die Kennzeichnung. */
 export function verwirfVorschlag(k: Kennzeichnung): Kennzeichnung | null {
   if (k.herkunft.art === 'nutzer') return null
   return { ...k, vorschlag: null }

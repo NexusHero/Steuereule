@@ -1,30 +1,16 @@
-// Application logic for the Kapital guided mask + depot-Einordnung + the § 32d Abs. 6
-// Günstigerprüfung (ticket 10.5, product ADR-032, Anlage KAP). userId+steuerjahr-scoped
-// read/write, then the honest-state + fold mapping. Trusts that `userId` was produced by
-// UserContextGuard + @RequiresAccount() (never accepts it from a param/body) — mirrors
-// LstbService/RenteService. The fold is NEVER computed here — @steuereule/core's
-// `kapitalAlsKernposten`/`kapitalStand`/`guenstigerpruefung`/`ordneKapDepotEin`/
-// `deserialisiereKapitalFeld`/`serialisiereKapitalFeld`/`setzeKapitalFeld` are imported,
-// never reimplemented (ADR-014/048 determinism boundary).
-//
-// The depot kind (Deutscher / Ausländischer Broker / Krypto) is DERIVED from the persisted
-// interview answer `kap-depot` (read through the interview repository — one source, no
-// denormalized copy). The Günstigerprüfung applies ONLY where Abgeltungsteuer was actually
-// withheld (deutscher-broker); an ausländischer Broker is a KAP-Pflicht (no tax withheld), and
-// Krypto is gated — both named honestly, never a fabricated Abgeltung (ADR-032).
-import { BadRequestException, Inject, Injectable } from '@nestjs/common'
+import { Inject, Injectable } from '@nestjs/common'
+import { InvalidInputError } from '../common/domain-error.js'
 import {
   LEERES_KAPITAL,
-  LEERES_LSTB,
   angestellteAusDaten,
   deserialisiereKapitalFeld,
-  deserialisiereLstbFeld,
   gatedEinkunftsarten,
   guenstigerpruefung,
   istGueltigerKapitalBetrag,
   kapitalAlsKernposten,
   kapitalStand,
   ordneKapDepotEin,
+  progressionsvorbehaltAus,
   serialisiereKapitalFeld,
   setzeKapitalFeld,
   type Answers,
@@ -36,7 +22,6 @@ import {
   type KapitalFeldZustand,
   type KapitalDepotEinordnung,
   type KirchensteuerFaktor,
-  type LstbDaten,
   type Posten,
   kennzeichnungsKey,
 } from '@steuereule/core'
@@ -46,16 +31,16 @@ import {
   INTERVIEW_ANSWER_REPOSITORY,
   type InterviewAnswerRepository,
 } from '../interview/interview-answer.repository.js'
-import { LSTB_REPOSITORY, type LstbRecord, type LstbRepository } from '../lstb/lstb.repository.js'
+import { LSTB_REPOSITORY, type LstbRepository } from '../lstb/lstb.repository.js'
 import { TAX_YEAR_REPOSITORY, type TaxYearRepository } from '../cockpit/tax-year.repository.js'
-import { progressionsvorbehaltAus } from '../veranlagungsartenvergleich/veranlagungsartenvergleich.service.js'
 import { KAPITAL_REPOSITORY, type KapitalRecord, type KapitalRepository } from './kapital.repository.js'
 import type { PutKapitalFeldDto, KapitalFeldDto } from './dto/kapital-feld.dto.js'
 import type { DepotEinordnungDto, KapitalPostenDto, KapitalResponseDto, KapitalStandDto } from './dto/kapital-response.dto.js'
 import type { GuenstigerpruefungDto, GuenstigerpruefungHerkunftDto } from './dto/guenstigerpruefung-response.dto.js'
 import type { UnschaerfeDto } from '../veranlagungsartenvergleich/dto/veranlagungsartenvergleich-response.dto.js'
+import { answersAus } from '../interview/answers.js'
+import { lstbDatenAus } from '../lstb/lstb-daten.js'
 
-/** A stored row (or none) → the core's KapitalDaten, via the ONE encoding in core/kapital.ts. */
 function datenAusRecord(record: KapitalRecord | null): KapitalDaten {
   if (record === null) return LEERES_KAPITAL
   return {
@@ -67,29 +52,11 @@ function datenAusRecord(record: KapitalRecord | null): KapitalDaten {
   }
 }
 
-/** A stored LStB row (or none) → the core's LstbDaten, via the ONE encoding in core/lstb.ts. */
-function lstbAusRecord(record: LstbRecord | null): LstbDaten {
-  if (record === null) return LEERES_LSTB
-  return {
-    bruttoarbeitslohn: deserialisiereLstbFeld(record.bruttoarbeitslohn),
-    lohnsteuer: deserialisiereLstbFeld(record.lohnsteuer),
-    sozialversicherung: deserialisiereLstbFeld(record.sozialversicherung),
-  }
-}
-
-/** Stored interview rows → the core's sparse Answers object. */
-function toAnswers(rows: { questionId: string; value: string }[]): Answers {
-  const answers: Record<string, string> = {}
-  for (const row of rows) answers[row.questionId] = row.value
-  return answers as Answers
-}
-
-/** A wire field state → the core's KapitalFeldZustand; a 400 when `erfasst` lacks a valid value. */
 function zustandAusDto(dto: PutKapitalFeldDto): KapitalFeldZustand {
   if (dto.kind === 'offen') return { kind: 'offen' }
   if (dto.kind === 'unklar') return { kind: 'unklar' }
   if (dto.wert === undefined || !istGueltigerKapitalBetrag(dto.wert)) {
-    throw new BadRequestException('kind "erfasst" requires a non-negative integer `wert`.')
+    throw new InvalidInputError('FIELD_VALUE_INVALID', 'kind "erfasst" requires a non-negative integer `wert`.')
   }
   return { kind: 'erfasst', wert: dto.wert }
 }
@@ -142,7 +109,6 @@ function standZuDto(stand: Berechnungsstand): KapitalStandDto {
   }
 }
 
-/** The core's result → the flat wire DTO (kind + optional fields). */
 function guenstigerpruefungZuDto(ergebnis: GuenstigerpruefungKern): GuenstigerpruefungDto {
   const unschaerfe: UnschaerfeDto =
     ergebnis.unschaerfe.kind === 'bestimmt'
@@ -173,6 +139,7 @@ function guenstigerpruefungZuDto(ergebnis: GuenstigerpruefungKern): Guenstigerpr
   }
 }
 
+/** Application logic for the Kapital guided mask + depot-Einordnung + the § 32d Abs. 6 Günstigerprüfung. */
 @Injectable()
 export class KapitalService {
   constructor(
@@ -181,13 +148,12 @@ export class KapitalService {
     @Inject(LSTB_REPOSITORY) private readonly lstbRepository: LstbRepository,
     @Inject(TAX_YEAR_REPOSITORY) private readonly taxYearRepository: TaxYearRepository,
     @Inject(AuditService) private readonly auditService: AuditService,
-    // ADR-0052 §6: a value the user writes themselves is theirs — its marker (and any proposal) goes.
     @Inject(KENNZEICHNUNG_REPOSITORY) private readonly kennzeichnungen: KennzeichnungRepository,
   ) {}
 
   private async antworten(userId: string, steuerjahr: number): Promise<Answers> {
     const rows = await this.interviewRepository.findAllForUserAndYear(userId, steuerjahr)
-    return toAnswers(rows)
+    return answersAus(rows)
   }
 
   private async toResponse(userId: string, steuerjahr: number, record: KapitalRecord | null): Promise<KapitalResponseDto> {
@@ -215,7 +181,6 @@ export class KapitalService {
 
   async getState(userId: string, steuerjahr: number): Promise<KapitalResponseDto> {
     const record = await this.repository.findForUserAndYear(userId, steuerjahr)
-    // Only log an access when there's something to access (REQ-004.2's pattern).
     if (record !== null) {
       await this.auditService.append({ userId, action: 'READ', resource: 'kapital' })
     }
@@ -226,31 +191,18 @@ export class KapitalService {
     const record = await this.repository.findForUserAndYear(userId, steuerjahr)
     const daten = datenAusRecord(record)
     const zustand = zustandAusDto(dto)
-    // `setzeKapitalFeld` is the core's own invariant guard (throws on an invalid `erfasst`) —
-    // defense in depth behind the explicit 400 in `zustandAusDto`.
     setzeKapitalFeld(daten, feld, zustand)
     const next = await this.repository.setFeld(userId, steuerjahr, feld, serialisiereKapitalFeld(zustand))
     await this.kennzeichnungen.entferne(userId, steuerjahr, [kennzeichnungsKey('kapital', feld)])
     return this.toResponse(userId, steuerjahr, next)
   }
 
-  /**
-   * The § 32d Abs. 6 EStG Günstigerprüfung, gathered + gated here and computed ONLY by the core
-   * (`guenstigerpruefung`, ADR-0034-Muster). The honest gates first (ADR-032): the comparison
-   * applies only where Abgeltungsteuer was withheld (deutscher-broker) AND Kapitalerträge are
-   * captured. `uebrigesZvE` is the settled non-capital income (Einnahmen-Basis from `berechne`,
-   * layer 3 open). The Veranlagungsart is fixed to Einzelveranlagung in M1 — the Sparerpauschbetrag
-   * (§ 20 Abs. 9: 1.000 € einzel / 2.000 € zusammen) and the Splitting-Tarif are the later
-   * Zusammenveranlagung slice's inputs, the same "not yet collected" honesty as the
-   * Veranlagungsartenvergleich's `verheiratet` flag (never fabricated here).
-   */
   async getGuenstigerpruefung(
     userId: string,
     steuerjahr: number,
     kirchensteuerFaktor: KirchensteuerFaktor,
   ): Promise<GuenstigerpruefungDto | null> {
     const record = await this.taxYearRepository.findByUserAndYear(userId, steuerjahr)
-    // Null propagates as-is — "no tax year yet" is the honest empty state (same as Cockpit).
     if (!record) return null
 
     const [kapitalRecord, lstbRecord, interviewRows] = await Promise.all([
@@ -259,12 +211,10 @@ export class KapitalService {
       this.interviewRepository.findAllForUserAndYear(userId, steuerjahr),
     ])
 
-    const answers = toAnswers(interviewRows)
+    const answers = answersAus(interviewRows)
     const depot = ordneKapDepotEin(answers['kap-depot'])
     const daten = datenAusRecord(kapitalRecord)
 
-    // Honest gates first — the Günstigerprüfung names why it does not apply rather than
-    // manufacturing an Abgeltung that never happened (ADR-032).
     if (depot.kind === 'auslaendischer-broker') {
       return { kind: 'nicht-anwendbar', grund: 'keine-abgeltung-einbehalten' }
     }
@@ -278,8 +228,7 @@ export class KapitalService {
       return { kind: 'nicht-anwendbar', grund: 'keine-kapitalertraege' }
     }
 
-    const uebrigesZvE = angestellteAusDaten(lstbAusRecord(lstbRecord), answers).einnahmen
-    // M1: Einzelveranlagung — see the method doc (the Veranlagung choice is a later slice's input).
+    const uebrigesZvE = angestellteAusDaten(lstbDatenAus(lstbRecord), answers).einnahmen
     const veranlagung = 'einzel' as const
 
     const ergebnis = guenstigerpruefung({

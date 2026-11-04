@@ -1426,6 +1426,104 @@
         ]
       }
     },
+    "/v1/assistenten": {
+      "get": {
+        "operationId": "AssistentenController_listConnected",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "List of connected AI assistants (ADR-0052 §10).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/VerbundenerAssistentDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Requires signed-in account."
+          },
+          "403": {
+            "description": "Assistants cannot manage assistant connections."
+          }
+        },
+        "tags": [
+          "assistenten"
+        ]
+      }
+    },
+    "/v1/assistenten/{clientId}": {
+      "delete": {
+        "operationId": "AssistentenController_revoke",
+        "parameters": [
+          {
+            "name": "clientId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": "client_xyz",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Revokes connection to the assistant with immediate effect.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevokeAssistentResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Requires signed-in account."
+          },
+          "403": {
+            "description": "Assistants cannot revoke connections."
+          }
+        },
+        "tags": [
+          "assistenten"
+        ]
+      }
+    },
+    "/v1/oauth/client-info": {
+      "get": {
+        "operationId": "AssistentenController_getClientInfo",
+        "parameters": [
+          {
+            "name": "clientId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "example": "client_xyz",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Public client metadata for the OAuth consent screen.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OauthClientInfoDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "assistenten"
+        ]
+      }
+    },
     "/v1/device/code": {
       "post": {
         "operationId": "DeviceController_requestCode",
@@ -4869,6 +4967,72 @@
           "profile",
           "taxData",
           "accessLog"
+        ]
+      },
+      "VerbundenerAssistentDto": {
+        "type": "object",
+        "properties": {
+          "clientId": {
+            "type": "string",
+            "example": "client_xyz123"
+          },
+          "name": {
+            "type": "string",
+            "example": "Claude Desktop"
+          },
+          "verbundenSeit": {
+            "type": "string",
+            "example": "2026-11-03T18:00:00.000Z"
+          },
+          "zuletztGenutzt": {
+            "type": "string",
+            "example": "2026-11-03T19:30:00.000Z",
+            "nullable": true
+          }
+        },
+        "required": [
+          "clientId",
+          "name",
+          "verbundenSeit"
+        ]
+      },
+      "RevokeAssistentResponseDto": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          }
+        },
+        "required": [
+          "success"
+        ]
+      },
+      "OauthClientInfoDto": {
+        "type": "object",
+        "properties": {
+          "clientId": {
+            "type": "string",
+            "example": "client_xyz123"
+          },
+          "name": {
+            "type": "string",
+            "example": "Claude Desktop"
+          },
+          "uri": {
+            "type": "string",
+            "example": "https://claude.ai",
+            "nullable": true
+          },
+          "icon": {
+            "type": "string",
+            "example": null,
+            "nullable": true
+          }
+        },
+        "required": [
+          "clientId",
+          "name"
         ]
       },
       "DeviceCodeResponseDto": {

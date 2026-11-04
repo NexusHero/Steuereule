@@ -1,15 +1,10 @@
-// `type:` given explicitly on every @ApiProperty() — see PutProfileDto's comment for
-// why (esbuild/tsx emit no `design:*` metadata, so @nestjs/swagger can't infer these).
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import { IsIn, IsNotEmpty, IsOptional, IsString, Matches } from 'class-validator'
 import { BELEGARTEN, type Belegart } from '@steuereule/core'
 
-// The exact date shape @steuereule/core's `jahrAusDatum` parses (`^\d{4}-\d{2}-\d{2}$`) —
-// a date-only ISO yyyy-mm-dd, no time component, no other separator. Keeping the DTO and
-// the core parser on the same regex means a value that reaches the core can only be one
-// the core can actually read the year from (ADR-0033's "one rule, not two copies").
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
 
+/** `type:` given explicitly on every. */
 export class CreateBelegDto {
   @ApiProperty({
     type: String,

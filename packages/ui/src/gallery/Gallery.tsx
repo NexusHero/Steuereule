@@ -1,6 +1,3 @@
-// Zustands-Galerie — the Storybook replacement required before merge (tech-direktion / ADR-050):
-// every component in its variants and states on one scrollable screen. Mounted by the galerie/
-// mobile-web app; here it doubles as a living reference and a render smoke test.
 import { ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { type ReactNode } from 'react'
 import { useTheme } from '../theme/useTheme'

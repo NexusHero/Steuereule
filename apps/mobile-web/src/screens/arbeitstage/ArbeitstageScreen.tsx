@@ -1,13 +1,3 @@
-// Arbeitstage-Assistent-Screen (M4, ticket 08 / ticket 15) — calendar logic from the core,
-// never free text. The user selects their work-week pattern and enters vacation/sick/home-office
-// days; @steuereule/core's `berechneWerktage` derives the weekday/commute-day count from the
-// actual calendar (how many of each chosen weekday fall in the tax year), instead of trusting a
-// hand-typed "220 Tage" figure the old prototype collected (ADR-0031 §2's `tage`, #337).
-//
-// HONESTY BOUNDARY (ADR-0032): gesetzliche Feiertage are NOT subtracted — `werktage.ts` says so
-// plainly. The figures are named `werktage`/`pendlertage` ("vor Feiertagen"), an upper bound, and
-// this screen says so on-screen rather than promising `arbeitstage`. There is NO persistence this
-// slice (no werktage endpoint/model exists) — so there is no save button, only the honest result.
 import { useState } from 'react'
 import { ScrollView, View, Text, Pressable, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
@@ -29,7 +19,6 @@ export function ArbeitstageScreen({ onDone = () => {}, onBack, taxYear = CURRENT
   const styles = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
 
-  // Work-week pattern: Mo–Fr by default (the ordinary employee case).
   const [werktage, setWerktage] = useState<readonly IsoWochentag[]>([1, 2, 3, 4, 5])
   const [urlaub, setUrlaub] = useState('')
   const [krank, setKrank] = useState('')
@@ -112,8 +101,6 @@ function Ergebnis({ ergebnis }: { readonly ergebnis: ReturnType<typeof berechneW
       <Row label={tr('arbeitstage.wochentage')} value={String(ergebnis.wochentage)} />
       <Row label={tr('arbeitstage.werktage')} value={String(ergebnis.werktage)} />
       <Row label={tr('arbeitstage.pendlertage')} value={String(ergebnis.pendlertage)} />
-      {/* The honesty boundary ADR-0032 makes visible: these are weekdays, not work days after
-          public holidays — the Feiertagskalender is a later slice. */}
       <Text style={styles.honestyNote}>{tr('arbeitstage.honestyNote')}</Text>
     </View>
   )

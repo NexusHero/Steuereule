@@ -1,5 +1,3 @@
-// Erfolgs-Sticker (fk-sticker) — slightly rotated, hard shadow. For deltas and finds. Max one
-// visible success moment per journey (CLAUDE.md). Numbers tabular-nums.
 import { View, Text, type ViewStyle, type TextStyle, type StyleProp } from 'react-native'
 import { type ReactNode } from 'react'
 import { useTheme } from '../theme/useTheme'

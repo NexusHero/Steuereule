@@ -8,12 +8,7 @@
 // against the vacuous "zero routes found" pass (ADR-0021 amendment §1).
 import { deviceAuthorization } from 'better-auth/plugins'
 import { describe, expect, it } from 'vitest'
-import {
-  DEVICE_AUTHORIZATION_DISABLED_PATHS,
-  assertDeviceAuthorizationDisabledPathsComplete,
-  deviceAuthorizationPluginPaths,
-  type DeviceAuthorizationPluginLike,
-} from '../src/auth/better-auth.js'
+import { DEVICE_AUTHORIZATION_DISABLED_PATHS, assertDeviceAuthorizationDisabledPathsComplete, deviceAuthorizationPluginPaths, type DeviceAuthorizationPluginLike } from '../src/auth/device-authorization-paths.js'
 
 /** Constructs the real, installed device-authorization plugin — same call shape
  *  `buildOptions()` makes in production; `expiresIn`/`verificationUri` govern

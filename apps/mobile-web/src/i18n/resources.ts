@@ -1,5 +1,3 @@
-// App-level i18n (the `app` namespace). German base + English, both complete (ADR-0006).
-// Tax terms stay German in both; "Steuerjahr" is soft enough to translate as "tax year".
 export const APP_NS = 'app'
 
 export const appResources = {
@@ -16,16 +14,8 @@ export const appResources = {
         greetingMark: 'da',
         greetingAfter: ' bist.',
         subtitle: 'Dein Steuerjahr wartet — weiter, wo du aufgehört hast.',
-        // REQ-008: Google sign-in is now live (matching DS auth.html's "Weiter mit Google" ghost button).
-        // Apple sign-in (#45) stays hidden until its gate opens.
         google: 'Weiter mit Google',
-        // REQ-008 (Apple half) — the button is wired but only ever rendered when the deployment
-        // flips its flag (an Apple Developer account + a shipped iOS build). See useSocialSignInAvailable.
         apple: 'Weiter mit Apple',
-        // #283 §3(a) — the DS's own honest fallback for a provider the deployment genuinely
-        // doesn't have configured (auth.html), shown in the button's own place rather than
-        // silence. `googleUnknown` is the distinct case: the probe itself can't currently answer
-        // (only shown once the shared-outage banner is already up — see LoginScreen.tsx).
         googleNotConfigured: 'Google ist auf diesem Gerät nicht eingerichtet — die anderen Wege stehen dir offen.',
         googleUnknown: 'Wir können gerade nicht prüfen, ob Google verfügbar ist.',
         orEmail: 'oder mit E-Mail',
@@ -35,19 +25,9 @@ export const appResources = {
         submit: 'Einloggen',
         submitting: 'Wird geprüft …',
         continue: 'Weiter',
-        // "Passwort vergessen?" is a dead link in the DS demo and password reset has no DS
-        // artifact and isn't in REQ-005 scope — hidden rather than wired to nothing (steuereule#72).
         register: 'Neu hier? Konto anlegen',
         guest: 'Erstmal als Gast umschauen',
-        // Honest replacement for the pre-Slice-1 "stays on this device only" claim, which
-        // became false once the guest path started flowing into Onboarding and its
-        // server-side, encrypted profile persistence (steuereule#65, ADR-020 + REQ-003).
-        // Final wording per Matthias (Product Owner), ruling on issue #65 — shorter than
-        // Kaan's original proposal; drops the identity-at-filing clause since it sits one
-        // screen before Onboarding collects the Steuer-ID and could be misread as "no
-        // identifying data needed yet".
         guestNote: 'Gast-Modus: deine Angaben werden sicher verschlüsselt gespeichert.',
-        // REQ-007 — 2FA challenge shown after the primary factor (email+password) succeeds.
         twoFactor: {
           heading: 'Zweiter Faktor',
           body: 'Dein Konto ({{email}}) ist mit einem zweiten Faktor geschützt. Gib den Code aus deiner Authenticator-App ein.',
@@ -56,73 +36,34 @@ export const appResources = {
         },
         errEmail: 'Das sieht noch nicht nach einer E-Mail aus.',
         errPass: 'Mindestens 6 Zeichen fürs Passwort.',
-        // #283 AC-A — the single shared alert for a genuine, transport-level API outage (not a
-        // real answer like a wrong password or a rate limit — AC-B keeps those on their own
-        // copy). Wording follows the same voice Musti cited from AuthGeraete.jsx's own `fehler`
-        // state (names the cause, takes the blame, reassures), generalised beyond "no QR code"
-        // since this banner now also covers the login form — final wording is Suhay's to bless.
-        //
-        // #298 review, F2 — two bodies, not one: `bodyRetrying`'s "wir versuchen es automatisch
-        // weiter" is only true while the QR column actually has a retry scheduled
-        // (`autoRetryStatus === 'scheduled'`). At `bp === 's'` (or embedded usage) the column
-        // never even starts, and once §4(1)'s attempt cap is spent nothing is retrying either —
-        // `body` (no retry claim) is what shows then. LoginScreen picks between the two live,
-        // never both.
         apiUnreachable: {
           heading: 'Gerade nicht erreichbar — das liegt an uns.',
           body: 'Unsere Server antworten nicht. Deine Daten sind sicher, es ist nichts verloren.',
           bodyRetrying: 'Unsere Server antworten nicht. Deine Daten sind sicher, es ist nichts verloren. Wir versuchen es automatisch weiter.',
         },
-        // #238 — the QR column next to the login form. A phone that opens the code's URL uses
-        // its own native camera + browser, never this app's camera — so there is nothing here
-        // about permissions, only about what happens once the phone gets there.
         qr: {
           heading: 'Mit dem Handy anmelden',
           body: 'Scanne den Code mit der Kamera deines Handys — dort bist du schon angemeldet.',
           accessibilityLabel: 'QR-Code zum Anmelden mit dem Handy',
           loading: 'Code wird erzeugt …',
-          // Task 6 (Salih's T1 gate) — the desktop's own polling loop (`useDeviceQrCode`)
-          // reaching `access_denied` (RFC 8628 §3.5): the phone confirmed a *different* code,
-          // or (once a decline affordance exists) explicitly said no. Distinct from `error`
-          // deliberately — nothing here broke, the answer was just "not this one".
           denied: 'Anmeldung wurde nicht bestätigt.',
           expired: 'Code abgelaufen.',
           requestNew: 'Neuen Code anzeigen',
           error: 'Code konnte nicht erzeugt werden.',
           retry: 'Erneut versuchen',
-          // #283 §3(b)/AC-B — a deliberate server-side brake (ADR-0024), never an outage: its
-          // own specific copy, manual retry only, never the "that's on us" framing above.
           rateLimited: 'Gerade zu viele Anfragen. Versuch es in ein paar Sekunden noch mal.',
           retryingAuto: 'Wir versuchen es automatisch erneut …',
-          // #298 review, F1(b) — once the bounded auto-retry has genuinely given up (the attempt
-          // cap, not just a long delay), the copy must say so rather than keep claiming an
-          // ongoing retry that stopped.
           retryExhausted: 'Die automatischen Versuche sind pausiert — bitte versuch es manuell noch einmal.',
-          // #283 §5, state 3 ("knapp") — the amber pre-warning under 20s, and the ordinary
-          // countdown otherwise. `{{time}}` is already formatted mm:ss.
           knapp: 'Läuft gleich ab — noch {{time}}',
           remaining: 'Gilt noch {{time}}',
           copy: 'Kopieren',
           copied: '✓ Kopiert',
-          // #298 review, F3 — dropped: the DS demo's "Keine Kamera? …tipp den Code ein" promises
-          // a manual-entry capability this product does not have. `steuereule.de/koppeln` isn't
-          // even the right domain/route (the real one is `/device?user_code=…`) — but fixing
-          // just the URL wouldn't make the claim true either: `DeviceScreen.tsx` has no
-          // code-entry field at all, and visiting `/device` without a `user_code` renders
-          // `device.missingCode` ("open the link/QR again"), which is worse than useless advice
-          // for someone who followed this exact line because they have no camera. Same
-          // discipline as "Passwort vergessen?" elsewhere in this file: a capability that
-          // doesn't exist doesn't ship copy promising it, DS reference notwithstanding.
-          // #283 §5, state 7 — the confirmation beat before `onApproved` actually fires.
           approved: {
             heading: 'Das war’s — du bist drin.',
             body: 'Freigegeben über dein Telefon. Dein Steuerjahr lädt.',
           },
         },
       },
-      // Shared copy for both Login and Registrierung, driven by better-auth's own error codes
-      // (authErrors.ts) and REQ-005's honest-unverified-state requirement — one place, not
-      // duplicated per screen.
       auth: {
         errInvalidCredentials: 'E-Mail oder Passwort stimmen nicht.',
         errEmailTaken: 'Für diese E-Mail gibt es schon ein Konto.',
@@ -137,8 +78,6 @@ export const appResources = {
           resendSent: 'Ist raus — schau in dein Postfach.',
           resendError: 'Das hat gerade nicht geklappt. Versuch es gleich noch mal.',
         },
-        // Shown in the verify banner's place once the session confirms verification (#194,
-        // stakeholder ruling — a deliberate DS deviation, the reference has no such artifact).
         verifiedBanner: {
           heading: 'E-Mail bestätigt ✓',
         },
@@ -155,8 +94,6 @@ export const appResources = {
         submit: 'Konto anlegen',
         submitting: 'Wird angelegt …',
         legalNote: 'Mit dem Anlegen akzeptierst du AGB & Datenschutz.',
-        // The reverse of LoginScreen's "Neu hier? Konto anlegen" — closes the dead branch where
-        // a user on Registrierung had no way back (Phase 0.3 AC-2).
         backToLogin: 'Schon ein Konto? Einloggen',
         errEmail: 'Das sieht noch nicht nach einer E-Mail aus.',
         errPass: 'Mindestens 6 Zeichen fürs Passwort.',
@@ -227,9 +164,6 @@ export const appResources = {
           footerNote: 'Wird sicher gespeichert — du kannst jederzeit zurückkommen.',
         },
       },
-      // #238 — the match-verification screen a phone lands on after opening the QR/link
-      // (`/device?user_code=…`). Match-verification, not one-tap: the question is whether
-      // the code is currently on the *other* screen, never "approve?".
       funnel: {
         kontoWand: {
           sticker: 'Weg gefunden',
@@ -256,12 +190,6 @@ export const appResources = {
       },
       device: {
         sessionChecking: 'Wir prüfen deine Anmeldung …',
-        // #349 — distinct from both `missingCode` (we know there's no code) and the embedded
-        // LoginScreen (we know there's no session): here we genuinely do not know whether this
-        // phone is signed in, because `/get-session` itself didn't answer (429, a 5xx, no
-        // connection). Voiced like `login.googleUnknown` — "we can't currently tell", never
-        // "check your connection", which would overclaim on a 429 the connection had nothing to
-        // do with.
         sessionUnknown: {
           heading: 'Das können wir gerade nicht prüfen.',
           body: 'Wir können gerade nicht feststellen, ob du angemeldet bist. Versuch es noch mal.',
@@ -278,8 +206,6 @@ export const appResources = {
             body: 'Fordere auf dem anderen Bildschirm einen neuen Code an.',
           },
           question: 'Steht dieser Code gerade auf deinem Bildschirm?',
-          // The explicit, persistent statement Decision 4 requires — never approved from a
-          // code received via message/link, only from what this screen itself resolved.
           warning: 'Ein Code, den du per Nachricht oder Link bekommen hast, wird hier niemals bestätigt — nur ein Code, der gerade auf einem anderen Bildschirm steht.',
           context: {
             browser: 'Browser',
@@ -341,24 +267,11 @@ export const appResources = {
         sicherheit: {
           rowLabel: 'Sicherheit (Zwei-Faktor)',
         },
-        // #238, Decision 6 — every session on the account, not just QR-authorized ones. No
-        // region here (see DeviceListSection.tsx's header comment) — Musti's ADR-0021 control
-        // test showed the only deployment-config candidate for a trustworthy client IP still
-        // returns a spoofable address, so `Session.region` was never built; fail-closed.
         devices: {
           heading: 'Angemeldete Geräte',
           loading: 'Geräte werden geladen …',
-          // #306 — one string used to serve every failure, so it named a cause it had not
-          // established: it told the stakeholder to check a connection that had just rendered
-          // his name and Steuer-ID, when better-auth had in fact answered 403. Each variant may
-          // only assert what its `FailureReason` actually establishes; `unknown` asserts nothing.
           loadError: {
             unreachable: 'Deine Geräte konnten nicht geladen werden. Prüf die Verbindung und versuch es noch mal.',
-            // Suhay's ruling, #336 — "abgelehnt" (a deliberate refusal) is true for 401/403 but
-            // misleads for 500, which `classifyByStatus` also routes here (failure-reason.ts):
-            // the server didn't decline, it broke. This wording asserts only what all four
-            // statuses share — it answered, and that answer didn't get you your devices — and
-            // keeps the retraction Musti flagged as the load-bearing clause.
             refused: 'Deine Geräte konnten nicht geladen werden — der Server hat sich gemeldet, aber das hat nicht geklappt. An deiner Verbindung liegt es nicht.',
             unknown: 'Deine Geräte konnten nicht geladen werden. Versuch es noch mal.',
           },
@@ -374,9 +287,19 @@ export const appResources = {
           revoking: 'Wird abgemeldet …',
           revokeError: 'Das hat nicht geklappt. Versuch es noch einmal.',
         },
+        assistenten: {
+          heading: 'Verbundene Assistenten',
+          subheading: 'Ihr eigener KI-Assistent (Claude, Gemini etc.) verbindet sich per MCP. Alle Einträge bleiben unbestätigt, bis Sie sie in der App prüfen.',
+          loading: 'Assistenten werden geladen …',
+          empty: 'Keine Assistenten verbunden.',
+          connectedSince: 'Verbunden seit',
+          lastActive: 'Zuletzt aktiv',
+          neverActive: 'Noch nicht verwendet',
+          revoke: 'Trennen',
+          revoking: 'Wird getrennt …',
+          revokeError: 'Trennen fehlgeschlagen. Bitte erneut versuchen.',
+        },
       },
-      // REQ-007 — Sicherheit (2FA), reached from Profil. Wording stays honest: enabling shows a
-      // QR + backup codes and requires confirming one code; disabling requires the password again.
       sicherheit: {
         title: 'Sicherheit',
         back: 'Zurück zu Profil',
@@ -414,8 +337,6 @@ export const appResources = {
           loading: 'Wird geladen …',
           count: '{{count}}',
           body: 'Ein Passkey ist ein zusätzlicher Anmeldeweg ganz ohne Passwort. Du bestätigst die Anmeldung mit deinem Gerät — zum Beispiel per Fingerabdruck oder Gesichtserkennung.',
-          // Honest boundary (REQ-007 passkey half): the WebAuthn ceremony runs through the
-          // browser's `navigator.credentials`; the native app has no such API yet.
           webOnly: 'Passkeys funktionieren im Browser. In der App folgen sie später.',
           empty: 'Noch keine Passkeys eingerichtet.',
           unnamed: 'Passkey',
@@ -432,17 +353,6 @@ export const appResources = {
         errTooManyAttempts: 'Zu viele Versuche. Bitte fordere einen neuen Code an.',
         errLocked: 'Zu viele Fehlversuche — dein Konto ist vorübergehend gesperrt. Versuch es später noch mal.',
       },
-      // REQ-011 (ADR-0013) — Datenschutz screen: DSGVO export (Art. 15/20) + account deletion
-      // (Art. 17), reached from Profil. The delete copy is corrected, not ported from the DS
-      // demo (Datenschutz.jsx/Profil.jsx): profile + account are permanently erased
-      // server-side; the access-log record is anonymised and *retained* (Art. 30), never
-      // deleted; anything under active Löschschutz is retained under legal obligation; the
-      // export offers JSON and PDF, never "Belege (ZIP)" — no receipts model exists yet.
-      // ADR-0050: Impressum, Datenschutzerklärung, AGB, Hinweise. The page bodies are German
-      // only (screens/rechtliches/texte.ts — the binding text); only the chrome is localised.
-      // ADR-0050: the paid Formular-Ausdruck — print, sign, hand in. No ELSTER promise anywhere.
-      // REQ-032 (ADR-0052 §6/§7) — „Prüfen & bestätigen“: was nicht der Nutzer selbst eingetragen
-      // hat, wird je Anlage bestätigt oder einzeln geändert; Vorschläge überschreiben nie.
       bestaetigung: {
         title: 'Prüfen & bestätigen {{jahr}}',
         back: 'Zurück',
@@ -539,7 +449,6 @@ export const appResources = {
         ],
         hinweisEdaten: 'Lohnsteuer, Sozialversicherung und andere „e“-Zeilen liegen dem Finanzamt bereits vom Arbeitgeber vor und bleiben leer.',
       },
-      // ADR-0050: what the Hauptvordruck ESt 1 A needs beyond name and Steuer-ID.
       stammdaten: {
         rowLabel: 'Angaben für die Steuererklärung',
         title: 'Angaben für die Erklärung',
@@ -611,21 +520,11 @@ export const appResources = {
           body: 'Steuerdaten sind das Privateste, was eine App anfassen kann. Deshalb steht hier alles — kurz, konkret, nachprüfbar.',
         },
         sessionChecking: 'Wird geprüft …',
-        // #349 — the honest "we don't know" state, distinct from `GuestNotice` (we know there's
-        // no account) and the signed-in content below (we know there is). See `device.
-        // sessionUnknown` for the full reasoning; this screen gets its own key rather than
-        // sharing that one, matching every other pair of `device`/`datenschutz` strings here.
         sessionUnknown: {
           heading: 'Das können wir gerade nicht prüfen.',
           body: 'Wir können gerade nicht feststellen, ob du angemeldet bist. Versuch es noch mal.',
           retry: 'Noch mal versuchen',
         },
-        // #238, ADR-0024 (task 0c) — two disclosures, both new to this text, neither new to
-        // what the server actually stores: Session.ipAddress/userAgent are collected for
-        // every session since day one (see prisma/schema.prisma), and what's new here is
-        // that a signed-in user can now see that data themselves, in their own Geräte-Liste
-        // (Profil). The geo-IP resolution is genuinely new processing, added for the
-        // QR-Code-Login's match-verification screen — see attribution below for the source.
         deviceSessions: {
           heading: 'Anmeldungen & Geräte',
           sessionData:
@@ -685,14 +584,6 @@ export const appResources = {
           guestBlocked: 'Für Gast-Zugänge gibt es kein Konto zum Löschen.',
         },
       },
-      // REQ-015 (#318, Segment 1 of ADR-0031) — the Minimal-Gate: three questions, one per
-      // screen, rendered purely against `nextStep()` from `@steuereule/core`. Option *values*
-      // stay the German domain vocabulary the graph and (later) the API persist
-      // (`packages/core/src/interview.ts`) — only the *label* shown here is translated; see
-      // InterviewScreen.tsx's option tables for the value/label split.
-      // ADR-0032 removes two controls the DS reference (Interview.jsx) offers but this slice
-      // cannot honour — the Gewerbe gate's notify-me button (#83 unbuilt) and the CH-only
-      // gate's "Vormerken" button (no storage decided) — so neither has copy here.
       interview: {
         back: 'Zurück zur Frage',
         loading: 'Deine Antworten werden geladen …',
@@ -701,9 +592,6 @@ export const appResources = {
           message: 'Deine Antworten konnten nicht geladen werden. Prüf die Verbindung und versuch es noch mal.',
           retry: 'Noch mal versuchen',
         },
-        // #318 task 2 — the client and server disagreeing about the path (409) or the value
-        // (400) "should not happen" for a well-behaved client; shown honestly rather than
-        // swallowed, never a generic error. `network` covers a genuine connection failure.
         postError: {
           conflict: 'Deine Antwort passte nicht zum gespeicherten Stand. Wir haben deinen Fortschritt aktualisiert.',
           invalid: 'Diese Antwort wurde nicht akzeptiert. Wir haben deinen Fortschritt aktualisiert.',
@@ -756,9 +644,6 @@ export const appResources = {
           continueWithoutForeign: 'Ohne Auslands-Teil weitermachen',
         },
       },
-      // REQ-016 (ticket 08) — the LStB guided mask: three fields, each erfasst/offen/unklar,
-      // and a named widerspruch (ADR-008) rather than a silent fix. The state comes from the
-      // server (ADR-0033); this screen only renders it and sends whole-euro values.
       lstb: {
         back: 'Zurück',
         heading: 'Deine Lohnsteuerbescheinigung',
@@ -789,8 +674,6 @@ export const appResources = {
         },
         weiter: 'Weiter',
       },
-      // REQ-022 (ticket 10.4) — the Rentner guided mask (product ADR-034, Anlage R). The
-      // Rentenart values are the German domain vocabulary; only the labels live here (ADR-0033).
       rente: {
         back: 'Zurück',
         heading: 'Deine Rente',
@@ -824,9 +707,6 @@ export const appResources = {
         },
         weiter: 'Weiter',
       },
-      // REQ-025 (ticket 10.5) — the Kapital guided mask + § 32d Abs. 6 Günstigerprüfung
-      // (product ADR-032, Anlage KAP). The depot kinds are the server-derived Einordnung;
-      // only the labels live here (ADR-0033).
       kapital: {
         back: 'Zurück',
         heading: 'Kapital & Depot',
@@ -875,7 +755,6 @@ export const appResources = {
         },
         weiter: 'Weiter',
       },
-      // REQ-026 (ticket 10.6) — the Vermietung guided mask (product ADR-033, Anlage V einfach).
       vermietung: {
         back: 'Zurück',
         heading: 'Deine Vermietung',
@@ -920,15 +799,10 @@ export const appResources = {
         },
         weiter: 'Weiter',
       },
-      // REQ-027 (ticket 10.7) — der Fristen-Warnmodus (§ 149/§ 152 AO). Nüchtern (ADR-023),
-      // ein Banner, NIE ein Status (ADR-0039).
       fristen: {
         warnung: 'Abgabefrist: {{frist}} (noch {{tage}} Tage). Bei Verspätung fällt ein Verspätungszuschlag an — mindestens {{mindestsatz}} pro Monat (§ 152 AO).',
         abgelaufen: 'Die Abgabefrist {{frist}} ist um {{tage}} Tage überschritten. Verspätungszuschlag (§ 152 AO): mindestens {{mindestsatz}} pro Monat — reich die Erklärung bald ein.',
       },
-      // REQ-017 (ticket 08) — the on-demand catalogue (Lebenslagen + Sonderausgaben), walked by
-      // the same engine as the Minimal-Gate. Question ids are the German domain vocabulary;
-      // only the labels live here (the values persist byte-equal, ADR-0033).
       katalog: {
         back: 'Zurück',
         loading: 'Wird geladen …',
@@ -972,7 +846,6 @@ export const appResources = {
           Nebenjob: 'Nebenjob',
         },
       },
-      // M4 (ticket 08) — the Arbeitstage assistant: calendar logic from the core, no free text.
       arbeitstage: {
         back: 'Zurück',
         heading: 'Deine Arbeitstage',
@@ -991,7 +864,6 @@ export const appResources = {
         widerspruchBody: 'Mehr Urlaubs-/Krankheitstage als Werktage — prüf deine Eingaben.',
         weiter: 'Weiter',
       },
-      // M2 (ticket 08) — the Plausibilitäts-Prüfung: honest Widersprüche/Hinweise, no fake Ampel.
       plausibilitaet: {
         back: 'Zurück',
         loading: 'Deine Prüfung wird geladen …',
@@ -1001,13 +873,9 @@ export const appResources = {
           retry: 'Noch mal versuchen',
         },
         heading: 'Prüfung vor Abgabe',
-        // ADR-0050: no Ausdruck exists yet, so "du kannst abgeben" would promise an action the
-        // app cannot perform — the check states what it found, not what to do next.
         einreichbar: 'Alles klar — keine Widersprüche, nichts mehr offen.',
         nichtEinreichbar: 'Da ist noch etwas offen:',
         weiterZumVergleich: 'Weiter zum Veranlagungsartenvergleich',
-        // Ticket 15 review F3 — the werktage/Pendlerpauschale check is not run this slice; the
-        // screen says so instead of letting "einreichbar" read as "everything was checked".
         werktageNote: 'Ehrlich: die Arbeitstage- und Pendlerpauschale-Prüfung folgt in einem späteren Schritt.',
         widersprueche: 'Widersprüche',
         hinweise: 'Hinweise',
@@ -1036,10 +904,6 @@ export const appResources = {
           message: 'Für dieses Steuerjahr liegen noch keine Angaben vor. Sobald deine Daten da sind, zeigen wir dir hier dein erfasstes Einkommen.',
         },
         hero: {
-          // Ticket 15 — the Schätz-Platzhalter is gone; the hero now shows the deterministic
-          // fold from @steuereule/core (berechne + cockpitSpanne). The number is the settled
-          // INCOME (LStB Brutto + Nebenjob), never a refund — the tariff/Erstattung formula is a
-          // later slice, stated honestly rather than faked (ADR-0032).
           label: 'Erfasstes Einkommen',
           openItems_one: '{{count}} Frage offen',
           openItems_other: '{{count}} Fragen offen',
@@ -1048,28 +912,19 @@ export const appResources = {
           herkunftRegel: 'Spannen-Regel · ADR-015',
           herkunftRechenweg_one: '{{count}} offener Posten × {{perItem}} Unsicherheit',
           herkunftRechenweg_other: '{{count}} offene Posten × {{perItem}} Unsicherheit',
-          // ADR-032 — a declared-but-uncomputable Einkunftsart is named, never widened into a
-          // numeric range. `{{name}}` is the German domain vocabulary (e.g. "Gewerbe").
           gatedHeading: 'Ehrlich: dafür sind wir noch nicht gut genug.',
           gatedBody: '{{name}} kann SteuerEule in Version 1 noch nicht rechnen. Dein erfasstes Einkommen bleibt sichtbar — abgegeben wird erst, wenn alles drin ist.',
           refundLater: 'Die Erstattung rechnen wir in einem späteren Schritt.',
         },
         refresh: 'Aktualisieren',
         refreshing: 'Wird aktualisiert …',
-        // #318 task 2 — the Minimal-Gate is now reachable from here (the revisit CockpitScreen.tsx
-        // itself named): the one primary action while items are open, demoting "Aktualisieren" to
-        // the secondary slot (one primary action per screen, design-system CLAUDE.md).
         answerQuestions: 'Fragen beantworten',
-        // REQ-023 — the Bescheidprüfung entry (eigener Bereich, ticket 10.3).
         checkBescheid: 'Bescheid prüfen',
         checkKapital: 'Kapital & Depot prüfen',
         checkVermietung: 'Vermietung prüfen',
         checkKinder: 'Kinder verwalten',
         eulenModus: 'Eulen-Modus',
-        // Ticket 10.8 M3 (ADR-022) — die Jahr-Auswahl: das gewählte Steuerjahr, bis 4 Rückjahre.
         jahrAuswahl: 'Steuerjahr wählen',
-        // REQ-032 (ADR-0052 §6) — der ruhige Bestätigungs-Hinweis: unbestätigte Werte zählen in
-        // die Spanne, nie in den Punktwert; bestätigt wird je Anlage auf „Prüfen & bestätigen“.
         bestaetigung: {
           hinweis_one: '{{summe}} wartet noch auf deine Bestätigung.',
           hinweis_other: '{{summe}} warten noch auf deine Bestätigung.',
@@ -1078,10 +933,6 @@ export const appResources = {
           pruefen: 'Prüfen & bestätigen',
         },
       },
-      // Ticket 10 (Phase 2, Slice 1) — Beleg-Posteingang (ADR-007/008). The upload affordance is
-      // deliberately a HONEST placeholder, not a scan/PDF button: binary storage is a follow-up
-      // (ADR-036/045), so a button that promises a stored file would be exactly the fake the
-      // honesty rule (ADR-032 §2) forbids.
       belege: {
         appbarTitle: 'Belege',
         loading: 'Deine Belege werden geladen …',
@@ -1135,9 +986,6 @@ export const appResources = {
           zahlungsdatum: 'Zahlungsdatum',
         },
       },
-      // REQ-023 (ticket 10.3) — Bescheidprüfung: der Steuerbescheid wird Feld für Feld
-      // eingetippt (ADR-036), gegen den Kern abgeglichen (Diff, nie still) und nach dem Bescheid
-      // gibt es den Einspruch-Flow (§ 355 AO). KEIN „Korrigieren" nach dem Bescheid (ADR-009/032).
       bescheid: {
         back: 'Zurück',
         heading: 'Dein Steuerbescheid',
@@ -1279,8 +1127,6 @@ export const appResources = {
           done: 'Fertig',
         },
       },
-      // Ticket 10.2 (M1) — Veranlagungsartenvergleich (ADR-0034). `aussage`/`kind` zuerst:
-      // eine Empfehlung nur, wenn `eindeutig` — sonst ehrlich "zu knapp"/"können wir noch nicht".
       veranlagungsartenvergleich: {
         back: 'Zurück',
         loading: 'Dein Vergleich wird berechnet …',
@@ -1308,6 +1154,22 @@ export const appResources = {
         herkunftRechenweg: 'zvE-Basis: {{zveA}} + {{zveB}} (Einnahmen — noch kein echtes zvE)',
         progressionsvorbehaltHinweis: 'Ehrlich: der Progressionsvorbehalt (Lohnersatz) ist hier noch nicht berücksichtigt.',
       },
+      oauthConsent: {
+        title: 'Assistent verbinden',
+        requestNotice: 'möchte sich mit Ihrem SteuerEule-Konto verbinden.',
+        scopesHeading: 'Der Assistent erhält Zugriff auf:',
+        scopeSteuerdatenRead: 'Steuerdaten lesen (maskiert)',
+        scopeSteuerdatenWrite: 'Steuerfakten ausfüllen (bleibt unbestätigt bis zu Ihrer Prüfung)',
+        scopeBelegeWrite: 'Belege hochladen',
+        scopeZahllinkRead: 'Zahllink abrufen',
+        drittlandHeading: 'Hinweis zur Datenübertragung (Drittland)',
+        drittlandNotice: 'Durch die Verbindung werden Ihre Daten an den Anbieter dieses Assistenten übermittelt. Dies kann Server in einem Drittland (z. B. USA) ohne Angemessenheitsbeschluss der EU-Kommission umfassen. Die Verarbeitung dort unterliegt den Bestimmungen des jeweiligen Anbieters.',
+        allow: 'Verbindung erlauben',
+        deny: 'Ablehnen',
+        loading: 'Wird geladen …',
+        processing: 'Wird verarbeitet …',
+        error: 'Fehler bei der Autorisierung. Bitte versuchen Sie es erneut.',
+      },
     },
   },
   en: {
@@ -1323,7 +1185,6 @@ export const appResources = {
         greetingMark: 'here',
         greetingAfter: '.',
         subtitle: 'Your tax year is waiting — pick up where you left off.',
-        // REQ-008: Google sign-in is now live.
         google: 'Continue with Google',
         apple: 'Continue with Apple',
         googleNotConfigured: "Google isn't set up on this device — the other ways are still open to you.",
@@ -1337,9 +1198,7 @@ export const appResources = {
         continue: 'Continue',
         register: 'New here? Create account',
         guest: 'Look around as a guest',
-        // See the `de` entry above for the provenance note (steuereule#65).
         guestNote: 'Guest mode: your details are saved securely, encrypted.',
-        // REQ-007 — 2FA challenge shown after the primary factor (email+password) succeeds.
         twoFactor: {
           heading: 'Second factor',
           body: 'Your account ({{email}}) is protected by a second factor. Enter the code from your authenticator app.',
@@ -1584,7 +1443,6 @@ export const appResources = {
           loading: 'Loading devices …',
           loadError: {
             unreachable: "Your devices couldn't be loaded. Check your connection and try again.",
-            // Suhay's ruling, #336 — follows the German (ADR-0006); see the `de` block for why.
             refused: "Your devices couldn't be loaded — the server responded, but that didn't work. It isn't your connection.",
             unknown: "Your devices couldn't be loaded. Try again.",
           },
@@ -1600,8 +1458,19 @@ export const appResources = {
           revoking: 'Signing out …',
           revokeError: "That didn't work. Please try again.",
         },
+        assistenten: {
+          heading: 'Connected assistants',
+          subheading: 'Your AI assistant (Claude, Gemini, etc.) connects via MCP. All entries remain unconfirmed until reviewed by you.',
+          loading: 'Loading assistants …',
+          empty: 'No assistants connected.',
+          connectedSince: 'Connected since',
+          lastActive: 'Last active',
+          neverActive: 'Not used yet',
+          revoke: 'Disconnect',
+          revoking: 'Disconnecting …',
+          revokeError: 'Disconnection failed. Please try again.',
+        },
       },
-      // REQ-007 — Sicherheit (2FA), reached from Profil.
       sicherheit: {
         title: 'Security',
         back: 'Back to profile',
@@ -1639,8 +1508,6 @@ export const appResources = {
           loading: 'Loading …',
           count: '{{count}}',
           body: 'A passkey is an extra way to sign in with no password at all. You confirm sign-in with your device — for example with your fingerprint or face.',
-          // Honest boundary (REQ-007 passkey half): the WebAuthn ceremony runs through the
-          // browser's `navigator.credentials`; the native app has no such API yet.
           webOnly: 'Passkeys work in the browser. In the app they will follow later.',
           empty: 'No passkeys set up yet.',
           unnamed: 'Passkey',
@@ -1978,7 +1845,6 @@ export const appResources = {
         },
         weiter: 'Continue',
       },
-      // REQ-022 (ticket 10.4) — the Rentner guided mask (product ADR-034, Anlage R).
       rente: {
         back: 'Back',
         heading: 'Your pension',
@@ -2012,7 +1878,6 @@ export const appResources = {
         },
         weiter: 'Continue',
       },
-      // REQ-025 (ticket 10.5) — the Kapital guided mask + § 32d Abs. 6 Günstigerprüfung (EN).
       kapital: {
         back: 'Back',
         heading: 'Capital & brokerage',
@@ -2061,7 +1926,6 @@ export const appResources = {
         },
         weiter: 'Continue',
       },
-      // REQ-026 (ticket 10.6) — the Vermietung guided mask (product ADR-033, Anlage V einfach). EN.
       vermietung: {
         back: 'Back',
         heading: 'Your rental property',
@@ -2106,8 +1970,6 @@ export const appResources = {
         },
         weiter: 'Continue',
       },
-      // REQ-027 (ticket 10.7) — the deadline warning mode (§ 149/§ 152 AO). Sober (ADR-023),
-      // a banner, NEVER a status (ADR-0039).
       fristen: {
         warnung: 'Filing deadline: {{frist}} ({{tage}} days left). Late filing incurs a late-filing surcharge — at least {{mindestsatz}} per month (§ 152 AO).',
         abgelaufen: 'The filing deadline {{frist}} passed {{tage}} days ago. Late-filing surcharge (§ 152 AO): at least {{mindestsatz}} per month — file soon.',
@@ -2242,8 +2104,6 @@ export const appResources = {
           pruefen: 'Review & confirm',
         },
       },
-      // Ticket 10 (Phase 2, Slice 1) — Beleg-Posteingang (ADR-007/008). See the `de` block for
-      // why the upload affordance is an honest placeholder, not a fake scan button.
       belege: {
         appbarTitle: 'Receipts',
         loading: 'Loading your receipts …',
@@ -2466,6 +2326,22 @@ export const appResources = {
         herkunftRegelZusammen: '§32a §5 splitting + Soli §4 SolZG',
         herkunftRechenweg: 'zvE basis: {{zveA}} + {{zveB}} (income — not a real zvE yet)',
         progressionsvorbehaltHinweis: 'Honestly: the progression clause (wage-replacement benefits) is not yet factored in here.',
+      },
+      oauthConsent: {
+        title: 'Connect Assistant',
+        requestNotice: 'wants to connect to your SteuerEule account.',
+        scopesHeading: 'The assistant will receive access to:',
+        scopeSteuerdatenRead: 'Read tax facts (masked)',
+        scopeSteuerdatenWrite: 'Fill tax facts (remains unconfirmed until your review)',
+        scopeBelegeWrite: 'Upload receipts',
+        scopeZahllinkRead: 'Fetch payment link',
+        drittlandHeading: 'Data transfer notice (third countries)',
+        drittlandNotice: 'By connecting, your data is transferred to the provider of this assistant. This may include servers in third countries (e.g. US) without an EU adequacy decision. Processing is governed by that provider’s policies.',
+        allow: 'Allow connection',
+        deny: 'Decline',
+        loading: 'Loading …',
+        processing: 'Processing …',
+        error: 'Authorization failed. Please try again.',
       },
   },
 } as const

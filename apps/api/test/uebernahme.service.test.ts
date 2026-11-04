@@ -16,6 +16,7 @@ import { FakeKennzeichnungRepository } from './fakes/fake-kennzeichnung.reposito
 import { FakeLstbRepository } from './fakes/fake-lstb.repository.js'
 import { FakeRenteRepository } from './fakes/fake-rente.repository.js'
 import { FakeVermietungRepository } from './fakes/fake-vermietung.repository.js'
+import { FakeJahresuebernahmeRepository } from './fakes/fake-jahresuebernahme.repository.js'
 
 const USER_ID = 'user-1'
 const ZIELJAHR = 2026
@@ -32,6 +33,7 @@ describe('UebernahmeService', () => {
   let rente: FakeRenteRepository
   let kapital: FakeKapitalRepository
   let vermietung: FakeVermietungRepository
+  let jahresuebernahme: FakeJahresuebernahmeRepository
   let service: UebernahmeService
 
   beforeEach(() => {
@@ -40,8 +42,9 @@ describe('UebernahmeService', () => {
     rente = new FakeRenteRepository()
     kapital = new FakeKapitalRepository()
     vermietung = new FakeVermietungRepository()
+    jahresuebernahme = new FakeJahresuebernahmeRepository()
     const bestaetigung = new BestaetigungService(repository, feldZugriffAus({ lstb, rente, kapital, vermietung }), new AuditService(new FakeAuditRepository()))
-    service = new UebernahmeService(repository, bestaetigung, lstb, rente, kapital, vermietung)
+    service = new UebernahmeService(repository, bestaetigung, lstb, rente, kapital, vermietung, jahresuebernahme)
   })
 
   it('kopiert die LStB-Zeile des Vorjahrs unverändert und markiert sie UNBESTÄTIGT (ADR-021)', async () => {
@@ -86,6 +89,17 @@ describe('UebernahmeService', () => {
     lstb.seed({ userId: USER_ID, steuerjahr: 2025, bruttoarbeitslohn: '50000', lohnsteuer: null, sozialversicherung: null })
     await service.uebernehme(USER_ID, ZIELJAHR, 2025)
 
+    await expect(service.uebernehme(USER_ID, ZIELJAHR, 2025)).rejects.toThrow('already taken over')
+  })
+
+  it('ein zweiter Kopierversuch ist auch dann ein 409, wenn der Nutzer alle übernommenen Felder selbst editiert hat', async () => {
+    lstb.seed({ userId: USER_ID, steuerjahr: 2025, bruttoarbeitslohn: '50000', lohnsteuer: null, sozialversicherung: null })
+    await service.uebernehme(USER_ID, ZIELJAHR, 2025)
+
+    // Nutzer ändert das Feld selbst in der Maske -> Kennzeichnung wird gelöscht
+    await repository.entferne(USER_ID, ZIELJAHR, ['lstb.bruttoarbeitslohn'])
+
+    // Zweiter Kopierversuch MUSS trotzdem ein 409 sein (Randfall-Schutz gegen doppelte Vermietungsobjekte)
     await expect(service.uebernehme(USER_ID, ZIELJAHR, 2025)).rejects.toThrow('already taken over')
   })
 

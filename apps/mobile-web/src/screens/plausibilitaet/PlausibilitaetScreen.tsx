@@ -1,14 +1,3 @@
-// Plausibilitäts-Screen (M2, ticket 08 / ticket 15) — the honest gate between "the data is in"
-// and "einreichbar". It renders the core's `pruefePlausibilitaet` result: every WIDERSPRUCH (a
-// blocker — the return cannot be submitted while it stands) and every HINWEIS (a warning, shown
-// but never blocks), with an honest `einreichbar` verdict. No fake "Ampel"/score — only the facts
-// the core already holds (ADR-0032).
-//
-// HONESTY BOUNDARY: the core's full check also covers the werktage widerspruch, but werktage is
-// NOT persisted this slice (no endpoint/model exists). This screen therefore folds the LStB +
-// interview facts it CAN read, and passes a neutral werktage result (no widerspruch) — documented
-// here, never faked as "checked". The Pendlerpauschale's contribution to Werbungskosten is
-// correspondingly absent until the werktage persistence slice lands.
 import { ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Button, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
@@ -33,7 +22,6 @@ import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 
 export interface PlausibilitaetScreenProps {
   readonly onBack?: () => void
-  /** Ticket 10.2 — advance to the Veranlagungsartenvergleich (the next screen in the flow). */
   readonly onDone?: () => void
   readonly taxYear?: number
 }
@@ -76,9 +64,6 @@ export function PlausibilitaetScreen({ onBack, onDone, taxYear = CURRENT_TAX_YEA
 
       <Text style={styles.heading}>{tr('plausibilitaet.heading')}</Text>
 
-      {/* ADR-0032 (ticket 15 review F3): the werktage/Pendlerpauschale check is NOT run this
-          slice — say so on the screen, not just in this file's header, so "einreichbar" can never
-          read as "everything was checked". Shown always, not hidden in a footnote. */}
       <Text style={styles.werktageNote}>{tr('plausibilitaet.werktageNote')}</Text>
 
       {ergebnis.kind === 'einreichbar' ? (
@@ -109,9 +94,6 @@ export function PlausibilitaetScreen({ onBack, onDone, taxYear = CURRENT_TAX_YEA
         </View>
       ) : null}
 
-      {/* Ticket 10.2 — the Veranlagungsartenvergleich follows the Plausibilitäts-Screen
-          (ADR-0034: the comparison screen may only appear once at least one real path can
-          reach `eindeutig` — which the core now delivers). */}
       {onDone ? (
         <Button onPress={onDone} style={styles.doneCta}>
           {tr('plausibilitaet.weiterZumVergleich')}
@@ -121,7 +103,6 @@ export function PlausibilitaetScreen({ onBack, onDone, taxYear = CURRENT_TAX_YEA
   )
 }
 
-/** The LStB wire DTO → the core's LstbDaten (re-encoding via the ONE mapping in core/lstb.ts). */
 function datenAusResponse(r: LstbResponseDto): LstbDaten {
   return {
     bruttoarbeitslohn: r.bruttoarbeitslohn as LstbFeldZustand,
@@ -130,10 +111,7 @@ function datenAusResponse(r: LstbResponseDto): LstbDaten {
   }
 }
 
-/** Fold the readable facts into the core's PlausibilitaetsEingaben (werktage neutral — see header). */
 function fold(daten: LstbDaten, answers: Answers) {
-  // The settled income + open/conflict counts are NOT re-derived here — `angestellteAusDaten`
-  // is the ONE core fold the Cockpit API and this screen both consume (ticket 15 review F2).
   const fakten = angestellteAusDaten(daten, answers)
 
   return {

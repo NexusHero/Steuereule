@@ -1,10 +1,3 @@
-// The step indicator (dashed progress bar, `role="progressbar"`) Onboarding and Interview both
-// draw — one component, not two copies (Phase 0.3: screens stop re-typing the same pieces).
-//
-// React-Native-Web forwards a step indicator's ARIA min/max/now from the flat legacy
-// `accessibilityValueMin/Max/Now` props, not from RN's `accessibilityValue` object (verified
-// against react-native-web's forwardedProps/createDOMProps — the object form is silently
-// dropped). Contained to this one cast so neither host screen stays on a divergent API.
 import { View, type ViewStyle, type ViewProps } from 'react-native'
 import { useTheme, type UiTheme } from '@steuereule/ui'
 

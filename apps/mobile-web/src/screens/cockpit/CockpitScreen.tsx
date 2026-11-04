@@ -1,13 +1,3 @@
-// Cockpit (F: Cockpit.jsx in Funke dress) — the screen a user lands on after Onboarding. REQ-001
-// (steuereule#3/#93): the walking-skeleton slice builds only the hero estimate card — the
-// Spannen-Ticker (refund estimate range, ADR-015) + "N Angaben offen" + provenance. The rest of
-// the full DS Cockpit is deliberately out of scope here per ADR-0005 ("walking skeleton first").
-//
-// Data comes from the generated `useCockpitControllerGetCockpitSummary` hook (orval-generated
-// against the real `GET /v1/steuerjahre/{jahr}/cockpit`, #119). Honest states throughout: a real
-// loading spinner, a real "noch keine Angaben" empty state, and a retryable error state — never
-// mock/fallback data. Loading/error now render through the shared `LoadingState`/`ErrorState`
-// (Phase 0.3 AC-3) instead of this screen's own private copies.
 import { useState } from 'react'
 import { ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
@@ -25,31 +15,19 @@ import { APP_NS } from '../../i18n/resources'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 
-/** ADR-022: die Jahr-Auswahl zeigt das aktuelle Jahr und bis zu 4 Rückjahre („Hol dir 4 Jahre"). */
 const JAHRE_ZURUECK = 4
 
-/** The selectable years, newest first: CURRENT_TAX_YEAR … CURRENT_TAX_YEAR - 4. */
 const AUSWAHL_JAHRE = Array.from({ length: JAHRE_ZURUECK + 1 }, (_, i) => CURRENT_TAX_YEAR - i)
 
 export interface CockpitScreenProps {
   readonly taxYear?: number
-  /** Opens the Minimal-Gate (REQ-015/#318) — wired at the composition root (ADR-0023); this
-   *  screen never imports the router itself. Defaults to a no-op so existing call sites and
-   *  tests that don't care about this flow keep compiling unchanged. */
   readonly onOpenInterview?: () => void
-  /** Opens the Bescheidprüfung (REQ-023/ticket 10.3) — same composition-root wiring. */
   readonly onOpenBescheid?: () => void
-  /** Opens the Kapital guided mask + Günstigerprüfung (REQ-025/ticket 10.5) — same wiring. */
   readonly onOpenKapital?: () => void
-  /** Opens the Vermietung guided mask (REQ-026/ticket 10.6) — same wiring. */
   readonly onOpenVermietung?: () => void
-  /** Opens the Kinder management screen (Anlage Kind). */
   readonly onOpenKinder?: () => void
-  /** Opens the Eulen-KI mode proactive advice screen. */
   readonly onOpenEulenModus?: (jahr: number) => void
-  /** ADR-0050: opens the Formular-Ausdruck for the year shown. Omitted = no entry rendered. */
   readonly onOpenAusdruck?: (jahr: number) => void
-  /** REQ-032: opens „Prüfen & bestätigen“ for the year shown. */
   readonly onOpenBestaetigung?: (jahr: number) => void
 }
 
@@ -66,12 +44,8 @@ export function CockpitScreen({
 }: CockpitScreenProps) {
   const bp = useBreakpoint()
   const { t: tr } = useTranslation(APP_NS)
-  // ADR-022 — die prominente Jahr-Auswahl: das gewählte Jahr ist SCREEN-State (kein globaler
-  // Kontext; ehrlich benannt), der Cockpit-Query läuft pro Jahr (der Query-Key trägt das Jahr).
   const [jahr, setJahr] = useState(taxYear)
   const query = useCockpitControllerGetCockpitSummary(jahr)
-  // REQ-032 — was im gewählten Jahr noch zu bestätigen ist; der Hinweis erscheint nur, wenn es
-  // etwas gibt (ein fehlender Query bricht den Cockpit nie).
   const bestaetigungQuery = useBestaetigungControllerGet(jahr)
 
   if (query.isPending) {
@@ -137,8 +111,6 @@ function Appbar({ jahr, onJahrWechsel }: { readonly jahr: number; readonly onJah
   return (
     <View style={styles.appbar}>
       <Text style={styles.appbarTitle}>{tr('cockpit.appbarTitle')}</Text>
-      {/* ADR-022 — bis 4 Rückjahre, aktiv beworben: das gewählte Jahr ist gefüllt, der Rest
-          wählbar. */}
       <View style={styles.jahrReihe} accessibilityLabel={tr('cockpit.jahrAuswahl')}>
         {AUSWAHL_JAHRE.map((y) => (
           <Chip key={y} aktiv={y === jahr} onPress={() => onJahrWechsel(y)} testID={`jahr-${y}`}>
@@ -172,15 +144,10 @@ function CockpitEmpty({ jahr, onJahrWechsel, onRefresh, isRefreshing, onOpenInte
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
       <Appbar jahr={jahr} onJahrWechsel={onJahrWechsel} />
-      {/* REQ-027 (ticket 10.7) — der Fristen-Warnmodus: ein Banner, NIE ein Status (ADR-0039);
-          rendert nichts bei `keine`. */}
       <FristenBanner taxYear={jahr} />
       <View style={styles.emptyBlock}>
         <Text style={styles.heading}>{tr('cockpit.empty.heading')}</Text>
         <Text style={styles.help}>{tr('cockpit.empty.message')}</Text>
-        {/* The empty state IS the "no interview answers yet" case (REQ-015's GWT opening clause) —
-            without this, a brand-new account has no TaxYear row and no way to reach the
-            Minimal-Gate from Cockpit at all (#318 task 2). */}
         <Button onPress={onOpenInterview} style={styles.cta}>
           {tr('cockpit.answerQuestions')}
         </Button>
@@ -217,11 +184,6 @@ interface BestaetigungHinweisProps {
   readonly onOpenBestaetigung?: () => void
 }
 
-/**
- * REQ-032 (ADR-0052 §6, vorher ADR-021) — der ruhige Bestätigungs-Hinweis: Werte, die nicht der
- * Nutzer selbst eingetragen hat, warten auf die Bestätigung je Anlage. Grau und ruhig benannt, nie
- * ein Konflikt (ADR-008 ist für Widersprüche); die Summe, die die Spanne trägt, wird ehrlich zitiert.
- */
 function BestaetigungHinweis({ anlagen, stand, onOpenBestaetigung }: BestaetigungHinweisProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
@@ -258,7 +220,6 @@ interface CockpitLoadedProps {
   readonly summary: CockpitSummaryDto
   readonly jahr: number
   readonly onJahrWechsel: (jahr: number) => void
-  /** Was im Jahr noch zu bestätigen ist, oder null wenn der Query noch lief/scheiterte. */
   readonly bestaetigung: readonly AnlageBestaetigungDto[] | null
   readonly onOpenBestaetigung?: () => void
   readonly onRefresh: () => void
@@ -278,18 +239,12 @@ function CockpitLoaded({ summary, jahr, onJahrWechsel, bestaetigung, onOpenBesta
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
   const { openItems, stand } = summary
-  // One primary action per screen (design-system CLAUDE.md): while there's something to
-  // resolve, that's it — "Aktualisieren" moves to the secondary/ghost slot. With nothing open,
-  // refresh is the only honest action, so it keeps the primary slot.
   const hasOpenItems = openItems > 0
 
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
       <Appbar jahr={jahr} onJahrWechsel={onJahrWechsel} />
-      {/* REQ-027 (ticket 10.7) — der Fristen-Warnmodus: ein Banner, NIE ein Status (ADR-0039). */}
       <FristenBanner taxYear={jahr} />
-      {/* Ticket 10.8 (ADR-021) — der ruhige Übernahme-Hinweis: unbestätigte Posten aus der
-          Jahresübernahme, einzeln bestätigt. Grau und ruhig, nie ein Konflikt. */}
       <BestaetigungHinweis anlagen={bestaetigung} stand={stand} {...(onOpenBestaetigung ? { onOpenBestaetigung } : {})} />
       <Card variant="nacht">
         <Text style={styles.heroLabel}>{tr('cockpit.hero.label')}</Text>
@@ -364,7 +319,6 @@ function CockpitLoaded({ summary, jahr, onJahrWechsel, bestaetigung, onOpenBesta
   )
 }
 
-/** The deterministic number, as a point value or a range, with its provenance (ADR-015). */
 function NumericHero({ stand }: { readonly stand: CockpitStandDto }) {
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(useTheme())
@@ -386,7 +340,6 @@ function NumericHero({ stand }: { readonly stand: CockpitStandDto }) {
   )
 }
 
-/** ADR-032 — a gated Einkunftsart is named, never widened into a fake numeric range. */
 function GatedHero({ stand }: { readonly stand: CockpitStandDto }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
@@ -421,13 +374,11 @@ function makeStyles(t: UiTheme) {
     paddingBottom: t.space.s4,
   }
   const appbarTitle: TextStyle = {
-    // `.appbar h1` in the DS reference is `font-size: var(--text-2xl)` (32px), weight 800.
     fontFamily: t.font.display,
     fontWeight: t.weight.schwer,
     fontSize: t.size['2xl'],
     color: t.color.tinte,
   }
-  // ADR-022 — die Jahr-Auswahl: eine Chip-Reihe, das gewählte Jahr gefüllt (aktiv).
   const jahrReihe: ViewStyle = {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -464,8 +415,6 @@ function makeStyles(t: UiTheme) {
     textAlign: 'center',
   }
   const cta: ViewStyle = { marginTop: t.space.s4 }
-  // Only used once "Fragen beantworten" already claimed `cta`'s marginTop — the secondary
-  // "Aktualisieren" needs its own, smaller gap underneath it, not a doubled one.
   const secondaryCta: ViewStyle = { marginTop: t.space.s3 }
   const emptyBlock: ViewStyle = { alignItems: 'center', paddingVertical: t.space.s6 }
   const heroLabel: TextStyle = {

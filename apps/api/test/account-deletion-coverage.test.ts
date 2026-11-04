@@ -16,6 +16,10 @@ const HANDLED_ELSEWHERE: Record<string, string> = {
   TwoFactor: 'cascades off User',
   Passkey: 'cascades off User',
   Freischaltung: 'cascades off User',
+  OauthClient: 'cascades off User',
+  OauthRefreshToken: 'cascades off User',
+  OauthAccessToken: 'cascades off User',
+  OauthConsent: 'cascades off User',
   DeviceCode: 'deleted by its own step',
   LegalHold: 'the retention record itself — must outlive the erasure it justifies',
 }

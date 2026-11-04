@@ -1,4 +1,4 @@
-/** What Anlage Kind needs beyond the child's identity (Zeilen 7, 8, 10). */
+/** What Anlage Kind needs beyond the child's identity. */
 export interface KindAngaben {
   kindschaftsverhaeltnis: string | null
   kindschaftsverhaeltnisB: string | null
@@ -28,6 +28,7 @@ export interface KindRecord extends KindAngaben {
 
 export const KIND_REPOSITORY = Symbol('KIND_REPOSITORY')
 
+/** What Anlage Kind needs beyond the child's identity. */
 export interface KindRepository {
   listForUserAndYear(userId: string, steuerjahr: number): Promise<KindRecord[]>
   create(

@@ -2,7 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import { ANDERE_KINDSCHAFTSVERHAELTNISSE, ANDERER_ELTERNTEIL_STATUS, KINDSCHAFTSVERHAELTNISSE } from '@steuereule/core'
 import { IsBoolean, IsIn, IsNotEmpty, IsOptional, IsString, Matches, MaxLength } from 'class-validator'
 
-/** The Anlage-Kind facts beyond the child's identity (Zeilen 7, 8, 10) — optional on write. */
+/** The Anlage-Kind facts beyond the child's identity — optional on write. */
 class KindAngabenDto {
   @ApiPropertyOptional({ enum: KINDSCHAFTSVERHAELTNISSE, nullable: true, description: 'Kz 02: 1 = leiblich/adoptiert, 2 = Pflegekind, 3 = Enkel-/Stiefkind' })
   @IsOptional()

@@ -1,10 +1,3 @@
-// Normalize the design-system manifest (finanzo-funke-design-system/project/_ds_manifest.json)
-// into a grouped token tree — the single source both renderers consume (ADR-050: one token
-// truth, fed from _ds_manifest.json). Pure and deterministic: no I/O, no Style Dictionary here.
-//
-// The manifest lists every token twice where a dark override exists: once unscoped (light) and
-// once scoped `[data-theme="dunkel"]`. We route by scope. Every dark override is a colour.
-
 const DARK_SCOPE = '[data-theme="dunkel"]'
 
 /** One raw token as it appears in the manifest `tokens` array. */
@@ -20,7 +13,6 @@ export interface Manifest {
   readonly tokens: readonly ManifestToken[]
 }
 
-/** Token groups, mirroring the checked-in token CSS files. */
 export type Group =
   | 'color'
   | 'shadow'
@@ -43,18 +35,14 @@ export interface NormalToken {
 }
 
 export interface NormalizedTokens {
-  /** Light/base: every group -> key -> token. */
   readonly base: Readonly<Record<Group, readonly NormalToken[]>>
-  /** Dark overrides only (all colours), keyed like base.color. */
   readonly darkColors: readonly NormalToken[]
 }
 
-/** `funke-hell` -> `funkeHell`, `tinte-2` -> `tinte2`. Leaves single words untouched. */
 export function camel(segment: string): string {
   return segment.replace(/-([a-z0-9])/g, (_m, c: string) => c.toUpperCase())
 }
 
-/** Map a CSS custom-property name to its group and JS key. Deterministic, total. */
 export function classify(cssVar: string): { group: Group; key: string } {
   const bare = cssVar.replace(/^--/, '')
 
@@ -72,8 +60,6 @@ export function classify(cssVar: string): { group: Group; key: string } {
   if (bare === 'feder' || bare === 'zack') return { group: 'easing', key: bare }
   if (bare.startsWith('bp-')) return { group: 'breakpoint', key: bare.slice('bp-'.length) }
 
-  // Everything else is a colour (colors.css / dunkel.css). The manifest mis-labels
-  // `--nacht-text` as kind "font"; grouping by name keeps it a colour where it belongs.
   return { group: 'color', key: camel(bare) }
 }
 
@@ -92,7 +78,6 @@ const EMPTY_BASE = (): Record<Group, NormalToken[]> => ({
   breakpoint: [],
 })
 
-/** Normalize the manifest into the grouped light tree + dark colour overrides. */
 export function manifestToTokens(manifest: Manifest): NormalizedTokens {
   const base = EMPTY_BASE()
   const darkColors: NormalToken[] = []

@@ -2,7 +2,6 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import { FAMILIENSTAENDE, istGueltigeIban, istGueltigePlz, istGueltigesDatum, RELIGIONSSCHLUESSEL } from '@steuereule/core'
 import { IsBoolean, IsIn, IsOptional, IsString, MaxLength, registerDecorator, type ValidationOptions } from 'class-validator'
 
-/** Wraps a pure @steuereule/core predicate as a class-validator rule (one rule, one source). */
 function Erfuellt(praedikat: (wert: string) => boolean, meldung: string, options?: ValidationOptions) {
   return (object: object, propertyName: string) =>
     registerDecorator({

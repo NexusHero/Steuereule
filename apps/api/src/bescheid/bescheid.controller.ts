@@ -24,7 +24,6 @@ import {
 @Controller('v1/steuerjahre')
 @UseGuards(UserContextGuard)
 export class BescheidController {
-  // Explicit token — see the comment on ProfileController's constructor.
   constructor(@Inject(BescheidService) private readonly service: BescheidService) {}
 
   @Get(':jahr/bescheid')
@@ -37,7 +36,6 @@ export class BescheidController {
   }
 
   @Put(':jahr/bescheid/feld/:feld')
-  // Upsert-style write on an existing tax-year resource (one row per userId+steuerjahr) → 200.
   @HttpCode(200)
   @RequiresAccount()
   @ApiParam({ name: 'jahr', type: Number, example: 2026, description: 'The tax year (Steuerjahr).' })

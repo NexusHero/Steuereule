@@ -1,5 +1,3 @@
-// SicherheitScreen's styles (REQ-007). One factory, mirroring the Datenschutz/Profil
-// pattern of a single `make*Styles` imported by the screen rather than inlined styles.
 import { type ViewStyle, type TextStyle } from 'react-native'
 import { WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
 

@@ -1,6 +1,3 @@
-// Apple logo (monochrome) for the Sign in with Apple button (REQ-008, Apple half — flagged
-// off until an Apple Developer account + a shipped iOS build exist). A single-colour mark so it
-// works on the ghost button's ink without a white backdrop; Apple's own sign-in mark is black.
 import { Svg, Path } from 'react-native-svg'
 
 export function AppleG({ size = 20 }: { readonly size?: number } = {}) {

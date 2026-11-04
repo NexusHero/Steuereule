@@ -1,9 +1,3 @@
-// Onboarding (F: Onboarding.jsx in Funke dress) — 3-step flow: name → Steuer-ID → Steuernummer →
-// summary, wired to the real Profile API (GET/PUT /v1/profile, steuereule#27/#29). The screen
-// holds the profile in-memory only — nothing is written to localStorage/AsyncStorage; the
-// Steuer-ID is persisted server-side, field-encrypted at rest (ADR-0008). Honest states
-// throughout: a real loading screen, a real retryable error, an inline retryable save error —
-// no fake spinners, no silent failures. Copy via i18n (de base + en, ADR-0006).
 import { useEffect, useState } from 'react'
 import { ScrollView, View, Text } from 'react-native'
 import { useTranslation } from 'react-i18next'
@@ -34,11 +28,9 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
   const styles = makeOnboardingStyles(t)
 
   const [profil, setProfil] = useState<OnboardingProfil | null>(null)
-  const [schritt, setSchritt] = useState(0) // 0..2 = the three steps, 3 = summary
+  const [schritt, setSchritt] = useState(0)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
-  // Seed the local, in-memory profile exactly once from the loaded server value (or the
-  // all-null default) — after that the user's own edits are the source of truth until submit.
   useEffect(() => {
     if (profil === null && profileQuery.data !== undefined) {
       setProfil(toOnboardingProfil(profileQuery.data.data))
@@ -74,9 +66,6 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
   }
 
   function submit() {
-    // Defensive only: `submit` is only ever passed to OnboardingSummary, which never renders
-    // before `profil` is set (see the early returns above). TS can't carry that narrowing into
-    // a nested function declaration.
     if (profil === null) return
     setSubmitError(null)
     putProfile.mutate(
@@ -168,7 +157,6 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
             <Pill>{tr('onboarding.step2.counter', { count: idDigits })}</Pill>
             {steuerIdOk ? <Sticker>{tr('onboarding.step2.confirmed')}</Sticker> : null}
           </View>
-          {/* ADR-0045: hardly anyone knows their Steuer-ID by heart — skipping must never be a dead end. */}
           <Chip style={{ marginTop: t.space.s3 }} onPress={() => { set('steuerId')(''); weiter(); }}>{tr('onboarding.step2.later')}</Chip>
         </>
       ) : null}
