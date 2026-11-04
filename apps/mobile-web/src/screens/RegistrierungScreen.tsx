@@ -1,16 +1,3 @@
-// Registrierung (F: registrierung.html / Registrierung.jsx in Funke dress) — create account
-// (email + password) against the real better-auth client SDK, then the honest success step
-// leading into Onboarding.
-//
-// Deliberate deviation from the DS reference (steuereule#72, ADR-0012 §5): the DS demo's middle
-// "Demo-Code: 123456" gate is not reproduced — the real flow sends a real verification link
-// asynchronously and the account already works before it's clicked (REQ-005), so "Konto anlegen"
-// goes straight to the success step with an honest "please verify" banner when still unverified.
-//
-// The social slot and the verification banner are shared with LoginScreen (../shared/) — this
-// screen owns only the sign-up form and the success step. The "back to login" link closes the
-// one dead branch this screen used to have: a user who reached Registrierung and changed their
-// mind had no way back (Phase 0.3 AC-2: every screen reachable from every reachable state).
 import { useState } from 'react'
 import { ScrollView, View, Text, Pressable, ActivityIndicator, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
@@ -24,13 +11,9 @@ import { EmailVerificationBanner } from './shared/EmailVerificationBanner'
 
 export interface RegistrierungScreenProps {
   readonly onDone: () => void
-  /** Returns to Login — the reverse of LoginScreen's "Neu hier? Konto anlegen". Omit where the
-   *  screen is embedded and there is no login to return to. */
   readonly onLogin?: () => void
 }
 
-// `Stage.success` carries only `email` — the server's value from the signup response, never the
-// raw input — verification status is read live every render, never snapshotted (#194).
 type Stage =
   | { readonly kind: 'form' }
   | { readonly kind: 'submitting' }
@@ -47,7 +30,6 @@ export function RegistrierungScreen({ onDone, onLogin }: RegistrierungScreenProp
   const [pass, setPass] = useState('')
   const [fehler, setFehler] = useState('')
   const [stage, setStage] = useState<Stage>({ kind: 'form' })
-  // Live, account-scoped, fail-closed — shared with LoginScreen (#194/#217, ADR-0012 amendment).
   const verifiedForThisAccount = useEmailVerified(stage.kind === 'success' ? stage.email : undefined)
 
   const ok = mail.includes('@') && pass.length >= 6
@@ -59,8 +41,6 @@ export function RegistrierungScreen({ onDone, onLogin }: RegistrierungScreenProp
     }
     setFehler('')
     setStage({ kind: 'submitting' })
-    // better-auth resolves to `{ data, error }` for a request that reached the server; a genuine
-    // network failure rejects instead — both land on the same honest, generic error.
     try {
       const { data, error } = await authClient.signUp.email({ name: '', email: mail, password: pass })
       if (error || !data) {
@@ -79,9 +59,6 @@ export function RegistrierungScreen({ onDone, onLogin }: RegistrierungScreenProp
     return (
       <ScrollView contentContainerStyle={bp === 's' ? styles.successScreen : styles.wideSuccessScreen} keyboardShouldPersistTaps="handled" testID="screen-container">
         <Sticker style={styles.successBadge}>{tr('registrierung.success.badge')}</Sticker>
-        {/* Same class Musti's #298 review named for LoginScreen (F8): the DS reference renders
-            this as a real `<h1>`; this screen's own page title was visual only. `role="heading"`/
-            `aria-level={1}` explicit for the same reason — not left to a level-less default. */}
         <Text style={styles.successHeading} role="heading" aria-level={1}>
           {tr('registrierung.success.heading')}
         </Text>

@@ -1,5 +1,3 @@
-// Form ↔ API mapping for the Erklärungs-Stammdaten (ADR-0050). Users type dates the
-// German way (TT.MM.JJJJ); the API stores ISO (YYYY-MM-DD) — the form never shows ISO.
 import type {
   PutStammdatenDto,
   PutStammdatenDtoFamilienstand,
@@ -30,8 +28,6 @@ export function isoZuDeutsch(iso: string | null): string {
   return match ? `${match[3]}.${match[2]}.${match[1]}` : ''
 }
 
-/** "12.4.1990" → "1990-04-12"; anything unparseable is passed through so the API's
- *  date rule rejects it with a visible error instead of the form silently dropping it. */
 export function deutschZuIso(eingabe: string): string | null {
   const wert = eingabe.trim()
   if (wert === '') return null
@@ -55,7 +51,6 @@ export function zuEntwurf(stand: StammdatenResponseDto): StammdatenEntwurf {
     wohnort: stand.wohnort ?? '',
     beruf: stand.beruf ?? '',
     religion: stand.religion,
-    // A stored religion was stored with consent; the box starts ticked for it.
     religionEinwilligung: stand.religion !== null,
     familienstand: stand.familienstand,
     familienstandSeit: isoZuDeutsch(stand.familienstandSeit),

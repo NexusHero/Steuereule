@@ -1,9 +1,7 @@
-// `type: String`/explicit literals given on every @ApiProperty() below — see the
-// comment in validation-error.dto.ts for why we don't rely on inferred design:type
-// metadata (esbuild/tsx never emit it).
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import { Equals, IsOptional, IsString, MinLength } from 'class-validator'
 
+/** `type: String`/explicit literals given on every. */
 export class DeleteAccountRequestDto {
   @ApiProperty({
     type: Boolean,

@@ -59,7 +59,7 @@ describe('REQ-008 Google OAuth — ATDD acceptance', () => {
 
   it('falls back to dev-only Google credentials outside production (resolveGoogleClientId/Secret)', async () => {
     // Dynamic import to get the resolve functions from the same module
-    const { resolveGoogleClientId, resolveGoogleClientSecret } = await import('../src/auth/better-auth.js')
+    const { resolveGoogleClientId, resolveGoogleClientSecret } = await import('../src/auth/better-auth-env.js')
 
     // In test/dev, resolves to dev placeholders — Google sign-in is available
     const clientId = resolveGoogleClientId({ NODE_ENV: 'test' })
@@ -70,7 +70,7 @@ describe('REQ-008 Google OAuth — ATDD acceptance', () => {
   })
 
   it('returns undefined for Google credentials in production when not set (gate closed)', async () => {
-    const { resolveGoogleClientId, resolveGoogleClientSecret } = await import('../src/auth/better-auth.js')
+    const { resolveGoogleClientId, resolveGoogleClientSecret } = await import('../src/auth/better-auth-env.js')
 
     const clientId = resolveGoogleClientId({ NODE_ENV: 'production' })
     const clientSecret = resolveGoogleClientSecret({ NODE_ENV: 'production' })
@@ -81,7 +81,7 @@ describe('REQ-008 Google OAuth — ATDD acceptance', () => {
   })
 
   it('uses real Google credentials from env when provided (even in production)', async () => {
-    const { resolveGoogleClientId, resolveGoogleClientSecret } = await import('../src/auth/better-auth.js')
+    const { resolveGoogleClientId, resolveGoogleClientSecret } = await import('../src/auth/better-auth-env.js')
 
     const clientId = resolveGoogleClientId({
       NODE_ENV: 'production',

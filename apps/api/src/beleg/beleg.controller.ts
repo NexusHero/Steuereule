@@ -18,7 +18,6 @@ import { SetZuordnungDto } from './dto/set-zuordnung.dto.js'
 @Controller('v1/belege')
 @UseGuards(UserContextGuard)
 export class BelegController {
-  // Explicit token — see the comment on ProfileController's constructor.
   constructor(@Inject(BelegService) private readonly belegService: BelegService) {}
 
   @Get()
@@ -28,8 +27,6 @@ export class BelegController {
   }
 
   @Post()
-  // A Beleg is a new resource → Nest's default 201 is correct here (unlike the interview
-  // POST, which is an upsert on an existing tax-year resource and therefore uses 200).
   @ApiBody({ type: CreateBelegDto })
   @ApiCreatedResponse({ type: BelegResponseDto, description: 'The created, unbound Beleg with its derived Zuordnung.' })
   create(@CurrentUser() userId: string, @Body() dto: CreateBelegDto): Promise<BelegResponseDto> {
@@ -37,7 +34,6 @@ export class BelegController {
   }
 
   @Post(':id/zuordnung')
-  // Upsert-style write on an existing resource (the Beleg's confirmed year) → 200.
   @HttpCode(200)
   @ApiParam({ name: 'id', type: String, description: 'The Beleg id (the caller’s own).' })
   @ApiBody({ type: SetZuordnungDto })

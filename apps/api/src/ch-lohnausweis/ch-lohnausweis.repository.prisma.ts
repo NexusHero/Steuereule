@@ -3,7 +3,6 @@ import { LOHNAUSWEIS_BETRAG_FELDER, type LohnausweisBetragFeldId } from '@steuer
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
 import type { ChLohnausweisFelder, ChLohnausweisRecord, ChLohnausweisRepository, NGreAngaben } from './ch-lohnausweis.repository.js'
 
-/** The Lohnausweis field id → Prisma column name (the id's hyphen-free camelCase form). */
 const FELD_SPALTE: Record<LohnausweisBetragFeldId, string> = {
   lohn: 'lohn',
   gehaltsnebenleistungen: 'gehaltsnebenleistungen',
@@ -21,7 +20,6 @@ const FELD_SPALTE: Record<LohnausweisBetragFeldId, string> = {
   'weitere-nebenleistungen': 'weitereNebenleistungen',
 }
 
-/** The row shape the repository reads/writes — the 14 amount columns, the freitext + the Kurs. */
 type ChLohnausweisRow = {
   userId: string
   steuerjahr: number
@@ -75,13 +73,10 @@ function toRecord(row: ChLohnausweisRow): ChLohnausweisRecord {
   }
 }
 
-/** The one-keyed update/insert payload for `feld` — typed as a sparse record, never a computed
- *  `{[spalte]: wert}` cast that could silently target a non-column key. */
 function feldData(feld: LohnausweisBetragFeldId, wert: string | null): Record<string, string | null> {
   return { [FELD_SPALTE[feld]]: wert }
 }
 
-/** A fresh row's create payload — every field `null` (`offen`), never a fabricated figure. */
 const EMPTY_CREATE: Record<string, null> = Object.fromEntries([
   ...LOHNAUSWEIS_BETRAG_FELDER.map((f) => [FELD_SPALTE[f], null]),
   ['bemerkungen', null],
@@ -103,9 +98,6 @@ const EMPTY_CREATE: Record<string, null> = Object.fromEntries([
 
 @Injectable()
 export class PrismaChLohnausweisRepository implements ChLohnausweisRepository {
-  // ENCRYPTED_PRISMA, never plain PrismaService — the CHF figures are field-encrypted at rest
-  // (ADR-0008): actual income is the most sensitive personal fact a tax app holds, joinable to
-  // Profile's Steuer-ID via the same userId (see schema.prisma's ChLohnausweis doc).
   constructor(@Inject(ENCRYPTED_PRISMA) private readonly prisma: EncryptedPrismaClient) {}
 
   async findForUserAndYear(userId: string, steuerjahr: number): Promise<ChLohnausweisRecord | null> {

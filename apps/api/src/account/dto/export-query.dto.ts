@@ -1,8 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger'
 import { IsIn, IsOptional } from 'class-validator'
 
-/** ADR-0013 §Contract: `?format=` chosen over `Accept` content-negotiation because a
- *  browser file-download `<a href>` cannot reliably set an `Accept` header. */
 export const EXPORT_FORMATS = ['json', 'pdf'] as const
 export type ExportFormat = (typeof EXPORT_FORMATS)[number]
 

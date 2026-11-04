@@ -1,10 +1,3 @@
-// German-language, human-readable rendering of the same ExportDocument the JSON
-// representation returns (ADR-0013 §4/§7 — "one data path, two renderings"). Fully
-// self-contained: no external stylesheet/font/network fetch, since PdfRenderer must
-// never need network access to lay a page out. Print-styled for A4.
-//
-// Honesty (ADR-0013 §8): it renders exactly the stored rows and says so plainly when
-// there are none — it never claims a "Belege ZIP" or anything else not actually held.
 import type { ExportDocument, ExportTaxDataValue } from './export-document.js'
 
 function escapeHtml(value: string): string {
@@ -67,15 +60,13 @@ function renderAccessLogRows(entries: ExportDocument['accessLog']): string {
       (entry) => `
       <tr>
         <td>${escapeHtml(entry.action)}</td>
-        <td>${escapeHtml(entry.resource)}</td>
+        <td>${escapeHtml(entry.resource)}${entry.source ? ` (${escapeHtml(entry.source)})` : ''}</td>
         <td>${formatGermanTimestamp(entry.createdAt)}</td>
       </tr>`,
     )
     .join('')
 }
 
-/** Builds the full HTML document PdfRenderer.renderPdf() prints to A4 — the same
- *  assembled ExportDocument the JSON representation returns, human-readable in German. */
 export function buildExportReportHtml(document: ExportDocument): string {
   return `<!doctype html>
 <html lang="de">

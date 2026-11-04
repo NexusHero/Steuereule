@@ -1,6 +1,3 @@
-// ProfilScreen's styles — shared by the screen's extracted ProfilView and ProfilEdit so each file
-// stays about what it renders. The loading/error states' centred styles live in
-// ../shared/ScreenState.tsx (Phase 0.3 AC-3).
 import { type ViewStyle, type TextStyle } from 'react-native'
 import { WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
 

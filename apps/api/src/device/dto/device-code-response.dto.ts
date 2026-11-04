@@ -1,11 +1,6 @@
-// `type:` given explicitly on every @ApiProperty() — esbuild/tsx (dev+prod) and
-// Vitest/SWC-under-test both need it; see PutProfileDto's header comment for why
-// design:type metadata can't be relied on here.
 import { ApiProperty } from '@nestjs/swagger'
 
-/** The response shape for `POST /v1/device/code` (#238, RFC 8628 §3.2, ADR-0024) —
- *  our own camelCase mirror of the plugin's snake_case wire shape, matching this
- *  app's existing DTO convention (see ProfileResponseDto). */
+/** The response shape for `POST /v1/device/code`. */
 export class DeviceCodeResponseDto {
   @ApiProperty({ type: String, example: 'K7QX-9F2M', description: 'The short code shown on the desktop and matched on the phone.' })
   userCode!: string

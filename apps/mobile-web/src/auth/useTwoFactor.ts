@@ -1,10 +1,3 @@
-// REQ-007 — the two-factor client seam. Wraps the `twoFactorClient()` plugin's
-// `authClient.twoFactor.*` methods the security screen drives (enable → code-confirm,
-// disable with re-authentication) and translates better-auth's own error codes to the
-// app's `sicherheit.*` i18n keys — one place, so the screen and the login prompt never
-// re-derive the mapping. The plugin's own HTTP routes carry a per-route rate limit
-// (window 10s / max 3), so a rapid wrong-code retry resolves to a 429 here — mapped to
-// the honest "too many attempts" message rather than a raw server string.
 import { useTranslation } from 'react-i18next'
 import { APP_NS } from '../i18n/resources'
 import { useAuthClient } from './AuthClientProvider'
@@ -16,19 +9,12 @@ export interface TotpSetup {
 }
 
 export interface UseTwoFactorResult {
-  /** Starts enrollment — returns the TOTP URI + backup codes on success, or a translated error. */
   readonly enable: (password: string) => Promise<TotpSetup | string>
-  /** Confirms one generated code, completing enrollment (or a login challenge). */
   readonly verifyTotp: (code: string) => Promise<string | null>
-  /** Removes the factor — better-auth requires the password on the server (re-authentication). */
   readonly disable: (password: string) => Promise<string | null>
 }
 
-/** The two-factor client surface, typed structurally (see the cast in `useTwoFactor`): the
- *  client plugin's `$InferServerPlugin` is empty, so `createAuthClient`'s own inferred type
- *  does not carry `authClient.twoFactor.*` — the runtime object does, because the client plugin
- *  registers the `/two-factor/*` path methods. Narrow and honest: only the three methods this
- *  app actually calls. */
+/** The two-factor client surface, typed structurally. */
 interface TwoFactorClientSurface {
   twoFactor: {
     enable: (input: { password: string }) => Promise<{ data?: { totpURI: string; backupCodes: string[] } | null; error: AuthErrorLike | null }>

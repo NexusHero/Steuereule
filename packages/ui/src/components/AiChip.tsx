@@ -1,5 +1,3 @@
-// KI-Absender-Chip (fk-ai-chip) — Violett-Territorium, the ONLY place --ki appears. Always marked
-// with the "B" owl dot so KI output stays recognizable (design rule: violet = AI only).
 import { View, Text, type ViewStyle, type TextStyle, type StyleProp } from 'react-native'
 import { type ReactNode } from 'react'
 import { useTheme } from '../theme/useTheme'

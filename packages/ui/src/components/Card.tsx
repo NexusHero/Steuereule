@@ -1,5 +1,3 @@
-// Karte (fk-karte). Ruhe-Hierarchie: normal cards whisper (fine line, no shadow); only the
-// nacht/held hero and the KI card carry a 2px ink contour + hard shadow (komponenten.css, CLAUDE.md).
 import { View, type ViewStyle, type StyleProp } from 'react-native'
 import { type ReactNode } from 'react'
 import { useTheme } from '../theme/useTheme'

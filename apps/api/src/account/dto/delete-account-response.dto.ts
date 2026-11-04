@@ -1,10 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger'
 
-/**
- * The honest teardown summary (ADR-0013's frozen contract, §8's honesty invariant):
- * exactly what was erased vs. anonymised-and-retained vs. held under active
- * Löschschutz — never a vague "your data was deleted".
- */
+/** The honest teardown summary: exactly what was erased vs. anonymised-and-retained vs. held under active Löschschutz. */
 export class DeletedSummaryDto {
   @ApiProperty({
     type: Boolean,

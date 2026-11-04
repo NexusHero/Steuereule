@@ -1,6 +1,3 @@
-// OnboardingScreen's styles — shared by the step-form screen and its extracted OnboardingSummary
-// so each file stays about what it renders rather than re-listing the whole style map. The
-// loading/error states' own centred styles live in ../shared/ScreenState.tsx (Phase 0.3 AC-3).
 import { type ViewStyle, type TextStyle } from 'react-native'
 import { WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
 

@@ -1,8 +1,5 @@
-// ADR-0052 §6/§7 — Herkunft und Bestätigung je Feld. Every write that does not come from the user
-// (Jahresübernahme now, the assistant in 17.3) goes through `schreibe`, which applies the core's
-// conflict rule; the user confirms per Anlage or decides on proposals here. The decisions are
-// @steuereule/core's (`entscheideSchreibung`, `fehlendeBestaetigungen`), never re-derived here.
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common'
+import { Inject, Injectable } from '@nestjs/common'
+import { InvalidInputError, NotFoundError } from '../common/domain-error.js'
 import {
   ANLAGEN,
   JAHRESUNABHAENGIG,
@@ -47,6 +44,7 @@ function herkunftDto(h: Herkunft): HerkunftDto {
   }
 }
 
+/** §6/§7 — Herkunft und Bestätigung je Feld. */
 @Injectable()
 export class BestaetigungService {
   constructor(
@@ -60,28 +58,27 @@ export class BestaetigungService {
     try {
       teile = zerlegeKennzeichnungsKey(key)
     } catch {
-      throw new BadRequestException(`"${key}" is not a known field.`)
+      throw new InvalidInputError('FIELD_UNKNOWN', `"${key}" is not a known field.`)
     }
     const zugriff = this.zugriff[teile.maske]
     if (zugriff === undefined || !zugriff.felder.includes(teile.feld) || zugriff.mitInstanz !== (teile.instanz !== null)) {
-      throw new BadRequestException(`"${key}" is not a field that can be written here.`)
+      throw new InvalidInputError('FIELD_NOT_WRITABLE', `"${key}" is not a field that can be written here.`)
     }
     return { key, ...teile, steuerjahr: istJahresunabhaengig(key) ? JAHRESUNABHAENGIG : steuerjahr, zugriff }
   }
 
   private async aktuellerWert(userId: string, a: Adresse): Promise<string | null> {
     const werte = await a.zugriff.lese(userId, a.steuerjahr, a.instanz)
-    if (werte === null) throw new NotFoundException(`"${a.key}" does not exist in this tax year.`)
+    if (werte === null) throw new NotFoundError('FIELD_NOT_FOUND', `"${a.key}" does not exist in this tax year.`)
     return werte[a.feld] ?? null
   }
 
   private async schreibeWert(userId: string, a: Adresse, wert: string | null): Promise<void> {
     if (!(await a.zugriff.schreibe(userId, a.steuerjahr, a.instanz, a.feld, wert))) {
-      throw new NotFoundException(`"${a.key}" does not exist in this tax year.`)
+      throw new NotFoundError('FIELD_NOT_FOUND', `"${a.key}" does not exist in this tax year.`)
     }
   }
 
-  /** ADR-0052 §7: writes a non-user value, or files it as a proposal when the user's value wins. */
   async schreibe(userId: string, steuerjahr: number, key: string, neuerWert: string | null, herkunft: Herkunft): Promise<Schreibergebnis> {
     if (herkunft.art === 'nutzer') throw new Error('BestaetigungService.schreibe is for non-user writes; the masks handle user writes.')
     const a = this.adresse(key, steuerjahr)
@@ -106,7 +103,6 @@ export class BestaetigungService {
     return this.repository.listForUserAndYears(userId, [steuerjahr, JAHRESUNABHAENGIG])
   }
 
-  /** Vorprüfungs-Schlüssel `unbestaetigt.<anlage>` — unconfirmed values block like missing ones. */
   async fehlend(userId: string, steuerjahr: number): Promise<string[]> {
     return fehlendeBestaetigungen((await this.liste(userId, steuerjahr)).map((r) => ({ ...r, wert: null })))
   }
@@ -116,7 +112,6 @@ export class BestaetigungService {
     if (offen.length === 0) return { anlagen: [] }
     await this.auditService.append({ userId, action: 'READ', resource: 'kennzeichnung' })
 
-    // One read per mask instance, not per field.
     const gelesen = new Map<string, Promise<Readonly<Record<string, string | null>> | null>>()
     const werte: { anlage: Anlage; dto: KennzeichnungWertDto }[] = []
     for (const r of offen) {
@@ -148,7 +143,7 @@ export class BestaetigungService {
   }
 
   async bestaetigeAnlage(userId: string, steuerjahr: number, anlage: Anlage): Promise<BestaetigungResponseDto> {
-    if (!(ANLAGEN as readonly string[]).includes(anlage)) throw new BadRequestException(`"${anlage}" is not an Anlage.`)
+    if (!(ANLAGEN as readonly string[]).includes(anlage)) throw new InvalidInputError('ANLAGE_UNKNOWN', `"${anlage}" is not an Anlage.`)
     await this.repository.bestaetigeAnlage(userId, [steuerjahr, JAHRESUNABHAENGIG], anlage)
     return this.uebersicht(userId, steuerjahr)
   }
@@ -156,7 +151,7 @@ export class BestaetigungService {
   async entscheideVorschlag(userId: string, steuerjahr: number, key: string, entscheidung: 'annehmen' | 'verwerfen'): Promise<BestaetigungResponseDto> {
     const a = this.adresse(key, steuerjahr)
     const bestehend = await this.repository.find(userId, a.steuerjahr, key)
-    if (bestehend === null || bestehend.vorschlag === null) throw new NotFoundException(`There is no open proposal for "${key}".`)
+    if (bestehend === null || bestehend.vorschlag === null) throw new NotFoundError('PROPOSAL_NOT_FOUND', `There is no open proposal for "${key}".`)
     const kennzeichnung: Kennzeichnung = { ...bestehend, wert: await this.aktuellerWert(userId, a) }
     if (entscheidung === 'annehmen') {
       const angenommen = nimmVorschlagAn(kennzeichnung)

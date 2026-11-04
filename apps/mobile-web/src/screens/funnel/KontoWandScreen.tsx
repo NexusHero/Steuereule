@@ -1,18 +1,8 @@
-// Konto-Wand (ADR-0045, value-first funnel) — the screen a GUEST lands on right after the
-// Minimal-Gate. The guest has just answered three questions without an account; this screen
-// shows what those answers mean ("dein Weg": which vertical, what comes next) and only THEN asks
-// for an account, because everything after the Minimal-Gate (LStB / CH / Rente masks) is
-// account-only server-side.
-//
-// Honesty rule (ADR-048/ADR-0032): no refund number, no "bis zu X €" teaser — the app has no
-// calculation at this point, so the screen shows the path and the next steps, never money.
-// Copy via i18n (de base + en, ADR-0006). Screen never imports the router (ADR-0023).
 import { ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Button, Card, Chip, Sticker, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
 import { APP_NS } from '../../i18n/resources'
 
-/** The vertical the Minimal-Gate answers route to — the same decision App.tsx makes for accounts. */
 export type FunnelPfad = 'angestellte' | 'rente' | 'ch'
 
 export function pfadAusAntworten(answers: Readonly<Record<string, string | undefined>>): FunnelPfad {
@@ -23,11 +13,8 @@ export function pfadAusAntworten(answers: Readonly<Record<string, string | undef
 
 export interface KontoWandScreenProps {
   readonly pfad: FunnelPfad
-  /** Create an account — the guest's answers travel with it (REQ-006 / ADR-0045). */
   readonly onRegister: () => void
-  /** Already has an account — signing in carries the answers over the same way. */
   readonly onLogin: () => void
-  /** Not now — back to the Cockpit, nothing lost (answers stay under the guest session). */
   readonly onLater: () => void
 }
 

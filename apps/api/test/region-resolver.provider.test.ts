@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -44,7 +45,7 @@ describe('geoIpRegionResolverProvider — file loading', () => {
   })
 
   it('resolves every request as "unknown", not a thrown error, when the configured files do not exist', async () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const warn = vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => {})
     process.env.GEOIP_DATABASE_PATH = join(dir, 'does-not-exist.csv')
     const resolver = await geoIpRegionResolverProvider.useFactory!()
     await expect(resolver.resolve('203.0.113.42')).resolves.toBe(UNKNOWN_REGION)

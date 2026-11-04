@@ -1,7 +1,3 @@
-// REQ-032 (ADR-0052 §6/§7) — „Prüfen & bestätigen“: every value the user did not enter themselves
-// (Jahresübernahme, later the assistant) is shown per Anlage with its Herkunft; the user confirms
-// the Anlage or changes values one by one in their mask. A proposal never overwrote anything —
-// the user accepts or discards it here.
 import { Pressable, ScrollView, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
@@ -25,13 +21,11 @@ export type BestaetigungsMaske = KennzeichnungWertDto['maske']
 export interface BestaetigungScreenProps {
   readonly jahr: number
   readonly onZurueck: () => void
-  /** Opens the mask a value belongs to, where the user changes it themselves. */
   readonly onMaskeOeffnen: (maske: BestaetigungsMaske) => void
 }
 
 type Tr = ReturnType<typeof useTranslation>['t']
 
-// Fields whose stored string is a year, an age or a choice — everything else is whole euros.
 const KEINE_BETRAEGE = new Set(['rente.rentenbeginnJahr', 'rente.alterBeiRentenbeginn', 'rente.rentenart', 'vermietung.baujahr'])
 
 function herkunftText(tr: Tr, h: HerkunftDto): string {
@@ -90,7 +84,6 @@ export function BestaetigungScreen({ jahr, onZurueck, onMaskeOeffnen }: Bestaeti
   }
   const { anlagen } = uebersicht.data.data
 
-  // Cockpit, Vorprüfung and the masks all read what a confirmation changes.
   const nachAenderung = async (aktion: () => Promise<{ status: number }>) => {
     setFehler(false)
     try {

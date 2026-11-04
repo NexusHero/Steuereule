@@ -1,42 +1,14 @@
-// The one better-auth client construction site (mirrors packages/api-client/src/http-client.ts's
-// "one fetch call site" rule for the Profile API). better-auth's client SDK is a fixed contract —
-// mounted server-side as a Fastify catch-all on `/api/auth/*` (ADR-0012 §1) — so the frontend
-// build is not blocked on the backend landing; it targets the library's own, versioned shape.
-//
-// better-auth's `createAuthClient` takes its origin at construction time (there is no mutable
-// `configure*` setter the way the generated Profile client has), so the origin is injected here
-// as a plain factory argument — the app's entry point calls this once, exactly like it calls
-// `configureApiClient` (12-Factor III: the origin is env-driven config, never a baked-in host).
-//
-// `credentials: 'include'` is better-auth's own default whenever the runtime's `Request` supports
-// it (true for both the real browser and Node's fetch) — required for the cross-site demo
-// (ADR-0011/0012, session cookie is `SameSite=None; Secure`). Not re-specified here to avoid a
-// second, driftable copy of that default; see better-auth's `getClientConfig`.
 import { createAuthClient } from 'better-auth/react'
 import { twoFactorClient } from 'better-auth/client/plugins'
 import { passkeyClient } from '@better-auth/passkey/client'
 
-/** Mount point ADR-0012 §1 fixes for better-auth on the API (Fastify catch-all, outside Nest). */
 const AUTH_BASE_PATH = '/api/auth'
 
 export function createAppAuthClient(baseUrl: string): ReturnType<typeof createAuthClient> {
   return createAuthClient({
     baseURL: baseUrl,
     basePath: AUTH_BASE_PATH,
-    // twoFactorClient() (REQ-007) exposes `authClient.twoFactor.{enable,verifyTotp,
-    // disable,getTotpUri}` for the security screen, and wires the `twoFactorRedirect`
-    // signal better-auth answers a credential sign-in with when 2FA is pending. No
-    // `onTwoFactorRedirect`/`twoFactorPage` option: LoginScreen handles the challenge
-    // itself (it must, to keep the challenge inline rather than bounce to a page).
-    // passkeyClient() (REQ-007 passkey half, ticket 14) exposes
-    // `authClient.passkey.addPasskey` and `authClient.signIn.passkey` — the browser WebAuthn
-    // ceremony (`navigator.credentials`) is driven by `@simplewebauthn/browser` inside the
-    // plugin. Web only; native has no `navigator.credentials` (REQ-007 register row). The
-    // plugin's list/delete routes (`/passkey/list-user-passkeys`, `/passkey/delete-passkey`)
-    // are NOT wrapped as client methods — `usePasskey` reaches them via `authClient.$fetch`.
     plugins: [twoFactorClient(), passkeyClient()],
-    // Pinned explicitly rather than inherited (#194, ADR-0012 amendment) — an honesty
-    // behaviour shouldn't rest on an undocumented dependency default.
     sessionOptions: { refetchOnWindowFocus: true },
   })
 }

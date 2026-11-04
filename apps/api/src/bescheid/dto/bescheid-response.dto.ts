@@ -1,9 +1,8 @@
-// `type:` given explicitly — see PutProfileDto's comment for why.
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import { IsIn, IsOptional, IsString } from 'class-validator'
 import { BescheidFeldDto } from './bescheid-feld.dto.js'
 
-/** One Abgleich deviation (Bescheid vs. berechnet) — never silent, always a named diff. */
+/** One Abgleich deviation. */
 export class BescheidAbweichungDto {
   @ApiProperty({ type: String, enum: ['einnahmen', 'vorsorgeaufwand', 'anrechnung'] })
   feld!: string
@@ -18,7 +17,7 @@ export class BescheidAbweichungDto {
   differenz!: number
 }
 
-/** The Abgleich result — @steuereule/core's `gleicheBescheidAb`, never recomputed here. */
+/** The Abgleich result. */
 export class BescheidAbgleichDto {
   @ApiProperty({ type: [BescheidAbweichungDto], description: 'The deviations (empty = alles stimmt überein).' })
   abweichungen!: BescheidAbweichungDto[]
@@ -27,7 +26,7 @@ export class BescheidAbgleichDto {
   berechnungUnvollstaendig!: boolean
 }
 
-/** The § 355 AO Einspruchsfrist (countdown), derived by @steuereule/core, never stored. */
+/** The § 355 AO Einspruchsfrist, derived. */
 export class BescheidFristDto {
   @ApiProperty({ type: String, nullable: true, description: 'Bescheiddatum (ISO yyyy-mm-dd), null until set.' })
   bescheiddatum!: string | null
@@ -39,12 +38,7 @@ export class BescheidFristDto {
   verbleibendeTage!: number | null
 }
 
-/**
- * The response shape for `GET /v1/steuerjahre/{jahr}/bescheid` and every PUT: the five figures
- * (paper order), the phase sub-state, the Bescheiddatum, the Einspruch-Grund, the derived Abgleich
- * and the Fristen-Countdown. Everything came from @steuereule/core, never recomputed in the API —
- * the same "server decides what's true" seam as the interview/lstb/ch modules.
- */
+/** The response shape for `GET /v1/steuerjahre/{jahr}/bescheid` and every PUT. */
 export class BescheidResponseDto {
   @ApiProperty({ type: String, enum: ['eingegangen', 'geprüft', 'einspruch-eingelegt'], description: 'The bescheid-phase sub-state.' })
   status!: string
@@ -68,14 +62,14 @@ export class BescheidResponseDto {
   naechsteZustaende!: string[]
 }
 
-/** The PUT body for a status transition (validated server-side against istBescheidUebergangErlaubt). */
+/** The PUT body for a status transition. */
 export class SetBescheidStatusDto {
   @ApiProperty({ type: String, enum: ['eingegangen', 'geprüft', 'einspruch-eingelegt'], description: 'The target sub-state.' })
   @IsIn(['eingegangen', 'geprüft', 'einspruch-eingelegt'])
   status!: string
 }
 
-/** The PUT body for the Bescheiddatum (ISO yyyy-mm-dd or null to clear). */
+/** The PUT body for the Bescheiddatum. */
 export class SetBescheidDatumDto {
   @ApiPropertyOptional({ type: String, nullable: true, example: '2026-04-15', description: 'Bescheiddatum (ISO yyyy-mm-dd).' })
   @IsOptional()
@@ -83,7 +77,7 @@ export class SetBescheidDatumDto {
   datum?: string | null
 }
 
-/** The PUT body for filing an Einspruch (Produkt-ADR-009). */
+/** The PUT body for filing an Einspruch. */
 export class SetEinspruchDto {
   @ApiProperty({ type: String, enum: ['betrag-falsch', 'beleg-nicht-beruecksichtigt', 'sonstiges'], description: 'The Einspruch-Grund (closed set).' })
   @IsIn(['betrag-falsch', 'beleg-nicht-beruecksichtigt', 'sonstiges'])

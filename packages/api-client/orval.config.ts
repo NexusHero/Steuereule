@@ -405,4 +405,18 @@ export default defineConfig({
       },
     },
   },
+  assistenten: {
+    input: { target: '../../apps/api/openapi.json', filters: { tags: ['assistenten'] } },
+    output: {
+      target: './src/generated/assistenten.ts',
+      mode: 'split',
+      client: 'react-query',
+      httpClient: 'fetch',
+      mock: true,
+      override: {
+        mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        mock: { required: true },
+      },
+    },
+  },
 })

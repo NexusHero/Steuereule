@@ -1,11 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger'
 import { ZuordnungDto } from './zuordnung.dto.js'
 
-/**
- * Response shape for the Beleg endpoints (ADR-007/008). Carries the persisted FACTS
- * (id, dateiname, dates) plus the DERIVED `zuordnung` state — the state is never stored,
- * it is recomputed from the facts on every read via @steuereule/core (ADR-014/048).
- */
+/** Response shape for the Beleg endpoints. */
 export class BelegResponseDto {
   @ApiProperty({ type: String, example: 'b1' })
   id!: string

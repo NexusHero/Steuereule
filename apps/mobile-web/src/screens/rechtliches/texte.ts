@@ -1,12 +1,3 @@
-// Legal pages (ADR-0050). German only on purpose: the binding text of a German consumer
-// contract is the German one, and a translated Impressum/AGB would be a second version to
-// keep legally consistent.
-//
-// DRAFT — written against what the code actually does (recipients: hosting, Brevo, Stripe,
-// Google only on Google sign-in, Have I Been Pwned via k-anonymity; no analytics, no
-// tracking, no ELSTER transmission). It MUST be reviewed by a lawyer before the first paid
-// sale; the Stand line below is the version marker to bump on every change.
-
 export type RechtlicheSeite = 'impressum' | 'datenschutz' | 'agb' | 'hinweise'
 
 export const RECHTLICHE_SEITEN: readonly RechtlicheSeite[] = ['impressum', 'datenschutz', 'agb', 'hinweise']
@@ -26,11 +17,6 @@ export interface Betreiber {
   readonly ustId?: string
 }
 
-/**
- * The operator data comes from the build environment, never from this file — a missing
- * value must stay visibly missing (the Impressum then says so), not be filled with a
- * placeholder that looks real.
- */
 export function betreiberAusUmgebung(env: Record<string, string | undefined>): Betreiber | null {
   const name = env.EXPO_PUBLIC_BETREIBER_NAME?.trim()
   const anschrift = env.EXPO_PUBLIC_BETREIBER_ANSCHRIFT?.trim()
@@ -40,7 +26,6 @@ export function betreiberAusUmgebung(env: Record<string, string | undefined>): B
   const ustId = env.EXPO_PUBLIC_BETREIBER_USTID?.trim()
   return {
     name,
-    // `\n` in an env value arrives literally; it separates the address lines.
     anschrift: anschrift.replaceAll('\\n', '\n'),
     email,
     ...(vertreten ? { vertreten } : {}),

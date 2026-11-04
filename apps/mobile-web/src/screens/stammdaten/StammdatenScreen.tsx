@@ -1,6 +1,3 @@
-// Erklärungs-Stammdaten (ADR-0050) — what page 1 of ESt 1 A needs beyond name and Steuer-ID,
-// reached from Profil. Religion is only saved with the explicit Art. 9 consent tick; the
-// server enforces the same rule, this screen only makes it visible before the request.
 import { useState } from 'react'
 import { Pressable, ScrollView, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'

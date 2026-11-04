@@ -1,11 +1,6 @@
-// `type:`/explicit classes throughout — see PutProfileDto's comment for why (esbuild/tsx
-// emit no `design:*` metadata, so @nestjs/swagger can't infer these).
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 
-/**
- * The margin (ADR-0034 decision 3) on the wire: `kind` fixes which optional field is present.
- * Mirrors @steuereule/core's `Unschaerfe` exactly — never re-derived in the API.
- */
+/** The margin on the wire: `kind` fixes which optional field is present. */
 export class UnschaerfeDto {
   @ApiProperty({ type: String, enum: ['bestimmt', 'unbestimmt'], example: 'bestimmt' })
   kind!: 'bestimmt' | 'unbestimmt'
@@ -21,7 +16,7 @@ export class UnschaerfeDto {
   grund?: 'progressionsvorbehalt-nicht-eingegeben'
 }
 
-/** Herkunfts-Metadaten an beiden Zahlen (Ticket-AC): die zvE-Basen und die Bestandteile. */
+/** Herkunfts-Metadaten an beiden Zahlen: die zvE-Basen und die Bestandteile. */
 export class VergleichsHerkunftDto {
   @ApiProperty({ type: Number, example: 60000, description: 'The primary zvE-basis (Einnahmen from @steuereule/core — layer 3 open, no real zvE yet).' })
   zveA!: number
@@ -33,14 +28,7 @@ export class VergleichsHerkunftDto {
   bestandteile!: string[]
 }
 
-/**
- * The one response shape for `GET /v1/steuerjahre/{jahr}/veranlagungsartenvergleich`. A flat
- * discriminated union on `kind` (same shape as CockpitStandDto): `aussage` is read FIRST —
- * `empfehlung` exists only when `kind === 'eindeutig'` (ADR-0034: a caller cannot skip the
- * check). `nicht-anwendbar` is the honest gate when the comparison does not apply (single, or
- * no income recorded yet) — never a fabricated zero. The wire body is this object or JSON
- * `null` (no tax year seeded yet — the honest empty state, same as Cockpit).
- */
+/** The one response shape for `GET /v1/steuerjahre/{jahr}/veranlagungsartenvergleich`. */
 export class VeranlagungsartenvergleichDto {
   @ApiProperty({ type: String, enum: ['eindeutig', 'zu-knapp', 'unbestimmt', 'nicht-anwendbar'], example: 'eindeutig' })
   kind!: 'eindeutig' | 'zu-knapp' | 'unbestimmt' | 'nicht-anwendbar'

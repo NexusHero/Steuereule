@@ -11,7 +11,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { GATE_ACKNOWLEDGED } from '@steuereule/core'
 import { AuditService } from '../src/audit/audit.service.js'
-import { GuestCannotUseThisEndpointError } from '../src/auth/requires-account.guard.js'
+import { GuestCannotUseThisEndpointError } from '../src/common/account-required.error.js'
 import { InvalidAnswerValueError, InterviewService, UnreachableAnswerError } from '../src/interview/interview.service.js'
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
 import { FakeInterviewAnswerRepository } from './fakes/fake-interview-answer.repository.js'

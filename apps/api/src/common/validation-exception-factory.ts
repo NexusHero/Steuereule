@@ -1,7 +1,3 @@
-// Turns class-validator's ValidationError[] into the machine-readable ValidationErrorDto
-// shape. Deliberately reads only `.property` and `.constraints` — never `.value` — so a
-// rejected Steuer-ID/Steuernummer can never end up echoed back in a 400 body (or, since
-// Nest logs unhandled exceptions, in a log line either).
 import { BadRequestException } from '@nestjs/common'
 import type { ValidationError } from 'class-validator'
 

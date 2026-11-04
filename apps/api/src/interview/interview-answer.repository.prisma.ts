@@ -3,14 +3,7 @@ import { isValidAnswer, type StepId } from '@steuereule/core'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
 import type { InterviewAnswerRecord, InterviewAnswerRepository, WriteAnswerParams } from './interview-answer.repository.js'
 
-/**
- * Thrown when a decrypted (or pass-through) InterviewAnswer.value doesn't
- * shape-validate as an accepted value for its own questionId (REQ-003.5's pattern,
- * mirrored from ProfileIntegrityError). This table has never written a plaintext row
- * — every write goes through this same field-encryption-extended client from day one
- * — so a value that doesn't validate against isValidAnswer() is definitionally
- * corruption, not legacy data.
- */
+/** Thrown when a decrypted InterviewAnswer.value doesn't shape-validate as an accepted value for its own questionId. */
 export class InterviewAnswerIntegrityError extends Error {
   constructor(questionId: string) {
     super(
@@ -22,9 +15,6 @@ export class InterviewAnswerIntegrityError extends Error {
 
 @Injectable()
 export class PrismaInterviewAnswerRepository implements InterviewAnswerRepository {
-  // ENCRYPTED_PRISMA, never plain PrismaService — this is the only place
-  // InterviewAnswer rows are read/written, so it's the only place that needs to
-  // (transparently) encrypt/decrypt `value` (ADR-0008). Mirrors PrismaProfileRepository.
   constructor(@Inject(ENCRYPTED_PRISMA) private readonly prisma: EncryptedPrismaClient) {}
 
   async findAllForUserAndYear(userId: string, steuerjahr: number): Promise<InterviewAnswerRecord[]> {
@@ -37,23 +27,6 @@ export class PrismaInterviewAnswerRepository implements InterviewAnswerRepositor
     })
   }
 
-  /**
-   * Writes the answer row, its WRITE audit entry (REQ-004.1) and the TaxYear.openItems
-   * projection as a single Prisma array-form `$transaction` — all three commit or none
-   * do. Mirrors PrismaProfileRepository.upsert's precedent of a repository directly
-   * writing a table it doesn't conceptually "own" (there it's TaxDataAccessLog, here
-   * it's additionally TaxYear) for true cross-table atomicity, which only the
-   * Prisma-specific persistence layer can give without leaking Prisma types into the
-   * Prisma-agnostic InterviewService/AuditService seam.
-   *
-   * TaxYear has never had a write path before this (see #318) — `create` seeds
-   * `baseEstimate: 0`, an honest zero rather than an invented estimate: computing a
-   * real estimate from interview answers is explicitly out of this slice's scope
-   * (ADR-0032, D1), so there is nothing truthful to put there yet. `baseEstimate` is
-   * VESTIGIAL as of ticket 15 (see schema.prisma) — kept only to satisfy the upsert's
-   * required column; no later slice will write a real value through this path. This
-   * upsert's `update` branch only ever touches `openItems`.
-   */
   async write(params: WriteAnswerParams): Promise<void> {
     const { userId, steuerjahr, questionId, value, openItems } = params
     await this.prisma.$transaction([

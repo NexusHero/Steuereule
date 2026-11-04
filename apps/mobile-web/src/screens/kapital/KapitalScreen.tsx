@@ -1,14 +1,3 @@
-// Kapital-Screen (REQ-025, ticket 10.5) — die Kapitalerträge (product ADR-032, Anlage KAP):
-// die Depot-Einordnung (Deutscher / Ausländischer Broker / Krypto, abgeleitet aus der Interview-
-// Antwort `kap-depot`), das Kapitalerträge-Feld (ehrlich erfasst/offen/unklar) und — wo Abgeltung-
-// steuer tatsächlich einbehalten wurde — die § 32d Abs. 6 Günstigerprüfung als bounded comparison
-// (ADR-0034-Muster): `aussage`/`kind` wird ZUERST gelesen, nie ein nacktes Urteil.
-//
-// NAMENS-DISZIPLIN (ADR-0034 §1): DIESER Screen trägt "Günstigerprüfung" (§ 32d Abs. 6) — der
-// Veranlagungsartenvergleich (10.2) heißt nicht so. Zwei Vergleiche, zwei Namen.
-//
-// Der Client bleibt dumm (ADR-0033): jede Zahl — der Kapital-Posten UND die Günstigerprüfung —
-// kommt aus der API (der Kern entscheidet, was wahr ist); jeder Edit ist ein PUT.
 import { useState } from 'react'
 import { ScrollView, View, Text, Pressable, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
@@ -102,7 +91,6 @@ export function KapitalScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX
   )
 }
 
-/** Die Depot-Einordnung: was die `kap-depot`-Antwort für die Steuererklärung BEDEUTET (ehrlich benannt). */
 function DepotNotice({ kind }: { readonly kind: KapitalResponseDto['depot']['kind'] }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
@@ -118,7 +106,6 @@ function DepotNotice({ kind }: { readonly kind: KapitalResponseDto['depot']['kin
   return <Text style={s.depotText}>{text}</Text>
 }
 
-/** Ein Kapital-Feld: numerische Eingabe wenn `erfasst`, plus der ehrliche "unlesbar"-Fallback. */
 function KapitalFeldEditor({
   label,
   zustand,
@@ -160,7 +147,6 @@ function KapitalFeldEditor({
   )
 }
 
-/** Der abgeleitete Kapital-Posten mit Herkunft, oder der ehrliche "noch offen"-Hinweis. */
 function PostenNotice({ response }: { readonly response: KapitalResponseDto }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
@@ -179,7 +165,6 @@ function PostenNotice({ response }: { readonly response: KapitalResponseDto }) {
   )
 }
 
-/** Die § 32d Abs. 6 Günstigerprüfung — `aussage`/`kind` ZUERST, nie ein nacktes Urteil. */
 function GuenstigerpruefungAbschnitt({ taxYear }: { readonly taxYear: number }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
@@ -199,7 +184,6 @@ function GuenstigerpruefungAbschnitt({ taxYear }: { readonly taxYear: number }) 
   )
 }
 
-/** Das Ergebnis der Günstigerprüfung: `kind` zuerst lesen, dann das, was die Variante erlaubt. */
 function Ergebnis({ dto }: { readonly dto: GuenstigerpruefungDto }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)

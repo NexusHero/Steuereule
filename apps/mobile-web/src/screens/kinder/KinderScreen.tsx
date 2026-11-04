@@ -49,7 +49,7 @@ export interface KindItem {
   kindergeldAnMichGanzjaehrig?: boolean | null
 }
 
-/** What the form writes: the identity plus the Anlage-Kind facts (Zeilen 7, 8, 10). */
+/** What the form writes: the identity plus the Anlage-Kind facts. */
 export interface KindEingabe {
   vorname: string
   nachname: string
@@ -95,7 +95,6 @@ export interface KinderScreenProps {
   readonly onAddKind?: ((kind: KindEingabe) => Promise<void> | void) | undefined
   readonly onSaveKind?: ((id: string, kind: KindEingabe) => Promise<void> | void) | undefined
   readonly onDeleteKind?: ((id: string) => Promise<void> | void) | undefined
-  /** Opens the two household questions behind the Entlastungsbetrag (Anlage Kind Zeilen 47/48). */
   readonly onAlleinerziehendFragen?: (() => void) | undefined
 }
 
@@ -238,7 +237,6 @@ function KinderScreenView({
     setBearbeitet(k?.id ?? null)
   }
 
-  // Name, birth date and kind of relationship are asked only for a known parent (Zeilen 11/12).
   const aeBekannt = ae === 'Inland' || ae === 'Verstorben'
 
   async function handleSave() {

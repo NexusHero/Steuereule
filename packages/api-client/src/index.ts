@@ -1,9 +1,3 @@
-// @steuereule/api-client — the typed OpenAPI client + TanStack Query hooks for the
-// Profile, Auth-capability, Cockpit and Device-authorization APIs (ADR-0001). Generated from
-// apps/api/openapi.json via orval; never hand-write a hook or type here — regenerate instead
-// (see orval.config.ts). MSW handlers/faker factories are intentionally NOT re-exported from
-// this entry — import them from the `@steuereule/api-client/msw` subpath in tests only, so
-// production code never pulls in msw/faker.
 export * from './generated/profile'
 export * from './generated/profile.schemas'
 export * from './generated/auth'
@@ -27,11 +21,6 @@ export * from './generated/rente.schemas'
 export * from './generated/veranlagungsartenvergleich'
 export * from './generated/veranlagungsartenvergleich.schemas'
 export * from './generated/kapital'
-// kapital.schemas is re-exported explicitly rather than `export *`: orval emits its own copy of
-// `UnschaerfeDto`/`UnschaerfeDtoKind`/`UnschaerfeDtoGrund` here (the Günstigerprüfung DTO reuses
-// the Veranlagungsartenvergleich's margin type), which would collide with the identical names
-// already re-exported above. Those three are the SAME ADR-0034 margin — consumers get them from
-// `veranlagungsartenvergleich.schemas`; everything else is named here.
 export type {
   KapitalFeldDto,
   DepotEinordnungDto,
@@ -65,4 +54,6 @@ export * from './generated/kopplung'
 export * from './generated/kopplung.schemas'
 export * from './generated/eulen-modus'
 export * from './generated/eulen-modus.schemas'
+export * from './generated/assistenten'
+export * from './generated/assistenten.schemas'
 export { configureApiClient, resetApiClientConfig, getApiClientBaseUrl, type ApiClientConfig } from './http-client'

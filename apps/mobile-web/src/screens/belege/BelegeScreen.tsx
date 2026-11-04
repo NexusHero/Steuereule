@@ -1,23 +1,3 @@
-// BelegeScreen (Ticket 10, Phase 2 Slice 1) — der Beleg-Posteingang (ADR-007/008) als eigener
-// Tab. Die Inbox liest die echte `GET /v1/belege` und rendert den ABGELEITETEN Zuordnungs-Zustand
-// jedes Belegs ehrlich (ungebunden/vorgeschlagen/zugeordnet/konflikt) — der Zustand kommt von
-// @steuereule/core's `zuordnungAusDaten` über die API, wird hier NIE nachgerechnet (ADR-014/048:
-// die Wahrheit liegt im Kern, nicht in einer zweiten Kopie).
-//
-// - ADR-007 (Zuordnung als Vorschlag): ein Datum erzeugt einen Vorschlag ("Regel: Zahlungsdatum"/
-//   "Belegdatum"), ein Tap bestätigt via `POST /v1/belege/:id/zuordnung`. Der Screen drängt kein
-//   Jahr auf — ungebundene Belege bleiben einfach ungebunden.
-// - ADR-008 (Konflikt sichtbar statt stilles Überschreiben): weicht das bestätigte Jahr vom
-//   Datums-Vorschlag ab, zeigt der Screen BEIDE Jahre (Amber) und löst NUR über eine explizite
-//   Wahl auf — nie durch stilles Überschreiben.
-// - ADR-032 §2 (keine Fake-Funktionalität): das Scannen/Fotografieren der Belege (Binary, ADR-036/
-//   045) ist bewusst ein Folge-Ticket. Der Screen zeigt das ehrlich als "Scan folgt"-Platzhalter
-//   statt eines Scan-/Upload-Buttons, der eine Binary-Speicherung verspräche, die es nicht gibt.
-//
-// Posture (DoD D16): Belege sind Steuerdaten. Der Screen persistiert NICHTS client-seitig — alle
-// Lese-/Schreibvorgänge gehen über die Beleg-API, wo `dateiname` feldverschlüsselt at rest liegt
-// (ADR-0008) und jeder Zugriff auditiert wird (REQ-004). Der Screen selbst hält nur flüchtigen
-// UI-Zustand (offene Jahres-Override-Felder); kein localStorage/sessionStorage/AsyncStorage.
 import { useState } from 'react'
 import { ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
@@ -27,8 +7,6 @@ import { useBelegControllerList, useBelegControllerSetZuordnung, getBelegControl
 import { APP_NS } from '../../i18n/resources'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 
-/** The persisted `art` values → i18n keys. Unknown values fall back to the raw string (the
- *  response type is `string | null`, so a forward-compatible value must not crash the screen). */
 const ART_LABEL_KEYS: Readonly<Record<string, string>> = {
   Lohnausweis: 'belege.art.lohnausweis',
   Quellensteuer: 'belege.art.quellensteuer',
@@ -40,8 +18,6 @@ const ART_LABEL_KEYS: Readonly<Record<string, string>> = {
   Sonstiges: 'belege.art.sonstiges',
 }
 
-/** A calendar year for the manual override is four digits, nothing else — the API persists an
- *  integer (`SetZuordnungDto.@IsInt`) and the core throws on a non-integer (beleg.ts `ordneZu`). */
 const JAHR_RE = /^\d{4}$/
 
 export function BelegeScreen() {
@@ -69,14 +45,8 @@ export function BelegeScreen() {
   }
 
   const belege = query.data.data
-  // "offen" = everything that still needs attention: ungebunden, vorgeschlagen, konflikt.
   const offen = belege.filter((b) => b.zuordnung.kind !== 'zugeordnet').length
 
-  // The one assignment operation (ADR-007 "ein Tap bestätigt", or a manual year that may
-  // contradict the suggestion → the server's derived state reports `konflikt`, ADR-008).
-  // `vorschlagVerworfen` is ADR-008's "bei meinem Jahr bleiben": persist the dismissal of a
-  // contradicting suggestion, keeping `steuerjahr`. On success the list is refetched so the
-  // derived state never goes stale client-side.
   function ordneZu(id: string, steuerjahr: number, vorschlagVerworfen = false) {
     setZuordnung.mutate(
       { id, data: { steuerjahr, vorschlagVerworfen } },
@@ -115,8 +85,6 @@ function Appbar({ offen }: { readonly offen: number }) {
   )
 }
 
-// ADR-032 §2: der Upload-Platzhalter. Kein Scan-/PDF-Button — der verspräche eine Binary-
-// Speicherung, die erst mit dem Scan-Slice (ADR-036/045) kommt. Nur der ehrliche Satz.
 function ScanFolgt() {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
@@ -150,9 +118,6 @@ function BelegCard({ beleg, onZuordnen }: BelegCardProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const s = makeStyles(t)
-  // `art` is a plain `string | null` on the wire (the response has no enum, only the create DTO
-  // does), so an unknown/future value must not crash — it falls back to the raw string. `null`
-  // is the generic receipt (not "not yet classified"), rendered honestly as such.
   const artKey = beleg.art === null ? undefined : ART_LABEL_KEYS[beleg.art]
   const artLabel = artKey !== undefined ? tr(artKey) : beleg.art === null ? tr('belege.art.generic') : beleg.art
 
@@ -204,10 +169,6 @@ function ZuordnungSection({ beleg, onZuordnen }: BelegCardProps) {
       />
     )
   }
-  // konflikt — ADR-008: beide Jahre sichtbar, Amber statt Rot (Konflikt ist normal, kein Fehler),
-  // Auflösung nur über eine explizite Wahl — und in BEIDE Richtungen, keine Sackgasse: entweder
-  // den Vorschlag übernehmen (`resolve`) oder beim eigenen Jahr bleiben und den Vorschlag
-  // verwerfen (`keep`, vorschlagVerworfen). Beide Pfade führen aus dem Konflikt-Zustand heraus.
   return (
     <View style={s.konfliktBox}>
       <Text style={s.konfliktHeading}>{tr('belege.zuordnung.konflikt.heading')}</Text>

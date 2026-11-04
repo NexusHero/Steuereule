@@ -1,8 +1,6 @@
 import { Controller, Get, Inject, Param, UseGuards } from '@nestjs/common'
 import { ApiOkResponse, ApiParam, ApiTags } from '@nestjs/swagger'
 import { UserContextGuard } from '../auth/user-context.guard.js'
-// Reused directly, not duplicated — `jahr` is always validated against a sensible tax-year window,
-// never just "parses as a number" (same pipe as Cockpit/Rente/Vermietung).
 import { ParseSteuerjahrPipe } from '../cockpit/parse-steuerjahr.pipe.js'
 import { FristenService } from './fristen.service.js'
 import { FristenResponseDto } from './dto/fristen-response.dto.js'
@@ -11,10 +9,6 @@ import { FristenResponseDto } from './dto/fristen-response.dto.js'
 @Controller('v1/steuerjahre')
 @UseGuards(UserContextGuard)
 export class FristenController {
-  // Explicit token — see the comment on ProfileController's constructor. The fristen are
-  // statutory facts, not user data — same read openness as Cockpit (no @RequiresAccount): the
-  // value-first funnel lets a GUEST see the Cockpit-Spanne, and the Warn-Banner (ADR-0039)
-  // belongs there too; a frist never reveals anything about the user.
   constructor(@Inject(FristenService) private readonly fristenService: FristenService) {}
 
   @Get(':jahr/fristen')

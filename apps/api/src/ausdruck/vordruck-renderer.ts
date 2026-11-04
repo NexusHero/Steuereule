@@ -1,14 +1,3 @@
-// Writes field values onto the checked-in Vordruck templates (ADR-0050). The template pages
-// are copied untouched — layout, form keys, barcodes and grey raster stay exactly as the tax
-// administration printed them; only the values are added, following the BMF letter of
-// 12.08.2022: sans-serif, 10 pt, decimal comma without thousands separator, empty fields
-// stay empty, a form's every page is handed out, a form without any entry is not.
-//
-// The printout draws the values as page content. The editable variant puts the same values
-// into named AcroForm fields over the same boxes (`anlKap.kz280`; a repeated form's second
-// instance `anlKind.vorname#2`) — for a correction before printing, and so any PDF viewer
-// shows which field sits where. (Flattening such fields with pdf-lib leaves dangling object
-// references that readers report as broken, so the printout does not go through fields.)
 import { readFileSync } from 'node:fs'
 import { PDFDocument, rgb, StandardFonts, TextAlignment, type PDFFont, type PDFForm, type PDFPage } from 'pdf-lib'
 import felder2025 from './felder-2025.json' with { type: 'json' }
@@ -30,13 +19,11 @@ export interface Feldsatz {
   felder: Feld[]
 }
 
-/** A text value, or `true` to tick a box. */
 export type FeldWerte = Readonly<Record<string, string | true>>
 
 const SCHRIFTGROESSE = 10
 const INNENABSTAND = 3
 
-// Order in which forms are handed in: Hauptvordruck first, then the Anlagen.
 const REIHENFOLGE = [
   'est-1-a',
   'anlage-n',
@@ -52,6 +39,7 @@ const REIHENFOLGE = [
 
 export const FELDSAETZE: Readonly<Record<number, Feldsatz>> = { 2025: felder2025 as Feldsatz }
 
+/** Writes field values onto the checked-in Vordruck templates. */
 export class UeberlaufFehler extends Error {
   constructor(readonly felder: string[]) {
     super(`Wert passt nicht in sein Feld: ${felder.join(', ')}`)
@@ -59,11 +47,8 @@ export class UeberlaufFehler extends Error {
 }
 
 export interface RendererOptionen {
-  /** Directory holding `<formular>.pdf` for the Feldsatz's year. */
   vorlagenVerzeichnis: URL
-  /** Repeatable form instances (e.g. multiple children or rental objects). */
   instanzen?: Record<string, readonly FeldWerte[]> | undefined
-  /** Named, editable AcroForm fields instead of fixed page content. */
   bearbeitbar?: boolean | undefined
 }
 
@@ -115,7 +100,6 @@ export async function rendereVordrucke(feldsatz: Feldsatz, werte: FeldWerte, opt
 
 const istBetrag = (feld: Feld) => feld.art === 'euro' || feld.art === 'euroCent'
 
-/** Where the value goes in its box, or null when it does not fit — the BMF forbids shrinking below 10 pt. */
 function platziere(schrift: PDFFont, feld: Feld, wert: string | true): { text: string; x: number; grundlinie: number } | null {
   const { x, y, breite, hoehe } = feld.kasten
   const grundlinie = y + (hoehe - schrift.heightAtSize(SCHRIFTGROESSE, { descender: false })) / 2

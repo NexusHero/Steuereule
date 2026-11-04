@@ -12,8 +12,6 @@ import { VeranlagungsartenvergleichService } from './veranlagungsartenvergleich.
   controllers: [VeranlagungsartenvergleichController],
   providers: [
     VeranlagungsartenvergleichService,
-    // The same TaxYearRepository seam the Cockpit uses — provided here (not imported from
-    // CockpitModule) because CockpitModule does not export it; one Prisma read path either way.
     { provide: TAX_YEAR_REPOSITORY, useClass: PrismaTaxYearRepository },
   ],
 })

@@ -1,4 +1,3 @@
-// Mono-Metadaten-Pille (fk-pill) — Steuerjahr, counters. Never interactive. Numbers tabular-nums.
 import { View, Text, type ViewStyle, type TextStyle, type StyleProp } from 'react-native'
 import { type ReactNode } from 'react'
 import { useTheme } from '../theme/useTheme'
@@ -26,7 +25,7 @@ export function Pill({ style, children, testID }: PillProps) {
     fontFamily: t.font.mono,
     fontSize: t.size.xs,
     color: t.color.tinte,
-    letterSpacing: 0.08 * t.size.xs, // tracking.label (0.08em) resolved at this font size
+    letterSpacing: 0.08 * t.size.xs,
     textTransform: 'uppercase',
     fontVariant: ['tabular-nums'],
   }

@@ -1,6 +1,3 @@
-// Impressum, Datenschutzerklärung, AGB & Widerruf, Hinweise (ADR-0050) — one screen, the
-// page chosen by route. Bodies come from texte.ts; operator data from the build env, so
-// a missing Impressum stays visibly missing instead of showing placeholder data.
 import { Pressable, ScrollView, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useBreakpoint, useTheme } from '@steuereule/ui'

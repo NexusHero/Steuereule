@@ -9,8 +9,6 @@ import {
 import { CurrentUser } from '../auth/current-user.decorator.js'
 import { RequiresAccount } from '../auth/requires-account.guard.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
-// Reused directly, not duplicated — `jahr` is always validated against a sensible tax-year window,
-// never just "parses as a number" (same pipe as Cockpit/Lstb/Interview).
 import { ParseSteuerjahrPipe } from '../cockpit/parse-steuerjahr.pipe.js'
 import { ParseLohnausweisFeldPipe } from './parse-lohnausweis-feld.pipe.js'
 import { ChLohnausweisService } from './ch-lohnausweis.service.js'
@@ -23,7 +21,6 @@ import { ChLohnausweisResponseDto } from './dto/ch-lohnausweis-response.dto.js'
 @Controller('v1/steuerjahre')
 @UseGuards(UserContextGuard)
 export class ChLohnausweisController {
-  // Explicit token — see the comment on ProfileController's constructor.
   constructor(@Inject(ChLohnausweisService) private readonly service: ChLohnausweisService) {}
 
   @Get(':jahr/ch-lohnausweis')
@@ -41,7 +38,6 @@ export class ChLohnausweisController {
   }
 
   @Put(':jahr/ch-lohnausweis/:feld')
-  // Upsert-style write on an existing tax-year resource (one row per userId+steuerjahr) → 200.
   @HttpCode(200)
   @RequiresAccount()
   @ApiParam({

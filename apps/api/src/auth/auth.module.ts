@@ -1,29 +1,11 @@
-// The auth wiring seam (ADR-0012 §1): builds the one shared better-auth instance
-// (BETTER_AUTH_BUNDLE) off the existing PrismaService connection — never a second DB
-// client — and provides UserContextGuard here so every feature module gets the same
-// guard instance via DI (constructor-injected dependencies, not a bare `new`).
-//
-// @Global(): every future authenticated endpoint reuses UserContextGuard by importing
-// nothing extra (`@UseGuards(UserContextGuard)` alone, exactly as ProfileController
-// already does) — the whole point of the seam is that adding real login costs
-// controllers/services nothing.
 import { Global, Module } from '@nestjs/common'
 import { PrismaModule } from '../prisma/prisma.module.js'
 import { PrismaService } from '../prisma/prisma.service.js'
 import { resolveCorsOrigins } from '../cors/resolve-cors-origins.js'
 import { resolveTrustedProxies } from '../config/trusted-proxies.js'
 import { BETTER_AUTH_BUNDLE } from './auth.tokens.js'
-import {
-  createBetterAuth,
-  resolveAppleClientId,
-  resolveAppleClientSecret,
-  resolveAppleSignInEnabled,
-  resolveBetterAuthSecret,
-  resolveBetterAuthUrl,
-  resolveGoogleClientId,
-  resolveGoogleClientSecret,
-  resolveWebAppUrl,
-} from './better-auth.js'
+import { createBetterAuth } from './better-auth.js'
+import { resolveAppleClientId, resolveAppleClientSecret, resolveAppleSignInEnabled, resolveBetterAuthSecret, resolveBetterAuthUrl, resolveGoogleClientId, resolveGoogleClientSecret, resolveWebAppUrl } from './better-auth-env.js'
 import { BrevoEmailSender, resolveBrevoConfig } from './brevo-email-sender.js'
 import { EMAIL_SENDER, type EmailSender } from './email-sender.js'
 import { LoggingEmailSender } from './logging-email-sender.js'
@@ -31,13 +13,12 @@ import { RequiresAccountGuard } from './requires-account.guard.js'
 import { UserContextGuard } from './user-context.guard.js'
 import { AuthCapabilitiesController } from './auth-capabilities.controller.js'
 
+/** The auth wiring seam: builds the one shared better-auth instance off the existing PrismaService connection. */
 @Global()
 @Module({
   imports: [PrismaModule],
   controllers: [AuthCapabilitiesController],
   providers: [
-    // Brevo when configured; the logging stand-in only outside production —
-    // resolveBrevoConfig() refuses to boot a production process without a provider.
     {
       provide: EMAIL_SENDER,
       useFactory: (): EmailSender => {
@@ -53,31 +34,18 @@ import { AuthCapabilitiesController } from './auth-capabilities.controller.js'
           prisma,
           secret: resolveBetterAuthSecret(),
           baseUrl: resolveBetterAuthUrl(),
-          // Same allowlist CORS uses (ADR-0011/ADR-0012 §5) — one source of truth for
-          // "who is allowed to call us cross-origin", never a second, drifting copy.
           trustedOrigins: resolveCorsOrigins(),
-          // The web app's own origin (#238, ADR-0024) — its own env var, deliberately
-          // not derived from the CORS allowlist above (see resolveWebAppUrl's doc
-          // comment). Used to build the device-authorization QR's verificationUri.
           webAppUrl: resolveWebAppUrl(),
           emailSender,
-          // Google OAuth (REQ-008): credentials from env, dev-only fallback outside prod.
           googleClientId: resolveGoogleClientId(),
           googleClientSecret: resolveGoogleClientSecret(),
-          // Apple Sign-In (REQ-008): triple-gated (flag + both credentials), no dev fallback —
-          // stays off until an Apple Developer account and a shipped iOS build both exist.
           appleSignInEnabled: resolveAppleSignInEnabled(),
           appleClientId: resolveAppleClientId(),
           appleClientSecret: resolveAppleClientSecret(),
-          // #241: which reverse-proxy hops to trust when reading X-Forwarded-For —
-          // governs Session.ipAddress and better-auth's own built-in rate limiter.
           trustedProxies: resolveTrustedProxies(),
         }),
     },
     UserContextGuard,
-    // Route-scoped, no constructor deps of its own — registered/exported the same way
-    // as UserContextGuard so @RequiresAccount() works from any feature module by
-    // importing nothing extra (#318).
     RequiresAccountGuard,
   ],
   exports: [BETTER_AUTH_BUNDLE, EMAIL_SENDER, UserContextGuard, RequiresAccountGuard],

@@ -1,4 +1,3 @@
-// Form field (fk-feld) — label above the control, optional error line below (honest error state).
 import { View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { type ReactNode } from 'react'
 import { useTheme } from '../theme/useTheme'

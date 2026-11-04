@@ -1,14 +1,4 @@
-// The one fetch call site for the whole generated client (ADR-0001) — every orval hook
-// calls this mutator, never `fetch` directly. The API origin is injected config
-// (12-Factor III), not a literal baked into generated code; the app's entry point is
-// responsible for calling `configureApiClient` with the environment's value.
-//
-// Deliberately mirrors orval's own default fetch-client shape (`{ data, status, headers }`,
-// never throwing on a non-2xx) rather than inventing a different contract — callers switch
-// on `.status` the way the generated response types model it (e.g. PUT's 200 vs 400). Only a
-// genuine network failure (the fetch call itself rejecting) is a thrown error.
 export interface ApiClientConfig {
-  /** Origin prepended to every request path. Empty = same-origin (relative) requests. */
   readonly baseUrl: string
 }
 
@@ -16,23 +6,14 @@ const DEFAULT_CONFIG: ApiClientConfig = { baseUrl: '' }
 
 let config: ApiClientConfig = DEFAULT_CONFIG
 
-/** Overrides the API origin at runtime — called once at app startup, and by tests. */
 export function configureApiClient(next: Partial<ApiClientConfig>): void {
   config = { ...config, ...next }
 }
 
-/** Restores the default (same-origin) configuration. Test-only escape hatch. */
 export function resetApiClientConfig(): void {
   config = DEFAULT_CONFIG
 }
 
-/**
- * Read-only access to the configured API origin — for the rare caller that must bypass
- * this module's own `httpClient` (REQ-011's export download: the response is a binary
- * attachment, `httpClient` above unconditionally `JSON.parse`s the body, which would
- * throw on a PDF's bytes). Such a caller still needs the same configured origin +
- * `credentials: 'include'` discipline, just not the JSON-envelope shape.
- */
 export function getApiClientBaseUrl(): string {
   return config.baseUrl
 }

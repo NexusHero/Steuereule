@@ -12,8 +12,6 @@ import { VermietungService } from './vermietung.service.js'
   imports: [KennzeichnungModule, PrismaModule, AuditModule, InterviewModule],
   controllers: [VermietungController],
   providers: [VermietungService, { provide: VERMIETUNG_REPOSITORY, useClass: PrismaVermietungRepository }],
-  // Exported so the Jahresübernahme (ticket 10.8 M2) can copy the Vermietungsobjekte through the
-  // SAME field-encryption seam its own service uses — never a second Prisma read path.
   exports: [VERMIETUNG_REPOSITORY],
 })
 export class VermietungModule {}

@@ -1,11 +1,3 @@
-// GrenzgaengerScreen (REQ-021, ticket 16) — the Grenzgänger-CH vertical's single screen: the two
-// CH-interview questions (`ch-wohnsitz`/`ch-nichtrueckkehrtage`, ADR-013) then the guided
-// Lohnausweis mask (ADR-036, Ziffern 1–15, CHF führt). Both run against the REAL API — the CH
-// interview through the same interview engine as the Minimal-Gate (`?eintrag=segment-ch`), the
-// mask through `GET/PUT /v1/steuerjahre/{jahr}/ch-lohnausweis`. The derived Grenzgänger-Status and
-// the fold (Einnahmen/Vorsorgeaufwand/Anrechnung) are shown from the server's response — never
-// recomputed in the client (ADR-014/048 determinism boundary, ADR-0033 "server decides what's
-// true").
 import { useState } from 'react'
 import { ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
@@ -31,7 +23,6 @@ import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 
 export interface GrenzgaengerScreenProps {
-  /** Fires once the user is done entering their CH data — returns to the Cockpit. */
   readonly onDone: () => void
   readonly taxYear?: number
 }
@@ -52,8 +43,6 @@ export function GrenzgaengerScreen({ onDone, taxYear = CURRENT_TAX_YEAR }: Grenz
   const [interviewAnswers, setInterviewAnswers] = useState<Answers>({})
   const [seeded, setSeeded] = useState(false)
 
-  // Seed local interview answers once the server's re-entry state resolves (same "server is now
-  // the truth" moment as InterviewScreen) — never on every render, so a refetch can't clobber edits.
   if (!seeded && interviewQuery.data?.status === 200) {
     setInterviewAnswers(interviewQuery.data.data.answers as Answers)
     setSeeded(true)
@@ -88,12 +77,9 @@ export function GrenzgaengerScreen({ onDone, taxYear = CURRENT_TAX_YEAR }: Grenz
       {
         onSuccess: (response) => {
           if (response.status === 200) {
-            // The status/offene-Pflichtfelder the fold reports are read from these answers — the
-            // Lohnausweis read must refetch so the derived status can flip from `null`.
             void queryClient.invalidateQueries({ queryKey: getChLohnausweisControllerGetQueryKey(taxYear) })
             return
           }
-          // 400/409 — undo the optimistic step and resync (same honesty as InterviewScreen).
           setInterviewAnswers(previous)
           setSeeded(false)
           void interviewQuery.refetch()
@@ -105,8 +91,6 @@ export function GrenzgaengerScreen({ onDone, taxYear = CURRENT_TAX_YEAR }: Grenz
     )
   }
 
-  // The interview phase renders until both questions are answered; then the mask takes over.
-  // segment-ch has no gates, so `step.kind === 'question'` covers every non-done state.
   if (step !== null && step.kind === 'question') {
     return <ChInterviewStep stepId={step.id} onAnswer={answer} bp={bp} onBack={onDone} />
   }
@@ -128,8 +112,6 @@ export function GrenzgaengerScreen({ onDone, taxYear = CURRENT_TAX_YEAR }: Grenz
     />
   )
 }
-
-// --- CH-Interview step (two questions, ADR-013) ---------------------------------------------
 
 function ChInterviewStep({ stepId, onAnswer, bp, onBack }: { readonly stepId: EntryQuestionId; readonly onAnswer: (id: EntryQuestionId, value: string) => void; readonly bp: Breakpoint; readonly onBack: () => void }) {
   const t = useTheme()
@@ -194,8 +176,6 @@ function TageInput({ onAnswer }: { readonly onAnswer: (id: EntryQuestionId, valu
     </View>
   )
 }
-
-// --- Lohnausweis step (mask + Wechselkurs + Status + fold) -----------------------------------
 
 function LohnausweisStep({
   lohnausweis,
@@ -295,7 +275,6 @@ function LohnausweisStep({
 const N_GRE_TEXTFELDER = ['arbeitgeberName', 'arbeitgeberStrasse', 'arbeitgeberPlzOrt'] as const
 const N_GRE_BETRAGSFELDER = ['familienzulagenChf', 'krankentaggeldChf', 'pkArbeitnehmerChf', 'pkArbeitgeberChf'] as const
 
-/** What Anlage N-Gre needs beyond the Lohnausweis: employer, Vorsorge split, and the Sonderfall question. */
 function NGreAbschnitt({ nGre, onSet }: { readonly nGre: NGreAngabenDto; readonly onSet: (data: PutNGreDto) => void }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
@@ -361,7 +340,6 @@ function NGreEingabe({
   )
 }
 
-/** One editable CHF field — local text state seeded from the server, committed (erfasst/offen) on submit. */
 function ChFeldInput({
   feldId,
   ziffer,

@@ -93,12 +93,12 @@ describe('BestaetigungService', () => {
   })
 
   it('a proposal decision on a field without a proposal is a 404, an unknown key a 400', async () => {
-    await expect(service.entscheideVorschlag(USER, JAHR, 'lstb.lohnsteuer', 'annehmen')).rejects.toMatchObject({ status: 404 })
-    await expect(service.entscheideVorschlag(USER, JAHR, 'gewerbe.gewinn', 'annehmen')).rejects.toMatchObject({ status: 400 })
+    await expect(service.entscheideVorschlag(USER, JAHR, 'lstb.lohnsteuer', 'annehmen')).rejects.toMatchObject({ code: 'PROPOSAL_NOT_FOUND' })
+    await expect(service.entscheideVorschlag(USER, JAHR, 'gewerbe.gewinn', 'annehmen')).rejects.toMatchObject({ code: 'FIELD_UNKNOWN' })
   })
 
   it('an unknown Anlage is a 400, never a silent no-op', async () => {
-    await expect(service.bestaetigeAnlage(USER, JAHR, 'anlageX' as never)).rejects.toMatchObject({ status: 400 })
+    await expect(service.bestaetigeAnlage(USER, JAHR, 'anlageX' as never)).rejects.toMatchObject({ code: 'ANLAGE_UNKNOWN' })
   })
 
   it('writes into a Vermietungsobjekt by instance and refuses an object of another user', async () => {
@@ -106,7 +106,7 @@ describe('BestaetigungService', () => {
     const fremdes = await vermietung.create('user-2', JAHR)
 
     await service.schreibe(USER, JAHR, `vermietung:${eigenes.id}.mieteinnahmen`, '9000', CLAUDE)
-    await expect(service.schreibe(USER, JAHR, `vermietung:${fremdes.id}.mieteinnahmen`, '1', CLAUDE)).rejects.toMatchObject({ status: 404 })
+    await expect(service.schreibe(USER, JAHR, `vermietung:${fremdes.id}.mieteinnahmen`, '1', CLAUDE)).rejects.toMatchObject({ code: 'FIELD_NOT_FOUND' })
 
     expect((await vermietung.listForUserAndYear('user-2', JAHR))[0]?.mieteinnahmen).toBeNull()
     expect(await service.fehlend(USER, JAHR)).toEqual(['unbestaetigt.anlageV'])

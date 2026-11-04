@@ -1,28 +1,17 @@
-// Render the normalized tokens to a typed React-Native theme object (ADR-044/050). RN knows no
-// CSS, so the raw token strings are transformed into RN-native primitives:
-//   px lengths  -> unitless numbers          (RN treats numbers as density-independent px)
-//   hard shadow -> { shadowColor, shadowOffset, shadowOpacity, shadowRadius, elevation }
-//   easing      -> [x1, y1, x2, y2] tuple     (feed to Easing.bezier(...))
-//   duration    -> milliseconds number
-// Colours, fonts, weights, leading and tracking stay strings the RN style props accept directly.
-
 import type { NormalizedTokens, NormalToken } from './manifest-to-tokens'
 
-/** "16px" -> 16, "999px" -> 999. Throws on anything that is not a plain px length. */
 export function pxToNumber(value: string): number {
   const m = /^(-?\d+(?:\.\d+)?)px$/.exec(value.trim())
   if (!m) throw new RangeError(`Not a px length: ${value}`)
   return Number(m[1])
 }
 
-/** "120ms" -> 120. */
 export function msToNumber(value: string): number {
   const m = /^(\d+(?:\.\d+)?)ms$/.exec(value.trim())
   if (!m) throw new RangeError(`Not a ms duration: ${value}`)
   return Number(m[1])
 }
 
-/** "cubic-bezier(0.34, 1.56, 0.64, 1)" -> [0.34, 1.56, 0.64, 1]. */
 export function parseEasing(value: string): readonly [number, number, number, number] {
   const m = /^cubic-bezier\(([^)]+)\)$/.exec(value.trim())
   if (!m) throw new RangeError(`Not a cubic-bezier: ${value}`)
@@ -41,11 +30,6 @@ export interface RnShadow {
   readonly elevation: number
 }
 
-/**
- * "4px 4px 0 var(--tinte)" -> RN shadow. The colour is a `var(--…)` reference resolved against
- * the given theme colour map, so a dark theme's hard shadow flips to light ink automatically —
- * exactly what tokens/dunkel.css does by leaving `--schatten-*` to inherit the flipped `--tinte`.
- */
 export function parseShadow(value: string, resolveColor: (cssVar: string) => string): RnShadow {
   const m = /^(-?\d+)px\s+(-?\d+)px\s+(-?\d+)(?:px)?\s+var\((--[a-z0-9-]+)\)$/.exec(value.trim())
   if (!m) throw new RangeError(`Not a hard-shadow value: ${value}`)
@@ -57,12 +41,10 @@ export function parseShadow(value: string, resolveColor: (cssVar: string) => str
     shadowOffset: { width, height },
     shadowOpacity: 1,
     shadowRadius: blur,
-    // Android has no offset shadow; approximate depth by the vertical offset.
     elevation: Math.abs(height),
   }
 }
 
-/** Resolve the effective colour map for a theme: base colours with dark overrides applied. */
 export function resolveColors(
   base: readonly NormalToken[],
   overrides: readonly NormalToken[],
@@ -72,8 +54,6 @@ export function resolveColors(
   for (const t of overrides) out[t.key] = t.value
   return out
 }
-
-// ---- object builders (the tested heart; the string emit is a thin wrapper) --------------------
 
 function numberMap(tokens: readonly NormalToken[], parse: (v: string) => number): Record<string, number> {
   const out: Record<string, number> = {}
@@ -93,7 +73,6 @@ function shadowMap(
 ): Record<string, RnShadow> {
   const resolve = (cssVar: string): string => {
     const key = cssVar.replace(/^--/, '')
-    // colour keys are camelCased; the only shadow reference in the DS is `--tinte`/`--ki`.
     const val = colors[key]
     if (val === undefined) throw new RangeError(`Shadow references unknown colour ${cssVar}`)
     return val
@@ -103,7 +82,6 @@ function shadowMap(
   return out
 }
 
-/** The full theme value object (both modes), independent of any string formatting. */
 export function buildRnTheme(n: NormalizedTokens) {
   const lightColors = resolveColors(n.base.color, [])
   const darkColors = resolveColors(n.base.color, n.darkColors)
@@ -124,7 +102,6 @@ export function buildRnTheme(n: NormalizedTokens) {
   } as const
 }
 
-/** Emit the typed RN theme module (dist/theme.ts). */
 export function renderRnTheme(n: NormalizedTokens): string {
   const theme = buildRnTheme(n)
   return [

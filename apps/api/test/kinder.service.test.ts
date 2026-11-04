@@ -61,7 +61,7 @@ describe('KinderService', () => {
         nachname: 'Zukunft',
         geburtsdatum: '2026-01-01',
       }),
-    ).rejects.toThrow(/Ungültiges Geburtsdatum/)
+    ).rejects.toMatchObject({ code: 'GEBURTSDATUM_INVALID' })
   })
 
   it('stores the Anlage-Kind facts (Kindschaftsverhältnis, Familienkasse, Wohnsitz) and returns them', async () => {

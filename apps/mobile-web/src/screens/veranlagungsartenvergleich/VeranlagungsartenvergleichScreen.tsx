@@ -1,18 +1,3 @@
-// Veranlagungsartenvergleich (M1, ticket 10.2) — "zwei Zahlen + Empfehlung" aus dem
-// Veranlagungsartenvergleich (ADR-0034): Einzel- vs. Zusammenveranlagung als bounded
-// comparison, NIE ein nacktes Urteil. `aussage`/`kind` wird ZUERST gelesen:
-//   - `eindeutig`  → die Empfehlung (einzel/zusammen);
-//   - `zu-knapp`   → ehrlich "zu knapp, um das zu sagen";
-//   - `unbestimmt` → ehrlich "das können wir noch nicht".
-// Beide Zahlen tragen einen Herkunfts-Chip (welche zvE-Basen, welche Bestandteile).
-//
-// NAMENS-DISZIPLIN (ADR-0034 §1): "Günstigerprüfung" ist für §32d Abs. 6 EStG reserviert
-// (Ticket 10.5) — dieser Screen heißt Veranlagungsartenvergleich, in Code, Tests und Prosa.
-//
-// M1-HONESTY: der Verheiratet-Flag und das Partner-Einkommen sind Screen-Eingaben, weil M1 sie
-// noch nicht persistiert (die Segment-2-Frage `partner` ist deklariert, aber noch nicht
-// server-seitig zugelassen — Kopplung D4). Der Screen fragt sie direkt und reicht sie als
-// Query-Params an den Endpoint weiter — nie ein erfundener Partner-Wert.
 import { useState } from 'react'
 import { ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
@@ -45,8 +30,6 @@ export function VeranlagungsartenvergleichScreen({ onBack, onDone, taxYear = CUR
   const zveBWert = Number(zveB)
   const bereit = verheiratet && zveB !== '' && Number.isFinite(zveBWert) && zveBWert >= 0
 
-  // Build the params object conditionally so an absent zveB is OMITTED (not `undefined`) —
-  // exactOptionalPropertyTypes forbids `zveB: undefined` on the generated params type.
   const params: VeranlagungsartenvergleichControllerGetVergleichParams = bereit
     ? { verheiratet, zveB: zveBWert }
     : { verheiratet }
@@ -61,8 +44,6 @@ export function VeranlagungsartenvergleichScreen({ onBack, onDone, taxYear = CUR
 
       <Text style={styles.heading}>{tr('veranlagungsartenvergleich.heading')}</Text>
 
-      {/* M1 inputs: the married flag + partner income are not persisted yet (Segment 2 not
-          admitted) — asked directly here, never a fabricated default. */}
       <Text style={styles.label}>{tr('veranlagungsartenvergleich.verheiratetLabel')}</Text>
       <View style={styles.optionRow}>
         <Option gewaehlt={verheiratet} onPress={() => setVerheiratet(true)} testID="verheiratet-ja">
@@ -114,7 +95,6 @@ export function VeranlagungsartenvergleichScreen({ onBack, onDone, taxYear = CUR
   )
 }
 
-/** The comparison result: `aussage`/`kind` FIRST, then the two numbers with Herkunfts-Chips. */
 function Ergebnis({ dto }: { readonly dto: VeranlagungsartenvergleichDto }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)

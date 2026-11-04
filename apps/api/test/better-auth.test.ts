@@ -1,6 +1,7 @@
 import type { PrismaClient } from '@prisma/client'
 import { describe, expect, it, vi } from 'vitest'
-import { createBetterAuth, resolveAppleClientId, resolveAppleClientSecret, resolveAppleSignInEnabled, resolveBetterAuthSecret, resolveBetterAuthUrl, resolveGoogleClientId, resolveGoogleClientSecret } from '../src/auth/better-auth.js'
+import { createBetterAuth } from '../src/auth/better-auth.js'
+import { resolveAppleClientId, resolveAppleClientSecret, resolveAppleSignInEnabled, resolveBetterAuthSecret, resolveBetterAuthUrl, resolveGoogleClientId, resolveGoogleClientSecret } from '../src/auth/better-auth-env.js'
 import type { EmailSender } from '../src/auth/email-sender.js'
 
 function fakeEmailSender(): EmailSender {
@@ -181,5 +182,30 @@ describe('resolveAppleClientId / resolveAppleClientSecret', () => {
     expect(resolveAppleClientId({ NODE_ENV: 'test' })).toBeUndefined()
     expect(resolveAppleClientSecret({ APPLE_CLIENT_SECRET: 'signed-jwt' })).toBe('signed-jwt')
     expect(resolveAppleClientSecret({})).toBeUndefined()
+  })
+})
+
+describe('OAuth 2.1 Provider plugin (ADR-0052 §4, Issue #385)', () => {
+  const base = {
+    prisma: {} as PrismaClient,
+    secret: 'test-secret-at-least-32-characters-long!!',
+    baseUrl: 'http://localhost:3000',
+    webAppUrl: 'http://localhost:8081',
+    trustedOrigins: ['http://localhost:3000'],
+    trustedProxies: [],
+    emailSender: fakeEmailSender(),
+  }
+
+  it('registers the oauth-provider plugin with required scopes and 15m token expiry', () => {
+    const bundle = createBetterAuth(base)
+    const options = bundle.auth.options
+    const plugin = options.plugins?.find((p) => p.id === 'oauth-provider') as any
+    expect(plugin).toBeDefined()
+    expect(plugin.options.scopes).toContain('steuerdaten:read')
+    expect(plugin.options.scopes).toContain('steuerdaten:write')
+    expect(plugin.options.scopes).toContain('belege:write')
+    expect(plugin.options.scopes).toContain('zahllink:read')
+    expect(plugin.options.accessTokenExpiresIn).toBe(900)
+    expect(plugin.options.requirePKCE).toBe(true)
   })
 })

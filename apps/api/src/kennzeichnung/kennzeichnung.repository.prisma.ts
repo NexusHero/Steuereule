@@ -24,7 +24,6 @@ function herkunftAusSpalten({ art, name, belegId, vorjahr }: HerkunftSpalten): H
       if (belegId === null) break
       return { art: 'beleg', belegId }
   }
-  // The columns have only ever been written from a Herkunft — anything else is corruption.
   throw new Error(`Kennzeichnung: stored Herkunft "${art}" is incomplete`)
 }
 
@@ -90,7 +89,6 @@ function toData(k: Omit<Kennzeichnung, 'wert'>) {
 
 @Injectable()
 export class PrismaKennzeichnungRepository implements KennzeichnungRepository {
-  // ENCRYPTED_PRISMA because `vorschlagWert` can carry anything a mask stores (Steuer-ID, IBAN).
   constructor(@Inject(ENCRYPTED_PRISMA) private readonly prisma: EncryptedPrismaClient) {}
 
   async listForUserAndYears(userId: string, steuerjahre: readonly number[]): Promise<KennzeichnungRecord[]> {

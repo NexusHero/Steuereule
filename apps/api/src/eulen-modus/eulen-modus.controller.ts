@@ -1,6 +1,7 @@
 import { Body, Controller, Get, HttpCode, Inject, Param, Post, Put, UseGuards } from '@nestjs/common'
 import { ApiBody, ApiOkResponse, ApiParam, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger'
 import { CurrentUser } from '../auth/current-user.decorator.js'
+import { ForbidAssistant } from '../auth/forbid-assistant.guard.js'
 import { RequiresAccount } from '../auth/requires-account.guard.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
 import { ParseSteuerjahrPipe } from '../cockpit/parse-steuerjahr.pipe.js'
@@ -28,6 +29,7 @@ export class EulenModusController {
   @Put('eulen-modus/einstellung')
   @HttpCode(200)
   @RequiresAccount()
+  @ForbidAssistant()
   @ApiBody({ type: SetEulenEinstellungDto })
   @ApiOkResponse({ type: EulenEinstellungResponseDto })
   @ApiUnauthorizedResponse({ description: 'Requires account.' })

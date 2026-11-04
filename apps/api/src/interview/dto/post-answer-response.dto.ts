@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger'
 import { StepDto } from './step.dto.js'
 
-/** Response shape for `POST /v1/steuerjahre/{jahr}/interview/antworten` (#318). */
+/** Response shape for `POST /v1/steuerjahre/{jahr}/interview/antworten`. */
 export class PostAnswerResponseDto {
   @ApiProperty({ type: StepDto, description: '@steuereule/core’s nextStep(answers) after this write.' })
   nextStep!: StepDto

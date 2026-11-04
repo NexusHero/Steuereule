@@ -1,7 +1,9 @@
-import type { ExecutionContext } from '@nestjs/common'
+import { UnauthorizedException, type ExecutionContext } from '@nestjs/common'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createHash } from 'node:crypto'
 import { signGuestSession } from '../src/auth/guest-session.js'
 import {
+  AUTH_CONTEXT_REQUEST_KEY,
   GUEST_SESSION_COOKIE,
   USER_ID_KIND_REQUEST_KEY,
   USER_ID_REQUEST_KEY,
@@ -9,12 +11,13 @@ import {
 } from '../src/auth/user-context.guard.js'
 import type { BetterAuthBundle } from '../src/auth/auth.tokens.js'
 import { createResettableRateLimitStorage } from '../src/auth/rate-limit-storage.js'
+import type { PrismaService } from '../src/prisma/prisma.service.js'
 
 const SECRET = 'test-secret'
 const SESSION_COOKIE_NAME = 'better-auth.session_token'
 
-function makeContext(cookies: Record<string, string | undefined>) {
-  const request: Record<string, unknown> = { cookies, headers: {} }
+function makeContext(cookies: Record<string, string | undefined>, headers: Record<string, string | undefined> = {}) {
+  const request: Record<string, unknown> = { cookies, headers }
   const setCookie = vi.fn()
   const reply = { setCookie }
   const context = {
@@ -145,6 +148,145 @@ describe('UserContextGuard', () => {
       // left as (or mistaken for) 'session' — that would let @RequiresAccount() admit
       // a caller whose session just failed to verify.
       expect(request[USER_ID_KIND_REQUEST_KEY]).toBe('guest')
+    })
+  })
+
+  // --- ADR-0052 §2/§4/§10: OAuth 2.1 Bearer Token for Assistants ---
+  describe('OAuth 2.1 Bearer Token', () => {
+    function hashToken(raw: string): string {
+      return createHash('sha256').update(raw).digest('base64url')
+    }
+
+    it('a valid bearer token sets userId, userIdKind = bearer, and authContext with assistant info', async () => {
+      const rawToken = 'test-access-token-123'
+      const hashed = hashToken(rawToken)
+      const tokenRecord = {
+        userId: 'oauth-user-id',
+        clientId: 'client-1',
+        scopes: ['openid', 'steuerdaten:read', 'steuerdaten:write'],
+        expiresAt: new Date(Date.now() + 60_000),
+        revoked: null,
+        client: { clientId: 'client-1', name: 'Claude Assistant', disabled: false },
+      }
+      const fakePrisma = {
+        oauthAccessToken: {
+          findUnique: vi.fn().mockResolvedValue(tokenRecord),
+        },
+      } as unknown as PrismaService
+
+      const guard = new UserContextGuard(makeBetterAuthBundle(vi.fn()), fakePrisma)
+      const { context, request, setCookie } = makeContext({}, { authorization: `Bearer ${rawToken}` })
+
+      await expect(guard.canActivate(context)).resolves.toBe(true)
+      expect(request[USER_ID_REQUEST_KEY]).toBe('oauth-user-id')
+      expect(request[USER_ID_KIND_REQUEST_KEY]).toBe('bearer')
+      expect(request[AUTH_CONTEXT_REQUEST_KEY]).toEqual({
+        source: 'assistent',
+        clientId: 'client-1',
+        clientName: 'Claude Assistant',
+        scopes: ['openid', 'steuerdaten:read', 'steuerdaten:write'],
+      })
+      expect(setCookie).not.toHaveBeenCalled()
+      expect(fakePrisma.oauthAccessToken.findUnique).toHaveBeenCalledWith({
+        where: { token: hashed },
+        include: { client: true },
+      })
+    })
+
+    it('an expired bearer token throws UnauthorizedException (never falls back to guest)', async () => {
+      const rawToken = 'expired-token'
+      const tokenRecord = {
+        userId: 'oauth-user-id',
+        clientId: 'client-1',
+        scopes: ['openid'],
+        expiresAt: new Date(Date.now() - 1000), // expired
+        revoked: null,
+        client: { clientId: 'client-1', name: 'Claude', disabled: false },
+      }
+      const fakePrisma = {
+        oauthAccessToken: {
+          findUnique: vi.fn().mockResolvedValue(tokenRecord),
+        },
+      } as unknown as PrismaService
+
+      const guard = new UserContextGuard(makeBetterAuthBundle(vi.fn()), fakePrisma)
+      const { context, setCookie } = makeContext({}, { authorization: `Bearer ${rawToken}` })
+
+      await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException)
+      expect(setCookie).not.toHaveBeenCalled()
+    })
+
+    it('a revoked bearer token throws UnauthorizedException', async () => {
+      const rawToken = 'revoked-token'
+      const tokenRecord = {
+        userId: 'oauth-user-id',
+        clientId: 'client-1',
+        scopes: ['openid'],
+        expiresAt: new Date(Date.now() + 60_000),
+        revoked: new Date(), // revoked
+        client: { clientId: 'client-1', name: 'Claude', disabled: false },
+      }
+      const fakePrisma = {
+        oauthAccessToken: {
+          findUnique: vi.fn().mockResolvedValue(tokenRecord),
+        },
+      } as unknown as PrismaService
+
+      const guard = new UserContextGuard(makeBetterAuthBundle(vi.fn()), fakePrisma)
+      const { context, setCookie } = makeContext({}, { authorization: `Bearer ${rawToken}` })
+
+      await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException)
+      expect(setCookie).not.toHaveBeenCalled()
+    })
+
+    it('an unknown bearer token throws UnauthorizedException', async () => {
+      const fakePrisma = {
+        oauthAccessToken: {
+          findUnique: vi.fn().mockResolvedValue(null),
+        },
+      } as unknown as PrismaService
+
+      const guard = new UserContextGuard(makeBetterAuthBundle(vi.fn()), fakePrisma)
+      const { context, setCookie } = makeContext({}, { authorization: 'Bearer nonexistent-token' })
+
+      await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException)
+      expect(setCookie).not.toHaveBeenCalled()
+    })
+
+    it('a disabled client token throws UnauthorizedException', async () => {
+      const rawToken = 'token-for-disabled-client'
+      const tokenRecord = {
+        userId: 'oauth-user-id',
+        clientId: 'client-1',
+        scopes: ['openid'],
+        expiresAt: new Date(Date.now() + 60_000),
+        revoked: null,
+        client: { clientId: 'client-1', name: 'Claude', disabled: true }, // disabled client
+      }
+      const fakePrisma = {
+        oauthAccessToken: {
+          findUnique: vi.fn().mockResolvedValue(tokenRecord),
+        },
+      } as unknown as PrismaService
+
+      const guard = new UserContextGuard(makeBetterAuthBundle(vi.fn()), fakePrisma)
+      const { context, setCookie } = makeContext({}, { authorization: `Bearer ${rawToken}` })
+
+      await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException)
+      expect(setCookie).not.toHaveBeenCalled()
+    })
+
+    it('sets authContext = { source: "nutzer" } for normal session and guest', async () => {
+      const getSession = vi.fn().mockResolvedValue({ user: { id: 'u1' }, session: {} })
+      const guard = new UserContextGuard(makeBetterAuthBundle(getSession))
+
+      const sessionReq = makeContext({ [SESSION_COOKIE_NAME]: 'sess' })
+      await guard.canActivate(sessionReq.context)
+      expect(sessionReq.request[AUTH_CONTEXT_REQUEST_KEY]).toEqual({ source: 'nutzer' })
+
+      const guestReq = makeContext({})
+      await guard.canActivate(guestReq.context)
+      expect(guestReq.request[AUTH_CONTEXT_REQUEST_KEY]).toEqual({ source: 'nutzer' })
     })
   })
 })

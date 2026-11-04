@@ -10,7 +10,6 @@ function toRecord(row: StammdatenRecord): StammdatenRecord {
 
 @Injectable()
 export class PrismaStammdatenRepository implements StammdatenRepository {
-  // ENCRYPTED_PRISMA: address, IBAN and religion are encrypted at rest (ADR-0008).
   constructor(@Inject(ENCRYPTED_PRISMA) private readonly prisma: EncryptedPrismaClient) {}
 
   async findByUserId(userId: string): Promise<StammdatenRecord | null> {

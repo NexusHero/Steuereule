@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common'
+import { APP_FILTER } from '@nestjs/core'
 import { ThrottlerModule } from '@nestjs/throttler'
 import { AccountModule } from './account/account.module.js'
+import { AssistentenModule } from './assistenten/assistenten.module.js'
 import { AusdruckModule } from './ausdruck/ausdruck.module.js'
 import { AuthModule } from './auth/auth.module.js'
 import { BelegModule } from './beleg/beleg.module.js'
@@ -24,14 +26,10 @@ import { VermietungModule } from './vermietung/vermietung.module.js'
 import { KinderModule } from './kinder/kinder.module.js'
 import { KopplungModule } from './kopplung/kopplung.module.js'
 import { EulenModusModule } from './eulen-modus/eulen-modus.module.js'
+import { DomainErrorFilter } from './common/domain-error.filter.js'
 
 @Module({
   imports: [
-    // One default throttler; every rate-limited route overrides its own window/max
-    // via `@Throttle` (see device.controller.ts / account-deletion.controller.ts).
-    // The guard is applied per-route (`@UseGuards(ThrottlerGuard)`), not globally,
-    // so the account-deletion route can run it *after* UserContextGuard resolves the
-    // userId its tracker keys on.
     ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 10 }]),
     AuthModule,
     ProfileModule,
@@ -44,6 +42,7 @@ import { EulenModusModule } from './eulen-modus/eulen-modus.module.js'
     BelegModule,
     BescheidModule,
     AccountModule,
+    AssistentenModule,
     DeviceModule,
     HealthModule,
     VeranlagungsartenvergleichModule,
@@ -58,5 +57,6 @@ import { EulenModusModule } from './eulen-modus/eulen-modus.module.js'
     KopplungModule,
     EulenModusModule,
   ],
+  providers: [{ provide: APP_FILTER, useClass: DomainErrorFilter }],
 })
 export class AppModule {}

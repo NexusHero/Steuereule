@@ -1,5 +1,3 @@
-// The legal footer: every public entry screen links Impressum and Datenschutzerklärung
-// (§ 5 DDG: "leicht erkennbar, unmittelbar erreichbar").
 import { Pressable, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '@steuereule/ui'
@@ -8,7 +6,6 @@ import { RECHTLICHE_SEITEN, SEITEN_TITEL, type RechtlicheSeite } from './texte'
 
 export interface RechtlichesLinksProps {
   readonly onSeite: (seite: RechtlicheSeite) => void
-  /** The page currently shown, rendered as plain text rather than a link to itself. */
   readonly aktuell?: RechtlicheSeite
 }
 

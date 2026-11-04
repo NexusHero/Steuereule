@@ -1,28 +1,16 @@
-// Anlage N-Gre (Grenzgänger Schweiz): the wage lines and the split of the Swiss social
-// contributions, computed with the rates the 2025 form itself prints (Zeilen 78, 79, 83).
-// Pure, no I/O (ADR-0004).
-
-/** AHV/IV employee share (Zeile 83), EO (Zeile 78), ALV up to the ceiling (Zeile 79). */
 const AHV_IV = 0.0505
 const EO = 0.0025
 const ALV = 0.011
 const ALV_HOECHSTBETRAG_CHF = 148200
-/** In der Schweiz erhobene Abzugssteuer, höchstens 4,5 % von Zeile 6 (Art. 15a DBA). */
 const ABZUGSSTEUER_HOECHSTSATZ = 0.045
 
 /** The CHF facts from the Lohnausweis and the Vorsorgeausweis, plus the EUR-per-CHF Kurs. */
 export interface NGreEingabe {
-  /** Lohnausweis Ziffer 8. */
   readonly bruttolohnChf: number
-  /** Kinder- und Ausbildungszulagen contained in Ziffer 8 (Zeilen 8 / 76). */
   readonly familienzulagenChf: number
-  /** Lohnausweis Ziffer 9 — AHV/IV/EO/ALV/NBUV together. */
   readonly ahvBeitraegeChf: number
-  /** Lohnausweis Ziffer 12. */
   readonly quellensteuerChf: number
-  /** Employee contributions to the Krankentaggeldversicherung (Zeile 80). */
   readonly krankentaggeldChf: number
-  /** Säule 2a Obligatorium, employee and employer (Zeilen 84 / 87, Vorsorgeausweis). */
   readonly pkArbeitnehmerChf: number
   readonly pkArbeitgeberChf: number
   readonly kurs: number
@@ -38,7 +26,6 @@ export interface NGreBetraege {
   readonly eur: Readonly<Record<NGreZeile, number>>
 }
 
-/** The amounts per line in whole CHF and whole EUR; EUR sums are sums of the converted parts. */
 export function anlageNGreBetraege(e: NGreEingabe): NGreBetraege {
   const basis = e.bruttolohnChf - e.familienzulagenChf
   const ahv = Math.round(basis * AHV_IV)

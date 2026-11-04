@@ -1,6 +1,5 @@
 // ADR-0050 — Erklärungs-Stammdaten against an in-memory repository (ADR-0004). The
 // ciphertext-at-rest and HTTP proofs are in test/acceptance/stammdaten.test.ts.
-import { BadRequestException } from '@nestjs/common'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { AuditService } from '../src/audit/audit.service.js'
 import type { StammdatenRecord, StammdatenRepository } from '../src/stammdaten/stammdaten.repository.js'
@@ -66,9 +65,9 @@ describe('StammdatenService', () => {
   })
 
   it('Art. 9 DSGVO: a religion without explicit consent is refused and nothing is written', async () => {
-    await expect(service.speichere('u1', { ...VOLLSTAENDIG, religionEinwilligung: false })).rejects.toBeInstanceOf(
-      BadRequestException,
-    )
+    await expect(service.speichere('u1', { ...VOLLSTAENDIG, religionEinwilligung: false })).rejects.toMatchObject({
+      code: 'RELIGION_CONSENT_REQUIRED',
+    })
     expect(repository.rows.size).toBe(0)
   })
 

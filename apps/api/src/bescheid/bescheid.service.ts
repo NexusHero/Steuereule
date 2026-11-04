@@ -1,13 +1,5 @@
-// Application logic for the Steuerbescheid (Bescheidprüfung 1.0, ticket 10.3, ADR-009):
-// userId+steuerjahr-scoped read/write, the honest field-state + Abgleich + Frist mapping, and the
-// server-validated phase transitions. Trusts that `userId` was produced by UserContextGuard +
-// @RequiresAccount() (never accepts it from a param/body). The Abgleich, the Frist and the
-// transitions are NEVER computed here — @steuereule/core's `gleicheBescheidAb`,
-// `bescheidBerechnungsstand`, `einspruchsfristEnde`/`verbleibendeEinspruchstage` and
-// `istBescheidUebergangErlaubt` are imported, never reimplemented (ADR-014/048 determinism
-// boundary). The "berechnet" side is folded from the SAME repositories the Cockpit and the CH
-// services read (LStB + interview + CH-Lohnausweis), never a second calc path.
-import { BadRequestException, ConflictException, Inject, Injectable } from '@nestjs/common'
+import { Inject, Injectable } from '@nestjs/common'
+import { ConflictError, InvalidInputError } from '../common/domain-error.js'
 import {
   BESCHEID_FELDER,
   amtlicherMonatskurs,
@@ -56,10 +48,10 @@ import type {
   SetBescheidStatusDto,
   SetEinspruchDto,
 } from './dto/bescheid-response.dto.js'
+import { answersAus } from '../interview/answers.js'
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
-/** The stored strings → the wire field states + the sparse comparable `BescheidWerte`. */
 function felderAusRecord(record: BescheidRecord | null): { felder: BescheidFeldDto[]; werte: BescheidWerte } {
   const felder: BescheidFeldDto[] = []
   const werte: BescheidWerte = {}
@@ -78,20 +70,12 @@ function felderAusRecord(record: BescheidRecord | null): { felder: BescheidFeldD
   return { felder, werte }
 }
 
-function toAnswers(rows: readonly { questionId: string; value: string }[]): Answers {
-  const answers: Record<string, string> = {}
-  for (const row of rows) answers[row.questionId] = row.value
-  return answers as Answers
-}
-
-// --- Grenzgänger-CH fold — mirrors ChLohnausweisService's private derivation (read-only). ----
-
 function wechselkursAusRecord(record: ChLohnausweisRecord | null): Wechselkurs | null {
   if (record === null || record.wechselkursMonat === null || record.wechselkursKurs === null || record.wechselkursModus === null) {
     return null
   }
   if (record.wechselkursModus === 'amtlich') return amtlicherMonatskurs(record.wechselkursMonat, record.wechselkursKurs)
-  if (record.wechselkursBelegId === null) return null // persisted tatsächlich without a Beleg (ADR-012) — not foldable
+  if (record.wechselkursBelegId === null) return null
   return tatsaechlicherKurs(record.wechselkursMonat, record.wechselkursKurs, record.wechselkursBelegId)
 }
 
@@ -115,6 +99,7 @@ function lohnausweisWerteAusRecord(record: ChLohnausweisRecord | null): Lohnausw
   return werte
 }
 
+/** Application logic for the Steuerbescheid. */
 @Injectable()
 export class BescheidService {
   constructor(
@@ -125,14 +110,13 @@ export class BescheidService {
     @Inject(AuditService) private readonly auditService: AuditService,
   ) {}
 
-  /** The computed "berechnet" side: the merged Angestellte + CH fold, via the core. */
   private async berechnungsstand(userId: string, steuerjahr: number): Promise<Berechnungsstand> {
     const [lstbRecord, interviewRows, chRecord] = await Promise.all([
       this.lstbRepository.findForUserAndYear(userId, steuerjahr),
       this.interviewRepository.findAllForUserAndYear(userId, steuerjahr),
       this.chLohnausweisRepository.findForUserAndYear(userId, steuerjahr),
     ])
-    const answers = toAnswers(interviewRows)
+    const answers = answersAus(interviewRows)
 
     const angestellte = angestellteAusDaten(
       {
@@ -148,8 +132,6 @@ export class BescheidService {
     const saeule3aChf = chRecord === null || chRecord.saeule3aChf === null ? undefined : Number(chRecord.saeule3aChf)
     const krankenkasseChf = chRecord === null || chRecord.krankenkasseChf === null ? undefined : Number(chRecord.krankenkasseChf)
 
-    // The CH fold only exists once both the Kurs and the status are known; before that there is
-    // no CH side to merge (nothing to fold — never a fabricated zero).
     let ch: Berechnungsstand | null = null
     if (wechselkurs !== null && status !== null) {
       ch = grenzgaengerStand({
@@ -194,7 +176,6 @@ export class BescheidService {
 
   async getState(userId: string, steuerjahr: number): Promise<BescheidResponseDto> {
     const record = await this.repository.findForUserAndYear(userId, steuerjahr)
-    // Only log an access when there's something to access (REQ-004.2's pattern).
     if (record !== null) {
       await this.auditService.append({ userId, action: 'READ', resource: 'bescheid' })
     }
@@ -213,7 +194,7 @@ export class BescheidService {
 
   async setDatum(userId: string, steuerjahr: number, dto: SetBescheidDatumDto): Promise<BescheidResponseDto> {
     if (dto.datum !== null && dto.datum !== undefined && !ISO_DATE_RE.test(dto.datum)) {
-      throw new BadRequestException('bescheiddatum must be an ISO yyyy-mm-dd date')
+      throw new InvalidInputError('BESCHEIDDATUM_INVALID', 'bescheiddatum must be an ISO yyyy-mm-dd date.')
     }
     const record = await this.repository.setDatum(userId, steuerjahr, dto.datum ?? null)
     return this.toResponse(userId, steuerjahr, record)
@@ -224,9 +205,7 @@ export class BescheidService {
     const von: BescheidStatus = current?.status ?? 'eingegangen'
     const nach = dto.status as BescheidStatus
     if (!istBescheidUebergangErlaubt(von, nach)) {
-      // ADR-021/0039: an illegal transition is rejected, never silently coerced — the client
-      // must only offer `naechsteZustaende`, and a forged write is a 409 conflict.
-      throw new ConflictException(`illegal Bescheid transition "${von}" → "${nach}"`)
+      throw new ConflictError('BESCHEID_TRANSITION_ILLEGAL', `illegal Bescheid transition "${von}" → "${nach}"`)
     }
     const record = await this.repository.setStatus(userId, steuerjahr, nach)
     return this.toResponse(userId, steuerjahr, record)
@@ -234,34 +213,27 @@ export class BescheidService {
 
   async setEinspruch(userId: string, steuerjahr: number, dto: SetEinspruchDto): Promise<BescheidResponseDto> {
     if (!istEinspruchGrund(dto.grund)) {
-      throw new BadRequestException(`unknown Einspruch-Grund "${dto.grund}"`)
+      throw new InvalidInputError('EINSPRUCH_GRUND_UNKNOWN', `unknown Einspruch-Grund "${dto.grund}"`)
     }
     const current = await this.repository.findForUserAndYear(userId, steuerjahr)
     const von: BescheidStatus = current?.status ?? 'eingegangen'
     if (!istBescheidUebergangErlaubt(von, 'einspruch-eingelegt')) {
-      throw new ConflictException(`illegal Bescheid transition "${von}" → "einspruch-eingelegt"`)
+      throw new ConflictError('BESCHEID_TRANSITION_ILLEGAL', `illegal Bescheid transition "${von}" → "einspruch-eingelegt"`)
     }
     const record = await this.repository.setEinspruch(userId, steuerjahr, dto.grund)
     return this.toResponse(userId, steuerjahr, record)
   }
 }
 
-/** The wire field state → the core's stored encoding; a 400 when `erfasst` lacks a valid amount. */
 function wertAusDto(feld: Parameters<BescheidRepository['setFeld']>[2], dto: PutBescheidFeldDto): string | null {
   if (dto.kind === 'offen') return null
   if (dto.kind === 'unklar') return 'unklar'
   if (dto.wert === undefined || !istGueltigerBescheidBetrag(feld, dto.wert)) {
-    throw new BadRequestException(`kind "erfasst" requires a valid whole-euro \`wert\` for "${feld}".`)
+    throw new InvalidInputError('FIELD_VALUE_INVALID', `kind "erfasst" requires a valid whole-euro \`wert\` for "${feld}".`)
   }
   return serialisiereBescheidFeld(feld, dto.wert)
 }
 
-/** Today's German calendar day (Europe/Berlin) as ISO yyyy-mm-dd — the Fristen-Countdown's
- *  reference point, recomputed per read. NOT UTC: between 00:00 and 02:00 CEST (01:00 CET) the
- *  UTC date lags Berlin by one day, so a UTC reference would show "0 Tage" on the very day the
- *  § 355 AO Einspruchsfrist has already run out (§ 355 runs on German calendar days — the same
- *  honesty as the § 108 Abs. 3-AO note in the core). `jetzt` is injectable for the
- *  midnight-boundary test. */
 export function heuteIso(jetzt: Date = new Date()): string {
   const teile = new Intl.DateTimeFormat('en-US', {
     timeZone: 'Europe/Berlin',

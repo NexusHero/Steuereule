@@ -1,12 +1,3 @@
-// Profil (REQ-013, steuereule#95) — view + edit the stored profile (name, Steuer-ID,
-// Steuernummer), wired to the live GET/PUT /v1/profile (same contract, same hooks, same
-// no-client-persistence discipline as OnboardingScreen/REQ-012). ADR-0008: the profile lives
-// server-side, field-encrypted; this screen holds it in-memory only.
-//
-// The DS reference (Profil.jsx) is an account/settings screen whose "Bearbeiten" affordance is a
-// dead end and whose settings rows have no live backend — this builds the part that's genuinely
-// ready: the profile-data summary + edit round trip, plus (REQ-011) the one "Deine Daten" row
-// that reaches the wired Datenschutz screen. The read view and edit form live in ./profil/.
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
@@ -19,15 +10,9 @@ import { ProfilEdit } from './profil/ProfilEdit'
 import { LoadingState, ErrorState } from './shared/ScreenState'
 
 export interface ProfilScreenProps {
-  /** Navigates to the Datenschutz screen (REQ-011) — Profil never renders it itself; the DS
-   *  reference and TAB_ORDNUNG both make Datenschutz a screen reached *from* Profil. */
   readonly onOpenDatenschutz: () => void
-  /** ADR-0050: the Erklärungs-Stammdaten — same drill-down as Datenschutz. */
   readonly onOpenStammdaten?: () => void
-  /** Navigates to the Sicherheit screen (REQ-007) — same drill-down as Datenschutz. */
   readonly onOpenSicherheit: () => void
-  /** Fires when the device list (#238) revokes the session this very screen is running under —
-   *  the same "never a stale screen for a gone account" contract DatenschutzScreen honours. */
   readonly onSignedOut: () => void
 }
 
@@ -42,14 +27,6 @@ export function ProfilScreen({ onOpenDatenschutz, onOpenSicherheit, onOpenStammd
   const [saveError, setSaveError] = useState<string | null>(null)
   const [justSaved, setJustSaved] = useState(false)
 
-  // Derive the view profile directly from the query's data on every render — never seed a local
-  // copy once and freeze it. Onboarding and Profil share one QueryClient/query key; if
-  // Onboarding's earlier (empty) GET is already cached when Profil mounts, TanStack Query hands
-  // back that stale value synchronously *and* kicks off a background refetch. A one-time "seed if
-  // null" effect would latch onto the stale value and never look again; reading fresh each render
-  // shows the real profile the moment the refetch resolves. The in-flight `draft` stays the sole
-  // edit-time source of truth; save writes the server's response straight into the query cache so
-  // this same derivation reflects it immediately.
   const profil = profileQuery.data ? toOnboardingProfil(profileQuery.data.data) : null
 
   if (profileQuery.isPending) {

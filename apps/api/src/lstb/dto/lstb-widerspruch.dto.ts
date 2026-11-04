@@ -1,13 +1,5 @@
-// `type:` given explicitly on every @ApiProperty() — see PutProfileDto's comment for why
-// (esbuild/tsx emit no `design:*` metadata, so @nestjs/swagger can't infer these).
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 
-/**
- * Mirrors @steuereule/core's `LstbWiderspruch` union — a structural contradiction between
- * two `erfasst` figures (ADR-008: named, never silently fixed). The two variants carry
- * different numbers, so every field is optional except `art`; which one is present is fixed
- * by `art` (same "flat discriminated union on the wire" shape as StepDto).
- */
 export class LstbWiderspruchDto {
   @ApiProperty({
     type: String,

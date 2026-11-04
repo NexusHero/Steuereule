@@ -179,6 +179,15 @@ const EXPECTED_CURSORS: Record<string, string> = {
   SteuerjahrKopplung: 'id',
   EulenEinstellung: 'id',
   EulenKartenVerwurf: 'id',
+  Jahresuebernahme: 'id',
+  OauthClient: 'id',
+  OauthResource: 'id',
+  OauthClientResource: 'id',
+  OauthRefreshToken: 'id',
+  OauthAccessToken: 'id',
+  OauthConsent: 'id',
+  OauthClientAssertion: 'id',
+  Jwks: 'id',
 }
 
 describe('encrypted/hashed field set (#325) — derived from Prisma.dmmf, not comment text', () => {

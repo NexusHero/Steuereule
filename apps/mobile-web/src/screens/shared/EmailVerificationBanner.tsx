@@ -1,14 +1,3 @@
-// The "please verify your email" banner (and its verified confirmation) shared by LoginScreen's
-// unverified stage and RegistrierungScreen's success stage — one component, not two copies
-// (Phase 0.3 AC-1). Both screens had the same banner, the same resend affordance, the same
-// four-state resend progress, and the same verified confirmation, re-typed in each file; the
-// only thing that differed was *which* screen's stage handed it the email.
-//
-// The live verification read (`useEmailVerified`) stays with the host — it is account-scoped to
-// the exact stage the host is showing, and scoping matters differently on LoginScreen (a second
-// person on a shared device) than on RegistrierungScreen (the fresh account). The resend flow,
-// by contrast, is identical: same `sendVerificationEmail` call, same idle/sending/sent/error
-// states, so it lives here once.
 import { useState } from 'react'
 import { View, Text, Pressable, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
@@ -17,10 +6,7 @@ import { APP_NS } from '../../i18n/resources'
 import { useAuthClient } from '../../auth/AuthClientProvider'
 
 interface EmailVerificationBannerProps {
-  /** The server-derived account email the banner names (never a raw input field). */
   readonly email: string
-  /** Whether the live session already reports this account as verified — `true` swaps the
-   *  "please verify" banner for the positive confirmation. */
   readonly verified: boolean
 }
 
@@ -65,10 +51,6 @@ export function EmailVerificationBanner({ email, verified }: EmailVerificationBa
 }
 
 function makeStyles(t: UiTheme) {
-  // `alignSelf: 'stretch'` (not `width: '100%'`) — the banner must fill the column whether the
-  // host lays it out in a default-stretch column (LoginScreen's unverified stage) or a centred
-  // one (RegistrierungScreen's success stage, whose `alignItems: 'center'` would otherwise
-  // shrink-wrap it to its text).
   const verifyBanner: ViewStyle = {
     alignSelf: 'stretch',
     backgroundColor: t.color.warnWeich,
@@ -83,8 +65,6 @@ function makeStyles(t: UiTheme) {
   const verifyResendLink: TextStyle = { fontFamily: t.font.text, fontWeight: t.weight.schwer, fontSize: t.size.s, color: t.color.tinte, textDecorationLine: 'underline', minHeight: 44, textAlignVertical: 'center' }
   const verifyResendNote: TextStyle = { fontFamily: t.font.text, fontSize: t.size.xs, color: t.color.tinte2, marginTop: t.space.s1 }
   const verifyResendError: TextStyle = { fontFamily: t.font.text, fontSize: t.size.xs, color: t.color.fehler, marginTop: t.space.s1 }
-  // Same box primitive as `verifyBanner`, recolored with the DS's positive semantic pair
-  // (`--ok`/`--ok-weich`, `farben-semantik.html`).
   const verifiedBanner: ViewStyle = {
     alignSelf: 'stretch',
     backgroundColor: t.color.okWeich,

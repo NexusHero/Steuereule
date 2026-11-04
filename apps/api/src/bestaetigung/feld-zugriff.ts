@@ -1,9 +1,3 @@
-// The one place that knows how to read and write a single field of each mask by its
-// Kennzeichnungs-Key. The Bestätigung needs it to show current values, to apply the conflict rule
-// against the stored value and to write an accepted proposal. Every read/write goes through the
-// mask's own repository (same encryption, same scoping) — never a second Prisma path.
-// Masks without an entry here cannot be written by anyone but the user yet (ADR-0052: 17.3 adds
-// the masks the assistant writes).
 import {
   KAPITAL_FELDER,
   LSTB_FELDER,
@@ -22,11 +16,8 @@ import type { VermietungRepository } from '../vermietung/vermietung.repository.j
 
 export interface MaskenZugriff {
   readonly felder: readonly string[]
-  /** Whether this mask is addressed per instance (`vermietung:<id>.feld`). */
   readonly mitInstanz: boolean
-  /** The stored field strings, or null when the instance does not exist for this user. */
   lese(userId: string, steuerjahr: number, instanz: string | null): Promise<Readonly<Record<string, string | null>> | null>
-  /** False when the instance does not exist for this user (nothing was written). */
   schreibe(userId: string, steuerjahr: number, instanz: string | null, feld: string, wert: string | null): Promise<boolean>
 }
 

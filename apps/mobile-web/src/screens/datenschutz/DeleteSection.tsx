@@ -1,8 +1,3 @@
-// DatenschutzScreen's account-deletion section (Art. 17) — the closed → offer → confirm →
-// password → deleting state machine, plus the guest-blocked terminal. Extracted from
-// DatenschutzScreen.tsx so that file stays a screen; this file owns the destructive flow's UI
-// only. The DELETE call and the honest status mapping (400/401/403/429/500) stay with the host
-// screen, which owns the query client it must clear on success.
 import { View, Text, ActivityIndicator } from 'react-native'
 import { Button, Card, Feld, Input, useTheme } from '@steuereule/ui'
 import { makeDatenschutzStyles } from './styles'

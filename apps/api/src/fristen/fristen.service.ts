@@ -1,10 +1,5 @@
-// Application logic for the Fristen-/Verspätungszuschlag-Warnmodus (ticket 10.7, M6). The facts
-// are computed ONLY by @steuereule/core (`abgabefristFuer`/`fristenWarnung`) — never re-derived
-// here (ADR-014/048 determinism boundary). The service owns the ONE non-pure input: "heute" —
-// the server clock in Europe/Berlin (never the client clock, which the user could skew), mapped
-// to an ISO yyyy-mm-dd. No persistence, no audit entry: the fristen are statutory facts, not
-// user data (REQ-004 governs sensitive tax/profile data).
-import { BadRequestException, Injectable } from '@nestjs/common'
+import { Injectable } from '@nestjs/common'
+import { InvalidInputError } from '../common/domain-error.js'
 import {
   VERSPAETUNGSZUSCHLAG_MINDESTSATZ_EUR,
   VERSPAETUNGSZUSCHLAG_PROZENT_PRO_MONAT,
@@ -12,11 +7,6 @@ import {
 } from '@steuereule/core'
 import type { FristenResponseDto } from './dto/fristen-response.dto.js'
 
-/**
- * The server's "heute" in Europe/Berlin as ISO yyyy-mm-dd. `now` is injectable so the
- * midnight-boundary behaviour is unit-testable (22:00 UTC is already the next day in Berlin);
- * the production call passes nothing and uses the real clock.
- */
 export function heuteInBerlin(now: Date = new Date()): string {
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Europe/Berlin',
@@ -34,18 +24,17 @@ export function heuteInBerlin(now: Date = new Date()): string {
   return `${jahr}-${monat}-${tag}`
 }
 
+/** Application logic for the Fristen-/Verspätungszuschlag-Warnmodus. */
 @Injectable()
 export class FristenService {
   async getFristen(steuerjahr: number): Promise<FristenResponseDto> {
     const heute = heuteInBerlin()
-    // The core throws for an unsupported year (the per-year Regelwerk, Produkt-ADR-022) — at the
-    // boundary that is an honest 400, never a neighbouring year's frist.
     let warnung
     try {
       warnung = fristenWarnung(steuerjahr, heute)
     } catch (error) {
       if (error instanceof RangeError) {
-        throw new BadRequestException(error.message)
+        throw new InvalidInputError('STEUERJAHR_UNSUPPORTED', error.message)
       }
       throw error
     }

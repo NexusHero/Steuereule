@@ -1,18 +1,3 @@
-// The third boot finding (#289): presence → reachability → usability. `SELECT 1`
-// answers on an empty Postgres, so a reachable database with no schema used to pass
-// the reachability probe and the server listened, then 500'd on every real request.
-// On k3s the migration Job and the Deployment have no inherent ordering, so a pod
-// starting before the Job finished is the normal case, not an exotic one — refusing
-// here is the signal the platform needs (the pod restarts until the Job is through).
-//
-// The check holds the migration directories this build ships (`prisma/migrations/`)
-// against `_prisma_migrations` rows that finished and were not rolled back. Both are
-// generated from the same `prisma/migrations/` + `schema.prisma`, so this reads the
-// condition itself, not a shadow of it (a "does table X exist" probe would be #284's
-// proxy shape). `_prisma_migrations` is a Prisma internal: every failure of the query
-// — missing table, renamed column, timeout — is a refusal, never a pass-through.
-//
-// Deliberately not a migration runner: running migrations stays the platform's job.
 import { readdirSync } from 'node:fs'
 import { PrismaClient } from '@prisma/client'
 import { resolveDatabaseUrl } from './database-url.js'
@@ -20,8 +5,6 @@ import { disconnectQuietly, redactCause, withTimeout } from './assert-database-r
 
 const PROBE_TIMEOUT_MS = 5_000
 
-// Resolves from both `src/config/` and the compiled `dist/config/` to the same
-// `apps/api/prisma/migrations` — the Dockerfile copies the whole repo, so it ships.
 const MIGRATIONS_DIR = new URL('../../prisma/migrations/', import.meta.url)
 
 export function listExpectedMigrations(dir: URL | string = MIGRATIONS_DIR): string[] {
@@ -36,6 +19,7 @@ export function findMissingMigrations(expected: readonly string[], applied: read
   return expected.filter((name) => !appliedSet.has(name))
 }
 
+/** The third boot finding: presence → reachability → usability. */
 export interface MigrationRecordClient {
   $queryRaw<T>(query: TemplateStringsArray, ...values: unknown[]): Promise<T>
   $disconnect(): Promise<void>
@@ -69,8 +53,6 @@ export async function assertDatabaseMigrated(options: AssertDatabaseMigratedOpti
     )
     applied = rows.map((row) => row.migration_name)
   } catch (rawCause) {
-    // Same redaction rule as the reachability probe: the raw error can carry the
-    // configured username, so only its class name travels as `cause`.
     // oxlint-disable-next-line eslint/preserve-caught-error
     throw new Error(
       `Cannot read the applied-migration record (_prisma_migrations) — refusing to start. ${REFUSAL_ADVICE}`,

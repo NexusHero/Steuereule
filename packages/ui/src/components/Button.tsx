@@ -1,5 +1,3 @@
-// Funke-Button (fk-btn). Lime, ink contour, hard shadow; press drückt AUF den Schatten
-// (translate onto the offset, shadow collapses). One primary action per screen (CLAUDE.md).
 import { Pressable, Text, type ViewStyle, type TextStyle, type StyleProp } from 'react-native'
 import { type ReactNode } from 'react'
 import { useTheme } from '../theme/useTheme'
@@ -28,10 +26,6 @@ export function Button({ variante = 'primaer', disabled = false, onPress, style,
   const shadow = variante === 'leise' ? t.shadow.hartS : t.shadow.hart
 
   const container: ViewStyle = {
-    // `.fk-btn { width: 100% }` (komponenten.css:12) — the faithful RN port, not
-    // `alignSelf: 'stretch'`: stretch would silently survive a caller passing
-    // `width: 'auto'`, breaking the DS's own opt-out idiom (JahrTab.jsx:76). `style` is
-    // spread last below, so a caller-supplied width still wins over this default (#177).
     width: '100%',
     flexDirection: 'row',
     justifyContent: 'center',

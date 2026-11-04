@@ -1,4 +1,3 @@
-import { BadRequestException, ForbiddenException } from '@nestjs/common'
 import { plainToInstance } from 'class-transformer'
 import { validate } from 'class-validator'
 import { describe, expect, it } from 'vitest'
@@ -80,7 +79,7 @@ describe('KopplungService', () => {
     expect(einladungsCodeGueltigBis).toBe('2025-03-15T10:00:00.000Z')
 
     const spaeter = new Date('2025-03-15T10:00:01Z')
-    await expect(service.joinWithCode('user-b', jahr, einladungsCode!, spaeter)).rejects.toThrow(/abgelaufen/)
+    await expect(service.joinWithCode('user-b', jahr, einladungsCode!, spaeter)).rejects.toMatchObject({ code: 'INVITATION_CODE_EXPIRED' })
 
     const neu = await service.set('user-a', jahr, { veranlagungsart: 'zusammen' }, spaeter)
     expect(neu.einladungsCode).not.toBe(einladungsCode)
@@ -107,12 +106,8 @@ describe('KopplungService', () => {
     await service.joinWithCode('user-b', jahr, einladungsCode!)
     await profileRepo.upsert('user-b', { firstName: 'Bea', lastName: 'Echt', steuerId: '12345678903', steuernummer: null })
 
-    await expect(service.updatePersonB('user-a', jahr, { steuerId: '98765432109' })).rejects.toBeInstanceOf(
-      ForbiddenException,
-    )
-    await expect(service.updatePersonB('user-b', jahr, { firstName: 'Mallory' })).rejects.toBeInstanceOf(
-      ForbiddenException,
-    )
+    await expect(service.updatePersonB('user-a', jahr, { steuerId: '98765432109' })).rejects.toMatchObject({ code: 'PERSON_B_OWNS_DATA' })
+    await expect(service.updatePersonB('user-b', jahr, { firstName: 'Mallory' })).rejects.toMatchObject({ code: 'PERSON_B_OWNS_DATA' })
     expect((await profileRepo.findByUserId('user-b'))?.steuerId).toBe('12345678903')
   })
 
@@ -121,9 +116,9 @@ describe('KopplungService', () => {
     const { einladungsCode } = await service.set('user-a', jahr, { veranlagungsart: 'zusammen' })
     await service.joinWithCode('user-b', jahr, einladungsCode!)
 
-    await expect(service.set('user-b', jahr, { veranlagungsart: 'zusammen' })).rejects.toBeInstanceOf(
-      ForbiddenException,
-    )
+    await expect(service.set('user-b', jahr, { veranlagungsart: 'zusammen' })).rejects.toMatchObject({
+      code: 'VERANLAGUNGSART_OWNED_BY_PERSON_A',
+    })
   })
 
   it('never records a religion consent nobody gave (Art. 9 DSGVO)', async () => {
@@ -133,9 +128,7 @@ describe('KopplungService', () => {
     const { personBUserId } = await service.updatePersonB('user-a', jahr, { beruf: 'Lehrerin' })
     expect((await stammdatenRepo.findByUserId(personBUserId!))?.religionEinwilligungAm).toBeNull()
 
-    await expect(service.updatePersonB('user-a', jahr, { religion: 'EV' })).rejects.toBeInstanceOf(
-      BadRequestException,
-    )
+    await expect(service.updatePersonB('user-a', jahr, { religion: 'EV' })).rejects.toMatchObject({ code: 'RELIGION_CONSENT_REQUIRED' })
 
     await service.updatePersonB('user-a', jahr, { religion: 'EV', religionEinwilligung: true })
     expect((await stammdatenRepo.findByUserId(personBUserId!))?.religionEinwilligungAm).toBeInstanceOf(Date)

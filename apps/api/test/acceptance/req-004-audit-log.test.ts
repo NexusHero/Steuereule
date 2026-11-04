@@ -205,7 +205,9 @@ describe('REQ-004 — immutable audit log of tax-data access, against the real s
     const columns = await prisma.$queryRaw<{ column_name: string }[]>`
       SELECT column_name FROM information_schema.columns WHERE table_name = 'TaxDataAccessLog'
     `
-    expect(columns.map((c) => c.column_name).sort()).toEqual(['action', 'createdAt', 'id', 'resource', 'userId'].sort())
+    expect(columns.map((c) => c.column_name).sort()).toEqual(
+      ['action', 'createdAt', 'id', 'resource', 'source', 'userId'].sort(),
+    )
   })
 
   it('REQ-004.6 failure writes nothing: a real 400 (invalid payload) appends zero audit entries', async () => {

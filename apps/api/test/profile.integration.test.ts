@@ -355,7 +355,7 @@ describe('PROFILE /v1/profile — real Postgres', () => {
         SELECT column_name FROM information_schema.columns WHERE table_name = 'TaxDataAccessLog'
       `
       expect(columns.map((c) => c.column_name).sort()).toEqual(
-        ['action', 'createdAt', 'id', 'resource', 'userId'].sort(),
+        ['action', 'createdAt', 'id', 'resource', 'source', 'userId'].sort(),
       )
     })
 

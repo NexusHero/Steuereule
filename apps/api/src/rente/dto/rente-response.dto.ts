@@ -1,13 +1,7 @@
-// `type:` given explicitly — see PutProfileDto's comment for why.
 import { ApiProperty } from '@nestjs/swagger'
 import { RenteFeldDto } from './rente-feld.dto.js'
 
-/**
- * The derived taxable Posten (product ADR-034) — @steuereule/core's `renteAlsKernposten` as a
- * flat wire shape. `herkunft` is the § 22 Nr. 1 Satz 3 EStG rule citation that produced the
- * amount (ADR-014/015 "regel" origin), so the screen can show the taxable share AND where it
- * came from. Empty while the rente is not determinable (never a fabricated zero, ADR-032).
- */
+/** The derived taxable Posten. */
 export class RentePostenDto {
   @ApiProperty({ type: String, example: 'rente', description: 'The stable posten id.' })
   id!: string
@@ -19,7 +13,7 @@ export class RentePostenDto {
   herkunft!: string
 }
 
-/** The derived fold result — @steuereule/core's `Berechnungsstand` as a flat wire shape. */
+/** The derived fold result. */
 export class RenteStandDto {
   @ApiProperty({ enum: ['bestimmt', 'offen'], description: 'Determined, or open (naming what blocks).' })
   kind!: 'bestimmt' | 'offen'
@@ -43,12 +37,7 @@ export class RenteStandDto {
   gegated?: string[]
 }
 
-/**
- * The response shape for `GET /v1/steuerjahre/{jahr}/rente` and every PUT: the rentenart choice,
- * the three field states, the derived taxable posten (with Herkunft) and the fold result.
- * Everything came from @steuereule/core, never recomputed in the API — the same "server decides
- * what's true" seam as the interview.
- */
+/** The response shape for `GET /v1/steuerjahre/{jahr}/rente` and every PUT. */
 export class RenteResponseDto {
   @ApiProperty({
     type: String,

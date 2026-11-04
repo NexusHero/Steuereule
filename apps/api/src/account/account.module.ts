@@ -16,17 +16,6 @@ import { PlaywrightPdfRenderer } from './export/pdf-renderer.playwright.js'
 import { TAX_DATA_EXPORT_REPOSITORY } from './tax-data-export.repository.js'
 import { PrismaTaxDataExportRepository } from './tax-data-export.repository.prisma.js'
 
-// The shared `v1/account` module (REQ-011/ADR-0013), owned jointly by two parallel
-// tracks under one Controller('v1/account') base:
-//   - BE-B (#128, DELETE wiring) — `AccountDeletionController` /
-//     `AccountDeletionService` / `account-deletion.repository(.prisma).ts` /
-//     `delete-account-transaction.ts`.
-//   - BE-A (#127, export endpoint) — `AccountExportController` /
-//     `AccountExportService` / `account-identity.repository(.prisma).ts` /
-//     `export/pdf-renderer.playwright.ts`.
-//     Reuses `PROFILE_REPOSITORY`/`ENCRYPTED_PRISMA` + `AUDIT_REPOSITORY` directly,
-//     the same way ProfileService already does — export needs no new repository
-//     seam of its own beyond AccountIdentityRepository.
 @Module({
   imports: [PrismaModule, AuditModule, ProfileModule],
   controllers: [AccountDeletionController, AccountExportController],

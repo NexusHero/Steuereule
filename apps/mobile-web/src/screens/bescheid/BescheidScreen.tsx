@@ -1,17 +1,3 @@
-// BescheidScreen (REQ-023, ticket 10.3) — die Bescheidprüfung: der Steuerbescheid wird Feld für
-// Feld eingetippt (ADR-036 Scan-Fallback; das PDF/der Beleg bleibt als Beleg liegen, Scan/OCR ist
-// OUT of scope, ADR-045), seine Beträge werden gegen den deterministischen Kern abgeglichen
-// (`gleicheBescheidAb` — Abweichungen als sichtbarer Diff, nie still), und nach dem Bescheid gibt
-// es den Einspruch-Flow (§ 355 AO Fristen-Countdown + Grund-Auswahl, Produkt-ADR-009).
-//
-// Der Client bleibt dumm (ADR-0033): jeder Zustand — die fünf Feld-Zustände, der Abgleich, die
-// Frist und die legalen Folge-Übergänge — kommt aus `GET /v1/steuerjahre/{jahr}/bescheid`; jede
-// Schreiboperation ist ein PUT gegen die echte API. Die Übergänge werden SERVER-seitig validiert
-// (istBescheidUebergangErlaubt) — der Screen bietet nur `naechsteZustaende` an, kein stiller
-// Übergang.
-//
-// ADR-032 §2 / ADR-009: NACH dem Bescheid gibt es KEINEN „Korrigieren"-Button — das Wort wäre eine
-// falsche Zusage (Korrektur ist der VOR-Bescheid-Flow, ADR-009). Hier gibt es nur den Einspruch.
 import { useState } from 'react'
 import { ScrollView, View, Text, Pressable, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
@@ -277,8 +263,6 @@ function StatusSection({ response, onSetStatus }: { readonly response: BescheidR
       <View style={s.statusRow}>
         <Pill>{tr(`bescheid.status.${response.status}`)}</Pill>
       </View>
-      {/* nur die Folge-Zustände, die der Server erlaubt (kein stiller Übergang) — der Einspruch
-          hat seinen eigenen Flow unten, daher hier nur „geprüft". */}
       {naechste.includes('geprüft') ? (
         <Button onPress={() => onSetStatus('geprüft')} style={s.cta}>
           {tr('bescheid.status.alsGeprueft')}
@@ -293,9 +277,6 @@ function EinspruchSection({ response, onEinspruch }: { readonly response: Besche
   const { t: tr } = useTranslation(APP_NS)
   const s = makeStyles(t)
 
-  // Nur NACH dem Bescheid und nur wenn der Server „geprüft → einspruch-eingelegt" erlaubt. Es gibt
-  // hier bewusst KEINEN „Korrigieren"-Button (ADR-009/ADR-032): nach dem Bescheid ist der
-  // Einspruch der einzige Weg, die Korrektur ist der VOR-Bescheid-Flow.
   if (!response.naechsteZustaende.includes('einspruch-eingelegt')) {
     if (response.status === 'einspruch-eingelegt') {
       return (

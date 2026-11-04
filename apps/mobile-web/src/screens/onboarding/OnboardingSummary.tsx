@@ -1,6 +1,3 @@
-// OnboardingScreen's summary step — the read-back card of the three collected values and the
-// submit CTA. Extracted from OnboardingScreen.tsx so that file stays a screen; this file owns
-// the final step's read-only layout and its inline submit error.
 import { ScrollView, View, Text } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Button, Card, Sticker, useTheme, type Breakpoint } from '@steuereule/ui'
@@ -24,7 +21,6 @@ export function OnboardingSummary({ profil, onSubmit, onEdit, isSubmitting, subm
   const rows: ReadonlyArray<readonly [string, string, boolean]> = [
     [tr('onboarding.summary.rowFirstName'), profil.vorname, false],
     [tr('onboarding.summary.rowLastName'), profil.nachname, false],
-    // ADR-0045: the Steuer-ID may be skipped in step 2 and added later from Profil.
     [tr('onboarding.summary.rowSteuerId'), profil.steuerId || tr('onboarding.summary.steuerIdLater'), true],
     [tr('onboarding.summary.rowSteuerNr'), profil.steuerNr || tr('onboarding.summary.steuerNrLater'), true],
   ]

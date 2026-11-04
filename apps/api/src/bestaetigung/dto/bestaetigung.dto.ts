@@ -1,4 +1,3 @@
-// `type:` given explicitly — see PutProfileDto's comment for why.
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import { ANLAGEN, MASKEN } from '@steuereule/core'
 import { IsIn } from 'class-validator'

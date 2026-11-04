@@ -1,7 +1,3 @@
-// The Minimal-Gate's two hard gates — Gewerbe (terminal for "Selbstständig", passable for
-// "Beides") and CH-only. ADR-0032 drops the DS reference's "notify me"/"Vormerken" buttons
-// (neither is built), so these offer only the honest text, the one passable action where it
-// exists, and the way back.
 import { ScrollView, Text, Pressable } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Option, useTheme, type Breakpoint } from '@steuereule/ui'
@@ -42,9 +38,6 @@ function GewerbeGate({
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeInterviewStyles(t)
-  // Product ADR-028: "Selbstständig" is a full stop — this screen offers no forward action at
-  // all, only the honest text and the way back. "Beides" is explicitly passable and keeps the
-  // "prepare the employee part" button (ADR-0032: it promises nothing external).
   const passable = job === 'Beides'
 
   return (

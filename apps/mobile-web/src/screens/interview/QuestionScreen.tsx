@@ -1,6 +1,3 @@
-// The Minimal-Gate's question screen — one question (job | ausland | kinder), its option list,
-// and the step header. The option *values* stay the German domain vocabulary the graph persists;
-// only the *labels* are translated (see InterviewScreen.tsx's header for the value/label split).
 import { ScrollView, View, Text } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Option, useTheme, type Breakpoint } from '@steuereule/ui'

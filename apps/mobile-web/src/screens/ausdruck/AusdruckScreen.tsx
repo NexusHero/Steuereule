@@ -1,7 +1,3 @@
-// Formular-Ausdruck (ADR-0050): the one place where the user unlocks, downloads and is told
-// how to hand in the paper return. Also the return target of the Stripe checkout
-// (`?zahlung=erfolg|abbruch`) — the redirect proves nothing, so "erfolg" only shows a
-// waiting state until the server, confirmed by the webhook, says `freigeschaltet`.
 import { useState } from 'react'
 import { Pressable, ScrollView, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
@@ -21,19 +17,12 @@ export interface AusdruckScreenProps {
   readonly zahlung?: 'erfolg' | 'abbruch'
   readonly onZurueck: () => void
   readonly onAngabenErgaenzen: () => void
-  /** Opens the Sonderausgaben questions, where the Anlage-AV details are asked. */
   readonly onRiesterErgaenzen: () => void
-  /** Opens the Kinder screen, where the Anlage-Kind details are completed. */
   readonly onKinderErgaenzen: () => void
-  /** Opens the Vermietung screen, where the Anlage-V facts are completed. */
   readonly onVermietungErgaenzen: () => void
-  /** Opens the Kapital screen, where the Anlage-KAP facts are completed. */
   readonly onKapitalErgaenzen: () => void
-  /** Opens the Grenzgänger screen, where the Lohnausweis and the N-Gre facts are completed. */
   readonly onGrenzgaengerErgaenzen: () => void
-  /** REQ-032: opens „Prüfen & bestätigen“, where unconfirmed values are confirmed per Anlage. */
   readonly onBestaetigen: () => void
-  /** Hands the browser to the hosted checkout page. Injected so tests never leave the page. */
   readonly oeffneCheckout?: (url: string) => void
 }
 
@@ -43,8 +32,6 @@ export function AusdruckScreen({ jahr, zahlung, onZurueck, onAngabenErgaenzen, o
   const styles = makeDatenschutzStyles(theme)
   const { t } = useTranslation(APP_NS)
   const status = useFreischaltungControllerStatus(jahr)
-  // The server's own pre-check: Stammdaten gaps, married, and Anlagen not printable yet —
-  // shown before paying, so nobody pays for a printout that cannot be delivered.
   const pruefung = useAusdruckControllerPruefung(jahr)
   const checkout = useAusdruckControllerCheckout()
   const [meldung, setMeldung] = useState<{ art: 'ok' | 'fehler'; text: string } | null>(null)
@@ -75,7 +62,6 @@ export function AusdruckScreen({ jahr, zahlung, onZurueck, onAngabenErgaenzen, o
   const kapital = fehlend.includes('kapital')
   const grenzgaenger = fehlend.includes('grenzgaenger')
   const anlagen = fehlend.filter((key) => key.startsWith('anlage'))
-  // REQ-032: `unbestaetigt.<anlage>` — values someone else entered that the user has not confirmed yet.
   const unbestaetigt = fehlend.filter((key) => key.startsWith('unbestaetigt.') && key !== 'unbestaetigt.personB').map((key) => key.slice('unbestaetigt.'.length))
   const personBUnbestaetigt = fehlend.includes('unbestaetigt.personB')
   const eigenerWeg = new Set(['ehegatte', 'riester', 'kinder', 'vermietung', 'kapital', 'grenzgaenger'])

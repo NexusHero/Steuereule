@@ -1,9 +1,3 @@
-// The Erklärungs-Stammdaten the Hauptvordruck ESt 1 A asks for beyond name and Steuer-ID
-// (ADR-0050: the paper return must be complete, the user only signs). Pure rules, one
-// source for the API's validation and the web form, so they cannot drift.
-
-/** Religionsschlüssel per Anleitung zum Hauptvordruck ESt 1 A 2025; "VD" = none / not
- *  subject to church tax. Only the key is stored, never the long name. */
 export const RELIGIONSSCHLUESSEL = [
   'VD',
   'EV',
@@ -24,7 +18,6 @@ export const RELIGIONSSCHLUESSEL = [
 
 export type Religionsschluessel = (typeof RELIGIONSSCHLUESSEL)[number]
 
-/** ESt 1 A Zeile 18: the marital states it distinguishes (with a "seit" date except ledig). */
 export const FAMILIENSTAENDE = ['ledig', 'verheiratet', 'verwitwet', 'geschieden', 'dauernd-getrennt'] as const
 
 export type Familienstand = (typeof FAMILIENSTAENDE)[number]
@@ -33,8 +26,6 @@ export function normalisiereIban(value: string): string {
   return value.replace(/\s+/g, '').toUpperCase()
 }
 
-/** ISO 13616: country code, two check digits, BBAN; mod-97 of the rearranged number is 1.
- *  German IBANs are exactly 22 characters. */
 export function istGueltigeIban(value: string): boolean {
   const iban = normalisiereIban(value)
   if (!/^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$/.test(iban)) return false
@@ -52,7 +43,6 @@ export function istGueltigePlz(value: string): boolean {
   return /^\d{5}$/.test(value)
 }
 
-/** A real calendar date as YYYY-MM-DD (rejects 30 February and other non-dates). */
 export function istGueltigesDatum(value: string): boolean {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
   if (!match) return false
@@ -61,7 +51,6 @@ export function istGueltigesDatum(value: string): boolean {
   return datum.getUTCFullYear() === jahr && datum.getUTCMonth() === monat - 1 && datum.getUTCDate() === tag
 }
 
-/** YYYY-MM-DD as the German TT.MM.JJJJ the forms and the cards show. */
 export function deutschesDatum(iso: string): string {
   const [jahr, monat, tag] = iso.split('-')
   return `${tag}.${monat}.${jahr}`

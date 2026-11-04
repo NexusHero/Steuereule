@@ -1,4 +1,5 @@
-import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common'
+import { Inject, Injectable } from '@nestjs/common'
+import { ForbiddenError, InvalidInputError, NotFoundError } from '../common/domain-error.js'
 import { randomBytes } from 'node:crypto'
 import { AuditService } from '../audit/audit.service.js'
 import { PROFILE_REPOSITORY, type ProfileRepository } from '../profile/profile.repository.js'
@@ -11,9 +12,6 @@ import {
 import { KOPPLUNG_REPOSITORY, type KopplungRepository, type SteuerjahrKopplungRecord } from './kopplung.repository.js'
 import type { KopplungPersonBDto, KopplungResponseDto, SetKopplungDto } from './dto/kopplung.dto.js'
 
-// Until the partner joins with the invite code, Person A fills in Person B's data on a
-// shadow id. Once a real account sits there, that data is the partner's own and only the
-// partner may change it.
 const SCHATTEN_PRAEFIX = 'spouse_'
 
 function schattenId(userId: string, steuerjahr: number): string {
@@ -24,7 +22,6 @@ function hatEigenesKonto(row: SteuerjahrKopplungRecord): boolean {
   return row.personBUserId !== '' && !row.personBUserId.startsWith(SCHATTEN_PRAEFIX)
 }
 
-// 64 bits and 14 days: the code is the only credential that links two accounts.
 const EINLADUNG_GUELTIG_MS = 14 * 24 * 60 * 60 * 1000
 
 function neueEinladung(jetzt: Date): { einladungsCode: string; einladungsCodeGueltigBis: Date } {
@@ -92,7 +89,7 @@ export class KopplungService {
   async set(userId: string, steuerjahr: number, dto: SetKopplungDto, jetzt = new Date()): Promise<KopplungResponseDto> {
     const existing = await this.repository.findByUserAndYear(userId, steuerjahr)
     if (existing && existing.personAUserId !== userId) {
-      throw new ForbiddenException('Die Veranlagungsart legt Person A fest.')
+      throw new ForbiddenError('VERANLAGUNGSART_OWNED_BY_PERSON_A', 'Only person A can choose the Veranlagungsart.')
     }
 
     if (dto.veranlagungsart === 'zusammen') {
@@ -123,14 +120,13 @@ export class KopplungService {
   async updatePersonB(userId: string, steuerjahr: number, data: KopplungPersonBDto): Promise<KopplungResponseDto> {
     const row = await this.repository.findByUserAndYear(userId, steuerjahr)
     if (!row || row.veranlagungsart !== 'zusammen' || !row.personBUserId) {
-      throw new BadRequestException('Keine aktive Zusammenveranlagung.')
+      throw new InvalidInputError('NO_ACTIVE_ZUSAMMENVERANLAGUNG', 'There is no active Zusammenveranlagung.')
     }
     if (row.personAUserId !== userId || hatEigenesKonto(row)) {
-      throw new ForbiddenException('Person B pflegt ihre Angaben im eigenen Konto.')
+      throw new ForbiddenError('PERSON_B_OWNS_DATA', 'Person B maintains their data in their own account.')
     }
-    // Art. 9 DSGVO, same rule as the own Stammdaten: no religion without explicit consent.
     if (data.religion && data.religionEinwilligung !== true) {
-      throw new BadRequestException('religion requires religionEinwilligung = true (Art. 9 DSGVO)')
+      throw new InvalidInputError('RELIGION_CONSENT_REQUIRED', 'religion requires religionEinwilligung = true (Art. 9 DSGVO).')
     }
 
     const spouseUserId = row.personBUserId
@@ -165,13 +161,13 @@ export class KopplungService {
   async joinWithCode(userId: string, steuerjahr: number, code: string, jetzt = new Date()): Promise<KopplungResponseDto> {
     const row = await this.repository.findByEinladungsCode(code)
     if (!row || row.steuerjahr !== steuerjahr) {
-      throw new NotFoundException('Ungültiger Einladungscode.')
+      throw new NotFoundError('INVITATION_CODE_INVALID', 'The invitation code is invalid.')
     }
     if (!einladungGueltig(row, jetzt)) {
-      throw new NotFoundException('Der Einladungscode ist abgelaufen.')
+      throw new NotFoundError('INVITATION_CODE_EXPIRED', 'The invitation code has expired.')
     }
     if (row.personAUserId === userId) {
-      throw new BadRequestException('Man kann sich nicht mit der eigenen Einladung koppeln.')
+      throw new InvalidInputError('INVITATION_IS_OWN', 'You cannot couple with your own invitation.')
     }
     await this.repository.setPersonB(row.id, userId)
     return this.get(userId, steuerjahr)

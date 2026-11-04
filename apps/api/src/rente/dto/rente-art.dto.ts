@@ -1,8 +1,7 @@
-// `type:` given explicitly — see PutProfileDto's comment for why.
 import { ApiProperty } from '@nestjs/swagger'
 import { IsIn, IsOptional } from 'class-validator'
 
-/** The PUT body for choosing the Rentenart (null clears the choice). */
+/** The PUT body for choosing the Rentenart. */
 export class PutRentenartDto {
   @ApiProperty({
     type: String,

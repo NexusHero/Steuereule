@@ -68,6 +68,8 @@ model TaxDataAccessLog {
   /// The resource/field-class touched, e.g. "profile". A short discriminator, never
   /// the sensitive value itself.
   resource  String
+  /// Optional actor / client source, e.g. "Assistent: Claude" for OAuth bearer token requests.
+  source    String?
   createdAt DateTime    @default(now())
 
   @@index([userId])
@@ -110,6 +112,10 @@ model User {
   twoFactors    TwoFactor[]
   passkeys      Passkey[]
   freischaltungen Freischaltung[]
+  oauthClients    OauthClient[]
+  oauthConsents   OauthConsent[]
+  oauthAccessTokens OauthAccessToken[]
+  oauthRefreshTokens OauthRefreshToken[]
 }
 
 /// DB-backed, server-revocable session (ADR-0012 §3). Read on every
@@ -125,6 +131,8 @@ model Session {
   userAgent String?
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  oauthAccessTokens  OauthAccessToken[]
+  oauthRefreshTokens OauthRefreshToken[]
 }
 
 /// One row per credential/identity linked to a User — email+password today
@@ -886,4 +894,190 @@ model EulenKartenVerwurf {
 
   @@unique([userId, steuerjahr, fingerprint])
   @@index([userId, steuerjahr])
+}
+
+/// Tracks completed Jahresübernahmen per (userId, steuerjahr) to prevent duplicate takeovers
+/// even if all copied fields are later edited or confirmed by the user (ADR-0049 / ADR-0052).
+model Jahresuebernahme {
+  id         String   @id @default(uuid())
+  userId     String
+  steuerjahr Int
+  vorjahr    Int
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, steuerjahr])
+  @@index([userId, steuerjahr])
+}
+
+/// OAuth 2.1 Provider models for Better Auth (ADR-0052 §4)
+model OauthClient {
+  id                               String    @id @default(uuid())
+  clientId                         String    @unique
+  clientSecret                     String?
+  clientDiscoveryId                String?
+  disabled                         Boolean?  @default(false)
+  skipConsent                      Boolean?
+  enableEndSession                 Boolean?
+  subjectType                      String?
+  scopes                           String[]
+  clientCredentialsScopes          String[]  @default([])
+  userId                           String?
+  user                             User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt                        DateTime? @default(now())
+  updatedAt                        DateTime? @updatedAt
+  name                             String?
+  uri                              String?
+  icon                             String?
+  contacts                         String[]
+  tos                              String?
+  policy                           String?
+  softwareId                       String?
+  softwareVersion                  String?
+  softwareStatement                String?
+  redirectUris                     String[]
+  postLogoutRedirectUris           String[]
+  backchannelLogoutUri             String?
+  backchannelLogoutSessionRequired Boolean?
+  tokenEndpointAuthMethod          String?
+  applicationType                  String?
+  jwks                             String?
+  jwksUri                          String?
+  grantTypes                       String[]
+  responseTypes                    String[]
+  requirePKCE                      Boolean?
+  dpopBoundAccessTokens            Boolean?  @default(false)
+  referenceId                      String?
+  metadata                         Json?
+
+  consents                         OauthConsent[]
+  accessTokens                     OauthAccessToken[]
+  refreshTokens                    OauthRefreshToken[]
+  clientResources                  OauthClientResource[]
+
+  @@index([userId])
+}
+
+model OauthResource {
+  id                            String    @id @default(uuid())
+  identifier                    String    @unique
+  name                          String
+  accessTokenTtl                Int?
+  refreshTokenTtl               Int?
+  signingAlgorithm              String?
+  signingKeyId                  String?
+  allowedScopes                 String[]
+  customClaims                  Json?
+  dpopBoundAccessTokensRequired Boolean?  @default(false)
+  disabled                      Boolean?  @default(false)
+  createdAt                     DateTime? @default(now())
+  updatedAt                     DateTime? @updatedAt
+  policyVersion                 Int?      @default(1)
+  metadata                      Json?
+
+  clientResources               OauthClientResource[]
+}
+
+model OauthClientResource {
+  id         String        @id @default(uuid())
+  clientId   String
+  client     OauthClient   @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  resourceId String
+  resource   OauthResource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  metadata   Json?
+  createdAt  DateTime?     @default(now())
+
+  @@index([clientId])
+  @@index([resourceId])
+}
+
+model OauthRefreshToken {
+  id                      String              @id @default(uuid())
+  token                   String              @unique
+  clientId                String
+  client                  OauthClient         @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  sessionId               String?
+  session                 Session?            @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  userId                  String
+  user                    User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  referenceId             String?
+  authorizationCodeId     String?
+  resources               String[]
+  requestedUserInfoClaims String[]
+  expiresAt               DateTime?
+  createdAt               DateTime?           @default(now())
+  revoked                 DateTime?
+  rotatedAt               DateTime?
+  rotationReplayResponse  String?
+  rotationReplayExpiresAt DateTime?
+  authTime                DateTime?
+  confirmation            Json?
+  scopes                  String[]
+
+  accessTokens            OauthAccessToken[]
+
+  @@index([clientId])
+  @@index([userId])
+  @@index([sessionId])
+  @@index([authorizationCodeId])
+}
+
+model OauthAccessToken {
+  id                      String             @id @default(uuid())
+  token                   String?            @unique
+  clientId                String
+  client                  OauthClient        @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  sessionId               String?
+  session                 Session?           @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  userId                  String?
+  user                    User?              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  referenceId             String?
+  authorizationCodeId     String?
+  resources               String[]
+  requestedUserInfoClaims String[]
+  refreshId               String?
+  refreshToken            OauthRefreshToken? @relation(fields: [refreshId], references: [id], onDelete: SetNull)
+  expiresAt               DateTime?
+  createdAt               DateTime?          @default(now())
+  revoked                 DateTime?
+  confirmation            Json?
+  scopes                  String[]
+
+  @@index([clientId])
+  @@index([userId])
+  @@index([sessionId])
+  @@index([refreshId])
+  @@index([authorizationCodeId])
+}
+
+model OauthConsent {
+  id                      String      @id @default(uuid())
+  clientId                String
+  client                  OauthClient @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  userId                  String?
+  user                    User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  referenceId             String?
+  resources               String[]
+  requestedUserInfoClaims String[]
+  scopes                  String[]
+  createdAt               DateTime?   @default(now())
+  updatedAt               DateTime?   @updatedAt
+
+  @@index([clientId])
+  @@index([userId])
+}
+
+model OauthClientAssertion {
+  id        String   @id @default(uuid())
+  expiresAt DateTime
+}
+
+/// JWKS keys for JWT signing (better-auth jwt plugin, required by oauthProvider)
+model Jwks {
+  id         String    @id @default(uuid())
+  publicKey  String
+  privateKey String
+  createdAt  DateTime  @default(now())
+  expiresAt  DateTime?
+  alg        String?
+  crv        String?
 }

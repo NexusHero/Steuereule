@@ -1,6 +1,3 @@
-// ProfilScreen's edit form — name, Steuer-ID (with live counter/validity), Steuernummer, and the
-// save/cancel round trip. Extracted from ProfilScreen.tsx so that file stays a screen. The edit
-// form reuses OnboardingScreen's field patterns and validation exactly (REQ-013).
 import { ScrollView, View, Text } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Button, Feld, Input, Pill, Sticker, useTheme, type Breakpoint } from '@steuereule/ui'
@@ -26,8 +23,6 @@ export function ProfilEdit({ draft, onChange, onSave, onCancel, isSaving, saveEr
   const styles = makeProfilStyles(t)
   const idDigits = countDigits(draft.steuerId)
   const steuerIdOk = isValidSteuerId(draft.steuerId.replace(/\D/g, ''))
-  // ADR-0045: the Steuer-ID is OPTIONAL (null = "not given yet") — the save must not require it.
-  // The server validates it only when present; the confirmed-sticker below is the display side.
   const canSave = draft.vorname.trim() !== '' && draft.nachname.trim() !== ''
 
   return (

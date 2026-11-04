@@ -1,63 +1,26 @@
-// Application logic: userId+steuerjahr-scoped read, then the honest fold -> wire mapping.
-// Trusts that `userId` was produced by UserContextGuard (never accepts it from a
-// param/body) — mirrors ProfileService's shape.
-//
-// Ticket 15 (Cockpit-Echtdaten): the Schätz-Platzhalter (`baseEstimate`) is GONE. The number
-// the Cockpit shows now comes from the deterministic core alone — the settled income Posten
-// (LStB Bruttoarbeitslohn + Nebenjob-Brutto) summed, folded through @steuereule/core's
-// `cockpitSpanneAusEingaben` (which carries the ADR-015 range rule), and reported as an honest
-// `bestimmt` / `spanne` / `gated` stand. The refund/tariff formula stays out of scope (ADR-048/
-// ADR-0032: no number that looks like a calculation without being one) — so the hero shows the
-// settled income, never a fabricated Erstattung.
 import { Inject, Injectable } from '@nestjs/common'
 import {
-  LEERES_LSTB,
   angestellteAusDaten,
   cockpitSpanneAusEingaben,
-  deserialisiereLstbFeld,
-  type Answers,
   type CockpitSpanne,
-  type LstbDaten,
 } from '@steuereule/core'
-import { INTERVIEW_ANSWER_REPOSITORY, type InterviewAnswerRecord, type InterviewAnswerRepository } from '../interview/interview-answer.repository.js'
+import { INTERVIEW_ANSWER_REPOSITORY, type InterviewAnswerRepository } from '../interview/interview-answer.repository.js'
 import { KAPITAL_REPOSITORY, type KapitalRepository } from '../kapital/kapital.repository.js'
-import { LSTB_REPOSITORY, type LstbRecord, type LstbRepository } from '../lstb/lstb.repository.js'
+import { LSTB_REPOSITORY, type LstbRepository } from '../lstb/lstb.repository.js'
 import { RENTE_REPOSITORY, type RenteRepository } from '../rente/rente.repository.js'
 import { KENNZEICHNUNG_REPOSITORY, type KennzeichnungRepository } from '../kennzeichnung/kennzeichnung.repository.js'
 import { VERMIETUNG_REPOSITORY, type VermietungRepository } from '../vermietung/vermietung.repository.js'
 import { TAX_YEAR_REPOSITORY, type TaxYearRepository } from './tax-year.repository.js'
 import type { CockpitStandDto, CockpitSummaryDto } from './dto/cockpit-summary.dto.js'
+import { answersAus } from '../interview/answers.js'
+import { lstbDatenAus } from '../lstb/lstb-daten.js'
 
-/**
- * The ONE encoding (packages/core/src/lstb.ts): a stored field string is `erfasst` when it is a
- * plain non-negative integer (whole euros), anything else (`null`/`unklar`/`0`) is not a settled
- * fact. A settled value parses to its number, anything else yields null — never a fabricated
- * zero (ADR-032).
- */
 function erfassterWert(raw: string | null): number | null {
   if (raw === null || raw === 'unklar') return null
   if (!/^\d+$/.test(raw)) return null
   return Number(raw)
 }
 
-/** A stored LStB row (or none) → the core's LstbDaten, via the ONE encoding in core/lstb.ts. */
-function datenAusRecord(record: LstbRecord | null): LstbDaten {
-  if (record === null) return LEERES_LSTB
-  return {
-    bruttoarbeitslohn: deserialisiereLstbFeld(record.bruttoarbeitslohn),
-    lohnsteuer: deserialisiereLstbFeld(record.lohnsteuer),
-    sozialversicherung: deserialisiereLstbFeld(record.sozialversicherung),
-  }
-}
-
-/** Stored interview rows → the core's sparse Answers object. */
-function toAnswers(rows: InterviewAnswerRecord[]): Answers {
-  const answers: Record<string, string> = {}
-  for (const row of rows) answers[row.questionId] = row.value
-  return answers as Answers
-}
-
-/** The core's CockpitSpanne → the flat wire DTO (kind + optional fields, LstbZustandDto's shape). */
 function toStandDto(stand: CockpitSpanne): CockpitStandDto {
   switch (stand.kind) {
     case 'bestimmt':
@@ -77,11 +40,9 @@ function toStandDto(stand: CockpitSpanne): CockpitStandDto {
   }
 }
 
+/** Application logic: userId+steuerjahr-scoped read, then the honest fold -> wire mapping. */
 @Injectable()
 export class CockpitService {
-  // Explicit tokens — see the comment on ProfileController's constructor. The LStB/Interview
-  // repositories are the same seams their own services use, so the Cockpit's aggregation reads
-  // through the SAME field-encryption + integrity checks, never a second Prisma path.
   constructor(
     @Inject(TAX_YEAR_REPOSITORY) private readonly taxYearRepository: TaxYearRepository,
     @Inject(LSTB_REPOSITORY) private readonly lstbRepository: LstbRepository,
@@ -94,8 +55,6 @@ export class CockpitService {
 
   async getSummary(userId: string, steuerjahr: number): Promise<CockpitSummaryDto | null> {
     const record = await this.taxYearRepository.findByUserAndYear(userId, steuerjahr)
-    // Null propagates as-is — "no tax year yet" is the honest empty state (REQ-001),
-    // never a synthesized zero row.
     if (!record) return null
 
     const [lstbRecord, interviewRows, kennzeichnungen, renteRecord, kapitalRecord, vermietungRecords] = await Promise.all([
@@ -107,12 +66,9 @@ export class CockpitService {
       this.vermietungRepository.listForUserAndYear(userId, steuerjahr),
     ])
 
-    const daten = datenAusRecord(lstbRecord)
-    const answers = toAnswers(interviewRows)
+    const daten = lstbDatenAus(lstbRecord)
+    const answers = answersAus(interviewRows)
 
-    // ADR-021/ADR-0052 §6: ein Fakt mit mindestens einem UNBESTÄTIGTEN Feld zählt in die Spanne,
-    // seine erfasste Summe ist die Unsicherheit, die er beiträgt (ruhig, kein Konflikt). Der Wert
-    // kommt aus der Fakt-Zeile selbst — immer der erfasste Betrag, nie ein fabricated zero.
     const unbestaetigteFakten = new Set(
       kennzeichnungen.filter((k) => !k.bestaetigt).map((k) => k.key.slice(0, k.key.indexOf('.'))),
     )
@@ -137,9 +93,6 @@ export class CockpitService {
       }
     }
 
-    // The one and only place the stand is derived — @steuereule/core's cockpitSpanneAusEingaben,
-    // never re-derived here (determinism boundary, ADR-014/048/015). The settled income + open/
-    // conflict counts come from `angestellteAusDaten`, the single core fold shared with mobile-web.
     const fakten = angestellteAusDaten(daten, answers)
     const stand = cockpitSpanneAusEingaben({
       summe: fakten.einnahmen,

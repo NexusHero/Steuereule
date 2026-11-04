@@ -7,16 +7,10 @@ import { AccountExportService } from './account-export.service.js'
 import { EXPORT_FORMATS, type ExportFormat, ExportQueryDto } from './dto/export-query.dto.js'
 import { ExportDocumentDto } from './dto/export-response.dto.js'
 
-// Named *Export*Controller (not AccountController) — REQ-011/BE-A is one of two
-// sibling slices sharing the `v1/account` module (ADR-0013); the DELETE /v1/account
-// teardown (BE-B) lands in its own AccountDeletionController class alongside this one
-// (Nest happily lets multiple controllers share a `@Controller()` path prefix), so the
-// two tracks never need to touch the same controller file/class.
 @ApiTags('account')
 @Controller('v1/account')
 @UseGuards(UserContextGuard)
 export class AccountExportController {
-  // Explicit token — see the comment on ProfileController's constructor.
   constructor(@Inject(AccountExportService) private readonly exportService: AccountExportService) {}
 
   @Get('export')
@@ -38,19 +32,14 @@ export class AccountExportController {
   ): Promise<ExportDocumentDto | Buffer> {
     const document = await this.exportService.assemble(userId)
     if (!document) {
-      // ADR-0013's contract describes "a signed-in account holder" — a guest session
-      // that never created a real account has nothing to export yet. 404 over a
-      // fabricated empty document: there genuinely is no account.
       throw new NotFoundException('No account exists for this session to export.')
     }
 
     const format: ExportFormat = query.format ?? 'json'
-    const filenameDate = document.exportedAt.slice(0, 10) // YYYY-MM-DD
+    const filenameDate = document.exportedAt.slice(0, 10)
 
     if (format === 'pdf') {
       const pdf = await this.exportService.renderPdf(document)
-      // Appended after rendering (so a render failure never logs a phantom access)
-      // but before the response is sent (ADR-0013 §4/the AC's exact ordering).
       await this.exportService.recordExportRead(userId)
       reply.header('Content-Disposition', `attachment; filename="steuereule-export-${filenameDate}.pdf"`)
       reply.type('application/pdf')
