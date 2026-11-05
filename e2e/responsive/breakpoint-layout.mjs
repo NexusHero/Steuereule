@@ -91,7 +91,7 @@ const COPY = {
   steuerNrLater: 'Hab ich nicht zur Hand — später',
   cockpitRetry: 'Noch mal versuchen',
   cockpitEmptyHeading: 'Noch keine Angaben.',
-  cockpitRefresh: 'Aktualisieren',
+  cockpitAnswerQuestions: 'Fragen beantworten',
   registrierungEmailPlaceholder: 'du@beispiel.de',
   registrierungPasswordPlaceholder: 'Mindestens 6 Zeichen',
   registrierungSubmit: 'Konto anlegen',
@@ -340,8 +340,8 @@ async function measureCockpitEmpty(browser, width, label) {
     // Loaded, which would coincidentally pass the same width assertion for an
     // unrelated, already-correct call site and mask a real regression here).
     await page.getByText(COPY.cockpitEmptyHeading).waitFor({ state: 'visible', timeout: 20_000 })
-    const refreshButton = page.getByRole('button', { name: COPY.cockpitRefresh })
-    await measureButtonFillsParent(refreshButton, `CockpitScreen Empty CTA (bp=${label})`)
+    const primaryButton = page.getByRole('button', { name: COPY.cockpitAnswerQuestions })
+    await measureButtonFillsParent(primaryButton, `CockpitScreen Empty CTA (bp=${label})`)
   } finally {
     await context.close()
   }
