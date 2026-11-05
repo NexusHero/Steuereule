@@ -111,6 +111,10 @@ export const EMPTY_CH_LOHNAUSWEIS_RESPONSE: ChLohnausweisResponseDto = {
     krankentaggeldChf: null,
     pkArbeitnehmerChf: null,
     pkArbeitgeberChf: null,
+    krankentaggeldArbeitgeberProzent: null,
+    krankentaggeldArbeitgeberChf: null,
+    nbuvArbeitgeberProzent: null,
+    nbuvArbeitgeberChf: null,
     sonderfaelle: null,
   }
 }

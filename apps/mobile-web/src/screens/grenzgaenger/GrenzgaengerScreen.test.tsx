@@ -65,6 +65,10 @@ const EMPTY_CH: ChLohnausweisResponseDto = {
     krankentaggeldChf: null,
     pkArbeitnehmerChf: null,
     pkArbeitgeberChf: null,
+    krankentaggeldArbeitgeberProzent: null,
+    krankentaggeldArbeitgeberChf: null,
+    nbuvArbeitgeberProzent: null,
+    nbuvArbeitgeberChf: null,
     sonderfaelle: null,
   },
 }
@@ -89,6 +93,10 @@ const FOLDED_CH: ChLohnausweisResponseDto = {
     krankentaggeldChf: null,
     pkArbeitnehmerChf: null,
     pkArbeitgeberChf: null,
+    krankentaggeldArbeitgeberProzent: null,
+    krankentaggeldArbeitgeberChf: null,
+    nbuvArbeitgeberProzent: null,
+    nbuvArbeitgeberChf: null,
     sonderfaelle: null,
   },
 }
@@ -184,6 +192,41 @@ describe('GrenzgaengerScreen — Anlage N-Gre facts', () => {
     fireEvent.click(screen.getByTestId('ch-ngre-sonderfaelle-nein'))
 
     await waitFor(() => expect(bodies).toEqual([{ arbeitgeberName: 'Muster AG' }, { pkArbeitgeberChf: 6000 }, { sonderfaelle: false }]))
+  })
+
+  it('asks who pays the Krankentaggeld premium and, only at 100 %, the employer amount', async () => {
+    const bodies: unknown[] = []
+    let stored = EMPTY_CH
+    server.use(http.get(INTERVIEW_URL, () => HttpResponse.json(DONE_CH_INTERVIEW, { status: 200 })))
+    server.use(http.get(CH_URL, () => HttpResponse.json(stored, { status: 200 })))
+    server.use(
+      http.put(`${CH_URL}/n-gre`, async ({ request }) => {
+        const body = (await request.json()) as Record<string, unknown>
+        bodies.push(body)
+        stored = { ...stored, nGre: { ...stored.nGre, ...body } }
+        return HttpResponse.json(stored, { status: 200 })
+      }),
+    )
+    renderScreen()
+    const prozent = await screen.findByTestId('ch-ngre-krankentaggeldArbeitgeberProzent')
+    expect(screen.queryByTestId('ch-ngre-krankentaggeldArbeitgeberChf')).toBeNull()
+
+    fireEvent.change(prozent, { target: { value: '10' } })
+    fireEvent.blur(prozent)
+    await waitFor(() => expect(bodies).toEqual([{ krankentaggeldArbeitgeberProzent: 10 }]))
+    expect(screen.queryByTestId('ch-ngre-krankentaggeldArbeitgeberChf')).toBeNull()
+
+    fireEvent.change(prozent, { target: { value: '100' } })
+    fireEvent.blur(prozent)
+    expect(await screen.findByTestId('ch-ngre-krankentaggeldArbeitgeberChf')).toBeTruthy()
+  })
+
+  it('no longer lists employer Krankentaggeld/NBUV contributions as a case the printout cannot cover', async () => {
+    server.use(http.get(INTERVIEW_URL, () => HttpResponse.json(DONE_CH_INTERVIEW, { status: 200 })))
+    server.use(http.get(CH_URL, () => HttpResponse.json(EMPTY_CH, { status: 200 })))
+    renderScreen()
+    expect(await screen.findByText(/Überobligatorium oder einen Firmenwagen\?$/)).toBeTruthy()
+    expect(screen.queryByText(/Krankentaggeld\/NBUV/)).toBeNull()
   })
 
   it('saves employer facts and Lohnausweis figures when the field loses focus — no Enter needed', async () => {

@@ -291,6 +291,11 @@ function LohnausweisStep({
 
 const N_GRE_TEXTFELDER = ['arbeitgeberName', 'arbeitgeberStrasse', 'arbeitgeberPlzOrt'] as const
 const N_GRE_BETRAGSFELDER = ['familienzulagenChf', 'krankentaggeldChf', 'pkArbeitnehmerChf', 'pkArbeitgeberChf'] as const
+/** Who pays the premium (N-Gre Zeilen 18/19, 95–98); the CHF field only matters when the employer pays it all. */
+const PRAEMIEN = [
+  { prozent: 'krankentaggeldArbeitgeberProzent', chf: 'krankentaggeldArbeitgeberChf' },
+  { prozent: 'nbuvArbeitgeberProzent', chf: 'nbuvArbeitgeberChf' },
+] as const
 
 function NGreAbschnitt({ nGre, onSet }: { readonly nGre: NGreAngabenDto; readonly onSet: (data: PutNGreDto) => void }) {
   const t = useTheme()
@@ -321,6 +326,32 @@ function NGreAbschnitt({ nGre, onSet }: { readonly nGre: NGreAngabenDto; readonl
             else if (/^(0|[1-9]\d*)$/.test(text)) onSet({ [feld]: Number(text) })
           }}
         />
+      ))}
+      {PRAEMIEN.map(({ prozent, chf }) => (
+        <View key={prozent}>
+          <NGreEingabe
+            label={tr(`grenzgaenger.nGre.felder.${prozent}`)}
+            initial={nGre[prozent] === null ? '' : String(nGre[prozent])}
+            numeric
+            testID={`ch-ngre-${prozent}`}
+            onCommit={(text) => {
+              if (text === '') onSet({ [prozent]: null })
+              else if (/^(0|[1-9]\d?|100)$/.test(text)) onSet({ [prozent]: Number(text) })
+            }}
+          />
+          {nGre[prozent] === 100 ? (
+            <NGreEingabe
+              label={tr(`grenzgaenger.nGre.felder.${chf}`)}
+              initial={nGre[chf] === null ? '' : String(nGre[chf])}
+              numeric
+              testID={`ch-ngre-${chf}`}
+              onCommit={(text) => {
+                if (text === '') onSet({ [chf]: null })
+                else if (/^(0|[1-9]\d*)$/.test(text)) onSet({ [chf]: Number(text) })
+              }}
+            />
+          ) : null}
+        </View>
       ))}
       <Feld label={tr('grenzgaenger.nGre.sonderfaelle')}>
         <View style={{ flexDirection: 'row', gap: t.space.s2 }}>
