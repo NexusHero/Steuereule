@@ -234,6 +234,20 @@ export default defineConfig({
       },
     },
   },
+  steuerschaetzung: {
+    input: { target: '../../apps/api/openapi.json', filters: { tags: ['steuerschaetzung'] } },
+    output: {
+      target: './src/generated/steuerschaetzung.ts',
+      mode: 'split',
+      client: 'react-query',
+      httpClient: 'fetch',
+      mock: true,
+      override: {
+        mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        mock: { required: true },
+      },
+    },
+  },
   arbeitsweg: {
     input: { target: '../../apps/api/openapi.json', filters: { tags: ['arbeitsweg'] } },
     output: {

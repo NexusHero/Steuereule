@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { ActivityIndicator, RefreshControl, ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import { Button, Card, Chip, HerkunftsChip, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme, type Breakpoint } from '@steuereule/ui'
 import { FristenBanner } from '../fristen/FristenBanner'
 import { formatEuro, formatEuroRange, UNCERTAINTY_PER_ITEM } from '@steuereule/core'
@@ -9,6 +10,8 @@ import {
   useBestaetigungControllerGet,
   useInterviewControllerGetInterview,
   useStammdatenControllerLese,
+  useSteuerschaetzungControllerGet,
+  type SteuerschaetzungDto,
   type AnlageBestaetigungDto,
   type CockpitStandDto,
   type CockpitSummaryDto,
@@ -150,6 +153,33 @@ export function CockpitScreen({
 interface PullToRefresh {
   readonly pulling: boolean
   readonly onPull: () => void
+}
+
+function Erstattung({ jahr }: { readonly jahr: number }) {
+  const t = useTheme()
+  const styles = makeStyles(t)
+  const { t: tr, i18n } = useTranslation(APP_NS)
+  const query = useSteuerschaetzungControllerGet(jahr)
+  const schaetzung: SteuerschaetzungDto | null = query.data?.status === 200 ? query.data.data : null
+  return (
+    <>
+      <Text style={styles.refundLater}>{erstattungsText(schaetzung, tr, i18n.language)}</Text>
+      {schaetzung?.kind === 'spanne' && schaetzung.kirchensteuerOffen ? (
+        <Text style={styles.refundLater}>{tr('cockpit.erstattung.kirchensteuer')}</Text>
+      ) : null}
+    </>
+  )
+}
+
+function erstattungsText(schaetzung: SteuerschaetzungDto | null, tr: TFunction<typeof APP_NS>, sprache: string): string {
+  if (schaetzung === null) return tr('cockpit.hero.refundLater')
+  if (schaetzung.kind === 'offen') return tr('cockpit.erstattung.offen', { count: schaetzung.fehlt?.length ?? 0 })
+  if (schaetzung.kind === 'nicht-moeglich') return tr(`cockpit.erstattung.grund.${schaetzung.grund ?? 'unbekannt'}`)
+  const { von, bis } = schaetzung.ergebnis ?? { von: 0, bis: 0 }
+  const betrag = (wert: number) => Math.abs(wert).toLocaleString(sprache === 'en' ? 'en-GB' : 'de-DE')
+  if (von >= 0) return tr('cockpit.erstattung.erstattung', { von: betrag(von), bis: betrag(bis) })
+  if (bis <= 0) return tr('cockpit.erstattung.nachzahlung', { von: betrag(bis), bis: betrag(von) })
+  return tr('cockpit.erstattung.offenesErgebnis', { nachzahlung: betrag(von), erstattung: betrag(bis) })
 }
 
 function Appbar({ jahr, onJahrWechsel, isRefreshing }: { readonly jahr: number; readonly onJahrWechsel: (jahr: number) => void; readonly isRefreshing: boolean }) {
@@ -325,7 +355,7 @@ function CockpitLoaded({ summary, jahr, onJahrWechsel, bestaetigung, onOpenBesta
           <NumericHero stand={stand} />
         )}
         <Text style={styles.openItems}>{tr('cockpit.hero.openItems', { count: openItems })}</Text>
-        <Text style={styles.refundLater}>{tr('cockpit.hero.refundLater')}</Text>
+        <Erstattung jahr={jahr} />
       </Card>
       {weiter ? (
         <Button onPress={weiter.onPress} style={styles.cta} testID="cockpit-weiter">
