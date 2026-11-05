@@ -7,6 +7,7 @@ import { formatEuro, formatEuroRange, UNCERTAINTY_PER_ITEM } from '@steuereule/c
 import {
   useCockpitControllerGetCockpitSummary,
   useBestaetigungControllerGet,
+  useInterviewControllerGetInterview,
   type AnlageBestaetigungDto,
   type CockpitStandDto,
   type CockpitSummaryDto,
@@ -14,6 +15,7 @@ import {
 import { APP_NS } from '../../i18n/resources'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
+import { pfadAusAntworten, type FunnelPfad } from '../funnel/KontoWandScreen'
 
 const JAHRE_ZURUECK = 4
 
@@ -29,6 +31,12 @@ export interface CockpitScreenProps {
   readonly onOpenEulenModus?: (jahr: number) => void
   readonly onOpenAusdruck?: (jahr: number) => void
   readonly onOpenBestaetigung?: (jahr: number) => void
+  readonly onContinuePath?: (pfad: FunnelPfad) => void
+}
+
+interface Weiter {
+  readonly label: string
+  readonly onPress: () => void
 }
 
 export function CockpitScreen({
@@ -41,6 +49,7 @@ export function CockpitScreen({
   onOpenEulenModus,
   onOpenAusdruck,
   onOpenBestaetigung,
+  onContinuePath,
 }: CockpitScreenProps) {
   const bp = useBreakpoint()
   const { t: tr } = useTranslation(APP_NS)
@@ -48,6 +57,7 @@ export function CockpitScreen({
   const query = useCockpitControllerGetCockpitSummary(jahr)
   const [pulling, setPulling] = useState(false)
   const bestaetigungQuery = useBestaetigungControllerGet(jahr)
+  const interviewQuery = useInterviewControllerGetInterview(jahr)
 
   if (query.isPending) {
     return <LoadingState bp={bp} label={tr('cockpit.loading')} />
@@ -72,6 +82,12 @@ export function CockpitScreen({
     },
   }
   const isRefreshing = query.isFetching && !pulling
+  const interview = interviewQuery.data?.status === 200 ? interviewQuery.data.data : null
+  const pfad = interview?.nextStep.kind === 'done' ? pfadAusAntworten(interview.answers) : null
+  const weiter: Weiter | null =
+    pfad !== null && onContinuePath
+      ? { label: tr('cockpit.weiterMitDeinemWeg', { pfad: tr(`funnel.kontoWand.pfad.${pfad}`) }), onPress: () => onContinuePath(pfad) }
+      : null
 
   if (summary === null) {
     return (
@@ -80,6 +96,7 @@ export function CockpitScreen({
         onJahrWechsel={setJahr}
         refresh={refresh}
         isRefreshing={isRefreshing}
+        weiter={weiter}
         onOpenInterview={onOpenInterview}
         onOpenBescheid={onOpenBescheid}
         onOpenKapital={onOpenKapital}
@@ -100,6 +117,7 @@ export function CockpitScreen({
       {...(onOpenBestaetigung ? { onOpenBestaetigung: () => onOpenBestaetigung(jahr) } : {})}
       refresh={refresh}
       isRefreshing={isRefreshing}
+      weiter={weiter}
       onOpenInterview={onOpenInterview}
       onOpenBescheid={onOpenBescheid}
       onOpenKapital={onOpenKapital}
@@ -143,6 +161,7 @@ interface CockpitEmptyProps {
   readonly onJahrWechsel: (jahr: number) => void
   readonly refresh: PullToRefresh
   readonly isRefreshing: boolean
+  readonly weiter: Weiter | null
   readonly onOpenInterview: () => void
   readonly onOpenBescheid: () => void
   readonly onOpenKapital: () => void
@@ -153,7 +172,7 @@ interface CockpitEmptyProps {
   readonly bp: Breakpoint
 }
 
-function CockpitEmpty({ jahr, onJahrWechsel, refresh, isRefreshing, onOpenInterview, onOpenBescheid, onOpenKapital, onOpenVermietung, onOpenKinder, onOpenEulenModus, bp }: CockpitEmptyProps) {
+function CockpitEmpty({ jahr, onJahrWechsel, refresh, isRefreshing, weiter, onOpenInterview, onOpenBescheid, onOpenKapital, onOpenVermietung, onOpenKinder, onOpenEulenModus, bp }: CockpitEmptyProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
@@ -168,9 +187,15 @@ function CockpitEmpty({ jahr, onJahrWechsel, refresh, isRefreshing, onOpenInterv
       <View style={styles.emptyBlock}>
         <Text style={styles.heading}>{tr('cockpit.empty.heading')}</Text>
         <Text style={styles.help}>{tr('cockpit.empty.message')}</Text>
-        <Button onPress={onOpenInterview} style={styles.cta}>
-          {tr('cockpit.answerQuestions')}
-        </Button>
+        {weiter ? (
+          <Button onPress={weiter.onPress} style={styles.cta} testID="cockpit-weiter">
+            {weiter.label}
+          </Button>
+        ) : (
+          <Button onPress={onOpenInterview} style={styles.cta}>
+            {tr('cockpit.answerQuestions')}
+          </Button>
+        )}
         <Button variante="ghost" onPress={onOpenBescheid} style={styles.secondaryCta}>
           {tr('cockpit.checkBescheid')}
         </Button>
@@ -241,6 +266,7 @@ interface CockpitLoadedProps {
   readonly onOpenBestaetigung?: () => void
   readonly refresh: PullToRefresh
   readonly isRefreshing: boolean
+  readonly weiter: Weiter | null
   readonly onOpenInterview: () => void
   readonly onOpenBescheid: () => void
   readonly onOpenKapital: () => void
@@ -251,7 +277,7 @@ interface CockpitLoadedProps {
   readonly bp: Breakpoint
 }
 
-function CockpitLoaded({ summary, jahr, onJahrWechsel, bestaetigung, onOpenBestaetigung, refresh, isRefreshing, onOpenInterview, onOpenBescheid, onOpenKapital, onOpenVermietung, onOpenKinder, onOpenEulenModus, onOpenAusdruck, bp }: CockpitLoadedProps) {
+function CockpitLoaded({ summary, jahr, onJahrWechsel, bestaetigung, onOpenBestaetigung, refresh, isRefreshing, weiter, onOpenInterview, onOpenBescheid, onOpenKapital, onOpenVermietung, onOpenKinder, onOpenEulenModus, onOpenAusdruck, bp }: CockpitLoadedProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
@@ -277,7 +303,11 @@ function CockpitLoaded({ summary, jahr, onJahrWechsel, bestaetigung, onOpenBesta
         <Text style={styles.openItems}>{tr('cockpit.hero.openItems', { count: openItems })}</Text>
         <Text style={styles.refundLater}>{tr('cockpit.hero.refundLater')}</Text>
       </Card>
-      {hasOpenItems ? (
+      {weiter ? (
+        <Button onPress={weiter.onPress} style={styles.cta} testID="cockpit-weiter">
+          {weiter.label}
+        </Button>
+      ) : hasOpenItems ? (
         <Button onPress={onOpenInterview} style={styles.cta}>
           {tr('cockpit.answerQuestions')}
         </Button>
