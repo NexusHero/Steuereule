@@ -261,16 +261,16 @@ function besondereLebenslage(answers: Answers): boolean {
 function pendlerpauschaleAus(jahr: number, weg: CommuteInputs | null): number {
   if (weg === null || weg.einfacheKm === null || weg.verkehrsmittel === null) return 0
   const tage = calculateWorkdays({
-    jahr,
-    werktage: weg.arbeitstage,
-    urlaubstage: weg.urlaubstage,
-    krankheitstage: weg.krankheitstage,
-    homeofficeTage: weg.homeofficeTage,
-    feiertage: weg.feiertage ?? 0,
+    year: jahr,
+    workdays: weg.arbeitstage,
+    vacationDays: weg.urlaubstage,
+    sickDays: weg.krankheitstage,
+    homeOfficeDays: weg.homeofficeTage,
+    publicHolidays: weg.feiertage ?? 0,
   })
   if (tage.kind !== 'bestimmt') return 0
   try {
-    return commuterAllowance({ einfacheKm: weg.einfacheKm, tage: tage.pendlertage, jahr, mitPkw: weg.verkehrsmittel === 'pkw' })
+    return commuterAllowance({ oneWayKm: weg.einfacheKm, days: tage.pendlertage, year: jahr, withCar: weg.verkehrsmittel === 'pkw' })
   } catch {
     return 0
   }

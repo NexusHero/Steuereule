@@ -74,5 +74,3 @@ export function cockpitRangeFromInputs(eingaben: CockpitRangeInputs): CockpitRan
 export function rangeFromCalculation(input: BerechnungsInput): CockpitRange {
   return calculateCockpitRange(calculate(input))
 }
-
-// Backward-compatibility aliases

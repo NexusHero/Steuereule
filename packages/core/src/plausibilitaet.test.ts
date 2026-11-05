@@ -30,7 +30,7 @@ function eingaben(over: {
     lstb:
       over.lstb ??
       wageTaxCertificateStatus({ bruttoarbeitslohn: { kind: 'erfasst', wert: 50000 }, lohnsteuer: { kind: 'erfasst', wert: 9000 }, sozialversicherung: { kind: 'erfasst', wert: 10000 } }),
-    werktage: over.werktage ?? calculateWorkdays({ jahr: 2026, werktage: [1, 2, 3, 4, 5], urlaubstage: 30, krankheitstage: 5, homeofficeTage: 40 }),
+    werktage: over.werktage ?? calculateWorkdays({ year: 2026, workdays: [1, 2, 3, 4, 5], vacationDays: 30, sickDays: 5, homeOfficeDays: 40 }),
     stand:
       over.stand ??
       calculateEmployeeStatus({ einnahmen: 50000, werbungskosten: 1200, sonderausgaben: 3000, offenePosten: 0, konflikte: 0, gegated: [] }),
@@ -61,7 +61,7 @@ describe('pruefePlausibilitaet (M2)', () => {
   })
 
   it('a werktage contradiction blocks', () => {
-    const arbeit = calculateWorkdays({ jahr: 2026, werktage: [1], urlaubstage: 0, krankheitstage: 0, homeofficeTage: 99 })
+    const arbeit = calculateWorkdays({ year: 2026, workdays: [1], vacationDays: 0, sickDays: 0, homeOfficeDays: 99 })
     expect(widersprueche(pruefePlausibilitaet(eingaben({ werktage: arbeit })))).toContainEqual({ art: 'werktage-widerspruch' })
   })
 

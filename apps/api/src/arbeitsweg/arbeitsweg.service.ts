@@ -28,12 +28,12 @@ export class ArbeitswegService {
 
 function stand(steuerjahr: number, eingaben: CommuteInputs): ArbeitswegStand {
   const ergebnis = calculateWorkdays({
-    jahr: steuerjahr,
-    werktage: eingaben.arbeitstage,
-    urlaubstage: eingaben.urlaubstage,
-    krankheitstage: eingaben.krankheitstage,
-    homeofficeTage: eingaben.homeofficeTage,
-    feiertage: eingaben.feiertage ?? 0,
+    year: steuerjahr,
+    workdays: eingaben.arbeitstage,
+    vacationDays: eingaben.urlaubstage,
+    sickDays: eingaben.krankheitstage,
+    homeOfficeDays: eingaben.homeofficeTage,
+    publicHolidays: eingaben.feiertage ?? 0,
   })
   if (ergebnis.kind === 'widerspruch') {
     throw new InvalidInputError('ARBEITSTAGE_WIDERSPRUCH', `The days off exceed the working days (${ergebnis.widerspruch.art}).`)
@@ -42,6 +42,6 @@ function stand(steuerjahr: number, eingaben: CommuteInputs): ArbeitswegStand {
   const pauschale =
     eingaben.einfacheKm === null || eingaben.verkehrsmittel === null
       ? null
-      : commuterAllowance({ einfacheKm: eingaben.einfacheKm, tage: pendlertage, jahr: steuerjahr, mitPkw: eingaben.verkehrsmittel === 'pkw' })
+      : commuterAllowance({ oneWayKm: eingaben.einfacheKm, days: pendlertage, year: steuerjahr, withCar: eingaben.verkehrsmittel === 'pkw' })
   return { eingaben, werktage: { wochentage, werktage, pendlertage }, pendlerpauschale: pauschale }
 }

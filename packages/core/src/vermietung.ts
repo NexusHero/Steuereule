@@ -200,5 +200,3 @@ export function vermietungStand(objekte: readonly RentalObjectData[], gegated: r
     gegated: fold.gegated,
   }
 }
-
-// Backward-compatibility aliases

@@ -67,5 +67,3 @@ export function gatedIncomeTypes(answers: Answers): readonly IncomeType[] {
 
   return INCOME_TYPES.filter((art) => gated.has(art))
 }
-
-// Backward-compatibility aliases

@@ -65,5 +65,3 @@ export function decouple<T extends TaxYear | Steuerjahr>(s: T): T {
 
   return { ...s, veranlagung: { kind: 'einzeln' } }
 }
-
-// Backward-compatibility aliases

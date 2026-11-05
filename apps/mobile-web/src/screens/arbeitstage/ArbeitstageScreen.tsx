@@ -87,12 +87,12 @@ function ArbeitstageFormular({
   }
 
   const eingabe = {
-    jahr: taxYear,
-    werktage,
-    urlaubstage: int(urlaub),
-    krankheitstage: int(krank),
-    homeofficeTage: int(homeoffice),
-    feiertage: int(feiertage),
+    year: taxYear,
+    workdays: werktage,
+    vacationDays: int(urlaub),
+    sickDays: int(krank),
+    homeOfficeDays: int(homeoffice),
+    publicHolidays: int(feiertage),
   }
   const ergebnis = werktage.length > 0 ? calculateWorkdays(eingabe) : null
   const einfacheKm = ganzzahlAus(km)
@@ -109,9 +109,9 @@ function ArbeitstageFormular({
         jahr: taxYear,
         data: {
           arbeitstage: [...werktage],
-          urlaubstage: eingabe.urlaubstage,
-          krankheitstage: eingabe.krankheitstage,
-          homeofficeTage: eingabe.homeofficeTage,
+          urlaubstage: eingabe.vacationDays,
+          krankheitstage: eingabe.sickDays,
+          homeofficeTage: eingabe.homeOfficeDays,
           einfacheKm,
           verkehrsmittel,
           taetigkeitsstaette: arbeitsort.trim() === '' ? null : arbeitsort.trim(),
@@ -221,7 +221,7 @@ function textAus(wert: number | null | undefined): string {
 
 function pauschaleOderNull(einfacheKm: number, tage: number, jahr: number, mitPkw: boolean): number | null {
   try {
-    return commuterAllowance({ einfacheKm, tage, jahr, mitPkw })
+    return commuterAllowance({ oneWayKm: einfacheKm, days: tage, year: jahr, withCar: mitPkw })
   } catch {
     return null
   }

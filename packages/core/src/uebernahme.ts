@@ -22,5 +22,3 @@ export function adoptionProvenance(priorYear: number): string {
   }
   return `Übernahme aus ${priorYear}`
 }
-
-// Backward-compatibility aliases

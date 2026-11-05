@@ -118,5 +118,3 @@ export function capitalStatus(kapital: CapitalData, gegated: readonly (IncomeTyp
   const offenePosten = kernposten === null ? 1 : 0
   return calculate({ posten, offenePosten, konflikte: [], gegated: gegated as readonly IncomeType[] })
 }
-
-// Backward-compatibility aliases

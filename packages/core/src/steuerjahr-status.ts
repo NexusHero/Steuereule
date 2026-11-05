@@ -89,5 +89,3 @@ export function istBescheidUebergangErlaubt(von: BescheidStatus, nach: BescheidS
 export function naechsteBescheidZustaende(von: BescheidStatus): readonly BescheidStatus[] {
   return BESCHEID_UEBERGAENGE[von]
 }
-
-// Backward-compatibility aliases

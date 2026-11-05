@@ -150,5 +150,3 @@ export function resolveConflict(konflikt: PostenKonflikt, aufloesung: KonfliktAu
   }
   return { id: konflikt.postenId, einkunftsart: konflikt.einkunftsart, betrag, quelle }
 }
-
-// Backward-compatibility aliases

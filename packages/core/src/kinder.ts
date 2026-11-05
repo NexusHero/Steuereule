@@ -138,5 +138,3 @@ export function calculateChildrenStatus(children: readonly (ChildData | KindDate
     differentialChildBenefitSum,
   }
 }
-
-// Backward-compatibility aliases

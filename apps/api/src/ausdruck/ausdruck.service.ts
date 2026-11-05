@@ -290,12 +290,12 @@ function chLohnausweisFakten(ch: CrossBorderSalaryStatementRecord | null, answer
 function arbeitswegFakten(jahr: number, eingaben: CommuteInputs | null): ArbeitswegFakten | null {
   if (eingaben === null) return null
   const ergebnis = calculateWorkdays({
-    jahr,
-    werktage: eingaben.arbeitstage,
-    urlaubstage: eingaben.urlaubstage,
-    krankheitstage: eingaben.krankheitstage,
-    homeofficeTage: eingaben.homeofficeTage,
-    feiertage: eingaben.feiertage ?? 0,
+    year: jahr,
+    workdays: eingaben.arbeitstage,
+    vacationDays: eingaben.urlaubstage,
+    sickDays: eingaben.krankheitstage,
+    homeOfficeDays: eingaben.homeofficeTage,
+    publicHolidays: eingaben.feiertage ?? 0,
   })
   if (ergebnis.kind !== 'bestimmt') return null
   return {

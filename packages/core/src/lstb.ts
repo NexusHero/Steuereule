@@ -117,5 +117,3 @@ export function deserializeWageTaxCertificateField(value: string | null): WageTa
   }
   return { kind: 'erfasst', wert }
 }
-
-// Backward-compatibility aliases

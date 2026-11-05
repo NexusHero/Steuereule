@@ -11,15 +11,6 @@ export interface WorkdaysInput {
   readonly publicHolidays?: number
 }
 
-export interface WerktageEingabe {
-  readonly jahr: number
-  readonly werktage: readonly IsoWeekday[]
-  readonly urlaubstage: number
-  readonly krankheitstage: number
-  readonly homeofficeTage: number
-  readonly feiertage?: number
-}
-
 export function isLeapYear(year: number): boolean {
   return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0
 }
@@ -33,12 +24,8 @@ function isoWeekdayAt(year: number, dayIndex0: number): IsoWeekday {
   return (utcDay === 0 ? 7 : utcDay) as IsoWeekday
 }
 
-function validateWorkdaysInput(input: WorkdaysInput | WerktageEingabe): void {
-  const year = 'year' in input ? input.year : input.jahr
-  const workdays = 'workdays' in input ? input.workdays : input.werktage
-  const vacation = 'vacationDays' in input ? input.vacationDays : input.urlaubstage
-  const sick = 'sickDays' in input ? input.sickDays : input.krankheitstage
-  const homeOffice = 'homeOfficeDays' in input ? input.homeOfficeDays : input.homeofficeTage
+function validateWorkdaysInput(input: WorkdaysInput): void {
+  const { year, workdays, vacationDays: vacation, sickDays: sick, homeOfficeDays: homeOffice } = input
 
   if (!Number.isInteger(year) || year < 2000 || year > 2100) {
     throw new RangeError('year must be an integer calendar year between 2000 and 2100')
@@ -93,18 +80,14 @@ export type WerktageErgebnis =
     }
   | { readonly kind: 'widerspruch'; readonly widerspruch: WerktageWiderspruch }
 
-export function calculateWorkdays(input: WorkdaysInput | WerktageEingabe): WerktageErgebnis & {
+export function calculateWorkdays(input: WorkdaysInput): WerktageErgebnis & {
   readonly weekdays?: number
   readonly workdays?: number
   readonly commuteDays?: number
 } {
   validateWorkdaysInput(input)
-  const year = 'year' in input ? input.year : input.jahr
-  const workdaysArr = 'workdays' in input ? input.workdays : input.werktage
-  const vacation = 'vacationDays' in input ? input.vacationDays : input.urlaubstage
-  const sick = 'sickDays' in input ? input.sickDays : input.krankheitstage
-  const homeOffice = 'homeOfficeDays' in input ? input.homeOfficeDays : input.homeofficeTage
-  const holidays = ('publicHolidays' in input ? input.publicHolidays : 'feiertage' in input ? input.feiertage : 0) ?? 0
+  const { year, workdays: workdaysArr, vacationDays: vacation, sickDays: sick, homeOfficeDays: homeOffice } = input
+  const holidays = input.publicHolidays ?? 0
 
   const weekdays = weekdaysInYear(year, workdaysArr)
   const workdays = weekdays - holidays - vacation - sick
@@ -141,13 +124,6 @@ export interface CommuterAllowanceInput {
   readonly withCar: boolean
 }
 
-export interface PendlerpauschaleEingabe {
-  readonly einfacheKm: number
-  readonly tage: number
-  readonly jahr: number
-  readonly mitPkw: boolean
-}
-
 interface Tier {
   readonly firstKm: number
   readonly rateFirst: number
@@ -166,11 +142,8 @@ const TIERS: Readonly<Record<number, Tier>> = {
 const MAXIMUM_AMOUNT_WITHOUT_CAR = 4500
 
 /** Distance commuter allowance per § 9 Abs. 1 Nr. 4 EStG: only full kilometres count; the 4,500 € cap applies only without car. */
-export function commuterAllowance(input: CommuterAllowanceInput | PendlerpauschaleEingabe): number {
-  const kmInput = 'oneWayKm' in input ? input.oneWayKm : input.einfacheKm
-  const days = 'days' in input ? input.days : input.tage
-  const year = 'year' in input ? input.year : input.jahr
-  const withCar = 'withCar' in input ? input.withCar : input.mitPkw
+export function commuterAllowance(input: CommuterAllowanceInput): number {
+  const { oneWayKm: kmInput, days, year, withCar } = input
 
   if (!Number.isFinite(kmInput) || kmInput < 0) throw new RangeError('km must be a non-negative finite number')
   if (!Number.isInteger(days) || days < 0) throw new RangeError('days must be a non-negative integer')
@@ -182,5 +155,3 @@ export function commuterAllowance(input: CommuterAllowanceInput | Pendlerpauscha
   const amount = Math.round(days * (firstKm * tier.rateFirst + additionalKm * tier.rateAdditional))
   return withCar ? amount : Math.min(amount, MAXIMUM_AMOUNT_WITHOUT_CAR)
 }
-
-// Backward-compatibility aliases

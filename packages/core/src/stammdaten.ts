@@ -53,5 +53,3 @@ export function formatGermanDate(iso: string): string {
   const [year, month, day] = iso.split('-')
   return `${day}.${month}.${year}`
 }
-
-// Backward-compatibility aliases

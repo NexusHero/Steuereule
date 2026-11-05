@@ -214,5 +214,3 @@ export function generateOwlCards(fakten: OwlInputFacts): readonly OwlCard[] {
     return (b.betragEur ?? 0) - (a.betragEur ?? 0)
   })
 }
-
-// Backward-compatibility aliases

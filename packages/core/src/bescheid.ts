@@ -197,5 +197,3 @@ export function deserializeAssessmentField(feld: AssessmentField, value: string 
   }
   return wert
 }
-
-// Backward-compatibility aliases

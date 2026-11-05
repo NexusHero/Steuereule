@@ -56,5 +56,3 @@ export function fristenWarnung(steuerjahr: number, heute: string): FristenWarnun
   const stufe: FristenStufe = verbleibendeTage < 0 ? 'abgelaufen' : verbleibendeTage <= DEADLINE_WARNING_THRESHOLD_DAYS ? 'warnung' : 'keine'
   return { stufe, abgabefrist, verbleibendeTage }
 }
-
-// Backward-compatibility aliases

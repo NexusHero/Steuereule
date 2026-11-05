@@ -16,5 +16,3 @@ export type ReceiptType = (typeof RECEIPT_TYPES)[number]
 export function isReceiptType(value: string): value is ReceiptType {
   return (RECEIPT_TYPES as readonly string[]).includes(value)
 }
-
-// Backward-compatibility aliases

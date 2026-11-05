@@ -5,15 +5,15 @@ import {
   calendarDaysInYear,
   commuterAllowance,
   weekdaysInYear,
-  type WerktageEingabe,
+  type WorkdaysInput,
 } from './werktage'
 
-const MO_FR: WerktageEingabe = {
-  jahr: 2026,
-  werktage: [1, 2, 3, 4, 5],
-  urlaubstage: 30,
-  krankheitstage: 5,
-  homeofficeTage: 40,
+const MO_FR: WorkdaysInput = {
+  year: 2026,
+  workdays: [1, 2, 3, 4, 5],
+  vacationDays: 30,
+  sickDays: 5,
+  homeOfficeDays: 40,
 }
 
 describe('calendar arithmetic (the deterministic "Kalenderlogik statt Freitext" part)', () => {
@@ -74,7 +74,7 @@ describe('berechneWerktage', () => {
   })
 
   it('more vacation+sick days than weekdays is a widerspruch, never clamped', () => {
-    const daten: WerktageEingabe = { ...MO_FR, urlaubstage: 200, krankheitstage: 100 }
+    const daten: WorkdaysInput = { ...MO_FR, vacationDays: 200, sickDays: 100 }
     const r = calculateWorkdays(daten)
     expect(r).toEqual({
       kind: 'widerspruch',
@@ -83,7 +83,7 @@ describe('berechneWerktage', () => {
   })
 
   it('more home-office days than werktage is a widerspruch', () => {
-    const daten: WerktageEingabe = { ...MO_FR, urlaubstage: 0, krankheitstage: 0, homeofficeTage: 999 }
+    const daten: WorkdaysInput = { ...MO_FR, vacationDays: 0, sickDays: 0, homeOfficeDays: 999 }
     const r = calculateWorkdays(daten)
     expect(r).toEqual({
       kind: 'widerspruch',
@@ -92,62 +92,62 @@ describe('berechneWerktage', () => {
   })
 
   it('rejects an empty weekday pattern', () => {
-    expect(() => calculateWorkdays({ ...MO_FR, werktage: [] })).toThrow(RangeError)
+    expect(() => calculateWorkdays({ ...MO_FR, workdays: [] })).toThrow(RangeError)
   })
 
   it('rejects an out-of-range year', () => {
-    expect(() => calculateWorkdays({ ...MO_FR, jahr: 1900 })).toThrow(RangeError)
+    expect(() => calculateWorkdays({ ...MO_FR, year: 1900 })).toThrow(RangeError)
   })
 })
 
 describe('pendlerpauschale (Entfernungspauschale, § 9 Abs. 1 Nr. 4 EStG)', () => {
   it('2025: 0,30 € for each of the first 20 km', () => {
-    const betrag = commuterAllowance({ einfacheKm: 15, tage: 206, jahr: 2025, mitPkw: true })
+    const betrag = commuterAllowance({ oneWayKm: 15, days: 206, year: 2025, withCar: true })
 
     expect(betrag).toBe(927)
   })
 
   it('2025: 0,38 € from the 21st km on', () => {
-    const betrag = commuterAllowance({ einfacheKm: 30, tage: 206, jahr: 2025, mitPkw: true })
+    const betrag = commuterAllowance({ oneWayKm: 30, days: 206, year: 2025, withCar: true })
 
     expect(betrag).toBe(2019)
   })
 
   it('2026: 0,38 € from the first km', () => {
-    const betrag = commuterAllowance({ einfacheKm: 30, tage: 206, jahr: 2026, mitPkw: true })
+    const betrag = commuterAllowance({ oneWayKm: 30, days: 206, year: 2026, withCar: true })
 
     expect(betrag).toBe(2348)
   })
 
   it('counts only full kilometres, as the form asks', () => {
-    const betrag = commuterAllowance({ einfacheKm: 15.9, tage: 100, jahr: 2025, mitPkw: true })
+    const betrag = commuterAllowance({ oneWayKm: 15.9, days: 100, year: 2025, withCar: true })
 
     expect(betrag).toBe(450)
   })
 
   it('caps at 4.500 € without an own car', () => {
-    const betrag = commuterAllowance({ einfacheKm: 100, tage: 220, jahr: 2025, mitPkw: false })
+    const betrag = commuterAllowance({ oneWayKm: 100, days: 220, year: 2025, withCar: false })
 
     expect(betrag).toBe(4500)
   })
 
   it('does not cap with an own car', () => {
-    const betrag = commuterAllowance({ einfacheKm: 100, tage: 220, jahr: 2025, mitPkw: true })
+    const betrag = commuterAllowance({ oneWayKm: 100, days: 220, year: 2025, withCar: true })
 
     expect(betrag).toBe(8008)
   })
 
   it('rejects impossible inputs', () => {
-    expect(() => commuterAllowance({ einfacheKm: -1, tage: 10, jahr: 2025, mitPkw: true })).toThrow(RangeError)
-    expect(() => commuterAllowance({ einfacheKm: 10, tage: -1, jahr: 2025, mitPkw: true })).toThrow(RangeError)
-    expect(() => commuterAllowance({ einfacheKm: 10, tage: 10, jahr: 2019, mitPkw: true })).toThrow(RangeError)
+    expect(() => commuterAllowance({ oneWayKm: -1, days: 10, year: 2025, withCar: true })).toThrow(RangeError)
+    expect(() => commuterAllowance({ oneWayKm: 10, days: -1, year: 2025, withCar: true })).toThrow(RangeError)
+    expect(() => commuterAllowance({ oneWayKm: 10, days: 10, year: 2019, withCar: true })).toThrow(RangeError)
   })
 })
 
 describe('calculateWorkdays with public holidays (F4)', () => {
   it('subtracts the confirmed holidays from the working days', () => {
-    const ohne = calculateWorkdays({ jahr: 2025, werktage: [1, 2, 3, 4, 5], urlaubstage: 30, krankheitstage: 4, homeofficeTage: 0 })
-    const mit = calculateWorkdays({ jahr: 2025, werktage: [1, 2, 3, 4, 5], urlaubstage: 30, krankheitstage: 4, homeofficeTage: 0, feiertage: 11 })
+    const ohne = calculateWorkdays({ year: 2025, workdays: [1, 2, 3, 4, 5], vacationDays: 30, sickDays: 4, homeOfficeDays: 0 })
+    const mit = calculateWorkdays({ year: 2025, workdays: [1, 2, 3, 4, 5], vacationDays: 30, sickDays: 4, homeOfficeDays: 0, publicHolidays: 11 })
     if (ohne.kind !== 'bestimmt' || mit.kind !== 'bestimmt') throw new Error('expected a result')
     expect(mit.pendlertage).toBe(ohne.pendlertage - 11)
   })
