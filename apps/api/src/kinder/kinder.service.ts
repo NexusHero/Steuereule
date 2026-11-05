@@ -1,11 +1,13 @@
-import { Inject, Injectable } from '@nestjs/common'
+import { Inject, Injectable, Optional } from '@nestjs/common'
 import { InvalidInputError, NotFoundError } from '../common/domain-error.js'
-import { istGueltigesKindGeburtsdatum, kinderStand, type KindDaten } from '@steuereule/core'
+import { calculateDifferentialChildBenefit, istGueltigesKindGeburtsdatum, kinderStand, type KindDaten } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
+import { CH_LOHNAUSWEIS_REPOSITORY, type ChLohnausweisRepository } from '../ch-lohnausweis/ch-lohnausweis.repository.js'
+import { KOPPLUNG_REPOSITORY, type KopplungRepository } from '../kopplung/kopplung.repository.js'
 import { KIND_REPOSITORY, type KindRecord, type KindRepository } from './kind.repository.js'
 import type { CreateKindDto, KinderResponseDto, KindResponseDto, UpdateKindDto } from './dto/kind.dto.js'
 
-function toKindDaten(r: KindRecord): KindDaten {
+function toKindDaten(r: KindRecord, effectiveSwissEur: number | null): KindDaten {
   return {
     id: r.id,
     vorname: r.vorname,
@@ -13,10 +15,12 @@ function toKindDaten(r: KindRecord): KindDaten {
     geburtsdatum: r.geburtsdatum,
     steuerId: r.idnr,
     kindergeld: r.kindergeldAnspruchEur ? Number(r.kindergeldAnspruchEur) : null,
+    schweizerKinderzulageEur: effectiveSwissEur,
   }
 }
 
-function toDto(r: KindRecord): KindResponseDto {
+function toDto(r: KindRecord, effectiveSwissEur: number | null, jahr: number): KindResponseDto {
+  const diff = effectiveSwissEur != null ? calculateDifferentialChildBenefit(r.geburtsdatum, jahr, effectiveSwissEur) : null
   return {
     id: r.id,
     lfdNr: r.lfdNr,
@@ -39,6 +43,9 @@ function toDto(r: KindRecord): KindResponseDto {
     kindergeldAnMichGanzjaehrig: r.kindergeldAnMichGanzjaehrig,
     kvBasisEur: r.kvBasisEur,
     pvEur: r.pvEur,
+    schweizerKinderzulageEur: effectiveSwissEur != null ? String(effectiveSwissEur) : null,
+    differenzkindergeldEur: diff != null ? String(diff.differentialChildBenefit) : null,
+    gesamtanspruchEur: diff != null ? String(diff.totalClaim) : null,
   }
 }
 
@@ -47,16 +54,46 @@ export class KinderService {
   constructor(
     @Inject(KIND_REPOSITORY) private readonly repository: KindRepository,
     @Inject(AuditService) private readonly auditService: AuditService,
+    @Optional() @Inject(CH_LOHNAUSWEIS_REPOSITORY) private readonly chLohnausweis?: ChLohnausweisRepository,
+    @Optional() @Inject(KOPPLUNG_REPOSITORY) private readonly kopplung?: KopplungRepository,
   ) {}
 
-  private toResponse(records: KindRecord[], jahr: number): KinderResponseDto {
-    const daten = records.map(toKindDaten)
+  private async getProKindSwissAllowanceEur(userId: string, jahr: number, count: number): Promise<number | null> {
+    if (!this.chLohnausweis || count <= 0) return null
+    let chRecord = await this.chLohnausweis.findForUserAndYear(userId, jahr)
+    if ((!chRecord?.nGre.familienzulagenChf || Number(chRecord.nGre.familienzulagenChf) <= 0) && this.kopplung) {
+      const k = await this.kopplung.findByUserAndYear(userId, jahr)
+      if (k?.veranlagungsart === 'zusammen' && k.personBUserId) {
+        const spouseCh = await this.chLohnausweis.findForUserAndYear(k.personBUserId, jahr)
+        if (spouseCh?.nGre.familienzulagenChf && Number(spouseCh.nGre.familienzulagenChf) > 0) {
+          chRecord = spouseCh
+        }
+      }
+    }
+    const zulagenChf = chRecord?.nGre.familienzulagenChf
+    if (!zulagenChf || Number(zulagenChf) <= 0) return null
+    const kurs = chRecord?.wechselkursKurs ?? 1.0
+    const proKindChf = Math.round(Number(zulagenChf) / count)
+    return Math.round(proKindChf * kurs)
+  }
+
+  private async toResponse(userId: string, records: KindRecord[], jahr: number): Promise<KinderResponseDto> {
+    const proKindEur = await this.getProKindSwissAllowanceEur(userId, jahr, records.length)
+    const daten = records.map((r) => {
+      const effectiveSwissEur = r.schweizerKinderzulageEur ? Number(r.schweizerKinderzulageEur) : proKindEur
+      return toKindDaten(r, effectiveSwissEur)
+    })
     const stand = kinderStand(daten, jahr)
     return {
-      kinder: records.map(toDto),
+      kinder: records.map((r) => {
+        const effectiveSwissEur = r.schweizerKinderzulageEur ? Number(r.schweizerKinderzulageEur) : proKindEur
+        return toDto(r, effectiveSwissEur, jahr)
+      }),
       anzahl: stand.anzahl,
       kindergeldSumme: stand.kindergeldSumme,
       freibetragGesamt: stand.freibetragGesamt,
+      schweizerKinderzulageSumme: stand.schweizerKinderzulageSumme,
+      differenzkindergeldSumme: stand.differenzkindergeldSumme,
     }
   }
 
@@ -65,7 +102,7 @@ export class KinderService {
     if (records.length > 0) {
       await this.auditService.append({ userId, action: 'READ', resource: 'kind' })
     }
-    return this.toResponse(records, steuerjahr)
+    return this.toResponse(userId, records, steuerjahr)
   }
 
   async create(userId: string, steuerjahr: number, dto: CreateKindDto): Promise<KinderResponseDto> {
@@ -74,7 +111,7 @@ export class KinderService {
     }
     await this.repository.create(userId, steuerjahr, dto)
     const records = await this.repository.listForUserAndYear(userId, steuerjahr)
-    return this.toResponse(records, steuerjahr)
+    return this.toResponse(userId, records, steuerjahr)
   }
 
   async update(userId: string, steuerjahr: number, id: string, dto: UpdateKindDto): Promise<KinderResponseDto> {
@@ -86,7 +123,7 @@ export class KinderService {
       throw new NotFoundError('KIND_NOT_FOUND', `Kind "${id}" does not exist for this account.`)
     }
     const records = await this.repository.listForUserAndYear(userId, steuerjahr)
-    return this.toResponse(records, steuerjahr)
+    return this.toResponse(userId, records, steuerjahr)
   }
 
   async delete(userId: string, steuerjahr: number, id: string): Promise<KinderResponseDto> {
@@ -95,7 +132,7 @@ export class KinderService {
       throw new NotFoundError('KIND_NOT_FOUND', `Kind "${id}" does not exist for this account.`)
     }
     const records = await this.repository.listForUserAndYear(userId, steuerjahr)
-    return this.toResponse(records, steuerjahr)
+    return this.toResponse(userId, records, steuerjahr)
   }
 }
 

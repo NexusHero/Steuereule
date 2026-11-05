@@ -91,6 +91,21 @@ export interface KindResponseDto {
   kvBasisEur: string | null;
   /** @nullable */
   pvEur: string | null;
+  /**
+     * Zeile 6 (Kz 15): Schweizer Kinderzulage in whole EUR.
+     * @nullable
+     */
+  schweizerKinderzulageEur?: string | null;
+  /**
+     * Differenz-Kindergeld der deutschen Familienkasse in whole EUR.
+     * @nullable
+     */
+  differenzkindergeldEur?: string | null;
+  /**
+     * Gesamtanspruch auf Kindergeld oder vergleichbare Leistungen (Zeile 6).
+     * @nullable
+     */
+  gesamtanspruchEur?: string | null;
 }
 
 export interface KinderResponseDto {
@@ -98,6 +113,10 @@ export interface KinderResponseDto {
   anzahl: number;
   kindergeldSumme: number;
   freibetragGesamt: number;
+  /** Summe der Schweizer Kinderzulagen in EUR. */
+  schweizerKinderzulageSumme: number;
+  /** Summe des Differenz-Kindergeldes in EUR. */
+  differenzkindergeldSumme: number;
 }
 
 /**
@@ -204,6 +223,11 @@ export interface CreateKindDto {
      * @nullable
      */
   pvEur?: string | null;
+  /**
+     * Zeile 6 (Kz 15): Schweizer Kinderzulage / Familienzulage in whole EUR.
+     * @nullable
+     */
+  schweizerKinderzulageEur?: string | null;
   vorname: string;
   nachname: string;
   /** ISO date YYYY-MM-DD */
@@ -316,6 +340,11 @@ export interface UpdateKindDto {
      * @nullable
      */
   pvEur?: string | null;
+  /**
+     * Zeile 6 (Kz 15): Schweizer Kinderzulage / Familienzulage in whole EUR.
+     * @nullable
+     */
+  schweizerKinderzulageEur?: string | null;
   vorname?: string;
   nachname?: string;
   geburtsdatum?: string;

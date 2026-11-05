@@ -1,6 +1,7 @@
 import {
   afaSatzProzent,
   anlageNGreBetraege,
+  calculateDifferentialChildBenefit,
   deutschesDatum,
   type GrenzgaengerStatus,
   type NGreZeile,
@@ -37,6 +38,7 @@ export interface KindFakten {
   geburtsdatum: string | null
   idnr: string | null
   kindergeldAnspruchEur?: string | null
+  schweizerKinderzulageEur?: string | null
   kindschaftsverhaeltnis?: string | null
   kindschaftsverhaeltnisB?: string | null
   familienkasse?: string | null
@@ -661,7 +663,14 @@ export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
       if (k.vorname) kWerte['anlKind.vorname'] = k.vorname
       if (k.nachname && k.nachname !== profil.lastName) kWerte['anlKind.nachname'] = k.nachname
       if (k.geburtsdatum) kWerte['anlKind.geburtsdatum'] = deutschesDatum(k.geburtsdatum)
-      if (k.kindergeldAnspruchEur) kWerte['anlKind.kindergeld'] = k.kindergeldAnspruchEur
+      if (k.schweizerKinderzulageEur && Number(k.schweizerKinderzulageEur) > 0) {
+        const swissEur = Number(k.schweizerKinderzulageEur)
+        const diff = calculateDifferentialChildBenefit(k.geburtsdatum ?? `${fakten.steuerjahr}-01-01`, fakten.steuerjahr, swissEur)
+        const anspruchEur = k.kindergeldAnspruchEur ? Number(k.kindergeldAnspruchEur) : 0
+        kWerte['anlKind.kindergeld'] = String(Math.max(anspruchEur, diff.totalClaim))
+      } else if (k.kindergeldAnspruchEur) {
+        kWerte['anlKind.kindergeld'] = k.kindergeldAnspruchEur
+      }
       if (k.familienkasse) kWerte['anlKind.familienkasse'] = k.familienkasse
       // Z. 27/28: KV/PV of the child the parents pay as policyholders — an empty or zero line stays empty.
       if (k.kvBasisEur && Number(k.kvBasisEur) > 0) kWerte['anlKind.kz66'] = k.kvBasisEur

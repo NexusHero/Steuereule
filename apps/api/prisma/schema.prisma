@@ -864,6 +864,8 @@ model Kind {
   /// policyholders; whole euros, null = not entered.
   kvBasisEur                     String?  /// @encrypted?mode=strict
   pvEur                          String?  /// @encrypted?mode=strict
+  /// Anlage Kind Zeile 6 (Kz 15): Schweizer Kinderzulage / Familienzulage in whole EUR (converted from Lohnausweis).
+  schweizerKinderzulageEur       String?  /// @encrypted?mode=strict
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 

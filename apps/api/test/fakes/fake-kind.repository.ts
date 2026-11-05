@@ -54,6 +54,7 @@ export class FakeKindRepository implements KindRepository {
       kindergeldAnMichGanzjaehrig: data.kindergeldAnMichGanzjaehrig ?? null,
       kvBasisEur: data.kvBasisEur ?? null,
       pvEur: data.pvEur ?? null,
+      schweizerKinderzulageEur: data.schweizerKinderzulageEur ?? null,
     }
     this.store.set(record.id, record)
     return Promise.resolve(record)

@@ -504,6 +504,28 @@ describe('ausdruckWerte', () => {
       expect(ausdruckWerte({ ...ZUSAMMEN, kinder: [{ ...KIND, geburtsdatum: '2007-02-01' }] }).fehlend).toEqual(['anlageKindVolljaehrig'])
       expect(ausdruckWerte({ ...ZUSAMMEN, kinder: [KIND, { ...KIND, wohnsitzInlandGanzjaehrig: false }, { ...KIND, wohnsitzInlandGanzjaehrig: false }] }).fehlend).toEqual(['anlageKindAusland'])
     })
+
+    it('prints Swiss family allowance plus Differenzkindergeld in Zeile 6 (Kz 15, ADR-0054, #414)', () => {
+      const { instanzen, fehlend } = ausdruckWerte({
+        ...ZUSAMMEN,
+        kinder: [{ ...KIND, schweizerKinderzulageEur: '2748' }],
+      })
+      expect(fehlend).toEqual([])
+      // 2025: 255 * 12 = 3060 total claim
+      expect(instanzen!['anlage-kind']![0]).toMatchObject({
+        'anlKind.kindergeld': '3060',
+      })
+    })
+
+    it('prints higher Swiss family allowance in Zeile 6 when exceeding German Kindergeld', () => {
+      const { instanzen } = ausdruckWerte({
+        ...ZUSAMMEN,
+        kinder: [{ ...KIND, schweizerKinderzulageEur: '3500' }],
+      })
+      expect(instanzen!['anlage-kind']![0]).toMatchObject({
+        'anlKind.kindergeld': '3500',
+      })
+    })
   })
 
   describe('Anlage Kind — the other parent outside this return (Zeilen 11–15)', () => {

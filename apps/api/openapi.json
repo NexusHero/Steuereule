@@ -6487,6 +6487,24 @@
           "pvEur": {
             "type": "string",
             "nullable": true
+          },
+          "schweizerKinderzulageEur": {
+            "type": "string",
+            "nullable": true,
+            "example": "2748",
+            "description": "Zeile 6 (Kz 15): Schweizer Kinderzulage in whole EUR."
+          },
+          "differenzkindergeldEur": {
+            "type": "string",
+            "nullable": true,
+            "example": "312",
+            "description": "Differenz-Kindergeld der deutschen Familienkasse in whole EUR."
+          },
+          "gesamtanspruchEur": {
+            "type": "string",
+            "nullable": true,
+            "example": "3060",
+            "description": "Gesamtanspruch auf Kindergeld oder vergleichbare Leistungen (Zeile 6)."
           }
         },
         "required": [
@@ -6531,13 +6549,25 @@
           "freibetragGesamt": {
             "type": "number",
             "example": 9600
+          },
+          "schweizerKinderzulageSumme": {
+            "type": "number",
+            "example": 5496,
+            "description": "Summe der Schweizer Kinderzulagen in EUR."
+          },
+          "differenzkindergeldSumme": {
+            "type": "number",
+            "example": 624,
+            "description": "Summe des Differenz-Kindergeldes in EUR."
           }
         },
         "required": [
           "kinder",
           "anzahl",
           "kindergeldSumme",
-          "freibetragGesamt"
+          "freibetragGesamt",
+          "schweizerKinderzulageSumme",
+          "differenzkindergeldSumme"
         ]
       },
       "CreateKindDto": {
@@ -6633,6 +6663,12 @@
             "nullable": true,
             "example": "0",
             "description": "Zeile 28 (Kz 67): PV of the child paid by the parents, whole euros."
+          },
+          "schweizerKinderzulageEur": {
+            "type": "string",
+            "nullable": true,
+            "example": "2748",
+            "description": "Zeile 6 (Kz 15): Schweizer Kinderzulage / Familienzulage in whole EUR."
           },
           "vorname": {
             "type": "string",
@@ -6755,6 +6791,12 @@
             "nullable": true,
             "example": "0",
             "description": "Zeile 28 (Kz 67): PV of the child paid by the parents, whole euros."
+          },
+          "schweizerKinderzulageEur": {
+            "type": "string",
+            "nullable": true,
+            "example": "2748",
+            "description": "Zeile 6 (Kz 15): Schweizer Kinderzulage / Familienzulage in whole EUR."
           },
           "vorname": {
             "type": "string",

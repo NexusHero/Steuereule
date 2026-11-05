@@ -195,6 +195,8 @@ export const EMPTY_KINDER_RESPONSE: KinderResponseDto = {
   anzahl: 0,
   kindergeldSumme: 0,
   freibetragGesamt: 0,
+  schweizerKinderzulageSumme: 0,
+  differenzkindergeldSumme: 0,
 }
 
 export const EMPTY_KOPPLUNG_RESPONSE: KopplungResponseDto = {

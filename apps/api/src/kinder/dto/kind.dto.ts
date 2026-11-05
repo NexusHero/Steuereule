@@ -76,6 +76,11 @@ class KindAngabenDto {
   @IsOptional()
   @Matches(/^\d{1,7}$/)
   pvEur?: string | null
+
+  @ApiPropertyOptional({ type: String, nullable: true, example: '2748', description: 'Zeile 6 (Kz 15): Schweizer Kinderzulage / Familienzulage in whole EUR.' })
+  @IsOptional()
+  @Matches(/^\d{1,7}$/)
+  schweizerKinderzulageEur?: string | null
 }
 
 export class CreateKindDto extends KindAngabenDto {
@@ -205,6 +210,15 @@ export class KindResponseDto {
 
   @ApiProperty({ type: String, nullable: true })
   pvEur!: string | null
+
+  @ApiPropertyOptional({ type: String, nullable: true, example: '2748', description: 'Zeile 6 (Kz 15): Schweizer Kinderzulage in whole EUR.' })
+  schweizerKinderzulageEur?: string | null
+
+  @ApiPropertyOptional({ type: String, nullable: true, example: '312', description: 'Differenz-Kindergeld der deutschen Familienkasse in whole EUR.' })
+  differenzkindergeldEur?: string | null
+
+  @ApiPropertyOptional({ type: String, nullable: true, example: '3060', description: 'Gesamtanspruch auf Kindergeld oder vergleichbare Leistungen (Zeile 6).' })
+  gesamtanspruchEur?: string | null
 }
 
 export class KinderResponseDto {
@@ -219,4 +233,10 @@ export class KinderResponseDto {
 
   @ApiProperty({ type: Number, example: 9600 })
   freibetragGesamt!: number
+
+  @ApiProperty({ type: Number, example: 5496, description: 'Summe der Schweizer Kinderzulagen in EUR.' })
+  schweizerKinderzulageSumme!: number
+
+  @ApiProperty({ type: Number, example: 624, description: 'Summe des Differenz-Kindergeldes in EUR.' })
+  differenzkindergeldSumme!: number
 }
