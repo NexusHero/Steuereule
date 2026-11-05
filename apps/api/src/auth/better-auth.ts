@@ -143,7 +143,7 @@ function buildOptions(options: CreateBetterAuthOptions & { rateLimitStorage: Res
     },
     advanced: {
       defaultCookieAttributes: SESSION_COOKIE_ATTRIBUTES,
-      useSecureCookies: true,
+      useSecureCookies: new URL(baseUrl).protocol === 'https:',
       disableOriginCheck: false,
       ipAddress: {
         trustedProxies,

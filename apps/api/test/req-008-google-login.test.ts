@@ -54,7 +54,7 @@ describe('REQ-008 Google OAuth — ATDD acceptance', () => {
 
     // Auth still works for email/password — Google is just not available
     expect(typeof auth.handler).toBe('function')
-    expect(sessionCookieName).toBe('__Secure-better-auth.session_token')
+    expect(sessionCookieName).toBe('better-auth.session_token')
   })
 
   it('falls back to dev-only Google credentials outside production (resolveGoogleClientId/Secret)', async () => {
