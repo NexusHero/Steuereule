@@ -17,6 +17,10 @@ export class PrismaStammdatenRepository implements StammdatenRepository {
     return row === null ? null : toRecord(row)
   }
 
+  async save(userId: string, record: StammdatenRecord): Promise<StammdatenRecord> {
+    return this.speichere(userId, record)
+  }
+
   async speichere(userId: string, record: StammdatenRecord): Promise<StammdatenRecord> {
     const [row] = await this.prisma.$transaction([
       this.prisma.stammdaten.upsert({ where: { userId }, create: { userId, ...record }, update: record }),

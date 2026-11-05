@@ -28,7 +28,8 @@ import type {
   GuenstigerpruefungDto,
   KapitalControllerGetGuenstigerpruefungParams,
   KapitalResponseDto,
-  PutKapitalFeldDto
+  PutKapitalFeldDto,
+  PutKapitalInhaberDto
 } from './kapital.schemas';
 
 import { httpClient } from '../http-client';
@@ -166,6 +167,91 @@ export function useKapitalControllerGet<TData = Awaited<ReturnType<typeof kapita
 
 
 
+
+export type kapitalControllerSetInhaberResponse200 = {
+  data: KapitalResponseDto
+  status: 200
+}
+
+export type kapitalControllerSetInhaberResponse401 = {
+  data: void
+  status: 401
+}
+
+export type kapitalControllerSetInhaberResponseSuccess = (kapitalControllerSetInhaberResponse200) & {
+  headers: Headers;
+};
+export type kapitalControllerSetInhaberResponseError = (kapitalControllerSetInhaberResponse401) & {
+  headers: Headers;
+};
+
+export type kapitalControllerSetInhaberResponse = (kapitalControllerSetInhaberResponseSuccess | kapitalControllerSetInhaberResponseError)
+
+export const getKapitalControllerSetInhaberUrl = (jahr: number,) => {
+
+
+
+
+  return `/v1/steuerjahre/${jahr}/kapital/inhaber`
+}
+
+export const kapitalControllerSetInhaber = async (jahr: number,
+    putKapitalInhaberDto: PutKapitalInhaberDto, options?: RequestInit): Promise<kapitalControllerSetInhaberResponse> => {
+
+  return httpClient<kapitalControllerSetInhaberResponse>(getKapitalControllerSetInhaberUrl(jahr),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(putKapitalInhaberDto)
+  }
+);}
+
+
+
+
+
+export const getKapitalControllerSetInhaberMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof kapitalControllerSetInhaber>>, TError,{jahr: number;data: PutKapitalInhaberDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof kapitalControllerSetInhaber>>, TError,{jahr: number;data: PutKapitalInhaberDto}, TContext> => {
+
+const mutationKey = ['kapitalControllerSetInhaber'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof kapitalControllerSetInhaber>>, {jahr: number;data: PutKapitalInhaberDto}> = (props) => {
+          const {jahr,data} = props ?? {};
+
+          return  kapitalControllerSetInhaber(jahr,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type KapitalControllerSetInhaberMutationResult = NonNullable<Awaited<ReturnType<typeof kapitalControllerSetInhaber>>>
+    export type KapitalControllerSetInhaberMutationBody = PutKapitalInhaberDto
+    export type KapitalControllerSetInhaberMutationError = void
+
+    export const useKapitalControllerSetInhaber = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof kapitalControllerSetInhaber>>, TError,{jahr: number;data: PutKapitalInhaberDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof kapitalControllerSetInhaber>>,
+        TError,
+        {jahr: number;data: PutKapitalInhaberDto},
+        TContext
+      > => {
+      return useMutation(getKapitalControllerSetInhaberMutationOptions(options), queryClient);
+    }
 
 export type kapitalControllerSetFeldResponse200 = {
   data: KapitalResponseDto

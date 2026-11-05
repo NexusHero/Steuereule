@@ -212,3 +212,6 @@ export function heuteIso(jetzt: Date = new Date()): string {
   const tag = teile.find((p) => p.type === 'day')!.value
   return `${jahr}-${monat}-${tag}`
 }
+
+export { BescheidService as AssessmentService }
+

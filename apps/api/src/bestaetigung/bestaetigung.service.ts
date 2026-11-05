@@ -164,4 +164,27 @@ export class BestaetigungService {
     }
     return this.uebersicht(userId, steuerjahr)
   }
+
+  async decideProposal(userId: string, taxYear: number, key: string, decision: 'annehmen' | 'verwerfen'): Promise<BestaetigungResponseDto> {
+    return this.entscheideVorschlag(userId, taxYear, key, decision)
+  }
+
+  async confirmAnnex(userId: string, taxYear: number, annex: Anlage): Promise<BestaetigungResponseDto> {
+    return this.bestaetigeAnlage(userId, taxYear, annex)
+  }
+
+  async overview(userId: string, taxYear: number): Promise<BestaetigungResponseDto> {
+    return this.uebersicht(userId, taxYear)
+  }
+
+  async missing(userId: string, taxYear: number): Promise<string[]> {
+    return this.fehlend(userId, taxYear)
+  }
+
+  async list(userId: string, taxYear: number): Promise<KennzeichnungRecord[]> {
+    return this.liste(userId, taxYear)
+  }
 }
+
+export { BestaetigungService as ConfirmationService }
+

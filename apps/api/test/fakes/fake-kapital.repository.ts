@@ -17,6 +17,10 @@ export class FakeKapitalRepository implements KapitalRepository {
     return Promise.resolve(this.store.get(key(userId, steuerjahr)) ?? null)
   }
 
+  setField(userId: string, taxYear: number, field: KapitalFeldId, value: string | null): Promise<KapitalRecord> {
+    return this.setFeld(userId, taxYear, field, value)
+  }
+
   setFeld(userId: string, steuerjahr: number, feld: KapitalFeldId, wert: string | null): Promise<KapitalRecord> {
     const k = key(userId, steuerjahr)
     const existing = this.store.get(k)
@@ -32,6 +36,10 @@ export class FakeKapitalRepository implements KapitalRepository {
     const updated: KapitalRecord = { ...record, [feld]: wert }
     this.store.set(k, updated)
     return Promise.resolve(updated)
+  }
+
+  setOwner(userId: string, taxYear: number, owner: KapitalInhaber): Promise<KapitalRecord> {
+    return this.setInhaber(userId, taxYear, owner)
   }
 
   setInhaber(userId: string, steuerjahr: number, inhaber: KapitalInhaber): Promise<KapitalRecord> {

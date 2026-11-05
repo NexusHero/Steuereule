@@ -28,6 +28,7 @@ const DEUTSCHER_BROKER: KapitalResponseDto = {
   depot: { kind: 'deutscher-broker' },
   posten: [{ id: 'kapital', betrag: 20000, herkunft: 'eingabe' }],
   stand: { kind: 'bestimmt', einnahmen: 20000, vorsorgeaufwand: 0, anrechnung: 0 },
+  inhaber: null,
 }
 
 const EINDEUTIG_ABGELTUNG = {

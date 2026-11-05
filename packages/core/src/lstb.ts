@@ -134,6 +134,11 @@ export function deserializeWageTaxCertificateField(value: string | null): WageTa
 }
 
 // Backward-compatibility aliases
+export const EMPTY_LSTB = EMPTY_WAGE_TAX_CERTIFICATE
+export type LstbData = WageTaxCertificateData
+export const serializeLstbField = serializeWageTaxCertificateField
+export const deserializeLstbField = deserializeWageTaxCertificateField
+
 export {
   isValidAmount as istGueltigerBetrag,
   setWageTaxCertificateField as setzeLstbFeld,

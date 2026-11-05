@@ -83,3 +83,10 @@ export class SetEinspruchDto {
   @IsIn(['betrag-falsch', 'beleg-nicht-beruecksichtigt', 'sonstiges'])
   grund!: string
 }
+
+export type AssessmentResponseDto = BescheidResponseDto
+export type SetAssessmentDateDto = SetBescheidDatumDto
+export type SetAppealDto = SetEinspruchDto
+export type AssessmentComparisonDto = BescheidAbgleichDto
+export type AssessmentDeadlineDto = BescheidFristDto
+

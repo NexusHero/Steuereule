@@ -17,3 +17,7 @@ export class UebernahmeResponseDto {
   @ApiProperty({ type: [UebernahmeKennzeichnungDto], description: 'Die Übernahme-Kennzeichnungen, älteste zuerst.' })
   kennzeichnungen!: UebernahmeKennzeichnungDto[]
 }
+
+export type RolloverProvenanceDto = UebernahmeKennzeichnungDto
+export type RolloverResponseDto = UebernahmeResponseDto
+

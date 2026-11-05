@@ -21,3 +21,6 @@ export class BelegResponseDto {
   @ApiProperty({ type: ZuordnungDto, description: '@steuereule/core’s zuordnungAusDaten — never recomputed elsewhere.' })
   zuordnung!: ZuordnungDto
 }
+
+export type ReceiptResponseDto = BelegResponseDto
+

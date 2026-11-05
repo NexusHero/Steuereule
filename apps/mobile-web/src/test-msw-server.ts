@@ -151,6 +151,7 @@ export const EMPTY_KAPITAL_RESPONSE: KapitalResponseDto = {
   depot: { kind: 'unbekannt' },
   posten: [],
   stand: { kind: 'offen', einnahmen: 0, vorsorgeaufwand: 0, anrechnung: 0, offenePosten: 1, konflikte: 0, gegated: [] },
+  inhaber: null,
 }
 
 /**

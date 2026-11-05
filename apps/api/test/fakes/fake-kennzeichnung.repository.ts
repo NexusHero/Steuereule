@@ -21,6 +21,10 @@ export class FakeKennzeichnungRepository implements KennzeichnungRepository {
     return Promise.resolve(this.store.get(id(userId, steuerjahr, key)) ?? null)
   }
 
+  save(userId: string, taxYear: number, provenance: Omit<Kennzeichnung, 'wert'>): Promise<KennzeichnungRecord> {
+    return this.speichere(userId, taxYear, provenance)
+  }
+
   speichere(userId: string, steuerjahr: number, k: Omit<Kennzeichnung, 'wert'>): Promise<KennzeichnungRecord> {
     anlageVon(k.key) // same rejection of unknown keys as the real repository
     const record: KennzeichnungRecord = { userId, steuerjahr, key: k.key, herkunft: k.herkunft, bestaetigt: k.bestaetigt, vorschlag: k.vorschlag }
@@ -28,10 +32,18 @@ export class FakeKennzeichnungRepository implements KennzeichnungRepository {
     return Promise.resolve(record)
   }
 
+  remove(userId: string, taxYear: number, keys: readonly string[]): Promise<number> {
+    return this.entferne(userId, taxYear, keys)
+  }
+
   entferne(userId: string, steuerjahr: number, keys: readonly string[]): Promise<number> {
     let count = 0
     for (const key of keys) if (this.store.delete(id(userId, steuerjahr, key))) count += 1
     return Promise.resolve(count)
+  }
+
+  confirmAnnex(userId: string, taxYears: readonly number[], annex: Anlage): Promise<number> {
+    return this.bestaetigeAnlage(userId, taxYears, annex)
   }
 
   bestaetigeAnlage(userId: string, steuerjahre: readonly number[], anlage: Anlage): Promise<number> {

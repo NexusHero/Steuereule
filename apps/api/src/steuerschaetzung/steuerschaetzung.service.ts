@@ -150,3 +150,6 @@ function mitKirchensteuer(schaetzung: Steuerschaetzung, kirchensteuerOffen: bool
   if (schaetzung.kind !== 'spanne') return { kind: 'nicht-moeglich', grund: schaetzung.grund }
   return { ...schaetzung, kirchensteuerOffen }
 }
+
+export { SteuerschaetzungService as TaxEstimateService }
+

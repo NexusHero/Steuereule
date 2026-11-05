@@ -51,3 +51,6 @@ export class FristenService {
     }
   }
 }
+
+export { FristenService as DeadlinesService }
+

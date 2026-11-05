@@ -31,9 +31,13 @@ export interface FieldProvenance {
 export interface Kennzeichnung {
   readonly key: string
   readonly herkunft: Herkunft
+  readonly provenance?: FieldProvenanceKind | Herkunft
   readonly bestaetigt: boolean
+  readonly confirmed?: boolean
   readonly wert: string | null
+  readonly value?: string | null
   readonly vorschlag: Vorschlag | null
+  readonly suggestion?: Proposal | Vorschlag | null
 }
 
 export const MASKEN = ['profil', 'stammdaten', 'kopplung', 'interview', 'lstb', 'chLohnausweis', 'rente', 'kapital', 'vermietung', 'kind'] as const

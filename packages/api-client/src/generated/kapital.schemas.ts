@@ -17,6 +17,19 @@ export const KapitalResponseDtoPflichtfelderItem = {
 } as const;
 
 /**
+ * Whose depot (ADR-0054); null = Person A.
+ * @nullable
+ */
+export type KapitalResponseDtoInhaber = typeof KapitalResponseDtoInhaber[keyof typeof KapitalResponseDtoInhaber] | null;
+
+
+export const KapitalResponseDtoInhaber = {
+  A: 'A',
+  B: 'B',
+  gemeinsam: 'gemeinsam',
+} as const;
+
+/**
  * The field’s capture state.
  */
 export type KapitalFeldDtoKind = typeof KapitalFeldDtoKind[keyof typeof KapitalFeldDtoKind];
@@ -102,6 +115,28 @@ export interface KapitalResponseDto {
   /** The Kapital-Posten (empty while not determinable). */
   posten: KapitalPostenDto[];
   stand: KapitalStandDto;
+  /**
+     * Whose depot (ADR-0054); null = Person A.
+     * @nullable
+     */
+  inhaber: KapitalResponseDtoInhaber;
+}
+
+/**
+ * Person A, Person B, or a joint account split half and half.
+ */
+export type PutKapitalInhaberDtoInhaber = typeof PutKapitalInhaberDtoInhaber[keyof typeof PutKapitalInhaberDtoInhaber];
+
+
+export const PutKapitalInhaberDtoInhaber = {
+  A: 'A',
+  B: 'B',
+  gemeinsam: 'gemeinsam',
+} as const;
+
+export interface PutKapitalInhaberDto {
+  /** Person A, Person B, or a joint account split half and half. */
+  inhaber: PutKapitalInhaberDtoInhaber;
 }
 
 /**

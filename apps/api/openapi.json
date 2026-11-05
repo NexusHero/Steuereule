@@ -737,6 +737,51 @@
         ]
       }
     },
+    "/v1/steuerjahre/{jahr}/kapital/inhaber": {
+      "put": {
+        "operationId": "KapitalController_setInhaber",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr).",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutKapitalInhaberDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The mask with the stored owner.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KapitalResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "kapital"
+        ]
+      }
+    },
     "/v1/steuerjahre/{jahr}/kapital/{feld}": {
       "put": {
         "operationId": "KapitalController_setFeld",
@@ -3965,6 +4010,16 @@
           },
           "stand": {
             "$ref": "#/components/schemas/KapitalStandDto"
+          },
+          "inhaber": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B",
+              "gemeinsam"
+            ],
+            "nullable": true,
+            "description": "Whose depot (ADR-0054); null = Person A."
           }
         },
         "required": [
@@ -3976,7 +4031,25 @@
           "pflichtfelder",
           "depot",
           "posten",
-          "stand"
+          "stand",
+          "inhaber"
+        ]
+      },
+      "PutKapitalInhaberDto": {
+        "type": "object",
+        "properties": {
+          "inhaber": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B",
+              "gemeinsam"
+            ],
+            "description": "Person A, Person B, or a joint account split half and half."
+          }
+        },
+        "required": [
+          "inhaber"
         ]
       },
       "PutKapitalFeldDto": {
