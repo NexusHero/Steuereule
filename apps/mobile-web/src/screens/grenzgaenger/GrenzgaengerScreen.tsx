@@ -198,7 +198,8 @@ function LohnausweisStep({
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
-  const [monat, setMonat] = useState(lohnausweis.wechselkurs?.monat ?? `${taxYear}-01`)
+  const [monat, setMonat] = useState(lohnausweis.wechselkurs?.monat ?? "")
+  const [kursFehler, setKursFehler] = useState(false)
   const [kurs, setKurs] = useState(lohnausweis.wechselkurs !== null && lohnausweis.wechselkurs !== undefined ? String(lohnausweis.wechselkurs.kurs) : '')
 
   const betragFelder = LOHNAUSWEIS_FELDER.filter((f) => f.art === 'chf-betrag')
@@ -220,21 +221,22 @@ function LohnausweisStep({
       <Text style={styles.sectionTitle}>{tr('grenzgaenger.lohnausweis.wechselkurs.title')}</Text>
       <Text style={styles.help}>{tr('grenzgaenger.lohnausweis.wechselkurs.help')}</Text>
       <Feld label={tr('grenzgaenger.lohnausweis.wechselkurs.monat')}>
-        <Input type="text" value={monat} onChange={setMonat} placeholder={`${taxYear}-01`} testID="ch-wechselkurs-monat" />
+        <Input type="text" value={monat} onChange={setMonat} placeholder={`${taxYear}-12`} testID="ch-wechselkurs-monat" />
       </Feld>
       <Feld label={tr('grenzgaenger.lohnausweis.wechselkurs.kurs')}>
-        <Input type="numeric" value={kurs} onChange={setKurs} placeholder="0.9412" testID="ch-wechselkurs-kurs" />
+        <Input type="numeric" value={kurs} onChange={setKurs} placeholder="1,07" testID="ch-wechselkurs-kurs" />
       </Feld>
+      {kursFehler ? <Text style={styles.help}>{tr('grenzgaenger.lohnausweis.wechselkurs.fehlt')}</Text> : null}
       <Button
         variante="ghost"
         onPress={() => {
-          const n = Number(kurs)
-          if (monat !== '' && Number.isFinite(n) && n > 0) {
-            onSetWechselkurs({ jahr: taxYear, data: { monat, kurs: n, modus: 'amtlich' } })
-          }
+          const n = Number(kurs.trim().replace(',', '.'))
+          const gueltig = /^\d{4}-(0[1-9]|1[0-2])$/.test(monat) && Number.isFinite(n) && n > 0
+          setKursFehler(!gueltig)
+          if (gueltig) onSetWechselkurs({ jahr: taxYear, data: { monat, kurs: n, modus: 'amtlich' } })
         }}
       >
-        {tr('grenzgaenger.lohnausweis.wechselkurs.amtlich')}
+        {tr('grenzgaenger.lohnausweis.wechselkurs.speichern')}
       </Button>
 
       <NGreAbschnitt nGre={lohnausweis.nGre} onSet={onSetNGre} />

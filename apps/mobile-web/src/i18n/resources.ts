@@ -1123,10 +1123,11 @@ export const appResources = {
           ziffer: 'Ziffer {{n}}',
           wechselkurs: {
             title: 'Wechselkurs',
-            help: 'Amtlicher BMF-Monatskurs als Standard — ein tatsächlicher Kurs braucht einen Beleg.',
+            help: 'Nimm den amtlichen Monatskurs aus der BMF-Tabelle „Umsatzsteuer-Umrechnungskurse“ (bundesfinanzministerium.de) — ein abweichender, tatsächlicher Kurs braucht einen Beleg.',
             monat: 'Monat (JJJJ-MM)',
             kurs: 'Kurs (EUR pro 1 CHF)',
-            amtlich: 'Amtlich',
+            speichern: 'Kurs speichern',
+            fehlt: 'Bitte Monat (JJJJ-MM) und Kurs eintragen, z. B. 1,07.',
           },
           status: {
             label: 'Status',
@@ -2313,10 +2314,11 @@ export const appResources = {
           ziffer: 'Box {{n}}',
           wechselkurs: {
             title: 'Exchange rate',
-            help: 'Official BMF monthly rate as standard — an actual rate needs a receipt.',
+            help: 'Use the official monthly rate from the BMF table “Umsatzsteuer-Umrechnungskurse” (bundesfinanzministerium.de) — a different, actual rate needs a receipt.',
             monat: 'Month (YYYY-MM)',
             kurs: 'Rate (EUR per 1 CHF)',
-            amtlich: 'Official',
+            speichern: 'Save rate',
+            fehlt: 'Please enter the month (YYYY-MM) and the rate, e.g. 1.07.',
           },
           status: {
             label: 'Status',
