@@ -22,7 +22,7 @@ export function isSupportedDeadlineYear(year: number): year is DeadlineYear {
 
 export function filingDeadlineFor(taxYear: number): string {
   if (!isSupportedDeadlineYear(taxYear)) {
-    throw new RangeError(`Unsupported tax year for the filing deadline (§ 149 Abs. 2 AO): ${taxYear}`)
+    throw new RangeError(`Unsupported tax year for the Abgabefrist / filing deadline (§ 149 Abs. 2 AO): ${taxYear}`)
   }
   return FILING_DEADLINES[taxYear]!
 }
