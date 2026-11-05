@@ -15,6 +15,14 @@ export interface RentalObjectRecord {
   ort?: string | null
   wohnflaeche?: string | null
   afaWieVorjahr?: boolean | null
+  /** Anlage V Z. 20: laufende Umlagen / Nebenkosten received (whole euros). */
+  umlagen?: string | null
+  /** Anlage V Z. 46/48: Schuldzinsen (whole euros). */
+  schuldzinsen?: string | null
+  /** Number of flats let in this building (Anlage V Z. 13). */
+  einheiten?: string | null
+  /** Person A's share in percent; the rest is Person B's (Anlage V Z. 86, ADR-0054). */
+  anteilA?: string | null
 }
 export type VermietungsobjektRecord = RentalObjectRecord
 
@@ -31,13 +39,13 @@ export interface RentalRepository {
     userId: string,
     taxYear: number,
     objectId: string,
-    address: { strasse?: string | null; hausnummer?: string | null; plz?: string | null; ort?: string | null; wohnflaeche?: string | null; afaWieVorjahr?: boolean | null },
+    address: { strasse?: string | null; hausnummer?: string | null; plz?: string | null; ort?: string | null; wohnflaeche?: string | null; afaWieVorjahr?: boolean | null; umlagen?: string | null; schuldzinsen?: string | null; einheiten?: string | null; anteilA?: string | null },
   ): Promise<RentalObjectRecord | null>
   setAdresse(
     userId: string,
     steuerjahr: number,
     objektId: string,
-    adresse: { strasse?: string | null; hausnummer?: string | null; plz?: string | null; ort?: string | null; wohnflaeche?: string | null; afaWieVorjahr?: boolean | null },
+    adresse: { strasse?: string | null; hausnummer?: string | null; plz?: string | null; ort?: string | null; wohnflaeche?: string | null; afaWieVorjahr?: boolean | null; umlagen?: string | null; schuldzinsen?: string | null; einheiten?: string | null; anteilA?: string | null },
   ): Promise<VermietungsobjektRecord | null>
 }
 export type VermietungRepository = RentalRepository

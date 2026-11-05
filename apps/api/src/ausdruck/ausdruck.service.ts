@@ -182,6 +182,10 @@ export class AusdruckService {
       baujahr: obj.baujahr,
       werbungskosten: obj.werbungskosten,
       afaWieVorjahr: obj.afaWieVorjahr ?? null,
+      umlagen: obj.umlagen ?? null,
+      schuldzinsen: obj.schuldzinsen ?? null,
+      einheiten: obj.einheiten ?? null,
+      anteilA: obj.anteilA ?? null,
     }))
 
     const kinderFakten = kinder.map((k, i) => {

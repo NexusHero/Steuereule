@@ -143,19 +143,25 @@ anlV.ort                       S1 Z5    ↑ Ort                          ← Pos
 anlV.wohnflaeche               S1 Z11   ↑ 2 = Nein                     ← 54 Gesamtwohnfläche (in m²)
 anlV.z13Wohnflaeche            S1 Z13   ↑ Wohnfläche (in m²)           ← Bezeichnung der Wohneinheit (z. B. Stockwerk, Nummer der Wohnung)
 anlV.z13Miete                  S1 Z13   ↑ EUR                          ← Bezeichnung der Wohneinheit (z. B. Stockwerk, Nummer der Wohnung) Wohnfläche (in m²)
+anlV.z13Bezeichnung            S1 Z13   ↑ Bezeichnung der Wohneinheit… ← 
 anlV.kz01                      S1 Z15   ↑                              ← 01 = Summe
+anlV.kz04                      S1 Z20   ↑ EUR                          ← 04 auf die Zeilen 15 und 18 entfallende laufende Neben- / Betriebskosten
 anlV.z32Einnahmen              S2 Z32   ↑ EUR                          ← Summe der Einnahmen aus den Zeilen 15, 18 bis 28 und 31
 anlV.z33Linear                 S2 Z33   ↑                              ← 
 anlV.z33Satz                   S2 Z33   ↑ Zuordnung                    ← 1 = linear 2 = degressiv
 anlV.z33WieVorjahr             S2 Z33   ↑ Gebäude                      ← 1 = linear % 2 = degressiv
 anlV.z33Afa                    S2 Z33   ↑ EUR                          ← 1 = linear 1 = wie Vorjahr % 2 = degressiv 2 = laut Erläuterung
 anlV.kz30                      S2 Z35   ↑                              ← 30 = Abzugsfähige Werbungskosten
+anlV.z46Text                   S3 Z46   ↑ Einzelangaben (z. B. Kredit… ← 
+anlV.z46Betrag                 S3 Z46   ↑ EUR                          ← Einzelangaben (z. B. Kreditinstitut)
+anlV.kz33                      S3 Z48   ↑                              ← 202500310203 33 = Abzugsfähige Werbungskosten
 anlV.z80Text                   S4 Z80   ↑ Einzelangaben                ← 
 anlV.z80Betrag                 S4 Z80   ↑ EUR                          ← Einzelangaben
 anlV.kz49                      S4 Z82   ↑                              ← 49 = Abzugsfähige Werbungskosten
 anlV.werbungskostenSumme       S4 Z83   ↑ EUR                          ← Summe der Werbungskosten (Summe der Zeilen 35, 38, 41, 45, 48, 51, 54, 55, 56, 60, 63, 66…
 anlV.ueberschuss               S4 Z85   ↑ EUR                          ← Überschuss (Einnahmen laut Zeile 32 abzüglich Werbungskosten laut Zeile 83) – negativen B…
 anlV.kz20                      S4 Z86   ↑ EUR                          ← 20 Zurechnung des Betrags aus Zeile 85
+anlV.kz21                      S4 Z86   ↑ EUR                          ← EUR ,– 20 21 Zurechnung des Betrags aus Zeile 85
 anlKind.name                   S1 Z1    ↑ Name                         ← 
 anlKind.vornameEltern          S1 Z2    ↑ Vorname                      ← 
 anlKind.steuernummer           S1 Z3    ↑                              ← Steuernummer

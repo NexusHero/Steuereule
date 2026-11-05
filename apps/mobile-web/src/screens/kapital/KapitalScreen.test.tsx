@@ -4,7 +4,7 @@
 // Empfehlung, zu-knapp/unbestimmt as honest no-verdict states, nicht-anwendbar naming the gate.
 // The client stays dumb: the fold and the comparison come from the server.
 import { describe, it, expect } from 'vitest'
-import { fireEvent, render, screen, waitFor, fireEvent, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@steuereule/ui'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'

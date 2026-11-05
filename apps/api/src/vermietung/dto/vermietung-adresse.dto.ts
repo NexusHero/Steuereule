@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger'
-import { IsBoolean, IsOptional, IsString, MaxLength } from 'class-validator'
+import { IsBoolean, IsOptional, IsString, Matches, MaxLength } from 'class-validator'
 
 export class PutVermietungAdresseDto {
   @ApiPropertyOptional({ type: String, example: 'Musterstraße' })
@@ -36,4 +36,24 @@ export class PutVermietungAdresseDto {
   @IsOptional()
   @IsBoolean()
   afaWieVorjahr?: boolean
+
+  @ApiPropertyOptional({ type: String, example: '2400', description: 'Anlage V Zeile 20: laufende Umlagen / Nebenkosten received, whole euros.' })
+  @IsOptional()
+  @Matches(/^\d{1,7}$/)
+  umlagen?: string
+
+  @ApiPropertyOptional({ type: String, example: '3100', description: 'Anlage V Zeilen 46/48: Schuldzinsen (without repayment), whole euros.' })
+  @IsOptional()
+  @Matches(/^\d{1,7}$/)
+  schuldzinsen?: string
+
+  @ApiPropertyOptional({ type: String, example: '3', description: 'Number of flats let in this building (Anlage V Zeile 13).' })
+  @IsOptional()
+  @Matches(/^[1-9]\d{0,2}$/)
+  einheiten?: string
+
+  @ApiPropertyOptional({ type: String, example: '50', description: "Person A's share in percent, the rest is Person B's (Anlage V Zeile 86, ADR-0054)." })
+  @IsOptional()
+  @Matches(/^(\d{1,2}|100)$/)
+  anteilA?: string
 }

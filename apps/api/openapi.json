@@ -4357,6 +4357,22 @@
             "type": "boolean",
             "nullable": true
           },
+          "umlagen": {
+            "type": "string",
+            "nullable": true
+          },
+          "schuldzinsen": {
+            "type": "string",
+            "nullable": true
+          },
+          "einheiten": {
+            "type": "string",
+            "nullable": true
+          },
+          "anteilA": {
+            "type": "string",
+            "nullable": true
+          },
           "fakten": {
             "$ref": "#/components/schemas/VermietungsobjektFaktenDto"
           }
@@ -4373,6 +4389,10 @@
           "ort",
           "wohnflaeche",
           "afaWieVorjahr",
+          "umlagen",
+          "schuldzinsen",
+          "einheiten",
+          "anteilA",
           "fakten"
         ]
       },
@@ -4505,6 +4525,26 @@
           "afaWieVorjahr": {
             "type": "boolean",
             "description": "Anlage V Zeile 33: the building AfA is unchanged from last year."
+          },
+          "umlagen": {
+            "type": "string",
+            "example": "2400",
+            "description": "Anlage V Zeile 20: laufende Umlagen / Nebenkosten received, whole euros."
+          },
+          "schuldzinsen": {
+            "type": "string",
+            "example": "3100",
+            "description": "Anlage V Zeilen 46/48: Schuldzinsen (without repayment), whole euros."
+          },
+          "einheiten": {
+            "type": "string",
+            "example": "3",
+            "description": "Number of flats let in this building (Anlage V Zeile 13)."
+          },
+          "anteilA": {
+            "type": "string",
+            "example": "50",
+            "description": "Person A's share in percent, the rest is Person B's (Anlage V Zeile 86, ADR-0054)."
           }
         }
       },

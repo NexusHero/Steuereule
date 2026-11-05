@@ -73,6 +73,18 @@ export class VermietungsobjektDto {
   @ApiProperty({ type: Boolean, nullable: true })
   afaWieVorjahr?: boolean | null
 
+  @ApiProperty({ type: String, nullable: true })
+  umlagen?: string | null
+
+  @ApiProperty({ type: String, nullable: true })
+  schuldzinsen?: string | null
+
+  @ApiProperty({ type: String, nullable: true })
+  einheiten?: string | null
+
+  @ApiProperty({ type: String, nullable: true })
+  anteilA?: string | null
+
   @ApiProperty({ type: VermietungsobjektFaktenDto })
   fakten!: VermietungsobjektFaktenDto
 }

@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Button, Card, Chip, Feld, Input, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
 import { formatEuro, VERMIETUNG_FELDER, type VermietungFeldId } from '@steuereule/core'
 import {
+  useKopplungControllerGet,
   getVermietungControllerGetQueryKey,
   useVermietungControllerCreate,
   useVermietungControllerGet,
@@ -41,6 +42,7 @@ export function VermietungScreen({ onDone = () => {}, onBack, taxYear = CURRENT_
 
   // The depot / the kind of letting is a catalogue answer; the mask can ask it right here.
   const [frageOffen, setFrageOffen] = useState(false)
+  const kopplung = useKopplungControllerGet(taxYear)
 
   if (query.isPending) {
     return <LoadingState bp={bp} label={tr('vermietung.loading')} />
@@ -58,6 +60,7 @@ export function VermietungScreen({ onDone = () => {}, onBack, taxYear = CURRENT_
   }
 
   const response = query.data.data
+  const paar = kopplung.data?.status === 200 && kopplung.data.data.veranlagungsart === 'zusammen'
 
   if (frageOffen) {
     const zurueck = () => {
@@ -105,6 +108,7 @@ export function VermietungScreen({ onDone = () => {}, onBack, taxYear = CURRENT_
           index={index}
           onSend={(feld, data) => send(objekt.id, feld, data)}
           onSendAdresse={(data) => sendAdresse(objekt.id, data)}
+          paar={paar}
         />
       ))}
 
@@ -141,7 +145,9 @@ function ObjektCard({
   index,
   onSend,
   onSendAdresse,
+  paar = false,
 }: {
+  readonly paar?: boolean
   readonly objekt: VermietungsobjektDto
   readonly index: number
   readonly onSend: (feld: VermietungFeldId, data: VermietungFeldDto) => void
@@ -214,6 +220,26 @@ function ObjektCard({
             onChange={(wohnflaeche) => onSendAdresse?.({ wohnflaeche })}
           />
         </Feld>
+        {(
+          [
+            ['einheiten', 'Wie viele Wohnungen vermietest du in diesem Gebäude?', '1'],
+            ['umlagen', 'Umlagen / Nebenkosten, die die Mieter gezahlt haben (€ im Jahr)', '2400'],
+            ['schuldzinsen', 'Schuldzinsen für das Objekt, ohne Tilgung (€ im Jahr)', '3100'],
+            ...(paar ? ([['anteilA', 'Dein Anteil am Objekt in % (der Rest gehört deinem Partner)', '50']] as const) : []),
+          ] as const
+        ).map(([feld, label, beispiel]) => (
+          <Feld key={feld} label={label}>
+            <Input
+              value={objekt[feld] ?? ''}
+              placeholder={beispiel}
+              type="numeric"
+              accessibilityLabel={label}
+              onChange={(wert) => {
+                if (/^\d+$/.test(wert.trim())) onSendAdresse?.({ [feld]: wert.trim() })
+              }}
+            />
+          </Feld>
+        ))}
         <Feld label="Ist die Gebäude-AfA unverändert wie im Vorjahr?">
           <View style={{ flexDirection: 'row', gap: t.space.s2 }}>
             <Chip

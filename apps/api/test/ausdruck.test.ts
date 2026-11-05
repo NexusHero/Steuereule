@@ -188,6 +188,36 @@ describe('ausdruckWerte', () => {
     })
   })
 
+  describe('Anlage V — typical lines (S6)', () => {
+    const OBJEKT = {
+      strasse: 'Mühlstraße 21', plz: '73728', ort: 'Esslingen', wohnflaeche: '240', mieteinnahmen: '38400',
+      anschaffungskosten: '620000', baujahr: '1978', werbungskosten: '9800', afaWieVorjahr: true,
+      umlagen: '4200', schuldzinsen: '6100', einheiten: '3',
+    }
+
+    it('prints Umlagen (Z. 20), Schuldzinsen (Z. 46/48) and several flats in Z. 13, and nets them in the result', () => {
+      const v = ausdruckWerte({ ...FAKTEN, vermietung: [OBJEKT] }).instanzen?.['anlage-v']?.[0]
+      expect(v).toMatchObject({
+        'anlV.z13Bezeichnung': '3 Wohneinheiten',
+        'anlV.kz04': '4200',
+        'anlV.z32Einnahmen': String(38400 + 4200),
+        'anlV.kz33': '6100',
+        'anlV.werbungskostenSumme': String(9800 + 6100 + 12400),
+        'anlV.ueberschuss': String(38400 + 4200 - 9800 - 6100 - 12400),
+        'anlV.kz20': String(38400 + 4200 - 9800 - 6100 - 12400),
+      })
+      expect(v?.['anlV.kz21']).toBeUndefined()
+    })
+
+    it('attributes the result to both spouses in a joint return — half and half unless a share is given (Z. 86)', () => {
+      const kopplung = { veranlagungsart: 'zusammen' as const, personB: { firstName: 'Sabine', lastName: 'Weber', steuerId: null, geburtsdatum: null } }
+      const haelftig = ausdruckWerte({ ...FAKTEN, kopplung, vermietung: [OBJEKT] }).instanzen?.['anlage-v']?.[0]
+      expect(haelftig).toMatchObject({ 'anlV.kz20': '7150', 'anlV.kz21': '7150' })
+      const siebzigProzent = ausdruckWerte({ ...FAKTEN, kopplung, vermietung: [{ ...OBJEKT, anteilA: '70' }] }).instanzen?.['anlage-v']?.[0]
+      expect(siebzigProzent).toMatchObject({ 'anlV.kz20': '10010', 'anlV.kz21': '4290' })
+    })
+  })
+
   describe('Anlage KAP', () => {
     const DEUTSCH = {
       depot: 'deutscher-broker',
