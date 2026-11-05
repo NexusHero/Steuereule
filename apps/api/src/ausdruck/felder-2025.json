@@ -2008,6 +2008,30 @@
       }
     },
     {
+      "id": "anlKind.kz66",
+      "formular": "anlage-kind",
+      "seite": 2,
+      "art": "euro",
+      "kasten": {
+        "x": 447.5,
+        "y": 506.2,
+        "breite": 72.1,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlKind.kz67",
+      "formular": "anlage-kind",
+      "seite": 2,
+      "art": "euro",
+      "kasten": {
+        "x": 447.5,
+        "y": 486,
+        "breite": 72.2,
+        "hoehe": 15.8
+      }
+    },
+    {
       "id": "anlKind.inlandVon",
       "formular": "anlage-kind",
       "seite": 1,
@@ -2376,6 +2400,138 @@
         "x": 132.6,
         "y": 723.9,
         "breite": 183.1,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlVor.kz326",
+      "formular": "anlage-vorsorgeaufwand",
+      "seite": 1,
+      "art": "euro",
+      "kasten": {
+        "x": 350.1,
+        "y": 232.8,
+        "breite": 70.9,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlVor.kz328",
+      "formular": "anlage-vorsorgeaufwand",
+      "seite": 1,
+      "art": "euro",
+      "kasten": {
+        "x": 347.8,
+        "y": 209.6,
+        "breite": 70.9,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlVor.kz329",
+      "formular": "anlage-vorsorgeaufwand",
+      "seite": 1,
+      "art": "euro",
+      "kasten": {
+        "x": 350.1,
+        "y": 174.3,
+        "breite": 70.9,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlVor.kz338",
+      "formular": "anlage-vorsorgeaufwand",
+      "seite": 1,
+      "art": "euro",
+      "kasten": {
+        "x": 347.8,
+        "y": 45.5,
+        "breite": 70.9,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlVor.kz350",
+      "formular": "anlage-vorsorgeaufwand",
+      "seite": 2,
+      "art": "euro",
+      "kasten": {
+        "x": 327.7,
+        "y": 751.3,
+        "breite": 72.5,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlVor.kz351",
+      "formular": "anlage-vorsorgeaufwand",
+      "seite": 2,
+      "art": "euro",
+      "kasten": {
+        "x": 327.7,
+        "y": 731,
+        "breite": 72.5,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlVor.kz354",
+      "formular": "anlage-vorsorgeaufwand",
+      "seite": 2,
+      "art": "euro",
+      "kasten": {
+        "x": 325.4,
+        "y": 625.4,
+        "breite": 72.5,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlVor.kz333",
+      "formular": "anlage-vorsorgeaufwand",
+      "seite": 2,
+      "art": "euro",
+      "kasten": {
+        "x": 334.4,
+        "y": 581.2,
+        "breite": 72.5,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlVor.kz334",
+      "formular": "anlage-vorsorgeaufwand",
+      "seite": 2,
+      "art": "euro",
+      "kasten": {
+        "x": 334.4,
+        "y": 560.9,
+        "breite": 72.5,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlVor.kz335",
+      "formular": "anlage-vorsorgeaufwand",
+      "seite": 2,
+      "art": "euro",
+      "kasten": {
+        "x": 334.4,
+        "y": 533.2,
+        "breite": 72.5,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlVor.kz339",
+      "formular": "anlage-vorsorgeaufwand",
+      "seite": 2,
+      "art": "euro",
+      "kasten": {
+        "x": 334.4,
+        "y": 444,
+        "breite": 72.5,
         "hoehe": 15.8
       }
     }

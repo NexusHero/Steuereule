@@ -49,6 +49,8 @@ export interface KindItem {
   andererElternteilVerstorbenAm?: string | null
   gemeldetBeiMirGanzjaehrig?: boolean | null
   kindergeldAnMichGanzjaehrig?: boolean | null
+  kvBasisEur?: string | null
+  pvEur?: string | null
 }
 
 /** What the form writes: the identity plus the Anlage-Kind facts. */
@@ -70,6 +72,8 @@ export interface KindEingabe {
   andererElternteilVerstorbenAm: string | null
   gemeldetBeiMirGanzjaehrig: boolean | null
   kindergeldAnMichGanzjaehrig: boolean | null
+  kvBasisEur: string | null
+  pvEur: string | null
 }
 
 const ANDERER_ELTERNTEIL_LABEL: Record<AndererElternteilStatus, string> = {
@@ -197,6 +201,8 @@ function KinderScreenView({
   const [geburtsdatum, setGeburtsdatum] = useState('')
   const [idnr, setIdnr] = useState('')
   const [kindergeld, setKindergeld] = useState('')
+  const [kvBasis, setKvBasis] = useState('')
+  const [pv, setPv] = useState('')
   const [verhaeltnis, setVerhaeltnis] = useState<Kindschaftsverhaeltnis | null>(null)
   const [verhaeltnisB, setVerhaeltnisB] = useState<Kindschaftsverhaeltnis | null>(null)
   const [familienkasse, setFamilienkasse] = useState('')
@@ -230,6 +236,8 @@ function KinderScreenView({
     setGeburtsdatum(isoZuDeutsch(k?.geburtsdatum ?? null))
     setIdnr(k?.idnr ?? '')
     setKindergeld(k?.kindergeldAnspruchEur ?? '')
+    setKvBasis(k?.kvBasisEur ?? '')
+    setPv(k?.pvEur ?? '')
     setVerhaeltnis(k?.kindschaftsverhaeltnis ?? null)
     setVerhaeltnisB(k?.kindschaftsverhaeltnisB ?? null)
     setFamilienkasse(k?.familienkasse ?? '')
@@ -267,6 +275,8 @@ function KinderScreenView({
       andererElternteilVerstorbenAm: ae === 'Verstorben' ? deutschZuIso(aeVerstorbenAm) : null,
       gemeldetBeiMirGanzjaehrig: gemeldet,
       kindergeldAnMichGanzjaehrig: kindergeldAnMich,
+      kvBasisEur: /^\d+$/.test(kvBasis.trim()) ? kvBasis.trim() : null,
+      pvEur: /^\d+$/.test(pv.trim()) ? pv.trim() : null,
     }
     if (bearbeitet) {
       if (onSaveKind) await onSaveKind(bearbeitet, payload)
@@ -418,6 +428,18 @@ function KinderScreenView({
               placeholder="z.B. Familienkasse Sachsen"
               accessibilityLabel="Familienkasse"
             />
+          </Feld>
+          <Feld label="Krankenversicherung des Kindes, die ihr zahlt (Basisabsicherung, € im Jahr, optional)">
+            <Input
+              value={kvBasis}
+              onChange={setKvBasis}
+              placeholder="z.B. 1080"
+              type="numeric"
+              accessibilityLabel="Krankenversicherung des Kindes"
+            />
+          </Feld>
+          <Feld label="Pflegeversicherung des Kindes, die ihr zahlt (€ im Jahr, optional)">
+            <Input value={pv} onChange={setPv} placeholder="z.B. 0" type="numeric" accessibilityLabel="Pflegeversicherung des Kindes" />
           </Feld>
           <Feld label={`Hat das Kind ${taxYear} durchgehend in Deutschland gewohnt?`}>
             <View style={styles.chips}>

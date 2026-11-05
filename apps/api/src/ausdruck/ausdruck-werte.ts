@@ -7,6 +7,7 @@ import {
   kapitalPflichtfelder,
   type KapitalDepotEinordnung,
   type KapitalFeldId,
+  type Krankenversicherung,
 } from '@steuereule/core'
 import type { FeldWerte } from './vordruck-renderer.js'
 
@@ -45,6 +46,8 @@ export interface KindFakten {
   andererElternteilVerstorbenAm?: string | null
   gemeldetBeiMirGanzjaehrig?: boolean | null
   kindergeldAnMichGanzjaehrig?: boolean | null
+  kvBasisEur?: string | null
+  pvEur?: string | null
 }
 
 /** Anlage Kind Zeilen 47/48 — answered once per year in the interview. */
@@ -247,6 +250,38 @@ export interface AusdruckFakten {
   riester?: RiesterFakten | null
   alleinerziehend?: AlleinerziehendFakten | null
   arbeitsweg?: ArbeitswegFakten | null
+  /** Self-paid health and care insurance of Person A (Anlage Vorsorgeaufwand Z. 16–33). */
+  krankenversicherung?: readonly Krankenversicherung[] | null
+}
+
+/**
+ * Anlage Vorsorgeaufwand for self-paid insurance (Person A Kennzahlen 3xx): voluntary statutory Z. 16–18
+ * and 22, private Z. 23, 24 and 27, foreign Z. 28–30 and 33. Contributions withheld from a German salary
+ * are e-data (Z. 11–13) and Swiss ones via the employer are in the Anlage N-Gre — neither is repeated here.
+ */
+function vorsorgeaufwandWerte(versicherungen: readonly Krankenversicherung[] | null | undefined): Record<string, string> {
+  const summen = new Map<string, number>()
+  const addiere = (kz: string, betrag: number) => summen.set(kz, (summen.get(kz) ?? 0) + betrag)
+  for (const kv of versicherungen ?? []) {
+    if (kv.art === 'gesetzlich') {
+      addiere('326', kv.kvBasis)
+      if (kv.mitKrankengeld) addiere('328', kv.kvBasis)
+      addiere('329', kv.pv)
+      addiere('338', kv.wahlleistungen)
+    } else if (kv.art === 'privat') {
+      addiere('350', kv.kvBasis)
+      addiere('351', kv.pv)
+      addiere('354', kv.wahlleistungen)
+    } else {
+      addiere('333', kv.kvBasis)
+      if (!kv.mitKrankengeld) addiere('334', kv.kvBasis)
+      addiere('335', kv.pv)
+      addiere('339', kv.wahlleistungen)
+    }
+  }
+  const werte: Record<string, string> = {}
+  for (const [kz, betrag] of summen) if (betrag > 0) werte[`anlVor.kz${kz}`] = String(betrag)
+  return werte
 }
 
 const RENTE_KENNZAHL: Record<string, string> = {
@@ -556,6 +591,9 @@ export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
       if (k.geburtsdatum) kWerte['anlKind.geburtsdatum'] = deutschesDatum(k.geburtsdatum)
       if (k.kindergeldAnspruchEur) kWerte['anlKind.kindergeld'] = k.kindergeldAnspruchEur
       if (k.familienkasse) kWerte['anlKind.familienkasse'] = k.familienkasse
+      // Z. 27/28: KV/PV of the child the parents pay as policyholders — an empty or zero line stays empty.
+      if (k.kvBasisEur && Number(k.kvBasisEur) > 0) kWerte['anlKind.kz66'] = k.kvBasisEur
+      if (k.pvEur && Number(k.pvEur) > 0) kWerte['anlKind.kz67'] = k.pvEur
       const beginn = k.geburtsdatum?.startsWith(`${fakten.steuerjahr}-`) ? k.geburtsdatum : `${fakten.steuerjahr}-01-01`
       const ende = `${fakten.steuerjahr}-12-31`
       if (k.wohnsitzInlandGanzjaehrig) {
@@ -601,6 +639,14 @@ export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
     setze('anlSo.vorname', profil.firstName)
     setze('anlSo.steuernummer', profil.steuernummer)
     werte['anlSo.spenden'] = fakten.sonderausgaben.spenden
+  }
+
+  const vorsorge = vorsorgeaufwandWerte(fakten.krankenversicherung)
+  if (Object.keys(vorsorge).length > 0) {
+    setze('anlVor.name', profil.lastName)
+    setze('anlVor.vorname', profil.firstName)
+    setze('anlVor.steuernummer', profil.steuernummer)
+    Object.assign(werte, vorsorge)
   }
 
   if (fakten.riester) {

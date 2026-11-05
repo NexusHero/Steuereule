@@ -332,6 +332,55 @@ describe('ausdruckWerte', () => {
     })
   })
 
+  it("prints the child's KV/PV paid by the parents in Anlage Kind Z. 27/28", () => {
+    const kind = { lfdNr: '1', vorname: 'Mia', nachname: 'Beispiel', geburtsdatum: '2016-03-14', idnr: '41234567890', kvBasisEur: '1080', pvEur: '0' }
+    const { instanzen } = ausdruckWerte({ ...FAKTEN, kinder: [kind] })
+    expect(instanzen?.['anlage-kind']?.[0]).toMatchObject({ 'anlKind.kz66': '1080' })
+    expect(instanzen?.['anlage-kind']?.[0]?.['anlKind.kz67']).toBeUndefined()
+  })
+
+  describe('Anlage Vorsorgeaufwand', () => {
+    it('prints voluntary statutory KV with Krankengeld, PV and extras in Z. 16, 17, 18 and 22', () => {
+      const { werte } = ausdruckWerte({
+        ...FAKTEN,
+        krankenversicherung: [{ art: 'gesetzlich', kvBasis: 2340, mitKrankengeld: true, pv: 660, wahlleistungen: 120 }],
+      })
+      expect(werte).toMatchObject({
+        'anlVor.name': 'Beispiel',
+        'anlVor.kz326': '2340',
+        'anlVor.kz328': '2340',
+        'anlVor.kz329': '660',
+        'anlVor.kz338': '120',
+      })
+    })
+
+    it('prints private insurance in Z. 23, 24 and 27, and leaves empty lines empty', () => {
+      const { werte } = ausdruckWerte({
+        ...FAKTEN,
+        krankenversicherung: [{ art: 'privat', kvBasis: 4800, mitKrankengeld: false, pv: 400, wahlleistungen: 0 }],
+      })
+      expect(werte).toMatchObject({ 'anlVor.kz350': '4800', 'anlVor.kz351': '400' })
+      expect(werte['anlVor.kz354']).toBeUndefined()
+      expect(werte['anlVor.kz326']).toBeUndefined()
+    })
+
+    it('adds foreign insurances up in Z. 28–30 — a Swiss Krankenkasse has no Krankengeld claim (Z. 29)', () => {
+      const { werte } = ausdruckWerte({
+        ...FAKTEN,
+        krankenversicherung: [
+          { art: 'ausland', kvBasis: 3000, mitKrankengeld: false, pv: 0, wahlleistungen: 0 },
+          { art: 'ausland', kvBasis: 500, mitKrankengeld: false, pv: 0, wahlleistungen: 0 },
+        ],
+      })
+      expect(werte).toMatchObject({ 'anlVor.kz333': '3500', 'anlVor.kz334': '3500' })
+    })
+
+    it('prints no Anlage Vorsorgeaufwand without self-paid insurance', () => {
+      const { werte } = ausdruckWerte({ ...FAKTEN, krankenversicherung: [] })
+      expect(Object.keys(werte).some((id) => id.startsWith('anlVor.'))).toBe(false)
+    })
+  })
+
   it('fills Anlage Sonderausgaben and AV', () => {
     const { werte } = ausdruckWerte({
       ...FAKTEN,

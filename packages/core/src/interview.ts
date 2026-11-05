@@ -30,7 +30,11 @@ export type SonderausgabeQuestionId =
   | 'spenden'
   | 'spenden-betrag'
   | 'kv-pv'
+  | 'kv-pv-art'
+  | 'kv-krankengeld'
   | 'kv-pv-betrag'
+  | 'pv-betrag'
+  | 'kv-wahl-betrag'
   | 'riester'
   | 'riester-betrag'
   | 'riester-art'
@@ -90,6 +94,9 @@ export const VERMIETUNG_ART_VALUES = ['Einfach', 'Mehrere', 'Verkauf oder möbli
 export const JA_NEIN_VALUES = ['Ja', 'Nein'] as const
 
 export const RIESTER_ART_VALUES = ['Unmittelbar', 'Mittelbar'] as const
+
+/** Anlage Vorsorgeaufwand: voluntary statutory (Z. 16–18), private (Z. 23–27) or foreign (Z. 28–33) insurance. */
+export const KV_ART_VALUES = ['Gesetzlich (freiwillig)', 'Privat', 'Ausländisch'] as const
 
 export const NEBENJOB_VALUES = ['Nein', 'Minijob', 'Midijob', 'Nebenjob'] as const
 
@@ -205,8 +212,23 @@ export const QUESTIONS: Readonly<Record<EntryStepId, QuestionDeclaration>> = {
 
   spenden: { id: 'spenden', kind: 'question', form: { kind: 'enum', values: JA_NEIN_VALUES }, followUps: { Ja: ['spenden-betrag'] } },
   'spenden-betrag': { id: 'spenden-betrag', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
-  'kv-pv': { id: 'kv-pv', kind: 'question', form: { kind: 'enum', values: JA_NEIN_VALUES }, followUps: { Ja: ['kv-pv-betrag'] } },
+  'kv-pv': {
+    id: 'kv-pv',
+    kind: 'question',
+    form: { kind: 'enum', values: JA_NEIN_VALUES },
+    followUps: { Ja: ['kv-pv-art', 'kv-pv-betrag', 'pv-betrag', 'kv-wahl-betrag'] },
+  },
+  'kv-pv-art': {
+    id: 'kv-pv-art',
+    kind: 'question',
+    form: { kind: 'enum', values: KV_ART_VALUES },
+    // Only statutory and foreign contributions are split by the Krankengeld claim on the form.
+    followUps: { 'Gesetzlich (freiwillig)': ['kv-krankengeld'], Ausländisch: ['kv-krankengeld'], Privat: [] },
+  },
+  'kv-krankengeld': { id: 'kv-krankengeld', kind: 'question', form: { kind: 'enum', values: JA_NEIN_VALUES } },
   'kv-pv-betrag': { id: 'kv-pv-betrag', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
+  'pv-betrag': { id: 'pv-betrag', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
+  'kv-wahl-betrag': { id: 'kv-wahl-betrag', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
   riester: { id: 'riester', kind: 'question', form: { kind: 'enum', values: JA_NEIN_VALUES }, followUps: { Ja: ['riester-betrag', 'riester-art'] } },
   'riester-betrag': { id: 'riester-betrag', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
   'riester-art': {

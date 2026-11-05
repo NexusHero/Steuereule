@@ -52,6 +52,8 @@ export class FakeKindRepository implements KindRepository {
       andererElternteilVerstorbenAm: data.andererElternteilVerstorbenAm ?? null,
       gemeldetBeiMirGanzjaehrig: data.gemeldetBeiMirGanzjaehrig ?? null,
       kindergeldAnMichGanzjaehrig: data.kindergeldAnMichGanzjaehrig ?? null,
+      kvBasisEur: data.kvBasisEur ?? null,
+      pvEur: data.pvEur ?? null,
     }
     this.store.set(record.id, record)
     return Promise.resolve(record)

@@ -857,6 +857,10 @@ model Kind {
   /// Entlastungsbetrag für Alleinerziehende (Anlage Kind Zeilen 45/46), whole year only.
   gemeldetBeiMirGanzjaehrig      Boolean?
   kindergeldAnMichGanzjaehrig    Boolean?
+  /// Anlage Kind Zeilen 27/28 (Kz 66/67): the child's KV Basisabsicherung and PV, paid by the parents as
+  /// policyholders; whole euros, null = not entered.
+  kvBasisEur                     String?  /// @encrypted?mode=strict
+  pvEur                          String?  /// @encrypted?mode=strict
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 

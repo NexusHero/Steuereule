@@ -51,6 +51,19 @@ describe('KinderScreen', () => {
     expect(screen.getByText('Entlastungsbetrag für Alleinerziehende')).toBeTruthy()
   })
 
+  it("saves the child's health and care insurance the parents pay (Anlage Kind Z. 27/28)", async () => {
+    const onAdd = vi.fn().mockResolvedValue(undefined)
+    renderKinder({ onAddKind: onAdd })
+    fireEvent.click(screen.getByTestId('kind-neu'))
+    fireEvent.change(screen.getByLabelText('Vorname'), { target: { value: 'Noah' } })
+    fireEvent.change(screen.getByLabelText('Nachname'), { target: { value: 'Brenner' } })
+    fireEvent.change(screen.getByLabelText('Geburtsdatum'), { target: { value: '02.09.2019' } })
+    fireEvent.change(screen.getByLabelText('Krankenversicherung des Kindes'), { target: { value: '1080' } })
+    fireEvent.click(screen.getByTestId('kind-speichern'))
+
+    await waitFor(() => expect(onAdd).toHaveBeenCalledWith(expect.objectContaining({ kvBasisEur: '1080', pvEur: null })))
+  })
+
   it('allows adding a new child', async () => {
     const onAdd = vi.fn().mockResolvedValue(undefined)
     renderKinder({ onAddKind: onAdd })

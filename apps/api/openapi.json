@@ -6235,6 +6235,14 @@
           "kindergeldAnMichGanzjaehrig": {
             "type": "boolean",
             "nullable": true
+          },
+          "kvBasisEur": {
+            "type": "string",
+            "nullable": true
+          },
+          "pvEur": {
+            "type": "string",
+            "nullable": true
           }
         },
         "required": [
@@ -6254,7 +6262,9 @@
           "andererElternteilArt",
           "andererElternteilVerstorbenAm",
           "gemeldetBeiMirGanzjaehrig",
-          "kindergeldAnMichGanzjaehrig"
+          "kindergeldAnMichGanzjaehrig",
+          "kvBasisEur",
+          "pvEur"
         ]
       },
       "KinderResponseDto": {
@@ -6368,6 +6378,18 @@
             "nullable": true,
             "description": "Zeile 46: the Kindergeld was paid to the filer all year."
           },
+          "kvBasisEur": {
+            "type": "string",
+            "nullable": true,
+            "example": "1080",
+            "description": "Zeile 27 (Kz 66): KV Basisabsicherung of the child paid by the parents, whole euros."
+          },
+          "pvEur": {
+            "type": "string",
+            "nullable": true,
+            "example": "0",
+            "description": "Zeile 28 (Kz 67): PV of the child paid by the parents, whole euros."
+          },
           "vorname": {
             "type": "string",
             "example": "Lina"
@@ -6477,6 +6499,18 @@
             "type": "boolean",
             "nullable": true,
             "description": "Zeile 46: the Kindergeld was paid to the filer all year."
+          },
+          "kvBasisEur": {
+            "type": "string",
+            "nullable": true,
+            "example": "1080",
+            "description": "Zeile 27 (Kz 66): KV Basisabsicherung of the child paid by the parents, whole euros."
+          },
+          "pvEur": {
+            "type": "string",
+            "nullable": true,
+            "example": "0",
+            "description": "Zeile 28 (Kz 67): PV of the child paid by the parents, whole euros."
           },
           "vorname": {
             "type": "string",
