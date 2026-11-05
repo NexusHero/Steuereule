@@ -870,6 +870,10 @@ jobs:
           WEB_ORIGIN: http://localhost:8080
           DATABASE_URL: postgresql://steuereule:steuereule@localhost:5432/steuereule
         run: node e2e/prod-deploy/run.mjs
+      - name: Registration mail reached the local inbox (Mailpit, SMTP)
+        run: |
+          curl --fail --silent --show-error --retry 10 --retry-delay 2 --retry-all-errors \
+            "http://localhost:8025/api/v1/message/latest" | grep -q 'verify-email'
       - name: REQ-011 PDF export — real HTTP against the built apps/api/Dockerfile container
         # The coordinator's own F5 follow-up: F1 (Musti's #274 review) added Chromium to
         # apps/api/Dockerfile, but nothing had actually exercised it INSIDE the built container —

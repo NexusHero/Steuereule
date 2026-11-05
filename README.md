@@ -82,12 +82,13 @@ Gebaut als sauberes, hochgradig typisiertes Monorepo:
 ```bash
 scripts/local.sh          # alles in Containern, wie in Produktion
 scripts/local.sh dev      # zum Entwickeln, Web mit Hot Reload
-scripts/local.sh help     # alle Befehle (mail, logs, status, down, reset)
+scripts/local.sh mail     # lokales Postfach öffnen
+scripts/local.sh help     # alle Befehle (logs, status, down, reset)
 ```
 
 * **`up`:** Web [http://localhost:8080](http://localhost:8080), API [http://localhost:3000](http://localhost:3000). Legt beim ersten Mal `.env` aus `.env.example` an.
 * **`dev`:** Web [http://localhost:8081](http://localhost:8081), API [http://localhost:3000](http://localhost:3000), Postgres auf Port 5434.
-* **`mail`:** holt den Bestätigungslink nach der Registrierung aus dem API-Log — lokal werden keine Mails verschickt.
+* **Postfach:** [http://localhost:8025](http://localhost:8025) (Mailpit) — Bestätigungs- und Passwort-Mails landen hier, nie im Internet.
 
 > **Gut zu wissen vor dem ersten Klick:**
 > 1. **Die Datenbank startet leer:** „Sauberes Blatt“ – du kannst direkt als Gast starten oder dich neu registrieren.
