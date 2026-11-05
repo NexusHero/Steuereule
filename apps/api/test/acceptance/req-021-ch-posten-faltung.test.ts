@@ -187,6 +187,7 @@ describe('REQ-021 — the CH-Posten folding (Vorsorge + Quellensteuer-Anrechnung
       krankentaggeldChf: 300,
       pkArbeitnehmerChf: 5000,
       pkArbeitgeberChf: 6000,
+      krankentaggeldArbeitgeberProzent: 10,
       sonderfaelle: false,
     })
     expect(put.status).toBe(200)
@@ -199,8 +200,13 @@ describe('REQ-021 — the CH-Posten folding (Vorsorge + Quellensteuer-Anrechnung
       krankentaggeldChf: 300,
       pkArbeitnehmerChf: 5000,
       pkArbeitgeberChf: 6000,
+      krankentaggeldArbeitgeberProzent: 10,
+      krankentaggeldArbeitgeberChf: null,
+      nbuvArbeitgeberProzent: null,
+      nbuvArbeitgeberChf: null,
       sonderfaelle: false,
     })
+    expect((await putFeld(cookie, 'n-gre', { krankentaggeldArbeitgeberProzent: 101 })).status).toBe(400)
     expect((await putFeld(cookie, 'n-gre', { familienzulagenChf: -1 })).status).toBe(400)
   })
 
