@@ -21,7 +21,8 @@ confidence) · **Assess** (evaluating, not yet committed) · **Hold** (avoid / l
 | Prisma + managed EU Postgres | Adopt | ADR-047 |
 | prisma-field-encryption (AES-256-GCM, randomized) | Adopt | ADR-0008 |
 | Redis (BullMQ queues) | Adopt | ADR-047 |
-| k3s on Hetzner (EU) | Adopt | ADR-049 |
+| Google Cloud Run + Cloud SQL (europe-west4) for the beta | Adopt | ADR-0053 |
+| k3s on Hetzner (EU) | Assess (after the beta) | ADR-049, ADR-0053 |
 | LangChain.js / LangGraph.js (v1.x, behind KiService port) | Adopt | ADR-048 |
 | `@react-navigation/native` + `native-stack` (router at the composition root only) | Adopt | ADR-0023 |
 | `react-native-screens` · `react-native-safe-area-context` (navigator's required deps) | Adopt | ADR-0023 (entered with the navigator, not chosen separately) |

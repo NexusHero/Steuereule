@@ -1,4 +1,35 @@
-# Infra — k3s auf Hetzner, managed EU-Postgres, Redis (Track 06 / #292)
+# Infra
+
+## Beta: Google Cloud Run + Cloud SQL (aktiv, ADR-0053)
+
+`infra/gcp/` beschreibt die Beta-Umgebung in `europe-west4`: Cloud SQL (Postgres 16), Artifact
+Registry, Secret Manager (nur leere Secrets — die Werte setzt der Wizard), Service-Accounts,
+Workload Identity für GitHub Actions und einen Budget-Alarm. Die Cloud-Run-Dienste selbst
+rollt `.github/workflows/deploy.yml` nach jeder grünen CI auf `main` aus.
+
+Einrichten, einmalig und wiederholbar:
+
+```sh
+scripts/infra/gcp-setup.sh
+```
+
+Der Wizard führt durch Projekt und Abrechnung, State-Bucket, `tofu apply`, Secrets,
+Brevo, optional Google-Login und Stripe, GitHub-Variablen, den ersten Deploy und die
+Domain-Verknüpfung. Er ist idempotent: ein zweiter Lauf überschreibt keine vorhandenen Secrets.
+
+Datenbank zwischen Testrunden anhalten und wieder starten:
+
+```sh
+gcloud sql instances patch steuereule-beta --activation-policy=NEVER
+gcloud sql instances patch steuereule-beta --activation-policy=ALWAYS
+```
+
+## Später: k3s auf Hetzner (nicht aktiv)
+
+Alles unterhalb dieser Zeile beschreibt das Zielbild aus Produkt-ADR-049. Es wird nicht
+deployt, bis Last oder Verfügbarkeit es verlangen (ADR-0053).
+
+### k3s auf Hetzner, managed EU-Postgres, Redis (Track 06 / #292)
 
 **Slice 1: IaC-Skelett + Feinschnitt + Credential-Blöcke.** Dieses Verzeichnis ist das
 Skelett der echten Infrastruktur aus `docs/roadmap-1.0.md` (Infra-Track, D7) und den
