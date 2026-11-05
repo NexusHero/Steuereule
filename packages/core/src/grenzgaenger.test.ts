@@ -51,7 +51,7 @@ describe('LOHNAUSWEIS_FELDER — ADR-036 the guided mask (Ziffern 1–15)', () =
 
   it('marks exactly the ADR-029-relevant fields as postenRelevant', () => {
     const relevant = LOHNAUSWEIS_FELDER.filter((f) => f.postenRelevant).map((f) => f.id)
-    expect(relevant).toEqual(['bruttolohn-total', 'ahv-beitraege', 'berufliche-vorsorge', 'quellensteuer'])
+    expect(relevant).toEqual(['bruttolohn-total', 'berufliche-vorsorge', 'quellensteuer'])
   })
 })
 
@@ -191,19 +191,15 @@ describe('chPostenAlsKernposten — ADR-029/0015-Lehre, Vorsorge + Anrechnung fo
     })
   })
 
-  it('AHV/IV/EO/ALV/NBUV (Ziffer 9) counts as Vorsorgeaufwand, like the gesetzliche Rentenversicherung', () => {
+  it('AHV (1. Säule) has no role yet — its DBA treatment is open', () => {
     const ahv: Parameters<typeof chPostenAlsKernposten>[0] = {
-      id: 'ch-lohnausweis-ahv-beitraege',
+      id: 'ch-ahv',
       art: 'AHV',
       betragChf: 4000,
       wechselkurs: KURS,
       betragEur: 3764.8,
-      ziffer: '9',
     }
-
-    const kernposten = chPostenAlsKernposten(ahv)
-
-    expect(kernposten).toMatchObject({ rolle: 'vorsorgeaufwand', betrag: 3765, quelle: { art: 'beleg', belegId: 'lohnausweis' } })
+    expect(chPostenAlsKernposten(ahv)).toBeNull()
   })
 })
 

@@ -31,14 +31,19 @@ export interface AngestelltEingaben {
   readonly selbstGezahlteKvPv: number
 }
 
+/** The EUR lines of the Anlage N-Gre (anlageNGreBetraege) plus what the user pays outside the salary. */
 export interface GrenzgaengerEingaben {
   readonly jahr: number
-  readonly einnahmenEur: number
+  /** Z. 23: Arbeitslohn after Familienzulagen. */
+  readonly arbeitslohnEur: number
+  /** Z. 25: creditable Swiss withholding tax, at most 4.5 %. */
   readonly quellensteuerEur: number
-  readonly ahvEur: number
-  readonly pensionskasseEur: number
-  readonly krankenkasseEur: number
-  readonly selbstGezahlteKvPv: number
+  /** Z. 85: employee AHV/IV plus Pensionskasse Obligatorium — treated like gesetzliche Rentenversicherung. */
+  readonly altersvorsorgeEur: number
+  /** Z. 82: EO, ALV, Krankentaggeld and half the NBUV — sonstige Vorsorgeaufwendungen. */
+  readonly sonstigeVorsorgeEur: number
+  /** Basic health and care insurance paid outside the salary (Swiss Krankenkasse, German KV/PV). */
+  readonly krankenversicherungEur: number
   readonly pendlerpauschale: number
   readonly spenden: number
 }
@@ -52,8 +57,8 @@ const SONDERAUSGABEN_PAUSCHBETRAG = 36
  */
 const SV_ABZIEHBAR: Spanne = { von: 0.91, bis: 0.93 }
 
-/** Ziffer 9 mixes AHV/IV/EO (Altersvorsorge) with ALV and NBUV (sonstige Vorsorge, usually absorbed). */
-const AHV_ABZIEHBAR: Spanne = { von: 0.72, bis: 1 }
+/** § 10 Abs. 4 EStG for someone who pays their health insurance entirely themselves, as a Grenzgänger does. */
+const HOECHSTBETRAG_SONSTIGE_VORSORGE = 2800
 
 /** A ranged estimate of the Einkommensteuer for one single Angestellte — never a point value (product ADR-015). */
 export function steuerschaetzungAngestellt(e: AngestelltEingaben): Steuerschaetzung {
@@ -77,16 +82,15 @@ export function steuerschaetzungAngestellt(e: AngestelltEingaben): Steuerschaetz
 /** A ranged estimate for a Grenzgänger CH: German tax against the creditable Swiss withholding tax (Art. 15a DBA). */
 export function steuerschaetzungGrenzgaenger(e: GrenzgaengerEingaben): Steuerschaetzung {
   if (!isSupportedIncomeTaxYear(e.jahr)) return { kind: 'nicht-moeglich', grund: 'jahr-ohne-tarif' }
-  const fest = e.pensionskasseEur + e.krankenkasseEur + e.selbstGezahlteKvPv
+  const sonstigeAbziehbar = Math.max(e.krankenversicherungEur, Math.min(HOECHSTBETRAG_SONSTIGE_VORSORGE, e.krankenversicherungEur + e.sonstigeVorsorgeEur))
   const vorsorge = {
-    von: fest + Math.round(e.ahvEur * AHV_ABZIEHBAR.von),
-    bis: fest + Math.round(e.ahvEur * AHV_ABZIEHBAR.bis),
+    von: e.altersvorsorgeEur + e.krankenversicherungEur,
+    bis: e.altersvorsorgeEur + sonstigeAbziehbar,
   }
-  const werbungskosten = Math.max(ARBEITNEHMER_PAUSCHBETRAG, e.pendlerpauschale)
   return schaetzung({
     jahr: e.jahr,
-    einnahmen: e.einnahmenEur,
-    werbungskosten,
+    einnahmen: e.arbeitslohnEur,
+    werbungskosten: Math.max(ARBEITNEHMER_PAUSCHBETRAG, e.pendlerpauschale),
     vorsorge,
     spenden: e.spenden,
     bereitsGezahlt: (est) => e.quellensteuerEur - est,

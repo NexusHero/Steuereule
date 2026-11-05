@@ -94,12 +94,34 @@ describe('SteuerschaetzungService', () => {
       wechselkursKurs: 1.07,
       wechselkursModus: 'amtlich',
       wechselkursBelegId: null,
-      nGre: {} as ChLohnausweisRecord['nGre'],
+      nGre: { familienzulagenChf: 0, krankentaggeldChf: 0, pkArbeitnehmerChf: 4500, pkArbeitgeberChf: 4500 } as unknown as ChLohnausweisRecord['nGre'],
     })
 
     const stand = spanne(await service.getState('u', 2025))
 
     expect(stand.anrechnung).toBe(4334)
     expect(stand.ergebnis.bis).toBeLessThan(0)
+  })
+
+  it('names the missing Pensionskasse Obligatorium instead of guessing the Altersvorsorge', async () => {
+    const { interview, ch, service } = setup()
+    interview.seed('u', 2025, { ...ANGESTELLT, ausland: 'Ja, in die Schweiz', 'ch-wohnsitz': 'Deutschland', 'ch-nichtrueckkehrtage': '0' })
+    ch.seed({
+      userId: 'u',
+      steuerjahr: 2025,
+      felder: { 'bruttolohn-total': '90000', 'berufliche-vorsorge': '4500', quellensteuer: '4050' } as ChLohnausweisRecord['felder'],
+      bemerkungen: null,
+      saeule3aChf: null,
+      krankenkasseChf: null,
+      wechselkursMonat: '2025-12',
+      wechselkursKurs: 1.07,
+      wechselkursModus: 'amtlich',
+      wechselkursBelegId: null,
+      nGre: { pkArbeitnehmerChf: null } as ChLohnausweisRecord['nGre'],
+    })
+
+    const stand = await service.getState('u', 2025)
+
+    expect(stand).toEqual({ kind: 'offen', fehlt: ['pk-obligatorium'] })
   })
 })

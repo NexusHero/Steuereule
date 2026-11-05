@@ -58,12 +58,11 @@ describe('steuerschaetzungAngestellt', () => {
 
 const GRENZGAENGER = {
   jahr: 2025,
-  einnahmenEur: 96300,
+  arbeitslohnEur: 96300,
   quellensteuerEur: 4334,
-  ahvEur: 7126,
-  pensionskasseEur: 4815,
-  krankenkasseEur: 0,
-  selbstGezahlteKvPv: 0,
+  altersvorsorgeEur: 9678,
+  sonstigeVorsorgeEur: 1782,
+  krankenversicherungEur: 0,
   pendlerpauschale: 0,
   spenden: 0,
 }
@@ -73,15 +72,22 @@ describe('steuerschaetzungGrenzgaenger', () => {
     const schaetzung = steuerschaetzungGrenzgaenger(GRENZGAENGER)
 
     if (schaetzung.kind !== 'spanne') throw new Error('expected a range')
-    expect(schaetzung.ergebnis.bis).toBeLessThan(0)
     expect(schaetzung.anrechnung).toBe(4334)
-    expect(schaetzung.ergebnis.von).toBeLessThan(schaetzung.ergebnis.bis)
+    expect(schaetzung.ergebnis.bis).toBeLessThan(0)
+    expect(schaetzung.ergebnis.von).toBeLessThanOrEqual(schaetzung.ergebnis.bis)
   })
 
-  it('treats AHV between 72 % and 100 % as deductible, because Ziffer 9 also holds ALV and NBUV', () => {
-    const schaetzung = steuerschaetzungGrenzgaenger(GRENZGAENGER)
+  it('deducts Altersvorsorge in full and sonstige Vorsorge only up to the Höchstbetrag (Anlage N-Gre Z. 82/85)', () => {
+    const schaetzung = steuerschaetzungGrenzgaenger({ ...GRENZGAENGER, sonstigeVorsorgeEur: 5000 })
 
     if (schaetzung.kind !== 'spanne') throw new Error('expected a range')
-    expect(schaetzung.vorsorge).toEqual({ von: 4815 + Math.round(7126 * 0.72), bis: 4815 + 7126 })
+    expect(schaetzung.vorsorge).toEqual({ von: 9678, bis: 9678 + 2800 })
+  })
+
+  it('always deducts the basic health insurance, even above the Höchstbetrag', () => {
+    const schaetzung = steuerschaetzungGrenzgaenger({ ...GRENZGAENGER, krankenversicherungEur: 4000 })
+
+    if (schaetzung.kind !== 'spanne') throw new Error('expected a range')
+    expect(schaetzung.vorsorge).toEqual({ von: 9678 + 4000, bis: 9678 + 4000 })
   })
 })

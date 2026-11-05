@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common'
 import {
+  anlageNGreBetraege,
   angestellteAusAntworten,
   berechneWerktage,
   chfNachEur,
@@ -63,19 +64,32 @@ export class SteuerschaetzungService {
       const werte = lohnausweisWerteAusRecord(chRecord)
       const wechselkurs = wechselkursAusRecord(chRecord)
       const status = grenzgaengerStatusAusAnswers(answers)
-      const fehlt = [...(status === null ? ['grenzgaenger-status'] : offeneLohnausweisFelder(werte, status)), ...(wechselkurs === null ? ['wechselkurs'] : [])]
-      if (fehlt.length > 0 || wechselkurs === null) return { kind: 'offen', fehlt }
-      const eur = (chf: number | undefined) => (chf === undefined ? 0 : Math.round(chfNachEur(chf, wechselkurs.kurs)))
-      const krankenkasseChf = chRecord?.krankenkasseChf === null || chRecord?.krankenkasseChf === undefined ? undefined : Number(chRecord.krankenkasseChf)
+      const nGre = chRecord?.nGre
+      const fehlt = [
+        ...(status === null ? ['grenzgaenger-status'] : offeneLohnausweisFelder(werte, status)),
+        ...(wechselkurs === null ? ['wechselkurs'] : []),
+        ...(nGre?.pkArbeitnehmerChf === null || nGre?.pkArbeitnehmerChf === undefined ? ['pk-obligatorium'] : []),
+      ]
+      if (fehlt.length > 0 || wechselkurs === null || nGre === undefined) return { kind: 'offen', fehlt }
+      const zeilen = anlageNGreBetraege({
+        bruttolohnChf: werte['bruttolohn-total'] ?? 0,
+        familienzulagenChf: Number(nGre.familienzulagenChf ?? 0),
+        ahvBeitraegeChf: werte['ahv-beitraege'] ?? 0,
+        quellensteuerChf: werte.quellensteuer ?? 0,
+        krankentaggeldChf: Number(nGre.krankentaggeldChf ?? 0),
+        pkArbeitnehmerChf: Number(nGre.pkArbeitnehmerChf ?? 0),
+        pkArbeitgeberChf: Number(nGre.pkArbeitgeberChf ?? 0),
+        kurs: wechselkurs.kurs,
+      }).eur
+      const krankenkasseChf = chRecord?.krankenkasseChf === null || chRecord?.krankenkasseChf === undefined ? 0 : Number(chRecord.krankenkasseChf)
       return mitKirchensteuer(
         steuerschaetzungGrenzgaenger({
           jahr,
-          einnahmenEur: eur(werte['bruttolohn-total']),
-          quellensteuerEur: eur(werte.quellensteuer),
-          ahvEur: eur(werte['ahv-beitraege']),
-          pensionskasseEur: eur(werte['berufliche-vorsorge']),
-          krankenkasseEur: eur(krankenkasseChf),
-          selbstGezahlteKvPv: zahlen.kvPvBeitraege,
+          arbeitslohnEur: zeilen.z23,
+          quellensteuerEur: zeilen.z25,
+          altersvorsorgeEur: zeilen.z85,
+          sonstigeVorsorgeEur: zeilen.z82,
+          krankenversicherungEur: Math.round(chfNachEur(krankenkasseChf, wechselkurs.kurs)) + zahlen.kvPvBeitraege,
           pendlerpauschale: pauschale,
           spenden: zahlen.spenden,
         }),
