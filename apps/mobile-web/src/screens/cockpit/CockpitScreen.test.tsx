@@ -12,7 +12,8 @@ import { http, HttpResponse } from 'msw'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { CockpitScreen } from './CockpitScreen'
 import { server } from '../../test-msw-server'
-import type { CockpitSummaryDto } from '@steuereule/api-client'
+import type { CockpitSummaryDto, InterviewStateDto } from '@steuereule/api-client'
+import type { FunnelPfad } from '../funnel/KontoWandScreen'
 
 const TAX_YEAR = 2026
 const COCKPIT_URL = `*/v1/steuerjahre/${TAX_YEAR}/cockpit`
@@ -28,6 +29,17 @@ function mockCockpit(data: CockpitSummaryDto | null, status = 200) {
   // convention, where the `{ data, status }` envelope is httpClient's own generic wrapper around
   // the parsed JSON, never something the server itself sends.
   server.use(http.get(COCKPIT_URL, () => HttpResponse.json(data, { status })))
+}
+
+const INTERVIEW_URL = `*/v1/steuerjahre/${TAX_YEAR}/interview`
+
+function mockInterview(answers: Record<string, string>, done = true) {
+  const state: InterviewStateDto = {
+    answers,
+    nextStep: done ? { kind: 'done' } : { kind: 'question', id: 'kinder' },
+    openItems: done ? 0 : 1,
+  }
+  server.use(http.get(INTERVIEW_URL, () => HttpResponse.json(state, { status: 200 })))
 }
 
 function holdNextCockpitResponse(body: CockpitSummaryDto | null): () => void {
@@ -64,6 +76,7 @@ function renderCockpit(opts: {
   onOpenEulenModus?: (jahr: number) => void
   onOpenAusdruck?: (jahr: number) => void
   onOpenBestaetigung?: (jahr: number) => void
+  onContinuePath?: (pfad: FunnelPfad) => void
 } = {}) {
   const i18n = createAppI18n(opts.lng ?? 'de')
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -78,6 +91,7 @@ function renderCockpit(opts: {
             {...(opts.onOpenEulenModus ? { onOpenEulenModus: opts.onOpenEulenModus } : {})}
             {...(opts.onOpenAusdruck ? { onOpenAusdruck: opts.onOpenAusdruck } : {})}
             {...(opts.onOpenBestaetigung ? { onOpenBestaetigung: opts.onOpenBestaetigung } : {})}
+            {...(opts.onContinuePath ? { onContinuePath: opts.onContinuePath } : {})}
           />
         </ThemeProvider>
       </I18nextProvider>
@@ -375,5 +389,40 @@ describe('CockpitScreen — Kinder & Eulen-Modus entries', () => {
     renderCockpit({ onOpenEulenModus })
     fireEvent.click(await screen.findByTestId('cockpit-eulen-modus'))
     expect(onOpenEulenModus).toHaveBeenCalledWith(TAX_YEAR)
+  })
+
+  describe('"Weiter mit deinem Weg" — the way back into the path once the three questions are answered', () => {
+    it.each([
+      [{ job: 'Angestellt', ausland: 'Ja, in die Schweiz', kinder: 'Nein' }, 'Grenzgänger CH', 'ch'],
+      [{ job: 'Rente', ausland: 'Nein', kinder: 'Nein' }, 'Rente', 'rente'],
+      [{ job: 'Angestellt', ausland: 'Nein', kinder: 'Nein' }, 'Angestellte', 'angestellte'],
+    ] as const)('leads %o into the %s path', async (answers, label, pfad) => {
+      mockCockpit({ ...LOADED_SUMMARY, openItems: 0 })
+      mockInterview(answers)
+      const onContinuePath = vi.fn()
+      renderCockpit({ onContinuePath })
+
+      fireEvent.click(await screen.findByText(`Weiter mit deinem Weg · ${label}`))
+
+      expect(onContinuePath).toHaveBeenCalledWith(pfad)
+    })
+
+    it('offers it from the empty state too', async () => {
+      mockCockpit(null)
+      mockInterview({ job: 'Angestellt', ausland: 'Ja, in die Schweiz', kinder: 'Nein' })
+      renderCockpit({ onContinuePath: () => {} })
+
+      expect(await screen.findByText('Weiter mit deinem Weg · Grenzgänger CH')).toBeTruthy()
+    })
+
+    it('stays hidden while the three questions are not answered yet', async () => {
+      mockCockpit(LOADED_SUMMARY)
+      mockInterview({ job: 'Angestellt' }, false)
+      renderCockpit({ onContinuePath: () => {} })
+
+      await screen.findByText('Fragen beantworten')
+
+      expect(screen.queryByText(/Weiter mit deinem Weg/)).toBeNull()
+    })
   })
 })

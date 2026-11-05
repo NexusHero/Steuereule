@@ -353,6 +353,10 @@ function TabbedShell({ tab, onTabChange, onSignedOut, startInInterview = false, 
             onOpenVermietung={() => setCockpitView('vermietung')}
             onOpenKinder={() => setCockpitView('kinder')}
             onOpenEulenModus={() => setCockpitView('eulen-modus')}
+            onContinuePath={(pfad) => {
+              setFunnelPfad(pfad)
+              setAusstehenderPfad(pfad)
+            }}
             {...(onOpenAusdruck ? { onOpenAusdruck } : {})}
             {...(onOpenBestaetigung ? { onOpenBestaetigung } : {})}
           /> : null}
