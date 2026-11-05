@@ -41,11 +41,11 @@ export function InterviewScreen({ onDone, taxYear = CURRENT_TAX_YEAR }: Intervie
   const [seeded, setSeeded] = useState(false)
 
   useEffect(() => {
-    if (!seeded && interviewQuery.data?.status === 200) {
+    if (!seeded && interviewQuery.isFetchedAfterMount && interviewQuery.data?.status === 200) {
       setAnswers(interviewQuery.data.data.answers as Answers)
       setSeeded(true)
     }
-  }, [seeded, interviewQuery.data])
+  }, [seeded, interviewQuery.isFetchedAfterMount, interviewQuery.data])
 
   const current = seeded ? nextStep(answers) : null
 
