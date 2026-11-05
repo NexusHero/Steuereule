@@ -14,26 +14,38 @@ export interface ArbeitstageScreenProps {
   readonly onDone?: () => void
   readonly onBack?: () => void
   readonly taxYear?: number
+  /** Set when Person A records the partner's commute (ADR-0054, partner without an own account). */
+  readonly partnerName?: string
 }
 
-export function ArbeitstageScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YEAR }: ArbeitstageScreenProps) {
+export function ArbeitstageScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YEAR, partnerName }: ArbeitstageScreenProps) {
   const bp = useBreakpoint()
   const { t: tr } = useTranslation(APP_NS)
-  const query = useArbeitswegControllerGet(taxYear)
+  const query = useArbeitswegControllerGet(taxYear, partnerName === undefined ? undefined : { person: 'B' })
 
   if (query.isPending) return <LoadingState bp={bp} label={tr('arbeitstage.loading')} />
   const gespeichert = query.data?.status === 200 ? query.data.data.eingaben : null
-  return <ArbeitstageFormular gespeichert={gespeichert} taxYear={taxYear} onDone={onDone} {...(onBack ? { onBack } : {})} />
+  return (
+    <ArbeitstageFormular
+      gespeichert={gespeichert}
+      taxYear={taxYear}
+      onDone={onDone}
+      {...(onBack ? { onBack } : {})}
+      {...(partnerName === undefined ? {} : { partnerName })}
+    />
+  )
 }
 
 function ArbeitstageFormular({
   gespeichert,
   taxYear,
+  partnerName,
   onDone,
   onBack,
 }: {
   readonly gespeichert: ArbeitswegEingabenDto | null
   readonly taxYear: number
+  readonly partnerName?: string
   readonly onDone: () => void
   readonly onBack?: () => void
 }) {
@@ -85,6 +97,7 @@ function ArbeitstageFormular({
           verkehrsmittel,
           taetigkeitsstaette: arbeitsort.trim() === '' ? null : arbeitsort.trim(),
         },
+        ...(partnerName === undefined ? {} : { params: { person: 'B' as const } }),
       },
       {
         onSuccess: (response) => (response.status === 200 ? onDone() : setFehler(true)),
@@ -99,7 +112,7 @@ function ArbeitstageFormular({
         {onBack ? <BackButton accessibilityLabel={tr('arbeitstage.back')} onPress={onBack} /> : <BackButtonSpacer />}
       </View>
 
-      <Text style={styles.heading}>{tr('arbeitstage.heading')}</Text>
+      <Text style={styles.heading}>{partnerName === undefined ? tr('arbeitstage.heading') : tr('arbeitstage.headingPartner', { name: partnerName })}</Text>
       <Text style={styles.help}>{tr('arbeitstage.help')}</Text>
 
       <Text style={styles.sectionLabel}>{tr('arbeitstage.weekdays')}</Text>

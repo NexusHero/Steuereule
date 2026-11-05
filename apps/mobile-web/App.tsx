@@ -306,9 +306,12 @@ function TabbedShell({ tab, onTabChange, onSignedOut, startInInterview = false, 
     | 'kinder'
     | 'eulen-modus'
     | 'stammdaten'
+    | 'partner'
   >(startInInterview ? 'interview' : 'main')
   const [ausstehenderPfad, setAusstehenderPfad] = useState<FunnelPfad | null>(null)
   const [steuerjahr, setSteuerjahr] = useState(CURRENT_TAX_YEAR)
+  // ADR-0054: Person A records a partner's figures (no own account) in the regular masks.
+  const [partnerMaske, setPartnerMaske] = useState<{ readonly bereich: 'lstb' | 'arbeitsweg'; readonly name: string } | null>(null)
 
   useEffect(() => {
     if (ausstehenderPfad === null) return
@@ -375,7 +378,20 @@ function TabbedShell({ tab, onTabChange, onSignedOut, startInInterview = false, 
             }}
           />
         ) : null}
-        {tab === 'cockpit' && cockpitView === 'stammdaten' ? <StammdatenScreen onZurueck={() => setCockpitView('main')} /> : null}
+        {tab === 'cockpit' && cockpitView === 'stammdaten' ? <StammdatenScreen
+            taxYear={steuerjahr}
+            onZurueck={() => setCockpitView('main')}
+            onPartnerErfassen={(bereich, name) => {
+              setPartnerMaske({ bereich, name })
+              setCockpitView('partner')
+            }}
+          /> : null}
+        {tab === 'cockpit' && cockpitView === 'partner' && partnerMaske?.bereich === 'lstb' ? (
+          <LstbScreen taxYear={steuerjahr} partnerName={partnerMaske.name} onDone={() => setCockpitView('stammdaten')} onBack={() => setCockpitView('stammdaten')} />
+        ) : null}
+        {tab === 'cockpit' && cockpitView === 'partner' && partnerMaske?.bereich === 'arbeitsweg' ? (
+          <ArbeitstageScreen taxYear={steuerjahr} partnerName={partnerMaske.name} onDone={() => setCockpitView('stammdaten')} onBack={() => setCockpitView('stammdaten')} />
+        ) : null}
         {tab === 'cockpit' && cockpitView === 'konto-wand' ? (
           <KontoWandScreen pfad={funnelPfad} onRegister={onRegister} onLogin={onLogin} onLater={() => setCockpitView('main')} />
         ) : null}

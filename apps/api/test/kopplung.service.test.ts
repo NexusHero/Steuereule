@@ -135,6 +135,29 @@ describe('KopplungService', () => {
   })
 })
 
+describe('KopplungService.datenNutzer — whose figures a request touches (ADR-0054)', () => {
+  it("is the caller's own id without person=B", async () => {
+    const { service } = setup()
+    expect(await service.datenNutzer('user-a', jahr, 'A')).toBe('user-a')
+  })
+
+  it("lets Person A record Person B's figures under B's shadow id while B has no account", async () => {
+    const { service } = setup()
+    const { personBUserId } = await service.set('user-a', jahr, { veranlagungsart: 'zusammen' })
+    expect(await service.datenNutzer('user-a', jahr, 'B')).toBe(personBUserId)
+  })
+
+  it('refuses without a Zusammenveranlagung, for Person B, and once B has an own account', async () => {
+    const { service } = setup()
+    await expect(service.datenNutzer('user-a', jahr, 'B')).rejects.toMatchObject({ code: 'NO_ACTIVE_ZUSAMMENVERANLAGUNG' })
+
+    const { einladungsCode } = await service.set('user-a', jahr, { veranlagungsart: 'zusammen' })
+    await service.joinWithCode('user-b', jahr, einladungsCode!)
+    await expect(service.datenNutzer('user-a', jahr, 'B')).rejects.toMatchObject({ code: 'PERSON_B_OWNS_DATA' })
+    await expect(service.datenNutzer('user-b', jahr, 'B')).rejects.toMatchObject({ code: 'ONLY_PERSON_A_RECORDS_FOR_B' })
+  })
+})
+
 describe('Kopplung DTOs', () => {
   it('rejects a client-chosen personBUserId — a real partner links only via einladungsCode', async () => {
     expect(await validationErrors(SetKopplungDto, { veranlagungsart: 'zusammen', personBUserId: 'victim' })).toContain(

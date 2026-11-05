@@ -20,6 +20,9 @@ export interface PersonBFakten {
   beruf?: string | null
   bruttoarbeitslohn?: string | null
   rente?: { rentenart: string | null; jahresbetrag: string | null } | null
+  chLohnausweis?: ChLohnausweisFakten | null
+  arbeitsweg?: ArbeitswegFakten | null
+  krankenversicherung?: readonly Krankenversicherung[] | null
 }
 
 export interface KopplungFakten {
@@ -180,6 +183,68 @@ function nGreLuecke(ch: ChLohnausweisFakten): string | null {
   return vollstaendig ? null : 'grenzgaenger'
 }
 
+interface NGreErgebnis {
+  readonly werte: Record<string, string | true>
+  readonly luecke: string | null
+}
+
+/** One Anlage N-Gre for Person A or B, or null when that person has no Swiss wage. */
+function nGreWerte(
+  ch: ChLohnausweisFakten | null | undefined,
+  arbeitsweg: ArbeitswegFakten | null | undefined,
+  rolle: 'A' | 'B',
+  kopf: { name: string | null; vorname: string | null; beruf: string | null; steuernummer: string | null },
+): NGreErgebnis | null {
+  if (!ch || ch.bruttolohnChf === null) return null
+  const luecke = nGreLuecke(ch)
+  if (luecke) return { werte: {}, luecke: rolle === 'B' && luecke === 'grenzgaenger' ? 'grenzgaengerPersonB' : luecke }
+  const werte: Record<string, string | true> = {}
+  const setze = (id: string, wert: string | null) => {
+    if (wert) werte[id] = wert
+  }
+  werte[rolle === 'A' ? 'anlNGre.personA' : 'anlNGre.personB'] = true
+  setze('anlNGre.name', kopf.name)
+  setze('anlNGre.vorname', kopf.vorname)
+  setze('anlNGre.steuernummer', kopf.steuernummer)
+  werte['anlNGre.kz117'] = '3'
+  setze('anlNGre.beruf', kopf.beruf)
+  const { chf, eur, aufteilung } = anlageNGreBetraege({
+    bruttolohnChf: Number(ch.bruttolohnChf),
+    familienzulagenChf: Number(ch.familienzulagenChf),
+    ahvBeitraegeChf: Number(ch.ahvBeitraegeChf),
+    quellensteuerChf: Number(ch.quellensteuerChf),
+    krankentaggeldChf: Number(ch.krankentaggeldChf),
+    pkArbeitnehmerChf: Number(ch.pkArbeitnehmerChf),
+    pkArbeitgeberChf: Number(ch.pkArbeitgeberChf),
+    kurs: ch.kurs!,
+    krankentaggeldArbeitgeberProzent: optionaleZahl(ch.krankentaggeldArbeitgeberProzent),
+    krankentaggeldArbeitgeberChf: optionaleZahl(ch.krankentaggeldArbeitgeberChf),
+    nbuvArbeitgeberProzent: optionaleZahl(ch.nbuvArbeitgeberProzent),
+    nbuvArbeitgeberChf: optionaleZahl(ch.nbuvArbeitgeberChf),
+  })
+  for (const zeile of Object.keys(chf) as NGreZeile[]) {
+    // Z. 18/19 only apply when the employer pays part of a premium; an empty line stays empty.
+    if ((zeile === 'z18' || zeile === 'z19') && chf[zeile] === 0) continue
+    werte[`anlNGre.${zeile}Chf`] = String(chf[zeile])
+    werte[`anlNGre.${zeile}Eur`] = String(eur[zeile])
+  }
+  for (const [zeilen, teil] of [
+    [['z95', 'z96'], aufteilung.krankentaggeld],
+    [['z97', 'z98'], aufteilung.nbuv],
+  ] as const) {
+    if (teil.arbeitgeberChf + teil.arbeitnehmerChf === 0) continue
+    werte[`anlNGre.${zeilen[0]}Arbeitgeber`] = String(teil.arbeitgeberProzent)
+    werte[`anlNGre.${zeilen[0]}Arbeitnehmer`] = String(teil.arbeitnehmerProzent)
+    werte[`anlNGre.${zeilen[1]}Arbeitgeber`] = String(teil.arbeitgeberChf)
+    werte[`anlNGre.${zeilen[1]}Arbeitnehmer`] = String(teil.arbeitnehmerChf)
+  }
+  Object.assign(werte, arbeitswegWerte(arbeitsweg, 'anlNGre'))
+  setze('anlNGre.arbeitgeberName', ch.arbeitgeberName)
+  setze('anlNGre.arbeitgeberStrasse', ch.arbeitgeberStrasse)
+  setze('anlNGre.arbeitgeberPlzOrt', ch.arbeitgeberPlzOrt)
+  return { werte, luecke: null }
+}
+
 export interface SonderausgabenFakten {
   spenden?: string | null
 }
@@ -259,7 +324,7 @@ export interface AusdruckFakten {
  * and 22, private Z. 23, 24 and 27, foreign Z. 28–30 and 33. Contributions withheld from a German salary
  * are e-data (Z. 11–13) and Swiss ones via the employer are in the Anlage N-Gre — neither is repeated here.
  */
-function vorsorgeaufwandWerte(versicherungen: readonly Krankenversicherung[] | null | undefined): Record<string, string> {
+function vorsorgeaufwandWerte(versicherungen: readonly Krankenversicherung[] | null | undefined, rolle: 'A' | 'B' = 'A'): Record<string, string> {
   const summen = new Map<string, number>()
   const addiere = (kz: string, betrag: number) => summen.set(kz, (summen.get(kz) ?? 0) + betrag)
   for (const kv of versicherungen ?? []) {
@@ -280,7 +345,8 @@ function vorsorgeaufwandWerte(versicherungen: readonly Krankenversicherung[] | n
     }
   }
   const werte: Record<string, string> = {}
-  for (const [kz, betrag] of summen) if (betrag > 0) werte[`anlVor.kz${kz}`] = String(betrag)
+  // Person B's column carries the same Kennzahlen with a leading 4 instead of 3.
+  for (const [kz, betrag] of summen) if (betrag > 0) werte[`anlVor.kz${rolle === 'A' ? kz : `4${kz.slice(1)}`}`] = String(betrag)
   return werte
 }
 
@@ -397,6 +463,8 @@ export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
     }
     const b = fakten.kopplung?.personB
     const nB: Record<string, string | true> = { 'anlN.kz110': bruttoB!, 'anlN.personB': true }
+    // B's commute belongs to their Anlage N unless they are a Grenzgänger (then it is in their N-Gre).
+    if (!b?.chLohnausweis) Object.assign(nB, arbeitswegWerte(b?.arbeitsweg))
     if (b?.lastName) nB['anlN.name'] = b.lastName
     if (b?.firstName) nB['anlN.vorname'] = b.firstName
     if (profil.steuernummer) nB['anlN.steuernummer'] = profil.steuernummer
@@ -479,53 +547,24 @@ export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
     }
   }
 
-  const ch = fakten.chLohnausweis
-  if (ch && ch.bruttolohnChf !== null) {
-    const luecke = nGreLuecke(ch)
-    if (luecke) fehlend.push(luecke)
-    else {
-      werte['anlNGre.personA'] = true
-      setze('anlNGre.name', profil.lastName)
-      setze('anlNGre.vorname', profil.firstName)
-      setze('anlNGre.steuernummer', profil.steuernummer)
-      werte['anlNGre.kz117'] = '3'
-      setze('anlNGre.beruf', sd?.beruf ?? null)
-      const { chf, eur, aufteilung } = anlageNGreBetraege({
-        bruttolohnChf: Number(ch.bruttolohnChf),
-        familienzulagenChf: Number(ch.familienzulagenChf),
-        ahvBeitraegeChf: Number(ch.ahvBeitraegeChf),
-        quellensteuerChf: Number(ch.quellensteuerChf),
-        krankentaggeldChf: Number(ch.krankentaggeldChf),
-        pkArbeitnehmerChf: Number(ch.pkArbeitnehmerChf),
-        pkArbeitgeberChf: Number(ch.pkArbeitgeberChf),
-        kurs: ch.kurs!,
-        krankentaggeldArbeitgeberProzent: optionaleZahl(ch.krankentaggeldArbeitgeberProzent),
-        krankentaggeldArbeitgeberChf: optionaleZahl(ch.krankentaggeldArbeitgeberChf),
-        nbuvArbeitgeberProzent: optionaleZahl(ch.nbuvArbeitgeberProzent),
-        nbuvArbeitgeberChf: optionaleZahl(ch.nbuvArbeitgeberChf),
-      })
-      for (const zeile of Object.keys(chf) as NGreZeile[]) {
-        // Z. 18/19 only apply when the employer pays part of a premium; an empty line stays empty.
-        if ((zeile === 'z18' || zeile === 'z19') && chf[zeile] === 0) continue
-        werte[`anlNGre.${zeile}Chf`] = String(chf[zeile])
-        werte[`anlNGre.${zeile}Eur`] = String(eur[zeile])
-      }
-      for (const [zeilen, teil] of [
-        [['z95', 'z96'], aufteilung.krankentaggeld],
-        [['z97', 'z98'], aufteilung.nbuv],
-      ] as const) {
-        if (teil.arbeitgeberChf + teil.arbeitnehmerChf === 0) continue
-        werte[`anlNGre.${zeilen[0]}Arbeitgeber`] = String(teil.arbeitgeberProzent)
-        werte[`anlNGre.${zeilen[0]}Arbeitnehmer`] = String(teil.arbeitnehmerProzent)
-        werte[`anlNGre.${zeilen[1]}Arbeitgeber`] = String(teil.arbeitgeberChf)
-        werte[`anlNGre.${zeilen[1]}Arbeitnehmer`] = String(teil.arbeitnehmerChf)
-      }
-      Object.assign(werte, arbeitswegWerte(fakten.arbeitsweg, 'anlNGre'))
-      setze('anlNGre.arbeitgeberName', ch.arbeitgeberName)
-      setze('anlNGre.arbeitgeberStrasse', ch.arbeitgeberStrasse)
-      setze('anlNGre.arbeitgeberPlzOrt', ch.arbeitgeberPlzOrt)
-    }
-  }
+  // Anlage N-Gre: one per Grenzgänger. A couple where both commute to Switzerland gets two instances.
+  const personB = fakten.kopplung?.veranlagungsart === 'zusammen' ? fakten.kopplung.personB : null
+  const nGreA = nGreWerte(fakten.chLohnausweis, fakten.arbeitsweg, 'A', {
+    name: profil.lastName,
+    vorname: profil.firstName,
+    beruf: sd?.beruf ?? null,
+    steuernummer: profil.steuernummer,
+  })
+  const nGreB = nGreWerte(personB?.chLohnausweis, personB?.arbeitsweg, 'B', {
+    name: personB?.lastName ?? null,
+    vorname: personB?.firstName ?? null,
+    beruf: personB?.beruf ?? null,
+    steuernummer: profil.steuernummer,
+  })
+  for (const n of [nGreA, nGreB]) if (n?.luecke) fehlend.push(n.luecke)
+  const nGreInstanzen = [nGreA, nGreB].filter((n): n is NGreErgebnis => n !== null && n.luecke === null).map((n) => n.werte)
+  if (nGreInstanzen.length === 1 && nGreA?.luecke === null) Object.assign(werte, nGreInstanzen[0])
+  else if (nGreInstanzen.length > 0) instanzen['anlage-n-gre'] = nGreInstanzen
 
   if (fakten.vermietung && fakten.vermietung.length > 0) {
     instanzen['anlage-v'] = fakten.vermietung.map((obj, i) => {
@@ -641,7 +680,10 @@ export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
     werte['anlSo.spenden'] = fakten.sonderausgaben.spenden
   }
 
-  const vorsorge = vorsorgeaufwandWerte(fakten.krankenversicherung)
+  const vorsorge = {
+    ...vorsorgeaufwandWerte(fakten.krankenversicherung),
+    ...vorsorgeaufwandWerte(personB?.krankenversicherung, 'B'),
+  }
   if (Object.keys(vorsorge).length > 0) {
     setze('anlVor.name', profil.lastName)
     setze('anlVor.vorname', profil.firstName)

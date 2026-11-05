@@ -25,6 +25,8 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  LstbControllerGetLstbParams,
+  LstbControllerSetFeldParams,
   LstbFeldDto,
   LstbResponseDto
 } from './lstb.schemas';
@@ -70,17 +72,26 @@ export type lstbControllerGetLstbResponseError = (lstbControllerGetLstbResponse4
 
 export type lstbControllerGetLstbResponse = (lstbControllerGetLstbResponseSuccess | lstbControllerGetLstbResponseError)
 
-export const getLstbControllerGetLstbUrl = (jahr: number,) => {
+export const getLstbControllerGetLstbUrl = (jahr: number,
+    params?: LstbControllerGetLstbParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/v1/steuerjahre/${jahr}/lstb`
+  return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/lstb?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/lstb`
 }
 
-export const lstbControllerGetLstb = async (jahr: number, options?: RequestInit): Promise<lstbControllerGetLstbResponse> => {
+export const lstbControllerGetLstb = async (jahr: number,
+    params?: LstbControllerGetLstbParams, options?: RequestInit): Promise<lstbControllerGetLstbResponse> => {
 
-  return httpClient<lstbControllerGetLstbResponse>(getLstbControllerGetLstbUrl(jahr),
+  return httpClient<lstbControllerGetLstbResponse>(getLstbControllerGetLstbUrl(jahr,params),
   {
     ...options,
     method: 'GET'
@@ -93,23 +104,25 @@ export const lstbControllerGetLstb = async (jahr: number, options?: RequestInit)
 
 
 
-export const getLstbControllerGetLstbQueryKey = (jahr: number,) => {
+export const getLstbControllerGetLstbQueryKey = (jahr: number,
+    params?: LstbControllerGetLstbParams,) => {
     return [
-    `/v1/steuerjahre/${jahr}/lstb`
+    `/v1/steuerjahre/${jahr}/lstb`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getLstbControllerGetLstbQueryOptions = <TData = Awaited<ReturnType<typeof lstbControllerGetLstb>>, TError = void>(jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof lstbControllerGetLstb>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export const getLstbControllerGetLstbQueryOptions = <TData = Awaited<ReturnType<typeof lstbControllerGetLstb>>, TError = void>(jahr: number,
+    params?: LstbControllerGetLstbParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof lstbControllerGetLstb>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getLstbControllerGetLstbQueryKey(jahr);
+  const queryKey =  queryOptions?.queryKey ?? getLstbControllerGetLstbQueryKey(jahr,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof lstbControllerGetLstb>>> = ({ signal }) => lstbControllerGetLstb(jahr, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof lstbControllerGetLstb>>> = ({ signal }) => lstbControllerGetLstb(jahr,params, { signal, ...requestOptions });
 
 
 
@@ -123,7 +136,8 @@ export type LstbControllerGetLstbQueryError = void
 
 
 export function useLstbControllerGetLstb<TData = Awaited<ReturnType<typeof lstbControllerGetLstb>>, TError = void>(
- jahr: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof lstbControllerGetLstb>>, TError, TData>> & Pick<
+ jahr: number,
+    params: undefined |  LstbControllerGetLstbParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof lstbControllerGetLstb>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof lstbControllerGetLstb>>,
           TError,
@@ -133,7 +147,8 @@ export function useLstbControllerGetLstb<TData = Awaited<ReturnType<typeof lstbC
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useLstbControllerGetLstb<TData = Awaited<ReturnType<typeof lstbControllerGetLstb>>, TError = void>(
- jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof lstbControllerGetLstb>>, TError, TData>> & Pick<
+ jahr: number,
+    params?: LstbControllerGetLstbParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof lstbControllerGetLstb>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof lstbControllerGetLstb>>,
           TError,
@@ -143,16 +158,18 @@ export function useLstbControllerGetLstb<TData = Awaited<ReturnType<typeof lstbC
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useLstbControllerGetLstb<TData = Awaited<ReturnType<typeof lstbControllerGetLstb>>, TError = void>(
- jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof lstbControllerGetLstb>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ jahr: number,
+    params?: LstbControllerGetLstbParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof lstbControllerGetLstb>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 
 export function useLstbControllerGetLstb<TData = Awaited<ReturnType<typeof lstbControllerGetLstb>>, TError = void>(
- jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof lstbControllerGetLstb>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ jahr: number,
+    params?: LstbControllerGetLstbParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof lstbControllerGetLstb>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getLstbControllerGetLstbQueryOptions(jahr,options)
+  const queryOptions = getLstbControllerGetLstbQueryOptions(jahr,params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
@@ -185,19 +202,28 @@ export type lstbControllerSetFeldResponseError = (lstbControllerSetFeldResponse4
 export type lstbControllerSetFeldResponse = (lstbControllerSetFeldResponseSuccess | lstbControllerSetFeldResponseError)
 
 export const getLstbControllerSetFeldUrl = (jahr: number,
-    feld: string,) => {
+    feld: string,
+    params?: LstbControllerSetFeldParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/v1/steuerjahre/${jahr}/lstb/${feld}`
+  return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/lstb/${feld}?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/lstb/${feld}`
 }
 
 export const lstbControllerSetFeld = async (jahr: number,
     feld: string,
-    lstbFeldDto: LstbFeldDto, options?: RequestInit): Promise<lstbControllerSetFeldResponse> => {
+    lstbFeldDto: LstbFeldDto,
+    params?: LstbControllerSetFeldParams, options?: RequestInit): Promise<lstbControllerSetFeldResponse> => {
 
-  return httpClient<lstbControllerSetFeldResponse>(getLstbControllerSetFeldUrl(jahr,feld),
+  return httpClient<lstbControllerSetFeldResponse>(getLstbControllerSetFeldUrl(jahr,feld,params),
   {
     ...options,
     method: 'PUT',
@@ -211,8 +237,8 @@ export const lstbControllerSetFeld = async (jahr: number,
 
 
 export const getLstbControllerSetFeldMutationOptions = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof lstbControllerSetFeld>>, TError,{jahr: number;feld: string;data: LstbFeldDto}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof lstbControllerSetFeld>>, TError,{jahr: number;feld: string;data: LstbFeldDto}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof lstbControllerSetFeld>>, TError,{jahr: number;feld: string;data: LstbFeldDto;params?: LstbControllerSetFeldParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof lstbControllerSetFeld>>, TError,{jahr: number;feld: string;data: LstbFeldDto;params?: LstbControllerSetFeldParams}, TContext> => {
 
 const mutationKey = ['lstbControllerSetFeld'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -224,10 +250,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof lstbControllerSetFeld>>, {jahr: number;feld: string;data: LstbFeldDto}> = (props) => {
-          const {jahr,feld,data} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof lstbControllerSetFeld>>, {jahr: number;feld: string;data: LstbFeldDto;params?: LstbControllerSetFeldParams}> = (props) => {
+          const {jahr,feld,data,params} = props ?? {};
 
-          return  lstbControllerSetFeld(jahr,feld,data,requestOptions)
+          return  lstbControllerSetFeld(jahr,feld,data,params,requestOptions)
         }
 
 
@@ -242,11 +268,11 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type LstbControllerSetFeldMutationError = void
 
     export const useLstbControllerSetFeld = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof lstbControllerSetFeld>>, TError,{jahr: number;feld: string;data: LstbFeldDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof lstbControllerSetFeld>>, TError,{jahr: number;feld: string;data: LstbFeldDto;params?: LstbControllerSetFeldParams}, TContext>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof lstbControllerSetFeld>>,
         TError,
-        {jahr: number;feld: string;data: LstbFeldDto},
+        {jahr: number;feld: string;data: LstbFeldDto;params?: LstbControllerSetFeldParams},
         TContext
       > => {
       return useMutation(getLstbControllerSetFeldMutationOptions(options), queryClient);

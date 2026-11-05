@@ -25,6 +25,8 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  ArbeitswegControllerGetParams,
+  ArbeitswegControllerPutParams,
   ArbeitswegEingabenDto,
   ArbeitswegResponseDto
 } from './arbeitsweg.schemas';
@@ -70,17 +72,26 @@ export type arbeitswegControllerGetResponseError = (arbeitswegControllerGetRespo
 
 export type arbeitswegControllerGetResponse = (arbeitswegControllerGetResponseSuccess | arbeitswegControllerGetResponseError)
 
-export const getArbeitswegControllerGetUrl = (jahr: number,) => {
+export const getArbeitswegControllerGetUrl = (jahr: number,
+    params?: ArbeitswegControllerGetParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/v1/steuerjahre/${jahr}/arbeitsweg`
+  return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/arbeitsweg?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/arbeitsweg`
 }
 
-export const arbeitswegControllerGet = async (jahr: number, options?: RequestInit): Promise<arbeitswegControllerGetResponse> => {
+export const arbeitswegControllerGet = async (jahr: number,
+    params?: ArbeitswegControllerGetParams, options?: RequestInit): Promise<arbeitswegControllerGetResponse> => {
 
-  return httpClient<arbeitswegControllerGetResponse>(getArbeitswegControllerGetUrl(jahr),
+  return httpClient<arbeitswegControllerGetResponse>(getArbeitswegControllerGetUrl(jahr,params),
   {
     ...options,
     method: 'GET'
@@ -93,23 +104,25 @@ export const arbeitswegControllerGet = async (jahr: number, options?: RequestIni
 
 
 
-export const getArbeitswegControllerGetQueryKey = (jahr: number,) => {
+export const getArbeitswegControllerGetQueryKey = (jahr: number,
+    params?: ArbeitswegControllerGetParams,) => {
     return [
-    `/v1/steuerjahre/${jahr}/arbeitsweg`
+    `/v1/steuerjahre/${jahr}/arbeitsweg`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getArbeitswegControllerGetQueryOptions = <TData = Awaited<ReturnType<typeof arbeitswegControllerGet>>, TError = void>(jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof arbeitswegControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export const getArbeitswegControllerGetQueryOptions = <TData = Awaited<ReturnType<typeof arbeitswegControllerGet>>, TError = void>(jahr: number,
+    params?: ArbeitswegControllerGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof arbeitswegControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getArbeitswegControllerGetQueryKey(jahr);
+  const queryKey =  queryOptions?.queryKey ?? getArbeitswegControllerGetQueryKey(jahr,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof arbeitswegControllerGet>>> = ({ signal }) => arbeitswegControllerGet(jahr, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof arbeitswegControllerGet>>> = ({ signal }) => arbeitswegControllerGet(jahr,params, { signal, ...requestOptions });
 
 
 
@@ -123,7 +136,8 @@ export type ArbeitswegControllerGetQueryError = void
 
 
 export function useArbeitswegControllerGet<TData = Awaited<ReturnType<typeof arbeitswegControllerGet>>, TError = void>(
- jahr: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof arbeitswegControllerGet>>, TError, TData>> & Pick<
+ jahr: number,
+    params: undefined |  ArbeitswegControllerGetParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof arbeitswegControllerGet>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof arbeitswegControllerGet>>,
           TError,
@@ -133,7 +147,8 @@ export function useArbeitswegControllerGet<TData = Awaited<ReturnType<typeof arb
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useArbeitswegControllerGet<TData = Awaited<ReturnType<typeof arbeitswegControllerGet>>, TError = void>(
- jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof arbeitswegControllerGet>>, TError, TData>> & Pick<
+ jahr: number,
+    params?: ArbeitswegControllerGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof arbeitswegControllerGet>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof arbeitswegControllerGet>>,
           TError,
@@ -143,16 +158,18 @@ export function useArbeitswegControllerGet<TData = Awaited<ReturnType<typeof arb
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useArbeitswegControllerGet<TData = Awaited<ReturnType<typeof arbeitswegControllerGet>>, TError = void>(
- jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof arbeitswegControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ jahr: number,
+    params?: ArbeitswegControllerGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof arbeitswegControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 
 export function useArbeitswegControllerGet<TData = Awaited<ReturnType<typeof arbeitswegControllerGet>>, TError = void>(
- jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof arbeitswegControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ jahr: number,
+    params?: ArbeitswegControllerGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof arbeitswegControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getArbeitswegControllerGetQueryOptions(jahr,options)
+  const queryOptions = getArbeitswegControllerGetQueryOptions(jahr,params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
@@ -184,18 +201,27 @@ export type arbeitswegControllerPutResponseError = (arbeitswegControllerPutRespo
 
 export type arbeitswegControllerPutResponse = (arbeitswegControllerPutResponseSuccess | arbeitswegControllerPutResponseError)
 
-export const getArbeitswegControllerPutUrl = (jahr: number,) => {
+export const getArbeitswegControllerPutUrl = (jahr: number,
+    params?: ArbeitswegControllerPutParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/v1/steuerjahre/${jahr}/arbeitsweg`
+  return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/arbeitsweg?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/arbeitsweg`
 }
 
 export const arbeitswegControllerPut = async (jahr: number,
-    arbeitswegEingabenDto: ArbeitswegEingabenDto, options?: RequestInit): Promise<arbeitswegControllerPutResponse> => {
+    arbeitswegEingabenDto: ArbeitswegEingabenDto,
+    params?: ArbeitswegControllerPutParams, options?: RequestInit): Promise<arbeitswegControllerPutResponse> => {
 
-  return httpClient<arbeitswegControllerPutResponse>(getArbeitswegControllerPutUrl(jahr),
+  return httpClient<arbeitswegControllerPutResponse>(getArbeitswegControllerPutUrl(jahr,params),
   {
     ...options,
     method: 'PUT',
@@ -209,8 +235,8 @@ export const arbeitswegControllerPut = async (jahr: number,
 
 
 export const getArbeitswegControllerPutMutationOptions = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof arbeitswegControllerPut>>, TError,{jahr: number;data: ArbeitswegEingabenDto}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof arbeitswegControllerPut>>, TError,{jahr: number;data: ArbeitswegEingabenDto}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof arbeitswegControllerPut>>, TError,{jahr: number;data: ArbeitswegEingabenDto;params?: ArbeitswegControllerPutParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof arbeitswegControllerPut>>, TError,{jahr: number;data: ArbeitswegEingabenDto;params?: ArbeitswegControllerPutParams}, TContext> => {
 
 const mutationKey = ['arbeitswegControllerPut'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -222,10 +248,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof arbeitswegControllerPut>>, {jahr: number;data: ArbeitswegEingabenDto}> = (props) => {
-          const {jahr,data} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof arbeitswegControllerPut>>, {jahr: number;data: ArbeitswegEingabenDto;params?: ArbeitswegControllerPutParams}> = (props) => {
+          const {jahr,data,params} = props ?? {};
 
-          return  arbeitswegControllerPut(jahr,data,requestOptions)
+          return  arbeitswegControllerPut(jahr,data,params,requestOptions)
         }
 
 
@@ -240,11 +266,11 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type ArbeitswegControllerPutMutationError = void
 
     export const useArbeitswegControllerPut = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof arbeitswegControllerPut>>, TError,{jahr: number;data: ArbeitswegEingabenDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof arbeitswegControllerPut>>, TError,{jahr: number;data: ArbeitswegEingabenDto;params?: ArbeitswegControllerPutParams}, TContext>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof arbeitswegControllerPut>>,
         TError,
-        {jahr: number;data: ArbeitswegEingabenDto},
+        {jahr: number;data: ArbeitswegEingabenDto;params?: ArbeitswegControllerPutParams},
         TContext
       > => {
       return useMutation(getArbeitswegControllerPutMutationOptions(options), queryClient);

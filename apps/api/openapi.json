@@ -124,6 +124,19 @@
         "operationId": "LstbController_getLstb",
         "parameters": [
           {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "B: Person A reads the figures of a partner without an own account (ADR-0054).",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
             "name": "jahr",
             "required": true,
             "in": "path",
@@ -158,6 +171,19 @@
       "put": {
         "operationId": "LstbController_setFeld",
         "parameters": [
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "B: Person A records the figures of a partner without an own account (ADR-0054).",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
           {
             "name": "feld",
             "required": true,
@@ -206,6 +232,234 @@
         },
         "tags": [
           "lstb"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/kopplung": {
+      "get": {
+        "operationId": "KopplungController_get",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KopplungResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Requires account."
+          }
+        },
+        "tags": [
+          "kopplung"
+        ]
+      },
+      "put": {
+        "operationId": "KopplungController_set",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetKopplungDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KopplungResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Requires account."
+          },
+          "403": {
+            "description": "Only Person A sets the Veranlagungsart."
+          }
+        },
+        "tags": [
+          "kopplung"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/kopplung/person-b": {
+      "put": {
+        "operationId": "KopplungController_updatePersonB",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KopplungPersonBDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KopplungResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Requires account."
+          },
+          "403": {
+            "description": "Person B joined with an own account; only they edit their data."
+          }
+        },
+        "tags": [
+          "kopplung"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/kopplung/beitreten/{code}": {
+      "post": {
+        "operationId": "KopplungController_joinWithCode",
+        "parameters": [
+          {
+            "name": "code",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": "9F3A0C71B2E4D658",
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KopplungResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Requires account."
+          }
+        },
+        "tags": [
+          "kopplung"
+        ]
+      }
+    },
+    "/v1/stammdaten": {
+      "get": {
+        "operationId": "StammdatenController_lese",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "All null with every required field in `fehlend` when nothing is saved yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StammdatenResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "stammdaten"
+        ]
+      },
+      "put": {
+        "operationId": "StammdatenController_speichere",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutStammdatenDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StammdatenResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid field, or a religion without explicit consent (Art. 9 DSGVO)."
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "stammdaten"
         ]
       }
     },
@@ -1035,6 +1289,19 @@
         "operationId": "ArbeitswegController_get",
         "parameters": [
           {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "B: Person A reads the commute of a partner without an own account (ADR-0054).",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
             "name": "jahr",
             "required": true,
             "in": "path",
@@ -1066,6 +1333,19 @@
       "put": {
         "operationId": "ArbeitswegController_put",
         "parameters": [
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "B: Person A records the commute of a partner without an own account (ADR-0054).",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
           {
             "name": "jahr",
             "required": true,
@@ -1137,65 +1417,6 @@
         },
         "tags": [
           "steuerschaetzung"
-        ]
-      }
-    },
-    "/v1/stammdaten": {
-      "get": {
-        "operationId": "StammdatenController_lese",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "All null with every required field in `fehlend` when nothing is saved yet.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StammdatenResponseDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Guest session — this endpoint requires a signed-in account."
-          }
-        },
-        "tags": [
-          "stammdaten"
-        ]
-      },
-      "put": {
-        "operationId": "StammdatenController_speichere",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PutStammdatenDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StammdatenResponseDto"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid field, or a religion without explicit consent (Art. 9 DSGVO)."
-          },
-          "401": {
-            "description": "Guest session — this endpoint requires a signed-in account."
-          }
-        },
-        "tags": [
-          "stammdaten"
         ]
       }
     },
@@ -2509,175 +2730,6 @@
         ]
       }
     },
-    "/v1/steuerjahre/{jahr}/kopplung": {
-      "get": {
-        "operationId": "KopplungController_get",
-        "parameters": [
-          {
-            "name": "jahr",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "example": 2025,
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/KopplungResponseDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Requires account."
-          }
-        },
-        "tags": [
-          "kopplung"
-        ]
-      },
-      "put": {
-        "operationId": "KopplungController_set",
-        "parameters": [
-          {
-            "name": "jahr",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "example": 2025,
-              "type": "number"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SetKopplungDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/KopplungResponseDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Requires account."
-          },
-          "403": {
-            "description": "Only Person A sets the Veranlagungsart."
-          }
-        },
-        "tags": [
-          "kopplung"
-        ]
-      }
-    },
-    "/v1/steuerjahre/{jahr}/kopplung/person-b": {
-      "put": {
-        "operationId": "KopplungController_updatePersonB",
-        "parameters": [
-          {
-            "name": "jahr",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "example": 2025,
-              "type": "number"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/KopplungPersonBDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/KopplungResponseDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Requires account."
-          },
-          "403": {
-            "description": "Person B joined with an own account; only they edit their data."
-          }
-        },
-        "tags": [
-          "kopplung"
-        ]
-      }
-    },
-    "/v1/steuerjahre/{jahr}/kopplung/beitreten/{code}": {
-      "post": {
-        "operationId": "KopplungController_joinWithCode",
-        "parameters": [
-          {
-            "name": "code",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "example": "9F3A0C71B2E4D658",
-              "type": "string"
-            }
-          },
-          {
-            "name": "jahr",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "example": 2025,
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/KopplungResponseDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Requires account."
-          }
-        },
-        "tags": [
-          "kopplung"
-        ]
-      }
-    },
     "/v1/eulen-modus/einstellung": {
       "get": {
         "operationId": "EulenModusController_getEinstellung",
@@ -3145,6 +3197,340 @@
           "sozialversicherung",
           "zustand"
         ]
+      },
+      "KopplungPersonBDto": {
+        "type": "object",
+        "properties": {
+          "firstName": {
+            "type": "string",
+            "nullable": true,
+            "example": "Erika"
+          },
+          "lastName": {
+            "type": "string",
+            "nullable": true,
+            "example": "Muster"
+          },
+          "steuerId": {
+            "type": "string",
+            "nullable": true,
+            "example": "12345678901"
+          },
+          "geburtsdatum": {
+            "type": "string",
+            "nullable": true,
+            "example": "1985-04-12"
+          },
+          "religion": {
+            "type": "string",
+            "enum": [
+              "VD",
+              "EV",
+              "RK",
+              "AK",
+              "FA",
+              "FB",
+              "FG",
+              "FM",
+              "FS",
+              "IB",
+              "IL",
+              "IS",
+              "IW",
+              "JD",
+              "JH"
+            ],
+            "nullable": true,
+            "description": "Art. 9 DSGVO: requires religionEinwilligung = true, like the own Stammdaten."
+          },
+          "religionEinwilligung": {
+            "type": "boolean",
+            "description": "Explicit consent to store the religion (Art. 9 Abs. 2 lit. a DSGVO)."
+          },
+          "beruf": {
+            "type": "string",
+            "nullable": true,
+            "example": "Angestellte"
+          }
+        }
+      },
+      "KopplungResponseDto": {
+        "type": "object",
+        "properties": {
+          "veranlagungsart": {
+            "type": "string",
+            "enum": [
+              "keine",
+              "einzel",
+              "zusammen"
+            ],
+            "example": "zusammen"
+          },
+          "personBUserId": {
+            "type": "string",
+            "nullable": true,
+            "example": "person-b-user-id"
+          },
+          "einladungsCode": {
+            "type": "string",
+            "nullable": true,
+            "example": "9F3A0C71B2E4D658"
+          },
+          "einladungsCodeGueltigBis": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "After this moment the code no longer links."
+          },
+          "personBHatEigenesKonto": {
+            "type": "boolean",
+            "description": "Person B joined with an own account and maintains their data there — Person A cannot edit it."
+          },
+          "personB": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/KopplungPersonBDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "veranlagungsart"
+        ]
+      },
+      "SetKopplungDto": {
+        "type": "object",
+        "properties": {
+          "veranlagungsart": {
+            "type": "string",
+            "enum": [
+              "einzel",
+              "zusammen"
+            ],
+            "example": "zusammen"
+          }
+        },
+        "required": [
+          "veranlagungsart"
+        ]
+      },
+      "StammdatenResponseDto": {
+        "type": "object",
+        "properties": {
+          "geburtsdatum": {
+            "type": "string",
+            "nullable": true
+          },
+          "strasse": {
+            "type": "string",
+            "nullable": true
+          },
+          "hausnummer": {
+            "type": "string",
+            "nullable": true
+          },
+          "hausnummerZusatz": {
+            "type": "string",
+            "nullable": true
+          },
+          "plz": {
+            "type": "string",
+            "nullable": true
+          },
+          "wohnort": {
+            "type": "string",
+            "nullable": true
+          },
+          "beruf": {
+            "type": "string",
+            "nullable": true
+          },
+          "religion": {
+            "type": "string",
+            "enum": [
+              "VD",
+              "EV",
+              "RK",
+              "AK",
+              "FA",
+              "FB",
+              "FG",
+              "FM",
+              "FS",
+              "IB",
+              "IL",
+              "IS",
+              "IW",
+              "JD",
+              "JH"
+            ],
+            "nullable": true
+          },
+          "familienstand": {
+            "type": "string",
+            "enum": [
+              "ledig",
+              "verheiratet",
+              "verwitwet",
+              "geschieden",
+              "dauernd-getrennt"
+            ],
+            "nullable": true
+          },
+          "familienstandSeit": {
+            "type": "string",
+            "nullable": true
+          },
+          "iban": {
+            "type": "string",
+            "nullable": true
+          },
+          "kontoinhaber": {
+            "type": "string",
+            "nullable": true
+          },
+          "finanzamt": {
+            "type": "string",
+            "nullable": true
+          },
+          "telefon": {
+            "type": "string",
+            "nullable": true
+          },
+          "fehlend": {
+            "description": "Fields the Hauptvordruck needs that are still empty — the honest gap list for the Ausdruck.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "geburtsdatum",
+          "strasse",
+          "hausnummer",
+          "hausnummerZusatz",
+          "plz",
+          "wohnort",
+          "beruf",
+          "religion",
+          "familienstand",
+          "familienstandSeit",
+          "iban",
+          "kontoinhaber",
+          "finanzamt",
+          "telefon",
+          "fehlend"
+        ]
+      },
+      "PutStammdatenDto": {
+        "type": "object",
+        "properties": {
+          "geburtsdatum": {
+            "type": "string",
+            "nullable": true,
+            "example": "1990-04-12",
+            "description": "YYYY-MM-DD"
+          },
+          "strasse": {
+            "type": "string",
+            "nullable": true,
+            "example": "Musterstraße"
+          },
+          "hausnummer": {
+            "type": "string",
+            "nullable": true,
+            "example": "12"
+          },
+          "hausnummerZusatz": {
+            "type": "string",
+            "nullable": true,
+            "example": "a"
+          },
+          "plz": {
+            "type": "string",
+            "nullable": true,
+            "example": "01067",
+            "description": "Five digits (Inland)."
+          },
+          "wohnort": {
+            "type": "string",
+            "nullable": true,
+            "example": "Dresden"
+          },
+          "beruf": {
+            "type": "string",
+            "nullable": true,
+            "example": "Ingenieurin"
+          },
+          "religion": {
+            "type": "string",
+            "enum": [
+              "VD",
+              "EV",
+              "RK",
+              "AK",
+              "FA",
+              "FB",
+              "FG",
+              "FM",
+              "FS",
+              "IB",
+              "IL",
+              "IS",
+              "IW",
+              "JD",
+              "JH"
+            ],
+            "nullable": true,
+            "description": "Religionsschlüssel per ESt 1 A guide (VD = none). Art. 9 DSGVO: requires religionEinwilligung = true."
+          },
+          "religionEinwilligung": {
+            "type": "boolean",
+            "description": "Explicit consent to store the religion (Art. 9 Abs. 2 lit. a DSGVO)."
+          },
+          "familienstand": {
+            "type": "string",
+            "enum": [
+              "ledig",
+              "verheiratet",
+              "verwitwet",
+              "geschieden",
+              "dauernd-getrennt"
+            ],
+            "nullable": true
+          },
+          "familienstandSeit": {
+            "type": "string",
+            "nullable": true,
+            "example": "2018-06-01",
+            "description": "YYYY-MM-DD; not for ledig."
+          },
+          "iban": {
+            "type": "string",
+            "nullable": true,
+            "example": "DE89370400440532013000",
+            "description": "Mod-97-checked; stored without spaces."
+          },
+          "kontoinhaber": {
+            "type": "string",
+            "nullable": true,
+            "example": "Anna Beispiel",
+            "description": "Only when the account holder is someone else."
+          },
+          "finanzamt": {
+            "type": "string",
+            "nullable": true,
+            "example": "Dresden-Nord"
+          },
+          "telefon": {
+            "type": "string",
+            "nullable": true,
+            "example": "0351 1234567"
+          }
+        }
       },
       "StepDto": {
         "type": "object",
@@ -4685,222 +5071,6 @@
         "required": [
           "kind"
         ]
-      },
-      "StammdatenResponseDto": {
-        "type": "object",
-        "properties": {
-          "geburtsdatum": {
-            "type": "string",
-            "nullable": true
-          },
-          "strasse": {
-            "type": "string",
-            "nullable": true
-          },
-          "hausnummer": {
-            "type": "string",
-            "nullable": true
-          },
-          "hausnummerZusatz": {
-            "type": "string",
-            "nullable": true
-          },
-          "plz": {
-            "type": "string",
-            "nullable": true
-          },
-          "wohnort": {
-            "type": "string",
-            "nullable": true
-          },
-          "beruf": {
-            "type": "string",
-            "nullable": true
-          },
-          "religion": {
-            "type": "string",
-            "enum": [
-              "VD",
-              "EV",
-              "RK",
-              "AK",
-              "FA",
-              "FB",
-              "FG",
-              "FM",
-              "FS",
-              "IB",
-              "IL",
-              "IS",
-              "IW",
-              "JD",
-              "JH"
-            ],
-            "nullable": true
-          },
-          "familienstand": {
-            "type": "string",
-            "enum": [
-              "ledig",
-              "verheiratet",
-              "verwitwet",
-              "geschieden",
-              "dauernd-getrennt"
-            ],
-            "nullable": true
-          },
-          "familienstandSeit": {
-            "type": "string",
-            "nullable": true
-          },
-          "iban": {
-            "type": "string",
-            "nullable": true
-          },
-          "kontoinhaber": {
-            "type": "string",
-            "nullable": true
-          },
-          "finanzamt": {
-            "type": "string",
-            "nullable": true
-          },
-          "telefon": {
-            "type": "string",
-            "nullable": true
-          },
-          "fehlend": {
-            "description": "Fields the Hauptvordruck needs that are still empty — the honest gap list for the Ausdruck.",
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        },
-        "required": [
-          "geburtsdatum",
-          "strasse",
-          "hausnummer",
-          "hausnummerZusatz",
-          "plz",
-          "wohnort",
-          "beruf",
-          "religion",
-          "familienstand",
-          "familienstandSeit",
-          "iban",
-          "kontoinhaber",
-          "finanzamt",
-          "telefon",
-          "fehlend"
-        ]
-      },
-      "PutStammdatenDto": {
-        "type": "object",
-        "properties": {
-          "geburtsdatum": {
-            "type": "string",
-            "nullable": true,
-            "example": "1990-04-12",
-            "description": "YYYY-MM-DD"
-          },
-          "strasse": {
-            "type": "string",
-            "nullable": true,
-            "example": "Musterstraße"
-          },
-          "hausnummer": {
-            "type": "string",
-            "nullable": true,
-            "example": "12"
-          },
-          "hausnummerZusatz": {
-            "type": "string",
-            "nullable": true,
-            "example": "a"
-          },
-          "plz": {
-            "type": "string",
-            "nullable": true,
-            "example": "01067",
-            "description": "Five digits (Inland)."
-          },
-          "wohnort": {
-            "type": "string",
-            "nullable": true,
-            "example": "Dresden"
-          },
-          "beruf": {
-            "type": "string",
-            "nullable": true,
-            "example": "Ingenieurin"
-          },
-          "religion": {
-            "type": "string",
-            "enum": [
-              "VD",
-              "EV",
-              "RK",
-              "AK",
-              "FA",
-              "FB",
-              "FG",
-              "FM",
-              "FS",
-              "IB",
-              "IL",
-              "IS",
-              "IW",
-              "JD",
-              "JH"
-            ],
-            "nullable": true,
-            "description": "Religionsschlüssel per ESt 1 A guide (VD = none). Art. 9 DSGVO: requires religionEinwilligung = true."
-          },
-          "religionEinwilligung": {
-            "type": "boolean",
-            "description": "Explicit consent to store the religion (Art. 9 Abs. 2 lit. a DSGVO)."
-          },
-          "familienstand": {
-            "type": "string",
-            "enum": [
-              "ledig",
-              "verheiratet",
-              "verwitwet",
-              "geschieden",
-              "dauernd-getrennt"
-            ],
-            "nullable": true
-          },
-          "familienstandSeit": {
-            "type": "string",
-            "nullable": true,
-            "example": "2018-06-01",
-            "description": "YYYY-MM-DD; not for ledig."
-          },
-          "iban": {
-            "type": "string",
-            "nullable": true,
-            "example": "DE89370400440532013000",
-            "description": "Mod-97-checked; stored without spaces."
-          },
-          "kontoinhaber": {
-            "type": "string",
-            "nullable": true,
-            "example": "Anna Beispiel",
-            "description": "Only when the account holder is someone else."
-          },
-          "finanzamt": {
-            "type": "string",
-            "nullable": true,
-            "example": "Dresden-Nord"
-          },
-          "telefon": {
-            "type": "string",
-            "nullable": true,
-            "example": "0351 1234567"
-          }
-        }
       },
       "ZuordnungDto": {
         "type": "object",
@@ -6533,124 +6703,6 @@
             "example": "3000"
           }
         }
-      },
-      "KopplungPersonBDto": {
-        "type": "object",
-        "properties": {
-          "firstName": {
-            "type": "string",
-            "nullable": true,
-            "example": "Erika"
-          },
-          "lastName": {
-            "type": "string",
-            "nullable": true,
-            "example": "Muster"
-          },
-          "steuerId": {
-            "type": "string",
-            "nullable": true,
-            "example": "12345678901"
-          },
-          "geburtsdatum": {
-            "type": "string",
-            "nullable": true,
-            "example": "1985-04-12"
-          },
-          "religion": {
-            "type": "string",
-            "enum": [
-              "VD",
-              "EV",
-              "RK",
-              "AK",
-              "FA",
-              "FB",
-              "FG",
-              "FM",
-              "FS",
-              "IB",
-              "IL",
-              "IS",
-              "IW",
-              "JD",
-              "JH"
-            ],
-            "nullable": true,
-            "description": "Art. 9 DSGVO: requires religionEinwilligung = true, like the own Stammdaten."
-          },
-          "religionEinwilligung": {
-            "type": "boolean",
-            "description": "Explicit consent to store the religion (Art. 9 Abs. 2 lit. a DSGVO)."
-          },
-          "beruf": {
-            "type": "string",
-            "nullable": true,
-            "example": "Angestellte"
-          }
-        }
-      },
-      "KopplungResponseDto": {
-        "type": "object",
-        "properties": {
-          "veranlagungsart": {
-            "type": "string",
-            "enum": [
-              "keine",
-              "einzel",
-              "zusammen"
-            ],
-            "example": "zusammen"
-          },
-          "personBUserId": {
-            "type": "string",
-            "nullable": true,
-            "example": "person-b-user-id"
-          },
-          "einladungsCode": {
-            "type": "string",
-            "nullable": true,
-            "example": "9F3A0C71B2E4D658"
-          },
-          "einladungsCodeGueltigBis": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true,
-            "description": "After this moment the code no longer links."
-          },
-          "personBHatEigenesKonto": {
-            "type": "boolean",
-            "description": "Person B joined with an own account and maintains their data there — Person A cannot edit it."
-          },
-          "personB": {
-            "nullable": true,
-            "type": "object",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/KopplungPersonBDto"
-              }
-            ]
-          }
-        },
-        "required": [
-          "veranlagungsart"
-        ]
-      },
-      "SetKopplungDto": {
-        "type": "object",
-        "properties": {
-          "veranlagungsart": {
-            "type": "string",
-            "enum": [
-              "einzel",
-              "zusammen"
-            ],
-            "example": "zusammen"
-          }
-        },
-        "required": [
-          "veranlagungsart"
-        ]
       },
       "EulenEinstellungResponseDto": {
         "type": "object",

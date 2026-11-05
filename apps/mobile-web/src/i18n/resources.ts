@@ -419,7 +419,8 @@ export const appResources = {
         anlagen: {
           anlageV: 'Vermietung (Anlage V)',
           anlageKap: 'Kapitalerträge (Anlage KAP)',
-          anlageNGreSonderfall: 'Sonderfälle beim Schweizer Arbeitslohn (Anlage N-Gre, Zeilen 7–22)',
+          anlageNGreSonderfall: 'Sonderfälle beim Schweizer Arbeitslohn (Anlage N-Gre, Zeilen 7–17 und 20–22)',
+          personADruckt: 'Ihr gebt eine gemeinsame Erklärung ab – ausdrucken kann sie die Person, die zur Zusammenveranlagung eingeladen hat',
           anlageNGreKeinGrenzgaenger: 'Arbeit in der Schweiz ohne Grenzgänger-Status (zu viele Nichtrückkehrtage oder Wohnsitz in der Schweiz)',
           anlageRAvBav: 'Betriebsrente (Anlage R-AV/bAV)',
           anlageRAus: 'ausländische Rente (Anlage R-AUS)',
@@ -651,6 +652,7 @@ export const appResources = {
       lstb: {
         back: 'Zurück',
         heading: 'Deine Lohnsteuerbescheinigung',
+        headingPartner: 'Lohnsteuerbescheinigung von {{name}}',
         help: 'Übertrag die drei Werte aus deiner Lohnsteuerbescheinigung — Feld für Feld, in der Reihenfolge des Papiers.',
         loading: 'Deine Lohnsteuerbescheinigung wird geladen …',
         loadError: {
@@ -861,6 +863,7 @@ export const appResources = {
       arbeitstage: {
         back: 'Zurück',
         heading: 'Deine Arbeitstage',
+        headingPartner: 'Arbeitstage und Arbeitsweg von {{name}}',
         help: 'Wähl deine Arbeitstage und trag Urlaub, Krankheit und Homeoffice ein. Wir zählen aus dem echten Kalender — kein Schätzwert.',
         weekdays: 'An welchen Tagen arbeitest du?',
         weekdayNames: { 1: 'Mo', 2: 'Di', 3: 'Mi', 4: 'Do', 5: 'Fr', 6: 'Sa', 7: 'So' },
@@ -1648,7 +1651,8 @@ export const appResources = {
         anlagen: {
           anlageV: 'rental income (Anlage V)',
           anlageKap: 'capital income (Anlage KAP)',
-          anlageNGreSonderfall: 'special cases in the Swiss wage (Anlage N-Gre, lines 7–22)',
+          anlageNGreSonderfall: 'special cases in the Swiss wage (Anlage N-Gre, lines 7–17 and 20–22)',
+          personADruckt: 'You file one joint return – it is printed by the partner who sent the invitation',
           anlageNGreKeinGrenzgaenger: 'work in Switzerland without cross-border status (too many non-return days or residence in Switzerland)',
           anlageRAvBav: 'occupational pension (Anlage R-AV/bAV)',
           anlageRAus: 'foreign pension (Anlage R-AUS)',
@@ -1880,6 +1884,7 @@ export const appResources = {
       lstb: {
         back: 'Back',
         heading: 'Your wage tax statement',
+        headingPartner: 'Wage tax certificate of {{name}}',
         help: 'Copy the three figures from your wage tax statement (Lohnsteuerbescheinigung) — field by field, in the paper\u2019s own order.',
         loading: 'Loading your wage tax statement …',
         loadError: {
@@ -2090,6 +2095,7 @@ export const appResources = {
       arbeitstage: {
         back: 'Back',
         heading: 'Your work days',
+        headingPartner: 'Working days and commute of {{name}}',
         help: "Pick your work days and enter vacation, sick and home-office days. We count from the real calendar — no estimate.",
         weekdays: 'Which days do you work?',
         weekdayNames: { 1: 'Mo', 2: 'Tu', 3: 'We', 4: 'Th', 5: 'Fr', 6: 'Sa', 7: 'Su' },

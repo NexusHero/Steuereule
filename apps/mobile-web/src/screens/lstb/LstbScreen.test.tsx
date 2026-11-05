@@ -8,7 +8,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { LstbScreen } from './LstbScreen'
-import { server } from '../../test-msw-server'
+import { EMPTY_LSTB_RESPONSE, server } from '../../test-msw-server'
 import type { LstbResponseDto } from '@steuereule/api-client'
 
 const TAX_YEAR = 2026
@@ -24,14 +24,14 @@ const WIDERSPRUCH: LstbResponseDto = {
   },
 }
 
-function renderLstb() {
+function renderLstb(partnerName?: string) {
   const i18n = createAppI18n('de')
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={queryClient}>
       <I18nextProvider i18n={i18n}>
         <ThemeProvider mode="light">
-          <LstbScreen taxYear={TAX_YEAR} onDone={() => {}} />
+          <LstbScreen taxYear={TAX_YEAR} onDone={() => {}} {...(partnerName ? { partnerName } : {})} />
         </ThemeProvider>
       </I18nextProvider>
     </QueryClientProvider>,
@@ -92,6 +92,28 @@ describe('LstbScreen', () => {
     await waitFor(() => expect(puts).toHaveLength(1))
     expect(puts[0]!.url).toMatch(/\/lstb\/bruttoarbeitslohn$/)
     expect(puts[0]!.body).toEqual({ kind: 'erfasst', wert: 45000 })
+  })
+
+  it("records the partner's certificate as person=B and says whose it is (ADR-0054)", async () => {
+    const urls: string[] = []
+    server.use(
+      http.get(LSTB_URL, ({ request }) => {
+        urls.push(request.url)
+        return HttpResponse.json(EMPTY_LSTB_RESPONSE, { status: 200 })
+      }),
+      http.put(`${LSTB_URL}/:feld`, ({ request }) => {
+        urls.push(request.url)
+        return HttpResponse.json({}, { status: 200 })
+      }),
+    )
+    renderLstb('Sabine')
+    expect(await screen.findByText('Lohnsteuerbescheinigung von Sabine')).toBeTruthy()
+    const brutto = screen.getByLabelText('Bruttoarbeitslohn (Zeile 3) (Ganzzahlige Euro)')
+    fireEvent.change(brutto, { target: { value: '48000' } })
+    fireEvent.blur(brutto)
+
+    await waitFor(() => expect(urls.some((u) => u.endsWith('/lstb/bruttoarbeitslohn?person=B'))).toBe(true))
+    expect(urls[0]).toMatch(/\/lstb\?person=B$/)
   })
 
   it('never turns an untouched empty field into 0 € when it loses focus', async () => {
