@@ -54,23 +54,9 @@ export function weekdaysInYear(year: number, workdays: readonly IsoWeekday[]): n
   return count
 }
 
-export type WorkdaysConflict =
-  | { readonly kind: 'vacation-sick-exceeds-weekdays'; readonly weekdays: number; readonly vacationDays: number; readonly sickDays: number }
-  | { readonly kind: 'homeoffice-exceeds-workdays'; readonly workdays: number; readonly homeOfficeDays: number }
-
 export type WerktageWiderspruch =
   | { readonly art: 'urlaub-krank-uebersteigt-wochentage'; readonly wochentage: number; readonly urlaubstage: number; readonly krankheitstage: number }
   | { readonly art: 'homeoffice-uebersteigt-werktage'; readonly werktage: number; readonly homeofficeTage: number }
-
-export type WorkdaysResult =
-  | {
-      readonly kind: 'exact'
-      readonly weekdays: number
-      readonly workdays: number
-      readonly commuteDays: number
-    }
-  | { readonly kind: 'conflict'; readonly conflict: WorkdaysConflict }
-
 export type WerktageErgebnis =
   | {
       readonly kind: 'bestimmt'

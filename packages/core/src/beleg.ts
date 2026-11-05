@@ -1,23 +1,5 @@
 import type { ReceiptType } from './belegart.js'
 
-export interface ReceiptData {
-  readonly id: string
-  readonly userId: string
-  readonly filename: string
-  readonly type?: ReceiptType
-  readonly receiptDate?: string
-  readonly paymentDate?: string
-  readonly taxYear: number | null
-  readonly suggestionDismissed: boolean
-  // Backward compatibility fields
-  readonly dateiname?: string
-  readonly art?: ReceiptType
-  readonly belegdatum?: string
-  readonly zahlungsdatum?: string
-  readonly steuerjahr?: number | null
-  readonly vorschlagVerworfen?: boolean
-}
-
 export type BelegDaten = {
   readonly id: string
   readonly userId: string
@@ -29,13 +11,7 @@ export type BelegDaten = {
   readonly vorschlagVerworfen: boolean
 }
 
-export type SuggestionProvenance = 'paymentDate' | 'receiptDate'
 export type VorschlagsHerkunft = 'zahlungsdatum' | 'belegdatum'
-
-export interface TaxYearSuggestion {
-  readonly taxYear: number
-  readonly provenance: SuggestionProvenance
-}
 
 export interface SteuerjahrVorschlag {
   readonly steuerjahr: number
@@ -47,34 +23,17 @@ function yearFromDate(iso: string): number | null {
   return match === null ? null : Number(match[1])
 }
 
-export function steuerjahrVorschlag(daten: BelegDaten | ReceiptData): SteuerjahrVorschlag | null {
-  const paymentDate = 'paymentDate' in daten && daten.paymentDate !== undefined ? daten.paymentDate : daten.zahlungsdatum
-  if (paymentDate !== undefined) {
-    const year = yearFromDate(paymentDate)
+export function steuerjahrVorschlag(daten: BelegDaten): SteuerjahrVorschlag | null {
+  if (daten.zahlungsdatum !== undefined) {
+    const year = yearFromDate(daten.zahlungsdatum)
     if (year !== null) return { steuerjahr: year, herkunft: 'zahlungsdatum' }
   }
-  const receiptDate = 'receiptDate' in daten && daten.receiptDate !== undefined ? daten.receiptDate : daten.belegdatum
-  if (receiptDate !== undefined) {
-    const year = yearFromDate(receiptDate)
+  if (daten.belegdatum !== undefined) {
+    const year = yearFromDate(daten.belegdatum)
     if (year !== null) return { steuerjahr: year, herkunft: 'belegdatum' }
   }
   return null
 }
-
-export function suggestTaxYear(data: ReceiptData | BelegDaten): TaxYearSuggestion | null {
-  const res = steuerjahrVorschlag(data)
-  if (res === null) return null
-  return {
-    taxYear: res.steuerjahr,
-    provenance: res.herkunft === 'zahlungsdatum' ? 'paymentDate' : 'receiptDate',
-  }
-}
-
-export type ReceiptAssignment =
-  | { readonly kind: 'unbound' }
-  | { readonly kind: 'suggested'; readonly suggestion: TaxYearSuggestion }
-  | { readonly kind: 'assigned'; readonly taxYear: number }
-  | { readonly kind: 'conflict'; readonly assigned: number; readonly suggestion: TaxYearSuggestion }
 
 export type BelegZuordnung =
   | { readonly kind: 'ungebunden' }
@@ -82,10 +41,10 @@ export type BelegZuordnung =
   | { readonly kind: 'zugeordnet'; readonly steuerjahr: number }
   | { readonly kind: 'konflikt'; readonly zugeordnet: number; readonly vorschlag: SteuerjahrVorschlag }
 
-export function assignmentFromData(daten: BelegDaten | ReceiptData): BelegZuordnung {
+export function assignmentFromData(daten: BelegDaten): BelegZuordnung {
   const vorschlag = steuerjahrVorschlag(daten)
-  const currentTaxYear = 'taxYear' in daten && daten.taxYear !== undefined ? daten.taxYear : (daten as BelegDaten).steuerjahr
-  const isDismissed = 'suggestionDismissed' in daten && daten.suggestionDismissed !== undefined ? daten.suggestionDismissed : (daten as BelegDaten).vorschlagVerworfen
+  const currentTaxYear = daten.steuerjahr
+  const isDismissed = daten.vorschlagVerworfen
 
   if (currentTaxYear !== null) {
     if (!isDismissed && vorschlag !== null && vorschlag.steuerjahr !== currentTaxYear) {
@@ -97,23 +56,17 @@ export function assignmentFromData(daten: BelegDaten | ReceiptData): BelegZuordn
   return { kind: 'ungebunden' }
 }
 
-export function assignReceipt<T extends BelegDaten | ReceiptData>(daten: T, steuerjahr: number): T {
+export function assignReceipt<T extends BelegDaten>(daten: T, steuerjahr: number): T {
   if (!Number.isInteger(steuerjahr)) {
     throw new RangeError('steuerjahr must be an integer calendar year')
   }
   return {
     ...daten,
     steuerjahr,
-    taxYear: steuerjahr,
     vorschlagVerworfen: false,
-    suggestionDismissed: false,
   }
 }
 
-export function dismissSuggestion<T extends BelegDaten | ReceiptData>(daten: T): T {
-  return {
-    ...daten,
-    vorschlagVerworfen: true,
-    suggestionDismissed: true,
-  }
+export function dismissSuggestion<T extends BelegDaten>(daten: T): T {
+  return { ...daten, vorschlagVerworfen: true }
 }

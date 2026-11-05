@@ -1,17 +1,5 @@
 import { calculate, type Posten } from './berechnung'
 import type { IncomeType } from './einkunftsarten'
-
-export type RentalTypeAnswer = 'Einfach' | 'Mehrere' | 'Verkauf oder möbliert'
-export const RENTAL_TYPE_ANSWERS: readonly RentalTypeAnswer[] = [
-  'Einfach',
-  'Mehrere',
-  'Verkauf oder möbliert',
-]
-
-export function isRentalTypeAnswer(value: string): value is RentalTypeAnswer {
-  return (RENTAL_TYPE_ANSWERS as readonly string[]).includes(value)
-}
-
 export type RentalClassification =
   | { readonly kind: 'einfach' }
   | { readonly kind: 'mehrere' }

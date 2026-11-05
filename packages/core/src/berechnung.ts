@@ -1,33 +1,11 @@
 import type { IncomeType } from './einkunftsarten.js'
-
-export type ProvenanceKind = 'input' | 'receipt' | 'ai-suggestion' | 'rule' | 'rollover'
-
-export type Source =
-  | { readonly kind: 'input' }
-  | { readonly kind: 'receipt'; readonly receiptId: string }
-  | { readonly kind: 'ai-suggestion'; readonly suggestionId: string; readonly receiptId?: string }
-  | { readonly kind: 'rule'; readonly rule: string }
-  | { readonly kind: 'rollover'; readonly priorYear: number }
-
 export type Quelle =
   | { readonly art: 'eingabe' }
   | { readonly art: 'beleg'; readonly belegId: string }
   | { readonly art: 'ki-vorschlag'; readonly vorschlagId: string; readonly belegId?: string }
   | { readonly art: 'regel'; readonly regel: string }
   | { readonly art: 'uebernahme'; readonly vorjahr: number }
-
-export type LineItemRole = 'income' | 'provision' | 'credit'
 export type Rolle = 'einnahme' | 'vorsorgeaufwand' | 'anrechnung'
-
-/** A settled line item. */
-export interface LineItem {
-  readonly id: string
-  readonly incomeType: IncomeType
-  readonly role?: LineItemRole
-  readonly amount: number
-  readonly source: Source | Quelle
-  readonly unconfirmed?: boolean
-}
 
 export interface Posten {
   readonly id: string
@@ -137,10 +115,6 @@ export function calculate(input: BerechnungsInput): Berechnungsstand {
 export type KonfliktAufloesung =
   | { readonly art: 'quelle-waehlen'; readonly quelle: Quelle; readonly betrag: number }
   | { readonly art: 'wert-korrigieren'; readonly betrag: number }
-
-export type ConflictResolution =
-  | { readonly kind: 'choose-source'; readonly source: Source | Quelle; readonly amount: number }
-  | { readonly kind: 'correct-value'; readonly amount: number }
 
 export function resolveConflict(konflikt: PostenKonflikt, aufloesung: KonfliktAufloesung): Posten {
   const quelle: Quelle = aufloesung.art === 'quelle-waehlen' ? aufloesung.quelle : { art: 'eingabe' }

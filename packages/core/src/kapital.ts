@@ -1,17 +1,5 @@
 import { calculate, type Berechnungsstand, type Posten } from './berechnung'
 import type { IncomeType } from './einkunftsarten'
-
-export type CapitalDepotAnswer = 'Deutscher Broker' | 'Ausländischer Broker' | 'Krypto'
-export const CAPITAL_DEPOT_ANSWERS: readonly CapitalDepotAnswer[] = [
-  'Deutscher Broker',
-  'Ausländischer Broker',
-  'Krypto',
-]
-
-export function isCapitalDepotAnswer(value: string): value is CapitalDepotAnswer {
-  return (CAPITAL_DEPOT_ANSWERS as readonly string[]).includes(value)
-}
-
 export type CapitalDepotClassification =
   | { readonly kind: 'deutscher-broker' }
   | { readonly kind: 'auslaendischer-broker' }

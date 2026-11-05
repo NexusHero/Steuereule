@@ -15,10 +15,7 @@ export const RELIGION_KEYS = [
   'JD',
   'JH',
 ] as const
-
-export type ReligionKey = (typeof RELIGION_KEYS)[number]
 export const MARITAL_STATUSES = ['ledig', 'verheiratet', 'verwitwet', 'geschieden', 'dauernd-getrennt'] as const
-export type MaritalStatus = (typeof MARITAL_STATUSES)[number]
 
 export function normalizeIban(value: string): string {
   return value.replace(/\s+/g, '').toUpperCase()

@@ -30,7 +30,7 @@ describe('employeeFromAnswers — the catalogue answers feed the Rechenkern', ()
     const answers: Answers = {
       umzug: 'Ja',
       'umzug-kosten': '800',
-      donations: 'Nein',
+      spenden: 'Nein',
       dhf: 'Ja',
       'dhf-miete': '650',
       abfindung: 'Ja',

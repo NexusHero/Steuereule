@@ -1,43 +1,20 @@
-export type FieldProvenanceKind =
-  | { readonly kind: 'user' }
-  | { readonly kind: 'rollover'; readonly priorYear: number }
-  | { readonly kind: 'assistant'; readonly name: string; readonly receiptId?: string }
-  | { readonly kind: 'receipt'; readonly receiptId: string }
-
 export type Herkunft =
   | { readonly art: 'nutzer' }
   | { readonly art: 'uebernahme'; readonly vorjahr: number }
   | { readonly art: 'assistent'; readonly name: string; readonly belegId?: string }
   | { readonly art: 'beleg'; readonly belegId: string }
 
-export interface Proposal {
-  readonly value: string | null
-  readonly provenance: FieldProvenanceKind | Herkunft
-}
-
 export interface Vorschlag {
   readonly wert: string | null
   readonly herkunft: Herkunft
 }
 
-export interface FieldProvenance {
-  readonly key: string
-  readonly provenance: FieldProvenanceKind | Herkunft
-  readonly confirmed: boolean
-  readonly value: string | null
-  readonly suggestion: Proposal | Vorschlag | null
-}
-
 export interface Kennzeichnung {
   readonly key: string
   readonly herkunft: Herkunft
-  readonly provenance?: FieldProvenanceKind | Herkunft
   readonly bestaetigt: boolean
-  readonly confirmed?: boolean
   readonly wert: string | null
-  readonly value?: string | null
   readonly vorschlag: Vorschlag | null
-  readonly suggestion?: Proposal | Vorschlag | null
 }
 
 export const MASKEN = ['profil', 'stammdaten', 'kopplung', 'interview', 'lstb', 'chLohnausweis', 'rente', 'kapital', 'vermietung', 'kind'] as const
@@ -83,8 +60,6 @@ export function decomposeProvenanceKey(key: string): { maske: Maske; instanz: st
 export function anlageVon(key: string): Annex {
   return ANLAGE_JE_MASKE[decomposeProvenanceKey(key).maske]
 }
-
-export const annexForMask = (maske: Maske): Annex => ANLAGE_JE_MASKE[maske]
 
 export function isYearIndependent(key: string): boolean {
   const { maske } = decomposeProvenanceKey(key)

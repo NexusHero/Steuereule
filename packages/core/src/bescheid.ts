@@ -4,17 +4,6 @@ import type { AngestellteFakten } from './angestellte'
 export type AssessmentAmountField = 'einnahmen' | 'vorsorgeaufwand' | 'anrechnung'
 export type AssessmentOnlyField = 'festgesetzteSteuer' | 'erstattung'
 export type AssessmentField = AssessmentAmountField | AssessmentOnlyField
-
-/** The five figures a tax assessment notice carries, in paper order, with the comparable flag. */
-export interface AssessmentFieldDefinition {
-  readonly id: AssessmentField
-  readonly signed: boolean
-  readonly comparable: boolean
-  // Backward compatibility
-  readonly signiert?: boolean
-  readonly vergleichbar?: boolean
-}
-
 export type BescheidFeldDef = {
   readonly id: AssessmentField
   readonly signiert: boolean
