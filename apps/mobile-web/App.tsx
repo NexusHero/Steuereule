@@ -46,6 +46,7 @@ import { betreiberAusUmgebung, RECHTLICHE_SEITEN, type RechtlicheSeite } from '.
 import { KontoWandScreen, pfadAusAntworten, type FunnelPfad } from './src/screens/funnel/KontoWandScreen'
 import { useAccountSession } from './src/auth/useAccountSession'
 import { followNativeAppFocus } from './src/app-focus'
+import { CURRENT_TAX_YEAR } from './src/config/taxYear'
 import { ansichtNachDemInterview } from './src/screens/funnel/nachDemInterview'
 
 const i18n = createAppI18n('de')
@@ -306,6 +307,7 @@ function TabbedShell({ tab, onTabChange, onSignedOut, startInInterview = false, 
     | 'eulen-modus'
   >(startInInterview ? 'interview' : 'main')
   const [ausstehenderPfad, setAusstehenderPfad] = useState<FunnelPfad | null>(null)
+  const [steuerjahr, setSteuerjahr] = useState(CURRENT_TAX_YEAR)
 
   useEffect(() => {
     if (ausstehenderPfad === null) return
@@ -347,6 +349,8 @@ function TabbedShell({ tab, onTabChange, onSignedOut, startInInterview = false, 
     <View style={{ flex: 1 }}>
       <View style={{ flex: 1, backgroundColor: t.color.grund, paddingBottom: zeigtTabBar ? tabBarClearance(t, insets.bottom) : 0 }}>
         {tab === 'cockpit' && cockpitView === 'main' ? <CockpitScreen
+            taxYear={steuerjahr}
+            onJahrWechsel={setSteuerjahr}
             onOpenInterview={() => setCockpitView('interview')}
             onOpenBescheid={() => setCockpitView('bescheid')}
             onOpenKapital={() => setCockpitView('kapital')}
@@ -361,7 +365,7 @@ function TabbedShell({ tab, onTabChange, onSignedOut, startInInterview = false, 
             {...(onOpenBestaetigung ? { onOpenBestaetigung } : {})}
           /> : null}
         {tab === 'cockpit' && cockpitView === 'interview' ? (
-          <InterviewScreen
+          <InterviewScreen taxYear={steuerjahr}
             onDone={(answers) => {
               const pfad = pfadAusAntworten(answers)
               setFunnelPfad(pfad)
@@ -373,41 +377,41 @@ function TabbedShell({ tab, onTabChange, onSignedOut, startInInterview = false, 
           <KontoWandScreen pfad={funnelPfad} onRegister={onRegister} onLogin={onLogin} onLater={() => setCockpitView('main')} />
         ) : null}
         {tab === 'cockpit' && cockpitView === 'rente' ? (
-          <RentnerScreen onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
+          <RentnerScreen taxYear={steuerjahr} onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
         ) : null}
-        {tab === 'cockpit' && cockpitView === 'ch' ? <GrenzgaengerScreen onDone={() => setCockpitView('main')} /> : null}
+        {tab === 'cockpit' && cockpitView === 'ch' ? <GrenzgaengerScreen taxYear={steuerjahr} onDone={() => setCockpitView('main')} /> : null}
         {tab === 'cockpit' && cockpitView === 'lstb' ? (
-          <LstbScreen onDone={() => setCockpitView('katalog-lebenslagen')} onBack={() => setCockpitView('main')} />
+          <LstbScreen taxYear={steuerjahr} onDone={() => setCockpitView('katalog-lebenslagen')} onBack={() => setCockpitView('main')} />
         ) : null}
         {tab === 'cockpit' && cockpitView === 'katalog-lebenslagen' ? (
-          <KatalogScreen entry="lebenslagen" onDone={() => setCockpitView('katalog-sonderausgaben')} onBack={() => setCockpitView('lstb')} />
+          <KatalogScreen taxYear={steuerjahr} entry="lebenslagen" onDone={() => setCockpitView('katalog-sonderausgaben')} onBack={() => setCockpitView('lstb')} />
         ) : null}
         {tab === 'cockpit' && cockpitView === 'katalog-sonderausgaben' ? (
-          <KatalogScreen entry="sonderausgaben" onDone={() => setCockpitView('arbeitstage')} onBack={() => setCockpitView('katalog-lebenslagen')} />
+          <KatalogScreen taxYear={steuerjahr} entry="sonderausgaben" onDone={() => setCockpitView('arbeitstage')} onBack={() => setCockpitView('katalog-lebenslagen')} />
         ) : null}
         {tab === 'cockpit' && cockpitView === 'arbeitstage' ? (
-          <ArbeitstageScreen onDone={() => setCockpitView('plausibilitaet')} onBack={() => setCockpitView('katalog-sonderausgaben')} />
+          <ArbeitstageScreen taxYear={steuerjahr} onDone={() => setCockpitView('plausibilitaet')} onBack={() => setCockpitView('katalog-sonderausgaben')} />
         ) : null}
         {tab === 'cockpit' && cockpitView === 'plausibilitaet' ? (
-          <PlausibilitaetScreen onBack={() => setCockpitView('main')} onDone={() => setCockpitView('veranlagungsartenvergleich')} />
+          <PlausibilitaetScreen taxYear={steuerjahr} onBack={() => setCockpitView('main')} onDone={() => setCockpitView('veranlagungsartenvergleich')} />
         ) : null}
         {tab === 'cockpit' && cockpitView === 'veranlagungsartenvergleich' ? (
-          <VeranlagungsartenvergleichScreen onBack={() => setCockpitView('plausibilitaet')} onDone={() => setCockpitView('main')} />
+          <VeranlagungsartenvergleichScreen taxYear={steuerjahr} onBack={() => setCockpitView('plausibilitaet')} onDone={() => setCockpitView('main')} />
         ) : null}
         {tab === 'cockpit' && cockpitView === 'bescheid' ? (
-          <BescheidScreen onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
+          <BescheidScreen taxYear={steuerjahr} onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
         ) : null}
         {tab === 'cockpit' && cockpitView === 'kapital' ? (
-          <KapitalScreen onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
+          <KapitalScreen taxYear={steuerjahr} onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
         ) : null}
         {tab === 'cockpit' && cockpitView === 'vermietung' ? (
-          <VermietungScreen onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
+          <VermietungScreen taxYear={steuerjahr} onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
         ) : null}
         {tab === 'cockpit' && cockpitView === 'kinder' ? (
-          <KinderScreen onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
+          <KinderScreen taxYear={steuerjahr} onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
         ) : null}
         {tab === 'cockpit' && cockpitView === 'eulen-modus' ? (
-          <EulenModusScreen onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
+          <EulenModusScreen taxYear={steuerjahr} onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
         ) : null}
         {tab === 'belege' ? <BelegeScreen /> : null}
         {tab === 'profil' && profilView === 'main' ? (
