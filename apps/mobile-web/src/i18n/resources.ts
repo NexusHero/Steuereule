@@ -814,6 +814,7 @@ export const appResources = {
         conflict: 'Deine Antwort passte nicht zum gespeicherten Stand. Wir haben deinen Fortschritt aktualisiert.',
         progress: '{{done}} von {{total}}',
         amountPlaceholder: 'Ganzzahlige Euro',
+        weiter: 'Weiter',
         questions: {
           dhf: 'Hast du eine doppelte Haushaltsführung?',
           'dhf-miete': 'Monatliche Miete am Arbeitsort',
@@ -1985,6 +1986,7 @@ export const appResources = {
         conflict: "Your answer didn't match what was saved. We've updated your progress.",
         progress: '{{done}} of {{total}}',
         amountPlaceholder: 'Whole euros',
+        weiter: 'Continue',
         questions: {
           dhf: 'Do you keep a second household for work?',
           'dhf-miete': 'Monthly rent at your place of work',

@@ -18,6 +18,7 @@ import {
   type PutNGreDto,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
+import { ganzzahlAus } from '../shared/ganzzahl'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
@@ -333,9 +334,21 @@ function NGreEingabe({
   readonly onCommit: (text: string) => void
 }) {
   const [text, setText] = useState(initial)
+  function commit() {
+    const getrimmt = text.trim()
+    if (getrimmt !== initial) onCommit(getrimmt)
+  }
   return (
     <Feld label={label}>
-      <Input type={numeric ? 'numeric' : 'text'} value={text} onChange={setText} onSubmit={() => onCommit(text.trim())} testID={testID} />
+      <Input
+        type={numeric ? 'numeric' : 'text'}
+        value={text}
+        onChange={setText}
+        onSubmit={commit}
+        onBlur={commit}
+        accessibilityLabel={label}
+        testID={testID}
+      />
     </Feld>
   )
 }
@@ -353,6 +366,13 @@ function ChFeldInput({
 }) {
   const { t: tr } = useTranslation(APP_NS)
   const [text, setText] = useState(initial)
+  function commit() {
+    const getrimmt = text.trim()
+    if (getrimmt === initial) return
+    if (getrimmt === '') return onCommit({ kind: 'offen' })
+    const wert = ganzzahlAus(getrimmt)
+    if (wert !== null) onCommit({ kind: 'erfasst', wert })
+  }
   return (
     <Feld label={`${tr('grenzgaenger.lohnausweis.ziffer', { n: ziffer })} · ${tr(`grenzgaenger.lohnausweis.felder.${feldId}`)}`}>
       <Input
@@ -361,11 +381,8 @@ function ChFeldInput({
         onChange={setText}
         placeholder="0"
         mono
-        onSubmit={() => {
-          const n = Number(text)
-          if (text === '') onCommit({ kind: 'offen' })
-          else if (/^(0|[1-9]\d*)$/.test(text) && Number.isInteger(n) && n >= 0) onCommit({ kind: 'erfasst', wert: n })
-        }}
+        onSubmit={commit}
+        onBlur={commit}
         testID={`ch-feld-${feldId}`}
       />
     </Feld>
