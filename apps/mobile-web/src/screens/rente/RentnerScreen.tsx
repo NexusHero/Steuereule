@@ -13,6 +13,7 @@ import {
 } from '@steuereule/api-client'
 import { RENTENARTEN, type Rentenart } from '@steuereule/core'
 import { APP_NS } from '../../i18n/resources'
+import { ganzzahlAus } from '../shared/ganzzahl'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
@@ -135,9 +136,11 @@ function RenteFeldEditor({
   const s = makeStyles(t)
   const [text, setText] = useState(zustand.kind === 'erfasst' ? String(zustand.wert) : '')
 
-  function submit() {
-    const wert = Number(text)
-    if (Number.isInteger(wert) && wert >= 0) onErfasst(wert)
+  function commit() {
+    const wert = ganzzahlAus(text)
+    if (wert === null) return
+    if (zustand.kind === 'erfasst' && zustand.wert === wert) return
+    onErfasst(wert)
   }
 
   return (
@@ -149,7 +152,8 @@ function RenteFeldEditor({
           value={zustand.kind === 'unklar' ? '' : text}
           onChange={setText}
           placeholder={tr('rente.feld.placeholder')}
-          onSubmit={submit}
+          onSubmit={commit}
+          onBlur={commit}
           accessibilityLabel={`${label} (${tr('rente.feld.placeholder')})`}
         />
         <Pressable accessibilityRole="button" onPress={onUnklar} style={s.unklarButton}>

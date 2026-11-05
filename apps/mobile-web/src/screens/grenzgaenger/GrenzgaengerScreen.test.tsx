@@ -185,4 +185,45 @@ describe('GrenzgaengerScreen — Anlage N-Gre facts', () => {
 
     await waitFor(() => expect(bodies).toEqual([{ arbeitgeberName: 'Muster AG' }, { pkArbeitgeberChf: 6000 }, { sonderfaelle: false }]))
   })
+
+  it('saves employer facts and Lohnausweis figures when the field loses focus — no Enter needed', async () => {
+    const nGre: unknown[] = []
+    const felder: unknown[] = []
+    server.use(http.get(INTERVIEW_URL, () => HttpResponse.json(DONE_CH_INTERVIEW, { status: 200 })))
+    server.use(
+      http.put(`${CH_URL}/n-gre`, async ({ request }) => {
+        nGre.push(await request.json())
+        return HttpResponse.json(EMPTY_CH, { status: 200 })
+      }),
+      http.put(`${CH_URL}/:feld`, async ({ request }) => {
+        felder.push(await request.json())
+        return HttpResponse.json(EMPTY_CH, { status: 200 })
+      }),
+    )
+    renderScreen()
+    const name = await screen.findByTestId('ch-ngre-arbeitgeberName')
+    const lohn = screen.getByTestId('ch-feld-lohn')
+
+    fireEvent.change(name, { target: { value: 'Muster AG' } })
+    fireEvent.blur(name)
+    fireEvent.change(lohn, { target: { value: '90000' } })
+    fireEvent.blur(lohn)
+
+    await waitFor(() => expect(nGre).toEqual([{ arbeitgeberName: 'Muster AG' }]))
+    await waitFor(() => expect(felder).toEqual([{ kind: 'erfasst', wert: 90000 }]))
+  })
+
+  it('does not send anything when an untouched field loses focus', async () => {
+    const puts: unknown[] = []
+    server.use(http.get(INTERVIEW_URL, () => HttpResponse.json(DONE_CH_INTERVIEW, { status: 200 })))
+    server.use(http.put(`${CH_URL}/:feld`, () => { puts.push(1); return HttpResponse.json(EMPTY_CH, { status: 200 }) }))
+    renderScreen()
+    const lohn = await screen.findByTestId('ch-feld-lohn')
+
+    fireEvent.focus(lohn)
+    fireEvent.blur(lohn)
+
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(puts).toHaveLength(0)
+  })
 })

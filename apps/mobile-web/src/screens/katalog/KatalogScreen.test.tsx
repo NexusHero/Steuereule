@@ -2,7 +2,7 @@
 // Minimal-Gate: renders the first Lebenslage question from GET ?eintrag=lebenslagen, posts the
 // answer, and advances to the amount follow-up (a numeric input, never free text).
 import { describe, it, expect } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@steuereule/ui'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -58,6 +58,26 @@ describe('KatalogScreen', () => {
 
     expect(await screen.findByText('Monatliche Miete am Arbeitsort')).toBeTruthy()
     expect(screen.getByLabelText('Monatliche Miete am Arbeitsort (Ganzzahlige Euro)')).toBeTruthy()
+  })
+
+  it('submits an amount with a visible "Weiter" button, not only with Enter', async () => {
+    const bodies: unknown[] = []
+    server.use(
+      http.get(`*/v1/steuerjahre/${TAX_YEAR}/interview`, () =>
+        HttpResponse.json({ answers: { dhf: 'Ja' }, nextStep: { kind: 'question', id: 'dhf-miete' }, openItems: 4 }, { status: 200 }),
+      ),
+      http.post(`*/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, async ({ request }) => {
+        bodies.push(await request.json())
+        return HttpResponse.json({ nextStep: { kind: 'question', id: 'umzug' }, openItems: 3 }, { status: 200 })
+      }),
+    )
+    renderKatalog('lebenslagen')
+    const miete = await screen.findByLabelText('Monatliche Miete am Arbeitsort (Ganzzahlige Euro)')
+
+    fireEvent.change(miete, { target: { value: '650' } })
+    fireEvent.click(screen.getByText('Weiter'))
+
+    await waitFor(() => expect(bodies).toEqual([{ questionId: 'dhf-miete', value: '650' }]))
   })
 
   it('renders the first Sonderausgabe question for eintrag=sonderausgaben', async () => {
