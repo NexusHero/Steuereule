@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common'
 import {
   anlageNGreBetraege,
-  angestellteAusAntworten,
+  employeeFromAnswers,
   calculateWorkdays,
   chfNachEur,
   gatedIncomeTypes,
@@ -69,7 +69,7 @@ export class TaxEstimateService {
       return { kind: 'nicht-moeglich', grund: 'besondere-lebenslage' }
     }
 
-    const zahlen = angestellteAusAntworten(answers)
+    const zahlen = employeeFromAnswers(answers)
     const pauschale = pendlerpauschaleAus(jahr, weg)
     const kirchensteuerOffen = stammdaten?.religion !== undefined && stammdaten?.religion !== null && stammdaten.religion !== 'VD'
 
@@ -106,9 +106,9 @@ export class TaxEstimateService {
           quellensteuerEur: zeilen.z25,
           altersvorsorgeEur: zeilen.z85,
           sonstigeVorsorgeEur: zeilen.z82,
-          krankenversicherungEur: Math.round(chfNachEur(krankenkasseChf, wechselkurs.kurs)) + zahlen.kvPvBeitraege,
+          krankenversicherungEur: Math.round(chfNachEur(krankenkasseChf, wechselkurs.kurs)) + zahlen.healthCareContributions,
           pendlerpauschale: pauschale,
-          spenden: zahlen.spenden,
+          spenden: zahlen.donations,
         }),
         kirchensteuerOffen,
       )
@@ -124,9 +124,9 @@ export class TaxEstimateService {
         lohnsteuer: zustand.lohnsteuer,
         sozialversicherung: zustand.sozialversicherung,
         pendlerpauschale: pauschale,
-        weitereWerbungskosten: zahlen.umzugKosten,
-        spenden: zahlen.spenden,
-        selbstGezahlteKvPv: zahlen.kvPvBeitraege,
+        weitereWerbungskosten: zahlen.relocationCosts,
+        spenden: zahlen.donations,
+        selbstGezahlteKvPv: zahlen.healthCareContributions,
       }),
       kirchensteuerOffen,
     )
@@ -177,7 +177,7 @@ export class TaxEstimateService {
       this.arbeitsweg.findForUserAndYear(userId, jahr),
     ])
     const answers = answersFrom(interviewRows)
-    const zahlen = angestellteAusAntworten(answers)
+    const zahlen = employeeFromAnswers(answers)
     const pauschale = pendlerpauschaleAus(jahr, weg)
     if (chRecord && (answers.ausland === CH_AUSLAND || lstbRecord === null)) {
       const werte = lohnausweisWerteAusRecord(chRecord)
@@ -203,7 +203,7 @@ export class TaxEstimateService {
       const krankenkasseChf = chRecord.krankenkasseChf === null || chRecord.krankenkasseChf === undefined ? 0 : Number(chRecord.krankenkasseChf)
       return {
         kind: 'ok',
-        spenden: zahlen.spenden,
+        spenden: zahlen.donations,
         spouse: {
           kind: 'crossBorder',
           wageEur: zeilen.z23,
@@ -211,7 +211,7 @@ export class TaxEstimateService {
           pensionContributionsEur: zeilen.z85,
           otherProvisionEur: zeilen.z82,
           commuteAllowance: pauschale,
-          selfPaidHealthCare: Math.round(chfNachEur(krankenkasseChf, wechselkurs.kurs)) + zahlen.kvPvBeitraege,
+          selfPaidHealthCare: Math.round(chfNachEur(krankenkasseChf, wechselkurs.kurs)) + zahlen.healthCareContributions,
         },
       }
     }
@@ -221,14 +221,14 @@ export class TaxEstimateService {
     if (zustand.kind === 'widerspruch') return { kind: 'offen', fehlt: zustand.widersprueche.map((w) => w.art) }
     return {
       kind: 'ok',
-      spenden: zahlen.spenden,
+      spenden: zahlen.donations,
       spouse: {
         kind: 'employee',
         grossWage: zustand.bruttoarbeitslohn,
         wageTax: zustand.lohnsteuer,
         socialSecurity: zustand.sozialversicherung,
-        commuteAllowance: pauschale + zahlen.umzugKosten,
-        selfPaidHealthCare: zahlen.kvPvBeitraege,
+        commuteAllowance: pauschale + zahlen.relocationCosts,
+        selfPaidHealthCare: zahlen.healthCareContributions,
       },
     }
   }

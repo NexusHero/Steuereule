@@ -129,12 +129,12 @@ function fold(daten: WageTaxCertificateData, answers: Answers) {
     lstb: wageTaxCertificateStatus(daten),
     werktage: { kind: 'bestimmt' as const, wochentage: 0, werktage: 0, pendlertage: 0 },
     stand: calculateEmployeeStatus({
-      einnahmen: fakten.einnahmen,
-      werbungskosten: fakten.werbungskosten,
-      sonderausgaben: fakten.sonderausgaben,
-      offenePosten: fakten.offenePosten,
-      konflikte: fakten.konflikte,
-      gegated: fakten.gegated,
+      income: fakten.einnahmen,
+      incomeRelatedExpenses: fakten.werbungskosten,
+      specialExpenses: fakten.sonderausgaben,
+      openItems: fakten.offenePosten,
+      conflicts: fakten.konflikte,
+      gated: fakten.gegated,
     }),
     erfasstNichtGerechnet: fakten.erfasstNichtGerechnet,
   }

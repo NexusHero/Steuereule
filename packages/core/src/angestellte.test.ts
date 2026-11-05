@@ -1,28 +1,28 @@
 import { describe, expect, it } from 'vitest'
-import { angestellteAusAntworten, employeeFromData, calculateEmployeeStatus, type AngestellteEingaben } from './angestellte'
+import { employeeFromAnswers, employeeFromData, calculateEmployeeStatus, type EmployeeInputs } from './angestellte'
 import { ENTRIES, entryForStep, isReachableFor, nextStepFor, remainingStepsFor, type Answers } from './interview'
 import { EMPTY_WAGE_TAX_CERTIFICATE, type WageTaxCertificateData } from './lstb'
 
-const EINGABEN: AngestellteEingaben = {
-  einnahmen: 50000,
-  werbungskosten: 1200,
-  sonderausgaben: 3000,
-  offenePosten: 0,
-  konflikte: 0,
-  gegated: [],
+const EINGABEN: EmployeeInputs = {
+  income: 50000,
+  incomeRelatedExpenses: 1200,
+  specialExpenses: 3000,
+  openItems: 0,
+  conflicts: 0,
+  gated: [],
 }
 
-describe('angestellteAusAntworten — the catalogue answers feed the Rechenkern', () => {
+describe('employeeFromAnswers — the catalogue answers feed the Rechenkern', () => {
   it('empty answers parse to all-zero figures', () => {
-    expect(angestellteAusAntworten({})).toEqual({
-      nebenjobBrutto: 0,
-      umzugKosten: 0,
-      spenden: 0,
-      kvPvBeitraege: 0,
+    expect(employeeFromAnswers({})).toEqual({
+      sideJobGross: 0,
+      relocationCosts: 0,
+      donations: 0,
+      healthCareContributions: 0,
       riester: 0,
-      dhfMiete: 0,
-      abfindungBetrag: 0,
-      lohnersatzBetrag: 0,
+      doubleHouseholdRent: 0,
+      severanceAmount: 0,
+      wageReplacementAmount: 0,
     })
   })
 
@@ -30,7 +30,7 @@ describe('angestellteAusAntworten — the catalogue answers feed the Rechenkern'
     const answers: Answers = {
       umzug: 'Ja',
       'umzug-kosten': '800',
-      spenden: 'Nein',
+      donations: 'Nein',
       dhf: 'Ja',
       'dhf-miete': '650',
       abfindung: 'Ja',
@@ -38,21 +38,21 @@ describe('angestellteAusAntworten — the catalogue answers feed the Rechenkern'
       lohnersatz: 'Ja',
       'lohnersatz-betrag': '4000',
     }
-    expect(angestellteAusAntworten(answers)).toEqual({
-      nebenjobBrutto: 0,
-      umzugKosten: 800,
-      spenden: 0,
-      kvPvBeitraege: 0,
+    expect(employeeFromAnswers(answers)).toEqual({
+      sideJobGross: 0,
+      relocationCosts: 800,
+      donations: 0,
+      healthCareContributions: 0,
       riester: 0,
-      dhfMiete: 650,
-      abfindungBetrag: 20000,
-      lohnersatzBetrag: 4000,
+      doubleHouseholdRent: 650,
+      severanceAmount: 20000,
+      wageReplacementAmount: 4000,
     })
   })
 
   it('Minijob carries no amount (steuerfrei), Midijob/Nebenjob read the Brutto', () => {
-    expect(angestellteAusAntworten({ nebenjob: 'Minijob', 'nebenjob-brutto': '500' }).nebenjobBrutto).toBe(0)
-    expect(angestellteAusAntworten({ nebenjob: 'Nebenjob', 'nebenjob-brutto': '6000' }).nebenjobBrutto).toBe(6000)
+    expect(employeeFromAnswers({ nebenjob: 'Minijob', 'nebenjob-brutto': '500' }).sideJobGross).toBe(0)
+    expect(employeeFromAnswers({ nebenjob: 'Nebenjob', 'nebenjob-brutto': '6000' }).sideJobGross).toBe(6000)
   })
 })
 
@@ -73,24 +73,24 @@ describe('angestelltenStand — the deterministic fold', () => {
   })
 
   it('open inputs → offen, naming the count', () => {
-    const r = calculateEmployeeStatus({ ...EINGABEN, offenePosten: 2 })
+    const r = calculateEmployeeStatus({ ...EINGABEN, openItems: 2 })
     expect(r.kind).toBe('offen')
     expect((r as { offenePosten: number }).offenePosten).toBe(2)
   })
 
   it('a gated Einkunftsart → offen, naming it', () => {
-    const r = calculateEmployeeStatus({ ...EINGABEN, gegated: ['Gewerbe'] })
+    const r = calculateEmployeeStatus({ ...EINGABEN, gated: ['Gewerbe'] })
     expect(r).toMatchObject({ kind: 'offen', gegated: ['Gewerbe'] })
   })
 
   it('werbungskosten exceeding einnahmen floors einkuenfte at 0, never negative', () => {
-    const r = calculateEmployeeStatus({ ...EINGABEN, werbungskosten: 99999 })
+    const r = calculateEmployeeStatus({ ...EINGABEN, incomeRelatedExpenses: 99999 })
     expect(r.kind === 'bestimmt' ? r.einkuenfte : null).toBe(0)
   })
 
   it('rejects negative or non-integer inputs', () => {
-    expect(() => calculateEmployeeStatus({ ...EINGABEN, einnahmen: -1 })).toThrow(RangeError)
-    expect(() => calculateEmployeeStatus({ ...EINGABEN, sonderausgaben: 1.5 })).toThrow(RangeError)
+    expect(() => calculateEmployeeStatus({ ...EINGABEN, income: -1 })).toThrow(RangeError)
+    expect(() => calculateEmployeeStatus({ ...EINGABEN, specialExpenses: 1.5 })).toThrow(RangeError)
   })
 })
 

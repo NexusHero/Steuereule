@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { angestellteAusAntworten } from './angestellte'
+import { employeeFromAnswers } from './angestellte'
 import { ENTRIES, nextStepFor, type Answers } from './interview'
 import { healthInsuranceFromAnswers } from './krankenversicherung'
 
@@ -42,7 +42,7 @@ describe('self-paid health and care insurance (Anlage Vorsorgeaufwand Z. 16–33
       'pv-betrag': '600',
       'kv-wahl-betrag': '200',
     }
-    expect(angestellteAusAntworten(answers).kvPvBeitraege).toBe(2880 + 600)
-    expect(angestellteAusAntworten({ ...answers, 'kv-krankengeld': 'Nein' }).kvPvBeitraege).toBe(3000 + 600)
+    expect(employeeFromAnswers(answers).healthCareContributions).toBe(2880 + 600)
+    expect(employeeFromAnswers({ ...answers, 'kv-krankengeld': 'Nein' }).healthCareContributions).toBe(3000 + 600)
   })
 })

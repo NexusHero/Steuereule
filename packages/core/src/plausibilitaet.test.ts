@@ -33,7 +33,7 @@ function eingaben(over: {
     werktage: over.werktage ?? calculateWorkdays({ year: 2026, workdays: [1, 2, 3, 4, 5], vacationDays: 30, sickDays: 5, homeOfficeDays: 40 }),
     stand:
       over.stand ??
-      calculateEmployeeStatus({ einnahmen: 50000, werbungskosten: 1200, sonderausgaben: 3000, offenePosten: 0, konflikte: 0, gegated: [] }),
+      calculateEmployeeStatus({ income: 50000, incomeRelatedExpenses: 1200, specialExpenses: 3000, openItems: 0, conflicts: 0, gated: [] }),
     erfasstNichtGerechnet: over.erfasstNichtGerechnet ?? 0,
   }
 }
@@ -66,7 +66,7 @@ describe('pruefePlausibilitaet (M2)', () => {
   })
 
   it('a gated Einkunftsart blocks, naming it', () => {
-    const stand = calculateEmployeeStatus({ einnahmen: 0, werbungskosten: 0, sonderausgaben: 0, offenePosten: 0, konflikte: 0, gegated: ['Kapital'] })
+    const stand = calculateEmployeeStatus({ income: 0, incomeRelatedExpenses: 0, specialExpenses: 0, openItems: 0, conflicts: 0, gated: ['Kapital'] })
     expect(widersprueche(pruefePlausibilitaet(eingaben({ stand })))).toContainEqual({ art: 'gated-einkunftsart', einkunftsart: 'Kapital' })
   })
 
@@ -78,7 +78,7 @@ describe('pruefePlausibilitaet (M2)', () => {
   })
 
   it('Werbungskosten over Einnahmen is a Hinweis (possible Verlust, not a contradiction)', () => {
-    const stand = calculateEmployeeStatus({ einnahmen: 1000, werbungskosten: 1500, sonderausgaben: 0, offenePosten: 0, konflikte: 0, gegated: [] })
+    const stand = calculateEmployeeStatus({ income: 1000, incomeRelatedExpenses: 1500, specialExpenses: 0, openItems: 0, conflicts: 0, gated: [] })
     expect(hinweise(pruefePlausibilitaet(eingaben({ stand })))).toContainEqual({
       art: 'werbungskosten-uebersteigt-einnahmen',
       werbungskosten: 1500,

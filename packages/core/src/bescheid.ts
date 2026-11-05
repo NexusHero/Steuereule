@@ -79,13 +79,6 @@ export function bescheidBerechnungsstand(angestellte: AngestellteFakten, ch: Ber
 }
 
 /** An IMMUTABLE snapshot of a submitted filing — the "Fassung". */
-export interface FilingVersion {
-  readonly versionNumber: number
-  readonly income: number
-  readonly provision: number
-  readonly credit: number
-}
-
 export interface Fassung {
   readonly nummer: number
   readonly einnahmen: number
