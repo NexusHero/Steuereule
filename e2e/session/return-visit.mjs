@@ -159,6 +159,7 @@ const COPY = {
   job: 'Angestellt',
   nein: 'Nein',
   kinder: '2 oder mehr',
+  familienstand: 'Ledig',
   kontoWandLater: 'Später — erst mal ins Cockpit',
   // #283/#298 AC-A (landed on `main` while this file was in review, see this file's own PR
   // thread) — a genuine, transport-level API outage now shows exactly ONE shared alert, not
@@ -526,7 +527,8 @@ async function testGuestReload(browser, webOrigin) {
     await page.getByText(COPY.job).waitFor({ state: 'visible', timeout: 10_000 })
     await page.getByText(COPY.job).click()
     await page.getByText(COPY.nein).click() // ausland: no gate
-    await page.getByText(COPY.kinder).click() // completes the Minimal-Gate
+    await page.getByText(COPY.kinder).click()
+    await page.getByText(COPY.familienstand).click() // completes the Minimal-Gate (Familienstand, ADR-0054)
     await page.getByText(COPY.kontoWandLater).click() // Konto-Wand -> "Später" -> Cockpit
     await page.getByText('0 Fragen offen', { exact: true }).waitFor({ state: 'visible', timeout: 10_000 })
     console.log('[return-visit] Row D: guest answered the Minimal-Gate, own data ("0 Fragen offen") renders in the Cockpit.')

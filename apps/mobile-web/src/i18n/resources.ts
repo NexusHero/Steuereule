@@ -636,6 +636,18 @@ export const appResources = {
             mehrere: '2 oder mehr',
           },
         },
+        familienstand: {
+          titleBefore: 'Wie war dein ',
+          titleMark: 'Familienstand',
+          titleAfter: ' am 31.12.?',
+          help: 'Verheiratete geben meist eine gemeinsame Erklärung ab — dann rechnen wir mit dem Splittingtarif.',
+          options: {
+            ledig: 'Ledig',
+            verheiratet: 'Verheiratet / eingetragene Lebenspartnerschaft',
+            geschieden: 'Geschieden oder dauernd getrennt',
+            verwitwet: 'Verwitwet',
+          },
+        },
         gewerbe: {
           heading: 'Ehrlich: dafür sind wir noch nicht gut genug.',
           body1: 'Selbstständige brauchen EÜR, Anlage G/S und Umsatzsteuer — das kann SteuerEule in Version 1 nicht. Halbe Steuererklärungen liefern wir nicht.',
@@ -980,6 +992,7 @@ export const appResources = {
           nachzahlungRund: 'Voraussichtlich rund {{betrag}} € Nachzahlung',
           offenesErgebnis: 'Voraussichtlich zwischen {{nachzahlung}} € Nachzahlung und {{erstattung}} € Erstattung',
           kirchensteuer: 'Kirchensteuer ist in der Schätzung noch nicht enthalten.',
+          veranlagungsartOffen: 'Ihr seid verheiratet: Leg in „Angaben für die Erklärung“ die Zusammenveranlagung an – dann rechnen wir für euch beide.',
           offen_one: 'Für die Schätzung fehlt noch 1 Angabe.',
           offen_other: 'Für die Schätzung fehlen noch {{count}} Angaben.',
           grund: {
@@ -1890,6 +1903,18 @@ export const appResources = {
             mehrere: '2 or more',
           },
         },
+        familienstand: {
+          titleBefore: 'What was your ',
+          titleMark: 'marital status',
+          titleAfter: ' on 31 December?',
+          help: 'Married couples usually file one joint return — then we calculate with the splitting tariff.',
+          options: {
+            ledig: 'Single',
+            verheiratet: 'Married / registered partnership',
+            geschieden: 'Divorced or permanently separated',
+            verwitwet: 'Widowed',
+          },
+        },
         gewerbe: {
           heading: "Honestly: we're not good enough for that yet.",
           body1: "Self-employed returns need EÜR, Anlage G/S and VAT — SteuerEule can't do that in version 1. We don't ship half tax returns.",
@@ -2234,6 +2259,7 @@ export const appResources = {
           nachzahlungRund: 'Expected back-payment: about {{betrag}} €',
           offenesErgebnis: 'Expected: between {{nachzahlung}} € back-payment and {{erstattung}} € refund',
           kirchensteuer: 'Church tax is not part of the estimate yet.',
+          veranlagungsartOffen: 'You are married: set up the joint return under “Details for your return” – then we calculate for both of you.',
           offen_one: 'The estimate still needs 1 detail.',
           offen_other: 'The estimate still needs {{count}} details.',
           grund: {

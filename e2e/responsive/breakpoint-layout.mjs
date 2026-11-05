@@ -100,6 +100,7 @@ const COPY = {
   job: 'Angestellt',
   nein: 'Nein',
   kinder: '2 oder mehr',
+  familienstand: 'Ledig',
   kontoWandLater: 'Später — erst mal ins Cockpit',
 }
 
@@ -302,7 +303,8 @@ async function continueAsGuestThroughOnboarding(page) {
   // sets those viewports in two resize steps, and the shell re-lays out while the breakpoint hook
   // settles) — the buttons themselves are fine.
   await page.getByText(COPY.nein).click({ force: true }) // ausland: no gate
-  await page.getByText(COPY.kinder).click({ force: true }) // completes the Minimal-Gate
+  await page.getByText(COPY.kinder).click({ force: true })
+  await page.getByText(COPY.familienstand).click({ force: true }) // completes the Minimal-Gate (Familienstand, ADR-0054)
 
   // Konto-Wand — the honest next step for a guest; "Später" reaches the Cockpit.
   await page.getByText(COPY.kontoWandLater).waitFor({ state: 'visible', timeout: 10_000 })

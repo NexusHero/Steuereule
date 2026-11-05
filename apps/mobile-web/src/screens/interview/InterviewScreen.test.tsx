@@ -63,6 +63,7 @@ async function renderOnJobQuestion(opts: Parameters<typeof renderInterview>[0] =
 const onJobQuestion = () => screen.findByText('Mehrfachjobs? Nimm die Hauptquelle — der Rest kommt später.')
 const onAuslandQuestion = () => screen.findByText('Grenzgänger haben Sonderregeln — in die Schweiz können wir sie komplett, inklusive 60-Tage-Tracking.')
 const onKinderQuestion = () => screen.findByText('Kindergeld, Freibeträge, Betreuungskosten — die Günstigerprüfung Kindergeld vs. Freibetrag läuft automatisch.')
+const onFamilienstandQuestion = () => screen.findByText('Verheiratete geben meist eine gemeinsame Erklärung ab — dann rechnen wir mit dem Splittingtarif.')
 const onGewerbeGate = () => screen.findByText('Ehrlich: dafür sind wir noch nicht gut genug.')
 const onChOnlyGate = () => screen.findByText('Ehrlich: andere Länder können wir noch nicht.')
 
@@ -113,20 +114,20 @@ describe('InterviewScreen', () => {
     expect(screen.queryByText('Mehrfachjobs? Nimm die Hauptquelle — der Rest kommt später.')).toBeNull()
   })
 
-  it('opens on the job question — heading, help text, all four options, step 1/3', async () => {
+  it('opens on the job question — heading, help text, all four options, step 1/4', async () => {
     await renderOnJobQuestion()
     expect(screen.getByText('Angestellt')).toBeTruthy()
     expect(screen.getByText('Selbstständig')).toBeTruthy()
     expect(screen.getByText('Beides')).toBeTruthy()
     expect(screen.getByText('Rente')).toBeTruthy()
-    expect(screen.getByText('1/3')).toBeTruthy()
+    expect(screen.getByText('1/4')).toBeTruthy()
   })
 
-  it('exposes progressbar semantics on the job question, correct for step 1 of 3', async () => {
+  it('exposes progressbar semantics on the job question, correct for step 1 of 4', async () => {
     await renderOnJobQuestion()
     const bar = screen.getByRole('progressbar')
     expect(bar.getAttribute('aria-valuemin')).toBe('1')
-    expect(bar.getAttribute('aria-valuemax')).toBe('3')
+    expect(bar.getAttribute('aria-valuemax')).toBe('4')
     expect(bar.getAttribute('aria-valuenow')).toBe('1')
   })
 
@@ -324,7 +325,7 @@ describe('InterviewScreen', () => {
     })
   })
 
-  it('calls onDone exactly once after the kinder question is answered, and renders nothing after', async () => {
+  it('calls onDone exactly once after the Familienstand question is answered, and renders nothing after', async () => {
     const onDone = vi.fn()
     const { container } = await renderOnJobQuestion({ onDone })
     fireEvent.click(screen.getByText('Angestellt'))
@@ -332,6 +333,9 @@ describe('InterviewScreen', () => {
     fireEvent.click(screen.getByText('Nein')) // ausland
     await onKinderQuestion()
     fireEvent.click(screen.getByText('1 Kind'))
+    await onFamilienstandQuestion()
+    expect(onDone).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByText('Verheiratet / eingetragene Lebenspartnerschaft'))
 
     await waitFor(() => expect(onDone).toHaveBeenCalledOnce())
     expect(container.textContent).toBe('')
@@ -371,10 +375,10 @@ describe('InterviewScreen', () => {
       await renderOnJobQuestion()
       fireEvent.click(screen.getByText('Angestellt'))
       await onAuslandQuestion()
-      expect(screen.getByText('2/3')).toBeTruthy()
+      expect(screen.getByText('2/4')).toBeTruthy()
       fireEvent.click(screen.getByLabelText('Zurück'))
       await onJobQuestion()
-      expect(screen.getByText('1/3')).toBeTruthy()
+      expect(screen.getByText('1/4')).toBeTruthy()
       expect(screen.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('1')
     })
   })
@@ -452,6 +456,8 @@ describe('InterviewScreen', () => {
       fireEvent.click(screen.getByText('Ohne Auslands-Teil weitermachen'))
       await onKinderQuestion()
       fireEvent.click(screen.getByText('2 oder mehr'))
+      await onFamilienstandQuestion()
+      fireEvent.click(screen.getByText('Ledig'))
 
       await waitFor(() => expect(onDone).toHaveBeenCalledOnce())
       expect(setItem).not.toHaveBeenCalled()

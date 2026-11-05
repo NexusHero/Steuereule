@@ -90,7 +90,7 @@ describe('REQ-015 — the Minimal-Gate, against the real server', () => {
       expect(await initial.json()).toEqual({
         answers: {},
         nextStep: { kind: 'question', id: 'job' },
-        openItems: 3,
+        openItems: 4,
       })
 
       const job = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
@@ -99,25 +99,32 @@ describe('REQ-015 — the Minimal-Gate, against the real server', () => {
         body: JSON.stringify({ questionId: 'job', value: 'Angestellt' }),
       })
       expect(job.status).toBe(200)
-      expect(await job.json()).toEqual({ nextStep: { kind: 'question', id: 'ausland' }, openItems: 2 })
+      expect(await job.json()).toEqual({ nextStep: { kind: 'question', id: 'ausland' }, openItems: 3 })
 
       const ausland = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', cookie },
         body: JSON.stringify({ questionId: 'ausland', value: 'Nein' }),
       })
-      expect(await ausland.json()).toEqual({ nextStep: { kind: 'question', id: 'kinder' }, openItems: 1 })
+      expect(await ausland.json()).toEqual({ nextStep: { kind: 'question', id: 'kinder' }, openItems: 2 })
 
       const kinder = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', cookie },
         body: JSON.stringify({ questionId: 'kinder', value: '1 Kind' }),
       })
-      expect(await kinder.json()).toEqual({ nextStep: { kind: 'done' }, openItems: 0 })
+      expect(await kinder.json()).toEqual({ nextStep: { kind: 'question', id: 'familienstand' }, openItems: 1 })
+
+      const familienstand = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', cookie },
+        body: JSON.stringify({ questionId: 'familienstand', value: 'Ledig' }),
+      })
+      expect(await familienstand.json()).toEqual({ nextStep: { kind: 'done' }, openItems: 0 })
 
       const final = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview`, { headers: { cookie } })
       expect(await final.json()).toEqual({
-        answers: { job: 'Angestellt', ausland: 'Nein', kinder: '1 Kind' },
+        answers: { job: 'Angestellt', ausland: 'Nein', kinder: '1 Kind', familienstand: 'Ledig' },
         nextStep: { kind: 'done' },
         openItems: 0,
       })
@@ -150,7 +157,7 @@ describe('REQ-015 — the Minimal-Gate, against the real server', () => {
       body: JSON.stringify({ questionId: 'ausland', value: 'In ein anderes Land' }),
     })
 
-    expect(await response.json()).toEqual({ nextStep: { kind: 'gate', id: 'ch-only' }, openItems: 1 })
+    expect(await response.json()).toEqual({ nextStep: { kind: 'gate', id: 'ch-only' }, openItems: 2 })
   })
 
   it('a terminal Gewerbe-Gate (Selbstständig) rejects every answer behind it, acknowledged or not', async () => {
@@ -231,7 +238,7 @@ describe('REQ-015 — the Minimal-Gate, against the real server', () => {
       const guestCookie = await mintGuestCookie()
       const response = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview`, { headers: { cookie: guestCookie } })
       expect(response.status).toBe(200)
-      expect(await response.json()).toEqual({ answers: {}, nextStep: { kind: 'question', id: 'job' }, openItems: 3 })
+      expect(await response.json()).toEqual({ answers: {}, nextStep: { kind: 'question', id: 'job' }, openItems: 4 })
     })
 
     it('a guest answers the Minimal-Gate: the row persists encrypted under the guest id, and the server still enforces the graph', async () => {
@@ -285,7 +292,7 @@ describe('REQ-015 — the Minimal-Gate, against the real server', () => {
       const asB = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview`, {
         headers: { cookie: userB.cookie },
       })
-      expect(await asB.json()).toEqual({ answers: {}, nextStep: { kind: 'question', id: 'job' }, openItems: 3 })
+      expect(await asB.json()).toEqual({ answers: {}, nextStep: { kind: 'question', id: 'job' }, openItems: 4 })
 
       const asA = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview`, {
         headers: { cookie: userA.cookie },
@@ -293,7 +300,7 @@ describe('REQ-015 — the Minimal-Gate, against the real server', () => {
       expect(await asA.json()).toEqual({
         answers: { job: 'Angestellt' },
         nextStep: { kind: 'question', id: 'ausland' },
-        openItems: 2,
+        openItems: 3,
       })
     })
 
@@ -380,7 +387,7 @@ describe('REQ-015 — the Minimal-Gate, against the real server', () => {
         body: JSON.stringify({ questionId: 'job', value: 'Angestellt' }),
       })
       let taxYear = await prisma.taxYear.findUnique({ where: { userId_steuerjahr: { userId, steuerjahr: STEUERJAHR } } })
-      expect(taxYear?.openItems).toBe(2)
+      expect(taxYear?.openItems).toBe(3)
 
       await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
         method: 'POST',
@@ -388,7 +395,7 @@ describe('REQ-015 — the Minimal-Gate, against the real server', () => {
         body: JSON.stringify({ questionId: 'ausland', value: 'Nein' }),
       })
       taxYear = await prisma.taxYear.findUnique({ where: { userId_steuerjahr: { userId, steuerjahr: STEUERJAHR } } })
-      expect(taxYear?.openItems).toBe(1)
+      expect(taxYear?.openItems).toBe(2)
 
       await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
         method: 'POST',
@@ -396,11 +403,19 @@ describe('REQ-015 — the Minimal-Gate, against the real server', () => {
         body: JSON.stringify({ questionId: 'kinder', value: 'Nein' }),
       })
       taxYear = await prisma.taxYear.findUnique({ where: { userId_steuerjahr: { userId, steuerjahr: STEUERJAHR } } })
+      expect(taxYear?.openItems).toBe(1)
+
+      await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', cookie },
+        body: JSON.stringify({ questionId: 'familienstand', value: 'Ledig' }),
+      })
+      taxYear = await prisma.taxYear.findUnique({ where: { userId_steuerjahr: { userId, steuerjahr: STEUERJAHR } } })
       expect(taxYear?.openItems).toBe(0)
 
       const rows = await interviewRows(userId)
-      expect(rows).toHaveLength(3)
-      expect(rows.map((r) => r.questionId).sort()).toEqual(['ausland', 'job', 'kinder'])
+      expect(rows).toHaveLength(4)
+      expect(rows.map((r) => r.questionId).sort()).toEqual(['ausland', 'familienstand', 'job', 'kinder'])
       expect(rows.every((r) => r.steuerjahr === STEUERJAHR)).toBe(true)
     })
   })

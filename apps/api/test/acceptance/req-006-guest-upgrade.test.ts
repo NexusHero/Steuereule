@@ -175,7 +175,7 @@ describe('REQ-006 — guest -> account upgrade, against the real server', () => 
       const { newGuestUserId, signGuestSession } = await import('../../src/auth/guest-session.js')
       const guestUserId = newGuestUserId()
       const guestCookie = `se_guest_session=${signGuestSession(guestUserId, GUEST_SESSION_SECRET)}`
-      for (const [questionId, value] of [['job', 'Angestellt'], ['ausland', 'Nein'], ['kinder', '1 Kind']] as const) {
+      for (const [questionId, value] of [['job', 'Angestellt'], ['ausland', 'Nein'], ['kinder', '1 Kind'], ['familienstand', 'Ledig']] as const) {
         const response = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
           method: 'POST',
           headers: { 'content-type': 'application/json', cookie: guestCookie },
@@ -205,7 +205,7 @@ describe('REQ-006 — guest -> account upgrade, against the real server', () => 
       const state = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview`, { headers: { cookie: accountCookie } })
       expect(state.status).toBe(200)
       expect(await state.json()).toEqual({
-        answers: { job: 'Angestellt', ausland: 'Nein', kinder: '1 Kind' },
+        answers: { job: 'Angestellt', ausland: 'Nein', kinder: '1 Kind', familienstand: 'Ledig' },
         nextStep: { kind: 'done' },
         openItems: 0,
       })

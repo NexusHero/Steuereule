@@ -177,7 +177,11 @@ function Erstattung({ jahr }: { readonly jahr: number }) {
 
 function erstattungsText(schaetzung: SteuerschaetzungDto | null, tr: TFunction<typeof APP_NS>, sprache: string): string {
   if (schaetzung === null) return tr('cockpit.hero.refundLater')
-  if (schaetzung.kind === 'offen') return tr('cockpit.erstattung.offen', { count: schaetzung.fehlt?.length ?? 0 })
+  if (schaetzung.kind === 'offen') {
+    // A married person is never estimated as single (ADR-0054): say what unlocks the couple's estimate.
+    if (schaetzung.fehlt?.includes('veranlagungsart')) return tr('cockpit.erstattung.veranlagungsartOffen')
+    return tr('cockpit.erstattung.offen', { count: schaetzung.fehlt?.length ?? 0 })
+  }
   if (schaetzung.kind === 'nicht-moeglich') return tr(`cockpit.erstattung.grund.${schaetzung.grund ?? 'unbekannt'}`)
   const { von, bis } = schaetzung.ergebnis ?? { von: 0, bis: 0 }
   const betrag = (wert: number) => Math.abs(wert).toLocaleString(sprache === 'en' ? 'en-GB' : 'de-DE')
