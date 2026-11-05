@@ -18,6 +18,7 @@ import {
 import { APP_NS } from '../../i18n/resources'
 import { ganzzahlAus } from '../shared/ganzzahl'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
+import { KatalogScreen } from '../katalog/KatalogScreen'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 
@@ -38,6 +39,9 @@ export function VermietungScreen({ onDone = () => {}, onBack, taxYear = CURRENT_
   const setFeld = useVermietungControllerSetFeld()
   const setAdresse = useVermietungControllerSetAdresse()
 
+  // The depot / the kind of letting is a catalogue answer; the mask can ask it right here.
+  const [frageOffen, setFrageOffen] = useState(false)
+
   if (query.isPending) {
     return <LoadingState bp={bp} label={tr('vermietung.loading')} />
   }
@@ -54,6 +58,14 @@ export function VermietungScreen({ onDone = () => {}, onBack, taxYear = CURRENT_
   }
 
   const response = query.data.data
+
+  if (frageOffen) {
+    const zurueck = () => {
+      setFrageOffen(false)
+      void query.refetch()
+    }
+    return <KatalogScreen taxYear={taxYear} entry="einkuenfte" onDone={zurueck} onBack={zurueck} />
+  }
 
   function invalidate() {
     void queryClient.invalidateQueries({ queryKey: getVermietungControllerGetQueryKey(taxYear) })
@@ -80,6 +92,11 @@ export function VermietungScreen({ onDone = () => {}, onBack, taxYear = CURRENT_
       <Text style={styles.help}>{tr('vermietung.help')}</Text>
 
       <EinordnungNotice kind={response.einordnung.kind} />
+      {response.einordnung.kind === 'unbekannt' ? (
+        <Button variante="ghost" onPress={() => setFrageOffen(true)} testID="vermietung-frage-beantworten">
+          {tr('katalog.einkuenfteBeantworten')}
+        </Button>
+      ) : null}
 
       {response.objekte.map((objekt, index) => (
         <ObjektCard

@@ -48,6 +48,7 @@ export interface ChLohnausweisRecord {
 }
 
 export const CH_LOHNAUSWEIS_REPOSITORY = Symbol('CH_LOHNAUSWEIS_REPOSITORY')
+export const CROSS_BORDER_SALARY_STATEMENT_REPOSITORY = CH_LOHNAUSWEIS_REPOSITORY
 
 /** The persistence seam for the CH-Lohnausweis guided mask. */
 export interface ChLohnausweisRepository {
@@ -62,3 +63,7 @@ export interface ChLohnausweisRepository {
     wechselkurs: { monat: string; kurs: number; modus: string; belegId?: string },
   ): Promise<ChLohnausweisRecord>
 }
+
+export type CrossBorderSalaryStatementRecord = ChLohnausweisRecord
+export type CrossBorderSalaryStatementRepository = ChLohnausweisRepository
+

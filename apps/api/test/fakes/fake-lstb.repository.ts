@@ -17,6 +17,10 @@ export class FakeLstbRepository implements LstbRepository {
     return Promise.resolve(this.store.get(key(userId, steuerjahr)) ?? null)
   }
 
+  setField(userId: string, taxYear: number, field: LstbFeldId, value: string | null): Promise<LstbRecord> {
+    return this.setFeld(userId, taxYear, field, value)
+  }
+
   setFeld(userId: string, steuerjahr: number, feld: LstbFeldId, wert: string | null): Promise<LstbRecord> {
     const k = key(userId, steuerjahr)
     const existing = this.store.get(k)

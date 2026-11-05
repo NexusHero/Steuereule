@@ -1,23 +1,28 @@
-import type { IsoWochentag } from '@steuereule/core'
+import type { IsoWeekday, IsoWochentag } from '@steuereule/core'
 
-export type Verkehrsmittel = 'pkw' | 'oepnv' | 'andere'
+export type MeansOfTransport = 'pkw' | 'oepnv' | 'andere'
+export type Verkehrsmittel = MeansOfTransport
 
-export const VERKEHRSMITTEL: readonly Verkehrsmittel[] = ['pkw', 'oepnv', 'andere']
+export const MEANS_OF_TRANSPORT: readonly MeansOfTransport[] = ['pkw', 'oepnv', 'andere']
+export const VERKEHRSMITTEL = MEANS_OF_TRANSPORT
 
-export interface ArbeitswegEingaben {
-  readonly arbeitstage: readonly IsoWochentag[]
+export interface CommuteInputs {
+  readonly arbeitstage: readonly (IsoWeekday | IsoWochentag)[]
   readonly urlaubstage: number
   readonly krankheitstage: number
   readonly homeofficeTage: number
   readonly einfacheKm: number | null
-  readonly verkehrsmittel: Verkehrsmittel | null
+  readonly verkehrsmittel: MeansOfTransport | null
   readonly taetigkeitsstaette: string | null
 }
+export type ArbeitswegEingaben = CommuteInputs
 
-export const ARBEITSWEG_REPOSITORY = Symbol('ARBEITSWEG_REPOSITORY')
+export const COMMUTE_REPOSITORY = Symbol('COMMUTE_REPOSITORY')
+export const ARBEITSWEG_REPOSITORY = COMMUTE_REPOSITORY
 
 /** The persistence seam for the commute facts behind the Entfernungspauschale. */
-export interface ArbeitswegRepository {
-  findForUserAndYear(userId: string, steuerjahr: number): Promise<ArbeitswegEingaben | null>
-  save(userId: string, steuerjahr: number, eingaben: ArbeitswegEingaben): Promise<ArbeitswegEingaben>
+export interface CommuteRepository {
+  findForUserAndYear(userId: string, steuerjahr: number): Promise<CommuteInputs | null>
+  save(userId: string, steuerjahr: number, eingaben: CommuteInputs): Promise<CommuteInputs>
 }
+export type ArbeitswegRepository = CommuteRepository

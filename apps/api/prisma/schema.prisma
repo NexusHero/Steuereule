@@ -649,6 +649,9 @@ model Kapital {
   kapitalertragsteuer   String? /// @encrypted?mode=strict
   solidaritaetszuschlag String? /// @encrypted?mode=strict
   kirchensteuer         String? /// @encrypted?mode=strict
+  /// Whose capital income (ADR-0054): A, B or gemeinsam (a joint account, split half and half). Clear —
+  /// it carries no amount. null = A.
+  inhaber               String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

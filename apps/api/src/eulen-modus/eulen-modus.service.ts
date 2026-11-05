@@ -139,3 +139,6 @@ export class EulenModusService {
     await this.verwurfRepo.verwerfe(userId, steuerjahr, fingerprint)
   }
 }
+
+export { EulenModusService as OwlModeService }
+

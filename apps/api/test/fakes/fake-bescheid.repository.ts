@@ -27,12 +27,20 @@ export class FakeBescheidRepository implements BescheidRepository {
     return Promise.resolve(this.store.get(key(userId, steuerjahr)) ?? null)
   }
 
+  setField(userId: string, taxYear: number, field: BescheidFeld, value: string | null): Promise<BescheidRecord> {
+    return this.setFeld(userId, taxYear, field, value)
+  }
+
   setFeld(userId: string, steuerjahr: number, feld: BescheidFeld, wert: string | null): Promise<BescheidRecord> {
     const k = key(userId, steuerjahr)
     const existing = this.store.get(k) ?? this.leer(userId, steuerjahr)
     const updated = { ...existing, felder: { ...existing.felder, [feld]: wert } }
     this.store.set(k, updated)
     return Promise.resolve(updated)
+  }
+
+  setDate(userId: string, taxYear: number, date: string | null): Promise<BescheidRecord> {
+    return this.setDatum(userId, taxYear, date)
   }
 
   setDatum(userId: string, steuerjahr: number, datum: string | null): Promise<BescheidRecord> {
@@ -49,6 +57,10 @@ export class FakeBescheidRepository implements BescheidRepository {
     const updated = { ...existing, status }
     this.store.set(k, updated)
     return Promise.resolve(updated)
+  }
+
+  setAppeal(userId: string, taxYear: number, reason: string): Promise<BescheidRecord> {
+    return this.setEinspruch(userId, taxYear, reason)
   }
 
   setEinspruch(userId: string, steuerjahr: number, grund: string): Promise<BescheidRecord> {

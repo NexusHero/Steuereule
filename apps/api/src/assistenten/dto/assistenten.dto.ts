@@ -32,3 +32,7 @@ export class RevokeAssistentResponseDto {
   @ApiProperty({ type: Boolean, example: true })
   success!: boolean
 }
+
+export type ConnectedAssistantDto = VerbundenerAssistentDto
+export type RevokeAssistantResponseDto = RevokeAssistentResponseDto
+

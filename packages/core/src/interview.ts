@@ -245,7 +245,7 @@ export const QUESTIONS: Readonly<Record<EntryStepId, QuestionDeclaration>> = {
   'ch-nichtrueckkehrtage': { id: 'ch-nichtrueckkehrtage', kind: 'question', form: { kind: 'integer', min: 0, max: 365 } },
 }
 
-export type EntryId = 'minimal-gate' | 'segment-2' | 'lebenslagen' | 'sonderausgaben' | 'segment-ch' | 'alleinerziehend'
+export type EntryId = 'minimal-gate' | 'segment-2' | 'lebenslagen' | 'einkuenfte' | 'sonderausgaben' | 'segment-ch' | 'alleinerziehend'
 
 export interface CatalogueEntry {
   readonly id: EntryId
@@ -254,7 +254,9 @@ export interface CatalogueEntry {
 
 export const ENTRIES: Readonly<Record<EntryId, CatalogueEntry>> = {
   'minimal-gate': { id: 'minimal-gate', steps: ['job', 'ausland', 'kinder'] },
-  'segment-2': { id: 'segment-2', steps: ['partner', 'homeoffice', 'weg', 'tage', 'fortbildung', 'einkuenfte'] },
+  'segment-2': { id: 'segment-2', steps: ['partner', 'homeoffice', 'weg', 'tage', 'fortbildung'] },
+  /** Kapital and Vermietung: the depot and the kind of letting decide what the masks and the Anlagen ask. */
+  einkuenfte: { id: 'einkuenfte', steps: ['einkuenfte'] },
   lebenslagen: {
     id: 'lebenslagen',
     steps: ['dhf', 'umzug', 'abfindung', 'lohnersatz', 'nebenjob'],

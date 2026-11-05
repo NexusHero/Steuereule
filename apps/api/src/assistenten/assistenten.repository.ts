@@ -1,9 +1,12 @@
-export interface VerbundenerAssistent {
+export interface ConnectedAssistant {
   clientId: string
   name: string
   verbundenSeit: Date
+  connectedSince?: Date
   zuletztGenutzt: Date | null
+  lastUsed?: Date | null
 }
+export type VerbundenerAssistent = ConnectedAssistant
 
 export interface ClientInfo {
   clientId: string
@@ -12,10 +15,12 @@ export interface ClientInfo {
   icon: string | null
 }
 
-export const ASSISTENTEN_REPOSITORY = Symbol('ASSISTENTEN_REPOSITORY')
+export const ASSISTANT_REPOSITORY = Symbol('ASSISTANT_REPOSITORY')
+export const ASSISTENTEN_REPOSITORY = ASSISTANT_REPOSITORY
 
-export interface AssistentenRepository {
-  findConnectedForUser(userId: string): Promise<VerbundenerAssistent[]>
+export interface AssistantRepository {
+  findConnectedForUser(userId: string): Promise<ConnectedAssistant[]>
   revokeForUser(userId: string, clientId: string): Promise<void>
   findClientInfo(clientId: string): Promise<ClientInfo | null>
 }
+export type AssistentenRepository = AssistantRepository

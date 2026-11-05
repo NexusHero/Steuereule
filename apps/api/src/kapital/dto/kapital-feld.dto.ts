@@ -30,3 +30,10 @@ export class PutKapitalFeldDto {
   @Min(0)
   wert?: number
 }
+
+/** The PUT body for the depot owner (ADR-0054). */
+export class PutKapitalInhaberDto {
+  @ApiProperty({ enum: ['A', 'B', 'gemeinsam'], description: 'Person A, Person B, or a joint account split half and half.' })
+  @IsIn(['A', 'B', 'gemeinsam'])
+  inhaber!: 'A' | 'B' | 'gemeinsam'
+}

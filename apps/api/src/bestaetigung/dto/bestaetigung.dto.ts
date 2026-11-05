@@ -72,3 +72,11 @@ export class VorschlagEntscheidungDto {
   @IsIn(['annehmen', 'verwerfen'])
   entscheidung!: 'annehmen' | 'verwerfen'
 }
+
+export type ProvenanceDto = HerkunftDto
+export type ProposalDto = VorschlagDto
+export type FieldProvenanceDto = KennzeichnungWertDto
+export type AnnexConfirmationDto = AnlageBestaetigungDto
+export type ConfirmationResponseDto = BestaetigungResponseDto
+export type ProposalDecisionDto = VorschlagEntscheidungDto
+

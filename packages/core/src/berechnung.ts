@@ -1,5 +1,14 @@
 import type { Einkunftsart } from './einkunftsarten.js'
 
+export type ProvenanceKind = 'input' | 'receipt' | 'ai-suggestion' | 'rule' | 'rollover'
+
+export type Source =
+  | { readonly kind: 'input' }
+  | { readonly kind: 'receipt'; readonly receiptId: string }
+  | { readonly kind: 'ai-suggestion'; readonly suggestionId: string; readonly receiptId?: string }
+  | { readonly kind: 'rule'; readonly rule: string }
+  | { readonly kind: 'rollover'; readonly priorYear: number }
+
 export type Quelle =
   | { readonly art: 'eingabe' }
   | { readonly art: 'beleg'; readonly belegId: string }
@@ -7,9 +16,19 @@ export type Quelle =
   | { readonly art: 'regel'; readonly regel: string }
   | { readonly art: 'uebernahme'; readonly vorjahr: number }
 
+export type LineItemRole = 'income' | 'provision' | 'credit'
 export type Rolle = 'einnahme' | 'vorsorgeaufwand' | 'anrechnung'
 
 /** A settled line item. */
+export interface LineItem {
+  readonly id: string
+  readonly incomeType: Einkunftsart
+  readonly role?: LineItemRole
+  readonly amount: number
+  readonly source: Source | Quelle
+  readonly unconfirmed?: boolean
+}
+
 export interface Posten {
   readonly id: string
   readonly einkunftsart: Einkunftsart
@@ -19,7 +38,7 @@ export interface Posten {
   readonly unbestaetigt?: boolean
 }
 
-/** A Posten with conflicting sources. */
+/** A LineItem / Posten with conflicting sources. */
 export interface PostenKonflikt {
   readonly postenId: string
   readonly einkunftsart: Einkunftsart
@@ -63,11 +82,11 @@ function validate(input: BerechnungsInput): void {
   }
 }
 
-function rolleVon(posten: Posten): Rolle {
+function roleOf(posten: Posten): Rolle {
   return posten.rolle ?? 'einnahme'
 }
 
-export function berechne(input: BerechnungsInput): Berechnungsstand {
+export function calculate(input: BerechnungsInput): Berechnungsstand {
   validate(input)
   let einnahmen = 0
   let vorsorgeaufwand = 0
@@ -75,7 +94,7 @@ export function berechne(input: BerechnungsInput): Berechnungsstand {
   let unbestaetigte = 0
   let unbestaetigteSumme = 0
   for (const posten of input.posten) {
-    switch (rolleVon(posten)) {
+    switch (roleOf(posten)) {
       case 'einnahme':
         einnahmen += posten.betrag
         break
@@ -88,12 +107,20 @@ export function berechne(input: BerechnungsInput): Berechnungsstand {
     }
     if (posten.unbestaetigt === true) {
       unbestaetigte += 1
-      if (rolleVon(posten) === 'einnahme') unbestaetigteSumme += posten.betrag
+      if (roleOf(posten) === 'einnahme') unbestaetigteSumme += posten.betrag
     }
   }
+
   const offen =
-    input.offenePosten > 0 || input.konflikte.length > 0 || input.gegated.length > 0 || unbestaetigte > 0
-  if (!offen) return { kind: 'bestimmt', einnahmen, vorsorgeaufwand, anrechnung }
+    input.offenePosten > 0 ||
+    input.konflikte.length > 0 ||
+    input.gegated.length > 0 ||
+    unbestaetigte > 0
+
+  if (!offen) {
+    return { kind: 'bestimmt', einnahmen, vorsorgeaufwand, anrechnung }
+  }
+
   return {
     kind: 'offen',
     einnahmen,
@@ -111,6 +138,10 @@ export type KonfliktAufloesung =
   | { readonly art: 'quelle-waehlen'; readonly quelle: Quelle; readonly betrag: number }
   | { readonly art: 'wert-korrigieren'; readonly betrag: number }
 
+export type ConflictResolution =
+  | { readonly kind: 'choose-source'; readonly source: Source | Quelle; readonly amount: number }
+  | { readonly kind: 'correct-value'; readonly amount: number }
+
 export function loeseKonflikt(konflikt: PostenKonflikt, aufloesung: KonfliktAufloesung): Posten {
   const quelle: Quelle = aufloesung.art === 'quelle-waehlen' ? aufloesung.quelle : { art: 'eingabe' }
   const betrag = aufloesung.betrag
@@ -119,3 +150,8 @@ export function loeseKonflikt(konflikt: PostenKonflikt, aufloesung: KonfliktAufl
   }
   return { id: konflikt.postenId, einkunftsart: konflikt.einkunftsart, betrag, quelle }
 }
+
+export const resolveConflict = loeseKonflikt
+
+// Backward-compatibility aliases
+export { calculate as berechne }

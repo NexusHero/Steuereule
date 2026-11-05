@@ -34,6 +34,10 @@ export class FakeVermietungRepository implements VermietungRepository {
     return Promise.resolve(record)
   }
 
+  setField(userId: string, taxYear: number, objectId: string, field: VermietungFeldId, value: string | null): Promise<VermietungsobjektRecord | null> {
+    return this.setFeld(userId, taxYear, objectId, field, value)
+  }
+
   setFeld(userId: string, steuerjahr: number, objektId: string, feld: VermietungFeldId, wert: string | null): Promise<VermietungsobjektRecord | null> {
     const k = `${key(userId, steuerjahr)}::${objektId}`
     const existing = this.store.get(k)
@@ -41,6 +45,15 @@ export class FakeVermietungRepository implements VermietungRepository {
     const updated: VermietungsobjektRecord = { ...existing, [feld]: wert }
     this.store.set(k, updated)
     return Promise.resolve(updated)
+  }
+
+  setAddress(
+    userId: string,
+    taxYear: number,
+    objectId: string,
+    address: { strasse?: string | null; hausnummer?: string | null; plz?: string | null; ort?: string | null; wohnflaeche?: string | null; afaWieVorjahr?: boolean | null },
+  ): Promise<VermietungsobjektRecord | null> {
+    return this.setAdresse(userId, taxYear, objectId, address)
   }
 
   setAdresse(

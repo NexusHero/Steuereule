@@ -65,3 +65,8 @@ export class ArbeitswegResponseDto {
   @ApiProperty({ type: Number, nullable: true, description: 'Entfernungspauschale in whole euros; null until distance and means of travel are known.' })
   pendlerpauschale!: number | null
 }
+
+export type CommuteInputsDto = ArbeitswegEingabenDto
+export type WorkdaysDto = WerktageDto
+export type CommuteResponseDto = ArbeitswegResponseDto
+

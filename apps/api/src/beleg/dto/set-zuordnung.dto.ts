@@ -17,3 +17,6 @@ export class SetZuordnungDto {
   @IsBoolean()
   vorschlagVerworfen?: boolean
 }
+
+export type SetAssignmentDto = SetZuordnungDto
+

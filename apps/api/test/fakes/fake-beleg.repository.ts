@@ -38,6 +38,10 @@ export class FakeBelegRepository implements BelegRepository {
     return Promise.resolve(record)
   }
 
+  setAssignment(userId: string, id: string, data: SetZuordnungData): Promise<BelegRecord | null> {
+    return this.setZuordnung(userId, id, data)
+  }
+
   setZuordnung(userId: string, id: string, data: SetZuordnungData): Promise<BelegRecord | null> {
     const index = this.rows.findIndex((row) => row.userId === userId && row.id === id)
     if (index === -1) return Promise.resolve(null)

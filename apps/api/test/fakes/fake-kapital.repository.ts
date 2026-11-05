@@ -4,7 +4,7 @@
 // Kapital-Posten / Günstigerprüfung are left to KapitalService (as in production, the
 // repository stores facts, never the derived state — ADR-014/048).
 import type { KapitalFeldId } from '@steuereule/core'
-import type { KapitalRecord, KapitalRepository } from '../../src/kapital/kapital.repository.js'
+import type { KapitalInhaber, KapitalRecord, KapitalRepository } from '../../src/kapital/kapital.repository.js'
 
 function key(userId: string, steuerjahr: number): string {
   return `${userId}::${steuerjahr}`
@@ -15,6 +15,10 @@ export class FakeKapitalRepository implements KapitalRepository {
 
   findForUserAndYear(userId: string, steuerjahr: number): Promise<KapitalRecord | null> {
     return Promise.resolve(this.store.get(key(userId, steuerjahr)) ?? null)
+  }
+
+  setField(userId: string, taxYear: number, field: KapitalFeldId, value: string | null): Promise<KapitalRecord> {
+    return this.setFeld(userId, taxYear, field, value)
   }
 
   setFeld(userId: string, steuerjahr: number, feld: KapitalFeldId, wert: string | null): Promise<KapitalRecord> {
@@ -30,6 +34,26 @@ export class FakeKapitalRepository implements KapitalRepository {
       kirchensteuer: null,
     }
     const updated: KapitalRecord = { ...record, [feld]: wert }
+    this.store.set(k, updated)
+    return Promise.resolve(updated)
+  }
+
+  setOwner(userId: string, taxYear: number, owner: KapitalInhaber): Promise<KapitalRecord> {
+    return this.setInhaber(userId, taxYear, owner)
+  }
+
+  setInhaber(userId: string, steuerjahr: number, inhaber: KapitalInhaber): Promise<KapitalRecord> {
+    const k = key(userId, steuerjahr)
+    const record: KapitalRecord = this.store.get(k) ?? {
+      userId,
+      steuerjahr,
+      kapitalertraege: null,
+      sparerPauschbetrag: null,
+      kapitalertragsteuer: null,
+      solidaritaetszuschlag: null,
+      kirchensteuer: null,
+    }
+    const updated: KapitalRecord = { ...record, inhaber }
     this.store.set(k, updated)
     return Promise.resolve(updated)
   }

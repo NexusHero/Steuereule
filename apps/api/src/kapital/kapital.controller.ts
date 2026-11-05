@@ -16,7 +16,7 @@ import { UserContextGuard } from '../auth/user-context.guard.js'
 import { ParseSteuerjahrPipe } from '../cockpit/parse-steuerjahr.pipe.js'
 import { ParseKapitalFeldPipe } from './parse-kapital-feld.pipe.js'
 import { KapitalService } from './kapital.service.js'
-import { PutKapitalFeldDto } from './dto/kapital-feld.dto.js'
+import { PutKapitalFeldDto, PutKapitalInhaberDto } from './dto/kapital-feld.dto.js'
 import { KapitalResponseDto } from './dto/kapital-response.dto.js'
 import { GuenstigerpruefungDto, GuenstigerpruefungHerkunftDto } from './dto/guenstigerpruefung-response.dto.js'
 import { UnschaerfeDto } from '../veranlagungsartenvergleich/dto/veranlagungsartenvergleich-response.dto.js'
@@ -50,6 +50,21 @@ export class KapitalController {
   @ApiUnauthorizedResponse({ description: 'Guest session — this endpoint requires a signed-in account.' })
   get(@CurrentUser() userId: string, @Param('jahr', ParseSteuerjahrPipe) jahr: number): Promise<KapitalResponseDto> {
     return this.kapitalService.getState(userId, jahr)
+  }
+
+  @Put(':jahr/kapital/inhaber')
+  @HttpCode(200)
+  @RequiresAccount()
+  @ApiParam({ name: 'jahr', type: Number, example: 2025, description: 'The tax year (Steuerjahr).' })
+  @ApiBody({ type: PutKapitalInhaberDto })
+  @ApiOkResponse({ type: KapitalResponseDto, description: 'The mask with the stored owner.' })
+  @ApiUnauthorizedResponse({ description: 'Guest session — this endpoint requires a signed-in account.' })
+  setInhaber(
+    @CurrentUser() userId: string,
+    @Param('jahr', ParseSteuerjahrPipe) jahr: number,
+    @Body() dto: PutKapitalInhaberDto,
+  ): Promise<KapitalResponseDto> {
+    return this.kapitalService.setInhaber(userId, jahr, dto.inhaber)
   }
 
   @Put(':jahr/kapital/:feld')

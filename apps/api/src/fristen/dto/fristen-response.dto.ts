@@ -26,3 +26,7 @@ export class FristenResponseDto {
   @ApiProperty({ type: VerspaetungszuschlagDto })
   verspaetungszuschlag!: VerspaetungszuschlagDto
 }
+
+export type LateFilingFeeDto = VerspaetungszuschlagDto
+export type DeadlinesResponseDto = FristenResponseDto
+

@@ -90,3 +90,6 @@ export class VeranlagungsartenvergleichService {
     return toDto(vergleich)
   }
 }
+
+export { VeranlagungsartenvergleichService as AssessmentComparisonService }
+

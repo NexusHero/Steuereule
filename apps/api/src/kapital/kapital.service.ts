@@ -176,6 +176,7 @@ export class KapitalService {
       depot: depotZuDto(depot),
       posten,
       stand: standZuDto(stand),
+      inhaber: record?.inhaber ?? null,
     }
   }
 
@@ -194,6 +195,11 @@ export class KapitalService {
     setzeKapitalFeld(daten, feld, zustand)
     const next = await this.repository.setFeld(userId, steuerjahr, feld, serialisiereKapitalFeld(zustand))
     await this.kennzeichnungen.entferne(userId, steuerjahr, [kennzeichnungsKey('kapital', feld)])
+    return this.toResponse(userId, steuerjahr, next)
+  }
+
+  async setInhaber(userId: string, steuerjahr: number, inhaber: 'A' | 'B' | 'gemeinsam'): Promise<KapitalResponseDto> {
+    const next = await this.repository.setInhaber(userId, steuerjahr, inhaber)
     return this.toResponse(userId, steuerjahr, next)
   }
 

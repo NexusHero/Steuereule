@@ -1,9 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common'
 import type { KapitalFeldId } from '@steuereule/core'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
-import type { KapitalRecord, KapitalRepository } from './kapital.repository.js'
+import type { KapitalRecord, KapitalRepository, KapitalInhaber } from './kapital.repository.js'
 
-function toRecord(row: KapitalRecord): KapitalRecord {
+function toRecord(row: Omit<KapitalRecord, 'inhaber'> & { inhaber?: string | null }): KapitalRecord {
   return {
     userId: row.userId,
     steuerjahr: row.steuerjahr,
@@ -12,6 +12,7 @@ function toRecord(row: KapitalRecord): KapitalRecord {
     kapitalertragsteuer: row.kapitalertragsteuer,
     solidaritaetszuschlag: row.solidaritaetszuschlag,
     kirchensteuer: row.kirchensteuer,
+    inhaber: (row.inhaber ?? null) as KapitalInhaber | null,
   }
 }
 
@@ -22,6 +23,10 @@ export class PrismaKapitalRepository implements KapitalRepository {
   async findForUserAndYear(userId: string, steuerjahr: number): Promise<KapitalRecord | null> {
     const row = await this.prisma.kapital.findUnique({ where: { userId_steuerjahr: { userId, steuerjahr } } })
     return row === null ? null : toRecord(row)
+  }
+
+  async setField(userId: string, taxYear: number, field: KapitalFeldId, value: string | null): Promise<KapitalRecord> {
+    return this.setFeld(userId, taxYear, field, value)
   }
 
   async setFeld(userId: string, steuerjahr: number, feld: KapitalFeldId, wert: string | null): Promise<KapitalRecord> {
@@ -35,6 +40,19 @@ export class PrismaKapitalRepository implements KapitalRepository {
         data: { userId, action: 'WRITE', resource: 'kapital' },
       }),
     ])
+    return toRecord(row)
+  }
+
+  async setOwner(userId: string, taxYear: number, owner: KapitalInhaber): Promise<KapitalRecord> {
+    return this.setInhaber(userId, taxYear, owner)
+  }
+
+  async setInhaber(userId: string, steuerjahr: number, inhaber: KapitalInhaber): Promise<KapitalRecord> {
+    const row = await this.prisma.kapital.upsert({
+      where: { userId_steuerjahr: { userId, steuerjahr } },
+      create: { userId, steuerjahr, inhaber },
+      update: { inhaber },
+    })
     return toRecord(row)
   }
 }

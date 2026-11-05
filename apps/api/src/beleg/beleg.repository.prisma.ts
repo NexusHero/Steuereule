@@ -71,6 +71,10 @@ export class PrismaBelegRepository implements BelegRepository {
     return toRecord(row)
   }
 
+  async setAssignment(userId: string, id: string, data: SetZuordnungData): Promise<BelegRecord | null> {
+    return this.setZuordnung(userId, id, data)
+  }
+
   async setZuordnung(userId: string, id: string, data: SetZuordnungData): Promise<BelegRecord | null> {
     const row = await this.prisma.beleg.findFirst({ where: { id, userId } })
     if (row === null) return null

@@ -1,7 +1,18 @@
 import type { Answers } from './interview'
-import { gatedEinkunftsarten, type Einkunftsart } from './einkunftsarten'
+import { gatedEinkunftsarten, type Einkunftsart, type IncomeType } from './einkunftsarten'
 import { lstbZustand, type LstbDaten } from './lstb'
 import { abziehbareBasisvorsorge, krankenversicherungAusAntworten } from './krankenversicherung'
+
+export interface EmployeeAnswerFigures {
+  readonly sideJobGross: number
+  readonly relocationCosts: number
+  readonly donations: number
+  readonly healthCareContributions: number
+  readonly riester: number
+  readonly doubleHouseholdRent: number
+  readonly severanceAmount: number
+  readonly wageReplacementAmount: number
+}
 
 /** The interview-catalogue-derived figures for the Angestellte case, already categorised into where they belong in the fold. */
 export interface AngestellteAntwortZahlen {
@@ -35,7 +46,30 @@ export function angestellteAusAntworten(answers: Answers): AngestellteAntwortZah
   }
 }
 
+export function employeeFromAnswers(answers: Answers): EmployeeAnswerFigures {
+  const a = angestellteAusAntworten(answers)
+  return {
+    sideJobGross: a.nebenjobBrutto,
+    relocationCosts: a.umzugKosten,
+    donations: a.spenden,
+    healthCareContributions: a.kvPvBeitraege,
+    riester: a.riester,
+    doubleHouseholdRent: a.dhfMiete,
+    severanceAmount: a.abfindungBetrag,
+    wageReplacementAmount: a.lohnersatzBetrag,
+  }
+}
+
 /** The already-summed inputs to the fold. */
+export interface EmployeeInputs {
+  readonly income: number
+  readonly incomeRelatedExpenses: number
+  readonly specialExpenses: number
+  readonly openItems: number
+  readonly conflicts: number
+  readonly gated: readonly (IncomeType | Einkunftsart)[]
+}
+
 export interface AngestellteEingaben {
   readonly einnahmen: number
   readonly werbungskosten: number
@@ -95,6 +129,8 @@ export function angestelltenStand(eingaben: AngestellteEingaben): AngestelltenSt
   }
 }
 
+export const calculateEmployeeStatus = angestelltenStand
+
 /** The ONE fold from the readable Angestellte facts → every numeric input both the Cockpit spanne AND the Plausibilitäts-Prüfung need. */
 export interface AngestellteFakten {
   readonly einnahmen: number
@@ -130,3 +166,5 @@ export function angestellteAusDaten(daten: LstbDaten, answers: Answers): Angeste
     erfasstNichtGerechnet: zahlen.dhfMiete + zahlen.abfindungBetrag + zahlen.lohnersatzBetrag,
   }
 }
+
+export const employeeFromData = angestellteAusDaten

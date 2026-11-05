@@ -106,6 +106,10 @@ export class PrismaKennzeichnungRepository implements KennzeichnungRepository {
     return row === null ? null : toRecord(row)
   }
 
+  async save(userId: string, taxYear: number, provenance: Omit<Kennzeichnung, 'wert'>): Promise<KennzeichnungRecord> {
+    return this.speichere(userId, taxYear, provenance)
+  }
+
   async speichere(userId: string, steuerjahr: number, kennzeichnung: Omit<Kennzeichnung, 'wert'>): Promise<KennzeichnungRecord> {
     const data = toData(kennzeichnung)
     const [row] = await this.prisma.$transaction([
@@ -119,6 +123,10 @@ export class PrismaKennzeichnungRepository implements KennzeichnungRepository {
     return toRecord(row)
   }
 
+  async remove(userId: string, taxYear: number, keys: readonly string[]): Promise<number> {
+    return this.entferne(userId, taxYear, keys)
+  }
+
   async entferne(userId: string, steuerjahr: number, keys: readonly string[]): Promise<number> {
     if (keys.length === 0) return 0
     const { count } = await this.prisma.kennzeichnung.deleteMany({ where: { userId, steuerjahr, postenKey: { in: [...keys] } } })
@@ -126,6 +134,10 @@ export class PrismaKennzeichnungRepository implements KennzeichnungRepository {
       await this.prisma.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: 'kennzeichnung' } })
     }
     return count
+  }
+
+  async confirmAnnex(userId: string, taxYears: readonly number[], annex: Anlage): Promise<number> {
+    return this.bestaetigeAnlage(userId, taxYears, annex)
   }
 
   async bestaetigeAnlage(userId: string, steuerjahre: readonly number[], anlage: Anlage): Promise<number> {

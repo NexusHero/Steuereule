@@ -98,3 +98,6 @@ export class KinderService {
     return this.toResponse(records, steuerjahr)
   }
 }
+
+export { KinderService as ChildrenService }
+

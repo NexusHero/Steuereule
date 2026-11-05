@@ -46,3 +46,6 @@ export class CreateBelegDto {
   @Matches(ISO_DATE)
   zahlungsdatum?: string
 }
+
+export type CreateReceiptDto = CreateBelegDto
+

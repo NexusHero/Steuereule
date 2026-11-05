@@ -17,6 +17,10 @@ export class FakeRenteRepository implements RenteRepository {
     return Promise.resolve(this.store.get(key(userId, steuerjahr)) ?? null)
   }
 
+  setField(userId: string, taxYear: number, field: RentenFeldId, value: string | null): Promise<RenteRecord> {
+    return this.setFeld(userId, taxYear, field, value)
+  }
+
   setFeld(userId: string, steuerjahr: number, feld: RentenFeldId, wert: string | null): Promise<RenteRecord> {
     const k = key(userId, steuerjahr)
     const existing = this.store.get(k)
@@ -31,6 +35,10 @@ export class FakeRenteRepository implements RenteRepository {
     const updated: RenteRecord = { ...record, [feld]: wert }
     this.store.set(k, updated)
     return Promise.resolve(updated)
+  }
+
+  setPensionType(userId: string, taxYear: number, type: string | null): Promise<RenteRecord> {
+    return this.setRentenart(userId, taxYear, type)
   }
 
   setRentenart(userId: string, steuerjahr: number, art: string | null): Promise<RenteRecord> {

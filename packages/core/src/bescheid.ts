@@ -1,14 +1,26 @@
 import type { Berechnungsstand } from './berechnung'
 import type { AngestellteFakten } from './angestellte'
 
-export type BescheidBetragFeld = 'einnahmen' | 'vorsorgeaufwand' | 'anrechnung'
+export type AssessmentAmountField = 'einnahmen' | 'vorsorgeaufwand' | 'anrechnung'
+export type BescheidBetragFeld = AssessmentAmountField
 
-export type BescheidNurFeld = 'festgesetzteSteuer' | 'erstattung'
+export type AssessmentOnlyField = 'festgesetzteSteuer' | 'erstattung'
+export type BescheidNurFeld = AssessmentOnlyField
 
-export type BescheidFeld = BescheidBetragFeld | BescheidNurFeld
+export type AssessmentField = AssessmentAmountField | AssessmentOnlyField
+export type BescheidFeld = AssessmentField
 
-/** The five figures a Steuerbescheid carries, in paper order, with the comparable flag. */
-export interface BescheidFeldDef {
+/** The five figures a tax assessment notice carries, in paper order, with the comparable flag. */
+export interface AssessmentFieldDefinition {
+  readonly id: AssessmentField
+  readonly signed: boolean
+  readonly comparable: boolean
+  // Backward compatibility
+  readonly signiert?: boolean
+  readonly vergleichbar?: boolean
+}
+
+export type BescheidFeldDef = {
   readonly id: BescheidFeld
   readonly signiert: boolean
   readonly vergleichbar: boolean
@@ -29,6 +41,7 @@ export const BESCHEID_VERGLEICHBARE_FELDER: readonly BescheidBetragFeld[] = BESC
 ).map((f) => f.id)
 
 export type BescheidWerte = Partial<Record<BescheidFeld, number>>
+export type AssessmentValues = BescheidWerte
 
 /** A deviation on one of the three comparable buckets. */
 export interface BescheidAbweichung {
@@ -38,12 +51,16 @@ export interface BescheidAbweichung {
   readonly differenz: number
 }
 
+export type AssessmentDeviation = BescheidAbweichung
+
 export interface BescheidAbgleich {
   readonly abweichungen: readonly BescheidAbweichung[]
   readonly berechnungUnvollstaendig: boolean
 }
 
-export function gleicheBescheidAb(werte: BescheidWerte, stand: Berechnungsstand): BescheidAbgleich {
+export type AssessmentComparison = BescheidAbgleich
+
+export function reconcileAssessment(werte: BescheidWerte, stand: Berechnungsstand): BescheidAbgleich {
   const abweichungen: BescheidAbweichung[] = []
   for (const feld of BESCHEID_VERGLEICHBARE_FELDER) {
     const bescheid = werte[feld]
@@ -72,6 +89,13 @@ export function bescheidBerechnungsstand(angestellte: AngestellteFakten, ch: Ber
 }
 
 /** An IMMUTABLE snapshot of a submitted filing — the "Fassung". */
+export interface FilingVersion {
+  readonly versionNumber: number
+  readonly income: number
+  readonly provision: number
+  readonly credit: number
+}
+
 export interface Fassung {
   readonly nummer: number
   readonly einnahmen: number
@@ -119,20 +143,20 @@ export function korrigiereFassung(vorfassung: Fassung, korrekturen: readonly Fas
 }
 
 export const EINSPRUCHS_GRUENDE = ['betrag-falsch', 'beleg-nicht-beruecksichtigt', 'sonstiges'] as const
+export type AppealReason = (typeof EINSPRUCHS_GRUENDE)[number]
+export type EinspruchGrund = AppealReason
 
-export type EinspruchGrund = (typeof EINSPRUCHS_GRUENDE)[number]
-
-export function istEinspruchGrund(value: string): value is EinspruchGrund {
+export function isAppealReason(value: string): value is AppealReason {
   return (EINSPRUCHS_GRUENDE as readonly string[]).includes(value)
 }
 
 const ISO_DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/
 
-function tageImMonat(jahr: number, monat: number): number {
-  return new Date(Date.UTC(jahr, monat, 0)).getUTCDate()
+function daysInMonth(year: number, month: number): number {
+  return new Date(Date.UTC(year, month, 0)).getUTCDate()
 }
 
-export function einspruchsfristEnde(bescheiddatum: string): string {
+export function appealDeadlineEnd(bescheiddatum: string): string {
   const m = ISO_DATE_RE.exec(bescheiddatum)
   if (m === null) throw new RangeError(`einspruchsfristEnde: "${bescheiddatum}" is not an ISO yyyy-mm-dd date`)
   const jahr = Number(m[1]!)
@@ -140,47 +164,59 @@ export function einspruchsfristEnde(bescheiddatum: string): string {
   const tag = Number(m[3]!)
   const zielJahr = monat === 12 ? jahr + 1 : jahr
   const zielMonat = monat === 12 ? 1 : monat + 1
-  const zielTag = Math.min(tag, tageImMonat(zielJahr, zielMonat))
+  const zielTag = Math.min(tag, daysInMonth(zielJahr, zielMonat))
   const mm = String(zielMonat).padStart(2, '0')
   const tt = String(zielTag).padStart(2, '0')
   return `${zielJahr}-${mm}-${tt}`
 }
 
-function tageSeit(iso: string): number {
+function daysSince(iso: string): number {
   const m = ISO_DATE_RE.exec(iso)
   if (m === null) throw new RangeError(`"${iso}" is not an ISO yyyy-mm-dd date`)
   return Date.UTC(Number(m[1]!), Number(m[2]!) - 1, Number(m[3]!)) / 86_400_000
 }
 
-export function verbleibendeEinspruchstage(bescheiddatum: string, heute: string): number {
-  const ende = tageSeit(einspruchsfristEnde(bescheiddatum))
-  const start = tageSeit(heute)
+export function remainingAppealDays(bescheiddatum: string, heute: string): number {
+  const ende = daysSince(appealDeadlineEnd(bescheiddatum))
+  const start = daysSince(heute)
   return ende - start
 }
 
-export const BESCHEID_UNKLAR = 'unklar'
+export const ASSESSMENT_UNCLEAR = 'unklar'
+export const BESCHEID_UNKLAR = ASSESSMENT_UNCLEAR
 
-export function istGueltigerBescheidBetrag(feld: BescheidFeld, wert: number): boolean {
+export function isValidAssessmentAmount(feld: BescheidFeld, wert: number): boolean {
   if (!Number.isInteger(wert)) return false
   const def = BESCHEID_FELDER.find((f) => f.id === feld)
   return def?.signiert === true ? Number.isFinite(wert) : wert >= 0
 }
 
-export function serialisiereBescheidFeld(feld: BescheidFeld, wert: number | null | typeof BESCHEID_UNKLAR): string | null {
+export function serializeAssessmentField(feld: BescheidFeld, wert: number | null | typeof BESCHEID_UNKLAR): string | null {
   if (wert === null) return null
   if (wert === BESCHEID_UNKLAR) return BESCHEID_UNKLAR
-  if (!istGueltigerBescheidBetrag(feld, wert)) {
+  if (!isValidAssessmentAmount(feld, wert)) {
     throw new RangeError(`bescheid: erfasst value for "${feld}" is not a valid whole-euro amount`)
   }
   return String(wert)
 }
 
-export function deserialisiereBescheidFeld(feld: BescheidFeld, value: string | null): number | null | typeof BESCHEID_UNKLAR {
+export function deserializeAssessmentField(feld: BescheidFeld, value: string | null): number | null | typeof BESCHEID_UNKLAR {
   if (value === null) return null
   if (value === BESCHEID_UNKLAR) return BESCHEID_UNKLAR
   const wert = Number(value)
-  if (!istGueltigerBescheidBetrag(feld, wert)) {
+  if (!isValidAssessmentAmount(feld, wert)) {
     throw new Error(`bescheid: stored value "${value}" for "${feld}" is neither offen, unklar, nor a valid amount`)
   }
   return wert
+}
+
+// Backward-compatibility aliases
+export {
+  reconcileAssessment as gleicheBescheidAb,
+  isAppealReason as istEinspruchGrund,
+  appealDeadlineEnd as einspruchsfristEnde,
+  remainingAppealDays as verbleibendeEinspruchstage,
+  isValidAssessmentAmount as istGueltigerBescheidBetrag,
+  serializeAssessmentField as serialisiereBescheidFeld,
+  deserializeAssessmentField as deserialisiereBescheidFeld,
 }

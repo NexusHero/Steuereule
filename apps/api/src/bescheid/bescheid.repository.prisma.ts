@@ -61,6 +61,10 @@ export class PrismaBescheidRepository implements BescheidRepository {
     return row === null ? null : toRecord(row)
   }
 
+  async setField(userId: string, taxYear: number, field: BescheidFeld, value: string | null): Promise<BescheidRecord> {
+    return this.setFeld(userId, taxYear, field, value)
+  }
+
   async setFeld(userId: string, steuerjahr: number, feld: BescheidFeld, wert: string | null): Promise<BescheidRecord> {
     const [row] = await this.prisma.$transaction([
       this.prisma.bescheid.upsert({
@@ -78,6 +82,10 @@ export class PrismaBescheidRepository implements BescheidRepository {
       }),
     ])
     return toRecord(row)
+  }
+
+  async setDate(userId: string, taxYear: number, date: string | null): Promise<BescheidRecord> {
+    return this.setDatum(userId, taxYear, date)
   }
 
   async setDatum(userId: string, steuerjahr: number, datum: string | null): Promise<BescheidRecord> {
@@ -106,6 +114,10 @@ export class PrismaBescheidRepository implements BescheidRepository {
       }),
     ])
     return toRecord(row)
+  }
+
+  async setAppeal(userId: string, taxYear: number, reason: string): Promise<BescheidRecord> {
+    return this.setEinspruch(userId, taxYear, reason)
   }
 
   async setEinspruch(userId: string, steuerjahr: number, grund: string): Promise<BescheidRecord> {

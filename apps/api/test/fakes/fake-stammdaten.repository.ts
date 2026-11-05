@@ -7,6 +7,10 @@ export class FakeStammdatenRepository implements StammdatenRepository {
     return Promise.resolve(this.store.get(userId) ?? null)
   }
 
+  save(userId: string, record: StammdatenRecord): Promise<StammdatenRecord> {
+    return this.speichere(userId, record)
+  }
+
   speichere(userId: string, record: StammdatenRecord): Promise<StammdatenRecord> {
     this.store.set(userId, record)
     return Promise.resolve(record)

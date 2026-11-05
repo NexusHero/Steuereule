@@ -1,5 +1,5 @@
 /** What Anlage Kind needs beyond the child's identity. */
-export interface KindAngaben {
+export interface ChildDetails {
   kindschaftsverhaeltnis: string | null
   kindschaftsverhaeltnisB: string | null
   familienkasse: string | null
@@ -15,24 +15,31 @@ export interface KindAngaben {
   kvBasisEur: string | null
   pvEur: string | null
 }
+export type KindAngaben = ChildDetails
 
-export interface KindRecord extends KindAngaben {
+export interface ChildRecord extends ChildDetails {
   id: string
   userId: string
   steuerjahr: number
+  taxYear?: number
   lfdNr: number
   vorname: string
+  firstName?: string
   nachname: string
+  lastName?: string
   geburtsdatum: string
+  birthDate?: string
   idnr: string | null
   kindergeldAnspruchEur: string | null
 }
+export type KindRecord = ChildRecord
 
-export const KIND_REPOSITORY = Symbol('KIND_REPOSITORY')
+export const CHILD_REPOSITORY = Symbol('CHILD_REPOSITORY')
+export const KIND_REPOSITORY = CHILD_REPOSITORY
 
 /** What Anlage Kind needs beyond the child's identity. */
-export interface KindRepository {
-  listForUserAndYear(userId: string, steuerjahr: number): Promise<KindRecord[]>
+export interface ChildRepository {
+  listForUserAndYear(userId: string, steuerjahr: number): Promise<ChildRecord[]>
   create(
     userId: string,
     steuerjahr: number,
@@ -42,8 +49,8 @@ export interface KindRepository {
       geburtsdatum: string
       idnr?: string | null
       kindergeldAnspruchEur?: string | null
-    } & Partial<KindAngaben>,
-  ): Promise<KindRecord>
+    } & Partial<ChildDetails>,
+  ): Promise<ChildRecord>
   update(
     userId: string,
     steuerjahr: number,
@@ -54,7 +61,8 @@ export interface KindRepository {
       geburtsdatum?: string
       idnr?: string | null
       kindergeldAnspruchEur?: string | null
-    } & Partial<KindAngaben>,
-  ): Promise<KindRecord | null>
+    } & Partial<ChildDetails>,
+  ): Promise<ChildRecord | null>
   delete(userId: string, steuerjahr: number, id: string): Promise<boolean>
 }
+export type KindRepository = ChildRepository

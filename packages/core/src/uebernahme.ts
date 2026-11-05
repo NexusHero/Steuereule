@@ -1,24 +1,31 @@
 import type { Posten } from './berechnung'
 
-export function uebernommenerPosten(posten: Posten, vorjahr: number): Posten {
-  if (!Number.isInteger(vorjahr) || vorjahr < 0) {
-    throw new RangeError(`uebernommenerPosten: "${vorjahr}" is not a valid year`)
+export function adoptedLineItem(lineItem: Posten, priorYear: number): Posten {
+  if (!Number.isInteger(priorYear) || priorYear < 0) {
+    throw new RangeError(`adoptedLineItem: "${priorYear}" is not a valid year`)
   }
   return {
-    ...posten,
-    quelle: { art: 'uebernahme', vorjahr },
+    ...lineItem,
+    quelle: { art: 'uebernahme', vorjahr: priorYear },
     unbestaetigt: true,
   }
 }
 
-export function bestaetigePosten(posten: Posten): Posten {
-  if (posten.unbestaetigt !== true) return posten
-  return { ...posten, unbestaetigt: false }
+export function confirmLineItem(lineItem: Posten): Posten {
+  if (lineItem.unbestaetigt !== true) return lineItem
+  return { ...lineItem, unbestaetigt: false }
 }
 
-export function uebernahmeHerkunft(vorjahr: number): string {
-  if (!Number.isInteger(vorjahr) || vorjahr < 0) {
-    throw new RangeError(`uebernahmeHerkunft: "${vorjahr}" is not a valid year`)
+export function adoptionProvenance(priorYear: number): string {
+  if (!Number.isInteger(priorYear) || priorYear < 0) {
+    throw new RangeError(`adoptionProvenance: "${priorYear}" is not a valid year`)
   }
-  return `Übernahme aus ${vorjahr}`
+  return `Übernahme aus ${priorYear}`
+}
+
+// Backward-compatibility aliases
+export {
+  adoptedLineItem as uebernommenerPosten,
+  confirmLineItem as bestaetigePosten,
+  adoptionProvenance as uebernahmeHerkunft,
 }

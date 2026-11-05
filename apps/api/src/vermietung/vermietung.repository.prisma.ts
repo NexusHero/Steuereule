@@ -75,6 +75,16 @@ export class PrismaVermietungRepository implements VermietungRepository {
     return toRecord(row)
   }
 
+  async setField(
+    userId: string,
+    taxYear: number,
+    objectId: string,
+    field: VermietungFeldId,
+    value: string | null,
+  ): Promise<VermietungsobjektRecord | null> {
+    return this.setFeld(userId, taxYear, objectId, field, value)
+  }
+
   async setFeld(
     userId: string,
     steuerjahr: number,
@@ -92,6 +102,15 @@ export class PrismaVermietungRepository implements VermietungRepository {
       }),
     ])
     return toRecord(row)
+  }
+
+  async setAddress(
+    userId: string,
+    taxYear: number,
+    objectId: string,
+    address: { strasse?: string | null; hausnummer?: string | null; plz?: string | null; ort?: string | null; wohnflaeche?: string | null; afaWieVorjahr?: boolean | null },
+  ): Promise<VermietungsobjektRecord | null> {
+    return this.setAdresse(userId, taxYear, objectId, address)
   }
 
   async setAdresse(

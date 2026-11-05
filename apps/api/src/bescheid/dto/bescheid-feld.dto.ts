@@ -32,3 +32,7 @@ export class PutBescheidFeldDto {
   @IsInt()
   wert?: number
 }
+
+export type AssessmentFieldDto = BescheidFeldDto
+export type PutAssessmentFieldDto = PutBescheidFeldDto
+

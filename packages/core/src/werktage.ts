@@ -1,6 +1,16 @@
-export type IsoWochentag = 1 | 2 | 3 | 4 | 5 | 6 | 7
+export type IsoWeekday = 1 | 2 | 3 | 4 | 5 | 6 | 7
+export type IsoWochentag = IsoWeekday
 
-export const WOCHENTAGE: readonly IsoWochentag[] = [1, 2, 3, 4, 5, 6, 7]
+export const ISO_WEEKDAYS: readonly IsoWeekday[] = [1, 2, 3, 4, 5, 6, 7]
+export const WOCHENTAGE = ISO_WEEKDAYS
+
+export interface WorkdaysInput {
+  readonly year: number
+  readonly workdays: readonly IsoWeekday[]
+  readonly vacationDays: number
+  readonly sickDays: number
+  readonly homeOfficeDays: number
+}
 
 export interface WerktageEingabe {
   readonly jahr: number
@@ -10,51 +20,69 @@ export interface WerktageEingabe {
   readonly homeofficeTage: number
 }
 
-
-export function istSchaltjahr(jahr: number): boolean {
-  return (jahr % 4 === 0 && jahr % 100 !== 0) || jahr % 400 === 0
+export function isLeapYear(year: number): boolean {
+  return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0
 }
 
-export function kalendertageImJahr(jahr: number): number {
-  return istSchaltjahr(jahr) ? 366 : 365
+export function calendarDaysInYear(year: number): number {
+  return isLeapYear(year) ? 366 : 365
 }
 
-function isoWochentagAm(jahr: number, tagIndex0: number): IsoWochentag {
-  const utcTag = new Date(Date.UTC(jahr, 0, 1 + tagIndex0)).getUTCDay()
-  return (utcTag === 0 ? 7 : utcTag) as IsoWochentag
+function isoWeekdayAt(year: number, dayIndex0: number): IsoWeekday {
+  const utcDay = new Date(Date.UTC(year, 0, 1 + dayIndex0)).getUTCDay()
+  return (utcDay === 0 ? 7 : utcDay) as IsoWeekday
 }
 
-function validiere(eingabe: WerktageEingabe): void {
-  if (!Number.isInteger(eingabe.jahr) || eingabe.jahr < 2000 || eingabe.jahr > 2100) {
-    throw new RangeError('jahr must be an integer calendar year between 2000 and 2100')
+function validateWorkdaysInput(input: WorkdaysInput | WerktageEingabe): void {
+  const year = 'year' in input ? input.year : input.jahr
+  const workdays = 'workdays' in input ? input.workdays : input.werktage
+  const vacation = 'vacationDays' in input ? input.vacationDays : input.urlaubstage
+  const sick = 'sickDays' in input ? input.sickDays : input.krankheitstage
+  const homeOffice = 'homeOfficeDays' in input ? input.homeOfficeDays : input.homeofficeTage
+
+  if (!Number.isInteger(year) || year < 2000 || year > 2100) {
+    throw new RangeError('year must be an integer calendar year between 2000 and 2100')
   }
-  if (eingabe.werktage.length === 0) {
-    throw new RangeError('werktage must name at least one weekday')
+  if (workdays.length === 0) {
+    throw new RangeError('workdays must name at least one weekday')
   }
-  for (const tag of eingabe.werktage) {
-    if (!WOCHENTAGE.includes(tag)) throw new RangeError(`"${tag}" is not an ISO weekday (1-7)`)
+  for (const day of workdays) {
+    if (!ISO_WEEKDAYS.includes(day)) throw new RangeError(`"${day}" is not an ISO weekday (1-7)`)
   }
   for (const [name, n] of [
-    ['urlaubstage', eingabe.urlaubstage],
-    ['krankheitstage', eingabe.krankheitstage],
-    ['homeofficeTage', eingabe.homeofficeTage],
+    ['vacationDays', vacation],
+    ['sickDays', sick],
+    ['homeOfficeDays', homeOffice],
   ] as const) {
     if (!Number.isInteger(n) || n < 0) throw new RangeError(`${name} must be a non-negative integer`)
   }
 }
 
-export function wochentageImJahr(jahr: number, werktage: readonly IsoWochentag[]): number {
-  const set = new Set(werktage)
+export function weekdaysInYear(year: number, workdays: readonly IsoWeekday[]): number {
+  const set = new Set(workdays)
   let count = 0
-  for (let d = 0; d < kalendertageImJahr(jahr); d++) {
-    if (set.has(isoWochentagAm(jahr, d))) count++
+  for (let d = 0; d < calendarDaysInYear(year); d++) {
+    if (set.has(isoWeekdayAt(year, d))) count++
   }
   return count
 }
 
+export type WorkdaysConflict =
+  | { readonly kind: 'vacation-sick-exceeds-weekdays'; readonly weekdays: number; readonly vacationDays: number; readonly sickDays: number }
+  | { readonly kind: 'homeoffice-exceeds-workdays'; readonly workdays: number; readonly homeOfficeDays: number }
+
 export type WerktageWiderspruch =
   | { readonly art: 'urlaub-krank-uebersteigt-wochentage'; readonly wochentage: number; readonly urlaubstage: number; readonly krankheitstage: number }
   | { readonly art: 'homeoffice-uebersteigt-werktage'; readonly werktage: number; readonly homeofficeTage: number }
+
+export type WorkdaysResult =
+  | {
+      readonly kind: 'exact'
+      readonly weekdays: number
+      readonly workdays: number
+      readonly commuteDays: number
+    }
+  | { readonly kind: 'conflict'; readonly conflict: WorkdaysConflict }
 
 export type WerktageErgebnis =
   | {
@@ -65,29 +93,51 @@ export type WerktageErgebnis =
     }
   | { readonly kind: 'widerspruch'; readonly widerspruch: WerktageWiderspruch }
 
-export function berechneWerktage(eingabe: WerktageEingabe): WerktageErgebnis {
-  validiere(eingabe)
-  const wochentage = wochentageImJahr(eingabe.jahr, eingabe.werktage)
-  const werktage = wochentage - eingabe.urlaubstage - eingabe.krankheitstage
-  if (werktage < 0) {
+export function calculateWorkdays(input: WorkdaysInput | WerktageEingabe): WerktageErgebnis & {
+  readonly weekdays?: number
+  readonly workdays?: number
+  readonly commuteDays?: number
+} {
+  validateWorkdaysInput(input)
+  const year = 'year' in input ? input.year : input.jahr
+  const workdaysArr = 'workdays' in input ? input.workdays : input.werktage
+  const vacation = 'vacationDays' in input ? input.vacationDays : input.urlaubstage
+  const sick = 'sickDays' in input ? input.sickDays : input.krankheitstage
+  const homeOffice = 'homeOfficeDays' in input ? input.homeOfficeDays : input.homeofficeTage
+
+  const weekdays = weekdaysInYear(year, workdaysArr)
+  const workdays = weekdays - vacation - sick
+  if (workdays < 0) {
     return {
       kind: 'widerspruch',
       widerspruch: {
         art: 'urlaub-krank-uebersteigt-wochentage',
-        wochentage,
-        urlaubstage: eingabe.urlaubstage,
-        krankheitstage: eingabe.krankheitstage,
+        wochentage: weekdays,
+        urlaubstage: vacation,
+        krankheitstage: sick,
       },
     }
   }
-  const pendlertage = werktage - eingabe.homeofficeTage
-  if (pendlertage < 0) {
+  const commuteDays = workdays - homeOffice
+  if (commuteDays < 0) {
     return {
       kind: 'widerspruch',
-      widerspruch: { art: 'homeoffice-uebersteigt-werktage', werktage, homeofficeTage: eingabe.homeofficeTage },
+      widerspruch: { art: 'homeoffice-uebersteigt-werktage', werktage: workdays, homeofficeTage: homeOffice },
     }
   }
-  return { kind: 'bestimmt', wochentage, werktage, pendlertage }
+  return {
+    kind: 'bestimmt',
+    wochentage: weekdays,
+    werktage: workdays,
+    pendlertage: commuteDays,
+  }
+}
+
+export interface CommuterAllowanceInput {
+  readonly oneWayKm: number
+  readonly days: number
+  readonly year: number
+  readonly withCar: boolean
 }
 
 export interface PendlerpauschaleEingabe {
@@ -97,32 +147,46 @@ export interface PendlerpauschaleEingabe {
   readonly mitPkw: boolean
 }
 
-interface Staffel {
-  readonly ersteKm: number
-  readonly satzErste: number
-  readonly satzWeitere: number
+interface Tier {
+  readonly firstKm: number
+  readonly rateFirst: number
+  readonly rateAdditional: number
 }
 
-const STAFFEL: Readonly<Record<number, Staffel>> = {
-  2021: { ersteKm: 20, satzErste: 0.3, satzWeitere: 0.35 },
-  2022: { ersteKm: 20, satzErste: 0.3, satzWeitere: 0.38 },
-  2023: { ersteKm: 20, satzErste: 0.3, satzWeitere: 0.38 },
-  2024: { ersteKm: 20, satzErste: 0.3, satzWeitere: 0.38 },
-  2025: { ersteKm: 20, satzErste: 0.3, satzWeitere: 0.38 },
-  2026: { ersteKm: 0, satzErste: 0.38, satzWeitere: 0.38 },
+const TIERS: Readonly<Record<number, Tier>> = {
+  2021: { firstKm: 20, rateFirst: 0.3, rateAdditional: 0.35 },
+  2022: { firstKm: 20, rateFirst: 0.3, rateAdditional: 0.38 },
+  2023: { firstKm: 20, rateFirst: 0.3, rateAdditional: 0.38 },
+  2024: { firstKm: 20, rateFirst: 0.3, rateAdditional: 0.38 },
+  2025: { firstKm: 20, rateFirst: 0.3, rateAdditional: 0.38 },
+  2026: { firstKm: 0, rateFirst: 0.38, rateAdditional: 0.38 },
 }
 
-const HOECHSTBETRAG_OHNE_PKW = 4500
+const MAXIMUM_AMOUNT_WITHOUT_CAR = 4500
 
-/** Entfernungspauschale per § 9 Abs. 1 Nr. 4 EStG: only full kilometres count; the 4.500 € cap applies only without an own car. */
-export function pendlerpauschale({ einfacheKm, tage, jahr, mitPkw }: PendlerpauschaleEingabe): number {
-  if (!Number.isFinite(einfacheKm) || einfacheKm < 0) throw new RangeError('einfacheKm must be a non-negative finite number')
-  if (!Number.isInteger(tage) || tage < 0) throw new RangeError('tage must be a non-negative integer')
-  const staffel = STAFFEL[jahr]
-  if (staffel === undefined) throw new RangeError(`no Entfernungspauschale rates for ${jahr}`)
-  const km = Math.floor(einfacheKm)
-  const ersteKm = Math.min(km, staffel.ersteKm)
-  const weitereKm = km - ersteKm
-  const betrag = Math.round(tage * (ersteKm * staffel.satzErste + weitereKm * staffel.satzWeitere))
-  return mitPkw ? betrag : Math.min(betrag, HOECHSTBETRAG_OHNE_PKW)
+/** Distance commuter allowance per § 9 Abs. 1 Nr. 4 EStG: only full kilometres count; the 4,500 € cap applies only without car. */
+export function commuterAllowance(input: CommuterAllowanceInput | PendlerpauschaleEingabe): number {
+  const kmInput = 'oneWayKm' in input ? input.oneWayKm : input.einfacheKm
+  const days = 'days' in input ? input.days : input.tage
+  const year = 'year' in input ? input.year : input.jahr
+  const withCar = 'withCar' in input ? input.withCar : input.mitPkw
+
+  if (!Number.isFinite(kmInput) || kmInput < 0) throw new RangeError('km must be a non-negative finite number')
+  if (!Number.isInteger(days) || days < 0) throw new RangeError('days must be a non-negative integer')
+  const tier = TIERS[year]
+  if (tier === undefined) throw new RangeError(`no commuter allowance rates for ${year}`)
+  const km = Math.floor(kmInput)
+  const firstKm = Math.min(km, tier.firstKm)
+  const additionalKm = km - firstKm
+  const amount = Math.round(days * (firstKm * tier.rateFirst + additionalKm * tier.rateAdditional))
+  return withCar ? amount : Math.min(amount, MAXIMUM_AMOUNT_WITHOUT_CAR)
+}
+
+// Backward-compatibility aliases
+export {
+  isLeapYear as istSchaltjahr,
+  calendarDaysInYear as kalendertageImJahr,
+  weekdaysInYear as wochentageImJahr,
+  calculateWorkdays as berechneWerktage,
+  commuterAllowance as pendlerpauschale,
 }

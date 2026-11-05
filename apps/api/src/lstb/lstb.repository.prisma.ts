@@ -42,6 +42,10 @@ export class PrismaLstbRepository implements LstbRepository {
     return row === null ? null : toRecord(row)
   }
 
+  async setField(userId: string, taxYear: number, field: LstbFeldId, value: string | null): Promise<LstbRecord> {
+    return this.setFeld(userId, taxYear, field, value)
+  }
+
   async setFeld(userId: string, steuerjahr: number, feld: LstbFeldId, wert: string | null): Promise<LstbRecord> {
     const [row] = await this.prisma.$transaction([
       this.prisma.lstb.upsert({

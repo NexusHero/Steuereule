@@ -25,3 +25,6 @@ export class ZuordnungDto {
   })
   herkunft?: 'zahlungsdatum' | 'belegdatum'
 }
+
+export type AssignmentDto = ZuordnungDto
+
