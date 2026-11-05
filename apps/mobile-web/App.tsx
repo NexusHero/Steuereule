@@ -5,8 +5,8 @@ import { I18nextProvider, useTranslation } from 'react-i18next'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { NavigationContainer, type LinkingOptions } from '@react-navigation/native'
 import { createNativeStackNavigator, type NativeStackScreenProps } from '@react-navigation/native-stack'
-import { SafeAreaProvider } from 'react-native-safe-area-context'
-import { TabBar, TAB_ICON_PATHS, ThemeProvider, useTheme, type TabItem } from '@steuereule/ui'
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context'
+import { TabBar, TAB_ICON_PATHS, tabBarClearance, ThemeProvider, useTheme, type TabItem } from '@steuereule/ui'
 import { configureApiClient } from '@steuereule/api-client'
 import { createAppI18n } from './src/i18n/app-i18n'
 import { APP_NS } from './src/i18n/resources'
@@ -45,10 +45,12 @@ import { EulenModusScreen } from './src/screens/berater/EulenModusScreen'
 import { betreiberAusUmgebung, RECHTLICHE_SEITEN, type RechtlicheSeite } from './src/screens/rechtliches/texte'
 import { KontoWandScreen, pfadAusAntworten, type FunnelPfad } from './src/screens/funnel/KontoWandScreen'
 import { useAccountSession } from './src/auth/useAccountSession'
+import { followNativeAppFocus } from './src/app-focus'
 import { ansichtNachDemInterview } from './src/screens/funnel/nachDemInterview'
 
 const i18n = createAppI18n('de')
 const queryClient = new QueryClient({ defaultOptions: APP_QUERY_DEFAULTS })
+followNativeAppFocus()
 
 const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://localhost:3000'
 configureApiClient({ baseUrl: apiBaseUrl })
@@ -281,6 +283,7 @@ function TabbedShell({ tab, onTabChange, onSignedOut, startInInterview = false, 
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const { state: sessionState } = useAccountSession()
+  const insets = useSafeAreaInsets()
   const [funnelPfad, setFunnelPfad] = useState<FunnelPfad>('angestellte')
 
   const [profilView, setProfilView] = useState<'main' | 'datenschutz' | 'sicherheit' | 'stammdaten'>('main')
@@ -329,84 +332,88 @@ function TabbedShell({ tab, onTabChange, onSignedOut, startInInterview = false, 
     onTabChange(next)
   }
 
+  const zeigtTabBar = profilView === 'main'
+
   return (
     <View style={{ flex: 1 }}>
-      {tab === 'cockpit' && cockpitView === 'main' ? <CockpitScreen
-          onOpenInterview={() => setCockpitView('interview')}
-          onOpenBescheid={() => setCockpitView('bescheid')}
-          onOpenKapital={() => setCockpitView('kapital')}
-          onOpenVermietung={() => setCockpitView('vermietung')}
-          onOpenKinder={() => setCockpitView('kinder')}
-          onOpenEulenModus={() => setCockpitView('eulen-modus')}
-          {...(onOpenAusdruck ? { onOpenAusdruck } : {})}
-          {...(onOpenBestaetigung ? { onOpenBestaetigung } : {})}
-        /> : null}
-      {tab === 'cockpit' && cockpitView === 'interview' ? (
-        <InterviewScreen
-          onDone={(answers) => {
-            const pfad = pfadAusAntworten(answers)
-            setFunnelPfad(pfad)
-            setCockpitView(ansichtNachDemInterview(pfad, sessionState.status))
-          }}
-        />
-      ) : null}
-      {tab === 'cockpit' && cockpitView === 'konto-wand' ? (
-        <KontoWandScreen pfad={funnelPfad} onRegister={onRegister} onLogin={onLogin} onLater={() => setCockpitView('main')} />
-      ) : null}
-      {tab === 'cockpit' && cockpitView === 'rente' ? (
-        <RentnerScreen onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
-      ) : null}
-      {tab === 'cockpit' && cockpitView === 'ch' ? <GrenzgaengerScreen onDone={() => setCockpitView('main')} /> : null}
-      {tab === 'cockpit' && cockpitView === 'lstb' ? (
-        <LstbScreen onDone={() => setCockpitView('katalog-lebenslagen')} onBack={() => setCockpitView('main')} />
-      ) : null}
-      {tab === 'cockpit' && cockpitView === 'katalog-lebenslagen' ? (
-        <KatalogScreen entry="lebenslagen" onDone={() => setCockpitView('katalog-sonderausgaben')} onBack={() => setCockpitView('lstb')} />
-      ) : null}
-      {tab === 'cockpit' && cockpitView === 'katalog-sonderausgaben' ? (
-        <KatalogScreen entry="sonderausgaben" onDone={() => setCockpitView('arbeitstage')} onBack={() => setCockpitView('katalog-lebenslagen')} />
-      ) : null}
-      {tab === 'cockpit' && cockpitView === 'arbeitstage' ? (
-        <ArbeitstageScreen onDone={() => setCockpitView('plausibilitaet')} onBack={() => setCockpitView('katalog-sonderausgaben')} />
-      ) : null}
-      {tab === 'cockpit' && cockpitView === 'plausibilitaet' ? (
-        <PlausibilitaetScreen onBack={() => setCockpitView('main')} onDone={() => setCockpitView('veranlagungsartenvergleich')} />
-      ) : null}
-      {tab === 'cockpit' && cockpitView === 'veranlagungsartenvergleich' ? (
-        <VeranlagungsartenvergleichScreen onBack={() => setCockpitView('plausibilitaet')} onDone={() => setCockpitView('main')} />
-      ) : null}
-      {tab === 'cockpit' && cockpitView === 'bescheid' ? (
-        <BescheidScreen onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
-      ) : null}
-      {tab === 'cockpit' && cockpitView === 'kapital' ? (
-        <KapitalScreen onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
-      ) : null}
-      {tab === 'cockpit' && cockpitView === 'vermietung' ? (
-        <VermietungScreen onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
-      ) : null}
-      {tab === 'cockpit' && cockpitView === 'kinder' ? (
-        <KinderScreen onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
-      ) : null}
-      {tab === 'cockpit' && cockpitView === 'eulen-modus' ? (
-        <EulenModusScreen onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
-      ) : null}
-      {tab === 'belege' ? <BelegeScreen /> : null}
-      {tab === 'profil' && profilView === 'main' ? (
-        <ProfilScreen
-          onOpenDatenschutz={() => setProfilView('datenschutz')}
-          onOpenSicherheit={() => setProfilView('sicherheit')}
-          onOpenStammdaten={() => setProfilView('stammdaten')}
-          onSignedOut={onSignedOut}
-        />
-      ) : null}
-      {tab === 'profil' && profilView === 'datenschutz' ? (
-        <DatenschutzScreen onZurueck={() => setProfilView('main')} onAccountDeleted={onSignedOut} />
-      ) : null}
-      {tab === 'profil' && profilView === 'stammdaten' ? <StammdatenScreen onZurueck={() => setProfilView('main')} /> : null}
-      {tab === 'profil' && profilView === 'sicherheit' ? (
-        <SicherheitScreen onZurueck={() => setProfilView('main')} />
-      ) : null}
-      {profilView === 'main' ? <TabBar tabs={tabs} aktiv={tab} onWechsel={(id) => changeTab(id as Tab)} /> : null}
+      <View style={{ flex: 1, backgroundColor: t.color.grund, paddingBottom: zeigtTabBar ? tabBarClearance(t, insets.bottom) : 0 }}>
+        {tab === 'cockpit' && cockpitView === 'main' ? <CockpitScreen
+            onOpenInterview={() => setCockpitView('interview')}
+            onOpenBescheid={() => setCockpitView('bescheid')}
+            onOpenKapital={() => setCockpitView('kapital')}
+            onOpenVermietung={() => setCockpitView('vermietung')}
+            onOpenKinder={() => setCockpitView('kinder')}
+            onOpenEulenModus={() => setCockpitView('eulen-modus')}
+            {...(onOpenAusdruck ? { onOpenAusdruck } : {})}
+            {...(onOpenBestaetigung ? { onOpenBestaetigung } : {})}
+          /> : null}
+        {tab === 'cockpit' && cockpitView === 'interview' ? (
+          <InterviewScreen
+            onDone={(answers) => {
+              const pfad = pfadAusAntworten(answers)
+              setFunnelPfad(pfad)
+              setCockpitView(ansichtNachDemInterview(pfad, sessionState.status))
+            }}
+          />
+        ) : null}
+        {tab === 'cockpit' && cockpitView === 'konto-wand' ? (
+          <KontoWandScreen pfad={funnelPfad} onRegister={onRegister} onLogin={onLogin} onLater={() => setCockpitView('main')} />
+        ) : null}
+        {tab === 'cockpit' && cockpitView === 'rente' ? (
+          <RentnerScreen onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
+        ) : null}
+        {tab === 'cockpit' && cockpitView === 'ch' ? <GrenzgaengerScreen onDone={() => setCockpitView('main')} /> : null}
+        {tab === 'cockpit' && cockpitView === 'lstb' ? (
+          <LstbScreen onDone={() => setCockpitView('katalog-lebenslagen')} onBack={() => setCockpitView('main')} />
+        ) : null}
+        {tab === 'cockpit' && cockpitView === 'katalog-lebenslagen' ? (
+          <KatalogScreen entry="lebenslagen" onDone={() => setCockpitView('katalog-sonderausgaben')} onBack={() => setCockpitView('lstb')} />
+        ) : null}
+        {tab === 'cockpit' && cockpitView === 'katalog-sonderausgaben' ? (
+          <KatalogScreen entry="sonderausgaben" onDone={() => setCockpitView('arbeitstage')} onBack={() => setCockpitView('katalog-lebenslagen')} />
+        ) : null}
+        {tab === 'cockpit' && cockpitView === 'arbeitstage' ? (
+          <ArbeitstageScreen onDone={() => setCockpitView('plausibilitaet')} onBack={() => setCockpitView('katalog-sonderausgaben')} />
+        ) : null}
+        {tab === 'cockpit' && cockpitView === 'plausibilitaet' ? (
+          <PlausibilitaetScreen onBack={() => setCockpitView('main')} onDone={() => setCockpitView('veranlagungsartenvergleich')} />
+        ) : null}
+        {tab === 'cockpit' && cockpitView === 'veranlagungsartenvergleich' ? (
+          <VeranlagungsartenvergleichScreen onBack={() => setCockpitView('plausibilitaet')} onDone={() => setCockpitView('main')} />
+        ) : null}
+        {tab === 'cockpit' && cockpitView === 'bescheid' ? (
+          <BescheidScreen onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
+        ) : null}
+        {tab === 'cockpit' && cockpitView === 'kapital' ? (
+          <KapitalScreen onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
+        ) : null}
+        {tab === 'cockpit' && cockpitView === 'vermietung' ? (
+          <VermietungScreen onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
+        ) : null}
+        {tab === 'cockpit' && cockpitView === 'kinder' ? (
+          <KinderScreen onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
+        ) : null}
+        {tab === 'cockpit' && cockpitView === 'eulen-modus' ? (
+          <EulenModusScreen onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
+        ) : null}
+        {tab === 'belege' ? <BelegeScreen /> : null}
+        {tab === 'profil' && profilView === 'main' ? (
+          <ProfilScreen
+            onOpenDatenschutz={() => setProfilView('datenschutz')}
+            onOpenSicherheit={() => setProfilView('sicherheit')}
+            onOpenStammdaten={() => setProfilView('stammdaten')}
+            onSignedOut={onSignedOut}
+          />
+        ) : null}
+        {tab === 'profil' && profilView === 'datenschutz' ? (
+          <DatenschutzScreen onZurueck={() => setProfilView('main')} onAccountDeleted={onSignedOut} />
+        ) : null}
+        {tab === 'profil' && profilView === 'stammdaten' ? <StammdatenScreen onZurueck={() => setProfilView('main')} /> : null}
+        {tab === 'profil' && profilView === 'sicherheit' ? (
+          <SicherheitScreen onZurueck={() => setProfilView('main')} />
+        ) : null}
+      </View>
+      {zeigtTabBar ? <TabBar tabs={tabs} aktiv={tab} onWechsel={(id) => changeTab(id as Tab)} bottomInset={insets.bottom} /> : null}
     </View>
   )
 }

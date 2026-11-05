@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
+import { ActivityIndicator, RefreshControl, ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Button, Card, Chip, HerkunftsChip, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme, type Breakpoint } from '@steuereule/ui'
 import { FristenBanner } from '../fristen/FristenBanner'
@@ -46,6 +46,7 @@ export function CockpitScreen({
   const { t: tr } = useTranslation(APP_NS)
   const [jahr, setJahr] = useState(taxYear)
   const query = useCockpitControllerGetCockpitSummary(jahr)
+  const [pulling, setPulling] = useState(false)
   const bestaetigungQuery = useBestaetigungControllerGet(jahr)
 
   if (query.isPending) {
@@ -63,15 +64,22 @@ export function CockpitScreen({
     )
   }
   const summary = query.data.data
-  const onRefresh = () => void query.refetch()
+  const refresh: PullToRefresh = {
+    pulling,
+    onPull: () => {
+      setPulling(true)
+      void query.refetch().finally(() => setPulling(false))
+    },
+  }
+  const isRefreshing = query.isFetching && !pulling
 
   if (summary === null) {
     return (
       <CockpitEmpty
         jahr={jahr}
         onJahrWechsel={setJahr}
-        onRefresh={onRefresh}
-        isRefreshing={query.isFetching}
+        refresh={refresh}
+        isRefreshing={isRefreshing}
         onOpenInterview={onOpenInterview}
         onOpenBescheid={onOpenBescheid}
         onOpenKapital={onOpenKapital}
@@ -90,8 +98,8 @@ export function CockpitScreen({
       onJahrWechsel={setJahr}
       bestaetigung={bestaetigungQuery.data?.status === 200 ? bestaetigungQuery.data.data.anlagen : null}
       {...(onOpenBestaetigung ? { onOpenBestaetigung: () => onOpenBestaetigung(jahr) } : {})}
-      onRefresh={onRefresh}
-      isRefreshing={query.isFetching}
+      refresh={refresh}
+      isRefreshing={isRefreshing}
       onOpenInterview={onOpenInterview}
       onOpenBescheid={onOpenBescheid}
       onOpenKapital={onOpenKapital}
@@ -104,13 +112,21 @@ export function CockpitScreen({
   )
 }
 
-function Appbar({ jahr, onJahrWechsel }: { readonly jahr: number; readonly onJahrWechsel: (jahr: number) => void }) {
+interface PullToRefresh {
+  readonly pulling: boolean
+  readonly onPull: () => void
+}
+
+function Appbar({ jahr, onJahrWechsel, isRefreshing }: { readonly jahr: number; readonly onJahrWechsel: (jahr: number) => void; readonly isRefreshing: boolean }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
   return (
     <View style={styles.appbar}>
-      <Text style={styles.appbarTitle}>{tr('cockpit.appbarTitle')}</Text>
+      <View style={styles.appbarTitleReihe}>
+        <Text style={styles.appbarTitle}>{tr('cockpit.appbarTitle')}</Text>
+        {isRefreshing ? <ActivityIndicator size="small" color={t.color.tinte2} accessibilityLabel={tr('cockpit.refreshing')} /> : null}
+      </View>
       <View style={styles.jahrReihe} accessibilityLabel={tr('cockpit.jahrAuswahl')}>
         {AUSWAHL_JAHRE.map((y) => (
           <Chip key={y} aktiv={y === jahr} onPress={() => onJahrWechsel(y)} testID={`jahr-${y}`}>
@@ -125,7 +141,7 @@ function Appbar({ jahr, onJahrWechsel }: { readonly jahr: number; readonly onJah
 interface CockpitEmptyProps {
   readonly jahr: number
   readonly onJahrWechsel: (jahr: number) => void
-  readonly onRefresh: () => void
+  readonly refresh: PullToRefresh
   readonly isRefreshing: boolean
   readonly onOpenInterview: () => void
   readonly onOpenBescheid: () => void
@@ -137,13 +153,17 @@ interface CockpitEmptyProps {
   readonly bp: Breakpoint
 }
 
-function CockpitEmpty({ jahr, onJahrWechsel, onRefresh, isRefreshing, onOpenInterview, onOpenBescheid, onOpenKapital, onOpenVermietung, onOpenKinder, onOpenEulenModus, bp }: CockpitEmptyProps) {
+function CockpitEmpty({ jahr, onJahrWechsel, refresh, isRefreshing, onOpenInterview, onOpenBescheid, onOpenKapital, onOpenVermietung, onOpenKinder, onOpenEulenModus, bp }: CockpitEmptyProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
   return (
-    <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
-      <Appbar jahr={jahr} onJahrWechsel={onJahrWechsel} />
+    <ScrollView
+      contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen}
+      refreshControl={<RefreshControl refreshing={refresh.pulling} onRefresh={refresh.onPull} />}
+      testID="screen-container"
+    >
+      <Appbar jahr={jahr} onJahrWechsel={onJahrWechsel} isRefreshing={isRefreshing} />
       <FristenBanner taxYear={jahr} />
       <View style={styles.emptyBlock}>
         <Text style={styles.heading}>{tr('cockpit.empty.heading')}</Text>
@@ -170,9 +190,6 @@ function CockpitEmpty({ jahr, onJahrWechsel, onRefresh, isRefreshing, onOpenInte
             {tr('cockpit.eulenModus')}
           </Button>
         ) : null}
-        <Button variante="ghost" onPress={onRefresh} disabled={isRefreshing} style={styles.secondaryCta}>
-          {isRefreshing ? tr('cockpit.refreshing') : tr('cockpit.refresh')}
-        </Button>
       </View>
     </ScrollView>
   )
@@ -222,7 +239,7 @@ interface CockpitLoadedProps {
   readonly onJahrWechsel: (jahr: number) => void
   readonly bestaetigung: readonly AnlageBestaetigungDto[] | null
   readonly onOpenBestaetigung?: () => void
-  readonly onRefresh: () => void
+  readonly refresh: PullToRefresh
   readonly isRefreshing: boolean
   readonly onOpenInterview: () => void
   readonly onOpenBescheid: () => void
@@ -234,7 +251,7 @@ interface CockpitLoadedProps {
   readonly bp: Breakpoint
 }
 
-function CockpitLoaded({ summary, jahr, onJahrWechsel, bestaetigung, onOpenBestaetigung, onRefresh, isRefreshing, onOpenInterview, onOpenBescheid, onOpenKapital, onOpenVermietung, onOpenKinder, onOpenEulenModus, onOpenAusdruck, bp }: CockpitLoadedProps) {
+function CockpitLoaded({ summary, jahr, onJahrWechsel, bestaetigung, onOpenBestaetigung, refresh, isRefreshing, onOpenInterview, onOpenBescheid, onOpenKapital, onOpenVermietung, onOpenKinder, onOpenEulenModus, onOpenAusdruck, bp }: CockpitLoadedProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
@@ -242,8 +259,12 @@ function CockpitLoaded({ summary, jahr, onJahrWechsel, bestaetigung, onOpenBesta
   const hasOpenItems = openItems > 0
 
   return (
-    <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
-      <Appbar jahr={jahr} onJahrWechsel={onJahrWechsel} />
+    <ScrollView
+      contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen}
+      refreshControl={<RefreshControl refreshing={refresh.pulling} onRefresh={refresh.onPull} />}
+      testID="screen-container"
+    >
+      <Appbar jahr={jahr} onJahrWechsel={onJahrWechsel} isRefreshing={isRefreshing} />
       <FristenBanner taxYear={jahr} />
       <BestaetigungHinweis anlagen={bestaetigung} stand={stand} {...(onOpenBestaetigung ? { onOpenBestaetigung } : {})} />
       <Card variant="nacht">
@@ -307,14 +328,6 @@ function CockpitLoaded({ summary, jahr, onJahrWechsel, bestaetigung, onOpenBesta
           {tr('ausdruck.cockpitCta')}
         </Button>
       ) : null}
-      <Button
-        variante={hasOpenItems ? 'ghost' : 'primaer'}
-        onPress={onRefresh}
-        disabled={isRefreshing}
-        style={hasOpenItems ? styles.secondaryCta : styles.cta}
-      >
-        {isRefreshing ? tr('cockpit.refreshing') : tr('cockpit.refresh')}
-      </Button>
     </ScrollView>
   )
 }
@@ -373,6 +386,7 @@ function makeStyles(t: UiTheme) {
     alignItems: 'center',
     paddingBottom: t.space.s4,
   }
+  const appbarTitleReihe: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s2 }
   const appbarTitle: TextStyle = {
     fontFamily: t.font.display,
     fontWeight: t.weight.schwer,
@@ -469,5 +483,5 @@ function makeStyles(t: UiTheme) {
     marginBottom: t.space.s2,
   }
 
-  return { screen, wideScreen, appbar, appbarTitle, jahrReihe, uebernahmeZeile, uebernahmeZeileText, heading, help, cta, secondaryCta, emptyBlock, heroLabel, heroValue, openItems, offenePosten, refundLater, gatedHeading, gatedBody }
+  return { screen, wideScreen, appbar, appbarTitleReihe, appbarTitle, jahrReihe, uebernahmeZeile, uebernahmeZeileText, heading, help, cta, secondaryCta, emptyBlock, heroLabel, heroValue, openItems, offenePosten, refundLater, gatedHeading, gatedBody }
 }

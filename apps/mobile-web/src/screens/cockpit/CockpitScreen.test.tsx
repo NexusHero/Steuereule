@@ -3,11 +3,11 @@
 // loading/empty/error states, i18n de/en, exactly one primary action. Exercises the real
 // generated `useCockpitControllerGetCockpitSummary` hook (@steuereule/api-client) against
 // `GET /v1/steuerjahre/{jahr}/cockpit`, with MSW mocking the wire shape.
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { afterEach, describe, it, expect, vi } from 'vitest'
+import { render, screen, fireEvent, act, waitFor } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, focusManager } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { CockpitScreen } from './CockpitScreen'
@@ -28,6 +28,29 @@ function mockCockpit(data: CockpitSummaryDto | null, status = 200) {
   // convention, where the `{ data, status }` envelope is httpClient's own generic wrapper around
   // the parsed JSON, never something the server itself sends.
   server.use(http.get(COCKPIT_URL, () => HttpResponse.json(data, { status })))
+}
+
+function holdNextCockpitResponse(body: CockpitSummaryDto | null): () => void {
+  let release: () => void = () => {}
+  const pending = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  server.use(
+    http.get(COCKPIT_URL, async () => {
+      await pending
+      return HttpResponse.json(body, { status: 200 })
+    }),
+  )
+  return () => release()
+}
+
+afterEach(() => focusManager.setFocused(undefined))
+
+function regainFocus() {
+  act(() => {
+    focusManager.setFocused(false)
+    focusManager.setFocused(true)
+  })
 }
 
 function mockCockpitError() {
@@ -142,22 +165,21 @@ describe('CockpitScreen', () => {
 
     await screen.findByText('Erfasstes Einkommen')
     expect(screen.getByText('Fragen beantworten')).toBeTruthy()
-    expect(screen.getAllByText('Aktualisieren')).toHaveLength(1)
 
     fireEvent.click(screen.getByText('Fragen beantworten'))
     expect(onOpenInterview).toHaveBeenCalledOnce()
   })
 
-  it('exposes exactly one primary action once loaded with nothing open — "Aktualisieren" alone', async () => {
+  it('offers no manual refresh button — the data refreshes itself', async () => {
     mockCockpit({ ...LOADED_SUMMARY, openItems: 0 })
     renderCockpit()
 
     await screen.findByText('Erfasstes Einkommen')
-    expect(screen.queryByText('Fragen beantworten')).toBeNull()
-    expect(screen.getAllByText('Aktualisieren')).toHaveLength(1)
+
+    expect(screen.queryByText('Aktualisieren')).toBeNull()
   })
 
-  it('refetches the summary when the primary action is pressed', async () => {
+  it('refetches the summary when the app regains focus', async () => {
     let calls = 0
     server.use(
       http.get(COCKPIT_URL, () => {
@@ -166,55 +188,28 @@ describe('CockpitScreen', () => {
       }),
     )
     renderCockpit()
-
     await screen.findByText('1 Frage offen')
-    fireEvent.click(screen.getByText('Aktualisieren'))
+
+    regainFocus()
+
     await screen.findByText('2 Fragen offen')
     expect(calls).toBe(2)
   })
 
-  it('shows the "Wird aktualisiert …" label while a refresh is in flight, from the loaded state', async () => {
-    mockCockpit(LOADED_SUMMARY)
+  it.each([
+    ['loaded', LOADED_SUMMARY, 'Erfasstes Einkommen'],
+    ['empty', null, 'Noch keine Angaben.'],
+  ] as const)('shows a quiet indicator in the header while refreshing, from the %s state', async (_state, body, visibleText) => {
+    mockCockpit(body)
     renderCockpit()
-    await screen.findByText('Erfasstes Einkommen')
+    await screen.findByText(visibleText)
+    const release = holdNextCockpitResponse(body)
 
-    let release: (() => void) | undefined
-    const pending = new Promise<void>((resolve) => {
-      release = resolve
-    })
-    server.use(
-      http.get(COCKPIT_URL, async () => {
-        await pending
-        return HttpResponse.json(LOADED_SUMMARY, { status: 200 })
-      }),
-    )
-    fireEvent.click(screen.getByText('Aktualisieren'))
+    regainFocus()
 
-    await screen.findByText('Wird aktualisiert …')
-    release?.()
-    await screen.findByText('Aktualisieren')
-  })
-
-  it('shows the "Wird aktualisiert …" label while a refresh is in flight, from the empty state', async () => {
-    mockCockpit(null)
-    renderCockpit()
-    await screen.findByText('Noch keine Angaben.')
-
-    let release: (() => void) | undefined
-    const pending = new Promise<void>((resolve) => {
-      release = resolve
-    })
-    server.use(
-      http.get(COCKPIT_URL, async () => {
-        await pending
-        return HttpResponse.json(null, { status: 200 })
-      }),
-    )
-    fireEvent.click(screen.getByText('Aktualisieren'))
-
-    await screen.findByText('Wird aktualisiert …')
-    release?.()
-    await screen.findByText('Aktualisieren')
+    await screen.findByLabelText('Wird aktualisiert …')
+    release()
+    await waitFor(() => expect(screen.queryByLabelText('Wird aktualisiert …')).toBeNull())
   })
 
   it('shows an honest empty state ("noch keine Angaben") when the API has no tax year yet, never mock data', async () => {
@@ -226,7 +221,6 @@ describe('CockpitScreen', () => {
       screen.getByText('Für dieses Steuerjahr liegen noch keine Angaben vor. Sobald deine Daten da sind, zeigen wir dir hier dein erfasstes Einkommen.'),
     ).toBeTruthy()
     expect(screen.queryByText('Erfasstes Einkommen')).toBeNull()
-    expect(screen.getAllByText('Aktualisieren')).toHaveLength(1)
   })
 
   it('offers "Fragen beantworten" from the empty state too — the only way a brand-new account ever reaches the Minimal-Gate', async () => {
