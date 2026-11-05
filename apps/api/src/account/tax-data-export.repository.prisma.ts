@@ -22,7 +22,7 @@ export class PrismaTaxDataExportRepository implements TaxDataExportRepository {
 
   async findAllForUser(userId: string): Promise<ExportTaxDataEntry[]> {
     const where = { userId }
-    const [steuerjahre, antworten, belege, lstb, ch, rente, kapital, vermietung, bescheide, kennzeichnungen, jahresuebernahmen, stammdaten, kinder, kopplungen, eulenEinstellung, eulenVerwuerfe] =
+    const [steuerjahre, antworten, belege, lstb, ch, rente, kapital, arbeitsweg, vermietung, bescheide, kennzeichnungen, jahresuebernahmen, stammdaten, kinder, kopplungen, eulenEinstellung, eulenVerwuerfe] =
       await Promise.all([
         this.prisma.taxYear.findMany({ where }),
         this.prisma.interviewAnswer.findMany({ where }),
@@ -31,6 +31,7 @@ export class PrismaTaxDataExportRepository implements TaxDataExportRepository {
         this.prisma.chLohnausweis.findMany({ where }),
         this.prisma.rente.findMany({ where }),
         this.prisma.kapital.findMany({ where }),
+        this.prisma.arbeitsweg.findMany({ where }),
         this.prisma.vermietungsobjekt.findMany({ where }),
         this.prisma.bescheid.findMany({ where }),
         this.prisma.kennzeichnung.findMany({ where }),
@@ -52,6 +53,7 @@ export class PrismaTaxDataExportRepository implements TaxDataExportRepository {
       ...ch.map((row) => toExportEntry('Lohnausweis (CH)', row)),
       ...rente.map((row) => toExportEntry('Rente', row)),
       ...kapital.map((row) => toExportEntry('Kapitalerträge', row)),
+      ...arbeitsweg.map((row) => toExportEntry('Arbeitsweg', row)),
       ...vermietung.map((row) => toExportEntry('Vermietungsobjekt', row)),
       ...bescheide.map((row) => toExportEntry('Steuerbescheid', row)),
       ...kennzeichnungen.map((row) => toExportEntry('Herkunft und Bestätigung', row)),

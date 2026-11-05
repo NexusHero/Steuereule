@@ -1081,3 +1081,28 @@ model Jwks {
   alg        String?
   crv        String?
 }
+
+/// One row per (userId, steuerjahr) — the commute facts for the Entfernungspauschale (Anlage N
+/// Zeilen 27–31): which weekdays are worked, days off, the one-way distance and how it is travelled.
+model Arbeitsweg {
+  id                 String   @id @default(uuid())
+  /// Scoping key — same trusted userId as Lstb.userId (ADR-0007).
+  userId             String
+  steuerjahr         Int
+  /// ISO weekdays worked, comma-separated ("1,2,3,4,5").
+  arbeitstage        String
+  urlaubstage        Int      @default(0)
+  krankheitstage     Int      @default(0)
+  homeofficeTage     Int      @default(0)
+  /// One-way distance in full kilometres; null = not entered yet.
+  einfacheKm         Int?
+  /// "pkw" | "oepnv" | "andere"; null = not entered yet.
+  verkehrsmittel     String?
+  /// PLZ, Ort und Straße der ersten Tätigkeitsstätte. Encrypted at rest (ADR-0008).
+  taetigkeitsstaette String?  /// @encrypted?mode=strict
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([userId, steuerjahr])
+}
+

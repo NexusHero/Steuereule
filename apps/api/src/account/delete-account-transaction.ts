@@ -30,6 +30,7 @@ export function taxDataTables(tx: TransactionClient): UserKeyedTable[] {
     tx.chLohnausweis,
     tx.rente,
     tx.kapital,
+    tx.arbeitsweg,
     tx.vermietungsobjekt,
     tx.bescheid,
     tx.kennzeichnung,

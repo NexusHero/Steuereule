@@ -149,6 +149,45 @@ describe('ausdruckWerte', () => {
     expect(werte['est1a.zusammenveranlagung']).toBeUndefined()
   })
 
+  describe('Anlage N — Entfernungspauschale (Zeilen 27–31)', () => {
+    const ARBEITSWEG = {
+      arbeitstageJeWoche: 5,
+      freieTage: 55,
+      pendlertage: 206,
+      einfacheKm: 23,
+      mitPkw: true,
+      taetigkeitsstaette: '79539 Lörrach, Hauptstraße 1',
+    }
+
+    it('fills workplace, days and distance; the tax office computes the Pauschale itself', () => {
+      const { werte } = ausdruckWerte({ ...FAKTEN, arbeitsweg: ARBEITSWEG })
+
+      expect(werte).toMatchObject({
+        'anlN.wegArt': '1',
+        'anlN.wegOrt': '79539 Lörrach, Hauptstraße 1',
+        'anlN.wegTageJeWoche': '5',
+        'anlN.wegFreieTage': '55',
+        'anlN.kz110Tage': '206',
+        'anlN.kz111': '23',
+        'anlN.kz112': '23',
+      })
+    })
+
+    it('leaves the car line empty without an own car', () => {
+      const { werte } = ausdruckWerte({ ...FAKTEN, arbeitsweg: { ...ARBEITSWEG, mitPkw: false } })
+
+      expect(werte['anlN.kz111']).toBe('23')
+      expect(werte['anlN.kz112']).toBeUndefined()
+    })
+
+    it('prints no commute lines while the distance is unknown', () => {
+      const { werte } = ausdruckWerte({ ...FAKTEN, arbeitsweg: { ...ARBEITSWEG, einfacheKm: null } })
+
+      expect(werte['anlN.kz110Tage']).toBeUndefined()
+      expect(werte['anlN.kz111']).toBeUndefined()
+    })
+  })
+
   describe('Anlage KAP', () => {
     const DEUTSCH = {
       depot: 'deutscher-broker',

@@ -10,7 +10,6 @@ export interface WerktageEingabe {
   readonly homeofficeTage: number
 }
 
-export const PENDLERPAUSCHALE_PRO_KM = 0.3
 
 export function istSchaltjahr(jahr: number): boolean {
   return (jahr % 4 === 0 && jahr % 100 !== 0) || jahr % 400 === 0
@@ -91,8 +90,39 @@ export function berechneWerktage(eingabe: WerktageEingabe): WerktageErgebnis {
   return { kind: 'bestimmt', wochentage, werktage, pendlertage }
 }
 
-export function pendlerpauschale(einfacheKm: number, pendlertage: number, satzProKm: number = PENDLERPAUSCHALE_PRO_KM): number {
+export interface PendlerpauschaleEingabe {
+  readonly einfacheKm: number
+  readonly tage: number
+  readonly jahr: number
+  readonly mitPkw: boolean
+}
+
+interface Staffel {
+  readonly ersteKm: number
+  readonly satzErste: number
+  readonly satzWeitere: number
+}
+
+const STAFFEL: Readonly<Record<number, Staffel>> = {
+  2021: { ersteKm: 20, satzErste: 0.3, satzWeitere: 0.35 },
+  2022: { ersteKm: 20, satzErste: 0.3, satzWeitere: 0.38 },
+  2023: { ersteKm: 20, satzErste: 0.3, satzWeitere: 0.38 },
+  2024: { ersteKm: 20, satzErste: 0.3, satzWeitere: 0.38 },
+  2025: { ersteKm: 20, satzErste: 0.3, satzWeitere: 0.38 },
+  2026: { ersteKm: 0, satzErste: 0.38, satzWeitere: 0.38 },
+}
+
+const HOECHSTBETRAG_OHNE_PKW = 4500
+
+/** Entfernungspauschale per § 9 Abs. 1 Nr. 4 EStG: only full kilometres count; the 4.500 € cap applies only without an own car. */
+export function pendlerpauschale({ einfacheKm, tage, jahr, mitPkw }: PendlerpauschaleEingabe): number {
   if (!Number.isFinite(einfacheKm) || einfacheKm < 0) throw new RangeError('einfacheKm must be a non-negative finite number')
-  if (!Number.isInteger(pendlertage) || pendlertage < 0) throw new RangeError('pendlertage must be a non-negative integer')
-  return Math.round(einfacheKm * pendlertage * satzProKm)
+  if (!Number.isInteger(tage) || tage < 0) throw new RangeError('tage must be a non-negative integer')
+  const staffel = STAFFEL[jahr]
+  if (staffel === undefined) throw new RangeError(`no Entfernungspauschale rates for ${jahr}`)
+  const km = Math.floor(einfacheKm)
+  const ersteKm = Math.min(km, staffel.ersteKm)
+  const weitereKm = km - ersteKm
+  const betrag = Math.round(tage * (ersteKm * staffel.satzErste + weitereKm * staffel.satzWeitere))
+  return mitPkw ? betrag : Math.min(betrag, HOECHSTBETRAG_OHNE_PKW)
 }

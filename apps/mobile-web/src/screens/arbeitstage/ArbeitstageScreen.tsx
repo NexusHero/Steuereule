@@ -1,11 +1,14 @@
 import { useState } from 'react'
 import { ScrollView, View, Text, Pressable, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { Button, Feld, Input, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
-import { WOCHENTAGE, berechneWerktage, type IsoWochentag } from '@steuereule/core'
+import { Button, Chip, Feld, Input, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
+import { WOCHENTAGE, berechneWerktage, formatEuro, pendlerpauschale, type IsoWochentag } from '@steuereule/core'
+import { useArbeitswegControllerGet, useArbeitswegControllerPut, type ArbeitswegEingabenDto } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
+import { LoadingState } from '../shared/ScreenState'
+import { ganzzahlAus } from '../shared/ganzzahl'
 
 export interface ArbeitstageScreenProps {
   readonly onDone?: () => void
@@ -15,14 +18,39 @@ export interface ArbeitstageScreenProps {
 
 export function ArbeitstageScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YEAR }: ArbeitstageScreenProps) {
   const bp = useBreakpoint()
+  const { t: tr } = useTranslation(APP_NS)
+  const query = useArbeitswegControllerGet(taxYear)
+
+  if (query.isPending) return <LoadingState bp={bp} label={tr('arbeitstage.loading')} />
+  const gespeichert = query.data?.status === 200 ? query.data.data.eingaben : null
+  return <ArbeitstageFormular gespeichert={gespeichert} taxYear={taxYear} onDone={onDone} {...(onBack ? { onBack } : {})} />
+}
+
+function ArbeitstageFormular({
+  gespeichert,
+  taxYear,
+  onDone,
+  onBack,
+}: {
+  readonly gespeichert: ArbeitswegEingabenDto | null
+  readonly taxYear: number
+  readonly onDone: () => void
+  readonly onBack?: () => void
+}) {
+  const bp = useBreakpoint()
   const t = useTheme()
   const styles = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
+  const speichern = useArbeitswegControllerPut()
 
-  const [werktage, setWerktage] = useState<readonly IsoWochentag[]>([1, 2, 3, 4, 5])
-  const [urlaub, setUrlaub] = useState('')
-  const [krank, setKrank] = useState('')
-  const [homeoffice, setHomeoffice] = useState('')
+  const [werktage, setWerktage] = useState<readonly IsoWochentag[]>((gespeichert?.arbeitstage as IsoWochentag[] | undefined) ?? [1, 2, 3, 4, 5])
+  const [urlaub, setUrlaub] = useState(textAus(gespeichert?.urlaubstage))
+  const [krank, setKrank] = useState(textAus(gespeichert?.krankheitstage))
+  const [homeoffice, setHomeoffice] = useState(textAus(gespeichert?.homeofficeTage))
+  const [km, setKm] = useState(textAus(gespeichert?.einfacheKm))
+  const [verkehrsmittel, setVerkehrsmittel] = useState<Verkehrsmittel | null>(gespeichert?.verkehrsmittel ?? null)
+  const [arbeitsort, setArbeitsort] = useState(gespeichert?.taetigkeitsstaette ?? '')
+  const [fehler, setFehler] = useState(false)
 
   function toggle(tag: IsoWochentag) {
     setWerktage((prev) => (prev.includes(tag) ? prev.filter((x) => x !== tag) : [...prev, tag].sort()))
@@ -36,6 +64,34 @@ export function ArbeitstageScreen({ onDone = () => {}, onBack, taxYear = CURRENT
     homeofficeTage: int(homeoffice),
   }
   const ergebnis = werktage.length > 0 ? berechneWerktage(eingabe) : null
+  const einfacheKm = ganzzahlAus(km)
+  const pauschale =
+    ergebnis?.kind === 'bestimmt' && einfacheKm !== null && verkehrsmittel !== null
+      ? pauschaleOderNull(einfacheKm, ergebnis.pendlertage, taxYear, verkehrsmittel === 'pkw')
+      : null
+
+  function weiter() {
+    if (ergebnis?.kind === 'widerspruch') return
+    setFehler(false)
+    speichern.mutate(
+      {
+        jahr: taxYear,
+        data: {
+          arbeitstage: [...werktage],
+          urlaubstage: eingabe.urlaubstage,
+          krankheitstage: eingabe.krankheitstage,
+          homeofficeTage: eingabe.homeofficeTage,
+          einfacheKm,
+          verkehrsmittel,
+          taetigkeitsstaette: arbeitsort.trim() === '' ? null : arbeitsort.trim(),
+        },
+      },
+      {
+        onSuccess: (response) => (response.status === 200 ? onDone() : setFehler(true)),
+        onError: () => setFehler(true),
+      },
+    )
+  }
 
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
@@ -75,11 +131,46 @@ export function ArbeitstageScreen({ onDone = () => {}, onBack, taxYear = CURRENT
 
       {ergebnis !== null ? <Ergebnis ergebnis={ergebnis} /> : null}
 
-      <Button onPress={onDone} style={styles.cta}>
+      <Text style={styles.sectionLabel}>{tr('arbeitstage.weg.titel')}</Text>
+      <Feld label={tr('arbeitstage.weg.km')}>
+        <Input type="numeric" mono value={km} onChange={setKm} placeholder="0" accessibilityLabel={tr('arbeitstage.weg.km')} />
+      </Feld>
+      <Feld label={tr('arbeitstage.weg.verkehrsmittel')}>
+        <View style={styles.weekdayRow}>
+          {VERKEHRSMITTEL.map((mittel) => (
+            <Chip key={mittel} aktiv={verkehrsmittel === mittel} onPress={() => setVerkehrsmittel(mittel)}>
+              {tr(`arbeitstage.weg.mittel.${mittel}`)}
+            </Chip>
+          ))}
+        </View>
+      </Feld>
+      <Feld label={tr('arbeitstage.weg.arbeitsort')}>
+        <Input type="text" value={arbeitsort} onChange={setArbeitsort} placeholder={tr('arbeitstage.weg.arbeitsortPlaceholder')} accessibilityLabel={tr('arbeitstage.weg.arbeitsort')} />
+      </Feld>
+      {pauschale !== null ? <Row label={tr('arbeitstage.weg.pauschale')} value={formatEuro(pauschale)} /> : null}
+
+      {fehler ? <Text style={styles.widerspruchBody}>{tr('arbeitstage.speichernFehler')}</Text> : null}
+
+      <Button onPress={weiter} disabled={speichern.isPending || ergebnis?.kind === 'widerspruch'} style={styles.cta}>
         {tr('arbeitstage.weiter')}
       </Button>
     </ScrollView>
   )
+}
+
+const VERKEHRSMITTEL: readonly Verkehrsmittel[] = ['pkw', 'oepnv', 'andere']
+type Verkehrsmittel = 'pkw' | 'oepnv' | 'andere'
+
+function textAus(wert: number | null | undefined): string {
+  return wert === null || wert === undefined || wert === 0 ? '' : String(wert)
+}
+
+function pauschaleOderNull(einfacheKm: number, tage: number, jahr: number, mitPkw: boolean): number | null {
+  try {
+    return pendlerpauschale({ einfacheKm, tage, jahr, mitPkw })
+  } catch {
+    return null
+  }
 }
 
 function Ergebnis({ ergebnis }: { readonly ergebnis: ReturnType<typeof berechneWerktage> }) {

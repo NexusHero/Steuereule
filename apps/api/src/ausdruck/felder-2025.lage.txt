@@ -38,6 +38,13 @@ anlN.steuernummer              S1 Z3    ↑                              ← Ste
 anlN.personA                   S1 Z3    ↑ Arbeit                       ← Steuernummer Daten für die mit gekennzeichneten Zeilen liegen im Regelfall vor und müssen…
 anlN.personB                   S1 Kopf  ↑ Arbeit                       ← 202500303201 Daten für die mit gekennzeichneten Zeilen liegen im Regelfall vor und müssen…
 anlN.kz110                     S1 Z5    ↑ EUR                          ← Bruttoarbeitslohn 110 einschließlich Sachbezüge
+anlN.wegArt                    S2 Z27   ↑ (1.                          ← 
+anlN.wegOrt                    S2 Z27   ↑ PLZ, Ort und Straße          ← 1 = erste Tätigkeitsstätte 2 = Sammelpunkt / weit- räumiges Tätigkeitsgebiet
+anlN.wegTageJeWoche            S2 Z28   ↑ Tätigkeitsgebiet             ← Arbeitstage je Woche
+anlN.wegFreieTage              S2 Z28   ↑                              ← Urlaubs-, Krankheits-, Arbeitstage Heimarbeits- und je Woche Dienstreisetage
+anlN.kz110Tage                 S2 Z29   ↑ 1 =                          ← je Woche Dienstreisetage mindestens 50 und Merkzeichen „G“ 110 aufgesucht an Tagen
+anlN.kz111                     S2 Z30   ↑ 1 =                          ← aufgesucht an Tagen 111 einfache Entfernung in Kilometern (auf volle Kilometer abgerundet)
+anlN.kz112                     S2 Z31   ↑                              ← einfache Entfernung in Kilometern (auf volle Kilometer abgerundet) 112 davon mit eigenem …
 anlR.name                      S1 Z1    ↑ Name                         ← 
 anlR.vorname                   S1 Z2    ↑ Vorname                      ← 
 anlR.steuernummer              S1 Z3    ↑                              ← Steuernummer

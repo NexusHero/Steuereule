@@ -32,6 +32,8 @@ export type {
   GuenstigerpruefungHerkunftDto,
   KapitalControllerGetGuenstigerpruefungParams,
 } from './generated/kapital.schemas'
+export * from './generated/arbeitsweg'
+export * from './generated/arbeitsweg.schemas'
 export * from './generated/bescheid'
 export * from './generated/bescheid.schemas'
 export * from './generated/vermietung'
