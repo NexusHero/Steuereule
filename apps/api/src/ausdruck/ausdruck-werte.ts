@@ -118,7 +118,7 @@ function vermietungAfa(obj: VermietungFakten): { satz: number; betrag: number } 
   return satz === null ? null : { satz, betrag: Math.round((kosten * satz) / 100) }
 }
 
-export type KapitalFakten = { depot: KapitalDepotEinordnung['kind'] } & Partial<Record<KapitalFeldId, string | null>>
+export type KapitalFakten = { depot: KapitalDepotEinordnung['kind']; inhaber?: 'A' | 'B' | 'gemeinsam' | null } & Partial<Record<KapitalFeldId, string | null>>
 
 /** The Lohnausweis Ziffern and the N-Gre facts as stored, plus status and Kurs. */
 export interface ChLohnausweisFakten {
@@ -181,6 +181,41 @@ function nGreLuecke(ch: ChLohnausweisFakten): string | null {
     praemieGeklaert(nbuvArbeitnehmerChf(ch), ch.nbuvArbeitgeberProzent, ch.nbuvArbeitgeberChf) &&
     Boolean(ch.arbeitgeberName && ch.arbeitgeberStrasse && ch.arbeitgeberPlzOrt)
   return vollstaendig ? null : 'grenzgaenger'
+}
+
+/**
+ * One Anlage KAP. `haelfte` -1 = the whole amount, 0 = the first half (rounded up), 1 = the second half.
+ */
+function kapWerte(
+  kapital: KapitalFakten,
+  rolle: 'A' | 'B',
+  haelfte: -1 | 0 | 1 | number,
+  kopf: { name: string | null; vorname: string | null },
+  steuernummer: string | null,
+): Record<string, string | true> {
+  const anteil = (wert: string | null | undefined): number => {
+    const zahl = Number(wert ?? 0)
+    if (haelfte === -1) return zahl
+    return haelfte === 0 ? Math.ceil(zahl / 2) : Math.floor(zahl / 2)
+  }
+  const werte: Record<string, string | true> = {}
+  werte[rolle === 'A' ? 'anlKap.personA' : 'anlKap.personB'] = true
+  if (kopf.name) werte['anlKap.name'] = kopf.name
+  if (kopf.vorname) werte['anlKap.vorname'] = kopf.vorname
+  if (steuernummer) werte['anlKap.steuernummer'] = steuernummer
+  werte['anlKap.guenstigerpruefung'] = '1'
+  if (kapital.depot === 'deutscher-broker') {
+    werte['anlKap.kz210'] = String(anteil(kapital.kapitalertraege))
+    werte['anlKap.kz217'] = String(anteil(kapital.sparerPauschbetrag))
+    werte['anlKap.kz280'] = `${anteil(kapital.kapitalertragsteuer)},00`
+    werte['anlKap.kz281'] = `${anteil(kapital.solidaritaetszuschlag)},00`
+    werte['anlKap.kz282'] = `${anteil(kapital.kirchensteuer)},00`
+  } else {
+    werte['anlKap.kz234'] = String(anteil(kapital.kapitalertraege))
+    werte['anlKap.kz217'] = '0'
+    werte['anlKap.kz218'] = String(anteil(kapital.sparerPauschbetrag))
+  }
+  return werte
 }
 
 interface NGreErgebnis {
@@ -528,22 +563,20 @@ export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
     if (kapital.depot === 'krypto') fehlend.push('anlageKapKrypto')
     else if (kapital.depot === 'unbekannt' || !vollstaendig) fehlend.push('kapital')
     else {
-      werte['anlKap.personA'] = true
-      setze('anlKap.name', profil.lastName)
-      setze('anlKap.vorname', profil.firstName)
-      setze('anlKap.steuernummer', profil.steuernummer)
-      werte['anlKap.guenstigerpruefung'] = '1'
-      if (kapital.depot === 'deutscher-broker') {
-        werte['anlKap.kz210'] = kapital.kapitalertraege
-        werte['anlKap.kz217'] = kapital.sparerPauschbetrag!
-        werte['anlKap.kz280'] = `${kapital.kapitalertragsteuer},00`
-        werte['anlKap.kz281'] = `${kapital.solidaritaetszuschlag},00`
-        werte['anlKap.kz282'] = `${kapital.kirchensteuer},00`
-      } else {
-        werte['anlKap.kz234'] = kapital.kapitalertraege
-        werte['anlKap.kz217'] = '0'
-        werte['anlKap.kz218'] = kapital.sparerPauschbetrag!
-      }
+      // ADR-0054: in a joint return a joint account is split half and half across an Anlage KAP for
+      // each spouse; an account of Person B goes onto B's Anlage KAP. A gets the odd euro.
+      const zusammen = fakten.kopplung?.veranlagungsart === 'zusammen'
+      const b = zusammen ? fakten.kopplung?.personB ?? null : null
+      const inhaber = zusammen ? (kapital.inhaber ?? 'A') : 'A'
+      const kopfA = { name: profil.lastName, vorname: profil.firstName }
+      const kopfB = { name: b?.lastName ?? null, vorname: b?.firstName ?? null }
+      const teile: [('A' | 'B'), number][] =
+        inhaber === 'gemeinsam' ? [['A', 0], ['B', 1]] : inhaber === 'B' ? [['B', -1]] : [['A', -1]]
+      const kapInstanzen = teile.map(([rolle, haelfte]) =>
+        kapWerte(kapital, rolle, haelfte, rolle === 'A' ? kopfA : kopfB, profil.steuernummer),
+      )
+      if (kapInstanzen.length === 1 && teile[0]![0] === 'A') Object.assign(werte, kapInstanzen[0])
+      else instanzen['anlage-kap'] = kapInstanzen
     }
   }
 

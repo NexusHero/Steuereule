@@ -4,7 +4,7 @@
 // Kapital-Posten / Günstigerprüfung are left to KapitalService (as in production, the
 // repository stores facts, never the derived state — ADR-014/048).
 import type { KapitalFeldId } from '@steuereule/core'
-import type { KapitalRecord, KapitalRepository } from '../../src/kapital/kapital.repository.js'
+import type { KapitalInhaber, KapitalRecord, KapitalRepository } from '../../src/kapital/kapital.repository.js'
 
 function key(userId: string, steuerjahr: number): string {
   return `${userId}::${steuerjahr}`
@@ -30,6 +30,22 @@ export class FakeKapitalRepository implements KapitalRepository {
       kirchensteuer: null,
     }
     const updated: KapitalRecord = { ...record, [feld]: wert }
+    this.store.set(k, updated)
+    return Promise.resolve(updated)
+  }
+
+  setInhaber(userId: string, steuerjahr: number, inhaber: KapitalInhaber): Promise<KapitalRecord> {
+    const k = key(userId, steuerjahr)
+    const record: KapitalRecord = this.store.get(k) ?? {
+      userId,
+      steuerjahr,
+      kapitalertraege: null,
+      sparerPauschbetrag: null,
+      kapitalertragsteuer: null,
+      solidaritaetszuschlag: null,
+      kirchensteuer: null,
+    }
+    const updated: KapitalRecord = { ...record, inhaber }
     this.store.set(k, updated)
     return Promise.resolve(updated)
   }

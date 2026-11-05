@@ -37,7 +37,7 @@ export class InvalidAnswerValueError extends InvalidInputError {
   }
 }
 
-const ADMITTED_ENTRY_IDS: readonly EntryId[] = ['minimal-gate', 'lebenslagen', 'sonderausgaben', 'segment-ch', 'alleinerziehend']
+const ADMITTED_ENTRY_IDS: readonly EntryId[] = ['minimal-gate', 'lebenslagen', 'einkuenfte', 'sonderausgaben', 'segment-ch', 'alleinerziehend']
 
 const GUEST_ADMITTED_ENTRY_IDS: readonly EntryId[] = ['minimal-gate']
 

@@ -294,6 +294,7 @@ function TabbedShell({ tab, onTabChange, onSignedOut, startInInterview = false, 
     | 'lstb'
     | 'rente'
     | 'katalog-lebenslagen'
+    | 'katalog-einkuenfte'
     | 'katalog-sonderausgaben'
     | 'arbeitstage'
     | 'plausibilitaet'
@@ -398,19 +399,27 @@ function TabbedShell({ tab, onTabChange, onSignedOut, startInInterview = false, 
         {tab === 'cockpit' && cockpitView === 'rente' ? (
           <RentnerScreen taxYear={steuerjahr} onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
         ) : null}
-        {tab === 'cockpit' && cockpitView === 'ch' ? <GrenzgaengerScreen taxYear={steuerjahr} onDone={() => setCockpitView('katalog-sonderausgaben')} /> : null}
+        {tab === 'cockpit' && cockpitView === 'ch' ? <GrenzgaengerScreen taxYear={steuerjahr} onDone={() => setCockpitView('katalog-einkuenfte')} /> : null}
         {tab === 'cockpit' && cockpitView === 'lstb' ? (
           <LstbScreen taxYear={steuerjahr} onDone={() => setCockpitView('katalog-lebenslagen')} onBack={() => setCockpitView('main')} />
         ) : null}
         {tab === 'cockpit' && cockpitView === 'katalog-lebenslagen' ? (
-          <KatalogScreen taxYear={steuerjahr} entry="lebenslagen" onDone={() => setCockpitView('katalog-sonderausgaben')} onBack={() => setCockpitView('lstb')} />
+          <KatalogScreen taxYear={steuerjahr} entry="lebenslagen" onDone={() => setCockpitView('katalog-einkuenfte')} onBack={() => setCockpitView('lstb')} />
+        ) : null}
+        {tab === 'cockpit' && cockpitView === 'katalog-einkuenfte' ? (
+          <KatalogScreen
+            taxYear={steuerjahr}
+            entry="einkuenfte"
+            onDone={() => setCockpitView('katalog-sonderausgaben')}
+            onBack={() => setCockpitView(funnelPfad === 'ch' ? 'ch' : 'katalog-lebenslagen')}
+          />
         ) : null}
         {tab === 'cockpit' && cockpitView === 'katalog-sonderausgaben' ? (
           <KatalogScreen
             taxYear={steuerjahr}
             entry="sonderausgaben"
             onDone={() => setCockpitView('arbeitstage')}
-            onBack={() => setCockpitView(funnelPfad === 'ch' ? 'ch' : 'katalog-lebenslagen')}
+            onBack={() => setCockpitView('katalog-einkuenfte')}
           />
         ) : null}
         {tab === 'cockpit' && cockpitView === 'arbeitstage' ? (

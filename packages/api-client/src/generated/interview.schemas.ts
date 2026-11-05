@@ -62,6 +62,7 @@ export const InterviewControllerGetInterviewEintrag = {
   'minimal-gate': 'minimal-gate',
   'segment-2': 'segment-2',
   lebenslagen: 'lebenslagen',
+  einkuenfte: 'einkuenfte',
   sonderausgaben: 'sonderausgaben',
   'segment-ch': 'segment-ch',
   alleinerziehend: 'alleinerziehend',

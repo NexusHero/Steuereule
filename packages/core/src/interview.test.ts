@@ -266,7 +266,7 @@ describe('entryForStep + isReachableFor (D3) — the cross-entry derivation R2 o
     expect(entryForStep('job')).toBe('minimal-gate')
     expect(entryForStep('gewerbe')).toBe('minimal-gate')
     expect(entryForStep('partner')).toBe('segment-2')
-    expect(entryForStep('krypto-gate')).toBe('segment-2')
+    expect(entryForStep('krypto-gate')).toBe('einkuenfte')
     expect(entryForStep('vermietung' as EntryStepId)).toBeUndefined()
   })
 
@@ -372,12 +372,15 @@ describe('remainingSteps — what TaxYear.openItems is written from (Minimal-Gat
 
 describe('Segment 2 (#321) — same engine, entry-derived answers, over ENTRIES["segment-2"]', () => {
   const entry = ENTRIES['segment-2']
+  // einkuenfte moved into its own catalogue entry (the masks for Kapital/Vermietung need it); the branch
+  // logic below is unchanged and the base answers are simply ignored by it.
+  const einkuenfteEntry = ENTRIES.einkuenfte
 
-  it('opens with partner, straight through the six base questions when nothing branches', () => {
+  it('opens with partner, straight through the five base questions when nothing branches', () => {
     expect(nextStepFor(entry, {})).toEqual({ kind: 'question', id: 'partner' })
     expect(nextStepFor(entry, { partner: 'Nein' })).toEqual({ kind: 'question', id: 'homeoffice' })
-    expect(remainingStepsFor(entry, {})).toBe(6)
-    expect(remainingStepsFor(entry, { partner: 'Nein' })).toBe(5)
+    expect(remainingStepsFor(entry, {})).toBe(5)
+    expect(remainingStepsFor(entry, { partner: 'Nein' })).toBe(4)
   })
 
   it('Q2 — einkuenfte: Kapitalerträge opens kap-depot, identity of the step, not merely its existence', () => {
@@ -389,7 +392,7 @@ describe('Segment 2 (#321) — same engine, entry-derived answers, over ENTRIES[
       fortbildung: 'Nein',
       einkuenfte: 'Kapitalerträge',
     }
-    expect(nextStepFor(entry, answers)).toEqual({ kind: 'question', id: 'kap-depot' })
+    expect(nextStepFor(einkuenfteEntry, answers)).toEqual({ kind: 'question', id: 'kap-depot' })
   })
 
   it('Q2 — einkuenfte: Vermietung opens vermietung-art, not kap-depot', () => {
@@ -401,7 +404,7 @@ describe('Segment 2 (#321) — same engine, entry-derived answers, over ENTRIES[
       fortbildung: 'Nein',
       einkuenfte: 'Vermietung',
     }
-    expect(nextStepFor(entry, answers)).toEqual({ kind: 'question', id: 'vermietung-art' })
+    expect(nextStepFor(einkuenfteEntry, answers)).toEqual({ kind: 'question', id: 'vermietung-art' })
   })
 
   it('Q2 — einkuenfte: Nein opens neither branch — straight to done', () => {
@@ -413,8 +416,8 @@ describe('Segment 2 (#321) — same engine, entry-derived answers, over ENTRIES[
       fortbildung: 'Nein',
       einkuenfte: 'Nein',
     }
-    expect(nextStepFor(entry, answers)).toEqual({ kind: 'done' })
-    expect(remainingStepsFor(entry, answers)).toBe(0)
+    expect(nextStepFor(einkuenfteEntry, answers)).toEqual({ kind: 'done' })
+    expect(remainingStepsFor(einkuenfteEntry, answers)).toBe(0)
   })
 
   it('Q2 — einkuenfte: Beides opens BOTH branches, in a fixed order (kap-depot first)', () => {
@@ -426,14 +429,14 @@ describe('Segment 2 (#321) — same engine, entry-derived answers, over ENTRIES[
       fortbildung: 'Nein',
       einkuenfte: 'Beides',
     }
-    expect(nextStepFor(entry, answered)).toEqual({ kind: 'question', id: 'kap-depot' })
+    expect(nextStepFor(einkuenfteEntry, answered)).toEqual({ kind: 'question', id: 'kap-depot' })
     // Both are already-certain future obligations regardless of asking order — remainingSteps
     // must count BOTH, not just the one nextStep happens to show first.
-    expect(remainingStepsFor(entry, answered)).toBe(2)
+    expect(remainingStepsFor(einkuenfteEntry, answered)).toBe(2)
 
     const kapAnswered: Answers = { ...answered, 'kap-depot': 'Deutscher Broker' }
-    expect(nextStepFor(entry, kapAnswered)).toEqual({ kind: 'question', id: 'vermietung-art' })
-    expect(remainingStepsFor(entry, kapAnswered)).toBe(1)
+    expect(nextStepFor(einkuenfteEntry, kapAnswered)).toEqual({ kind: 'question', id: 'vermietung-art' })
+    expect(remainingStepsFor(einkuenfteEntry, kapAnswered)).toBe(1)
   })
 
   // The five base questions, fully answered, harmlessly — the common prefix every branch
@@ -443,10 +446,10 @@ describe('Segment 2 (#321) — same engine, entry-derived answers, over ENTRIES[
 
   it('Q3 — the crypto gate is server-side: kap-depot: Krypto is reachable, krypto-gate only after it', () => {
     const beforeKap: Answers = { ...BASE_ANSWERED, einkuenfte: 'Kapitalerträge' }
-    expect(isReachableFor(entry, beforeKap, 'krypto-gate')).toBe(false)
+    expect(isReachableFor(einkuenfteEntry, beforeKap, 'krypto-gate')).toBe(false)
 
     const afterKap: Answers = { ...beforeKap, 'kap-depot': 'Krypto' }
-    expect(isReachableFor(entry, afterKap, 'krypto-gate')).toBe(true)
+    expect(isReachableFor(einkuenfteEntry, afterKap, 'krypto-gate')).toBe(true)
 
     // passability — every base step answered, so acknowledging the gate ends the walk
     // (review F12 — F8's `fortbildung`-omitted form never reached this branch at all: `walk`
@@ -454,7 +457,7 @@ describe('Segment 2 (#321) — same engine, entry-derived answers, over ENTRIES[
     // `ENTRIES['segment-2'].steps`, so removing it made the assertion pass independent of
     // krypto-gate's own passability).
     const acknowledged: Answers = { ...afterKap, 'krypto-gate': GATE_ACKNOWLEDGED }
-    expect(nextStepFor(entry, acknowledged)).toEqual({ kind: 'done' })
+    expect(nextStepFor(einkuenfteEntry, acknowledged)).toEqual({ kind: 'done' })
 
     // resumption — 'Beides' opens BOTH branches in fixed order, so a resolved krypto-gate
     // must carry on into vermietung-art. This is the only fixture in this entry where a
@@ -466,24 +469,24 @@ describe('Segment 2 (#321) — same engine, entry-derived answers, over ENTRIES[
       'kap-depot': 'Krypto',
       'krypto-gate': GATE_ACKNOWLEDGED,
     }
-    expect(nextStepFor(entry, bothBranches)).toEqual({ kind: 'question', id: 'vermietung-art' })
+    expect(nextStepFor(einkuenfteEntry, bothBranches)).toEqual({ kind: 'question', id: 'vermietung-art' })
   })
 
   it('Q3 — the sale/furnished-short-term gate is server-side: vermietung-gate only after vermietung-art: Verkauf oder möbliert', () => {
     const before: Answers = { ...BASE_ANSWERED, einkuenfte: 'Vermietung' }
-    expect(isReachableFor(entry, before, 'vermietung-gate')).toBe(false)
+    expect(isReachableFor(einkuenfteEntry, before, 'vermietung-gate')).toBe(false)
 
     const after: Answers = { ...before, 'vermietung-art': 'Verkauf oder möbliert' }
-    expect(isReachableFor(entry, after, 'vermietung-gate')).toBe(true)
+    expect(isReachableFor(einkuenfteEntry, after, 'vermietung-gate')).toBe(true)
     // Not reachable at all when a non-gating vermietung-art answer was given instead.
     const einfach: Answers = { ...before, 'vermietung-art': 'Einfach' }
-    expect(isReachableFor(entry, einfach, 'vermietung-gate')).toBe(false)
+    expect(isReachableFor(einkuenfteEntry, einfach, 'vermietung-gate')).toBe(false)
 
     // passability — every base step answered, so acknowledging the gate ends the walk
     // (review F12 — this gate had the same unproven-passability hole as krypto-gate's F8,
     // undetected because this case never asserted post-acknowledgement behaviour at all).
     const acknowledgedVermietung: Answers = { ...after, 'vermietung-gate': GATE_ACKNOWLEDGED }
-    expect(nextStepFor(entry, acknowledgedVermietung)).toEqual({ kind: 'done' })
+    expect(nextStepFor(einkuenfteEntry, acknowledgedVermietung)).toEqual({ kind: 'done' })
   })
 
   it('Q5 — leaving the entry mid-way and returning: answers already given persist and remain reachable', () => {
@@ -491,7 +494,7 @@ describe('Segment 2 (#321) — same engine, entry-derived answers, over ENTRIES[
     expect(nextStepFor(entry, partial)).toEqual({ kind: 'question', id: 'weg' })
     expect(isReachableFor(entry, partial, 'partner')).toBe(true)
     expect(isReachableFor(entry, partial, 'homeoffice')).toBe(true)
-    expect(remainingStepsFor(entry, partial)).toBe(4)
+    expect(remainingStepsFor(entry, partial)).toBe(3)
   })
 })
 

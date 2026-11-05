@@ -80,4 +80,7 @@ export class KapitalResponseDto {
 
   @ApiProperty({ type: KapitalStandDto })
   stand!: KapitalStandDto
+
+  @ApiProperty({ enum: ['A', 'B', 'gemeinsam'], nullable: true, description: 'Whose depot (ADR-0054); null = Person A.' })
+  inhaber!: 'A' | 'B' | 'gemeinsam' | null
 }

@@ -224,6 +224,7 @@ export class AusdruckService {
             kapitalertragsteuer: kapital.kapitalertragsteuer,
             solidaritaetszuschlag: kapital.solidaritaetszuschlag,
             kirchensteuer: kapital.kirchensteuer,
+            inhaber: kapital.inhaber ?? null,
           }
         : null,
       chLohnausweis: chLohnausweisFakten(ch, answers),
