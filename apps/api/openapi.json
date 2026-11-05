@@ -1030,6 +1030,175 @@
         ]
       }
     },
+    "/v1/steuerjahre/{jahr}/arbeitsweg": {
+      "get": {
+        "operationId": "ArbeitswegController_get",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArbeitswegResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "arbeitsweg"
+        ]
+      },
+      "put": {
+        "operationId": "ArbeitswegController_put",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArbeitswegEingabenDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArbeitswegResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "arbeitsweg"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/steuerschaetzung": {
+      "get": {
+        "operationId": "SteuerschaetzungController_get",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SteuerschaetzungDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "steuerschaetzung"
+        ]
+      }
+    },
+    "/v1/stammdaten": {
+      "get": {
+        "operationId": "StammdatenController_lese",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "All null with every required field in `fehlend` when nothing is saved yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StammdatenResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "stammdaten"
+        ]
+      },
+      "put": {
+        "operationId": "StammdatenController_speichere",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutStammdatenDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StammdatenResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid field, or a religion without explicit consent (Art. 9 DSGVO)."
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "stammdaten"
+        ]
+      }
+    },
     "/v1/belege": {
       "get": {
         "operationId": "BelegController_list",
@@ -2042,65 +2211,6 @@
         },
         "tags": [
           "freischaltung"
-        ]
-      }
-    },
-    "/v1/stammdaten": {
-      "get": {
-        "operationId": "StammdatenController_lese",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "All null with every required field in `fehlend` when nothing is saved yet.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StammdatenResponseDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Guest session — this endpoint requires a signed-in account."
-          }
-        },
-        "tags": [
-          "stammdaten"
-        ]
-      },
-      "put": {
-        "operationId": "StammdatenController_speichere",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PutStammdatenDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StammdatenResponseDto"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid field, or a religion without explicit consent (Art. 9 DSGVO)."
-          },
-          "401": {
-            "description": "Guest session — this endpoint requires a signed-in account."
-          }
-        },
-        "tags": [
-          "stammdaten"
         ]
       }
     },
@@ -4136,6 +4246,22 @@
             "type": "number",
             "nullable": true
           },
+          "krankentaggeldArbeitgeberProzent": {
+            "type": "number",
+            "nullable": true
+          },
+          "krankentaggeldArbeitgeberChf": {
+            "type": "number",
+            "nullable": true
+          },
+          "nbuvArbeitgeberProzent": {
+            "type": "number",
+            "nullable": true
+          },
+          "nbuvArbeitgeberChf": {
+            "type": "number",
+            "nullable": true
+          },
           "sonderfaelle": {
             "type": "boolean",
             "nullable": true
@@ -4149,6 +4275,10 @@
           "krankentaggeldChf",
           "pkArbeitnehmerChf",
           "pkArbeitgeberChf",
+          "krankentaggeldArbeitgeberProzent",
+          "krankentaggeldArbeitgeberChf",
+          "nbuvArbeitgeberProzent",
+          "nbuvArbeitgeberChf",
           "sonderfaelle"
         ]
       },
@@ -4307,10 +4437,30 @@
             "nullable": true,
             "description": "Whole CHF — Säule 2a Obligatorium, employer (Zeile 87)."
           },
+          "krankentaggeldArbeitgeberProzent": {
+            "type": "number",
+            "nullable": true,
+            "description": "Employer share of the Krankentaggeld premium in percent, 0–100 (Zeilen 18, 95, 96)."
+          },
+          "krankentaggeldArbeitgeberChf": {
+            "type": "number",
+            "nullable": true,
+            "description": "Whole CHF — employer Krankentaggeld contribution; only needed when the employer pays 100 %."
+          },
+          "nbuvArbeitgeberProzent": {
+            "type": "number",
+            "nullable": true,
+            "description": "Employer share of the NBUV premium in percent, 0–100 (Zeilen 19, 97, 98)."
+          },
+          "nbuvArbeitgeberChf": {
+            "type": "number",
+            "nullable": true,
+            "description": "Whole CHF — employer NBUV contribution; only needed when the employer pays 100 %."
+          },
           "sonderfaelle": {
             "type": "boolean",
             "nullable": true,
-            "description": "Any of N-Gre Zeilen 7, 9–14 or 16–22 applies."
+            "description": "Any of N-Gre Zeilen 7, 9–14, 16, 17 or 20–22 applies."
           }
         }
       },
@@ -4345,6 +4495,412 @@
           "kurs",
           "modus"
         ]
+      },
+      "ArbeitswegEingabenDto": {
+        "type": "object",
+        "properties": {
+          "arbeitstage": {
+            "example": [
+              1,
+              2,
+              3,
+              4,
+              5
+            ],
+            "description": "ISO weekdays worked (1 = Monday … 7 = Sunday).",
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "urlaubstage": {
+            "type": "number",
+            "example": 30
+          },
+          "krankheitstage": {
+            "type": "number",
+            "example": 5
+          },
+          "homeofficeTage": {
+            "type": "number",
+            "example": 20
+          },
+          "einfacheKm": {
+            "type": "number",
+            "nullable": true,
+            "example": 23,
+            "description": "One-way distance in full kilometres."
+          },
+          "verkehrsmittel": {
+            "type": "string",
+            "enum": [
+              "pkw",
+              "oepnv",
+              "andere"
+            ],
+            "nullable": true,
+            "example": "pkw"
+          },
+          "taetigkeitsstaette": {
+            "type": "string",
+            "nullable": true,
+            "example": "79539 Lörrach, Hauptstraße 1"
+          }
+        },
+        "required": [
+          "arbeitstage",
+          "urlaubstage",
+          "krankheitstage",
+          "homeofficeTage",
+          "einfacheKm",
+          "verkehrsmittel",
+          "taetigkeitsstaette"
+        ]
+      },
+      "WerktageDto": {
+        "type": "object",
+        "properties": {
+          "wochentage": {
+            "type": "number"
+          },
+          "werktage": {
+            "type": "number"
+          },
+          "pendlertage": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "wochentage",
+          "werktage",
+          "pendlertage"
+        ]
+      },
+      "ArbeitswegResponseDto": {
+        "type": "object",
+        "properties": {
+          "eingaben": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ArbeitswegEingabenDto"
+              }
+            ]
+          },
+          "werktage": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WerktageDto"
+              }
+            ]
+          },
+          "pendlerpauschale": {
+            "type": "number",
+            "nullable": true,
+            "description": "Entfernungspauschale in whole euros; null until distance and means of travel are known."
+          }
+        },
+        "required": [
+          "eingaben",
+          "werktage",
+          "pendlerpauschale"
+        ]
+      },
+      "SpanneDto": {
+        "type": "object",
+        "properties": {
+          "von": {
+            "type": "number"
+          },
+          "bis": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "von",
+          "bis"
+        ]
+      },
+      "SteuerschaetzungDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "spanne",
+              "offen",
+              "nicht-moeglich"
+            ]
+          },
+          "ergebnis": {
+            "description": "Positive = Erstattung, negative = Nachzahlung.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SpanneDto"
+              }
+            ]
+          },
+          "einkommensteuer": {
+            "$ref": "#/components/schemas/SpanneDto"
+          },
+          "zuVersteuerndesEinkommen": {
+            "$ref": "#/components/schemas/SpanneDto"
+          },
+          "vorsorge": {
+            "$ref": "#/components/schemas/SpanneDto"
+          },
+          "werbungskosten": {
+            "type": "number"
+          },
+          "sonderausgaben": {
+            "type": "number"
+          },
+          "anrechnung": {
+            "type": "number",
+            "description": "Lohnsteuer or creditable Swiss Quellensteuer already paid."
+          },
+          "kirchensteuerOffen": {
+            "type": "boolean",
+            "description": "True when church tax applies but is not part of the estimate."
+          },
+          "fehlt": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "grund": {
+            "type": "string",
+            "enum": [
+              "nur-angestellte",
+              "verheiratet",
+              "besondere-lebenslage",
+              "jahr-ohne-tarif"
+            ]
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "StammdatenResponseDto": {
+        "type": "object",
+        "properties": {
+          "geburtsdatum": {
+            "type": "string",
+            "nullable": true
+          },
+          "strasse": {
+            "type": "string",
+            "nullable": true
+          },
+          "hausnummer": {
+            "type": "string",
+            "nullable": true
+          },
+          "hausnummerZusatz": {
+            "type": "string",
+            "nullable": true
+          },
+          "plz": {
+            "type": "string",
+            "nullable": true
+          },
+          "wohnort": {
+            "type": "string",
+            "nullable": true
+          },
+          "beruf": {
+            "type": "string",
+            "nullable": true
+          },
+          "religion": {
+            "type": "string",
+            "enum": [
+              "VD",
+              "EV",
+              "RK",
+              "AK",
+              "FA",
+              "FB",
+              "FG",
+              "FM",
+              "FS",
+              "IB",
+              "IL",
+              "IS",
+              "IW",
+              "JD",
+              "JH"
+            ],
+            "nullable": true
+          },
+          "familienstand": {
+            "type": "string",
+            "enum": [
+              "ledig",
+              "verheiratet",
+              "verwitwet",
+              "geschieden",
+              "dauernd-getrennt"
+            ],
+            "nullable": true
+          },
+          "familienstandSeit": {
+            "type": "string",
+            "nullable": true
+          },
+          "iban": {
+            "type": "string",
+            "nullable": true
+          },
+          "kontoinhaber": {
+            "type": "string",
+            "nullable": true
+          },
+          "finanzamt": {
+            "type": "string",
+            "nullable": true
+          },
+          "telefon": {
+            "type": "string",
+            "nullable": true
+          },
+          "fehlend": {
+            "description": "Fields the Hauptvordruck needs that are still empty — the honest gap list for the Ausdruck.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "geburtsdatum",
+          "strasse",
+          "hausnummer",
+          "hausnummerZusatz",
+          "plz",
+          "wohnort",
+          "beruf",
+          "religion",
+          "familienstand",
+          "familienstandSeit",
+          "iban",
+          "kontoinhaber",
+          "finanzamt",
+          "telefon",
+          "fehlend"
+        ]
+      },
+      "PutStammdatenDto": {
+        "type": "object",
+        "properties": {
+          "geburtsdatum": {
+            "type": "string",
+            "nullable": true,
+            "example": "1990-04-12",
+            "description": "YYYY-MM-DD"
+          },
+          "strasse": {
+            "type": "string",
+            "nullable": true,
+            "example": "Musterstraße"
+          },
+          "hausnummer": {
+            "type": "string",
+            "nullable": true,
+            "example": "12"
+          },
+          "hausnummerZusatz": {
+            "type": "string",
+            "nullable": true,
+            "example": "a"
+          },
+          "plz": {
+            "type": "string",
+            "nullable": true,
+            "example": "01067",
+            "description": "Five digits (Inland)."
+          },
+          "wohnort": {
+            "type": "string",
+            "nullable": true,
+            "example": "Dresden"
+          },
+          "beruf": {
+            "type": "string",
+            "nullable": true,
+            "example": "Ingenieurin"
+          },
+          "religion": {
+            "type": "string",
+            "enum": [
+              "VD",
+              "EV",
+              "RK",
+              "AK",
+              "FA",
+              "FB",
+              "FG",
+              "FM",
+              "FS",
+              "IB",
+              "IL",
+              "IS",
+              "IW",
+              "JD",
+              "JH"
+            ],
+            "nullable": true,
+            "description": "Religionsschlüssel per ESt 1 A guide (VD = none). Art. 9 DSGVO: requires religionEinwilligung = true."
+          },
+          "religionEinwilligung": {
+            "type": "boolean",
+            "description": "Explicit consent to store the religion (Art. 9 Abs. 2 lit. a DSGVO)."
+          },
+          "familienstand": {
+            "type": "string",
+            "enum": [
+              "ledig",
+              "verheiratet",
+              "verwitwet",
+              "geschieden",
+              "dauernd-getrennt"
+            ],
+            "nullable": true
+          },
+          "familienstandSeit": {
+            "type": "string",
+            "nullable": true,
+            "example": "2018-06-01",
+            "description": "YYYY-MM-DD; not for ledig."
+          },
+          "iban": {
+            "type": "string",
+            "nullable": true,
+            "example": "DE89370400440532013000",
+            "description": "Mod-97-checked; stored without spaces."
+          },
+          "kontoinhaber": {
+            "type": "string",
+            "nullable": true,
+            "example": "Anna Beispiel",
+            "description": "Only when the account holder is someone else."
+          },
+          "finanzamt": {
+            "type": "string",
+            "nullable": true,
+            "example": "Dresden-Nord"
+          },
+          "telefon": {
+            "type": "string",
+            "nullable": true,
+            "example": "0351 1234567"
+          }
+        }
       },
       "ZuordnungDto": {
         "type": "object",
@@ -5548,222 +6104,6 @@
           "status"
         ]
       },
-      "StammdatenResponseDto": {
-        "type": "object",
-        "properties": {
-          "geburtsdatum": {
-            "type": "string",
-            "nullable": true
-          },
-          "strasse": {
-            "type": "string",
-            "nullable": true
-          },
-          "hausnummer": {
-            "type": "string",
-            "nullable": true
-          },
-          "hausnummerZusatz": {
-            "type": "string",
-            "nullable": true
-          },
-          "plz": {
-            "type": "string",
-            "nullable": true
-          },
-          "wohnort": {
-            "type": "string",
-            "nullable": true
-          },
-          "beruf": {
-            "type": "string",
-            "nullable": true
-          },
-          "religion": {
-            "type": "string",
-            "enum": [
-              "VD",
-              "EV",
-              "RK",
-              "AK",
-              "FA",
-              "FB",
-              "FG",
-              "FM",
-              "FS",
-              "IB",
-              "IL",
-              "IS",
-              "IW",
-              "JD",
-              "JH"
-            ],
-            "nullable": true
-          },
-          "familienstand": {
-            "type": "string",
-            "enum": [
-              "ledig",
-              "verheiratet",
-              "verwitwet",
-              "geschieden",
-              "dauernd-getrennt"
-            ],
-            "nullable": true
-          },
-          "familienstandSeit": {
-            "type": "string",
-            "nullable": true
-          },
-          "iban": {
-            "type": "string",
-            "nullable": true
-          },
-          "kontoinhaber": {
-            "type": "string",
-            "nullable": true
-          },
-          "finanzamt": {
-            "type": "string",
-            "nullable": true
-          },
-          "telefon": {
-            "type": "string",
-            "nullable": true
-          },
-          "fehlend": {
-            "description": "Fields the Hauptvordruck needs that are still empty — the honest gap list for the Ausdruck.",
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        },
-        "required": [
-          "geburtsdatum",
-          "strasse",
-          "hausnummer",
-          "hausnummerZusatz",
-          "plz",
-          "wohnort",
-          "beruf",
-          "religion",
-          "familienstand",
-          "familienstandSeit",
-          "iban",
-          "kontoinhaber",
-          "finanzamt",
-          "telefon",
-          "fehlend"
-        ]
-      },
-      "PutStammdatenDto": {
-        "type": "object",
-        "properties": {
-          "geburtsdatum": {
-            "type": "string",
-            "nullable": true,
-            "example": "1990-04-12",
-            "description": "YYYY-MM-DD"
-          },
-          "strasse": {
-            "type": "string",
-            "nullable": true,
-            "example": "Musterstraße"
-          },
-          "hausnummer": {
-            "type": "string",
-            "nullable": true,
-            "example": "12"
-          },
-          "hausnummerZusatz": {
-            "type": "string",
-            "nullable": true,
-            "example": "a"
-          },
-          "plz": {
-            "type": "string",
-            "nullable": true,
-            "example": "01067",
-            "description": "Five digits (Inland)."
-          },
-          "wohnort": {
-            "type": "string",
-            "nullable": true,
-            "example": "Dresden"
-          },
-          "beruf": {
-            "type": "string",
-            "nullable": true,
-            "example": "Ingenieurin"
-          },
-          "religion": {
-            "type": "string",
-            "enum": [
-              "VD",
-              "EV",
-              "RK",
-              "AK",
-              "FA",
-              "FB",
-              "FG",
-              "FM",
-              "FS",
-              "IB",
-              "IL",
-              "IS",
-              "IW",
-              "JD",
-              "JH"
-            ],
-            "nullable": true,
-            "description": "Religionsschlüssel per ESt 1 A guide (VD = none). Art. 9 DSGVO: requires religionEinwilligung = true."
-          },
-          "religionEinwilligung": {
-            "type": "boolean",
-            "description": "Explicit consent to store the religion (Art. 9 Abs. 2 lit. a DSGVO)."
-          },
-          "familienstand": {
-            "type": "string",
-            "enum": [
-              "ledig",
-              "verheiratet",
-              "verwitwet",
-              "geschieden",
-              "dauernd-getrennt"
-            ],
-            "nullable": true
-          },
-          "familienstandSeit": {
-            "type": "string",
-            "nullable": true,
-            "example": "2018-06-01",
-            "description": "YYYY-MM-DD; not for ledig."
-          },
-          "iban": {
-            "type": "string",
-            "nullable": true,
-            "example": "DE89370400440532013000",
-            "description": "Mod-97-checked; stored without spaces."
-          },
-          "kontoinhaber": {
-            "type": "string",
-            "nullable": true,
-            "example": "Anna Beispiel",
-            "description": "Only when the account holder is someone else."
-          },
-          "finanzamt": {
-            "type": "string",
-            "nullable": true,
-            "example": "Dresden-Nord"
-          },
-          "telefon": {
-            "type": "string",
-            "nullable": true,
-            "example": "0351 1234567"
-          }
-        }
-      },
       "AusdruckPruefungDto": {
         "type": "object",
         "properties": {
@@ -5895,6 +6235,14 @@
           "kindergeldAnMichGanzjaehrig": {
             "type": "boolean",
             "nullable": true
+          },
+          "kvBasisEur": {
+            "type": "string",
+            "nullable": true
+          },
+          "pvEur": {
+            "type": "string",
+            "nullable": true
           }
         },
         "required": [
@@ -5914,7 +6262,9 @@
           "andererElternteilArt",
           "andererElternteilVerstorbenAm",
           "gemeldetBeiMirGanzjaehrig",
-          "kindergeldAnMichGanzjaehrig"
+          "kindergeldAnMichGanzjaehrig",
+          "kvBasisEur",
+          "pvEur"
         ]
       },
       "KinderResponseDto": {
@@ -6028,6 +6378,18 @@
             "nullable": true,
             "description": "Zeile 46: the Kindergeld was paid to the filer all year."
           },
+          "kvBasisEur": {
+            "type": "string",
+            "nullable": true,
+            "example": "1080",
+            "description": "Zeile 27 (Kz 66): KV Basisabsicherung of the child paid by the parents, whole euros."
+          },
+          "pvEur": {
+            "type": "string",
+            "nullable": true,
+            "example": "0",
+            "description": "Zeile 28 (Kz 67): PV of the child paid by the parents, whole euros."
+          },
           "vorname": {
             "type": "string",
             "example": "Lina"
@@ -6137,6 +6499,18 @@
             "type": "boolean",
             "nullable": true,
             "description": "Zeile 46: the Kindergeld was paid to the filer all year."
+          },
+          "kvBasisEur": {
+            "type": "string",
+            "nullable": true,
+            "example": "1080",
+            "description": "Zeile 27 (Kz 66): KV Basisabsicherung of the child paid by the parents, whole euros."
+          },
+          "pvEur": {
+            "type": "string",
+            "nullable": true,
+            "example": "0",
+            "description": "Zeile 28 (Kz 67): PV of the child paid by the parents, whole euros."
           },
           "vorname": {
             "type": "string",

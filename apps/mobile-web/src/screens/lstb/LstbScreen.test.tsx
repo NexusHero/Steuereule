@@ -44,7 +44,7 @@ describe('LstbScreen', () => {
 
     expect(await screen.findByText('Bruttoarbeitslohn (Zeile 3)')).toBeTruthy()
     expect(screen.getByText('Einbehaltene Lohnsteuer (Zeile 4)')).toBeTruthy()
-    expect(screen.getByText('SV-Arbeitnehmeranteil (Zeilen 22/23)')).toBeTruthy()
+    expect(screen.getByText('SV-Arbeitnehmeranteil (Summe der Zeilen 23, 25, 26 und 27)')).toBeTruthy()
   })
 
   it('shows a named widerspruch when one figure exceeds the Bruttoarbeitslohn (ADR-008)', async () => {
@@ -73,6 +73,38 @@ describe('LstbScreen', () => {
 
     await waitFor(() => expect(body).toEqual({ kind: 'unklar' }))
     expect(url).toContain('/lstb/bruttoarbeitslohn')
+  })
+
+  it('saves a typed value as soon as the field loses focus — no Enter needed', async () => {
+    const puts: { url: string; body: unknown }[] = []
+    server.use(
+      http.put(`${LSTB_URL}/:feld`, async ({ request }) => {
+        puts.push({ url: request.url, body: await request.json() })
+        return HttpResponse.json({}, { status: 200 })
+      }),
+    )
+    renderLstb()
+    const brutto = await screen.findByLabelText('Bruttoarbeitslohn (Zeile 3) (Ganzzahlige Euro)')
+
+    fireEvent.change(brutto, { target: { value: '45000' } })
+    fireEvent.blur(brutto)
+
+    await waitFor(() => expect(puts).toHaveLength(1))
+    expect(puts[0]!.url).toMatch(/\/lstb\/bruttoarbeitslohn$/)
+    expect(puts[0]!.body).toEqual({ kind: 'erfasst', wert: 45000 })
+  })
+
+  it('never turns an untouched empty field into 0 € when it loses focus', async () => {
+    const puts: unknown[] = []
+    server.use(http.put(`${LSTB_URL}/:feld`, () => { puts.push(1); return HttpResponse.json({}, { status: 200 }) }))
+    renderLstb()
+    const brutto = await screen.findByLabelText('Bruttoarbeitslohn (Zeile 3) (Ganzzahlige Euro)')
+
+    fireEvent.focus(brutto)
+    fireEvent.blur(brutto)
+
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(puts).toHaveLength(0)
   })
 
   it('shows an honest loading state, then the fields', async () => {

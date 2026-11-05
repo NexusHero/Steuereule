@@ -54,4 +54,10 @@ describe('Option', () => {
     )
     expect((screen.getByTestId('opt') as HTMLElement).style.marginTop).toBe('12px')
   })
+
+  it('names the button after its text for screen readers', () => {
+    renderUi(<Option>Ja</Option>)
+
+    expect(screen.getByRole('button', { name: 'Ja' })).toBeTruthy()
+  })
 })

@@ -1,6 +1,7 @@
 import type { Answers } from './interview'
 import { gatedEinkunftsarten, type Einkunftsart } from './einkunftsarten'
 import { lstbZustand, type LstbDaten } from './lstb'
+import { abziehbareBasisvorsorge, krankenversicherungAusAntworten } from './krankenversicherung'
 
 /** The interview-catalogue-derived figures for the Angestellte case, already categorised into where they belong in the fold. */
 export interface AngestellteAntwortZahlen {
@@ -26,7 +27,7 @@ export function angestellteAusAntworten(answers: Answers): AngestellteAntwortZah
     nebenjobBrutto: nebenjob,
     umzugKosten: answers.umzug === 'Ja' ? intAus(answers['umzug-kosten']) : 0,
     spenden: answers.spenden === 'Ja' ? intAus(answers['spenden-betrag']) : 0,
-    kvPvBeitraege: answers['kv-pv'] === 'Ja' ? intAus(answers['kv-pv-betrag']) : 0,
+    kvPvBeitraege: abziehbareBasisvorsorge(krankenversicherungAusAntworten(answers)),
     riester: answers.riester === 'Ja' ? intAus(answers['riester-betrag']) : 0,
     dhfMiete: answers.dhf === 'Ja' ? intAus(answers['dhf-miete']) : 0,
     abfindungBetrag: answers.abfindung === 'Ja' ? intAus(answers['abfindung-betrag']) : 0,

@@ -13,6 +13,17 @@ export const TAB_ICON_PATHS = {
   profil: 'M12 11a4 4 0 100-8 4 4 0 000 8zm-7 9a7 7 0 0114 0',
 } as const
 
+const TAB_MIN_HEIGHT = 52
+const BAR_PADDING = 6
+const BAR_BORDER = 2
+
+export const TAB_BAR_HEIGHT = TAB_MIN_HEIGHT + 2 * BAR_PADDING + 2 * BAR_BORDER
+
+/** Bottom space a screen must keep free so its last element is not hidden behind the floating tab bar. */
+export function tabBarClearance(t: ReturnType<typeof useTheme>, bottomInset = 0): number {
+  return bottomInset + 2 * t.space.s3 + TAB_BAR_HEIGHT
+}
+
 export interface TabItem {
   readonly id: string
   readonly label: string
@@ -23,6 +34,7 @@ export interface TabBarProps {
   readonly tabs: readonly TabItem[]
   readonly aktiv: string
   readonly onWechsel: (id: string) => void
+  readonly bottomInset?: number
   readonly style?: StyleProp<ViewStyle>
   readonly testID?: string
 }
@@ -35,7 +47,7 @@ interface TabLayout {
 
 const PILL_DURATION_MS = 420
 
-export function TabBar({ tabs, aktiv, onWechsel, style, testID }: TabBarProps) {
+export function TabBar({ tabs, aktiv, onWechsel, bottomInset = 0, style, testID }: TabBarProps) {
   const t = useTheme()
   const reducedMotion = useReducedMotion()
   const [layouts, setLayouts] = useState<Record<string, TabLayout>>({})
@@ -75,7 +87,7 @@ export function TabBar({ tabs, aktiv, onWechsel, style, testID }: TabBarProps) {
   }
 
   return (
-    <View style={[styles.bar, style]} testID={testID}>
+    <View style={[styles.bar, { bottom: t.space.s3 + bottomInset }, style]} testID={testID}>
       <View style={styles.inner}>
         {activeLayout ? (
           <Animated.View
@@ -123,16 +135,16 @@ function makeStyles(t: ReturnType<typeof useTheme>) {
     maxWidth: 440,
     gap: 2,
     backgroundColor: t.color.karte,
-    borderWidth: 2,
+    borderWidth: BAR_BORDER,
     borderColor: t.color.tinte,
     borderRadius: t.radius.pille,
-    padding: 6,
+    padding: BAR_PADDING,
     ...t.shadow.hart,
   }
   const pill: ViewStyle = {
     position: 'absolute',
-    top: 6,
-    left: 6,
+    top: BAR_PADDING,
+    left: BAR_PADDING,
     zIndex: 0,
     backgroundColor: t.color.funke,
     borderWidth: 1.5,
@@ -143,7 +155,7 @@ function makeStyles(t: ReturnType<typeof useTheme>) {
     position: 'relative',
     zIndex: 1,
     flex: 1,
-    minHeight: 52,
+    minHeight: TAB_MIN_HEIGHT,
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',

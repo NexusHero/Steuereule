@@ -161,10 +161,13 @@ function BescheidFeldEditor({
   const kind = zustand?.kind ?? 'offen'
   const [text, setText] = useState(kind === 'erfasst' ? String(zustand?.wert) : '')
 
-  function submit() {
-    const wert = Number(text)
-    const gueltig = Number.isInteger(wert) && (feldId === 'erstattung' ? true : wert >= 0)
-    if (gueltig) onErfasst(wert)
+  function commit() {
+    const getrimmt = text.trim()
+    const muster = feldId === 'erstattung' ? /^-?(0|[1-9]\d*)$/ : /^(0|[1-9]\d*)$/
+    if (!muster.test(getrimmt)) return
+    const wert = Number(getrimmt)
+    if (zustand?.kind === 'erfasst' && zustand.wert === wert) return
+    onErfasst(wert)
   }
 
   return (
@@ -176,7 +179,8 @@ function BescheidFeldEditor({
           value={kind === 'unklar' ? '' : text}
           onChange={setText}
           placeholder={tr('bescheid.feld.placeholder')}
-          onSubmit={submit}
+          onSubmit={commit}
+          onBlur={commit}
           accessibilityLabel={`${label} (${tr('bescheid.feld.placeholder')})`}
         />
         <Pressable accessibilityRole="button" onPress={onUnklar} style={s.unklarButton}>
@@ -193,8 +197,8 @@ function DatumEditor({ datum, onSet }: { readonly datum: string | null; readonly
   const s = makeStyles(t)
   const [text, setText] = useState(datum ?? '')
 
-  function submit() {
-    if (/^\d{4}-\d{2}-\d{2}$/.test(text)) onSet(text)
+  function commit() {
+    if (text !== datum && /^\d{4}-\d{2}-\d{2}$/.test(text)) onSet(text)
   }
 
   return (
@@ -206,7 +210,8 @@ function DatumEditor({ datum, onSet }: { readonly datum: string | null; readonly
           value={text}
           onChange={setText}
           placeholder="JJJJ-MM-TT"
-          onSubmit={submit}
+          onSubmit={commit}
+          onBlur={commit}
           accessibilityLabel={tr('bescheid.datum.label')}
         />
       </View>

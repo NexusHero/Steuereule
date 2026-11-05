@@ -175,7 +175,7 @@ const COPY = {
   splashSkip: 'Weiter zur App',
   register: 'Neu hier? Konto anlegen',
   registrierungEmailPlaceholder: 'du@beispiel.de',
-  registrierungPasswordPlaceholder: 'Mindestens 6 Zeichen',
+  registrierungPasswordPlaceholder: 'Mindestens 8 Zeichen',
   registrierungSubmit: 'Konto anlegen',
   registrierungSuccessHeading: 'Willkommen bei SteuerEule.',
   loginSubmit: 'Einloggen',

@@ -37,22 +37,28 @@ describe('resolveBetterAuthUrl', () => {
 })
 
 describe('createBetterAuth', () => {
-  it('derives a deterministic session cookie name via better-auth’s own getCookies (never re-derived by hand)', () => {
-    const { sessionCookieName } = createBetterAuth({
+  function sessionCookieNameFor(baseUrl: string): string {
+    return createBetterAuth({
       prisma: {} as PrismaClient,
       secret: 'test-secret',
-      baseUrl: 'http://localhost:3000',
+      baseUrl,
       webAppUrl: 'http://localhost:8081',
       trustedOrigins: [],
       trustedProxies: [],
       emailSender: fakeEmailSender(),
-    })
+    }).sessionCookieName
+  }
 
-    // advanced.useSecureCookies: true (better-auth.ts) forces the `__Secure-` name
-    // prefix unconditionally — deterministic across dev (http) and the deployed
-    // (https) demo, so UserContextGuard's cookie-presence check never depends on
-    // NODE_ENV or protocol detection.
-    expect(sessionCookieName).toBe('__Secure-better-auth.session_token')
+  it('uses the __Secure- cookie prefix behind https', () => {
+    const name = sessionCookieNameFor('https://api.steuereule.de')
+
+    expect(name).toBe('__Secure-better-auth.session_token')
+  })
+
+  it('drops the __Secure- prefix on plain http, which Safari refuses to store for localhost', () => {
+    const name = sessionCookieNameFor('http://localhost:3000')
+
+    expect(name).toBe('better-auth.session_token')
   })
 
   it('exposes a real Auth instance whose handler is a Web-Fetch (Request) => Response function', () => {

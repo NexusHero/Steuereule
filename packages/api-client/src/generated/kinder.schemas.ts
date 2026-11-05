@@ -87,6 +87,10 @@ export interface KindResponseDto {
   gemeldetBeiMirGanzjaehrig: boolean | null;
   /** @nullable */
   kindergeldAnMichGanzjaehrig: boolean | null;
+  /** @nullable */
+  kvBasisEur: string | null;
+  /** @nullable */
+  pvEur: string | null;
 }
 
 export interface KinderResponseDto {
@@ -190,6 +194,16 @@ export interface CreateKindDto {
      * @nullable
      */
   kindergeldAnMichGanzjaehrig?: boolean | null;
+  /**
+     * Zeile 27 (Kz 66): KV Basisabsicherung of the child paid by the parents, whole euros.
+     * @nullable
+     */
+  kvBasisEur?: string | null;
+  /**
+     * Zeile 28 (Kz 67): PV of the child paid by the parents, whole euros.
+     * @nullable
+     */
+  pvEur?: string | null;
   vorname: string;
   nachname: string;
   /** ISO date YYYY-MM-DD */
@@ -292,6 +306,16 @@ export interface UpdateKindDto {
      * @nullable
      */
   kindergeldAnMichGanzjaehrig?: boolean | null;
+  /**
+     * Zeile 27 (Kz 66): KV Basisabsicherung of the child paid by the parents, whole euros.
+     * @nullable
+     */
+  kvBasisEur?: string | null;
+  /**
+     * Zeile 28 (Kz 67): PV of the child paid by the parents, whole euros.
+     * @nullable
+     */
+  pvEur?: string | null;
   vorname?: string;
   nachname?: string;
   geburtsdatum?: string;

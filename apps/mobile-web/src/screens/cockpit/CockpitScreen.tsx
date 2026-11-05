@@ -1,12 +1,17 @@
 import { useState } from 'react'
-import { ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
+import { ActivityIndicator, RefreshControl, ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import { Button, Card, Chip, HerkunftsChip, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme, type Breakpoint } from '@steuereule/ui'
 import { FristenBanner } from '../fristen/FristenBanner'
 import { formatEuro, formatEuroRange, UNCERTAINTY_PER_ITEM } from '@steuereule/core'
 import {
   useCockpitControllerGetCockpitSummary,
   useBestaetigungControllerGet,
+  useInterviewControllerGetInterview,
+  useStammdatenControllerLese,
+  useSteuerschaetzungControllerGet,
+  type SteuerschaetzungDto,
   type AnlageBestaetigungDto,
   type CockpitStandDto,
   type CockpitSummaryDto,
@@ -14,6 +19,7 @@ import {
 import { APP_NS } from '../../i18n/resources'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
+import { pfadAusAntworten, type FunnelPfad } from '../funnel/KontoWandScreen'
 
 const JAHRE_ZURUECK = 4
 
@@ -29,6 +35,14 @@ export interface CockpitScreenProps {
   readonly onOpenEulenModus?: (jahr: number) => void
   readonly onOpenAusdruck?: (jahr: number) => void
   readonly onOpenBestaetigung?: (jahr: number) => void
+  readonly onContinuePath?: (pfad: FunnelPfad) => void
+  readonly onJahrWechsel?: (jahr: number) => void
+  readonly onOpenStammdaten?: () => void
+}
+
+interface Weiter {
+  readonly label: string
+  readonly onPress: () => void
 }
 
 export function CockpitScreen({
@@ -41,12 +55,22 @@ export function CockpitScreen({
   onOpenEulenModus,
   onOpenAusdruck,
   onOpenBestaetigung,
+  onContinuePath,
+  onJahrWechsel,
+  onOpenStammdaten,
 }: CockpitScreenProps) {
   const bp = useBreakpoint()
   const { t: tr } = useTranslation(APP_NS)
-  const [jahr, setJahr] = useState(taxYear)
+  const [jahr, setJahrIntern] = useState(taxYear)
+  const setJahr = (neu: number) => {
+    setJahrIntern(neu)
+    onJahrWechsel?.(neu)
+  }
   const query = useCockpitControllerGetCockpitSummary(jahr)
+  const [pulling, setPulling] = useState(false)
   const bestaetigungQuery = useBestaetigungControllerGet(jahr)
+  const interviewQuery = useInterviewControllerGetInterview(jahr)
+  const stammdatenQuery = useStammdatenControllerLese()
 
   if (query.isPending) {
     return <LoadingState bp={bp} label={tr('cockpit.loading')} />
@@ -63,15 +87,39 @@ export function CockpitScreen({
     )
   }
   const summary = query.data.data
-  const onRefresh = () => void query.refetch()
+  const refresh: PullToRefresh = {
+    pulling,
+    onPull: () => {
+      setPulling(true)
+      void query.refetch().finally(() => setPulling(false))
+    },
+  }
+  const isRefreshing = query.isFetching && !pulling
+  const interview = interviewQuery.data?.status === 200 ? interviewQuery.data.data : null
+  const pfad = interview?.nextStep.kind === 'done' ? pfadAusAntworten(interview.answers) : null
+  const fehlendeAngaben = stammdatenQuery.data?.status === 200 ? stammdatenQuery.data.data.fehlend.length : 0
+  const stammdaten: Weiter | null =
+    // Stays reachable once complete: it is also the way back to the Veranlagungsart and the partner.
+    onOpenStammdaten === undefined
+      ? null
+      : {
+          label: fehlendeAngaben > 0 ? tr('cockpit.stammdatenErgaenzen', { anzahl: fehlendeAngaben }) : tr('cockpit.stammdatenAnsehen'),
+          onPress: onOpenStammdaten,
+        }
+  const weiter: Weiter | null =
+    pfad !== null && onContinuePath
+      ? { label: tr('cockpit.weiterMitDeinemWeg', { pfad: tr(`funnel.kontoWand.pfad.${pfad}`) }), onPress: () => onContinuePath(pfad) }
+      : null
 
   if (summary === null) {
     return (
       <CockpitEmpty
         jahr={jahr}
         onJahrWechsel={setJahr}
-        onRefresh={onRefresh}
-        isRefreshing={query.isFetching}
+        refresh={refresh}
+        isRefreshing={isRefreshing}
+        weiter={weiter}
+        stammdaten={stammdaten}
         onOpenInterview={onOpenInterview}
         onOpenBescheid={onOpenBescheid}
         onOpenKapital={onOpenKapital}
@@ -90,8 +138,10 @@ export function CockpitScreen({
       onJahrWechsel={setJahr}
       bestaetigung={bestaetigungQuery.data?.status === 200 ? bestaetigungQuery.data.data.anlagen : null}
       {...(onOpenBestaetigung ? { onOpenBestaetigung: () => onOpenBestaetigung(jahr) } : {})}
-      onRefresh={onRefresh}
-      isRefreshing={query.isFetching}
+      refresh={refresh}
+      isRefreshing={isRefreshing}
+      weiter={weiter}
+      stammdaten={stammdaten}
       onOpenInterview={onOpenInterview}
       onOpenBescheid={onOpenBescheid}
       onOpenKapital={onOpenKapital}
@@ -104,13 +154,50 @@ export function CockpitScreen({
   )
 }
 
-function Appbar({ jahr, onJahrWechsel }: { readonly jahr: number; readonly onJahrWechsel: (jahr: number) => void }) {
+interface PullToRefresh {
+  readonly pulling: boolean
+  readonly onPull: () => void
+}
+
+function Erstattung({ jahr }: { readonly jahr: number }) {
+  const t = useTheme()
+  const styles = makeStyles(t)
+  const { t: tr, i18n } = useTranslation(APP_NS)
+  const query = useSteuerschaetzungControllerGet(jahr)
+  const schaetzung: SteuerschaetzungDto | null = query.data?.status === 200 ? query.data.data : null
+  return (
+    <>
+      <Text style={styles.refundLater}>{erstattungsText(schaetzung, tr, i18n.language)}</Text>
+      {schaetzung?.kind === 'spanne' && schaetzung.kirchensteuerOffen ? (
+        <Text style={styles.refundLater}>{tr('cockpit.erstattung.kirchensteuer')}</Text>
+      ) : null}
+    </>
+  )
+}
+
+function erstattungsText(schaetzung: SteuerschaetzungDto | null, tr: TFunction<typeof APP_NS>, sprache: string): string {
+  if (schaetzung === null) return tr('cockpit.hero.refundLater')
+  if (schaetzung.kind === 'offen') return tr('cockpit.erstattung.offen', { count: schaetzung.fehlt?.length ?? 0 })
+  if (schaetzung.kind === 'nicht-moeglich') return tr(`cockpit.erstattung.grund.${schaetzung.grund ?? 'unbekannt'}`)
+  const { von, bis } = schaetzung.ergebnis ?? { von: 0, bis: 0 }
+  const betrag = (wert: number) => Math.abs(wert).toLocaleString(sprache === 'en' ? 'en-GB' : 'de-DE')
+  // A range without width ("31.192 – 31.192 €") reads like a typo; it is one figure.
+  if (von === bis) return tr(von >= 0 ? 'cockpit.erstattung.erstattungRund' : 'cockpit.erstattung.nachzahlungRund', { betrag: betrag(von) })
+  if (von >= 0) return tr('cockpit.erstattung.erstattung', { von: betrag(von), bis: betrag(bis) })
+  if (bis <= 0) return tr('cockpit.erstattung.nachzahlung', { von: betrag(bis), bis: betrag(von) })
+  return tr('cockpit.erstattung.offenesErgebnis', { nachzahlung: betrag(von), erstattung: betrag(bis) })
+}
+
+function Appbar({ jahr, onJahrWechsel, isRefreshing }: { readonly jahr: number; readonly onJahrWechsel: (jahr: number) => void; readonly isRefreshing: boolean }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
   return (
     <View style={styles.appbar}>
-      <Text style={styles.appbarTitle}>{tr('cockpit.appbarTitle')}</Text>
+      <View style={styles.appbarTitleReihe}>
+        <Text style={styles.appbarTitle}>{tr('cockpit.appbarTitle')}</Text>
+        {isRefreshing ? <ActivityIndicator size="small" color={t.color.tinte2} accessibilityLabel={tr('cockpit.refreshing')} /> : null}
+      </View>
       <View style={styles.jahrReihe} accessibilityLabel={tr('cockpit.jahrAuswahl')}>
         {AUSWAHL_JAHRE.map((y) => (
           <Chip key={y} aktiv={y === jahr} onPress={() => onJahrWechsel(y)} testID={`jahr-${y}`}>
@@ -125,8 +212,10 @@ function Appbar({ jahr, onJahrWechsel }: { readonly jahr: number; readonly onJah
 interface CockpitEmptyProps {
   readonly jahr: number
   readonly onJahrWechsel: (jahr: number) => void
-  readonly onRefresh: () => void
+  readonly refresh: PullToRefresh
   readonly isRefreshing: boolean
+  readonly weiter: Weiter | null
+  readonly stammdaten: Weiter | null
   readonly onOpenInterview: () => void
   readonly onOpenBescheid: () => void
   readonly onOpenKapital: () => void
@@ -137,20 +226,35 @@ interface CockpitEmptyProps {
   readonly bp: Breakpoint
 }
 
-function CockpitEmpty({ jahr, onJahrWechsel, onRefresh, isRefreshing, onOpenInterview, onOpenBescheid, onOpenKapital, onOpenVermietung, onOpenKinder, onOpenEulenModus, bp }: CockpitEmptyProps) {
+function CockpitEmpty({ jahr, onJahrWechsel, refresh, isRefreshing, weiter, stammdaten, onOpenInterview, onOpenBescheid, onOpenKapital, onOpenVermietung, onOpenKinder, onOpenEulenModus, bp }: CockpitEmptyProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
   return (
-    <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
-      <Appbar jahr={jahr} onJahrWechsel={onJahrWechsel} />
+    <ScrollView
+      contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen}
+      refreshControl={<RefreshControl refreshing={refresh.pulling} onRefresh={refresh.onPull} />}
+      testID="screen-container"
+    >
+      <Appbar jahr={jahr} onJahrWechsel={onJahrWechsel} isRefreshing={isRefreshing} />
       <FristenBanner taxYear={jahr} />
       <View style={styles.emptyBlock}>
         <Text style={styles.heading}>{tr('cockpit.empty.heading')}</Text>
         <Text style={styles.help}>{tr('cockpit.empty.message')}</Text>
-        <Button onPress={onOpenInterview} style={styles.cta}>
-          {tr('cockpit.answerQuestions')}
-        </Button>
+        {weiter ? (
+          <Button onPress={weiter.onPress} style={styles.cta} testID="cockpit-weiter">
+            {weiter.label}
+          </Button>
+        ) : (
+          <Button onPress={onOpenInterview} style={styles.cta}>
+            {tr('cockpit.answerQuestions')}
+          </Button>
+        )}
+        {stammdaten ? (
+          <Button variante="ghost" onPress={stammdaten.onPress} style={styles.secondaryCta} testID="cockpit-stammdaten">
+            {stammdaten.label}
+          </Button>
+        ) : null}
         <Button variante="ghost" onPress={onOpenBescheid} style={styles.secondaryCta}>
           {tr('cockpit.checkBescheid')}
         </Button>
@@ -170,9 +274,6 @@ function CockpitEmpty({ jahr, onJahrWechsel, onRefresh, isRefreshing, onOpenInte
             {tr('cockpit.eulenModus')}
           </Button>
         ) : null}
-        <Button variante="ghost" onPress={onRefresh} disabled={isRefreshing} style={styles.secondaryCta}>
-          {isRefreshing ? tr('cockpit.refreshing') : tr('cockpit.refresh')}
-        </Button>
       </View>
     </ScrollView>
   )
@@ -222,8 +323,10 @@ interface CockpitLoadedProps {
   readonly onJahrWechsel: (jahr: number) => void
   readonly bestaetigung: readonly AnlageBestaetigungDto[] | null
   readonly onOpenBestaetigung?: () => void
-  readonly onRefresh: () => void
+  readonly refresh: PullToRefresh
   readonly isRefreshing: boolean
+  readonly weiter: Weiter | null
+  readonly stammdaten: Weiter | null
   readonly onOpenInterview: () => void
   readonly onOpenBescheid: () => void
   readonly onOpenKapital: () => void
@@ -234,7 +337,7 @@ interface CockpitLoadedProps {
   readonly bp: Breakpoint
 }
 
-function CockpitLoaded({ summary, jahr, onJahrWechsel, bestaetigung, onOpenBestaetigung, onRefresh, isRefreshing, onOpenInterview, onOpenBescheid, onOpenKapital, onOpenVermietung, onOpenKinder, onOpenEulenModus, onOpenAusdruck, bp }: CockpitLoadedProps) {
+function CockpitLoaded({ summary, jahr, onJahrWechsel, bestaetigung, onOpenBestaetigung, refresh, isRefreshing, weiter, stammdaten, onOpenInterview, onOpenBescheid, onOpenKapital, onOpenVermietung, onOpenKinder, onOpenEulenModus, onOpenAusdruck, bp }: CockpitLoadedProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
@@ -242,8 +345,12 @@ function CockpitLoaded({ summary, jahr, onJahrWechsel, bestaetigung, onOpenBesta
   const hasOpenItems = openItems > 0
 
   return (
-    <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
-      <Appbar jahr={jahr} onJahrWechsel={onJahrWechsel} />
+    <ScrollView
+      contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen}
+      refreshControl={<RefreshControl refreshing={refresh.pulling} onRefresh={refresh.onPull} />}
+      testID="screen-container"
+    >
+      <Appbar jahr={jahr} onJahrWechsel={onJahrWechsel} isRefreshing={isRefreshing} />
       <FristenBanner taxYear={jahr} />
       <BestaetigungHinweis anlagen={bestaetigung} stand={stand} {...(onOpenBestaetigung ? { onOpenBestaetigung } : {})} />
       <Card variant="nacht">
@@ -254,11 +361,20 @@ function CockpitLoaded({ summary, jahr, onJahrWechsel, bestaetigung, onOpenBesta
           <NumericHero stand={stand} />
         )}
         <Text style={styles.openItems}>{tr('cockpit.hero.openItems', { count: openItems })}</Text>
-        <Text style={styles.refundLater}>{tr('cockpit.hero.refundLater')}</Text>
+        <Erstattung jahr={jahr} />
       </Card>
-      {hasOpenItems ? (
+      {weiter ? (
+        <Button onPress={weiter.onPress} style={styles.cta} testID="cockpit-weiter">
+          {weiter.label}
+        </Button>
+      ) : hasOpenItems ? (
         <Button onPress={onOpenInterview} style={styles.cta}>
           {tr('cockpit.answerQuestions')}
+        </Button>
+      ) : null}
+      {stammdaten ? (
+        <Button variante="ghost" onPress={stammdaten.onPress} style={styles.secondaryCta} testID="cockpit-stammdaten">
+          {stammdaten.label}
         </Button>
       ) : null}
       <Button
@@ -307,14 +423,6 @@ function CockpitLoaded({ summary, jahr, onJahrWechsel, bestaetigung, onOpenBesta
           {tr('ausdruck.cockpitCta')}
         </Button>
       ) : null}
-      <Button
-        variante={hasOpenItems ? 'ghost' : 'primaer'}
-        onPress={onRefresh}
-        disabled={isRefreshing}
-        style={hasOpenItems ? styles.secondaryCta : styles.cta}
-      >
-        {isRefreshing ? tr('cockpit.refreshing') : tr('cockpit.refresh')}
-      </Button>
     </ScrollView>
   )
 }
@@ -330,7 +438,7 @@ function NumericHero({ stand }: { readonly stand: CockpitStandDto }) {
   return (
     <>
       <Text style={styles.heroValue}>
-        {stand.kind === 'bestimmt' ? formatEuro(stand.wert ?? 0) : formatEuroRange(stand.von ?? 0, stand.bis ?? 0)}
+        {heroDisplay(stand, tr('cockpit.hero.nochOffen'))}
       </Text>
       {stand.kind === 'spanne' && (stand.offenePosten ?? 0) > 0 ? (
         <Text style={styles.offenePosten}>{tr('cockpit.hero.offenePosten', { count: stand.offenePosten ?? 0 })}</Text>
@@ -338,6 +446,16 @@ function NumericHero({ stand }: { readonly stand: CockpitStandDto }) {
       <HerkunftsChip quelle={quelle} />
     </>
   )
+}
+
+/**
+ * A range that starts at 0 € only says "nothing reliable is entered yet" — "0–120 €" would read as a
+ * real figure, so the hero says the income is still open instead.
+ */
+function heroDisplay(stand: CockpitStandDto, stillOpen: string): string {
+  if (stand.kind === 'bestimmt') return formatEuro(stand.wert ?? 0)
+  if ((stand.von ?? 0) === 0) return stillOpen
+  return formatEuroRange(stand.von ?? 0, stand.bis ?? 0)
 }
 
 function GatedHero({ stand }: { readonly stand: CockpitStandDto }) {
@@ -373,6 +491,7 @@ function makeStyles(t: UiTheme) {
     alignItems: 'center',
     paddingBottom: t.space.s4,
   }
+  const appbarTitleReihe: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s2 }
   const appbarTitle: TextStyle = {
     fontFamily: t.font.display,
     fontWeight: t.weight.schwer,
@@ -469,5 +588,5 @@ function makeStyles(t: UiTheme) {
     marginBottom: t.space.s2,
   }
 
-  return { screen, wideScreen, appbar, appbarTitle, jahrReihe, uebernahmeZeile, uebernahmeZeileText, heading, help, cta, secondaryCta, emptyBlock, heroLabel, heroValue, openItems, offenePosten, refundLater, gatedHeading, gatedBody }
+  return { screen, wideScreen, appbar, appbarTitleReihe, appbarTitle, jahrReihe, uebernahmeZeile, uebernahmeZeileText, heading, help, cta, secondaryCta, emptyBlock, heroLabel, heroValue, openItems, offenePosten, refundLater, gatedHeading, gatedBody }
 }

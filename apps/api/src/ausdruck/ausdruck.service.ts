@@ -1,6 +1,18 @@
 import { HttpException, HttpStatus, Inject, Injectable, UnprocessableEntityException } from '@nestjs/common'
 import { NotFoundError } from '../common/domain-error.js'
-import { CH_WOHNSITZ_VALUES, JAHRESUNABHAENGIG, fehlendeBestaetigungen, grenzgaengerStatus, ordneKapDepotEin, type ChWohnsitz, type GrenzgaengerStatus } from '@steuereule/core'
+import {
+  CH_WOHNSITZ_VALUES,
+  JAHRESUNABHAENGIG,
+  berechneWerktage,
+  fehlendeBestaetigungen,
+  grenzgaengerStatus,
+  krankenversicherungAusAntworten,
+  ordneKapDepotEin,
+  type ChWohnsitz,
+  type GrenzgaengerStatus,
+  type Krankenversicherung,
+} from '@steuereule/core'
+import { ARBEITSWEG_REPOSITORY, type ArbeitswegEingaben, type ArbeitswegRepository } from '../arbeitsweg/arbeitsweg.repository.js'
 import { AuditService } from '../audit/audit.service.js'
 import { CH_LOHNAUSWEIS_REPOSITORY, type ChLohnausweisRepository } from '../ch-lohnausweis/ch-lohnausweis.repository.js'
 import { FreischaltungService } from '../freischaltung/freischaltung.service.js'
@@ -14,7 +26,7 @@ import { PROFILE_REPOSITORY, type ProfileRepository } from '../profile/profile.r
 import { RENTE_REPOSITORY, type RenteRepository } from '../rente/rente.repository.js'
 import { STAMMDATEN_REPOSITORY, type StammdatenRepository } from '../stammdaten/stammdaten.repository.js'
 import { VERMIETUNG_REPOSITORY, type VermietungRepository } from '../vermietung/vermietung.repository.js'
-import { ausdruckWerte, type PersonBFakten } from './ausdruck-werte.js'
+import { ausdruckWerte, type ArbeitswegFakten, type PersonBFakten } from './ausdruck-werte.js'
 import { FELDSAETZE, rendereVordrucke, UeberlaufFehler } from './vordruck-renderer.js'
 
 export const VORLAGEN_BASIS = Symbol('VORLAGEN_BASIS')
@@ -42,6 +54,7 @@ export class AusdruckService {
     @Inject(KOPPLUNG_REPOSITORY) private readonly kopplung: KopplungRepository,
     @Inject(INTERVIEW_ANSWER_REPOSITORY) private readonly interview: InterviewAnswerRepository,
     @Inject(KENNZEICHNUNG_REPOSITORY) private readonly kennzeichnungen: KennzeichnungRepository,
+    @Inject(ARBEITSWEG_REPOSITORY) private readonly arbeitsweg: ArbeitswegRepository,
     @Inject(FreischaltungService) private readonly freischaltung: FreischaltungService,
     @Inject(AuditService) private readonly audit: AuditService,
     @Inject(VORLAGEN_BASIS) private readonly vorlagenBasis: URL,
@@ -109,7 +122,7 @@ export class AusdruckService {
   }
 
   private async sammleWerte(userId: string, jahr: number) {
-    const [profil, stammdaten, lstb, rente, kapital, objekte, ch, kinder, kopplung, interviewRows] = await Promise.all([
+    const [profil, stammdaten, lstb, rente, kapital, objekte, ch, kinder, kopplung, interviewRows, arbeitsweg] = await Promise.all([
       this.profile.findByUserId(userId),
       this.stammdaten.findByUserId(userId),
       this.lstb.findForUserAndYear(userId, jahr),
@@ -120,6 +133,7 @@ export class AusdruckService {
       this.kinder.listForUserAndYear(userId, jahr),
       this.kopplung.findByUserAndYear(userId, jahr),
       this.interview.findAllForUserAndYear(userId, jahr),
+      this.arbeitsweg.findForUserAndYear(userId, jahr),
     ])
 
     const answers: Record<string, string> = {}
@@ -178,6 +192,8 @@ export class AusdruckService {
       andererElternteilVerstorbenAm: k.andererElternteilVerstorbenAm,
       gemeldetBeiMirGanzjaehrig: k.gemeldetBeiMirGanzjaehrig,
       kindergeldAnMichGanzjaehrig: k.kindergeldAnMichGanzjaehrig,
+      kvBasisEur: k.kvBasisEur,
+      pvEur: k.pvEur,
     }))
 
     return ausdruckWerte({
@@ -215,6 +231,10 @@ export class AusdruckService {
             krankentaggeldChf: ch.nGre.krankentaggeldChf,
             pkArbeitnehmerChf: ch.nGre.pkArbeitnehmerChf,
             pkArbeitgeberChf: ch.nGre.pkArbeitgeberChf,
+            krankentaggeldArbeitgeberProzent: ch.nGre.krankentaggeldArbeitgeberProzent,
+            krankentaggeldArbeitgeberChf: ch.nGre.krankentaggeldArbeitgeberChf,
+            nbuvArbeitgeberProzent: ch.nGre.nbuvArbeitgeberProzent,
+            nbuvArbeitgeberChf: ch.nGre.nbuvArbeitgeberChf,
             sonderfaelle: ch.nGre.nGreSonderfaelle,
           }
         : null,
@@ -222,6 +242,7 @@ export class AusdruckService {
       kinder: kinderFakten.length > 0 ? kinderFakten : null,
       kopplung: kopplung ? { veranlagungsart: kopplung.veranlagungsart, personB: personBFakten } : null,
       sonderausgaben: answers['spenden-betrag'] ? { spenden: answers['spenden-betrag'] } : null,
+      krankenversicherung: krankenversicherungen(answers, ch),
       alleinerziehend: {
         weiterePerson: answers['ae-weitere-person'] ?? null,
         haushaltsgemeinschaft: answers['ae-haushaltsgemeinschaft'] ?? null,
@@ -230,6 +251,45 @@ export class AusdruckService {
         answers['riester'] === 'Ja'
           ? { art: answers['riester-art'] ?? null, einnahmenVorjahr: answers['riester-einnahmen-vorjahr'] ?? null }
           : null,
+      arbeitsweg: arbeitswegFakten(jahr, arbeitsweg),
     })
   }
+}
+
+function arbeitswegFakten(jahr: number, eingaben: ArbeitswegEingaben | null): ArbeitswegFakten | null {
+  if (eingaben === null) return null
+  const ergebnis = berechneWerktage({
+    jahr,
+    werktage: eingaben.arbeitstage,
+    urlaubstage: eingaben.urlaubstage,
+    krankheitstage: eingaben.krankheitstage,
+    homeofficeTage: eingaben.homeofficeTage,
+  })
+  if (ergebnis.kind !== 'bestimmt') return null
+  return {
+    arbeitstageJeWoche: eingaben.arbeitstage.length,
+    freieTage: eingaben.urlaubstage + eingaben.krankheitstage + eingaben.homeofficeTage,
+    pendlertage: ergebnis.pendlertage,
+    einfacheKm: eingaben.einfacheKm,
+    mitPkw: eingaben.verkehrsmittel === 'pkw',
+    taetigkeitsstaette: eingaben.taetigkeitsstaette,
+  }
+}
+
+/**
+ * Self-paid insurance for the Anlage Vorsorgeaufwand: what the Sonderausgaben interview names, plus a Swiss
+ * Krankenkasse from the Grenzgänger mask (foreign, Basisabsicherung, no Krankengeld) converted at the Lohnausweis rate.
+ */
+function krankenversicherungen(
+  answers: Record<string, string>,
+  ch: { krankenkasseChf: string | null; wechselkursKurs: number | null } | null,
+): Krankenversicherung[] {
+  const liste: Krankenversicherung[] = []
+  const ausInterview = krankenversicherungAusAntworten(answers)
+  if (ausInterview) liste.push(ausInterview)
+  const chf = ch?.krankenkasseChf ? Number(ch.krankenkasseChf) : 0
+  if (chf > 0 && ch?.wechselkursKurs) {
+    liste.push({ art: 'ausland', kvBasis: Math.round(chf * ch.wechselkursKurs), mitKrankengeld: false, pv: 0, wahlleistungen: 0 })
+  }
+  return liste
 }

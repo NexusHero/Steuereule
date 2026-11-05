@@ -79,24 +79,16 @@ Gebaut als sauberes, hochgradig typisiertes Monorepo:
 
 ## 🚀 In 60 Sekunden lokal starten
 
-### Produktionsnaher Stack (Postgres + echte Container):
-
 ```bash
-cp .env.example .env
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build
+scripts/local.sh          # alles in Containern, wie in Produktion
+scripts/local.sh dev      # zum Entwickeln, Web mit Hot Reload
+scripts/local.sh mail     # lokales Postfach öffnen
+scripts/local.sh help     # alle Befehle (logs, status, down, reset)
 ```
 
-* **Web-App:** [http://localhost:8080](http://localhost:8080)
-* **API:** [http://localhost:3000](http://localhost:3000)
-
-### Entwicklung mit Hot-Reload:
-
-```bash
-docker compose up -d                          # nur Postgres
-pnpm install
-pnpm --filter @steuereule/mobile-web start   # Expo / Metro
-pnpm --filter @steuereule/api start          # NestJS API
-```
+* **`up`:** Web [http://localhost:8080](http://localhost:8080), API [http://localhost:3000](http://localhost:3000). Legt beim ersten Mal `.env` aus `.env.example` an.
+* **`dev`:** Web [http://localhost:8081](http://localhost:8081), API [http://localhost:3000](http://localhost:3000), Postgres auf Port 5434.
+* **Postfach:** [http://localhost:8025](http://localhost:8025) (Mailpit) — Bestätigungs- und Passwort-Mails landen hier, nie im Internet.
 
 > **Gut zu wissen vor dem ersten Klick:**
 > 1. **Die Datenbank startet leer:** „Sauberes Blatt“ – du kannst direkt als Gast starten oder dich neu registrieren.

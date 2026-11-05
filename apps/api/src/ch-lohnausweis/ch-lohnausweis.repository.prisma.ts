@@ -68,6 +68,10 @@ function toRecord(row: ChLohnausweisRow): ChLohnausweisRecord {
       krankentaggeldChf: row.krankentaggeldChf,
       pkArbeitnehmerChf: row.pkArbeitnehmerChf,
       pkArbeitgeberChf: row.pkArbeitgeberChf,
+      krankentaggeldArbeitgeberProzent: row.krankentaggeldArbeitgeberProzent,
+      krankentaggeldArbeitgeberChf: row.krankentaggeldArbeitgeberChf,
+      nbuvArbeitgeberProzent: row.nbuvArbeitgeberProzent,
+      nbuvArbeitgeberChf: row.nbuvArbeitgeberChf,
       nGreSonderfaelle: row.nGreSonderfaelle,
     },
   }
@@ -93,6 +97,10 @@ const EMPTY_CREATE: Record<string, null> = Object.fromEntries([
   ['krankentaggeldChf', null],
   ['pkArbeitnehmerChf', null],
   ['pkArbeitgeberChf', null],
+  ['krankentaggeldArbeitgeberProzent', null],
+  ['krankentaggeldArbeitgeberChf', null],
+  ['nbuvArbeitgeberProzent', null],
+  ['nbuvArbeitgeberChf', null],
   ['nGreSonderfaelle', null],
 ])
 

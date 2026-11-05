@@ -59,6 +59,30 @@ describe('PlausibilitaetScreen', () => {
     expect(screen.getByText('Ehrlich: die Arbeitstage- und Pendlerpauschale-Prüfung folgt in einem späteren Schritt.')).toBeTruthy()
   })
 
+  it('does not claim "nichts mehr offen" while personal details for the printout are missing', async () => {
+    server.use(
+      http.get(`*/v1/steuerjahre/${TAX_YEAR}/lstb`, () =>
+        HttpResponse.json(
+          {
+            bruttoarbeitslohn: { kind: 'erfasst', wert: 50000 },
+            lohnsteuer: { kind: 'erfasst', wert: 8000 },
+            sozialversicherung: { kind: 'erfasst', wert: 9000 },
+            zustand: { kind: 'vollstaendig', bruttoarbeitslohn: 50000, lohnsteuer: 8000, sozialversicherung: 9000 },
+          },
+          { status: 200 },
+        ),
+      ),
+      http.get(`*/v1/steuerjahre/${TAX_YEAR}/interview`, () =>
+        HttpResponse.json({ answers: { job: 'Angestellt' }, nextStep: { kind: 'done' }, openItems: 0 }, { status: 200 }),
+      ),
+      http.get('*/v1/stammdaten', () => HttpResponse.json({ fehlend: ['iban', 'plz', 'wohnort'] }, { status: 200 })),
+    )
+    renderPlausibilitaet()
+
+    expect(await screen.findByText('Für den Ausdruck fehlen noch 3 persönliche Angaben (z. B. Adresse oder IBAN).')).toBeTruthy()
+    expect(screen.queryByText('Alles klar — keine Widersprüche, nichts mehr offen.')).toBeNull()
+  })
+
   it('names a gated Einkunftsart as a blocker (ADR-032)', async () => {
     server.use(
       http.get(`*/v1/steuerjahre/${TAX_YEAR}/interview`, () =>

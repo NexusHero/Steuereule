@@ -49,14 +49,14 @@ function mockVergleich(data: VeranlagungsartenvergleichDto | null) {
   server.use(http.get(VERGLEICH_URL, () => HttpResponse.json(data, { status: 200 })))
 }
 
-function renderScreen() {
+function renderScreen(onDone?: () => void) {
   const i18n = createAppI18n('de')
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={queryClient}>
       <I18nextProvider i18n={i18n}>
         <ThemeProvider mode="light">
-          <VeranlagungsartenvergleichScreen taxYear={TAX_YEAR} />
+          <VeranlagungsartenvergleichScreen taxYear={TAX_YEAR} {...(onDone ? { onDone } : {})} />
         </ThemeProvider>
       </I18nextProvider>
     </QueryClientProvider>,
@@ -70,6 +70,14 @@ async function chooseMarried(zveB: string) {
 }
 
 describe('VeranlagungsartenvergleichScreen', () => {
+  it('lets a single person carry on to the cockpit instead of offering only a way back', () => {
+    let done = 0
+    renderScreen(() => (done += 1))
+    fireEvent.click(screen.getByTestId('verheiratet-nein'))
+    fireEvent.click(screen.getByText('Weiter zum Cockpit'))
+    expect(done).toBe(1)
+  })
+
   it('renders `aussage` first: `eindeutig` shows the recommendation, then the two numbers', async () => {
     mockVergleich(EINDEUTIG)
     renderScreen()

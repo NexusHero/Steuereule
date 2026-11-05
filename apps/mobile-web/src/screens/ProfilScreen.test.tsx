@@ -135,7 +135,7 @@ describe('ProfilScreen', () => {
     expect(screen.getByDisplayValue('Anna')).toBeTruthy()
     expect(screen.getByDisplayValue('Beispiel')).toBeTruthy()
     expect(screen.getByDisplayValue('02 476 291 358')).toBeTruthy()
-    expect(screen.getByDisplayValue('123/456/7890')).toBeTruthy()
+    expect(screen.getByDisplayValue('12/345/67890')).toBeTruthy()
   })
 
   it('keeps Speichern from saving until the name fields are filled — the Steuer-ID is optional (ADR-0045)', async () => {

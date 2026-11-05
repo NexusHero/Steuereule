@@ -87,8 +87,8 @@ export function VeranlagungsartenvergleichScreen({ onBack, onDone, taxYear = CUR
       ) : null}
 
       {onDone ? (
-        <Button variante="ghost" onPress={onDone} style={styles.doneCta}>
-          {tr('plausibilitaet.back')}
+        <Button onPress={onDone} style={styles.doneCta} testID="veranlagungsartenvergleich-weiter">
+          {tr('veranlagungsartenvergleich.done')}
         </Button>
       ) : null}
     </ScrollView>

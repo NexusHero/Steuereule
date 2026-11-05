@@ -25,7 +25,15 @@ export function InterviewScreen({ onDone, taxYear = CURRENT_TAX_YEAR }: Intervie
   const { t: tr } = useTranslation(APP_NS)
   const queryClient = useQueryClient()
   const interviewQuery = useInterviewControllerGetInterview(taxYear)
-  const postAnswer = useInterviewControllerPostAnswer()
+  const postAnswer = useInterviewControllerPostAnswer({
+    mutation: {
+      onSuccess: (response) => {
+        if (response.status === 200) {
+          void queryClient.invalidateQueries({ queryKey: getCockpitControllerGetCockpitSummaryQueryKey(taxYear) })
+        }
+      },
+    },
+  })
 
   const [answers, setAnswers] = useState<Answers>({})
   const [history, setHistory] = useState<readonly StepId[]>([])
@@ -33,11 +41,11 @@ export function InterviewScreen({ onDone, taxYear = CURRENT_TAX_YEAR }: Intervie
   const [seeded, setSeeded] = useState(false)
 
   useEffect(() => {
-    if (!seeded && interviewQuery.data?.status === 200) {
+    if (!seeded && interviewQuery.isFetchedAfterMount && interviewQuery.data?.status === 200) {
       setAnswers(interviewQuery.data.data.answers as Answers)
       setSeeded(true)
     }
-  }, [seeded, interviewQuery.data])
+  }, [seeded, interviewQuery.isFetchedAfterMount, interviewQuery.data])
 
   const current = seeded ? nextStep(answers) : null
 
@@ -75,10 +83,7 @@ export function InterviewScreen({ onDone, taxYear = CURRENT_TAX_YEAR }: Intervie
       { jahr: taxYear, data: { questionId: stepId, value } },
       {
         onSuccess: (response) => {
-          if (response.status === 200) {
-            void queryClient.invalidateQueries({ queryKey: getCockpitControllerGetCockpitSummaryQueryKey(taxYear) })
-            return
-          }
+          if (response.status === 200) return
           setPostError(response.status === 409 ? 'conflict' : 'invalid')
           setHistory([])
           setSeeded(false)
@@ -133,6 +138,7 @@ export function InterviewScreen({ onDone, taxYear = CURRENT_TAX_YEAR }: Intervie
       onBack={back}
       bp={bp}
       notice={postError}
+      taxYear={taxYear}
     />
   )
 }

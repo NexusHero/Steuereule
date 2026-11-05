@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { Input, Option, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
+import { Button, Input, Option, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
 import {
   ENTRIES,
   QUESTIONS,
@@ -17,6 +17,7 @@ import {
   getCockpitControllerGetCockpitSummaryQueryKey,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
+import { ganzzahlAus } from '../shared/ganzzahl'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
@@ -43,11 +44,11 @@ export function KatalogScreen({ entry, onDone = () => {}, onBack, taxYear = CURR
   const [conflict, setConflict] = useState(false)
 
   useEffect(() => {
-    if (!seeded && interviewQuery.data?.status === 200) {
+    if (!seeded && interviewQuery.isFetchedAfterMount && interviewQuery.data?.status === 200) {
       setAnswers(interviewQuery.data.data.answers as Answers)
       setSeeded(true)
     }
-  }, [seeded, interviewQuery.data])
+  }, [seeded, interviewQuery.isFetchedAfterMount, interviewQuery.data])
 
   const current = seeded ? nextStepFor(ENTRIES[entry], answers) : null
 
@@ -137,24 +138,31 @@ export function KatalogScreen({ entry, onDone = () => {}, onBack, taxYear = CURR
 }
 
 function IntegerFollowUp({ step, onAnswer }: { readonly step: EntryStepId; readonly onAnswer: (value: string) => void }) {
+  const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
+  const styles = makeStyles(t)
   const [text, setText] = useState('')
+  const wert = ganzzahlAus(text)
 
   function submit() {
-    const n = Number(text)
-    if (Number.isInteger(n) && n >= 0) onAnswer(String(n))
+    if (wert !== null) onAnswer(String(wert))
   }
 
   return (
-    <Input
-      type="numeric"
-      mono
-      value={text}
-      onChange={setText}
-      placeholder={tr('katalog.amountPlaceholder')}
-      onSubmit={submit}
-      accessibilityLabel={`${tr(`katalog.questions.${step}`, { defaultValue: step })} (${tr('katalog.amountPlaceholder')})`}
-    />
+    <View>
+      <Input
+        type="numeric"
+        mono
+        value={text}
+        onChange={setText}
+        placeholder={tr('katalog.amountPlaceholder')}
+        onSubmit={submit}
+        accessibilityLabel={`${tr(`katalog.questions.${step}`, { defaultValue: step })} (${tr('katalog.amountPlaceholder')})`}
+      />
+      <Button onPress={submit} disabled={wert === null} style={styles.weiter}>
+        {tr('katalog.weiter')}
+      </Button>
+    </View>
   )
 }
 
@@ -179,5 +187,6 @@ function makeStyles(t: UiTheme) {
     color: t.color.tinte,
     marginBottom: t.space.s4,
   }
-  return { screen, wideScreen, headerRow, stepPill, conflict, heading }
+  const weiter: ViewStyle = { marginTop: t.space.s4 }
+  return { screen, wideScreen, headerRow, stepPill, conflict, heading, weiter }
 }

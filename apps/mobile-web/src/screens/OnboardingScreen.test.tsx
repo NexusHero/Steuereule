@@ -81,7 +81,7 @@ describe('OnboardingScreen', () => {
     expect(screen.queryByDisplayValue('02476291358')).toBeNull()
 
     fireEvent.click(screen.getByText('Weiter'))
-    expect(screen.getByDisplayValue('123/456/7890')).toBeTruthy()
+    expect(screen.getByDisplayValue('12/345/67890')).toBeTruthy()
   })
 
   it('shows a retryable error screen when the profile fails to load, and recovers on retry', async () => {

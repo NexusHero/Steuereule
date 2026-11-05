@@ -100,19 +100,46 @@ describe('berechneWerktage', () => {
   })
 })
 
-describe('pendlerpauschale (preparation)', () => {
-  it('one-way km × commute days × 0,30 €, whole euros', () => {
-    // 20 km × 186 days × 0,30 = 1116 €.
-    expect(pendlerpauschale(20, 186)).toBe(1116)
+describe('pendlerpauschale (Entfernungspauschale, § 9 Abs. 1 Nr. 4 EStG)', () => {
+  it('2025: 0,30 € for each of the first 20 km', () => {
+    const betrag = pendlerpauschale({ einfacheKm: 15, tage: 206, jahr: 2025, mitPkw: true })
+
+    expect(betrag).toBe(927)
   })
 
-  it('rounds to the nearest whole euro', () => {
-    // 7 km × 1 day × 0,30 = 2,10 → 2 €.
-    expect(pendlerpauschale(7, 1)).toBe(2)
+  it('2025: 0,38 € from the 21st km on', () => {
+    const betrag = pendlerpauschale({ einfacheKm: 30, tage: 206, jahr: 2025, mitPkw: true })
+
+    expect(betrag).toBe(2019)
   })
 
-  it('rejects negative distance or days', () => {
-    expect(() => pendlerpauschale(-1, 10)).toThrow(RangeError)
-    expect(() => pendlerpauschale(10, -1)).toThrow(RangeError)
+  it('2026: 0,38 € from the first km', () => {
+    const betrag = pendlerpauschale({ einfacheKm: 30, tage: 206, jahr: 2026, mitPkw: true })
+
+    expect(betrag).toBe(2348)
+  })
+
+  it('counts only full kilometres, as the form asks', () => {
+    const betrag = pendlerpauschale({ einfacheKm: 15.9, tage: 100, jahr: 2025, mitPkw: true })
+
+    expect(betrag).toBe(450)
+  })
+
+  it('caps at 4.500 € without an own car', () => {
+    const betrag = pendlerpauschale({ einfacheKm: 100, tage: 220, jahr: 2025, mitPkw: false })
+
+    expect(betrag).toBe(4500)
+  })
+
+  it('does not cap with an own car', () => {
+    const betrag = pendlerpauschale({ einfacheKm: 100, tage: 220, jahr: 2025, mitPkw: true })
+
+    expect(betrag).toBe(8008)
+  })
+
+  it('rejects impossible inputs', () => {
+    expect(() => pendlerpauschale({ einfacheKm: -1, tage: 10, jahr: 2025, mitPkw: true })).toThrow(RangeError)
+    expect(() => pendlerpauschale({ einfacheKm: 10, tage: -1, jahr: 2025, mitPkw: true })).toThrow(RangeError)
+    expect(() => pendlerpauschale({ einfacheKm: 10, tage: 10, jahr: 2019, mitPkw: true })).toThrow(RangeError)
   })
 })

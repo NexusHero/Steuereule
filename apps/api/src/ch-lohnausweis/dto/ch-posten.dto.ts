@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
-import { IsBoolean, IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validator'
+import { IsBoolean, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator'
 import { WechselkursDto } from './wechselkurs.dto.js'
 
 /** One CH line item with full provenance. */
@@ -93,7 +93,33 @@ export class PutNGreDto {
   @Min(0)
   pkArbeitgeberChf?: number | null
 
-  @ApiPropertyOptional({ type: Boolean, nullable: true, description: 'Any of N-Gre Zeilen 7, 9–14 or 16–22 applies.' })
+  @ApiPropertyOptional({ type: Number, nullable: true, description: 'Employer share of the Krankentaggeld premium in percent, 0–100 (Zeilen 18, 95, 96).' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  krankentaggeldArbeitgeberProzent?: number | null
+
+  @ApiPropertyOptional({ type: Number, nullable: true, description: 'Whole CHF — employer Krankentaggeld contribution; only needed when the employer pays 100 %.' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  krankentaggeldArbeitgeberChf?: number | null
+
+  @ApiPropertyOptional({ type: Number, nullable: true, description: 'Employer share of the NBUV premium in percent, 0–100 (Zeilen 19, 97, 98).' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  nbuvArbeitgeberProzent?: number | null
+
+  @ApiPropertyOptional({ type: Number, nullable: true, description: 'Whole CHF — employer NBUV contribution; only needed when the employer pays 100 %.' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  nbuvArbeitgeberChf?: number | null
+
+  @ApiPropertyOptional({ type: Boolean, nullable: true, description: 'Any of N-Gre Zeilen 7, 9–14, 16, 17 or 20–22 applies.' })
   @IsOptional()
   @IsBoolean()
   sonderfaelle?: boolean | null
@@ -121,6 +147,18 @@ export class NGreAngabenDto {
 
   @ApiProperty({ type: Number, nullable: true })
   pkArbeitgeberChf!: number | null
+
+  @ApiProperty({ type: Number, nullable: true })
+  krankentaggeldArbeitgeberProzent!: number | null
+
+  @ApiProperty({ type: Number, nullable: true })
+  krankentaggeldArbeitgeberChf!: number | null
+
+  @ApiProperty({ type: Number, nullable: true })
+  nbuvArbeitgeberProzent!: number | null
+
+  @ApiProperty({ type: Number, nullable: true })
+  nbuvArbeitgeberChf!: number | null
 
   @ApiProperty({ type: Boolean, nullable: true })
   sonderfaelle!: boolean | null

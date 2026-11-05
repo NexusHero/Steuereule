@@ -5,7 +5,7 @@ import { Button, Input, Feld, Chip, Pill, Sticker, useTheme, useBreakpoint } fro
 import { isValidSteuerId } from '@steuereule/core'
 import { useProfileControllerGetProfile, useProfileControllerPutProfile } from '@steuereule/api-client'
 import { APP_NS } from '../i18n/resources'
-import { formatSteuerId, formatSteuerNr, countDigits } from './onboarding/format'
+import { formatSteuerId, sanitizeTaxNumberInput, countDigits } from './onboarding/format'
 import { toOnboardingProfil, toPutProfileDto, type OnboardingProfil } from './onboarding/profileMapping'
 import { makeOnboardingStyles } from './onboarding/styles'
 import { OnboardingSummary } from './onboarding/OnboardingSummary'
@@ -174,7 +174,7 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
               type="numeric"
               mono
               value={profil.steuerNr}
-              onChange={(value) => set('steuerNr')(formatSteuerNr(value))}
+              onChange={(value) => set('steuerNr')(sanitizeTaxNumberInput(value))}
               placeholder={tr('onboarding.step3.placeholder')}
               accessibilityLabel={tr('onboarding.step3.fieldLabel')}
             />

@@ -5,8 +5,8 @@ import { I18nextProvider, useTranslation } from 'react-i18next'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { NavigationContainer, type LinkingOptions } from '@react-navigation/native'
 import { createNativeStackNavigator, type NativeStackScreenProps } from '@react-navigation/native-stack'
-import { SafeAreaProvider } from 'react-native-safe-area-context'
-import { TabBar, TAB_ICON_PATHS, ThemeProvider, useTheme, type TabItem } from '@steuereule/ui'
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context'
+import { TabBar, TAB_ICON_PATHS, tabBarClearance, ThemeProvider, useTheme, type TabItem } from '@steuereule/ui'
 import { configureApiClient } from '@steuereule/api-client'
 import { createAppI18n } from './src/i18n/app-i18n'
 import { APP_NS } from './src/i18n/resources'
@@ -45,9 +45,13 @@ import { EulenModusScreen } from './src/screens/berater/EulenModusScreen'
 import { betreiberAusUmgebung, RECHTLICHE_SEITEN, type RechtlicheSeite } from './src/screens/rechtliches/texte'
 import { KontoWandScreen, pfadAusAntworten, type FunnelPfad } from './src/screens/funnel/KontoWandScreen'
 import { useAccountSession } from './src/auth/useAccountSession'
+import { followNativeAppFocus } from './src/app-focus'
+import { CURRENT_TAX_YEAR } from './src/config/taxYear'
+import { ansichtNachDemInterview } from './src/screens/funnel/nachDemInterview'
 
 const i18n = createAppI18n('de')
 const queryClient = new QueryClient({ defaultOptions: APP_QUERY_DEFAULTS })
+followNativeAppFocus()
 
 const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://localhost:3000'
 configureApiClient({ baseUrl: apiBaseUrl })
@@ -280,6 +284,7 @@ function TabbedShell({ tab, onTabChange, onSignedOut, startInInterview = false, 
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const { state: sessionState } = useAccountSession()
+  const insets = useSafeAreaInsets()
   const [funnelPfad, setFunnelPfad] = useState<FunnelPfad>('angestellte')
 
   const [profilView, setProfilView] = useState<'main' | 'datenschutz' | 'sicherheit' | 'stammdaten'>('main')
@@ -300,7 +305,18 @@ function TabbedShell({ tab, onTabChange, onSignedOut, startInInterview = false, 
     | 'vermietung'
     | 'kinder'
     | 'eulen-modus'
+    | 'stammdaten'
   >(startInInterview ? 'interview' : 'main')
+  const [ausstehenderPfad, setAusstehenderPfad] = useState<FunnelPfad | null>(null)
+  const [steuerjahr, setSteuerjahr] = useState(CURRENT_TAX_YEAR)
+
+  useEffect(() => {
+    if (ausstehenderPfad === null) return
+    const ansicht = ansichtNachDemInterview(ausstehenderPfad, sessionState.status)
+    if (ansicht === null) return
+    setAusstehenderPfad(null)
+    setCockpitView(ansicht)
+  }, [ausstehenderPfad, sessionState.status])
 
   const iconColor = (id: Tab) => (id === tab ? t.color.tinte : t.color.tinte2)
 
@@ -328,88 +344,105 @@ function TabbedShell({ tab, onTabChange, onSignedOut, startInInterview = false, 
     onTabChange(next)
   }
 
+  const zeigtTabBar = profilView === 'main'
+
   return (
     <View style={{ flex: 1 }}>
-      {tab === 'cockpit' && cockpitView === 'main' ? <CockpitScreen
-          onOpenInterview={() => setCockpitView('interview')}
-          onOpenBescheid={() => setCockpitView('bescheid')}
-          onOpenKapital={() => setCockpitView('kapital')}
-          onOpenVermietung={() => setCockpitView('vermietung')}
-          onOpenKinder={() => setCockpitView('kinder')}
-          onOpenEulenModus={() => setCockpitView('eulen-modus')}
-          {...(onOpenAusdruck ? { onOpenAusdruck } : {})}
-          {...(onOpenBestaetigung ? { onOpenBestaetigung } : {})}
-        /> : null}
-      {tab === 'cockpit' && cockpitView === 'interview' ? (
-        <InterviewScreen
-          onDone={(answers) => {
-            const pfad = pfadAusAntworten(answers)
-            if (sessionState.status !== 'signed-in') {
+      <View style={{ flex: 1, backgroundColor: t.color.grund, paddingBottom: zeigtTabBar ? tabBarClearance(t, insets.bottom) : 0 }}>
+        {tab === 'cockpit' && cockpitView === 'main' ? <CockpitScreen
+            taxYear={steuerjahr}
+            onJahrWechsel={setSteuerjahr}
+            onOpenInterview={() => setCockpitView('interview')}
+            onOpenBescheid={() => setCockpitView('bescheid')}
+            onOpenKapital={() => setCockpitView('kapital')}
+            onOpenVermietung={() => setCockpitView('vermietung')}
+            onOpenKinder={() => setCockpitView('kinder')}
+            onOpenEulenModus={() => setCockpitView('eulen-modus')}
+            onOpenStammdaten={() => setCockpitView('stammdaten')}
+            onContinuePath={(pfad) => {
               setFunnelPfad(pfad)
-              setCockpitView('konto-wand')
-              return
-            }
-            setCockpitView(pfad === 'rente' ? 'rente' : pfad === 'ch' ? 'ch' : 'lstb')
-          }}
-        />
-      ) : null}
-      {tab === 'cockpit' && cockpitView === 'konto-wand' ? (
-        <KontoWandScreen pfad={funnelPfad} onRegister={onRegister} onLogin={onLogin} onLater={() => setCockpitView('main')} />
-      ) : null}
-      {tab === 'cockpit' && cockpitView === 'rente' ? (
-        <RentnerScreen onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
-      ) : null}
-      {tab === 'cockpit' && cockpitView === 'ch' ? <GrenzgaengerScreen onDone={() => setCockpitView('main')} /> : null}
-      {tab === 'cockpit' && cockpitView === 'lstb' ? (
-        <LstbScreen onDone={() => setCockpitView('katalog-lebenslagen')} onBack={() => setCockpitView('main')} />
-      ) : null}
-      {tab === 'cockpit' && cockpitView === 'katalog-lebenslagen' ? (
-        <KatalogScreen entry="lebenslagen" onDone={() => setCockpitView('katalog-sonderausgaben')} onBack={() => setCockpitView('lstb')} />
-      ) : null}
-      {tab === 'cockpit' && cockpitView === 'katalog-sonderausgaben' ? (
-        <KatalogScreen entry="sonderausgaben" onDone={() => setCockpitView('arbeitstage')} onBack={() => setCockpitView('katalog-lebenslagen')} />
-      ) : null}
-      {tab === 'cockpit' && cockpitView === 'arbeitstage' ? (
-        <ArbeitstageScreen onDone={() => setCockpitView('plausibilitaet')} onBack={() => setCockpitView('katalog-sonderausgaben')} />
-      ) : null}
-      {tab === 'cockpit' && cockpitView === 'plausibilitaet' ? (
-        <PlausibilitaetScreen onBack={() => setCockpitView('main')} onDone={() => setCockpitView('veranlagungsartenvergleich')} />
-      ) : null}
-      {tab === 'cockpit' && cockpitView === 'veranlagungsartenvergleich' ? (
-        <VeranlagungsartenvergleichScreen onBack={() => setCockpitView('plausibilitaet')} onDone={() => setCockpitView('main')} />
-      ) : null}
-      {tab === 'cockpit' && cockpitView === 'bescheid' ? (
-        <BescheidScreen onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
-      ) : null}
-      {tab === 'cockpit' && cockpitView === 'kapital' ? (
-        <KapitalScreen onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
-      ) : null}
-      {tab === 'cockpit' && cockpitView === 'vermietung' ? (
-        <VermietungScreen onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
-      ) : null}
-      {tab === 'cockpit' && cockpitView === 'kinder' ? (
-        <KinderScreen onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
-      ) : null}
-      {tab === 'cockpit' && cockpitView === 'eulen-modus' ? (
-        <EulenModusScreen onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
-      ) : null}
-      {tab === 'belege' ? <BelegeScreen /> : null}
-      {tab === 'profil' && profilView === 'main' ? (
-        <ProfilScreen
-          onOpenDatenschutz={() => setProfilView('datenschutz')}
-          onOpenSicherheit={() => setProfilView('sicherheit')}
-          onOpenStammdaten={() => setProfilView('stammdaten')}
-          onSignedOut={onSignedOut}
-        />
-      ) : null}
-      {tab === 'profil' && profilView === 'datenschutz' ? (
-        <DatenschutzScreen onZurueck={() => setProfilView('main')} onAccountDeleted={onSignedOut} />
-      ) : null}
-      {tab === 'profil' && profilView === 'stammdaten' ? <StammdatenScreen onZurueck={() => setProfilView('main')} /> : null}
-      {tab === 'profil' && profilView === 'sicherheit' ? (
-        <SicherheitScreen onZurueck={() => setProfilView('main')} />
-      ) : null}
-      {profilView === 'main' ? <TabBar tabs={tabs} aktiv={tab} onWechsel={(id) => changeTab(id as Tab)} /> : null}
+              setAusstehenderPfad(pfad)
+            }}
+            {...(onOpenAusdruck ? { onOpenAusdruck } : {})}
+            {...(onOpenBestaetigung ? { onOpenBestaetigung } : {})}
+          /> : null}
+        {tab === 'cockpit' && cockpitView === 'interview' ? (
+          <InterviewScreen taxYear={steuerjahr}
+            onDone={(answers) => {
+              const pfad = pfadAusAntworten(answers)
+              setFunnelPfad(pfad)
+              setAusstehenderPfad(pfad)
+            }}
+          />
+        ) : null}
+        {tab === 'cockpit' && cockpitView === 'stammdaten' ? <StammdatenScreen onZurueck={() => setCockpitView('main')} /> : null}
+        {tab === 'cockpit' && cockpitView === 'konto-wand' ? (
+          <KontoWandScreen pfad={funnelPfad} onRegister={onRegister} onLogin={onLogin} onLater={() => setCockpitView('main')} />
+        ) : null}
+        {tab === 'cockpit' && cockpitView === 'rente' ? (
+          <RentnerScreen taxYear={steuerjahr} onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
+        ) : null}
+        {tab === 'cockpit' && cockpitView === 'ch' ? <GrenzgaengerScreen taxYear={steuerjahr} onDone={() => setCockpitView('katalog-sonderausgaben')} /> : null}
+        {tab === 'cockpit' && cockpitView === 'lstb' ? (
+          <LstbScreen taxYear={steuerjahr} onDone={() => setCockpitView('katalog-lebenslagen')} onBack={() => setCockpitView('main')} />
+        ) : null}
+        {tab === 'cockpit' && cockpitView === 'katalog-lebenslagen' ? (
+          <KatalogScreen taxYear={steuerjahr} entry="lebenslagen" onDone={() => setCockpitView('katalog-sonderausgaben')} onBack={() => setCockpitView('lstb')} />
+        ) : null}
+        {tab === 'cockpit' && cockpitView === 'katalog-sonderausgaben' ? (
+          <KatalogScreen
+            taxYear={steuerjahr}
+            entry="sonderausgaben"
+            onDone={() => setCockpitView('arbeitstage')}
+            onBack={() => setCockpitView(funnelPfad === 'ch' ? 'ch' : 'katalog-lebenslagen')}
+          />
+        ) : null}
+        {tab === 'cockpit' && cockpitView === 'arbeitstage' ? (
+          <ArbeitstageScreen
+            taxYear={steuerjahr}
+            onDone={() => setCockpitView(funnelPfad === 'ch' ? 'main' : 'plausibilitaet')}
+            onBack={() => setCockpitView('katalog-sonderausgaben')}
+          />
+        ) : null}
+        {tab === 'cockpit' && cockpitView === 'plausibilitaet' ? (
+          <PlausibilitaetScreen taxYear={steuerjahr} onBack={() => setCockpitView('main')} onDone={() => setCockpitView('veranlagungsartenvergleich')} />
+        ) : null}
+        {tab === 'cockpit' && cockpitView === 'veranlagungsartenvergleich' ? (
+          <VeranlagungsartenvergleichScreen taxYear={steuerjahr} onBack={() => setCockpitView('plausibilitaet')} onDone={() => setCockpitView('main')} />
+        ) : null}
+        {tab === 'cockpit' && cockpitView === 'bescheid' ? (
+          <BescheidScreen taxYear={steuerjahr} onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
+        ) : null}
+        {tab === 'cockpit' && cockpitView === 'kapital' ? (
+          <KapitalScreen taxYear={steuerjahr} onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
+        ) : null}
+        {tab === 'cockpit' && cockpitView === 'vermietung' ? (
+          <VermietungScreen taxYear={steuerjahr} onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
+        ) : null}
+        {tab === 'cockpit' && cockpitView === 'kinder' ? (
+          <KinderScreen taxYear={steuerjahr} onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
+        ) : null}
+        {tab === 'cockpit' && cockpitView === 'eulen-modus' ? (
+          <EulenModusScreen taxYear={steuerjahr} onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
+        ) : null}
+        {tab === 'belege' ? <BelegeScreen /> : null}
+        {tab === 'profil' && profilView === 'main' ? (
+          <ProfilScreen
+            onOpenDatenschutz={() => setProfilView('datenschutz')}
+            onOpenSicherheit={() => setProfilView('sicherheit')}
+            onOpenStammdaten={() => setProfilView('stammdaten')}
+            onSignedOut={onSignedOut}
+          />
+        ) : null}
+        {tab === 'profil' && profilView === 'datenschutz' ? (
+          <DatenschutzScreen onZurueck={() => setProfilView('main')} onAccountDeleted={onSignedOut} />
+        ) : null}
+        {tab === 'profil' && profilView === 'stammdaten' ? <StammdatenScreen onZurueck={() => setProfilView('main')} /> : null}
+        {tab === 'profil' && profilView === 'sicherheit' ? (
+          <SicherheitScreen onZurueck={() => setProfilView('main')} />
+        ) : null}
+      </View>
+      {zeigtTabBar ? <TabBar tabs={tabs} aktiv={tab} onWechsel={(id) => changeTab(id as Tab)} bottomInset={insets.bottom} /> : null}
     </View>
   )
 }

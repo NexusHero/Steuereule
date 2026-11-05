@@ -111,7 +111,7 @@ describe('App', () => {
 
       expect(await screen.findByText('Konto anlegen')).toBeTruthy()
       fireEvent.change(screen.getByPlaceholderText('du@beispiel.de'), { target: { value: 'neu@beispiel.de' } })
-      fireEvent.change(screen.getByPlaceholderText('Mindestens 6 Zeichen'), { target: { value: 'geheim1' } })
+      fireEvent.change(screen.getByPlaceholderText('Mindestens 8 Zeichen'), { target: { value: 'geheim-123' } })
       fireEvent.click(screen.getByText('Konto anlegen'))
 
       await screen.findByText('Willkommen bei SteuerEule.')
@@ -294,7 +294,7 @@ describe('App', () => {
       fireEvent.click(screen.getByText('Neu hier? Konto anlegen'))
       expect(await screen.findByText('Konto anlegen')).toBeTruthy()
       fireEvent.change(screen.getByPlaceholderText('du@beispiel.de'), { target: { value: 'neu@beispiel.de' } })
-      fireEvent.change(screen.getByPlaceholderText('Mindestens 6 Zeichen'), { target: { value: 'geheim1' } })
+      fireEvent.change(screen.getByPlaceholderText('Mindestens 8 Zeichen'), { target: { value: 'geheim-123' } })
       fireEvent.click(screen.getByText('Konto anlegen'))
       await screen.findByText('Willkommen bei SteuerEule.')
       fireEvent.click(screen.getByText('Weiter zum Onboarding →'))
@@ -584,7 +584,7 @@ describe('App', () => {
       expect(screen.queryByText('Erstmal als Gast umschauen')).toBeNull()
 
       fireEvent.change(screen.getByPlaceholderText('du@beispiel.de'), { target: { value: 'phone@beispiel.de' } })
-      fireEvent.change(screen.getByPlaceholderText('••••••••'), { target: { value: 'geheim1' } })
+      fireEvent.change(screen.getByPlaceholderText('••••••••'), { target: { value: 'geheim-123' } })
       fireEvent.click(screen.getByText('Einloggen'))
 
       // The URL never changed underneath this — no navigation happened, the same mounted

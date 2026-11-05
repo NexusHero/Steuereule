@@ -45,3 +45,6 @@ apps/api/prisma/.generated-test-schema-*.prisma
 .vscode/
 *.swp
 *~
+
+# scripts/local.sh dev logs
+.local/

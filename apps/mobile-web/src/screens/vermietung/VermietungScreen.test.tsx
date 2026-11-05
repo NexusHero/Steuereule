@@ -106,10 +106,10 @@ describe('VermietungScreen', () => {
     )
     renderVermietung()
     const input = await screen.findByLabelText(/Mieteinnahmen \(Jahreskaltmiete\)/)
-    fireEvent.change(input, { target: { value: '12000' } })
+    fireEvent.change(input, { target: { value: '13500' } })
     fireEvent.keyDown(input, { key: 'Enter' })
 
-    await waitFor(() => expect(body).toEqual({ kind: 'erfasst', wert: 12000 }))
+    await waitFor(() => expect(body).toEqual({ kind: 'erfasst', wert: 13500 }))
     expect(url).toContain('/vermietung/objekte/obj-1/mieteinnahmen')
   })
 

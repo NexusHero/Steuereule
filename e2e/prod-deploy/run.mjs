@@ -69,7 +69,7 @@ const COPY = {
   steuerNrLater: 'Hab ich nicht zur Hand — später',
   onboardingLoadErrorHeading: 'Das hat nicht geklappt.', // the stakeholder's own quoted words
   registrierungEmailPlaceholder: 'du@beispiel.de',
-  registrierungPasswordPlaceholder: 'Mindestens 6 Zeichen',
+  registrierungPasswordPlaceholder: 'Mindestens 8 Zeichen',
   registrierungSubmit: 'Konto anlegen',
   registrierungSuccessCta: 'Weiter zum Onboarding →',
   // ADR-0045 (value-first funnel): the guest lands in the Minimal-Gate, then the Konto-Wand.

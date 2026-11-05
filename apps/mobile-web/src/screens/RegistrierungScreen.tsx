@@ -8,6 +8,7 @@ import { authErrorKey } from '../auth/authErrors'
 import { useEmailVerified } from '../auth/useEmailVerified'
 import { SocialSignInSection } from './shared/SocialSignInSection'
 import { EmailVerificationBanner } from './shared/EmailVerificationBanner'
+import { MIN_PASSWORD_LENGTH } from '../auth/password-policy'
 
 export interface RegistrierungScreenProps {
   readonly onDone: () => void
@@ -32,7 +33,7 @@ export function RegistrierungScreen({ onDone, onLogin }: RegistrierungScreenProp
   const [stage, setStage] = useState<Stage>({ kind: 'form' })
   const verifiedForThisAccount = useEmailVerified(stage.kind === 'success' ? stage.email : undefined)
 
-  const ok = mail.includes('@') && pass.length >= 6
+  const ok = mail.includes('@') && pass.length >= MIN_PASSWORD_LENGTH
 
   async function anlegen() {
     if (!ok) {

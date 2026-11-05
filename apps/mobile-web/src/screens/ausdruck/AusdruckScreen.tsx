@@ -38,6 +38,17 @@ export function AusdruckScreen({ jahr, zahlung, onZurueck, onAngabenErgaenzen, o
   const [laedt, setLaedt] = useState(false)
 
   if (status.isPending || pruefung.isPending) return <LoadingState bp={bp} label={t('ausdruck.loading')} />
+  if (pruefung.data?.status === 404) {
+    return (
+      <ErrorState
+        bp={bp}
+        heading={t('ausdruck.keineVordrucke.heading', { jahr })}
+        message={t('ausdruck.keineVordrucke.message')}
+        retryLabel={t('ausdruck.back')}
+        onRetry={onZurueck}
+      />
+    )
+  }
   if (status.data?.status !== 200 || pruefung.data?.status !== 200) {
     return (
       <ErrorState

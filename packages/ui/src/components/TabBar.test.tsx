@@ -1,8 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, renderHook, screen } from '@testing-library/react'
 import { Text } from 'react-native'
 import { ThemeProvider } from '../theme/ThemeProvider'
-import { TabBar, TAB_ICON_PATHS, type TabItem } from './TabBar'
+import { useTheme } from '../theme/useTheme'
+import { TabBar, TAB_BAR_HEIGHT, TAB_ICON_PATHS, tabBarClearance, type TabItem } from './TabBar'
 
 const TABS: TabItem[] = [
   { id: 'cockpit', label: 'Cockpit' },
@@ -75,5 +76,27 @@ describe('TabBar', () => {
     // The paths live here so the DS stays their source of truth; this package draws no SVG.
     expect(TAB_ICON_PATHS.cockpit).toMatch(/^M4 13h6V4H4v9z/)
     expect(TAB_ICON_PATHS.profil).toMatch(/^M12 11a4 4 0/)
+  })
+
+  it('sits above the bottom safe-area inset, not on top of the home indicator', () => {
+    render(
+      <ThemeProvider mode="light">
+        <TabBar tabs={TABS} aktiv="cockpit" onWechsel={() => {}} bottomInset={34} testID="tabbar" />
+      </ThemeProvider>,
+    )
+    const { result } = renderHook(() => useTheme())
+
+    const bottom = getComputedStyle(screen.getByTestId('tabbar')).bottom
+
+    expect(bottom).toBe(`${result.current.space.s3 + 34}px`)
+  })
+})
+
+describe('tabBarClearance', () => {
+  it('reserves the bar, the gap below it, breathing room above it and the safe-area inset', () => {
+    const { result } = renderHook(() => tabBarClearance(useTheme(), 34))
+    const { result: theme } = renderHook(() => useTheme())
+
+    expect(result.current).toBe(34 + 2 * theme.current.space.s3 + TAB_BAR_HEIGHT)
   })
 })

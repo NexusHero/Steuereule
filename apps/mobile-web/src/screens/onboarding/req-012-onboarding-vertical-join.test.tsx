@@ -103,7 +103,7 @@ describe('REQ-012 — Onboarding vertical-join (ATDD acceptance, steuereule#53)'
     expect(screen.getByDisplayValue('02 476 291 358')).toBeTruthy()
 
     fireEvent.click(screen.getByText('Weiter'))
-    expect(screen.getByDisplayValue('133/815/0815')).toBeTruthy()
+    expect(screen.getByDisplayValue('13/381/50815')).toBeTruthy()
 
     fireEvent.click(screen.getByText('Weiter'))
     await screen.findByText('Deine Maske')

@@ -41,9 +41,10 @@ x-api-env: &api-env
   # explicit answer in production — "none" records that as a deliberate choice, not an
   # omission).
   TRUSTED_PROXIES: none
-  # Local stack: verification links go to the container log (deliberate, see
-  # resolveBrevoConfig). The real deployment sets BREVO_API_KEY + EMAIL_FROM instead.
-  EMAIL_DELIVERY: log
+  # Local stack: every mail lands in Mailpit's inbox (http://localhost:8025), never on the
+  # internet. The real deployment sets BREVO_API_KEY + EMAIL_FROM instead.
+  EMAIL_DELIVERY: smtp
+  SMTP_URL: smtp://mailpit:1025
   GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
   GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
   PORT: ${API_PORT:-3000}
@@ -75,6 +76,8 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
+      mailpit:
+        condition: service_started
 
   web:
     build:

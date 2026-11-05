@@ -1,3 +1,4 @@
+import { type EmailPurpose, renderEmail } from './email-content.js'
 import type { EmailSender, VerificationEmail } from './email-sender.js'
 
 export const BREVO_SEND_URL = 'https://api.brevo.com/v3/smtp/email'
@@ -18,22 +19,15 @@ export class BrevoEmailSender implements EmailSender {
   ) {}
 
   async sendVerificationEmail(email: VerificationEmail): Promise<void> {
-    await this.send(
-      email,
-      'Bitte bestätige deine E-Mail-Adresse, damit wir dein Konto absichern können.',
-      'E-Mail-Adresse bestätigen',
-    )
+    await this.send(email, 'verification')
   }
 
   async sendPasswordResetEmail(email: VerificationEmail): Promise<void> {
-    await this.send(
-      email,
-      'Du hast angefordert, dein Passwort zurückzusetzen. Wenn das nicht du warst, ignoriere diese E-Mail.',
-      'Neues Passwort festlegen',
-    )
+    await this.send(email, 'password-reset')
   }
 
-  private async send(email: VerificationEmail, intro: string, action: string): Promise<void> {
+  private async send(email: VerificationEmail, purpose: EmailPurpose): Promise<void> {
+    const { subject, text, html } = renderEmail(email, purpose)
     const response = await this.fetchImpl(BREVO_SEND_URL, {
       method: 'POST',
       headers: {
@@ -44,12 +38,9 @@ export class BrevoEmailSender implements EmailSender {
       body: JSON.stringify({
         sender: { email: this.config.senderEmail, name: this.config.senderName },
         to: [{ email: email.to }],
-        subject: email.subject,
-        textContent: `${intro}\n\n${action}: ${email.url}\n\nDeine SteuerEule`,
-        htmlContent:
-          `<p>${escapeHtml(intro)}</p>` +
-          `<p><a href="${escapeHtml(email.url)}">${escapeHtml(action)}</a></p>` +
-          '<p>Deine SteuerEule</p>',
+        subject,
+        textContent: text,
+        htmlContent: html,
       }),
     })
     if (!response.ok) {
@@ -58,16 +49,8 @@ export class BrevoEmailSender implements EmailSender {
   }
 }
 
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-}
-
 export function resolveBrevoConfig(env: NodeJS.ProcessEnv = process.env): BrevoConfig | undefined {
-  if (env.EMAIL_DELIVERY === 'log') return undefined
+  if (env.EMAIL_DELIVERY === 'log' || env.EMAIL_DELIVERY === 'smtp') return undefined
   const apiKey = env.BREVO_API_KEY?.trim()
   const senderEmail = env.EMAIL_FROM?.trim()
   if (apiKey && senderEmail) {

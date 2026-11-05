@@ -3,16 +3,17 @@
 // loading/empty/error states, i18n de/en, exactly one primary action. Exercises the real
 // generated `useCockpitControllerGetCockpitSummary` hook (@steuereule/api-client) against
 // `GET /v1/steuerjahre/{jahr}/cockpit`, with MSW mocking the wire shape.
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { afterEach, describe, it, expect, vi } from 'vitest'
+import { render, screen, fireEvent, act, waitFor } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@steuereule/ui'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, focusManager } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { CockpitScreen } from './CockpitScreen'
 import { server } from '../../test-msw-server'
-import type { CockpitSummaryDto } from '@steuereule/api-client'
+import type { CockpitSummaryDto, InterviewStateDto } from '@steuereule/api-client'
+import type { FunnelPfad } from '../funnel/KontoWandScreen'
 
 const TAX_YEAR = 2026
 const COCKPIT_URL = `*/v1/steuerjahre/${TAX_YEAR}/cockpit`
@@ -30,6 +31,40 @@ function mockCockpit(data: CockpitSummaryDto | null, status = 200) {
   server.use(http.get(COCKPIT_URL, () => HttpResponse.json(data, { status })))
 }
 
+const INTERVIEW_URL = `*/v1/steuerjahre/${TAX_YEAR}/interview`
+
+function mockInterview(answers: Record<string, string>, done = true) {
+  const state: InterviewStateDto = {
+    answers,
+    nextStep: done ? { kind: 'done' } : { kind: 'question', id: 'kinder' },
+    openItems: done ? 0 : 1,
+  }
+  server.use(http.get(INTERVIEW_URL, () => HttpResponse.json(state, { status: 200 })))
+}
+
+function holdNextCockpitResponse(body: CockpitSummaryDto | null): () => void {
+  let release: () => void = () => {}
+  const pending = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  server.use(
+    http.get(COCKPIT_URL, async () => {
+      await pending
+      return HttpResponse.json(body, { status: 200 })
+    }),
+  )
+  return () => release()
+}
+
+afterEach(() => focusManager.setFocused(undefined))
+
+function regainFocus() {
+  act(() => {
+    focusManager.setFocused(false)
+    focusManager.setFocused(true)
+  })
+}
+
 function mockCockpitError() {
   server.use(http.get(COCKPIT_URL, () => HttpResponse.error()))
 }
@@ -41,6 +76,10 @@ function renderCockpit(opts: {
   onOpenEulenModus?: (jahr: number) => void
   onOpenAusdruck?: (jahr: number) => void
   onOpenBestaetigung?: (jahr: number) => void
+  onContinuePath?: (pfad: FunnelPfad) => void
+  onJahrWechsel?: (jahr: number) => void
+  onOpenStammdaten?: () => void
+  taxYear?: number
 } = {}) {
   const i18n = createAppI18n(opts.lng ?? 'de')
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -49,12 +88,15 @@ function renderCockpit(opts: {
       <I18nextProvider i18n={i18n}>
         <ThemeProvider mode="light">
           <CockpitScreen
-            taxYear={TAX_YEAR}
+            taxYear={opts.taxYear ?? TAX_YEAR}
             onOpenInterview={opts.onOpenInterview ?? (() => {})}
             {...(opts.onOpenKinder ? { onOpenKinder: opts.onOpenKinder } : {})}
             {...(opts.onOpenEulenModus ? { onOpenEulenModus: opts.onOpenEulenModus } : {})}
             {...(opts.onOpenAusdruck ? { onOpenAusdruck: opts.onOpenAusdruck } : {})}
             {...(opts.onOpenBestaetigung ? { onOpenBestaetigung: opts.onOpenBestaetigung } : {})}
+            {...(opts.onContinuePath ? { onContinuePath: opts.onContinuePath } : {})}
+            {...(opts.onJahrWechsel ? { onJahrWechsel: opts.onJahrWechsel } : {})}
+            {...(opts.onOpenStammdaten ? { onOpenStammdaten: opts.onOpenStammdaten } : {})}
           />
         </ThemeProvider>
       </I18nextProvider>
@@ -77,6 +119,19 @@ describe('CockpitScreen', () => {
     renderCockpit()
 
     expect(await screen.findByText('49.880–50.120 €')).toBeTruthy()
+  })
+
+  it('says the income is still open instead of inventing a range like 0–120 €', async () => {
+    mockCockpit({
+      taxYear: TAX_YEAR,
+      stand: { kind: 'spanne', von: 0, bis: 120, offenePosten: 2, konflikte: 0, unbestaetigte: 0, unbestaetigteSumme: 0 },
+      openItems: 0,
+    })
+    renderCockpit()
+
+    expect(await screen.findByText('Noch offen')).toBeTruthy()
+    expect(screen.getByText('2 Posten offen')).toBeTruthy()
+    expect(screen.queryByText('0–120 €')).toBeNull()
   })
 
   it('renders a settled point value with no range dashes (ADR-015)', async () => {
@@ -142,22 +197,21 @@ describe('CockpitScreen', () => {
 
     await screen.findByText('Erfasstes Einkommen')
     expect(screen.getByText('Fragen beantworten')).toBeTruthy()
-    expect(screen.getAllByText('Aktualisieren')).toHaveLength(1)
 
     fireEvent.click(screen.getByText('Fragen beantworten'))
     expect(onOpenInterview).toHaveBeenCalledOnce()
   })
 
-  it('exposes exactly one primary action once loaded with nothing open — "Aktualisieren" alone', async () => {
+  it('offers no manual refresh button — the data refreshes itself', async () => {
     mockCockpit({ ...LOADED_SUMMARY, openItems: 0 })
     renderCockpit()
 
     await screen.findByText('Erfasstes Einkommen')
-    expect(screen.queryByText('Fragen beantworten')).toBeNull()
-    expect(screen.getAllByText('Aktualisieren')).toHaveLength(1)
+
+    expect(screen.queryByText('Aktualisieren')).toBeNull()
   })
 
-  it('refetches the summary when the primary action is pressed', async () => {
+  it('refetches the summary when the app regains focus', async () => {
     let calls = 0
     server.use(
       http.get(COCKPIT_URL, () => {
@@ -166,55 +220,28 @@ describe('CockpitScreen', () => {
       }),
     )
     renderCockpit()
-
     await screen.findByText('1 Frage offen')
-    fireEvent.click(screen.getByText('Aktualisieren'))
+
+    regainFocus()
+
     await screen.findByText('2 Fragen offen')
     expect(calls).toBe(2)
   })
 
-  it('shows the "Wird aktualisiert …" label while a refresh is in flight, from the loaded state', async () => {
-    mockCockpit(LOADED_SUMMARY)
+  it.each([
+    ['loaded', LOADED_SUMMARY, 'Erfasstes Einkommen'],
+    ['empty', null, 'Noch keine Angaben.'],
+  ] as const)('shows a quiet indicator in the header while refreshing, from the %s state', async (_state, body, visibleText) => {
+    mockCockpit(body)
     renderCockpit()
-    await screen.findByText('Erfasstes Einkommen')
+    await screen.findByText(visibleText)
+    const release = holdNextCockpitResponse(body)
 
-    let release: (() => void) | undefined
-    const pending = new Promise<void>((resolve) => {
-      release = resolve
-    })
-    server.use(
-      http.get(COCKPIT_URL, async () => {
-        await pending
-        return HttpResponse.json(LOADED_SUMMARY, { status: 200 })
-      }),
-    )
-    fireEvent.click(screen.getByText('Aktualisieren'))
+    regainFocus()
 
-    await screen.findByText('Wird aktualisiert …')
-    release?.()
-    await screen.findByText('Aktualisieren')
-  })
-
-  it('shows the "Wird aktualisiert …" label while a refresh is in flight, from the empty state', async () => {
-    mockCockpit(null)
-    renderCockpit()
-    await screen.findByText('Noch keine Angaben.')
-
-    let release: (() => void) | undefined
-    const pending = new Promise<void>((resolve) => {
-      release = resolve
-    })
-    server.use(
-      http.get(COCKPIT_URL, async () => {
-        await pending
-        return HttpResponse.json(null, { status: 200 })
-      }),
-    )
-    fireEvent.click(screen.getByText('Aktualisieren'))
-
-    await screen.findByText('Wird aktualisiert …')
-    release?.()
-    await screen.findByText('Aktualisieren')
+    await screen.findByLabelText('Wird aktualisiert …')
+    release()
+    await waitFor(() => expect(screen.queryByLabelText('Wird aktualisiert …')).toBeNull())
   })
 
   it('shows an honest empty state ("noch keine Angaben") when the API has no tax year yet, never mock data', async () => {
@@ -226,7 +253,6 @@ describe('CockpitScreen', () => {
       screen.getByText('Für dieses Steuerjahr liegen noch keine Angaben vor. Sobald deine Daten da sind, zeigen wir dir hier dein erfasstes Einkommen.'),
     ).toBeTruthy()
     expect(screen.queryByText('Erfasstes Einkommen')).toBeNull()
-    expect(screen.getAllByText('Aktualisieren')).toHaveLength(1)
   })
 
   it('offers "Fragen beantworten" from the empty state too — the only way a brand-new account ever reaches the Minimal-Gate', async () => {
@@ -381,5 +407,140 @@ describe('CockpitScreen — Kinder & Eulen-Modus entries', () => {
     renderCockpit({ onOpenEulenModus })
     fireEvent.click(await screen.findByTestId('cockpit-eulen-modus'))
     expect(onOpenEulenModus).toHaveBeenCalledWith(TAX_YEAR)
+  })
+
+  describe('"Weiter mit deinem Weg" — the way back into the path once the three questions are answered', () => {
+    it.each([
+      [{ job: 'Angestellt', ausland: 'Ja, in die Schweiz', kinder: 'Nein' }, 'Grenzgänger CH', 'ch'],
+      [{ job: 'Rente', ausland: 'Nein', kinder: 'Nein' }, 'Rente', 'rente'],
+      [{ job: 'Angestellt', ausland: 'Nein', kinder: 'Nein' }, 'Angestellte', 'angestellte'],
+    ] as const)('leads %o into the %s path', async (answers, label, pfad) => {
+      mockCockpit({ ...LOADED_SUMMARY, openItems: 0 })
+      mockInterview(answers)
+      const onContinuePath = vi.fn()
+      renderCockpit({ onContinuePath })
+
+      fireEvent.click(await screen.findByText(`Weiter mit deinem Weg · ${label}`))
+
+      expect(onContinuePath).toHaveBeenCalledWith(pfad)
+    })
+
+    it('offers it from the empty state too', async () => {
+      mockCockpit(null)
+      mockInterview({ job: 'Angestellt', ausland: 'Ja, in die Schweiz', kinder: 'Nein' })
+      renderCockpit({ onContinuePath: () => {} })
+
+      expect(await screen.findByText('Weiter mit deinem Weg · Grenzgänger CH')).toBeTruthy()
+    })
+
+    it('stays hidden while the three questions are not answered yet', async () => {
+      mockCockpit(LOADED_SUMMARY)
+      mockInterview({ job: 'Angestellt' }, false)
+      renderCockpit({ onContinuePath: () => {} })
+
+      await screen.findByText('Fragen beantworten')
+
+      expect(screen.queryByText(/Weiter mit deinem Weg/)).toBeNull()
+    })
+  })
+})
+
+describe('CockpitScreen — the chosen tax year belongs to the whole app', () => {
+  it('reports a year change so every following screen works on the same year', async () => {
+    mockCockpit(LOADED_SUMMARY)
+    const onJahrWechsel = vi.fn()
+    renderCockpit({ onJahrWechsel })
+    await screen.findByText('Erfasstes Einkommen')
+
+    fireEvent.click(screen.getByTestId('jahr-2025'))
+
+    expect(onJahrWechsel).toHaveBeenCalledWith(2025)
+  })
+
+  it('opens on the year it is given, not on the current one', async () => {
+    let geladen2025 = 0
+    server.use(
+      http.get('*/v1/steuerjahre/2025/cockpit', () => {
+        geladen2025 += 1
+        return HttpResponse.json(LOADED_SUMMARY, { status: 200 })
+      }),
+    )
+    renderCockpit({ taxYear: 2025 })
+
+    await screen.findByText('Erfasstes Einkommen')
+
+    expect(geladen2025).toBe(1)
+  })
+})
+
+describe('CockpitScreen — the personal details the return needs, asked early', () => {
+  it('says how many details are still missing and opens them', async () => {
+    mockCockpit(LOADED_SUMMARY)
+    server.use(http.get('*/v1/stammdaten', () => HttpResponse.json({ fehlend: ['geburtsdatum', 'iban', 'finanzamt'] })))
+    const onOpenStammdaten = vi.fn()
+    renderCockpit({ onOpenStammdaten })
+
+    fireEvent.click(await screen.findByText('Angaben für die Erklärung ergänzen · 3 fehlen'))
+
+    expect(onOpenStammdaten).toHaveBeenCalledOnce()
+  })
+
+  it('drops the missing count once every detail is there but keeps the way back to the details', async () => {
+    mockCockpit(LOADED_SUMMARY)
+    server.use(http.get('*/v1/stammdaten', () => HttpResponse.json({ fehlend: [] })))
+    let geoeffnet = 0
+    renderCockpit({ onOpenStammdaten: () => (geoeffnet += 1) })
+
+    await screen.findByText('Erfasstes Einkommen')
+
+    expect(screen.queryByText(/Angaben für die Erklärung ergänzen/)).toBeNull()
+    fireEvent.click(await screen.findByText('Angaben für die Erklärung & Partner'))
+    expect(geoeffnet).toBe(1)
+  })
+})
+
+describe('CockpitScreen — die voraussichtliche Erstattung als ehrliche Spanne (ADR-015)', () => {
+  const SCHAETZUNG_URL = `*/v1/steuerjahre/${TAX_YEAR}/steuerschaetzung`
+
+  it('shows the expected refund as a range', async () => {
+    mockCockpit(LOADED_SUMMARY)
+    server.use(http.get(SCHAETZUNG_URL, () => HttpResponse.json({ kind: 'spanne', ergebnis: { von: 312, bis: 455 }, kirchensteuerOffen: false })))
+    renderCockpit()
+
+    expect(await screen.findByText('Voraussichtlich 312 – 455 € Erstattung')).toBeTruthy()
+    expect(screen.queryByText('Die Erstattung rechnen wir in einem späteren Schritt.')).toBeNull()
+  })
+
+  it('shows a range without width as one figure, not as "31.192 – 31.192 €"', async () => {
+    mockCockpit(LOADED_SUMMARY)
+    server.use(http.get(SCHAETZUNG_URL, () => HttpResponse.json({ kind: 'spanne', ergebnis: { von: -31192, bis: -31192 }, kirchensteuerOffen: false })))
+    renderCockpit()
+
+    expect(await screen.findByText('Voraussichtlich rund 31.192 € Nachzahlung')).toBeTruthy()
+  })
+
+  it('names a back-payment as such, never as a negative refund', async () => {
+    mockCockpit(LOADED_SUMMARY)
+    server.use(http.get(SCHAETZUNG_URL, () => HttpResponse.json({ kind: 'spanne', ergebnis: { von: -21200, bis: -20400 }, kirchensteuerOffen: true })))
+    renderCockpit()
+
+    expect(await screen.findByText('Voraussichtlich 20.400 – 21.200 € Nachzahlung')).toBeTruthy()
+    expect(screen.getByText('Kirchensteuer ist in der Schätzung noch nicht enthalten.')).toBeTruthy()
+  })
+
+  it('says how many details the estimate still needs', async () => {
+    mockCockpit(LOADED_SUMMARY)
+    server.use(http.get(SCHAETZUNG_URL, () => HttpResponse.json({ kind: 'offen', fehlt: ['lohnsteuer', 'sozialversicherung'] })))
+    renderCockpit()
+
+    expect(await screen.findByText('Für die Schätzung fehlen noch 2 Angaben.')).toBeTruthy()
+  })
+
+  it('is honest when it cannot estimate yet', async () => {
+    mockCockpit(LOADED_SUMMARY)
+    server.use(http.get(SCHAETZUNG_URL, () => HttpResponse.json({ kind: 'nicht-moeglich', grund: 'verheiratet' })))
+    renderCockpit()
+
+    expect(await screen.findByText('Für Verheiratete rechnen wir die Erstattung noch nicht.')).toBeTruthy()
   })
 })

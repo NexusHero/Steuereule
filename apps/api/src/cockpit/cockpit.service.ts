@@ -1,7 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common'
 import {
   angestellteAusDaten,
+  chfNachEur,
   cockpitSpanneAusEingaben,
+  gatedEinkunftsarten,
+  offeneLohnausweisFelder,
+  type Answers,
   type CockpitSpanne,
 } from '@steuereule/core'
 import { INTERVIEW_ANSWER_REPOSITORY, type InterviewAnswerRepository } from '../interview/interview-answer.repository.js'
@@ -14,6 +18,8 @@ import { TAX_YEAR_REPOSITORY, type TaxYearRepository } from './tax-year.reposito
 import type { CockpitStandDto, CockpitSummaryDto } from './dto/cockpit-summary.dto.js'
 import { answersAus } from '../interview/answers.js'
 import { lstbDatenAus } from '../lstb/lstb-daten.js'
+import { CH_LOHNAUSWEIS_REPOSITORY, type ChLohnausweisRecord, type ChLohnausweisRepository } from '../ch-lohnausweis/ch-lohnausweis.repository.js'
+import { grenzgaengerStatusAusAnswers, lohnausweisWerteAusRecord, wechselkursAusRecord } from '../ch-lohnausweis/lohnausweis-daten.js'
 
 function erfassterWert(raw: string | null): number | null {
   if (raw === null || raw === 'unklar') return null
@@ -40,6 +46,23 @@ function toStandDto(stand: CockpitSpanne): CockpitStandDto {
   }
 }
 
+const CH_AUSLAND = 'Ja, in die Schweiz'
+
+/** A Grenzgänger's income is the converted Lohnausweis; a missing rate or figure is open, never a guessed zero. */
+function grenzgaengerFakten(record: ChLohnausweisRecord | null, answers: Answers) {
+  const werte = lohnausweisWerteAusRecord(record)
+  const wechselkurs = wechselkursAusRecord(record)
+  const status = grenzgaengerStatusAusAnswers(answers)
+  const brutto = werte['bruttolohn-total']
+  const offeneFelder = status === null ? 1 : offeneLohnausweisFelder(werte, status).length
+  return {
+    einnahmen: brutto !== undefined && wechselkurs !== null ? Math.round(chfNachEur(brutto, wechselkurs.kurs)) : 0,
+    offenePosten: offeneFelder + (wechselkurs === null ? 1 : 0),
+    konflikte: 0,
+    gegated: gatedEinkunftsarten(answers),
+  }
+}
+
 /** Application logic: userId+steuerjahr-scoped read, then the honest fold -> wire mapping. */
 @Injectable()
 export class CockpitService {
@@ -51,19 +74,21 @@ export class CockpitService {
     @Inject(RENTE_REPOSITORY) private readonly renteRepository: RenteRepository,
     @Inject(KAPITAL_REPOSITORY) private readonly kapitalRepository: KapitalRepository,
     @Inject(VERMIETUNG_REPOSITORY) private readonly vermietungRepository: VermietungRepository,
+    @Inject(CH_LOHNAUSWEIS_REPOSITORY) private readonly chLohnausweisRepository: ChLohnausweisRepository,
   ) {}
 
   async getSummary(userId: string, steuerjahr: number): Promise<CockpitSummaryDto | null> {
     const record = await this.taxYearRepository.findByUserAndYear(userId, steuerjahr)
     if (!record) return null
 
-    const [lstbRecord, interviewRows, kennzeichnungen, renteRecord, kapitalRecord, vermietungRecords] = await Promise.all([
+    const [lstbRecord, interviewRows, kennzeichnungen, renteRecord, kapitalRecord, vermietungRecords, chRecord] = await Promise.all([
       this.lstbRepository.findForUserAndYear(userId, steuerjahr),
       this.interviewRepository.findAllForUserAndYear(userId, steuerjahr),
       this.kennzeichnungRepository.listForUserAndYears(userId, [steuerjahr]),
       this.renteRepository.findForUserAndYear(userId, steuerjahr),
       this.kapitalRepository.findForUserAndYear(userId, steuerjahr),
       this.vermietungRepository.listForUserAndYear(userId, steuerjahr),
+      this.chLohnausweisRepository.findForUserAndYear(userId, steuerjahr),
     ])
 
     const daten = lstbDatenAus(lstbRecord)
@@ -93,7 +118,7 @@ export class CockpitService {
       }
     }
 
-    const fakten = angestellteAusDaten(daten, answers)
+    const fakten = answers.ausland === CH_AUSLAND ? grenzgaengerFakten(chRecord, answers) : angestellteAusDaten(daten, answers)
     const stand = cockpitSpanneAusEingaben({
       summe: fakten.einnahmen,
       offenePosten: fakten.offenePosten,

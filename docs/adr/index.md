@@ -72,6 +72,7 @@ The ADRs **justify** the architecture; the [living arc42 document](../arc42/READ
 | 0051 | Eulen-KI-Modus & Strikte Datenschutz-Grenze (Ticket 10.9, Product ADRs 037–042) | Accepted |
 | 0052 | Agenten-Zugang: der eigene KI-Assistent des Nutzers füllt die Erklärung aus (MCP, OAuth, gesammelte Bestätigung) | Accepted |
 | 0053 | Beta-Hosting auf Google Cloud Run und Cloud SQL (ändert Produkt-ADR-049 für die Beta) | Accepted |
+| 0054 | Zusammenveranlagung: eine gemeinsame Erklärung, Person A erfasst für Person B mit | Accepted |
 
 See also the [Tech Radar](./tech-radar.md).
 

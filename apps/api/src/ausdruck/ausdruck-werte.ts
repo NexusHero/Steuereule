@@ -7,6 +7,7 @@ import {
   kapitalPflichtfelder,
   type KapitalDepotEinordnung,
   type KapitalFeldId,
+  type Krankenversicherung,
 } from '@steuereule/core'
 import type { FeldWerte } from './vordruck-renderer.js'
 
@@ -45,6 +46,8 @@ export interface KindFakten {
   andererElternteilVerstorbenAm?: string | null
   gemeldetBeiMirGanzjaehrig?: boolean | null
   kindergeldAnMichGanzjaehrig?: boolean | null
+  kvBasisEur?: string | null
+  pvEur?: string | null
 }
 
 /** Anlage Kind Zeilen 47/48 — answered once per year in the interview. */
@@ -128,7 +131,38 @@ export interface ChLohnausweisFakten {
   krankentaggeldChf: string | null
   pkArbeitnehmerChf: string | null
   pkArbeitgeberChf: string | null
+  krankentaggeldArbeitgeberProzent: string | null
+  krankentaggeldArbeitgeberChf: string | null
+  nbuvArbeitgeberProzent: string | null
+  nbuvArbeitgeberChf: string | null
   sonderfaelle: boolean | null
+}
+
+/**
+ * Who pays a premium must be stated once the employee pays some of it (otherwise Z. 18/19 and 95–98
+ * cannot be filled); an employer paying everything also has to give its CHF amount.
+ */
+function praemieGeklaert(arbeitnehmerChf: number | null, prozent: string | null, arbeitgeberChf: string | null): boolean {
+  const anteil = ganzeZahl(prozent)
+  if (anteil === null) return arbeitnehmerChf === 0
+  return anteil < 100 || ganzeZahl(arbeitgeberChf) !== null
+}
+
+function nbuvArbeitnehmerChf(ch: ChLohnausweisFakten): number | null {
+  const ahv = ganzeZahl(ch.ahvBeitraegeChf)
+  const brutto = ganzeZahl(ch.bruttolohnChf)
+  const zulagen = ganzeZahl(ch.familienzulagenChf)
+  if (ahv === null || brutto === null || zulagen === null || ch.kurs === null) return null
+  return anlageNGreBetraege({
+    bruttolohnChf: brutto,
+    familienzulagenChf: zulagen,
+    ahvBeitraegeChf: ahv,
+    quellensteuerChf: 0,
+    krankentaggeldChf: 0,
+    pkArbeitnehmerChf: 0,
+    pkArbeitgeberChf: 0,
+    kurs: ch.kurs,
+  }).aufteilung.nbuv.arbeitnehmerChf
 }
 
 function nGreLuecke(ch: ChLohnausweisFakten): string | null {
@@ -140,6 +174,8 @@ function nGreLuecke(ch: ChLohnausweisFakten): string | null {
     ch.sonderfaelle === false &&
     ch.kurs !== null &&
     betraege.every((wert) => ganzeZahl(wert) !== null) &&
+    praemieGeklaert(ganzeZahl(ch.krankentaggeldChf), ch.krankentaggeldArbeitgeberProzent, ch.krankentaggeldArbeitgeberChf) &&
+    praemieGeklaert(nbuvArbeitnehmerChf(ch), ch.nbuvArbeitgeberProzent, ch.nbuvArbeitgeberChf) &&
     Boolean(ch.arbeitgeberName && ch.arbeitgeberStrasse && ch.arbeitgeberPlzOrt)
   return vollstaendig ? null : 'grenzgaenger'
 }
@@ -152,6 +188,36 @@ export interface SonderausgabenFakten {
 export interface RiesterFakten {
   art: string | null
   einnahmenVorjahr: string | null
+}
+
+/** Anlage N Zeilen 27–31: the facts only — the Finanzamt computes the Entfernungspauschale itself. */
+export interface ArbeitswegFakten {
+  arbeitstageJeWoche: number
+  freieTage: number
+  pendlertage: number
+  einfacheKm: number | null
+  mitPkw: boolean
+  taetigkeitsstaette: string | null
+}
+
+/** Anlage N Z. 27–31 and Anlage N-Gre Z. 32–36 ask the same facts under their own field prefix. */
+function arbeitswegWerte(a: ArbeitswegFakten | null | undefined, prefix: 'anlN' | 'anlNGre' = 'anlN'): Record<string, string> {
+  if (!a || a.einfacheKm === null) return {}
+  const werte: Record<string, string> = {
+    [`${prefix}.wegArt`]: '1',
+    [`${prefix}.wegTageJeWoche`]: String(a.arbeitstageJeWoche),
+    [`${prefix}.wegFreieTage`]: String(a.freieTage),
+    [`${prefix}.kz110Tage`]: String(a.pendlertage),
+    [`${prefix}.kz111`]: String(a.einfacheKm),
+  }
+  if (a.taetigkeitsstaette) werte[`${prefix}.wegOrt`] = a.taetigkeitsstaette
+  if (a.mitPkw) werte[`${prefix}.kz112`] = String(a.einfacheKm)
+  return werte
+}
+
+const optionaleZahl = (wert: string | null): number | undefined => {
+  const zahl = ganzeZahl(wert)
+  return zahl === null ? undefined : zahl
 }
 
 export interface AusdruckFakten {
@@ -183,6 +249,39 @@ export interface AusdruckFakten {
   sonderausgaben?: SonderausgabenFakten | null
   riester?: RiesterFakten | null
   alleinerziehend?: AlleinerziehendFakten | null
+  arbeitsweg?: ArbeitswegFakten | null
+  /** Self-paid health and care insurance of Person A (Anlage Vorsorgeaufwand Z. 16–33). */
+  krankenversicherung?: readonly Krankenversicherung[] | null
+}
+
+/**
+ * Anlage Vorsorgeaufwand for self-paid insurance (Person A Kennzahlen 3xx): voluntary statutory Z. 16–18
+ * and 22, private Z. 23, 24 and 27, foreign Z. 28–30 and 33. Contributions withheld from a German salary
+ * are e-data (Z. 11–13) and Swiss ones via the employer are in the Anlage N-Gre — neither is repeated here.
+ */
+function vorsorgeaufwandWerte(versicherungen: readonly Krankenversicherung[] | null | undefined): Record<string, string> {
+  const summen = new Map<string, number>()
+  const addiere = (kz: string, betrag: number) => summen.set(kz, (summen.get(kz) ?? 0) + betrag)
+  for (const kv of versicherungen ?? []) {
+    if (kv.art === 'gesetzlich') {
+      addiere('326', kv.kvBasis)
+      if (kv.mitKrankengeld) addiere('328', kv.kvBasis)
+      addiere('329', kv.pv)
+      addiere('338', kv.wahlleistungen)
+    } else if (kv.art === 'privat') {
+      addiere('350', kv.kvBasis)
+      addiere('351', kv.pv)
+      addiere('354', kv.wahlleistungen)
+    } else {
+      addiere('333', kv.kvBasis)
+      if (!kv.mitKrankengeld) addiere('334', kv.kvBasis)
+      addiere('335', kv.pv)
+      addiere('339', kv.wahlleistungen)
+    }
+  }
+  const werte: Record<string, string> = {}
+  for (const [kz, betrag] of summen) if (betrag > 0) werte[`anlVor.kz${kz}`] = String(betrag)
+  return werte
 }
 
 const RENTE_KENNZAHL: Record<string, string> = {
@@ -283,13 +382,14 @@ export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
   if (hatBruttoA && !hatBruttoB) {
     werte['anlN.kz110'] = brutto!
     werte['anlN.personA'] = true
+    Object.assign(werte, arbeitswegWerte(fakten.arbeitsweg))
     setze('anlN.name', profil.lastName)
     setze('anlN.vorname', profil.firstName)
     setze('anlN.steuernummer', profil.steuernummer)
   } else if (hatBruttoB) {
     const nInstanzen: FeldWerte[] = []
     if (hatBruttoA) {
-      const nA: Record<string, string | true> = { 'anlN.kz110': brutto!, 'anlN.personA': true }
+      const nA: Record<string, string | true> = { 'anlN.kz110': brutto!, 'anlN.personA': true, ...arbeitswegWerte(fakten.arbeitsweg) }
       if (profil.lastName) nA['anlN.name'] = profil.lastName
       if (profil.firstName) nA['anlN.vorname'] = profil.firstName
       if (profil.steuernummer) nA['anlN.steuernummer'] = profil.steuernummer
@@ -390,7 +490,7 @@ export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
       setze('anlNGre.steuernummer', profil.steuernummer)
       werte['anlNGre.kz117'] = '3'
       setze('anlNGre.beruf', sd?.beruf ?? null)
-      const { chf, eur } = anlageNGreBetraege({
+      const { chf, eur, aufteilung } = anlageNGreBetraege({
         bruttolohnChf: Number(ch.bruttolohnChf),
         familienzulagenChf: Number(ch.familienzulagenChf),
         ahvBeitraegeChf: Number(ch.ahvBeitraegeChf),
@@ -399,11 +499,28 @@ export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
         pkArbeitnehmerChf: Number(ch.pkArbeitnehmerChf),
         pkArbeitgeberChf: Number(ch.pkArbeitgeberChf),
         kurs: ch.kurs!,
+        krankentaggeldArbeitgeberProzent: optionaleZahl(ch.krankentaggeldArbeitgeberProzent),
+        krankentaggeldArbeitgeberChf: optionaleZahl(ch.krankentaggeldArbeitgeberChf),
+        nbuvArbeitgeberProzent: optionaleZahl(ch.nbuvArbeitgeberProzent),
+        nbuvArbeitgeberChf: optionaleZahl(ch.nbuvArbeitgeberChf),
       })
       for (const zeile of Object.keys(chf) as NGreZeile[]) {
+        // Z. 18/19 only apply when the employer pays part of a premium; an empty line stays empty.
+        if ((zeile === 'z18' || zeile === 'z19') && chf[zeile] === 0) continue
         werte[`anlNGre.${zeile}Chf`] = String(chf[zeile])
         werte[`anlNGre.${zeile}Eur`] = String(eur[zeile])
       }
+      for (const [zeilen, teil] of [
+        [['z95', 'z96'], aufteilung.krankentaggeld],
+        [['z97', 'z98'], aufteilung.nbuv],
+      ] as const) {
+        if (teil.arbeitgeberChf + teil.arbeitnehmerChf === 0) continue
+        werte[`anlNGre.${zeilen[0]}Arbeitgeber`] = String(teil.arbeitgeberProzent)
+        werte[`anlNGre.${zeilen[0]}Arbeitnehmer`] = String(teil.arbeitnehmerProzent)
+        werte[`anlNGre.${zeilen[1]}Arbeitgeber`] = String(teil.arbeitgeberChf)
+        werte[`anlNGre.${zeilen[1]}Arbeitnehmer`] = String(teil.arbeitnehmerChf)
+      }
+      Object.assign(werte, arbeitswegWerte(fakten.arbeitsweg, 'anlNGre'))
       setze('anlNGre.arbeitgeberName', ch.arbeitgeberName)
       setze('anlNGre.arbeitgeberStrasse', ch.arbeitgeberStrasse)
       setze('anlNGre.arbeitgeberPlzOrt', ch.arbeitgeberPlzOrt)
@@ -474,6 +591,9 @@ export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
       if (k.geburtsdatum) kWerte['anlKind.geburtsdatum'] = deutschesDatum(k.geburtsdatum)
       if (k.kindergeldAnspruchEur) kWerte['anlKind.kindergeld'] = k.kindergeldAnspruchEur
       if (k.familienkasse) kWerte['anlKind.familienkasse'] = k.familienkasse
+      // Z. 27/28: KV/PV of the child the parents pay as policyholders — an empty or zero line stays empty.
+      if (k.kvBasisEur && Number(k.kvBasisEur) > 0) kWerte['anlKind.kz66'] = k.kvBasisEur
+      if (k.pvEur && Number(k.pvEur) > 0) kWerte['anlKind.kz67'] = k.pvEur
       const beginn = k.geburtsdatum?.startsWith(`${fakten.steuerjahr}-`) ? k.geburtsdatum : `${fakten.steuerjahr}-01-01`
       const ende = `${fakten.steuerjahr}-12-31`
       if (k.wohnsitzInlandGanzjaehrig) {
@@ -519,6 +639,14 @@ export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
     setze('anlSo.vorname', profil.firstName)
     setze('anlSo.steuernummer', profil.steuernummer)
     werte['anlSo.spenden'] = fakten.sonderausgaben.spenden
+  }
+
+  const vorsorge = vorsorgeaufwandWerte(fakten.krankenversicherung)
+  if (Object.keys(vorsorge).length > 0) {
+    setze('anlVor.name', profil.lastName)
+    setze('anlVor.vorname', profil.firstName)
+    setze('anlVor.steuernummer', profil.steuernummer)
+    Object.assign(werte, vorsorge)
   }
 
   if (fakten.riester) {

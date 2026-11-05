@@ -11,6 +11,10 @@ export interface NGreAngaben {
   krankentaggeldChf: string | null
   pkArbeitnehmerChf: string | null
   pkArbeitgeberChf: string | null
+  krankentaggeldArbeitgeberProzent: string | null
+  krankentaggeldArbeitgeberChf: string | null
+  nbuvArbeitgeberProzent: string | null
+  nbuvArbeitgeberChf: string | null
   nGreSonderfaelle: boolean | null
 }
 
@@ -22,6 +26,10 @@ export const LEERE_N_GRE: NGreAngaben = {
   krankentaggeldChf: null,
   pkArbeitnehmerChf: null,
   pkArbeitgeberChf: null,
+  krankentaggeldArbeitgeberProzent: null,
+  krankentaggeldArbeitgeberChf: null,
+  nbuvArbeitgeberProzent: null,
+  nbuvArbeitgeberChf: null,
   nGreSonderfaelle: null,
 }
 

@@ -20,8 +20,8 @@ export class FreischaltungController {
   constructor(@Inject(FreischaltungService) private readonly service: FreischaltungService) {}
 
   @Get('v1/steuerjahre/:jahr/freischaltung')
-  @UseGuards(UserContextGuard)
   @RequiresAccount()
+  @UseGuards(UserContextGuard)
   @ApiParam({ name: 'jahr', type: Number, example: 2025 })
   @ApiOkResponse({ type: FreischaltungStatusDto })
   @ApiUnauthorizedResponse({ description: 'Guest session — paying requires a signed-in account.' })
