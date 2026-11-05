@@ -6,8 +6,8 @@ cd "$(dirname "$0")/.."
 
 PROD_STACK=(docker compose -f docker-compose.yml -f docker-compose.prod.yml)
 DEV_STACK=(docker compose)
-DEV_DATABASE_URL="postgresql://steuereule:steuereule@localhost:5434/steuereule"
 DEV_API_LOG=".local/api.log"
+INBOX_URL="http://localhost:8025"
 
 if [[ -t 1 ]]; then BOLD=$'\e[1m'; GREEN=$'\e[32m'; YELLOW=$'\e[33m'; RESET=$'\e[0m'; else BOLD=""; GREEN=""; YELLOW=""; RESET=""; fi
 info() { printf '%s▸%s %s\n' "$GREEN" "$RESET" "$1"; }
@@ -49,23 +49,26 @@ cmd_up() {
   "${PROD_STACK[@]}" up --build -d
   wait_for "http://localhost:3000/v1/health/ready" "API"
   wait_for "http://localhost:8080/" "Web-App"
-  printf '\n%sLäuft.%s\n  Web: http://localhost:8080\n  API: http://localhost:3000\n' "$BOLD" "$RESET"
-  printf '  Bestätigungslink nach der Registrierung: scripts/local.sh mail\n  Stoppen: scripts/local.sh down\n\n'
+  printf '\n%sLäuft.%s\n  Web:      http://localhost:8080\n  API:      http://localhost:3000\n  Postfach: %s\n' "$BOLD" "$RESET" "$INBOX_URL"
+  printf '  Stoppen:  scripts/local.sh down\n\n'
   open_in_browser "http://localhost:8080"
 }
 
 cmd_dev() {
   require_docker
   require_pnpm_install
-  info "Postgres starten (Port 5434)"
-  "${DEV_STACK[@]}" up -d --wait postgres
+  info "Postgres und Postfach starten"
+  "${DEV_STACK[@]}" up -d --wait postgres mailpit
+  local pg_port
+  pg_port="$("${DEV_STACK[@]}" port postgres 5432 | sed 's/.*://')"
 
-  export DATABASE_URL="$DEV_DATABASE_URL"
+  export DATABASE_URL="postgresql://steuereule:steuereule@localhost:${pg_port}/steuereule"
   export PORT=3000
   export BETTER_AUTH_URL="http://localhost:3000"
   export CORS_ALLOWED_ORIGINS="http://localhost:8081"
   export WEB_APP_URL="http://localhost:8081"
-  export EMAIL_DELIVERY=log
+  export EMAIL_DELIVERY=smtp
+  export SMTP_URL="smtp://127.0.0.1:1025"
 
   info "Migrationen anwenden"
   pnpm --filter @steuereule/api migrate:deploy >/dev/null
@@ -78,6 +81,7 @@ cmd_dev() {
   trap 'kill "$api_pid" 2>/dev/null || true' EXIT INT TERM
   wait_for "http://localhost:3000/v1/health/ready" "API"
 
+  info "Postfach für Bestätigungsmails: $INBOX_URL"
   info "Web-App mit Hot Reload starten (http://localhost:8081, Strg-C beendet beides)"
   EXPO_NO_TYPESCRIPT_SETUP=1 EXPO_PUBLIC_API_BASE_URL="http://localhost:3000" pnpm --filter @steuereule/mobile-web web
 }
@@ -93,21 +97,10 @@ cmd_logs() {
   "${PROD_STACK[@]}" logs -f --tail 100 "${@:-api}"
 }
 
-last_verification_link() {
-  sed $'s/\e\\[[0-9;]*m//g' | grep -o 'https\?://[^ ]*verify-email[^ ]*' | tail -1 || true
-}
-
 cmd_mail() {
-  local link=""
-  if [[ -f "$DEV_API_LOG" ]]; then
-    link="$(last_verification_link <"$DEV_API_LOG")"
-  fi
-  if [[ -z "$link" ]] && docker info >/dev/null 2>&1; then
-    link="$("${PROD_STACK[@]}" logs --no-color --no-log-prefix api 2>/dev/null | last_verification_link)"
-  fi
-  [[ -n "$link" ]] || fail "Noch kein Bestätigungslink im Log. Erst registrieren, dann erneut versuchen."
-  printf '%s\n' "$link"
-  open_in_browser "$link"
+  curl -fsS -o /dev/null "$INBOX_URL" 2>/dev/null || fail "Postfach läuft nicht. Erst 'scripts/local.sh up' oder 'dev'."
+  info "Postfach: $INBOX_URL"
+  open_in_browser "$INBOX_URL"
 }
 
 cmd_reset() {
@@ -132,7 +125,7 @@ ${BOLD}scripts/local.sh${RESET} <befehl>
            Web http://localhost:8080 · API http://localhost:3000
   dev      Zum Entwickeln: Postgres im Container, API lokal, Web mit Hot Reload
            Web http://localhost:8081 · API http://localhost:3000
-  mail     Letzten Bestätigungslink aus dem API-Log holen und öffnen
+  mail     Lokales Postfach öffnen (alle Mails der App, http://localhost:8025)
   logs     API-Logs mitlesen (oder: logs web, logs postgres)
   status   Laufende Container anzeigen
   down     Alles stoppen, Daten bleiben

@@ -9,6 +9,7 @@ import { resolveAppleClientId, resolveAppleClientSecret, resolveAppleSignInEnabl
 import { BrevoEmailSender, resolveBrevoConfig } from './brevo-email-sender.js'
 import { EMAIL_SENDER, type EmailSender } from './email-sender.js'
 import { LoggingEmailSender } from './logging-email-sender.js'
+import { resolveSmtpConfig, SmtpEmailSender } from './smtp-email-sender.js'
 import { RequiresAccountGuard } from './requires-account.guard.js'
 import { UserContextGuard } from './user-context.guard.js'
 import { AuthCapabilitiesController } from './auth-capabilities.controller.js'
@@ -22,6 +23,8 @@ import { AuthCapabilitiesController } from './auth-capabilities.controller.js'
     {
       provide: EMAIL_SENDER,
       useFactory: (): EmailSender => {
+        const smtp = resolveSmtpConfig()
+        if (smtp) return new SmtpEmailSender(smtp)
         const brevo = resolveBrevoConfig()
         return brevo ? new BrevoEmailSender(brevo) : new LoggingEmailSender()
       },
