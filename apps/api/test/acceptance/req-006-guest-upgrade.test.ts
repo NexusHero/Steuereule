@@ -199,7 +199,7 @@ describe('REQ-006 — guest -> account upgrade, against the real server', () => 
       const accountCookie = signUp.headers.getSetCookie().find((c) => !c.startsWith('se_guest_session='))!.split(';')[0]!
 
       await expect(prisma.interviewAnswer.count({ where: { userId: guestUserId } })).resolves.toBe(0)
-      await expect(prisma.interviewAnswer.count({ where: { userId: user.id } })).resolves.toBe(3)
+      await expect(prisma.interviewAnswer.count({ where: { userId: user.id } })).resolves.toBe(4)
       await expect(prisma.taxYear.count({ where: { userId: user.id, steuerjahr: STEUERJAHR } })).resolves.toBe(1)
 
       const state = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview`, { headers: { cookie: accountCookie } })
@@ -235,7 +235,7 @@ describe('REQ-006 — guest -> account upgrade, against the real server', () => 
       expect(signIn.status).toBe(200)
 
       await expect(prisma.interviewAnswer.count({ where: { userId: user.id } })).resolves.toBe(1)
-      await expect(prisma.interviewAnswer.count({ where: { userId: guestUserId } })).resolves.toBe(3)
+      await expect(prisma.interviewAnswer.count({ where: { userId: guestUserId } })).resolves.toBe(4)
     })
 
     it('re-running the migration after the interview already moved duplicates nothing', async () => {
@@ -250,7 +250,7 @@ describe('REQ-006 — guest -> account upgrade, against the real server', () => 
       const { upgradeGuestToAccount } = await import('../../src/auth/guest-account-upgrade.js')
       await upgradeGuestToAccount(prisma, guestUserId, user.id)
 
-      await expect(prisma.interviewAnswer.count({ where: { userId: user.id } })).resolves.toBe(3)
+      await expect(prisma.interviewAnswer.count({ where: { userId: user.id } })).resolves.toBe(4)
       await expect(prisma.taxYear.count({ where: { userId: user.id } })).resolves.toBe(1)
     })
   })

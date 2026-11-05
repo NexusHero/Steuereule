@@ -487,7 +487,7 @@ describe('REQ-015 — the Minimal-Gate, against the real server', () => {
       headers: { 'content-type': 'application/json', cookie },
       body: JSON.stringify({ questionId: 'job', value: 'Rente' }),
     })
-    expect(await secondAnswer.json()).toEqual({ nextStep: { kind: 'question', id: 'ausland' }, openItems: 2 })
+    expect(await secondAnswer.json()).toEqual({ nextStep: { kind: 'question', id: 'ausland' }, openItems: 3 })
 
     const rows = await interviewRows(userId)
     expect(rows).toHaveLength(1)
