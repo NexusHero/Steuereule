@@ -2,9 +2,7 @@ export interface ConnectedAssistant {
   clientId: string
   name: string
   verbundenSeit: Date
-  connectedSince?: Date
   zuletztGenutzt: Date | null
-  lastUsed?: Date | null
 }
 
 export interface ClientInfo {

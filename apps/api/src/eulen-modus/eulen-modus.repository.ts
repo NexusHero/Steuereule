@@ -1,16 +1,13 @@
 export interface OwlSettingRecord {
   userId: string
   aktiviert: boolean
-  enabled?: boolean
   aktiviertAm: Date | null
-  enabledAt?: Date | null
 }
 
 export interface OwlCardDismissalRecord {
   id: string
   userId: string
   steuerjahr: number
-  taxYear?: number
   fingerprint: string
   createdAt: Date
 }

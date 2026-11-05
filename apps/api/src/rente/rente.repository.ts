@@ -5,13 +5,9 @@ export interface PensionRecord {
   taxYear?: number
   steuerjahr: number
   rentenart: string | null
-  pensionType?: string | null
   jahresbetrag: string | null
-  annualAmount?: string | null
   rentenbeginnJahr: string | null
-  startYear?: string | null
   alterBeiRentenbeginn: string | null
-  ageAtStart?: string | null
 }
 
 export const PENSION_REPOSITORY = Symbol('PENSION_REPOSITORY')

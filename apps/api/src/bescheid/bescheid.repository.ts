@@ -8,9 +8,7 @@ export interface AssessmentRecord {
   steuerjahr: number
   status: BescheidStatus
   bescheiddatum: string | null
-  noticeDate?: string | null
   einspruchGrund: string | null
-  appealReason?: string | null
   felder: AssessmentFields
 }
 

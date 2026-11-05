@@ -3,13 +3,9 @@ export interface PartnerCouplingRecord {
   personAUserId: string
   personBUserId: string
   steuerjahr: number
-  taxYear?: number
   veranlagungsart: 'einzel' | 'zusammen'
-  assessmentType?: 'single' | 'joint' | 'einzel' | 'zusammen'
   einladungsCode: string | null
-  invitationCode?: string | null
   einladungsCodeGueltigBis: Date | null
-  invitationCodeExpiresAt?: Date | null
 }
 
 export const PARTNER_COUPLING_REPOSITORY = Symbol('PARTNER_COUPLING_REPOSITORY')

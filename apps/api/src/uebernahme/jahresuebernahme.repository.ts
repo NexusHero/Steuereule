@@ -3,7 +3,6 @@ export interface TaxYearRolloverRecord {
   userId: string
   taxYear?: number
   steuerjahr: number
-  previousYear?: number
   vorjahr: number
   createdAt: Date
 }

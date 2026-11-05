@@ -4,7 +4,6 @@ export interface ReceiptRecord {
   id: string
   userId: string
   dateiname: string
-  filename?: string
   art?: ReceiptType | ReceiptType
   receiptType?: ReceiptType | ReceiptType
   belegdatum?: string
@@ -12,16 +11,13 @@ export interface ReceiptRecord {
   zahlungsdatum?: string
   paymentDate?: string
   steuerjahr: number | null
-  taxYear?: number | null
   vorschlagVerworfen: boolean
-  suggestionDismissed?: boolean
   createdAt: Date
   updatedAt: Date
 }
 
 export interface CreateReceiptData {
   dateiname: string
-  filename?: string
   art?: ReceiptType | ReceiptType
   receiptType?: ReceiptType | ReceiptType
   belegdatum?: string
@@ -33,9 +29,7 @@ export interface CreateReceiptData {
 /** The one assignment write: confirm a year, optionally dismissing a contradicting suggestion. */
 export interface SetAssignmentData {
   steuerjahr: number
-  taxYear?: number
   vorschlagVerworfen: boolean
-  suggestionDismissed?: boolean
 }
 
 export const RECEIPT_REPOSITORY = Symbol('RECEIPT_REPOSITORY')

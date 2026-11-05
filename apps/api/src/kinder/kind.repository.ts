@@ -21,14 +21,10 @@ export interface ChildRecord extends ChildDetails {
   id: string
   userId: string
   steuerjahr: number
-  taxYear?: number
   lfdNr: number
   vorname: string
-  firstName?: string
   nachname: string
-  lastName?: string
   geburtsdatum: string
-  birthDate?: string
   idnr: string | null
   kindergeldAnspruchEur: string | null
 }

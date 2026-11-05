@@ -3,7 +3,6 @@ import type { Annex, Kennzeichnung } from '@steuereule/core'
 export type ProvenanceRecord = Omit<Kennzeichnung, 'wert' | 'value'> & {
   readonly userId: string
   readonly steuerjahr: number
-  readonly taxYear?: number
 }
 export const PROVENANCE_REPOSITORY = Symbol('PROVENANCE_REPOSITORY')
 
