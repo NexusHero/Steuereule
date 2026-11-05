@@ -110,7 +110,7 @@ function schaetzung(input: {
     von: incomeTax(zuVersteuerndesEinkommen.von, input.jahr),
     bis: incomeTax(zuVersteuerndesEinkommen.bis, input.jahr),
   }
-  const solidaritaetszuschlag = { von: soli(einkommensteuer.von, input.jahr), bis: soli(einkommensteuer.bis, input.jahr) }
+  const soliSpanne = { von: soli(einkommensteuer.von, input.jahr), bis: soli(einkommensteuer.bis, input.jahr) }
   return {
     kind: 'spanne',
     werbungskosten: input.werbungskosten,
@@ -118,11 +118,11 @@ function schaetzung(input: {
     sonderausgaben,
     zuVersteuerndesEinkommen,
     einkommensteuer,
-    solidaritaetszuschlag,
+    solidaritaetszuschlag: soliSpanne,
     anrechnung: input.anrechnung,
     ergebnis: {
-      von: input.bereitsGezahlt(einkommensteuer.bis) - solidaritaetszuschlag.bis,
-      bis: input.bereitsGezahlt(einkommensteuer.von) - solidaritaetszuschlag.von,
+      von: input.bereitsGezahlt(einkommensteuer.bis) - soliSpanne.bis,
+      bis: input.bereitsGezahlt(einkommensteuer.von) - soliSpanne.von,
     },
   }
 }
