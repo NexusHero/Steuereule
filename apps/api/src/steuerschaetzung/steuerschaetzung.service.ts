@@ -2,12 +2,12 @@ import { Inject, Injectable } from '@nestjs/common'
 import {
   anlageNGreBetraege,
   angestellteAusAntworten,
-  berechneWerktage,
+  calculateWorkdays,
   chfNachEur,
-  gatedEinkunftsarten,
-  lstbZustand,
+  gatedIncomeTypes,
+  wageTaxCertificateStatus,
   offeneLohnausweisFelder,
-  pendlerpauschale,
+  commuterAllowance,
   steuerschaetzungAngestellt,
   steuerschaetzungGrenzgaenger,
   afaSatzProzent,
@@ -18,17 +18,17 @@ import {
   type SpouseIncome,
   type Steuerschaetzung,
 } from '@steuereule/core'
-import { ARBEITSWEG_REPOSITORY, type ArbeitswegEingaben, type ArbeitswegRepository } from '../arbeitsweg/arbeitsweg.repository.js'
-import { CH_LOHNAUSWEIS_REPOSITORY, type ChLohnausweisRepository } from '../ch-lohnausweis/ch-lohnausweis.repository.js'
+import { COMMUTE_REPOSITORY, type CommuteInputs, type CommuteRepository } from '../arbeitsweg/arbeitsweg.repository.js'
+import { CROSS_BORDER_SALARY_STATEMENT_REPOSITORY, type CrossBorderSalaryStatementRepository } from '../ch-lohnausweis/ch-lohnausweis.repository.js'
 import { grenzgaengerStatusAusAnswers, lohnausweisWerteAusRecord, wechselkursAusRecord } from '../ch-lohnausweis/lohnausweis-daten.js'
 import { INTERVIEW_ANSWER_REPOSITORY, type InterviewAnswerRepository } from '../interview/interview-answer.repository.js'
 import { answersAus } from '../interview/answers.js'
 import { LSTB_REPOSITORY, type LstbRepository } from '../lstb/lstb.repository.js'
 import { lstbDatenAus } from '../lstb/lstb-daten.js'
-import { STAMMDATEN_REPOSITORY, type StammdatenRepository } from '../stammdaten/stammdaten.repository.js'
-import { KIND_REPOSITORY, type KindRepository } from '../kinder/kind.repository.js'
-import { KOPPLUNG_REPOSITORY, type KopplungRepository } from '../kopplung/kopplung.repository.js'
-import { VERMIETUNG_REPOSITORY, type VermietungRepository } from '../vermietung/vermietung.repository.js'
+import { MASTER_DATA_REPOSITORY, type MasterDataRepository } from '../stammdaten/stammdaten.repository.js'
+import { CHILD_REPOSITORY, type ChildRepository } from '../kinder/kind.repository.js'
+import { PARTNER_COUPLING_REPOSITORY, type KopplungRepository } from '../kopplung/kopplung.repository.js'
+import { RENTAL_REPOSITORY, type RentalRepository } from '../vermietung/vermietung.repository.js'
 
 export type SteuerschaetzungStand =
   | (Extract<Steuerschaetzung, { kind: 'spanne' }> & { readonly kirchensteuerOffen: boolean; readonly zusammenveranlagung?: boolean })
@@ -39,16 +39,16 @@ const CH_AUSLAND = 'Ja, in die Schweiz'
 
 /** Ranged refund / back-payment estimate from everything the user has entered for one tax year (product ADR-015). */
 @Injectable()
-export class SteuerschaetzungService {
+export class TaxEstimateService {
   constructor(
     @Inject(LSTB_REPOSITORY) private readonly lstb: LstbRepository,
     @Inject(INTERVIEW_ANSWER_REPOSITORY) private readonly interview: InterviewAnswerRepository,
-    @Inject(CH_LOHNAUSWEIS_REPOSITORY) private readonly chLohnausweis: ChLohnausweisRepository,
-    @Inject(STAMMDATEN_REPOSITORY) private readonly stammdaten: StammdatenRepository,
-    @Inject(ARBEITSWEG_REPOSITORY) private readonly arbeitsweg: ArbeitswegRepository,
-    @Inject(KOPPLUNG_REPOSITORY) private readonly kopplung?: KopplungRepository,
-    @Inject(KIND_REPOSITORY) private readonly kinder?: KindRepository,
-    @Inject(VERMIETUNG_REPOSITORY) private readonly vermietung?: VermietungRepository,
+    @Inject(CROSS_BORDER_SALARY_STATEMENT_REPOSITORY) private readonly chLohnausweis: CrossBorderSalaryStatementRepository,
+    @Inject(MASTER_DATA_REPOSITORY) private readonly stammdaten: MasterDataRepository,
+    @Inject(COMMUTE_REPOSITORY) private readonly arbeitsweg: CommuteRepository,
+    @Inject(PARTNER_COUPLING_REPOSITORY) private readonly kopplung?: KopplungRepository,
+    @Inject(CHILD_REPOSITORY) private readonly kinder?: ChildRepository,
+    @Inject(RENTAL_REPOSITORY) private readonly vermietung?: RentalRepository,
   ) {}
 
   async getState(userId: string, jahr: number): Promise<SteuerschaetzungStand> {
@@ -65,7 +65,7 @@ export class SteuerschaetzungService {
     if (stammdaten?.familienstand === 'verheiratet' || answers.familienstand === 'Verheiratet') {
       return this.ehepaar(userId, jahr)
     }
-    if (gatedEinkunftsarten(answers).length > 0 || besondereLebenslage(answers)) {
+    if (gatedIncomeTypes(answers).length > 0 || besondereLebenslage(answers)) {
       return { kind: 'nicht-moeglich', grund: 'besondere-lebenslage' }
     }
 
@@ -114,7 +114,7 @@ export class SteuerschaetzungService {
       )
     }
 
-    const zustand = lstbZustand(lstbDatenAus(lstbRecord))
+    const zustand = wageTaxCertificateStatus(lstbDatenAus(lstbRecord))
     if (zustand.kind === 'unvollstaendig') return { kind: 'offen', fehlt: [...zustand.offen, ...zustand.unklar] }
     if (zustand.kind === 'widerspruch') return { kind: 'offen', fehlt: zustand.widersprueche.map((w) => w.art) }
     return mitKirchensteuer(
@@ -216,7 +216,7 @@ export class SteuerschaetzungService {
       }
     }
     if (lstbRecord === null) return null
-    const zustand = lstbZustand(lstbDatenAus(lstbRecord))
+    const zustand = wageTaxCertificateStatus(lstbDatenAus(lstbRecord))
     if (zustand.kind === 'unvollstaendig') return { kind: 'offen', fehlt: [...zustand.offen, ...zustand.unklar] }
     if (zustand.kind === 'widerspruch') return { kind: 'offen', fehlt: zustand.widersprueche.map((w) => w.art) }
     return {
@@ -258,9 +258,9 @@ function besondereLebenslage(answers: Answers): boolean {
   return answers.dhf === 'Ja' || answers.abfindung === 'Ja' || answers.lohnersatz === 'Ja' || answers.nebenjob === 'Midijob' || answers.nebenjob === 'Nebenjob'
 }
 
-function pendlerpauschaleAus(jahr: number, weg: ArbeitswegEingaben | null): number {
+function pendlerpauschaleAus(jahr: number, weg: CommuteInputs | null): number {
   if (weg === null || weg.einfacheKm === null || weg.verkehrsmittel === null) return 0
-  const tage = berechneWerktage({
+  const tage = calculateWorkdays({
     jahr,
     werktage: weg.arbeitstage,
     urlaubstage: weg.urlaubstage,
@@ -270,7 +270,7 @@ function pendlerpauschaleAus(jahr: number, weg: ArbeitswegEingaben | null): numb
   })
   if (tage.kind !== 'bestimmt') return 0
   try {
-    return pendlerpauschale({ einfacheKm: weg.einfacheKm, tage: tage.pendlertage, jahr, mitPkw: weg.verkehrsmittel === 'pkw' })
+    return commuterAllowance({ einfacheKm: weg.einfacheKm, tage: tage.pendlertage, jahr, mitPkw: weg.verkehrsmittel === 'pkw' })
   } catch {
     return 0
   }
@@ -280,6 +280,3 @@ function mitKirchensteuer(schaetzung: Steuerschaetzung, kirchensteuerOffen: bool
   if (schaetzung.kind !== 'spanne') return { kind: 'nicht-moeglich', grund: schaetzung.grund }
   return { ...schaetzung, kirchensteuerOffen }
 }
-
-export { SteuerschaetzungService as TaxEstimateService }
-

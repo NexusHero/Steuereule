@@ -7,7 +7,7 @@ import { ParseSteuerjahrPipe } from '../cockpit/parse-steuerjahr.pipe.js'
 import { KopplungService } from '../kopplung/kopplung.service.js'
 import { ParsePersonPipe } from '../kopplung/parse-person.pipe.js'
 import { ArbeitswegService } from './arbeitsweg.service.js'
-import { ArbeitswegEingabenDto, ArbeitswegResponseDto } from './dto/arbeitsweg.dto.js'
+import { CommuteInputsDto, CommuteResponseDto } from './dto/arbeitsweg.dto.js'
 
 @ApiTags('arbeitsweg')
 @Controller('v1/steuerjahre')
@@ -21,14 +21,14 @@ export class ArbeitswegController {
   @Get(':jahr/arbeitsweg')
   @RequiresAccount()
   @ApiParam({ name: 'jahr', type: Number, example: 2025 })
-  @ApiOkResponse({ type: ArbeitswegResponseDto })
+  @ApiOkResponse({ type: CommuteResponseDto })
   @ApiUnauthorizedResponse({ description: 'Guest session — this endpoint requires a signed-in account.' })
   @ApiQuery({ name: 'person', required: false, enum: ['A', 'B'], description: 'B: Person A reads the commute of a partner without an own account (ADR-0054).' })
   async get(
     @CurrentUser() userId: string,
     @Param('jahr', ParseSteuerjahrPipe) jahr: number,
     @Query('person', ParsePersonPipe) person: 'A' | 'B',
-  ): Promise<ArbeitswegResponseDto> {
+  ): Promise<CommuteResponseDto> {
     return this.service.getState(await this.kopplung.datenNutzer(userId, jahr, person), jahr)
   }
 
@@ -36,16 +36,16 @@ export class ArbeitswegController {
   @HttpCode(200)
   @RequiresAccount()
   @ApiParam({ name: 'jahr', type: Number, example: 2025 })
-  @ApiBody({ type: ArbeitswegEingabenDto })
-  @ApiOkResponse({ type: ArbeitswegResponseDto })
+  @ApiBody({ type: CommuteInputsDto })
+  @ApiOkResponse({ type: CommuteResponseDto })
   @ApiUnauthorizedResponse({ description: 'Guest session — this endpoint requires a signed-in account.' })
   @ApiQuery({ name: 'person', required: false, enum: ['A', 'B'], description: 'B: Person A records the commute of a partner without an own account (ADR-0054).' })
   async put(
     @CurrentUser() userId: string,
     @Param('jahr', ParseSteuerjahrPipe) jahr: number,
-    @Body() body: ArbeitswegEingabenDto,
+    @Body() body: CommuteInputsDto,
     @Query('person', ParsePersonPipe) person: 'A' | 'B',
-  ): Promise<ArbeitswegResponseDto> {
+  ): Promise<CommuteResponseDto> {
     return this.service.save(await this.kopplung.datenNutzer(userId, jahr, person), jahr, {
       arbeitstage: body.arbeitstage,
       urlaubstage: body.urlaubstage,

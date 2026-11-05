@@ -16,7 +16,6 @@ export interface ChildDetails {
   pvEur: string | null
   schweizerKinderzulageEur: string | null
 }
-export type KindAngaben = ChildDetails
 
 export interface ChildRecord extends ChildDetails {
   id: string
@@ -33,10 +32,8 @@ export interface ChildRecord extends ChildDetails {
   idnr: string | null
   kindergeldAnspruchEur: string | null
 }
-export type KindRecord = ChildRecord
 
 export const CHILD_REPOSITORY = Symbol('CHILD_REPOSITORY')
-export const KIND_REPOSITORY = CHILD_REPOSITORY
 
 /** What Anlage Kind needs beyond the child's identity. */
 export interface ChildRepository {
@@ -66,4 +63,3 @@ export interface ChildRepository {
   ): Promise<ChildRecord | null>
   delete(userId: string, steuerjahr: number, id: string): Promise<boolean>
 }
-export type KindRepository = ChildRepository

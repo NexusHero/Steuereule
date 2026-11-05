@@ -1,19 +1,19 @@
-import type { JahresuebernahmeRecord, JahresuebernahmeRepository } from '../../src/uebernahme/jahresuebernahme.repository.js'
+import type { TaxYearRolloverRecord, TaxYearRolloverRepository } from '../../src/uebernahme/jahresuebernahme.repository.js'
 
-export class FakeJahresuebernahmeRepository implements JahresuebernahmeRepository {
-  private records: JahresuebernahmeRecord[] = []
+export class FakeJahresuebernahmeRepository implements TaxYearRolloverRepository {
+  private records: TaxYearRolloverRecord[] = []
 
-  async findForUserAndYear(userId: string, steuerjahr: number): Promise<JahresuebernahmeRecord | null> {
+  async findForUserAndYear(userId: string, steuerjahr: number): Promise<TaxYearRolloverRecord | null> {
     const found = this.records.find((r) => r.userId === userId && r.steuerjahr === steuerjahr)
     return found ? { ...found } : null
   }
 
-  async record(userId: string, steuerjahr: number, vorjahr: number): Promise<JahresuebernahmeRecord> {
+  async record(userId: string, steuerjahr: number, vorjahr: number): Promise<TaxYearRolloverRecord> {
     const existing = await this.findForUserAndYear(userId, steuerjahr)
     if (existing) {
       throw new Error(`Unique constraint failed for userId=${userId}, steuerjahr=${steuerjahr}`)
     }
-    const created: JahresuebernahmeRecord = {
+    const created: TaxYearRolloverRecord = {
       id: `ju-${this.records.length + 1}`,
       userId,
       steuerjahr,
@@ -30,7 +30,7 @@ export class FakeJahresuebernahmeRepository implements JahresuebernahmeRepositor
     return before - this.records.length
   }
 
-  async listForUser(userId: string): Promise<JahresuebernahmeRecord[]> {
+  async listForUser(userId: string): Promise<TaxYearRolloverRecord[]> {
     return this.records.filter((r) => r.userId === userId).map((r) => ({ ...r }))
   }
 }

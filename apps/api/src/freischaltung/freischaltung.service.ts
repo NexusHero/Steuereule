@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { UnauthenticatedError, UnavailableError } from '../common/domain-error.js'
-import { FREISCHALTUNG_REPOSITORY, type FreischaltungRepository } from './freischaltung.repository.js'
+import { UNLOCK_REPOSITORY, type UnlockRepository } from './freischaltung.repository.js'
 import { ZAHLUNGSANBIETER, type Zahlungsanbieter } from './zahlungsanbieter.js'
 
 export const WEB_APP_URL_TOKEN = Symbol('WEB_APP_URL')
@@ -9,9 +9,9 @@ export type FreischaltungStatus = 'freigeschaltet' | 'offen' | 'nicht-verfuegbar
 
 /** Paid unlock per tax year: the user pays once per Steuerjahr before the Formular-Ausdruck is handed out. */
 @Injectable()
-export class FreischaltungService {
+export class UnlockService {
   constructor(
-    @Inject(FREISCHALTUNG_REPOSITORY) private readonly repository: FreischaltungRepository,
+    @Inject(UNLOCK_REPOSITORY) private readonly repository: UnlockRepository,
     @Inject(ZAHLUNGSANBIETER) private readonly anbieter: Zahlungsanbieter | null,
     @Inject(WEB_APP_URL_TOKEN) private readonly webAppUrl: string,
   ) {}
@@ -50,6 +50,3 @@ export class FreischaltungService {
     }
   }
 }
-
-export { FreischaltungService as UnlockService }
-

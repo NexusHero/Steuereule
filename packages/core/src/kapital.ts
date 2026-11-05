@@ -1,5 +1,5 @@
-import { berechne, type Berechnungsstand, type Posten } from './berechnung'
-import type { Einkunftsart, IncomeType } from './einkunftsarten'
+import { calculate, type Berechnungsstand, type Posten } from './berechnung'
+import type { IncomeType } from './einkunftsarten'
 
 export type CapitalDepotAnswer = 'Deutscher Broker' | 'Ausländischer Broker' | 'Krypto'
 export type KapDepotAntwort = CapitalDepotAnswer
@@ -46,9 +46,6 @@ export type CapitalFieldId =
   | 'kapitalertragsteuer'
   | 'solidaritaetszuschlag'
   | 'kirchensteuer'
-
-export type KapitalFeldId = CapitalFieldId
-
 export const CAPITAL_FIELDS: readonly CapitalFieldId[] = [
   'kapitalertraege',
   'sparerPauschbetrag',
@@ -56,7 +53,6 @@ export const CAPITAL_FIELDS: readonly CapitalFieldId[] = [
   'solidaritaetszuschlag',
   'kirchensteuer',
 ]
-export const KAPITAL_FELDER = CAPITAL_FIELDS
 
 export function mandatoryCapitalFields(depot: CapitalDepotClassification['kind']): readonly CapitalFieldId[] {
   if (depot === 'deutscher-broker') return CAPITAL_FIELDS
@@ -68,12 +64,7 @@ export type CapitalFieldState =
   | { readonly kind: 'offen' }
   | { readonly kind: 'unklar' }
   | { readonly kind: 'erfasst'; readonly wert: number }
-
-export type KapitalFeldZustand = CapitalFieldState
-
 export type CapitalData = { readonly [feld in CapitalFieldId]: CapitalFieldState }
-export type KapitalDaten = CapitalData
-
 export const EMPTY_CAPITAL: CapitalData = {
   kapitalertraege: { kind: 'offen' },
   sparerPauschbetrag: { kind: 'offen' },
@@ -81,7 +72,6 @@ export const EMPTY_CAPITAL: CapitalData = {
   solidaritaetszuschlag: { kind: 'offen' },
   kirchensteuer: { kind: 'offen' },
 }
-export const LEERES_KAPITAL = EMPTY_CAPITAL
 
 export function isValidCapitalAmount(wert: number): boolean {
   return Number.isFinite(wert) && Number.isInteger(wert) && wert >= 0
@@ -95,7 +85,6 @@ export function setCapitalField(daten: CapitalData, feld: CapitalFieldId, zustan
 }
 
 export const CAPITAL_UNCLEAR = 'unklar'
-export const KAPITAL_UNKLAR = CAPITAL_UNCLEAR
 
 export function serializeCapitalField(zustand: CapitalFieldState): string | null {
   switch (zustand.kind) {
@@ -128,23 +117,15 @@ export function capitalAsCoreLineItem(kapital: CapitalData): Posten | null {
   }
 }
 
-export function capitalStatus(kapital: CapitalData, gegated: readonly (IncomeType | Einkunftsart)[]): Berechnungsstand {
+export function capitalStatus(kapital: CapitalData, gegated: readonly (IncomeType | IncomeType)[]): Berechnungsstand {
   const kernposten = capitalAsCoreLineItem(kapital)
   const posten: Posten[] = kernposten === null ? [] : [kernposten]
   const offenePosten = kernposten === null ? 1 : 0
-  return berechne({ posten, offenePosten, konflikte: [], gegated: gegated as readonly Einkunftsart[] })
+  return calculate({ posten, offenePosten, konflikte: [], gegated: gegated as readonly IncomeType[] })
 }
 
 // Backward-compatibility aliases
 export {
   isCapitalDepotAnswer as istKapDepotAntwort,
-  classifyCapitalDepot as ordneKapDepotEin,
-  isFavorableTaxTestApplicable as istGuenstigerpruefungAnwendbar,
-  mandatoryCapitalFields as kapitalPflichtfelder,
-  isValidCapitalAmount as istGueltigerKapitalBetrag,
-  setCapitalField as setzeKapitalFeld,
-  serializeCapitalField as serialisiereKapitalFeld,
-  deserializeCapitalField as deserialisiereKapitalFeld,
-  capitalAsCoreLineItem as kapitalAlsKernposten,
-  capitalStatus as kapitalStand,
+  classifyCapitalDepot as ordneKapDepotEin
 }

@@ -3,7 +3,7 @@ import { ScrollView, View, Text, Pressable, type ViewStyle, type TextStyle } fro
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button, Card, Chip, Feld, Input, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
-import { formatEuro, VERMIETUNG_FELDER, type VermietungFeldId } from '@steuereule/core'
+import { formatEuro, RENTAL_FIELDS, type RentalFieldId } from '@steuereule/core'
 import {
   useKopplungControllerGet,
   getVermietungControllerGetQueryKey,
@@ -74,7 +74,7 @@ export function VermietungScreen({ onDone = () => {}, onBack, taxYear = CURRENT_
     void queryClient.invalidateQueries({ queryKey: getVermietungControllerGetQueryKey(taxYear) })
   }
 
-  function send(objektId: string, feld: VermietungFeldId, data: VermietungFeldDto) {
+  function send(objektId: string, feld: RentalFieldId, data: VermietungFeldDto) {
     setFeld.mutate({ jahr: taxYear, objektId, feld, data }, { onSuccess: invalidate })
   }
 
@@ -150,7 +150,7 @@ function ObjektCard({
   readonly paar?: boolean
   readonly objekt: VermietungsobjektDto
   readonly index: number
-  readonly onSend: (feld: VermietungFeldId, data: VermietungFeldDto) => void
+  readonly onSend: (feld: RentalFieldId, data: VermietungFeldDto) => void
   readonly onSendAdresse?: (adresse: PutVermietungAdresseDto) => void
 }) {
   const t = useTheme()
@@ -160,7 +160,7 @@ function ObjektCard({
   return (
     <Card style={styles.objektCard}>
       <Text style={styles.objektHeading}>{tr('vermietung.objektHeading', { index: index + 1 })}</Text>
-      {VERMIETUNG_FELDER.map((feld) => (
+      {RENTAL_FIELDS.map((feld) => (
         <VermietungFeldEditor
           key={feld}
           label={tr(`vermietung.felder.${feld}`)}

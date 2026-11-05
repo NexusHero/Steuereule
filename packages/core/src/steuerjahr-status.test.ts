@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   istBescheidUebergangErlaubt,
-  istUebergangErlaubt,
+  isTransitionAllowed,
   naechsteBescheidZustaende,
   naechsteZustaende,
   type BescheidStatus,
@@ -22,32 +22,32 @@ describe('the ADR-018 main flow (Entwurf → Prüfung → Eingereicht → Besche
   ]
 
   it.each(happyPath)('%s → %s is legal', (von, nach) => {
-    expect(istUebergangErlaubt(von, nach)).toBe(true)
+    expect(isTransitionAllowed(von, nach)).toBe(true)
   })
 })
 
 describe('rueckfrage — a REAL state between eingereicht and bescheid, reachable in both directions', () => {
   it('eingereicht → rueckfrage is legal (Finanzamt requests documents)', () => {
-    expect(istUebergangErlaubt('eingereicht', 'rueckfrage')).toBe(true)
+    expect(isTransitionAllowed('eingereicht', 'rueckfrage')).toBe(true)
   })
 
   it('rueckfrage ⇄ eingereicht: resolving the request returns to eingereicht', () => {
-    expect(istUebergangErlaubt('rueckfrage', 'eingereicht')).toBe(true)
+    expect(isTransitionAllowed('rueckfrage', 'eingereicht')).toBe(true)
   })
 
   it('rueckfrage → bescheid is legal (the request resolves straight into a Bescheid)', () => {
-    expect(istUebergangErlaubt('rueckfrage', 'bescheid')).toBe(true)
+    expect(isTransitionAllowed('rueckfrage', 'bescheid')).toBe(true)
   })
 })
 
 describe('extern-erledigt — a REAL parallel exit (ADR-018: archive, not a dead end)', () => {
   it('is reachable from entwurf and pruefung', () => {
-    expect(istUebergangErlaubt('entwurf', 'extern-erledigt')).toBe(true)
-    expect(istUebergangErlaubt('pruefung', 'extern-erledigt')).toBe(true)
+    expect(isTransitionAllowed('entwurf', 'extern-erledigt')).toBe(true)
+    expect(isTransitionAllowed('pruefung', 'extern-erledigt')).toBe(true)
   })
 
   it('is NOT reachable once eingereicht — you cannot file via us AND mark it externally done', () => {
-    expect(istUebergangErlaubt('eingereicht', 'extern-erledigt')).toBe(false)
+    expect(isTransitionAllowed('eingereicht', 'extern-erledigt')).toBe(false)
   })
 
   it('is terminal', () => {
@@ -73,7 +73,7 @@ describe('the two NON-states stay non-states (ADR-018)', () => {
 
 describe('editing is allowed: pruefung can return to entwurf', () => {
   it('pruefung → entwurf is legal (the user reopens a draft to fix something)', () => {
-    expect(istUebergangErlaubt('pruefung', 'entwurf')).toBe(true)
+    expect(isTransitionAllowed('pruefung', 'entwurf')).toBe(true)
   })
 })
 
@@ -92,7 +92,7 @@ describe('illegal jumps are rejected', () => {
     ['abgeschlossen', 'entwurf'],
     ['rueckfrage', 'entwurf'],
   ] as const)('%s → %s is illegal', (von, nach) => {
-    expect(istUebergangErlaubt(von, nach)).toBe(false)
+    expect(isTransitionAllowed(von, nach)).toBe(false)
   })
 })
 

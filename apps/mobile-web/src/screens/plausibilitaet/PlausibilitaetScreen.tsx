@@ -3,12 +3,12 @@ import { useTranslation } from 'react-i18next'
 import { Button, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
 import {
   angestellteAusDaten,
-  angestelltenStand,
-  lstbZustand,
+  calculateEmployeeStatus,
+  wageTaxCertificateStatus,
   pruefePlausibilitaet,
   type Answers,
   type LstbDaten,
-  type LstbFeldZustand,
+  type WageTaxCertificateFieldState,
 } from '@steuereule/core'
 import {
   useInterviewControllerGetInterview,
@@ -116,9 +116,9 @@ export function PlausibilitaetScreen({ onBack, onDone, taxYear = CURRENT_TAX_YEA
 
 function datenAusResponse(r: LstbResponseDto): LstbDaten {
   return {
-    bruttoarbeitslohn: r.bruttoarbeitslohn as LstbFeldZustand,
-    lohnsteuer: r.lohnsteuer as LstbFeldZustand,
-    sozialversicherung: r.sozialversicherung as LstbFeldZustand,
+    bruttoarbeitslohn: r.bruttoarbeitslohn as WageTaxCertificateFieldState,
+    lohnsteuer: r.lohnsteuer as WageTaxCertificateFieldState,
+    sozialversicherung: r.sozialversicherung as WageTaxCertificateFieldState,
   }
 }
 
@@ -126,9 +126,9 @@ function fold(daten: LstbDaten, answers: Answers) {
   const fakten = angestellteAusDaten(daten, answers)
 
   return {
-    lstb: lstbZustand(daten),
+    lstb: wageTaxCertificateStatus(daten),
     werktage: { kind: 'bestimmt' as const, wochentage: 0, werktage: 0, pendlertage: 0 },
-    stand: angestelltenStand({
+    stand: calculateEmployeeStatus({
       einnahmen: fakten.einnahmen,
       werbungskosten: fakten.werbungskosten,
       sonderausgaben: fakten.sonderausgaben,

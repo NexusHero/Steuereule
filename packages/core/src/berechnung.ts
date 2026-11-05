@@ -1,4 +1,4 @@
-import type { Einkunftsart } from './einkunftsarten.js'
+import type { IncomeType } from './einkunftsarten.js'
 
 export type ProvenanceKind = 'input' | 'receipt' | 'ai-suggestion' | 'rule' | 'rollover'
 
@@ -22,7 +22,7 @@ export type Rolle = 'einnahme' | 'vorsorgeaufwand' | 'anrechnung'
 /** A settled line item. */
 export interface LineItem {
   readonly id: string
-  readonly incomeType: Einkunftsart
+  readonly incomeType: IncomeType
   readonly role?: LineItemRole
   readonly amount: number
   readonly source: Source | Quelle
@@ -31,7 +31,7 @@ export interface LineItem {
 
 export interface Posten {
   readonly id: string
-  readonly einkunftsart: Einkunftsart
+  readonly einkunftsart: IncomeType
   readonly rolle?: Rolle
   readonly betrag: number
   readonly quelle: Quelle
@@ -41,7 +41,7 @@ export interface Posten {
 /** A LineItem / Posten with conflicting sources. */
 export interface PostenKonflikt {
   readonly postenId: string
-  readonly einkunftsart: Einkunftsart
+  readonly einkunftsart: IncomeType
   readonly quellen: readonly (Quelle & { readonly betrag: number })[]
 }
 
@@ -49,7 +49,7 @@ export interface BerechnungsInput {
   readonly posten: readonly Posten[]
   readonly offenePosten: number
   readonly konflikte: readonly PostenKonflikt[]
-  readonly gegated: readonly Einkunftsart[]
+  readonly gegated: readonly IncomeType[]
 }
 
 export type Berechnungsstand =
@@ -66,7 +66,7 @@ export type Berechnungsstand =
       readonly anrechnung: number
       readonly offenePosten: number
       readonly konflikte: number
-      readonly gegated: readonly Einkunftsart[]
+      readonly gegated: readonly IncomeType[]
       readonly unbestaetigte: number
       readonly unbestaetigteSumme: number
     }
@@ -154,4 +154,3 @@ export function loeseKonflikt(konflikt: PostenKonflikt, aufloesung: KonfliktAufl
 export const resolveConflict = loeseKonflikt
 
 // Backward-compatibility aliases
-export { calculate as berechne }

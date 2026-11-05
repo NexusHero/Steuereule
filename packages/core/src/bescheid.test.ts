@@ -4,14 +4,14 @@ import {
   BESCHEID_VERGLEICHBARE_FELDER,
   EINSPRUCHS_GRUENDE,
   bescheidBerechnungsstand,
-  deserialisiereBescheidFeld,
-  einspruchsfristEnde,
-  gleicheBescheidAb,
+  deserializeAssessmentField,
+  appealDeadlineEnd,
+  reconcileAssessment,
   istEinspruchGrund,
-  istGueltigerBescheidBetrag,
+  isValidAssessmentAmount,
   korrigiereFassung,
-  serialisiereBescheidFeld,
-  verbleibendeEinspruchstage,
+  serializeAssessmentField,
+  remainingAppealDays,
   type Fassung,
 } from './bescheid'
 import type { AngestellteFakten } from './angestellte'
@@ -34,24 +34,24 @@ describe('gleicheBescheidAb — Abgleich Bescheid vs. berechne', () => {
   const stand = { kind: 'bestimmt' as const, einnahmen: 50_000, vorsorgeaufwand: 4_000, anrechnung: 1_000 }
 
   it('reports no deviations when every entered comparable field matches', () => {
-    const ab = gleicheBescheidAb({ einnahmen: 50_000, vorsorgeaufwand: 4_000, anrechnung: 1_000 }, stand)
+    const ab = reconcileAssessment({ einnahmen: 50_000, vorsorgeaufwand: 4_000, anrechnung: 1_000 }, stand)
     expect(ab.abweichungen).toEqual([])
     expect(ab.berechnungUnvollstaendig).toBe(false)
   })
 
   it('lists deviations as a diff, never silent', () => {
-    const ab = gleicheBescheidAb({ einnahmen: 48_000, anrechnung: 1_000 }, stand)
+    const ab = reconcileAssessment({ einnahmen: 48_000, anrechnung: 1_000 }, stand)
     expect(ab.abweichungen).toEqual([{ feld: 'einnahmen', bescheid: 48_000, berechnet: 50_000, differenz: -2_000 }])
   })
 
   it('ignores a still-offen Bescheid field (no fabricated zero)', () => {
-    const ab = gleicheBescheidAb({ vorsorgeaufwand: 4_000 }, stand)
+    const ab = reconcileAssessment({ vorsorgeaufwand: 4_000 }, stand)
     expect(ab.abweichungen).toEqual([]) // einnahmen/anrechnung not entered → not compared
   })
 
   it('flags an incomplete computed side (berechne "offen") as a partial truth', () => {
     const offenerStand = { kind: 'offen' as const, einnahmen: 50_000, vorsorgeaufwand: 4_000, anrechnung: 1_000, offenePosten: 2, konflikte: 0, gegated: [], unbestaetigte: 0, unbestaetigteSumme: 0 }
-    const ab = gleicheBescheidAb({ einnahmen: 50_000 }, offenerStand)
+    const ab = reconcileAssessment({ einnahmen: 50_000 }, offenerStand)
     expect(ab.berechnungUnvollstaendig).toBe(true)
     expect(ab.abweichungen).toEqual([])
   })
@@ -113,26 +113,26 @@ describe('korrigiereFassung — Kopie der eingereichten Fassung + Diff (ADR-009)
 
 describe('einspruchsfristEnde / verbleibendeEinspruchstage — § 355 AO, 1 Monat', () => {
   it('adds one month', () => {
-    expect(einspruchsfristEnde('2026-03-15')).toBe('2026-04-15')
+    expect(appealDeadlineEnd('2026-03-15')).toBe('2026-04-15')
   })
 
   it('rolls over the year', () => {
-    expect(einspruchsfristEnde('2026-12-15')).toBe('2027-01-15')
+    expect(appealDeadlineEnd('2026-12-15')).toBe('2027-01-15')
   })
 
   it('clamps to the last day of the target month (31.01 has no 31.02)', () => {
-    expect(einspruchsfristEnde('2026-01-31')).toBe('2026-02-28')
-    expect(einspruchsfristEnde('2024-01-31')).toBe('2024-02-29') // leap year
+    expect(appealDeadlineEnd('2026-01-31')).toBe('2026-02-28')
+    expect(appealDeadlineEnd('2024-01-31')).toBe('2024-02-29') // leap year
   })
 
   it('counts whole days from heute (exclusive) to the frist end, negative once abgelaufen', () => {
-    expect(verbleibendeEinspruchstage('2026-03-15', '2026-03-15')).toBe(31) // frist end 2026-04-15
-    expect(verbleibendeEinspruchstage('2026-03-15', '2026-04-15')).toBe(0)
-    expect(verbleibendeEinspruchstage('2026-03-15', '2026-04-16')).toBe(-1)
+    expect(remainingAppealDays('2026-03-15', '2026-03-15')).toBe(31) // frist end 2026-04-15
+    expect(remainingAppealDays('2026-03-15', '2026-04-15')).toBe(0)
+    expect(remainingAppealDays('2026-03-15', '2026-04-16')).toBe(-1)
   })
 
   it('rejects a malformed date', () => {
-    expect(() => einspruchsfristEnde('15.03.2026')).toThrow(RangeError)
+    expect(() => appealDeadlineEnd('15.03.2026')).toThrow(RangeError)
   })
 })
 
@@ -152,23 +152,23 @@ describe('EINSPRUCHS_GRUENDE — the closed Grund-Auswahl', () => {
 
 describe('Bescheid persistence encoding — offen/unklar/erfasst', () => {
   it('serialises offen/unklar/erfasst and round-trips', () => {
-    expect(serialisiereBescheidFeld('einnahmen', null)).toBeNull()
-    expect(serialisiereBescheidFeld('einnahmen', 'unklar')).toBe('unklar')
-    expect(serialisiereBescheidFeld('einnahmen', 50_000)).toBe('50000')
+    expect(serializeAssessmentField('einnahmen', null)).toBeNull()
+    expect(serializeAssessmentField('einnahmen', 'unklar')).toBe('unklar')
+    expect(serializeAssessmentField('einnahmen', 50_000)).toBe('50000')
 
-    expect(deserialisiereBescheidFeld('einnahmen', null)).toBeNull()
-    expect(deserialisiereBescheidFeld('einnahmen', 'unklar')).toBe('unklar')
-    expect(deserialisiereBescheidFeld('einnahmen', '50000')).toBe(50_000)
+    expect(deserializeAssessmentField('einnahmen', null)).toBeNull()
+    expect(deserializeAssessmentField('einnahmen', 'unklar')).toBe('unklar')
+    expect(deserializeAssessmentField('einnahmen', '50000')).toBe(50_000)
   })
 
   it('allows a signed erstattung (Nachzahlung < 0)', () => {
-    expect(serialisiereBescheidFeld('erstattung', -250)).toBe('-250')
-    expect(deserialisiereBescheidFeld('erstattung', '-250')).toBe(-250)
+    expect(serializeAssessmentField('erstattung', -250)).toBe('-250')
+    expect(deserializeAssessmentField('erstattung', '-250')).toBe(-250)
   })
 
   it('rejects a negative amount on a non-signed field', () => {
-    expect(istGueltigerBescheidBetrag('einnahmen', -1)).toBe(false)
-    expect(istGueltigerBescheidBetrag('erstattung', -1)).toBe(true)
-    expect(() => serialisiereBescheidFeld('einnahmen', -1)).toThrow(RangeError)
+    expect(isValidAssessmentAmount('einnahmen', -1)).toBe(false)
+    expect(isValidAssessmentAmount('erstattung', -1)).toBe(true)
+    expect(() => serializeAssessmentField('einnahmen', -1)).toThrow(RangeError)
   })
 })

@@ -1,17 +1,17 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
-import { ANDERE_KINDSCHAFTSVERHAELTNISSE, ANDERER_ELTERNTEIL_STATUS, KINDSCHAFTSVERHAELTNISSE } from '@steuereule/core'
+import { OTHER_CHILD_RELATIONSHIPS, OTHER_PARENT_STATUSES, CHILD_RELATIONSHIPS } from '@steuereule/core'
 import { IsBoolean, IsIn, IsNotEmpty, IsOptional, IsString, Matches, MaxLength } from 'class-validator'
 
 /** The Anlage-Kind facts beyond the child's identity — optional on write. */
 class KindAngabenDto {
-  @ApiPropertyOptional({ enum: KINDSCHAFTSVERHAELTNISSE, nullable: true, description: 'Kz 02: 1 = leiblich/adoptiert, 2 = Pflegekind, 3 = Enkel-/Stiefkind' })
+  @ApiPropertyOptional({ enum: CHILD_RELATIONSHIPS, nullable: true, description: 'Kz 02: 1 = leiblich/adoptiert, 2 = Pflegekind, 3 = Enkel-/Stiefkind' })
   @IsOptional()
-  @IsIn(KINDSCHAFTSVERHAELTNISSE)
+  @IsIn(CHILD_RELATIONSHIPS)
   kindschaftsverhaeltnis?: string | null
 
-  @ApiPropertyOptional({ enum: KINDSCHAFTSVERHAELTNISSE, nullable: true, description: 'Kz 03, to the spouse — only for a joint return' })
+  @ApiPropertyOptional({ enum: CHILD_RELATIONSHIPS, nullable: true, description: 'Kz 03, to the spouse — only for a joint return' })
   @IsOptional()
-  @IsIn(KINDSCHAFTSVERHAELTNISSE)
+  @IsIn(CHILD_RELATIONSHIPS)
   kindschaftsverhaeltnisB?: string | null
 
   @ApiPropertyOptional({ type: String, nullable: true, example: 'Familienkasse Sachsen' })
@@ -25,9 +25,9 @@ class KindAngabenDto {
   @IsBoolean()
   wohnsitzInlandGanzjaehrig?: boolean | null
 
-  @ApiPropertyOptional({ enum: ANDERER_ELTERNTEIL_STATUS, nullable: true, description: 'The other parent outside this return (Zeilen 11–15).' })
+  @ApiPropertyOptional({ enum: OTHER_PARENT_STATUSES, nullable: true, description: 'The other parent outside this return (Zeilen 11–15).' })
   @IsOptional()
-  @IsIn(ANDERER_ELTERNTEIL_STATUS)
+  @IsIn(OTHER_PARENT_STATUSES)
   andererElternteil?: string | null
 
   @ApiPropertyOptional({ type: String, nullable: true, example: 'Muster, Max' })
@@ -47,9 +47,9 @@ class KindAngabenDto {
   @MaxLength(150)
   andererElternteilAdresse?: string | null
 
-  @ApiPropertyOptional({ enum: ANDERE_KINDSCHAFTSVERHAELTNISSE, nullable: true })
+  @ApiPropertyOptional({ enum: OTHER_CHILD_RELATIONSHIPS, nullable: true })
   @IsOptional()
-  @IsIn(ANDERE_KINDSCHAFTSVERHAELTNISSE)
+  @IsIn(OTHER_CHILD_RELATIONSHIPS)
   andererElternteilArt?: string | null
 
   @ApiPropertyOptional({ type: String, nullable: true, example: '2025-06-30' })
@@ -169,10 +169,10 @@ export class KindResponseDto {
   @ApiPropertyOptional({ type: String, nullable: true, example: '3000' })
   kindergeldAnspruchEur?: string | null
 
-  @ApiProperty({ enum: KINDSCHAFTSVERHAELTNISSE, nullable: true })
+  @ApiProperty({ enum: CHILD_RELATIONSHIPS, nullable: true })
   kindschaftsverhaeltnis!: string | null
 
-  @ApiProperty({ enum: KINDSCHAFTSVERHAELTNISSE, nullable: true })
+  @ApiProperty({ enum: CHILD_RELATIONSHIPS, nullable: true })
   kindschaftsverhaeltnisB!: string | null
 
   @ApiProperty({ type: String, nullable: true })
@@ -181,7 +181,7 @@ export class KindResponseDto {
   @ApiProperty({ type: Boolean, nullable: true })
   wohnsitzInlandGanzjaehrig!: boolean | null
 
-  @ApiProperty({ enum: ANDERER_ELTERNTEIL_STATUS, nullable: true })
+  @ApiProperty({ enum: OTHER_PARENT_STATUSES, nullable: true })
   andererElternteil!: string | null
 
   @ApiProperty({ type: String, nullable: true })
@@ -193,7 +193,7 @@ export class KindResponseDto {
   @ApiProperty({ type: String, nullable: true })
   andererElternteilAdresse!: string | null
 
-  @ApiProperty({ enum: ANDERE_KINDSCHAFTSVERHAELTNISSE, nullable: true })
+  @ApiProperty({ enum: OTHER_CHILD_RELATIONSHIPS, nullable: true })
   andererElternteilArt!: string | null
 
   @ApiProperty({ type: String, nullable: true })

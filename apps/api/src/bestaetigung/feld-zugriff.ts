@@ -1,18 +1,18 @@
 import {
-  KAPITAL_FELDER,
-  LSTB_FELDER,
-  RENTEN_FELDER,
-  VERMIETUNG_FELDER,
-  type KapitalFeldId,
-  type LstbFeldId,
+  CAPITAL_FIELDS,
+  WAGE_TAX_CERTIFICATE_FIELDS,
+  PENSION_FIELDS,
+  RENTAL_FIELDS,
+  type CapitalFieldId,
+  type WageTaxCertificateFieldId,
   type Maske,
-  type RentenFeldId,
-  type VermietungFeldId,
+  type PensionFieldId,
+  type RentalFieldId,
 } from '@steuereule/core'
-import type { KapitalRepository } from '../kapital/kapital.repository.js'
+import type { CapitalRepository } from '../kapital/kapital.repository.js'
 import type { LstbRepository } from '../lstb/lstb.repository.js'
-import type { RenteRepository } from '../rente/rente.repository.js'
-import type { VermietungRepository } from '../vermietung/vermietung.repository.js'
+import type { PensionRepository } from '../rente/rente.repository.js'
+import type { RentalRepository } from '../vermietung/vermietung.repository.js'
 
 export interface MaskenZugriff {
   readonly felder: readonly string[]
@@ -27,24 +27,24 @@ export const FELD_ZUGRIFF = Symbol('FELD_ZUGRIFF')
 
 export interface FeldZugriffRepositories {
   readonly lstb: LstbRepository
-  readonly rente: RenteRepository
-  readonly kapital: KapitalRepository
-  readonly vermietung: VermietungRepository
+  readonly rente: PensionRepository
+  readonly kapital: CapitalRepository
+  readonly vermietung: RentalRepository
 }
 
-const RENTE_ZUGRIFF_FELDER = ['rentenart', ...RENTEN_FELDER] as const
+const RENTE_ZUGRIFF_FELDER = ['rentenart', ...PENSION_FIELDS] as const
 
 export function feldZugriffAus({ lstb, rente, kapital, vermietung }: FeldZugriffRepositories): FeldZugriff {
   return {
     lstb: {
-      felder: LSTB_FELDER,
+      felder: WAGE_TAX_CERTIFICATE_FIELDS,
       mitInstanz: false,
       async lese(userId, steuerjahr) {
         const r = await lstb.findForUserAndYear(userId, steuerjahr)
         return { bruttoarbeitslohn: r?.bruttoarbeitslohn ?? null, lohnsteuer: r?.lohnsteuer ?? null, sozialversicherung: r?.sozialversicherung ?? null }
       },
       async schreibe(userId, steuerjahr, _instanz, feld, wert) {
-        await lstb.setFeld(userId, steuerjahr, feld as LstbFeldId, wert)
+        await lstb.setFeld(userId, steuerjahr, feld as WageTaxCertificateFieldId, wert)
         return true
       },
     },
@@ -62,33 +62,33 @@ export function feldZugriffAus({ lstb, rente, kapital, vermietung }: FeldZugriff
       },
       async schreibe(userId, steuerjahr, _instanz, feld, wert) {
         if (feld === 'rentenart') await rente.setRentenart(userId, steuerjahr, wert)
-        else await rente.setFeld(userId, steuerjahr, feld as RentenFeldId, wert)
+        else await rente.setFeld(userId, steuerjahr, feld as PensionFieldId, wert)
         return true
       },
     },
     kapital: {
-      felder: KAPITAL_FELDER,
+      felder: CAPITAL_FIELDS,
       mitInstanz: false,
       async lese(userId, steuerjahr) {
         const r = await kapital.findForUserAndYear(userId, steuerjahr)
-        return Object.fromEntries(KAPITAL_FELDER.map((f) => [f, r?.[f] ?? null]))
+        return Object.fromEntries(CAPITAL_FIELDS.map((f) => [f, r?.[f] ?? null]))
       },
       async schreibe(userId, steuerjahr, _instanz, feld, wert) {
-        await kapital.setFeld(userId, steuerjahr, feld as KapitalFeldId, wert)
+        await kapital.setFeld(userId, steuerjahr, feld as CapitalFieldId, wert)
         return true
       },
     },
     vermietung: {
-      felder: VERMIETUNG_FELDER,
+      felder: RENTAL_FIELDS,
       mitInstanz: true,
       async lese(userId, steuerjahr, instanz) {
         const objekt = (await vermietung.listForUserAndYear(userId, steuerjahr)).find((o) => o.id === instanz)
         if (objekt === undefined) return null
-        return Object.fromEntries(VERMIETUNG_FELDER.map((f) => [f, objekt[f]]))
+        return Object.fromEntries(RENTAL_FIELDS.map((f) => [f, objekt[f]]))
       },
       async schreibe(userId, steuerjahr, instanz, feld, wert) {
         if (instanz === null) return false
-        return (await vermietung.setFeld(userId, steuerjahr, instanz, feld as VermietungFeldId, wert)) !== null
+        return (await vermietung.setFeld(userId, steuerjahr, instanz, feld as RentalFieldId, wert)) !== null
       },
     },
   }

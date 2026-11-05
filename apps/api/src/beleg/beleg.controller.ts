@@ -10,8 +10,8 @@ import {
 import { CurrentUser } from '../auth/current-user.decorator.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
 import { BelegService } from './beleg.service.js'
-import { BelegResponseDto } from './dto/beleg-response.dto.js'
-import { CreateBelegDto } from './dto/create-beleg.dto.js'
+import { ReceiptResponseDto } from './dto/beleg-response.dto.js'
+import { CreateReceiptDto } from './dto/create-beleg.dto.js'
 import { SetZuordnungDto } from './dto/set-zuordnung.dto.js'
 
 @ApiTags('belege')
@@ -21,15 +21,15 @@ export class BelegController {
   constructor(@Inject(BelegService) private readonly belegService: BelegService) {}
 
   @Get()
-  @ApiOkResponse({ type: BelegResponseDto, isArray: true, description: 'The caller’s Beleg inbox, newest first.' })
-  list(@CurrentUser() userId: string): Promise<BelegResponseDto[]> {
+  @ApiOkResponse({ type: ReceiptResponseDto, isArray: true, description: 'The caller’s Beleg inbox, newest first.' })
+  list(@CurrentUser() userId: string): Promise<ReceiptResponseDto[]> {
     return this.belegService.list(userId)
   }
 
   @Post()
-  @ApiBody({ type: CreateBelegDto })
-  @ApiCreatedResponse({ type: BelegResponseDto, description: 'The created, unbound Beleg with its derived Zuordnung.' })
-  create(@CurrentUser() userId: string, @Body() dto: CreateBelegDto): Promise<BelegResponseDto> {
+  @ApiBody({ type: CreateReceiptDto })
+  @ApiCreatedResponse({ type: ReceiptResponseDto, description: 'The created, unbound Beleg with its derived Zuordnung.' })
+  create(@CurrentUser() userId: string, @Body() dto: CreateReceiptDto): Promise<ReceiptResponseDto> {
     return this.belegService.create(userId, dto)
   }
 
@@ -37,13 +37,13 @@ export class BelegController {
   @HttpCode(200)
   @ApiParam({ name: 'id', type: String, description: 'The Beleg id (the caller’s own).' })
   @ApiBody({ type: SetZuordnungDto })
-  @ApiOkResponse({ type: BelegResponseDto, description: 'The Beleg with its confirmed year and derived Zuordnung.' })
+  @ApiOkResponse({ type: ReceiptResponseDto, description: 'The Beleg with its confirmed year and derived Zuordnung.' })
   @ApiNotFoundResponse({ description: 'No such Beleg for this account — nothing was persisted.' })
   setZuordnung(
     @CurrentUser() userId: string,
     @Param('id') id: string,
     @Body() dto: SetZuordnungDto,
-  ): Promise<BelegResponseDto> {
+  ): Promise<ReceiptResponseDto> {
     return this.belegService.setZuordnung(userId, id, dto)
   }
 }

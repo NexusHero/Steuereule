@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import { IsIn, IsOptional, IsString } from 'class-validator'
-import { BescheidFeldDto } from './bescheid-feld.dto.js'
+import { AssessmentFieldDto } from './bescheid-feld.dto.js'
 
 /** One Abgleich deviation. */
 export class BescheidAbweichungDto {
@@ -18,7 +18,7 @@ export class BescheidAbweichungDto {
 }
 
 /** The Abgleich result. */
-export class BescheidAbgleichDto {
+export class AssessmentComparisonDto {
   @ApiProperty({ type: [BescheidAbweichungDto], description: 'The deviations (empty = alles stimmt überein).' })
   abweichungen!: BescheidAbweichungDto[]
 
@@ -27,7 +27,7 @@ export class BescheidAbgleichDto {
 }
 
 /** The § 355 AO Einspruchsfrist, derived. */
-export class BescheidFristDto {
+export class AssessmentDeadlineDto {
   @ApiProperty({ type: String, nullable: true, description: 'Bescheiddatum (ISO yyyy-mm-dd), null until set.' })
   bescheiddatum!: string | null
 
@@ -39,7 +39,7 @@ export class BescheidFristDto {
 }
 
 /** The response shape for `GET /v1/steuerjahre/{jahr}/bescheid` and every PUT. */
-export class BescheidResponseDto {
+export class AssessmentResponseDto {
   @ApiProperty({ type: String, enum: ['eingegangen', 'geprüft', 'einspruch-eingelegt'], description: 'The bescheid-phase sub-state.' })
   status!: string
 
@@ -49,14 +49,14 @@ export class BescheidResponseDto {
   @ApiProperty({ type: String, nullable: true, description: 'Einspruch-Grund (closed set), null until filed.' })
   einspruchGrund!: string | null
 
-  @ApiProperty({ type: [BescheidFeldDto], description: 'The five figures, in paper order.' })
-  felder!: BescheidFeldDto[]
+  @ApiProperty({ type: [AssessmentFieldDto], description: 'The five figures, in paper order.' })
+  felder!: AssessmentFieldDto[]
 
-  @ApiProperty({ type: BescheidAbgleichDto, description: 'The Abgleich (Bescheid vs. berechnet).' })
-  abgleich!: BescheidAbgleichDto
+  @ApiProperty({ type: AssessmentComparisonDto, description: 'The Abgleich (Bescheid vs. berechnet).' })
+  abgleich!: AssessmentComparisonDto
 
-  @ApiProperty({ type: BescheidFristDto, description: 'The § 355 AO Einspruchsfrist.' })
-  frist!: BescheidFristDto
+  @ApiProperty({ type: AssessmentDeadlineDto, description: 'The § 355 AO Einspruchsfrist.' })
+  frist!: AssessmentDeadlineDto
 
   @ApiProperty({ type: [String], description: 'The legal next sub-states (for the UI to offer only what is legal).' })
   naechsteZustaende!: string[]
@@ -70,7 +70,7 @@ export class SetBescheidStatusDto {
 }
 
 /** The PUT body for the Bescheiddatum. */
-export class SetBescheidDatumDto {
+export class SetAssessmentDateDto {
   @ApiPropertyOptional({ type: String, nullable: true, example: '2026-04-15', description: 'Bescheiddatum (ISO yyyy-mm-dd).' })
   @IsOptional()
   @IsString()
@@ -84,9 +84,4 @@ export class SetEinspruchDto {
   grund!: string
 }
 
-export type AssessmentResponseDto = BescheidResponseDto
-export type SetAssessmentDateDto = SetBescheidDatumDto
 export type SetAppealDto = SetEinspruchDto
-export type AssessmentComparisonDto = BescheidAbgleichDto
-export type AssessmentDeadlineDto = BescheidFristDto
-

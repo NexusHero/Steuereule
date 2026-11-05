@@ -1,53 +1,53 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { InvalidInputError } from '../common/domain-error.js'
 import {
-  LEERE_RENTE,
-  deserialisiereRentenFeld,
-  gatedEinkunftsarten,
-  istGueltigerRentenBetrag,
-  isRentenart,
-  renteAlsKernposten,
-  renteStand,
-  serialisiereRentenFeld,
-  setzeRentenFeld,
+  EMPTY_PENSION,
+  deserializePensionField,
+  gatedIncomeTypes,
+  isValidPensionAmount,
+  isPensionType,
+  pensionAsCoreLineItem,
+  pensionStatus,
+  serializePensionField,
+  setPensionField,
   type Answers,
   type Posten,
-  type RentenDaten,
-  type RentenFeldId,
-  type RentenFeldZustand,
-  kennzeichnungsKey,
+  type PensionData,
+  type PensionFieldId,
+  type PensionFieldState,
+  provenanceKey,
 } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
-import { KENNZEICHNUNG_REPOSITORY, type KennzeichnungRepository } from '../kennzeichnung/kennzeichnung.repository.js'
+import { PROVENANCE_REPOSITORY, type ProvenanceRepository } from '../kennzeichnung/kennzeichnung.repository.js'
 import {
   INTERVIEW_ANSWER_REPOSITORY,
   type InterviewAnswerRepository,
 } from '../interview/interview-answer.repository.js'
-import { RENTE_REPOSITORY, type RenteRecord, type RenteRepository } from './rente.repository.js'
+import { PENSION_REPOSITORY, type PensionRecord, type PensionRepository } from './rente.repository.js'
 import type { PutRenteFeldDto, RenteFeldDto } from './dto/rente-feld.dto.js'
 import type { PutRentenartDto } from './dto/rente-art.dto.js'
 import type { RentePostenDto, RenteResponseDto, RenteStandDto } from './dto/rente-response.dto.js'
 
-function datenAusRecord(record: RenteRecord | null): RentenDaten {
-  if (record === null) return LEERE_RENTE
+function datenAusRecord(record: PensionRecord | null): PensionData {
+  if (record === null) return EMPTY_PENSION
   return {
-    art: record.rentenart !== null && isRentenart(record.rentenart) ? record.rentenart : null,
-    jahresbetrag: deserialisiereRentenFeld(record.jahresbetrag),
-    rentenbeginnJahr: deserialisiereRentenFeld(record.rentenbeginnJahr),
-    alterBeiRentenbeginn: deserialisiereRentenFeld(record.alterBeiRentenbeginn),
+    art: record.rentenart !== null && isPensionType(record.rentenart) ? record.rentenart : null,
+    jahresbetrag: deserializePensionField(record.jahresbetrag),
+    rentenbeginnJahr: deserializePensionField(record.rentenbeginnJahr),
+    alterBeiRentenbeginn: deserializePensionField(record.alterBeiRentenbeginn),
   }
 }
 
-function zustandAusDto(dto: PutRenteFeldDto): RentenFeldZustand {
+function zustandAusDto(dto: PutRenteFeldDto): PensionFieldState {
   if (dto.kind === 'offen') return { kind: 'offen' }
   if (dto.kind === 'unklar') return { kind: 'unklar' }
-  if (dto.wert === undefined || !istGueltigerRentenBetrag(dto.wert)) {
+  if (dto.wert === undefined || !isValidPensionAmount(dto.wert)) {
     throw new InvalidInputError('FIELD_VALUE_INVALID', 'kind "erfasst" requires a non-negative integer `wert`.')
   }
   return { kind: 'erfasst', wert: dto.wert }
 }
 
-function toFeldDto(zustand: RentenFeldZustand): RenteFeldDto {
+function toFeldDto(zustand: PensionFieldState): RenteFeldDto {
   switch (zustand.kind) {
     case 'offen':
       return { kind: 'offen' }
@@ -71,10 +71,10 @@ function postenZuDto(posten: Posten): RentePostenDto {
 @Injectable()
 export class RenteService {
   constructor(
-    @Inject(RENTE_REPOSITORY) private readonly repository: RenteRepository,
+    @Inject(PENSION_REPOSITORY) private readonly repository: PensionRepository,
     @Inject(INTERVIEW_ANSWER_REPOSITORY) private readonly interviewRepository: InterviewAnswerRepository,
     @Inject(AuditService) private readonly auditService: AuditService,
-    @Inject(KENNZEICHNUNG_REPOSITORY) private readonly kennzeichnungen: KennzeichnungRepository,
+    @Inject(PROVENANCE_REPOSITORY) private readonly kennzeichnungen: ProvenanceRepository,
   ) {}
 
   private async antworten(userId: string, steuerjahr: number): Promise<Answers> {
@@ -84,14 +84,14 @@ export class RenteService {
     return answers as Answers
   }
 
-  private async toResponse(userId: string, steuerjahr: number, record: RenteRecord | null): Promise<RenteResponseDto> {
+  private async toResponse(userId: string, steuerjahr: number, record: PensionRecord | null): Promise<RenteResponseDto> {
     const daten = datenAusRecord(record)
     const answers = await this.antworten(userId, steuerjahr)
-    const gegated = gatedEinkunftsarten(answers)
+    const gegated = gatedIncomeTypes(answers)
 
-    const kernposten = renteAlsKernposten(daten)
+    const kernposten = pensionAsCoreLineItem(daten)
     const posten: RentePostenDto[] = kernposten === null ? [] : [postenZuDto(kernposten)]
-    const stand = renteStand(daten, gegated)
+    const stand = pensionStatus(daten, gegated)
 
     const standDto: RenteStandDto =
       stand.kind === 'bestimmt'
@@ -124,23 +124,23 @@ export class RenteService {
     return this.toResponse(userId, steuerjahr, record)
   }
 
-  async setFeld(userId: string, steuerjahr: number, feld: RentenFeldId, dto: PutRenteFeldDto): Promise<RenteResponseDto> {
+  async setFeld(userId: string, steuerjahr: number, feld: PensionFieldId, dto: PutRenteFeldDto): Promise<RenteResponseDto> {
     const record = await this.repository.findForUserAndYear(userId, steuerjahr)
     const daten = datenAusRecord(record)
     const zustand = zustandAusDto(dto)
-    setzeRentenFeld(daten, feld, zustand)
-    const next = await this.repository.setFeld(userId, steuerjahr, feld, serialisiereRentenFeld(zustand))
-    await this.kennzeichnungen.entferne(userId, steuerjahr, [kennzeichnungsKey('rente', feld)])
+    setPensionField(daten, feld, zustand)
+    const next = await this.repository.setFeld(userId, steuerjahr, feld, serializePensionField(zustand))
+    await this.kennzeichnungen.entferne(userId, steuerjahr, [provenanceKey('rente', feld)])
     return this.toResponse(userId, steuerjahr, next)
   }
 
   async setRentenart(userId: string, steuerjahr: number, dto: PutRentenartDto): Promise<RenteResponseDto> {
     const art = dto.art ?? null
-    if (art !== null && !isRentenart(art)) {
+    if (art !== null && !isPensionType(art)) {
       throw new InvalidInputError('RENTENART_UNKNOWN', 'art must be one of the five Rentenarten, or null.')
     }
     const record = await this.repository.setRentenart(userId, steuerjahr, art)
-    await this.kennzeichnungen.entferne(userId, steuerjahr, [kennzeichnungsKey('rente', 'rentenart')])
+    await this.kennzeichnungen.entferne(userId, steuerjahr, [provenanceKey('rente', 'rentenart')])
     return this.toResponse(userId, steuerjahr, record)
   }
 }

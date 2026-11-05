@@ -24,8 +24,3 @@ export function adoptionProvenance(priorYear: number): string {
 }
 
 // Backward-compatibility aliases
-export {
-  adoptedLineItem as uebernommenerPosten,
-  confirmLineItem as bestaetigePosten,
-  adoptionProvenance as uebernahmeHerkunft,
-}

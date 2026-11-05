@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
-import { FAMILIENSTAENDE, istGueltigeIban, istGueltigePlz, istGueltigesDatum, RELIGIONSSCHLUESSEL } from '@steuereule/core'
+import { MARITAL_STATUSES, istGueltigeIban, isValidPostalCode, isValidDate, RELIGIONSSCHLUESSEL } from '@steuereule/core'
 import { IsBoolean, IsIn, IsOptional, IsString, MaxLength, registerDecorator, type ValidationOptions } from 'class-validator'
 
 function Erfuellt(praedikat: (wert: string) => boolean, meldung: string, options?: ValidationOptions) {
@@ -18,7 +18,7 @@ const TEXT = { type: String, nullable: true } as const
 export class PutStammdatenDto {
   @ApiPropertyOptional({ ...TEXT, example: '1990-04-12', description: 'YYYY-MM-DD' })
   @IsOptional()
-  @Erfuellt(istGueltigesDatum, 'geburtsdatum must be a real date (YYYY-MM-DD)')
+  @Erfuellt(isValidDate, 'geburtsdatum must be a real date (YYYY-MM-DD)')
   geburtsdatum?: string | null
 
   @ApiPropertyOptional({ ...TEXT, example: 'Musterstraße' })
@@ -41,7 +41,7 @@ export class PutStammdatenDto {
 
   @ApiPropertyOptional({ ...TEXT, example: '01067', description: 'Five digits (Inland).' })
   @IsOptional()
-  @Erfuellt(istGueltigePlz, 'plz must be exactly five digits')
+  @Erfuellt(isValidPostalCode, 'plz must be exactly five digits')
   plz?: string | null
 
   @ApiPropertyOptional({ ...TEXT, example: 'Dresden' })
@@ -70,14 +70,14 @@ export class PutStammdatenDto {
   @IsBoolean()
   religionEinwilligung?: boolean
 
-  @ApiPropertyOptional({ enum: FAMILIENSTAENDE, nullable: true })
+  @ApiPropertyOptional({ enum: MARITAL_STATUSES, nullable: true })
   @IsOptional()
-  @IsIn(FAMILIENSTAENDE)
+  @IsIn(MARITAL_STATUSES)
   familienstand?: string | null
 
   @ApiPropertyOptional({ ...TEXT, example: '2018-06-01', description: 'YYYY-MM-DD; not for ledig.' })
   @IsOptional()
-  @Erfuellt(istGueltigesDatum, 'familienstandSeit must be a real date (YYYY-MM-DD)')
+  @Erfuellt(isValidDate, 'familienstandSeit must be a real date (YYYY-MM-DD)')
   familienstandSeit?: string | null
 
   @ApiPropertyOptional({ ...TEXT, example: 'DE89370400440532013000', description: 'Mod-97-checked; stored without spaces.' })
@@ -113,7 +113,7 @@ export class StammdatenResponseDto {
   @ApiProperty(TEXT) wohnort!: string | null
   @ApiProperty(TEXT) beruf!: string | null
   @ApiProperty({ enum: RELIGIONSSCHLUESSEL, nullable: true }) religion!: string | null
-  @ApiProperty({ enum: FAMILIENSTAENDE, nullable: true }) familienstand!: string | null
+  @ApiProperty({ enum: MARITAL_STATUSES, nullable: true }) familienstand!: string | null
   @ApiProperty(TEXT) familienstandSeit!: string | null
   @ApiProperty(TEXT) iban!: string | null
   @ApiProperty(TEXT) kontoinhaber!: string | null

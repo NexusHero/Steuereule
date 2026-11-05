@@ -6,10 +6,10 @@ import { KiModule } from '../ki/ki.module.js'
 import { KinderModule } from '../kinder/kinder.module.js'
 import { PrismaModule } from '../prisma/prisma.module.js'
 import { EulenModusController } from './eulen-modus.controller.js'
-import { EulenModusService } from './eulen-modus.service.js'
+import { OwlModeService } from './eulen-modus.service.js'
 import {
-  EULEN_EINSTELLUNG_REPOSITORY,
-  EULEN_KARTEN_VERWURF_REPOSITORY,
+  OWL_SETTING_REPOSITORY,
+  OWL_CARD_DISMISSAL_REPOSITORY,
 } from './eulen-modus.repository.js'
 import {
   PrismaEulenEinstellungRepository,
@@ -20,16 +20,16 @@ import {
   imports: [PrismaModule, AuditModule, KinderModule, InterviewModule, BescheidModule, KiModule],
   controllers: [EulenModusController],
   providers: [
-    EulenModusService,
+    OwlModeService,
     {
-      provide: EULEN_EINSTELLUNG_REPOSITORY,
+      provide: OWL_SETTING_REPOSITORY,
       useClass: PrismaEulenEinstellungRepository,
     },
     {
-      provide: EULEN_KARTEN_VERWURF_REPOSITORY,
+      provide: OWL_CARD_DISMISSAL_REPOSITORY,
       useClass: PrismaEulenKartenVerwurfRepository,
     },
   ],
-  exports: [EulenModusService, EULEN_EINSTELLUNG_REPOSITORY, EULEN_KARTEN_VERWURF_REPOSITORY],
+  exports: [OwlModeService, OWL_SETTING_REPOSITORY, OWL_CARD_DISMISSAL_REPOSITORY],
 })
 export class EulenModusModule {}

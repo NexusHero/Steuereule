@@ -33,7 +33,7 @@ export const LEERE_N_GRE: NGreAngaben = {
   nGreSonderfaelle: null,
 }
 
-export interface ChLohnausweisRecord {
+export interface CrossBorderSalaryStatementRecord {
   userId: string
   steuerjahr: number
   felder: ChLohnausweisFelder
@@ -47,23 +47,18 @@ export interface ChLohnausweisRecord {
   nGre: NGreAngaben
 }
 
-export const CH_LOHNAUSWEIS_REPOSITORY = Symbol('CH_LOHNAUSWEIS_REPOSITORY')
-export const CROSS_BORDER_SALARY_STATEMENT_REPOSITORY = CH_LOHNAUSWEIS_REPOSITORY
+export const CROSS_BORDER_SALARY_STATEMENT_REPOSITORY = Symbol('CH_LOHNAUSWEIS_REPOSITORY')
 
 /** The persistence seam for the CH-Lohnausweis guided mask. */
-export interface ChLohnausweisRepository {
-  findForUserAndYear(userId: string, steuerjahr: number): Promise<ChLohnausweisRecord | null>
-  setFeld(userId: string, steuerjahr: number, feld: LohnausweisBetragFeldId, wert: string | null): Promise<ChLohnausweisRecord>
-  setBemerkungen(userId: string, steuerjahr: number, text: string | null): Promise<ChLohnausweisRecord>
-  setVorsorge(userId: string, steuerjahr: number, saeule3aChf: string | null, krankenkasseChf: string | null): Promise<ChLohnausweisRecord>
-  setNGre(userId: string, steuerjahr: number, angaben: Partial<NGreAngaben>): Promise<ChLohnausweisRecord>
+export interface CrossBorderSalaryStatementRepository {
+  findForUserAndYear(userId: string, steuerjahr: number): Promise<CrossBorderSalaryStatementRecord | null>
+  setFeld(userId: string, steuerjahr: number, feld: LohnausweisBetragFeldId, wert: string | null): Promise<CrossBorderSalaryStatementRecord>
+  setBemerkungen(userId: string, steuerjahr: number, text: string | null): Promise<CrossBorderSalaryStatementRecord>
+  setVorsorge(userId: string, steuerjahr: number, saeule3aChf: string | null, krankenkasseChf: string | null): Promise<CrossBorderSalaryStatementRecord>
+  setNGre(userId: string, steuerjahr: number, angaben: Partial<NGreAngaben>): Promise<CrossBorderSalaryStatementRecord>
   setWechselkurs(
     userId: string,
     steuerjahr: number,
     wechselkurs: { monat: string; kurs: number; modus: string; belegId?: string },
-  ): Promise<ChLohnausweisRecord>
+  ): Promise<CrossBorderSalaryStatementRecord>
 }
-
-export type CrossBorderSalaryStatementRecord = ChLohnausweisRecord
-export type CrossBorderSalaryStatementRepository = ChLohnausweisRepository
-

@@ -2,7 +2,7 @@ import { ApiProperty } from '@nestjs/swagger'
 import { ZuordnungDto } from './zuordnung.dto.js'
 
 /** Response shape for the Beleg endpoints. */
-export class BelegResponseDto {
+export class ReceiptResponseDto {
   @ApiProperty({ type: String, example: 'b1' })
   id!: string
 
@@ -21,6 +21,3 @@ export class BelegResponseDto {
   @ApiProperty({ type: ZuordnungDto, description: '@steuereule/core’s zuordnungAusDaten — never recomputed elsewhere.' })
   zuordnung!: ZuordnungDto
 }
-
-export type ReceiptResponseDto = BelegResponseDto
-

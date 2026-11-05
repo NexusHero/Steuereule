@@ -7,7 +7,7 @@
 // The real-Postgres proofs live in test/acceptance/req-028-jahresuebernahme.test.ts.
 import { beforeEach, describe, expect, it } from 'vitest'
 import { AuditService } from '../src/audit/audit.service.js'
-import { BestaetigungService } from '../src/bestaetigung/bestaetigung.service.js'
+import { ConfirmationService } from '../src/bestaetigung/bestaetigung.service.js'
 import { feldZugriffAus } from '../src/bestaetigung/feld-zugriff.js'
 import { UebernahmeService } from '../src/uebernahme/uebernahme.service.js'
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
@@ -43,7 +43,7 @@ describe('UebernahmeService', () => {
     kapital = new FakeKapitalRepository()
     vermietung = new FakeVermietungRepository()
     jahresuebernahme = new FakeJahresuebernahmeRepository()
-    const bestaetigung = new BestaetigungService(repository, feldZugriffAus({ lstb, rente, kapital, vermietung }), new AuditService(new FakeAuditRepository()))
+    const bestaetigung = new ConfirmationService(repository, feldZugriffAus({ lstb, rente, kapital, vermietung }), new AuditService(new FakeAuditRepository()))
     service = new UebernahmeService(repository, bestaetigung, lstb, rente, kapital, vermietung, jahresuebernahme)
   })
 

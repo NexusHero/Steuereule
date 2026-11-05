@@ -2,16 +2,9 @@ import { isValidDate } from './stammdaten'
 
 export const CHILD_RELATIONSHIPS = ['1', '2', '3'] as const
 export type ChildRelationship = (typeof CHILD_RELATIONSHIPS)[number]
-export type Kindschaftsverhaeltnis = ChildRelationship
-export const KINDSCHAFTSVERHAELTNISSE = CHILD_RELATIONSHIPS
-
 export const OTHER_CHILD_RELATIONSHIPS = ['1', '2'] as const
-export const ANDERE_KINDSCHAFTSVERHAELTNISSE = OTHER_CHILD_RELATIONSHIPS
-
 export const OTHER_PARENT_STATUSES = ['Inland', 'Ausland', 'Verstorben', 'Unbekannt'] as const
 export type OtherParentStatus = (typeof OTHER_PARENT_STATUSES)[number]
-export type AndererElternteilStatus = OtherParentStatus
-export const ANDERER_ELTERNTEIL_STATUS = OTHER_PARENT_STATUSES
 
 export interface ChildData {
   readonly id: string
@@ -69,8 +62,6 @@ export interface DifferentialChildBenefitResult {
   readonly differentialChildBenefit: number
   readonly totalClaim: number
 }
-
-export type DifferenzkindergeldErgebnis = DifferentialChildBenefitResult
 
 export function calculateDifferentialChildBenefit(
   birthDate: string,
@@ -149,11 +140,3 @@ export function calculateChildrenStatus(children: readonly (ChildData | KindDate
 }
 
 // Backward-compatibility aliases
-export {
-  isValidChildBirthDate as istGueltigesKindGeburtsdatum,
-  childTaxAllowance as kinderfreibetrag,
-  monthlyChildBenefitClaim as kindergeldAnspruchMonat,
-  claimMonths as anspruchsMonate,
-  calculateChildrenStatus as kinderStand,
-  calculateDifferentialChildBenefit as berechneDifferenzkindergeld,
-}

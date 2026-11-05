@@ -1,10 +1,10 @@
 import type { Posten, Quelle } from './berechnung.js'
-import type { Einkunftsart } from './einkunftsarten.js'
+import type { IncomeType } from './einkunftsarten.js'
 
 /** The schema the LLM must answer. */
 export interface KiVorschlag {
   readonly id: string
-  readonly einkunftsart: Einkunftsart
+  readonly einkunftsart: IncomeType
   readonly betrag: number
   readonly belegId?: string
 }

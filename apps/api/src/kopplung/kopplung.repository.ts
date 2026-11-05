@@ -14,7 +14,6 @@ export interface PartnerCouplingRecord {
 export type SteuerjahrKopplungRecord = PartnerCouplingRecord
 
 export const PARTNER_COUPLING_REPOSITORY = Symbol('PARTNER_COUPLING_REPOSITORY')
-export const KOPPLUNG_REPOSITORY = PARTNER_COUPLING_REPOSITORY
 
 export interface PartnerCouplingRepository {
   findByUserAndYear(userId: string, steuerjahr: number): Promise<PartnerCouplingRecord | null>

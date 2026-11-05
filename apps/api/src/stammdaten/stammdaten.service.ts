@@ -4,14 +4,14 @@ import { normalisiereIban } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
 import type { PutStammdatenDto, StammdatenResponseDto } from './dto/stammdaten.dto.js'
 import {
-  STAMMDATEN_FELDER,
-  STAMMDATEN_REPOSITORY,
-  type StammdatenFeld,
-  type StammdatenRecord,
-  type StammdatenRepository,
+  MASTER_DATA_FIELDS,
+  MASTER_DATA_REPOSITORY,
+  type MasterDataField,
+  type MasterDataRecord,
+  type MasterDataRepository,
 } from './stammdaten.repository.js'
 
-const PFLICHT_FUER_AUSDRUCK: readonly StammdatenFeld[] = [
+const PFLICHT_FUER_AUSDRUCK: readonly MasterDataField[] = [
   'geburtsdatum',
   'strasse',
   'hausnummer',
@@ -27,7 +27,7 @@ const PFLICHT_FUER_AUSDRUCK: readonly StammdatenFeld[] = [
 @Injectable()
 export class StammdatenService {
   constructor(
-    @Inject(STAMMDATEN_REPOSITORY) private readonly repository: StammdatenRepository,
+    @Inject(MASTER_DATA_REPOSITORY) private readonly repository: MasterDataRepository,
     @Inject(AuditService) private readonly auditService: AuditService,
   ) {}
 
@@ -43,8 +43,8 @@ export class StammdatenService {
       throw new InvalidInputError('RELIGION_CONSENT_REQUIRED', 'religion requires religionEinwilligung = true (Art. 9 DSGVO).')
     }
     const bisher = await this.repository.findByUserId(userId)
-    const record = { religionEinwilligungAm: null } as StammdatenRecord
-    for (const feld of STAMMDATEN_FELDER) record[feld] = trimOrNull(dto[feld])
+    const record = { religionEinwilligungAm: null } as MasterDataRecord
+    for (const feld of MASTER_DATA_FIELDS) record[feld] = trimOrNull(dto[feld])
     if (record.iban !== null) record.iban = normalisiereIban(record.iban)
     if (record.familienstand === 'ledig') record.familienstandSeit = null
     record.religionEinwilligungAm =
@@ -58,9 +58,9 @@ function trimOrNull(wert: string | null | undefined): string | null {
   return getrimmt ? getrimmt : null
 }
 
-export function toResponse(record: StammdatenRecord | null): StammdatenResponseDto {
+export function toResponse(record: MasterDataRecord | null): StammdatenResponseDto {
   const response = {} as StammdatenResponseDto
-  for (const feld of STAMMDATEN_FELDER) response[feld] = record?.[feld] ?? null
+  for (const feld of MASTER_DATA_FIELDS) response[feld] = record?.[feld] ?? null
   response.fehlend = PFLICHT_FUER_AUSDRUCK.filter((feld) => response[feld] === null)
   return response
 }

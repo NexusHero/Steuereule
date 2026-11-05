@@ -1,8 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
-import { ANLAGEN, MASKEN } from '@steuereule/core'
+import { ANNEXES, MASKEN } from '@steuereule/core'
 import { IsIn } from 'class-validator'
 
-export class HerkunftDto {
+export class ProvenanceDto {
   @ApiProperty({ type: String, enum: ['nutzer', 'uebernahme', 'assistent', 'beleg'], example: 'assistent' })
   art!: 'nutzer' | 'uebernahme' | 'assistent' | 'beleg'
 
@@ -20,11 +20,11 @@ export class VorschlagDto {
   @ApiProperty({ type: String, nullable: true, example: '4800', description: 'Der vorgeschlagene Feld-Wert (null = leeren).' })
   wert!: string | null
 
-  @ApiProperty({ type: HerkunftDto })
-  herkunft!: HerkunftDto
+  @ApiProperty({ type: ProvenanceDto })
+  herkunft!: ProvenanceDto
 }
 
-export class KennzeichnungWertDto {
+export class FieldProvenanceDto {
   @ApiProperty({ type: String, example: 'lstb.bruttoarbeitslohn' })
   key!: string
 
@@ -40,8 +40,8 @@ export class KennzeichnungWertDto {
   @ApiProperty({ type: String, nullable: true, example: '4750', description: 'Der aktuell gespeicherte Feld-Wert (null = offen, "unklar").' })
   wert!: string | null
 
-  @ApiProperty({ type: HerkunftDto })
-  herkunft!: HerkunftDto
+  @ApiProperty({ type: ProvenanceDto })
+  herkunft!: ProvenanceDto
 
   @ApiProperty({ type: Boolean })
   bestaetigt!: boolean
@@ -50,21 +50,21 @@ export class KennzeichnungWertDto {
   vorschlag!: VorschlagDto | null
 }
 
-export class AnlageBestaetigungDto {
-  @ApiProperty({ type: String, enum: ANLAGEN, example: 'anlageN' })
-  anlage!: (typeof ANLAGEN)[number]
+export class AnnexConfirmationDto {
+  @ApiProperty({ type: String, enum: ANNEXES, example: 'anlageN' })
+  anlage!: (typeof ANNEXES)[number]
 
   @ApiProperty({ type: Number, description: 'Wie viele Werte dieser Anlage noch unbestätigt sind.' })
   unbestaetigt!: number
 
-  @ApiProperty({ type: [KennzeichnungWertDto] })
-  werte!: KennzeichnungWertDto[]
+  @ApiProperty({ type: [FieldProvenanceDto] })
+  werte!: FieldProvenanceDto[]
 }
 
 /** Was der Nutzer noch prüfen muss: je Anlage die unbestätigten Werte und offenen Vorschläge. */
-export class BestaetigungResponseDto {
-  @ApiProperty({ type: [AnlageBestaetigungDto] })
-  anlagen!: AnlageBestaetigungDto[]
+export class ConfirmationResponseDto {
+  @ApiProperty({ type: [AnnexConfirmationDto] })
+  anlagen!: AnnexConfirmationDto[]
 }
 
 export class VorschlagEntscheidungDto {
@@ -73,10 +73,6 @@ export class VorschlagEntscheidungDto {
   entscheidung!: 'annehmen' | 'verwerfen'
 }
 
-export type ProvenanceDto = HerkunftDto
 export type ProposalDto = VorschlagDto
-export type FieldProvenanceDto = KennzeichnungWertDto
-export type AnnexConfirmationDto = AnlageBestaetigungDto
-export type ConfirmationResponseDto = BestaetigungResponseDto
 export type ProposalDecisionDto = VorschlagEntscheidungDto
 

@@ -2,12 +2,12 @@ import {
   afaSatzProzent,
   anlageNGreBetraege,
   calculateDifferentialChildBenefit,
-  deutschesDatum,
+  formatGermanDate,
   type GrenzgaengerStatus,
   type NGreZeile,
-  kapitalPflichtfelder,
+  mandatoryCapitalFields,
   type KapitalDepotEinordnung,
-  type KapitalFeldId,
+  type CapitalFieldId,
   type Krankenversicherung,
 } from '@steuereule/core'
 import type { FeldWerte } from './vordruck-renderer.js'
@@ -125,7 +125,7 @@ function vermietungAfa(obj: VermietungFakten): { satz: number; betrag: number } 
   return satz === null ? null : { satz, betrag: Math.round((kosten * satz) / 100) }
 }
 
-export type KapitalFakten = { depot: KapitalDepotEinordnung['kind']; inhaber?: 'A' | 'B' | 'gemeinsam' | null } & Partial<Record<KapitalFeldId, string | null>>
+export type KapitalFakten = { depot: KapitalDepotEinordnung['kind']; inhaber?: 'A' | 'B' | 'gemeinsam' | null } & Partial<Record<CapitalFieldId, string | null>>
 
 /** The Lohnausweis Ziffern and the N-Gre facts as stored, plus status and Kurs. */
 export interface ChLohnausweisFakten {
@@ -442,7 +442,7 @@ export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
         fehlend.push('personB')
       } else {
         setze('est1a.idnrB', b.steuerId)
-        setze('est1a.geburtsdatumB', deutschesDatum(b.geburtsdatum))
+        setze('est1a.geburtsdatumB', formatGermanDate(b.geburtsdatum))
         setze('est1a.nameB', b.lastName)
         setze('est1a.vornameB', b.firstName)
         setze('est1a.religionB', b.religion)
@@ -466,7 +466,7 @@ export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
   if (sd) {
     setze('est1a.finanzamt', sd.finanzamt)
     setze('est1a.telefon', sd.telefon)
-    setze('est1a.geburtsdatum', sd.geburtsdatum ? deutschesDatum(sd.geburtsdatum) : null)
+    setze('est1a.geburtsdatum', sd.geburtsdatum ? formatGermanDate(sd.geburtsdatum) : null)
     setze('est1a.religion', sd.religion)
     setze('est1a.beruf', sd.beruf)
     setze('est1a.strasse', sd.strasse)
@@ -475,7 +475,7 @@ export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
     setze('est1a.plz', sd.plz)
     setze('est1a.wohnort', sd.wohnort)
     const seitFeld = sd.familienstand ? SEIT_FELD[sd.familienstand] : undefined
-    if (seitFeld) setze(seitFeld, sd.familienstandSeit ? deutschesDatum(sd.familienstandSeit) : null)
+    if (seitFeld) setze(seitFeld, sd.familienstandSeit ? formatGermanDate(sd.familienstandSeit) : null)
     if (sd.iban?.startsWith('DE')) setze('est1a.ibanInland', sd.iban.slice(2))
     else setze('est1a.ibanAusland', sd.iban)
     if (sd.kontoinhaber) setze('est1a.kontoinhaberName', sd.kontoinhaber)
@@ -565,7 +565,7 @@ export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
 
   const kapital = fakten.kapital
   if (kapital && kapital.kapitalertraege != null) {
-    const pflicht = kapitalPflichtfelder(kapital.depot)
+    const pflicht = mandatoryCapitalFields(kapital.depot)
     const vollstaendig = pflicht.every((feld) => ganzeZahl(kapital[feld] ?? null) !== null)
     if (kapital.depot === 'krypto') fehlend.push('anlageKapKrypto')
     else if (kapital.depot === 'unbekannt' || !vollstaendig) fehlend.push('kapital')
@@ -685,7 +685,7 @@ export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
       if (k.idnr) kWerte['anlKind.idnr'] = k.idnr
       if (k.vorname) kWerte['anlKind.vorname'] = k.vorname
       if (k.nachname && k.nachname !== profil.lastName) kWerte['anlKind.nachname'] = k.nachname
-      if (k.geburtsdatum) kWerte['anlKind.geburtsdatum'] = deutschesDatum(k.geburtsdatum)
+      if (k.geburtsdatum) kWerte['anlKind.geburtsdatum'] = formatGermanDate(k.geburtsdatum)
       if (k.schweizerKinderzulageEur && Number(k.schweizerKinderzulageEur) > 0) {
         const swissEur = Number(k.schweizerKinderzulageEur)
         const diff = calculateDifferentialChildBenefit(k.geburtsdatum ?? `${fakten.steuerjahr}-01-01`, fakten.steuerjahr, swissEur)
@@ -701,16 +701,16 @@ export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
       const beginn = k.geburtsdatum?.startsWith(`${fakten.steuerjahr}-`) ? k.geburtsdatum : `${fakten.steuerjahr}-01-01`
       const ende = `${fakten.steuerjahr}-12-31`
       if (k.wohnsitzInlandGanzjaehrig) {
-        kWerte['anlKind.inlandVon'] = deutschesDatum(beginn)
-        kWerte['anlKind.inlandBis'] = deutschesDatum(ende)
+        kWerte['anlKind.inlandVon'] = formatGermanDate(beginn)
+        kWerte['anlKind.inlandBis'] = formatGermanDate(ende)
       }
       if (k.kindschaftsverhaeltnis) kWerte['anlKind.kz02'] = k.kindschaftsverhaeltnis
       if (zusammen && k.kindschaftsverhaeltnisB) kWerte['anlKind.kz03'] = k.kindschaftsverhaeltnisB
       if (alleinstehend && k.gemeldetBeiMirGanzjaehrig && k.kindergeldAnMichGanzjaehrig) {
-        kWerte['anlKind.kz42Von'] = deutschesDatum(beginn)
-        kWerte['anlKind.kz42Bis'] = deutschesDatum(ende)
-        kWerte['anlKind.kz44Von'] = deutschesDatum(beginn)
-        kWerte['anlKind.kz44Bis'] = deutschesDatum(ende)
+        kWerte['anlKind.kz42Von'] = formatGermanDate(beginn)
+        kWerte['anlKind.kz42Bis'] = formatGermanDate(ende)
+        kWerte['anlKind.kz44Von'] = formatGermanDate(beginn)
+        kWerte['anlKind.kz44Bis'] = formatGermanDate(ende)
         kWerte['anlKind.kz46'] = '2'
         kWerte['anlKind.kz49'] = '2'
       }
@@ -718,15 +718,15 @@ export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
         if (k.andererElternteil === 'Unbekannt') kWerte['anlKind.kz05'] = '1'
         if (k.andererElternteil === 'Inland' || k.andererElternteil === 'Verstorben') {
           if (k.andererElternteilName) kWerte['anlKind.aeName'] = k.andererElternteilName
-          if (k.andererElternteilGeburtsdatum) kWerte['anlKind.aeGeburtsdatum'] = deutschesDatum(k.andererElternteilGeburtsdatum)
+          if (k.andererElternteilGeburtsdatum) kWerte['anlKind.aeGeburtsdatum'] = formatGermanDate(k.andererElternteilGeburtsdatum)
           if (k.andererElternteilAdresse) kWerte['anlKind.aeAdresse'] = k.andererElternteilAdresse
           if (k.andererElternteilArt) kWerte['anlKind.aeArt'] = k.andererElternteilArt
           const tod = k.andererElternteil === 'Verstorben' ? k.andererElternteilVerstorbenAm : null
-          if (tod) kWerte['anlKind.kz06'] = deutschesDatum(tod)
+          if (tod) kWerte['anlKind.kz06'] = formatGermanDate(tod)
           const bis = tod && tod < ende ? tod : ende
           if (bis >= beginn) {
-            kWerte['anlKind.aeVon'] = deutschesDatum(beginn)
-            kWerte['anlKind.aeBis'] = deutschesDatum(bis)
+            kWerte['anlKind.aeVon'] = formatGermanDate(beginn)
+            kWerte['anlKind.aeBis'] = formatGermanDate(bis)
           }
         }
       }

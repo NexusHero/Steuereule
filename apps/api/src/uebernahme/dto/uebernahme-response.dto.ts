@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger'
 
 /** Eine Kennzeichnung: welches Feld aus welchem Vorjahr kopiert wurde, und ob es bestätigt ist. */
-export class UebernahmeKennzeichnungDto {
+export class RolloverProvenanceDto {
   @ApiProperty({ type: String, example: 'lstb.bruttoarbeitslohn', description: 'Der Kennzeichnungs-Key des kopierten Felds (ADR-0052 §6).' })
   postenKey!: string
 
@@ -13,11 +13,7 @@ export class UebernahmeKennzeichnungDto {
 }
 
 /** Die Antwort aller Übernahme-Endpoints: die Kennzeichnungen des Zieljahres. */
-export class UebernahmeResponseDto {
-  @ApiProperty({ type: [UebernahmeKennzeichnungDto], description: 'Die Übernahme-Kennzeichnungen, älteste zuerst.' })
-  kennzeichnungen!: UebernahmeKennzeichnungDto[]
+export class RolloverResponseDto {
+  @ApiProperty({ type: [RolloverProvenanceDto], description: 'Die Übernahme-Kennzeichnungen, älteste zuerst.' })
+  kennzeichnungen!: RolloverProvenanceDto[]
 }
-
-export type RolloverProvenanceDto = UebernahmeKennzeichnungDto
-export type RolloverResponseDto = UebernahmeResponseDto
-

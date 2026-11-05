@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { KinderService } from '../src/kinder/kinder.service.js'
+import { ChildrenService } from '../src/kinder/kinder.service.js'
 import { FakeKindRepository } from './fakes/fake-kind.repository.js'
 import { FakeChLohnausweisRepository } from './fakes/fake-ch-lohnausweis.repository.js'
 
@@ -15,7 +15,7 @@ describe('KinderService', () => {
   it('creates and lists children, computing the Freibetrag and Kindergeld sum', async () => {
     const repo = new FakeKindRepository()
     const audit = new FakeAuditService()
-    const service = new KinderService(repo, audit as any)
+    const service = new ChildrenService(repo, audit as any)
 
     const userId = 'user-1'
     const jahr = 2025
@@ -54,7 +54,7 @@ describe('KinderService', () => {
   it('rejects a birth date in the future of the tax year', async () => {
     const repo = new FakeKindRepository()
     const audit = new FakeAuditService()
-    const service = new KinderService(repo, audit as any)
+    const service = new ChildrenService(repo, audit as any)
 
     await expect(
       service.create('user-1', 2025, {
@@ -66,7 +66,7 @@ describe('KinderService', () => {
   })
 
   it('stores the Anlage-Kind facts (Kindschaftsverhältnis, Familienkasse, Wohnsitz) and returns them', async () => {
-    const service = new KinderService(new FakeKindRepository(), new FakeAuditService() as never)
+    const service = new ChildrenService(new FakeKindRepository(), new FakeAuditService() as never)
     const { kinder } = await service.create('user-1', 2025, { vorname: 'Lina', nachname: 'M', geburtsdatum: '2016-05-10' })
     expect(kinder[0]).toMatchObject({ kindschaftsverhaeltnis: null, familienkasse: null, wohnsitzInlandGanzjaehrig: null })
 
@@ -101,7 +101,7 @@ describe('KinderService', () => {
       modus: 'amtlich',
     })
 
-    const service = new KinderService(repo, audit as any, chRepo)
+    const service = new ChildrenService(repo, audit as any, chRepo)
 
     // Add Mia and Noah (2 children)
     await service.create('user-mb', 2025, { vorname: 'Mia', nachname: 'Brenner', geburtsdatum: '2016-03-14' })

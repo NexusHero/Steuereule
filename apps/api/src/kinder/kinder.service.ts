@@ -1,13 +1,13 @@
 import { Inject, Injectable, Optional } from '@nestjs/common'
 import { InvalidInputError, NotFoundError } from '../common/domain-error.js'
-import { calculateDifferentialChildBenefit, istGueltigesKindGeburtsdatum, kinderStand, type KindDaten } from '@steuereule/core'
+import { calculateDifferentialChildBenefit, isValidChildBirthDate, calculateChildrenStatus, type KindDaten } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
-import { CH_LOHNAUSWEIS_REPOSITORY, type ChLohnausweisRepository } from '../ch-lohnausweis/ch-lohnausweis.repository.js'
-import { KOPPLUNG_REPOSITORY, type KopplungRepository } from '../kopplung/kopplung.repository.js'
-import { KIND_REPOSITORY, type KindRecord, type KindRepository } from './kind.repository.js'
+import { CROSS_BORDER_SALARY_STATEMENT_REPOSITORY, type CrossBorderSalaryStatementRepository } from '../ch-lohnausweis/ch-lohnausweis.repository.js'
+import { PARTNER_COUPLING_REPOSITORY, type KopplungRepository } from '../kopplung/kopplung.repository.js'
+import { CHILD_REPOSITORY, type ChildRecord, type ChildRepository } from './kind.repository.js'
 import type { CreateKindDto, KinderResponseDto, KindResponseDto, UpdateKindDto } from './dto/kind.dto.js'
 
-function toKindDaten(r: KindRecord, effectiveSwissEur: number | null): KindDaten {
+function toKindDaten(r: ChildRecord, effectiveSwissEur: number | null): KindDaten {
   return {
     id: r.id,
     vorname: r.vorname,
@@ -19,7 +19,7 @@ function toKindDaten(r: KindRecord, effectiveSwissEur: number | null): KindDaten
   }
 }
 
-function toDto(r: KindRecord, effectiveSwissEur: number | null, jahr: number): KindResponseDto {
+function toDto(r: ChildRecord, effectiveSwissEur: number | null, jahr: number): KindResponseDto {
   const diff = effectiveSwissEur != null ? calculateDifferentialChildBenefit(r.geburtsdatum, jahr, effectiveSwissEur) : null
   return {
     id: r.id,
@@ -50,12 +50,12 @@ function toDto(r: KindRecord, effectiveSwissEur: number | null, jahr: number): K
 }
 
 @Injectable()
-export class KinderService {
+export class ChildrenService {
   constructor(
-    @Inject(KIND_REPOSITORY) private readonly repository: KindRepository,
+    @Inject(CHILD_REPOSITORY) private readonly repository: ChildRepository,
     @Inject(AuditService) private readonly auditService: AuditService,
-    @Optional() @Inject(CH_LOHNAUSWEIS_REPOSITORY) private readonly chLohnausweis?: ChLohnausweisRepository,
-    @Optional() @Inject(KOPPLUNG_REPOSITORY) private readonly kopplung?: KopplungRepository,
+    @Optional() @Inject(CROSS_BORDER_SALARY_STATEMENT_REPOSITORY) private readonly chLohnausweis?: CrossBorderSalaryStatementRepository,
+    @Optional() @Inject(PARTNER_COUPLING_REPOSITORY) private readonly kopplung?: KopplungRepository,
   ) {}
 
   private async getProKindSwissAllowanceEur(userId: string, jahr: number, count: number): Promise<number | null> {
@@ -77,13 +77,13 @@ export class KinderService {
     return Math.round(proKindChf * kurs)
   }
 
-  private async toResponse(userId: string, records: KindRecord[], jahr: number): Promise<KinderResponseDto> {
+  private async toResponse(userId: string, records: ChildRecord[], jahr: number): Promise<KinderResponseDto> {
     const proKindEur = await this.getProKindSwissAllowanceEur(userId, jahr, records.length)
     const daten = records.map((r) => {
       const effectiveSwissEur = r.schweizerKinderzulageEur ? Number(r.schweizerKinderzulageEur) : proKindEur
       return toKindDaten(r, effectiveSwissEur)
     })
-    const stand = kinderStand(daten, jahr)
+    const stand = calculateChildrenStatus(daten, jahr)
     return {
       kinder: records.map((r) => {
         const effectiveSwissEur = r.schweizerKinderzulageEur ? Number(r.schweizerKinderzulageEur) : proKindEur
@@ -106,7 +106,7 @@ export class KinderService {
   }
 
   async create(userId: string, steuerjahr: number, dto: CreateKindDto): Promise<KinderResponseDto> {
-    if (!istGueltigesKindGeburtsdatum(dto.geburtsdatum, steuerjahr)) {
+    if (!isValidChildBirthDate(dto.geburtsdatum, steuerjahr)) {
       throw new InvalidInputError('GEBURTSDATUM_INVALID', 'The birth date is not valid for this tax year.')
     }
     await this.repository.create(userId, steuerjahr, dto)
@@ -115,7 +115,7 @@ export class KinderService {
   }
 
   async update(userId: string, steuerjahr: number, id: string, dto: UpdateKindDto): Promise<KinderResponseDto> {
-    if (dto.geburtsdatum && !istGueltigesKindGeburtsdatum(dto.geburtsdatum, steuerjahr)) {
+    if (dto.geburtsdatum && !isValidChildBirthDate(dto.geburtsdatum, steuerjahr)) {
       throw new InvalidInputError('GEBURTSDATUM_INVALID', 'The birth date is not valid for this tax year.')
     }
     const updated = await this.repository.update(userId, steuerjahr, id, dto)
@@ -135,6 +135,3 @@ export class KinderService {
     return this.toResponse(userId, records, steuerjahr)
   }
 }
-
-export { KinderService as ChildrenService }
-

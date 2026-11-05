@@ -1,16 +1,16 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service.js'
 import type {
-  EulenEinstellungRecord,
-  EulenEinstellungRepository,
-  EulenKartenVerwurfRepository,
+  OwlSettingRecord,
+  OwlSettingRepository,
+  OwlCardDismissalRepository,
 } from './eulen-modus.repository.js'
 
 @Injectable()
-export class PrismaEulenEinstellungRepository implements EulenEinstellungRepository {
+export class PrismaEulenEinstellungRepository implements OwlSettingRepository {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
-  async findByUserId(userId: string): Promise<EulenEinstellungRecord | null> {
+  async findByUserId(userId: string): Promise<OwlSettingRecord | null> {
     const row = await this.prisma.eulenEinstellung.findUnique({ where: { userId } })
     if (!row) return null
     return {
@@ -20,7 +20,7 @@ export class PrismaEulenEinstellungRepository implements EulenEinstellungReposit
     }
   }
 
-  async setAktiviert(userId: string, aktiviert: boolean): Promise<EulenEinstellungRecord> {
+  async setAktiviert(userId: string, aktiviert: boolean): Promise<OwlSettingRecord> {
     const now = new Date()
     const [row] = await this.prisma.$transaction([
       this.prisma.eulenEinstellung.upsert({
@@ -48,7 +48,7 @@ export class PrismaEulenEinstellungRepository implements EulenEinstellungReposit
 }
 
 @Injectable()
-export class PrismaEulenKartenVerwurfRepository implements EulenKartenVerwurfRepository {
+export class PrismaEulenKartenVerwurfRepository implements OwlCardDismissalRepository {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async listForUserAndYear(userId: string, steuerjahr: number): Promise<string[]> {

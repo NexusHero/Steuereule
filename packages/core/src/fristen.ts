@@ -1,12 +1,8 @@
 export const DEADLINE_WARNING_THRESHOLD_DAYS = 60
-export const WARN_SCHWELLE_TAGE = DEADLINE_WARNING_THRESHOLD_DAYS
-
 export const LATE_FILING_FEE_MINIMUM_EUR = 25
 export const VERSPAETUNGSZUSCHLAG_MINDESTSATZ_EUR = LATE_FILING_FEE_MINIMUM_EUR
 
 export const LATE_FILING_FEE_PERCENT_PER_MONTH = 0.25
-export const VERSPAETUNGSZUSCHLAG_PROZENT_PRO_MONAT = LATE_FILING_FEE_PERCENT_PER_MONTH
-
 const FILING_DEADLINES: Readonly<Record<number, string>> = {
   2024: '2025-07-31',
   2025: '2026-07-31',
@@ -14,7 +10,6 @@ const FILING_DEADLINES: Readonly<Record<number, string>> = {
 }
 
 export type DeadlineYear = 2024 | 2025 | 2026
-export type FristenJahr = DeadlineYear
 
 export function isSupportedDeadlineYear(year: number): year is DeadlineYear {
   return Number.isInteger(year) && Object.prototype.hasOwnProperty.call(FILING_DEADLINES, year)
@@ -65,7 +60,3 @@ export function fristenWarnung(steuerjahr: number, heute: string): FristenWarnun
 }
 
 // Backward-compatibility aliases
-export {
-  isSupportedDeadlineYear as istUnterstuetztesFristenJahr,
-  filingDeadlineFor as abgabefristFuer,
-}

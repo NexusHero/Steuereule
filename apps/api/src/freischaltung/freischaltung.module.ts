@@ -2,9 +2,9 @@ import { Module } from '@nestjs/common'
 import { resolveWebAppUrl } from '../auth/better-auth-env.js'
 import { PrismaModule } from '../prisma/prisma.module.js'
 import { FreischaltungController } from './freischaltung.controller.js'
-import { FREISCHALTUNG_REPOSITORY } from './freischaltung.repository.js'
+import { UNLOCK_REPOSITORY } from './freischaltung.repository.js'
 import { PrismaFreischaltungRepository } from './freischaltung.repository.prisma.js'
-import { FreischaltungService, WEB_APP_URL_TOKEN } from './freischaltung.service.js'
+import { UnlockService, WEB_APP_URL_TOKEN } from './freischaltung.service.js'
 import { resolveStripeConfig, StripeZahlungsanbieter } from './stripe-zahlungsanbieter.js'
 import { ZAHLUNGSANBIETER, type Zahlungsanbieter } from './zahlungsanbieter.js'
 
@@ -12,8 +12,8 @@ import { ZAHLUNGSANBIETER, type Zahlungsanbieter } from './zahlungsanbieter.js'
   imports: [PrismaModule],
   controllers: [FreischaltungController],
   providers: [
-    FreischaltungService,
-    { provide: FREISCHALTUNG_REPOSITORY, useClass: PrismaFreischaltungRepository },
+    UnlockService,
+    { provide: UNLOCK_REPOSITORY, useClass: PrismaFreischaltungRepository },
     {
       provide: ZAHLUNGSANBIETER,
       useFactory: (): Zahlungsanbieter | null => {
@@ -23,6 +23,6 @@ import { ZAHLUNGSANBIETER, type Zahlungsanbieter } from './zahlungsanbieter.js'
     },
     { provide: WEB_APP_URL_TOKEN, useFactory: () => resolveWebAppUrl() },
   ],
-  exports: [FreischaltungService],
+  exports: [UnlockService],
 })
 export class FreischaltungModule {}

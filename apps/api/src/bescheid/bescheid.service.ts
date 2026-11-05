@@ -4,38 +4,38 @@ import {
   BESCHEID_FELDER,
   angestellteAusDaten,
   bescheidBerechnungsstand,
-  deserialisiereBescheidFeld,
-  deserialisiereLstbFeld,
-  einspruchsfristEnde,
-  gatedEinkunftsarten,
-  gleicheBescheidAb,
+  deserializeAssessmentField,
+  deserializeWageTaxCertificateField,
+  appealDeadlineEnd,
+  gatedIncomeTypes,
+  reconcileAssessment,
   grenzgaengerStand,
   istBescheidUebergangErlaubt,
   istEinspruchGrund,
-  istGueltigerBescheidBetrag,
+  isValidAssessmentAmount,
   naechsteBescheidZustaende,
-  serialisiereBescheidFeld,
-  verbleibendeEinspruchstage,
+  serializeAssessmentField,
+  remainingAppealDays,
   type Berechnungsstand,
   type BescheidStatus,
-  type BescheidWerte,
+  type AssessmentValues,
 } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
 import {
-  CH_LOHNAUSWEIS_REPOSITORY,
-  type ChLohnausweisRepository,
+  CROSS_BORDER_SALARY_STATEMENT_REPOSITORY,
+  type CrossBorderSalaryStatementRepository,
 } from '../ch-lohnausweis/ch-lohnausweis.repository.js'
 import {
   INTERVIEW_ANSWER_REPOSITORY,
   type InterviewAnswerRepository,
 } from '../interview/interview-answer.repository.js'
 import { LSTB_REPOSITORY, type LstbRepository } from '../lstb/lstb.repository.js'
-import { BESCHEID_REPOSITORY, type BescheidRecord, type BescheidRepository } from './bescheid.repository.js'
-import type { BescheidFeldDto, PutBescheidFeldDto } from './dto/bescheid-feld.dto.js'
+import { ASSESSMENT_REPOSITORY, type AssessmentRecord, type AssessmentRepository } from './bescheid.repository.js'
+import type { AssessmentFieldDto, PutAssessmentFieldDto } from './dto/bescheid-feld.dto.js'
 import type {
   BescheidAbweichungDto,
-  BescheidResponseDto,
-  SetBescheidDatumDto,
+  AssessmentResponseDto,
+  SetAssessmentDateDto,
   SetBescheidStatusDto,
   SetEinspruchDto,
 } from './dto/bescheid-response.dto.js'
@@ -44,12 +44,12 @@ import { grenzgaengerStatusAusAnswers, lohnausweisWerteAusRecord, wechselkursAus
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
-function felderAusRecord(record: BescheidRecord | null): { felder: BescheidFeldDto[]; werte: BescheidWerte } {
-  const felder: BescheidFeldDto[] = []
-  const werte: BescheidWerte = {}
+function felderAusRecord(record: AssessmentRecord | null): { felder: AssessmentFieldDto[]; werte: AssessmentValues } {
+  const felder: AssessmentFieldDto[] = []
+  const werte: AssessmentValues = {}
   for (const feld of BESCHEID_FELDER) {
     const stored = record === null ? null : record.felder[feld.id]
-    const wert = deserialisiereBescheidFeld(feld.id, stored)
+    const wert = deserializeAssessmentField(feld.id, stored)
     if (wert === null) {
       felder.push({ id: feld.id, kind: 'offen' })
     } else if (wert === 'unklar') {
@@ -67,12 +67,12 @@ function felderAusRecord(record: BescheidRecord | null): { felder: BescheidFeldD
 
 /** Application logic for the Steuerbescheid. */
 @Injectable()
-export class BescheidService {
+export class AssessmentService {
   constructor(
-    @Inject(BESCHEID_REPOSITORY) private readonly repository: BescheidRepository,
+    @Inject(ASSESSMENT_REPOSITORY) private readonly repository: AssessmentRepository,
     @Inject(LSTB_REPOSITORY) private readonly lstbRepository: LstbRepository,
     @Inject(INTERVIEW_ANSWER_REPOSITORY) private readonly interviewRepository: InterviewAnswerRepository,
-    @Inject(CH_LOHNAUSWEIS_REPOSITORY) private readonly chLohnausweisRepository: ChLohnausweisRepository,
+    @Inject(CROSS_BORDER_SALARY_STATEMENT_REPOSITORY) private readonly chLohnausweisRepository: CrossBorderSalaryStatementRepository,
     @Inject(AuditService) private readonly auditService: AuditService,
   ) {}
 
@@ -86,9 +86,9 @@ export class BescheidService {
 
     const angestellte = angestellteAusDaten(
       {
-        bruttoarbeitslohn: deserialisiereLstbFeld(lstbRecord?.bruttoarbeitslohn ?? null),
-        lohnsteuer: deserialisiereLstbFeld(lstbRecord?.lohnsteuer ?? null),
-        sozialversicherung: deserialisiereLstbFeld(lstbRecord?.sozialversicherung ?? null),
+        bruttoarbeitslohn: deserializeWageTaxCertificateField(lstbRecord?.bruttoarbeitslohn ?? null),
+        lohnsteuer: deserializeWageTaxCertificateField(lstbRecord?.lohnsteuer ?? null),
+        sozialversicherung: deserializeWageTaxCertificateField(lstbRecord?.sozialversicherung ?? null),
       },
       answers,
     )
@@ -106,25 +106,25 @@ export class BescheidService {
         ...(krankenkasseChf !== undefined ? { krankenkasseChf } : {}),
         status,
         wechselkurs,
-        gegated: gatedEinkunftsarten(answers),
+        gegated: gatedIncomeTypes(answers),
       })
     }
 
     return bescheidBerechnungsstand(angestellte, ch)
   }
 
-  private async toResponse(userId: string, steuerjahr: number, record: BescheidRecord | null): Promise<BescheidResponseDto> {
+  private async toResponse(userId: string, steuerjahr: number, record: AssessmentRecord | null): Promise<AssessmentResponseDto> {
     const { felder, werte } = felderAusRecord(record)
     const status: BescheidStatus = record?.status ?? 'eingegangen'
     const bescheiddatum = record?.bescheiddatum ?? null
     const einspruchGrund = record?.einspruchGrund ?? null
 
     const stand = await this.berechnungsstand(userId, steuerjahr)
-    const abgleich = gleicheBescheidAb(werte, stand)
+    const abgleich = reconcileAssessment(werte, stand)
 
-    const fristEnde = bescheiddatum === null ? null : einspruchsfristEnde(bescheiddatum)
+    const fristEnde = bescheiddatum === null ? null : appealDeadlineEnd(bescheiddatum)
     const verbleibendeTage =
-      fristEnde === null ? null : verbleibendeEinspruchstage(bescheiddatum as string, heuteIso())
+      fristEnde === null ? null : remainingAppealDays(bescheiddatum as string, heuteIso())
 
     return {
       status,
@@ -140,7 +140,7 @@ export class BescheidService {
     }
   }
 
-  async getState(userId: string, steuerjahr: number): Promise<BescheidResponseDto> {
+  async getState(userId: string, steuerjahr: number): Promise<AssessmentResponseDto> {
     const record = await this.repository.findForUserAndYear(userId, steuerjahr)
     if (record !== null) {
       await this.auditService.append({ userId, action: 'READ', resource: 'bescheid' })
@@ -151,14 +151,14 @@ export class BescheidService {
   async setFeld(
     userId: string,
     steuerjahr: number,
-    feld: Parameters<BescheidRepository['setFeld']>[2],
-    dto: PutBescheidFeldDto,
-  ): Promise<BescheidResponseDto> {
+    feld: Parameters<AssessmentRepository['setFeld']>[2],
+    dto: PutAssessmentFieldDto,
+  ): Promise<AssessmentResponseDto> {
     const record = await this.repository.setFeld(userId, steuerjahr, feld, wertAusDto(feld, dto))
     return this.toResponse(userId, steuerjahr, record)
   }
 
-  async setDatum(userId: string, steuerjahr: number, dto: SetBescheidDatumDto): Promise<BescheidResponseDto> {
+  async setDatum(userId: string, steuerjahr: number, dto: SetAssessmentDateDto): Promise<AssessmentResponseDto> {
     if (dto.datum !== null && dto.datum !== undefined && !ISO_DATE_RE.test(dto.datum)) {
       throw new InvalidInputError('BESCHEIDDATUM_INVALID', 'bescheiddatum must be an ISO yyyy-mm-dd date.')
     }
@@ -166,7 +166,7 @@ export class BescheidService {
     return this.toResponse(userId, steuerjahr, record)
   }
 
-  async setStatus(userId: string, steuerjahr: number, dto: SetBescheidStatusDto): Promise<BescheidResponseDto> {
+  async setStatus(userId: string, steuerjahr: number, dto: SetBescheidStatusDto): Promise<AssessmentResponseDto> {
     const current = await this.repository.findForUserAndYear(userId, steuerjahr)
     const von: BescheidStatus = current?.status ?? 'eingegangen'
     const nach = dto.status as BescheidStatus
@@ -177,7 +177,7 @@ export class BescheidService {
     return this.toResponse(userId, steuerjahr, record)
   }
 
-  async setEinspruch(userId: string, steuerjahr: number, dto: SetEinspruchDto): Promise<BescheidResponseDto> {
+  async setEinspruch(userId: string, steuerjahr: number, dto: SetEinspruchDto): Promise<AssessmentResponseDto> {
     if (!istEinspruchGrund(dto.grund)) {
       throw new InvalidInputError('EINSPRUCH_GRUND_UNKNOWN', `unknown Einspruch-Grund "${dto.grund}"`)
     }
@@ -191,13 +191,13 @@ export class BescheidService {
   }
 }
 
-function wertAusDto(feld: Parameters<BescheidRepository['setFeld']>[2], dto: PutBescheidFeldDto): string | null {
+function wertAusDto(feld: Parameters<AssessmentRepository['setFeld']>[2], dto: PutAssessmentFieldDto): string | null {
   if (dto.kind === 'offen') return null
   if (dto.kind === 'unklar') return 'unklar'
-  if (dto.wert === undefined || !istGueltigerBescheidBetrag(feld, dto.wert)) {
+  if (dto.wert === undefined || !isValidAssessmentAmount(feld, dto.wert)) {
     throw new InvalidInputError('FIELD_VALUE_INVALID', `kind "erfasst" requires a valid whole-euro \`wert\` for "${feld}".`)
   }
-  return serialisiereBescheidFeld(feld, dto.wert)
+  return serializeAssessmentField(feld, dto.wert)
 }
 
 export function heuteIso(jetzt: Date = new Date()): string {
@@ -212,6 +212,3 @@ export function heuteIso(jetzt: Date = new Date()): string {
   const tag = teile.find((p) => p.type === 'day')!.value
   return `${jahr}-${monat}-${tag}`
 }
-
-export { BescheidService as AssessmentService }
-

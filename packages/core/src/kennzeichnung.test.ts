@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import {
   anlageVon,
-  bestaetigeAnlage,
+  confirmAnnex,
   entscheideSchreibung,
-  fehlendeBestaetigungen,
-  herkunftText,
-  kennzeichnungsKey,
+  missingConfirmations,
+  provenanceText,
+  provenanceKey,
   nimmVorschlagAn,
   verwirfVorschlag,
-  zerlegeKennzeichnungsKey,
+  decomposeProvenanceKey,
   type Kennzeichnung,
 } from './kennzeichnung'
 
@@ -20,15 +20,15 @@ function unbestaetigt(key: string, wert: string | null): Kennzeichnung {
 
 describe('kennzeichnungsKey / zerlegeKennzeichnungsKey', () => {
   it('builds field keys with and without an instance and parses them back', () => {
-    expect(kennzeichnungsKey('lstb', 'bruttoarbeitslohn')).toBe('lstb.bruttoarbeitslohn')
-    expect(kennzeichnungsKey('vermietung', 'mieteinnahmen', 'obj-1')).toBe('vermietung:obj-1.mieteinnahmen')
-    expect(zerlegeKennzeichnungsKey('vermietung:obj-1.mieteinnahmen')).toEqual({ maske: 'vermietung', instanz: 'obj-1', feld: 'mieteinnahmen' })
-    expect(zerlegeKennzeichnungsKey('lstb.lohnsteuer')).toEqual({ maske: 'lstb', instanz: null, feld: 'lohnsteuer' })
+    expect(provenanceKey('lstb', 'bruttoarbeitslohn')).toBe('lstb.bruttoarbeitslohn')
+    expect(provenanceKey('vermietung', 'mieteinnahmen', 'obj-1')).toBe('vermietung:obj-1.mieteinnahmen')
+    expect(decomposeProvenanceKey('vermietung:obj-1.mieteinnahmen')).toEqual({ maske: 'vermietung', instanz: 'obj-1', feld: 'mieteinnahmen' })
+    expect(decomposeProvenanceKey('lstb.lohnsteuer')).toEqual({ maske: 'lstb', instanz: null, feld: 'lohnsteuer' })
   })
 
   it('rejects an unknown mask or a key without a field instead of guessing', () => {
-    expect(() => zerlegeKennzeichnungsKey('lstb')).toThrow()
-    expect(() => zerlegeKennzeichnungsKey('gewerbe.gewinn')).toThrow()
+    expect(() => decomposeProvenanceKey('lstb')).toThrow()
+    expect(() => decomposeProvenanceKey('gewerbe.gewinn')).toThrow()
   })
 })
 
@@ -102,18 +102,18 @@ describe('bestaetigeAnlage / fehlendeBestaetigungen — unbestätigt wirkt wie o
   ]
 
   it('names every Anlage with an unconfirmed value once, in a stable order', () => {
-    expect(fehlendeBestaetigungen(liste)).toEqual(['unbestaetigt.anlageN', 'unbestaetigt.anlageR', 'unbestaetigt.anlageV'])
+    expect(missingConfirmations(liste)).toEqual(['unbestaetigt.anlageN', 'unbestaetigt.anlageR', 'unbestaetigt.anlageV'])
   })
 
   it('confirming one Anlage confirms all of its values and keeps their Herkunft', () => {
-    const danach = bestaetigeAnlage(liste, 'anlageR')
+    const danach = confirmAnnex(liste, 'anlageR')
     expect(danach.find((k) => k.key === 'rente.jahresbetrag')).toEqual({ ...liste[1], bestaetigt: true })
-    expect(fehlendeBestaetigungen(danach)).toEqual(['unbestaetigt.anlageN', 'unbestaetigt.anlageV'])
+    expect(missingConfirmations(danach)).toEqual(['unbestaetigt.anlageN', 'unbestaetigt.anlageV'])
   })
 
   it('an open proposal on a confirmed value does not block the printout', () => {
     const mitVorschlag: Kennzeichnung = { key: 'lstb.lohnsteuer', herkunft: { art: 'nutzer' }, bestaetigt: true, wert: '700', vorschlag: { wert: '720', herkunft: CLAUDE } }
-    expect(fehlendeBestaetigungen([mitVorschlag])).toEqual([])
+    expect(missingConfirmations([mitVorschlag])).toEqual([])
   })
 })
 
@@ -146,6 +146,6 @@ describe('herkunftText — der Herkunfts-Chip', () => {
     [{ art: 'assistent', name: 'Claude', belegId: 'b1' } as const, 'Assistent: Claude, aus Beleg'],
     [{ art: 'beleg', belegId: 'b1' } as const, 'Aus Beleg'],
   ])('%j → %s', (herkunft, text) => {
-    expect(herkunftText(herkunft)).toBe(text)
+    expect(provenanceText(herkunft)).toBe(text)
   })
 })

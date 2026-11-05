@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import type { ArbeitswegEingaben, ArbeitswegRepository } from '../src/arbeitsweg/arbeitsweg.repository.js'
-import type { ChLohnausweisRecord } from '../src/ch-lohnausweis/ch-lohnausweis.repository.js'
-import type { StammdatenRecord } from '../src/stammdaten/stammdaten.repository.js'
-import { SteuerschaetzungService } from '../src/steuerschaetzung/steuerschaetzung.service.js'
+import type { CommuteInputs, CommuteRepository } from '../src/arbeitsweg/arbeitsweg.repository.js'
+import type { CrossBorderSalaryStatementRecord } from '../src/ch-lohnausweis/ch-lohnausweis.repository.js'
+import type { MasterDataRecord } from '../src/stammdaten/stammdaten.repository.js'
+import { TaxEstimateService } from '../src/steuerschaetzung/steuerschaetzung.service.js'
 import { FakeChLohnausweisRepository } from './fakes/fake-ch-lohnausweis.repository.js'
 import { FakeInterviewAnswerRepository } from './fakes/fake-interview-answer.repository.js'
 import { FakeLstbRepository } from './fakes/fake-lstb.repository.js'
@@ -17,11 +17,11 @@ function spanne(stand: SteuerschaetzungStand) {
   return stand
 }
 
-function arbeitsweg(eingaben: ArbeitswegEingaben | null): ArbeitswegRepository {
+function arbeitsweg(eingaben: CommuteInputs | null): CommuteRepository {
   return { findForUserAndYear: async () => eingaben, save: async (_u, _j, e) => e }
 }
 
-function setup(weg: ArbeitswegEingaben | null = null) {
+function setup(weg: CommuteInputs | null = null) {
   const lstb = new FakeLstbRepository()
   const interview = new FakeInterviewAnswerRepository()
   const ch = new FakeChLohnausweisRepository()
@@ -29,7 +29,7 @@ function setup(weg: ArbeitswegEingaben | null = null) {
   const kopplung = new FakeKopplungRepository()
   const kinder = new FakeKindRepository()
   const vermietung = new FakeVermietungRepository()
-  const service = new SteuerschaetzungService(lstb, interview, ch, stammdaten, arbeitsweg(weg), kopplung, kinder, vermietung)
+  const service = new TaxEstimateService(lstb, interview, ch, stammdaten, arbeitsweg(weg), kopplung, kinder, vermietung)
   return { lstb, interview, ch, stammdaten, kopplung, kinder, vermietung, service }
 }
 
@@ -86,7 +86,7 @@ describe('SteuerschaetzungService', () => {
   it("estimates a couple with the splitting tariff from both spouses' certificates and the rental surplus", async () => {
     const { lstb, interview, stammdaten, kopplung, vermietung, service } = setup()
     interview.seed('a', 2025, ANGESTELLT)
-    await stammdaten.speichere('a', { familienstand: 'verheiratet', religion: 'VD' } as StammdatenRecord)
+    await stammdaten.speichere('a', { familienstand: 'verheiratet', religion: 'VD' } as MasterDataRecord)
     await kopplung.upsert('a', 2025, { personBUserId: 'spouse_a_2025', veranlagungsart: 'zusammen' })
     lstb.seed({ userId: 'a', steuerjahr: 2025, bruttoarbeitslohn: '82000', lohnsteuer: '9890', sozialversicherung: '15473' })
     lstb.seed({ userId: 'spouse_a_2025', steuerjahr: 2025, bruttoarbeitslohn: '48000', lohnsteuer: '10420', sozialversicherung: '10008' })
@@ -100,7 +100,7 @@ describe('SteuerschaetzungService', () => {
     const ohneMiete = spanne(await (async () => {
       const second = setup()
       second.interview.seed('a', 2025, ANGESTELLT)
-      await second.stammdaten.speichere('a', { familienstand: 'verheiratet', religion: 'VD' } as StammdatenRecord)
+      await second.stammdaten.speichere('a', { familienstand: 'verheiratet', religion: 'VD' } as MasterDataRecord)
       await second.kopplung.upsert('a', 2025, { personBUserId: 'spouse_a_2025', veranlagungsart: 'zusammen' })
       second.lstb.seed({ userId: 'a', steuerjahr: 2025, bruttoarbeitslohn: '82000', lohnsteuer: '9890', sozialversicherung: '15473' })
       second.lstb.seed({ userId: 'spouse_a_2025', steuerjahr: 2025, bruttoarbeitslohn: '48000', lohnsteuer: '10420', sozialversicherung: '10008' })
@@ -113,7 +113,7 @@ describe('SteuerschaetzungService', () => {
   it("names what is missing in Person B's figures", async () => {
     const { lstb, interview, stammdaten, kopplung, service } = setup()
     interview.seed('a', 2025, ANGESTELLT)
-    await stammdaten.speichere('a', { familienstand: 'verheiratet' } as StammdatenRecord)
+    await stammdaten.speichere('a', { familienstand: 'verheiratet' } as MasterDataRecord)
     await kopplung.upsert('a', 2025, { personBUserId: 'spouse_a_2025', veranlagungsart: 'zusammen' })
     lstb.seed({ userId: 'a', steuerjahr: 2025, bruttoarbeitslohn: '82000', lohnsteuer: '9890', sozialversicherung: '15473' })
     lstb.seed({ userId: 'spouse_a_2025', steuerjahr: 2025, bruttoarbeitslohn: '48000', lohnsteuer: null, sozialversicherung: '10008' } as never)
@@ -129,7 +129,7 @@ describe('SteuerschaetzungService', () => {
     ch.seed({
       userId: 'u',
       steuerjahr: 2025,
-      felder: { 'bruttolohn-total': '90000', 'ahv-beitraege': '6660', 'berufliche-vorsorge': '4500', quellensteuer: '4050' } as ChLohnausweisRecord['felder'],
+      felder: { 'bruttolohn-total': '90000', 'ahv-beitraege': '6660', 'berufliche-vorsorge': '4500', quellensteuer: '4050' } as CrossBorderSalaryStatementRecord['felder'],
       bemerkungen: null,
       saeule3aChf: null,
       krankenkasseChf: null,
@@ -137,7 +137,7 @@ describe('SteuerschaetzungService', () => {
       wechselkursKurs: 1.07,
       wechselkursModus: 'amtlich',
       wechselkursBelegId: null,
-      nGre: { familienzulagenChf: 0, krankentaggeldChf: 0, pkArbeitnehmerChf: 4500, pkArbeitgeberChf: 4500 } as unknown as ChLohnausweisRecord['nGre'],
+      nGre: { familienzulagenChf: 0, krankentaggeldChf: 0, pkArbeitnehmerChf: 4500, pkArbeitgeberChf: 4500 } as unknown as CrossBorderSalaryStatementRecord['nGre'],
     })
 
     const stand = spanne(await service.getState('u', 2025))
@@ -152,7 +152,7 @@ describe('SteuerschaetzungService', () => {
     ch.seed({
       userId: 'u',
       steuerjahr: 2025,
-      felder: { 'bruttolohn-total': '90000', 'berufliche-vorsorge': '4500', quellensteuer: '4050' } as ChLohnausweisRecord['felder'],
+      felder: { 'bruttolohn-total': '90000', 'berufliche-vorsorge': '4500', quellensteuer: '4050' } as CrossBorderSalaryStatementRecord['felder'],
       bemerkungen: null,
       saeule3aChf: null,
       krankenkasseChf: null,
@@ -160,7 +160,7 @@ describe('SteuerschaetzungService', () => {
       wechselkursKurs: 1.07,
       wechselkursModus: 'amtlich',
       wechselkursBelegId: null,
-      nGre: { pkArbeitnehmerChf: null } as ChLohnausweisRecord['nGre'],
+      nGre: { pkArbeitnehmerChf: null } as CrossBorderSalaryStatementRecord['nGre'],
     })
 
     const stand = await service.getState('u', 2025)

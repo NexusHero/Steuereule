@@ -2,11 +2,11 @@
 // provider. Signature verification itself is proven with real Stripe signatures in
 // stripe-zahlungsanbieter.test.ts; here the fake decides what "verified" means.
 import { beforeEach, describe, expect, it } from 'vitest'
-import type { FreischaltungRepository } from '../src/freischaltung/freischaltung.repository.js'
-import { FreischaltungService } from '../src/freischaltung/freischaltung.service.js'
+import type { UnlockRepository } from '../src/freischaltung/freischaltung.repository.js'
+import { UnlockService } from '../src/freischaltung/freischaltung.service.js'
 import type { CheckoutAnfrage, Zahlungsanbieter, ZahlungsEreignis } from '../src/freischaltung/zahlungsanbieter.js'
 
-class FakeFreischaltungRepository implements FreischaltungRepository {
+class FakeFreischaltungRepository implements UnlockRepository {
   rows: { userId: string; steuerjahr: number; sitzungId: string; status: string; betragCent: number | null }[] = []
 
   async legeOffeneAn(userId: string, steuerjahr: number, sitzungId: string): Promise<void> {
@@ -42,12 +42,12 @@ class FakeAnbieter implements Zahlungsanbieter {
 describe('FreischaltungService', () => {
   let repository: FakeFreischaltungRepository
   let anbieter: FakeAnbieter
-  let service: FreischaltungService
+  let service: UnlockService
 
   beforeEach(() => {
     repository = new FakeFreischaltungRepository()
     anbieter = new FakeAnbieter()
-    service = new FreischaltungService(repository, anbieter, 'https://app.steuereule.de')
+    service = new UnlockService(repository, anbieter, 'https://app.steuereule.de')
   })
 
   it('a fresh tax year is payable, not unlocked', async () => {
@@ -102,7 +102,7 @@ describe('FreischaltungService', () => {
   })
 
   it('without a configured provider the state is honestly "nicht-verfuegbar" and checkout refuses', async () => {
-    const ohne = new FreischaltungService(repository, null, 'https://app.steuereule.de')
+    const ohne = new UnlockService(repository, null, 'https://app.steuereule.de')
     await expect(ohne.status('u1', 2025)).resolves.toBe('nicht-verfuegbar')
     await expect(ohne.starteCheckout('u1', 2025)).rejects.toMatchObject({ code: 'PAYMENT_NOT_CONFIGURED' })
   })

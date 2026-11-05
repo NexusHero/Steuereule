@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common'
-import { EINKUNFTSARTEN, type Einkunftsart, type EulenQuelleId, type KiPort, type KiVorschlag } from '@steuereule/core'
+import { INCOME_TYPES, type IncomeType, type OwlSourceId, type KiPort, type KiVorschlag } from '@steuereule/core'
 
 export const KI_PORT = Symbol('KI_PORT')
 
@@ -11,7 +11,7 @@ export interface RechtsquelleEintrag {
   readonly url: string
 }
 
-export const RECHTSQUELLEN: Readonly<Record<EulenQuelleId | 'estg-32', RechtsquelleEintrag>> = {
+export const RECHTSQUELLEN: Readonly<Record<OwlSourceId | 'estg-32', RechtsquelleEintrag>> = {
   'estg-4-5-6c': {
     id: 'estg-4-5-6c',
     paragraph: '§ 4 Abs. 5 Satz 1 Nr. 6c EStG',
@@ -98,7 +98,7 @@ export function validiereKiVorschlag(raw: unknown): KiVorschlag {
   if (typeof obj.id !== 'string' || obj.id.trim().length === 0) {
     throw new Error('Invalid KiVorschlag: id must be a non-empty string.')
   }
-  if (typeof obj.einkunftsart !== 'string' || !(EINKUNFTSARTEN as readonly string[]).includes(obj.einkunftsart)) {
+  if (typeof obj.einkunftsart !== 'string' || !(INCOME_TYPES as readonly string[]).includes(obj.einkunftsart)) {
     throw new Error(`Invalid KiVorschlag: unknown einkunftsart "${String(obj.einkunftsart)}".`)
   }
   if (typeof obj.betrag !== 'number' || !Number.isInteger(obj.betrag) || obj.betrag < 0) {
@@ -109,7 +109,7 @@ export function validiereKiVorschlag(raw: unknown): KiVorschlag {
   }
   return {
     id: obj.id,
-    einkunftsart: obj.einkunftsart as Einkunftsart,
+    einkunftsart: obj.einkunftsart as IncomeType,
     betrag: obj.betrag,
     ...(typeof obj.belegId === 'string' ? { belegId: obj.belegId } : {}),
   }
@@ -125,7 +125,7 @@ export class RagKiAdapter implements KiPort {
 
   async erklaereQuelle(quelleId: string): Promise<string> {
     if (!Object.hasOwn(RECHTSQUELLEN, quelleId)) throw new Error(`Unbekannte Rechtsquelle "${quelleId}".`)
-    const eintrag = RECHTSQUELLEN[quelleId as EulenQuelleId]
+    const eintrag = RECHTSQUELLEN[quelleId as OwlSourceId]
     return `${eintrag.uebersetzung} (${eintrag.paragraph}, Rechtsstand ${eintrag.rechtsstandDatum})`
   }
 }

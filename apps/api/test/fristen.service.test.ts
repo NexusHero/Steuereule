@@ -5,7 +5,7 @@
 // packages/core/src/fristen.test.ts). The full real-socket proof lives in
 // test/acceptance/req-027-fristen.test.ts.
 import { describe, expect, it } from 'vitest'
-import { FristenService, heuteInBerlin } from '../src/fristen/fristen.service.js'
+import { DeadlinesService, heuteInBerlin } from '../src/fristen/fristen.service.js'
 
 describe('heuteInBerlin — the server\'s "heute", never the client clock', () => {
   it('maps a UTC instant to the Berlin calendar day (ISO yyyy-mm-dd)', () => {
@@ -26,7 +26,7 @@ describe('heuteInBerlin — the server\'s "heute", never the client clock', () =
 })
 
 describe('FristenService', () => {
-  const service = new FristenService()
+  const service = new DeadlinesService()
 
   it('returns the structure for a supported year — abgabefrist from the per-year Regelwerk', async () => {
     const dto = await service.getFristen(2026)

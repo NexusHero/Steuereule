@@ -5,7 +5,7 @@ import { ForbidAssistant } from '../auth/forbid-assistant.guard.js'
 import { RequiresAccount } from '../auth/requires-account.guard.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
 import { ParseSteuerjahrPipe } from '../cockpit/parse-steuerjahr.pipe.js'
-import { EulenModusService } from './eulen-modus.service.js'
+import { OwlModeService } from './eulen-modus.service.js'
 import {
   EulenEinstellungResponseDto,
   EulenKartenResponseDto,
@@ -16,7 +16,7 @@ import {
 @Controller('v1')
 @UseGuards(UserContextGuard)
 export class EulenModusController {
-  constructor(@Inject(EulenModusService) private readonly service: EulenModusService) {}
+  constructor(@Inject(OwlModeService) private readonly service: OwlModeService) {}
 
   @Get('eulen-modus/einstellung')
   @RequiresAccount()

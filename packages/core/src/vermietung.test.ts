@@ -1,17 +1,17 @@
 import { describe, expect, it } from 'vitest'
 import {
   afaSatzProzent,
-  istGueltigerVermietungBetrag,
-  istVermietungBerechenbar,
-  leeresVermietungsobjekt,
-  ordneVermietungEin,
-  serialisiereVermietungFeld,
-  deserialisiereVermietungFeld,
-  setzeVermietungFeld,
+  isValidRentalAmount,
+  isRentalCalculable,
+  emptyRentalObject,
+  classifyRental,
+  serializeRentalField,
+  deserializeRentalField,
+  setRentalField,
   vermietungsobjektAlsEinnahmePosten,
   vermietungsobjektFakten,
   vermietungStand,
-  type VermietungsobjektDaten,
+  type RentalObjectData,
 } from './vermietung'
 
 // Ticket 10.6 — Vermietung EINFACH (product ADR-033): the Einordnung (Einfach/Mehrere
@@ -21,21 +21,21 @@ import {
 
 describe('ordneVermietungEin — the vermietung-art answer mapped onto what it means', () => {
   it('Einfach and Mehrere are computable (ganzjährig vermietet, je Objekt eine Anlage V)', () => {
-    expect(ordneVermietungEin('Einfach')).toEqual({ kind: 'einfach' })
-    expect(ordneVermietungEin('Mehrere')).toEqual({ kind: 'mehrere' })
-    expect(istVermietungBerechenbar({ kind: 'einfach' })).toBe(true)
-    expect(istVermietungBerechenbar({ kind: 'mehrere' })).toBe(true)
+    expect(classifyRental('Einfach')).toEqual({ kind: 'einfach' })
+    expect(classifyRental('Mehrere')).toEqual({ kind: 'mehrere' })
+    expect(isRentalCalculable({ kind: 'einfach' })).toBe(true)
+    expect(isRentalCalculable({ kind: 'mehrere' })).toBe(true)
   })
 
   it('Verkauf oder möbliert stays gated (ADR-033 — the boundary is named, never widened)', () => {
-    expect(ordneVermietungEin('Verkauf oder möbliert')).toEqual({ kind: 'verkauf-oder-moebliert' })
-    expect(istVermietungBerechenbar({ kind: 'verkauf-oder-moebliert' })).toBe(false)
+    expect(classifyRental('Verkauf oder möbliert')).toEqual({ kind: 'verkauf-oder-moebliert' })
+    expect(isRentalCalculable({ kind: 'verkauf-oder-moebliert' })).toBe(false)
   })
 
   it('a missing answer is unbekannt — nothing is guessed', () => {
-    expect(ordneVermietungEin(undefined)).toEqual({ kind: 'unbekannt' })
-    expect(ordneVermietungEin('irgendwas')).toEqual({ kind: 'unbekannt' })
-    expect(istVermietungBerechenbar({ kind: 'unbekannt' })).toBe(false)
+    expect(classifyRental(undefined)).toEqual({ kind: 'unbekannt' })
+    expect(classifyRental('irgendwas')).toEqual({ kind: 'unbekannt' })
+    expect(isRentalCalculable({ kind: 'unbekannt' })).toBe(false)
   })
 })
 
@@ -64,7 +64,7 @@ describe('afaSatzProzent — § 7 Abs. 4 Satz 1 EStG, the three statutory bands 
 
 describe('the guided mask — one Vermietungsobjekt', () => {
   it('starts with every field open', () => {
-    const objekt = leeresVermietungsobjekt('obj-1')
+    const objekt = emptyRentalObject('obj-1')
     expect(objekt.mieteinnahmen).toEqual({ kind: 'offen' })
     expect(objekt.anschaffungskosten).toEqual({ kind: 'offen' })
     expect(objekt.baujahr).toEqual({ kind: 'offen' })
@@ -72,28 +72,28 @@ describe('the guided mask — one Vermietungsobjekt', () => {
   })
 
   it('setzeVermietungFeld captures and rejects invalid erfasst values', () => {
-    const objekt = setzeVermietungFeld(leeresVermietungsobjekt('o1'), 'mieteinnahmen', { kind: 'erfasst', wert: 12000 })
+    const objekt = setRentalField(emptyRentalObject('o1'), 'mieteinnahmen', { kind: 'erfasst', wert: 12000 })
     expect(objekt.mieteinnahmen).toEqual({ kind: 'erfasst', wert: 12000 })
-    expect(() => setzeVermietungFeld(leeresVermietungsobjekt('o1'), 'baujahr', { kind: 'erfasst', wert: -1 })).toThrow(RangeError)
-    expect(() => setzeVermietungFeld(leeresVermietungsobjekt('o1'), 'baujahr', { kind: 'erfasst', wert: 1.5 })).toThrow(RangeError)
+    expect(() => setRentalField(emptyRentalObject('o1'), 'baujahr', { kind: 'erfasst', wert: -1 })).toThrow(RangeError)
+    expect(() => setRentalField(emptyRentalObject('o1'), 'baujahr', { kind: 'erfasst', wert: 1.5 })).toThrow(RangeError)
   })
 
   it('round-trips the persistence encoding', () => {
-    expect(serialisiereVermietungFeld({ kind: 'offen' })).toBeNull()
-    expect(serialisiereVermietungFeld({ kind: 'unklar' })).toBe('unklar')
-    expect(serialisiereVermietungFeld({ kind: 'erfasst', wert: 12000 })).toBe('12000')
-    expect(deserialisiereVermietungFeld(null)).toEqual({ kind: 'offen' })
-    expect(deserialisiereVermietungFeld('unklar')).toEqual({ kind: 'unklar' })
-    expect(deserialisiereVermietungFeld('12000')).toEqual({ kind: 'erfasst', wert: 12000 })
-    expect(() => deserialisiereVermietungFeld('zwölf')).toThrow()
+    expect(serializeRentalField({ kind: 'offen' })).toBeNull()
+    expect(serializeRentalField({ kind: 'unklar' })).toBe('unklar')
+    expect(serializeRentalField({ kind: 'erfasst', wert: 12000 })).toBe('12000')
+    expect(deserializeRentalField(null)).toEqual({ kind: 'offen' })
+    expect(deserializeRentalField('unklar')).toEqual({ kind: 'unklar' })
+    expect(deserializeRentalField('12000')).toEqual({ kind: 'erfasst', wert: 12000 })
+    expect(() => deserializeRentalField('zwölf')).toThrow()
   })
 })
 
-function objektMit(id: string, overrides: Partial<VermietungsobjektDaten> = {}): VermietungsobjektDaten {
-  return { ...leeresVermietungsobjekt(id), ...overrides }
+function objektMit(id: string, overrides: Partial<RentalObjectData> = {}): RentalObjectData {
+  return { ...emptyRentalObject(id), ...overrides }
 }
 
-const VOLL = (id: string): VermietungsobjektDaten =>
+const VOLL = (id: string): RentalObjectData =>
   objektMit(id, {
     mieteinnahmen: { kind: 'erfasst', wert: 12000 },
     anschaffungskosten: { kind: 'erfasst', wert: 200000 },
@@ -112,7 +112,7 @@ describe('vermietungsobjektFakten — one object\'s honest facts', () => {
   })
 
   it('an empty object has three blocked results — Mieteinnahmen, AfA, Werbungskosten', () => {
-    const fakten = vermietungsobjektFakten(leeresVermietungsobjekt('a'))
+    const fakten = vermietungsobjektFakten(emptyRentalObject('a'))
     expect(fakten.einnahmen).toBeNull()
     expect(fakten.werbungskosten).toBeNull()
     expect(fakten.afa).toBeNull()
@@ -144,7 +144,7 @@ describe('vermietungsobjektAlsEinnahmePosten — the fold into the deterministic
   })
 
   it('an open field stays null — OFFEN, never a fabricated zero', () => {
-    expect(vermietungsobjektAlsEinnahmePosten(leeresVermietungsobjekt('a'))).toBeNull()
+    expect(vermietungsobjektAlsEinnahmePosten(emptyRentalObject('a'))).toBeNull()
   })
 })
 
@@ -165,7 +165,7 @@ describe('vermietungStand — the honest fold over ALL objects', () => {
   })
 
   it('is offen naming the blocked count when an object is incomplete — never a guessed zero', () => {
-    const stand = vermietungStand([VOLL('a'), leeresVermietungsobjekt('b')], [])
+    const stand = vermietungStand([VOLL('a'), emptyRentalObject('b')], [])
     expect(stand.kind).toBe('offen')
     if (stand.kind === 'offen') {
       expect(stand.offenePosten).toBe(3)
@@ -184,10 +184,10 @@ describe('vermietungStand — the honest fold over ALL objects', () => {
 
 describe('istGueltigerVermietungBetrag — the one amount guard', () => {
   it('accepts non-negative integers, rejects everything else', () => {
-    expect(istGueltigerVermietungBetrag(0)).toBe(true)
-    expect(istGueltigerVermietungBetrag(12000)).toBe(true)
-    expect(istGueltigerVermietungBetrag(-1)).toBe(false)
-    expect(istGueltigerVermietungBetrag(1.5)).toBe(false)
-    expect(istGueltigerVermietungBetrag(Number.NaN)).toBe(false)
+    expect(isValidRentalAmount(0)).toBe(true)
+    expect(isValidRentalAmount(12000)).toBe(true)
+    expect(isValidRentalAmount(-1)).toBe(false)
+    expect(isValidRentalAmount(1.5)).toBe(false)
+    expect(isValidRentalAmount(Number.NaN)).toBe(false)
   })
 })

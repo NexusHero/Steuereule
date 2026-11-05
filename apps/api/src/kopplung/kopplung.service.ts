@@ -4,12 +4,12 @@ import { randomBytes } from 'node:crypto'
 import { AuditService } from '../audit/audit.service.js'
 import { PROFILE_REPOSITORY, type ProfileRepository } from '../profile/profile.repository.js'
 import {
-  STAMMDATEN_FELDER,
-  STAMMDATEN_REPOSITORY,
-  type StammdatenRecord,
-  type StammdatenRepository,
+  MASTER_DATA_FIELDS,
+  MASTER_DATA_REPOSITORY,
+  type MasterDataRecord,
+  type MasterDataRepository,
 } from '../stammdaten/stammdaten.repository.js'
-import { KOPPLUNG_REPOSITORY, type KopplungRepository, type SteuerjahrKopplungRecord } from './kopplung.repository.js'
+import { PARTNER_COUPLING_REPOSITORY, type KopplungRepository, type SteuerjahrKopplungRecord } from './kopplung.repository.js'
 import type { KopplungPersonBDto, KopplungResponseDto, SetKopplungDto } from './dto/kopplung.dto.js'
 
 const SCHATTEN_PRAEFIX = 'spouse_'
@@ -35,9 +35,9 @@ function einladungGueltig(row: SteuerjahrKopplungRecord, jetzt: Date): boolean {
   return row.einladungsCode !== null && row.einladungsCodeGueltigBis !== null && row.einladungsCodeGueltigBis > jetzt
 }
 
-function leereStammdaten(): StammdatenRecord {
-  const werte = Object.fromEntries(STAMMDATEN_FELDER.map((feld) => [feld, null])) as Omit<
-    StammdatenRecord,
+function leereStammdaten(): MasterDataRecord {
+  const werte = Object.fromEntries(MASTER_DATA_FIELDS.map((feld) => [feld, null])) as Omit<
+    MasterDataRecord,
     'religionEinwilligungAm'
   >
   return { ...werte, religionEinwilligungAm: null }
@@ -46,9 +46,9 @@ function leereStammdaten(): StammdatenRecord {
 @Injectable()
 export class KopplungService {
   constructor(
-    @Inject(KOPPLUNG_REPOSITORY) private readonly repository: KopplungRepository,
+    @Inject(PARTNER_COUPLING_REPOSITORY) private readonly repository: KopplungRepository,
     @Inject(PROFILE_REPOSITORY) private readonly profileRepository: ProfileRepository,
-    @Inject(STAMMDATEN_REPOSITORY) private readonly stammdatenRepository: StammdatenRepository,
+    @Inject(MASTER_DATA_REPOSITORY) private readonly stammdatenRepository: MasterDataRepository,
     @Inject(AuditService) private readonly auditService: AuditService,
   ) {}
 

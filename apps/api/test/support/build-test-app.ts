@@ -23,10 +23,10 @@ import { PROFILE_REPOSITORY } from '../../src/profile/profile.repository.js'
 import { TAX_YEAR_REPOSITORY } from '../../src/cockpit/tax-year.repository.js'
 import { INTERVIEW_ANSWER_REPOSITORY } from '../../src/interview/interview-answer.repository.js'
 import { LSTB_REPOSITORY } from '../../src/lstb/lstb.repository.js'
-import { RENTE_REPOSITORY } from '../../src/rente/rente.repository.js'
-import { KAPITAL_REPOSITORY } from '../../src/kapital/kapital.repository.js'
-import { VERMIETUNG_REPOSITORY } from '../../src/vermietung/vermietung.repository.js'
-import { KENNZEICHNUNG_REPOSITORY } from '../../src/kennzeichnung/kennzeichnung.repository.js'
+import { PENSION_REPOSITORY } from '../../src/rente/rente.repository.js'
+import { CAPITAL_REPOSITORY } from '../../src/kapital/kapital.repository.js'
+import { RENTAL_REPOSITORY } from '../../src/vermietung/vermietung.repository.js'
+import { PROVENANCE_REPOSITORY } from '../../src/kennzeichnung/kennzeichnung.repository.js'
 import { FakeAccountIdentityRepository } from '../fakes/fake-account-identity.repository.js'
 import { FakeAuditRepository } from '../fakes/fake-audit.repository.js'
 import { FakeInterviewAnswerRepository } from '../fakes/fake-interview-answer.repository.js'
@@ -40,7 +40,7 @@ import { FakeTaxYearRepository } from '../fakes/fake-tax-year.repository.js'
 import { FakeKennzeichnungRepository } from '../fakes/fake-kennzeichnung.repository.js'
 import { FakeVermietungRepository } from '../fakes/fake-vermietung.repository.js'
 import { FakeChLohnausweisRepository } from '../fakes/fake-ch-lohnausweis.repository.js'
-import { CH_LOHNAUSWEIS_REPOSITORY } from '../../src/ch-lohnausweis/ch-lohnausweis.repository.js'
+import { CROSS_BORDER_SALARY_STATEMENT_REPOSITORY } from '../../src/ch-lohnausweis/ch-lohnausweis.repository.js'
 
 export async function buildTestApp(options?: {
   /** Overrides the default always-succeeding DATABASE_REACHABILITY_CHECK stub — the one
@@ -115,15 +115,15 @@ export async function buildTestApp(options?: {
     .useValue(lstbRepository)
     .overrideProvider(INTERVIEW_ANSWER_REPOSITORY)
     .useValue(interviewRepository)
-    .overrideProvider(KENNZEICHNUNG_REPOSITORY)
+    .overrideProvider(PROVENANCE_REPOSITORY)
     .useValue(kennzeichnungRepository)
-    .overrideProvider(RENTE_REPOSITORY)
+    .overrideProvider(PENSION_REPOSITORY)
     .useValue(renteRepository)
-    .overrideProvider(KAPITAL_REPOSITORY)
+    .overrideProvider(CAPITAL_REPOSITORY)
     .useValue(kapitalRepository)
-    .overrideProvider(VERMIETUNG_REPOSITORY)
+    .overrideProvider(RENTAL_REPOSITORY)
     .useValue(vermietungRepository)
-    .overrideProvider(CH_LOHNAUSWEIS_REPOSITORY)
+    .overrideProvider(CROSS_BORDER_SALARY_STATEMENT_REPOSITORY)
     .useValue(chLohnausweisRepository)
     .overrideProvider(ACCOUNT_IDENTITY_REPOSITORY)
     .useValue(accountIdentityRepository)

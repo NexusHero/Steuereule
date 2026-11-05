@@ -1,16 +1,16 @@
 import { Inject, Injectable } from '@nestjs/common'
 import {
-  deutschesDatum,
-  einspruchsfristEnde,
-  generiereEulenKarten,
+  formatGermanDate,
+  appealDeadlineEnd,
+  generateOwlCards,
   homeofficeTageAusInterview,
   RECHTSSTAND_DATUM,
-  type EulenArchivJahr,
-  type EulenEingabeFakten,
+  type OwlArchiveYear,
+  type OwlInputFacts,
   type KiPort,
 } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
-import { BESCHEID_REPOSITORY, type BescheidRecord, type BescheidRepository } from '../bescheid/bescheid.repository.js'
+import { ASSESSMENT_REPOSITORY, type AssessmentRecord, type AssessmentRepository } from '../bescheid/bescheid.repository.js'
 import { heuteInBerlin } from '../fristen/fristen.service.js'
 import {
   INTERVIEW_ANSWER_REPOSITORY,
@@ -18,12 +18,12 @@ import {
   type InterviewAnswerRepository,
 } from '../interview/interview-answer.repository.js'
 import { KI_PORT, pruefePiiFreiheit } from '../ki/ki.adapter.js'
-import { KIND_REPOSITORY, type KindRepository } from '../kinder/kind.repository.js'
+import { CHILD_REPOSITORY, type ChildRepository } from '../kinder/kind.repository.js'
 import {
-  EULEN_EINSTELLUNG_REPOSITORY,
-  EULEN_KARTEN_VERWURF_REPOSITORY,
-  type EulenEinstellungRepository,
-  type EulenKartenVerwurfRepository,
+  OWL_SETTING_REPOSITORY,
+  OWL_CARD_DISMISSAL_REPOSITORY,
+  type OwlSettingRepository,
+  type OwlCardDismissalRepository,
 } from './eulen-modus.repository.js'
 import type { EulenEinstellungResponseDto, EulenKartenResponseDto } from './dto/eulen-modus.dto.js'
 
@@ -38,30 +38,30 @@ function ganzzahl(wert: string | undefined): number | null {
 }
 
 function archivJahr(
-  bescheid: BescheidRecord | null,
+  bescheid: AssessmentRecord | null,
   antworten: Record<string, string>,
   heute: string,
-): EulenArchivJahr | null {
+): OwlArchiveYear | null {
   if (!bescheid?.bescheiddatum || bescheid.status === 'einspruch-eingelegt') return null
-  const fristEnde = einspruchsfristEnde(bescheid.bescheiddatum)
+  const fristEnde = appealDeadlineEnd(bescheid.bescheiddatum)
   const homeofficeTage = homeofficeTageAusInterview(antworten)
   if (fristEnde < heute || !homeofficeTage) return null
   return {
     steuerjahr: bescheid.steuerjahr,
-    bescheidDatum: deutschesDatum(bescheid.bescheiddatum),
-    einspruchMoeglichBis: deutschesDatum(fristEnde),
+    bescheidDatum: formatGermanDate(bescheid.bescheiddatum),
+    einspruchMoeglichBis: formatGermanDate(fristEnde),
     homeofficeTage,
   }
 }
 
 @Injectable()
-export class EulenModusService {
+export class OwlModeService {
   constructor(
-    @Inject(EULEN_EINSTELLUNG_REPOSITORY) private readonly einstellungRepo: EulenEinstellungRepository,
-    @Inject(EULEN_KARTEN_VERWURF_REPOSITORY) private readonly verwurfRepo: EulenKartenVerwurfRepository,
-    @Inject(KIND_REPOSITORY) private readonly kinderRepo: KindRepository,
+    @Inject(OWL_SETTING_REPOSITORY) private readonly einstellungRepo: OwlSettingRepository,
+    @Inject(OWL_CARD_DISMISSAL_REPOSITORY) private readonly verwurfRepo: OwlCardDismissalRepository,
+    @Inject(CHILD_REPOSITORY) private readonly kinderRepo: ChildRepository,
     @Inject(INTERVIEW_ANSWER_REPOSITORY) private readonly interviewRepo: InterviewAnswerRepository,
-    @Inject(BESCHEID_REPOSITORY) private readonly bescheidRepo: BescheidRepository,
+    @Inject(ASSESSMENT_REPOSITORY) private readonly bescheidRepo: AssessmentRepository,
     @Inject(KI_PORT) private readonly kiPort: KiPort,
     @Inject(AuditService) private readonly auditService: AuditService,
   ) {}
@@ -107,7 +107,7 @@ export class EulenModusService {
     const vorjahrSpendenEur = answers['spenden-betrag'] ? null : ganzzahl(vorjahrAnswers['spenden-betrag'])
     const archiv = archivJahr(vorjahrBescheid, vorjahrAnswers, heute)
 
-    const eingabe: EulenEingabeFakten = {
+    const eingabe: OwlInputFacts = {
       steuerjahr,
       hatFortbildung: answers['fortbildung'] === 'Ja',
       homeofficeTage: homeofficeTageAusInterview(answers),
@@ -119,7 +119,7 @@ export class EulenModusService {
     }
 
     pruefePiiFreiheit(eingabe)
-    const roheKarten = generiereEulenKarten(eingabe)
+    const roheKarten = generateOwlCards(eingabe)
     const karten = await Promise.all(
       roheKarten.map(async ({ quelleId, ...karte }) => ({
         ...karte,
@@ -139,6 +139,3 @@ export class EulenModusService {
     await this.verwurfRepo.verwerfe(userId, steuerjahr, fingerprint)
   }
 }
-
-export { EulenModusService as OwlModeService }
-

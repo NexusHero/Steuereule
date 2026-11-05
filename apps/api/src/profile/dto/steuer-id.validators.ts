@@ -1,10 +1,10 @@
-import { isValidSteuerId, isValidSteuernummer } from '@steuereule/core'
+import { isValidTaxId, isValidTaxNumber } from '@steuereule/core'
 import { registerDecorator, ValidatorConstraint, ValidatorConstraintInterface } from 'class-validator'
 
 @ValidatorConstraint({ name: 'isSteuerId', async: false })
 class IsSteuerIdConstraint implements ValidatorConstraintInterface {
   validate(value: unknown): boolean {
-    return typeof value === 'string' && isValidSteuerId(value)
+    return typeof value === 'string' && isValidTaxId(value)
   }
   defaultMessage(): string {
     return 'steuerId must be exactly 11 digits'
@@ -25,7 +25,7 @@ export function IsSteuerId() {
 @ValidatorConstraint({ name: 'isSteuernummer', async: false })
 class IsSteuernummerConstraint implements ValidatorConstraintInterface {
   validate(value: unknown): boolean {
-    return typeof value === 'string' && isValidSteuernummer(value)
+    return typeof value === 'string' && isValidTaxNumber(value)
   }
   defaultMessage(): string {
     return 'steuernummer must be 1-13 digits if present'

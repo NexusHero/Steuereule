@@ -6,7 +6,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@steuereule/ui'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { wochentageImJahr } from '@steuereule/core'
+import { weekdaysInYear } from '@steuereule/core'
 import { http, HttpResponse } from 'msw'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
@@ -31,7 +31,7 @@ describe('ArbeitstageScreen', () => {
 
     expect(await screen.findByText('Wochentage im Jahr')).toBeTruthy()
     // 2026 Mo–Fr, before any vacation/sick/home-office subtraction.
-    const wochentage = wochentageImJahr(2026, [1, 2, 3, 4, 5])
+    const wochentage = weekdaysInYear(2026, [1, 2, 3, 4, 5])
     expect(screen.getAllByText(String(wochentage)).length).toBeGreaterThan(0)
   })
 
@@ -51,7 +51,7 @@ describe('ArbeitstageScreen', () => {
     const krank = screen.getByLabelText('Krankheitstage')
     fireEvent.change(krank, { target: { value: '5' } })
 
-    const wochentage = wochentageImJahr(2026, [1, 2, 3, 4, 5])
+    const wochentage = weekdaysInYear(2026, [1, 2, 3, 4, 5])
     expect(screen.getAllByText(String(wochentage - 15)).length).toBeGreaterThan(0)
   })
 

@@ -43,13 +43,9 @@ export interface Kennzeichnung {
 export const MASKEN = ['profil', 'stammdaten', 'kopplung', 'interview', 'lstb', 'chLohnausweis', 'rente', 'kapital', 'vermietung', 'kind'] as const
 export type Maske = (typeof MASKEN)[number]
 
-export const ANLAGEN = ['hauptvordruck', 'anlageN', 'anlageNGre', 'anlageR', 'anlageKap', 'anlageV', 'anlageKind'] as const
-export type Anlage = (typeof ANLAGEN)[number]
-
-export const ANNEXES = ANLAGEN
-export type Annex = Anlage
-
-const ANLAGE_JE_MASKE: Readonly<Record<Maske, Anlage>> = {
+export const ANNEXES = ['hauptvordruck', 'anlageN', 'anlageNGre', 'anlageR', 'anlageKap', 'anlageV', 'anlageKind'] as const
+export type Annex = (typeof ANNEXES)[number]
+const ANLAGE_JE_MASKE: Readonly<Record<Maske, Annex>> = {
   profil: 'hauptvordruck',
   stammdaten: 'hauptvordruck',
   kopplung: 'hauptvordruck',
@@ -63,18 +59,15 @@ const ANLAGE_JE_MASKE: Readonly<Record<Maske, Anlage>> = {
 }
 
 export const YEAR_INDEPENDENT = 0
-export const JAHRESUNABHAENGIG = YEAR_INDEPENDENT
 
-export function kennzeichnungsKey(maske: Maske, feld: string, instanz?: string): string {
+export function provenanceKey(maske: Maske, feld: string, instanz?: string): string {
   if (feld === '' || feld.includes('.') || (instanz !== undefined && (instanz === '' || instanz.includes('.')))) {
     throw new RangeError(`kennzeichnungsKey: invalid field "${feld}" or instance "${instanz ?? ''}"`)
   }
   return instanz === undefined ? `${maske}.${feld}` : `${maske}:${instanz}.${feld}`
 }
 
-export const provenanceKey = kennzeichnungsKey
-
-export function zerlegeKennzeichnungsKey(key: string): { maske: Maske; instanz: string | null; feld: string } {
+export function decomposeProvenanceKey(key: string): { maske: Maske; instanz: string | null; feld: string } {
   const punkt = key.indexOf('.')
   if (punkt <= 0 || punkt === key.length - 1) throw new RangeError(`Kennzeichnungs-Key "${key}" has no field`)
   const kopf = key.slice(0, punkt)
@@ -87,20 +80,16 @@ export function zerlegeKennzeichnungsKey(key: string): { maske: Maske; instanz: 
   return { maske: maske as Maske, instanz, feld }
 }
 
-export const decomposeProvenanceKey = zerlegeKennzeichnungsKey
-
-export function anlageVon(key: string): Anlage {
-  return ANLAGE_JE_MASKE[zerlegeKennzeichnungsKey(key).maske]
+export function anlageVon(key: string): Annex {
+  return ANLAGE_JE_MASKE[decomposeProvenanceKey(key).maske]
 }
 
-export const annexForMask = (maske: Maske): Anlage => ANLAGE_JE_MASKE[maske]
+export const annexForMask = (maske: Maske): Annex => ANLAGE_JE_MASKE[maske]
 
-export function istJahresunabhaengig(key: string): boolean {
-  const { maske } = zerlegeKennzeichnungsKey(key)
+export function isYearIndependent(key: string): boolean {
+  const { maske } = decomposeProvenanceKey(key)
   return maske === 'profil' || maske === 'stammdaten'
 }
-
-export const isYearIndependent = istJahresunabhaengig
 
 export type Schreibentscheidung =
   | { readonly art: 'schreiben'; readonly kennzeichnung: Kennzeichnung | null }
@@ -128,18 +117,14 @@ export function entscheideSchreibung({ key, bestehend, aktuellerWert, neuerWert,
 
 export const decideWriting = entscheideSchreibung
 
-export function fehlendeBestaetigungen(kennzeichnungen: readonly Kennzeichnung[]): string[] {
+export function missingConfirmations(kennzeichnungen: readonly Kennzeichnung[]): string[] {
   const offen = new Set(kennzeichnungen.filter((k) => !k.bestaetigt).map((k) => anlageVon(k.key)))
-  return ANLAGEN.filter((a) => offen.has(a)).map((a) => `unbestaetigt.${a}`)
+  return ANNEXES.filter((a) => offen.has(a)).map((a) => `unbestaetigt.${a}`)
 }
 
-export const missingConfirmations = fehlendeBestaetigungen
-
-export function bestaetigeAnlage(kennzeichnungen: readonly Kennzeichnung[], anlage: Anlage): Kennzeichnung[] {
+export function confirmAnnex(kennzeichnungen: readonly Kennzeichnung[], anlage: Annex): Kennzeichnung[] {
   return kennzeichnungen.map((k) => (anlageVon(k.key) === anlage && !k.bestaetigt ? { ...k, bestaetigt: true } : k))
 }
-
-export const confirmAnnex = bestaetigeAnlage
 
 export function nimmVorschlagAn(k: Kennzeichnung): Kennzeichnung {
   if (k.vorschlag === null) throw new RangeError(`nimmVorschlagAn: "${k.key}" has no proposal`)
@@ -155,7 +140,7 @@ export function verwirfVorschlag(k: Kennzeichnung): Kennzeichnung | null {
 
 export const dismissProposal = verwirfVorschlag
 
-export function herkunftText(herkunft: Herkunft): string {
+export function provenanceText(herkunft: Herkunft): string {
   switch (herkunft.art) {
     case 'nutzer':
       return 'Selbst eingetragen'
@@ -167,5 +152,3 @@ export function herkunftText(herkunft: Herkunft): string {
       return 'Aus Beleg'
   }
 }
-
-export const provenanceText = herkunftText

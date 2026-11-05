@@ -5,7 +5,7 @@ import { ProfileModule } from '../profile/profile.module.js'
 import { StammdatenModule } from '../stammdaten/stammdaten.module.js'
 import { KopplungController } from './kopplung.controller.js'
 import { KopplungService } from './kopplung.service.js'
-import { KOPPLUNG_REPOSITORY } from './kopplung.repository.js'
+import { PARTNER_COUPLING_REPOSITORY } from './kopplung.repository.js'
 import { PrismaKopplungRepository } from './kopplung.repository.prisma.js'
 
 @Module({
@@ -14,10 +14,10 @@ import { PrismaKopplungRepository } from './kopplung.repository.prisma.js'
   providers: [
     KopplungService,
     {
-      provide: KOPPLUNG_REPOSITORY,
+      provide: PARTNER_COUPLING_REPOSITORY,
       useClass: PrismaKopplungRepository,
     },
   ],
-  exports: [KopplungService, KOPPLUNG_REPOSITORY],
+  exports: [KopplungService, PARTNER_COUPLING_REPOSITORY],
 })
 export class KopplungModule {}

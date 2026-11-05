@@ -1,12 +1,12 @@
 import { BadRequestException, Injectable, type PipeTransform } from '@nestjs/common'
-import { RENTEN_FELDER, type RentenFeldId } from '@steuereule/core'
+import { PENSION_FIELDS, type PensionFieldId } from '@steuereule/core'
 
 @Injectable()
-export class ParseRenteFeldPipe implements PipeTransform<unknown, RentenFeldId> {
-  transform(value: unknown): RentenFeldId {
-    if (typeof value !== 'string' || !(RENTEN_FELDER as readonly string[]).includes(value)) {
-      throw new BadRequestException(`feld must be one of: ${RENTEN_FELDER.join(', ')}`)
+export class ParseRenteFeldPipe implements PipeTransform<unknown, PensionFieldId> {
+  transform(value: unknown): PensionFieldId {
+    if (typeof value !== 'string' || !(PENSION_FIELDS as readonly string[]).includes(value)) {
+      throw new BadRequestException(`feld must be one of: ${PENSION_FIELDS.join(', ')}`)
     }
-    return value as RentenFeldId
+    return value as PensionFieldId
   }
 }

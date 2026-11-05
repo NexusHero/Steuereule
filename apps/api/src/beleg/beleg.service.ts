@@ -2,9 +2,9 @@ import { Inject, Injectable } from '@nestjs/common'
 import { NotFoundError } from '../common/domain-error.js'
 import { zuordnungAusDaten, type BelegZuordnung } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
-import { BELEG_REPOSITORY, type BelegRecord, type BelegRepository } from './beleg.repository.js'
-import type { BelegResponseDto } from './dto/beleg-response.dto.js'
-import type { CreateBelegDto } from './dto/create-beleg.dto.js'
+import { RECEIPT_REPOSITORY, type ReceiptRecord, type ReceiptRepository } from './beleg.repository.js'
+import type { ReceiptResponseDto } from './dto/beleg-response.dto.js'
+import type { CreateReceiptDto } from './dto/create-beleg.dto.js'
 import type { SetZuordnungDto } from './dto/set-zuordnung.dto.js'
 import type { ZuordnungDto } from './dto/zuordnung.dto.js'
 
@@ -26,7 +26,7 @@ function toZuordnungDto(zuordnung: BelegZuordnung): ZuordnungDto {
   }
 }
 
-function toBelegResponse(record: BelegRecord): BelegResponseDto {
+function toBelegResponse(record: ReceiptRecord): ReceiptResponseDto {
   return {
     id: record.id,
     dateiname: record.dateiname,
@@ -41,11 +41,11 @@ function toBelegResponse(record: BelegRecord): BelegResponseDto {
 @Injectable()
 export class BelegService {
   constructor(
-    @Inject(BELEG_REPOSITORY) private readonly repository: BelegRepository,
+    @Inject(RECEIPT_REPOSITORY) private readonly repository: ReceiptRepository,
     @Inject(AuditService) private readonly auditService: AuditService,
   ) {}
 
-  async list(userId: string): Promise<BelegResponseDto[]> {
+  async list(userId: string): Promise<ReceiptResponseDto[]> {
     const rows = await this.repository.findAllForUser(userId)
     if (rows.length > 0) {
       await this.auditService.append({ userId, action: 'READ', resource: 'beleg' })
@@ -53,7 +53,7 @@ export class BelegService {
     return rows.map(toBelegResponse)
   }
 
-  async create(userId: string, dto: CreateBelegDto): Promise<BelegResponseDto> {
+  async create(userId: string, dto: CreateReceiptDto): Promise<ReceiptResponseDto> {
     const record = await this.repository.create(userId, {
       dateiname: dto.dateiname,
       ...(dto.art !== undefined ? { art: dto.art } : {}),
@@ -63,7 +63,7 @@ export class BelegService {
     return toBelegResponse(record)
   }
 
-  async setZuordnung(userId: string, id: string, dto: SetZuordnungDto): Promise<BelegResponseDto> {
+  async setZuordnung(userId: string, id: string, dto: SetZuordnungDto): Promise<ReceiptResponseDto> {
     const record = await this.repository.setZuordnung(userId, id, {
       steuerjahr: dto.steuerjahr,
       vorschlagVerworfen: dto.vorschlagVerworfen ?? false,

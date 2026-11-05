@@ -12,7 +12,7 @@ import { FakeTaxYearRepository } from './fakes/fake-tax-year.repository.js'
 import { FakeKennzeichnungRepository } from './fakes/fake-kennzeichnung.repository.js'
 import { FakeVermietungRepository } from './fakes/fake-vermietung.repository.js'
 import { FakeChLohnausweisRepository } from './fakes/fake-ch-lohnausweis.repository.js'
-import type { ChLohnausweisRecord } from '../src/ch-lohnausweis/ch-lohnausweis.repository.js'
+import type { CrossBorderSalaryStatementRecord } from '../src/ch-lohnausweis/ch-lohnausweis.repository.js'
 
 describe('CockpitService', () => {
   let taxYear: FakeTaxYearRepository
@@ -203,11 +203,11 @@ describe('CockpitService', () => {
   describe('Grenzgänger CH — the Lohnausweis is the income, not the empty LStB', () => {
     const GRENZGAENGER = { job: 'Angestellt', ausland: 'Ja, in die Schweiz', kinder: 'Nein', 'ch-wohnsitz': 'Deutschland', 'ch-nichtrueckkehrtage': '0' }
 
-    function lohnausweis(felder: Partial<ChLohnausweisRecord['felder']>, kurs: number | null): ChLohnausweisRecord {
+    function lohnausweis(felder: Partial<CrossBorderSalaryStatementRecord['felder']>, kurs: number | null): CrossBorderSalaryStatementRecord {
       return {
         userId: 'user-a',
         steuerjahr: 2025,
-        felder: felder as ChLohnausweisRecord['felder'],
+        felder: felder as CrossBorderSalaryStatementRecord['felder'],
         bemerkungen: null,
         saeule3aChf: null,
         krankenkasseChf: null,
@@ -215,7 +215,7 @@ describe('CockpitService', () => {
         wechselkursKurs: kurs,
         wechselkursModus: kurs === null ? null : 'amtlich',
         wechselkursBelegId: null,
-        nGre: {} as ChLohnausweisRecord['nGre'],
+        nGre: {} as CrossBorderSalaryStatementRecord['nGre'],
       }
     }
 

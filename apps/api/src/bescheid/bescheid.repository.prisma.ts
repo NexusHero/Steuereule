@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common'
-import type { BescheidFeld, BescheidStatus } from '@steuereule/core'
+import type { AssessmentField, BescheidStatus } from '@steuereule/core'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
-import type { BescheidFelder, BescheidRecord, BescheidRepository } from './bescheid.repository.js'
+import type { AssessmentFields, AssessmentRecord, AssessmentRepository } from './bescheid.repository.js'
 
 type Row = {
   userId: string
@@ -16,7 +16,7 @@ type Row = {
   erstattung: string | null
 }
 
-function felderAusRow(row: Row): BescheidFelder {
+function felderAusRow(row: Row): AssessmentFields {
   return {
     einnahmen: row.einnahmen,
     vorsorgeaufwand: row.vorsorgeaufwand,
@@ -26,7 +26,7 @@ function felderAusRow(row: Row): BescheidFelder {
   }
 }
 
-function toRecord(row: Row): BescheidRecord {
+function toRecord(row: Row): AssessmentRecord {
   return {
     userId: row.userId,
     steuerjahr: row.steuerjahr,
@@ -37,7 +37,7 @@ function toRecord(row: Row): BescheidRecord {
   }
 }
 
-function feldData(feld: BescheidFeld, wert: string | null): Partial<Row> {
+function feldData(feld: AssessmentField, wert: string | null): Partial<Row> {
   switch (feld) {
     case 'einnahmen':
       return { einnahmen: wert }
@@ -53,19 +53,19 @@ function feldData(feld: BescheidFeld, wert: string | null): Partial<Row> {
 }
 
 @Injectable()
-export class PrismaBescheidRepository implements BescheidRepository {
+export class PrismaBescheidRepository implements AssessmentRepository {
   constructor(@Inject(ENCRYPTED_PRISMA) private readonly prisma: EncryptedPrismaClient) {}
 
-  async findForUserAndYear(userId: string, steuerjahr: number): Promise<BescheidRecord | null> {
+  async findForUserAndYear(userId: string, steuerjahr: number): Promise<AssessmentRecord | null> {
     const row = await this.prisma.bescheid.findUnique({ where: { userId_steuerjahr: { userId, steuerjahr } } })
     return row === null ? null : toRecord(row)
   }
 
-  async setField(userId: string, taxYear: number, field: BescheidFeld, value: string | null): Promise<BescheidRecord> {
+  async setField(userId: string, taxYear: number, field: AssessmentField, value: string | null): Promise<AssessmentRecord> {
     return this.setFeld(userId, taxYear, field, value)
   }
 
-  async setFeld(userId: string, steuerjahr: number, feld: BescheidFeld, wert: string | null): Promise<BescheidRecord> {
+  async setFeld(userId: string, steuerjahr: number, feld: AssessmentField, wert: string | null): Promise<AssessmentRecord> {
     const [row] = await this.prisma.$transaction([
       this.prisma.bescheid.upsert({
         where: { userId_steuerjahr: { userId, steuerjahr } },
@@ -84,11 +84,11 @@ export class PrismaBescheidRepository implements BescheidRepository {
     return toRecord(row)
   }
 
-  async setDate(userId: string, taxYear: number, date: string | null): Promise<BescheidRecord> {
+  async setDate(userId: string, taxYear: number, date: string | null): Promise<AssessmentRecord> {
     return this.setDatum(userId, taxYear, date)
   }
 
-  async setDatum(userId: string, steuerjahr: number, datum: string | null): Promise<BescheidRecord> {
+  async setDatum(userId: string, steuerjahr: number, datum: string | null): Promise<AssessmentRecord> {
     const [row] = await this.prisma.$transaction([
       this.prisma.bescheid.upsert({
         where: { userId_steuerjahr: { userId, steuerjahr } },
@@ -102,7 +102,7 @@ export class PrismaBescheidRepository implements BescheidRepository {
     return toRecord(row)
   }
 
-  async setStatus(userId: string, steuerjahr: number, status: BescheidStatus): Promise<BescheidRecord> {
+  async setStatus(userId: string, steuerjahr: number, status: BescheidStatus): Promise<AssessmentRecord> {
     const [row] = await this.prisma.$transaction([
       this.prisma.bescheid.upsert({
         where: { userId_steuerjahr: { userId, steuerjahr } },
@@ -116,11 +116,11 @@ export class PrismaBescheidRepository implements BescheidRepository {
     return toRecord(row)
   }
 
-  async setAppeal(userId: string, taxYear: number, reason: string): Promise<BescheidRecord> {
+  async setAppeal(userId: string, taxYear: number, reason: string): Promise<AssessmentRecord> {
     return this.setEinspruch(userId, taxYear, reason)
   }
 
-  async setEinspruch(userId: string, steuerjahr: number, grund: string): Promise<BescheidRecord> {
+  async setEinspruch(userId: string, steuerjahr: number, grund: string): Promise<AssessmentRecord> {
     const [row] = await this.prisma.$transaction([
       this.prisma.bescheid.upsert({
         where: { userId_steuerjahr: { userId, steuerjahr } },

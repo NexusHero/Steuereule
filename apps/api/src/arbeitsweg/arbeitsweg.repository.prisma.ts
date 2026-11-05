@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common'
 import type { IsoWochentag } from '@steuereule/core'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
-import { VERKEHRSMITTEL, type ArbeitswegEingaben, type ArbeitswegRepository, type Verkehrsmittel } from './arbeitsweg.repository.js'
+import { VERKEHRSMITTEL, type CommuteInputs, type CommuteRepository, type Verkehrsmittel } from './arbeitsweg.repository.js'
 
 interface ArbeitswegRow {
   arbeitstage: string
@@ -15,7 +15,7 @@ interface ArbeitswegRow {
   feiertageRegion?: string | null
 }
 
-function eingabenAus(row: ArbeitswegRow): ArbeitswegEingaben {
+function eingabenAus(row: ArbeitswegRow): CommuteInputs {
   return {
     arbeitstage: row.arbeitstage === '' ? [] : row.arbeitstage.split(',').map((tag) => Number(tag) as IsoWochentag),
     urlaubstage: row.urlaubstage,
@@ -30,15 +30,15 @@ function eingabenAus(row: ArbeitswegRow): ArbeitswegEingaben {
 }
 
 @Injectable()
-export class PrismaArbeitswegRepository implements ArbeitswegRepository {
+export class PrismaArbeitswegRepository implements CommuteRepository {
   constructor(@Inject(ENCRYPTED_PRISMA) private readonly prisma: EncryptedPrismaClient) {}
 
-  async findForUserAndYear(userId: string, steuerjahr: number): Promise<ArbeitswegEingaben | null> {
+  async findForUserAndYear(userId: string, steuerjahr: number): Promise<CommuteInputs | null> {
     const row = await this.prisma.arbeitsweg.findUnique({ where: { userId_steuerjahr: { userId, steuerjahr } } })
     return row === null ? null : eingabenAus(row)
   }
 
-  async save(userId: string, steuerjahr: number, eingaben: ArbeitswegEingaben): Promise<ArbeitswegEingaben> {
+  async save(userId: string, steuerjahr: number, eingaben: CommuteInputs): Promise<CommuteInputs> {
     const data = {
       arbeitstage: eingaben.arbeitstage.join(','),
       urlaubstage: eingaben.urlaubstage,

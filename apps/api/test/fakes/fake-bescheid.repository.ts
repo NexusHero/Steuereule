@@ -2,17 +2,17 @@
 // contract without a database (ADR-0004). The writes mirror the real repository's upsert + return
 // semantics; the derived Abgleich/Frist stay in BescheidService (ADR-014/048: facts stored, never
 // the derived state).
-import type { BescheidFeld, BescheidStatus } from '@steuereule/core'
-import type { BescheidRecord, BescheidRepository } from '../../src/bescheid/bescheid.repository.js'
+import type { AssessmentField, BescheidStatus } from '@steuereule/core'
+import type { AssessmentRecord, AssessmentRepository } from '../../src/bescheid/bescheid.repository.js'
 
 function key(userId: string, steuerjahr: number): string {
   return `${userId}::${steuerjahr}`
 }
 
-export class FakeBescheidRepository implements BescheidRepository {
-  private readonly store = new Map<string, BescheidRecord>()
+export class FakeBescheidRepository implements AssessmentRepository {
+  private readonly store = new Map<string, AssessmentRecord>()
 
-  private leer(userId: string, steuerjahr: number): BescheidRecord {
+  private leer(userId: string, steuerjahr: number): AssessmentRecord {
     return {
       userId,
       steuerjahr,
@@ -23,15 +23,15 @@ export class FakeBescheidRepository implements BescheidRepository {
     }
   }
 
-  findForUserAndYear(userId: string, steuerjahr: number): Promise<BescheidRecord | null> {
+  findForUserAndYear(userId: string, steuerjahr: number): Promise<AssessmentRecord | null> {
     return Promise.resolve(this.store.get(key(userId, steuerjahr)) ?? null)
   }
 
-  setField(userId: string, taxYear: number, field: BescheidFeld, value: string | null): Promise<BescheidRecord> {
+  setField(userId: string, taxYear: number, field: AssessmentField, value: string | null): Promise<AssessmentRecord> {
     return this.setFeld(userId, taxYear, field, value)
   }
 
-  setFeld(userId: string, steuerjahr: number, feld: BescheidFeld, wert: string | null): Promise<BescheidRecord> {
+  setFeld(userId: string, steuerjahr: number, feld: AssessmentField, wert: string | null): Promise<AssessmentRecord> {
     const k = key(userId, steuerjahr)
     const existing = this.store.get(k) ?? this.leer(userId, steuerjahr)
     const updated = { ...existing, felder: { ...existing.felder, [feld]: wert } }
@@ -39,11 +39,11 @@ export class FakeBescheidRepository implements BescheidRepository {
     return Promise.resolve(updated)
   }
 
-  setDate(userId: string, taxYear: number, date: string | null): Promise<BescheidRecord> {
+  setDate(userId: string, taxYear: number, date: string | null): Promise<AssessmentRecord> {
     return this.setDatum(userId, taxYear, date)
   }
 
-  setDatum(userId: string, steuerjahr: number, datum: string | null): Promise<BescheidRecord> {
+  setDatum(userId: string, steuerjahr: number, datum: string | null): Promise<AssessmentRecord> {
     const k = key(userId, steuerjahr)
     const existing = this.store.get(k) ?? this.leer(userId, steuerjahr)
     const updated = { ...existing, bescheiddatum: datum }
@@ -51,7 +51,7 @@ export class FakeBescheidRepository implements BescheidRepository {
     return Promise.resolve(updated)
   }
 
-  setStatus(userId: string, steuerjahr: number, status: BescheidStatus): Promise<BescheidRecord> {
+  setStatus(userId: string, steuerjahr: number, status: BescheidStatus): Promise<AssessmentRecord> {
     const k = key(userId, steuerjahr)
     const existing = this.store.get(k) ?? this.leer(userId, steuerjahr)
     const updated = { ...existing, status }
@@ -59,20 +59,20 @@ export class FakeBescheidRepository implements BescheidRepository {
     return Promise.resolve(updated)
   }
 
-  setAppeal(userId: string, taxYear: number, reason: string): Promise<BescheidRecord> {
+  setAppeal(userId: string, taxYear: number, reason: string): Promise<AssessmentRecord> {
     return this.setEinspruch(userId, taxYear, reason)
   }
 
-  setEinspruch(userId: string, steuerjahr: number, grund: string): Promise<BescheidRecord> {
+  setEinspruch(userId: string, steuerjahr: number, grund: string): Promise<AssessmentRecord> {
     const k = key(userId, steuerjahr)
     const existing = this.store.get(k) ?? this.leer(userId, steuerjahr)
-    const updated: BescheidRecord = { ...existing, status: 'einspruch-eingelegt', einspruchGrund: grund }
+    const updated: AssessmentRecord = { ...existing, status: 'einspruch-eingelegt', einspruchGrund: grund }
     this.store.set(k, updated)
     return Promise.resolve(updated)
   }
 
   /** Test seam: seed a full record directly. */
-  seed(record: BescheidRecord): void {
+  seed(record: AssessmentRecord): void {
     this.store.set(key(record.userId, record.steuerjahr), record)
   }
 }

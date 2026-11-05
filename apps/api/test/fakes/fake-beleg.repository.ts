@@ -2,13 +2,13 @@
 // the derived-zuordnung contract without a database. `create`/`setSteuerjahr` mirror the
 // real repository's return shapes; the derived Zuordnung state is left to BelegService (as
 // in production, the repository stores facts, never the derived state — ADR-014/048).
-import type { BelegRecord, BelegRepository, CreateBelegData, SetZuordnungData } from '../../src/beleg/beleg.repository.js'
+import type { ReceiptRecord, ReceiptRepository, CreateReceiptData, SetZuordnungData } from '../../src/beleg/beleg.repository.js'
 
-export class FakeBelegRepository implements BelegRepository {
-  private readonly rows: BelegRecord[] = []
+export class FakeBelegRepository implements ReceiptRepository {
+  private readonly rows: ReceiptRecord[] = []
   private seq = 0
 
-  findAllForUser(userId: string): Promise<BelegRecord[]> {
+  findAllForUser(userId: string): Promise<ReceiptRecord[]> {
     return Promise.resolve(
       this.rows
         .filter((row) => row.userId === userId)
@@ -16,13 +16,13 @@ export class FakeBelegRepository implements BelegRepository {
     )
   }
 
-  findByIdForUser(userId: string, id: string): Promise<BelegRecord | null> {
+  findByIdForUser(userId: string, id: string): Promise<ReceiptRecord | null> {
     return Promise.resolve(this.rows.find((row) => row.userId === userId && row.id === id) ?? null)
   }
 
-  create(userId: string, data: CreateBelegData): Promise<BelegRecord> {
+  create(userId: string, data: CreateReceiptData): Promise<ReceiptRecord> {
     const now = new Date()
-    const record: BelegRecord = {
+    const record: ReceiptRecord = {
       id: `beleg-${this.seq++}`,
       userId,
       dateiname: data.dateiname,
@@ -38,14 +38,14 @@ export class FakeBelegRepository implements BelegRepository {
     return Promise.resolve(record)
   }
 
-  setAssignment(userId: string, id: string, data: SetZuordnungData): Promise<BelegRecord | null> {
+  setAssignment(userId: string, id: string, data: SetZuordnungData): Promise<ReceiptRecord | null> {
     return this.setZuordnung(userId, id, data)
   }
 
-  setZuordnung(userId: string, id: string, data: SetZuordnungData): Promise<BelegRecord | null> {
+  setZuordnung(userId: string, id: string, data: SetZuordnungData): Promise<ReceiptRecord | null> {
     const index = this.rows.findIndex((row) => row.userId === userId && row.id === id)
     if (index === -1) return Promise.resolve(null)
-    const updated: BelegRecord = {
+    const updated: ReceiptRecord = {
       ...this.rows[index]!,
       steuerjahr: data.steuerjahr,
       vorschlagVerworfen: data.vorschlagVerworfen,
@@ -56,7 +56,7 @@ export class FakeBelegRepository implements BelegRepository {
   }
 
   /** Test seam: seed a record directly, bypassing create()'s audit side-effects. */
-  seed(record: BelegRecord): void {
+  seed(record: ReceiptRecord): void {
     this.rows.push(record)
   }
 

@@ -1,5 +1,4 @@
 export const UNLOCK_REPOSITORY = Symbol('UNLOCK_REPOSITORY')
-export const FREISCHALTUNG_REPOSITORY = UNLOCK_REPOSITORY
 
 export interface UnlockRepository {
   createPending?(userId: string, taxYear: number, sessionId: string): Promise<void>
@@ -9,4 +8,3 @@ export interface UnlockRepository {
   isPaid?(userId: string, taxYear: number): Promise<boolean>
   istBezahlt(userId: string, steuerjahr: number): Promise<boolean>
 }
-export type FreischaltungRepository = UnlockRepository

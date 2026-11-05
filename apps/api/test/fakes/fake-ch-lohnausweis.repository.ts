@@ -3,16 +3,16 @@
 // satisfies the interface; the Bescheid service never calls them (ADR-0004: honour the real
 // per-(userId, steuerjahr) one-row contract without a database).
 import type { LohnausweisBetragFeldId } from '@steuereule/core'
-import { LEERE_N_GRE, type ChLohnausweisRecord, type ChLohnausweisRepository, type NGreAngaben } from '../../src/ch-lohnausweis/ch-lohnausweis.repository.js'
+import { LEERE_N_GRE, type CrossBorderSalaryStatementRecord, type CrossBorderSalaryStatementRepository, type NGreAngaben } from '../../src/ch-lohnausweis/ch-lohnausweis.repository.js'
 
 function key(userId: string, steuerjahr: number): string {
   return `${userId}::${steuerjahr}`
 }
 
-export class FakeChLohnausweisRepository implements ChLohnausweisRepository {
-  private readonly store = new Map<string, ChLohnausweisRecord>()
+export class FakeChLohnausweisRepository implements CrossBorderSalaryStatementRepository {
+  private readonly store = new Map<string, CrossBorderSalaryStatementRecord>()
 
-  private leer(userId: string, steuerjahr: number): ChLohnausweisRecord {
+  private leer(userId: string, steuerjahr: number): CrossBorderSalaryStatementRecord {
     return {
       userId,
       steuerjahr,
@@ -33,11 +33,11 @@ export class FakeChLohnausweisRepository implements ChLohnausweisRepository {
     }
   }
 
-  findForUserAndYear(userId: string, steuerjahr: number): Promise<ChLohnausweisRecord | null> {
+  findForUserAndYear(userId: string, steuerjahr: number): Promise<CrossBorderSalaryStatementRecord | null> {
     return Promise.resolve(this.store.get(key(userId, steuerjahr)) ?? null)
   }
 
-  setFeld(userId: string, steuerjahr: number, feld: LohnausweisBetragFeldId, wert: string | null): Promise<ChLohnausweisRecord> {
+  setFeld(userId: string, steuerjahr: number, feld: LohnausweisBetragFeldId, wert: string | null): Promise<CrossBorderSalaryStatementRecord> {
     const k = key(userId, steuerjahr)
     const existing = this.store.get(k) ?? this.leer(userId, steuerjahr)
     const updated = { ...existing, felder: { ...existing.felder, [feld]: wert } }
@@ -45,7 +45,7 @@ export class FakeChLohnausweisRepository implements ChLohnausweisRepository {
     return Promise.resolve(updated)
   }
 
-  setBemerkungen(userId: string, steuerjahr: number, text: string | null): Promise<ChLohnausweisRecord> {
+  setBemerkungen(userId: string, steuerjahr: number, text: string | null): Promise<CrossBorderSalaryStatementRecord> {
     const k = key(userId, steuerjahr)
     const existing = this.store.get(k) ?? this.leer(userId, steuerjahr)
     const updated = { ...existing, bemerkungen: text }
@@ -53,7 +53,7 @@ export class FakeChLohnausweisRepository implements ChLohnausweisRepository {
     return Promise.resolve(updated)
   }
 
-  setVorsorge(userId: string, steuerjahr: number, saeule3aChf: string | null, krankenkasseChf: string | null): Promise<ChLohnausweisRecord> {
+  setVorsorge(userId: string, steuerjahr: number, saeule3aChf: string | null, krankenkasseChf: string | null): Promise<CrossBorderSalaryStatementRecord> {
     const k = key(userId, steuerjahr)
     const existing = this.store.get(k) ?? this.leer(userId, steuerjahr)
     const updated = { ...existing, saeule3aChf, krankenkasseChf }
@@ -61,7 +61,7 @@ export class FakeChLohnausweisRepository implements ChLohnausweisRepository {
     return Promise.resolve(updated)
   }
 
-  setNGre(userId: string, steuerjahr: number, angaben: Partial<NGreAngaben>): Promise<ChLohnausweisRecord> {
+  setNGre(userId: string, steuerjahr: number, angaben: Partial<NGreAngaben>): Promise<CrossBorderSalaryStatementRecord> {
     const k = key(userId, steuerjahr)
     const existing = this.store.get(k) ?? this.leer(userId, steuerjahr)
     const updated = { ...existing, nGre: { ...existing.nGre, ...angaben } }
@@ -69,7 +69,7 @@ export class FakeChLohnausweisRepository implements ChLohnausweisRepository {
     return Promise.resolve(updated)
   }
 
-  setWechselkurs(userId: string, steuerjahr: number, wechselkurs: { monat: string; kurs: number; modus: string; belegId?: string }): Promise<ChLohnausweisRecord> {
+  setWechselkurs(userId: string, steuerjahr: number, wechselkurs: { monat: string; kurs: number; modus: string; belegId?: string }): Promise<CrossBorderSalaryStatementRecord> {
     const k = key(userId, steuerjahr)
     const existing = this.store.get(k) ?? this.leer(userId, steuerjahr)
     const updated = {
@@ -84,7 +84,7 @@ export class FakeChLohnausweisRepository implements ChLohnausweisRepository {
   }
 
   /** Test seam: seed a full record directly. */
-  seed(record: ChLohnausweisRecord): void {
+  seed(record: CrossBorderSalaryStatementRecord): void {
     this.store.set(key(record.userId, record.steuerjahr), record)
   }
 }

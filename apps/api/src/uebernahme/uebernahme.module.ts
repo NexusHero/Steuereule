@@ -8,7 +8,7 @@ import { VermietungModule } from '../vermietung/vermietung.module.js'
 import { PrismaModule } from '../prisma/prisma.module.js'
 import { UebernahmeController } from './uebernahme.controller.js'
 import { UebernahmeService } from './uebernahme.service.js'
-import { JAHRESUEBERNAHME_REPOSITORY } from './jahresuebernahme.repository.js'
+import { TAX_YEAR_ROLLOVER_REPOSITORY } from './jahresuebernahme.repository.js'
 import { PrismaJahresuebernahmeRepository } from './jahresuebernahme.repository.prisma.js'
 
 @Module({
@@ -16,8 +16,8 @@ import { PrismaJahresuebernahmeRepository } from './jahresuebernahme.repository.
   controllers: [UebernahmeController],
   providers: [
     UebernahmeService,
-    { provide: JAHRESUEBERNAHME_REPOSITORY, useClass: PrismaJahresuebernahmeRepository },
+    { provide: TAX_YEAR_ROLLOVER_REPOSITORY, useClass: PrismaJahresuebernahmeRepository },
   ],
-  exports: [UebernahmeService, JAHRESUEBERNAHME_REPOSITORY],
+  exports: [UebernahmeService, TAX_YEAR_ROLLOVER_REPOSITORY],
 })
 export class UebernahmeModule {}

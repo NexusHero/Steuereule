@@ -12,12 +12,12 @@ import { RequiresAccount } from '../auth/requires-account.guard.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
 import { ParseSteuerjahrPipe } from '../cockpit/parse-steuerjahr.pipe.js'
 import { FreischaltungStatusDto } from './dto/freischaltung.dto.js'
-import { FreischaltungService } from './freischaltung.service.js'
+import { UnlockService } from './freischaltung.service.js'
 
 @ApiTags('freischaltung')
 @Controller()
 export class FreischaltungController {
-  constructor(@Inject(FreischaltungService) private readonly service: FreischaltungService) {}
+  constructor(@Inject(UnlockService) private readonly service: UnlockService) {}
 
   @Get('v1/steuerjahre/:jahr/freischaltung')
   @RequiresAccount()

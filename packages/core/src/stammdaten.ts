@@ -22,8 +22,6 @@ export const RELIGIONSSCHLUESSEL = RELIGION_KEYS
 
 export const MARITAL_STATUSES = ['ledig', 'verheiratet', 'verwitwet', 'geschieden', 'dauernd-getrennt'] as const
 export type MaritalStatus = (typeof MARITAL_STATUSES)[number]
-export type Familienstand = MaritalStatus
-export const FAMILIENSTAENDE = MARITAL_STATUSES
 
 export function normalizeIban(value: string): string {
   return value.replace(/\s+/g, '').toUpperCase()
@@ -62,8 +60,5 @@ export function formatGermanDate(iso: string): string {
 // Backward-compatibility aliases
 export {
   normalizeIban as normalisiereIban,
-  isValidIban as istGueltigeIban,
-  isValidPostalCode as istGueltigePlz,
-  isValidDate as istGueltigesDatum,
-  formatGermanDate as deutschesDatum,
+  isValidIban as istGueltigeIban
 }

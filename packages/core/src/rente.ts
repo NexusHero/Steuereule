@@ -1,5 +1,5 @@
-import { berechne, type Berechnungsstand, type Posten } from './berechnung'
-import type { Einkunftsart } from './einkunftsarten'
+import { calculate, type Berechnungsstand, type Posten } from './berechnung'
+import type { IncomeType } from './einkunftsarten'
 
 export type PensionType =
   | 'GesetzlicheRente'
@@ -7,9 +7,6 @@ export type PensionType =
   | 'PrivateRentenversicherung'
   | 'WitwenWaisenrente'
   | 'AuslaendischeRente'
-
-export type Rentenart = PensionType
-
 export const PENSION_TYPES: readonly PensionType[] = [
   'GesetzlicheRente',
   'Betriebsrente',
@@ -17,13 +14,10 @@ export const PENSION_TYPES: readonly PensionType[] = [
   'WitwenWaisenrente',
   'AuslaendischeRente',
 ]
-export const RENTENARTEN = PENSION_TYPES
 
 export function isPensionType(value: string): value is PensionType {
   return (PENSION_TYPES as readonly string[]).includes(value)
 }
-
-export const isRentenart = isPensionType
 
 const BESTEUERUNGSANTEIL_TABELLE: Readonly<Record<number, number>> = {
   2006: 52, 2007: 54, 2008: 56, 2009: 58, 2010: 60,
@@ -43,8 +37,6 @@ export function taxableSharePercent(rentenbeginnJahr: number): number | null {
   if (rentenbeginnJahr > 2058) return null
   return BESTEUERUNGSANTEIL_TABELLE[rentenbeginnJahr] ?? null
 }
-
-export const besteuerungsanteilProzent = taxableSharePercent
 
 const ERTRAGSANTEIL_TABELLE: readonly (readonly [number, number, number])[] = [
   [0, 1, 59], [2, 3, 58], [4, 5, 57], [6, 8, 56], [9, 10, 55],
@@ -70,24 +62,16 @@ export function incomePortionPercent(vollendetesLebensjahr: number): number | nu
   return null
 }
 
-export const ertragsanteilProzent = incomePortionPercent
-
-export function verwendetBesteuerungsanteil(art: Rentenart): boolean {
+export function verwendetBesteuerungsanteil(art: PensionType): boolean {
   return art !== 'PrivateRentenversicherung'
 }
 
 export type PensionFieldId = 'jahresbetrag' | 'rentenbeginnJahr' | 'alterBeiRentenbeginn'
-export type RentenFeldId = PensionFieldId
-
 export const PENSION_FIELDS: readonly PensionFieldId[] = ['jahresbetrag', 'rentenbeginnJahr', 'alterBeiRentenbeginn']
-export const RENTEN_FELDER = PENSION_FIELDS
-
 export type PensionFieldState =
   | { readonly kind: 'offen' }
   | { readonly kind: 'unklar' }
   | { readonly kind: 'erfasst'; readonly wert: number }
-
-export type RentenFeldZustand = PensionFieldState
 
 /** The guided mask's data. */
 export interface PensionData {
@@ -97,21 +81,16 @@ export interface PensionData {
   readonly alterBeiRentenbeginn: PensionFieldState
 }
 
-export type RentenDaten = PensionData
-
 export const EMPTY_PENSION: PensionData = {
   art: null,
   jahresbetrag: { kind: 'offen' },
   rentenbeginnJahr: { kind: 'offen' },
   alterBeiRentenbeginn: { kind: 'offen' },
 }
-export const LEERE_RENTE = EMPTY_PENSION
 
 export function isValidPensionAmount(wert: number): boolean {
   return Number.isFinite(wert) && Number.isInteger(wert) && wert >= 0
 }
-
-export const istGueltigerRentenBetrag = isValidPensionAmount
 
 export function setPensionField(daten: PensionData, feld: PensionFieldId, zustand: PensionFieldState): PensionData {
   if (zustand.kind === 'erfasst' && !isValidPensionAmount(zustand.wert)) {
@@ -120,8 +99,6 @@ export function setPensionField(daten: PensionData, feld: PensionFieldId, zustan
   return { ...daten, [feld]: zustand }
 }
 
-export const setzeRentenFeld = setPensionField
-
 export function setPensionType(daten: PensionData, art: PensionType | null): PensionData {
   if (art !== null && !isPensionType(art)) {
     throw new RangeError(`rente: "${art}" is not a declared Rentenart`)
@@ -129,10 +106,7 @@ export function setPensionType(daten: PensionData, art: PensionType | null): Pen
   return { ...daten, art }
 }
 
-export const setzeRentenart = setPensionType
-
 export const PENSION_UNCLEAR = 'unklar'
-export const RENTE_UNKLAR = PENSION_UNCLEAR
 
 export function serializePensionField(zustand: PensionFieldState): string | null {
   switch (zustand.kind) {
@@ -145,8 +119,6 @@ export function serializePensionField(zustand: PensionFieldState): string | null
   }
 }
 
-export const serialisiereRentenFeld = serializePensionField
-
 export function deserializePensionField(value: string | null): PensionFieldState {
   if (value === null) return { kind: 'offen' }
   if (value === PENSION_UNCLEAR) return { kind: 'unklar' }
@@ -157,8 +129,6 @@ export function deserializePensionField(value: string | null): PensionFieldState
   return { kind: 'erfasst', wert }
 }
 
-export const deserialisiereRentenFeld = deserializePensionField
-
 function besteuerungsanteilHerkunft(rentenbeginnJahr: number, prozent: number): string {
   return `§ 22 Nr. 1 Satz 3 Buchst. a Doppelbuchst. aa EStG — Besteuerungsanteil bei Rentenbeginn ${rentenbeginnJahr}: ${prozent} %`
 }
@@ -167,7 +137,7 @@ function ertragsanteilHerkunft(alter: number, prozent: number): string {
   return `§ 22 Nr. 1 Satz 3 Buchst. a Doppelbuchst. bb EStG — Ertragsanteil bei Rentenbeginn mit ${alter} Jahren: ${prozent} %`
 }
 
-export function renteAlsKernposten(rente: RentenDaten): Posten | null {
+export function pensionAsCoreLineItem(rente: PensionData): Posten | null {
   if (rente.art === null || rente.jahresbetrag.kind !== 'erfasst') return null
   const jahresbetrag = rente.jahresbetrag.wert
 
@@ -194,13 +164,9 @@ export function renteAlsKernposten(rente: RentenDaten): Posten | null {
   }
 }
 
-export const pensionAsCoreLineItem = renteAlsKernposten
-
-export function renteStand(rente: RentenDaten, gegated: readonly Einkunftsart[]): Berechnungsstand {
-  const kernposten = renteAlsKernposten(rente)
+export function pensionStatus(rente: PensionData, gegated: readonly IncomeType[]): Berechnungsstand {
+  const kernposten = pensionAsCoreLineItem(rente)
   const posten: Posten[] = kernposten === null ? [] : [kernposten]
   const offenePosten = kernposten === null ? 1 : 0
-  return berechne({ posten, offenePosten, konflikte: [], gegated })
+  return calculate({ posten, offenePosten, konflikte: [], gegated })
 }
-
-export const pensionStatus = renteStand

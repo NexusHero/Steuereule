@@ -1,5 +1,5 @@
-import type { Einkunftsart } from './einkunftsarten'
-import { berechne, type Berechnungsstand, type Posten } from './berechnung'
+import type { IncomeType } from './einkunftsarten'
+import { calculate, type Berechnungsstand, type Posten } from './berechnung'
 import { chfNachEur, type Wechselkurs } from './wechselkurs'
 import { CH_WOHNSITZ_VALUES, type ChWohnsitz } from './interview'
 
@@ -185,7 +185,7 @@ export interface GrenzgaengerBerechnungsInput {
   readonly krankenkasseChf?: number
   readonly status: GrenzgaengerStatus
   readonly wechselkurs: Wechselkurs
-  readonly gegated: readonly Einkunftsart[]
+  readonly gegated: readonly IncomeType[]
 }
 
 export function grenzgaengerChPosten(input: {
@@ -205,7 +205,7 @@ export function grenzgaengerStand(input: GrenzgaengerBerechnungsInput): Berechnu
     .map(chPostenAlsKernposten)
     .filter((p): p is Posten => p !== null)
   const offenePosten = offeneLohnausweisFelder(input.lohnausweis, input.status).length
-  return berechne({ posten: kernposten, offenePosten, konflikte: [], gegated: input.gegated })
+  return calculate({ posten: kernposten, offenePosten, konflikte: [], gegated: input.gegated })
 }
 
 export const LOHNAUSWEIS_UNKLAR = 'unklar'

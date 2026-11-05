@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { isBelegart } from '@steuereule/core'
+import { isReceiptType } from '@steuereule/core'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
-import type { BelegRecord, BelegRepository, CreateBelegData, SetZuordnungData } from './beleg.repository.js'
+import type { ReceiptRecord, ReceiptRepository, CreateReceiptData, SetZuordnungData } from './beleg.repository.js'
 
 function toIsoDate(value: Date): string {
   return value.toISOString().slice(0, 10)
@@ -18,12 +18,12 @@ function toRecord(row: {
   vorschlagVerworfen: boolean
   createdAt: Date
   updatedAt: Date
-}): BelegRecord {
+}): ReceiptRecord {
   return {
     id: row.id,
     userId: row.userId,
     dateiname: row.dateiname,
-    ...(row.art !== null ? { art: (isBelegart(row.art) ? row.art : (() => { throw new Error(`corrupt Beleg.art: ${row.art}`) })()) } : {}),
+    ...(row.art !== null ? { art: (isReceiptType(row.art) ? row.art : (() => { throw new Error(`corrupt Beleg.art: ${row.art}`) })()) } : {}),
     ...(row.belegdatum !== null ? { belegdatum: toIsoDate(row.belegdatum) } : {}),
     ...(row.zahlungsdatum !== null ? { zahlungsdatum: toIsoDate(row.zahlungsdatum) } : {}),
     steuerjahr: row.steuerjahr,
@@ -40,20 +40,20 @@ function fromIsoDate(value: string): Date {
 }
 
 @Injectable()
-export class PrismaBelegRepository implements BelegRepository {
+export class PrismaBelegRepository implements ReceiptRepository {
   constructor(@Inject(ENCRYPTED_PRISMA) private readonly prisma: EncryptedPrismaClient) {}
 
-  async findAllForUser(userId: string): Promise<BelegRecord[]> {
+  async findAllForUser(userId: string): Promise<ReceiptRecord[]> {
     const rows = await this.prisma.beleg.findMany({ where: { userId }, orderBy: { createdAt: 'desc' } })
     return rows.map(toRecord)
   }
 
-  async findByIdForUser(userId: string, id: string): Promise<BelegRecord | null> {
+  async findByIdForUser(userId: string, id: string): Promise<ReceiptRecord | null> {
     const row = await this.prisma.beleg.findFirst({ where: { id, userId } })
     return row === null ? null : toRecord(row)
   }
 
-  async create(userId: string, data: CreateBelegData): Promise<BelegRecord> {
+  async create(userId: string, data: CreateReceiptData): Promise<ReceiptRecord> {
     const [row] = await this.prisma.$transaction([
       this.prisma.beleg.create({
         data: {
@@ -71,11 +71,11 @@ export class PrismaBelegRepository implements BelegRepository {
     return toRecord(row)
   }
 
-  async setAssignment(userId: string, id: string, data: SetZuordnungData): Promise<BelegRecord | null> {
+  async setAssignment(userId: string, id: string, data: SetZuordnungData): Promise<ReceiptRecord | null> {
     return this.setZuordnung(userId, id, data)
   }
 
-  async setZuordnung(userId: string, id: string, data: SetZuordnungData): Promise<BelegRecord | null> {
+  async setZuordnung(userId: string, id: string, data: SetZuordnungData): Promise<ReceiptRecord | null> {
     const row = await this.prisma.beleg.findFirst({ where: { id, userId } })
     if (row === null) return null
 

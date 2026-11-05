@@ -2,7 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import { ArrayMaxSize, ArrayUnique, IsArray, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator'
 import { VERKEHRSMITTEL, type Verkehrsmittel } from '../arbeitsweg.repository.js'
 
-export class ArbeitswegEingabenDto {
+export class CommuteInputsDto {
   @ApiProperty({ type: [Number], example: [1, 2, 3, 4, 5], description: 'ISO weekdays worked (1 = Monday … 7 = Sunday).' })
   @IsArray()
   @ArrayUnique()
@@ -62,24 +62,19 @@ export class ArbeitswegEingabenDto {
   feiertageRegion?: string | null
 }
 
-export class WerktageDto {
+export class WorkdaysDto {
   @ApiProperty({ type: Number }) wochentage!: number
   @ApiProperty({ type: Number }) werktage!: number
   @ApiProperty({ type: Number }) pendlertage!: number
 }
 
-export class ArbeitswegResponseDto {
-  @ApiProperty({ type: () => ArbeitswegEingabenDto, nullable: true })
-  eingaben!: ArbeitswegEingabenDto | null
+export class CommuteResponseDto {
+  @ApiProperty({ type: () => CommuteInputsDto, nullable: true })
+  eingaben!: CommuteInputsDto | null
 
-  @ApiProperty({ type: () => WerktageDto, nullable: true })
-  werktage!: WerktageDto | null
+  @ApiProperty({ type: () => WorkdaysDto, nullable: true })
+  werktage!: WorkdaysDto | null
 
   @ApiProperty({ type: Number, nullable: true, description: 'Entfernungspauschale in whole euros; null until distance and means of travel are known.' })
   pendlerpauschale!: number | null
 }
-
-export type CommuteInputsDto = ArbeitswegEingabenDto
-export type WorkdaysDto = WerktageDto
-export type CommuteResponseDto = ArbeitswegResponseDto
-

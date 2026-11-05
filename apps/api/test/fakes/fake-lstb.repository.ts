@@ -3,7 +3,7 @@
 // the real repository's return shape (the full record) and upsert semantics; the derived
 // LstbZustand is left to LstbService (as in production, the repository stores facts, never
 // the derived state — ADR-014/048).
-import type { LstbFeldId } from '@steuereule/core'
+import type { WageTaxCertificateFieldId } from '@steuereule/core'
 import type { LstbRecord, LstbRepository } from '../../src/lstb/lstb.repository.js'
 
 function key(userId: string, steuerjahr: number): string {
@@ -17,11 +17,11 @@ export class FakeLstbRepository implements LstbRepository {
     return Promise.resolve(this.store.get(key(userId, steuerjahr)) ?? null)
   }
 
-  setField(userId: string, taxYear: number, field: LstbFeldId, value: string | null): Promise<LstbRecord> {
+  setField(userId: string, taxYear: number, field: WageTaxCertificateFieldId, value: string | null): Promise<LstbRecord> {
     return this.setFeld(userId, taxYear, field, value)
   }
 
-  setFeld(userId: string, steuerjahr: number, feld: LstbFeldId, wert: string | null): Promise<LstbRecord> {
+  setFeld(userId: string, steuerjahr: number, feld: WageTaxCertificateFieldId, wert: string | null): Promise<LstbRecord> {
     const k = key(userId, steuerjahr)
     const existing = this.store.get(k)
     const record: LstbRecord = existing ?? {

@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
-  FAMILIENSTAENDE,
+  MARITAL_STATUSES,
   istGueltigeIban,
-  istGueltigePlz,
-  istGueltigesDatum,
+  isValidPostalCode,
+  isValidDate,
   normalisiereIban,
   RELIGIONSSCHLUESSEL,
 } from './stammdaten'
@@ -34,22 +34,22 @@ describe('istGueltigeIban (ISO 13616, mod-97)', () => {
 
 describe('istGueltigePlz', () => {
   it('accepts exactly five digits', () => {
-    expect(istGueltigePlz('01067')).toBe(true)
-    expect(istGueltigePlz('1067')).toBe(false)
-    expect(istGueltigePlz('010670')).toBe(false)
+    expect(isValidPostalCode('01067')).toBe(true)
+    expect(isValidPostalCode('1067')).toBe(false)
+    expect(isValidPostalCode('010670')).toBe(false)
   })
 })
 
 describe('istGueltigesDatum', () => {
   it('accepts a real calendar date in ISO form', () => {
-    expect(istGueltigesDatum('1990-02-28')).toBe(true)
-    expect(istGueltigesDatum('2024-02-29')).toBe(true)
+    expect(isValidDate('1990-02-28')).toBe(true)
+    expect(isValidDate('2024-02-29')).toBe(true)
   })
 
   it('rejects impossible dates and other shapes', () => {
-    expect(istGueltigesDatum('1990-02-30')).toBe(false)
-    expect(istGueltigesDatum('2023-02-29')).toBe(false)
-    expect(istGueltigesDatum('28.02.1990')).toBe(false)
+    expect(isValidDate('1990-02-30')).toBe(false)
+    expect(isValidDate('2023-02-29')).toBe(false)
+    expect(isValidDate('28.02.1990')).toBe(false)
   })
 })
 
@@ -62,6 +62,6 @@ describe('closed vocabularies', () => {
   })
 
   it('carries the Familienstände ESt 1 A Zeile 18 distinguishes', () => {
-    expect(FAMILIENSTAENDE).toEqual(['ledig', 'verheiratet', 'verwitwet', 'geschieden', 'dauernd-getrennt'])
+    expect(MARITAL_STATUSES).toEqual(['ledig', 'verheiratet', 'verwitwet', 'geschieden', 'dauernd-getrennt'])
   })
 })

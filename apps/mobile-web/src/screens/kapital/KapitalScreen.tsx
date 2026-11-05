@@ -15,7 +15,7 @@ import {
   type KapitalResponseDto,
   type GuenstigerpruefungDto,
 } from '@steuereule/api-client'
-import type { KapitalFeldId } from '@steuereule/core'
+import type { CapitalFieldId } from '@steuereule/core'
 import { APP_NS } from '../../i18n/resources'
 import { ganzzahlAus } from '../shared/ganzzahl'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
@@ -74,7 +74,7 @@ export function KapitalScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX
     void queryClient.invalidateQueries({ queryKey: getKapitalControllerGetGuenstigerpruefungQueryKey(taxYear) })
   }
 
-  function send(feld: KapitalFeldId, data: KapitalFeldDto) {
+  function send(feld: CapitalFieldId, data: KapitalFeldDto) {
     setFeld.mutate({ jahr: taxYear, feld, data }, { onSuccess: invalidate })
   }
 

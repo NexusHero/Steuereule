@@ -1,14 +1,14 @@
-import type { KindAngaben, KindRecord, KindRepository } from '../../src/kinder/kind.repository.js'
+import type { ChildDetails, ChildRecord, ChildRepository } from '../../src/kinder/kind.repository.js'
 
 function key(userId: string, steuerjahr: number): string {
   return `${userId}::${steuerjahr}`
 }
 
-export class FakeKindRepository implements KindRepository {
-  private readonly store = new Map<string, KindRecord>()
+export class FakeKindRepository implements ChildRepository {
+  private readonly store = new Map<string, ChildRecord>()
   private counter = 0
 
-  listForUserAndYear(userId: string, steuerjahr: number): Promise<KindRecord[]> {
+  listForUserAndYear(userId: string, steuerjahr: number): Promise<ChildRecord[]> {
     const k = key(userId, steuerjahr)
     return Promise.resolve(
       [...this.store.values()]
@@ -26,11 +26,11 @@ export class FakeKindRepository implements KindRepository {
       geburtsdatum: string
       idnr?: string | null
       kindergeldAnspruchEur?: string | null
-    } & Partial<KindAngaben>,
-  ): Promise<KindRecord> {
+    } & Partial<ChildDetails>,
+  ): Promise<ChildRecord> {
     this.counter += 1
     const current = [...this.store.values()].filter((r) => key(r.userId, r.steuerjahr) === key(userId, steuerjahr))
-    const record: KindRecord = {
+    const record: ChildRecord = {
       id: `fake-kind-${this.counter}`,
       userId,
       steuerjahr,
@@ -70,12 +70,12 @@ export class FakeKindRepository implements KindRepository {
       geburtsdatum?: string
       idnr?: string | null
       kindergeldAnspruchEur?: string | null
-    } & Partial<KindAngaben>,
-  ): Promise<KindRecord | null> {
+    } & Partial<ChildDetails>,
+  ): Promise<ChildRecord | null> {
     const record = this.store.get(id)
     if (!record || record.userId !== userId || record.steuerjahr !== steuerjahr) return Promise.resolve(null)
     const angaben = Object.fromEntries(Object.entries(data).filter(([, wert]) => wert !== undefined))
-    const updated: KindRecord = { ...record, ...angaben }
+    const updated: ChildRecord = { ...record, ...angaben }
     this.store.set(id, updated)
     return Promise.resolve(updated)
   }

@@ -11,7 +11,7 @@ import {
   type RenteFeldDto,
   type RenteResponseDto,
 } from '@steuereule/api-client'
-import { RENTENARTEN, type Rentenart } from '@steuereule/core'
+import { PENSION_TYPES, type PensionType } from '@steuereule/core'
 import { APP_NS } from '../../i18n/resources'
 import { ganzzahlAus } from '../shared/ganzzahl'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
@@ -57,7 +57,7 @@ export function RentnerScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX
     void queryClient.invalidateQueries({ queryKey: getRenteControllerGetQueryKey(taxYear) })
   }
 
-  function sendArt(art: Rentenart | null) {
+  function sendArt(art: PensionType | null) {
     setArt.mutate({ jahr: taxYear, data: { art } }, { onSuccess: invalidate })
   }
 
@@ -77,7 +77,7 @@ export function RentnerScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX
       <Text style={styles.help}>{tr('rente.help')}</Text>
 
       <Text style={styles.sectionHeading}>{tr('rente.artHeading')}</Text>
-      {RENTENARTEN.map((art) => (
+      {PENSION_TYPES.map((art) => (
         <Pressable
           key={art}
           accessibilityRole="button"

@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { anlageVon, type Anlage, type Herkunft, type Kennzeichnung } from '@steuereule/core'
+import { anlageVon, type Annex, type Herkunft, type Kennzeichnung } from '@steuereule/core'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
-import type { KennzeichnungRecord, KennzeichnungRepository } from './kennzeichnung.repository.js'
+import type { ProvenanceRecord, ProvenanceRepository } from './kennzeichnung.repository.js'
 
 interface HerkunftSpalten {
   art: string
@@ -52,7 +52,7 @@ interface Row {
   vorschlagWert: string | null
 }
 
-function toRecord(row: Row): KennzeichnungRecord {
+function toRecord(row: Row): ProvenanceRecord {
   return {
     userId: row.userId,
     steuerjahr: row.steuerjahr,
@@ -88,10 +88,10 @@ function toData(k: Omit<Kennzeichnung, 'wert'>) {
 }
 
 @Injectable()
-export class PrismaKennzeichnungRepository implements KennzeichnungRepository {
+export class PrismaKennzeichnungRepository implements ProvenanceRepository {
   constructor(@Inject(ENCRYPTED_PRISMA) private readonly prisma: EncryptedPrismaClient) {}
 
-  async listForUserAndYears(userId: string, steuerjahre: readonly number[]): Promise<KennzeichnungRecord[]> {
+  async listForUserAndYears(userId: string, steuerjahre: readonly number[]): Promise<ProvenanceRecord[]> {
     const rows = await this.prisma.kennzeichnung.findMany({
       where: { userId, steuerjahr: { in: [...steuerjahre] } },
       orderBy: { postenKey: 'asc' },
@@ -99,18 +99,18 @@ export class PrismaKennzeichnungRepository implements KennzeichnungRepository {
     return rows.map(toRecord)
   }
 
-  async find(userId: string, steuerjahr: number, key: string): Promise<KennzeichnungRecord | null> {
+  async find(userId: string, steuerjahr: number, key: string): Promise<ProvenanceRecord | null> {
     const row = await this.prisma.kennzeichnung.findUnique({
       where: { userId_steuerjahr_postenKey: { userId, steuerjahr, postenKey: key } },
     })
     return row === null ? null : toRecord(row)
   }
 
-  async save(userId: string, taxYear: number, provenance: Omit<Kennzeichnung, 'wert'>): Promise<KennzeichnungRecord> {
+  async save(userId: string, taxYear: number, provenance: Omit<Kennzeichnung, 'wert'>): Promise<ProvenanceRecord> {
     return this.speichere(userId, taxYear, provenance)
   }
 
-  async speichere(userId: string, steuerjahr: number, kennzeichnung: Omit<Kennzeichnung, 'wert'>): Promise<KennzeichnungRecord> {
+  async speichere(userId: string, steuerjahr: number, kennzeichnung: Omit<Kennzeichnung, 'wert'>): Promise<ProvenanceRecord> {
     const data = toData(kennzeichnung)
     const [row] = await this.prisma.$transaction([
       this.prisma.kennzeichnung.upsert({
@@ -136,11 +136,11 @@ export class PrismaKennzeichnungRepository implements KennzeichnungRepository {
     return count
   }
 
-  async confirmAnnex(userId: string, taxYears: readonly number[], annex: Anlage): Promise<number> {
+  async confirmAnnex(userId: string, taxYears: readonly number[], annex: Annex): Promise<number> {
     return this.bestaetigeAnlage(userId, taxYears, annex)
   }
 
-  async bestaetigeAnlage(userId: string, steuerjahre: readonly number[], anlage: Anlage): Promise<number> {
+  async bestaetigeAnlage(userId: string, steuerjahre: readonly number[], anlage: Annex): Promise<number> {
     const [{ count }] = await this.prisma.$transaction([
       this.prisma.kennzeichnung.updateMany({
         where: { userId, steuerjahr: { in: [...steuerjahre] }, anlage, bestaetigt: false },

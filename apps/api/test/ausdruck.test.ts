@@ -3,7 +3,7 @@
 // by scripts/vordrucke/vermessen.mjs — never typed by hand.
 import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
-import { deutschesDatum } from '@steuereule/core'
+import { formatGermanDate } from '@steuereule/core'
 import { PDFDocument } from 'pdf-lib'
 import { describe, expect, it } from 'vitest'
 import { ausdruckWerte, type AusdruckFakten, type ChLohnausweisFakten } from '../src/ausdruck/ausdruck-werte.js'
@@ -101,7 +101,7 @@ describe('ausdruckWerte', () => {
   })
 
   it('formats dates with points, as the form asks', () => {
-    expect(deutschesDatum('2025-12-31')).toBe('31.12.2025')
+    expect(formatGermanDate('2025-12-31')).toBe('31.12.2025')
   })
 
   it('married with zusammenveranlagung fills Person B fields and checks completeness', () => {

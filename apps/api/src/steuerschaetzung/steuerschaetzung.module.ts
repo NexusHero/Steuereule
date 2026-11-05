@@ -8,11 +8,11 @@ import { VermietungModule } from '../vermietung/vermietung.module.js'
 import { LstbModule } from '../lstb/lstb.module.js'
 import { StammdatenModule } from '../stammdaten/stammdaten.module.js'
 import { SteuerschaetzungController } from './steuerschaetzung.controller.js'
-import { SteuerschaetzungService } from './steuerschaetzung.service.js'
+import { TaxEstimateService } from './steuerschaetzung.service.js'
 
 @Module({
   imports: [LstbModule, InterviewModule, ChLohnausweisModule, StammdatenModule, ArbeitswegModule, KopplungModule, KinderModule, VermietungModule],
   controllers: [SteuerschaetzungController],
-  providers: [SteuerschaetzungService],
+  providers: [TaxEstimateService],
 })
 export class SteuerschaetzungModule {}

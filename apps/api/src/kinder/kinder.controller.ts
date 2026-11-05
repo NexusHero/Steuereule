@@ -4,14 +4,14 @@ import { CurrentUser } from '../auth/current-user.decorator.js'
 import { RequiresAccount } from '../auth/requires-account.guard.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
 import { ParseSteuerjahrPipe } from '../cockpit/parse-steuerjahr.pipe.js'
-import { KinderService } from './kinder.service.js'
+import { ChildrenService } from './kinder.service.js'
 import { CreateKindDto, KinderResponseDto, UpdateKindDto } from './dto/kind.dto.js'
 
 @ApiTags('kinder')
 @Controller('v1/steuerjahre')
 @UseGuards(UserContextGuard)
 export class KinderController {
-  constructor(@Inject(KinderService) private readonly kinderService: KinderService) {}
+  constructor(@Inject(ChildrenService) private readonly kinderService: ChildrenService) {}
 
   @Get(':jahr/kinder')
   @RequiresAccount()

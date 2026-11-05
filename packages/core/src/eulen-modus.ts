@@ -5,10 +5,7 @@ export type OwlTriggerKind = 'musterluecke' | 'vorjahresvergleich' | 'rechtsaend
 export type EulenTriggerArt = OwlTriggerKind
 
 export type OwlCardCategory = 'cockpit_proaktiv' | 'abruf_frage' | 'archiv_einspruch'
-export type EulenKartenKategorie = OwlCardCategory
-
 export type OwlSourceId = 'estg-4-5-6c' | 'estg-9-1-4a' | 'estg-10b' | 'estg-10-1-5' | 'ao-355'
-export type EulenQuelleId = OwlSourceId
 
 export interface OwlRecommendationPath {
   readonly name: string
@@ -16,8 +13,6 @@ export interface OwlRecommendationPath {
   readonly beschreibung: string
   readonly risiko: 'sicher' | 'risiko'
 }
-
-export type EulenEmpfehlungWeg = OwlRecommendationPath
 
 export interface OwlCard {
   readonly id: string
@@ -36,8 +31,7 @@ export interface OwlCard {
   readonly einspruchFristBis?: string | undefined
 }
 
-export type EulenKarte = OwlCard
-export type EulenKartenAnzeige = Omit<EulenKarte, 'quelleId'>
+export type EulenKartenAnzeige = Omit<OwlCard, 'quelleId'>
 
 export interface OwlArchiveYear {
   readonly steuerjahr: number
@@ -45,8 +39,6 @@ export interface OwlArchiveYear {
   readonly einspruchMoeglichBis: string
   readonly homeofficeTage: number
 }
-
-export type EulenArchivJahr = OwlArchiveYear
 
 export interface OwlInputFacts {
   readonly steuerjahr: number
@@ -58,8 +50,6 @@ export interface OwlInputFacts {
   readonly archivJahre?: readonly OwlArchiveYear[]
   readonly verworfeneFingerprints?: readonly string[]
 }
-
-export type EulenEingabeFakten = OwlInputFacts
 
 export function calculateOwlCardFingerprint(trigger: OwlTriggerKind, keyContext: string): string {
   return createHash('sha256').update(`${trigger}::${keyContext}`).digest('hex').slice(0, 16)
@@ -228,7 +218,3 @@ export function generateOwlCards(fakten: OwlInputFacts): readonly OwlCard[] {
 }
 
 // Backward-compatibility aliases
-export {
-  calculateOwlCardFingerprint as berechneEulenKartenFingerprint,
-  generateOwlCards as generiereEulenKarten,
-}

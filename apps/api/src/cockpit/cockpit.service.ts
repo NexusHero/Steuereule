@@ -2,23 +2,23 @@ import { Inject, Injectable } from '@nestjs/common'
 import {
   angestellteAusDaten,
   chfNachEur,
-  cockpitSpanneAusEingaben,
-  gatedEinkunftsarten,
+  cockpitRangeFromInputs,
+  gatedIncomeTypes,
   offeneLohnausweisFelder,
   type Answers,
-  type CockpitSpanne,
+  type CockpitRange,
 } from '@steuereule/core'
 import { INTERVIEW_ANSWER_REPOSITORY, type InterviewAnswerRepository } from '../interview/interview-answer.repository.js'
-import { KAPITAL_REPOSITORY, type KapitalRepository } from '../kapital/kapital.repository.js'
+import { CAPITAL_REPOSITORY, type CapitalRepository } from '../kapital/kapital.repository.js'
 import { LSTB_REPOSITORY, type LstbRepository } from '../lstb/lstb.repository.js'
-import { RENTE_REPOSITORY, type RenteRepository } from '../rente/rente.repository.js'
-import { KENNZEICHNUNG_REPOSITORY, type KennzeichnungRepository } from '../kennzeichnung/kennzeichnung.repository.js'
-import { VERMIETUNG_REPOSITORY, type VermietungRepository } from '../vermietung/vermietung.repository.js'
+import { PENSION_REPOSITORY, type PensionRepository } from '../rente/rente.repository.js'
+import { PROVENANCE_REPOSITORY, type ProvenanceRepository } from '../kennzeichnung/kennzeichnung.repository.js'
+import { RENTAL_REPOSITORY, type RentalRepository } from '../vermietung/vermietung.repository.js'
 import { TAX_YEAR_REPOSITORY, type TaxYearRepository } from './tax-year.repository.js'
 import type { CockpitStandDto, CockpitSummaryDto } from './dto/cockpit-summary.dto.js'
 import { answersAus } from '../interview/answers.js'
 import { lstbDatenAus } from '../lstb/lstb-daten.js'
-import { CH_LOHNAUSWEIS_REPOSITORY, type ChLohnausweisRecord, type ChLohnausweisRepository } from '../ch-lohnausweis/ch-lohnausweis.repository.js'
+import { CROSS_BORDER_SALARY_STATEMENT_REPOSITORY, type CrossBorderSalaryStatementRecord, type CrossBorderSalaryStatementRepository } from '../ch-lohnausweis/ch-lohnausweis.repository.js'
 import { grenzgaengerStatusAusAnswers, lohnausweisWerteAusRecord, wechselkursAusRecord } from '../ch-lohnausweis/lohnausweis-daten.js'
 
 function erfassterWert(raw: string | null): number | null {
@@ -27,7 +27,7 @@ function erfassterWert(raw: string | null): number | null {
   return Number(raw)
 }
 
-function toStandDto(stand: CockpitSpanne): CockpitStandDto {
+function toStandDto(stand: CockpitRange): CockpitStandDto {
   switch (stand.kind) {
     case 'bestimmt':
       return { kind: 'bestimmt', wert: stand.wert }
@@ -49,7 +49,7 @@ function toStandDto(stand: CockpitSpanne): CockpitStandDto {
 const CH_AUSLAND = 'Ja, in die Schweiz'
 
 /** A Grenzgänger's income is the converted Lohnausweis; a missing rate or figure is open, never a guessed zero. */
-function grenzgaengerFakten(record: ChLohnausweisRecord | null, answers: Answers) {
+function grenzgaengerFakten(record: CrossBorderSalaryStatementRecord | null, answers: Answers) {
   const werte = lohnausweisWerteAusRecord(record)
   const wechselkurs = wechselkursAusRecord(record)
   const status = grenzgaengerStatusAusAnswers(answers)
@@ -59,7 +59,7 @@ function grenzgaengerFakten(record: ChLohnausweisRecord | null, answers: Answers
     einnahmen: brutto !== undefined && wechselkurs !== null ? Math.round(chfNachEur(brutto, wechselkurs.kurs)) : 0,
     offenePosten: offeneFelder + (wechselkurs === null ? 1 : 0),
     konflikte: 0,
-    gegated: gatedEinkunftsarten(answers),
+    gegated: gatedIncomeTypes(answers),
   }
 }
 
@@ -70,11 +70,11 @@ export class CockpitService {
     @Inject(TAX_YEAR_REPOSITORY) private readonly taxYearRepository: TaxYearRepository,
     @Inject(LSTB_REPOSITORY) private readonly lstbRepository: LstbRepository,
     @Inject(INTERVIEW_ANSWER_REPOSITORY) private readonly interviewRepository: InterviewAnswerRepository,
-    @Inject(KENNZEICHNUNG_REPOSITORY) private readonly kennzeichnungRepository: KennzeichnungRepository,
-    @Inject(RENTE_REPOSITORY) private readonly renteRepository: RenteRepository,
-    @Inject(KAPITAL_REPOSITORY) private readonly kapitalRepository: KapitalRepository,
-    @Inject(VERMIETUNG_REPOSITORY) private readonly vermietungRepository: VermietungRepository,
-    @Inject(CH_LOHNAUSWEIS_REPOSITORY) private readonly chLohnausweisRepository: ChLohnausweisRepository,
+    @Inject(PROVENANCE_REPOSITORY) private readonly kennzeichnungRepository: ProvenanceRepository,
+    @Inject(PENSION_REPOSITORY) private readonly renteRepository: PensionRepository,
+    @Inject(CAPITAL_REPOSITORY) private readonly kapitalRepository: CapitalRepository,
+    @Inject(RENTAL_REPOSITORY) private readonly vermietungRepository: RentalRepository,
+    @Inject(CROSS_BORDER_SALARY_STATEMENT_REPOSITORY) private readonly chLohnausweisRepository: CrossBorderSalaryStatementRepository,
   ) {}
 
   async getSummary(userId: string, steuerjahr: number): Promise<CockpitSummaryDto | null> {
@@ -119,7 +119,7 @@ export class CockpitService {
     }
 
     const fakten = answers.ausland === CH_AUSLAND ? grenzgaengerFakten(chRecord, answers) : angestellteAusDaten(daten, answers)
-    const stand = cockpitSpanneAusEingaben({
+    const stand = cockpitRangeFromInputs({
       summe: fakten.einnahmen,
       offenePosten: fakten.offenePosten,
       konflikte: fakten.konflikte,

@@ -1,18 +1,18 @@
 import type {
-  EulenEinstellungRecord,
-  EulenEinstellungRepository,
-  EulenKartenVerwurfRepository,
+  OwlSettingRecord,
+  OwlSettingRepository,
+  OwlCardDismissalRepository,
 } from '../../src/eulen-modus/eulen-modus.repository.js'
 
-export class FakeEulenEinstellungRepository implements EulenEinstellungRepository {
-  private readonly store = new Map<string, EulenEinstellungRecord>()
+export class FakeEulenEinstellungRepository implements OwlSettingRepository {
+  private readonly store = new Map<string, OwlSettingRecord>()
 
-  findByUserId(userId: string): Promise<EulenEinstellungRecord | null> {
+  findByUserId(userId: string): Promise<OwlSettingRecord | null> {
     return Promise.resolve(this.store.get(userId) ?? null)
   }
 
-  setAktiviert(userId: string, aktiviert: boolean): Promise<EulenEinstellungRecord> {
-    const record: EulenEinstellungRecord = {
+  setAktiviert(userId: string, aktiviert: boolean): Promise<OwlSettingRecord> {
+    const record: OwlSettingRecord = {
       userId,
       aktiviert,
       aktiviertAm: aktiviert ? new Date() : null,
@@ -22,7 +22,7 @@ export class FakeEulenEinstellungRepository implements EulenEinstellungRepositor
   }
 }
 
-export class FakeEulenKartenVerwurfRepository implements EulenKartenVerwurfRepository {
+export class FakeEulenKartenVerwurfRepository implements OwlCardDismissalRepository {
   private readonly verwuerfe = new Set<string>()
 
   listForUserAndYear(userId: string, steuerjahr: number): Promise<string[]> {

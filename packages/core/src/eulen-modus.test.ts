@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import {
-  generiereEulenKarten,
+  generateOwlCards,
   homeofficeTageAusInterview,
   RECHTSSTAND_DATUM,
-  type EulenEingabeFakten,
+  type OwlInputFacts,
 } from './eulen-modus.js'
 
 describe('eulen-modus', () => {
   it('triggers musterluecke for a Fortbildung, without inventing an amount', () => {
-    const fakten: EulenEingabeFakten = { steuerjahr: 2025, hatFortbildung: true }
-    const karten = generiereEulenKarten(fakten)
+    const fakten: OwlInputFacts = { steuerjahr: 2025, hatFortbildung: true }
+    const karten = generateOwlCards(fakten)
     expect(karten).toHaveLength(1)
     expect(karten[0]!.trigger).toBe('musterluecke')
     expect(karten[0]!.titel).toContain('Fahrtkosten zur Fortbildung')
@@ -19,22 +19,22 @@ describe('eulen-modus', () => {
   })
 
   it('triggers vorjahresvergleich when previous year had donations but current year has none', () => {
-    const fakten: EulenEingabeFakten = {
+    const fakten: OwlInputFacts = {
       steuerjahr: 2025,
       vorjahrFakten: { spendenEur: 350 },
     }
-    const karten = generiereEulenKarten(fakten)
+    const karten = generateOwlCards(fakten)
     expect(karten).toHaveLength(1)
     expect(karten[0]!.trigger).toBe('vorjahresvergleich')
     expect(karten[0]!.titel).toContain('Spenden wie im Vorjahr?')
   })
 
   it('triggers rechtsaenderung for homeoffice >= 50 EUR directly into Cockpit with safe vs risky path', () => {
-    const fakten: EulenEingabeFakten = {
+    const fakten: OwlInputFacts = {
       steuerjahr: 2025,
       homeofficeTage: 50, // 50 * 6 = 300 € >= 50 €
     }
-    const karten = generiereEulenKarten(fakten)
+    const karten = generateOwlCards(fakten)
     expect(karten).toHaveLength(1)
     expect(karten[0]!.trigger).toBe('rechtsaenderung')
     expect(karten[0]!.kategorie).toBe('cockpit_proaktiv')
@@ -46,19 +46,19 @@ describe('eulen-modus', () => {
   })
 
   it('caps the homeoffice amount at 210 days', () => {
-    expect(generiereEulenKarten({ steuerjahr: 2025, homeofficeTage: 300 })[0]!.betragEur).toBe(1260)
+    expect(generateOwlCards({ steuerjahr: 2025, homeofficeTage: 300 })[0]!.betragEur).toBe(1260)
   })
 
   it('triggers lebenslage_hinweis when the interview names children that are not recorded yet', () => {
-    const karten = generiereEulenKarten({ steuerjahr: 2025, kinderLautInterview: true, hatKinderErfasst: false })
+    const karten = generateOwlCards({ steuerjahr: 2025, kinderLautInterview: true, hatKinderErfasst: false })
     expect(karten).toHaveLength(1)
     expect(karten[0]!.trigger).toBe('lebenslage_hinweis')
     expect(karten[0]!.begruendung).toContain('80 %')
-    expect(generiereEulenKarten({ steuerjahr: 2025, kinderLautInterview: true, hatKinderErfasst: true })).toEqual([])
+    expect(generateOwlCards({ steuerjahr: 2025, kinderLautInterview: true, hatKinderErfasst: true })).toEqual([])
   })
 
   it('triggers archiv_einspruch for past year in appeal window (ADR-042)', () => {
-    const fakten: EulenEingabeFakten = {
+    const fakten: OwlInputFacts = {
       steuerjahr: 2025,
       archivJahre: [
         {
@@ -69,7 +69,7 @@ describe('eulen-modus', () => {
         },
       ],
     }
-    const karten = generiereEulenKarten(fakten)
+    const karten = generateOwlCards(fakten)
     expect(karten).toHaveLength(1)
     expect(karten[0]!.kategorie).toBe('archiv_einspruch')
     expect(karten[0]!.einspruchFristBis).toBe('01.10.2025')
@@ -78,12 +78,12 @@ describe('eulen-modus', () => {
   })
 
   it('suppresses dismissed cards by fingerprint (ADR-041)', () => {
-    const fakten: EulenEingabeFakten = { steuerjahr: 2025, hatFortbildung: true }
-    const erstKarten = generiereEulenKarten(fakten)
+    const fakten: OwlInputFacts = { steuerjahr: 2025, hatFortbildung: true }
+    const erstKarten = generateOwlCards(fakten)
     expect(erstKarten).toHaveLength(1)
 
     const fp = erstKarten[0]!.fingerprint
-    const nachVerwurf = generiereEulenKarten({
+    const nachVerwurf = generateOwlCards({
       ...fakten,
       verworfeneFingerprints: [fp],
     })

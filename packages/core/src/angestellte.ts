@@ -1,7 +1,7 @@
 import type { Answers } from './interview'
-import { gatedEinkunftsarten, type Einkunftsart, type IncomeType } from './einkunftsarten'
-import { lstbZustand, type LstbDaten } from './lstb'
-import { abziehbareBasisvorsorge, krankenversicherungAusAntworten } from './krankenversicherung'
+import { gatedIncomeTypes, type IncomeType } from './einkunftsarten'
+import { wageTaxCertificateStatus, type LstbDaten } from './lstb'
+import { deductibleBasicProvision, krankenversicherungAusAntworten } from './krankenversicherung'
 
 export interface EmployeeAnswerFigures {
   readonly sideJobGross: number
@@ -38,7 +38,7 @@ export function angestellteAusAntworten(answers: Answers): AngestellteAntwortZah
     nebenjobBrutto: nebenjob,
     umzugKosten: answers.umzug === 'Ja' ? intAus(answers['umzug-kosten']) : 0,
     spenden: answers.spenden === 'Ja' ? intAus(answers['spenden-betrag']) : 0,
-    kvPvBeitraege: abziehbareBasisvorsorge(krankenversicherungAusAntworten(answers)),
+    kvPvBeitraege: deductibleBasicProvision(krankenversicherungAusAntworten(answers)),
     riester: answers.riester === 'Ja' ? intAus(answers['riester-betrag']) : 0,
     dhfMiete: answers.dhf === 'Ja' ? intAus(answers['dhf-miete']) : 0,
     abfindungBetrag: answers.abfindung === 'Ja' ? intAus(answers['abfindung-betrag']) : 0,
@@ -67,7 +67,7 @@ export interface EmployeeInputs {
   readonly specialExpenses: number
   readonly openItems: number
   readonly conflicts: number
-  readonly gated: readonly (IncomeType | Einkunftsart)[]
+  readonly gated: readonly (IncomeType | IncomeType)[]
 }
 
 export interface AngestellteEingaben {
@@ -76,7 +76,7 @@ export interface AngestellteEingaben {
   readonly sonderausgaben: number
   readonly offenePosten: number
   readonly konflikte: number
-  readonly gegated: readonly Einkunftsart[]
+  readonly gegated: readonly IncomeType[]
 }
 
 export type AngestelltenStand =
@@ -89,7 +89,7 @@ export type AngestelltenStand =
       readonly einkuenfte: number
       readonly offenePosten: number
       readonly konflikte: number
-      readonly gegated: readonly Einkunftsart[]
+      readonly gegated: readonly IncomeType[]
     }
 
 function validate(eingaben: AngestellteEingaben): void {
@@ -104,7 +104,7 @@ function validate(eingaben: AngestellteEingaben): void {
   }
 }
 
-export function angestelltenStand(eingaben: AngestellteEingaben): AngestelltenStand {
+export function calculateEmployeeStatus(eingaben: AngestellteEingaben): AngestelltenStand {
   validate(eingaben)
   const einkuenfte = Math.max(0, eingaben.einnahmen - eingaben.werbungskosten)
   const offen = eingaben.offenePosten > 0 || eingaben.konflikte > 0 || eingaben.gegated.length > 0
@@ -129,8 +129,6 @@ export function angestelltenStand(eingaben: AngestellteEingaben): AngestelltenSt
   }
 }
 
-export const calculateEmployeeStatus = angestelltenStand
-
 /** The ONE fold from the readable Angestellte facts → every numeric input both the Cockpit spanne AND the Plausibilitäts-Prüfung need. */
 export interface AngestellteFakten {
   readonly einnahmen: number
@@ -138,13 +136,13 @@ export interface AngestellteFakten {
   readonly sonderausgaben: number
   readonly offenePosten: number
   readonly konflikte: number
-  readonly gegated: readonly Einkunftsart[]
+  readonly gegated: readonly IncomeType[]
   readonly erfasstNichtGerechnet: number
 }
 
 export function angestellteAusDaten(daten: LstbDaten, answers: Answers): AngestellteFakten {
   const zahlen = angestellteAusAntworten(answers)
-  const zustand = lstbZustand(daten)
+  const zustand = wageTaxCertificateStatus(daten)
   const angestellt = answers.job === 'Angestellt' || answers.job === 'Beides'
 
   const einnahmen =
@@ -162,7 +160,7 @@ export function angestellteAusDaten(daten: LstbDaten, answers: Answers): Angeste
     sonderausgaben: zahlen.spenden + zahlen.kvPvBeitraege + zahlen.riester,
     offenePosten,
     konflikte: angestellt && zustand.kind === 'widerspruch' ? zustand.widersprueche.length : 0,
-    gegated: gatedEinkunftsarten(answers),
+    gegated: gatedIncomeTypes(answers),
     erfasstNichtGerechnet: zahlen.dhfMiete + zahlen.abfindungBetrag + zahlen.lohnersatzBetrag,
   }
 }

@@ -58,12 +58,10 @@ export function healthInsuranceFromAnswers(answers: Answers): HealthInsurance | 
 }
 
 /** § 10 Abs. 1 Nr. 3 EStG: KV with a Krankengeld claim counts 4 % less; PV fully; extras only within § 10 Abs. 4 — not counted here. */
-export function abziehbareBasisvorsorge(kv: Krankenversicherung | HealthInsurance | null): number {
+export function deductibleBasicProvision(kv: Krankenversicherung | HealthInsurance | null): number {
   if (kv === null) return 0
   const hasSickPay = 'withSickPay' in kv ? kv.withSickPay : kv.mitKrankengeld
   const basicAmount = 'basicHealthAmount' in kv ? kv.basicHealthAmount : kv.kvBasis
   const careAmount = 'careInsuranceAmount' in kv ? kv.careInsuranceAmount : kv.pv
   return Math.round(hasSickPay ? basicAmount * 0.96 : basicAmount) + careAmount
 }
-
-export const deductibleBasicProvision = abziehbareBasisvorsorge

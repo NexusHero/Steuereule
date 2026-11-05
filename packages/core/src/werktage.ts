@@ -2,7 +2,6 @@ export type IsoWeekday = 1 | 2 | 3 | 4 | 5 | 6 | 7
 export type IsoWochentag = IsoWeekday
 
 export const ISO_WEEKDAYS: readonly IsoWeekday[] = [1, 2, 3, 4, 5, 6, 7]
-export const WOCHENTAGE = ISO_WEEKDAYS
 
 export interface WorkdaysInput {
   readonly year: number
@@ -187,10 +186,3 @@ export function commuterAllowance(input: CommuterAllowanceInput | Pendlerpauscha
 }
 
 // Backward-compatibility aliases
-export {
-  isLeapYear as istSchaltjahr,
-  calendarDaysInYear as kalendertageImJahr,
-  weekdaysInYear as wochentageImJahr,
-  calculateWorkdays as berechneWerktage,
-  commuterAllowance as pendlerpauschale,
-}

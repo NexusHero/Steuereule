@@ -1,15 +1,12 @@
-import { berechne, type Posten } from './berechnung'
-import type { Einkunftsart } from './einkunftsarten'
+import { calculate, type Posten } from './berechnung'
+import type { IncomeType } from './einkunftsarten'
 
 export type RentalTypeAnswer = 'Einfach' | 'Mehrere' | 'Verkauf oder möbliert'
-export type VermietungArtAntwort = RentalTypeAnswer
-
 export const RENTAL_TYPE_ANSWERS: readonly RentalTypeAnswer[] = [
   'Einfach',
   'Mehrere',
   'Verkauf oder möbliert',
 ]
-export const VERMIETUNG_ART_ANTWORTEN = RENTAL_TYPE_ANSWERS
 
 export function isRentalTypeAnswer(value: string): value is RentalTypeAnswer {
   return (RENTAL_TYPE_ANSWERS as readonly string[]).includes(value)
@@ -20,8 +17,6 @@ export type RentalClassification =
   | { readonly kind: 'mehrere' }
   | { readonly kind: 'verkauf-oder-moebliert' }
   | { readonly kind: 'unbekannt' }
-
-export type VermietungEinordnung = RentalClassification
 
 export function classifyRental(vermietungArt: string | undefined): RentalClassification {
   switch (vermietungArt) {
@@ -48,17 +43,11 @@ export function depreciationRatePercent(baujahr: number): number | null {
 }
 
 export type RentalFieldId = 'mieteinnahmen' | 'anschaffungskosten' | 'baujahr' | 'werbungskosten'
-export type VermietungFeldId = RentalFieldId
-
 export const RENTAL_FIELDS: readonly RentalFieldId[] = ['mieteinnahmen', 'anschaffungskosten', 'baujahr', 'werbungskosten']
-export const VERMIETUNG_FELDER = RENTAL_FIELDS
-
 export type RentalFieldState =
   | { readonly kind: 'offen' }
   | { readonly kind: 'unklar' }
   | { readonly kind: 'erfasst'; readonly wert: number }
-
-export type VermietungFeldZustand = RentalFieldState
 
 /** One object's guided-mask data. */
 export interface RentalObjectData {
@@ -68,8 +57,6 @@ export interface RentalObjectData {
   readonly baujahr: RentalFieldState
   readonly werbungskosten: RentalFieldState
 }
-
-export type VermietungsobjektDaten = RentalObjectData
 
 export function emptyRentalObject(id: string): RentalObjectData {
   return {
@@ -93,7 +80,6 @@ export function setRentalField(objekt: RentalObjectData, feld: RentalFieldId, zu
 }
 
 export const RENTAL_UNCLEAR = 'unklar'
-export const VERMIETUNG_UNKLAR = RENTAL_UNCLEAR
 
 export function serializeRentalField(zustand: RentalFieldState): string | null {
   switch (zustand.kind) {
@@ -127,8 +113,6 @@ export interface RentalObjectFacts {
   readonly afa: { readonly betrag: number; readonly herkunft: string } | null
   readonly offenePosten: number
 }
-
-export type VermietungsobjektFakten = RentalObjectFacts
 
 export function vermietungsobjektFakten(objekt: RentalObjectData): RentalObjectFacts {
   let offenePosten = 0
@@ -172,12 +156,10 @@ export interface RentalStatus {
   readonly afa: number
   readonly offenePosten: number
   readonly konflikte: number
-  readonly gegated: readonly Einkunftsart[]
+  readonly gegated: readonly IncomeType[]
 }
 
-export type VermietungStand = RentalStatus
-
-export function vermietungStand(objekte: readonly RentalObjectData[], gegated: readonly Einkunftsart[]): RentalStatus {
+export function vermietungStand(objekte: readonly RentalObjectData[], gegated: readonly IncomeType[]): RentalStatus {
   const posten: Posten[] = []
   let offenePosten = 0
   let werbungskosten = 0
@@ -191,7 +173,7 @@ export function vermietungStand(objekte: readonly RentalObjectData[], gegated: r
     if (fakten.afa !== null) afa += fakten.afa.betrag
   }
 
-  const fold = berechne({ posten, offenePosten, konflikte: [], gegated })
+  const fold = calculate({ posten, offenePosten, konflikte: [], gegated })
 
   if (fold.kind === 'bestimmt') {
     return {
@@ -221,13 +203,5 @@ export function vermietungStand(objekte: readonly RentalObjectData[], gegated: r
 
 // Backward-compatibility aliases
 export {
-  isRentalTypeAnswer as istVermietungArtAntwort,
-  classifyRental as ordneVermietungEin,
-  isRentalCalculable as istVermietungBerechenbar,
-  depreciationRatePercent as afaSatzProzent,
-  emptyRentalObject as leeresVermietungsobjekt,
-  isValidRentalAmount as istGueltigerVermietungBetrag,
-  setRentalField as setzeVermietungFeld,
-  serializeRentalField as serialisiereVermietungFeld,
-  deserializeRentalField as deserialisiereVermietungFeld,
+  depreciationRatePercent as afaSatzProzent
 }

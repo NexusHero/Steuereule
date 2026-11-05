@@ -5,7 +5,7 @@ import { CurrentUser } from '../auth/current-user.decorator.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
 import { ParseSteuerjahrPipe } from '../cockpit/parse-steuerjahr.pipe.js'
 import { VeranlagungsartenvergleichDto, VergleichsHerkunftDto, UnschaerfeDto } from './dto/veranlagungsartenvergleich-response.dto.js'
-import { VeranlagungsartenvergleichService } from './veranlagungsartenvergleich.service.js'
+import { AssessmentComparisonService } from './veranlagungsartenvergleich.service.js'
 
 const KIST_FAKTOREN: readonly KirchensteuerFaktor[] = [0, 0.08, 0.09]
 
@@ -38,7 +38,7 @@ function parseKirchensteuerFaktor(raw: unknown): KirchensteuerFaktor {
 @Controller('v1/steuerjahre')
 @UseGuards(UserContextGuard)
 export class VeranlagungsartenvergleichController {
-  constructor(@Inject(VeranlagungsartenvergleichService) private readonly service: VeranlagungsartenvergleichService) {}
+  constructor(@Inject(AssessmentComparisonService) private readonly service: AssessmentComparisonService) {}
 
   @Get(':jahr/veranlagungsartenvergleich')
   @ApiParam({

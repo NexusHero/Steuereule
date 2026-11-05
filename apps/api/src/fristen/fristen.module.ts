@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common'
 import { FristenController } from './fristen.controller.js'
-import { FristenService } from './fristen.service.js'
+import { DeadlinesService } from './fristen.service.js'
 
 @Module({
   controllers: [FristenController],
-  providers: [FristenService],
+  providers: [DeadlinesService],
 })
 export class FristenModule {}

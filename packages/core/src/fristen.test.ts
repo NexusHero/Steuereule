@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
   VERSPAETUNGSZUSCHLAG_MINDESTSATZ_EUR,
-  VERSPAETUNGSZUSCHLAG_PROZENT_PRO_MONAT,
-  WARN_SCHWELLE_TAGE,
-  abgabefristFuer,
+  LATE_FILING_FEE_PERCENT_PER_MONTH,
+  DEADLINE_WARNING_THRESHOLD_DAYS,
+  filingDeadlineFor,
   fristenWarnung,
-  istUnterstuetztesFristenJahr,
+  isSupportedDeadlineYear,
 } from './fristen'
 
 // Ticket 10.7 (M6) — the Fristen-/Verspätungszuschlag-Warnmodus. The Abgabefrist is the explicit
@@ -14,21 +14,21 @@ import {
 
 describe('abgabefristFuer — § 149 Abs. 2 AO, the explicit per-year table', () => {
   it('pins the three supported years to 31 July of the following year', () => {
-    expect(abgabefristFuer(2024)).toBe('2025-07-31')
-    expect(abgabefristFuer(2025)).toBe('2026-07-31')
-    expect(abgabefristFuer(2026)).toBe('2027-07-31')
+    expect(filingDeadlineFor(2024)).toBe('2025-07-31')
+    expect(filingDeadlineFor(2025)).toBe('2026-07-31')
+    expect(filingDeadlineFor(2026)).toBe('2027-07-31')
   })
 
   it('throws for an unsupported year — never falls back to a neighbour year', () => {
-    expect(() => abgabefristFuer(2023)).toThrow(RangeError)
-    expect(() => abgabefristFuer(2027)).toThrow(RangeError)
+    expect(() => filingDeadlineFor(2023)).toThrow(RangeError)
+    expect(() => filingDeadlineFor(2027)).toThrow(RangeError)
   })
 
   it('istUnterstuetztesFristenJahr is total over integer years', () => {
-    expect(istUnterstuetztesFristenJahr(2026)).toBe(true)
-    expect(istUnterstuetztesFristenJahr(2023)).toBe(false)
-    expect(istUnterstuetztesFristenJahr(2026.5)).toBe(false)
-    expect(istUnterstuetztesFristenJahr('2026' as never)).toBe(false)
+    expect(isSupportedDeadlineYear(2026)).toBe(true)
+    expect(isSupportedDeadlineYear(2023)).toBe(false)
+    expect(isSupportedDeadlineYear(2026.5)).toBe(false)
+    expect(isSupportedDeadlineYear('2026' as never)).toBe(false)
   })
 })
 
@@ -67,7 +67,7 @@ describe('fristenWarnung — the derived warning stage (ADR-0039, never a status
 describe('the cited § 152 Abs. 2 AO figures — constants the banner renders nüchtern (ADR-023)', () => {
   it('pins the statutory minimum and rate', () => {
     expect(VERSPAETUNGSZUSCHLAG_MINDESTSATZ_EUR).toBe(25)
-    expect(VERSPAETUNGSZUSCHLAG_PROZENT_PRO_MONAT).toBe(0.25)
-    expect(WARN_SCHWELLE_TAGE).toBe(60)
+    expect(LATE_FILING_FEE_PERCENT_PER_MONTH).toBe(0.25)
+    expect(DEADLINE_WARNING_THRESHOLD_DAYS).toBe(60)
   })
 })

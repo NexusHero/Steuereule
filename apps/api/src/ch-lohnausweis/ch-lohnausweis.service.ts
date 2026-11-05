@@ -5,7 +5,7 @@ import {
   amtlicherMonatskurs,
   chPostenAlsKernposten,
   deserialisiereLohnausweisFeld,
-  gatedEinkunftsarten,
+  gatedIncomeTypes,
   grenzgaengerChPosten,
   grenzgaengerStand,
   istGueltigerLohnausweisBetrag,
@@ -23,10 +23,10 @@ import {
   type InterviewAnswerRepository,
 } from '../interview/interview-answer.repository.js'
 import {
-  CH_LOHNAUSWEIS_REPOSITORY,
+  CROSS_BORDER_SALARY_STATEMENT_REPOSITORY,
   LEERE_N_GRE,
-  type ChLohnausweisRecord,
-  type ChLohnausweisRepository,
+  type CrossBorderSalaryStatementRecord,
+  type CrossBorderSalaryStatementRepository,
   type NGreAngaben,
 } from './ch-lohnausweis.repository.js'
 import type { LohnausweisFeldDto, PutLohnausweisFeldDto } from './dto/lohnausweis-feld.dto.js'
@@ -35,12 +35,12 @@ import type { ChPostenDto, NGreAngabenDto, PutBemerkungenDto, PutNGreDto, PutVor
 import type { BerechnungsstandDto, ChLohnausweisResponseDto } from './dto/ch-lohnausweis-response.dto.js'
 import { grenzgaengerStatusAusAnswers, wechselkursAusRecord } from './lohnausweis-daten.js'
 
-function felderAusRecord(record: ChLohnausweisRecord | null): { felder: LohnausweisFeldDto[]; werte: LohnausweisWerte } {
+function felderAusRecord(record: CrossBorderSalaryStatementRecord | null): { felder: LohnausweisFeldDto[]; werte: LohnausweisWerte } {
   const felder: LohnausweisFeldDto[] = []
   const werte: LohnausweisWerte = {}
   for (const feld of LOHNAUSWEIS_FELDER) {
     if (feld.art !== 'chf-betrag') continue
-    const stored = record === null ? null : record.felder[feld.id as keyof ChLohnausweisRecord['felder']]
+    const stored = record === null ? null : record.felder[feld.id as keyof CrossBorderSalaryStatementRecord['felder']]
     const wert = deserialisiereLohnausweisFeld(stored)
     if (wert === null) {
       felder.push({ id: feld.id, ziffer: feld.ziffer, kind: 'offen' })
@@ -119,7 +119,7 @@ function nGreZuDto(n: NGreAngaben): NGreAngabenDto {
 @Injectable()
 export class ChLohnausweisService {
   constructor(
-    @Inject(CH_LOHNAUSWEIS_REPOSITORY) private readonly repository: ChLohnausweisRepository,
+    @Inject(CROSS_BORDER_SALARY_STATEMENT_REPOSITORY) private readonly repository: CrossBorderSalaryStatementRepository,
     @Inject(INTERVIEW_ANSWER_REPOSITORY) private readonly interviewRepository: InterviewAnswerRepository,
     @Inject(AuditService) private readonly auditService: AuditService,
   ) {}
@@ -131,12 +131,12 @@ export class ChLohnausweisService {
     return answers as Answers
   }
 
-  private async toResponse(userId: string, steuerjahr: number, record: ChLohnausweisRecord | null): Promise<ChLohnausweisResponseDto> {
+  private async toResponse(userId: string, steuerjahr: number, record: CrossBorderSalaryStatementRecord | null): Promise<ChLohnausweisResponseDto> {
     const { felder, werte } = felderAusRecord(record)
     const wechselkurs = wechselkursAusRecord(record)
     const answers = await this.antworten(userId, steuerjahr)
     const status = grenzgaengerStatusAusAnswers(answers)
-    const gegated = gatedEinkunftsarten(answers)
+    const gegated = gatedIncomeTypes(answers)
 
     const saeule3aChf = record === null || record.saeule3aChf === null ? undefined : Number(record.saeule3aChf)
     const krankenkasseChf = record === null || record.krankenkasseChf === null ? undefined : Number(record.krankenkasseChf)
@@ -185,7 +185,7 @@ export class ChLohnausweisService {
   async setFeld(
     userId: string,
     steuerjahr: number,
-    feld: Parameters<ChLohnausweisRepository['setFeld']>[2],
+    feld: Parameters<CrossBorderSalaryStatementRepository['setFeld']>[2],
     dto: PutLohnausweisFeldDto,
   ): Promise<ChLohnausweisResponseDto> {
     const record = await this.repository.setFeld(userId, steuerjahr, feld, wertAusDto(dto))

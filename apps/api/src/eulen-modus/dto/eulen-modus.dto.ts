@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import { IsBoolean, IsNotEmpty } from 'class-validator'
-import type { EulenEmpfehlungWeg, EulenKartenAnzeige } from '@steuereule/core'
+import type { OwlRecommendationPath, EulenKartenAnzeige } from '@steuereule/core'
 
 export class SetEulenEinstellungDto {
   @ApiProperty({ type: Boolean, example: true })
@@ -17,7 +17,7 @@ export class EulenEinstellungResponseDto {
   aktiviertAm?: string | null
 }
 
-export class EulenWegDto implements EulenEmpfehlungWeg {
+export class EulenWegDto implements OwlRecommendationPath {
   @ApiProperty({ type: String, example: 'Tagespauschale ansetzen' })
   name!: string
 

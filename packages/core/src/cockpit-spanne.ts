@@ -1,8 +1,8 @@
-import { berechne, type BerechnungsInput, type Berechnungsstand } from './berechnung'
-import type { Einkunftsart } from './einkunftsarten'
+import { calculate, type BerechnungsInput, type Berechnungsstand } from './berechnung'
+import type { IncomeType } from './einkunftsarten'
 import { UNCERTAINTY_PER_CONFLICT, UNCERTAINTY_PER_ITEM } from './cockpit'
 
-export type CockpitSpanne =
+export type CockpitRange =
   | { readonly kind: 'bestimmt'; readonly wert: number }
   | {
       readonly kind: 'spanne'
@@ -13,30 +13,26 @@ export type CockpitSpanne =
       readonly unbestaetigte: number
       readonly unbestaetigteSumme: number
     }
-  | { readonly kind: 'gated'; readonly summe: number; readonly gegated: readonly Einkunftsart[] }
-
-export type CockpitRange = CockpitSpanne
+  | { readonly kind: 'gated'; readonly summe: number; readonly gegated: readonly IncomeType[] }
 
 /** The count-based inputs a caller holds before any Posten objects exist. */
-export interface CockpitSpanneEingaben {
+export interface CockpitRangeInputs {
   readonly summe: number
   readonly offenePosten: number
   readonly konflikte: number
-  readonly gegated: readonly Einkunftsart[]
+  readonly gegated: readonly IncomeType[]
   readonly unbestaetigte?: number
   readonly unbestaetigteSumme?: number
 }
-
-export type CockpitRangeInputs = CockpitSpanneEingaben
 
 function spanneAusZahlen(
   summe: number,
   offenePosten: number,
   konflikte: number,
-  gegated: readonly Einkunftsart[],
+  gegated: readonly IncomeType[],
   unbestaetigte = 0,
   unbestaetigteSumme = 0,
-): CockpitSpanne {
+): CockpitRange {
   if (gegated.length > 0) return { kind: 'gated', summe, gegated }
   if (offenePosten === 0 && konflikte === 0 && unbestaetigte === 0) return { kind: 'bestimmt', wert: summe }
 
@@ -52,7 +48,7 @@ function spanneAusZahlen(
   }
 }
 
-export function cockpitSpanne(stand: Berechnungsstand): CockpitSpanne {
+export function calculateCockpitRange(stand: Berechnungsstand): CockpitRange {
   if (stand.kind === 'bestimmt') return { kind: 'bestimmt', wert: stand.einnahmen }
   return spanneAusZahlen(
     stand.einnahmen,
@@ -64,7 +60,7 @@ export function cockpitSpanne(stand: Berechnungsstand): CockpitSpanne {
   )
 }
 
-export function cockpitSpanneAusEingaben(eingaben: CockpitSpanneEingaben): CockpitSpanne {
+export function cockpitRangeFromInputs(eingaben: CockpitRangeInputs): CockpitRange {
   return spanneAusZahlen(
     eingaben.summe,
     eingaben.offenePosten,
@@ -75,13 +71,8 @@ export function cockpitSpanneAusEingaben(eingaben: CockpitSpanneEingaben): Cockp
   )
 }
 
-export function spanneAusBerechnung(input: BerechnungsInput): CockpitSpanne {
-  return cockpitSpanne(berechne(input))
+export function rangeFromCalculation(input: BerechnungsInput): CockpitRange {
+  return calculateCockpitRange(calculate(input))
 }
 
 // Backward-compatibility aliases
-export {
-  cockpitSpanne as calculateCockpitRange,
-  cockpitSpanneAusEingaben as cockpitRangeFromInputs,
-  spanneAusBerechnung as rangeFromCalculation,
-}

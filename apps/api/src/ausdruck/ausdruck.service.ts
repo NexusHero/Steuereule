@@ -2,9 +2,9 @@ import { HttpException, HttpStatus, Inject, Injectable, UnprocessableEntityExcep
 import { NotFoundError } from '../common/domain-error.js'
 import {
   CH_WOHNSITZ_VALUES,
-  JAHRESUNABHAENGIG,
-  berechneWerktage,
-  fehlendeBestaetigungen,
+  YEAR_INDEPENDENT,
+  calculateWorkdays,
+  missingConfirmations,
   grenzgaengerStatus,
   krankenversicherungAusAntworten,
   ordneKapDepotEin,
@@ -12,20 +12,20 @@ import {
   type GrenzgaengerStatus,
   type Krankenversicherung,
 } from '@steuereule/core'
-import { ARBEITSWEG_REPOSITORY, type ArbeitswegEingaben, type ArbeitswegRepository } from '../arbeitsweg/arbeitsweg.repository.js'
+import { COMMUTE_REPOSITORY, type CommuteInputs, type CommuteRepository } from '../arbeitsweg/arbeitsweg.repository.js'
 import { AuditService } from '../audit/audit.service.js'
-import { CH_LOHNAUSWEIS_REPOSITORY, type ChLohnausweisRecord, type ChLohnausweisRepository } from '../ch-lohnausweis/ch-lohnausweis.repository.js'
-import { FreischaltungService } from '../freischaltung/freischaltung.service.js'
+import { CROSS_BORDER_SALARY_STATEMENT_REPOSITORY, type CrossBorderSalaryStatementRecord, type CrossBorderSalaryStatementRepository } from '../ch-lohnausweis/ch-lohnausweis.repository.js'
+import { UnlockService } from '../freischaltung/freischaltung.service.js'
 import { INTERVIEW_ANSWER_REPOSITORY, type InterviewAnswerRepository } from '../interview/interview-answer.repository.js'
-import { KAPITAL_REPOSITORY, type KapitalRepository } from '../kapital/kapital.repository.js'
-import { KIND_REPOSITORY, type KindRepository } from '../kinder/kind.repository.js'
-import { KENNZEICHNUNG_REPOSITORY, type KennzeichnungRepository } from '../kennzeichnung/kennzeichnung.repository.js'
-import { KOPPLUNG_REPOSITORY, type KopplungRepository } from '../kopplung/kopplung.repository.js'
+import { CAPITAL_REPOSITORY, type CapitalRepository } from '../kapital/kapital.repository.js'
+import { CHILD_REPOSITORY, type ChildRepository } from '../kinder/kind.repository.js'
+import { PROVENANCE_REPOSITORY, type ProvenanceRepository } from '../kennzeichnung/kennzeichnung.repository.js'
+import { PARTNER_COUPLING_REPOSITORY, type KopplungRepository } from '../kopplung/kopplung.repository.js'
 import { LSTB_REPOSITORY, type LstbRepository } from '../lstb/lstb.repository.js'
 import { PROFILE_REPOSITORY, type ProfileRepository } from '../profile/profile.repository.js'
-import { RENTE_REPOSITORY, type RenteRepository } from '../rente/rente.repository.js'
-import { STAMMDATEN_REPOSITORY, type StammdatenRepository } from '../stammdaten/stammdaten.repository.js'
-import { VERMIETUNG_REPOSITORY, type VermietungRepository } from '../vermietung/vermietung.repository.js'
+import { PENSION_REPOSITORY, type PensionRepository } from '../rente/rente.repository.js'
+import { MASTER_DATA_REPOSITORY, type MasterDataRepository } from '../stammdaten/stammdaten.repository.js'
+import { RENTAL_REPOSITORY, type RentalRepository } from '../vermietung/vermietung.repository.js'
 import { ausdruckWerte, type ArbeitswegFakten, type ChLohnausweisFakten, type PersonBFakten } from './ausdruck-werte.js'
 import { FELDSAETZE, rendereVordrucke, UeberlaufFehler } from './vordruck-renderer.js'
 
@@ -44,18 +44,18 @@ function grenzgaengerStatusAus(answers: Record<string, string>): GrenzgaengerSta
 export class AusdruckService {
   constructor(
     @Inject(PROFILE_REPOSITORY) private readonly profile: ProfileRepository,
-    @Inject(STAMMDATEN_REPOSITORY) private readonly stammdaten: StammdatenRepository,
+    @Inject(MASTER_DATA_REPOSITORY) private readonly stammdaten: MasterDataRepository,
     @Inject(LSTB_REPOSITORY) private readonly lstb: LstbRepository,
-    @Inject(RENTE_REPOSITORY) private readonly rente: RenteRepository,
-    @Inject(KAPITAL_REPOSITORY) private readonly kapital: KapitalRepository,
-    @Inject(VERMIETUNG_REPOSITORY) private readonly vermietung: VermietungRepository,
-    @Inject(CH_LOHNAUSWEIS_REPOSITORY) private readonly chLohnausweis: ChLohnausweisRepository,
-    @Inject(KIND_REPOSITORY) private readonly kinder: KindRepository,
-    @Inject(KOPPLUNG_REPOSITORY) private readonly kopplung: KopplungRepository,
+    @Inject(PENSION_REPOSITORY) private readonly rente: PensionRepository,
+    @Inject(CAPITAL_REPOSITORY) private readonly kapital: CapitalRepository,
+    @Inject(RENTAL_REPOSITORY) private readonly vermietung: RentalRepository,
+    @Inject(CROSS_BORDER_SALARY_STATEMENT_REPOSITORY) private readonly chLohnausweis: CrossBorderSalaryStatementRepository,
+    @Inject(CHILD_REPOSITORY) private readonly kinder: ChildRepository,
+    @Inject(PARTNER_COUPLING_REPOSITORY) private readonly kopplung: KopplungRepository,
     @Inject(INTERVIEW_ANSWER_REPOSITORY) private readonly interview: InterviewAnswerRepository,
-    @Inject(KENNZEICHNUNG_REPOSITORY) private readonly kennzeichnungen: KennzeichnungRepository,
-    @Inject(ARBEITSWEG_REPOSITORY) private readonly arbeitsweg: ArbeitswegRepository,
-    @Inject(FreischaltungService) private readonly freischaltung: FreischaltungService,
+    @Inject(PROVENANCE_REPOSITORY) private readonly kennzeichnungen: ProvenanceRepository,
+    @Inject(COMMUTE_REPOSITORY) private readonly arbeitsweg: CommuteRepository,
+    @Inject(UnlockService) private readonly freischaltung: UnlockService,
     @Inject(AuditService) private readonly audit: AuditService,
     @Inject(VORLAGEN_BASIS) private readonly vorlagenBasis: URL,
   ) {}
@@ -103,10 +103,10 @@ export class AusdruckService {
   }
 
   private async unbestaetigt(userId: string, jahr: number, personBUserId: string | null): Promise<string[]> {
-    const jahre = [jahr, JAHRESUNABHAENGIG]
-    const eigene = fehlendeBestaetigungen((await this.kennzeichnungen.listForUserAndYears(userId, jahre)).map((k) => ({ ...k, wert: null })))
+    const jahre = [jahr, YEAR_INDEPENDENT]
+    const eigene = missingConfirmations((await this.kennzeichnungen.listForUserAndYears(userId, jahre)).map((k) => ({ ...k, wert: null })))
     if (personBUserId === null) return eigene
-    const personB = fehlendeBestaetigungen((await this.kennzeichnungen.listForUserAndYears(personBUserId, jahre)).map((k) => ({ ...k, wert: null })))
+    const personB = missingConfirmations((await this.kennzeichnungen.listForUserAndYears(personBUserId, jahre)).map((k) => ({ ...k, wert: null })))
     return personB.length > 0 ? [...eigene, 'unbestaetigt.personB'] : eigene
   }
 
@@ -264,7 +264,7 @@ export class AusdruckService {
   }
 }
 
-function chLohnausweisFakten(ch: ChLohnausweisRecord | null, answers: Record<string, string>): ChLohnausweisFakten | null {
+function chLohnausweisFakten(ch: CrossBorderSalaryStatementRecord | null, answers: Record<string, string>): ChLohnausweisFakten | null {
   if (!ch) return null
   return {
     status: grenzgaengerStatusAus(answers),
@@ -287,9 +287,9 @@ function chLohnausweisFakten(ch: ChLohnausweisRecord | null, answers: Record<str
   }
 }
 
-function arbeitswegFakten(jahr: number, eingaben: ArbeitswegEingaben | null): ArbeitswegFakten | null {
+function arbeitswegFakten(jahr: number, eingaben: CommuteInputs | null): ArbeitswegFakten | null {
   if (eingaben === null) return null
-  const ergebnis = berechneWerktage({
+  const ergebnis = calculateWorkdays({
     jahr,
     werktage: eingaben.arbeitstage,
     urlaubstage: eingaben.urlaubstage,

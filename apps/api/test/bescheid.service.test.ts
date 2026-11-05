@@ -4,7 +4,7 @@
 // bescheid.integration.test.ts and the acceptance tier (req-023-bescheidpruefung.test.ts).
 import { beforeEach, describe, expect, it } from 'vitest'
 import { AuditService } from '../src/audit/audit.service.js'
-import { BescheidService, heuteIso } from '../src/bescheid/bescheid.service.js'
+import { AssessmentService, heuteIso } from '../src/bescheid/bescheid.service.js'
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
 import { FakeBescheidRepository } from './fakes/fake-bescheid.repository.js'
 import { FakeChLohnausweisRepository } from './fakes/fake-ch-lohnausweis.repository.js'
@@ -20,7 +20,7 @@ describe('BescheidService', () => {
   let interview: FakeInterviewAnswerRepository
   let ch: FakeChLohnausweisRepository
   let auditRepository: FakeAuditRepository
-  let service: BescheidService
+  let service: AssessmentService
 
   beforeEach(() => {
     repository = new FakeBescheidRepository()
@@ -28,7 +28,7 @@ describe('BescheidService', () => {
     interview = new FakeInterviewAnswerRepository()
     ch = new FakeChLohnausweisRepository()
     auditRepository = new FakeAuditRepository()
-    service = new BescheidService(repository, lstb, interview, ch, new AuditService(auditRepository))
+    service = new AssessmentService(repository, lstb, interview, ch, new AuditService(auditRepository))
   })
 
   /** Seed a computed side of 50.000 € Einnahmen (Angestellt) so the Abgleich has a counterpart. */

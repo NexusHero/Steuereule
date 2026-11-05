@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
-import type { KindAngaben, KindRecord, KindRepository } from './kind.repository.js'
+import type { ChildDetails, ChildRecord, ChildRepository } from './kind.repository.js'
 
 function toRecord(row: {
   id: string
@@ -12,7 +12,7 @@ function toRecord(row: {
   geburtsdatum: string
   idnr: string | null
   kindergeldAnspruchEur: string | null
-} & KindAngaben): KindRecord {
+} & ChildDetails): ChildRecord {
   return {
     id: row.id,
     userId: row.userId,
@@ -42,10 +42,10 @@ function toRecord(row: {
 }
 
 @Injectable()
-export class PrismaKindRepository implements KindRepository {
+export class PrismaKindRepository implements ChildRepository {
   constructor(@Inject(ENCRYPTED_PRISMA) private readonly prisma: EncryptedPrismaClient) {}
 
-  async listForUserAndYear(userId: string, steuerjahr: number): Promise<KindRecord[]> {
+  async listForUserAndYear(userId: string, steuerjahr: number): Promise<ChildRecord[]> {
     const rows = await this.prisma.kind.findMany({
       where: { userId, steuerjahr },
       orderBy: { lfdNr: 'asc' },
@@ -62,8 +62,8 @@ export class PrismaKindRepository implements KindRepository {
       geburtsdatum: string
       idnr?: string | null
       kindergeldAnspruchEur?: string | null
-    } & Partial<KindAngaben>,
-  ): Promise<KindRecord> {
+    } & Partial<ChildDetails>,
+  ): Promise<ChildRecord> {
     const count = await this.prisma.kind.count({ where: { userId, steuerjahr } })
     const [row] = await this.prisma.$transaction([
       this.prisma.kind.create({
@@ -110,8 +110,8 @@ export class PrismaKindRepository implements KindRepository {
       geburtsdatum?: string
       idnr?: string | null
       kindergeldAnspruchEur?: string | null
-    } & Partial<KindAngaben>,
-  ): Promise<KindRecord | null> {
+    } & Partial<ChildDetails>,
+  ): Promise<ChildRecord | null> {
     const existing = await this.prisma.kind.findFirst({ where: { id, userId, steuerjahr } })
     if (existing === null) return null
 

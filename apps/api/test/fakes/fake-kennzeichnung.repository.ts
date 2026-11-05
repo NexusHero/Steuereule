@@ -1,15 +1,15 @@
 // In-memory fake mirroring the real (userId, steuerjahr, key) uniqueness without a DB (ADR-0004).
-import { anlageVon, type Anlage, type Kennzeichnung } from '@steuereule/core'
-import type { KennzeichnungRecord, KennzeichnungRepository } from '../../src/kennzeichnung/kennzeichnung.repository.js'
+import { anlageVon, type Annex, type Kennzeichnung } from '@steuereule/core'
+import type { ProvenanceRecord, ProvenanceRepository } from '../../src/kennzeichnung/kennzeichnung.repository.js'
 
 function id(userId: string, steuerjahr: number, key: string): string {
   return `${userId}::${steuerjahr}::${key}`
 }
 
-export class FakeKennzeichnungRepository implements KennzeichnungRepository {
-  private readonly store = new Map<string, KennzeichnungRecord>()
+export class FakeKennzeichnungRepository implements ProvenanceRepository {
+  private readonly store = new Map<string, ProvenanceRecord>()
 
-  listForUserAndYears(userId: string, steuerjahre: readonly number[]): Promise<KennzeichnungRecord[]> {
+  listForUserAndYears(userId: string, steuerjahre: readonly number[]): Promise<ProvenanceRecord[]> {
     return Promise.resolve(
       [...this.store.values()]
         .filter((r) => r.userId === userId && steuerjahre.includes(r.steuerjahr))
@@ -17,17 +17,17 @@ export class FakeKennzeichnungRepository implements KennzeichnungRepository {
     )
   }
 
-  find(userId: string, steuerjahr: number, key: string): Promise<KennzeichnungRecord | null> {
+  find(userId: string, steuerjahr: number, key: string): Promise<ProvenanceRecord | null> {
     return Promise.resolve(this.store.get(id(userId, steuerjahr, key)) ?? null)
   }
 
-  save(userId: string, taxYear: number, provenance: Omit<Kennzeichnung, 'wert'>): Promise<KennzeichnungRecord> {
+  save(userId: string, taxYear: number, provenance: Omit<Kennzeichnung, 'wert'>): Promise<ProvenanceRecord> {
     return this.speichere(userId, taxYear, provenance)
   }
 
-  speichere(userId: string, steuerjahr: number, k: Omit<Kennzeichnung, 'wert'>): Promise<KennzeichnungRecord> {
+  speichere(userId: string, steuerjahr: number, k: Omit<Kennzeichnung, 'wert'>): Promise<ProvenanceRecord> {
     anlageVon(k.key) // same rejection of unknown keys as the real repository
-    const record: KennzeichnungRecord = { userId, steuerjahr, key: k.key, herkunft: k.herkunft, bestaetigt: k.bestaetigt, vorschlag: k.vorschlag }
+    const record: ProvenanceRecord = { userId, steuerjahr, key: k.key, herkunft: k.herkunft, bestaetigt: k.bestaetigt, vorschlag: k.vorschlag }
     this.store.set(id(userId, steuerjahr, k.key), record)
     return Promise.resolve(record)
   }
@@ -42,11 +42,11 @@ export class FakeKennzeichnungRepository implements KennzeichnungRepository {
     return Promise.resolve(count)
   }
 
-  confirmAnnex(userId: string, taxYears: readonly number[], annex: Anlage): Promise<number> {
+  confirmAnnex(userId: string, taxYears: readonly number[], annex: Annex): Promise<number> {
     return this.bestaetigeAnlage(userId, taxYears, annex)
   }
 
-  bestaetigeAnlage(userId: string, steuerjahre: readonly number[], anlage: Anlage): Promise<number> {
+  bestaetigeAnlage(userId: string, steuerjahre: readonly number[], anlage: Annex): Promise<number> {
     let count = 0
     for (const [k, r] of this.store) {
       if (r.userId === userId && steuerjahre.includes(r.steuerjahr) && anlageVon(r.key) === anlage && !r.bestaetigt) {
@@ -58,7 +58,7 @@ export class FakeKennzeichnungRepository implements KennzeichnungRepository {
   }
 
   /** Test seam: every stored record. */
-  alle(): KennzeichnungRecord[] {
+  alle(): ProvenanceRecord[] {
     return [...this.store.values()]
   }
 }

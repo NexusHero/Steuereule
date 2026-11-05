@@ -91,6 +91,3 @@ export function naechsteBescheidZustaende(von: BescheidStatus): readonly Beschei
 }
 
 // Backward-compatibility aliases
-export {
-  isTransitionAllowed as istUebergangErlaubt,
-}

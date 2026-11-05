@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common'
-import type { VermietungFeldId } from '@steuereule/core'
+import type { RentalFieldId } from '@steuereule/core'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
-import type { VermietungsobjektRecord, VermietungRepository } from './vermietung.repository.js'
+import type { RentalObjectRecord, RentalRepository } from './vermietung.repository.js'
 
 function toRecord(row: {
   id: string
@@ -21,7 +21,7 @@ function toRecord(row: {
   schuldzinsen?: string | null
   einheiten?: string | null
   anteilA?: string | null
-}): VermietungsobjektRecord {
+}): RentalObjectRecord {
   return {
     id: row.id,
     userId: row.userId,
@@ -44,7 +44,7 @@ function toRecord(row: {
 }
 
 function feldData(
-  feld: VermietungFeldId,
+  feld: RentalFieldId,
   wert: string | null,
 ): { mieteinnahmen?: string | null; anschaffungskosten?: string | null; baujahr?: string | null; werbungskosten?: string | null } {
   switch (feld) {
@@ -60,10 +60,10 @@ function feldData(
 }
 
 @Injectable()
-export class PrismaVermietungRepository implements VermietungRepository {
+export class PrismaVermietungRepository implements RentalRepository {
   constructor(@Inject(ENCRYPTED_PRISMA) private readonly prisma: EncryptedPrismaClient) {}
 
-  async listForUserAndYear(userId: string, steuerjahr: number): Promise<VermietungsobjektRecord[]> {
+  async listForUserAndYear(userId: string, steuerjahr: number): Promise<RentalObjectRecord[]> {
     const rows = await this.prisma.vermietungsobjekt.findMany({
       where: { userId, steuerjahr },
       orderBy: { createdAt: 'asc' },
@@ -71,7 +71,7 @@ export class PrismaVermietungRepository implements VermietungRepository {
     return rows.map(toRecord)
   }
 
-  async create(userId: string, steuerjahr: number): Promise<VermietungsobjektRecord> {
+  async create(userId: string, steuerjahr: number): Promise<RentalObjectRecord> {
     const [row] = await this.prisma.$transaction([
       this.prisma.vermietungsobjekt.create({
         data: { userId, steuerjahr, mieteinnahmen: null, anschaffungskosten: null, baujahr: null, werbungskosten: null },
@@ -87,9 +87,9 @@ export class PrismaVermietungRepository implements VermietungRepository {
     userId: string,
     taxYear: number,
     objectId: string,
-    field: VermietungFeldId,
+    field: RentalFieldId,
     value: string | null,
-  ): Promise<VermietungsobjektRecord | null> {
+  ): Promise<RentalObjectRecord | null> {
     return this.setFeld(userId, taxYear, objectId, field, value)
   }
 
@@ -97,9 +97,9 @@ export class PrismaVermietungRepository implements VermietungRepository {
     userId: string,
     steuerjahr: number,
     objektId: string,
-    feld: VermietungFeldId,
+    feld: RentalFieldId,
     wert: string | null,
-  ): Promise<VermietungsobjektRecord | null> {
+  ): Promise<RentalObjectRecord | null> {
     const existing = await this.prisma.vermietungsobjekt.findFirst({ where: { id: objektId, userId, steuerjahr } })
     if (existing === null) return null
 
@@ -117,7 +117,7 @@ export class PrismaVermietungRepository implements VermietungRepository {
     taxYear: number,
     objectId: string,
     address: { strasse?: string | null; hausnummer?: string | null; plz?: string | null; ort?: string | null; wohnflaeche?: string | null; afaWieVorjahr?: boolean | null; umlagen?: string | null; schuldzinsen?: string | null; einheiten?: string | null; anteilA?: string | null },
-  ): Promise<VermietungsobjektRecord | null> {
+  ): Promise<RentalObjectRecord | null> {
     return this.setAdresse(userId, taxYear, objectId, address)
   }
 
@@ -126,7 +126,7 @@ export class PrismaVermietungRepository implements VermietungRepository {
     steuerjahr: number,
     objektId: string,
     adresse: { strasse?: string | null; hausnummer?: string | null; plz?: string | null; ort?: string | null; wohnflaeche?: string | null; afaWieVorjahr?: boolean | null; umlagen?: string | null; schuldzinsen?: string | null; einheiten?: string | null; anteilA?: string | null },
-  ): Promise<VermietungsobjektRecord | null> {
+  ): Promise<RentalObjectRecord | null> {
     const existing = await this.prisma.vermietungsobjekt.findFirst({ where: { id: objektId, userId, steuerjahr } })
     if (existing === null) return null
 

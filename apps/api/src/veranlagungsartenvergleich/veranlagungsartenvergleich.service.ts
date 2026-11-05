@@ -44,7 +44,7 @@ function toDto(vergleich: Vergleich): VeranlagungsartenvergleichDto {
 
 /** Application logic: userId+steuerjahr-scoped read, then the deterministic Veranlagungsartenvergleich → wire mapping. */
 @Injectable()
-export class VeranlagungsartenvergleichService {
+export class AssessmentComparisonService {
   constructor(
     @Inject(TAX_YEAR_REPOSITORY) private readonly taxYearRepository: TaxYearRepository,
     @Inject(LSTB_REPOSITORY) private readonly lstbRepository: LstbRepository,
@@ -90,6 +90,3 @@ export class VeranlagungsartenvergleichService {
     return toDto(vergleich)
   }
 }
-
-export { VeranlagungsartenvergleichService as AssessmentComparisonService }
-

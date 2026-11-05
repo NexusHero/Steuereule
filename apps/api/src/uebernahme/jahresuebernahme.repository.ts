@@ -7,10 +7,8 @@ export interface TaxYearRolloverRecord {
   vorjahr: number
   createdAt: Date
 }
-export type JahresuebernahmeRecord = TaxYearRolloverRecord
 
 export const TAX_YEAR_ROLLOVER_REPOSITORY = Symbol('TAX_YEAR_ROLLOVER_REPOSITORY')
-export const JAHRESUEBERNAHME_REPOSITORY = TAX_YEAR_ROLLOVER_REPOSITORY
 
 /** The persistence seam recording which tax year was taken over from which previous year. */
 export interface TaxYearRolloverRepository {
@@ -19,4 +17,3 @@ export interface TaxYearRolloverRepository {
   deleteForUser(userId: string): Promise<number>
   listForUser(userId: string): Promise<TaxYearRolloverRecord[]>
 }
-export type JahresuebernahmeRepository = TaxYearRolloverRepository

@@ -7,7 +7,7 @@ import { PrismaModule } from '../prisma/prisma.module.js'
 import { TAX_YEAR_REPOSITORY } from '../cockpit/tax-year.repository.js'
 import { PrismaTaxYearRepository } from '../cockpit/tax-year.repository.prisma.js'
 import { KapitalController } from './kapital.controller.js'
-import { KAPITAL_REPOSITORY } from './kapital.repository.js'
+import { CAPITAL_REPOSITORY } from './kapital.repository.js'
 import { PrismaKapitalRepository } from './kapital.repository.prisma.js'
 import { KapitalService } from './kapital.service.js'
 
@@ -16,9 +16,9 @@ import { KapitalService } from './kapital.service.js'
   controllers: [KapitalController],
   providers: [
     KapitalService,
-    { provide: KAPITAL_REPOSITORY, useClass: PrismaKapitalRepository },
+    { provide: CAPITAL_REPOSITORY, useClass: PrismaKapitalRepository },
     { provide: TAX_YEAR_REPOSITORY, useClass: PrismaTaxYearRepository },
   ],
-  exports: [KAPITAL_REPOSITORY],
+  exports: [CAPITAL_REPOSITORY],
 })
 export class KapitalModule {}

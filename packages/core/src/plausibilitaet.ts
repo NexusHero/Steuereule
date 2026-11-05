@@ -1,21 +1,21 @@
-import type { LstbFeldId, LstbZustand } from './lstb.js'
+import type { WageTaxCertificateFieldId, WageTaxCertificateStatus } from './lstb.js'
 import type { WerktageErgebnis } from './werktage.js'
 import type { AngestelltenStand } from './angestellte.js'
-import type { Einkunftsart } from './einkunftsarten.js'
+import type { IncomeType } from './einkunftsarten.js'
 
 export type Widerspruch =
-  | { readonly art: 'lstb-offen'; readonly felder: readonly LstbFeldId[] }
-  | { readonly art: 'lstb-unklar'; readonly felder: readonly LstbFeldId[] }
+  | { readonly art: 'lstb-offen'; readonly felder: readonly WageTaxCertificateFieldId[] }
+  | { readonly art: 'lstb-unklar'; readonly felder: readonly WageTaxCertificateFieldId[] }
   | { readonly art: 'lstb-widerspruch' }
   | { readonly art: 'werktage-widerspruch' }
-  | { readonly art: 'gated-einkunftsart'; readonly einkunftsart: Einkunftsart }
+  | { readonly art: 'gated-einkunftsart'; readonly einkunftsart: IncomeType }
 
 export type Hinweis =
   | { readonly art: 'erfasst-nicht-gerechnet'; readonly betrag: number }
   | { readonly art: 'werbungskosten-uebersteigt-einnahmen'; readonly werbungskosten: number; readonly einnahmen: number }
 
 export interface PlausibilitaetsEingaben {
-  readonly lstb: LstbZustand
+  readonly lstb: WageTaxCertificateStatus
   readonly werktage: WerktageErgebnis
   readonly stand: AngestelltenStand
   readonly erfasstNichtGerechnet: number

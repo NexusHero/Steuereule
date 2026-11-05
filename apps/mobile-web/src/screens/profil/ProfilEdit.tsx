@@ -1,7 +1,7 @@
 import { ScrollView, View, Text } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Button, Feld, Input, Pill, Sticker, useTheme, type Breakpoint } from '@steuereule/ui'
-import { isValidSteuerId } from '@steuereule/core'
+import { isValidTaxId } from '@steuereule/core'
 import { APP_NS } from '../../i18n/resources'
 import { makeProfilStyles } from './styles'
 import { formatSteuerId, sanitizeTaxNumberInput, countDigits } from '../onboarding/format'
@@ -22,7 +22,7 @@ export function ProfilEdit({ draft, onChange, onSave, onCancel, isSaving, saveEr
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeProfilStyles(t)
   const idDigits = countDigits(draft.steuerId)
-  const steuerIdOk = isValidSteuerId(draft.steuerId.replace(/\D/g, ''))
+  const steuerIdOk = isValidTaxId(draft.steuerId.replace(/\D/g, ''))
   const canSave = draft.vorname.trim() !== '' && draft.nachname.trim() !== ''
 
   return (

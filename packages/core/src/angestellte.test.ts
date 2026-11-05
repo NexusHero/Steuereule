@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { angestellteAusAntworten, angestellteAusDaten, angestelltenStand, type AngestellteEingaben } from './angestellte'
+import { angestellteAusAntworten, angestellteAusDaten, calculateEmployeeStatus, type AngestellteEingaben } from './angestellte'
 import { ENTRIES, entryForStep, isReachableFor, nextStepFor, remainingStepsFor, type Answers } from './interview'
 import { LEERES_LSTB, type LstbDaten } from './lstb'
 
@@ -58,7 +58,7 @@ describe('angestellteAusAntworten — the catalogue answers feed the Rechenkern'
 
 describe('angestelltenStand — the deterministic fold', () => {
   it('nothing open/conflicting/gated → bestimmt, einkuenfte = einnahmen − werbungskosten', () => {
-    expect(angestelltenStand(EINGABEN)).toEqual({
+    expect(calculateEmployeeStatus(EINGABEN)).toEqual({
       kind: 'bestimmt',
       einnahmen: 50000,
       werbungskosten: 1200,
@@ -68,29 +68,29 @@ describe('angestelltenStand — the deterministic fold', () => {
   })
 
   it('sonderausgaben are reported, never subtracted (the aggregation is a later slice)', () => {
-    const r = angestelltenStand(EINGABEN)
+    const r = calculateEmployeeStatus(EINGABEN)
     expect(r.kind === 'bestimmt' ? r.einkuenfte : 0).toBe(48800) // 50000 − 1200, NOT − 3000
   })
 
   it('open inputs → offen, naming the count', () => {
-    const r = angestelltenStand({ ...EINGABEN, offenePosten: 2 })
+    const r = calculateEmployeeStatus({ ...EINGABEN, offenePosten: 2 })
     expect(r.kind).toBe('offen')
     expect((r as { offenePosten: number }).offenePosten).toBe(2)
   })
 
   it('a gated Einkunftsart → offen, naming it', () => {
-    const r = angestelltenStand({ ...EINGABEN, gegated: ['Gewerbe'] })
+    const r = calculateEmployeeStatus({ ...EINGABEN, gegated: ['Gewerbe'] })
     expect(r).toMatchObject({ kind: 'offen', gegated: ['Gewerbe'] })
   })
 
   it('werbungskosten exceeding einnahmen floors einkuenfte at 0, never negative', () => {
-    const r = angestelltenStand({ ...EINGABEN, werbungskosten: 99999 })
+    const r = calculateEmployeeStatus({ ...EINGABEN, werbungskosten: 99999 })
     expect(r.kind === 'bestimmt' ? r.einkuenfte : null).toBe(0)
   })
 
   it('rejects negative or non-integer inputs', () => {
-    expect(() => angestelltenStand({ ...EINGABEN, einnahmen: -1 })).toThrow(RangeError)
-    expect(() => angestelltenStand({ ...EINGABEN, sonderausgaben: 1.5 })).toThrow(RangeError)
+    expect(() => calculateEmployeeStatus({ ...EINGABEN, einnahmen: -1 })).toThrow(RangeError)
+    expect(() => calculateEmployeeStatus({ ...EINGABEN, sonderausgaben: 1.5 })).toThrow(RangeError)
   })
 })
 

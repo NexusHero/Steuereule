@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import type { ArbeitswegEingaben, ArbeitswegRepository } from '../src/arbeitsweg/arbeitsweg.repository.js'
+import type { CommuteInputs, CommuteRepository } from '../src/arbeitsweg/arbeitsweg.repository.js'
 import { ArbeitswegService } from '../src/arbeitsweg/arbeitsweg.service.js'
 
-function fakeRepository(): ArbeitswegRepository & { gespeichert: Map<string, ArbeitswegEingaben> } {
-  const gespeichert = new Map<string, ArbeitswegEingaben>()
+function fakeRepository(): CommuteRepository & { gespeichert: Map<string, CommuteInputs> } {
+  const gespeichert = new Map<string, CommuteInputs>()
   return {
     gespeichert,
     findForUserAndYear: async (userId, jahr) => gespeichert.get(`${userId}:${jahr}`) ?? null,
@@ -14,7 +14,7 @@ function fakeRepository(): ArbeitswegRepository & { gespeichert: Map<string, Arb
   }
 }
 
-const EINGABEN: ArbeitswegEingaben = {
+const EINGABEN: CommuteInputs = {
   arbeitstage: [1, 2, 3, 4, 5],
   urlaubstage: 30,
   krankheitstage: 5,

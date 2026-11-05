@@ -2,7 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import { IsIn, IsInt, IsOptional } from 'class-validator'
 
 /** One Bescheid figure's honest capture state. */
-export class BescheidFeldDto {
+export class AssessmentFieldDto {
   @ApiProperty({ type: String, description: 'The machine field id (BescheidFeld).' })
   id!: string
 
@@ -18,7 +18,7 @@ export class BescheidFeldDto {
 }
 
 /** The PUT body for one figure. */
-export class PutBescheidFeldDto {
+export class PutAssessmentFieldDto {
   @ApiProperty({ enum: ['erfasst', 'offen', 'unklar'], description: 'The field’s capture state.' })
   @IsIn(['erfasst', 'offen', 'unklar'])
   kind!: 'erfasst' | 'offen' | 'unklar'
@@ -32,7 +32,3 @@ export class PutBescheidFeldDto {
   @IsInt()
   wert?: number
 }
-
-export type AssessmentFieldDto = BescheidFeldDto
-export type PutAssessmentFieldDto = PutBescheidFeldDto
-

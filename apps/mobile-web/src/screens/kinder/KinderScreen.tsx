@@ -6,15 +6,15 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button, Card, Chip, Feld, Input, useBreakpoint, useTheme, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
 import {
-  anspruchsMonate,
+  claimMonths,
   formatEuro,
-  kindergeldAnspruchMonat,
-  kinderStand,
-  ANDERE_KINDSCHAFTSVERHAELTNISSE,
-  ANDERER_ELTERNTEIL_STATUS,
-  KINDSCHAFTSVERHAELTNISSE,
-  type AndererElternteilStatus,
-  type Kindschaftsverhaeltnis,
+  monthlyChildBenefitClaim,
+  calculateChildrenStatus,
+  OTHER_CHILD_RELATIONSHIPS,
+  OTHER_PARENT_STATUSES,
+  CHILD_RELATIONSHIPS,
+  type OtherParentStatus,
+  type ChildRelationship,
 } from '@steuereule/core'
 import {
   getKinderControllerListQueryKey,
@@ -37,11 +37,11 @@ export interface KindItem {
   geburtsdatum: string
   idnr?: string | null
   kindergeldAnspruchEur?: string | null
-  kindschaftsverhaeltnis?: Kindschaftsverhaeltnis | null
-  kindschaftsverhaeltnisB?: Kindschaftsverhaeltnis | null
+  kindschaftsverhaeltnis?: ChildRelationship | null
+  kindschaftsverhaeltnisB?: ChildRelationship | null
   familienkasse?: string | null
   wohnsitzInlandGanzjaehrig?: boolean | null
-  andererElternteil?: AndererElternteilStatus | null
+  andererElternteil?: OtherParentStatus | null
   andererElternteilName?: string | null
   andererElternteilGeburtsdatum?: string | null
   andererElternteilAdresse?: string | null
@@ -63,11 +63,11 @@ export interface KindEingabe {
   geburtsdatum: string
   idnr?: string
   kindergeldAnspruchEur?: string
-  kindschaftsverhaeltnis: Kindschaftsverhaeltnis | null
-  kindschaftsverhaeltnisB: Kindschaftsverhaeltnis | null
+  kindschaftsverhaeltnis: ChildRelationship | null
+  kindschaftsverhaeltnisB: ChildRelationship | null
   familienkasse: string | null
   wohnsitzInlandGanzjaehrig: boolean | null
-  andererElternteil: AndererElternteilStatus | null
+  andererElternteil: OtherParentStatus | null
   andererElternteilName: string | null
   andererElternteilGeburtsdatum: string | null
   andererElternteilAdresse: string | null
@@ -80,14 +80,14 @@ export interface KindEingabe {
   schweizerKinderzulageEur?: string | null
 }
 
-const ANDERER_ELTERNTEIL_LABEL: Record<AndererElternteilStatus, string> = {
+const ANDERER_ELTERNTEIL_LABEL: Record<OtherParentStatus, string> = {
   Inland: 'Lebt in Deutschland',
   Ausland: 'Lebt im Ausland',
   Verstorben: 'Ist verstorben',
   Unbekannt: 'Nicht zu ermitteln',
 }
 
-const KINDSCHAFT_LABEL: Record<Kindschaftsverhaeltnis, string> = {
+const KINDSCHAFT_LABEL: Record<ChildRelationship, string> = {
   '1': 'Leibliches Kind / Adoptivkind',
   '2': 'Pflegekind',
   '3': 'Enkelkind / Stiefkind',
@@ -208,11 +208,11 @@ function KinderScreenView({
   const [schweizerZulage, setSchweizerZulage] = useState('')
   const [kvBasis, setKvBasis] = useState('')
   const [pv, setPv] = useState('')
-  const [verhaeltnis, setVerhaeltnis] = useState<Kindschaftsverhaeltnis | null>(null)
-  const [verhaeltnisB, setVerhaeltnisB] = useState<Kindschaftsverhaeltnis | null>(null)
+  const [verhaeltnis, setVerhaeltnis] = useState<ChildRelationship | null>(null)
+  const [verhaeltnisB, setVerhaeltnisB] = useState<ChildRelationship | null>(null)
   const [familienkasse, setFamilienkasse] = useState('')
   const [inland, setInland] = useState<boolean | null>(null)
-  const [ae, setAe] = useState<AndererElternteilStatus | null>(null)
+  const [ae, setAe] = useState<OtherParentStatus | null>(null)
   const [aeName, setAeName] = useState('')
   const [aeGeburtsdatum, setAeGeburtsdatum] = useState('')
   const [aeAdresse, setAeAdresse] = useState('')
@@ -223,7 +223,7 @@ function KinderScreenView({
   const [bearbeitet, setBearbeitet] = useState<string | null>(null)
   const [formOpen, setFormOpen] = useState(initialKinder.length === 0)
 
-  const stand = kinderStand(
+  const stand = calculateChildrenStatus(
     kinder.map((k) => ({
       id: k.id,
       vorname: k.vorname,
@@ -375,10 +375,10 @@ function KinderScreenView({
                 {`Schweizer Kinderzulage: ${formatEuro(Number(k.schweizerKinderzulageEur))}`}
               </Text>
               <Text style={styles.kindDetail}>
-                {`Differenz-Kindergeld: ${formatEuro(Number(k.differenzkindergeldEur ?? Math.max(0, kindergeldAnspruchMonat(taxYear) * anspruchsMonate(k.geburtsdatum, taxYear) - Number(k.schweizerKinderzulageEur))))}`}
+                {`Differenz-Kindergeld: ${formatEuro(Number(k.differenzkindergeldEur ?? Math.max(0, monthlyChildBenefitClaim(taxYear) * claimMonths(k.geburtsdatum, taxYear) - Number(k.schweizerKinderzulageEur))))}`}
               </Text>
               <Text style={styles.kindDetail}>
-                {`Gesamtanspruch (Anlage Kind Z. 6): ${formatEuro(Number(k.gesamtanspruchEur ?? k.kindergeldAnspruchEur ?? Math.max(kindergeldAnspruchMonat(taxYear) * anspruchsMonate(k.geburtsdatum, taxYear), Number(k.schweizerKinderzulageEur))))}`}
+                {`Gesamtanspruch (Anlage Kind Z. 6): ${formatEuro(Number(k.gesamtanspruchEur ?? k.kindergeldAnspruchEur ?? Math.max(monthlyChildBenefitClaim(taxYear) * claimMonths(k.geburtsdatum, taxYear), Number(k.schweizerKinderzulageEur))))}`}
               </Text>
             </>
           ) : (
@@ -386,7 +386,7 @@ function KinderScreenView({
               Kindergeld:{' '}
               {k.kindergeldAnspruchEur
                 ? `${k.kindergeldAnspruchEur} €`
-                : `${formatEuro(kindergeldAnspruchMonat(taxYear) * anspruchsMonate(k.geburtsdatum, taxYear))} (gesetzlich)`}
+                : `${formatEuro(monthlyChildBenefitClaim(taxYear) * claimMonths(k.geburtsdatum, taxYear))} (gesetzlich)`}
             </Text>
           )}
           {fehltFuerAusdruck(k) ? (
@@ -445,7 +445,7 @@ function KinderScreenView({
           </Feld>
           <Feld label="Kindschaftsverhältnis zu dir">
             <View style={styles.chips}>
-              {KINDSCHAFTSVERHAELTNISSE.map((wert) => (
+              {CHILD_RELATIONSHIPS.map((wert) => (
                 <Chip key={wert} aktiv={verhaeltnis === wert} onPress={() => setVerhaeltnis(wert)} testID={`kind-verhaeltnis-${wert}`}>
                   {KINDSCHAFT_LABEL[wert]}
                 </Chip>
@@ -454,7 +454,7 @@ function KinderScreenView({
           </Feld>
           <Feld label="Kindschaftsverhältnis zu deinem Ehepartner (nur bei Zusammenveranlagung)">
             <View style={styles.chips}>
-              {KINDSCHAFTSVERHAELTNISSE.map((wert) => (
+              {CHILD_RELATIONSHIPS.map((wert) => (
                 <Chip key={wert} aktiv={verhaeltnisB === wert} onPress={() => setVerhaeltnisB(wert)} testID={`kind-verhaeltnis-b-${wert}`}>
                   {KINDSCHAFT_LABEL[wert]}
                 </Chip>
@@ -496,7 +496,7 @@ function KinderScreenView({
           </Feld>
           <Feld label="Der andere Elternteil (nicht nötig, wenn ihr beide Eltern seid und zusammen veranlagt werdet)">
             <View style={styles.chips}>
-              {ANDERER_ELTERNTEIL_STATUS.map((status) => (
+              {OTHER_PARENT_STATUSES.map((status) => (
                 <Chip key={status} aktiv={ae === status} onPress={() => setAe(status)} testID={`kind-ae-${status}`}>
                   {ANDERER_ELTERNTEIL_LABEL[status]}
                 </Chip>
@@ -521,7 +521,7 @@ function KinderScreenView({
               </Feld>
               <Feld label="Kindschaftsverhältnis zum anderen Elternteil">
                 <View style={styles.chips}>
-                  {ANDERE_KINDSCHAFTSVERHAELTNISSE.map((wert) => (
+                  {OTHER_CHILD_RELATIONSHIPS.map((wert) => (
                     <Chip key={wert} aktiv={aeArt === wert} onPress={() => setAeArt(wert)} testID={`kind-ae-art-${wert}`}>
                       {KINDSCHAFT_LABEL[wert]}
                     </Chip>

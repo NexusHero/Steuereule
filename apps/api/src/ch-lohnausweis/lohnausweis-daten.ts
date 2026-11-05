@@ -8,9 +8,9 @@ import {
   type LohnausweisWerte,
   type Wechselkurs,
 } from '@steuereule/core'
-import type { ChLohnausweisRecord } from './ch-lohnausweis.repository.js'
+import type { CrossBorderSalaryStatementRecord } from './ch-lohnausweis.repository.js'
 
-export function lohnausweisWerteAusRecord(record: ChLohnausweisRecord | null): LohnausweisWerte {
+export function lohnausweisWerteAusRecord(record: CrossBorderSalaryStatementRecord | null): LohnausweisWerte {
   const werte: LohnausweisWerte = {}
   if (record === null) return werte
   for (const [feldId, stored] of Object.entries(record.felder)) {
@@ -20,7 +20,7 @@ export function lohnausweisWerteAusRecord(record: ChLohnausweisRecord | null): L
   return werte
 }
 
-export function wechselkursAusRecord(record: ChLohnausweisRecord | null): Wechselkurs | null {
+export function wechselkursAusRecord(record: CrossBorderSalaryStatementRecord | null): Wechselkurs | null {
   if (record === null || record.wechselkursMonat === null || record.wechselkursKurs === null || record.wechselkursModus === null) {
     return null
   }

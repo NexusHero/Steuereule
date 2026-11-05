@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { EulenModusService } from '../src/eulen-modus/eulen-modus.service.js'
+import { OwlModeService } from '../src/eulen-modus/eulen-modus.service.js'
 import { RagKiAdapter } from '../src/ki/ki.adapter.js'
 import {
   FakeEulenEinstellungRepository,
@@ -17,7 +17,7 @@ class FakeAuditService {
 
 describe('EulenModusService', () => {
   it('returns empty list when Eulen-Modus is not activated', async () => {
-    const service = new EulenModusService(
+    const service = new OwlModeService(
       new FakeEulenEinstellungRepository(),
       new FakeEulenKartenVerwurfRepository(),
       new FakeKindRepository(),
@@ -41,7 +41,7 @@ describe('EulenModusService', () => {
     const kiAdapter = new RagKiAdapter()
     const audit = new FakeAuditService()
 
-    const service = new EulenModusService(
+    const service = new OwlModeService(
       einstellungRepo,
       verwurfRepo,
       kinderRepo,

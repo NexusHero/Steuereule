@@ -1,24 +1,24 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { InvalidInputError, NotFoundError } from '../common/domain-error.js'
 import {
-  ANLAGEN,
-  JAHRESUNABHAENGIG,
+  ANNEXES,
+  YEAR_INDEPENDENT,
   anlageVon,
   entscheideSchreibung,
-  fehlendeBestaetigungen,
-  istJahresunabhaengig,
+  missingConfirmations,
+  isYearIndependent,
   nimmVorschlagAn,
   verwirfVorschlag,
-  zerlegeKennzeichnungsKey,
-  type Anlage,
+  decomposeProvenanceKey,
+  type Annex,
   type Herkunft,
   type Kennzeichnung,
   type Maske,
 } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
-import { KENNZEICHNUNG_REPOSITORY, type KennzeichnungRecord, type KennzeichnungRepository } from '../kennzeichnung/kennzeichnung.repository.js'
+import { PROVENANCE_REPOSITORY, type ProvenanceRecord, type ProvenanceRepository } from '../kennzeichnung/kennzeichnung.repository.js'
 import { FELD_ZUGRIFF, type FeldZugriff, type MaskenZugriff } from './feld-zugriff.js'
-import type { BestaetigungResponseDto, HerkunftDto, KennzeichnungWertDto } from './dto/bestaetigung.dto.js'
+import type { ConfirmationResponseDto, ProvenanceDto, FieldProvenanceDto } from './dto/bestaetigung.dto.js'
 
 export type Schreibergebnis = 'geschrieben' | 'vorschlag' | 'unveraendert'
 
@@ -31,7 +31,7 @@ interface Adresse {
   zugriff: MaskenZugriff
 }
 
-function herkunftDto(h: Herkunft): HerkunftDto {
+function herkunftDto(h: Herkunft): ProvenanceDto {
   switch (h.art) {
     case 'nutzer':
       return { art: 'nutzer' }
@@ -46,17 +46,17 @@ function herkunftDto(h: Herkunft): HerkunftDto {
 
 /** §6/§7 — Herkunft und Bestätigung je Feld. */
 @Injectable()
-export class BestaetigungService {
+export class ConfirmationService {
   constructor(
-    @Inject(KENNZEICHNUNG_REPOSITORY) private readonly repository: KennzeichnungRepository,
+    @Inject(PROVENANCE_REPOSITORY) private readonly repository: ProvenanceRepository,
     @Inject(FELD_ZUGRIFF) private readonly zugriff: FeldZugriff,
     @Inject(AuditService) private readonly auditService: AuditService,
   ) {}
 
   private adresse(key: string, steuerjahr: number): Adresse {
-    let teile: ReturnType<typeof zerlegeKennzeichnungsKey>
+    let teile: ReturnType<typeof decomposeProvenanceKey>
     try {
-      teile = zerlegeKennzeichnungsKey(key)
+      teile = decomposeProvenanceKey(key)
     } catch {
       throw new InvalidInputError('FIELD_UNKNOWN', `"${key}" is not a known field.`)
     }
@@ -64,7 +64,7 @@ export class BestaetigungService {
     if (zugriff === undefined || !zugriff.felder.includes(teile.feld) || zugriff.mitInstanz !== (teile.instanz !== null)) {
       throw new InvalidInputError('FIELD_NOT_WRITABLE', `"${key}" is not a field that can be written here.`)
     }
-    return { key, ...teile, steuerjahr: istJahresunabhaengig(key) ? JAHRESUNABHAENGIG : steuerjahr, zugriff }
+    return { key, ...teile, steuerjahr: isYearIndependent(key) ? YEAR_INDEPENDENT : steuerjahr, zugriff }
   }
 
   private async aktuellerWert(userId: string, a: Adresse): Promise<string | null> {
@@ -99,23 +99,23 @@ export class BestaetigungService {
     }
   }
 
-  async liste(userId: string, steuerjahr: number): Promise<KennzeichnungRecord[]> {
-    return this.repository.listForUserAndYears(userId, [steuerjahr, JAHRESUNABHAENGIG])
+  async liste(userId: string, steuerjahr: number): Promise<ProvenanceRecord[]> {
+    return this.repository.listForUserAndYears(userId, [steuerjahr, YEAR_INDEPENDENT])
   }
 
   async fehlend(userId: string, steuerjahr: number): Promise<string[]> {
-    return fehlendeBestaetigungen((await this.liste(userId, steuerjahr)).map((r) => ({ ...r, wert: null })))
+    return missingConfirmations((await this.liste(userId, steuerjahr)).map((r) => ({ ...r, wert: null })))
   }
 
-  async uebersicht(userId: string, steuerjahr: number): Promise<BestaetigungResponseDto> {
+  async uebersicht(userId: string, steuerjahr: number): Promise<ConfirmationResponseDto> {
     const offen = (await this.liste(userId, steuerjahr)).filter((r) => !r.bestaetigt || r.vorschlag !== null)
     if (offen.length === 0) return { anlagen: [] }
     await this.auditService.append({ userId, action: 'READ', resource: 'kennzeichnung' })
 
     const gelesen = new Map<string, Promise<Readonly<Record<string, string | null>> | null>>()
-    const werte: { anlage: Anlage; dto: KennzeichnungWertDto }[] = []
+    const werte: { anlage: Annex; dto: FieldProvenanceDto }[] = []
     for (const r of offen) {
-      const { maske, instanz, feld } = zerlegeKennzeichnungsKey(r.key)
+      const { maske, instanz, feld } = decomposeProvenanceKey(r.key)
       const zugriff = this.zugriff[maske]
       const cacheKey = `${r.steuerjahr}|${maske}|${instanz ?? ''}`
       if (zugriff !== undefined && !gelesen.has(cacheKey)) gelesen.set(cacheKey, zugriff.lese(userId, r.steuerjahr, instanz))
@@ -135,20 +135,20 @@ export class BestaetigungService {
       })
     }
     return {
-      anlagen: ANLAGEN.flatMap((anlage) => {
+      anlagen: ANNEXES.flatMap((anlage) => {
         const eigene = werte.filter((w) => w.anlage === anlage).map((w) => w.dto)
         return eigene.length === 0 ? [] : [{ anlage, unbestaetigt: eigene.filter((w) => !w.bestaetigt).length, werte: eigene }]
       }),
     }
   }
 
-  async bestaetigeAnlage(userId: string, steuerjahr: number, anlage: Anlage): Promise<BestaetigungResponseDto> {
-    if (!(ANLAGEN as readonly string[]).includes(anlage)) throw new InvalidInputError('ANLAGE_UNKNOWN', `"${anlage}" is not an Anlage.`)
-    await this.repository.bestaetigeAnlage(userId, [steuerjahr, JAHRESUNABHAENGIG], anlage)
+  async bestaetigeAnlage(userId: string, steuerjahr: number, anlage: Annex): Promise<ConfirmationResponseDto> {
+    if (!(ANNEXES as readonly string[]).includes(anlage)) throw new InvalidInputError('ANLAGE_UNKNOWN', `"${anlage}" is not an Anlage.`)
+    await this.repository.bestaetigeAnlage(userId, [steuerjahr, YEAR_INDEPENDENT], anlage)
     return this.uebersicht(userId, steuerjahr)
   }
 
-  async entscheideVorschlag(userId: string, steuerjahr: number, key: string, entscheidung: 'annehmen' | 'verwerfen'): Promise<BestaetigungResponseDto> {
+  async entscheideVorschlag(userId: string, steuerjahr: number, key: string, entscheidung: 'annehmen' | 'verwerfen'): Promise<ConfirmationResponseDto> {
     const a = this.adresse(key, steuerjahr)
     const bestehend = await this.repository.find(userId, a.steuerjahr, key)
     if (bestehend === null || bestehend.vorschlag === null) throw new NotFoundError('PROPOSAL_NOT_FOUND', `There is no open proposal for "${key}".`)
@@ -165,15 +165,15 @@ export class BestaetigungService {
     return this.uebersicht(userId, steuerjahr)
   }
 
-  async decideProposal(userId: string, taxYear: number, key: string, decision: 'annehmen' | 'verwerfen'): Promise<BestaetigungResponseDto> {
+  async decideProposal(userId: string, taxYear: number, key: string, decision: 'annehmen' | 'verwerfen'): Promise<ConfirmationResponseDto> {
     return this.entscheideVorschlag(userId, taxYear, key, decision)
   }
 
-  async confirmAnnex(userId: string, taxYear: number, annex: Anlage): Promise<BestaetigungResponseDto> {
+  async confirmAnnex(userId: string, taxYear: number, annex: Annex): Promise<ConfirmationResponseDto> {
     return this.bestaetigeAnlage(userId, taxYear, annex)
   }
 
-  async overview(userId: string, taxYear: number): Promise<BestaetigungResponseDto> {
+  async overview(userId: string, taxYear: number): Promise<ConfirmationResponseDto> {
     return this.uebersicht(userId, taxYear)
   }
 
@@ -181,10 +181,7 @@ export class BestaetigungService {
     return this.fehlend(userId, taxYear)
   }
 
-  async list(userId: string, taxYear: number): Promise<KennzeichnungRecord[]> {
+  async list(userId: string, taxYear: number): Promise<ProvenanceRecord[]> {
     return this.liste(userId, taxYear)
   }
 }
-
-export { BestaetigungService as ConfirmationService }
-

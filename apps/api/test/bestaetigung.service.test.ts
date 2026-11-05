@@ -1,7 +1,7 @@
 // Fast, no-DB unit tier (ADR-0004): BestaetigungService against the fake repositories. The
 // real-Postgres proofs live in test/acceptance/req-032-herkunft-bestaetigung.test.ts.
 import { beforeEach, describe, expect, it } from 'vitest'
-import { BestaetigungService } from '../src/bestaetigung/bestaetigung.service.js'
+import { ConfirmationService } from '../src/bestaetigung/bestaetigung.service.js'
 import { feldZugriffAus } from '../src/bestaetigung/feld-zugriff.js'
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
 import { FakeKapitalRepository } from './fakes/fake-kapital.repository.js'
@@ -20,7 +20,7 @@ describe('BestaetigungService', () => {
   let lstb: FakeLstbRepository
   let rente: FakeRenteRepository
   let vermietung: FakeVermietungRepository
-  let service: BestaetigungService
+  let service: ConfirmationService
 
   beforeEach(() => {
     kennzeichnungen = new FakeKennzeichnungRepository()
@@ -28,7 +28,7 @@ describe('BestaetigungService', () => {
     rente = new FakeRenteRepository()
     vermietung = new FakeVermietungRepository()
     const zugriff = feldZugriffAus({ lstb, rente, kapital: new FakeKapitalRepository(), vermietung })
-    service = new BestaetigungService(kennzeichnungen, zugriff, new AuditService(new FakeAuditRepository()))
+    service = new ConfirmationService(kennzeichnungen, zugriff, new AuditService(new FakeAuditRepository()))
   })
 
   it('a non-user write into an empty field writes the value and leaves it unconfirmed', async () => {

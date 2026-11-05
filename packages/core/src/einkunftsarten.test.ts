@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { EINKUNFTSARTEN, einkunftsartenFromAnswers, gatedEinkunftsarten, isEinkunftsart } from './einkunftsarten'
+import { INCOME_TYPES, incomeTypesFromAnswers, gatedIncomeTypes, isIncomeType } from './einkunftsarten'
 import type { Answers } from './interview'
 
 // ADR-010/030 — the derivation is the load-bearing piece: it is the bridge between the
@@ -10,19 +10,19 @@ import type { Answers } from './interview'
 
 describe('isEinkunftsart', () => {
   it('accepts every declared Einkunftsart', () => {
-    for (const art of EINKUNFTSARTEN) expect(isEinkunftsart(art)).toBe(true)
+    for (const art of INCOME_TYPES) expect(isIncomeType(art)).toBe(true)
   })
 
   it('rejects an undeclared string, total over string', () => {
-    expect(isEinkunftsart('Landwirtschaft')).toBe(false)
-    expect(isEinkunftsart('')).toBe(false)
-    expect(isEinkunftsart('Kapitalerträge')).toBe(false) // the interview VALUE, not the Einkunftsart id
+    expect(isIncomeType('Landwirtschaft')).toBe(false)
+    expect(isIncomeType('')).toBe(false)
+    expect(isIncomeType('Kapitalerträge')).toBe(false) // the interview VALUE, not the Einkunftsart id
   })
 })
 
 describe('einkunftsartenFromAnswers — the onboarding-shorthand → Einkunftsart bridge (ADR-010)', () => {
   it('nothing answered declares nothing', () => {
-    expect(einkunftsartenFromAnswers({})).toEqual([])
+    expect(incomeTypesFromAnswers({})).toEqual([])
   })
 
   it.each([
@@ -31,7 +31,7 @@ describe('einkunftsartenFromAnswers — the onboarding-shorthand → Einkunftsar
     ['Beides', ['Nichtselbstständig', 'Gewerbe'] as const],
     ['Rente', ['Rente'] as const],
   ] as const)('job=%s declares exactly the expected Einkunftsart set', (job, expected) => {
-    expect(einkunftsartenFromAnswers({ job })).toEqual([...expected])
+    expect(incomeTypesFromAnswers({ job })).toEqual([...expected])
   })
 
   it.each([
@@ -39,7 +39,7 @@ describe('einkunftsartenFromAnswers — the onboarding-shorthand → Einkunftsar
     ['Nein', [] as const],
     ['In ein anderes Land', [] as const], // the CH-only gate — no computable category (honest)
   ] as const)('ausland=%s declares exactly the expected Einkunftsart set', (ausland, expected) => {
-    expect(einkunftsartenFromAnswers({ job: 'Angestellt', ausland })).toEqual(['Nichtselbstständig', ...expected])
+    expect(incomeTypesFromAnswers({ job: 'Angestellt', ausland })).toEqual(['Nichtselbstständig', ...expected])
   })
 
   it.each([
@@ -49,7 +49,7 @@ describe('einkunftsartenFromAnswers — the onboarding-shorthand → Einkunftsar
     ['Beides', ['Vermietung', 'Kapital'] as const],
     ['Nein', [] as const],
   ] as const)('einkuenfte=%s declares exactly the expected Einkunftsart set', (einkuenfte, expected) => {
-    expect(einkunftsartenFromAnswers({ job: 'Angestellt', einkuenfte })).toEqual(['Nichtselbstständig', ...expected])
+    expect(incomeTypesFromAnswers({ job: 'Angestellt', einkuenfte })).toEqual(['Nichtselbstständig', ...expected])
   })
 
   // ADR-030/034 — the combinability cases. Each is a NORMAL real person, not a synthetic
@@ -61,7 +61,7 @@ describe('einkunftsartenFromAnswers — the onboarding-shorthand → Einkunftsar
       ausland: 'Ja, in die Schweiz',
       einkuenfte: 'Beides',
     }
-    expect(einkunftsartenFromAnswers(answers)).toEqual([
+    expect(incomeTypesFromAnswers(answers)).toEqual([
       'Nichtselbstständig',
       'Vermietung',
       'Kapital',
@@ -71,24 +71,24 @@ describe('einkunftsartenFromAnswers — the onboarding-shorthand → Einkunftsar
 
   it('ADR-034 — Rente + Vermietung + Kapital is the normal pensioner case, freely combinable', () => {
     const answers: Answers = { job: 'Rente', einkuenfte: 'Beides' }
-    expect(einkunftsartenFromAnswers(answers)).toEqual(['Vermietung', 'Kapital', 'Rente'])
+    expect(incomeTypesFromAnswers(answers)).toEqual(['Vermietung', 'Kapital', 'Rente'])
   })
 
   it('Rente does not exclude other Einkunftsarten (ADR-034: Rente is an option, not a branch)', () => {
     const answers: Answers = { job: 'Rente', ausland: 'Ja, in die Schweiz', einkuenfte: 'Vermietung' }
-    expect(einkunftsartenFromAnswers(answers)).toEqual(['Vermietung', 'Rente', 'Grenzgänger'])
+    expect(incomeTypesFromAnswers(answers)).toEqual(['Vermietung', 'Rente', 'Grenzgänger'])
   })
 
   it('ADR-030/034 — Rente + Vermietung + Kapital + Grenzgänger all combine freely (ticket 10.4)', () => {
     const answers: Answers = { job: 'Rente', ausland: 'Ja, in die Schweiz', einkuenfte: 'Beides' }
-    expect(einkunftsartenFromAnswers(answers)).toEqual(['Vermietung', 'Kapital', 'Rente', 'Grenzgänger'])
+    expect(incomeTypesFromAnswers(answers)).toEqual(['Vermietung', 'Kapital', 'Rente', 'Grenzgänger'])
   })
 
   it('returns a deterministic, deduplicated, canonical-order set', () => {
     // "Beides" adds two Einkunftsarten from one answer; the result must carry no duplicates
     // and follow EINKUNFTSARTEN order regardless of how many answers contributed.
     const answers: Answers = { job: 'Beides', einkuenfte: 'Beides' }
-    const result = einkunftsartenFromAnswers(answers)
+    const result = incomeTypesFromAnswers(answers)
     expect(result).toEqual(['Nichtselbstständig', 'Gewerbe', 'Vermietung', 'Kapital'])
     expect(new Set(result).size).toBe(result.length)
   })
@@ -96,29 +96,29 @@ describe('einkunftsartenFromAnswers — the onboarding-shorthand → Einkunftsar
 
 describe('gatedEinkunftsarten — which declared Einkunftsarten 1.0 cannot compute (ADR-028/032/033)', () => {
   it('Gewerbe is gated whenever declared (ADR-028: EÜR stays out), Selbstständig and Beides alike', () => {
-    expect(gatedEinkunftsarten({ job: 'Selbstständig' })).toEqual(['Gewerbe'])
-    expect(gatedEinkunftsarten({ job: 'Beides' })).toEqual(['Gewerbe'])
+    expect(gatedIncomeTypes({ job: 'Selbstständig' })).toEqual(['Gewerbe'])
+    expect(gatedIncomeTypes({ job: 'Beides' })).toEqual(['Gewerbe'])
   })
 
   it('Angestellt alone gates nothing', () => {
-    expect(gatedEinkunftsarten({ job: 'Angestellt' })).toEqual([])
+    expect(gatedIncomeTypes({ job: 'Angestellt' })).toEqual([])
   })
 
   it('Kapital is gated ONLY for the Krypto broker (ADR-032); DE/foreign brokers are computable', () => {
     const base: Answers = { job: 'Angestellt', einkuenfte: 'Kapitalerträge' }
-    expect(gatedEinkunftsarten({ ...base, 'kap-depot': 'Deutscher Broker' })).toEqual([])
-    expect(gatedEinkunftsarten({ ...base, 'kap-depot': 'Ausländischer Broker' })).toEqual([])
-    expect(gatedEinkunftsarten({ ...base, 'kap-depot': 'Krypto' })).toEqual(['Kapital'])
+    expect(gatedIncomeTypes({ ...base, 'kap-depot': 'Deutscher Broker' })).toEqual([])
+    expect(gatedIncomeTypes({ ...base, 'kap-depot': 'Ausländischer Broker' })).toEqual([])
+    expect(gatedIncomeTypes({ ...base, 'kap-depot': 'Krypto' })).toEqual(['Kapital'])
   })
 
   it('Vermietung is gated ONLY for "Verkauf oder möbliert" (ADR-033); Einfach/Mehrere are computable', () => {
     const base: Answers = { job: 'Angestellt', einkuenfte: 'Vermietung' }
-    expect(gatedEinkunftsarten({ ...base, 'vermietung-art': 'Einfach' })).toEqual([])
-    expect(gatedEinkunftsarten({ ...base, 'vermietung-art': 'Mehrere' })).toEqual([])
-    expect(gatedEinkunftsarten({ ...base, 'vermietung-art': 'Verkauf oder möbliert' })).toEqual(['Vermietung'])
+    expect(gatedIncomeTypes({ ...base, 'vermietung-art': 'Einfach' })).toEqual([])
+    expect(gatedIncomeTypes({ ...base, 'vermietung-art': 'Mehrere' })).toEqual([])
+    expect(gatedIncomeTypes({ ...base, 'vermietung-art': 'Verkauf oder möbliert' })).toEqual(['Vermietung'])
   })
 
   it('gates only what is DECLARED — a Krypto answer with no Kapitalerträge declared gates nothing', () => {
-    expect(gatedEinkunftsarten({ job: 'Angestellt', 'kap-depot': 'Krypto' })).toEqual([])
+    expect(gatedIncomeTypes({ job: 'Angestellt', 'kap-depot': 'Krypto' })).toEqual([])
   })
 })

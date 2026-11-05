@@ -3,28 +3,28 @@
 // the real repository's return shape (the full record) and upsert semantics; the derived fold is
 // left to RenteService (as in production, the repository stores facts, never the derived state —
 // ADR-014/048).
-import type { RentenFeldId } from '@steuereule/core'
-import type { RenteRecord, RenteRepository } from '../../src/rente/rente.repository.js'
+import type { PensionFieldId } from '@steuereule/core'
+import type { PensionRecord, PensionRepository } from '../../src/rente/rente.repository.js'
 
 function key(userId: string, steuerjahr: number): string {
   return `${userId}::${steuerjahr}`
 }
 
-export class FakeRenteRepository implements RenteRepository {
-  private readonly store = new Map<string, RenteRecord>()
+export class FakeRenteRepository implements PensionRepository {
+  private readonly store = new Map<string, PensionRecord>()
 
-  findForUserAndYear(userId: string, steuerjahr: number): Promise<RenteRecord | null> {
+  findForUserAndYear(userId: string, steuerjahr: number): Promise<PensionRecord | null> {
     return Promise.resolve(this.store.get(key(userId, steuerjahr)) ?? null)
   }
 
-  setField(userId: string, taxYear: number, field: RentenFeldId, value: string | null): Promise<RenteRecord> {
+  setField(userId: string, taxYear: number, field: PensionFieldId, value: string | null): Promise<PensionRecord> {
     return this.setFeld(userId, taxYear, field, value)
   }
 
-  setFeld(userId: string, steuerjahr: number, feld: RentenFeldId, wert: string | null): Promise<RenteRecord> {
+  setFeld(userId: string, steuerjahr: number, feld: PensionFieldId, wert: string | null): Promise<PensionRecord> {
     const k = key(userId, steuerjahr)
     const existing = this.store.get(k)
-    const record: RenteRecord = existing ?? {
+    const record: PensionRecord = existing ?? {
       userId,
       steuerjahr,
       rentenart: null,
@@ -32,19 +32,19 @@ export class FakeRenteRepository implements RenteRepository {
       rentenbeginnJahr: null,
       alterBeiRentenbeginn: null,
     }
-    const updated: RenteRecord = { ...record, [feld]: wert }
+    const updated: PensionRecord = { ...record, [feld]: wert }
     this.store.set(k, updated)
     return Promise.resolve(updated)
   }
 
-  setPensionType(userId: string, taxYear: number, type: string | null): Promise<RenteRecord> {
+  setPensionType(userId: string, taxYear: number, type: string | null): Promise<PensionRecord> {
     return this.setRentenart(userId, taxYear, type)
   }
 
-  setRentenart(userId: string, steuerjahr: number, art: string | null): Promise<RenteRecord> {
+  setRentenart(userId: string, steuerjahr: number, art: string | null): Promise<PensionRecord> {
     const k = key(userId, steuerjahr)
     const existing = this.store.get(k)
-    const record: RenteRecord = existing ?? {
+    const record: PensionRecord = existing ?? {
       userId,
       steuerjahr,
       rentenart: null,
@@ -52,13 +52,13 @@ export class FakeRenteRepository implements RenteRepository {
       rentenbeginnJahr: null,
       alterBeiRentenbeginn: null,
     }
-    const updated: RenteRecord = { ...record, rentenart: art }
+    const updated: PensionRecord = { ...record, rentenart: art }
     this.store.set(k, updated)
     return Promise.resolve(updated)
   }
 
   /** Test seam: seed a full record directly, bypassing the setters' upsert. */
-  seed(record: RenteRecord): void {
+  seed(record: PensionRecord): void {
     this.store.set(key(record.userId, record.steuerjahr), record)
   }
 }

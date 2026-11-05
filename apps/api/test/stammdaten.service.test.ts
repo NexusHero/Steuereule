@@ -2,16 +2,16 @@
 // ciphertext-at-rest and HTTP proofs are in test/acceptance/stammdaten.test.ts.
 import { beforeEach, describe, expect, it } from 'vitest'
 import { AuditService } from '../src/audit/audit.service.js'
-import type { StammdatenRecord, StammdatenRepository } from '../src/stammdaten/stammdaten.repository.js'
+import type { MasterDataRecord, MasterDataRepository } from '../src/stammdaten/stammdaten.repository.js'
 import { StammdatenService } from '../src/stammdaten/stammdaten.service.js'
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
 
-class FakeStammdatenRepository implements StammdatenRepository {
-  rows = new Map<string, StammdatenRecord>()
+class FakeStammdatenRepository implements MasterDataRepository {
+  rows = new Map<string, MasterDataRecord>()
   async findByUserId(userId: string) {
     return this.rows.get(userId) ?? null
   }
-  async speichere(userId: string, record: StammdatenRecord) {
+  async speichere(userId: string, record: MasterDataRecord) {
     this.rows.set(userId, record)
     return record
   }

@@ -10,7 +10,7 @@ export class VerspaetungszuschlagDto {
 }
 
 /** The response shape for `GET /v1/steuerjahre/{jahr}/fristen`. */
-export class FristenResponseDto {
+export class DeadlinesResponseDto {
   @ApiProperty({ type: String, example: '2027-07-31', description: 'Die Abgabefrist (§ 149 Abs. 2 AO), ISO yyyy-mm-dd.' })
   abgabefrist!: string
 
@@ -28,5 +28,3 @@ export class FristenResponseDto {
 }
 
 export type LateFilingFeeDto = VerspaetungszuschlagDto
-export type DeadlinesResponseDto = FristenResponseDto
-

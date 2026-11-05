@@ -5,13 +5,13 @@ import { RequiresAccount } from '../auth/requires-account.guard.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
 import { ParseSteuerjahrPipe } from '../cockpit/parse-steuerjahr.pipe.js'
 import { SteuerschaetzungDto } from './dto/steuerschaetzung.dto.js'
-import { SteuerschaetzungService } from './steuerschaetzung.service.js'
+import { TaxEstimateService } from './steuerschaetzung.service.js'
 
 @ApiTags('steuerschaetzung')
 @Controller('v1/steuerjahre')
 @UseGuards(UserContextGuard)
 export class SteuerschaetzungController {
-  constructor(@Inject(SteuerschaetzungService) private readonly service: SteuerschaetzungService) {}
+  constructor(@Inject(TaxEstimateService) private readonly service: TaxEstimateService) {}
 
   @Get(':jahr/steuerschaetzung')
   @RequiresAccount()

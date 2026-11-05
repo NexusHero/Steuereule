@@ -1,39 +1,39 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { InvalidInputError } from '../common/domain-error.js'
 import {
-  LEERES_KAPITAL,
+  EMPTY_CAPITAL,
   angestellteAusDaten,
-  deserialisiereKapitalFeld,
-  gatedEinkunftsarten,
+  deserializeCapitalField,
+  gatedIncomeTypes,
   guenstigerpruefung,
-  istGueltigerKapitalBetrag,
-  kapitalAlsKernposten,
-  kapitalStand,
+  isValidCapitalAmount,
+  capitalAsCoreLineItem,
+  capitalStatus,
   ordneKapDepotEin,
   progressionsvorbehaltAus,
-  serialisiereKapitalFeld,
-  setzeKapitalFeld,
+  serializeCapitalField,
+  setCapitalField,
   type Answers,
   type Berechnungsstand,
   type Guenstigerpruefung as GuenstigerpruefungKern,
-  kapitalPflichtfelder,
-  type KapitalDaten,
-  type KapitalFeldId,
-  type KapitalFeldZustand,
+  mandatoryCapitalFields,
+  type CapitalData,
+  type CapitalFieldId,
+  type CapitalFieldState,
   type KapitalDepotEinordnung,
   type KirchensteuerFaktor,
   type Posten,
-  kennzeichnungsKey,
+  provenanceKey,
 } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
-import { KENNZEICHNUNG_REPOSITORY, type KennzeichnungRepository } from '../kennzeichnung/kennzeichnung.repository.js'
+import { PROVENANCE_REPOSITORY, type ProvenanceRepository } from '../kennzeichnung/kennzeichnung.repository.js'
 import {
   INTERVIEW_ANSWER_REPOSITORY,
   type InterviewAnswerRepository,
 } from '../interview/interview-answer.repository.js'
 import { LSTB_REPOSITORY, type LstbRepository } from '../lstb/lstb.repository.js'
 import { TAX_YEAR_REPOSITORY, type TaxYearRepository } from '../cockpit/tax-year.repository.js'
-import { KAPITAL_REPOSITORY, type KapitalRecord, type KapitalRepository } from './kapital.repository.js'
+import { CAPITAL_REPOSITORY, type CapitalRecord, type CapitalRepository } from './kapital.repository.js'
 import type { PutKapitalFeldDto, KapitalFeldDto } from './dto/kapital-feld.dto.js'
 import type { DepotEinordnungDto, KapitalPostenDto, KapitalResponseDto, KapitalStandDto } from './dto/kapital-response.dto.js'
 import type { GuenstigerpruefungDto, GuenstigerpruefungHerkunftDto } from './dto/guenstigerpruefung-response.dto.js'
@@ -41,27 +41,27 @@ import type { UnschaerfeDto } from '../veranlagungsartenvergleich/dto/veranlagun
 import { answersAus } from '../interview/answers.js'
 import { lstbDatenAus } from '../lstb/lstb-daten.js'
 
-function datenAusRecord(record: KapitalRecord | null): KapitalDaten {
-  if (record === null) return LEERES_KAPITAL
+function datenAusRecord(record: CapitalRecord | null): CapitalData {
+  if (record === null) return EMPTY_CAPITAL
   return {
-    kapitalertraege: deserialisiereKapitalFeld(record.kapitalertraege),
-    sparerPauschbetrag: deserialisiereKapitalFeld(record.sparerPauschbetrag),
-    kapitalertragsteuer: deserialisiereKapitalFeld(record.kapitalertragsteuer),
-    solidaritaetszuschlag: deserialisiereKapitalFeld(record.solidaritaetszuschlag),
-    kirchensteuer: deserialisiereKapitalFeld(record.kirchensteuer),
+    kapitalertraege: deserializeCapitalField(record.kapitalertraege),
+    sparerPauschbetrag: deserializeCapitalField(record.sparerPauschbetrag),
+    kapitalertragsteuer: deserializeCapitalField(record.kapitalertragsteuer),
+    solidaritaetszuschlag: deserializeCapitalField(record.solidaritaetszuschlag),
+    kirchensteuer: deserializeCapitalField(record.kirchensteuer),
   }
 }
 
-function zustandAusDto(dto: PutKapitalFeldDto): KapitalFeldZustand {
+function zustandAusDto(dto: PutKapitalFeldDto): CapitalFieldState {
   if (dto.kind === 'offen') return { kind: 'offen' }
   if (dto.kind === 'unklar') return { kind: 'unklar' }
-  if (dto.wert === undefined || !istGueltigerKapitalBetrag(dto.wert)) {
+  if (dto.wert === undefined || !isValidCapitalAmount(dto.wert)) {
     throw new InvalidInputError('FIELD_VALUE_INVALID', 'kind "erfasst" requires a non-negative integer `wert`.')
   }
   return { kind: 'erfasst', wert: dto.wert }
 }
 
-function toFeldDto(zustand: KapitalFeldZustand): KapitalFeldDto {
+function toFeldDto(zustand: CapitalFieldState): KapitalFeldDto {
   switch (zustand.kind) {
     case 'offen':
       return { kind: 'offen' }
@@ -143,12 +143,12 @@ function guenstigerpruefungZuDto(ergebnis: GuenstigerpruefungKern): Guenstigerpr
 @Injectable()
 export class KapitalService {
   constructor(
-    @Inject(KAPITAL_REPOSITORY) private readonly repository: KapitalRepository,
+    @Inject(CAPITAL_REPOSITORY) private readonly repository: CapitalRepository,
     @Inject(INTERVIEW_ANSWER_REPOSITORY) private readonly interviewRepository: InterviewAnswerRepository,
     @Inject(LSTB_REPOSITORY) private readonly lstbRepository: LstbRepository,
     @Inject(TAX_YEAR_REPOSITORY) private readonly taxYearRepository: TaxYearRepository,
     @Inject(AuditService) private readonly auditService: AuditService,
-    @Inject(KENNZEICHNUNG_REPOSITORY) private readonly kennzeichnungen: KennzeichnungRepository,
+    @Inject(PROVENANCE_REPOSITORY) private readonly kennzeichnungen: ProvenanceRepository,
   ) {}
 
   private async antworten(userId: string, steuerjahr: number): Promise<Answers> {
@@ -156,15 +156,15 @@ export class KapitalService {
     return answersAus(rows)
   }
 
-  private async toResponse(userId: string, steuerjahr: number, record: KapitalRecord | null): Promise<KapitalResponseDto> {
+  private async toResponse(userId: string, steuerjahr: number, record: CapitalRecord | null): Promise<KapitalResponseDto> {
     const daten = datenAusRecord(record)
     const answers = await this.antworten(userId, steuerjahr)
-    const gegated = gatedEinkunftsarten(answers)
+    const gegated = gatedIncomeTypes(answers)
     const depot = ordneKapDepotEin(answers['kap-depot'])
 
-    const kernposten = kapitalAlsKernposten(daten)
+    const kernposten = capitalAsCoreLineItem(daten)
     const posten: KapitalPostenDto[] = kernposten === null ? [] : [postenZuDto(kernposten)]
-    const stand = kapitalStand(daten, gegated)
+    const stand = capitalStatus(daten, gegated)
 
     return {
       kapitalertraege: toFeldDto(daten.kapitalertraege),
@@ -172,7 +172,7 @@ export class KapitalService {
       kapitalertragsteuer: toFeldDto(daten.kapitalertragsteuer),
       solidaritaetszuschlag: toFeldDto(daten.solidaritaetszuschlag),
       kirchensteuer: toFeldDto(daten.kirchensteuer),
-      pflichtfelder: [...kapitalPflichtfelder(depot.kind)],
+      pflichtfelder: [...mandatoryCapitalFields(depot.kind)],
       depot: depotZuDto(depot),
       posten,
       stand: standZuDto(stand),
@@ -188,13 +188,13 @@ export class KapitalService {
     return this.toResponse(userId, steuerjahr, record)
   }
 
-  async setFeld(userId: string, steuerjahr: number, feld: KapitalFeldId, dto: PutKapitalFeldDto): Promise<KapitalResponseDto> {
+  async setFeld(userId: string, steuerjahr: number, feld: CapitalFieldId, dto: PutKapitalFeldDto): Promise<KapitalResponseDto> {
     const record = await this.repository.findForUserAndYear(userId, steuerjahr)
     const daten = datenAusRecord(record)
     const zustand = zustandAusDto(dto)
-    setzeKapitalFeld(daten, feld, zustand)
-    const next = await this.repository.setFeld(userId, steuerjahr, feld, serialisiereKapitalFeld(zustand))
-    await this.kennzeichnungen.entferne(userId, steuerjahr, [kennzeichnungsKey('kapital', feld)])
+    setCapitalField(daten, feld, zustand)
+    const next = await this.repository.setFeld(userId, steuerjahr, feld, serializeCapitalField(zustand))
+    await this.kennzeichnungen.entferne(userId, steuerjahr, [provenanceKey('kapital', feld)])
     return this.toResponse(userId, steuerjahr, next)
   }
 

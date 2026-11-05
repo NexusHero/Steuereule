@@ -1,9 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service.js'
-import type { FreischaltungRepository } from './freischaltung.repository.js'
+import type { UnlockRepository } from './freischaltung.repository.js'
 
 @Injectable()
-export class PrismaFreischaltungRepository implements FreischaltungRepository {
+export class PrismaFreischaltungRepository implements UnlockRepository {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async legeOffeneAn(userId: string, steuerjahr: number, sitzungId: string): Promise<void> {

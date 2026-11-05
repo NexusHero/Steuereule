@@ -3,7 +3,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button, Card, Chip, Feld, Input, Option, useBreakpoint, useTheme } from '@steuereule/ui'
-import { deutschesDatum, FAMILIENSTAENDE, RELIGIONSSCHLUESSEL } from '@steuereule/core'
+import { formatGermanDate, MARITAL_STATUSES, RELIGIONSSCHLUESSEL } from '@steuereule/core'
 import {
   getKopplungControllerGetQueryKey,
   useKopplungControllerGet,
@@ -112,7 +112,7 @@ export function StammdatenScreen({ onZurueck, taxYear = CURRENT_TAX_YEAR, onPart
 
       <Feld label={t('stammdaten.familienstand')}>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.s2 }}>
-          {FAMILIENSTAENDE.map((stand_) => (
+          {MARITAL_STATUSES.map((stand_) => (
             <Chip key={stand_} aktiv={form.familienstand === stand_} onPress={() => setze({ familienstand: stand_ })}>
               {t(`stammdaten.familienstaende.${stand_}`)}
             </Chip>
@@ -165,7 +165,7 @@ function einladungsHinweis(code: string, gueltigBis: string | null): string {
   if (gueltigBis !== null && new Date(gueltigBis) <= new Date()) {
     return 'Der Einladungscode ist abgelaufen — wähle erneut Zusammenveranlagung für einen neuen.'
   }
-  const bis = gueltigBis ? ` (gültig bis ${deutschesDatum(gueltigBis.slice(0, 10))})` : ''
+  const bis = gueltigBis ? ` (gültig bis ${formatGermanDate(gueltigBis.slice(0, 10))})` : ''
   return `Einladungscode für Partner-Account: ${code}${bis}`
 }
 

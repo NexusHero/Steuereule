@@ -5,11 +5,11 @@ import { Button, Chip, Feld, Input, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WI
 import {
   GERMAN_STATES,
   SWISS_CANTONS,
-  WOCHENTAGE,
-  berechneWerktage,
+  ISO_WEEKDAYS,
+  calculateWorkdays,
   formatEuro,
   holidaysOnWorkdays,
-  pendlerpauschale,
+  commuterAllowance,
   type HolidayRegion,
   type IsoWochentag,
 } from '@steuereule/core'
@@ -94,7 +94,7 @@ function ArbeitstageFormular({
     homeofficeTage: int(homeoffice),
     feiertage: int(feiertage),
   }
-  const ergebnis = werktage.length > 0 ? berechneWerktage(eingabe) : null
+  const ergebnis = werktage.length > 0 ? calculateWorkdays(eingabe) : null
   const einfacheKm = ganzzahlAus(km)
   const pauschale =
     ergebnis?.kind === 'bestimmt' && einfacheKm !== null && verkehrsmittel !== null
@@ -138,7 +138,7 @@ function ArbeitstageFormular({
 
       <Text style={styles.sectionLabel}>{tr('arbeitstage.weekdays')}</Text>
       <View style={styles.weekdayRow}>
-        {WOCHENTAGE.map((tag) => (
+        {ISO_WEEKDAYS.map((tag) => (
           <Pressable
             key={tag}
             accessibilityRole="button"
@@ -221,13 +221,13 @@ function textAus(wert: number | null | undefined): string {
 
 function pauschaleOderNull(einfacheKm: number, tage: number, jahr: number, mitPkw: boolean): number | null {
   try {
-    return pendlerpauschale({ einfacheKm, tage, jahr, mitPkw })
+    return commuterAllowance({ einfacheKm, tage, jahr, mitPkw })
   } catch {
     return null
   }
 }
 
-function Ergebnis({ ergebnis }: { readonly ergebnis: ReturnType<typeof berechneWerktage> }) {
+function Ergebnis({ ergebnis }: { readonly ergebnis: ReturnType<typeof calculateWorkdays> }) {
   const t = useTheme()
   const styles = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)

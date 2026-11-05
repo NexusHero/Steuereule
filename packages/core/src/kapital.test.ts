@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import {
-  kapitalPflichtfelder,
-  LEERES_KAPITAL,
-  deserialisiereKapitalFeld,
-  istGueltigerKapitalBetrag,
-  kapitalAlsKernposten,
-  kapitalStand,
+  mandatoryCapitalFields,
+  EMPTY_CAPITAL,
+  deserializeCapitalField,
+  isValidCapitalAmount,
+  capitalAsCoreLineItem,
+  capitalStatus,
   ordneKapDepotEin,
-  serialisiereKapitalFeld,
-  setzeKapitalFeld,
-  istGuenstigerpruefungAnwendbar,
+  serializeCapitalField,
+  setCapitalField,
+  isFavorableTaxTestApplicable,
 } from './kapital'
 
 // Ticket 10.5 — Kapitalerträge (product ADR-032): the depot-Einordnung (German/foreign broker,
@@ -35,51 +35,51 @@ describe('ordneKapDepotEin — the kap-depot answer mapped onto what it means', 
   })
 
   it('the § 32d Abs. 6 Günstigerprüfung applies only where Abgeltungsteuer was withheld', () => {
-    expect(istGuenstigerpruefungAnwendbar({ kind: 'deutscher-broker' })).toBe(true)
-    expect(istGuenstigerpruefungAnwendbar({ kind: 'auslaendischer-broker' })).toBe(false)
-    expect(istGuenstigerpruefungAnwendbar({ kind: 'krypto' })).toBe(false)
-    expect(istGuenstigerpruefungAnwendbar({ kind: 'unbekannt' })).toBe(false)
+    expect(isFavorableTaxTestApplicable({ kind: 'deutscher-broker' })).toBe(true)
+    expect(isFavorableTaxTestApplicable({ kind: 'auslaendischer-broker' })).toBe(false)
+    expect(isFavorableTaxTestApplicable({ kind: 'krypto' })).toBe(false)
+    expect(isFavorableTaxTestApplicable({ kind: 'unbekannt' })).toBe(false)
   })
 })
 
 describe('setzeKapitalFeld — the one setter', () => {
   it('captures a non-negative integer as erfasst', () => {
-    const next = setzeKapitalFeld(LEERES_KAPITAL, 'kapitalertraege', { kind: 'erfasst', wert: 2500 })
+    const next = setCapitalField(EMPTY_CAPITAL, 'kapitalertraege', { kind: 'erfasst', wert: 2500 })
     expect(next.kapitalertraege).toEqual({ kind: 'erfasst', wert: 2500 })
   })
 
   it('accepts offen and unklar', () => {
-    expect(setzeKapitalFeld(LEERES_KAPITAL, 'kapitalertraege', { kind: 'unklar' }).kapitalertraege).toEqual({ kind: 'unklar' })
-    expect(setzeKapitalFeld(LEERES_KAPITAL, 'kapitalertraege', { kind: 'offen' }).kapitalertraege).toEqual({ kind: 'offen' })
+    expect(setCapitalField(EMPTY_CAPITAL, 'kapitalertraege', { kind: 'unklar' }).kapitalertraege).toEqual({ kind: 'unklar' })
+    expect(setCapitalField(EMPTY_CAPITAL, 'kapitalertraege', { kind: 'offen' }).kapitalertraege).toEqual({ kind: 'offen' })
   })
 
   it('throws on an invalid erfasst value', () => {
-    expect(() => setzeKapitalFeld(LEERES_KAPITAL, 'kapitalertraege', { kind: 'erfasst', wert: -1 })).toThrow(RangeError)
-    expect(() => setzeKapitalFeld(LEERES_KAPITAL, 'kapitalertraege', { kind: 'erfasst', wert: 1.5 })).toThrow(RangeError)
-    expect(() => setzeKapitalFeld(LEERES_KAPITAL, 'kapitalertraege', { kind: 'erfasst', wert: Number.NaN })).toThrow(RangeError)
+    expect(() => setCapitalField(EMPTY_CAPITAL, 'kapitalertraege', { kind: 'erfasst', wert: -1 })).toThrow(RangeError)
+    expect(() => setCapitalField(EMPTY_CAPITAL, 'kapitalertraege', { kind: 'erfasst', wert: 1.5 })).toThrow(RangeError)
+    expect(() => setCapitalField(EMPTY_CAPITAL, 'kapitalertraege', { kind: 'erfasst', wert: Number.NaN })).toThrow(RangeError)
   })
 })
 
 describe('the persistence encoding — the ONE place offen/unklar/erfasst maps to a string', () => {
   it('round-trips all three states', () => {
-    expect(serialisiereKapitalFeld({ kind: 'offen' })).toBeNull()
-    expect(serialisiereKapitalFeld({ kind: 'unklar' })).toBe('unklar')
-    expect(serialisiereKapitalFeld({ kind: 'erfasst', wert: 2500 })).toBe('2500')
+    expect(serializeCapitalField({ kind: 'offen' })).toBeNull()
+    expect(serializeCapitalField({ kind: 'unklar' })).toBe('unklar')
+    expect(serializeCapitalField({ kind: 'erfasst', wert: 2500 })).toBe('2500')
 
-    expect(deserialisiereKapitalFeld(null)).toEqual({ kind: 'offen' })
-    expect(deserialisiereKapitalFeld('unklar')).toEqual({ kind: 'unklar' })
-    expect(deserialisiereKapitalFeld('2500')).toEqual({ kind: 'erfasst', wert: 2500 })
+    expect(deserializeCapitalField(null)).toEqual({ kind: 'offen' })
+    expect(deserializeCapitalField('unklar')).toEqual({ kind: 'unklar' })
+    expect(deserializeCapitalField('2500')).toEqual({ kind: 'erfasst', wert: 2500 })
   })
 
   it('throws on a stored value that is neither (corruption, never guessed)', () => {
-    expect(() => deserialisiereKapitalFeld('zwölf')).toThrow()
-    expect(() => deserialisiereKapitalFeld('-5')).toThrow()
+    expect(() => deserializeCapitalField('zwölf')).toThrow()
+    expect(() => deserializeCapitalField('-5')).toThrow()
   })
 })
 
 describe('kapitalAlsKernposten — the fold into the deterministic core', () => {
   it('an erfasst field becomes a Kapital-Posten with Herkunft eingabe', () => {
-    const posten = kapitalAlsKernposten({ ...LEERES_KAPITAL, kapitalertraege: { kind: 'erfasst', wert: 2500 } })
+    const posten = capitalAsCoreLineItem({ ...EMPTY_CAPITAL, kapitalertraege: { kind: 'erfasst', wert: 2500 } })
     expect(posten).toEqual({
       id: 'kapital',
       einkunftsart: 'Kapital',
@@ -89,25 +89,25 @@ describe('kapitalAlsKernposten — the fold into the deterministic core', () => 
   })
 
   it('an open or unklar field stays null — OFFEN, never a fabricated zero', () => {
-    expect(kapitalAlsKernposten(LEERES_KAPITAL)).toBeNull()
-    expect(kapitalAlsKernposten({ ...LEERES_KAPITAL, kapitalertraege: { kind: 'unklar' } })).toBeNull()
+    expect(capitalAsCoreLineItem(EMPTY_CAPITAL)).toBeNull()
+    expect(capitalAsCoreLineItem({ ...EMPTY_CAPITAL, kapitalertraege: { kind: 'unklar' } })).toBeNull()
   })
 })
 
 describe('kapitalStand — the honest Berechnungsstand', () => {
   it('is bestimmt when the field is captured', () => {
-    const stand = kapitalStand({ ...LEERES_KAPITAL, kapitalertraege: { kind: 'erfasst', wert: 2500 } }, [])
+    const stand = capitalStatus({ ...EMPTY_CAPITAL, kapitalertraege: { kind: 'erfasst', wert: 2500 } }, [])
     expect(stand).toEqual({ kind: 'bestimmt', einnahmen: 2500, vorsorgeaufwand: 0, anrechnung: 0 })
   })
 
   it('is offen with one open posten when the field is open', () => {
-    const stand = kapitalStand(LEERES_KAPITAL, [])
+    const stand = capitalStatus(EMPTY_CAPITAL, [])
     expect(stand.kind).toBe('offen')
     if (stand.kind === 'offen') expect(stand.offenePosten).toBe(1)
   })
 
   it('passes gegated through — a Krypto-Anleger reads offen with the gate named', () => {
-    const stand = kapitalStand({ ...LEERES_KAPITAL, kapitalertraege: { kind: 'erfasst', wert: 2500 } }, ['Kapital'])
+    const stand = capitalStatus({ ...EMPTY_CAPITAL, kapitalertraege: { kind: 'erfasst', wert: 2500 } }, ['Kapital'])
     expect(stand.kind).toBe('offen')
     if (stand.kind === 'offen') expect(stand.gegated).toEqual(['Kapital'])
   })
@@ -115,21 +115,21 @@ describe('kapitalStand — the honest Berechnungsstand', () => {
 
 describe('istGueltigerKapitalBetrag — the one amount guard', () => {
   it('accepts non-negative integers, rejects everything else', () => {
-    expect(istGueltigerKapitalBetrag(0)).toBe(true)
-    expect(istGueltigerKapitalBetrag(2500)).toBe(true)
-    expect(istGueltigerKapitalBetrag(-1)).toBe(false)
-    expect(istGueltigerKapitalBetrag(1.5)).toBe(false)
-    expect(istGueltigerKapitalBetrag(Number.NaN)).toBe(false)
+    expect(isValidCapitalAmount(0)).toBe(true)
+    expect(isValidCapitalAmount(2500)).toBe(true)
+    expect(isValidCapitalAmount(-1)).toBe(false)
+    expect(isValidCapitalAmount(1.5)).toBe(false)
+    expect(isValidCapitalAmount(Number.NaN)).toBe(false)
   })
 
   it('names what Anlage KAP needs per depot — a German broker also the withheld taxes (Zeilen 37–39)', () => {
-    expect(kapitalPflichtfelder('deutscher-broker')).toEqual([
+    expect(mandatoryCapitalFields('deutscher-broker')).toEqual([
       'kapitalertraege',
       'sparerPauschbetrag',
       'kapitalertragsteuer',
       'solidaritaetszuschlag',
       'kirchensteuer',
     ])
-    expect(kapitalPflichtfelder('auslaendischer-broker')).toEqual(['kapitalertraege', 'sparerPauschbetrag'])
+    expect(mandatoryCapitalFields('auslaendischer-broker')).toEqual(['kapitalertraege', 'sparerPauschbetrag'])
   })
 })

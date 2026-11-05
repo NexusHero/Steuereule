@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger'
-import { KAPITAL_FELDER, type KapitalFeldId } from '@steuereule/core'
+import { CAPITAL_FIELDS, type CapitalFieldId } from '@steuereule/core'
 import { KapitalFeldDto } from './kapital-feld.dto.js'
 
 /** The depot-Einordnung — what the `kap-depot` answer MEANS for the Steuererklärung. */
@@ -69,8 +69,8 @@ export class KapitalResponseDto {
   @ApiProperty({ type: KapitalFeldDto })
   kirchensteuer!: KapitalFeldDto
 
-  @ApiProperty({ enum: KAPITAL_FELDER, isArray: true, description: 'The fields Anlage KAP needs for this depot.' })
-  pflichtfelder!: KapitalFeldId[]
+  @ApiProperty({ enum: CAPITAL_FIELDS, isArray: true, description: 'The fields Anlage KAP needs for this depot.' })
+  pflichtfelder!: CapitalFieldId[]
 
   @ApiProperty({ type: DepotEinordnungDto })
   depot!: DepotEinordnungDto

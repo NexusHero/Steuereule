@@ -19,14 +19,11 @@ export interface CommuteInputs {
   /** The state or canton the suggestion came from (public-holidays.ts). */
   readonly feiertageRegion?: string | null
 }
-export type ArbeitswegEingaben = CommuteInputs
 
 export const COMMUTE_REPOSITORY = Symbol('COMMUTE_REPOSITORY')
-export const ARBEITSWEG_REPOSITORY = COMMUTE_REPOSITORY
 
 /** The persistence seam for the commute facts behind the Entfernungspauschale. */
 export interface CommuteRepository {
   findForUserAndYear(userId: string, steuerjahr: number): Promise<CommuteInputs | null>
   save(userId: string, steuerjahr: number, eingaben: CommuteInputs): Promise<CommuteInputs>
 }
-export type ArbeitswegRepository = CommuteRepository

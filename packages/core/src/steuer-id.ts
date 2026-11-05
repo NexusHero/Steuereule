@@ -11,4 +11,3 @@ export function isValidTaxNumber(value: string | undefined | null): boolean {
 }
 
 // Backward-compatibility aliases
-export { isValidTaxId as isValidSteuerId, isValidTaxNumber as isValidSteuernummer }

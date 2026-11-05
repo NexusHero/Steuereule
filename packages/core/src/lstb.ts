@@ -1,12 +1,8 @@
 export type WageTaxCertificateFieldId = 'bruttoarbeitslohn' | 'lohnsteuer' | 'sozialversicherung'
-export type LstbFeldId = WageTaxCertificateFieldId
-
 export type WageTaxCertificateFieldState =
   | { readonly kind: 'erfasst'; readonly wert: number }
   | { readonly kind: 'offen' }
   | { readonly kind: 'unklar' }
-
-export type LstbFeldZustand = WageTaxCertificateFieldState
 
 export interface WageTaxCertificateData {
   readonly bruttoarbeitslohn: WageTaxCertificateFieldState
@@ -45,9 +41,6 @@ export type WageTaxCertificateConflict =
       readonly sozialversicherung: number
       readonly bruttoarbeitslohn: number
     }
-
-export type LstbWiderspruch = WageTaxCertificateConflict
-
 export type WageTaxCertificateStatus =
   | { readonly kind: 'unvollstaendig'; readonly offen: readonly WageTaxCertificateFieldId[]; readonly unklar: readonly WageTaxCertificateFieldId[] }
   | { readonly kind: 'widerspruch'; readonly widersprueche: readonly WageTaxCertificateConflict[] }
@@ -57,15 +50,11 @@ export type WageTaxCertificateStatus =
       readonly lohnsteuer: number
       readonly sozialversicherung: number
     }
-
-export type LstbZustand = WageTaxCertificateStatus
-
 export const WAGE_TAX_CERTIFICATE_FIELDS: readonly WageTaxCertificateFieldId[] = [
   'bruttoarbeitslohn',
   'lohnsteuer',
   'sozialversicherung',
 ]
-export const LSTB_FELDER = WAGE_TAX_CERTIFICATE_FIELDS
 
 function conflicts(daten: WageTaxCertificateData): readonly WageTaxCertificateConflict[] {
   const brutto = (daten.bruttoarbeitslohn as { kind: 'erfasst'; wert: number }).wert
@@ -138,11 +127,3 @@ export const EMPTY_LSTB = EMPTY_WAGE_TAX_CERTIFICATE
 export type LstbData = WageTaxCertificateData
 export const serializeLstbField = serializeWageTaxCertificateField
 export const deserializeLstbField = deserializeWageTaxCertificateField
-
-export {
-  isValidAmount as istGueltigerBetrag,
-  setWageTaxCertificateField as setzeLstbFeld,
-  wageTaxCertificateStatus as lstbZustand,
-  serializeWageTaxCertificateField as serialisiereLstbFeld,
-  deserializeWageTaxCertificateField as deserialisiereLstbFeld,
-}

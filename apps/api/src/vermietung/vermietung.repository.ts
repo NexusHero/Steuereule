@@ -1,4 +1,4 @@
-import type { RentalFieldId, VermietungFeldId } from '@steuereule/core'
+import type { RentalFieldId } from '@steuereule/core'
 
 export interface RentalObjectRecord {
   id: string
@@ -24,17 +24,15 @@ export interface RentalObjectRecord {
   /** Person A's share in percent; the rest is Person B's (Anlage V Z. 86, ADR-0054). */
   anteilA?: string | null
 }
-export type VermietungsobjektRecord = RentalObjectRecord
 
 export const RENTAL_REPOSITORY = Symbol('RENTAL_REPOSITORY')
-export const VERMIETUNG_REPOSITORY = RENTAL_REPOSITORY
 
 /** The persistence seam for the Vermietung guided mask. */
 export interface RentalRepository {
   listForUserAndYear(userId: string, steuerjahr: number): Promise<RentalObjectRecord[]>
   create(userId: string, steuerjahr: number): Promise<RentalObjectRecord>
   setField?(userId: string, taxYear: number, objectId: string, field: RentalFieldId, value: string | null): Promise<RentalObjectRecord | null>
-  setFeld(userId: string, steuerjahr: number, objektId: string, feld: VermietungFeldId, wert: string | null): Promise<VermietungsobjektRecord | null>
+  setFeld(userId: string, steuerjahr: number, objektId: string, feld: RentalFieldId, wert: string | null): Promise<RentalObjectRecord | null>
   setAddress?(
     userId: string,
     taxYear: number,
@@ -46,6 +44,5 @@ export interface RentalRepository {
     steuerjahr: number,
     objektId: string,
     adresse: { strasse?: string | null; hausnummer?: string | null; plz?: string | null; ort?: string | null; wohnflaeche?: string | null; afaWieVorjahr?: boolean | null; umlagen?: string | null; schuldzinsen?: string | null; einheiten?: string | null; anteilA?: string | null },
-  ): Promise<VermietungsobjektRecord | null>
+  ): Promise<RentalObjectRecord | null>
 }
-export type VermietungRepository = RentalRepository

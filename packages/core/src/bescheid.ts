@@ -2,13 +2,8 @@ import type { Berechnungsstand } from './berechnung'
 import type { AngestellteFakten } from './angestellte'
 
 export type AssessmentAmountField = 'einnahmen' | 'vorsorgeaufwand' | 'anrechnung'
-export type BescheidBetragFeld = AssessmentAmountField
-
 export type AssessmentOnlyField = 'festgesetzteSteuer' | 'erstattung'
-export type BescheidNurFeld = AssessmentOnlyField
-
 export type AssessmentField = AssessmentAmountField | AssessmentOnlyField
-export type BescheidFeld = AssessmentField
 
 /** The five figures a tax assessment notice carries, in paper order, with the comparable flag. */
 export interface AssessmentFieldDefinition {
@@ -21,7 +16,7 @@ export interface AssessmentFieldDefinition {
 }
 
 export type BescheidFeldDef = {
-  readonly id: BescheidFeld
+  readonly id: AssessmentField
   readonly signiert: boolean
   readonly vergleichbar: boolean
 }
@@ -34,34 +29,29 @@ export const BESCHEID_FELDER: readonly BescheidFeldDef[] = [
   { id: 'erstattung', signiert: true, vergleichbar: false },
 ]
 
-export const BESCHEID_FELD_IDS: readonly BescheidFeld[] = BESCHEID_FELDER.map((f) => f.id)
+export const BESCHEID_FELD_IDS: readonly AssessmentField[] = BESCHEID_FELDER.map((f) => f.id)
 
-export const BESCHEID_VERGLEICHBARE_FELDER: readonly BescheidBetragFeld[] = BESCHEID_FELDER.filter(
-  (f): f is BescheidFeldDef & { id: BescheidBetragFeld } => f.vergleichbar,
+export const BESCHEID_VERGLEICHBARE_FELDER: readonly AssessmentAmountField[] = BESCHEID_FELDER.filter(
+  (f): f is BescheidFeldDef & { id: AssessmentAmountField } => f.vergleichbar,
 ).map((f) => f.id)
 
-export type BescheidWerte = Partial<Record<BescheidFeld, number>>
-export type AssessmentValues = BescheidWerte
+export type AssessmentValues = Partial<Record<AssessmentField, number>>
 
 /** A deviation on one of the three comparable buckets. */
-export interface BescheidAbweichung {
-  readonly feld: BescheidBetragFeld
+export interface AssessmentDeviation {
+  readonly feld: AssessmentAmountField
   readonly bescheid: number
   readonly berechnet: number
   readonly differenz: number
 }
 
-export type AssessmentDeviation = BescheidAbweichung
-
-export interface BescheidAbgleich {
-  readonly abweichungen: readonly BescheidAbweichung[]
+export interface AssessmentComparison {
+  readonly abweichungen: readonly AssessmentDeviation[]
   readonly berechnungUnvollstaendig: boolean
 }
 
-export type AssessmentComparison = BescheidAbgleich
-
-export function reconcileAssessment(werte: BescheidWerte, stand: Berechnungsstand): BescheidAbgleich {
-  const abweichungen: BescheidAbweichung[] = []
+export function reconcileAssessment(werte: AssessmentValues, stand: Berechnungsstand): AssessmentComparison {
+  const abweichungen: AssessmentDeviation[] = []
   for (const feld of BESCHEID_VERGLEICHBARE_FELDER) {
     const bescheid = werte[feld]
     if (bescheid === undefined) continue
@@ -183,26 +173,25 @@ export function remainingAppealDays(bescheiddatum: string, heute: string): numbe
 }
 
 export const ASSESSMENT_UNCLEAR = 'unklar'
-export const BESCHEID_UNKLAR = ASSESSMENT_UNCLEAR
 
-export function isValidAssessmentAmount(feld: BescheidFeld, wert: number): boolean {
+export function isValidAssessmentAmount(feld: AssessmentField, wert: number): boolean {
   if (!Number.isInteger(wert)) return false
   const def = BESCHEID_FELDER.find((f) => f.id === feld)
   return def?.signiert === true ? Number.isFinite(wert) : wert >= 0
 }
 
-export function serializeAssessmentField(feld: BescheidFeld, wert: number | null | typeof BESCHEID_UNKLAR): string | null {
+export function serializeAssessmentField(feld: AssessmentField, wert: number | null | typeof ASSESSMENT_UNCLEAR): string | null {
   if (wert === null) return null
-  if (wert === BESCHEID_UNKLAR) return BESCHEID_UNKLAR
+  if (wert === ASSESSMENT_UNCLEAR) return ASSESSMENT_UNCLEAR
   if (!isValidAssessmentAmount(feld, wert)) {
     throw new RangeError(`bescheid: erfasst value for "${feld}" is not a valid whole-euro amount`)
   }
   return String(wert)
 }
 
-export function deserializeAssessmentField(feld: BescheidFeld, value: string | null): number | null | typeof BESCHEID_UNKLAR {
+export function deserializeAssessmentField(feld: AssessmentField, value: string | null): number | null | typeof ASSESSMENT_UNCLEAR {
   if (value === null) return null
-  if (value === BESCHEID_UNKLAR) return BESCHEID_UNKLAR
+  if (value === ASSESSMENT_UNCLEAR) return ASSESSMENT_UNCLEAR
   const wert = Number(value)
   if (!isValidAssessmentAmount(feld, wert)) {
     throw new Error(`bescheid: stored value "${value}" for "${feld}" is neither offen, unklar, nor a valid amount`)
@@ -212,11 +201,5 @@ export function deserializeAssessmentField(feld: BescheidFeld, value: string | n
 
 // Backward-compatibility aliases
 export {
-  reconcileAssessment as gleicheBescheidAb,
-  isAppealReason as istEinspruchGrund,
-  appealDeadlineEnd as einspruchsfristEnde,
-  remainingAppealDays as verbleibendeEinspruchstage,
-  isValidAssessmentAmount as istGueltigerBescheidBetrag,
-  serializeAssessmentField as serialisiereBescheidFeld,
-  deserializeAssessmentField as deserialisiereBescheidFeld,
+  isAppealReason as istEinspruchGrund
 }

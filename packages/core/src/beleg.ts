@@ -1,4 +1,4 @@
-import type { Belegart, ReceiptType } from './belegart.js'
+import type { ReceiptType } from './belegart.js'
 
 export interface ReceiptData {
   readonly id: string
@@ -11,7 +11,7 @@ export interface ReceiptData {
   readonly suggestionDismissed: boolean
   // Backward compatibility fields
   readonly dateiname?: string
-  readonly art?: Belegart
+  readonly art?: ReceiptType
   readonly belegdatum?: string
   readonly zahlungsdatum?: string
   readonly steuerjahr?: number | null
@@ -22,7 +22,7 @@ export type BelegDaten = {
   readonly id: string
   readonly userId: string
   readonly dateiname: string
-  readonly art?: Belegart
+  readonly art?: ReceiptType
   readonly belegdatum?: string
   readonly zahlungsdatum?: string
   readonly steuerjahr: number | null

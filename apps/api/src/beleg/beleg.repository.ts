@@ -1,12 +1,12 @@
-import type { Belegart, ReceiptType } from '@steuereule/core'
+import type { ReceiptType } from '@steuereule/core'
 
 export interface ReceiptRecord {
   id: string
   userId: string
   dateiname: string
   filename?: string
-  art?: Belegart | ReceiptType
-  receiptType?: Belegart | ReceiptType
+  art?: ReceiptType | ReceiptType
+  receiptType?: ReceiptType | ReceiptType
   belegdatum?: string
   receiptDate?: string
   zahlungsdatum?: string
@@ -18,19 +18,17 @@ export interface ReceiptRecord {
   createdAt: Date
   updatedAt: Date
 }
-export type BelegRecord = ReceiptRecord
 
 export interface CreateReceiptData {
   dateiname: string
   filename?: string
-  art?: Belegart | ReceiptType
-  receiptType?: Belegart | ReceiptType
+  art?: ReceiptType | ReceiptType
+  receiptType?: ReceiptType | ReceiptType
   belegdatum?: string
   receiptDate?: string
   zahlungsdatum?: string
   paymentDate?: string
 }
-export type CreateBelegData = CreateReceiptData
 
 /** The one assignment write: confirm a year, optionally dismissing a contradicting suggestion. */
 export interface SetAssignmentData {
@@ -42,7 +40,6 @@ export interface SetAssignmentData {
 export type SetZuordnungData = SetAssignmentData
 
 export const RECEIPT_REPOSITORY = Symbol('RECEIPT_REPOSITORY')
-export const BELEG_REPOSITORY = RECEIPT_REPOSITORY
 
 /** The persistence seam for Beleg / Receipt. */
 export interface ReceiptRepository {
@@ -50,6 +47,5 @@ export interface ReceiptRepository {
   findByIdForUser(userId: string, id: string): Promise<ReceiptRecord | null>
   create(userId: string, data: CreateReceiptData): Promise<ReceiptRecord>
   setAssignment?(userId: string, id: string, data: SetAssignmentData): Promise<ReceiptRecord | null>
-  setZuordnung(userId: string, id: string, data: SetZuordnungData): Promise<BelegRecord | null>
+  setZuordnung(userId: string, id: string, data: SetZuordnungData): Promise<ReceiptRecord | null>
 }
-export type BelegRepository = ReceiptRepository

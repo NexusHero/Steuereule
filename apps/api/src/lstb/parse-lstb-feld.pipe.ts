@@ -1,12 +1,12 @@
 import { BadRequestException, Injectable, type PipeTransform } from '@nestjs/common'
-import { LSTB_FELDER, type LstbFeldId } from '@steuereule/core'
+import { WAGE_TAX_CERTIFICATE_FIELDS, type WageTaxCertificateFieldId } from '@steuereule/core'
 
 @Injectable()
-export class ParseLstbFeldPipe implements PipeTransform<unknown, LstbFeldId> {
-  transform(value: unknown): LstbFeldId {
-    if (typeof value !== 'string' || !(LSTB_FELDER as readonly string[]).includes(value)) {
-      throw new BadRequestException(`feld must be one of: ${LSTB_FELDER.join(', ')}`)
+export class ParseLstbFeldPipe implements PipeTransform<unknown, WageTaxCertificateFieldId> {
+  transform(value: unknown): WageTaxCertificateFieldId {
+    if (typeof value !== 'string' || !(WAGE_TAX_CERTIFICATE_FIELDS as readonly string[]).includes(value)) {
+      throw new BadRequestException(`feld must be one of: ${WAGE_TAX_CERTIFICATE_FIELDS.join(', ')}`)
     }
-    return value as LstbFeldId
+    return value as WageTaxCertificateFieldId
   }
 }

@@ -1,18 +1,18 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { ConflictError, InvalidInputError, NotFoundError } from '../common/domain-error.js'
-import { LSTB_FELDER, RENTEN_FELDER, VERMIETUNG_FELDER, kennzeichnungsKey, type Herkunft, type Maske } from '@steuereule/core'
-import { BestaetigungService } from '../bestaetigung/bestaetigung.service.js'
-import { KAPITAL_REPOSITORY, type KapitalRepository } from '../kapital/kapital.repository.js'
-import { KENNZEICHNUNG_REPOSITORY, type KennzeichnungRecord, type KennzeichnungRepository } from '../kennzeichnung/kennzeichnung.repository.js'
+import { WAGE_TAX_CERTIFICATE_FIELDS, PENSION_FIELDS, RENTAL_FIELDS, provenanceKey, type Herkunft, type Maske } from '@steuereule/core'
+import { ConfirmationService } from '../bestaetigung/bestaetigung.service.js'
+import { CAPITAL_REPOSITORY, type CapitalRepository } from '../kapital/kapital.repository.js'
+import { PROVENANCE_REPOSITORY, type ProvenanceRecord, type ProvenanceRepository } from '../kennzeichnung/kennzeichnung.repository.js'
 import { LSTB_REPOSITORY, type LstbRepository } from '../lstb/lstb.repository.js'
-import { RENTE_REPOSITORY, type RenteRepository } from '../rente/rente.repository.js'
-import { VERMIETUNG_REPOSITORY, type VermietungRepository } from '../vermietung/vermietung.repository.js'
-import { JAHRESUEBERNAHME_REPOSITORY, type JahresuebernahmeRepository } from './jahresuebernahme.repository.js'
-import type { UebernahmeResponseDto } from './dto/uebernahme-response.dto.js'
+import { PENSION_REPOSITORY, type PensionRepository } from '../rente/rente.repository.js'
+import { RENTAL_REPOSITORY, type RentalRepository } from '../vermietung/vermietung.repository.js'
+import { TAX_YEAR_ROLLOVER_REPOSITORY, type TaxYearRolloverRepository } from './jahresuebernahme.repository.js'
+import type { RolloverResponseDto } from './dto/uebernahme-response.dto.js'
 
 export const MAX_RUECKJAHRE = 4
 
-function vonUebernahme(r: KennzeichnungRecord): boolean {
+function vonUebernahme(r: ProvenanceRecord): boolean {
   return r.herkunft.art === 'uebernahme' || r.vorschlag?.herkunft.art === 'uebernahme'
 }
 
@@ -20,16 +20,16 @@ function vonUebernahme(r: KennzeichnungRecord): boolean {
 @Injectable()
 export class UebernahmeService {
   constructor(
-    @Inject(KENNZEICHNUNG_REPOSITORY) private readonly repository: KennzeichnungRepository,
-    @Inject(BestaetigungService) private readonly bestaetigung: BestaetigungService,
+    @Inject(PROVENANCE_REPOSITORY) private readonly repository: ProvenanceRepository,
+    @Inject(ConfirmationService) private readonly bestaetigung: ConfirmationService,
     @Inject(LSTB_REPOSITORY) private readonly lstbRepository: LstbRepository,
-    @Inject(RENTE_REPOSITORY) private readonly renteRepository: RenteRepository,
-    @Inject(KAPITAL_REPOSITORY) private readonly kapitalRepository: KapitalRepository,
-    @Inject(VERMIETUNG_REPOSITORY) private readonly vermietungRepository: VermietungRepository,
-    @Inject(JAHRESUEBERNAHME_REPOSITORY) private readonly jahresuebernahmeRepository: JahresuebernahmeRepository,
+    @Inject(PENSION_REPOSITORY) private readonly renteRepository: PensionRepository,
+    @Inject(CAPITAL_REPOSITORY) private readonly kapitalRepository: CapitalRepository,
+    @Inject(RENTAL_REPOSITORY) private readonly vermietungRepository: RentalRepository,
+    @Inject(TAX_YEAR_ROLLOVER_REPOSITORY) private readonly jahresuebernahmeRepository: TaxYearRolloverRepository,
   ) {}
 
-  private async kennzeichnungen(userId: string, steuerjahr: number): Promise<UebernahmeResponseDto> {
+  private async kennzeichnungen(userId: string, steuerjahr: number): Promise<RolloverResponseDto> {
     const records = await this.repository.listForUserAndYears(userId, [steuerjahr])
     return {
       kennzeichnungen: records.flatMap((r) =>
@@ -38,11 +38,11 @@ export class UebernahmeService {
     }
   }
 
-  async getState(userId: string, steuerjahr: number): Promise<UebernahmeResponseDto> {
+  async getState(userId: string, steuerjahr: number): Promise<RolloverResponseDto> {
     return this.kennzeichnungen(userId, steuerjahr)
   }
 
-  async uebernehme(userId: string, steuerjahr: number, vorjahr: number): Promise<UebernahmeResponseDto> {
+  async uebernehme(userId: string, steuerjahr: number, vorjahr: number): Promise<RolloverResponseDto> {
     if (!Number.isInteger(vorjahr) || vorjahr < 1 || vorjahr >= steuerjahr) {
       throw new InvalidInputError('VORJAHR_INVALID', 'von must be a whole year strictly before the target year.')
     }
@@ -70,15 +70,15 @@ export class UebernahmeService {
     const herkunft: Herkunft = { art: 'uebernahme', vorjahr }
     const kopiere = async <F extends string>(maske: Maske, felder: readonly F[], quelle: Readonly<Record<F, string | null>>, instanz?: string) => {
       for (const feld of felder) {
-        await this.bestaetigung.schreibe(userId, steuerjahr, kennzeichnungsKey(maske, feld, instanz), quelle[feld], herkunft)
+        await this.bestaetigung.schreibe(userId, steuerjahr, provenanceKey(maske, feld, instanz), quelle[feld], herkunft)
       }
     }
-    if (lstbQuelle !== null) await kopiere('lstb', LSTB_FELDER, lstbQuelle)
-    if (renteQuelle !== null) await kopiere('rente', ['rentenart' as const, ...RENTEN_FELDER], renteQuelle)
+    if (lstbQuelle !== null) await kopiere('lstb', WAGE_TAX_CERTIFICATE_FIELDS, lstbQuelle)
+    if (renteQuelle !== null) await kopiere('rente', ['rentenart' as const, ...PENSION_FIELDS], renteQuelle)
     if (kapitalQuelle !== null) await kopiere('kapital', ['kapitalertraege' as const], kapitalQuelle)
     for (const objekt of vermietungQuellen) {
       const kopie = await this.vermietungRepository.create(userId, steuerjahr)
-      await kopiere('vermietung', VERMIETUNG_FELDER, objekt, kopie.id)
+      await kopiere('vermietung', RENTAL_FIELDS, objekt, kopie.id)
     }
 
     await this.jahresuebernahmeRepository.record(userId, steuerjahr, vorjahr)

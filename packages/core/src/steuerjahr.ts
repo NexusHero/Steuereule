@@ -1,4 +1,4 @@
-import type { Einkunftsart, IncomeType } from './einkunftsarten.js'
+import type { IncomeType } from './einkunftsarten.js'
 
 export type Assessment =
   | { readonly kind: 'single' }
@@ -12,7 +12,7 @@ export interface TaxYear {
   readonly id: string
   readonly userId: string
   readonly year: number
-  readonly incomeTypes: readonly (IncomeType | Einkunftsart)[]
+  readonly incomeTypes: readonly (IncomeType | IncomeType)[]
   readonly assessment: Assessment
 }
 
@@ -20,7 +20,7 @@ export interface Steuerjahr {
   readonly id: string
   readonly userId: string
   readonly jahr: number
-  readonly einkunftsarten: readonly Einkunftsart[]
+  readonly einkunftsarten: readonly IncomeType[]
   readonly veranlagung: Veranlagung
 }
 

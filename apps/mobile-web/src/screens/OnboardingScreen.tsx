@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { ScrollView, View, Text } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Button, Input, Feld, Chip, Pill, Sticker, useTheme, useBreakpoint } from '@steuereule/ui'
-import { isValidSteuerId } from '@steuereule/core'
+import { isValidTaxId } from '@steuereule/core'
 import { useProfileControllerGetProfile, useProfileControllerPutProfile } from '@steuereule/api-client'
 import { APP_NS } from '../i18n/resources'
 import { formatSteuerId, sanitizeTaxNumberInput, countDigits } from './onboarding/format'
@@ -55,7 +55,7 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
   const set = (key: keyof OnboardingProfil) => (value: string) =>
     setProfil((p) => (p ? { ...p, [key]: value } : p))
   const idDigits = countDigits(profil.steuerId)
-  const steuerIdOk = isValidSteuerId(profil.steuerId.replace(/\D/g, ''))
+  const steuerIdOk = isValidTaxId(profil.steuerId.replace(/\D/g, ''))
   const stepOk = [profil.vorname.trim() !== '' && profil.nachname.trim() !== '', steuerIdOk, true]
 
   function weiter() {

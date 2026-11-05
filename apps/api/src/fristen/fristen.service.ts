@@ -2,10 +2,10 @@ import { Injectable } from '@nestjs/common'
 import { InvalidInputError } from '../common/domain-error.js'
 import {
   VERSPAETUNGSZUSCHLAG_MINDESTSATZ_EUR,
-  VERSPAETUNGSZUSCHLAG_PROZENT_PRO_MONAT,
+  LATE_FILING_FEE_PERCENT_PER_MONTH,
   fristenWarnung,
 } from '@steuereule/core'
-import type { FristenResponseDto } from './dto/fristen-response.dto.js'
+import type { DeadlinesResponseDto } from './dto/fristen-response.dto.js'
 
 export function heuteInBerlin(now: Date = new Date()): string {
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -26,8 +26,8 @@ export function heuteInBerlin(now: Date = new Date()): string {
 
 /** Application logic for the Fristen-/Verspätungszuschlag-Warnmodus. */
 @Injectable()
-export class FristenService {
-  async getFristen(steuerjahr: number): Promise<FristenResponseDto> {
+export class DeadlinesService {
+  async getFristen(steuerjahr: number): Promise<DeadlinesResponseDto> {
     const heute = heuteInBerlin()
     let warnung
     try {
@@ -46,11 +46,8 @@ export class FristenService {
       verbleibendeTage: warnung.verbleibendeTage,
       verspaetungszuschlag: {
         mindestsatzEur: VERSPAETUNGSZUSCHLAG_MINDESTSATZ_EUR,
-        prozentProMonat: VERSPAETUNGSZUSCHLAG_PROZENT_PRO_MONAT,
+        prozentProMonat: LATE_FILING_FEE_PERCENT_PER_MONTH,
       },
     }
   }
 }
-
-export { FristenService as DeadlinesService }
-

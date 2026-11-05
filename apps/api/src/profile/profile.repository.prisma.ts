@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { isValidSteuerId, isValidSteuernummer } from '@steuereule/core'
+import { isValidTaxId, isValidTaxNumber } from '@steuereule/core'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
 import type { ProfileRecord, ProfileRepository } from './profile.repository.js'
 
@@ -18,8 +18,8 @@ export class PrismaProfileRepository implements ProfileRepository {
   async findByUserId(userId: string): Promise<ProfileRecord | null> {
     const row = await this.prisma.profile.findUnique({ where: { userId } })
     if (!row) return null
-    if (row.steuerId !== null && !isValidSteuerId(row.steuerId)) throw new ProfileIntegrityError('steuerId')
-    if (!isValidSteuernummer(row.steuernummer ?? undefined)) throw new ProfileIntegrityError('steuernummer')
+    if (row.steuerId !== null && !isValidTaxId(row.steuerId)) throw new ProfileIntegrityError('steuerId')
+    if (!isValidTaxNumber(row.steuernummer ?? undefined)) throw new ProfileIntegrityError('steuernummer')
     return toRecord(row)
   }
 
