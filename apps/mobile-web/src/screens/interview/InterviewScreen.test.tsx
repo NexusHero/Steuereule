@@ -175,6 +175,31 @@ describe('InterviewScreen', () => {
     await waitFor(() => expect(queryClient.getQueryState(cockpitKey)?.isInvalidated).toBe(true))
   })
 
+  it('still invalidates the Cockpit when the last answer closes the screen before the server confirms it', async () => {
+    const queryClient = makeTestQueryClient()
+    const cockpitKey = getCockpitControllerGetCockpitSummaryQueryKey(TAX_YEAR)
+    queryClient.setQueryData(cockpitKey, { data: { taxYear: TAX_YEAR, openItems: 1 }, status: 200, headers: new Headers() })
+    mockInterviewState({ answers: { job: 'Angestellt', ausland: 'Nein' }, nextStep: { kind: 'question', id: 'kinder' }, openItems: 1 })
+    let confirm: () => void = () => {}
+    const confirmed = new Promise<void>((resolve) => {
+      confirm = resolve
+    })
+    server.use(
+      http.post(POST_URL, async () => {
+        await confirmed
+        return HttpResponse.json({ answers: {}, nextStep: { kind: 'done' }, openItems: 0 }, { status: 200 })
+      }),
+    )
+    const view = renderInterview({ queryClient, onDone: () => view.unmount() })
+    await onKinderQuestion()
+
+    fireEvent.click(screen.getByText('Nein'))
+    await waitFor(() => expect(screen.queryByText('Nein')).toBeNull())
+    confirm()
+
+    await waitFor(() => expect(queryClient.getQueryState(cockpitKey)?.isInvalidated).toBe(true))
+  })
+
   describe('a rejected write (400/409) — the server and the local graph disagree, never swallowed', () => {
     it('409: reverts the optimistic step, resyncs from a fresh GET, and shows the honest conflict notice', async () => {
       await renderOnJobQuestion()

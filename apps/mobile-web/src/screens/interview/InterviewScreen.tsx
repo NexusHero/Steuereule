@@ -25,7 +25,15 @@ export function InterviewScreen({ onDone, taxYear = CURRENT_TAX_YEAR }: Intervie
   const { t: tr } = useTranslation(APP_NS)
   const queryClient = useQueryClient()
   const interviewQuery = useInterviewControllerGetInterview(taxYear)
-  const postAnswer = useInterviewControllerPostAnswer()
+  const postAnswer = useInterviewControllerPostAnswer({
+    mutation: {
+      onSuccess: (response) => {
+        if (response.status === 200) {
+          void queryClient.invalidateQueries({ queryKey: getCockpitControllerGetCockpitSummaryQueryKey(taxYear) })
+        }
+      },
+    },
+  })
 
   const [answers, setAnswers] = useState<Answers>({})
   const [history, setHistory] = useState<readonly StepId[]>([])
@@ -75,10 +83,7 @@ export function InterviewScreen({ onDone, taxYear = CURRENT_TAX_YEAR }: Intervie
       { jahr: taxYear, data: { questionId: stepId, value } },
       {
         onSuccess: (response) => {
-          if (response.status === 200) {
-            void queryClient.invalidateQueries({ queryKey: getCockpitControllerGetCockpitSummaryQueryKey(taxYear) })
-            return
-          }
+          if (response.status === 200) return
           setPostError(response.status === 409 ? 'conflict' : 'invalid')
           setHistory([])
           setSeeded(false)
