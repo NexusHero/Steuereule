@@ -141,6 +141,7 @@ export class AusdruckService {
     for (const row of interviewRows) answers[row.questionId] = row.value
 
     let personBFakten: PersonBFakten | null = null
+    let spouseChRecord: Awaited<ReturnType<typeof this.chLohnausweis.findForUserAndYear>> = null
     if (kopplung?.veranlagungsart === 'zusammen' && kopplung.personBUserId) {
       const spouseId = kopplung.personBUserId
       const [spouseProf, spouseSd, spouseLstb, spouseRente, spouseCh, spouseWeg, spouseInterview] = await Promise.all([
@@ -152,6 +153,7 @@ export class AusdruckService {
         this.arbeitsweg.findForUserAndYear(spouseId, jahr),
         this.interview.findAllForUserAndYear(spouseId, jahr),
       ])
+      spouseChRecord = spouseCh
       const spouseAnswers: Record<string, string> = {}
       for (const row of spouseInterview) spouseAnswers[row.questionId] = row.value
       personBFakten = {
@@ -182,28 +184,40 @@ export class AusdruckService {
       afaWieVorjahr: obj.afaWieVorjahr ?? null,
     }))
 
-    const kinderFakten = kinder.map((k, i) => ({
-      lfdNr: String(i + 1),
-      vorname: k.vorname,
-      nachname: k.nachname,
-      geburtsdatum: k.geburtsdatum,
-      idnr: k.idnr,
-      kindergeldAnspruchEur: k.kindergeldAnspruchEur,
-      kindschaftsverhaeltnis: k.kindschaftsverhaeltnis,
-      kindschaftsverhaeltnisB: k.kindschaftsverhaeltnisB,
-      familienkasse: k.familienkasse,
-      wohnsitzInlandGanzjaehrig: k.wohnsitzInlandGanzjaehrig,
-      andererElternteil: k.andererElternteil,
-      andererElternteilName: k.andererElternteilName,
-      andererElternteilGeburtsdatum: k.andererElternteilGeburtsdatum,
-      andererElternteilAdresse: k.andererElternteilAdresse,
-      andererElternteilArt: k.andererElternteilArt,
-      andererElternteilVerstorbenAm: k.andererElternteilVerstorbenAm,
-      gemeldetBeiMirGanzjaehrig: k.gemeldetBeiMirGanzjaehrig,
-      kindergeldAnMichGanzjaehrig: k.kindergeldAnMichGanzjaehrig,
-      kvBasisEur: k.kvBasisEur,
-      pvEur: k.pvEur,
-    }))
+    const kinderFakten = kinder.map((k, i) => {
+      let schweizerKinderzulageEur = k.schweizerKinderzulageEur
+      if (!schweizerKinderzulageEur && kinder.length > 0) {
+        const zulagenChf = ch?.nGre.familienzulagenChf ?? spouseChRecord?.nGre.familienzulagenChf
+        const kurs = ch?.wechselkursKurs ?? spouseChRecord?.wechselkursKurs
+        if (zulagenChf && Number(zulagenChf) > 0 && kurs && kurs > 0) {
+          const proKindChf = Math.round(Number(zulagenChf) / kinder.length)
+          schweizerKinderzulageEur = String(Math.round(proKindChf * kurs))
+        }
+      }
+      return {
+        lfdNr: String(i + 1),
+        vorname: k.vorname,
+        nachname: k.nachname,
+        geburtsdatum: k.geburtsdatum,
+        idnr: k.idnr,
+        kindergeldAnspruchEur: k.kindergeldAnspruchEur,
+        schweizerKinderzulageEur,
+        kindschaftsverhaeltnis: k.kindschaftsverhaeltnis,
+        kindschaftsverhaeltnisB: k.kindschaftsverhaeltnisB,
+        familienkasse: k.familienkasse,
+        wohnsitzInlandGanzjaehrig: k.wohnsitzInlandGanzjaehrig,
+        andererElternteil: k.andererElternteil,
+        andererElternteilName: k.andererElternteilName,
+        andererElternteilGeburtsdatum: k.andererElternteilGeburtsdatum,
+        andererElternteilAdresse: k.andererElternteilAdresse,
+        andererElternteilArt: k.andererElternteilArt,
+        andererElternteilVerstorbenAm: k.andererElternteilVerstorbenAm,
+        gemeldetBeiMirGanzjaehrig: k.gemeldetBeiMirGanzjaehrig,
+        kindergeldAnMichGanzjaehrig: k.kindergeldAnMichGanzjaehrig,
+        kvBasisEur: k.kvBasisEur,
+        pvEur: k.pvEur,
+      }
+    })
 
     return ausdruckWerte({
       steuerjahr: jahr,

@@ -189,4 +189,38 @@ describe('KinderScreen', () => {
       )
     })
   })
+
+  it('displays Swiss family allowance and Differenzkindergeld and allows editing it (ADR-0054, #414)', async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined)
+    const KINDER_CH: any[] = [
+      {
+        id: 'kind-ch-1',
+        lfdNr: 1,
+        vorname: 'Mia',
+        nachname: 'Brenner',
+        geburtsdatum: '2016-03-14',
+        idnr: '41234567890',
+        schweizerKinderzulageEur: '2748',
+        differenzkindergeldEur: '312',
+        gesamtanspruchEur: '3060',
+      },
+    ]
+    renderKinder({ initialKinder: KINDER_CH, onSaveKind: onSave })
+
+    expect(screen.getByText('1. Mia Brenner')).toBeDefined()
+    expect(screen.getByText(/Schweizer Kinderzulage: 2\.748/)).toBeDefined()
+    expect(screen.getByText(/Differenz-Kindergeld: 312/)).toBeDefined()
+    expect(screen.getByText(/Gesamtanspruch \(Anlage Kind Z\. 6\): 3\.060/)).toBeDefined()
+    expect(screen.getByText(/davon Schweizer Kinderzulage:/)).toBeDefined()
+    expect(screen.getByText(/davon Differenz-Kindergeld \(DE\):/)).toBeDefined()
+
+    fireEvent.click(screen.getByLabelText('Kind Mia bearbeiten'))
+    expect((screen.getByLabelText('Schweizer Kinderzulage') as HTMLInputElement).value).toBe('2748')
+    fireEvent.change(screen.getByLabelText('Schweizer Kinderzulage'), { target: { value: '2800' } })
+    fireEvent.click(screen.getByTestId('kind-speichern'))
+
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalledWith('kind-ch-1', expect.objectContaining({ schweizerKinderzulageEur: '2800' }))
+    })
+  })
 })

@@ -141,6 +141,7 @@ const EXPECTED_ENCRYPTED_FIELDS: ExpectedEncryptedField[] = [
   { model: 'Kind', field: 'andererElternteilVerstorbenAm', encrypt: true, strictDecryption: true },
   { model: 'Kind', field: 'kvBasisEur', encrypt: true, strictDecryption: true },
   { model: 'Kind', field: 'pvEur', encrypt: true, strictDecryption: true },
+  { model: 'Kind', field: 'schweizerKinderzulageEur', encrypt: true, strictDecryption: true },
   { model: 'Bescheid', field: 'einnahmen', encrypt: true, strictDecryption: true },
   { model: 'Bescheid', field: 'vorsorgeaufwand', encrypt: true, strictDecryption: true },
   { model: 'Bescheid', field: 'anrechnung', encrypt: true, strictDecryption: true },

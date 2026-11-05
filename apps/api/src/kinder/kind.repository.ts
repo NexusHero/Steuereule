@@ -14,6 +14,7 @@ export interface ChildDetails {
   kindergeldAnMichGanzjaehrig: boolean | null
   kvBasisEur: string | null
   pvEur: string | null
+  schweizerKinderzulageEur: string | null
 }
 export type KindAngaben = ChildDetails
 

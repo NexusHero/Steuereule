@@ -51,6 +51,9 @@ export interface KindItem {
   kindergeldAnMichGanzjaehrig?: boolean | null
   kvBasisEur?: string | null
   pvEur?: string | null
+  schweizerKinderzulageEur?: string | null
+  differenzkindergeldEur?: string | null
+  gesamtanspruchEur?: string | null
 }
 
 /** What the form writes: the identity plus the Anlage-Kind facts. */
@@ -74,6 +77,7 @@ export interface KindEingabe {
   kindergeldAnMichGanzjaehrig: boolean | null
   kvBasisEur: string | null
   pvEur: string | null
+  schweizerKinderzulageEur?: string | null
 }
 
 const ANDERER_ELTERNTEIL_LABEL: Record<AndererElternteilStatus, string> = {
@@ -201,6 +205,7 @@ function KinderScreenView({
   const [geburtsdatum, setGeburtsdatum] = useState('')
   const [idnr, setIdnr] = useState('')
   const [kindergeld, setKindergeld] = useState('')
+  const [schweizerZulage, setSchweizerZulage] = useState('')
   const [kvBasis, setKvBasis] = useState('')
   const [pv, setPv] = useState('')
   const [verhaeltnis, setVerhaeltnis] = useState<Kindschaftsverhaeltnis | null>(null)
@@ -226,6 +231,7 @@ function KinderScreenView({
       geburtsdatum: k.geburtsdatum,
       steuerId: k.idnr ?? null,
       kindergeld: k.kindergeldAnspruchEur ? Number(k.kindergeldAnspruchEur) : null,
+      schweizerKinderzulageEur: k.schweizerKinderzulageEur ? Number(k.schweizerKinderzulageEur) : null,
     })),
     taxYear,
   )
@@ -236,6 +242,7 @@ function KinderScreenView({
     setGeburtsdatum(isoZuDeutsch(k?.geburtsdatum ?? null))
     setIdnr(k?.idnr ?? '')
     setKindergeld(k?.kindergeldAnspruchEur ?? '')
+    setSchweizerZulage(k?.schweizerKinderzulageEur ?? '')
     setKvBasis(k?.kvBasisEur ?? '')
     setPv(k?.pvEur ?? '')
     setVerhaeltnis(k?.kindschaftsverhaeltnis ?? null)
@@ -277,6 +284,7 @@ function KinderScreenView({
       kindergeldAnMichGanzjaehrig: kindergeldAnMich,
       kvBasisEur: /^\d+$/.test(kvBasis.trim()) ? kvBasis.trim() : null,
       pvEur: /^\d+$/.test(pv.trim()) ? pv.trim() : null,
+      schweizerKinderzulageEur: /^\d+$/.test(schweizerZulage.trim()) ? schweizerZulage.trim() : null,
     }
     if (bearbeitet) {
       if (onSaveKind) await onSaveKind(bearbeitet, payload)
@@ -318,6 +326,18 @@ function KinderScreenView({
             <Text style={styles.summaryLabel}>{tr('kinder.kindergeldLabel', 'Kindergeld Anspruch:')}</Text>
             <Text style={styles.summaryValue}>{formatEuro(stand.kindergeldSumme)}</Text>
           </View>
+          {stand.schweizerKinderzulageSumme > 0 ? (
+            <>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summarySubLabel}>{tr('kinder.schweizLabel', 'davon Schweizer Kinderzulage:')}</Text>
+                <Text style={styles.summarySubValue}>{formatEuro(stand.schweizerKinderzulageSumme)}</Text>
+              </View>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summarySubLabel}>{tr('kinder.diffLabel', 'davon Differenz-Kindergeld (DE):')}</Text>
+                <Text style={styles.summarySubValue}>{formatEuro(stand.differenzkindergeldSumme)}</Text>
+              </View>
+            </>
+          ) : null}
         </Card>
       )}
 
@@ -349,12 +369,26 @@ function KinderScreenView({
           </View>
           <Text style={styles.kindDetail}>Geburtsdatum: {isoZuDeutsch(k.geburtsdatum) || k.geburtsdatum}</Text>
           {k.idnr && <Text style={styles.kindDetail}>Steuer-ID: {k.idnr}</Text>}
-          <Text style={styles.kindDetail}>
-            Kindergeld:{' '}
-            {k.kindergeldAnspruchEur
-              ? `${k.kindergeldAnspruchEur} €`
-              : `${formatEuro(kindergeldAnspruchMonat(taxYear) * anspruchsMonate(k.geburtsdatum, taxYear))} (gesetzlich)`}
-          </Text>
+          {k.schweizerKinderzulageEur && Number(k.schweizerKinderzulageEur) > 0 ? (
+            <>
+              <Text style={styles.kindDetail}>
+                {`Schweizer Kinderzulage: ${formatEuro(Number(k.schweizerKinderzulageEur))}`}
+              </Text>
+              <Text style={styles.kindDetail}>
+                {`Differenz-Kindergeld: ${formatEuro(Number(k.differenzkindergeldEur ?? Math.max(0, kindergeldAnspruchMonat(taxYear) * anspruchsMonate(k.geburtsdatum, taxYear) - Number(k.schweizerKinderzulageEur))))}`}
+              </Text>
+              <Text style={styles.kindDetail}>
+                {`Gesamtanspruch (Anlage Kind Z. 6): ${formatEuro(Number(k.gesamtanspruchEur ?? k.kindergeldAnspruchEur ?? Math.max(kindergeldAnspruchMonat(taxYear) * anspruchsMonate(k.geburtsdatum, taxYear), Number(k.schweizerKinderzulageEur))))}`}
+              </Text>
+            </>
+          ) : (
+            <Text style={styles.kindDetail}>
+              Kindergeld:{' '}
+              {k.kindergeldAnspruchEur
+                ? `${k.kindergeldAnspruchEur} €`
+                : `${formatEuro(kindergeldAnspruchMonat(taxYear) * anspruchsMonate(k.geburtsdatum, taxYear))} (gesetzlich)`}
+            </Text>
+          )}
           {fehltFuerAusdruck(k) ? (
             <Text style={styles.luecke}>
               {tr('kinder.luecke', 'Für den Ausdruck fehlen noch Angaben (Steuer-ID, Kindschaftsverhältnis, Familienkasse, Wohnsitz).')}
@@ -398,6 +432,15 @@ function KinderScreenView({
               placeholder="3000"
               type="numeric"
               accessibilityLabel="Kindergeld"
+            />
+          </Feld>
+          <Feld label="Schweizer Kinderzulage im Steuerjahr (in €, optional)">
+            <Input
+              value={schweizerZulage}
+              onChange={setSchweizerZulage}
+              placeholder="z.B. 2748"
+              type="numeric"
+              accessibilityLabel="Schweizer Kinderzulage"
             />
           </Feld>
           <Feld label="Kindschaftsverhältnis zu dir">
@@ -605,6 +648,17 @@ function makeStyles(t: UiTheme) {
     fontWeight: t.weight.fett,
     color: t.color.tinte,
   }
+  const summarySubLabel: TextStyle = {
+    fontFamily: t.font.text,
+    fontSize: t.size.s,
+    color: t.color.tinte2,
+    paddingLeft: t.space.s2,
+  }
+  const summarySubValue: TextStyle = {
+    fontFamily: t.font.text,
+    fontSize: t.size.s,
+    color: t.color.tinte,
+  }
   const kindCard: ViewStyle = {
     padding: t.space.s4,
     marginBottom: t.space.s3,
@@ -672,6 +726,8 @@ function makeStyles(t: UiTheme) {
     summaryRow,
     summaryLabel,
     summaryValue,
+    summarySubLabel,
+    summarySubValue,
     kindCard,
     kindHeader,
     kindName,

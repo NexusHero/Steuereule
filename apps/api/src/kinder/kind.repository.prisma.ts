@@ -37,6 +37,7 @@ function toRecord(row: {
     kindergeldAnMichGanzjaehrig: row.kindergeldAnMichGanzjaehrig,
     kvBasisEur: row.kvBasisEur,
     pvEur: row.pvEur,
+    schweizerKinderzulageEur: row.schweizerKinderzulageEur,
   }
 }
 
@@ -89,6 +90,7 @@ export class PrismaKindRepository implements KindRepository {
           kindergeldAnMichGanzjaehrig: data.kindergeldAnMichGanzjaehrig ?? null,
           kvBasisEur: data.kvBasisEur ?? null,
           pvEur: data.pvEur ?? null,
+          schweizerKinderzulageEur: data.schweizerKinderzulageEur ?? null,
         },
       }),
       this.prisma.taxDataAccessLog.create({
@@ -133,6 +135,7 @@ export class PrismaKindRepository implements KindRepository {
     if (data.kindergeldAnMichGanzjaehrig !== undefined) updateData.kindergeldAnMichGanzjaehrig = data.kindergeldAnMichGanzjaehrig
     if (data.kvBasisEur !== undefined) updateData.kvBasisEur = data.kvBasisEur
     if (data.pvEur !== undefined) updateData.pvEur = data.pvEur
+    if (data.schweizerKinderzulageEur !== undefined) updateData.schweizerKinderzulageEur = data.schweizerKinderzulageEur
 
     const [row] = await this.prisma.$transaction([
       this.prisma.kind.update({ where: { id }, data: updateData }),

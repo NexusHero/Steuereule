@@ -20,6 +20,8 @@ export interface ChildData {
   readonly birthDate: string
   readonly taxId: string | null
   readonly childBenefit: number | null
+  readonly swissFamilyAllowanceEur?: number | null
+  readonly schweizerKinderzulageEur?: number | null
 }
 
 export interface KindDaten {
@@ -29,6 +31,8 @@ export interface KindDaten {
   readonly geburtsdatum: string
   readonly steuerId: string | null
   readonly kindergeld: number | null
+  readonly schweizerKinderzulageEur?: number | null
+  readonly swissFamilyAllowanceEur?: number | null
 }
 
 export function isValidChildBirthDate(date: string, taxYear: number): boolean {
@@ -59,35 +63,88 @@ export function claimMonths(birthDate: string, year: number): number {
   return 13 - month!
 }
 
+export interface DifferentialChildBenefitResult {
+  readonly statutoryClaim: number
+  readonly swissAllowanceEur: number
+  readonly differentialChildBenefit: number
+  readonly totalClaim: number
+}
+
+export type DifferenzkindergeldErgebnis = DifferentialChildBenefitResult
+
+export function calculateDifferentialChildBenefit(
+  birthDate: string,
+  taxYear: number,
+  swissAllowanceEur: number,
+): DifferentialChildBenefitResult {
+  if (!Number.isFinite(swissAllowanceEur) || swissAllowanceEur < 0) {
+    throw new RangeError('swissAllowanceEur must be a non-negative finite number')
+  }
+  const months = claimMonths(birthDate, taxYear)
+  const statutoryClaim = monthlyChildBenefitClaim(taxYear) * months
+  const differentialChildBenefit = Math.max(0, statutoryClaim - swissAllowanceEur)
+  const totalClaim = Math.max(statutoryClaim, swissAllowanceEur)
+  return {
+    statutoryClaim,
+    swissAllowanceEur,
+    differentialChildBenefit,
+    totalClaim,
+  }
+}
+
 export interface ChildrenStatus {
   readonly count: number
   readonly childBenefitSum: number
   readonly totalAllowance: number
+  readonly swissFamilyAllowanceSum: number
+  readonly differentialChildBenefitSum: number
 }
 
 export interface KinderStand {
   readonly anzahl: number
   readonly kindergeldSumme: number
   readonly freibetragGesamt: number
+  readonly schweizerKinderzulageSumme: number
+  readonly differenzkindergeldSumme: number
 }
 
 export function calculateChildrenStatus(children: readonly (ChildData | KindDaten)[], year: number): KinderStand & ChildrenStatus {
   let childBenefitSum = 0
   let totalAllowance = 0
+  let swissFamilyAllowanceSum = 0
+  let differentialChildBenefitSum = 0
+
   for (const k of children) {
     const birthDate = 'birthDate' in k ? k.birthDate : k.geburtsdatum
     const benefit = 'childBenefit' in k ? k.childBenefit : k.kindergeld
+    const swissAllowance = 'swissFamilyAllowanceEur' in k ? k.swissFamilyAllowanceEur : k.schweizerKinderzulageEur
     const months = claimMonths(birthDate, year)
-    childBenefitSum += benefit ?? monthlyChildBenefitClaim(year) * months
+    const statutory = monthlyChildBenefitClaim(year) * months
+
+    if (swissAllowance != null && Number.isFinite(swissAllowance) && swissAllowance > 0) {
+      const diff = Math.max(0, statutory - swissAllowance)
+      const total = Math.max(statutory, swissAllowance)
+      swissFamilyAllowanceSum += swissAllowance
+      differentialChildBenefitSum += diff
+      childBenefitSum += benefit ?? total
+    } else {
+      childBenefitSum += benefit ?? statutory
+    }
+
     totalAllowance += Math.round((childTaxAllowance(year) * months) / 12)
   }
+
   return {
     anzahl: children.length,
     kindergeldSumme: childBenefitSum,
     freibetragGesamt: totalAllowance,
+    schweizerKinderzulageSumme: swissFamilyAllowanceSum,
+    differenzkindergeldSumme: differentialChildBenefitSum,
     count: children.length,
     childBenefitSum,
     totalAllowance,
+    swissFamilyAllowanceSum,
+    differentialChildBenefitSum,
   }
 }
 
@@ -98,4 +155,5 @@ export {
   monthlyChildBenefitClaim as kindergeldAnspruchMonat,
   claimMonths as anspruchsMonate,
   calculateChildrenStatus as kinderStand,
+  calculateDifferentialChildBenefit as berechneDifferenzkindergeld,
 }
