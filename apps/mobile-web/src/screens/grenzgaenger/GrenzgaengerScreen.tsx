@@ -10,12 +10,14 @@ import {
   useChLohnausweisControllerGet,
   useChLohnausweisControllerSetFeld,
   useChLohnausweisControllerSetNGre,
+  useChLohnausweisControllerSetVorsorge,
   useChLohnausweisControllerSetWechselkurs,
   getChLohnausweisControllerGetQueryKey,
   type ChLohnausweisResponseDto,
   type PutLohnausweisFeldDto,
   type NGreAngabenDto,
   type PutNGreDto,
+  type PutVorsorgeDto,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { ganzzahlAus } from '../shared/ganzzahl'
@@ -40,6 +42,7 @@ export function GrenzgaengerScreen({ onDone, taxYear = CURRENT_TAX_YEAR }: Grenz
   const setFeld = useChLohnausweisControllerSetFeld()
   const setWechselkurs = useChLohnausweisControllerSetWechselkurs()
   const setNGre = useChLohnausweisControllerSetNGre()
+  const setVorsorge = useChLohnausweisControllerSetVorsorge()
 
   const [interviewAnswers, setInterviewAnswers] = useState<Answers>({})
   const [seeded, setSeeded] = useState(false)
@@ -102,6 +105,12 @@ export function GrenzgaengerScreen({ onDone, taxYear = CURRENT_TAX_YEAR }: Grenz
       taxYear={taxYear}
       onSetFeld={setFeld.mutate}
       onSetWechselkurs={setWechselkurs.mutate}
+      onSetVorsorge={(data) =>
+        setVorsorge.mutate(
+          { jahr: taxYear, data },
+          { onSuccess: () => void queryClient.invalidateQueries({ queryKey: getChLohnausweisControllerGetQueryKey(taxYear) }) },
+        )
+      }
       onSetNGre={(data) =>
         setNGre.mutate(
           { jahr: taxYear, data },
@@ -184,6 +193,7 @@ function LohnausweisStep({
   onSetFeld,
   onSetWechselkurs,
   onSetNGre,
+  onSetVorsorge,
   onDone,
   bp,
 }: {
@@ -192,6 +202,7 @@ function LohnausweisStep({
   readonly onSetFeld: (vars: { jahr: number; feld: string; data: PutLohnausweisFeldDto }) => void
   readonly onSetWechselkurs: (vars: { jahr: number; data: { monat: string; kurs: number; modus: 'amtlich' | 'tatsaechlich' } }) => void
   readonly onSetNGre: (data: PutNGreDto) => void
+  readonly onSetVorsorge: (data: PutVorsorgeDto) => void
   readonly onDone: () => void
   readonly bp: Breakpoint
 }) {
@@ -238,6 +249,8 @@ function LohnausweisStep({
       >
         {tr('grenzgaenger.lohnausweis.wechselkurs.speichern')}
       </Button>
+
+      <VorsorgeAbschnitt lohnausweis={lohnausweis} onSet={onSetVorsorge} />
 
       <NGreAbschnitt nGre={lohnausweis.nGre} onSet={onSetNGre} />
 
@@ -318,6 +331,40 @@ function NGreAbschnitt({ nGre, onSet }: { readonly nGre: NGreAngabenDto; readonl
           </Chip>
         </View>
       </Feld>
+    </>
+  )
+}
+
+function VorsorgeAbschnitt({ lohnausweis, onSet }: { readonly lohnausweis: ChLohnausweisResponseDto; readonly onSet: (data: PutVorsorgeDto) => void }) {
+  const t = useTheme()
+  const styles = makeStyles(t)
+  const { t: tr } = useTranslation(APP_NS)
+  const gespeichert = (art: string) => lohnausweis.posten.find((p) => p.art === art)?.betragChf
+  return (
+    <>
+      <Text style={styles.sectionTitle}>{tr('grenzgaenger.vorsorge.title')}</Text>
+      <Text style={styles.help}>{tr('grenzgaenger.vorsorge.help')}</Text>
+      {(
+        [
+          ['krankenkasseChf', 'Krankenkasse'],
+          ['saeule3aChf', 'Saeule3a'],
+        ] as const
+      ).map(([feld, art]) => {
+        const initial = gespeichert(art)
+        return (
+          <NGreEingabe
+            key={feld}
+            label={tr(`grenzgaenger.vorsorge.${feld}`)}
+            initial={initial === undefined ? '' : String(initial)}
+            numeric
+            testID={`ch-vorsorge-${feld}`}
+            onCommit={(text) => {
+              if (text === '') onSet({ [feld]: null })
+              else if (/^(0|[1-9]\d*)$/.test(text)) onSet({ [feld]: Number(text) })
+            }}
+          />
+        )
+      })}
     </>
   )
 }

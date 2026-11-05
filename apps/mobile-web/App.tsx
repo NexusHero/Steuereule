@@ -382,7 +382,7 @@ function TabbedShell({ tab, onTabChange, onSignedOut, startInInterview = false, 
         {tab === 'cockpit' && cockpitView === 'rente' ? (
           <RentnerScreen taxYear={steuerjahr} onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
         ) : null}
-        {tab === 'cockpit' && cockpitView === 'ch' ? <GrenzgaengerScreen taxYear={steuerjahr} onDone={() => setCockpitView('main')} /> : null}
+        {tab === 'cockpit' && cockpitView === 'ch' ? <GrenzgaengerScreen taxYear={steuerjahr} onDone={() => setCockpitView('katalog-sonderausgaben')} /> : null}
         {tab === 'cockpit' && cockpitView === 'lstb' ? (
           <LstbScreen taxYear={steuerjahr} onDone={() => setCockpitView('katalog-lebenslagen')} onBack={() => setCockpitView('main')} />
         ) : null}
@@ -390,10 +390,19 @@ function TabbedShell({ tab, onTabChange, onSignedOut, startInInterview = false, 
           <KatalogScreen taxYear={steuerjahr} entry="lebenslagen" onDone={() => setCockpitView('katalog-sonderausgaben')} onBack={() => setCockpitView('lstb')} />
         ) : null}
         {tab === 'cockpit' && cockpitView === 'katalog-sonderausgaben' ? (
-          <KatalogScreen taxYear={steuerjahr} entry="sonderausgaben" onDone={() => setCockpitView('arbeitstage')} onBack={() => setCockpitView('katalog-lebenslagen')} />
+          <KatalogScreen
+            taxYear={steuerjahr}
+            entry="sonderausgaben"
+            onDone={() => setCockpitView('arbeitstage')}
+            onBack={() => setCockpitView(funnelPfad === 'ch' ? 'ch' : 'katalog-lebenslagen')}
+          />
         ) : null}
         {tab === 'cockpit' && cockpitView === 'arbeitstage' ? (
-          <ArbeitstageScreen taxYear={steuerjahr} onDone={() => setCockpitView('plausibilitaet')} onBack={() => setCockpitView('katalog-sonderausgaben')} />
+          <ArbeitstageScreen
+            taxYear={steuerjahr}
+            onDone={() => setCockpitView(funnelPfad === 'ch' ? 'main' : 'plausibilitaet')}
+            onBack={() => setCockpitView('katalog-sonderausgaben')}
+          />
         ) : null}
         {tab === 'cockpit' && cockpitView === 'plausibilitaet' ? (
           <PlausibilitaetScreen taxYear={steuerjahr} onBack={() => setCockpitView('main')} onDone={() => setCockpitView('veranlagungsartenvergleich')} />

@@ -1059,6 +1059,12 @@ export const appResources = {
         done: 'Fertig',
       },
       grenzgaenger: {
+        vorsorge: {
+          title: 'Vorsorge außerhalb des Lohns',
+          help: 'Nur was nicht schon auf dem Lohnausweis steht. Eine deutsche Krankenversicherung trägst du später bei den Sonderausgaben ein.',
+          krankenkasseChf: 'Schweizer Krankenkasse – deine Prämien im Jahr (CHF)',
+          saeule3aChf: 'Säule 3a – deine Einzahlungen im Jahr (CHF)',
+        },
         nGre: {
           title: 'Für die Anlage N-Gre',
           help: 'Diese Angaben stehen nicht auf dem Lohnausweis. Die Pensionskassen-Beiträge findest du auf deinem Vorsorgeausweis (nur Obligatorium, Säule 2a).',
@@ -2249,6 +2255,12 @@ export const appResources = {
         done: 'Done',
       },
       grenzgaenger: {
+        vorsorge: {
+          title: 'Provision outside your salary',
+          help: 'Only what is not already on the salary certificate. A German health insurance goes into the special expenses later.',
+          krankenkasseChf: 'Swiss health insurance – your premiums per year (CHF)',
+          saeule3aChf: 'Pillar 3a – your contributions per year (CHF)',
+        },
         nGre: {
           title: 'For Anlage N-Gre',
           help: 'These are not on the Lohnausweis. The pension fund contributions are on your Vorsorgeausweis (mandatory part only, pillar 2a).',

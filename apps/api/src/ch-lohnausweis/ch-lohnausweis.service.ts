@@ -8,14 +8,12 @@ import {
   gatedEinkunftsarten,
   grenzgaengerChPosten,
   grenzgaengerStand,
-  grenzgaengerStatus,
   istGueltigerLohnausweisBetrag,
   serialisiereLohnausweisFeld,
   tatsaechlicherKurs,
   type Answers,
   type Berechnungsstand,
   type ChPosten,
-  type GrenzgaengerStatus,
   type LohnausweisWerte,
   type Wechselkurs,
 } from '@steuereule/core'
@@ -35,6 +33,7 @@ import type { LohnausweisFeldDto, PutLohnausweisFeldDto } from './dto/lohnauswei
 import type { PutWechselkursDto, WechselkursDto } from './dto/wechselkurs.dto.js'
 import type { ChPostenDto, NGreAngabenDto, PutBemerkungenDto, PutNGreDto, PutVorsorgeDto } from './dto/ch-posten.dto.js'
 import type { BerechnungsstandDto, ChLohnausweisResponseDto } from './dto/ch-lohnausweis-response.dto.js'
+import { grenzgaengerStatusAusAnswers, wechselkursAusRecord } from './lohnausweis-daten.js'
 
 function felderAusRecord(record: ChLohnausweisRecord | null): { felder: LohnausweisFeldDto[]; werte: LohnausweisWerte } {
   const felder: LohnausweisFeldDto[] = []
@@ -55,16 +54,6 @@ function felderAusRecord(record: ChLohnausweisRecord | null): { felder: Lohnausw
   return { felder, werte }
 }
 
-function wechselkursAusRecord(record: ChLohnausweisRecord | null): Wechselkurs | null {
-  if (record === null || record.wechselkursMonat === null || record.wechselkursKurs === null || record.wechselkursModus === null) {
-    return null
-  }
-  if (record.wechselkursModus === 'amtlich') return amtlicherMonatskurs(record.wechselkursMonat, record.wechselkursKurs)
-  if (record.wechselkursBelegId === null) {
-    return null
-  }
-  return tatsaechlicherKurs(record.wechselkursMonat, record.wechselkursKurs, record.wechselkursBelegId)
-}
 
 function wechselkursZuDto(kurs: Wechselkurs): WechselkursDto {
   return { monat: kurs.monat, kurs: kurs.kurs, modus: kurs.modus, ...(kurs.belegId !== undefined ? { belegId: kurs.belegId } : {}) }
@@ -107,15 +96,6 @@ function wertAusDto(dto: PutLohnausweisFeldDto): string | null {
   return serialisiereLohnausweisFeld(dto.wert)
 }
 
-function statusAusAnswers(answers: Answers): GrenzgaengerStatus | null {
-  const wohnsitz = answers['ch-wohnsitz']
-  if (wohnsitz !== 'Deutschland' && wohnsitz !== 'Schweiz') return null
-  const tageStr = answers['ch-nichtrueckkehrtage']
-  if (tageStr === undefined) return null
-  const tage = Number(tageStr)
-  if (!Number.isInteger(tage)) return null
-  return grenzgaengerStatus(wohnsitz, tage)
-}
 
 function nGreZuDto(n: NGreAngaben): NGreAngabenDto {
   const zahl = (wert: string | null): number | null => (wert === null ? null : Number(wert))
@@ -151,7 +131,7 @@ export class ChLohnausweisService {
     const { felder, werte } = felderAusRecord(record)
     const wechselkurs = wechselkursAusRecord(record)
     const answers = await this.antworten(userId, steuerjahr)
-    const status = statusAusAnswers(answers)
+    const status = grenzgaengerStatusAusAnswers(answers)
     const gegated = gatedEinkunftsarten(answers)
 
     const saeule3aChf = record === null || record.saeule3aChf === null ? undefined : Number(record.saeule3aChf)

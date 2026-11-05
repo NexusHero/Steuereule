@@ -51,7 +51,7 @@ export const LOHNAUSWEIS_FELDER: readonly LohnausweisFeld[] = [
   { ziffer: '6', id: 'sitzungsgelder', art: 'chf-betrag', postenRelevant: false },
   { ziffer: '7', id: 'andere-leistungen', art: 'chf-betrag', postenRelevant: false },
   { ziffer: '8', id: 'bruttolohn-total', art: 'chf-betrag', postenRelevant: true },
-  { ziffer: '9', id: 'ahv-beitraege', art: 'chf-betrag', postenRelevant: false },
+  { ziffer: '9', id: 'ahv-beitraege', art: 'chf-betrag', postenRelevant: true },
   { ziffer: '10', id: 'berufliche-vorsorge', art: 'chf-betrag', postenRelevant: true },
   { ziffer: '11', id: 'nettolohn', art: 'chf-betrag', postenRelevant: false },
   { ziffer: '12', id: 'quellensteuer', art: 'chf-betrag', postenRelevant: true },
@@ -153,6 +153,7 @@ export function chPostenAlsKernposten(posten: ChPosten): Posten | null {
       quelle = { art: 'beleg', belegId: 'lohnausweis' }
       break
     case 'Pensionskasse':
+    case 'AHV':
       rolle = 'vorsorgeaufwand'
       quelle = { art: 'beleg', belegId: 'lohnausweis' }
       break
@@ -165,7 +166,6 @@ export function chPostenAlsKernposten(posten: ChPosten): Posten | null {
       rolle = 'vorsorgeaufwand'
       quelle = { art: 'eingabe' }
       break
-    case 'AHV':
     case 'Familienzulage':
       return null
   }

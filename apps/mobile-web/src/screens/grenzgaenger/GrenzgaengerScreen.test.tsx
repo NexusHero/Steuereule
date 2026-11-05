@@ -257,3 +257,25 @@ describe('GrenzgaengerScreen — Wechselkurs', () => {
     expect(await screen.findByText('Bitte Monat (JJJJ-MM) und Kurs eintragen, z. B. 1,07.')).toBeTruthy()
   })
 })
+
+describe('GrenzgaengerScreen — Vorsorge außerhalb des Lohns', () => {
+  it('saves the Swiss health insurance and Säule 3a when the field loses focus', async () => {
+    const bodies: unknown[] = []
+    server.use(http.get(INTERVIEW_URL, () => HttpResponse.json(DONE_CH_INTERVIEW, { status: 200 })))
+    server.use(
+      http.put(`${CH_URL}/vorsorge`, async ({ request }) => {
+        bodies.push(await request.json())
+        return HttpResponse.json(EMPTY_CH, { status: 200 })
+      }),
+    )
+    renderScreen()
+    const krankenkasse = await screen.findByTestId('ch-vorsorge-krankenkasseChf')
+
+    fireEvent.change(krankenkasse, { target: { value: '4200' } })
+    fireEvent.blur(krankenkasse)
+    fireEvent.change(screen.getByTestId('ch-vorsorge-saeule3aChf'), { target: { value: '7000' } })
+    fireEvent.blur(screen.getByTestId('ch-vorsorge-saeule3aChf'))
+
+    await waitFor(() => expect(bodies).toEqual([{ krankenkasseChf: 4200 }, { saeule3aChf: 7000 }]))
+  })
+})

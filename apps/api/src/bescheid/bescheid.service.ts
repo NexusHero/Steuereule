@@ -2,36 +2,27 @@ import { Inject, Injectable } from '@nestjs/common'
 import { ConflictError, InvalidInputError } from '../common/domain-error.js'
 import {
   BESCHEID_FELDER,
-  amtlicherMonatskurs,
   angestellteAusDaten,
   bescheidBerechnungsstand,
   deserialisiereBescheidFeld,
-  deserialisiereLohnausweisFeld,
   deserialisiereLstbFeld,
   einspruchsfristEnde,
   gatedEinkunftsarten,
   gleicheBescheidAb,
   grenzgaengerStand,
-  grenzgaengerStatus,
   istBescheidUebergangErlaubt,
   istEinspruchGrund,
   istGueltigerBescheidBetrag,
   naechsteBescheidZustaende,
   serialisiereBescheidFeld,
-  tatsaechlicherKurs,
   verbleibendeEinspruchstage,
-  type Answers,
   type Berechnungsstand,
   type BescheidStatus,
   type BescheidWerte,
-  type GrenzgaengerStatus,
-  type LohnausweisWerte,
-  type Wechselkurs,
 } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
 import {
   CH_LOHNAUSWEIS_REPOSITORY,
-  type ChLohnausweisRecord,
   type ChLohnausweisRepository,
 } from '../ch-lohnausweis/ch-lohnausweis.repository.js'
 import {
@@ -49,6 +40,7 @@ import type {
   SetEinspruchDto,
 } from './dto/bescheid-response.dto.js'
 import { answersAus } from '../interview/answers.js'
+import { grenzgaengerStatusAusAnswers, lohnausweisWerteAusRecord, wechselkursAusRecord } from '../ch-lohnausweis/lohnausweis-daten.js'
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
@@ -70,34 +62,8 @@ function felderAusRecord(record: BescheidRecord | null): { felder: BescheidFeldD
   return { felder, werte }
 }
 
-function wechselkursAusRecord(record: ChLohnausweisRecord | null): Wechselkurs | null {
-  if (record === null || record.wechselkursMonat === null || record.wechselkursKurs === null || record.wechselkursModus === null) {
-    return null
-  }
-  if (record.wechselkursModus === 'amtlich') return amtlicherMonatskurs(record.wechselkursMonat, record.wechselkursKurs)
-  if (record.wechselkursBelegId === null) return null
-  return tatsaechlicherKurs(record.wechselkursMonat, record.wechselkursKurs, record.wechselkursBelegId)
-}
 
-function statusAusAnswers(answers: Answers): GrenzgaengerStatus | null {
-  const wohnsitz = answers['ch-wohnsitz']
-  if (wohnsitz !== 'Deutschland' && wohnsitz !== 'Schweiz') return null
-  const tageStr = answers['ch-nichtrueckkehrtage']
-  if (tageStr === undefined) return null
-  const tage = Number(tageStr)
-  if (!Number.isInteger(tage)) return null
-  return grenzgaengerStatus(wohnsitz, tage)
-}
 
-function lohnausweisWerteAusRecord(record: ChLohnausweisRecord | null): LohnausweisWerte {
-  const werte: LohnausweisWerte = {}
-  if (record === null) return werte
-  for (const [feldId, stored] of Object.entries(record.felder)) {
-    const wert = deserialisiereLohnausweisFeld(stored)
-    if (typeof wert === 'number') werte[feldId as keyof LohnausweisWerte] = wert
-  }
-  return werte
-}
 
 /** Application logic for the Steuerbescheid. */
 @Injectable()
@@ -128,7 +94,7 @@ export class BescheidService {
     )
 
     const wechselkurs = wechselkursAusRecord(chRecord)
-    const status = statusAusAnswers(answers)
+    const status = grenzgaengerStatusAusAnswers(answers)
     const saeule3aChf = chRecord === null || chRecord.saeule3aChf === null ? undefined : Number(chRecord.saeule3aChf)
     const krankenkasseChf = chRecord === null || chRecord.krankenkasseChf === null ? undefined : Number(chRecord.krankenkasseChf)
 

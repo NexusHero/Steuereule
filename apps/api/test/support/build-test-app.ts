@@ -39,6 +39,8 @@ import { FakeRenteRepository } from '../fakes/fake-rente.repository.js'
 import { FakeTaxYearRepository } from '../fakes/fake-tax-year.repository.js'
 import { FakeKennzeichnungRepository } from '../fakes/fake-kennzeichnung.repository.js'
 import { FakeVermietungRepository } from '../fakes/fake-vermietung.repository.js'
+import { FakeChLohnausweisRepository } from '../fakes/fake-ch-lohnausweis.repository.js'
+import { CH_LOHNAUSWEIS_REPOSITORY } from '../../src/ch-lohnausweis/ch-lohnausweis.repository.js'
 
 export async function buildTestApp(options?: {
   /** Overrides the default always-succeeding DATABASE_REACHABILITY_CHECK stub — the one
@@ -63,6 +65,7 @@ export async function buildTestApp(options?: {
   const renteRepository = new FakeRenteRepository()
   const kapitalRepository = new FakeKapitalRepository()
   const vermietungRepository = new FakeVermietungRepository()
+  const chLohnausweisRepository = new FakeChLohnausweisRepository()
   const accountIdentityRepository = new FakeAccountIdentityRepository()
   const pdfRenderer = new FakePdfRenderer()
   const taxDataExportRepository = new FakeTaxDataExportRepository()
@@ -120,6 +123,8 @@ export async function buildTestApp(options?: {
     .useValue(kapitalRepository)
     .overrideProvider(VERMIETUNG_REPOSITORY)
     .useValue(vermietungRepository)
+    .overrideProvider(CH_LOHNAUSWEIS_REPOSITORY)
+    .useValue(chLohnausweisRepository)
     .overrideProvider(ACCOUNT_IDENTITY_REPOSITORY)
     .useValue(accountIdentityRepository)
     .overrideProvider(PDF_RENDERER)

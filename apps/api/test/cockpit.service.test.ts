@@ -11,6 +11,8 @@ import { FakeRenteRepository } from './fakes/fake-rente.repository.js'
 import { FakeTaxYearRepository } from './fakes/fake-tax-year.repository.js'
 import { FakeKennzeichnungRepository } from './fakes/fake-kennzeichnung.repository.js'
 import { FakeVermietungRepository } from './fakes/fake-vermietung.repository.js'
+import { FakeChLohnausweisRepository } from './fakes/fake-ch-lohnausweis.repository.js'
+import type { ChLohnausweisRecord } from '../src/ch-lohnausweis/ch-lohnausweis.repository.js'
 
 describe('CockpitService', () => {
   let taxYear: FakeTaxYearRepository
@@ -20,6 +22,7 @@ describe('CockpitService', () => {
   let rente: FakeRenteRepository
   let kapital: FakeKapitalRepository
   let vermietung: FakeVermietungRepository
+  let ch: FakeChLohnausweisRepository
   let service: CockpitService
 
   beforeEach(() => {
@@ -30,7 +33,8 @@ describe('CockpitService', () => {
     rente = new FakeRenteRepository()
     kapital = new FakeKapitalRepository()
     vermietung = new FakeVermietungRepository()
-    service = new CockpitService(taxYear, lstb, interview, uebernahme, rente, kapital, vermietung)
+    ch = new FakeChLohnausweisRepository()
+    service = new CockpitService(taxYear, lstb, interview, uebernahme, rente, kapital, vermietung, ch)
   })
 
   it('REQ-001 returns null for a userId/steuerjahr with nothing seeded — the honest empty state', async () => {
@@ -194,5 +198,45 @@ describe('CockpitService', () => {
     taxYear.seed('user-a', { steuerjahr: 2026, openItems: 0 })
 
     await expect(service.getSummary('user-a', 2025)).resolves.toBeNull()
+  })
+
+  describe('Grenzgänger CH — the Lohnausweis is the income, not the empty LStB', () => {
+    const GRENZGAENGER = { job: 'Angestellt', ausland: 'Ja, in die Schweiz', kinder: 'Nein', 'ch-wohnsitz': 'Deutschland', 'ch-nichtrueckkehrtage': '0' }
+
+    function lohnausweis(felder: Partial<ChLohnausweisRecord['felder']>, kurs: number | null): ChLohnausweisRecord {
+      return {
+        userId: 'user-a',
+        steuerjahr: 2025,
+        felder: felder as ChLohnausweisRecord['felder'],
+        bemerkungen: null,
+        saeule3aChf: null,
+        krankenkasseChf: null,
+        wechselkursMonat: kurs === null ? null : '2025-12',
+        wechselkursKurs: kurs,
+        wechselkursModus: kurs === null ? null : 'amtlich',
+        wechselkursBelegId: null,
+        nGre: {} as ChLohnausweisRecord['nGre'],
+      }
+    }
+
+    it('shows the converted Lohnausweis Bruttolohn as a point value once everything is there', async () => {
+      taxYear.seed('user-a', { steuerjahr: 2025, openItems: 0 })
+      interview.seed('user-a', 2025, GRENZGAENGER)
+      ch.seed(lohnausweis({ 'bruttolohn-total': '90000', 'berufliche-vorsorge': '4500', quellensteuer: '4050' }, 1.07))
+
+      const summary = await service.getSummary('user-a', 2025)
+
+      expect(summary?.stand).toEqual({ kind: 'bestimmt', wert: 96300 })
+    })
+
+    it('counts the missing rate and the missing Lohnausweis figures as open, never the LStB', async () => {
+      taxYear.seed('user-a', { steuerjahr: 2025, openItems: 0 })
+      interview.seed('user-a', 2025, GRENZGAENGER)
+      ch.seed(lohnausweis({ 'bruttolohn-total': '90000', 'berufliche-vorsorge': '4500' }, null))
+
+      const summary = await service.getSummary('user-a', 2025)
+
+      expect(summary?.stand).toMatchObject({ kind: 'spanne', offenePosten: 2 })
+    })
   })
 })
