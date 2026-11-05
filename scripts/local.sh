@@ -79,7 +79,7 @@ cmd_dev() {
   wait_for "http://localhost:3000/v1/health/ready" "API"
 
   info "Web-App mit Hot Reload starten (http://localhost:8081, Strg-C beendet beides)"
-  EXPO_PUBLIC_API_BASE_URL="http://localhost:3000" pnpm --filter @steuereule/mobile-web web
+  EXPO_NO_TYPESCRIPT_SETUP=1 EXPO_PUBLIC_API_BASE_URL="http://localhost:3000" pnpm --filter @steuereule/mobile-web web
 }
 
 cmd_down() {
