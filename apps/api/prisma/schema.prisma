@@ -1121,6 +1121,10 @@ model Arbeitsweg {
   verkehrsmittel     String?
   /// PLZ, Ort und Straße der ersten Tätigkeitsstätte. Encrypted at rest (ADR-0008).
   taetigkeitsstaette String?  /// @encrypted?mode=strict
+  /// Confirmed public holidays on working days (F4) and the state / canton they were suggested for. Clear —
+  /// a count and a region code.
+  feiertage          Int?
+  feiertageRegion    String?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 

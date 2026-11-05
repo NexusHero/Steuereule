@@ -266,6 +266,7 @@ function pendlerpauschaleAus(jahr: number, weg: ArbeitswegEingaben | null): numb
     urlaubstage: weg.urlaubstage,
     krankheitstage: weg.krankheitstage,
     homeofficeTage: weg.homeofficeTage,
+    feiertage: weg.feiertage ?? 0,
   })
   if (tage.kind !== 'bestimmt') return 0
   try {

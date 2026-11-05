@@ -54,6 +54,8 @@ export class ArbeitswegController {
       einfacheKm: body.einfacheKm ?? null,
       verkehrsmittel: body.verkehrsmittel ?? null,
       taetigkeitsstaette: body.taetigkeitsstaette?.trim() || null,
+      feiertage: body.feiertage ?? null,
+      feiertageRegion: body.feiertageRegion ?? null,
     })
   }
 }

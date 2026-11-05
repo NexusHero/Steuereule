@@ -33,6 +33,7 @@ function stand(steuerjahr: number, eingaben: ArbeitswegEingaben): ArbeitswegStan
     urlaubstage: eingaben.urlaubstage,
     krankheitstage: eingaben.krankheitstage,
     homeofficeTage: eingaben.homeofficeTage,
+    feiertage: eingaben.feiertage ?? 0,
   })
   if (ergebnis.kind === 'widerspruch') {
     throw new InvalidInputError('ARBEITSTAGE_WIDERSPRUCH', `The days off exceed the working days (${ergebnis.widerspruch.art}).`)

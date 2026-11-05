@@ -143,3 +143,12 @@ describe('pendlerpauschale (Entfernungspauschale, § 9 Abs. 1 Nr. 4 EStG)', () =
     expect(() => pendlerpauschale({ einfacheKm: 10, tage: 10, jahr: 2019, mitPkw: true })).toThrow(RangeError)
   })
 })
+
+describe('calculateWorkdays with public holidays (F4)', () => {
+  it('subtracts the confirmed holidays from the working days', () => {
+    const ohne = berechneWerktage({ jahr: 2025, werktage: [1, 2, 3, 4, 5], urlaubstage: 30, krankheitstage: 4, homeofficeTage: 0 })
+    const mit = berechneWerktage({ jahr: 2025, werktage: [1, 2, 3, 4, 5], urlaubstage: 30, krankheitstage: 4, homeofficeTage: 0, feiertage: 11 })
+    if (ohne.kind !== 'bestimmt' || mit.kind !== 'bestimmt') throw new Error('expected a result')
+    expect(mit.pendlertage).toBe(ohne.pendlertage - 11)
+  })
+})

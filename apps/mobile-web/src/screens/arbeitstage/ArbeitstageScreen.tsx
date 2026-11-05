@@ -2,7 +2,17 @@ import { useState } from 'react'
 import { ScrollView, View, Text, Pressable, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Button, Chip, Feld, Input, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
-import { WOCHENTAGE, berechneWerktage, formatEuro, pendlerpauschale, type IsoWochentag } from '@steuereule/core'
+import {
+  GERMAN_STATES,
+  SWISS_CANTONS,
+  WOCHENTAGE,
+  berechneWerktage,
+  formatEuro,
+  holidaysOnWorkdays,
+  pendlerpauschale,
+  type HolidayRegion,
+  type IsoWochentag,
+} from '@steuereule/core'
 import { useArbeitswegControllerGet, useArbeitswegControllerPut, type ArbeitswegEingabenDto } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
@@ -62,6 +72,14 @@ function ArbeitstageFormular({
   const [km, setKm] = useState(textAus(gespeichert?.einfacheKm))
   const [verkehrsmittel, setVerkehrsmittel] = useState<Verkehrsmittel | null>(gespeichert?.verkehrsmittel ?? null)
   const [arbeitsort, setArbeitsort] = useState(gespeichert?.taetigkeitsstaette ?? '')
+  const [region, setRegion] = useState<HolidayRegion | null>((gespeichert?.feiertageRegion as HolidayRegion | null | undefined) ?? null)
+  const [feiertage, setFeiertage] = useState(textAus(gespeichert?.feiertage))
+
+  // F4: suggest the holidays that fall on the chosen working days; the user confirms or corrects them.
+  function waehleRegion(neu: HolidayRegion) {
+    setRegion(neu)
+    setFeiertage(String(holidaysOnWorkdays(taxYear, neu, werktage)))
+  }
   const [fehler, setFehler] = useState(false)
 
   function toggle(tag: IsoWochentag) {
@@ -74,6 +92,7 @@ function ArbeitstageFormular({
     urlaubstage: int(urlaub),
     krankheitstage: int(krank),
     homeofficeTage: int(homeoffice),
+    feiertage: int(feiertage),
   }
   const ergebnis = werktage.length > 0 ? berechneWerktage(eingabe) : null
   const einfacheKm = ganzzahlAus(km)
@@ -96,6 +115,8 @@ function ArbeitstageFormular({
           einfacheKm,
           verkehrsmittel,
           taetigkeitsstaette: arbeitsort.trim() === '' ? null : arbeitsort.trim(),
+          feiertage: feiertage.trim() === '' ? null : int(feiertage),
+          feiertageRegion: region,
         },
         ...(partnerName === undefined ? {} : { params: { person: 'B' as const } }),
       },
@@ -140,6 +161,26 @@ function ArbeitstageFormular({
       </Feld>
       <Feld label={tr('arbeitstage.homeoffice')}>
         <Input type="numeric" mono value={homeoffice} onChange={setHomeoffice} placeholder={tr('arbeitstage.daysPlaceholder')} accessibilityLabel={tr('arbeitstage.homeoffice')} />
+      </Feld>
+
+      <Feld label={tr('arbeitstage.feiertage.region')}>
+        <View style={styles.weekdayRow}>
+          {[...GERMAN_STATES, ...SWISS_CANTONS].map((code) => (
+            <Chip key={code} aktiv={region === code} onPress={() => waehleRegion(code)} testID={`feiertage-region-${code}`}>
+              {tr(`arbeitstage.feiertage.regionen.${code}`)}
+            </Chip>
+          ))}
+        </View>
+      </Feld>
+      <Feld label={tr('arbeitstage.feiertage.anzahl')}>
+        <Input
+          type="numeric"
+          mono
+          value={feiertage}
+          onChange={setFeiertage}
+          placeholder={tr('arbeitstage.daysPlaceholder')}
+          accessibilityLabel={tr('arbeitstage.feiertage.anzahl')}
+        />
       </Feld>
 
       {ergebnis !== null ? <Ergebnis ergebnis={ergebnis} /> : null}

@@ -295,6 +295,7 @@ function arbeitswegFakten(jahr: number, eingaben: ArbeitswegEingaben | null): Ar
     urlaubstage: eingaben.urlaubstage,
     krankheitstage: eingaben.krankheitstage,
     homeofficeTage: eingaben.homeofficeTage,
+    feiertage: eingaben.feiertage ?? 0,
   })
   if (ergebnis.kind !== 'bestimmt') return null
   return {

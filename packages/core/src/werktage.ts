@@ -10,6 +10,8 @@ export interface WorkdaysInput {
   readonly vacationDays: number
   readonly sickDays: number
   readonly homeOfficeDays: number
+  /** Public holidays on working days (public-holidays.ts suggests them; the user confirms). */
+  readonly publicHolidays?: number
 }
 
 export interface WerktageEingabe {
@@ -18,6 +20,7 @@ export interface WerktageEingabe {
   readonly urlaubstage: number
   readonly krankheitstage: number
   readonly homeofficeTage: number
+  readonly feiertage?: number
 }
 
 export function isLeapYear(year: number): boolean {
@@ -104,9 +107,10 @@ export function calculateWorkdays(input: WorkdaysInput | WerktageEingabe): Werkt
   const vacation = 'vacationDays' in input ? input.vacationDays : input.urlaubstage
   const sick = 'sickDays' in input ? input.sickDays : input.krankheitstage
   const homeOffice = 'homeOfficeDays' in input ? input.homeOfficeDays : input.homeofficeTage
+  const holidays = ('publicHolidays' in input ? input.publicHolidays : 'feiertage' in input ? input.feiertage : 0) ?? 0
 
   const weekdays = weekdaysInYear(year, workdaysArr)
-  const workdays = weekdays - vacation - sick
+  const workdays = weekdays - holidays - vacation - sick
   if (workdays < 0) {
     return {
       kind: 'widerspruch',

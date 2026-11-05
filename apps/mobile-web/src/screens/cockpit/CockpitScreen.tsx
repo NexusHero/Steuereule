@@ -17,13 +17,12 @@ import {
   type CockpitSummaryDto,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
-import { CURRENT_TAX_YEAR } from '../../config/taxYear'
+import { AUSWAHL_STEUERJAHRE, CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { pfadAusAntworten, type FunnelPfad } from '../funnel/KontoWandScreen'
 
-const JAHRE_ZURUECK = 4
 
-const AUSWAHL_JAHRE = Array.from({ length: JAHRE_ZURUECK + 1 }, (_, i) => CURRENT_TAX_YEAR - i)
+const AUSWAHL_JAHRE = AUSWAHL_STEUERJAHRE
 
 export interface CockpitScreenProps {
   readonly taxYear?: number

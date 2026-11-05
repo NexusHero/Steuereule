@@ -41,12 +41,13 @@ import { AusdruckScreen } from './src/screens/ausdruck/AusdruckScreen'
 import { BestaetigungScreen, type BestaetigungsMaske } from './src/screens/bestaetigung/BestaetigungScreen'
 import { OauthConsentScreen } from './src/screens/oauth/OauthConsentScreen'
 import { KinderScreen } from './src/screens/kinder/KinderScreen'
+import { rememberPendingPath, rememberTaxYear, rememberedPendingPath, rememberedTaxYear } from './src/screens/funnel/sessionMemory'
 import { EulenModusScreen } from './src/screens/berater/EulenModusScreen'
 import { betreiberAusUmgebung, RECHTLICHE_SEITEN, type RechtlicheSeite } from './src/screens/rechtliches/texte'
 import { KontoWandScreen, pfadAusAntworten, type FunnelPfad } from './src/screens/funnel/KontoWandScreen'
 import { useAccountSession } from './src/auth/useAccountSession'
 import { followNativeAppFocus } from './src/app-focus'
-import { CURRENT_TAX_YEAR } from './src/config/taxYear'
+import { AUSWAHL_STEUERJAHRE, CURRENT_TAX_YEAR } from './src/config/taxYear'
 import { ansichtNachDemInterview } from './src/screens/funnel/nachDemInterview'
 
 const i18n = createAppI18n('de')
@@ -310,7 +311,11 @@ function TabbedShell({ tab, onTabChange, onSignedOut, startInInterview = false, 
     | 'partner'
   >(startInInterview ? 'interview' : 'main')
   const [ausstehenderPfad, setAusstehenderPfad] = useState<FunnelPfad | null>(null)
-  const [steuerjahr, setSteuerjahr] = useState(CURRENT_TAX_YEAR)
+  const [steuerjahr, setSteuerjahrState] = useState(() => rememberedTaxYear(CURRENT_TAX_YEAR, AUSWAHL_STEUERJAHRE))
+  const setSteuerjahr = (jahr: number) => {
+    rememberTaxYear(jahr)
+    setSteuerjahrState(jahr)
+  }
   // ADR-0054: Person A records a partner's figures (no own account) in the regular masks.
   const [partnerMaske, setPartnerMaske] = useState<{ readonly bereich: 'lstb' | 'arbeitsweg'; readonly name: string } | null>(null)
 
@@ -319,8 +324,20 @@ function TabbedShell({ tab, onTabChange, onSignedOut, startInInterview = false, 
     const ansicht = ansichtNachDemInterview(ausstehenderPfad, sessionState.status)
     if (ansicht === null) return
     setAusstehenderPfad(null)
+    // A guest goes to the Konto-Wand and leaves for registration — remember where they were heading.
+    rememberPendingPath(ansicht === 'konto-wand' ? ausstehenderPfad : null)
     setCockpitView(ansicht)
   }, [ausstehenderPfad, sessionState.status])
+
+  // Back from registration / onboarding with an account: carry on with the path the guest started.
+  useEffect(() => {
+    if (sessionState.status !== 'signed-in') return
+    const gemerkt = rememberedPendingPath()
+    if (gemerkt === null) return
+    rememberPendingPath(null)
+    setFunnelPfad(gemerkt)
+    setAusstehenderPfad(gemerkt)
+  }, [sessionState.status])
 
   const iconColor = (id: Tab) => (id === tab ? t.color.tinte : t.color.tinte2)
 
