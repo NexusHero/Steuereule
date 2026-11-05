@@ -23,11 +23,13 @@ export interface StammdatenScreenProps {
   readonly onZurueck: () => void
   /** The Veranlagungsart and the partner belong to one tax year — the one the cockpit shows. */
   readonly taxYear?: number
+  /** Opens a regular mask for the partner's figures — only while the partner has no own account. */
+  readonly onPartnerErfassen?: (bereich: 'lstb' | 'arbeitsweg', name: string) => void
 }
 
 type TextFeld = Exclude<keyof StammdatenEntwurf, 'religion' | 'religionEinwilligung' | 'familienstand'>
 
-export function StammdatenScreen({ onZurueck, taxYear = CURRENT_TAX_YEAR }: StammdatenScreenProps) {
+export function StammdatenScreen({ onZurueck, taxYear = CURRENT_TAX_YEAR, onPartnerErfassen }: StammdatenScreenProps) {
   const bp = useBreakpoint()
   const theme = useTheme()
   const styles = makeDatenschutzStyles(theme)
@@ -118,7 +120,7 @@ export function StammdatenScreen({ onZurueck, taxYear = CURRENT_TAX_YEAR }: Stam
         </View>
       </Feld>
       {form.familienstand !== null && form.familienstand !== 'ledig' ? textFeld('familienstandSeit') : null}
-      {form.familienstand === 'verheiratet' ? <SteuerjahrKopplungSection taxYear={taxYear} /> : null}
+      {form.familienstand === 'verheiratet' ? <SteuerjahrKopplungSection taxYear={taxYear} {...(onPartnerErfassen ? { onPartnerErfassen } : {})} /> : null}
 
       <Feld label={t('stammdaten.religion')}>
         <Text style={styles.hint}>{t('stammdaten.religionHinweis')}</Text>
@@ -167,7 +169,13 @@ function einladungsHinweis(code: string, gueltigBis: string | null): string {
   return `Einladungscode für Partner-Account: ${code}${bis}`
 }
 
-function SteuerjahrKopplungSection({ taxYear }: { readonly taxYear: number }) {
+function SteuerjahrKopplungSection({
+  taxYear,
+  onPartnerErfassen,
+}: {
+  readonly taxYear: number
+  readonly onPartnerErfassen?: (bereich: 'lstb' | 'arbeitsweg', name: string) => void
+}) {
   const theme = useTheme()
   const queryClient = useQueryClient()
   const kopplungQuery = useKopplungControllerGet(taxYear)
@@ -180,6 +188,7 @@ function SteuerjahrKopplungSection({ taxYear }: { readonly taxYear: number }) {
   const current = kopplungQuery.data?.status === 200 ? kopplungQuery.data.data : null
   const veranlagungsart = current?.veranlagungsart ?? 'keine'
   const personB = current?.personB
+  const partnerAnzeigeName = personB?.firstName || 'deinem Partner'
 
   const [vornameB, setVornameB] = useState(personB?.firstName ?? '')
   const [nachnameB, setNachnameB] = useState(personB?.lastName ?? '')
@@ -270,6 +279,19 @@ function SteuerjahrKopplungSection({ taxYear }: { readonly taxYear: number }) {
           <Button variante="ghost" onPress={speicherePersonB} testID="personb-speichern">
             Partner-Angaben übernehmen
           </Button>
+          {onPartnerErfassen ? (
+            <>
+              <Text style={{ fontSize: theme.size.s, color: theme.color.tinte2, marginTop: theme.space.s3 }}>
+                Hat dein Partner kein eigenes Konto? Dann trag sein Einkommen hier mit ein – es kommt in eure gemeinsame Erklärung.
+              </Text>
+              <Button variante="ghost" onPress={() => onPartnerErfassen('lstb', partnerAnzeigeName)} testID="partner-lstb">
+                {`Lohnsteuerbescheinigung von ${partnerAnzeigeName} erfassen`}
+              </Button>
+              <Button variante="ghost" onPress={() => onPartnerErfassen('arbeitsweg', partnerAnzeigeName)} testID="partner-arbeitsweg">
+                {`Arbeitsweg von ${partnerAnzeigeName} erfassen`}
+              </Button>
+            </>
+          ) : null}
         </View>
       ) : (
         <View>

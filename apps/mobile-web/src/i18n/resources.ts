@@ -652,6 +652,7 @@ export const appResources = {
       lstb: {
         back: 'Zurück',
         heading: 'Deine Lohnsteuerbescheinigung',
+        headingPartner: 'Lohnsteuerbescheinigung von {{name}}',
         help: 'Übertrag die drei Werte aus deiner Lohnsteuerbescheinigung — Feld für Feld, in der Reihenfolge des Papiers.',
         loading: 'Deine Lohnsteuerbescheinigung wird geladen …',
         loadError: {
@@ -862,6 +863,7 @@ export const appResources = {
       arbeitstage: {
         back: 'Zurück',
         heading: 'Deine Arbeitstage',
+        headingPartner: 'Arbeitstage und Arbeitsweg von {{name}}',
         help: 'Wähl deine Arbeitstage und trag Urlaub, Krankheit und Homeoffice ein. Wir zählen aus dem echten Kalender — kein Schätzwert.',
         weekdays: 'An welchen Tagen arbeitest du?',
         weekdayNames: { 1: 'Mo', 2: 'Di', 3: 'Mi', 4: 'Do', 5: 'Fr', 6: 'Sa', 7: 'So' },
@@ -1882,6 +1884,7 @@ export const appResources = {
       lstb: {
         back: 'Back',
         heading: 'Your wage tax statement',
+        headingPartner: 'Wage tax certificate of {{name}}',
         help: 'Copy the three figures from your wage tax statement (Lohnsteuerbescheinigung) — field by field, in the paper\u2019s own order.',
         loading: 'Loading your wage tax statement …',
         loadError: {
@@ -2092,6 +2095,7 @@ export const appResources = {
       arbeitstage: {
         back: 'Back',
         heading: 'Your work days',
+        headingPartner: 'Working days and commute of {{name}}',
         help: "Pick your work days and enter vacation, sick and home-office days. We count from the real calendar — no estimate.",
         weekdays: 'Which days do you work?',
         weekdayNames: { 1: 'Mo', 2: 'Tu', 3: 'We', 4: 'Th', 5: 'Fr', 6: 'Sa', 7: 'Su' },

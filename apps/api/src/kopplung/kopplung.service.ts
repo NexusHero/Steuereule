@@ -86,6 +86,26 @@ export class KopplungService {
     }
   }
 
+  /**
+   * ADR-0054: whose data a request reads or writes. Person A may record Person B's figures (LStB, Arbeitsweg …)
+   * while B has no account; they live under B's shadow id and move with B on joinWithCode. Once B has an
+   * account, the data is B's alone.
+   */
+  async datenNutzer(userId: string, steuerjahr: number, person: 'A' | 'B'): Promise<string> {
+    if (person === 'A') return userId
+    const row = await this.repository.findByUserAndYear(userId, steuerjahr)
+    if (!row || row.veranlagungsart !== 'zusammen' || !row.personBUserId) {
+      throw new InvalidInputError('NO_ACTIVE_ZUSAMMENVERANLAGUNG', 'There is no active Zusammenveranlagung.')
+    }
+    if (row.personAUserId !== userId) {
+      throw new ForbiddenError('ONLY_PERSON_A_RECORDS_FOR_B', 'Only person A records data for person B.')
+    }
+    if (hatEigenesKonto(row)) {
+      throw new ForbiddenError('PERSON_B_OWNS_DATA', 'Person B maintains their data in their own account.')
+    }
+    return row.personBUserId
+  }
+
   async set(userId: string, steuerjahr: number, dto: SetKopplungDto, jetzt = new Date()): Promise<KopplungResponseDto> {
     const existing = await this.repository.findByUserAndYear(userId, steuerjahr)
     if (existing && existing.personAUserId !== userId) {

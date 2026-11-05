@@ -28,15 +28,18 @@ export interface LstbScreenProps {
   readonly onDone?: () => void
   readonly onBack?: () => void
   readonly taxYear?: number
+  /** Set when Person A records the partner's certificate (ADR-0054, partner without an own account). */
+  readonly partnerName?: string
 }
 
-export function LstbScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YEAR }: LstbScreenProps) {
+export function LstbScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YEAR, partnerName }: LstbScreenProps) {
+  const params = partnerName === undefined ? undefined : ({ person: 'B' } as const)
   const bp = useBreakpoint()
   const t = useTheme()
   const styles = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
   const queryClient = useQueryClient()
-  const query = useLstbControllerGetLstb(taxYear)
+  const query = useLstbControllerGetLstb(taxYear, params)
   const setFeld = useLstbControllerSetFeld()
 
   if (query.isPending) {
@@ -58,10 +61,10 @@ export function LstbScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YE
 
   function send(feld: FeldId, data: LstbFeldDto) {
     setFeld.mutate(
-      { jahr: taxYear, feld, data },
+      { jahr: taxYear, feld, data, ...(params ? { params } : {}) },
       {
         onSuccess: () => {
-          void queryClient.invalidateQueries({ queryKey: getLstbControllerGetLstbQueryKey(taxYear) })
+          void queryClient.invalidateQueries({ queryKey: getLstbControllerGetLstbQueryKey(taxYear, params) })
         },
       },
     )
@@ -72,7 +75,7 @@ export function LstbScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YE
       <View style={styles.headerRow}>
         {onBack ? <BackButton accessibilityLabel={tr('lstb.back')} onPress={onBack} /> : <BackButtonSpacer />}
       </View>
-      <Text style={styles.heading}>{tr('lstb.heading')}</Text>
+      <Text style={styles.heading}>{partnerName === undefined ? tr('lstb.heading') : tr('lstb.headingPartner', { name: partnerName })}</Text>
       <Text style={styles.help}>{tr('lstb.help')}</Text>
 
       {FELDER.map((feld) => (

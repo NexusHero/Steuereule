@@ -74,3 +74,33 @@ export interface LstbResponseDto {
   zustand: LstbZustandDto;
 }
 
+export type LstbControllerGetLstbParams = {
+/**
+ * B: Person A reads the figures of a partner without an own account (ADR-0054).
+ */
+person?: LstbControllerGetLstbPerson;
+};
+
+export type LstbControllerGetLstbPerson = typeof LstbControllerGetLstbPerson[keyof typeof LstbControllerGetLstbPerson];
+
+
+export const LstbControllerGetLstbPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+
+export type LstbControllerSetFeldParams = {
+/**
+ * B: Person A records the figures of a partner without an own account (ADR-0054).
+ */
+person?: LstbControllerSetFeldPerson;
+};
+
+export type LstbControllerSetFeldPerson = typeof LstbControllerSetFeldPerson[keyof typeof LstbControllerSetFeldPerson];
+
+
+export const LstbControllerSetFeldPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+

@@ -145,6 +145,27 @@ describe('StammdatenScreen (ADR-0050)', () => {
       expect(screen.queryByText(/9F3A0C71B2E4D658/)).toBeNull()
     })
 
+    it("opens the partner's masks while the partner has no own account", async () => {
+      server.use(
+        http.get('*/v1/stammdaten', () => HttpResponse.json(VERHEIRATET)),
+        http.get('*/v1/steuerjahre/:jahr/kopplung', () => HttpResponse.json(ZUSAMMEN)),
+      )
+      const geoeffnet: string[] = []
+      const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      render(
+        <QueryClientProvider client={queryClient}>
+          <I18nextProvider i18n={createAppI18n('de')}>
+            <ThemeProvider mode="light">
+              <StammdatenScreen onZurueck={() => {}} taxYear={2025} onPartnerErfassen={(bereich, name) => geoeffnet.push(`${bereich}:${name}`)} />
+            </ThemeProvider>
+          </I18nextProvider>
+        </QueryClientProvider>,
+      )
+      fireEvent.click(await screen.findByText('Lohnsteuerbescheinigung von Bea erfassen'))
+      fireEvent.click(screen.getByText('Arbeitsweg von Bea erfassen'))
+      expect(geoeffnet).toEqual(['lstb:Bea', 'arbeitsweg:Bea'])
+    })
+
     it('sets the Veranlagungsart for the tax year the cockpit shows, not the current one', async () => {
       const gesetzt: string[] = []
       server.use(

@@ -52,3 +52,33 @@ export interface ArbeitswegResponseDto {
   pendlerpauschale: number | null;
 }
 
+export type ArbeitswegControllerGetParams = {
+/**
+ * B: Person A reads the commute of a partner without an own account (ADR-0054).
+ */
+person?: ArbeitswegControllerGetPerson;
+};
+
+export type ArbeitswegControllerGetPerson = typeof ArbeitswegControllerGetPerson[keyof typeof ArbeitswegControllerGetPerson];
+
+
+export const ArbeitswegControllerGetPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+
+export type ArbeitswegControllerPutParams = {
+/**
+ * B: Person A records the commute of a partner without an own account (ADR-0054).
+ */
+person?: ArbeitswegControllerPutPerson;
+};
+
+export type ArbeitswegControllerPutPerson = typeof ArbeitswegControllerPutPerson[keyof typeof ArbeitswegControllerPutPerson];
+
+
+export const ArbeitswegControllerPutPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+
