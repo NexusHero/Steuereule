@@ -164,24 +164,4 @@ export class ConfirmationService {
     }
     return this.uebersicht(userId, steuerjahr)
   }
-
-  async decideProposal(userId: string, taxYear: number, key: string, decision: 'annehmen' | 'verwerfen'): Promise<ConfirmationResponseDto> {
-    return this.entscheideVorschlag(userId, taxYear, key, decision)
-  }
-
-  async confirmAnnex(userId: string, taxYear: number, annex: Annex): Promise<ConfirmationResponseDto> {
-    return this.bestaetigeAnlage(userId, taxYear, annex)
-  }
-
-  async overview(userId: string, taxYear: number): Promise<ConfirmationResponseDto> {
-    return this.uebersicht(userId, taxYear)
-  }
-
-  async missing(userId: string, taxYear: number): Promise<string[]> {
-    return this.fehlend(userId, taxYear)
-  }
-
-  async list(userId: string, taxYear: number): Promise<ProvenanceRecord[]> {
-    return this.liste(userId, taxYear)
-  }
 }

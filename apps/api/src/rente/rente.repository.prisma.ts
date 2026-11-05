@@ -44,10 +44,6 @@ export class PrismaRenteRepository implements PensionRepository {
     return row === null ? null : toRecord(row)
   }
 
-  async setField(userId: string, taxYear: number, field: PensionFieldId, value: string | null): Promise<PensionRecord> {
-    return this.setFeld(userId, taxYear, field, value)
-  }
-
   async setFeld(userId: string, steuerjahr: number, feld: PensionFieldId, wert: string | null): Promise<PensionRecord> {
     const [row] = await this.prisma.$transaction([
       this.prisma.rente.upsert({
@@ -60,10 +56,6 @@ export class PrismaRenteRepository implements PensionRepository {
       }),
     ])
     return toRecord(row)
-  }
-
-  async setPensionType(userId: string, taxYear: number, type: string | null): Promise<PensionRecord> {
-    return this.setRentenart(userId, taxYear, type)
   }
 
   async setRentenart(userId: string, steuerjahr: number, art: string | null): Promise<PensionRecord> {

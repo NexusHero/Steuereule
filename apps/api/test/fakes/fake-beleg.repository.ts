@@ -38,10 +38,6 @@ export class FakeBelegRepository implements ReceiptRepository {
     return Promise.resolve(record)
   }
 
-  setAssignment(userId: string, id: string, data: SetAssignmentData): Promise<ReceiptRecord | null> {
-    return this.setZuordnung(userId, id, data)
-  }
-
   setZuordnung(userId: string, id: string, data: SetAssignmentData): Promise<ReceiptRecord | null> {
     const index = this.rows.findIndex((row) => row.userId === userId && row.id === id)
     if (index === -1) return Promise.resolve(null)

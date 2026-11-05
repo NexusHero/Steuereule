@@ -17,10 +17,6 @@ export class FakeLstbRepository implements WageTaxCertificateRepository {
     return Promise.resolve(this.store.get(key(userId, steuerjahr)) ?? null)
   }
 
-  setField(userId: string, taxYear: number, field: WageTaxCertificateFieldId, value: string | null): Promise<WageTaxCertificateRecord> {
-    return this.setFeld(userId, taxYear, field, value)
-  }
-
   setFeld(userId: string, steuerjahr: number, feld: WageTaxCertificateFieldId, wert: string | null): Promise<WageTaxCertificateRecord> {
     const k = key(userId, steuerjahr)
     const existing = this.store.get(k)

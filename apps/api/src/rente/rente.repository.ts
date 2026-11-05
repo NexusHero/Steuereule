@@ -19,8 +19,6 @@ export const PENSION_REPOSITORY = Symbol('PENSION_REPOSITORY')
 /** The persistence seam for the pension / Rentner guided mask. */
 export interface PensionRepository {
   findForUserAndYear(userId: string, steuerjahr: number): Promise<PensionRecord | null>
-  setField?(userId: string, taxYear: number, field: PensionFieldId, value: string | null): Promise<PensionRecord>
   setFeld(userId: string, steuerjahr: number, feld: PensionFieldId, wert: string | null): Promise<PensionRecord>
-  setPensionType?(userId: string, taxYear: number, type: string | null): Promise<PensionRecord>
   setRentenart(userId: string, steuerjahr: number, art: string | null): Promise<PensionRecord>
 }

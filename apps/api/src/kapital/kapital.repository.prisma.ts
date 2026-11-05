@@ -25,10 +25,6 @@ export class PrismaKapitalRepository implements CapitalRepository {
     return row === null ? null : toRecord(row)
   }
 
-  async setField(userId: string, taxYear: number, field: CapitalFieldId, value: string | null): Promise<CapitalRecord> {
-    return this.setFeld(userId, taxYear, field, value)
-  }
-
   async setFeld(userId: string, steuerjahr: number, feld: CapitalFieldId, wert: string | null): Promise<CapitalRecord> {
     const [row] = await this.prisma.$transaction([
       this.prisma.kapital.upsert({
@@ -41,10 +37,6 @@ export class PrismaKapitalRepository implements CapitalRepository {
       }),
     ])
     return toRecord(row)
-  }
-
-  async setOwner(userId: string, taxYear: number, owner: CapitalOwner): Promise<CapitalRecord> {
-    return this.setInhaber(userId, taxYear, owner)
   }
 
   async setInhaber(userId: string, steuerjahr: number, inhaber: CapitalOwner): Promise<CapitalRecord> {

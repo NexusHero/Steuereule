@@ -42,10 +42,6 @@ export class PrismaLstbRepository implements WageTaxCertificateRepository {
     return row === null ? null : toRecord(row)
   }
 
-  async setField(userId: string, taxYear: number, field: WageTaxCertificateFieldId, value: string | null): Promise<WageTaxCertificateRecord> {
-    return this.setFeld(userId, taxYear, field, value)
-  }
-
   async setFeld(userId: string, steuerjahr: number, feld: WageTaxCertificateFieldId, wert: string | null): Promise<WageTaxCertificateRecord> {
     const [row] = await this.prisma.$transaction([
       this.prisma.lstb.upsert({

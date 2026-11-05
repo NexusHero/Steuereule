@@ -27,20 +27,12 @@ export class FakeBescheidRepository implements AssessmentRepository {
     return Promise.resolve(this.store.get(key(userId, steuerjahr)) ?? null)
   }
 
-  setField(userId: string, taxYear: number, field: AssessmentField, value: string | null): Promise<AssessmentRecord> {
-    return this.setFeld(userId, taxYear, field, value)
-  }
-
   setFeld(userId: string, steuerjahr: number, feld: AssessmentField, wert: string | null): Promise<AssessmentRecord> {
     const k = key(userId, steuerjahr)
     const existing = this.store.get(k) ?? this.leer(userId, steuerjahr)
     const updated = { ...existing, felder: { ...existing.felder, [feld]: wert } }
     this.store.set(k, updated)
     return Promise.resolve(updated)
-  }
-
-  setDate(userId: string, taxYear: number, date: string | null): Promise<AssessmentRecord> {
-    return this.setDatum(userId, taxYear, date)
   }
 
   setDatum(userId: string, steuerjahr: number, datum: string | null): Promise<AssessmentRecord> {
@@ -57,10 +49,6 @@ export class FakeBescheidRepository implements AssessmentRepository {
     const updated = { ...existing, status }
     this.store.set(k, updated)
     return Promise.resolve(updated)
-  }
-
-  setAppeal(userId: string, taxYear: number, reason: string): Promise<AssessmentRecord> {
-    return this.setEinspruch(userId, taxYear, reason)
   }
 
   setEinspruch(userId: string, steuerjahr: number, grund: string): Promise<AssessmentRecord> {

@@ -61,10 +61,6 @@ export class PrismaBescheidRepository implements AssessmentRepository {
     return row === null ? null : toRecord(row)
   }
 
-  async setField(userId: string, taxYear: number, field: AssessmentField, value: string | null): Promise<AssessmentRecord> {
-    return this.setFeld(userId, taxYear, field, value)
-  }
-
   async setFeld(userId: string, steuerjahr: number, feld: AssessmentField, wert: string | null): Promise<AssessmentRecord> {
     const [row] = await this.prisma.$transaction([
       this.prisma.bescheid.upsert({
@@ -82,10 +78,6 @@ export class PrismaBescheidRepository implements AssessmentRepository {
       }),
     ])
     return toRecord(row)
-  }
-
-  async setDate(userId: string, taxYear: number, date: string | null): Promise<AssessmentRecord> {
-    return this.setDatum(userId, taxYear, date)
   }
 
   async setDatum(userId: string, steuerjahr: number, datum: string | null): Promise<AssessmentRecord> {
@@ -114,10 +106,6 @@ export class PrismaBescheidRepository implements AssessmentRepository {
       }),
     ])
     return toRecord(row)
-  }
-
-  async setAppeal(userId: string, taxYear: number, reason: string): Promise<AssessmentRecord> {
-    return this.setEinspruch(userId, taxYear, reason)
   }
 
   async setEinspruch(userId: string, steuerjahr: number, grund: string): Promise<AssessmentRecord> {

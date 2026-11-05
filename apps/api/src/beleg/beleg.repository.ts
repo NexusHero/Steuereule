@@ -45,6 +45,5 @@ export interface ReceiptRepository {
   findAllForUser(userId: string): Promise<ReceiptRecord[]>
   findByIdForUser(userId: string, id: string): Promise<ReceiptRecord | null>
   create(userId: string, data: CreateReceiptData): Promise<ReceiptRecord>
-  setAssignment?(userId: string, id: string, data: SetAssignmentData): Promise<ReceiptRecord | null>
   setZuordnung(userId: string, id: string, data: SetAssignmentData): Promise<ReceiptRecord | null>
 }

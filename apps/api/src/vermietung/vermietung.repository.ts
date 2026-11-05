@@ -31,14 +31,7 @@ export const RENTAL_REPOSITORY = Symbol('RENTAL_REPOSITORY')
 export interface RentalRepository {
   listForUserAndYear(userId: string, steuerjahr: number): Promise<RentalObjectRecord[]>
   create(userId: string, steuerjahr: number): Promise<RentalObjectRecord>
-  setField?(userId: string, taxYear: number, objectId: string, field: RentalFieldId, value: string | null): Promise<RentalObjectRecord | null>
   setFeld(userId: string, steuerjahr: number, objektId: string, feld: RentalFieldId, wert: string | null): Promise<RentalObjectRecord | null>
-  setAddress?(
-    userId: string,
-    taxYear: number,
-    objectId: string,
-    address: { strasse?: string | null; hausnummer?: string | null; plz?: string | null; ort?: string | null; wohnflaeche?: string | null; afaWieVorjahr?: boolean | null; umlagen?: string | null; schuldzinsen?: string | null; einheiten?: string | null; anteilA?: string | null },
-  ): Promise<RentalObjectRecord | null>
   setAdresse(
     userId: string,
     steuerjahr: number,
