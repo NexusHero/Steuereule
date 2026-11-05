@@ -45,6 +45,7 @@ import { EulenModusScreen } from './src/screens/berater/EulenModusScreen'
 import { betreiberAusUmgebung, RECHTLICHE_SEITEN, type RechtlicheSeite } from './src/screens/rechtliches/texte'
 import { KontoWandScreen, pfadAusAntworten, type FunnelPfad } from './src/screens/funnel/KontoWandScreen'
 import { useAccountSession } from './src/auth/useAccountSession'
+import { ansichtNachDemInterview } from './src/screens/funnel/nachDemInterview'
 
 const i18n = createAppI18n('de')
 const queryClient = new QueryClient({ defaultOptions: APP_QUERY_DEFAULTS })
@@ -344,12 +345,8 @@ function TabbedShell({ tab, onTabChange, onSignedOut, startInInterview = false, 
         <InterviewScreen
           onDone={(answers) => {
             const pfad = pfadAusAntworten(answers)
-            if (sessionState.status !== 'signed-in') {
-              setFunnelPfad(pfad)
-              setCockpitView('konto-wand')
-              return
-            }
-            setCockpitView(pfad === 'rente' ? 'rente' : pfad === 'ch' ? 'ch' : 'lstb')
+            setFunnelPfad(pfad)
+            setCockpitView(ansichtNachDemInterview(pfad, sessionState.status))
           }}
         />
       ) : null}
