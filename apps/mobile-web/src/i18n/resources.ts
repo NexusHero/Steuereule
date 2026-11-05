@@ -398,6 +398,10 @@ export const appResources = {
         intro: 'Wir füllen die amtlichen Vordrucke mit deinen Angaben aus. Du druckst sie aus, unterschreibst und gibst sie bei deinem Finanzamt ab.',
         loading: 'Wird geladen …',
         loadError: { heading: 'Das hat nicht geklappt.', message: 'Der Stand konnte nicht geladen werden.', retry: 'Noch mal versuchen' },
+        keineVordrucke: {
+          heading: 'Für {{jahr}} gibt es die amtlichen Vordrucke noch nicht.',
+          message: 'Das Finanzamt veröffentlicht sie erst im Folgejahr. Wähl im Cockpit ein früheres Steuerjahr oder schau später wieder rein.',
+        },
         fehlendTitel: 'Dafür fehlt noch etwas',
         fehlendAngaben: 'Ergänze zuerst deine Angaben für die Steuererklärung.',
         fehlendEhegatte: 'Leg in den Stammdaten fest, ob ihr zusammen oder einzeln veranlagt werdet.',
@@ -1570,6 +1574,10 @@ export const appResources = {
         intro: 'We fill in the official forms with your details. You print them, sign and hand them in at your tax office.',
         loading: 'Loading …',
         loadError: { heading: 'That did not work.', message: 'The status could not be loaded.', retry: 'Try again' },
+        keineVordrucke: {
+          heading: 'The official forms for {{jahr}} are not available yet.',
+          message: 'The tax office publishes them in the following year. Pick an earlier tax year in the cockpit or check back later.',
+        },
         fehlendTitel: 'Something is still missing',
         fehlendAngaben: 'Please complete your details for the tax return first.',
         fehlendEhegatte: 'Choose in your personal details whether you file jointly or separately.',

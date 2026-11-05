@@ -51,6 +51,19 @@ function renderScreen(props: { zahlung?: 'erfolg' | 'abbruch'; oeffneCheckout?: 
 afterEach(() => server.resetHandlers())
 
 describe('AusdruckScreen (ADR-0050)', () => {
+  it('says honestly that a year has no Vordrucke yet, instead of a generic load error', async () => {
+    server.use(
+      http.get('*/v1/steuerjahre/2025/freischaltung', () => HttpResponse.json({ status: 'offen' })),
+      http.get('*/v1/steuerjahre/2025/ausdruck/pruefung', () =>
+        HttpResponse.json({ statusCode: 404, error: 'Not Found', code: 'VORDRUCKE_MISSING', message: 'x' }, { status: 404 }),
+      ),
+    )
+    renderScreen()
+
+    expect(await screen.findByText('Für 2025 gibt es die amtlichen Vordrucke noch nicht.')).toBeTruthy()
+    expect(screen.queryByText('Der Stand konnte nicht geladen werden.')).toBeNull()
+  })
+
   it('payable: the checkout button hands the browser to the hosted Stripe page', async () => {
     mock('offen')
     server.use(

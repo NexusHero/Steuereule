@@ -32,6 +32,7 @@ export interface CockpitScreenProps {
   readonly onOpenAusdruck?: (jahr: number) => void
   readonly onOpenBestaetigung?: (jahr: number) => void
   readonly onContinuePath?: (pfad: FunnelPfad) => void
+  readonly onJahrWechsel?: (jahr: number) => void
 }
 
 interface Weiter {
@@ -50,10 +51,15 @@ export function CockpitScreen({
   onOpenAusdruck,
   onOpenBestaetigung,
   onContinuePath,
+  onJahrWechsel,
 }: CockpitScreenProps) {
   const bp = useBreakpoint()
   const { t: tr } = useTranslation(APP_NS)
-  const [jahr, setJahr] = useState(taxYear)
+  const [jahr, setJahrIntern] = useState(taxYear)
+  const setJahr = (neu: number) => {
+    setJahrIntern(neu)
+    onJahrWechsel?.(neu)
+  }
   const query = useCockpitControllerGetCockpitSummary(jahr)
   const [pulling, setPulling] = useState(false)
   const bestaetigungQuery = useBestaetigungControllerGet(jahr)

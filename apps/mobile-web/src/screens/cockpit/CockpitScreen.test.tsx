@@ -77,6 +77,8 @@ function renderCockpit(opts: {
   onOpenAusdruck?: (jahr: number) => void
   onOpenBestaetigung?: (jahr: number) => void
   onContinuePath?: (pfad: FunnelPfad) => void
+  onJahrWechsel?: (jahr: number) => void
+  taxYear?: number
 } = {}) {
   const i18n = createAppI18n(opts.lng ?? 'de')
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -85,13 +87,14 @@ function renderCockpit(opts: {
       <I18nextProvider i18n={i18n}>
         <ThemeProvider mode="light">
           <CockpitScreen
-            taxYear={TAX_YEAR}
+            taxYear={opts.taxYear ?? TAX_YEAR}
             onOpenInterview={opts.onOpenInterview ?? (() => {})}
             {...(opts.onOpenKinder ? { onOpenKinder: opts.onOpenKinder } : {})}
             {...(opts.onOpenEulenModus ? { onOpenEulenModus: opts.onOpenEulenModus } : {})}
             {...(opts.onOpenAusdruck ? { onOpenAusdruck: opts.onOpenAusdruck } : {})}
             {...(opts.onOpenBestaetigung ? { onOpenBestaetigung: opts.onOpenBestaetigung } : {})}
             {...(opts.onContinuePath ? { onContinuePath: opts.onContinuePath } : {})}
+            {...(opts.onJahrWechsel ? { onJahrWechsel: opts.onJahrWechsel } : {})}
           />
         </ThemeProvider>
       </I18nextProvider>
@@ -424,5 +427,33 @@ describe('CockpitScreen — Kinder & Eulen-Modus entries', () => {
 
       expect(screen.queryByText(/Weiter mit deinem Weg/)).toBeNull()
     })
+  })
+})
+
+describe('CockpitScreen — the chosen tax year belongs to the whole app', () => {
+  it('reports a year change so every following screen works on the same year', async () => {
+    mockCockpit(LOADED_SUMMARY)
+    const onJahrWechsel = vi.fn()
+    renderCockpit({ onJahrWechsel })
+    await screen.findByText('Erfasstes Einkommen')
+
+    fireEvent.click(screen.getByTestId('jahr-2025'))
+
+    expect(onJahrWechsel).toHaveBeenCalledWith(2025)
+  })
+
+  it('opens on the year it is given, not on the current one', async () => {
+    let geladen2025 = 0
+    server.use(
+      http.get('*/v1/steuerjahre/2025/cockpit', () => {
+        geladen2025 += 1
+        return HttpResponse.json(LOADED_SUMMARY, { status: 200 })
+      }),
+    )
+    renderCockpit({ taxYear: 2025 })
+
+    await screen.findByText('Erfasstes Einkommen')
+
+    expect(geladen2025).toBe(1)
   })
 })
