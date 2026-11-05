@@ -419,7 +419,8 @@ export const appResources = {
         anlagen: {
           anlageV: 'Vermietung (Anlage V)',
           anlageKap: 'Kapitalerträge (Anlage KAP)',
-          anlageNGreSonderfall: 'Sonderfälle beim Schweizer Arbeitslohn (Anlage N-Gre, Zeilen 7–22)',
+          anlageNGreSonderfall: 'Sonderfälle beim Schweizer Arbeitslohn (Anlage N-Gre, Zeilen 7–17 und 20–22)',
+          personADruckt: 'Ihr gebt eine gemeinsame Erklärung ab – ausdrucken kann sie die Person, die zur Zusammenveranlagung eingeladen hat',
           anlageNGreKeinGrenzgaenger: 'Arbeit in der Schweiz ohne Grenzgänger-Status (zu viele Nichtrückkehrtage oder Wohnsitz in der Schweiz)',
           anlageRAvBav: 'Betriebsrente (Anlage R-AV/bAV)',
           anlageRAus: 'ausländische Rente (Anlage R-AUS)',
@@ -1648,7 +1649,8 @@ export const appResources = {
         anlagen: {
           anlageV: 'rental income (Anlage V)',
           anlageKap: 'capital income (Anlage KAP)',
-          anlageNGreSonderfall: 'special cases in the Swiss wage (Anlage N-Gre, lines 7–22)',
+          anlageNGreSonderfall: 'special cases in the Swiss wage (Anlage N-Gre, lines 7–17 and 20–22)',
+          personADruckt: 'You file one joint return – it is printed by the partner who sent the invitation',
           anlageNGreKeinGrenzgaenger: 'work in Switzerland without cross-border status (too many non-return days or residence in Switzerland)',
           anlageRAvBav: 'occupational pension (Anlage R-AV/bAV)',
           anlageRAus: 'foreign pension (Anlage R-AUS)',

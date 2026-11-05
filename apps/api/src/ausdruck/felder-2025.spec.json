@@ -221,6 +221,17 @@
     { "id": "anlVor.kz333", "formular": "anlage-vorsorgeaufwand", "seite": 2, "anker": "333", "zeile": 28, "lage": "rechts", "art": "euro" },
     { "id": "anlVor.kz334", "formular": "anlage-vorsorgeaufwand", "seite": 2, "anker": "334", "zeile": 29, "lage": "rechts", "art": "euro" },
     { "id": "anlVor.kz335", "formular": "anlage-vorsorgeaufwand", "seite": 2, "anker": "335", "zeile": 30, "lage": "rechts", "art": "euro" },
-    { "id": "anlVor.kz339", "formular": "anlage-vorsorgeaufwand", "seite": 2, "anker": "339", "zeile": 33, "lage": "rechts", "art": "euro" }
+    { "id": "anlVor.kz339", "formular": "anlage-vorsorgeaufwand", "seite": 2, "anker": "339", "zeile": 33, "lage": "rechts", "art": "euro" },
+    { "id": "anlVor.kz426", "formular": "anlage-vorsorgeaufwand", "seite": 1, "anker": "426", "zeile": 16, "lage": "rechts", "art": "euro" },
+    { "id": "anlVor.kz428", "formular": "anlage-vorsorgeaufwand", "seite": 1, "anker": "428", "zeile": 17, "lage": "rechts", "art": "euro" },
+    { "id": "anlVor.kz429", "formular": "anlage-vorsorgeaufwand", "seite": 1, "anker": "429", "zeile": 18, "lage": "rechts", "art": "euro" },
+    { "id": "anlVor.kz438", "formular": "anlage-vorsorgeaufwand", "seite": 1, "anker": "438", "zeile": 22, "lage": "rechts", "art": "euro" },
+    { "id": "anlVor.kz450", "formular": "anlage-vorsorgeaufwand", "seite": 2, "anker": "450", "zeile": 23, "lage": "rechts", "art": "euro" },
+    { "id": "anlVor.kz451", "formular": "anlage-vorsorgeaufwand", "seite": 2, "anker": "451", "zeile": 24, "lage": "rechts", "art": "euro" },
+    { "id": "anlVor.kz454", "formular": "anlage-vorsorgeaufwand", "seite": 2, "anker": "454", "zeile": 27, "lage": "rechts", "art": "euro" },
+    { "id": "anlVor.kz433", "formular": "anlage-vorsorgeaufwand", "seite": 2, "anker": "433", "zeile": 28, "lage": "rechts", "art": "euro" },
+    { "id": "anlVor.kz434", "formular": "anlage-vorsorgeaufwand", "seite": 2, "anker": "434", "zeile": 29, "lage": "rechts", "art": "euro" },
+    { "id": "anlVor.kz435", "formular": "anlage-vorsorgeaufwand", "seite": 2, "anker": "435", "zeile": 30, "lage": "rechts", "art": "euro" },
+    { "id": "anlVor.kz439", "formular": "anlage-vorsorgeaufwand", "seite": 2, "anker": "439", "zeile": 33, "lage": "rechts", "art": "euro" }
   ]
 }

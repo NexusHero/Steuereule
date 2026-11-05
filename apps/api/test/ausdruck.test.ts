@@ -292,6 +292,48 @@ describe('ausdruckWerte', () => {
       expect(Object.keys(ngre({ kurs: null }).werte).some((id) => id.startsWith('anlNGre.'))).toBe(false)
     })
 
+    it('a couple of two Grenzgänger files one return with an Anlage N-Gre for each (ADR-0054)', () => {
+      const { werte, instanzen, fehlend } = ausdruckWerte({
+        ...FAKTEN,
+        chLohnausweis: CH,
+        kopplung: {
+          veranlagungsart: 'zusammen',
+          personB: {
+            firstName: 'Julia', lastName: 'Brenner', steuerId: '21234567891', geburtsdatum: '1986-07-21', beruf: 'Treuhänderin',
+            chLohnausweis: { ...CH, bruttolohnChf: '110000', familienzulagenChf: '0', arbeitgeberName: 'Basler Treuhand AG' },
+            arbeitsweg: { arbeitstageJeWoche: 5, freieTage: 33, pendlertage: 228, einfacheKm: 20, mitPkw: true, taetigkeitsstaette: '4051 Basel' },
+            krankenversicherung: [{ art: 'gesetzlich', kvBasis: 2520, mitKrankengeld: false, pv: 480, wahlleistungen: 0 }],
+          },
+        },
+      })
+      expect(fehlend).toEqual([])
+      const nGre = instanzen?.['anlage-n-gre'] ?? []
+      expect(nGre).toHaveLength(2)
+      expect(nGre[0]).toMatchObject({ 'anlNGre.personA': true, 'anlNGre.z6Chf': '100000' })
+      expect(nGre[1]).toMatchObject({
+        'anlNGre.personB': true,
+        'anlNGre.vorname': 'Julia',
+        'anlNGre.beruf': 'Treuhänderin',
+        'anlNGre.z6Chf': '110000',
+        'anlNGre.arbeitgeberName': 'Basler Treuhand AG',
+        'anlNGre.kz111': '20',
+      })
+      expect(werte['anlNGre.z6Chf']).toBeUndefined()
+      expect(werte).toMatchObject({ 'anlVor.kz426': '2520', 'anlVor.kz429': '480' })
+    })
+
+    it("names Person B's incomplete Lohnausweis separately", () => {
+      const { fehlend } = ausdruckWerte({
+        ...FAKTEN,
+        chLohnausweis: CH,
+        kopplung: {
+          veranlagungsart: 'zusammen',
+          personB: { firstName: 'Julia', lastName: 'Brenner', steuerId: null, geburtsdatum: null, chLohnausweis: { ...CH, kurs: null } },
+        },
+      })
+      expect(fehlend).toContain('grenzgaengerPersonB')
+    })
+
     it('asks who pays a premium the employee contributes to, and the CHF when the employer pays everything', () => {
       expect(ngre({ krankentaggeldArbeitgeberProzent: null }).fehlend).toEqual(['grenzgaenger'])
       expect(ngre({ nbuvArbeitgeberProzent: null }).fehlend).toEqual(['grenzgaenger'])

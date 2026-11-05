@@ -375,7 +375,7 @@ function TabbedShell({ tab, onTabChange, onSignedOut, startInInterview = false, 
             }}
           />
         ) : null}
-        {tab === 'cockpit' && cockpitView === 'stammdaten' ? <StammdatenScreen onZurueck={() => setCockpitView('main')} /> : null}
+        {tab === 'cockpit' && cockpitView === 'stammdaten' ? <StammdatenScreen taxYear={steuerjahr} onZurueck={() => setCockpitView('main')} /> : null}
         {tab === 'cockpit' && cockpitView === 'konto-wand' ? (
           <KontoWandScreen pfad={funnelPfad} onRegister={onRegister} onLogin={onLogin} onLater={() => setCockpitView('main')} />
         ) : null}

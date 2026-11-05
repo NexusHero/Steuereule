@@ -14,7 +14,7 @@ import {
 } from '@steuereule/core'
 import { ARBEITSWEG_REPOSITORY, type ArbeitswegEingaben, type ArbeitswegRepository } from '../arbeitsweg/arbeitsweg.repository.js'
 import { AuditService } from '../audit/audit.service.js'
-import { CH_LOHNAUSWEIS_REPOSITORY, type ChLohnausweisRepository } from '../ch-lohnausweis/ch-lohnausweis.repository.js'
+import { CH_LOHNAUSWEIS_REPOSITORY, type ChLohnausweisRecord, type ChLohnausweisRepository } from '../ch-lohnausweis/ch-lohnausweis.repository.js'
 import { FreischaltungService } from '../freischaltung/freischaltung.service.js'
 import { INTERVIEW_ANSWER_REPOSITORY, type InterviewAnswerRepository } from '../interview/interview-answer.repository.js'
 import { KAPITAL_REPOSITORY, type KapitalRepository } from '../kapital/kapital.repository.js'
@@ -26,7 +26,7 @@ import { PROFILE_REPOSITORY, type ProfileRepository } from '../profile/profile.r
 import { RENTE_REPOSITORY, type RenteRepository } from '../rente/rente.repository.js'
 import { STAMMDATEN_REPOSITORY, type StammdatenRepository } from '../stammdaten/stammdaten.repository.js'
 import { VERMIETUNG_REPOSITORY, type VermietungRepository } from '../vermietung/vermietung.repository.js'
-import { ausdruckWerte, type ArbeitswegFakten, type PersonBFakten } from './ausdruck-werte.js'
+import { ausdruckWerte, type ArbeitswegFakten, type ChLohnausweisFakten, type PersonBFakten } from './ausdruck-werte.js'
 import { FELDSAETZE, rendereVordrucke, UeberlaufFehler } from './vordruck-renderer.js'
 
 export const VORLAGEN_BASIS = Symbol('VORLAGEN_BASIS')
@@ -111,13 +111,14 @@ export class AusdruckService {
   }
 
   private async sammle(userId: string, jahr: number) {
-    const [werte, kopplung] = await Promise.all([this.sammleWerte(userId, jahr), this.kopplung.findByUserAndYear(userId, jahr)])
-    const personBUserId =
-      kopplung?.veranlagungsart === 'zusammen' && kopplung.personBUserId
-        ? kopplung.personAUserId === userId
-          ? kopplung.personBUserId
-          : kopplung.personAUserId
-        : null
+    const kopplung = await this.kopplung.findByUserAndYear(userId, jahr)
+    // ADR-0054: a couple files one return, printed by Person A. Person B sees it but never prints a
+    // second one with themselves as Person A.
+    if (kopplung?.veranlagungsart === 'zusammen' && kopplung.personAUserId !== userId) {
+      return { werte: {}, instanzen: {}, fehlend: ['personADruckt'] }
+    }
+    const werte = await this.sammleWerte(userId, jahr)
+    const personBUserId = kopplung?.veranlagungsart === 'zusammen' && kopplung.personBUserId ? kopplung.personBUserId : null
     return { ...werte, fehlend: [...werte.fehlend, ...(await this.unbestaetigt(userId, jahr, personBUserId))] }
   }
 
@@ -141,13 +142,18 @@ export class AusdruckService {
 
     let personBFakten: PersonBFakten | null = null
     if (kopplung?.veranlagungsart === 'zusammen' && kopplung.personBUserId) {
-      const spouseId = kopplung.personAUserId === userId ? kopplung.personBUserId : kopplung.personAUserId
-      const [spouseProf, spouseSd, spouseLstb, spouseRente] = await Promise.all([
+      const spouseId = kopplung.personBUserId
+      const [spouseProf, spouseSd, spouseLstb, spouseRente, spouseCh, spouseWeg, spouseInterview] = await Promise.all([
         this.profile.findByUserId(spouseId),
         this.stammdaten.findByUserId(spouseId),
         this.lstb.findForUserAndYear(spouseId, jahr),
         this.rente.findForUserAndYear(spouseId, jahr),
+        this.chLohnausweis.findForUserAndYear(spouseId, jahr),
+        this.arbeitsweg.findForUserAndYear(spouseId, jahr),
+        this.interview.findAllForUserAndYear(spouseId, jahr),
       ])
+      const spouseAnswers: Record<string, string> = {}
+      for (const row of spouseInterview) spouseAnswers[row.questionId] = row.value
       personBFakten = {
         firstName: spouseProf?.firstName ?? null,
         lastName: spouseProf?.lastName ?? null,
@@ -157,6 +163,9 @@ export class AusdruckService {
         beruf: spouseSd?.beruf ?? null,
         bruttoarbeitslohn: spouseLstb?.bruttoarbeitslohn ?? null,
         rente: spouseRente ? { rentenart: spouseRente.rentenart, jahresbetrag: spouseRente.jahresbetrag } : null,
+        chLohnausweis: chLohnausweisFakten(spouseCh, spouseAnswers),
+        arbeitsweg: arbeitswegFakten(jahr, spouseWeg),
+        krankenversicherung: krankenversicherungen(spouseAnswers, spouseCh),
       }
     }
 
@@ -217,27 +226,7 @@ export class AusdruckService {
             kirchensteuer: kapital.kirchensteuer,
           }
         : null,
-      chLohnausweis: ch
-        ? {
-            status: grenzgaengerStatusAus(answers),
-            kurs: ch.wechselkursKurs,
-            bruttolohnChf: ch.felder['bruttolohn-total'],
-            ahvBeitraegeChf: ch.felder['ahv-beitraege'],
-            quellensteuerChf: ch.felder['quellensteuer'],
-            arbeitgeberName: ch.nGre.arbeitgeberName,
-            arbeitgeberStrasse: ch.nGre.arbeitgeberStrasse,
-            arbeitgeberPlzOrt: ch.nGre.arbeitgeberPlzOrt,
-            familienzulagenChf: ch.nGre.familienzulagenChf,
-            krankentaggeldChf: ch.nGre.krankentaggeldChf,
-            pkArbeitnehmerChf: ch.nGre.pkArbeitnehmerChf,
-            pkArbeitgeberChf: ch.nGre.pkArbeitgeberChf,
-            krankentaggeldArbeitgeberProzent: ch.nGre.krankentaggeldArbeitgeberProzent,
-            krankentaggeldArbeitgeberChf: ch.nGre.krankentaggeldArbeitgeberChf,
-            nbuvArbeitgeberProzent: ch.nGre.nbuvArbeitgeberProzent,
-            nbuvArbeitgeberChf: ch.nGre.nbuvArbeitgeberChf,
-            sonderfaelle: ch.nGre.nGreSonderfaelle,
-          }
-        : null,
+      chLohnausweis: chLohnausweisFakten(ch, answers),
       vermietung: vermietungFakten.length > 0 ? vermietungFakten : null,
       kinder: kinderFakten.length > 0 ? kinderFakten : null,
       kopplung: kopplung ? { veranlagungsart: kopplung.veranlagungsart, personB: personBFakten } : null,
@@ -253,6 +242,29 @@ export class AusdruckService {
           : null,
       arbeitsweg: arbeitswegFakten(jahr, arbeitsweg),
     })
+  }
+}
+
+function chLohnausweisFakten(ch: ChLohnausweisRecord | null, answers: Record<string, string>): ChLohnausweisFakten | null {
+  if (!ch) return null
+  return {
+    status: grenzgaengerStatusAus(answers),
+    kurs: ch.wechselkursKurs,
+    bruttolohnChf: ch.felder['bruttolohn-total'],
+    ahvBeitraegeChf: ch.felder['ahv-beitraege'],
+    quellensteuerChf: ch.felder['quellensteuer'],
+    arbeitgeberName: ch.nGre.arbeitgeberName,
+    arbeitgeberStrasse: ch.nGre.arbeitgeberStrasse,
+    arbeitgeberPlzOrt: ch.nGre.arbeitgeberPlzOrt,
+    familienzulagenChf: ch.nGre.familienzulagenChf,
+    krankentaggeldChf: ch.nGre.krankentaggeldChf,
+    pkArbeitnehmerChf: ch.nGre.pkArbeitnehmerChf,
+    pkArbeitgeberChf: ch.nGre.pkArbeitgeberChf,
+    krankentaggeldArbeitgeberProzent: ch.nGre.krankentaggeldArbeitgeberProzent,
+    krankentaggeldArbeitgeberChf: ch.nGre.krankentaggeldArbeitgeberChf,
+    nbuvArbeitgeberProzent: ch.nGre.nbuvArbeitgeberProzent,
+    nbuvArbeitgeberChf: ch.nGre.nbuvArbeitgeberChf,
+    sonderfaelle: ch.nGre.nGreSonderfaelle,
   }
 }
 

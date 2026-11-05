@@ -8,6 +8,7 @@ import {
   getKopplungControllerGetQueryKey,
   useKopplungControllerGet,
   useKopplungControllerSet,
+  useKopplungControllerJoinWithCode,
   useKopplungControllerUpdatePersonB,
   useStammdatenControllerLese,
   useStammdatenControllerSpeichere,
@@ -16,15 +17,17 @@ import { APP_NS } from '../../i18n/resources'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { makeDatenschutzStyles } from '../datenschutz/styles'
 import { ErrorState, LoadingState } from '../shared/ScreenState'
-import { zuEntwurf, zuPutDto, type StammdatenEntwurf } from './stammdatenMapping'
+import { deutschZuIso, isoZuDeutsch, zuEntwurf, zuPutDto, type StammdatenEntwurf } from './stammdatenMapping'
 
 export interface StammdatenScreenProps {
   readonly onZurueck: () => void
+  /** The Veranlagungsart and the partner belong to one tax year — the one the cockpit shows. */
+  readonly taxYear?: number
 }
 
 type TextFeld = Exclude<keyof StammdatenEntwurf, 'religion' | 'religionEinwilligung' | 'familienstand'>
 
-export function StammdatenScreen({ onZurueck }: StammdatenScreenProps) {
+export function StammdatenScreen({ onZurueck, taxYear = CURRENT_TAX_YEAR }: StammdatenScreenProps) {
   const bp = useBreakpoint()
   const theme = useTheme()
   const styles = makeDatenschutzStyles(theme)
@@ -115,7 +118,7 @@ export function StammdatenScreen({ onZurueck }: StammdatenScreenProps) {
         </View>
       </Feld>
       {form.familienstand !== null && form.familienstand !== 'ledig' ? textFeld('familienstandSeit') : null}
-      {form.familienstand === 'verheiratet' ? <SteuerjahrKopplungSection taxYear={CURRENT_TAX_YEAR} /> : null}
+      {form.familienstand === 'verheiratet' ? <SteuerjahrKopplungSection taxYear={taxYear} /> : null}
 
       <Feld label={t('stammdaten.religion')}>
         <Text style={styles.hint}>{t('stammdaten.religionHinweis')}</Text>
@@ -170,6 +173,9 @@ function SteuerjahrKopplungSection({ taxYear }: { readonly taxYear: number }) {
   const kopplungQuery = useKopplungControllerGet(taxYear)
   const setKopplung = useKopplungControllerSet()
   const updatePersonB = useKopplungControllerUpdatePersonB()
+  const beitreten = useKopplungControllerJoinWithCode()
+  const [code, setCode] = useState('')
+  const [beitrittsFehler, setBeitrittsFehler] = useState<string | null>(null)
 
   const current = kopplungQuery.data?.status === 200 ? kopplungQuery.data.data : null
   const veranlagungsart = current?.veranlagungsart ?? 'keine'
@@ -189,6 +195,24 @@ function SteuerjahrKopplungSection({ taxYear }: { readonly taxYear: number }) {
     setKopplung.mutate({ jahr: taxYear, data: { veranlagungsart: art } }, { onSuccess: invalidate })
   }
 
+  const loeseCodeEin = () => {
+    const bereinigt = code.trim().toUpperCase()
+    if (bereinigt === '') return
+    setBeitrittsFehler(null)
+    beitreten.mutate(
+      { jahr: taxYear, code: bereinigt },
+      {
+        onSuccess: (antwort) => {
+          if (antwort.status === 200) {
+            setCode('')
+            invalidate()
+          } else setBeitrittsFehler(beitrittsFehlerText(antwort.data))
+        },
+        onError: () => setBeitrittsFehler('Das hat nicht geklappt. Prüf die Verbindung und versuch es noch mal.'),
+      },
+    )
+  }
+
   const speicherePersonB = () => {
     updatePersonB.mutate(
       {
@@ -197,7 +221,7 @@ function SteuerjahrKopplungSection({ taxYear }: { readonly taxYear: number }) {
           firstName: vornameB || null,
           lastName: nachnameB || null,
           steuerId: steuerIdB || null,
-          geburtsdatum: geburtsdatumB || null,
+          geburtsdatum: geburtsdatumB ? deutschZuIso(geburtsdatumB) : null,
           beruf: berufB || null,
         },
       },
@@ -207,7 +231,7 @@ function SteuerjahrKopplungSection({ taxYear }: { readonly taxYear: number }) {
 
   return (
     <Card style={{ marginVertical: theme.space.s3, padding: theme.space.s4 }}>
-      <Feld label="Veranlagungsart & Partner (Person B, Zeile 19–24 ESt 1 A)">
+      <Feld label={`Veranlagungsart ${taxYear} & Partner (Person B, Zeile 19–24 ESt 1 A)`}>
         <View style={{ flexDirection: 'row', gap: theme.space.s2, marginBottom: theme.space.s3 }}>
           <Chip aktiv={veranlagungsart === 'zusammen'} onPress={() => wähleArt('zusammen')} testID="kopplung-zusammen">
             Zusammenveranlagung
@@ -237,8 +261,8 @@ function SteuerjahrKopplungSection({ taxYear }: { readonly taxYear: number }) {
           <Feld label="Steuer-ID Partner (11 Ziffern)">
             <Input type="numeric" value={steuerIdB || (personB?.steuerId ?? '')} onChange={setSteuerIdB} testID="personb-steuerid" />
           </Feld>
-          <Feld label="Geburtsdatum Partner (JJJJ-MM-TT)">
-            <Input value={geburtsdatumB || (personB?.geburtsdatum ?? '')} onChange={setGeburtsdatumB} testID="personb-geburtsdatum" />
+          <Feld label="Geburtsdatum Partner (TT.MM.JJJJ)">
+            <Input value={geburtsdatumB || isoZuDeutsch(personB?.geburtsdatum ?? null)} onChange={setGeburtsdatumB} testID="personb-geburtsdatum" />
           </Feld>
           <Feld label="Beruf Partner">
             <Input value={berufB || (personB?.beruf ?? '')} onChange={setBerufB} testID="personb-beruf" />
@@ -247,7 +271,28 @@ function SteuerjahrKopplungSection({ taxYear }: { readonly taxYear: number }) {
             Partner-Angaben übernehmen
           </Button>
         </View>
-      ) : null}
+      ) : (
+        <View>
+          <Text style={{ fontSize: theme.size.s, color: theme.color.tinte2, marginBottom: theme.space.s2 }}>
+            {`Dein Partner hat die Zusammenveranlagung ${taxYear} schon angelegt? Dann gib hier den Einladungscode ein – ihr gebt dann eine gemeinsame Erklärung ab.`}
+          </Text>
+          <Feld label="Einladungscode deines Partners">
+            <Input value={code} onChange={setCode} testID="kopplung-code" accessibilityLabel="Einladungscode deines Partners" />
+          </Feld>
+          {beitrittsFehler ? <Text style={{ fontSize: theme.size.s, color: theme.color.tinte }}>{beitrittsFehler}</Text> : null}
+          <Button variante="ghost" onPress={loeseCodeEin} testID="kopplung-beitreten">
+            Einladung annehmen
+          </Button>
+        </View>
+      )}
     </Card>
   )
+}
+
+/** The server names why a code did not work (KopplungService.joinWithCode); say it in plain words. */
+function beitrittsFehlerText(antwort: unknown): string {
+  const code = typeof antwort === 'object' && antwort !== null && 'code' in antwort ? String((antwort as { code: unknown }).code) : ''
+  if (code === 'INVITATION_CODE_EXPIRED') return 'Der Code ist abgelaufen. Bitte deinen Partner um einen neuen.'
+  if (code === 'INVITATION_IS_OWN') return 'Das ist dein eigener Code – den gibst du an deinen Partner weiter.'
+  return 'Diesen Code kennen wir nicht. Prüf die Schreibweise.'
 }

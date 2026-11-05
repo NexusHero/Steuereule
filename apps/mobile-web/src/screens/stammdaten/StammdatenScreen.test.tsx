@@ -27,13 +27,13 @@ const LEER: StammdatenResponseDto = {
   fehlend: ['geburtsdatum', 'strasse', 'hausnummer', 'plz', 'wohnort', 'religion', 'familienstand', 'iban', 'finanzamt'],
 }
 
-function renderScreen() {
+function renderScreen(taxYear?: number) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   render(
     <QueryClientProvider client={queryClient}>
       <I18nextProvider i18n={createAppI18n('de')}>
         <ThemeProvider mode="light">
-          <StammdatenScreen onZurueck={() => {}} />
+          <StammdatenScreen onZurueck={() => {}} {...(taxYear ? { taxYear } : {})} />
         </ThemeProvider>
       </I18nextProvider>
     </QueryClientProvider>,
@@ -143,6 +143,40 @@ describe('StammdatenScreen (ADR-0050)', () => {
       renderScreen()
       expect(await screen.findByText(/Einladungscode ist abgelaufen/)).toBeTruthy()
       expect(screen.queryByText(/9F3A0C71B2E4D658/)).toBeNull()
+    })
+
+    it('sets the Veranlagungsart for the tax year the cockpit shows, not the current one', async () => {
+      const gesetzt: string[] = []
+      server.use(
+        http.get('*/v1/stammdaten', () => HttpResponse.json(VERHEIRATET)),
+        http.get('*/v1/steuerjahre/:jahr/kopplung', () => HttpResponse.json({ veranlagungsart: 'keine' })),
+        http.put('*/v1/steuerjahre/:jahr/kopplung', ({ params }) => {
+          gesetzt.push(String(params.jahr))
+          return HttpResponse.json(ZUSAMMEN)
+        }),
+      )
+      renderScreen(2025)
+      expect(await screen.findByText(/Veranlagungsart 2025/)).toBeTruthy()
+      fireEvent.click(screen.getByTestId('kopplung-zusammen'))
+      await waitFor(() => expect(gesetzt).toEqual(['2025']))
+    })
+
+    it('lets the invited partner redeem the code, and says plainly when it is unknown', async () => {
+      const codes: string[] = []
+      server.use(
+        http.get('*/v1/stammdaten', () => HttpResponse.json(VERHEIRATET)),
+        http.get('*/v1/steuerjahre/:jahr/kopplung', () => HttpResponse.json({ veranlagungsart: 'keine' })),
+        http.post('*/v1/steuerjahre/:jahr/kopplung/beitreten/:code', ({ params }) => {
+          codes.push(`${String(params.jahr)}:${String(params.code)}`)
+          return HttpResponse.json({ code: 'INVITATION_CODE_INVALID', message: 'The invitation code is invalid.' }, { status: 404 })
+        }),
+      )
+      renderScreen(2025)
+      fireEvent.change(await screen.findByTestId('kopplung-code'), { target: { value: ' c39b4e995366e74a ' } })
+      fireEvent.click(screen.getByTestId('kopplung-beitreten'))
+
+      await waitFor(() => expect(codes).toEqual(['2025:C39B4E995366E74A']))
+      expect(await screen.findByText('Diesen Code kennen wir nicht. Prüf die Schreibweise.')).toBeTruthy()
     })
 
     it("shows a joined partner's data read-only — it is theirs to change", async () => {
