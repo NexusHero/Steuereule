@@ -245,6 +245,10 @@ describe('ausdruckWerte', () => {
       krankentaggeldChf: '300',
       pkArbeitnehmerChf: '5000',
       pkArbeitgeberChf: '6000',
+      krankentaggeldArbeitgeberProzent: '0',
+      krankentaggeldArbeitgeberChf: null,
+      nbuvArbeitgeberProzent: '0',
+      nbuvArbeitgeberChf: null,
       sonderfaelle: false,
     }
     const ngre = (ch: Partial<ChLohnausweisFakten>) => ausdruckWerte({ ...FAKTEN, chLohnausweis: { ...CH, ...ch } })
@@ -286,6 +290,94 @@ describe('ausdruckWerte', () => {
       expect(ngre({ sonderfaelle: true }).fehlend).toEqual(['anlageNGreSonderfall'])
       expect(ngre({ status: 'kein-grenzgaenger' }).fehlend).toEqual(['anlageNGreKeinGrenzgaenger'])
       expect(Object.keys(ngre({ kurs: null }).werte).some((id) => id.startsWith('anlNGre.'))).toBe(false)
+    })
+
+    it('asks who pays a premium the employee contributes to, and the CHF when the employer pays everything', () => {
+      expect(ngre({ krankentaggeldArbeitgeberProzent: null }).fehlend).toEqual(['grenzgaenger'])
+      expect(ngre({ nbuvArbeitgeberProzent: null }).fehlend).toEqual(['grenzgaenger'])
+      expect(ngre({ krankentaggeldChf: '0', krankentaggeldArbeitgeberProzent: null }).fehlend).toEqual([])
+      expect(ngre({ krankentaggeldChf: '0', krankentaggeldArbeitgeberProzent: '100' }).fehlend).toEqual(['grenzgaenger'])
+      expect(ngre({ krankentaggeldChf: '0', krankentaggeldArbeitgeberProzent: '100', krankentaggeldArbeitgeberChf: '1200' }).fehlend).toEqual([])
+    })
+
+    it('prints an employer share of the Krankentaggeld as wage (Z. 18) and in Z. 95/96 — 10 % / 90 %', () => {
+      const { werte, fehlend } = ngre({ krankentaggeldChf: '900', krankentaggeldArbeitgeberProzent: '10' })
+      expect(fehlend).toEqual([])
+      expect(werte).toMatchObject({
+        'anlNGre.z18Chf': '100',
+        'anlNGre.z23Chf': '97700',
+        'anlNGre.z80Chf': '1000',
+        'anlNGre.z95Arbeitgeber': '10',
+        'anlNGre.z95Arbeitnehmer': '90',
+        'anlNGre.z96Arbeitgeber': '100',
+        'anlNGre.z96Arbeitnehmer': '900',
+      })
+      expect(werte['anlNGre.z19Chf']).toBeUndefined()
+    })
+
+    it('prints the commute in the Anlage N-Gre (Z. 32–36), not only in the Anlage N', () => {
+      const { werte } = ausdruckWerte({
+        ...FAKTEN,
+        bruttoarbeitslohn: null,
+        chLohnausweis: CH,
+        arbeitsweg: { arbeitstageJeWoche: 5, freieTage: 35, pendlertage: 226, einfacheKm: 80, mitPkw: true, taetigkeitsstaette: '4058 Basel' },
+      })
+      expect(werte).toMatchObject({
+        'anlNGre.wegArt': '1',
+        'anlNGre.wegOrt': '4058 Basel',
+        'anlNGre.kz110Tage': '226',
+        'anlNGre.kz111': '80',
+        'anlNGre.kz112': '80',
+      })
+    })
+  })
+
+  it("prints the child's KV/PV paid by the parents in Anlage Kind Z. 27/28", () => {
+    const kind = { lfdNr: '1', vorname: 'Mia', nachname: 'Beispiel', geburtsdatum: '2016-03-14', idnr: '41234567890', kvBasisEur: '1080', pvEur: '0' }
+    const { instanzen } = ausdruckWerte({ ...FAKTEN, kinder: [kind] })
+    expect(instanzen?.['anlage-kind']?.[0]).toMatchObject({ 'anlKind.kz66': '1080' })
+    expect(instanzen?.['anlage-kind']?.[0]?.['anlKind.kz67']).toBeUndefined()
+  })
+
+  describe('Anlage Vorsorgeaufwand', () => {
+    it('prints voluntary statutory KV with Krankengeld, PV and extras in Z. 16, 17, 18 and 22', () => {
+      const { werte } = ausdruckWerte({
+        ...FAKTEN,
+        krankenversicherung: [{ art: 'gesetzlich', kvBasis: 2340, mitKrankengeld: true, pv: 660, wahlleistungen: 120 }],
+      })
+      expect(werte).toMatchObject({
+        'anlVor.name': 'Beispiel',
+        'anlVor.kz326': '2340',
+        'anlVor.kz328': '2340',
+        'anlVor.kz329': '660',
+        'anlVor.kz338': '120',
+      })
+    })
+
+    it('prints private insurance in Z. 23, 24 and 27, and leaves empty lines empty', () => {
+      const { werte } = ausdruckWerte({
+        ...FAKTEN,
+        krankenversicherung: [{ art: 'privat', kvBasis: 4800, mitKrankengeld: false, pv: 400, wahlleistungen: 0 }],
+      })
+      expect(werte).toMatchObject({ 'anlVor.kz350': '4800', 'anlVor.kz351': '400' })
+      expect(werte['anlVor.kz354']).toBeUndefined()
+      expect(werte['anlVor.kz326']).toBeUndefined()
+    })
+
+    it('adds foreign insurances up in Z. 28–30 — a Swiss Krankenkasse has no Krankengeld claim (Z. 29)', () => {
+      const { werte } = ausdruckWerte({
+        ...FAKTEN,
+        krankenversicherung: [
+          { art: 'ausland', kvBasis: 3000, mitKrankengeld: false, pv: 0, wahlleistungen: 0 },
+          { art: 'ausland', kvBasis: 500, mitKrankengeld: false, pv: 0, wahlleistungen: 0 },
+        ],
+      })
+      expect(werte).toMatchObject({ 'anlVor.kz333': '3500', 'anlVor.kz334': '3500' })
+    })
+
+    it('prints no Anlage Vorsorgeaufwand without self-paid insurance', () => {
+      const { werte } = ausdruckWerte({ ...FAKTEN, krankenversicherung: [] })
+      expect(Object.keys(werte).some((id) => id.startsWith('anlVor.'))).toBe(false)
     })
   })
 
@@ -669,6 +761,7 @@ describe('rendereVordrucke (real templates)', () => {
       status: 'echter-grenzgaenger', kurs: 1.065, bruttolohnChf: '50000', ahvBeitraegeChf: '3300', quellensteuerChf: '2250',
       arbeitgeberName: 'Muster AG', arbeitgeberStrasse: 'Bahnhofstrasse 1', arbeitgeberPlzOrt: '4051 Basel',
       familienzulagenChf: '0', krankentaggeldChf: '150', pkArbeitnehmerChf: '2500', pkArbeitgeberChf: '3000', sonderfaelle: false,
+      krankentaggeldArbeitgeberProzent: '0', krankentaggeldArbeitgeberChf: null, nbuvArbeitgeberProzent: '0', nbuvArbeitgeberChf: null,
     },
     sonderausgaben: { spenden: '200' },
     riester: { art: 'Unmittelbar', einnahmenVorjahr: '40000' },

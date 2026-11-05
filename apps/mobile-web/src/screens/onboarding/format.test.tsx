@@ -1,7 +1,7 @@
 // Pure mask tests for the Onboarding tax-id fields. Named .test.tsx (not .ts) because the vitest
 // `include` glob for this app is tsx-only (see apps/mobile-web/vitest.config.ts).
 import { describe, it, expect } from 'vitest'
-import { formatSteuerId, countDigits, formatSteuerNr } from './format'
+import { formatSteuerId, countDigits, sanitizeTaxNumberInput, formatStoredTaxNumber } from './format'
 
 describe('formatSteuerId', () => {
   it('groups 11 digits as 2-3-3-3', () => {
@@ -40,24 +40,31 @@ describe('countDigits', () => {
   })
 })
 
-describe('formatSteuerNr', () => {
-  it('formats digits as 2-3/3/5, preferring a 3-digit leading group', () => {
-    expect(formatSteuerNr('1234567890')).toBe('123/456/7890')
+describe('sanitizeTaxNumberInput', () => {
+  it('keeps the Bundesland layout the user types instead of regrouping it', () => {
+    expect(sanitizeTaxNumberInput('06/123/45678')).toBe('06/123/45678')
+    expect(sanitizeTaxNumberInput('123/4567/8901')).toBe('123/4567/8901')
+  })
+
+  it('drops letters and doubled or leading separators', () => {
+    expect(sanitizeTaxNumberInput('/06//12a3')).toBe('06/123')
   })
 
   it('caps input at 13 digits', () => {
-    expect(formatSteuerNr('12345678901234567')).toBe('123/456/78901')
+    expect(sanitizeTaxNumberInput('12345678901234567')).toBe('1234567890123')
+  })
+})
+
+describe('formatStoredTaxNumber', () => {
+  it('groups a 10-digit Landesformat as 2/3/5', () => {
+    expect(formatStoredTaxNumber('0612345678')).toBe('06/123/45678')
   })
 
-  it('formats partial groups as digits arrive', () => {
-    expect(formatSteuerNr('123')).toBe('123')
-  })
-
-  it('falls back to a 2-digit leading group when only 2 digits are available', () => {
-    expect(formatSteuerNr('12')).toBe('12')
+  it('leaves 11-digit numbers ungrouped because Bayern and NRW group them differently', () => {
+    expect(formatStoredTaxNumber('18181508155')).toBe('18181508155')
   })
 
   it('returns an empty string for empty input', () => {
-    expect(formatSteuerNr('')).toBe('')
+    expect(formatStoredTaxNumber('')).toBe('')
   })
 })

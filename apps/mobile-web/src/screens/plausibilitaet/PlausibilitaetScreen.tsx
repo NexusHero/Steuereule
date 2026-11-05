@@ -13,6 +13,7 @@ import {
 import {
   useInterviewControllerGetInterview,
   useLstbControllerGetLstb,
+  useStammdatenControllerLese,
   type LstbResponseDto,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
@@ -33,8 +34,9 @@ export function PlausibilitaetScreen({ onBack, onDone, taxYear = CURRENT_TAX_YEA
   const { t: tr } = useTranslation(APP_NS)
   const lstbQuery = useLstbControllerGetLstb(taxYear)
   const interviewQuery = useInterviewControllerGetInterview(taxYear)
+  const stammdatenQuery = useStammdatenControllerLese()
 
-  if (lstbQuery.isPending || interviewQuery.isPending) {
+  if (lstbQuery.isPending || interviewQuery.isPending || stammdatenQuery.isPending) {
     return <LoadingState bp={bp} label={tr('plausibilitaet.loading')} />
   }
   if (lstbQuery.isError || lstbQuery.data.status !== 200 || interviewQuery.isError || interviewQuery.data.status !== 200) {
@@ -55,6 +57,11 @@ export function PlausibilitaetScreen({ onBack, onDone, taxYear = CURRENT_TAX_YEA
   const daten = datenAusResponse(lstbQuery.data.data)
   const answers = interviewQuery.data.data.answers as Answers
   const ergebnis = pruefePlausibilitaet(fold(daten, answers))
+  // The Stammdaten are not part of the core check, but the printout cannot go out without them —
+  // "nichts mehr offen" must not be claimed while they (or their state) are missing.
+  const missingPersonalDetails =
+    stammdatenQuery.data?.status === 200 ? stammdatenQuery.data.data.fehlend.length : null
+  const allClear = ergebnis.kind === 'einreichbar' && missingPersonalDetails === 0
 
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
@@ -66,11 +73,15 @@ export function PlausibilitaetScreen({ onBack, onDone, taxYear = CURRENT_TAX_YEA
 
       <Text style={styles.werktageNote}>{tr('plausibilitaet.werktageNote')}</Text>
 
-      {ergebnis.kind === 'einreichbar' ? (
+      {allClear ? (
         <Text style={styles.einreichbar}>{tr('plausibilitaet.einreichbar')}</Text>
       ) : (
         <Text style={styles.nichtEinreichbar}>{tr('plausibilitaet.nichtEinreichbar')}</Text>
       )}
+      {missingPersonalDetails !== null && missingPersonalDetails > 0 ? (
+        <Text style={styles.nichtEinreichbar}>{tr('plausibilitaet.stammdatenOffen', { count: missingPersonalDetails })}</Text>
+      ) : null}
+      {missingPersonalDetails === null ? <Text style={styles.nichtEinreichbar}>{tr('plausibilitaet.stammdatenUnbekannt')}</Text> : null}
 
       {ergebnis.kind === 'nicht-einreichbar' && ergebnis.widersprueche.length > 0 ? (
         <View style={styles.block}>

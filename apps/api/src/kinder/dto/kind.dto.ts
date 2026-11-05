@@ -66,6 +66,16 @@ class KindAngabenDto {
   @IsOptional()
   @IsBoolean()
   kindergeldAnMichGanzjaehrig?: boolean | null
+
+  @ApiPropertyOptional({ type: String, nullable: true, example: '1080', description: 'Zeile 27 (Kz 66): KV Basisabsicherung of the child paid by the parents, whole euros.' })
+  @IsOptional()
+  @Matches(/^\d{1,7}$/)
+  kvBasisEur?: string | null
+
+  @ApiPropertyOptional({ type: String, nullable: true, example: '0', description: 'Zeile 28 (Kz 67): PV of the child paid by the parents, whole euros.' })
+  @IsOptional()
+  @Matches(/^\d{1,7}$/)
+  pvEur?: string | null
 }
 
 export class CreateKindDto extends KindAngabenDto {
@@ -189,6 +199,12 @@ export class KindResponseDto {
 
   @ApiProperty({ type: Boolean, nullable: true })
   kindergeldAnMichGanzjaehrig!: boolean | null
+
+  @ApiProperty({ type: String, nullable: true })
+  kvBasisEur!: string | null
+
+  @ApiProperty({ type: String, nullable: true })
+  pvEur!: string | null
 }
 
 export class KinderResponseDto {

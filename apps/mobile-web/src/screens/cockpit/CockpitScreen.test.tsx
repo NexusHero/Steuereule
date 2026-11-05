@@ -121,6 +121,19 @@ describe('CockpitScreen', () => {
     expect(await screen.findByText('49.880–50.120 €')).toBeTruthy()
   })
 
+  it('says the income is still open instead of inventing a range like 0–120 €', async () => {
+    mockCockpit({
+      taxYear: TAX_YEAR,
+      stand: { kind: 'spanne', von: 0, bis: 120, offenePosten: 2, konflikte: 0, unbestaetigte: 0, unbestaetigteSumme: 0 },
+      openItems: 0,
+    })
+    renderCockpit()
+
+    expect(await screen.findByText('Noch offen')).toBeTruthy()
+    expect(screen.getByText('2 Posten offen')).toBeTruthy()
+    expect(screen.queryByText('0–120 €')).toBeNull()
+  })
+
   it('renders a settled point value with no range dashes (ADR-015)', async () => {
     mockCockpit({ taxYear: TAX_YEAR, stand: { kind: 'bestimmt', wert: 50000 }, openItems: 0 })
     renderCockpit()
@@ -472,14 +485,17 @@ describe('CockpitScreen — the personal details the return needs, asked early',
     expect(onOpenStammdaten).toHaveBeenCalledOnce()
   })
 
-  it('stays quiet once every detail is there', async () => {
+  it('drops the missing count once every detail is there but keeps the way back to the details', async () => {
     mockCockpit(LOADED_SUMMARY)
     server.use(http.get('*/v1/stammdaten', () => HttpResponse.json({ fehlend: [] })))
-    renderCockpit({ onOpenStammdaten: () => {} })
+    let geoeffnet = 0
+    renderCockpit({ onOpenStammdaten: () => (geoeffnet += 1) })
 
     await screen.findByText('Erfasstes Einkommen')
 
     expect(screen.queryByText(/Angaben für die Erklärung ergänzen/)).toBeNull()
+    fireEvent.click(await screen.findByText('Angaben für die Erklärung & Partner'))
+    expect(geoeffnet).toBe(1)
   })
 })
 
@@ -493,6 +509,14 @@ describe('CockpitScreen — die voraussichtliche Erstattung als ehrliche Spanne 
 
     expect(await screen.findByText('Voraussichtlich 312 – 455 € Erstattung')).toBeTruthy()
     expect(screen.queryByText('Die Erstattung rechnen wir in einem späteren Schritt.')).toBeNull()
+  })
+
+  it('shows a range without width as one figure, not as "31.192 – 31.192 €"', async () => {
+    mockCockpit(LOADED_SUMMARY)
+    server.use(http.get(SCHAETZUNG_URL, () => HttpResponse.json({ kind: 'spanne', ergebnis: { von: -31192, bis: -31192 }, kirchensteuerOffen: false })))
+    renderCockpit()
+
+    expect(await screen.findByText('Voraussichtlich rund 31.192 € Nachzahlung')).toBeTruthy()
   })
 
   it('names a back-payment as such, never as a negative refund', async () => {

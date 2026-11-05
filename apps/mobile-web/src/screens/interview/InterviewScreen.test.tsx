@@ -25,7 +25,7 @@ function makeTestQueryClient() {
   return new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
 }
 
-function renderInterview(opts: { lng?: 'de' | 'en'; onDone?: () => void; queryClient?: QueryClient } = {}) {
+function renderInterview(opts: { lng?: 'de' | 'en'; onDone?: () => void; queryClient?: QueryClient; taxYear?: number } = {}) {
   const i18n = createAppI18n(opts.lng ?? 'de')
   const queryClient = opts.queryClient ?? makeTestQueryClient()
   return {
@@ -34,7 +34,7 @@ function renderInterview(opts: { lng?: 'de' | 'en'; onDone?: () => void; queryCl
       <QueryClientProvider client={queryClient}>
         <I18nextProvider i18n={i18n}>
           <ThemeProvider mode="light">
-            <InterviewScreen onDone={opts.onDone ?? (() => {})} taxYear={TAX_YEAR} />
+            <InterviewScreen onDone={opts.onDone ?? (() => {})} taxYear={opts.taxYear ?? TAX_YEAR} />
           </ThemeProvider>
         </I18nextProvider>
       </QueryClientProvider>,
@@ -67,6 +67,14 @@ const onGewerbeGate = () => screen.findByText('Ehrlich: dafür sind wir noch nic
 const onChOnlyGate = () => screen.findByText('Ehrlich: andere Länder können wir noch nicht.')
 
 describe('InterviewScreen', () => {
+  it('names the chosen tax year in the first question, not a fixed one', async () => {
+    server.use(http.get('*/v1/steuerjahre/2025/interview', () => HttpResponse.json(EMPTY_INTERVIEW_STATE, { status: 200 })))
+    renderInterview({ taxYear: 2025 })
+    await onJobQuestion()
+    expect(screen.getByText(/ 2025\?$/)).toBeTruthy()
+    expect(screen.queryByText(/2026/)).toBeNull()
+  })
+
   it('shows an honest loading state while the interview state is fetched', async () => {
     renderInterview()
     expect(screen.getByLabelText('Deine Antworten werden geladen …')).toBeTruthy()

@@ -1,5 +1,5 @@
 import type { ProfileResponseDto, PutProfileDto } from '@steuereule/api-client'
-import { formatSteuerId, formatSteuerNr } from './format'
+import { formatSteuerId, formatStoredTaxNumber } from './format'
 
 export interface OnboardingProfil {
   readonly vorname: string
@@ -20,7 +20,7 @@ export function toOnboardingProfil(dto: ProfileResponseDto): OnboardingProfil {
     vorname: dto.firstName ?? '',
     nachname: dto.lastName ?? '',
     steuerId: formatSteuerId(dto.steuerId ?? ''),
-    steuerNr: formatSteuerNr(dto.steuernummer ?? ''),
+    steuerNr: formatStoredTaxNumber(dto.steuernummer ?? ''),
   }
 }
 

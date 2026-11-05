@@ -32,10 +32,36 @@ describe('KinderScreen', () => {
   it('renders existing children and calculates freibetrag and kindergeld', () => {
     renderKinder()
     expect(screen.getByText('1. Lina Muster')).toBeDefined()
-    expect(screen.getByText('Geburtsdatum: 2016-05-12')).toBeDefined()
+    expect(screen.getByText('Geburtsdatum: 12.05.2016')).toBeDefined()
     expect(screen.getByText('Steuer-ID: 12345678901')).toBeDefined()
     expect(screen.getByText(/9\.600/)).toBeDefined() // 2025: 6.672 + 2.928
     expect(screen.getByText(/Für den Ausdruck fehlen noch Angaben/)).toBeDefined()
+  })
+
+  it('hides the single-parent relief from married people, who cannot claim it', () => {
+    renderKinder({ married: true, onAlleinerziehendFragen: () => {} })
+    fireEvent.click(screen.getByTestId('kind-neu'))
+    expect(screen.queryByText('Entlastungsbetrag für Alleinerziehende')).toBeNull()
+    expect(screen.queryByText('Fragen zum Entlastungsbetrag beantworten')).toBeNull()
+  })
+
+  it('offers the single-parent relief to people who are not married', () => {
+    renderKinder({ onAlleinerziehendFragen: () => {} })
+    fireEvent.click(screen.getByTestId('kind-neu'))
+    expect(screen.getByText('Entlastungsbetrag für Alleinerziehende')).toBeTruthy()
+  })
+
+  it("saves the child's health and care insurance the parents pay (Anlage Kind Z. 27/28)", async () => {
+    const onAdd = vi.fn().mockResolvedValue(undefined)
+    renderKinder({ onAddKind: onAdd })
+    fireEvent.click(screen.getByTestId('kind-neu'))
+    fireEvent.change(screen.getByLabelText('Vorname'), { target: { value: 'Noah' } })
+    fireEvent.change(screen.getByLabelText('Nachname'), { target: { value: 'Brenner' } })
+    fireEvent.change(screen.getByLabelText('Geburtsdatum'), { target: { value: '02.09.2019' } })
+    fireEvent.change(screen.getByLabelText('Krankenversicherung des Kindes'), { target: { value: '1080' } })
+    fireEvent.click(screen.getByTestId('kind-speichern'))
+
+    await waitFor(() => expect(onAdd).toHaveBeenCalledWith(expect.objectContaining({ kvBasisEur: '1080', pvEur: null })))
   })
 
   it('allows adding a new child', async () => {
@@ -51,7 +77,7 @@ describe('KinderScreen', () => {
 
     fireEvent.change(vornameInput, { target: { value: 'Noah' } })
     fireEvent.change(nachnameInput, { target: { value: 'Muster' } })
-    fireEvent.change(geburtsdatumInput, { target: { value: '2019-08-20' } })
+    fireEvent.change(geburtsdatumInput, { target: { value: '20.8.2019' } })
 
     fireEvent.click(screen.getByTestId('kind-verhaeltnis-1'))
     fireEvent.click(screen.getByTestId('kind-verhaeltnis-b-1'))
@@ -122,7 +148,7 @@ describe('KinderScreen', () => {
     expect(screen.queryByLabelText('Name des anderen Elternteils')).toBeNull()
     fireEvent.click(screen.getByTestId('kind-ae-Inland'))
     fireEvent.change(screen.getByLabelText('Name des anderen Elternteils'), { target: { value: 'Muster, Max' } })
-    fireEvent.change(screen.getByLabelText('Geburtsdatum des anderen Elternteils'), { target: { value: '1984-02-11' } })
+    fireEvent.change(screen.getByLabelText('Geburtsdatum des anderen Elternteils'), { target: { value: '11.02.1984' } })
     fireEvent.change(screen.getByLabelText('Adresse des anderen Elternteils'), { target: { value: 'Hauptstraße 3, 01067 Dresden' } })
     fireEvent.click(screen.getByTestId('kind-ae-art-1'))
     expect(screen.queryByLabelText('Todestag des anderen Elternteils')).toBeNull()

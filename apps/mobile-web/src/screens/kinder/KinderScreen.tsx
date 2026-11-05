@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { KatalogScreen } from '../katalog/KatalogScreen'
+import { deutschZuIso, isoZuDeutsch } from '../stammdaten/stammdatenMapping'
 import { Pressable, ScrollView, Text, View, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
@@ -21,6 +22,7 @@ import {
   useKinderControllerDelete,
   useKinderControllerList,
   useKinderControllerUpdate,
+  useStammdatenControllerLese,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
@@ -47,6 +49,8 @@ export interface KindItem {
   andererElternteilVerstorbenAm?: string | null
   gemeldetBeiMirGanzjaehrig?: boolean | null
   kindergeldAnMichGanzjaehrig?: boolean | null
+  kvBasisEur?: string | null
+  pvEur?: string | null
 }
 
 /** What the form writes: the identity plus the Anlage-Kind facts. */
@@ -68,6 +72,8 @@ export interface KindEingabe {
   andererElternteilVerstorbenAm: string | null
   gemeldetBeiMirGanzjaehrig: boolean | null
   kindergeldAnMichGanzjaehrig: boolean | null
+  kvBasisEur: string | null
+  pvEur: string | null
 }
 
 const ANDERER_ELTERNTEIL_LABEL: Record<AndererElternteilStatus, string> = {
@@ -96,6 +102,8 @@ export interface KinderScreenProps {
   readonly onSaveKind?: ((id: string, kind: KindEingabe) => Promise<void> | void) | undefined
   readonly onDeleteKind?: ((id: string) => Promise<void> | void) | undefined
   readonly onAlleinerziehendFragen?: (() => void) | undefined
+  /** Married people cannot claim the Entlastungsbetrag für Alleinerziehende (§ 24b EStG), so its questions stay hidden. */
+  readonly married?: boolean | undefined
 }
 
 export function KinderScreen(props: KinderScreenProps) {
@@ -113,6 +121,8 @@ function ConnectedKinderScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TA
   const createKind = useKinderControllerCreate()
   const updateKind = useKinderControllerUpdate()
   const deleteKind = useKinderControllerDelete()
+  const stammdaten = useStammdatenControllerLese()
+  const married = stammdaten.data?.status === 200 && stammdaten.data.data.familienstand === 'verheiratet'
   const [haushaltsfragen, setHaushaltsfragen] = useState(false)
 
   if (query.isPending) {
@@ -164,6 +174,7 @@ function ConnectedKinderScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TA
         await invalidate()
       }}
       onAlleinerziehendFragen={() => setHaushaltsfragen(true)}
+      married={married}
     />
   )
 }
@@ -177,6 +188,7 @@ function KinderScreenView({
   onSaveKind,
   onDeleteKind,
   onAlleinerziehendFragen,
+  married = false,
 }: KinderScreenProps & { readonly initialKinder: readonly KindItem[] }) {
   const bp = useBreakpoint()
   const t = useTheme()
@@ -189,6 +201,8 @@ function KinderScreenView({
   const [geburtsdatum, setGeburtsdatum] = useState('')
   const [idnr, setIdnr] = useState('')
   const [kindergeld, setKindergeld] = useState('')
+  const [kvBasis, setKvBasis] = useState('')
+  const [pv, setPv] = useState('')
   const [verhaeltnis, setVerhaeltnis] = useState<Kindschaftsverhaeltnis | null>(null)
   const [verhaeltnisB, setVerhaeltnisB] = useState<Kindschaftsverhaeltnis | null>(null)
   const [familienkasse, setFamilienkasse] = useState('')
@@ -219,19 +233,21 @@ function KinderScreenView({
   function fuelleFormular(k: KindItem | null) {
     setVorname(k?.vorname ?? '')
     setNachname(k?.nachname ?? '')
-    setGeburtsdatum(k?.geburtsdatum ?? '')
+    setGeburtsdatum(isoZuDeutsch(k?.geburtsdatum ?? null))
     setIdnr(k?.idnr ?? '')
     setKindergeld(k?.kindergeldAnspruchEur ?? '')
+    setKvBasis(k?.kvBasisEur ?? '')
+    setPv(k?.pvEur ?? '')
     setVerhaeltnis(k?.kindschaftsverhaeltnis ?? null)
     setVerhaeltnisB(k?.kindschaftsverhaeltnisB ?? null)
     setFamilienkasse(k?.familienkasse ?? '')
     setInland(k?.wohnsitzInlandGanzjaehrig ?? null)
     setAe(k?.andererElternteil ?? null)
     setAeName(k?.andererElternteilName ?? '')
-    setAeGeburtsdatum(k?.andererElternteilGeburtsdatum ?? '')
+    setAeGeburtsdatum(isoZuDeutsch(k?.andererElternteilGeburtsdatum ?? null))
     setAeAdresse(k?.andererElternteilAdresse ?? '')
     setAeArt(k?.andererElternteilArt ?? null)
-    setAeVerstorbenAm(k?.andererElternteilVerstorbenAm ?? '')
+    setAeVerstorbenAm(isoZuDeutsch(k?.andererElternteilVerstorbenAm ?? null))
     setGemeldet(k?.gemeldetBeiMirGanzjaehrig ?? null)
     setKindergeldAnMich(k?.kindergeldAnMichGanzjaehrig ?? null)
     setBearbeitet(k?.id ?? null)
@@ -244,7 +260,7 @@ function KinderScreenView({
     const payload: KindEingabe = {
       vorname: vorname.trim(),
       nachname: nachname.trim(),
-      geburtsdatum: geburtsdatum.trim(),
+      geburtsdatum: deutschZuIso(geburtsdatum) ?? '',
       ...(idnr.trim() && { idnr: idnr.trim() }),
       ...(kindergeld.trim() && { kindergeldAnspruchEur: kindergeld.trim() }),
       kindschaftsverhaeltnis: verhaeltnis,
@@ -253,12 +269,14 @@ function KinderScreenView({
       wohnsitzInlandGanzjaehrig: inland,
       andererElternteil: ae,
       andererElternteilName: aeBekannt ? aeName.trim() || null : null,
-      andererElternteilGeburtsdatum: aeBekannt ? aeGeburtsdatum.trim() || null : null,
+      andererElternteilGeburtsdatum: aeBekannt ? deutschZuIso(aeGeburtsdatum) : null,
       andererElternteilAdresse: aeBekannt ? aeAdresse.trim() || null : null,
       andererElternteilArt: aeBekannt ? aeArt : null,
-      andererElternteilVerstorbenAm: ae === 'Verstorben' ? aeVerstorbenAm.trim() || null : null,
+      andererElternteilVerstorbenAm: ae === 'Verstorben' ? deutschZuIso(aeVerstorbenAm) : null,
       gemeldetBeiMirGanzjaehrig: gemeldet,
       kindergeldAnMichGanzjaehrig: kindergeldAnMich,
+      kvBasisEur: /^\d+$/.test(kvBasis.trim()) ? kvBasis.trim() : null,
+      pvEur: /^\d+$/.test(pv.trim()) ? pv.trim() : null,
     }
     if (bearbeitet) {
       if (onSaveKind) await onSaveKind(bearbeitet, payload)
@@ -329,7 +347,7 @@ function KinderScreenView({
               </Pressable>
             </View>
           </View>
-          <Text style={styles.kindDetail}>Geburtsdatum: {k.geburtsdatum}</Text>
+          <Text style={styles.kindDetail}>Geburtsdatum: {isoZuDeutsch(k.geburtsdatum) || k.geburtsdatum}</Text>
           {k.idnr && <Text style={styles.kindDetail}>Steuer-ID: {k.idnr}</Text>}
           <Text style={styles.kindDetail}>
             Kindergeld:{' '}
@@ -356,11 +374,11 @@ function KinderScreenView({
           <Feld label="Nachname">
             <Input value={nachname} onChange={setNachname} placeholder="z.B. Mustermann" accessibilityLabel="Nachname" />
           </Feld>
-          <Feld label="Geburtsdatum (JJJJ-MM-TT)">
+          <Feld label="Geburtsdatum (TT.MM.JJJJ)">
             <Input
               value={geburtsdatum}
               onChange={setGeburtsdatum}
-              placeholder="z.B. 2018-05-12"
+              placeholder="z.B. 12.05.2018"
               accessibilityLabel="Geburtsdatum"
             />
           </Feld>
@@ -411,6 +429,18 @@ function KinderScreenView({
               accessibilityLabel="Familienkasse"
             />
           </Feld>
+          <Feld label="Krankenversicherung des Kindes, die ihr zahlt (Basisabsicherung, € im Jahr, optional)">
+            <Input
+              value={kvBasis}
+              onChange={setKvBasis}
+              placeholder="z.B. 1080"
+              type="numeric"
+              accessibilityLabel="Krankenversicherung des Kindes"
+            />
+          </Feld>
+          <Feld label="Pflegeversicherung des Kindes, die ihr zahlt (€ im Jahr, optional)">
+            <Input value={pv} onChange={setPv} placeholder="z.B. 0" type="numeric" accessibilityLabel="Pflegeversicherung des Kindes" />
+          </Feld>
           <Feld label={`Hat das Kind ${taxYear} durchgehend in Deutschland gewohnt?`}>
             <View style={styles.chips}>
               <Chip aktiv={inland === true} onPress={() => setInland(true)} testID="kind-inland-ja">
@@ -435,11 +465,11 @@ function KinderScreenView({
               <Feld label="Name, Vorname">
                 <Input value={aeName} onChange={setAeName} placeholder="z.B. Muster, Max" accessibilityLabel="Name des anderen Elternteils" />
               </Feld>
-              <Feld label="Geburtsdatum (JJJJ-MM-TT)">
+              <Feld label="Geburtsdatum (TT.MM.JJJJ)">
                 <Input
                   value={aeGeburtsdatum}
                   onChange={setAeGeburtsdatum}
-                  placeholder="z.B. 1984-02-11"
+                  placeholder="z.B. 11.02.1984"
                   accessibilityLabel="Geburtsdatum des anderen Elternteils"
                 />
               </Feld>
@@ -456,12 +486,14 @@ function KinderScreenView({
                 </View>
               </Feld>
               {ae === 'Verstorben' ? (
-                <Feld label="Todestag (JJJJ-MM-TT)">
+                <Feld label="Todestag (TT.MM.JJJJ)">
                   <Input value={aeVerstorbenAm} onChange={setAeVerstorbenAm} accessibilityLabel="Todestag des anderen Elternteils" />
                 </Feld>
               ) : null}
             </>
           ) : null}
+          {married ? null : (
+          <>
           <Text style={styles.formTitle}>{tr('kinder.entlastungTitel', 'Entlastungsbetrag für Alleinerziehende')}</Text>
           <Text style={styles.kindDetail}>
             {tr(
@@ -489,6 +521,8 @@ function KinderScreenView({
               </Chip>
             </View>
           </Feld>
+          </>
+          )}
           <Button onPress={handleSave} style={styles.addButton} testID="kind-speichern">
             {tr('kinder.save', 'Kind speichern')}
           </Button>
@@ -507,7 +541,7 @@ function KinderScreenView({
         </Button>
       )}
 
-      {onAlleinerziehendFragen && kinder.length > 0 ? (
+      {onAlleinerziehendFragen && kinder.length > 0 && !married ? (
         <Button variante="ghost" onPress={onAlleinerziehendFragen} style={styles.toggleButton}>
           {tr('kinder.entlastungFragen', 'Fragen zum Entlastungsbetrag beantworten')}
         </Button>

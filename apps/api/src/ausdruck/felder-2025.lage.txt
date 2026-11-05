@@ -79,6 +79,10 @@ anlNGre.z8Chf                  S1 Z8    ↑                              ← −
 anlNGre.z8Eur                  S1 Z8    ↑                              ← ,– ,– − − Kinder- und Ausbildungszulage
 anlNGre.z15Chf                 S1 Z15   ↑                              ← = Verbleiben
 anlNGre.z15Eur                 S1 Z15   ↑                              ← ,– = = Verbleiben
+anlNGre.z18Chf                 S1 Z18   ↑                              ← Arbeitgeberbeiträge zur Kollektivkrankentag- + geldversicherung (vgl. Zeile 80)
+anlNGre.z18Eur                 S1 Z18   ↑                              ← Arbeitgeberbeiträge zur Kollektivkrankentag- ,– + + geldversicherung (vgl. Zeile 80)
+anlNGre.z19Chf                 S1 Z19   ↑                              ← + Arbeitgeberbeiträge zur NBUV (vgl. Zeile 81)
+anlNGre.z19Eur                 S1 Z19   ↑                              ← ,– ,– + + Arbeitgeberbeiträge zur NBUV (vgl. Zeile 81)
 anlNGre.z23Chf                 S1 Z23   ↑                              ← 116 Steuerpflichtiger Arbeitslohn
 anlNGre.z23Eur                 S1 Z23   ↑                              ← ,– 116 116 Steuerpflichtiger Arbeitslohn
 anlNGre.z25Chf                 S1 Z25   ↑ ,–                           ← In der Schweiz erhobene Abzugssteuer 135 (höchstens 4,5 % von Zeile 6)
@@ -114,6 +118,21 @@ anlNGre.z88Eur                 S4 Z88   ↑                              ← ,�
 anlNGre.arbeitgeberName        S4 Z89   ↑ Name (Bezeichnung)           ← 
 anlNGre.arbeitgeberStrasse     S4 Z90   ↑ Straße und Hausnummer        ← 
 anlNGre.arbeitgeberPlzOrt      S4 Z91   ↑ Postleitzahl, Ort            ← 
+anlNGre.wegArt                 S2 Z32   ↑                              ← 
+anlNGre.wegOrt                 S2 Z32   ↑ PLZ, Ort und Straße          ← = erste Tätigkeitsstätte = Sammelpunkt / weit- räumiges Tätigkeitsgebiet
+anlNGre.wegTageJeWoche         S2 Z33   ↑ Tätigkeitsgebiet             ← Arbeitstage je Woche
+anlNGre.wegFreieTage           S2 Z33   ↑                              ← Urlaubs-, Krankheits-, Arbeitstage Heimarbeits- und je Woche Dienstreisetage
+anlNGre.kz110Tage              S2 Z34   ↑ 1 = Ja                       ← je Woche Dienstreisetage mindestens 50 und Merkzeichen „G“ 110 aufgesucht an Tagen
+anlNGre.kz111                  S2 Z35   ↑ 1 = Ja                       ← aufgesucht an Tagen 111 einfache Entfernung in Kilometern (auf volle Kilometer abgerundet)
+anlNGre.kz112                  S2 Z36   ↑                              ← einfache Entfernung in Kilometern (auf volle Kilometer abgerundet) 112 davon mit eigenem …
+anlNGre.z95Arbeitgeber         S5 Z95   ↑ Versicherungsprämien?        ← Wer bezahlt die Arbeitgeber (in %)
+anlNGre.z95Arbeitnehmer        S5 Z95   ↑ der Versicherung             ← Wer bezahlt die Versicherungsprämien? Arbeitgeber (in %) Arbeitnehmer (in %)
+anlNGre.z96Arbeitgeber         S5 Z96   ↑ in                           ← Wie hoch sind die Anteil des Arbeitgebers in CHF
+anlNGre.z96Arbeitnehmer        S5 Z96   ↑                              ← Wie hoch sind die Versicherungsprämien in die Krankentaggeldversicherung? ,– Anteil des A…
+anlNGre.z97Arbeitgeber         S5 Z97   ↑ Versicherungsprämien?        ← Wer bezahlt die Arbeitgeber (in %)
+anlNGre.z97Arbeitnehmer        S5 Z97   ↑                              ← Wer bezahlt die Versicherungsprämien? Arbeitgeber (in %) Arbeitnehmer (in %)
+anlNGre.z98Arbeitgeber         S5 Z98   ↑ in                           ← Wie hoch sind die Anteil des Arbeitgebers in CHF
+anlNGre.z98Arbeitnehmer        S5 Z98   ↑                              ← Wie hoch sind die Versicherungsprämien in die Nichtberufsunfallversicherung? ,– Anteil de…
 anlV.name                      S1 Z1    ↑ Name                         ← 
 anlV.vorname                   S1 Z2    ↑ Vorname                      ← 
 anlV.steuernummer              S1 Z3    ↑                              ← Steuernummer
@@ -147,6 +166,8 @@ anlKind.nachname               S1 Z5    ↑ ggf. abweichender Familienn… ← V
 anlKind.geburtsdatum           S1 Z6    ↑ Geburtsdatum                 ← 16
 anlKind.kindergeld             S1 Z6    ↑ EUR                          ← Geburtsdatum Anspruch auf Kindergeld oder ver- 16 15 gleichbare Leistungen für 2025
 anlKind.familienkasse          S1 Z7    ↑ Für die Kindergeldfestsetzu… ← 
+anlKind.kz66                   S2 Z27   ↑ EUR                          ← 66 Beiträge zu Krankenversicherungen des Kindes (nur Basisabsicherung, keine Wahlleistung…
+anlKind.kz67                   S2 Z28   ↑ EUR                          ← Beiträge zu Krankenversicherungen des Kindes (nur Basisabsicherung, keine Wahlleistungen)…
 anlKind.inlandVon              S1 Z8    ↑ vom                          ← 00
 anlKind.inlandBis              S1 Z8    ↑ bis                          ← vom 00
 anlKind.kz02                   S1 Z10   ↑                              ← Kindschaftsverhältnis zur steuerpflichtigen Person / 02 Ehemann / Person A
@@ -178,3 +199,14 @@ anlAv.mittelbar                S1 Z14   ↑                              ← Ren
 anlVor.name                    S1 Z1    ↑ Name                         ← 
 anlVor.vorname                 S1 Z2    ↑ Vorname                      ← 
 anlVor.steuernummer            S1 Z3    ↑                              ← Steuernummer
+anlVor.kz326                   S1 Z16   ↑ EUR                          ← – ohne Beiträge, die in Zeile 11 geltend gemacht werden – (z. B. bei Rentnern, bei freiwi…
+anlVor.kz328                   S1 Z17   ↑ EUR                          ← lern) In Zeile 16 enthaltene Beiträge zur Krankenversicherung, aus 328 denen sich ein Ans…
+anlVor.kz329                   S1 Z18   ↑                              ← – ohne Beiträge, die in Zeile 13 geltend gemacht werden – (z. B. bei Rentnern, bei freiwi…
+anlVor.kz338                   S1 Z22   ↑ EUR                          ← Über die Basisabsicherung hinausgehende Beiträge zu Krankenver- sicherungen (z. B. für Wa…
+anlVor.kz350                   S2 Z23   ↑ EUR                          ← Beiträge zu privaten Krankenversicherungen (nur Basisabsicherung, 350 keine Wahlleistunge…
+anlVor.kz351                   S2 Z24   ↑ EUR                          ← 350 keine Wahlleistungen) 351 Beiträge zu Pflege-Pflichtversicherungen
+anlVor.kz354                   S2 Z27   ↑                              ← sicherungen (z. B. für Wahlleistungen, Zusatzversicherungen) und / oder zu zusätzlichen P…
+anlVor.kz333                   S2 Z28   ↑ EUR                          ← Beiträge (abzüglich steuerfreier Zuschüsse ) – ohne Beträge laut Zeile 34 – zur Krankenve…
+anlVor.kz334                   S2 Z29   ↑ EUR                          ← rung vergleichbar ist (nur Basisabsicherung, keine Wahlleistungen) In Zeile 28 enthaltene…
+anlVor.kz335                   S2 Z30   ↑                              ← Beiträge (abzüglich steuerfreier Zuschüsse ) – ohne Beträge laut Zeile 36 – zur sozialen …
+anlVor.kz339                   S2 Z33   ↑                              ← Über die Basisabsicherung hinausgehende Beiträge zu Krankenversi- cherungen und zusätzlic…

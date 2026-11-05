@@ -49,9 +49,10 @@ interface QuestionScreenProps {
   readonly onBack: () => void
   readonly bp: Breakpoint
   readonly notice: PostErrorKind | null
+  readonly taxYear: number
 }
 
-export function QuestionScreen({ questionId, canGoBack, onAnswer, onBack, bp, notice }: QuestionScreenProps) {
+export function QuestionScreen({ questionId, canGoBack, onAnswer, onBack, bp, notice, taxYear }: QuestionScreenProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeInterviewStyles(t)
@@ -77,7 +78,7 @@ export function QuestionScreen({ questionId, canGoBack, onAnswer, onBack, bp, no
       <Text style={styles.heading}>
         {tr(`${copy.titleKey}.titleBefore`)}
         <Text style={styles.mark}>{tr(`${copy.titleKey}.titleMark`)}</Text>
-        {tr(`${copy.titleKey}.titleAfter`)}
+        {tr(`${copy.titleKey}.titleAfter`, { taxYear })}
       </Text>
       <Text style={styles.help}>{tr(copy.helpKey)}</Text>
 

@@ -174,6 +174,7 @@ function TageInput({ onAnswer }: { readonly onAnswer: (id: EntryQuestionId, valu
           value={text}
           onChange={setText}
           placeholder={tr('grenzgaenger.interview.tage.placeholder')}
+          accessibilityLabel={tr('grenzgaenger.interview.tage.label')}
           onSubmit={() => {
             if (valid) onAnswer('ch-nichtrueckkehrtage', text)
           }}
@@ -232,10 +233,10 @@ function LohnausweisStep({
       <Text style={styles.sectionTitle}>{tr('grenzgaenger.lohnausweis.wechselkurs.title')}</Text>
       <Text style={styles.help}>{tr('grenzgaenger.lohnausweis.wechselkurs.help')}</Text>
       <Feld label={tr('grenzgaenger.lohnausweis.wechselkurs.monat')}>
-        <Input type="text" value={monat} onChange={setMonat} placeholder={`${taxYear}-12`} testID="ch-wechselkurs-monat" />
+        <Input type="text" value={monat} onChange={setMonat} placeholder={`${taxYear}-12`} accessibilityLabel={tr('grenzgaenger.lohnausweis.wechselkurs.monat')} testID="ch-wechselkurs-monat" />
       </Feld>
       <Feld label={tr('grenzgaenger.lohnausweis.wechselkurs.kurs')}>
-        <Input type="numeric" value={kurs} onChange={setKurs} placeholder="1,07" testID="ch-wechselkurs-kurs" />
+        <Input type="numeric" value={kurs} onChange={setKurs} placeholder="1,07" accessibilityLabel={tr('grenzgaenger.lohnausweis.wechselkurs.kurs')} testID="ch-wechselkurs-kurs" />
       </Feld>
       {kursFehler ? <Text style={styles.help}>{tr('grenzgaenger.lohnausweis.wechselkurs.fehlt')}</Text> : null}
       <Button
@@ -290,6 +291,11 @@ function LohnausweisStep({
 
 const N_GRE_TEXTFELDER = ['arbeitgeberName', 'arbeitgeberStrasse', 'arbeitgeberPlzOrt'] as const
 const N_GRE_BETRAGSFELDER = ['familienzulagenChf', 'krankentaggeldChf', 'pkArbeitnehmerChf', 'pkArbeitgeberChf'] as const
+/** Who pays the premium (N-Gre Zeilen 18/19, 95–98); the CHF field only matters when the employer pays it all. */
+const PRAEMIEN = [
+  { prozent: 'krankentaggeldArbeitgeberProzent', chf: 'krankentaggeldArbeitgeberChf' },
+  { prozent: 'nbuvArbeitgeberProzent', chf: 'nbuvArbeitgeberChf' },
+] as const
 
 function NGreAbschnitt({ nGre, onSet }: { readonly nGre: NGreAngabenDto; readonly onSet: (data: PutNGreDto) => void }) {
   const t = useTheme()
@@ -320,6 +326,32 @@ function NGreAbschnitt({ nGre, onSet }: { readonly nGre: NGreAngabenDto; readonl
             else if (/^(0|[1-9]\d*)$/.test(text)) onSet({ [feld]: Number(text) })
           }}
         />
+      ))}
+      {PRAEMIEN.map(({ prozent, chf }) => (
+        <View key={prozent}>
+          <NGreEingabe
+            label={tr(`grenzgaenger.nGre.felder.${prozent}`)}
+            initial={nGre[prozent] === null ? '' : String(nGre[prozent])}
+            numeric
+            testID={`ch-ngre-${prozent}`}
+            onCommit={(text) => {
+              if (text === '') onSet({ [prozent]: null })
+              else if (/^(0|[1-9]\d?|100)$/.test(text)) onSet({ [prozent]: Number(text) })
+            }}
+          />
+          {nGre[prozent] === 100 ? (
+            <NGreEingabe
+              label={tr(`grenzgaenger.nGre.felder.${chf}`)}
+              initial={nGre[chf] === null ? '' : String(nGre[chf])}
+              numeric
+              testID={`ch-ngre-${chf}`}
+              onCommit={(text) => {
+                if (text === '') onSet({ [chf]: null })
+                else if (/^(0|[1-9]\d*)$/.test(text)) onSet({ [chf]: Number(text) })
+              }}
+            />
+          ) : null}
+        </View>
       ))}
       <Feld label={tr('grenzgaenger.nGre.sonderfaelle')}>
         <View style={{ flexDirection: 'row', gap: t.space.s2 }}>
@@ -422,10 +454,12 @@ function ChFeldInput({
     const wert = ganzzahlAus(getrimmt)
     if (wert !== null) onCommit({ kind: 'erfasst', wert })
   }
+  const label = `${tr('grenzgaenger.lohnausweis.ziffer', { n: ziffer })} · ${tr(`grenzgaenger.lohnausweis.felder.${feldId}`)}`
   return (
-    <Feld label={`${tr('grenzgaenger.lohnausweis.ziffer', { n: ziffer })} · ${tr(`grenzgaenger.lohnausweis.felder.${feldId}`)}`}>
+    <Feld label={label}>
       <Input
         type="numeric"
+        accessibilityLabel={label}
         value={text}
         onChange={setText}
         placeholder="0"

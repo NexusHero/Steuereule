@@ -99,9 +99,13 @@ export function CockpitScreen({
   const pfad = interview?.nextStep.kind === 'done' ? pfadAusAntworten(interview.answers) : null
   const fehlendeAngaben = stammdatenQuery.data?.status === 200 ? stammdatenQuery.data.data.fehlend.length : 0
   const stammdaten: Weiter | null =
-    fehlendeAngaben > 0 && onOpenStammdaten
-      ? { label: tr('cockpit.stammdatenErgaenzen', { anzahl: fehlendeAngaben }), onPress: onOpenStammdaten }
-      : null
+    // Stays reachable once complete: it is also the way back to the Veranlagungsart and the partner.
+    onOpenStammdaten === undefined
+      ? null
+      : {
+          label: fehlendeAngaben > 0 ? tr('cockpit.stammdatenErgaenzen', { anzahl: fehlendeAngaben }) : tr('cockpit.stammdatenAnsehen'),
+          onPress: onOpenStammdaten,
+        }
   const weiter: Weiter | null =
     pfad !== null && onContinuePath
       ? { label: tr('cockpit.weiterMitDeinemWeg', { pfad: tr(`funnel.kontoWand.pfad.${pfad}`) }), onPress: () => onContinuePath(pfad) }
@@ -177,6 +181,8 @@ function erstattungsText(schaetzung: SteuerschaetzungDto | null, tr: TFunction<t
   if (schaetzung.kind === 'nicht-moeglich') return tr(`cockpit.erstattung.grund.${schaetzung.grund ?? 'unbekannt'}`)
   const { von, bis } = schaetzung.ergebnis ?? { von: 0, bis: 0 }
   const betrag = (wert: number) => Math.abs(wert).toLocaleString(sprache === 'en' ? 'en-GB' : 'de-DE')
+  // A range without width ("31.192 – 31.192 €") reads like a typo; it is one figure.
+  if (von === bis) return tr(von >= 0 ? 'cockpit.erstattung.erstattungRund' : 'cockpit.erstattung.nachzahlungRund', { betrag: betrag(von) })
   if (von >= 0) return tr('cockpit.erstattung.erstattung', { von: betrag(von), bis: betrag(bis) })
   if (bis <= 0) return tr('cockpit.erstattung.nachzahlung', { von: betrag(bis), bis: betrag(von) })
   return tr('cockpit.erstattung.offenesErgebnis', { nachzahlung: betrag(von), erstattung: betrag(bis) })
@@ -432,7 +438,7 @@ function NumericHero({ stand }: { readonly stand: CockpitStandDto }) {
   return (
     <>
       <Text style={styles.heroValue}>
-        {stand.kind === 'bestimmt' ? formatEuro(stand.wert ?? 0) : formatEuroRange(stand.von ?? 0, stand.bis ?? 0)}
+        {heroDisplay(stand, tr('cockpit.hero.nochOffen'))}
       </Text>
       {stand.kind === 'spanne' && (stand.offenePosten ?? 0) > 0 ? (
         <Text style={styles.offenePosten}>{tr('cockpit.hero.offenePosten', { count: stand.offenePosten ?? 0 })}</Text>
@@ -440,6 +446,16 @@ function NumericHero({ stand }: { readonly stand: CockpitStandDto }) {
       <HerkunftsChip quelle={quelle} />
     </>
   )
+}
+
+/**
+ * A range that starts at 0 € only says "nothing reliable is entered yet" — "0–120 €" would read as a
+ * real figure, so the hero says the income is still open instead.
+ */
+function heroDisplay(stand: CockpitStandDto, stillOpen: string): string {
+  if (stand.kind === 'bestimmt') return formatEuro(stand.wert ?? 0)
+  if ((stand.von ?? 0) === 0) return stillOpen
+  return formatEuroRange(stand.von ?? 0, stand.bis ?? 0)
 }
 
 function GatedHero({ stand }: { readonly stand: CockpitStandDto }) {

@@ -138,6 +138,7 @@ export function InterviewScreen({ onDone, taxYear = CURRENT_TAX_YEAR }: Intervie
       onBack={back}
       bp={bp}
       notice={postError}
+      taxYear={taxYear}
     />
   )
 }

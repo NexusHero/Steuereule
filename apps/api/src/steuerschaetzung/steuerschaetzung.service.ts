@@ -79,6 +79,10 @@ export class SteuerschaetzungService {
         krankentaggeldChf: Number(nGre.krankentaggeldChf ?? 0),
         pkArbeitnehmerChf: Number(nGre.pkArbeitnehmerChf ?? 0),
         pkArbeitgeberChf: Number(nGre.pkArbeitgeberChf ?? 0),
+        krankentaggeldArbeitgeberProzent: optionaleZahl(nGre.krankentaggeldArbeitgeberProzent),
+        krankentaggeldArbeitgeberChf: optionaleZahl(nGre.krankentaggeldArbeitgeberChf),
+        nbuvArbeitgeberProzent: optionaleZahl(nGre.nbuvArbeitgeberProzent),
+        nbuvArbeitgeberChf: optionaleZahl(nGre.nbuvArbeitgeberChf),
         kurs: wechselkurs.kurs,
       }).eur
       const krankenkasseChf = chRecord?.krankenkasseChf === null || chRecord?.krankenkasseChf === undefined ? 0 : Number(chRecord.krankenkasseChf)
@@ -114,6 +118,11 @@ export class SteuerschaetzungService {
       kirchensteuerOffen,
     )
   }
+}
+
+/** A stored optional number; absent and null both mean "not entered". */
+function optionaleZahl(wert: string | null | undefined): number | undefined {
+  return wert === null || wert === undefined ? undefined : Number(wert)
 }
 
 function besondereLebenslage(answers: Answers): boolean {

@@ -4246,6 +4246,22 @@
             "type": "number",
             "nullable": true
           },
+          "krankentaggeldArbeitgeberProzent": {
+            "type": "number",
+            "nullable": true
+          },
+          "krankentaggeldArbeitgeberChf": {
+            "type": "number",
+            "nullable": true
+          },
+          "nbuvArbeitgeberProzent": {
+            "type": "number",
+            "nullable": true
+          },
+          "nbuvArbeitgeberChf": {
+            "type": "number",
+            "nullable": true
+          },
           "sonderfaelle": {
             "type": "boolean",
             "nullable": true
@@ -4259,6 +4275,10 @@
           "krankentaggeldChf",
           "pkArbeitnehmerChf",
           "pkArbeitgeberChf",
+          "krankentaggeldArbeitgeberProzent",
+          "krankentaggeldArbeitgeberChf",
+          "nbuvArbeitgeberProzent",
+          "nbuvArbeitgeberChf",
           "sonderfaelle"
         ]
       },
@@ -4417,10 +4437,30 @@
             "nullable": true,
             "description": "Whole CHF — Säule 2a Obligatorium, employer (Zeile 87)."
           },
+          "krankentaggeldArbeitgeberProzent": {
+            "type": "number",
+            "nullable": true,
+            "description": "Employer share of the Krankentaggeld premium in percent, 0–100 (Zeilen 18, 95, 96)."
+          },
+          "krankentaggeldArbeitgeberChf": {
+            "type": "number",
+            "nullable": true,
+            "description": "Whole CHF — employer Krankentaggeld contribution; only needed when the employer pays 100 %."
+          },
+          "nbuvArbeitgeberProzent": {
+            "type": "number",
+            "nullable": true,
+            "description": "Employer share of the NBUV premium in percent, 0–100 (Zeilen 19, 97, 98)."
+          },
+          "nbuvArbeitgeberChf": {
+            "type": "number",
+            "nullable": true,
+            "description": "Whole CHF — employer NBUV contribution; only needed when the employer pays 100 %."
+          },
           "sonderfaelle": {
             "type": "boolean",
             "nullable": true,
-            "description": "Any of N-Gre Zeilen 7, 9–14 or 16–22 applies."
+            "description": "Any of N-Gre Zeilen 7, 9–14, 16, 17 or 20–22 applies."
           }
         }
       },
@@ -6195,6 +6235,14 @@
           "kindergeldAnMichGanzjaehrig": {
             "type": "boolean",
             "nullable": true
+          },
+          "kvBasisEur": {
+            "type": "string",
+            "nullable": true
+          },
+          "pvEur": {
+            "type": "string",
+            "nullable": true
           }
         },
         "required": [
@@ -6214,7 +6262,9 @@
           "andererElternteilArt",
           "andererElternteilVerstorbenAm",
           "gemeldetBeiMirGanzjaehrig",
-          "kindergeldAnMichGanzjaehrig"
+          "kindergeldAnMichGanzjaehrig",
+          "kvBasisEur",
+          "pvEur"
         ]
       },
       "KinderResponseDto": {
@@ -6328,6 +6378,18 @@
             "nullable": true,
             "description": "Zeile 46: the Kindergeld was paid to the filer all year."
           },
+          "kvBasisEur": {
+            "type": "string",
+            "nullable": true,
+            "example": "1080",
+            "description": "Zeile 27 (Kz 66): KV Basisabsicherung of the child paid by the parents, whole euros."
+          },
+          "pvEur": {
+            "type": "string",
+            "nullable": true,
+            "example": "0",
+            "description": "Zeile 28 (Kz 67): PV of the child paid by the parents, whole euros."
+          },
           "vorname": {
             "type": "string",
             "example": "Lina"
@@ -6437,6 +6499,18 @@
             "type": "boolean",
             "nullable": true,
             "description": "Zeile 46: the Kindergeld was paid to the filer all year."
+          },
+          "kvBasisEur": {
+            "type": "string",
+            "nullable": true,
+            "example": "1080",
+            "description": "Zeile 27 (Kz 66): KV Basisabsicherung of the child paid by the parents, whole euros."
+          },
+          "pvEur": {
+            "type": "string",
+            "nullable": true,
+            "example": "0",
+            "description": "Zeile 28 (Kz 67): PV of the child paid by the parents, whole euros."
           },
           "vorname": {
             "type": "string",
