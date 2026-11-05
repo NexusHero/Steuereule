@@ -1,26 +1,35 @@
 import type { Answers } from './interview'
 
-export type KrankenversicherungArt = 'gesetzlich' | 'privat' | 'ausland'
+export type HealthInsuranceKind = 'gesetzlich' | 'privat' | 'ausland'
+export type KrankenversicherungArt = HealthInsuranceKind
 
 /** Self-paid health and care insurance of one person, as the Anlage Vorsorgeaufwand asks for it. */
+export interface HealthInsurance {
+  readonly kind: HealthInsuranceKind
+  /** KV Basisabsicherung, without care insurance and extras. */
+  readonly basicHealthAmount: number
+  /** Whether the KV contributions carry a Krankengeld claim (only asked for statutory and foreign insurance). */
+  readonly withSickPay: boolean
+  readonly careInsuranceAmount: number
+  /** Beyond the Basisabsicherung (Wahlleistungen, Zusatzversicherungen). */
+  readonly optionalExtrasAmount: number
+}
+
 export interface Krankenversicherung {
   readonly art: KrankenversicherungArt
-  /** KV Basisabsicherung, without care insurance and extras. */
   readonly kvBasis: number
-  /** Whether the KV contributions carry a Krankengeld claim (only asked for statutory and foreign insurance). */
   readonly mitKrankengeld: boolean
   readonly pv: number
-  /** Beyond the Basisabsicherung (Wahlleistungen, Zusatzversicherungen). */
   readonly wahlleistungen: number
 }
 
-const ART: Readonly<Record<string, KrankenversicherungArt>> = {
+const ART_MAP: Readonly<Record<string, KrankenversicherungArt>> = {
   'Gesetzlich (freiwillig)': 'gesetzlich',
   Privat: 'privat',
   Ausländisch: 'ausland',
 }
 
-function betrag(value: string | undefined): number {
+function parseAmount(value: string | undefined): number {
   const n = Number(value ?? 0)
   return Number.isFinite(n) ? n : 0
 }
@@ -28,16 +37,33 @@ function betrag(value: string | undefined): number {
 export function krankenversicherungAusAntworten(answers: Answers): Krankenversicherung | null {
   if (answers['kv-pv'] !== 'Ja') return null
   return {
-    art: ART[answers['kv-pv-art'] ?? ''] ?? 'gesetzlich',
-    kvBasis: betrag(answers['kv-pv-betrag']),
+    art: ART_MAP[answers['kv-pv-art'] ?? ''] ?? 'gesetzlich',
+    kvBasis: parseAmount(answers['kv-pv-betrag']),
     mitKrankengeld: answers['kv-krankengeld'] === 'Ja',
-    pv: betrag(answers['pv-betrag']),
-    wahlleistungen: betrag(answers['kv-wahl-betrag']),
+    pv: parseAmount(answers['pv-betrag']),
+    wahlleistungen: parseAmount(answers['kv-wahl-betrag']),
+  }
+}
+
+export function healthInsuranceFromAnswers(answers: Answers): HealthInsurance | null {
+  const kv = krankenversicherungAusAntworten(answers)
+  if (kv === null) return null
+  return {
+    kind: kv.art,
+    basicHealthAmount: kv.kvBasis,
+    withSickPay: kv.mitKrankengeld,
+    careInsuranceAmount: kv.pv,
+    optionalExtrasAmount: kv.wahlleistungen,
   }
 }
 
 /** § 10 Abs. 1 Nr. 3 EStG: KV with a Krankengeld claim counts 4 % less; PV fully; extras only within § 10 Abs. 4 — not counted here. */
-export function abziehbareBasisvorsorge(kv: Krankenversicherung | null): number {
+export function abziehbareBasisvorsorge(kv: Krankenversicherung | HealthInsurance | null): number {
   if (kv === null) return 0
-  return Math.round(kv.mitKrankengeld ? kv.kvBasis * 0.96 : kv.kvBasis) + kv.pv
+  const hasSickPay = 'withSickPay' in kv ? kv.withSickPay : kv.mitKrankengeld
+  const basicAmount = 'basicHealthAmount' in kv ? kv.basicHealthAmount : kv.kvBasis
+  const careAmount = 'careInsuranceAmount' in kv ? kv.careInsuranceAmount : kv.pv
+  return Math.round(hasSickPay ? basicAmount * 0.96 : basicAmount) + careAmount
 }
+
+export const deductibleBasicProvision = abziehbareBasisvorsorge

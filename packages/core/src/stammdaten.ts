@@ -1,4 +1,4 @@
-export const RELIGIONSSCHLUESSEL = [
+export const RELIGION_KEYS = [
   'VD',
   'EV',
   'RK',
@@ -16,42 +16,54 @@ export const RELIGIONSSCHLUESSEL = [
   'JH',
 ] as const
 
-export type Religionsschluessel = (typeof RELIGIONSSCHLUESSEL)[number]
+export type ReligionKey = (typeof RELIGION_KEYS)[number]
+export type Religionsschluessel = ReligionKey
+export const RELIGIONSSCHLUESSEL = RELIGION_KEYS
 
-export const FAMILIENSTAENDE = ['ledig', 'verheiratet', 'verwitwet', 'geschieden', 'dauernd-getrennt'] as const
+export const MARITAL_STATUSES = ['ledig', 'verheiratet', 'verwitwet', 'geschieden', 'dauernd-getrennt'] as const
+export type MaritalStatus = (typeof MARITAL_STATUSES)[number]
+export type Familienstand = MaritalStatus
+export const FAMILIENSTAENDE = MARITAL_STATUSES
 
-export type Familienstand = (typeof FAMILIENSTAENDE)[number]
-
-export function normalisiereIban(value: string): string {
+export function normalizeIban(value: string): string {
   return value.replace(/\s+/g, '').toUpperCase()
 }
 
-export function istGueltigeIban(value: string): boolean {
-  const iban = normalisiereIban(value)
+export function isValidIban(value: string): boolean {
+  const iban = normalizeIban(value)
   if (!/^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$/.test(iban)) return false
   if (iban.startsWith('DE') && iban.length !== 22) return false
-  const umgestellt = iban.slice(4) + iban.slice(0, 4)
-  let rest = 0
-  for (const zeichen of umgestellt) {
-    const ziffern = /\d/.test(zeichen) ? zeichen : String(zeichen.charCodeAt(0) - 55)
-    for (const ziffer of ziffern) rest = (rest * 10 + Number(ziffer)) % 97
+  const transposed = iban.slice(4) + iban.slice(0, 4)
+  let remainder = 0
+  for (const char of transposed) {
+    const digits = /\d/.test(char) ? char : String(char.charCodeAt(0) - 55)
+    for (const digit of digits) remainder = (remainder * 10 + Number(digit)) % 97
   }
-  return rest === 1
+  return remainder === 1
 }
 
-export function istGueltigePlz(value: string): boolean {
+export function isValidPostalCode(value: string): boolean {
   return /^\d{5}$/.test(value)
 }
 
-export function istGueltigesDatum(value: string): boolean {
+export function isValidDate(value: string): boolean {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
   if (!match) return false
-  const [jahr, monat, tag] = [Number(match[1]), Number(match[2]), Number(match[3])]
-  const datum = new Date(Date.UTC(jahr, monat - 1, tag))
-  return datum.getUTCFullYear() === jahr && datum.getUTCMonth() === monat - 1 && datum.getUTCDate() === tag
+  const [year, month, day] = [Number(match[1]), Number(match[2]), Number(match[3])]
+  const date = new Date(Date.UTC(year, month - 1, day))
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
 }
 
-export function deutschesDatum(iso: string): string {
-  const [jahr, monat, tag] = iso.split('-')
-  return `${tag}.${monat}.${jahr}`
+export function formatGermanDate(iso: string): string {
+  const [year, month, day] = iso.split('-')
+  return `${day}.${month}.${year}`
+}
+
+// Backward-compatibility aliases
+export {
+  normalizeIban as normalisiereIban,
+  isValidIban as istGueltigeIban,
+  isValidPostalCode as istGueltigePlz,
+  isValidDate as istGueltigesDatum,
+  formatGermanDate as deutschesDatum,
 }

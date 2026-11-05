@@ -1,48 +1,71 @@
-export const WARN_SCHWELLE_TAGE = 60
+export const DEADLINE_WARNING_THRESHOLD_DAYS = 60
+export const WARN_SCHWELLE_TAGE = DEADLINE_WARNING_THRESHOLD_DAYS
 
-export const VERSPAETUNGSZUSCHLAG_MINDESTSATZ_EUR = 25
+export const LATE_FILING_FEE_MINIMUM_EUR = 25
+export const VERSPAETUNGSZUSCHLAG_MINDESTSATZ_EUR = LATE_FILING_FEE_MINIMUM_EUR
 
-export const VERSPAETUNGSZUSCHLAG_PROZENT_PRO_MONAT = 0.25
+export const LATE_FILING_FEE_PERCENT_PER_MONTH = 0.25
+export const VERSPAETUNGSZUSCHLAG_PROZENT_PRO_MONAT = LATE_FILING_FEE_PERCENT_PER_MONTH
 
-const ABGABEFRISTEN: Readonly<Record<number, string>> = {
+const FILING_DEADLINES: Readonly<Record<number, string>> = {
   2024: '2025-07-31',
   2025: '2026-07-31',
   2026: '2027-07-31',
 }
 
-export type FristenJahr = 2024 | 2025 | 2026
+export type DeadlineYear = 2024 | 2025 | 2026
+export type FristenJahr = DeadlineYear
 
-export function istUnterstuetztesFristenJahr(jahr: number): jahr is FristenJahr {
-  return Number.isInteger(jahr) && Object.prototype.hasOwnProperty.call(ABGABEFRISTEN, jahr)
+export function isSupportedDeadlineYear(year: number): year is DeadlineYear {
+  return Number.isInteger(year) && Object.prototype.hasOwnProperty.call(FILING_DEADLINES, year)
 }
 
-export function abgabefristFuer(steuerjahr: number): string {
-  if (!istUnterstuetztesFristenJahr(steuerjahr)) {
-    throw new RangeError(`Unsupported tax year for the Abgabefrist (§ 149 Abs. 2 AO): ${steuerjahr}`)
+export function filingDeadlineFor(taxYear: number): string {
+  if (!isSupportedDeadlineYear(taxYear)) {
+    throw new RangeError(`Unsupported tax year for the filing deadline (§ 149 Abs. 2 AO): ${taxYear}`)
   }
-  return ABGABEFRISTEN[steuerjahr]!
+  return FILING_DEADLINES[taxYear]!
 }
 
 const ISO_DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/
 
-function tageSeit(iso: string): number {
+function daysSince(iso: string): number {
   const m = ISO_DATE_RE.exec(iso)
   if (m === null) throw new RangeError(`"${iso}" is not an ISO yyyy-mm-dd date`)
   return Date.UTC(Number(m[1]!), Number(m[2]!) - 1, Number(m[3]!)) / 86_400_000
 }
 
+export type DeadlineLevel = 'none' | 'warning' | 'expired'
 export type FristenStufe = 'keine' | 'warnung' | 'abgelaufen'
 
-/** Der ehrliche Fristen-Fakt für ein Steuerjahr an einem Stichtag — der Banner-Input, nie ein Status. */
+export interface DeadlineWarning {
+  readonly level: DeadlineLevel
+  readonly filingDeadline: string
+  readonly remainingDays: number
+}
+
 export interface FristenWarnung {
   readonly stufe: FristenStufe
   readonly abgabefrist: string
   readonly verbleibendeTage: number
 }
 
+export function deadlineWarning(taxYear: number, today: string): DeadlineWarning {
+  const filingDeadline = filingDeadlineFor(taxYear)
+  const remainingDays = daysSince(filingDeadline) - daysSince(today)
+  const level: DeadlineLevel = remainingDays < 0 ? 'expired' : remainingDays <= DEADLINE_WARNING_THRESHOLD_DAYS ? 'warning' : 'none'
+  return { level, filingDeadline, remainingDays }
+}
+
 export function fristenWarnung(steuerjahr: number, heute: string): FristenWarnung {
-  const abgabefrist = abgabefristFuer(steuerjahr)
-  const verbleibendeTage = tageSeit(abgabefrist) - tageSeit(heute)
-  const stufe: FristenStufe = verbleibendeTage < 0 ? 'abgelaufen' : verbleibendeTage <= WARN_SCHWELLE_TAGE ? 'warnung' : 'keine'
+  const abgabefrist = filingDeadlineFor(steuerjahr)
+  const verbleibendeTage = daysSince(abgabefrist) - daysSince(heute)
+  const stufe: FristenStufe = verbleibendeTage < 0 ? 'abgelaufen' : verbleibendeTage <= DEADLINE_WARNING_THRESHOLD_DAYS ? 'warnung' : 'keine'
   return { stufe, abgabefrist, verbleibendeTage }
+}
+
+// Backward-compatibility aliases
+export {
+  isSupportedDeadlineYear as istUnterstuetztesFristenJahr,
+  filingDeadlineFor as abgabefristFuer,
 }

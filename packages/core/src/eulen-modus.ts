@@ -1,57 +1,67 @@
 import { createHash } from 'node:crypto'
 import type { HOMEOFFICE_VALUES } from './interview'
 
-export type EulenTriggerArt = 'musterluecke' | 'vorjahresvergleich' | 'rechtsaenderung' | 'lebenslage_hinweis'
+export type OwlTriggerKind = 'musterluecke' | 'vorjahresvergleich' | 'rechtsaenderung' | 'lebenslage_hinweis'
+export type EulenTriggerArt = OwlTriggerKind
 
-export type EulenKartenKategorie = 'cockpit_proaktiv' | 'abruf_frage' | 'archiv_einspruch'
+export type OwlCardCategory = 'cockpit_proaktiv' | 'abruf_frage' | 'archiv_einspruch'
+export type EulenKartenKategorie = OwlCardCategory
 
-export type EulenQuelleId = 'estg-4-5-6c' | 'estg-9-1-4a' | 'estg-10b' | 'estg-10-1-5' | 'ao-355'
+export type OwlSourceId = 'estg-4-5-6c' | 'estg-9-1-4a' | 'estg-10b' | 'estg-10-1-5' | 'ao-355'
+export type EulenQuelleId = OwlSourceId
 
-export interface EulenEmpfehlungWeg {
+export interface OwlRecommendationPath {
   readonly name: string
   readonly betragEur: number
   readonly beschreibung: string
   readonly risiko: 'sicher' | 'risiko'
 }
 
-export interface EulenKarte {
+export type EulenEmpfehlungWeg = OwlRecommendationPath
+
+export interface OwlCard {
   readonly id: string
   readonly fingerprint: string
-  readonly trigger: EulenTriggerArt
-  readonly kategorie: EulenKartenKategorie
+  readonly trigger: OwlTriggerKind
+  readonly kategorie: OwlCardCategory
   readonly titel: string
   readonly botschaft: string
   readonly begruendung: string
   readonly betragEur: number | null
   readonly rechtsstandDatum: string
-  readonly quelleId: EulenQuelleId
+  readonly quelleId: OwlSourceId
   readonly quelleUebersetzt: string
   readonly quelleUrl?: string | undefined
-  readonly wege?: readonly [EulenEmpfehlungWeg, EulenEmpfehlungWeg] | undefined
+  readonly wege?: readonly [OwlRecommendationPath, OwlRecommendationPath] | undefined
   readonly einspruchFristBis?: string | undefined
 }
 
+export type EulenKarte = OwlCard
 export type EulenKartenAnzeige = Omit<EulenKarte, 'quelleId'>
 
-export interface EulenArchivJahr {
+export interface OwlArchiveYear {
   readonly steuerjahr: number
   readonly bescheidDatum: string
   readonly einspruchMoeglichBis: string
   readonly homeofficeTage: number
 }
 
-export interface EulenEingabeFakten {
+export type EulenArchivJahr = OwlArchiveYear
+
+export interface OwlInputFacts {
   readonly steuerjahr: number
   readonly hatFortbildung?: boolean
   readonly homeofficeTage?: number | null
   readonly vorjahrFakten?: { readonly spendenEur?: number | null } | null
   readonly kinderLautInterview?: boolean
   readonly hatKinderErfasst?: boolean
-  readonly archivJahre?: readonly EulenArchivJahr[]
+  readonly archivJahre?: readonly OwlArchiveYear[]
   readonly verworfeneFingerprints?: readonly string[]
 }
 
-export function berechneEulenKartenFingerprint(trigger: EulenTriggerArt, keyContext: string): string {
+export type EulenEingabeFakten = OwlInputFacts
+
+export function calculateOwlCardFingerprint(trigger: OwlTriggerKind, keyContext: string): string {
   return createHash('sha256').update(`${trigger}::${keyContext}`).digest('hex').slice(0, 16)
 }
 
@@ -81,12 +91,12 @@ function homeofficePauschaleEur(tage: number): number {
   return Math.min(tage, HOMEOFFICE_HOECHSTTAGE) * HOMEOFFICE_TAGESPAUSCHALE_EUR
 }
 
-export function generiereEulenKarten(fakten: EulenEingabeFakten): readonly EulenKarte[] {
-  const karten: EulenKarte[] = []
+export function generateOwlCards(fakten: OwlInputFacts): readonly OwlCard[] {
+  const karten: OwlCard[] = []
   const verworfen = new Set(fakten.verworfeneFingerprints ?? [])
 
   if (fakten.hatFortbildung) {
-    const fp = berechneEulenKartenFingerprint('musterluecke', `fortbildung_ohne_fahrt_${fakten.steuerjahr}`)
+    const fp = calculateOwlCardFingerprint('musterluecke', `fortbildung_ohne_fahrt_${fakten.steuerjahr}`)
     if (!verworfen.has(fp)) {
       karten.push({
         id: `eule-ml-fortbildung-${fakten.steuerjahr}`,
@@ -109,7 +119,7 @@ export function generiereEulenKarten(fakten: EulenEingabeFakten): readonly Eulen
     fakten.vorjahrFakten?.spendenEur &&
     fakten.vorjahrFakten.spendenEur > 0
   ) {
-    const fp = berechneEulenKartenFingerprint('vorjahresvergleich', `spenden_vorjahr_${fakten.steuerjahr}`)
+    const fp = calculateOwlCardFingerprint('vorjahresvergleich', `spenden_vorjahr_${fakten.steuerjahr}`)
     if (!verworfen.has(fp)) {
       karten.push({
         id: `eule-vj-spenden-${fakten.steuerjahr}`,
@@ -131,7 +141,7 @@ export function generiereEulenKarten(fakten: EulenEingabeFakten): readonly Eulen
   if (fakten.homeofficeTage && fakten.homeofficeTage >= 10) {
     const betrag = homeofficePauschaleEur(fakten.homeofficeTage)
     if (betrag >= 50) {
-      const fp = berechneEulenKartenFingerprint('rechtsaenderung', `homeoffice_pauschale_${fakten.steuerjahr}_${betrag}`)
+      const fp = calculateOwlCardFingerprint('rechtsaenderung', `homeoffice_pauschale_${fakten.steuerjahr}_${betrag}`)
       if (!verworfen.has(fp)) {
         karten.push({
           id: `eule-ra-homeoffice-${fakten.steuerjahr}`,
@@ -166,7 +176,7 @@ export function generiereEulenKarten(fakten: EulenEingabeFakten): readonly Eulen
   }
 
   if (fakten.kinderLautInterview && !fakten.hatKinderErfasst) {
-    const fp = berechneEulenKartenFingerprint('lebenslage_hinweis', `kinder_nicht_erfasst_${fakten.steuerjahr}`)
+    const fp = calculateOwlCardFingerprint('lebenslage_hinweis', `kinder_nicht_erfasst_${fakten.steuerjahr}`)
     if (!verworfen.has(fp)) {
       karten.push({
         id: `eule-lh-kinder-${fakten.steuerjahr}`,
@@ -188,7 +198,7 @@ export function generiereEulenKarten(fakten: EulenEingabeFakten): readonly Eulen
   if (fakten.archivJahre && fakten.archivJahre.length > 0) {
     for (const archiv of fakten.archivJahre) {
       if (archiv.homeofficeTage > 0) {
-        const fp = berechneEulenKartenFingerprint('rechtsaenderung', `archiv_einspruch_${archiv.steuerjahr}`)
+        const fp = calculateOwlCardFingerprint('rechtsaenderung', `archiv_einspruch_${archiv.steuerjahr}`)
         if (!verworfen.has(fp)) {
           karten.push({
             id: `eule-archiv-${archiv.steuerjahr}`,
@@ -215,4 +225,10 @@ export function generiereEulenKarten(fakten: EulenEingabeFakten): readonly Eulen
     if (a.kategorie !== 'cockpit_proaktiv' && b.kategorie === 'cockpit_proaktiv') return 1
     return (b.betragEur ?? 0) - (a.betragEur ?? 0)
   })
+}
+
+// Backward-compatibility aliases
+export {
+  calculateOwlCardFingerprint as berechneEulenKartenFingerprint,
+  generateOwlCards as generiereEulenKarten,
 }

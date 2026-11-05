@@ -15,6 +15,8 @@ export type CockpitSpanne =
     }
   | { readonly kind: 'gated'; readonly summe: number; readonly gegated: readonly Einkunftsart[] }
 
+export type CockpitRange = CockpitSpanne
+
 /** The count-based inputs a caller holds before any Posten objects exist. */
 export interface CockpitSpanneEingaben {
   readonly summe: number
@@ -24,6 +26,8 @@ export interface CockpitSpanneEingaben {
   readonly unbestaetigte?: number
   readonly unbestaetigteSumme?: number
 }
+
+export type CockpitRangeInputs = CockpitSpanneEingaben
 
 function spanneAusZahlen(
   summe: number,
@@ -73,4 +77,11 @@ export function cockpitSpanneAusEingaben(eingaben: CockpitSpanneEingaben): Cockp
 
 export function spanneAusBerechnung(input: BerechnungsInput): CockpitSpanne {
   return cockpitSpanne(berechne(input))
+}
+
+// Backward-compatibility aliases
+export {
+  cockpitSpanne as calculateCockpitRange,
+  cockpitSpanneAusEingaben as cockpitRangeFromInputs,
+  spanneAusBerechnung as rangeFromCalculation,
 }

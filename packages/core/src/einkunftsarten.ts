@@ -8,6 +8,8 @@ export type Einkunftsart =
   | 'Rente'
   | 'Grenzgänger'
 
+export type IncomeType = Einkunftsart
+
 export const EINKUNFTSARTEN: readonly Einkunftsart[] = [
   'Nichtselbstständig',
   'Gewerbe',
@@ -17,11 +19,13 @@ export const EINKUNFTSARTEN: readonly Einkunftsart[] = [
   'Grenzgänger',
 ]
 
-export function isEinkunftsart(value: string): value is Einkunftsart {
+export const INCOME_TYPES = EINKUNFTSARTEN
+
+export function isIncomeType(value: string): value is IncomeType {
   return (EINKUNFTSARTEN as readonly string[]).includes(value)
 }
 
-export function einkunftsartenFromAnswers(answers: Answers): readonly Einkunftsart[] {
+export function incomeTypesFromAnswers(answers: Answers): readonly IncomeType[] {
   const declared = new Set<Einkunftsart>()
 
   switch (answers.job) {
@@ -58,8 +62,8 @@ export function einkunftsartenFromAnswers(answers: Answers): readonly Einkunftsa
   return EINKUNFTSARTEN.filter((art) => declared.has(art))
 }
 
-export function gatedEinkunftsarten(answers: Answers): readonly Einkunftsart[] {
-  const declared = new Set(einkunftsartenFromAnswers(answers))
+export function gatedIncomeTypes(answers: Answers): readonly IncomeType[] {
+  const declared = new Set(incomeTypesFromAnswers(answers))
   const gated = new Set<Einkunftsart>()
 
   if (declared.has('Gewerbe')) gated.add('Gewerbe')
@@ -67,4 +71,11 @@ export function gatedEinkunftsarten(answers: Answers): readonly Einkunftsart[] {
   if (declared.has('Vermietung') && answers['vermietung-art'] === 'Verkauf oder möbliert') gated.add('Vermietung')
 
   return EINKUNFTSARTEN.filter((art) => gated.has(art))
+}
+
+// Backward-compatibility aliases
+export {
+  isIncomeType as isEinkunftsart,
+  incomeTypesFromAnswers as einkunftsartenFromAnswers,
+  gatedIncomeTypes as gatedEinkunftsarten,
 }

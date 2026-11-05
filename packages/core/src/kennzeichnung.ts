@@ -1,12 +1,31 @@
+export type FieldProvenanceKind =
+  | { readonly kind: 'user' }
+  | { readonly kind: 'rollover'; readonly priorYear: number }
+  | { readonly kind: 'assistant'; readonly name: string; readonly receiptId?: string }
+  | { readonly kind: 'receipt'; readonly receiptId: string }
+
 export type Herkunft =
   | { readonly art: 'nutzer' }
   | { readonly art: 'uebernahme'; readonly vorjahr: number }
   | { readonly art: 'assistent'; readonly name: string; readonly belegId?: string }
   | { readonly art: 'beleg'; readonly belegId: string }
 
+export interface Proposal {
+  readonly value: string | null
+  readonly provenance: FieldProvenanceKind | Herkunft
+}
+
 export interface Vorschlag {
   readonly wert: string | null
   readonly herkunft: Herkunft
+}
+
+export interface FieldProvenance {
+  readonly key: string
+  readonly provenance: FieldProvenanceKind | Herkunft
+  readonly confirmed: boolean
+  readonly value: string | null
+  readonly suggestion: Proposal | Vorschlag | null
 }
 
 export interface Kennzeichnung {
@@ -23,6 +42,9 @@ export type Maske = (typeof MASKEN)[number]
 export const ANLAGEN = ['hauptvordruck', 'anlageN', 'anlageNGre', 'anlageR', 'anlageKap', 'anlageV', 'anlageKind'] as const
 export type Anlage = (typeof ANLAGEN)[number]
 
+export const ANNEXES = ANLAGEN
+export type Annex = Anlage
+
 const ANLAGE_JE_MASKE: Readonly<Record<Maske, Anlage>> = {
   profil: 'hauptvordruck',
   stammdaten: 'hauptvordruck',
@@ -36,7 +58,8 @@ const ANLAGE_JE_MASKE: Readonly<Record<Maske, Anlage>> = {
   kind: 'anlageKind',
 }
 
-export const JAHRESUNABHAENGIG = 0
+export const YEAR_INDEPENDENT = 0
+export const JAHRESUNABHAENGIG = YEAR_INDEPENDENT
 
 export function kennzeichnungsKey(maske: Maske, feld: string, instanz?: string): string {
   if (feld === '' || feld.includes('.') || (instanz !== undefined && (instanz === '' || instanz.includes('.')))) {
@@ -44,6 +67,8 @@ export function kennzeichnungsKey(maske: Maske, feld: string, instanz?: string):
   }
   return instanz === undefined ? `${maske}.${feld}` : `${maske}:${instanz}.${feld}`
 }
+
+export const provenanceKey = kennzeichnungsKey
 
 export function zerlegeKennzeichnungsKey(key: string): { maske: Maske; instanz: string | null; feld: string } {
   const punkt = key.indexOf('.')
@@ -58,14 +83,20 @@ export function zerlegeKennzeichnungsKey(key: string): { maske: Maske; instanz: 
   return { maske: maske as Maske, instanz, feld }
 }
 
+export const decomposeProvenanceKey = zerlegeKennzeichnungsKey
+
 export function anlageVon(key: string): Anlage {
   return ANLAGE_JE_MASKE[zerlegeKennzeichnungsKey(key).maske]
 }
+
+export const annexForMask = (maske: Maske): Anlage => ANLAGE_JE_MASKE[maske]
 
 export function istJahresunabhaengig(key: string): boolean {
   const { maske } = zerlegeKennzeichnungsKey(key)
   return maske === 'profil' || maske === 'stammdaten'
 }
+
+export const isYearIndependent = istJahresunabhaengig
 
 export type Schreibentscheidung =
   | { readonly art: 'schreiben'; readonly kennzeichnung: Kennzeichnung | null }
@@ -91,24 +122,34 @@ export function entscheideSchreibung({ key, bestehend, aktuellerWert, neuerWert,
   return { art: 'schreiben', kennzeichnung: { key, herkunft, bestaetigt: false, vorschlag: null, wert: neuerWert } }
 }
 
+export const decideWriting = entscheideSchreibung
+
 export function fehlendeBestaetigungen(kennzeichnungen: readonly Kennzeichnung[]): string[] {
   const offen = new Set(kennzeichnungen.filter((k) => !k.bestaetigt).map((k) => anlageVon(k.key)))
   return ANLAGEN.filter((a) => offen.has(a)).map((a) => `unbestaetigt.${a}`)
 }
 
+export const missingConfirmations = fehlendeBestaetigungen
+
 export function bestaetigeAnlage(kennzeichnungen: readonly Kennzeichnung[], anlage: Anlage): Kennzeichnung[] {
   return kennzeichnungen.map((k) => (anlageVon(k.key) === anlage && !k.bestaetigt ? { ...k, bestaetigt: true } : k))
 }
+
+export const confirmAnnex = bestaetigeAnlage
 
 export function nimmVorschlagAn(k: Kennzeichnung): Kennzeichnung {
   if (k.vorschlag === null) throw new RangeError(`nimmVorschlagAn: "${k.key}" has no proposal`)
   return { key: k.key, herkunft: k.vorschlag.herkunft, bestaetigt: true, wert: k.vorschlag.wert, vorschlag: null }
 }
 
+export const acceptProposal = nimmVorschlagAn
+
 export function verwirfVorschlag(k: Kennzeichnung): Kennzeichnung | null {
   if (k.herkunft.art === 'nutzer') return null
   return { ...k, vorschlag: null }
 }
+
+export const dismissProposal = verwirfVorschlag
 
 export function herkunftText(herkunft: Herkunft): string {
   switch (herkunft.art) {
@@ -122,3 +163,5 @@ export function herkunftText(herkunft: Herkunft): string {
       return 'Aus Beleg'
   }
 }
+
+export const provenanceText = herkunftText
