@@ -16,6 +16,7 @@ import { SocialSignInSection } from './shared/SocialSignInSection'
 import { EmailVerificationBanner } from './shared/EmailVerificationBanner'
 import { RechtlichesLinks } from './rechtliches/RechtlichesLinks'
 import type { RechtlicheSeite } from './rechtliches/texte'
+import { MIN_PASSWORD_LENGTH } from '../auth/password-policy'
 
 export interface LoginScreenProps {
   readonly onDone: () => void
@@ -56,7 +57,7 @@ export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true, 
   const anySurfaceUnreachable = qrUnreachable || capabilitiesUnreachable || formTransportError
   const apiUnreachableAutoRetrying = autoRetryStatus === 'scheduled'
 
-  const ok = mail.includes('@') && pass.length >= 6
+  const ok = mail.includes('@') && pass.length >= MIN_PASSWORD_LENGTH
 
   async function login() {
     if (!ok) {

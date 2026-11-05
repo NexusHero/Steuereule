@@ -222,6 +222,7 @@ export const server = setupServer(
   // response body is never asserted by a test that doesn't override it); tests proving the
   // widerspruch/unreadable states override with `server.use(...)`.
   getLstbControllerGetLstbMockHandler(EMPTY_LSTB_RESPONSE),
+  http.get('*/v1/stammdaten', () => HttpResponse.json({ fehlend: [] }, { status: 200 })),
   http.get('*/v1/steuerjahre/:jahr/arbeitsweg', () => HttpResponse.json(EMPTY_ARBEITSWEG_RESPONSE, { status: 200 })),
   http.put('*/v1/steuerjahre/:jahr/lstb/:feld', () =>
     HttpResponse.json(EMPTY_LSTB_RESPONSE, { status: 200 }),

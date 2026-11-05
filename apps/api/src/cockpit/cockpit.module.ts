@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common'
+import { ChLohnausweisModule } from '../ch-lohnausweis/ch-lohnausweis.module.js'
 import { InterviewModule } from '../interview/interview.module.js'
 import { KapitalModule } from '../kapital/kapital.module.js'
 import { LstbModule } from '../lstb/lstb.module.js'
@@ -12,7 +13,7 @@ import { PrismaTaxYearRepository } from './tax-year.repository.prisma.js'
 import { TAX_YEAR_REPOSITORY } from './tax-year.repository.js'
 
 @Module({
-  imports: [PrismaModule, LstbModule, InterviewModule, KennzeichnungModule, RenteModule, KapitalModule, VermietungModule],
+  imports: [PrismaModule, LstbModule, InterviewModule, KennzeichnungModule, RenteModule, KapitalModule, VermietungModule, ChLohnausweisModule],
   controllers: [CockpitController],
   providers: [
     CockpitService,

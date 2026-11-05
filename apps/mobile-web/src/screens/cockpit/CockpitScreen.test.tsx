@@ -78,6 +78,7 @@ function renderCockpit(opts: {
   onOpenBestaetigung?: (jahr: number) => void
   onContinuePath?: (pfad: FunnelPfad) => void
   onJahrWechsel?: (jahr: number) => void
+  onOpenStammdaten?: () => void
   taxYear?: number
 } = {}) {
   const i18n = createAppI18n(opts.lng ?? 'de')
@@ -95,6 +96,7 @@ function renderCockpit(opts: {
             {...(opts.onOpenBestaetigung ? { onOpenBestaetigung: opts.onOpenBestaetigung } : {})}
             {...(opts.onContinuePath ? { onContinuePath: opts.onContinuePath } : {})}
             {...(opts.onJahrWechsel ? { onJahrWechsel: opts.onJahrWechsel } : {})}
+            {...(opts.onOpenStammdaten ? { onOpenStammdaten: opts.onOpenStammdaten } : {})}
           />
         </ThemeProvider>
       </I18nextProvider>
@@ -455,5 +457,66 @@ describe('CockpitScreen — the chosen tax year belongs to the whole app', () =>
     await screen.findByText('Erfasstes Einkommen')
 
     expect(geladen2025).toBe(1)
+  })
+})
+
+describe('CockpitScreen — the personal details the return needs, asked early', () => {
+  it('says how many details are still missing and opens them', async () => {
+    mockCockpit(LOADED_SUMMARY)
+    server.use(http.get('*/v1/stammdaten', () => HttpResponse.json({ fehlend: ['geburtsdatum', 'iban', 'finanzamt'] })))
+    const onOpenStammdaten = vi.fn()
+    renderCockpit({ onOpenStammdaten })
+
+    fireEvent.click(await screen.findByText('Angaben für die Erklärung ergänzen · 3 fehlen'))
+
+    expect(onOpenStammdaten).toHaveBeenCalledOnce()
+  })
+
+  it('stays quiet once every detail is there', async () => {
+    mockCockpit(LOADED_SUMMARY)
+    server.use(http.get('*/v1/stammdaten', () => HttpResponse.json({ fehlend: [] })))
+    renderCockpit({ onOpenStammdaten: () => {} })
+
+    await screen.findByText('Erfasstes Einkommen')
+
+    expect(screen.queryByText(/Angaben für die Erklärung ergänzen/)).toBeNull()
+  })
+})
+
+describe('CockpitScreen — die voraussichtliche Erstattung als ehrliche Spanne (ADR-015)', () => {
+  const SCHAETZUNG_URL = `*/v1/steuerjahre/${TAX_YEAR}/steuerschaetzung`
+
+  it('shows the expected refund as a range', async () => {
+    mockCockpit(LOADED_SUMMARY)
+    server.use(http.get(SCHAETZUNG_URL, () => HttpResponse.json({ kind: 'spanne', ergebnis: { von: 312, bis: 455 }, kirchensteuerOffen: false })))
+    renderCockpit()
+
+    expect(await screen.findByText('Voraussichtlich 312 – 455 € Erstattung')).toBeTruthy()
+    expect(screen.queryByText('Die Erstattung rechnen wir in einem späteren Schritt.')).toBeNull()
+  })
+
+  it('names a back-payment as such, never as a negative refund', async () => {
+    mockCockpit(LOADED_SUMMARY)
+    server.use(http.get(SCHAETZUNG_URL, () => HttpResponse.json({ kind: 'spanne', ergebnis: { von: -21200, bis: -20400 }, kirchensteuerOffen: true })))
+    renderCockpit()
+
+    expect(await screen.findByText('Voraussichtlich 20.400 – 21.200 € Nachzahlung')).toBeTruthy()
+    expect(screen.getByText('Kirchensteuer ist in der Schätzung noch nicht enthalten.')).toBeTruthy()
+  })
+
+  it('says how many details the estimate still needs', async () => {
+    mockCockpit(LOADED_SUMMARY)
+    server.use(http.get(SCHAETZUNG_URL, () => HttpResponse.json({ kind: 'offen', fehlt: ['lohnsteuer', 'sozialversicherung'] })))
+    renderCockpit()
+
+    expect(await screen.findByText('Für die Schätzung fehlen noch 2 Angaben.')).toBeTruthy()
+  })
+
+  it('is honest when it cannot estimate yet', async () => {
+    mockCockpit(LOADED_SUMMARY)
+    server.use(http.get(SCHAETZUNG_URL, () => HttpResponse.json({ kind: 'nicht-moeglich', grund: 'verheiratet' })))
+    renderCockpit()
+
+    expect(await screen.findByText('Für Verheiratete rechnen wir die Erstattung noch nicht.')).toBeTruthy()
   })
 })

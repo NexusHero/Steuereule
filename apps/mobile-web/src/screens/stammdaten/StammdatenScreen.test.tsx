@@ -158,4 +158,13 @@ describe('StammdatenScreen (ADR-0050)', () => {
       expect(screen.queryByTestId('personb-speichern')).toBeNull()
     })
   })
+
+  it('gives every text field a name screen readers can announce', async () => {
+    server.use(http.get('*/v1/stammdaten', () => HttpResponse.json(LEER)))
+    renderScreen()
+
+    expect(await screen.findByLabelText('Geburtsdatum (TT.MM.JJJJ)')).toBeTruthy()
+    expect(screen.getByLabelText('IBAN für die Erstattung')).toBeTruthy()
+    expect(screen.getByLabelText('Zuständiges Finanzamt')).toBeTruthy()
+  })
 })

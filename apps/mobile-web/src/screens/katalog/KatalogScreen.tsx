@@ -44,11 +44,11 @@ export function KatalogScreen({ entry, onDone = () => {}, onBack, taxYear = CURR
   const [conflict, setConflict] = useState(false)
 
   useEffect(() => {
-    if (!seeded && interviewQuery.data?.status === 200) {
+    if (!seeded && interviewQuery.isFetchedAfterMount && interviewQuery.data?.status === 200) {
       setAnswers(interviewQuery.data.data.answers as Answers)
       setSeeded(true)
     }
-  }, [seeded, interviewQuery.data])
+  }, [seeded, interviewQuery.isFetchedAfterMount, interviewQuery.data])
 
   const current = seeded ? nextStepFor(ENTRIES[entry], answers) : null
 
