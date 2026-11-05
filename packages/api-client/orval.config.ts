@@ -234,6 +234,20 @@ export default defineConfig({
       },
     },
   },
+  arbeitsweg: {
+    input: { target: '../../apps/api/openapi.json', filters: { tags: ['arbeitsweg'] } },
+    output: {
+      target: './src/generated/arbeitsweg.ts',
+      mode: 'split',
+      client: 'react-query',
+      httpClient: 'fetch',
+      mock: true,
+      override: {
+        mutator: { path: './src/http-client.ts', name: 'httpClient' },
+        mock: { required: true },
+      },
+    },
+  },
   bescheid: {
     input: { target: '../../apps/api/openapi.json', filters: { tags: ['bescheid'] } },
     output: {

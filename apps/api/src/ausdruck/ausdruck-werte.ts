@@ -154,6 +154,30 @@ export interface RiesterFakten {
   einnahmenVorjahr: string | null
 }
 
+/** Anlage N Zeilen 27–31: the facts only — the Finanzamt computes the Entfernungspauschale itself. */
+export interface ArbeitswegFakten {
+  arbeitstageJeWoche: number
+  freieTage: number
+  pendlertage: number
+  einfacheKm: number | null
+  mitPkw: boolean
+  taetigkeitsstaette: string | null
+}
+
+function arbeitswegWerte(a: ArbeitswegFakten | null | undefined): Record<string, string> {
+  if (!a || a.einfacheKm === null) return {}
+  const werte: Record<string, string> = {
+    'anlN.wegArt': '1',
+    'anlN.wegTageJeWoche': String(a.arbeitstageJeWoche),
+    'anlN.wegFreieTage': String(a.freieTage),
+    'anlN.kz110Tage': String(a.pendlertage),
+    'anlN.kz111': String(a.einfacheKm),
+  }
+  if (a.taetigkeitsstaette) werte['anlN.wegOrt'] = a.taetigkeitsstaette
+  if (a.mitPkw) werte['anlN.kz112'] = String(a.einfacheKm)
+  return werte
+}
+
 export interface AusdruckFakten {
   steuerjahr: number
   profil: { firstName: string | null; lastName: string | null; steuerId: string | null; steuernummer: string | null }
@@ -183,6 +207,7 @@ export interface AusdruckFakten {
   sonderausgaben?: SonderausgabenFakten | null
   riester?: RiesterFakten | null
   alleinerziehend?: AlleinerziehendFakten | null
+  arbeitsweg?: ArbeitswegFakten | null
 }
 
 const RENTE_KENNZAHL: Record<string, string> = {
@@ -283,13 +308,14 @@ export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
   if (hatBruttoA && !hatBruttoB) {
     werte['anlN.kz110'] = brutto!
     werte['anlN.personA'] = true
+    Object.assign(werte, arbeitswegWerte(fakten.arbeitsweg))
     setze('anlN.name', profil.lastName)
     setze('anlN.vorname', profil.firstName)
     setze('anlN.steuernummer', profil.steuernummer)
   } else if (hatBruttoB) {
     const nInstanzen: FeldWerte[] = []
     if (hatBruttoA) {
-      const nA: Record<string, string | true> = { 'anlN.kz110': brutto!, 'anlN.personA': true }
+      const nA: Record<string, string | true> = { 'anlN.kz110': brutto!, 'anlN.personA': true, ...arbeitswegWerte(fakten.arbeitsweg) }
       if (profil.lastName) nA['anlN.name'] = profil.lastName
       if (profil.firstName) nA['anlN.vorname'] = profil.firstName
       if (profil.steuernummer) nA['anlN.steuernummer'] = profil.steuernummer

@@ -1030,6 +1030,82 @@
         ]
       }
     },
+    "/v1/steuerjahre/{jahr}/arbeitsweg": {
+      "get": {
+        "operationId": "ArbeitswegController_get",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArbeitswegResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "arbeitsweg"
+        ]
+      },
+      "put": {
+        "operationId": "ArbeitswegController_put",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArbeitswegEingabenDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArbeitswegResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "arbeitsweg"
+        ]
+      }
+    },
     "/v1/belege": {
       "get": {
         "operationId": "BelegController_list",
@@ -4344,6 +4420,119 @@
           "monat",
           "kurs",
           "modus"
+        ]
+      },
+      "ArbeitswegEingabenDto": {
+        "type": "object",
+        "properties": {
+          "arbeitstage": {
+            "example": [
+              1,
+              2,
+              3,
+              4,
+              5
+            ],
+            "description": "ISO weekdays worked (1 = Monday … 7 = Sunday).",
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "urlaubstage": {
+            "type": "number",
+            "example": 30
+          },
+          "krankheitstage": {
+            "type": "number",
+            "example": 5
+          },
+          "homeofficeTage": {
+            "type": "number",
+            "example": 20
+          },
+          "einfacheKm": {
+            "type": "number",
+            "nullable": true,
+            "example": 23,
+            "description": "One-way distance in full kilometres."
+          },
+          "verkehrsmittel": {
+            "type": "string",
+            "enum": [
+              "pkw",
+              "oepnv",
+              "andere"
+            ],
+            "nullable": true,
+            "example": "pkw"
+          },
+          "taetigkeitsstaette": {
+            "type": "string",
+            "nullable": true,
+            "example": "79539 Lörrach, Hauptstraße 1"
+          }
+        },
+        "required": [
+          "arbeitstage",
+          "urlaubstage",
+          "krankheitstage",
+          "homeofficeTage",
+          "einfacheKm",
+          "verkehrsmittel",
+          "taetigkeitsstaette"
+        ]
+      },
+      "WerktageDto": {
+        "type": "object",
+        "properties": {
+          "wochentage": {
+            "type": "number"
+          },
+          "werktage": {
+            "type": "number"
+          },
+          "pendlertage": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "wochentage",
+          "werktage",
+          "pendlertage"
+        ]
+      },
+      "ArbeitswegResponseDto": {
+        "type": "object",
+        "properties": {
+          "eingaben": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ArbeitswegEingabenDto"
+              }
+            ]
+          },
+          "werktage": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/WerktageDto"
+              }
+            ]
+          },
+          "pendlerpauschale": {
+            "type": "number",
+            "nullable": true,
+            "description": "Entfernungspauschale in whole euros; null until distance and means of travel are known."
+          }
+        },
+        "required": [
+          "eingaben",
+          "werktage",
+          "pendlerpauschale"
         ]
       },
       "ZuordnungDto": {

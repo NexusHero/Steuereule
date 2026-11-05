@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common'
+import { ArbeitswegModule } from '../arbeitsweg/arbeitsweg.module.js'
 import { AuditModule } from '../audit/audit.module.js'
 import { ChLohnausweisModule } from '../ch-lohnausweis/ch-lohnausweis.module.js'
 import { FreischaltungModule } from '../freischaltung/freischaltung.module.js'
@@ -30,6 +31,7 @@ import { AusdruckService, VORLAGEN_BASIS } from './ausdruck.service.js'
     VermietungModule,
     KinderModule,
     KopplungModule,
+    ArbeitswegModule,
   ],
   controllers: [AusdruckController],
   providers: [

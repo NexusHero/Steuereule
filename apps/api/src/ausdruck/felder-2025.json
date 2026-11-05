@@ -472,6 +472,90 @@
       }
     },
     {
+      "id": "anlN.wegArt",
+      "formular": "anlage-n",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 39.1,
+        "y": 592.4,
+        "breite": 12.1,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlN.wegOrt",
+      "formular": "anlage-n",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 154.6,
+        "y": 587.9,
+        "breite": 240.2,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlN.wegTageJeWoche",
+      "formular": "anlage-n",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 96.1,
+        "y": 558.6,
+        "breite": 40.8,
+        "hoehe": 15.9
+      }
+    },
+    {
+      "id": "anlN.wegFreieTage",
+      "formular": "anlage-n",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 244.5,
+        "y": 558.6,
+        "breite": 40.8,
+        "hoehe": 15.9
+      }
+    },
+    {
+      "id": "anlN.kz110Tage",
+      "formular": "anlage-n",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 473.6,
+        "y": 538.5,
+        "breite": 40.6,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlN.kz111",
+      "formular": "anlage-n",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 473.6,
+        "y": 518.2,
+        "breite": 40.6,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlN.kz112",
+      "formular": "anlage-n",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 473.6,
+        "y": 498,
+        "breite": 40.6,
+        "hoehe": 15.8
+      }
+    },
+    {
       "id": "anlR.name",
       "formular": "anlage-r",
       "seite": 1,

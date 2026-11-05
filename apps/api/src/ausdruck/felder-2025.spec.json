@@ -42,6 +42,13 @@
     { "id": "anlN.personA", "formular": "anlage-n", "seite": 1, "anker": "Steuerpflichtige", "lage": "links", "art": "kreuz" },
     { "id": "anlN.personB", "formular": "anlage-n", "seite": 1, "anker": "Ehefrau", "lage": "links", "art": "kreuz" },
     { "id": "anlN.kz110", "formular": "anlage-n", "seite": 1, "anker": "110", "zeile": 5, "lage": "rechts", "art": "euro" },
+    { "id": "anlN.wegArt", "formular": "anlage-n", "seite": 2, "anker": "1", "zeile": 27, "vorkommen": 1, "lage": "links", "art": "text" },
+    { "id": "anlN.wegOrt", "formular": "anlage-n", "seite": 2, "anker": "PLZ,", "zeile": 27, "lage": "unter", "art": "text" },
+    { "id": "anlN.wegTageJeWoche", "formular": "anlage-n", "seite": 2, "anker": "Woche", "zeile": 28, "lage": "rechts", "art": "text" },
+    { "id": "anlN.wegFreieTage", "formular": "anlage-n", "seite": 2, "anker": "Dienstreisetage", "zeile": 28, "lage": "rechts", "art": "text" },
+    { "id": "anlN.kz110Tage", "formular": "anlage-n", "seite": 2, "anker": "110", "zeile": 29, "lage": "rechts", "art": "text" },
+    { "id": "anlN.kz111", "formular": "anlage-n", "seite": 2, "anker": "111", "zeile": 30, "lage": "rechts", "art": "text" },
+    { "id": "anlN.kz112", "formular": "anlage-n", "seite": 2, "anker": "112", "zeile": 31, "lage": "rechts", "art": "text" },
 
     { "id": "anlR.name", "formular": "anlage-r", "seite": 1, "anker": "Name", "zeile": 1, "lage": "unter", "art": "text" },
     { "id": "anlR.vorname", "formular": "anlage-r", "seite": 1, "anker": "Vorname", "zeile": 2, "lage": "unter", "art": "text" },

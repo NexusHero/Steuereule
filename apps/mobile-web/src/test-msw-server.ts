@@ -32,7 +32,7 @@ import {
   getAssistentenControllerListConnectedMockHandler,
 } from '@steuereule/api-client/msw'
 import { LOHNAUSWEIS_FELDER } from '@steuereule/core'
-import type { ProfileResponseDto, AuthCapabilitiesDto, DeviceCodeResponseDto, InterviewStateDto, LstbResponseDto, ChLohnausweisResponseDto, RenteResponseDto, KapitalResponseDto, VermietungResponseDto, FristenResponseDto, UebernahmeResponseDto, BestaetigungResponseDto, KinderResponseDto, KopplungResponseDto, EulenEinstellungResponseDto, EulenKartenResponseDto } from '@steuereule/api-client'
+import type { ProfileResponseDto, AuthCapabilitiesDto, DeviceCodeResponseDto, InterviewStateDto, LstbResponseDto, ChLohnausweisResponseDto, RenteResponseDto, KapitalResponseDto, VermietungResponseDto, FristenResponseDto, UebernahmeResponseDto, BestaetigungResponseDto, KinderResponseDto, KopplungResponseDto, EulenEinstellungResponseDto, EulenKartenResponseDto, ArbeitswegResponseDto } from '@steuereule/api-client'
 
 export const EMPTY_PROFILE_RESPONSE: ProfileResponseDto = {
   firstName: null,
@@ -210,6 +210,8 @@ export const EMPTY_EULEN_KARTEN_RESPONSE: EulenKartenResponseDto = {
   rechtsstand: '01.01.2025',
 }
 
+export const EMPTY_ARBEITSWEG_RESPONSE: ArbeitswegResponseDto = { eingaben: null, werktage: null, pendlerpauschale: null }
+
 export const server = setupServer(
   getProfileControllerGetProfileMockHandler(EMPTY_PROFILE_RESPONSE),
   getProfileControllerPutProfileMockHandler(),
@@ -220,6 +222,7 @@ export const server = setupServer(
   // response body is never asserted by a test that doesn't override it); tests proving the
   // widerspruch/unreadable states override with `server.use(...)`.
   getLstbControllerGetLstbMockHandler(EMPTY_LSTB_RESPONSE),
+  http.get('*/v1/steuerjahre/:jahr/arbeitsweg', () => HttpResponse.json(EMPTY_ARBEITSWEG_RESPONSE, { status: 200 })),
   http.put('*/v1/steuerjahre/:jahr/lstb/:feld', () =>
     HttpResponse.json(EMPTY_LSTB_RESPONSE, { status: 200 }),
   ),
