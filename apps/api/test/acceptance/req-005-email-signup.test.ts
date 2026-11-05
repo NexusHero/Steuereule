@@ -9,6 +9,7 @@ import { resetRateLimiters } from '../support/reset-rate-limiters.js'
 process.env.GUEST_SESSION_SECRET = 'req-005-secret'
 process.env.BETTER_AUTH_SECRET = 'req-005-better-auth-secret-0123456789'
 process.env.BETTER_AUTH_URL = 'http://127.0.0.1:39998'
+process.env.WEB_APP_URL = 'https://app.example.com'
 
 const ALLOWED_ORIGIN = 'https://allowed.example.com'
 process.env.CORS_ALLOWED_ORIGINS = ALLOWED_ORIGIN
@@ -71,7 +72,7 @@ describe('REQ-005 — email/password signup + async verification, against the re
     expect(profile.status).toBe(200)
   })
 
-  it('following the verification link marks the account verified', async () => {
+  it('following the verification link marks the account verified and lands in the web app', async () => {
     const emailSpy = vi.spyOn(Logger.prototype, 'warn')
 
     try {
@@ -86,8 +87,13 @@ describe('REQ-005 — email/password signup + async verification, against the re
       expect(logLine).toBeDefined()
       const token = new URL(logLine!.split(': ')[1]!).searchParams.get('token')!
 
-      const verify = await fetch(`${baseUrl}/api/auth/verify-email?token=${encodeURIComponent(token)}`)
-      expect(verify.status).toBe(200)
+      const callbackURL = new URL(logLine!.split(': ')[1]!).searchParams.get('callbackURL')!
+      const verify = await fetch(
+        `${baseUrl}/api/auth/verify-email?token=${encodeURIComponent(token)}&callbackURL=${encodeURIComponent(callbackURL)}`,
+        { redirect: 'manual' },
+      )
+      expect(verify.status).toBe(302)
+      expect(new URL(verify.headers.get('location')!).origin).toBe('https://app.example.com')
 
       const user = await prisma.user.findUnique({ where: { email: 'verify-me@example.com' } })
       expect(user?.emailVerified).toBe(true)

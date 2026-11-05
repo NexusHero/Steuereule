@@ -1,0 +1,19 @@
+<claude-code-hint v="1" type="plugin" value="stripe@claude-plugins-official" />
+[33m[Nest] 4368  - [39m11/05/2026, 9:30:55 AM [33m   WARN[39m [38;5;3m[PlaywrightPdfRenderer] [39m[33mChromium did not launch at boot (PDF export will retry lazily on first use): Error: browserType.launch: Executable doesn't exist at /Users/suhaysevinc/Library/Caches/ms-playwright/chromium_headless_shell-1194/chrome-mac/headless_shell
+╔═════════════════════════════════════════════════════════════════════════╗
+║ Looks like Playwright Test or Playwright was just installed or updated. ║
+║ Please run the following command to download new browsers:              ║
+║                                                                         ║
+║     npx playwright install                                              ║
+║                                                                         ║
+║ <3 Playwright Team                                                      ║
+╚═════════════════════════════════════════════════════════════════════════╝[39m
+2026-11-05T08:31:01.077Z WARN [Better Auth]: Rate limiting could not determine a client IP and is falling back to a single shared per-path bucket. Ensure your runtime forwards a trusted client IP header, then set `advanced.ipAddress.ipAddressHeaders` or `advanced.ipAddress.trustedProxies` so the address can be resolved.
+2026-11-05T08:32:40.104Z WARN [Better Auth]: User not found
+2026-11-05T08:32:41.897Z WARN [Better Auth]: User not found
+[33m[Nest] 4368  - [39m11/05/2026, 9:33:10 AM [33m   WARN[39m [38;5;3m[DomainErrorFilter] [39m[33mGET /v1/steuerjahre/:jahr/bestaetigung → 401 ACCOUNT_REQUIRED[39m
+[33m[Nest] 4368  - [39m11/05/2026, 9:33:40 AM [33m   WARN[39m [38;5;3m[DomainErrorFilter] [39m[33mGET /v1/steuerjahre/:jahr/bestaetigung → 401 ACCOUNT_REQUIRED[39m
+[33m[Nest] 4368  - [39m11/05/2026, 9:33:59 AM [33m   WARN[39m [38;5;3m[DomainErrorFilter] [39m[33mGET /v1/steuerjahre/:jahr/kinder → 401 ACCOUNT_REQUIRED[39m
+[33m[Nest] 4368  - [39m11/05/2026, 9:34:01 AM [33m   WARN[39m [38;5;3m[DomainErrorFilter] [39m[33mGET /v1/steuerjahre/:jahr/kinder → 401 ACCOUNT_REQUIRED[39m
+[33m[Nest] 4368  - [39m11/05/2026, 9:34:08 AM [33m   WARN[39m [38;5;3m[DomainErrorFilter] [39m[33mGET /v1/steuerjahre/:jahr/kinder → 401 ACCOUNT_REQUIRED[39m
+[33m[Nest] 4368  - [39m11/05/2026, 9:34:13 AM [33m   WARN[39m [38;5;3m[DomainErrorFilter] [39m[33mGET /v1/steuerjahre/:jahr/kinder → 401 ACCOUNT_REQUIRED[39m
