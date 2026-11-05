@@ -2,10 +2,12 @@ import { useState } from 'react'
 import { ScrollView, View, Text, Pressable, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { Button, Card, Feld, Input, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
+import { Button, Card, Chip, Feld, Input, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
 import {
   useKapitalControllerGet,
   useKapitalControllerSetFeld,
+  useKapitalControllerSetInhaber,
+  useKopplungControllerGet,
   useKapitalControllerGetGuenstigerpruefung,
   getKapitalControllerGetQueryKey,
   getKapitalControllerGetGuenstigerpruefungQueryKey,
@@ -35,6 +37,9 @@ export function KapitalScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX
   const queryClient = useQueryClient()
   const query = useKapitalControllerGet(taxYear)
   const setFeld = useKapitalControllerSetFeld()
+  const setInhaber = useKapitalControllerSetInhaber()
+  const kopplung = useKopplungControllerGet(taxYear)
+  const zusammen = kopplung.data?.status === 200 && kopplung.data.data.veranlagungsart === 'zusammen'
 
   // The depot / the kind of letting is a catalogue answer; the mask can ask it right here.
   const [frageOffen, setFrageOffen] = useState(false)
@@ -86,6 +91,23 @@ export function KapitalScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX
         <Button variante="ghost" onPress={() => setFrageOffen(true)} testID="kapital-frage-beantworten">
           {tr('katalog.einkuenfteBeantworten')}
         </Button>
+      ) : null}
+
+      {zusammen ? (
+        <Feld label={tr('kapital.inhaber.frage')}>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.s2 }}>
+            {(['A', 'B', 'gemeinsam'] as const).map((inhaber) => (
+              <Chip
+                key={inhaber}
+                aktiv={(response.inhaber ?? 'A') === inhaber}
+                onPress={() => setInhaber.mutate({ jahr: taxYear, data: { inhaber } }, { onSuccess: invalidate })}
+                testID={`kapital-inhaber-${inhaber}`}
+              >
+                {tr(`kapital.inhaber.${inhaber}`)}
+              </Chip>
+            ))}
+          </View>
+        </Feld>
       ) : null}
 
       {response.pflichtfelder.map((feld) => (

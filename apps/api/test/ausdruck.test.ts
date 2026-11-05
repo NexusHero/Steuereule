@@ -222,6 +222,32 @@ describe('ausdruckWerte', () => {
       expect(werte['anlKap.kz280']).toBeUndefined()
     })
 
+    const EHEPAAR = {
+      veranlagungsart: 'zusammen' as const,
+      personB: { firstName: 'Sabine', lastName: 'Weber', steuerId: '51234567891', geburtsdatum: '1975-04-30' },
+    }
+
+    it('a joint account in a joint return: an Anlage KAP for each spouse with half of every amount (ADR-0054)', () => {
+      const { werte, instanzen, fehlend } = ausdruckWerte({
+        ...FAKTEN,
+        kopplung: EHEPAAR,
+        kapital: { ...DEUTSCH, kapitalertraege: '50001', sparerPauschbetrag: '2000', kapitalertragsteuer: '12000', solidaritaetszuschlag: '660', inhaber: 'gemeinsam' } as never,
+      })
+      expect(fehlend).toEqual([])
+      expect(werte['anlKap.kz210']).toBeUndefined()
+      const [a, b] = instanzen?.['anlage-kap'] ?? []
+      expect(a).toMatchObject({ 'anlKap.personA': true, 'anlKap.vorname': 'Anna', 'anlKap.kz210': '25001', 'anlKap.kz217': '1000', 'anlKap.kz280': '6000,00', 'anlKap.kz281': '330,00' })
+      expect(b).toMatchObject({ 'anlKap.personB': true, 'anlKap.vorname': 'Sabine', 'anlKap.kz210': '25000', 'anlKap.kz217': '1000', 'anlKap.kz280': '6000,00' })
+    })
+
+    it("Person B's own depot goes onto B's Anlage KAP; outside a joint return the owner is ignored", () => {
+      const nurB = ausdruckWerte({ ...FAKTEN, kopplung: EHEPAAR, kapital: { ...DEUTSCH, inhaber: 'B' } as never })
+      expect(nurB.instanzen?.['anlage-kap']).toHaveLength(1)
+      expect(nurB.instanzen?.['anlage-kap']?.[0]).toMatchObject({ 'anlKap.personB': true, 'anlKap.kz210': '20000' })
+      const einzeln = ausdruckWerte({ ...FAKTEN, kapital: { ...DEUTSCH, inhaber: 'gemeinsam' } as never })
+      expect(einzeln.werte).toMatchObject({ 'anlKap.personA': true, 'anlKap.kz210': '20000' })
+    })
+
     it('missing facts or an unanswered depot block as "kapital"; Krypto is named as not printable', () => {
       expect(kap({ ...DEUTSCH, kapitalertragsteuer: null }).fehlend).toEqual(['kapital'])
       expect(kap({ ...DEUTSCH, sparerPauschbetrag: 'unklar' }).fehlend).toEqual(['kapital'])

@@ -714,6 +714,12 @@ export const appResources = {
         weiter: 'Weiter',
       },
       kapital: {
+        inhaber: {
+          frage: 'Wem gehört das Depot?',
+          A: 'Mir',
+          B: 'Meinem Partner',
+          gemeinsam: 'Uns beiden (Gemeinschaftsdepot)',
+        },
         back: 'Zurück',
         heading: 'Kapital & Depot',
         help: 'Übertrag deine Kapitalerträge aus der Jahressteuerbescheinigung deiner Bank.',
@@ -1962,6 +1968,12 @@ export const appResources = {
         weiter: 'Continue',
       },
       kapital: {
+        inhaber: {
+          frage: 'Whose portfolio is it?',
+          A: 'Mine',
+          B: 'My partner’s',
+          gemeinsam: 'Both of ours (joint account)',
+        },
         back: 'Back',
         heading: 'Capital & brokerage',
         help: 'Copy your capital income from your bank\u2019s annual tax certificate (Jahressteuerbescheinigung).',
