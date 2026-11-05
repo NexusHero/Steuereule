@@ -8,7 +8,13 @@ describe('ansichtNachDemInterview', () => {
     expect(ansicht).toBe('konto-wand')
   })
 
-  it.each(['signed-in', 'loading', 'unknown'] as const)('continues the CH path when the session is %s', (status) => {
+  it('decides nothing while the session is still loading', () => {
+    const ansicht = ansichtNachDemInterview('ch', 'loading')
+
+    expect(ansicht).toBeNull()
+  })
+
+  it.each(['signed-in', 'unknown'] as const)('continues the CH path when the session is %s', (status) => {
     const ansicht = ansichtNachDemInterview('ch', status)
 
     expect(ansicht).toBe('ch')

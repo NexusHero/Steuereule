@@ -305,6 +305,15 @@ function TabbedShell({ tab, onTabChange, onSignedOut, startInInterview = false, 
     | 'kinder'
     | 'eulen-modus'
   >(startInInterview ? 'interview' : 'main')
+  const [ausstehenderPfad, setAusstehenderPfad] = useState<FunnelPfad | null>(null)
+
+  useEffect(() => {
+    if (ausstehenderPfad === null) return
+    const ansicht = ansichtNachDemInterview(ausstehenderPfad, sessionState.status)
+    if (ansicht === null) return
+    setAusstehenderPfad(null)
+    setCockpitView(ansicht)
+  }, [ausstehenderPfad, sessionState.status])
 
   const iconColor = (id: Tab) => (id === tab ? t.color.tinte : t.color.tinte2)
 
@@ -352,7 +361,7 @@ function TabbedShell({ tab, onTabChange, onSignedOut, startInInterview = false, 
             onDone={(answers) => {
               const pfad = pfadAusAntworten(answers)
               setFunnelPfad(pfad)
-              setCockpitView(ansichtNachDemInterview(pfad, sessionState.status))
+              setAusstehenderPfad(pfad)
             }}
           />
         ) : null}
