@@ -1,21 +1,21 @@
 import { Inject, Injectable, Optional } from '@nestjs/common'
 import { InvalidInputError, NotFoundError } from '../common/domain-error.js'
-import { calculateDifferentialChildBenefit, isValidChildBirthDate, calculateChildrenStatus, type KindDaten } from '@steuereule/core'
+import { calculateDifferentialChildBenefit, isValidChildBirthDate, calculateChildrenStatus, type ChildData } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
 import { CROSS_BORDER_SALARY_STATEMENT_REPOSITORY, type CrossBorderSalaryStatementRepository } from '../ch-lohnausweis/ch-lohnausweis.repository.js'
 import { PARTNER_COUPLING_REPOSITORY, type PartnerCouplingRepository } from '../kopplung/kopplung.repository.js'
 import { CHILD_REPOSITORY, type ChildRecord, type ChildRepository } from './kind.repository.js'
 import type { CreateKindDto, KinderResponseDto, KindResponseDto, UpdateKindDto } from './dto/kind.dto.js'
 
-function toKindDaten(r: ChildRecord, effectiveSwissEur: number | null): KindDaten {
+function toChildData(r: ChildRecord, effectiveSwissEur: number | null): ChildData {
   return {
     id: r.id,
-    vorname: r.vorname,
-    nachname: r.nachname,
-    geburtsdatum: r.geburtsdatum,
-    steuerId: r.idnr,
-    kindergeld: r.kindergeldAnspruchEur ? Number(r.kindergeldAnspruchEur) : null,
-    schweizerKinderzulageEur: effectiveSwissEur,
+    firstName: r.vorname,
+    lastName: r.nachname,
+    birthDate: r.geburtsdatum,
+    taxId: r.idnr,
+    childBenefit: r.kindergeldAnspruchEur ? Number(r.kindergeldAnspruchEur) : null,
+    swissFamilyAllowanceEur: effectiveSwissEur,
   }
 }
 
@@ -81,7 +81,7 @@ export class ChildrenService {
     const proKindEur = await this.getProKindSwissAllowanceEur(userId, jahr, records.length)
     const daten = records.map((r) => {
       const effectiveSwissEur = r.schweizerKinderzulageEur ? Number(r.schweizerKinderzulageEur) : proKindEur
-      return toKindDaten(r, effectiveSwissEur)
+      return toChildData(r, effectiveSwissEur)
     })
     const stand = calculateChildrenStatus(daten, jahr)
     return {
@@ -89,11 +89,11 @@ export class ChildrenService {
         const effectiveSwissEur = r.schweizerKinderzulageEur ? Number(r.schweizerKinderzulageEur) : proKindEur
         return toDto(r, effectiveSwissEur, jahr)
       }),
-      anzahl: stand.anzahl,
-      kindergeldSumme: stand.kindergeldSumme,
-      freibetragGesamt: stand.freibetragGesamt,
-      schweizerKinderzulageSumme: stand.schweizerKinderzulageSumme,
-      differenzkindergeldSumme: stand.differenzkindergeldSumme,
+      anzahl: stand.count,
+      kindergeldSumme: stand.childBenefitSum,
+      freibetragGesamt: stand.totalAllowance,
+      schweizerKinderzulageSumme: stand.swissFamilyAllowanceSum,
+      differenzkindergeldSumme: stand.differentialChildBenefitSum,
     }
   }
 

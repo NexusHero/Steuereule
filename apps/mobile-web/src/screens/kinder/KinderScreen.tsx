@@ -226,12 +226,12 @@ function KinderScreenView({
   const stand = calculateChildrenStatus(
     kinder.map((k) => ({
       id: k.id,
-      vorname: k.vorname,
-      nachname: k.nachname,
-      geburtsdatum: k.geburtsdatum,
-      steuerId: k.idnr ?? null,
-      kindergeld: k.kindergeldAnspruchEur ? Number(k.kindergeldAnspruchEur) : null,
-      schweizerKinderzulageEur: k.schweizerKinderzulageEur ? Number(k.schweizerKinderzulageEur) : null,
+      firstName: k.vorname,
+      lastName: k.nachname,
+      birthDate: k.geburtsdatum,
+      taxId: k.idnr ?? null,
+      childBenefit: k.kindergeldAnspruchEur ? Number(k.kindergeldAnspruchEur) : null,
+      swissFamilyAllowanceEur: k.schweizerKinderzulageEur ? Number(k.schweizerKinderzulageEur) : null,
     })),
     taxYear,
   )
@@ -320,21 +320,21 @@ function KinderScreenView({
           <Text style={styles.summaryTitle}>{tr('kinder.summaryTitle', 'Steuerliche Entlastung')}</Text>
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>{tr('kinder.freibetragLabel', 'Kinderfreibetrag Gesamt:')}</Text>
-            <Text style={styles.summaryValue}>{formatEuro(stand.freibetragGesamt)}</Text>
+            <Text style={styles.summaryValue}>{formatEuro(stand.totalAllowance)}</Text>
           </View>
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>{tr('kinder.kindergeldLabel', 'Kindergeld Anspruch:')}</Text>
-            <Text style={styles.summaryValue}>{formatEuro(stand.kindergeldSumme)}</Text>
+            <Text style={styles.summaryValue}>{formatEuro(stand.childBenefitSum)}</Text>
           </View>
-          {stand.schweizerKinderzulageSumme > 0 ? (
+          {stand.swissFamilyAllowanceSum > 0 ? (
             <>
               <View style={styles.summaryRow}>
                 <Text style={styles.summarySubLabel}>{tr('kinder.schweizLabel', 'davon Schweizer Kinderzulage:')}</Text>
-                <Text style={styles.summarySubValue}>{formatEuro(stand.schweizerKinderzulageSumme)}</Text>
+                <Text style={styles.summarySubValue}>{formatEuro(stand.swissFamilyAllowanceSum)}</Text>
               </View>
               <View style={styles.summaryRow}>
                 <Text style={styles.summarySubLabel}>{tr('kinder.diffLabel', 'davon Differenz-Kindergeld (DE):')}</Text>
-                <Text style={styles.summarySubValue}>{formatEuro(stand.differenzkindergeldSumme)}</Text>
+                <Text style={styles.summarySubValue}>{formatEuro(stand.differentialChildBenefitSum)}</Text>
               </View>
             </>
           ) : null}

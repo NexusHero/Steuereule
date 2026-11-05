@@ -5,7 +5,7 @@ import {
   childTaxAllowance,
   monthlyChildBenefitClaim,
   calculateChildrenStatus,
-  type KindDaten,
+  type ChildData,
 } from './kinder.js'
 
 describe('kinder', () => {
@@ -29,35 +29,35 @@ describe('kinder', () => {
   })
 
   it('a child born in the year counts from its birth month (§ 32 Abs. 6 Satz 5, § 66 Abs. 2 EStG)', () => {
-    const neugeboren: KindDaten = { id: 'k', vorname: 'Ida', nachname: 'M', geburtsdatum: '2025-10-20', steuerId: null, kindergeld: null }
+    const neugeboren: ChildData = { id: 'k', firstName: 'Ida', lastName: 'M', birthDate: '2025-10-20', taxId: null, childBenefit: null }
     const stand = calculateChildrenStatus([neugeboren], 2025)
-    expect(stand.kindergeldSumme).toBe(3 * 255)
-    expect(stand.freibetragGesamt).toBe(Math.round((9600 * 3) / 12))
+    expect(stand.childBenefitSum).toBe(3 * 255)
+    expect(stand.totalAllowance).toBe(Math.round((9600 * 3) / 12))
   })
 
   it('folds child facts into deterministic count and figures', () => {
-    const kinder: KindDaten[] = [
+    const kinder: ChildData[] = [
       {
         id: 'k-1',
-        vorname: 'Mia',
-        nachname: 'Muster',
-        geburtsdatum: '2019-04-12',
-        steuerId: '12345678901',
-        kindergeld: 3000,
+        firstName: 'Mia',
+        lastName: 'Muster',
+        birthDate: '2019-04-12',
+        taxId: '12345678901',
+        childBenefit: 3000,
       },
       {
         id: 'k-2',
-        vorname: 'Ben',
-        nachname: 'Muster',
-        geburtsdatum: '2022-09-01',
-        steuerId: null,
-        kindergeld: 3000,
+        firstName: 'Ben',
+        lastName: 'Muster',
+        birthDate: '2022-09-01',
+        taxId: null,
+        childBenefit: 3000,
       },
     ]
     const stand = calculateChildrenStatus(kinder, 2025)
-    expect(stand.anzahl).toBe(2)
-    expect(stand.kindergeldSumme).toBe(6000)
-    expect(stand.freibetragGesamt).toBe(2 * 9600)
+    expect(stand.count).toBe(2)
+    expect(stand.childBenefitSum).toBe(6000)
+    expect(stand.totalAllowance).toBe(2 * 9600)
   })
 
   it('calculates Differenzkindergeld for Swiss family allowances (ADR-0054, #414)', () => {
@@ -86,31 +86,31 @@ describe('kinder', () => {
 
   it('integrates Swiss family allowances and Differenzkindergeld into KinderStand (ADR-0054, #414)', () => {
     // Scenario 2: Markus Brenner (Mia born 2016, Noah born 2019, 2.748 € Swiss allowance each)
-    const kinder: KindDaten[] = [
+    const kinder: ChildData[] = [
       {
         id: 'mia',
-        vorname: 'Mia',
-        nachname: 'Brenner',
-        geburtsdatum: '2016-03-14',
-        steuerId: '41234567890',
-        kindergeld: null,
-        schweizerKinderzulageEur: 2748,
+        firstName: 'Mia',
+        lastName: 'Brenner',
+        birthDate: '2016-03-14',
+        taxId: '41234567890',
+        childBenefit: null,
+        swissFamilyAllowanceEur: 2748,
       },
       {
         id: 'noah',
-        vorname: 'Noah',
-        nachname: 'Brenner',
-        geburtsdatum: '2019-09-02',
-        steuerId: '41234567891',
-        kindergeld: null,
-        schweizerKinderzulageEur: 2748,
+        firstName: 'Noah',
+        lastName: 'Brenner',
+        birthDate: '2019-09-02',
+        taxId: '41234567891',
+        childBenefit: null,
+        swissFamilyAllowanceEur: 2748,
       },
     ]
     const stand = calculateChildrenStatus(kinder, 2025)
-    expect(stand.anzahl).toBe(2)
-    expect(stand.schweizerKinderzulageSumme).toBe(2748 * 2) // 5.496 €
-    expect(stand.differenzkindergeldSumme).toBe(312 * 2) // 624 €
-    expect(stand.kindergeldSumme).toBe(3060 * 2) // 6.120 € total claim for Günstigerprüfung
-    expect(stand.freibetragGesamt).toBe(9600 * 2) // 19.200 € Kinderfreibetrag + BEA
+    expect(stand.count).toBe(2)
+    expect(stand.swissFamilyAllowanceSum).toBe(2748 * 2) // 5.496 €
+    expect(stand.differentialChildBenefitSum).toBe(312 * 2) // 624 €
+    expect(stand.childBenefitSum).toBe(3060 * 2) // 6.120 € total claim for Günstigerprüfung
+    expect(stand.totalAllowance).toBe(9600 * 2) // 19.200 € Kinderfreibetrag + BEA
   })
 })

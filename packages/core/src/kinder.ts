@@ -14,18 +14,6 @@ export interface ChildData {
   readonly taxId: string | null
   readonly childBenefit: number | null
   readonly swissFamilyAllowanceEur?: number | null
-  readonly schweizerKinderzulageEur?: number | null
-}
-
-export interface KindDaten {
-  readonly id: string
-  readonly vorname: string
-  readonly nachname: string
-  readonly geburtsdatum: string
-  readonly steuerId: string | null
-  readonly kindergeld: number | null
-  readonly schweizerKinderzulageEur?: number | null
-  readonly swissFamilyAllowanceEur?: number | null
 }
 
 export function isValidChildBirthDate(date: string, taxYear: number): boolean {
@@ -91,24 +79,14 @@ export interface ChildrenStatus {
   readonly differentialChildBenefitSum: number
 }
 
-export interface KinderStand {
-  readonly anzahl: number
-  readonly kindergeldSumme: number
-  readonly freibetragGesamt: number
-  readonly schweizerKinderzulageSumme: number
-  readonly differenzkindergeldSumme: number
-}
-
-export function calculateChildrenStatus(children: readonly (ChildData | KindDaten)[], year: number): KinderStand & ChildrenStatus {
+export function calculateChildrenStatus(children: readonly ChildData[], year: number): ChildrenStatus {
   let childBenefitSum = 0
   let totalAllowance = 0
   let swissFamilyAllowanceSum = 0
   let differentialChildBenefitSum = 0
 
   for (const k of children) {
-    const birthDate = 'birthDate' in k ? k.birthDate : k.geburtsdatum
-    const benefit = 'childBenefit' in k ? k.childBenefit : k.kindergeld
-    const swissAllowance = 'swissFamilyAllowanceEur' in k ? k.swissFamilyAllowanceEur : k.schweizerKinderzulageEur
+    const { birthDate, childBenefit: benefit, swissFamilyAllowanceEur: swissAllowance } = k
     const months = claimMonths(birthDate, year)
     const statutory = monthlyChildBenefitClaim(year) * months
 
@@ -126,11 +104,6 @@ export function calculateChildrenStatus(children: readonly (ChildData | KindDate
   }
 
   return {
-    anzahl: children.length,
-    kindergeldSumme: childBenefitSum,
-    freibetragGesamt: totalAllowance,
-    schweizerKinderzulageSumme: swissFamilyAllowanceSum,
-    differenzkindergeldSumme: differentialChildBenefitSum,
     count: children.length,
     childBenefitSum,
     totalAllowance,
