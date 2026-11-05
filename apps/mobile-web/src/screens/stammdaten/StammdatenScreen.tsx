@@ -56,7 +56,7 @@ export function StammdatenScreen({ onZurueck }: StammdatenScreenProps) {
   }
   const textFeld = (feld: TextFeld, type: 'text' | 'numeric' = 'text') => (
     <Feld label={t(`stammdaten.${feld}`)}>
-      <Input type={type} value={form[feld]} onChange={(wert) => setze({ [feld]: wert })} testID={`stammdaten-${feld}`} />
+      <Input type={type} value={form[feld]} onChange={(wert) => setze({ [feld]: wert })} accessibilityLabel={t(`stammdaten.${feld}`)} testID={`stammdaten-${feld}`} />
     </Feld>
   )
 

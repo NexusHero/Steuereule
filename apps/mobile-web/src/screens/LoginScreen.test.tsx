@@ -78,7 +78,7 @@ function renderLogin(
   )
 }
 
-function fillCredentials(email = 'a@b.de', password = 'geheim1') {
+function fillCredentials(email = 'a@b.de', password = 'geheim-123') {
   fireEvent.change(screen.getByPlaceholderText('du@beispiel.de'), { target: { value: email } })
   fireEvent.change(screen.getByPlaceholderText('••••••••'), { target: { value: password } })
 }
@@ -157,7 +157,7 @@ describe('LoginScreen', () => {
     renderLogin()
     fireEvent.change(screen.getByPlaceholderText('du@beispiel.de'), { target: { value: 'a@b.de' } })
     fireEvent.click(screen.getByText('Einloggen'))
-    expect(screen.getByText('Mindestens 6 Zeichen fürs Passwort.')).toBeTruthy()
+    expect(screen.getByText('Mindestens 8 Zeichen fürs Passwort.')).toBeTruthy()
   })
 
   it('calls onGuest from the guest chip', () => {
@@ -203,11 +203,11 @@ describe('LoginScreen', () => {
     )
     const onDone = vi.fn()
     renderLogin({ onDone })
-    fillCredentials('a@b.de', 'geheim1')
+    fillCredentials('a@b.de', 'geheim-123')
     fireEvent.click(screen.getByText('Einloggen'))
 
     await waitFor(() => expect(onDone).toHaveBeenCalledOnce())
-    expect(receivedBody).toMatchObject({ email: 'a@b.de', password: 'geheim1' })
+    expect(receivedBody).toMatchObject({ email: 'a@b.de', password: 'geheim-123' })
   })
 
   it('shows the 2FA challenge after the primary factor succeeds (REQ-007)', async () => {
@@ -223,7 +223,7 @@ describe('LoginScreen', () => {
     )
     const onDone = vi.fn()
     renderLogin({ onDone })
-    fillCredentials('a@b.de', 'geheim1')
+    fillCredentials('a@b.de', 'geheim-123')
     fireEvent.click(screen.getByText('Einloggen'))
 
     // Primary factor succeeded but no session was issued — a 2FA challenge appears instead.

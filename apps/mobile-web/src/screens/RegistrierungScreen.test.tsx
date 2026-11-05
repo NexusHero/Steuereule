@@ -30,9 +30,9 @@ function renderRegistrierung(opts: { lng?: 'de' | 'en'; onDone?: () => void } = 
   )
 }
 
-function fillCredentials(email = 'neu@beispiel.de', password = 'geheim1') {
+function fillCredentials(email = 'neu@beispiel.de', password = 'geheim-123') {
   fireEvent.change(screen.getByPlaceholderText('du@beispiel.de'), { target: { value: email } })
-  fireEvent.change(screen.getByPlaceholderText('Mindestens 6 Zeichen'), { target: { value: password } })
+  fireEvent.change(screen.getByPlaceholderText('Mindestens 8 Zeichen'), { target: { value: password } })
 }
 
 describe('RegistrierungScreen', () => {
@@ -90,7 +90,7 @@ describe('RegistrierungScreen', () => {
     renderRegistrierung()
     fireEvent.change(screen.getByPlaceholderText('du@beispiel.de'), { target: { value: 'a@b.de' } })
     fireEvent.click(screen.getByText('Konto anlegen'))
-    expect(screen.getByText('Mindestens 6 Zeichen fürs Passwort.')).toBeTruthy()
+    expect(screen.getByText('Mindestens 8 Zeichen fürs Passwort.')).toBeTruthy()
   })
 
   it('signs up against the real better-auth client (POST /api/auth/sign-up/email) with the entered credentials', async () => {
@@ -109,7 +109,7 @@ describe('RegistrierungScreen', () => {
     fireEvent.click(screen.getByText('Konto anlegen'))
 
     await screen.findByText('Willkommen bei SteuerEule.')
-    expect(receivedBody).toMatchObject({ email: 'neu@beispiel.de', password: 'geheim1' })
+    expect(receivedBody).toMatchObject({ email: 'neu@beispiel.de', password: 'geheim-123' })
   })
 
   it('shows the honest generic error on a genuine network failure (not just a server-returned error)', async () => {

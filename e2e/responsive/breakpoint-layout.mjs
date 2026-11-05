@@ -93,7 +93,7 @@ const COPY = {
   cockpitEmptyHeading: 'Noch keine Angaben.',
   cockpitAnswerQuestions: 'Fragen beantworten',
   registrierungEmailPlaceholder: 'du@beispiel.de',
-  registrierungPasswordPlaceholder: 'Mindestens 6 Zeichen',
+  registrierungPasswordPlaceholder: 'Mindestens 8 Zeichen',
   registrierungSubmit: 'Konto anlegen',
   registrierungSuccessCta: 'Weiter zum Onboarding →',
   // ADR-0045 (value-first funnel): a guest lands in the Minimal-Gate, then the Konto-Wand.
