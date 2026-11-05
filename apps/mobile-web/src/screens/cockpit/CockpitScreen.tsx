@@ -8,6 +8,7 @@ import {
   useCockpitControllerGetCockpitSummary,
   useBestaetigungControllerGet,
   useInterviewControllerGetInterview,
+  useStammdatenControllerLese,
   type AnlageBestaetigungDto,
   type CockpitStandDto,
   type CockpitSummaryDto,
@@ -33,6 +34,7 @@ export interface CockpitScreenProps {
   readonly onOpenBestaetigung?: (jahr: number) => void
   readonly onContinuePath?: (pfad: FunnelPfad) => void
   readonly onJahrWechsel?: (jahr: number) => void
+  readonly onOpenStammdaten?: () => void
 }
 
 interface Weiter {
@@ -52,6 +54,7 @@ export function CockpitScreen({
   onOpenBestaetigung,
   onContinuePath,
   onJahrWechsel,
+  onOpenStammdaten,
 }: CockpitScreenProps) {
   const bp = useBreakpoint()
   const { t: tr } = useTranslation(APP_NS)
@@ -64,6 +67,7 @@ export function CockpitScreen({
   const [pulling, setPulling] = useState(false)
   const bestaetigungQuery = useBestaetigungControllerGet(jahr)
   const interviewQuery = useInterviewControllerGetInterview(jahr)
+  const stammdatenQuery = useStammdatenControllerLese()
 
   if (query.isPending) {
     return <LoadingState bp={bp} label={tr('cockpit.loading')} />
@@ -90,6 +94,11 @@ export function CockpitScreen({
   const isRefreshing = query.isFetching && !pulling
   const interview = interviewQuery.data?.status === 200 ? interviewQuery.data.data : null
   const pfad = interview?.nextStep.kind === 'done' ? pfadAusAntworten(interview.answers) : null
+  const fehlendeAngaben = stammdatenQuery.data?.status === 200 ? stammdatenQuery.data.data.fehlend.length : 0
+  const stammdaten: Weiter | null =
+    fehlendeAngaben > 0 && onOpenStammdaten
+      ? { label: tr('cockpit.stammdatenErgaenzen', { anzahl: fehlendeAngaben }), onPress: onOpenStammdaten }
+      : null
   const weiter: Weiter | null =
     pfad !== null && onContinuePath
       ? { label: tr('cockpit.weiterMitDeinemWeg', { pfad: tr(`funnel.kontoWand.pfad.${pfad}`) }), onPress: () => onContinuePath(pfad) }
@@ -103,6 +112,7 @@ export function CockpitScreen({
         refresh={refresh}
         isRefreshing={isRefreshing}
         weiter={weiter}
+        stammdaten={stammdaten}
         onOpenInterview={onOpenInterview}
         onOpenBescheid={onOpenBescheid}
         onOpenKapital={onOpenKapital}
@@ -124,6 +134,7 @@ export function CockpitScreen({
       refresh={refresh}
       isRefreshing={isRefreshing}
       weiter={weiter}
+      stammdaten={stammdaten}
       onOpenInterview={onOpenInterview}
       onOpenBescheid={onOpenBescheid}
       onOpenKapital={onOpenKapital}
@@ -168,6 +179,7 @@ interface CockpitEmptyProps {
   readonly refresh: PullToRefresh
   readonly isRefreshing: boolean
   readonly weiter: Weiter | null
+  readonly stammdaten: Weiter | null
   readonly onOpenInterview: () => void
   readonly onOpenBescheid: () => void
   readonly onOpenKapital: () => void
@@ -178,7 +190,7 @@ interface CockpitEmptyProps {
   readonly bp: Breakpoint
 }
 
-function CockpitEmpty({ jahr, onJahrWechsel, refresh, isRefreshing, weiter, onOpenInterview, onOpenBescheid, onOpenKapital, onOpenVermietung, onOpenKinder, onOpenEulenModus, bp }: CockpitEmptyProps) {
+function CockpitEmpty({ jahr, onJahrWechsel, refresh, isRefreshing, weiter, stammdaten, onOpenInterview, onOpenBescheid, onOpenKapital, onOpenVermietung, onOpenKinder, onOpenEulenModus, bp }: CockpitEmptyProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
@@ -202,6 +214,11 @@ function CockpitEmpty({ jahr, onJahrWechsel, refresh, isRefreshing, weiter, onOp
             {tr('cockpit.answerQuestions')}
           </Button>
         )}
+        {stammdaten ? (
+          <Button variante="ghost" onPress={stammdaten.onPress} style={styles.secondaryCta} testID="cockpit-stammdaten">
+            {stammdaten.label}
+          </Button>
+        ) : null}
         <Button variante="ghost" onPress={onOpenBescheid} style={styles.secondaryCta}>
           {tr('cockpit.checkBescheid')}
         </Button>
@@ -273,6 +290,7 @@ interface CockpitLoadedProps {
   readonly refresh: PullToRefresh
   readonly isRefreshing: boolean
   readonly weiter: Weiter | null
+  readonly stammdaten: Weiter | null
   readonly onOpenInterview: () => void
   readonly onOpenBescheid: () => void
   readonly onOpenKapital: () => void
@@ -283,7 +301,7 @@ interface CockpitLoadedProps {
   readonly bp: Breakpoint
 }
 
-function CockpitLoaded({ summary, jahr, onJahrWechsel, bestaetigung, onOpenBestaetigung, refresh, isRefreshing, weiter, onOpenInterview, onOpenBescheid, onOpenKapital, onOpenVermietung, onOpenKinder, onOpenEulenModus, onOpenAusdruck, bp }: CockpitLoadedProps) {
+function CockpitLoaded({ summary, jahr, onJahrWechsel, bestaetigung, onOpenBestaetigung, refresh, isRefreshing, weiter, stammdaten, onOpenInterview, onOpenBescheid, onOpenKapital, onOpenVermietung, onOpenKinder, onOpenEulenModus, onOpenAusdruck, bp }: CockpitLoadedProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
@@ -316,6 +334,11 @@ function CockpitLoaded({ summary, jahr, onJahrWechsel, bestaetigung, onOpenBesta
       ) : hasOpenItems ? (
         <Button onPress={onOpenInterview} style={styles.cta}>
           {tr('cockpit.answerQuestions')}
+        </Button>
+      ) : null}
+      {stammdaten ? (
+        <Button variante="ghost" onPress={stammdaten.onPress} style={styles.secondaryCta} testID="cockpit-stammdaten">
+          {stammdaten.label}
         </Button>
       ) : null}
       <Button

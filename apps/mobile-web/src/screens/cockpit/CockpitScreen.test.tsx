@@ -78,6 +78,7 @@ function renderCockpit(opts: {
   onOpenBestaetigung?: (jahr: number) => void
   onContinuePath?: (pfad: FunnelPfad) => void
   onJahrWechsel?: (jahr: number) => void
+  onOpenStammdaten?: () => void
   taxYear?: number
 } = {}) {
   const i18n = createAppI18n(opts.lng ?? 'de')
@@ -95,6 +96,7 @@ function renderCockpit(opts: {
             {...(opts.onOpenBestaetigung ? { onOpenBestaetigung: opts.onOpenBestaetigung } : {})}
             {...(opts.onContinuePath ? { onContinuePath: opts.onContinuePath } : {})}
             {...(opts.onJahrWechsel ? { onJahrWechsel: opts.onJahrWechsel } : {})}
+            {...(opts.onOpenStammdaten ? { onOpenStammdaten: opts.onOpenStammdaten } : {})}
           />
         </ThemeProvider>
       </I18nextProvider>
@@ -455,5 +457,28 @@ describe('CockpitScreen — the chosen tax year belongs to the whole app', () =>
     await screen.findByText('Erfasstes Einkommen')
 
     expect(geladen2025).toBe(1)
+  })
+})
+
+describe('CockpitScreen — the personal details the return needs, asked early', () => {
+  it('says how many details are still missing and opens them', async () => {
+    mockCockpit(LOADED_SUMMARY)
+    server.use(http.get('*/v1/stammdaten', () => HttpResponse.json({ fehlend: ['geburtsdatum', 'iban', 'finanzamt'] })))
+    const onOpenStammdaten = vi.fn()
+    renderCockpit({ onOpenStammdaten })
+
+    fireEvent.click(await screen.findByText('Angaben für die Erklärung ergänzen · 3 fehlen'))
+
+    expect(onOpenStammdaten).toHaveBeenCalledOnce()
+  })
+
+  it('stays quiet once every detail is there', async () => {
+    mockCockpit(LOADED_SUMMARY)
+    server.use(http.get('*/v1/stammdaten', () => HttpResponse.json({ fehlend: [] })))
+    renderCockpit({ onOpenStammdaten: () => {} })
+
+    await screen.findByText('Erfasstes Einkommen')
+
+    expect(screen.queryByText(/Angaben für die Erklärung ergänzen/)).toBeNull()
   })
 })

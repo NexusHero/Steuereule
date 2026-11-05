@@ -305,6 +305,7 @@ function TabbedShell({ tab, onTabChange, onSignedOut, startInInterview = false, 
     | 'vermietung'
     | 'kinder'
     | 'eulen-modus'
+    | 'stammdaten'
   >(startInInterview ? 'interview' : 'main')
   const [ausstehenderPfad, setAusstehenderPfad] = useState<FunnelPfad | null>(null)
   const [steuerjahr, setSteuerjahr] = useState(CURRENT_TAX_YEAR)
@@ -357,6 +358,7 @@ function TabbedShell({ tab, onTabChange, onSignedOut, startInInterview = false, 
             onOpenVermietung={() => setCockpitView('vermietung')}
             onOpenKinder={() => setCockpitView('kinder')}
             onOpenEulenModus={() => setCockpitView('eulen-modus')}
+            onOpenStammdaten={() => setCockpitView('stammdaten')}
             onContinuePath={(pfad) => {
               setFunnelPfad(pfad)
               setAusstehenderPfad(pfad)
@@ -373,6 +375,7 @@ function TabbedShell({ tab, onTabChange, onSignedOut, startInInterview = false, 
             }}
           />
         ) : null}
+        {tab === 'cockpit' && cockpitView === 'stammdaten' ? <StammdatenScreen onZurueck={() => setCockpitView('main')} /> : null}
         {tab === 'cockpit' && cockpitView === 'konto-wand' ? (
           <KontoWandScreen pfad={funnelPfad} onRegister={onRegister} onLogin={onLogin} onLater={() => setCockpitView('main')} />
         ) : null}
