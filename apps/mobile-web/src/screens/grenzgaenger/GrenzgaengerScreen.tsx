@@ -174,6 +174,7 @@ function TageInput({ onAnswer }: { readonly onAnswer: (id: EntryQuestionId, valu
           value={text}
           onChange={setText}
           placeholder={tr('grenzgaenger.interview.tage.placeholder')}
+          accessibilityLabel={tr('grenzgaenger.interview.tage.label')}
           onSubmit={() => {
             if (valid) onAnswer('ch-nichtrueckkehrtage', text)
           }}
@@ -232,10 +233,10 @@ function LohnausweisStep({
       <Text style={styles.sectionTitle}>{tr('grenzgaenger.lohnausweis.wechselkurs.title')}</Text>
       <Text style={styles.help}>{tr('grenzgaenger.lohnausweis.wechselkurs.help')}</Text>
       <Feld label={tr('grenzgaenger.lohnausweis.wechselkurs.monat')}>
-        <Input type="text" value={monat} onChange={setMonat} placeholder={`${taxYear}-12`} testID="ch-wechselkurs-monat" />
+        <Input type="text" value={monat} onChange={setMonat} placeholder={`${taxYear}-12`} accessibilityLabel={tr('grenzgaenger.lohnausweis.wechselkurs.monat')} testID="ch-wechselkurs-monat" />
       </Feld>
       <Feld label={tr('grenzgaenger.lohnausweis.wechselkurs.kurs')}>
-        <Input type="numeric" value={kurs} onChange={setKurs} placeholder="1,07" testID="ch-wechselkurs-kurs" />
+        <Input type="numeric" value={kurs} onChange={setKurs} placeholder="1,07" accessibilityLabel={tr('grenzgaenger.lohnausweis.wechselkurs.kurs')} testID="ch-wechselkurs-kurs" />
       </Feld>
       {kursFehler ? <Text style={styles.help}>{tr('grenzgaenger.lohnausweis.wechselkurs.fehlt')}</Text> : null}
       <Button
@@ -422,10 +423,12 @@ function ChFeldInput({
     const wert = ganzzahlAus(getrimmt)
     if (wert !== null) onCommit({ kind: 'erfasst', wert })
   }
+  const label = `${tr('grenzgaenger.lohnausweis.ziffer', { n: ziffer })} · ${tr(`grenzgaenger.lohnausweis.felder.${feldId}`)}`
   return (
-    <Feld label={`${tr('grenzgaenger.lohnausweis.ziffer', { n: ziffer })} · ${tr(`grenzgaenger.lohnausweis.felder.${feldId}`)}`}>
+    <Feld label={label}>
       <Input
         type="numeric"
+        accessibilityLabel={label}
         value={text}
         onChange={setText}
         placeholder="0"

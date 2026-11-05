@@ -278,4 +278,14 @@ describe('GrenzgaengerScreen — Vorsorge außerhalb des Lohns', () => {
 
     await waitFor(() => expect(bodies).toEqual([{ krankenkasseChf: 4200 }, { saeule3aChf: 7000 }]))
   })
+
+describe('GrenzgaengerScreen accessibility', () => {
+  it('gives every Lohnausweis Ziffer a name screen readers can announce, not just the placeholder', async () => {
+    server.use(http.get(INTERVIEW_URL, () => HttpResponse.json(DONE_CH_INTERVIEW, { status: 200 })))
+    server.use(http.get(CH_URL, () => HttpResponse.json(EMPTY_CH, { status: 200 })))
+    renderScreen()
+    expect(await screen.findByLabelText('Ziffer 1 · Lohn (Grundlohn)')).toBeTruthy()
+    expect(screen.getByLabelText('Ziffer 12 · Quellensteuerabzug')).toBeTruthy()
+  })
+})
 })

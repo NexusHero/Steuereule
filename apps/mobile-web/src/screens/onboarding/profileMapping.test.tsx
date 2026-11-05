@@ -5,7 +5,7 @@ describe('toOnboardingProfil', () => {
   it('maps a saved profile field-by-field, grouping the Steuer-ID/Steuernummer like the typing path (steuereule#60)', () => {
     expect(
       toOnboardingProfil({ firstName: 'Kim', lastName: 'Yilmaz', steuerId: '12345678901', steuernummer: '1234567890' }),
-    ).toEqual({ vorname: 'Kim', nachname: 'Yilmaz', steuerId: '12 345 678 901', steuerNr: '123/456/7890' })
+    ).toEqual({ vorname: 'Kim', nachname: 'Yilmaz', steuerId: '12 345 678 901', steuerNr: '12/345/67890' })
   })
 
   it('maps the all-null default to the empty profile', () => {

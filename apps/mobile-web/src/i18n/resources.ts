@@ -451,7 +451,7 @@ export const appResources = {
           'Alle Seiten abgeben, auch leere – aber nicht heften oder klammern.',
           'Belege nur beilegen, wenn ein Vordruck ausdrücklich danach fragt.',
         ],
-        hinweisEdaten: 'Lohnsteuer, Sozialversicherung und andere „e“-Zeilen liegen dem Finanzamt bereits vom Arbeitgeber vor und bleiben leer.',
+        hinweisEdaten: 'Lohnsteuer, Sozialversicherung und andere „e“-Zeilen liegen dem Finanzamt bereits vom Arbeitgeber vor und bleiben leer. Nur den Bruttoarbeitslohn (Anlage N, Zeile 5) tragen wir zur Kontrolle ein.',
       },
       stammdaten: {
         rowLabel: 'Angaben für die Steuererklärung',
@@ -604,7 +604,7 @@ export const appResources = {
         job: {
           titleBefore: 'Woher kam dein ',
           titleMark: 'Geld',
-          titleAfter: ' 2026?',
+          titleAfter: ' {{taxYear}}?',
           help: 'Mehrfachjobs? Nimm die Hauptquelle — der Rest kommt später.',
           options: {
             angestellt: 'Angestellt',
@@ -661,7 +661,7 @@ export const appResources = {
         felder: {
           bruttoarbeitslohn: 'Bruttoarbeitslohn (Zeile 3)',
           lohnsteuer: 'Einbehaltene Lohnsteuer (Zeile 4)',
-          sozialversicherung: 'SV-Arbeitnehmeranteil (Zeilen 22/23)',
+          sozialversicherung: 'SV-Arbeitnehmeranteil (Summe der Zeilen 23, 25, 26 und 27)',
         },
         feld: {
           placeholder: 'Ganzzahlige Euro',
@@ -891,6 +891,9 @@ export const appResources = {
         heading: 'Prüfung vor Abgabe',
         einreichbar: 'Alles klar — keine Widersprüche, nichts mehr offen.',
         nichtEinreichbar: 'Da ist noch etwas offen:',
+        stammdatenOffen_one: 'Für den Ausdruck fehlt noch 1 persönliche Angabe (z. B. Adresse oder IBAN).',
+        stammdatenOffen_other: 'Für den Ausdruck fehlen noch {{count}} persönliche Angaben (z. B. Adresse oder IBAN).',
+        stammdatenUnbekannt: 'Ob deine persönlichen Angaben vollständig sind, konnten wir gerade nicht prüfen.',
         weiterZumVergleich: 'Weiter zum Veranlagungsartenvergleich',
         werktageNote: 'Ehrlich: die Arbeitstage- und Pendlerpauschale-Prüfung folgt in einem späteren Schritt.',
         widersprueche: 'Widersprüche',
@@ -923,6 +926,7 @@ export const appResources = {
           label: 'Erfasstes Einkommen',
           openItems_one: '{{count}} Frage offen',
           openItems_other: '{{count}} Fragen offen',
+          nochOffen: 'Noch offen',
           offenePosten_one: '{{count}} Posten offen',
           offenePosten_other: '{{count}} Posten offen',
           herkunftRegel: 'Spannen-Regel · ADR-015',
@@ -936,9 +940,12 @@ export const appResources = {
         answerQuestions: 'Fragen beantworten',
         weiterMitDeinemWeg: 'Weiter mit deinem Weg · {{pfad}}',
         stammdatenErgaenzen: 'Angaben für die Erklärung ergänzen · {{anzahl}} fehlen',
+        stammdatenAnsehen: 'Angaben für die Erklärung & Partner',
         erstattung: {
           erstattung: 'Voraussichtlich {{von}} – {{bis}} € Erstattung',
           nachzahlung: 'Voraussichtlich {{von}} – {{bis}} € Nachzahlung',
+          erstattungRund: 'Voraussichtlich rund {{betrag}} € Erstattung',
+          nachzahlungRund: 'Voraussichtlich rund {{betrag}} € Nachzahlung',
           offenesErgebnis: 'Voraussichtlich zwischen {{nachzahlung}} € Nachzahlung und {{erstattung}} € Erstattung',
           kirchensteuer: 'Kirchensteuer ist in der Schätzung noch nicht enthalten.',
           offen_one: 'Für die Schätzung fehlt noch 1 Angabe.',
@@ -1185,6 +1192,7 @@ export const appResources = {
         zuKnapp: 'Zu knapp, um das zu sagen.',
         unbestimmt: 'Das können wir noch nicht sagen.',
         nichtVerheiratet: 'Nur Verheiratete können zwischen Einzel- und Zusammenveranlagung wählen.',
+        done: 'Weiter zum Cockpit',
         keineEinnahmen: 'Noch kein Einkommen erfasst — es gibt nichts zu vergleichen.',
         einzel: 'Einzelveranlagung',
         zusammen: 'Zusammenveranlagung',
@@ -1661,7 +1669,7 @@ export const appResources = {
           'Hand in all pages, including empty ones — but do not staple or clip them.',
           'Only enclose receipts where a form explicitly asks for them.',
         ],
-        hinweisEdaten: 'Income tax, social security and other “e” lines are already reported by your employer and stay empty.',
+        hinweisEdaten: 'Income tax, social security and other “e” lines are already reported by your employer and stay empty. Only the gross wage (Anlage N, line 5) is filled in, as a cross-check.',
       },
       stammdaten: {
         rowLabel: 'Details for your tax return',
@@ -1814,7 +1822,7 @@ export const appResources = {
         job: {
           titleBefore: 'Where did your ',
           titleMark: 'money',
-          titleAfter: ' come from in 2026?',
+          titleAfter: ' come from in {{taxYear}}?',
           help: 'Multiple jobs? Use your main source — the rest comes later.',
           options: {
             angestellt: 'Employed',
@@ -1871,7 +1879,7 @@ export const appResources = {
         felder: {
           bruttoarbeitslohn: 'Gross pay (line 3)',
           lohnsteuer: 'Withheld income tax (line 4)',
-          sozialversicherung: 'Employee social-insurance share (lines 22/23)',
+          sozialversicherung: 'Employee social-insurance share (sum of lines 23, 25, 26 and 27)',
         },
         feld: {
           placeholder: 'Whole euros',
@@ -2101,6 +2109,9 @@ export const appResources = {
         heading: 'Check before filing',
         einreichbar: 'All clear — no contradictions, nothing left open.',
         nichtEinreichbar: 'Something is still open:',
+        stammdatenOffen_one: '1 personal detail is still missing for the printout (e.g. address or IBAN).',
+        stammdatenOffen_other: '{{count}} personal details are still missing for the printout (e.g. address or IBAN).',
+        stammdatenUnbekannt: "We couldn't check right now whether your personal details are complete.",
         weiterZumVergleich: 'Continue to the assessment-type comparison',
         werktageNote: "Honestly: the work-days and commuting-allowance check comes in a later step.",
         widersprueche: 'Blockers',
@@ -2133,6 +2144,7 @@ export const appResources = {
           label: 'Recorded income',
           openItems_one: '{{count}} question still open',
           openItems_other: '{{count}} questions still open',
+          nochOffen: 'Still open',
           offenePosten_one: '{{count}} item still open',
           offenePosten_other: '{{count}} items still open',
           herkunftRegel: 'Range rule · ADR-015',
@@ -2146,9 +2158,12 @@ export const appResources = {
         answerQuestions: 'Answer questions',
         weiterMitDeinemWeg: 'Continue your path · {{pfad}}',
         stammdatenErgaenzen: 'Complete the details for your return · {{anzahl}} missing',
+        stammdatenAnsehen: 'Details for your return & partner',
         erstattung: {
           erstattung: 'Expected refund: {{von}} – {{bis}} €',
           nachzahlung: 'Expected back-payment: {{von}} – {{bis}} €',
+          erstattungRund: 'Expected refund: about {{betrag}} €',
+          nachzahlungRund: 'Expected back-payment: about {{betrag}} €',
           offenesErgebnis: 'Expected: between {{nachzahlung}} € back-payment and {{erstattung}} € refund',
           kirchensteuer: 'Church tax is not part of the estimate yet.',
           offen_one: 'The estimate still needs 1 detail.',
@@ -2397,6 +2412,7 @@ export const appResources = {
         zuKnapp: 'Too close to call.',
         unbestimmt: "We can't say that yet.",
         nichtVerheiratet: 'Only married couples can choose between separate and joint assessment.',
+        done: 'Continue to cockpit',
         keineEinnahmen: 'No income recorded yet — there is nothing to compare.',
         einzel: 'Separate assessment',
         zusammen: 'Joint assessment',

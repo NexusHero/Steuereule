@@ -44,7 +44,7 @@ describe('LstbScreen', () => {
 
     expect(await screen.findByText('Bruttoarbeitslohn (Zeile 3)')).toBeTruthy()
     expect(screen.getByText('Einbehaltene Lohnsteuer (Zeile 4)')).toBeTruthy()
-    expect(screen.getByText('SV-Arbeitnehmeranteil (Zeilen 22/23)')).toBeTruthy()
+    expect(screen.getByText('SV-Arbeitnehmeranteil (Summe der Zeilen 23, 25, 26 und 27)')).toBeTruthy()
   })
 
   it('shows a named widerspruch when one figure exceeds the Bruttoarbeitslohn (ADR-008)', async () => {

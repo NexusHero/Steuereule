@@ -4,7 +4,7 @@ import { Button, Feld, Input, Pill, Sticker, useTheme, type Breakpoint } from '@
 import { isValidSteuerId } from '@steuereule/core'
 import { APP_NS } from '../../i18n/resources'
 import { makeProfilStyles } from './styles'
-import { formatSteuerId, formatSteuerNr, countDigits } from '../onboarding/format'
+import { formatSteuerId, sanitizeTaxNumberInput, countDigits } from '../onboarding/format'
 import type { OnboardingProfil } from '../onboarding/profileMapping'
 
 interface ProfilEditProps {
@@ -64,7 +64,7 @@ export function ProfilEdit({ draft, onChange, onSave, onCancel, isSaving, saveEr
           type="numeric"
           mono
           value={draft.steuerNr}
-          onChange={(value) => onChange('steuerNr')(formatSteuerNr(value))}
+          onChange={(value) => onChange('steuerNr')(sanitizeTaxNumberInput(value))}
           placeholder={tr('profil.steuerNrPlaceholder')}
           accessibilityLabel={tr('profil.steuerNrLabel')}
         />
