@@ -11,7 +11,6 @@ export interface PartnerCouplingRecord {
   einladungsCodeGueltigBis: Date | null
   invitationCodeExpiresAt?: Date | null
 }
-export type SteuerjahrKopplungRecord = PartnerCouplingRecord
 
 export const PARTNER_COUPLING_REPOSITORY = Symbol('PARTNER_COUPLING_REPOSITORY')
 
@@ -31,4 +30,3 @@ export interface PartnerCouplingRepository {
   setPersonB(id: string, personBUserId: string): Promise<PartnerCouplingRecord>
   delete(personAUserId: string, steuerjahr: number): Promise<boolean>
 }
-export type KopplungRepository = PartnerCouplingRepository

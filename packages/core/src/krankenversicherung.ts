@@ -1,7 +1,6 @@
 import type { Answers } from './interview'
 
 export type HealthInsuranceKind = 'gesetzlich' | 'privat' | 'ausland'
-export type KrankenversicherungArt = HealthInsuranceKind
 
 /** Self-paid health and care insurance of one person, as the Anlage Vorsorgeaufwand asks for it. */
 export interface HealthInsurance {
@@ -16,14 +15,14 @@ export interface HealthInsurance {
 }
 
 export interface Krankenversicherung {
-  readonly art: KrankenversicherungArt
+  readonly art: HealthInsuranceKind
   readonly kvBasis: number
   readonly mitKrankengeld: boolean
   readonly pv: number
   readonly wahlleistungen: number
 }
 
-const ART_MAP: Readonly<Record<string, KrankenversicherungArt>> = {
+const ART_MAP: Readonly<Record<string, HealthInsuranceKind>> = {
   'Gesetzlich (freiwillig)': 'gesetzlich',
   Privat: 'privat',
   Ausländisch: 'ausland',

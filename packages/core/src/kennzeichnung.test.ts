@@ -2,12 +2,12 @@ import { describe, expect, it } from 'vitest'
 import {
   anlageVon,
   confirmAnnex,
-  entscheideSchreibung,
+  decideWriting,
   missingConfirmations,
   provenanceText,
   provenanceKey,
-  nimmVorschlagAn,
-  verwirfVorschlag,
+  acceptProposal,
+  dismissProposal,
   decomposeProvenanceKey,
   type Kennzeichnung,
 } from './kennzeichnung'
@@ -51,46 +51,46 @@ describe('anlageVon — every mask belongs to exactly one Anlage', () => {
 
 describe('entscheideSchreibung — der Nutzer gewinnt (ADR-0052 §7)', () => {
   it('a user write always writes and drops the marker (the value is now the user\'s)', () => {
-    expect(entscheideSchreibung({ key: 'lstb.lohnsteuer', bestehend: unbestaetigt('lstb.lohnsteuer', '700'), aktuellerWert: '700', neuerWert: '650', herkunft: { art: 'nutzer' } })).toEqual({ art: 'schreiben', kennzeichnung: null })
+    expect(decideWriting({ key: 'lstb.lohnsteuer', bestehend: unbestaetigt('lstb.lohnsteuer', '700'), aktuellerWert: '700', neuerWert: '650', herkunft: { art: 'nutzer' } })).toEqual({ art: 'schreiben', kennzeichnung: null })
   })
 
   it('a non-user write into an empty field writes and stays unconfirmed with its Herkunft', () => {
-    expect(entscheideSchreibung({ key: 'lstb.lohnsteuer', bestehend: null, aktuellerWert: null, neuerWert: '700', herkunft: CLAUDE })).toEqual({
+    expect(decideWriting({ key: 'lstb.lohnsteuer', bestehend: null, aktuellerWert: null, neuerWert: '700', herkunft: CLAUDE })).toEqual({
       art: 'schreiben',
       kennzeichnung: { key: 'lstb.lohnsteuer', herkunft: CLAUDE, bestaetigt: false, vorschlag: null, wert: '700' },
     })
   })
 
   it('a non-user write over a value the user typed becomes a proposal and never overwrites it', () => {
-    expect(entscheideSchreibung({ key: 'lstb.bruttoarbeitslohn', bestehend: null, aktuellerWert: '4750', neuerWert: '4800', herkunft: CLAUDE })).toEqual({
+    expect(decideWriting({ key: 'lstb.bruttoarbeitslohn', bestehend: null, aktuellerWert: '4750', neuerWert: '4800', herkunft: CLAUDE })).toEqual({
       art: 'vorschlag',
       kennzeichnung: { key: 'lstb.bruttoarbeitslohn', herkunft: { art: 'nutzer' }, bestaetigt: true, wert: '4750', vorschlag: { wert: '4800', herkunft: CLAUDE } },
     })
   })
 
   it('a value the user marked "unklar" is the user\'s too — proposal, not overwrite', () => {
-    expect(entscheideSchreibung({ key: 'lstb.lohnsteuer', bestehend: null, aktuellerWert: 'unklar', neuerWert: '700', herkunft: CLAUDE }).art).toBe('vorschlag')
+    expect(decideWriting({ key: 'lstb.lohnsteuer', bestehend: null, aktuellerWert: 'unklar', neuerWert: '700', herkunft: CLAUDE }).art).toBe('vorschlag')
   })
 
   it('a confirmed value is protected like a typed one; the newest proposal replaces the older', () => {
     const bestaetigt: Kennzeichnung = { ...unbestaetigt('rente.jahresbetrag', '12000'), bestaetigt: true, vorschlag: { wert: '12100', herkunft: CLAUDE } }
     const gemini = { art: 'assistent', name: 'Gemini' } as const
-    expect(entscheideSchreibung({ key: 'rente.jahresbetrag', bestehend: bestaetigt, aktuellerWert: '12000', neuerWert: '12200', herkunft: gemini })).toEqual({
+    expect(decideWriting({ key: 'rente.jahresbetrag', bestehend: bestaetigt, aktuellerWert: '12000', neuerWert: '12200', herkunft: gemini })).toEqual({
       art: 'vorschlag',
       kennzeichnung: { ...bestaetigt, vorschlag: { wert: '12200', herkunft: gemini } },
     })
   })
 
   it('an unconfirmed value from someone else is replaced (nobody has vouched for it yet)', () => {
-    expect(entscheideSchreibung({ key: 'kapital.kapitalertraege', bestehend: unbestaetigt('kapital.kapitalertraege', '300'), aktuellerWert: '300', neuerWert: '320', herkunft: CLAUDE })).toEqual({
+    expect(decideWriting({ key: 'kapital.kapitalertraege', bestehend: unbestaetigt('kapital.kapitalertraege', '300'), aktuellerWert: '300', neuerWert: '320', herkunft: CLAUDE })).toEqual({
       art: 'schreiben',
       kennzeichnung: { key: 'kapital.kapitalertraege', herkunft: CLAUDE, bestaetigt: false, vorschlag: null, wert: '320' },
     })
   })
 
   it('writing what is already there changes nothing', () => {
-    expect(entscheideSchreibung({ key: 'lstb.lohnsteuer', bestehend: null, aktuellerWert: '700', neuerWert: '700', herkunft: CLAUDE })).toEqual({ art: 'unveraendert' })
-    expect(entscheideSchreibung({ key: 'lstb.lohnsteuer', bestehend: null, aktuellerWert: null, neuerWert: null, herkunft: CLAUDE })).toEqual({ art: 'unveraendert' })
+    expect(decideWriting({ key: 'lstb.lohnsteuer', bestehend: null, aktuellerWert: '700', neuerWert: '700', herkunft: CLAUDE })).toEqual({ art: 'unveraendert' })
+    expect(decideWriting({ key: 'lstb.lohnsteuer', bestehend: null, aktuellerWert: null, neuerWert: null, herkunft: CLAUDE })).toEqual({ art: 'unveraendert' })
   })
 })
 
@@ -121,20 +121,20 @@ describe('nimmVorschlagAn / verwirfVorschlag', () => {
   const mitVorschlag: Kennzeichnung = { key: 'lstb.bruttoarbeitslohn', herkunft: { art: 'nutzer' }, bestaetigt: true, wert: '4750', vorschlag: { wert: '4800', herkunft: CLAUDE } }
 
   it('accepting writes the proposed value as confirmed (the user chose it) with the proposer as Herkunft', () => {
-    expect(nimmVorschlagAn(mitVorschlag)).toEqual({ key: 'lstb.bruttoarbeitslohn', herkunft: CLAUDE, bestaetigt: true, wert: '4800', vorschlag: null })
+    expect(acceptProposal(mitVorschlag)).toEqual({ key: 'lstb.bruttoarbeitslohn', herkunft: CLAUDE, bestaetigt: true, wert: '4800', vorschlag: null })
   })
 
   it('discarding a proposal on a user value leaves no marker behind', () => {
-    expect(verwirfVorschlag(mitVorschlag)).toBeNull()
+    expect(dismissProposal(mitVorschlag)).toBeNull()
   })
 
   it('discarding a proposal on an unconfirmed value keeps the value unconfirmed', () => {
     const k: Kennzeichnung = { ...unbestaetigt('rente.jahresbetrag', '12000'), vorschlag: { wert: '1', herkunft: CLAUDE } }
-    expect(verwirfVorschlag(k)).toEqual({ ...k, vorschlag: null })
+    expect(dismissProposal(k)).toEqual({ ...k, vorschlag: null })
   })
 
   it('there is nothing to accept without a proposal', () => {
-    expect(() => nimmVorschlagAn({ ...mitVorschlag, vorschlag: null })).toThrow()
+    expect(() => acceptProposal({ ...mitVorschlag, vorschlag: null })).toThrow()
   })
 })
 

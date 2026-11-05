@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   calculate,
-  loeseKonflikt,
+  resolveConflict,
   type BerechnungsInput,
   type Posten,
   type PostenKonflikt,
@@ -100,17 +100,17 @@ describe('loeseKonflikt — ADR-008 resolution is explicit, never silent', () =>
   }
 
   it('"eine Quelle wählen" keeps that source’s amount AND origin', () => {
-    const posten = loeseKonflikt(konflikt, { art: 'quelle-waehlen', quelle: { art: 'beleg', belegId: 'b1' }, betrag: 480 })
+    const posten = resolveConflict(konflikt, { art: 'quelle-waehlen', quelle: { art: 'beleg', belegId: 'b1' }, betrag: 480 })
     expect(posten).toEqual({ id: 'p-conflict', einkunftsart: 'Kapital', betrag: 480, quelle: { art: 'beleg', belegId: 'b1' } })
   })
 
   it('"Wert korrigieren" produces a fresh manual entry (origin eingabe)', () => {
-    const posten = loeseKonflikt(konflikt, { art: 'wert-korrigieren', betrag: 490 })
+    const posten = resolveConflict(konflikt, { art: 'wert-korrigieren', betrag: 490 })
     expect(posten).toEqual({ id: 'p-conflict', einkunftsart: 'Kapital', betrag: 490, quelle: { art: 'eingabe' } })
   })
 
   it('rejects a negative corrected value', () => {
-    expect(() => loeseKonflikt(konflikt, { art: 'wert-korrigieren', betrag: -1 })).toThrow(RangeError)
+    expect(() => resolveConflict(konflikt, { art: 'wert-korrigieren', betrag: -1 })).toThrow(RangeError)
   })
 })
 

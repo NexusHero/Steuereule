@@ -7,7 +7,7 @@ import {
   deserializeAssessmentField,
   appealDeadlineEnd,
   reconcileAssessment,
-  istEinspruchGrund,
+  isAppealReason,
   isValidAssessmentAmount,
   korrigiereFassung,
   serializeAssessmentField,
@@ -142,11 +142,11 @@ describe('EINSPRUCHS_GRUENDE — the closed Grund-Auswahl', () => {
   })
 
   it('istEinspruchGrund is total over string', () => {
-    expect(istEinspruchGrund('betrag-falsch')).toBe(true)
-    expect(istEinspruchGrund('sonstiges')).toBe(true)
-    expect(istEinspruchGrund('betrag-falsch')).toBe(true)
-    expect(istEinspruchGrund('')).toBe(false)
-    expect(istEinspruchGrund('betragfalsch')).toBe(false)
+    expect(isAppealReason('betrag-falsch')).toBe(true)
+    expect(isAppealReason('sonstiges')).toBe(true)
+    expect(isAppealReason('betrag-falsch')).toBe(true)
+    expect(isAppealReason('')).toBe(false)
+    expect(isAppealReason('betragfalsch')).toBe(false)
   })
 })
 

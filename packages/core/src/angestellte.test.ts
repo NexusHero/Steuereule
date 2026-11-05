@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { angestellteAusAntworten, angestellteAusDaten, calculateEmployeeStatus, type AngestellteEingaben } from './angestellte'
+import { angestellteAusAntworten, employeeFromData, calculateEmployeeStatus, type AngestellteEingaben } from './angestellte'
 import { ENTRIES, entryForStep, isReachableFor, nextStepFor, remainingStepsFor, type Answers } from './interview'
-import { LEERES_LSTB, type LstbDaten } from './lstb'
+import { EMPTY_WAGE_TAX_CERTIFICATE, type WageTaxCertificateData } from './lstb'
 
 const EINGABEN: AngestellteEingaben = {
   einnahmen: 50000,
@@ -95,14 +95,14 @@ describe('angestelltenStand — the deterministic fold', () => {
 })
 
 describe('angestellteAusDaten — the ONE fold shared by Cockpit API + Plausibilitäts-Screen (ticket 15 review F2)', () => {
-  const VOLLSTAENDIG: LstbDaten = {
+  const VOLLSTAENDIG: WageTaxCertificateData = {
     bruttoarbeitslohn: { kind: 'erfasst', wert: 50000 },
     lohnsteuer: { kind: 'erfasst', wert: 8000 },
     sozialversicherung: { kind: 'erfasst', wert: 9000 },
   }
 
   it('empty answers + empty LStB fold to all-zero facts, nothing gated', () => {
-    expect(angestellteAusDaten(LEERES_LSTB, {})).toEqual({
+    expect(employeeFromData(EMPTY_WAGE_TAX_CERTIFICATE, {})).toEqual({
       einnahmen: 0,
       werbungskosten: 0,
       sonderausgaben: 0,
@@ -114,29 +114,29 @@ describe('angestellteAusDaten — the ONE fold shared by Cockpit API + Plausibil
   })
 
   it('sums LStB Brutto (Angestellte vertical only) + declared Nebenjob-Brutto', () => {
-    expect(angestellteAusDaten(VOLLSTAENDIG, { job: 'Angestellt', nebenjob: 'Nebenjob', 'nebenjob-brutto': '4000' }).einnahmen).toBe(54000)
+    expect(employeeFromData(VOLLSTAENDIG, { job: 'Angestellt', nebenjob: 'Nebenjob', 'nebenjob-brutto': '4000' }).einnahmen).toBe(54000)
     // A pensioner has no LStB to transcribe, so the (present) LStB must not fold into income.
-    expect(angestellteAusDaten(VOLLSTAENDIG, { job: 'Rente' }).einnahmen).toBe(0)
+    expect(employeeFromData(VOLLSTAENDIG, { job: 'Rente' }).einnahmen).toBe(0)
   })
 
   it('counts open LStB fields only for the Angestellte vertical', () => {
-    const offen: LstbDaten = { bruttoarbeitslohn: { kind: 'erfasst', wert: 50000 }, lohnsteuer: { kind: 'offen' }, sozialversicherung: { kind: 'offen' } }
-    expect(angestellteAusDaten(offen, { job: 'Angestellt' }).offenePosten).toBe(2)
-    expect(angestellteAusDaten(offen, { job: 'Rente' }).offenePosten).toBe(0)
+    const offen: WageTaxCertificateData = { bruttoarbeitslohn: { kind: 'erfasst', wert: 50000 }, lohnsteuer: { kind: 'offen' }, sozialversicherung: { kind: 'offen' } }
+    expect(employeeFromData(offen, { job: 'Angestellt' }).offenePosten).toBe(2)
+    expect(employeeFromData(offen, { job: 'Rente' }).offenePosten).toBe(0)
   })
 
   it('counts a declared Nebenjob without Brutto as an open Posten (never Minijob)', () => {
-    expect(angestellteAusDaten(VOLLSTAENDIG, { job: 'Angestellt', nebenjob: 'Nebenjob' }).offenePosten).toBe(1)
-    expect(angestellteAusDaten(VOLLSTAENDIG, { job: 'Angestellt', nebenjob: 'Minijob' }).offenePosten).toBe(0)
+    expect(employeeFromData(VOLLSTAENDIG, { job: 'Angestellt', nebenjob: 'Nebenjob' }).offenePosten).toBe(1)
+    expect(employeeFromData(VOLLSTAENDIG, { job: 'Angestellt', nebenjob: 'Minijob' }).offenePosten).toBe(0)
   })
 
   it('counts an LStB widerspruch as a conflict (ADR-008)', () => {
-    const widerspruch: LstbDaten = { bruttoarbeitslohn: { kind: 'erfasst', wert: 50000 }, lohnsteuer: { kind: 'erfasst', wert: 60000 }, sozialversicherung: { kind: 'erfasst', wert: 0 } }
-    expect(angestellteAusDaten(widerspruch, { job: 'Angestellt' }).konflikte).toBe(1)
+    const widerspruch: WageTaxCertificateData = { bruttoarbeitslohn: { kind: 'erfasst', wert: 50000 }, lohnsteuer: { kind: 'erfasst', wert: 60000 }, sozialversicherung: { kind: 'erfasst', wert: 0 } }
+    expect(employeeFromData(widerspruch, { job: 'Angestellt' }).konflikte).toBe(1)
   })
 
   it('names a gated Einkunftsart and sums the captured-but-not-folded amounts', () => {
-    const fakten = angestellteAusDaten(VOLLSTAENDIG, {
+    const fakten = employeeFromData(VOLLSTAENDIG, {
       job: 'Beides',
       dhf: 'Ja',
       'dhf-miete': '650',

@@ -134,7 +134,6 @@ export function korrigiereFassung(vorfassung: Fassung, korrekturen: readonly Fas
 
 export const EINSPRUCHS_GRUENDE = ['betrag-falsch', 'beleg-nicht-beruecksichtigt', 'sonstiges'] as const
 export type AppealReason = (typeof EINSPRUCHS_GRUENDE)[number]
-export type EinspruchGrund = AppealReason
 
 export function isAppealReason(value: string): value is AppealReason {
   return (EINSPRUCHS_GRUENDE as readonly string[]).includes(value)
@@ -200,6 +199,3 @@ export function deserializeAssessmentField(feld: AssessmentField, value: string 
 }
 
 // Backward-compatibility aliases
-export {
-  isAppealReason as istEinspruchGrund
-}

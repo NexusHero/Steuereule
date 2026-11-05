@@ -6,7 +6,7 @@ import {
   isValidCapitalAmount,
   capitalAsCoreLineItem,
   capitalStatus,
-  ordneKapDepotEin,
+  classifyCapitalDepot,
   serializeCapitalField,
   setCapitalField,
   isFavorableTaxTestApplicable,
@@ -18,20 +18,20 @@ import {
 
 describe('ordneKapDepotEin — the kap-depot answer mapped onto what it means', () => {
   it('a German broker withheld Abgeltungsteuer', () => {
-    expect(ordneKapDepotEin('Deutscher Broker')).toEqual({ kind: 'deutscher-broker' })
+    expect(classifyCapitalDepot('Deutscher Broker')).toEqual({ kind: 'deutscher-broker' })
   })
 
   it('a foreign broker withheld nothing — KAP-Pflicht, never a guessed Abgeltung', () => {
-    expect(ordneKapDepotEin('Ausländischer Broker')).toEqual({ kind: 'auslaendischer-broker' })
+    expect(classifyCapitalDepot('Ausländischer Broker')).toEqual({ kind: 'auslaendischer-broker' })
   })
 
   it('Krypto is gated (product ADR-032 §2 — 2.0, no half feature)', () => {
-    expect(ordneKapDepotEin('Krypto')).toEqual({ kind: 'krypto' })
+    expect(classifyCapitalDepot('Krypto')).toEqual({ kind: 'krypto' })
   })
 
   it('a missing answer is unbekannt — nothing is guessed', () => {
-    expect(ordneKapDepotEin(undefined)).toEqual({ kind: 'unbekannt' })
-    expect(ordneKapDepotEin('irgendwas')).toEqual({ kind: 'unbekannt' })
+    expect(classifyCapitalDepot(undefined)).toEqual({ kind: 'unbekannt' })
+    expect(classifyCapitalDepot('irgendwas')).toEqual({ kind: 'unbekannt' })
   })
 
   it('the § 32d Abs. 6 Günstigerprüfung applies only where Abgeltungsteuer was withheld', () => {

@@ -5,5 +5,3 @@ export function answersFrom(rows: readonly { questionId: string; value: string }
   for (const row of rows) answers[row.questionId] = row.value
   return answers as Answers
 }
-
-export const answersAus = answersFrom

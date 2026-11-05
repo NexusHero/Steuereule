@@ -10,7 +10,7 @@ import {
   commuterAllowance,
   steuerschaetzungAngestellt,
   steuerschaetzungGrenzgaenger,
-  afaSatzProzent,
+  depreciationRatePercent,
   claimMonths,
   estimateMarriedCouple,
   monthlyChildBenefitClaim,
@@ -22,12 +22,12 @@ import { COMMUTE_REPOSITORY, type CommuteInputs, type CommuteRepository } from '
 import { CROSS_BORDER_SALARY_STATEMENT_REPOSITORY, type CrossBorderSalaryStatementRepository } from '../ch-lohnausweis/ch-lohnausweis.repository.js'
 import { grenzgaengerStatusAusAnswers, lohnausweisWerteAusRecord, wechselkursAusRecord } from '../ch-lohnausweis/lohnausweis-daten.js'
 import { INTERVIEW_ANSWER_REPOSITORY, type InterviewAnswerRepository } from '../interview/interview-answer.repository.js'
-import { answersAus } from '../interview/answers.js'
-import { LSTB_REPOSITORY, type LstbRepository } from '../lstb/lstb.repository.js'
-import { lstbDatenAus } from '../lstb/lstb-daten.js'
+import { answersFrom } from '../interview/answers.js'
+import { WAGE_TAX_CERTIFICATE_REPOSITORY, type WageTaxCertificateRepository } from '../lstb/lstb.repository.js'
+import { wageTaxCertificateDataFrom } from '../lstb/lstb-daten.js'
 import { MASTER_DATA_REPOSITORY, type MasterDataRepository } from '../stammdaten/stammdaten.repository.js'
 import { CHILD_REPOSITORY, type ChildRepository } from '../kinder/kind.repository.js'
-import { PARTNER_COUPLING_REPOSITORY, type KopplungRepository } from '../kopplung/kopplung.repository.js'
+import { PARTNER_COUPLING_REPOSITORY, type PartnerCouplingRepository } from '../kopplung/kopplung.repository.js'
 import { RENTAL_REPOSITORY, type RentalRepository } from '../vermietung/vermietung.repository.js'
 
 export type SteuerschaetzungStand =
@@ -41,12 +41,12 @@ const CH_AUSLAND = 'Ja, in die Schweiz'
 @Injectable()
 export class TaxEstimateService {
   constructor(
-    @Inject(LSTB_REPOSITORY) private readonly lstb: LstbRepository,
+    @Inject(WAGE_TAX_CERTIFICATE_REPOSITORY) private readonly lstb: WageTaxCertificateRepository,
     @Inject(INTERVIEW_ANSWER_REPOSITORY) private readonly interview: InterviewAnswerRepository,
     @Inject(CROSS_BORDER_SALARY_STATEMENT_REPOSITORY) private readonly chLohnausweis: CrossBorderSalaryStatementRepository,
     @Inject(MASTER_DATA_REPOSITORY) private readonly stammdaten: MasterDataRepository,
     @Inject(COMMUTE_REPOSITORY) private readonly arbeitsweg: CommuteRepository,
-    @Inject(PARTNER_COUPLING_REPOSITORY) private readonly kopplung?: KopplungRepository,
+    @Inject(PARTNER_COUPLING_REPOSITORY) private readonly kopplung?: PartnerCouplingRepository,
     @Inject(CHILD_REPOSITORY) private readonly kinder?: ChildRepository,
     @Inject(RENTAL_REPOSITORY) private readonly vermietung?: RentalRepository,
   ) {}
@@ -59,7 +59,7 @@ export class TaxEstimateService {
       this.stammdaten.findByUserId(userId),
       this.arbeitsweg.findForUserAndYear(userId, jahr),
     ])
-    const answers = answersAus(interviewRows)
+    const answers = answersFrom(interviewRows)
 
     if (answers.job !== 'Angestellt') return { kind: 'nicht-moeglich', grund: 'nur-angestellte' }
     if (stammdaten?.familienstand === 'verheiratet' || answers.familienstand === 'Verheiratet') {
@@ -114,7 +114,7 @@ export class TaxEstimateService {
       )
     }
 
-    const zustand = wageTaxCertificateStatus(lstbDatenAus(lstbRecord))
+    const zustand = wageTaxCertificateStatus(wageTaxCertificateDataFrom(lstbRecord))
     if (zustand.kind === 'unvollstaendig') return { kind: 'offen', fehlt: [...zustand.offen, ...zustand.unklar] }
     if (zustand.kind === 'widerspruch') return { kind: 'offen', fehlt: zustand.widersprueche.map((w) => w.art) }
     return mitKirchensteuer(
@@ -176,7 +176,7 @@ export class TaxEstimateService {
       this.chLohnausweis.findForUserAndYear(userId, jahr),
       this.arbeitsweg.findForUserAndYear(userId, jahr),
     ])
-    const answers = answersAus(interviewRows)
+    const answers = answersFrom(interviewRows)
     const zahlen = angestellteAusAntworten(answers)
     const pauschale = pendlerpauschaleAus(jahr, weg)
     if (chRecord && (answers.ausland === CH_AUSLAND || lstbRecord === null)) {
@@ -216,7 +216,7 @@ export class TaxEstimateService {
       }
     }
     if (lstbRecord === null) return null
-    const zustand = wageTaxCertificateStatus(lstbDatenAus(lstbRecord))
+    const zustand = wageTaxCertificateStatus(wageTaxCertificateDataFrom(lstbRecord))
     if (zustand.kind === 'unvollstaendig') return { kind: 'offen', fehlt: [...zustand.offen, ...zustand.unklar] }
     if (zustand.kind === 'widerspruch') return { kind: 'offen', fehlt: zustand.widersprueche.map((w) => w.art) }
     return {
@@ -244,7 +244,7 @@ function vermietungsUeberschuss(o: {
   schuldzinsen?: string | null
 }): number {
   const zahl = (wert: string | null | undefined) => (wert && /^\d+$/.test(wert) ? Number(wert) : 0)
-  const satz = o.baujahr && /^\d+$/.test(o.baujahr) ? afaSatzProzent(Number(o.baujahr)) : null
+  const satz = o.baujahr && /^\d+$/.test(o.baujahr) ? depreciationRatePercent(Number(o.baujahr)) : null
   const afa = satz === null ? 0 : Math.round((zahl(o.anschaffungskosten) * satz) / 100)
   return zahl(o.mieteinnahmen) + zahl(o.umlagen) - zahl(o.werbungskosten) - zahl(o.schuldzinsen) - afa
 }

@@ -22,7 +22,7 @@ import { PrismaService } from '../../src/prisma/prisma.service.js'
 import { PROFILE_REPOSITORY } from '../../src/profile/profile.repository.js'
 import { TAX_YEAR_REPOSITORY } from '../../src/cockpit/tax-year.repository.js'
 import { INTERVIEW_ANSWER_REPOSITORY } from '../../src/interview/interview-answer.repository.js'
-import { LSTB_REPOSITORY } from '../../src/lstb/lstb.repository.js'
+import { WAGE_TAX_CERTIFICATE_REPOSITORY } from '../../src/lstb/lstb.repository.js'
 import { PENSION_REPOSITORY } from '../../src/rente/rente.repository.js'
 import { CAPITAL_REPOSITORY } from '../../src/kapital/kapital.repository.js'
 import { RENTAL_REPOSITORY } from '../../src/vermietung/vermietung.repository.js'
@@ -111,7 +111,7 @@ export async function buildTestApp(options?: {
     .useValue(repository)
     .overrideProvider(TAX_YEAR_REPOSITORY)
     .useValue(taxYearRepository)
-    .overrideProvider(LSTB_REPOSITORY)
+    .overrideProvider(WAGE_TAX_CERTIFICATE_REPOSITORY)
     .useValue(lstbRepository)
     .overrideProvider(INTERVIEW_ANSWER_REPOSITORY)
     .useValue(interviewRepository)

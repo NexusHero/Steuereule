@@ -1,18 +1,18 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { InvalidInputError } from '../common/domain-error.js'
 import {
-  angestellteAusDaten,
+  employeeFromData,
   progressionsvorbehaltAus,
   veranlagungsartenvergleich,
   type KirchensteuerFaktor,
   type Veranlagungsartenvergleich as Vergleich,
 } from '@steuereule/core'
 import { INTERVIEW_ANSWER_REPOSITORY, type InterviewAnswerRepository } from '../interview/interview-answer.repository.js'
-import { LSTB_REPOSITORY, type LstbRepository } from '../lstb/lstb.repository.js'
+import { WAGE_TAX_CERTIFICATE_REPOSITORY, type WageTaxCertificateRepository } from '../lstb/lstb.repository.js'
 import { TAX_YEAR_REPOSITORY, type TaxYearRepository } from '../cockpit/tax-year.repository.js'
 import type { UnschaerfeDto, VeranlagungsartenvergleichDto, VergleichsHerkunftDto } from './dto/veranlagungsartenvergleich-response.dto.js'
-import { answersAus } from '../interview/answers.js'
-import { lstbDatenAus } from '../lstb/lstb-daten.js'
+import { answersFrom } from '../interview/answers.js'
+import { wageTaxCertificateDataFrom } from '../lstb/lstb-daten.js'
 
 function toDto(vergleich: Vergleich): VeranlagungsartenvergleichDto {
   const unschaerfe: UnschaerfeDto =
@@ -47,7 +47,7 @@ function toDto(vergleich: Vergleich): VeranlagungsartenvergleichDto {
 export class AssessmentComparisonService {
   constructor(
     @Inject(TAX_YEAR_REPOSITORY) private readonly taxYearRepository: TaxYearRepository,
-    @Inject(LSTB_REPOSITORY) private readonly lstbRepository: LstbRepository,
+    @Inject(WAGE_TAX_CERTIFICATE_REPOSITORY) private readonly lstbRepository: WageTaxCertificateRepository,
     @Inject(INTERVIEW_ANSWER_REPOSITORY) private readonly interviewRepository: InterviewAnswerRepository,
   ) {}
 
@@ -66,13 +66,13 @@ export class AssessmentComparisonService {
       this.interviewRepository.findAllForUserAndYear(userId, steuerjahr),
     ])
 
-    const daten = lstbDatenAus(lstbRecord)
-    const answers = answersAus(interviewRows)
+    const daten = wageTaxCertificateDataFrom(lstbRecord)
+    const answers = answersFrom(interviewRows)
 
     if (!verheiratet) {
       return { kind: 'nicht-anwendbar', grund: 'nicht-verheiratet' }
     }
-    const fakten = angestellteAusDaten(daten, answers)
+    const fakten = employeeFromData(daten, answers)
     if (fakten.einnahmen === 0) {
       return { kind: 'nicht-anwendbar', grund: 'keine-einnahmen' }
     }

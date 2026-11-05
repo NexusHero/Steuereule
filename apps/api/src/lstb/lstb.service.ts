@@ -5,7 +5,7 @@ import {
   wageTaxCertificateStatus,
   serializeWageTaxCertificateField,
   setWageTaxCertificateField,
-  type LstbDaten,
+  type WageTaxCertificateData,
   type WageTaxCertificateFieldId,
   type WageTaxCertificateFieldState,
   type WageTaxCertificateStatus,
@@ -14,12 +14,12 @@ import {
 } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
 import { PROVENANCE_REPOSITORY, type ProvenanceRepository } from '../kennzeichnung/kennzeichnung.repository.js'
-import { LSTB_REPOSITORY, type LstbRepository } from './lstb.repository.js'
+import { WAGE_TAX_CERTIFICATE_REPOSITORY, type WageTaxCertificateRepository } from './lstb.repository.js'
 import type { LstbFeldDto } from './dto/lstb-feld.dto.js'
 import type { LstbResponseDto } from './dto/lstb-response.dto.js'
 import type { LstbWiderspruchDto } from './dto/lstb-widerspruch.dto.js'
 import type { LstbZustandDto } from './dto/lstb-zustand.dto.js'
-import { lstbDatenAus } from './lstb-daten.js'
+import { wageTaxCertificateDataFrom } from './lstb-daten.js'
 
 function zustandAusDto(dto: LstbFeldDto): WageTaxCertificateFieldState {
   if (dto.kind === 'offen') return { kind: 'offen' }
@@ -61,7 +61,7 @@ function toZustandDto(z: WageTaxCertificateStatus): LstbZustandDto {
   }
 }
 
-function toResponse(daten: LstbDaten): LstbResponseDto {
+function toResponse(daten: WageTaxCertificateData): LstbResponseDto {
   return {
     bruttoarbeitslohn: toFeldDto(daten.bruttoarbeitslohn),
     lohnsteuer: toFeldDto(daten.lohnsteuer),
@@ -74,7 +74,7 @@ function toResponse(daten: LstbDaten): LstbResponseDto {
 @Injectable()
 export class LstbService {
   constructor(
-    @Inject(LSTB_REPOSITORY) private readonly repository: LstbRepository,
+    @Inject(WAGE_TAX_CERTIFICATE_REPOSITORY) private readonly repository: WageTaxCertificateRepository,
     @Inject(AuditService) private readonly auditService: AuditService,
     @Inject(PROVENANCE_REPOSITORY) private readonly kennzeichnungen: ProvenanceRepository,
   ) {}
@@ -84,12 +84,12 @@ export class LstbService {
     if (record !== null) {
       await this.auditService.append({ userId, action: 'READ', resource: 'lstb' })
     }
-    return toResponse(lstbDatenAus(record))
+    return toResponse(wageTaxCertificateDataFrom(record))
   }
 
   async setFeld(userId: string, steuerjahr: number, feld: WageTaxCertificateFieldId, dto: LstbFeldDto): Promise<LstbResponseDto> {
     const record = await this.repository.findForUserAndYear(userId, steuerjahr)
-    const daten = lstbDatenAus(record)
+    const daten = wageTaxCertificateDataFrom(record)
     const zustand = zustandAusDto(dto)
     const next = setWageTaxCertificateField(daten, feld, zustand)
     await this.repository.setFeld(userId, steuerjahr, feld, serializeWageTaxCertificateField(zustand))

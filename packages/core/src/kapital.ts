@@ -2,14 +2,11 @@ import { calculate, type Berechnungsstand, type Posten } from './berechnung'
 import type { IncomeType } from './einkunftsarten'
 
 export type CapitalDepotAnswer = 'Deutscher Broker' | 'Ausländischer Broker' | 'Krypto'
-export type KapDepotAntwort = CapitalDepotAnswer
-
 export const CAPITAL_DEPOT_ANSWERS: readonly CapitalDepotAnswer[] = [
   'Deutscher Broker',
   'Ausländischer Broker',
   'Krypto',
 ]
-export const KAP_DEPOT_ANTWORTEN = CAPITAL_DEPOT_ANSWERS
 
 export function isCapitalDepotAnswer(value: string): value is CapitalDepotAnswer {
   return (CAPITAL_DEPOT_ANSWERS as readonly string[]).includes(value)
@@ -20,8 +17,6 @@ export type CapitalDepotClassification =
   | { readonly kind: 'auslaendischer-broker' }
   | { readonly kind: 'krypto' }
   | { readonly kind: 'unbekannt' }
-
-export type KapitalDepotEinordnung = CapitalDepotClassification
 
 export function classifyCapitalDepot(kapDepot: string | undefined): CapitalDepotClassification {
   switch (kapDepot) {
@@ -125,7 +120,3 @@ export function capitalStatus(kapital: CapitalData, gegated: readonly (IncomeTyp
 }
 
 // Backward-compatibility aliases
-export {
-  isCapitalDepotAnswer as istKapDepotAntwort,
-  classifyCapitalDepot as ordneKapDepotEin
-}

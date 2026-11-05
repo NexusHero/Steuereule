@@ -17,7 +17,7 @@ import {
   AssessmentResponseDto,
   SetAssessmentDateDto,
   SetBescheidStatusDto,
-  SetEinspruchDto,
+  SetAppealDto,
 } from './dto/bescheid-response.dto.js'
 
 @ApiTags('bescheid')
@@ -83,12 +83,12 @@ export class BescheidController {
   @HttpCode(200)
   @RequiresAccount()
   @ApiParam({ name: 'jahr', type: Number, example: 2026, description: 'The tax year (Steuerjahr).' })
-  @ApiBody({ type: SetEinspruchDto })
+  @ApiBody({ type: SetAppealDto })
   @ApiOkResponse({ type: AssessmentResponseDto, description: 'The Bescheid after filing the Einspruch (validated transition).' })
   setEinspruch(
     @CurrentUser() userId: string,
     @Param('jahr', ParseSteuerjahrPipe) jahr: number,
-    @Body() dto: SetEinspruchDto,
+    @Body() dto: SetAppealDto,
   ): Promise<AssessmentResponseDto> {
     return this.service.setEinspruch(userId, jahr, dto)
   }

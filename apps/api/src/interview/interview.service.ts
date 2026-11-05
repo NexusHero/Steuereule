@@ -21,7 +21,7 @@ import {
 import type { InterviewStateDto } from './dto/interview-state.dto.js'
 import type { PostAnswerDto } from './dto/post-answer.dto.js'
 import type { PostAnswerResponseDto } from './dto/post-answer-response.dto.js'
-import { answersAus } from './answers.js'
+import { answersFrom } from './answers.js'
 
 /** QuestionId is not reachable given the answers stored so far. */
 export class UnreachableAnswerError extends ConflictError {
@@ -59,7 +59,7 @@ export class InterviewService {
     if (Object.hasOwn(ENTRIES, requestedEntry)) assertGuestMayUse(kind, requestedEntry as EntryId)
 
     const rows = await this.repository.findAllForUserAndYear(userId, steuerjahr)
-    const answers = answersAus(rows)
+    const answers = answersFrom(rows)
 
     if (rows.length > 0) {
       await this.auditService.append({ userId, action: 'READ', resource: 'interview' })
@@ -79,7 +79,7 @@ export class InterviewService {
 
   async postAnswer(userId: string, steuerjahr: number, dto: PostAnswerDto, kind: UserIdKind = 'session'): Promise<PostAnswerResponseDto> {
     const rows = await this.repository.findAllForUserAndYear(userId, steuerjahr)
-    const answers = answersAus(rows)
+    const answers = answersFrom(rows)
     const entryId = entryForStep(dto.questionId as never)
     if (entryId === undefined || !ADMITTED_ENTRY_IDS.includes(entryId)) {
       throw new UnreachableAnswerError(dto.questionId)

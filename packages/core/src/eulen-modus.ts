@@ -2,8 +2,6 @@ import { createHash } from 'node:crypto'
 import type { HOMEOFFICE_VALUES } from './interview'
 
 export type OwlTriggerKind = 'musterluecke' | 'vorjahresvergleich' | 'rechtsaenderung' | 'lebenslage_hinweis'
-export type EulenTriggerArt = OwlTriggerKind
-
 export type OwlCardCategory = 'cockpit_proaktiv' | 'abruf_frage' | 'archiv_einspruch'
 export type OwlSourceId = 'estg-4-5-6c' | 'estg-9-1-4a' | 'estg-10b' | 'estg-10-1-5' | 'ao-355'
 

@@ -17,7 +17,7 @@ import { resolveGuestSessionSecret, verifyGuestSession } from '../src/auth/guest
 import { validationExceptionFactory } from '../src/common/validation-exception-factory.js'
 import { PrismaService } from '../src/prisma/prisma.service.js'
 import { INTERVIEW_ANSWER_REPOSITORY, type InterviewAnswerRepository } from '../src/interview/interview-answer.repository.js'
-import { LSTB_REPOSITORY, type LstbRepository } from '../src/lstb/lstb.repository.js'
+import { WAGE_TAX_CERTIFICATE_REPOSITORY, type WageTaxCertificateRepository } from '../src/lstb/lstb.repository.js'
 import { extractSessionCookie } from './support/build-test-app.js'
 
 /** Recovers the trusted userId the app minted, from the raw `Set-Cookie`/`Cookie` pair. */
@@ -33,7 +33,7 @@ function userIdFromCookie(cookie: string): string {
 describe('GET /v1/steuerjahre/:jahr/cockpit — real Postgres (REQ-001 + ticket 15)', () => {
   let app: NestFastifyApplication
   let prisma: PrismaClient
-  let lstbRepository: LstbRepository
+  let lstbRepository: WageTaxCertificateRepository
   let interviewRepository: InterviewAnswerRepository
 
   beforeAll(async () => {
@@ -55,7 +55,7 @@ describe('GET /v1/steuerjahre/:jahr/cockpit — real Postgres (REQ-001 + ticket 
     // The encryption-aware seams — the LStB/InterviewAnswer figures are field-encrypted at rest
     // (ADR-0008), so seeding them via raw Prisma would write plaintext the strict-mode read
     // would reject; the repositories' own upserts are the honest seeding paths.
-    lstbRepository = app.get(LSTB_REPOSITORY)
+    lstbRepository = app.get(WAGE_TAX_CERTIFICATE_REPOSITORY)
     interviewRepository = app.get(INTERVIEW_ANSWER_REPOSITORY)
   })
 

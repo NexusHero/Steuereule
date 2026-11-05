@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
-import { RELIGIONSSCHLUESSEL } from '@steuereule/core'
+import { RELIGION_KEYS } from '@steuereule/core'
 import { IsBoolean, IsIn, IsOptional, IsString } from 'class-validator'
 import { IsSteuerId } from '../../profile/dto/steuer-id.validators.js'
 
@@ -31,12 +31,12 @@ export class KopplungPersonBDto {
   geburtsdatum?: string | null
 
   @ApiPropertyOptional({
-    enum: RELIGIONSSCHLUESSEL,
+    enum: RELIGION_KEYS,
     nullable: true,
     description: 'Art. 9 DSGVO: requires religionEinwilligung = true, like the own Stammdaten.',
   })
   @IsOptional()
-  @IsIn(RELIGIONSSCHLUESSEL)
+  @IsIn(RELIGION_KEYS)
   religion?: string | null
 
   @ApiPropertyOptional({ type: Boolean, description: 'Explicit consent to store the religion (Art. 9 Abs. 2 lit. a DSGVO).' })

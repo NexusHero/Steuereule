@@ -12,7 +12,7 @@ import { UserContextGuard } from '../auth/user-context.guard.js'
 import { BelegService } from './beleg.service.js'
 import { ReceiptResponseDto } from './dto/beleg-response.dto.js'
 import { CreateReceiptDto } from './dto/create-beleg.dto.js'
-import { SetZuordnungDto } from './dto/set-zuordnung.dto.js'
+import { SetAssignmentDto } from './dto/set-zuordnung.dto.js'
 
 @ApiTags('belege')
 @Controller('v1/belege')
@@ -36,13 +36,13 @@ export class BelegController {
   @Post(':id/zuordnung')
   @HttpCode(200)
   @ApiParam({ name: 'id', type: String, description: 'The Beleg id (the caller’s own).' })
-  @ApiBody({ type: SetZuordnungDto })
+  @ApiBody({ type: SetAssignmentDto })
   @ApiOkResponse({ type: ReceiptResponseDto, description: 'The Beleg with its confirmed year and derived Zuordnung.' })
   @ApiNotFoundResponse({ description: 'No such Beleg for this account — nothing was persisted.' })
   setZuordnung(
     @CurrentUser() userId: string,
     @Param('id') id: string,
-    @Body() dto: SetZuordnungDto,
+    @Body() dto: SetAssignmentDto,
   ): Promise<ReceiptResponseDto> {
     return this.belegService.setZuordnung(userId, id, dto)
   }

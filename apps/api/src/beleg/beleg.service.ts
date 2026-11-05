@@ -1,14 +1,14 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { NotFoundError } from '../common/domain-error.js'
-import { zuordnungAusDaten, type BelegZuordnung } from '@steuereule/core'
+import { assignmentFromData, type BelegZuordnung } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
 import { RECEIPT_REPOSITORY, type ReceiptRecord, type ReceiptRepository } from './beleg.repository.js'
 import type { ReceiptResponseDto } from './dto/beleg-response.dto.js'
 import type { CreateReceiptDto } from './dto/create-beleg.dto.js'
-import type { SetZuordnungDto } from './dto/set-zuordnung.dto.js'
-import type { ZuordnungDto } from './dto/zuordnung.dto.js'
+import type { SetAssignmentDto } from './dto/set-zuordnung.dto.js'
+import type { AssignmentDto } from './dto/zuordnung.dto.js'
 
-function toZuordnungDto(zuordnung: BelegZuordnung): ZuordnungDto {
+function toZuordnungDto(zuordnung: BelegZuordnung): AssignmentDto {
   switch (zuordnung.kind) {
     case 'ungebunden':
       return { kind: 'ungebunden' }
@@ -33,7 +33,7 @@ function toBelegResponse(record: ReceiptRecord): ReceiptResponseDto {
     art: record.art ?? null,
     belegdatum: record.belegdatum ?? null,
     zahlungsdatum: record.zahlungsdatum ?? null,
-    zuordnung: toZuordnungDto(zuordnungAusDaten(record)),
+    zuordnung: toZuordnungDto(assignmentFromData(record)),
   }
 }
 
@@ -63,7 +63,7 @@ export class BelegService {
     return toBelegResponse(record)
   }
 
-  async setZuordnung(userId: string, id: string, dto: SetZuordnungDto): Promise<ReceiptResponseDto> {
+  async setZuordnung(userId: string, id: string, dto: SetAssignmentDto): Promise<ReceiptResponseDto> {
     const record = await this.repository.setZuordnung(userId, id, {
       steuerjahr: dto.steuerjahr,
       vorschlagVerworfen: dto.vorschlagVerworfen ?? false,

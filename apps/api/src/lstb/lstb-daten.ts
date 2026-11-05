@@ -1,13 +1,11 @@
-import { EMPTY_LSTB, LEERES_LSTB, deserializeLstbField, type LstbData } from '@steuereule/core'
-import type { LstbRecord } from './lstb.repository.js'
+import { EMPTY_WAGE_TAX_CERTIFICATE, deserializeWageTaxCertificateField, type WageTaxCertificateData } from '@steuereule/core'
+import type { WageTaxCertificateRecord } from './lstb.repository.js'
 
-export function lstbDataFrom(record: LstbRecord | null): LstbData {
-  if (record === null) return EMPTY_LSTB ?? LEERES_LSTB
+export function wageTaxCertificateDataFrom(record: WageTaxCertificateRecord | null): WageTaxCertificateData {
+  if (record === null) return EMPTY_WAGE_TAX_CERTIFICATE ?? EMPTY_WAGE_TAX_CERTIFICATE
   return {
-    bruttoarbeitslohn: deserializeLstbField(record.bruttoarbeitslohn),
-    lohnsteuer: deserializeLstbField(record.lohnsteuer),
-    sozialversicherung: deserializeLstbField(record.sozialversicherung),
+    bruttoarbeitslohn: deserializeWageTaxCertificateField(record.bruttoarbeitslohn),
+    lohnsteuer: deserializeWageTaxCertificateField(record.lohnsteuer),
+    sozialversicherung: deserializeWageTaxCertificateField(record.sozialversicherung),
   }
 }
-
-export const lstbDatenAus = lstbDataFrom

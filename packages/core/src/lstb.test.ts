@@ -1,20 +1,20 @@
 import { describe, expect, it } from 'vitest'
 import {
-  LEERES_LSTB,
-  LSTB_UNKLAR,
+  EMPTY_WAGE_TAX_CERTIFICATE,
+  WAGE_TAX_CERTIFICATE_UNCLEAR,
   deserializeWageTaxCertificateField,
   isValidAmount,
   wageTaxCertificateStatus,
   serializeWageTaxCertificateField,
   setWageTaxCertificateField,
-  type LstbDaten,
+  type WageTaxCertificateData,
 } from './lstb'
 
-function mit(daten: LstbDaten, feld: keyof LstbDaten, wert: number): LstbDaten {
+function mit(daten: WageTaxCertificateData, feld: keyof WageTaxCertificateData, wert: number): WageTaxCertificateData {
   return setWageTaxCertificateField(daten, feld, { kind: 'erfasst', wert })
 }
 
-const VOLL: LstbDaten = {
+const VOLL: WageTaxCertificateData = {
   bruttoarbeitslohn: { kind: 'erfasst', wert: 50000 },
   lohnsteuer: { kind: 'erfasst', wert: 9000 },
   sozialversicherung: { kind: 'erfasst', wert: 10000 },
@@ -35,13 +35,13 @@ describe('istGueltigerBetrag', () => {
 
 describe('setzeLstbFeld', () => {
   it('replaces one field immutably', () => {
-    const next = mit(LEERES_LSTB, 'bruttoarbeitslohn', 50000)
+    const next = mit(EMPTY_WAGE_TAX_CERTIFICATE, 'bruttoarbeitslohn', 50000)
     expect(next.bruttoarbeitslohn).toEqual({ kind: 'erfasst', wert: 50000 })
     // The original is untouched.
-    expect(LEERES_LSTB.bruttoarbeitslohn).toEqual({ kind: 'offen' })
+    expect(EMPTY_WAGE_TAX_CERTIFICATE.bruttoarbeitslohn).toEqual({ kind: 'offen' })
   })
   it('throws on a non-integer erfasst value (defense in depth)', () => {
-    expect(() => setWageTaxCertificateField(LEERES_LSTB, 'lohnsteuer', { kind: 'erfasst', wert: -5 })).toThrow(RangeError)
+    expect(() => setWageTaxCertificateField(EMPTY_WAGE_TAX_CERTIFICATE, 'lohnsteuer', { kind: 'erfasst', wert: -5 })).toThrow(RangeError)
   })
   it('accepts offen and unklar states without a value', () => {
     expect(setWageTaxCertificateField(VOLL, 'lohnsteuer', { kind: 'unklar' }).lohnsteuer).toEqual({ kind: 'unklar' })
@@ -50,7 +50,7 @@ describe('setzeLstbFeld', () => {
 
 describe('lstbZustand', () => {
   it('the empty mask is unvollstaendig, all three fields offen', () => {
-    expect(wageTaxCertificateStatus(LEERES_LSTB)).toEqual({
+    expect(wageTaxCertificateStatus(EMPTY_WAGE_TAX_CERTIFICATE)).toEqual({
       kind: 'unvollstaendig',
       offen: ['bruttoarbeitslohn', 'lohnsteuer', 'sozialversicherung'],
       unklar: [],
@@ -58,7 +58,7 @@ describe('lstbZustand', () => {
   })
 
   it('a mask with an unreadable field reports it under unklar, the rest under offen', () => {
-    const daten = setWageTaxCertificateField(LEERES_LSTB, 'lohnsteuer', { kind: 'unklar' })
+    const daten = setWageTaxCertificateField(EMPTY_WAGE_TAX_CERTIFICATE, 'lohnsteuer', { kind: 'unklar' })
     expect(wageTaxCertificateStatus(daten)).toEqual({
       kind: 'unvollstaendig',
       offen: ['bruttoarbeitslohn', 'sozialversicherung'],
@@ -76,7 +76,7 @@ describe('lstbZustand', () => {
   })
 
   it('Lohnsteuer over Brutto is a widerspruch, never a silent fix (ADR-008)', () => {
-    const daten = mit(mit(mit(LEERES_LSTB, 'bruttoarbeitslohn', 10000), 'lohnsteuer', 20000), 'sozialversicherung', 0)
+    const daten = mit(mit(mit(EMPTY_WAGE_TAX_CERTIFICATE, 'bruttoarbeitslohn', 10000), 'lohnsteuer', 20000), 'sozialversicherung', 0)
     expect(wageTaxCertificateStatus(daten)).toEqual({
       kind: 'widerspruch',
       widersprueche: [{ art: 'lohnsteuer-uebersteigt-brutto', lohnsteuer: 20000, bruttoarbeitslohn: 10000 }],
@@ -84,7 +84,7 @@ describe('lstbZustand', () => {
   })
 
   it('Sozialversicherung over Brutto is a widerspruch too', () => {
-    const daten = mit(mit(mit(LEERES_LSTB, 'bruttoarbeitslohn', 10000), 'lohnsteuer', 1000), 'sozialversicherung', 15000)
+    const daten = mit(mit(mit(EMPTY_WAGE_TAX_CERTIFICATE, 'bruttoarbeitslohn', 10000), 'lohnsteuer', 1000), 'sozialversicherung', 15000)
     expect(wageTaxCertificateStatus(daten)).toEqual({
       kind: 'widerspruch',
       widersprueche: [{ art: 'sozialversicherung-uebersteigt-brutto', sozialversicherung: 15000, bruttoarbeitslohn: 10000 }],
@@ -92,7 +92,7 @@ describe('lstbZustand', () => {
   })
 
   it('reports both contradictions when both exceed the Brutto', () => {
-    const daten = mit(mit(mit(LEERES_LSTB, 'bruttoarbeitslohn', 1000), 'lohnsteuer', 2000), 'sozialversicherung', 3000)
+    const daten = mit(mit(mit(EMPTY_WAGE_TAX_CERTIFICATE, 'bruttoarbeitslohn', 1000), 'lohnsteuer', 2000), 'sozialversicherung', 3000)
     const zustand = wageTaxCertificateStatus(daten)
     expect(zustand.kind).toBe('widerspruch')
     if (zustand.kind !== 'widerspruch') throw new Error('expected widerspruch')
@@ -103,13 +103,13 @@ describe('lstbZustand', () => {
 describe('serialisiereLstbFeld / deserialisiereLstbFeld — the one persistence encoding', () => {
   it('round-trips offen → null, unklar → marker, erfasst → decimal string', () => {
     expect(serializeWageTaxCertificateField({ kind: 'offen' })).toBeNull()
-    expect(serializeWageTaxCertificateField({ kind: 'unklar' })).toBe(LSTB_UNKLAR)
+    expect(serializeWageTaxCertificateField({ kind: 'unklar' })).toBe(WAGE_TAX_CERTIFICATE_UNCLEAR)
     expect(serializeWageTaxCertificateField({ kind: 'erfasst', wert: 50000 })).toBe('50000')
   })
 
   it('deserialises back to the same state', () => {
     expect(deserializeWageTaxCertificateField(null)).toEqual({ kind: 'offen' })
-    expect(deserializeWageTaxCertificateField(LSTB_UNKLAR)).toEqual({ kind: 'unklar' })
+    expect(deserializeWageTaxCertificateField(WAGE_TAX_CERTIFICATE_UNCLEAR)).toEqual({ kind: 'unklar' })
     expect(deserializeWageTaxCertificateField('50000')).toEqual({ kind: 'erfasst', wert: 50000 })
   })
 

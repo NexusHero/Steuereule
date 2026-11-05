@@ -2,7 +2,7 @@
 // the derived-zuordnung contract without a database. `create`/`setSteuerjahr` mirror the
 // real repository's return shapes; the derived Zuordnung state is left to BelegService (as
 // in production, the repository stores facts, never the derived state — ADR-014/048).
-import type { ReceiptRecord, ReceiptRepository, CreateReceiptData, SetZuordnungData } from '../../src/beleg/beleg.repository.js'
+import type { ReceiptRecord, ReceiptRepository, CreateReceiptData, SetAssignmentData } from '../../src/beleg/beleg.repository.js'
 
 export class FakeBelegRepository implements ReceiptRepository {
   private readonly rows: ReceiptRecord[] = []
@@ -38,11 +38,11 @@ export class FakeBelegRepository implements ReceiptRepository {
     return Promise.resolve(record)
   }
 
-  setAssignment(userId: string, id: string, data: SetZuordnungData): Promise<ReceiptRecord | null> {
+  setAssignment(userId: string, id: string, data: SetAssignmentData): Promise<ReceiptRecord | null> {
     return this.setZuordnung(userId, id, data)
   }
 
-  setZuordnung(userId: string, id: string, data: SetZuordnungData): Promise<ReceiptRecord | null> {
+  setZuordnung(userId: string, id: string, data: SetAssignmentData): Promise<ReceiptRecord | null> {
     const index = this.rows.findIndex((row) => row.userId === userId && row.id === id)
     if (index === -1) return Promise.resolve(null)
     const updated: ReceiptRecord = {

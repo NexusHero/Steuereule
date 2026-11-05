@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  afaSatzProzent,
+  depreciationRatePercent,
   isValidRentalAmount,
   isRentalCalculable,
   emptyRentalObject,
@@ -41,24 +41,24 @@ describe('ordneVermietungEin — the vermietung-art answer mapped onto what it m
 
 describe('afaSatzProzent — § 7 Abs. 4 Satz 1 EStG, the three statutory bands verbatim', () => {
   it('before 1925: 2,5 %', () => {
-    expect(afaSatzProzent(1900)).toBe(2.5)
-    expect(afaSatzProzent(1924)).toBe(2.5)
+    expect(depreciationRatePercent(1900)).toBe(2.5)
+    expect(depreciationRatePercent(1924)).toBe(2.5)
   })
 
   it('1925–2022: 2 %', () => {
-    expect(afaSatzProzent(1925)).toBe(2)
-    expect(afaSatzProzent(1990)).toBe(2)
-    expect(afaSatzProzent(2022)).toBe(2)
+    expect(depreciationRatePercent(1925)).toBe(2)
+    expect(depreciationRatePercent(1990)).toBe(2)
+    expect(depreciationRatePercent(2022)).toBe(2)
   })
 
   it('from 2023: 3 % (Wohngebäude, § 7 Abs. 4 Satz 1 Nr. 2 i.d.F. JStG 2022)', () => {
-    expect(afaSatzProzent(2023)).toBe(3)
-    expect(afaSatzProzent(2030)).toBe(3)
+    expect(depreciationRatePercent(2023)).toBe(3)
+    expect(depreciationRatePercent(2030)).toBe(3)
   })
 
   it('a non-integer or negative Baujahr is offen — never guessed', () => {
-    expect(afaSatzProzent(1990.5)).toBeNull()
-    expect(afaSatzProzent(-1)).toBeNull()
+    expect(depreciationRatePercent(1990.5)).toBeNull()
+    expect(depreciationRatePercent(-1)).toBeNull()
   })
 })
 

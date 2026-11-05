@@ -78,10 +78,8 @@ export class SetAssessmentDateDto {
 }
 
 /** The PUT body for filing an Einspruch. */
-export class SetEinspruchDto {
+export class SetAppealDto {
   @ApiProperty({ type: String, enum: ['betrag-falsch', 'beleg-nicht-beruecksichtigt', 'sonstiges'], description: 'The Einspruch-Grund (closed set).' })
   @IsIn(['betrag-falsch', 'beleg-nicht-beruecksichtigt', 'sonstiges'])
   grund!: string
 }
-
-export type SetAppealDto = SetEinspruchDto

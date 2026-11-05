@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
-import { MARITAL_STATUSES, istGueltigeIban, isValidPostalCode, isValidDate, RELIGIONSSCHLUESSEL } from '@steuereule/core'
+import { MARITAL_STATUSES, isValidIban, isValidPostalCode, isValidDate, RELIGION_KEYS } from '@steuereule/core'
 import { IsBoolean, IsIn, IsOptional, IsString, MaxLength, registerDecorator, type ValidationOptions } from 'class-validator'
 
 function Erfuellt(praedikat: (wert: string) => boolean, meldung: string, options?: ValidationOptions) {
@@ -57,12 +57,12 @@ export class PutStammdatenDto {
   beruf?: string | null
 
   @ApiPropertyOptional({
-    enum: RELIGIONSSCHLUESSEL,
+    enum: RELIGION_KEYS,
     nullable: true,
     description: 'Religionsschlüssel per ESt 1 A guide (VD = none). Art. 9 DSGVO: requires religionEinwilligung = true.',
   })
   @IsOptional()
-  @IsIn(RELIGIONSSCHLUESSEL)
+  @IsIn(RELIGION_KEYS)
   religion?: string | null
 
   @ApiPropertyOptional({ type: Boolean, description: 'Explicit consent to store the religion (Art. 9 Abs. 2 lit. a DSGVO).' })
@@ -82,7 +82,7 @@ export class PutStammdatenDto {
 
   @ApiPropertyOptional({ ...TEXT, example: 'DE89370400440532013000', description: 'Mod-97-checked; stored without spaces.' })
   @IsOptional()
-  @Erfuellt(istGueltigeIban, 'iban is not a valid IBAN')
+  @Erfuellt(isValidIban, 'iban is not a valid IBAN')
   iban?: string | null
 
   @ApiPropertyOptional({ ...TEXT, example: 'Anna Beispiel', description: 'Only when the account holder is someone else.' })
@@ -112,7 +112,7 @@ export class StammdatenResponseDto {
   @ApiProperty(TEXT) plz!: string | null
   @ApiProperty(TEXT) wohnort!: string | null
   @ApiProperty(TEXT) beruf!: string | null
-  @ApiProperty({ enum: RELIGIONSSCHLUESSEL, nullable: true }) religion!: string | null
+  @ApiProperty({ enum: RELIGION_KEYS, nullable: true }) religion!: string | null
   @ApiProperty({ enum: MARITAL_STATUSES, nullable: true }) familienstand!: string | null
   @ApiProperty(TEXT) familienstandSeit!: string | null
   @ApiProperty(TEXT) iban!: string | null

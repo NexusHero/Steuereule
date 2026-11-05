@@ -16,7 +16,7 @@ export class ProvenanceDto {
   vorjahr?: number
 }
 
-export class VorschlagDto {
+export class ProposalDto {
   @ApiProperty({ type: String, nullable: true, example: '4800', description: 'Der vorgeschlagene Feld-Wert (null = leeren).' })
   wert!: string | null
 
@@ -46,8 +46,8 @@ export class FieldProvenanceDto {
   @ApiProperty({ type: Boolean })
   bestaetigt!: boolean
 
-  @ApiProperty({ type: VorschlagDto, nullable: true })
-  vorschlag!: VorschlagDto | null
+  @ApiProperty({ type: ProposalDto, nullable: true })
+  vorschlag!: ProposalDto | null
 }
 
 export class AnnexConfirmationDto {
@@ -67,12 +67,8 @@ export class ConfirmationResponseDto {
   anlagen!: AnnexConfirmationDto[]
 }
 
-export class VorschlagEntscheidungDto {
+export class ProposalDecisionDto {
   @ApiProperty({ type: String, enum: ['annehmen', 'verwerfen'] })
   @IsIn(['annehmen', 'verwerfen'])
   entscheidung!: 'annehmen' | 'verwerfen'
 }
-
-export type ProposalDto = VorschlagDto
-export type ProposalDecisionDto = VorschlagEntscheidungDto
-

@@ -202,6 +202,3 @@ export function vermietungStand(objekte: readonly RentalObjectData[], gegated: r
 }
 
 // Backward-compatibility aliases
-export {
-  depreciationRatePercent as afaSatzProzent
-}

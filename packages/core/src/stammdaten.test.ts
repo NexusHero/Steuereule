@@ -1,34 +1,34 @@
 import { describe, expect, it } from 'vitest'
 import {
   MARITAL_STATUSES,
-  istGueltigeIban,
+  isValidIban,
   isValidPostalCode,
   isValidDate,
-  normalisiereIban,
-  RELIGIONSSCHLUESSEL,
+  normalizeIban,
+  RELIGION_KEYS,
 } from './stammdaten'
 
 describe('istGueltigeIban (ISO 13616, mod-97)', () => {
   it('accepts a valid German IBAN, with or without spaces', () => {
-    expect(istGueltigeIban('DE89370400440532013000')).toBe(true)
-    expect(istGueltigeIban('DE89 3704 0044 0532 0130 00')).toBe(true)
+    expect(isValidIban('DE89370400440532013000')).toBe(true)
+    expect(isValidIban('DE89 3704 0044 0532 0130 00')).toBe(true)
   })
 
   it('accepts a valid foreign IBAN (Grenzgänger with a Swiss account)', () => {
-    expect(istGueltigeIban('CH9300762011623852957')).toBe(true)
+    expect(isValidIban('CH9300762011623852957')).toBe(true)
   })
 
   it('rejects a transposed digit — the check digits catch it', () => {
-    expect(istGueltigeIban('DE89370400440532013001')).toBe(false)
+    expect(isValidIban('DE89370400440532013001')).toBe(false)
   })
 
   it('rejects a German IBAN of the wrong length and garbage', () => {
-    expect(istGueltigeIban('DE8937040044053201300')).toBe(false)
-    expect(istGueltigeIban('kein iban')).toBe(false)
+    expect(isValidIban('DE8937040044053201300')).toBe(false)
+    expect(isValidIban('kein iban')).toBe(false)
   })
 
   it('normalises to upper case without spaces', () => {
-    expect(normalisiereIban(' de89 3704 0044 0532 0130 00 ')).toBe('DE89370400440532013000')
+    expect(normalizeIban(' de89 3704 0044 0532 0130 00 ')).toBe('DE89370400440532013000')
   })
 })
 
@@ -55,10 +55,10 @@ describe('istGueltigesDatum', () => {
 
 describe('closed vocabularies', () => {
   it('carries the Religionsschlüssel of the official ESt 1 A 2025 guide, VD for none', () => {
-    expect(RELIGIONSSCHLUESSEL).toContain('VD')
-    expect(RELIGIONSSCHLUESSEL).toContain('EV')
-    expect(RELIGIONSSCHLUESSEL).toContain('RK')
-    expect(RELIGIONSSCHLUESSEL).toHaveLength(15)
+    expect(RELIGION_KEYS).toContain('VD')
+    expect(RELIGION_KEYS).toContain('EV')
+    expect(RELIGION_KEYS).toContain('RK')
+    expect(RELIGION_KEYS).toHaveLength(15)
   })
 
   it('carries the Familienstände ESt 1 A Zeile 18 distinguishes', () => {

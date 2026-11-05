@@ -7,7 +7,7 @@ import {
   missingConfirmations,
   grenzgaengerStatus,
   krankenversicherungAusAntworten,
-  ordneKapDepotEin,
+  classifyCapitalDepot,
   type ChWohnsitz,
   type GrenzgaengerStatus,
   type Krankenversicherung,
@@ -20,8 +20,8 @@ import { INTERVIEW_ANSWER_REPOSITORY, type InterviewAnswerRepository } from '../
 import { CAPITAL_REPOSITORY, type CapitalRepository } from '../kapital/kapital.repository.js'
 import { CHILD_REPOSITORY, type ChildRepository } from '../kinder/kind.repository.js'
 import { PROVENANCE_REPOSITORY, type ProvenanceRepository } from '../kennzeichnung/kennzeichnung.repository.js'
-import { PARTNER_COUPLING_REPOSITORY, type KopplungRepository } from '../kopplung/kopplung.repository.js'
-import { LSTB_REPOSITORY, type LstbRepository } from '../lstb/lstb.repository.js'
+import { PARTNER_COUPLING_REPOSITORY, type PartnerCouplingRepository } from '../kopplung/kopplung.repository.js'
+import { WAGE_TAX_CERTIFICATE_REPOSITORY, type WageTaxCertificateRepository } from '../lstb/lstb.repository.js'
 import { PROFILE_REPOSITORY, type ProfileRepository } from '../profile/profile.repository.js'
 import { PENSION_REPOSITORY, type PensionRepository } from '../rente/rente.repository.js'
 import { MASTER_DATA_REPOSITORY, type MasterDataRepository } from '../stammdaten/stammdaten.repository.js'
@@ -45,13 +45,13 @@ export class AusdruckService {
   constructor(
     @Inject(PROFILE_REPOSITORY) private readonly profile: ProfileRepository,
     @Inject(MASTER_DATA_REPOSITORY) private readonly stammdaten: MasterDataRepository,
-    @Inject(LSTB_REPOSITORY) private readonly lstb: LstbRepository,
+    @Inject(WAGE_TAX_CERTIFICATE_REPOSITORY) private readonly lstb: WageTaxCertificateRepository,
     @Inject(PENSION_REPOSITORY) private readonly rente: PensionRepository,
     @Inject(CAPITAL_REPOSITORY) private readonly kapital: CapitalRepository,
     @Inject(RENTAL_REPOSITORY) private readonly vermietung: RentalRepository,
     @Inject(CROSS_BORDER_SALARY_STATEMENT_REPOSITORY) private readonly chLohnausweis: CrossBorderSalaryStatementRepository,
     @Inject(CHILD_REPOSITORY) private readonly kinder: ChildRepository,
-    @Inject(PARTNER_COUPLING_REPOSITORY) private readonly kopplung: KopplungRepository,
+    @Inject(PARTNER_COUPLING_REPOSITORY) private readonly kopplung: PartnerCouplingRepository,
     @Inject(INTERVIEW_ANSWER_REPOSITORY) private readonly interview: InterviewAnswerRepository,
     @Inject(PROVENANCE_REPOSITORY) private readonly kennzeichnungen: ProvenanceRepository,
     @Inject(COMMUTE_REPOSITORY) private readonly arbeitsweg: CommuteRepository,
@@ -236,7 +236,7 @@ export class AusdruckService {
       rente: rente ? { rentenart: rente.rentenart, jahresbetrag: rente.jahresbetrag } : null,
       kapital: kapital
         ? {
-            depot: ordneKapDepotEin(answers['kap-depot']).kind,
+            depot: classifyCapitalDepot(answers['kap-depot']).kind,
             kapitalertraege: kapital.kapitalertraege,
             sparerPauschbetrag: kapital.sparerPauschbetrag,
             kapitalertragsteuer: kapital.kapitalertragsteuer,

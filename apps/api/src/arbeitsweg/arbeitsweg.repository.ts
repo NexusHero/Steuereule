@@ -1,13 +1,10 @@
-import type { IsoWeekday, IsoWochentag } from '@steuereule/core'
+import type { IsoWeekday } from '@steuereule/core'
 
 export type MeansOfTransport = 'pkw' | 'oepnv' | 'andere'
-export type Verkehrsmittel = MeansOfTransport
-
 export const MEANS_OF_TRANSPORT: readonly MeansOfTransport[] = ['pkw', 'oepnv', 'andere']
-export const VERKEHRSMITTEL = MEANS_OF_TRANSPORT
 
 export interface CommuteInputs {
-  readonly arbeitstage: readonly (IsoWeekday | IsoWochentag)[]
+  readonly arbeitstage: readonly (IsoWeekday | IsoWeekday)[]
   readonly urlaubstage: number
   readonly krankheitstage: number
   readonly homeofficeTage: number

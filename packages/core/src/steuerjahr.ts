@@ -67,4 +67,3 @@ export function decouple<T extends TaxYear | Steuerjahr>(s: T): T {
 }
 
 // Backward-compatibility aliases
-export { couple as kopple, decouple as entkopple }

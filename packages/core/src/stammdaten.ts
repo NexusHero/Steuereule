@@ -17,9 +17,6 @@ export const RELIGION_KEYS = [
 ] as const
 
 export type ReligionKey = (typeof RELIGION_KEYS)[number]
-export type Religionsschluessel = ReligionKey
-export const RELIGIONSSCHLUESSEL = RELIGION_KEYS
-
 export const MARITAL_STATUSES = ['ledig', 'verheiratet', 'verwitwet', 'geschieden', 'dauernd-getrennt'] as const
 export type MaritalStatus = (typeof MARITAL_STATUSES)[number]
 
@@ -58,7 +55,3 @@ export function formatGermanDate(iso: string): string {
 }
 
 // Backward-compatibility aliases
-export {
-  normalizeIban as normalisiereIban,
-  isValidIban as istGueltigeIban
-}

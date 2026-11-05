@@ -4,11 +4,11 @@ import {
   ANNEXES,
   YEAR_INDEPENDENT,
   anlageVon,
-  entscheideSchreibung,
+  decideWriting,
   missingConfirmations,
   isYearIndependent,
-  nimmVorschlagAn,
-  verwirfVorschlag,
+  acceptProposal,
+  dismissProposal,
   decomposeProvenanceKey,
   type Annex,
   type Herkunft,
@@ -84,7 +84,7 @@ export class ConfirmationService {
     const a = this.adresse(key, steuerjahr)
     const aktuellerWert = await this.aktuellerWert(userId, a)
     const bestehend = await this.repository.find(userId, a.steuerjahr, key)
-    const entscheidung = entscheideSchreibung({ key, bestehend: bestehend === null ? null : { ...bestehend, wert: aktuellerWert }, aktuellerWert, neuerWert, herkunft })
+    const entscheidung = decideWriting({ key, bestehend: bestehend === null ? null : { ...bestehend, wert: aktuellerWert }, aktuellerWert, neuerWert, herkunft })
     switch (entscheidung.art) {
       case 'unveraendert':
         return 'unveraendert'
@@ -154,11 +154,11 @@ export class ConfirmationService {
     if (bestehend === null || bestehend.vorschlag === null) throw new NotFoundError('PROPOSAL_NOT_FOUND', `There is no open proposal for "${key}".`)
     const kennzeichnung: Kennzeichnung = { ...bestehend, wert: await this.aktuellerWert(userId, a) }
     if (entscheidung === 'annehmen') {
-      const angenommen = nimmVorschlagAn(kennzeichnung)
+      const angenommen = acceptProposal(kennzeichnung)
       await this.schreibeWert(userId, a, angenommen.wert)
       await this.repository.speichere(userId, a.steuerjahr, angenommen)
     } else {
-      const rest = verwirfVorschlag(kennzeichnung)
+      const rest = dismissProposal(kennzeichnung)
       if (rest === null) await this.repository.entferne(userId, a.steuerjahr, [key])
       else await this.repository.speichere(userId, a.steuerjahr, rest)
     }

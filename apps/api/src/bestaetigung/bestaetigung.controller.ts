@@ -6,7 +6,7 @@ import { RequiresAccount } from '../auth/requires-account.guard.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
 import { ParseSteuerjahrPipe } from '../cockpit/parse-steuerjahr.pipe.js'
 import { ConfirmationService } from './bestaetigung.service.js'
-import { ConfirmationResponseDto, VorschlagEntscheidungDto } from './dto/bestaetigung.dto.js'
+import { ConfirmationResponseDto, ProposalDecisionDto } from './dto/bestaetigung.dto.js'
 
 const JAHR_PARAM = { name: 'jahr', type: Number, example: 2025, description: 'The tax year (ParseSteuerjahrPipe, same as Cockpit).' }
 
@@ -43,7 +43,7 @@ export class BestaetigungController {
   @RequiresAccount()
   @ApiParam(JAHR_PARAM)
   @ApiParam({ name: 'key', type: String, example: 'lstb.bruttoarbeitslohn' })
-  @ApiBody({ type: VorschlagEntscheidungDto })
+  @ApiBody({ type: ProposalDecisionDto })
   @ApiOkResponse({ type: ConfirmationResponseDto, description: 'The proposal was accepted (written, confirmed) or discarded.' })
   @ApiNotFoundResponse({ description: 'No open proposal for this field.' })
   @ApiUnauthorizedResponse({ description: 'Guest session — this endpoint requires a signed-in account.' })
@@ -51,7 +51,7 @@ export class BestaetigungController {
     @CurrentUser() userId: string,
     @Param('jahr', ParseSteuerjahrPipe) jahr: number,
     @Param('key') key: string,
-    @Body() body: VorschlagEntscheidungDto,
+    @Body() body: ProposalDecisionDto,
   ): Promise<ConfirmationResponseDto> {
     return this.service.entscheideVorschlag(userId, jahr, key, body.entscheidung)
   }

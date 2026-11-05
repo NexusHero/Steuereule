@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { InvalidInputError } from '../common/domain-error.js'
-import { normalisiereIban } from '@steuereule/core'
+import { normalizeIban } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
 import type { PutStammdatenDto, StammdatenResponseDto } from './dto/stammdaten.dto.js'
 import {
@@ -45,7 +45,7 @@ export class StammdatenService {
     const bisher = await this.repository.findByUserId(userId)
     const record = { religionEinwilligungAm: null } as MasterDataRecord
     for (const feld of MASTER_DATA_FIELDS) record[feld] = trimOrNull(dto[feld])
-    if (record.iban !== null) record.iban = normalisiereIban(record.iban)
+    if (record.iban !== null) record.iban = normalizeIban(record.iban)
     if (record.familienstand === 'ledig') record.familienstandSeit = null
     record.religionEinwilligungAm =
       religion === null ? null : bisher?.religion === religion ? (bisher.religionEinwilligungAm ?? jetzt) : jetzt

@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
 import { AssistentenService } from '../src/assistenten/assistenten.service.js'
-import type { AssistentenRepository, VerbundenerAssistent } from '../src/assistenten/assistenten.repository.js'
+import type { AssistantRepository, ConnectedAssistant } from '../src/assistenten/assistenten.repository.js'
 
 describe('AssistentenService (ADR-0052 §10 / Issue #385)', () => {
   it('lists connected assistants for a user', async () => {
-    const list: VerbundenerAssistent[] = [
+    const list: ConnectedAssistant[] = [
       {
         clientId: 'c1',
         name: 'Claude Desktop',
@@ -12,7 +12,7 @@ describe('AssistentenService (ADR-0052 §10 / Issue #385)', () => {
         zuletztGenutzt: new Date('2026-11-03T18:00:00Z'),
       },
     ]
-    const fakeRepo: AssistentenRepository = {
+    const fakeRepo: AssistantRepository = {
       findConnectedForUser: vi.fn().mockResolvedValue(list),
       revokeForUser: vi.fn().mockResolvedValue(undefined),
       findClientInfo: vi.fn().mockResolvedValue(null),
@@ -32,7 +32,7 @@ describe('AssistentenService (ADR-0052 §10 / Issue #385)', () => {
   })
 
   it('revokes an assistant connection immediately', async () => {
-    const fakeRepo: AssistentenRepository = {
+    const fakeRepo: AssistantRepository = {
       findConnectedForUser: vi.fn().mockResolvedValue([]),
       revokeForUser: vi.fn().mockResolvedValue(undefined),
       findClientInfo: vi.fn().mockResolvedValue(null),
@@ -45,7 +45,7 @@ describe('AssistentenService (ADR-0052 §10 / Issue #385)', () => {
   })
 
   it('gets client info for consent screen', async () => {
-    const fakeRepo: AssistentenRepository = {
+    const fakeRepo: AssistantRepository = {
       findConnectedForUser: vi.fn().mockResolvedValue([]),
       revokeForUser: vi.fn().mockResolvedValue(undefined),
       findClientInfo: vi.fn().mockResolvedValue({

@@ -1,15 +1,15 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { ASSISTENTEN_REPOSITORY, type AssistentenRepository } from './assistenten.repository.js'
-import type { OauthClientInfoDto, VerbundenerAssistentDto } from './dto/assistenten.dto.js'
+import { ASSISTANT_REPOSITORY, type AssistantRepository } from './assistenten.repository.js'
+import type { OauthClientInfoDto, ConnectedAssistantDto } from './dto/assistenten.dto.js'
 
 @Injectable()
 export class AssistentenService {
   constructor(
-    @Inject(ASSISTENTEN_REPOSITORY)
-    private readonly repository: AssistentenRepository,
+    @Inject(ASSISTANT_REPOSITORY)
+    private readonly repository: AssistantRepository,
   ) {}
 
-  async listConnected(userId: string): Promise<VerbundenerAssistentDto[]> {
+  async listConnected(userId: string): Promise<ConnectedAssistantDto[]> {
     const list = await this.repository.findConnectedForUser(userId)
     return list.map((item) => ({
       clientId: item.clientId,

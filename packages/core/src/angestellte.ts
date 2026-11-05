@@ -1,6 +1,6 @@
 import type { Answers } from './interview'
 import { gatedIncomeTypes, type IncomeType } from './einkunftsarten'
-import { wageTaxCertificateStatus, type LstbDaten } from './lstb'
+import { wageTaxCertificateStatus, type WageTaxCertificateData } from './lstb'
 import { deductibleBasicProvision, krankenversicherungAusAntworten } from './krankenversicherung'
 
 export interface EmployeeAnswerFigures {
@@ -140,7 +140,7 @@ export interface AngestellteFakten {
   readonly erfasstNichtGerechnet: number
 }
 
-export function angestellteAusDaten(daten: LstbDaten, answers: Answers): AngestellteFakten {
+export function employeeFromData(daten: WageTaxCertificateData, answers: Answers): AngestellteFakten {
   const zahlen = angestellteAusAntworten(answers)
   const zustand = wageTaxCertificateStatus(daten)
   const angestellt = answers.job === 'Angestellt' || answers.job === 'Beides'
@@ -164,5 +164,3 @@ export function angestellteAusDaten(daten: LstbDaten, answers: Answers): Angeste
     erfasstNichtGerechnet: zahlen.dhfMiete + zahlen.abfindungBetrag + zahlen.lohnersatzBetrag,
   }
 }
-
-export const employeeFromData = angestellteAusDaten

@@ -9,7 +9,7 @@ import {
   type MasterDataRecord,
   type MasterDataRepository,
 } from '../stammdaten/stammdaten.repository.js'
-import { PARTNER_COUPLING_REPOSITORY, type KopplungRepository, type SteuerjahrKopplungRecord } from './kopplung.repository.js'
+import { PARTNER_COUPLING_REPOSITORY, type PartnerCouplingRepository, type PartnerCouplingRecord } from './kopplung.repository.js'
 import type { KopplungPersonBDto, KopplungResponseDto, SetKopplungDto } from './dto/kopplung.dto.js'
 
 const SCHATTEN_PRAEFIX = 'spouse_'
@@ -18,7 +18,7 @@ function schattenId(userId: string, steuerjahr: number): string {
   return `${SCHATTEN_PRAEFIX}${userId}_${steuerjahr}`
 }
 
-function hatEigenesKonto(row: SteuerjahrKopplungRecord): boolean {
+function hatEigenesKonto(row: PartnerCouplingRecord): boolean {
   return row.personBUserId !== '' && !row.personBUserId.startsWith(SCHATTEN_PRAEFIX)
 }
 
@@ -31,7 +31,7 @@ function neueEinladung(jetzt: Date): { einladungsCode: string; einladungsCodeGue
   }
 }
 
-function einladungGueltig(row: SteuerjahrKopplungRecord, jetzt: Date): boolean {
+function einladungGueltig(row: PartnerCouplingRecord, jetzt: Date): boolean {
   return row.einladungsCode !== null && row.einladungsCodeGueltigBis !== null && row.einladungsCodeGueltigBis > jetzt
 }
 
@@ -46,7 +46,7 @@ function leereStammdaten(): MasterDataRecord {
 @Injectable()
 export class KopplungService {
   constructor(
-    @Inject(PARTNER_COUPLING_REPOSITORY) private readonly repository: KopplungRepository,
+    @Inject(PARTNER_COUPLING_REPOSITORY) private readonly repository: PartnerCouplingRepository,
     @Inject(PROFILE_REPOSITORY) private readonly profileRepository: ProfileRepository,
     @Inject(MASTER_DATA_REPOSITORY) private readonly stammdatenRepository: MasterDataRepository,
     @Inject(AuditService) private readonly auditService: AuditService,

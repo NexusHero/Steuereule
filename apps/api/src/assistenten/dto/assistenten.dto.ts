@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 
-export class VerbundenerAssistentDto {
+export class ConnectedAssistantDto {
   @ApiProperty({ type: String, example: 'client_xyz123' })
   clientId!: string
 
@@ -28,11 +28,7 @@ export class OauthClientInfoDto {
   icon?: string | null
 }
 
-export class RevokeAssistentResponseDto {
+export class RevokeAssistantResponseDto {
   @ApiProperty({ type: Boolean, example: true })
   success!: boolean
 }
-
-export type ConnectedAssistantDto = VerbundenerAssistentDto
-export type RevokeAssistantResponseDto = RevokeAssistentResponseDto
-

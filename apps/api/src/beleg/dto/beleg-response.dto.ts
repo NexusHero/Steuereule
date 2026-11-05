@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger'
-import { ZuordnungDto } from './zuordnung.dto.js'
+import { AssignmentDto } from './zuordnung.dto.js'
 
 /** Response shape for the Beleg endpoints. */
 export class ReceiptResponseDto {
@@ -18,6 +18,6 @@ export class ReceiptResponseDto {
   @ApiProperty({ type: String, nullable: true, example: '2026-01-15', description: 'Payment date (ISO yyyy-mm-dd).' })
   zahlungsdatum!: string | null
 
-  @ApiProperty({ type: ZuordnungDto, description: '@steuereule/core’s zuordnungAusDaten — never recomputed elsewhere.' })
-  zuordnung!: ZuordnungDto
+  @ApiProperty({ type: AssignmentDto, description: '@steuereule/core’s zuordnungAusDaten — never recomputed elsewhere.' })
+  zuordnung!: AssignmentDto
 }

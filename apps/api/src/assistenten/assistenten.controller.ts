@@ -7,8 +7,8 @@ import { UserContextGuard } from '../auth/user-context.guard.js'
 import { AssistentenService } from './assistenten.service.js'
 import {
   OauthClientInfoDto,
-  RevokeAssistentResponseDto,
-  VerbundenerAssistentDto,
+  RevokeAssistantResponseDto,
+  ConnectedAssistantDto,
 } from './dto/assistenten.dto.js'
 
 @ApiTags('assistenten')
@@ -20,10 +20,10 @@ export class AssistentenController {
   @Get('assistenten')
   @RequiresAccount()
   @ForbidAssistant()
-  @ApiOkResponse({ type: [VerbundenerAssistentDto], description: 'List of connected AI assistants (ADR-0052 §10).' })
+  @ApiOkResponse({ type: [ConnectedAssistantDto], description: 'List of connected AI assistants (ADR-0052 §10).' })
   @ApiUnauthorizedResponse({ description: 'Requires signed-in account.' })
   @ApiForbiddenResponse({ description: 'Assistants cannot manage assistant connections.' })
-  listConnected(@CurrentUser() userId: string): Promise<VerbundenerAssistentDto[]> {
+  listConnected(@CurrentUser() userId: string): Promise<ConnectedAssistantDto[]> {
     return this.service.listConnected(userId)
   }
 
@@ -32,13 +32,13 @@ export class AssistentenController {
   @RequiresAccount()
   @ForbidAssistant()
   @ApiParam({ name: 'clientId', type: String, example: 'client_xyz' })
-  @ApiOkResponse({ type: RevokeAssistentResponseDto, description: 'Revokes connection to the assistant with immediate effect.' })
+  @ApiOkResponse({ type: RevokeAssistantResponseDto, description: 'Revokes connection to the assistant with immediate effect.' })
   @ApiUnauthorizedResponse({ description: 'Requires signed-in account.' })
   @ApiForbiddenResponse({ description: 'Assistants cannot revoke connections.' })
   async revoke(
     @CurrentUser() userId: string,
     @Param('clientId') clientId: string,
-  ): Promise<RevokeAssistentResponseDto> {
+  ): Promise<RevokeAssistantResponseDto> {
     await this.service.revoke(userId, clientId)
     return { success: true }
   }

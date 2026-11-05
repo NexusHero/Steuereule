@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  VERSPAETUNGSZUSCHLAG_MINDESTSATZ_EUR,
+  LATE_FILING_FEE_MINIMUM_EUR,
   LATE_FILING_FEE_PERCENT_PER_MONTH,
   DEADLINE_WARNING_THRESHOLD_DAYS,
   filingDeadlineFor,
@@ -66,7 +66,7 @@ describe('fristenWarnung — the derived warning stage (ADR-0039, never a status
 
 describe('the cited § 152 Abs. 2 AO figures — constants the banner renders nüchtern (ADR-023)', () => {
   it('pins the statutory minimum and rate', () => {
-    expect(VERSPAETUNGSZUSCHLAG_MINDESTSATZ_EUR).toBe(25)
+    expect(LATE_FILING_FEE_MINIMUM_EUR).toBe(25)
     expect(LATE_FILING_FEE_PERCENT_PER_MONTH).toBe(0.25)
     expect(DEADLINE_WARNING_THRESHOLD_DAYS).toBe(60)
   })

@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { isReceiptType } from '@steuereule/core'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
-import type { ReceiptRecord, ReceiptRepository, CreateReceiptData, SetZuordnungData } from './beleg.repository.js'
+import type { ReceiptRecord, ReceiptRepository, CreateReceiptData, SetAssignmentData } from './beleg.repository.js'
 
 function toIsoDate(value: Date): string {
   return value.toISOString().slice(0, 10)
@@ -71,11 +71,11 @@ export class PrismaBelegRepository implements ReceiptRepository {
     return toRecord(row)
   }
 
-  async setAssignment(userId: string, id: string, data: SetZuordnungData): Promise<ReceiptRecord | null> {
+  async setAssignment(userId: string, id: string, data: SetAssignmentData): Promise<ReceiptRecord | null> {
     return this.setZuordnung(userId, id, data)
   }
 
-  async setZuordnung(userId: string, id: string, data: SetZuordnungData): Promise<ReceiptRecord | null> {
+  async setZuordnung(userId: string, id: string, data: SetAssignmentData): Promise<ReceiptRecord | null> {
     const row = await this.prisma.beleg.findFirst({ where: { id, userId } })
     if (row === null) return null
 

@@ -1,14 +1,14 @@
-import type { SteuerjahrKopplungRecord, KopplungRepository } from '../../src/kopplung/kopplung.repository.js'
+import type { PartnerCouplingRecord, PartnerCouplingRepository } from '../../src/kopplung/kopplung.repository.js'
 
 function key(userId: string, steuerjahr: number): string {
   return `${userId}::${steuerjahr}`
 }
 
-export class FakeKopplungRepository implements KopplungRepository {
-  private readonly store = new Map<string, SteuerjahrKopplungRecord>()
+export class FakeKopplungRepository implements PartnerCouplingRepository {
+  private readonly store = new Map<string, PartnerCouplingRecord>()
   private counter = 0
 
-  findByUserAndYear(userId: string, steuerjahr: number): Promise<SteuerjahrKopplungRecord | null> {
+  findByUserAndYear(userId: string, steuerjahr: number): Promise<PartnerCouplingRecord | null> {
     for (const r of this.store.values()) {
       if (r.steuerjahr === steuerjahr && (r.personAUserId === userId || r.personBUserId === userId)) {
         return Promise.resolve(r)
@@ -17,7 +17,7 @@ export class FakeKopplungRepository implements KopplungRepository {
     return Promise.resolve(null)
   }
 
-  findByEinladungsCode(code: string): Promise<SteuerjahrKopplungRecord | null> {
+  findByEinladungsCode(code: string): Promise<PartnerCouplingRecord | null> {
     for (const r of this.store.values()) {
       if (r.einladungsCode === code) return Promise.resolve(r)
     }
@@ -33,11 +33,11 @@ export class FakeKopplungRepository implements KopplungRepository {
       einladungsCode?: string | null
       einladungsCodeGueltigBis?: Date | null
     },
-  ): Promise<SteuerjahrKopplungRecord> {
+  ): Promise<PartnerCouplingRecord> {
     const k = key(personAUserId, steuerjahr)
     const existing = this.store.get(k)
     const id = existing?.id ?? `fake-kopplung-${++this.counter}`
-    const record: SteuerjahrKopplungRecord = {
+    const record: PartnerCouplingRecord = {
       id,
       personAUserId,
       personBUserId: data.personBUserId,
@@ -50,7 +50,7 @@ export class FakeKopplungRepository implements KopplungRepository {
     return Promise.resolve(record)
   }
 
-  setPersonB(id: string, personBUserId: string): Promise<SteuerjahrKopplungRecord> {
+  setPersonB(id: string, personBUserId: string): Promise<PartnerCouplingRecord> {
     for (const [k, r] of this.store.entries()) {
       if (r.id === id) {
         const updated = { ...r, personBUserId, einladungsCode: null, einladungsCodeGueltigBis: null }

@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common'
 import {
-  angestellteAusDaten,
+  employeeFromData,
   chfNachEur,
   cockpitRangeFromInputs,
   gatedIncomeTypes,
@@ -10,14 +10,14 @@ import {
 } from '@steuereule/core'
 import { INTERVIEW_ANSWER_REPOSITORY, type InterviewAnswerRepository } from '../interview/interview-answer.repository.js'
 import { CAPITAL_REPOSITORY, type CapitalRepository } from '../kapital/kapital.repository.js'
-import { LSTB_REPOSITORY, type LstbRepository } from '../lstb/lstb.repository.js'
+import { WAGE_TAX_CERTIFICATE_REPOSITORY, type WageTaxCertificateRepository } from '../lstb/lstb.repository.js'
 import { PENSION_REPOSITORY, type PensionRepository } from '../rente/rente.repository.js'
 import { PROVENANCE_REPOSITORY, type ProvenanceRepository } from '../kennzeichnung/kennzeichnung.repository.js'
 import { RENTAL_REPOSITORY, type RentalRepository } from '../vermietung/vermietung.repository.js'
 import { TAX_YEAR_REPOSITORY, type TaxYearRepository } from './tax-year.repository.js'
 import type { CockpitStandDto, CockpitSummaryDto } from './dto/cockpit-summary.dto.js'
-import { answersAus } from '../interview/answers.js'
-import { lstbDatenAus } from '../lstb/lstb-daten.js'
+import { answersFrom } from '../interview/answers.js'
+import { wageTaxCertificateDataFrom } from '../lstb/lstb-daten.js'
 import { CROSS_BORDER_SALARY_STATEMENT_REPOSITORY, type CrossBorderSalaryStatementRecord, type CrossBorderSalaryStatementRepository } from '../ch-lohnausweis/ch-lohnausweis.repository.js'
 import { grenzgaengerStatusAusAnswers, lohnausweisWerteAusRecord, wechselkursAusRecord } from '../ch-lohnausweis/lohnausweis-daten.js'
 
@@ -68,7 +68,7 @@ function grenzgaengerFakten(record: CrossBorderSalaryStatementRecord | null, ans
 export class CockpitService {
   constructor(
     @Inject(TAX_YEAR_REPOSITORY) private readonly taxYearRepository: TaxYearRepository,
-    @Inject(LSTB_REPOSITORY) private readonly lstbRepository: LstbRepository,
+    @Inject(WAGE_TAX_CERTIFICATE_REPOSITORY) private readonly lstbRepository: WageTaxCertificateRepository,
     @Inject(INTERVIEW_ANSWER_REPOSITORY) private readonly interviewRepository: InterviewAnswerRepository,
     @Inject(PROVENANCE_REPOSITORY) private readonly kennzeichnungRepository: ProvenanceRepository,
     @Inject(PENSION_REPOSITORY) private readonly renteRepository: PensionRepository,
@@ -91,8 +91,8 @@ export class CockpitService {
       this.chLohnausweisRepository.findForUserAndYear(userId, steuerjahr),
     ])
 
-    const daten = lstbDatenAus(lstbRecord)
-    const answers = answersAus(interviewRows)
+    const daten = wageTaxCertificateDataFrom(lstbRecord)
+    const answers = answersFrom(interviewRows)
 
     const unbestaetigteFakten = new Set(
       kennzeichnungen.filter((k) => !k.bestaetigt).map((k) => k.key.slice(0, k.key.indexOf('.'))),
@@ -118,7 +118,7 @@ export class CockpitService {
       }
     }
 
-    const fakten = answers.ausland === CH_AUSLAND ? grenzgaengerFakten(chRecord, answers) : angestellteAusDaten(daten, answers)
+    const fakten = answers.ausland === CH_AUSLAND ? grenzgaengerFakten(chRecord, answers) : employeeFromData(daten, answers)
     const stand = cockpitRangeFromInputs({
       summe: fakten.einnahmen,
       offenePosten: fakten.offenePosten,

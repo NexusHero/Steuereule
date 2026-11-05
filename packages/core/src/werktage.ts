@@ -1,6 +1,4 @@
 export type IsoWeekday = 1 | 2 | 3 | 4 | 5 | 6 | 7
-export type IsoWochentag = IsoWeekday
-
 export const ISO_WEEKDAYS: readonly IsoWeekday[] = [1, 2, 3, 4, 5, 6, 7]
 
 export interface WorkdaysInput {
@@ -15,7 +13,7 @@ export interface WorkdaysInput {
 
 export interface WerktageEingabe {
   readonly jahr: number
-  readonly werktage: readonly IsoWochentag[]
+  readonly werktage: readonly IsoWeekday[]
   readonly urlaubstage: number
   readonly krankheitstage: number
   readonly homeofficeTage: number

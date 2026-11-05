@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import { InvalidInputError } from '../common/domain-error.js'
 import {
-  VERSPAETUNGSZUSCHLAG_MINDESTSATZ_EUR,
+  LATE_FILING_FEE_MINIMUM_EUR,
   LATE_FILING_FEE_PERCENT_PER_MONTH,
   fristenWarnung,
 } from '@steuereule/core'
@@ -45,7 +45,7 @@ export class DeadlinesService {
       stufe: warnung.stufe,
       verbleibendeTage: warnung.verbleibendeTage,
       verspaetungszuschlag: {
-        mindestsatzEur: VERSPAETUNGSZUSCHLAG_MINDESTSATZ_EUR,
+        mindestsatzEur: LATE_FILING_FEE_MINIMUM_EUR,
         prozentProMonat: LATE_FILING_FEE_PERCENT_PER_MONTH,
       },
     }

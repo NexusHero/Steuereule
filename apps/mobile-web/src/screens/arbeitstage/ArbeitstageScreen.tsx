@@ -11,7 +11,7 @@ import {
   holidaysOnWorkdays,
   commuterAllowance,
   type HolidayRegion,
-  type IsoWochentag,
+  type IsoWeekday,
 } from '@steuereule/core'
 import { useArbeitswegControllerGet, useArbeitswegControllerPut, type ArbeitswegEingabenDto } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
@@ -65,7 +65,7 @@ function ArbeitstageFormular({
   const { t: tr } = useTranslation(APP_NS)
   const speichern = useArbeitswegControllerPut()
 
-  const [werktage, setWerktage] = useState<readonly IsoWochentag[]>((gespeichert?.arbeitstage as IsoWochentag[] | undefined) ?? [1, 2, 3, 4, 5])
+  const [werktage, setWerktage] = useState<readonly IsoWeekday[]>((gespeichert?.arbeitstage as IsoWeekday[] | undefined) ?? [1, 2, 3, 4, 5])
   const [urlaub, setUrlaub] = useState(textAus(gespeichert?.urlaubstage))
   const [krank, setKrank] = useState(textAus(gespeichert?.krankheitstage))
   const [homeoffice, setHomeoffice] = useState(textAus(gespeichert?.homeofficeTage))
@@ -82,7 +82,7 @@ function ArbeitstageFormular({
   }
   const [fehler, setFehler] = useState(false)
 
-  function toggle(tag: IsoWochentag) {
+  function toggle(tag: IsoWeekday) {
     setWerktage((prev) => (prev.includes(tag) ? prev.filter((x) => x !== tag) : [...prev, tag].sort()))
   }
 

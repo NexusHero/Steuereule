@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 
-export class ZuordnungDto {
+export class AssignmentDto {
   @ApiProperty({ type: String, enum: ['ungebunden', 'vorgeschlagen', 'zugeordnet', 'konflikt'] })
   kind!: 'ungebunden' | 'vorgeschlagen' | 'zugeordnet' | 'konflikt'
 
@@ -25,6 +25,3 @@ export class ZuordnungDto {
   })
   herkunft?: 'zahlungsdatum' | 'belegdatum'
 }
-
-export type AssignmentDto = ZuordnungDto
-

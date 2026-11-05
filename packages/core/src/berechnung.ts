@@ -142,7 +142,7 @@ export type ConflictResolution =
   | { readonly kind: 'choose-source'; readonly source: Source | Quelle; readonly amount: number }
   | { readonly kind: 'correct-value'; readonly amount: number }
 
-export function loeseKonflikt(konflikt: PostenKonflikt, aufloesung: KonfliktAufloesung): Posten {
+export function resolveConflict(konflikt: PostenKonflikt, aufloesung: KonfliktAufloesung): Posten {
   const quelle: Quelle = aufloesung.art === 'quelle-waehlen' ? aufloesung.quelle : { art: 'eingabe' }
   const betrag = aufloesung.betrag
   if (!Number.isFinite(betrag) || betrag < 0) {
@@ -150,7 +150,5 @@ export function loeseKonflikt(konflikt: PostenKonflikt, aufloesung: KonfliktAufl
   }
   return { id: konflikt.postenId, einkunftsart: konflikt.einkunftsart, betrag, quelle }
 }
-
-export const resolveConflict = loeseKonflikt
 
 // Backward-compatibility aliases

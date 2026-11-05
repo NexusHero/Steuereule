@@ -3,7 +3,7 @@ import { AuditModule } from '../audit/audit.module.js'
 import { CAPITAL_REPOSITORY, type CapitalRepository } from '../kapital/kapital.repository.js'
 import { KapitalModule } from '../kapital/kapital.module.js'
 import { KennzeichnungModule } from '../kennzeichnung/kennzeichnung.module.js'
-import { LSTB_REPOSITORY, type LstbRepository } from '../lstb/lstb.repository.js'
+import { WAGE_TAX_CERTIFICATE_REPOSITORY, type WageTaxCertificateRepository } from '../lstb/lstb.repository.js'
 import { LstbModule } from '../lstb/lstb.module.js'
 import { PENSION_REPOSITORY, type PensionRepository } from '../rente/rente.repository.js'
 import { RenteModule } from '../rente/rente.module.js'
@@ -20,8 +20,8 @@ import { FELD_ZUGRIFF, feldZugriffAus } from './feld-zugriff.js'
     ConfirmationService,
     {
       provide: FELD_ZUGRIFF,
-      inject: [LSTB_REPOSITORY, PENSION_REPOSITORY, CAPITAL_REPOSITORY, RENTAL_REPOSITORY],
-      useFactory: (lstb: LstbRepository, rente: PensionRepository, kapital: CapitalRepository, vermietung: RentalRepository) =>
+      inject: [WAGE_TAX_CERTIFICATE_REPOSITORY, PENSION_REPOSITORY, CAPITAL_REPOSITORY, RENTAL_REPOSITORY],
+      useFactory: (lstb: WageTaxCertificateRepository, rente: PensionRepository, kapital: CapitalRepository, vermietung: RentalRepository) =>
         feldZugriffAus({ lstb, rente, kapital, vermietung }),
     },
   ],

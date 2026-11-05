@@ -2,12 +2,12 @@ import { ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-na
 import { useTranslation } from 'react-i18next'
 import { Button, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
 import {
-  angestellteAusDaten,
+  employeeFromData,
   calculateEmployeeStatus,
   wageTaxCertificateStatus,
   pruefePlausibilitaet,
   type Answers,
-  type LstbDaten,
+  type WageTaxCertificateData,
   type WageTaxCertificateFieldState,
 } from '@steuereule/core'
 import {
@@ -114,7 +114,7 @@ export function PlausibilitaetScreen({ onBack, onDone, taxYear = CURRENT_TAX_YEA
   )
 }
 
-function datenAusResponse(r: LstbResponseDto): LstbDaten {
+function datenAusResponse(r: LstbResponseDto): WageTaxCertificateData {
   return {
     bruttoarbeitslohn: r.bruttoarbeitslohn as WageTaxCertificateFieldState,
     lohnsteuer: r.lohnsteuer as WageTaxCertificateFieldState,
@@ -122,8 +122,8 @@ function datenAusResponse(r: LstbResponseDto): LstbDaten {
   }
 }
 
-function fold(daten: LstbDaten, answers: Answers) {
-  const fakten = angestellteAusDaten(daten, answers)
+function fold(daten: WageTaxCertificateData, answers: Answers) {
+  const fakten = employeeFromData(daten, answers)
 
   return {
     lstb: wageTaxCertificateStatus(daten),

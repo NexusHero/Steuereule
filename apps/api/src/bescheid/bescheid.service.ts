@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common'
 import { ConflictError, InvalidInputError } from '../common/domain-error.js'
 import {
   BESCHEID_FELDER,
-  angestellteAusDaten,
+  employeeFromData,
   bescheidBerechnungsstand,
   deserializeAssessmentField,
   deserializeWageTaxCertificateField,
@@ -11,7 +11,7 @@ import {
   reconcileAssessment,
   grenzgaengerStand,
   istBescheidUebergangErlaubt,
-  istEinspruchGrund,
+  isAppealReason,
   isValidAssessmentAmount,
   naechsteBescheidZustaende,
   serializeAssessmentField,
@@ -29,7 +29,7 @@ import {
   INTERVIEW_ANSWER_REPOSITORY,
   type InterviewAnswerRepository,
 } from '../interview/interview-answer.repository.js'
-import { LSTB_REPOSITORY, type LstbRepository } from '../lstb/lstb.repository.js'
+import { WAGE_TAX_CERTIFICATE_REPOSITORY, type WageTaxCertificateRepository } from '../lstb/lstb.repository.js'
 import { ASSESSMENT_REPOSITORY, type AssessmentRecord, type AssessmentRepository } from './bescheid.repository.js'
 import type { AssessmentFieldDto, PutAssessmentFieldDto } from './dto/bescheid-feld.dto.js'
 import type {
@@ -37,9 +37,9 @@ import type {
   AssessmentResponseDto,
   SetAssessmentDateDto,
   SetBescheidStatusDto,
-  SetEinspruchDto,
+  SetAppealDto,
 } from './dto/bescheid-response.dto.js'
-import { answersAus } from '../interview/answers.js'
+import { answersFrom } from '../interview/answers.js'
 import { grenzgaengerStatusAusAnswers, lohnausweisWerteAusRecord, wechselkursAusRecord } from '../ch-lohnausweis/lohnausweis-daten.js'
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/
@@ -70,7 +70,7 @@ function felderAusRecord(record: AssessmentRecord | null): { felder: AssessmentF
 export class AssessmentService {
   constructor(
     @Inject(ASSESSMENT_REPOSITORY) private readonly repository: AssessmentRepository,
-    @Inject(LSTB_REPOSITORY) private readonly lstbRepository: LstbRepository,
+    @Inject(WAGE_TAX_CERTIFICATE_REPOSITORY) private readonly lstbRepository: WageTaxCertificateRepository,
     @Inject(INTERVIEW_ANSWER_REPOSITORY) private readonly interviewRepository: InterviewAnswerRepository,
     @Inject(CROSS_BORDER_SALARY_STATEMENT_REPOSITORY) private readonly chLohnausweisRepository: CrossBorderSalaryStatementRepository,
     @Inject(AuditService) private readonly auditService: AuditService,
@@ -82,9 +82,9 @@ export class AssessmentService {
       this.interviewRepository.findAllForUserAndYear(userId, steuerjahr),
       this.chLohnausweisRepository.findForUserAndYear(userId, steuerjahr),
     ])
-    const answers = answersAus(interviewRows)
+    const answers = answersFrom(interviewRows)
 
-    const angestellte = angestellteAusDaten(
+    const angestellte = employeeFromData(
       {
         bruttoarbeitslohn: deserializeWageTaxCertificateField(lstbRecord?.bruttoarbeitslohn ?? null),
         lohnsteuer: deserializeWageTaxCertificateField(lstbRecord?.lohnsteuer ?? null),
@@ -177,8 +177,8 @@ export class AssessmentService {
     return this.toResponse(userId, steuerjahr, record)
   }
 
-  async setEinspruch(userId: string, steuerjahr: number, dto: SetEinspruchDto): Promise<AssessmentResponseDto> {
-    if (!istEinspruchGrund(dto.grund)) {
+  async setEinspruch(userId: string, steuerjahr: number, dto: SetAppealDto): Promise<AssessmentResponseDto> {
+    if (!isAppealReason(dto.grund)) {
       throw new InvalidInputError('EINSPRUCH_GRUND_UNKNOWN', `unknown Einspruch-Grund "${dto.grund}"`)
     }
     const current = await this.repository.findForUserAndYear(userId, steuerjahr)

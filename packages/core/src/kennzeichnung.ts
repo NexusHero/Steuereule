@@ -104,7 +104,7 @@ export interface Schreibversuch {
   readonly herkunft: Herkunft
 }
 
-export function entscheideSchreibung({ key, bestehend, aktuellerWert, neuerWert, herkunft }: Schreibversuch): Schreibentscheidung {
+export function decideWriting({ key, bestehend, aktuellerWert, neuerWert, herkunft }: Schreibversuch): Schreibentscheidung {
   if (herkunft.art === 'nutzer') return { art: 'schreiben', kennzeichnung: null }
   if (neuerWert === aktuellerWert) return { art: 'unveraendert' }
   const geschuetzt = bestehend === null ? aktuellerWert !== null : bestehend.bestaetigt
@@ -115,8 +115,6 @@ export function entscheideSchreibung({ key, bestehend, aktuellerWert, neuerWert,
   return { art: 'schreiben', kennzeichnung: { key, herkunft, bestaetigt: false, vorschlag: null, wert: neuerWert } }
 }
 
-export const decideWriting = entscheideSchreibung
-
 export function missingConfirmations(kennzeichnungen: readonly Kennzeichnung[]): string[] {
   const offen = new Set(kennzeichnungen.filter((k) => !k.bestaetigt).map((k) => anlageVon(k.key)))
   return ANNEXES.filter((a) => offen.has(a)).map((a) => `unbestaetigt.${a}`)
@@ -126,19 +124,15 @@ export function confirmAnnex(kennzeichnungen: readonly Kennzeichnung[], anlage: 
   return kennzeichnungen.map((k) => (anlageVon(k.key) === anlage && !k.bestaetigt ? { ...k, bestaetigt: true } : k))
 }
 
-export function nimmVorschlagAn(k: Kennzeichnung): Kennzeichnung {
+export function acceptProposal(k: Kennzeichnung): Kennzeichnung {
   if (k.vorschlag === null) throw new RangeError(`nimmVorschlagAn: "${k.key}" has no proposal`)
   return { key: k.key, herkunft: k.vorschlag.herkunft, bestaetigt: true, wert: k.vorschlag.wert, vorschlag: null }
 }
 
-export const acceptProposal = nimmVorschlagAn
-
-export function verwirfVorschlag(k: Kennzeichnung): Kennzeichnung | null {
+export function dismissProposal(k: Kennzeichnung): Kennzeichnung | null {
   if (k.herkunft.art === 'nutzer') return null
   return { ...k, vorschlag: null }
 }
-
-export const dismissProposal = verwirfVorschlag
 
 export function provenanceText(herkunft: Herkunft): string {
   switch (herkunft.art) {

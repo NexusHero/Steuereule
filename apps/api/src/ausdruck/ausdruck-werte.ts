@@ -1,12 +1,12 @@
 import {
-  afaSatzProzent,
+  depreciationRatePercent,
   anlageNGreBetraege,
   calculateDifferentialChildBenefit,
   formatGermanDate,
   type GrenzgaengerStatus,
   type NGreZeile,
   mandatoryCapitalFields,
-  type KapitalDepotEinordnung,
+  type CapitalDepotClassification,
   type CapitalFieldId,
   type Krankenversicherung,
 } from '@steuereule/core'
@@ -121,11 +121,11 @@ function vermietungAfa(obj: VermietungFakten): { satz: number; betrag: number } 
   const kosten = ganzeZahl(obj.anschaffungskosten)
   const baujahr = ganzeZahl(obj.baujahr)
   if (kosten === null || baujahr === null) return null
-  const satz = afaSatzProzent(baujahr)
+  const satz = depreciationRatePercent(baujahr)
   return satz === null ? null : { satz, betrag: Math.round((kosten * satz) / 100) }
 }
 
-export type KapitalFakten = { depot: KapitalDepotEinordnung['kind']; inhaber?: 'A' | 'B' | 'gemeinsam' | null } & Partial<Record<CapitalFieldId, string | null>>
+export type KapitalFakten = { depot: CapitalDepotClassification['kind']; inhaber?: 'A' | 'B' | 'gemeinsam' | null } & Partial<Record<CapitalFieldId, string | null>>
 
 /** The Lohnausweis Ziffern and the N-Gre facts as stored, plus status and Kurs. */
 export interface ChLohnausweisFakten {

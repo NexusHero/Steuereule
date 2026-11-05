@@ -10,7 +10,7 @@ import {
   type RentalFieldId,
 } from '@steuereule/core'
 import type { CapitalRepository } from '../kapital/kapital.repository.js'
-import type { LstbRepository } from '../lstb/lstb.repository.js'
+import type { WageTaxCertificateRepository } from '../lstb/lstb.repository.js'
 import type { PensionRepository } from '../rente/rente.repository.js'
 import type { RentalRepository } from '../vermietung/vermietung.repository.js'
 
@@ -26,7 +26,7 @@ export type FeldZugriff = Readonly<Partial<Record<Maske, MaskenZugriff>>>
 export const FELD_ZUGRIFF = Symbol('FELD_ZUGRIFF')
 
 export interface FeldZugriffRepositories {
-  readonly lstb: LstbRepository
+  readonly lstb: WageTaxCertificateRepository
   readonly rente: PensionRepository
   readonly kapital: CapitalRepository
   readonly vermietung: RentalRepository

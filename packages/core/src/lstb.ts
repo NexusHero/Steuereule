@@ -10,14 +10,11 @@ export interface WageTaxCertificateData {
   readonly sozialversicherung: WageTaxCertificateFieldState
 }
 
-export type LstbDaten = WageTaxCertificateData
-
 export const EMPTY_WAGE_TAX_CERTIFICATE: WageTaxCertificateData = {
   bruttoarbeitslohn: { kind: 'offen' },
   lohnsteuer: { kind: 'offen' },
   sozialversicherung: { kind: 'offen' },
 }
-export const LEERES_LSTB = EMPTY_WAGE_TAX_CERTIFICATE
 
 export function isValidAmount(wert: number): boolean {
   return Number.isFinite(wert) && Number.isInteger(wert) && wert >= 0
@@ -99,7 +96,6 @@ export function wageTaxCertificateStatus(daten: WageTaxCertificateData): WageTax
 }
 
 export const WAGE_TAX_CERTIFICATE_UNCLEAR = 'unklar'
-export const LSTB_UNKLAR = WAGE_TAX_CERTIFICATE_UNCLEAR
 
 export function serializeWageTaxCertificateField(zustand: WageTaxCertificateFieldState): string | null {
   switch (zustand.kind) {
@@ -123,7 +119,3 @@ export function deserializeWageTaxCertificateField(value: string | null): WageTa
 }
 
 // Backward-compatibility aliases
-export const EMPTY_LSTB = EMPTY_WAGE_TAX_CERTIFICATE
-export type LstbData = WageTaxCertificateData
-export const serializeLstbField = serializeWageTaxCertificateField
-export const deserializeLstbField = deserializeWageTaxCertificateField

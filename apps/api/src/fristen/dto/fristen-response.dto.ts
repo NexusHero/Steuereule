@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger'
 
 /** Die § 152 Abs. 2 AO-Fakten, die das Banner nüchtern nennt. */
-export class VerspaetungszuschlagDto {
+export class LateFilingFeeDto {
   @ApiProperty({ type: Number, example: 25, description: '§ 152 Abs. 2 Satz 2 AO — der Mindestzuschlag je angefangenem Monat, in Euro.' })
   mindestsatzEur!: number
 
@@ -23,8 +23,6 @@ export class DeadlinesResponseDto {
   @ApiProperty({ type: Number, example: 60, description: 'Whole days from heute (exclusive) to the frist; negative = abgelaufen.' })
   verbleibendeTage!: number
 
-  @ApiProperty({ type: VerspaetungszuschlagDto })
-  verspaetungszuschlag!: VerspaetungszuschlagDto
+  @ApiProperty({ type: LateFilingFeeDto })
+  verspaetungszuschlag!: LateFilingFeeDto
 }
-
-export type LateFilingFeeDto = VerspaetungszuschlagDto

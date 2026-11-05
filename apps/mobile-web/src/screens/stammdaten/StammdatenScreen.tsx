@@ -3,7 +3,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button, Card, Chip, Feld, Input, Option, useBreakpoint, useTheme } from '@steuereule/ui'
-import { formatGermanDate, MARITAL_STATUSES, RELIGIONSSCHLUESSEL } from '@steuereule/core'
+import { formatGermanDate, MARITAL_STATUSES, RELIGION_KEYS } from '@steuereule/core'
 import {
   getKopplungControllerGetQueryKey,
   useKopplungControllerGet,
@@ -125,7 +125,7 @@ export function StammdatenScreen({ onZurueck, taxYear = CURRENT_TAX_YEAR, onPart
       <Feld label={t('stammdaten.religion')}>
         <Text style={styles.hint}>{t('stammdaten.religionHinweis')}</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.s2, marginTop: theme.space.s2 }}>
-          {RELIGIONSSCHLUESSEL.map((schluessel) => (
+          {RELIGION_KEYS.map((schluessel) => (
             <Chip key={schluessel} aktiv={form.religion === schluessel} onPress={() => setze({ religion: schluessel })}>
               {t(`stammdaten.religionen.${schluessel}`)}
             </Chip>

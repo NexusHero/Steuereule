@@ -30,7 +30,7 @@ import type {
   VermietungResponseDto,
   VermietungStandDto,
 } from './dto/vermietung-response.dto.js'
-import { answersAus } from '../interview/answers.js'
+import { answersFrom } from '../interview/answers.js'
 
 function datenAusRecord(record: RentalObjectRecord) {
   return {
@@ -103,7 +103,7 @@ export class VermietungService {
 
   private async antworten(userId: string, steuerjahr: number): Promise<Answers> {
     const rows = await this.interviewRepository.findAllForUserAndYear(userId, steuerjahr)
-    return answersAus(rows)
+    return answersFrom(rows)
   }
 
   private async toResponse(userId: string, steuerjahr: number, records: RentalObjectRecord[]): Promise<VermietungResponseDto> {

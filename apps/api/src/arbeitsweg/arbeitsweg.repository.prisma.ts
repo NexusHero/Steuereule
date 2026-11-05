@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common'
-import type { IsoWochentag } from '@steuereule/core'
+import type { IsoWeekday } from '@steuereule/core'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
-import { VERKEHRSMITTEL, type CommuteInputs, type CommuteRepository, type Verkehrsmittel } from './arbeitsweg.repository.js'
+import { MEANS_OF_TRANSPORT, type CommuteInputs, type CommuteRepository, type MeansOfTransport } from './arbeitsweg.repository.js'
 
 interface ArbeitswegRow {
   arbeitstage: string
@@ -17,12 +17,12 @@ interface ArbeitswegRow {
 
 function eingabenAus(row: ArbeitswegRow): CommuteInputs {
   return {
-    arbeitstage: row.arbeitstage === '' ? [] : row.arbeitstage.split(',').map((tag) => Number(tag) as IsoWochentag),
+    arbeitstage: row.arbeitstage === '' ? [] : row.arbeitstage.split(',').map((tag) => Number(tag) as IsoWeekday),
     urlaubstage: row.urlaubstage,
     krankheitstage: row.krankheitstage,
     homeofficeTage: row.homeofficeTage,
     einfacheKm: row.einfacheKm,
-    verkehrsmittel: VERKEHRSMITTEL.includes(row.verkehrsmittel as Verkehrsmittel) ? (row.verkehrsmittel as Verkehrsmittel) : null,
+    verkehrsmittel: MEANS_OF_TRANSPORT.includes(row.verkehrsmittel as MeansOfTransport) ? (row.verkehrsmittel as MeansOfTransport) : null,
     taetigkeitsstaette: row.taetigkeitsstaette,
     feiertage: row.feiertage ?? null,
     feiertageRegion: row.feiertageRegion ?? null,

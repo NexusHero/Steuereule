@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service.js'
-import type { SteuerjahrKopplungRecord, KopplungRepository } from './kopplung.repository.js'
+import type { PartnerCouplingRecord, PartnerCouplingRepository } from './kopplung.repository.js'
 
 function toRecord(row: {
   id: string
@@ -10,7 +10,7 @@ function toRecord(row: {
   veranlagungsart: string
   einladungsCode: string | null
   einladungsCodeGueltigBis: Date | null
-}): SteuerjahrKopplungRecord {
+}): PartnerCouplingRecord {
   return {
     id: row.id,
     personAUserId: row.personAUserId,
@@ -23,10 +23,10 @@ function toRecord(row: {
 }
 
 @Injectable()
-export class PrismaKopplungRepository implements KopplungRepository {
+export class PrismaKopplungRepository implements PartnerCouplingRepository {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
-  async findByUserAndYear(userId: string, steuerjahr: number): Promise<SteuerjahrKopplungRecord | null> {
+  async findByUserAndYear(userId: string, steuerjahr: number): Promise<PartnerCouplingRecord | null> {
     const row = await this.prisma.steuerjahrKopplung.findFirst({
       where: {
         steuerjahr,
@@ -36,7 +36,7 @@ export class PrismaKopplungRepository implements KopplungRepository {
     return row ? toRecord(row) : null
   }
 
-  async findByEinladungsCode(code: string): Promise<SteuerjahrKopplungRecord | null> {
+  async findByEinladungsCode(code: string): Promise<PartnerCouplingRecord | null> {
     const row = await this.prisma.steuerjahrKopplung.findUnique({
       where: { einladungsCode: code },
     })
@@ -52,7 +52,7 @@ export class PrismaKopplungRepository implements KopplungRepository {
       einladungsCode?: string | null
       einladungsCodeGueltigBis?: Date | null
     },
-  ): Promise<SteuerjahrKopplungRecord> {
+  ): Promise<PartnerCouplingRecord> {
     const [row] = await this.prisma.$transaction([
       this.prisma.steuerjahrKopplung.upsert({
         where: {
@@ -83,7 +83,7 @@ export class PrismaKopplungRepository implements KopplungRepository {
     return toRecord(row)
   }
 
-  async setPersonB(id: string, personBUserId: string): Promise<SteuerjahrKopplungRecord> {
+  async setPersonB(id: string, personBUserId: string): Promise<PartnerCouplingRecord> {
     const row = await this.prisma.steuerjahrKopplung.update({
       where: { id },
       data: { personBUserId, einladungsCode: null, einladungsCodeGueltigBis: null },

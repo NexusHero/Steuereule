@@ -3,7 +3,7 @@ import { InvalidInputError, NotFoundError } from '../common/domain-error.js'
 import { calculateDifferentialChildBenefit, isValidChildBirthDate, calculateChildrenStatus, type KindDaten } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
 import { CROSS_BORDER_SALARY_STATEMENT_REPOSITORY, type CrossBorderSalaryStatementRepository } from '../ch-lohnausweis/ch-lohnausweis.repository.js'
-import { PARTNER_COUPLING_REPOSITORY, type KopplungRepository } from '../kopplung/kopplung.repository.js'
+import { PARTNER_COUPLING_REPOSITORY, type PartnerCouplingRepository } from '../kopplung/kopplung.repository.js'
 import { CHILD_REPOSITORY, type ChildRecord, type ChildRepository } from './kind.repository.js'
 import type { CreateKindDto, KinderResponseDto, KindResponseDto, UpdateKindDto } from './dto/kind.dto.js'
 
@@ -55,7 +55,7 @@ export class ChildrenService {
     @Inject(CHILD_REPOSITORY) private readonly repository: ChildRepository,
     @Inject(AuditService) private readonly auditService: AuditService,
     @Optional() @Inject(CROSS_BORDER_SALARY_STATEMENT_REPOSITORY) private readonly chLohnausweis?: CrossBorderSalaryStatementRepository,
-    @Optional() @Inject(PARTNER_COUPLING_REPOSITORY) private readonly kopplung?: KopplungRepository,
+    @Optional() @Inject(PARTNER_COUPLING_REPOSITORY) private readonly kopplung?: PartnerCouplingRepository,
   ) {}
 
   private async getProKindSwissAllowanceEur(userId: string, jahr: number, count: number): Promise<number | null> {

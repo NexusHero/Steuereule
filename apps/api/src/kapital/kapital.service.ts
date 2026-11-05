@@ -2,14 +2,14 @@ import { Inject, Injectable } from '@nestjs/common'
 import { InvalidInputError } from '../common/domain-error.js'
 import {
   EMPTY_CAPITAL,
-  angestellteAusDaten,
+  employeeFromData,
   deserializeCapitalField,
   gatedIncomeTypes,
   guenstigerpruefung,
   isValidCapitalAmount,
   capitalAsCoreLineItem,
   capitalStatus,
-  ordneKapDepotEin,
+  classifyCapitalDepot,
   progressionsvorbehaltAus,
   serializeCapitalField,
   setCapitalField,
@@ -20,7 +20,7 @@ import {
   type CapitalData,
   type CapitalFieldId,
   type CapitalFieldState,
-  type KapitalDepotEinordnung,
+  type CapitalDepotClassification,
   type KirchensteuerFaktor,
   type Posten,
   provenanceKey,
@@ -31,15 +31,15 @@ import {
   INTERVIEW_ANSWER_REPOSITORY,
   type InterviewAnswerRepository,
 } from '../interview/interview-answer.repository.js'
-import { LSTB_REPOSITORY, type LstbRepository } from '../lstb/lstb.repository.js'
+import { WAGE_TAX_CERTIFICATE_REPOSITORY, type WageTaxCertificateRepository } from '../lstb/lstb.repository.js'
 import { TAX_YEAR_REPOSITORY, type TaxYearRepository } from '../cockpit/tax-year.repository.js'
 import { CAPITAL_REPOSITORY, type CapitalRecord, type CapitalRepository } from './kapital.repository.js'
 import type { PutKapitalFeldDto, KapitalFeldDto } from './dto/kapital-feld.dto.js'
 import type { DepotEinordnungDto, KapitalPostenDto, KapitalResponseDto, KapitalStandDto } from './dto/kapital-response.dto.js'
 import type { GuenstigerpruefungDto, GuenstigerpruefungHerkunftDto } from './dto/guenstigerpruefung-response.dto.js'
 import type { UnschaerfeDto } from '../veranlagungsartenvergleich/dto/veranlagungsartenvergleich-response.dto.js'
-import { answersAus } from '../interview/answers.js'
-import { lstbDatenAus } from '../lstb/lstb-daten.js'
+import { answersFrom } from '../interview/answers.js'
+import { wageTaxCertificateDataFrom } from '../lstb/lstb-daten.js'
 
 function datenAusRecord(record: CapitalRecord | null): CapitalData {
   if (record === null) return EMPTY_CAPITAL
@@ -72,7 +72,7 @@ function toFeldDto(zustand: CapitalFieldState): KapitalFeldDto {
   }
 }
 
-function depotZuDto(einordnung: KapitalDepotEinordnung): DepotEinordnungDto {
+function depotZuDto(einordnung: CapitalDepotClassification): DepotEinordnungDto {
   switch (einordnung.kind) {
     case 'deutscher-broker':
       return { kind: 'deutscher-broker' }
@@ -145,7 +145,7 @@ export class KapitalService {
   constructor(
     @Inject(CAPITAL_REPOSITORY) private readonly repository: CapitalRepository,
     @Inject(INTERVIEW_ANSWER_REPOSITORY) private readonly interviewRepository: InterviewAnswerRepository,
-    @Inject(LSTB_REPOSITORY) private readonly lstbRepository: LstbRepository,
+    @Inject(WAGE_TAX_CERTIFICATE_REPOSITORY) private readonly lstbRepository: WageTaxCertificateRepository,
     @Inject(TAX_YEAR_REPOSITORY) private readonly taxYearRepository: TaxYearRepository,
     @Inject(AuditService) private readonly auditService: AuditService,
     @Inject(PROVENANCE_REPOSITORY) private readonly kennzeichnungen: ProvenanceRepository,
@@ -153,14 +153,14 @@ export class KapitalService {
 
   private async antworten(userId: string, steuerjahr: number): Promise<Answers> {
     const rows = await this.interviewRepository.findAllForUserAndYear(userId, steuerjahr)
-    return answersAus(rows)
+    return answersFrom(rows)
   }
 
   private async toResponse(userId: string, steuerjahr: number, record: CapitalRecord | null): Promise<KapitalResponseDto> {
     const daten = datenAusRecord(record)
     const answers = await this.antworten(userId, steuerjahr)
     const gegated = gatedIncomeTypes(answers)
-    const depot = ordneKapDepotEin(answers['kap-depot'])
+    const depot = classifyCapitalDepot(answers['kap-depot'])
 
     const kernposten = capitalAsCoreLineItem(daten)
     const posten: KapitalPostenDto[] = kernposten === null ? [] : [postenZuDto(kernposten)]
@@ -217,8 +217,8 @@ export class KapitalService {
       this.interviewRepository.findAllForUserAndYear(userId, steuerjahr),
     ])
 
-    const answers = answersAus(interviewRows)
-    const depot = ordneKapDepotEin(answers['kap-depot'])
+    const answers = answersFrom(interviewRows)
+    const depot = classifyCapitalDepot(answers['kap-depot'])
     const daten = datenAusRecord(kapitalRecord)
 
     if (depot.kind === 'auslaendischer-broker') {
@@ -234,7 +234,7 @@ export class KapitalService {
       return { kind: 'nicht-anwendbar', grund: 'keine-kapitalertraege' }
     }
 
-    const uebrigesZvE = angestellteAusDaten(lstbDatenAus(lstbRecord), answers).einnahmen
+    const uebrigesZvE = employeeFromData(wageTaxCertificateDataFrom(lstbRecord), answers).einnahmen
     const veranlagung = 'einzel' as const
 
     const ergebnis = guenstigerpruefung({

@@ -4,7 +4,7 @@ import { WAGE_TAX_CERTIFICATE_FIELDS, PENSION_FIELDS, RENTAL_FIELDS, provenanceK
 import { ConfirmationService } from '../bestaetigung/bestaetigung.service.js'
 import { CAPITAL_REPOSITORY, type CapitalRepository } from '../kapital/kapital.repository.js'
 import { PROVENANCE_REPOSITORY, type ProvenanceRecord, type ProvenanceRepository } from '../kennzeichnung/kennzeichnung.repository.js'
-import { LSTB_REPOSITORY, type LstbRepository } from '../lstb/lstb.repository.js'
+import { WAGE_TAX_CERTIFICATE_REPOSITORY, type WageTaxCertificateRepository } from '../lstb/lstb.repository.js'
 import { PENSION_REPOSITORY, type PensionRepository } from '../rente/rente.repository.js'
 import { RENTAL_REPOSITORY, type RentalRepository } from '../vermietung/vermietung.repository.js'
 import { TAX_YEAR_ROLLOVER_REPOSITORY, type TaxYearRolloverRepository } from './jahresuebernahme.repository.js'
@@ -22,7 +22,7 @@ export class UebernahmeService {
   constructor(
     @Inject(PROVENANCE_REPOSITORY) private readonly repository: ProvenanceRepository,
     @Inject(ConfirmationService) private readonly bestaetigung: ConfirmationService,
-    @Inject(LSTB_REPOSITORY) private readonly lstbRepository: LstbRepository,
+    @Inject(WAGE_TAX_CERTIFICATE_REPOSITORY) private readonly lstbRepository: WageTaxCertificateRepository,
     @Inject(PENSION_REPOSITORY) private readonly renteRepository: PensionRepository,
     @Inject(CAPITAL_REPOSITORY) private readonly kapitalRepository: CapitalRepository,
     @Inject(RENTAL_REPOSITORY) private readonly vermietungRepository: RentalRepository,

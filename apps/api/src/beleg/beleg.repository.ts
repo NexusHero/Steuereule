@@ -37,7 +37,6 @@ export interface SetAssignmentData {
   vorschlagVerworfen: boolean
   suggestionDismissed?: boolean
 }
-export type SetZuordnungData = SetAssignmentData
 
 export const RECEIPT_REPOSITORY = Symbol('RECEIPT_REPOSITORY')
 
@@ -47,5 +46,5 @@ export interface ReceiptRepository {
   findByIdForUser(userId: string, id: string): Promise<ReceiptRecord | null>
   create(userId: string, data: CreateReceiptData): Promise<ReceiptRecord>
   setAssignment?(userId: string, id: string, data: SetAssignmentData): Promise<ReceiptRecord | null>
-  setZuordnung(userId: string, id: string, data: SetZuordnungData): Promise<ReceiptRecord | null>
+  setZuordnung(userId: string, id: string, data: SetAssignmentData): Promise<ReceiptRecord | null>
 }

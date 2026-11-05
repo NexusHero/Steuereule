@@ -82,7 +82,7 @@ export type BelegZuordnung =
   | { readonly kind: 'zugeordnet'; readonly steuerjahr: number }
   | { readonly kind: 'konflikt'; readonly zugeordnet: number; readonly vorschlag: SteuerjahrVorschlag }
 
-export function zuordnungAusDaten(daten: BelegDaten | ReceiptData): BelegZuordnung {
+export function assignmentFromData(daten: BelegDaten | ReceiptData): BelegZuordnung {
   const vorschlag = steuerjahrVorschlag(daten)
   const currentTaxYear = 'taxYear' in daten && daten.taxYear !== undefined ? daten.taxYear : (daten as BelegDaten).steuerjahr
   const isDismissed = 'suggestionDismissed' in daten && daten.suggestionDismissed !== undefined ? daten.suggestionDismissed : (daten as BelegDaten).vorschlagVerworfen
@@ -97,9 +97,7 @@ export function zuordnungAusDaten(daten: BelegDaten | ReceiptData): BelegZuordnu
   return { kind: 'ungebunden' }
 }
 
-export const assignmentFromData = zuordnungAusDaten
-
-export function ordneZu<T extends BelegDaten | ReceiptData>(daten: T, steuerjahr: number): T {
+export function assignReceipt<T extends BelegDaten | ReceiptData>(daten: T, steuerjahr: number): T {
   if (!Number.isInteger(steuerjahr)) {
     throw new RangeError('steuerjahr must be an integer calendar year')
   }
@@ -112,14 +110,10 @@ export function ordneZu<T extends BelegDaten | ReceiptData>(daten: T, steuerjahr
   }
 }
 
-export const assignReceipt = ordneZu
-
-export function verwerfeVorschlag<T extends BelegDaten | ReceiptData>(daten: T): T {
+export function dismissSuggestion<T extends BelegDaten | ReceiptData>(daten: T): T {
   return {
     ...daten,
     vorschlagVerworfen: true,
     suggestionDismissed: true,
   }
 }
-
-export const dismissSuggestion = verwerfeVorschlag

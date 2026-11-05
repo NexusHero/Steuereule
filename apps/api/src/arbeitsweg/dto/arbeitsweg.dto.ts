@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import { ArrayMaxSize, ArrayUnique, IsArray, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator'
-import { VERKEHRSMITTEL, type Verkehrsmittel } from '../arbeitsweg.repository.js'
+import { MEANS_OF_TRANSPORT, type MeansOfTransport } from '../arbeitsweg.repository.js'
 
 export class CommuteInputsDto {
   @ApiProperty({ type: [Number], example: [1, 2, 3, 4, 5], description: 'ISO weekdays worked (1 = Monday … 7 = Sunday).' })
@@ -37,10 +37,10 @@ export class CommuteInputsDto {
   @Max(999)
   einfacheKm!: number | null
 
-  @ApiProperty({ type: String, enum: VERKEHRSMITTEL, nullable: true, example: 'pkw' })
+  @ApiProperty({ type: String, enum: MEANS_OF_TRANSPORT, nullable: true, example: 'pkw' })
   @IsOptional()
-  @IsIn(VERKEHRSMITTEL)
-  verkehrsmittel!: Verkehrsmittel | null
+  @IsIn(MEANS_OF_TRANSPORT)
+  verkehrsmittel!: MeansOfTransport | null
 
   @ApiProperty({ type: String, nullable: true, example: '79539 Lörrach, Hauptstraße 1' })
   @IsOptional()

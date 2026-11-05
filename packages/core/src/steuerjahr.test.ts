@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { entkopple, kopple, type Steuerjahr, type Veranlagung } from './steuerjahr'
+import { decouple, couple, type Steuerjahr, type Veranlagung } from './steuerjahr'
 
 // ADR-006 — ownership + coupling. The core invariants under test: (1) a Steuerjahr belongs
 // to one person, (2) a coupling links two persons' years of the SAME calendar year,
@@ -14,7 +14,7 @@ describe('kopple — Zusammenveranlagung links two persons’ years of the same 
     const a = jahr('a', 'person-1', 2026)
     const b = jahr('b', 'person-2', 2026)
 
-    const [a2, b2] = kopple(a, b)
+    const [a2, b2] = couple(a, b)
 
     expect(a2.veranlagung).toEqual({ kind: 'zusammen', partnerSteuerjahrId: 'b' })
     expect(b2.veranlagung).toEqual({ kind: 'zusammen', partnerSteuerjahrId: 'a' })
@@ -27,21 +27,21 @@ describe('kopple — Zusammenveranlagung links two persons’ years of the same 
   it('refuses to couple a year with itself (same userId)', () => {
     const a = jahr('a', 'person-1', 2026)
     const b = jahr('b', 'person-1', 2026)
-    expect(() => kopple(a, b)).toThrow(/same userId/)
+    expect(() => couple(a, b)).toThrow(/same userId/)
   })
 
   it('refuses to couple two different calendar years', () => {
     const a = jahr('a', 'person-1', 2026)
     const b = jahr('b', 'person-2', 2025)
-    expect(() => kopple(a, b)).toThrow(/SAME calendar year/)
+    expect(() => couple(a, b)).toThrow(/SAME calendar year/)
   })
 
   it('refuses to couple when either side is already coupled', () => {
     const a = jahr('a', 'person-1', 2026)
     const b = jahr('b', 'person-2', 2026)
-    const [a2] = kopple(a, b)
+    const [a2] = couple(a, b)
     const c = jahr('c', 'person-3', 2026)
-    expect(() => kopple(a2, c)).toThrow(/must be einzeln/)
+    expect(() => couple(a2, c)).toThrow(/must be einzeln/)
   })
 })
 
@@ -49,15 +49,15 @@ describe('entkopple — dissolves only the link, never the data (ADR-006)', () =
   it('returns a coupled year to einzeln, keeping id/userId/jahr/einkunftsarten', () => {
     const a = jahr('a', 'person-1', 2026)
     const b = jahr('b', 'person-2', 2026)
-    const [a2] = kopple(a, b)
+    const [a2] = couple(a, b)
 
-    const decoupled = entkopple(a2)
+    const decoupled = decouple(a2)
 
     expect(decoupled).toEqual({ ...a, veranlagung: { kind: 'einzeln' } })
     expect(decoupled.einkunftsarten).toEqual(['Nichtselbstständig'])
   })
 
   it('refuses to decouple a year that is not coupled', () => {
-    expect(() => entkopple(jahr('a', 'person-1', 2026))).toThrow(/not coupled/)
+    expect(() => decouple(jahr('a', 'person-1', 2026))).toThrow(/not coupled/)
   })
 })
