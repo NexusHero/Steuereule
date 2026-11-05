@@ -8,3 +8,6 @@
 # Real kubeconfigs are credentials — never committed (they carry cluster-admin access).
 *.kubeconfig
 kubeconfig
+
+# Beta-Wizard: remembered answers and local plan files.
+*.tfplan
