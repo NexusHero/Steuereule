@@ -1,7 +1,7 @@
 import type { Answers } from './interview'
 import { gatedIncomeTypes, type IncomeType } from './einkunftsarten'
 import { wageTaxCertificateStatus, type WageTaxCertificateData } from './lstb'
-import { deductibleBasicProvision, krankenversicherungAusAntworten } from './krankenversicherung'
+import { deductibleBasicProvision, healthInsuranceFromAnswers } from './krankenversicherung'
 
 export interface EmployeeAnswerFigures {
   readonly sideJobGross: number
@@ -38,7 +38,7 @@ export function angestellteAusAntworten(answers: Answers): AngestellteAntwortZah
     nebenjobBrutto: nebenjob,
     umzugKosten: answers.umzug === 'Ja' ? intAus(answers['umzug-kosten']) : 0,
     spenden: answers.spenden === 'Ja' ? intAus(answers['spenden-betrag']) : 0,
-    kvPvBeitraege: deductibleBasicProvision(krankenversicherungAusAntworten(answers)),
+    kvPvBeitraege: deductibleBasicProvision(healthInsuranceFromAnswers(answers)),
     riester: answers.riester === 'Ja' ? intAus(answers['riester-betrag']) : 0,
     dhfMiete: answers.dhf === 'Ja' ? intAus(answers['dhf-miete']) : 0,
     abfindungBetrag: answers.abfindung === 'Ja' ? intAus(answers['abfindung-betrag']) : 0,

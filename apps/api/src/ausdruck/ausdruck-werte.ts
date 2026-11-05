@@ -8,7 +8,7 @@ import {
   mandatoryCapitalFields,
   type CapitalDepotClassification,
   type CapitalFieldId,
-  type Krankenversicherung,
+  type HealthInsurance,
 } from '@steuereule/core'
 import type { FeldWerte } from './vordruck-renderer.js'
 
@@ -23,7 +23,7 @@ export interface PersonBFakten {
   rente?: { rentenart: string | null; jahresbetrag: string | null } | null
   chLohnausweis?: ChLohnausweisFakten | null
   arbeitsweg?: ArbeitswegFakten | null
-  krankenversicherung?: readonly Krankenversicherung[] | null
+  krankenversicherung?: readonly HealthInsurance[] | null
 }
 
 export interface KopplungFakten {
@@ -358,7 +358,7 @@ export interface AusdruckFakten {
   alleinerziehend?: AlleinerziehendFakten | null
   arbeitsweg?: ArbeitswegFakten | null
   /** Self-paid health and care insurance of Person A (Anlage Vorsorgeaufwand Z. 16–33). */
-  krankenversicherung?: readonly Krankenversicherung[] | null
+  krankenversicherung?: readonly HealthInsurance[] | null
 }
 
 /**
@@ -366,24 +366,24 @@ export interface AusdruckFakten {
  * and 22, private Z. 23, 24 and 27, foreign Z. 28–30 and 33. Contributions withheld from a German salary
  * are e-data (Z. 11–13) and Swiss ones via the employer are in the Anlage N-Gre — neither is repeated here.
  */
-function vorsorgeaufwandWerte(versicherungen: readonly Krankenversicherung[] | null | undefined, rolle: 'A' | 'B' = 'A'): Record<string, string> {
+function vorsorgeaufwandWerte(versicherungen: readonly HealthInsurance[] | null | undefined, rolle: 'A' | 'B' = 'A'): Record<string, string> {
   const summen = new Map<string, number>()
   const addiere = (kz: string, betrag: number) => summen.set(kz, (summen.get(kz) ?? 0) + betrag)
   for (const kv of versicherungen ?? []) {
-    if (kv.art === 'gesetzlich') {
-      addiere('326', kv.kvBasis)
-      if (kv.mitKrankengeld) addiere('328', kv.kvBasis)
-      addiere('329', kv.pv)
-      addiere('338', kv.wahlleistungen)
-    } else if (kv.art === 'privat') {
-      addiere('350', kv.kvBasis)
-      addiere('351', kv.pv)
-      addiere('354', kv.wahlleistungen)
+    if (kv.kind === 'gesetzlich') {
+      addiere('326', kv.basicHealthAmount)
+      if (kv.withSickPay) addiere('328', kv.basicHealthAmount)
+      addiere('329', kv.careInsuranceAmount)
+      addiere('338', kv.optionalExtrasAmount)
+    } else if (kv.kind === 'privat') {
+      addiere('350', kv.basicHealthAmount)
+      addiere('351', kv.careInsuranceAmount)
+      addiere('354', kv.optionalExtrasAmount)
     } else {
-      addiere('333', kv.kvBasis)
-      if (!kv.mitKrankengeld) addiere('334', kv.kvBasis)
-      addiere('335', kv.pv)
-      addiere('339', kv.wahlleistungen)
+      addiere('333', kv.basicHealthAmount)
+      if (!kv.withSickPay) addiere('334', kv.basicHealthAmount)
+      addiere('335', kv.careInsuranceAmount)
+      addiere('339', kv.optionalExtrasAmount)
     }
   }
   const werte: Record<string, string> = {}

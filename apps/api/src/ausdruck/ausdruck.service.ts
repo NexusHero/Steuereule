@@ -6,11 +6,11 @@ import {
   calculateWorkdays,
   missingConfirmations,
   grenzgaengerStatus,
-  krankenversicherungAusAntworten,
+  healthInsuranceFromAnswers,
   classifyCapitalDepot,
   type ChWohnsitz,
   type GrenzgaengerStatus,
-  type Krankenversicherung,
+  type HealthInsurance,
 } from '@steuereule/core'
 import { COMMUTE_REPOSITORY, type CommuteInputs, type CommuteRepository } from '../arbeitsweg/arbeitsweg.repository.js'
 import { AuditService } from '../audit/audit.service.js'
@@ -315,13 +315,13 @@ function arbeitswegFakten(jahr: number, eingaben: CommuteInputs | null): Arbeits
 function krankenversicherungen(
   answers: Record<string, string>,
   ch: { krankenkasseChf: string | null; wechselkursKurs: number | null } | null,
-): Krankenversicherung[] {
-  const liste: Krankenversicherung[] = []
-  const ausInterview = krankenversicherungAusAntworten(answers)
+): HealthInsurance[] {
+  const liste: HealthInsurance[] = []
+  const ausInterview = healthInsuranceFromAnswers(answers)
   if (ausInterview) liste.push(ausInterview)
   const chf = ch?.krankenkasseChf ? Number(ch.krankenkasseChf) : 0
   if (chf > 0 && ch?.wechselkursKurs) {
-    liste.push({ art: 'ausland', kvBasis: Math.round(chf * ch.wechselkursKurs), mitKrankengeld: false, pv: 0, wahlleistungen: 0 })
+    liste.push({ kind: 'ausland', basicHealthAmount: Math.round(chf * ch.wechselkursKurs), withSickPay: false, careInsuranceAmount: 0, optionalExtrasAmount: 0 })
   }
   return liste
 }

@@ -358,7 +358,7 @@ describe('ausdruckWerte', () => {
             firstName: 'Julia', lastName: 'Brenner', steuerId: '21234567891', geburtsdatum: '1986-07-21', beruf: 'Treuhänderin',
             chLohnausweis: { ...CH, bruttolohnChf: '110000', familienzulagenChf: '0', arbeitgeberName: 'Basler Treuhand AG' },
             arbeitsweg: { arbeitstageJeWoche: 5, freieTage: 33, pendlertage: 228, einfacheKm: 20, mitPkw: true, taetigkeitsstaette: '4051 Basel' },
-            krankenversicherung: [{ art: 'gesetzlich', kvBasis: 2520, mitKrankengeld: false, pv: 480, wahlleistungen: 0 }],
+            krankenversicherung: [{ kind: 'gesetzlich', basicHealthAmount: 2520, withSickPay: false, careInsuranceAmount: 480, optionalExtrasAmount: 0 }],
           },
         },
       })
@@ -441,7 +441,7 @@ describe('ausdruckWerte', () => {
     it('prints voluntary statutory KV with Krankengeld, PV and extras in Z. 16, 17, 18 and 22', () => {
       const { werte } = ausdruckWerte({
         ...FAKTEN,
-        krankenversicherung: [{ art: 'gesetzlich', kvBasis: 2340, mitKrankengeld: true, pv: 660, wahlleistungen: 120 }],
+        krankenversicherung: [{ kind: 'gesetzlich', basicHealthAmount: 2340, withSickPay: true, careInsuranceAmount: 660, optionalExtrasAmount: 120 }],
       })
       expect(werte).toMatchObject({
         'anlVor.name': 'Beispiel',
@@ -455,7 +455,7 @@ describe('ausdruckWerte', () => {
     it('prints private insurance in Z. 23, 24 and 27, and leaves empty lines empty', () => {
       const { werte } = ausdruckWerte({
         ...FAKTEN,
-        krankenversicherung: [{ art: 'privat', kvBasis: 4800, mitKrankengeld: false, pv: 400, wahlleistungen: 0 }],
+        krankenversicherung: [{ kind: 'privat', basicHealthAmount: 4800, withSickPay: false, careInsuranceAmount: 400, optionalExtrasAmount: 0 }],
       })
       expect(werte).toMatchObject({ 'anlVor.kz350': '4800', 'anlVor.kz351': '400' })
       expect(werte['anlVor.kz354']).toBeUndefined()
@@ -466,8 +466,8 @@ describe('ausdruckWerte', () => {
       const { werte } = ausdruckWerte({
         ...FAKTEN,
         krankenversicherung: [
-          { art: 'ausland', kvBasis: 3000, mitKrankengeld: false, pv: 0, wahlleistungen: 0 },
-          { art: 'ausland', kvBasis: 500, mitKrankengeld: false, pv: 0, wahlleistungen: 0 },
+          { kind: 'ausland', basicHealthAmount: 3000, withSickPay: false, careInsuranceAmount: 0, optionalExtrasAmount: 0 },
+          { kind: 'ausland', basicHealthAmount: 500, withSickPay: false, careInsuranceAmount: 0, optionalExtrasAmount: 0 },
         ],
       })
       expect(werte).toMatchObject({ 'anlVor.kz333': '3500', 'anlVor.kz334': '3500' })

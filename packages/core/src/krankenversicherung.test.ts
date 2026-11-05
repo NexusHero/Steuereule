@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { angestellteAusAntworten } from './angestellte'
 import { ENTRIES, nextStepFor, type Answers } from './interview'
-import { krankenversicherungAusAntworten } from './krankenversicherung'
+import { healthInsuranceFromAnswers } from './krankenversicherung'
 
 const SONDERAUSGABEN = ENTRIES.sonderausgaben
 
@@ -21,7 +21,7 @@ describe('self-paid health and care insurance (Anlage Vorsorgeaufwand Z. 16–33
 
   it('reads the answers into the form figures', () => {
     expect(
-      krankenversicherungAusAntworten({
+      healthInsuranceFromAnswers({
         'kv-pv': 'Ja',
         'kv-pv-art': 'Gesetzlich (freiwillig)',
         'kv-krankengeld': 'Ja',
@@ -29,8 +29,8 @@ describe('self-paid health and care insurance (Anlage Vorsorgeaufwand Z. 16–33
         'pv-betrag': '600',
         'kv-wahl-betrag': '200',
       }),
-    ).toEqual({ art: 'gesetzlich', kvBasis: 3000, mitKrankengeld: true, pv: 600, wahlleistungen: 200 })
-    expect(krankenversicherungAusAntworten({ 'kv-pv': 'Nein' })).toBeNull()
+    ).toEqual({ kind: 'gesetzlich', basicHealthAmount: 3000, withSickPay: true, careInsuranceAmount: 600, optionalExtrasAmount: 200 })
+    expect(healthInsuranceFromAnswers({ 'kv-pv': 'Nein' })).toBeNull()
   })
 
   it('counts KV less 4 % when it carries a Krankengeld claim, plus PV, for the estimate (§ 10 Abs. 1 Nr. 3 EStG)', () => {
