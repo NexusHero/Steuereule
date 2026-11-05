@@ -107,6 +107,10 @@ function nGreZuDto(n: NGreAngaben): NGreAngabenDto {
     krankentaggeldChf: zahl(n.krankentaggeldChf),
     pkArbeitnehmerChf: zahl(n.pkArbeitnehmerChf),
     pkArbeitgeberChf: zahl(n.pkArbeitgeberChf),
+    krankentaggeldArbeitgeberProzent: zahl(n.krankentaggeldArbeitgeberProzent),
+    krankentaggeldArbeitgeberChf: zahl(n.krankentaggeldArbeitgeberChf),
+    nbuvArbeitgeberProzent: zahl(n.nbuvArbeitgeberProzent),
+    nbuvArbeitgeberChf: zahl(n.nbuvArbeitgeberChf),
     sonderfaelle: n.nGreSonderfaelle,
   }
 }

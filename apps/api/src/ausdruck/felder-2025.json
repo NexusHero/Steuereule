@@ -964,6 +964,54 @@
       }
     },
     {
+      "id": "anlNGre.z18Chf",
+      "formular": "anlage-n-gre",
+      "seite": 1,
+      "art": "euro",
+      "kasten": {
+        "x": 266.9,
+        "y": 229,
+        "breite": 101.7,
+        "hoehe": 15.9
+      }
+    },
+    {
+      "id": "anlNGre.z18Eur",
+      "formular": "anlage-n-gre",
+      "seite": 1,
+      "art": "euro",
+      "kasten": {
+        "x": 425,
+        "y": 229,
+        "breite": 101.7,
+        "hoehe": 15.9
+      }
+    },
+    {
+      "id": "anlNGre.z19Chf",
+      "formular": "anlage-n-gre",
+      "seite": 1,
+      "art": "euro",
+      "kasten": {
+        "x": 266.9,
+        "y": 208.9,
+        "breite": 101.7,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlNGre.z19Eur",
+      "formular": "anlage-n-gre",
+      "seite": 1,
+      "art": "euro",
+      "kasten": {
+        "x": 425,
+        "y": 208.9,
+        "breite": 101.7,
+        "hoehe": 15.8
+      }
+    },
+    {
       "id": "anlNGre.z23Chf",
       "formular": "anlage-n-gre",
       "seite": 1,
@@ -1380,6 +1428,186 @@
         "x": 39.1,
         "y": 74,
         "breite": 495.4,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlNGre.wegArt",
+      "formular": "anlage-n-gre",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 39.1,
+        "y": 477,
+        "breite": 12.1,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlNGre.wegOrt",
+      "formular": "anlage-n-gre",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 154.6,
+        "y": 472.6,
+        "breite": 240.8,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlNGre.wegTageJeWoche",
+      "formular": "anlage-n-gre",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 96.1,
+        "y": 443.3,
+        "breite": 40.7,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlNGre.wegFreieTage",
+      "formular": "anlage-n-gre",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 244.5,
+        "y": 443.3,
+        "breite": 40.7,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlNGre.kz110Tage",
+      "formular": "anlage-n-gre",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 473.6,
+        "y": 423.1,
+        "breite": 40.6,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlNGre.kz111",
+      "formular": "anlage-n-gre",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 473.6,
+        "y": 402.8,
+        "breite": 40.6,
+        "hoehe": 15.9
+      }
+    },
+    {
+      "id": "anlNGre.kz112",
+      "formular": "anlage-n-gre",
+      "seite": 2,
+      "art": "text",
+      "kasten": {
+        "x": 473.6,
+        "y": 382.7,
+        "breite": 40.6,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlNGre.z95Arbeitgeber",
+      "formular": "anlage-n-gre",
+      "seite": 5,
+      "art": "text",
+      "kasten": {
+        "x": 138.9,
+        "y": 644.1,
+        "breite": 40.1,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlNGre.z95Arbeitnehmer",
+      "formular": "anlage-n-gre",
+      "seite": 5,
+      "art": "text",
+      "kasten": {
+        "x": 265.4,
+        "y": 644.1,
+        "breite": 40.1,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlNGre.z96Arbeitgeber",
+      "formular": "anlage-n-gre",
+      "seite": 5,
+      "art": "euro",
+      "kasten": {
+        "x": 184.5,
+        "y": 610.4,
+        "breite": 57.2,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlNGre.z96Arbeitnehmer",
+      "formular": "anlage-n-gre",
+      "seite": 5,
+      "art": "euro",
+      "kasten": {
+        "x": 389,
+        "y": 610.4,
+        "breite": 57.2,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlNGre.z97Arbeitgeber",
+      "formular": "anlage-n-gre",
+      "seite": 5,
+      "art": "text",
+      "kasten": {
+        "x": 138.9,
+        "y": 548.2,
+        "breite": 40.1,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlNGre.z97Arbeitnehmer",
+      "formular": "anlage-n-gre",
+      "seite": 5,
+      "art": "text",
+      "kasten": {
+        "x": 265.4,
+        "y": 548.2,
+        "breite": 40.1,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlNGre.z98Arbeitgeber",
+      "formular": "anlage-n-gre",
+      "seite": 5,
+      "art": "euro",
+      "kasten": {
+        "x": 184.5,
+        "y": 514.5,
+        "breite": 57.2,
+        "hoehe": 15.8
+      }
+    },
+    {
+      "id": "anlNGre.z98Arbeitnehmer",
+      "formular": "anlage-n-gre",
+      "seite": 5,
+      "art": "euro",
+      "kasten": {
+        "x": 389,
+        "y": 514.5,
+        "breite": 57.2,
         "hoehe": 15.8
       }
     },

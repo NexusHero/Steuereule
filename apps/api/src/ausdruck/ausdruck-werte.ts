@@ -128,7 +128,38 @@ export interface ChLohnausweisFakten {
   krankentaggeldChf: string | null
   pkArbeitnehmerChf: string | null
   pkArbeitgeberChf: string | null
+  krankentaggeldArbeitgeberProzent: string | null
+  krankentaggeldArbeitgeberChf: string | null
+  nbuvArbeitgeberProzent: string | null
+  nbuvArbeitgeberChf: string | null
   sonderfaelle: boolean | null
+}
+
+/**
+ * Who pays a premium must be stated once the employee pays some of it (otherwise Z. 18/19 and 95–98
+ * cannot be filled); an employer paying everything also has to give its CHF amount.
+ */
+function praemieGeklaert(arbeitnehmerChf: number | null, prozent: string | null, arbeitgeberChf: string | null): boolean {
+  const anteil = ganzeZahl(prozent)
+  if (anteil === null) return arbeitnehmerChf === 0
+  return anteil < 100 || ganzeZahl(arbeitgeberChf) !== null
+}
+
+function nbuvArbeitnehmerChf(ch: ChLohnausweisFakten): number | null {
+  const ahv = ganzeZahl(ch.ahvBeitraegeChf)
+  const brutto = ganzeZahl(ch.bruttolohnChf)
+  const zulagen = ganzeZahl(ch.familienzulagenChf)
+  if (ahv === null || brutto === null || zulagen === null || ch.kurs === null) return null
+  return anlageNGreBetraege({
+    bruttolohnChf: brutto,
+    familienzulagenChf: zulagen,
+    ahvBeitraegeChf: ahv,
+    quellensteuerChf: 0,
+    krankentaggeldChf: 0,
+    pkArbeitnehmerChf: 0,
+    pkArbeitgeberChf: 0,
+    kurs: ch.kurs,
+  }).aufteilung.nbuv.arbeitnehmerChf
 }
 
 function nGreLuecke(ch: ChLohnausweisFakten): string | null {
@@ -140,6 +171,8 @@ function nGreLuecke(ch: ChLohnausweisFakten): string | null {
     ch.sonderfaelle === false &&
     ch.kurs !== null &&
     betraege.every((wert) => ganzeZahl(wert) !== null) &&
+    praemieGeklaert(ganzeZahl(ch.krankentaggeldChf), ch.krankentaggeldArbeitgeberProzent, ch.krankentaggeldArbeitgeberChf) &&
+    praemieGeklaert(nbuvArbeitnehmerChf(ch), ch.nbuvArbeitgeberProzent, ch.nbuvArbeitgeberChf) &&
     Boolean(ch.arbeitgeberName && ch.arbeitgeberStrasse && ch.arbeitgeberPlzOrt)
   return vollstaendig ? null : 'grenzgaenger'
 }
@@ -164,18 +197,24 @@ export interface ArbeitswegFakten {
   taetigkeitsstaette: string | null
 }
 
-function arbeitswegWerte(a: ArbeitswegFakten | null | undefined): Record<string, string> {
+/** Anlage N Z. 27–31 and Anlage N-Gre Z. 32–36 ask the same facts under their own field prefix. */
+function arbeitswegWerte(a: ArbeitswegFakten | null | undefined, prefix: 'anlN' | 'anlNGre' = 'anlN'): Record<string, string> {
   if (!a || a.einfacheKm === null) return {}
   const werte: Record<string, string> = {
-    'anlN.wegArt': '1',
-    'anlN.wegTageJeWoche': String(a.arbeitstageJeWoche),
-    'anlN.wegFreieTage': String(a.freieTage),
-    'anlN.kz110Tage': String(a.pendlertage),
-    'anlN.kz111': String(a.einfacheKm),
+    [`${prefix}.wegArt`]: '1',
+    [`${prefix}.wegTageJeWoche`]: String(a.arbeitstageJeWoche),
+    [`${prefix}.wegFreieTage`]: String(a.freieTage),
+    [`${prefix}.kz110Tage`]: String(a.pendlertage),
+    [`${prefix}.kz111`]: String(a.einfacheKm),
   }
-  if (a.taetigkeitsstaette) werte['anlN.wegOrt'] = a.taetigkeitsstaette
-  if (a.mitPkw) werte['anlN.kz112'] = String(a.einfacheKm)
+  if (a.taetigkeitsstaette) werte[`${prefix}.wegOrt`] = a.taetigkeitsstaette
+  if (a.mitPkw) werte[`${prefix}.kz112`] = String(a.einfacheKm)
   return werte
+}
+
+const optionaleZahl = (wert: string | null): number | undefined => {
+  const zahl = ganzeZahl(wert)
+  return zahl === null ? undefined : zahl
 }
 
 export interface AusdruckFakten {
@@ -416,7 +455,7 @@ export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
       setze('anlNGre.steuernummer', profil.steuernummer)
       werte['anlNGre.kz117'] = '3'
       setze('anlNGre.beruf', sd?.beruf ?? null)
-      const { chf, eur } = anlageNGreBetraege({
+      const { chf, eur, aufteilung } = anlageNGreBetraege({
         bruttolohnChf: Number(ch.bruttolohnChf),
         familienzulagenChf: Number(ch.familienzulagenChf),
         ahvBeitraegeChf: Number(ch.ahvBeitraegeChf),
@@ -425,11 +464,28 @@ export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
         pkArbeitnehmerChf: Number(ch.pkArbeitnehmerChf),
         pkArbeitgeberChf: Number(ch.pkArbeitgeberChf),
         kurs: ch.kurs!,
+        krankentaggeldArbeitgeberProzent: optionaleZahl(ch.krankentaggeldArbeitgeberProzent),
+        krankentaggeldArbeitgeberChf: optionaleZahl(ch.krankentaggeldArbeitgeberChf),
+        nbuvArbeitgeberProzent: optionaleZahl(ch.nbuvArbeitgeberProzent),
+        nbuvArbeitgeberChf: optionaleZahl(ch.nbuvArbeitgeberChf),
       })
       for (const zeile of Object.keys(chf) as NGreZeile[]) {
+        // Z. 18/19 only apply when the employer pays part of a premium; an empty line stays empty.
+        if ((zeile === 'z18' || zeile === 'z19') && chf[zeile] === 0) continue
         werte[`anlNGre.${zeile}Chf`] = String(chf[zeile])
         werte[`anlNGre.${zeile}Eur`] = String(eur[zeile])
       }
+      for (const [zeilen, teil] of [
+        [['z95', 'z96'], aufteilung.krankentaggeld],
+        [['z97', 'z98'], aufteilung.nbuv],
+      ] as const) {
+        if (teil.arbeitgeberChf + teil.arbeitnehmerChf === 0) continue
+        werte[`anlNGre.${zeilen[0]}Arbeitgeber`] = String(teil.arbeitgeberProzent)
+        werte[`anlNGre.${zeilen[0]}Arbeitnehmer`] = String(teil.arbeitnehmerProzent)
+        werte[`anlNGre.${zeilen[1]}Arbeitgeber`] = String(teil.arbeitgeberChf)
+        werte[`anlNGre.${zeilen[1]}Arbeitnehmer`] = String(teil.arbeitnehmerChf)
+      }
+      Object.assign(werte, arbeitswegWerte(fakten.arbeitsweg, 'anlNGre'))
       setze('anlNGre.arbeitgeberName', ch.arbeitgeberName)
       setze('anlNGre.arbeitgeberStrasse', ch.arbeitgeberStrasse)
       setze('anlNGre.arbeitgeberPlzOrt', ch.arbeitgeberPlzOrt)

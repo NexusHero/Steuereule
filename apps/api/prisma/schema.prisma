@@ -563,7 +563,13 @@ model ChLohnausweis {
   krankentaggeldChf         String? /// @encrypted?mode=strict
   pkArbeitnehmerChf         String? /// @encrypted?mode=strict
   pkArbeitgeberChf          String? /// @encrypted?mode=strict
-  /// Any of N-Gre Zeilen 7, 9–14, 16–22 applies — not printable yet.
+  /// Who pays the Kollektivkrankentaggeld / NBUV premium (N-Gre Zeilen 18/19, 95–98): employer share in
+  /// percent (0–100), plus the employer CHF only when it pays everything; null = not entered.
+  krankentaggeldArbeitgeberProzent String? /// @encrypted?mode=strict
+  krankentaggeldArbeitgeberChf     String? /// @encrypted?mode=strict
+  nbuvArbeitgeberProzent           String? /// @encrypted?mode=strict
+  nbuvArbeitgeberChf               String? /// @encrypted?mode=strict
+  /// Any of N-Gre Zeilen 7, 9–14, 16, 17, 20–22 applies — not printable yet.
   nGreSonderfaelle          Boolean?
   /// Wechselkurs-Monat (yyyy-mm) the CHF→EUR conversion applies to (ADR-012).
   wechselkursMonat          String?

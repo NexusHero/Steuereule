@@ -245,6 +245,10 @@ describe('ausdruckWerte', () => {
       krankentaggeldChf: '300',
       pkArbeitnehmerChf: '5000',
       pkArbeitgeberChf: '6000',
+      krankentaggeldArbeitgeberProzent: '0',
+      krankentaggeldArbeitgeberChf: null,
+      nbuvArbeitgeberProzent: '0',
+      nbuvArbeitgeberChf: null,
       sonderfaelle: false,
     }
     const ngre = (ch: Partial<ChLohnausweisFakten>) => ausdruckWerte({ ...FAKTEN, chLohnausweis: { ...CH, ...ch } })
@@ -286,6 +290,45 @@ describe('ausdruckWerte', () => {
       expect(ngre({ sonderfaelle: true }).fehlend).toEqual(['anlageNGreSonderfall'])
       expect(ngre({ status: 'kein-grenzgaenger' }).fehlend).toEqual(['anlageNGreKeinGrenzgaenger'])
       expect(Object.keys(ngre({ kurs: null }).werte).some((id) => id.startsWith('anlNGre.'))).toBe(false)
+    })
+
+    it('asks who pays a premium the employee contributes to, and the CHF when the employer pays everything', () => {
+      expect(ngre({ krankentaggeldArbeitgeberProzent: null }).fehlend).toEqual(['grenzgaenger'])
+      expect(ngre({ nbuvArbeitgeberProzent: null }).fehlend).toEqual(['grenzgaenger'])
+      expect(ngre({ krankentaggeldChf: '0', krankentaggeldArbeitgeberProzent: null }).fehlend).toEqual([])
+      expect(ngre({ krankentaggeldChf: '0', krankentaggeldArbeitgeberProzent: '100' }).fehlend).toEqual(['grenzgaenger'])
+      expect(ngre({ krankentaggeldChf: '0', krankentaggeldArbeitgeberProzent: '100', krankentaggeldArbeitgeberChf: '1200' }).fehlend).toEqual([])
+    })
+
+    it('prints an employer share of the Krankentaggeld as wage (Z. 18) and in Z. 95/96 — 10 % / 90 %', () => {
+      const { werte, fehlend } = ngre({ krankentaggeldChf: '900', krankentaggeldArbeitgeberProzent: '10' })
+      expect(fehlend).toEqual([])
+      expect(werte).toMatchObject({
+        'anlNGre.z18Chf': '100',
+        'anlNGre.z23Chf': '97700',
+        'anlNGre.z80Chf': '1000',
+        'anlNGre.z95Arbeitgeber': '10',
+        'anlNGre.z95Arbeitnehmer': '90',
+        'anlNGre.z96Arbeitgeber': '100',
+        'anlNGre.z96Arbeitnehmer': '900',
+      })
+      expect(werte['anlNGre.z19Chf']).toBeUndefined()
+    })
+
+    it('prints the commute in the Anlage N-Gre (Z. 32–36), not only in the Anlage N', () => {
+      const { werte } = ausdruckWerte({
+        ...FAKTEN,
+        bruttoarbeitslohn: null,
+        chLohnausweis: CH,
+        arbeitsweg: { arbeitstageJeWoche: 5, freieTage: 35, pendlertage: 226, einfacheKm: 80, mitPkw: true, taetigkeitsstaette: '4058 Basel' },
+      })
+      expect(werte).toMatchObject({
+        'anlNGre.wegArt': '1',
+        'anlNGre.wegOrt': '4058 Basel',
+        'anlNGre.kz110Tage': '226',
+        'anlNGre.kz111': '80',
+        'anlNGre.kz112': '80',
+      })
     })
   })
 
@@ -669,6 +712,7 @@ describe('rendereVordrucke (real templates)', () => {
       status: 'echter-grenzgaenger', kurs: 1.065, bruttolohnChf: '50000', ahvBeitraegeChf: '3300', quellensteuerChf: '2250',
       arbeitgeberName: 'Muster AG', arbeitgeberStrasse: 'Bahnhofstrasse 1', arbeitgeberPlzOrt: '4051 Basel',
       familienzulagenChf: '0', krankentaggeldChf: '150', pkArbeitnehmerChf: '2500', pkArbeitgeberChf: '3000', sonderfaelle: false,
+      krankentaggeldArbeitgeberProzent: '0', krankentaggeldArbeitgeberChf: null, nbuvArbeitgeberProzent: '0', nbuvArbeitgeberChf: null,
     },
     sonderausgaben: { spenden: '200' },
     riester: { art: 'Unmittelbar', einnahmenVorjahr: '40000' },

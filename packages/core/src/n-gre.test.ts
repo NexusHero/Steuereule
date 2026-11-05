@@ -48,4 +48,44 @@ describe('Anlage N-Gre — Arbeitslohn and the Swiss social contributions (Zeile
     expect(eur.z85).toBe(eur.z83 + eur.z84)
     expect(eur.z88).toBe(eur.z86 + eur.z87)
   })
+
+describe('Anlage N-Gre — employer share of Krankentaggeld and NBUV (Zeilen 18, 19, 80, 81, 95–98)', () => {
+  it('without an employer share nothing changes', () => {
+    const ohne = anlageNGreBetraege(EINGABE)
+    const mitNull = anlageNGreBetraege({ ...EINGABE, krankentaggeldArbeitgeberProzent: 0, nbuvArbeitgeberProzent: 0 })
+    expect(mitNull.chf).toEqual(ohne.chf)
+    expect(ohne.chf).toMatchObject({ z18: 0, z19: 0 })
+  })
+
+  it('derives the employer CHF from the employee contribution and the percentages (10 % / 90 %)', () => {
+    // Employee pays 900 CHF = 90 % → employer 100 CHF = 10 %.
+    const { chf, aufteilung } = anlageNGreBetraege({ ...EINGABE, krankentaggeldChf: 900, krankentaggeldArbeitgeberProzent: 10 })
+    expect(aufteilung.krankentaggeld).toEqual({ arbeitgeberProzent: 10, arbeitnehmerProzent: 90, arbeitgeberChf: 100, arbeitnehmerChf: 900 })
+    // The employer part is taxable wage (Z. 18 → Z. 23) and counts as a contribution (Z. 80).
+    expect(chf).toMatchObject({ z18: 100, z15: 97600, z23: 97700, z80: 1000 })
+  })
+
+  it('adds the employer NBUV share to the wage (Z. 19) and halves the full NBUV contribution (Z. 81)', () => {
+    // Employee NBUV 353 CHF (see above) at 50 % → employer 353 CHF.
+    const { chf, aufteilung } = anlageNGreBetraege({ ...EINGABE, nbuvArbeitgeberProzent: 50 })
+    expect(aufteilung.nbuv).toEqual({ arbeitgeberProzent: 50, arbeitnehmerProzent: 50, arbeitgeberChf: 353, arbeitnehmerChf: 353 })
+    expect(chf).toMatchObject({ z19: 353, z23: 97600 + 353, z81: 353 })
+  })
+
+  it('takes the employer CHF as given when the employer pays everything (100 %)', () => {
+    const { chf, aufteilung } = anlageNGreBetraege({
+      ...EINGABE,
+      krankentaggeldChf: 0,
+      krankentaggeldArbeitgeberProzent: 100,
+      krankentaggeldArbeitgeberChf: 1200,
+    })
+    expect(aufteilung.krankentaggeld).toEqual({ arbeitgeberProzent: 100, arbeitnehmerProzent: 0, arbeitgeberChf: 1200, arbeitnehmerChf: 0 })
+    expect(chf).toMatchObject({ z18: 1200, z80: 1200 })
+  })
+
+  it('converts the new lines to EUR like every other line', () => {
+    const { eur } = anlageNGreBetraege({ ...EINGABE, krankentaggeldChf: 900, krankentaggeldArbeitgeberProzent: 10 })
+    expect(eur).toMatchObject({ z18: Math.round(100 * 1.065), z80: Math.round(1000 * 1.065) })
+  })
+})
 })

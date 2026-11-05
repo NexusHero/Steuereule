@@ -218,6 +218,10 @@ export class AusdruckService {
             krankentaggeldChf: ch.nGre.krankentaggeldChf,
             pkArbeitnehmerChf: ch.nGre.pkArbeitnehmerChf,
             pkArbeitgeberChf: ch.nGre.pkArbeitgeberChf,
+            krankentaggeldArbeitgeberProzent: ch.nGre.krankentaggeldArbeitgeberProzent,
+            krankentaggeldArbeitgeberChf: ch.nGre.krankentaggeldArbeitgeberChf,
+            nbuvArbeitgeberProzent: ch.nGre.nbuvArbeitgeberProzent,
+            nbuvArbeitgeberChf: ch.nGre.nbuvArbeitgeberChf,
             sonderfaelle: ch.nGre.nGreSonderfaelle,
           }
         : null,

@@ -149,6 +149,14 @@ export interface NGreAngabenDto {
   /** @nullable */
   pkArbeitgeberChf: number | null;
   /** @nullable */
+  krankentaggeldArbeitgeberProzent: number | null;
+  /** @nullable */
+  krankentaggeldArbeitgeberChf: number | null;
+  /** @nullable */
+  nbuvArbeitgeberProzent: number | null;
+  /** @nullable */
+  nbuvArbeitgeberChf: number | null;
+  /** @nullable */
   sonderfaelle: boolean | null;
 }
 
@@ -258,7 +266,27 @@ export interface PutNGreDto {
      */
   pkArbeitgeberChf?: number | null;
   /**
-     * Any of N-Gre Zeilen 7, 9–14 or 16–22 applies.
+     * Employer share of the Krankentaggeld premium in percent, 0–100 (Zeilen 18, 95, 96).
+     * @nullable
+     */
+  krankentaggeldArbeitgeberProzent?: number | null;
+  /**
+     * Whole CHF — employer Krankentaggeld contribution; only needed when the employer pays 100 %.
+     * @nullable
+     */
+  krankentaggeldArbeitgeberChf?: number | null;
+  /**
+     * Employer share of the NBUV premium in percent, 0–100 (Zeilen 19, 97, 98).
+     * @nullable
+     */
+  nbuvArbeitgeberProzent?: number | null;
+  /**
+     * Whole CHF — employer NBUV contribution; only needed when the employer pays 100 %.
+     * @nullable
+     */
+  nbuvArbeitgeberChf?: number | null;
+  /**
+     * Any of N-Gre Zeilen 7, 9–14, 16, 17 or 20–22 applies.
      * @nullable
      */
   sonderfaelle?: boolean | null;
