@@ -87,4 +87,26 @@ describe('EulenModusService', () => {
     expect(resAfterDismiss.cards.find((k) => k.fingerprint === firstCard.fingerprint)).toBeUndefined()
     expect(resAfterDismiss.cards.length).toBe(3)
   })
+
+  it('turns the interview\'s occupation group into profession tips, each citing its EStG source', async () => {
+    const settingRepo = new FakeOwlSettingRepository()
+    const interviewRepo = new FakeInterviewAnswerRepository()
+    const service = new OwlModeService(
+      settingRepo,
+      new FakeOwlCardDismissalRepository(),
+      new FakeChildRepository(),
+      interviewRepo,
+      new FakeAssessmentRepository(),
+      new RagKiAdapter(),
+      new FakeAuditService() as never,
+    )
+    await interviewRepo.write({ userId: 'user-1', taxYear: 2026, questionId: 'beruf', value: 'IT & Software', openItems: 0 })
+    await service.setSetting('user-1', true)
+
+    const res = await service.getCards('user-1', 2026, '2026-11-06')
+    const tips = res.cards.filter((k) => k.id.startsWith('eule-beruf-'))
+    expect(tips.map((k) => k.id)).toEqual(['eule-beruf-fortbildung-2026', 'eule-beruf-it-hardware-2026'])
+    expect(tips[0]!.sourceTranslated).toContain('§ 9 Abs. 1 Satz 1 EStG')
+    expect(tips[1]!.sourceTranslated).toContain('§ 9 Abs. 1 Satz 3 Nr. 6 und 7 EStG')
+  })
 })

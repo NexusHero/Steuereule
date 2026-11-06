@@ -480,7 +480,8 @@
                 "einkuenfte",
                 "sonderausgaben",
                 "segment-ch",
-                "alleinerziehend"
+                "alleinerziehend",
+                "berufsprofil"
               ],
               "type": "string"
             }

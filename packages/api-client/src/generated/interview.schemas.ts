@@ -66,5 +66,6 @@ export const InterviewControllerGetInterviewEintrag = {
   sonderausgaben: 'sonderausgaben',
   'segment-ch': 'segment-ch',
   alleinerziehend: 'alleinerziehend',
+  berufsprofil: 'berufsprofil',
 } as const;
 

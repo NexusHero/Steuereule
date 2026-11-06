@@ -3,7 +3,7 @@ import { Pressable, ScrollView, Text, View, type TextStyle, type ViewStyle } fro
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { AiChip, Button, Card, Chip, Option, useBreakpoint, useTheme, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
-import { formatEuro, type OwlCardsDisplay } from '@steuereule/core'
+import { formatEuro, PROFESSION_VALUES, type OwlCardsDisplay, type Profession } from '@steuereule/core'
 import {
   getOwlModeControllerGetSettingQueryKey,
   getOwlModeControllerGetCardsQueryKey,
@@ -11,6 +11,9 @@ import {
   useOwlModeControllerGetCards,
   useOwlModeControllerSetSetting,
   useOwlModeControllerDismissCard,
+  useInterviewControllerGetInterview,
+  useInterviewControllerPostAnswer,
+  getInterviewControllerGetInterviewQueryKey,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
@@ -18,6 +21,7 @@ import { BackButton } from '../shared/BackButton'
 import { ErrorState, LoadingState } from '../shared/ScreenState'
 import { OwlMark } from '../../marks/OwlMark'
 import { useOwlEntrance } from '../../marks/useOwlEntrance'
+import { ProfessionPicker } from './ProfessionPicker'
 
 export interface OwlModeScreenProps {
   readonly onDone?: () => void
@@ -28,6 +32,13 @@ export interface OwlModeScreenProps {
   readonly onAcceptPath?: ((cardId: string, pathIndex: number) => void) | undefined
   readonly optInEnabled?: boolean | undefined
   readonly onToggleOptIn?: ((enabled: boolean) => Promise<void> | void) | undefined
+  /** The interview's occupation group; null = not chosen yet, undefined = no picker (not loaded). */
+  readonly profession?: Profession | null | undefined
+  readonly onChooseProfession?: ((profession: Profession) => Promise<void> | void) | undefined
+}
+
+function professionFrom(value: string | undefined): Profession | null {
+  return (PROFESSION_VALUES as readonly string[]).includes(value ?? '') ? (value as Profession) : null
 }
 
 export function OwlModeScreen(props: OwlModeScreenProps) {
@@ -45,6 +56,9 @@ function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CURRENT_T
   const cardsQuery = useOwlModeControllerGetCards(taxYear)
   const setSetting = useOwlModeControllerSetSetting()
   const dismissCard = useOwlModeControllerDismissCard()
+  const interviewQuery = useInterviewControllerGetInterview(taxYear)
+  const postAnswer = useInterviewControllerPostAnswer()
+  const interviewAnswers = interviewQuery.data?.status === 200 ? (interviewQuery.data.data.answers as Record<string, string>) : undefined
 
   if (settingQuery.isPending || cardsQuery.isPending) {
     return <LoadingState bp={bp} label={tr('eule.loading', 'Eulen-Modus wird geladen …')} />
@@ -93,6 +107,15 @@ function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CURRENT_T
         await invalidate()
       }}
       {...(onAcceptPath ? { onAcceptPath } : {})}
+      profession={interviewAnswers === undefined ? undefined : professionFrom(interviewAnswers['beruf'])}
+      onChooseProfession={async (profession) => {
+        const response = await postAnswer.mutateAsync({ jahr: taxYear, data: { questionId: 'beruf', value: profession } })
+        if (response.status !== 200) throw new Error(`profession not stored (HTTP ${response.status})`)
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: getInterviewControllerGetInterviewQueryKey(taxYear) }),
+          invalidate(),
+        ])
+      }}
     />
   )
 }
@@ -106,6 +129,8 @@ function OwlModeScreenView({
   onAcceptPath,
   optInEnabled = true,
   onToggleOptIn,
+  profession,
+  onChooseProfession,
 }: OwlModeScreenProps & { readonly initialCards: readonly OwlCardsDisplay[] }) {
   const bp = useBreakpoint()
   const t = useTheme()
@@ -148,6 +173,10 @@ function OwlModeScreenView({
           </Text>
         </View>
       </View>
+
+      {profession !== undefined && onChooseProfession ? (
+        <ProfessionPicker profession={profession} onChoose={onChooseProfession} />
+      ) : null}
 
       {onToggleOptIn ? (
         <View style={{ marginBottom: t.space.s4 }}>
