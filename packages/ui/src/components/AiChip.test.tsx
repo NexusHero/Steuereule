@@ -7,7 +7,8 @@ describe('AiChip', () => {
   it('renders_label_and_owl_mark', () => {
     renderUi(<AiChip>Berater</AiChip>)
     expect(screen.getByText('Berater')).toBeTruthy()
-    // The "B" owl dot marks KI output — violet is AI-only.
-    expect(screen.getByText('B')).toBeTruthy()
+    // The advisor owl marks KI output (replaced the old "B" dot) — violet is AI-only.
+    expect(screen.getByTestId('owl-glyph')).toBeTruthy()
+    expect(screen.queryByText('B')).toBeNull()
   })
 })
