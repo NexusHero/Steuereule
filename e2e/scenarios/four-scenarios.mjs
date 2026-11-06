@@ -91,11 +91,11 @@ async function confirmAnnexesIfPresent(page) {
     await openConfirmButton.click()
     await page.locator('[data-testid="bestaetigung-zurueck"]').waitFor({ state: 'visible', timeout: 10_000 })
 
-    const confirmButtons = page.locator('[data-testid^="bestaetige-"]')
-    const count = await confirmButtons.count()
-    for (let i = 0; i < count; i++) {
-      await confirmButtons.nth(i).click()
-      await page.waitForTimeout(200)
+    while (true) {
+      const confirmButton = page.locator('[data-testid^="bestaetige-"]').first()
+      if ((await confirmButton.count()) === 0 || !(await confirmButton.isVisible())) break
+      await confirmButton.click()
+      await page.waitForTimeout(400)
     }
 
     await page.locator('[data-testid="bestaetigung-zurueck"]').click()
@@ -122,7 +122,7 @@ async function downloadAndVerifyPdf(page, expectedFields) {
     let actualValue
     try {
       const field = form.getField(key)
-      actualValue = typeof field.getText === 'function' ? field.getText() : field.isChecked?.() ? 'X' : ''
+      actualValue = typeof field.getText === 'function' ? (field.getText() ?? '') : field.isChecked?.() ? 'X' : ''
     } catch (error) {
       fail(`downloadAndVerifyPdf: missing PDF form field "${key}" — ${error.message}`)
     }
@@ -227,10 +227,12 @@ async function runScenario1(browser, webOrigin, sql) {
   await page.locator('[data-testid="stammdaten-strasse"]').fill(s1.masterData.street)
   await page.locator('[data-testid="stammdaten-hausnummer"]').fill(s1.masterData.houseNumber)
   await page.locator('[data-testid="stammdaten-plz"]').fill(s1.masterData.postalCode)
-  await page.locator('[data-testid="stammdaten-ort"]').fill(s1.masterData.city)
+  await page.locator('[data-testid="stammdaten-wohnort"]').fill(s1.masterData.city)
+  await page.locator(`[data-testid="stammdaten-familienstand-${s1.masterData.maritalStatus}"]`).click()
+  await page.locator(`[data-testid="stammdaten-religion-${s1.masterData.religion}"]`).click()
+  await page.locator('[data-testid="stammdaten-einwilligung"]').click()
   await page.locator('[data-testid="stammdaten-finanzamt"]').fill(s1.masterData.taxOffice)
   await page.locator('[data-testid="stammdaten-iban"]').fill(s1.masterData.iban)
-  await page.locator('[data-testid="stammdaten-religion"]').fill(s1.masterData.religion)
 
   // Save master data and navigate back to Cockpit
   await page.locator('[data-testid="stammdaten-speichern"]').click()
@@ -350,8 +352,8 @@ async function runScenario2And3(browser, webOrigin, sql) {
     await pageMarkus.locator('[data-testid="kind-steuerid"]').fill(child.taxId)
     await pageMarkus.locator('[data-testid="kind-schweizer-kinderzulage"]').fill(String(child.swissAllowanceEur))
     await pageMarkus.locator('[data-testid="kind-kindergeld"]').fill(String(child.childBenefitEur))
-    await pageMarkus.locator('[data-testid="kind-verhaeltnis-leiblich"]').click()
-    await pageMarkus.locator('[data-testid="kind-verhaeltnis-b-leiblich"]').click()
+    await pageMarkus.locator('[data-testid="kind-verhaeltnis-1"]').click()
+    await pageMarkus.locator('[data-testid="kind-verhaeltnis-b-1"]').click()
     await pageMarkus.locator('[data-testid="kind-inland-ja"]').click()
     await pageMarkus.locator('[data-testid="kind-gemeldet-ja"]').click()
     await pageMarkus.locator('[data-testid="kind-kindergeld-an-mich-ja"]').click()
@@ -370,11 +372,12 @@ async function runScenario2And3(browser, webOrigin, sql) {
   await pageMarkus.locator('[data-testid="stammdaten-strasse"]').fill(s.markus.masterData.street)
   await pageMarkus.locator('[data-testid="stammdaten-hausnummer"]').fill(s.markus.masterData.houseNumber)
   await pageMarkus.locator('[data-testid="stammdaten-plz"]').fill(s.markus.masterData.postalCode)
-  await pageMarkus.locator('[data-testid="stammdaten-ort"]').fill(s.markus.masterData.city)
+  await pageMarkus.locator('[data-testid="stammdaten-wohnort"]').fill(s.markus.masterData.city)
+  await pageMarkus.locator(`[data-testid="stammdaten-familienstand-${s.markus.masterData.maritalStatus}"]`).click()
+  await pageMarkus.locator(`[data-testid="stammdaten-religion-${s.markus.masterData.religion}"]`).click()
+  await pageMarkus.locator('[data-testid="stammdaten-einwilligung"]').click()
   await pageMarkus.locator('[data-testid="stammdaten-finanzamt"]').fill(s.markus.masterData.taxOffice)
   await pageMarkus.locator('[data-testid="stammdaten-iban"]').fill(s.markus.masterData.iban)
-  await pageMarkus.locator('[data-testid="stammdaten-religion"]').fill(s.markus.masterData.religion)
-  await pageMarkus.locator('[data-testid="stammdaten-einwilligung"]').click()
 
   await pageMarkus.locator('[data-testid="kopplung-zusammen"]').click()
   await pageMarkus.locator('[data-testid="stammdaten-speichern"]').click()
@@ -460,7 +463,8 @@ async function runScenario2And3(browser, webOrigin, sql) {
 
   await pageJulia.locator('[data-testid="stammdaten-geburtsdatum"]').fill(s.julia.masterData.birthDate)
   await pageJulia.locator('[data-testid="stammdaten-beruf"]').fill(s.julia.masterData.occupation)
-  await pageJulia.locator('[data-testid="stammdaten-religion"]').fill(s.julia.masterData.religion)
+  await pageJulia.locator(`[data-testid="stammdaten-familienstand-${s.julia.masterData.maritalStatus}"]`).click()
+  await pageJulia.locator(`[data-testid="stammdaten-religion-${s.julia.masterData.religion}"]`).click()
   await pageJulia.locator('[data-testid="stammdaten-einwilligung"]').click()
 
   await pageJulia.locator('[data-testid="kopplung-code"]').fill(invitationCode)
@@ -572,10 +576,12 @@ async function runScenario4(browser, webOrigin, sql) {
   await page.locator('[data-testid="stammdaten-strasse"]').fill(s.thomas.masterData.street)
   await page.locator('[data-testid="stammdaten-hausnummer"]').fill(s.thomas.masterData.houseNumber)
   await page.locator('[data-testid="stammdaten-plz"]').fill(s.thomas.masterData.postalCode)
-  await page.locator('[data-testid="stammdaten-ort"]').fill(s.thomas.masterData.city)
+  await page.locator('[data-testid="stammdaten-wohnort"]').fill(s.thomas.masterData.city)
+  await page.locator(`[data-testid="stammdaten-familienstand-${s.thomas.masterData.maritalStatus}"]`).click()
+  await page.locator(`[data-testid="stammdaten-religion-${s.thomas.masterData.religion}"]`).click()
+  await page.locator('[data-testid="stammdaten-einwilligung"]').click()
   await page.locator('[data-testid="stammdaten-finanzamt"]').fill(s.thomas.masterData.taxOffice)
   await page.locator('[data-testid="stammdaten-iban"]').fill(s.thomas.masterData.iban)
-  await page.locator('[data-testid="stammdaten-religion"]').fill(s.thomas.masterData.religion)
 
   // Person B details
   await page.locator('[data-testid="kopplung-zusammen"]').click()

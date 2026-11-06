@@ -113,7 +113,7 @@ export function MasterDataScreen({ onBack, taxYear = CURRENT_TAX_YEAR, onRecordP
       <Feld label={t('stammdaten.familienstand')}>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.s2 }}>
           {MARITAL_STATUSES.map((status_) => (
-            <Chip key={status_} active={form.familienstand === status_} onPress={() => set({ familienstand: status_ })}>
+            <Chip key={status_} active={form.familienstand === status_} onPress={() => set({ familienstand: status_ })} testID={`stammdaten-familienstand-${status_}`}>
               {t(`stammdaten.familienstaende.${status_}`)}
             </Chip>
           ))}
@@ -126,7 +126,7 @@ export function MasterDataScreen({ onBack, taxYear = CURRENT_TAX_YEAR, onRecordP
         <Text style={styles.hint}>{t('stammdaten.religionHinweis')}</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.s2, marginTop: theme.space.s2 }}>
           {RELIGION_KEYS.map((key) => (
-            <Chip key={key} active={form.religion === key} onPress={() => set({ religion: key })}>
+            <Chip key={key} active={form.religion === key} onPress={() => set({ religion: key })} testID={`stammdaten-religion-${key}`}>
               {t(`stammdaten.religionen.${key}`)}
             </Chip>
           ))}
