@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="images/steuereule-logo.svg" width="120" height="120" alt="SteuerEule Logo — Eule mit Brille" />
+</p>
+
 # Steuereule 🦉
 
 <p align="center">
@@ -59,15 +63,15 @@ Künstliche Intelligenz ist bei uns kein Werbegag, sondern das Herzstück eines 
 
 ## 📸 Ein Blick in die App
 
-| Cockpit mit ehrlicher Spanne | Quiz-Interview (1 Frage / Screen) |
-|:---:|:---:|
-| <img src="images/screenshots/cockpit.png" width="360" alt="Cockpit Screen" /> | <img src="images/screenshots/interview.png" width="360" alt="Interview Screen" /> |
-| *Erstattung transparent als Spanne, keine falschen Garantien.* | *Schnell, fokussiert und ohne Fachchinesisch.* |
+| Cockpit mit ehrlicher Spanne | Quiz-Interview (1 Frage / Screen) | Onboarding & Stammdaten |
+|:---:|:---:|:---:|
+| <img src="images/screenshots/cockpit.png" width="280" alt="Cockpit Screen" /> | <img src="images/screenshots/interview.png" width="280" alt="Interview Screen" /> | <img src="images/screenshots/onboarding.png" width="280" alt="Onboarding Screen" /> |
+| *Erstattung transparent als Spanne, keine falschen Garantien.* | *Schnell, fokussiert und ohne Fachchinesisch.* | *Datensparsam, feldverschlüsselt und DSGVO-konform.* |
 
-| Onboarding & Profil | QR-Gerätefreigabe ohne Passwort |
-|:---:|:---:|
-| <img src="images/screenshots/onboarding.png" width="360" alt="Onboarding Screen" /> | <img src="images/screenshots/geraetefreigabe.png" width="360" alt="Gerätefreigabe Screen" /> |
-| *Datensparsam, feldverschlüsselt und DSGVO-konform.* | *Nahtloser Login am Desktop via Handy-Kamera.* |
+| Profil & Einstellungen | QR-Gerätefreigabe ohne Passwort | Willkommen & Gast-Modus |
+|:---:|:---:|:---:|
+| <img src="images/screenshots/profil.png" width="280" alt="Profil Screen" /> | <img src="images/screenshots/geraetefreigabe.png" width="280" alt="Gerätefreigabe Screen" /> | <img src="images/screenshots/login.png" width="280" alt="Login Screen" /> |
+| *Volle DSGVO-Transparenz mit Datenexport und Löschung.* | *Nahtloser Login am Desktop via Handy-Kamera.* | *Sofort loslegen ohne Registrierungszwang.* |
 
 ---
 
