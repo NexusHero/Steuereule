@@ -1,31 +1,59 @@
 # Steuereule 🦉
 
 <p align="center">
-  <b>Steuern? Zack, erledigt.</b><br>
-  Die moderne, quelloffene Steuer-App, die dir nichts verspricht, was sie nicht liefert.
+  <b>Steuerberater füllen heute oft nur noch Formulare aus. Wir bringen echte Beratung zurück — mit KI.</b><br>
+  Die moderne, quelloffene Steuer-App, die Menschen hilft, ihr Recht zu nutzen, statt sie mit grauen Formularen und hohen Gebühren allein zu lassen.
 </p>
 
 <p align="center">
+  <img src="https://img.shields.io/badge/Mission-AI_Steuer--Sparbegleiter-C9F229?style=for-the-badge&labelColor=191B12" alt="AI Steuerberatung" />
   <img src="https://img.shields.io/badge/Design-Neobrutalismus_„Funke“-C9F229?style=for-the-badge&labelColor=191B12" alt="Funke Design System" />
-  <img src="https://img.shields.io/badge/Frontend-Expo_%7C_React_Native_Web-191B12?style=for-the-badge&logo=react" alt="Frontend" />
-  <img src="https://img.shields.io/badge/Backend-NestJS_%7C_Fastify-E0234E?style=for-the-badge&logo=nestjs" alt="Backend" />
-  <img src="https://img.shields.io/badge/Security-AES--256--GCM_Field_Encryption-1F9D55?style=for-the-badge" alt="Security" />
-  <img src="https://img.shields.io/badge/DSGVO-Art._15_/_17_/_20_Export-blue?style=for-the-badge" alt="DSGVO" />
+  <img src="https://img.shields.io/badge/Security-AES--256--GCM_Feldverschlüsselung-1F9D55?style=for-the-badge" alt="Security" />
+  <img src="https://img.shields.io/badge/Grenzgänger-Schweiz_%2B_DE_Splitting-blue?style=for-the-badge" alt="Grenzgänger" />
+  <img src="https://img.shields.io/badge/DSGVO-Art._15_/_17_/_20_Export-green?style=for-the-badge" alt="DSGVO" />
 </p>
 
 ---
 
-## ⚡ Warum Steuereule?
+## ⚡ Warum Steuereule? Das Steuerberater-Dilemma & unsere Mission
 
-Die meisten Steuer-Programme in Deutschland leiden unter zwei Krankheiten:
-1. **Verstaubter Behörden-Charme:** Graue Formular-Wüsten, die abschrecken und Angst vor Fehlern machen.
-2. **Unehrliche Versprechen:** Falsche Punktwert-Erstattungen ("Hol dir 1.095 €!"), die am Ende vor dem Finanzamt in sich zusammenbrechen.
+Seien wir ehrlich: **Die meisten Steuerberater beraten heute gar nicht mehr.**
 
-**Steuereule macht Schluss damit:**
-* 🔥 **Pop-Brutalismus statt Amtsschimmel:** Knalliges Neobrutalismus-Design ([„Funke“-Designsystem](finanzo-funke-design-system/project/readme.md)), fette Konturen, haptische Buttons und 1 Gedanke pro Screen.
-* 🎯 **Ehrliche Spannen:** Wir schätzen deine Erstattung stets als realistische Spanne – niemals als erfundene Punktlandung.
-* 🔒 **Datenschutz ernst genommen:** Deine Steuer-ID wird serverseitig feldverschlüsselt (AES-256-GCM) gespeichert, nie im Browser-Speicher — per echtem Browser-Gate in CI geprüft. Jeder Zugriff landet in einem Audit-Log.
-* 🚀 **Gast-Modus ohne Zwang:** Sofort starten ohne Account. Gefällt dir die App, nimmst du deine Daten mit einem Klick in dein echtes Konto mit.
+Wer heute in Deutschland oder im Grenzgebiet steuerliche Unterstützung sucht, stößt fast überall auf dieselben Mauern:
+1. 🛑 **Kanzleien im Aufnahmestopp & horrende Kosten:** Kanzleien sind chronisch überlastet. Normale Angestellte, junge Familien oder Grenzgänger werden oft gar nicht erst angenommen — oder zahlen unverhältnismäßig hohe Rechnungen.
+2. 📋 **Formular-Ausfüller statt echte Berater:** Hat man einen Platz ergattert, verkommt der Service allzu oft zum bloßen „Beleg-Abtippen“. Man sortiert monatelang Rechnungen vor, und die Kanzlei überträgt sie lediglich in die Maske. Proaktive Ideen? Aufdecken ungenutzter Pauschalen? Sparpotenziale querdenken? Fehlanzeige. Man zahlt Hunderte Euro für stumpfes Ausfüllen.
+3. 🌫️ **Grauer Amtsschimmel & falsche Versprechungen:** Auf der Gegenseite stehen klassische Steuerprogramme — unübersichtliche Tabellenwüsten, die Angst vor Fehlern schüren, oder Lockvogel-Apps mit erfundenen Punktwert-Erstattungsversprechen („Hol dir 1.095 € zurück!“), die vor dem Finanzamt in sich zusammenbrechen.
+
+**Wir finden: Das Steuer-System muss für Menschen da sein, nicht gegen sie.**
+Steuereule wurde gegründet, um Menschen mit intelligenter Technologie etwas Gutes zu tun und steuerliches Expertenwissen für alle zugänglich zu machen — unabhängig von Geldbeutel oder Kanzleikontakten.
+
+---
+
+## 🤖 Wie KI die Steuerwelt verändert: Echte Beratung statt Formular-Frust
+
+Künstliche Intelligenz ist bei uns kein Werbegag, sondern das Herzstück eines neuen Steuer-Erlebnisses:
+
+* 🦉 **Der Eulen-Modus (Dein KI-Spar-Begleiter):** Wo ein herkömmliches Formular stumm auf Eingaben wartet, denkt unsere KI aktiv mit. Sie analysiert deine Lebenssituation ganzheitlich, entdeckt ungenutzte Pauschalen (Arbeitszimmer, Pendlerwege, Fortbildungen, Sonderausgaben) und schlägt dir verständlich formulierte Optimierungen vor — genau die Fragen, die dir ein engagierter Berater stellen sollte.
+* 🛡️ **Zero-Hallucination & 100% deterministischer Kern:** KI darf kreativ beraten, aber **niemals Zahlen erfinden**. Deshalb trennt Steuereule Beratung und Berechnung strikt: Die KI unterstützt, strukturiert und erklärt Sachverhalte in einfacher Sprache. Die eigentliche Steuerberechnung läuft in einem quelloffenen, strikt deterministischen TypeScript-Kern ([`@steuereule/core`](packages/core/)) auf Basis der gesetzlichen BMF-Vorgaben.
+* ⏱️ **In wenigen Minuten auf den Cent verifizierbar:** Keine undurchsichtige Blackbox! Jeder erfasste Posten wird transparent vorgerechnet und mündet direkt in amtlich vermessene, offizielle PDF-Vordrucke. Du, dein Partner oder ein Fachmann könnt das Ergebnis **in 5 Minuten Zeile für Zeile gegen die Original-Formulare prüfen**.
+* 🎯 **Ehrliche Spannen statt falscher Garantien:** Steuereule schätzt deine Erstattung stets als realistische Bandbreite (Mindest- und Höchstwert gemäß [ADR-032](docs/adr/0032-honest-refund-ranges.md)). Keine geratenen Fantasiezahlen.
+* ⚖️ **Ehrlicher rechtlicher Rahmen:** Steuereule erbringt keine geschäftsmäßige Rechts- oder Steuerberatung im Sinne des Steuerberatungsgesetzes (StBerG). Wir bieten dir das intelligenteste Werkzeug, um deine Steuererklärung eigenverantwortlich, optimal und mit minimalem Zeitaufwand vorzubereiten.
+
+---
+
+## ✨ Was Steuereule heute kann
+
+| Feature | Das steckt dahinter |
+|:---|:---|
+| 🦉 **Eulen-Modus (KI-Spar-Assistent)** | Analysiert deine Angaben quer, findet versteckte Abzugsmöglichkeiten und erklärt kompliziertes Steuerdeutsch ohne Amtsfloskeln. |
+| 🇨🇭 **Grenzgänger-Spezialist (CH ⇄ DE)** | Vollständige Erfassung des Schweizer Lohnausweises, automatische Umrechnung mit Monatswechselkursen, Nichtrückkehrtage, Anlage N-Gre, Schweizer Säule 2/3 sowie Differenzkindergeld. |
+| 👫 **Ehepaare & Partnerschaften** | Zusammen- oder Einzelveranlagung mit automatischem Günstigervergleich (Splitting). Person B kann ohne eigenes Konto direkt von Person A mit erfasst werden — oder per 16-stelligem Einladungscode beitreten. |
+| 🏡 **Vermietung & Verpachtung (Anlage V)** | Mehrere Mietobjekte, Mehrfamilienhäuser mit Wohneinheiten, Schuldzinsen, laufende Kosten und historische lineare AfA. |
+| 📈 **Kapitalerträge (Anlage KAP)** | Deutsche und ausländische Broker, Sparer-Pauschbetrag, Verteilung bei Gemeinschaftsdepots und automatischer Günstigerprüfungs-Antrag. |
+| 🔥 **Neobrutalismus „Funke“** | Schluss mit grauen Tabellen: Knalliges Design ([„Funke“-Designsystem](finanzo-funke-design-system/project/readme.md)), fette Konturen, haptische Buttons und strikt **1 Gedanke pro Screen**. |
+| 🔒 **Banken-Sicherheit (Feldverschlüsselung)** | Deine Steuer-ID und Profildaten werden serverseitig mit **AES-256-GCM** verschlüsselt und landen niemals im Browser-Speicher. Jeder Zugriff wird auditiert. |
+| ⚡ **Gast-Modus ohne Registrierungszwang** | Starte komplett anonym. Erst wenn du deine Daten dauerhaft sichern willst, nimmst du sie mit einem Klick in dein echtes Konto mit. |
+| 📄 **Amtlicher PDF-Ausdruck** | Generiert auf den Millimeter vermessene, offiziell abgabefähige PDF-Vordrucke für alle unterstützten Anlagen (ESt 1 A, N, N-Gre, Kind, KAP, V, Vorsorgeaufwand). |
 
 ---
 
@@ -43,19 +71,6 @@ Die meisten Steuer-Programme in Deutschland leiden unter zwei Krankheiten:
 
 ---
 
-## ✨ Was die App heute kann
-
-- **Gast-Browsing ohne Registrierungszwang** — Starte anonym; erst wenn du deine Daten dauerhaft sichern oder übertragen willst, wird daraus ein vollwertiges Konto (atomare Gast→Konto-Übernahme).
-- **Cockpit** — Deine voraussichtliche Erstattung als ehrliche *Spanne* plus Zähler offener Punkte mit sauberen Lade- und Fehlerzuständen.
-- **Micro-Interview** — Schritt für Schritt durch die wichtigsten Lebenssachverhalte (Angestellte, Rentner, Grenzgänger CH); Antworten werden server-seitig validiert und verschlüsselt abgelegt.
-- **Feldverschlüsseltes Profil** — Deine Steuer-ID wird serverseitig mit **AES-256-GCM** verschlüsselt; jeder Zugriff hinterlässt einen unveränderlichen Audit-Log.
-- **Konto & Geräte** — E-Mail-Login, Google-Sign-in-Plumbing (#170), QR-Gerätefreigabe für den Desktop-Login ohne Passwort, Sitzungen einzeln widerrufbar.
-- **DSGVO by Design** — Voller Datenexport (JSON/PDF mit Headless-Chromium) nach Art. 15/20 und Konto-Löschung nach Art. 17 inklusive Pflicht-Export-Angebot.
-
-> **Was bewusst noch in Arbeit ist:** 1.0 gibt auf Papier ab ([ADR-0050](docs/adr/0050-papierweg-statt-elster-in-1-0.md)): Der Formular-Ausdruck auf amtlichen Vordrucken ist der nächste Schritt, die bezahlte Freischaltung dafür steht. Eine ELSTER-Übermittlung folgt nach 1.0, sobald das Hersteller-Zertifikat vorliegt. Apple Sign-In bleibt bis zu einem iOS-Build abgeschaltet — Details im [Requirements-Register](docs/requirements/register.md).
-
----
-
 ## 🏗️ Architektur im Überblick
 
 Gebaut als sauberes, hochgradig typisiertes Monorepo:
@@ -65,7 +80,7 @@ Gebaut als sauberes, hochgradig typisiertes Monorepo:
 │   ├── mobile-web       # Expo + React Native Web (TanStack Query, i18n, Funke UI)
 │   └── api              # NestJS + Fastify REST-API (/v1/*), Prisma auf Postgres
 ├── packages/
-│   ├── core             # UI-freier fachlicher Steuerkern (Determinismus-Grenze)
+│   ├── core             # UI-freier deterministischer Steuerkern (Mathematik & Tarife)
 │   ├── ui               # Neobrutalistisches Design-System (Funke-Komponenten)
 │   ├── tokens           # Style Dictionary Design Tokens (Farben, Radien, Schatten)
 │   └── api-client       # Typisierter API-Client (OpenAPI-generiert via orval)
@@ -100,6 +115,7 @@ scripts/local.sh help     # alle Befehle (logs, status, down, reset)
 
 * **Vierstufige Definition of Done:** Ticket, REQ, Phase, 1.0 ([ADR-0036](docs/adr/0036-definition-of-done.md)) mit Security- & Performance-Posture.
 * **Tiered Testing:** Unit-, Integration- (echtes Postgres) und Acceptance-Tests (echter Socket) sowie Playwright Browser-Gates in CI.
+* **S10 UI-Abnahmetest:** Echte 4-Persona-End-to-End-Abnahme (inkl. Grenzgänger Schweiz, Kinder, Vermietung, Kapital) vor jedem Merge.
 * **AI-Crew Process:** Dokumentierte KI-Kollaborations-Architektur (siehe [CONTRIBUTORS.md](CONTRIBUTORS.md) und [docs/process/](docs/process/)).
 
 ---
