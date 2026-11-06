@@ -2902,6 +2902,34 @@
           "eulen-modus"
         ]
       }
+    },
+    "/mcp/sse": {
+      "get": {
+        "operationId": "McpController_sse",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Mcp"
+        ]
+      }
+    },
+    "/mcp/messages": {
+      "post": {
+        "operationId": "McpController_messages",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Mcp"
+        ]
+      }
     }
   },
   "info": {
