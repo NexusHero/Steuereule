@@ -73,6 +73,39 @@ async function selectTaxYear2025(page) {
   await page.waitForTimeout(400)
 }
 
+/**
+ * Reads the Cockpit estimate ("Voraussichtlich 1.234 – 1.456 € Erstattung", or one value) and checks it
+ * against the scenario's independent reference: the right direction and, where a hand calculation
+ * exists, a range that contains it. A Cockpit that only says "noch offen" fails.
+ */
+async function assertEstimate(page, label, { direction, contains }) {
+  const locator = page.locator('[data-testid="cockpit-erstattung"]')
+  await locator.waitFor({ state: 'visible', timeout: 10_000 })
+  // Returning to the Cockpit shows the cached estimate until the refetch lands, so wait for the
+  // network and re-read until the fresh figure is there; a figure that never fits is a failure.
+  await page.waitForLoadState('networkidle').catch(() => {})
+  const check = (text) => {
+    const named = direction === undefined ? ['Erstattung', 'Nachzahlung'].some((w) => text.includes(w)) : text.includes(direction)
+    if (!named) return `expected a ${direction ?? 'refund or back-payment'} estimate`
+    const amounts = [...text.matchAll(/\d{1,3}(?:\.\d{3})*/g)].map((m) => Number(m[0].replace(/\./g, '')))
+    if (amounts.length === 0) return 'the estimate names no amount'
+    const from = Math.min(...amounts)
+    const to = Math.max(...amounts)
+    if (contains !== undefined && (contains < from || contains > to)) return `the hand-calculated ${direction} of ${contains} € is outside the Cockpit's ${from}–${to} €`
+    return null
+  }
+  const deadline = Date.now() + 15_000
+  let text = await locator.innerText()
+  let problem = check(text)
+  while (problem !== null && Date.now() < deadline) {
+    await page.waitForTimeout(500)
+    text = await locator.innerText()
+    problem = check(text)
+  }
+  console.log(`[${label}] Cockpit estimate text: "${text}"`)
+  if (problem !== null) fail(`[${label}] ${problem}: "${text}"`)
+}
+
 /** Unlocks a tax year directly in the database for payment-free e2e printout access. */
 function unlockTaxYearInDb(sql, email, year) {
   const userId = sql(`SELECT id FROM "User" WHERE email = '${email}';`).trim()
@@ -212,6 +245,8 @@ async function runScenario1(browser, webOrigin, sql) {
   await page.locator('[data-testid="arbeitstage-homeoffice"]').fill(String(s1.commute.homeOfficeDays))
   await page.locator(`[data-testid="feiertage-region-${s1.commute.region}"]`).click()
   await page.locator('[data-testid="arbeitstage-km"]').fill(String(s1.commute.oneWayKm))
+  // the commuter allowance needs the means of transport; without it the estimate rightly counts 0 €
+  await page.locator(`[data-testid="arbeitstage-transport-${s1.commute.transport}"]`).click()
   await page.locator('[data-testid="arbeitstage-arbeitsort"]').fill(s1.commute.workplace)
   await page.locator('[data-testid="arbeitstage-weiter"]').click()
 
@@ -244,13 +279,8 @@ async function runScenario1(browser, webOrigin, sql) {
   await page.waitForTimeout(500)
   await page.locator('[data-testid="stammdaten-zurueck"]').click()
 
-  // 11. Check Cockpit estimate
-  await page.locator('[data-testid="cockpit-erstattung"]').waitFor({ state: 'visible', timeout: 10_000 })
-  const estimateText = await page.locator('[data-testid="cockpit-erstattung"]').innerText()
-  console.log(`[Scenario 1] Cockpit estimate text: "${estimateText}"`)
-  if (!estimateText.includes('Erstattung')) {
-    fail(`[Scenario 1] expected refund estimate text, got: "${estimateText}"`)
-  }
+  // 11. Check Cockpit estimate against the hand calculation (fixture: expectedEstimate)
+  await assertEstimate(page, 'Scenario 1', { direction: 'Erstattung', contains: s1.expectedEstimate.targetRefund })
 
   // 12. Unlock year in DB & Printout check
   unlockTaxYearInDb(sql, s1.email, s1.year)
@@ -344,6 +374,8 @@ async function runScenario2And3(browser, webOrigin, sql) {
   await pageMarkus.locator('[data-testid="arbeitstage-homeoffice"]').fill(String(s.markus.commute.homeOfficeDays))
   await pageMarkus.locator(`[data-testid="feiertage-region-${s.markus.commute.region}"]`).click()
   await pageMarkus.locator('[data-testid="arbeitstage-km"]').fill(String(s.markus.commute.oneWayKm))
+  // the commuter allowance needs the means of transport; without it the estimate rightly counts 0 €
+  await pageMarkus.locator(`[data-testid="arbeitstage-transport-${s.markus.commute.transport}"]`).click()
   await pageMarkus.locator('[data-testid="arbeitstage-arbeitsort"]').fill(s.markus.commute.workplace)
   await pageMarkus.locator('[data-testid="arbeitstage-weiter"]').click()
 
@@ -466,6 +498,8 @@ async function runScenario2And3(browser, webOrigin, sql) {
   await pageJulia.locator('[data-testid="arbeitstage-homeoffice"]').fill(String(s.julia.commute.homeOfficeDays))
   await pageJulia.locator(`[data-testid="feiertage-region-${s.julia.commute.region}"]`).click()
   await pageJulia.locator('[data-testid="arbeitstage-km"]').fill(String(s.julia.commute.oneWayKm))
+  // the commuter allowance needs the means of transport; without it the estimate rightly counts 0 €
+  await pageJulia.locator(`[data-testid="arbeitstage-transport-${s.julia.commute.transport}"]`).click()
   await pageJulia.locator('[data-testid="arbeitstage-arbeitsort"]').fill(s.julia.commute.workplace)
   await pageJulia.locator('[data-testid="arbeitstage-weiter"]').click()
 
@@ -485,7 +519,11 @@ async function runScenario2And3(browser, webOrigin, sql) {
   await pageJulia.locator('[data-testid="stammdaten-speichern"]').click()
   await ctxJulia.close()
 
-  // --- Step C: Markus prints the joint return ---
+  // --- Step C: Markus sees the joint estimate, then prints the joint return ---
+  // Julia joined in her own browser; Markus' Cockpit only learns that on a fresh load.
+  await pageMarkus.reload()
+  await selectTaxYear2025(pageMarkus)
+  await assertEstimate(pageMarkus, 'Scenario 2/3', {})
   unlockTaxYearInDb(sql, s.markus.email, s.year)
 
   await pageMarkus.locator('[data-testid="cockpit-ausdruck"]').click()
@@ -565,6 +603,8 @@ async function runScenario4(browser, webOrigin, sql) {
   await page.locator('[data-testid="arbeitstage-homeoffice"]').fill(String(s.thomas.commute.homeOfficeDays))
   await page.locator(`[data-testid="feiertage-region-${s.thomas.commute.region}"]`).click()
   await page.locator('[data-testid="arbeitstage-km"]').fill(String(s.thomas.commute.oneWayKm))
+  // the commuter allowance needs the means of transport; without it the estimate rightly counts 0 €
+  await page.locator(`[data-testid="arbeitstage-transport-${s.thomas.commute.transport}"]`).click()
   await page.locator('[data-testid="arbeitstage-arbeitsort"]').fill(s.thomas.commute.workplace)
   await page.locator('[data-testid="arbeitstage-weiter"]').click()
 
@@ -618,6 +658,8 @@ async function runScenario4(browser, webOrigin, sql) {
   await page.locator('[data-testid="arbeitstage-homeoffice"]').fill(String(s.sabine.commute.homeOfficeDays))
   await page.locator(`[data-testid="feiertage-region-${s.sabine.commute.region}"]`).click()
   await page.locator('[data-testid="arbeitstage-km"]').fill(String(s.sabine.commute.oneWayKm))
+  // the commuter allowance needs the means of transport; without it the estimate rightly counts 0 €
+  await page.locator(`[data-testid="arbeitstage-transport-${s.sabine.commute.transport}"]`).click()
   await page.locator('[data-testid="arbeitstage-arbeitsort"]').fill(s.sabine.commute.workplace)
   await page.locator('[data-testid="arbeitstage-weiter"]').click()
 
@@ -666,9 +708,8 @@ async function runScenario4(browser, webOrigin, sql) {
   await page.locator('[data-testid="vermietung-weiter"]').click()
 
   // 11. Check Cockpit estimate
-  await page.locator('[data-testid="cockpit-erstattung"]').waitFor({ state: 'visible', timeout: 10_000 })
-  const estimateText = await page.locator('[data-testid="cockpit-erstattung"]').innerText()
-  console.log(`[Scenario 4] Cockpit estimate text: "${estimateText}"`)
+  // No independent ESt reference for this couple yet: the Cockpit must at least give a determined amount
+  await assertEstimate(page, 'Scenario 4', {})
 
   // 12. Unlock year & Printout check
   unlockTaxYearInDb(sql, s.email, s.year)
