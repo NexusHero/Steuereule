@@ -42,6 +42,9 @@ export type SpecialExpenseQuestionId =
 
 export type SingleParentQuestionId = 'ae-weitere-person' | 'ae-haushaltsgemeinschaft'
 
+/** Asked where the advice lives (the Eule tab), not in the Minimal-Gate — value first (ADR-0045). */
+export type ProfessionQuestionId = 'beruf'
+
 export type SegmentChQuestionId = 'ch-wohnsitz' | 'ch-nichtrueckkehrtage'
 
 export type QuestionId = MinimalGateQuestionId
@@ -62,6 +65,7 @@ export type EntryQuestionId =
   | SpecialExpenseQuestionId
   | SegmentChQuestionId
   | SingleParentQuestionId
+  | ProfessionQuestionId
 export type EntryGateId = MinimalGateGateId | SegmentTwoGateId
 
 export type EntryStepId = EntryQuestionId | EntryGateId
@@ -74,6 +78,24 @@ export type EntryStep =
 export type Answers = Partial<Record<EntryStepId, string>>
 
 export const JOB_VALUES = ['Angestellt', 'Selbstständig', 'Beides', 'Rente'] as const
+
+/**
+ * The occupation group behind the job — asked in the Eule tab, so the owl can give
+ * tips that fit the work (an IT pro's certificates, a nurse's work clothes). Coarse groups only:
+ * no employer, no job title — nothing that identifies a person.
+ */
+export const PROFESSION_VALUES = [
+  'IT & Software',
+  'Pflege & Gesundheit',
+  'Lehrkraft & Erziehung',
+  'Handwerk & Technik',
+  'Büro & Verwaltung',
+  'Vertrieb & Außendienst',
+  'Ausbildung oder Studium',
+  'Etwas anderes',
+] as const
+
+export type Profession = (typeof PROFESSION_VALUES)[number]
 
 export const FOREIGN_VALUES = ['Ja, in die Schweiz', 'In ein anderes Land', 'Nein'] as const
 
@@ -138,6 +160,7 @@ export const QUESTIONS: Readonly<Record<EntryStepId, QuestionDeclaration>> = {
     },
     defaultFollowUp: ['gewerbe'],
   },
+  beruf: { id: 'beruf', kind: 'question', form: { kind: 'enum', values: PROFESSION_VALUES } },
   ausland: {
     id: 'ausland',
     kind: 'question',
@@ -249,7 +272,15 @@ export const QUESTIONS: Readonly<Record<EntryStepId, QuestionDeclaration>> = {
   'ch-nichtrueckkehrtage': { id: 'ch-nichtrueckkehrtage', kind: 'question', form: { kind: 'integer', min: 0, max: 365 } },
 }
 
-export type EntryId = 'minimal-gate' | 'segment-2' | 'lebenslagen' | 'einkuenfte' | 'sonderausgaben' | 'segment-ch' | 'alleinerziehend'
+export type EntryId =
+  | 'minimal-gate'
+  | 'segment-2'
+  | 'lebenslagen'
+  | 'einkuenfte'
+  | 'sonderausgaben'
+  | 'segment-ch'
+  | 'alleinerziehend'
+  | 'berufsprofil'
 
 export interface CatalogueEntry {
   readonly id: EntryId
@@ -271,6 +302,8 @@ export const ENTRIES: Readonly<Record<EntryId, CatalogueEntry>> = {
   },
   'segment-ch': { id: 'segment-ch', steps: ['ch-wohnsitz', 'ch-nichtrueckkehrtage'] },
   alleinerziehend: { id: 'alleinerziehend', steps: ['ae-weitere-person', 'ae-haushaltsgemeinschaft'] },
+  /** The occupation group for the owl's profession tips — one question, asked in the Eule tab. */
+  berufsprofil: { id: 'berufsprofil', steps: ['beruf'] },
 }
 
 function targetId(target: FollowUpTarget): EntryStepId {

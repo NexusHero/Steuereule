@@ -5,6 +5,7 @@ import {
   LEGAL_STATUS_DATE,
   type OwlInputFacts,
 } from './owl-mode.js'
+import { PROFESSION_VALUES } from './interview.js'
 
 describe('eulen-modus', () => {
   it('triggers musterluecke for a Fortbildung, without inventing an amount', () => {
@@ -102,5 +103,39 @@ describe('eulen-modus', () => {
       expect(homeOfficeDaysFromInterview({})).toBeNull()
       expect(homeOfficeDaysFromInterview({ homeoffice: '3' })).toBeNull()
     })
+  })
+})
+
+describe('generateOwlCards — profession tips (Berufsprofil)', () => {
+  it('gives an IT pro the training and hardware tips, as questions without a figure', () => {
+    const cards = generateOwlCards({ taxYear: 2026, profession: 'IT & Software' })
+    const ids = cards.map((c) => c.id)
+    expect(ids).toContain('eule-beruf-fortbildung-2026')
+    expect(ids).toContain('eule-beruf-it-hardware-2026')
+    for (const card of cards.filter((c) => c.id.startsWith('eule-beruf-'))) {
+      expect(card.amountEur).toBeNull()
+      expect(card.category).toBe('abruf_frage')
+      expect(card.sourceUrl).toContain('gesetze-im-internet.de/estg/__9.html')
+    }
+  })
+
+  it('drops the training tip when the interview already has training costs', () => {
+    const cards = generateOwlCards({ taxYear: 2026, profession: 'IT & Software', hasTraining: true })
+    expect(cards.map((c) => c.id)).not.toContain('eule-beruf-fortbildung-2026')
+    expect(cards.map((c) => c.id)).toContain('eule-beruf-it-hardware-2026')
+  })
+
+  it('gives every occupation group at least one tip, and none without a profession', () => {
+    for (const profession of PROFESSION_VALUES) {
+      expect(generateOwlCards({ taxYear: 2026, profession }).length).toBeGreaterThan(0)
+    }
+    expect(generateOwlCards({ taxYear: 2026 })).toEqual([])
+  })
+
+  it('keeps a dismissed profession tip dismissed', () => {
+    const [first] = generateOwlCards({ taxYear: 2026, profession: 'Vertrieb & Außendienst' })
+    expect(first).toBeDefined()
+    const again = generateOwlCards({ taxYear: 2026, profession: 'Vertrieb & Außendienst', dismissedFingerprints: [first!.fingerprint] })
+    expect(again).toEqual([])
   })
 })

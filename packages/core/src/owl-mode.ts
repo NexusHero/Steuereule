@@ -1,9 +1,19 @@
 import { createHash } from 'node:crypto'
-import type { HOME_OFFICE_VALUES } from './interview'
+import type { HOME_OFFICE_VALUES, Profession } from './interview'
+import { professionTipsFor } from './profession-tips'
 
 export type OwlTriggerKind = 'musterluecke' | 'vorjahresvergleich' | 'rechtsaenderung' | 'lebenslage_hinweis'
 export type OwlCardCategory = 'cockpit_proaktiv' | 'abruf_frage' | 'archiv_einspruch'
-export type OwlSourceId = 'estg-4-5-6c' | 'estg-9-1-4a' | 'estg-10b' | 'estg-10-1-5' | 'ao-355'
+export type OwlSourceId =
+  | 'estg-4-5-6c'
+  | 'estg-9-1'
+  | 'estg-9-1-4a'
+  | 'estg-9-1-6'
+  | 'estg-9-4a'
+  | 'estg-9-6'
+  | 'estg-10b'
+  | 'estg-10-1-5'
+  | 'ao-355'
 
 export interface OwlRecommendationPath {
   readonly name: string
@@ -41,6 +51,8 @@ export interface OwlArchiveYear {
 export interface OwlInputFacts {
   readonly taxYear: number
   readonly hasTraining?: boolean
+  /** The occupation group from the interview (`beruf`) — drives the profession tips. */
+  readonly profession?: Profession | undefined
   readonly homeOfficeDays?: number | null
   readonly lastYearFacts?: { readonly donationsEur?: number | null } | null
   readonly childrenPerInterview?: boolean
@@ -101,6 +113,26 @@ export function generateOwlCards(facts: OwlInputFacts): readonly OwlCard[] {
         sourceUrl: 'https://www.gesetze-im-internet.de/estg/__9.html',
       })
     }
+  }
+
+  // Tips that fit the user's work — the owl advises from the job, not only from gaps in the data.
+  for (const tip of professionTipsFor(facts.profession, facts.hasTraining ?? false)) {
+    const fp = calculateOwlCardFingerprint('lebenslage_hinweis', `beruf_${tip.key}_${facts.taxYear}`)
+    if (dismissed.has(fp)) continue
+    cards.push({
+      id: `eule-beruf-${tip.key}-${facts.taxYear}`,
+      fingerprint: fp,
+      trigger: 'lebenslage_hinweis',
+      category: 'abruf_frage',
+      title: tip.title,
+      message: tip.message,
+      reason: tip.reason,
+      amountEur: null,
+      legalStatusDate: LEGAL_STATUS_DATE,
+      sourceId: tip.sourceId,
+      sourceTranslated: tip.sourceTranslated,
+      sourceUrl: tip.sourceUrl,
+    })
   }
 
   if (
