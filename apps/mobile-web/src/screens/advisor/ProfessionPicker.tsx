@@ -34,6 +34,7 @@ export function ProfessionPicker({ profession, onChoose, saving = false }: Profe
   const styles = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
   const [editing, setEditing] = useState(profession === null)
+  const [failed, setFailed] = useState(false)
 
   if (profession !== null && !editing) {
     return (
@@ -64,8 +65,14 @@ export function ProfessionPicker({ profession, onChoose, saving = false }: Profe
             onPress={() => {
               if (saving) return
               void (async () => {
-                await onChoose(value)
-                setEditing(false)
+                setFailed(false)
+                try {
+                  await onChoose(value)
+                  setEditing(false)
+                } catch {
+                  // never a silent no-op: the choice was not stored, so say so and keep the picker open
+                  setFailed(true)
+                }
               })()
             }}
             testID={`beruf-${value}`}
@@ -74,6 +81,11 @@ export function ProfessionPicker({ profession, onChoose, saving = false }: Profe
           </Chip>
         ))}
       </View>
+      {failed ? (
+        <Text style={styles.error} role="alert" testID="beruf-error">
+          {tr('eule.beruf.error', 'Das hat nicht geklappt — dein Beruf ist noch nicht gespeichert. Versuch es noch einmal.')}
+        </Text>
+      ) : null}
     </Card>
   )
 }
@@ -93,5 +105,6 @@ function makeStyles(t: UiTheme) {
   const summaryRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: t.space.s3, marginBottom: t.space.s4 }
   const summaryText: TextStyle = { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte2, flexShrink: 1 }
   const change: TextStyle = { fontFamily: t.font.text, fontSize: t.size.s, fontWeight: t.weight.fett, color: t.color.funkeTinte }
-  return { card, title, mark, help, chips, summaryRow, summaryText, change }
+  const error: TextStyle = { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.fehler, marginTop: t.space.s3 }
+  return { card, title, mark, help, chips, summaryRow, summaryText, change, error }
 }

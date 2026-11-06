@@ -110,7 +110,7 @@ function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CURRENT_T
       profession={interviewAnswers === undefined ? undefined : professionFrom(interviewAnswers['beruf'])}
       onChooseProfession={async (profession) => {
         const response = await postAnswer.mutateAsync({ jahr: taxYear, data: { questionId: 'beruf', value: profession } })
-        if (response.status !== 200) return
+        if (response.status !== 200) throw new Error(`profession not stored (HTTP ${response.status})`)
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: getInterviewControllerGetInterviewQueryKey(taxYear) }),
           invalidate(),

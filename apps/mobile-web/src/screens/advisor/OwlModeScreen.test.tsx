@@ -123,6 +123,14 @@ describe('EulenModusScreen', () => {
       expect(screen.getByTestId('beruf-picker')).toBeDefined()
     })
 
+    it('says so when the choice could not be stored, and keeps the picker open', async () => {
+      const onChoose = vi.fn().mockRejectedValue(new Error('HTTP 500'))
+      renderScreen({ profession: null, onChooseProfession: onChoose })
+      fireEvent.click(screen.getByText('IT & Software'))
+      expect(await screen.findByTestId('beruf-error')).toBeDefined()
+      expect(screen.getByTestId('beruf-picker')).toBeDefined()
+    })
+
     it('shows no picker while the interview has not loaded', () => {
       renderScreen({ onChooseProfession: vi.fn() })
       expect(screen.queryByTestId('beruf-picker')).toBeNull()

@@ -18,11 +18,18 @@ export interface ProfessionTip {
 
 const ESTG_9_URL = 'https://www.gesetze-im-internet.de/estg/__9.html'
 
+/**
+ * Werbungskosten only change the tax once they exceed the Arbeitnehmer-Pauschbetrag (§ 9a Satz 1
+ * Nr. 1 Buchst. a EStG) — the owl says so instead of promising money back for a single purchase.
+ */
+export const EMPLOYEE_LUMP_SUM_NOTE = 'Das wirkt sich erst aus, wenn deine Werbungskosten zusammen über dem Arbeitnehmer-Pauschbetrag von 1.230 € liegen.'
+const counted = (reason: string) => `${reason} ${EMPLOYEE_LUMP_SUM_NOTE}`
+
 const TRAINING: ProfessionTip = {
   key: 'fortbildung',
   title: 'Kurse und Zertifikate absetzen',
-  message: 'Hast du dieses Jahr einen Kurs, eine Zertifizierung oder eine Konferenz für deinen Job bezahlt? Das holst du dir über die Steuer teilweise zurück.',
-  reason: 'weil Fortbildungskosten für den ausgeübten Beruf Werbungskosten sind — Kursgebühr, Prüfung, Fachbücher und die Fahrt dorthin.',
+  message: 'Hast du dieses Jahr einen Kurs, eine Zertifizierung oder eine Konferenz für deinen Job bezahlt? Das kann deine Steuer senken.',
+  reason: counted('weil Fortbildungskosten für den ausgeübten Beruf Werbungskosten sind — Kursgebühr, Prüfung, Fachbücher und die Fahrt dorthin.'),
   sourceId: 'estg-9-1',
   sourceTranslated: 'Werbungskosten (§ 9 Abs. 1 Satz 1 EStG).',
   sourceUrl: ESTG_9_URL,
@@ -30,7 +37,7 @@ const TRAINING: ProfessionTip = {
 }
 
 const WORK_EQUIPMENT_UP_TO_800: Omit<ProfessionTip, 'key' | 'title' | 'message'> = {
-  reason: 'weil Arbeitsmittel bis 800 € netto (952 € mit Umsatzsteuer) im Jahr der Anschaffung voll absetzbar sind; teurere werden über die Nutzungsdauer verteilt.',
+  reason: counted('weil Arbeitsmittel bis 800 € netto (952 € mit Umsatzsteuer) im Jahr der Anschaffung voll absetzbar sind; teurere werden über die Nutzungsdauer verteilt.'),
   sourceId: 'estg-9-1-6',
   sourceTranslated: 'Arbeitsmittel (§ 9 Abs. 1 Satz 3 Nr. 6 und 7 EStG).',
   sourceUrl: ESTG_9_URL,
@@ -47,7 +54,7 @@ export const PROFESSION_TIPS: Readonly<Record<Profession, readonly ProfessionTip
       key: 'it-hardware',
       title: 'Laptop, Monitor, Software',
       message: 'Hast du dir für die Arbeit Hardware oder Software gekauft? Computer und Software setzt du im Jahr des Kaufs komplett ab — egal, was sie gekostet haben.',
-      reason: 'weil die Finanzverwaltung für Computerhardware und Software eine Nutzungsdauer von einem Jahr ansetzt (BMF-Schreiben vom 22.02.2022); bei privater Mitnutzung zählt der berufliche Anteil.',
+      reason: counted('weil die Finanzverwaltung für Computerhardware und Software eine Nutzungsdauer von einem Jahr ansetzt (BMF-Schreiben vom 22.02.2022); bei privater Mitnutzung zählt der berufliche Anteil.'),
       sourceId: 'estg-9-1-6',
       sourceTranslated: 'Arbeitsmittel (§ 9 Abs. 1 Satz 3 Nr. 6 EStG).',
       sourceUrl: ESTG_9_URL,
@@ -58,7 +65,7 @@ export const PROFESSION_TIPS: Readonly<Record<Profession, readonly ProfessionTip
       key: 'berufskleidung',
       title: 'Dienstkleidung und Reinigung',
       message: 'Kaufst und wäschst du deine Dienstkleidung selbst? Kittel, Kasack und Arbeitsschuhe sind absetzbar — die Reinigung auch.',
-      reason: 'weil typische Berufskleidung ein Arbeitsmittel ist; Alltagskleidung zählt nicht, auch wenn du sie nur bei der Arbeit trägst.',
+      reason: counted('weil typische Berufskleidung ein Arbeitsmittel ist; Alltagskleidung zählt nicht, auch wenn du sie nur bei der Arbeit trägst.'),
       sourceId: 'estg-9-1-6',
       sourceTranslated: 'Typische Berufskleidung als Arbeitsmittel (§ 9 Abs. 1 Satz 3 Nr. 6 EStG).',
       sourceUrl: ESTG_9_URL,
@@ -78,7 +85,7 @@ export const PROFESSION_TIPS: Readonly<Record<Profession, readonly ProfessionTip
     {
       key: 'werkzeug',
       title: 'Werkzeug und Arbeitskleidung',
-      message: 'Hast du eigenes Werkzeug, Sicherheitsschuhe oder Arbeitskleidung gekauft? Das holst du dir zurück.',
+      message: 'Hast du eigenes Werkzeug, Sicherheitsschuhe oder Arbeitskleidung gekauft? Das kann deine Steuer senken.',
       ...WORK_EQUIPMENT_UP_TO_800,
     },
     TRAINING,
@@ -97,7 +104,7 @@ export const PROFESSION_TIPS: Readonly<Record<Profession, readonly ProfessionTip
       key: 'verpflegung',
       title: 'Verpflegung auf Dienstreisen',
       message: 'Bist du beruflich unterwegs und mehr als 8 Stunden von zu Hause und deinem Büro weg? Dann gibt es eine Pauschale fürs Essen — auch ohne Beleg.',
-      reason: 'weil bei beruflicher Auswärtstätigkeit Verpflegungspauschalen gelten: 14 € ab mehr als 8 Stunden Abwesenheit, 28 € für volle Tage — abzüglich dessen, was der Arbeitgeber steuerfrei erstattet.',
+      reason: counted('weil bei beruflicher Auswärtstätigkeit Verpflegungspauschalen gelten: 14 € ab mehr als 8 Stunden Abwesenheit, 28 € für volle Tage — abzüglich dessen, was der Arbeitgeber steuerfrei erstattet.'),
       sourceId: 'estg-9-4a',
       sourceTranslated: 'Verpflegungsmehraufwendungen (§ 9 Abs. 4a EStG).',
       sourceUrl: ESTG_9_URL,
