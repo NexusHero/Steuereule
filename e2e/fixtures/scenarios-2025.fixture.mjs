@@ -57,10 +57,10 @@ export const SCENARIO_1_LENA = {
     sickDays: 4,
     homeOfficeDays: 0,
     region: 'BW',
-    // 261 possible workdays - (30 vacation + 4 sick) = 227 commute days
-    commuteDays: 227,
-    // Hand calculation: 227 days * (20 km * 0.30 € + 50 km * 0.38 €) = 227 * 25.00 € = 5.675 €
-    allowance: 5675,
+    // 261 possible workdays - 11 public holidays (BW) - (30 vacation + 4 sick) = 216 commute days
+    commuteDays: 216,
+    // Hand calculation: 216 days * (20 km * 0.30 € + 50 km * 0.38 €) = 216 * 25.00 € = 5.400 €
+    allowance: 5400,
     workplace: '76131 Karlsruhe, Durlacher Allee 50',
   },
   // BMF tax calculator 2025 calculation details:
@@ -90,7 +90,7 @@ export const SCENARIO_1_LENA = {
     'est1a.idnr': '31234567890',
     'est1a.steuernummer': '0612345678',
     'anlN.kz110': '94999',
-    'anlN.kz110Tage': '227',
+    'anlN.kz110Tage': '216',
     'anlN.kz111': '70',
     'anlSo.spenden': '300',
   },
