@@ -128,4 +128,30 @@ describe('KinderService', () => {
     expect(res.childBenefitSum).toBe(6120)
     expect(res.totalAllowance).toBe(19200)
   })
+
+  it('leaves Swiss family allowance open when exchange rate is missing (ADR-032, no 1.0 fallback)', async () => {
+    const repo = new FakeChildRepository()
+    const audit = new FakeAuditService()
+    const chRepo = new FakeChSalaryCertificateRepository()
+
+    // Swiss salary statement has family allowance, but NO exchange rate is set
+    await chRepo.setNGre('user-mb', 2025, {
+      arbeitgeberName: 'Rheinpharma AG',
+      familienzulagenChf: '5160',
+    } as any)
+
+    const service = new ChildrenService(repo, audit as any, chRepo)
+
+    await service.create('user-mb', 2025, { firstName: 'Mia', lastName: 'Brenner', geburtsdatum: '2016-03-14' })
+    const res = await service.create('user-mb', 2025, { firstName: 'Noah', lastName: 'Brenner', geburtsdatum: '2019-09-02' })
+
+    expect(res.count).toBe(2)
+    // Without an exchange rate, CHF is never converted to EUR with a guessed 1.0 rate
+    expect(res.kinder[0]!.swissFamilyAllowanceEur).toBeNull()
+    expect(res.kinder[0]!.differentialChildBenefitEur).toBeNull()
+    expect(res.kinder[1]!.swissFamilyAllowanceEur).toBeNull()
+    expect(res.kinder[1]!.differentialChildBenefitEur).toBeNull()
+    expect(res.swissFamilyAllowanceSum).toBe(0)
+    expect(res.differentialChildBenefitSum).toBe(0)
+  })
 })

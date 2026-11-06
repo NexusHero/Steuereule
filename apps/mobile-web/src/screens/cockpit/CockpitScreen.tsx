@@ -16,6 +16,7 @@ import {
   type CockpitStatusDto,
   type CockpitSummaryDto,
 } from '@steuereule/api-client'
+import { OwlAdvisorCard } from '../advisor/OwlAdvisorCard'
 import { APP_NS } from '../../i18n/resources'
 import { SELECTABLE_TAX_YEARS, CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
@@ -253,6 +254,7 @@ function CockpitEmpty({ year, onYearChange, refresh, isRefreshing, next, masterD
             {tr('cockpit.answerQuestions')}
           </Button>
         )}
+        {onOpenOwlMode ? <View style={styles.berater}><OwlAdvisorCard onOpen={onOpenOwlMode} testID="cockpit-empty-eulen-modus" /></View> : null}
         {masterData ? (
           <Button variant="ghost" onPress={masterData.onPress} style={styles.secondaryCta} testID="cockpit-stammdaten">
             {masterData.label}
@@ -270,11 +272,6 @@ function CockpitEmpty({ year, onYearChange, refresh, isRefreshing, next, masterD
         {onOpenKinder ? (
           <Button variant="ghost" onPress={onOpenKinder} style={styles.secondaryCta} testID="cockpit-empty-kinder">
             {tr('cockpit.checkKinder')}
-          </Button>
-        ) : null}
-        {onOpenOwlMode ? (
-          <Button variant="ghost" onPress={onOpenOwlMode} style={styles.secondaryCta} testID="cockpit-empty-eulen-modus">
-            {tr('cockpit.eulenModus')}
           </Button>
         ) : null}
       </View>
@@ -375,6 +372,7 @@ function CockpitLoaded({ summary, year, onYearChange, confirmation, onOpenConfir
           {tr('cockpit.answerQuestions')}
         </Button>
       ) : null}
+      {onOpenOwlMode ? <View style={styles.berater}><OwlAdvisorCard onOpen={onOpenOwlMode} /></View> : null}
       {masterData ? (
         <Button variant="ghost" onPress={masterData.onPress} style={styles.secondaryCta} testID="cockpit-stammdaten">
           {masterData.label}
@@ -412,16 +410,6 @@ function CockpitLoaded({ summary, year, onYearChange, confirmation, onOpenConfir
           testID="cockpit-kinder"
         >
           {tr('cockpit.checkKinder')}
-        </Button>
-      ) : null}
-      {onOpenOwlMode ? (
-        <Button
-          variant="ghost"
-          onPress={onOpenOwlMode}
-          style={styles.secondaryCta}
-          testID="cockpit-eulen-modus"
-        >
-          {tr('cockpit.eulenModus')}
         </Button>
       ) : null}
       {onOpenPrintout ? (
@@ -541,6 +529,8 @@ function makeStyles(t: UiTheme) {
   }
   const cta: ViewStyle = { marginTop: t.space.s4 }
   const secondaryCta: ViewStyle = { marginTop: t.space.s3 }
+  // The advisor card sits right under the next step — advice up front, not at the bottom.
+  const berater: ViewStyle = { marginTop: t.space.s4, width: '100%' }
   const emptyBlock: ViewStyle = { alignItems: 'center', paddingVertical: t.space.s6 }
   const heroLabel: TextStyle = {
     fontFamily: t.font.mono,
@@ -594,5 +584,5 @@ function makeStyles(t: UiTheme) {
     marginBottom: t.space.s2,
   }
 
-  return { screen, wideScreen, appbar, appbarTitleReihe: appbarTitleRow, appbarTitle, jahrReihe: yearRow, uebernahmeZeile: takeoverRow, uebernahmeZeileText: takeoverRowText, heading, help, cta, secondaryCta, emptyBlock, heroLabel, heroValue, openItems, offenePosten: openItemCount, refundLater, gatedHeading, gatedBody }
+  return { screen, wideScreen, appbar, appbarTitleReihe: appbarTitleRow, appbarTitle, jahrReihe: yearRow, uebernahmeZeile: takeoverRow, uebernahmeZeileText: takeoverRowText, heading, help, cta, secondaryCta, berater, emptyBlock, heroLabel, heroValue, openItems, offenePosten: openItemCount, refundLater, gatedHeading, gatedBody }
 }

@@ -1,6 +1,7 @@
 import { View, Text, type ViewStyle, type TextStyle, type StyleProp } from 'react-native'
 import { type ReactNode } from 'react'
 import { useTheme } from '../theme/useTheme'
+import { OwlGlyph } from './OwlGlyph'
 
 export interface AiChipProps {
   readonly style?: StyleProp<ViewStyle>
@@ -23,24 +24,13 @@ export function AiChip({ style, children, testID }: AiChipProps) {
     paddingLeft: 6,
     paddingRight: 12,
   }
-  const dot: ViewStyle = {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: t.color.ki,
-    alignItems: 'center',
-    justifyContent: 'center',
-  }
-  const dotText: TextStyle = { color: '#ffffff', fontWeight: t.weight.schwer, fontSize: 10 }
   const label: TextStyle = { color: t.color.kiTinte, fontWeight: t.weight.fett, fontSize: t.size.xs }
 
   return (
     <View testID={testID} accessibilityLabel="KI" style={[container, style]}>
-      <View style={dot}>
-        <Text style={dotText} accessible={false}>
-          B
-        </Text>
-      </View>
+      {/* The advisor owl is the AI sender mark (was the round "B" dot) — in ki-tinte, so the
+          marking never hangs on colour alone. */}
+      <OwlGlyph ink={t.color.kiTinte} ground={t.color.kiWeich} />
       {typeof children === 'string' ? <Text style={label}>{children}</Text> : children}
     </View>
   )

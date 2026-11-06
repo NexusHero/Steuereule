@@ -6,7 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { NavigationContainer, type LinkingOptions } from '@react-navigation/native'
 import { createNativeStackNavigator, type NativeStackScreenProps } from '@react-navigation/native-stack'
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context'
-import { TabBar, TAB_ICON_PATHS, tabBarClearance, ThemeProvider, useTheme, type TabItem } from '@steuereule/ui'
+import { OwlGlyph, TabBar, TAB_ICON_PATHS, tabBarClearance, ThemeProvider, useTheme, type TabItem } from '@steuereule/ui'
 import { configureApiClient } from '@steuereule/api-client'
 import { createAppI18n } from './src/i18n/app-i18n'
 import { APP_NS } from './src/i18n/resources'
@@ -93,7 +93,8 @@ const linking: LinkingOptions<RootStackParamList> = {
   },
 }
 
-type Tab = 'cockpit' | 'belege' | 'profil'
+// The advisor owl is a tab of its own, second only to the Cockpit — advice up front.
+type Tab = 'cockpit' | 'eule' | 'belege' | 'profil'
 
 export default function App() {
   return (
@@ -307,7 +308,6 @@ function TabbedShell({ tab, onTabChange, onSignedOut, startInInterview = false, 
     | 'kapital'
     | 'vermietung'
     | 'kinder'
-    | 'eulen-modus'
     | 'stammdaten'
     | 'partner'
   >(startInInterview ? 'interview' : 'main')
@@ -349,6 +349,11 @@ function TabbedShell({ tab, onTabChange, onSignedOut, startInInterview = false, 
       icon: <TabIcon path={TAB_ICON_PATHS.cockpit} color={iconColor('cockpit')} />,
     },
     {
+      id: 'eule',
+      label: tr('tabs.eule'),
+      icon: <OwlGlyph size={22} ink={iconColor('eule')} ground={tab === 'eule' ? t.color.funke : t.color.karte} testID="tab-icon-eule" />,
+    },
+    {
       id: 'belege',
       label: tr('tabs.belege'),
       icon: <TabIcon path={TAB_ICON_PATHS.belege} color={iconColor('belege')} />,
@@ -379,7 +384,7 @@ function TabbedShell({ tab, onTabChange, onSignedOut, startInInterview = false, 
             onOpenCapital={() => setCockpitView('kapital')}
             onOpenRental={() => setCockpitView('vermietung')}
             onOpenKinder={() => setCockpitView('kinder')}
-            onOpenOwlMode={() => setCockpitView('eulen-modus')}
+            onOpenOwlMode={() => changeTab('eule')}
             onOpenMasterData={() => setCockpitView('stammdaten')}
             onContinuePath={(path) => {
               setFunnelPath(path)
@@ -465,9 +470,7 @@ function TabbedShell({ tab, onTabChange, onSignedOut, startInInterview = false, 
         {tab === 'cockpit' && cockpitView === 'kinder' ? (
           <ChildrenScreen taxYear={taxYear} onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
         ) : null}
-        {tab === 'cockpit' && cockpitView === 'eulen-modus' ? (
-          <OwlModeScreen taxYear={taxYear} onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
-        ) : null}
+        {tab === 'eule' ? <OwlModeScreen taxYear={taxYear} onDone={() => changeTab('cockpit')} /> : null}
         {tab === 'belege' ? <ReceiptsScreen /> : null}
         {tab === 'profil' && profileView === 'main' ? (
           <ProfileScreen
