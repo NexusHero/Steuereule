@@ -120,7 +120,7 @@ export function RentalScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_
 
       <StatusNotice response={response} />
 
-      <Button onPress={onDone} style={styles.cta}>
+      <Button onPress={onDone} style={styles.cta} testID="vermietung-weiter">
         {tr('vermietung.weiter')}
       </Button>
     </ScrollView>
@@ -165,6 +165,7 @@ function PropertyCard({
           key={field}
           label={tr(`vermietung.felder.${field}`)}
           state={property[field]}
+          testID={`vermietung-${index}-${field}`}
           onRecorded={(value) => onSend(field, { kind: 'erfasst', value })}
           onUnclear={() => onSend(field, { kind: 'unklar' })}
         />
@@ -179,6 +180,7 @@ function PropertyCard({
             value={[property.strasse, property.hausnummer].filter(Boolean).join(' ')}
             placeholder="Musterstraße 12"
             accessibilityLabel="Straße und Hausnummer"
+            testID={`vermietung-${index}-adresse`}
             onChange={(val) => {
               const parts = val.split(' ')
               const h = parts.length > 1 ? parts.pop() : ''
@@ -196,6 +198,7 @@ function PropertyCard({
                 placeholder="10115"
                 type="numeric"
                 accessibilityLabel="Postleitzahl"
+                testID={`vermietung-${index}-plz`}
                 onChange={(plz) => onSendAddress?.({ plz })}
               />
             </Feld>
@@ -206,6 +209,7 @@ function PropertyCard({
                 value={property.city ?? ''}
                 placeholder="Berlin"
                 accessibilityLabel="Ort"
+                testID={`vermietung-${index}-ort`}
                 onChange={(city) => onSendAddress?.({ city })}
               />
             </Feld>
@@ -217,6 +221,7 @@ function PropertyCard({
             placeholder="85"
             type="numeric"
             accessibilityLabel="Gesamtwohnfläche"
+            testID={`vermietung-${index}-wohnflaeche`}
             onChange={(livingArea) => onSendAddress?.({ livingArea })}
           />
         </Feld>
@@ -234,6 +239,7 @@ function PropertyCard({
               placeholder={example}
               type="numeric"
               accessibilityLabel={label}
+              testID={`vermietung-${index}-${field}`}
               onChange={(value) => {
                 if (/^\d+$/.test(value.trim())) onSendAddress?.({ [field]: value.trim() })
               }}
@@ -245,14 +251,14 @@ function PropertyCard({
             <Chip
               active={property.depreciationAsLastYear === true}
               onPress={() => onSendAddress?.({ depreciationAsLastYear: true })}
-              testID="vermietung-afa-wie-vorjahr-ja"
+              testID={index === 0 ? 'vermietung-afa-wie-vorjahr-ja' : `vermietung-${index}-afa-wie-vorjahr-ja`}
             >
               Ja
             </Chip>
             <Chip
               active={property.depreciationAsLastYear === false}
               onPress={() => onSendAddress?.({ depreciationAsLastYear: false })}
-              testID="vermietung-afa-wie-vorjahr-nein"
+              testID={index === 0 ? 'vermietung-afa-wie-vorjahr-nein' : `vermietung-${index}-afa-wie-vorjahr-nein`}
             >
               Nein, im Jahr gekauft oder geändert
             </Chip>
@@ -268,11 +274,13 @@ function PropertyCard({
 function RentalFieldEditor({
   label,
   state,
+  testID,
   onRecorded,
   onUnclear,
 }: {
   readonly label: string
   readonly state: RentalFieldDto
+  readonly testID?: string
   readonly onRecorded: (value: number) => void
   readonly onUnclear: () => void
 }) {
@@ -300,6 +308,7 @@ function RentalFieldEditor({
           onSubmit={commit}
           onBlur={commit}
           accessibilityLabel={`${label} (${tr('vermietung.feld.placeholder')})`}
+          {...(testID ? { testID } : {})}
         />
         <Pressable accessibilityRole="button" onPress={onUnclear} style={s.unklarButton}>
           <Text style={state.kind === 'unklar' ? s.unklarActive : s.unklarLabel}>{tr('vermietung.feld.unklar')}</Text>

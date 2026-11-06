@@ -90,7 +90,7 @@ export function MasterDataScreen({ onBack, taxYear = CURRENT_TAX_YEAR, onRecordP
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
       <View style={styles.appbar}>
-        <Pressable accessibilityRole="button" accessibilityLabel={t('stammdaten.back')} onPress={onBack} style={styles.backButton}>
+        <Pressable accessibilityRole="button" accessibilityLabel={t('stammdaten.back')} onPress={onBack} style={styles.backButton} testID="stammdaten-zurueck">
           <Text style={styles.backGlyph}>←</Text>
         </Pressable>
         <Text style={styles.appbarTitle}>{t('stammdaten.title')}</Text>
@@ -257,7 +257,7 @@ function TaxYearLinkSection({
       ) : filingType === 'zusammen' ? (
         <View>
           {current?.invitationCode ? (
-            <Text style={{ fontFamily: theme.font.mono, fontSize: theme.size.xs, color: theme.color.tinte2, marginBottom: theme.space.s2 }}>
+            <Text style={{ fontFamily: theme.font.mono, fontSize: theme.size.xs, color: theme.color.tinte2, marginBottom: theme.space.s2 }} testID="kopplung-code-anzeige">
               {invitationNotice(current.invitationCode, current.invitationCodeValidUntil ?? null)}
             </Text>
           ) : null}

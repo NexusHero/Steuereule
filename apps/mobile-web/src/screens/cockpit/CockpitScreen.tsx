@@ -166,7 +166,7 @@ function Refund({ year }: { readonly year: number }) {
   const estimate: TaxEstimateDto | null = query.data?.status === 200 ? query.data.data : null
   return (
     <>
-      <Text style={styles.refundLater}>{refundText(estimate, tr, i18n.language)}</Text>
+      <Text style={styles.refundLater} testID="cockpit-erstattung">{refundText(estimate, tr, i18n.language)}</Text>
       {estimate?.kind === 'spanne' && estimate.churchTaxOpen ? (
         <Text style={styles.refundLater}>{tr('cockpit.erstattung.kirchensteuer')}</Text>
       ) : null}
@@ -249,7 +249,7 @@ function CockpitEmpty({ year, onYearChange, refresh, isRefreshing, next, masterD
             {next.label}
           </Button>
         ) : (
-          <Button onPress={onOpenInterview} style={styles.cta}>
+          <Button onPress={onOpenInterview} style={styles.cta} testID="cockpit-interview">
             {tr('cockpit.answerQuestions')}
           </Button>
         )}
@@ -258,13 +258,13 @@ function CockpitEmpty({ year, onYearChange, refresh, isRefreshing, next, masterD
             {masterData.label}
           </Button>
         ) : null}
-        <Button variant="ghost" onPress={onOpenAssessment} style={styles.secondaryCta}>
+        <Button variant="ghost" onPress={onOpenAssessment} style={styles.secondaryCta} testID="cockpit-bescheid">
           {tr('cockpit.checkBescheid')}
         </Button>
-        <Button variant="ghost" onPress={onOpenCapital} style={styles.secondaryCta}>
+        <Button variant="ghost" onPress={onOpenCapital} style={styles.secondaryCta} testID="cockpit-kapital">
           {tr('cockpit.checkKapital')}
         </Button>
-        <Button variant="ghost" onPress={onOpenRental} style={styles.secondaryCta}>
+        <Button variant="ghost" onPress={onOpenRental} style={styles.secondaryCta} testID="cockpit-vermietung">
           {tr('cockpit.checkVermietung')}
         </Button>
         {onOpenKinder ? (
@@ -371,7 +371,7 @@ function CockpitLoaded({ summary, year, onYearChange, confirmation, onOpenConfir
           {next.label}
         </Button>
       ) : hasOpenItems ? (
-        <Button onPress={onOpenInterview} style={styles.cta}>
+        <Button onPress={onOpenInterview} style={styles.cta} testID="cockpit-interview">
           {tr('cockpit.answerQuestions')}
         </Button>
       ) : null}
@@ -384,6 +384,7 @@ function CockpitLoaded({ summary, year, onYearChange, confirmation, onOpenConfir
         variant="ghost"
         onPress={onOpenAssessment}
         style={styles.secondaryCta}
+        testID="cockpit-bescheid"
       >
         {tr('cockpit.checkBescheid')}
       </Button>
@@ -391,6 +392,7 @@ function CockpitLoaded({ summary, year, onYearChange, confirmation, onOpenConfir
         variant="ghost"
         onPress={onOpenCapital}
         style={styles.secondaryCta}
+        testID="cockpit-kapital"
       >
         {tr('cockpit.checkKapital')}
       </Button>
@@ -398,6 +400,7 @@ function CockpitLoaded({ summary, year, onYearChange, confirmation, onOpenConfir
         variant="ghost"
         onPress={onOpenRental}
         style={styles.secondaryCta}
+        testID="cockpit-vermietung"
       >
         {tr('cockpit.checkVermietung')}
       </Button>

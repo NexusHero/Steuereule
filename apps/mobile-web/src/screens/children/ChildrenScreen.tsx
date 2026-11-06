@@ -403,10 +403,10 @@ function KinderScreenView({
             {edited ? tr('kinder.editTitle', 'Kind bearbeiten') : tr('kinder.addTitle', 'Kind hinzufügen')}
           </Text>
           <Feld label="Vorname">
-            <Input value={firstName} onChange={setFirstName} placeholder="z.B. Lina" accessibilityLabel="Vorname" />
+            <Input value={firstName} onChange={setFirstName} placeholder="z.B. Lina" accessibilityLabel="Vorname" testID="kind-vorname" />
           </Feld>
           <Feld label="Nachname">
-            <Input value={lastName} onChange={setLastName} placeholder="z.B. Mustermann" accessibilityLabel="Nachname" />
+            <Input value={lastName} onChange={setLastName} placeholder="z.B. Mustermann" accessibilityLabel="Nachname" testID="kind-nachname" />
           </Feld>
           <Feld label="Geburtsdatum (TT.MM.JJJJ)">
             <Input
@@ -414,6 +414,7 @@ function KinderScreenView({
               onChange={setBirthDate}
               placeholder="z.B. 12.05.2018"
               accessibilityLabel="Geburtsdatum"
+              testID="kind-geburtsdatum"
             />
           </Feld>
           <Feld label="Steuer-Identifikationsnummer">
@@ -423,6 +424,7 @@ function KinderScreenView({
               placeholder="11 Ziffern"
               type="numeric"
               accessibilityLabel="Steuer-Identifikationsnummer"
+              testID="kind-steuerid"
             />
           </Feld>
           <Feld label="Erhaltenes Kindergeld im Steuerjahr (optional in €)">
@@ -432,6 +434,7 @@ function KinderScreenView({
               placeholder="3000"
               type="numeric"
               accessibilityLabel="Kindergeld"
+              testID="kind-kindergeld"
             />
           </Feld>
           <Feld label="Schweizer Kinderzulage im Steuerjahr (in €, optional)">
@@ -441,6 +444,7 @@ function KinderScreenView({
               placeholder="z.B. 2748"
               type="numeric"
               accessibilityLabel="Schweizer Kinderzulage"
+              testID="kind-schweizer-kinderzulage"
             />
           </Feld>
           <Feld label="Kindschaftsverhältnis zu dir">
@@ -590,7 +594,7 @@ function KinderScreenView({
         </Button>
       ) : null}
 
-      <Button onPress={onDone} style={styles.cta}>
+      <Button onPress={onDone} style={styles.cta} testID="kinder-weiter">
         {tr('kinder.done', 'Weiter')}
       </Button>
     </ScrollView>

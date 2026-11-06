@@ -150,7 +150,7 @@ export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true, 
 
       {onRegister ? (
         <View style={styles.linksRow}>
-          <Pressable accessibilityRole="link" onPress={onRegister}>
+          <Pressable accessibilityRole="link" onPress={onRegister} testID="login-register-link">
             <Text style={styles.link}>{tr('login.register')}</Text>
           </Pressable>
         </View>

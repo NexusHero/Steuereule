@@ -115,6 +115,7 @@ export function CapitalScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX
           key={field}
           label={field === 'kapitalertraege' ? tr('kapital.feld.label') : tr(`kapital.felder.${field}`)}
           state={response[field]}
+          testID={`kapital-${field}`}
           onRecorded={(value) => send(field, { kind: 'erfasst', value })}
           onUnclear={() => send(field, { kind: 'unklar' })}
         />
@@ -124,7 +125,7 @@ export function CapitalScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX
 
       <MostFavourableCheckSection taxYear={taxYear} />
 
-      <Button onPress={onDone} style={styles.cta}>
+      <Button onPress={onDone} style={styles.cta} testID="kapital-weiter">
         {tr('kapital.weiter')}
       </Button>
     </ScrollView>
@@ -149,11 +150,13 @@ function DepotNotice({ kind }: { readonly kind: KapitalResponseDto['depot']['kin
 function CapitalFieldEditor({
   label,
   state,
+  testID,
   onRecorded,
   onUnclear,
 }: {
   readonly label: string
   readonly state: KapitalFeldDto
+  readonly testID?: string
   readonly onRecorded: (value: number) => void
   readonly onUnclear: () => void
 }) {
@@ -181,6 +184,7 @@ function CapitalFieldEditor({
           onSubmit={commit}
           onBlur={commit}
           accessibilityLabel={`${label} (${tr('kapital.feld.placeholder')})`}
+          {...(testID ? { testID } : {})}
         />
         <Pressable accessibilityRole="button" onPress={onUnclear} style={s.unklarButton}>
           <Text style={state.kind === 'unklar' ? s.unklarActive : s.unklarLabel}>{tr('kapital.feld.unklar')}</Text>

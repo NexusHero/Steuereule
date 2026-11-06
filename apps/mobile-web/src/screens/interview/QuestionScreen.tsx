@@ -91,7 +91,7 @@ export function QuestionScreen({ questionId, canGoBack, onAnswer, onBack, bp, no
       <Text style={styles.help}>{tr(copy.helpKey)}</Text>
 
       {copy.options.map((opt) => (
-        <Option key={opt.value} onPress={() => onAnswer(opt.value)}>
+        <Option key={opt.value} onPress={() => onAnswer(opt.value)} testID={`interview-option-${questionId}-${opt.value}`}>
           {tr(opt.labelKey)}
         </Option>
       ))}

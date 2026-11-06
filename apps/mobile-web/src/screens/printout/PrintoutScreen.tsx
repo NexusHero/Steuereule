@@ -110,7 +110,7 @@ export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCom
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
       <View style={styles.appbar}>
-        <Pressable accessibilityRole="button" accessibilityLabel={t('ausdruck.back')} onPress={onBack} style={styles.backButton}>
+        <Pressable accessibilityRole="button" accessibilityLabel={t('ausdruck.back')} onPress={onBack} style={styles.backButton} testID="ausdruck-zurueck">
           <Text style={styles.backGlyph}>←</Text>
         </Pressable>
         <Text style={styles.appbarTitle}>{t('ausdruck.title', { jahr: year })}</Text>
@@ -132,21 +132,21 @@ export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCom
               <Text style={styles.sectionBody}>
                 {t('ausdruck.fehlendUnbestaetigt', { anlagen: unconfirmed.map((a) => t(`bestaetigung.anlagen.${a}`)).join(', ') })}
               </Text>
-              <Button variant="ghost" onPress={onConfirm}>
+              <Button variant="ghost" onPress={onConfirm} testID="ausdruck-bestaetigung-oeffnen">
                 {t('ausdruck.bestaetigungOeffnen')}
               </Button>
             </>
           ) : null}
           {personBUnconfirmed ? <Text style={styles.sectionBody}>{t('ausdruck.fehlendPersonB')}</Text> : null}
           {masterDataMissing || married ? (
-            <Button variant="ghost" onPress={onCompleteDetails}>
+            <Button variant="ghost" onPress={onCompleteDetails} testID="ausdruck-angaben-ergaenzen">
               {t('ausdruck.angabenErgaenzen')}
             </Button>
           ) : null}
           {kinder ? (
             <>
               <Text style={styles.sectionBody}>{t('ausdruck.fehlendKinder')}</Text>
-              <Button variant="ghost" onPress={onCompleteChildren}>
+              <Button variant="ghost" onPress={onCompleteChildren} testID="ausdruck-kinder-ergaenzen">
                 {t('ausdruck.kinderErgaenzen')}
               </Button>
             </>

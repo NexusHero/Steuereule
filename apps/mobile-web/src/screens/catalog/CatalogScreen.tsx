@@ -126,7 +126,7 @@ export function CatalogScreen({ entry, onDone = () => {}, onBack, taxYear = CURR
 
       {decl.form.kind === 'enum' ? (
         decl.form.values.map((value) => (
-          <Option key={value} onPress={() => answer(step, value)}>
+          <Option key={value} onPress={() => answer(step, value)} testID={`katalog-option-${step}-${value}`}>
             {tr(`katalog.options.${value}`, { defaultValue: value })}
           </Option>
         ))
@@ -158,8 +158,9 @@ function IntegerFollowUp({ step, onAnswer }: { readonly step: EntryStepId; reado
         placeholder={tr('katalog.amountPlaceholder')}
         onSubmit={submit}
         accessibilityLabel={`${tr(`katalog.questions.${step}`, { defaultValue: step })} (${tr('katalog.amountPlaceholder')})`}
+        testID={`katalog-input-${step}`}
       />
-      <Button onPress={submit} disabled={rawValue === null} style={styles.weiter}>
+      <Button onPress={submit} disabled={rawValue === null} style={styles.weiter} testID={`katalog-submit-${step}`}>
         {tr('katalog.weiter')}
       </Button>
     </View>

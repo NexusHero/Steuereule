@@ -106,7 +106,7 @@ export function PlausibilityScreen({ onBack, onDone, taxYear = CURRENT_TAX_YEAR 
       ) : null}
 
       {onDone ? (
-        <Button onPress={onDone} style={styles.doneCta}>
+        <Button onPress={onDone} style={styles.doneCta} testID="plausibilitaet-weiter">
           {tr('plausibilitaet.weiterZumVergleich')}
         </Button>
       ) : null}

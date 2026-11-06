@@ -67,7 +67,7 @@ export function RegistrationScreen({ onDone, onLogin }: RegistrationScreenProps)
 
         <EmailVerificationBanner email={stage.email} verified={verifiedForThisAccount} />
 
-        <Button onPress={onDone} style={styles.cta}>
+        <Button onPress={onDone} style={styles.cta} testID="registrierung-success-weiter">
           {tr('registrierung.success.cta')}
         </Button>
       </ScrollView>
@@ -86,7 +86,7 @@ export function RegistrationScreen({ onDone, onLogin }: RegistrationScreenProps)
       <SocialSignInSection disabled={stage.kind === 'submitting'} onSignedIn={onDone} onError={setError} />
 
       <Feld label={tr('registrierung.emailLabel')}>
-        <Input type="email" value={mail} onChange={setMail} placeholder={tr('registrierung.emailPlaceholder')} />
+        <Input type="email" value={mail} onChange={setMail} placeholder={tr('registrierung.emailPlaceholder')} testID="registrierung-email" />
       </Feld>
       <Feld label={tr('registrierung.passwordLabel')} error={errorMessage}>
         <Input
@@ -95,9 +95,10 @@ export function RegistrationScreen({ onDone, onLogin }: RegistrationScreenProps)
           onChange={setPass}
           placeholder={tr('registrierung.passwordPlaceholder')}
           onSubmit={() => void create()}
+          testID="registrierung-passwort"
         />
       </Feld>
-      <Button onPress={() => void create()} disabled={stage.kind === 'submitting'}>
+      <Button onPress={() => void create()} disabled={stage.kind === 'submitting'} testID="registrierung-submit">
         {stage.kind === 'submitting' ? (
           <View style={styles.submittingRow}>
             <ActivityIndicator size="small" color={t.color.tinte} />

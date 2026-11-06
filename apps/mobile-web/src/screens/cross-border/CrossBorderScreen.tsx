@@ -242,6 +242,7 @@ function SalaryCertificateStep({
       {rateError ? <Text style={styles.help}>{tr('grenzgaenger.lohnausweis.wechselkurs.fehlt')}</Text> : null}
       <Button
         variant="ghost"
+        testID="ch-wechselkurs-speichern"
         onPress={() => {
           const n = Number(rate.trim().replace(',', '.'))
           const valid = /^\d{4}-(0[1-9]|1[0-2])$/.test(month) && Number.isFinite(n) && n > 0
@@ -283,7 +284,7 @@ function SalaryCertificateStep({
         </Card>
       ) : null}
 
-      <Button onPress={onDone} style={styles.cta}>
+      <Button onPress={onDone} style={styles.cta} testID="ch-lohnausweis-weiter">
         {tr('grenzgaenger.lohnausweis.done')}
       </Button>
     </ScrollView>
