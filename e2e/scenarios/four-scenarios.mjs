@@ -348,10 +348,29 @@ async function runScenario2And3(browser, webOrigin, sql) {
   await pageMarkus.locator('[data-testid="ch-wechselkurs-kurs"]').fill(s.markus.crossBorder.exchangeRate)
   await pageMarkus.locator('[data-testid="ch-wechselkurs-speichern"]').click()
 
-  // N-Gre details & Krankenversicherung
-  await pageMarkus.locator('[data-testid="ch-ngre-krankentaggeldArbeitgeberProzent"]').fill(String(s.markus.crossBorder.dailySicknessEmployerPercent))
-  await pageMarkus.locator('[data-testid="ch-ngre-sonderfaelle-nein"]').click()
+  // Vorsorge & N-Gre details
   await pageMarkus.locator('[data-testid="ch-vorsorge-krankenkasseChf"]').fill(String(s.markus.crossBorder.healthCareEur))
+  await pageMarkus.locator('[data-testid="ch-vorsorge-krankenkasseChf"]').blur()
+  await pageMarkus.locator('[data-testid="ch-ngre-arbeitgeberName"]').fill('Rheinpharma AG')
+  await pageMarkus.locator('[data-testid="ch-ngre-arbeitgeberName"]').blur()
+  await pageMarkus.locator('[data-testid="ch-ngre-arbeitgeberStrasse"]').fill('Grenzacherstrasse 100')
+  await pageMarkus.locator('[data-testid="ch-ngre-arbeitgeberStrasse"]').blur()
+  await pageMarkus.locator('[data-testid="ch-ngre-arbeitgeberPlzOrt"]').fill('4058 Basel')
+  await pageMarkus.locator('[data-testid="ch-ngre-arbeitgeberPlzOrt"]').blur()
+  await pageMarkus.locator('[data-testid="ch-ngre-pkArbeitnehmerChf"]').fill(String(s.markus.crossBorder.pensionObligatoryChf))
+  await pageMarkus.locator('[data-testid="ch-ngre-pkArbeitnehmerChf"]').blur()
+  await pageMarkus.locator('[data-testid="ch-ngre-pkArbeitgeberChf"]').fill(String(s.markus.crossBorder.pensionEmployerChf))
+  await pageMarkus.locator('[data-testid="ch-ngre-pkArbeitgeberChf"]').blur()
+  await pageMarkus.locator('[data-testid="ch-ngre-familienzulagenChf"]').fill(String(s.markus.crossBorder.familyAllowancesChf))
+  await pageMarkus.locator('[data-testid="ch-ngre-familienzulagenChf"]').blur()
+  await pageMarkus.locator('[data-testid="ch-ngre-krankentaggeldChf"]').fill(String(s.markus.crossBorder.dailySicknessAllowanceEur))
+  await pageMarkus.locator('[data-testid="ch-ngre-krankentaggeldChf"]').blur()
+  await pageMarkus.locator('[data-testid="ch-ngre-krankentaggeldArbeitgeberProzent"]').fill(String(s.markus.crossBorder.dailySicknessEmployerPercent))
+  await pageMarkus.locator('[data-testid="ch-ngre-krankentaggeldArbeitgeberProzent"]').blur()
+  await pageMarkus.locator('[data-testid="ch-ngre-nbuvArbeitgeberProzent"]').fill('0')
+  await pageMarkus.locator('[data-testid="ch-ngre-nbuvArbeitgeberProzent"]').blur()
+  await pageMarkus.locator('[data-testid="ch-ngre-sonderfaelle-nein"]').click()
+  await pageMarkus.waitForTimeout(500)
 
   await pageMarkus.locator('[data-testid="ch-lohnausweis-weiter"]').click()
 
@@ -384,8 +403,11 @@ async function runScenario2And3(browser, webOrigin, sql) {
   await pageMarkus.locator('[data-testid="cockpit-kinder"]').click()
 
   for (const child of s.markus.children) {
-    await pageMarkus.locator('[data-testid="kind-neu"]').waitFor({ state: 'visible', timeout: 10_000 })
-    await pageMarkus.locator('[data-testid="kind-neu"]').click()
+    // with no child yet the form is already open; afterwards "+ Weiteres Kind" opens it
+    await pageMarkus.locator('[data-testid="kind-neu"], [data-testid="kind-vorname"]').first().waitFor({ state: 'visible', timeout: 10_000 })
+    if (await pageMarkus.locator('[data-testid="kind-neu"]').isVisible()) {
+      await pageMarkus.locator('[data-testid="kind-neu"]').click()
+    }
     await pageMarkus.locator('[data-testid="kind-vorname"]').fill(child.firstName)
     await pageMarkus.locator('[data-testid="kind-nachname"]').fill(child.lastName)
     await pageMarkus.locator('[data-testid="kind-geburtsdatum"]').fill(child.birthDate)
@@ -394,6 +416,7 @@ async function runScenario2And3(browser, webOrigin, sql) {
     await pageMarkus.locator('[data-testid="kind-kindergeld"]').fill(String(child.childBenefitEur))
     await pageMarkus.locator('[data-testid="kind-verhaeltnis-1"]').click()
     await pageMarkus.locator('[data-testid="kind-verhaeltnis-b-1"]').click()
+    await pageMarkus.locator('[data-testid="kind-familienkasse"]').fill('Familienkasse Baden-Württemberg West')
     await pageMarkus.locator('[data-testid="kind-inland-ja"]').click()
     await pageMarkus.locator('[data-testid="kind-gemeldet-ja"]').click()
     await pageMarkus.locator('[data-testid="kind-kindergeld-an-mich-ja"]').click()
@@ -477,8 +500,30 @@ async function runScenario2And3(browser, webOrigin, sql) {
   await pageJulia.locator('[data-testid="ch-wechselkurs-kurs"]').fill(s.julia.crossBorder.exchangeRate)
   await pageJulia.locator('[data-testid="ch-wechselkurs-speichern"]').click()
 
-  await pageJulia.locator('[data-testid="ch-ngre-sonderfaelle-nein"]').click()
+  // Vorsorge & N-Gre details
   await pageJulia.locator('[data-testid="ch-vorsorge-krankenkasseChf"]').fill(String(s.julia.crossBorder.healthCareEur))
+  await pageJulia.locator('[data-testid="ch-vorsorge-krankenkasseChf"]').blur()
+  await pageJulia.locator('[data-testid="ch-ngre-arbeitgeberName"]').fill('Basler Treuhand AG')
+  await pageJulia.locator('[data-testid="ch-ngre-arbeitgeberName"]').blur()
+  await pageJulia.locator('[data-testid="ch-ngre-arbeitgeberStrasse"]').fill('Steinenberg 5')
+  await pageJulia.locator('[data-testid="ch-ngre-arbeitgeberStrasse"]').blur()
+  await pageJulia.locator('[data-testid="ch-ngre-arbeitgeberPlzOrt"]').fill('4051 Basel')
+  await pageJulia.locator('[data-testid="ch-ngre-arbeitgeberPlzOrt"]').blur()
+  await pageJulia.locator('[data-testid="ch-ngre-pkArbeitnehmerChf"]').fill(String(s.julia.crossBorder.pensionObligatoryChf))
+  await pageJulia.locator('[data-testid="ch-ngre-pkArbeitnehmerChf"]').blur()
+  await pageJulia.locator('[data-testid="ch-ngre-pkArbeitgeberChf"]').fill(String(s.julia.crossBorder.pensionEmployerChf))
+  await pageJulia.locator('[data-testid="ch-ngre-pkArbeitgeberChf"]').blur()
+  await pageJulia.locator('[data-testid="ch-ngre-familienzulagenChf"]').fill('0')
+  await pageJulia.locator('[data-testid="ch-ngre-familienzulagenChf"]').blur()
+  await pageJulia.locator('[data-testid="ch-ngre-krankentaggeldChf"]').fill('0')
+  await pageJulia.locator('[data-testid="ch-ngre-krankentaggeldChf"]').blur()
+  await pageJulia.locator('[data-testid="ch-ngre-krankentaggeldArbeitgeberProzent"]').fill(String(s.julia.crossBorder.dailySicknessEmployerPercent))
+  await pageJulia.locator('[data-testid="ch-ngre-krankentaggeldArbeitgeberProzent"]').blur()
+  await pageJulia.locator('[data-testid="ch-ngre-nbuvArbeitgeberProzent"]').fill('0')
+  await pageJulia.locator('[data-testid="ch-ngre-nbuvArbeitgeberProzent"]').blur()
+  await pageJulia.locator('[data-testid="ch-ngre-sonderfaelle-nein"]').click()
+  await pageJulia.waitForTimeout(500)
+
   await pageJulia.locator('[data-testid="ch-lohnausweis-weiter"]').click()
 
   // Catalog Einkünfte / Sonderausgaben: Nein
@@ -641,8 +686,11 @@ async function runScenario4(browser, webOrigin, sql) {
   await page.locator('[data-testid="personb-beruf"]').fill(s.sabine.occupation)
   await page.locator('[data-testid="personb-speichern"]').click()
   await page.waitForTimeout(400)
+  await page.locator('[data-testid="stammdaten-speichern"]').click()
+  await page.waitForTimeout(400)
 
   // Record Sabine's LStB via partner-lstb
+  await page.locator('[data-testid="partner-lstb"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="partner-lstb"]').click()
   await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').fill(String(s.sabine.lstb.grossWage))
@@ -651,6 +699,7 @@ async function runScenario4(browser, webOrigin, sql) {
   await page.locator('[data-testid="lstb-weiter"]').click()
 
   // Record Sabine's commute via partner-arbeitsweg
+  await page.locator('[data-testid="partner-arbeitsweg"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="partner-arbeitsweg"]').click()
   await page.locator('[data-testid="arbeitstage-urlaub"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="arbeitstage-urlaub"]').fill(String(s.sabine.commute.vacationDays))
@@ -663,9 +712,8 @@ async function runScenario4(browser, webOrigin, sql) {
   await page.locator('[data-testid="arbeitstage-arbeitsort"]').fill(s.sabine.commute.workplace)
   await page.locator('[data-testid="arbeitstage-weiter"]').click()
 
-  // Save MasterData & return to Cockpit
-  await page.locator('[data-testid="stammdaten-speichern"]').click()
-  await page.waitForTimeout(500)
+  // Return to Cockpit
+  await page.locator('[data-testid="stammdaten-zurueck"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="stammdaten-zurueck"]').click()
 
   // 9. CapitalScreen: Joint custody, 50k capital income
@@ -686,23 +734,34 @@ async function runScenario4(browser, webOrigin, sql) {
 
   for (let i = 0; i < s.rentals.length; i++) {
     const r = s.rentals[i]
-    if (i > 0) {
+    const mieteLocator = page.locator(`[data-testid="vermietung-${i}-mieteinnahmen"]`)
+    if ((await mieteLocator.count()) === 0 || !(await mieteLocator.isVisible())) {
       await page.locator('[data-testid="objekt-hinzufuegen"]').click()
-      await page.waitForTimeout(300)
+      await mieteLocator.waitFor({ state: 'visible', timeout: 10_000 })
     }
-    await page.locator(`[data-testid="vermietung-${i}-einnahmen"]`).fill(String(r.grossRent))
+    await page.locator(`[data-testid="vermietung-${i}-mieteinnahmen"]`).fill(String(r.grossRent))
+    await page.locator(`[data-testid="vermietung-${i}-mieteinnahmen"]`).blur()
     await page.locator(`[data-testid="vermietung-${i}-werbungskosten"]`).fill(String(r.advertisingCosts))
-    await page.locator(`[data-testid="vermietung-${i}-anschaffungskostenGebaeude"]`).fill(String(r.buildingCost))
+    await page.locator(`[data-testid="vermietung-${i}-werbungskosten"]`).blur()
+    await page.locator(`[data-testid="vermietung-${i}-anschaffungskosten"]`).fill(String(r.buildingCost))
+    await page.locator(`[data-testid="vermietung-${i}-anschaffungskosten"]`).blur()
     await page.locator(`[data-testid="vermietung-${i}-baujahr"]`).fill(String(r.yearOfConstruction))
+    await page.locator(`[data-testid="vermietung-${i}-baujahr"]`).blur()
     await page.locator(`[data-testid="vermietung-${i}-adresse"]`).fill(r.address.street)
+    await page.locator(`[data-testid="vermietung-${i}-adresse"]`).blur()
     await page.locator(`[data-testid="vermietung-${i}-plz"]`).fill(r.address.postalCode)
+    await page.locator(`[data-testid="vermietung-${i}-plz"]`).blur()
     await page.locator(`[data-testid="vermietung-${i}-ort"]`).fill(r.address.city)
+    await page.locator(`[data-testid="vermietung-${i}-ort"]`).blur()
     await page.locator(`[data-testid="vermietung-${i}-wohnflaeche"]`).fill(r.address.livingArea)
+    await page.locator(`[data-testid="vermietung-${i}-wohnflaeche"]`).blur()
     await page.locator(`[data-testid="vermietung-${i}-einheiten"]`).fill(r.address.units)
+    await page.locator(`[data-testid="vermietung-${i}-einheiten"]`).blur()
     const afaBtn = i === 0
       ? page.locator('[data-testid="vermietung-afa-wie-vorjahr-ja"]')
       : page.locator(`[data-testid="vermietung-${i}-afa-wie-vorjahr-ja"]`)
     await afaBtn.click()
+    await page.waitForTimeout(300)
   }
 
   await page.locator('[data-testid="vermietung-weiter"]').click()

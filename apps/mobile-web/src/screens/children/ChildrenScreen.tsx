@@ -474,6 +474,7 @@ function KinderScreenView({
               onChange={setFamilyBenefitsOffice}
               placeholder="z.B. Familienkasse Sachsen"
               accessibilityLabel="Familienkasse"
+              testID="kind-familienkasse"
             />
           </Feld>
           <Feld label="Krankenversicherung des Kindes, die ihr zahlt (Basisabsicherung, € im Jahr, optional)">

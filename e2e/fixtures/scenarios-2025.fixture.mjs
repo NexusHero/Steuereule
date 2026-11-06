@@ -152,7 +152,7 @@ export const SCENARIO_2_3_BRENNER = {
       sickDays: 5,
       homeOfficeDays: 0,
       region: 'BS',
-      workplace: 'Rheinpharma AG, Grenzacherstrasse 100, 4058 Basel',
+      workplace: '4058 Basel, Grenzacherstrasse 100',
       // Hand calculation: 226 days * (20 * 0.30 + 60 * 0.38) = 226 * 28.80 € = 6.509 €
       allowance: 6509,
     },
@@ -224,7 +224,7 @@ export const SCENARIO_2_3_BRENNER = {
       sickDays: 3,
       homeOfficeDays: 0,
       region: 'BS',
-      workplace: 'Basler Treuhand AG, Steinenberg 5, 4051 Basel',
+      workplace: '4051 Basel, Steinenberg 5',
       // Hand calculation: 228 days * 20 km * 0.30 € = 1.368 €
       allowance: 1368,
     },
