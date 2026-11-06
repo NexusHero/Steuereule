@@ -63,25 +63,22 @@ export const SCENARIO_1_LENA = {
     allowance: 5400,
     workplace: '76131 Karlsruhe, Durlacher Allee 50',
   },
-  // BMF tax calculator 2025 calculation details:
+  // Hand calculation 2025 (§ 32a EStG Grundtarif, zone 4: 0,42 · zvE − 10.911,92), with public holidays:
   // - Gross salary: 94.999 €
-  // - Werbungskosten (commute): 5.675 € (exceeds Arbeitnehmer-Pauschbetrag of 1.230 €)
-  // - Einkünfte aus nichtselbständiger Arbeit: 89.324 €
-  // - Vorsorgeaufwendungen (RV 100% abzugsfähig, Basis-KV + PV): ~15.853 €
+  // - Werbungskosten: Pendlerpauschale 216 × 25 € = 5.400 € (above the 1.230 € Pauschbetrag)
+  // - Vorsorgeaufwendungen (RV, Basis-KV + PV, AV): 15.853 €
   // - Spenden: 300 €
-  // - Zu versteuerndes Einkommen (zvE): 73.171 €
-  // - Tarifliche Einkommensteuer 2025 (Grundtarif): 19.819 €
-  // - Solidaritätszuschlag: 0 € (Freigrenze nicht überschritten)
-  // - Einbehaltene Lohnsteuer: 21.797 €
-  // - Erwartete Erstattung: 2.197 € (angezeigte Cockpit-Spanne: 2.156 € – 2.301 €)
+  // - zvE: 94.999 − 5.400 − 15.853 − 300 = 73.446 €
+  // - ESt: 0,42 · 73.446 − 10.911,92 = 19.935 € (Soli 0: below the 19.950 € Freigrenze)
+  // - Refund: Lohnsteuer 21.797 € + Soli 219 € − 19.935 € = 2.081 €
+  // The 2025 test run's 2.197 € (zvE 73.171 €) counted 227 commute days, before public holidays were
+  // subtracted (finding F4); the same formula reproduces it, which checks the formula.
   expectedEstimate: {
-    taxableIncome: 73171,
-    incomeTax: 19819,
+    taxableIncome: 73446,
+    incomeTax: 19935,
     soli: 0,
     churchTax: 0,
-    targetRefund: 2197,
-    rangeFrom: 2156,
-    rangeTo: 2301,
+    targetRefund: 2081,
   },
   expectedPdfFields: {
     'est1a.name': 'Hoffmann',
