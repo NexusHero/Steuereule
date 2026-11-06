@@ -5,73 +5,74 @@
 # Steuereule 🦉
 
 <p align="center">
-  <b>Steuerberater füllen heute oft nur noch Formulare aus. Wir bringen echte Beratung zurück — mit KI.</b><br>
-  Die moderne, quelloffene Steuer-App, die Menschen hilft, ihr Recht zu nutzen, statt sie mit grauen Formularen und hohen Gebühren allein zu lassen.
+  <b>Steuerberater füllen heute oft nur noch aus. Die Eule erklärt dir, was dir zusteht.</b><br>
+  Die moderne, quelloffene Steuer-App für Angestellte, Familien und Grenzgänger: Sie fragt nach, gibt Tipps mit Gesetzesquelle und rechnet so, dass du jede Zahl nachprüfen kannst.
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Mission-AI_Steuer--Sparbegleiter-C9F229?style=for-the-badge&labelColor=191B12" alt="AI Steuerberatung" />
+  <img src="https://img.shields.io/badge/Mission-Beraten_statt_nur_ausf%C3%BCllen-C9F229?style=for-the-badge&labelColor=191B12" alt="Mission" />
   <img src="https://img.shields.io/badge/Design-Neobrutalismus_„Funke“-C9F229?style=for-the-badge&labelColor=191B12" alt="Funke Design System" />
-  <img src="https://img.shields.io/badge/Security-AES--256--GCM_Feldverschlüsselung-1F9D55?style=for-the-badge" alt="Security" />
-  <img src="https://img.shields.io/badge/Grenzgänger-Schweiz_%2B_DE_Splitting-blue?style=for-the-badge" alt="Grenzgänger" />
+  <img src="https://img.shields.io/badge/Security-AES--256--GCM_Feldverschl%C3%BCsselung-1F9D55?style=for-the-badge" alt="Security" />
+  <img src="https://img.shields.io/badge/Grenzg%C3%A4nger-Schweiz_%E2%87%84_DE-blue?style=for-the-badge" alt="Grenzgänger" />
   <img src="https://img.shields.io/badge/DSGVO-Art._15_/_17_/_20_Export-green?style=for-the-badge" alt="DSGVO" />
 </p>
 
 ---
 
-## ⚡ Warum Steuereule? Das Steuerberater-Dilemma & unsere Mission
+## ⚡ Warum Steuereule?
 
-Seien wir ehrlich: **Die meisten Steuerberater beraten heute gar nicht mehr.**
+**Wir finden: Viele Steuerberater beraten heute nicht mehr, sie füllen nur noch aus.**
 
-Wer heute in Deutschland oder im Grenzgebiet steuerliche Unterstützung sucht, stößt fast überall auf dieselben Mauern:
-1. 🛑 **Kanzleien im Aufnahmestopp & horrende Kosten:** Kanzleien sind chronisch überlastet. Normale Angestellte, junge Familien oder Grenzgänger werden oft gar nicht erst angenommen — oder zahlen unverhältnismäßig hohe Rechnungen.
-2. 📋 **Formular-Ausfüller statt echte Berater:** Hat man einen Platz ergattert, verkommt der Service allzu oft zum bloßen „Beleg-Abtippen“. Man sortiert monatelang Rechnungen vor, und die Kanzlei überträgt sie lediglich in die Maske. Proaktive Ideen? Aufdecken ungenutzter Pauschalen? Sparpotenziale querdenken? Fehlanzeige. Man zahlt Hunderte Euro für stumpfes Ausfüllen.
-3. 🌫️ **Grauer Amtsschimmel & falsche Versprechungen:** Auf der Gegenseite stehen klassische Steuerprogramme — unübersichtliche Tabellenwüsten, die Angst vor Fehlern schüren, oder Lockvogel-Apps mit erfundenen Punktwert-Erstattungsversprechen („Hol dir 1.095 € zurück!“), die vor dem Finanzamt in sich zusammenbrechen.
+Wer Unterstützung bei der Steuer sucht, stößt oft auf dieselben Mauern:
 
-**Wir finden: Das Steuer-System muss für Menschen da sein, nicht gegen sie.**
-Steuereule wurde gegründet, um Menschen mit intelligenter Technologie etwas Gutes zu tun und steuerliches Expertenwissen für alle zugänglich zu machen — unabhängig von Geldbeutel oder Kanzleikontakten.
+1. 🛑 **Volle Kanzleien, hohe Kosten:** Angestellte, junge Familien oder Grenzgänger finden oft keinen Platz, oder die Rechnung steht in keinem Verhältnis zur Erstattung.
+2. 📋 **Ausfüllen statt beraten:** Man sortiert Belege vor, die Kanzlei tippt sie in die Maske. Wer fragt nach der Pauschale, die du vergessen hast? Wer erklärt, warum eine Zeile so aussieht?
+3. 🌫️ **Graue Formulare und große Versprechen:** Klassische Programme sind Tabellenwüsten. Andere Apps werben mit festen Beträgen („Hol dir 1.095 € zurück!“), die vor dem Finanzamt nicht halten.
+
+**Wir wollen das ändern und Menschen mit guter Technik etwas Gutes tun.** Steuerwissen soll nicht vom Geldbeutel oder von Kanzleikontakten abhängen.
 
 ---
 
-## 🤖 Wie KI die Steuerwelt verändert: Echte Beratung statt Formular-Frust
+## 🦉 Beraten statt nur ausfüllen: so arbeitet die Eule
 
-Künstliche Intelligenz ist bei uns kein Werbegag, sondern das Herzstück eines neuen Steuer-Erlebnisses:
-
-* 🦉 **Der Eulen-Modus (Dein KI-Spar-Begleiter):** Wo ein herkömmliches Formular stumm auf Eingaben wartet, denkt unsere KI aktiv mit. Sie analysiert deine Lebenssituation ganzheitlich, entdeckt ungenutzte Pauschalen (Arbeitszimmer, Pendlerwege, Fortbildungen, Sonderausgaben) und schlägt dir verständlich formulierte Optimierungen vor — genau die Fragen, die dir ein engagierter Berater stellen sollte.
-* 🛡️ **Zero-Hallucination & 100% deterministischer Kern:** KI darf kreativ beraten, aber **niemals Zahlen erfinden**. Deshalb trennt Steuereule Beratung und Berechnung strikt: Die KI unterstützt, strukturiert und erklärt Sachverhalte in einfacher Sprache. Die eigentliche Steuerberechnung läuft in einem quelloffenen, strikt deterministischen TypeScript-Kern ([`@steuereule/core`](packages/core/)) auf Basis der gesetzlichen BMF-Vorgaben.
-* ⏱️ **In wenigen Minuten auf den Cent verifizierbar:** Keine undurchsichtige Blackbox! Jeder erfasste Posten wird transparent vorgerechnet und mündet direkt in amtlich vermessene, offizielle PDF-Vordrucke. Du, dein Partner oder ein Fachmann könnt das Ergebnis **in 5 Minuten Zeile für Zeile gegen die Original-Formulare prüfen**.
-* 🎯 **Ehrliche Spannen statt falscher Garantien:** Steuereule schätzt deine Erstattung stets als realistische Bandbreite (Mindest- und Höchstwert gemäß [ADR-032](docs/adr/0032-honest-refund-ranges.md)). Keine geratenen Fantasiezahlen.
-* ⚖️ **Ehrlicher rechtlicher Rahmen:** Steuereule erbringt keine geschäftsmäßige Rechts- oder Steuerberatung im Sinne des Steuerberatungsgesetzes (StBerG). Wir bieten dir das intelligenteste Werkzeug, um deine Steuererklärung eigenverantwortlich, optimal und mit minimalem Zeitaufwand vorzubereiten.
+* 🦉 **Die Eule denkt mit:** Aus deinen Antworten und deinem Beruf leitet die Eule Tipps ab, zum Beispiel Homeoffice-Pauschale, Fortbildungsfahrten, Spenden, Kinderbetreuung oder eine laufende Einspruchsfrist. Jeder Tipp nennt den Paragraphen und den Rechtsstand.
+* 🧮 **Rechnen tut nur der Kern, nie die KI:** Jede Zahl kommt aus einem deterministischen, quelloffenen Rechenkern ([`@steuereule/core`](packages/core/)). KI darf vorschlagen und erklären, aber nichts selbst eintragen: Ein Vorschlag zählt erst, wenn du ihn bestätigst ([ADR-0038](docs/adr/0038-berechnungs-kern-ki-port.md)).
+* ⏱️ **Mit wenig Aufwand nachprüfbar:** Das Ergebnis landet auf den amtlichen Vordrucken, Zeile für Zeile. Du, dein Partner oder eine Fachperson könnt jeden Wert in wenigen Minuten gegen deine Belege und die Formulare prüfen. Keine Blackbox.
+* 🎯 **Spanne statt Fantasiezahl:** Deine Erstattung zeigen wir als ehrliche Spanne. Fehlt eine Angabe, bleibt der Posten offen, statt dass wir raten ([ADR-0032](docs/adr/0032-nothing-on-screen-promises-what-the-slice-does-not-deliver.md)).
+* ⚖️ **Keine Steuerberatung im rechtlichen Sinn:** Steuereule ersetzt keine Beratung nach dem Steuerberatungsgesetz und übernimmt keine Haftung für deine Erklärung. Sie ist ein Werkzeug, mit dem du deine Erklärung selbst, gut vorbereitet und nachvollziehbar erstellst.
 
 ---
 
 ## ✨ Was Steuereule heute kann
 
-| Feature | Das steckt dahinter |
+| Bereich | Das steckt dahinter |
 |:---|:---|
-| 🦉 **Eulen-Modus (KI-Spar-Assistent)** | Analysiert deine Angaben quer, findet versteckte Abzugsmöglichkeiten und erklärt kompliziertes Steuerdeutsch ohne Amtsfloskeln. |
-| 🇨🇭 **Grenzgänger-Spezialist (CH ⇄ DE)** | Vollständige Erfassung des Schweizer Lohnausweises, automatische Umrechnung mit Monatswechselkursen, Nichtrückkehrtage, Anlage N-Gre, Schweizer Säule 2/3 sowie Differenzkindergeld. |
-| 👫 **Ehepaare & Partnerschaften** | Zusammen- oder Einzelveranlagung mit automatischem Günstigervergleich (Splitting). Person B kann ohne eigenes Konto direkt von Person A mit erfasst werden — oder per 16-stelligem Einladungscode beitreten. |
-| 🏡 **Vermietung & Verpachtung (Anlage V)** | Mehrere Mietobjekte, Mehrfamilienhäuser mit Wohneinheiten, Schuldzinsen, laufende Kosten und historische lineare AfA. |
-| 📈 **Kapitalerträge (Anlage KAP)** | Deutsche und ausländische Broker, Sparer-Pauschbetrag, Verteilung bei Gemeinschaftsdepots und automatischer Günstigerprüfungs-Antrag. |
-| 🔥 **Neobrutalismus „Funke“** | Schluss mit grauen Tabellen: Knalliges Design ([„Funke“-Designsystem](finanzo-funke-design-system/project/readme.md)), fette Konturen, haptische Buttons und strikt **1 Gedanke pro Screen**. |
-| 🔒 **Banken-Sicherheit (Feldverschlüsselung)** | Deine Steuer-ID und Profildaten werden serverseitig mit **AES-256-GCM** verschlüsselt und landen niemals im Browser-Speicher. Jeder Zugriff wird auditiert. |
-| ⚡ **Gast-Modus ohne Registrierungszwang** | Starte komplett anonym. Erst wenn du deine Daten dauerhaft sichern willst, nimmst du sie mit einem Klick in dein echtes Konto mit. |
-| 📄 **Amtlicher PDF-Ausdruck** | Generiert auf den Millimeter vermessene, offiziell abgabefähige PDF-Vordrucke für alle unterstützten Anlagen (ESt 1 A, N, N-Gre, Kind, KAP, V, Vorsorgeaufwand). |
+| 🦉 **Eule als Beraterin** | Tipps passend zu deinen Antworten und deinem Beruf, jeweils mit Gesetzesquelle. Du entscheidest, was du übernimmst. |
+| 🇨🇭 **Grenzgänger CH ⇄ DE** | Schweizer Lohnausweis, Umrechnung mit dem von dir erfassten Kurs, Nichtrückkehrtage, Anlage N-Gre, AHV/ALV und Pensionskasse, Schweizer Kinderzulage mit Differenzkindergeld. |
+| 👫 **Ehepaare** | Zusammenveranlagung mit Splitting. Person B erfasst du direkt mit oder sie tritt per Einladungscode mit eigenem Konto bei. Person A druckt eine gemeinsame Erklärung. |
+| 🏡 **Vermietung (Anlage V)** | Mehrere Objekte, mehrere Wohneinheiten, Umlagen, Schuldzinsen, laufende Werbungskosten und lineare AfA wie im Vorjahr. |
+| 📈 **Kapitalerträge (Anlage KAP)** | Deutsche und ausländische Depots, Sparer-Pauschbetrag, gemeinsame Depots je zur Hälfte, Antrag auf Günstigerprüfung. |
+| 🚗 **Arbeitsweg** | Pendlerpauschale mit Arbeitstagen; Feiertage nach Bundesland oder Kanton werden vorgeschlagen und von dir bestätigt. |
+| 📄 **Ausdruck auf amtlichen Vordrucken** | ESt 1 A, Anlagen N, N-Gre, Kind, KAP, V und Vorsorgeaufwand als PDF zum Ausdrucken und Unterschreiben. Die Feldpositionen werden in CI gegen die Vordrucke vermessen. |
+| 🔒 **Feldverschlüsselung** | Steuer-ID und sensible Angaben werden serverseitig mit **AES-256-GCM** verschlüsselt, nie im Browser-Speicher abgelegt. Jeder Zugriff wird protokolliert. |
+| ⚡ **Gast-Modus** | Ohne Konto starten. Wer bleiben will, nimmt seine Angaben mit einem Klick ins eigene Konto mit. |
+| 🔥 **Design „Funke“** | Knalliges Neobrutalismus-Design ([„Funke“-Designsystem](finanzo-funke-design-system/project/readme.md)), fette Konturen und ein Gedanke pro Screen. |
+
+> **Was (noch) nicht geht:** Version 1.0 gibt auf Papier ab ([ADR-0050](docs/adr/0050-papierweg-statt-elster-in-1-0.md)). Eine ELSTER-Übermittlung kommt erst nach 1.0, sobald das Hersteller-Zertifikat vorliegt. Verluste und Krypto bei Kapitalerträgen unterstützen wir noch nicht; die App sagt das offen. Apple Sign-In bleibt bis zu einem iOS-Build abgeschaltet. Details im [Requirements-Register](docs/requirements/register.md).
 
 ---
 
 ## 📸 Ein Blick in die App
 
-| Cockpit mit ehrlicher Spanne | Quiz-Interview (1 Frage / Screen) | Onboarding & Stammdaten |
+| Cockpit mit ehrlicher Spanne | Quiz-Interview (1 Frage / Screen) | Onboarding |
 |:---:|:---:|:---:|
 | <img src="images/screenshots/cockpit.png" width="280" alt="Cockpit Screen" /> | <img src="images/screenshots/interview.png" width="280" alt="Interview Screen" /> | <img src="images/screenshots/onboarding.png" width="280" alt="Onboarding Screen" /> |
 | *Erstattung transparent als Spanne, keine falschen Garantien.* | *Schnell, fokussiert und ohne Fachchinesisch.* | *Datensparsam, feldverschlüsselt und DSGVO-konform.* |
 
-| Profil & Einstellungen | QR-Gerätefreigabe ohne Passwort | Willkommen & Gast-Modus |
+| Profil & Geräte | QR-Gerätefreigabe ohne Passwort | Login & Gast-Modus |
 |:---:|:---:|:---:|
 | <img src="images/screenshots/profil.png" width="280" alt="Profil Screen" /> | <img src="images/screenshots/geraetefreigabe.png" width="280" alt="Gerätefreigabe Screen" /> | <img src="images/screenshots/login.png" width="280" alt="Login Screen" /> |
-| *Volle DSGVO-Transparenz mit Datenexport und Löschung.* | *Nahtloser Login am Desktop via Handy-Kamera.* | *Sofort loslegen ohne Registrierungszwang.* |
+| *Angemeldete Geräte im Blick, einzeln abmeldbar.* | *Nahtloser Login am Desktop via Handy-Kamera.* | *Sofort loslegen ohne Registrierungszwang.* |
 
 ---
 
@@ -119,7 +120,6 @@ scripts/local.sh help     # alle Befehle (logs, status, down, reset)
 
 * **Vierstufige Definition of Done:** Ticket, REQ, Phase, 1.0 ([ADR-0036](docs/adr/0036-definition-of-done.md)) mit Security- & Performance-Posture.
 * **Tiered Testing:** Unit-, Integration- (echtes Postgres) und Acceptance-Tests (echter Socket) sowie Playwright Browser-Gates in CI.
-* **S10 UI-Abnahmetest:** Echte 4-Persona-End-to-End-Abnahme (inkl. Grenzgänger Schweiz, Kinder, Vermietung, Kapital) vor jedem Merge.
 * **AI-Crew Process:** Dokumentierte KI-Kollaborations-Architektur (siehe [CONTRIBUTORS.md](CONTRIBUTORS.md) und [docs/process/](docs/process/)).
 
 ---
