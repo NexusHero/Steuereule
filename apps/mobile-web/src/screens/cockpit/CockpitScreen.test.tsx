@@ -409,6 +409,18 @@ describe('CockpitScreen — Kinder & Eulen-Modus entries', () => {
     expect(onOpenOwlMode).toHaveBeenCalledWith(TAX_YEAR)
   })
 
+  // Advice up front: the owl advisor card sits right under the next step, above the ghost
+  // buttons — not as the last of them. Its button is `leise`, so the screen keeps one primary.
+  it('shows the owl advisor card above the secondary checks', async () => {
+    mockCockpit(LOADED_SUMMARY)
+    renderCockpit({ onOpenOwlMode: vi.fn() })
+    const card = await screen.findByTestId('cockpit-berater')
+    expect(card.querySelector('[data-testid="owl-mark-tinte"]')).not.toBeNull()
+    expect(card.textContent).toContain('Deine Eule berät dich')
+    const check = screen.getByText('Bescheid prüfen')
+    expect(card.compareDocumentPosition(check) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
   describe('"Weiter mit deinem Weg" — the way back into the path once the three questions are answered', () => {
     it.each([
       [{ job: 'Angestellt', ausland: 'Ja, in die Schweiz', kinder: 'Nein' }, 'Grenzgänger CH', 'ch'],

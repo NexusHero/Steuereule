@@ -4,7 +4,7 @@ export const appResources = {
   de: {
     [APP_NS]: {
       brand: { steuer: 'Steuer', eule: 'Eule' },
-      tabs: { cockpit: 'Cockpit', belege: 'Belege', profil: 'Profil' },
+      tabs: { cockpit: 'Cockpit', eule: 'Eule', belege: 'Belege', profil: 'Profil' },
       splash: {
         greeting: 'Steuern? Zack, erledigt.',
         skipLabel: 'Weiter zur App',
@@ -614,6 +614,22 @@ export const appResources = {
             rente: 'Rente',
           },
         },
+        beruf: {
+          titleBefore: 'Was machst du ',
+          titleMark: 'beruflich',
+          titleAfter: '?',
+          help: 'Damit die Eule dir Tipps geben kann, die zu deinem Job passen. Nur die Richtung — kein Arbeitgeber, kein Titel.',
+          options: {
+            it: 'IT & Software',
+            pflege: 'Pflege & Gesundheit',
+            lehre: 'Lehrkraft & Erziehung',
+            handwerk: 'Handwerk & Technik',
+            buero: 'Büro & Verwaltung',
+            vertrieb: 'Vertrieb & Außendienst',
+            ausbildung: 'Ausbildung oder Studium',
+            anderes: 'Etwas anderes',
+          },
+        },
         ausland: {
           titleBefore: 'Pendelst du zum Arbeiten ins ',
           titleMark: 'Ausland',
@@ -1036,6 +1052,11 @@ export const appResources = {
         checkVermietung: 'Vermietung prüfen',
         checkKinder: 'Kinder verwalten',
         eulenModus: 'Eulen-Modus',
+        berater: {
+          title: 'Deine Eule berät dich',
+          body: 'Sie prüft dein Steuerjahr auf Geld, das du liegen lässt, und sagt dir, was du dieses Jahr noch tun kannst.',
+          cta: 'Eule fragen',
+        },
         jahrAuswahl: 'Steuerjahr wählen',
         bestaetigung: {
           hinweis_one: '{{summe}} wartet noch auf deine Bestätigung.',
@@ -1299,7 +1320,7 @@ export const appResources = {
   en: {
     [APP_NS]: {
       brand: { steuer: 'Steuer', eule: 'Eule' },
-      tabs: { cockpit: 'Cockpit', belege: 'Receipts', profil: 'Profile' },
+      tabs: { cockpit: 'Cockpit', eule: 'Owl', belege: 'Receipts', profil: 'Profile' },
       splash: {
         greeting: 'Taxes? Sorted, just like that.',
         skipLabel: 'Continue to the app',
@@ -1909,6 +1930,22 @@ export const appResources = {
             rente: 'Pension',
           },
         },
+        beruf: {
+          titleBefore: 'What do you do for ',
+          titleMark: 'work',
+          titleAfter: '?',
+          help: 'So the owl can give you tips that fit your job. Just the field — no employer, no title.',
+          options: {
+            it: 'IT & software',
+            pflege: 'Care & health',
+            lehre: 'Teaching & education',
+            handwerk: 'Trades & engineering',
+            buero: 'Office & administration',
+            vertrieb: 'Sales & field service',
+            ausbildung: 'Apprenticeship or studies',
+            anderes: 'Something else',
+          },
+        },
         ausland: {
           titleBefore: 'Do you commute abroad for ',
           titleMark: 'work',
@@ -2331,6 +2368,11 @@ export const appResources = {
         checkVermietung: 'Review rental property',
         checkKinder: 'Manage children',
         eulenModus: 'Owl Mode',
+        berater: {
+          title: 'Your owl advises you',
+          body: 'It checks your tax year for money you are leaving on the table and tells you what you can still do this year.',
+          cta: 'Ask the owl',
+        },
         jahrAuswahl: 'Choose tax year',
         bestaetigung: {
           hinweis_one: '{{summe}} is still waiting for your confirmation.',

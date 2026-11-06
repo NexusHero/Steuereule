@@ -20,6 +20,38 @@ export const LEGAL_SOURCES: Readonly<Record<OwlSourceId | 'estg-32', LegalSource
       'Für jeden Kalendertag, an dem die berufliche Tätigkeit überwiegend in der häuslichen Wohnung ausgeübt wird, kann eine Tagespauschale von 6 € abgezogen werden, höchstens 1.260 € im Jahr (210 Tage).',
     url: 'https://www.gesetze-im-internet.de/estg/__4.html',
   },
+  'estg-9-1': {
+    id: 'estg-9-1',
+    paragraph: '§ 9 Abs. 1 Satz 1 EStG',
+    legalStatusDate: '01.01.2025',
+    translation:
+      'Werbungskosten sind Aufwendungen zur Erwerbung, Sicherung und Erhaltung der Einnahmen — dazu gehören Fortbildungen im ausgeübten Beruf.',
+    url: 'https://www.gesetze-im-internet.de/estg/__9.html',
+  },
+  'estg-9-1-6': {
+    id: 'estg-9-1-6',
+    paragraph: '§ 9 Abs. 1 Satz 3 Nr. 6 und 7 EStG',
+    legalStatusDate: '01.01.2025',
+    translation:
+      'Aufwendungen für Arbeitsmittel, etwa Werkzeuge und typische Berufskleidung, sind Werbungskosten; Arbeitsmittel bis 800 € netto können sofort voll abgezogen werden.',
+    url: 'https://www.gesetze-im-internet.de/estg/__9.html',
+  },
+  'estg-9-4a': {
+    id: 'estg-9-4a',
+    paragraph: '§ 9 Abs. 4a EStG',
+    legalStatusDate: '01.01.2025',
+    translation:
+      'Bei einer beruflichen Auswärtstätigkeit gelten Verpflegungspauschalen: 14 € bei mehr als 8 Stunden Abwesenheit, 28 € für jeden vollen Kalendertag.',
+    url: 'https://www.gesetze-im-internet.de/estg/__9.html',
+  },
+  'estg-9-6': {
+    id: 'estg-9-6',
+    paragraph: '§ 9 Abs. 6 EStG',
+    legalStatusDate: '01.01.2025',
+    translation:
+      'Kosten einer Erstausbildung oder eines Erststudiums sind nur Werbungskosten, wenn sie im Rahmen eines Dienstverhältnisses stattfinden; eine Zweitausbildung ist voll als Werbungskosten abziehbar.',
+    url: 'https://www.gesetze-im-internet.de/estg/__9.html',
+  },
   'estg-9-1-4a': {
     id: 'estg-9-1-4a',
     paragraph: '§ 9 Abs. 1 Satz 3 Nr. 4a EStG',
