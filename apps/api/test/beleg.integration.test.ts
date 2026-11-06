@@ -50,7 +50,7 @@ describe('POST/GET /v1/belege — real Postgres (ADR-007/008)', () => {
   })
 
   afterEach(async () => {
-    await prisma.beleg.deleteMany()
+    await prisma.receipt.deleteMany()
     await prisma.$executeRawUnsafe(`DELETE FROM "TaxDataAccessLog"`)
   })
 
@@ -75,10 +75,10 @@ describe('POST/GET /v1/belege — real Postgres (ADR-007/008)', () => {
     const first = await app.inject({ method: 'GET', url: '/v1/belege' })
     const cookie = extractSessionCookie(first.headers['set-cookie'])!
 
-    const created = await createReceipt(cookie, { dateiname: 'quittung.pdf' })
+    const created = await createReceipt(cookie, { fileName: 'quittung.pdf' })
     expect(created.statusCode).toBe(201)
     expect(created.body).toMatchObject({
-      dateiname: 'quittung.pdf',
+      fileName: 'quittung.pdf',
       belegdatum: null,
       zahlungsdatum: null,
       assignment: { kind: 'ungebunden' },
@@ -87,7 +87,7 @@ describe('POST/GET /v1/belege — real Postgres (ADR-007/008)', () => {
     const list = await app.inject({ method: 'GET', url: '/v1/belege', headers: { cookie } })
     expect(list.statusCode).toBe(200)
     expect(list.json()).toHaveLength(1)
-    expect(list.json()[0]).toMatchObject({ dateiname: 'quittung.pdf', assignment: { kind: 'ungebunden' } })
+    expect(list.json()[0]).toMatchObject({ fileName: 'quittung.pdf', assignment: { kind: 'ungebunden' } })
   })
 
   it('the year suggestion prefers the payment date over the invoice date (§ 11 Zufluss) — the cross-year case', async () => {
@@ -95,41 +95,41 @@ describe('POST/GET /v1/belege — real Postgres (ADR-007/008)', () => {
     const cookie = extractSessionCookie(first.headers['set-cookie'])!
 
     const created = await createReceipt(cookie, {
-      dateiname: 'miete-dez.pdf',
+      fileName: 'miete-dez.pdf',
       belegdatum: '2025-12-20',
       zahlungsdatum: '2026-01-15',
     })
     expect(created.statusCode).toBe(201)
     // Rechnungsdatum 2025, Zahlungsdatum 2026 → 2026 (the silent error ADR-007 names).
-    expect(created.body.assignment).toEqual({ kind: 'vorgeschlagen', steuerjahr: 2026, provenance: 'zahlungsdatum' })
+    expect(created.body.assignment).toEqual({ kind: 'vorgeschlagen', taxYear: 2026, provenance: 'zahlungsdatum' })
   })
 
   it('confirming the suggested year → zugeordnet; a contradicting assignment → konflikt with both years visible (ADR-008)', async () => {
     const first = await app.inject({ method: 'GET', url: '/v1/belege' })
     const cookie = extractSessionCookie(first.headers['set-cookie'])!
-    const created = await createReceipt(cookie, { dateiname: 'a.pdf', zahlungsdatum: '2026-01-15' })
+    const created = await createReceipt(cookie, { fileName: 'a.pdf', zahlungsdatum: '2026-01-15' })
     const id = created.body.id as string
 
     const confirm = await app.inject({
       method: 'POST',
       url: `/v1/belege/${id}/zuordnung`,
       headers: { cookie },
-      payload: { steuerjahr: 2026 },
+      payload: { taxYear: 2026 },
     })
     expect(confirm.statusCode).toBe(200)
-    expect(confirm.json().assignment).toEqual({ kind: 'zugeordnet', steuerjahr: 2026 })
+    expect(confirm.json().assignment).toEqual({ kind: 'zugeordnet', taxYear: 2026 })
 
     // Re-assign to a year that contradicts the dates → visible konflikt, never a silent overwrite.
     const conflict = await app.inject({
       method: 'POST',
       url: `/v1/belege/${id}/zuordnung`,
       headers: { cookie },
-      payload: { steuerjahr: 2025 },
+      payload: { taxYear: 2025 },
     })
     expect(conflict.statusCode).toBe(200)
     expect(conflict.json().assignment).toEqual({
       kind: 'konflikt',
-      steuerjahr: 2025,
+      taxYear: 2025,
       proposalYear: 2026,
       provenance: 'zahlungsdatum',
     })
@@ -138,32 +138,32 @@ describe('POST/GET /v1/belege — real Postgres (ADR-007/008)', () => {
   it('dismissing a contradicting suggestion resolves the conflict to zugeordnet on the user’s own year (ADR-008 "bei meinem Jahr bleiben")', async () => {
     const first = await app.inject({ method: 'GET', url: '/v1/belege' })
     const cookie = extractSessionCookie(first.headers['set-cookie'])!
-    const created = await createReceipt(cookie, { dateiname: 'a.pdf', zahlungsdatum: '2026-01-15' })
+    const created = await createReceipt(cookie, { fileName: 'a.pdf', zahlungsdatum: '2026-01-15' })
     const id = created.body.id as string
 
     const conflict = await app.inject({
       method: 'POST',
       url: `/v1/belege/${id}/zuordnung`,
       headers: { cookie },
-      payload: { steuerjahr: 2025 },
+      payload: { taxYear: 2025 },
     })
-    expect(conflict.json().assignment).toMatchObject({ kind: 'konflikt', steuerjahr: 2025, proposalYear: 2026 })
+    expect(conflict.json().assignment).toMatchObject({ kind: 'konflikt', taxYear: 2025, proposalYear: 2026 })
 
     // "bei meinem Jahr bleiben": keep 2025, dismiss the 2026 suggestion → zugeordnet, no dead end.
     const resolved = await app.inject({
       method: 'POST',
       url: `/v1/belege/${id}/zuordnung`,
       headers: { cookie },
-      payload: { steuerjahr: 2025, vorschlagVerworfen: true },
+      payload: { taxYear: 2025, proposalDismissed: true },
     })
     expect(resolved.statusCode).toBe(200)
-    expect(resolved.json().assignment).toEqual({ kind: 'zugeordnet', steuerjahr: 2025 })
+    expect(resolved.json().assignment).toEqual({ kind: 'zugeordnet', taxYear: 2025 })
   })
 
   it('cross-user isolation: user B never sees or reassigns user A’s Beleg', async () => {
     const first = await app.inject({ method: 'GET', url: '/v1/belege' })
     const cookieA = extractSessionCookie(first.headers['set-cookie'])!
-    await createReceipt(cookieA, { dateiname: 'a.pdf' })
+    await createReceipt(cookieA, { fileName: 'a.pdf' })
 
     const userB = await app.inject({ method: 'GET', url: '/v1/belege' })
     const cookieB = extractSessionCookie(userB.headers['set-cookie'])!
@@ -176,7 +176,7 @@ describe('POST/GET /v1/belege — real Postgres (ADR-007/008)', () => {
       method: 'POST',
       url: `/v1/belege/${idA}/zuordnung`,
       headers: { cookie: cookieB },
-      payload: { steuerjahr: 2026 },
+      payload: { taxYear: 2026 },
     })
     expect(foreign.statusCode).toBe(404)
   })
@@ -185,14 +185,14 @@ describe('POST/GET /v1/belege — real Postgres (ADR-007/008)', () => {
     const first = await app.inject({ method: 'GET', url: '/v1/belege' })
     const cookie = extractSessionCookie(first.headers['set-cookie'])!
     const userId = userIdFromCookie(cookie)
-    await createReceipt(cookie, { dateiname: 'quittung.pdf' })
+    await createReceipt(cookie, { fileName: 'quittung.pdf' })
 
-    const rawRows = await prisma.$queryRaw<{ dateiname: string }[]>`
+    const rawRows = await prisma.$queryRaw<{ fileName: string }[]>`
       SELECT "dateiname" FROM "Beleg" WHERE "userId" = ${userId}
     `
     expect(rawRows).toHaveLength(1)
-    expect(rawRows[0]!.dateiname).not.toBe('quittung.pdf')
-    expect(rawRows[0]!.dateiname).toMatch(/^v\d+\.aesgcm256\./)
+    expect(rawRows[0]!.fileName).not.toBe('quittung.pdf')
+    expect(rawRows[0]!.fileName).toMatch(/^v\d+\.aesgcm256\./)
   })
 
   it('audit: each create and each assignment appends exactly one WRITE entry; a list appends one READ entry (REQ-004)', async () => {
@@ -200,12 +200,12 @@ describe('POST/GET /v1/belege — real Postgres (ADR-007/008)', () => {
     const cookie = extractSessionCookie(first.headers['set-cookie'])!
     const userId = userIdFromCookie(cookie)
 
-    const created = await createReceipt(cookie, { dateiname: 'a.pdf' })
+    const created = await createReceipt(cookie, { fileName: 'a.pdf' })
     await app.inject({
       method: 'POST',
       url: `/v1/belege/${created.body.id as string}/zuordnung`,
       headers: { cookie },
-      payload: { steuerjahr: 2026 },
+      payload: { taxYear: 2026 },
     })
     await app.inject({ method: 'GET', url: '/v1/belege', headers: { cookie } })
 
@@ -223,24 +223,24 @@ describe('POST/GET /v1/belege — real Postgres (ADR-007/008)', () => {
     const first = await app.inject({ method: 'GET', url: '/v1/belege' })
     const cookie = extractSessionCookie(first.headers['set-cookie'])!
 
-    const created = await createReceipt(cookie, { dateiname: 'lohnausweis.pdf', art: 'Lohnausweis' })
+    const created = await createReceipt(cookie, { fileName: 'lohnausweis.pdf', kind: 'Lohnausweis' })
     expect(created.statusCode).toBe(201)
-    expect(created.body).toMatchObject({ dateiname: 'lohnausweis.pdf', art: 'Lohnausweis' })
+    expect(created.body).toMatchObject({ fileName: 'lohnausweis.pdf', kind: 'Lohnausweis' })
 
     const list = await app.inject({ method: 'GET', url: '/v1/belege', headers: { cookie } })
-    expect(list.json()[0]).toMatchObject({ art: 'Lohnausweis' })
+    expect(list.json()[0]).toMatchObject({ kind: 'Lohnausweis' })
 
-    const invalid = await createReceipt(cookie, { dateiname: 'x.pdf', art: 'LStB' })
+    const invalid = await createReceipt(cookie, { fileName: 'x.pdf', kind: 'LStB' })
     expect(invalid.statusCode).toBe(400)
-    await expect(prisma.beleg.count()).resolves.toBe(1)
+    await expect(prisma.receipt.count()).resolves.toBe(1)
   })
 
   it('rejects a malformed date with 400 and persists nothing', async () => {
     const first = await app.inject({ method: 'GET', url: '/v1/belege' })
     const cookie = extractSessionCookie(first.headers['set-cookie'])!
 
-    const response = await createReceipt(cookie, { dateiname: 'a.pdf', zahlungsdatum: 'nicht-ein-datum' })
+    const response = await createReceipt(cookie, { fileName: 'a.pdf', zahlungsdatum: 'nicht-ein-datum' })
     expect(response.statusCode).toBe(400)
-    await expect(prisma.beleg.count()).resolves.toBe(0)
+    await expect(prisma.receipt.count()).resolves.toBe(0)
   })
 })

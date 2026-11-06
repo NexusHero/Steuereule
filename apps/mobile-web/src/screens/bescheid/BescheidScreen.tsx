@@ -100,7 +100,7 @@ export function AssessmentScreen({ onDone = () => {}, onBack, taxYear = CURRENT_
         />
       ))}
 
-      <DateEditor date={response.frist.bescheiddatum} onSet={(date) => setDate.mutate({ jahr: taxYear, data: { date } }, { onSuccess: refetch })} />
+      <DateEditor date={response.frist.assessmentDate} onSet={(date) => setDate.mutate({ jahr: taxYear, data: { date } }, { onSuccess: refetch })} />
 
       <ReconciliationSection response={response} />
 
@@ -122,7 +122,7 @@ function FristBanner({ frist }: { readonly frist: AssessmentResponseDto['frist']
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const s = makeStyles(t)
-  if (frist.bescheiddatum === null) {
+  if (frist.assessmentDate === null) {
     return (
       <Card variant="nacht">
         <Text style={s.fristHeading}>{tr('bescheid.frist.nochKeinDatum')}</Text>
@@ -287,7 +287,7 @@ function AppealSection({ response, onAppeal }: { readonly response: AssessmentRe
       return (
         <View style={s.section}>
           <Text style={s.sectionHeading}>{tr('bescheid.einspruch.heading')}</Text>
-          <Text style={s.ok}>{tr('bescheid.einspruch.eingelegt', { grund: tr(`bescheid.einspruch.grund.${response.einspruchGrund ?? 'sonstiges'}`) })}</Text>
+          <Text style={s.ok}>{tr('bescheid.einspruch.eingelegt', { grund: tr(`bescheid.einspruch.grund.${response.appealReason ?? 'sonstiges'}`) })}</Text>
         </View>
       )
     }

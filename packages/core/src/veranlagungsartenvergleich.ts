@@ -10,9 +10,9 @@ import {
 } from './tarif'
 
 export type ProgressionClauseInput =
-  | { readonly art: 'keine' }
-  | { readonly art: 'lohnersatzleistungen'; readonly amount: number }
-  | { readonly art: 'nicht-angegeben' }
+  | { readonly kind: 'keine' }
+  | { readonly kind: 'lohnersatzleistungen'; readonly amount: number }
+  | { readonly kind: 'nicht-angegeben' }
 
 export type Uncertainty =
   | { readonly kind: 'bestimmt'; readonly upperLimit: number }
@@ -65,7 +65,7 @@ export interface FilingTypeComparisonInput {
 const MAX_MARGINAL_TAX_RATE = 0.45
 
 export function progressionClauseLimit(pv: ProgressionClauseInput): Uncertainty {
-  switch (pv.art) {
+  switch (pv.kind) {
     case 'keine':
       return { kind: 'bestimmt', upperLimit: 0 }
     case 'lohnersatzleistungen': {

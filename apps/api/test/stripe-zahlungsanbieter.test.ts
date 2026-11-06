@@ -27,18 +27,18 @@ describe('StripeZahlungsanbieter.verifiziereEreignis', () => {
   it('a correctly signed, paid checkout.session.completed is "bezahlt"', () => {
     const { body, signature } = signed(sessionEvent('checkout.session.completed', 'paid'))
     expect(provider.verifyEvent(body, signature)).toEqual({
-      art: 'bezahlt',
+      kind: 'bezahlt',
       sessionId: 'cs_test_1',
-      betragCent: 1999,
+      amountCents: 1999,
     })
   })
 
   it('a completed but unpaid session (SEPA pending) is ignored until async_payment_succeeded', () => {
     const pending = signed(sessionEvent('checkout.session.completed', 'unpaid'))
-    expect(provider.verifyEvent(pending.body, pending.signature)).toEqual({ art: 'ignoriert' })
+    expect(provider.verifyEvent(pending.body, pending.signature)).toEqual({ kind: 'ignoriert' })
 
     const later = signed(sessionEvent('checkout.session.async_payment_succeeded', 'paid'))
-    expect(provider.verifyEvent(later.body, later.signature)).toMatchObject({ art: 'bezahlt' })
+    expect(provider.verifyEvent(later.body, later.signature)).toMatchObject({ kind: 'bezahlt' })
   })
 
   it('refuses a tampered body', () => {

@@ -77,25 +77,25 @@ export class CockpitService {
     @Inject(CROSS_BORDER_SALARY_STATEMENT_REPOSITORY) private readonly chSalaryCertificateRepository: CrossBorderSalaryStatementRepository,
   ) {}
 
-  async getSummary(userId: string, steuerjahr: number): Promise<CockpitSummaryDto | null> {
-    const record = await this.taxYearRepository.findByUserAndYear(userId, steuerjahr)
+  async getSummary(userId: string, taxYear: number): Promise<CockpitSummaryDto | null> {
+    const record = await this.taxYearRepository.findByUserAndYear(userId, taxYear)
     if (!record) return null
 
     const [lstbRecord, interviewRows, markings, pensionRecord, capitalRecord, rentalRecords, chRecord] = await Promise.all([
-      this.lstbRepository.findForUserAndYear(userId, steuerjahr),
-      this.interviewRepository.findAllForUserAndYear(userId, steuerjahr),
-      this.markingRepository.listForUserAndYears(userId, [steuerjahr]),
-      this.pensionRepository.findForUserAndYear(userId, steuerjahr),
-      this.capitalRepository.findForUserAndYear(userId, steuerjahr),
-      this.rentalRepository.listForUserAndYear(userId, steuerjahr),
-      this.chSalaryCertificateRepository.findForUserAndYear(userId, steuerjahr),
+      this.lstbRepository.findForUserAndYear(userId, taxYear),
+      this.interviewRepository.findAllForUserAndYear(userId, taxYear),
+      this.markingRepository.listForUserAndYears(userId, [taxYear]),
+      this.pensionRepository.findForUserAndYear(userId, taxYear),
+      this.capitalRepository.findForUserAndYear(userId, taxYear),
+      this.rentalRepository.listForUserAndYear(userId, taxYear),
+      this.chSalaryCertificateRepository.findForUserAndYear(userId, taxYear),
     ])
 
     const data = wageTaxCertificateDataFrom(lstbRecord)
     const answers = answersFrom(interviewRows)
 
     const unconfirmedFacts = new Set(
-      markings.filter((k) => !k.bestaetigt).map((k) => k.key.slice(0, k.key.indexOf('.'))),
+      markings.filter((k) => !k.confirmed).map((k) => k.key.slice(0, k.key.indexOf('.'))),
     )
     let unconfirmedItems = 0
     let unconfirmedSum = 0
@@ -128,6 +128,6 @@ export class CockpitService {
       unconfirmedSum,
     })
 
-    return { taxYear: record.steuerjahr, status: toStatusDto(status), openItems: record.openItems }
+    return { taxYear: record.taxYear, status: toStatusDto(status), openItems: record.openItems }
   }
 }

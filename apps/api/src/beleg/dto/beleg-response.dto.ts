@@ -7,10 +7,10 @@ export class ReceiptResponseDto {
   id!: string
 
   @ApiProperty({ type: String, example: 'miete-januar.pdf', description: 'Original filename (decrypted for the owner).' })
-  dateiname!: string
+  fileName!: string
 
   @ApiProperty({ type: String, nullable: true, example: 'Lohnausweis', description: 'Document type (ADR-029) — null is the generic receipt.' })
-  art!: string | null
+  kind!: string | null
 
   @ApiProperty({ type: String, nullable: true, example: '2025-12-20', description: 'Invoice date (ISO yyyy-mm-dd).' })
   belegdatum!: string | null

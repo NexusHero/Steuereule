@@ -7,11 +7,11 @@
  */
 export interface RolloverProvenanceDto {
   /** Der Kennzeichnungs-Key des kopierten Felds (ADR-0052 §6). */
-  postenKey: string;
+  itemKey: string;
   /** Das Quelljahr der Kopie — der Jahresbezug der Herkunft (ADR-022). */
-  vorjahr: number;
+  lastYear: number;
   /** false = UNBESTÄTIGT (kopiert, Anlage noch nicht bestätigt), true = bestätigt (ADR-021). */
-  bestaetigt: boolean;
+  confirmed: boolean;
 }
 
 export interface RolloverResponseDto {

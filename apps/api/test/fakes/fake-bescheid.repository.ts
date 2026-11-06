@@ -5,62 +5,62 @@
 import type { AssessmentField, AssessmentStatus } from '@steuereule/core'
 import type { AssessmentRecord, AssessmentRepository } from '../../src/bescheid/bescheid.repository.js'
 
-function key(userId: string, steuerjahr: number): string {
-  return `${userId}::${steuerjahr}`
+function key(userId: string, taxYear: number): string {
+  return `${userId}::${taxYear}`
 }
 
 export class FakeAssessmentRepository implements AssessmentRepository {
   private readonly store = new Map<string, AssessmentRecord>()
 
-  private leer(userId: string, steuerjahr: number): AssessmentRecord {
+  private leer(userId: string, taxYear: number): AssessmentRecord {
     return {
       userId,
-      steuerjahr,
+      taxYear,
       status: 'eingegangen',
-      bescheiddatum: null,
-      einspruchGrund: null,
+      assessmentDate: null,
+      appealReason: null,
       fields: { einnahmen: null, vorsorgeaufwand: null, anrechnung: null, festgesetzteSteuer: null, erstattung: null },
     }
   }
 
-  findForUserAndYear(userId: string, steuerjahr: number): Promise<AssessmentRecord | null> {
-    return Promise.resolve(this.store.get(key(userId, steuerjahr)) ?? null)
+  findForUserAndYear(userId: string, taxYear: number): Promise<AssessmentRecord | null> {
+    return Promise.resolve(this.store.get(key(userId, taxYear)) ?? null)
   }
 
-  setField(userId: string, steuerjahr: number, field: AssessmentField, value: string | null): Promise<AssessmentRecord> {
-    const k = key(userId, steuerjahr)
-    const existing = this.store.get(k) ?? this.leer(userId, steuerjahr)
+  setField(userId: string, taxYear: number, field: AssessmentField, value: string | null): Promise<AssessmentRecord> {
+    const k = key(userId, taxYear)
+    const existing = this.store.get(k) ?? this.leer(userId, taxYear)
     const updated = { ...existing, fields: { ...existing.fields, [field]: value } }
     this.store.set(k, updated)
     return Promise.resolve(updated)
   }
 
-  setDate(userId: string, steuerjahr: number, date: string | null): Promise<AssessmentRecord> {
-    const k = key(userId, steuerjahr)
-    const existing = this.store.get(k) ?? this.leer(userId, steuerjahr)
-    const updated = { ...existing, bescheiddatum: date }
+  setDate(userId: string, taxYear: number, date: string | null): Promise<AssessmentRecord> {
+    const k = key(userId, taxYear)
+    const existing = this.store.get(k) ?? this.leer(userId, taxYear)
+    const updated = { ...existing, assessmentDate: date }
     this.store.set(k, updated)
     return Promise.resolve(updated)
   }
 
-  setStatus(userId: string, steuerjahr: number, status: AssessmentStatus): Promise<AssessmentRecord> {
-    const k = key(userId, steuerjahr)
-    const existing = this.store.get(k) ?? this.leer(userId, steuerjahr)
+  setStatus(userId: string, taxYear: number, status: AssessmentStatus): Promise<AssessmentRecord> {
+    const k = key(userId, taxYear)
+    const existing = this.store.get(k) ?? this.leer(userId, taxYear)
     const updated = { ...existing, status }
     this.store.set(k, updated)
     return Promise.resolve(updated)
   }
 
-  setAppeal(userId: string, steuerjahr: number, reason: string): Promise<AssessmentRecord> {
-    const k = key(userId, steuerjahr)
-    const existing = this.store.get(k) ?? this.leer(userId, steuerjahr)
-    const updated: AssessmentRecord = { ...existing, status: 'einspruch-eingelegt', einspruchGrund: reason }
+  setAppeal(userId: string, taxYear: number, reason: string): Promise<AssessmentRecord> {
+    const k = key(userId, taxYear)
+    const existing = this.store.get(k) ?? this.leer(userId, taxYear)
+    const updated: AssessmentRecord = { ...existing, status: 'einspruch-eingelegt', appealReason: reason }
     this.store.set(k, updated)
     return Promise.resolve(updated)
   }
 
   /** Test seam: seed a full record directly. */
   seed(record: AssessmentRecord): void {
-    this.store.set(key(record.userId, record.steuerjahr), record)
+    this.store.set(key(record.userId, record.taxYear), record)
   }
 }

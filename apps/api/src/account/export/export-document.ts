@@ -27,7 +27,7 @@ export type ExportTaxDataValue = string | number | boolean | null
 /** One stored tax-data row: its area, tax year, and its fields with technical keys removed. */
 export interface ExportTaxDataEntry {
   area: string
-  steuerjahr: number | null
+  taxYear: number | null
   fields: Record<string, ExportTaxDataValue>
 }
 

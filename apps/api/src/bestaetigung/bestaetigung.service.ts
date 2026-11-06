@@ -12,7 +12,7 @@ import {
   decomposeProvenanceKey,
   type Annex,
   type Provenance,
-  type Kennzeichnung,
+  type Marking,
   type Screen,
 } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
@@ -27,20 +27,20 @@ interface Address {
   screen: Screen
   instance: string | null
   field: string
-  steuerjahr: number
+  taxYear: number
   access: ScreenAccess
 }
 
 function provenanceDto(h: Provenance): ProvenanceDto {
-  switch (h.art) {
+  switch (h.kind) {
     case 'nutzer':
-      return { art: 'nutzer' }
+      return { kind: 'nutzer' }
     case 'uebernahme':
-      return { art: 'uebernahme', vorjahr: h.vorjahr }
+      return { kind: 'uebernahme', lastYear: h.lastYear }
     case 'assistent':
-      return h.receiptId === undefined ? { art: 'assistent', name: h.name } : { art: 'assistent', name: h.name, receiptId: h.receiptId }
+      return h.receiptId === undefined ? { kind: 'assistent', name: h.name } : { kind: 'assistent', name: h.name, receiptId: h.receiptId }
     case 'beleg':
-      return { art: 'beleg', receiptId: h.receiptId }
+      return { kind: 'beleg', receiptId: h.receiptId }
   }
 }
 
@@ -53,7 +53,7 @@ export class ConfirmationService {
     @Inject(AuditService) private readonly auditService: AuditService,
   ) {}
 
-  private address(key: string, steuerjahr: number): Address {
+  private address(key: string, taxYear: number): Address {
     let parts: ReturnType<typeof decomposeProvenanceKey>
     try {
       parts = decomposeProvenanceKey(key)
@@ -64,64 +64,64 @@ export class ConfirmationService {
     if (access === undefined || !access.fields.includes(parts.field) || access.withInstance !== (parts.instance !== null)) {
       throw new InvalidInputError('FIELD_NOT_WRITABLE', `"${key}" is not a field that can be written here.`)
     }
-    return { key, ...parts, steuerjahr: isYearIndependent(key) ? YEAR_INDEPENDENT : steuerjahr, access }
+    return { key, ...parts, taxYear: isYearIndependent(key) ? YEAR_INDEPENDENT : taxYear, access }
   }
 
   private async currentValue(userId: string, a: Address): Promise<string | null> {
-    const values = await a.access.read(userId, a.steuerjahr, a.instance)
+    const values = await a.access.read(userId, a.taxYear, a.instance)
     if (values === null) throw new NotFoundError('FIELD_NOT_FOUND', `"${a.key}" does not exist in this tax year.`)
     return values[a.field] ?? null
   }
 
   private async writeValue(userId: string, a: Address, value: string | null): Promise<void> {
-    if (!(await a.access.write(userId, a.steuerjahr, a.instance, a.field, value))) {
+    if (!(await a.access.write(userId, a.taxYear, a.instance, a.field, value))) {
       throw new NotFoundError('FIELD_NOT_FOUND', `"${a.key}" does not exist in this tax year.`)
     }
   }
 
-  async write(userId: string, steuerjahr: number, key: string, newValue: string | null, provenance: Provenance): Promise<WriteResult> {
-    if (provenance.art === 'nutzer') throw new Error('BestaetigungService.schreibe is for non-user writes; the masks handle user writes.')
-    const a = this.address(key, steuerjahr)
+  async write(userId: string, taxYear: number, key: string, newValue: string | null, provenance: Provenance): Promise<WriteResult> {
+    if (provenance.kind === 'nutzer') throw new Error('BestaetigungService.schreibe is for non-user writes; the masks handle user writes.')
+    const a = this.address(key, taxYear)
     const currentValue = await this.currentValue(userId, a)
-    const existing = await this.repository.find(userId, a.steuerjahr, key)
+    const existing = await this.repository.find(userId, a.taxYear, key)
     const decision = decideWriting({ key, existing: existing === null ? null : { ...existing, value: currentValue }, currentValue, newValue, provenance })
-    switch (decision.art) {
+    switch (decision.kind) {
       case 'unveraendert':
         return 'unveraendert'
       case 'vorschlag':
-        await this.repository.save(userId, a.steuerjahr, decision.marking)
+        await this.repository.save(userId, a.taxYear, decision.marking)
         return 'vorschlag'
       case 'schreiben':
         await this.writeValue(userId, a, newValue)
-        if (decision.marking === null) await this.repository.remove(userId, a.steuerjahr, [key])
-        else await this.repository.save(userId, a.steuerjahr, decision.marking)
+        if (decision.marking === null) await this.repository.remove(userId, a.taxYear, [key])
+        else await this.repository.save(userId, a.taxYear, decision.marking)
         return 'geschrieben'
     }
   }
 
-  async list(userId: string, steuerjahr: number): Promise<ProvenanceRecord[]> {
-    return this.repository.listForUserAndYears(userId, [steuerjahr, YEAR_INDEPENDENT])
+  async list(userId: string, taxYear: number): Promise<ProvenanceRecord[]> {
+    return this.repository.listForUserAndYears(userId, [taxYear, YEAR_INDEPENDENT])
   }
 
-  async missing(userId: string, steuerjahr: number): Promise<string[]> {
-    return missingConfirmations((await this.list(userId, steuerjahr)).map((r) => ({ ...r, value: null })))
+  async missing(userId: string, taxYear: number): Promise<string[]> {
+    return missingConfirmations((await this.list(userId, taxYear)).map((r) => ({ ...r, value: null })))
   }
 
-  async overview(userId: string, steuerjahr: number): Promise<ConfirmationResponseDto> {
-    const open = (await this.list(userId, steuerjahr)).filter((r) => !r.bestaetigt || r.proposal !== null)
+  async overview(userId: string, taxYear: number): Promise<ConfirmationResponseDto> {
+    const open = (await this.list(userId, taxYear)).filter((r) => !r.confirmed || r.proposal !== null)
     if (open.length === 0) return { annexes: [] }
     await this.auditService.append({ userId, action: 'READ', resource: 'kennzeichnung' })
 
     const read = new Map<string, Promise<Readonly<Record<string, string | null>> | null>>()
-    const values: { anlage: Annex; dto: FieldProvenanceDto }[] = []
+    const values: { annex: Annex; dto: FieldProvenanceDto }[] = []
     for (const r of open) {
       const { screen, instance, field } = decomposeProvenanceKey(r.key)
       const access = this.access[screen]
-      const cacheKey = `${r.steuerjahr}|${screen}|${instance ?? ''}`
-      if (access !== undefined && !read.has(cacheKey)) read.set(cacheKey, access.read(userId, r.steuerjahr, instance))
+      const cacheKey = `${r.taxYear}|${screen}|${instance ?? ''}`
+      if (access !== undefined && !read.has(cacheKey)) read.set(cacheKey, access.read(userId, r.taxYear, instance))
       const fields = access === undefined ? null : await read.get(cacheKey)
       values.push({
-        anlage: annexOf(r.key),
+        annex: annexOf(r.key),
         dto: {
           key: r.key,
           screen,
@@ -129,39 +129,39 @@ export class ConfirmationService {
           field,
           value: fields?.[field] ?? null,
           provenance: provenanceDto(r.provenance),
-          bestaetigt: r.bestaetigt,
+          confirmed: r.confirmed,
           proposal: r.proposal === null ? null : { value: r.proposal.value, provenance: provenanceDto(r.proposal.provenance) },
         },
       })
     }
     return {
-      annexes: ANNEXES.flatMap((anlage) => {
-        const own = values.filter((w) => w.anlage === anlage).map((w) => w.dto)
-        return own.length === 0 ? [] : [{ anlage, unconfirmed: own.filter((w) => !w.bestaetigt).length, values: own }]
+      annexes: ANNEXES.flatMap((annex) => {
+        const own = values.filter((w) => w.annex === annex).map((w) => w.dto)
+        return own.length === 0 ? [] : [{ annex, unconfirmed: own.filter((w) => !w.confirmed).length, values: own }]
       }),
     }
   }
 
-  async confirmAnnex(userId: string, steuerjahr: number, anlage: Annex): Promise<ConfirmationResponseDto> {
-    if (!(ANNEXES as readonly string[]).includes(anlage)) throw new InvalidInputError('ANLAGE_UNKNOWN', `"${anlage}" is not an Anlage.`)
-    await this.repository.confirmAnnex(userId, [steuerjahr, YEAR_INDEPENDENT], anlage)
-    return this.overview(userId, steuerjahr)
+  async confirmAnnex(userId: string, taxYear: number, annex: Annex): Promise<ConfirmationResponseDto> {
+    if (!(ANNEXES as readonly string[]).includes(annex)) throw new InvalidInputError('ANLAGE_UNKNOWN', `"${annex}" is not an Anlage.`)
+    await this.repository.confirmAnnex(userId, [taxYear, YEAR_INDEPENDENT], annex)
+    return this.overview(userId, taxYear)
   }
 
-  async decideProposal(userId: string, steuerjahr: number, key: string, decision: 'annehmen' | 'verwerfen'): Promise<ConfirmationResponseDto> {
-    const a = this.address(key, steuerjahr)
-    const existing = await this.repository.find(userId, a.steuerjahr, key)
+  async decideProposal(userId: string, taxYear: number, key: string, decision: 'annehmen' | 'verwerfen'): Promise<ConfirmationResponseDto> {
+    const a = this.address(key, taxYear)
+    const existing = await this.repository.find(userId, a.taxYear, key)
     if (existing === null || existing.proposal === null) throw new NotFoundError('PROPOSAL_NOT_FOUND', `There is no open proposal for "${key}".`)
-    const marking: Kennzeichnung = { ...existing, value: await this.currentValue(userId, a) }
+    const marking: Marking = { ...existing, value: await this.currentValue(userId, a) }
     if (decision === 'annehmen') {
       const assumed = acceptProposal(marking)
       await this.writeValue(userId, a, assumed.value)
-      await this.repository.save(userId, a.steuerjahr, assumed)
+      await this.repository.save(userId, a.taxYear, assumed)
     } else {
       const rest = dismissProposal(marking)
-      if (rest === null) await this.repository.remove(userId, a.steuerjahr, [key])
-      else await this.repository.save(userId, a.steuerjahr, rest)
+      if (rest === null) await this.repository.remove(userId, a.taxYear, [key])
+      else await this.repository.save(userId, a.taxYear, rest)
     }
-    return this.overview(userId, steuerjahr)
+    return this.overview(userId, taxYear)
   }
 }

@@ -16,23 +16,23 @@ export class UnlockService {
     @Inject(WEB_APP_URL_TOKEN) private readonly webAppUrl: string,
   ) {}
 
-  async status(userId: string, steuerjahr: number): Promise<UnlockStatus> {
-    if (await this.repository.isPaid(userId, steuerjahr)) return 'freigeschaltet'
+  async status(userId: string, taxYear: number): Promise<UnlockStatus> {
+    if (await this.repository.isPaid(userId, taxYear)) return 'freigeschaltet'
     return this.provider ? 'offen' : 'nicht-verfuegbar'
   }
 
-  async startCheckout(userId: string, steuerjahr: number): Promise<{ checkoutUrl: string }> {
+  async startCheckout(userId: string, taxYear: number): Promise<{ checkoutUrl: string }> {
     if (!this.provider) {
       throw new UnavailableError('PAYMENT_NOT_CONFIGURED', 'Payment is not configured in this environment.')
     }
-    const returnTrip = `${this.webAppUrl}/app/steuerjahr/${steuerjahr}/ausdruck`
+    const returnTrip = `${this.webAppUrl}/app/steuerjahr/${taxYear}/ausdruck`
     const session = await this.provider.createCheckout({
       userId,
-      steuerjahr,
+      taxYear,
       successUrl: `${returnTrip}?zahlung=erfolg`,
       cancelUrl: `${returnTrip}?zahlung=abbruch`,
     })
-    await this.repository.createOpenOnes(userId, steuerjahr, session.id)
+    await this.repository.createOpenOnes(userId, taxYear, session.id)
     return { checkoutUrl: session.url }
   }
 
@@ -45,8 +45,8 @@ export class UnlockService {
     } catch {
       throw new UnauthenticatedError('WEBHOOK_SIGNATURE_INVALID', 'The webhook signature is invalid.')
     }
-    if (event.art === 'bezahlt') {
-      await this.repository.markPaid(event.sessionId, event.betragCent, now)
+    if (event.kind === 'bezahlt') {
+      await this.repository.markPaid(event.sessionId, event.amountCents, now)
     }
   }
 }

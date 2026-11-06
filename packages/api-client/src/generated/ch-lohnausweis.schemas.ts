@@ -65,10 +65,10 @@ export interface ExchangeRateDto {
 /**
  * The CH line-item kind.
  */
-export type ChItemDtoArt = typeof ChItemDtoArt[keyof typeof ChItemDtoArt];
+export type ChItemDtoKind = typeof ChItemDtoKind[keyof typeof ChItemDtoKind];
 
 
-export const ChItemDtoArt = {
+export const ChItemDtoKind = {
   Bruttolohn: 'Bruttolohn',
   Quellensteuer: 'Quellensteuer',
   Pensionskasse: 'Pensionskasse',
@@ -92,7 +92,7 @@ export interface ChItemDto {
   /** Stable line-item id. */
   id: string;
   /** The CH line-item kind. */
-  art: ChItemDtoArt;
+  kind: ChItemDtoKind;
   /** The Lohnausweis Ziffer (when from the Lohnausweis). */
   digit?: string;
   /** CHF amount as entered (ADR-036: CHF führt). */

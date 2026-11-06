@@ -13,7 +13,7 @@ export class CreateReceiptDto {
   })
   @IsString()
   @IsNotEmpty()
-  dateiname!: string
+  fileName!: string
 
   @ApiPropertyOptional({
     type: String,
@@ -24,7 +24,7 @@ export class CreateReceiptDto {
   @IsOptional()
   @IsString()
   @IsIn([...RECEIPT_TYPES])
-  art?: ReceiptType
+  kind?: ReceiptType
 
   @ApiPropertyOptional({
     type: String,

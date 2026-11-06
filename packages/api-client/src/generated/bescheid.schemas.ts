@@ -69,7 +69,7 @@ export interface AssessmentDeadlineDto {
      * Bescheiddatum (ISO yyyy-mm-dd), null until set.
      * @nullable
      */
-  bescheiddatum: string | null;
+  assessmentDate: string | null;
   /**
      * Einspruchsfrist-Ende (Bescheiddatum + 1 Monat), null until the datum is set.
      * @nullable
@@ -89,12 +89,12 @@ export interface AssessmentResponseDto {
      * Bescheiddatum (ISO yyyy-mm-dd).
      * @nullable
      */
-  bescheiddatum: string | null;
+  assessmentDate: string | null;
   /**
      * Einspruch-Grund (closed set), null until filed.
      * @nullable
      */
-  einspruchGrund: string | null;
+  appealReason: string | null;
   /** The five figures, in paper order. */
   fields: AssessmentFieldDto[];
   /** The Abgleich (Bescheid vs. berechnet). */

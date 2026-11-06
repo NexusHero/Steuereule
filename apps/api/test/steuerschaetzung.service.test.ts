@@ -39,7 +39,7 @@ describe('SteuerschaetzungService', () => {
   it('estimates the refund for a complete Lohnsteuerbescheinigung', async () => {
     const { lstb, interview, service } = setup()
     interview.seed('u', 2025, EMPLOYED)
-    lstb.seed({ userId: 'u', steuerjahr: 2025, bruttoarbeitslohn: '45000', lohnsteuer: '6100', sozialversicherung: '9200' })
+    lstb.seed({ userId: 'u', taxYear: 2025, bruttoarbeitslohn: '45000', lohnsteuer: '6100', sozialversicherung: '9200' })
 
     const status = range(await service.getState('u', 2025))
 
@@ -49,16 +49,16 @@ describe('SteuerschaetzungService', () => {
 
   it('takes the Entfernungspauschale from the stored commute', async () => {
     const { lstb, interview, service } = setup({
-      arbeitstage: [1, 2, 3, 4, 5],
-      urlaubstage: 30,
-      krankheitstage: 5,
-      homeofficeTage: 20,
-      einfacheKm: 30,
-      verkehrsmittel: 'pkw',
-      taetigkeitsstaette: null,
+      workdays: [1, 2, 3, 4, 5],
+      vacationDays: 30,
+      sickDays: 5,
+      homeOfficeDays: 20,
+      oneWayKm: 30,
+      transport: 'pkw',
+      workplace: null,
     })
     interview.seed('u', 2025, EMPLOYED)
-    lstb.seed({ userId: 'u', steuerjahr: 2025, bruttoarbeitslohn: '45000', lohnsteuer: '6100', sozialversicherung: '9200' })
+    lstb.seed({ userId: 'u', taxYear: 2025, bruttoarbeitslohn: '45000', lohnsteuer: '6100', sozialversicherung: '9200' })
 
     const status = range(await service.getState('u', 2025))
 
@@ -68,7 +68,7 @@ describe('SteuerschaetzungService', () => {
   it('names what is still missing instead of estimating from an incomplete LStB', async () => {
     const { lstb, interview, service } = setup()
     interview.seed('u', 2025, EMPLOYED)
-    lstb.seed({ userId: 'u', steuerjahr: 2025, bruttoarbeitslohn: '45000', lohnsteuer: null, sozialversicherung: null })
+    lstb.seed({ userId: 'u', taxYear: 2025, bruttoarbeitslohn: '45000', lohnsteuer: null, sozialversicherung: null })
 
     const status = await service.getState('u', 2025)
 
@@ -78,7 +78,7 @@ describe('SteuerschaetzungService', () => {
   it('never estimates a married person as single — it asks for the joint return first (ADR-0054)', async () => {
     const { lstb, interview, service } = setup()
     interview.seed('u', 2025, { ...EMPLOYED, familienstand: 'Verheiratet' })
-    lstb.seed({ userId: 'u', steuerjahr: 2025, bruttoarbeitslohn: '45000', lohnsteuer: '6100', sozialversicherung: '9200' })
+    lstb.seed({ userId: 'u', taxYear: 2025, bruttoarbeitslohn: '45000', lohnsteuer: '6100', sozialversicherung: '9200' })
 
     expect(await service.getState('u', 2025)).toEqual({ kind: 'offen', fehlt: ['veranlagungsart'] })
   })
@@ -87,11 +87,11 @@ describe('SteuerschaetzungService', () => {
     const { lstb, interview, stammdaten: masterData, kopplung: link, vermietung: rental, service } = setup()
     interview.seed('a', 2025, EMPLOYED)
     await masterData.save('a', { familienstand: 'verheiratet', religion: 'VD' } as MasterDataRecord)
-    await link.upsert('a', 2025, { personBUserId: 'spouse_a_2025', veranlagungsart: 'zusammen' })
-    lstb.seed({ userId: 'a', steuerjahr: 2025, bruttoarbeitslohn: '82000', lohnsteuer: '9890', sozialversicherung: '15473' })
-    lstb.seed({ userId: 'spouse_a_2025', steuerjahr: 2025, bruttoarbeitslohn: '48000', lohnsteuer: '10420', sozialversicherung: '10008' })
+    await link.upsert('a', 2025, { personBUserId: 'spouse_a_2025', filingType: 'zusammen' })
+    lstb.seed({ userId: 'a', taxYear: 2025, bruttoarbeitslohn: '82000', lohnsteuer: '9890', sozialversicherung: '15473' })
+    lstb.seed({ userId: 'spouse_a_2025', taxYear: 2025, bruttoarbeitslohn: '48000', lohnsteuer: '10420', sozialversicherung: '10008' })
     rental.seed({
-      id: 'o1', userId: 'a', steuerjahr: 2025, mieteinnahmen: '14400', anschaffungskosten: '280000', baujahr: '1995', werbungskosten: '3200',
+      id: 'o1', userId: 'a', taxYear: 2025, mieteinnahmen: '14400', anschaffungskosten: '280000', baujahr: '1995', werbungskosten: '3200',
     } as never)
 
     const status = range(await service.getState('a', 2025))
@@ -101,9 +101,9 @@ describe('SteuerschaetzungService', () => {
       const second = setup()
       second.interview.seed('a', 2025, EMPLOYED)
       await second.stammdaten.save('a', { familienstand: 'verheiratet', religion: 'VD' } as MasterDataRecord)
-      await second.kopplung.upsert('a', 2025, { personBUserId: 'spouse_a_2025', veranlagungsart: 'zusammen' })
-      second.lstb.seed({ userId: 'a', steuerjahr: 2025, bruttoarbeitslohn: '82000', lohnsteuer: '9890', sozialversicherung: '15473' })
-      second.lstb.seed({ userId: 'spouse_a_2025', steuerjahr: 2025, bruttoarbeitslohn: '48000', lohnsteuer: '10420', sozialversicherung: '10008' })
+      await second.kopplung.upsert('a', 2025, { personBUserId: 'spouse_a_2025', filingType: 'zusammen' })
+      second.lstb.seed({ userId: 'a', taxYear: 2025, bruttoarbeitslohn: '82000', lohnsteuer: '9890', sozialversicherung: '15473' })
+      second.lstb.seed({ userId: 'spouse_a_2025', taxYear: 2025, bruttoarbeitslohn: '48000', lohnsteuer: '10420', sozialversicherung: '10008' })
       return second.service.getState('a', 2025)
     })())
     // 14.400 rent − 3.200 costs − 5.600 AfA = 5.600 more income → more tax.
@@ -114,9 +114,9 @@ describe('SteuerschaetzungService', () => {
     const { lstb, interview, stammdaten: masterData, kopplung: link, service } = setup()
     interview.seed('a', 2025, EMPLOYED)
     await masterData.save('a', { familienstand: 'verheiratet' } as MasterDataRecord)
-    await link.upsert('a', 2025, { personBUserId: 'spouse_a_2025', veranlagungsart: 'zusammen' })
-    lstb.seed({ userId: 'a', steuerjahr: 2025, bruttoarbeitslohn: '82000', lohnsteuer: '9890', sozialversicherung: '15473' })
-    lstb.seed({ userId: 'spouse_a_2025', steuerjahr: 2025, bruttoarbeitslohn: '48000', lohnsteuer: null, sozialversicherung: '10008' } as never)
+    await link.upsert('a', 2025, { personBUserId: 'spouse_a_2025', filingType: 'zusammen' })
+    lstb.seed({ userId: 'a', taxYear: 2025, bruttoarbeitslohn: '82000', lohnsteuer: '9890', sozialversicherung: '15473' })
+    lstb.seed({ userId: 'spouse_a_2025', taxYear: 2025, bruttoarbeitslohn: '48000', lohnsteuer: null, sozialversicherung: '10008' } as never)
 
     const status = await service.getState('a', 2025)
     expect(status).toMatchObject({ kind: 'offen' })
@@ -128,15 +128,15 @@ describe('SteuerschaetzungService', () => {
     interview.seed('u', 2025, { ...EMPLOYED, ausland: 'Ja, in die Schweiz', 'ch-wohnsitz': 'Deutschland', 'ch-nichtrueckkehrtage': '0' })
     ch.seed({
       userId: 'u',
-      steuerjahr: 2025,
+      taxYear: 2025,
       fields: { 'bruttolohn-total': '90000', 'ahv-beitraege': '6660', 'berufliche-vorsorge': '4500', quellensteuer: '4050' } as CrossBorderSalaryStatementRecord['fields'],
       bemerkungen: null,
       saeule3aChf: null,
       krankenkasseChf: null,
-      wechselkursMonat: '2025-12',
-      wechselkursKurs: 1.07,
-      wechselkursModus: 'amtlich',
-      wechselkursBelegId: null,
+      exchangeRateMonth: '2025-12',
+      exchangeRateValue: 1.07,
+      exchangeRateMode: 'amtlich',
+      exchangeRateReceiptId: null,
       nGre: { familienzulagenChf: 0, krankentaggeldChf: 0, pkArbeitnehmerChf: 4500, pkArbeitgeberChf: 4500 } as unknown as CrossBorderSalaryStatementRecord['nGre'],
     })
 
@@ -151,15 +151,15 @@ describe('SteuerschaetzungService', () => {
     interview.seed('u', 2025, { ...EMPLOYED, ausland: 'Ja, in die Schweiz', 'ch-wohnsitz': 'Deutschland', 'ch-nichtrueckkehrtage': '0' })
     ch.seed({
       userId: 'u',
-      steuerjahr: 2025,
+      taxYear: 2025,
       fields: { 'bruttolohn-total': '90000', 'berufliche-vorsorge': '4500', quellensteuer: '4050' } as CrossBorderSalaryStatementRecord['fields'],
       bemerkungen: null,
       saeule3aChf: null,
       krankenkasseChf: null,
-      wechselkursMonat: '2025-12',
-      wechselkursKurs: 1.07,
-      wechselkursModus: 'amtlich',
-      wechselkursBelegId: null,
+      exchangeRateMonth: '2025-12',
+      exchangeRateValue: 1.07,
+      exchangeRateMode: 'amtlich',
+      exchangeRateReceiptId: null,
       nGre: { pkArbeitnehmerChf: null } as CrossBorderSalaryStatementRecord['nGre'],
     })
 

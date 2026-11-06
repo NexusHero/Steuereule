@@ -10,7 +10,7 @@ import type { Answers } from './interview'
 
 describe('isEinkunftsart', () => {
   it('accepts every declared Einkunftsart', () => {
-    for (const art of INCOME_TYPES) expect(isIncomeType(art)).toBe(true)
+    for (const kind of INCOME_TYPES) expect(isIncomeType(kind)).toBe(true)
   })
 
   it('rejects an undeclared string, total over string', () => {

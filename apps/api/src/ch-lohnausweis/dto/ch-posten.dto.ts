@@ -8,7 +8,7 @@ export class ChItemDto {
   id!: string
 
   @ApiProperty({ enum: ['Bruttolohn', 'Quellensteuer', 'Pensionskasse', 'Saeule3a', 'Krankenkasse'], description: 'The CH line-item kind.' })
-  art!: string
+  kind!: string
 
   @ApiPropertyOptional({ type: String, description: 'The Lohnausweis Ziffer (when from the Lohnausweis).' })
   digit?: string

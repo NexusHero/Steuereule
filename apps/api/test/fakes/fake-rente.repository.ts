@@ -6,23 +6,23 @@
 import type { PensionFieldId } from '@steuereule/core'
 import type { PensionRecord, PensionRepository } from '../../src/rente/rente.repository.js'
 
-function key(userId: string, steuerjahr: number): string {
-  return `${userId}::${steuerjahr}`
+function key(userId: string, taxYear: number): string {
+  return `${userId}::${taxYear}`
 }
 
 export class FakePensionRepository implements PensionRepository {
   private readonly store = new Map<string, PensionRecord>()
 
-  findForUserAndYear(userId: string, steuerjahr: number): Promise<PensionRecord | null> {
-    return Promise.resolve(this.store.get(key(userId, steuerjahr)) ?? null)
+  findForUserAndYear(userId: string, taxYear: number): Promise<PensionRecord | null> {
+    return Promise.resolve(this.store.get(key(userId, taxYear)) ?? null)
   }
 
-  setField(userId: string, steuerjahr: number, field: PensionFieldId, value: string | null): Promise<PensionRecord> {
-    const k = key(userId, steuerjahr)
+  setField(userId: string, taxYear: number, field: PensionFieldId, value: string | null): Promise<PensionRecord> {
+    const k = key(userId, taxYear)
     const existing = this.store.get(k)
     const record: PensionRecord = existing ?? {
       userId,
-      steuerjahr,
+      taxYear,
       rentenart: null,
       jahresbetrag: null,
       rentenbeginnJahr: null,
@@ -33,24 +33,24 @@ export class FakePensionRepository implements PensionRepository {
     return Promise.resolve(updated)
   }
 
-  setPensionKind(userId: string, steuerjahr: number, art: string | null): Promise<PensionRecord> {
-    const k = key(userId, steuerjahr)
+  setPensionKind(userId: string, taxYear: number, kind: string | null): Promise<PensionRecord> {
+    const k = key(userId, taxYear)
     const existing = this.store.get(k)
     const record: PensionRecord = existing ?? {
       userId,
-      steuerjahr,
+      taxYear,
       rentenart: null,
       jahresbetrag: null,
       rentenbeginnJahr: null,
       alterBeiRentenbeginn: null,
     }
-    const updated: PensionRecord = { ...record, rentenart: art }
+    const updated: PensionRecord = { ...record, rentenart: kind }
     this.store.set(k, updated)
     return Promise.resolve(updated)
   }
 
   /** Test seam: seed a full record directly, bypassing the setters' upsert. */
   seed(record: PensionRecord): void {
-    this.store.set(key(record.userId, record.steuerjahr), record)
+    this.store.set(key(record.userId, record.taxYear), record)
   }
 }

@@ -23,7 +23,7 @@ const TRUSTED_ORIGIN_HEADERS = { origin: ALLOWED_ORIGIN }
 const TAX_YEAR = 2026
 const RATE = 0.9412
 
-type ChSalaryCertificateRow = { userId: string; bruttolohnTotal: string | null }
+type ChSalaryCertificateRow = { userId: string; grossWageTotal: string | null }
 
 describe('REQ-021 — the CH-Posten folding (Vorsorge + Quellensteuer-Anrechnung), against the real server', () => {
   let app: NestFastifyApplication
@@ -117,7 +117,7 @@ describe('REQ-021 — the CH-Posten folding (Vorsorge + Quellensteuer-Anrechnung
       const body = (await response.json()) as {
         status: string
         exchangeRate: { month: string; rate: number; mode: string }
-        items: Array<{ id: string; art: string; digit: string; amountChf: number; amountEur: number; role: string }>
+        items: Array<{ id: string; kind: string; digit: string; amountChf: number; amountEur: number; role: string }>
         foldStatus: { kind: string; einnahmen: number; vorsorgeaufwand: number; anrechnung: number }
       }
 
@@ -127,7 +127,7 @@ describe('REQ-021 — the CH-Posten folding (Vorsorge + Quellensteuer-Anrechnung
       expect(body.items).toEqual([
         {
           id: 'ch-lohnausweis-bruttolohn-total',
-          art: 'Bruttolohn',
+          kind: 'Bruttolohn',
           digit: '8',
           amountChf: 84000,
           amountEur: 79060.8,
@@ -136,7 +136,7 @@ describe('REQ-021 — the CH-Posten folding (Vorsorge + Quellensteuer-Anrechnung
         },
         {
           id: 'ch-lohnausweis-berufliche-vorsorge',
-          art: 'Pensionskasse',
+          kind: 'Pensionskasse',
           digit: '10',
           amountChf: 5000,
           amountEur: 4706,
@@ -145,7 +145,7 @@ describe('REQ-021 — the CH-Posten folding (Vorsorge + Quellensteuer-Anrechnung
         },
         {
           id: 'ch-lohnausweis-quellensteuer',
-          art: 'Quellensteuer',
+          kind: 'Quellensteuer',
           digit: '12',
           amountChf: 3780,
           amountEur: 3557.74,
@@ -256,11 +256,11 @@ describe('REQ-021 — the CH-Posten folding (Vorsorge + Quellensteuer-Anrechnung
       await putExchangeRate(cookie, { month: '2026-01', rate: RATE, mode: 'amtlich' })
       await putField(cookie, 'bruttolohn-total', { kind: 'erfasst', value: 84000 })
 
-      const rawRows = await prisma.$queryRaw<{ bruttolohnTotal: string | null }[]>`
+      const rawRows = await prisma.$queryRaw<{ grossWageTotal: string | null }[]>`
         SELECT "bruttolohnTotal" FROM "ChLohnausweis" WHERE "userId" = ${userId}
       `
       expect(rawRows).toHaveLength(1)
-      const rawValue = rawRows[0]!.bruttolohnTotal
+      const rawValue = rawRows[0]!.grossWageTotal
       expect(rawValue).not.toBe('84000')
       expect(rawValue).not.toBeNull()
       expect(rawValue).toMatch(/^v\d+\.aesgcm256\./)

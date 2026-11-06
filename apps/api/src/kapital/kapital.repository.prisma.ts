@@ -6,7 +6,7 @@ import type { CapitalRecord, CapitalRepository, CapitalOwner } from './kapital.r
 function toRecord(row: Omit<CapitalRecord, 'inhaber'> & { inhaber?: string | null }): CapitalRecord {
   return {
     userId: row.userId,
-    steuerjahr: row.steuerjahr,
+    taxYear: row.taxYear,
     kapitalertraege: row.kapitalertraege,
     sparerPauschbetrag: row.sparerPauschbetrag,
     kapitalertragsteuer: row.kapitalertragsteuer,
@@ -20,16 +20,16 @@ function toRecord(row: Omit<CapitalRecord, 'inhaber'> & { inhaber?: string | nul
 export class PrismaCapitalRepository implements CapitalRepository {
   constructor(@Inject(ENCRYPTED_PRISMA) private readonly prisma: EncryptedPrismaClient) {}
 
-  async findForUserAndYear(userId: string, steuerjahr: number): Promise<CapitalRecord | null> {
-    const row = await this.prisma.kapital.findUnique({ where: { userId_steuerjahr: { userId, steuerjahr } } })
+  async findForUserAndYear(userId: string, taxYear: number): Promise<CapitalRecord | null> {
+    const row = await this.prisma.capital.findUnique({ where: { userId_taxYear: { userId, taxYear } } })
     return row === null ? null : toRecord(row)
   }
 
-  async setField(userId: string, steuerjahr: number, field: CapitalFieldId, value: string | null): Promise<CapitalRecord> {
+  async setField(userId: string, taxYear: number, field: CapitalFieldId, value: string | null): Promise<CapitalRecord> {
     const [row] = await this.prisma.$transaction([
-      this.prisma.kapital.upsert({
-        where: { userId_steuerjahr: { userId, steuerjahr } },
-        create: { userId, steuerjahr, ...fieldData(field, value) },
+      this.prisma.capital.upsert({
+        where: { userId_taxYear: { userId, taxYear } },
+        create: { userId, taxYear, ...fieldData(field, value) },
         update: fieldData(field, value),
       }),
       this.prisma.taxDataAccessLog.create({
@@ -39,10 +39,10 @@ export class PrismaCapitalRepository implements CapitalRepository {
     return toRecord(row)
   }
 
-  async setOwner(userId: string, steuerjahr: number, inhaber: CapitalOwner): Promise<CapitalRecord> {
-    const row = await this.prisma.kapital.upsert({
-      where: { userId_steuerjahr: { userId, steuerjahr } },
-      create: { userId, steuerjahr, inhaber },
+  async setOwner(userId: string, taxYear: number, inhaber: CapitalOwner): Promise<CapitalRecord> {
+    const row = await this.prisma.capital.upsert({
+      where: { userId_taxYear: { userId, taxYear } },
+      create: { userId, taxYear, inhaber },
       update: { inhaber },
     })
     return toRecord(row)

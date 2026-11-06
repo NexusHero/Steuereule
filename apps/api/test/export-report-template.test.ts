@@ -100,14 +100,14 @@ describe('buildExportReportHtml — HTML-injection escaping (T1, every user-cont
       'taxData[].felder value (e.g. a Beleg file name)',
       (doc: ExportDocument, payload: string) => ({
         ...doc,
-        taxData: [{ area: 'Beleg', steuerjahr: null, fields: { dateiname: payload } }],
+        taxData: [{ area: 'Beleg', taxYear: null, fields: { dateiname: payload } }],
       }),
     ],
     [
       'taxData[].felder key',
       (doc: ExportDocument, payload: string) => ({
         ...doc,
-        taxData: [{ area: 'Beleg', steuerjahr: 2025, fields: { [payload]: 'x' } }],
+        taxData: [{ area: 'Beleg', taxYear: 2025, fields: { [payload]: 'x' } }],
       }),
     ],
   ] as const)('escapes a <script> payload injected via %s', (_label, withPayload) => {

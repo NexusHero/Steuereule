@@ -6,19 +6,19 @@ function toRecord(row: {
   id: string
   personAUserId: string
   personBUserId: string
-  steuerjahr: number
-  veranlagungsart: string
-  einladungsCode: string | null
-  einladungsCodeGueltigBis: Date | null
+  taxYear: number
+  filingType: string
+  invitationCode: string | null
+  invitationCodeValidUntil: Date | null
 }): PartnerCouplingRecord {
   return {
     id: row.id,
     personAUserId: row.personAUserId,
     personBUserId: row.personBUserId,
-    steuerjahr: row.steuerjahr,
-    veranlagungsart: row.veranlagungsart as 'einzel' | 'zusammen',
-    einladungsCode: row.einladungsCode,
-    einladungsCodeGueltigBis: row.einladungsCodeGueltigBis,
+    taxYear: row.taxYear,
+    filingType: row.filingType as 'einzel' | 'zusammen',
+    invitationCode: row.invitationCode,
+    invitationCodeValidUntil: row.invitationCodeValidUntil,
   }
 }
 
@@ -26,10 +26,10 @@ function toRecord(row: {
 export class PrismaLinkRepository implements PartnerCouplingRepository {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
-  async findByUserAndYear(userId: string, steuerjahr: number): Promise<PartnerCouplingRecord | null> {
-    const row = await this.prisma.steuerjahrKopplung.findFirst({
+  async findByUserAndYear(userId: string, taxYear: number): Promise<PartnerCouplingRecord | null> {
+    const row = await this.prisma.taxYearLink.findFirst({
       where: {
-        steuerjahr,
+        taxYear,
         OR: [{ personAUserId: userId }, { personBUserId: userId }],
       },
     })
@@ -37,43 +37,43 @@ export class PrismaLinkRepository implements PartnerCouplingRepository {
   }
 
   async findByInvitationCode(code: string): Promise<PartnerCouplingRecord | null> {
-    const row = await this.prisma.steuerjahrKopplung.findUnique({
-      where: { einladungsCode: code },
+    const row = await this.prisma.taxYearLink.findUnique({
+      where: { invitationCode: code },
     })
     return row ? toRecord(row) : null
   }
 
   async upsert(
     personAUserId: string,
-    steuerjahr: number,
+    taxYear: number,
     data: {
       personBUserId: string
-      veranlagungsart: 'einzel' | 'zusammen'
-      einladungsCode?: string | null
-      einladungsCodeGueltigBis?: Date | null
+      filingType: 'einzel' | 'zusammen'
+      invitationCode?: string | null
+      invitationCodeValidUntil?: Date | null
     },
   ): Promise<PartnerCouplingRecord> {
     const [row] = await this.prisma.$transaction([
-      this.prisma.steuerjahrKopplung.upsert({
+      this.prisma.taxYearLink.upsert({
         where: {
-          personAUserId_steuerjahr: {
+          personAUserId_taxYear: {
             personAUserId,
-            steuerjahr,
+            taxYear,
           },
         },
         create: {
           personAUserId,
           personBUserId: data.personBUserId,
-          steuerjahr,
-          veranlagungsart: data.veranlagungsart,
-          einladungsCode: data.einladungsCode ?? null,
-          einladungsCodeGueltigBis: data.einladungsCodeGueltigBis ?? null,
+          taxYear,
+          filingType: data.filingType,
+          invitationCode: data.invitationCode ?? null,
+          invitationCodeValidUntil: data.invitationCodeValidUntil ?? null,
         },
         update: {
           personBUserId: data.personBUserId,
-          veranlagungsart: data.veranlagungsart,
-          ...(data.einladungsCode !== undefined && { einladungsCode: data.einladungsCode }),
-          ...(data.einladungsCodeGueltigBis !== undefined && { einladungsCodeGueltigBis: data.einladungsCodeGueltigBis }),
+          filingType: data.filingType,
+          ...(data.invitationCode !== undefined && { einladungsCode: data.invitationCode }),
+          ...(data.invitationCodeValidUntil !== undefined && { einladungsCodeGueltigBis: data.invitationCodeValidUntil }),
         },
       }),
       this.prisma.taxDataAccessLog.create({
@@ -84,23 +84,23 @@ export class PrismaLinkRepository implements PartnerCouplingRepository {
   }
 
   async setPersonB(id: string, personBUserId: string): Promise<PartnerCouplingRecord> {
-    const row = await this.prisma.steuerjahrKopplung.update({
+    const row = await this.prisma.taxYearLink.update({
       where: { id },
-      data: { personBUserId, einladungsCode: null, einladungsCodeGueltigBis: null },
+      data: { personBUserId, invitationCode: null, invitationCodeValidUntil: null },
     })
     return toRecord(row)
   }
 
-  async delete(personAUserId: string, steuerjahr: number): Promise<boolean> {
-    const existing = await this.prisma.steuerjahrKopplung.findUnique({
+  async delete(personAUserId: string, taxYear: number): Promise<boolean> {
+    const existing = await this.prisma.taxYearLink.findUnique({
       where: {
-        personAUserId_steuerjahr: { personAUserId, steuerjahr },
+        personAUserId_taxYear: { personAUserId, taxYear },
       },
     })
     if (!existing) return false
 
     await this.prisma.$transaction([
-      this.prisma.steuerjahrKopplung.delete({
+      this.prisma.taxYearLink.delete({
         where: { id: existing.id },
       }),
       this.prisma.taxDataAccessLog.create({

@@ -51,7 +51,7 @@ const DONE_CH_INTERVIEW: InterviewStateDto = {
 
 /** The empty CH-Lohnausweis mask (no Wechselkurs, no status, no fold). */
 const EMPTY_CH: ChSalaryCertificateResponseDto = {
-  fields: SALARY_CERTIFICATE_FIELDS.filter((f) => f.art === 'chf-betrag').map((f) => ({ id: f.id, digit: f.digit, kind: 'offen' as const })),
+  fields: SALARY_CERTIFICATE_FIELDS.filter((f) => f.kind === 'chf-betrag').map((f) => ({ id: f.id, digit: f.digit, kind: 'offen' as const })),
   bemerkungen: null,
   exchangeRate: null,
   status: null,
@@ -75,7 +75,7 @@ const EMPTY_CH: ChSalaryCertificateResponseDto = {
 
 /** A folded CH-Lohnausweis: status derived, fold bestimmt (Bruttolohn/PK/Quellensteuer). */
 const FOLDED_CH: ChSalaryCertificateResponseDto = {
-  fields: SALARY_CERTIFICATE_FIELDS.filter((f) => f.art === 'chf-betrag').map((f) =>
+  fields: SALARY_CERTIFICATE_FIELDS.filter((f) => f.kind === 'chf-betrag').map((f) =>
     f.id === 'bruttolohn-total' || f.id === 'berufliche-vorsorge' || f.id === 'quellensteuer'
       ? { id: f.id, digit: f.digit, kind: 'erfasst' as const, value: f.id === 'bruttolohn-total' ? 84000 : f.id === 'berufliche-vorsorge' ? 5000 : 3780 }
       : { id: f.id, digit: f.digit, kind: 'offen' as const },

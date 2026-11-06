@@ -6,7 +6,7 @@ export function adoptedLineItem(lineItem: Item, priorYear: number): Item {
   }
   return {
     ...lineItem,
-    source: { art: 'uebernahme', vorjahr: priorYear },
+    source: { kind: 'uebernahme', lastYear: priorYear },
     unconfirmed: true,
   }
 }

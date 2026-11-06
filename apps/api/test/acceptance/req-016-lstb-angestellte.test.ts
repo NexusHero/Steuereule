@@ -21,7 +21,7 @@ const TRUSTED_ORIGIN_HEADERS = { origin: ALLOWED_ORIGIN }
 
 const TAX_YEAR = 2026
 
-type LstbRow = { userId: string; steuerjahr: number; bruttoarbeitslohn: string | null }
+type LstbRow = { userId: string; taxYear: number; bruttoarbeitslohn: string | null }
 
 describe('REQ-016 — the LStB guided mask, against the real server', () => {
   let app: NestFastifyApplication
@@ -134,7 +134,7 @@ describe('REQ-016 — the LStB guided mask, against the real server', () => {
 
     expect(((await response.json()) as { state: unknown }).state).toEqual({
       kind: 'widerspruch',
-      conflicts: [{ art: 'lohnsteuer-uebersteigt-brutto', lohnsteuer: 20000, bruttoarbeitslohn: 10000 }],
+      conflicts: [{ kind: 'lohnsteuer-uebersteigt-brutto', lohnsteuer: 20000, bruttoarbeitslohn: 10000 }],
     })
   })
 

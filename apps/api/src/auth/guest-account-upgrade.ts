@@ -24,19 +24,19 @@ export async function upgradeGuestToAccount(
 
     const guestYears = await tx.interviewAnswer.findMany({
       where: { userId: guestUserId },
-      select: { steuerjahr: true },
-      distinct: ['steuerjahr'],
+      select: { taxYear: true },
+      distinct: ['taxYear'],
     })
     let movedInterview = false
-    for (const { steuerjahr } of guestYears) {
+    for (const { taxYear } of guestYears) {
       const [accountAnswers, accountTaxYear] = await Promise.all([
-        tx.interviewAnswer.count({ where: { userId: accountUserId, steuerjahr } }),
-        tx.taxYear.count({ where: { userId: accountUserId, steuerjahr } }),
+        tx.interviewAnswer.count({ where: { userId: accountUserId, taxYear } }),
+        tx.taxYear.count({ where: { userId: accountUserId, taxYear } }),
       ])
       if (accountAnswers > 0 || accountTaxYear > 0) continue
 
-      await tx.interviewAnswer.updateMany({ where: { userId: guestUserId, steuerjahr }, data: { userId: accountUserId } })
-      await tx.taxYear.updateMany({ where: { userId: guestUserId, steuerjahr }, data: { userId: accountUserId } })
+      await tx.interviewAnswer.updateMany({ where: { userId: guestUserId, taxYear }, data: { userId: accountUserId } })
+      await tx.taxYear.updateMany({ where: { userId: guestUserId, taxYear }, data: { userId: accountUserId } })
       movedInterview = true
     }
     if (movedInterview) {

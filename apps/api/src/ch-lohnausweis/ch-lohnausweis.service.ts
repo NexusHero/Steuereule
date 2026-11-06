@@ -39,7 +39,7 @@ function fieldsFromRecord(record: CrossBorderSalaryStatementRecord | null): { fi
   const fields: SalaryCertificateFieldDto[] = []
   const values: SalaryCertificateValues = {}
   for (const field of SALARY_CERTIFICATE_FIELDS) {
-    if (field.art !== 'chf-betrag') continue
+    if (field.kind !== 'chf-betrag') continue
     const stored = record === null ? null : record.fields[field.id as keyof CrossBorderSalaryStatementRecord['fields']]
     const value = deserializeSalaryCertificateField(stored)
     if (value === null) {
@@ -78,7 +78,7 @@ function itemToDto(items: ChItem): ChItemDto {
   const kern = chItemsAsCoreItems(items)
   return {
     id: items.id,
-    art: items.art,
+    kind: items.kind,
     ...(items.digit !== undefined ? { digit: items.digit } : {}),
     amountChf: items.amountChf,
     amountEur: items.amountEur,
@@ -124,17 +124,17 @@ export class ChSalaryCertificateService {
     @Inject(AuditService) private readonly auditService: AuditService,
   ) {}
 
-  private async answers(userId: string, steuerjahr: number): Promise<Answers> {
-    const rows = await this.interviewRepository.findAllForUserAndYear(userId, steuerjahr)
+  private async answers(userId: string, taxYear: number): Promise<Answers> {
+    const rows = await this.interviewRepository.findAllForUserAndYear(userId, taxYear)
     const answers: Record<string, string> = {}
     for (const row of rows) answers[row.questionId] = row.value
     return answers as Answers
   }
 
-  private async toResponse(userId: string, steuerjahr: number, record: CrossBorderSalaryStatementRecord | null): Promise<ChSalaryCertificateResponseDto> {
+  private async toResponse(userId: string, taxYear: number, record: CrossBorderSalaryStatementRecord | null): Promise<ChSalaryCertificateResponseDto> {
     const { fields, values } = fieldsFromRecord(record)
     const exchangeRate = exchangeRateFromRecord(record)
-    const answers = await this.answers(userId, steuerjahr)
+    const answers = await this.answers(userId, taxYear)
     const status = crossBorderStatusFromAnswers(answers)
     const gated = gatedIncomeTypes(answers)
 
@@ -174,37 +174,37 @@ export class ChSalaryCertificateService {
     }
   }
 
-  async getState(userId: string, steuerjahr: number): Promise<ChSalaryCertificateResponseDto> {
-    const record = await this.repository.findForUserAndYear(userId, steuerjahr)
+  async getState(userId: string, taxYear: number): Promise<ChSalaryCertificateResponseDto> {
+    const record = await this.repository.findForUserAndYear(userId, taxYear)
     if (record !== null) {
       await this.auditService.append({ userId, action: 'READ', resource: 'ch-lohnausweis' })
     }
-    return this.toResponse(userId, steuerjahr, record)
+    return this.toResponse(userId, taxYear, record)
   }
 
   async setField(
     userId: string,
-    steuerjahr: number,
+    taxYear: number,
     field: Parameters<CrossBorderSalaryStatementRepository['setField']>[2],
     dto: PutSalaryCertificateFieldDto,
   ): Promise<ChSalaryCertificateResponseDto> {
-    const record = await this.repository.setField(userId, steuerjahr, field, valueFromDto(dto))
-    return this.toResponse(userId, steuerjahr, record)
+    const record = await this.repository.setField(userId, taxYear, field, valueFromDto(dto))
+    return this.toResponse(userId, taxYear, record)
   }
 
-  async setRemarks(userId: string, steuerjahr: number, dto: PutRemarksDto): Promise<ChSalaryCertificateResponseDto> {
-    const record = await this.repository.setRemarks(userId, steuerjahr, dto.text ?? null)
-    return this.toResponse(userId, steuerjahr, record)
+  async setRemarks(userId: string, taxYear: number, dto: PutRemarksDto): Promise<ChSalaryCertificateResponseDto> {
+    const record = await this.repository.setRemarks(userId, taxYear, dto.text ?? null)
+    return this.toResponse(userId, taxYear, record)
   }
 
-  async setProvision(userId: string, steuerjahr: number, dto: PutProvisionDto): Promise<ChSalaryCertificateResponseDto> {
+  async setProvision(userId: string, taxYear: number, dto: PutProvisionDto): Promise<ChSalaryCertificateResponseDto> {
     const saeule3aChf = this.serializeOptional(dto.saeule3aChf)
     const krankenkasseChf = this.serializeOptional(dto.krankenkasseChf)
-    const record = await this.repository.setProvision(userId, steuerjahr, saeule3aChf, krankenkasseChf)
-    return this.toResponse(userId, steuerjahr, record)
+    const record = await this.repository.setProvision(userId, taxYear, saeule3aChf, krankenkasseChf)
+    return this.toResponse(userId, taxYear, record)
   }
 
-  async setNGre(userId: string, steuerjahr: number, dto: PutNGreDto): Promise<ChSalaryCertificateResponseDto> {
+  async setNGre(userId: string, taxYear: number, dto: PutNGreDto): Promise<ChSalaryCertificateResponseDto> {
     const { specialCases, ...rest } = dto
     const details: Partial<NGreDetails> = {}
     for (const [field, value] of Object.entries(rest)) {
@@ -212,11 +212,11 @@ export class ChSalaryCertificateService {
       details[field as Exclude<keyof NGreDetails, 'nGreSonderfaelle'>] = value === null ? null : String(value)
     }
     if (specialCases !== undefined) details.nGreSonderfaelle = specialCases
-    const record = await this.repository.setNGre(userId, steuerjahr, details)
-    return this.toResponse(userId, steuerjahr, record)
+    const record = await this.repository.setNGre(userId, taxYear, details)
+    return this.toResponse(userId, taxYear, record)
   }
 
-  async setExchangeRate(userId: string, steuerjahr: number, dto: PutExchangeRateDto): Promise<ChSalaryCertificateResponseDto> {
+  async setExchangeRate(userId: string, taxYear: number, dto: PutExchangeRateDto): Promise<ChSalaryCertificateResponseDto> {
     let rate: ExchangeRate
     try {
       rate =
@@ -229,13 +229,13 @@ export class ChSalaryCertificateService {
       }
       throw error
     }
-    const record = await this.repository.setExchangeRate(userId, steuerjahr, {
+    const record = await this.repository.setExchangeRate(userId, taxYear, {
       month: rate.month,
       rate: rate.rate,
       mode: rate.mode,
       ...(rate.receiptId !== undefined ? { receiptId: rate.receiptId } : {}),
     })
-    return this.toResponse(userId, steuerjahr, record)
+    return this.toResponse(userId, taxYear, record)
   }
 
   private serializeOptional(value: number | null | undefined): string | null {

@@ -14,7 +14,7 @@ describe('guenstigerpruefung — the two amounts (Ebene 2, exakt gegeben die Ein
       remainingZvE: 60000,
       year: 2026,
       assessmentType: 'einzel',
-      progressionClause: { art: 'keine' },
+      progressionClause: { kind: 'keine' },
     })
     expect(result.flatRateTax).toBe(4750)
     // Persönlich: (22.464 − 14.233) + Soli-Differenz (251 − 0, Milderungszone über der Freigrenze
@@ -38,7 +38,7 @@ describe('guenstigerpruefung — the two amounts (Ebene 2, exakt gegeben die Ein
       remainingZvE: 300000,
       year: 2026,
       assessmentType: 'einzel',
-      progressionClause: { art: 'keine' },
+      progressionClause: { kind: 'keine' },
       churchTaxFactor: 0.09,
     })
     expect(result.flatRateTax).toBe(26944)
@@ -58,7 +58,7 @@ describe('guenstigerpruefung — the two amounts (Ebene 2, exakt gegeben die Ein
       remainingZvE: 60000,
       year: 2026,
       assessmentType: 'zusammen',
-      progressionClause: { art: 'keine' },
+      progressionClause: { kind: 'keine' },
     })
     expect(result.flatRateTax).toBe(4500)
     expect(result.personal).toBe(5984)
@@ -77,7 +77,7 @@ describe('guenstigerpruefung — the bounded verdict (ADR-0034 Entscheidung 2)',
   }
 
   it('is eindeutig with empfehlung when |delta| exceeds the Progressionsvorbehalt-Schranke', () => {
-    const flatRateCheaper = mostFavourableCheck({ ...basis, progressionClause: { art: 'keine' } })
+    const flatRateCheaper = mostFavourableCheck({ ...basis, progressionClause: { kind: 'keine' } })
     expect(flatRateCheaper.statement).toBe('eindeutig')
     if (flatRateCheaper.statement === 'eindeutig') {
       expect(flatRateCheaper.recommendation).toBe('abgeltung') // delta = +3.481
@@ -89,7 +89,7 @@ describe('guenstigerpruefung — the bounded verdict (ADR-0034 Entscheidung 2)',
       remainingZvE: 0,
       year: 2026,
       assessmentType: 'einzel',
-      progressionClause: { art: 'keine' },
+      progressionClause: { kind: 'keine' },
     })
     expect(personalCheaper.statement).toBe('eindeutig')
     if (personalCheaper.statement === 'eindeutig') {
@@ -101,7 +101,7 @@ describe('guenstigerpruefung — the bounded verdict (ADR-0034 Entscheidung 2)',
     // Lohnersatz 20.000 → Schranke ⌈0,45 × 20.000⌉ = 9.000; |delta| = 3.732 ≤ 9.000.
     const result = mostFavourableCheck({
       ...basis,
-      progressionClause: { art: 'lohnersatzleistungen', amount: 20000 },
+      progressionClause: { kind: 'lohnersatzleistungen', amount: 20000 },
     })
     expect(result.statement).toBe('zu-knapp')
     if (result.statement === 'zu-knapp') {
@@ -112,7 +112,7 @@ describe('guenstigerpruefung — the bounded verdict (ADR-0034 Entscheidung 2)',
   })
 
   it('is unbestimmt when the Progressionsvorbehalt is not bounded — no verdict possible', () => {
-    const result = mostFavourableCheck({ ...basis, progressionClause: { art: 'nicht-angegeben' } })
+    const result = mostFavourableCheck({ ...basis, progressionClause: { kind: 'nicht-angegeben' } })
     expect(result.statement).toBe('unbestimmt')
     if (result.statement === 'unbestimmt') {
       expect(result.uncertainty).toEqual({ kind: 'unbestimmt', reason: 'progressionsvorbehalt-nicht-eingegeben' })
@@ -130,7 +130,7 @@ describe('guenstigerpruefung — validation (throw, don\'t approximate)', () => 
     remainingZvE: 60000,
     year: 2026,
     assessmentType: 'einzel' as const,
-    progressionClause: { art: 'keine' as const },
+    progressionClause: { kind: 'keine' as const },
   }
 
   it('throws on negative or non-integer inputs', () => {

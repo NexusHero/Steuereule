@@ -42,9 +42,9 @@ describe('CockpitService', () => {
   })
 
   it('derives a point value from the settled LStB Bruttoarbeitslohn once nothing is open (ADR-015)', async () => {
-    taxYear.seed('user-a', { steuerjahr: 2026, openItems: 0 })
+    taxYear.seed('user-a', { taxYear: 2026, openItems: 0 })
     interview.seed('user-a', 2026, { job: 'Angestellt' })
-    lstb.seed({ userId: 'user-a', steuerjahr: 2026, bruttoarbeitslohn: '50000', lohnsteuer: '8000', sozialversicherung: '9000' })
+    lstb.seed({ userId: 'user-a', taxYear: 2026, bruttoarbeitslohn: '50000', lohnsteuer: '8000', sozialversicherung: '9000' })
 
     const summary = await service.getSummary('user-a', 2026)
 
@@ -52,10 +52,10 @@ describe('CockpitService', () => {
   })
 
   it('widens into a spanne when LStB fields are still open, around the settled partial sum', async () => {
-    taxYear.seed('user-a', { steuerjahr: 2026, openItems: 2 })
+    taxYear.seed('user-a', { taxYear: 2026, openItems: 2 })
     interview.seed('user-a', 2026, { job: 'Angestellt' })
     // Only the Bruttoarbeitslohn is entered; lohnsteuer + sozialversicherung remain open.
-    lstb.seed({ userId: 'user-a', steuerjahr: 2026, bruttoarbeitslohn: '50000', lohnsteuer: null, sozialversicherung: null })
+    lstb.seed({ userId: 'user-a', taxYear: 2026, bruttoarbeitslohn: '50000', lohnsteuer: null, sozialversicherung: null })
 
     const summary = await service.getSummary('user-a', 2026)
 
@@ -65,10 +65,10 @@ describe('CockpitService', () => {
   })
 
   it('ADR-021: eine unbestätigte Übernahme zählt in die Spanne — ruhig benannt, kein Konflikt', async () => {
-    taxYear.seed('user-a', { steuerjahr: 2026, openItems: 0 })
+    taxYear.seed('user-a', { taxYear: 2026, openItems: 0 })
     interview.seed('user-a', 2026, { job: 'Angestellt' })
-    lstb.seed({ userId: 'user-a', steuerjahr: 2026, bruttoarbeitslohn: '50000', lohnsteuer: '8000', sozialversicherung: '9000' })
-    void takeover.save('user-a', 2026, { key: 'lstb.bruttoarbeitslohn', provenance: { art: 'uebernahme', vorjahr: 2025 }, bestaetigt: false, proposal: null })
+    lstb.seed({ userId: 'user-a', taxYear: 2026, bruttoarbeitslohn: '50000', lohnsteuer: '8000', sozialversicherung: '9000' })
+    void takeover.save('user-a', 2026, { key: 'lstb.bruttoarbeitslohn', provenance: { kind: 'uebernahme', lastYear: 2025 }, confirmed: false, proposal: null })
 
     const summary = await service.getSummary('user-a', 2026)
 
@@ -85,10 +85,10 @@ describe('CockpitService', () => {
   })
 
   it('ADR-0052 §6: ein Fakt mit nur EINEM unbestätigten Feld (nicht der Summe) zählt trotzdem als unbestätigt', async () => {
-    taxYear.seed('user-a', { steuerjahr: 2026, openItems: 0 })
+    taxYear.seed('user-a', { taxYear: 2026, openItems: 0 })
     interview.seed('user-a', 2026, { job: 'Angestellt' })
-    lstb.seed({ userId: 'user-a', steuerjahr: 2026, bruttoarbeitslohn: '50000', lohnsteuer: '8000', sozialversicherung: '9000' })
-    await takeover.save('user-a', 2026, { key: 'lstb.lohnsteuer', provenance: { art: 'assistent', name: 'Claude' }, bestaetigt: false, proposal: null })
+    lstb.seed({ userId: 'user-a', taxYear: 2026, bruttoarbeitslohn: '50000', lohnsteuer: '8000', sozialversicherung: '9000' })
+    await takeover.save('user-a', 2026, { key: 'lstb.lohnsteuer', provenance: { kind: 'assistent', name: 'Claude' }, confirmed: false, proposal: null })
 
     const summary = await service.getSummary('user-a', 2026)
 
@@ -96,10 +96,10 @@ describe('CockpitService', () => {
   })
 
   it('ADR-021: eine BESTÄTIGTE Übernahme ergibt wieder den Punktwert', async () => {
-    taxYear.seed('user-a', { steuerjahr: 2026, openItems: 0 })
+    taxYear.seed('user-a', { taxYear: 2026, openItems: 0 })
     interview.seed('user-a', 2026, { job: 'Angestellt' })
-    lstb.seed({ userId: 'user-a', steuerjahr: 2026, bruttoarbeitslohn: '50000', lohnsteuer: '8000', sozialversicherung: '9000' })
-    void takeover.save('user-a', 2026, { key: 'lstb.bruttoarbeitslohn', provenance: { art: 'uebernahme', vorjahr: 2025 }, bestaetigt: true, proposal: null })
+    lstb.seed({ userId: 'user-a', taxYear: 2026, bruttoarbeitslohn: '50000', lohnsteuer: '8000', sozialversicherung: '9000' })
+    void takeover.save('user-a', 2026, { key: 'lstb.bruttoarbeitslohn', provenance: { kind: 'uebernahme', lastYear: 2025 }, confirmed: true, proposal: null })
 
     const summary = await service.getSummary('user-a', 2026)
 
@@ -107,16 +107,16 @@ describe('CockpitService', () => {
   })
 
   it('ADR-021 M2: unbestätigte Rente/Kapital/Vermietung zählen MIT — jede erfasste Summe weitet die Spanne', async () => {
-    taxYear.seed('user-a', { steuerjahr: 2026, openItems: 0 })
+    taxYear.seed('user-a', { taxYear: 2026, openItems: 0 })
     interview.seed('user-a', 2026, { job: 'Angestellt' })
-    lstb.seed({ userId: 'user-a', steuerjahr: 2026, bruttoarbeitslohn: '50000', lohnsteuer: '8000', sozialversicherung: '9000' })
-    void takeover.save('user-a', 2026, { key: 'lstb.bruttoarbeitslohn', provenance: { art: 'uebernahme', vorjahr: 2025 }, bestaetigt: false, proposal: null })
-    void takeover.save('user-a', 2026, { key: 'rente.jahresbetrag', provenance: { art: 'uebernahme', vorjahr: 2025 }, bestaetigt: false, proposal: null })
-    void takeover.save('user-a', 2026, { key: 'kapital.kapitalertraege', provenance: { art: 'uebernahme', vorjahr: 2025 }, bestaetigt: false, proposal: null })
-    void takeover.save('user-a', 2026, { key: 'vermietung:obj-1.mieteinnahmen', provenance: { art: 'uebernahme', vorjahr: 2025 }, bestaetigt: false, proposal: null })
-    pension.seed({ userId: 'user-a', steuerjahr: 2026, rentenart: 'GesetzlicheRente', jahresbetrag: '12000', rentenbeginnJahr: '2020', alterBeiRentenbeginn: null })
-    capital.seed({ userId: 'user-a', steuerjahr: 2026, kapitalertraege: '3000' })
-    rental.seed({ id: 'obj-1', userId: 'user-a', steuerjahr: 2026, mieteinnahmen: '9600', anschaffungskosten: '100000', baujahr: '1995', werbungskosten: '1200' })
+    lstb.seed({ userId: 'user-a', taxYear: 2026, bruttoarbeitslohn: '50000', lohnsteuer: '8000', sozialversicherung: '9000' })
+    void takeover.save('user-a', 2026, { key: 'lstb.bruttoarbeitslohn', provenance: { kind: 'uebernahme', lastYear: 2025 }, confirmed: false, proposal: null })
+    void takeover.save('user-a', 2026, { key: 'rente.jahresbetrag', provenance: { kind: 'uebernahme', lastYear: 2025 }, confirmed: false, proposal: null })
+    void takeover.save('user-a', 2026, { key: 'kapital.kapitalertraege', provenance: { kind: 'uebernahme', lastYear: 2025 }, confirmed: false, proposal: null })
+    void takeover.save('user-a', 2026, { key: 'vermietung:obj-1.mieteinnahmen', provenance: { kind: 'uebernahme', lastYear: 2025 }, confirmed: false, proposal: null })
+    pension.seed({ userId: 'user-a', taxYear: 2026, rentenart: 'GesetzlicheRente', jahresbetrag: '12000', rentenbeginnJahr: '2020', alterBeiRentenbeginn: null })
+    capital.seed({ userId: 'user-a', taxYear: 2026, kapitalertraege: '3000' })
+    rental.seed({ id: 'obj-1', userId: 'user-a', taxYear: 2026, mieteinnahmen: '9600', anschaffungskosten: '100000', baujahr: '1995', werbungskosten: '1200' })
 
     const summary = await service.getSummary('user-a', 2026)
 
@@ -133,11 +133,11 @@ describe('CockpitService', () => {
   })
 
   it('ADR-021 M2: ein offenes kopiertes Feld trägt keine Summe — offen bleibt offen, nie ein fabricated zero', async () => {
-    taxYear.seed('user-a', { steuerjahr: 2026, openItems: 0 })
+    taxYear.seed('user-a', { taxYear: 2026, openItems: 0 })
     interview.seed('user-a', 2026, { job: 'Angestellt' })
-    lstb.seed({ userId: 'user-a', steuerjahr: 2026, bruttoarbeitslohn: '50000', lohnsteuer: '8000', sozialversicherung: '9000' })
-    void takeover.save('user-a', 2026, { key: 'kapital.kapitalertraege', provenance: { art: 'uebernahme', vorjahr: 2025 }, bestaetigt: false, proposal: null })
-    capital.seed({ userId: 'user-a', steuerjahr: 2026, kapitalertraege: null })
+    lstb.seed({ userId: 'user-a', taxYear: 2026, bruttoarbeitslohn: '50000', lohnsteuer: '8000', sozialversicherung: '9000' })
+    void takeover.save('user-a', 2026, { key: 'kapital.kapitalertraege', provenance: { kind: 'uebernahme', lastYear: 2025 }, confirmed: false, proposal: null })
+    capital.seed({ userId: 'user-a', taxYear: 2026, kapitalertraege: null })
 
     const summary = await service.getSummary('user-a', 2026)
 
@@ -146,10 +146,10 @@ describe('CockpitService', () => {
   })
 
   it('names the LStB widerspruch as a conflict, widening more than an item (ADR-008)', async () => {
-    taxYear.seed('user-a', { steuerjahr: 2026, openItems: 0 })
+    taxYear.seed('user-a', { taxYear: 2026, openItems: 0 })
     interview.seed('user-a', 2026, { job: 'Angestellt' })
     // lohnsteuer (60000) exceeds the Bruttoarbeitslohn (50000) — a named widerspruch, never fixed.
-    lstb.seed({ userId: 'user-a', steuerjahr: 2026, bruttoarbeitslohn: '50000', lohnsteuer: '60000', sozialversicherung: '0' })
+    lstb.seed({ userId: 'user-a', taxYear: 2026, bruttoarbeitslohn: '50000', lohnsteuer: '60000', sozialversicherung: '0' })
 
     const summary = await service.getSummary('user-a', 2026)
 
@@ -157,10 +157,10 @@ describe('CockpitService', () => {
   })
 
   it('reports a gated Einkunftsart honestly, naming it rather than widening into a fake range (ADR-032)', async () => {
-    taxYear.seed('user-a', { steuerjahr: 2026, openItems: 0 })
+    taxYear.seed('user-a', { taxYear: 2026, openItems: 0 })
     // Beides declares Gewerbe — gated in 1.0; the Angestellte income is still settled.
     interview.seed('user-a', 2026, { job: 'Beides' })
-    lstb.seed({ userId: 'user-a', steuerjahr: 2026, bruttoarbeitslohn: '50000', lohnsteuer: '8000', sozialversicherung: '9000' })
+    lstb.seed({ userId: 'user-a', taxYear: 2026, bruttoarbeitslohn: '50000', lohnsteuer: '8000', sozialversicherung: '9000' })
 
     const summary = await service.getSummary('user-a', 2026)
 
@@ -168,7 +168,7 @@ describe('CockpitService', () => {
   })
 
   it('does not count LStB fields as open for a non-Angestellte person (Rente has no LStB)', async () => {
-    taxYear.seed('user-a', { steuerjahr: 2026, openItems: 0 })
+    taxYear.seed('user-a', { taxYear: 2026, openItems: 0 })
     interview.seed('user-a', 2026, { job: 'Rente' })
     // A pensioner has no LStB to transcribe, so the (absent) LStB must not widen the range.
     const summary = await service.getSummary('user-a', 2026)
@@ -177,9 +177,9 @@ describe('CockpitService', () => {
   })
 
   it('adds the declared Nebenjob Brutto to the settled income sum', async () => {
-    taxYear.seed('user-a', { steuerjahr: 2026, openItems: 0 })
+    taxYear.seed('user-a', { taxYear: 2026, openItems: 0 })
     interview.seed('user-a', 2026, { job: 'Angestellt', nebenjob: 'Nebenjob', 'nebenjob-brutto': '4000' })
-    lstb.seed({ userId: 'user-a', steuerjahr: 2026, bruttoarbeitslohn: '50000', lohnsteuer: '8000', sozialversicherung: '9000' })
+    lstb.seed({ userId: 'user-a', taxYear: 2026, bruttoarbeitslohn: '50000', lohnsteuer: '8000', sozialversicherung: '9000' })
 
     const summary = await service.getSummary('user-a', 2026)
 
@@ -187,15 +187,15 @@ describe('CockpitService', () => {
   })
 
   it('REQ-001 strictly scopes per userId: user-b never sees user-a’s tax year', async () => {
-    taxYear.seed('user-a', { steuerjahr: 2026, openItems: 0 })
+    taxYear.seed('user-a', { taxYear: 2026, openItems: 0 })
     interview.seed('user-a', 2026, { job: 'Angestellt' })
-    lstb.seed({ userId: 'user-a', steuerjahr: 2026, bruttoarbeitslohn: '50000', lohnsteuer: '8000', sozialversicherung: '9000' })
+    lstb.seed({ userId: 'user-a', taxYear: 2026, bruttoarbeitslohn: '50000', lohnsteuer: '8000', sozialversicherung: '9000' })
 
     await expect(service.getSummary('user-b', 2026)).resolves.toBeNull()
   })
 
   it('REQ-001 strictly scopes per steuerjahr: the same userId with only 2026 seeded returns null for 2025', async () => {
-    taxYear.seed('user-a', { steuerjahr: 2026, openItems: 0 })
+    taxYear.seed('user-a', { taxYear: 2026, openItems: 0 })
 
     await expect(service.getSummary('user-a', 2025)).resolves.toBeNull()
   })
@@ -206,21 +206,21 @@ describe('CockpitService', () => {
     function salaryCertificate(fields: Partial<CrossBorderSalaryStatementRecord['fields']>, rate: number | null): CrossBorderSalaryStatementRecord {
       return {
         userId: 'user-a',
-        steuerjahr: 2025,
+        taxYear: 2025,
         fields: fields as CrossBorderSalaryStatementRecord['fields'],
         bemerkungen: null,
         saeule3aChf: null,
         krankenkasseChf: null,
-        wechselkursMonat: rate === null ? null : '2025-12',
-        wechselkursKurs: rate,
-        wechselkursModus: rate === null ? null : 'amtlich',
-        wechselkursBelegId: null,
+        exchangeRateMonth: rate === null ? null : '2025-12',
+        exchangeRateValue: rate,
+        exchangeRateMode: rate === null ? null : 'amtlich',
+        exchangeRateReceiptId: null,
         nGre: {} as CrossBorderSalaryStatementRecord['nGre'],
       }
     }
 
     it('shows the converted Lohnausweis Bruttolohn as a point value once everything is there', async () => {
-      taxYear.seed('user-a', { steuerjahr: 2025, openItems: 0 })
+      taxYear.seed('user-a', { taxYear: 2025, openItems: 0 })
       interview.seed('user-a', 2025, CROSS_BORDER)
       ch.seed(salaryCertificate({ 'bruttolohn-total': '90000', 'berufliche-vorsorge': '4500', quellensteuer: '4050' }, 1.07))
 
@@ -230,7 +230,7 @@ describe('CockpitService', () => {
     })
 
     it('counts the missing rate and the missing Lohnausweis figures as open, never the LStB', async () => {
-      taxYear.seed('user-a', { steuerjahr: 2025, openItems: 0 })
+      taxYear.seed('user-a', { taxYear: 2025, openItems: 0 })
       interview.seed('user-a', 2025, CROSS_BORDER)
       ch.seed(salaryCertificate({ 'bruttolohn-total': '90000', 'berufliche-vorsorge': '4500' }, null))
 

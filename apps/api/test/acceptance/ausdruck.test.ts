@@ -83,8 +83,8 @@ describe('Formular-Ausdruck (ADR-0050), against the real server', () => {
   }
 
   async function pay(userId: string): Promise<void> {
-    await prisma.freischaltung.create({
-      data: { userId, steuerjahr: 2025, stripeCheckoutSessionId: `cs_${userId}`, status: 'bezahlt', bezahltAm: new Date() },
+    await prisma.unlock.create({
+      data: { userId, taxYear: 2025, stripeCheckoutSessionId: `cs_${userId}`, status: 'bezahlt', paidAt: new Date() },
     })
   }
 
@@ -144,19 +144,19 @@ describe('Formular-Ausdruck (ADR-0050), against the real server', () => {
   it('a pension is printed on Anlage R: ESt 1 A + Anlage N + Anlage R = 8 pages', async () => {
     const { cookie, userId } = await signUp('ausdruck-rente@example.com')
     await complete(cookie)
-    await prisma.rente.create({ data: { userId, steuerjahr: 2025, rentenart: 'GesetzlicheRente', jahresbetrag: '14400' } })
+    await prisma.pension.create({ data: { userId, taxYear: 2025, rentenart: 'GesetzlicheRente', jahresbetrag: '14400' } })
     await pay(userId)
 
     const pdf = await PDFDocument.load(new Uint8Array(await (await printout(cookie)).arrayBuffer()))
     expect(pdf.getPageCount()).toBe(8)
-    await prisma.rente.deleteMany({ where: { userId } })
+    await prisma.pension.deleteMany({ where: { userId } })
   })
 
   it('rented property is printed on Anlage V, one instance per Objekt', async () => {
     const { cookie, userId } = await signUp('ausdruck-vermietung@example.com')
     await complete(cookie)
-    await prisma.vermietungsobjekt.create({
-      data: { userId, steuerjahr: 2025, strasse: 'Hauptstraße', hausnummer: '3', plz: '01067', ort: 'Dresden', mieteinnahmen: '9600', werbungskosten: '0' },
+    await prisma.rentalProperty.create({
+      data: { userId, taxYear: 2025, strasse: 'Hauptstraße', hausnummer: '3', plz: '01067', city: 'Dresden', mieteinnahmen: '9600', werbungskosten: '0' },
     })
     await pay(userId)
 
@@ -165,21 +165,21 @@ describe('Formular-Ausdruck (ADR-0050), against the real server', () => {
 
     const pdf = await PDFDocument.load(new Uint8Array(await (await printout(cookie)).arrayBuffer()))
     expect(pdf.getPageCount()).toBe(6 + ANNEX_V_PAGES)
-    await prisma.vermietungsobjekt.deleteMany({ where: { userId } })
+    await prisma.rentalProperty.deleteMany({ where: { userId } })
   })
 
   it('the pre-check names an Anlage that is not printable yet, and checkout refuses before anyone pays', async () => {
     const { cookie, userId } = await signUp('ausdruck-betriebsrente@example.com')
     await complete(cookie)
-    await prisma.rente.create({ data: { userId, steuerjahr: 2025, rentenart: 'Betriebsrente', jahresbetrag: '3000' } })
+    await prisma.pension.create({ data: { userId, taxYear: 2025, rentenart: 'Betriebsrente', jahresbetrag: '3000' } })
 
     const check = await fetch(`${baseUrl}/v1/steuerjahre/2025/ausdruck/pruefung`, { headers: { cookie } })
     expect(await check.json()).toEqual({ missing: ['anlageRAvBav'] })
 
     const checkout = await fetch(`${baseUrl}/v1/steuerjahre/2025/ausdruck/checkout`, { method: 'POST', headers: { cookie } })
     expect(checkout.status).toBe(422)
-    expect(await prisma.freischaltung.count({ where: { userId } })).toBe(0)
-    await prisma.rente.deleteMany({ where: { userId } })
+    expect(await prisma.unlock.count({ where: { userId } })).toBe(0)
+    await prisma.pension.deleteMany({ where: { userId } })
   })
 
   it('a guest session cannot download', async () => {

@@ -12,5 +12,5 @@ export class PutPensionKindDto {
   })
   @IsOptional()
   @IsIn(['GesetzlicheRente', 'Betriebsrente', 'PrivateRentenversicherung', 'WitwenWaisenrente', 'AuslaendischeRente'])
-  art?: string | null
+  kind?: string | null
 }

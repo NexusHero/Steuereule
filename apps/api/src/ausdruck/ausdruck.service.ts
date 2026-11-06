@@ -114,11 +114,11 @@ export class PrintoutService {
     const link = await this.link.findByUserAndYear(userId, year)
     // ADR-0054: a couple files one return, printed by Person A. Person B sees it but never prints a
     // second one with themselves as Person A.
-    if (link?.veranlagungsart === 'zusammen' && link.personAUserId !== userId) {
+    if (link?.filingType === 'zusammen' && link.personAUserId !== userId) {
       return { values: {}, instances: {}, missing: ['personADruckt'] }
     }
     const values = await this.collectValues(userId, year)
-    const personBUserId = link?.veranlagungsart === 'zusammen' && link.personBUserId ? link.personBUserId : null
+    const personBUserId = link?.filingType === 'zusammen' && link.personBUserId ? link.personBUserId : null
     return { ...values, missing: [...values.missing, ...(await this.unconfirmed(userId, year, personBUserId))] }
   }
 
@@ -142,7 +142,7 @@ export class PrintoutService {
 
     let personBFacts: PersonBFacts | null = null
     let spouseChRecord: Awaited<ReturnType<typeof this.chSalaryCertificate.findForUserAndYear>> = null
-    if (link?.veranlagungsart === 'zusammen' && link.personBUserId) {
+    if (link?.filingType === 'zusammen' && link.personBUserId) {
       const spouseId = link.personBUserId
       const [spouseProf, spouseSd, spouseLstb, spousePension, spouseCh, spouseCommute, spouseInterview] = await Promise.all([
         this.profile.findByUserId(spouseId),
@@ -172,16 +172,16 @@ export class PrintoutService {
     }
 
     const rentalFacts = properties.map((obj, i) => ({
-      lfdNr: String(i + 1),
+      sequenceNumber: String(i + 1),
       strasse: [obj.strasse, obj.hausnummer].filter(Boolean).join(' ') || null,
       plz: obj.plz ?? null,
-      ort: obj.ort ?? null,
-      wohnflaeche: obj.wohnflaeche ?? null,
+      city: obj.city ?? null,
+      livingArea: obj.livingArea ?? null,
       mieteinnahmen: obj.mieteinnahmen,
       anschaffungskosten: obj.anschaffungskosten,
       baujahr: obj.baujahr,
       werbungskosten: obj.werbungskosten,
-      afaWieVorjahr: obj.afaWieVorjahr ?? null,
+      depreciationAsLastYear: obj.depreciationAsLastYear ?? null,
       umlagen: obj.umlagen ?? null,
       schuldzinsen: obj.schuldzinsen ?? null,
       einheiten: obj.einheiten ?? null,
@@ -189,42 +189,42 @@ export class PrintoutService {
     }))
 
     const childrenFacts = kinder.map((k, i) => {
-      let schweizerKinderzulageEur = k.schweizerKinderzulageEur
-      if (!schweizerKinderzulageEur && kinder.length > 0) {
+      let swissFamilyAllowanceEur = k.swissFamilyAllowanceEur
+      if (!swissFamilyAllowanceEur && kinder.length > 0) {
         const allowancesChf = ch?.nGre.familienzulagenChf ?? spouseChRecord?.nGre.familienzulagenChf
-        const rate = ch?.wechselkursKurs ?? spouseChRecord?.wechselkursKurs
+        const rate = ch?.exchangeRateValue ?? spouseChRecord?.exchangeRateValue
         if (allowancesChf && Number(allowancesChf) > 0 && rate && rate > 0) {
           const perChildChf = Math.round(Number(allowancesChf) / kinder.length)
-          schweizerKinderzulageEur = String(Math.round(perChildChf * rate))
+          swissFamilyAllowanceEur = String(Math.round(perChildChf * rate))
         }
       }
       return {
-        lfdNr: String(i + 1),
-        vorname: k.vorname,
-        nachname: k.nachname,
+        sequenceNumber: String(i + 1),
+        firstName: k.firstName,
+        lastName: k.lastName,
         geburtsdatum: k.geburtsdatum,
-        idnr: k.idnr,
-        kindergeldAnspruchEur: k.kindergeldAnspruchEur,
-        schweizerKinderzulageEur,
-        kindschaftsverhaeltnis: k.kindschaftsverhaeltnis,
-        kindschaftsverhaeltnisB: k.kindschaftsverhaeltnisB,
-        familienkasse: k.familienkasse,
-        wohnsitzInlandGanzjaehrig: k.wohnsitzInlandGanzjaehrig,
-        andererElternteil: k.andererElternteil,
-        andererElternteilName: k.andererElternteilName,
-        andererElternteilGeburtsdatum: k.andererElternteilGeburtsdatum,
-        andererElternteilAdresse: k.andererElternteilAdresse,
-        andererElternteilArt: k.andererElternteilArt,
-        andererElternteilVerstorbenAm: k.andererElternteilVerstorbenAm,
-        gemeldetBeiMirGanzjaehrig: k.gemeldetBeiMirGanzjaehrig,
-        kindergeldAnMichGanzjaehrig: k.kindergeldAnMichGanzjaehrig,
-        kvBasisEur: k.kvBasisEur,
-        pvEur: k.pvEur,
+        taxId: k.taxId,
+        childBenefitClaimEur: k.childBenefitClaimEur,
+        swissFamilyAllowanceEur,
+        kinship: k.kinship,
+        kinshipB: k.kinshipB,
+        familyBenefitsOffice: k.familyBenefitsOffice,
+        domesticResidenceAllYear: k.domesticResidenceAllYear,
+        otherParent: k.otherParent,
+        otherParentName: k.otherParentName,
+        otherParentBirthDate: k.otherParentBirthDate,
+        otherParentAddress: k.otherParentAddress,
+        otherParentKind: k.otherParentKind,
+        otherParentDiedOn: k.otherParentDiedOn,
+        registeredWithMeAllYear: k.registeredWithMeAllYear,
+        childBenefitToMeAllYear: k.childBenefitToMeAllYear,
+        healthBasicEur: k.healthBasicEur,
+        careEur: k.careEur,
       }
     })
 
     return printoutValues({
-      steuerjahr: year,
+      taxYear: year,
       profile: {
         firstName: profile?.firstName ?? null,
         lastName: profile?.lastName ?? null,
@@ -248,7 +248,7 @@ export class PrintoutService {
       chSalaryCertificate: chSalaryCertificateFacts(ch, answers),
       rental: rentalFacts.length > 0 ? rentalFacts : null,
       kinder: childrenFacts.length > 0 ? childrenFacts : null,
-      link: link ? { veranlagungsart: link.veranlagungsart, personB: personBFacts } : null,
+      link: link ? { filingType: link.filingType, personB: personBFacts } : null,
       specialExpenses: answers['spenden-betrag'] ? { donations: answers['spenden-betrag'] } : null,
       healthInsurance: healthInsurances(answers, ch),
       singleParent: {
@@ -257,7 +257,7 @@ export class PrintoutService {
       },
       riester:
         answers['riester'] === 'Ja'
-          ? { art: answers['riester-art'] ?? null, incomeLastYear: answers['riester-einnahmen-vorjahr'] ?? null }
+          ? { kind: answers['riester-art'] ?? null, incomeLastYear: answers['riester-einnahmen-vorjahr'] ?? null }
           : null,
       commute: commuteFacts(year, commute),
     })
@@ -268,7 +268,7 @@ function chSalaryCertificateFacts(ch: CrossBorderSalaryStatementRecord | null, a
   if (!ch) return null
   return {
     status: crossBorderStatusFrom(answers),
-    rate: ch.wechselkursKurs,
+    rate: ch.exchangeRateValue,
     grossWageChf: ch.fields['bruttolohn-total'],
     ahvContributionsChf: ch.fields['ahv-beitraege'],
     withholdingTaxChf: ch.fields['quellensteuer'],
@@ -291,20 +291,20 @@ function commuteFacts(year: number, inputs: CommuteInputs | null): CommuteFacts 
   if (inputs === null) return null
   const result = calculateWorkdays({
     year,
-    workdays: inputs.arbeitstage,
-    vacationDays: inputs.urlaubstage,
-    sickDays: inputs.krankheitstage,
-    homeOfficeDays: inputs.homeofficeTage,
-    publicHolidays: inputs.feiertage ?? 0,
+    workdays: inputs.workdays,
+    vacationDays: inputs.vacationDays,
+    sickDays: inputs.sickDays,
+    homeOfficeDays: inputs.homeOfficeDays,
+    publicHolidays: inputs.publicHolidays ?? 0,
   })
   if (result.kind !== 'bestimmt') return null
   return {
-    workdaysPerWeek: inputs.arbeitstage.length,
-    daysOff: inputs.urlaubstage + inputs.krankheitstage + inputs.homeofficeTage,
+    workdaysPerWeek: inputs.workdays.length,
+    daysOff: inputs.vacationDays + inputs.sickDays + inputs.homeOfficeDays,
     commuteDays: result.commuteDays,
-    einfacheKm: inputs.einfacheKm,
-    withCar: inputs.verkehrsmittel === 'pkw',
-    taetigkeitsstaette: inputs.taetigkeitsstaette,
+    oneWayKm: inputs.oneWayKm,
+    withCar: inputs.transport === 'pkw',
+    workplace: inputs.workplace,
   }
 }
 
@@ -314,14 +314,14 @@ function commuteFacts(year: number, inputs: CommuteInputs | null): CommuteFacts 
  */
 function healthInsurances(
   answers: Record<string, string>,
-  ch: { krankenkasseChf: string | null; wechselkursKurs: number | null } | null,
+  ch: { krankenkasseChf: string | null; exchangeRateValue: number | null } | null,
 ): HealthInsurance[] {
   const list: HealthInsurance[] = []
   const fromInterview = healthInsuranceFromAnswers(answers)
   if (fromInterview) list.push(fromInterview)
   const chf = ch?.krankenkasseChf ? Number(ch.krankenkasseChf) : 0
-  if (chf > 0 && ch?.wechselkursKurs) {
-    list.push({ kind: 'ausland', basicHealthAmount: Math.round(chf * ch.wechselkursKurs), withSickPay: false, careInsuranceAmount: 0, optionalExtrasAmount: 0 })
+  if (chf > 0 && ch?.exchangeRateValue) {
+    list.push({ kind: 'ausland', basicHealthAmount: Math.round(chf * ch.exchangeRateValue), withSickPay: false, careInsuranceAmount: 0, optionalExtrasAmount: 0 })
   }
   return list
 }

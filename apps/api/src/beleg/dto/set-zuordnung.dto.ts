@@ -5,7 +5,7 @@ import { IsBoolean, IsInt, IsOptional } from 'class-validator'
 export class SetAssignmentDto {
   @ApiProperty({ type: Number, example: 2026, description: 'The calendar year to confirm/assign.' })
   @IsInt()
-  steuerjahr!: number
+  taxYear!: number
 
   @ApiPropertyOptional({
     type: Boolean,
@@ -15,5 +15,5 @@ export class SetAssignmentDto {
   })
   @IsOptional()
   @IsBoolean()
-  vorschlagVerworfen?: boolean
+  proposalDismissed?: boolean
 }

@@ -38,26 +38,26 @@ export type SalaryCertificateFieldId =
 export interface SalaryCertificateField {
   readonly digit: string
   readonly id: SalaryCertificateFieldId
-  readonly art: 'chf-betrag' | 'freitext'
+  readonly kind: 'chf-betrag' | 'freitext'
   readonly itemsRelevant: boolean
 }
 
 export const SALARY_CERTIFICATE_FIELDS: readonly SalaryCertificateField[] = [
-  { digit: '1', id: 'lohn', art: 'chf-betrag', itemsRelevant: false },
-  { digit: '2', id: 'gehaltsnebenleistungen', art: 'chf-betrag', itemsRelevant: false },
-  { digit: '3', id: 'unregelmaessige-leistungen', art: 'chf-betrag', itemsRelevant: false },
-  { digit: '4', id: 'kapitalleistungen', art: 'chf-betrag', itemsRelevant: false },
-  { digit: '5', id: 'beteiligungsrechte', art: 'chf-betrag', itemsRelevant: false },
-  { digit: '6', id: 'sitzungsgelder', art: 'chf-betrag', itemsRelevant: false },
-  { digit: '7', id: 'andere-leistungen', art: 'chf-betrag', itemsRelevant: false },
-  { digit: '8', id: 'bruttolohn-total', art: 'chf-betrag', itemsRelevant: true },
-  { digit: '9', id: 'ahv-beitraege', art: 'chf-betrag', itemsRelevant: false },
-  { digit: '10', id: 'berufliche-vorsorge', art: 'chf-betrag', itemsRelevant: true },
-  { digit: '11', id: 'nettolohn', art: 'chf-betrag', itemsRelevant: false },
-  { digit: '12', id: 'quellensteuer', art: 'chf-betrag', itemsRelevant: true },
-  { digit: '13', id: 'spesen', art: 'chf-betrag', itemsRelevant: false },
-  { digit: '14', id: 'weitere-nebenleistungen', art: 'chf-betrag', itemsRelevant: false },
-  { digit: '15', id: 'bemerkungen', art: 'freitext', itemsRelevant: false },
+  { digit: '1', id: 'lohn', kind: 'chf-betrag', itemsRelevant: false },
+  { digit: '2', id: 'gehaltsnebenleistungen', kind: 'chf-betrag', itemsRelevant: false },
+  { digit: '3', id: 'unregelmaessige-leistungen', kind: 'chf-betrag', itemsRelevant: false },
+  { digit: '4', id: 'kapitalleistungen', kind: 'chf-betrag', itemsRelevant: false },
+  { digit: '5', id: 'beteiligungsrechte', kind: 'chf-betrag', itemsRelevant: false },
+  { digit: '6', id: 'sitzungsgelder', kind: 'chf-betrag', itemsRelevant: false },
+  { digit: '7', id: 'andere-leistungen', kind: 'chf-betrag', itemsRelevant: false },
+  { digit: '8', id: 'bruttolohn-total', kind: 'chf-betrag', itemsRelevant: true },
+  { digit: '9', id: 'ahv-beitraege', kind: 'chf-betrag', itemsRelevant: false },
+  { digit: '10', id: 'berufliche-vorsorge', kind: 'chf-betrag', itemsRelevant: true },
+  { digit: '11', id: 'nettolohn', kind: 'chf-betrag', itemsRelevant: false },
+  { digit: '12', id: 'quellensteuer', kind: 'chf-betrag', itemsRelevant: true },
+  { digit: '13', id: 'spesen', kind: 'chf-betrag', itemsRelevant: false },
+  { digit: '14', id: 'weitere-nebenleistungen', kind: 'chf-betrag', itemsRelevant: false },
+  { digit: '15', id: 'bemerkungen', kind: 'freitext', itemsRelevant: false },
 ]
 
 export type SalaryCertificateValues = Partial<Record<SalaryCertificateFieldId, number>>
@@ -65,7 +65,7 @@ export type SalaryCertificateValues = Partial<Record<SalaryCertificateFieldId, n
 export type SalaryCertificateAmountFieldId = Exclude<SalaryCertificateFieldId, 'bemerkungen'>
 
 export const SALARY_CERTIFICATE_AMOUNT_FIELDS: readonly SalaryCertificateAmountFieldId[] = SALARY_CERTIFICATE_FIELDS.filter(
-  (field) => field.art === 'chf-betrag',
+  (field) => field.kind === 'chf-betrag',
 ).map((field) => field.id) as readonly SalaryCertificateAmountFieldId[]
 
 export function openSalaryCertificateFields(values: SalaryCertificateValues, status: CrossBorderStatus): readonly SalaryCertificateFieldId[] {
@@ -86,7 +86,7 @@ export type ChItemKind =
 /** A CH line item with full provenance: Lohnausweis-Ziffer times exchange rate. */
 export interface ChItem {
   readonly id: string
-  readonly art: ChItemKind
+  readonly kind: ChItemKind
   readonly digit?: string
   readonly amountChf: number
   readonly exchangeRate: ExchangeRate
@@ -108,14 +108,14 @@ function fieldToItemKind(field: SalaryCertificateFieldId): ChItemKind {
   }
 }
 
-function makeChItem(id: string, art: ChItemKind, amountChf: number, exchangeRate: ExchangeRate, digit?: string): ChItem {
-  return { id, art, amountChf, exchangeRate, amountEur: chfToEur(amountChf, exchangeRate.rate), ...(digit !== undefined ? { digit } : {}) }
+function makeChItem(id: string, kind: ChItemKind, amountChf: number, exchangeRate: ExchangeRate, digit?: string): ChItem {
+  return { id, kind, amountChf, exchangeRate, amountEur: chfToEur(amountChf, exchangeRate.rate), ...(digit !== undefined ? { digit } : {}) }
 }
 
 export function chItemsFromSalaryCertificate(values: SalaryCertificateValues, exchangeRate: ExchangeRate): readonly ChItem[] {
   const items: ChItem[] = []
   for (const field of SALARY_CERTIFICATE_FIELDS) {
-    if (!field.itemsRelevant || field.art !== 'chf-betrag') continue
+    if (!field.itemsRelevant || field.kind !== 'chf-betrag') continue
     const amountChf = values[field.id]
     if (amountChf === undefined) continue
     items.push(makeChItem(`ch-lohnausweis-${field.id}`, fieldToItemKind(field.id), amountChf, exchangeRate, field.digit))
@@ -140,30 +140,30 @@ export function offsetAllowances(chAllowancesEur: number, deChildBenefitEur: num
 }
 
 export function grossWageAsCoreItem(items: ChItem): Item | null {
-  if (items.art !== 'Bruttolohn') return null
+  if (items.kind !== 'Bruttolohn') return null
   return chItemsAsCoreItems(items)
 }
 
 export function chItemsAsCoreItems(items: ChItem): Item | null {
   let role: Item['role']
   let source: Item['source']
-  switch (items.art) {
+  switch (items.kind) {
     case 'Bruttolohn':
       role = 'einnahme'
-      source = { art: 'beleg', receiptId: 'lohnausweis' }
+      source = { kind: 'beleg', receiptId: 'lohnausweis' }
       break
     case 'Pensionskasse':
       role = 'vorsorgeaufwand'
-      source = { art: 'beleg', receiptId: 'lohnausweis' }
+      source = { kind: 'beleg', receiptId: 'lohnausweis' }
       break
     case 'Quellensteuer':
       role = 'anrechnung'
-      source = { art: 'beleg', receiptId: 'lohnausweis' }
+      source = { kind: 'beleg', receiptId: 'lohnausweis' }
       break
     case 'Saeule3a':
     case 'Krankenkasse':
       role = 'vorsorgeaufwand'
-      source = { art: 'eingabe' }
+      source = { kind: 'eingabe' }
       break
     case 'AHV':
     case 'Familienzulage':

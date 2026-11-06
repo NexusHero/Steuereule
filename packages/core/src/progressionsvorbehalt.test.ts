@@ -8,7 +8,7 @@ describe('progressionsvorbehaltAus', () => {
 
     const input = progressionClauseFrom(answers)
 
-    expect(input).toEqual({ art: 'lohnersatzleistungen', amount: 4200 })
+    expect(input).toEqual({ kind: 'lohnersatzleistungen', amount: 4200 })
   })
 
   it('treats a "Ja" without a positive amount as not yet given', () => {
@@ -16,7 +16,7 @@ describe('progressionsvorbehaltAus', () => {
 
     const input = progressionClauseFrom(answers)
 
-    expect(input).toEqual({ art: 'nicht-angegeben' })
+    expect(input).toEqual({ kind: 'nicht-angegeben' })
   })
 
   it('reads an explicit "Nein" as no Progressionsvorbehalt', () => {
@@ -24,12 +24,12 @@ describe('progressionsvorbehaltAus', () => {
 
     const input = progressionClauseFrom(answers)
 
-    expect(input).toEqual({ art: 'keine' })
+    expect(input).toEqual({ kind: 'keine' })
   })
 
   it('treats an unanswered question as not yet given', () => {
     const input = progressionClauseFrom({} as Answers)
 
-    expect(input).toEqual({ art: 'nicht-angegeben' })
+    expect(input).toEqual({ kind: 'nicht-angegeben' })
   })
 })

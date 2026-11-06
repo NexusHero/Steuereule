@@ -6,36 +6,36 @@
 import type { RentalFieldId } from '@steuereule/core'
 import type { RentalObjectRecord, RentalRepository } from '../../src/vermietung/vermietung.repository.js'
 
-function key(userId: string, steuerjahr: number): string {
-  return `${userId}::${steuerjahr}`
+function key(userId: string, taxYear: number): string {
+  return `${userId}::${taxYear}`
 }
 
 export class FakeRentalRepository implements RentalRepository {
   private readonly store = new Map<string, RentalObjectRecord>()
   private counter = 0
 
-  listForUserAndYear(userId: string, steuerjahr: number): Promise<RentalObjectRecord[]> {
-    const k = key(userId, steuerjahr)
-    return Promise.resolve([...this.store.values()].filter((r) => key(r.userId, r.steuerjahr) === k))
+  listForUserAndYear(userId: string, taxYear: number): Promise<RentalObjectRecord[]> {
+    const k = key(userId, taxYear)
+    return Promise.resolve([...this.store.values()].filter((r) => key(r.userId, r.taxYear) === k))
   }
 
-  create(userId: string, steuerjahr: number): Promise<RentalObjectRecord> {
+  create(userId: string, taxYear: number): Promise<RentalObjectRecord> {
     this.counter += 1
     const record: RentalObjectRecord = {
       id: `fake-id-${this.counter}`,
       userId,
-      steuerjahr,
+      taxYear,
       mieteinnahmen: null,
       anschaffungskosten: null,
       baujahr: null,
       werbungskosten: null,
     }
-    this.store.set(`${key(userId, steuerjahr)}::${record.id}`, record)
+    this.store.set(`${key(userId, taxYear)}::${record.id}`, record)
     return Promise.resolve(record)
   }
 
-  setField(userId: string, steuerjahr: number, propertyId: string, field: RentalFieldId, value: string | null): Promise<RentalObjectRecord | null> {
-    const k = `${key(userId, steuerjahr)}::${propertyId}`
+  setField(userId: string, taxYear: number, propertyId: string, field: RentalFieldId, value: string | null): Promise<RentalObjectRecord | null> {
+    const k = `${key(userId, taxYear)}::${propertyId}`
     const existing = this.store.get(k)
     if (existing === undefined) return Promise.resolve(null)
     const updated: RentalObjectRecord = { ...existing, [field]: value }
@@ -45,11 +45,11 @@ export class FakeRentalRepository implements RentalRepository {
 
   setAddress(
     userId: string,
-    steuerjahr: number,
+    taxYear: number,
     propertyId: string,
-    address: { strasse?: string | null; hausnummer?: string | null; plz?: string | null; ort?: string | null; wohnflaeche?: string | null; afaWieVorjahr?: boolean | null },
+    address: { strasse?: string | null; hausnummer?: string | null; plz?: string | null; city?: string | null; livingArea?: string | null; depreciationAsLastYear?: boolean | null },
   ): Promise<RentalObjectRecord | null> {
-    const k = `${key(userId, steuerjahr)}::${propertyId}`
+    const k = `${key(userId, taxYear)}::${propertyId}`
     const existing = this.store.get(k)
     if (existing === undefined) return Promise.resolve(null)
     const updated: RentalObjectRecord = { ...existing, ...address }
@@ -59,6 +59,6 @@ export class FakeRentalRepository implements RentalRepository {
 
   /** Test seam: seed a full record directly, bypassing the create/setFeld paths. */
   seed(record: RentalObjectRecord): void {
-    this.store.set(`${key(record.userId, record.steuerjahr)}::${record.id}`, record)
+    this.store.set(`${key(record.userId, record.taxYear)}::${record.id}`, record)
   }
 }

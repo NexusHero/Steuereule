@@ -106,9 +106,9 @@ describe('StammdatenScreen (ADR-0050)', () => {
   describe('Kopplung (Zusammenveranlagung)', () => {
     const MARRIED: MasterDataResponseDto = { ...LEER, familienstand: 'verheiratet' }
     const JOINT: LinkResponseDto = {
-      veranlagungsart: 'zusammen',
+      filingType: 'zusammen',
       personBUserId: 'spouse_user-a_2025',
-      einladungsCode: '9F3A0C71B2E4D658',
+      invitationCode: '9F3A0C71B2E4D658',
       personBHasOwnAccount: false,
       personB: { firstName: 'Bea', lastName: 'Muster', steuerId: null, geburtsdatum: null, religion: null, beruf: null },
     }
@@ -126,7 +126,7 @@ describe('StammdatenScreen (ADR-0050)', () => {
       server.use(
         http.get('*/v1/stammdaten', () => HttpResponse.json(MARRIED)),
         http.get('*/v1/steuerjahre/:jahr/kopplung', () =>
-          HttpResponse.json({ ...JOINT, einladungsCodeGueltigBis: '2999-01-14T10:00:00.000Z' }),
+          HttpResponse.json({ ...JOINT, invitationCodeValidUntil: '2999-01-14T10:00:00.000Z' }),
         ),
       )
       renderScreen()
@@ -137,7 +137,7 @@ describe('StammdatenScreen (ADR-0050)', () => {
       server.use(
         http.get('*/v1/stammdaten', () => HttpResponse.json(MARRIED)),
         http.get('*/v1/steuerjahre/:jahr/kopplung', () =>
-          HttpResponse.json({ ...JOINT, einladungsCodeGueltigBis: '2000-01-01T00:00:00.000Z' }),
+          HttpResponse.json({ ...JOINT, invitationCodeValidUntil: '2000-01-01T00:00:00.000Z' }),
         ),
       )
       renderScreen()
@@ -170,7 +170,7 @@ describe('StammdatenScreen (ADR-0050)', () => {
       const set: string[] = []
       server.use(
         http.get('*/v1/stammdaten', () => HttpResponse.json(MARRIED)),
-        http.get('*/v1/steuerjahre/:jahr/kopplung', () => HttpResponse.json({ veranlagungsart: 'keine' })),
+        http.get('*/v1/steuerjahre/:jahr/kopplung', () => HttpResponse.json({ filingType: 'keine' })),
         http.put('*/v1/steuerjahre/:jahr/kopplung', ({ params }) => {
           set.push(String(params.jahr))
           return HttpResponse.json(JOINT)
@@ -186,7 +186,7 @@ describe('StammdatenScreen (ADR-0050)', () => {
       const codes: string[] = []
       server.use(
         http.get('*/v1/stammdaten', () => HttpResponse.json(MARRIED)),
-        http.get('*/v1/steuerjahre/:jahr/kopplung', () => HttpResponse.json({ veranlagungsart: 'keine' })),
+        http.get('*/v1/steuerjahre/:jahr/kopplung', () => HttpResponse.json({ filingType: 'keine' })),
         http.post('*/v1/steuerjahre/:jahr/kopplung/beitreten/:code', ({ params }) => {
           codes.push(`${String(params.jahr)}:${String(params.code)}`)
           return HttpResponse.json({ code: 'INVITATION_CODE_INVALID', message: 'The invitation code is invalid.' }, { status: 404 })
@@ -204,7 +204,7 @@ describe('StammdatenScreen (ADR-0050)', () => {
       server.use(
         http.get('*/v1/stammdaten', () => HttpResponse.json(MARRIED)),
         http.get('*/v1/steuerjahre/:jahr/kopplung', () =>
-          HttpResponse.json({ ...JOINT, personBUserId: 'user-b', einladungsCode: null, personBHasOwnAccount: true }),
+          HttpResponse.json({ ...JOINT, personBUserId: 'user-b', invitationCode: null, personBHasOwnAccount: true }),
         ),
       )
       renderScreen()

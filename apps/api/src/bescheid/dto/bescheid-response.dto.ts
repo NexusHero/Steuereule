@@ -29,7 +29,7 @@ export class AssessmentComparisonDto {
 /** The § 355 AO Einspruchsfrist, derived. */
 export class AssessmentDeadlineDto {
   @ApiProperty({ type: String, nullable: true, description: 'Bescheiddatum (ISO yyyy-mm-dd), null until set.' })
-  bescheiddatum!: string | null
+  assessmentDate!: string | null
 
   @ApiProperty({ type: String, nullable: true, description: 'Einspruchsfrist-Ende (Bescheiddatum + 1 Monat), null until the datum is set.' })
   deadlineEnd!: string | null
@@ -44,10 +44,10 @@ export class AssessmentResponseDto {
   status!: string
 
   @ApiProperty({ type: String, nullable: true, description: 'Bescheiddatum (ISO yyyy-mm-dd).' })
-  bescheiddatum!: string | null
+  assessmentDate!: string | null
 
   @ApiProperty({ type: String, nullable: true, description: 'Einspruch-Grund (closed set), null until filed.' })
-  einspruchGrund!: string | null
+  appealReason!: string | null
 
   @ApiProperty({ type: [AssessmentFieldDto], description: 'The five figures, in paper order.' })
   fields!: AssessmentFieldDto[]

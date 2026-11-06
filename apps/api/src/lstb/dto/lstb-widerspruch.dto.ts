@@ -6,7 +6,7 @@ export class LstbConflictDto {
     enum: ['lohnsteuer-uebersteigt-brutto', 'sozialversicherung-uebersteigt-brutto'],
     example: 'lohnsteuer-uebersteigt-brutto',
   })
-  art!: 'lohnsteuer-uebersteigt-brutto' | 'sozialversicherung-uebersteigt-brutto'
+  kind!: 'lohnsteuer-uebersteigt-brutto' | 'sozialversicherung-uebersteigt-brutto'
 
   @ApiPropertyOptional({ type: Number, description: 'The einbehaltene Lohnsteuer (only when art is lohnsteuer-uebersteigt-brutto).' })
   lohnsteuer?: number

@@ -47,15 +47,15 @@ export class CommuteController {
     @Query('person', ParsePersonPipe) person: 'A' | 'B',
   ): Promise<CommuteResponseDto> {
     return this.service.save(await this.link.dataUser(userId, year, person), year, {
-      arbeitstage: body.arbeitstage,
-      urlaubstage: body.urlaubstage,
-      krankheitstage: body.krankheitstage,
-      homeofficeTage: body.homeofficeTage,
-      einfacheKm: body.einfacheKm ?? null,
-      verkehrsmittel: body.verkehrsmittel ?? null,
-      taetigkeitsstaette: body.taetigkeitsstaette?.trim() || null,
-      feiertage: body.feiertage ?? null,
-      feiertageRegion: body.feiertageRegion ?? null,
+      workdays: body.workdays,
+      vacationDays: body.vacationDays,
+      sickDays: body.sickDays,
+      homeOfficeDays: body.homeOfficeDays,
+      oneWayKm: body.oneWayKm ?? null,
+      transport: body.transport ?? null,
+      workplace: body.workplace?.trim() || null,
+      publicHolidays: body.publicHolidays ?? null,
+      publicHolidayRegion: body.publicHolidayRegion ?? null,
     })
   }
 }

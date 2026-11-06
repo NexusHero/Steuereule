@@ -5,7 +5,7 @@ import type { PensionRecord, PensionRepository } from './rente.repository.js'
 
 function toRecord(row: {
   userId: string
-  steuerjahr: number
+  taxYear: number
   rentenart: string | null
   jahresbetrag: string | null
   rentenbeginnJahr: string | null
@@ -13,7 +13,7 @@ function toRecord(row: {
 }): PensionRecord {
   return {
     userId: row.userId,
-    steuerjahr: row.steuerjahr,
+    taxYear: row.taxYear,
     rentenart: row.rentenart,
     jahresbetrag: row.jahresbetrag,
     rentenbeginnJahr: row.rentenbeginnJahr,
@@ -39,16 +39,16 @@ function fieldData(
 export class PrismaPensionRepository implements PensionRepository {
   constructor(@Inject(ENCRYPTED_PRISMA) private readonly prisma: EncryptedPrismaClient) {}
 
-  async findForUserAndYear(userId: string, steuerjahr: number): Promise<PensionRecord | null> {
-    const row = await this.prisma.rente.findUnique({ where: { userId_steuerjahr: { userId, steuerjahr } } })
+  async findForUserAndYear(userId: string, taxYear: number): Promise<PensionRecord | null> {
+    const row = await this.prisma.pension.findUnique({ where: { userId_taxYear: { userId, taxYear } } })
     return row === null ? null : toRecord(row)
   }
 
-  async setField(userId: string, steuerjahr: number, field: PensionFieldId, value: string | null): Promise<PensionRecord> {
+  async setField(userId: string, taxYear: number, field: PensionFieldId, value: string | null): Promise<PensionRecord> {
     const [row] = await this.prisma.$transaction([
-      this.prisma.rente.upsert({
-        where: { userId_steuerjahr: { userId, steuerjahr } },
-        create: { userId, steuerjahr, rentenart: null, jahresbetrag: null, rentenbeginnJahr: null, alterBeiRentenbeginn: null, ...fieldData(field, value) },
+      this.prisma.pension.upsert({
+        where: { userId_taxYear: { userId, taxYear } },
+        create: { userId, taxYear, rentenart: null, jahresbetrag: null, rentenbeginnJahr: null, alterBeiRentenbeginn: null, ...fieldData(field, value) },
         update: fieldData(field, value),
       }),
       this.prisma.taxDataAccessLog.create({
@@ -58,12 +58,12 @@ export class PrismaPensionRepository implements PensionRepository {
     return toRecord(row)
   }
 
-  async setPensionKind(userId: string, steuerjahr: number, art: string | null): Promise<PensionRecord> {
+  async setPensionKind(userId: string, taxYear: number, kind: string | null): Promise<PensionRecord> {
     const [row] = await this.prisma.$transaction([
-      this.prisma.rente.upsert({
-        where: { userId_steuerjahr: { userId, steuerjahr } },
-        create: { userId, steuerjahr, rentenart: art, jahresbetrag: null, rentenbeginnJahr: null, alterBeiRentenbeginn: null },
-        update: { rentenart: art },
+      this.prisma.pension.upsert({
+        where: { userId_taxYear: { userId, taxYear } },
+        create: { userId, taxYear, rentenart: kind, jahresbetrag: null, rentenbeginnJahr: null, alterBeiRentenbeginn: null },
+        update: { rentenart: kind },
       }),
       this.prisma.taxDataAccessLog.create({
         data: { userId, action: 'WRITE', resource: 'rente' },

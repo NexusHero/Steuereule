@@ -3146,7 +3146,7 @@
       "LstbConflictDto": {
         "type": "object",
         "properties": {
-          "art": {
+          "kind": {
             "type": "string",
             "enum": [
               "lohnsteuer-uebersteigt-brutto",
@@ -3168,7 +3168,7 @@
           }
         },
         "required": [
-          "art"
+          "kind"
         ]
       },
       "LstbStatusDto": {
@@ -3287,7 +3287,7 @@
               "JH"
             ],
             "nullable": true,
-            "description": "Art. 9 DSGVO: requires religionEinwilligung = true, like the own Stammdaten."
+            "description": "Art. 9 DSGVO: requires religionConsent = true, like the own Stammdaten."
           },
           "religionConsent": {
             "type": "boolean",
@@ -3303,7 +3303,7 @@
       "LinkResponseDto": {
         "type": "object",
         "properties": {
-          "veranlagungsart": {
+          "filingType": {
             "type": "string",
             "enum": [
               "keine",
@@ -3317,12 +3317,12 @@
             "nullable": true,
             "example": "person-b-user-id"
           },
-          "einladungsCode": {
+          "invitationCode": {
             "type": "string",
             "nullable": true,
             "example": "9F3A0C71B2E4D658"
           },
-          "einladungsCodeGueltigBis": {
+          "invitationCodeValidUntil": {
             "type": "string",
             "format": "date-time",
             "nullable": true,
@@ -3343,13 +3343,13 @@
           }
         },
         "required": [
-          "veranlagungsart"
+          "filingType"
         ]
       },
       "SetLinkDto": {
         "type": "object",
         "properties": {
-          "veranlagungsart": {
+          "filingType": {
             "type": "string",
             "enum": [
               "einzel",
@@ -3359,7 +3359,7 @@
           }
         },
         "required": [
-          "veranlagungsart"
+          "filingType"
         ]
       },
       "MasterDataResponseDto": {
@@ -3531,7 +3531,7 @@
               "JH"
             ],
             "nullable": true,
-            "description": "Religionsschlüssel per ESt 1 A guide (VD = none). Art. 9 DSGVO: requires religionEinwilligung = true."
+            "description": "Religionsschlüssel per ESt 1 A guide (VD = none). Art. 9 DSGVO: requires religionConsent = true."
           },
           "religionConsent": {
             "type": "boolean",
@@ -3770,7 +3770,7 @@
       "PensionResponseDto": {
         "type": "object",
         "properties": {
-          "art": {
+          "kind": {
             "type": "string",
             "enum": [
               "GesetzlicheRente",
@@ -3803,7 +3803,7 @@
           }
         },
         "required": [
-          "art",
+          "kind",
           "jahresbetrag",
           "rentenbeginnJahr",
           "alterBeiRentenbeginn",
@@ -3814,7 +3814,7 @@
       "PutPensionKindDto": {
         "type": "object",
         "properties": {
-          "art": {
+          "kind": {
             "type": "string",
             "enum": [
               "GesetzlicheRente",
@@ -3829,7 +3829,7 @@
           }
         },
         "required": [
-          "art"
+          "kind"
         ]
       },
       "PutPensionFieldDto": {
@@ -4345,15 +4345,15 @@
             "type": "string",
             "nullable": true
           },
-          "ort": {
+          "city": {
             "type": "string",
             "nullable": true
           },
-          "wohnflaeche": {
+          "livingArea": {
             "type": "string",
             "nullable": true
           },
-          "afaWieVorjahr": {
+          "depreciationAsLastYear": {
             "type": "boolean",
             "nullable": true
           },
@@ -4386,9 +4386,9 @@
           "strasse",
           "hausnummer",
           "plz",
-          "ort",
-          "wohnflaeche",
-          "afaWieVorjahr",
+          "city",
+          "livingArea",
+          "depreciationAsLastYear",
           "umlagen",
           "schuldzinsen",
           "einheiten",
@@ -4514,15 +4514,15 @@
             "type": "string",
             "example": "10115"
           },
-          "ort": {
+          "city": {
             "type": "string",
             "example": "Berlin"
           },
-          "wohnflaeche": {
+          "livingArea": {
             "type": "string",
             "example": "85"
           },
-          "afaWieVorjahr": {
+          "depreciationAsLastYear": {
             "type": "boolean",
             "description": "Anlage V Zeile 33: the building AfA is unchanged from last year."
           },
@@ -4619,7 +4619,7 @@
             "type": "string",
             "description": "Stable line-item id."
           },
-          "art": {
+          "kind": {
             "type": "string",
             "enum": [
               "Bruttolohn",
@@ -4662,7 +4662,7 @@
         },
         "required": [
           "id",
-          "art",
+          "kind",
           "amountChf",
           "amountEur",
           "role",
@@ -4999,7 +4999,7 @@
       "CommuteInputsDto": {
         "type": "object",
         "properties": {
-          "arbeitstage": {
+          "workdays": {
             "example": [
               1,
               2,
@@ -5013,25 +5013,25 @@
               "type": "number"
             }
           },
-          "urlaubstage": {
+          "vacationDays": {
             "type": "number",
             "example": 30
           },
-          "krankheitstage": {
+          "sickDays": {
             "type": "number",
             "example": 5
           },
-          "homeofficeTage": {
+          "homeOfficeDays": {
             "type": "number",
             "example": 20
           },
-          "einfacheKm": {
+          "oneWayKm": {
             "type": "number",
             "nullable": true,
             "example": 23,
             "description": "One-way distance in full kilometres."
           },
-          "verkehrsmittel": {
+          "transport": {
             "type": "string",
             "enum": [
               "pkw",
@@ -5041,18 +5041,18 @@
             "nullable": true,
             "example": "pkw"
           },
-          "taetigkeitsstaette": {
+          "workplace": {
             "type": "string",
             "nullable": true,
             "example": "79539 Lörrach, Hauptstraße 1"
           },
-          "feiertage": {
+          "publicHolidays": {
             "type": "number",
             "nullable": true,
             "example": 11,
             "description": "Confirmed public holidays on working days, subtracted from the commute days."
           },
-          "feiertageRegion": {
+          "publicHolidayRegion": {
             "type": "string",
             "nullable": true,
             "example": "BW",
@@ -5060,13 +5060,13 @@
           }
         },
         "required": [
-          "arbeitstage",
-          "urlaubstage",
-          "krankheitstage",
-          "homeofficeTage",
-          "einfacheKm",
-          "verkehrsmittel",
-          "taetigkeitsstaette"
+          "workdays",
+          "vacationDays",
+          "sickDays",
+          "homeOfficeDays",
+          "oneWayKm",
+          "transport",
+          "workplace"
         ]
       },
       "WorkdaysDto": {
@@ -5205,15 +5205,15 @@
             "type": "string",
             "example": "uuid"
           },
-          "lfdNr": {
+          "sequenceNumber": {
             "type": "number",
             "example": 1
           },
-          "vorname": {
+          "firstName": {
             "type": "string",
             "example": "Lina"
           },
-          "nachname": {
+          "lastName": {
             "type": "string",
             "example": "Muster"
           },
@@ -5221,17 +5221,17 @@
             "type": "string",
             "example": "2018-05-12"
           },
-          "idnr": {
+          "taxId": {
             "type": "string",
             "nullable": true,
             "example": "12345678901"
           },
-          "kindergeldAnspruchEur": {
+          "childBenefitClaimEur": {
             "type": "string",
             "nullable": true,
             "example": "3000"
           },
-          "kindschaftsverhaeltnis": {
+          "kinship": {
             "type": "string",
             "enum": [
               "1",
@@ -5240,7 +5240,7 @@
             ],
             "nullable": true
           },
-          "kindschaftsverhaeltnisB": {
+          "kinshipB": {
             "type": "string",
             "enum": [
               "1",
@@ -5249,15 +5249,15 @@
             ],
             "nullable": true
           },
-          "familienkasse": {
+          "familyBenefitsOffice": {
             "type": "string",
             "nullable": true
           },
-          "wohnsitzInlandGanzjaehrig": {
+          "domesticResidenceAllYear": {
             "type": "boolean",
             "nullable": true
           },
-          "andererElternteil": {
+          "otherParent": {
             "type": "string",
             "enum": [
               "Inland",
@@ -5267,19 +5267,19 @@
             ],
             "nullable": true
           },
-          "andererElternteilName": {
+          "otherParentName": {
             "type": "string",
             "nullable": true
           },
-          "andererElternteilGeburtsdatum": {
+          "otherParentBirthDate": {
             "type": "string",
             "nullable": true
           },
-          "andererElternteilAdresse": {
+          "otherParentAddress": {
             "type": "string",
             "nullable": true
           },
-          "andererElternteilArt": {
+          "otherParentKind": {
             "type": "string",
             "enum": [
               "1",
@@ -5287,27 +5287,27 @@
             ],
             "nullable": true
           },
-          "andererElternteilVerstorbenAm": {
+          "otherParentDiedOn": {
             "type": "string",
             "nullable": true
           },
-          "gemeldetBeiMirGanzjaehrig": {
+          "registeredWithMeAllYear": {
             "type": "boolean",
             "nullable": true
           },
-          "kindergeldAnMichGanzjaehrig": {
+          "childBenefitToMeAllYear": {
             "type": "boolean",
             "nullable": true
           },
-          "kvBasisEur": {
+          "healthBasicEur": {
             "type": "string",
             "nullable": true
           },
-          "pvEur": {
+          "careEur": {
             "type": "string",
             "nullable": true
           },
-          "schweizerKinderzulageEur": {
+          "swissFamilyAllowanceEur": {
             "type": "string",
             "nullable": true,
             "example": "2748",
@@ -5328,24 +5328,24 @@
         },
         "required": [
           "id",
-          "lfdNr",
-          "vorname",
-          "nachname",
+          "sequenceNumber",
+          "firstName",
+          "lastName",
           "geburtsdatum",
-          "kindschaftsverhaeltnis",
-          "kindschaftsverhaeltnisB",
-          "familienkasse",
-          "wohnsitzInlandGanzjaehrig",
-          "andererElternteil",
-          "andererElternteilName",
-          "andererElternteilGeburtsdatum",
-          "andererElternteilAdresse",
-          "andererElternteilArt",
-          "andererElternteilVerstorbenAm",
-          "gemeldetBeiMirGanzjaehrig",
-          "kindergeldAnMichGanzjaehrig",
-          "kvBasisEur",
-          "pvEur"
+          "kinship",
+          "kinshipB",
+          "familyBenefitsOffice",
+          "domesticResidenceAllYear",
+          "otherParent",
+          "otherParentName",
+          "otherParentBirthDate",
+          "otherParentAddress",
+          "otherParentKind",
+          "otherParentDiedOn",
+          "registeredWithMeAllYear",
+          "childBenefitToMeAllYear",
+          "healthBasicEur",
+          "careEur"
         ]
       },
       "KinderResponseDto": {
@@ -5392,7 +5392,7 @@
       "CreateChildDto": {
         "type": "object",
         "properties": {
-          "kindschaftsverhaeltnis": {
+          "kinship": {
             "type": "string",
             "enum": [
               "1",
@@ -5402,7 +5402,7 @@
             "nullable": true,
             "description": "Kz 02: 1 = leiblich/adoptiert, 2 = Pflegekind, 3 = Enkel-/Stiefkind"
           },
-          "kindschaftsverhaeltnisB": {
+          "kinshipB": {
             "type": "string",
             "enum": [
               "1",
@@ -5412,17 +5412,17 @@
             "nullable": true,
             "description": "Kz 03, to the spouse — only for a joint return"
           },
-          "familienkasse": {
+          "familyBenefitsOffice": {
             "type": "string",
             "nullable": true,
             "example": "Familienkasse Sachsen"
           },
-          "wohnsitzInlandGanzjaehrig": {
+          "domesticResidenceAllYear": {
             "type": "boolean",
             "nullable": true,
             "description": "The child lived in Germany all year (Zeile 8)."
           },
-          "andererElternteil": {
+          "otherParent": {
             "type": "string",
             "enum": [
               "Inland",
@@ -5433,22 +5433,22 @@
             "nullable": true,
             "description": "The other parent outside this return (Zeilen 11–15)."
           },
-          "andererElternteilName": {
+          "otherParentName": {
             "type": "string",
             "nullable": true,
             "example": "Muster, Max"
           },
-          "andererElternteilGeburtsdatum": {
+          "otherParentBirthDate": {
             "type": "string",
             "nullable": true,
             "example": "1984-02-11"
           },
-          "andererElternteilAdresse": {
+          "otherParentAddress": {
             "type": "string",
             "nullable": true,
             "example": "Hauptstraße 3, 01067 Dresden"
           },
-          "andererElternteilArt": {
+          "otherParentKind": {
             "type": "string",
             "enum": [
               "1",
@@ -5456,44 +5456,44 @@
             ],
             "nullable": true
           },
-          "andererElternteilVerstorbenAm": {
+          "otherParentDiedOn": {
             "type": "string",
             "nullable": true,
             "example": "2025-06-30"
           },
-          "gemeldetBeiMirGanzjaehrig": {
+          "registeredWithMeAllYear": {
             "type": "boolean",
             "nullable": true,
             "description": "Zeile 45: the child was registered with the filer all year."
           },
-          "kindergeldAnMichGanzjaehrig": {
+          "childBenefitToMeAllYear": {
             "type": "boolean",
             "nullable": true,
             "description": "Zeile 46: the Kindergeld was paid to the filer all year."
           },
-          "kvBasisEur": {
+          "healthBasicEur": {
             "type": "string",
             "nullable": true,
             "example": "1080",
             "description": "Zeile 27 (Kz 66): KV Basisabsicherung of the child paid by the parents, whole euros."
           },
-          "pvEur": {
+          "careEur": {
             "type": "string",
             "nullable": true,
             "example": "0",
             "description": "Zeile 28 (Kz 67): PV of the child paid by the parents, whole euros."
           },
-          "schweizerKinderzulageEur": {
+          "swissFamilyAllowanceEur": {
             "type": "string",
             "nullable": true,
             "example": "2748",
             "description": "Zeile 6 (Kz 15): Schweizer Kinderzulage / Familienzulage in whole EUR."
           },
-          "vorname": {
+          "firstName": {
             "type": "string",
             "example": "Lina"
           },
-          "nachname": {
+          "lastName": {
             "type": "string",
             "example": "Muster"
           },
@@ -5502,25 +5502,25 @@
             "example": "2018-05-12",
             "description": "ISO date YYYY-MM-DD"
           },
-          "idnr": {
+          "taxId": {
             "type": "string",
             "example": "12345678901"
           },
-          "kindergeldAnspruchEur": {
+          "childBenefitClaimEur": {
             "type": "string",
             "example": "3000"
           }
         },
         "required": [
-          "vorname",
-          "nachname",
+          "firstName",
+          "lastName",
           "geburtsdatum"
         ]
       },
       "UpdateChildDto": {
         "type": "object",
         "properties": {
-          "kindschaftsverhaeltnis": {
+          "kinship": {
             "type": "string",
             "enum": [
               "1",
@@ -5530,7 +5530,7 @@
             "nullable": true,
             "description": "Kz 02: 1 = leiblich/adoptiert, 2 = Pflegekind, 3 = Enkel-/Stiefkind"
           },
-          "kindschaftsverhaeltnisB": {
+          "kinshipB": {
             "type": "string",
             "enum": [
               "1",
@@ -5540,17 +5540,17 @@
             "nullable": true,
             "description": "Kz 03, to the spouse — only for a joint return"
           },
-          "familienkasse": {
+          "familyBenefitsOffice": {
             "type": "string",
             "nullable": true,
             "example": "Familienkasse Sachsen"
           },
-          "wohnsitzInlandGanzjaehrig": {
+          "domesticResidenceAllYear": {
             "type": "boolean",
             "nullable": true,
             "description": "The child lived in Germany all year (Zeile 8)."
           },
-          "andererElternteil": {
+          "otherParent": {
             "type": "string",
             "enum": [
               "Inland",
@@ -5561,22 +5561,22 @@
             "nullable": true,
             "description": "The other parent outside this return (Zeilen 11–15)."
           },
-          "andererElternteilName": {
+          "otherParentName": {
             "type": "string",
             "nullable": true,
             "example": "Muster, Max"
           },
-          "andererElternteilGeburtsdatum": {
+          "otherParentBirthDate": {
             "type": "string",
             "nullable": true,
             "example": "1984-02-11"
           },
-          "andererElternteilAdresse": {
+          "otherParentAddress": {
             "type": "string",
             "nullable": true,
             "example": "Hauptstraße 3, 01067 Dresden"
           },
-          "andererElternteilArt": {
+          "otherParentKind": {
             "type": "string",
             "enum": [
               "1",
@@ -5584,44 +5584,44 @@
             ],
             "nullable": true
           },
-          "andererElternteilVerstorbenAm": {
+          "otherParentDiedOn": {
             "type": "string",
             "nullable": true,
             "example": "2025-06-30"
           },
-          "gemeldetBeiMirGanzjaehrig": {
+          "registeredWithMeAllYear": {
             "type": "boolean",
             "nullable": true,
             "description": "Zeile 45: the child was registered with the filer all year."
           },
-          "kindergeldAnMichGanzjaehrig": {
+          "childBenefitToMeAllYear": {
             "type": "boolean",
             "nullable": true,
             "description": "Zeile 46: the Kindergeld was paid to the filer all year."
           },
-          "kvBasisEur": {
+          "healthBasicEur": {
             "type": "string",
             "nullable": true,
             "example": "1080",
             "description": "Zeile 27 (Kz 66): KV Basisabsicherung of the child paid by the parents, whole euros."
           },
-          "pvEur": {
+          "careEur": {
             "type": "string",
             "nullable": true,
             "example": "0",
             "description": "Zeile 28 (Kz 67): PV of the child paid by the parents, whole euros."
           },
-          "schweizerKinderzulageEur": {
+          "swissFamilyAllowanceEur": {
             "type": "string",
             "nullable": true,
             "example": "2748",
             "description": "Zeile 6 (Kz 15): Schweizer Kinderzulage / Familienzulage in whole EUR."
           },
-          "vorname": {
+          "firstName": {
             "type": "string",
             "example": "Lina"
           },
-          "nachname": {
+          "lastName": {
             "type": "string",
             "example": "Muster"
           },
@@ -5629,11 +5629,11 @@
             "type": "string",
             "example": "2018-05-12"
           },
-          "idnr": {
+          "taxId": {
             "type": "string",
             "example": "12345678901"
           },
-          "kindergeldAnspruchEur": {
+          "childBenefitClaimEur": {
             "type": "string",
             "example": "3000"
           }
@@ -5651,7 +5651,7 @@
               "konflikt"
             ]
           },
-          "steuerjahr": {
+          "taxYear": {
             "type": "number",
             "example": 2026,
             "description": "vorgeschlagen: the suggested year; zugeordnet/konflikt: the confirmed year."
@@ -5681,12 +5681,12 @@
             "type": "string",
             "example": "b1"
           },
-          "dateiname": {
+          "fileName": {
             "type": "string",
             "example": "miete-januar.pdf",
             "description": "Original filename (decrypted for the owner)."
           },
-          "art": {
+          "kind": {
             "type": "string",
             "nullable": true,
             "example": "Lohnausweis",
@@ -5715,8 +5715,8 @@
         },
         "required": [
           "id",
-          "dateiname",
-          "art",
+          "fileName",
+          "kind",
           "belegdatum",
           "zahlungsdatum",
           "assignment"
@@ -5725,12 +5725,12 @@
       "CreateReceiptDto": {
         "type": "object",
         "properties": {
-          "dateiname": {
+          "fileName": {
             "type": "string",
             "example": "miete-januar.pdf",
             "description": "Original filename/storage key — field-encrypted at rest (ADR-0008)."
           },
-          "art": {
+          "kind": {
             "type": "string",
             "enum": [
               "Lohnausweis",
@@ -5759,25 +5759,25 @@
           }
         },
         "required": [
-          "dateiname"
+          "fileName"
         ]
       },
       "SetAssignmentDto": {
         "type": "object",
         "properties": {
-          "steuerjahr": {
+          "taxYear": {
             "type": "number",
             "example": 2026,
             "description": "The calendar year to confirm/assign."
           },
-          "vorschlagVerworfen": {
+          "proposalDismissed": {
             "type": "boolean",
             "default": false,
             "description": "ADR-008 \"bei meinem Jahr bleiben\": persist the dismissal of a contradicting date-derived suggestion, keeping `steuerjahr`. Omitted/false = a normal assignment."
           }
         },
         "required": [
-          "steuerjahr"
+          "taxYear"
         ]
       },
       "AssessmentFieldDto": {
@@ -5861,7 +5861,7 @@
       "AssessmentDeadlineDto": {
         "type": "object",
         "properties": {
-          "bescheiddatum": {
+          "assessmentDate": {
             "type": "string",
             "nullable": true,
             "description": "Bescheiddatum (ISO yyyy-mm-dd), null until set."
@@ -5878,7 +5878,7 @@
           }
         },
         "required": [
-          "bescheiddatum",
+          "assessmentDate",
           "deadlineEnd",
           "remainingDays"
         ]
@@ -5895,12 +5895,12 @@
             ],
             "description": "The bescheid-phase sub-state."
           },
-          "bescheiddatum": {
+          "assessmentDate": {
             "type": "string",
             "nullable": true,
             "description": "Bescheiddatum (ISO yyyy-mm-dd)."
           },
-          "einspruchGrund": {
+          "appealReason": {
             "type": "string",
             "nullable": true,
             "description": "Einspruch-Grund (closed set), null until filed."
@@ -5938,8 +5938,8 @@
         },
         "required": [
           "status",
-          "bescheiddatum",
-          "einspruchGrund",
+          "assessmentDate",
+          "appealReason",
           "fields",
           "reconciliation",
           "frist",
@@ -6161,7 +6161,7 @@
             "type": "string",
             "example": "Kapitalerträge"
           },
-          "steuerjahr": {
+          "taxYear": {
             "type": "number",
             "nullable": true,
             "example": 2025
@@ -6190,7 +6190,7 @@
         },
         "required": [
           "area",
-          "steuerjahr",
+          "taxYear",
           "fields"
         ]
       },
@@ -6610,26 +6610,26 @@
       "RolloverProvenanceDto": {
         "type": "object",
         "properties": {
-          "postenKey": {
+          "itemKey": {
             "type": "string",
             "example": "lstb.bruttoarbeitslohn",
             "description": "Der Kennzeichnungs-Key des kopierten Felds (ADR-0052 §6)."
           },
-          "vorjahr": {
+          "lastYear": {
             "type": "number",
             "example": 2025,
             "description": "Das Quelljahr der Kopie — der Jahresbezug der Herkunft (ADR-022)."
           },
-          "bestaetigt": {
+          "confirmed": {
             "type": "boolean",
             "example": false,
             "description": "false = UNBESTÄTIGT (kopiert, Anlage noch nicht bestätigt), true = bestätigt (ADR-021)."
           }
         },
         "required": [
-          "postenKey",
-          "vorjahr",
-          "bestaetigt"
+          "itemKey",
+          "lastYear",
+          "confirmed"
         ]
       },
       "RolloverResponseDto": {
@@ -6650,7 +6650,7 @@
       "ProvenanceDto": {
         "type": "object",
         "properties": {
-          "art": {
+          "kind": {
             "type": "string",
             "enum": [
               "nutzer",
@@ -6669,14 +6669,14 @@
             "type": "string",
             "description": "Der Beleg, aus dem der Wert stammt."
           },
-          "vorjahr": {
+          "lastYear": {
             "type": "number",
             "example": 2024,
             "description": "Quelljahr der Jahresübernahme (art = uebernahme)."
           }
         },
         "required": [
-          "art"
+          "kind"
         ]
       },
       "ProposalDto": {
@@ -6738,7 +6738,7 @@
           "provenance": {
             "$ref": "#/components/schemas/ProvenanceDto"
           },
-          "bestaetigt": {
+          "confirmed": {
             "type": "boolean"
           },
           "proposal": {
@@ -6758,14 +6758,14 @@
           "field",
           "value",
           "provenance",
-          "bestaetigt",
+          "confirmed",
           "proposal"
         ]
       },
       "AnnexConfirmationDto": {
         "type": "object",
         "properties": {
-          "anlage": {
+          "annex": {
             "type": "string",
             "enum": [
               "hauptvordruck",
@@ -6790,7 +6790,7 @@
           }
         },
         "required": [
-          "anlage",
+          "annex",
           "unconfirmed",
           "values"
         ]
@@ -6875,30 +6875,30 @@
       "OwlSettingResponseDto": {
         "type": "object",
         "properties": {
-          "aktiviert": {
+          "enabled": {
             "type": "boolean",
             "example": true
           },
-          "aktiviertAm": {
+          "enabledAt": {
             "type": "string",
             "nullable": true,
             "example": "2026-11-03T10:00:00Z"
           }
         },
         "required": [
-          "aktiviert"
+          "enabled"
         ]
       },
       "SetOwlSettingDto": {
         "type": "object",
         "properties": {
-          "aktiviert": {
+          "enabled": {
             "type": "boolean",
             "example": true
           }
         },
         "required": [
-          "aktiviert"
+          "enabled"
         ]
       },
       "OwlPathDto": {
@@ -7015,7 +7015,7 @@
       "OwlCardsResponseDto": {
         "type": "object",
         "properties": {
-          "aktiviert": {
+          "enabled": {
             "type": "boolean",
             "example": true
           },
@@ -7031,7 +7031,7 @@
           }
         },
         "required": [
-          "aktiviert",
+          "enabled",
           "cards",
           "legalStatus"
         ]

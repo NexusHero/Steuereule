@@ -35,15 +35,15 @@ export const EMPTY_N_GRE: NGreDetails = {
 
 export interface CrossBorderSalaryStatementRecord {
   userId: string
-  steuerjahr: number
+  taxYear: number
   fields: ChSalaryCertificateFields
   bemerkungen: string | null
   saeule3aChf: string | null
   krankenkasseChf: string | null
-  wechselkursMonat: string | null
-  wechselkursKurs: number | null
-  wechselkursModus: string | null
-  wechselkursBelegId: string | null
+  exchangeRateMonth: string | null
+  exchangeRateValue: number | null
+  exchangeRateMode: string | null
+  exchangeRateReceiptId: string | null
   nGre: NGreDetails
 }
 
@@ -51,14 +51,14 @@ export const CROSS_BORDER_SALARY_STATEMENT_REPOSITORY = Symbol('CH_LOHNAUSWEIS_R
 
 /** The persistence seam for the CH-Lohnausweis guided mask. */
 export interface CrossBorderSalaryStatementRepository {
-  findForUserAndYear(userId: string, steuerjahr: number): Promise<CrossBorderSalaryStatementRecord | null>
-  setField(userId: string, steuerjahr: number, field: SalaryCertificateAmountFieldId, value: string | null): Promise<CrossBorderSalaryStatementRecord>
-  setRemarks(userId: string, steuerjahr: number, text: string | null): Promise<CrossBorderSalaryStatementRecord>
-  setProvision(userId: string, steuerjahr: number, saeule3aChf: string | null, krankenkasseChf: string | null): Promise<CrossBorderSalaryStatementRecord>
-  setNGre(userId: string, steuerjahr: number, details: Partial<NGreDetails>): Promise<CrossBorderSalaryStatementRecord>
+  findForUserAndYear(userId: string, taxYear: number): Promise<CrossBorderSalaryStatementRecord | null>
+  setField(userId: string, taxYear: number, field: SalaryCertificateAmountFieldId, value: string | null): Promise<CrossBorderSalaryStatementRecord>
+  setRemarks(userId: string, taxYear: number, text: string | null): Promise<CrossBorderSalaryStatementRecord>
+  setProvision(userId: string, taxYear: number, saeule3aChf: string | null, krankenkasseChf: string | null): Promise<CrossBorderSalaryStatementRecord>
+  setNGre(userId: string, taxYear: number, details: Partial<NGreDetails>): Promise<CrossBorderSalaryStatementRecord>
   setExchangeRate(
     userId: string,
-    steuerjahr: number,
+    taxYear: number,
     exchangeRate: { month: string; rate: number; mode: string; receiptId?: string },
   ): Promise<CrossBorderSalaryStatementRecord>
 }

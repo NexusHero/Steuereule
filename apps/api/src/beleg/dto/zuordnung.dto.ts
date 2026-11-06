@@ -9,7 +9,7 @@ export class AssignmentDto {
     example: 2026,
     description: 'vorgeschlagen: the suggested year; zugeordnet/konflikt: the confirmed year.',
   })
-  steuerjahr?: number
+  taxYear?: number
 
   @ApiPropertyOptional({
     type: Number,

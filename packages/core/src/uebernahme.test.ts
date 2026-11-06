@@ -13,7 +13,7 @@ const ITEMS: Item = {
   id: 'lstb',
   incomeType: 'Nichtselbstständig',
   amount: 50000,
-  source: { art: 'eingabe' },
+  source: { kind: 'eingabe' },
 }
 
 describe('uebernommenerPosten — der Kopier-Schritt (ADR-021)', () => {
@@ -21,7 +21,7 @@ describe('uebernommenerPosten — der Kopier-Schritt (ADR-021)', () => {
     const takenOver = adoptedLineItem(ITEMS, 2025)
     expect(takenOver).toEqual({
       ...ITEMS,
-      source: { art: 'uebernahme', vorjahr: 2025 },
+      source: { kind: 'uebernahme', lastYear: 2025 },
       unconfirmed: true,
     })
   })
@@ -34,9 +34,9 @@ describe('uebernommenerPosten — der Kopier-Schritt (ADR-021)', () => {
 
 describe('bestaetigePosten — der Bestätigungs-Schritt (angetippt/Beleg)', () => {
   it('entfernt das unbestätigt-Flag, die Übernahme-Herkunft BLEIBT', () => {
-    const bestaetigt = confirmLineItem(adoptedLineItem(ITEMS, 2025))
-    expect(bestaetigt.unconfirmed).toBe(false)
-    expect(bestaetigt.source).toEqual({ art: 'uebernahme', vorjahr: 2025 })
+    const confirmed = confirmLineItem(adoptedLineItem(ITEMS, 2025))
+    expect(confirmed.unconfirmed).toBe(false)
+    expect(confirmed.source).toEqual({ kind: 'uebernahme', lastYear: 2025 })
   })
 
   it('ist idempotent für bereits bestätigte und normale Posten', () => {

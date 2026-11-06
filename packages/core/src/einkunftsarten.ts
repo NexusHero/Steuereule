@@ -54,7 +54,7 @@ export function incomeTypesFromAnswers(answers: Answers): readonly IncomeType[] 
       break
   }
 
-  return INCOME_TYPES.filter((art) => declared.has(art))
+  return INCOME_TYPES.filter((kind) => declared.has(kind))
 }
 
 export function gatedIncomeTypes(answers: Answers): readonly IncomeType[] {
@@ -65,5 +65,5 @@ export function gatedIncomeTypes(answers: Answers): readonly IncomeType[] {
   if (declared.has('Kapital') && answers['kap-depot'] === 'Krypto') gated.add('Kapital')
   if (declared.has('Vermietung') && answers['vermietung-art'] === 'Verkauf oder möbliert') gated.add('Vermietung')
 
-  return INCOME_TYPES.filter((art) => gated.has(art))
+  return INCOME_TYPES.filter((kind) => gated.has(kind))
 }

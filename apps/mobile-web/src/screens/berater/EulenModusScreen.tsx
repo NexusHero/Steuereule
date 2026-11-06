@@ -25,7 +25,7 @@ export interface OwlModeScreenProps {
   readonly onDismissCard?: ((fingerprint: string) => Promise<void> | void) | undefined
   readonly onAcceptPath?: ((cardId: string, pathIndex: number) => void) | undefined
   readonly optInEnabled?: boolean | undefined
-  readonly onToggleOptIn?: ((aktiviert: boolean) => Promise<void> | void) | undefined
+  readonly onToggleOptIn?: ((enabled: boolean) => Promise<void> | void) | undefined
 }
 
 export function OwlModeScreen(props: OwlModeScreenProps) {
@@ -81,9 +81,9 @@ function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CURRENT_T
       {...(onBack ? { onBack } : {})}
       taxYear={taxYear}
       initialCards={cards}
-      optInEnabled={settingQuery.data.data.aktiviert}
-      onToggleOptIn={async (aktiviert) => {
-        await setSetting.mutateAsync({ data: { aktiviert } })
+      optInEnabled={settingQuery.data.data.enabled}
+      onToggleOptIn={async (enabled) => {
+        await setSetting.mutateAsync({ data: { enabled } })
         await invalidate()
       }}
       onDismissCard={async (fingerprint) => {

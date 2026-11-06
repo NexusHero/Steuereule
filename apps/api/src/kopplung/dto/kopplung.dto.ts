@@ -6,7 +6,7 @@ import { IsTaxId } from '../../profile/dto/steuer-id.validators.js'
 export class SetLinkDto {
   @ApiProperty({ type: String, enum: ['einzel', 'zusammen'], example: 'zusammen' })
   @IsIn(['einzel', 'zusammen'])
-  veranlagungsart!: 'einzel' | 'zusammen'
+  filingType!: 'einzel' | 'zusammen'
 }
 
 export class LinkPersonBDto {
@@ -52,16 +52,16 @@ export class LinkPersonBDto {
 
 export class LinkResponseDto {
   @ApiProperty({ type: String, enum: ['keine', 'einzel', 'zusammen'], example: 'zusammen' })
-  veranlagungsart!: 'keine' | 'einzel' | 'zusammen'
+  filingType!: 'keine' | 'einzel' | 'zusammen'
 
   @ApiPropertyOptional({ type: String, nullable: true, example: 'person-b-user-id' })
   personBUserId?: string | null
 
   @ApiPropertyOptional({ type: String, nullable: true, example: '9F3A0C71B2E4D658' })
-  einladungsCode?: string | null
+  invitationCode?: string | null
 
   @ApiPropertyOptional({ type: String, format: 'date-time', nullable: true, description: 'After this moment the code no longer links.' })
-  einladungsCodeGueltigBis?: string | null
+  invitationCodeValidUntil?: string | null
 
   @ApiPropertyOptional({
     type: Boolean,

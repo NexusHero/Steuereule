@@ -80,9 +80,9 @@ function propertyToDto(record: RentalObjectRecord): RentalPropertyDto {
     strasse: record.strasse ?? null,
     hausnummer: record.hausnummer ?? null,
     plz: record.plz ?? null,
-    ort: record.ort ?? null,
-    wohnflaeche: record.wohnflaeche ?? null,
-    afaWieVorjahr: record.afaWieVorjahr ?? null,
+    city: record.city ?? null,
+    livingArea: record.livingArea ?? null,
+    depreciationAsLastYear: record.depreciationAsLastYear ?? null,
     umlagen: record.umlagen ?? null,
     schuldzinsen: record.schuldzinsen ?? null,
     einheiten: record.einheiten ?? null,
@@ -101,13 +101,13 @@ export class RentalService {
     @Inject(PROVENANCE_REPOSITORY) private readonly markings: ProvenanceRepository,
   ) {}
 
-  private async answers(userId: string, steuerjahr: number): Promise<Answers> {
-    const rows = await this.interviewRepository.findAllForUserAndYear(userId, steuerjahr)
+  private async answers(userId: string, taxYear: number): Promise<Answers> {
+    const rows = await this.interviewRepository.findAllForUserAndYear(userId, taxYear)
     return answersFrom(rows)
   }
 
-  private async toResponse(userId: string, steuerjahr: number, records: RentalObjectRecord[]): Promise<RentalResponseDto> {
-    const answers = await this.answers(userId, steuerjahr)
+  private async toResponse(userId: string, taxYear: number, records: RentalObjectRecord[]): Promise<RentalResponseDto> {
+    const answers = await this.answers(userId, taxYear)
     const gated = gatedIncomeTypes(answers)
     const classification: RentalClassificationDto = classifyRental(answers['vermietung-art'])
 
@@ -145,44 +145,44 @@ export class RentalService {
     }
   }
 
-  async getState(userId: string, steuerjahr: number): Promise<RentalResponseDto> {
-    const records = await this.repository.listForUserAndYear(userId, steuerjahr)
+  async getState(userId: string, taxYear: number): Promise<RentalResponseDto> {
+    const records = await this.repository.listForUserAndYear(userId, taxYear)
     if (records.length > 0) {
       await this.auditService.append({ userId, action: 'READ', resource: 'vermietung' })
     }
-    return this.toResponse(userId, steuerjahr, records)
+    return this.toResponse(userId, taxYear, records)
   }
 
-  async createProperty(userId: string, steuerjahr: number): Promise<RentalResponseDto> {
-    await this.repository.create(userId, steuerjahr)
-    const records = await this.repository.listForUserAndYear(userId, steuerjahr)
-    return this.toResponse(userId, steuerjahr, records)
+  async createProperty(userId: string, taxYear: number): Promise<RentalResponseDto> {
+    await this.repository.create(userId, taxYear)
+    const records = await this.repository.listForUserAndYear(userId, taxYear)
+    return this.toResponse(userId, taxYear, records)
   }
 
-  async setField(userId: string, steuerjahr: number, propertyId: string, field: RentalFieldId, dto: PutRentalFieldDto): Promise<RentalResponseDto> {
+  async setField(userId: string, taxYear: number, propertyId: string, field: RentalFieldId, dto: PutRentalFieldDto): Promise<RentalResponseDto> {
     const state = stateFromDto(dto)
-    const record = await this.repository.setField(userId, steuerjahr, propertyId, field, serializeRentalField(state))
+    const record = await this.repository.setField(userId, taxYear, propertyId, field, serializeRentalField(state))
     if (record === null) {
       throw new NotFoundError('VERMIETUNGSOBJEKT_NOT_FOUND', 'No such Vermietungsobjekt for this account and tax year.')
     }
-    await this.markings.remove(userId, steuerjahr, [provenanceKey('vermietung', field, propertyId)])
+    await this.markings.remove(userId, taxYear, [provenanceKey('vermietung', field, propertyId)])
     const data = dataFromRecord(record)
     setRentalField(data, field, state)
-    const records = await this.repository.listForUserAndYear(userId, steuerjahr)
-    return this.toResponse(userId, steuerjahr, records)
+    const records = await this.repository.listForUserAndYear(userId, taxYear)
+    return this.toResponse(userId, taxYear, records)
   }
 
   async setAddress(
     userId: string,
-    steuerjahr: number,
+    taxYear: number,
     propertyId: string,
     dto: PutRentalAddressDto,
   ): Promise<RentalResponseDto> {
-    const record = await this.repository.setAddress(userId, steuerjahr, propertyId, dto)
+    const record = await this.repository.setAddress(userId, taxYear, propertyId, dto)
     if (record === null) {
       throw new NotFoundError('VERMIETUNGSOBJEKT_NOT_FOUND', 'No such Vermietungsobjekt for this account and tax year.')
     }
-    const records = await this.repository.listForUserAndYear(userId, steuerjahr)
-    return this.toResponse(userId, steuerjahr, records)
+    const records = await this.repository.listForUserAndYear(userId, taxYear)
+    return this.toResponse(userId, taxYear, records)
   }
 }

@@ -76,11 +76,11 @@ export class AssessmentService {
     @Inject(AuditService) private readonly auditService: AuditService,
   ) {}
 
-  private async calculationStatus(userId: string, steuerjahr: number): Promise<CalculationStatus> {
+  private async calculationStatus(userId: string, taxYear: number): Promise<CalculationStatus> {
     const [lstbRecord, interviewRows, chRecord] = await Promise.all([
-      this.lstbRepository.findForUserAndYear(userId, steuerjahr),
-      this.interviewRepository.findAllForUserAndYear(userId, steuerjahr),
-      this.chSalaryCertificateRepository.findForUserAndYear(userId, steuerjahr),
+      this.lstbRepository.findForUserAndYear(userId, taxYear),
+      this.interviewRepository.findAllForUserAndYear(userId, taxYear),
+      this.chSalaryCertificateRepository.findForUserAndYear(userId, taxYear),
     ])
     const answers = answersFrom(interviewRows)
 
@@ -113,81 +113,81 @@ export class AssessmentService {
     return assessmentCalculationStatus(employee, ch)
   }
 
-  private async toResponse(userId: string, steuerjahr: number, record: AssessmentRecord | null): Promise<AssessmentResponseDto> {
+  private async toResponse(userId: string, taxYear: number, record: AssessmentRecord | null): Promise<AssessmentResponseDto> {
     const { fields, values } = fieldsFromRecord(record)
     const status: AssessmentStatus = record?.status ?? 'eingegangen'
-    const bescheiddatum = record?.bescheiddatum ?? null
-    const einspruchGrund = record?.einspruchGrund ?? null
+    const assessmentDate = record?.assessmentDate ?? null
+    const appealReason = record?.appealReason ?? null
 
-    const stand = await this.calculationStatus(userId, steuerjahr)
+    const stand = await this.calculationStatus(userId, taxYear)
     const reconciliation = reconcileAssessment(values, stand)
 
-    const deadlineEnd = bescheiddatum === null ? null : appealDeadlineEnd(bescheiddatum)
+    const deadlineEnd = assessmentDate === null ? null : appealDeadlineEnd(assessmentDate)
     const remainingDays =
-      deadlineEnd === null ? null : remainingAppealDays(bescheiddatum as string, todayIso())
+      deadlineEnd === null ? null : remainingAppealDays(assessmentDate as string, todayIso())
 
     return {
       status,
-      bescheiddatum,
-      einspruchGrund,
+      assessmentDate,
+      appealReason,
       fields,
       reconciliation: {
         deviations: reconciliation.deviations.map((a): AssessmentDeviationDto => ({ ...a })),
         calculationIncomplete: reconciliation.calculationIncomplete,
       },
-      frist: { bescheiddatum, deadlineEnd, remainingDays },
+      frist: { assessmentDate, deadlineEnd, remainingDays },
       nextStates: [...nextAssessmentStates(status)],
     }
   }
 
-  async getState(userId: string, steuerjahr: number): Promise<AssessmentResponseDto> {
-    const record = await this.repository.findForUserAndYear(userId, steuerjahr)
+  async getState(userId: string, taxYear: number): Promise<AssessmentResponseDto> {
+    const record = await this.repository.findForUserAndYear(userId, taxYear)
     if (record !== null) {
       await this.auditService.append({ userId, action: 'READ', resource: 'bescheid' })
     }
-    return this.toResponse(userId, steuerjahr, record)
+    return this.toResponse(userId, taxYear, record)
   }
 
   async setField(
     userId: string,
-    steuerjahr: number,
+    taxYear: number,
     field: Parameters<AssessmentRepository['setField']>[2],
     dto: PutAssessmentFieldDto,
   ): Promise<AssessmentResponseDto> {
-    const record = await this.repository.setField(userId, steuerjahr, field, valueFromDto(field, dto))
-    return this.toResponse(userId, steuerjahr, record)
+    const record = await this.repository.setField(userId, taxYear, field, valueFromDto(field, dto))
+    return this.toResponse(userId, taxYear, record)
   }
 
-  async setDate(userId: string, steuerjahr: number, dto: SetAssessmentDateDto): Promise<AssessmentResponseDto> {
+  async setDate(userId: string, taxYear: number, dto: SetAssessmentDateDto): Promise<AssessmentResponseDto> {
     if (dto.date !== null && dto.date !== undefined && !ISO_DATE_RE.test(dto.date)) {
       throw new InvalidInputError('BESCHEIDDATUM_INVALID', 'bescheiddatum must be an ISO yyyy-mm-dd date.')
     }
-    const record = await this.repository.setDate(userId, steuerjahr, dto.date ?? null)
-    return this.toResponse(userId, steuerjahr, record)
+    const record = await this.repository.setDate(userId, taxYear, dto.date ?? null)
+    return this.toResponse(userId, taxYear, record)
   }
 
-  async setStatus(userId: string, steuerjahr: number, dto: SetAssessmentStatusDto): Promise<AssessmentResponseDto> {
-    const current = await this.repository.findForUserAndYear(userId, steuerjahr)
+  async setStatus(userId: string, taxYear: number, dto: SetAssessmentStatusDto): Promise<AssessmentResponseDto> {
+    const current = await this.repository.findForUserAndYear(userId, taxYear)
     const from: AssessmentStatus = current?.status ?? 'eingegangen'
     const after = dto.status as AssessmentStatus
     if (!isAssessmentTransitionAllowed(from, after)) {
       throw new ConflictError('BESCHEID_TRANSITION_ILLEGAL', `illegal Bescheid transition "${from}" → "${after}"`)
     }
-    const record = await this.repository.setStatus(userId, steuerjahr, after)
-    return this.toResponse(userId, steuerjahr, record)
+    const record = await this.repository.setStatus(userId, taxYear, after)
+    return this.toResponse(userId, taxYear, record)
   }
 
-  async setAppeal(userId: string, steuerjahr: number, dto: SetAppealDto): Promise<AssessmentResponseDto> {
+  async setAppeal(userId: string, taxYear: number, dto: SetAppealDto): Promise<AssessmentResponseDto> {
     if (!isAppealReason(dto.reason)) {
       throw new InvalidInputError('EINSPRUCH_GRUND_UNKNOWN', `unknown Einspruch-Grund "${dto.reason}"`)
     }
-    const current = await this.repository.findForUserAndYear(userId, steuerjahr)
+    const current = await this.repository.findForUserAndYear(userId, taxYear)
     const from: AssessmentStatus = current?.status ?? 'eingegangen'
     if (!isAssessmentTransitionAllowed(from, 'einspruch-eingelegt')) {
       throw new ConflictError('BESCHEID_TRANSITION_ILLEGAL', `illegal Bescheid transition "${from}" → "einspruch-eingelegt"`)
     }
-    const record = await this.repository.setAppeal(userId, steuerjahr, dto.reason)
-    return this.toResponse(userId, steuerjahr, record)
+    const record = await this.repository.setAppeal(userId, taxYear, dto.reason)
+    return this.toResponse(userId, taxYear, record)
   }
 }
 

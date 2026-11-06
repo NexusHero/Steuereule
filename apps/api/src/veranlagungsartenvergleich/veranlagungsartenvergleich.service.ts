@@ -53,17 +53,17 @@ export class AssessmentComparisonService {
 
   async getComparison(
     userId: string,
-    steuerjahr: number,
+    taxYear: number,
     married: boolean,
     zveB: number | undefined,
     churchTaxFactor: ChurchTaxFactor,
   ): Promise<FilingTypeComparisonDto | null> {
-    const record = await this.taxYearRepository.findByUserAndYear(userId, steuerjahr)
+    const record = await this.taxYearRepository.findByUserAndYear(userId, taxYear)
     if (!record) return null
 
     const [lstbRecord, interviewRows] = await Promise.all([
-      this.lstbRepository.findForUserAndYear(userId, steuerjahr),
-      this.interviewRepository.findAllForUserAndYear(userId, steuerjahr),
+      this.lstbRepository.findForUserAndYear(userId, taxYear),
+      this.interviewRepository.findAllForUserAndYear(userId, taxYear),
     ])
 
     const data = wageTaxCertificateDataFrom(lstbRecord)
@@ -83,7 +83,7 @@ export class AssessmentComparisonService {
     const comparison = filingTypeComparison({
       zveA: facts.einnahmen,
       zveB,
-      year: steuerjahr,
+      year: taxYear,
       progressionClause: progressionClauseFrom(answers),
       churchTaxFactor,
     })

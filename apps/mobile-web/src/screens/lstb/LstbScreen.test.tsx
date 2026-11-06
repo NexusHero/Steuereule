@@ -20,7 +20,7 @@ const CONFLICT: LstbResponseDto = {
   sozialversicherung: { kind: 'erfasst', value: 0 },
   state: {
     kind: 'widerspruch',
-    conflicts: [{ art: 'lohnsteuer-uebersteigt-brutto', lohnsteuer: 60000, bruttoarbeitslohn: 50000 }],
+    conflicts: [{ kind: 'lohnsteuer-uebersteigt-brutto', lohnsteuer: 60000, bruttoarbeitslohn: 50000 }],
   },
 }
 

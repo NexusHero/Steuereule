@@ -42,7 +42,7 @@ function renderTaxDataSection(entries: ExportDocument['taxData']): string {
   }
   return entries
     .map((entry) => {
-      const year = entry.steuerjahr === null ? 'ohne Steuerjahr' : `Steuerjahr ${entry.steuerjahr}`
+      const year = entry.taxYear === null ? 'ohne Steuerjahr' : `Steuerjahr ${entry.taxYear}`
       const rows = Object.entries(entry.fields)
         .map(([field, value]) => `<tr><th>${escapeHtml(field)}</th><td>${formatTaxValue(value)}</td></tr>`)
         .join('')

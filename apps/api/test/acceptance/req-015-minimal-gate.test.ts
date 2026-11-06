@@ -30,7 +30,7 @@ const TRUSTED_ORIGIN_HEADERS = { origin: ALLOWED_ORIGIN }
 
 const TAX_YEAR = 2026
 
-type InterviewAnswerRow = { userId: string; steuerjahr: number; questionId: string; value: string }
+type InterviewAnswerRow = { userId: string; taxYear: number; questionId: string; value: string }
 
 describe('REQ-015 — the Minimal-Gate, against the real server', () => {
   let app: NestFastifyApplication
@@ -379,14 +379,14 @@ describe('REQ-015 — the Minimal-Gate, against the real server', () => {
     it('three real HTTP POSTs leave exactly three InterviewAnswer rows and TaxYear.openItems counting down to 0', async () => {
       const { cookie, userId } = await signUp('p6-vertical@example.com')
 
-      await expect(prisma.taxYear.findUnique({ where: { userId_steuerjahr: { userId, steuerjahr: TAX_YEAR } } })).resolves.toBeNull()
+      await expect(prisma.taxYear.findUnique({ where: { userId_taxYear: { userId, taxYear: TAX_YEAR } } })).resolves.toBeNull()
 
       await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', cookie },
         body: JSON.stringify({ questionId: 'job', value: 'Angestellt' }),
       })
-      let taxYear = await prisma.taxYear.findUnique({ where: { userId_steuerjahr: { userId, steuerjahr: TAX_YEAR } } })
+      let taxYear = await prisma.taxYear.findUnique({ where: { userId_taxYear: { userId, taxYear: TAX_YEAR } } })
       expect(taxYear?.openItems).toBe(3)
 
       await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, {
@@ -394,7 +394,7 @@ describe('REQ-015 — the Minimal-Gate, against the real server', () => {
         headers: { 'content-type': 'application/json', cookie },
         body: JSON.stringify({ questionId: 'ausland', value: 'Nein' }),
       })
-      taxYear = await prisma.taxYear.findUnique({ where: { userId_steuerjahr: { userId, steuerjahr: TAX_YEAR } } })
+      taxYear = await prisma.taxYear.findUnique({ where: { userId_taxYear: { userId, taxYear: TAX_YEAR } } })
       expect(taxYear?.openItems).toBe(2)
 
       await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, {
@@ -402,7 +402,7 @@ describe('REQ-015 — the Minimal-Gate, against the real server', () => {
         headers: { 'content-type': 'application/json', cookie },
         body: JSON.stringify({ questionId: 'kinder', value: 'Nein' }),
       })
-      taxYear = await prisma.taxYear.findUnique({ where: { userId_steuerjahr: { userId, steuerjahr: TAX_YEAR } } })
+      taxYear = await prisma.taxYear.findUnique({ where: { userId_taxYear: { userId, taxYear: TAX_YEAR } } })
       expect(taxYear?.openItems).toBe(1)
 
       await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, {
@@ -410,13 +410,13 @@ describe('REQ-015 — the Minimal-Gate, against the real server', () => {
         headers: { 'content-type': 'application/json', cookie },
         body: JSON.stringify({ questionId: 'familienstand', value: 'Ledig' }),
       })
-      taxYear = await prisma.taxYear.findUnique({ where: { userId_steuerjahr: { userId, steuerjahr: TAX_YEAR } } })
+      taxYear = await prisma.taxYear.findUnique({ where: { userId_taxYear: { userId, taxYear: TAX_YEAR } } })
       expect(taxYear?.openItems).toBe(0)
 
       const rows = await interviewRows(userId)
       expect(rows).toHaveLength(4)
       expect(rows.map((r) => r.questionId).sort()).toEqual(['ausland', 'familienstand', 'job', 'kinder'])
-      expect(rows.every((r) => r.steuerjahr === TAX_YEAR)).toBe(true)
+      expect(rows.every((r) => r.taxYear === TAX_YEAR)).toBe(true)
     })
   })
 

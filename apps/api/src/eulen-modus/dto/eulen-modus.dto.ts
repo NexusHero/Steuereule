@@ -6,15 +6,15 @@ export class SetOwlSettingDto {
   @ApiProperty({ type: Boolean, example: true })
   @IsNotEmpty()
   @IsBoolean()
-  aktiviert!: boolean
+  enabled!: boolean
 }
 
 export class OwlSettingResponseDto {
   @ApiProperty({ type: Boolean, example: true })
-  aktiviert!: boolean
+  enabled!: boolean
 
   @ApiPropertyOptional({ type: String, nullable: true, example: '2026-11-03T10:00:00Z' })
-  aktiviertAm?: string | null
+  enabledAt?: string | null
 }
 
 export class OwlPathDto implements OwlRecommendationPath {
@@ -74,7 +74,7 @@ export class OwlCardDto implements OwlCardsDisplay {
 
 export class OwlCardsResponseDto {
   @ApiProperty({ type: Boolean, example: true })
-  aktiviert!: boolean
+  enabled!: boolean
 
   @ApiProperty({ type: [OwlCardDto] })
   cards!: readonly OwlCardDto[]

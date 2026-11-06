@@ -34,7 +34,7 @@ export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCom
   const status = useUnlockControllerStatus(year)
   const check = usePrintoutControllerCheck(year)
   const checkout = usePrintoutControllerCheckout()
-  const [message, setMessage] = useState<{ art: 'ok' | 'fehler'; text: string } | null>(null)
+  const [message, setMessage] = useState<{ kind: 'ok' | 'fehler'; text: string } | null>(null)
   const [loading, setLoading] = useState(false)
 
   if (status.isPending || check.isPending) return <LoadingState bp={bp} label={t('ausdruck.loading')} />
@@ -86,9 +86,9 @@ export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCom
       {
         onSuccess: (response) => {
           if (response.status === 200) openCheckout(response.data.checkoutUrl)
-          else setMessage({ art: 'fehler', text: t('ausdruck.fehler') })
+          else setMessage({ kind: 'fehler', text: t('ausdruck.fehler') })
         },
-        onError: () => setMessage({ art: 'fehler', text: t('ausdruck.fehler') }),
+        onError: () => setMessage({ kind: 'fehler', text: t('ausdruck.fehler') }),
       },
     )
   }
@@ -98,10 +98,10 @@ export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCom
     setMessage(null)
     try {
       const result = await loadPrintout(year, { editable })
-      setMessage(result.ok ? { art: 'ok', text: t('ausdruck.heruntergeladen') } : { art: 'fehler', text: t('ausdruck.fehler') })
+      setMessage(result.ok ? { kind: 'ok', text: t('ausdruck.heruntergeladen') } : { kind: 'fehler', text: t('ausdruck.fehler') })
       if (!result.ok && result.status === 422) void check.refetch()
     } catch {
-      setMessage({ art: 'fehler', text: t('ausdruck.fehler') })
+      setMessage({ kind: 'fehler', text: t('ausdruck.fehler') })
     } finally {
       setLoading(false)
     }
@@ -122,9 +122,9 @@ export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCom
           <Text style={styles.sectionTitle}>{t('ausdruck.fehlendTitel')}</Text>
           {masterDataMissing ? <Text style={styles.sectionBody}>{t('ausdruck.fehlendAngaben')}</Text> : null}
           {married ? <Text style={styles.sectionBody}>{t('ausdruck.fehlendEhegatte')}</Text> : null}
-          {annexes.map((anlage) => (
-            <Text key={anlage} style={styles.sectionBody}>
-              {t('ausdruck.anlageNochNicht', { anlage: t(`ausdruck.anlagen.${anlage}`) })}
+          {annexes.map((annex) => (
+            <Text key={annex} style={styles.sectionBody}>
+              {t('ausdruck.anlageNochNicht', { anlage: t(`ausdruck.anlagen.${annex}`) })}
             </Text>
           ))}
           {unconfirmed.length > 0 ? (
@@ -223,7 +223,7 @@ export function PrintoutScreen({ year, payment, onBack, onCompleteDetails, onCom
       ) : null}
 
       {message ? (
-        <Text style={message.art === 'ok' ? styles.successNote : styles.errorNote} accessibilityLiveRegion="polite">
+        <Text style={message.kind === 'ok' ? styles.successNote : styles.errorNote} accessibilityLiveRegion="polite">
           {message.text}
         </Text>
       ) : null}

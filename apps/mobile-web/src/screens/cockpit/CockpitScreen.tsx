@@ -302,10 +302,10 @@ function ConfirmationNotice({ annexes, status, onOpenConfirmation }: Confirmatio
         {sum > 0 ? tr('cockpit.bestaetigung.hinweis', { count: open.reduce((n, a) => n + a.unconfirmed, 0), summe: formatEuro(sum) }) : tr('cockpit.bestaetigung.hinweisOhneSumme')}
       </Text>
       {open.map((a) => (
-        <View key={a.anlage} style={styles.uebernahmeZeile}>
+        <View key={a.annex} style={styles.uebernahmeZeile}>
           <Text style={styles.uebernahmeZeileText}>
             {tr('cockpit.bestaetigung.anlage', {
-              anlage: tr(`bestaetigung.anlagen.${a.anlage}`),
+              anlage: tr(`bestaetigung.anlagen.${a.annex}`),
               anzahl: tr('bestaetigung.unbestaetigt', { count: a.unconfirmed }),
             })}
           </Text>

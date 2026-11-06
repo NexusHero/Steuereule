@@ -84,7 +84,7 @@ describe('kapitalAlsKernposten — the fold into the deterministic core', () => 
       id: 'kapital',
       incomeType: 'Kapital',
       amount: 2500,
-      source: { art: 'eingabe' },
+      source: { kind: 'eingabe' },
     })
   })
 

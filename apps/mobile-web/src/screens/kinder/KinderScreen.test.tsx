@@ -8,12 +8,12 @@ import { KinderScreen } from './KinderScreen'
 const KINDER_FIXTURE = [
   {
     id: 'kind-1',
-    lfdNr: 1,
-    vorname: 'Lina',
-    nachname: 'Muster',
+    sequenceNumber: 1,
+    firstName: 'Lina',
+    lastName: 'Muster',
     geburtsdatum: '2016-05-12',
-    idnr: '12345678901',
-    kindergeldAnspruchEur: '3000',
+    taxId: '12345678901',
+    childBenefitClaimEur: '3000',
   },
 ]
 
@@ -61,7 +61,7 @@ describe('KinderScreen', () => {
     fireEvent.change(screen.getByLabelText('Krankenversicherung des Kindes'), { target: { value: '1080' } })
     fireEvent.click(screen.getByTestId('kind-speichern'))
 
-    await waitFor(() => expect(onAdd).toHaveBeenCalledWith(expect.objectContaining({ kvBasisEur: '1080', pvEur: null })))
+    await waitFor(() => expect(onAdd).toHaveBeenCalledWith(expect.objectContaining({ healthBasicEur: '1080', careEur: null })))
   })
 
   it('allows adding a new child', async () => {
@@ -90,13 +90,13 @@ describe('KinderScreen', () => {
     await waitFor(() => {
       expect(onAdd).toHaveBeenCalledWith(
         expect.objectContaining({
-          vorname: 'Noah',
-          nachname: 'Muster',
+          firstName: 'Noah',
+          lastName: 'Muster',
           geburtsdatum: '2019-08-20',
-          kindschaftsverhaeltnis: '1',
-          kindschaftsverhaeltnisB: '1',
-          familienkasse: 'Familienkasse Sachsen',
-          wohnsitzInlandGanzjaehrig: true,
+          kinship: '1',
+          kinshipB: '1',
+          familyBenefitsOffice: 'Familienkasse Sachsen',
+          domesticResidenceAllYear: true,
         }),
       )
     })
@@ -134,7 +134,7 @@ describe('KinderScreen', () => {
     await waitFor(() => {
       expect(onSave).toHaveBeenCalledWith(
         'kind-1',
-        expect.objectContaining({ kindschaftsverhaeltnis: '1', familienkasse: 'Familienkasse Bayern Süd', wohnsitzInlandGanzjaehrig: true }),
+        expect.objectContaining({ kinship: '1', familyBenefitsOffice: 'Familienkasse Bayern Süd', domesticResidenceAllYear: true }),
       )
     })
     await waitFor(() => expect(screen.queryByText(/Für den Ausdruck fehlen noch Angaben/)).toBeNull())
@@ -158,12 +158,12 @@ describe('KinderScreen', () => {
       expect(onSave).toHaveBeenCalledWith(
         'kind-1',
         expect.objectContaining({
-          andererElternteil: 'Inland',
-          andererElternteilName: 'Muster, Max',
-          andererElternteilGeburtsdatum: '1984-02-11',
-          andererElternteilAdresse: 'Hauptstraße 3, 01067 Dresden',
-          andererElternteilArt: '1',
-          andererElternteilVerstorbenAm: null,
+          otherParent: 'Inland',
+          otherParentName: 'Muster, Max',
+          otherParentBirthDate: '1984-02-11',
+          otherParentAddress: 'Hauptstraße 3, 01067 Dresden',
+          otherParentKind: '1',
+          otherParentDiedOn: null,
         }),
       )
     })
@@ -185,7 +185,7 @@ describe('KinderScreen', () => {
     await waitFor(() => {
       expect(onSave).toHaveBeenCalledWith(
         'kind-1',
-        expect.objectContaining({ gemeldetBeiMirGanzjaehrig: true, kindergeldAnMichGanzjaehrig: true }),
+        expect.objectContaining({ registeredWithMeAllYear: true, childBenefitToMeAllYear: true }),
       )
     })
   })
@@ -195,14 +195,14 @@ describe('KinderScreen', () => {
     const KINDER_CH: any[] = [
       {
         id: 'kind-ch-1',
-        lfdNr: 1,
-        vorname: 'Mia',
-        nachname: 'Brenner',
+        sequenceNumber: 1,
+        firstName: 'Mia',
+        lastName: 'Brenner',
         geburtsdatum: '2016-03-14',
-        idnr: '41234567890',
-        schweizerKinderzulageEur: '2748',
-        differenzkindergeldEur: '312',
-        gesamtanspruchEur: '3060',
+        taxId: '41234567890',
+        swissFamilyAllowanceEur: '2748',
+        differentialChildBenefitEur: '312',
+        totalClaimEur: '3060',
       },
     ]
     renderKinder({ initialKinder: KINDER_CH, onSaveChild: onSave })
@@ -220,7 +220,7 @@ describe('KinderScreen', () => {
     fireEvent.click(screen.getByTestId('kind-speichern'))
 
     await waitFor(() => {
-      expect(onSave).toHaveBeenCalledWith('kind-ch-1', expect.objectContaining({ schweizerKinderzulageEur: '2800' }))
+      expect(onSave).toHaveBeenCalledWith('kind-ch-1', expect.objectContaining({ swissFamilyAllowanceEur: '2800' }))
     })
   })
 })

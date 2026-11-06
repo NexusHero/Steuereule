@@ -29,7 +29,7 @@ export const AssignmentDtoProvenance = {
 export interface AssignmentDto {
   kind: AssignmentDtoKind;
   /** vorgeschlagen: the suggested year; zugeordnet/konflikt: the confirmed year. */
-  steuerjahr?: number;
+  taxYear?: number;
   /** konflikt only: the contradicting date-derived suggestion. */
   proposalYear?: number;
   /** vorgeschlagen/konflikt: which date the rule used ("Regel: Zahlungsdatum" chip). */
@@ -39,12 +39,12 @@ export interface AssignmentDto {
 export interface ReceiptResponseDto {
   id: string;
   /** Original filename (decrypted for the owner). */
-  dateiname: string;
+  fileName: string;
   /**
      * Document type (ADR-029) — null is the generic receipt.
      * @nullable
      */
-  art: string | null;
+  kind: string | null;
   /**
      * Invoice date (ISO yyyy-mm-dd).
      * @nullable
@@ -62,10 +62,10 @@ export interface ReceiptResponseDto {
 /**
  * Document type (ADR-029). Omitted = null (not classified); pass 'Sonstiges' to classify a generic receipt explicitly.
  */
-export type CreateReceiptDtoArt = typeof CreateReceiptDtoArt[keyof typeof CreateReceiptDtoArt];
+export type CreateReceiptDtoKind = typeof CreateReceiptDtoKind[keyof typeof CreateReceiptDtoKind];
 
 
-export const CreateReceiptDtoArt = {
+export const CreateReceiptDtoKind = {
   Lohnausweis: 'Lohnausweis',
   Quellensteuer: 'Quellensteuer',
   Pensionskasse: 'Pensionskasse',
@@ -80,9 +80,9 @@ export const CreateReceiptDtoArt = {
 
 export interface CreateReceiptDto {
   /** Original filename/storage key — field-encrypted at rest (ADR-0008). */
-  dateiname: string;
+  fileName: string;
   /** Document type (ADR-029). Omitted = null (not classified); pass 'Sonstiges' to classify a generic receipt explicitly. */
-  art?: CreateReceiptDtoArt;
+  kind?: CreateReceiptDtoKind;
   /** Invoice date (Rechnungsdatum), ISO yyyy-mm-dd. Optional. */
   belegdatum?: string;
   /** Payment date (Zahlungsdatum), ISO yyyy-mm-dd — § 11 Zufluss fixes the year. Optional. */
@@ -91,8 +91,8 @@ export interface CreateReceiptDto {
 
 export interface SetAssignmentDto {
   /** The calendar year to confirm/assign. */
-  steuerjahr: number;
+  taxYear: number;
   /** ADR-008 "bei meinem Jahr bleiben": persist the dismissal of a contradicting date-derived suggestion, keeping `steuerjahr`. Omitted/false = a normal assignment. */
-  vorschlagVerworfen?: boolean;
+  proposalDismissed?: boolean;
 }
 

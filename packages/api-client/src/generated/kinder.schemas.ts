@@ -8,10 +8,10 @@
 /**
  * @nullable
  */
-export type ChildResponseDtoKindschaftsverhaeltnis = typeof ChildResponseDtoKindschaftsverhaeltnis[keyof typeof ChildResponseDtoKindschaftsverhaeltnis] | null;
+export type ChildResponseDtoKinship = typeof ChildResponseDtoKinship[keyof typeof ChildResponseDtoKinship] | null;
 
 
-export const ChildResponseDtoKindschaftsverhaeltnis = {
+export const ChildResponseDtoKinship = {
   NUMBER_1: '1',
   NUMBER_2: '2',
   NUMBER_3: '3',
@@ -20,10 +20,10 @@ export const ChildResponseDtoKindschaftsverhaeltnis = {
 /**
  * @nullable
  */
-export type ChildResponseDtoKindschaftsverhaeltnisB = typeof ChildResponseDtoKindschaftsverhaeltnisB[keyof typeof ChildResponseDtoKindschaftsverhaeltnisB] | null;
+export type ChildResponseDtoKinshipB = typeof ChildResponseDtoKinshipB[keyof typeof ChildResponseDtoKinshipB] | null;
 
 
-export const ChildResponseDtoKindschaftsverhaeltnisB = {
+export const ChildResponseDtoKinshipB = {
   NUMBER_1: '1',
   NUMBER_2: '2',
   NUMBER_3: '3',
@@ -32,10 +32,10 @@ export const ChildResponseDtoKindschaftsverhaeltnisB = {
 /**
  * @nullable
  */
-export type ChildResponseDtoAndererElternteil = typeof ChildResponseDtoAndererElternteil[keyof typeof ChildResponseDtoAndererElternteil] | null;
+export type ChildResponseDtoOtherParent = typeof ChildResponseDtoOtherParent[keyof typeof ChildResponseDtoOtherParent] | null;
 
 
-export const ChildResponseDtoAndererElternteil = {
+export const ChildResponseDtoOtherParent = {
   Inland: 'Inland',
   Ausland: 'Ausland',
   Verstorben: 'Verstorben',
@@ -45,57 +45,57 @@ export const ChildResponseDtoAndererElternteil = {
 /**
  * @nullable
  */
-export type ChildResponseDtoAndererElternteilArt = typeof ChildResponseDtoAndererElternteilArt[keyof typeof ChildResponseDtoAndererElternteilArt] | null;
+export type ChildResponseDtoOtherParentKind = typeof ChildResponseDtoOtherParentKind[keyof typeof ChildResponseDtoOtherParentKind] | null;
 
 
-export const ChildResponseDtoAndererElternteilArt = {
+export const ChildResponseDtoOtherParentKind = {
   NUMBER_1: '1',
   NUMBER_2: '2',
 } as const;
 
 export interface ChildResponseDto {
   id: string;
-  lfdNr: number;
-  vorname: string;
-  nachname: string;
+  sequenceNumber: number;
+  firstName: string;
+  lastName: string;
   geburtsdatum: string;
   /** @nullable */
-  idnr?: string | null;
+  taxId?: string | null;
   /** @nullable */
-  kindergeldAnspruchEur?: string | null;
+  childBenefitClaimEur?: string | null;
   /** @nullable */
-  kindschaftsverhaeltnis: ChildResponseDtoKindschaftsverhaeltnis;
+  kinship: ChildResponseDtoKinship;
   /** @nullable */
-  kindschaftsverhaeltnisB: ChildResponseDtoKindschaftsverhaeltnisB;
+  kinshipB: ChildResponseDtoKinshipB;
   /** @nullable */
-  familienkasse: string | null;
+  familyBenefitsOffice: string | null;
   /** @nullable */
-  wohnsitzInlandGanzjaehrig: boolean | null;
+  domesticResidenceAllYear: boolean | null;
   /** @nullable */
-  andererElternteil: ChildResponseDtoAndererElternteil;
+  otherParent: ChildResponseDtoOtherParent;
   /** @nullable */
-  andererElternteilName: string | null;
+  otherParentName: string | null;
   /** @nullable */
-  andererElternteilGeburtsdatum: string | null;
+  otherParentBirthDate: string | null;
   /** @nullable */
-  andererElternteilAdresse: string | null;
+  otherParentAddress: string | null;
   /** @nullable */
-  andererElternteilArt: ChildResponseDtoAndererElternteilArt;
+  otherParentKind: ChildResponseDtoOtherParentKind;
   /** @nullable */
-  andererElternteilVerstorbenAm: string | null;
+  otherParentDiedOn: string | null;
   /** @nullable */
-  gemeldetBeiMirGanzjaehrig: boolean | null;
+  registeredWithMeAllYear: boolean | null;
   /** @nullable */
-  kindergeldAnMichGanzjaehrig: boolean | null;
+  childBenefitToMeAllYear: boolean | null;
   /** @nullable */
-  kvBasisEur: string | null;
+  healthBasicEur: string | null;
   /** @nullable */
-  pvEur: string | null;
+  careEur: string | null;
   /**
      * Zeile 6 (Kz 15): Schweizer Kinderzulage in whole EUR.
      * @nullable
      */
-  schweizerKinderzulageEur?: string | null;
+  swissFamilyAllowanceEur?: string | null;
   /**
      * Differenz-Kindergeld der deutschen Familienkasse in whole EUR.
      * @nullable
@@ -123,10 +123,10 @@ export interface KinderResponseDto {
  * Kz 02: 1 = leiblich/adoptiert, 2 = Pflegekind, 3 = Enkel-/Stiefkind
  * @nullable
  */
-export type CreateChildDtoKindschaftsverhaeltnis = typeof CreateChildDtoKindschaftsverhaeltnis[keyof typeof CreateChildDtoKindschaftsverhaeltnis] | null;
+export type CreateChildDtoKinship = typeof CreateChildDtoKinship[keyof typeof CreateChildDtoKinship] | null;
 
 
-export const CreateChildDtoKindschaftsverhaeltnis = {
+export const CreateChildDtoKinship = {
   NUMBER_1: '1',
   NUMBER_2: '2',
   NUMBER_3: '3',
@@ -136,10 +136,10 @@ export const CreateChildDtoKindschaftsverhaeltnis = {
  * Kz 03, to the spouse — only for a joint return
  * @nullable
  */
-export type CreateChildDtoKindschaftsverhaeltnisB = typeof CreateChildDtoKindschaftsverhaeltnisB[keyof typeof CreateChildDtoKindschaftsverhaeltnisB] | null;
+export type CreateChildDtoKinshipB = typeof CreateChildDtoKinshipB[keyof typeof CreateChildDtoKinshipB] | null;
 
 
-export const CreateChildDtoKindschaftsverhaeltnisB = {
+export const CreateChildDtoKinshipB = {
   NUMBER_1: '1',
   NUMBER_2: '2',
   NUMBER_3: '3',
@@ -149,10 +149,10 @@ export const CreateChildDtoKindschaftsverhaeltnisB = {
  * The other parent outside this return (Zeilen 11–15).
  * @nullable
  */
-export type CreateChildDtoAndererElternteil = typeof CreateChildDtoAndererElternteil[keyof typeof CreateChildDtoAndererElternteil] | null;
+export type CreateChildDtoOtherParent = typeof CreateChildDtoOtherParent[keyof typeof CreateChildDtoOtherParent] | null;
 
 
-export const CreateChildDtoAndererElternteil = {
+export const CreateChildDtoOtherParent = {
   Inland: 'Inland',
   Ausland: 'Ausland',
   Verstorben: 'Verstorben',
@@ -162,10 +162,10 @@ export const CreateChildDtoAndererElternteil = {
 /**
  * @nullable
  */
-export type CreateChildDtoAndererElternteilArt = typeof CreateChildDtoAndererElternteilArt[keyof typeof CreateChildDtoAndererElternteilArt] | null;
+export type CreateChildDtoOtherParentKind = typeof CreateChildDtoOtherParentKind[keyof typeof CreateChildDtoOtherParentKind] | null;
 
 
-export const CreateChildDtoAndererElternteilArt = {
+export const CreateChildDtoOtherParentKind = {
   NUMBER_1: '1',
   NUMBER_2: '2',
 } as const;
@@ -175,75 +175,75 @@ export interface CreateChildDto {
      * Kz 02: 1 = leiblich/adoptiert, 2 = Pflegekind, 3 = Enkel-/Stiefkind
      * @nullable
      */
-  kindschaftsverhaeltnis?: CreateChildDtoKindschaftsverhaeltnis;
+  kinship?: CreateChildDtoKinship;
   /**
      * Kz 03, to the spouse — only for a joint return
      * @nullable
      */
-  kindschaftsverhaeltnisB?: CreateChildDtoKindschaftsverhaeltnisB;
+  kinshipB?: CreateChildDtoKinshipB;
   /** @nullable */
-  familienkasse?: string | null;
+  familyBenefitsOffice?: string | null;
   /**
      * The child lived in Germany all year (Zeile 8).
      * @nullable
      */
-  wohnsitzInlandGanzjaehrig?: boolean | null;
+  domesticResidenceAllYear?: boolean | null;
   /**
      * The other parent outside this return (Zeilen 11–15).
      * @nullable
      */
-  andererElternteil?: CreateChildDtoAndererElternteil;
+  otherParent?: CreateChildDtoOtherParent;
   /** @nullable */
-  andererElternteilName?: string | null;
+  otherParentName?: string | null;
   /** @nullable */
-  andererElternteilGeburtsdatum?: string | null;
+  otherParentBirthDate?: string | null;
   /** @nullable */
-  andererElternteilAdresse?: string | null;
+  otherParentAddress?: string | null;
   /** @nullable */
-  andererElternteilArt?: CreateChildDtoAndererElternteilArt;
+  otherParentKind?: CreateChildDtoOtherParentKind;
   /** @nullable */
-  andererElternteilVerstorbenAm?: string | null;
+  otherParentDiedOn?: string | null;
   /**
      * Zeile 45: the child was registered with the filer all year.
      * @nullable
      */
-  gemeldetBeiMirGanzjaehrig?: boolean | null;
+  registeredWithMeAllYear?: boolean | null;
   /**
      * Zeile 46: the Kindergeld was paid to the filer all year.
      * @nullable
      */
-  kindergeldAnMichGanzjaehrig?: boolean | null;
+  childBenefitToMeAllYear?: boolean | null;
   /**
      * Zeile 27 (Kz 66): KV Basisabsicherung of the child paid by the parents, whole euros.
      * @nullable
      */
-  kvBasisEur?: string | null;
+  healthBasicEur?: string | null;
   /**
      * Zeile 28 (Kz 67): PV of the child paid by the parents, whole euros.
      * @nullable
      */
-  pvEur?: string | null;
+  careEur?: string | null;
   /**
      * Zeile 6 (Kz 15): Schweizer Kinderzulage / Familienzulage in whole EUR.
      * @nullable
      */
-  schweizerKinderzulageEur?: string | null;
-  vorname: string;
-  nachname: string;
+  swissFamilyAllowanceEur?: string | null;
+  firstName: string;
+  lastName: string;
   /** ISO date YYYY-MM-DD */
   geburtsdatum: string;
-  idnr?: string;
-  kindergeldAnspruchEur?: string;
+  taxId?: string;
+  childBenefitClaimEur?: string;
 }
 
 /**
  * Kz 02: 1 = leiblich/adoptiert, 2 = Pflegekind, 3 = Enkel-/Stiefkind
  * @nullable
  */
-export type UpdateChildDtoKindschaftsverhaeltnis = typeof UpdateChildDtoKindschaftsverhaeltnis[keyof typeof UpdateChildDtoKindschaftsverhaeltnis] | null;
+export type UpdateChildDtoKinship = typeof UpdateChildDtoKinship[keyof typeof UpdateChildDtoKinship] | null;
 
 
-export const UpdateChildDtoKindschaftsverhaeltnis = {
+export const UpdateChildDtoKinship = {
   NUMBER_1: '1',
   NUMBER_2: '2',
   NUMBER_3: '3',
@@ -253,10 +253,10 @@ export const UpdateChildDtoKindschaftsverhaeltnis = {
  * Kz 03, to the spouse — only for a joint return
  * @nullable
  */
-export type UpdateChildDtoKindschaftsverhaeltnisB = typeof UpdateChildDtoKindschaftsverhaeltnisB[keyof typeof UpdateChildDtoKindschaftsverhaeltnisB] | null;
+export type UpdateChildDtoKinshipB = typeof UpdateChildDtoKinshipB[keyof typeof UpdateChildDtoKinshipB] | null;
 
 
-export const UpdateChildDtoKindschaftsverhaeltnisB = {
+export const UpdateChildDtoKinshipB = {
   NUMBER_1: '1',
   NUMBER_2: '2',
   NUMBER_3: '3',
@@ -266,10 +266,10 @@ export const UpdateChildDtoKindschaftsverhaeltnisB = {
  * The other parent outside this return (Zeilen 11–15).
  * @nullable
  */
-export type UpdateChildDtoAndererElternteil = typeof UpdateChildDtoAndererElternteil[keyof typeof UpdateChildDtoAndererElternteil] | null;
+export type UpdateChildDtoOtherParent = typeof UpdateChildDtoOtherParent[keyof typeof UpdateChildDtoOtherParent] | null;
 
 
-export const UpdateChildDtoAndererElternteil = {
+export const UpdateChildDtoOtherParent = {
   Inland: 'Inland',
   Ausland: 'Ausland',
   Verstorben: 'Verstorben',
@@ -279,10 +279,10 @@ export const UpdateChildDtoAndererElternteil = {
 /**
  * @nullable
  */
-export type UpdateChildDtoAndererElternteilArt = typeof UpdateChildDtoAndererElternteilArt[keyof typeof UpdateChildDtoAndererElternteilArt] | null;
+export type UpdateChildDtoOtherParentKind = typeof UpdateChildDtoOtherParentKind[keyof typeof UpdateChildDtoOtherParentKind] | null;
 
 
-export const UpdateChildDtoAndererElternteilArt = {
+export const UpdateChildDtoOtherParentKind = {
   NUMBER_1: '1',
   NUMBER_2: '2',
 } as const;
@@ -292,63 +292,63 @@ export interface UpdateChildDto {
      * Kz 02: 1 = leiblich/adoptiert, 2 = Pflegekind, 3 = Enkel-/Stiefkind
      * @nullable
      */
-  kindschaftsverhaeltnis?: UpdateChildDtoKindschaftsverhaeltnis;
+  kinship?: UpdateChildDtoKinship;
   /**
      * Kz 03, to the spouse — only for a joint return
      * @nullable
      */
-  kindschaftsverhaeltnisB?: UpdateChildDtoKindschaftsverhaeltnisB;
+  kinshipB?: UpdateChildDtoKinshipB;
   /** @nullable */
-  familienkasse?: string | null;
+  familyBenefitsOffice?: string | null;
   /**
      * The child lived in Germany all year (Zeile 8).
      * @nullable
      */
-  wohnsitzInlandGanzjaehrig?: boolean | null;
+  domesticResidenceAllYear?: boolean | null;
   /**
      * The other parent outside this return (Zeilen 11–15).
      * @nullable
      */
-  andererElternteil?: UpdateChildDtoAndererElternteil;
+  otherParent?: UpdateChildDtoOtherParent;
   /** @nullable */
-  andererElternteilName?: string | null;
+  otherParentName?: string | null;
   /** @nullable */
-  andererElternteilGeburtsdatum?: string | null;
+  otherParentBirthDate?: string | null;
   /** @nullable */
-  andererElternteilAdresse?: string | null;
+  otherParentAddress?: string | null;
   /** @nullable */
-  andererElternteilArt?: UpdateChildDtoAndererElternteilArt;
+  otherParentKind?: UpdateChildDtoOtherParentKind;
   /** @nullable */
-  andererElternteilVerstorbenAm?: string | null;
+  otherParentDiedOn?: string | null;
   /**
      * Zeile 45: the child was registered with the filer all year.
      * @nullable
      */
-  gemeldetBeiMirGanzjaehrig?: boolean | null;
+  registeredWithMeAllYear?: boolean | null;
   /**
      * Zeile 46: the Kindergeld was paid to the filer all year.
      * @nullable
      */
-  kindergeldAnMichGanzjaehrig?: boolean | null;
+  childBenefitToMeAllYear?: boolean | null;
   /**
      * Zeile 27 (Kz 66): KV Basisabsicherung of the child paid by the parents, whole euros.
      * @nullable
      */
-  kvBasisEur?: string | null;
+  healthBasicEur?: string | null;
   /**
      * Zeile 28 (Kz 67): PV of the child paid by the parents, whole euros.
      * @nullable
      */
-  pvEur?: string | null;
+  careEur?: string | null;
   /**
      * Zeile 6 (Kz 15): Schweizer Kinderzulage / Familienzulage in whole EUR.
      * @nullable
      */
-  schweizerKinderzulageEur?: string | null;
-  vorname?: string;
-  nachname?: string;
+  swissFamilyAllowanceEur?: string | null;
+  firstName?: string;
+  lastName?: string;
   geburtsdatum?: string;
-  idnr?: string;
-  kindergeldAnspruchEur?: string;
+  taxId?: string;
+  childBenefitClaimEur?: string;
 }
 

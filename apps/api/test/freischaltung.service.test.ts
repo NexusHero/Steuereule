@@ -7,26 +7,26 @@ import { UnlockService } from '../src/freischaltung/freischaltung.service.js'
 import type { CheckoutRequest, PaymentProvider, PaymentEvent } from '../src/freischaltung/zahlungsanbieter.js'
 
 class FakeUnlockRepository implements UnlockRepository {
-  rows: { userId: string; steuerjahr: number; sessionId: string; status: string; betragCent: number | null }[] = []
+  rows: { userId: string; taxYear: number; sessionId: string; status: string; amountCents: number | null }[] = []
 
-  async createOpenOnes(userId: string, steuerjahr: number, sessionId: string): Promise<void> {
-    this.rows.push({ userId, steuerjahr, sessionId, status: 'offen', betragCent: null })
+  async createOpenOnes(userId: string, taxYear: number, sessionId: string): Promise<void> {
+    this.rows.push({ userId, taxYear, sessionId, status: 'offen', amountCents: null })
   }
 
-  async markPaid(sessionId: string, betragCent: number | null): Promise<void> {
+  async markPaid(sessionId: string, amountCents: number | null): Promise<void> {
     for (const row of this.rows) {
-      if (row.sessionId === sessionId && row.status === 'offen') Object.assign(row, { status: 'bezahlt', betragCent })
+      if (row.sessionId === sessionId && row.status === 'offen') Object.assign(row, { status: 'bezahlt', amountCents })
     }
   }
 
-  async isPaid(userId: string, steuerjahr: number): Promise<boolean> {
-    return this.rows.some((row) => row.userId === userId && row.steuerjahr === steuerjahr && row.status === 'bezahlt')
+  async isPaid(userId: string, taxYear: number): Promise<boolean> {
+    return this.rows.some((row) => row.userId === userId && row.taxYear === taxYear && row.status === 'bezahlt')
   }
 }
 
 class FakeProvider implements PaymentProvider {
   requests: CheckoutRequest[] = []
-  nextEvent: PaymentEvent | 'ungueltig' = { art: 'ignoriert' }
+  nextEvent: PaymentEvent | 'ungueltig' = { kind: 'ignoriert' }
 
   async createCheckout(request: CheckoutRequest) {
     this.requests.push(request)
@@ -59,7 +59,7 @@ describe('FreischaltungService', () => {
 
     expect(checkoutUrl).toBe('https://checkout.example/cs_1')
     expect(repository.rows).toEqual([
-      { userId: 'u1', steuerjahr: 2025, sessionId: 'cs_1', status: 'offen', betragCent: null },
+      { userId: 'u1', taxYear: 2025, sessionId: 'cs_1', status: 'offen', amountCents: null },
     ])
     expect(provider.requests[0]).toMatchObject({
       successUrl: 'https://app.steuereule.de/app/steuerjahr/2025/ausdruck?zahlung=erfolg',
@@ -71,19 +71,19 @@ describe('FreischaltungService', () => {
 
   it('only a verified "bezahlt" event unlocks — for that user and that tax year only', async () => {
     await service.startCheckout('u1', 2025)
-    provider.nextEvent = { art: 'bezahlt', sessionId: 'cs_1', betragCent: 1999 }
+    provider.nextEvent = { kind: 'bezahlt', sessionId: 'cs_1', amountCents: 1999 }
 
     await service.processWebhook(Buffer.from('{}'), 'sig')
 
     await expect(service.status('u1', 2025)).resolves.toBe('freigeschaltet')
     await expect(service.status('u1', 2024)).resolves.toBe('offen')
     await expect(service.status('u2', 2025)).resolves.toBe('offen')
-    expect(repository.rows[0]!.betragCent).toBe(1999)
+    expect(repository.rows[0]!.amountCents).toBe(1999)
   })
 
   it('a webhook redelivery is idempotent', async () => {
     await service.startCheckout('u1', 2025)
-    provider.nextEvent = { art: 'bezahlt', sessionId: 'cs_1', betragCent: 1999 }
+    provider.nextEvent = { kind: 'bezahlt', sessionId: 'cs_1', amountCents: 1999 }
     await service.processWebhook(Buffer.from('{}'), 'sig')
     await service.processWebhook(Buffer.from('{}'), 'sig')
     expect(repository.rows.filter((row) => row.status === 'bezahlt')).toHaveLength(1)

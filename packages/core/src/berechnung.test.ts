@@ -14,7 +14,7 @@ import {
 // excluded from the sum (ADR-008), and a gated Einkunftsart is named, not silently
 // dropped (ADR-032).
 
-const employed: Item = { id: 'p1', incomeType: 'Nichtselbstständig', amount: 1407, source: { art: 'eingabe' } }
+const employed: Item = { id: 'p1', incomeType: 'Nichtselbstständig', amount: 1407, source: { kind: 'eingabe' } }
 
 function input(overrides: Partial<CalculationInput> = {}): CalculationInput {
   return {
@@ -42,8 +42,8 @@ describe('berechne — the honest fold', () => {
       itemId: 'p-conflict',
       incomeType: 'Kapital',
       sources: [
-        { art: 'beleg', receiptId: 'b1', amount: 480 },
-        { art: 'eingabe', amount: 500 },
+        { kind: 'beleg', receiptId: 'b1', amount: 480 },
+        { kind: 'eingabe', amount: 500 },
       ],
     }
     const status = calculate(input({ items: [employed], conflicts: [conflict] }))
@@ -75,9 +75,9 @@ describe('berechne — the honest fold', () => {
 })
 
 describe('berechne — Rolle folding (ADR-029/0015-Lehre, Vorsorge + Anrechnung)', () => {
-  const provision: Item = { id: 'pk', incomeType: 'Grenzgänger', role: 'vorsorgeaufwand', amount: 4706, source: { art: 'beleg', receiptId: 'lohnausweis' } }
-  const anrechnung: Item = { id: 'qst', incomeType: 'Grenzgänger', role: 'anrechnung', amount: 3558, source: { art: 'beleg', receiptId: 'lohnausweis' } }
-  const gross: Item = { id: 'brutto', incomeType: 'Grenzgänger', amount: 79061, source: { art: 'beleg', receiptId: 'lohnausweis' } }
+  const provision: Item = { id: 'pk', incomeType: 'Grenzgänger', role: 'vorsorgeaufwand', amount: 4706, source: { kind: 'beleg', receiptId: 'lohnausweis' } }
+  const anrechnung: Item = { id: 'qst', incomeType: 'Grenzgänger', role: 'anrechnung', amount: 3558, source: { kind: 'beleg', receiptId: 'lohnausweis' } }
+  const gross: Item = { id: 'brutto', incomeType: 'Grenzgänger', amount: 79061, source: { kind: 'beleg', receiptId: 'lohnausweis' } }
 
   it('folds Vorsorgeaufwand and Anrechnung into their own buckets, never into Einnahmen', () => {
     const status = calculate(input({ items: [gross, provision, anrechnung] }))
@@ -94,29 +94,29 @@ describe('loeseKonflikt — ADR-008 resolution is explicit, never silent', () =>
     itemId: 'p-conflict',
     incomeType: 'Kapital',
     sources: [
-      { art: 'beleg', receiptId: 'b1', amount: 480 },
-      { art: 'eingabe', amount: 500 },
+      { kind: 'beleg', receiptId: 'b1', amount: 480 },
+      { kind: 'eingabe', amount: 500 },
     ],
   }
 
   it('"eine Quelle wählen" keeps that source’s amount AND origin', () => {
-    const items = resolveConflict(conflict, { art: 'quelle-waehlen', source: { art: 'beleg', receiptId: 'b1' }, amount: 480 })
-    expect(items).toEqual({ id: 'p-conflict', incomeType: 'Kapital', amount: 480, source: { art: 'beleg', receiptId: 'b1' } })
+    const items = resolveConflict(conflict, { kind: 'quelle-waehlen', source: { kind: 'beleg', receiptId: 'b1' }, amount: 480 })
+    expect(items).toEqual({ id: 'p-conflict', incomeType: 'Kapital', amount: 480, source: { kind: 'beleg', receiptId: 'b1' } })
   })
 
   it('"Wert korrigieren" produces a fresh manual entry (origin eingabe)', () => {
-    const items = resolveConflict(conflict, { art: 'wert-korrigieren', amount: 490 })
-    expect(items).toEqual({ id: 'p-conflict', incomeType: 'Kapital', amount: 490, source: { art: 'eingabe' } })
+    const items = resolveConflict(conflict, { kind: 'wert-korrigieren', amount: 490 })
+    expect(items).toEqual({ id: 'p-conflict', incomeType: 'Kapital', amount: 490, source: { kind: 'eingabe' } })
   })
 
   it('rejects a negative corrected value', () => {
-    expect(() => resolveConflict(conflict, { art: 'wert-korrigieren', amount: -1 })).toThrow(RangeError)
+    expect(() => resolveConflict(conflict, { kind: 'wert-korrigieren', amount: -1 })).toThrow(RangeError)
   })
 })
 
 describe('Quelle — every number carries Herkunft (ADR-014/015)', () => {
   it('the ki-vorschlag Quelle records the suggestion id and the Beleg it came from', () => {
-    const source: Source = { art: 'ki-vorschlag', proposalId: 'v1', receiptId: 'b1' }
-    expect(source).toEqual({ art: 'ki-vorschlag', proposalId: 'v1', receiptId: 'b1' })
+    const source: Source = { kind: 'ki-vorschlag', proposalId: 'v1', receiptId: 'b1' }
+    expect(source).toEqual({ kind: 'ki-vorschlag', proposalId: 'v1', receiptId: 'b1' })
   })
 })

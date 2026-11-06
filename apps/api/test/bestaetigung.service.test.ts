@@ -13,7 +13,7 @@ import { AuditService } from '../src/audit/audit.service.js'
 
 const USER = 'user-1'
 const YEAR = 2025
-const CLAUDE = { art: 'assistent', name: 'Claude' } as const
+const CLAUDE = { kind: 'assistent', name: 'Claude' } as const
 
 describe('BestaetigungService', () => {
   let markings: FakeMarkingRepository
@@ -47,7 +47,7 @@ describe('BestaetigungService', () => {
     const overview = await service.overview(USER, YEAR)
     expect(overview.annexes).toEqual([
       {
-        anlage: 'anlageN',
+        annex: 'anlageN',
         unconfirmed: 0,
         values: [
           {
@@ -56,9 +56,9 @@ describe('BestaetigungService', () => {
             instance: null,
             field: 'bruttoarbeitslohn',
             value: '4750',
-            provenance: { art: 'nutzer' },
-            bestaetigt: true,
-            proposal: { value: '4800', provenance: { art: 'assistent', name: 'Claude' } },
+            provenance: { kind: 'nutzer' },
+            confirmed: true,
+            proposal: { value: '4800', provenance: { kind: 'assistent', name: 'Claude' } },
           },
         ],
       },
@@ -67,13 +67,13 @@ describe('BestaetigungService', () => {
 
   it('confirming an Anlage lifts its block and only its block', async () => {
     await service.write(USER, YEAR, 'lstb.lohnsteuer', '700', CLAUDE)
-    await service.write(USER, YEAR, 'rente.jahresbetrag', '12000', { art: 'uebernahme', vorjahr: 2024 })
+    await service.write(USER, YEAR, 'rente.jahresbetrag', '12000', { kind: 'uebernahme', lastYear: 2024 })
     expect(await service.missing(USER, YEAR)).toEqual(['unbestaetigt.anlageN', 'unbestaetigt.anlageR'])
 
     await service.confirmAnnex(USER, YEAR, 'anlageR')
 
     expect(await service.missing(USER, YEAR)).toEqual(['unbestaetigt.anlageN'])
-    expect((await service.overview(USER, YEAR)).annexes.map((a) => a.anlage)).toEqual(['anlageN'])
+    expect((await service.overview(USER, YEAR)).annexes.map((a) => a.annex)).toEqual(['anlageN'])
   })
 
   it('accepting a proposal writes it into the mask as confirmed; discarding leaves the user value without a marker', async () => {
@@ -87,7 +87,7 @@ describe('BestaetigungService', () => {
 
     expect(await lstb.findForUserAndYear(USER, YEAR)).toMatchObject({ bruttoarbeitslohn: '4800', lohnsteuer: '700' })
     expect(markings.all()).toEqual([
-      { userId: USER, steuerjahr: YEAR, key: 'lstb.bruttoarbeitslohn', provenance: CLAUDE, bestaetigt: true, proposal: null },
+      { userId: USER, taxYear: YEAR, key: 'lstb.bruttoarbeitslohn', provenance: CLAUDE, confirmed: true, proposal: null },
     ])
     expect(await service.missing(USER, YEAR)).toEqual([])
   })

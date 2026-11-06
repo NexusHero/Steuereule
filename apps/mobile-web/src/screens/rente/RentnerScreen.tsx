@@ -57,16 +57,16 @@ export function PensionerScreen({ onDone = () => {}, onBack, taxYear = CURRENT_T
     void queryClient.invalidateQueries({ queryKey: getPensionControllerGetQueryKey(taxYear) })
   }
 
-  function sendKind(art: PensionType | null) {
-    setKind.mutate({ jahr: taxYear, data: { art } }, { onSuccess: invalidate })
+  function sendKind(kind: PensionType | null) {
+    setKind.mutate({ jahr: taxYear, data: { kind } }, { onSuccess: invalidate })
   }
 
   function send(field: FieldId, data: PensionFieldDto) {
     setField.mutate({ jahr: taxYear, feld: field, data }, { onSuccess: invalidate })
   }
 
-  const showsPensionStartYear = response.art !== null && response.art !== 'PrivateRentenversicherung'
-  const showsAlter = response.art === 'PrivateRentenversicherung'
+  const showsPensionStartYear = response.kind !== null && response.kind !== 'PrivateRentenversicherung'
+  const showsAlter = response.kind === 'PrivateRentenversicherung'
 
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
@@ -77,14 +77,14 @@ export function PensionerScreen({ onDone = () => {}, onBack, taxYear = CURRENT_T
       <Text style={styles.help}>{tr('rente.help')}</Text>
 
       <Text style={styles.sectionHeading}>{tr('rente.artHeading')}</Text>
-      {PENSION_TYPES.map((art) => (
+      {PENSION_TYPES.map((kind) => (
         <Pressable
-          key={art}
+          key={kind}
           accessibilityRole="button"
-          onPress={() => sendKind(art)}
-          style={[styles.artButton, response.art === art ? styles.artButtonActive : null]}
+          onPress={() => sendKind(kind)}
+          style={[styles.artButton, response.kind === kind ? styles.artButtonActive : null]}
         >
-          <Text style={response.art === art ? styles.artLabelActive : styles.artLabel}>{tr(`rente.arten.${art}`)}</Text>
+          <Text style={response.kind === kind ? styles.artLabelActive : styles.artLabel}>{tr(`rente.arten.${kind}`)}</Text>
         </Pressable>
       ))}
 

@@ -71,11 +71,11 @@ describe('REQ-024 — the Rentner vertical (Anlage R), against the real server',
     return fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/rente`, { headers: { cookie } })
   }
 
-  function putKind(cookie: string, art: string | null) {
+  function putKind(cookie: string, kind: string | null) {
     return fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/rente/art`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json', cookie },
-      body: JSON.stringify({ art }),
+      body: JSON.stringify({ kind }),
     })
   }
 
@@ -96,12 +96,12 @@ describe('REQ-024 — the Rentner vertical (Anlage R), against the real server',
       const response = await putField(cookie, 'rentenbeginnJahr', { kind: 'erfasst', value: 2020 })
 
       const body = (await response.json()) as {
-        art: string
+        kind: string
         items: Array<{ id: string; amount: number; provenance: string }>
         status: { kind: string; einnahmen: number; vorsorgeaufwand: number; anrechnung: number }
       }
 
-      expect(body.art).toBe('GesetzlicheRente')
+      expect(body.kind).toBe('GesetzlicheRente')
       expect(body.items).toEqual([
         { id: 'rente', amount: 16000, provenance: '§ 22 Nr. 1 Satz 3 Buchst. a Doppelbuchst. aa EStG — Besteuerungsanteil bei Rentenbeginn 2020: 80 %' },
       ])
@@ -166,12 +166,12 @@ describe('REQ-024 — the Rentner vertical (Anlage R), against the real server',
       await putKind(userA.cookie, 'GesetzlicheRente')
       await putField(userA.cookie, 'jahresbetrag', { kind: 'erfasst', value: 20000 })
 
-      const asB = (await (await get(userB.cookie)).json()) as { art: string | null; jahresbetrag: { kind: string } }
-      expect(asB.art).toBeNull()
+      const asB = (await (await get(userB.cookie)).json()) as { kind: string | null; jahresbetrag: { kind: string } }
+      expect(asB.kind).toBeNull()
       expect(asB.jahresbetrag).toEqual({ kind: 'offen' })
 
-      const asA = (await (await get(userA.cookie)).json()) as { art: string | null; jahresbetrag: { kind: string; value?: number } }
-      expect(asA.art).toBe('GesetzlicheRente')
+      const asA = (await (await get(userA.cookie)).json()) as { kind: string | null; jahresbetrag: { kind: string; value?: number } }
+      expect(asA.kind).toBe('GesetzlicheRente')
       expect(asA.jahresbetrag).toEqual({ kind: 'erfasst', value: 20000 })
     })
   })

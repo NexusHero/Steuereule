@@ -5,10 +5,10 @@
  * Onboarding profile endpoints (steuereule#29)
  * OpenAPI spec version: 1.0
  */
-export type AnnexConfirmationDtoAnlage = typeof AnnexConfirmationDtoAnlage[keyof typeof AnnexConfirmationDtoAnlage];
+export type AnnexConfirmationDtoAnnex = typeof AnnexConfirmationDtoAnnex[keyof typeof AnnexConfirmationDtoAnnex];
 
 
-export const AnnexConfirmationDtoAnlage = {
+export const AnnexConfirmationDtoAnnex = {
   hauptvordruck: 'hauptvordruck',
   anlageN: 'anlageN',
   anlageNGre: 'anlageNGre',
@@ -34,10 +34,10 @@ export const FieldProvenanceDtoScreen = {
   kind: 'kind',
 } as const;
 
-export type ProvenanceDtoArt = typeof ProvenanceDtoArt[keyof typeof ProvenanceDtoArt];
+export type ProvenanceDtoKind = typeof ProvenanceDtoKind[keyof typeof ProvenanceDtoKind];
 
 
-export const ProvenanceDtoArt = {
+export const ProvenanceDtoKind = {
   nutzer: 'nutzer',
   uebernahme: 'uebernahme',
   assistent: 'assistent',
@@ -45,13 +45,13 @@ export const ProvenanceDtoArt = {
 } as const;
 
 export interface ProvenanceDto {
-  art: ProvenanceDtoArt;
+  kind: ProvenanceDtoKind;
   /** Name des Assistenten (art = assistent). */
   name?: string;
   /** Der Beleg, aus dem der Wert stammt. */
   receiptId?: string;
   /** Quelljahr der Jahresübernahme (art = uebernahme). */
-  vorjahr?: number;
+  lastYear?: number;
 }
 
 export interface ProposalDto {
@@ -78,13 +78,13 @@ export interface FieldProvenanceDto {
      */
   value: string | null;
   provenance: ProvenanceDto;
-  bestaetigt: boolean;
+  confirmed: boolean;
   /** @nullable */
   proposal: ProposalDto | null;
 }
 
 export interface AnnexConfirmationDto {
-  anlage: AnnexConfirmationDtoAnlage;
+  annex: AnnexConfirmationDtoAnnex;
   /** Wie viele Werte dieser Anlage noch unbestätigt sind. */
   unconfirmed: number;
   values: FieldProvenanceDto[];

@@ -37,7 +37,7 @@ export class StripePaymentProvider implements PaymentProvider {
       mode: 'payment',
       line_items: [{ price: this.config.priceId, quantity: 1 }],
       client_reference_id: request.userId,
-      metadata: { userId: request.userId, steuerjahr: String(request.steuerjahr) },
+      metadata: { userId: request.userId, steuerjahr: String(request.taxYear) },
       success_url: request.successUrl,
       cancel_url: request.cancelUrl,
       locale: 'de',
@@ -54,9 +54,9 @@ export class StripePaymentProvider implements PaymentProvider {
     if (event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded') {
       const session = event.data.object
       if (session.payment_status === 'paid') {
-        return { art: 'bezahlt', sessionId: session.id, betragCent: session.amount_total ?? null }
+        return { kind: 'bezahlt', sessionId: session.id, amountCents: session.amount_total ?? null }
       }
     }
-    return { art: 'ignoriert' }
+    return { kind: 'ignoriert' }
   }
 }

@@ -21,12 +21,12 @@ export function salaryCertificateValuesFromRecord(record: CrossBorderSalaryState
 }
 
 export function exchangeRateFromRecord(record: CrossBorderSalaryStatementRecord | null): ExchangeRate | null {
-  if (record === null || record.wechselkursMonat === null || record.wechselkursKurs === null || record.wechselkursModus === null) {
+  if (record === null || record.exchangeRateMonth === null || record.exchangeRateValue === null || record.exchangeRateMode === null) {
     return null
   }
-  if (record.wechselkursModus === 'amtlich') return officialMonthlyRate(record.wechselkursMonat, record.wechselkursKurs)
-  if (record.wechselkursBelegId === null) return null
-  return actualRate(record.wechselkursMonat, record.wechselkursKurs, record.wechselkursBelegId)
+  if (record.exchangeRateMode === 'amtlich') return officialMonthlyRate(record.exchangeRateMonth, record.exchangeRateValue)
+  if (record.exchangeRateReceiptId === null) return null
+  return actualRate(record.exchangeRateMonth, record.exchangeRateValue, record.exchangeRateReceiptId)
 }
 
 export function crossBorderStatusFromAnswers(answers: Answers): CrossBorderStatus | null {

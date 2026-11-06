@@ -22,8 +22,8 @@ export function ProfileView({ profile, onEdit, justSaved, bp, onOpenPrivacy, onO
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeProfileStyles(t)
-  const fullName = `${profile.vorname} ${profile.nachname}`.trim()
-  const initialSource = profile.vorname.trim() || profile.nachname.trim()
+  const fullName = `${profile.firstName} ${profile.lastName}`.trim()
+  const initialSource = profile.firstName.trim() || profile.lastName.trim()
   const initial = initialSource ? initialSource[0]?.toUpperCase() : '?'
 
   return (

@@ -11,11 +11,11 @@ export class FakeOwlSettingRepository implements OwlSettingRepository {
     return Promise.resolve(this.store.get(userId) ?? null)
   }
 
-  setEnabled(userId: string, aktiviert: boolean): Promise<OwlSettingRecord> {
+  setEnabled(userId: string, enabled: boolean): Promise<OwlSettingRecord> {
     const record: OwlSettingRecord = {
       userId,
-      aktiviert,
-      aktiviertAm: aktiviert ? new Date() : null,
+      enabled,
+      enabledAt: enabled ? new Date() : null,
     }
     this.store.set(userId, record)
     return Promise.resolve(record)
@@ -25,8 +25,8 @@ export class FakeOwlSettingRepository implements OwlSettingRepository {
 export class FakeOwlCardDismissalRepository implements OwlCardDismissalRepository {
   private readonly dismissals = new Set<string>()
 
-  listForUserAndYear(userId: string, steuerjahr: number): Promise<string[]> {
-    const prefix = `${userId}::${steuerjahr}::`
+  listForUserAndYear(userId: string, taxYear: number): Promise<string[]> {
+    const prefix = `${userId}::${taxYear}::`
     const list: string[] = []
     for (const item of this.dismissals) {
       if (item.startsWith(prefix)) {
@@ -36,8 +36,8 @@ export class FakeOwlCardDismissalRepository implements OwlCardDismissalRepositor
     return Promise.resolve(list)
   }
 
-  dismiss(userId: string, steuerjahr: number, fingerprint: string): Promise<void> {
-    this.dismissals.add(`${userId}::${steuerjahr}::${fingerprint}`)
+  dismiss(userId: string, taxYear: number, fingerprint: string): Promise<void> {
+    this.dismissals.add(`${userId}::${taxYear}::${fingerprint}`)
     return Promise.resolve()
   }
 }

@@ -21,8 +21,8 @@ const ASSESSMENT_URL = '*/v1/steuerjahre/2026/bescheid'
 function emptyAssessment(): AssessmentResponseDto {
   return {
     status: 'eingegangen',
-    bescheiddatum: null,
-    einspruchGrund: null,
+    assessmentDate: null,
+    appealReason: null,
     fields: [
       { id: 'einnahmen', kind: 'offen' },
       { id: 'vorsorgeaufwand', kind: 'offen' },
@@ -31,7 +31,7 @@ function emptyAssessment(): AssessmentResponseDto {
       { id: 'erstattung', kind: 'offen' },
     ],
     reconciliation: { deviations: [], calculationIncomplete: false },
-    frist: { bescheiddatum: null, deadlineEnd: null, remainingDays: null },
+    frist: { assessmentDate: null, deadlineEnd: null, remainingDays: null },
     nextStates: ['geprüft'],
   }
 }
@@ -98,7 +98,7 @@ describe('BescheidScreen', () => {
 
   it('shows the § 355 AO Fristen-Countdown from the Bescheiddatum', async () => {
     const data = emptyAssessment()
-    data.frist = { bescheiddatum: '2026-03-15', deadlineEnd: '2026-04-15', remainingDays: 31 }
+    data.frist = { assessmentDate: '2026-03-15', deadlineEnd: '2026-04-15', remainingDays: 31 }
     mockAssessment(data)
     renderAssessment()
     await screen.findByText('Dein Steuerbescheid')
@@ -137,7 +137,7 @@ describe('BescheidScreen', () => {
       http.get(ASSESSMENT_URL, () => HttpResponse.json(state, { status: 200 })),
       http.put('*/v1/steuerjahre/2026/bescheid/einspruch', async ({ request }) => {
         posted = await request.json()
-        state = { ...state, status: 'einspruch-eingelegt', einspruchGrund: 'betrag-falsch', nextStates: [] }
+        state = { ...state, status: 'einspruch-eingelegt', appealReason: 'betrag-falsch', nextStates: [] }
         return HttpResponse.json(state, { status: 200 })
       }),
     )

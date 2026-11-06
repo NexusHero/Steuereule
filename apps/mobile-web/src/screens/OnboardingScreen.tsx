@@ -56,7 +56,7 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
     setProfile((p) => (p ? { ...p, [key]: value } : p))
   const idDigits = countDigits(profile.steuerId)
   const taxIdOk = isValidTaxId(profile.steuerId.replace(/\D/g, ''))
-  const stepOk = [profile.vorname.trim() !== '' && profile.nachname.trim() !== '', taxIdOk, true]
+  const stepOk = [profile.firstName.trim() !== '' && profile.lastName.trim() !== '', taxIdOk, true]
 
   function next() {
     setStep((s) => (s === STEP_COUNT - 1 ? STEP_COUNT : s + 1))
@@ -118,16 +118,16 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
           <Text style={styles.help}>{tr('onboarding.step1.help')}</Text>
           <Feld label={tr('onboarding.step1.firstNameLabel')}>
             <Input
-              value={profile.vorname}
-              onChange={set('vorname')}
+              value={profile.firstName}
+              onChange={set('firstName')}
               placeholder={tr('onboarding.step1.firstNamePlaceholder')}
               accessibilityLabel={tr('onboarding.step1.firstNameLabel')}
             />
           </Feld>
           <Feld label={tr('onboarding.step1.lastNameLabel')}>
             <Input
-              value={profile.nachname}
-              onChange={set('nachname')}
+              value={profile.lastName}
+              onChange={set('lastName')}
               placeholder={tr('onboarding.step1.lastNamePlaceholder')}
               accessibilityLabel={tr('onboarding.step1.lastNameLabel')}
             />

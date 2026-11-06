@@ -154,9 +154,9 @@ describe('REQ-023 — Bescheidprüfung, against the real server', () => {
       expect(((await checked.json()) as { status: string }).status).toBe('geprüft')
 
       const appeal = await putAppeal(cookie, 'betrag-falsch')
-      const appealBody = (await appeal.json()) as { status: string; einspruchGrund: string }
+      const appealBody = (await appeal.json()) as { status: string; appealReason: string }
       expect(appealBody.status).toBe('einspruch-eingelegt')
-      expect(appealBody.einspruchGrund).toBe('betrag-falsch')
+      expect(appealBody.appealReason).toBe('betrag-falsch')
     },
   )
 

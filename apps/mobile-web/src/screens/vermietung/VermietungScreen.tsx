@@ -60,7 +60,7 @@ export function RentalScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_
   }
 
   const response = query.data.data
-  const paar = link.data?.status === 200 && link.data.data.veranlagungsart === 'zusammen'
+  const paar = link.data?.status === 200 && link.data.data.filingType === 'zusammen'
 
   if (questionOpen) {
     const back = () => {
@@ -203,21 +203,21 @@ function PropertyCard({
           <View style={{ flex: 2 }}>
             <Feld label="Ort">
               <Input
-                value={property.ort ?? ''}
+                value={property.city ?? ''}
                 placeholder="Berlin"
                 accessibilityLabel="Ort"
-                onChange={(ort) => onSendAddress?.({ ort })}
+                onChange={(city) => onSendAddress?.({ city })}
               />
             </Feld>
           </View>
         </View>
         <Feld label="Gesamtwohnfläche (m²)">
           <Input
-            value={property.wohnflaeche ?? ''}
+            value={property.livingArea ?? ''}
             placeholder="85"
             type="numeric"
             accessibilityLabel="Gesamtwohnfläche"
-            onChange={(wohnflaeche) => onSendAddress?.({ wohnflaeche })}
+            onChange={(livingArea) => onSendAddress?.({ livingArea })}
           />
         </Feld>
         {(
@@ -243,15 +243,15 @@ function PropertyCard({
         <Feld label="Ist die Gebäude-AfA unverändert wie im Vorjahr?">
           <View style={{ flexDirection: 'row', gap: t.space.s2 }}>
             <Chip
-              active={property.afaWieVorjahr === true}
-              onPress={() => onSendAddress?.({ afaWieVorjahr: true })}
+              active={property.depreciationAsLastYear === true}
+              onPress={() => onSendAddress?.({ depreciationAsLastYear: true })}
               testID="vermietung-afa-wie-vorjahr-ja"
             >
               Ja
             </Chip>
             <Chip
-              active={property.afaWieVorjahr === false}
-              onPress={() => onSendAddress?.({ afaWieVorjahr: false })}
+              active={property.depreciationAsLastYear === false}
+              onPress={() => onSendAddress?.({ depreciationAsLastYear: false })}
               testID="vermietung-afa-wie-vorjahr-nein"
             >
               Nein, im Jahr gekauft oder geändert

@@ -65,15 +65,15 @@ function WorkdaysForm({
   const { t: tr } = useTranslation(APP_NS)
   const save = useCommuteControllerPut()
 
-  const [workdays, setWorkdays] = useState<readonly IsoWeekday[]>((saved?.arbeitstage as IsoWeekday[] | undefined) ?? [1, 2, 3, 4, 5])
-  const [vacation, setVacation] = useState(textFrom(saved?.urlaubstage))
-  const [sick, setSick] = useState(textFrom(saved?.krankheitstage))
-  const [homeOffice, setHomeOffice] = useState(textFrom(saved?.homeofficeTage))
-  const [km, setKm] = useState(textFrom(saved?.einfacheKm))
-  const [verkehrsmittel, setTransport] = useState<Transport | null>(saved?.verkehrsmittel ?? null)
-  const [workplace, setWorkplace] = useState(saved?.taetigkeitsstaette ?? '')
-  const [region, setRegion] = useState<HolidayRegion | null>((saved?.feiertageRegion as HolidayRegion | null | undefined) ?? null)
-  const [feiertage, setPublicHolidays] = useState(textFrom(saved?.feiertage))
+  const [workdays, setWorkdays] = useState<readonly IsoWeekday[]>((saved?.workdays as IsoWeekday[] | undefined) ?? [1, 2, 3, 4, 5])
+  const [vacation, setVacation] = useState(textFrom(saved?.vacationDays))
+  const [sick, setSick] = useState(textFrom(saved?.sickDays))
+  const [homeOffice, setHomeOffice] = useState(textFrom(saved?.homeOfficeDays))
+  const [km, setKm] = useState(textFrom(saved?.oneWayKm))
+  const [transport, setTransport] = useState<Transport | null>(saved?.transport ?? null)
+  const [workplace, setWorkplace] = useState(saved?.workplace ?? '')
+  const [region, setRegion] = useState<HolidayRegion | null>((saved?.publicHolidayRegion as HolidayRegion | null | undefined) ?? null)
+  const [publicHolidays, setPublicHolidays] = useState(textFrom(saved?.publicHolidays))
 
   // F4: suggest the holidays that fall on the chosen working days; the user confirms or corrects them.
   function selectRegion(fresh: HolidayRegion) {
@@ -92,13 +92,13 @@ function WorkdaysForm({
     vacationDays: int(vacation),
     sickDays: int(sick),
     homeOfficeDays: int(homeOffice),
-    publicHolidays: int(feiertage),
+    publicHolidays: int(publicHolidays),
   }
   const result = workdays.length > 0 ? calculateWorkdays(input) : null
-  const einfacheKm = integerFrom(km)
+  const oneWayKm = integerFrom(km)
   const allowance =
-    result?.kind === 'bestimmt' && einfacheKm !== null && verkehrsmittel !== null
-      ? allowanceOrNull(einfacheKm, result.commuteDays, taxYear, verkehrsmittel === 'pkw')
+    result?.kind === 'bestimmt' && oneWayKm !== null && transport !== null
+      ? allowanceOrNull(oneWayKm, result.commuteDays, taxYear, transport === 'pkw')
       : null
 
   function next() {
@@ -108,15 +108,15 @@ function WorkdaysForm({
       {
         jahr: taxYear,
         data: {
-          arbeitstage: [...workdays],
-          urlaubstage: input.vacationDays,
-          krankheitstage: input.sickDays,
-          homeofficeTage: input.homeOfficeDays,
-          einfacheKm,
-          verkehrsmittel,
-          taetigkeitsstaette: workplace.trim() === '' ? null : workplace.trim(),
-          feiertage: feiertage.trim() === '' ? null : int(feiertage),
-          feiertageRegion: region,
+          workdays: [...workdays],
+          vacationDays: input.vacationDays,
+          sickDays: input.sickDays,
+          homeOfficeDays: input.homeOfficeDays,
+          oneWayKm,
+          transport,
+          workplace: workplace.trim() === '' ? null : workplace.trim(),
+          publicHolidays: publicHolidays.trim() === '' ? null : int(publicHolidays),
+          publicHolidayRegion: region,
         },
         ...(partnerName === undefined ? {} : { params: { person: 'B' as const } }),
       },
@@ -176,7 +176,7 @@ function WorkdaysForm({
         <Input
           type="numeric"
           mono
-          value={feiertage}
+          value={publicHolidays}
           onChange={setPublicHolidays}
           placeholder={tr('arbeitstage.daysPlaceholder')}
           accessibilityLabel={tr('arbeitstage.feiertage.anzahl')}
@@ -192,7 +192,7 @@ function WorkdaysForm({
       <Feld label={tr('arbeitstage.weg.verkehrsmittel')}>
         <View style={styles.weekdayRow}>
           {TRANSPORT.map((means) => (
-            <Chip key={means} active={verkehrsmittel === means} onPress={() => setTransport(means)}>
+            <Chip key={means} active={transport === means} onPress={() => setTransport(means)}>
               {tr(`arbeitstage.weg.mittel.${means}`)}
             </Chip>
           ))}
@@ -219,9 +219,9 @@ function textFrom(value: number | null | undefined): string {
   return value === null || value === undefined || value === 0 ? '' : String(value)
 }
 
-function allowanceOrNull(einfacheKm: number, days: number, year: number, withCar: boolean): number | null {
+function allowanceOrNull(oneWayKm: number, days: number, year: number, withCar: boolean): number | null {
   try {
-    return commuterAllowance({ oneWayKm: einfacheKm, days, year, withCar })
+    return commuterAllowance({ oneWayKm, days, year, withCar })
   } catch {
     return null
   }

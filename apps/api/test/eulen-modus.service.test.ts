@@ -28,7 +28,7 @@ describe('EulenModusService', () => {
     )
 
     const res = await service.getCards('user-1', 2025)
-    expect(res.aktiviert).toBe(false)
+    expect(res.enabled).toBe(false)
     expect(res.cards).toHaveLength(0)
   })
 
@@ -55,20 +55,20 @@ describe('EulenModusService', () => {
     const year = 2025
 
     // Seed real interview facts for 2025 (Homeoffice + Fortbildung without Fahrtkosten) and 2024 (Spenden + Bescheid)
-    await interviewRepo.write({ userId, steuerjahr: year, questionId: 'homeoffice', value: 'Fast immer', openItems: 0 })
-    await interviewRepo.write({ userId, steuerjahr: year, questionId: 'tage', value: '200', openItems: 0 })
-    await interviewRepo.write({ userId, steuerjahr: year, questionId: 'fortbildung', value: 'Ja', openItems: 0 })
-    await interviewRepo.write({ userId, steuerjahr: year - 1, questionId: 'spenden-betrag', value: '300', openItems: 0 })
-    await interviewRepo.write({ userId, steuerjahr: year - 1, questionId: 'homeoffice', value: '1–2 Tage pro Woche', openItems: 0 })
+    await interviewRepo.write({ userId, taxYear: year, questionId: 'homeoffice', value: 'Fast immer', openItems: 0 })
+    await interviewRepo.write({ userId, taxYear: year, questionId: 'tage', value: '200', openItems: 0 })
+    await interviewRepo.write({ userId, taxYear: year, questionId: 'fortbildung', value: 'Ja', openItems: 0 })
+    await interviewRepo.write({ userId, taxYear: year - 1, questionId: 'spenden-betrag', value: '300', openItems: 0 })
+    await interviewRepo.write({ userId, taxYear: year - 1, questionId: 'homeoffice', value: '1–2 Tage pro Woche', openItems: 0 })
     await assessmentRepo.setDate(userId, year - 1, '2025-10-15')
 
     const setRes = await service.setSetting(userId, true)
-    expect(setRes.aktiviert).toBe(true)
-    expect(setRes.aktiviertAm).toBeDefined()
+    expect(setRes.enabled).toBe(true)
+    expect(setRes.enabledAt).toBeDefined()
 
     const today = '2025-11-01'
     const res = await service.getCards(userId, year, today)
-    expect(res.aktiviert).toBe(true)
+    expect(res.enabled).toBe(true)
     expect(res.cards.map((k) => k.category)).toEqual(['cockpit_proaktiv', 'archiv_einspruch', 'abruf_frage', 'abruf_frage'])
 
     const firstCard = res.cards[0]!

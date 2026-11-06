@@ -4,7 +4,7 @@ import { IsIn } from 'class-validator'
 
 export class ProvenanceDto {
   @ApiProperty({ type: String, enum: ['nutzer', 'uebernahme', 'assistent', 'beleg'], example: 'assistent' })
-  art!: 'nutzer' | 'uebernahme' | 'assistent' | 'beleg'
+  kind!: 'nutzer' | 'uebernahme' | 'assistent' | 'beleg'
 
   @ApiPropertyOptional({ type: String, example: 'Claude', description: 'Name des Assistenten (art = assistent).' })
   name?: string
@@ -13,7 +13,7 @@ export class ProvenanceDto {
   receiptId?: string
 
   @ApiPropertyOptional({ type: Number, example: 2024, description: 'Quelljahr der Jahresübernahme (art = uebernahme).' })
-  vorjahr?: number
+  lastYear?: number
 }
 
 export class ProposalDto {
@@ -44,7 +44,7 @@ export class FieldProvenanceDto {
   provenance!: ProvenanceDto
 
   @ApiProperty({ type: Boolean })
-  bestaetigt!: boolean
+  confirmed!: boolean
 
   @ApiProperty({ type: ProposalDto, nullable: true })
   proposal!: ProposalDto | null
@@ -52,7 +52,7 @@ export class FieldProvenanceDto {
 
 export class AnnexConfirmationDto {
   @ApiProperty({ type: String, enum: ANNEXES, example: 'anlageN' })
-  anlage!: (typeof ANNEXES)[number]
+  annex!: (typeof ANNEXES)[number]
 
   @ApiProperty({ type: Number, description: 'Wie viele Werte dieser Anlage noch unbestätigt sind.' })
   unconfirmed!: number

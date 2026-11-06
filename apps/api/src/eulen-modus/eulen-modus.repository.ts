@@ -1,13 +1,13 @@
 export interface OwlSettingRecord {
   userId: string
-  aktiviert: boolean
-  aktiviertAm: Date | null
+  enabled: boolean
+  enabledAt: Date | null
 }
 
 export interface OwlCardDismissalRecord {
   id: string
   userId: string
-  steuerjahr: number
+  taxYear: number
   fingerprint: string
   createdAt: Date
 }
@@ -17,10 +17,10 @@ export const OWL_CARD_DISMISSAL_REPOSITORY = Symbol('OWL_CARD_DISMISSAL_REPOSITO
 
 export interface OwlSettingRepository {
   findByUserId(userId: string): Promise<OwlSettingRecord | null>
-  setEnabled(userId: string, aktiviert: boolean): Promise<OwlSettingRecord>
+  setEnabled(userId: string, enabled: boolean): Promise<OwlSettingRecord>
 }
 
 export interface OwlCardDismissalRepository {
-  listForUserAndYear(userId: string, steuerjahr: number): Promise<string[]>
-  dismiss(userId: string, steuerjahr: number, fingerprint: string): Promise<void>
+  listForUserAndYear(userId: string, taxYear: number): Promise<string[]>
+  dismiss(userId: string, taxYear: number, fingerprint: string): Promise<void>
 }

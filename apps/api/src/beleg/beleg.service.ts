@@ -13,14 +13,14 @@ function toAssignmentDto(assignment: ReceiptAssignment): AssignmentDto {
     case 'ungebunden':
       return { kind: 'ungebunden' }
     case 'vorgeschlagen':
-      return { kind: 'vorgeschlagen', steuerjahr: assignment.proposal.steuerjahr, provenance: assignment.proposal.provenance }
+      return { kind: 'vorgeschlagen', taxYear: assignment.proposal.taxYear, provenance: assignment.proposal.provenance }
     case 'zugeordnet':
-      return { kind: 'zugeordnet', steuerjahr: assignment.steuerjahr }
+      return { kind: 'zugeordnet', taxYear: assignment.taxYear }
     case 'konflikt':
       return {
         kind: 'konflikt',
-        steuerjahr: assignment.assigned,
-        proposalYear: assignment.proposal.steuerjahr,
+        taxYear: assignment.assigned,
+        proposalYear: assignment.proposal.taxYear,
         provenance: assignment.proposal.provenance,
       }
   }
@@ -29,8 +29,8 @@ function toAssignmentDto(assignment: ReceiptAssignment): AssignmentDto {
 function toReceiptResponse(record: ReceiptRecord): ReceiptResponseDto {
   return {
     id: record.id,
-    dateiname: record.dateiname,
-    art: record.art ?? null,
+    fileName: record.fileName,
+    kind: record.kind ?? null,
     belegdatum: record.belegdatum ?? null,
     zahlungsdatum: record.zahlungsdatum ?? null,
     assignment: toAssignmentDto(assignmentFromData(record)),
@@ -55,8 +55,8 @@ export class ReceiptService {
 
   async create(userId: string, dto: CreateReceiptDto): Promise<ReceiptResponseDto> {
     const record = await this.repository.create(userId, {
-      dateiname: dto.dateiname,
-      ...(dto.art !== undefined ? { art: dto.art } : {}),
+      fileName: dto.fileName,
+      ...(dto.kind !== undefined ? { kind: dto.kind } : {}),
       ...(dto.belegdatum !== undefined ? { belegdatum: dto.belegdatum } : {}),
       ...(dto.zahlungsdatum !== undefined ? { zahlungsdatum: dto.zahlungsdatum } : {}),
     })
@@ -65,8 +65,8 @@ export class ReceiptService {
 
   async setAssignment(userId: string, id: string, dto: SetAssignmentDto): Promise<ReceiptResponseDto> {
     const record = await this.repository.setAssignment(userId, id, {
-      steuerjahr: dto.steuerjahr,
-      vorschlagVerworfen: dto.vorschlagVerworfen ?? false,
+      taxYear: dto.taxYear,
+      proposalDismissed: dto.proposalDismissed ?? false,
     })
     if (record === null) {
       throw new NotFoundError('BELEG_NOT_FOUND', `Beleg "${id}" does not exist for this account.`)

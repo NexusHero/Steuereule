@@ -27,32 +27,32 @@ export interface PersonBFacts {
 }
 
 export interface LinkFacts {
-  veranlagungsart: 'einzel' | 'zusammen'
+  filingType: 'einzel' | 'zusammen'
   personB?: PersonBFacts | null
 }
 
 export interface ChildFacts {
-  lfdNr?: string
-  vorname: string | null
-  nachname: string | null
+  sequenceNumber?: string
+  firstName: string | null
+  lastName: string | null
   geburtsdatum: string | null
-  idnr: string | null
-  kindergeldAnspruchEur?: string | null
-  schweizerKinderzulageEur?: string | null
-  kindschaftsverhaeltnis?: string | null
-  kindschaftsverhaeltnisB?: string | null
-  familienkasse?: string | null
-  wohnsitzInlandGanzjaehrig?: boolean | null
-  andererElternteil?: string | null
-  andererElternteilName?: string | null
-  andererElternteilGeburtsdatum?: string | null
-  andererElternteilAdresse?: string | null
-  andererElternteilArt?: string | null
-  andererElternteilVerstorbenAm?: string | null
-  gemeldetBeiMirGanzjaehrig?: boolean | null
-  kindergeldAnMichGanzjaehrig?: boolean | null
-  kvBasisEur?: string | null
-  pvEur?: string | null
+  taxId: string | null
+  childBenefitClaimEur?: string | null
+  swissFamilyAllowanceEur?: string | null
+  kinship?: string | null
+  kinshipB?: string | null
+  familyBenefitsOffice?: string | null
+  domesticResidenceAllYear?: boolean | null
+  otherParent?: string | null
+  otherParentName?: string | null
+  otherParentBirthDate?: string | null
+  otherParentAddress?: string | null
+  otherParentKind?: string | null
+  otherParentDiedOn?: string | null
+  registeredWithMeAllYear?: boolean | null
+  childBenefitToMeAllYear?: boolean | null
+  healthBasicEur?: string | null
+  careEur?: string | null
 }
 
 /** Anlage Kind Zeilen 47/48 — answered once per year in the interview. */
@@ -62,43 +62,43 @@ export interface SingleParentFacts {
 }
 
 function needsOtherParent(k: ChildFacts, joint: boolean): boolean {
-  return !joint || !k.kindschaftsverhaeltnisB
+  return !joint || !k.kinshipB
 }
 
 function otherParentGap(k: ChildFacts): string | null {
-  const known = Boolean(k.andererElternteilName && k.andererElternteilGeburtsdatum && k.andererElternteilArt)
-  switch (k.andererElternteil) {
+  const known = Boolean(k.otherParentName && k.otherParentBirthDate && k.otherParentKind)
+  switch (k.otherParent) {
     case 'Unbekannt':
       return null
     case 'Ausland':
       return 'anlageKindAndererElternteilAusland'
     case 'Inland':
-      return known && k.andererElternteilAdresse ? null : 'kinder'
+      return known && k.otherParentAddress ? null : 'kinder'
     case 'Verstorben':
-      return known && k.andererElternteilVerstorbenAm ? null : 'kinder'
+      return known && k.otherParentDiedOn ? null : 'kinder'
     default:
       return 'kinder'
   }
 }
 
-function childGap(k: ChildFacts, steuerjahr: number, joint: boolean): string | null {
-  if (!k.idnr || !k.kindschaftsverhaeltnis || !k.familienkasse || k.wohnsitzInlandGanzjaehrig == null) return 'kinder'
-  if (!k.wohnsitzInlandGanzjaehrig) return 'anlageKindAusland'
-  if (k.geburtsdatum && Number(k.geburtsdatum.slice(0, 4)) <= steuerjahr - 18) return 'anlageKindVolljaehrig'
+function childGap(k: ChildFacts, taxYear: number, joint: boolean): string | null {
+  if (!k.taxId || !k.kinship || !k.familyBenefitsOffice || k.domesticResidenceAllYear == null) return 'kinder'
+  if (!k.domesticResidenceAllYear) return 'anlageKindAusland'
+  if (k.geburtsdatum && Number(k.geburtsdatum.slice(0, 4)) <= taxYear - 18) return 'anlageKindVolljaehrig'
   return needsOtherParent(k, joint) ? otherParentGap(k) : null
 }
 
 export interface RentalFacts {
-  lfdNr?: string
+  sequenceNumber?: string
   strasse: string | null
   plz: string | null
-  ort: string | null
-  wohnflaeche: string | null
+  city: string | null
+  livingArea: string | null
   mieteinnahmen: string | null
   anschaffungskosten: string | null
   baujahr: string | null
   werbungskosten: string | null
-  afaWieVorjahr: boolean | null
+  depreciationAsLastYear: boolean | null
   umlagen?: string | null
   schuldzinsen?: string | null
   einheiten?: string | null
@@ -111,10 +111,10 @@ const integer = (value: string | null): number | null => (value !== null && /^\d
 function rentalGap(obj: RentalFacts): string | null {
   const unclear = [obj.mieteinnahmen, obj.werbungskosten, obj.anschaffungskosten, obj.baujahr].includes('unklar')
   if (unclear || integer(obj.mieteinnahmen) === null || integer(obj.werbungskosten) === null) return 'vermietung'
-  if (!obj.strasse || !obj.plz || !obj.ort) return 'vermietung'
+  if (!obj.strasse || !obj.plz || !obj.city) return 'vermietung'
   if (rentalDepreciation(obj) === null) return null
-  if (obj.afaWieVorjahr === null) return 'vermietung'
-  return obj.afaWieVorjahr ? null : 'anlageVAfaNeu'
+  if (obj.depreciationAsLastYear === null) return 'vermietung'
+  return obj.depreciationAsLastYear ? null : 'anlageVAfaNeu'
 }
 
 function rentalDepreciation(obj: RentalFacts): { rate: number; amount: number } | null {
@@ -197,7 +197,7 @@ function kapValues(
   capital: CapitalFacts,
   role: 'A' | 'B',
   half: -1 | 0 | 1 | number,
-  header: { name: string | null; vorname: string | null },
+  header: { name: string | null; firstName: string | null },
   steuernummer: string | null,
 ): Record<string, string | true> {
   const share = (value: string | null | undefined): number => {
@@ -208,7 +208,7 @@ function kapValues(
   const values: Record<string, string | true> = {}
   values[role === 'A' ? 'anlKap.personA' : 'anlKap.personB'] = true
   if (header.name) values['anlKap.name'] = header.name
-  if (header.vorname) values['anlKap.vorname'] = header.vorname
+  if (header.firstName) values['anlKap.vorname'] = header.firstName
   if (steuernummer) values['anlKap.steuernummer'] = steuernummer
   values['anlKap.guenstigerpruefung'] = '1'
   if (capital.depot === 'deutscher-broker') {
@@ -235,7 +235,7 @@ function nGreValues(
   ch: ChSalaryCertificateFacts | null | undefined,
   commute: CommuteFacts | null | undefined,
   role: 'A' | 'B',
-  header: { name: string | null; vorname: string | null; beruf: string | null; steuernummer: string | null },
+  header: { name: string | null; firstName: string | null; beruf: string | null; steuernummer: string | null },
 ): NGreResult | null {
   if (!ch || ch.grossWageChf === null) return null
   const gap = nGreGap(ch)
@@ -246,7 +246,7 @@ function nGreValues(
   }
   values[role === 'A' ? 'anlNGre.personA' : 'anlNGre.personB'] = true
   set('anlNGre.name', header.name)
-  set('anlNGre.vorname', header.vorname)
+  set('anlNGre.vorname', header.firstName)
   set('anlNGre.steuernummer', header.steuernummer)
   values['anlNGre.kz117'] = '3'
   set('anlNGre.beruf', header.beruf)
@@ -293,7 +293,7 @@ export interface SpecialExpensesFacts {
 
 /** Anlage AV: the contributions come from the provider; the form needs the kind of eligibility. */
 export interface RiesterFacts {
-  art: string | null
+  kind: string | null
   incomeLastYear: string | null
 }
 
@@ -302,23 +302,23 @@ export interface CommuteFacts {
   workdaysPerWeek: number
   daysOff: number
   commuteDays: number
-  einfacheKm: number | null
+  oneWayKm: number | null
   withCar: boolean
-  taetigkeitsstaette: string | null
+  workplace: string | null
 }
 
 /** Anlage N Z. 27–31 and Anlage N-Gre Z. 32–36 ask the same facts under their own field prefix. */
 function commuteValues(a: CommuteFacts | null | undefined, prefix: 'anlN' | 'anlNGre' = 'anlN'): Record<string, string> {
-  if (!a || a.einfacheKm === null) return {}
+  if (!a || a.oneWayKm === null) return {}
   const values: Record<string, string> = {
     [`${prefix}.wegArt`]: '1',
     [`${prefix}.wegTageJeWoche`]: String(a.workdaysPerWeek),
     [`${prefix}.wegFreieTage`]: String(a.daysOff),
     [`${prefix}.kz110Tage`]: String(a.commuteDays),
-    [`${prefix}.kz111`]: String(a.einfacheKm),
+    [`${prefix}.kz111`]: String(a.oneWayKm),
   }
-  if (a.taetigkeitsstaette) values[`${prefix}.wegOrt`] = a.taetigkeitsstaette
-  if (a.withCar) values[`${prefix}.kz112`] = String(a.einfacheKm)
+  if (a.workplace) values[`${prefix}.wegOrt`] = a.workplace
+  if (a.withCar) values[`${prefix}.kz112`] = String(a.oneWayKm)
   return values
 }
 
@@ -328,7 +328,7 @@ const optionalNumber = (value: string | null): number | undefined => {
 }
 
 export interface PrintoutFacts {
-  steuerjahr: number
+  taxYear: number
   profile: { firstName: string | null; lastName: string | null; steuerId: string | null; steuernummer: string | null }
   masterData: {
     geburtsdatum: string | null
@@ -435,7 +435,7 @@ export function printoutValues(facts: PrintoutFacts): PrintoutValues {
   if (sd?.familienstand === 'verheiratet') {
     if (!facts.link) {
       missing.push('ehegatte')
-    } else if (facts.link.veranlagungsart === 'zusammen') {
+    } else if (facts.link.filingType === 'zusammen') {
       values['est1a.zusammenveranlagung'] = true
       const b = facts.link.personB
       if (!b || !b.lastName || !b.firstName || !b.steuerId || !b.geburtsdatum) {
@@ -448,7 +448,7 @@ export function printoutValues(facts: PrintoutFacts): PrintoutValues {
         set('est1a.religionB', b.religion)
         set('est1a.berufB', b.beruf)
       }
-    } else if (facts.link.veranlagungsart === 'einzel') {
+    } else if (facts.link.filingType === 'einzel') {
       values['est1a.einzelveranlagung'] = true
     }
   }
@@ -483,7 +483,7 @@ export function printoutValues(facts: PrintoutFacts): PrintoutValues {
   }
 
   const gross = facts.bruttoarbeitslohn
-  const grossB = facts.link?.veranlagungsart === 'zusammen' ? facts.link.personB?.bruttoarbeitslohn ?? null : null
+  const grossB = facts.link?.filingType === 'zusammen' ? facts.link.personB?.bruttoarbeitslohn ?? null : null
   const hasGrossA = gross !== null && /^\d+$/.test(gross)
   const hasGrossB = grossB !== null && /^\d+$/.test(grossB)
 
@@ -515,7 +515,7 @@ export function printoutValues(facts: PrintoutFacts): PrintoutValues {
   }
 
   const pension = facts.pension
-  const pensionB = facts.link?.veranlagungsart === 'zusammen' ? facts.link.personB?.pension ?? null : null
+  const pensionB = facts.link?.filingType === 'zusammen' ? facts.link.personB?.pension ?? null : null
   if (pension?.rentenart) {
     const otherForm = PENSION_OTHER_FORM[pension.rentenart]
     if (otherForm) missing.push(otherForm)
@@ -572,11 +572,11 @@ export function printoutValues(facts: PrintoutFacts): PrintoutValues {
     else {
       // ADR-0054: in a joint return a joint account is split half and half across an Anlage KAP for
       // each spouse; an account of Person B goes onto B's Anlage KAP. A gets the odd euro.
-      const joint = facts.link?.veranlagungsart === 'zusammen'
+      const joint = facts.link?.filingType === 'zusammen'
       const b = joint ? facts.link?.personB ?? null : null
       const inhaber = joint ? (capital.inhaber ?? 'A') : 'A'
-      const headerA = { name: profile.lastName, vorname: profile.firstName }
-      const headerB = { name: b?.lastName ?? null, vorname: b?.firstName ?? null }
+      const headerA = { name: profile.lastName, firstName: profile.firstName }
+      const headerB = { name: b?.lastName ?? null, firstName: b?.firstName ?? null }
       const parts: [('A' | 'B'), number][] =
         inhaber === 'gemeinsam' ? [['A', 0], ['B', 1]] : inhaber === 'B' ? [['B', -1]] : [['A', -1]]
       const kapInstances = parts.map(([role, half]) =>
@@ -588,16 +588,16 @@ export function printoutValues(facts: PrintoutFacts): PrintoutValues {
   }
 
   // Anlage N-Gre: one per Grenzgänger. A couple where both commute to Switzerland gets two instances.
-  const personB = facts.link?.veranlagungsart === 'zusammen' ? facts.link.personB : null
+  const personB = facts.link?.filingType === 'zusammen' ? facts.link.personB : null
   const nGreA = nGreValues(facts.chSalaryCertificate, facts.commute, 'A', {
     name: profile.lastName,
-    vorname: profile.firstName,
+    firstName: profile.firstName,
     beruf: sd?.beruf ?? null,
     steuernummer: profile.steuernummer,
   })
   const nGreB = nGreValues(personB?.chSalaryCertificate, personB?.commute, 'B', {
     name: personB?.lastName ?? null,
-    vorname: personB?.firstName ?? null,
+    firstName: personB?.firstName ?? null,
     beruf: personB?.beruf ?? null,
     steuernummer: profile.steuernummer,
   })
@@ -612,17 +612,17 @@ export function printoutValues(facts: PrintoutFacts): PrintoutValues {
       if (profile.lastName) vValues['anlV.name'] = profile.lastName
       if (profile.firstName) vValues['anlV.vorname'] = profile.firstName
       if (profile.steuernummer) vValues['anlV.steuernummer'] = profile.steuernummer
-      vValues['anlV.lfdNr'] = obj.lfdNr ?? String(i + 1)
+      vValues['anlV.lfdNr'] = obj.sequenceNumber ?? String(i + 1)
       if (obj.strasse) vValues['anlV.strasse'] = obj.strasse
       if (obj.plz) vValues['anlV.plz'] = obj.plz
-      if (obj.ort) vValues['anlV.ort'] = obj.ort
-      if (obj.wohnflaeche) {
-        vValues['anlV.wohnflaeche'] = obj.wohnflaeche
-        vValues['anlV.z13Wohnflaeche'] = obj.wohnflaeche
+      if (obj.city) vValues['anlV.ort'] = obj.city
+      if (obj.livingArea) {
+        vValues['anlV.wohnflaeche'] = obj.livingArea
+        vValues['anlV.z13Wohnflaeche'] = obj.livingArea
       }
       // Several flats of one building go into Z. 13 together, named as such.
-      const einheiten = integer(obj.einheiten ?? null)
-      if (einheiten !== null && einheiten > 1) vValues['anlV.z13Bezeichnung'] = `${einheiten} Wohneinheiten`
+      const units = integer(obj.einheiten ?? null)
+      if (units !== null && units > 1) vValues['anlV.z13Bezeichnung'] = `${units} Wohneinheiten`
       const rent = integer(obj.mieteinnahmen)
       const ongoing = integer(obj.werbungskosten)
       if (rent === null || ongoing === null) return vValues
@@ -638,7 +638,7 @@ export function printoutValues(facts: PrintoutFacts): PrintoutValues {
         vValues['anlV.kz33'] = String(schuldzinsen)
       }
       const depreciation = rentalDepreciation(obj)
-      if (depreciation && obj.afaWieVorjahr) {
+      if (depreciation && obj.depreciationAsLastYear) {
         vValues['anlV.z33Linear'] = '1'
         vValues['anlV.z33Satz'] = String(depreciation.rate).replace('.', ',')
         vValues['anlV.z33WieVorjahr'] = '1'
@@ -650,12 +650,12 @@ export function printoutValues(facts: PrintoutFacts): PrintoutValues {
         vValues['anlV.z80Betrag'] = String(ongoing)
         vValues['anlV.kz49'] = String(ongoing)
       }
-      const sum = ongoing + schuldzinsen + (depreciation && obj.afaWieVorjahr ? depreciation.amount : 0)
+      const sum = ongoing + schuldzinsen + (depreciation && obj.depreciationAsLastYear ? depreciation.amount : 0)
       const surplus = rent + umlagen - sum
       vValues['anlV.werbungskostenSumme'] = String(sum)
       vValues['anlV.ueberschuss'] = String(surplus)
       // Z. 86: in a joint return the result is attributed to both spouses (ADR-0054), half and half by default.
-      if (facts.link?.veranlagungsart === 'zusammen') {
+      if (facts.link?.filingType === 'zusammen') {
         const anteilA = Math.min(100, integer(obj.anteilA ?? null) ?? 50)
         const teilA = Math.round((surplus * anteilA) / 100)
         vValues['anlV.kz20'] = String(teilA)
@@ -670,7 +670,7 @@ export function printoutValues(facts: PrintoutFacts): PrintoutValues {
   }
 
   if (facts.kinder && facts.kinder.length > 0) {
-    const zusammen = facts.link?.veranlagungsart === 'zusammen'
+    const zusammen = facts.link?.filingType === 'zusammen'
     const single =
       !zusammen &&
       sd?.familienstand !== 'verheiratet' &&
@@ -681,32 +681,32 @@ export function printoutValues(facts: PrintoutFacts): PrintoutValues {
       if (profile.lastName) kValues['anlKind.name'] = profile.lastName
       if (profile.firstName) kValues['anlKind.vornameEltern'] = profile.firstName
       if (profile.steuernummer) kValues['anlKind.steuernummer'] = profile.steuernummer
-      kValues['anlKind.lfdNr'] = k.lfdNr ?? String(i + 1)
-      if (k.idnr) kValues['anlKind.idnr'] = k.idnr
-      if (k.vorname) kValues['anlKind.vorname'] = k.vorname
-      if (k.nachname && k.nachname !== profile.lastName) kValues['anlKind.nachname'] = k.nachname
+      kValues['anlKind.lfdNr'] = k.sequenceNumber ?? String(i + 1)
+      if (k.taxId) kValues['anlKind.idnr'] = k.taxId
+      if (k.firstName) kValues['anlKind.vorname'] = k.firstName
+      if (k.lastName && k.lastName !== profile.lastName) kValues['anlKind.nachname'] = k.lastName
       if (k.geburtsdatum) kValues['anlKind.geburtsdatum'] = formatGermanDate(k.geburtsdatum)
-      if (k.schweizerKinderzulageEur && Number(k.schweizerKinderzulageEur) > 0) {
-        const swissEur = Number(k.schweizerKinderzulageEur)
-        const diff = calculateDifferentialChildBenefit(k.geburtsdatum ?? `${facts.steuerjahr}-01-01`, facts.steuerjahr, swissEur)
-        const claimEur = k.kindergeldAnspruchEur ? Number(k.kindergeldAnspruchEur) : 0
+      if (k.swissFamilyAllowanceEur && Number(k.swissFamilyAllowanceEur) > 0) {
+        const swissEur = Number(k.swissFamilyAllowanceEur)
+        const diff = calculateDifferentialChildBenefit(k.geburtsdatum ?? `${facts.taxYear}-01-01`, facts.taxYear, swissEur)
+        const claimEur = k.childBenefitClaimEur ? Number(k.childBenefitClaimEur) : 0
         kValues['anlKind.kindergeld'] = String(Math.max(claimEur, diff.totalClaim))
-      } else if (k.kindergeldAnspruchEur) {
-        kValues['anlKind.kindergeld'] = k.kindergeldAnspruchEur
+      } else if (k.childBenefitClaimEur) {
+        kValues['anlKind.kindergeld'] = k.childBenefitClaimEur
       }
-      if (k.familienkasse) kValues['anlKind.familienkasse'] = k.familienkasse
+      if (k.familyBenefitsOffice) kValues['anlKind.familienkasse'] = k.familyBenefitsOffice
       // Z. 27/28: KV/PV of the child the parents pay as policyholders — an empty or zero line stays empty.
-      if (k.kvBasisEur && Number(k.kvBasisEur) > 0) kValues['anlKind.kz66'] = k.kvBasisEur
-      if (k.pvEur && Number(k.pvEur) > 0) kValues['anlKind.kz67'] = k.pvEur
-      const start = k.geburtsdatum?.startsWith(`${facts.steuerjahr}-`) ? k.geburtsdatum : `${facts.steuerjahr}-01-01`
-      const end = `${facts.steuerjahr}-12-31`
-      if (k.wohnsitzInlandGanzjaehrig) {
+      if (k.healthBasicEur && Number(k.healthBasicEur) > 0) kValues['anlKind.kz66'] = k.healthBasicEur
+      if (k.careEur && Number(k.careEur) > 0) kValues['anlKind.kz67'] = k.careEur
+      const start = k.geburtsdatum?.startsWith(`${facts.taxYear}-`) ? k.geburtsdatum : `${facts.taxYear}-01-01`
+      const end = `${facts.taxYear}-12-31`
+      if (k.domesticResidenceAllYear) {
         kValues['anlKind.inlandVon'] = formatGermanDate(start)
         kValues['anlKind.inlandBis'] = formatGermanDate(end)
       }
-      if (k.kindschaftsverhaeltnis) kValues['anlKind.kz02'] = k.kindschaftsverhaeltnis
-      if (zusammen && k.kindschaftsverhaeltnisB) kValues['anlKind.kz03'] = k.kindschaftsverhaeltnisB
-      if (single && k.gemeldetBeiMirGanzjaehrig && k.kindergeldAnMichGanzjaehrig) {
+      if (k.kinship) kValues['anlKind.kz02'] = k.kinship
+      if (zusammen && k.kinshipB) kValues['anlKind.kz03'] = k.kinshipB
+      if (single && k.registeredWithMeAllYear && k.childBenefitToMeAllYear) {
         kValues['anlKind.kz42Von'] = formatGermanDate(start)
         kValues['anlKind.kz42Bis'] = formatGermanDate(end)
         kValues['anlKind.kz44Von'] = formatGermanDate(start)
@@ -715,13 +715,13 @@ export function printoutValues(facts: PrintoutFacts): PrintoutValues {
         kValues['anlKind.kz49'] = '2'
       }
       if (needsOtherParent(k, zusammen)) {
-        if (k.andererElternteil === 'Unbekannt') kValues['anlKind.kz05'] = '1'
-        if (k.andererElternteil === 'Inland' || k.andererElternteil === 'Verstorben') {
-          if (k.andererElternteilName) kValues['anlKind.aeName'] = k.andererElternteilName
-          if (k.andererElternteilGeburtsdatum) kValues['anlKind.aeGeburtsdatum'] = formatGermanDate(k.andererElternteilGeburtsdatum)
-          if (k.andererElternteilAdresse) kValues['anlKind.aeAdresse'] = k.andererElternteilAdresse
-          if (k.andererElternteilArt) kValues['anlKind.aeArt'] = k.andererElternteilArt
-          const tod = k.andererElternteil === 'Verstorben' ? k.andererElternteilVerstorbenAm : null
+        if (k.otherParent === 'Unbekannt') kValues['anlKind.kz05'] = '1'
+        if (k.otherParent === 'Inland' || k.otherParent === 'Verstorben') {
+          if (k.otherParentName) kValues['anlKind.aeName'] = k.otherParentName
+          if (k.otherParentBirthDate) kValues['anlKind.aeGeburtsdatum'] = formatGermanDate(k.otherParentBirthDate)
+          if (k.otherParentAddress) kValues['anlKind.aeAdresse'] = k.otherParentAddress
+          if (k.otherParentKind) kValues['anlKind.aeArt'] = k.otherParentKind
+          const tod = k.otherParent === 'Verstorben' ? k.otherParentDiedOn : null
           if (tod) kValues['anlKind.kz06'] = formatGermanDate(tod)
           const to = tod && tod < end ? tod : end
           if (to >= start) {
@@ -733,7 +733,7 @@ export function printoutValues(facts: PrintoutFacts): PrintoutValues {
       return kValues
     })
     for (const kind of facts.kinder) {
-      const luecke = childGap(kind, facts.steuerjahr, zusammen)
+      const luecke = childGap(kind, facts.taxYear, zusammen)
       if (luecke && !missing.includes(luecke)) missing.push(luecke)
     }
   }
@@ -757,7 +757,7 @@ export function printoutValues(facts: PrintoutFacts): PrintoutValues {
   }
 
   if (facts.riester) {
-    const { art, incomeLastYear } = facts.riester
+    const { kind: art, incomeLastYear } = facts.riester
     const direct = art === 'Unmittelbar' && incomeLastYear !== null && /^\d+$/.test(incomeLastYear)
     if (direct || art === 'Mittelbar') {
       set('anlAv.name', profile.lastName)

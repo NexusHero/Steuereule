@@ -78,7 +78,7 @@ describe('berechneWerktage', () => {
     const r = calculateWorkdays(data)
     expect(r).toEqual({
       kind: 'widerspruch',
-      conflict: { art: 'urlaub-krank-uebersteigt-wochentage', weekdays: 261, urlaubstage: 200, krankheitstage: 100 },
+      conflict: { kind: 'urlaub-krank-uebersteigt-wochentage', weekdays: 261, vacationDays: 200, sickDays: 100 },
     })
   })
 
@@ -87,7 +87,7 @@ describe('berechneWerktage', () => {
     const r = calculateWorkdays(data)
     expect(r).toEqual({
       kind: 'widerspruch',
-      conflict: { art: 'homeoffice-uebersteigt-werktage', workdays: 261, homeofficeTage: 999 },
+      conflict: { kind: 'homeoffice-uebersteigt-werktage', workdays: 261, homeOfficeDays: 999 },
     })
   })
 

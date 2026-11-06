@@ -88,7 +88,7 @@ export function PlausibilityScreen({ onBack, onDone, taxYear = CURRENT_TAX_YEAR 
           <Text style={styles.blockHeading}>{tr('plausibilitaet.widersprueche')}</Text>
           {result.conflicts.map((w, i) => (
             <Text key={i} style={styles.widerspruchItem}>
-              {tr(`plausibilitaet.widerspruch.${w.art}`, { defaultValue: w.art })}
+              {tr(`plausibilitaet.widerspruch.${w.kind}`, { defaultValue: w.kind })}
             </Text>
           ))}
         </View>
@@ -99,7 +99,7 @@ export function PlausibilityScreen({ onBack, onDone, taxYear = CURRENT_TAX_YEAR 
           <Text style={styles.blockHeading}>{tr('plausibilitaet.hinweise')}</Text>
           {result.notices.map((h, i) => (
             <Text key={i} style={styles.hinweisItem}>
-              {tr(`plausibilitaet.hinweis.${h.art}`, { defaultValue: h.art })}
+              {tr(`plausibilitaet.hinweis.${h.kind}`, { defaultValue: h.kind })}
             </Text>
           ))}
         </View>

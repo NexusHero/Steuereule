@@ -12,7 +12,7 @@ import { ConfirmationScreen } from './BestaetigungScreen'
 const WITH_VALUES: ConfirmationResponseDto = {
   annexes: [
     {
-      anlage: 'anlageN',
+      annex: 'anlageN',
       unconfirmed: 1,
       values: [
         {
@@ -21,9 +21,9 @@ const WITH_VALUES: ConfirmationResponseDto = {
           instance: null,
           field: 'bruttoarbeitslohn',
           value: '4750',
-          provenance: { art: 'nutzer' },
-          bestaetigt: true,
-          proposal: { value: '4800', provenance: { art: 'assistent', name: 'Claude' } },
+          provenance: { kind: 'nutzer' },
+          confirmed: true,
+          proposal: { value: '4800', provenance: { kind: 'assistent', name: 'Claude' } },
         },
         {
           key: 'lstb.lohnsteuer',
@@ -31,8 +31,8 @@ const WITH_VALUES: ConfirmationResponseDto = {
           instance: null,
           field: 'lohnsteuer',
           value: '700',
-          provenance: { art: 'uebernahme', vorjahr: 2024 },
-          bestaetigt: false,
+          provenance: { kind: 'uebernahme', lastYear: 2024 },
+          confirmed: false,
           proposal: null,
         },
       ],
@@ -72,11 +72,11 @@ describe('BestaetigungScreen (REQ-032, ADR-0052 §6/§7)', () => {
   })
 
   it('confirming the Anlage calls the endpoint and shows the honest empty state afterwards', async () => {
-    let bestaetigt = false
+    let confirmed = false
     server.use(
-      http.get('*/v1/steuerjahre/2025/bestaetigung', () => HttpResponse.json(bestaetigt ? { annexes: [] } : WITH_VALUES)),
+      http.get('*/v1/steuerjahre/2025/bestaetigung', () => HttpResponse.json(confirmed ? { annexes: [] } : WITH_VALUES)),
       http.put('*/v1/steuerjahre/2025/bestaetigung/anlagen/anlageN', () => {
-        bestaetigt = true
+        confirmed = true
         return HttpResponse.json({ annexes: [] })
       }),
     )
@@ -85,7 +85,7 @@ describe('BestaetigungScreen (REQ-032, ADR-0052 §6/§7)', () => {
     fireEvent.click(await screen.findByTestId('bestaetige-anlageN'))
 
     expect(await screen.findByText('Alles bestätigt. Es gibt nichts mehr zu prüfen.')).toBeTruthy()
-    expect(bestaetigt).toBe(true)
+    expect(confirmed).toBe(true)
   })
 
   it('accepting or discarding a proposal sends the decision for exactly that field', async () => {

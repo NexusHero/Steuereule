@@ -5,14 +5,14 @@ import type { WageTaxCertificateRecord, WageTaxCertificateRepository } from './l
 
 function toRecord(row: {
   userId: string
-  steuerjahr: number
+  taxYear: number
   bruttoarbeitslohn: string | null
   lohnsteuer: string | null
   sozialversicherung: string | null
 }): WageTaxCertificateRecord {
   return {
     userId: row.userId,
-    steuerjahr: row.steuerjahr,
+    taxYear: row.taxYear,
     bruttoarbeitslohn: row.bruttoarbeitslohn,
     lohnsteuer: row.lohnsteuer,
     sozialversicherung: row.sozialversicherung,
@@ -37,16 +37,16 @@ function fieldData(
 export class PrismaLstbRepository implements WageTaxCertificateRepository {
   constructor(@Inject(ENCRYPTED_PRISMA) private readonly prisma: EncryptedPrismaClient) {}
 
-  async findForUserAndYear(userId: string, steuerjahr: number): Promise<WageTaxCertificateRecord | null> {
-    const row = await this.prisma.lstb.findUnique({ where: { userId_steuerjahr: { userId, steuerjahr } } })
+  async findForUserAndYear(userId: string, taxYear: number): Promise<WageTaxCertificateRecord | null> {
+    const row = await this.prisma.lstb.findUnique({ where: { userId_taxYear: { userId, taxYear } } })
     return row === null ? null : toRecord(row)
   }
 
-  async setField(userId: string, steuerjahr: number, field: WageTaxCertificateFieldId, value: string | null): Promise<WageTaxCertificateRecord> {
+  async setField(userId: string, taxYear: number, field: WageTaxCertificateFieldId, value: string | null): Promise<WageTaxCertificateRecord> {
     const [row] = await this.prisma.$transaction([
       this.prisma.lstb.upsert({
-        where: { userId_steuerjahr: { userId, steuerjahr } },
-        create: { userId, steuerjahr, bruttoarbeitslohn: null, lohnsteuer: null, sozialversicherung: null, ...fieldData(field, value) },
+        where: { userId_taxYear: { userId, taxYear } },
+        create: { userId, taxYear, bruttoarbeitslohn: null, lohnsteuer: null, sozialversicherung: null, ...fieldData(field, value) },
         update: fieldData(field, value),
       }),
       this.prisma.taxDataAccessLog.create({

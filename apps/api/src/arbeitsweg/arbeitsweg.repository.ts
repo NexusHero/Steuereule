@@ -4,23 +4,23 @@ export type MeansOfTransport = 'pkw' | 'oepnv' | 'andere'
 export const MEANS_OF_TRANSPORT: readonly MeansOfTransport[] = ['pkw', 'oepnv', 'andere']
 
 export interface CommuteInputs {
-  readonly arbeitstage: readonly (IsoWeekday | IsoWeekday)[]
-  readonly urlaubstage: number
-  readonly krankheitstage: number
-  readonly homeofficeTage: number
-  readonly einfacheKm: number | null
-  readonly verkehrsmittel: MeansOfTransport | null
-  readonly taetigkeitsstaette: string | null
+  readonly workdays: readonly (IsoWeekday | IsoWeekday)[]
+  readonly vacationDays: number
+  readonly sickDays: number
+  readonly homeOfficeDays: number
+  readonly oneWayKm: number | null
+  readonly transport: MeansOfTransport | null
+  readonly workplace: string | null
   /** Confirmed public holidays on working days (F4); null = none counted. */
-  readonly feiertage?: number | null
+  readonly publicHolidays?: number | null
   /** The state or canton the suggestion came from (public-holidays.ts). */
-  readonly feiertageRegion?: string | null
+  readonly publicHolidayRegion?: string | null
 }
 
 export const COMMUTE_REPOSITORY = Symbol('COMMUTE_REPOSITORY')
 
 /** The persistence seam for the commute facts behind the Entfernungspauschale. */
 export interface CommuteRepository {
-  findForUserAndYear(userId: string, steuerjahr: number): Promise<CommuteInputs | null>
-  save(userId: string, steuerjahr: number, inputs: CommuteInputs): Promise<CommuteInputs>
+  findForUserAndYear(userId: string, taxYear: number): Promise<CommuteInputs | null>
+  save(userId: string, taxYear: number, inputs: CommuteInputs): Promise<CommuteInputs>
 }

@@ -10,8 +10,8 @@ function integerFrom(value: string | undefined): number {
 export function progressionClauseFrom(answers: Answers): ProgressionClauseInput {
   if (answers.lohnersatz === 'Ja') {
     const amount = integerFrom(answers['lohnersatz-betrag'])
-    return amount > 0 ? { art: 'lohnersatzleistungen', amount } : { art: 'nicht-angegeben' }
+    return amount > 0 ? { kind: 'lohnersatzleistungen', amount } : { kind: 'nicht-angegeben' }
   }
-  if (answers.lohnersatz === 'Nein') return { art: 'keine' }
-  return { art: 'nicht-angegeben' }
+  if (answers.lohnersatz === 'Nein') return { kind: 'keine' }
+  return { kind: 'nicht-angegeben' }
 }

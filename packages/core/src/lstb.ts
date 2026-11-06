@@ -32,9 +32,9 @@ export function setWageTaxCertificateField(
 }
 
 export type WageTaxCertificateConflict =
-  | { readonly art: 'lohnsteuer-uebersteigt-brutto'; readonly lohnsteuer: number; readonly bruttoarbeitslohn: number }
+  | { readonly kind: 'lohnsteuer-uebersteigt-brutto'; readonly lohnsteuer: number; readonly bruttoarbeitslohn: number }
   | {
-      readonly art: 'sozialversicherung-uebersteigt-brutto'
+      readonly kind: 'sozialversicherung-uebersteigt-brutto'
       readonly sozialversicherung: number
       readonly bruttoarbeitslohn: number
     }
@@ -60,10 +60,10 @@ function conflicts(data: WageTaxCertificateData): readonly WageTaxCertificateCon
 
   const result: WageTaxCertificateConflict[] = []
   if (lohnsteuer > gross) {
-    result.push({ art: 'lohnsteuer-uebersteigt-brutto', lohnsteuer, bruttoarbeitslohn: gross })
+    result.push({ kind: 'lohnsteuer-uebersteigt-brutto', lohnsteuer, bruttoarbeitslohn: gross })
   }
   if (sozialversicherung > gross) {
-    result.push({ art: 'sozialversicherung-uebersteigt-brutto', sozialversicherung, bruttoarbeitslohn: gross })
+    result.push({ kind: 'sozialversicherung-uebersteigt-brutto', sozialversicherung, bruttoarbeitslohn: gross })
   }
   return result
 }

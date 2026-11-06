@@ -13,14 +13,14 @@ describe('nehmeVorschlagAn — a suggestion becomes a Posten only by acceptance 
       id: 'p1',
       incomeType: 'Vermietung',
       amount: 480,
-      source: { art: 'ki-vorschlag', proposalId: 'v1' },
+      source: { kind: 'ki-vorschlag', proposalId: 'v1' },
     })
   })
 
   it('records the Beleg it was derived from, when one is present (ADR-014 "Beleg + KI-Vorschlag, bestätigt")', () => {
     const proposal: AiProposal = { id: 'v1', incomeType: 'Kapital', amount: 123, receiptId: 'b1' }
     expect(acceptAiProposal(proposal, 'p1').source).toEqual({
-      art: 'ki-vorschlag',
+      kind: 'ki-vorschlag',
       proposalId: 'v1',
       receiptId: 'b1',
     })

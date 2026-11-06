@@ -2,27 +2,27 @@ export interface PartnerCouplingRecord {
   id: string
   personAUserId: string
   personBUserId: string
-  steuerjahr: number
-  veranlagungsart: 'einzel' | 'zusammen'
-  einladungsCode: string | null
-  einladungsCodeGueltigBis: Date | null
+  taxYear: number
+  filingType: 'einzel' | 'zusammen'
+  invitationCode: string | null
+  invitationCodeValidUntil: Date | null
 }
 
 export const PARTNER_COUPLING_REPOSITORY = Symbol('PARTNER_COUPLING_REPOSITORY')
 
 export interface PartnerCouplingRepository {
-  findByUserAndYear(userId: string, steuerjahr: number): Promise<PartnerCouplingRecord | null>
+  findByUserAndYear(userId: string, taxYear: number): Promise<PartnerCouplingRecord | null>
   findByInvitationCode(code: string): Promise<PartnerCouplingRecord | null>
   upsert(
     personAUserId: string,
-    steuerjahr: number,
+    taxYear: number,
     data: {
       personBUserId: string
-      veranlagungsart: 'einzel' | 'zusammen'
-      einladungsCode?: string | null
-      einladungsCodeGueltigBis?: Date | null
+      filingType: 'einzel' | 'zusammen'
+      invitationCode?: string | null
+      invitationCodeValidUntil?: Date | null
     },
   ): Promise<PartnerCouplingRecord>
   setPersonB(id: string, personBUserId: string): Promise<PartnerCouplingRecord>
-  delete(personAUserId: string, steuerjahr: number): Promise<boolean>
+  delete(personAUserId: string, taxYear: number): Promise<boolean>
 }

@@ -6,23 +6,23 @@
 import type { CapitalFieldId } from '@steuereule/core'
 import type { CapitalOwner, CapitalRecord, CapitalRepository } from '../../src/kapital/kapital.repository.js'
 
-function key(userId: string, steuerjahr: number): string {
-  return `${userId}::${steuerjahr}`
+function key(userId: string, taxYear: number): string {
+  return `${userId}::${taxYear}`
 }
 
 export class FakeCapitalRepository implements CapitalRepository {
   private readonly store = new Map<string, CapitalRecord>()
 
-  findForUserAndYear(userId: string, steuerjahr: number): Promise<CapitalRecord | null> {
-    return Promise.resolve(this.store.get(key(userId, steuerjahr)) ?? null)
+  findForUserAndYear(userId: string, taxYear: number): Promise<CapitalRecord | null> {
+    return Promise.resolve(this.store.get(key(userId, taxYear)) ?? null)
   }
 
-  setField(userId: string, steuerjahr: number, field: CapitalFieldId, value: string | null): Promise<CapitalRecord> {
-    const k = key(userId, steuerjahr)
+  setField(userId: string, taxYear: number, field: CapitalFieldId, value: string | null): Promise<CapitalRecord> {
+    const k = key(userId, taxYear)
     const existing = this.store.get(k)
     const record: CapitalRecord = existing ?? {
       userId,
-      steuerjahr,
+      taxYear,
       kapitalertraege: null,
       sparerPauschbetrag: null,
       kapitalertragsteuer: null,
@@ -34,11 +34,11 @@ export class FakeCapitalRepository implements CapitalRepository {
     return Promise.resolve(updated)
   }
 
-  setOwner(userId: string, steuerjahr: number, inhaber: CapitalOwner): Promise<CapitalRecord> {
-    const k = key(userId, steuerjahr)
+  setOwner(userId: string, taxYear: number, inhaber: CapitalOwner): Promise<CapitalRecord> {
+    const k = key(userId, taxYear)
     const record: CapitalRecord = this.store.get(k) ?? {
       userId,
-      steuerjahr,
+      taxYear,
       kapitalertraege: null,
       sparerPauschbetrag: null,
       kapitalertragsteuer: null,
@@ -51,8 +51,8 @@ export class FakeCapitalRepository implements CapitalRepository {
   }
 
   /** Test seam: seed a record directly, bypassing the setter's upsert; unnamed fields are offen. */
-  seed(record: Pick<CapitalRecord, 'userId' | 'steuerjahr' | 'kapitalertraege'> & Partial<CapitalRecord>): void {
-    this.store.set(key(record.userId, record.steuerjahr), {
+  seed(record: Pick<CapitalRecord, 'userId' | 'taxYear' | 'kapitalertraege'> & Partial<CapitalRecord>): void {
+    this.store.set(key(record.userId, record.taxYear), {
       sparerPauschbetrag: null,
       kapitalertragsteuer: null,
       solidaritaetszuschlag: null,

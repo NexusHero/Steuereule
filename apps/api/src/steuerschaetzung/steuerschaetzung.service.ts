@@ -116,7 +116,7 @@ export class TaxEstimateService {
 
     const state = wageTaxCertificateStatus(wageTaxCertificateDataFrom(lstbRecord))
     if (state.kind === 'unvollstaendig') return { kind: 'offen', fehlt: [...state.open, ...state.unclear] }
-    if (state.kind === 'widerspruch') return { kind: 'offen', fehlt: state.conflicts.map((w) => w.art) }
+    if (state.kind === 'widerspruch') return { kind: 'offen', fehlt: state.conflicts.map((w) => w.kind) }
     return withChurchTax(
       taxEstimateEmployee({
         year,
@@ -135,7 +135,7 @@ export class TaxEstimateService {
   /** ADR-0054: a couple's estimate from both spouses' figures — only once the joint return for the year is set up. */
   private async marriedCouple(userId: string, year: number): Promise<TaxEstimateStatus> {
     const link = this.link ? await this.link.findByUserAndYear(userId, year) : null
-    if (!link || link.veranlagungsart !== 'zusammen') return { kind: 'offen', fehlt: ['veranlagungsart'] }
+    if (!link || link.filingType !== 'zusammen') return { kind: 'offen', fehlt: ['veranlagungsart'] }
     const [a, b] = await Promise.all([
       this.income(link.personAUserId, year),
       link.personBUserId ? this.income(link.personBUserId, year) : Promise.resolve(null),
@@ -218,7 +218,7 @@ export class TaxEstimateService {
     if (lstbRecord === null) return null
     const state = wageTaxCertificateStatus(wageTaxCertificateDataFrom(lstbRecord))
     if (state.kind === 'unvollstaendig') return { kind: 'offen', fehlt: [...state.open, ...state.unclear] }
-    if (state.kind === 'widerspruch') return { kind: 'offen', fehlt: state.conflicts.map((w) => w.art) }
+    if (state.kind === 'widerspruch') return { kind: 'offen', fehlt: state.conflicts.map((w) => w.kind) }
     return {
       kind: 'ok',
       donations: numbers.donations,
@@ -259,18 +259,18 @@ function specialCircumstance(answers: Answers): boolean {
 }
 
 function commuterAllowanceFrom(year: number, path: CommuteInputs | null): number {
-  if (path === null || path.einfacheKm === null || path.verkehrsmittel === null) return 0
+  if (path === null || path.oneWayKm === null || path.transport === null) return 0
   const days = calculateWorkdays({
     year,
-    workdays: path.arbeitstage,
-    vacationDays: path.urlaubstage,
-    sickDays: path.krankheitstage,
-    homeOfficeDays: path.homeofficeTage,
-    publicHolidays: path.feiertage ?? 0,
+    workdays: path.workdays,
+    vacationDays: path.vacationDays,
+    sickDays: path.sickDays,
+    homeOfficeDays: path.homeOfficeDays,
+    publicHolidays: path.publicHolidays ?? 0,
   })
   if (days.kind !== 'bestimmt') return 0
   try {
-    return commuterAllowance({ oneWayKm: path.einfacheKm, days: days.commuteDays, year, withCar: path.verkehrsmittel === 'pkw' })
+    return commuterAllowance({ oneWayKm: path.oneWayKm, days: days.commuteDays, year, withCar: path.transport === 'pkw' })
   } catch {
     return 0
   }

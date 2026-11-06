@@ -147,8 +147,8 @@ describe('VermietungService', () => {
 
   it('ADR-0052 §6: a user write drops the marker of exactly that field of that object', async () => {
     const property = await repository.create('user-1', 2025)
-    await markings.save('user-1', 2025, { key: `vermietung:${property.id}.mieteinnahmen`, provenance: { art: 'uebernahme', vorjahr: 2024 }, bestaetigt: false, proposal: null })
-    await markings.save('user-1', 2025, { key: `vermietung:${property.id}.baujahr`, provenance: { art: 'uebernahme', vorjahr: 2024 }, bestaetigt: false, proposal: null })
+    await markings.save('user-1', 2025, { key: `vermietung:${property.id}.mieteinnahmen`, provenance: { kind: 'uebernahme', lastYear: 2024 }, confirmed: false, proposal: null })
+    await markings.save('user-1', 2025, { key: `vermietung:${property.id}.baujahr`, provenance: { kind: 'uebernahme', lastYear: 2024 }, confirmed: false, proposal: null })
 
     await service.setField('user-1', 2025, property.id, 'mieteinnahmen', { kind: 'erfasst', value: 9000 })
 

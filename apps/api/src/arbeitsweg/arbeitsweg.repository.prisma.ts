@@ -4,28 +4,28 @@ import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypte
 import { MEANS_OF_TRANSPORT, type CommuteInputs, type CommuteRepository, type MeansOfTransport } from './arbeitsweg.repository.js'
 
 interface CommuteRow {
-  arbeitstage: string
-  urlaubstage: number
-  krankheitstage: number
-  homeofficeTage: number
-  einfacheKm: number | null
-  verkehrsmittel: string | null
-  taetigkeitsstaette: string | null
-  feiertage?: number | null
-  feiertageRegion?: string | null
+  workdays: string
+  vacationDays: number
+  sickDays: number
+  homeOfficeDays: number
+  oneWayKm: number | null
+  transport: string | null
+  workplace: string | null
+  publicHolidays?: number | null
+  publicHolidayRegion?: string | null
 }
 
 function inputsFrom(row: CommuteRow): CommuteInputs {
   return {
-    arbeitstage: row.arbeitstage === '' ? [] : row.arbeitstage.split(',').map((tag) => Number(tag) as IsoWeekday),
-    urlaubstage: row.urlaubstage,
-    krankheitstage: row.krankheitstage,
-    homeofficeTage: row.homeofficeTage,
-    einfacheKm: row.einfacheKm,
-    verkehrsmittel: MEANS_OF_TRANSPORT.includes(row.verkehrsmittel as MeansOfTransport) ? (row.verkehrsmittel as MeansOfTransport) : null,
-    taetigkeitsstaette: row.taetigkeitsstaette,
-    feiertage: row.feiertage ?? null,
-    feiertageRegion: row.feiertageRegion ?? null,
+    workdays: row.workdays === '' ? [] : row.workdays.split(',').map((tag) => Number(tag) as IsoWeekday),
+    vacationDays: row.vacationDays,
+    sickDays: row.sickDays,
+    homeOfficeDays: row.homeOfficeDays,
+    oneWayKm: row.oneWayKm,
+    transport: MEANS_OF_TRANSPORT.includes(row.transport as MeansOfTransport) ? (row.transport as MeansOfTransport) : null,
+    workplace: row.workplace,
+    publicHolidays: row.publicHolidays ?? null,
+    publicHolidayRegion: row.publicHolidayRegion ?? null,
   }
 }
 
@@ -33,27 +33,27 @@ function inputsFrom(row: CommuteRow): CommuteInputs {
 export class PrismaCommuteRepository implements CommuteRepository {
   constructor(@Inject(ENCRYPTED_PRISMA) private readonly prisma: EncryptedPrismaClient) {}
 
-  async findForUserAndYear(userId: string, steuerjahr: number): Promise<CommuteInputs | null> {
-    const row = await this.prisma.arbeitsweg.findUnique({ where: { userId_steuerjahr: { userId, steuerjahr } } })
+  async findForUserAndYear(userId: string, taxYear: number): Promise<CommuteInputs | null> {
+    const row = await this.prisma.commute.findUnique({ where: { userId_taxYear: { userId, taxYear } } })
     return row === null ? null : inputsFrom(row)
   }
 
-  async save(userId: string, steuerjahr: number, inputs: CommuteInputs): Promise<CommuteInputs> {
+  async save(userId: string, taxYear: number, inputs: CommuteInputs): Promise<CommuteInputs> {
     const data = {
-      arbeitstage: inputs.arbeitstage.join(','),
-      urlaubstage: inputs.urlaubstage,
-      krankheitstage: inputs.krankheitstage,
-      homeofficeTage: inputs.homeofficeTage,
-      einfacheKm: inputs.einfacheKm,
-      verkehrsmittel: inputs.verkehrsmittel,
-      taetigkeitsstaette: inputs.taetigkeitsstaette,
-      feiertage: inputs.feiertage ?? null,
-      feiertageRegion: inputs.feiertageRegion ?? null,
+      workdays: inputs.workdays.join(','),
+      vacationDays: inputs.vacationDays,
+      sickDays: inputs.sickDays,
+      homeOfficeDays: inputs.homeOfficeDays,
+      oneWayKm: inputs.oneWayKm,
+      transport: inputs.transport,
+      workplace: inputs.workplace,
+      publicHolidays: inputs.publicHolidays ?? null,
+      publicHolidayRegion: inputs.publicHolidayRegion ?? null,
     }
     const [row] = await this.prisma.$transaction([
-      this.prisma.arbeitsweg.upsert({
-        where: { userId_steuerjahr: { userId, steuerjahr } },
-        create: { userId, steuerjahr, ...data },
+      this.prisma.commute.upsert({
+        where: { userId_taxYear: { userId, taxYear } },
+        create: { userId, taxYear, ...data },
         update: data,
       }),
       this.prisma.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: 'arbeitsweg' } }),

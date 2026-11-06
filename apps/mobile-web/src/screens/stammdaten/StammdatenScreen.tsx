@@ -38,7 +38,7 @@ export function MasterDataScreen({ onBack, taxYear = CURRENT_TAX_YEAR, onRecordP
   const query = useMasterDataControllerRead()
   const save = useMasterDataControllerSave()
   const [draft, setDraft] = useState<MasterDataDraft | null>(null)
-  const [message, setMessage] = useState<{ art: 'ok' | 'fehler'; text: string } | null>(null)
+  const [message, setMessage] = useState<{ kind: 'ok' | 'fehler'; text: string } | null>(null)
 
   if (query.isPending) return <LoadingState bp={bp} label={t('stammdaten.loading')} />
   if (query.isError || query.data?.status !== 200) {
@@ -67,7 +67,7 @@ export function MasterDataScreen({ onBack, taxYear = CURRENT_TAX_YEAR, onRecordP
 
   function submit() {
     if (form.religion !== null && !form.religionConsent) {
-      setMessage({ art: 'fehler', text: t('stammdaten.saveError.einwilligung') })
+      setMessage({ kind: 'fehler', text: t('stammdaten.saveError.einwilligung') })
       return
     }
     save.mutate(
@@ -77,12 +77,12 @@ export function MasterDataScreen({ onBack, taxYear = CURRENT_TAX_YEAR, onRecordP
           if (response.status === 200) {
             queryClient.setQueryData(query.queryKey, response)
             setDraft(null)
-            setMessage({ art: 'ok', text: t('stammdaten.gespeichert') })
+            setMessage({ kind: 'ok', text: t('stammdaten.gespeichert') })
           } else {
-            setMessage({ art: 'fehler', text: t('stammdaten.saveError.validation') })
+            setMessage({ kind: 'fehler', text: t('stammdaten.saveError.validation') })
           }
         },
-        onError: () => setMessage({ art: 'fehler', text: t('stammdaten.saveError.network') }),
+        onError: () => setMessage({ kind: 'fehler', text: t('stammdaten.saveError.network') }),
       },
     )
   }
@@ -148,7 +148,7 @@ export function MasterDataScreen({ onBack, taxYear = CURRENT_TAX_YEAR, onRecordP
       {textField('telefon')}
 
       {message ? (
-        <Text style={message.art === 'ok' ? styles.successNote : styles.errorNote} accessibilityLiveRegion="polite">
+        <Text style={message.kind === 'ok' ? styles.successNote : styles.errorNote} accessibilityLiveRegion="polite">
           {message.text}
         </Text>
       ) : null}
@@ -186,7 +186,7 @@ function TaxYearLinkSection({
   const [joinError, setJoinError] = useState<string | null>(null)
 
   const current = linkQuery.data?.status === 200 ? linkQuery.data.data : null
-  const veranlagungsart = current?.veranlagungsart ?? 'keine'
+  const filingType = current?.filingType ?? 'keine'
   const personB = current?.personB
   const partnerDisplayName = personB?.firstName || 'deinem Partner'
 
@@ -200,8 +200,8 @@ function TaxYearLinkSection({
     void queryClient.invalidateQueries({ queryKey: getLinkControllerGetQueryKey(taxYear) })
   }
 
-  const selectKind = (art: 'zusammen' | 'einzel') => {
-    setLink.mutate({ jahr: taxYear, data: { veranlagungsart: art } }, { onSuccess: invalidate })
+  const selectKind = (kind: 'zusammen' | 'einzel') => {
+    setLink.mutate({ jahr: taxYear, data: { filingType: kind } }, { onSuccess: invalidate })
   }
 
   const redeemCode = () => {
@@ -242,23 +242,23 @@ function TaxYearLinkSection({
     <Card style={{ marginVertical: theme.space.s3, padding: theme.space.s4 }}>
       <Feld label={`Veranlagungsart ${taxYear} & Partner (Person B, Zeile 19–24 ESt 1 A)`}>
         <View style={{ flexDirection: 'row', gap: theme.space.s2, marginBottom: theme.space.s3 }}>
-          <Chip active={veranlagungsart === 'zusammen'} onPress={() => selectKind('zusammen')} testID="kopplung-zusammen">
+          <Chip active={filingType === 'zusammen'} onPress={() => selectKind('zusammen')} testID="kopplung-zusammen">
             Zusammenveranlagung
           </Chip>
-          <Chip active={veranlagungsart === 'einzel'} onPress={() => selectKind('einzel')} testID="kopplung-einzel">
+          <Chip active={filingType === 'einzel'} onPress={() => selectKind('einzel')} testID="kopplung-einzel">
             Einzelveranlagung
           </Chip>
         </View>
       </Feld>
-      {veranlagungsart === 'zusammen' && current?.personBHasOwnAccount ? (
+      {filingType === 'zusammen' && current?.personBHasOwnAccount ? (
         <Text style={{ fontSize: theme.size.s, color: theme.color.tinte2 }}>
           {`${[personB?.firstName, personB?.lastName].filter(Boolean).join(' ') || 'Person B'} pflegt die Angaben im eigenen Konto.`}
         </Text>
-      ) : veranlagungsart === 'zusammen' ? (
+      ) : filingType === 'zusammen' ? (
         <View>
-          {current?.einladungsCode ? (
+          {current?.invitationCode ? (
             <Text style={{ fontFamily: theme.font.mono, fontSize: theme.size.xs, color: theme.color.tinte2, marginBottom: theme.space.s2 }}>
-              {invitationNotice(current.einladungsCode, current.einladungsCodeGueltigBis ?? null)}
+              {invitationNotice(current.invitationCode, current.invitationCodeValidUntil ?? null)}
             </Text>
           ) : null}
           <Feld label="Vorname Partner (Person B)">

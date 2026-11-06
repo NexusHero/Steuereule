@@ -13,13 +13,13 @@ export class PrismaMasterDataRepository implements MasterDataRepository {
   constructor(@Inject(ENCRYPTED_PRISMA) private readonly prisma: EncryptedPrismaClient) {}
 
   async findByUserId(userId: string): Promise<MasterDataRecord | null> {
-    const row = await this.prisma.stammdaten.findUnique({ where: { userId } })
+    const row = await this.prisma.masterData.findUnique({ where: { userId } })
     return row === null ? null : toRecord(row)
   }
 
   async save(userId: string, record: MasterDataRecord): Promise<MasterDataRecord> {
     const [row] = await this.prisma.$transaction([
-      this.prisma.stammdaten.upsert({ where: { userId }, create: { userId, ...record }, update: record }),
+      this.prisma.masterData.upsert({ where: { userId }, create: { userId, ...record }, update: record }),
       this.prisma.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: 'stammdaten' } }),
     ])
     return toRecord(row)

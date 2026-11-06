@@ -54,7 +54,7 @@ describe('KapitalService', () => {
     })
 
     it('re-entry reflects stored facts and appends a READ audit entry', async () => {
-      repository.seed({ userId: USER_ID, steuerjahr: TAX_YEAR, kapitalertraege: '2500' })
+      repository.seed({ userId: USER_ID, taxYear: TAX_YEAR, kapitalertraege: '2500' })
       interviewRepository.seed(USER_ID, TAX_YEAR, { 'kap-depot': 'Deutscher Broker' })
 
       const state = await service.getState(USER_ID, TAX_YEAR)
@@ -67,7 +67,7 @@ describe('KapitalService', () => {
     })
 
     it('is scoped strictly to userId and steuerjahr', async () => {
-      repository.seed({ userId: 'someone-else', steuerjahr: TAX_YEAR, kapitalertraege: '1' })
+      repository.seed({ userId: 'someone-else', taxYear: TAX_YEAR, kapitalertraege: '1' })
 
       const state = await service.getState(USER_ID, TAX_YEAR)
       expect(state.kapitalertraege).toEqual({ kind: 'offen' })
@@ -108,7 +108,7 @@ describe('KapitalService', () => {
 
   describe('getGuenstigerpruefung — the § 32d Abs. 6 bounded comparison with honest gates', () => {
     function seedTaxYear(): void {
-      taxYearRepository.seed(USER_ID, { steuerjahr: TAX_YEAR, openItems: 0 })
+      taxYearRepository.seed(USER_ID, { taxYear: TAX_YEAR, openItems: 0 })
     }
 
     it('returns null when no tax year is seeded (the honest empty state)', async () => {
@@ -118,11 +118,11 @@ describe('KapitalService', () => {
 
     it('a German broker with captured Kapitalerträge yields the core\'s bounded comparison', async () => {
       seedTaxYear()
-      repository.seed({ userId: USER_ID, steuerjahr: TAX_YEAR, kapitalertraege: '20000' })
+      repository.seed({ userId: USER_ID, taxYear: TAX_YEAR, kapitalertraege: '20000' })
       interviewRepository.seed(USER_ID, TAX_YEAR, { job: 'Angestellt', 'kap-depot': 'Deutscher Broker', lohnersatz: 'Nein' })
       lstbRepository.seed({
         userId: USER_ID,
-        steuerjahr: TAX_YEAR,
+        taxYear: TAX_YEAR,
         bruttoarbeitslohn: '60000',
         lohnsteuer: null,
         sozialversicherung: null,
@@ -147,7 +147,7 @@ describe('KapitalService', () => {
 
     it('a foreign broker withheld no Abgeltungsteuer — KAP-Pflicht, never a guessed comparison', async () => {
       seedTaxYear()
-      repository.seed({ userId: USER_ID, steuerjahr: TAX_YEAR, kapitalertraege: '20000' })
+      repository.seed({ userId: USER_ID, taxYear: TAX_YEAR, kapitalertraege: '20000' })
       interviewRepository.seed(USER_ID, TAX_YEAR, { 'kap-depot': 'Ausländischer Broker' })
 
       const result = await service.getMostFavourableCheck(USER_ID, TAX_YEAR, 0)
@@ -157,7 +157,7 @@ describe('KapitalService', () => {
 
     it('Krypto is gated, an unanswered kap-depot is never guessed, missing Kapitalerträge are named', async () => {
       seedTaxYear()
-      repository.seed({ userId: USER_ID, steuerjahr: TAX_YEAR, kapitalertraege: '20000' })
+      repository.seed({ userId: USER_ID, taxYear: TAX_YEAR, kapitalertraege: '20000' })
       interviewRepository.seed(USER_ID, TAX_YEAR, { 'kap-depot': 'Krypto' })
       expect(await service.getMostFavourableCheck(USER_ID, TAX_YEAR, 0)).toEqual({ kind: 'nicht-anwendbar', reason: 'krypto-gegated' })
 
@@ -165,13 +165,13 @@ describe('KapitalService', () => {
       expect(await service.getMostFavourableCheck(USER_ID, TAX_YEAR, 0)).toEqual({ kind: 'nicht-anwendbar', reason: 'kap-depot-nicht-beantwortet' })
 
       interviewRepository.seed(USER_ID, TAX_YEAR, { 'kap-depot': 'Deutscher Broker' })
-      repository.seed({ userId: USER_ID, steuerjahr: TAX_YEAR, kapitalertraege: null })
+      repository.seed({ userId: USER_ID, taxYear: TAX_YEAR, kapitalertraege: null })
       expect(await service.getMostFavourableCheck(USER_ID, TAX_YEAR, 0)).toEqual({ kind: 'nicht-anwendbar', reason: 'keine-kapitalertraege' })
     })
 
     it('a missing Progressionsvorbehalt answer makes the comparison unbestimmt — no verdict', async () => {
       seedTaxYear()
-      repository.seed({ userId: USER_ID, steuerjahr: TAX_YEAR, kapitalertraege: '20000' })
+      repository.seed({ userId: USER_ID, taxYear: TAX_YEAR, kapitalertraege: '20000' })
       interviewRepository.seed(USER_ID, TAX_YEAR, { 'kap-depot': 'Deutscher Broker' })
 
       const result = await service.getMostFavourableCheck(USER_ID, TAX_YEAR, 0)
@@ -184,7 +184,7 @@ describe('KapitalService', () => {
   })
 
   it('ADR-0052 §6: a user write drops the marker of exactly that field', async () => {
-    await markings.save('user-1', 2025, { key: 'kapital.kapitalertraege', provenance: { art: 'uebernahme', vorjahr: 2024 }, bestaetigt: false, proposal: null })
+    await markings.save('user-1', 2025, { key: 'kapital.kapitalertraege', provenance: { kind: 'uebernahme', lastYear: 2024 }, confirmed: false, proposal: null })
 
     await service.setField('user-1', 2025, 'kapitalertraege', { kind: 'erfasst', value: 310 })
 

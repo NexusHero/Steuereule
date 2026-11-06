@@ -8,10 +8,10 @@
 /**
  * @nullable
  */
-export type CommuteInputsDtoVerkehrsmittel = typeof CommuteInputsDtoVerkehrsmittel[keyof typeof CommuteInputsDtoVerkehrsmittel] | null;
+export type CommuteInputsDtoTransport = typeof CommuteInputsDtoTransport[keyof typeof CommuteInputsDtoTransport] | null;
 
 
-export const CommuteInputsDtoVerkehrsmittel = {
+export const CommuteInputsDtoTransport = {
   pkw: 'pkw',
   oepnv: 'oepnv',
   andere: 'andere',
@@ -19,29 +19,29 @@ export const CommuteInputsDtoVerkehrsmittel = {
 
 export interface CommuteInputsDto {
   /** ISO weekdays worked (1 = Monday … 7 = Sunday). */
-  arbeitstage: number[];
-  urlaubstage: number;
-  krankheitstage: number;
-  homeofficeTage: number;
+  workdays: number[];
+  vacationDays: number;
+  sickDays: number;
+  homeOfficeDays: number;
   /**
      * One-way distance in full kilometres.
      * @nullable
      */
-  einfacheKm: number | null;
+  oneWayKm: number | null;
   /** @nullable */
-  verkehrsmittel: CommuteInputsDtoVerkehrsmittel;
+  transport: CommuteInputsDtoTransport;
   /** @nullable */
-  taetigkeitsstaette: string | null;
+  workplace: string | null;
   /**
      * Confirmed public holidays on working days, subtracted from the commute days.
      * @nullable
      */
-  feiertage?: number | null;
+  publicHolidays?: number | null;
   /**
      * German state or Swiss canton the holiday suggestion came from.
      * @nullable
      */
-  feiertageRegion?: string | null;
+  publicHolidayRegion?: string | null;
 }
 
 export interface WorkdaysDto {

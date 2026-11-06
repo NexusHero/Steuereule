@@ -41,7 +41,7 @@ describe('LstbService', () => {
     })
 
     it('re-entry reflects stored facts and appends a READ audit entry', async () => {
-      repository.seed({ userId: USER_ID, steuerjahr: TAX_YEAR, bruttoarbeitslohn: '50000', lohnsteuer: '9000', sozialversicherung: '10000' })
+      repository.seed({ userId: USER_ID, taxYear: TAX_YEAR, bruttoarbeitslohn: '50000', lohnsteuer: '9000', sozialversicherung: '10000' })
 
       const state = await service.getState(USER_ID, TAX_YEAR)
 
@@ -51,7 +51,7 @@ describe('LstbService', () => {
     })
 
     it('is scoped strictly to userId and steuerjahr', async () => {
-      repository.seed({ userId: 'someone-else', steuerjahr: TAX_YEAR, bruttoarbeitslohn: '1', lohnsteuer: null, sozialversicherung: null })
+      repository.seed({ userId: 'someone-else', taxYear: TAX_YEAR, bruttoarbeitslohn: '1', lohnsteuer: null, sozialversicherung: null })
 
       const state = await service.getState(USER_ID, TAX_YEAR)
       expect(state.bruttoarbeitslohn).toEqual({ kind: 'offen' })
@@ -97,7 +97,7 @@ describe('LstbService', () => {
 
       expect(state.state).toEqual({
         kind: 'widerspruch',
-        conflicts: [{ art: 'lohnsteuer-uebersteigt-brutto', lohnsteuer: 20000, bruttoarbeitslohn: 10000 }],
+        conflicts: [{ kind: 'lohnsteuer-uebersteigt-brutto', lohnsteuer: 20000, bruttoarbeitslohn: 10000 }],
       })
     })
 
@@ -112,8 +112,8 @@ describe('LstbService', () => {
   })
 
   it('ADR-0052 §6: a user write drops the marker of exactly that field — changing it is confirming it', async () => {
-    await markings.save('user-1', 2025, { key: 'lstb.lohnsteuer', provenance: { art: 'assistent', name: 'Claude' }, bestaetigt: false, proposal: null })
-    await markings.save('user-1', 2025, { key: 'lstb.bruttoarbeitslohn', provenance: { art: 'assistent', name: 'Claude' }, bestaetigt: false, proposal: null })
+    await markings.save('user-1', 2025, { key: 'lstb.lohnsteuer', provenance: { kind: 'assistent', name: 'Claude' }, confirmed: false, proposal: null })
+    await markings.save('user-1', 2025, { key: 'lstb.bruttoarbeitslohn', provenance: { kind: 'assistent', name: 'Claude' }, confirmed: false, proposal: null })
 
     await service.setField('user-1', 2025, 'lohnsteuer', { kind: 'erfasst', value: 700 })
 

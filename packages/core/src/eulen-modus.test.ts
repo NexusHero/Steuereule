@@ -8,7 +8,7 @@ import {
 
 describe('eulen-modus', () => {
   it('triggers musterluecke for a Fortbildung, without inventing an amount', () => {
-    const facts: OwlInputFacts = { steuerjahr: 2025, hasTraining: true }
+    const facts: OwlInputFacts = { taxYear: 2025, hasTraining: true }
     const cards = generateOwlCards(facts)
     expect(cards).toHaveLength(1)
     expect(cards[0]!.trigger).toBe('musterluecke')
@@ -20,7 +20,7 @@ describe('eulen-modus', () => {
 
   it('triggers vorjahresvergleich when previous year had donations but current year has none', () => {
     const facts: OwlInputFacts = {
-      steuerjahr: 2025,
+      taxYear: 2025,
       lastYearFacts: { donationsEur: 350 },
     }
     const cards = generateOwlCards(facts)
@@ -31,8 +31,8 @@ describe('eulen-modus', () => {
 
   it('triggers rechtsaenderung for homeoffice >= 50 EUR directly into Cockpit with safe vs risky path', () => {
     const facts: OwlInputFacts = {
-      steuerjahr: 2025,
-      homeofficeTage: 50, // 50 * 6 = 300 € >= 50 €
+      taxYear: 2025,
+      homeOfficeDays: 50, // 50 * 6 = 300 € >= 50 €
     }
     const cards = generateOwlCards(facts)
     expect(cards).toHaveLength(1)
@@ -46,26 +46,26 @@ describe('eulen-modus', () => {
   })
 
   it('caps the homeoffice amount at 210 days', () => {
-    expect(generateOwlCards({ steuerjahr: 2025, homeofficeTage: 300 })[0]!.amountEur).toBe(1260)
+    expect(generateOwlCards({ taxYear: 2025, homeOfficeDays: 300 })[0]!.amountEur).toBe(1260)
   })
 
   it('triggers lebenslage_hinweis when the interview names children that are not recorded yet', () => {
-    const cards = generateOwlCards({ steuerjahr: 2025, childrenPerInterview: true, hasChildrenRecorded: false })
+    const cards = generateOwlCards({ taxYear: 2025, childrenPerInterview: true, hasChildrenRecorded: false })
     expect(cards).toHaveLength(1)
     expect(cards[0]!.trigger).toBe('lebenslage_hinweis')
     expect(cards[0]!.reason).toContain('80 %')
-    expect(generateOwlCards({ steuerjahr: 2025, childrenPerInterview: true, hasChildrenRecorded: true })).toEqual([])
+    expect(generateOwlCards({ taxYear: 2025, childrenPerInterview: true, hasChildrenRecorded: true })).toEqual([])
   })
 
   it('triggers archiv_einspruch for past year in appeal window (ADR-042)', () => {
     const facts: OwlInputFacts = {
-      steuerjahr: 2025,
+      taxYear: 2025,
       archiveYears: [
         {
-          steuerjahr: 2024,
+          taxYear: 2024,
           assessmentDate: '2025-09-01',
           appealPossibleUntil: '01.10.2025',
-          homeofficeTage: 66,
+          homeOfficeDays: 66,
         },
       ],
     }
@@ -78,7 +78,7 @@ describe('eulen-modus', () => {
   })
 
   it('suppresses dismissed cards by fingerprint (ADR-041)', () => {
-    const facts: OwlInputFacts = { steuerjahr: 2025, hasTraining: true }
+    const facts: OwlInputFacts = { taxYear: 2025, hasTraining: true }
     const firstCards = generateOwlCards(facts)
     expect(firstCards).toHaveLength(1)
 

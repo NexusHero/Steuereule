@@ -34,7 +34,7 @@ describe('isRentenart / RENTENARTEN — the five pension kinds (product ADR-036 
   })
 
   it('accepts every declared Rentenart and rejects anything else, total over string', () => {
-    for (const art of PENSION_TYPES) expect(isPensionType(art)).toBe(true)
+    for (const kind of PENSION_TYPES) expect(isPensionType(kind)).toBe(true)
     expect(isPensionType('Rente')).toBe(false) // the Einkunftsart, not the Rentenart
     expect(isPensionType('')).toBe(false)
     expect(isPensionType('gesetzliche Rente')).toBe(false)
@@ -109,7 +109,7 @@ describe('renteAlsKernposten — the taxable share, with Herkunft, offen where o
   it('gesetzliche Rente, Rentenbeginn 2020 → 80 % taxable, citing aa', () => {
     const items = pensionAsCoreLineItem(
       pension({
-        art: 'GesetzlicheRente',
+        kind: 'GesetzlicheRente',
         jahresbetrag: { kind: 'erfasst', value: 20000 },
         rentenbeginnJahr: { kind: 'erfasst', value: 2020 },
       }),
@@ -118,21 +118,21 @@ describe('renteAlsKernposten — the taxable share, with Herkunft, offen where o
       id: 'rente',
       incomeType: 'Rente',
       amount: 16000,
-      source: { art: 'regel', rule: '§ 22 Nr. 1 Satz 3 Buchst. a Doppelbuchst. aa EStG — Besteuerungsanteil bei Rentenbeginn 2020: 80 %' },
+      source: { kind: 'regel', rule: '§ 22 Nr. 1 Satz 3 Buchst. a Doppelbuchst. aa EStG — Besteuerungsanteil bei Rentenbeginn 2020: 80 %' },
     })
   })
 
   it('Betriebsrente, Rentenbeginn 2026 → 84 % taxable (the half-point phase)', () => {
     const items = pensionAsCoreLineItem(
       pension({
-        art: 'Betriebsrente',
+        kind: 'Betriebsrente',
         jahresbetrag: { kind: 'erfasst', value: 12000 },
         rentenbeginnJahr: { kind: 'erfasst', value: 2026 },
       }),
     )
     expect(items?.amount).toBe(10080) // 12000 × 0.84
     expect(items?.source).toEqual({
-      art: 'regel',
+      kind: 'regel',
       rule: '§ 22 Nr. 1 Satz 3 Buchst. a Doppelbuchst. aa EStG — Besteuerungsanteil bei Rentenbeginn 2026: 84 %',
     })
   })
@@ -140,7 +140,7 @@ describe('renteAlsKernposten — the taxable share, with Herkunft, offen where o
   it('private Rentenversicherung, Rentenbeginn mit 65 → 18 % Ertragsanteil, citing bb', () => {
     const items = pensionAsCoreLineItem(
       pension({
-        art: 'PrivateRentenversicherung',
+        kind: 'PrivateRentenversicherung',
         jahresbetrag: { kind: 'erfasst', value: 10000 },
         alterBeiRentenbeginn: { kind: 'erfasst', value: 65 },
       }),
@@ -149,39 +149,39 @@ describe('renteAlsKernposten — the taxable share, with Herkunft, offen where o
       id: 'rente',
       incomeType: 'Rente',
       amount: 1800,
-      source: { art: 'regel', rule: '§ 22 Nr. 1 Satz 3 Buchst. a Doppelbuchst. bb EStG — Ertragsanteil bei Rentenbeginn mit 65 Jahren: 18 %' },
+      source: { kind: 'regel', rule: '§ 22 Nr. 1 Satz 3 Buchst. a Doppelbuchst. bb EStG — Ertragsanteil bei Rentenbeginn mit 65 Jahren: 18 %' },
     })
   })
 
   it('no art chosen, or an open/unklar Jahresbetrag → null (offen, never a zero)', () => {
     expect(pensionAsCoreLineItem(pension())).toBeNull()
-    expect(pensionAsCoreLineItem(pension({ art: 'GesetzlicheRente' }))).toBeNull()
+    expect(pensionAsCoreLineItem(pension({ kind: 'GesetzlicheRente' }))).toBeNull()
     expect(
-      pensionAsCoreLineItem(pension({ art: 'GesetzlicheRente', jahresbetrag: { kind: 'unklar' }, rentenbeginnJahr: { kind: 'erfasst', value: 2020 } })),
+      pensionAsCoreLineItem(pension({ kind: 'GesetzlicheRente', jahresbetrag: { kind: 'unklar' }, rentenbeginnJahr: { kind: 'erfasst', value: 2020 } })),
     ).toBeNull()
   })
 
   it('a missing Rentenbeginn-Jahr (Besteuerungsanteil path) is offen', () => {
-    expect(pensionAsCoreLineItem(pension({ art: 'GesetzlicheRente', jahresbetrag: { kind: 'erfasst', value: 20000 } }))).toBeNull()
+    expect(pensionAsCoreLineItem(pension({ kind: 'GesetzlicheRente', jahresbetrag: { kind: 'erfasst', value: 20000 } }))).toBeNull()
   })
 
   it('a Rentenbeginn-Jahr outside the table is offen, never guessed', () => {
     expect(
       pensionAsCoreLineItem(
-        pension({ art: 'GesetzlicheRente', jahresbetrag: { kind: 'erfasst', value: 20000 }, rentenbeginnJahr: { kind: 'erfasst', value: 2070 } }),
+        pension({ kind: 'GesetzlicheRente', jahresbetrag: { kind: 'erfasst', value: 20000 }, rentenbeginnJahr: { kind: 'erfasst', value: 2070 } }),
       ),
     ).toBeNull()
   })
 
   it('a missing Rentenbeginn-Lebensalter (Ertragsanteil path) is offen', () => {
-    expect(pensionAsCoreLineItem(pension({ art: 'PrivateRentenversicherung', jahresbetrag: { kind: 'erfasst', value: 10000 } }))).toBeNull()
+    expect(pensionAsCoreLineItem(pension({ kind: 'PrivateRentenversicherung', jahresbetrag: { kind: 'erfasst', value: 10000 } }))).toBeNull()
   })
 })
 
 describe('renteStand — the fold into the deterministic core', () => {
   it('a determinable rente is bestimmt with the taxable share as einnahmen', () => {
     const status = pensionStatus(
-      pension({ art: 'GesetzlicheRente', jahresbetrag: { kind: 'erfasst', value: 20000 }, rentenbeginnJahr: { kind: 'erfasst', value: 2020 } }),
+      pension({ kind: 'GesetzlicheRente', jahresbetrag: { kind: 'erfasst', value: 20000 }, rentenbeginnJahr: { kind: 'erfasst', value: 2020 } }),
       [],
     )
     expect(status).toEqual({ kind: 'bestimmt', einnahmen: 16000, vorsorgeaufwand: 0, anrechnung: 0 })
@@ -194,7 +194,7 @@ describe('renteStand — the fold into the deterministic core', () => {
 
   it('a gated Einkunftsart is named, keeping the result offen (ADR-030/034 combinability)', () => {
     const status = pensionStatus(
-      pension({ art: 'GesetzlicheRente', jahresbetrag: { kind: 'erfasst', value: 20000 }, rentenbeginnJahr: { kind: 'erfasst', value: 2020 } }),
+      pension({ kind: 'GesetzlicheRente', jahresbetrag: { kind: 'erfasst', value: 20000 }, rentenbeginnJahr: { kind: 'erfasst', value: 2020 } }),
       ['Gewerbe'],
     )
     expect(status).toEqual({ kind: 'offen', einnahmen: 16000, vorsorgeaufwand: 0, anrechnung: 0, openItems: 0, conflicts: 0, gated: ['Gewerbe'], unconfirmedItems: 0, unconfirmedSum: 0 })
@@ -214,8 +214,8 @@ describe('setzeRentenFeld / setzeRentenart — the one setters', () => {
   })
 
   it('setzeRentenart sets a declared art and rejects an undeclared one', () => {
-    expect(setPensionType(EMPTY_PENSION, 'GesetzlicheRente').art).toBe('GesetzlicheRente')
-    expect(setPensionType(EMPTY_PENSION, null).art).toBeNull()
+    expect(setPensionType(EMPTY_PENSION, 'GesetzlicheRente').kind).toBe('GesetzlicheRente')
+    expect(setPensionType(EMPTY_PENSION, null).kind).toBeNull()
     expect(() => setPensionType(EMPTY_PENSION, 'Rente' as never)).toThrow(RangeError)
   })
 })

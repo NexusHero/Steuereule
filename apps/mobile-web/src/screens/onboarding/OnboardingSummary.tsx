@@ -19,8 +19,8 @@ export function OnboardingSummary({ profile, onSubmit, onEdit, isSubmitting, sub
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeOnboardingStyles(t)
   const rows: ReadonlyArray<readonly [string, string, boolean]> = [
-    [tr('onboarding.summary.rowFirstName'), profile.vorname, false],
-    [tr('onboarding.summary.rowLastName'), profile.nachname, false],
+    [tr('onboarding.summary.rowFirstName'), profile.firstName, false],
+    [tr('onboarding.summary.rowLastName'), profile.lastName, false],
     [tr('onboarding.summary.rowSteuerId'), profile.steuerId || tr('onboarding.summary.steuerIdLater'), true],
     [tr('onboarding.summary.rowSteuerNr'), profile.taxNumber || tr('onboarding.summary.steuerNrLater'), true],
   ]

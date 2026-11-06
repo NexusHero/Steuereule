@@ -2,8 +2,7 @@ import type { CapitalFieldId } from '@steuereule/core'
 
 export interface CapitalRecord {
   userId: string
-  taxYear?: number
-  steuerjahr: number
+  taxYear: number
   kapitalertraege: string | null
   sparerPauschbetrag: string | null
   kapitalertragsteuer: string | null
@@ -20,6 +19,6 @@ export const CAPITAL_REPOSITORY = Symbol('CAPITAL_REPOSITORY')
 /** The persistence seam for the capital gains guided mask. */
 export interface CapitalRepository {
   findForUserAndYear(userId: string, taxYear: number): Promise<CapitalRecord | null>
-  setField(userId: string, steuerjahr: number, field: CapitalFieldId, value: string | null): Promise<CapitalRecord>
-  setOwner(userId: string, steuerjahr: number, inhaber: CapitalOwner): Promise<CapitalRecord>
+  setField(userId: string, taxYear: number, field: CapitalFieldId, value: string | null): Promise<CapitalRecord>
+  setOwner(userId: string, taxYear: number, inhaber: CapitalOwner): Promise<CapitalRecord>
 }

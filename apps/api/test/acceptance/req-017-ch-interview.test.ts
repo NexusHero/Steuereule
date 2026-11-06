@@ -25,7 +25,7 @@ const TRUSTED_ORIGIN_HEADERS = { origin: ALLOWED_ORIGIN }
 
 const TAX_YEAR = 2026
 
-type InterviewAnswerRow = { userId: string; steuerjahr: number; questionId: string; value: string }
+type InterviewAnswerRow = { userId: string; taxYear: number; questionId: string; value: string }
 
 describe('REQ-020 — the Grenzgänger-CH interview entry, against the real server', () => {
   let app: NestFastifyApplication

@@ -33,7 +33,7 @@ describe('BescheidService', () => {
 
   /** Seed a computed side of 50.000 € Einnahmen (Angestellt) so the Abgleich has a counterpart. */
   function seedEmployeeIncome(gross: number) {
-    lstb.seed({ userId: USER_ID, steuerjahr: YEAR, bruttoarbeitslohn: String(gross), lohnsteuer: '9000', sozialversicherung: '10000' })
+    lstb.seed({ userId: USER_ID, taxYear: YEAR, bruttoarbeitslohn: String(gross), lohnsteuer: '9000', sozialversicherung: '10000' })
     interview.seed(USER_ID, YEAR, { job: 'Angestellt' })
   }
 
@@ -41,8 +41,8 @@ describe('BescheidService', () => {
     it('a fresh year reads as eingegangen, all fields offen, no frist, empty abgleich', async () => {
       const state = await service.getState(USER_ID, YEAR)
       expect(state.status).toBe('eingegangen')
-      expect(state.bescheiddatum).toBeNull()
-      expect(state.einspruchGrund).toBeNull()
+      expect(state.assessmentDate).toBeNull()
+      expect(state.appealReason).toBeNull()
       expect(state.fields.map((f) => f.kind)).toEqual(['offen', 'offen', 'offen', 'offen', 'offen'])
       expect(state.reconciliation.deviations).toEqual([])
       expect(state.frist.deadlineEnd).toBeNull()
@@ -81,7 +81,7 @@ describe('BescheidService', () => {
   describe('setDatum — the § 355 AO Frist', () => {
     it('sets the Bescheiddatum and derives the frist end (Bescheiddatum + 1 Monat)', async () => {
       const state = await service.setDate(USER_ID, YEAR, { date: '2026-03-15' })
-      expect(state.bescheiddatum).toBe('2026-03-15')
+      expect(state.assessmentDate).toBe('2026-03-15')
       expect(state.frist.deadlineEnd).toBe('2026-04-15')
       expect(state.frist.remainingDays).toBeTypeOf('number')
     })
@@ -109,7 +109,7 @@ describe('BescheidService', () => {
       await service.setStatus(USER_ID, YEAR, { status: 'geprüft' })
       const state = await service.setAppeal(USER_ID, YEAR, { reason: 'betrag-falsch' })
       expect(state.status).toBe('einspruch-eingelegt')
-      expect(state.einspruchGrund).toBe('betrag-falsch')
+      expect(state.appealReason).toBe('betrag-falsch')
       expect(state.nextStates).toEqual([])
     })
 

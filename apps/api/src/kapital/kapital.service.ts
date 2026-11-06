@@ -90,7 +90,7 @@ function itemToDto(items: Item): CapitalItemDto {
   return {
     id: items.id,
     amount: items.amount,
-    provenance: source.art === 'regel' ? source.rule : 'eingabe',
+    provenance: source.kind === 'regel' ? source.rule : 'eingabe',
   }
 }
 
@@ -151,14 +151,14 @@ export class CapitalService {
     @Inject(PROVENANCE_REPOSITORY) private readonly markings: ProvenanceRepository,
   ) {}
 
-  private async answers(userId: string, steuerjahr: number): Promise<Answers> {
-    const rows = await this.interviewRepository.findAllForUserAndYear(userId, steuerjahr)
+  private async answers(userId: string, taxYear: number): Promise<Answers> {
+    const rows = await this.interviewRepository.findAllForUserAndYear(userId, taxYear)
     return answersFrom(rows)
   }
 
-  private async toResponse(userId: string, steuerjahr: number, record: CapitalRecord | null): Promise<CapitalResponseDto> {
+  private async toResponse(userId: string, taxYear: number, record: CapitalRecord | null): Promise<CapitalResponseDto> {
     const data = dataFromRecord(record)
-    const answers = await this.answers(userId, steuerjahr)
+    const answers = await this.answers(userId, taxYear)
     const gated = gatedIncomeTypes(answers)
     const depot = classifyCapitalDepot(answers['kap-depot'])
 
@@ -180,41 +180,41 @@ export class CapitalService {
     }
   }
 
-  async getState(userId: string, steuerjahr: number): Promise<CapitalResponseDto> {
-    const record = await this.repository.findForUserAndYear(userId, steuerjahr)
+  async getState(userId: string, taxYear: number): Promise<CapitalResponseDto> {
+    const record = await this.repository.findForUserAndYear(userId, taxYear)
     if (record !== null) {
       await this.auditService.append({ userId, action: 'READ', resource: 'kapital' })
     }
-    return this.toResponse(userId, steuerjahr, record)
+    return this.toResponse(userId, taxYear, record)
   }
 
-  async setField(userId: string, steuerjahr: number, field: CapitalFieldId, dto: PutCapitalFieldDto): Promise<CapitalResponseDto> {
-    const record = await this.repository.findForUserAndYear(userId, steuerjahr)
+  async setField(userId: string, taxYear: number, field: CapitalFieldId, dto: PutCapitalFieldDto): Promise<CapitalResponseDto> {
+    const record = await this.repository.findForUserAndYear(userId, taxYear)
     const data = dataFromRecord(record)
     const state = stateFromDto(dto)
     setCapitalField(data, field, state)
-    const next = await this.repository.setField(userId, steuerjahr, field, serializeCapitalField(state))
-    await this.markings.remove(userId, steuerjahr, [provenanceKey('kapital', field)])
-    return this.toResponse(userId, steuerjahr, next)
+    const next = await this.repository.setField(userId, taxYear, field, serializeCapitalField(state))
+    await this.markings.remove(userId, taxYear, [provenanceKey('kapital', field)])
+    return this.toResponse(userId, taxYear, next)
   }
 
-  async setOwner(userId: string, steuerjahr: number, inhaber: 'A' | 'B' | 'gemeinsam'): Promise<CapitalResponseDto> {
-    const next = await this.repository.setOwner(userId, steuerjahr, inhaber)
-    return this.toResponse(userId, steuerjahr, next)
+  async setOwner(userId: string, taxYear: number, inhaber: 'A' | 'B' | 'gemeinsam'): Promise<CapitalResponseDto> {
+    const next = await this.repository.setOwner(userId, taxYear, inhaber)
+    return this.toResponse(userId, taxYear, next)
   }
 
   async getMostFavourableCheck(
     userId: string,
-    steuerjahr: number,
+    taxYear: number,
     churchTaxFactor: ChurchTaxFactor,
   ): Promise<MostFavourableCheckDto | null> {
-    const record = await this.taxYearRepository.findByUserAndYear(userId, steuerjahr)
+    const record = await this.taxYearRepository.findByUserAndYear(userId, taxYear)
     if (!record) return null
 
     const [capitalRecord, lstbRecord, interviewRows] = await Promise.all([
-      this.repository.findForUserAndYear(userId, steuerjahr),
-      this.lstbRepository.findForUserAndYear(userId, steuerjahr),
-      this.interviewRepository.findAllForUserAndYear(userId, steuerjahr),
+      this.repository.findForUserAndYear(userId, taxYear),
+      this.lstbRepository.findForUserAndYear(userId, taxYear),
+      this.interviewRepository.findAllForUserAndYear(userId, taxYear),
     ])
 
     const answers = answersFrom(interviewRows)
@@ -240,7 +240,7 @@ export class CapitalService {
     const result = mostFavourableCheck({
       kapitalertraege: data.kapitalertraege.value,
       remainingZvE,
-      year: steuerjahr,
+      year: taxYear,
       assessmentType,
       progressionClause: progressionClauseFrom(answers),
       churchTaxFactor,

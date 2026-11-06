@@ -25,20 +25,20 @@ export function taxDataTables(tx: TransactionClient): UserKeyedTable[] {
   return [
     tx.taxYear,
     tx.interviewAnswer,
-    tx.beleg,
+    tx.receipt,
     tx.lstb,
-    tx.chLohnausweis,
-    tx.rente,
-    tx.kapital,
-    tx.arbeitsweg,
-    tx.vermietungsobjekt,
-    tx.bescheid,
-    tx.kennzeichnung,
-    tx.jahresuebernahme,
-    tx.stammdaten,
-    tx.kind,
-    tx.eulenEinstellung,
-    tx.eulenKartenVerwurf,
+    tx.chSalaryCertificate,
+    tx.pension,
+    tx.capital,
+    tx.commute,
+    tx.rentalProperty,
+    tx.assessment,
+    tx.marking,
+    tx.yearTakeover,
+    tx.masterData,
+    tx.child,
+    tx.owlSetting,
+    tx.owlCardDismissal,
   ]
 }
 
@@ -75,7 +75,7 @@ export async function deleteAccountTransaction(
       for (const table of taxDataTables(tx)) {
         await table.deleteMany({ where: { userId } })
       }
-      await tx.steuerjahrKopplung.deleteMany({
+      await tx.taxYearLink.deleteMany({
         where: { OR: [{ personAUserId: userId }, { personBUserId: userId }] },
       })
     }

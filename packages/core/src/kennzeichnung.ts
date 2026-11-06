@@ -1,18 +1,18 @@
 export type Provenance =
-  | { readonly art: 'nutzer' }
-  | { readonly art: 'uebernahme'; readonly vorjahr: number }
-  | { readonly art: 'assistent'; readonly name: string; readonly receiptId?: string }
-  | { readonly art: 'beleg'; readonly receiptId: string }
+  | { readonly kind: 'nutzer' }
+  | { readonly kind: 'uebernahme'; readonly lastYear: number }
+  | { readonly kind: 'assistent'; readonly name: string; readonly receiptId?: string }
+  | { readonly kind: 'beleg'; readonly receiptId: string }
 
 export interface Proposal {
   readonly value: string | null
   readonly provenance: Provenance
 }
 
-export interface Kennzeichnung {
+export interface Marking {
   readonly key: string
   readonly provenance: Provenance
-  readonly bestaetigt: boolean
+  readonly confirmed: boolean
   readonly value: string | null
   readonly proposal: Proposal | null
 }
@@ -67,54 +67,54 @@ export function isYearIndependent(key: string): boolean {
 }
 
 export type WriteDecision =
-  | { readonly art: 'schreiben'; readonly marking: Kennzeichnung | null }
-  | { readonly art: 'vorschlag'; readonly marking: Kennzeichnung }
-  | { readonly art: 'unveraendert' }
+  | { readonly kind: 'schreiben'; readonly marking: Marking | null }
+  | { readonly kind: 'vorschlag'; readonly marking: Marking }
+  | { readonly kind: 'unveraendert' }
 
 export interface WriteAttempt {
   readonly key: string
-  readonly existing: Kennzeichnung | null
+  readonly existing: Marking | null
   readonly currentValue: string | null
   readonly newValue: string | null
   readonly provenance: Provenance
 }
 
 export function decideWriting({ key, existing, currentValue, newValue, provenance }: WriteAttempt): WriteDecision {
-  if (provenance.art === 'nutzer') return { art: 'schreiben', marking: null }
-  if (newValue === currentValue) return { art: 'unveraendert' }
-  const geschuetzt = existing === null ? currentValue !== null : existing.bestaetigt
+  if (provenance.kind === 'nutzer') return { kind: 'schreiben', marking: null }
+  if (newValue === currentValue) return { kind: 'unveraendert' }
+  const geschuetzt = existing === null ? currentValue !== null : existing.confirmed
   if (geschuetzt) {
-    const basis: Kennzeichnung = existing ?? { key, provenance: { art: 'nutzer' }, bestaetigt: true, value: currentValue, proposal: null }
-    return { art: 'vorschlag', marking: { ...basis, proposal: { value: newValue, provenance } } }
+    const basis: Marking = existing ?? { key, provenance: { kind: 'nutzer' }, confirmed: true, value: currentValue, proposal: null }
+    return { kind: 'vorschlag', marking: { ...basis, proposal: { value: newValue, provenance } } }
   }
-  return { art: 'schreiben', marking: { key, provenance, bestaetigt: false, proposal: null, value: newValue } }
+  return { kind: 'schreiben', marking: { key, provenance, confirmed: false, proposal: null, value: newValue } }
 }
 
-export function missingConfirmations(markings: readonly Kennzeichnung[]): string[] {
-  const open = new Set(markings.filter((k) => !k.bestaetigt).map((k) => annexOf(k.key)))
+export function missingConfirmations(markings: readonly Marking[]): string[] {
+  const open = new Set(markings.filter((k) => !k.confirmed).map((k) => annexOf(k.key)))
   return ANNEXES.filter((a) => open.has(a)).map((a) => `unbestaetigt.${a}`)
 }
 
-export function confirmAnnex(markings: readonly Kennzeichnung[], anlage: Annex): Kennzeichnung[] {
-  return markings.map((k) => (annexOf(k.key) === anlage && !k.bestaetigt ? { ...k, bestaetigt: true } : k))
+export function confirmAnnex(markings: readonly Marking[], annex: Annex): Marking[] {
+  return markings.map((k) => (annexOf(k.key) === annex && !k.confirmed ? { ...k, confirmed: true } : k))
 }
 
-export function acceptProposal(k: Kennzeichnung): Kennzeichnung {
+export function acceptProposal(k: Marking): Marking {
   if (k.proposal === null) throw new RangeError(`nimmVorschlagAn: "${k.key}" has no proposal`)
-  return { key: k.key, provenance: k.proposal.provenance, bestaetigt: true, value: k.proposal.value, proposal: null }
+  return { key: k.key, provenance: k.proposal.provenance, confirmed: true, value: k.proposal.value, proposal: null }
 }
 
-export function dismissProposal(k: Kennzeichnung): Kennzeichnung | null {
-  if (k.provenance.art === 'nutzer') return null
+export function dismissProposal(k: Marking): Marking | null {
+  if (k.provenance.kind === 'nutzer') return null
   return { ...k, proposal: null }
 }
 
 export function provenanceText(provenance: Provenance): string {
-  switch (provenance.art) {
+  switch (provenance.kind) {
     case 'nutzer':
       return 'Selbst eingetragen'
     case 'uebernahme':
-      return `Übernahme aus ${provenance.vorjahr}`
+      return `Übernahme aus ${provenance.lastYear}`
     case 'assistent':
       return provenance.receiptId === undefined ? `Assistent: ${provenance.name}` : `Assistent: ${provenance.name}, aus Beleg`
     case 'beleg':

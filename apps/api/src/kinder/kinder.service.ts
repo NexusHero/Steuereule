@@ -10,11 +10,11 @@ import type { CreateChildDto, KinderResponseDto, ChildResponseDto, UpdateChildDt
 function toChildData(r: ChildRecord, effectiveSwissEur: number | null): ChildData {
   return {
     id: r.id,
-    firstName: r.vorname,
-    lastName: r.nachname,
+    firstName: r.firstName,
+    lastName: r.lastName,
     birthDate: r.geburtsdatum,
-    taxId: r.idnr,
-    childBenefit: r.kindergeldAnspruchEur ? Number(r.kindergeldAnspruchEur) : null,
+    taxId: r.taxId,
+    childBenefit: r.childBenefitClaimEur ? Number(r.childBenefitClaimEur) : null,
     swissFamilyAllowanceEur: effectiveSwissEur,
   }
 }
@@ -23,27 +23,27 @@ function toDto(r: ChildRecord, effectiveSwissEur: number | null, year: number): 
   const diff = effectiveSwissEur != null ? calculateDifferentialChildBenefit(r.geburtsdatum, year, effectiveSwissEur) : null
   return {
     id: r.id,
-    lfdNr: r.lfdNr,
-    vorname: r.vorname,
-    nachname: r.nachname,
+    sequenceNumber: r.sequenceNumber,
+    firstName: r.firstName,
+    lastName: r.lastName,
     geburtsdatum: r.geburtsdatum,
-    idnr: r.idnr,
-    kindergeldAnspruchEur: r.kindergeldAnspruchEur,
-    kindschaftsverhaeltnis: r.kindschaftsverhaeltnis,
-    kindschaftsverhaeltnisB: r.kindschaftsverhaeltnisB,
-    familienkasse: r.familienkasse,
-    wohnsitzInlandGanzjaehrig: r.wohnsitzInlandGanzjaehrig,
-    andererElternteil: r.andererElternteil,
-    andererElternteilName: r.andererElternteilName,
-    andererElternteilGeburtsdatum: r.andererElternteilGeburtsdatum,
-    andererElternteilAdresse: r.andererElternteilAdresse,
-    andererElternteilArt: r.andererElternteilArt,
-    andererElternteilVerstorbenAm: r.andererElternteilVerstorbenAm,
-    gemeldetBeiMirGanzjaehrig: r.gemeldetBeiMirGanzjaehrig,
-    kindergeldAnMichGanzjaehrig: r.kindergeldAnMichGanzjaehrig,
-    kvBasisEur: r.kvBasisEur,
-    pvEur: r.pvEur,
-    schweizerKinderzulageEur: effectiveSwissEur != null ? String(effectiveSwissEur) : null,
+    taxId: r.taxId,
+    childBenefitClaimEur: r.childBenefitClaimEur,
+    kinship: r.kinship,
+    kinshipB: r.kinshipB,
+    familyBenefitsOffice: r.familyBenefitsOffice,
+    domesticResidenceAllYear: r.domesticResidenceAllYear,
+    otherParent: r.otherParent,
+    otherParentName: r.otherParentName,
+    otherParentBirthDate: r.otherParentBirthDate,
+    otherParentAddress: r.otherParentAddress,
+    otherParentKind: r.otherParentKind,
+    otherParentDiedOn: r.otherParentDiedOn,
+    registeredWithMeAllYear: r.registeredWithMeAllYear,
+    childBenefitToMeAllYear: r.childBenefitToMeAllYear,
+    healthBasicEur: r.healthBasicEur,
+    careEur: r.careEur,
+    swissFamilyAllowanceEur: effectiveSwissEur != null ? String(effectiveSwissEur) : null,
     differentialChildBenefitEur: diff != null ? String(diff.differentialChildBenefit) : null,
     totalClaimEur: diff != null ? String(diff.totalClaim) : null,
   }
@@ -63,7 +63,7 @@ export class ChildrenService {
     let chRecord = await this.chSalaryCertificate.findForUserAndYear(userId, year)
     if ((!chRecord?.nGre.familienzulagenChf || Number(chRecord.nGre.familienzulagenChf) <= 0) && this.link) {
       const k = await this.link.findByUserAndYear(userId, year)
-      if (k?.veranlagungsart === 'zusammen' && k.personBUserId) {
+      if (k?.filingType === 'zusammen' && k.personBUserId) {
         const spouseCh = await this.chSalaryCertificate.findForUserAndYear(k.personBUserId, year)
         if (spouseCh?.nGre.familienzulagenChf && Number(spouseCh.nGre.familienzulagenChf) > 0) {
           chRecord = spouseCh
@@ -72,7 +72,7 @@ export class ChildrenService {
     }
     const allowancesChf = chRecord?.nGre.familienzulagenChf
     if (!allowancesChf || Number(allowancesChf) <= 0) return null
-    const rate = chRecord?.wechselkursKurs ?? 1.0
+    const rate = chRecord?.exchangeRateValue ?? 1.0
     const perChildChf = Math.round(Number(allowancesChf) / count)
     return Math.round(perChildChf * rate)
   }
@@ -80,13 +80,13 @@ export class ChildrenService {
   private async toResponse(userId: string, records: ChildRecord[], year: number): Promise<KinderResponseDto> {
     const perChildEur = await this.getPerChildSwissAllowanceEur(userId, year, records.length)
     const data = records.map((r) => {
-      const effectiveSwissEur = r.schweizerKinderzulageEur ? Number(r.schweizerKinderzulageEur) : perChildEur
+      const effectiveSwissEur = r.swissFamilyAllowanceEur ? Number(r.swissFamilyAllowanceEur) : perChildEur
       return toChildData(r, effectiveSwissEur)
     })
     const status = calculateChildrenStatus(data, year)
     return {
       kinder: records.map((r) => {
-        const effectiveSwissEur = r.schweizerKinderzulageEur ? Number(r.schweizerKinderzulageEur) : perChildEur
+        const effectiveSwissEur = r.swissFamilyAllowanceEur ? Number(r.swissFamilyAllowanceEur) : perChildEur
         return toDto(r, effectiveSwissEur, year)
       }),
       count: status.count,
@@ -97,41 +97,41 @@ export class ChildrenService {
     }
   }
 
-  async list(userId: string, steuerjahr: number): Promise<KinderResponseDto> {
-    const records = await this.repository.listForUserAndYear(userId, steuerjahr)
+  async list(userId: string, taxYear: number): Promise<KinderResponseDto> {
+    const records = await this.repository.listForUserAndYear(userId, taxYear)
     if (records.length > 0) {
       await this.auditService.append({ userId, action: 'READ', resource: 'kind' })
     }
-    return this.toResponse(userId, records, steuerjahr)
+    return this.toResponse(userId, records, taxYear)
   }
 
-  async create(userId: string, steuerjahr: number, dto: CreateChildDto): Promise<KinderResponseDto> {
-    if (!isValidChildBirthDate(dto.geburtsdatum, steuerjahr)) {
+  async create(userId: string, taxYear: number, dto: CreateChildDto): Promise<KinderResponseDto> {
+    if (!isValidChildBirthDate(dto.geburtsdatum, taxYear)) {
       throw new InvalidInputError('GEBURTSDATUM_INVALID', 'The birth date is not valid for this tax year.')
     }
-    await this.repository.create(userId, steuerjahr, dto)
-    const records = await this.repository.listForUserAndYear(userId, steuerjahr)
-    return this.toResponse(userId, records, steuerjahr)
+    await this.repository.create(userId, taxYear, dto)
+    const records = await this.repository.listForUserAndYear(userId, taxYear)
+    return this.toResponse(userId, records, taxYear)
   }
 
-  async update(userId: string, steuerjahr: number, id: string, dto: UpdateChildDto): Promise<KinderResponseDto> {
-    if (dto.geburtsdatum && !isValidChildBirthDate(dto.geburtsdatum, steuerjahr)) {
+  async update(userId: string, taxYear: number, id: string, dto: UpdateChildDto): Promise<KinderResponseDto> {
+    if (dto.geburtsdatum && !isValidChildBirthDate(dto.geburtsdatum, taxYear)) {
       throw new InvalidInputError('GEBURTSDATUM_INVALID', 'The birth date is not valid for this tax year.')
     }
-    const updated = await this.repository.update(userId, steuerjahr, id, dto)
+    const updated = await this.repository.update(userId, taxYear, id, dto)
     if (!updated) {
       throw new NotFoundError('KIND_NOT_FOUND', `Kind "${id}" does not exist for this account.`)
     }
-    const records = await this.repository.listForUserAndYear(userId, steuerjahr)
-    return this.toResponse(userId, records, steuerjahr)
+    const records = await this.repository.listForUserAndYear(userId, taxYear)
+    return this.toResponse(userId, records, taxYear)
   }
 
-  async delete(userId: string, steuerjahr: number, id: string): Promise<KinderResponseDto> {
-    const deleted = await this.repository.delete(userId, steuerjahr, id)
+  async delete(userId: string, taxYear: number, id: string): Promise<KinderResponseDto> {
+    const deleted = await this.repository.delete(userId, taxYear, id)
     if (!deleted) {
       throw new NotFoundError('KIND_NOT_FOUND', `Kind "${id}" does not exist for this account.`)
     }
-    const records = await this.repository.listForUserAndYear(userId, steuerjahr)
-    return this.toResponse(userId, records, steuerjahr)
+    const records = await this.repository.listForUserAndYear(userId, taxYear)
+    return this.toResponse(userId, records, taxYear)
   }
 }

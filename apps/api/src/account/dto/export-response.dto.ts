@@ -53,7 +53,7 @@ export class ExportTaxDataEntryDto {
   area!: string
 
   @ApiProperty({ type: Number, nullable: true, example: 2025 })
-  steuerjahr!: number | null
+  taxYear!: number | null
 
   @ApiProperty({
     type: 'object',

@@ -2,7 +2,7 @@ export const PAYMENT_PROVIDER = Symbol('ZAHLUNGSANBIETER')
 
 export interface CheckoutRequest {
   userId: string
-  steuerjahr: number
+  taxYear: number
   successUrl: string
   cancelUrl: string
 }
@@ -13,8 +13,8 @@ export interface CheckoutSession {
 }
 
 export type PaymentEvent =
-  | { art: 'bezahlt'; sessionId: string; betragCent: number | null }
-  | { art: 'ignoriert' }
+  | { kind: 'bezahlt'; sessionId: string; amountCents: number | null }
+  | { kind: 'ignoriert' }
 
 export interface PaymentProvider {
   createCheckout(request: CheckoutRequest): Promise<CheckoutSession>

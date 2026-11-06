@@ -337,8 +337,8 @@ describe('CockpitScreen', () => {
       http.get('*/v1/steuerjahre/2026/bestaetigung', () =>
         HttpResponse.json({
           annexes: [
-            { anlage: 'anlageN', unconfirmed: 3, values: [] },
-            { anlage: 'anlageKap', unconfirmed: 1, values: [] },
+            { annex: 'anlageN', unconfirmed: 3, values: [] },
+            { annex: 'anlageKap', unconfirmed: 1, values: [] },
           ],
         }),
       ),
@@ -353,7 +353,7 @@ describe('CockpitScreen', () => {
   it('REQ-032: „Prüfen & bestätigen“ öffnet den Bestätigungs-Screen für das gezeigte Jahr', async () => {
     mockCockpit(LOADED_SUMMARY)
     server.use(
-      http.get('*/v1/steuerjahre/2026/bestaetigung', () => HttpResponse.json({ annexes: [{ anlage: 'anlageR', unconfirmed: 1, values: [] }] })),
+      http.get('*/v1/steuerjahre/2026/bestaetigung', () => HttpResponse.json({ annexes: [{ annex: 'anlageR', unconfirmed: 1, values: [] }] })),
     )
     const onOpenConfirmation = vi.fn()
     renderCockpit({ onOpenConfirmation })
@@ -365,7 +365,7 @@ describe('CockpitScreen', () => {
   it('REQ-032: nur offene Vorschläge (alles bestätigt) zeigen keinen Hinweis', async () => {
     mockCockpit(LOADED_SUMMARY)
     server.use(
-      http.get('*/v1/steuerjahre/2026/bestaetigung', () => HttpResponse.json({ annexes: [{ anlage: 'anlageN', unconfirmed: 0, values: [] }] })),
+      http.get('*/v1/steuerjahre/2026/bestaetigung', () => HttpResponse.json({ annexes: [{ annex: 'anlageN', unconfirmed: 0, values: [] }] })),
     )
     renderCockpit()
 

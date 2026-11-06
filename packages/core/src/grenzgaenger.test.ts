@@ -46,7 +46,7 @@ describe('LOHNAUSWEIS_FELDER — ADR-036 the guided mask (Ziffern 1–15)', () =
   it('lists 15 Ziffern in paper order', () => {
     expect(SALARY_CERTIFICATE_FIELDS).toHaveLength(15)
     expect(SALARY_CERTIFICATE_FIELDS[0]).toMatchObject({ digit: '1', id: 'lohn' })
-    expect(SALARY_CERTIFICATE_FIELDS[14]).toMatchObject({ digit: '15', id: 'bemerkungen', art: 'freitext' })
+    expect(SALARY_CERTIFICATE_FIELDS[14]).toMatchObject({ digit: '15', id: 'bemerkungen', kind: 'freitext' })
   })
 
   it('marks exactly the ADR-029-relevant fields as postenRelevant', () => {
@@ -82,7 +82,7 @@ describe('chPostenAusLohnausweis — ADR-029 "Lohnausweis Ziffer n × Kurs"', ()
     expect(items).toEqual([
       {
         id: 'ch-lohnausweis-bruttolohn-total',
-        art: 'Bruttolohn',
+        kind: 'Bruttolohn',
         digit: '8',
         amountChf: 84000,
         exchangeRate: RATE,
@@ -90,7 +90,7 @@ describe('chPostenAusLohnausweis — ADR-029 "Lohnausweis Ziffer n × Kurs"', ()
       },
       {
         id: 'ch-lohnausweis-berufliche-vorsorge',
-        art: 'Pensionskasse',
+        kind: 'Pensionskasse',
         digit: '10',
         amountChf: 5000,
         exchangeRate: RATE,
@@ -98,7 +98,7 @@ describe('chPostenAusLohnausweis — ADR-029 "Lohnausweis Ziffer n × Kurs"', ()
       },
       {
         id: 'ch-lohnausweis-quellensteuer',
-        art: 'Quellensteuer',
+        kind: 'Quellensteuer',
         digit: '12',
         amountChf: 3780,
         exchangeRate: RATE,
@@ -109,17 +109,17 @@ describe('chPostenAusLohnausweis — ADR-029 "Lohnausweis Ziffer n × Kurs"', ()
 
   it('a required-but-empty field is never fabricated into a zero Posten', () => {
     const items = chItemsFromSalaryCertificate({ 'bruttolohn-total': 84000 }, RATE)
-    expect(items.map((p) => p.art)).toEqual(['Bruttolohn'])
+    expect(items.map((p) => p.kind)).toEqual(['Bruttolohn'])
   })
 })
 
 describe('saeule3aAbzug / krankenkasseAbzug — ADR-029 points 4–5', () => {
   it('Säule 3a is captured and converted, no limit invented here', () => {
-    expect(pillar3aDeduction(7000, RATE)).toMatchObject({ id: 'ch-saeule-3a', art: 'Saeule3a', amountChf: 7000, amountEur: 6588.4 })
+    expect(pillar3aDeduction(7000, RATE)).toMatchObject({ id: 'ch-saeule-3a', kind: 'Saeule3a', amountChf: 7000, amountEur: 6588.4 })
   })
 
   it('Krankenkasse is captured and converted', () => {
-    expect(healthInsurerDeduction(3000, RATE)).toMatchObject({ id: 'ch-krankenkasse', art: 'Krankenkasse', amountChf: 3000, amountEur: 2823.6 })
+    expect(healthInsurerDeduction(3000, RATE)).toMatchObject({ id: 'ch-krankenkasse', kind: 'Krankenkasse', amountChf: 3000, amountEur: 2823.6 })
   })
 })
 
@@ -149,7 +149,7 @@ describe('bruttolohnAlsKernposten — the ONE line that maps onto the core incom
       incomeType: 'Grenzgänger',
       role: 'einnahme',
       amount: 79061, // 79060.8 rounded to whole euros
-      source: { art: 'beleg', receiptId: 'lohnausweis' },
+      source: { kind: 'beleg', receiptId: 'lohnausweis' },
     })
   })
 
@@ -167,14 +167,14 @@ describe('chPostenAlsKernposten — ADR-029/0015-Lehre, Vorsorge + Anrechnung fo
       incomeType: 'Grenzgänger',
       role: 'vorsorgeaufwand',
       amount: 4706,
-      source: { art: 'beleg', receiptId: 'lohnausweis' },
+      source: { kind: 'beleg', receiptId: 'lohnausweis' },
     })
     expect(chItemsAsCoreItems(qst!)).toMatchObject({
       id: 'ch-lohnausweis-quellensteuer',
       incomeType: 'Grenzgänger',
       role: 'anrechnung',
       amount: 3558, // 3557.74 rounded to whole euros
-      source: { art: 'beleg', receiptId: 'lohnausweis' },
+      source: { kind: 'beleg', receiptId: 'lohnausweis' },
     })
   })
 
@@ -182,19 +182,19 @@ describe('chPostenAlsKernposten — ADR-029/0015-Lehre, Vorsorge + Anrechnung fo
     expect(chItemsAsCoreItems(pillar3aDeduction(7000, RATE))).toMatchObject({
       role: 'vorsorgeaufwand',
       amount: 6588,
-      source: { art: 'eingabe' },
+      source: { kind: 'eingabe' },
     })
     expect(chItemsAsCoreItems(healthInsurerDeduction(3000, RATE))).toMatchObject({
       role: 'vorsorgeaufwand',
       amount: 2824, // 2823.6 rounded
-      source: { art: 'eingabe' },
+      source: { kind: 'eingabe' },
     })
   })
 
   it('AHV (1. Säule) has no role yet — its DBA treatment is open', () => {
     const ahv: Parameters<typeof chItemsAsCoreItems>[0] = {
       id: 'ch-ahv',
-      art: 'AHV',
+      kind: 'AHV',
       amountChf: 4000,
       exchangeRate: RATE,
       amountEur: 3764.8,

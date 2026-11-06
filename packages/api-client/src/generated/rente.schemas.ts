@@ -9,10 +9,10 @@
  * The chosen Rentenart (product ADR-036 §3), null when not yet chosen.
  * @nullable
  */
-export type PensionResponseDtoArt = typeof PensionResponseDtoArt[keyof typeof PensionResponseDtoArt] | null;
+export type PensionResponseDtoKind = typeof PensionResponseDtoKind[keyof typeof PensionResponseDtoKind] | null;
 
 
-export const PensionResponseDtoArt = {
+export const PensionResponseDtoKind = {
   GesetzlicheRente: 'GesetzlicheRente',
   Betriebsrente: 'Betriebsrente',
   PrivateRentenversicherung: 'PrivateRentenversicherung',
@@ -81,7 +81,7 @@ export interface PensionResponseDto {
      * The chosen Rentenart (product ADR-036 §3), null when not yet chosen.
      * @nullable
      */
-  art: PensionResponseDtoArt;
+  kind: PensionResponseDtoKind;
   jahresbetrag: PensionFieldDto;
   rentenbeginnJahr: PensionFieldDto;
   alterBeiRentenbeginn: PensionFieldDto;
@@ -94,10 +94,10 @@ export interface PensionResponseDto {
  * One of the five Rentenarten (product ADR-036 §3), or null to clear.
  * @nullable
  */
-export type PutPensionKindDtoArt = typeof PutPensionKindDtoArt[keyof typeof PutPensionKindDtoArt] | null;
+export type PutPensionKindDtoKind = typeof PutPensionKindDtoKind[keyof typeof PutPensionKindDtoKind] | null;
 
 
-export const PutPensionKindDtoArt = {
+export const PutPensionKindDtoKind = {
   GesetzlicheRente: 'GesetzlicheRente',
   Betriebsrente: 'Betriebsrente',
   PrivateRentenversicherung: 'PrivateRentenversicherung',
@@ -110,7 +110,7 @@ export interface PutPensionKindDto {
      * One of the five Rentenarten (product ADR-036 §3), or null to clear.
      * @nullable
      */
-  art: PutPensionKindDtoArt;
+  kind: PutPensionKindDtoKind;
 }
 
 /**

@@ -65,13 +65,13 @@ export class RentalPropertyDto {
   plz?: string | null
 
   @ApiProperty({ type: String, nullable: true })
-  ort?: string | null
+  city?: string | null
 
   @ApiProperty({ type: String, nullable: true })
-  wohnflaeche?: string | null
+  livingArea?: string | null
 
   @ApiProperty({ type: Boolean, nullable: true })
-  afaWieVorjahr?: boolean | null
+  depreciationAsLastYear?: boolean | null
 
   @ApiProperty({ type: String, nullable: true })
   umlagen?: string | null

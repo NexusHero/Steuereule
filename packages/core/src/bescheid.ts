@@ -127,9 +127,9 @@ function daysInMonth(year: number, month: number): number {
   return new Date(Date.UTC(year, month, 0)).getUTCDate()
 }
 
-export function appealDeadlineEnd(bescheiddatum: string): string {
-  const m = ISO_DATE_RE.exec(bescheiddatum)
-  if (m === null) throw new RangeError(`einspruchsfristEnde: "${bescheiddatum}" is not an ISO yyyy-mm-dd date`)
+export function appealDeadlineEnd(assessmentDate: string): string {
+  const m = ISO_DATE_RE.exec(assessmentDate)
+  if (m === null) throw new RangeError(`einspruchsfristEnde: "${assessmentDate}" is not an ISO yyyy-mm-dd date`)
   const year = Number(m[1]!)
   const month = Number(m[2]!)
   const tag = Number(m[3]!)
@@ -147,8 +147,8 @@ function daysSince(iso: string): number {
   return Date.UTC(Number(m[1]!), Number(m[2]!) - 1, Number(m[3]!)) / 86_400_000
 }
 
-export function remainingAppealDays(bescheiddatum: string, today: string): number {
-  const end = daysSince(appealDeadlineEnd(bescheiddatum))
+export function remainingAppealDays(assessmentDate: string, today: string): number {
+  const end = daysSince(appealDeadlineEnd(assessmentDate))
   const start = daysSince(today)
   return end - start
 }

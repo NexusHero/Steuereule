@@ -91,7 +91,7 @@ describe('Stammdaten (ADR-0050), against the real server', () => {
     const { cookie, userId } = await signUp('stammdaten-art9@example.com')
     const response = await put(cookie, { ...COMPLETE, religionConsent: undefined })
     expect(response.status).toBe(400)
-    expect(await prisma.stammdaten.count({ where: { userId } })).toBe(0)
+    expect(await prisma.masterData.count({ where: { userId } })).toBe(0)
   })
 
   it('refuses an IBAN with a wrong check digit and an impossible date', async () => {

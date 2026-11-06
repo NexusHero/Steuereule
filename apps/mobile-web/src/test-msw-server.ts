@@ -97,7 +97,7 @@ export const EMPTY_LSTB_RESPONSE: LstbResponseDto = {
  * empty-mask shape, pinned (not the generated faker) for the same reason as `EMPTY_LSTB_RESPONSE`.
  */
 export const EMPTY_CH_SALARY_CERTIFICATE_RESPONSE: ChSalaryCertificateResponseDto = {
-  fields: SALARY_CERTIFICATE_FIELDS.filter((f) => f.art === 'chf-betrag').map((f) => ({ id: f.id, digit: f.digit, kind: 'offen' as const })),
+  fields: SALARY_CERTIFICATE_FIELDS.filter((f) => f.kind === 'chf-betrag').map((f) => ({ id: f.id, digit: f.digit, kind: 'offen' as const })),
   bemerkungen: null,
   exchangeRate: null,
   status: null,
@@ -126,7 +126,7 @@ export const EMPTY_CH_SALARY_CERTIFICATE_RESPONSE: ChSalaryCertificateResponseDt
  * `EMPTY_LSTB_RESPONSE`.
  */
 export const EMPTY_PENSION_RESPONSE: PensionResponseDto = {
-  art: null,
+  kind: null,
   jahresbetrag: { kind: 'offen' },
   rentenbeginnJahr: { kind: 'offen' },
   alterBeiRentenbeginn: { kind: 'offen' },
@@ -200,19 +200,19 @@ export const EMPTY_KINDER_RESPONSE: KinderResponseDto = {
 }
 
 export const EMPTY_LINK_RESPONSE: LinkResponseDto = {
-  veranlagungsart: 'keine',
+  filingType: 'keine',
   personBUserId: null,
-  einladungsCode: null,
+  invitationCode: null,
   personB: null,
 }
 
 export const EMPTY_OWL_SETTING_RESPONSE: OwlSettingResponseDto = {
-  aktiviert: false,
-  aktiviertAm: null,
+  enabled: false,
+  enabledAt: null,
 }
 
 export const EMPTY_OWL_CARDS_RESPONSE: OwlCardsResponseDto = {
-  aktiviert: false,
+  enabled: false,
   cards: [],
   legalStatus: '01.01.2025',
 }

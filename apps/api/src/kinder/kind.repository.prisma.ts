@@ -5,39 +5,39 @@ import type { ChildDetails, ChildRecord, ChildRepository } from './kind.reposito
 function toRecord(row: {
   id: string
   userId: string
-  steuerjahr: number
-  lfdNr: number
-  vorname: string
-  nachname: string
+  taxYear: number
+  sequenceNumber: number
+  firstName: string
+  lastName: string
   geburtsdatum: string
-  idnr: string | null
-  kindergeldAnspruchEur: string | null
+  taxId: string | null
+  childBenefitClaimEur: string | null
 } & ChildDetails): ChildRecord {
   return {
     id: row.id,
     userId: row.userId,
-    steuerjahr: row.steuerjahr,
-    lfdNr: row.lfdNr,
-    vorname: row.vorname,
-    nachname: row.nachname,
+    taxYear: row.taxYear,
+    sequenceNumber: row.sequenceNumber,
+    firstName: row.firstName,
+    lastName: row.lastName,
     geburtsdatum: row.geburtsdatum,
-    idnr: row.idnr,
-    kindergeldAnspruchEur: row.kindergeldAnspruchEur,
-    kindschaftsverhaeltnis: row.kindschaftsverhaeltnis,
-    kindschaftsverhaeltnisB: row.kindschaftsverhaeltnisB,
-    familienkasse: row.familienkasse,
-    wohnsitzInlandGanzjaehrig: row.wohnsitzInlandGanzjaehrig,
-    andererElternteil: row.andererElternteil,
-    andererElternteilName: row.andererElternteilName,
-    andererElternteilGeburtsdatum: row.andererElternteilGeburtsdatum,
-    andererElternteilAdresse: row.andererElternteilAdresse,
-    andererElternteilArt: row.andererElternteilArt,
-    andererElternteilVerstorbenAm: row.andererElternteilVerstorbenAm,
-    gemeldetBeiMirGanzjaehrig: row.gemeldetBeiMirGanzjaehrig,
-    kindergeldAnMichGanzjaehrig: row.kindergeldAnMichGanzjaehrig,
-    kvBasisEur: row.kvBasisEur,
-    pvEur: row.pvEur,
-    schweizerKinderzulageEur: row.schweizerKinderzulageEur,
+    taxId: row.taxId,
+    childBenefitClaimEur: row.childBenefitClaimEur,
+    kinship: row.kinship,
+    kinshipB: row.kinshipB,
+    familyBenefitsOffice: row.familyBenefitsOffice,
+    domesticResidenceAllYear: row.domesticResidenceAllYear,
+    otherParent: row.otherParent,
+    otherParentName: row.otherParentName,
+    otherParentBirthDate: row.otherParentBirthDate,
+    otherParentAddress: row.otherParentAddress,
+    otherParentKind: row.otherParentKind,
+    otherParentDiedOn: row.otherParentDiedOn,
+    registeredWithMeAllYear: row.registeredWithMeAllYear,
+    childBenefitToMeAllYear: row.childBenefitToMeAllYear,
+    healthBasicEur: row.healthBasicEur,
+    careEur: row.careEur,
+    swissFamilyAllowanceEur: row.swissFamilyAllowanceEur,
   }
 }
 
@@ -45,52 +45,52 @@ function toRecord(row: {
 export class PrismaChildRepository implements ChildRepository {
   constructor(@Inject(ENCRYPTED_PRISMA) private readonly prisma: EncryptedPrismaClient) {}
 
-  async listForUserAndYear(userId: string, steuerjahr: number): Promise<ChildRecord[]> {
-    const rows = await this.prisma.kind.findMany({
-      where: { userId, steuerjahr },
-      orderBy: { lfdNr: 'asc' },
+  async listForUserAndYear(userId: string, taxYear: number): Promise<ChildRecord[]> {
+    const rows = await this.prisma.child.findMany({
+      where: { userId, taxYear },
+      orderBy: { sequenceNumber: 'asc' },
     })
     return rows.map(toRecord)
   }
 
   async create(
     userId: string,
-    steuerjahr: number,
+    taxYear: number,
     data: {
-      vorname: string
-      nachname: string
+      firstName: string
+      lastName: string
       geburtsdatum: string
-      idnr?: string | null
-      kindergeldAnspruchEur?: string | null
+      taxId?: string | null
+      childBenefitClaimEur?: string | null
     } & Partial<ChildDetails>,
   ): Promise<ChildRecord> {
-    const count = await this.prisma.kind.count({ where: { userId, steuerjahr } })
+    const count = await this.prisma.child.count({ where: { userId, taxYear } })
     const [row] = await this.prisma.$transaction([
-      this.prisma.kind.create({
+      this.prisma.child.create({
         data: {
           userId,
-          steuerjahr,
-          lfdNr: count + 1,
-          vorname: data.vorname,
-          nachname: data.nachname,
+          taxYear,
+          sequenceNumber: count + 1,
+          firstName: data.firstName,
+          lastName: data.lastName,
           geburtsdatum: data.geburtsdatum,
-          idnr: data.idnr ?? null,
-          kindergeldAnspruchEur: data.kindergeldAnspruchEur ?? null,
-          kindschaftsverhaeltnis: data.kindschaftsverhaeltnis ?? null,
-          kindschaftsverhaeltnisB: data.kindschaftsverhaeltnisB ?? null,
-          familienkasse: data.familienkasse ?? null,
-          wohnsitzInlandGanzjaehrig: data.wohnsitzInlandGanzjaehrig ?? null,
-          andererElternteil: data.andererElternteil ?? null,
-          andererElternteilName: data.andererElternteilName ?? null,
-          andererElternteilGeburtsdatum: data.andererElternteilGeburtsdatum ?? null,
-          andererElternteilAdresse: data.andererElternteilAdresse ?? null,
-          andererElternteilArt: data.andererElternteilArt ?? null,
-          andererElternteilVerstorbenAm: data.andererElternteilVerstorbenAm ?? null,
-          gemeldetBeiMirGanzjaehrig: data.gemeldetBeiMirGanzjaehrig ?? null,
-          kindergeldAnMichGanzjaehrig: data.kindergeldAnMichGanzjaehrig ?? null,
-          kvBasisEur: data.kvBasisEur ?? null,
-          pvEur: data.pvEur ?? null,
-          schweizerKinderzulageEur: data.schweizerKinderzulageEur ?? null,
+          taxId: data.taxId ?? null,
+          childBenefitClaimEur: data.childBenefitClaimEur ?? null,
+          kinship: data.kinship ?? null,
+          kinshipB: data.kinshipB ?? null,
+          familyBenefitsOffice: data.familyBenefitsOffice ?? null,
+          domesticResidenceAllYear: data.domesticResidenceAllYear ?? null,
+          otherParent: data.otherParent ?? null,
+          otherParentName: data.otherParentName ?? null,
+          otherParentBirthDate: data.otherParentBirthDate ?? null,
+          otherParentAddress: data.otherParentAddress ?? null,
+          otherParentKind: data.otherParentKind ?? null,
+          otherParentDiedOn: data.otherParentDiedOn ?? null,
+          registeredWithMeAllYear: data.registeredWithMeAllYear ?? null,
+          childBenefitToMeAllYear: data.childBenefitToMeAllYear ?? null,
+          healthBasicEur: data.healthBasicEur ?? null,
+          careEur: data.careEur ?? null,
+          swissFamilyAllowanceEur: data.swissFamilyAllowanceEur ?? null,
         },
       }),
       this.prisma.taxDataAccessLog.create({
@@ -102,43 +102,43 @@ export class PrismaChildRepository implements ChildRepository {
 
   async update(
     userId: string,
-    steuerjahr: number,
+    taxYear: number,
     id: string,
     data: {
-      vorname?: string
-      nachname?: string
+      firstName?: string
+      lastName?: string
       geburtsdatum?: string
-      idnr?: string | null
-      kindergeldAnspruchEur?: string | null
+      taxId?: string | null
+      childBenefitClaimEur?: string | null
     } & Partial<ChildDetails>,
   ): Promise<ChildRecord | null> {
-    const existing = await this.prisma.kind.findFirst({ where: { id, userId, steuerjahr } })
+    const existing = await this.prisma.child.findFirst({ where: { id, userId, taxYear } })
     if (existing === null) return null
 
     const updateData: Record<string, string | boolean | null> = {}
-    if (data.vorname !== undefined) updateData.vorname = data.vorname
-    if (data.nachname !== undefined) updateData.nachname = data.nachname
+    if (data.firstName !== undefined) updateData.vorname = data.firstName
+    if (data.lastName !== undefined) updateData.nachname = data.lastName
     if (data.geburtsdatum !== undefined) updateData.geburtsdatum = data.geburtsdatum
-    if (data.idnr !== undefined) updateData.idnr = data.idnr
-    if (data.kindergeldAnspruchEur !== undefined) updateData.kindergeldAnspruchEur = data.kindergeldAnspruchEur
-    if (data.kindschaftsverhaeltnis !== undefined) updateData.kindschaftsverhaeltnis = data.kindschaftsverhaeltnis
-    if (data.kindschaftsverhaeltnisB !== undefined) updateData.kindschaftsverhaeltnisB = data.kindschaftsverhaeltnisB
-    if (data.familienkasse !== undefined) updateData.familienkasse = data.familienkasse
-    if (data.wohnsitzInlandGanzjaehrig !== undefined) updateData.wohnsitzInlandGanzjaehrig = data.wohnsitzInlandGanzjaehrig
-    if (data.andererElternteil !== undefined) updateData.andererElternteil = data.andererElternteil
-    if (data.andererElternteilName !== undefined) updateData.andererElternteilName = data.andererElternteilName
-    if (data.andererElternteilGeburtsdatum !== undefined) updateData.andererElternteilGeburtsdatum = data.andererElternteilGeburtsdatum
-    if (data.andererElternteilAdresse !== undefined) updateData.andererElternteilAdresse = data.andererElternteilAdresse
-    if (data.andererElternteilArt !== undefined) updateData.andererElternteilArt = data.andererElternteilArt
-    if (data.andererElternteilVerstorbenAm !== undefined) updateData.andererElternteilVerstorbenAm = data.andererElternteilVerstorbenAm
-    if (data.gemeldetBeiMirGanzjaehrig !== undefined) updateData.gemeldetBeiMirGanzjaehrig = data.gemeldetBeiMirGanzjaehrig
-    if (data.kindergeldAnMichGanzjaehrig !== undefined) updateData.kindergeldAnMichGanzjaehrig = data.kindergeldAnMichGanzjaehrig
-    if (data.kvBasisEur !== undefined) updateData.kvBasisEur = data.kvBasisEur
-    if (data.pvEur !== undefined) updateData.pvEur = data.pvEur
-    if (data.schweizerKinderzulageEur !== undefined) updateData.schweizerKinderzulageEur = data.schweizerKinderzulageEur
+    if (data.taxId !== undefined) updateData.idnr = data.taxId
+    if (data.childBenefitClaimEur !== undefined) updateData.kindergeldAnspruchEur = data.childBenefitClaimEur
+    if (data.kinship !== undefined) updateData.kindschaftsverhaeltnis = data.kinship
+    if (data.kinshipB !== undefined) updateData.kindschaftsverhaeltnisB = data.kinshipB
+    if (data.familyBenefitsOffice !== undefined) updateData.familienkasse = data.familyBenefitsOffice
+    if (data.domesticResidenceAllYear !== undefined) updateData.wohnsitzInlandGanzjaehrig = data.domesticResidenceAllYear
+    if (data.otherParent !== undefined) updateData.andererElternteil = data.otherParent
+    if (data.otherParentName !== undefined) updateData.andererElternteilName = data.otherParentName
+    if (data.otherParentBirthDate !== undefined) updateData.andererElternteilGeburtsdatum = data.otherParentBirthDate
+    if (data.otherParentAddress !== undefined) updateData.andererElternteilAdresse = data.otherParentAddress
+    if (data.otherParentKind !== undefined) updateData.andererElternteilArt = data.otherParentKind
+    if (data.otherParentDiedOn !== undefined) updateData.andererElternteilVerstorbenAm = data.otherParentDiedOn
+    if (data.registeredWithMeAllYear !== undefined) updateData.gemeldetBeiMirGanzjaehrig = data.registeredWithMeAllYear
+    if (data.childBenefitToMeAllYear !== undefined) updateData.kindergeldAnMichGanzjaehrig = data.childBenefitToMeAllYear
+    if (data.healthBasicEur !== undefined) updateData.kvBasisEur = data.healthBasicEur
+    if (data.careEur !== undefined) updateData.pvEur = data.careEur
+    if (data.swissFamilyAllowanceEur !== undefined) updateData.schweizerKinderzulageEur = data.swissFamilyAllowanceEur
 
     const [row] = await this.prisma.$transaction([
-      this.prisma.kind.update({ where: { id }, data: updateData }),
+      this.prisma.child.update({ where: { id }, data: updateData }),
       this.prisma.taxDataAccessLog.create({
         data: { userId, action: 'WRITE', resource: 'kind' },
       }),
@@ -146,12 +146,12 @@ export class PrismaChildRepository implements ChildRepository {
     return toRecord(row)
   }
 
-  async delete(userId: string, steuerjahr: number, id: string): Promise<boolean> {
-    const existing = await this.prisma.kind.findFirst({ where: { id, userId, steuerjahr } })
+  async delete(userId: string, taxYear: number, id: string): Promise<boolean> {
+    const existing = await this.prisma.child.findFirst({ where: { id, userId, taxYear } })
     if (existing === null) return false
 
     await this.prisma.$transaction([
-      this.prisma.kind.delete({ where: { id } }),
+      this.prisma.child.delete({ where: { id } }),
       this.prisma.taxDataAccessLog.create({
         data: { userId, action: 'WRITE', resource: 'kind' },
       }),

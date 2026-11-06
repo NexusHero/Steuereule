@@ -14,8 +14,8 @@ import type { LinkPersonBDto, LinkResponseDto, SetLinkDto } from './dto/kopplung
 
 const SHADOW_PREFIX = 'spouse_'
 
-function shadowId(userId: string, steuerjahr: number): string {
-  return `${SHADOW_PREFIX}${userId}_${steuerjahr}`
+function shadowId(userId: string, taxYear: number): string {
+  return `${SHADOW_PREFIX}${userId}_${taxYear}`
 }
 
 function hasOwnAccount(row: PartnerCouplingRecord): boolean {
@@ -24,15 +24,15 @@ function hasOwnAccount(row: PartnerCouplingRecord): boolean {
 
 const INVITATION_VALID_MS = 14 * 24 * 60 * 60 * 1000
 
-function newInvitation(now: Date): { einladungsCode: string; einladungsCodeGueltigBis: Date } {
+function newInvitation(now: Date): { invitationCode: string; invitationCodeValidUntil: Date } {
   return {
-    einladungsCode: randomBytes(8).toString('hex').toUpperCase(),
-    einladungsCodeGueltigBis: new Date(now.getTime() + INVITATION_VALID_MS),
+    invitationCode: randomBytes(8).toString('hex').toUpperCase(),
+    invitationCodeValidUntil: new Date(now.getTime() + INVITATION_VALID_MS),
   }
 }
 
 function invitationValid(row: PartnerCouplingRecord, now: Date): boolean {
-  return row.einladungsCode !== null && row.einladungsCodeGueltigBis !== null && row.einladungsCodeGueltigBis > now
+  return row.invitationCode !== null && row.invitationCodeValidUntil !== null && row.invitationCodeValidUntil > now
 }
 
 function emptyMasterData(): MasterDataRecord {
@@ -52,14 +52,14 @@ export class LinkService {
     @Inject(AuditService) private readonly auditService: AuditService,
   ) {}
 
-  async get(userId: string, steuerjahr: number): Promise<LinkResponseDto> {
-    const row = await this.repository.findByUserAndYear(userId, steuerjahr)
+  async get(userId: string, taxYear: number): Promise<LinkResponseDto> {
+    const row = await this.repository.findByUserAndYear(userId, taxYear)
     if (!row) {
-      return { veranlagungsart: 'keine' }
+      return { filingType: 'keine' }
     }
 
     let personB: LinkPersonBDto | null = null
-    if (row.veranlagungsart === 'zusammen' && row.personBUserId) {
+    if (row.filingType === 'zusammen' && row.personBUserId) {
       const otherId = row.personAUserId === userId ? row.personBUserId : row.personAUserId
       const [prof, sd] = await Promise.all([
         this.profileRepository.findByUserId(otherId),
@@ -77,10 +77,10 @@ export class LinkService {
 
     await this.auditService.append({ userId, action: 'READ', resource: 'kopplung' })
     return {
-      veranlagungsart: row.veranlagungsart,
+      filingType: row.filingType,
       personBUserId: row.personBUserId,
-      einladungsCode: row.einladungsCode,
-      einladungsCodeGueltigBis: row.einladungsCodeGueltigBis?.toISOString() ?? null,
+      invitationCode: row.invitationCode,
+      invitationCodeValidUntil: row.invitationCodeValidUntil?.toISOString() ?? null,
       personBHasOwnAccount: hasOwnAccount(row),
       personB,
     }
@@ -91,10 +91,10 @@ export class LinkService {
    * while B has no account; they live under B's shadow id and move with B on joinWithCode. Once B has an
    * account, the data is B's alone.
    */
-  async dataUser(userId: string, steuerjahr: number, person: 'A' | 'B'): Promise<string> {
+  async dataUser(userId: string, taxYear: number, person: 'A' | 'B'): Promise<string> {
     if (person === 'A') return userId
-    const row = await this.repository.findByUserAndYear(userId, steuerjahr)
-    if (!row || row.veranlagungsart !== 'zusammen' || !row.personBUserId) {
+    const row = await this.repository.findByUserAndYear(userId, taxYear)
+    if (!row || row.filingType !== 'zusammen' || !row.personBUserId) {
       throw new InvalidInputError('NO_ACTIVE_ZUSAMMENVERANLAGUNG', 'There is no active Zusammenveranlagung.')
     }
     if (row.personAUserId !== userId) {
@@ -106,40 +106,40 @@ export class LinkService {
     return row.personBUserId
   }
 
-  async set(userId: string, steuerjahr: number, dto: SetLinkDto, now = new Date()): Promise<LinkResponseDto> {
-    const existing = await this.repository.findByUserAndYear(userId, steuerjahr)
+  async set(userId: string, taxYear: number, dto: SetLinkDto, now = new Date()): Promise<LinkResponseDto> {
+    const existing = await this.repository.findByUserAndYear(userId, taxYear)
     if (existing && existing.personAUserId !== userId) {
       throw new ForbiddenError('VERANLAGUNGSART_OWNED_BY_PERSON_A', 'Only person A can choose the Veranlagungsart.')
     }
 
-    if (dto.veranlagungsart === 'zusammen') {
-      const remains = existing?.veranlagungsart === 'zusammen' && existing.personBUserId !== ''
+    if (dto.filingType === 'zusammen') {
+      const remains = existing?.filingType === 'zusammen' && existing.personBUserId !== ''
       const invitation =
         remains && hasOwnAccount(existing)
-          ? { einladungsCode: null, einladungsCodeGueltigBis: null }
+          ? { invitationCode: null, invitationCodeValidUntil: null }
           : remains && invitationValid(existing, now)
-            ? { einladungsCode: existing.einladungsCode, einladungsCodeGueltigBis: existing.einladungsCodeGueltigBis }
+            ? { invitationCode: existing.invitationCode, invitationCodeValidUntil: existing.invitationCodeValidUntil }
             : newInvitation(now)
-      await this.repository.upsert(userId, steuerjahr, {
-        veranlagungsart: 'zusammen',
-        personBUserId: remains ? existing.personBUserId : shadowId(userId, steuerjahr),
+      await this.repository.upsert(userId, taxYear, {
+        filingType: 'zusammen',
+        personBUserId: remains ? existing.personBUserId : shadowId(userId, taxYear),
         ...invitation,
       })
     } else {
-      await this.repository.upsert(userId, steuerjahr, {
-        veranlagungsart: 'einzel',
+      await this.repository.upsert(userId, taxYear, {
+        filingType: 'einzel',
         personBUserId: '',
-        einladungsCode: null,
-        einladungsCodeGueltigBis: null,
+        invitationCode: null,
+        invitationCodeValidUntil: null,
       })
     }
 
-    return this.get(userId, steuerjahr)
+    return this.get(userId, taxYear)
   }
 
-  async updatePersonB(userId: string, steuerjahr: number, data: LinkPersonBDto): Promise<LinkResponseDto> {
-    const row = await this.repository.findByUserAndYear(userId, steuerjahr)
-    if (!row || row.veranlagungsart !== 'zusammen' || !row.personBUserId) {
+  async updatePersonB(userId: string, taxYear: number, data: LinkPersonBDto): Promise<LinkResponseDto> {
+    const row = await this.repository.findByUserAndYear(userId, taxYear)
+    if (!row || row.filingType !== 'zusammen' || !row.personBUserId) {
       throw new InvalidInputError('NO_ACTIVE_ZUSAMMENVERANLAGUNG', 'There is no active Zusammenveranlagung.')
     }
     if (row.personAUserId !== userId || hasOwnAccount(row)) {
@@ -175,12 +175,12 @@ export class LinkService {
       })
     }
 
-    return this.get(userId, steuerjahr)
+    return this.get(userId, taxYear)
   }
 
-  async joinWithCode(userId: string, steuerjahr: number, code: string, now = new Date()): Promise<LinkResponseDto> {
+  async joinWithCode(userId: string, taxYear: number, code: string, now = new Date()): Promise<LinkResponseDto> {
     const row = await this.repository.findByInvitationCode(code)
-    if (!row || row.steuerjahr !== steuerjahr) {
+    if (!row || row.taxYear !== taxYear) {
       throw new NotFoundError('INVITATION_CODE_INVALID', 'The invitation code is invalid.')
     }
     if (!invitationValid(row, now)) {
@@ -190,6 +190,6 @@ export class LinkService {
       throw new InvalidInputError('INVITATION_IS_OWN', 'You cannot couple with your own invitation.')
     }
     await this.repository.setPersonB(row.id, userId)
-    return this.get(userId, steuerjahr)
+    return this.get(userId, taxYear)
   }
 }

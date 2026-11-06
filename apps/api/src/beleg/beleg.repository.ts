@@ -3,22 +3,22 @@ import type { ReceiptType } from '@steuereule/core'
 export interface ReceiptRecord {
   id: string
   userId: string
-  dateiname: string
-  art?: ReceiptType | ReceiptType
+  fileName: string
+  kind?: ReceiptType | ReceiptType
   receiptType?: ReceiptType | ReceiptType
   belegdatum?: string
   receiptDate?: string
   zahlungsdatum?: string
   paymentDate?: string
-  steuerjahr: number | null
-  vorschlagVerworfen: boolean
+  taxYear: number | null
+  proposalDismissed: boolean
   createdAt: Date
   updatedAt: Date
 }
 
 export interface CreateReceiptData {
-  dateiname: string
-  art?: ReceiptType | ReceiptType
+  fileName: string
+  kind?: ReceiptType | ReceiptType
   receiptType?: ReceiptType | ReceiptType
   belegdatum?: string
   receiptDate?: string
@@ -28,8 +28,8 @@ export interface CreateReceiptData {
 
 /** The one assignment write: confirm a year, optionally dismissing a contradicting suggestion. */
 export interface SetAssignmentData {
-  steuerjahr: number
-  vorschlagVerworfen: boolean
+  taxYear: number
+  proposalDismissed: boolean
 }
 
 export const RECEIPT_REPOSITORY = Symbol('RECEIPT_REPOSITORY')

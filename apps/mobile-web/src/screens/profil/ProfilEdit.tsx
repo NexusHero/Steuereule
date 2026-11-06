@@ -23,7 +23,7 @@ export function ProfileEdit({ draft, onChange, onSave, onCancel, isSaving, saveE
   const styles = makeProfileStyles(t)
   const idDigits = countDigits(draft.steuerId)
   const taxIdOk = isValidTaxId(draft.steuerId.replace(/\D/g, ''))
-  const canSave = draft.vorname.trim() !== '' && draft.nachname.trim() !== ''
+  const canSave = draft.firstName.trim() !== '' && draft.lastName.trim() !== ''
 
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} keyboardShouldPersistTaps="handled" testID="screen-container">
@@ -31,16 +31,16 @@ export function ProfileEdit({ draft, onChange, onSave, onCancel, isSaving, saveE
 
       <Feld label={tr('profil.firstNameLabel')}>
         <Input
-          value={draft.vorname}
-          onChange={onChange('vorname')}
+          value={draft.firstName}
+          onChange={onChange('firstName')}
           placeholder={tr('profil.firstNamePlaceholder')}
           accessibilityLabel={tr('profil.firstNameLabel')}
         />
       </Feld>
       <Feld label={tr('profil.lastNameLabel')}>
         <Input
-          value={draft.nachname}
-          onChange={onChange('nachname')}
+          value={draft.lastName}
+          onChange={onChange('lastName')}
           placeholder={tr('profil.lastNamePlaceholder')}
           accessibilityLabel={tr('profil.lastNameLabel')}
         />

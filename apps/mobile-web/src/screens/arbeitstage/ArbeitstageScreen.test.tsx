@@ -59,7 +59,7 @@ describe('ArbeitstageScreen', () => {
     server.use(
       http.get('*/v1/steuerjahre/2025/arbeitsweg', () =>
         HttpResponse.json({
-          inputs: { arbeitstage: [1, 2, 3, 4, 5], urlaubstage: 30, krankheitstage: 5, homeofficeTage: 20, einfacheKm: 30, verkehrsmittel: 'pkw', taetigkeitsstaette: 'Lörrach' },
+          inputs: { workdays: [1, 2, 3, 4, 5], vacationDays: 30, sickDays: 5, homeOfficeDays: 20, oneWayKm: 30, transport: 'pkw', workplace: 'Lörrach' },
           workdays: { weekdays: 261, workdays: 226, commuteDays: 206 },
           commuterAllowance: 2019,
         }),
@@ -100,15 +100,15 @@ describe('ArbeitstageScreen', () => {
     await waitFor(() => expect(onDone).toHaveBeenCalledOnce())
     expect(bodies).toEqual([
       {
-        arbeitstage: [1, 2, 3, 4, 5],
-        urlaubstage: 30,
-        krankheitstage: 0,
-        homeofficeTage: 0,
-        feiertage: null,
-        feiertageRegion: null,
-        einfacheKm: 15,
-        verkehrsmittel: 'pkw',
-        taetigkeitsstaette: '79539 Lörrach, Hauptstraße 1',
+        workdays: [1, 2, 3, 4, 5],
+        vacationDays: 30,
+        sickDays: 0,
+        homeOfficeDays: 0,
+        publicHolidays: null,
+        publicHolidayRegion: null,
+        oneWayKm: 15,
+        transport: 'pkw',
+        workplace: '79539 Lörrach, Hauptstraße 1',
       },
     ])
   })

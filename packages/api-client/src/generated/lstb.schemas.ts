@@ -33,16 +33,16 @@ export const LstbStatusDtoKind = {
   vollstaendig: 'vollstaendig',
 } as const;
 
-export type LstbConflictDtoArt = typeof LstbConflictDtoArt[keyof typeof LstbConflictDtoArt];
+export type LstbConflictDtoKind = typeof LstbConflictDtoKind[keyof typeof LstbConflictDtoKind];
 
 
-export const LstbConflictDtoArt = {
+export const LstbConflictDtoKind = {
   'lohnsteuer-uebersteigt-brutto': 'lohnsteuer-uebersteigt-brutto',
   'sozialversicherung-uebersteigt-brutto': 'sozialversicherung-uebersteigt-brutto',
 } as const;
 
 export interface LstbConflictDto {
-  art: LstbConflictDtoArt;
+  kind: LstbConflictDtoKind;
   /** The einbehaltene Lohnsteuer (only when art is lohnsteuer-uebersteigt-brutto). */
   lohnsteuer?: number;
   /** The Bruttoarbeitslohn (both arts). */

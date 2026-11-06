@@ -29,7 +29,7 @@ describe('Freischaltung — Stripe webhook against the real server (ADR-0050)', 
   })
 
   afterEach(async () => {
-    await prisma.freischaltung.deleteMany()
+    await prisma.unlock.deleteMany()
     await prisma.user.deleteMany({ where: { email: { startsWith: 'freischaltung-' } } })
   })
 
@@ -39,8 +39,8 @@ describe('Freischaltung — Stripe webhook against the real server (ADR-0050)', 
 
   async function seedOpenUnlock(): Promise<string> {
     const user = await prisma.user.create({ data: { name: 'Test', email: `freischaltung-${Date.now()}@example.com` } })
-    await prisma.freischaltung.create({
-      data: { userId: user.id, steuerjahr: 2025, stripeCheckoutSessionId: 'cs_acceptance_1' },
+    await prisma.unlock.create({
+      data: { userId: user.id, taxYear: 2025, stripeCheckoutSessionId: 'cs_acceptance_1' },
     })
     return user.id
   }
@@ -67,9 +67,9 @@ describe('Freischaltung — Stripe webhook against the real server (ADR-0050)', 
     const response = await postWebhook(paidEvent, signature)
 
     expect(response.status).toBe(200)
-    const row = await prisma.freischaltung.findFirstOrThrow({ where: { userId } })
-    expect(row).toMatchObject({ status: 'bezahlt', betragCent: 1999 })
-    expect(row.bezahltAm).not.toBeNull()
+    const row = await prisma.unlock.findFirstOrThrow({ where: { userId } })
+    expect(row).toMatchObject({ status: 'bezahlt', amountCents: 1999 })
+    expect(row.paidAt).not.toBeNull()
   })
 
   it('a forged signature is refused with 401 and unlocks nothing', async () => {
@@ -79,12 +79,12 @@ describe('Freischaltung — Stripe webhook against the real server (ADR-0050)', 
     const response = await postWebhook(paidEvent, forged)
 
     expect(response.status).toBe(401)
-    expect(await prisma.freischaltung.findFirstOrThrow({ where: { userId } })).toMatchObject({ status: 'offen' })
+    expect(await prisma.unlock.findFirstOrThrow({ where: { userId } })).toMatchObject({ status: 'offen' })
   })
 
   it('the unlock cascades away with the account (Art. 17)', async () => {
     const userId = await seedOpenUnlock()
     await prisma.user.delete({ where: { id: userId } })
-    expect(await prisma.freischaltung.count({ where: { userId } })).toBe(0)
+    expect(await prisma.unlock.count({ where: { userId } })).toBe(0)
   })
 })

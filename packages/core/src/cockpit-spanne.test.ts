@@ -5,36 +5,36 @@ import { calculateCockpitRange, cockpitRangeFromInputs, rangeFromCalculation } f
 
 describe('cockpitSpanne', () => {
   it('bestimmt collapses to a point value (ADR-015)', () => {
-    const status = calculate({ items: [{ id: 'p1', incomeType: 'Nichtselbstständig', amount: 1407, source: { art: 'eingabe' } }], openItems: 0, conflicts: [], gated: [] })
+    const status = calculate({ items: [{ id: 'p1', incomeType: 'Nichtselbstständig', amount: 1407, source: { kind: 'eingabe' } }], openItems: 0, conflicts: [], gated: [] })
     expect(status.kind).toBe('bestimmt')
     expect(calculateCockpitRange(status)).toStrictEqual({ kind: 'bestimmt', value: 1407 })
   })
 
   it('open items widen the settled sum into a bounded range', () => {
-    const status = calculate({ items: [{ id: 'p1', incomeType: 'Nichtselbstständig', amount: 1407, source: { art: 'eingabe' } }], openItems: 3, conflicts: [], gated: [] })
+    const status = calculate({ items: [{ id: 'p1', incomeType: 'Nichtselbstständig', amount: 1407, source: { kind: 'eingabe' } }], openItems: 3, conflicts: [], gated: [] })
     expect(status.kind).toBe('offen')
     const spread = 3 * UNCERTAINTY_PER_ITEM
     expect(calculateCockpitRange(status)).toStrictEqual({ kind: 'spanne', from: 1407 - spread, to: 1407 + spread, openItems: 3, conflicts: 0, unconfirmedItems: 0, unconfirmedSum: 0 })
   })
 
   it('a conflict widens more than an item (ADR-008 ± offen)', () => {
-    const status = calculate({ items: [{ id: 'p1', incomeType: 'Nichtselbstständig', amount: 1000, source: { art: 'eingabe' } }], openItems: 0, conflicts: [{ itemId: 'c1', incomeType: 'Nichtselbstständig', sources: [{ art: 'eingabe', amount: 100 }, { art: 'beleg', receiptId: 'b1', amount: 200 }] }], gated: [] })
+    const status = calculate({ items: [{ id: 'p1', incomeType: 'Nichtselbstständig', amount: 1000, source: { kind: 'eingabe' } }], openItems: 0, conflicts: [{ itemId: 'c1', incomeType: 'Nichtselbstständig', sources: [{ kind: 'eingabe', amount: 100 }, { kind: 'beleg', receiptId: 'b1', amount: 200 }] }], gated: [] })
     expect(calculateCockpitRange(status)).toStrictEqual({ kind: 'spanne', from: 1000 - UNCERTAINTY_PER_CONFLICT, to: 1000 + UNCERTAINTY_PER_CONFLICT, openItems: 0, conflicts: 1, unconfirmedItems: 0, unconfirmedSum: 0 })
   })
 
   it('items and conflicts add up', () => {
-    const status = calculate({ items: [{ id: 'p1', incomeType: 'Nichtselbstständig', amount: 1000, source: { art: 'eingabe' } }], openItems: 2, conflicts: [{ itemId: 'c1', incomeType: 'Nichtselbstständig', sources: [{ art: 'eingabe', amount: 1 }, { art: 'beleg', receiptId: 'b1', amount: 2 }] }], gated: [] })
+    const status = calculate({ items: [{ id: 'p1', incomeType: 'Nichtselbstständig', amount: 1000, source: { kind: 'eingabe' } }], openItems: 2, conflicts: [{ itemId: 'c1', incomeType: 'Nichtselbstständig', sources: [{ kind: 'eingabe', amount: 1 }, { kind: 'beleg', receiptId: 'b1', amount: 2 }] }], gated: [] })
     const spread = 2 * UNCERTAINTY_PER_ITEM + 1 * UNCERTAINTY_PER_CONFLICT
     expect(calculateCockpitRange(status)).toStrictEqual({ kind: 'spanne', from: 1000 - spread, to: 1000 + spread, openItems: 2, conflicts: 1, unconfirmedItems: 0, unconfirmedSum: 0 })
   })
 
   it('a gated Einkunftsart is named, never widened into a fake range (ADR-032)', () => {
-    const status = calculate({ items: [{ id: 'p1', incomeType: 'Nichtselbstständig', amount: 500, source: { art: 'eingabe' } }], openItems: 0, conflicts: [], gated: ['Gewerbe'] })
+    const status = calculate({ items: [{ id: 'p1', incomeType: 'Nichtselbstständig', amount: 500, source: { kind: 'eingabe' } }], openItems: 0, conflicts: [], gated: ['Gewerbe'] })
     expect(calculateCockpitRange(status)).toStrictEqual({ kind: 'gated', sum: 500, gated: ['Gewerbe'] })
   })
 
   it('lower bound never below zero', () => {
-    const status = calculate({ items: [{ id: 'p1', incomeType: 'Nichtselbstständig', amount: 50, source: { art: 'eingabe' } }], openItems: 3, conflicts: [], gated: [] })
+    const status = calculate({ items: [{ id: 'p1', incomeType: 'Nichtselbstständig', amount: 50, source: { kind: 'eingabe' } }], openItems: 3, conflicts: [], gated: [] })
     const result = calculateCockpitRange(status)
     expect(result.kind).toBe('spanne')
     if (result.kind !== 'spanne') return
@@ -46,7 +46,7 @@ describe('cockpitSpanne', () => {
 describe('spanneAusBerechnung', () => {
   it('folds a full BerechnungsInput through berechne and derives the spanne', () => {
     const input = {
-      items: [{ id: 'p1', incomeType: 'Nichtselbstständig' as const, amount: 1407, source: { art: 'eingabe' as const } }],
+      items: [{ id: 'p1', incomeType: 'Nichtselbstständig' as const, amount: 1407, source: { kind: 'eingabe' as const } }],
       openItems: 3,
       conflicts: [],
       gated: [],

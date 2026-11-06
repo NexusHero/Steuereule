@@ -20,8 +20,8 @@ const RECEIPTS_URL = '*/v1/belege'
 
 const UNBOUND: ReceiptResponseDto = {
   id: 'b-ungebunden',
-  dateiname: 'miete-januar.pdf',
-  art: null,
+  fileName: 'miete-januar.pdf',
+  kind: null,
   belegdatum: null,
   zahlungsdatum: null,
   assignment: { kind: 'ungebunden' },
@@ -29,29 +29,29 @@ const UNBOUND: ReceiptResponseDto = {
 
 const PROPOSED: ReceiptResponseDto = {
   id: 'b-vorschlag',
-  dateiname: 'rechnung-fortbildung.pdf',
-  art: 'Sonstiges',
+  fileName: 'rechnung-fortbildung.pdf',
+  kind: 'Sonstiges',
   belegdatum: '2025-12-20',
   zahlungsdatum: '2026-01-15',
-  assignment: { kind: 'vorgeschlagen', steuerjahr: 2026, provenance: 'zahlungsdatum' },
+  assignment: { kind: 'vorgeschlagen', taxYear: 2026, provenance: 'zahlungsdatum' },
 }
 
 const ASSIGNED: ReceiptResponseDto = {
   id: 'b-zugeordnet',
-  dateiname: 'lohnausweis-2026.pdf',
-  art: 'Lohnausweis',
+  fileName: 'lohnausweis-2026.pdf',
+  kind: 'Lohnausweis',
   belegdatum: '2026-02-01',
   zahlungsdatum: null,
-  assignment: { kind: 'zugeordnet', steuerjahr: 2026 },
+  assignment: { kind: 'zugeordnet', taxYear: 2026 },
 }
 
 const CONFLICT: ReceiptResponseDto = {
   id: 'b-konflikt',
-  dateiname: 'spende-drk.pdf',
-  art: 'Sonstiges',
+  fileName: 'spende-drk.pdf',
+  kind: 'Sonstiges',
   belegdatum: '2026-01-02',
   zahlungsdatum: null,
-  assignment: { kind: 'konflikt', steuerjahr: 2025, proposalYear: 2026, provenance: 'belegdatum' },
+  assignment: { kind: 'konflikt', taxYear: 2025, proposalYear: 2026, provenance: 'belegdatum' },
 }
 
 function mockReceipts(data: ReceiptResponseDto[], status = 200) {
@@ -149,7 +149,7 @@ describe('BelegeScreen', () => {
       http.get(RECEIPTS_URL, () => HttpResponse.json(list, { status: 200 })),
       http.post('*/v1/belege/:id/zuordnung', async ({ params, request }) => {
         posted = { id: String(params.id), body: await request.json() }
-        list = [{ ...PROPOSED, assignment: { kind: 'zugeordnet', steuerjahr: 2026 } }]
+        list = [{ ...PROPOSED, assignment: { kind: 'zugeordnet', taxYear: 2026 } }]
         return HttpResponse.json(list[0], { status: 200 })
       }),
     )
@@ -159,7 +159,7 @@ describe('BelegeScreen', () => {
     fireEvent.click(screen.getByText('Zuordnen zu 2026'))
 
     await screen.findByText('Zugeordnet: 2026')
-    expect(posted).toEqual({ id: 'b-vorschlag', body: { steuerjahr: 2026, vorschlagVerworfen: false } })
+    expect(posted).toEqual({ id: 'b-vorschlag', body: { taxYear: 2026, proposalDismissed: false } })
   })
 
   it('shows a CONFLICT (both years) when a different year is assigned, never a silent overwrite (ADR-008)', async () => {
@@ -171,7 +171,7 @@ describe('BelegeScreen', () => {
         posted = await request.json()
         // The API's real derived state: confirmed 2025 contradicts the date-derived 2026.
         list = [
-          { ...PROPOSED, assignment: { kind: 'konflikt', steuerjahr: 2025, proposalYear: 2026, provenance: 'zahlungsdatum' } },
+          { ...PROPOSED, assignment: { kind: 'konflikt', taxYear: 2025, proposalYear: 2026, provenance: 'zahlungsdatum' } },
         ]
         return HttpResponse.json(list[0], { status: 200 })
       }),
@@ -185,7 +185,7 @@ describe('BelegeScreen', () => {
 
     await screen.findByText('Zwei Jahre für diesen Beleg — du entscheidest.')
     expect(screen.getByText(/Zugeordnet: 2025 · Vorschlag: 2026/)).toBeTruthy()
-    expect(posted).toEqual({ steuerjahr: 2025, vorschlagVerworfen: false })
+    expect(posted).toEqual({ taxYear: 2025, proposalDismissed: false })
   })
 
   it('rejects a non-four-digit year in the manual override instead of POSTing it', async () => {
@@ -215,7 +215,7 @@ describe('BelegeScreen', () => {
       http.get(RECEIPTS_URL, () => HttpResponse.json(list, { status: 200 })),
       http.post('*/v1/belege/:id/zuordnung', async ({ request }) => {
         posted = await request.json()
-        list = [{ ...CONFLICT, assignment: { kind: 'zugeordnet', steuerjahr: 2026 } }]
+        list = [{ ...CONFLICT, assignment: { kind: 'zugeordnet', taxYear: 2026 } }]
         return HttpResponse.json(list[0], { status: 200 })
       }),
     )
@@ -224,7 +224,7 @@ describe('BelegeScreen', () => {
     await screen.findByText('Zwei Jahre für diesen Beleg — du entscheidest.')
     fireEvent.click(screen.getByText('Vorschlag 2026 übernehmen'))
     await screen.findByText('Zugeordnet: 2026')
-    expect(posted).toEqual({ steuerjahr: 2026, vorschlagVerworfen: false })
+    expect(posted).toEqual({ taxYear: 2026, proposalDismissed: false })
   })
 
   it('resolves a conflict by keeping the user’s own year (ADR-008 "bei meinem Jahr bleiben" — no dead end)', async () => {
@@ -236,7 +236,7 @@ describe('BelegeScreen', () => {
         posted = await request.json()
         // The API's real derived state: dismissing the suggestion resolves to zugeordnet on the
         // user's own confirmed year (2025), the contradicting suggestion no longer a conflict.
-        list = [{ ...CONFLICT, assignment: { kind: 'zugeordnet', steuerjahr: 2025 } }]
+        list = [{ ...CONFLICT, assignment: { kind: 'zugeordnet', taxYear: 2025 } }]
         return HttpResponse.json(list[0], { status: 200 })
       }),
     )
@@ -245,7 +245,7 @@ describe('BelegeScreen', () => {
     await screen.findByText('Zwei Jahre für diesen Beleg — du entscheidest.')
     fireEvent.click(screen.getByText('Bei 2025 bleiben'))
     await screen.findByText('Zugeordnet: 2025')
-    expect(posted).toEqual({ steuerjahr: 2025, vorschlagVerworfen: true })
+    expect(posted).toEqual({ taxYear: 2025, proposalDismissed: true })
   })
 
   it('shows a retryable error state on a genuine network failure, and recovers on retry', async () => {

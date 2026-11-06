@@ -9,13 +9,13 @@ import {
   acceptProposal,
   dismissProposal,
   decomposeProvenanceKey,
-  type Kennzeichnung,
+  type Marking,
 } from './kennzeichnung'
 
-const CLAUDE = { art: 'assistent', name: 'Claude' } as const
+const CLAUDE = { kind: 'assistent', name: 'Claude' } as const
 
-function unconfirmed(key: string, value: string | null): Kennzeichnung {
-  return { key, provenance: { art: 'uebernahme', vorjahr: 2024 }, bestaetigt: false, proposal: null, value }
+function unconfirmed(key: string, value: string | null): Marking {
+  return { key, provenance: { kind: 'uebernahme', lastYear: 2024 }, confirmed: false, proposal: null, value }
 }
 
 describe('kennzeichnungsKey / zerlegeKennzeichnungsKey', () => {
@@ -44,58 +44,58 @@ describe('anlageVon — every mask belongs to exactly one Anlage', () => {
     ['kapital.kapitalertraege', 'anlageKap'],
     ['vermietung:o1.mieteinnahmen', 'anlageV'],
     ['kind:k1.vorname', 'anlageKind'],
-  ])('%s → %s', (key, anlage) => {
-    expect(annexOf(key)).toBe(anlage)
+  ])('%s → %s', (key, annex) => {
+    expect(annexOf(key)).toBe(annex)
   })
 })
 
 describe('entscheideSchreibung — der Nutzer gewinnt (ADR-0052 §7)', () => {
   it('a user write always writes and drops the marker (the value is now the user\'s)', () => {
-    expect(decideWriting({ key: 'lstb.lohnsteuer', existing: unconfirmed('lstb.lohnsteuer', '700'), currentValue: '700', newValue: '650', provenance: { art: 'nutzer' } })).toEqual({ art: 'schreiben', marking: null })
+    expect(decideWriting({ key: 'lstb.lohnsteuer', existing: unconfirmed('lstb.lohnsteuer', '700'), currentValue: '700', newValue: '650', provenance: { kind: 'nutzer' } })).toEqual({ kind: 'schreiben', marking: null })
   })
 
   it('a non-user write into an empty field writes and stays unconfirmed with its Herkunft', () => {
     expect(decideWriting({ key: 'lstb.lohnsteuer', existing: null, currentValue: null, newValue: '700', provenance: CLAUDE })).toEqual({
-      art: 'schreiben',
-      marking: { key: 'lstb.lohnsteuer', provenance: CLAUDE, bestaetigt: false, proposal: null, value: '700' },
+      kind: 'schreiben',
+      marking: { key: 'lstb.lohnsteuer', provenance: CLAUDE, confirmed: false, proposal: null, value: '700' },
     })
   })
 
   it('a non-user write over a value the user typed becomes a proposal and never overwrites it', () => {
     expect(decideWriting({ key: 'lstb.bruttoarbeitslohn', existing: null, currentValue: '4750', newValue: '4800', provenance: CLAUDE })).toEqual({
-      art: 'vorschlag',
-      marking: { key: 'lstb.bruttoarbeitslohn', provenance: { art: 'nutzer' }, bestaetigt: true, value: '4750', proposal: { value: '4800', provenance: CLAUDE } },
+      kind: 'vorschlag',
+      marking: { key: 'lstb.bruttoarbeitslohn', provenance: { kind: 'nutzer' }, confirmed: true, value: '4750', proposal: { value: '4800', provenance: CLAUDE } },
     })
   })
 
   it('a value the user marked "unklar" is the user\'s too — proposal, not overwrite', () => {
-    expect(decideWriting({ key: 'lstb.lohnsteuer', existing: null, currentValue: 'unklar', newValue: '700', provenance: CLAUDE }).art).toBe('vorschlag')
+    expect(decideWriting({ key: 'lstb.lohnsteuer', existing: null, currentValue: 'unklar', newValue: '700', provenance: CLAUDE }).kind).toBe('vorschlag')
   })
 
   it('a confirmed value is protected like a typed one; the newest proposal replaces the older', () => {
-    const bestaetigt: Kennzeichnung = { ...unconfirmed('rente.jahresbetrag', '12000'), bestaetigt: true, proposal: { value: '12100', provenance: CLAUDE } }
-    const gemini = { art: 'assistent', name: 'Gemini' } as const
-    expect(decideWriting({ key: 'rente.jahresbetrag', existing: bestaetigt, currentValue: '12000', newValue: '12200', provenance: gemini })).toEqual({
-      art: 'vorschlag',
-      marking: { ...bestaetigt, proposal: { value: '12200', provenance: gemini } },
+    const confirmed: Marking = { ...unconfirmed('rente.jahresbetrag', '12000'), confirmed: true, proposal: { value: '12100', provenance: CLAUDE } }
+    const gemini = { kind: 'assistent', name: 'Gemini' } as const
+    expect(decideWriting({ key: 'rente.jahresbetrag', existing: confirmed, currentValue: '12000', newValue: '12200', provenance: gemini })).toEqual({
+      kind: 'vorschlag',
+      marking: { ...confirmed, proposal: { value: '12200', provenance: gemini } },
     })
   })
 
   it('an unconfirmed value from someone else is replaced (nobody has vouched for it yet)', () => {
     expect(decideWriting({ key: 'kapital.kapitalertraege', existing: unconfirmed('kapital.kapitalertraege', '300'), currentValue: '300', newValue: '320', provenance: CLAUDE })).toEqual({
-      art: 'schreiben',
-      marking: { key: 'kapital.kapitalertraege', provenance: CLAUDE, bestaetigt: false, proposal: null, value: '320' },
+      kind: 'schreiben',
+      marking: { key: 'kapital.kapitalertraege', provenance: CLAUDE, confirmed: false, proposal: null, value: '320' },
     })
   })
 
   it('writing what is already there changes nothing', () => {
-    expect(decideWriting({ key: 'lstb.lohnsteuer', existing: null, currentValue: '700', newValue: '700', provenance: CLAUDE })).toEqual({ art: 'unveraendert' })
-    expect(decideWriting({ key: 'lstb.lohnsteuer', existing: null, currentValue: null, newValue: null, provenance: CLAUDE })).toEqual({ art: 'unveraendert' })
+    expect(decideWriting({ key: 'lstb.lohnsteuer', existing: null, currentValue: '700', newValue: '700', provenance: CLAUDE })).toEqual({ kind: 'unveraendert' })
+    expect(decideWriting({ key: 'lstb.lohnsteuer', existing: null, currentValue: null, newValue: null, provenance: CLAUDE })).toEqual({ kind: 'unveraendert' })
   })
 })
 
 describe('bestaetigeAnlage / fehlendeBestaetigungen — unbestätigt wirkt wie offen', () => {
-  const list: Kennzeichnung[] = [
+  const list: Marking[] = [
     unconfirmed('lstb.bruttoarbeitslohn', '50000'),
     unconfirmed('rente.jahresbetrag', '12000'),
     unconfirmed('vermietung:o1.mieteinnahmen', '9000'),
@@ -107,21 +107,21 @@ describe('bestaetigeAnlage / fehlendeBestaetigungen — unbestätigt wirkt wie o
 
   it('confirming one Anlage confirms all of its values and keeps their Herkunft', () => {
     const afterwards = confirmAnnex(list, 'anlageR')
-    expect(afterwards.find((k) => k.key === 'rente.jahresbetrag')).toEqual({ ...list[1], bestaetigt: true })
+    expect(afterwards.find((k) => k.key === 'rente.jahresbetrag')).toEqual({ ...list[1], confirmed: true })
     expect(missingConfirmations(afterwards)).toEqual(['unbestaetigt.anlageN', 'unbestaetigt.anlageV'])
   })
 
   it('an open proposal on a confirmed value does not block the printout', () => {
-    const withProposal: Kennzeichnung = { key: 'lstb.lohnsteuer', provenance: { art: 'nutzer' }, bestaetigt: true, value: '700', proposal: { value: '720', provenance: CLAUDE } }
+    const withProposal: Marking = { key: 'lstb.lohnsteuer', provenance: { kind: 'nutzer' }, confirmed: true, value: '700', proposal: { value: '720', provenance: CLAUDE } }
     expect(missingConfirmations([withProposal])).toEqual([])
   })
 })
 
 describe('nimmVorschlagAn / verwirfVorschlag', () => {
-  const withProposal: Kennzeichnung = { key: 'lstb.bruttoarbeitslohn', provenance: { art: 'nutzer' }, bestaetigt: true, value: '4750', proposal: { value: '4800', provenance: CLAUDE } }
+  const withProposal: Marking = { key: 'lstb.bruttoarbeitslohn', provenance: { kind: 'nutzer' }, confirmed: true, value: '4750', proposal: { value: '4800', provenance: CLAUDE } }
 
   it('accepting writes the proposed value as confirmed (the user chose it) with the proposer as Herkunft', () => {
-    expect(acceptProposal(withProposal)).toEqual({ key: 'lstb.bruttoarbeitslohn', provenance: CLAUDE, bestaetigt: true, value: '4800', proposal: null })
+    expect(acceptProposal(withProposal)).toEqual({ key: 'lstb.bruttoarbeitslohn', provenance: CLAUDE, confirmed: true, value: '4800', proposal: null })
   })
 
   it('discarding a proposal on a user value leaves no marker behind', () => {
@@ -129,7 +129,7 @@ describe('nimmVorschlagAn / verwirfVorschlag', () => {
   })
 
   it('discarding a proposal on an unconfirmed value keeps the value unconfirmed', () => {
-    const k: Kennzeichnung = { ...unconfirmed('rente.jahresbetrag', '12000'), proposal: { value: '1', provenance: CLAUDE } }
+    const k: Marking = { ...unconfirmed('rente.jahresbetrag', '12000'), proposal: { value: '1', provenance: CLAUDE } }
     expect(dismissProposal(k)).toEqual({ ...k, proposal: null })
   })
 
@@ -140,11 +140,11 @@ describe('nimmVorschlagAn / verwirfVorschlag', () => {
 
 describe('herkunftText — der Herkunfts-Chip', () => {
   it.each([
-    [{ art: 'nutzer' } as const, 'Selbst eingetragen'],
-    [{ art: 'uebernahme', vorjahr: 2024 } as const, 'Übernahme aus 2024'],
+    [{ kind: 'nutzer' } as const, 'Selbst eingetragen'],
+    [{ kind: 'uebernahme', lastYear: 2024 } as const, 'Übernahme aus 2024'],
     [CLAUDE, 'Assistent: Claude'],
-    [{ art: 'assistent', name: 'Claude', receiptId: 'b1' } as const, 'Assistent: Claude, aus Beleg'],
-    [{ art: 'beleg', receiptId: 'b1' } as const, 'Aus Beleg'],
+    [{ kind: 'assistent', name: 'Claude', receiptId: 'b1' } as const, 'Assistent: Claude, aus Beleg'],
+    [{ kind: 'beleg', receiptId: 'b1' } as const, 'Aus Beleg'],
   ])('%j → %s', (provenance, text) => {
     expect(provenanceText(provenance)).toBe(text)
   })

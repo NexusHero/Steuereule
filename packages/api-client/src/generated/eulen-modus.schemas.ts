@@ -6,13 +6,13 @@
  * OpenAPI spec version: 1.0
  */
 export interface OwlSettingResponseDto {
-  aktiviert: boolean;
+  enabled: boolean;
   /** @nullable */
-  aktiviertAm?: string | null;
+  enabledAt?: string | null;
 }
 
 export interface SetOwlSettingDto {
-  aktiviert: boolean;
+  enabled: boolean;
 }
 
 export type OwlCardDtoTrigger = typeof OwlCardDtoTrigger[keyof typeof OwlCardDtoTrigger];
@@ -67,7 +67,7 @@ export interface OwlCardDto {
 }
 
 export interface OwlCardsResponseDto {
-  aktiviert: boolean;
+  enabled: boolean;
   cards: OwlCardDto[];
   legalStatus: string;
 }

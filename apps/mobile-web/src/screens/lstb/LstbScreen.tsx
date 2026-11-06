@@ -155,8 +155,8 @@ function StateNotice({ response }: { readonly response: LstbResponseDto }) {
       <View style={s.widerspruchBlock}>
         <Text style={s.widerspruchHeading}>{tr('lstb.zustand.widerspruch')}</Text>
         {(z.conflicts ?? []).map((w) => (
-          <Text key={w.art} style={s.widerspruchItem}>
-            {tr(`lstb.widerspruch.${w.art}`)}
+          <Text key={w.kind} style={s.widerspruchItem}>
+            {tr(`lstb.widerspruch.${w.kind}`)}
           </Text>
         ))}
       </View>

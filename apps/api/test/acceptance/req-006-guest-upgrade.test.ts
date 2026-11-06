@@ -200,7 +200,7 @@ describe('REQ-006 — guest -> account upgrade, against the real server', () => 
 
       await expect(prisma.interviewAnswer.count({ where: { userId: guestUserId } })).resolves.toBe(0)
       await expect(prisma.interviewAnswer.count({ where: { userId: user.id } })).resolves.toBe(4)
-      await expect(prisma.taxYear.count({ where: { userId: user.id, steuerjahr: TAX_YEAR } })).resolves.toBe(1)
+      await expect(prisma.taxYear.count({ where: { userId: user.id, taxYear: TAX_YEAR } })).resolves.toBe(1)
 
       const state = await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview`, { headers: { cookie: accountCookie } })
       expect(state.status).toBe(200)

@@ -54,11 +54,11 @@ export class InterviewService {
     @Inject(AuditService) private readonly auditService: AuditService,
   ) {}
 
-  async getState(userId: string, steuerjahr: number, eintrag?: string, kind: UserIdKind = 'session'): Promise<InterviewStateDto> {
+  async getState(userId: string, taxYear: number, eintrag?: string, kind: UserIdKind = 'session'): Promise<InterviewStateDto> {
     const requestedEntry = eintrag ?? 'minimal-gate'
     if (Object.hasOwn(ENTRIES, requestedEntry)) assertGuestMayUse(kind, requestedEntry as EntryId)
 
-    const rows = await this.repository.findAllForUserAndYear(userId, steuerjahr)
+    const rows = await this.repository.findAllForUserAndYear(userId, taxYear)
     const answers = answersFrom(rows)
 
     if (rows.length > 0) {
@@ -77,8 +77,8 @@ export class InterviewService {
     }
   }
 
-  async postAnswer(userId: string, steuerjahr: number, dto: PostAnswerDto, kind: UserIdKind = 'session'): Promise<PostAnswerResponseDto> {
-    const rows = await this.repository.findAllForUserAndYear(userId, steuerjahr)
+  async postAnswer(userId: string, taxYear: number, dto: PostAnswerDto, kind: UserIdKind = 'session'): Promise<PostAnswerResponseDto> {
+    const rows = await this.repository.findAllForUserAndYear(userId, taxYear)
     const answers = answersFrom(rows)
     const entryId = entryForStep(dto.questionId as never)
     if (entryId === undefined || !ADMITTED_ENTRY_IDS.includes(entryId)) {
@@ -95,7 +95,7 @@ export class InterviewService {
 
     await this.repository.write({
       userId,
-      steuerjahr,
+      taxYear,
       questionId: dto.questionId,
       value: dto.value,
       openItems,

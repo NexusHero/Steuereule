@@ -83,11 +83,11 @@ export interface RentalPropertyDto {
   /** @nullable */
   plz: string | null;
   /** @nullable */
-  ort: string | null;
+  city: string | null;
   /** @nullable */
-  wohnflaeche: string | null;
+  livingArea: string | null;
   /** @nullable */
-  afaWieVorjahr: boolean | null;
+  depreciationAsLastYear: boolean | null;
   /** @nullable */
   umlagen: string | null;
   /** @nullable */
@@ -161,10 +161,10 @@ export interface PutRentalAddressDto {
   strasse?: string;
   hausnummer?: string;
   plz?: string;
-  ort?: string;
-  wohnflaeche?: string;
+  city?: string;
+  livingArea?: string;
   /** Anlage V Zeile 33: the building AfA is unchanged from last year. */
-  afaWieVorjahr?: boolean;
+  depreciationAsLastYear?: boolean;
   /** Anlage V Zeile 20: laufende Umlagen / Nebenkosten received, whole euros. */
   umlagen?: string;
   /** Anlage V Zeilen 46/48: Schuldzinsen (without repayment), whole euros. */

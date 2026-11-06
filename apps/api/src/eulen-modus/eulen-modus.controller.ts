@@ -37,7 +37,7 @@ export class OwlModeController {
     @CurrentUser() userId: string,
     @Body() dto: SetOwlSettingDto,
   ): Promise<OwlSettingResponseDto> {
-    return this.service.setSetting(userId, dto.aktiviert)
+    return this.service.setSetting(userId, dto.enabled)
   }
 
   @Get('steuerjahre/:jahr/eulen-karten')

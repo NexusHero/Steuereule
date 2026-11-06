@@ -139,7 +139,7 @@ describe('vermietungsobjektAlsEinnahmePosten — the fold into the deterministic
       id: 'vermietung-a',
       incomeType: 'Vermietung',
       amount: 12000,
-      source: { art: 'eingabe' },
+      source: { kind: 'eingabe' },
     })
   })
 

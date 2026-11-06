@@ -27,11 +27,11 @@ export function todayInBerlin(now: Date = new Date()): string {
 /** Application logic for the Fristen-/Verspätungszuschlag-Warnmodus. */
 @Injectable()
 export class DeadlinesService {
-  async getDeadlines(steuerjahr: number): Promise<DeadlinesResponseDto> {
+  async getDeadlines(taxYear: number): Promise<DeadlinesResponseDto> {
     const today = todayInBerlin()
     let warning
     try {
-      warning = deadlineWarning(steuerjahr, today)
+      warning = deadlineWarning(taxYear, today)
     } catch (error) {
       if (error instanceof RangeError) {
         throw new InvalidInputError('STEUERJAHR_UNSUPPORTED', error.message)

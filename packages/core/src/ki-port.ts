@@ -18,7 +18,7 @@ export interface KiPort {
 export function acceptAiProposal(proposal: AiProposal, itemId: string): Item {
   const source: Source =
     proposal.receiptId !== undefined
-      ? { art: 'ki-vorschlag', proposalId: proposal.id, receiptId: proposal.receiptId }
-      : { art: 'ki-vorschlag', proposalId: proposal.id }
+      ? { kind: 'ki-vorschlag', proposalId: proposal.id, receiptId: proposal.receiptId }
+      : { kind: 'ki-vorschlag', proposalId: proposal.id }
   return { id: itemId, incomeType: proposal.incomeType, amount: proposal.amount, source }
 }

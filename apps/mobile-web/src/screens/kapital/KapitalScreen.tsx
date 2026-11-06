@@ -39,7 +39,7 @@ export function CapitalScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX
   const setField = useCapitalControllerSetField()
   const setOwner = useCapitalControllerSetOwner()
   const link = useLinkControllerGet(taxYear)
-  const joint = link.data?.status === 200 && link.data.data.veranlagungsart === 'zusammen'
+  const joint = link.data?.status === 200 && link.data.data.filingType === 'zusammen'
 
   // The depot / the kind of letting is a catalogue answer; the mask can ask it right here.
   const [questionOpen, setQuestionOpen] = useState(false)

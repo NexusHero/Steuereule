@@ -51,7 +51,7 @@ export type ExportTaxDataEntryDtoFields = {[key: string]: string | number | bool
 export interface ExportTaxDataEntryDto {
   area: string;
   /** @nullable */
-  steuerjahr: number | null;
+  taxYear: number | null;
   fields: ExportTaxDataEntryDtoFields;
 }
 

@@ -25,12 +25,12 @@ export class FakeReceiptRepository implements ReceiptRepository {
     const record: ReceiptRecord = {
       id: `beleg-${this.seq++}`,
       userId,
-      dateiname: data.dateiname,
-      ...(data.art !== undefined ? { art: data.art } : {}),
+      fileName: data.fileName,
+      ...(data.kind !== undefined ? { kind: data.kind } : {}),
       ...(data.belegdatum !== undefined ? { belegdatum: data.belegdatum } : {}),
       ...(data.zahlungsdatum !== undefined ? { zahlungsdatum: data.zahlungsdatum } : {}),
-      steuerjahr: null,
-      vorschlagVerworfen: false,
+      taxYear: null,
+      proposalDismissed: false,
       createdAt: now,
       updatedAt: now,
     }
@@ -43,8 +43,8 @@ export class FakeReceiptRepository implements ReceiptRepository {
     if (index === -1) return Promise.resolve(null)
     const updated: ReceiptRecord = {
       ...this.rows[index]!,
-      steuerjahr: data.steuerjahr,
-      vorschlagVerworfen: data.vorschlagVerworfen,
+      taxYear: data.taxYear,
+      proposalDismissed: data.proposalDismissed,
       updatedAt: new Date(),
     }
     this.rows[index] = updated

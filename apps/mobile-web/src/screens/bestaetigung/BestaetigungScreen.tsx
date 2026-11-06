@@ -29,11 +29,11 @@ type Tr = ReturnType<typeof useTranslation>['t']
 const NO_AMOUNTS = new Set(['rente.rentenbeginnJahr', 'rente.alterBeiRentenbeginn', 'rente.rentenart', 'vermietung.baujahr'])
 
 function provenanceText(tr: Tr, h: ProvenanceDto): string {
-  switch (h.art) {
+  switch (h.kind) {
     case 'nutzer':
       return tr('bestaetigung.herkunft.nutzer')
     case 'uebernahme':
-      return tr('bestaetigung.herkunft.uebernahme', { vorjahr: h.vorjahr })
+      return tr('bestaetigung.herkunft.uebernahme', { vorjahr: h.lastYear })
     case 'assistent':
       return h.receiptId ? tr('bestaetigung.herkunft.assistentBeleg', { name: h.name }) : tr('bestaetigung.herkunft.assistent', { name: h.name })
     case 'beleg':
@@ -115,16 +115,16 @@ export function ConfirmationScreen({ year, onBack, onOpenScreen }: ConfirmationS
         </Text>
       ) : null}
 
-      {annexes.map((anlage: AnnexConfirmationDto) => {
-        const annexName = t(`bestaetigung.anlagen.${anlage.anlage}`)
-        const firstScreen = anlage.values[0]?.screen
+      {annexes.map((annex: AnnexConfirmationDto) => {
+        const annexName = t(`bestaetigung.anlagen.${annex.annex}`)
+        const firstScreen = annex.values[0]?.screen
         return (
-          <Card key={anlage.anlage} style={{ marginBottom: theme.space.s4 }} testID={`anlage-${anlage.anlage}`}>
+          <Card key={annex.annex} style={{ marginBottom: theme.space.s4 }} testID={`anlage-${annex.annex}`}>
             <Text style={styles.sectionTitle}>{annexName}</Text>
             <Text style={styles.hint}>
-              {anlage.unconfirmed > 0 ? t('bestaetigung.unbestaetigt', { count: anlage.unconfirmed }) : t('bestaetigung.nurVorschlaege')}
+              {annex.unconfirmed > 0 ? t('bestaetigung.unbestaetigt', { count: annex.unconfirmed }) : t('bestaetigung.nurVorschlaege')}
             </Text>
-            {anlage.values.map((w) => (
+            {annex.values.map((w) => (
               <View key={w.key} style={{ gap: theme.space.s1, marginTop: theme.space.s3 }}>
                 <Text style={styles.sectionBody}>{fieldLabel(t, w)}</Text>
                 <Text style={styles.sectionTitle}>{valueText(t, w, w.value)}</Text>
@@ -161,17 +161,17 @@ export function ConfirmationScreen({ year, onBack, onOpenScreen }: ConfirmationS
               </View>
             ))}
             <View style={{ gap: theme.space.s2, marginTop: theme.space.s4 }}>
-              {anlage.unconfirmed > 0 ? (
+              {annex.unconfirmed > 0 ? (
                 <Button
                   disabled={confirm.isPending}
-                  testID={`bestaetige-${anlage.anlage}`}
-                  onPress={() => void afterChange(() => confirm.mutateAsync({ jahr: year, anlage: anlage.anlage }))}
+                  testID={`bestaetige-${annex.annex}`}
+                  onPress={() => void afterChange(() => confirm.mutateAsync({ jahr: year, anlage: annex.annex }))}
                 >
                   {t('bestaetigung.anlageBestaetigen', { anlage: annexName })}
                 </Button>
               ) : null}
               {firstScreen ? (
-                <Button variant="ghost" testID={`aendern-${anlage.anlage}`} onPress={() => onOpenScreen(firstScreen)}>
+                <Button variant="ghost" testID={`aendern-${annex.annex}`} onPress={() => onOpenScreen(firstScreen)}>
                   {t('bestaetigung.einzelnAendern')}
                 </Button>
               ) : null}

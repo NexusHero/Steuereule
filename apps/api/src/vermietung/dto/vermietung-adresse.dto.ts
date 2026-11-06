@@ -24,18 +24,18 @@ export class PutRentalAddressDto {
   @IsOptional()
   @IsString()
   @MaxLength(100)
-  ort?: string
+  city?: string
 
   @ApiPropertyOptional({ type: String, example: '85' })
   @IsOptional()
   @IsString()
   @MaxLength(10)
-  wohnflaeche?: string
+  livingArea?: string
 
   @ApiPropertyOptional({ type: Boolean, description: 'Anlage V Zeile 33: the building AfA is unchanged from last year.' })
   @IsOptional()
   @IsBoolean()
-  afaWieVorjahr?: boolean
+  depreciationAsLastYear?: boolean
 
   @ApiPropertyOptional({ type: String, example: '2400', description: 'Anlage V Zeile 20: laufende Umlagen / Nebenkosten received, whole euros.' })
   @IsOptional()

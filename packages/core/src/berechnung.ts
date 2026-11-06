@@ -1,10 +1,10 @@
 import type { IncomeType } from './einkunftsarten.js'
 export type Source =
-  | { readonly art: 'eingabe' }
-  | { readonly art: 'beleg'; readonly receiptId: string }
-  | { readonly art: 'ki-vorschlag'; readonly proposalId: string; readonly receiptId?: string }
-  | { readonly art: 'regel'; readonly rule: string }
-  | { readonly art: 'uebernahme'; readonly vorjahr: number }
+  | { readonly kind: 'eingabe' }
+  | { readonly kind: 'beleg'; readonly receiptId: string }
+  | { readonly kind: 'ki-vorschlag'; readonly proposalId: string; readonly receiptId?: string }
+  | { readonly kind: 'regel'; readonly rule: string }
+  | { readonly kind: 'uebernahme'; readonly lastYear: number }
 export type Role = 'einnahme' | 'vorsorgeaufwand' | 'anrechnung'
 
 export interface Item {
@@ -113,11 +113,11 @@ export function calculate(input: CalculationInput): CalculationStatus {
 }
 
 export type ConflictResolution =
-  | { readonly art: 'quelle-waehlen'; readonly source: Source; readonly amount: number }
-  | { readonly art: 'wert-korrigieren'; readonly amount: number }
+  | { readonly kind: 'quelle-waehlen'; readonly source: Source; readonly amount: number }
+  | { readonly kind: 'wert-korrigieren'; readonly amount: number }
 
 export function resolveConflict(conflict: ItemConflict, resolution: ConflictResolution): Item {
-  const source: Source = resolution.art === 'quelle-waehlen' ? resolution.source : { art: 'eingabe' }
+  const source: Source = resolution.kind === 'quelle-waehlen' ? resolution.source : { kind: 'eingabe' }
   const amount = resolution.amount
   if (!Number.isFinite(amount) || amount < 0) {
     throw new RangeError('aufloesung.betrag must be a non-negative finite number')

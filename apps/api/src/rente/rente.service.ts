@@ -31,7 +31,7 @@ import type { PensionItemDto, PensionResponseDto, PensionStatusDto } from './dto
 function dataFromRecord(record: PensionRecord | null): PensionData {
   if (record === null) return EMPTY_PENSION
   return {
-    art: record.rentenart !== null && isPensionType(record.rentenart) ? record.rentenart : null,
+    kind: record.rentenart !== null && isPensionType(record.rentenart) ? record.rentenart : null,
     jahresbetrag: deserializePensionField(record.jahresbetrag),
     rentenbeginnJahr: deserializePensionField(record.rentenbeginnJahr),
     alterBeiRentenbeginn: deserializePensionField(record.alterBeiRentenbeginn),
@@ -63,7 +63,7 @@ function itemToDto(items: Item): PensionItemDto {
   return {
     id: items.id,
     amount: items.amount,
-    provenance: source.art === 'regel' ? source.rule : 'eingabe',
+    provenance: source.kind === 'regel' ? source.rule : 'eingabe',
   }
 }
 
@@ -77,16 +77,16 @@ export class PensionService {
     @Inject(PROVENANCE_REPOSITORY) private readonly markings: ProvenanceRepository,
   ) {}
 
-  private async answers(userId: string, steuerjahr: number): Promise<Answers> {
-    const rows = await this.interviewRepository.findAllForUserAndYear(userId, steuerjahr)
+  private async answers(userId: string, taxYear: number): Promise<Answers> {
+    const rows = await this.interviewRepository.findAllForUserAndYear(userId, taxYear)
     const answers: Record<string, string> = {}
     for (const row of rows) answers[row.questionId] = row.value
     return answers as Answers
   }
 
-  private async toResponse(userId: string, steuerjahr: number, record: PensionRecord | null): Promise<PensionResponseDto> {
+  private async toResponse(userId: string, taxYear: number, record: PensionRecord | null): Promise<PensionResponseDto> {
     const data = dataFromRecord(record)
-    const answers = await this.answers(userId, steuerjahr)
+    const answers = await this.answers(userId, taxYear)
     const gated = gatedIncomeTypes(answers)
 
     const coreItems = pensionAsCoreLineItem(data)
@@ -107,7 +107,7 @@ export class PensionService {
           }
 
     return {
-      art: data.art,
+      kind: data.kind,
       jahresbetrag: toFieldDto(data.jahresbetrag),
       rentenbeginnJahr: toFieldDto(data.rentenbeginnJahr),
       alterBeiRentenbeginn: toFieldDto(data.alterBeiRentenbeginn),
@@ -116,31 +116,31 @@ export class PensionService {
     }
   }
 
-  async getState(userId: string, steuerjahr: number): Promise<PensionResponseDto> {
-    const record = await this.repository.findForUserAndYear(userId, steuerjahr)
+  async getState(userId: string, taxYear: number): Promise<PensionResponseDto> {
+    const record = await this.repository.findForUserAndYear(userId, taxYear)
     if (record !== null) {
       await this.auditService.append({ userId, action: 'READ', resource: 'rente' })
     }
-    return this.toResponse(userId, steuerjahr, record)
+    return this.toResponse(userId, taxYear, record)
   }
 
-  async setField(userId: string, steuerjahr: number, field: PensionFieldId, dto: PutPensionFieldDto): Promise<PensionResponseDto> {
-    const record = await this.repository.findForUserAndYear(userId, steuerjahr)
+  async setField(userId: string, taxYear: number, field: PensionFieldId, dto: PutPensionFieldDto): Promise<PensionResponseDto> {
+    const record = await this.repository.findForUserAndYear(userId, taxYear)
     const data = dataFromRecord(record)
     const state = stateFromDto(dto)
     setPensionField(data, field, state)
-    const next = await this.repository.setField(userId, steuerjahr, field, serializePensionField(state))
-    await this.markings.remove(userId, steuerjahr, [provenanceKey('rente', field)])
-    return this.toResponse(userId, steuerjahr, next)
+    const next = await this.repository.setField(userId, taxYear, field, serializePensionField(state))
+    await this.markings.remove(userId, taxYear, [provenanceKey('rente', field)])
+    return this.toResponse(userId, taxYear, next)
   }
 
-  async setPensionKind(userId: string, steuerjahr: number, dto: PutPensionKindDto): Promise<PensionResponseDto> {
-    const art = dto.art ?? null
-    if (art !== null && !isPensionType(art)) {
+  async setPensionKind(userId: string, taxYear: number, dto: PutPensionKindDto): Promise<PensionResponseDto> {
+    const kind = dto.kind ?? null
+    if (kind !== null && !isPensionType(kind)) {
       throw new InvalidInputError('RENTENART_UNKNOWN', 'art must be one of the five Rentenarten, or null.')
     }
-    const record = await this.repository.setPensionKind(userId, steuerjahr, art)
-    await this.markings.remove(userId, steuerjahr, [provenanceKey('rente', 'rentenart')])
-    return this.toResponse(userId, steuerjahr, record)
+    const record = await this.repository.setPensionKind(userId, taxYear, kind)
+    await this.markings.remove(userId, taxYear, [provenanceKey('rente', 'rentenart')])
+    return this.toResponse(userId, taxYear, record)
   }
 }

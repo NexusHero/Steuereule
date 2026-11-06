@@ -42,15 +42,15 @@ function archiveYear(
   answers: Record<string, string>,
   today: string,
 ): OwlArchiveYear | null {
-  if (!assessment?.bescheiddatum || assessment.status === 'einspruch-eingelegt') return null
-  const deadlineEnd = appealDeadlineEnd(assessment.bescheiddatum)
-  const homeofficeTage = homeOfficeDaysFromInterview(answers)
-  if (deadlineEnd < today || !homeofficeTage) return null
+  if (!assessment?.assessmentDate || assessment.status === 'einspruch-eingelegt') return null
+  const deadlineEnd = appealDeadlineEnd(assessment.assessmentDate)
+  const homeOfficeDays = homeOfficeDaysFromInterview(answers)
+  if (deadlineEnd < today || !homeOfficeDays) return null
   return {
-    steuerjahr: assessment.steuerjahr,
-    assessmentDate: formatGermanDate(assessment.bescheiddatum),
+    taxYear: assessment.taxYear,
+    assessmentDate: formatGermanDate(assessment.assessmentDate),
     appealPossibleUntil: formatGermanDate(deadlineEnd),
-    homeofficeTage,
+    homeOfficeDays,
   }
 }
 
@@ -70,36 +70,36 @@ export class OwlModeService {
     const row = await this.settingRepo.findByUserId(userId)
     await this.auditService.append({ userId, action: 'READ', resource: 'eulen_einstellung' })
     return {
-      aktiviert: row?.aktiviert ?? false,
-      aktiviertAm: row?.aktiviertAm ? row.aktiviertAm.toISOString() : null,
+      enabled: row?.enabled ?? false,
+      enabledAt: row?.enabledAt ? row.enabledAt.toISOString() : null,
     }
   }
 
-  async setSetting(userId: string, aktiviert: boolean): Promise<OwlSettingResponseDto> {
-    const row = await this.settingRepo.setEnabled(userId, aktiviert)
+  async setSetting(userId: string, enabled: boolean): Promise<OwlSettingResponseDto> {
+    const row = await this.settingRepo.setEnabled(userId, enabled)
     return {
-      aktiviert: row.aktiviert,
-      aktiviertAm: row.aktiviertAm ? row.aktiviertAm.toISOString() : null,
+      enabled: row.enabled,
+      enabledAt: row.enabledAt ? row.enabledAt.toISOString() : null,
     }
   }
 
-  async getCards(userId: string, steuerjahr: number, today = todayInBerlin()): Promise<OwlCardsResponseDto> {
+  async getCards(userId: string, taxYear: number, today = todayInBerlin()): Promise<OwlCardsResponseDto> {
     const setting = await this.settingRepo.findByUserId(userId)
-    const aktiviert = setting?.aktiviert ?? false
-    if (!aktiviert) {
+    const enabled = setting?.enabled ?? false
+    if (!enabled) {
       return {
-        aktiviert: false,
+        enabled: false,
         cards: [],
         legalStatus: LEGAL_STATUS_DATE,
       }
     }
 
     const [kinder, dismissedItems, interviewRows, lastYearInterviewRows, lastYearAssessment] = await Promise.all([
-      this.childrenRepo.listForUserAndYear(userId, steuerjahr),
-      this.dismissalRepo.listForUserAndYear(userId, steuerjahr),
-      this.interviewRepo.findAllForUserAndYear(userId, steuerjahr),
-      this.interviewRepo.findAllForUserAndYear(userId, steuerjahr - 1),
-      this.assessmentRepo.findForUserAndYear(userId, steuerjahr - 1),
+      this.childrenRepo.listForUserAndYear(userId, taxYear),
+      this.dismissalRepo.listForUserAndYear(userId, taxYear),
+      this.interviewRepo.findAllForUserAndYear(userId, taxYear),
+      this.interviewRepo.findAllForUserAndYear(userId, taxYear - 1),
+      this.assessmentRepo.findForUserAndYear(userId, taxYear - 1),
     ])
 
     const answers = toAnswerMap(interviewRows)
@@ -108,9 +108,9 @@ export class OwlModeService {
     const archive = archiveYear(lastYearAssessment, lastYearAnswers, today)
 
     const input: OwlInputFacts = {
-      steuerjahr,
+      taxYear,
       hasTraining: answers['fortbildung'] === 'Ja',
-      homeofficeTage: homeOfficeDaysFromInterview(answers),
+      homeOfficeDays: homeOfficeDaysFromInterview(answers),
       lastYearFacts: lastYearDonationsEur !== null ? { donationsEur: lastYearDonationsEur } : null,
       childrenPerInterview: answers['kinder'] !== undefined && answers['kinder'] !== 'Nein',
       hasChildrenRecorded: kinder.length > 0,
@@ -129,13 +129,13 @@ export class OwlModeService {
     await this.auditService.append({ userId, action: 'READ', resource: 'eulen_karten' })
 
     return {
-      aktiviert: true,
+      enabled: true,
       cards,
       legalStatus: LEGAL_STATUS_DATE,
     }
   }
 
-  async dismissCard(userId: string, steuerjahr: number, fingerprint: string): Promise<void> {
-    await this.dismissalRepo.dismiss(userId, steuerjahr, fingerprint)
+  async dismissCard(userId: string, taxYear: number, fingerprint: string): Promise<void> {
+    await this.dismissalRepo.dismiss(userId, taxYear, fingerprint)
   }
 }

@@ -83,7 +83,7 @@ describe('GET /v1/steuerjahre/:jahr/cockpit — real Postgres (REQ-001 + ticket 
 
     // Seed through the real seams: job=Angestellt (writes the TaxYear projection), then only the
     // Bruttoarbeitslohn — lohnsteuer + sozialversicherung stay open (honest, never a fabricated 0).
-    await interviewRepository.write({ userId, steuerjahr: 2026, questionId: 'job', value: 'Angestellt', openItems: 2 })
+    await interviewRepository.write({ userId, taxYear: 2026, questionId: 'job', value: 'Angestellt', openItems: 2 })
     await lstbRepository.setField(userId, 2026, 'bruttoarbeitslohn', '50000')
 
     const response = await app.inject({
@@ -106,7 +106,7 @@ describe('GET /v1/steuerjahre/:jahr/cockpit — real Postgres (REQ-001 + ticket 
     const cookieA = extractSessionCookie(first.headers['set-cookie'])!
     const userIdA = userIdFromCookie(cookieA)
 
-    await interviewRepository.write({ userId: userIdA, steuerjahr: 2026, questionId: 'job', value: 'Angestellt', openItems: 2 })
+    await interviewRepository.write({ userId: userIdA, taxYear: 2026, questionId: 'job', value: 'Angestellt', openItems: 2 })
 
     // A fresh request with no cookie is a brand-new guest session per the guard.
     const userBResponse = await app.inject({ method: 'GET', url: '/v1/steuerjahre/2026/cockpit' })
@@ -130,7 +130,7 @@ describe('GET /v1/steuerjahre/:jahr/cockpit — real Postgres (REQ-001 + ticket 
     const cookie = extractSessionCookie(first.headers['set-cookie'])!
     const userId = userIdFromCookie(cookie)
 
-    await interviewRepository.write({ userId, steuerjahr: 2026, questionId: 'job', value: 'Angestellt', openItems: 2 })
+    await interviewRepository.write({ userId, taxYear: 2026, questionId: 'job', value: 'Angestellt', openItems: 2 })
 
     const response = await app.inject({
       method: 'GET',
@@ -147,7 +147,7 @@ describe('GET /v1/steuerjahre/:jahr/cockpit — real Postgres (REQ-001 + ticket 
     const cookie = extractSessionCookie(first.headers['set-cookie'])!
     const userId = userIdFromCookie(cookie)
 
-    await interviewRepository.write({ userId, steuerjahr: 2026, questionId: 'job', value: 'Angestellt', openItems: 2 })
+    await interviewRepository.write({ userId, taxYear: 2026, questionId: 'job', value: 'Angestellt', openItems: 2 })
     await lstbRepository.setField(userId, 2026, 'bruttoarbeitslohn', '50000')
     await lstbRepository.setField(userId, 2026, 'lohnsteuer', '8000')
     await lstbRepository.setField(userId, 2026, 'sozialversicherung', '9000')

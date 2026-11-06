@@ -130,7 +130,7 @@ export function rentalPropertyAsIncomeItem(property: RentalObjectData): Item | n
     id: `vermietung-${property.id}`,
     incomeType: 'Vermietung',
     amount: property.mieteinnahmen.value,
-    source: { art: 'eingabe' },
+    source: { kind: 'eingabe' },
   }
 }
 

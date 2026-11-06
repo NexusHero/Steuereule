@@ -214,7 +214,7 @@ function SalaryCertificateStep({
   const [rateError, setRateError] = useState(false)
   const [rate, setRate] = useState(salaryCertificate.exchangeRate !== null && salaryCertificate.exchangeRate !== undefined ? String(salaryCertificate.exchangeRate.rate) : '')
 
-  const amountFields = SALARY_CERTIFICATE_FIELDS.filter((f) => f.art === 'chf-betrag')
+  const amountFields = SALARY_CERTIFICATE_FIELDS.filter((f) => f.kind === 'chf-betrag')
   const stand = salaryCertificate.foldStatus
   const status = salaryCertificate.status
 
@@ -371,7 +371,7 @@ function ProvisionSection({ salaryCertificate, onSet }: { readonly salaryCertifi
   const t = useTheme()
   const styles = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
-  const saved = (art: string) => salaryCertificate.items.find((p) => p.art === art)?.amountChf
+  const saved = (kind: string) => salaryCertificate.items.find((p) => p.kind === kind)?.amountChf
   return (
     <>
       <Text style={styles.sectionTitle}>{tr('grenzgaenger.vorsorge.title')}</Text>
@@ -381,8 +381,8 @@ function ProvisionSection({ salaryCertificate, onSet }: { readonly salaryCertifi
           ['krankenkasseChf', 'Krankenkasse'],
           ['saeule3aChf', 'Saeule3a'],
         ] as const
-      ).map(([field, art]) => {
-        const initial = saved(art)
+      ).map(([field, kind]) => {
+        const initial = saved(kind)
         return (
           <NGreInput
             key={field}

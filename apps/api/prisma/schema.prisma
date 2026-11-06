@@ -95,26 +95,26 @@ enum AuditAction {
 /// session's opaque uuid (ADR-0012 §3) — Profile.userId holds either without a
 /// type change, and REQ-006's guest->account upgrade just re-keys the FK value.
 model User {
-  id            String    @id @default(uuid())
-  name          String
-  email         String    @unique
-  emailVerified Boolean   @default(false)
-  image         String?
+  id                 String              @id @default(uuid())
+  name               String
+  email              String              @unique
+  emailVerified      Boolean             @default(false)
+  image              String?
   /// Opt-in TOTP 2FA flag (REQ-007). Written only by better-auth's `two-factor`
   /// plugin (`enableTwoFactor`/`disableTwoFactor` set it, `verifyTOTP` flips it true
   /// after the one-code confirmation), never by this app's own controllers — the
   /// plugin owns the field exactly as it owns `twoFactor.secret`.
-  twoFactorEnabled Boolean @default(false)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  sessions      Session[]
-  accounts      Account[]
-  twoFactors    TwoFactor[]
-  passkeys      Passkey[]
-  freischaltungen Freischaltung[]
-  oauthClients    OauthClient[]
-  oauthConsents   OauthConsent[]
-  oauthAccessTokens OauthAccessToken[]
+  twoFactorEnabled   Boolean             @default(false)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  sessions           Session[]
+  accounts           Account[]
+  twoFactors         TwoFactor[]
+  passkeys           Passkey[]
+  unlocks            Unlock[]
+  oauthClients       OauthClient[]
+  oauthConsents      OauthConsent[]
+  oauthAccessTokens  OauthAccessToken[]
   oauthRefreshTokens OauthRefreshToken[]
 }
 
@@ -122,15 +122,15 @@ model User {
 /// authenticated request via UserContextGuard -> auth.api.getSession(); guest
 /// requests never touch this table (ADR-0012 §2).
 model Session {
-  id        String   @id @default(uuid())
-  expiresAt DateTime
-  token     String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  ipAddress String?
-  userAgent String?
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                 String              @id @default(uuid())
+  expiresAt          DateTime
+  token              String              @unique
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  ipAddress          String?
+  userAgent          String?
+  userId             String
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   oauthAccessTokens  OauthAccessToken[]
   oauthRefreshTokens OauthRefreshToken[]
 }
@@ -181,23 +181,23 @@ model Verification {
 /// Nest controller to interpose the way ADR-0024 did for the device plugin's
 /// bearer-token route.
 model TwoFactor {
-  id                     String    @id @default(uuid())
+  id                      String    @id @default(uuid())
   /// The TOTP secret — ciphertext (better-auth's `symmetricEncrypt`), `returned: false`.
-  secret                 String
+  secret                  String
   /// Encrypted backup codes (`storeBackupCodes: "encrypted"` default).
-  backupCodes            String
-  userId                 String
-  user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  backupCodes             String
+  userId                  String
+  user                    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   /// "Code confirmed" — better-auth's canonical schema defaults this to `true`
   /// (`@default(true)`); the plugin writes it explicitly: `false` on a fresh
   /// `enableTwoFactor`, `true` on `verifyTOTP` (the DB default only governs rows not
   /// created through the plugin). The user-visible "2FA on" flag is
   /// `User.twoFactorEnabled`, not this field.
-  verified               Boolean   @default(true)
-  failedVerificationCount Int      @default(0)
-  lockedUntil            DateTime?
-  createdAt              DateTime  @default(now())
-  updatedAt              DateTime  @updatedAt
+  verified                Boolean   @default(true)
+  failedVerificationCount Int       @default(0)
+  lockedUntil             DateTime?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
 
   @@index([userId])
   @@index([secret])
@@ -271,7 +271,7 @@ model TaxYear {
   userId        String
   /// The tax year shown in the Cockpit (e.g. 2026). Part of the request path, but the
   /// row lookup is always userId-scoped first (`@@unique([userId, steuerjahr])`).
-  steuerjahr    Int
+  taxYear       Int      @map("steuerjahr")
   /// Base estimate before the range is spread, in whole euro (>= 0). VESTIGIAL as of
   /// ticket 15 (Cockpit-Echtdaten): the Cockpit no longer reads this column — the spanne is
   /// now derived from @steuereule/core's `berechne`+`cockpitSpanne` over the real LStB/interview
@@ -287,7 +287,7 @@ model TaxYear {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  @@unique([userId, steuerjahr])
+  @@unique([userId, taxYear])
 }
 
 /// One row per (userId, steuerjahr, questionId) — the on-demand catalogue's stored answers
@@ -311,7 +311,7 @@ model InterviewAnswer {
   userId     String
   /// The tax year this answer belongs to — answers are collected per Steuerjahr, same
   /// granularity as TaxYear.
-  steuerjahr Int
+  taxYear    Int      @map("steuerjahr")
   /// An `EntryStepId` from packages/core/src/interview.ts's `QUESTIONS` registry — the current,
   /// exhaustive set (not hand-copied here, so this comment cannot drift the way ADR-0033
   /// already names as a real defect class for this file). Left in the clear (unlike `value`
@@ -335,12 +335,12 @@ model InterviewAnswer {
   /// user (employment status, foreign work, children) that are joinable to Profile's
   /// Steuer-ID via the same userId. `mode=strict` — see Profile.steuerId's comment
   /// for why a tampered/corrupted ciphertext must throw on read, never pass through.
-  value      String   /// @encrypted?mode=strict
+  value      String /// @encrypted?mode=strict
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  @@unique([userId, steuerjahr, questionId])
-  @@index([userId, steuerjahr])
+  @@unique([userId, taxYear, questionId])
+  @@index([userId, taxYear])
 }
 
 /// QR-code device-authorization (#238, RFC 8628, ADR-0024). better-auth's
@@ -436,37 +436,38 @@ model LegalHold {
 /// the (userId, steuerjahr) index need them without decrypting, and a date alone is not
 /// a tax identifier (the ADR-0008 ruling that put InterviewAnswer.value in the clear was
 /// about uniqueness/lookup; here it is about the derived-state rule, same instinct).
-model Beleg {
-  id            String    @id @default(uuid())
+model Receipt {
+  id                String    @id @default(uuid())
   /// Scoping key — same trusted userId as Profile.userId (ADR-0007). Never read from the
   /// request path/query/body.
-  userId        String
+  userId            String
   /// Original filename/storage key. Encrypted at rest (ADR-0008).
-  dateiname     String    /// @encrypted?mode=strict
+  fileName          String    @map("dateiname") /// @encrypted?mode=strict
   /// Document type (ADR-029): one of belegart.ts's `Belegart` values (Lohnausweis,
   /// Quellensteuer, Pensionskasse, Saeule3a, Krankenkasse, Familienzulage, Sonstiges) —
   /// null is the pre-CH undifferentiated receipt (not yet classified); 'Sonstiges' is an
   /// explicitly chosen generic receipt. A plain discriminator, not a tax fact: left in the
   /// clear (no field-level protection, same reasoning as the dates) so the inbox can group
   /// by it without decrypting.
-  art           String?
+  kind              String?   @map("art")
   /// Invoice date (Rechnungsdatum). Clear — the suggestion rule reads it without decrypting.
-  belegdatum    DateTime?
+  belegdatum        DateTime?
   /// Payment date (Zahlungsdatum) — § 11 Zufluss fixes the year, not the invoice date.
-  zahlungsdatum DateTime?
+  zahlungsdatum     DateTime?
   /// The CONFIRMED year (a tap has happened). Null while unbound/suggested. The
   /// suggestion itself is derived, never stored.
-  steuerjahr    Int?
+  taxYear           Int?      @map("steuerjahr")
   /// ADR-008 "bei meinem Jahr bleiben": whether the user explicitly dismissed the
   /// date-derived suggestion to keep their own confirmed year — a persisted FACT (not the
   /// derived state), so `zuordnungAusDaten` can resolve the conflict without silently
   /// overwriting the contradicting dates.
-  vorschlagVerworfen Boolean  @default(false)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  proposalDismissed Boolean   @default(false) @map("vorschlagVerworfen")
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   @@index([userId])
-  @@index([userId, steuerjahr])
+  @@index([userId, taxYear])
+  @@map("Beleg")
 }
 
 /// One row per (userId, steuerjahr) — the LStB (Lohnsteuerbescheinigung) guided-mask data for the
@@ -487,17 +488,17 @@ model Lstb {
   /// request path/query/body.
   userId             String
   /// The tax year these figures belong to (same granularity as TaxYear/InterviewAnswer).
-  steuerjahr         Int
+  taxYear            Int      @map("steuerjahr")
   /// Bruttoarbeitslohn (Zeile 3). Encrypted at rest (ADR-0008); null=offen, "unklar"=unreadable.
-  bruttoarbeitslohn  String?  /// @encrypted?mode=strict
+  bruttoarbeitslohn  String? /// @encrypted?mode=strict
   /// Einbehaltene Lohnsteuer (Zeile 4). Encrypted at rest; same state encoding.
-  lohnsteuer         String?  /// @encrypted?mode=strict
+  lohnsteuer         String? /// @encrypted?mode=strict
   /// Arbeitnehmer-Anteil der SV-Beiträge (Zeilen 22/23). Encrypted at rest; same state encoding.
-  sozialversicherung String?  /// @encrypted?mode=strict
+  sozialversicherung String? /// @encrypted?mode=strict
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  @@unique([userId, steuerjahr])
+  @@unique([userId, taxYear])
 }
 
 /// One row per (userId, steuerjahr) — the CH-Lohnausweis guided-mask data (ADR-036 Scan-Fallback,
@@ -513,56 +514,56 @@ model Lstb {
 /// row — the fold (grenzgaengerStand) reads them all, so a partial re-read resumes without losing
 /// the Kurs the CHF→EUR conversion was made with. The Wechselkurs columns stay in the clear: the
 /// BMF rate is public and the fold needs them without decrypting.
-model ChLohnausweis {
-  id                        String   @id @default(uuid())
+model ChSalaryCertificate {
+  id                               String   @id @default(uuid())
   /// Scoping key — same trusted userId as Profile.userId (ADR-0007). Never read from the
   /// request path/query/body.
-  userId                    String
+  userId                           String
   /// The tax year these figures belong to (same granularity as TaxYear/Lstb).
-  steuerjahr                Int
+  taxYear                          Int      @map("steuerjahr")
   /// Ziffer 1 — Lohn (Grundlohn). Encrypted at rest; null=offen, "unklar"=unreadable.
-  lohn                      String? /// @encrypted?mode=strict
+  lohn                             String? /// @encrypted?mode=strict
   /// Ziffer 2 — Gehaltsnebenleistungen. Encrypted at rest.
-  gehaltsnebenleistungen    String? /// @encrypted?mode=strict
+  gehaltsnebenleistungen           String? /// @encrypted?mode=strict
   /// Ziffer 3 — Unregelmäßige Leistungen. Encrypted at rest.
-  unregelmaessigeLeistungen String? /// @encrypted?mode=strict
+  irregularBenefits                String?  @map("unregelmaessigeLeistungen") /// @encrypted?mode=strict
   /// Ziffer 4 — Kapitalleistungen. Encrypted at rest.
-  kapitalleistungen         String? /// @encrypted?mode=strict
+  kapitalleistungen                String? /// @encrypted?mode=strict
   /// Ziffer 5 — Beteiligungsrechte. Encrypted at rest.
-  beteiligungsrechte        String? /// @encrypted?mode=strict
+  beteiligungsrechte               String? /// @encrypted?mode=strict
   /// Ziffer 6 — Sitzungsgelder. Encrypted at rest.
-  sitzungsgelder            String? /// @encrypted?mode=strict
+  sitzungsgelder                   String? /// @encrypted?mode=strict
   /// Ziffer 7 — Andere Leistungen. Encrypted at rest.
-  andereLeistungen          String? /// @encrypted?mode=strict
+  otherBenefits                    String?  @map("andereLeistungen") /// @encrypted?mode=strict
   /// Ziffer 8 — Total Bruttolohn (postenRelevant: Einkünfte). Encrypted at rest.
-  bruttolohnTotal           String? /// @encrypted?mode=strict
+  grossWageTotal                   String?  @map("bruttolohnTotal") /// @encrypted?mode=strict
   /// Ziffer 9 — AHV/IV/EO/ALV/NBUV (1. Säule). Encrypted at rest.
-  ahvBeitraege              String? /// @encrypted?mode=strict
+  ahvContributions                 String?  @map("ahvBeitraege") /// @encrypted?mode=strict
   /// Ziffer 10 — berufliche Vorsorge (2. Säule / PK, postenRelevant: Vorsorgeaufwand). Encrypted.
-  beruflicheVorsorge        String? /// @encrypted?mode=strict
+  occupationalPension              String?  @map("beruflicheVorsorge") /// @encrypted?mode=strict
   /// Ziffer 11 — Nettolohn. Encrypted at rest.
-  nettolohn                 String? /// @encrypted?mode=strict
+  nettolohn                        String? /// @encrypted?mode=strict
   /// Ziffer 12 — Quellensteuerabzug (postenRelevant: Anrechnung). Encrypted at rest.
-  quellensteuer             String? /// @encrypted?mode=strict
+  quellensteuer                    String? /// @encrypted?mode=strict
   /// Ziffer 13 — Spesen. Encrypted at rest.
-  spesen                    String? /// @encrypted?mode=strict
+  spesen                           String? /// @encrypted?mode=strict
   /// Ziffer 14 — Weitere Nebenleistungen. Encrypted at rest.
-  weitereNebenleistungen    String? /// @encrypted?mode=strict
+  otherFringeBenefits              String?  @map("weitereNebenleistungen") /// @encrypted?mode=strict
   /// Ziffer 15 — Bemerkungen (Freitext). Encrypted at rest (free text can carry PII).
-  bemerkungen               String? /// @encrypted?mode=strict
+  bemerkungen                      String? /// @encrypted?mode=strict
   /// Säule 3a (ADR-029 point 4) — optional whole-CHF amount, null = not entered. Encrypted.
-  saeule3aChf               String? /// @encrypted?mode=strict
+  saeule3aChf                      String? /// @encrypted?mode=strict
   /// CH-Krankenkasse (ADR-029 point 5) — optional whole-CHF amount, null = not entered. Encrypted.
-  krankenkasseChf           String? /// @encrypted?mode=strict
+  krankenkasseChf                  String? /// @encrypted?mode=strict
   /// Anlage N-Gre: employer (Zeilen 89–91), Familienzulagen (Z. 8/76), Krankentaggeld (Z. 80),
   /// Säule 2a Obligatorium employee/employer (Z. 84/87); whole CHF, null = not entered.
-  arbeitgeberName           String? /// @encrypted?mode=strict
-  arbeitgeberStrasse        String? /// @encrypted?mode=strict
-  arbeitgeberPlzOrt         String? /// @encrypted?mode=strict
-  familienzulagenChf        String? /// @encrypted?mode=strict
-  krankentaggeldChf         String? /// @encrypted?mode=strict
-  pkArbeitnehmerChf         String? /// @encrypted?mode=strict
-  pkArbeitgeberChf          String? /// @encrypted?mode=strict
+  arbeitgeberName                  String? /// @encrypted?mode=strict
+  arbeitgeberStrasse               String? /// @encrypted?mode=strict
+  arbeitgeberPlzOrt                String? /// @encrypted?mode=strict
+  familienzulagenChf               String? /// @encrypted?mode=strict
+  krankentaggeldChf                String? /// @encrypted?mode=strict
+  pkArbeitnehmerChf                String? /// @encrypted?mode=strict
+  pkArbeitgeberChf                 String? /// @encrypted?mode=strict
   /// Who pays the Kollektivkrankentaggeld / NBUV premium (N-Gre Zeilen 18/19, 95–98): employer share in
   /// percent (0–100), plus the employer CHF only when it pays everything; null = not entered.
   krankentaggeldArbeitgeberProzent String? /// @encrypted?mode=strict
@@ -570,19 +571,20 @@ model ChLohnausweis {
   nbuvArbeitgeberProzent           String? /// @encrypted?mode=strict
   nbuvArbeitgeberChf               String? /// @encrypted?mode=strict
   /// Any of N-Gre Zeilen 7, 9–14, 16, 17, 20–22 applies — not printable yet.
-  nGreSonderfaelle          Boolean?
+  nGreSonderfaelle                 Boolean?
   /// Wechselkurs-Monat (yyyy-mm) the CHF→EUR conversion applies to (ADR-012).
-  wechselkursMonat          String?
+  exchangeRateMonth                String?  @map("wechselkursMonat")
   /// Wechselkurs-Kurs (EUR per 1 CHF, strictly positive) — public BMF rate, clear.
-  wechselkursKurs           Float?
+  exchangeRateValue                Float?   @map("wechselkursKurs")
   /// Wechselkurs-Modus (amtlich | tatsaechlich). Clear.
-  wechselkursModus          String?
+  exchangeRateMode                 String?  @map("wechselkursModus")
   /// Beleg id for a tatsächlicher Kurs (ADR-012: "ohne Beleg kein tatsächlicher Kurs"). Clear.
-  wechselkursBelegId        String?
-  createdAt                 DateTime @default(now())
-  updatedAt                 DateTime @updatedAt
+  exchangeRateReceiptId            String?  @map("wechselkursBelegId")
+  createdAt                        DateTime @default(now())
+  updatedAt                        DateTime @updatedAt
 
-  @@unique([userId, steuerjahr])
+  @@unique([userId, taxYear])
+  @@map("ChLohnausweis")
 }
 
 /// One row per (userId, steuerjahr) — the Rentner guided-mask data (product ADR-034, Anlage R,
@@ -600,13 +602,13 @@ model ChLohnausweis {
 /// actual income is the most sensitive personal fact a tax app holds, and the Rentenbeginn-Jahr /
 /// -Lebensalter are personal facts that fix the tax treatment, joinable to Profile's Steuer-ID via
 /// the same userId.
-model Rente {
+model Pension {
   id                   String   @id @default(uuid())
   /// Scoping key — same trusted userId as Profile.userId (ADR-0007). Never read from the
   /// request path/query/body.
   userId               String
   /// The tax year these figures belong to (same granularity as TaxYear/Lstb/ChLohnausweis).
-  steuerjahr           Int
+  taxYear              Int      @map("steuerjahr")
   /// One of rente.ts's five `Rentenart` values, null = not yet chosen. Clear (plain discriminator).
   rentenart            String?
   /// Jahresbetrag der Rente (whole euros). Encrypted at rest; null=offen, "unklar"=unreadable.
@@ -618,7 +620,8 @@ model Rente {
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
-  @@unique([userId, steuerjahr])
+  @@unique([userId, taxYear])
+  @@map("Rente")
 }
 
 /// One row per (userId, steuerjahr) — the Kapital guided-mask data (ticket 10.5, product
@@ -634,16 +637,16 @@ model Rente {
 /// guenstigerpruefung), never stored (ADR-014/048 determinism boundary). The figure is
 /// field-encrypted at rest (ADR-0008): actual capital income is among the most sensitive
 /// personal facts a tax app holds, joinable to Profile's Steuer-ID via the same userId.
-model Kapital {
-  id              String   @id @default(uuid())
+model Capital {
+  id                    String   @id @default(uuid())
   /// Scoping key — same trusted userId as Profile.userId (ADR-0007). Never read from the
   /// request path/query/body.
-  userId          String
+  userId                String
   /// The tax year these figures belong to (same granularity as Lstb/ChLohnausweis/Rente).
-  steuerjahr      Int
+  taxYear               Int      @map("steuerjahr")
   /// Kapitalerträge (Einkünfte aus Kapitalvermögen, whole euros). Encrypted at rest;
   /// null=offen, "unklar"=unreadable.
-  kapitalertraege String? /// @encrypted?mode=strict
+  kapitalertraege       String? /// @encrypted?mode=strict
   /// Anlage KAP Zeile 16/17 and the withheld taxes of Zeilen 37–39, same encoding.
   sparerPauschbetrag    String? /// @encrypted?mode=strict
   kapitalertragsteuer   String? /// @encrypted?mode=strict
@@ -652,10 +655,11 @@ model Kapital {
   /// Whose capital income (ADR-0054): A, B or gemeinsam (a joint account, split half and half). Clear —
   /// it carries no amount. null = A.
   inhaber               String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
-  @@unique([userId, steuerjahr])
+  @@unique([userId, taxYear])
+  @@map("Kapital")
 }
 
 /// One row per (userId, steuerjahr, id) — ONE Vermietungsobjekt of the guided mask (ticket 10.6,
@@ -675,39 +679,40 @@ model Kapital {
 /// All four figures are field-encrypted at rest (ADR-0008): rental income and acquisition costs
 /// are among the most sensitive personal facts a tax app holds, joinable to Profile's Steuer-ID
 /// via the same userId.
-model Vermietungsobjekt {
-  id                 String   @id @default(uuid())
+model RentalProperty {
+  id                     String   @id @default(uuid())
   /// Scoping key — same trusted userId as Profile.userId (ADR-0007). Never read from the
   /// request path/query/body.
-  userId             String
+  userId                 String
   /// The tax year these figures belong to (same granularity as Lstb/ChLohnausweis/Rente).
-  steuerjahr         Int
+  taxYear                Int      @map("steuerjahr")
   /// Jahreskaltmiete (whole euros). Encrypted at rest; null=offen, "unklar"=unreadable.
-  mieteinnahmen      String? /// @encrypted?mode=strict
+  mieteinnahmen          String? /// @encrypted?mode=strict
   /// Gebäude-Anschaffungskosten (whole euros). Encrypted at rest; same encoding.
-  anschaffungskosten String? /// @encrypted?mode=strict
+  anschaffungskosten     String? /// @encrypted?mode=strict
   /// Baujahr (Fertigstellung) — fixes the § 7 Abs. 4 Satz 1 AfA-Satz. Encrypted at rest.
-  baujahr            String? /// @encrypted?mode=strict
+  baujahr                String? /// @encrypted?mode=strict
   /// Laufende Werbungskosten (whole euros). Encrypted at rest; same encoding.
-  werbungskosten     String? /// @encrypted?mode=strict
+  werbungskosten         String? /// @encrypted?mode=strict
   /// Lage des Objekts für Anlage V (ADR-0050). Encrypted at rest.
-  strasse            String? /// @encrypted?mode=strict
-  hausnummer         String? /// @encrypted?mode=strict
-  plz                String? /// @encrypted?mode=strict
-  ort                String? /// @encrypted?mode=strict
-  wohnflaeche        String? /// @encrypted?mode=strict
+  strasse                String? /// @encrypted?mode=strict
+  hausnummer             String? /// @encrypted?mode=strict
+  plz                    String? /// @encrypted?mode=strict
+  city                   String?  @map("ort") /// @encrypted?mode=strict
+  livingArea             String?  @map("wohnflaeche") /// @encrypted?mode=strict
   /// Anlage V Zeile 33: the building AfA is unchanged from last year (1 = wie Vorjahr).
-  afaWieVorjahr      Boolean?
+  depreciationAsLastYear Boolean? @map("afaWieVorjahr")
   /// Anlage V Z. 20 Umlagen, Z. 46/48 Schuldzinsen (whole euros), Z. 13 number of flats, Z. 86 Person A's share
   /// in percent (ADR-0054). Encrypted at rest; null = not entered.
-  umlagen            String? /// @encrypted?mode=strict
-  schuldzinsen       String? /// @encrypted?mode=strict
-  einheiten          String? /// @encrypted?mode=strict
-  anteilA            String? /// @encrypted?mode=strict
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  umlagen                String? /// @encrypted?mode=strict
+  schuldzinsen           String? /// @encrypted?mode=strict
+  einheiten              String? /// @encrypted?mode=strict
+  anteilA                String? /// @encrypted?mode=strict
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
 
-  @@index([userId, steuerjahr])
+  @@index([userId, taxYear])
+  @@map("Vermietungsobjekt")
 }
 
 /// One row per (userId, steuerjahr) — the Steuerbescheid (Bescheidprüfung 1.0, ticket 10.3,
@@ -721,35 +726,36 @@ model Vermietungsobjekt {
 /// facts a tax app holds, joinable to Profile's Steuer-ID via the same userId. The phase sub-state
 /// (`status`) and the Bescheiddatum stay in the clear: the server-side transition validation and
 /// the § 355 AO Fristen-Countdown need them without decrypting, and neither is a tax identifier.
-model Bescheid {
-  id                  String   @id @default(uuid())
+model Assessment {
+  id                 String   @id @default(uuid())
   /// Scoping key — same trusted userId as Profile.userId (ADR-0007). Never read from the
   /// request path/query/body.
-  userId              String
+  userId             String
   /// The tax year these figures belong to (same granularity as Lstb/ChLohnausweis).
-  steuerjahr          Int
+  taxYear            Int      @map("steuerjahr")
   /// The bescheid-phase sub-state (eingegangen | geprüft | einspruch-eingelegt), validated on
   /// every write against @steuereule/core's istBescheidUebergangErlaubt — kein stiller Übergang.
-  status              String   @default("eingegangen")
+  status             String   @default("eingegangen")
   /// Bescheiddatum (ISO yyyy-mm-dd) — the § 355 AO Einspruchsfrist runs from here. Clear.
-  bescheiddatum       String?
+  assessmentDate     String?  @map("bescheiddatum")
   /// Einspruch-Grund (closed set from @steuereule/core's EINSPRUCHS_GRUENDE), null until filed.
-  einspruchGrund      String?
+  appealReason       String?  @map("einspruchGrund")
   /// Einkünfte laut Bescheid (comparable). Encrypted at rest; null=offen, "unklar"=unreadable.
-  einnahmen           String?  /// @encrypted?mode=strict
+  einnahmen          String? /// @encrypted?mode=strict
   /// Vorsorgeaufwendungen laut Bescheid (comparable). Encrypted at rest.
-  vorsorgeaufwand     String?  /// @encrypted?mode=strict
+  vorsorgeaufwand    String? /// @encrypted?mode=strict
   /// Anrechenbare Steuern (Quellensteuer) laut Bescheid (comparable). Encrypted at rest.
-  anrechnung          String?  /// @encrypted?mode=strict
+  anrechnung         String? /// @encrypted?mode=strict
   /// Festgesetzte Einkommensteuer (Bescheid-only, not comparable). Encrypted at rest.
-  festgesetzteSteuer  String?  /// @encrypted?mode=strict
+  festgesetzteSteuer String? /// @encrypted?mode=strict
   /// Abschlusszahlung: Erstattung > 0, Nachzahlung < 0 (Bescheid-only, not comparable). Encrypted.
-  erstattung          String?  /// @encrypted?mode=strict
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  erstattung         String? /// @encrypted?mode=strict
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
-  @@unique([userId, steuerjahr])
+  @@unique([userId, taxYear])
   @@index([userId])
+  @@map("Bescheid")
 }
 
 /// Die Kennzeichnungs-Schicht (ADR-0049, verallgemeinert durch ADR-0052 §6/§7): eine Zeile je
@@ -758,35 +764,36 @@ model Bescheid {
 /// selbst bleiben in ihren Modellen; Vorprüfung, Ausdruck und Bezahlung behandeln `bestaetigt =
 /// false` wie offen. Ein Wert des Nutzers wird nie überschrieben: der fremde Wert landet als
 /// Vorschlag (`vorschlag*`), der neueste ersetzt einen älteren.
-model Kennzeichnung {
-  id                    String   @id @default(uuid())
+model Marking {
+  id                     String   @id @default(uuid())
   /// Scoping key — same trusted userId as Profile.userId (ADR-0007). Never read from the
   /// request path/query/body.
-  userId                String
+  userId                 String
   /// The tax year of the field; 0 for year-independent masks (Profil, Stammdaten).
-  steuerjahr            Int
+  taxYear                Int      @map("steuerjahr")
   /// `<maske>[:<instanz>].<feld>`, e.g. `lstb.bruttoarbeitslohn`, `vermietung:<id>.mieteinnahmen`.
-  postenKey             String
+  itemKey                String   @map("postenKey")
   /// The Anlage the field is confirmed with (core `anlageVon`), kept for per-Anlage queries.
-  anlage                String
+  annex                  String   @map("anlage")
   /// Herkunft of the current value: nutzer | uebernahme | assistent | beleg.
-  herkunftArt           String
-  herkunftName          String?
-  herkunftBelegId       String?
-  vorjahr               Int?
+  provenanceKind         String   @map("herkunftArt")
+  provenanceName         String?  @map("herkunftName")
+  provenanceReceiptId    String?  @map("herkunftBelegId")
+  lastYear               Int?     @map("vorjahr")
   /// false = UNBESTÄTIGT; true = the user confirmed the Anlage or chose the value.
-  bestaetigt            Boolean  @default(false)
+  confirmed              Boolean  @default(false) @map("bestaetigt")
   /// Null when there is no open proposal.
-  vorschlagHerkunftArt  String?
-  vorschlagHerkunftName String?
-  vorschlagBelegId      String?
-  vorschlagVorjahr      Int?
-  vorschlagWert         String?  /// @encrypted?mode=strict
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  proposalProvenanceKind String?  @map("vorschlagHerkunftArt")
+  proposalProvenanceName String?  @map("vorschlagHerkunftName")
+  proposalReceiptId      String?  @map("vorschlagBelegId")
+  proposalLastYear       Int?     @map("vorschlagVorjahr")
+  proposalValue          String?  @map("vorschlagWert") /// @encrypted?mode=strict
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
 
-  @@unique([userId, steuerjahr, postenKey])
-  @@index([userId, steuerjahr])
+  @@unique([userId, taxYear, itemKey])
+  @@index([userId, taxYear])
+  @@map("Kennzeichnung")
 }
 
 /// Paid unlock of one tax year's Formular-Ausdruck (ADR-0050: Papierweg, paid on print).
@@ -794,20 +801,21 @@ model Kennzeichnung {
 /// webhook, never by the browser's return redirect. Account-only (a guest cannot pay),
 /// so it carries a real FK and cascades with the User on Art. 17 erasure — Stripe keeps
 /// the accounting record (§ 147 AO) on its side, this row is only the entitlement.
-model Freischaltung {
+model Unlock {
   id                      String    @id @default(uuid())
   userId                  String
-  steuerjahr              Int
+  taxYear                 Int       @map("steuerjahr")
   /// "offen" until the webhook confirms payment, then "bezahlt".
   status                  String    @default("offen")
   stripeCheckoutSessionId String    @unique
-  betragCent              Int?
-  bezahltAm               DateTime?
+  amountCents             Int?      @map("betragCent")
+  paidAt                  DateTime? @map("bezahltAm")
   createdAt               DateTime  @default(now())
   updatedAt               DateTime  @updatedAt
   user                    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId, steuerjahr])
+  @@index([userId, taxYear])
+  @@map("Freischaltung")
 }
 
 /// Erklärungs-Stammdaten for the Hauptvordruck ESt 1 A beyond Profile's name/Steuer-ID
@@ -816,118 +824,126 @@ model Freischaltung {
 /// fields there would break the value-first funnel (ADR-0045). Every personal field is
 /// encrypted at rest; `religion` is a special category (Art. 9 DSGVO) and is stored only
 /// together with the explicit consent timestamp.
-model Stammdaten {
-  id                    String    @id @default(uuid())
-  userId                String    @unique
-  geburtsdatum          String? /// @encrypted?mode=strict
-  strasse               String? /// @encrypted?mode=strict
-  hausnummer            String? /// @encrypted?mode=strict
-  hausnummerZusatz      String? /// @encrypted?mode=strict
-  plz                   String? /// @encrypted?mode=strict
-  wohnort               String? /// @encrypted?mode=strict
-  beruf                 String? /// @encrypted?mode=strict
-  religion              String? /// @encrypted?mode=strict
+model MasterData {
+  id                     String    @id @default(uuid())
+  userId                 String    @unique
+  geburtsdatum           String? /// @encrypted?mode=strict
+  strasse                String? /// @encrypted?mode=strict
+  hausnummer             String? /// @encrypted?mode=strict
+  hausnummerZusatz       String? /// @encrypted?mode=strict
+  plz                    String? /// @encrypted?mode=strict
+  wohnort                String? /// @encrypted?mode=strict
+  beruf                  String? /// @encrypted?mode=strict
+  religion               String? /// @encrypted?mode=strict
   religionEinwilligungAm DateTime?
-  familienstand         String? /// @encrypted?mode=strict
-  familienstandSeit     String? /// @encrypted?mode=strict
-  iban                  String? /// @encrypted?mode=strict
-  kontoinhaber          String? /// @encrypted?mode=strict
-  finanzamt             String? /// @encrypted?mode=strict
-  telefon               String? /// @encrypted?mode=strict
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  familienstand          String? /// @encrypted?mode=strict
+  familienstandSeit      String? /// @encrypted?mode=strict
+  iban                   String? /// @encrypted?mode=strict
+  kontoinhaber           String? /// @encrypted?mode=strict
+  finanzamt              String? /// @encrypted?mode=strict
+  telefon                String? /// @encrypted?mode=strict
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  @@map("Stammdaten")
 }
 
 /// One row per child for a given tax year (product ADR-031, Anlage Kind, ADR-0050).
 /// Personal facts are field-encrypted at rest (ADR-0008).
-model Kind {
-  id                    String   @id @default(uuid())
+model Child {
+  id                       String   @id @default(uuid())
   /// Scoping key — same trusted userId as Profile.userId (ADR-0007).
-  userId                String
-  steuerjahr            Int
-  lfdNr                 Int      @default(1)
-  vorname               String   /// @encrypted?mode=strict
-  nachname              String   /// @encrypted?mode=strict
-  geburtsdatum          String   /// @encrypted?mode=strict
-  idnr                  String?  /// @encrypted?mode=strict
-  kindergeldAnspruchEur String?  /// @encrypted?mode=strict
+  userId                   String
+  taxYear                  Int      @map("steuerjahr")
+  sequenceNumber           Int      @default(1) @map("lfdNr")
+  firstName                String   @map("vorname") /// @encrypted?mode=strict
+  lastName                 String   @map("nachname") /// @encrypted?mode=strict
+  geburtsdatum             String /// @encrypted?mode=strict
+  taxId                    String?  @map("idnr") /// @encrypted?mode=strict
+  childBenefitClaimEur     String?  @map("kindergeldAnspruchEur") /// @encrypted?mode=strict
   /// Anlage Kind Zeile 10 (Kz 02 / Kz 03): 1 = leiblich/adoptiert, 2 = Pflegekind, 3 = Enkel-/Stiefkind.
-  kindschaftsverhaeltnis  String?
-  kindschaftsverhaeltnisB String?
-  familienkasse           String?  /// @encrypted?mode=strict
-  wohnsitzInlandGanzjaehrig Boolean?
+  kinship                  String?  @map("kindschaftsverhaeltnis")
+  kinshipB                 String?  @map("kindschaftsverhaeltnisB")
+  familyBenefitsOffice     String?  @map("familienkasse") /// @encrypted?mode=strict
+  domesticResidenceAllYear Boolean? @map("wohnsitzInlandGanzjaehrig")
   /// Anlage Kind Zeilen 11–15: the other parent when not part of this return.
-  andererElternteil              String?
-  andererElternteilName          String?  /// @encrypted?mode=strict
-  andererElternteilGeburtsdatum  String?  /// @encrypted?mode=strict
-  andererElternteilAdresse       String?  /// @encrypted?mode=strict
-  andererElternteilArt           String?
-  andererElternteilVerstorbenAm  String?  /// @encrypted?mode=strict
+  otherParent              String?  @map("andererElternteil")
+  otherParentName          String?  @map("andererElternteilName") /// @encrypted?mode=strict
+  otherParentBirthDate     String?  @map("andererElternteilGeburtsdatum") /// @encrypted?mode=strict
+  otherParentAddress       String?  @map("andererElternteilAdresse") /// @encrypted?mode=strict
+  otherParentKind          String?  @map("andererElternteilArt")
+  otherParentDiedOn        String?  @map("andererElternteilVerstorbenAm") /// @encrypted?mode=strict
   /// Entlastungsbetrag für Alleinerziehende (Anlage Kind Zeilen 45/46), whole year only.
-  gemeldetBeiMirGanzjaehrig      Boolean?
-  kindergeldAnMichGanzjaehrig    Boolean?
+  registeredWithMeAllYear  Boolean? @map("gemeldetBeiMirGanzjaehrig")
+  childBenefitToMeAllYear  Boolean? @map("kindergeldAnMichGanzjaehrig")
   /// Anlage Kind Zeilen 27/28 (Kz 66/67): the child's KV Basisabsicherung and PV, paid by the parents as
   /// policyholders; whole euros, null = not entered.
-  kvBasisEur                     String?  /// @encrypted?mode=strict
-  pvEur                          String?  /// @encrypted?mode=strict
+  healthBasicEur           String?  @map("kvBasisEur") /// @encrypted?mode=strict
+  careEur                  String?  @map("pvEur") /// @encrypted?mode=strict
   /// Anlage Kind Zeile 6 (Kz 15): Schweizer Kinderzulage / Familienzulage in whole EUR (converted from Lohnausweis).
-  schweizerKinderzulageEur       String?  /// @encrypted?mode=strict
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  swissFamilyAllowanceEur  String?  @map("schweizerKinderzulageEur") /// @encrypted?mode=strict
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
 
-  @@index([userId, steuerjahr])
+  @@index([userId, taxYear])
+  @@map("Kind")
 }
 
 /// Coupling of two tax years for joint filing (ADR-006, Zusammenveranlagung).
-model SteuerjahrKopplung {
-  id              String   @id @default(uuid())
-  personAUserId   String
-  personBUserId   String
-  steuerjahr      Int
-  veranlagungsart String   @default("zusammen")
-  einladungsCode  String?  @unique
+model TaxYearLink {
+  id                       String    @id @default(uuid())
+  personAUserId            String
+  personBUserId            String
+  taxYear                  Int       @map("steuerjahr")
+  filingType               String    @default("zusammen") @map("veranlagungsart")
+  invitationCode           String?   @unique @map("einladungsCode")
   /// The invite code links two accounts; it stops working after this moment.
-  einladungsCodeGueltigBis DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  invitationCodeValidUntil DateTime? @map("einladungsCodeGueltigBis")
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
 
-  @@unique([personAUserId, steuerjahr])
-  @@index([personBUserId, steuerjahr])
+  @@unique([personAUserId, taxYear])
+  @@index([personBUserId, taxYear])
+  @@map("SteuerjahrKopplung")
 }
 
 /// Opt-in setting and consent for Eulen-Modus (product ADR-037, ADR-048).
-model EulenEinstellung {
-  id          String    @id @default(uuid())
-  userId      String    @unique
-  aktiviert   Boolean   @default(false)
-  aktiviertAm DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+model OwlSetting {
+  id        String    @id @default(uuid())
+  userId    String    @unique
+  enabled   Boolean   @default(false) @map("aktiviert")
+  enabledAt DateTime? @map("aktiviertAm")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@map("EulenEinstellung")
 }
 
 /// Dismissed cards in Eulen-Modus (product ADR-041: "Stimmt nicht").
-model EulenKartenVerwurf {
+model OwlCardDismissal {
   id          String   @id @default(uuid())
   userId      String
-  steuerjahr  Int
+  taxYear     Int      @map("steuerjahr")
   fingerprint String
-  verworfenAm DateTime @default(now())
+  dismissedAt DateTime @default(now()) @map("verworfenAm")
 
-  @@unique([userId, steuerjahr, fingerprint])
-  @@index([userId, steuerjahr])
+  @@unique([userId, taxYear, fingerprint])
+  @@index([userId, taxYear])
+  @@map("EulenKartenVerwurf")
 }
 
 /// Tracks completed Jahresübernahmen per (userId, steuerjahr) to prevent duplicate takeovers
 /// even if all copied fields are later edited or confirmed by the user (ADR-0049 / ADR-0052).
-model Jahresuebernahme {
-  id         String   @id @default(uuid())
-  userId     String
-  steuerjahr Int
-  vorjahr    Int
-  createdAt  DateTime @default(now())
+model YearTakeover {
+  id        String   @id @default(uuid())
+  userId    String
+  taxYear   Int      @map("steuerjahr")
+  lastYear  Int      @map("vorjahr")
+  createdAt DateTime @default(now())
 
-  @@unique([userId, steuerjahr])
-  @@index([userId, steuerjahr])
+  @@unique([userId, taxYear])
+  @@index([userId, taxYear])
+  @@map("Jahresuebernahme")
 }
 
 /// OAuth 2.1 Provider models for Better Auth (ADR-0052 §4)
@@ -970,10 +986,10 @@ model OauthClient {
   referenceId                      String?
   metadata                         Json?
 
-  consents                         OauthConsent[]
-  accessTokens                     OauthAccessToken[]
-  refreshTokens                    OauthRefreshToken[]
-  clientResources                  OauthClientResource[]
+  consents        OauthConsent[]
+  accessTokens    OauthAccessToken[]
+  refreshTokens   OauthRefreshToken[]
+  clientResources OauthClientResource[]
 
   @@index([userId])
 }
@@ -995,7 +1011,7 @@ model OauthResource {
   policyVersion                 Int?      @default(1)
   metadata                      Json?
 
-  clientResources               OauthClientResource[]
+  clientResources OauthClientResource[]
 }
 
 model OauthClientResource {
@@ -1012,20 +1028,20 @@ model OauthClientResource {
 }
 
 model OauthRefreshToken {
-  id                      String              @id @default(uuid())
-  token                   String              @unique
+  id                      String      @id @default(uuid())
+  token                   String      @unique
   clientId                String
-  client                  OauthClient         @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  client                  OauthClient @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
   sessionId               String?
-  session                 Session?            @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  session                 Session?    @relation(fields: [sessionId], references: [id], onDelete: SetNull)
   userId                  String
-  user                    User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   referenceId             String?
   authorizationCodeId     String?
   resources               String[]
   requestedUserInfoClaims String[]
   expiresAt               DateTime?
-  createdAt               DateTime?           @default(now())
+  createdAt               DateTime?   @default(now())
   revoked                 DateTime?
   rotatedAt               DateTime?
   rotationReplayResponse  String?
@@ -1034,7 +1050,7 @@ model OauthRefreshToken {
   confirmation            Json?
   scopes                  String[]
 
-  accessTokens            OauthAccessToken[]
+  accessTokens OauthAccessToken[]
 
   @@index([clientId])
   @@index([userId])
@@ -1105,29 +1121,29 @@ model Jwks {
 
 /// One row per (userId, steuerjahr) — the commute facts for the Entfernungspauschale (Anlage N
 /// Zeilen 27–31): which weekdays are worked, days off, the one-way distance and how it is travelled.
-model Arbeitsweg {
-  id                 String   @id @default(uuid())
+model Commute {
+  id                  String   @id @default(uuid())
   /// Scoping key — same trusted userId as Lstb.userId (ADR-0007).
-  userId             String
-  steuerjahr         Int
+  userId              String
+  taxYear             Int      @map("steuerjahr")
   /// ISO weekdays worked, comma-separated ("1,2,3,4,5").
-  arbeitstage        String
-  urlaubstage        Int      @default(0)
-  krankheitstage     Int      @default(0)
-  homeofficeTage     Int      @default(0)
+  workdays            String   @map("arbeitstage")
+  vacationDays        Int      @default(0) @map("urlaubstage")
+  sickDays            Int      @default(0) @map("krankheitstage")
+  homeOfficeDays      Int      @default(0) @map("homeofficeTage")
   /// One-way distance in full kilometres; null = not entered yet.
-  einfacheKm         Int?
+  oneWayKm            Int?     @map("einfacheKm")
   /// "pkw" | "oepnv" | "andere"; null = not entered yet.
-  verkehrsmittel     String?
+  transport           String?  @map("verkehrsmittel")
   /// PLZ, Ort und Straße der ersten Tätigkeitsstätte. Encrypted at rest (ADR-0008).
-  taetigkeitsstaette String?  /// @encrypted?mode=strict
+  workplace           String?  @map("taetigkeitsstaette") /// @encrypted?mode=strict
   /// Confirmed public holidays on working days (F4) and the state / canton they were suggested for. Clear —
   /// a count and a region code.
-  feiertage          Int?
-  feiertageRegion    String?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  publicHolidays      Int?     @map("feiertage")
+  publicHolidayRegion String?  @map("feiertageRegion")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
-  @@unique([userId, steuerjahr])
+  @@unique([userId, taxYear])
+  @@map("Arbeitsweg")
 }
-

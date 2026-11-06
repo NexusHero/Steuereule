@@ -5,17 +5,17 @@
  * Onboarding profile endpoints (steuereule#29)
  * OpenAPI spec version: 1.0
  */
-export type LinkResponseDtoVeranlagungsart = typeof LinkResponseDtoVeranlagungsart[keyof typeof LinkResponseDtoVeranlagungsart];
+export type LinkResponseDtoFilingType = typeof LinkResponseDtoFilingType[keyof typeof LinkResponseDtoFilingType];
 
 
-export const LinkResponseDtoVeranlagungsart = {
+export const LinkResponseDtoFilingType = {
   keine: 'keine',
   einzel: 'einzel',
   zusammen: 'zusammen',
 } as const;
 
 /**
- * Art. 9 DSGVO: requires religionEinwilligung = true, like the own Stammdaten.
+ * Art. 9 DSGVO: requires religionConsent = true, like the own Stammdaten.
  * @nullable
  */
 export type LinkPersonBDtoReligion = typeof LinkPersonBDtoReligion[keyof typeof LinkPersonBDtoReligion] | null;
@@ -49,7 +49,7 @@ export interface LinkPersonBDto {
   /** @nullable */
   geburtsdatum?: string | null;
   /**
-     * Art. 9 DSGVO: requires religionEinwilligung = true, like the own Stammdaten.
+     * Art. 9 DSGVO: requires religionConsent = true, like the own Stammdaten.
      * @nullable
      */
   religion?: LinkPersonBDtoReligion;
@@ -60,31 +60,31 @@ export interface LinkPersonBDto {
 }
 
 export interface LinkResponseDto {
-  veranlagungsart: LinkResponseDtoVeranlagungsart;
+  filingType: LinkResponseDtoFilingType;
   /** @nullable */
   personBUserId?: string | null;
   /** @nullable */
-  einladungsCode?: string | null;
+  invitationCode?: string | null;
   /**
      * After this moment the code no longer links.
      * @nullable
      */
-  einladungsCodeGueltigBis?: string | null;
+  invitationCodeValidUntil?: string | null;
   /** Person B joined with an own account and maintains their data there — Person A cannot edit it. */
   personBHasOwnAccount?: boolean;
   /** @nullable */
   personB?: LinkPersonBDto | null;
 }
 
-export type SetLinkDtoVeranlagungsart = typeof SetLinkDtoVeranlagungsart[keyof typeof SetLinkDtoVeranlagungsart];
+export type SetLinkDtoFilingType = typeof SetLinkDtoFilingType[keyof typeof SetLinkDtoFilingType];
 
 
-export const SetLinkDtoVeranlagungsart = {
+export const SetLinkDtoFilingType = {
   einzel: 'einzel',
   zusammen: 'zusammen',
 } as const;
 
 export interface SetLinkDto {
-  veranlagungsart: SetLinkDtoVeranlagungsart;
+  filingType: SetLinkDtoFilingType;
 }
 

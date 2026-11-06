@@ -16,7 +16,7 @@ const TAX_YEAR = 2026
 const PENSION_URL = `*/v1/steuerjahre/${TAX_YEAR}/rente`
 
 const STATUTORY_PENSION: PensionResponseDto = {
-  art: 'GesetzlicheRente',
+  kind: 'GesetzlicheRente',
   jahresbetrag: { kind: 'erfasst', value: 20000 },
   rentenbeginnJahr: { kind: 'erfasst', value: 2020 },
   alterBeiRentenbeginn: { kind: 'offen' },
@@ -64,7 +64,7 @@ describe('RentnerScreen', () => {
       http.put(`${PENSION_URL}/art`, async ({ request }) => {
         url = request.url
         body = await request.json()
-        return HttpResponse.json({ ...STATUTORY_PENSION, art: 'GesetzlicheRente' }, { status: 200 })
+        return HttpResponse.json({ ...STATUTORY_PENSION, kind: 'GesetzlicheRente' }, { status: 200 })
       }),
     )
     renderPensioner()
@@ -72,7 +72,7 @@ describe('RentnerScreen', () => {
 
     fireEvent.click(screen.getByText('Gesetzliche Rente'))
 
-    await waitFor(() => expect(body).toEqual({ art: 'GesetzlicheRente' }))
+    await waitFor(() => expect(body).toEqual({ kind: 'GesetzlicheRente' }))
     expect(url).toContain('/rente/art')
   })
 

@@ -34,9 +34,9 @@ export class ConfirmationController {
   confirmAnnex(
     @CurrentUser() userId: string,
     @Param('jahr', ParseTaxYearPipe) year: number,
-    @Param('anlage') anlage: string,
+    @Param('anlage') annex: string,
   ): Promise<ConfirmationResponseDto> {
-    return this.service.confirmAnnex(userId, year, anlage as Annex)
+    return this.service.confirmAnnex(userId, year, annex as Annex)
   }
 
   @Put(':jahr/bestaetigung/vorschlaege/:key')

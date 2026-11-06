@@ -32,16 +32,16 @@ export interface OwlCard {
 export type OwlCardsDisplay = Omit<OwlCard, 'sourceId'>
 
 export interface OwlArchiveYear {
-  readonly steuerjahr: number
+  readonly taxYear: number
   readonly assessmentDate: string
   readonly appealPossibleUntil: string
-  readonly homeofficeTage: number
+  readonly homeOfficeDays: number
 }
 
 export interface OwlInputFacts {
-  readonly steuerjahr: number
+  readonly taxYear: number
   readonly hasTraining?: boolean
-  readonly homeofficeTage?: number | null
+  readonly homeOfficeDays?: number | null
   readonly lastYearFacts?: { readonly donationsEur?: number | null } | null
   readonly childrenPerInterview?: boolean
   readonly hasChildrenRecorded?: boolean
@@ -71,8 +71,8 @@ export function homeOfficeDaysFromInterview(answers: Readonly<Record<string, str
   const share = HOME_OFFICE_SHARE[answers['homeoffice'] as HomeOfficeAnswer]
   if (share === undefined) return null
   const days = answers['tage']
-  const arbeitstage = days && /^\d+$/.test(days) ? Number(days) : ASSUMED_WORKDAYS
-  return Math.min(Math.round(arbeitstage * share), HOME_OFFICE_MAX_DAYS)
+  const workdays = days && /^\d+$/.test(days) ? Number(days) : ASSUMED_WORKDAYS
+  return Math.min(Math.round(workdays * share), HOME_OFFICE_MAX_DAYS)
 }
 
 function homeOfficeAllowanceEur(days: number): number {
@@ -84,10 +84,10 @@ export function generateOwlCards(facts: OwlInputFacts): readonly OwlCard[] {
   const dismissed = new Set(facts.dismissedFingerprints ?? [])
 
   if (facts.hasTraining) {
-    const fp = calculateOwlCardFingerprint('musterluecke', `fortbildung_ohne_fahrt_${facts.steuerjahr}`)
+    const fp = calculateOwlCardFingerprint('musterluecke', `fortbildung_ohne_fahrt_${facts.taxYear}`)
     if (!dismissed.has(fp)) {
       cards.push({
-        id: `eule-ml-fortbildung-${facts.steuerjahr}`,
+        id: `eule-ml-fortbildung-${facts.taxYear}`,
         fingerprint: fp,
         trigger: 'musterluecke',
         category: 'abruf_frage',
@@ -107,10 +107,10 @@ export function generateOwlCards(facts: OwlInputFacts): readonly OwlCard[] {
     facts.lastYearFacts?.donationsEur &&
     facts.lastYearFacts.donationsEur > 0
   ) {
-    const fp = calculateOwlCardFingerprint('vorjahresvergleich', `spenden_vorjahr_${facts.steuerjahr}`)
+    const fp = calculateOwlCardFingerprint('vorjahresvergleich', `spenden_vorjahr_${facts.taxYear}`)
     if (!dismissed.has(fp)) {
       cards.push({
-        id: `eule-vj-spenden-${facts.steuerjahr}`,
+        id: `eule-vj-spenden-${facts.taxYear}`,
         fingerprint: fp,
         trigger: 'vorjahresvergleich',
         category: 'abruf_frage',
@@ -126,18 +126,18 @@ export function generateOwlCards(facts: OwlInputFacts): readonly OwlCard[] {
     }
   }
 
-  if (facts.homeofficeTage && facts.homeofficeTage >= 10) {
-    const amount = homeOfficeAllowanceEur(facts.homeofficeTage)
+  if (facts.homeOfficeDays && facts.homeOfficeDays >= 10) {
+    const amount = homeOfficeAllowanceEur(facts.homeOfficeDays)
     if (amount >= 50) {
-      const fp = calculateOwlCardFingerprint('rechtsaenderung', `homeoffice_pauschale_${facts.steuerjahr}_${amount}`)
+      const fp = calculateOwlCardFingerprint('rechtsaenderung', `homeoffice_pauschale_${facts.taxYear}_${amount}`)
       if (!dismissed.has(fp)) {
         cards.push({
-          id: `eule-ra-homeoffice-${facts.steuerjahr}`,
+          id: `eule-ra-homeoffice-${facts.taxYear}`,
           fingerprint: fp,
           trigger: 'rechtsaenderung',
           category: 'cockpit_proaktiv',
           title: 'Homeoffice-Tagespauschale 6 €',
-          message: `Du hast ${facts.homeofficeTage} Tage im Homeoffice gearbeitet. Nach aktueller Rechtslage kannst du 6 € pro Tag geltend machen!`,
+          message: `Du hast ${facts.homeOfficeDays} Tage im Homeoffice gearbeitet. Nach aktueller Rechtslage kannst du 6 € pro Tag geltend machen!`,
           reason: 'weil der Gesetzgeber die Homeoffice-Pauschale dauerhaft auf 6 € pro Tag (max. 1.260 € / 210 Tage) angehoben hat.',
           amountEur: amount,
           legalStatusDate: LEGAL_STATUS_DATE,
@@ -164,10 +164,10 @@ export function generateOwlCards(facts: OwlInputFacts): readonly OwlCard[] {
   }
 
   if (facts.childrenPerInterview && !facts.hasChildrenRecorded) {
-    const fp = calculateOwlCardFingerprint('lebenslage_hinweis', `kinder_nicht_erfasst_${facts.steuerjahr}`)
+    const fp = calculateOwlCardFingerprint('lebenslage_hinweis', `kinder_nicht_erfasst_${facts.taxYear}`)
     if (!dismissed.has(fp)) {
       cards.push({
-        id: `eule-lh-kinder-${facts.steuerjahr}`,
+        id: `eule-lh-kinder-${facts.taxYear}`,
         fingerprint: fp,
         trigger: 'lebenslage_hinweis',
         category: 'abruf_frage',
@@ -185,18 +185,18 @@ export function generateOwlCards(facts: OwlInputFacts): readonly OwlCard[] {
 
   if (facts.archiveYears && facts.archiveYears.length > 0) {
     for (const archive of facts.archiveYears) {
-      if (archive.homeofficeTage > 0) {
-        const fp = calculateOwlCardFingerprint('rechtsaenderung', `archiv_einspruch_${archive.steuerjahr}`)
+      if (archive.homeOfficeDays > 0) {
+        const fp = calculateOwlCardFingerprint('rechtsaenderung', `archiv_einspruch_${archive.taxYear}`)
         if (!dismissed.has(fp)) {
           cards.push({
-            id: `eule-archiv-${archive.steuerjahr}`,
+            id: `eule-archiv-${archive.taxYear}`,
             fingerprint: fp,
             trigger: 'rechtsaenderung',
             category: 'archiv_einspruch',
-            title: `Einspruchsfrist Steuerjahr ${archive.steuerjahr}`,
-            message: `Für deinen Steuerbescheid ${archive.steuerjahr} läuft die Einspruchsfrist bis ${archive.appealPossibleUntil}. Prüf, ob die Homeoffice-Pauschale darin steckt.`,
+            title: `Einspruchsfrist Steuerjahr ${archive.taxYear}`,
+            message: `Für deinen Steuerbescheid ${archive.taxYear} läuft die Einspruchsfrist bis ${archive.appealPossibleUntil}. Prüf, ob die Homeoffice-Pauschale darin steckt.`,
             reason: 'weil du für dieses Jahr Homeoffice-Tage angegeben hast — fehlt die Pauschale im Bescheid, kannst du bis Fristende Einspruch einlegen.',
-            amountEur: homeOfficeAllowanceEur(archive.homeofficeTage),
+            amountEur: homeOfficeAllowanceEur(archive.homeOfficeDays),
             legalStatusDate: LEGAL_STATUS_DATE,
             sourceId: 'ao-355',
             sourceTranslated: 'Einspruchsfrist von einem Monat (§ 355 Abs. 1 AO).',

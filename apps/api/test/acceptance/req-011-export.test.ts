@@ -44,7 +44,7 @@ describe('REQ-011 — DSGVO data export (Art. 15/20), against the real server', 
     await prisma.account.deleteMany()
     await prisma.user.deleteMany()
     await prisma.profile.deleteMany()
-    await prisma.kapital.deleteMany()
+    await prisma.capital.deleteMany()
     await prisma.$executeRawUnsafe(`DELETE FROM "TaxDataAccessLog"`)
   })
 
@@ -115,10 +115,10 @@ describe('REQ-011 — DSGVO data export (Art. 15/20), against the real server', 
 
     const response = await fetch(`${baseUrl}/v1/account/export?format=json`, { headers: { cookie } })
     const document = (await response.json()) as {
-      taxData: { area: string; steuerjahr: number | null; fields: Record<string, unknown> }[]
+      taxData: { area: string; taxYear: number | null; fields: Record<string, unknown> }[]
     }
     const capital = document.taxData.find((entry) => entry.area === 'Kapitalerträge')
-    expect(capital).toMatchObject({ steuerjahr: 2025, fields: { kapitalertraege: '1200' } })
+    expect(capital).toMatchObject({ taxYear: 2025, fields: { kapitalertraege: '1200' } })
     expect(capital!.fields).not.toHaveProperty('userId')
   })
 

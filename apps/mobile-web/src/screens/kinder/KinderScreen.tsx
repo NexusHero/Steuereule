@@ -31,53 +31,53 @@ import { ErrorState, LoadingState } from '../shared/ScreenState'
 
 export interface ChildItem {
   id: string
-  lfdNr: number
-  vorname: string
-  nachname: string
+  sequenceNumber: number
+  firstName: string
+  lastName: string
   geburtsdatum: string
-  idnr?: string | null
-  kindergeldAnspruchEur?: string | null
-  kindschaftsverhaeltnis?: ChildRelationship | null
-  kindschaftsverhaeltnisB?: ChildRelationship | null
-  familienkasse?: string | null
-  wohnsitzInlandGanzjaehrig?: boolean | null
-  andererElternteil?: OtherParentStatus | null
-  andererElternteilName?: string | null
-  andererElternteilGeburtsdatum?: string | null
-  andererElternteilAdresse?: string | null
-  andererElternteilArt?: '1' | '2' | null
-  andererElternteilVerstorbenAm?: string | null
-  gemeldetBeiMirGanzjaehrig?: boolean | null
-  kindergeldAnMichGanzjaehrig?: boolean | null
-  kvBasisEur?: string | null
-  pvEur?: string | null
-  schweizerKinderzulageEur?: string | null
+  taxId?: string | null
+  childBenefitClaimEur?: string | null
+  kinship?: ChildRelationship | null
+  kinshipB?: ChildRelationship | null
+  familyBenefitsOffice?: string | null
+  domesticResidenceAllYear?: boolean | null
+  otherParent?: OtherParentStatus | null
+  otherParentName?: string | null
+  otherParentBirthDate?: string | null
+  otherParentAddress?: string | null
+  otherParentKind?: '1' | '2' | null
+  otherParentDiedOn?: string | null
+  registeredWithMeAllYear?: boolean | null
+  childBenefitToMeAllYear?: boolean | null
+  healthBasicEur?: string | null
+  careEur?: string | null
+  swissFamilyAllowanceEur?: string | null
   differentialChildBenefitEur?: string | null
   totalClaimEur?: string | null
 }
 
 /** What the form writes: the identity plus the Anlage-Kind facts. */
 export interface ChildInput {
-  vorname: string
-  nachname: string
+  firstName: string
+  lastName: string
   geburtsdatum: string
-  idnr?: string
-  kindergeldAnspruchEur?: string
-  kindschaftsverhaeltnis: ChildRelationship | null
-  kindschaftsverhaeltnisB: ChildRelationship | null
-  familienkasse: string | null
-  wohnsitzInlandGanzjaehrig: boolean | null
-  andererElternteil: OtherParentStatus | null
-  andererElternteilName: string | null
-  andererElternteilGeburtsdatum: string | null
-  andererElternteilAdresse: string | null
-  andererElternteilArt: '1' | '2' | null
-  andererElternteilVerstorbenAm: string | null
-  gemeldetBeiMirGanzjaehrig: boolean | null
-  kindergeldAnMichGanzjaehrig: boolean | null
-  kvBasisEur: string | null
-  pvEur: string | null
-  schweizerKinderzulageEur?: string | null
+  taxId?: string
+  childBenefitClaimEur?: string
+  kinship: ChildRelationship | null
+  kinshipB: ChildRelationship | null
+  familyBenefitsOffice: string | null
+  domesticResidenceAllYear: boolean | null
+  otherParent: OtherParentStatus | null
+  otherParentName: string | null
+  otherParentBirthDate: string | null
+  otherParentAddress: string | null
+  otherParentKind: '1' | '2' | null
+  otherParentDiedOn: string | null
+  registeredWithMeAllYear: boolean | null
+  childBenefitToMeAllYear: boolean | null
+  healthBasicEur: string | null
+  careEur: string | null
+  swissFamilyAllowanceEur?: string | null
 }
 
 const OTHER_PARENT_LABEL: Record<OtherParentStatus, string> = {
@@ -94,7 +94,7 @@ const KINSHIP_LABEL: Record<ChildRelationship, string> = {
 }
 
 function missingForPrintout(k: ChildItem): boolean {
-  return !k.idnr || !k.kindschaftsverhaeltnis || !k.familienkasse || k.wohnsitzInlandGanzjaehrig == null
+  return !k.taxId || !k.kinship || !k.familyBenefitsOffice || k.domesticResidenceAllYear == null
 }
 
 export interface KinderScreenProps {
@@ -200,17 +200,17 @@ function KinderScreenView({
   const { t: tr } = useTranslation(APP_NS)
 
   const [kinder, setKinder] = useState<readonly ChildItem[]>(initialKinder)
-  const [vorname, setFirstName] = useState('')
-  const [nachname, setLastName] = useState('')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
   const [geburtsdatum, setBirthDate] = useState('')
-  const [idnr, setTaxId] = useState('')
+  const [taxId, setTaxId] = useState('')
   const [childBenefit, setChildBenefit] = useState('')
   const [swissAllowance, setSwissAllowance] = useState('')
   const [kvBasis, setKvBasis] = useState('')
   const [pv, setPv] = useState('')
   const [relationship, setRelationship] = useState<ChildRelationship | null>(null)
   const [relationshipB, setRelationshipB] = useState<ChildRelationship | null>(null)
-  const [familienkasse, setFamilyBenefitsOffice] = useState('')
+  const [familyBenefitsOffice, setFamilyBenefitsOffice] = useState('')
   const [inland, setInland] = useState<boolean | null>(null)
   const [ae, setAe] = useState<OtherParentStatus | null>(null)
   const [opName, setOpName] = useState('')
@@ -226,72 +226,72 @@ function KinderScreenView({
   const stand = calculateChildrenStatus(
     kinder.map((k) => ({
       id: k.id,
-      firstName: k.vorname,
-      lastName: k.nachname,
+      firstName: k.firstName,
+      lastName: k.lastName,
       birthDate: k.geburtsdatum,
-      taxId: k.idnr ?? null,
-      childBenefit: k.kindergeldAnspruchEur ? Number(k.kindergeldAnspruchEur) : null,
-      swissFamilyAllowanceEur: k.schweizerKinderzulageEur ? Number(k.schweizerKinderzulageEur) : null,
+      taxId: k.taxId ?? null,
+      childBenefit: k.childBenefitClaimEur ? Number(k.childBenefitClaimEur) : null,
+      swissFamilyAllowanceEur: k.swissFamilyAllowanceEur ? Number(k.swissFamilyAllowanceEur) : null,
     })),
     taxYear,
   )
 
   function fillForm(k: ChildItem | null) {
-    setFirstName(k?.vorname ?? '')
-    setLastName(k?.nachname ?? '')
+    setFirstName(k?.firstName ?? '')
+    setLastName(k?.lastName ?? '')
     setBirthDate(isoToGerman(k?.geburtsdatum ?? null))
-    setTaxId(k?.idnr ?? '')
-    setChildBenefit(k?.kindergeldAnspruchEur ?? '')
-    setSwissAllowance(k?.schweizerKinderzulageEur ?? '')
-    setKvBasis(k?.kvBasisEur ?? '')
-    setPv(k?.pvEur ?? '')
-    setRelationship(k?.kindschaftsverhaeltnis ?? null)
-    setRelationshipB(k?.kindschaftsverhaeltnisB ?? null)
-    setFamilyBenefitsOffice(k?.familienkasse ?? '')
-    setInland(k?.wohnsitzInlandGanzjaehrig ?? null)
-    setAe(k?.andererElternteil ?? null)
-    setOpName(k?.andererElternteilName ?? '')
-    setOpBirthDate(isoToGerman(k?.andererElternteilGeburtsdatum ?? null))
-    setOpAddress(k?.andererElternteilAdresse ?? '')
-    setOpKind(k?.andererElternteilArt ?? null)
-    setOpDiedOn(isoToGerman(k?.andererElternteilVerstorbenAm ?? null))
-    setRegistered(k?.gemeldetBeiMirGanzjaehrig ?? null)
-    setChildBenefitToMe(k?.kindergeldAnMichGanzjaehrig ?? null)
+    setTaxId(k?.taxId ?? '')
+    setChildBenefit(k?.childBenefitClaimEur ?? '')
+    setSwissAllowance(k?.swissFamilyAllowanceEur ?? '')
+    setKvBasis(k?.healthBasicEur ?? '')
+    setPv(k?.careEur ?? '')
+    setRelationship(k?.kinship ?? null)
+    setRelationshipB(k?.kinshipB ?? null)
+    setFamilyBenefitsOffice(k?.familyBenefitsOffice ?? '')
+    setInland(k?.domesticResidenceAllYear ?? null)
+    setAe(k?.otherParent ?? null)
+    setOpName(k?.otherParentName ?? '')
+    setOpBirthDate(isoToGerman(k?.otherParentBirthDate ?? null))
+    setOpAddress(k?.otherParentAddress ?? '')
+    setOpKind(k?.otherParentKind ?? null)
+    setOpDiedOn(isoToGerman(k?.otherParentDiedOn ?? null))
+    setRegistered(k?.registeredWithMeAllYear ?? null)
+    setChildBenefitToMe(k?.childBenefitToMeAllYear ?? null)
     setEdited(k?.id ?? null)
   }
 
   const opKnown = ae === 'Inland' || ae === 'Verstorben'
 
   async function handleSave() {
-    if (!vorname.trim() || !nachname.trim() || !geburtsdatum.trim()) return
+    if (!firstName.trim() || !lastName.trim() || !geburtsdatum.trim()) return
     const payload: ChildInput = {
-      vorname: vorname.trim(),
-      nachname: nachname.trim(),
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
       geburtsdatum: germanToIso(geburtsdatum) ?? '',
-      ...(idnr.trim() && { idnr: idnr.trim() }),
-      ...(childBenefit.trim() && { kindergeldAnspruchEur: childBenefit.trim() }),
-      kindschaftsverhaeltnis: relationship,
-      kindschaftsverhaeltnisB: relationshipB,
-      familienkasse: familienkasse.trim() || null,
-      wohnsitzInlandGanzjaehrig: inland,
-      andererElternteil: ae,
-      andererElternteilName: opKnown ? opName.trim() || null : null,
-      andererElternteilGeburtsdatum: opKnown ? germanToIso(opBirthDate) : null,
-      andererElternteilAdresse: opKnown ? opAddress.trim() || null : null,
-      andererElternteilArt: opKnown ? opKind : null,
-      andererElternteilVerstorbenAm: ae === 'Verstorben' ? germanToIso(opDiedOn) : null,
-      gemeldetBeiMirGanzjaehrig: registered,
-      kindergeldAnMichGanzjaehrig: childBenefitToMe,
-      kvBasisEur: /^\d+$/.test(kvBasis.trim()) ? kvBasis.trim() : null,
-      pvEur: /^\d+$/.test(pv.trim()) ? pv.trim() : null,
-      schweizerKinderzulageEur: /^\d+$/.test(swissAllowance.trim()) ? swissAllowance.trim() : null,
+      ...(taxId.trim() && { taxId: taxId.trim() }),
+      ...(childBenefit.trim() && { childBenefitClaimEur: childBenefit.trim() }),
+      kinship: relationship,
+      kinshipB: relationshipB,
+      familyBenefitsOffice: familyBenefitsOffice.trim() || null,
+      domesticResidenceAllYear: inland,
+      otherParent: ae,
+      otherParentName: opKnown ? opName.trim() || null : null,
+      otherParentBirthDate: opKnown ? germanToIso(opBirthDate) : null,
+      otherParentAddress: opKnown ? opAddress.trim() || null : null,
+      otherParentKind: opKnown ? opKind : null,
+      otherParentDiedOn: ae === 'Verstorben' ? germanToIso(opDiedOn) : null,
+      registeredWithMeAllYear: registered,
+      childBenefitToMeAllYear: childBenefitToMe,
+      healthBasicEur: /^\d+$/.test(kvBasis.trim()) ? kvBasis.trim() : null,
+      careEur: /^\d+$/.test(pv.trim()) ? pv.trim() : null,
+      swissFamilyAllowanceEur: /^\d+$/.test(swissAllowance.trim()) ? swissAllowance.trim() : null,
     }
     if (edited) {
       if (onSaveChild) await onSaveChild(edited, payload)
       setKinder(kinder.map((k) => (k.id === edited ? { ...k, ...payload } : k)))
     } else {
       if (onAddChild) await onAddChild(payload)
-      setKinder([...kinder, { id: `local-${Date.now()}`, lfdNr: kinder.length + 1, ...payload }])
+      setKinder([...kinder, { id: `local-${Date.now()}`, sequenceNumber: kinder.length + 1, ...payload }])
     }
     fillForm(null)
     setFormOpen(false)
@@ -345,12 +345,12 @@ function KinderScreenView({
         <Card key={k.id} style={styles.kindCard}>
           <View style={styles.kindHeader}>
             <Text style={styles.kindName}>
-              {`${index + 1}. ${k.vorname} ${k.nachname}`}
+              {`${index + 1}. ${k.firstName} ${k.lastName}`}
             </Text>
             <View style={styles.kindActions}>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={`Kind ${k.vorname} bearbeiten`}
+                accessibilityLabel={`Kind ${k.firstName} bearbeiten`}
                 onPress={() => {
                   fillForm(k)
                   setFormOpen(true)
@@ -360,7 +360,7 @@ function KinderScreenView({
               </Pressable>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={`Kind ${k.vorname} löschen`}
+                accessibilityLabel={`Kind ${k.firstName} löschen`}
                 onPress={() => handleDelete(k.id)}
               >
                 <Text style={styles.deleteButton}>{tr('kinder.delete', 'Löschen')}</Text>
@@ -368,24 +368,24 @@ function KinderScreenView({
             </View>
           </View>
           <Text style={styles.kindDetail}>Geburtsdatum: {isoToGerman(k.geburtsdatum) || k.geburtsdatum}</Text>
-          {k.idnr && <Text style={styles.kindDetail}>Steuer-ID: {k.idnr}</Text>}
-          {k.schweizerKinderzulageEur && Number(k.schweizerKinderzulageEur) > 0 ? (
+          {k.taxId && <Text style={styles.kindDetail}>Steuer-ID: {k.taxId}</Text>}
+          {k.swissFamilyAllowanceEur && Number(k.swissFamilyAllowanceEur) > 0 ? (
             <>
               <Text style={styles.kindDetail}>
-                {`Schweizer Kinderzulage: ${formatEuro(Number(k.schweizerKinderzulageEur))}`}
+                {`Schweizer Kinderzulage: ${formatEuro(Number(k.swissFamilyAllowanceEur))}`}
               </Text>
               <Text style={styles.kindDetail}>
-                {`Differenz-Kindergeld: ${formatEuro(Number(k.differentialChildBenefitEur ?? Math.max(0, monthlyChildBenefitClaim(taxYear) * claimMonths(k.geburtsdatum, taxYear) - Number(k.schweizerKinderzulageEur))))}`}
+                {`Differenz-Kindergeld: ${formatEuro(Number(k.differentialChildBenefitEur ?? Math.max(0, monthlyChildBenefitClaim(taxYear) * claimMonths(k.geburtsdatum, taxYear) - Number(k.swissFamilyAllowanceEur))))}`}
               </Text>
               <Text style={styles.kindDetail}>
-                {`Gesamtanspruch (Anlage Kind Z. 6): ${formatEuro(Number(k.totalClaimEur ?? k.kindergeldAnspruchEur ?? Math.max(monthlyChildBenefitClaim(taxYear) * claimMonths(k.geburtsdatum, taxYear), Number(k.schweizerKinderzulageEur))))}`}
+                {`Gesamtanspruch (Anlage Kind Z. 6): ${formatEuro(Number(k.totalClaimEur ?? k.childBenefitClaimEur ?? Math.max(monthlyChildBenefitClaim(taxYear) * claimMonths(k.geburtsdatum, taxYear), Number(k.swissFamilyAllowanceEur))))}`}
               </Text>
             </>
           ) : (
             <Text style={styles.kindDetail}>
               Kindergeld:{' '}
-              {k.kindergeldAnspruchEur
-                ? `${k.kindergeldAnspruchEur} €`
+              {k.childBenefitClaimEur
+                ? `${k.childBenefitClaimEur} €`
                 : `${formatEuro(monthlyChildBenefitClaim(taxYear) * claimMonths(k.geburtsdatum, taxYear))} (gesetzlich)`}
             </Text>
           )}
@@ -403,10 +403,10 @@ function KinderScreenView({
             {edited ? tr('kinder.editTitle', 'Kind bearbeiten') : tr('kinder.addTitle', 'Kind hinzufügen')}
           </Text>
           <Feld label="Vorname">
-            <Input value={vorname} onChange={setFirstName} placeholder="z.B. Lina" accessibilityLabel="Vorname" />
+            <Input value={firstName} onChange={setFirstName} placeholder="z.B. Lina" accessibilityLabel="Vorname" />
           </Feld>
           <Feld label="Nachname">
-            <Input value={nachname} onChange={setLastName} placeholder="z.B. Mustermann" accessibilityLabel="Nachname" />
+            <Input value={lastName} onChange={setLastName} placeholder="z.B. Mustermann" accessibilityLabel="Nachname" />
           </Feld>
           <Feld label="Geburtsdatum (TT.MM.JJJJ)">
             <Input
@@ -418,7 +418,7 @@ function KinderScreenView({
           </Feld>
           <Feld label="Steuer-Identifikationsnummer">
             <Input
-              value={idnr}
+              value={taxId}
               onChange={setTaxId}
               placeholder="11 Ziffern"
               type="numeric"
@@ -466,7 +466,7 @@ function KinderScreenView({
           </Feld>
           <Feld label="Für das Kindergeld zuständige Familienkasse">
             <Input
-              value={familienkasse}
+              value={familyBenefitsOffice}
               onChange={setFamilyBenefitsOffice}
               placeholder="z.B. Familienkasse Sachsen"
               accessibilityLabel="Familienkasse"

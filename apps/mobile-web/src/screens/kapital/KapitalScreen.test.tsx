@@ -75,7 +75,7 @@ describe('KapitalScreen', () => {
     server.use(
       http.get(CAPITAL_URL, () => HttpResponse.json(GERMAN_BROKER, { status: 200 })),
       http.get(GP_URL, () => HttpResponse.json(null, { status: 200 })),
-      http.get(`*/v1/steuerjahre/${TAX_YEAR}/kopplung`, () => HttpResponse.json({ veranlagungsart: 'zusammen' })),
+      http.get(`*/v1/steuerjahre/${TAX_YEAR}/kopplung`, () => HttpResponse.json({ filingType: 'zusammen' })),
       http.put(`${CAPITAL_URL}/inhaber`, async ({ request }) => {
         bodies.push(await request.json())
         return HttpResponse.json(GERMAN_BROKER, { status: 200 })

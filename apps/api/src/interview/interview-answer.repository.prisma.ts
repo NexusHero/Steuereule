@@ -17,8 +17,8 @@ export class InterviewAnswerIntegrityError extends Error {
 export class PrismaInterviewAnswerRepository implements InterviewAnswerRepository {
   constructor(@Inject(ENCRYPTED_PRISMA) private readonly prisma: EncryptedPrismaClient) {}
 
-  async findAllForUserAndYear(userId: string, steuerjahr: number): Promise<InterviewAnswerRecord[]> {
-    const rows = await this.prisma.interviewAnswer.findMany({ where: { userId, steuerjahr } })
+  async findAllForUserAndYear(userId: string, taxYear: number): Promise<InterviewAnswerRecord[]> {
+    const rows = await this.prisma.interviewAnswer.findMany({ where: { userId, taxYear } })
     return rows.map((row) => {
       if (!isValidAnswer(row.questionId as StepId, row.value)) {
         throw new InterviewAnswerIntegrityError(row.questionId)
@@ -28,19 +28,19 @@ export class PrismaInterviewAnswerRepository implements InterviewAnswerRepositor
   }
 
   async write(params: WriteAnswerParams): Promise<void> {
-    const { userId, steuerjahr, questionId, value, openItems } = params
+    const { userId, taxYear, questionId, value, openItems } = params
     await this.prisma.$transaction([
       this.prisma.interviewAnswer.upsert({
-        where: { userId_steuerjahr_questionId: { userId, steuerjahr, questionId } },
-        create: { userId, steuerjahr, questionId, value },
+        where: { userId_taxYear_questionId: { userId, taxYear, questionId } },
+        create: { userId, taxYear, questionId, value },
         update: { value },
       }),
       this.prisma.taxDataAccessLog.create({
         data: { userId, action: 'WRITE', resource: 'interview' },
       }),
       this.prisma.taxYear.upsert({
-        where: { userId_steuerjahr: { userId, steuerjahr } },
-        create: { userId, steuerjahr, baseEstimate: 0, openItems, openConflicts: 0 },
+        where: { userId_taxYear: { userId, taxYear } },
+        create: { userId, taxYear, baseEstimate: 0, openItems, openConflicts: 0 },
         update: { openItems },
       }),
     ])

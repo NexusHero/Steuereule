@@ -11,28 +11,28 @@ export class PrismaOwlSettingRepository implements OwlSettingRepository {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async findByUserId(userId: string): Promise<OwlSettingRecord | null> {
-    const row = await this.prisma.eulenEinstellung.findUnique({ where: { userId } })
+    const row = await this.prisma.owlSetting.findUnique({ where: { userId } })
     if (!row) return null
     return {
       userId: row.userId,
-      aktiviert: row.aktiviert,
-      aktiviertAm: row.aktiviertAm,
+      enabled: row.enabled,
+      enabledAt: row.enabledAt,
     }
   }
 
-  async setEnabled(userId: string, aktiviert: boolean): Promise<OwlSettingRecord> {
+  async setEnabled(userId: string, enabled: boolean): Promise<OwlSettingRecord> {
     const now = new Date()
     const [row] = await this.prisma.$transaction([
-      this.prisma.eulenEinstellung.upsert({
+      this.prisma.owlSetting.upsert({
         where: { userId },
         create: {
           userId,
-          aktiviert,
-          aktiviertAm: aktiviert ? now : null,
+          enabled,
+          enabledAt: enabled ? now : null,
         },
         update: {
-          aktiviert,
-          ...(aktiviert && { aktiviertAm: now }),
+          enabled,
+          ...(enabled && { aktiviertAm: now }),
         },
       }),
       this.prisma.taxDataAccessLog.create({
@@ -41,8 +41,8 @@ export class PrismaOwlSettingRepository implements OwlSettingRepository {
     ])
     return {
       userId: row.userId,
-      aktiviert: row.aktiviert,
-      aktiviertAm: row.aktiviertAm,
+      enabled: row.enabled,
+      enabledAt: row.enabledAt,
     }
   }
 }
@@ -51,18 +51,18 @@ export class PrismaOwlSettingRepository implements OwlSettingRepository {
 export class PrismaOwlCardDismissalRepository implements OwlCardDismissalRepository {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
-  async listForUserAndYear(userId: string, steuerjahr: number): Promise<string[]> {
-    const rows = await this.prisma.eulenKartenVerwurf.findMany({
-      where: { userId, steuerjahr },
+  async listForUserAndYear(userId: string, taxYear: number): Promise<string[]> {
+    const rows = await this.prisma.owlCardDismissal.findMany({
+      where: { userId, taxYear },
       select: { fingerprint: true },
     })
     return rows.map((r) => r.fingerprint)
   }
 
-  async dismiss(userId: string, steuerjahr: number, fingerprint: string): Promise<void> {
+  async dismiss(userId: string, taxYear: number, fingerprint: string): Promise<void> {
     await this.prisma.$transaction([
-      this.prisma.eulenKartenVerwurf.create({
-        data: { userId, steuerjahr, fingerprint },
+      this.prisma.owlCardDismissal.create({
+        data: { userId, taxYear, fingerprint },
       }),
       this.prisma.taxDataAccessLog.create({
         data: { userId, action: 'WRITE', resource: 'eulen_verwurf' },

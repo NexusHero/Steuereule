@@ -1,5 +1,5 @@
 export interface TaxYearRecord {
-  steuerjahr: number
+  taxYear: number
   openItems: number
 }
 
@@ -7,5 +7,5 @@ export const TAX_YEAR_REPOSITORY = Symbol('TAX_YEAR_REPOSITORY')
 
 /** The persistence seam for the Cockpit's raw tax-year inputs. */
 export interface TaxYearRepository {
-  findByUserAndYear(userId: string, steuerjahr: number): Promise<TaxYearRecord | null>
+  findByUserAndYear(userId: string, taxYear: number): Promise<TaxYearRecord | null>
 }

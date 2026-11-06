@@ -36,8 +36,8 @@ export interface DeadlineWarning {
   readonly remainingDays: number
 }
 
-export function deadlineWarning(steuerjahr: number, today: string): DeadlineWarning {
-  const filingDeadline = filingDeadlineFor(steuerjahr)
+export function deadlineWarning(taxYear: number, today: string): DeadlineWarning {
+  const filingDeadline = filingDeadlineFor(taxYear)
   const remainingDays = daysSince(filingDeadline) - daysSince(today)
   const level: DeadlineLevel = remainingDays < 0 ? 'abgelaufen' : remainingDays <= DEADLINE_WARNING_THRESHOLD_DAYS ? 'warnung' : 'keine'
   return { level, filingDeadline, remainingDays }

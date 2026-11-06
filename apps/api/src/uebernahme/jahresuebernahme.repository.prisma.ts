@@ -6,27 +6,27 @@ import type { TaxYearRolloverRecord, TaxYearRolloverRepository } from './jahresu
 export class PrismaYearTakeoverRepository implements TaxYearRolloverRepository {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
-  async findForUserAndYear(userId: string, steuerjahr: number): Promise<TaxYearRolloverRecord | null> {
-    return this.prisma.jahresuebernahme.findUnique({
-      where: { userId_steuerjahr: { userId, steuerjahr } },
+  async findForUserAndYear(userId: string, taxYear: number): Promise<TaxYearRolloverRecord | null> {
+    return this.prisma.yearTakeover.findUnique({
+      where: { userId_taxYear: { userId, taxYear } },
     })
   }
 
-  async record(userId: string, steuerjahr: number, vorjahr: number): Promise<TaxYearRolloverRecord> {
-    return this.prisma.jahresuebernahme.create({
-      data: { userId, steuerjahr, vorjahr },
+  async record(userId: string, taxYear: number, lastYear: number): Promise<TaxYearRolloverRecord> {
+    return this.prisma.yearTakeover.create({
+      data: { userId, taxYear, lastYear },
     })
   }
 
   async deleteForUser(userId: string): Promise<number> {
-    const res = await this.prisma.jahresuebernahme.deleteMany({ where: { userId } })
+    const res = await this.prisma.yearTakeover.deleteMany({ where: { userId } })
     return res.count
   }
 
   async listForUser(userId: string): Promise<TaxYearRolloverRecord[]> {
-    return this.prisma.jahresuebernahme.findMany({
+    return this.prisma.yearTakeover.findMany({
       where: { userId },
-      orderBy: { steuerjahr: 'asc' },
+      orderBy: { taxYear: 'asc' },
     })
   }
 }

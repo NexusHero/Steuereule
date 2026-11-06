@@ -15,7 +15,7 @@ describe('veranlagungsartenvergleich — ADR-0034 bounded comparison', () => {
       zveA: 100000,
       zveB: 0,
       year: 2026,
-      progressionClause: { art: 'keine' },
+      progressionClause: { kind: 'keine' },
     })
     expect(result.statement).toBe('eindeutig')
     if (result.statement === 'eindeutig') {
@@ -32,7 +32,7 @@ describe('veranlagungsartenvergleich — ADR-0034 bounded comparison', () => {
       zveA: 100000,
       zveB: 0,
       year: 2026,
-      progressionClause: { art: 'keine' },
+      progressionClause: { kind: 'keine' },
     })
     expect(result.provenance).toEqual({
       zveA: 100000,
@@ -46,7 +46,7 @@ describe('veranlagungsartenvergleich — ADR-0034 bounded comparison', () => {
       zveA: 100000,
       zveB: 0,
       year: 2026,
-      progressionClause: { art: 'keine' },
+      progressionClause: { kind: 'keine' },
       churchTaxFactor: 0.09,
     })
     expect(result.provenance.components).toEqual(['einkommensteuer', 'solidaritaetszuschlag', 'kirchensteuer'])
@@ -60,7 +60,7 @@ describe('veranlagungsartenvergleich — ADR-0034 bounded comparison', () => {
       zveA: 60000,
       zveB: 60000,
       year: 2026,
-      progressionClause: { art: 'keine' },
+      progressionClause: { kind: 'keine' },
     })
     expect(result.statement).toBe('zu-knapp')
     expect(result.delta).toBe(0)
@@ -72,7 +72,7 @@ describe('veranlagungsartenvergleich — ADR-0034 bounded comparison', () => {
       zveA: 60000,
       zveB: 40000,
       year: 2026,
-      progressionClause: { art: 'keine' },
+      progressionClause: { kind: 'keine' },
     })
     expect(withoutWageReplacement.statement).toBe('eindeutig')
     expect(withoutWageReplacement.delta).toBe(-346)
@@ -82,7 +82,7 @@ describe('veranlagungsartenvergleich — ADR-0034 bounded comparison', () => {
       zveA: 60000,
       zveB: 40000,
       year: 2026,
-      progressionClause: { art: 'lohnersatzleistungen', amount: 1000 },
+      progressionClause: { kind: 'lohnersatzleistungen', amount: 1000 },
     })
     expect(withWageReplacement.statement).toBe('zu-knapp')
     expect(withWageReplacement.uncertainty).toEqual({ kind: 'bestimmt', upperLimit: 450 })
@@ -93,7 +93,7 @@ describe('veranlagungsartenvergleich — ADR-0034 bounded comparison', () => {
       zveA: 100000,
       zveB: 0,
       year: 2026,
-      progressionClause: { art: 'nicht-angegeben' },
+      progressionClause: { kind: 'nicht-angegeben' },
     })
     expect(result.statement).toBe('unbestimmt')
     expect(result.uncertainty).toEqual({ kind: 'unbestimmt', reason: 'progressionsvorbehalt-nicht-eingegeben' })
@@ -101,17 +101,17 @@ describe('veranlagungsartenvergleich — ADR-0034 bounded comparison', () => {
 
   it('throws for negative zvE, an unsupported year, or a negative Lohnersatz-Betrag', () => {
     expect(() =>
-      filingTypeComparison({ zveA: -1, zveB: 0, year: 2026, progressionClause: { art: 'keine' } }),
+      filingTypeComparison({ zveA: -1, zveB: 0, year: 2026, progressionClause: { kind: 'keine' } }),
     ).toThrow(RangeError)
     expect(() =>
-      filingTypeComparison({ zveA: 1000, zveB: 0, year: 2023, progressionClause: { art: 'keine' } }),
+      filingTypeComparison({ zveA: 1000, zveB: 0, year: 2023, progressionClause: { kind: 'keine' } }),
     ).toThrow(RangeError)
     expect(() =>
       filingTypeComparison({
         zveA: 1000,
         zveB: 0,
         year: 2026,
-        progressionClause: { art: 'lohnersatzleistungen', amount: -5 },
+        progressionClause: { kind: 'lohnersatzleistungen', amount: -5 },
       }),
     ).toThrow(RangeError)
   })
@@ -121,7 +121,7 @@ describe('veranlagungsartenvergleich — ADR-0034 bounded comparison', () => {
       zveA: 100000,
       zveB: 0,
       year: 2026,
-      progressionClause: { art: 'keine' },
+      progressionClause: { kind: 'keine' },
     })
     // @ts-expect-error — `empfehlung` exists only on the `eindeutig` variant; a bare read
     // without narrowing `aussage` first is a type error (ADR-0034: unrepresentable-to-skip).

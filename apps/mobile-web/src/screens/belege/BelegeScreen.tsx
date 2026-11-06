@@ -47,9 +47,9 @@ export function ReceiptsScreen() {
   const receipts = query.data.data
   const open = receipts.filter((b) => b.assignment.kind !== 'zugeordnet').length
 
-  function assign(id: string, steuerjahr: number, vorschlagVerworfen = false) {
+  function assign(id: string, taxYear: number, proposalDismissed = false) {
     setAssignment.mutate(
-      { id, data: { steuerjahr, vorschlagVerworfen } },
+      { id, data: { taxYear, proposalDismissed } },
       {
         onSuccess: (response) => {
           if (response.status === 200) {
@@ -111,21 +111,21 @@ function Empty() {
 
 interface ReceiptCardProps {
   readonly receipt: ReceiptResponseDto
-  readonly onAssign: (id: string, steuerjahr: number, vorschlagVerworfen?: boolean) => void
+  readonly onAssign: (id: string, taxYear: number, proposalDismissed?: boolean) => void
 }
 
 function ReceiptCard({ receipt, onAssign }: ReceiptCardProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const s = makeStyles(t)
-  const kindKey = receipt.art === null ? undefined : KIND_LABEL_KEYS[receipt.art]
-  const kindLabel = kindKey !== undefined ? tr(kindKey) : receipt.art === null ? tr('belege.art.generic') : receipt.art
+  const kindKey = receipt.kind === null ? undefined : KIND_LABEL_KEYS[receipt.kind]
+  const kindLabel = kindKey !== undefined ? tr(kindKey) : receipt.kind === null ? tr('belege.art.generic') : receipt.kind
 
   return (
     <Card>
       <View style={s.cardHead}>
         <Text style={s.cardTitle} numberOfLines={2}>
-          {receipt.dateiname}
+          {receipt.fileName}
         </Text>
         <Chip variant="src">{kindLabel}</Chip>
       </View>
@@ -158,12 +158,12 @@ function AssignmentSection({ receipt, onAssign }: ReceiptCardProps) {
     return <Text style={s.zuordnungMuted}>{tr('belege.zuordnung.ungebunden')}</Text>
   }
   if (z.kind === 'zugeordnet') {
-    return <Text style={s.zuordnungSettled}>{tr('belege.zuordnung.zugeordnet', { jahr: z.steuerjahr })}</Text>
+    return <Text style={s.zuordnungSettled}>{tr('belege.zuordnung.zugeordnet', { jahr: z.taxYear })}</Text>
   }
   if (z.kind === 'vorgeschlagen') {
     return (
       <Proposed
-        proposalYear={z.steuerjahr ?? 0}
+        proposalYear={z.taxYear ?? 0}
         provenance={z.provenance ?? 'zahlungsdatum'}
         onAssign={(year) => onAssign(receipt.id, year)}
       />
@@ -173,14 +173,14 @@ function AssignmentSection({ receipt, onAssign }: ReceiptCardProps) {
     <View style={s.konfliktBox}>
       <Text style={s.konfliktHeading}>{tr('belege.zuordnung.konflikt.heading')}</Text>
       <Text style={s.konfliktBody}>
-        {tr('belege.zuordnung.konflikt.body', { zugeordnet: z.steuerjahr, vorschlag: z.proposalYear })}
+        {tr('belege.zuordnung.konflikt.body', { zugeordnet: z.taxYear, vorschlag: z.proposalYear })}
       </Text>
       <View style={s.actionRow}>
         <Button onPress={() => onAssign(receipt.id, z.proposalYear ?? 0)}>
           {tr('belege.zuordnung.konflikt.resolve', { jahr: z.proposalYear })}
         </Button>
-        <Button variant="leise" onPress={() => onAssign(receipt.id, z.steuerjahr ?? 0, true)}>
-          {tr('belege.zuordnung.konflikt.keep', { jahr: z.steuerjahr })}
+        <Button variant="leise" onPress={() => onAssign(receipt.id, z.taxYear ?? 0, true)}>
+          {tr('belege.zuordnung.konflikt.keep', { jahr: z.taxYear })}
         </Button>
       </View>
     </View>

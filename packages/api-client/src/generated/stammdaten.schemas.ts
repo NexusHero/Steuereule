@@ -77,7 +77,7 @@ export interface MasterDataResponseDto {
 }
 
 /**
- * Religionsschlüssel per ESt 1 A guide (VD = none). Art. 9 DSGVO: requires religionEinwilligung = true.
+ * Religionsschlüssel per ESt 1 A guide (VD = none). Art. 9 DSGVO: requires religionConsent = true.
  * @nullable
  */
 export type PutMasterDataDtoReligion = typeof PutMasterDataDtoReligion[keyof typeof PutMasterDataDtoReligion] | null;
@@ -137,7 +137,7 @@ export interface PutMasterDataDto {
   /** @nullable */
   beruf?: string | null;
   /**
-     * Religionsschlüssel per ESt 1 A guide (VD = none). Art. 9 DSGVO: requires religionEinwilligung = true.
+     * Religionsschlüssel per ESt 1 A guide (VD = none). Art. 9 DSGVO: requires religionConsent = true.
      * @nullable
      */
   religion?: PutMasterDataDtoReligion;

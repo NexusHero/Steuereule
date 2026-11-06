@@ -63,10 +63,10 @@ describe('chfNachEur — ADR-036 CHF führt, EUR daneben', () => {
 
 describe('wechselkursQuelle — ADR-014/015 jede Zahl trägt Herkunft', () => {
   it('amtlich → regel (BMF-Monatskurs)', () => {
-    expect(exchangeRateSource(officialMonthlyRate('2026-01', 0.9412))).toEqual({ art: 'regel', rule: 'BMF-Monatskurs' })
+    expect(exchangeRateSource(officialMonthlyRate('2026-01', 0.9412))).toEqual({ kind: 'regel', rule: 'BMF-Monatskurs' })
   })
 
   it('tatsächlich → beleg (the Kontoauszug)', () => {
-    expect(exchangeRateSource(actualRate('2026-01', 0.92, 'beleg-7'))).toEqual({ art: 'beleg', receiptId: 'beleg-7' })
+    expect(exchangeRateSource(actualRate('2026-01', 0.92, 'beleg-7'))).toEqual({ kind: 'beleg', receiptId: 'beleg-7' })
   })
 })

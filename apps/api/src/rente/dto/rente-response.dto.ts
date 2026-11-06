@@ -45,7 +45,7 @@ export class PensionResponseDto {
     nullable: true,
     description: 'The chosen Rentenart (product ADR-036 §3), null when not yet chosen.',
   })
-  art!: string | null
+  kind!: string | null
 
   @ApiProperty({ type: PensionFieldDto })
   jahresbetrag!: PensionFieldDto

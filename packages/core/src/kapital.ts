@@ -96,7 +96,7 @@ export function capitalAsCoreLineItem(capital: CapitalData): Item | null {
     id: 'kapital',
     incomeType: 'Kapital',
     amount: capital.kapitalertraege.value,
-    source: { art: 'eingabe' },
+    source: { kind: 'eingabe' },
   }
 }
 

@@ -14,7 +14,7 @@ import { FIELD_SETS, renderForms, OverflowError } from '../src/ausdruck/vordruck
 const TEMPLATES = new URL('../assets/vordrucke/2025/', import.meta.url)
 
 const FACTS: PrintoutFacts = {
-  steuerjahr: 2025,
+  taxYear: 2025,
   profile: { firstName: 'Anna', lastName: 'Beispiel', steuerId: '02476291358', steuernummer: '2010304050' },
   masterData: {
     geburtsdatum: '1990-04-12',
@@ -109,7 +109,7 @@ describe('ausdruckWerte', () => {
       ...FACTS,
       masterData: { ...FACTS.masterData!, familienstand: 'verheiratet', familienstandSeit: '2020-05-15' },
       link: {
-        veranlagungsart: 'zusammen',
+        filingType: 'zusammen',
         personB: {
           firstName: 'Bernd',
           lastName: 'Beispiel',
@@ -142,7 +142,7 @@ describe('ausdruckWerte', () => {
     const { values, missing } = printoutValues({
       ...FACTS,
       masterData: { ...FACTS.masterData!, familienstand: 'verheiratet', familienstandSeit: '2020-05-15' },
-      link: { veranlagungsart: 'einzel' },
+      link: { filingType: 'einzel' },
     })
     expect(missing).toEqual([])
     expect(values['est1a.einzelveranlagung']).toBe(true)
@@ -154,9 +154,9 @@ describe('ausdruckWerte', () => {
       workdaysPerWeek: 5,
       daysOff: 55,
       commuteDays: 206,
-      einfacheKm: 23,
+      oneWayKm: 23,
       withCar: true,
-      taetigkeitsstaette: '79539 Lörrach, Hauptstraße 1',
+      workplace: '79539 Lörrach, Hauptstraße 1',
     }
 
     it('fills workplace, days and distance; the tax office computes the Pauschale itself', () => {
@@ -181,7 +181,7 @@ describe('ausdruckWerte', () => {
     })
 
     it('prints no commute lines while the distance is unknown', () => {
-      const { values } = printoutValues({ ...FACTS, commute: { ...COMMUTE, einfacheKm: null } })
+      const { values } = printoutValues({ ...FACTS, commute: { ...COMMUTE, oneWayKm: null } })
 
       expect(values['anlN.kz110Tage']).toBeUndefined()
       expect(values['anlN.kz111']).toBeUndefined()
@@ -190,8 +190,8 @@ describe('ausdruckWerte', () => {
 
   describe('Anlage V — typical lines (S6)', () => {
     const PROPERTY = {
-      strasse: 'Mühlstraße 21', plz: '73728', ort: 'Esslingen', wohnflaeche: '240', mieteinnahmen: '38400',
-      anschaffungskosten: '620000', baujahr: '1978', werbungskosten: '9800', afaWieVorjahr: true,
+      strasse: 'Mühlstraße 21', plz: '73728', city: 'Esslingen', livingArea: '240', mieteinnahmen: '38400',
+      anschaffungskosten: '620000', baujahr: '1978', werbungskosten: '9800', depreciationAsLastYear: true,
       umlagen: '4200', schuldzinsen: '6100', einheiten: '3',
     }
 
@@ -210,7 +210,7 @@ describe('ausdruckWerte', () => {
     })
 
     it('attributes the result to both spouses in a joint return — half and half unless a share is given (Z. 86)', () => {
-      const link = { veranlagungsart: 'zusammen' as const, personB: { firstName: 'Sabine', lastName: 'Weber', steuerId: null, geburtsdatum: null } }
+      const link = { filingType: 'zusammen' as const, personB: { firstName: 'Sabine', lastName: 'Weber', steuerId: null, geburtsdatum: null } }
       const halved = printoutValues({ ...FACTS, link, rental: [PROPERTY] }).instances?.['anlage-v']?.[0]
       expect(halved).toMatchObject({ 'anlV.kz20': '7150', 'anlV.kz21': '7150' })
       const seventyPercent = printoutValues({ ...FACTS, link, rental: [{ ...PROPERTY, anteilA: '70' }] }).instances?.['anlage-v']?.[0]
@@ -253,7 +253,7 @@ describe('ausdruckWerte', () => {
     })
 
     const MARRIED_COUPLE = {
-      veranlagungsart: 'zusammen' as const,
+      filingType: 'zusammen' as const,
       personB: { firstName: 'Sabine', lastName: 'Weber', steuerId: '51234567891', geburtsdatum: '1975-04-30' },
     }
 
@@ -353,11 +353,11 @@ describe('ausdruckWerte', () => {
         ...FACTS,
         chSalaryCertificate: CH,
         link: {
-          veranlagungsart: 'zusammen',
+          filingType: 'zusammen',
           personB: {
             firstName: 'Julia', lastName: 'Brenner', steuerId: '21234567891', geburtsdatum: '1986-07-21', beruf: 'Treuhänderin',
             chSalaryCertificate: { ...CH, grossWageChf: '110000', familienzulagenChf: '0', arbeitgeberName: 'Basler Treuhand AG' },
-            commute: { workdaysPerWeek: 5, daysOff: 33, commuteDays: 228, einfacheKm: 20, withCar: true, taetigkeitsstaette: '4051 Basel' },
+            commute: { workdaysPerWeek: 5, daysOff: 33, commuteDays: 228, oneWayKm: 20, withCar: true, workplace: '4051 Basel' },
             healthInsurance: [{ kind: 'gesetzlich', basicHealthAmount: 2520, withSickPay: false, careInsuranceAmount: 480, optionalExtrasAmount: 0 }],
           },
         },
@@ -383,7 +383,7 @@ describe('ausdruckWerte', () => {
         ...FACTS,
         chSalaryCertificate: CH,
         link: {
-          veranlagungsart: 'zusammen',
+          filingType: 'zusammen',
           personB: { firstName: 'Julia', lastName: 'Brenner', steuerId: null, geburtsdatum: null, chSalaryCertificate: { ...CH, rate: null } },
         },
       })
@@ -418,7 +418,7 @@ describe('ausdruckWerte', () => {
         ...FACTS,
         bruttoarbeitslohn: null,
         chSalaryCertificate: CH,
-        commute: { workdaysPerWeek: 5, daysOff: 35, commuteDays: 226, einfacheKm: 80, withCar: true, taetigkeitsstaette: '4058 Basel' },
+        commute: { workdaysPerWeek: 5, daysOff: 35, commuteDays: 226, oneWayKm: 80, withCar: true, workplace: '4058 Basel' },
       })
       expect(values).toMatchObject({
         'anlNGre.wegArt': '1',
@@ -431,7 +431,7 @@ describe('ausdruckWerte', () => {
   })
 
   it("prints the child's KV/PV paid by the parents in Anlage Kind Z. 27/28", () => {
-    const kind = { lfdNr: '1', vorname: 'Mia', nachname: 'Beispiel', geburtsdatum: '2016-03-14', idnr: '41234567890', kvBasisEur: '1080', pvEur: '0' }
+    const kind = { sequenceNumber: '1', firstName: 'Mia', lastName: 'Beispiel', geburtsdatum: '2016-03-14', taxId: '41234567890', healthBasicEur: '1080', careEur: '0' }
     const { instances } = printoutValues({ ...FACTS, kinder: [kind] })
     expect(instances?.['anlage-kind']?.[0]).toMatchObject({ 'anlKind.kz66': '1080' })
     expect(instances?.['anlage-kind']?.[0]?.['anlKind.kz67']).toBeUndefined()
@@ -483,7 +483,7 @@ describe('ausdruckWerte', () => {
     const { values } = printoutValues({
       ...FACTS,
       specialExpenses: { donations: '450' },
-      riester: { art: 'Unmittelbar', incomeLastYear: '48000' },
+      riester: { kind: 'Unmittelbar', incomeLastYear: '48000' },
     })
     expect(values).toMatchObject({
       'anlSo.spenden': '450',
@@ -493,14 +493,14 @@ describe('ausdruckWerte', () => {
   })
 
   it('Anlage AV: mittelbar writes 2 in Zeile 14 and needs no earnings; a direct claim without them blocks', () => {
-    const indirect = printoutValues({ ...FACTS, riester: { art: 'Mittelbar', incomeLastYear: null } })
+    const indirect = printoutValues({ ...FACTS, riester: { kind: 'Mittelbar', incomeLastYear: null } })
     expect(indirect.values['anlAv.mittelbar']).toBe('2')
     expect(indirect.values['anlAv.unmittelbar']).toBeUndefined()
     expect(indirect.missing).toEqual([])
 
-    expect(printoutValues({ ...FACTS, riester: { art: 'Unmittelbar', incomeLastYear: null } }).missing).toEqual(['riester'])
-    expect(printoutValues({ ...FACTS, riester: { art: null, incomeLastYear: null } }).missing).toEqual(['riester'])
-    expect(Object.keys(printoutValues({ ...FACTS, riester: { art: null, incomeLastYear: null } }).values).some((id) => id.startsWith('anlAv.'))).toBe(false)
+    expect(printoutValues({ ...FACTS, riester: { kind: 'Unmittelbar', incomeLastYear: null } }).missing).toEqual(['riester'])
+    expect(printoutValues({ ...FACTS, riester: { kind: null, incomeLastYear: null } }).missing).toEqual(['riester'])
+    expect(Object.keys(printoutValues({ ...FACTS, riester: { kind: null, incomeLastYear: null } }).values).some((id) => id.startsWith('anlAv.'))).toBe(false)
   })
 
   it('writes nothing onto Anlage Vorsorgeaufwand: its employee lines are ⓔ-Zeilen the Finanzamt already has', () => {
@@ -513,20 +513,20 @@ describe('ausdruckWerte', () => {
       ...FACTS,
       masterData: { ...FACTS.masterData!, familienstand: 'verheiratet', familienstandSeit: '2015-05-15' },
       link: {
-        veranlagungsart: 'zusammen',
+        filingType: 'zusammen',
         personB: { firstName: 'Bernd', lastName: 'Beispiel', steuerId: '12345678902', geburtsdatum: '1988-11-20', religion: 'VD', beruf: 'Lehrer' },
       },
     }
     const KIND = {
-      vorname: 'Lina',
-      nachname: 'Beispiel',
+      firstName: 'Lina',
+      lastName: 'Beispiel',
       geburtsdatum: '2016-03-10',
-      idnr: '11111111111',
-      kindergeldAnspruchEur: '3060',
-      kindschaftsverhaeltnis: '1',
-      kindschaftsverhaeltnisB: '1',
-      familienkasse: 'Familienkasse Sachsen',
-      wohnsitzInlandGanzjaehrig: true,
+      taxId: '11111111111',
+      childBenefitClaimEur: '3060',
+      kinship: '1',
+      kinshipB: '1',
+      familyBenefitsOffice: 'Familienkasse Sachsen',
+      domesticResidenceAllYear: true,
     }
 
     it('prints Familienkasse, Wohnsitz im Inland and both Kindschaftsverhältnisse (Zeilen 7, 8, 10)', () => {
@@ -545,26 +545,26 @@ describe('ausdruckWerte', () => {
     })
 
     it('a different family name is printed; a child born in the year lives here from its birth', () => {
-      const { instances } = printoutValues({ ...JOINT, kinder: [{ ...KIND, nachname: 'Muster', geburtsdatum: '2025-08-04' }] })
+      const { instances } = printoutValues({ ...JOINT, kinder: [{ ...KIND, lastName: 'Muster', geburtsdatum: '2025-08-04' }] })
       expect(instances!['anlage-kind']![0]).toMatchObject({ 'anlKind.nachname': 'Muster', 'anlKind.inlandVon': '04.08.2025' })
     })
 
     it('missing details block the printout as "kinder"', () => {
-      for (const gap of [{ idnr: null }, { kindschaftsverhaeltnis: null }, { familienkasse: null }, { wohnsitzInlandGanzjaehrig: null }]) {
+      for (const gap of [{ taxId: null }, { kinship: null }, { familyBenefitsOffice: null }, { domesticResidenceAllYear: null }]) {
         expect(printoutValues({ ...JOINT, kinder: [{ ...KIND, ...gap }] }).missing).toEqual(['kinder'])
       }
     })
 
     it('cases the printout cannot cover yet are named, never printed half', () => {
-      expect(printoutValues({ ...JOINT, kinder: [{ ...KIND, wohnsitzInlandGanzjaehrig: false }] }).missing).toEqual(['anlageKindAusland'])
+      expect(printoutValues({ ...JOINT, kinder: [{ ...KIND, domesticResidenceAllYear: false }] }).missing).toEqual(['anlageKindAusland'])
       expect(printoutValues({ ...JOINT, kinder: [{ ...KIND, geburtsdatum: '2007-02-01' }] }).missing).toEqual(['anlageKindVolljaehrig'])
-      expect(printoutValues({ ...JOINT, kinder: [KIND, { ...KIND, wohnsitzInlandGanzjaehrig: false }, { ...KIND, wohnsitzInlandGanzjaehrig: false }] }).missing).toEqual(['anlageKindAusland'])
+      expect(printoutValues({ ...JOINT, kinder: [KIND, { ...KIND, domesticResidenceAllYear: false }, { ...KIND, domesticResidenceAllYear: false }] }).missing).toEqual(['anlageKindAusland'])
     })
 
     it('prints Swiss family allowance plus Differenzkindergeld in Zeile 6 (Kz 15, ADR-0054, #414)', () => {
       const { instances, missing } = printoutValues({
         ...JOINT,
-        kinder: [{ ...KIND, schweizerKinderzulageEur: '2748' }],
+        kinder: [{ ...KIND, swissFamilyAllowanceEur: '2748' }],
       })
       expect(missing).toEqual([])
       // 2025: 255 * 12 = 3060 total claim
@@ -576,7 +576,7 @@ describe('ausdruckWerte', () => {
     it('prints higher Swiss family allowance in Zeile 6 when exceeding German Kindergeld', () => {
       const { instances } = printoutValues({
         ...JOINT,
-        kinder: [{ ...KIND, schweizerKinderzulageEur: '3500' }],
+        kinder: [{ ...KIND, swissFamilyAllowanceEur: '3500' }],
       })
       expect(instances!['anlage-kind']![0]).toMatchObject({
         'anlKind.kindergeld': '3500',
@@ -586,27 +586,27 @@ describe('ausdruckWerte', () => {
 
   describe('Anlage Kind — the other parent outside this return (Zeilen 11–15)', () => {
     const CHILD_SOLE = {
-      vorname: 'Lina',
-      nachname: 'Beispiel',
+      firstName: 'Lina',
+      lastName: 'Beispiel',
       geburtsdatum: '2016-03-10',
-      idnr: '11111111111',
-      kindergeldAnspruchEur: '3060',
-      kindschaftsverhaeltnis: '1',
-      kindschaftsverhaeltnisB: null,
-      familienkasse: 'Familienkasse Sachsen',
-      wohnsitzInlandGanzjaehrig: true,
-      andererElternteil: 'Inland',
-      andererElternteilName: 'Muster, Max',
-      andererElternteilGeburtsdatum: '1984-02-11',
-      andererElternteilAdresse: 'Hauptstraße 3, 01067 Dresden',
-      andererElternteilArt: '1',
-      andererElternteilVerstorbenAm: null,
+      taxId: '11111111111',
+      childBenefitClaimEur: '3060',
+      kinship: '1',
+      kinshipB: null,
+      familyBenefitsOffice: 'Familienkasse Sachsen',
+      domesticResidenceAllYear: true,
+      otherParent: 'Inland',
+      otherParentName: 'Muster, Max',
+      otherParentBirthDate: '1984-02-11',
+      otherParentAddress: 'Hauptstraße 3, 01067 Dresden',
+      otherParentKind: '1',
+      otherParentDiedOn: null,
     }
-    const anlage = (facts: PrintoutFacts) => printoutValues(facts).instances!['anlage-kind']![0]!
+    const annex = (facts: PrintoutFacts) => printoutValues(facts).instances!['anlage-kind']![0]!
 
     it('a single parent prints the other parent with the year as the relationship period', () => {
       expect(printoutValues({ ...FACTS, kinder: [CHILD_SOLE] }).missing).toEqual([])
-      expect(anlage({ ...FACTS, kinder: [CHILD_SOLE] })).toMatchObject({
+      expect(annex({ ...FACTS, kinder: [CHILD_SOLE] })).toMatchObject({
         'anlKind.aeName': 'Muster, Max',
         'anlKind.aeGeburtsdatum': '11.02.1984',
         'anlKind.aeVon': '01.01.2025',
@@ -617,47 +617,47 @@ describe('ausdruckWerte', () => {
     })
 
     it('a deceased parent ends the period at the date of death (Zeile 14, Kz 06)', () => {
-      const values = anlage({ ...FACTS, kinder: [{ ...CHILD_SOLE, andererElternteil: 'Verstorben', andererElternteilVerstorbenAm: '2025-06-30' }] })
+      const values = annex({ ...FACTS, kinder: [{ ...CHILD_SOLE, otherParent: 'Verstorben', otherParentDiedOn: '2025-06-30' }] })
       expect(values).toMatchObject({ 'anlKind.kz06': '30.06.2025', 'anlKind.aeBis': '30.06.2025' })
     })
 
     it('a parent who cannot be ascertained is Zeile 15 alone (Kz 05 = 1)', () => {
-      const facts = { ...FACTS, kinder: [{ ...CHILD_SOLE, andererElternteil: 'Unbekannt', andererElternteilName: null, andererElternteilGeburtsdatum: null, andererElternteilAdresse: null, andererElternteilArt: null }] }
+      const facts = { ...FACTS, kinder: [{ ...CHILD_SOLE, otherParent: 'Unbekannt', otherParentName: null, otherParentBirthDate: null, otherParentAddress: null, otherParentKind: null }] }
       expect(printoutValues(facts).missing).toEqual([])
-      expect(anlage(facts)['anlKind.kz05']).toBe('1')
-      expect(anlage(facts)['anlKind.aeName']).toBeUndefined()
+      expect(annex(facts)['anlKind.kz05']).toBe('1')
+      expect(annex(facts)['anlKind.aeName']).toBeUndefined()
     })
 
     it('missing details block as "kinder"; a parent abroad (Zeile 13) is named as not printable yet', () => {
-      expect(printoutValues({ ...FACTS, kinder: [{ ...CHILD_SOLE, andererElternteil: null }] }).missing).toEqual(['kinder'])
-      expect(printoutValues({ ...FACTS, kinder: [{ ...CHILD_SOLE, andererElternteilAdresse: null }] }).missing).toEqual(['kinder'])
-      expect(printoutValues({ ...FACTS, kinder: [{ ...CHILD_SOLE, andererElternteil: 'Verstorben' }] }).missing).toEqual(['kinder'])
-      expect(printoutValues({ ...FACTS, kinder: [{ ...CHILD_SOLE, andererElternteil: 'Ausland' }] }).missing).toEqual(['anlageKindAndererElternteilAusland'])
+      expect(printoutValues({ ...FACTS, kinder: [{ ...CHILD_SOLE, otherParent: null }] }).missing).toEqual(['kinder'])
+      expect(printoutValues({ ...FACTS, kinder: [{ ...CHILD_SOLE, otherParentAddress: null }] }).missing).toEqual(['kinder'])
+      expect(printoutValues({ ...FACTS, kinder: [{ ...CHILD_SOLE, otherParent: 'Verstorben' }] }).missing).toEqual(['kinder'])
+      expect(printoutValues({ ...FACTS, kinder: [{ ...CHILD_SOLE, otherParent: 'Ausland' }] }).missing).toEqual(['anlageKindAndererElternteilAusland'])
     })
 
     it('in a joint return where both are parents, the other-parent lines stay empty', () => {
       const joint: PrintoutFacts = {
         ...FACTS,
         masterData: { ...FACTS.masterData!, familienstand: 'verheiratet', familienstandSeit: '2015-05-15' },
-        link: { veranlagungsart: 'zusammen', personB: { firstName: 'Bernd', lastName: 'Beispiel', steuerId: '12345678902', geburtsdatum: '1988-11-20', religion: 'VD', beruf: 'Lehrer' } },
-        kinder: [{ ...CHILD_SOLE, kindschaftsverhaeltnisB: '1' }],
+        link: { filingType: 'zusammen', personB: { firstName: 'Bernd', lastName: 'Beispiel', steuerId: '12345678902', geburtsdatum: '1988-11-20', religion: 'VD', beruf: 'Lehrer' } },
+        kinder: [{ ...CHILD_SOLE, kinshipB: '1' }],
       }
-      expect(Object.keys(anlage(joint)).filter((id) => id.startsWith('anlKind.ae'))).toEqual([])
+      expect(Object.keys(annex(joint)).filter((id) => id.startsWith('anlKind.ae'))).toEqual([])
     })
   })
 
   describe('Entlastungsbetrag für Alleinerziehende (Anlage Kind Zeilen 45–48)', () => {
     const KIND = {
-      vorname: 'Lina',
-      nachname: 'Beispiel',
+      firstName: 'Lina',
+      lastName: 'Beispiel',
       geburtsdatum: '2016-03-10',
-      idnr: '11111111111',
-      kindschaftsverhaeltnis: '1',
-      familienkasse: 'Familienkasse Sachsen',
-      wohnsitzInlandGanzjaehrig: true,
-      andererElternteil: 'Unbekannt',
-      gemeldetBeiMirGanzjaehrig: true,
-      kindergeldAnMichGanzjaehrig: true,
+      taxId: '11111111111',
+      kinship: '1',
+      familyBenefitsOffice: 'Familienkasse Sachsen',
+      domesticResidenceAllYear: true,
+      otherParent: 'Unbekannt',
+      registeredWithMeAllYear: true,
+      childBenefitToMeAllYear: true,
     }
     const SINGLE_PARENT: PrintoutFacts = { ...FACTS, singleParent: { otherPerson: 'Nein', householdCommunity: 'Nein' } }
     const ae = (facts: PrintoutFacts) => {
@@ -681,8 +681,8 @@ describe('ausdruckWerte', () => {
       expect(ae({ ...SINGLE_PARENT, singleParent: { otherPerson: 'Ja', householdCommunity: 'Nein' }, kinder: [KIND] })).toEqual({})
       expect(ae({ ...SINGLE_PARENT, singleParent: { otherPerson: 'Nein', householdCommunity: null }, kinder: [KIND] })).toEqual({})
       expect(ae({ ...FACTS, kinder: [KIND] })).toEqual({})
-      expect(ae({ ...SINGLE_PARENT, kinder: [{ ...KIND, kindergeldAnMichGanzjaehrig: false }] })).toEqual({})
-      const married = { ...SINGLE_PARENT, masterData: { ...FACTS.masterData!, familienstand: 'verheiratet' }, link: { veranlagungsart: 'einzel' as const } }
+      expect(ae({ ...SINGLE_PARENT, kinder: [{ ...KIND, childBenefitToMeAllYear: false }] })).toEqual({})
+      const married = { ...SINGLE_PARENT, masterData: { ...FACTS.masterData!, familienstand: 'verheiratet' }, link: { filingType: 'einzel' as const } }
       expect(ae({ ...married, kinder: [KIND] })).toEqual({})
     })
   })
@@ -691,21 +691,21 @@ describe('ausdruckWerte', () => {
     const res = printoutValues({
       ...FACTS,
       kinder: [
-        { lfdNr: '1', vorname: 'Lina', nachname: 'Beispiel', geburtsdatum: '2015-03-10', idnr: '11111111111', kindergeldAnspruchEur: '3000' },
-        { lfdNr: '2', vorname: 'Noah', nachname: 'Beispiel', geburtsdatum: '2018-07-22', idnr: '22222222222', kindergeldAnspruchEur: '3000' },
+        { sequenceNumber: '1', firstName: 'Lina', lastName: 'Beispiel', geburtsdatum: '2015-03-10', taxId: '11111111111', childBenefitClaimEur: '3000' },
+        { sequenceNumber: '2', firstName: 'Noah', lastName: 'Beispiel', geburtsdatum: '2018-07-22', taxId: '22222222222', childBenefitClaimEur: '3000' },
       ],
       rental: [
         {
-          lfdNr: '1',
+          sequenceNumber: '1',
           strasse: 'Schulstraße 4',
           plz: '01067',
-          ort: 'Dresden',
-          wohnflaeche: '75',
+          city: 'Dresden',
+          livingArea: '75',
           mieteinnahmen: '9600',
           anschaffungskosten: '150000',
           baujahr: '1995',
           werbungskosten: '1200',
-          afaWieVorjahr: true,
+          depreciationAsLastYear: true,
         },
       ],
     })
@@ -740,13 +740,13 @@ describe('ausdruckWerte', () => {
     const PROPERTY = {
       strasse: 'Schulstraße 4',
       plz: '01067',
-      ort: 'Dresden',
-      wohnflaeche: '75',
+      city: 'Dresden',
+      livingArea: '75',
       mieteinnahmen: '9600',
       anschaffungskosten: '150000',
       baujahr: '1995',
       werbungskosten: '1200',
-      afaWieVorjahr: true,
+      depreciationAsLastYear: true,
     }
     const v = (property: Partial<typeof PROPERTY> & Record<string, unknown>) =>
       printoutValues({ ...FACTS, rental: [{ ...PROPERTY, ...property } as never] })
@@ -784,7 +784,7 @@ describe('ausdruckWerte', () => {
     })
 
     it('without building data there is no AfA line, and no "wie Vorjahr" question', () => {
-      const res = v({ anschaffungskosten: null as never, baujahr: null as never, afaWieVorjahr: null as never })
+      const res = v({ anschaffungskosten: null as never, baujahr: null as never, depreciationAsLastYear: null as never })
       expect(res.missing).toEqual([])
       expect(Object.keys(res.instances!['anlage-v']![0]!).filter((id) => id.startsWith('anlV.z33'))).toEqual([])
       expect(res.instances!['anlage-v']![0]!['anlV.werbungskostenSumme']).toBe('1200')
@@ -794,9 +794,9 @@ describe('ausdruckWerte', () => {
       expect(v({ mieteinnahmen: null as never }).missing).toEqual(['vermietung'])
       expect(v({ werbungskosten: null as never }).missing).toEqual(['vermietung'])
       expect(v({ baujahr: 'unklar' }).missing).toEqual(['vermietung'])
-      expect(v({ ort: null as never }).missing).toEqual(['vermietung'])
-      expect(v({ afaWieVorjahr: null as never }).missing).toEqual(['vermietung'])
-      expect(v({ afaWieVorjahr: false }).missing).toEqual(['anlageVAfaNeu'])
+      expect(v({ city: null as never }).missing).toEqual(['vermietung'])
+      expect(v({ depreciationAsLastYear: null as never }).missing).toEqual(['vermietung'])
+      expect(v({ depreciationAsLastYear: false }).missing).toEqual(['anlageVAfaNeu'])
     })
   })
 })
@@ -818,8 +818,8 @@ describe('rendereVordrucke (real templates)', () => {
     const res = printoutValues({
       ...FACTS,
       kinder: [
-        { vorname: 'Lina', nachname: 'Beispiel', geburtsdatum: '2016-01-01', idnr: '12345678901' },
-        { vorname: 'Noah', nachname: 'Beispiel', geburtsdatum: '2018-01-01', idnr: '22222222222' },
+        { firstName: 'Lina', lastName: 'Beispiel', geburtsdatum: '2016-01-01', taxId: '12345678901' },
+        { firstName: 'Noah', lastName: 'Beispiel', geburtsdatum: '2018-01-01', taxId: '22222222222' },
       ],
     })
     const pdf = await renderForms(FIELD_SETS[2025]!, res.values, { templatesDirectory: TEMPLATES, instances: res.instances, editable: true })
@@ -867,11 +867,11 @@ describe('rendereVordrucke (real templates)', () => {
   // Every fact the printout knows, filled to the last optional detail, in both household shapes:
   // a field id the mapping writes but nobody measured would only surface as a 500 after payment.
   const CHILD_FULL = {
-    vorname: 'Lina', nachname: 'Muster', geburtsdatum: '2016-01-01', idnr: '12345678901', kindergeldAnspruchEur: '3060',
-    kindschaftsverhaeltnis: '1', kindschaftsverhaeltnisB: '1', familienkasse: 'Familienkasse Sachsen', wohnsitzInlandGanzjaehrig: true,
-    andererElternteil: 'Verstorben', andererElternteilName: 'Muster, Max', andererElternteilGeburtsdatum: '1984-02-11',
-    andererElternteilAdresse: 'Hauptstraße 3, 01067 Dresden', andererElternteilArt: '1', andererElternteilVerstorbenAm: '2025-06-30',
-    gemeldetBeiMirGanzjaehrig: true, kindergeldAnMichGanzjaehrig: true,
+    firstName: 'Lina', lastName: 'Muster', geburtsdatum: '2016-01-01', taxId: '12345678901', childBenefitClaimEur: '3060',
+    kinship: '1', kinshipB: '1', familyBenefitsOffice: 'Familienkasse Sachsen', domesticResidenceAllYear: true,
+    otherParent: 'Verstorben', otherParentName: 'Muster, Max', otherParentBirthDate: '1984-02-11',
+    otherParentAddress: 'Hauptstraße 3, 01067 Dresden', otherParentKind: '1', otherParentDiedOn: '2025-06-30',
+    registeredWithMeAllYear: true, childBenefitToMeAllYear: true,
   }
   const ALL_FACTS: PrintoutFacts = {
     ...FACTS,
@@ -884,25 +884,25 @@ describe('rendereVordrucke (real templates)', () => {
       krankentaggeldArbeitgeberProzent: '0', krankentaggeldArbeitgeberChf: null, nbuvArbeitgeberProzent: '0', nbuvArbeitgeberChf: null,
     },
     specialExpenses: { donations: '200' },
-    riester: { art: 'Unmittelbar', incomeLastYear: '40000' },
+    riester: { kind: 'Unmittelbar', incomeLastYear: '40000' },
     singleParent: { otherPerson: 'Nein', householdCommunity: 'Nein' },
-    kinder: [CHILD_FULL, { ...CHILD_FULL, andererElternteil: 'Unbekannt' }],
+    kinder: [CHILD_FULL, { ...CHILD_FULL, otherParent: 'Unbekannt' }],
     rental: [
-      { strasse: 'Musterweg 1', plz: '10115', ort: 'Berlin', wohnflaeche: '60', mieteinnahmen: '8000', anschaffungskosten: '100000', baujahr: '2000', werbungskosten: '500', afaWieVorjahr: true },
+      { strasse: 'Musterweg 1', plz: '10115', city: 'Berlin', livingArea: '60', mieteinnahmen: '8000', anschaffungskosten: '100000', baujahr: '2000', werbungskosten: '500', depreciationAsLastYear: true },
     ],
   }
   const MARRIED: PrintoutFacts = {
     ...ALL_FACTS,
     masterData: { ...FACTS.masterData!, familienstand: 'verheiratet', familienstandSeit: '2015-05-15' },
     link: {
-      veranlagungsart: 'zusammen',
+      filingType: 'zusammen',
       personB: {
         firstName: 'Bernd', lastName: 'Beispiel', steuerId: '12345678902', geburtsdatum: '1988-11-20', religion: 'VD', beruf: 'Lehrer',
         bruttoarbeitslohn: '54000', pension: { rentenart: 'GesetzlicheRente', jahresbetrag: '9000' },
       },
     },
     capital: { depot: 'auslaendischer-broker', kapitalertraege: '800', sparerPauschbetrag: '200' },
-    riester: { art: 'Mittelbar', incomeLastYear: null },
+    riester: { kind: 'Mittelbar', incomeLastYear: null },
   }
 
   for (const [fall, facts] of [['single parent', ALL_FACTS], ['joint return', MARRIED]] as const) {

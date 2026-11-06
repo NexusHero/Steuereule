@@ -18,7 +18,7 @@ const LAST_YEAR = 2024
 const YEAR = 2025
 
 interface Overview {
-  annexes: { anlage: string; unconfirmed: number; values: { key: string; value: string | null; provenance: { art: string; vorjahr?: number }; bestaetigt: boolean; proposal: { value: string | null } | null }[] }[]
+  annexes: { annex: string; unconfirmed: number; values: { key: string; value: string | null; provenance: { kind: string; lastYear?: number }; confirmed: boolean; proposal: { value: string | null } | null }[] }[]
 }
 
 describe('REQ-032 — Herkunft und Bestätigung (ADR-0052 §6/§7), against the real server', () => {
@@ -105,18 +105,18 @@ describe('REQ-032 — Herkunft und Bestätigung (ADR-0052 §6/§7), against the 
     expect(((await checkout.json()) as { missing: string[] }).missing).toContain('unbestaetigt.anlageN')
 
     const before = await overview(cookie)
-    expect(before.annexes.map((a) => a.anlage)).toEqual(['anlageN', 'anlageKap'])
+    expect(before.annexes.map((a) => a.annex)).toEqual(['anlageN', 'anlageKap'])
     const annexN = before.annexes[0]!
     expect(annexN.unconfirmed).toBe(1)
     expect(annexN.values).toEqual([
-      expect.objectContaining({ key: 'lstb.bruttoarbeitslohn', value: '52000', provenance: { art: 'nutzer' }, bestaetigt: true, proposal: expect.objectContaining({ value: '50000' }) }),
-      expect.objectContaining({ key: 'lstb.lohnsteuer', value: '8000', provenance: { art: 'uebernahme', vorjahr: LAST_YEAR }, bestaetigt: false, proposal: null }),
+      expect.objectContaining({ key: 'lstb.bruttoarbeitslohn', value: '52000', provenance: { kind: 'nutzer' }, confirmed: true, proposal: expect.objectContaining({ value: '50000' }) }),
+      expect.objectContaining({ key: 'lstb.lohnsteuer', value: '8000', provenance: { kind: 'uebernahme', lastYear: LAST_YEAR }, confirmed: false, proposal: null }),
     ])
 
     // Ciphertext at rest (ADR-0008): the proposal is never stored as plaintext.
-    const rows = await prisma.$queryRaw<Array<{ vorschlagWert: string | null }>>`SELECT "vorschlagWert" FROM "Kennzeichnung" WHERE "userId" = ${userId} AND "postenKey" = 'lstb.bruttoarbeitslohn'`
-    expect(rows[0]?.vorschlagWert).toBeTruthy()
-    expect(rows[0]?.vorschlagWert).not.toContain('50000')
+    const rows = await prisma.$queryRaw<Array<{ proposalValue: string | null }>>`SELECT "vorschlagWert" FROM "Kennzeichnung" WHERE "userId" = ${userId} AND "postenKey" = 'lstb.bruttoarbeitslohn'`
+    expect(rows[0]?.proposalValue).toBeTruthy()
+    expect(rows[0]?.proposalValue).not.toContain('50000')
 
     // Accept the proposal → written into the mask.
     expect((await put(cookie, `${YEAR}/bestaetigung/vorschlaege/lstb.bruttoarbeitslohn`, { decision: 'annehmen' })).status).toBe(200)

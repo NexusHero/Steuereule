@@ -101,7 +101,7 @@ describe('REQ-028 — die Jahresübernahme (ADR-021), against the real server', 
       const response = await fetch(`${baseUrl}/v1/steuerjahre/${TARGET_YEAR}/uebernahme?von=${LAST_YEAR}`, { method: 'POST', headers: { cookie } })
       expect(response.status).toBe(200)
       expect(await response.json()).toEqual({
-        markings: ['lstb.bruttoarbeitslohn', 'lstb.lohnsteuer', 'lstb.sozialversicherung'].map((postenKey) => ({ postenKey, vorjahr: LAST_YEAR, bestaetigt: false })),
+        markings: ['lstb.bruttoarbeitslohn', 'lstb.lohnsteuer', 'lstb.sozialversicherung'].map((itemKey) => ({ itemKey, lastYear: LAST_YEAR, confirmed: false })),
       })
 
       // Die kopierte Zeile trägt die Feld-Strings unverändert (die ehrlichen Zustände reisen mit).
@@ -117,10 +117,10 @@ describe('REQ-028 — die Jahresübernahme (ADR-021), against the real server', 
       expect(cockpitBody.status.to).toBe(100000)
 
       // Anlage N bestätigen (REQ-032) → Punktwert.
-      const bestaetigt = await fetch(`${baseUrl}/v1/steuerjahre/${TARGET_YEAR}/bestaetigung/anlagen/anlageN`, { method: 'PUT', headers: { cookie } })
-      expect(bestaetigt.status).toBe(200)
+      const confirmed = await fetch(`${baseUrl}/v1/steuerjahre/${TARGET_YEAR}/bestaetigung/anlagen/anlageN`, { method: 'PUT', headers: { cookie } })
+      expect(confirmed.status).toBe(200)
       const state = await fetch(`${baseUrl}/v1/steuerjahre/${TARGET_YEAR}/uebernahme`, { headers: { cookie } })
-      expect(((await state.json()) as { markings: Array<{ bestaetigt: boolean }> }).markings.every((k) => k.bestaetigt)).toBe(true)
+      expect(((await state.json()) as { markings: Array<{ confirmed: boolean }> }).markings.every((k) => k.confirmed)).toBe(true)
 
       const cockpit2 = await fetch(`${baseUrl}/v1/steuerjahre/${TARGET_YEAR}/cockpit`, { headers: { cookie } })
       const cockpit2Body = (await cockpit2.json()) as { status: { kind: string; value?: number } }
@@ -173,7 +173,7 @@ describe('REQ-028 — die Jahresübernahme (ADR-021), against the real server', 
     await fetch(`${baseUrl}/v1/steuerjahre/${LAST_YEAR}/rente/art`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json', cookie },
-      body: JSON.stringify({ art: 'GesetzlicheRente' }),
+      body: JSON.stringify({ kind: 'GesetzlicheRente' }),
     })
     await fetch(`${baseUrl}/v1/steuerjahre/${LAST_YEAR}/rente/jahresbetrag`, {
       method: 'PUT',
@@ -183,15 +183,15 @@ describe('REQ-028 — die Jahresübernahme (ADR-021), against the real server', 
 
     const response = await fetch(`${baseUrl}/v1/steuerjahre/${TARGET_YEAR}/uebernahme?von=${LAST_YEAR}`, { method: 'POST', headers: { cookie } })
     expect(response.status).toBe(200)
-    const body = (await response.json()) as { markings: Array<{ postenKey: string; vorjahr: number; bestaetigt: boolean }> }
+    const body = (await response.json()) as { markings: Array<{ itemKey: string; lastYear: number; confirmed: boolean }> }
     expect(body.markings).toEqual([
-      { postenKey: 'rente.jahresbetrag', vorjahr: LAST_YEAR, bestaetigt: false },
-      { postenKey: 'rente.rentenart', vorjahr: LAST_YEAR, bestaetigt: false },
+      { itemKey: 'rente.jahresbetrag', lastYear: LAST_YEAR, confirmed: false },
+      { itemKey: 'rente.rentenart', lastYear: LAST_YEAR, confirmed: false },
     ])
 
     const pensionTarget = await fetch(`${baseUrl}/v1/steuerjahre/${TARGET_YEAR}/rente`, { headers: { cookie } })
-    const pensionBody = (await pensionTarget.json()) as { art: string | null; jahresbetrag: { kind: string; value?: number } }
-    expect(pensionBody.art).toBe('GesetzlicheRente')
+    const pensionBody = (await pensionTarget.json()) as { kind: string | null; jahresbetrag: { kind: string; value?: number } }
+    expect(pensionBody.kind).toBe('GesetzlicheRente')
     expect(pensionBody.jahresbetrag).toEqual({ kind: 'erfasst', value: 12000 })
   })
 
@@ -203,7 +203,7 @@ describe('REQ-028 — die Jahresübernahme (ADR-021), against the real server', 
     await fetch(`${baseUrl}/v1/steuerjahre/${LAST_YEAR}/rente/art`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json', cookie },
-      body: JSON.stringify({ art: 'GesetzlicheRente' }),
+      body: JSON.stringify({ kind: 'GesetzlicheRente' }),
     })
     await fetch(`${baseUrl}/v1/steuerjahre/${LAST_YEAR}/rente/jahresbetrag`, {
       method: 'PUT',
@@ -229,13 +229,13 @@ describe('REQ-028 — die Jahresübernahme (ADR-021), against the real server', 
 
     const response = await fetch(`${baseUrl}/v1/steuerjahre/${TARGET_YEAR}/uebernahme?von=${LAST_YEAR}`, { method: 'POST', headers: { cookie } })
     expect(response.status).toBe(200)
-    const body = (await response.json()) as { markings: Array<{ postenKey: string; vorjahr: number; bestaetigt: boolean }> }
-    const keys = body.markings.map((k) => k.postenKey)
+    const body = (await response.json()) as { markings: Array<{ itemKey: string; lastYear: number; confirmed: boolean }> }
+    const keys = body.markings.map((k) => k.itemKey)
     expect(keys).toContain('lstb.bruttoarbeitslohn')
     expect(keys).toContain('rente.jahresbetrag')
     expect(keys).toContain('kapital.kapitalertraege')
     expect(keys.filter((k) => k.startsWith('vermietung:'))).toEqual([expect.stringMatching(/^vermietung:[^.]+\.mieteinnahmen$/)])
-    expect(body.markings.every((k) => k.vorjahr === LAST_YEAR && k.bestaetigt === false)).toBe(true)
+    expect(body.markings.every((k) => k.lastYear === LAST_YEAR && k.confirmed === false)).toBe(true)
 
     // Die Spanne trägt die Gesamtsumme aller unbestätigten Fakten: 50000+12000+3000+9600 = 74600.
     const cockpit = await fetch(`${baseUrl}/v1/steuerjahre/${TARGET_YEAR}/cockpit`, { headers: { cookie } })
@@ -245,9 +245,9 @@ describe('REQ-028 — die Jahresübernahme (ADR-021), against the real server', 
     expect(cockpitBody.status.to).toBe(50000 + 74600)
 
     // Bestätigen je Anlage (REQ-032) → Punktwert.
-    for (const anlage of ['anlageN', 'anlageR', 'anlageKap', 'anlageV']) {
-      const bestaetigt = await fetch(`${baseUrl}/v1/steuerjahre/${TARGET_YEAR}/bestaetigung/anlagen/${anlage}`, { method: 'PUT', headers: { cookie } })
-      expect(bestaetigt.status).toBe(200)
+    for (const annex of ['anlageN', 'anlageR', 'anlageKap', 'anlageV']) {
+      const confirmed = await fetch(`${baseUrl}/v1/steuerjahre/${TARGET_YEAR}/bestaetigung/anlagen/${annex}`, { method: 'PUT', headers: { cookie } })
+      expect(confirmed.status).toBe(200)
     }
     const cockpit2 = await fetch(`${baseUrl}/v1/steuerjahre/${TARGET_YEAR}/cockpit`, { headers: { cookie } })
     const cockpit2Body = (await cockpit2.json()) as { status: { kind: string; value?: number } }

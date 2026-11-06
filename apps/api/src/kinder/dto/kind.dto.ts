@@ -7,80 +7,80 @@ class ChildDetailsDto {
   @ApiPropertyOptional({ enum: CHILD_RELATIONSHIPS, nullable: true, description: 'Kz 02: 1 = leiblich/adoptiert, 2 = Pflegekind, 3 = Enkel-/Stiefkind' })
   @IsOptional()
   @IsIn(CHILD_RELATIONSHIPS)
-  kindschaftsverhaeltnis?: string | null
+  kinship?: string | null
 
   @ApiPropertyOptional({ enum: CHILD_RELATIONSHIPS, nullable: true, description: 'Kz 03, to the spouse — only for a joint return' })
   @IsOptional()
   @IsIn(CHILD_RELATIONSHIPS)
-  kindschaftsverhaeltnisB?: string | null
+  kinshipB?: string | null
 
   @ApiPropertyOptional({ type: String, nullable: true, example: 'Familienkasse Sachsen' })
   @IsOptional()
   @IsString()
   @MaxLength(100)
-  familienkasse?: string | null
+  familyBenefitsOffice?: string | null
 
   @ApiPropertyOptional({ type: Boolean, nullable: true, description: 'The child lived in Germany all year (Zeile 8).' })
   @IsOptional()
   @IsBoolean()
-  wohnsitzInlandGanzjaehrig?: boolean | null
+  domesticResidenceAllYear?: boolean | null
 
   @ApiPropertyOptional({ enum: OTHER_PARENT_STATUSES, nullable: true, description: 'The other parent outside this return (Zeilen 11–15).' })
   @IsOptional()
   @IsIn(OTHER_PARENT_STATUSES)
-  andererElternteil?: string | null
+  otherParent?: string | null
 
   @ApiPropertyOptional({ type: String, nullable: true, example: 'Muster, Max' })
   @IsOptional()
   @IsString()
   @MaxLength(100)
-  andererElternteilName?: string | null
+  otherParentName?: string | null
 
   @ApiPropertyOptional({ type: String, nullable: true, example: '1984-02-11' })
   @IsOptional()
   @Matches(/^\d{4}-\d{2}-\d{2}$/)
-  andererElternteilGeburtsdatum?: string | null
+  otherParentBirthDate?: string | null
 
   @ApiPropertyOptional({ type: String, nullable: true, example: 'Hauptstraße 3, 01067 Dresden' })
   @IsOptional()
   @IsString()
   @MaxLength(150)
-  andererElternteilAdresse?: string | null
+  otherParentAddress?: string | null
 
   @ApiPropertyOptional({ enum: OTHER_CHILD_RELATIONSHIPS, nullable: true })
   @IsOptional()
   @IsIn(OTHER_CHILD_RELATIONSHIPS)
-  andererElternteilArt?: string | null
+  otherParentKind?: string | null
 
   @ApiPropertyOptional({ type: String, nullable: true, example: '2025-06-30' })
   @IsOptional()
   @Matches(/^\d{4}-\d{2}-\d{2}$/)
-  andererElternteilVerstorbenAm?: string | null
+  otherParentDiedOn?: string | null
 
   @ApiPropertyOptional({ type: Boolean, nullable: true, description: 'Zeile 45: the child was registered with the filer all year.' })
   @IsOptional()
   @IsBoolean()
-  gemeldetBeiMirGanzjaehrig?: boolean | null
+  registeredWithMeAllYear?: boolean | null
 
   @ApiPropertyOptional({ type: Boolean, nullable: true, description: 'Zeile 46: the Kindergeld was paid to the filer all year.' })
   @IsOptional()
   @IsBoolean()
-  kindergeldAnMichGanzjaehrig?: boolean | null
+  childBenefitToMeAllYear?: boolean | null
 
   @ApiPropertyOptional({ type: String, nullable: true, example: '1080', description: 'Zeile 27 (Kz 66): KV Basisabsicherung of the child paid by the parents, whole euros.' })
   @IsOptional()
   @Matches(/^\d{1,7}$/)
-  kvBasisEur?: string | null
+  healthBasicEur?: string | null
 
   @ApiPropertyOptional({ type: String, nullable: true, example: '0', description: 'Zeile 28 (Kz 67): PV of the child paid by the parents, whole euros.' })
   @IsOptional()
   @Matches(/^\d{1,7}$/)
-  pvEur?: string | null
+  careEur?: string | null
 
   @ApiPropertyOptional({ type: String, nullable: true, example: '2748', description: 'Zeile 6 (Kz 15): Schweizer Kinderzulage / Familienzulage in whole EUR.' })
   @IsOptional()
   @Matches(/^\d{1,7}$/)
-  schweizerKinderzulageEur?: string | null
+  swissFamilyAllowanceEur?: string | null
 }
 
 export class CreateChildDto extends ChildDetailsDto {
@@ -88,13 +88,13 @@ export class CreateChildDto extends ChildDetailsDto {
   @IsNotEmpty()
   @IsString()
   @MaxLength(100)
-  vorname!: string
+  firstName!: string
 
   @ApiProperty({ type: String, example: 'Muster' })
   @IsNotEmpty()
   @IsString()
   @MaxLength(100)
-  nachname!: string
+  lastName!: string
 
   @ApiProperty({ type: String, example: '2018-05-12', description: 'ISO date YYYY-MM-DD' })
   @IsNotEmpty()
@@ -106,13 +106,13 @@ export class CreateChildDto extends ChildDetailsDto {
   @IsOptional()
   @IsString()
   @MaxLength(11)
-  idnr?: string
+  taxId?: string
 
   @ApiPropertyOptional({ type: String, example: '3000' })
   @IsOptional()
   @IsString()
   @Matches(/^\d+$/)
-  kindergeldAnspruchEur?: string
+  childBenefitClaimEur?: string
 }
 
 export class UpdateChildDto extends ChildDetailsDto {
@@ -120,13 +120,13 @@ export class UpdateChildDto extends ChildDetailsDto {
   @IsOptional()
   @IsString()
   @MaxLength(100)
-  vorname?: string
+  firstName?: string
 
   @ApiPropertyOptional({ type: String, example: 'Muster' })
   @IsOptional()
   @IsString()
   @MaxLength(100)
-  nachname?: string
+  lastName?: string
 
   @ApiPropertyOptional({ type: String, example: '2018-05-12' })
   @IsOptional()
@@ -138,13 +138,13 @@ export class UpdateChildDto extends ChildDetailsDto {
   @IsOptional()
   @IsString()
   @MaxLength(11)
-  idnr?: string
+  taxId?: string
 
   @ApiPropertyOptional({ type: String, example: '3000' })
   @IsOptional()
   @IsString()
   @Matches(/^\d+$/)
-  kindergeldAnspruchEur?: string
+  childBenefitClaimEur?: string
 }
 
 export class ChildResponseDto {
@@ -152,67 +152,67 @@ export class ChildResponseDto {
   id!: string
 
   @ApiProperty({ type: Number, example: 1 })
-  lfdNr!: number
+  sequenceNumber!: number
 
   @ApiProperty({ type: String, example: 'Lina' })
-  vorname!: string
+  firstName!: string
 
   @ApiProperty({ type: String, example: 'Muster' })
-  nachname!: string
+  lastName!: string
 
   @ApiProperty({ type: String, example: '2018-05-12' })
   geburtsdatum!: string
 
   @ApiPropertyOptional({ type: String, nullable: true, example: '12345678901' })
-  idnr?: string | null
+  taxId?: string | null
 
   @ApiPropertyOptional({ type: String, nullable: true, example: '3000' })
-  kindergeldAnspruchEur?: string | null
+  childBenefitClaimEur?: string | null
 
   @ApiProperty({ enum: CHILD_RELATIONSHIPS, nullable: true })
-  kindschaftsverhaeltnis!: string | null
+  kinship!: string | null
 
   @ApiProperty({ enum: CHILD_RELATIONSHIPS, nullable: true })
-  kindschaftsverhaeltnisB!: string | null
+  kinshipB!: string | null
 
   @ApiProperty({ type: String, nullable: true })
-  familienkasse!: string | null
+  familyBenefitsOffice!: string | null
 
   @ApiProperty({ type: Boolean, nullable: true })
-  wohnsitzInlandGanzjaehrig!: boolean | null
+  domesticResidenceAllYear!: boolean | null
 
   @ApiProperty({ enum: OTHER_PARENT_STATUSES, nullable: true })
-  andererElternteil!: string | null
+  otherParent!: string | null
 
   @ApiProperty({ type: String, nullable: true })
-  andererElternteilName!: string | null
+  otherParentName!: string | null
 
   @ApiProperty({ type: String, nullable: true })
-  andererElternteilGeburtsdatum!: string | null
+  otherParentBirthDate!: string | null
 
   @ApiProperty({ type: String, nullable: true })
-  andererElternteilAdresse!: string | null
+  otherParentAddress!: string | null
 
   @ApiProperty({ enum: OTHER_CHILD_RELATIONSHIPS, nullable: true })
-  andererElternteilArt!: string | null
+  otherParentKind!: string | null
 
   @ApiProperty({ type: String, nullable: true })
-  andererElternteilVerstorbenAm!: string | null
+  otherParentDiedOn!: string | null
 
   @ApiProperty({ type: Boolean, nullable: true })
-  gemeldetBeiMirGanzjaehrig!: boolean | null
+  registeredWithMeAllYear!: boolean | null
 
   @ApiProperty({ type: Boolean, nullable: true })
-  kindergeldAnMichGanzjaehrig!: boolean | null
+  childBenefitToMeAllYear!: boolean | null
 
   @ApiProperty({ type: String, nullable: true })
-  kvBasisEur!: string | null
+  healthBasicEur!: string | null
 
   @ApiProperty({ type: String, nullable: true })
-  pvEur!: string | null
+  careEur!: string | null
 
   @ApiPropertyOptional({ type: String, nullable: true, example: '2748', description: 'Zeile 6 (Kz 15): Schweizer Kinderzulage in whole EUR.' })
-  schweizerKinderzulageEur?: string | null
+  swissFamilyAllowanceEur?: string | null
 
   @ApiPropertyOptional({ type: String, nullable: true, example: '312', description: 'Differenz-Kindergeld der deutschen Familienkasse in whole EUR.' })
   differentialChildBenefitEur?: string | null

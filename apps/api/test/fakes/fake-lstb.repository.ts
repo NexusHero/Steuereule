@@ -6,23 +6,23 @@
 import type { WageTaxCertificateFieldId } from '@steuereule/core'
 import type { WageTaxCertificateRecord, WageTaxCertificateRepository } from '../../src/lstb/lstb.repository.js'
 
-function key(userId: string, steuerjahr: number): string {
-  return `${userId}::${steuerjahr}`
+function key(userId: string, taxYear: number): string {
+  return `${userId}::${taxYear}`
 }
 
 export class FakeLstbRepository implements WageTaxCertificateRepository {
   private readonly store = new Map<string, WageTaxCertificateRecord>()
 
-  findForUserAndYear(userId: string, steuerjahr: number): Promise<WageTaxCertificateRecord | null> {
-    return Promise.resolve(this.store.get(key(userId, steuerjahr)) ?? null)
+  findForUserAndYear(userId: string, taxYear: number): Promise<WageTaxCertificateRecord | null> {
+    return Promise.resolve(this.store.get(key(userId, taxYear)) ?? null)
   }
 
-  setField(userId: string, steuerjahr: number, field: WageTaxCertificateFieldId, value: string | null): Promise<WageTaxCertificateRecord> {
-    const k = key(userId, steuerjahr)
+  setField(userId: string, taxYear: number, field: WageTaxCertificateFieldId, value: string | null): Promise<WageTaxCertificateRecord> {
+    const k = key(userId, taxYear)
     const existing = this.store.get(k)
     const record: WageTaxCertificateRecord = existing ?? {
       userId,
-      steuerjahr,
+      taxYear,
       bruttoarbeitslohn: null,
       lohnsteuer: null,
       sozialversicherung: null,
@@ -34,6 +34,6 @@ export class FakeLstbRepository implements WageTaxCertificateRepository {
 
   /** Test seam: seed a full record directly, bypassing setFeld's upsert. */
   seed(record: WageTaxCertificateRecord): void {
-    this.store.set(key(record.userId, record.steuerjahr), record)
+    this.store.set(key(record.userId, record.taxYear), record)
   }
 }

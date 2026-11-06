@@ -42,11 +42,11 @@ function toFieldDto(state: WageTaxCertificateFieldState): LstbFieldDto {
 }
 
 function toConflictDto(w: WageTaxCertificateConflict): LstbConflictDto {
-  switch (w.art) {
+  switch (w.kind) {
     case 'lohnsteuer-uebersteigt-brutto':
-      return { art: 'lohnsteuer-uebersteigt-brutto', lohnsteuer: w.lohnsteuer, bruttoarbeitslohn: w.bruttoarbeitslohn }
+      return { kind: 'lohnsteuer-uebersteigt-brutto', lohnsteuer: w.lohnsteuer, bruttoarbeitslohn: w.bruttoarbeitslohn }
     case 'sozialversicherung-uebersteigt-brutto':
-      return { art: 'sozialversicherung-uebersteigt-brutto', sozialversicherung: w.sozialversicherung, bruttoarbeitslohn: w.bruttoarbeitslohn }
+      return { kind: 'sozialversicherung-uebersteigt-brutto', sozialversicherung: w.sozialversicherung, bruttoarbeitslohn: w.bruttoarbeitslohn }
   }
 }
 
@@ -79,21 +79,21 @@ export class LstbService {
     @Inject(PROVENANCE_REPOSITORY) private readonly markings: ProvenanceRepository,
   ) {}
 
-  async getState(userId: string, steuerjahr: number): Promise<LstbResponseDto> {
-    const record = await this.repository.findForUserAndYear(userId, steuerjahr)
+  async getState(userId: string, taxYear: number): Promise<LstbResponseDto> {
+    const record = await this.repository.findForUserAndYear(userId, taxYear)
     if (record !== null) {
       await this.auditService.append({ userId, action: 'READ', resource: 'lstb' })
     }
     return toResponse(wageTaxCertificateDataFrom(record))
   }
 
-  async setField(userId: string, steuerjahr: number, field: WageTaxCertificateFieldId, dto: LstbFieldDto): Promise<LstbResponseDto> {
-    const record = await this.repository.findForUserAndYear(userId, steuerjahr)
+  async setField(userId: string, taxYear: number, field: WageTaxCertificateFieldId, dto: LstbFieldDto): Promise<LstbResponseDto> {
+    const record = await this.repository.findForUserAndYear(userId, taxYear)
     const data = wageTaxCertificateDataFrom(record)
     const state = stateFromDto(dto)
     const next = setWageTaxCertificateField(data, field, state)
-    await this.repository.setField(userId, steuerjahr, field, serializeWageTaxCertificateField(state))
-    await this.markings.remove(userId, steuerjahr, [provenanceKey('lstb', field)])
+    await this.repository.setField(userId, taxYear, field, serializeWageTaxCertificateField(state))
+    await this.markings.remove(userId, taxYear, [provenanceKey('lstb', field)])
     return toResponse(next)
   }
 }

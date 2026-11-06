@@ -21,20 +21,20 @@ describe('KinderService', () => {
     const year = 2025
 
     const res1 = await service.create(userId, year, {
-      vorname: 'Lina',
-      nachname: 'Mustermann',
+      firstName: 'Lina',
+      lastName: 'Mustermann',
       geburtsdatum: '2016-05-10',
-      idnr: '12345678901',
-      kindergeldAnspruchEur: '3000',
+      taxId: '12345678901',
+      childBenefitClaimEur: '3000',
     })
     expect(res1.count).toBe(1)
     expect(res1.childBenefitSum).toBe(3000)
     expect(res1.totalAllowance).toBe(9600)
-    expect(res1.kinder[0]!.vorname).toBe('Lina')
+    expect(res1.kinder[0]!.firstName).toBe('Lina')
 
     const res2 = await service.create(userId, year, {
-      vorname: 'Noah',
-      nachname: 'Mustermann',
+      firstName: 'Noah',
+      lastName: 'Mustermann',
       geburtsdatum: '2019-09-15',
     })
     expect(res2.count).toBe(2)
@@ -42,13 +42,13 @@ describe('KinderService', () => {
     expect(res2.totalAllowance).toBe(2 * 9600)
 
     const updated = await service.update(userId, year, res2.kinder[1]!.id, {
-      vorname: 'Noah-Elias',
+      firstName: 'Noah-Elias',
     })
-    expect(updated.kinder[1]!.vorname).toBe('Noah-Elias')
+    expect(updated.kinder[1]!.firstName).toBe('Noah-Elias')
 
     const afterDelete = await service.delete(userId, year, res1.kinder[0]!.id)
     expect(afterDelete.count).toBe(1)
-    expect(afterDelete.kinder[0]!.vorname).toBe('Noah-Elias')
+    expect(afterDelete.kinder[0]!.firstName).toBe('Noah-Elias')
   })
 
   it('rejects a birth date in the future of the tax year', async () => {
@@ -58,8 +58,8 @@ describe('KinderService', () => {
 
     await expect(
       service.create('user-1', 2025, {
-        vorname: 'Baby',
-        nachname: 'Zukunft',
+        firstName: 'Baby',
+        lastName: 'Zukunft',
         geburtsdatum: '2026-01-01',
       }),
     ).rejects.toMatchObject({ code: 'GEBURTSDATUM_INVALID' })
@@ -67,21 +67,21 @@ describe('KinderService', () => {
 
   it('stores the Anlage-Kind facts (Kindschaftsverhältnis, Familienkasse, Wohnsitz) and returns them', async () => {
     const service = new ChildrenService(new FakeChildRepository(), new FakeAuditService() as never)
-    const { kinder } = await service.create('user-1', 2025, { vorname: 'Lina', nachname: 'M', geburtsdatum: '2016-05-10' })
-    expect(kinder[0]).toMatchObject({ kindschaftsverhaeltnis: null, familienkasse: null, wohnsitzInlandGanzjaehrig: null })
+    const { kinder } = await service.create('user-1', 2025, { firstName: 'Lina', lastName: 'M', geburtsdatum: '2016-05-10' })
+    expect(kinder[0]).toMatchObject({ kinship: null, familyBenefitsOffice: null, domesticResidenceAllYear: null })
 
     const res = await service.update('user-1', 2025, kinder[0]!.id, {
-      kindschaftsverhaeltnis: '1',
-      kindschaftsverhaeltnisB: '1',
-      familienkasse: 'Familienkasse Sachsen',
-      wohnsitzInlandGanzjaehrig: true,
+      kinship: '1',
+      kinshipB: '1',
+      familyBenefitsOffice: 'Familienkasse Sachsen',
+      domesticResidenceAllYear: true,
     })
     expect(res.kinder[0]).toMatchObject({
-      vorname: 'Lina',
-      kindschaftsverhaeltnis: '1',
-      kindschaftsverhaeltnisB: '1',
-      familienkasse: 'Familienkasse Sachsen',
-      wohnsitzInlandGanzjaehrig: true,
+      firstName: 'Lina',
+      kinship: '1',
+      kinshipB: '1',
+      familyBenefitsOffice: 'Familienkasse Sachsen',
+      domesticResidenceAllYear: true,
     })
   })
 
@@ -104,22 +104,22 @@ describe('KinderService', () => {
     const service = new ChildrenService(repo, audit as any, chRepo)
 
     // Add Mia and Noah (2 children)
-    await service.create('user-mb', 2025, { vorname: 'Mia', nachname: 'Brenner', geburtsdatum: '2016-03-14' })
-    const res = await service.create('user-mb', 2025, { vorname: 'Noah', nachname: 'Brenner', geburtsdatum: '2019-09-02' })
+    await service.create('user-mb', 2025, { firstName: 'Mia', lastName: 'Brenner', geburtsdatum: '2016-03-14' })
+    const res = await service.create('user-mb', 2025, { firstName: 'Noah', lastName: 'Brenner', geburtsdatum: '2019-09-02' })
 
     expect(res.count).toBe(2)
     // 5.160 CHF / 2 = 2.580 CHF; 2.580 * 1.065 = 2.748 € per child
     // Statutory claim: 255 * 12 = 3.060 €
     // Difference: 3.060 - 2.748 = 312 €
     expect(res.kinder[0]).toMatchObject({
-      vorname: 'Mia',
-      schweizerKinderzulageEur: '2748',
+      firstName: 'Mia',
+      swissFamilyAllowanceEur: '2748',
       differentialChildBenefitEur: '312',
       totalClaimEur: '3060',
     })
     expect(res.kinder[1]).toMatchObject({
-      vorname: 'Noah',
-      schweizerKinderzulageEur: '2748',
+      firstName: 'Noah',
+      swissFamilyAllowanceEur: '2748',
       differentialChildBenefitEur: '312',
       totalClaimEur: '3060',
     })

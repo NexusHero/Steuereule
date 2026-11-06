@@ -62,8 +62,8 @@ export function incomePortionPercent(completedAge: number): number | null {
   return null
 }
 
-export function usedTaxableShare(art: PensionType): boolean {
-  return art !== 'PrivateRentenversicherung'
+export function usedTaxableShare(kind: PensionType): boolean {
+  return kind !== 'PrivateRentenversicherung'
 }
 
 export type PensionFieldId = 'jahresbetrag' | 'rentenbeginnJahr' | 'alterBeiRentenbeginn'
@@ -75,14 +75,14 @@ export type PensionFieldState =
 
 /** The guided mask's data. */
 export interface PensionData {
-  readonly art: PensionType | null
+  readonly kind: PensionType | null
   readonly jahresbetrag: PensionFieldState
   readonly rentenbeginnJahr: PensionFieldState
   readonly alterBeiRentenbeginn: PensionFieldState
 }
 
 export const EMPTY_PENSION: PensionData = {
-  art: null,
+  kind: null,
   jahresbetrag: { kind: 'offen' },
   rentenbeginnJahr: { kind: 'offen' },
   alterBeiRentenbeginn: { kind: 'offen' },
@@ -99,11 +99,11 @@ export function setPensionField(data: PensionData, field: PensionFieldId, state:
   return { ...data, [field]: state }
 }
 
-export function setPensionType(data: PensionData, art: PensionType | null): PensionData {
-  if (art !== null && !isPensionType(art)) {
-    throw new RangeError(`rente: "${art}" is not a declared Rentenart`)
+export function setPensionType(data: PensionData, kind: PensionType | null): PensionData {
+  if (kind !== null && !isPensionType(kind)) {
+    throw new RangeError(`rente: "${kind}" is not a declared Rentenart`)
   }
-  return { ...data, art }
+  return { ...data, kind }
 }
 
 export const PENSION_UNCLEAR = 'unklar'
@@ -138,10 +138,10 @@ function incomeShareSource(alter: number, percent: number): string {
 }
 
 export function pensionAsCoreLineItem(pension: PensionData): Item | null {
-  if (pension.art === null || pension.jahresbetrag.kind !== 'erfasst') return null
+  if (pension.kind === null || pension.jahresbetrag.kind !== 'erfasst') return null
   const jahresbetrag = pension.jahresbetrag.value
 
-  if (usedTaxableShare(pension.art)) {
+  if (usedTaxableShare(pension.kind)) {
     if (pension.rentenbeginnJahr.kind !== 'erfasst') return null
     const percent = taxableSharePercent(pension.rentenbeginnJahr.value)
     if (percent === null) return null
@@ -149,7 +149,7 @@ export function pensionAsCoreLineItem(pension: PensionData): Item | null {
       id: 'rente',
       incomeType: 'Rente',
       amount: Math.round(jahresbetrag * (percent / 100)),
-      source: { art: 'regel', rule: taxableShareSource(pension.rentenbeginnJahr.value, percent) },
+      source: { kind: 'regel', rule: taxableShareSource(pension.rentenbeginnJahr.value, percent) },
     }
   }
 
@@ -160,7 +160,7 @@ export function pensionAsCoreLineItem(pension: PensionData): Item | null {
     id: 'rente',
     incomeType: 'Rente',
     amount: Math.round(jahresbetrag * (prozent / 100)),
-    source: { art: 'regel', rule: incomeShareSource(pension.alterBeiRentenbeginn.value, prozent) },
+    source: { kind: 'regel', rule: incomeShareSource(pension.alterBeiRentenbeginn.value, prozent) },
   }
 }
 

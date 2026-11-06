@@ -41,6 +41,6 @@ export function chfToEur(amountChf: number, rate: number): number {
 }
 
 export function exchangeRateSource(rate: ExchangeRate): Source {
-  if (rate.mode === 'amtlich') return { art: 'regel', rule: 'BMF-Monatskurs' }
-  return { art: 'beleg', receiptId: rate.receiptId as string }
+  if (rate.mode === 'amtlich') return { kind: 'regel', rule: 'BMF-Monatskurs' }
+  return { kind: 'beleg', receiptId: rate.receiptId as string }
 }

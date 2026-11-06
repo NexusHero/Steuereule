@@ -28,9 +28,9 @@ const FULL_PROPERTY: RentalResponseDto = {
       strasse: null,
       hausnummer: null,
       plz: null,
-      ort: null,
-      wohnflaeche: null,
-      afaWieVorjahr: null,
+      city: null,
+      livingArea: null,
+      depreciationAsLastYear: null,
       umlagen: null,
       schuldzinsen: null,
       einheiten: null,
@@ -128,7 +128,7 @@ describe('VermietungScreen', () => {
     )
     renderRental()
     fireEvent.click(await screen.findByTestId('vermietung-afa-wie-vorjahr-ja'))
-    await waitFor(() => expect(body).toEqual({ afaWieVorjahr: true }))
+    await waitFor(() => expect(body).toEqual({ depreciationAsLastYear: true }))
   })
 
   it('saves Umlagen and Schuldzinsen with the object, and asks the share only in a joint return', async () => {

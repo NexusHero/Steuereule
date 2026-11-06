@@ -10,24 +10,24 @@ function toIsoDate(value: Date): string {
 function toRecord(row: {
   id: string
   userId: string
-  dateiname: string
-  art: string | null
+  fileName: string
+  kind: string | null
   belegdatum: Date | null
   zahlungsdatum: Date | null
-  steuerjahr: number | null
-  vorschlagVerworfen: boolean
+  taxYear: number | null
+  proposalDismissed: boolean
   createdAt: Date
   updatedAt: Date
 }): ReceiptRecord {
   return {
     id: row.id,
     userId: row.userId,
-    dateiname: row.dateiname,
-    ...(row.art !== null ? { art: (isReceiptType(row.art) ? row.art : (() => { throw new Error(`corrupt Beleg.art: ${row.art}`) })()) } : {}),
+    fileName: row.fileName,
+    ...(row.kind !== null ? { kind: (isReceiptType(row.kind) ? row.kind : (() => { throw new Error(`corrupt Beleg.art: ${row.kind}`) })()) } : {}),
     ...(row.belegdatum !== null ? { belegdatum: toIsoDate(row.belegdatum) } : {}),
     ...(row.zahlungsdatum !== null ? { zahlungsdatum: toIsoDate(row.zahlungsdatum) } : {}),
-    steuerjahr: row.steuerjahr,
-    vorschlagVerworfen: row.vorschlagVerworfen,
+    taxYear: row.taxYear,
+    proposalDismissed: row.proposalDismissed,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   }
@@ -44,22 +44,22 @@ export class PrismaReceiptRepository implements ReceiptRepository {
   constructor(@Inject(ENCRYPTED_PRISMA) private readonly prisma: EncryptedPrismaClient) {}
 
   async findAllForUser(userId: string): Promise<ReceiptRecord[]> {
-    const rows = await this.prisma.beleg.findMany({ where: { userId }, orderBy: { createdAt: 'desc' } })
+    const rows = await this.prisma.receipt.findMany({ where: { userId }, orderBy: { createdAt: 'desc' } })
     return rows.map(toRecord)
   }
 
   async findByIdForUser(userId: string, id: string): Promise<ReceiptRecord | null> {
-    const row = await this.prisma.beleg.findFirst({ where: { id, userId } })
+    const row = await this.prisma.receipt.findFirst({ where: { id, userId } })
     return row === null ? null : toRecord(row)
   }
 
   async create(userId: string, data: CreateReceiptData): Promise<ReceiptRecord> {
     const [row] = await this.prisma.$transaction([
-      this.prisma.beleg.create({
+      this.prisma.receipt.create({
         data: {
           userId,
-          dateiname: data.dateiname,
-          ...(data.art !== undefined ? { art: data.art } : {}),
+          fileName: data.fileName,
+          ...(data.kind !== undefined ? { kind: data.kind } : {}),
           ...(data.belegdatum !== undefined ? { belegdatum: fromIsoDate(data.belegdatum) } : {}),
           ...(data.zahlungsdatum !== undefined ? { zahlungsdatum: fromIsoDate(data.zahlungsdatum) } : {}),
         },
@@ -72,13 +72,13 @@ export class PrismaReceiptRepository implements ReceiptRepository {
   }
 
   async setAssignment(userId: string, id: string, data: SetAssignmentData): Promise<ReceiptRecord | null> {
-    const row = await this.prisma.beleg.findFirst({ where: { id, userId } })
+    const row = await this.prisma.receipt.findFirst({ where: { id, userId } })
     if (row === null) return null
 
     const [updated] = await this.prisma.$transaction([
-      this.prisma.beleg.update({
+      this.prisma.receipt.update({
         where: { id },
-        data: { steuerjahr: data.steuerjahr, vorschlagVerworfen: data.vorschlagVerworfen },
+        data: { taxYear: data.taxYear, proposalDismissed: data.proposalDismissed },
       }),
       this.prisma.taxDataAccessLog.create({
         data: { userId, action: 'WRITE', resource: 'beleg' },

@@ -1,89 +1,89 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { annexOf, type Annex, type Provenance, type Kennzeichnung } from '@steuereule/core'
+import { annexOf, type Annex, type Provenance, type Marking } from '@steuereule/core'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
 import type { ProvenanceRecord, ProvenanceRepository } from './kennzeichnung.repository.js'
 
 interface ProvenanceColumns {
-  art: string
+  kind: string
   name: string | null
   receiptId: string | null
-  vorjahr: number | null
+  lastYear: number | null
 }
 
-function provenanceFromColumns({ art, name, receiptId, vorjahr }: ProvenanceColumns): Provenance {
-  switch (art) {
+function provenanceFromColumns({ kind, name, receiptId, lastYear }: ProvenanceColumns): Provenance {
+  switch (kind) {
     case 'nutzer':
-      return { art: 'nutzer' }
+      return { kind: 'nutzer' }
     case 'uebernahme':
-      if (vorjahr === null) break
-      return { art: 'uebernahme', vorjahr }
+      if (lastYear === null) break
+      return { kind: 'uebernahme', lastYear }
     case 'assistent':
       if (name === null) break
-      return receiptId === null ? { art: 'assistent', name } : { art: 'assistent', name, receiptId }
+      return receiptId === null ? { kind: 'assistent', name } : { kind: 'assistent', name, receiptId }
     case 'beleg':
       if (receiptId === null) break
-      return { art: 'beleg', receiptId }
+      return { kind: 'beleg', receiptId }
   }
-  throw new Error(`Kennzeichnung: stored Herkunft "${art}" is incomplete`)
+  throw new Error(`Kennzeichnung: stored Herkunft "${kind}" is incomplete`)
 }
 
 function provenanceToColumns(h: Provenance): ProvenanceColumns {
   return {
-    art: h.art,
-    name: h.art === 'assistent' ? h.name : null,
-    receiptId: h.art === 'beleg' || (h.art === 'assistent' && h.receiptId !== undefined) ? (h.receiptId ?? null) : null,
-    vorjahr: h.art === 'uebernahme' ? h.vorjahr : null,
+    kind: h.kind,
+    name: h.kind === 'assistent' ? h.name : null,
+    receiptId: h.kind === 'beleg' || (h.kind === 'assistent' && h.receiptId !== undefined) ? (h.receiptId ?? null) : null,
+    lastYear: h.kind === 'uebernahme' ? h.lastYear : null,
   }
 }
 
 interface Row {
   userId: string
-  steuerjahr: number
-  postenKey: string
-  herkunftArt: string
-  herkunftName: string | null
-  herkunftBelegId: string | null
-  vorjahr: number | null
-  bestaetigt: boolean
-  vorschlagHerkunftArt: string | null
-  vorschlagHerkunftName: string | null
-  vorschlagBelegId: string | null
-  vorschlagVorjahr: number | null
-  vorschlagWert: string | null
+  taxYear: number
+  itemKey: string
+  provenanceKind: string
+  provenanceName: string | null
+  provenanceReceiptId: string | null
+  lastYear: number | null
+  confirmed: boolean
+  proposalProvenanceKind: string | null
+  proposalProvenanceName: string | null
+  proposalReceiptId: string | null
+  proposalLastYear: number | null
+  proposalValue: string | null
 }
 
 function toRecord(row: Row): ProvenanceRecord {
   return {
     userId: row.userId,
-    steuerjahr: row.steuerjahr,
-    key: row.postenKey,
-    provenance: provenanceFromColumns({ art: row.herkunftArt, name: row.herkunftName, receiptId: row.herkunftBelegId, vorjahr: row.vorjahr }),
-    bestaetigt: row.bestaetigt,
+    taxYear: row.taxYear,
+    key: row.itemKey,
+    provenance: provenanceFromColumns({ kind: row.provenanceKind, name: row.provenanceName, receiptId: row.provenanceReceiptId, lastYear: row.lastYear }),
+    confirmed: row.confirmed,
     proposal:
-      row.vorschlagHerkunftArt === null
+      row.proposalProvenanceKind === null
         ? null
         : {
-            value: row.vorschlagWert,
-            provenance: provenanceFromColumns({ art: row.vorschlagHerkunftArt, name: row.vorschlagHerkunftName, receiptId: row.vorschlagBelegId, vorjahr: row.vorschlagVorjahr }),
+            value: row.proposalValue,
+            provenance: provenanceFromColumns({ kind: row.proposalProvenanceKind, name: row.proposalProvenanceName, receiptId: row.proposalReceiptId, lastYear: row.proposalLastYear }),
           },
   }
 }
 
-function toData(k: Omit<Kennzeichnung, 'value'>) {
+function toData(k: Omit<Marking, 'value'>) {
   const h = provenanceToColumns(k.provenance)
   const v = k.proposal === null ? null : provenanceToColumns(k.proposal.provenance)
   return {
-    anlage: annexOf(k.key),
-    herkunftArt: h.art,
-    herkunftName: h.name,
-    herkunftBelegId: h.receiptId,
-    vorjahr: h.vorjahr,
-    bestaetigt: k.bestaetigt,
-    vorschlagHerkunftArt: v?.art ?? null,
-    vorschlagHerkunftName: v?.name ?? null,
-    vorschlagBelegId: v?.receiptId ?? null,
-    vorschlagVorjahr: v?.vorjahr ?? null,
-    vorschlagWert: k.proposal?.value ?? null,
+    annex: annexOf(k.key),
+    provenanceKind: h.kind,
+    provenanceName: h.name,
+    provenanceReceiptId: h.receiptId,
+    lastYear: h.lastYear,
+    confirmed: k.confirmed,
+    proposalProvenanceKind: v?.kind ?? null,
+    proposalProvenanceName: v?.name ?? null,
+    proposalReceiptId: v?.receiptId ?? null,
+    proposalLastYear: v?.lastYear ?? null,
+    proposalValue: k.proposal?.value ?? null,
   }
 }
 
@@ -92,26 +92,26 @@ export class PrismaMarkingRepository implements ProvenanceRepository {
   constructor(@Inject(ENCRYPTED_PRISMA) private readonly prisma: EncryptedPrismaClient) {}
 
   async listForUserAndYears(userId: string, taxYears: readonly number[]): Promise<ProvenanceRecord[]> {
-    const rows = await this.prisma.kennzeichnung.findMany({
-      where: { userId, steuerjahr: { in: [...taxYears] } },
-      orderBy: { postenKey: 'asc' },
+    const rows = await this.prisma.marking.findMany({
+      where: { userId, taxYear: { in: [...taxYears] } },
+      orderBy: { itemKey: 'asc' },
     })
     return rows.map(toRecord)
   }
 
-  async find(userId: string, steuerjahr: number, key: string): Promise<ProvenanceRecord | null> {
-    const row = await this.prisma.kennzeichnung.findUnique({
-      where: { userId_steuerjahr_postenKey: { userId, steuerjahr, postenKey: key } },
+  async find(userId: string, taxYear: number, key: string): Promise<ProvenanceRecord | null> {
+    const row = await this.prisma.marking.findUnique({
+      where: { userId_taxYear_itemKey: { userId, taxYear, itemKey: key } },
     })
     return row === null ? null : toRecord(row)
   }
 
-  async save(userId: string, steuerjahr: number, marking: Omit<Kennzeichnung, 'value'>): Promise<ProvenanceRecord> {
+  async save(userId: string, taxYear: number, marking: Omit<Marking, 'value'>): Promise<ProvenanceRecord> {
     const data = toData(marking)
     const [row] = await this.prisma.$transaction([
-      this.prisma.kennzeichnung.upsert({
-        where: { userId_steuerjahr_postenKey: { userId, steuerjahr, postenKey: marking.key } },
-        create: { userId, steuerjahr, postenKey: marking.key, ...data },
+      this.prisma.marking.upsert({
+        where: { userId_taxYear_itemKey: { userId, taxYear, itemKey: marking.key } },
+        create: { userId, taxYear, itemKey: marking.key, ...data },
         update: data,
       }),
       this.prisma.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: 'kennzeichnung' } }),
@@ -119,20 +119,20 @@ export class PrismaMarkingRepository implements ProvenanceRepository {
     return toRecord(row)
   }
 
-  async remove(userId: string, steuerjahr: number, keys: readonly string[]): Promise<number> {
+  async remove(userId: string, taxYear: number, keys: readonly string[]): Promise<number> {
     if (keys.length === 0) return 0
-    const { count } = await this.prisma.kennzeichnung.deleteMany({ where: { userId, steuerjahr, postenKey: { in: [...keys] } } })
+    const { count } = await this.prisma.marking.deleteMany({ where: { userId, taxYear, itemKey: { in: [...keys] } } })
     if (count > 0) {
       await this.prisma.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: 'kennzeichnung' } })
     }
     return count
   }
 
-  async confirmAnnex(userId: string, taxYears: readonly number[], anlage: Annex): Promise<number> {
+  async confirmAnnex(userId: string, taxYears: readonly number[], annex: Annex): Promise<number> {
     const [{ count }] = await this.prisma.$transaction([
-      this.prisma.kennzeichnung.updateMany({
-        where: { userId, steuerjahr: { in: [...taxYears] }, anlage, bestaetigt: false },
-        data: { bestaetigt: true },
+      this.prisma.marking.updateMany({
+        where: { userId, taxYear: { in: [...taxYears] }, annex, confirmed: false },
+        data: { confirmed: true },
       }),
       this.prisma.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: 'kennzeichnung' } }),
     ])

@@ -1,9 +1,9 @@
 // In-memory fake mirroring the real (userId, steuerjahr, key) uniqueness without a DB (ADR-0004).
-import { annexOf, type Annex, type Kennzeichnung } from '@steuereule/core'
+import { annexOf, type Annex, type Marking } from '@steuereule/core'
 import type { ProvenanceRecord, ProvenanceRepository } from '../../src/kennzeichnung/kennzeichnung.repository.js'
 
-function id(userId: string, steuerjahr: number, key: string): string {
-  return `${userId}::${steuerjahr}::${key}`
+function id(userId: string, taxYear: number, key: string): string {
+  return `${userId}::${taxYear}::${key}`
 }
 
 export class FakeMarkingRepository implements ProvenanceRepository {
@@ -12,33 +12,33 @@ export class FakeMarkingRepository implements ProvenanceRepository {
   listForUserAndYears(userId: string, taxYears: readonly number[]): Promise<ProvenanceRecord[]> {
     return Promise.resolve(
       [...this.store.values()]
-        .filter((r) => r.userId === userId && taxYears.includes(r.steuerjahr))
+        .filter((r) => r.userId === userId && taxYears.includes(r.taxYear))
         .sort((a, b) => a.key.localeCompare(b.key)),
     )
   }
 
-  find(userId: string, steuerjahr: number, key: string): Promise<ProvenanceRecord | null> {
-    return Promise.resolve(this.store.get(id(userId, steuerjahr, key)) ?? null)
+  find(userId: string, taxYear: number, key: string): Promise<ProvenanceRecord | null> {
+    return Promise.resolve(this.store.get(id(userId, taxYear, key)) ?? null)
   }
 
-  save(userId: string, steuerjahr: number, k: Omit<Kennzeichnung, 'value'>): Promise<ProvenanceRecord> {
+  save(userId: string, taxYear: number, k: Omit<Marking, 'value'>): Promise<ProvenanceRecord> {
     annexOf(k.key) // same rejection of unknown keys as the real repository
-    const record: ProvenanceRecord = { userId, steuerjahr, key: k.key, provenance: k.provenance, bestaetigt: k.bestaetigt, proposal: k.proposal }
-    this.store.set(id(userId, steuerjahr, k.key), record)
+    const record: ProvenanceRecord = { userId, taxYear, key: k.key, provenance: k.provenance, confirmed: k.confirmed, proposal: k.proposal }
+    this.store.set(id(userId, taxYear, k.key), record)
     return Promise.resolve(record)
   }
 
-  remove(userId: string, steuerjahr: number, keys: readonly string[]): Promise<number> {
+  remove(userId: string, taxYear: number, keys: readonly string[]): Promise<number> {
     let count = 0
-    for (const key of keys) if (this.store.delete(id(userId, steuerjahr, key))) count += 1
+    for (const key of keys) if (this.store.delete(id(userId, taxYear, key))) count += 1
     return Promise.resolve(count)
   }
 
-  confirmAnnex(userId: string, taxYears: readonly number[], anlage: Annex): Promise<number> {
+  confirmAnnex(userId: string, taxYears: readonly number[], annex: Annex): Promise<number> {
     let count = 0
     for (const [k, r] of this.store) {
-      if (r.userId === userId && taxYears.includes(r.steuerjahr) && annexOf(r.key) === anlage && !r.bestaetigt) {
-        this.store.set(k, { ...r, bestaetigt: true })
+      if (r.userId === userId && taxYears.includes(r.taxYear) && annexOf(r.key) === annex && !r.confirmed) {
+        this.store.set(k, { ...r, confirmed: true })
         count += 1
       }
     }

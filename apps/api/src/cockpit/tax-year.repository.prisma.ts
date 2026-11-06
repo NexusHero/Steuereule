@@ -6,13 +6,13 @@ import type { TaxYearRecord, TaxYearRepository } from './tax-year.repository.js'
 export class PrismaTaxYearRepository implements TaxYearRepository {
   constructor(@Inject(ENCRYPTED_PRISMA) private readonly prisma: EncryptedPrismaClient) {}
 
-  async findByUserAndYear(userId: string, steuerjahr: number): Promise<TaxYearRecord | null> {
+  async findByUserAndYear(userId: string, taxYear: number): Promise<TaxYearRecord | null> {
     const row = await this.prisma.taxYear.findUnique({
-      where: { userId_steuerjahr: { userId, steuerjahr } },
+      where: { userId_taxYear: { userId, taxYear } },
     })
     if (!row) return null
     return {
-      steuerjahr: row.steuerjahr,
+      taxYear: row.taxYear,
       openItems: row.openItems,
     }
   }

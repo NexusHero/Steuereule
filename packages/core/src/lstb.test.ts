@@ -79,7 +79,7 @@ describe('lstbZustand', () => {
     const data = withValue(withValue(withValue(EMPTY_WAGE_TAX_CERTIFICATE, 'bruttoarbeitslohn', 10000), 'lohnsteuer', 20000), 'sozialversicherung', 0)
     expect(wageTaxCertificateStatus(data)).toEqual({
       kind: 'widerspruch',
-      conflicts: [{ art: 'lohnsteuer-uebersteigt-brutto', lohnsteuer: 20000, bruttoarbeitslohn: 10000 }],
+      conflicts: [{ kind: 'lohnsteuer-uebersteigt-brutto', lohnsteuer: 20000, bruttoarbeitslohn: 10000 }],
     })
   })
 
@@ -87,7 +87,7 @@ describe('lstbZustand', () => {
     const data = withValue(withValue(withValue(EMPTY_WAGE_TAX_CERTIFICATE, 'bruttoarbeitslohn', 10000), 'lohnsteuer', 1000), 'sozialversicherung', 15000)
     expect(wageTaxCertificateStatus(data)).toEqual({
       kind: 'widerspruch',
-      conflicts: [{ art: 'sozialversicherung-uebersteigt-brutto', sozialversicherung: 15000, bruttoarbeitslohn: 10000 }],
+      conflicts: [{ kind: 'sozialversicherung-uebersteigt-brutto', sozialversicherung: 15000, bruttoarbeitslohn: 10000 }],
     })
   })
 
