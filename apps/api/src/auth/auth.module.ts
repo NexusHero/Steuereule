@@ -51,6 +51,6 @@ import { AuthCapabilitiesController } from './auth-capabilities.controller.js'
     UserContextGuard,
     RequiresAccountGuard,
   ],
-  exports: [BETTER_AUTH_BUNDLE, EMAIL_SENDER, UserContextGuard, RequiresAccountGuard],
+  exports: [BETTER_AUTH_BUNDLE, EMAIL_SENDER, UserContextGuard, RequiresAccountGuard, PrismaModule],
 })
 export class AuthModule {}

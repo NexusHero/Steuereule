@@ -38,5 +38,6 @@ import { PrintoutService, TEMPLATES_BASE } from './printout.service.js'
     PrintoutService,
     { provide: TEMPLATES_BASE, useValue: new URL('../../assets/vordrucke/', import.meta.url) },
   ],
+  exports: [PrintoutService],
 })
 export class PrintoutModule {}

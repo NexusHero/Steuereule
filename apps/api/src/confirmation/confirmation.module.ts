@@ -9,20 +9,78 @@ import { PENSION_REPOSITORY, type PensionRepository } from '../pension/pension.r
 import { PensionModule } from '../pension/pension.module.js'
 import { RENTAL_REPOSITORY, type RentalRepository } from '../rental/rental.repository.js'
 import { RentalModule } from '../rental/rental.module.js'
+import { PROFILE_REPOSITORY, type ProfileRepository } from '../profile/profile.repository.js'
+import { ProfileModule } from '../profile/profile.module.js'
+import { MASTER_DATA_REPOSITORY, type MasterDataRepository } from '../master-data/master-data.repository.js'
+import { MasterDataModule } from '../master-data/master-data.module.js'
+import { PARTNER_COUPLING_REPOSITORY, type PartnerCouplingRepository } from '../link/link.repository.js'
+import { LinkModule } from '../link/link.module.js'
+import { INTERVIEW_ANSWER_REPOSITORY, type InterviewAnswerRepository } from '../interview/interview-answer.repository.js'
+import { InterviewModule } from '../interview/interview.module.js'
+import { CROSS_BORDER_SALARY_STATEMENT_REPOSITORY, type CrossBorderSalaryStatementRepository } from '../ch-salary-certificate/ch-salary-certificate.repository.js'
+import { ChSalaryCertificateModule } from '../ch-salary-certificate/ch-salary-certificate.module.js'
+import { CHILD_REPOSITORY, type ChildRepository } from '../children/child.repository.js'
+import { ChildrenModule } from '../children/children.module.js'
 import { ConfirmationController } from './confirmation.controller.js'
 import { ConfirmationService } from './confirmation.service.js'
 import { FIELD_ACCESS, fieldAccessFrom } from './field-access.js'
 
 @Module({
-  imports: [AuditModule, MarkingModule, LstbModule, PensionModule, CapitalModule, RentalModule],
+  imports: [
+    AuditModule,
+    MarkingModule,
+    LstbModule,
+    PensionModule,
+    CapitalModule,
+    RentalModule,
+    ProfileModule,
+    MasterDataModule,
+    LinkModule,
+    InterviewModule,
+    ChSalaryCertificateModule,
+    ChildrenModule,
+  ],
   controllers: [ConfirmationController],
   providers: [
     ConfirmationService,
     {
       provide: FIELD_ACCESS,
-      inject: [WAGE_TAX_CERTIFICATE_REPOSITORY, PENSION_REPOSITORY, CAPITAL_REPOSITORY, RENTAL_REPOSITORY],
-      useFactory: (lstb: WageTaxCertificateRepository, pension: PensionRepository, capital: CapitalRepository, rental: RentalRepository) =>
-        fieldAccessFrom({ lstb, pension, capital, rental }),
+      inject: [
+        WAGE_TAX_CERTIFICATE_REPOSITORY,
+        PENSION_REPOSITORY,
+        CAPITAL_REPOSITORY,
+        RENTAL_REPOSITORY,
+        PROFILE_REPOSITORY,
+        MASTER_DATA_REPOSITORY,
+        PARTNER_COUPLING_REPOSITORY,
+        INTERVIEW_ANSWER_REPOSITORY,
+        CROSS_BORDER_SALARY_STATEMENT_REPOSITORY,
+        CHILD_REPOSITORY,
+      ],
+      useFactory: (
+        lstb: WageTaxCertificateRepository,
+        pension: PensionRepository,
+        capital: CapitalRepository,
+        rental: RentalRepository,
+        profile: ProfileRepository,
+        masterData: MasterDataRepository,
+        link: PartnerCouplingRepository,
+        interview: InterviewAnswerRepository,
+        chSalaryCertificate: CrossBorderSalaryStatementRepository,
+        child: ChildRepository,
+      ) =>
+        fieldAccessFrom({
+          lstb,
+          pension,
+          capital,
+          rental,
+          profile,
+          masterData,
+          link,
+          interview,
+          chSalaryCertificate,
+          child,
+        }),
     },
   ],
   exports: [ConfirmationService],

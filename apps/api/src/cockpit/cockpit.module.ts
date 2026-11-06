@@ -19,5 +19,6 @@ import { TAX_YEAR_REPOSITORY } from './tax-year.repository.js'
     CockpitService,
     { provide: TAX_YEAR_REPOSITORY, useClass: PrismaTaxYearRepository },
   ],
+  exports: [CockpitService],
 })
 export class CockpitModule {}
