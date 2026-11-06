@@ -114,9 +114,9 @@ describe('REQ-032 — Herkunft und Bestätigung (ADR-0052 §6/§7), against the 
     ])
 
     // Ciphertext at rest (ADR-0008): the proposal is never stored as plaintext.
-    const rows = await prisma.$queryRaw<Array<{ proposalValue: string | null }>>`SELECT "vorschlagWert" FROM "Kennzeichnung" WHERE "userId" = ${userId} AND "postenKey" = 'lstb.bruttoarbeitslohn'`
-    expect(rows[0]?.proposalValue).toBeTruthy()
-    expect(rows[0]?.proposalValue).not.toContain('50000')
+    const rows = await prisma.$queryRaw<Array<{ vorschlagWert: string | null }>>`SELECT "vorschlagWert" FROM "Kennzeichnung" WHERE "userId" = ${userId} AND "postenKey" = 'lstb.bruttoarbeitslohn'`
+    expect(rows[0]?.vorschlagWert).toBeTruthy()
+    expect(rows[0]?.vorschlagWert).not.toContain('50000')
 
     // Accept the proposal → written into the mask.
     expect((await put(cookie, `${YEAR}/bestaetigung/vorschlaege/lstb.bruttoarbeitslohn`, { decision: 'annehmen' })).status).toBe(200)

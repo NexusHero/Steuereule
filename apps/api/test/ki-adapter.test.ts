@@ -8,6 +8,9 @@ describe('RagKiAdapter & PII-Schranke (ADR-048 / ADR-0051)', () => {
     expect(() => checkPiiFree({ vorname: 'Erika', betrag: 100 })).toThrow(/vorname/)
     expect(() => checkPiiFree({ steuerjahr: 2025, homeofficeTage: 45 })).not.toThrow()
     expect(() => checkPiiFree({ steuerjahr: 2025, partner: { steuerId: null } })).toThrow(/steuerId/)
+    // the code's English names are personal data too
+    expect(() => checkPiiFree({ taxYear: 2025, child: { taxId: null } })).toThrow(/taxId/)
+    expect(() => checkPiiFree({ firstName: 'Erika' })).toThrow(/firstName/)
   })
 
   it('validiert strukturierte KiVorschlag-Outputs strikt gegen das Schema (ADR-048 § 2)', () => {

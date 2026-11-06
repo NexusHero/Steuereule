@@ -23,7 +23,7 @@ const TRUSTED_ORIGIN_HEADERS = { origin: ALLOWED_ORIGIN }
 const TAX_YEAR = 2026
 const RATE = 0.9412
 
-type ChSalaryCertificateRow = { userId: string; grossWageTotal: string | null }
+type ChSalaryCertificateRow = { userId: string; bruttolohnTotal: string | null }
 
 describe('REQ-021 — the CH-Posten folding (Vorsorge + Quellensteuer-Anrechnung), against the real server', () => {
   let app: NestFastifyApplication
@@ -256,11 +256,11 @@ describe('REQ-021 — the CH-Posten folding (Vorsorge + Quellensteuer-Anrechnung
       await putExchangeRate(cookie, { month: '2026-01', rate: RATE, mode: 'amtlich' })
       await putField(cookie, 'bruttolohn-total', { kind: 'erfasst', value: 84000 })
 
-      const rawRows = await prisma.$queryRaw<{ grossWageTotal: string | null }[]>`
+      const rawRows = await prisma.$queryRaw<{ bruttolohnTotal: string | null }[]>`
         SELECT "bruttolohnTotal" FROM "ChLohnausweis" WHERE "userId" = ${userId}
       `
       expect(rawRows).toHaveLength(1)
-      const rawValue = rawRows[0]!.grossWageTotal
+      const rawValue = rawRows[0]!.bruttolohnTotal
       expect(rawValue).not.toBe('84000')
       expect(rawValue).not.toBeNull()
       expect(rawValue).toMatch(/^v\d+\.aesgcm256\./)

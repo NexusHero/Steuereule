@@ -64,7 +64,8 @@ export const LEGAL_SOURCES: Readonly<Record<OwlSourceId | 'estg-32', LegalSource
 
 const IBAN_REGEX = /\b[A-Z]{2}\d{2}[A-Z0-9]{11,30}\b/
 const TAX_ID_REGEX = /\b\d{11}\b/
-const PERSON_KEYS = new Set(['firstName', 'lastName', 'vorname', 'nachname', 'steuerId', 'idnr', 'iban', 'strasse', 'telefon'])
+// German and English spellings: payloads carry the code's English names, older records the German ones.
+const PERSON_KEYS = new Set(['firstName', 'lastName', 'vorname', 'nachname', 'steuerId', 'taxId', 'idnr', 'iban', 'strasse', 'street', 'telefon', 'phone', 'birthDate', 'geburtsdatum'])
 
 function findPersonKey(value: unknown): string | null {
   if (typeof value !== 'object' || value === null) return null

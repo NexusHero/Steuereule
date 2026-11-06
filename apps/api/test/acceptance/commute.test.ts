@@ -89,9 +89,9 @@ describe('Arbeitsweg, against the real server', () => {
       headers: { 'content-type': 'application/json', cookie, ...ORIGIN },
       body: JSON.stringify(INPUTS),
     })
-    const [row] = await prisma.$queryRawUnsafe<{ workplace: string }[]>(`SELECT "taetigkeitsstaette" FROM "Arbeitsweg"`)
+    const [row] = await prisma.$queryRawUnsafe<{ taetigkeitsstaette: string }[]>(`SELECT "taetigkeitsstaette" FROM "Arbeitsweg"`)
 
-    expect(row!.workplace).not.toContain('Lörrach')
+    expect(row!.taetigkeitsstaette).not.toContain('Lörrach')
   })
 
   it('refuses a guest', async () => {

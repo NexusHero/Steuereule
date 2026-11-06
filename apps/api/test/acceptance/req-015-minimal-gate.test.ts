@@ -30,7 +30,7 @@ const TRUSTED_ORIGIN_HEADERS = { origin: ALLOWED_ORIGIN }
 
 const TAX_YEAR = 2026
 
-type InterviewAnswerRow = { userId: string; taxYear: number; questionId: string; value: string }
+type InterviewAnswerRow = { userId: string; steuerjahr: number; questionId: string; value: string }
 
 describe('REQ-015 — the Minimal-Gate, against the real server', () => {
   let app: NestFastifyApplication
@@ -416,7 +416,7 @@ describe('REQ-015 — the Minimal-Gate, against the real server', () => {
       const rows = await interviewRows(userId)
       expect(rows).toHaveLength(4)
       expect(rows.map((r) => r.questionId).sort()).toEqual(['ausland', 'familienstand', 'job', 'kinder'])
-      expect(rows.every((r) => r.taxYear === TAX_YEAR)).toBe(true)
+      expect(rows.every((r) => r.steuerjahr === TAX_YEAR)).toBe(true)
     })
   })
 

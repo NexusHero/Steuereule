@@ -106,7 +106,7 @@ describe('REQ-025 — the Kapital vertical (Anlage KAP), against the real server
   async function seedAnswer(userId: string, questionId: string, value: string): Promise<void> {
     const { ENCRYPTED_PRISMA } = await import('../../src/prisma/encrypted-prisma.provider.js')
     const encrypted = app.get<{ interviewAnswer: { create: (input: { data: unknown }) => Promise<unknown> } }>(ENCRYPTED_PRISMA)
-    await encrypted.interviewAnswer.create({ data: { userId, steuerjahr: TAX_YEAR, questionId, value } })
+    await encrypted.interviewAnswer.create({ data: { userId, taxYear: TAX_YEAR, questionId, value } })
   }
 
   it(

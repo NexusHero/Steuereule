@@ -187,12 +187,12 @@ describe('POST/GET /v1/belege — real Postgres (ADR-007/008)', () => {
     const userId = userIdFromCookie(cookie)
     await createReceipt(cookie, { fileName: 'quittung.pdf' })
 
-    const rawRows = await prisma.$queryRaw<{ fileName: string }[]>`
+    const rawRows = await prisma.$queryRaw<{ dateiname: string }[]>`
       SELECT "dateiname" FROM "Beleg" WHERE "userId" = ${userId}
     `
     expect(rawRows).toHaveLength(1)
-    expect(rawRows[0]!.fileName).not.toBe('quittung.pdf')
-    expect(rawRows[0]!.fileName).toMatch(/^v\d+\.aesgcm256\./)
+    expect(rawRows[0]!.dateiname).not.toBe('quittung.pdf')
+    expect(rawRows[0]!.dateiname).toMatch(/^v\d+\.aesgcm256\./)
   })
 
   it('audit: each create and each assignment appends exactly one WRITE entry; a list appends one READ entry (REQ-004)', async () => {
