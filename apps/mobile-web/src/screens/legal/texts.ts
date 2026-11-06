@@ -75,7 +75,8 @@ export function privacy(operator: Operator | null): readonly Section[] {
         'Gastmodus: Du kannst ohne Konto starten. Wir setzen dafür ein technisch notwendiges Cookie mit einer zufälligen Kennung und speichern deine Interview-Antworten zu dieser Kennung.',
         'Konto: E-Mail-Adresse, Name, Passwort (nur als Hash gespeichert), optional Passkeys und Zwei-Faktor-Daten sowie Sitzungsdaten (Zeitpunkt, IP-Adresse, Browser) zur Absicherung deines Kontos.',
         'Steuerdaten: die Angaben, die du für deine Steuererklärung einträgst (z. B. Lohnsteuerbescheinigung, Renten, Kapitalerträge, Vermietung, Bescheide, Belegnamen) sowie deine Steuer-ID und Steuernummer. Diese Werte speichern wir feldweise verschlüsselt (AES-256-GCM).',
-        'Zugriffsprotokoll: Jeder Lese- und Schreibzugriff auf deine Steuerdaten wird protokolliert (wer, was, wann – ohne die Werte selbst). Du siehst dieses Protokoll in deinem Datenexport.',
+        'KI-Assistenten (optional): Verbindest du einen eigenen KI-Assistenten über unsere Schnittstelle (Model Context Protocol / OAuth 2.1), erteilst du diesem Zugriff auf ausgewählte Datenbereiche. Beim Auslesen sensibler Daten (Steuer-ID, IBAN, Name, Adresse, Telefon) werden diese automatisch pseudonymisiert bzw. maskiert, bevor sie an den Assistenten übertragen werden.',
+        'Zugriffsprotokoll: Jeder Lese- und Schreibzugriff auf deine Steuerdaten wird protokolliert (wer, was, wann – ohne die Werte selbst, inklusive verbundener KI-Assistenten). Du siehst dieses Protokoll in deinem Datenexport.',
         'Zahlungen: Für die Freischaltung des Formular-Ausdrucks speichern wir Steuerjahr, Betrag, Zahlungsstatus und die Kennung des Zahlungsvorgangs. Zahlungsdaten (Karte, Konto) erhält ausschließlich unser Zahlungsdienstleister.',
       ],
     },
@@ -83,6 +84,7 @@ export function privacy(operator: Operator | null): readonly Section[] {
       title: '3. Zwecke und Rechtsgrundlagen',
       paragraphs: [
         'Bereitstellung der App und Vorbereitung deiner Steuererklärung: Art. 6 Abs. 1 lit. b DSGVO (Vertrag).',
+        'Nutzung externer KI-Assistenten auf deine Veranlassung: Art. 6 Abs. 1 lit. a DSGVO (Einwilligung) bzw. Art. 6 Abs. 1 lit. b DSGVO (Vertragserfüllung).',
         'Absicherung deines Kontos (Sitzungen, Anmeldeschutz, Prüfung auf bekannte geleakte Passwörter): Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an einem sicheren Dienst).',
         'Rechnungen und Aufbewahrung von Geschäftsunterlagen: Art. 6 Abs. 1 lit. c DSGVO i. V. m. § 147 AO und § 257 HGB.',
         'Es gibt kein Tracking, keine Analyse- oder Werbe-Cookies und keine Weitergabe zu Werbezwecken.',
@@ -95,6 +97,7 @@ export function privacy(operator: Operator | null): readonly Section[] {
         'E-Mail-Versand: Bestätigungs- und Passwort-Links versenden wir über Brevo (Sendinblue SAS, Frankreich) als Auftragsverarbeiter.',
         'Zahlungen: Stripe Payments Europe Ltd. (Irland) wickelt Zahlungen ab und ist dafür eigenständig verantwortlich.',
         'Anmeldung mit Google (nur wenn du sie wählst): Google Ireland Ltd. erhält die für die Anmeldung nötigen Daten.',
+        'Eigener KI-Assistent (nur wenn du ihn verbindest): Verknüpfst du einen externen Assistenten (z. B. Anthropic Claude, OpenAI), werden Daten auf deine Weisung an den jeweiligen Anbieter übertragen. Bei Anbietern in Drittländern (z. B. USA) erfolgt die Übermittlung auf Grundlage deiner ausdrücklichen Einwilligung (Art. 49 Abs. 1 lit. a DSGVO) bzw. von Angemessenheitsbeschlüssen. Du kannst die Verknüpfung jederzeit mit sofortiger Wirkung unter „Profil → Verbundene Assistenten“ widerrufen.',
         'Passwortprüfung: Bei der Registrierung prüfen wir dein Passwort gegen die Datenbank „Have I Been Pwned“. Dabei verlassen nur die ersten fünf Zeichen eines Hash-Werts unseren Server, nie dein Passwort.',
         'An das Finanzamt übermitteln wir nichts. Du druckst die Formulare aus und reichst sie selbst ein.',
       ],
@@ -131,6 +134,7 @@ export function terms(operator: Operator | null): readonly Section[] {
         'SteuerEule ist eine Software, mit der du die Angaben für deine Einkommensteuererklärung erfasst, prüfst und als ausgefüllte Formulare zum Ausdrucken erhältst.',
         'SteuerEule übermittelt keine Daten an das Finanzamt. Du prüfst die Ausdrucke, unterschreibst sie und reichst sie selbst ein. Für die Richtigkeit und Vollständigkeit deiner Angaben bist du verantwortlich.',
         'SteuerEule ist keine Steuerberatung und keine Hilfeleistung in Steuersachen im Sinne des Steuerberatungsgesetzes. Schätzungen und Hinweise in der App sind unverbindlich.',
+        'Anbindung eigener KI-Assistenten: Du kannst eigene KI-Assistenten über das Model Context Protocol (MCP) anbinden. Der Assistent agiert als dein persönliches Werkzeug. Werte, die ein Assistent einträgt, gelten als unbestätigt und sperren die Formularerstellung bis zu deiner Bestätigung je Anlage. Bestehende, von dir erfasste Werte werden niemals überschrieben, sondern als Vorschlag abgelegt („Der Nutzer gewinnt“). Du bist verpflichtet, alle durch einen Assistenten generierten oder vorgeschlagenen Werte vor dem Ausdruck eigenständig zu prüfen und zu bestätigen.',
       ],
     },
     {
@@ -160,6 +164,7 @@ export function terms(operator: Operator | null): readonly Section[] {
       paragraphs: [
         'Wir haften unbeschränkt bei Vorsatz, grober Fahrlässigkeit, bei Verletzung von Leben, Körper oder Gesundheit und nach dem Produkthaftungsgesetz.',
         'Bei leicht fahrlässiger Verletzung einer wesentlichen Vertragspflicht ist unsere Haftung auf den vertragstypischen, vorhersehbaren Schaden begrenzt. Im Übrigen ist die Haftung für leichte Fahrlässigkeit ausgeschlossen.',
+        'Wir übernehmen keine Haftung für die Richtigkeit, Plausibilität oder Vollständigkeit von Angaben, die durch von dir angebundene externe KI-Assistenten vorgeschlagen, berechnet oder eingetragen wurden. Die steuerliche Verantwortung verbleibt stets bei dir als Steuerpflichtigem.',
       ],
     },
     {

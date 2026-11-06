@@ -82,4 +82,12 @@ describe('legal texts stay honest about what the product does', () => {
       expect(alles).toContain(recipient)
     }
   })
+
+  it('covers the AI assistant / agent access clauses in privacy and terms (ADR-0052 §13 / #388)', () => {
+    expect(alles).toContain('Model Context Protocol')
+    expect(alles).toContain('Verbundene Assistenten')
+    expect(alles).toContain('Art. 49 Abs. 1 lit. a DSGVO')
+    expect(alles).toContain('Der Nutzer gewinnt')
+    expect(alles).toContain('Die steuerliche Verantwortung verbleibt stets bei dir als Steuerpflichtigem')
+  })
 })
