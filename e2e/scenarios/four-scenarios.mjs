@@ -245,6 +245,8 @@ async function runScenario1(browser, webOrigin, sql) {
   await page.locator('[data-testid="arbeitstage-homeoffice"]').fill(String(s1.commute.homeOfficeDays))
   await page.locator(`[data-testid="feiertage-region-${s1.commute.region}"]`).click()
   await page.locator('[data-testid="arbeitstage-km"]').fill(String(s1.commute.oneWayKm))
+  // the commuter allowance needs the means of transport; without it the estimate rightly counts 0 €
+  await page.locator(`[data-testid="arbeitstage-transport-${s1.commute.transport}"]`).click()
   await page.locator('[data-testid="arbeitstage-arbeitsort"]').fill(s1.commute.workplace)
   await page.locator('[data-testid="arbeitstage-weiter"]').click()
 
@@ -372,6 +374,8 @@ async function runScenario2And3(browser, webOrigin, sql) {
   await pageMarkus.locator('[data-testid="arbeitstage-homeoffice"]').fill(String(s.markus.commute.homeOfficeDays))
   await pageMarkus.locator(`[data-testid="feiertage-region-${s.markus.commute.region}"]`).click()
   await pageMarkus.locator('[data-testid="arbeitstage-km"]').fill(String(s.markus.commute.oneWayKm))
+  // the commuter allowance needs the means of transport; without it the estimate rightly counts 0 €
+  await pageMarkus.locator(`[data-testid="arbeitstage-transport-${s.markus.commute.transport}"]`).click()
   await pageMarkus.locator('[data-testid="arbeitstage-arbeitsort"]').fill(s.markus.commute.workplace)
   await pageMarkus.locator('[data-testid="arbeitstage-weiter"]').click()
 
@@ -494,6 +498,8 @@ async function runScenario2And3(browser, webOrigin, sql) {
   await pageJulia.locator('[data-testid="arbeitstage-homeoffice"]').fill(String(s.julia.commute.homeOfficeDays))
   await pageJulia.locator(`[data-testid="feiertage-region-${s.julia.commute.region}"]`).click()
   await pageJulia.locator('[data-testid="arbeitstage-km"]').fill(String(s.julia.commute.oneWayKm))
+  // the commuter allowance needs the means of transport; without it the estimate rightly counts 0 €
+  await pageJulia.locator(`[data-testid="arbeitstage-transport-${s.julia.commute.transport}"]`).click()
   await pageJulia.locator('[data-testid="arbeitstage-arbeitsort"]').fill(s.julia.commute.workplace)
   await pageJulia.locator('[data-testid="arbeitstage-weiter"]').click()
 
@@ -597,6 +603,8 @@ async function runScenario4(browser, webOrigin, sql) {
   await page.locator('[data-testid="arbeitstage-homeoffice"]').fill(String(s.thomas.commute.homeOfficeDays))
   await page.locator(`[data-testid="feiertage-region-${s.thomas.commute.region}"]`).click()
   await page.locator('[data-testid="arbeitstage-km"]').fill(String(s.thomas.commute.oneWayKm))
+  // the commuter allowance needs the means of transport; without it the estimate rightly counts 0 €
+  await page.locator(`[data-testid="arbeitstage-transport-${s.thomas.commute.transport}"]`).click()
   await page.locator('[data-testid="arbeitstage-arbeitsort"]').fill(s.thomas.commute.workplace)
   await page.locator('[data-testid="arbeitstage-weiter"]').click()
 
@@ -650,6 +658,8 @@ async function runScenario4(browser, webOrigin, sql) {
   await page.locator('[data-testid="arbeitstage-homeoffice"]').fill(String(s.sabine.commute.homeOfficeDays))
   await page.locator(`[data-testid="feiertage-region-${s.sabine.commute.region}"]`).click()
   await page.locator('[data-testid="arbeitstage-km"]').fill(String(s.sabine.commute.oneWayKm))
+  // the commuter allowance needs the means of transport; without it the estimate rightly counts 0 €
+  await page.locator(`[data-testid="arbeitstage-transport-${s.sabine.commute.transport}"]`).click()
   await page.locator('[data-testid="arbeitstage-arbeitsort"]').fill(s.sabine.commute.workplace)
   await page.locator('[data-testid="arbeitstage-weiter"]').click()
 
