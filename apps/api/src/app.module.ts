@@ -25,7 +25,7 @@ import { PensionModule } from './rente/rente.module.js'
 import { MasterDataModule } from './stammdaten/stammdaten.module.js'
 import { FilingTypeComparisonModule } from './veranlagungsartenvergleich/veranlagungsartenvergleich.module.js'
 import { RentalModule } from './vermietung/vermietung.module.js'
-import { KinderModule } from './kinder/kinder.module.js'
+import { ChildrenModule } from './kinder/kinder.module.js'
 import { LinkModule } from './kopplung/kopplung.module.js'
 import { OwlModeModule } from './eulen-modus/eulen-modus.module.js'
 import { DomainErrorFilter } from './common/domain-error.filter.js'
@@ -57,7 +57,7 @@ import { DomainErrorFilter } from './common/domain-error.filter.js'
     UnlockModule,
     MasterDataModule,
     PrintoutModule,
-    KinderModule,
+    ChildrenModule,
     LinkModule,
     OwlModeModule,
   ],

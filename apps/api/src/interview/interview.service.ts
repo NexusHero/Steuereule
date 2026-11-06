@@ -54,8 +54,8 @@ export class InterviewService {
     @Inject(AuditService) private readonly auditService: AuditService,
   ) {}
 
-  async getState(userId: string, taxYear: number, eintrag?: string, kind: UserIdKind = 'session'): Promise<InterviewStateDto> {
-    const requestedEntry = eintrag ?? 'minimal-gate'
+  async getState(userId: string, taxYear: number, entryKey?: string, kind: UserIdKind = 'session'): Promise<InterviewStateDto> {
+    const requestedEntry = entryKey ?? 'minimal-gate'
     if (Object.hasOwn(ENTRIES, requestedEntry)) assertGuestMayUse(kind, requestedEntry as EntryId)
 
     const rows = await this.repository.findAllForUserAndYear(userId, taxYear)
@@ -65,9 +65,9 @@ export class InterviewService {
       await this.auditService.append({ userId, action: 'READ', resource: 'interview' })
     }
 
-    const entryId = eintrag ?? 'minimal-gate'
+    const entryId = entryKey ?? 'minimal-gate'
     if (!Object.hasOwn(ENTRIES, entryId)) {
-      throw new InvalidInputError('CATALOGUE_ENTRY_UNKNOWN', `"${eintrag}" is not a known catalogue entry.`)
+      throw new InvalidInputError('CATALOGUE_ENTRY_UNKNOWN', `"${entryKey}" is not a known catalogue entry.`)
     }
     const entry = ENTRIES[entryId as EntryId]
     return {

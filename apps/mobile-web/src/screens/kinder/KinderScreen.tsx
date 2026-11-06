@@ -17,11 +17,11 @@ import {
   type ChildRelationship,
 } from '@steuereule/core'
 import {
-  getKinderControllerListQueryKey,
-  useKinderControllerCreate,
-  useKinderControllerDelete,
-  useKinderControllerList,
-  useKinderControllerUpdate,
+  getChildrenControllerListQueryKey,
+  useChildrenControllerCreate,
+  useChildrenControllerDelete,
+  useChildrenControllerList,
+  useChildrenControllerUpdate,
   useMasterDataControllerRead,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
@@ -97,7 +97,7 @@ function missingForPrintout(k: ChildItem): boolean {
   return !k.taxId || !k.kinship || !k.familyBenefitsOffice || k.domesticResidenceAllYear == null
 }
 
-export interface KinderScreenProps {
+export interface ChildrenScreenProps {
   readonly onDone?: () => void
   readonly onBack?: () => void
   readonly taxYear?: number
@@ -110,21 +110,21 @@ export interface KinderScreenProps {
   readonly married?: boolean | undefined
 }
 
-export function KinderScreen(props: KinderScreenProps) {
+export function ChildrenScreen(props: ChildrenScreenProps) {
   if (props.initialKinder !== undefined) {
     return <KinderScreenView {...props} initialKinder={props.initialKinder} />
   }
   return <ConnectedKinderScreen {...props} />
 }
 
-function ConnectedKinderScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YEAR }: KinderScreenProps) {
+function ConnectedKinderScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YEAR }: ChildrenScreenProps) {
   const bp = useBreakpoint()
   const { t: tr } = useTranslation(APP_NS)
   const queryClient = useQueryClient()
-  const query = useKinderControllerList(taxYear)
-  const createChild = useKinderControllerCreate()
-  const updateChild = useKinderControllerUpdate()
-  const deleteChild = useKinderControllerDelete()
+  const query = useChildrenControllerList(taxYear)
+  const createChild = useChildrenControllerCreate()
+  const updateChild = useChildrenControllerUpdate()
+  const deleteChild = useChildrenControllerDelete()
   const masterData = useMasterDataControllerRead()
   const married = masterData.data?.status === 200 && masterData.data.data.familienstand === 'verheiratet'
   const [householdQuestions, setHouseholdQuestions] = useState(false)
@@ -145,7 +145,7 @@ function ConnectedKinderScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TA
   }
 
   const invalidate = async () => {
-    await queryClient.invalidateQueries({ queryKey: getKinderControllerListQueryKey(taxYear) })
+    await queryClient.invalidateQueries({ queryKey: getChildrenControllerListQueryKey(taxYear) })
   }
 
   if (householdQuestions) {
@@ -193,7 +193,7 @@ function KinderScreenView({
   onDeleteChild,
   onSingleParentQuestions,
   married = false,
-}: KinderScreenProps & { readonly initialKinder: readonly ChildItem[] }) {
+}: ChildrenScreenProps & { readonly initialKinder: readonly ChildItem[] }) {
   const bp = useBreakpoint()
   const t = useTheme()
   const styles = makeStyles(t)
@@ -223,7 +223,7 @@ function KinderScreenView({
   const [edited, setEdited] = useState<string | null>(null)
   const [formOpen, setFormOpen] = useState(initialKinder.length === 0)
 
-  const stand = calculateChildrenStatus(
+  const foldStatus = calculateChildrenStatus(
     kinder.map((k) => ({
       id: k.id,
       firstName: k.firstName,
@@ -320,21 +320,21 @@ function KinderScreenView({
           <Text style={styles.summaryTitle}>{tr('kinder.summaryTitle', 'Steuerliche Entlastung')}</Text>
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>{tr('kinder.freibetragLabel', 'Kinderfreibetrag Gesamt:')}</Text>
-            <Text style={styles.summaryValue}>{formatEuro(stand.totalAllowance)}</Text>
+            <Text style={styles.summaryValue}>{formatEuro(foldStatus.totalAllowance)}</Text>
           </View>
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>{tr('kinder.kindergeldLabel', 'Kindergeld Anspruch:')}</Text>
-            <Text style={styles.summaryValue}>{formatEuro(stand.childBenefitSum)}</Text>
+            <Text style={styles.summaryValue}>{formatEuro(foldStatus.childBenefitSum)}</Text>
           </View>
-          {stand.swissFamilyAllowanceSum > 0 ? (
+          {foldStatus.swissFamilyAllowanceSum > 0 ? (
             <>
               <View style={styles.summaryRow}>
                 <Text style={styles.summarySubLabel}>{tr('kinder.schweizLabel', 'davon Schweizer Kinderzulage:')}</Text>
-                <Text style={styles.summarySubValue}>{formatEuro(stand.swissFamilyAllowanceSum)}</Text>
+                <Text style={styles.summarySubValue}>{formatEuro(foldStatus.swissFamilyAllowanceSum)}</Text>
               </View>
               <View style={styles.summaryRow}>
                 <Text style={styles.summarySubLabel}>{tr('kinder.diffLabel', 'davon Differenz-Kindergeld (DE):')}</Text>
-                <Text style={styles.summarySubValue}>{formatEuro(stand.differentialChildBenefitSum)}</Text>
+                <Text style={styles.summarySubValue}>{formatEuro(foldStatus.differentialChildBenefitSum)}</Text>
               </View>
             </>
           ) : null}

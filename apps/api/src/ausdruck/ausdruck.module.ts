@@ -10,7 +10,7 @@ import { ProfileModule } from '../profile/profile.module.js'
 import { PensionModule } from '../rente/rente.module.js'
 import { MasterDataModule } from '../stammdaten/stammdaten.module.js'
 import { RentalModule } from '../vermietung/vermietung.module.js'
-import { KinderModule } from '../kinder/kinder.module.js'
+import { ChildrenModule } from '../kinder/kinder.module.js'
 import { LinkModule } from '../kopplung/kopplung.module.js'
 import { MarkingModule } from '../kennzeichnung/kennzeichnung.module.js'
 import { PrintoutController } from './ausdruck.controller.js'
@@ -29,7 +29,7 @@ import { PrintoutService, TEMPLATES_BASE } from './ausdruck.service.js'
     PensionModule,
     MasterDataModule,
     RentalModule,
-    KinderModule,
+    ChildrenModule,
     LinkModule,
     CommuteModule,
   ],

@@ -153,12 +153,12 @@ export function solidaritaetszuschlag(assessmentBasis: number, exemptionLimit: n
   return Math.floor(Math.min(full, reduced))
 }
 
-export function kirchensteuer(einkommensteuer: number, factor: ChurchTaxFactor): number {
-  if (!Number.isFinite(einkommensteuer) || einkommensteuer < 0) {
+export function kirchensteuer(incomeTaxAmount: number, factor: ChurchTaxFactor): number {
+  if (!Number.isFinite(incomeTaxAmount) || incomeTaxAmount < 0) {
     throw new RangeError('einkommensteuer must be a non-negative finite number')
   }
   if (factor !== 0 && factor !== 0.08 && factor !== 0.09) {
     throw new RangeError('faktor must be one of 0, 0.08, 0.09')
   }
-  return Math.floor(einkommensteuer * factor)
+  return Math.floor(incomeTaxAmount * factor)
 }

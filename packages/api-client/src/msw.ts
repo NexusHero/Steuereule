@@ -119,14 +119,14 @@ export {
   getSteuerEuleAPIMock as getBestaetigungApiMock,
 } from './generated/bestaetigung.msw'
 export {
-  getKinderControllerListResponseMock,
-  getKinderControllerListMockHandler,
-  getKinderControllerCreateResponseMock,
-  getKinderControllerCreateMockHandler,
-  getKinderControllerUpdateResponseMock,
-  getKinderControllerUpdateMockHandler,
-  getKinderControllerDeleteResponseMock,
-  getKinderControllerDeleteMockHandler,
+  getChildrenControllerListResponseMock,
+  getChildrenControllerListMockHandler,
+  getChildrenControllerCreateResponseMock,
+  getChildrenControllerCreateMockHandler,
+  getChildrenControllerUpdateResponseMock,
+  getChildrenControllerUpdateMockHandler,
+  getChildrenControllerDeleteResponseMock,
+  getChildrenControllerDeleteMockHandler,
   getSteuerEuleAPIMock as getKinderApiMock,
 } from './generated/kinder.msw'
 export {

@@ -83,11 +83,11 @@ export function serializeCapitalField(state: CapitalFieldState): string | null {
 export function deserializeCapitalField(value: string | null): CapitalFieldState {
   if (value === null) return { kind: 'offen' }
   if (value === CAPITAL_UNCLEAR) return { kind: 'unklar' }
-  const wert = Number(value)
-  if (!isValidCapitalAmount(wert)) {
+  const rawValue = Number(value)
+  if (!isValidCapitalAmount(rawValue)) {
     throw new Error(`kapital: stored value "${value}" is neither offen, unklar, nor a valid integer`)
   }
-  return { kind: 'erfasst', value: wert }
+  return { kind: 'erfasst', value: rawValue }
 }
 
 export function capitalAsCoreLineItem(capital: CapitalData): Item | null {

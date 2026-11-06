@@ -74,7 +74,7 @@ export function taxEstimateEmployee(e: EmployeeEstimateInput): TaxEstimate {
     werbungskosten,
     provision,
     donations: e.donations,
-    alreadyPaid: (est) => e.lohnsteuer - est + soli(e.lohnsteuer, e.year),
+    alreadyPaid: (taxAmount) => e.lohnsteuer - taxAmount + soli(e.lohnsteuer, e.year),
     anrechnung: e.lohnsteuer,
   })
 }
@@ -93,7 +93,7 @@ export function taxEstimateCrossBorder(e: CrossBorderEstimateInput): TaxEstimate
     werbungskosten: Math.max(EMPLOYEE_LUMP_SUM, e.commuterAllowance),
     provision,
     donations: e.donations,
-    alreadyPaid: (est) => e.withholdingTaxEur - est,
+    alreadyPaid: (taxAmount) => e.withholdingTaxEur - taxAmount,
     anrechnung: e.withholdingTaxEur,
   })
 }
@@ -104,34 +104,34 @@ function estimate(input: {
   readonly werbungskosten: number
   readonly provision: Range
   readonly donations: number
-  readonly alreadyPaid: (einkommensteuer: number) => number
+  readonly alreadyPaid: (incomeTaxAmount: number) => number
   readonly anrechnung: number
 }): TaxEstimate {
   const specialExpenses = Math.max(SPECIAL_EXPENSES_LUMP_SUM, input.donations)
   const zve = (provision: number) => Math.max(0, input.einnahmen - input.werbungskosten - provision - specialExpenses)
   const taxableIncome = { from: zve(input.provision.to), to: zve(input.provision.from) }
-  const einkommensteuer = {
+  const incomeTaxOwed = {
     from: incomeTax(taxableIncome.from, input.year),
     to: incomeTax(taxableIncome.to, input.year),
   }
-  const soliRange = { from: soli(einkommensteuer.from, input.year), to: soli(einkommensteuer.to, input.year) }
+  const soliRange = { from: soli(incomeTaxOwed.from, input.year), to: soli(incomeTaxOwed.to, input.year) }
   return {
     kind: 'spanne',
     werbungskosten: input.werbungskosten,
     provision: input.provision,
     specialExpenses,
     taxableIncome,
-    incomeTax: einkommensteuer,
+    incomeTax: incomeTaxOwed,
     solidaritaetszuschlag: soliRange,
     anrechnung: input.anrechnung,
     result: {
-      from: input.alreadyPaid(einkommensteuer.to) - soliRange.to,
-      to: input.alreadyPaid(einkommensteuer.from) - soliRange.from,
+      from: input.alreadyPaid(incomeTaxOwed.to) - soliRange.to,
+      to: input.alreadyPaid(incomeTaxOwed.from) - soliRange.from,
     },
   }
 }
 
-function soli(einkommensteuer: number, year: number): number {
+function soli(incomeTaxAmount: number, year: number): number {
   if (!isSupportedIncomeTaxYear(year)) return 0
-  return solidaritaetszuschlag(einkommensteuer, soliExemptionLimits(year).single)
+  return solidaritaetszuschlag(incomeTaxAmount, soliExemptionLimits(year).single)
 }

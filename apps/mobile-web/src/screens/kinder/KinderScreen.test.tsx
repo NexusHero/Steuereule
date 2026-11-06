@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@steuereule/ui'
 import { createAppI18n } from '../../i18n/app-i18n'
-import { KinderScreen } from './KinderScreen'
+import { ChildrenScreen } from './KinderScreen'
 
 const KINDER_FIXTURE = [
   {
@@ -17,12 +17,12 @@ const KINDER_FIXTURE = [
   },
 ]
 
-function renderKinder(props: Partial<Parameters<typeof KinderScreen>[0]> = {}) {
+function renderKinder(props: Partial<Parameters<typeof ChildrenScreen>[0]> = {}) {
   const i18n = createAppI18n('de')
   return render(
     <I18nextProvider i18n={i18n}>
       <ThemeProvider mode="light">
-        <KinderScreen taxYear={2025} initialKinder={KINDER_FIXTURE} {...props} />
+        <ChildrenScreen taxYear={2025} initialKinder={KINDER_FIXTURE} {...props} />
       </ThemeProvider>
     </I18nextProvider>,
   )

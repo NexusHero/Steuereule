@@ -388,7 +388,7 @@ function provisionExpensesValues(insurances: readonly HealthInsurance[] | null |
   }
   const values: Record<string, string> = {}
   // Person B's column carries the same Kennzahlen with a leading 4 instead of 3.
-  for (const [kz, betrag] of sums) if (betrag > 0) values[`anlVor.kz${role === 'A' ? kz : `4${kz.slice(1)}`}`] = String(betrag)
+  for (const [kz, rawAmount] of sums) if (rawAmount > 0) values[`anlVor.kz${role === 'A' ? kz : `4${kz.slice(1)}`}`] = String(rawAmount)
   return values
 }
 
@@ -670,9 +670,9 @@ export function printoutValues(facts: PrintoutFacts): PrintoutValues {
   }
 
   if (facts.kinder && facts.kinder.length > 0) {
-    const zusammen = facts.link?.filingType === 'zusammen'
+    const isJoint = facts.link?.filingType === 'zusammen'
     const single =
-      !zusammen &&
+      !isJoint &&
       sd?.familienstand !== 'verheiratet' &&
       facts.singleParent?.otherPerson === 'Nein' &&
       facts.singleParent.householdCommunity === 'Nein'
@@ -705,7 +705,7 @@ export function printoutValues(facts: PrintoutFacts): PrintoutValues {
         kValues['anlKind.inlandBis'] = formatGermanDate(end)
       }
       if (k.kinship) kValues['anlKind.kz02'] = k.kinship
-      if (zusammen && k.kinshipB) kValues['anlKind.kz03'] = k.kinshipB
+      if (isJoint && k.kinshipB) kValues['anlKind.kz03'] = k.kinshipB
       if (single && k.registeredWithMeAllYear && k.childBenefitToMeAllYear) {
         kValues['anlKind.kz42Von'] = formatGermanDate(start)
         kValues['anlKind.kz42Bis'] = formatGermanDate(end)
@@ -714,7 +714,7 @@ export function printoutValues(facts: PrintoutFacts): PrintoutValues {
         kValues['anlKind.kz46'] = '2'
         kValues['anlKind.kz49'] = '2'
       }
-      if (needsOtherParent(k, zusammen)) {
+      if (needsOtherParent(k, isJoint)) {
         if (k.otherParent === 'Unbekannt') kValues['anlKind.kz05'] = '1'
         if (k.otherParent === 'Inland' || k.otherParent === 'Verstorben') {
           if (k.otherParentName) kValues['anlKind.aeName'] = k.otherParentName
@@ -733,8 +733,8 @@ export function printoutValues(facts: PrintoutFacts): PrintoutValues {
       return kValues
     })
     for (const kind of facts.kinder) {
-      const luecke = childGap(kind, facts.taxYear, zusammen)
-      if (luecke && !missing.includes(luecke)) missing.push(luecke)
+      const missingField = childGap(kind, facts.taxYear, isJoint)
+      if (missingField && !missing.includes(missingField)) missing.push(missingField)
     }
   }
 
@@ -757,9 +757,9 @@ export function printoutValues(facts: PrintoutFacts): PrintoutValues {
   }
 
   if (facts.riester) {
-    const { kind: art, incomeLastYear } = facts.riester
-    const direct = art === 'Unmittelbar' && incomeLastYear !== null && /^\d+$/.test(incomeLastYear)
-    if (direct || art === 'Mittelbar') {
+    const { kind: fieldKind, incomeLastYear } = facts.riester
+    const direct = fieldKind === 'Unmittelbar' && incomeLastYear !== null && /^\d+$/.test(incomeLastYear)
+    if (direct || fieldKind === 'Mittelbar') {
       set('anlAv.name', profile.lastName)
       set('anlAv.vorname', profile.firstName)
       set('anlAv.steuernummer', profile.steuernummer)

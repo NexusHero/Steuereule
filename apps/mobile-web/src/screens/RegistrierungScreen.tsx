@@ -29,7 +29,7 @@ export function RegistrationScreen({ onDone, onLogin }: RegistrationScreenProps)
 
   const [mail, setMail] = useState('')
   const [pass, setPass] = useState('')
-  const [fehler, setError] = useState('')
+  const [errorMessage, setError] = useState('')
   const [stage, setStage] = useState<Stage>({ kind: 'form' })
   const verifiedForThisAccount = useEmailVerified(stage.kind === 'success' ? stage.email : undefined)
 
@@ -88,7 +88,7 @@ export function RegistrationScreen({ onDone, onLogin }: RegistrationScreenProps)
       <Feld label={tr('registrierung.emailLabel')}>
         <Input type="email" value={mail} onChange={setMail} placeholder={tr('registrierung.emailPlaceholder')} />
       </Feld>
-      <Feld label={tr('registrierung.passwordLabel')} error={fehler}>
+      <Feld label={tr('registrierung.passwordLabel')} error={errorMessage}>
         <Input
           type="password"
           value={pass}

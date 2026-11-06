@@ -41,7 +41,7 @@ export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true, 
 
   const [mail, setMail] = useState('')
   const [pass, setPass] = useState('')
-  const [fehler, setError] = useState('')
+  const [errorMessage, setError] = useState('')
   const [stage, setStage] = useState<Stage>({ kind: 'form' })
   const emailVerified = useEmailVerified(stage.kind === 'unverified' ? stage.email : undefined)
 
@@ -111,7 +111,7 @@ export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true, 
     )
   }
 
-  const passwordError = formTransportError ? '' : fehler
+  const passwordError = formTransportError ? '' : errorMessage
 
   const formColumn = (
     <View style={bp === 's' ? undefined : styles.formColumn}>

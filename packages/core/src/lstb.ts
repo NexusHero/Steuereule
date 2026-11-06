@@ -111,9 +111,9 @@ export function serializeWageTaxCertificateField(state: WageTaxCertificateFieldS
 export function deserializeWageTaxCertificateField(value: string | null): WageTaxCertificateFieldState {
   if (value === null) return { kind: 'offen' }
   if (value === WAGE_TAX_CERTIFICATE_UNCLEAR) return { kind: 'unklar' }
-  const wert = Number(value)
-  if (!isValidAmount(wert)) {
+  const rawValue = Number(value)
+  if (!isValidAmount(rawValue)) {
     throw new Error(`lstb: stored value "${value}" is neither offen, unklar, nor a valid amount`)
   }
-  return { kind: 'erfasst', value: wert }
+  return { kind: 'erfasst', value: rawValue }
 }

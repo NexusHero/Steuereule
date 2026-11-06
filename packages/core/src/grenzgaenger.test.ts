@@ -5,7 +5,7 @@ import {
   chItemsAsCoreItems,
   chItemsFromSalaryCertificate,
   deserializeSalaryCertificateField,
-  grenzgaengerStand,
+  crossBorderFold,
   crossBorderStatus,
   healthInsurerDeduction,
   SALARY_CERTIFICATE_FIELDS,
@@ -207,7 +207,7 @@ describe('grenzgaengerStand — ADR-029 fold through the deterministic core', ()
   const values: SalaryCertificateValues = { 'bruttolohn-total': 84000, 'berufliche-vorsorge': 5000, quellensteuer: 3780 }
 
   it('folds Bruttolohn→einnahmen, PK→vorsorgeaufwand, Quellensteuer→anrechnung, 3a/KK into vorsorgeaufwand', () => {
-    const status = grenzgaengerStand({
+    const status = crossBorderFold({
       salaryCertificate: values,
       saeule3aChf: 7000,
       krankenkasseChf: 3000,
@@ -224,7 +224,7 @@ describe('grenzgaengerStand — ADR-029 fold through the deterministic core', ()
   })
 
   it('a required-but-empty field is `offen`, never a fabricated zero (ADR-032 honesty)', () => {
-    const status = grenzgaengerStand({ salaryCertificate: { 'bruttolohn-total': 84000 }, status: 'echter-grenzgaenger', exchangeRate: RATE, gated: [] })
+    const status = crossBorderFold({ salaryCertificate: { 'bruttolohn-total': 84000 }, status: 'echter-grenzgaenger', exchangeRate: RATE, gated: [] })
     expect(status.kind).toBe('offen')
     if (status.kind === 'offen') {
       expect(status.openItems).toBe(2) // PK + Quellensteuer still open
@@ -234,13 +234,13 @@ describe('grenzgaengerStand — ADR-029 fold through the deterministic core', ()
   })
 
   it('an absent optional 3a/KK is not folded at all — no zero Posten', () => {
-    const status = grenzgaengerStand({ salaryCertificate: values, status: 'echter-grenzgaenger', exchangeRate: RATE, gated: [] })
+    const status = crossBorderFold({ salaryCertificate: values, status: 'echter-grenzgaenger', exchangeRate: RATE, gated: [] })
     expect(status.kind).toBe('bestimmt')
     if (status.kind === 'bestimmt') expect(status.vorsorgeaufwand).toBe(4706)
   })
 
   it('passes gated Einkunftsarten through as an honest blocker', () => {
-    const status = grenzgaengerStand({ salaryCertificate: values, status: 'echter-grenzgaenger', exchangeRate: RATE, gated: ['Kapital'] })
+    const status = crossBorderFold({ salaryCertificate: values, status: 'echter-grenzgaenger', exchangeRate: RATE, gated: ['Kapital'] })
     expect(status.kind).toBe('offen')
     if (status.kind === 'offen') expect(status.gated).toEqual(['Kapital'])
   })

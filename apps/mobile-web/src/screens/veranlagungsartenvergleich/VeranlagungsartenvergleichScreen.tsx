@@ -27,11 +27,11 @@ export function FilingTypeComparisonScreen({ onBack, onDone, taxYear = CURRENT_T
 
   const [married, setMarried] = useState(false)
   const [zveB, setZveB] = useState('')
-  const zveBWert = Number(zveB)
-  const ready = married && zveB !== '' && Number.isFinite(zveBWert) && zveBWert >= 0
+  const zveBValue = Number(zveB)
+  const ready = married && zveB !== '' && Number.isFinite(zveBValue) && zveBValue >= 0
 
   const params: FilingTypeComparisonControllerGetComparisonParams = ready
-    ? { verheiratet: married, zveB: zveBWert }
+    ? { verheiratet: married, zveB: zveBValue }
     : { verheiratet: married }
 
   const query = useFilingTypeComparisonControllerGetComparison(taxYear, params, { query: { enabled: ready } })

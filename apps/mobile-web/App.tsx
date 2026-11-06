@@ -40,7 +40,7 @@ import { MasterDataScreen } from './src/screens/stammdaten/StammdatenScreen'
 import { PrintoutScreen } from './src/screens/ausdruck/AusdruckScreen'
 import { ConfirmationScreen, type ConfirmationForm } from './src/screens/bestaetigung/BestaetigungScreen'
 import { OauthConsentScreen } from './src/screens/oauth/OauthConsentScreen'
-import { KinderScreen } from './src/screens/kinder/KinderScreen'
+import { ChildrenScreen } from './src/screens/kinder/KinderScreen'
 import { rememberPendingPath, rememberTaxYear, rememberedPendingPath, rememberedTaxYear } from './src/screens/funnel/sessionMemory'
 import { OwlModeScreen } from './src/screens/berater/EulenModusScreen'
 import { operatorFromEnv, LEGAL_PAGES, type LegalPage } from './src/screens/rechtliches/texte'
@@ -191,7 +191,7 @@ function PrintoutRoute({ navigation, route }: NativeStackScreenProps<RootStackPa
     return <RentalScreen taxYear={year} onDone={() => setView('ausdruck')} onBack={() => setView('ausdruck')} />
   }
   if (view === 'kinder') {
-    return <KinderScreen taxYear={year} onDone={() => setView('ausdruck')} onBack={() => setView('ausdruck')} />
+    return <ChildrenScreen taxYear={year} onDone={() => setView('ausdruck')} onBack={() => setView('ausdruck')} />
   }
   if (view === 'sonderausgaben') {
     return (
@@ -463,7 +463,7 @@ function TabbedShell({ tab, onTabChange, onSignedOut, startInInterview = false, 
           <RentalScreen taxYear={taxYear} onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
         ) : null}
         {tab === 'cockpit' && cockpitView === 'kinder' ? (
-          <KinderScreen taxYear={taxYear} onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
+          <ChildrenScreen taxYear={taxYear} onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
         ) : null}
         {tab === 'cockpit' && cockpitView === 'eulen-modus' ? (
           <OwlModeScreen taxYear={taxYear} onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />

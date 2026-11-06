@@ -521,7 +521,7 @@ describe('CockpitScreen — die voraussichtliche Erstattung als ehrliche Spanne 
 
   it('tells a married person to set up the joint return instead of estimating them as single (ADR-0054)', async () => {
     mockCockpit(LOADED_SUMMARY)
-    server.use(http.get(ESTIMATE_URL, () => HttpResponse.json({ kind: 'offen', fehlt: ['veranlagungsart'] })))
+    server.use(http.get(ESTIMATE_URL, () => HttpResponse.json({ kind: 'offen', missing: ['veranlagungsart'] })))
     renderCockpit()
     expect(await screen.findByText(/Leg in „Angaben für die Erklärung“ die Zusammenveranlagung an/)).toBeTruthy()
   })
@@ -537,7 +537,7 @@ describe('CockpitScreen — die voraussichtliche Erstattung als ehrliche Spanne 
 
   it('says how many details the estimate still needs', async () => {
     mockCockpit(LOADED_SUMMARY)
-    server.use(http.get(ESTIMATE_URL, () => HttpResponse.json({ kind: 'offen', fehlt: ['lohnsteuer', 'sozialversicherung'] })))
+    server.use(http.get(ESTIMATE_URL, () => HttpResponse.json({ kind: 'offen', missing: ['lohnsteuer', 'sozialversicherung'] })))
     renderCockpit()
 
     expect(await screen.findByText('Für die Schätzung fehlen noch 2 Angaben.')).toBeTruthy()

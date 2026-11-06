@@ -83,11 +83,11 @@ export function serializeRentalField(state: RentalFieldState): string | null {
 export function deserializeRentalField(value: string | null): RentalFieldState {
   if (value === null) return { kind: 'offen' }
   if (value === RENTAL_UNCLEAR) return { kind: 'unklar' }
-  const wert = Number(value)
-  if (!isValidRentalAmount(wert)) {
+  const rawValue = Number(value)
+  if (!isValidRentalAmount(rawValue)) {
     throw new Error(`vermietung: stored value "${value}" is neither offen, unklar, nor a valid integer`)
   }
-  return { kind: 'erfasst', value: wert }
+  return { kind: 'erfasst', value: rawValue }
 }
 
 export function depreciationSource(baujahr: number, percent: number): string {

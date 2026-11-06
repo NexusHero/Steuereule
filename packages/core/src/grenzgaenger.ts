@@ -200,7 +200,7 @@ export function crossBorderChItems(input: {
   return items
 }
 
-export function grenzgaengerStand(input: CrossBorderCalculationInput): CalculationStatus {
+export function crossBorderFold(input: CrossBorderCalculationInput): CalculationStatus {
   const coreItems = crossBorderChItems(input)
     .map(chItemsAsCoreItems)
     .filter((p): p is Item => p !== null)
@@ -226,9 +226,9 @@ export function serializeSalaryCertificateField(value: number | null | typeof SA
 export function deserializeSalaryCertificateField(value: string | null): number | null | typeof SALARY_CERTIFICATE_UNCLEAR {
   if (value === null) return null
   if (value === SALARY_CERTIFICATE_UNCLEAR) return SALARY_CERTIFICATE_UNCLEAR
-  const wert = Number(value)
-  if (!isValidSalaryCertificateAmount(wert)) {
+  const rawValue = Number(value)
+  if (!isValidSalaryCertificateAmount(rawValue)) {
     throw new Error(`lohnausweis: stored value "${value}" is neither offen, unklar, nor a valid amount`)
   }
-  return wert
+  return rawValue
 }

@@ -77,8 +77,8 @@ export class TakeoverService {
     if (pensionSource !== null) await copy('rente', ['rentenart' as const, ...PENSION_FIELDS], pensionSource)
     if (capitalSource !== null) await copy('kapital', ['kapitalertraege' as const], capitalSource)
     for (const property of rentalSources) {
-      const kopie = await this.rentalRepository.create(userId, taxYear)
-      await copy('vermietung', RENTAL_FIELDS, property, kopie.id)
+      const copied = await this.rentalRepository.create(userId, taxYear)
+      await copy('vermietung', RENTAL_FIELDS, property, copied.id)
     }
 
     await this.yearTakeoverRepository.record(userId, taxYear, lastYear)

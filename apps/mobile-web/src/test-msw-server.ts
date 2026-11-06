@@ -25,14 +25,14 @@ import {
   getDeadlinesControllerGetDeadlinesMockHandler,
   getTakeoverControllerGetMockHandler,
   getConfirmationControllerGetMockHandler,
-  getKinderControllerListMockHandler,
+  getChildrenControllerListMockHandler,
   getLinkControllerGetMockHandler,
   getOwlModeControllerGetSettingMockHandler,
   getOwlModeControllerGetCardsMockHandler,
   getAssistantsControllerListConnectedMockHandler,
 } from '@steuereule/api-client/msw'
 import { SALARY_CERTIFICATE_FIELDS } from '@steuereule/core'
-import type { ProfileResponseDto, AuthCapabilitiesDto, DeviceCodeResponseDto, InterviewStateDto, LstbResponseDto, ChSalaryCertificateResponseDto, PensionResponseDto, KapitalResponseDto, RentalResponseDto, DeadlinesResponseDto, RolloverResponseDto, ConfirmationResponseDto, KinderResponseDto, LinkResponseDto, OwlSettingResponseDto, OwlCardsResponseDto, CommuteResponseDto } from '@steuereule/api-client'
+import type { ProfileResponseDto, AuthCapabilitiesDto, DeviceCodeResponseDto, InterviewStateDto, LstbResponseDto, ChSalaryCertificateResponseDto, PensionResponseDto, KapitalResponseDto, RentalResponseDto, DeadlinesResponseDto, RolloverResponseDto, ConfirmationResponseDto, ChildrenResponseDto, LinkResponseDto, OwlSettingResponseDto, OwlCardsResponseDto, CommuteResponseDto } from '@steuereule/api-client'
 
 export const EMPTY_PROFILE_RESPONSE: ProfileResponseDto = {
   firstName: null,
@@ -190,7 +190,7 @@ export const EMPTY_TAKEOVER_RESPONSE: RolloverResponseDto = {
 /** Default `GET .../bestaetigung` answer (REQ-032): nothing to confirm — no hint, nothing blocked. */
 export const EMPTY_CONFIRMATION_RESPONSE: ConfirmationResponseDto = { annexes: [] }
 
-export const EMPTY_KINDER_RESPONSE: KinderResponseDto = {
+export const EMPTY_KINDER_RESPONSE: ChildrenResponseDto = {
   kinder: [],
   count: 0,
   childBenefitSum: 0,
@@ -257,7 +257,7 @@ export const server = setupServer(
   http.post('*/v1/steuerjahre/:jahr/vermietung/objekte', () => HttpResponse.json(EMPTY_RENTAL_RESPONSE, { status: 201 })),
   http.put('*/v1/steuerjahre/:jahr/vermietung/objekte/:objektId/adresse', () => HttpResponse.json(EMPTY_RENTAL_RESPONSE, { status: 200 })),
   http.put('*/v1/steuerjahre/:jahr/vermietung/objekte/:objektId/:feld', () => HttpResponse.json(EMPTY_RENTAL_RESPONSE, { status: 200 })),
-  getKinderControllerListMockHandler(EMPTY_KINDER_RESPONSE),
+  getChildrenControllerListMockHandler(EMPTY_KINDER_RESPONSE),
   getLinkControllerGetMockHandler(EMPTY_LINK_RESPONSE),
   http.put('*/v1/steuerjahre/:jahr/kopplung', () => HttpResponse.json(EMPTY_LINK_RESPONSE, { status: 200 })),
   http.put('*/v1/steuerjahre/:jahr/kopplung/person-b', () => HttpResponse.json(EMPTY_LINK_RESPONSE, { status: 200 })),

@@ -221,7 +221,7 @@ export class ChildResponseDto {
   totalClaimEur?: string | null
 }
 
-export class KinderResponseDto {
+export class ChildrenResponseDto {
   @ApiProperty({ type: [ChildResponseDto] })
   kinder!: ChildResponseDto[]
 

@@ -7,7 +7,7 @@ import {
   deserializeSalaryCertificateField,
   gatedIncomeTypes,
   crossBorderChItems,
-  grenzgaengerStand,
+  crossBorderFold,
   isValidSalaryCertificateAmount,
   serializeSalaryCertificateField,
   actualRate,
@@ -152,7 +152,7 @@ export class ChSalaryCertificateService {
       })
       items = chItems.map(itemToDto)
       foldStatus = statusToDto(
-        grenzgaengerStand({
+        crossBorderFold({
           salaryCertificate: values,
           ...(saeule3aChf !== undefined ? { saeule3aChf } : {}),
           ...(krankenkasseChf !== undefined ? { krankenkasseChf } : {}),

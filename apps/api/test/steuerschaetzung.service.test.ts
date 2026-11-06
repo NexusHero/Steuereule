@@ -72,7 +72,7 @@ describe('SteuerschaetzungService', () => {
 
     const status = await service.getState('u', 2025)
 
-    expect(status).toMatchObject({ kind: 'offen', fehlt: ['lohnsteuer', 'sozialversicherung'] })
+    expect(status).toMatchObject({ kind: 'offen', missing: ['lohnsteuer', 'sozialversicherung'] })
   })
 
   it('never estimates a married person as single — it asks for the joint return first (ADR-0054)', async () => {
@@ -80,7 +80,7 @@ describe('SteuerschaetzungService', () => {
     interview.seed('u', 2025, { ...EMPLOYED, familienstand: 'Verheiratet' })
     lstb.seed({ userId: 'u', taxYear: 2025, bruttoarbeitslohn: '45000', lohnsteuer: '6100', sozialversicherung: '9200' })
 
-    expect(await service.getState('u', 2025)).toEqual({ kind: 'offen', fehlt: ['veranlagungsart'] })
+    expect(await service.getState('u', 2025)).toEqual({ kind: 'offen', missing: ['veranlagungsart'] })
   })
 
   it("estimates a couple with the splitting tariff from both spouses' certificates and the rental surplus", async () => {
@@ -120,7 +120,7 @@ describe('SteuerschaetzungService', () => {
 
     const status = await service.getState('a', 2025)
     expect(status).toMatchObject({ kind: 'offen' })
-    expect(status.kind === 'offen' && status.fehlt.some((f) => f.startsWith('personB.'))).toBe(true)
+    expect(status.kind === 'offen' && status.missing.some((f) => f.startsWith('personB.'))).toBe(true)
   })
 
   it('estimates a Grenzgänger from the Lohnausweis against the Quellensteuer', async () => {
@@ -165,6 +165,6 @@ describe('SteuerschaetzungService', () => {
 
     const status = await service.getState('u', 2025)
 
-    expect(status).toEqual({ kind: 'offen', fehlt: ['pk-obligatorium'] })
+    expect(status).toEqual({ kind: 'offen', missing: ['pk-obligatorium'] })
   })
 })

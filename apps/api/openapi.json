@@ -1468,7 +1468,7 @@
     },
     "/v1/steuerjahre/{jahr}/kinder": {
       "get": {
-        "operationId": "KinderController_list",
+        "operationId": "ChildrenController_list",
         "parameters": [
           {
             "name": "jahr",
@@ -1486,7 +1486,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/KinderResponseDto"
+                  "$ref": "#/components/schemas/ChildrenResponseDto"
                 }
               }
             }
@@ -1500,7 +1500,7 @@
         ]
       },
       "post": {
-        "operationId": "KinderController_create",
+        "operationId": "ChildrenController_create",
         "parameters": [
           {
             "name": "jahr",
@@ -1528,7 +1528,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/KinderResponseDto"
+                  "$ref": "#/components/schemas/ChildrenResponseDto"
                 }
               }
             }
@@ -1544,7 +1544,7 @@
     },
     "/v1/steuerjahre/{jahr}/kinder/{id}": {
       "put": {
-        "operationId": "KinderController_update",
+        "operationId": "ChildrenController_update",
         "parameters": [
           {
             "name": "id",
@@ -1581,7 +1581,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/KinderResponseDto"
+                  "$ref": "#/components/schemas/ChildrenResponseDto"
                 }
               }
             }
@@ -1595,7 +1595,7 @@
         ]
       },
       "delete": {
-        "operationId": "KinderController_delete",
+        "operationId": "ChildrenController_delete",
         "parameters": [
           {
             "name": "id",
@@ -1622,7 +1622,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/KinderResponseDto"
+                  "$ref": "#/components/schemas/ChildrenResponseDto"
                 }
               }
             }
@@ -5178,7 +5178,7 @@
             "type": "boolean",
             "description": "True when church tax applies but is not part of the estimate."
           },
-          "fehlt": {
+          "missing": {
             "type": "array",
             "items": {
               "type": "string"
@@ -5348,7 +5348,7 @@
           "careEur"
         ]
       },
-      "KinderResponseDto": {
+      "ChildrenResponseDto": {
         "type": "object",
         "properties": {
           "kinder": {

@@ -3,7 +3,7 @@ import { AuditModule } from '../audit/audit.module.js'
 import { AssessmentModule } from '../bescheid/bescheid.module.js'
 import { InterviewModule } from '../interview/interview.module.js'
 import { KiModule } from '../ki/ki.module.js'
-import { KinderModule } from '../kinder/kinder.module.js'
+import { ChildrenModule } from '../kinder/kinder.module.js'
 import { PrismaModule } from '../prisma/prisma.module.js'
 import { OwlModeController } from './eulen-modus.controller.js'
 import { OwlModeService } from './eulen-modus.service.js'
@@ -17,7 +17,7 @@ import {
 } from './eulen-modus.repository.prisma.js'
 
 @Module({
-  imports: [PrismaModule, AuditModule, KinderModule, InterviewModule, AssessmentModule, KiModule],
+  imports: [PrismaModule, AuditModule, ChildrenModule, InterviewModule, AssessmentModule, KiModule],
   controllers: [OwlModeController],
   providers: [
     OwlModeService,

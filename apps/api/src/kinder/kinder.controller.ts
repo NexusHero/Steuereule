@@ -5,20 +5,20 @@ import { RequiresAccount } from '../auth/requires-account.guard.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
 import { ParseTaxYearPipe } from '../cockpit/parse-steuerjahr.pipe.js'
 import { ChildrenService } from './kinder.service.js'
-import { CreateChildDto, KinderResponseDto, UpdateChildDto } from './dto/kind.dto.js'
+import { CreateChildDto, ChildrenResponseDto, UpdateChildDto } from './dto/kind.dto.js'
 
 @ApiTags('kinder')
 @Controller('v1/steuerjahre')
 @UseGuards(UserContextGuard)
-export class KinderController {
+export class ChildrenController {
   constructor(@Inject(ChildrenService) private readonly kinderService: ChildrenService) {}
 
   @Get(':jahr/kinder')
   @RequiresAccount()
   @ApiParam({ name: 'jahr', type: Number, example: 2025 })
-  @ApiOkResponse({ type: KinderResponseDto })
+  @ApiOkResponse({ type: ChildrenResponseDto })
   @ApiUnauthorizedResponse({ description: 'Requires account.' })
-  list(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number): Promise<KinderResponseDto> {
+  list(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number): Promise<ChildrenResponseDto> {
     return this.kinderService.list(userId, year)
   }
 
@@ -26,13 +26,13 @@ export class KinderController {
   @RequiresAccount()
   @ApiParam({ name: 'jahr', type: Number, example: 2025 })
   @ApiBody({ type: CreateChildDto })
-  @ApiCreatedResponse({ type: KinderResponseDto })
+  @ApiCreatedResponse({ type: ChildrenResponseDto })
   @ApiUnauthorizedResponse({ description: 'Requires account.' })
   create(
     @CurrentUser() userId: string,
     @Param('jahr', ParseTaxYearPipe) year: number,
     @Body() dto: CreateChildDto,
-  ): Promise<KinderResponseDto> {
+  ): Promise<ChildrenResponseDto> {
     return this.kinderService.create(userId, year, dto)
   }
 
@@ -42,14 +42,14 @@ export class KinderController {
   @ApiParam({ name: 'jahr', type: Number, example: 2025 })
   @ApiParam({ name: 'id', type: String, example: 'uuid' })
   @ApiBody({ type: UpdateChildDto })
-  @ApiOkResponse({ type: KinderResponseDto })
+  @ApiOkResponse({ type: ChildrenResponseDto })
   @ApiUnauthorizedResponse({ description: 'Requires account.' })
   update(
     @CurrentUser() userId: string,
     @Param('jahr', ParseTaxYearPipe) year: number,
     @Param('id') id: string,
     @Body() dto: UpdateChildDto,
-  ): Promise<KinderResponseDto> {
+  ): Promise<ChildrenResponseDto> {
     return this.kinderService.update(userId, year, id, dto)
   }
 
@@ -58,13 +58,13 @@ export class KinderController {
   @RequiresAccount()
   @ApiParam({ name: 'jahr', type: Number, example: 2025 })
   @ApiParam({ name: 'id', type: String, example: 'uuid' })
-  @ApiOkResponse({ type: KinderResponseDto })
+  @ApiOkResponse({ type: ChildrenResponseDto })
   @ApiUnauthorizedResponse({ description: 'Requires account.' })
   delete(
     @CurrentUser() userId: string,
     @Param('jahr', ParseTaxYearPipe) year: number,
     @Param('id') id: string,
-  ): Promise<KinderResponseDto> {
+  ): Promise<ChildrenResponseDto> {
     return this.kinderService.delete(userId, year, id)
   }
 }

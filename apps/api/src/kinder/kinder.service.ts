@@ -5,7 +5,7 @@ import { AuditService } from '../audit/audit.service.js'
 import { CROSS_BORDER_SALARY_STATEMENT_REPOSITORY, type CrossBorderSalaryStatementRepository } from '../ch-lohnausweis/ch-lohnausweis.repository.js'
 import { PARTNER_COUPLING_REPOSITORY, type PartnerCouplingRepository } from '../kopplung/kopplung.repository.js'
 import { CHILD_REPOSITORY, type ChildRecord, type ChildRepository } from './kind.repository.js'
-import type { CreateChildDto, KinderResponseDto, ChildResponseDto, UpdateChildDto } from './dto/kind.dto.js'
+import type { CreateChildDto, ChildrenResponseDto, ChildResponseDto, UpdateChildDto } from './dto/kind.dto.js'
 
 function toChildData(r: ChildRecord, effectiveSwissEur: number | null): ChildData {
   return {
@@ -77,7 +77,7 @@ export class ChildrenService {
     return Math.round(perChildChf * rate)
   }
 
-  private async toResponse(userId: string, records: ChildRecord[], year: number): Promise<KinderResponseDto> {
+  private async toResponse(userId: string, records: ChildRecord[], year: number): Promise<ChildrenResponseDto> {
     const perChildEur = await this.getPerChildSwissAllowanceEur(userId, year, records.length)
     const data = records.map((r) => {
       const effectiveSwissEur = r.swissFamilyAllowanceEur ? Number(r.swissFamilyAllowanceEur) : perChildEur
@@ -97,7 +97,7 @@ export class ChildrenService {
     }
   }
 
-  async list(userId: string, taxYear: number): Promise<KinderResponseDto> {
+  async list(userId: string, taxYear: number): Promise<ChildrenResponseDto> {
     const records = await this.repository.listForUserAndYear(userId, taxYear)
     if (records.length > 0) {
       await this.auditService.append({ userId, action: 'READ', resource: 'kind' })
@@ -105,7 +105,7 @@ export class ChildrenService {
     return this.toResponse(userId, records, taxYear)
   }
 
-  async create(userId: string, taxYear: number, dto: CreateChildDto): Promise<KinderResponseDto> {
+  async create(userId: string, taxYear: number, dto: CreateChildDto): Promise<ChildrenResponseDto> {
     if (!isValidChildBirthDate(dto.geburtsdatum, taxYear)) {
       throw new InvalidInputError('GEBURTSDATUM_INVALID', 'The birth date is not valid for this tax year.')
     }
@@ -114,7 +114,7 @@ export class ChildrenService {
     return this.toResponse(userId, records, taxYear)
   }
 
-  async update(userId: string, taxYear: number, id: string, dto: UpdateChildDto): Promise<KinderResponseDto> {
+  async update(userId: string, taxYear: number, id: string, dto: UpdateChildDto): Promise<ChildrenResponseDto> {
     if (dto.geburtsdatum && !isValidChildBirthDate(dto.geburtsdatum, taxYear)) {
       throw new InvalidInputError('GEBURTSDATUM_INVALID', 'The birth date is not valid for this tax year.')
     }
@@ -126,7 +126,7 @@ export class ChildrenService {
     return this.toResponse(userId, records, taxYear)
   }
 
-  async delete(userId: string, taxYear: number, id: string): Promise<KinderResponseDto> {
+  async delete(userId: string, taxYear: number, id: string): Promise<ChildrenResponseDto> {
     const deleted = await this.repository.delete(userId, taxYear, id)
     if (!deleted) {
       throw new NotFoundError('KIND_NOT_FOUND', `Kind "${id}" does not exist for this account.`)

@@ -200,8 +200,9 @@ function SalaryCertificateStep({
 }: {
   readonly salaryCertificate: ChSalaryCertificateResponseDto
   readonly taxYear: number
-  readonly onSetField: (vars: { jahr: number; feld: string; data: PutSalaryCertificateFieldDto }) => void
-  readonly onSetExchangeRate: (vars: { jahr: number; data: { month: string; rate: number; mode: 'amtlich' | 'tatsaechlich' } }) => void
+  // the generated client's own variables, so the path parameters follow the spec
+  readonly onSetField: (vars: Parameters<ReturnType<typeof useChSalaryCertificateControllerSetField>['mutate']>[0]) => void
+  readonly onSetExchangeRate: (vars: Parameters<ReturnType<typeof useChSalaryCertificateControllerSetExchangeRate>['mutate']>[0]) => void
   readonly onSetNGre: (data: PutNGreDto) => void
   readonly onSetProvision: (data: PutProvisionDto) => void
   readonly onDone: () => void
@@ -215,7 +216,7 @@ function SalaryCertificateStep({
   const [rate, setRate] = useState(salaryCertificate.exchangeRate !== null && salaryCertificate.exchangeRate !== undefined ? String(salaryCertificate.exchangeRate.rate) : '')
 
   const amountFields = SALARY_CERTIFICATE_FIELDS.filter((f) => f.kind === 'chf-betrag')
-  const stand = salaryCertificate.foldStatus
+  const foldStatus = salaryCertificate.foldStatus
   const status = salaryCertificate.status
 
   return (
@@ -264,20 +265,20 @@ function SalaryCertificateStep({
         <Text style={styles.help}>{tr('grenzgaenger.lohnausweis.status.offen')}</Text>
       )}
 
-      {stand !== null ? (
+      {foldStatus !== null ? (
         <Card variant="default" style={styles.statusCard}>
           <Text style={styles.sectionTitle}>{tr('grenzgaenger.lohnausweis.stand.label')}</Text>
           <Text style={styles.standRow}>
-            {tr('grenzgaenger.lohnausweis.stand.einnahmen')}: {formatEuro(stand.einnahmen)}
+            {tr('grenzgaenger.lohnausweis.stand.einnahmen')}: {formatEuro(foldStatus.einnahmen)}
           </Text>
           <Text style={styles.standRow}>
-            {tr('grenzgaenger.lohnausweis.stand.vorsorgeaufwand')}: {formatEuro(stand.vorsorgeaufwand)}
+            {tr('grenzgaenger.lohnausweis.stand.vorsorgeaufwand')}: {formatEuro(foldStatus.vorsorgeaufwand)}
           </Text>
           <Text style={styles.standRow}>
-            {tr('grenzgaenger.lohnausweis.stand.anrechnung')}: {formatEuro(stand.anrechnung)}
+            {tr('grenzgaenger.lohnausweis.stand.anrechnung')}: {formatEuro(foldStatus.anrechnung)}
           </Text>
-          {stand.kind === 'offen' && stand.openItems !== undefined ? (
-            <Text style={styles.help}>{tr('grenzgaenger.lohnausweis.stand.offen', { count: stand.openItems })}</Text>
+          {foldStatus.kind === 'offen' && foldStatus.openItems !== undefined ? (
+            <Text style={styles.help}>{tr('grenzgaenger.lohnausweis.stand.offen', { count: foldStatus.openItems })}</Text>
           ) : null}
         </Card>
       ) : null}

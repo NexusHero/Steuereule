@@ -35,7 +35,7 @@ export class TaxEstimateDto {
   churchTaxOpen?: boolean
 
   @ApiProperty({ type: [String], required: false })
-  fehlt?: string[]
+  missing?: string[]
 
   @ApiProperty({ type: String, required: false, enum: ['nur-angestellte', 'verheiratet', 'besondere-lebenslage', 'jahr-ohne-tarif'] })
   reason?: string

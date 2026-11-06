@@ -12,7 +12,7 @@ import {
   correctVersion,
   serializeAssessmentField,
   remainingAppealDays,
-  type Fassung,
+  type FilingVersion,
 } from './bescheid'
 import type { EmployeeFacts } from './angestellte'
 
@@ -88,7 +88,7 @@ describe('bescheidBerechnungsstand — the merged computed side', () => {
 })
 
 describe('korrigiereFassung — Kopie der eingereichten Fassung + Diff (ADR-009)', () => {
-  const submitted: Fassung = { number: 1, einnahmen: 50_000, vorsorgeaufwand: 4_000, anrechnung: 1_000 }
+  const submitted: FilingVersion = { number: 1, einnahmen: 50_000, vorsorgeaufwand: 4_000, anrechnung: 1_000 }
 
   it('produces Fassung n+1 as a copy, leaving Fassung n unverändert', () => {
     const { version, deviations } = correctVersion(submitted, [{ field: 'einnahmen', newAmount: 52_000 }])

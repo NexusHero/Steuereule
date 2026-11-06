@@ -9,7 +9,7 @@ import {
   appealDeadlineEnd,
   gatedIncomeTypes,
   reconcileAssessment,
-  grenzgaengerStand,
+  crossBorderFold,
   isAssessmentTransitionAllowed,
   isAppealReason,
   isValidAssessmentAmount,
@@ -100,7 +100,7 @@ export class AssessmentService {
 
     let ch: CalculationStatus | null = null
     if (exchangeRate !== null && status !== null) {
-      ch = grenzgaengerStand({
+      ch = crossBorderFold({
         salaryCertificate: salaryCertificateValuesFromRecord(chRecord),
         ...(saeule3aChf !== undefined ? { saeule3aChf } : {}),
         ...(krankenkasseChf !== undefined ? { krankenkasseChf } : {}),
@@ -119,8 +119,8 @@ export class AssessmentService {
     const assessmentDate = record?.assessmentDate ?? null
     const appealReason = record?.appealReason ?? null
 
-    const stand = await this.calculationStatus(userId, taxYear)
-    const reconciliation = reconcileAssessment(values, stand)
+    const foldStatus = await this.calculationStatus(userId, taxYear)
+    const reconciliation = reconcileAssessment(values, foldStatus)
 
     const deadlineEnd = assessmentDate === null ? null : appealDeadlineEnd(assessmentDate)
     const remainingDays =

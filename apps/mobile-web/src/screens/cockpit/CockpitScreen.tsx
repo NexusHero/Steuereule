@@ -178,8 +178,8 @@ function refundText(estimate: TaxEstimateDto | null, tr: TFunction<typeof APP_NS
   if (estimate === null) return tr('cockpit.hero.refundLater')
   if (estimate.kind === 'offen') {
     // A married person is never estimated as single (ADR-0054): say what unlocks the couple's estimate.
-    if (estimate.fehlt?.includes('veranlagungsart')) return tr('cockpit.erstattung.veranlagungsartOffen')
-    return tr('cockpit.erstattung.offen', { count: estimate.fehlt?.length ?? 0 })
+    if (estimate.missing?.includes('veranlagungsart')) return tr('cockpit.erstattung.veranlagungsartOffen')
+    return tr('cockpit.erstattung.offen', { count: estimate.missing?.length ?? 0 })
   }
   if (estimate.kind === 'nicht-moeglich') return tr(`cockpit.erstattung.grund.${estimate.reason ?? 'unbekannt'}`)
   const { from, to } = estimate.result ?? { from: 0, to: 0 }
@@ -191,7 +191,7 @@ function refundText(estimate: TaxEstimateDto | null, tr: TFunction<typeof APP_NS
   return tr('cockpit.erstattung.offenesErgebnis', { nachzahlung: amount(from), erstattung: amount(to) })
 }
 
-function Appbar({ year, onYearChange, isRefreshing }: { readonly year: number; readonly onYearChange: (jahr: number) => void; readonly isRefreshing: boolean }) {
+function Appbar({ year, onYearChange, isRefreshing }: { readonly year: number; readonly onYearChange: (selectedYear: number) => void; readonly isRefreshing: boolean }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
@@ -563,7 +563,7 @@ function makeStyles(t: UiTheme) {
     marginTop: t.space.s2,
     marginBottom: t.space.s3,
   }
-  const offenePosten: TextStyle = {
+  const openItemCount: TextStyle = {
     color: t.color.nachtText,
     opacity: 0.85,
     fontFamily: t.font.text,
@@ -591,5 +591,5 @@ function makeStyles(t: UiTheme) {
     marginBottom: t.space.s2,
   }
 
-  return { screen, wideScreen, appbar, appbarTitleReihe: appbarTitleRow, appbarTitle, jahrReihe: yearRow, uebernahmeZeile: takeoverRow, uebernahmeZeileText: takeoverRowText, heading, help, cta, secondaryCta, emptyBlock, heroLabel, heroValue, openItems, offenePosten, refundLater, gatedHeading, gatedBody }
+  return { screen, wideScreen, appbar, appbarTitleReihe: appbarTitleRow, appbarTitle, jahrReihe: yearRow, uebernahmeZeile: takeoverRow, uebernahmeZeileText: takeoverRowText, heading, help, cta, secondaryCta, emptyBlock, heroLabel, heroValue, openItems, offenePosten: openItemCount, refundLater, gatedHeading, gatedBody }
 }

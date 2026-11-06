@@ -32,7 +32,7 @@ import { RENTAL_REPOSITORY, type RentalRepository } from '../vermietung/vermietu
 
 export type TaxEstimateStatus =
   | (Extract<TaxEstimate, { kind: 'spanne' }> & { readonly churchTaxOpen: boolean; readonly jointAssessment?: boolean })
-  | { readonly kind: 'offen'; readonly fehlt: readonly string[] }
+  | { readonly kind: 'offen'; readonly missing: readonly string[] }
   | { readonly kind: 'nicht-moeglich'; readonly reason: string }
 
 const CH_FOREIGN = 'Ja, in die Schweiz'
@@ -78,12 +78,12 @@ export class TaxEstimateService {
       const exchangeRate = exchangeRateFromRecord(chRecord)
       const status = crossBorderStatusFromAnswers(answers)
       const nGre = chRecord?.nGre
-      const fehlt = [
+      const missing = [
         ...(status === null ? ['grenzgaenger-status'] : openSalaryCertificateFields(values, status)),
         ...(exchangeRate === null ? ['wechselkurs'] : []),
         ...(nGre?.pkArbeitnehmerChf === null || nGre?.pkArbeitnehmerChf === undefined ? ['pk-obligatorium'] : []),
       ]
-      if (fehlt.length > 0 || exchangeRate === null || nGre === undefined) return { kind: 'offen', fehlt }
+      if (missing.length > 0 || exchangeRate === null || nGre === undefined) return { kind: 'offen', missing }
       const rows = annexNGreAmounts({
         grossWageChf: values['bruttolohn-total'] ?? 0,
         familienzulagenChf: Number(nGre.familienzulagenChf ?? 0),
@@ -115,8 +115,8 @@ export class TaxEstimateService {
     }
 
     const state = wageTaxCertificateStatus(wageTaxCertificateDataFrom(lstbRecord))
-    if (state.kind === 'unvollstaendig') return { kind: 'offen', fehlt: [...state.open, ...state.unclear] }
-    if (state.kind === 'widerspruch') return { kind: 'offen', fehlt: state.conflicts.map((w) => w.kind) }
+    if (state.kind === 'unvollstaendig') return { kind: 'offen', missing: [...state.open, ...state.unclear] }
+    if (state.kind === 'widerspruch') return { kind: 'offen', missing: state.conflicts.map((w) => w.kind) }
     return withChurchTax(
       taxEstimateEmployee({
         year,
@@ -135,14 +135,14 @@ export class TaxEstimateService {
   /** ADR-0054: a couple's estimate from both spouses' figures — only once the joint return for the year is set up. */
   private async marriedCouple(userId: string, year: number): Promise<TaxEstimateStatus> {
     const link = this.link ? await this.link.findByUserAndYear(userId, year) : null
-    if (!link || link.filingType !== 'zusammen') return { kind: 'offen', fehlt: ['veranlagungsart'] }
+    if (!link || link.filingType !== 'zusammen') return { kind: 'offen', missing: ['veranlagungsart'] }
     const [a, b] = await Promise.all([
       this.income(link.personAUserId, year),
       link.personBUserId ? this.income(link.personBUserId, year) : Promise.resolve(null),
     ])
-    const fehlt = [...(a?.kind === 'offen' ? a.fehlt : []), ...(b?.kind === 'offen' ? b.fehlt.map((f) => `personB.${f}`) : [])]
-    if (a === null) fehlt.unshift('einkommen')
-    if (fehlt.length > 0 || a?.kind !== 'ok') return { kind: 'offen', fehlt }
+    const missing = [...(a?.kind === 'offen' ? a.missing : []), ...(b?.kind === 'offen' ? b.missing.map((f) => `personB.${f}`) : [])]
+    if (a === null) missing.unshift('einkommen')
+    if (missing.length > 0 || a?.kind !== 'ok') return { kind: 'offen', missing }
     const [kinder, properties, sdA, sdB] = await Promise.all([
       this.kinder ? this.kinder.listForUserAndYear(link.personAUserId, year) : Promise.resolve([]),
       this.rental ? this.rental.listForUserAndYear(link.personAUserId, year) : Promise.resolve([]),
@@ -169,7 +169,7 @@ export class TaxEstimateService {
   private async income(
     userId: string,
     year: number,
-  ): Promise<{ kind: 'ok'; spouse: SpouseIncome; donations: number } | { kind: 'offen'; fehlt: string[] } | null> {
+  ): Promise<{ kind: 'ok'; spouse: SpouseIncome; donations: number } | { kind: 'offen'; missing: string[] } | null> {
     const [lstbRecord, interviewRows, chRecord, path] = await Promise.all([
       this.lstb.findForUserAndYear(userId, year),
       this.interview.findAllForUserAndYear(userId, year),
@@ -183,9 +183,9 @@ export class TaxEstimateService {
       const values = salaryCertificateValuesFromRecord(chRecord)
       const exchangeRate = exchangeRateFromRecord(chRecord)
       const nGre = chRecord.nGre
-      const fehlt = [...(exchangeRate === null ? ['wechselkurs'] : []), ...(nGre.pkArbeitnehmerChf === null ? ['pk-obligatorium'] : [])]
-      if (values['bruttolohn-total'] === undefined) fehlt.unshift('bruttolohn-total')
-      if (fehlt.length > 0 || exchangeRate === null) return { kind: 'offen', fehlt }
+      const missing = [...(exchangeRate === null ? ['wechselkurs'] : []), ...(nGre.pkArbeitnehmerChf === null ? ['pk-obligatorium'] : [])]
+      if (values['bruttolohn-total'] === undefined) missing.unshift('bruttolohn-total')
+      if (missing.length > 0 || exchangeRate === null) return { kind: 'offen', missing }
       const rows = annexNGreAmounts({
         grossWageChf: values['bruttolohn-total'] ?? 0,
         familienzulagenChf: Number(nGre.familienzulagenChf ?? 0),
@@ -217,8 +217,8 @@ export class TaxEstimateService {
     }
     if (lstbRecord === null) return null
     const state = wageTaxCertificateStatus(wageTaxCertificateDataFrom(lstbRecord))
-    if (state.kind === 'unvollstaendig') return { kind: 'offen', fehlt: [...state.open, ...state.unclear] }
-    if (state.kind === 'widerspruch') return { kind: 'offen', fehlt: state.conflicts.map((w) => w.kind) }
+    if (state.kind === 'unvollstaendig') return { kind: 'offen', missing: [...state.open, ...state.unclear] }
+    if (state.kind === 'widerspruch') return { kind: 'offen', missing: state.conflicts.map((w) => w.kind) }
     return {
       kind: 'ok',
       donations: numbers.donations,

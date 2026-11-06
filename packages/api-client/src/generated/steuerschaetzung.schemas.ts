@@ -42,7 +42,7 @@ export interface TaxEstimateDto {
   anrechnung?: number;
   /** True when church tax applies but is not part of the estimate. */
   churchTaxOpen?: boolean;
-  fehlt?: string[];
+  missing?: string[];
   reason?: TaxEstimateDtoReason;
 }
 

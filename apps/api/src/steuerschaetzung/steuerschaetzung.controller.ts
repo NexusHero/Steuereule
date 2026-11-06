@@ -20,6 +20,6 @@ export class TaxEstimateController {
   @ApiUnauthorizedResponse({ description: 'Guest session — this endpoint requires a signed-in account.' })
   async get(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number): Promise<TaxEstimateDto> {
     const status = await this.service.getState(userId, year)
-    return { ...status, ...('fehlt' in status ? { fehlt: [...status.fehlt] } : {}) } as TaxEstimateDto
+    return { ...status, ...('missing' in status ? { missing: [...status.missing] } : {}) } as TaxEstimateDto
   }
 }

@@ -122,11 +122,11 @@ export function serializePensionField(state: PensionFieldState): string | null {
 export function deserializePensionField(value: string | null): PensionFieldState {
   if (value === null) return { kind: 'offen' }
   if (value === PENSION_UNCLEAR) return { kind: 'unklar' }
-  const wert = Number(value)
-  if (!isValidPensionAmount(wert)) {
+  const rawValue = Number(value)
+  if (!isValidPensionAmount(rawValue)) {
     throw new Error(`rente: stored value "${value}" is neither offen, unklar, nor a valid integer`)
   }
-  return { kind: 'erfasst', value: wert }
+  return { kind: 'erfasst', value: rawValue }
 }
 
 function taxableShareSource(rentenbeginnJahr: number, percent: number): string {
@@ -154,13 +154,13 @@ export function pensionAsCoreLineItem(pension: PensionData): Item | null {
   }
 
   if (pension.alterBeiRentenbeginn.kind !== 'erfasst') return null
-  const prozent = incomePortionPercent(pension.alterBeiRentenbeginn.value)
-  if (prozent === null) return null
+  const percentValue = incomePortionPercent(pension.alterBeiRentenbeginn.value)
+  if (percentValue === null) return null
   return {
     id: 'rente',
     incomeType: 'Rente',
-    amount: Math.round(jahresbetrag * (prozent / 100)),
-    source: { kind: 'regel', rule: incomeShareSource(pension.alterBeiRentenbeginn.value, prozent) },
+    amount: Math.round(jahresbetrag * (percentValue / 100)),
+    source: { kind: 'regel', rule: incomeShareSource(pension.alterBeiRentenbeginn.value, percentValue) },
   }
 }
 

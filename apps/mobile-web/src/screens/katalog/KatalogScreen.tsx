@@ -142,10 +142,10 @@ function IntegerFollowUp({ step, onAnswer }: { readonly step: EntryStepId; reado
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
   const [text, setText] = useState('')
-  const wert = integerFrom(text)
+  const rawValue = integerFrom(text)
 
   function submit() {
-    if (wert !== null) onAnswer(String(wert))
+    if (rawValue !== null) onAnswer(String(rawValue))
   }
 
   return (
@@ -159,7 +159,7 @@ function IntegerFollowUp({ step, onAnswer }: { readonly step: EntryStepId; reado
         onSubmit={submit}
         accessibilityLabel={`${tr(`katalog.questions.${step}`, { defaultValue: step })} (${tr('katalog.amountPlaceholder')})`}
       />
-      <Button onPress={submit} disabled={wert === null} style={styles.weiter}>
+      <Button onPress={submit} disabled={rawValue === null} style={styles.weiter}>
         {tr('katalog.weiter')}
       </Button>
     </View>

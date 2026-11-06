@@ -82,8 +82,8 @@ export interface WriteAttempt {
 export function decideWriting({ key, existing, currentValue, newValue, provenance }: WriteAttempt): WriteDecision {
   if (provenance.kind === 'nutzer') return { kind: 'schreiben', marking: null }
   if (newValue === currentValue) return { kind: 'unveraendert' }
-  const geschuetzt = existing === null ? currentValue !== null : existing.confirmed
-  if (geschuetzt) {
+  const isProtected = existing === null ? currentValue !== null : existing.confirmed
+  if (isProtected) {
     const basis: Marking = existing ?? { key, provenance: { kind: 'nutzer' }, confirmed: true, value: currentValue, proposal: null }
     return { kind: 'vorschlag', marking: { ...basis, proposal: { value: newValue, provenance } } }
   }

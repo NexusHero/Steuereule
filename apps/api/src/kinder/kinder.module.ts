@@ -3,14 +3,14 @@ import { AuditModule } from '../audit/audit.module.js'
 import { ChSalaryCertificateModule } from '../ch-lohnausweis/ch-lohnausweis.module.js'
 import { LinkModule } from '../kopplung/kopplung.module.js'
 import { PrismaModule } from '../prisma/prisma.module.js'
-import { KinderController } from './kinder.controller.js'
+import { ChildrenController } from './kinder.controller.js'
 import { ChildrenService } from './kinder.service.js'
 import { CHILD_REPOSITORY } from './kind.repository.js'
 import { PrismaChildRepository } from './kind.repository.prisma.js'
 
 @Module({
   imports: [PrismaModule, AuditModule, ChSalaryCertificateModule, LinkModule],
-  controllers: [KinderController],
+  controllers: [ChildrenController],
   providers: [
     ChildrenService,
     {
@@ -20,4 +20,4 @@ import { PrismaChildRepository } from './kind.repository.prisma.js'
   ],
   exports: [ChildrenService, CHILD_REPOSITORY],
 })
-export class KinderModule {}
+export class ChildrenModule {}

@@ -191,7 +191,7 @@ function AssessmentFieldEditor({
   )
 }
 
-function DateEditor({ date, onSet }: { readonly date: string | null; readonly onSet: (datum: string | null) => void }) {
+function DateEditor({ date, onSet }: { readonly date: string | null; readonly onSet: (dateText: string | null) => void }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const s = makeStyles(t)

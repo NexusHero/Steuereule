@@ -101,23 +101,23 @@ export async function renderForms(fieldSet: FieldSet, values: FieldValues, optio
 const isAmount = (field: Field) => field.art === 'euro' || field.art === 'euroCent'
 
 function place(font: PDFFont, field: Field, value: string | true): { text: string; x: number; baseline: number } | null {
-  const { x, y, breite: width, hoehe: amount } = field.kasten
-  const baseline = y + (amount - font.heightAtSize(FONT_SIZE, { descender: false })) / 2
+  const { x, y, breite, hoehe } = field.kasten
+  const baseline = y + (hoehe - font.heightAtSize(FONT_SIZE, { descender: false })) / 2
   const text = value === true ? 'X' : value
   const textWidth = font.widthOfTextAtSize(text, FONT_SIZE)
   const links = field.textAb ?? x + INNER_PADDING
-  const right = x + width - INNER_PADDING
-  const start = value === true ? x + (width - textWidth) / 2 : isAmount(field) ? right - textWidth : links
-  if (start < x || start + textWidth > x + width) return null
+  const right = x + breite - INNER_PADDING
+  const start = value === true ? x + (breite - textWidth) / 2 : isAmount(field) ? right - textWidth : links
+  if (start < x || start + textWidth > x + breite) return null
   return { text, x: start, baseline }
 }
 
 function setFormField(form: PDFForm, page: PDFPage, font: PDFFont, field: Field, name: string, value: string | true): void {
-  const { x, y, breite: width, hoehe: amount } = field.kasten
+  const { x, y, breite, hoehe } = field.kasten
   const links = field.textAb ?? x
   const textField = form.createTextField(name)
   textField.setText(value === true ? 'X' : value)
   textField.setAlignment(value === true ? TextAlignment.Center : isAmount(field) ? TextAlignment.Right : TextAlignment.Left)
-  textField.addToPage(page, { x: links, y, width: x + width - links, height: amount, font, textColor: rgb(0, 0, 0), borderWidth: 0 })
+  textField.addToPage(page, { x: links, y, width: x + breite - links, height: hoehe, font, textColor: rgb(0, 0, 0), borderWidth: 0 })
   textField.setFontSize(FONT_SIZE)
 }

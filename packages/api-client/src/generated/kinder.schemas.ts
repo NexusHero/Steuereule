@@ -108,7 +108,7 @@ export interface ChildResponseDto {
   totalClaimEur?: string | null;
 }
 
-export interface KinderResponseDto {
+export interface ChildrenResponseDto {
   kinder: ChildResponseDto[];
   count: number;
   childBenefitSum: number;

@@ -68,7 +68,7 @@ export function assessmentCalculationStatus(employee: EmployeeFacts, ch: Calcula
 }
 
 /** An IMMUTABLE snapshot of a submitted filing — the "Fassung". */
-export interface Fassung {
+export interface FilingVersion {
   readonly number: number
   readonly einnahmen: number
   readonly vorsorgeaufwand: number
@@ -91,11 +91,11 @@ export interface VersionDeviation {
 }
 
 export interface CorrectionResult {
-  readonly version: Fassung
+  readonly version: FilingVersion
   readonly deviations: readonly VersionDeviation[]
 }
 
-export function correctVersion(previousVersion: Fassung, corrections: readonly VersionCorrection[]): CorrectionResult {
+export function correctVersion(previousVersion: FilingVersion, corrections: readonly VersionCorrection[]): CorrectionResult {
   const version: { number: number; einnahmen: number; vorsorgeaufwand: number; anrechnung: number } = {
     ...previousVersion,
     number: previousVersion.number + 1,
@@ -173,9 +173,9 @@ export function serializeAssessmentField(field: AssessmentField, value: number |
 export function deserializeAssessmentField(field: AssessmentField, value: string | null): number | null | typeof ASSESSMENT_UNCLEAR {
   if (value === null) return null
   if (value === ASSESSMENT_UNCLEAR) return ASSESSMENT_UNCLEAR
-  const wert = Number(value)
-  if (!isValidAssessmentAmount(field, wert)) {
+  const rawValue = Number(value)
+  if (!isValidAssessmentAmount(field, rawValue)) {
     throw new Error(`bescheid: stored value "${value}" for "${field}" is neither offen, unklar, nor a valid amount`)
   }
-  return wert
+  return rawValue
 }
