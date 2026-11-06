@@ -90,7 +90,7 @@ export function MasterDataScreen({ onBack, taxYear = CURRENT_TAX_YEAR, onRecordP
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
       <View style={styles.appbar}>
-        <Pressable accessibilityRole="button" accessibilityLabel={t('stammdaten.back')} onPress={onBack} style={styles.backButton}>
+        <Pressable accessibilityRole="button" accessibilityLabel={t('stammdaten.back')} onPress={onBack} style={styles.backButton} testID="stammdaten-zurueck">
           <Text style={styles.backGlyph}>←</Text>
         </Pressable>
         <Text style={styles.appbarTitle}>{t('stammdaten.title')}</Text>
@@ -113,7 +113,7 @@ export function MasterDataScreen({ onBack, taxYear = CURRENT_TAX_YEAR, onRecordP
       <Feld label={t('stammdaten.familienstand')}>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.s2 }}>
           {MARITAL_STATUSES.map((status_) => (
-            <Chip key={status_} active={form.familienstand === status_} onPress={() => set({ familienstand: status_ })}>
+            <Chip key={status_} active={form.familienstand === status_} onPress={() => set({ familienstand: status_ })} testID={`stammdaten-familienstand-${status_}`}>
               {t(`stammdaten.familienstaende.${status_}`)}
             </Chip>
           ))}
@@ -126,7 +126,7 @@ export function MasterDataScreen({ onBack, taxYear = CURRENT_TAX_YEAR, onRecordP
         <Text style={styles.hint}>{t('stammdaten.religionHinweis')}</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.s2, marginTop: theme.space.s2 }}>
           {RELIGION_KEYS.map((key) => (
-            <Chip key={key} active={form.religion === key} onPress={() => set({ religion: key })}>
+            <Chip key={key} active={form.religion === key} onPress={() => set({ religion: key })} testID={`stammdaten-religion-${key}`}>
               {t(`stammdaten.religionen.${key}`)}
             </Chip>
           ))}
@@ -257,7 +257,7 @@ function TaxYearLinkSection({
       ) : filingType === 'zusammen' ? (
         <View>
           {current?.invitationCode ? (
-            <Text style={{ fontFamily: theme.font.mono, fontSize: theme.size.xs, color: theme.color.tinte2, marginBottom: theme.space.s2 }}>
+            <Text style={{ fontFamily: theme.font.mono, fontSize: theme.size.xs, color: theme.color.tinte2, marginBottom: theme.space.s2 }} testID="kopplung-code-anzeige">
               {invitationNotice(current.invitationCode, current.invitationCodeValidUntil ?? null)}
             </Text>
           ) : null}

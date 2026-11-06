@@ -122,6 +122,7 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
               onChange={set('firstName')}
               placeholder={tr('onboarding.step1.firstNamePlaceholder')}
               accessibilityLabel={tr('onboarding.step1.firstNameLabel')}
+              testID="onboarding-vorname"
             />
           </Feld>
           <Feld label={tr('onboarding.step1.lastNameLabel')}>
@@ -130,6 +131,7 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
               onChange={set('lastName')}
               placeholder={tr('onboarding.step1.lastNamePlaceholder')}
               accessibilityLabel={tr('onboarding.step1.lastNameLabel')}
+              testID="onboarding-nachname"
             />
           </Feld>
         </>
@@ -151,6 +153,7 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
               onChange={(value) => set('steuerId')(formatTaxId(value))}
               placeholder={tr('onboarding.step2.placeholder')}
               accessibilityLabel={tr('onboarding.step2.fieldLabel')}
+              testID="onboarding-steuerid"
             />
           </Feld>
           <View style={styles.counterRow}>
@@ -177,13 +180,14 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
               onChange={(value) => set('taxNumber')(sanitizeTaxNumberInput(value))}
               placeholder={tr('onboarding.step3.placeholder')}
               accessibilityLabel={tr('onboarding.step3.fieldLabel')}
+              testID="onboarding-steuernummer"
             />
           </Feld>
           <Chip onPress={() => { set('taxNumber')(''); next(); }}>{tr('onboarding.step3.later')}</Chip>
         </>
       ) : null}
 
-      <Button onPress={next} disabled={!stepOk[step]} style={styles.cta}>
+      <Button onPress={next} disabled={!stepOk[step]} style={styles.cta} testID="onboarding-weiter">
         {tr('onboarding.weiter')}
       </Button>
     </ScrollView>

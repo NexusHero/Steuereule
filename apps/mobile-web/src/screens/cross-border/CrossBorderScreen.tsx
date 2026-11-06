@@ -140,8 +140,8 @@ function ChInterviewStep({ stepId, onAnswer, bp, onBack }: { readonly stepId: En
           {tr('grenzgaenger.interview.wohnsitz.titleAfter')}
         </Text>
         <Text style={styles.help}>{tr('grenzgaenger.interview.wohnsitz.help')}</Text>
-        <Option onPress={() => onAnswer('ch-wohnsitz', 'Deutschland')}>{tr('grenzgaenger.interview.wohnsitz.deutschland')}</Option>
-        <Option onPress={() => onAnswer('ch-wohnsitz', 'Schweiz')}>{tr('grenzgaenger.interview.wohnsitz.schweiz')}</Option>
+        <Option onPress={() => onAnswer('ch-wohnsitz', 'Deutschland')} testID="ch-wohnsitz-deutschland">{tr('grenzgaenger.interview.wohnsitz.deutschland')}</Option>
+        <Option onPress={() => onAnswer('ch-wohnsitz', 'Schweiz')} testID="ch-wohnsitz-schweiz">{tr('grenzgaenger.interview.wohnsitz.schweiz')}</Option>
       </ScrollView>
     )
   }
@@ -242,6 +242,7 @@ function SalaryCertificateStep({
       {rateError ? <Text style={styles.help}>{tr('grenzgaenger.lohnausweis.wechselkurs.fehlt')}</Text> : null}
       <Button
         variant="ghost"
+        testID="ch-wechselkurs-speichern"
         onPress={() => {
           const n = Number(rate.trim().replace(',', '.'))
           const valid = /^\d{4}-(0[1-9]|1[0-2])$/.test(month) && Number.isFinite(n) && n > 0
@@ -283,7 +284,7 @@ function SalaryCertificateStep({
         </Card>
       ) : null}
 
-      <Button onPress={onDone} style={styles.cta}>
+      <Button onPress={onDone} style={styles.cta} testID="ch-lohnausweis-weiter">
         {tr('grenzgaenger.lohnausweis.done')}
       </Button>
     </ScrollView>

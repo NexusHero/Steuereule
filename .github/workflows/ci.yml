@@ -781,6 +781,12 @@ jobs:
         # (`showDeviceQr={false}` on the embedded LoginScreen), so this step spends no shared
         # rate-limit bucket and its order relative to every other step in this job is unconstrained.
         run: node e2e/session/cold-start-session-failure.mjs
+      - name: S10 Full UI acceptance gate (4 personas, real stack, headless Chromium)
+        # Drives all 4 personas (Lena Hoffmann, Markus Brenner, Julia Brenner, Thomas & Sabine Weber)
+        # end-to-end through the real UI (Registration -> Interview -> Form masks -> Cockpit estimate
+        # -> Printout check), verifying expected PDF form field values against reference values.
+        # Attaches via ATTACH mode exactly like every other step in this job.
+        run: node e2e/scenarios/four-scenarios.mjs
       - name: API log (on failure)
         if: failure()
         run: cat /tmp/steuereule-api-cross-origin.log || true

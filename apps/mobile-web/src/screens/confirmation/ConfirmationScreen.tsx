@@ -98,7 +98,7 @@ export function ConfirmationScreen({ year, onBack, onOpenScreen }: ConfirmationS
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
       <View style={styles.appbar}>
-        <Pressable accessibilityRole="button" accessibilityLabel={t('bestaetigung.back')} onPress={onBack} style={styles.backButton}>
+        <Pressable accessibilityRole="button" accessibilityLabel={t('bestaetigung.back')} onPress={onBack} style={styles.backButton} testID="bestaetigung-zurueck">
           <Text style={styles.backGlyph}>←</Text>
         </Pressable>
         <Text style={styles.appbarTitle}>{t('bestaetigung.title', { jahr: year })}</Text>

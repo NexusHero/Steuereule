@@ -154,13 +154,13 @@ function WorkdaysForm({
       </View>
 
       <Feld label={tr('arbeitstage.urlaub')}>
-        <Input type="numeric" mono value={vacation} onChange={setVacation} placeholder={tr('arbeitstage.daysPlaceholder')} accessibilityLabel={tr('arbeitstage.urlaub')} />
+        <Input type="numeric" mono value={vacation} onChange={setVacation} placeholder={tr('arbeitstage.daysPlaceholder')} accessibilityLabel={tr('arbeitstage.urlaub')} testID="arbeitstage-urlaub" />
       </Feld>
       <Feld label={tr('arbeitstage.krank')}>
-        <Input type="numeric" mono value={sick} onChange={setSick} placeholder={tr('arbeitstage.daysPlaceholder')} accessibilityLabel={tr('arbeitstage.krank')} />
+        <Input type="numeric" mono value={sick} onChange={setSick} placeholder={tr('arbeitstage.daysPlaceholder')} accessibilityLabel={tr('arbeitstage.krank')} testID="arbeitstage-krank" />
       </Feld>
       <Feld label={tr('arbeitstage.homeoffice')}>
-        <Input type="numeric" mono value={homeOffice} onChange={setHomeOffice} placeholder={tr('arbeitstage.daysPlaceholder')} accessibilityLabel={tr('arbeitstage.homeoffice')} />
+        <Input type="numeric" mono value={homeOffice} onChange={setHomeOffice} placeholder={tr('arbeitstage.daysPlaceholder')} accessibilityLabel={tr('arbeitstage.homeoffice')} testID="arbeitstage-homeoffice" />
       </Feld>
 
       <Feld label={tr('arbeitstage.feiertage.region')}>
@@ -180,6 +180,7 @@ function WorkdaysForm({
           onChange={setPublicHolidays}
           placeholder={tr('arbeitstage.daysPlaceholder')}
           accessibilityLabel={tr('arbeitstage.feiertage.anzahl')}
+          testID="arbeitstage-feiertage-anzahl"
         />
       </Feld>
 
@@ -187,25 +188,25 @@ function WorkdaysForm({
 
       <Text style={styles.sectionLabel}>{tr('arbeitstage.weg.titel')}</Text>
       <Feld label={tr('arbeitstage.weg.km')}>
-        <Input type="numeric" mono value={km} onChange={setKm} placeholder="0" accessibilityLabel={tr('arbeitstage.weg.km')} />
+        <Input type="numeric" mono value={km} onChange={setKm} placeholder="0" accessibilityLabel={tr('arbeitstage.weg.km')} testID="arbeitstage-km" />
       </Feld>
       <Feld label={tr('arbeitstage.weg.verkehrsmittel')}>
         <View style={styles.weekdayRow}>
           {TRANSPORT.map((means) => (
-            <Chip key={means} active={transport === means} onPress={() => setTransport(means)}>
+            <Chip key={means} active={transport === means} onPress={() => setTransport(means)} testID={`arbeitstage-transport-${means}`}>
               {tr(`arbeitstage.weg.mittel.${means}`)}
             </Chip>
           ))}
         </View>
       </Feld>
       <Feld label={tr('arbeitstage.weg.arbeitsort')}>
-        <Input type="text" value={workplace} onChange={setWorkplace} placeholder={tr('arbeitstage.weg.arbeitsortPlaceholder')} accessibilityLabel={tr('arbeitstage.weg.arbeitsort')} />
+        <Input type="text" value={workplace} onChange={setWorkplace} placeholder={tr('arbeitstage.weg.arbeitsortPlaceholder')} accessibilityLabel={tr('arbeitstage.weg.arbeitsort')} testID="arbeitstage-arbeitsort" />
       </Feld>
       {allowance !== null ? <Row label={tr('arbeitstage.weg.pauschale')} value={formatEuro(allowance)} /> : null}
 
       {error ? <Text style={styles.widerspruchBody}>{tr('arbeitstage.speichernFehler')}</Text> : null}
 
-      <Button onPress={next} disabled={save.isPending || result?.kind === 'widerspruch'} style={styles.cta}>
+      <Button onPress={next} disabled={save.isPending || result?.kind === 'widerspruch'} style={styles.cta} testID="arbeitstage-weiter">
         {tr('arbeitstage.weiter')}
       </Button>
     </ScrollView>

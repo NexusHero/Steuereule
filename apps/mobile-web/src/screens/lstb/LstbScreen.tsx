@@ -83,6 +83,7 @@ export function LstbScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YE
           key={field.id}
           label={tr(field.labelKey)}
           state={response[field.id]}
+          testID={`lstb-${field.id}`}
           onRecorded={(value) => send(field.id, { kind: 'erfasst', value })}
           onUnclear={() => send(field.id, { kind: 'unklar' })}
         />
@@ -90,7 +91,7 @@ export function LstbScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YE
 
       <StateNotice response={response} />
 
-      <Button onPress={onDone} style={styles.cta}>
+      <Button onPress={onDone} style={styles.cta} testID="lstb-weiter">
         {tr('lstb.weiter')}
       </Button>
     </ScrollView>
@@ -100,11 +101,13 @@ export function LstbScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YE
 function LstbFieldEditor({
   label,
   state,
+  testID,
   onRecorded,
   onUnclear,
 }: {
   readonly label: string
   readonly state: LstbFieldDto
+  readonly testID?: string
   readonly onRecorded: (value: number) => void
   readonly onUnclear: () => void
 }) {
@@ -132,6 +135,7 @@ function LstbFieldEditor({
           onSubmit={commit}
           onBlur={commit}
           accessibilityLabel={`${label} (${tr('lstb.feld.placeholder')})`}
+          {...(testID ? { testID } : {})}
         />
         <Pressable accessibilityRole="button" onPress={onUnclear} style={s.unklarButton}>
           <Text style={state.kind === 'unklar' ? s.unklarActive : s.unklarLabel}>{tr('lstb.feld.unklar')}</Text>

@@ -49,7 +49,7 @@ export function OnboardingSummary({ profile, onSubmit, onEdit, isSubmitting, sub
         </Text>
       ) : null}
 
-      <Button onPress={onSubmit} disabled={isSubmitting} style={styles.cta}>
+      <Button onPress={onSubmit} disabled={isSubmitting} style={styles.cta} testID="onboarding-speichern">
         {isSubmitting ? tr('onboarding.summary.submitting') : tr('onboarding.summary.cta')}
       </Button>
       <Button variant="ghost" onPress={onEdit} disabled={isSubmitting} style={styles.summaryEditButton}>

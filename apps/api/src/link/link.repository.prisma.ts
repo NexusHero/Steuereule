@@ -72,8 +72,8 @@ export class PrismaLinkRepository implements PartnerCouplingRepository {
         update: {
           personBUserId: data.personBUserId,
           filingType: data.filingType,
-          ...(data.invitationCode !== undefined && { einladungsCode: data.invitationCode }),
-          ...(data.invitationCodeValidUntil !== undefined && { einladungsCodeGueltigBis: data.invitationCodeValidUntil }),
+          ...(data.invitationCode !== undefined && { invitationCode: data.invitationCode }),
+          ...(data.invitationCodeValidUntil !== undefined && { invitationCodeValidUntil: data.invitationCodeValidUntil }),
         },
       }),
       this.prisma.taxDataAccessLog.create({

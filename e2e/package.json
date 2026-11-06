@@ -13,7 +13,8 @@
     "return-visit": "node session/return-visit.mjs",
     "cold-start-session-failure": "node session/cold-start-session-failure.mjs",
     "no-client-persistence": "node storage/no-client-persistence.mjs",
-    "prod-deploy-smoke": "node prod-deploy/run.mjs"
+    "prod-deploy-smoke": "node prod-deploy/run.mjs",
+    "four-scenarios": "node scenarios/four-scenarios.mjs"
   },
   "devDependencies": {
     "playwright-core": "1.56.1"
