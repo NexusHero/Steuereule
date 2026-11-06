@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 
-export class VerbundenerAssistentDto {
+export class ConnectedAssistantDto {
   @ApiProperty({ type: String, example: 'client_xyz123' })
   clientId!: string
 
@@ -8,10 +8,10 @@ export class VerbundenerAssistentDto {
   name!: string
 
   @ApiProperty({ type: String, example: '2026-11-03T18:00:00.000Z' })
-  verbundenSeit!: string
+  linkedSince!: string
 
   @ApiPropertyOptional({ type: String, example: '2026-11-03T19:30:00.000Z', nullable: true })
-  zuletztGenutzt!: string | null
+  lastUsed!: string | null
 }
 
 export class OauthClientInfoDto {
@@ -28,11 +28,7 @@ export class OauthClientInfoDto {
   icon?: string | null
 }
 
-export class RevokeAssistentResponseDto {
+export class RevokeAssistantResponseDto {
   @ApiProperty({ type: Boolean, example: true })
   success!: boolean
 }
-
-export type ConnectedAssistantDto = VerbundenerAssistentDto
-export type RevokeAssistantResponseDto = RevokeAssistentResponseDto
-

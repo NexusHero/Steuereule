@@ -21,8 +21,8 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
-  VeranlagungsartenvergleichControllerGetVergleichParams,
-  VeranlagungsartenvergleichDto
+  FilingTypeComparisonControllerGetComparisonParams,
+  FilingTypeComparisonDto
 } from './veranlagungsartenvergleich.schemas';
 
 import { httpClient } from '../http-client';
@@ -47,20 +47,20 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   return result;
 };
 
-export type veranlagungsartenvergleichControllerGetVergleichResponse200 = {
-  data: VeranlagungsartenvergleichDto | null
+export type filingTypeComparisonControllerGetComparisonResponse200 = {
+  data: FilingTypeComparisonDto | null
   status: 200
 }
 
-export type veranlagungsartenvergleichControllerGetVergleichResponseSuccess = (veranlagungsartenvergleichControllerGetVergleichResponse200) & {
+export type filingTypeComparisonControllerGetComparisonResponseSuccess = (filingTypeComparisonControllerGetComparisonResponse200) & {
   headers: Headers;
 };
 ;
 
-export type veranlagungsartenvergleichControllerGetVergleichResponse = (veranlagungsartenvergleichControllerGetVergleichResponseSuccess)
+export type filingTypeComparisonControllerGetComparisonResponse = (filingTypeComparisonControllerGetComparisonResponseSuccess)
 
-export const getVeranlagungsartenvergleichControllerGetVergleichUrl = (jahr: number,
-    params?: VeranlagungsartenvergleichControllerGetVergleichParams,) => {
+export const getFilingTypeComparisonControllerGetComparisonUrl = (jahr: number,
+    params?: FilingTypeComparisonControllerGetComparisonParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -75,10 +75,10 @@ export const getVeranlagungsartenvergleichControllerGetVergleichUrl = (jahr: num
   return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/veranlagungsartenvergleich?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/veranlagungsartenvergleich`
 }
 
-export const veranlagungsartenvergleichControllerGetVergleich = async (jahr: number,
-    params?: VeranlagungsartenvergleichControllerGetVergleichParams, options?: RequestInit): Promise<veranlagungsartenvergleichControllerGetVergleichResponse> => {
+export const filingTypeComparisonControllerGetComparison = async (jahr: number,
+    params?: FilingTypeComparisonControllerGetComparisonParams, options?: RequestInit): Promise<filingTypeComparisonControllerGetComparisonResponse> => {
 
-  return httpClient<veranlagungsartenvergleichControllerGetVergleichResponse>(getVeranlagungsartenvergleichControllerGetVergleichUrl(jahr,params),
+  return httpClient<filingTypeComparisonControllerGetComparisonResponse>(getFilingTypeComparisonControllerGetComparisonUrl(jahr,params),
   {
     ...options,
     method: 'GET'
@@ -91,72 +91,72 @@ export const veranlagungsartenvergleichControllerGetVergleich = async (jahr: num
 
 
 
-export const getVeranlagungsartenvergleichControllerGetVergleichQueryKey = (jahr: number,
-    params?: VeranlagungsartenvergleichControllerGetVergleichParams,) => {
+export const getFilingTypeComparisonControllerGetComparisonQueryKey = (jahr: number,
+    params?: FilingTypeComparisonControllerGetComparisonParams,) => {
     return [
     `/v1/steuerjahre/${jahr}/veranlagungsartenvergleich`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getVeranlagungsartenvergleichControllerGetVergleichQueryOptions = <TData = Awaited<ReturnType<typeof veranlagungsartenvergleichControllerGetVergleich>>, TError = unknown>(jahr: number,
-    params?: VeranlagungsartenvergleichControllerGetVergleichParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof veranlagungsartenvergleichControllerGetVergleich>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export const getFilingTypeComparisonControllerGetComparisonQueryOptions = <TData = Awaited<ReturnType<typeof filingTypeComparisonControllerGetComparison>>, TError = unknown>(jahr: number,
+    params?: FilingTypeComparisonControllerGetComparisonParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof filingTypeComparisonControllerGetComparison>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getVeranlagungsartenvergleichControllerGetVergleichQueryKey(jahr,params);
+  const queryKey =  queryOptions?.queryKey ?? getFilingTypeComparisonControllerGetComparisonQueryKey(jahr,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof veranlagungsartenvergleichControllerGetVergleich>>> = ({ signal }) => veranlagungsartenvergleichControllerGetVergleich(jahr,params, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof filingTypeComparisonControllerGetComparison>>> = ({ signal }) => filingTypeComparisonControllerGetComparison(jahr,params, { signal, ...requestOptions });
 
 
 
 
 
-   return  { queryKey, queryFn, enabled: jahr !== null && jahr !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof veranlagungsartenvergleichControllerGetVergleich>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+   return  { queryKey, queryFn, enabled: jahr !== null && jahr !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof filingTypeComparisonControllerGetComparison>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
-export type VeranlagungsartenvergleichControllerGetVergleichQueryResult = NonNullable<Awaited<ReturnType<typeof veranlagungsartenvergleichControllerGetVergleich>>>
-export type VeranlagungsartenvergleichControllerGetVergleichQueryError = unknown
+export type FilingTypeComparisonControllerGetComparisonQueryResult = NonNullable<Awaited<ReturnType<typeof filingTypeComparisonControllerGetComparison>>>
+export type FilingTypeComparisonControllerGetComparisonQueryError = unknown
 
 
-export function useVeranlagungsartenvergleichControllerGetVergleich<TData = Awaited<ReturnType<typeof veranlagungsartenvergleichControllerGetVergleich>>, TError = unknown>(
+export function useFilingTypeComparisonControllerGetComparison<TData = Awaited<ReturnType<typeof filingTypeComparisonControllerGetComparison>>, TError = unknown>(
  jahr: number,
-    params: undefined |  VeranlagungsartenvergleichControllerGetVergleichParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof veranlagungsartenvergleichControllerGetVergleich>>, TError, TData>> & Pick<
+    params: undefined |  FilingTypeComparisonControllerGetComparisonParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof filingTypeComparisonControllerGetComparison>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof veranlagungsartenvergleichControllerGetVergleich>>,
+          Awaited<ReturnType<typeof filingTypeComparisonControllerGetComparison>>,
           TError,
-          Awaited<ReturnType<typeof veranlagungsartenvergleichControllerGetVergleich>>
+          Awaited<ReturnType<typeof filingTypeComparisonControllerGetComparison>>
         > , 'initialData'
       >, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useVeranlagungsartenvergleichControllerGetVergleich<TData = Awaited<ReturnType<typeof veranlagungsartenvergleichControllerGetVergleich>>, TError = unknown>(
+export function useFilingTypeComparisonControllerGetComparison<TData = Awaited<ReturnType<typeof filingTypeComparisonControllerGetComparison>>, TError = unknown>(
  jahr: number,
-    params?: VeranlagungsartenvergleichControllerGetVergleichParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof veranlagungsartenvergleichControllerGetVergleich>>, TError, TData>> & Pick<
+    params?: FilingTypeComparisonControllerGetComparisonParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof filingTypeComparisonControllerGetComparison>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof veranlagungsartenvergleichControllerGetVergleich>>,
+          Awaited<ReturnType<typeof filingTypeComparisonControllerGetComparison>>,
           TError,
-          Awaited<ReturnType<typeof veranlagungsartenvergleichControllerGetVergleich>>
+          Awaited<ReturnType<typeof filingTypeComparisonControllerGetComparison>>
         > , 'initialData'
       >, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useVeranlagungsartenvergleichControllerGetVergleich<TData = Awaited<ReturnType<typeof veranlagungsartenvergleichControllerGetVergleich>>, TError = unknown>(
+export function useFilingTypeComparisonControllerGetComparison<TData = Awaited<ReturnType<typeof filingTypeComparisonControllerGetComparison>>, TError = unknown>(
  jahr: number,
-    params?: VeranlagungsartenvergleichControllerGetVergleichParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof veranlagungsartenvergleichControllerGetVergleich>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+    params?: FilingTypeComparisonControllerGetComparisonParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof filingTypeComparisonControllerGetComparison>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 
-export function useVeranlagungsartenvergleichControllerGetVergleich<TData = Awaited<ReturnType<typeof veranlagungsartenvergleichControllerGetVergleich>>, TError = unknown>(
+export function useFilingTypeComparisonControllerGetComparison<TData = Awaited<ReturnType<typeof filingTypeComparisonControllerGetComparison>>, TError = unknown>(
  jahr: number,
-    params?: VeranlagungsartenvergleichControllerGetVergleichParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof veranlagungsartenvergleichControllerGetVergleich>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+    params?: FilingTypeComparisonControllerGetComparisonParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof filingTypeComparisonControllerGetComparison>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getVeranlagungsartenvergleichControllerGetVergleichQueryOptions(jahr,params,options)
+  const queryOptions = getFilingTypeComparisonControllerGetComparisonQueryOptions(jahr,params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

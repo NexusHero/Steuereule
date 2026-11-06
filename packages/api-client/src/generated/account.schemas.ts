@@ -46,13 +46,13 @@ export interface ExportProfileDto {
   updatedAt: string;
 }
 
-export type ExportTaxDataEntryDtoFelder = {[key: string]: string | number | boolean | null};
+export type ExportTaxDataEntryDtoFields = {[key: string]: string | number | boolean | null};
 
 export interface ExportTaxDataEntryDto {
-  bereich: string;
+  area: string;
   /** @nullable */
-  steuerjahr: number | null;
-  felder: ExportTaxDataEntryDtoFelder;
+  taxYear: number | null;
+  fields: ExportTaxDataEntryDtoFields;
 }
 
 export interface ExportAccessLogEntryDto {

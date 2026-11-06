@@ -48,7 +48,7 @@ describe('AccountExportService.assemble', () => {
   it('includes the caller’s stored tax data (Art. 15/20) — never a hard-coded empty set', async () => {
     const { service, accountIdentityRepository, taxDataExportRepository } = buildService()
     accountIdentityRepository.seed('user-1', ACCOUNT_IDENTITY)
-    const entry = { bereich: 'Kapitalerträge', steuerjahr: 2025, felder: { kapitalertraege: '1200' } }
+    const entry = { area: 'Kapitalerträge', taxYear: 2025, fields: { kapitalertraege: '1200' } }
     taxDataExportRepository.seed('user-1', [entry])
 
     const document = await service.assemble('user-1')

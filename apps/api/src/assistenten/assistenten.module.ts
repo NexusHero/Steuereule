@@ -1,20 +1,20 @@
 import { Module } from '@nestjs/common'
 import { PrismaModule } from '../prisma/prisma.module.js'
-import { AssistentenController } from './assistenten.controller.js'
-import { ASSISTENTEN_REPOSITORY } from './assistenten.repository.js'
-import { PrismaAssistentenRepository } from './assistenten.repository.prisma.js'
-import { AssistentenService } from './assistenten.service.js'
+import { AssistantsController } from './assistenten.controller.js'
+import { ASSISTANT_REPOSITORY } from './assistenten.repository.js'
+import { PrismaAssistantsRepository } from './assistenten.repository.prisma.js'
+import { AssistantsService } from './assistenten.service.js'
 
 @Module({
   imports: [PrismaModule],
-  controllers: [AssistentenController],
+  controllers: [AssistantsController],
   providers: [
-    AssistentenService,
+    AssistantsService,
     {
-      provide: ASSISTENTEN_REPOSITORY,
-      useClass: PrismaAssistentenRepository,
+      provide: ASSISTANT_REPOSITORY,
+      useClass: PrismaAssistantsRepository,
     },
   ],
-  exports: [AssistentenService, ASSISTENTEN_REPOSITORY],
+  exports: [AssistantsService, ASSISTANT_REPOSITORY],
 })
-export class AssistentenModule {}
+export class AssistantsModule {}

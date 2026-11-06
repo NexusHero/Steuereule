@@ -25,9 +25,9 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
-  CreateKindDto,
-  KinderResponseDto,
-  UpdateKindDto
+  ChildrenResponseDto,
+  CreateChildDto,
+  UpdateChildDto
 } from './kinder.schemas';
 
 import { httpClient } from '../http-client';
@@ -52,26 +52,26 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   return result;
 };
 
-export type kinderControllerListResponse200 = {
-  data: KinderResponseDto
+export type childrenControllerListResponse200 = {
+  data: ChildrenResponseDto
   status: 200
 }
 
-export type kinderControllerListResponse401 = {
+export type childrenControllerListResponse401 = {
   data: void
   status: 401
 }
 
-export type kinderControllerListResponseSuccess = (kinderControllerListResponse200) & {
+export type childrenControllerListResponseSuccess = (childrenControllerListResponse200) & {
   headers: Headers;
 };
-export type kinderControllerListResponseError = (kinderControllerListResponse401) & {
+export type childrenControllerListResponseError = (childrenControllerListResponse401) & {
   headers: Headers;
 };
 
-export type kinderControllerListResponse = (kinderControllerListResponseSuccess | kinderControllerListResponseError)
+export type childrenControllerListResponse = (childrenControllerListResponseSuccess | childrenControllerListResponseError)
 
-export const getKinderControllerListUrl = (jahr: number,) => {
+export const getChildrenControllerListUrl = (jahr: number,) => {
 
 
 
@@ -79,9 +79,9 @@ export const getKinderControllerListUrl = (jahr: number,) => {
   return `/v1/steuerjahre/${jahr}/kinder`
 }
 
-export const kinderControllerList = async (jahr: number, options?: RequestInit): Promise<kinderControllerListResponse> => {
+export const childrenControllerList = async (jahr: number, options?: RequestInit): Promise<childrenControllerListResponse> => {
 
-  return httpClient<kinderControllerListResponse>(getKinderControllerListUrl(jahr),
+  return httpClient<childrenControllerListResponse>(getChildrenControllerListUrl(jahr),
   {
     ...options,
     method: 'GET'
@@ -94,66 +94,66 @@ export const kinderControllerList = async (jahr: number, options?: RequestInit):
 
 
 
-export const getKinderControllerListQueryKey = (jahr: number,) => {
+export const getChildrenControllerListQueryKey = (jahr: number,) => {
     return [
     `/v1/steuerjahre/${jahr}/kinder`
     ] as const;
     }
 
 
-export const getKinderControllerListQueryOptions = <TData = Awaited<ReturnType<typeof kinderControllerList>>, TError = void>(jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof kinderControllerList>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export const getChildrenControllerListQueryOptions = <TData = Awaited<ReturnType<typeof childrenControllerList>>, TError = void>(jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof childrenControllerList>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getKinderControllerListQueryKey(jahr);
+  const queryKey =  queryOptions?.queryKey ?? getChildrenControllerListQueryKey(jahr);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof kinderControllerList>>> = ({ signal }) => kinderControllerList(jahr, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof childrenControllerList>>> = ({ signal }) => childrenControllerList(jahr, { signal, ...requestOptions });
 
 
 
 
 
-   return  { queryKey, queryFn, enabled: jahr !== null && jahr !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof kinderControllerList>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+   return  { queryKey, queryFn, enabled: jahr !== null && jahr !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof childrenControllerList>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
-export type KinderControllerListQueryResult = NonNullable<Awaited<ReturnType<typeof kinderControllerList>>>
-export type KinderControllerListQueryError = void
+export type ChildrenControllerListQueryResult = NonNullable<Awaited<ReturnType<typeof childrenControllerList>>>
+export type ChildrenControllerListQueryError = void
 
 
-export function useKinderControllerList<TData = Awaited<ReturnType<typeof kinderControllerList>>, TError = void>(
- jahr: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof kinderControllerList>>, TError, TData>> & Pick<
+export function useChildrenControllerList<TData = Awaited<ReturnType<typeof childrenControllerList>>, TError = void>(
+ jahr: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof childrenControllerList>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof kinderControllerList>>,
+          Awaited<ReturnType<typeof childrenControllerList>>,
           TError,
-          Awaited<ReturnType<typeof kinderControllerList>>
+          Awaited<ReturnType<typeof childrenControllerList>>
         > , 'initialData'
       >, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useKinderControllerList<TData = Awaited<ReturnType<typeof kinderControllerList>>, TError = void>(
- jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof kinderControllerList>>, TError, TData>> & Pick<
+export function useChildrenControllerList<TData = Awaited<ReturnType<typeof childrenControllerList>>, TError = void>(
+ jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof childrenControllerList>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof kinderControllerList>>,
+          Awaited<ReturnType<typeof childrenControllerList>>,
           TError,
-          Awaited<ReturnType<typeof kinderControllerList>>
+          Awaited<ReturnType<typeof childrenControllerList>>
         > , 'initialData'
       >, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useKinderControllerList<TData = Awaited<ReturnType<typeof kinderControllerList>>, TError = void>(
- jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof kinderControllerList>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export function useChildrenControllerList<TData = Awaited<ReturnType<typeof childrenControllerList>>, TError = void>(
+ jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof childrenControllerList>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 
-export function useKinderControllerList<TData = Awaited<ReturnType<typeof kinderControllerList>>, TError = void>(
- jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof kinderControllerList>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export function useChildrenControllerList<TData = Awaited<ReturnType<typeof childrenControllerList>>, TError = void>(
+ jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof childrenControllerList>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getKinderControllerListQueryOptions(jahr,options)
+  const queryOptions = getChildrenControllerListQueryOptions(jahr,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
@@ -166,26 +166,26 @@ export function useKinderControllerList<TData = Awaited<ReturnType<typeof kinder
 
 
 
-export type kinderControllerCreateResponse201 = {
-  data: KinderResponseDto
+export type childrenControllerCreateResponse201 = {
+  data: ChildrenResponseDto
   status: 201
 }
 
-export type kinderControllerCreateResponse401 = {
+export type childrenControllerCreateResponse401 = {
   data: void
   status: 401
 }
 
-export type kinderControllerCreateResponseSuccess = (kinderControllerCreateResponse201) & {
+export type childrenControllerCreateResponseSuccess = (childrenControllerCreateResponse201) & {
   headers: Headers;
 };
-export type kinderControllerCreateResponseError = (kinderControllerCreateResponse401) & {
+export type childrenControllerCreateResponseError = (childrenControllerCreateResponse401) & {
   headers: Headers;
 };
 
-export type kinderControllerCreateResponse = (kinderControllerCreateResponseSuccess | kinderControllerCreateResponseError)
+export type childrenControllerCreateResponse = (childrenControllerCreateResponseSuccess | childrenControllerCreateResponseError)
 
-export const getKinderControllerCreateUrl = (jahr: number,) => {
+export const getChildrenControllerCreateUrl = (jahr: number,) => {
 
 
 
@@ -193,15 +193,15 @@ export const getKinderControllerCreateUrl = (jahr: number,) => {
   return `/v1/steuerjahre/${jahr}/kinder`
 }
 
-export const kinderControllerCreate = async (jahr: number,
-    createKindDto: CreateKindDto, options?: RequestInit): Promise<kinderControllerCreateResponse> => {
+export const childrenControllerCreate = async (jahr: number,
+    createChildDto: CreateChildDto, options?: RequestInit): Promise<childrenControllerCreateResponse> => {
 
-  return httpClient<kinderControllerCreateResponse>(getKinderControllerCreateUrl(jahr),
+  return httpClient<childrenControllerCreateResponse>(getChildrenControllerCreateUrl(jahr),
   {
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(createKindDto)
+    body: JSON.stringify(createChildDto)
   }
 );}
 
@@ -209,11 +209,11 @@ export const kinderControllerCreate = async (jahr: number,
 
 
 
-export const getKinderControllerCreateMutationOptions = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof kinderControllerCreate>>, TError,{jahr: number;data: CreateKindDto}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof kinderControllerCreate>>, TError,{jahr: number;data: CreateKindDto}, TContext> => {
+export const getChildrenControllerCreateMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof childrenControllerCreate>>, TError,{jahr: number;data: CreateChildDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof childrenControllerCreate>>, TError,{jahr: number;data: CreateChildDto}, TContext> => {
 
-const mutationKey = ['kinderControllerCreate'];
+const mutationKey = ['childrenControllerCreate'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -223,10 +223,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof kinderControllerCreate>>, {jahr: number;data: CreateKindDto}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof childrenControllerCreate>>, {jahr: number;data: CreateChildDto}> = (props) => {
           const {jahr,data} = props ?? {};
 
-          return  kinderControllerCreate(jahr,data,requestOptions)
+          return  childrenControllerCreate(jahr,data,requestOptions)
         }
 
 
@@ -236,41 +236,41 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type KinderControllerCreateMutationResult = NonNullable<Awaited<ReturnType<typeof kinderControllerCreate>>>
-    export type KinderControllerCreateMutationBody = CreateKindDto
-    export type KinderControllerCreateMutationError = void
+    export type ChildrenControllerCreateMutationResult = NonNullable<Awaited<ReturnType<typeof childrenControllerCreate>>>
+    export type ChildrenControllerCreateMutationBody = CreateChildDto
+    export type ChildrenControllerCreateMutationError = void
 
-    export const useKinderControllerCreate = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof kinderControllerCreate>>, TError,{jahr: number;data: CreateKindDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+    export const useChildrenControllerCreate = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof childrenControllerCreate>>, TError,{jahr: number;data: CreateChildDto}, TContext>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof kinderControllerCreate>>,
+        Awaited<ReturnType<typeof childrenControllerCreate>>,
         TError,
-        {jahr: number;data: CreateKindDto},
+        {jahr: number;data: CreateChildDto},
         TContext
       > => {
-      return useMutation(getKinderControllerCreateMutationOptions(options), queryClient);
+      return useMutation(getChildrenControllerCreateMutationOptions(options), queryClient);
     }
 
-export type kinderControllerUpdateResponse200 = {
-  data: KinderResponseDto
+export type childrenControllerUpdateResponse200 = {
+  data: ChildrenResponseDto
   status: 200
 }
 
-export type kinderControllerUpdateResponse401 = {
+export type childrenControllerUpdateResponse401 = {
   data: void
   status: 401
 }
 
-export type kinderControllerUpdateResponseSuccess = (kinderControllerUpdateResponse200) & {
+export type childrenControllerUpdateResponseSuccess = (childrenControllerUpdateResponse200) & {
   headers: Headers;
 };
-export type kinderControllerUpdateResponseError = (kinderControllerUpdateResponse401) & {
+export type childrenControllerUpdateResponseError = (childrenControllerUpdateResponse401) & {
   headers: Headers;
 };
 
-export type kinderControllerUpdateResponse = (kinderControllerUpdateResponseSuccess | kinderControllerUpdateResponseError)
+export type childrenControllerUpdateResponse = (childrenControllerUpdateResponseSuccess | childrenControllerUpdateResponseError)
 
-export const getKinderControllerUpdateUrl = (jahr: number,
+export const getChildrenControllerUpdateUrl = (jahr: number,
     id: string,) => {
 
 
@@ -279,16 +279,16 @@ export const getKinderControllerUpdateUrl = (jahr: number,
   return `/v1/steuerjahre/${jahr}/kinder/${id}`
 }
 
-export const kinderControllerUpdate = async (jahr: number,
+export const childrenControllerUpdate = async (jahr: number,
     id: string,
-    updateKindDto: UpdateKindDto, options?: RequestInit): Promise<kinderControllerUpdateResponse> => {
+    updateChildDto: UpdateChildDto, options?: RequestInit): Promise<childrenControllerUpdateResponse> => {
 
-  return httpClient<kinderControllerUpdateResponse>(getKinderControllerUpdateUrl(jahr,id),
+  return httpClient<childrenControllerUpdateResponse>(getChildrenControllerUpdateUrl(jahr,id),
   {
     ...options,
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(updateKindDto)
+    body: JSON.stringify(updateChildDto)
   }
 );}
 
@@ -296,11 +296,11 @@ export const kinderControllerUpdate = async (jahr: number,
 
 
 
-export const getKinderControllerUpdateMutationOptions = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof kinderControllerUpdate>>, TError,{jahr: number;id: string;data: UpdateKindDto}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof kinderControllerUpdate>>, TError,{jahr: number;id: string;data: UpdateKindDto}, TContext> => {
+export const getChildrenControllerUpdateMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof childrenControllerUpdate>>, TError,{jahr: number;id: string;data: UpdateChildDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof childrenControllerUpdate>>, TError,{jahr: number;id: string;data: UpdateChildDto}, TContext> => {
 
-const mutationKey = ['kinderControllerUpdate'];
+const mutationKey = ['childrenControllerUpdate'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -310,10 +310,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof kinderControllerUpdate>>, {jahr: number;id: string;data: UpdateKindDto}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof childrenControllerUpdate>>, {jahr: number;id: string;data: UpdateChildDto}> = (props) => {
           const {jahr,id,data} = props ?? {};
 
-          return  kinderControllerUpdate(jahr,id,data,requestOptions)
+          return  childrenControllerUpdate(jahr,id,data,requestOptions)
         }
 
 
@@ -323,41 +323,41 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type KinderControllerUpdateMutationResult = NonNullable<Awaited<ReturnType<typeof kinderControllerUpdate>>>
-    export type KinderControllerUpdateMutationBody = UpdateKindDto
-    export type KinderControllerUpdateMutationError = void
+    export type ChildrenControllerUpdateMutationResult = NonNullable<Awaited<ReturnType<typeof childrenControllerUpdate>>>
+    export type ChildrenControllerUpdateMutationBody = UpdateChildDto
+    export type ChildrenControllerUpdateMutationError = void
 
-    export const useKinderControllerUpdate = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof kinderControllerUpdate>>, TError,{jahr: number;id: string;data: UpdateKindDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+    export const useChildrenControllerUpdate = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof childrenControllerUpdate>>, TError,{jahr: number;id: string;data: UpdateChildDto}, TContext>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof kinderControllerUpdate>>,
+        Awaited<ReturnType<typeof childrenControllerUpdate>>,
         TError,
-        {jahr: number;id: string;data: UpdateKindDto},
+        {jahr: number;id: string;data: UpdateChildDto},
         TContext
       > => {
-      return useMutation(getKinderControllerUpdateMutationOptions(options), queryClient);
+      return useMutation(getChildrenControllerUpdateMutationOptions(options), queryClient);
     }
 
-export type kinderControllerDeleteResponse200 = {
-  data: KinderResponseDto
+export type childrenControllerDeleteResponse200 = {
+  data: ChildrenResponseDto
   status: 200
 }
 
-export type kinderControllerDeleteResponse401 = {
+export type childrenControllerDeleteResponse401 = {
   data: void
   status: 401
 }
 
-export type kinderControllerDeleteResponseSuccess = (kinderControllerDeleteResponse200) & {
+export type childrenControllerDeleteResponseSuccess = (childrenControllerDeleteResponse200) & {
   headers: Headers;
 };
-export type kinderControllerDeleteResponseError = (kinderControllerDeleteResponse401) & {
+export type childrenControllerDeleteResponseError = (childrenControllerDeleteResponse401) & {
   headers: Headers;
 };
 
-export type kinderControllerDeleteResponse = (kinderControllerDeleteResponseSuccess | kinderControllerDeleteResponseError)
+export type childrenControllerDeleteResponse = (childrenControllerDeleteResponseSuccess | childrenControllerDeleteResponseError)
 
-export const getKinderControllerDeleteUrl = (jahr: number,
+export const getChildrenControllerDeleteUrl = (jahr: number,
     id: string,) => {
 
 
@@ -366,10 +366,10 @@ export const getKinderControllerDeleteUrl = (jahr: number,
   return `/v1/steuerjahre/${jahr}/kinder/${id}`
 }
 
-export const kinderControllerDelete = async (jahr: number,
-    id: string, options?: RequestInit): Promise<kinderControllerDeleteResponse> => {
+export const childrenControllerDelete = async (jahr: number,
+    id: string, options?: RequestInit): Promise<childrenControllerDeleteResponse> => {
 
-  return httpClient<kinderControllerDeleteResponse>(getKinderControllerDeleteUrl(jahr,id),
+  return httpClient<childrenControllerDeleteResponse>(getChildrenControllerDeleteUrl(jahr,id),
   {
     ...options,
     method: 'DELETE'
@@ -382,11 +382,11 @@ export const kinderControllerDelete = async (jahr: number,
 
 
 
-export const getKinderControllerDeleteMutationOptions = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof kinderControllerDelete>>, TError,{jahr: number;id: string}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof kinderControllerDelete>>, TError,{jahr: number;id: string}, TContext> => {
+export const getChildrenControllerDeleteMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof childrenControllerDelete>>, TError,{jahr: number;id: string}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof childrenControllerDelete>>, TError,{jahr: number;id: string}, TContext> => {
 
-const mutationKey = ['kinderControllerDelete'];
+const mutationKey = ['childrenControllerDelete'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -396,10 +396,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof kinderControllerDelete>>, {jahr: number;id: string}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof childrenControllerDelete>>, {jahr: number;id: string}> = (props) => {
           const {jahr,id} = props ?? {};
 
-          return  kinderControllerDelete(jahr,id,requestOptions)
+          return  childrenControllerDelete(jahr,id,requestOptions)
         }
 
 
@@ -409,18 +409,18 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type KinderControllerDeleteMutationResult = NonNullable<Awaited<ReturnType<typeof kinderControllerDelete>>>
+    export type ChildrenControllerDeleteMutationResult = NonNullable<Awaited<ReturnType<typeof childrenControllerDelete>>>
 
-    export type KinderControllerDeleteMutationError = void
+    export type ChildrenControllerDeleteMutationError = void
 
-    export const useKinderControllerDelete = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof kinderControllerDelete>>, TError,{jahr: number;id: string}, TContext>, request?: SecondParameter<typeof httpClient>}
+    export const useChildrenControllerDelete = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof childrenControllerDelete>>, TError,{jahr: number;id: string}, TContext>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof kinderControllerDelete>>,
+        Awaited<ReturnType<typeof childrenControllerDelete>>,
         TError,
         {jahr: number;id: string},
         TContext
       > => {
-      return useMutation(getKinderControllerDeleteMutationOptions(options), queryClient);
+      return useMutation(getChildrenControllerDeleteMutationOptions(options), queryClient);
     }
 

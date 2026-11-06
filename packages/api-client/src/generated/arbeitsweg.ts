@@ -25,10 +25,10 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
-  ArbeitswegControllerGetParams,
-  ArbeitswegControllerPutParams,
-  ArbeitswegEingabenDto,
-  ArbeitswegResponseDto
+  CommuteControllerGetParams,
+  CommuteControllerPutParams,
+  CommuteInputsDto,
+  CommuteResponseDto
 } from './arbeitsweg.schemas';
 
 import { httpClient } from '../http-client';
@@ -53,27 +53,27 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   return result;
 };
 
-export type arbeitswegControllerGetResponse200 = {
-  data: ArbeitswegResponseDto
+export type commuteControllerGetResponse200 = {
+  data: CommuteResponseDto
   status: 200
 }
 
-export type arbeitswegControllerGetResponse401 = {
+export type commuteControllerGetResponse401 = {
   data: void
   status: 401
 }
 
-export type arbeitswegControllerGetResponseSuccess = (arbeitswegControllerGetResponse200) & {
+export type commuteControllerGetResponseSuccess = (commuteControllerGetResponse200) & {
   headers: Headers;
 };
-export type arbeitswegControllerGetResponseError = (arbeitswegControllerGetResponse401) & {
+export type commuteControllerGetResponseError = (commuteControllerGetResponse401) & {
   headers: Headers;
 };
 
-export type arbeitswegControllerGetResponse = (arbeitswegControllerGetResponseSuccess | arbeitswegControllerGetResponseError)
+export type commuteControllerGetResponse = (commuteControllerGetResponseSuccess | commuteControllerGetResponseError)
 
-export const getArbeitswegControllerGetUrl = (jahr: number,
-    params?: ArbeitswegControllerGetParams,) => {
+export const getCommuteControllerGetUrl = (jahr: number,
+    params?: CommuteControllerGetParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -88,10 +88,10 @@ export const getArbeitswegControllerGetUrl = (jahr: number,
   return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/arbeitsweg?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/arbeitsweg`
 }
 
-export const arbeitswegControllerGet = async (jahr: number,
-    params?: ArbeitswegControllerGetParams, options?: RequestInit): Promise<arbeitswegControllerGetResponse> => {
+export const commuteControllerGet = async (jahr: number,
+    params?: CommuteControllerGetParams, options?: RequestInit): Promise<commuteControllerGetResponse> => {
 
-  return httpClient<arbeitswegControllerGetResponse>(getArbeitswegControllerGetUrl(jahr,params),
+  return httpClient<commuteControllerGetResponse>(getCommuteControllerGetUrl(jahr,params),
   {
     ...options,
     method: 'GET'
@@ -104,72 +104,72 @@ export const arbeitswegControllerGet = async (jahr: number,
 
 
 
-export const getArbeitswegControllerGetQueryKey = (jahr: number,
-    params?: ArbeitswegControllerGetParams,) => {
+export const getCommuteControllerGetQueryKey = (jahr: number,
+    params?: CommuteControllerGetParams,) => {
     return [
     `/v1/steuerjahre/${jahr}/arbeitsweg`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getArbeitswegControllerGetQueryOptions = <TData = Awaited<ReturnType<typeof arbeitswegControllerGet>>, TError = void>(jahr: number,
-    params?: ArbeitswegControllerGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof arbeitswegControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export const getCommuteControllerGetQueryOptions = <TData = Awaited<ReturnType<typeof commuteControllerGet>>, TError = void>(jahr: number,
+    params?: CommuteControllerGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof commuteControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getArbeitswegControllerGetQueryKey(jahr,params);
+  const queryKey =  queryOptions?.queryKey ?? getCommuteControllerGetQueryKey(jahr,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof arbeitswegControllerGet>>> = ({ signal }) => arbeitswegControllerGet(jahr,params, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof commuteControllerGet>>> = ({ signal }) => commuteControllerGet(jahr,params, { signal, ...requestOptions });
 
 
 
 
 
-   return  { queryKey, queryFn, enabled: jahr !== null && jahr !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof arbeitswegControllerGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+   return  { queryKey, queryFn, enabled: jahr !== null && jahr !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof commuteControllerGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
-export type ArbeitswegControllerGetQueryResult = NonNullable<Awaited<ReturnType<typeof arbeitswegControllerGet>>>
-export type ArbeitswegControllerGetQueryError = void
+export type CommuteControllerGetQueryResult = NonNullable<Awaited<ReturnType<typeof commuteControllerGet>>>
+export type CommuteControllerGetQueryError = void
 
 
-export function useArbeitswegControllerGet<TData = Awaited<ReturnType<typeof arbeitswegControllerGet>>, TError = void>(
+export function useCommuteControllerGet<TData = Awaited<ReturnType<typeof commuteControllerGet>>, TError = void>(
  jahr: number,
-    params: undefined |  ArbeitswegControllerGetParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof arbeitswegControllerGet>>, TError, TData>> & Pick<
+    params: undefined |  CommuteControllerGetParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof commuteControllerGet>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof arbeitswegControllerGet>>,
+          Awaited<ReturnType<typeof commuteControllerGet>>,
           TError,
-          Awaited<ReturnType<typeof arbeitswegControllerGet>>
+          Awaited<ReturnType<typeof commuteControllerGet>>
         > , 'initialData'
       >, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useArbeitswegControllerGet<TData = Awaited<ReturnType<typeof arbeitswegControllerGet>>, TError = void>(
+export function useCommuteControllerGet<TData = Awaited<ReturnType<typeof commuteControllerGet>>, TError = void>(
  jahr: number,
-    params?: ArbeitswegControllerGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof arbeitswegControllerGet>>, TError, TData>> & Pick<
+    params?: CommuteControllerGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof commuteControllerGet>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof arbeitswegControllerGet>>,
+          Awaited<ReturnType<typeof commuteControllerGet>>,
           TError,
-          Awaited<ReturnType<typeof arbeitswegControllerGet>>
+          Awaited<ReturnType<typeof commuteControllerGet>>
         > , 'initialData'
       >, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useArbeitswegControllerGet<TData = Awaited<ReturnType<typeof arbeitswegControllerGet>>, TError = void>(
+export function useCommuteControllerGet<TData = Awaited<ReturnType<typeof commuteControllerGet>>, TError = void>(
  jahr: number,
-    params?: ArbeitswegControllerGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof arbeitswegControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+    params?: CommuteControllerGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof commuteControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 
-export function useArbeitswegControllerGet<TData = Awaited<ReturnType<typeof arbeitswegControllerGet>>, TError = void>(
+export function useCommuteControllerGet<TData = Awaited<ReturnType<typeof commuteControllerGet>>, TError = void>(
  jahr: number,
-    params?: ArbeitswegControllerGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof arbeitswegControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+    params?: CommuteControllerGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof commuteControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getArbeitswegControllerGetQueryOptions(jahr,params,options)
+  const queryOptions = getCommuteControllerGetQueryOptions(jahr,params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
@@ -182,27 +182,27 @@ export function useArbeitswegControllerGet<TData = Awaited<ReturnType<typeof arb
 
 
 
-export type arbeitswegControllerPutResponse200 = {
-  data: ArbeitswegResponseDto
+export type commuteControllerPutResponse200 = {
+  data: CommuteResponseDto
   status: 200
 }
 
-export type arbeitswegControllerPutResponse401 = {
+export type commuteControllerPutResponse401 = {
   data: void
   status: 401
 }
 
-export type arbeitswegControllerPutResponseSuccess = (arbeitswegControllerPutResponse200) & {
+export type commuteControllerPutResponseSuccess = (commuteControllerPutResponse200) & {
   headers: Headers;
 };
-export type arbeitswegControllerPutResponseError = (arbeitswegControllerPutResponse401) & {
+export type commuteControllerPutResponseError = (commuteControllerPutResponse401) & {
   headers: Headers;
 };
 
-export type arbeitswegControllerPutResponse = (arbeitswegControllerPutResponseSuccess | arbeitswegControllerPutResponseError)
+export type commuteControllerPutResponse = (commuteControllerPutResponseSuccess | commuteControllerPutResponseError)
 
-export const getArbeitswegControllerPutUrl = (jahr: number,
-    params?: ArbeitswegControllerPutParams,) => {
+export const getCommuteControllerPutUrl = (jahr: number,
+    params?: CommuteControllerPutParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -217,16 +217,16 @@ export const getArbeitswegControllerPutUrl = (jahr: number,
   return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/arbeitsweg?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/arbeitsweg`
 }
 
-export const arbeitswegControllerPut = async (jahr: number,
-    arbeitswegEingabenDto: ArbeitswegEingabenDto,
-    params?: ArbeitswegControllerPutParams, options?: RequestInit): Promise<arbeitswegControllerPutResponse> => {
+export const commuteControllerPut = async (jahr: number,
+    commuteInputsDto: CommuteInputsDto,
+    params?: CommuteControllerPutParams, options?: RequestInit): Promise<commuteControllerPutResponse> => {
 
-  return httpClient<arbeitswegControllerPutResponse>(getArbeitswegControllerPutUrl(jahr,params),
+  return httpClient<commuteControllerPutResponse>(getCommuteControllerPutUrl(jahr,params),
   {
     ...options,
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(arbeitswegEingabenDto)
+    body: JSON.stringify(commuteInputsDto)
   }
 );}
 
@@ -234,11 +234,11 @@ export const arbeitswegControllerPut = async (jahr: number,
 
 
 
-export const getArbeitswegControllerPutMutationOptions = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof arbeitswegControllerPut>>, TError,{jahr: number;data: ArbeitswegEingabenDto;params?: ArbeitswegControllerPutParams}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof arbeitswegControllerPut>>, TError,{jahr: number;data: ArbeitswegEingabenDto;params?: ArbeitswegControllerPutParams}, TContext> => {
+export const getCommuteControllerPutMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof commuteControllerPut>>, TError,{jahr: number;data: CommuteInputsDto;params?: CommuteControllerPutParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof commuteControllerPut>>, TError,{jahr: number;data: CommuteInputsDto;params?: CommuteControllerPutParams}, TContext> => {
 
-const mutationKey = ['arbeitswegControllerPut'];
+const mutationKey = ['commuteControllerPut'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -248,10 +248,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof arbeitswegControllerPut>>, {jahr: number;data: ArbeitswegEingabenDto;params?: ArbeitswegControllerPutParams}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof commuteControllerPut>>, {jahr: number;data: CommuteInputsDto;params?: CommuteControllerPutParams}> = (props) => {
           const {jahr,data,params} = props ?? {};
 
-          return  arbeitswegControllerPut(jahr,data,params,requestOptions)
+          return  commuteControllerPut(jahr,data,params,requestOptions)
         }
 
 
@@ -261,18 +261,18 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type ArbeitswegControllerPutMutationResult = NonNullable<Awaited<ReturnType<typeof arbeitswegControllerPut>>>
-    export type ArbeitswegControllerPutMutationBody = ArbeitswegEingabenDto
-    export type ArbeitswegControllerPutMutationError = void
+    export type CommuteControllerPutMutationResult = NonNullable<Awaited<ReturnType<typeof commuteControllerPut>>>
+    export type CommuteControllerPutMutationBody = CommuteInputsDto
+    export type CommuteControllerPutMutationError = void
 
-    export const useArbeitswegControllerPut = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof arbeitswegControllerPut>>, TError,{jahr: number;data: ArbeitswegEingabenDto;params?: ArbeitswegControllerPutParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+    export const useCommuteControllerPut = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof commuteControllerPut>>, TError,{jahr: number;data: CommuteInputsDto;params?: CommuteControllerPutParams}, TContext>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof arbeitswegControllerPut>>,
+        Awaited<ReturnType<typeof commuteControllerPut>>,
         TError,
-        {jahr: number;data: ArbeitswegEingabenDto;params?: ArbeitswegControllerPutParams},
+        {jahr: number;data: CommuteInputsDto;params?: CommuteControllerPutParams},
         TContext
       > => {
-      return useMutation(getArbeitswegControllerPutMutationOptions(options), queryClient);
+      return useMutation(getCommuteControllerPutMutationOptions(options), queryClient);
     }
 

@@ -1,6 +1,6 @@
-import type { Spanne, Steuerschaetzung } from './steuerschaetzung'
-import { childTaxAllowance } from './kinder'
-import { isSupportedIncomeTaxYear, soliFreigrenzen, solidaritaetszuschlag, splittingTarif } from './tarif'
+import type { Range, TaxEstimate } from './tax-estimate'
+import { childTaxAllowance } from './children'
+import { isSupportedIncomeTaxYear, soliExemptionLimits, solidaritaetszuschlag, splittingTariff } from './tarif'
 
 /** One spouse's wage income, as either the German Lohnsteuerbescheinigung or the Swiss Anlage N-Gre gives it. */
 export type SpouseIncome =
@@ -42,27 +42,27 @@ export interface MarriedEstimateInput {
 }
 
 export type MarriedEstimate =
-  | (Extract<Steuerschaetzung, { kind: 'spanne' }> & {
+  | (Extract<TaxEstimate, { kind: 'spanne' }> & {
       readonly childAllowanceUsed: boolean
-      readonly churchTax: Spanne
+      readonly churchTax: Range
       /** German wage tax was withheld, and with it Kirchensteuer we do not know — then it stays out of the result. */
       readonly churchTaxOpen: boolean
     })
-  | { readonly kind: 'nicht-moeglich'; readonly grund: 'jahr-ohne-tarif' }
+  | { readonly kind: 'nicht-moeglich'; readonly reason: 'jahr-ohne-tarif' }
 
 const EMPLOYEE_ALLOWANCE = 1230
 /** § 10c EStG, doubled for a joint return. */
 const SPECIAL_EXPENSES_ALLOWANCE_JOINT = 72
 /** Deductible share of German employee social security (see steuerschaetzung.ts). */
-const SOCIAL_SECURITY_DEDUCTIBLE: Spanne = { von: 0.91, bis: 0.93 }
+const SOCIAL_SECURITY_DEDUCTIBLE: Range = { from: 0.91, to: 0.93 }
 /** § 10 Abs. 4 EStG for someone who pays their health insurance entirely themselves. */
 const OTHER_PROVISION_CAP = 2800
 /** Kirchensteuer is 8 % in Baden-Württemberg and Bayern, 9 % elsewhere — a range until the Land is known. */
-const CHURCH_TAX_RATE: Spanne = { von: 0.08, bis: 0.09 }
+const CHURCH_TAX_RATE: Range = { from: 0.08, to: 0.09 }
 
 interface SpouseFigures {
   readonly income: number
-  readonly provision: Spanne
+  readonly provision: Range
   readonly credit: number
 }
 
@@ -71,16 +71,16 @@ function spouseFigures(s: SpouseIncome, year: number): SpouseFigures {
     return {
       income: s.grossWage - Math.max(EMPLOYEE_ALLOWANCE, s.commuteAllowance),
       provision: {
-        von: Math.round(s.socialSecurity * SOCIAL_SECURITY_DEDUCTIBLE.von) + s.selfPaidHealthCare,
-        bis: Math.round(s.socialSecurity * SOCIAL_SECURITY_DEDUCTIBLE.bis) + s.selfPaidHealthCare,
+        from: Math.round(s.socialSecurity * SOCIAL_SECURITY_DEDUCTIBLE.from) + s.selfPaidHealthCare,
+        to: Math.round(s.socialSecurity * SOCIAL_SECURITY_DEDUCTIBLE.to) + s.selfPaidHealthCare,
       },
-      credit: s.wageTax + solidaritaetszuschlag(s.wageTax, soliFreigrenzen(year as never).einzel),
+      credit: s.wageTax + solidaritaetszuschlag(s.wageTax, soliExemptionLimits(year as never).single),
     }
   }
   const other = Math.max(s.selfPaidHealthCare, Math.min(OTHER_PROVISION_CAP, s.selfPaidHealthCare + s.otherProvisionEur))
   return {
     income: s.wageEur - Math.max(EMPLOYEE_ALLOWANCE, s.commuteAllowance),
-    provision: { von: s.pensionContributionsEur + s.selfPaidHealthCare, bis: s.pensionContributionsEur + other },
+    provision: { from: s.pensionContributionsEur + s.selfPaidHealthCare, to: s.pensionContributionsEur + other },
     credit: s.swissWithholdingEur,
   }
 }
@@ -91,50 +91,50 @@ function spouseFigures(s: SpouseIncome, year: number): SpouseFigures {
  * Kirchensteuer as a range. Never a point value (product ADR-015).
  */
 export function estimateMarriedCouple(input: MarriedEstimateInput): MarriedEstimate {
-  if (!isSupportedIncomeTaxYear(input.year)) return { kind: 'nicht-moeglich', grund: 'jahr-ohne-tarif' }
+  if (!isSupportedIncomeTaxYear(input.year)) return { kind: 'nicht-moeglich', reason: 'jahr-ohne-tarif' }
   const spouses = [input.a, ...(input.b ? [input.b] : [])].map((s) => spouseFigures(s, input.year))
   const income = spouses.reduce((sum, s) => sum + s.income, 0) + input.rentalSurplus
   const provision = {
-    von: spouses.reduce((sum, s) => sum + s.provision.von, 0),
-    bis: spouses.reduce((sum, s) => sum + s.provision.bis, 0),
+    from: spouses.reduce((sum, s) => sum + s.provision.from, 0),
+    to: spouses.reduce((sum, s) => sum + s.provision.to, 0),
   }
   const specialExpenses = Math.max(SPECIAL_EXPENSES_ALLOWANCE_JOINT, input.donations)
   const taxableIncome = (deduction: number) => Math.max(0, income - deduction - specialExpenses)
-  const zve = { von: taxableIncome(provision.bis), bis: taxableIncome(provision.von) }
+  const zve = { from: taxableIncome(provision.to), to: taxableIncome(provision.from) }
 
   const allowance = input.children * childTaxAllowance(input.year)
-  const withAllowance = (z: number) => splittingTarif(Math.max(0, z - allowance), 0, input.year)
-  const withBenefit = (z: number) => splittingTarif(z, 0, input.year)
+  const withAllowance = (z: number) => splittingTariff(Math.max(0, z - allowance), 0, input.year)
+  const withBenefit = (z: number) => splittingTariff(z, 0, input.year)
   // Günstigerprüfung: the allowance only wins when it saves more tax than the Kindergeld paid out.
-  const childAllowanceUsed = allowance > 0 && withBenefit(zve.bis) - withAllowance(zve.bis) > input.childBenefit
+  const childAllowanceUsed = allowance > 0 && withBenefit(zve.to) - withAllowance(zve.to) > input.childBenefit
   const incomeTaxFor = (z: number) => (childAllowanceUsed ? withAllowance(z) + input.childBenefit : withBenefit(z))
-  const einkommensteuer = { von: incomeTaxFor(zve.von), bis: incomeTaxFor(zve.bis) }
+  const incomeTax = { from: incomeTaxFor(zve.from), to: incomeTaxFor(zve.to) }
 
   // Soli and Kirchensteuer are always measured on the tax after the child allowances (§ 3 Abs. 2 SolZG, § 51a EStG).
-  const freigrenze = soliFreigrenzen(input.year as never).zusammen
+  const exemptionLimit = soliExemptionLimits(input.year as never).joint
   const soli = {
-    von: solidaritaetszuschlag(withAllowance(zve.von), freigrenze),
-    bis: solidaritaetszuschlag(withAllowance(zve.bis), freigrenze),
+    from: solidaritaetszuschlag(withAllowance(zve.from), exemptionLimit),
+    to: solidaritaetszuschlag(withAllowance(zve.to), exemptionLimit),
   }
   const churchTax = input.churchMember
-    ? { von: Math.round(withAllowance(zve.von) * CHURCH_TAX_RATE.von), bis: Math.round(withAllowance(zve.bis) * CHURCH_TAX_RATE.bis) }
-    : { von: 0, bis: 0 }
+    ? { from: Math.round(withAllowance(zve.from) * CHURCH_TAX_RATE.from), to: Math.round(withAllowance(zve.to) * CHURCH_TAX_RATE.to) }
+    : { from: 0, to: 0 }
   const churchTaxOpen = input.churchMember && [input.a, input.b].some((s) => s?.kind === 'employee')
-  const churchTaxDue = churchTaxOpen ? { von: 0, bis: 0 } : churchTax
+  const churchTaxDue = churchTaxOpen ? { from: 0, to: 0 } : churchTax
 
   const credit = spouses.reduce((sum, s) => sum + s.credit, 0)
   return {
     kind: 'spanne',
     werbungskosten: 0,
-    vorsorge: provision,
-    sonderausgaben: specialExpenses,
-    zuVersteuerndesEinkommen: zve,
-    einkommensteuer,
+    provision,
+    specialExpenses,
+    taxableIncome: zve,
+    incomeTax,
     solidaritaetszuschlag: soli,
     anrechnung: credit,
-    ergebnis: {
-      von: credit - einkommensteuer.bis - soli.bis - churchTaxDue.bis,
-      bis: credit - einkommensteuer.von - soli.von - churchTaxDue.von,
+    result: {
+      from: credit - incomeTax.to - soli.to - churchTaxDue.to,
+      to: credit - incomeTax.from - soli.from - churchTaxDue.from,
     },
     childAllowanceUsed,
     churchTax,

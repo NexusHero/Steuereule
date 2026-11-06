@@ -78,7 +78,7 @@ amtlich vorgeschriebene Vordruck verwendet wird (§ 150 Abs. 1 AO). Das BMF-Schr
 - Die Vorlagen 2025 kamen vom Stakeholder als ZIP aus dem Formular-Management-System:
   amtliche Internet-Vordrucke (Formularschlüssel `…NET`, Barcodes, bereits grau gerastert),
   **ohne Formularfelder**. Sie liegen unverändert unter `apps/api/assets/vordrucke/2025/`,
-  gepinnt per SHA-256 (`apps/api/src/ausdruck/vordrucke-2025.json`). Anlage R und V wurden nachgeliefert.
+  gepinnt per SHA-256 (`apps/api/src/printout/vordrucke-2025.json`). Anlage R und V wurden nachgeliefert.
 - Feldpositionen werden nicht getippt, sondern mit `scripts/vordrucke/vermessen.mjs` aus den
   Vorlagen vermessen: Anker ist ein gedrucktes Wort (Label, Kennzahl, Zeilennummer), Ziel der
   weiße Eingabekasten bzw. Rahmen, den das Formular selbst zeichnet. Das Ergebnis

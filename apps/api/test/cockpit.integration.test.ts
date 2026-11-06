@@ -17,7 +17,7 @@ import { resolveGuestSessionSecret, verifyGuestSession } from '../src/auth/guest
 import { validationExceptionFactory } from '../src/common/validation-exception-factory.js'
 import { PrismaService } from '../src/prisma/prisma.service.js'
 import { INTERVIEW_ANSWER_REPOSITORY, type InterviewAnswerRepository } from '../src/interview/interview-answer.repository.js'
-import { LSTB_REPOSITORY, type LstbRepository } from '../src/lstb/lstb.repository.js'
+import { WAGE_TAX_CERTIFICATE_REPOSITORY, type WageTaxCertificateRepository } from '../src/lstb/lstb.repository.js'
 import { extractSessionCookie } from './support/build-test-app.js'
 
 /** Recovers the trusted userId the app minted, from the raw `Set-Cookie`/`Cookie` pair. */
@@ -33,7 +33,7 @@ function userIdFromCookie(cookie: string): string {
 describe('GET /v1/steuerjahre/:jahr/cockpit — real Postgres (REQ-001 + ticket 15)', () => {
   let app: NestFastifyApplication
   let prisma: PrismaClient
-  let lstbRepository: LstbRepository
+  let lstbRepository: WageTaxCertificateRepository
   let interviewRepository: InterviewAnswerRepository
 
   beforeAll(async () => {
@@ -55,7 +55,7 @@ describe('GET /v1/steuerjahre/:jahr/cockpit — real Postgres (REQ-001 + ticket 
     // The encryption-aware seams — the LStB/InterviewAnswer figures are field-encrypted at rest
     // (ADR-0008), so seeding them via raw Prisma would write plaintext the strict-mode read
     // would reject; the repositories' own upserts are the honest seeding paths.
-    lstbRepository = app.get(LSTB_REPOSITORY)
+    lstbRepository = app.get(WAGE_TAX_CERTIFICATE_REPOSITORY)
     interviewRepository = app.get(INTERVIEW_ANSWER_REPOSITORY)
   })
 
@@ -83,8 +83,8 @@ describe('GET /v1/steuerjahre/:jahr/cockpit — real Postgres (REQ-001 + ticket 
 
     // Seed through the real seams: job=Angestellt (writes the TaxYear projection), then only the
     // Bruttoarbeitslohn — lohnsteuer + sozialversicherung stay open (honest, never a fabricated 0).
-    await interviewRepository.write({ userId, steuerjahr: 2026, questionId: 'job', value: 'Angestellt', openItems: 2 })
-    await lstbRepository.setFeld(userId, 2026, 'bruttoarbeitslohn', '50000')
+    await interviewRepository.write({ userId, taxYear: 2026, questionId: 'job', value: 'Angestellt', openItems: 2 })
+    await lstbRepository.setField(userId, 2026, 'bruttoarbeitslohn', '50000')
 
     const response = await app.inject({
       method: 'GET',
@@ -96,7 +96,7 @@ describe('GET /v1/steuerjahre/:jahr/cockpit — real Postgres (REQ-001 + ticket 
     expect(response.json()).toEqual({
       taxYear: 2026,
       // 2 open LStB fields × 60 uncertainty around the settled 50000.
-      stand: { kind: 'spanne', von: 49880, bis: 50120, offenePosten: 2, konflikte: 0, unbestaetigte: 0, unbestaetigteSumme: 0 },
+      status: { kind: 'spanne', from: 49880, to: 50120, openItems: 2, conflicts: 0, unconfirmedItems: 0, unconfirmedSum: 0 },
       openItems: 2,
     })
   })
@@ -106,7 +106,7 @@ describe('GET /v1/steuerjahre/:jahr/cockpit — real Postgres (REQ-001 + ticket 
     const cookieA = extractSessionCookie(first.headers['set-cookie'])!
     const userIdA = userIdFromCookie(cookieA)
 
-    await interviewRepository.write({ userId: userIdA, steuerjahr: 2026, questionId: 'job', value: 'Angestellt', openItems: 2 })
+    await interviewRepository.write({ userId: userIdA, taxYear: 2026, questionId: 'job', value: 'Angestellt', openItems: 2 })
 
     // A fresh request with no cookie is a brand-new guest session per the guard.
     const userBResponse = await app.inject({ method: 'GET', url: '/v1/steuerjahre/2026/cockpit' })
@@ -120,7 +120,7 @@ describe('GET /v1/steuerjahre/:jahr/cockpit — real Postgres (REQ-001 + ticket 
     // userA declared Angestellt but has not started the LStB yet → all three fields open.
     expect(userAResponse.json()).toEqual({
       taxYear: 2026,
-      stand: { kind: 'spanne', von: 0, bis: 180, offenePosten: 3, konflikte: 0, unbestaetigte: 0, unbestaetigteSumme: 0 },
+      status: { kind: 'spanne', from: 0, to: 180, openItems: 3, conflicts: 0, unconfirmedItems: 0, unconfirmedSum: 0 },
       openItems: 2,
     })
   })
@@ -130,7 +130,7 @@ describe('GET /v1/steuerjahre/:jahr/cockpit — real Postgres (REQ-001 + ticket 
     const cookie = extractSessionCookie(first.headers['set-cookie'])!
     const userId = userIdFromCookie(cookie)
 
-    await interviewRepository.write({ userId, steuerjahr: 2026, questionId: 'job', value: 'Angestellt', openItems: 2 })
+    await interviewRepository.write({ userId, taxYear: 2026, questionId: 'job', value: 'Angestellt', openItems: 2 })
 
     const response = await app.inject({
       method: 'GET',
@@ -147,10 +147,10 @@ describe('GET /v1/steuerjahre/:jahr/cockpit — real Postgres (REQ-001 + ticket 
     const cookie = extractSessionCookie(first.headers['set-cookie'])!
     const userId = userIdFromCookie(cookie)
 
-    await interviewRepository.write({ userId, steuerjahr: 2026, questionId: 'job', value: 'Angestellt', openItems: 2 })
-    await lstbRepository.setFeld(userId, 2026, 'bruttoarbeitslohn', '50000')
-    await lstbRepository.setFeld(userId, 2026, 'lohnsteuer', '8000')
-    await lstbRepository.setFeld(userId, 2026, 'sozialversicherung', '9000')
+    await interviewRepository.write({ userId, taxYear: 2026, questionId: 'job', value: 'Angestellt', openItems: 2 })
+    await lstbRepository.setField(userId, 2026, 'bruttoarbeitslohn', '50000')
+    await lstbRepository.setField(userId, 2026, 'lohnsteuer', '8000')
+    await lstbRepository.setField(userId, 2026, 'sozialversicherung', '9000')
 
     const response = await app.inject({
       method: 'GET',
@@ -158,6 +158,6 @@ describe('GET /v1/steuerjahre/:jahr/cockpit — real Postgres (REQ-001 + ticket 
       headers: { cookie },
     })
 
-    expect(response.json()).toEqual({ taxYear: 2026, stand: { kind: 'bestimmt', wert: 50000 }, openItems: 2 })
+    expect(response.json()).toEqual({ taxYear: 2026, status: { kind: 'bestimmt', value: 50000 }, openItems: 2 })
   })
 })

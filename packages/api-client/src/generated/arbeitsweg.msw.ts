@@ -18,39 +18,39 @@ import type {
 } from 'msw';
 
 import type {
-  ArbeitswegResponseDto
+  CommuteResponseDto
 } from './arbeitsweg.schemas';
 
 
-export const getArbeitswegControllerGetResponseMock = (overrideResponse: Partial<Extract<ArbeitswegResponseDto, object>> = {}): ArbeitswegResponseDto => ({eingaben: faker.helpers.arrayElement([{...{arbeitstage: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.number.float({fractionDigits: 2}))), urlaubstage: faker.number.float({fractionDigits: 2}), krankheitstage: faker.number.float({fractionDigits: 2}), homeofficeTage: faker.number.float({fractionDigits: 2}), einfacheKm: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), verkehrsmittel: faker.helpers.arrayElement([faker.helpers.arrayElement(['pkw','oepnv','andere'] as const), null]), taetigkeitsstaette: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), feiertage: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), feiertageRegion: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null])},}, null]), werktage: faker.helpers.arrayElement([{...{wochentage: faker.number.float({fractionDigits: 2}), werktage: faker.number.float({fractionDigits: 2}), pendlertage: faker.number.float({fractionDigits: 2})},}, null]), pendlerpauschale: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), ...overrideResponse})
+export const getCommuteControllerGetResponseMock = (overrideResponse: Partial<Extract<CommuteResponseDto, object>> = {}): CommuteResponseDto => ({inputs: faker.helpers.arrayElement([{...{workdays: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.number.float({fractionDigits: 2}))), vacationDays: faker.number.float({fractionDigits: 2}), sickDays: faker.number.float({fractionDigits: 2}), homeOfficeDays: faker.number.float({fractionDigits: 2}), oneWayKm: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), transport: faker.helpers.arrayElement([faker.helpers.arrayElement(['pkw','oepnv','andere'] as const), null]), workplace: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), publicHolidays: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), publicHolidayRegion: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null])},}, null]), workdays: faker.helpers.arrayElement([{...{weekdays: faker.number.float({fractionDigits: 2}), workdays: faker.number.float({fractionDigits: 2}), commuteDays: faker.number.float({fractionDigits: 2})},}, null]), commuterAllowance: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), ...overrideResponse})
 
-export const getArbeitswegControllerPutResponseMock = (overrideResponse: Partial<Extract<ArbeitswegResponseDto, object>> = {}): ArbeitswegResponseDto => ({eingaben: faker.helpers.arrayElement([{...{arbeitstage: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.number.float({fractionDigits: 2}))), urlaubstage: faker.number.float({fractionDigits: 2}), krankheitstage: faker.number.float({fractionDigits: 2}), homeofficeTage: faker.number.float({fractionDigits: 2}), einfacheKm: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), verkehrsmittel: faker.helpers.arrayElement([faker.helpers.arrayElement(['pkw','oepnv','andere'] as const), null]), taetigkeitsstaette: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), feiertage: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), feiertageRegion: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null])},}, null]), werktage: faker.helpers.arrayElement([{...{wochentage: faker.number.float({fractionDigits: 2}), werktage: faker.number.float({fractionDigits: 2}), pendlertage: faker.number.float({fractionDigits: 2})},}, null]), pendlerpauschale: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), ...overrideResponse})
+export const getCommuteControllerPutResponseMock = (overrideResponse: Partial<Extract<CommuteResponseDto, object>> = {}): CommuteResponseDto => ({inputs: faker.helpers.arrayElement([{...{workdays: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.number.float({fractionDigits: 2}))), vacationDays: faker.number.float({fractionDigits: 2}), sickDays: faker.number.float({fractionDigits: 2}), homeOfficeDays: faker.number.float({fractionDigits: 2}), oneWayKm: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), transport: faker.helpers.arrayElement([faker.helpers.arrayElement(['pkw','oepnv','andere'] as const), null]), workplace: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), publicHolidays: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), publicHolidayRegion: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null])},}, null]), workdays: faker.helpers.arrayElement([{...{weekdays: faker.number.float({fractionDigits: 2}), workdays: faker.number.float({fractionDigits: 2}), commuteDays: faker.number.float({fractionDigits: 2})},}, null]), commuterAllowance: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), ...overrideResponse})
 
 
-export const getArbeitswegControllerGetMockHandler = (overrideResponse?: ArbeitswegResponseDto | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<ArbeitswegResponseDto> | ArbeitswegResponseDto), options?: RequestHandlerOptions) => {
+export const getCommuteControllerGetMockHandler = (overrideResponse?: CommuteResponseDto | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<CommuteResponseDto> | CommuteResponseDto), options?: RequestHandlerOptions) => {
   return http.get('*/v1/steuerjahre/:jahr/arbeitsweg', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
 
 
     return HttpResponse.json(overrideResponse !== undefined
     ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
-    : getArbeitswegControllerGetResponseMock(),
+    : getCommuteControllerGetResponseMock(),
       { status: 200
       })
   }, options)
 }
 
-export const getArbeitswegControllerPutMockHandler = (overrideResponse?: ArbeitswegResponseDto | ((info: Parameters<Parameters<typeof http.put>[1]>[0]) => Promise<ArbeitswegResponseDto> | ArbeitswegResponseDto), options?: RequestHandlerOptions) => {
+export const getCommuteControllerPutMockHandler = (overrideResponse?: CommuteResponseDto | ((info: Parameters<Parameters<typeof http.put>[1]>[0]) => Promise<CommuteResponseDto> | CommuteResponseDto), options?: RequestHandlerOptions) => {
   return http.put('*/v1/steuerjahre/:jahr/arbeitsweg', async (info: Parameters<Parameters<typeof http.put>[1]>[0]) => {
 
 
     return HttpResponse.json(overrideResponse !== undefined
     ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
-    : getArbeitswegControllerPutResponseMock(),
+    : getCommuteControllerPutResponseMock(),
       { status: 200
       })
   }, options)
 }
 export const getSteuerEuleAPIMock = () => [
-  getArbeitswegControllerGetMockHandler(),
-  getArbeitswegControllerPutMockHandler()
+  getCommuteControllerGetMockHandler(),
+  getCommuteControllerPutMockHandler()
 ]

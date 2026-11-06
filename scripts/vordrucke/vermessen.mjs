@@ -26,7 +26,7 @@ if (!/^\d{4}$/.test(jahr ?? '')) {
   process.exit(1)
 }
 const VORLAGEN = path.join(ROOT, 'apps/api/assets/vordrucke', jahr)
-const AUSDRUCK = path.join(ROOT, 'apps/api/src/ausdruck')
+const AUSDRUCK = path.join(ROOT, 'apps/api/src/printout')
 const spec = JSON.parse(readFileSync(path.join(AUSDRUCK, `felder-${jahr}.spec.json`), 'utf8'))
 
 const cache = new Map()
@@ -186,5 +186,5 @@ if (process.argv.includes('--check')) {
   console.log(`${felder.length} Felder: felder-${jahr}.json stimmt mit Vorlagen und Spec überein.`)
 } else {
   writeFileSync(ziel, inhalt)
-  console.log(`${felder.length} Felder vermessen → apps/api/src/ausdruck/felder-${jahr}.json`)
+  console.log(`${felder.length} Felder vermessen → apps/api/src/printout/felder-${jahr}.json`)
 }

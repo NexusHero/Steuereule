@@ -4,18 +4,18 @@ import { useTranslation } from 'react-i18next'
 import { useTheme } from '../theme/useTheme'
 import { UI_NS } from '../i18n/resources'
 
-export interface Herkunft {
-  readonly beleg?: string
-  readonly regel: string
-  readonly rechenweg?: string
+export interface Provenance {
+  readonly receipt?: string
+  readonly rule: string
+  readonly calculationPath?: string
 }
 
-export interface HerkunftsChipProps {
-  readonly quelle: Herkunft
+export interface ProvenanceChipProps {
+  readonly source: Provenance
   readonly testID?: string
 }
 
-export function HerkunftsChip({ quelle, testID }: HerkunftsChipProps) {
+export function ProvenanceChip({ source, testID }: ProvenanceChipProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(UI_NS)
   const [open, setOpen] = useState(false)
@@ -61,17 +61,17 @@ export function HerkunftsChip({ quelle, testID }: HerkunftsChipProps) {
       </Pressable>
       {open && (
         <View accessibilityRole="summary" style={pop}>
-          {quelle.beleg !== undefined && (
+          {source.receipt !== undefined && (
             <Text style={line}>
-              <Text style={strong}>{tr('herkunft.beleg')}:</Text> {quelle.beleg}
+              <Text style={strong}>{tr('herkunft.beleg')}:</Text> {source.receipt}
             </Text>
           )}
           <Text style={line}>
-            <Text style={strong}>{tr('herkunft.regel')}:</Text> <Text style={mono}>{quelle.regel}</Text>
+            <Text style={strong}>{tr('herkunft.regel')}:</Text> <Text style={mono}>{source.rule}</Text>
           </Text>
-          {quelle.rechenweg !== undefined && (
+          {source.calculationPath !== undefined && (
             <Text style={line}>
-              <Text style={strong}>{tr('herkunft.rechenweg')}:</Text> <Text style={mono}>{quelle.rechenweg}</Text>
+              <Text style={strong}>{tr('herkunft.rechenweg')}:</Text> <Text style={mono}>{source.calculationPath}</Text>
             </Text>
           )}
         </View>

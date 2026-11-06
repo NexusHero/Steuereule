@@ -21,7 +21,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
-  SteuerschaetzungDto
+  TaxEstimateDto
 } from './steuerschaetzung.schemas';
 
 import { httpClient } from '../http-client';
@@ -46,26 +46,26 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   return result;
 };
 
-export type steuerschaetzungControllerGetResponse200 = {
-  data: SteuerschaetzungDto
+export type taxEstimateControllerGetResponse200 = {
+  data: TaxEstimateDto
   status: 200
 }
 
-export type steuerschaetzungControllerGetResponse401 = {
+export type taxEstimateControllerGetResponse401 = {
   data: void
   status: 401
 }
 
-export type steuerschaetzungControllerGetResponseSuccess = (steuerschaetzungControllerGetResponse200) & {
+export type taxEstimateControllerGetResponseSuccess = (taxEstimateControllerGetResponse200) & {
   headers: Headers;
 };
-export type steuerschaetzungControllerGetResponseError = (steuerschaetzungControllerGetResponse401) & {
+export type taxEstimateControllerGetResponseError = (taxEstimateControllerGetResponse401) & {
   headers: Headers;
 };
 
-export type steuerschaetzungControllerGetResponse = (steuerschaetzungControllerGetResponseSuccess | steuerschaetzungControllerGetResponseError)
+export type taxEstimateControllerGetResponse = (taxEstimateControllerGetResponseSuccess | taxEstimateControllerGetResponseError)
 
-export const getSteuerschaetzungControllerGetUrl = (jahr: number,) => {
+export const getTaxEstimateControllerGetUrl = (jahr: number,) => {
 
 
 
@@ -73,9 +73,9 @@ export const getSteuerschaetzungControllerGetUrl = (jahr: number,) => {
   return `/v1/steuerjahre/${jahr}/steuerschaetzung`
 }
 
-export const steuerschaetzungControllerGet = async (jahr: number, options?: RequestInit): Promise<steuerschaetzungControllerGetResponse> => {
+export const taxEstimateControllerGet = async (jahr: number, options?: RequestInit): Promise<taxEstimateControllerGetResponse> => {
 
-  return httpClient<steuerschaetzungControllerGetResponse>(getSteuerschaetzungControllerGetUrl(jahr),
+  return httpClient<taxEstimateControllerGetResponse>(getTaxEstimateControllerGetUrl(jahr),
   {
     ...options,
     method: 'GET'
@@ -88,66 +88,66 @@ export const steuerschaetzungControllerGet = async (jahr: number, options?: Requ
 
 
 
-export const getSteuerschaetzungControllerGetQueryKey = (jahr: number,) => {
+export const getTaxEstimateControllerGetQueryKey = (jahr: number,) => {
     return [
     `/v1/steuerjahre/${jahr}/steuerschaetzung`
     ] as const;
     }
 
 
-export const getSteuerschaetzungControllerGetQueryOptions = <TData = Awaited<ReturnType<typeof steuerschaetzungControllerGet>>, TError = void>(jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof steuerschaetzungControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export const getTaxEstimateControllerGetQueryOptions = <TData = Awaited<ReturnType<typeof taxEstimateControllerGet>>, TError = void>(jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof taxEstimateControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getSteuerschaetzungControllerGetQueryKey(jahr);
+  const queryKey =  queryOptions?.queryKey ?? getTaxEstimateControllerGetQueryKey(jahr);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof steuerschaetzungControllerGet>>> = ({ signal }) => steuerschaetzungControllerGet(jahr, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof taxEstimateControllerGet>>> = ({ signal }) => taxEstimateControllerGet(jahr, { signal, ...requestOptions });
 
 
 
 
 
-   return  { queryKey, queryFn, enabled: jahr !== null && jahr !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof steuerschaetzungControllerGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+   return  { queryKey, queryFn, enabled: jahr !== null && jahr !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof taxEstimateControllerGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
-export type SteuerschaetzungControllerGetQueryResult = NonNullable<Awaited<ReturnType<typeof steuerschaetzungControllerGet>>>
-export type SteuerschaetzungControllerGetQueryError = void
+export type TaxEstimateControllerGetQueryResult = NonNullable<Awaited<ReturnType<typeof taxEstimateControllerGet>>>
+export type TaxEstimateControllerGetQueryError = void
 
 
-export function useSteuerschaetzungControllerGet<TData = Awaited<ReturnType<typeof steuerschaetzungControllerGet>>, TError = void>(
- jahr: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof steuerschaetzungControllerGet>>, TError, TData>> & Pick<
+export function useTaxEstimateControllerGet<TData = Awaited<ReturnType<typeof taxEstimateControllerGet>>, TError = void>(
+ jahr: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof taxEstimateControllerGet>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof steuerschaetzungControllerGet>>,
+          Awaited<ReturnType<typeof taxEstimateControllerGet>>,
           TError,
-          Awaited<ReturnType<typeof steuerschaetzungControllerGet>>
+          Awaited<ReturnType<typeof taxEstimateControllerGet>>
         > , 'initialData'
       >, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useSteuerschaetzungControllerGet<TData = Awaited<ReturnType<typeof steuerschaetzungControllerGet>>, TError = void>(
- jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof steuerschaetzungControllerGet>>, TError, TData>> & Pick<
+export function useTaxEstimateControllerGet<TData = Awaited<ReturnType<typeof taxEstimateControllerGet>>, TError = void>(
+ jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof taxEstimateControllerGet>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof steuerschaetzungControllerGet>>,
+          Awaited<ReturnType<typeof taxEstimateControllerGet>>,
           TError,
-          Awaited<ReturnType<typeof steuerschaetzungControllerGet>>
+          Awaited<ReturnType<typeof taxEstimateControllerGet>>
         > , 'initialData'
       >, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useSteuerschaetzungControllerGet<TData = Awaited<ReturnType<typeof steuerschaetzungControllerGet>>, TError = void>(
- jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof steuerschaetzungControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export function useTaxEstimateControllerGet<TData = Awaited<ReturnType<typeof taxEstimateControllerGet>>, TError = void>(
+ jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof taxEstimateControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 
-export function useSteuerschaetzungControllerGet<TData = Awaited<ReturnType<typeof steuerschaetzungControllerGet>>, TError = void>(
- jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof steuerschaetzungControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export function useTaxEstimateControllerGet<TData = Awaited<ReturnType<typeof taxEstimateControllerGet>>, TError = void>(
+ jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof taxEstimateControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getSteuerschaetzungControllerGetQueryOptions(jahr,options)
+  const queryOptions = getTaxEstimateControllerGetQueryOptions(jahr,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

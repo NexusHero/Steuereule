@@ -9,6 +9,3 @@ export function isValidTaxNumber(value: string | undefined | null): boolean {
   if (value === undefined || value === null) return true
   return /^\d{1,13}$/.test(value)
 }
-
-// Backward-compatibility aliases
-export { isValidTaxId as isValidSteuerId, isValidTaxNumber as isValidSteuernummer }

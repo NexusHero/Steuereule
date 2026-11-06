@@ -1,57 +1,53 @@
 import { Inject, Injectable } from '@nestjs/common'
-import type { LstbFeldId } from '@steuereule/core'
+import type { WageTaxCertificateFieldId } from '@steuereule/core'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
-import type { LstbRecord, LstbRepository } from './lstb.repository.js'
+import type { WageTaxCertificateRecord, WageTaxCertificateRepository } from './lstb.repository.js'
 
 function toRecord(row: {
   userId: string
-  steuerjahr: number
+  taxYear: number
   bruttoarbeitslohn: string | null
   lohnsteuer: string | null
   sozialversicherung: string | null
-}): LstbRecord {
+}): WageTaxCertificateRecord {
   return {
     userId: row.userId,
-    steuerjahr: row.steuerjahr,
+    taxYear: row.taxYear,
     bruttoarbeitslohn: row.bruttoarbeitslohn,
     lohnsteuer: row.lohnsteuer,
     sozialversicherung: row.sozialversicherung,
   }
 }
 
-function feldData(
-  feld: LstbFeldId,
-  wert: string | null,
+function fieldData(
+  field: WageTaxCertificateFieldId,
+  value: string | null,
 ): { bruttoarbeitslohn?: string | null; lohnsteuer?: string | null; sozialversicherung?: string | null } {
-  switch (feld) {
+  switch (field) {
     case 'bruttoarbeitslohn':
-      return { bruttoarbeitslohn: wert }
+      return { bruttoarbeitslohn: value }
     case 'lohnsteuer':
-      return { lohnsteuer: wert }
+      return { lohnsteuer: value }
     case 'sozialversicherung':
-      return { sozialversicherung: wert }
+      return { sozialversicherung: value }
   }
 }
 
 @Injectable()
-export class PrismaLstbRepository implements LstbRepository {
+export class PrismaLstbRepository implements WageTaxCertificateRepository {
   constructor(@Inject(ENCRYPTED_PRISMA) private readonly prisma: EncryptedPrismaClient) {}
 
-  async findForUserAndYear(userId: string, steuerjahr: number): Promise<LstbRecord | null> {
-    const row = await this.prisma.lstb.findUnique({ where: { userId_steuerjahr: { userId, steuerjahr } } })
+  async findForUserAndYear(userId: string, taxYear: number): Promise<WageTaxCertificateRecord | null> {
+    const row = await this.prisma.lstb.findUnique({ where: { userId_taxYear: { userId, taxYear } } })
     return row === null ? null : toRecord(row)
   }
 
-  async setField(userId: string, taxYear: number, field: LstbFeldId, value: string | null): Promise<LstbRecord> {
-    return this.setFeld(userId, taxYear, field, value)
-  }
-
-  async setFeld(userId: string, steuerjahr: number, feld: LstbFeldId, wert: string | null): Promise<LstbRecord> {
+  async setField(userId: string, taxYear: number, field: WageTaxCertificateFieldId, value: string | null): Promise<WageTaxCertificateRecord> {
     const [row] = await this.prisma.$transaction([
       this.prisma.lstb.upsert({
-        where: { userId_steuerjahr: { userId, steuerjahr } },
-        create: { userId, steuerjahr, bruttoarbeitslohn: null, lohnsteuer: null, sozialversicherung: null, ...feldData(feld, wert) },
-        update: feldData(feld, wert),
+        where: { userId_taxYear: { userId, taxYear } },
+        create: { userId, taxYear, bruttoarbeitslohn: null, lohnsteuer: null, sozialversicherung: null, ...fieldData(field, value) },
+        update: fieldData(field, value),
       }),
       this.prisma.taxDataAccessLog.create({
         data: { userId, action: 'WRITE', resource: 'lstb' },

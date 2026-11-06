@@ -10,11 +10,11 @@ import {
 } from '@faker-js/faker';
 
 import type {
-  UebernahmeResponseDto
+  RolloverResponseDto
 } from './uebernahme.schemas';
 
 
-export const getUebernahmeControllerGetResponseMock = (overrideResponse: Partial<Extract<UebernahmeResponseDto, object>> = {}): UebernahmeResponseDto => ({kennzeichnungen: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({postenKey: faker.string.alpha({length: {min: 10, max: 20}}), vorjahr: faker.number.float({fractionDigits: 2}), bestaetigt: faker.datatype.boolean()})), ...overrideResponse})
+export const getTakeoverControllerGetResponseMock = (overrideResponse: Partial<Extract<RolloverResponseDto, object>> = {}): RolloverResponseDto => ({markings: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({itemKey: faker.string.alpha({length: {min: 10, max: 20}}), lastYear: faker.number.float({fractionDigits: 2}), confirmed: faker.datatype.boolean()})), ...overrideResponse})
 
-export const getUebernahmeControllerUebernehmeResponseMock = (overrideResponse: Partial<Extract<UebernahmeResponseDto, object>> = {}): UebernahmeResponseDto => ({kennzeichnungen: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({postenKey: faker.string.alpha({length: {min: 10, max: 20}}), vorjahr: faker.number.float({fractionDigits: 2}), bestaetigt: faker.datatype.boolean()})), ...overrideResponse})
+export const getTakeoverControllerTakeOverResponseMock = (overrideResponse: Partial<Extract<RolloverResponseDto, object>> = {}): RolloverResponseDto => ({markings: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({itemKey: faker.string.alpha({length: {min: 10, max: 20}}), lastYear: faker.number.float({fractionDigits: 2}), confirmed: faker.datatype.boolean()})), ...overrideResponse})
 

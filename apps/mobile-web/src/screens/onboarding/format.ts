@@ -1,4 +1,4 @@
-export function formatSteuerId(raw: string): string {
+export function formatTaxId(raw: string): string {
   const digits = raw.replace(/\D/g, '').slice(0, 11)
   return digits.replace(/^(\d{2})(\d{0,3})(\d{0,3})(\d{0,3}).*$/, (_m, a, b, c, d) =>
     [a, b, c, d].filter(Boolean).join(' '),

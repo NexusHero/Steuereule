@@ -3,10 +3,10 @@ import { useTranslation } from 'react-i18next'
 import { Button, Card, Sticker, useTheme, type Breakpoint } from '@steuereule/ui'
 import { APP_NS } from '../../i18n/resources'
 import { makeOnboardingStyles } from './styles'
-import type { OnboardingProfil } from './profileMapping'
+import type { OnboardingProfile } from './profileMapping'
 
 interface OnboardingSummaryProps {
-  readonly profil: OnboardingProfil
+  readonly profile: OnboardingProfile
   readonly onSubmit: () => void
   readonly onEdit: () => void
   readonly isSubmitting: boolean
@@ -14,15 +14,15 @@ interface OnboardingSummaryProps {
   readonly bp: Breakpoint
 }
 
-export function OnboardingSummary({ profil, onSubmit, onEdit, isSubmitting, submitError, bp }: OnboardingSummaryProps) {
+export function OnboardingSummary({ profile, onSubmit, onEdit, isSubmitting, submitError, bp }: OnboardingSummaryProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeOnboardingStyles(t)
   const rows: ReadonlyArray<readonly [string, string, boolean]> = [
-    [tr('onboarding.summary.rowFirstName'), profil.vorname, false],
-    [tr('onboarding.summary.rowLastName'), profil.nachname, false],
-    [tr('onboarding.summary.rowSteuerId'), profil.steuerId || tr('onboarding.summary.steuerIdLater'), true],
-    [tr('onboarding.summary.rowSteuerNr'), profil.steuerNr || tr('onboarding.summary.steuerNrLater'), true],
+    [tr('onboarding.summary.rowFirstName'), profile.firstName, false],
+    [tr('onboarding.summary.rowLastName'), profile.lastName, false],
+    [tr('onboarding.summary.rowSteuerId'), profile.steuerId || tr('onboarding.summary.steuerIdLater'), true],
+    [tr('onboarding.summary.rowSteuerNr'), profile.taxNumber || tr('onboarding.summary.steuerNrLater'), true],
   ]
 
   return (
@@ -52,7 +52,7 @@ export function OnboardingSummary({ profil, onSubmit, onEdit, isSubmitting, subm
       <Button onPress={onSubmit} disabled={isSubmitting} style={styles.cta}>
         {isSubmitting ? tr('onboarding.summary.submitting') : tr('onboarding.summary.cta')}
       </Button>
-      <Button variante="ghost" onPress={onEdit} disabled={isSubmitting} style={styles.summaryEditButton}>
+      <Button variant="ghost" onPress={onEdit} disabled={isSubmitting} style={styles.summaryEditButton}>
         {tr('onboarding.summary.changeDetails')}
       </Button>
       <Text style={styles.summaryFooterNote}>{tr('onboarding.summary.footerNote')}</Text>

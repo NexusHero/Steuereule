@@ -61,10 +61,10 @@ async function renderOnJobQuestion(opts: Parameters<typeof renderInterview>[0] =
 // mis-wired branch fails loudly instead of a generic "something is on screen" assertion passing
 // by accident. `find*` (not `get*`): every screen mount now waits on the GET.
 const onJobQuestion = () => screen.findByText('Mehrfachjobs? Nimm die Hauptquelle — der Rest kommt später.')
-const onAuslandQuestion = () => screen.findByText('Grenzgänger haben Sonderregeln — in die Schweiz können wir sie komplett, inklusive 60-Tage-Tracking.')
+const onForeignQuestion = () => screen.findByText('Grenzgänger haben Sonderregeln — in die Schweiz können wir sie komplett, inklusive 60-Tage-Tracking.')
 const onKinderQuestion = () => screen.findByText('Kindergeld, Freibeträge, Betreuungskosten — die Günstigerprüfung Kindergeld vs. Freibetrag läuft automatisch.')
-const onFamilienstandQuestion = () => screen.findByText('Verheiratete geben meist eine gemeinsame Erklärung ab — dann rechnen wir mit dem Splittingtarif.')
-const onGewerbeGate = () => screen.findByText('Ehrlich: dafür sind wir noch nicht gut genug.')
+const onMaritalStatusQuestion = () => screen.findByText('Verheiratete geben meist eine gemeinsame Erklärung ab — dann rechnen wir mit dem Splittingtarif.')
+const onBusinessGate = () => screen.findByText('Ehrlich: dafür sind wir noch nicht gut genug.')
 const onChOnlyGate = () => screen.findByText('Ehrlich: andere Länder können wir noch nicht.')
 
 describe('InterviewScreen', () => {
@@ -146,7 +146,7 @@ describe('InterviewScreen', () => {
     )
     await renderOnJobQuestion()
     fireEvent.click(screen.getByText('Angestellt'))
-    await onAuslandQuestion()
+    await onForeignQuestion()
 
     expect(receivedBody).toEqual({ questionId: 'job', value: 'Angestellt' })
   })
@@ -166,7 +166,7 @@ describe('InterviewScreen', () => {
     fireEvent.click(screen.getByText('Angestellt'))
 
     // The next question is already on screen while the write is still in flight.
-    await onAuslandQuestion()
+    await onForeignQuestion()
     release?.()
   })
 
@@ -179,7 +179,7 @@ describe('InterviewScreen', () => {
     expect(queryClient.getQueryState(cockpitKey)?.isInvalidated).toBe(false)
 
     fireEvent.click(screen.getByText('Angestellt'))
-    await onAuslandQuestion()
+    await onForeignQuestion()
 
     await waitFor(() => expect(queryClient.getQueryState(cockpitKey)?.isInvalidated).toBe(true))
   })
@@ -219,7 +219,7 @@ describe('InterviewScreen', () => {
 
       fireEvent.click(screen.getByText('Angestellt'))
 
-      await onGewerbeGate()
+      await onBusinessGate()
       expect(screen.getByText('Deine Antwort passte nicht zum gespeicherten Stand. Wir haben deinen Fortschritt aktualisiert.')).toBeTruthy()
     })
 
@@ -249,28 +249,28 @@ describe('InterviewScreen', () => {
     it('Angestellt -> ausland question (no gate)', async () => {
       await renderOnJobQuestion()
       fireEvent.click(screen.getByText('Angestellt'))
-      await onAuslandQuestion()
+      await onForeignQuestion()
       expect(screen.queryByText('Ehrlich: dafür sind wir noch nicht gut genug.')).toBeNull()
     })
 
     it('Rente -> ausland question directly, NOT the Gewerbe gate (ADR-034: Rente is an answer, not a branch)', async () => {
       await renderOnJobQuestion()
       fireEvent.click(screen.getByText('Rente'))
-      await onAuslandQuestion()
+      await onForeignQuestion()
       expect(screen.queryByText('Ehrlich: dafür sind wir noch nicht gut genug.')).toBeNull()
     })
 
     it('Beides -> Gewerbe gate, WITH the "prepare employee part" option', async () => {
       await renderOnJobQuestion()
       fireEvent.click(screen.getByText('Beides'))
-      await onGewerbeGate()
+      await onBusinessGate()
       expect(screen.getByText('Angestellten-Teil vorbereiten — Abgabe erst mit Gewerbe')).toBeTruthy()
     })
 
     it('Selbstständig -> Gewerbe gate, terminal: no forward action of any kind', async () => {
       await renderOnJobQuestion()
       fireEvent.click(screen.getByText('Selbstständig'))
-      await onGewerbeGate()
+      await onBusinessGate()
       expect(screen.queryByText('Angestellten-Teil vorbereiten — Abgabe erst mit Gewerbe')).toBeNull()
       // The only interactive control left is the back link — no button offers to move on.
       expect(screen.getAllByRole('button')).toHaveLength(1)
@@ -280,19 +280,19 @@ describe('InterviewScreen', () => {
   it('Beides at the Gewerbe gate: "prepare" advances to the ausland question (product ADR-028)', async () => {
     await renderOnJobQuestion()
     fireEvent.click(screen.getByText('Beides'))
-    await onGewerbeGate()
+    await onBusinessGate()
     fireEvent.click(screen.getByText('Angestellten-Teil vorbereiten — Abgabe erst mit Gewerbe'))
-    await onAuslandQuestion()
+    await onForeignQuestion()
   })
 
   it('Selbstständig stays behind the Gewerbe gate forever, even after visiting and returning', async () => {
     await renderOnJobQuestion()
     fireEvent.click(screen.getByText('Selbstständig'))
-    await onGewerbeGate()
+    await onBusinessGate()
     fireEvent.click(screen.getByText('Zurück zur Frage'))
     await onJobQuestion()
     fireEvent.click(screen.getByText('Selbstständig'))
-    await onGewerbeGate()
+    await onBusinessGate()
     expect(screen.queryByText('Angestellten-Teil vorbereiten — Abgabe erst mit Gewerbe')).toBeNull()
   })
 
@@ -300,7 +300,7 @@ describe('InterviewScreen', () => {
     it('"In ein anderes Land" -> CH-only gate; continuing lands on the kinder question', async () => {
       await renderOnJobQuestion()
       fireEvent.click(screen.getByText('Angestellt'))
-      await onAuslandQuestion()
+      await onForeignQuestion()
       fireEvent.click(screen.getByText('In ein anderes Land'))
       await onChOnlyGate()
       fireEvent.click(screen.getByText('Ohne Auslands-Teil weitermachen'))
@@ -310,7 +310,7 @@ describe('InterviewScreen', () => {
     it('"Ja, in die Schweiz" -> kinder question directly, no gate', async () => {
       await renderOnJobQuestion()
       fireEvent.click(screen.getByText('Angestellt'))
-      await onAuslandQuestion()
+      await onForeignQuestion()
       fireEvent.click(screen.getByText('Ja, in die Schweiz'))
       await onKinderQuestion()
       expect(screen.queryByText('Ehrlich: andere Länder können wir noch nicht.')).toBeNull()
@@ -319,7 +319,7 @@ describe('InterviewScreen', () => {
     it('"Nein" -> kinder question directly, no gate', async () => {
       await renderOnJobQuestion()
       fireEvent.click(screen.getByText('Angestellt'))
-      await onAuslandQuestion()
+      await onForeignQuestion()
       fireEvent.click(screen.getByText('Nein'))
       await onKinderQuestion()
     })
@@ -329,11 +329,11 @@ describe('InterviewScreen', () => {
     const onDone = vi.fn()
     const { container } = await renderOnJobQuestion({ onDone })
     fireEvent.click(screen.getByText('Angestellt'))
-    await onAuslandQuestion()
+    await onForeignQuestion()
     fireEvent.click(screen.getByText('Nein')) // ausland
     await onKinderQuestion()
     fireEvent.click(screen.getByText('1 Kind'))
-    await onFamilienstandQuestion()
+    await onMaritalStatusQuestion()
     expect(onDone).not.toHaveBeenCalled()
     fireEvent.click(screen.getByText('Verheiratet / eingetragene Lebenspartnerschaft'))
 
@@ -345,7 +345,7 @@ describe('InterviewScreen', () => {
     it('back from ausland returns to the job question', async () => {
       await renderOnJobQuestion()
       fireEvent.click(screen.getByText('Angestellt'))
-      await onAuslandQuestion()
+      await onForeignQuestion()
       fireEvent.click(screen.getByLabelText('Zurück'))
       await onJobQuestion()
     })
@@ -353,28 +353,28 @@ describe('InterviewScreen', () => {
     it('back from the CH-only gate returns to the ausland question', async () => {
       await renderOnJobQuestion()
       fireEvent.click(screen.getByText('Angestellt'))
-      await onAuslandQuestion()
+      await onForeignQuestion()
       fireEvent.click(screen.getByText('In ein anderes Land'))
       await onChOnlyGate()
       fireEvent.click(screen.getByText('Zurück zur Frage'))
-      await onAuslandQuestion()
+      await onForeignQuestion()
     })
 
     it('changing the job answer after going back changes the downstream path (no stale gate)', async () => {
       await renderOnJobQuestion()
       fireEvent.click(screen.getByText('Selbstständig'))
-      await onGewerbeGate() // terminal
+      await onBusinessGate() // terminal
       fireEvent.click(screen.getByText('Zurück zur Frage'))
       await onJobQuestion()
       fireEvent.click(screen.getByText('Angestellt'))
-      await onAuslandQuestion() // not stuck behind the old gate
+      await onForeignQuestion() // not stuck behind the old gate
       expect(screen.queryByText('Ehrlich: dafür sind wir noch nicht gut genug.')).toBeNull()
     })
 
     it('the progress step and pill move back with the screen', async () => {
       await renderOnJobQuestion()
       fireEvent.click(screen.getByText('Angestellt'))
-      await onAuslandQuestion()
+      await onForeignQuestion()
       expect(screen.getByText('2/4')).toBeTruthy()
       fireEvent.click(screen.getByLabelText('Zurück'))
       await onJobQuestion()
@@ -387,19 +387,19 @@ describe('InterviewScreen', () => {
     it('the Gewerbe gate never renders a notify-me control, for either passable or terminal job values', async () => {
       await renderOnJobQuestion()
       fireEvent.click(screen.getByText('Beides'))
-      await onGewerbeGate()
+      await onBusinessGate()
       expect(screen.queryByText(/[Bb]enachrichtigt/)).toBeNull()
       fireEvent.click(screen.getByText('Zurück zur Frage'))
       await onJobQuestion()
       fireEvent.click(screen.getByText('Selbstständig'))
-      await onGewerbeGate()
+      await onBusinessGate()
       expect(screen.queryByText(/[Bb]enachrichtigt/)).toBeNull()
     })
 
     it('the CH-only gate never renders a "Vormerken" control', async () => {
       await renderOnJobQuestion()
       fireEvent.click(screen.getByText('Angestellt'))
-      await onAuslandQuestion()
+      await onForeignQuestion()
       fireEvent.click(screen.getByText('In ein anderes Land'))
       await onChOnlyGate()
       expect(screen.queryByText(/Vormerken/)).toBeNull()
@@ -409,7 +409,7 @@ describe('InterviewScreen', () => {
       await renderOnJobQuestion()
       expect(screen.queryByText(/€/)).toBeNull()
       fireEvent.click(screen.getByText('Angestellt'))
-      await onAuslandQuestion()
+      await onForeignQuestion()
       expect(screen.queryByText(/€/)).toBeNull()
     })
   })
@@ -450,13 +450,13 @@ describe('InterviewScreen', () => {
       const onDone = vi.fn()
       await renderOnJobQuestion({ onDone })
       fireEvent.click(screen.getByText('Angestellt'))
-      await onAuslandQuestion()
+      await onForeignQuestion()
       fireEvent.click(screen.getByText('In ein anderes Land'))
       await onChOnlyGate()
       fireEvent.click(screen.getByText('Ohne Auslands-Teil weitermachen'))
       await onKinderQuestion()
       fireEvent.click(screen.getByText('2 oder mehr'))
-      await onFamilienstandQuestion()
+      await onMaritalStatusQuestion()
       fireEvent.click(screen.getByText('Ledig'))
 
       await waitFor(() => expect(onDone).toHaveBeenCalledOnce())

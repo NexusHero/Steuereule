@@ -42,7 +42,7 @@ const SYNTHETIC_PROFILES = [
 const SYNTHETIC_TAX_YEARS = [
   {
     userId: 'seed-guest-anna',
-    steuerjahr: 2026,
+    taxYear: 2026,
     baseEstimate: 1407,
     openItems: 3,
     openConflicts: 0,
@@ -60,7 +60,7 @@ async function main(): Promise<void> {
 
   for (const taxYear of SYNTHETIC_TAX_YEARS) {
     await basePrisma.taxYear.upsert({
-      where: { userId_steuerjahr: { userId: taxYear.userId, steuerjahr: taxYear.steuerjahr } },
+      where: { userId_taxYear: { userId: taxYear.userId, taxYear: taxYear.taxYear } },
       update: taxYear,
       create: taxYear,
     })
@@ -73,7 +73,7 @@ async function main(): Promise<void> {
       openConflicts: taxYear.openConflicts,
     })
     console.log(
-      `Seeded TaxYear ${taxYear.userId}/${taxYear.steuerjahr}: estimate range ${range.from}–${range.to} €`,
+      `Seeded TaxYear ${taxYear.userId}/${taxYear.taxYear}: estimate range ${range.from}–${range.to} €`,
     )
   }
 }

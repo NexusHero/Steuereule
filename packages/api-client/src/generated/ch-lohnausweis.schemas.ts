@@ -9,10 +9,10 @@
  * The derived Grenzgänger-Status (ADR-013); null while ch-wohnsitz is unanswered.
  * @nullable
  */
-export type ChLohnausweisResponseDtoStatus = typeof ChLohnausweisResponseDtoStatus[keyof typeof ChLohnausweisResponseDtoStatus] | null;
+export type ChSalaryCertificateResponseDtoStatus = typeof ChSalaryCertificateResponseDtoStatus[keyof typeof ChSalaryCertificateResponseDtoStatus] | null;
 
 
-export const ChLohnausweisResponseDtoStatus = {
+export const ChSalaryCertificateResponseDtoStatus = {
   'echter-grenzgaenger': 'echter-grenzgaenger',
   'kein-grenzgaenger': 'kein-grenzgaenger',
 } as const;
@@ -20,55 +20,55 @@ export const ChLohnausweisResponseDtoStatus = {
 /**
  * The field’s capture state.
  */
-export type LohnausweisFeldDtoKind = typeof LohnausweisFeldDtoKind[keyof typeof LohnausweisFeldDtoKind];
+export type SalaryCertificateFieldDtoKind = typeof SalaryCertificateFieldDtoKind[keyof typeof SalaryCertificateFieldDtoKind];
 
 
-export const LohnausweisFeldDtoKind = {
+export const SalaryCertificateFieldDtoKind = {
   erfasst: 'erfasst',
   offen: 'offen',
   unklar: 'unklar',
 } as const;
 
-export interface LohnausweisFeldDto {
+export interface SalaryCertificateFieldDto {
   /** The machine field id (LohnausweisFeldId). */
   id: string;
   /** The box number on the paper (1–15). */
-  ziffer: string;
+  digit: string;
   /** The field’s capture state. */
-  kind: LohnausweisFeldDtoKind;
+  kind: SalaryCertificateFieldDtoKind;
   /** The whole-CHF amount — present only when kind === "erfasst". */
-  wert?: number;
+  value?: number;
 }
 
 /**
  * The rate mode (ADR-012).
  */
-export type WechselkursDtoModus = typeof WechselkursDtoModus[keyof typeof WechselkursDtoModus];
+export type ExchangeRateDtoMode = typeof ExchangeRateDtoMode[keyof typeof ExchangeRateDtoMode];
 
 
-export const WechselkursDtoModus = {
+export const ExchangeRateDtoMode = {
   amtlich: 'amtlich',
   tatsaechlich: 'tatsaechlich',
 } as const;
 
-export interface WechselkursDto {
+export interface ExchangeRateDto {
   /** yyyy-mm the rate applies to. */
-  monat: string;
+  month: string;
   /** EUR per 1 CHF, strictly positive. */
-  kurs: number;
+  rate: number;
   /** The rate mode (ADR-012). */
-  modus: WechselkursDtoModus;
+  mode: ExchangeRateDtoMode;
   /** Beleg id — required iff modus === "tatsaechlich". */
-  belegId?: string;
+  receiptId?: string;
 }
 
 /**
  * The CH line-item kind.
  */
-export type ChPostenDtoArt = typeof ChPostenDtoArt[keyof typeof ChPostenDtoArt];
+export type ChItemDtoKind = typeof ChItemDtoKind[keyof typeof ChItemDtoKind];
 
 
-export const ChPostenDtoArt = {
+export const ChItemDtoKind = {
   Bruttolohn: 'Bruttolohn',
   Quellensteuer: 'Quellensteuer',
   Pensionskasse: 'Pensionskasse',
@@ -79,46 +79,46 @@ export const ChPostenDtoArt = {
 /**
  * The fold bucket (Rolle).
  */
-export type ChPostenDtoRolle = typeof ChPostenDtoRolle[keyof typeof ChPostenDtoRolle];
+export type ChItemDtoRole = typeof ChItemDtoRole[keyof typeof ChItemDtoRole];
 
 
-export const ChPostenDtoRolle = {
+export const ChItemDtoRole = {
   einnahme: 'einnahme',
   vorsorgeaufwand: 'vorsorgeaufwand',
   anrechnung: 'anrechnung',
 } as const;
 
-export interface ChPostenDto {
+export interface ChItemDto {
   /** Stable line-item id. */
   id: string;
   /** The CH line-item kind. */
-  art: ChPostenDtoArt;
+  kind: ChItemDtoKind;
   /** The Lohnausweis Ziffer (when from the Lohnausweis). */
-  ziffer?: string;
+  digit?: string;
   /** CHF amount as entered (ADR-036: CHF führt). */
-  betragChf: number;
+  amountChf: number;
   /** EUR amount = chfNachEur(betragChf, kurs), rounded to cents. */
-  betragEur: number;
+  amountEur: number;
   /** The fold bucket (Rolle). */
-  rolle: ChPostenDtoRolle;
+  role: ChItemDtoRole;
   /** The Kurs the conversion was made with. */
-  wechselkurs: WechselkursDto;
+  exchangeRate: ExchangeRateDto;
 }
 
 /**
  * Determined, or open (naming what blocks).
  */
-export type BerechnungsstandDtoKind = typeof BerechnungsstandDtoKind[keyof typeof BerechnungsstandDtoKind];
+export type CalculationStatusDtoKind = typeof CalculationStatusDtoKind[keyof typeof CalculationStatusDtoKind];
 
 
-export const BerechnungsstandDtoKind = {
+export const CalculationStatusDtoKind = {
   bestimmt: 'bestimmt',
   offen: 'offen',
 } as const;
 
-export interface BerechnungsstandDto {
+export interface CalculationStatusDto {
   /** Determined, or open (naming what blocks). */
-  kind: BerechnungsstandDtoKind;
+  kind: CalculationStatusDtoKind;
   /** Sum of Einnahme Posten (whole euros). */
   einnahmen: number;
   /** Sum of Vorsorgeaufwand Posten (whole euros). */
@@ -126,14 +126,14 @@ export interface BerechnungsstandDto {
   /** Sum of Anrechnung Posten (whole euros). */
   anrechnung: number;
   /** Required-but-empty line items (only when offen). */
-  offenePosten?: number;
+  openItems?: number;
   /** Open conflicts (only when offen). */
-  konflikte?: number;
+  conflicts?: number;
   /** Gated Einkunftsarten (only when offen). */
-  gegated?: string[];
+  gated?: string[];
 }
 
-export interface NGreAngabenDto {
+export interface NGreDetailsDto {
   /** @nullable */
   arbeitgeberName: string | null;
   /** @nullable */
@@ -157,12 +157,12 @@ export interface NGreAngabenDto {
   /** @nullable */
   nbuvArbeitgeberChf: number | null;
   /** @nullable */
-  sonderfaelle: boolean | null;
+  specialCases: boolean | null;
 }
 
-export interface ChLohnausweisResponseDto {
+export interface ChSalaryCertificateResponseDto {
   /** The 14 CHF-betrag fields, in paper order (Ziffern 1–14). */
-  felder: LohnausweisFeldDto[];
+  fields: SalaryCertificateFieldDto[];
   /**
      * Ziffer 15 Bemerkungen (Freitext), null when not entered.
      * @nullable
@@ -172,43 +172,43 @@ export interface ChLohnausweisResponseDto {
      * The Wechselkurs, null when not yet set.
      * @nullable
      */
-  wechselkurs: WechselkursDto | null;
+  exchangeRate: ExchangeRateDto | null;
   /**
      * The derived Grenzgänger-Status (ADR-013); null while ch-wohnsitz is unanswered.
      * @nullable
      */
-  status: ChLohnausweisResponseDtoStatus;
+  status: ChSalaryCertificateResponseDtoStatus;
   /** The folded CH line items (empty until the Kurs + status exist). */
-  posten: ChPostenDto[];
+  items: ChItemDto[];
   /**
      * The fold result, null until foldable.
      * @nullable
      */
-  stand: BerechnungsstandDto | null;
+  foldStatus: CalculationStatusDto | null;
   /** The Anlage-N-Gre facts beyond the Lohnausweis. */
-  nGre: NGreAngabenDto;
+  nGre: NGreDetailsDto;
 }
 
 /**
  * The field’s capture state.
  */
-export type PutLohnausweisFeldDtoKind = typeof PutLohnausweisFeldDtoKind[keyof typeof PutLohnausweisFeldDtoKind];
+export type PutSalaryCertificateFieldDtoKind = typeof PutSalaryCertificateFieldDtoKind[keyof typeof PutSalaryCertificateFieldDtoKind];
 
 
-export const PutLohnausweisFeldDtoKind = {
+export const PutSalaryCertificateFieldDtoKind = {
   erfasst: 'erfasst',
   offen: 'offen',
   unklar: 'unklar',
 } as const;
 
-export interface PutLohnausweisFeldDto {
+export interface PutSalaryCertificateFieldDto {
   /** The field’s capture state. */
-  kind: PutLohnausweisFeldDtoKind;
+  kind: PutSalaryCertificateFieldDtoKind;
   /** The whole-CHF amount — present only when kind === "erfasst" (validated via @steuereule/core). */
-  wert?: number;
+  value?: number;
 }
 
-export interface PutBemerkungenDto {
+export interface PutRemarksDto {
   /**
      * The free-text remark, or null to clear.
      * @nullable
@@ -216,7 +216,7 @@ export interface PutBemerkungenDto {
   text?: string | null;
 }
 
-export interface PutVorsorgeDto {
+export interface PutProvisionDto {
   /**
      * Säule 3a whole-CHF amount, or null to clear.
      * @nullable
@@ -289,28 +289,28 @@ export interface PutNGreDto {
      * Any of N-Gre Zeilen 7, 9–14, 16, 17 or 20–22 applies.
      * @nullable
      */
-  sonderfaelle?: boolean | null;
+  specialCases?: boolean | null;
 }
 
 /**
  * The rate mode (ADR-012).
  */
-export type PutWechselkursDtoModus = typeof PutWechselkursDtoModus[keyof typeof PutWechselkursDtoModus];
+export type PutExchangeRateDtoMode = typeof PutExchangeRateDtoMode[keyof typeof PutExchangeRateDtoMode];
 
 
-export const PutWechselkursDtoModus = {
+export const PutExchangeRateDtoMode = {
   amtlich: 'amtlich',
   tatsaechlich: 'tatsaechlich',
 } as const;
 
-export interface PutWechselkursDto {
+export interface PutExchangeRateDto {
   /** yyyy-mm the rate applies to. */
-  monat: string;
+  month: string;
   /** EUR per 1 CHF, strictly positive. */
-  kurs: number;
+  rate: number;
   /** The rate mode (ADR-012). */
-  modus: PutWechselkursDtoModus;
+  mode: PutExchangeRateDtoMode;
   /** Beleg id — required iff modus === "tatsaechlich". */
-  belegId?: string;
+  receiptId?: string;
 }
 

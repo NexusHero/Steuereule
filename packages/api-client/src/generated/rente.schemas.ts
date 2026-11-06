@@ -9,10 +9,10 @@
  * The chosen Rentenart (product ADR-036 §3), null when not yet chosen.
  * @nullable
  */
-export type RenteResponseDtoArt = typeof RenteResponseDtoArt[keyof typeof RenteResponseDtoArt] | null;
+export type PensionResponseDtoKind = typeof PensionResponseDtoKind[keyof typeof PensionResponseDtoKind] | null;
 
 
-export const RenteResponseDtoArt = {
+export const PensionResponseDtoKind = {
   GesetzlicheRente: 'GesetzlicheRente',
   Betriebsrente: 'Betriebsrente',
   PrivateRentenversicherung: 'PrivateRentenversicherung',
@@ -23,45 +23,45 @@ export const RenteResponseDtoArt = {
 /**
  * The field’s capture state.
  */
-export type RenteFeldDtoKind = typeof RenteFeldDtoKind[keyof typeof RenteFeldDtoKind];
+export type PensionFieldDtoKind = typeof PensionFieldDtoKind[keyof typeof PensionFieldDtoKind];
 
 
-export const RenteFeldDtoKind = {
+export const PensionFieldDtoKind = {
   erfasst: 'erfasst',
   offen: 'offen',
   unklar: 'unklar',
 } as const;
 
-export interface RenteFeldDto {
+export interface PensionFieldDto {
   /** The field’s capture state. */
-  kind: RenteFeldDtoKind;
+  kind: PensionFieldDtoKind;
   /** The value — present only when kind === "erfasst" (validated via @steuereule/core). */
-  wert?: number;
+  value?: number;
 }
 
-export interface RentePostenDto {
+export interface PensionItemDto {
   /** The stable posten id. */
   id: string;
   /** The taxable share (whole euros). */
-  betrag: number;
+  amount: number;
   /** The § 22 Nr. 1 Satz 3 EStG rule citation (Herkunft). */
-  herkunft: string;
+  provenance: string;
 }
 
 /**
  * Determined, or open (naming what blocks).
  */
-export type RenteStandDtoKind = typeof RenteStandDtoKind[keyof typeof RenteStandDtoKind];
+export type PensionStatusDtoKind = typeof PensionStatusDtoKind[keyof typeof PensionStatusDtoKind];
 
 
-export const RenteStandDtoKind = {
+export const PensionStatusDtoKind = {
   bestimmt: 'bestimmt',
   offen: 'offen',
 } as const;
 
-export interface RenteStandDto {
+export interface PensionStatusDto {
   /** Determined, or open (naming what blocks). */
-  kind: RenteStandDtoKind;
+  kind: PensionStatusDtoKind;
   /** Sum of Einnahme Posten (whole euros). */
   einnahmen: number;
   /** Sum of Vorsorgeaufwand Posten (whole euros). */
@@ -69,35 +69,35 @@ export interface RenteStandDto {
   /** Sum of Anrechnung Posten (whole euros). */
   anrechnung: number;
   /** Required-but-empty line items (only when offen). */
-  offenePosten?: number;
+  openItems?: number;
   /** Open conflicts (only when offen). */
-  konflikte?: number;
+  conflicts?: number;
   /** Gated Einkunftsarten (only when offen). */
-  gegated?: string[];
+  gated?: string[];
 }
 
-export interface RenteResponseDto {
+export interface PensionResponseDto {
   /**
      * The chosen Rentenart (product ADR-036 §3), null when not yet chosen.
      * @nullable
      */
-  art: RenteResponseDtoArt;
-  jahresbetrag: RenteFeldDto;
-  rentenbeginnJahr: RenteFeldDto;
-  alterBeiRentenbeginn: RenteFeldDto;
+  kind: PensionResponseDtoKind;
+  jahresbetrag: PensionFieldDto;
+  rentenbeginnJahr: PensionFieldDto;
+  alterBeiRentenbeginn: PensionFieldDto;
   /** The taxable posten (empty while not determinable). */
-  posten: RentePostenDto[];
-  stand: RenteStandDto;
+  items: PensionItemDto[];
+  status: PensionStatusDto;
 }
 
 /**
  * One of the five Rentenarten (product ADR-036 §3), or null to clear.
  * @nullable
  */
-export type PutRentenartDtoArt = typeof PutRentenartDtoArt[keyof typeof PutRentenartDtoArt] | null;
+export type PutPensionKindDtoKind = typeof PutPensionKindDtoKind[keyof typeof PutPensionKindDtoKind] | null;
 
 
-export const PutRentenartDtoArt = {
+export const PutPensionKindDtoKind = {
   GesetzlicheRente: 'GesetzlicheRente',
   Betriebsrente: 'Betriebsrente',
   PrivateRentenversicherung: 'PrivateRentenversicherung',
@@ -105,30 +105,30 @@ export const PutRentenartDtoArt = {
   AuslaendischeRente: 'AuslaendischeRente',
 } as const;
 
-export interface PutRentenartDto {
+export interface PutPensionKindDto {
   /**
      * One of the five Rentenarten (product ADR-036 §3), or null to clear.
      * @nullable
      */
-  art: PutRentenartDtoArt;
+  kind: PutPensionKindDtoKind;
 }
 
 /**
  * The field’s capture state.
  */
-export type PutRenteFeldDtoKind = typeof PutRenteFeldDtoKind[keyof typeof PutRenteFeldDtoKind];
+export type PutPensionFieldDtoKind = typeof PutPensionFieldDtoKind[keyof typeof PutPensionFieldDtoKind];
 
 
-export const PutRenteFeldDtoKind = {
+export const PutPensionFieldDtoKind = {
   erfasst: 'erfasst',
   offen: 'offen',
   unklar: 'unklar',
 } as const;
 
-export interface PutRenteFeldDto {
+export interface PutPensionFieldDto {
   /** The field’s capture state. */
-  kind: PutRenteFeldDtoKind;
+  kind: PutPensionFieldDtoKind;
   /** The value — present only when kind === "erfasst" (validated via @steuereule/core). */
-  wert?: number;
+  value?: number;
 }
 

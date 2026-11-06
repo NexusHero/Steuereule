@@ -5,21 +5,21 @@
  * Onboarding profile endpoints (steuereule#29)
  * OpenAPI spec version: 1.0
  */
-export interface UebernahmeKennzeichnungDto {
+export interface RolloverProvenanceDto {
   /** Der Kennzeichnungs-Key des kopierten Felds (ADR-0052 §6). */
-  postenKey: string;
+  itemKey: string;
   /** Das Quelljahr der Kopie — der Jahresbezug der Herkunft (ADR-022). */
-  vorjahr: number;
+  lastYear: number;
   /** false = UNBESTÄTIGT (kopiert, Anlage noch nicht bestätigt), true = bestätigt (ADR-021). */
-  bestaetigt: boolean;
+  confirmed: boolean;
 }
 
-export interface UebernahmeResponseDto {
+export interface RolloverResponseDto {
   /** Die Übernahme-Kennzeichnungen, älteste zuerst. */
-  kennzeichnungen: UebernahmeKennzeichnungDto[];
+  markings: RolloverProvenanceDto[];
 }
 
-export type UebernahmeControllerUebernehmeParams = {
+export type TakeoverControllerTakeOverParams = {
 /**
  * The source year to copy from (M1: the LStB row). Must be strictly before the target year.
  */

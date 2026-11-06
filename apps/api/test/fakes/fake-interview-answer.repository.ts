@@ -4,8 +4,8 @@
 // (idempotent upsert on questionId) without a database.
 import type { InterviewAnswerRecord, InterviewAnswerRepository, WriteAnswerParams } from '../../src/interview/interview-answer.repository.js'
 
-function key(userId: string, steuerjahr: number): string {
-  return `${userId}::${steuerjahr}`
+function key(userId: string, taxYear: number): string {
+  return `${userId}::${taxYear}`
 }
 
 export class FakeInterviewAnswerRepository implements InterviewAnswerRepository {
@@ -13,15 +13,15 @@ export class FakeInterviewAnswerRepository implements InterviewAnswerRepository 
   /** Every write() call in order — lets a test assert "no row created" precisely. */
   readonly writes: WriteAnswerParams[] = []
 
-  findAllForUserAndYear(userId: string, steuerjahr: number): Promise<InterviewAnswerRecord[]> {
-    const rows = this.store.get(key(userId, steuerjahr))
+  findAllForUserAndYear(userId: string, taxYear: number): Promise<InterviewAnswerRecord[]> {
+    const rows = this.store.get(key(userId, taxYear))
     if (!rows) return Promise.resolve([])
     return Promise.resolve([...rows.entries()].map(([questionId, value]) => ({ questionId, value })))
   }
 
   write(params: WriteAnswerParams): Promise<void> {
     this.writes.push(params)
-    const k = key(params.userId, params.steuerjahr)
+    const k = key(params.userId, params.taxYear)
     const rows = this.store.get(k) ?? new Map<string, string>()
     rows.set(params.questionId, params.value)
     this.store.set(k, rows)
@@ -29,10 +29,10 @@ export class FakeInterviewAnswerRepository implements InterviewAnswerRepository 
   }
 
   /** Test seam: seed answers directly, bypassing write()'s admission side-effects. */
-  seed(userId: string, steuerjahr: number, answers: Record<string, string>): void {
-    const rows = this.store.get(key(userId, steuerjahr)) ?? new Map<string, string>()
+  seed(userId: string, taxYear: number, answers: Record<string, string>): void {
+    const rows = this.store.get(key(userId, taxYear)) ?? new Map<string, string>()
     for (const [questionId, value] of Object.entries(answers)) rows.set(questionId, value)
-    this.store.set(key(userId, steuerjahr), rows)
+    this.store.set(key(userId, taxYear), rows)
   }
 
   recordCount(): number {

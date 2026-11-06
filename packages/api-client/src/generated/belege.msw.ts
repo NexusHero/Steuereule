@@ -18,54 +18,54 @@ import type {
 } from 'msw';
 
 import type {
-  BelegResponseDto
+  ReceiptResponseDto
 } from './belege.schemas';
 
 
-export const getBelegControllerListResponseMock = (): BelegResponseDto[] => (Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), dateiname: faker.string.alpha({length: {min: 10, max: 20}}), art: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), belegdatum: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), zahlungsdatum: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), zuordnung: {...{kind: faker.helpers.arrayElement(['ungebunden','vorgeschlagen','zugeordnet','konflikt'] as const), steuerjahr: faker.number.float({fractionDigits: 2}), vorschlagsJahr: faker.number.float({fractionDigits: 2}), herkunft: faker.helpers.arrayElement(['zahlungsdatum','belegdatum'] as const)},}})))
+export const getReceiptControllerListResponseMock = (): ReceiptResponseDto[] => (Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), fileName: faker.string.alpha({length: {min: 10, max: 20}}), kind: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), belegdatum: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), zahlungsdatum: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), assignment: {...{kind: faker.helpers.arrayElement(['ungebunden','vorgeschlagen','zugeordnet','konflikt'] as const), taxYear: faker.number.float({fractionDigits: 2}), proposalYear: faker.number.float({fractionDigits: 2}), provenance: faker.helpers.arrayElement(['zahlungsdatum','belegdatum'] as const)},}})))
 
-export const getBelegControllerCreateResponseMock = (overrideResponse: Partial<Extract<BelegResponseDto, object>> = {}): BelegResponseDto => ({id: faker.string.alpha({length: {min: 10, max: 20}}), dateiname: faker.string.alpha({length: {min: 10, max: 20}}), art: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), belegdatum: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), zahlungsdatum: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), zuordnung: {...{kind: faker.helpers.arrayElement(['ungebunden','vorgeschlagen','zugeordnet','konflikt'] as const), steuerjahr: faker.number.float({fractionDigits: 2}), vorschlagsJahr: faker.number.float({fractionDigits: 2}), herkunft: faker.helpers.arrayElement(['zahlungsdatum','belegdatum'] as const)},}, ...overrideResponse})
+export const getReceiptControllerCreateResponseMock = (overrideResponse: Partial<Extract<ReceiptResponseDto, object>> = {}): ReceiptResponseDto => ({id: faker.string.alpha({length: {min: 10, max: 20}}), fileName: faker.string.alpha({length: {min: 10, max: 20}}), kind: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), belegdatum: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), zahlungsdatum: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), assignment: {...{kind: faker.helpers.arrayElement(['ungebunden','vorgeschlagen','zugeordnet','konflikt'] as const), taxYear: faker.number.float({fractionDigits: 2}), proposalYear: faker.number.float({fractionDigits: 2}), provenance: faker.helpers.arrayElement(['zahlungsdatum','belegdatum'] as const)},}, ...overrideResponse})
 
-export const getBelegControllerSetZuordnungResponseMock = (overrideResponse: Partial<Extract<BelegResponseDto, object>> = {}): BelegResponseDto => ({id: faker.string.alpha({length: {min: 10, max: 20}}), dateiname: faker.string.alpha({length: {min: 10, max: 20}}), art: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), belegdatum: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), zahlungsdatum: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), zuordnung: {...{kind: faker.helpers.arrayElement(['ungebunden','vorgeschlagen','zugeordnet','konflikt'] as const), steuerjahr: faker.number.float({fractionDigits: 2}), vorschlagsJahr: faker.number.float({fractionDigits: 2}), herkunft: faker.helpers.arrayElement(['zahlungsdatum','belegdatum'] as const)},}, ...overrideResponse})
+export const getReceiptControllerSetAssignmentResponseMock = (overrideResponse: Partial<Extract<ReceiptResponseDto, object>> = {}): ReceiptResponseDto => ({id: faker.string.alpha({length: {min: 10, max: 20}}), fileName: faker.string.alpha({length: {min: 10, max: 20}}), kind: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), belegdatum: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), zahlungsdatum: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), assignment: {...{kind: faker.helpers.arrayElement(['ungebunden','vorgeschlagen','zugeordnet','konflikt'] as const), taxYear: faker.number.float({fractionDigits: 2}), proposalYear: faker.number.float({fractionDigits: 2}), provenance: faker.helpers.arrayElement(['zahlungsdatum','belegdatum'] as const)},}, ...overrideResponse})
 
 
-export const getBelegControllerListMockHandler = (overrideResponse?: BelegResponseDto[] | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<BelegResponseDto[]> | BelegResponseDto[]), options?: RequestHandlerOptions) => {
+export const getReceiptControllerListMockHandler = (overrideResponse?: ReceiptResponseDto[] | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<ReceiptResponseDto[]> | ReceiptResponseDto[]), options?: RequestHandlerOptions) => {
   return http.get('*/v1/belege', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
 
 
     return HttpResponse.json(overrideResponse !== undefined
     ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
-    : getBelegControllerListResponseMock(),
+    : getReceiptControllerListResponseMock(),
       { status: 200
       })
   }, options)
 }
 
-export const getBelegControllerCreateMockHandler = (overrideResponse?: BelegResponseDto | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<BelegResponseDto> | BelegResponseDto), options?: RequestHandlerOptions) => {
+export const getReceiptControllerCreateMockHandler = (overrideResponse?: ReceiptResponseDto | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<ReceiptResponseDto> | ReceiptResponseDto), options?: RequestHandlerOptions) => {
   return http.post('*/v1/belege', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
 
 
     return HttpResponse.json(overrideResponse !== undefined
     ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
-    : getBelegControllerCreateResponseMock(),
+    : getReceiptControllerCreateResponseMock(),
       { status: 201
       })
   }, options)
 }
 
-export const getBelegControllerSetZuordnungMockHandler = (overrideResponse?: BelegResponseDto | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<BelegResponseDto> | BelegResponseDto), options?: RequestHandlerOptions) => {
+export const getReceiptControllerSetAssignmentMockHandler = (overrideResponse?: ReceiptResponseDto | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<ReceiptResponseDto> | ReceiptResponseDto), options?: RequestHandlerOptions) => {
   return http.post('*/v1/belege/:id/zuordnung', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
 
 
     return HttpResponse.json(overrideResponse !== undefined
     ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
-    : getBelegControllerSetZuordnungResponseMock(),
+    : getReceiptControllerSetAssignmentResponseMock(),
       { status: 200
       })
   }, options)
 }
 export const getSteuerEuleAPIMock = () => [
-  getBelegControllerListMockHandler(),
-  getBelegControllerCreateMockHandler(),
-  getBelegControllerSetZuordnungMockHandler()
+  getReceiptControllerListMockHandler(),
+  getReceiptControllerCreateMockHandler(),
+  getReceiptControllerSetAssignmentMockHandler()
 ]

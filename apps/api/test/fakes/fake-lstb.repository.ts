@@ -3,41 +3,37 @@
 // the real repository's return shape (the full record) and upsert semantics; the derived
 // LstbZustand is left to LstbService (as in production, the repository stores facts, never
 // the derived state — ADR-014/048).
-import type { LstbFeldId } from '@steuereule/core'
-import type { LstbRecord, LstbRepository } from '../../src/lstb/lstb.repository.js'
+import type { WageTaxCertificateFieldId } from '@steuereule/core'
+import type { WageTaxCertificateRecord, WageTaxCertificateRepository } from '../../src/lstb/lstb.repository.js'
 
-function key(userId: string, steuerjahr: number): string {
-  return `${userId}::${steuerjahr}`
+function key(userId: string, taxYear: number): string {
+  return `${userId}::${taxYear}`
 }
 
-export class FakeLstbRepository implements LstbRepository {
-  private readonly store = new Map<string, LstbRecord>()
+export class FakeLstbRepository implements WageTaxCertificateRepository {
+  private readonly store = new Map<string, WageTaxCertificateRecord>()
 
-  findForUserAndYear(userId: string, steuerjahr: number): Promise<LstbRecord | null> {
-    return Promise.resolve(this.store.get(key(userId, steuerjahr)) ?? null)
+  findForUserAndYear(userId: string, taxYear: number): Promise<WageTaxCertificateRecord | null> {
+    return Promise.resolve(this.store.get(key(userId, taxYear)) ?? null)
   }
 
-  setField(userId: string, taxYear: number, field: LstbFeldId, value: string | null): Promise<LstbRecord> {
-    return this.setFeld(userId, taxYear, field, value)
-  }
-
-  setFeld(userId: string, steuerjahr: number, feld: LstbFeldId, wert: string | null): Promise<LstbRecord> {
-    const k = key(userId, steuerjahr)
+  setField(userId: string, taxYear: number, field: WageTaxCertificateFieldId, value: string | null): Promise<WageTaxCertificateRecord> {
+    const k = key(userId, taxYear)
     const existing = this.store.get(k)
-    const record: LstbRecord = existing ?? {
+    const record: WageTaxCertificateRecord = existing ?? {
       userId,
-      steuerjahr,
+      taxYear,
       bruttoarbeitslohn: null,
       lohnsteuer: null,
       sozialversicherung: null,
     }
-    const updated: LstbRecord = { ...record, [feld]: wert }
+    const updated: WageTaxCertificateRecord = { ...record, [field]: value }
     this.store.set(k, updated)
     return Promise.resolve(updated)
   }
 
   /** Test seam: seed a full record directly, bypassing setFeld's upsert. */
-  seed(record: LstbRecord): void {
-    this.store.set(key(record.userId, record.steuerjahr), record)
+  seed(record: WageTaxCertificateRecord): void {
+    this.store.set(key(record.userId, record.taxYear), record)
   }
 }

@@ -15,7 +15,7 @@ const HANDLED_ELSEWHERE: Record<string, string> = {
   Account: 'cascades off User',
   TwoFactor: 'cascades off User',
   Passkey: 'cascades off User',
-  Freischaltung: 'cascades off User',
+  Unlock: 'cascades off User',
   OauthClient: 'cascades off User',
   OauthRefreshToken: 'cascades off User',
   OauthAccessToken: 'cascades off User',
@@ -44,8 +44,8 @@ describe('account deletion covers every userId-keyed model', () => {
   })
 
   it('control proof: the check is not vacuous — the tax-data tables are found and covered', () => {
-    expect(userKeyedModels).toContain('Kapital')
-    expect(covered.has('kapital')).toBe(true)
+    expect(userKeyedModels).toContain('Capital')
+    expect(covered.has('capital')).toBe(true)
     expect(covered.has('profile')).toBe(false)
   })
 })

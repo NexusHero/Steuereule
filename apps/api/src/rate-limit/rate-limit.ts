@@ -7,7 +7,7 @@ export const DEVICE_PENDING_THROTTLE = { ttl: 60_000, limit: 10 } as const
 
 export const VERIFY_PASSWORD_THROTTLE = { ttl: 10_000, limit: 3 } as const
 
-export const KOPPLUNG_BEITRITT_THROTTLE = { ttl: 60_000, limit: 5 } as const
+export const LINK_JOIN_THROTTLE = { ttl: 60_000, limit: 5 } as const
 
 export const accountKeyedTracker: ThrottlerGetTrackerFunction = (req) => {
   const userId = (req as RequestWithUserId)[USER_ID_REQUEST_KEY]

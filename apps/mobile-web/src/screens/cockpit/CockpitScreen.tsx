@@ -3,43 +3,43 @@ import { ActivityIndicator, RefreshControl, ScrollView, View, Text, type ViewSty
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import { Button, Card, Chip, HerkunftsChip, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme, type Breakpoint } from '@steuereule/ui'
-import { FristenBanner } from '../fristen/FristenBanner'
+import { DeadlinesBanner } from '../deadlines/DeadlinesBanner'
 import { formatEuro, formatEuroRange, UNCERTAINTY_PER_ITEM } from '@steuereule/core'
 import {
   useCockpitControllerGetCockpitSummary,
-  useBestaetigungControllerGet,
+  useConfirmationControllerGet,
   useInterviewControllerGetInterview,
-  useStammdatenControllerLese,
-  useSteuerschaetzungControllerGet,
-  type SteuerschaetzungDto,
-  type AnlageBestaetigungDto,
-  type CockpitStandDto,
+  useMasterDataControllerRead,
+  useTaxEstimateControllerGet,
+  type TaxEstimateDto,
+  type AnnexConfirmationDto,
+  type CockpitStatusDto,
   type CockpitSummaryDto,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
-import { AUSWAHL_STEUERJAHRE, CURRENT_TAX_YEAR } from '../../config/taxYear'
+import { SELECTABLE_TAX_YEARS, CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
-import { pfadAusAntworten, type FunnelPfad } from '../funnel/KontoWandScreen'
+import { pathFromAnswers, type FunnelPath } from '../funnel/KontoWandScreen'
 
 
-const AUSWAHL_JAHRE = AUSWAHL_STEUERJAHRE
+const SELECTABLE_YEARS = SELECTABLE_TAX_YEARS
 
 export interface CockpitScreenProps {
   readonly taxYear?: number
   readonly onOpenInterview?: () => void
-  readonly onOpenBescheid?: () => void
-  readonly onOpenKapital?: () => void
-  readonly onOpenVermietung?: () => void
+  readonly onOpenAssessment?: () => void
+  readonly onOpenCapital?: () => void
+  readonly onOpenRental?: () => void
   readonly onOpenKinder?: () => void
-  readonly onOpenEulenModus?: (jahr: number) => void
-  readonly onOpenAusdruck?: (jahr: number) => void
-  readonly onOpenBestaetigung?: (jahr: number) => void
-  readonly onContinuePath?: (pfad: FunnelPfad) => void
-  readonly onJahrWechsel?: (jahr: number) => void
-  readonly onOpenStammdaten?: () => void
+  readonly onOpenOwlMode?: (year: number) => void
+  readonly onOpenPrintout?: (year: number) => void
+  readonly onOpenConfirmation?: (year: number) => void
+  readonly onContinuePath?: (path: FunnelPath) => void
+  readonly onYearChange?: (year: number) => void
+  readonly onOpenMasterData?: () => void
 }
 
-interface Weiter {
+interface Next {
   readonly label: string
   readonly onPress: () => void
 }
@@ -47,29 +47,29 @@ interface Weiter {
 export function CockpitScreen({
   taxYear = CURRENT_TAX_YEAR,
   onOpenInterview = () => {},
-  onOpenBescheid = () => {},
-  onOpenKapital = () => {},
-  onOpenVermietung = () => {},
+  onOpenAssessment = () => {},
+  onOpenCapital = () => {},
+  onOpenRental = () => {},
   onOpenKinder,
-  onOpenEulenModus,
-  onOpenAusdruck,
-  onOpenBestaetigung,
+  onOpenOwlMode,
+  onOpenPrintout,
+  onOpenConfirmation,
   onContinuePath,
-  onJahrWechsel,
-  onOpenStammdaten,
+  onYearChange,
+  onOpenMasterData,
 }: CockpitScreenProps) {
   const bp = useBreakpoint()
   const { t: tr } = useTranslation(APP_NS)
-  const [jahr, setJahrIntern] = useState(taxYear)
-  const setJahr = (neu: number) => {
-    setJahrIntern(neu)
-    onJahrWechsel?.(neu)
+  const [year, setYearInternal] = useState(taxYear)
+  const setYear = (fresh: number) => {
+    setYearInternal(fresh)
+    onYearChange?.(fresh)
   }
-  const query = useCockpitControllerGetCockpitSummary(jahr)
+  const query = useCockpitControllerGetCockpitSummary(year)
   const [pulling, setPulling] = useState(false)
-  const bestaetigungQuery = useBestaetigungControllerGet(jahr)
-  const interviewQuery = useInterviewControllerGetInterview(jahr)
-  const stammdatenQuery = useStammdatenControllerLese()
+  const confirmationQuery = useConfirmationControllerGet(year)
+  const interviewQuery = useInterviewControllerGetInterview(year)
+  const masterDataQuery = useMasterDataControllerRead()
 
   if (query.isPending) {
     return <LoadingState bp={bp} label={tr('cockpit.loading')} />
@@ -95,37 +95,37 @@ export function CockpitScreen({
   }
   const isRefreshing = query.isFetching && !pulling
   const interview = interviewQuery.data?.status === 200 ? interviewQuery.data.data : null
-  const pfad = interview?.nextStep.kind === 'done' ? pfadAusAntworten(interview.answers) : null
-  const fehlendeAngaben = stammdatenQuery.data?.status === 200 ? stammdatenQuery.data.data.fehlend.length : 0
-  const stammdaten: Weiter | null =
+  const path = interview?.nextStep.kind === 'done' ? pathFromAnswers(interview.answers) : null
+  const missingDetails = masterDataQuery.data?.status === 200 ? masterDataQuery.data.data.missing.length : 0
+  const masterData: Next | null =
     // Stays reachable once complete: it is also the way back to the Veranlagungsart and the partner.
-    onOpenStammdaten === undefined
+    onOpenMasterData === undefined
       ? null
       : {
-          label: fehlendeAngaben > 0 ? tr('cockpit.stammdatenErgaenzen', { anzahl: fehlendeAngaben }) : tr('cockpit.stammdatenAnsehen'),
-          onPress: onOpenStammdaten,
+          label: missingDetails > 0 ? tr('cockpit.stammdatenErgaenzen', { anzahl: missingDetails }) : tr('cockpit.stammdatenAnsehen'),
+          onPress: onOpenMasterData,
         }
-  const weiter: Weiter | null =
-    pfad !== null && onContinuePath
-      ? { label: tr('cockpit.weiterMitDeinemWeg', { pfad: tr(`funnel.kontoWand.pfad.${pfad}`) }), onPress: () => onContinuePath(pfad) }
+  const next: Next | null =
+    path !== null && onContinuePath
+      ? { label: tr('cockpit.weiterMitDeinemWeg', { pfad: tr(`funnel.kontoWand.pfad.${path}`) }), onPress: () => onContinuePath(path) }
       : null
 
   if (summary === null) {
     return (
       <CockpitEmpty
-        jahr={jahr}
-        onJahrWechsel={setJahr}
+        year={year}
+        onYearChange={setYear}
         refresh={refresh}
         isRefreshing={isRefreshing}
-        weiter={weiter}
-        stammdaten={stammdaten}
+        next={next}
+        masterData={masterData}
         onOpenInterview={onOpenInterview}
-        onOpenBescheid={onOpenBescheid}
-        onOpenKapital={onOpenKapital}
-        onOpenVermietung={onOpenVermietung}
+        onOpenAssessment={onOpenAssessment}
+        onOpenCapital={onOpenCapital}
+        onOpenRental={onOpenRental}
         {...(onOpenKinder ? { onOpenKinder } : {})}
-        {...(onOpenEulenModus ? { onOpenEulenModus: () => onOpenEulenModus(jahr) } : {})}
-        {...(onOpenAusdruck ? { onOpenAusdruck: () => onOpenAusdruck(jahr) } : {})}
+        {...(onOpenOwlMode ? { onOpenOwlMode: () => onOpenOwlMode(year) } : {})}
+        {...(onOpenPrintout ? { onOpenPrintout: () => onOpenPrintout(year) } : {})}
         bp={bp}
       />
     )
@@ -133,21 +133,21 @@ export function CockpitScreen({
   return (
     <CockpitLoaded
       summary={summary}
-      jahr={jahr}
-      onJahrWechsel={setJahr}
-      bestaetigung={bestaetigungQuery.data?.status === 200 ? bestaetigungQuery.data.data.anlagen : null}
-      {...(onOpenBestaetigung ? { onOpenBestaetigung: () => onOpenBestaetigung(jahr) } : {})}
+      year={year}
+      onYearChange={setYear}
+      confirmation={confirmationQuery.data?.status === 200 ? confirmationQuery.data.data.annexes : null}
+      {...(onOpenConfirmation ? { onOpenConfirmation: () => onOpenConfirmation(year) } : {})}
       refresh={refresh}
       isRefreshing={isRefreshing}
-      weiter={weiter}
-      stammdaten={stammdaten}
+      next={next}
+      masterData={masterData}
       onOpenInterview={onOpenInterview}
-      onOpenBescheid={onOpenBescheid}
-      onOpenKapital={onOpenKapital}
-      onOpenVermietung={onOpenVermietung}
+      onOpenAssessment={onOpenAssessment}
+      onOpenCapital={onOpenCapital}
+      onOpenRental={onOpenRental}
       {...(onOpenKinder ? { onOpenKinder } : {})}
-      {...(onOpenEulenModus ? { onOpenEulenModus: () => onOpenEulenModus(jahr) } : {})}
-      {...(onOpenAusdruck ? { onOpenAusdruck: () => onOpenAusdruck(jahr) } : {})}
+      {...(onOpenOwlMode ? { onOpenOwlMode: () => onOpenOwlMode(year) } : {})}
+      {...(onOpenPrintout ? { onOpenPrintout: () => onOpenPrintout(year) } : {})}
       bp={bp}
     />
   )
@@ -158,40 +158,40 @@ interface PullToRefresh {
   readonly onPull: () => void
 }
 
-function Erstattung({ jahr }: { readonly jahr: number }) {
+function Refund({ year }: { readonly year: number }) {
   const t = useTheme()
   const styles = makeStyles(t)
   const { t: tr, i18n } = useTranslation(APP_NS)
-  const query = useSteuerschaetzungControllerGet(jahr)
-  const schaetzung: SteuerschaetzungDto | null = query.data?.status === 200 ? query.data.data : null
+  const query = useTaxEstimateControllerGet(year)
+  const estimate: TaxEstimateDto | null = query.data?.status === 200 ? query.data.data : null
   return (
     <>
-      <Text style={styles.refundLater}>{erstattungsText(schaetzung, tr, i18n.language)}</Text>
-      {schaetzung?.kind === 'spanne' && schaetzung.kirchensteuerOffen ? (
+      <Text style={styles.refundLater}>{refundText(estimate, tr, i18n.language)}</Text>
+      {estimate?.kind === 'spanne' && estimate.churchTaxOpen ? (
         <Text style={styles.refundLater}>{tr('cockpit.erstattung.kirchensteuer')}</Text>
       ) : null}
     </>
   )
 }
 
-function erstattungsText(schaetzung: SteuerschaetzungDto | null, tr: TFunction<typeof APP_NS>, sprache: string): string {
-  if (schaetzung === null) return tr('cockpit.hero.refundLater')
-  if (schaetzung.kind === 'offen') {
+function refundText(estimate: TaxEstimateDto | null, tr: TFunction<typeof APP_NS>, language: string): string {
+  if (estimate === null) return tr('cockpit.hero.refundLater')
+  if (estimate.kind === 'offen') {
     // A married person is never estimated as single (ADR-0054): say what unlocks the couple's estimate.
-    if (schaetzung.fehlt?.includes('veranlagungsart')) return tr('cockpit.erstattung.veranlagungsartOffen')
-    return tr('cockpit.erstattung.offen', { count: schaetzung.fehlt?.length ?? 0 })
+    if (estimate.missing?.includes('veranlagungsart')) return tr('cockpit.erstattung.veranlagungsartOffen')
+    return tr('cockpit.erstattung.offen', { count: estimate.missing?.length ?? 0 })
   }
-  if (schaetzung.kind === 'nicht-moeglich') return tr(`cockpit.erstattung.grund.${schaetzung.grund ?? 'unbekannt'}`)
-  const { von, bis } = schaetzung.ergebnis ?? { von: 0, bis: 0 }
-  const betrag = (wert: number) => Math.abs(wert).toLocaleString(sprache === 'en' ? 'en-GB' : 'de-DE')
+  if (estimate.kind === 'nicht-moeglich') return tr(`cockpit.erstattung.grund.${estimate.reason ?? 'unbekannt'}`)
+  const { from, to } = estimate.result ?? { from: 0, to: 0 }
+  const amount = (value: number) => Math.abs(value).toLocaleString(language === 'en' ? 'en-GB' : 'de-DE')
   // A range without width ("31.192 – 31.192 €") reads like a typo; it is one figure.
-  if (von === bis) return tr(von >= 0 ? 'cockpit.erstattung.erstattungRund' : 'cockpit.erstattung.nachzahlungRund', { betrag: betrag(von) })
-  if (von >= 0) return tr('cockpit.erstattung.erstattung', { von: betrag(von), bis: betrag(bis) })
-  if (bis <= 0) return tr('cockpit.erstattung.nachzahlung', { von: betrag(bis), bis: betrag(von) })
-  return tr('cockpit.erstattung.offenesErgebnis', { nachzahlung: betrag(von), erstattung: betrag(bis) })
+  if (from === to) return tr(from >= 0 ? 'cockpit.erstattung.erstattungRund' : 'cockpit.erstattung.nachzahlungRund', { betrag: amount(from) })
+  if (from >= 0) return tr('cockpit.erstattung.erstattung', { von: amount(from), bis: amount(to) })
+  if (to <= 0) return tr('cockpit.erstattung.nachzahlung', { von: amount(to), bis: amount(from) })
+  return tr('cockpit.erstattung.offenesErgebnis', { nachzahlung: amount(from), erstattung: amount(to) })
 }
 
-function Appbar({ jahr, onJahrWechsel, isRefreshing }: { readonly jahr: number; readonly onJahrWechsel: (jahr: number) => void; readonly isRefreshing: boolean }) {
+function Appbar({ year, onYearChange, isRefreshing }: { readonly year: number; readonly onYearChange: (selectedYear: number) => void; readonly isRefreshing: boolean }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
@@ -202,8 +202,8 @@ function Appbar({ jahr, onJahrWechsel, isRefreshing }: { readonly jahr: number; 
         {isRefreshing ? <ActivityIndicator size="small" color={t.color.tinte2} accessibilityLabel={tr('cockpit.refreshing')} /> : null}
       </View>
       <View style={styles.jahrReihe} accessibilityLabel={tr('cockpit.jahrAuswahl')}>
-        {AUSWAHL_JAHRE.map((y) => (
-          <Chip key={y} aktiv={y === jahr} onPress={() => onJahrWechsel(y)} testID={`jahr-${y}`}>
+        {SELECTABLE_YEARS.map((y) => (
+          <Chip key={y} active={y === year} onPress={() => onYearChange(y)} testID={`jahr-${y}`}>
             {String(y)}
           </Chip>
         ))}
@@ -213,23 +213,23 @@ function Appbar({ jahr, onJahrWechsel, isRefreshing }: { readonly jahr: number; 
 }
 
 interface CockpitEmptyProps {
-  readonly jahr: number
-  readonly onJahrWechsel: (jahr: number) => void
+  readonly year: number
+  readonly onYearChange: (year: number) => void
   readonly refresh: PullToRefresh
   readonly isRefreshing: boolean
-  readonly weiter: Weiter | null
-  readonly stammdaten: Weiter | null
+  readonly next: Next | null
+  readonly masterData: Next | null
   readonly onOpenInterview: () => void
-  readonly onOpenBescheid: () => void
-  readonly onOpenKapital: () => void
-  readonly onOpenVermietung: () => void
+  readonly onOpenAssessment: () => void
+  readonly onOpenCapital: () => void
+  readonly onOpenRental: () => void
   readonly onOpenKinder?: () => void
-  readonly onOpenEulenModus?: () => void
-  readonly onOpenAusdruck?: () => void
+  readonly onOpenOwlMode?: () => void
+  readonly onOpenPrintout?: () => void
   readonly bp: Breakpoint
 }
 
-function CockpitEmpty({ jahr, onJahrWechsel, refresh, isRefreshing, weiter, stammdaten, onOpenInterview, onOpenBescheid, onOpenKapital, onOpenVermietung, onOpenKinder, onOpenEulenModus, bp }: CockpitEmptyProps) {
+function CockpitEmpty({ year, onYearChange, refresh, isRefreshing, next, masterData, onOpenInterview, onOpenAssessment, onOpenCapital, onOpenRental, onOpenKinder, onOpenOwlMode, bp }: CockpitEmptyProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
@@ -239,41 +239,41 @@ function CockpitEmpty({ jahr, onJahrWechsel, refresh, isRefreshing, weiter, stam
       refreshControl={<RefreshControl refreshing={refresh.pulling} onRefresh={refresh.onPull} />}
       testID="screen-container"
     >
-      <Appbar jahr={jahr} onJahrWechsel={onJahrWechsel} isRefreshing={isRefreshing} />
-      <FristenBanner taxYear={jahr} />
+      <Appbar year={year} onYearChange={onYearChange} isRefreshing={isRefreshing} />
+      <DeadlinesBanner taxYear={year} />
       <View style={styles.emptyBlock}>
         <Text style={styles.heading}>{tr('cockpit.empty.heading')}</Text>
         <Text style={styles.help}>{tr('cockpit.empty.message')}</Text>
-        {weiter ? (
-          <Button onPress={weiter.onPress} style={styles.cta} testID="cockpit-weiter">
-            {weiter.label}
+        {next ? (
+          <Button onPress={next.onPress} style={styles.cta} testID="cockpit-weiter">
+            {next.label}
           </Button>
         ) : (
           <Button onPress={onOpenInterview} style={styles.cta}>
             {tr('cockpit.answerQuestions')}
           </Button>
         )}
-        {stammdaten ? (
-          <Button variante="ghost" onPress={stammdaten.onPress} style={styles.secondaryCta} testID="cockpit-stammdaten">
-            {stammdaten.label}
+        {masterData ? (
+          <Button variant="ghost" onPress={masterData.onPress} style={styles.secondaryCta} testID="cockpit-stammdaten">
+            {masterData.label}
           </Button>
         ) : null}
-        <Button variante="ghost" onPress={onOpenBescheid} style={styles.secondaryCta}>
+        <Button variant="ghost" onPress={onOpenAssessment} style={styles.secondaryCta}>
           {tr('cockpit.checkBescheid')}
         </Button>
-        <Button variante="ghost" onPress={onOpenKapital} style={styles.secondaryCta}>
+        <Button variant="ghost" onPress={onOpenCapital} style={styles.secondaryCta}>
           {tr('cockpit.checkKapital')}
         </Button>
-        <Button variante="ghost" onPress={onOpenVermietung} style={styles.secondaryCta}>
+        <Button variant="ghost" onPress={onOpenRental} style={styles.secondaryCta}>
           {tr('cockpit.checkVermietung')}
         </Button>
         {onOpenKinder ? (
-          <Button variante="ghost" onPress={onOpenKinder} style={styles.secondaryCta} testID="cockpit-empty-kinder">
+          <Button variant="ghost" onPress={onOpenKinder} style={styles.secondaryCta} testID="cockpit-empty-kinder">
             {tr('cockpit.checkKinder')}
           </Button>
         ) : null}
-        {onOpenEulenModus ? (
-          <Button variante="ghost" onPress={onOpenEulenModus} style={styles.secondaryCta} testID="cockpit-empty-eulen-modus">
+        {onOpenOwlMode ? (
+          <Button variant="ghost" onPress={onOpenOwlMode} style={styles.secondaryCta} testID="cockpit-empty-eulen-modus">
             {tr('cockpit.eulenModus')}
           </Button>
         ) : null}
@@ -282,37 +282,37 @@ function CockpitEmpty({ jahr, onJahrWechsel, refresh, isRefreshing, weiter, stam
   )
 }
 
-interface BestaetigungHinweisProps {
-  readonly anlagen: readonly AnlageBestaetigungDto[] | null
-  readonly stand: CockpitStandDto
-  readonly onOpenBestaetigung?: () => void
+interface ConfirmationNoticeProps {
+  readonly annexes: readonly AnnexConfirmationDto[] | null
+  readonly status: CockpitStatusDto
+  readonly onOpenConfirmation?: () => void
 }
 
-function BestaetigungHinweis({ anlagen, stand, onOpenBestaetigung }: BestaetigungHinweisProps) {
+function ConfirmationNotice({ annexes, status, onOpenConfirmation }: ConfirmationNoticeProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
-  const offen = (anlagen ?? []).filter((a) => a.unbestaetigt > 0)
-  if (offen.length === 0) return null
-  const summe = stand.kind === 'spanne' ? (stand.unbestaetigteSumme ?? 0) : 0
+  const open = (annexes ?? []).filter((a) => a.unconfirmed > 0)
+  if (open.length === 0) return null
+  const sum = status.kind === 'spanne' ? (status.unconfirmedSum ?? 0) : 0
 
   return (
     <Card variant="default" testID="bestaetigung-hinweis">
       <Text style={styles.help}>
-        {summe > 0 ? tr('cockpit.bestaetigung.hinweis', { count: offen.reduce((n, a) => n + a.unbestaetigt, 0), summe: formatEuro(summe) }) : tr('cockpit.bestaetigung.hinweisOhneSumme')}
+        {sum > 0 ? tr('cockpit.bestaetigung.hinweis', { count: open.reduce((n, a) => n + a.unconfirmed, 0), summe: formatEuro(sum) }) : tr('cockpit.bestaetigung.hinweisOhneSumme')}
       </Text>
-      {offen.map((a) => (
-        <View key={a.anlage} style={styles.uebernahmeZeile}>
+      {open.map((a) => (
+        <View key={a.annex} style={styles.uebernahmeZeile}>
           <Text style={styles.uebernahmeZeileText}>
             {tr('cockpit.bestaetigung.anlage', {
-              anlage: tr(`bestaetigung.anlagen.${a.anlage}`),
-              anzahl: tr('bestaetigung.unbestaetigt', { count: a.unbestaetigt }),
+              anlage: tr(`bestaetigung.anlagen.${a.annex}`),
+              anzahl: tr('bestaetigung.unbestaetigt', { count: a.unconfirmed }),
             })}
           </Text>
         </View>
       ))}
-      {onOpenBestaetigung ? (
-        <Button variante="ghost" onPress={onOpenBestaetigung} testID="bestaetigung-oeffnen">
+      {onOpenConfirmation ? (
+        <Button variant="ghost" onPress={onOpenConfirmation} testID="bestaetigung-oeffnen">
           {tr('cockpit.bestaetigung.pruefen')}
         </Button>
       ) : null}
@@ -322,29 +322,29 @@ function BestaetigungHinweis({ anlagen, stand, onOpenBestaetigung }: Bestaetigun
 
 interface CockpitLoadedProps {
   readonly summary: CockpitSummaryDto
-  readonly jahr: number
-  readonly onJahrWechsel: (jahr: number) => void
-  readonly bestaetigung: readonly AnlageBestaetigungDto[] | null
-  readonly onOpenBestaetigung?: () => void
+  readonly year: number
+  readonly onYearChange: (year: number) => void
+  readonly confirmation: readonly AnnexConfirmationDto[] | null
+  readonly onOpenConfirmation?: () => void
   readonly refresh: PullToRefresh
   readonly isRefreshing: boolean
-  readonly weiter: Weiter | null
-  readonly stammdaten: Weiter | null
+  readonly next: Next | null
+  readonly masterData: Next | null
   readonly onOpenInterview: () => void
-  readonly onOpenBescheid: () => void
-  readonly onOpenKapital: () => void
-  readonly onOpenVermietung: () => void
+  readonly onOpenAssessment: () => void
+  readonly onOpenCapital: () => void
+  readonly onOpenRental: () => void
   readonly onOpenKinder?: () => void
-  readonly onOpenEulenModus?: () => void
-  readonly onOpenAusdruck?: () => void
+  readonly onOpenOwlMode?: () => void
+  readonly onOpenPrintout?: () => void
   readonly bp: Breakpoint
 }
 
-function CockpitLoaded({ summary, jahr, onJahrWechsel, bestaetigung, onOpenBestaetigung, refresh, isRefreshing, weiter, stammdaten, onOpenInterview, onOpenBescheid, onOpenKapital, onOpenVermietung, onOpenKinder, onOpenEulenModus, onOpenAusdruck, bp }: CockpitLoadedProps) {
+function CockpitLoaded({ summary, year, onYearChange, confirmation, onOpenConfirmation, refresh, isRefreshing, next, masterData, onOpenInterview, onOpenAssessment, onOpenCapital, onOpenRental, onOpenKinder, onOpenOwlMode, onOpenPrintout, bp }: CockpitLoadedProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
-  const { openItems, stand } = summary
+  const { openItems, status } = summary
   const hasOpenItems = openItems > 0
 
   return (
@@ -353,57 +353,57 @@ function CockpitLoaded({ summary, jahr, onJahrWechsel, bestaetigung, onOpenBesta
       refreshControl={<RefreshControl refreshing={refresh.pulling} onRefresh={refresh.onPull} />}
       testID="screen-container"
     >
-      <Appbar jahr={jahr} onJahrWechsel={onJahrWechsel} isRefreshing={isRefreshing} />
-      <FristenBanner taxYear={jahr} />
-      <BestaetigungHinweis anlagen={bestaetigung} stand={stand} {...(onOpenBestaetigung ? { onOpenBestaetigung } : {})} />
+      <Appbar year={year} onYearChange={onYearChange} isRefreshing={isRefreshing} />
+      <DeadlinesBanner taxYear={year} />
+      <ConfirmationNotice annexes={confirmation} status={status} {...(onOpenConfirmation ? { onOpenConfirmation } : {})} />
       <Card variant="nacht">
         <Text style={styles.heroLabel}>{tr('cockpit.hero.label')}</Text>
-        {stand.kind === 'gated' ? (
-          <GatedHero stand={stand} />
+        {status.kind === 'gated' ? (
+          <GatedHero status={status} />
         ) : (
-          <NumericHero stand={stand} />
+          <NumericHero status={status} />
         )}
         <Text style={styles.openItems}>{tr('cockpit.hero.openItems', { count: openItems })}</Text>
-        <Erstattung jahr={jahr} />
+        <Refund year={year} />
       </Card>
-      {weiter ? (
-        <Button onPress={weiter.onPress} style={styles.cta} testID="cockpit-weiter">
-          {weiter.label}
+      {next ? (
+        <Button onPress={next.onPress} style={styles.cta} testID="cockpit-weiter">
+          {next.label}
         </Button>
       ) : hasOpenItems ? (
         <Button onPress={onOpenInterview} style={styles.cta}>
           {tr('cockpit.answerQuestions')}
         </Button>
       ) : null}
-      {stammdaten ? (
-        <Button variante="ghost" onPress={stammdaten.onPress} style={styles.secondaryCta} testID="cockpit-stammdaten">
-          {stammdaten.label}
+      {masterData ? (
+        <Button variant="ghost" onPress={masterData.onPress} style={styles.secondaryCta} testID="cockpit-stammdaten">
+          {masterData.label}
         </Button>
       ) : null}
       <Button
-        variante="ghost"
-        onPress={onOpenBescheid}
+        variant="ghost"
+        onPress={onOpenAssessment}
         style={styles.secondaryCta}
       >
         {tr('cockpit.checkBescheid')}
       </Button>
       <Button
-        variante="ghost"
-        onPress={onOpenKapital}
+        variant="ghost"
+        onPress={onOpenCapital}
         style={styles.secondaryCta}
       >
         {tr('cockpit.checkKapital')}
       </Button>
       <Button
-        variante="ghost"
-        onPress={onOpenVermietung}
+        variant="ghost"
+        onPress={onOpenRental}
         style={styles.secondaryCta}
       >
         {tr('cockpit.checkVermietung')}
       </Button>
       {onOpenKinder ? (
         <Button
-          variante="ghost"
+          variant="ghost"
           onPress={onOpenKinder}
           style={styles.secondaryCta}
           testID="cockpit-kinder"
@@ -411,18 +411,18 @@ function CockpitLoaded({ summary, jahr, onJahrWechsel, bestaetigung, onOpenBesta
           {tr('cockpit.checkKinder')}
         </Button>
       ) : null}
-      {onOpenEulenModus ? (
+      {onOpenOwlMode ? (
         <Button
-          variante="ghost"
-          onPress={onOpenEulenModus}
+          variant="ghost"
+          onPress={onOpenOwlMode}
           style={styles.secondaryCta}
           testID="cockpit-eulen-modus"
         >
           {tr('cockpit.eulenModus')}
         </Button>
       ) : null}
-      {onOpenAusdruck ? (
-        <Button variante="ghost" onPress={onOpenAusdruck} style={styles.secondaryCta} testID="cockpit-ausdruck">
+      {onOpenPrintout ? (
+        <Button variant="ghost" onPress={onOpenPrintout} style={styles.secondaryCta} testID="cockpit-ausdruck">
           {tr('ausdruck.cockpitCta')}
         </Button>
       ) : null}
@@ -430,23 +430,23 @@ function CockpitLoaded({ summary, jahr, onJahrWechsel, bestaetigung, onOpenBesta
   )
 }
 
-function NumericHero({ stand }: { readonly stand: CockpitStandDto }) {
+function NumericHero({ status }: { readonly status: CockpitStatusDto }) {
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(useTheme())
-  const rechenweg =
-    stand.kind === 'spanne'
-      ? tr('cockpit.hero.herkunftRechenweg', { count: stand.offenePosten ?? 0, perItem: formatEuro(UNCERTAINTY_PER_ITEM) })
+  const calculationPath =
+    status.kind === 'spanne'
+      ? tr('cockpit.hero.herkunftRechenweg', { count: status.openItems ?? 0, perItem: formatEuro(UNCERTAINTY_PER_ITEM) })
       : undefined
-  const quelle = rechenweg === undefined ? { regel: tr('cockpit.hero.herkunftRegel') } : { regel: tr('cockpit.hero.herkunftRegel'), rechenweg }
+  const source = calculationPath === undefined ? { rule: tr('cockpit.hero.herkunftRegel') } : { rule: tr('cockpit.hero.herkunftRegel'), calculationPath }
   return (
     <>
       <Text style={styles.heroValue}>
-        {heroDisplay(stand, tr('cockpit.hero.nochOffen'))}
+        {heroDisplay(status, tr('cockpit.hero.nochOffen'))}
       </Text>
-      {stand.kind === 'spanne' && (stand.offenePosten ?? 0) > 0 ? (
-        <Text style={styles.offenePosten}>{tr('cockpit.hero.offenePosten', { count: stand.offenePosten ?? 0 })}</Text>
+      {status.kind === 'spanne' && (status.openItems ?? 0) > 0 ? (
+        <Text style={styles.offenePosten}>{tr('cockpit.hero.offenePosten', { count: status.openItems ?? 0 })}</Text>
       ) : null}
-      <HerkunftsChip quelle={quelle} />
+      <HerkunftsChip source={source} />
     </>
   )
 }
@@ -455,20 +455,20 @@ function NumericHero({ stand }: { readonly stand: CockpitStandDto }) {
  * A range that starts at 0 € only says "nothing reliable is entered yet" — "0–120 €" would read as a
  * real figure, so the hero says the income is still open instead.
  */
-function heroDisplay(stand: CockpitStandDto, stillOpen: string): string {
-  if (stand.kind === 'bestimmt') return formatEuro(stand.wert ?? 0)
-  if ((stand.von ?? 0) === 0) return stillOpen
-  return formatEuroRange(stand.von ?? 0, stand.bis ?? 0)
+function heroDisplay(status: CockpitStatusDto, stillOpen: string): string {
+  if (status.kind === 'bestimmt') return formatEuro(status.value ?? 0)
+  if ((status.from ?? 0) === 0) return stillOpen
+  return formatEuroRange(status.from ?? 0, status.to ?? 0)
 }
 
-function GatedHero({ stand }: { readonly stand: CockpitStandDto }) {
+function GatedHero({ status }: { readonly status: CockpitStatusDto }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
   return (
     <>
       <Text style={styles.gatedHeading}>{tr('cockpit.hero.gatedHeading')}</Text>
-      {(stand.gegated ?? []).map((name) => (
+      {(status.gated ?? []).map((name) => (
         <Text key={name} style={styles.gatedBody}>
           {tr('cockpit.hero.gatedBody', { name })}
         </Text>
@@ -494,28 +494,28 @@ function makeStyles(t: UiTheme) {
     alignItems: 'center',
     paddingBottom: t.space.s4,
   }
-  const appbarTitleReihe: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s2 }
+  const appbarTitleRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s2 }
   const appbarTitle: TextStyle = {
     fontFamily: t.font.display,
     fontWeight: t.weight.schwer,
     fontSize: t.size['2xl'],
     color: t.color.tinte,
   }
-  const jahrReihe: ViewStyle = {
+  const yearRow: ViewStyle = {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'flex-end',
     gap: t.space.s1,
     maxWidth: '55%',
   }
-  const uebernahmeZeile: ViewStyle = {
+  const takeoverRow: ViewStyle = {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     gap: t.space.s3,
     marginTop: t.space.s3,
   }
-  const uebernahmeZeileText: TextStyle = {
+  const takeoverRowText: TextStyle = {
     flex: 1,
     flexWrap: 'wrap',
     color: t.color.tinte,
@@ -563,7 +563,7 @@ function makeStyles(t: UiTheme) {
     marginTop: t.space.s2,
     marginBottom: t.space.s3,
   }
-  const offenePosten: TextStyle = {
+  const openItemCount: TextStyle = {
     color: t.color.nachtText,
     opacity: 0.85,
     fontFamily: t.font.text,
@@ -591,5 +591,5 @@ function makeStyles(t: UiTheme) {
     marginBottom: t.space.s2,
   }
 
-  return { screen, wideScreen, appbar, appbarTitleReihe, appbarTitle, jahrReihe, uebernahmeZeile, uebernahmeZeileText, heading, help, cta, secondaryCta, emptyBlock, heroLabel, heroValue, openItems, offenePosten, refundLater, gatedHeading, gatedBody }
+  return { screen, wideScreen, appbar, appbarTitleReihe: appbarTitleRow, appbarTitle, jahrReihe: yearRow, uebernahmeZeile: takeoverRow, uebernahmeZeileText: takeoverRowText, heading, help, cta, secondaryCta, emptyBlock, heroLabel, heroValue, openItems, offenePosten: openItemCount, refundLater, gatedHeading, gatedBody }
 }

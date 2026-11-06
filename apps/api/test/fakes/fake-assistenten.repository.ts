@@ -1,14 +1,14 @@
 import type {
-  AssistentenRepository,
+  AssistantRepository,
   ClientInfo,
-  VerbundenerAssistent,
+  ConnectedAssistant,
 } from '../../src/assistenten/assistenten.repository.js'
 
-export class FakeAssistentenRepository implements AssistentenRepository {
-  private connected: Map<string, VerbundenerAssistent[]> = new Map()
+export class FakeAssistantsRepository implements AssistantRepository {
+  private connected: Map<string, ConnectedAssistant[]> = new Map()
   private clients: Map<string, ClientInfo> = new Map()
 
-  setConnected(userId: string, list: VerbundenerAssistent[]): void {
+  setConnected(userId: string, list: ConnectedAssistant[]): void {
     this.connected.set(userId, [...list])
   }
 
@@ -16,7 +16,7 @@ export class FakeAssistentenRepository implements AssistentenRepository {
     this.clients.set(info.clientId, info)
   }
 
-  async findConnectedForUser(userId: string): Promise<VerbundenerAssistent[]> {
+  async findConnectedForUser(userId: string): Promise<ConnectedAssistant[]> {
     return this.connected.get(userId) ?? []
   }
 

@@ -25,9 +25,9 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
-  EulenEinstellungResponseDto,
-  EulenKartenResponseDto,
-  SetEulenEinstellungDto
+  OwlCardsResponseDto,
+  OwlSettingResponseDto,
+  SetOwlSettingDto
 } from './eulen-modus.schemas';
 
 import { httpClient } from '../http-client';
@@ -52,26 +52,26 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   return result;
 };
 
-export type eulenModusControllerGetEinstellungResponse200 = {
-  data: EulenEinstellungResponseDto
+export type owlModeControllerGetSettingResponse200 = {
+  data: OwlSettingResponseDto
   status: 200
 }
 
-export type eulenModusControllerGetEinstellungResponse401 = {
+export type owlModeControllerGetSettingResponse401 = {
   data: void
   status: 401
 }
 
-export type eulenModusControllerGetEinstellungResponseSuccess = (eulenModusControllerGetEinstellungResponse200) & {
+export type owlModeControllerGetSettingResponseSuccess = (owlModeControllerGetSettingResponse200) & {
   headers: Headers;
 };
-export type eulenModusControllerGetEinstellungResponseError = (eulenModusControllerGetEinstellungResponse401) & {
+export type owlModeControllerGetSettingResponseError = (owlModeControllerGetSettingResponse401) & {
   headers: Headers;
 };
 
-export type eulenModusControllerGetEinstellungResponse = (eulenModusControllerGetEinstellungResponseSuccess | eulenModusControllerGetEinstellungResponseError)
+export type owlModeControllerGetSettingResponse = (owlModeControllerGetSettingResponseSuccess | owlModeControllerGetSettingResponseError)
 
-export const getEulenModusControllerGetEinstellungUrl = () => {
+export const getOwlModeControllerGetSettingUrl = () => {
 
 
 
@@ -79,9 +79,9 @@ export const getEulenModusControllerGetEinstellungUrl = () => {
   return `/v1/eulen-modus/einstellung`
 }
 
-export const eulenModusControllerGetEinstellung = async ( options?: RequestInit): Promise<eulenModusControllerGetEinstellungResponse> => {
+export const owlModeControllerGetSetting = async ( options?: RequestInit): Promise<owlModeControllerGetSettingResponse> => {
 
-  return httpClient<eulenModusControllerGetEinstellungResponse>(getEulenModusControllerGetEinstellungUrl(),
+  return httpClient<owlModeControllerGetSettingResponse>(getOwlModeControllerGetSettingUrl(),
   {
     ...options,
     method: 'GET'
@@ -94,66 +94,66 @@ export const eulenModusControllerGetEinstellung = async ( options?: RequestInit)
 
 
 
-export const getEulenModusControllerGetEinstellungQueryKey = () => {
+export const getOwlModeControllerGetSettingQueryKey = () => {
     return [
     `/v1/eulen-modus/einstellung`
     ] as const;
     }
 
 
-export const getEulenModusControllerGetEinstellungQueryOptions = <TData = Awaited<ReturnType<typeof eulenModusControllerGetEinstellung>>, TError = void>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof eulenModusControllerGetEinstellung>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export const getOwlModeControllerGetSettingQueryOptions = <TData = Awaited<ReturnType<typeof owlModeControllerGetSetting>>, TError = void>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof owlModeControllerGetSetting>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getEulenModusControllerGetEinstellungQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getOwlModeControllerGetSettingQueryKey();
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof eulenModusControllerGetEinstellung>>> = ({ signal }) => eulenModusControllerGetEinstellung({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof owlModeControllerGetSetting>>> = ({ signal }) => owlModeControllerGetSetting({ signal, ...requestOptions });
 
 
 
 
 
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof eulenModusControllerGetEinstellung>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof owlModeControllerGetSetting>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
-export type EulenModusControllerGetEinstellungQueryResult = NonNullable<Awaited<ReturnType<typeof eulenModusControllerGetEinstellung>>>
-export type EulenModusControllerGetEinstellungQueryError = void
+export type OwlModeControllerGetSettingQueryResult = NonNullable<Awaited<ReturnType<typeof owlModeControllerGetSetting>>>
+export type OwlModeControllerGetSettingQueryError = void
 
 
-export function useEulenModusControllerGetEinstellung<TData = Awaited<ReturnType<typeof eulenModusControllerGetEinstellung>>, TError = void>(
-  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof eulenModusControllerGetEinstellung>>, TError, TData>> & Pick<
+export function useOwlModeControllerGetSetting<TData = Awaited<ReturnType<typeof owlModeControllerGetSetting>>, TError = void>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof owlModeControllerGetSetting>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof eulenModusControllerGetEinstellung>>,
+          Awaited<ReturnType<typeof owlModeControllerGetSetting>>,
           TError,
-          Awaited<ReturnType<typeof eulenModusControllerGetEinstellung>>
+          Awaited<ReturnType<typeof owlModeControllerGetSetting>>
         > , 'initialData'
       >, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useEulenModusControllerGetEinstellung<TData = Awaited<ReturnType<typeof eulenModusControllerGetEinstellung>>, TError = void>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof eulenModusControllerGetEinstellung>>, TError, TData>> & Pick<
+export function useOwlModeControllerGetSetting<TData = Awaited<ReturnType<typeof owlModeControllerGetSetting>>, TError = void>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof owlModeControllerGetSetting>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof eulenModusControllerGetEinstellung>>,
+          Awaited<ReturnType<typeof owlModeControllerGetSetting>>,
           TError,
-          Awaited<ReturnType<typeof eulenModusControllerGetEinstellung>>
+          Awaited<ReturnType<typeof owlModeControllerGetSetting>>
         > , 'initialData'
       >, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useEulenModusControllerGetEinstellung<TData = Awaited<ReturnType<typeof eulenModusControllerGetEinstellung>>, TError = void>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof eulenModusControllerGetEinstellung>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export function useOwlModeControllerGetSetting<TData = Awaited<ReturnType<typeof owlModeControllerGetSetting>>, TError = void>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof owlModeControllerGetSetting>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 
-export function useEulenModusControllerGetEinstellung<TData = Awaited<ReturnType<typeof eulenModusControllerGetEinstellung>>, TError = void>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof eulenModusControllerGetEinstellung>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export function useOwlModeControllerGetSetting<TData = Awaited<ReturnType<typeof owlModeControllerGetSetting>>, TError = void>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof owlModeControllerGetSetting>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getEulenModusControllerGetEinstellungQueryOptions(options)
+  const queryOptions = getOwlModeControllerGetSettingQueryOptions(options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
@@ -166,26 +166,26 @@ export function useEulenModusControllerGetEinstellung<TData = Awaited<ReturnType
 
 
 
-export type eulenModusControllerSetEinstellungResponse200 = {
-  data: EulenEinstellungResponseDto
+export type owlModeControllerSetSettingResponse200 = {
+  data: OwlSettingResponseDto
   status: 200
 }
 
-export type eulenModusControllerSetEinstellungResponse401 = {
+export type owlModeControllerSetSettingResponse401 = {
   data: void
   status: 401
 }
 
-export type eulenModusControllerSetEinstellungResponseSuccess = (eulenModusControllerSetEinstellungResponse200) & {
+export type owlModeControllerSetSettingResponseSuccess = (owlModeControllerSetSettingResponse200) & {
   headers: Headers;
 };
-export type eulenModusControllerSetEinstellungResponseError = (eulenModusControllerSetEinstellungResponse401) & {
+export type owlModeControllerSetSettingResponseError = (owlModeControllerSetSettingResponse401) & {
   headers: Headers;
 };
 
-export type eulenModusControllerSetEinstellungResponse = (eulenModusControllerSetEinstellungResponseSuccess | eulenModusControllerSetEinstellungResponseError)
+export type owlModeControllerSetSettingResponse = (owlModeControllerSetSettingResponseSuccess | owlModeControllerSetSettingResponseError)
 
-export const getEulenModusControllerSetEinstellungUrl = () => {
+export const getOwlModeControllerSetSettingUrl = () => {
 
 
 
@@ -193,14 +193,14 @@ export const getEulenModusControllerSetEinstellungUrl = () => {
   return `/v1/eulen-modus/einstellung`
 }
 
-export const eulenModusControllerSetEinstellung = async (setEulenEinstellungDto: SetEulenEinstellungDto, options?: RequestInit): Promise<eulenModusControllerSetEinstellungResponse> => {
+export const owlModeControllerSetSetting = async (setOwlSettingDto: SetOwlSettingDto, options?: RequestInit): Promise<owlModeControllerSetSettingResponse> => {
 
-  return httpClient<eulenModusControllerSetEinstellungResponse>(getEulenModusControllerSetEinstellungUrl(),
+  return httpClient<owlModeControllerSetSettingResponse>(getOwlModeControllerSetSettingUrl(),
   {
     ...options,
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(setEulenEinstellungDto)
+    body: JSON.stringify(setOwlSettingDto)
   }
 );}
 
@@ -208,11 +208,11 @@ export const eulenModusControllerSetEinstellung = async (setEulenEinstellungDto:
 
 
 
-export const getEulenModusControllerSetEinstellungMutationOptions = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof eulenModusControllerSetEinstellung>>, TError,{data: SetEulenEinstellungDto}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof eulenModusControllerSetEinstellung>>, TError,{data: SetEulenEinstellungDto}, TContext> => {
+export const getOwlModeControllerSetSettingMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof owlModeControllerSetSetting>>, TError,{data: SetOwlSettingDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof owlModeControllerSetSetting>>, TError,{data: SetOwlSettingDto}, TContext> => {
 
-const mutationKey = ['eulenModusControllerSetEinstellung'];
+const mutationKey = ['owlModeControllerSetSetting'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -222,10 +222,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof eulenModusControllerSetEinstellung>>, {data: SetEulenEinstellungDto}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof owlModeControllerSetSetting>>, {data: SetOwlSettingDto}> = (props) => {
           const {data} = props ?? {};
 
-          return  eulenModusControllerSetEinstellung(data,requestOptions)
+          return  owlModeControllerSetSetting(data,requestOptions)
         }
 
 
@@ -235,41 +235,41 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type EulenModusControllerSetEinstellungMutationResult = NonNullable<Awaited<ReturnType<typeof eulenModusControllerSetEinstellung>>>
-    export type EulenModusControllerSetEinstellungMutationBody = SetEulenEinstellungDto
-    export type EulenModusControllerSetEinstellungMutationError = void
+    export type OwlModeControllerSetSettingMutationResult = NonNullable<Awaited<ReturnType<typeof owlModeControllerSetSetting>>>
+    export type OwlModeControllerSetSettingMutationBody = SetOwlSettingDto
+    export type OwlModeControllerSetSettingMutationError = void
 
-    export const useEulenModusControllerSetEinstellung = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof eulenModusControllerSetEinstellung>>, TError,{data: SetEulenEinstellungDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+    export const useOwlModeControllerSetSetting = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof owlModeControllerSetSetting>>, TError,{data: SetOwlSettingDto}, TContext>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof eulenModusControllerSetEinstellung>>,
+        Awaited<ReturnType<typeof owlModeControllerSetSetting>>,
         TError,
-        {data: SetEulenEinstellungDto},
+        {data: SetOwlSettingDto},
         TContext
       > => {
-      return useMutation(getEulenModusControllerSetEinstellungMutationOptions(options), queryClient);
+      return useMutation(getOwlModeControllerSetSettingMutationOptions(options), queryClient);
     }
 
-export type eulenModusControllerGetKartenResponse200 = {
-  data: EulenKartenResponseDto
+export type owlModeControllerGetCardsResponse200 = {
+  data: OwlCardsResponseDto
   status: 200
 }
 
-export type eulenModusControllerGetKartenResponse401 = {
+export type owlModeControllerGetCardsResponse401 = {
   data: void
   status: 401
 }
 
-export type eulenModusControllerGetKartenResponseSuccess = (eulenModusControllerGetKartenResponse200) & {
+export type owlModeControllerGetCardsResponseSuccess = (owlModeControllerGetCardsResponse200) & {
   headers: Headers;
 };
-export type eulenModusControllerGetKartenResponseError = (eulenModusControllerGetKartenResponse401) & {
+export type owlModeControllerGetCardsResponseError = (owlModeControllerGetCardsResponse401) & {
   headers: Headers;
 };
 
-export type eulenModusControllerGetKartenResponse = (eulenModusControllerGetKartenResponseSuccess | eulenModusControllerGetKartenResponseError)
+export type owlModeControllerGetCardsResponse = (owlModeControllerGetCardsResponseSuccess | owlModeControllerGetCardsResponseError)
 
-export const getEulenModusControllerGetKartenUrl = (jahr: number,) => {
+export const getOwlModeControllerGetCardsUrl = (jahr: number,) => {
 
 
 
@@ -277,9 +277,9 @@ export const getEulenModusControllerGetKartenUrl = (jahr: number,) => {
   return `/v1/steuerjahre/${jahr}/eulen-karten`
 }
 
-export const eulenModusControllerGetKarten = async (jahr: number, options?: RequestInit): Promise<eulenModusControllerGetKartenResponse> => {
+export const owlModeControllerGetCards = async (jahr: number, options?: RequestInit): Promise<owlModeControllerGetCardsResponse> => {
 
-  return httpClient<eulenModusControllerGetKartenResponse>(getEulenModusControllerGetKartenUrl(jahr),
+  return httpClient<owlModeControllerGetCardsResponse>(getOwlModeControllerGetCardsUrl(jahr),
   {
     ...options,
     method: 'GET'
@@ -292,66 +292,66 @@ export const eulenModusControllerGetKarten = async (jahr: number, options?: Requ
 
 
 
-export const getEulenModusControllerGetKartenQueryKey = (jahr: number,) => {
+export const getOwlModeControllerGetCardsQueryKey = (jahr: number,) => {
     return [
     `/v1/steuerjahre/${jahr}/eulen-karten`
     ] as const;
     }
 
 
-export const getEulenModusControllerGetKartenQueryOptions = <TData = Awaited<ReturnType<typeof eulenModusControllerGetKarten>>, TError = void>(jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof eulenModusControllerGetKarten>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export const getOwlModeControllerGetCardsQueryOptions = <TData = Awaited<ReturnType<typeof owlModeControllerGetCards>>, TError = void>(jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof owlModeControllerGetCards>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getEulenModusControllerGetKartenQueryKey(jahr);
+  const queryKey =  queryOptions?.queryKey ?? getOwlModeControllerGetCardsQueryKey(jahr);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof eulenModusControllerGetKarten>>> = ({ signal }) => eulenModusControllerGetKarten(jahr, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof owlModeControllerGetCards>>> = ({ signal }) => owlModeControllerGetCards(jahr, { signal, ...requestOptions });
 
 
 
 
 
-   return  { queryKey, queryFn, enabled: jahr !== null && jahr !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof eulenModusControllerGetKarten>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+   return  { queryKey, queryFn, enabled: jahr !== null && jahr !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof owlModeControllerGetCards>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
-export type EulenModusControllerGetKartenQueryResult = NonNullable<Awaited<ReturnType<typeof eulenModusControllerGetKarten>>>
-export type EulenModusControllerGetKartenQueryError = void
+export type OwlModeControllerGetCardsQueryResult = NonNullable<Awaited<ReturnType<typeof owlModeControllerGetCards>>>
+export type OwlModeControllerGetCardsQueryError = void
 
 
-export function useEulenModusControllerGetKarten<TData = Awaited<ReturnType<typeof eulenModusControllerGetKarten>>, TError = void>(
- jahr: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof eulenModusControllerGetKarten>>, TError, TData>> & Pick<
+export function useOwlModeControllerGetCards<TData = Awaited<ReturnType<typeof owlModeControllerGetCards>>, TError = void>(
+ jahr: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof owlModeControllerGetCards>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof eulenModusControllerGetKarten>>,
+          Awaited<ReturnType<typeof owlModeControllerGetCards>>,
           TError,
-          Awaited<ReturnType<typeof eulenModusControllerGetKarten>>
+          Awaited<ReturnType<typeof owlModeControllerGetCards>>
         > , 'initialData'
       >, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useEulenModusControllerGetKarten<TData = Awaited<ReturnType<typeof eulenModusControllerGetKarten>>, TError = void>(
- jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof eulenModusControllerGetKarten>>, TError, TData>> & Pick<
+export function useOwlModeControllerGetCards<TData = Awaited<ReturnType<typeof owlModeControllerGetCards>>, TError = void>(
+ jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof owlModeControllerGetCards>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof eulenModusControllerGetKarten>>,
+          Awaited<ReturnType<typeof owlModeControllerGetCards>>,
           TError,
-          Awaited<ReturnType<typeof eulenModusControllerGetKarten>>
+          Awaited<ReturnType<typeof owlModeControllerGetCards>>
         > , 'initialData'
       >, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useEulenModusControllerGetKarten<TData = Awaited<ReturnType<typeof eulenModusControllerGetKarten>>, TError = void>(
- jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof eulenModusControllerGetKarten>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export function useOwlModeControllerGetCards<TData = Awaited<ReturnType<typeof owlModeControllerGetCards>>, TError = void>(
+ jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof owlModeControllerGetCards>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 
-export function useEulenModusControllerGetKarten<TData = Awaited<ReturnType<typeof eulenModusControllerGetKarten>>, TError = void>(
- jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof eulenModusControllerGetKarten>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export function useOwlModeControllerGetCards<TData = Awaited<ReturnType<typeof owlModeControllerGetCards>>, TError = void>(
+ jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof owlModeControllerGetCards>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getEulenModusControllerGetKartenQueryOptions(jahr,options)
+  const queryOptions = getOwlModeControllerGetCardsQueryOptions(jahr,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
@@ -364,26 +364,26 @@ export function useEulenModusControllerGetKarten<TData = Awaited<ReturnType<type
 
 
 
-export type eulenModusControllerVerwerfeKarteResponse200 = {
+export type owlModeControllerDismissCardResponse200 = {
   data: void
   status: 200
 }
 
-export type eulenModusControllerVerwerfeKarteResponse401 = {
+export type owlModeControllerDismissCardResponse401 = {
   data: void
   status: 401
 }
 
-export type eulenModusControllerVerwerfeKarteResponseSuccess = (eulenModusControllerVerwerfeKarteResponse200) & {
+export type owlModeControllerDismissCardResponseSuccess = (owlModeControllerDismissCardResponse200) & {
   headers: Headers;
 };
-export type eulenModusControllerVerwerfeKarteResponseError = (eulenModusControllerVerwerfeKarteResponse401) & {
+export type owlModeControllerDismissCardResponseError = (owlModeControllerDismissCardResponse401) & {
   headers: Headers;
 };
 
-export type eulenModusControllerVerwerfeKarteResponse = (eulenModusControllerVerwerfeKarteResponseSuccess | eulenModusControllerVerwerfeKarteResponseError)
+export type owlModeControllerDismissCardResponse = (owlModeControllerDismissCardResponseSuccess | owlModeControllerDismissCardResponseError)
 
-export const getEulenModusControllerVerwerfeKarteUrl = (jahr: number,
+export const getOwlModeControllerDismissCardUrl = (jahr: number,
     fingerprint: string,) => {
 
 
@@ -392,10 +392,10 @@ export const getEulenModusControllerVerwerfeKarteUrl = (jahr: number,
   return `/v1/steuerjahre/${jahr}/eulen-karten/${fingerprint}/verwerfen`
 }
 
-export const eulenModusControllerVerwerfeKarte = async (jahr: number,
-    fingerprint: string, options?: RequestInit): Promise<eulenModusControllerVerwerfeKarteResponse> => {
+export const owlModeControllerDismissCard = async (jahr: number,
+    fingerprint: string, options?: RequestInit): Promise<owlModeControllerDismissCardResponse> => {
 
-  return httpClient<eulenModusControllerVerwerfeKarteResponse>(getEulenModusControllerVerwerfeKarteUrl(jahr,fingerprint),
+  return httpClient<owlModeControllerDismissCardResponse>(getOwlModeControllerDismissCardUrl(jahr,fingerprint),
   {
     ...options,
     method: 'POST'
@@ -408,11 +408,11 @@ export const eulenModusControllerVerwerfeKarte = async (jahr: number,
 
 
 
-export const getEulenModusControllerVerwerfeKarteMutationOptions = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof eulenModusControllerVerwerfeKarte>>, TError,{jahr: number;fingerprint: string}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof eulenModusControllerVerwerfeKarte>>, TError,{jahr: number;fingerprint: string}, TContext> => {
+export const getOwlModeControllerDismissCardMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof owlModeControllerDismissCard>>, TError,{jahr: number;fingerprint: string}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof owlModeControllerDismissCard>>, TError,{jahr: number;fingerprint: string}, TContext> => {
 
-const mutationKey = ['eulenModusControllerVerwerfeKarte'];
+const mutationKey = ['owlModeControllerDismissCard'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -422,10 +422,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof eulenModusControllerVerwerfeKarte>>, {jahr: number;fingerprint: string}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof owlModeControllerDismissCard>>, {jahr: number;fingerprint: string}> = (props) => {
           const {jahr,fingerprint} = props ?? {};
 
-          return  eulenModusControllerVerwerfeKarte(jahr,fingerprint,requestOptions)
+          return  owlModeControllerDismissCard(jahr,fingerprint,requestOptions)
         }
 
 
@@ -435,18 +435,18 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type EulenModusControllerVerwerfeKarteMutationResult = NonNullable<Awaited<ReturnType<typeof eulenModusControllerVerwerfeKarte>>>
+    export type OwlModeControllerDismissCardMutationResult = NonNullable<Awaited<ReturnType<typeof owlModeControllerDismissCard>>>
 
-    export type EulenModusControllerVerwerfeKarteMutationError = void
+    export type OwlModeControllerDismissCardMutationError = void
 
-    export const useEulenModusControllerVerwerfeKarte = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof eulenModusControllerVerwerfeKarte>>, TError,{jahr: number;fingerprint: string}, TContext>, request?: SecondParameter<typeof httpClient>}
+    export const useOwlModeControllerDismissCard = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof owlModeControllerDismissCard>>, TError,{jahr: number;fingerprint: string}, TContext>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof eulenModusControllerVerwerfeKarte>>,
+        Awaited<ReturnType<typeof owlModeControllerDismissCard>>,
         TError,
         {jahr: number;fingerprint: string},
         TContext
       > => {
-      return useMutation(getEulenModusControllerVerwerfeKarteMutationOptions(options), queryClient);
+      return useMutation(getOwlModeControllerDismissCardMutationOptions(options), queryClient);
     }
 

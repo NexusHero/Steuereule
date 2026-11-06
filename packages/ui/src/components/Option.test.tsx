@@ -35,7 +35,7 @@ describe('Option', () => {
     // The DS component (Option.jsx) marks selection with `aria-pressed`, not `aria-selected` —
     // pin the exact attribute so a well-meaning "use accessibilityState.selected instead" edit
     // goes red rather than silently changing the exposed semantics.
-    renderUi(<Option gewaehlt>Angestellt</Option>)
+    renderUi(<Option selected>Angestellt</Option>)
     const el = screen.getByRole('button') as HTMLElement
     expect(el.getAttribute('aria-pressed')).toBe('true')
     expect(el.getAttribute('aria-selected')).toBeNull()

@@ -25,10 +25,10 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
-  AssistentenControllerGetClientInfoParams,
+  AssistantsControllerGetClientInfoParams,
+  ConnectedAssistantDto,
   OauthClientInfoDto,
-  RevokeAssistentResponseDto,
-  VerbundenerAssistentDto
+  RevokeAssistantResponseDto
 } from './assistenten.schemas';
 
 import { httpClient } from '../http-client';
@@ -53,31 +53,31 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   return result;
 };
 
-export type assistentenControllerListConnectedResponse200 = {
-  data: VerbundenerAssistentDto[]
+export type assistantsControllerListConnectedResponse200 = {
+  data: ConnectedAssistantDto[]
   status: 200
 }
 
-export type assistentenControllerListConnectedResponse401 = {
+export type assistantsControllerListConnectedResponse401 = {
   data: void
   status: 401
 }
 
-export type assistentenControllerListConnectedResponse403 = {
+export type assistantsControllerListConnectedResponse403 = {
   data: void
   status: 403
 }
 
-export type assistentenControllerListConnectedResponseSuccess = (assistentenControllerListConnectedResponse200) & {
+export type assistantsControllerListConnectedResponseSuccess = (assistantsControllerListConnectedResponse200) & {
   headers: Headers;
 };
-export type assistentenControllerListConnectedResponseError = (assistentenControllerListConnectedResponse401 | assistentenControllerListConnectedResponse403) & {
+export type assistantsControllerListConnectedResponseError = (assistantsControllerListConnectedResponse401 | assistantsControllerListConnectedResponse403) & {
   headers: Headers;
 };
 
-export type assistentenControllerListConnectedResponse = (assistentenControllerListConnectedResponseSuccess | assistentenControllerListConnectedResponseError)
+export type assistantsControllerListConnectedResponse = (assistantsControllerListConnectedResponseSuccess | assistantsControllerListConnectedResponseError)
 
-export const getAssistentenControllerListConnectedUrl = () => {
+export const getAssistantsControllerListConnectedUrl = () => {
 
 
 
@@ -85,9 +85,9 @@ export const getAssistentenControllerListConnectedUrl = () => {
   return `/v1/assistenten`
 }
 
-export const assistentenControllerListConnected = async ( options?: RequestInit): Promise<assistentenControllerListConnectedResponse> => {
+export const assistantsControllerListConnected = async ( options?: RequestInit): Promise<assistantsControllerListConnectedResponse> => {
 
-  return httpClient<assistentenControllerListConnectedResponse>(getAssistentenControllerListConnectedUrl(),
+  return httpClient<assistantsControllerListConnectedResponse>(getAssistantsControllerListConnectedUrl(),
   {
     ...options,
     method: 'GET'
@@ -100,66 +100,66 @@ export const assistentenControllerListConnected = async ( options?: RequestInit)
 
 
 
-export const getAssistentenControllerListConnectedQueryKey = () => {
+export const getAssistantsControllerListConnectedQueryKey = () => {
     return [
     `/v1/assistenten`
     ] as const;
     }
 
 
-export const getAssistentenControllerListConnectedQueryOptions = <TData = Awaited<ReturnType<typeof assistentenControllerListConnected>>, TError = void>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof assistentenControllerListConnected>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export const getAssistantsControllerListConnectedQueryOptions = <TData = Awaited<ReturnType<typeof assistantsControllerListConnected>>, TError = void>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof assistantsControllerListConnected>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getAssistentenControllerListConnectedQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getAssistantsControllerListConnectedQueryKey();
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof assistentenControllerListConnected>>> = ({ signal }) => assistentenControllerListConnected({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof assistantsControllerListConnected>>> = ({ signal }) => assistantsControllerListConnected({ signal, ...requestOptions });
 
 
 
 
 
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof assistentenControllerListConnected>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof assistantsControllerListConnected>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
-export type AssistentenControllerListConnectedQueryResult = NonNullable<Awaited<ReturnType<typeof assistentenControllerListConnected>>>
-export type AssistentenControllerListConnectedQueryError = void
+export type AssistantsControllerListConnectedQueryResult = NonNullable<Awaited<ReturnType<typeof assistantsControllerListConnected>>>
+export type AssistantsControllerListConnectedQueryError = void
 
 
-export function useAssistentenControllerListConnected<TData = Awaited<ReturnType<typeof assistentenControllerListConnected>>, TError = void>(
-  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof assistentenControllerListConnected>>, TError, TData>> & Pick<
+export function useAssistantsControllerListConnected<TData = Awaited<ReturnType<typeof assistantsControllerListConnected>>, TError = void>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof assistantsControllerListConnected>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof assistentenControllerListConnected>>,
+          Awaited<ReturnType<typeof assistantsControllerListConnected>>,
           TError,
-          Awaited<ReturnType<typeof assistentenControllerListConnected>>
+          Awaited<ReturnType<typeof assistantsControllerListConnected>>
         > , 'initialData'
       >, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useAssistentenControllerListConnected<TData = Awaited<ReturnType<typeof assistentenControllerListConnected>>, TError = void>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof assistentenControllerListConnected>>, TError, TData>> & Pick<
+export function useAssistantsControllerListConnected<TData = Awaited<ReturnType<typeof assistantsControllerListConnected>>, TError = void>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof assistantsControllerListConnected>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof assistentenControllerListConnected>>,
+          Awaited<ReturnType<typeof assistantsControllerListConnected>>,
           TError,
-          Awaited<ReturnType<typeof assistentenControllerListConnected>>
+          Awaited<ReturnType<typeof assistantsControllerListConnected>>
         > , 'initialData'
       >, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useAssistentenControllerListConnected<TData = Awaited<ReturnType<typeof assistentenControllerListConnected>>, TError = void>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof assistentenControllerListConnected>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export function useAssistantsControllerListConnected<TData = Awaited<ReturnType<typeof assistantsControllerListConnected>>, TError = void>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof assistantsControllerListConnected>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 
-export function useAssistentenControllerListConnected<TData = Awaited<ReturnType<typeof assistentenControllerListConnected>>, TError = void>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof assistentenControllerListConnected>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export function useAssistantsControllerListConnected<TData = Awaited<ReturnType<typeof assistantsControllerListConnected>>, TError = void>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof assistantsControllerListConnected>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getAssistentenControllerListConnectedQueryOptions(options)
+  const queryOptions = getAssistantsControllerListConnectedQueryOptions(options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
@@ -172,31 +172,31 @@ export function useAssistentenControllerListConnected<TData = Awaited<ReturnType
 
 
 
-export type assistentenControllerRevokeResponse200 = {
-  data: RevokeAssistentResponseDto
+export type assistantsControllerRevokeResponse200 = {
+  data: RevokeAssistantResponseDto
   status: 200
 }
 
-export type assistentenControllerRevokeResponse401 = {
+export type assistantsControllerRevokeResponse401 = {
   data: void
   status: 401
 }
 
-export type assistentenControllerRevokeResponse403 = {
+export type assistantsControllerRevokeResponse403 = {
   data: void
   status: 403
 }
 
-export type assistentenControllerRevokeResponseSuccess = (assistentenControllerRevokeResponse200) & {
+export type assistantsControllerRevokeResponseSuccess = (assistantsControllerRevokeResponse200) & {
   headers: Headers;
 };
-export type assistentenControllerRevokeResponseError = (assistentenControllerRevokeResponse401 | assistentenControllerRevokeResponse403) & {
+export type assistantsControllerRevokeResponseError = (assistantsControllerRevokeResponse401 | assistantsControllerRevokeResponse403) & {
   headers: Headers;
 };
 
-export type assistentenControllerRevokeResponse = (assistentenControllerRevokeResponseSuccess | assistentenControllerRevokeResponseError)
+export type assistantsControllerRevokeResponse = (assistantsControllerRevokeResponseSuccess | assistantsControllerRevokeResponseError)
 
-export const getAssistentenControllerRevokeUrl = (clientId: string,) => {
+export const getAssistantsControllerRevokeUrl = (clientId: string,) => {
 
 
 
@@ -204,9 +204,9 @@ export const getAssistentenControllerRevokeUrl = (clientId: string,) => {
   return `/v1/assistenten/${clientId}`
 }
 
-export const assistentenControllerRevoke = async (clientId: string, options?: RequestInit): Promise<assistentenControllerRevokeResponse> => {
+export const assistantsControllerRevoke = async (clientId: string, options?: RequestInit): Promise<assistantsControllerRevokeResponse> => {
 
-  return httpClient<assistentenControllerRevokeResponse>(getAssistentenControllerRevokeUrl(clientId),
+  return httpClient<assistantsControllerRevokeResponse>(getAssistantsControllerRevokeUrl(clientId),
   {
     ...options,
     method: 'DELETE'
@@ -219,11 +219,11 @@ export const assistentenControllerRevoke = async (clientId: string, options?: Re
 
 
 
-export const getAssistentenControllerRevokeMutationOptions = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assistentenControllerRevoke>>, TError,{clientId: string}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof assistentenControllerRevoke>>, TError,{clientId: string}, TContext> => {
+export const getAssistantsControllerRevokeMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assistantsControllerRevoke>>, TError,{clientId: string}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof assistantsControllerRevoke>>, TError,{clientId: string}, TContext> => {
 
-const mutationKey = ['assistentenControllerRevoke'];
+const mutationKey = ['assistantsControllerRevoke'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -233,10 +233,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof assistentenControllerRevoke>>, {clientId: string}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof assistantsControllerRevoke>>, {clientId: string}> = (props) => {
           const {clientId} = props ?? {};
 
-          return  assistentenControllerRevoke(clientId,requestOptions)
+          return  assistantsControllerRevoke(clientId,requestOptions)
         }
 
 
@@ -246,34 +246,34 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type AssistentenControllerRevokeMutationResult = NonNullable<Awaited<ReturnType<typeof assistentenControllerRevoke>>>
+    export type AssistantsControllerRevokeMutationResult = NonNullable<Awaited<ReturnType<typeof assistantsControllerRevoke>>>
 
-    export type AssistentenControllerRevokeMutationError = void
+    export type AssistantsControllerRevokeMutationError = void
 
-    export const useAssistentenControllerRevoke = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assistentenControllerRevoke>>, TError,{clientId: string}, TContext>, request?: SecondParameter<typeof httpClient>}
+    export const useAssistantsControllerRevoke = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assistantsControllerRevoke>>, TError,{clientId: string}, TContext>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof assistentenControllerRevoke>>,
+        Awaited<ReturnType<typeof assistantsControllerRevoke>>,
         TError,
         {clientId: string},
         TContext
       > => {
-      return useMutation(getAssistentenControllerRevokeMutationOptions(options), queryClient);
+      return useMutation(getAssistantsControllerRevokeMutationOptions(options), queryClient);
     }
 
-export type assistentenControllerGetClientInfoResponse200 = {
+export type assistantsControllerGetClientInfoResponse200 = {
   data: OauthClientInfoDto
   status: 200
 }
 
-export type assistentenControllerGetClientInfoResponseSuccess = (assistentenControllerGetClientInfoResponse200) & {
+export type assistantsControllerGetClientInfoResponseSuccess = (assistantsControllerGetClientInfoResponse200) & {
   headers: Headers;
 };
 ;
 
-export type assistentenControllerGetClientInfoResponse = (assistentenControllerGetClientInfoResponseSuccess)
+export type assistantsControllerGetClientInfoResponse = (assistantsControllerGetClientInfoResponseSuccess)
 
-export const getAssistentenControllerGetClientInfoUrl = (params: AssistentenControllerGetClientInfoParams,) => {
+export const getAssistantsControllerGetClientInfoUrl = (params: AssistantsControllerGetClientInfoParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -288,9 +288,9 @@ export const getAssistentenControllerGetClientInfoUrl = (params: AssistentenCont
   return stringifiedParams.length > 0 ? `/v1/oauth/client-info?${stringifiedParams}` : `/v1/oauth/client-info`
 }
 
-export const assistentenControllerGetClientInfo = async (params: AssistentenControllerGetClientInfoParams, options?: RequestInit): Promise<assistentenControllerGetClientInfoResponse> => {
+export const assistantsControllerGetClientInfo = async (params: AssistantsControllerGetClientInfoParams, options?: RequestInit): Promise<assistantsControllerGetClientInfoResponse> => {
 
-  return httpClient<assistentenControllerGetClientInfoResponse>(getAssistentenControllerGetClientInfoUrl(params),
+  return httpClient<assistantsControllerGetClientInfoResponse>(getAssistantsControllerGetClientInfoUrl(params),
   {
     ...options,
     method: 'GET'
@@ -303,66 +303,66 @@ export const assistentenControllerGetClientInfo = async (params: AssistentenCont
 
 
 
-export const getAssistentenControllerGetClientInfoQueryKey = (params?: AssistentenControllerGetClientInfoParams,) => {
+export const getAssistantsControllerGetClientInfoQueryKey = (params?: AssistantsControllerGetClientInfoParams,) => {
     return [
     `/v1/oauth/client-info`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getAssistentenControllerGetClientInfoQueryOptions = <TData = Awaited<ReturnType<typeof assistentenControllerGetClientInfo>>, TError = unknown>(params: AssistentenControllerGetClientInfoParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof assistentenControllerGetClientInfo>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export const getAssistantsControllerGetClientInfoQueryOptions = <TData = Awaited<ReturnType<typeof assistantsControllerGetClientInfo>>, TError = unknown>(params: AssistantsControllerGetClientInfoParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof assistantsControllerGetClientInfo>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getAssistentenControllerGetClientInfoQueryKey(params);
+  const queryKey =  queryOptions?.queryKey ?? getAssistantsControllerGetClientInfoQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof assistentenControllerGetClientInfo>>> = ({ signal }) => assistentenControllerGetClientInfo(params, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof assistantsControllerGetClientInfo>>> = ({ signal }) => assistantsControllerGetClientInfo(params, { signal, ...requestOptions });
 
 
 
 
 
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof assistentenControllerGetClientInfo>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof assistantsControllerGetClientInfo>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
-export type AssistentenControllerGetClientInfoQueryResult = NonNullable<Awaited<ReturnType<typeof assistentenControllerGetClientInfo>>>
-export type AssistentenControllerGetClientInfoQueryError = unknown
+export type AssistantsControllerGetClientInfoQueryResult = NonNullable<Awaited<ReturnType<typeof assistantsControllerGetClientInfo>>>
+export type AssistantsControllerGetClientInfoQueryError = unknown
 
 
-export function useAssistentenControllerGetClientInfo<TData = Awaited<ReturnType<typeof assistentenControllerGetClientInfo>>, TError = unknown>(
- params: AssistentenControllerGetClientInfoParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof assistentenControllerGetClientInfo>>, TError, TData>> & Pick<
+export function useAssistantsControllerGetClientInfo<TData = Awaited<ReturnType<typeof assistantsControllerGetClientInfo>>, TError = unknown>(
+ params: AssistantsControllerGetClientInfoParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof assistantsControllerGetClientInfo>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof assistentenControllerGetClientInfo>>,
+          Awaited<ReturnType<typeof assistantsControllerGetClientInfo>>,
           TError,
-          Awaited<ReturnType<typeof assistentenControllerGetClientInfo>>
+          Awaited<ReturnType<typeof assistantsControllerGetClientInfo>>
         > , 'initialData'
       >, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useAssistentenControllerGetClientInfo<TData = Awaited<ReturnType<typeof assistentenControllerGetClientInfo>>, TError = unknown>(
- params: AssistentenControllerGetClientInfoParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof assistentenControllerGetClientInfo>>, TError, TData>> & Pick<
+export function useAssistantsControllerGetClientInfo<TData = Awaited<ReturnType<typeof assistantsControllerGetClientInfo>>, TError = unknown>(
+ params: AssistantsControllerGetClientInfoParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof assistantsControllerGetClientInfo>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof assistentenControllerGetClientInfo>>,
+          Awaited<ReturnType<typeof assistantsControllerGetClientInfo>>,
           TError,
-          Awaited<ReturnType<typeof assistentenControllerGetClientInfo>>
+          Awaited<ReturnType<typeof assistantsControllerGetClientInfo>>
         > , 'initialData'
       >, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useAssistentenControllerGetClientInfo<TData = Awaited<ReturnType<typeof assistentenControllerGetClientInfo>>, TError = unknown>(
- params: AssistentenControllerGetClientInfoParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof assistentenControllerGetClientInfo>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export function useAssistantsControllerGetClientInfo<TData = Awaited<ReturnType<typeof assistantsControllerGetClientInfo>>, TError = unknown>(
+ params: AssistantsControllerGetClientInfoParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof assistantsControllerGetClientInfo>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 
-export function useAssistentenControllerGetClientInfo<TData = Awaited<ReturnType<typeof assistentenControllerGetClientInfo>>, TError = unknown>(
- params: AssistentenControllerGetClientInfoParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof assistentenControllerGetClientInfo>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export function useAssistantsControllerGetClientInfo<TData = Awaited<ReturnType<typeof assistantsControllerGetClientInfo>>, TError = unknown>(
+ params: AssistantsControllerGetClientInfoParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof assistantsControllerGetClientInfo>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getAssistentenControllerGetClientInfoQueryOptions(params,options)
+  const queryOptions = getAssistantsControllerGetClientInfoQueryOptions(params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

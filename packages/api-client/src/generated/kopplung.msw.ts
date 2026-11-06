@@ -18,69 +18,69 @@ import type {
 } from 'msw';
 
 import type {
-  KopplungResponseDto
+  LinkResponseDto
 } from './kopplung.schemas';
 
 
-export const getKopplungControllerGetResponseMock = (overrideResponse: Partial<Extract<KopplungResponseDto, object>> = {}): KopplungResponseDto => ({veranlagungsart: faker.helpers.arrayElement(['keine','einzel','zusammen'] as const), personBUserId: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), einladungsCode: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), einladungsCodeGueltigBis: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), personBHatEigenesKonto: faker.datatype.boolean(), personB: faker.helpers.arrayElement([{...{firstName: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), lastName: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), steuerId: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), geburtsdatum: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), religion: faker.helpers.arrayElement([faker.helpers.arrayElement(['VD','EV','RK','AK','FA','FB','FG','FM','FS','IB','IL','IS','IW','JD','JH'] as const), null]), religionEinwilligung: faker.datatype.boolean(), beruf: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null])},}, null]), ...overrideResponse})
+export const getLinkControllerGetResponseMock = (overrideResponse: Partial<Extract<LinkResponseDto, object>> = {}): LinkResponseDto => ({filingType: faker.helpers.arrayElement(['keine','einzel','zusammen'] as const), personBUserId: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), invitationCode: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), invitationCodeValidUntil: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), personBHasOwnAccount: faker.datatype.boolean(), personB: faker.helpers.arrayElement([{...{firstName: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), lastName: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), steuerId: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), geburtsdatum: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), religion: faker.helpers.arrayElement([faker.helpers.arrayElement(['VD','EV','RK','AK','FA','FB','FG','FM','FS','IB','IL','IS','IW','JD','JH'] as const), null]), religionConsent: faker.datatype.boolean(), beruf: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null])},}, null]), ...overrideResponse})
 
-export const getKopplungControllerSetResponseMock = (overrideResponse: Partial<Extract<KopplungResponseDto, object>> = {}): KopplungResponseDto => ({veranlagungsart: faker.helpers.arrayElement(['keine','einzel','zusammen'] as const), personBUserId: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), einladungsCode: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), einladungsCodeGueltigBis: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), personBHatEigenesKonto: faker.datatype.boolean(), personB: faker.helpers.arrayElement([{...{firstName: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), lastName: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), steuerId: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), geburtsdatum: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), religion: faker.helpers.arrayElement([faker.helpers.arrayElement(['VD','EV','RK','AK','FA','FB','FG','FM','FS','IB','IL','IS','IW','JD','JH'] as const), null]), religionEinwilligung: faker.datatype.boolean(), beruf: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null])},}, null]), ...overrideResponse})
+export const getLinkControllerSetResponseMock = (overrideResponse: Partial<Extract<LinkResponseDto, object>> = {}): LinkResponseDto => ({filingType: faker.helpers.arrayElement(['keine','einzel','zusammen'] as const), personBUserId: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), invitationCode: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), invitationCodeValidUntil: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), personBHasOwnAccount: faker.datatype.boolean(), personB: faker.helpers.arrayElement([{...{firstName: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), lastName: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), steuerId: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), geburtsdatum: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), religion: faker.helpers.arrayElement([faker.helpers.arrayElement(['VD','EV','RK','AK','FA','FB','FG','FM','FS','IB','IL','IS','IW','JD','JH'] as const), null]), religionConsent: faker.datatype.boolean(), beruf: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null])},}, null]), ...overrideResponse})
 
-export const getKopplungControllerUpdatePersonBResponseMock = (overrideResponse: Partial<Extract<KopplungResponseDto, object>> = {}): KopplungResponseDto => ({veranlagungsart: faker.helpers.arrayElement(['keine','einzel','zusammen'] as const), personBUserId: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), einladungsCode: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), einladungsCodeGueltigBis: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), personBHatEigenesKonto: faker.datatype.boolean(), personB: faker.helpers.arrayElement([{...{firstName: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), lastName: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), steuerId: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), geburtsdatum: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), religion: faker.helpers.arrayElement([faker.helpers.arrayElement(['VD','EV','RK','AK','FA','FB','FG','FM','FS','IB','IL','IS','IW','JD','JH'] as const), null]), religionEinwilligung: faker.datatype.boolean(), beruf: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null])},}, null]), ...overrideResponse})
+export const getLinkControllerUpdatePersonBResponseMock = (overrideResponse: Partial<Extract<LinkResponseDto, object>> = {}): LinkResponseDto => ({filingType: faker.helpers.arrayElement(['keine','einzel','zusammen'] as const), personBUserId: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), invitationCode: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), invitationCodeValidUntil: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), personBHasOwnAccount: faker.datatype.boolean(), personB: faker.helpers.arrayElement([{...{firstName: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), lastName: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), steuerId: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), geburtsdatum: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), religion: faker.helpers.arrayElement([faker.helpers.arrayElement(['VD','EV','RK','AK','FA','FB','FG','FM','FS','IB','IL','IS','IW','JD','JH'] as const), null]), religionConsent: faker.datatype.boolean(), beruf: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null])},}, null]), ...overrideResponse})
 
-export const getKopplungControllerJoinWithCodeResponseMock = (overrideResponse: Partial<Extract<KopplungResponseDto, object>> = {}): KopplungResponseDto => ({veranlagungsart: faker.helpers.arrayElement(['keine','einzel','zusammen'] as const), personBUserId: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), einladungsCode: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), einladungsCodeGueltigBis: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), personBHatEigenesKonto: faker.datatype.boolean(), personB: faker.helpers.arrayElement([{...{firstName: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), lastName: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), steuerId: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), geburtsdatum: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), religion: faker.helpers.arrayElement([faker.helpers.arrayElement(['VD','EV','RK','AK','FA','FB','FG','FM','FS','IB','IL','IS','IW','JD','JH'] as const), null]), religionEinwilligung: faker.datatype.boolean(), beruf: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null])},}, null]), ...overrideResponse})
+export const getLinkControllerJoinWithCodeResponseMock = (overrideResponse: Partial<Extract<LinkResponseDto, object>> = {}): LinkResponseDto => ({filingType: faker.helpers.arrayElement(['keine','einzel','zusammen'] as const), personBUserId: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), invitationCode: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), invitationCodeValidUntil: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', null]), personBHasOwnAccount: faker.datatype.boolean(), personB: faker.helpers.arrayElement([{...{firstName: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), lastName: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), steuerId: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), geburtsdatum: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), religion: faker.helpers.arrayElement([faker.helpers.arrayElement(['VD','EV','RK','AK','FA','FB','FG','FM','FS','IB','IL','IS','IW','JD','JH'] as const), null]), religionConsent: faker.datatype.boolean(), beruf: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null])},}, null]), ...overrideResponse})
 
 
-export const getKopplungControllerGetMockHandler = (overrideResponse?: KopplungResponseDto | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<KopplungResponseDto> | KopplungResponseDto), options?: RequestHandlerOptions) => {
+export const getLinkControllerGetMockHandler = (overrideResponse?: LinkResponseDto | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<LinkResponseDto> | LinkResponseDto), options?: RequestHandlerOptions) => {
   return http.get('*/v1/steuerjahre/:jahr/kopplung', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
 
 
     return HttpResponse.json(overrideResponse !== undefined
     ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
-    : getKopplungControllerGetResponseMock(),
+    : getLinkControllerGetResponseMock(),
       { status: 200
       })
   }, options)
 }
 
-export const getKopplungControllerSetMockHandler = (overrideResponse?: KopplungResponseDto | ((info: Parameters<Parameters<typeof http.put>[1]>[0]) => Promise<KopplungResponseDto> | KopplungResponseDto), options?: RequestHandlerOptions) => {
+export const getLinkControllerSetMockHandler = (overrideResponse?: LinkResponseDto | ((info: Parameters<Parameters<typeof http.put>[1]>[0]) => Promise<LinkResponseDto> | LinkResponseDto), options?: RequestHandlerOptions) => {
   return http.put('*/v1/steuerjahre/:jahr/kopplung', async (info: Parameters<Parameters<typeof http.put>[1]>[0]) => {
 
 
     return HttpResponse.json(overrideResponse !== undefined
     ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
-    : getKopplungControllerSetResponseMock(),
+    : getLinkControllerSetResponseMock(),
       { status: 200
       })
   }, options)
 }
 
-export const getKopplungControllerUpdatePersonBMockHandler = (overrideResponse?: KopplungResponseDto | ((info: Parameters<Parameters<typeof http.put>[1]>[0]) => Promise<KopplungResponseDto> | KopplungResponseDto), options?: RequestHandlerOptions) => {
+export const getLinkControllerUpdatePersonBMockHandler = (overrideResponse?: LinkResponseDto | ((info: Parameters<Parameters<typeof http.put>[1]>[0]) => Promise<LinkResponseDto> | LinkResponseDto), options?: RequestHandlerOptions) => {
   return http.put('*/v1/steuerjahre/:jahr/kopplung/person-b', async (info: Parameters<Parameters<typeof http.put>[1]>[0]) => {
 
 
     return HttpResponse.json(overrideResponse !== undefined
     ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
-    : getKopplungControllerUpdatePersonBResponseMock(),
+    : getLinkControllerUpdatePersonBResponseMock(),
       { status: 200
       })
   }, options)
 }
 
-export const getKopplungControllerJoinWithCodeMockHandler = (overrideResponse?: KopplungResponseDto | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<KopplungResponseDto> | KopplungResponseDto), options?: RequestHandlerOptions) => {
+export const getLinkControllerJoinWithCodeMockHandler = (overrideResponse?: LinkResponseDto | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<LinkResponseDto> | LinkResponseDto), options?: RequestHandlerOptions) => {
   return http.post('*/v1/steuerjahre/:jahr/kopplung/beitreten/:code', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
 
 
     return HttpResponse.json(overrideResponse !== undefined
     ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
-    : getKopplungControllerJoinWithCodeResponseMock(),
+    : getLinkControllerJoinWithCodeResponseMock(),
       { status: 200
       })
   }, options)
 }
 export const getSteuerEuleAPIMock = () => [
-  getKopplungControllerGetMockHandler(),
-  getKopplungControllerSetMockHandler(),
-  getKopplungControllerUpdatePersonBMockHandler(),
-  getKopplungControllerJoinWithCodeMockHandler()
+  getLinkControllerGetMockHandler(),
+  getLinkControllerSetMockHandler(),
+  getLinkControllerUpdatePersonBMockHandler(),
+  getLinkControllerJoinWithCodeMockHandler()
 ]

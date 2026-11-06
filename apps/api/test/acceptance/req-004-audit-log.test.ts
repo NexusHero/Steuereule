@@ -188,7 +188,7 @@ describe('REQ-004 — immutable audit log of tax-data access, against the real s
     })
     const userId = userIdFromSetCookie(put.headers.get('set-cookie'))
 
-    const rawSteuerIdAtRest = await prisma.$queryRaw<{ value: string | null }[]>`
+    const rawTaxIdAtRest = await prisma.$queryRaw<{ value: string | null }[]>`
       SELECT "steuerId" AS value FROM "Profile" WHERE "userId" = ${userId}
     `
     const rows = await auditRows(prisma, userId)
@@ -196,7 +196,7 @@ describe('REQ-004 — immutable audit log of tax-data access, against the real s
 
     const serializedRows = JSON.stringify(rows)
     expect(serializedRows).not.toContain(VALID_PAYLOAD.steuerId)
-    const ciphertext = rawSteuerIdAtRest[0]?.value
+    const ciphertext = rawTaxIdAtRest[0]?.value
     if (ciphertext) {
       expect(serializedRows).not.toContain(ciphertext)
     }

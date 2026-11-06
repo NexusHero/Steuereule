@@ -8,10 +8,10 @@
 /**
  * @nullable
  */
-export type StammdatenResponseDtoReligion = typeof StammdatenResponseDtoReligion[keyof typeof StammdatenResponseDtoReligion] | null;
+export type MasterDataResponseDtoReligion = typeof MasterDataResponseDtoReligion[keyof typeof MasterDataResponseDtoReligion] | null;
 
 
-export const StammdatenResponseDtoReligion = {
+export const MasterDataResponseDtoReligion = {
   VD: 'VD',
   EV: 'EV',
   RK: 'RK',
@@ -32,10 +32,10 @@ export const StammdatenResponseDtoReligion = {
 /**
  * @nullable
  */
-export type StammdatenResponseDtoFamilienstand = typeof StammdatenResponseDtoFamilienstand[keyof typeof StammdatenResponseDtoFamilienstand] | null;
+export type MasterDataResponseDtoFamilienstand = typeof MasterDataResponseDtoFamilienstand[keyof typeof MasterDataResponseDtoFamilienstand] | null;
 
 
-export const StammdatenResponseDtoFamilienstand = {
+export const MasterDataResponseDtoFamilienstand = {
   ledig: 'ledig',
   verheiratet: 'verheiratet',
   verwitwet: 'verwitwet',
@@ -43,7 +43,7 @@ export const StammdatenResponseDtoFamilienstand = {
   'dauernd-getrennt': 'dauernd-getrennt',
 } as const;
 
-export interface StammdatenResponseDto {
+export interface MasterDataResponseDto {
   /** @nullable */
   geburtsdatum: string | null;
   /** @nullable */
@@ -59,9 +59,9 @@ export interface StammdatenResponseDto {
   /** @nullable */
   beruf: string | null;
   /** @nullable */
-  religion: StammdatenResponseDtoReligion;
+  religion: MasterDataResponseDtoReligion;
   /** @nullable */
-  familienstand: StammdatenResponseDtoFamilienstand;
+  familienstand: MasterDataResponseDtoFamilienstand;
   /** @nullable */
   familienstandSeit: string | null;
   /** @nullable */
@@ -73,17 +73,17 @@ export interface StammdatenResponseDto {
   /** @nullable */
   telefon: string | null;
   /** Fields the Hauptvordruck needs that are still empty — the honest gap list for the Ausdruck. */
-  fehlend: string[];
+  missing: string[];
 }
 
 /**
- * Religionsschlüssel per ESt 1 A guide (VD = none). Art. 9 DSGVO: requires religionEinwilligung = true.
+ * Religionsschlüssel per ESt 1 A guide (VD = none). Art. 9 DSGVO: requires religionConsent = true.
  * @nullable
  */
-export type PutStammdatenDtoReligion = typeof PutStammdatenDtoReligion[keyof typeof PutStammdatenDtoReligion] | null;
+export type PutMasterDataDtoReligion = typeof PutMasterDataDtoReligion[keyof typeof PutMasterDataDtoReligion] | null;
 
 
-export const PutStammdatenDtoReligion = {
+export const PutMasterDataDtoReligion = {
   VD: 'VD',
   EV: 'EV',
   RK: 'RK',
@@ -104,10 +104,10 @@ export const PutStammdatenDtoReligion = {
 /**
  * @nullable
  */
-export type PutStammdatenDtoFamilienstand = typeof PutStammdatenDtoFamilienstand[keyof typeof PutStammdatenDtoFamilienstand] | null;
+export type PutMasterDataDtoFamilienstand = typeof PutMasterDataDtoFamilienstand[keyof typeof PutMasterDataDtoFamilienstand] | null;
 
 
-export const PutStammdatenDtoFamilienstand = {
+export const PutMasterDataDtoFamilienstand = {
   ledig: 'ledig',
   verheiratet: 'verheiratet',
   verwitwet: 'verwitwet',
@@ -115,7 +115,7 @@ export const PutStammdatenDtoFamilienstand = {
   'dauernd-getrennt': 'dauernd-getrennt',
 } as const;
 
-export interface PutStammdatenDto {
+export interface PutMasterDataDto {
   /**
      * YYYY-MM-DD
      * @nullable
@@ -137,14 +137,14 @@ export interface PutStammdatenDto {
   /** @nullable */
   beruf?: string | null;
   /**
-     * Religionsschlüssel per ESt 1 A guide (VD = none). Art. 9 DSGVO: requires religionEinwilligung = true.
+     * Religionsschlüssel per ESt 1 A guide (VD = none). Art. 9 DSGVO: requires religionConsent = true.
      * @nullable
      */
-  religion?: PutStammdatenDtoReligion;
+  religion?: PutMasterDataDtoReligion;
   /** Explicit consent to store the religion (Art. 9 Abs. 2 lit. a DSGVO). */
-  religionEinwilligung?: boolean;
+  religionConsent?: boolean;
   /** @nullable */
-  familienstand?: PutStammdatenDtoFamilienstand;
+  familienstand?: PutMasterDataDtoFamilienstand;
   /**
      * YYYY-MM-DD; not for ledig.
      * @nullable

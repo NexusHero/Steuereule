@@ -53,16 +53,16 @@ describe('ProfileService', () => {
   })
 
   it('stores a missing steuernummer as null, not undefined/empty-string', async () => {
-    const { steuernummer: _omitted, ...payloadWithoutSteuernummer } = validPayload()
-    await service.saveProfile('user-a', payloadWithoutSteuernummer)
+    const { steuernummer: _omitted, ...payloadWithoutTaxNumber } = validPayload()
+    await service.saveProfile('user-a', payloadWithoutTaxNumber)
     await expect(service.getProfile('user-a')).resolves.toEqual(
       expect.objectContaining({ steuernummer: null }),
     )
   })
 
   it('ADR-0045 — stores a missing steuerId as null ("not given yet"), keeping the name', async () => {
-    const { steuerId: _omitted, ...payloadWithoutSteuerId } = validPayload()
-    await service.saveProfile('user-a', payloadWithoutSteuerId)
+    const { steuerId: _omitted, ...payloadWithoutTaxId } = validPayload()
+    await service.saveProfile('user-a', payloadWithoutTaxId)
     await expect(service.getProfile('user-a')).resolves.toEqual(
       expect.objectContaining({ firstName: validPayload().firstName, steuerId: null }),
     )

@@ -8,48 +8,48 @@
 /**
  * einfach/mehrere = ganzjährig vermietete Objekte, je Objekt eine Anlage V (computable); verkauf-oder-moebliert = gated in 1.0 (ADR-033); unbekannt = vermietung-art not answered.
  */
-export type VermietungEinordnungDtoKind = typeof VermietungEinordnungDtoKind[keyof typeof VermietungEinordnungDtoKind];
+export type RentalClassificationDtoKind = typeof RentalClassificationDtoKind[keyof typeof RentalClassificationDtoKind];
 
 
-export const VermietungEinordnungDtoKind = {
+export const RentalClassificationDtoKind = {
   einfach: 'einfach',
   mehrere: 'mehrere',
   'verkauf-oder-moebliert': 'verkauf-oder-moebliert',
   unbekannt: 'unbekannt',
 } as const;
 
-export interface VermietungEinordnungDto {
+export interface RentalClassificationDto {
   /** einfach/mehrere = ganzjährig vermietete Objekte, je Objekt eine Anlage V (computable); verkauf-oder-moebliert = gated in 1.0 (ADR-033); unbekannt = vermietung-art not answered. */
-  kind: VermietungEinordnungDtoKind;
+  kind: RentalClassificationDtoKind;
 }
 
 /**
  * The field’s capture state.
  */
-export type VermietungFeldDtoKind = typeof VermietungFeldDtoKind[keyof typeof VermietungFeldDtoKind];
+export type RentalFieldDtoKind = typeof RentalFieldDtoKind[keyof typeof RentalFieldDtoKind];
 
 
-export const VermietungFeldDtoKind = {
+export const RentalFieldDtoKind = {
   erfasst: 'erfasst',
   offen: 'offen',
   unklar: 'unklar',
 } as const;
 
-export interface VermietungFeldDto {
+export interface RentalFieldDto {
   /** The field’s capture state. */
-  kind: VermietungFeldDtoKind;
+  kind: RentalFieldDtoKind;
   /** The value — present only when kind === "erfasst" (validated via @steuereule/core). */
-  wert?: number;
+  value?: number;
 }
 
-export interface VermietungAfADto {
+export interface RentalDepreciationDto {
   /** Anschaffungskosten × AfA-Satz, rounded to whole euros. */
-  betrag: number;
+  amount: number;
   /** The statutory citation that produced the percentage. */
-  herkunft: string;
+  provenance: string;
 }
 
-export interface VermietungsobjektFaktenDto {
+export interface RentalPropertyFactsDto {
   /**
      * The captured Mieteinnahmen, or null while open.
      * @nullable
@@ -64,18 +64,18 @@ export interface VermietungsobjektFaktenDto {
      * The computed lineare AfA with its § 7 Abs. 4 Herkunft, or null while open.
      * @nullable
      */
-  afa: VermietungAfADto | null;
+  depreciation: RentalDepreciationDto | null;
   /** The blocked results of this object (Mieteinnahmen/AfA/Werbungskosten — max 3). */
-  offenePosten: number;
+  openItems: number;
 }
 
-export interface VermietungsobjektDto {
+export interface RentalPropertyDto {
   /** The stable object id (assigned by the API on create). */
   id: string;
-  mieteinnahmen: VermietungFeldDto;
-  anschaffungskosten: VermietungFeldDto;
-  baujahr: VermietungFeldDto;
-  werbungskosten: VermietungFeldDto;
+  mieteinnahmen: RentalFieldDto;
+  anschaffungskosten: RentalFieldDto;
+  baujahr: RentalFieldDto;
+  werbungskosten: RentalFieldDto;
   /** @nullable */
   strasse: string | null;
   /** @nullable */
@@ -83,11 +83,11 @@ export interface VermietungsobjektDto {
   /** @nullable */
   plz: string | null;
   /** @nullable */
-  ort: string | null;
+  city: string | null;
   /** @nullable */
-  wohnflaeche: string | null;
+  livingArea: string | null;
   /** @nullable */
-  afaWieVorjahr: boolean | null;
+  depreciationAsLastYear: boolean | null;
   /** @nullable */
   umlagen: string | null;
   /** @nullable */
@@ -96,23 +96,23 @@ export interface VermietungsobjektDto {
   einheiten: string | null;
   /** @nullable */
   anteilA: string | null;
-  fakten: VermietungsobjektFaktenDto;
+  facts: RentalPropertyFactsDto;
 }
 
 /**
  * Determined, or open (naming what blocks).
  */
-export type VermietungStandDtoKind = typeof VermietungStandDtoKind[keyof typeof VermietungStandDtoKind];
+export type RentalStatusDtoKind = typeof RentalStatusDtoKind[keyof typeof RentalStatusDtoKind];
 
 
-export const VermietungStandDtoKind = {
+export const RentalStatusDtoKind = {
   bestimmt: 'bestimmt',
   offen: 'offen',
 } as const;
 
-export interface VermietungStandDto {
+export interface RentalStatusDto {
   /** Determined, or open (naming what blocks). */
-  kind: VermietungStandDtoKind;
+  kind: RentalStatusDtoKind;
   /** Sum of the Mieteinnahmen Einnahme-Posten (whole euros). */
   einnahmen: number;
   /** Sum of Vorsorgeaufwand Posten (whole euros). */
@@ -122,49 +122,49 @@ export interface VermietungStandDto {
   /** Sum of CAPTURED Werbungskosten — reported, never subtracted (partial truth as a partial truth). */
   werbungskosten: number;
   /** Sum of the computed lineare AfA. */
-  afa: number;
+  depreciation: number;
   /** Required-but-empty results across all objects. */
-  offenePosten: number;
+  openItems: number;
   /** Open conflicts (always 0 this slice). */
-  konflikte: number;
+  conflicts: number;
   /** Gated Einkunftsarten (only when offen). */
-  gegated?: string[];
+  gated?: string[];
 }
 
-export interface VermietungResponseDto {
-  einordnung: VermietungEinordnungDto;
+export interface RentalResponseDto {
+  classification: RentalClassificationDto;
   /** The objects, oldest first. */
-  objekte: VermietungsobjektDto[];
-  stand: VermietungStandDto;
+  properties: RentalPropertyDto[];
+  status: RentalStatusDto;
 }
 
 /**
  * The field’s capture state.
  */
-export type PutVermietungFeldDtoKind = typeof PutVermietungFeldDtoKind[keyof typeof PutVermietungFeldDtoKind];
+export type PutRentalFieldDtoKind = typeof PutRentalFieldDtoKind[keyof typeof PutRentalFieldDtoKind];
 
 
-export const PutVermietungFeldDtoKind = {
+export const PutRentalFieldDtoKind = {
   erfasst: 'erfasst',
   offen: 'offen',
   unklar: 'unklar',
 } as const;
 
-export interface PutVermietungFeldDto {
+export interface PutRentalFieldDto {
   /** The field’s capture state. */
-  kind: PutVermietungFeldDtoKind;
+  kind: PutRentalFieldDtoKind;
   /** The value — present only when kind === "erfasst" (validated via @steuereule/core). */
-  wert?: number;
+  value?: number;
 }
 
-export interface PutVermietungAdresseDto {
+export interface PutRentalAddressDto {
   strasse?: string;
   hausnummer?: string;
   plz?: string;
-  ort?: string;
-  wohnflaeche?: string;
+  city?: string;
+  livingArea?: string;
   /** Anlage V Zeile 33: the building AfA is unchanged from last year. */
-  afaWieVorjahr?: boolean;
+  depreciationAsLastYear?: boolean;
   /** Anlage V Zeile 20: laufende Umlagen / Nebenkosten received, whole euros. */
   umlagen?: string;
   /** Anlage V Zeilen 46/48: Schuldzinsen (without repayment), whole euros. */

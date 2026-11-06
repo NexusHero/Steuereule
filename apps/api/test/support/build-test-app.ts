@@ -22,25 +22,25 @@ import { PrismaService } from '../../src/prisma/prisma.service.js'
 import { PROFILE_REPOSITORY } from '../../src/profile/profile.repository.js'
 import { TAX_YEAR_REPOSITORY } from '../../src/cockpit/tax-year.repository.js'
 import { INTERVIEW_ANSWER_REPOSITORY } from '../../src/interview/interview-answer.repository.js'
-import { LSTB_REPOSITORY } from '../../src/lstb/lstb.repository.js'
-import { RENTE_REPOSITORY } from '../../src/rente/rente.repository.js'
-import { KAPITAL_REPOSITORY } from '../../src/kapital/kapital.repository.js'
-import { VERMIETUNG_REPOSITORY } from '../../src/vermietung/vermietung.repository.js'
-import { KENNZEICHNUNG_REPOSITORY } from '../../src/kennzeichnung/kennzeichnung.repository.js'
+import { WAGE_TAX_CERTIFICATE_REPOSITORY } from '../../src/lstb/lstb.repository.js'
+import { PENSION_REPOSITORY } from '../../src/pension/pension.repository.js'
+import { CAPITAL_REPOSITORY } from '../../src/capital/capital.repository.js'
+import { RENTAL_REPOSITORY } from '../../src/rental/rental.repository.js'
+import { PROVENANCE_REPOSITORY } from '../../src/marking/marking.repository.js'
 import { FakeAccountIdentityRepository } from '../fakes/fake-account-identity.repository.js'
 import { FakeAuditRepository } from '../fakes/fake-audit.repository.js'
 import { FakeInterviewAnswerRepository } from '../fakes/fake-interview-answer.repository.js'
-import { FakeKapitalRepository } from '../fakes/fake-kapital.repository.js'
+import { FakeCapitalRepository } from '../fakes/fake-capital.repository.js'
 import { FakeLstbRepository } from '../fakes/fake-lstb.repository.js'
 import { FakePdfRenderer } from '../fakes/fake-pdf-renderer.js'
 import { FakeTaxDataExportRepository } from '../fakes/fake-tax-data-export.repository.js'
 import { FakeProfileRepository } from '../fakes/fake-profile.repository.js'
-import { FakeRenteRepository } from '../fakes/fake-rente.repository.js'
+import { FakePensionRepository } from '../fakes/fake-pension.repository.js'
 import { FakeTaxYearRepository } from '../fakes/fake-tax-year.repository.js'
-import { FakeKennzeichnungRepository } from '../fakes/fake-kennzeichnung.repository.js'
-import { FakeVermietungRepository } from '../fakes/fake-vermietung.repository.js'
-import { FakeChLohnausweisRepository } from '../fakes/fake-ch-lohnausweis.repository.js'
-import { CH_LOHNAUSWEIS_REPOSITORY } from '../../src/ch-lohnausweis/ch-lohnausweis.repository.js'
+import { FakeMarkingRepository } from '../fakes/fake-marking.repository.js'
+import { FakeRentalRepository } from '../fakes/fake-rental.repository.js'
+import { FakeChSalaryCertificateRepository } from '../fakes/fake-ch-salary-certificate.repository.js'
+import { CROSS_BORDER_SALARY_STATEMENT_REPOSITORY } from '../../src/ch-salary-certificate/ch-salary-certificate.repository.js'
 
 export async function buildTestApp(options?: {
   /** Overrides the default always-succeeding DATABASE_REACHABILITY_CHECK stub — the one
@@ -61,11 +61,11 @@ export async function buildTestApp(options?: {
   const taxYearRepository = new FakeTaxYearRepository()
   const lstbRepository = new FakeLstbRepository()
   const interviewRepository = new FakeInterviewAnswerRepository()
-  const kennzeichnungRepository = new FakeKennzeichnungRepository()
-  const renteRepository = new FakeRenteRepository()
-  const kapitalRepository = new FakeKapitalRepository()
-  const vermietungRepository = new FakeVermietungRepository()
-  const chLohnausweisRepository = new FakeChLohnausweisRepository()
+  const markingRepository = new FakeMarkingRepository()
+  const pensionRepository = new FakePensionRepository()
+  const capitalRepository = new FakeCapitalRepository()
+  const rentalRepository = new FakeRentalRepository()
+  const chSalaryCertificateRepository = new FakeChSalaryCertificateRepository()
   const accountIdentityRepository = new FakeAccountIdentityRepository()
   const pdfRenderer = new FakePdfRenderer()
   const taxDataExportRepository = new FakeTaxDataExportRepository()
@@ -111,20 +111,20 @@ export async function buildTestApp(options?: {
     .useValue(repository)
     .overrideProvider(TAX_YEAR_REPOSITORY)
     .useValue(taxYearRepository)
-    .overrideProvider(LSTB_REPOSITORY)
+    .overrideProvider(WAGE_TAX_CERTIFICATE_REPOSITORY)
     .useValue(lstbRepository)
     .overrideProvider(INTERVIEW_ANSWER_REPOSITORY)
     .useValue(interviewRepository)
-    .overrideProvider(KENNZEICHNUNG_REPOSITORY)
-    .useValue(kennzeichnungRepository)
-    .overrideProvider(RENTE_REPOSITORY)
-    .useValue(renteRepository)
-    .overrideProvider(KAPITAL_REPOSITORY)
-    .useValue(kapitalRepository)
-    .overrideProvider(VERMIETUNG_REPOSITORY)
-    .useValue(vermietungRepository)
-    .overrideProvider(CH_LOHNAUSWEIS_REPOSITORY)
-    .useValue(chLohnausweisRepository)
+    .overrideProvider(PROVENANCE_REPOSITORY)
+    .useValue(markingRepository)
+    .overrideProvider(PENSION_REPOSITORY)
+    .useValue(pensionRepository)
+    .overrideProvider(CAPITAL_REPOSITORY)
+    .useValue(capitalRepository)
+    .overrideProvider(RENTAL_REPOSITORY)
+    .useValue(rentalRepository)
+    .overrideProvider(CROSS_BORDER_SALARY_STATEMENT_REPOSITORY)
+    .useValue(chSalaryCertificateRepository)
     .overrideProvider(ACCOUNT_IDENTITY_REPOSITORY)
     .useValue(accountIdentityRepository)
     .overrideProvider(PDF_RENDERER)

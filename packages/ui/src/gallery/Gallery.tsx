@@ -6,7 +6,7 @@ import { Button, type ButtonVariant } from '../components/Button'
 import { Pill } from '../components/Pill'
 import { Sticker } from '../components/Sticker'
 import { AiChip } from '../components/AiChip'
-import { HerkunftsChip } from '../components/HerkunftsChip'
+import { ProvenanceChip } from '../components/HerkunftsChip'
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   const t = useTheme()
@@ -55,7 +55,7 @@ export function Gallery() {
           <Text style={heroLabel}>Voraussichtliche Erstattung</Text>
           <Text style={heroValue}>1.227–1.587 €</Text>
           <View style={{ marginTop: t.space.s2, alignSelf: 'flex-start' }}>
-            <HerkunftsChip quelle={{ regel: 'SCHÄTZ-01 · Stand 2026', rechenweg: 'Spanne = offene Angaben × 60 €' }} />
+            <ProvenanceChip source={{ rule: 'SCHÄTZ-01 · Stand 2026', calculationPath: 'Spanne = offene Angaben × 60 €' }} />
           </View>
         </Card>
       </Section>
@@ -68,7 +68,7 @@ export function Gallery() {
 
       <Section title="Button">
         {BUTTON_VARIANTS.map((v) => (
-          <Button key={v} variante={v}>
+          <Button key={v} variant={v}>
             {v}
           </Button>
         ))}
@@ -81,7 +81,7 @@ export function Gallery() {
       </Section>
 
       <Section title="Herkunft">
-        <HerkunftsChip quelle={{ beleg: 'Lohnsteuerbescheinigung', regel: 'WK-N-01', rechenweg: '1.230 € Pauschbetrag' }} />
+        <ProvenanceChip source={{ receipt: 'Lohnsteuerbescheinigung', rule: 'WK-N-01', calculationPath: '1.230 € Pauschbetrag' }} />
       </Section>
     </ScrollView>
   )

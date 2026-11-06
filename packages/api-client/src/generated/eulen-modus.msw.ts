@@ -18,55 +18,55 @@ import type {
 } from 'msw';
 
 import type {
-  EulenEinstellungResponseDto,
-  EulenKartenResponseDto
+  OwlCardsResponseDto,
+  OwlSettingResponseDto
 } from './eulen-modus.schemas';
 
 
-export const getEulenModusControllerGetEinstellungResponseMock = (overrideResponse: Partial<Extract<EulenEinstellungResponseDto, object>> = {}): EulenEinstellungResponseDto => ({aktiviert: faker.datatype.boolean(), aktiviertAm: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), ...overrideResponse})
+export const getOwlModeControllerGetSettingResponseMock = (overrideResponse: Partial<Extract<OwlSettingResponseDto, object>> = {}): OwlSettingResponseDto => ({enabled: faker.datatype.boolean(), enabledAt: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), ...overrideResponse})
 
-export const getEulenModusControllerSetEinstellungResponseMock = (overrideResponse: Partial<Extract<EulenEinstellungResponseDto, object>> = {}): EulenEinstellungResponseDto => ({aktiviert: faker.datatype.boolean(), aktiviertAm: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), ...overrideResponse})
+export const getOwlModeControllerSetSettingResponseMock = (overrideResponse: Partial<Extract<OwlSettingResponseDto, object>> = {}): OwlSettingResponseDto => ({enabled: faker.datatype.boolean(), enabledAt: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), ...overrideResponse})
 
-export const getEulenModusControllerGetKartenResponseMock = (overrideResponse: Partial<Extract<EulenKartenResponseDto, object>> = {}): EulenKartenResponseDto => ({aktiviert: faker.datatype.boolean(), karten: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), fingerprint: faker.string.alpha({length: {min: 10, max: 20}}), trigger: faker.helpers.arrayElement(['musterluecke','vorjahresvergleich','rechtsaenderung','lebenslage_hinweis'] as const), kategorie: faker.helpers.arrayElement(['cockpit_proaktiv','abruf_frage','archiv_einspruch'] as const), titel: faker.string.alpha({length: {min: 10, max: 20}}), botschaft: faker.string.alpha({length: {min: 10, max: 20}}), begruendung: faker.string.alpha({length: {min: 10, max: 20}}), betragEur: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), rechtsstandDatum: faker.string.alpha({length: {min: 10, max: 20}}), quelleUebersetzt: faker.string.alpha({length: {min: 10, max: 20}}), quelleUrl: faker.string.alpha({length: {min: 10, max: 20}}), wege: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({name: faker.string.alpha({length: {min: 10, max: 20}}), betragEur: faker.number.float({fractionDigits: 2}), beschreibung: faker.string.alpha({length: {min: 10, max: 20}}), risiko: faker.helpers.arrayElement(['sicher','risiko'] as const)})), einspruchFristBis: faker.string.alpha({length: {min: 10, max: 20}})})), rechtsstand: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
+export const getOwlModeControllerGetCardsResponseMock = (overrideResponse: Partial<Extract<OwlCardsResponseDto, object>> = {}): OwlCardsResponseDto => ({enabled: faker.datatype.boolean(), cards: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), fingerprint: faker.string.alpha({length: {min: 10, max: 20}}), trigger: faker.helpers.arrayElement(['musterluecke','vorjahresvergleich','rechtsaenderung','lebenslage_hinweis'] as const), category: faker.helpers.arrayElement(['cockpit_proaktiv','abruf_frage','archiv_einspruch'] as const), title: faker.string.alpha({length: {min: 10, max: 20}}), message: faker.string.alpha({length: {min: 10, max: 20}}), reason: faker.string.alpha({length: {min: 10, max: 20}}), amountEur: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), legalStatusDate: faker.string.alpha({length: {min: 10, max: 20}}), sourceTranslated: faker.string.alpha({length: {min: 10, max: 20}}), sourceUrl: faker.string.alpha({length: {min: 10, max: 20}}), paths: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({name: faker.string.alpha({length: {min: 10, max: 20}}), amountEur: faker.number.float({fractionDigits: 2}), description: faker.string.alpha({length: {min: 10, max: 20}}), risk: faker.helpers.arrayElement(['sicher','risiko'] as const)})), appealDeadline: faker.string.alpha({length: {min: 10, max: 20}})})), legalStatus: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
 
 
-export const getEulenModusControllerGetEinstellungMockHandler = (overrideResponse?: EulenEinstellungResponseDto | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<EulenEinstellungResponseDto> | EulenEinstellungResponseDto), options?: RequestHandlerOptions) => {
+export const getOwlModeControllerGetSettingMockHandler = (overrideResponse?: OwlSettingResponseDto | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<OwlSettingResponseDto> | OwlSettingResponseDto), options?: RequestHandlerOptions) => {
   return http.get('*/v1/eulen-modus/einstellung', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
 
 
     return HttpResponse.json(overrideResponse !== undefined
     ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
-    : getEulenModusControllerGetEinstellungResponseMock(),
+    : getOwlModeControllerGetSettingResponseMock(),
       { status: 200
       })
   }, options)
 }
 
-export const getEulenModusControllerSetEinstellungMockHandler = (overrideResponse?: EulenEinstellungResponseDto | ((info: Parameters<Parameters<typeof http.put>[1]>[0]) => Promise<EulenEinstellungResponseDto> | EulenEinstellungResponseDto), options?: RequestHandlerOptions) => {
+export const getOwlModeControllerSetSettingMockHandler = (overrideResponse?: OwlSettingResponseDto | ((info: Parameters<Parameters<typeof http.put>[1]>[0]) => Promise<OwlSettingResponseDto> | OwlSettingResponseDto), options?: RequestHandlerOptions) => {
   return http.put('*/v1/eulen-modus/einstellung', async (info: Parameters<Parameters<typeof http.put>[1]>[0]) => {
 
 
     return HttpResponse.json(overrideResponse !== undefined
     ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
-    : getEulenModusControllerSetEinstellungResponseMock(),
+    : getOwlModeControllerSetSettingResponseMock(),
       { status: 200
       })
   }, options)
 }
 
-export const getEulenModusControllerGetKartenMockHandler = (overrideResponse?: EulenKartenResponseDto | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<EulenKartenResponseDto> | EulenKartenResponseDto), options?: RequestHandlerOptions) => {
+export const getOwlModeControllerGetCardsMockHandler = (overrideResponse?: OwlCardsResponseDto | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<OwlCardsResponseDto> | OwlCardsResponseDto), options?: RequestHandlerOptions) => {
   return http.get('*/v1/steuerjahre/:jahr/eulen-karten', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
 
 
     return HttpResponse.json(overrideResponse !== undefined
     ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
-    : getEulenModusControllerGetKartenResponseMock(),
+    : getOwlModeControllerGetCardsResponseMock(),
       { status: 200
       })
   }, options)
 }
 
-export const getEulenModusControllerVerwerfeKarteMockHandler = (overrideResponse?: void | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<void> | void), options?: RequestHandlerOptions) => {
+export const getOwlModeControllerDismissCardMockHandler = (overrideResponse?: void | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<void> | void), options?: RequestHandlerOptions) => {
   return http.post('*/v1/steuerjahre/:jahr/eulen-karten/:fingerprint/verwerfen', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
   if (typeof overrideResponse === 'function') {await overrideResponse(info); }
 
@@ -76,8 +76,8 @@ export const getEulenModusControllerVerwerfeKarteMockHandler = (overrideResponse
   }, options)
 }
 export const getSteuerEuleAPIMock = () => [
-  getEulenModusControllerGetEinstellungMockHandler(),
-  getEulenModusControllerSetEinstellungMockHandler(),
-  getEulenModusControllerGetKartenMockHandler(),
-  getEulenModusControllerVerwerfeKarteMockHandler()
+  getOwlModeControllerGetSettingMockHandler(),
+  getOwlModeControllerSetSettingMockHandler(),
+  getOwlModeControllerGetCardsMockHandler(),
+  getOwlModeControllerDismissCardMockHandler()
 ]

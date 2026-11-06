@@ -5,26 +5,26 @@
  * Onboarding profile endpoints (steuereule#29)
  * OpenAPI spec version: 1.0
  */
-export interface AusdruckPruefungDto {
+export interface PrintoutCheckDto {
   /** What stops the printout: missing Stammdaten keys, `ehegatte` (married, not yet supported), or an Anlage that is not printable yet (`anlageV`, `anlageKap`, `anlageNGre`, `anlageRAvBav`, `anlageRAus`). Empty = printable. */
-  fehlend: string[];
+  missing: string[];
 }
 
 export interface CheckoutResponseDto {
   checkoutUrl: string;
 }
 
-export type AusdruckControllerAusdruckParams = {
+export type PrintoutControllerPrintoutParams = {
 /**
  * true → the values as named, editable AcroForm fields (for a correction before printing).
  */
-bearbeitbar?: AusdruckControllerAusdruckBearbeitbar;
+bearbeitbar?: PrintoutControllerPrintoutBearbeitbar;
 };
 
-export type AusdruckControllerAusdruckBearbeitbar = typeof AusdruckControllerAusdruckBearbeitbar[keyof typeof AusdruckControllerAusdruckBearbeitbar];
+export type PrintoutControllerPrintoutBearbeitbar = typeof PrintoutControllerPrintoutBearbeitbar[keyof typeof PrintoutControllerPrintoutBearbeitbar];
 
 
-export const AusdruckControllerAusdruckBearbeitbar = {
+export const PrintoutControllerPrintoutBearbeitbar = {
   true: 'true',
 } as const;
 

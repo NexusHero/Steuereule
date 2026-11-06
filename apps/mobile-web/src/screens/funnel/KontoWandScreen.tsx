@@ -3,28 +3,28 @@ import { useTranslation } from 'react-i18next'
 import { Button, Card, Chip, Sticker, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
 import { APP_NS } from '../../i18n/resources'
 
-export type FunnelPfad = 'angestellte' | 'rente' | 'ch'
+export type FunnelPath = 'angestellte' | 'rente' | 'ch'
 
-export function pfadAusAntworten(answers: Readonly<Record<string, string | undefined>>): FunnelPfad {
+export function pathFromAnswers(answers: Readonly<Record<string, string | undefined>>): FunnelPath {
   if (answers.job === 'Rente') return 'rente'
   if (answers.ausland === 'Ja, in die Schweiz') return 'ch'
   return 'angestellte'
 }
 
-export interface KontoWandScreenProps {
-  readonly pfad: FunnelPfad
+export interface AccountWallScreenProps {
+  readonly path: FunnelPath
   readonly onRegister: () => void
   readonly onLogin: () => void
   readonly onLater: () => void
 }
 
-const SCHRITTE: Record<FunnelPfad, readonly string[]> = {
+const STEPS: Record<FunnelPath, readonly string[]> = {
   angestellte: ['lstb', 'lebenslagen', 'sonderausgaben'],
   rente: ['rentenbescheid', 'kvpv'],
   ch: ['lohnausweis', 'nichtrueckkehrtage'],
 }
 
-export function KontoWandScreen({ pfad, onRegister, onLogin, onLater }: KontoWandScreenProps) {
+export function AccountWallScreen({ path, onRegister, onLogin, onLater }: AccountWallScreenProps) {
   const t = useTheme()
   const bp = useBreakpoint()
   const { t: tr } = useTranslation(APP_NS)
@@ -35,17 +35,17 @@ export function KontoWandScreen({ pfad, onRegister, onLogin, onLater }: KontoWan
       <Sticker>{tr('funnel.kontoWand.sticker')}</Sticker>
       <Text style={styles.heading} accessibilityRole="header">
         {tr('funnel.kontoWand.titleBefore')}
-        <Text style={styles.mark}>{tr(`funnel.kontoWand.pfad.${pfad}`)}</Text>
+        <Text style={styles.mark}>{tr(`funnel.kontoWand.pfad.${path}`)}</Text>
         {tr('funnel.kontoWand.titleAfter')}
       </Text>
       <Text style={styles.help}>{tr('funnel.kontoWand.help')}</Text>
 
       <Card>
         <Text style={styles.cardLabel}>{tr('funnel.kontoWand.nextLabel')}</Text>
-        {SCHRITTE[pfad].map((schritt, index) => (
-          <View key={schritt} style={styles.stepRow}>
+        {STEPS[path].map((step, index) => (
+          <View key={step} style={styles.stepRow}>
             <Text style={styles.stepNumber}>{index + 1}</Text>
-            <Text style={styles.stepText}>{tr(`funnel.kontoWand.schritte.${schritt}`)}</Text>
+            <Text style={styles.stepText}>{tr(`funnel.kontoWand.schritte.${step}`)}</Text>
           </View>
         ))}
       </Card>
@@ -55,7 +55,7 @@ export function KontoWandScreen({ pfad, onRegister, onLogin, onLater }: KontoWan
       <Button onPress={onRegister} style={styles.cta}>
         {tr('funnel.kontoWand.register')}
       </Button>
-      <Button variante="ghost" onPress={onLogin} style={styles.secondaryCta}>
+      <Button variant="ghost" onPress={onLogin} style={styles.secondaryCta}>
         {tr('funnel.kontoWand.login')}
       </Button>
       <View style={styles.laterRow}>

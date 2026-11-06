@@ -18,54 +18,54 @@ import type {
 } from 'msw';
 
 import type {
-  RenteResponseDto
+  PensionResponseDto
 } from './rente.schemas';
 
 
-export const getRenteControllerGetResponseMock = (overrideResponse: Partial<Extract<RenteResponseDto, object>> = {}): RenteResponseDto => ({art: faker.helpers.arrayElement([faker.helpers.arrayElement(['GesetzlicheRente','Betriebsrente','PrivateRentenversicherung','WitwenWaisenrente','AuslaendischeRente'] as const), null]), jahresbetrag: {kind: faker.helpers.arrayElement(['erfasst','offen','unklar'] as const), wert: faker.number.float({fractionDigits: 2})}, rentenbeginnJahr: {kind: faker.helpers.arrayElement(['erfasst','offen','unklar'] as const), wert: faker.number.float({fractionDigits: 2})}, alterBeiRentenbeginn: {kind: faker.helpers.arrayElement(['erfasst','offen','unklar'] as const), wert: faker.number.float({fractionDigits: 2})}, posten: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), betrag: faker.number.float({fractionDigits: 2}), herkunft: faker.string.alpha({length: {min: 10, max: 20}})})), stand: {kind: faker.helpers.arrayElement(['bestimmt','offen'] as const), einnahmen: faker.number.float({fractionDigits: 2}), vorsorgeaufwand: faker.number.float({fractionDigits: 2}), anrechnung: faker.number.float({fractionDigits: 2}), offenePosten: faker.number.float({fractionDigits: 2}), konflikte: faker.number.float({fractionDigits: 2}), gegated: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}})))}, ...overrideResponse})
+export const getPensionControllerGetResponseMock = (overrideResponse: Partial<Extract<PensionResponseDto, object>> = {}): PensionResponseDto => ({kind: faker.helpers.arrayElement([faker.helpers.arrayElement(['GesetzlicheRente','Betriebsrente','PrivateRentenversicherung','WitwenWaisenrente','AuslaendischeRente'] as const), null]), jahresbetrag: {kind: faker.helpers.arrayElement(['erfasst','offen','unklar'] as const), value: faker.number.float({fractionDigits: 2})}, rentenbeginnJahr: {kind: faker.helpers.arrayElement(['erfasst','offen','unklar'] as const), value: faker.number.float({fractionDigits: 2})}, alterBeiRentenbeginn: {kind: faker.helpers.arrayElement(['erfasst','offen','unklar'] as const), value: faker.number.float({fractionDigits: 2})}, items: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), amount: faker.number.float({fractionDigits: 2}), provenance: faker.string.alpha({length: {min: 10, max: 20}})})), status: {kind: faker.helpers.arrayElement(['bestimmt','offen'] as const), einnahmen: faker.number.float({fractionDigits: 2}), vorsorgeaufwand: faker.number.float({fractionDigits: 2}), anrechnung: faker.number.float({fractionDigits: 2}), openItems: faker.number.float({fractionDigits: 2}), conflicts: faker.number.float({fractionDigits: 2}), gated: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}})))}, ...overrideResponse})
 
-export const getRenteControllerSetRentenartResponseMock = (overrideResponse: Partial<Extract<RenteResponseDto, object>> = {}): RenteResponseDto => ({art: faker.helpers.arrayElement([faker.helpers.arrayElement(['GesetzlicheRente','Betriebsrente','PrivateRentenversicherung','WitwenWaisenrente','AuslaendischeRente'] as const), null]), jahresbetrag: {kind: faker.helpers.arrayElement(['erfasst','offen','unklar'] as const), wert: faker.number.float({fractionDigits: 2})}, rentenbeginnJahr: {kind: faker.helpers.arrayElement(['erfasst','offen','unklar'] as const), wert: faker.number.float({fractionDigits: 2})}, alterBeiRentenbeginn: {kind: faker.helpers.arrayElement(['erfasst','offen','unklar'] as const), wert: faker.number.float({fractionDigits: 2})}, posten: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), betrag: faker.number.float({fractionDigits: 2}), herkunft: faker.string.alpha({length: {min: 10, max: 20}})})), stand: {kind: faker.helpers.arrayElement(['bestimmt','offen'] as const), einnahmen: faker.number.float({fractionDigits: 2}), vorsorgeaufwand: faker.number.float({fractionDigits: 2}), anrechnung: faker.number.float({fractionDigits: 2}), offenePosten: faker.number.float({fractionDigits: 2}), konflikte: faker.number.float({fractionDigits: 2}), gegated: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}})))}, ...overrideResponse})
+export const getPensionControllerSetPensionKindResponseMock = (overrideResponse: Partial<Extract<PensionResponseDto, object>> = {}): PensionResponseDto => ({kind: faker.helpers.arrayElement([faker.helpers.arrayElement(['GesetzlicheRente','Betriebsrente','PrivateRentenversicherung','WitwenWaisenrente','AuslaendischeRente'] as const), null]), jahresbetrag: {kind: faker.helpers.arrayElement(['erfasst','offen','unklar'] as const), value: faker.number.float({fractionDigits: 2})}, rentenbeginnJahr: {kind: faker.helpers.arrayElement(['erfasst','offen','unklar'] as const), value: faker.number.float({fractionDigits: 2})}, alterBeiRentenbeginn: {kind: faker.helpers.arrayElement(['erfasst','offen','unklar'] as const), value: faker.number.float({fractionDigits: 2})}, items: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), amount: faker.number.float({fractionDigits: 2}), provenance: faker.string.alpha({length: {min: 10, max: 20}})})), status: {kind: faker.helpers.arrayElement(['bestimmt','offen'] as const), einnahmen: faker.number.float({fractionDigits: 2}), vorsorgeaufwand: faker.number.float({fractionDigits: 2}), anrechnung: faker.number.float({fractionDigits: 2}), openItems: faker.number.float({fractionDigits: 2}), conflicts: faker.number.float({fractionDigits: 2}), gated: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}})))}, ...overrideResponse})
 
-export const getRenteControllerSetFeldResponseMock = (overrideResponse: Partial<Extract<RenteResponseDto, object>> = {}): RenteResponseDto => ({art: faker.helpers.arrayElement([faker.helpers.arrayElement(['GesetzlicheRente','Betriebsrente','PrivateRentenversicherung','WitwenWaisenrente','AuslaendischeRente'] as const), null]), jahresbetrag: {kind: faker.helpers.arrayElement(['erfasst','offen','unklar'] as const), wert: faker.number.float({fractionDigits: 2})}, rentenbeginnJahr: {kind: faker.helpers.arrayElement(['erfasst','offen','unklar'] as const), wert: faker.number.float({fractionDigits: 2})}, alterBeiRentenbeginn: {kind: faker.helpers.arrayElement(['erfasst','offen','unklar'] as const), wert: faker.number.float({fractionDigits: 2})}, posten: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), betrag: faker.number.float({fractionDigits: 2}), herkunft: faker.string.alpha({length: {min: 10, max: 20}})})), stand: {kind: faker.helpers.arrayElement(['bestimmt','offen'] as const), einnahmen: faker.number.float({fractionDigits: 2}), vorsorgeaufwand: faker.number.float({fractionDigits: 2}), anrechnung: faker.number.float({fractionDigits: 2}), offenePosten: faker.number.float({fractionDigits: 2}), konflikte: faker.number.float({fractionDigits: 2}), gegated: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}})))}, ...overrideResponse})
+export const getPensionControllerSetFieldResponseMock = (overrideResponse: Partial<Extract<PensionResponseDto, object>> = {}): PensionResponseDto => ({kind: faker.helpers.arrayElement([faker.helpers.arrayElement(['GesetzlicheRente','Betriebsrente','PrivateRentenversicherung','WitwenWaisenrente','AuslaendischeRente'] as const), null]), jahresbetrag: {kind: faker.helpers.arrayElement(['erfasst','offen','unklar'] as const), value: faker.number.float({fractionDigits: 2})}, rentenbeginnJahr: {kind: faker.helpers.arrayElement(['erfasst','offen','unklar'] as const), value: faker.number.float({fractionDigits: 2})}, alterBeiRentenbeginn: {kind: faker.helpers.arrayElement(['erfasst','offen','unklar'] as const), value: faker.number.float({fractionDigits: 2})}, items: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), amount: faker.number.float({fractionDigits: 2}), provenance: faker.string.alpha({length: {min: 10, max: 20}})})), status: {kind: faker.helpers.arrayElement(['bestimmt','offen'] as const), einnahmen: faker.number.float({fractionDigits: 2}), vorsorgeaufwand: faker.number.float({fractionDigits: 2}), anrechnung: faker.number.float({fractionDigits: 2}), openItems: faker.number.float({fractionDigits: 2}), conflicts: faker.number.float({fractionDigits: 2}), gated: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}})))}, ...overrideResponse})
 
 
-export const getRenteControllerGetMockHandler = (overrideResponse?: RenteResponseDto | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<RenteResponseDto> | RenteResponseDto), options?: RequestHandlerOptions) => {
+export const getPensionControllerGetMockHandler = (overrideResponse?: PensionResponseDto | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<PensionResponseDto> | PensionResponseDto), options?: RequestHandlerOptions) => {
   return http.get('*/v1/steuerjahre/:jahr/rente', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
 
 
     return HttpResponse.json(overrideResponse !== undefined
     ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
-    : getRenteControllerGetResponseMock(),
+    : getPensionControllerGetResponseMock(),
       { status: 200
       })
   }, options)
 }
 
-export const getRenteControllerSetRentenartMockHandler = (overrideResponse?: RenteResponseDto | ((info: Parameters<Parameters<typeof http.put>[1]>[0]) => Promise<RenteResponseDto> | RenteResponseDto), options?: RequestHandlerOptions) => {
+export const getPensionControllerSetPensionKindMockHandler = (overrideResponse?: PensionResponseDto | ((info: Parameters<Parameters<typeof http.put>[1]>[0]) => Promise<PensionResponseDto> | PensionResponseDto), options?: RequestHandlerOptions) => {
   return http.put('*/v1/steuerjahre/:jahr/rente/art', async (info: Parameters<Parameters<typeof http.put>[1]>[0]) => {
 
 
     return HttpResponse.json(overrideResponse !== undefined
     ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
-    : getRenteControllerSetRentenartResponseMock(),
+    : getPensionControllerSetPensionKindResponseMock(),
       { status: 200
       })
   }, options)
 }
 
-export const getRenteControllerSetFeldMockHandler = (overrideResponse?: RenteResponseDto | ((info: Parameters<Parameters<typeof http.put>[1]>[0]) => Promise<RenteResponseDto> | RenteResponseDto), options?: RequestHandlerOptions) => {
+export const getPensionControllerSetFieldMockHandler = (overrideResponse?: PensionResponseDto | ((info: Parameters<Parameters<typeof http.put>[1]>[0]) => Promise<PensionResponseDto> | PensionResponseDto), options?: RequestHandlerOptions) => {
   return http.put('*/v1/steuerjahre/:jahr/rente/:feld', async (info: Parameters<Parameters<typeof http.put>[1]>[0]) => {
 
 
     return HttpResponse.json(overrideResponse !== undefined
     ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
-    : getRenteControllerSetFeldResponseMock(),
+    : getPensionControllerSetFieldResponseMock(),
       { status: 200
       })
   }, options)
 }
 export const getSteuerEuleAPIMock = () => [
-  getRenteControllerGetMockHandler(),
-  getRenteControllerSetRentenartMockHandler(),
-  getRenteControllerSetFeldMockHandler()
+  getPensionControllerGetMockHandler(),
+  getPensionControllerSetPensionKindMockHandler(),
+  getPensionControllerSetFieldMockHandler()
 ]

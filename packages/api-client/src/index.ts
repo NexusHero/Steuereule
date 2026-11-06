@@ -22,15 +22,15 @@ export * from './generated/veranlagungsartenvergleich'
 export * from './generated/veranlagungsartenvergleich.schemas'
 export * from './generated/kapital'
 export type {
-  KapitalFeldDto,
-  DepotEinordnungDto,
-  KapitalPostenDto,
-  KapitalStandDto,
-  KapitalResponseDto,
-  PutKapitalFeldDto,
-  GuenstigerpruefungDto,
-  GuenstigerpruefungHerkunftDto,
-  KapitalControllerGetGuenstigerpruefungParams,
+  CapitalFieldDto as KapitalFeldDto,
+  DepotClassificationDto as DepotEinordnungDto,
+  CapitalItemDto as KapitalPostenDto,
+  CapitalStatusDto as KapitalStandDto,
+  CapitalResponseDto as KapitalResponseDto,
+  PutCapitalFieldDto as PutKapitalFeldDto,
+  MostFavourableCheckDto as GuenstigerpruefungDto,
+  MostFavourableCheckSourceDto as GuenstigerpruefungHerkunftDto,
+  CapitalControllerGetMostFavourableCheckParams,
 } from './generated/kapital.schemas'
 export * from './generated/steuerschaetzung'
 export * from './generated/steuerschaetzung.schemas'

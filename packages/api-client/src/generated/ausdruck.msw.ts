@@ -18,41 +18,41 @@ import type {
 } from 'msw';
 
 import type {
-  AusdruckPruefungDto,
-  CheckoutResponseDto
+  CheckoutResponseDto,
+  PrintoutCheckDto
 } from './ausdruck.schemas';
 
 
-export const getAusdruckControllerPruefungResponseMock = (overrideResponse: Partial<Extract<AusdruckPruefungDto, object>> = {}): AusdruckPruefungDto => ({fehlend: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), ...overrideResponse})
+export const getPrintoutControllerCheckResponseMock = (overrideResponse: Partial<Extract<PrintoutCheckDto, object>> = {}): PrintoutCheckDto => ({missing: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), ...overrideResponse})
 
-export const getAusdruckControllerCheckoutResponseMock = (overrideResponse: Partial<Extract<CheckoutResponseDto, object>> = {}): CheckoutResponseDto => ({checkoutUrl: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
+export const getPrintoutControllerCheckoutResponseMock = (overrideResponse: Partial<Extract<CheckoutResponseDto, object>> = {}): CheckoutResponseDto => ({checkoutUrl: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
 
 
-export const getAusdruckControllerPruefungMockHandler = (overrideResponse?: AusdruckPruefungDto | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<AusdruckPruefungDto> | AusdruckPruefungDto), options?: RequestHandlerOptions) => {
+export const getPrintoutControllerCheckMockHandler = (overrideResponse?: PrintoutCheckDto | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<PrintoutCheckDto> | PrintoutCheckDto), options?: RequestHandlerOptions) => {
   return http.get('*/v1/steuerjahre/:jahr/ausdruck/pruefung', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
 
 
     return HttpResponse.json(overrideResponse !== undefined
     ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
-    : getAusdruckControllerPruefungResponseMock(),
+    : getPrintoutControllerCheckResponseMock(),
       { status: 200
       })
   }, options)
 }
 
-export const getAusdruckControllerCheckoutMockHandler = (overrideResponse?: CheckoutResponseDto | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<CheckoutResponseDto> | CheckoutResponseDto), options?: RequestHandlerOptions) => {
+export const getPrintoutControllerCheckoutMockHandler = (overrideResponse?: CheckoutResponseDto | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<CheckoutResponseDto> | CheckoutResponseDto), options?: RequestHandlerOptions) => {
   return http.post('*/v1/steuerjahre/:jahr/ausdruck/checkout', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
 
 
     return HttpResponse.json(overrideResponse !== undefined
     ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
-    : getAusdruckControllerCheckoutResponseMock(),
+    : getPrintoutControllerCheckoutResponseMock(),
       { status: 200
       })
   }, options)
 }
 
-export const getAusdruckControllerAusdruckMockHandler = (overrideResponse?: void | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<void> | void), options?: RequestHandlerOptions) => {
+export const getPrintoutControllerPrintoutMockHandler = (overrideResponse?: void | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<void> | void), options?: RequestHandlerOptions) => {
   return http.get('*/v1/steuerjahre/:jahr/ausdruck', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
   if (typeof overrideResponse === 'function') {await overrideResponse(info); }
 
@@ -62,7 +62,7 @@ export const getAusdruckControllerAusdruckMockHandler = (overrideResponse?: void
   }, options)
 }
 export const getSteuerEuleAPIMock = () => [
-  getAusdruckControllerPruefungMockHandler(),
-  getAusdruckControllerCheckoutMockHandler(),
-  getAusdruckControllerAusdruckMockHandler()
+  getPrintoutControllerCheckMockHandler(),
+  getPrintoutControllerCheckoutMockHandler(),
+  getPrintoutControllerPrintoutMockHandler()
 ]

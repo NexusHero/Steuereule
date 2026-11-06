@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { screen, fireEvent } from '@testing-library/react'
 import { Text } from 'react-native'
 import { Input } from './Input'
-import { Feld } from './Feld'
+import { Field } from './Field'
 import { Chip } from './Chip'
 import { renderUi } from '../test-utils'
 
@@ -49,9 +49,9 @@ describe('Input', () => {
 describe('Feld', () => {
   it('renders the label and the child control', () => {
     renderUi(
-      <Feld label="E-Mail">
+      <Field label="E-Mail">
         <Text>control</Text>
-      </Feld>,
+      </Field>,
     )
     expect(screen.getByText('E-Mail')).toBeTruthy()
     expect(screen.getByText('control')).toBeTruthy()
@@ -59,15 +59,15 @@ describe('Feld', () => {
 
   it('shows the error line when present, hides it otherwise', () => {
     const { rerender } = renderUi(
-      <Feld label="Passwort" fehler="Mindestens 6 Zeichen.">
+      <Field label="Passwort" error="Mindestens 6 Zeichen.">
         <Text>x</Text>
-      </Feld>,
+      </Field>,
     )
     expect(screen.getByText('Mindestens 6 Zeichen.')).toBeTruthy()
     rerender(
-      <Feld label="Passwort">
+      <Field label="Passwort">
         <Text>x</Text>
-      </Feld>,
+      </Field>,
     )
     expect(screen.queryByText('Mindestens 6 Zeichen.')).toBeNull()
   })
@@ -85,7 +85,7 @@ describe('Chip', () => {
     // Active fills the chip with lime; assert it still renders + stays pressable.
     const onPress = vi.fn()
     renderUi(
-      <Chip aktiv onPress={onPress}>
+      <Chip active onPress={onPress}>
         an
       </Chip>,
     )
@@ -94,7 +94,7 @@ describe('Chip', () => {
   })
 
   it('renders the pro (nacht) variant', () => {
-    renderUi(<Chip variante="pro">pro</Chip>)
+    renderUi(<Chip variant="pro">pro</Chip>)
     expect(screen.getByText('pro')).toBeTruthy()
   })
 

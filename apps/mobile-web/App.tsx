@@ -16,39 +16,39 @@ import { APP_QUERY_DEFAULTS } from './src/query-client'
 import { TabIcon } from './src/icons/TabIcon'
 import { SplashScreen } from './src/screens/SplashScreen'
 import { LoginScreen } from './src/screens/LoginScreen'
-import { RegistrierungScreen } from './src/screens/RegistrierungScreen'
+import { RegistrationScreen } from './src/screens/RegistrationScreen'
 import { OnboardingScreen } from './src/screens/OnboardingScreen'
 import { CockpitScreen } from './src/screens/cockpit/CockpitScreen'
 import { InterviewScreen } from './src/screens/interview/InterviewScreen'
 import { LstbScreen } from './src/screens/lstb/LstbScreen'
-import { KatalogScreen } from './src/screens/katalog/KatalogScreen'
-import { ArbeitstageScreen } from './src/screens/arbeitstage/ArbeitstageScreen'
-import { PlausibilitaetScreen } from './src/screens/plausibilitaet/PlausibilitaetScreen'
-import { VeranlagungsartenvergleichScreen } from './src/screens/veranlagungsartenvergleich/VeranlagungsartenvergleichScreen'
-import { BelegeScreen } from './src/screens/belege/BelegeScreen'
-import { BescheidScreen } from './src/screens/bescheid/BescheidScreen'
-import { KapitalScreen } from './src/screens/kapital/KapitalScreen'
-import { VermietungScreen } from './src/screens/vermietung/VermietungScreen'
-import { GrenzgaengerScreen } from './src/screens/grenzgaenger/GrenzgaengerScreen'
-import { RentnerScreen } from './src/screens/rente/RentnerScreen'
-import { ProfilScreen } from './src/screens/ProfilScreen'
-import { DatenschutzScreen } from './src/screens/DatenschutzScreen'
-import { SicherheitScreen } from './src/screens/security/SicherheitScreen'
+import { CatalogScreen } from './src/screens/catalog/CatalogScreen'
+import { WorkdaysScreen } from './src/screens/workdays/WorkdaysScreen'
+import { PlausibilityScreen } from './src/screens/plausibility/PlausibilityScreen'
+import { FilingTypeComparisonScreen } from './src/screens/filing-type-comparison/FilingTypeComparisonScreen'
+import { ReceiptsScreen } from './src/screens/receipts/ReceiptsScreen'
+import { AssessmentScreen } from './src/screens/assessment/AssessmentScreen'
+import { CapitalScreen } from './src/screens/capital/CapitalScreen'
+import { RentalScreen } from './src/screens/rental/RentalScreen'
+import { CrossBorderScreen } from './src/screens/cross-border/CrossBorderScreen'
+import { PensionerScreen } from './src/screens/pension/PensionerScreen'
+import { ProfileScreen } from './src/screens/ProfileScreen'
+import { PrivacyScreen } from './src/screens/PrivacyScreen'
+import { SecurityScreen } from './src/screens/security/SecurityScreen'
 import { DeviceScreen } from './src/screens/device/DeviceScreen'
-import { RechtlichesScreen } from './src/screens/rechtliches/RechtlichesScreen'
-import { StammdatenScreen } from './src/screens/stammdaten/StammdatenScreen'
-import { AusdruckScreen } from './src/screens/ausdruck/AusdruckScreen'
-import { BestaetigungScreen, type BestaetigungsMaske } from './src/screens/bestaetigung/BestaetigungScreen'
+import { LegalScreen } from './src/screens/legal/LegalScreen'
+import { MasterDataScreen } from './src/screens/master-data/MasterDataScreen'
+import { PrintoutScreen } from './src/screens/printout/PrintoutScreen'
+import { ConfirmationScreen, type ConfirmationForm } from './src/screens/confirmation/ConfirmationScreen'
 import { OauthConsentScreen } from './src/screens/oauth/OauthConsentScreen'
-import { KinderScreen } from './src/screens/kinder/KinderScreen'
+import { ChildrenScreen } from './src/screens/children/ChildrenScreen'
 import { rememberPendingPath, rememberTaxYear, rememberedPendingPath, rememberedTaxYear } from './src/screens/funnel/sessionMemory'
-import { EulenModusScreen } from './src/screens/berater/EulenModusScreen'
-import { betreiberAusUmgebung, RECHTLICHE_SEITEN, type RechtlicheSeite } from './src/screens/rechtliches/texte'
-import { KontoWandScreen, pfadAusAntworten, type FunnelPfad } from './src/screens/funnel/KontoWandScreen'
+import { OwlModeScreen } from './src/screens/advisor/OwlModeScreen'
+import { operatorFromEnv, LEGAL_PAGES, type LegalPage } from './src/screens/legal/texts'
+import { AccountWallScreen, pathFromAnswers, type FunnelPath } from './src/screens/funnel/KontoWandScreen'
 import { useAccountSession } from './src/auth/useAccountSession'
 import { followNativeAppFocus } from './src/app-focus'
-import { AUSWAHL_STEUERJAHRE, CURRENT_TAX_YEAR } from './src/config/taxYear'
-import { ansichtNachDemInterview } from './src/screens/funnel/nachDemInterview'
+import { SELECTABLE_TAX_YEARS, CURRENT_TAX_YEAR } from './src/config/taxYear'
+import { viewAfterInterview } from './src/screens/funnel/afterTheInterview'
 
 const i18n = createAppI18n('de')
 const queryClient = new QueryClient({ defaultOptions: APP_QUERY_DEFAULTS })
@@ -62,13 +62,14 @@ const authClient = createAppAuthClient(apiBaseUrl)
 type RootStackParamList = {
   Splash: undefined
   Login: undefined
-  Registrierung: undefined
+  Registration: undefined
   Onboarding: undefined
   App: { start?: 'interview' } | undefined
   Device: { user_code?: string } | undefined
-  Rechtliches: { seite: RechtlicheSeite }
-  Ausdruck: { jahr: string; zahlung?: string }
-  Bestaetigung: { jahr: string }
+  Legal: { page: LegalPage }
+  // `zahlung` is the query parameter in the Stripe return URL; it stays as the API writes it.
+  Printout: { year: string; payment?: string }
+  Confirmation: { year: string }
   OauthConsent: { client_id?: string; scope?: string } | undefined
 }
 
@@ -80,13 +81,13 @@ const linking: LinkingOptions<RootStackParamList> = {
     screens: {
       Splash: '',
       Login: 'login',
-      Registrierung: 'registrierung',
+      Registration: 'registrierung',
       Onboarding: 'onboarding',
       App: 'app',
       Device: 'device',
-      Rechtliches: 'rechtliches/:seite',
-      Ausdruck: 'app/steuerjahr/:jahr/ausdruck',
-      Bestaetigung: 'app/steuerjahr/:jahr/bestaetigung',
+      Legal: 'rechtliches/:page',
+      Printout: 'app/steuerjahr/:year/ausdruck',
+      Confirmation: 'app/steuerjahr/:year/bestaetigung',
       OauthConsent: 'oauth/consent',
     },
   },
@@ -106,13 +107,13 @@ export default function App() {
                   <RootStack.Navigator screenOptions={{ headerShown: false }}>
                     <RootStack.Screen name="Splash" component={SplashRoute} />
                     <RootStack.Screen name="Login" component={LoginRoute} />
-                    <RootStack.Screen name="Registrierung" component={RegistrierungRoute} />
+                    <RootStack.Screen name="Registration" component={RegistrationRoute} />
                     <RootStack.Screen name="Onboarding" component={OnboardingRoute} />
                     <RootStack.Screen name="App" component={AppRoute} />
                     <RootStack.Screen name="Device" component={DeviceRoute} />
-                    <RootStack.Screen name="Rechtliches" component={RechtlichesRoute} />
-                    <RootStack.Screen name="Ausdruck" component={AusdruckRoute} />
-                    <RootStack.Screen name="Bestaetigung" component={BestaetigungRoute} />
+                    <RootStack.Screen name="Legal" component={LegalRoute} />
+                    <RootStack.Screen name="Printout" component={PrintoutRoute} />
+                    <RootStack.Screen name="Confirmation" component={ConfirmationRoute} />
                     <RootStack.Screen name="OauthConsent" component={OauthConsentRoute} />
                   </RootStack.Navigator>
                 </NavigationContainer>
@@ -135,15 +136,15 @@ function LoginRoute({ navigation }: NativeStackScreenProps<RootStackParamList, '
     <LoginScreen
       onDone={() => navigation.replace('App')}
       onGuest={() => navigation.replace('App', { start: 'interview' })}
-      onRegister={() => navigation.replace('Registrierung')}
-      onRechtliches={(seite) => navigation.navigate('Rechtliches', { seite })}
+      onRegister={() => navigation.replace('Registration')}
+      onLegal={(page) => navigation.navigate('Legal', { page })}
     />
   )
 }
 
-function RegistrierungRoute({ navigation }: NativeStackScreenProps<RootStackParamList, 'Registrierung'>) {
+function RegistrationRoute({ navigation }: NativeStackScreenProps<RootStackParamList, 'Registration'>) {
   return (
-    <RegistrierungScreen
+    <RegistrationScreen
       onDone={() => navigation.replace('Onboarding')}
       onLogin={() => navigation.replace('Login')}
     />
@@ -154,7 +155,7 @@ function OnboardingRoute({ navigation }: NativeStackScreenProps<RootStackParamLi
   return <OnboardingScreen onDone={() => navigation.replace('App')} />
 }
 
-const BETREIBER = betreiberAusUmgebung({
+const OPERATOR = operatorFromEnv({
   EXPO_PUBLIC_BETREIBER_NAME: process.env.EXPO_PUBLIC_BETREIBER_NAME,
   EXPO_PUBLIC_BETREIBER_ANSCHRIFT: process.env.EXPO_PUBLIC_BETREIBER_ANSCHRIFT,
   EXPO_PUBLIC_BETREIBER_EMAIL: process.env.EXPO_PUBLIC_BETREIBER_EMAIL,
@@ -162,80 +163,80 @@ const BETREIBER = betreiberAusUmgebung({
   EXPO_PUBLIC_BETREIBER_USTID: process.env.EXPO_PUBLIC_BETREIBER_USTID,
 })
 
-function RechtlichesRoute({ navigation, route }: NativeStackScreenProps<RootStackParamList, 'Rechtliches'>) {
-  const seite = RECHTLICHE_SEITEN.includes(route.params?.seite) ? route.params.seite : 'impressum'
+function LegalRoute({ navigation, route }: NativeStackScreenProps<RootStackParamList, 'Legal'>) {
+  const page = LEGAL_PAGES.includes(route.params?.page) ? route.params.page : 'impressum'
   return (
-    <RechtlichesScreen
-      seite={seite}
-      betreiber={BETREIBER}
-      onZurueck={() => (navigation.canGoBack() ? navigation.goBack() : navigation.replace('Login'))}
-      onSeite={(naechste) => navigation.setParams({ seite: naechste })}
+    <LegalScreen
+      page={page}
+      operator={OPERATOR}
+      onBack={() => (navigation.canGoBack() ? navigation.goBack() : navigation.replace('Login'))}
+      onPage={(next) => navigation.setParams({ page: next })}
     />
   )
 }
 
-function AusdruckRoute({ navigation, route }: NativeStackScreenProps<RootStackParamList, 'Ausdruck'>) {
-  const [ansicht, setAnsicht] = useState<'ausdruck' | 'stammdaten' | 'sonderausgaben' | 'kinder' | 'vermietung' | 'kapital' | 'grenzgaenger'>('ausdruck')
-  const jahr = Number(route.params?.jahr)
+function PrintoutRoute({ navigation, route }: NativeStackScreenProps<RootStackParamList, 'Printout'>) {
+  const [view, setView] = useState<'ausdruck' | 'stammdaten' | 'sonderausgaben' | 'kinder' | 'vermietung' | 'kapital' | 'grenzgaenger'>('ausdruck')
+  const year = Number(route.params?.year)
   useEffect(() => {
-    if (!Number.isInteger(jahr)) navigation.replace('App')
-  }, [jahr, navigation])
-  if (!Number.isInteger(jahr)) return null
-  if (ansicht === 'stammdaten') return <StammdatenScreen onZurueck={() => setAnsicht('ausdruck')} />
-  if (ansicht === 'grenzgaenger') return <GrenzgaengerScreen taxYear={jahr} onDone={() => setAnsicht('ausdruck')} />
-  if (ansicht === 'kapital') {
-    return <KapitalScreen taxYear={jahr} onDone={() => setAnsicht('ausdruck')} onBack={() => setAnsicht('ausdruck')} />
+    if (!Number.isInteger(year)) navigation.replace('App')
+  }, [year, navigation])
+  if (!Number.isInteger(year)) return null
+  if (view === 'stammdaten') return <MasterDataScreen onBack={() => setView('ausdruck')} />
+  if (view === 'grenzgaenger') return <CrossBorderScreen taxYear={year} onDone={() => setView('ausdruck')} />
+  if (view === 'kapital') {
+    return <CapitalScreen taxYear={year} onDone={() => setView('ausdruck')} onBack={() => setView('ausdruck')} />
   }
-  if (ansicht === 'vermietung') {
-    return <VermietungScreen taxYear={jahr} onDone={() => setAnsicht('ausdruck')} onBack={() => setAnsicht('ausdruck')} />
+  if (view === 'vermietung') {
+    return <RentalScreen taxYear={year} onDone={() => setView('ausdruck')} onBack={() => setView('ausdruck')} />
   }
-  if (ansicht === 'kinder') {
-    return <KinderScreen taxYear={jahr} onDone={() => setAnsicht('ausdruck')} onBack={() => setAnsicht('ausdruck')} />
+  if (view === 'kinder') {
+    return <ChildrenScreen taxYear={year} onDone={() => setView('ausdruck')} onBack={() => setView('ausdruck')} />
   }
-  if (ansicht === 'sonderausgaben') {
+  if (view === 'sonderausgaben') {
     return (
-      <KatalogScreen
+      <CatalogScreen
         entry="sonderausgaben"
-        taxYear={jahr}
-        onDone={() => setAnsicht('ausdruck')}
-        onBack={() => setAnsicht('ausdruck')}
+        taxYear={year}
+        onDone={() => setView('ausdruck')}
+        onBack={() => setView('ausdruck')}
       />
     )
   }
-  const zahlung = route.params?.zahlung
+  const payment = route.params?.payment
   return (
-    <AusdruckScreen
-      jahr={jahr}
-      {...(zahlung === 'erfolg' || zahlung === 'abbruch' ? { zahlung } : {})}
-      onZurueck={() => (navigation.canGoBack() ? navigation.goBack() : navigation.replace('App'))}
-      onAngabenErgaenzen={() => setAnsicht('stammdaten')}
-      onRiesterErgaenzen={() => setAnsicht('sonderausgaben')}
-      onKinderErgaenzen={() => setAnsicht('kinder')}
-      onVermietungErgaenzen={() => setAnsicht('vermietung')}
-      onKapitalErgaenzen={() => setAnsicht('kapital')}
-      onGrenzgaengerErgaenzen={() => setAnsicht('grenzgaenger')}
-      onBestaetigen={() => navigation.navigate('Bestaetigung', { jahr: String(jahr) })}
+    <PrintoutScreen
+      year={year}
+      {...(payment === 'erfolg' || payment === 'abbruch' ? { payment } : {})}
+      onBack={() => (navigation.canGoBack() ? navigation.goBack() : navigation.replace('App'))}
+      onCompleteDetails={() => setView('stammdaten')}
+      onCompleteRiester={() => setView('sonderausgaben')}
+      onCompleteChildren={() => setView('kinder')}
+      onCompleteRental={() => setView('vermietung')}
+      onCompleteCapital={() => setView('kapital')}
+      onCompleteCrossBorder={() => setView('grenzgaenger')}
+      onConfirm={() => navigation.navigate('Confirmation', { year: String(year) })}
     />
   )
 }
 
-function BestaetigungRoute({ navigation, route }: NativeStackScreenProps<RootStackParamList, 'Bestaetigung'>) {
-  const [maske, setMaske] = useState<BestaetigungsMaske | null>(null)
-  const jahr = Number(route.params?.jahr)
+function ConfirmationRoute({ navigation, route }: NativeStackScreenProps<RootStackParamList, 'Confirmation'>) {
+  const [screen, setScreen] = useState<ConfirmationForm | null>(null)
+  const year = Number(route.params?.year)
   useEffect(() => {
-    if (!Number.isInteger(jahr)) navigation.replace('App')
-  }, [jahr, navigation])
-  if (!Number.isInteger(jahr)) return null
-  const zurueck = () => setMaske(null)
-  if (maske === 'lstb') return <LstbScreen taxYear={jahr} onDone={zurueck} onBack={zurueck} />
-  if (maske === 'rente') return <RentnerScreen taxYear={jahr} onDone={zurueck} onBack={zurueck} />
-  if (maske === 'kapital') return <KapitalScreen taxYear={jahr} onDone={zurueck} onBack={zurueck} />
-  if (maske === 'vermietung') return <VermietungScreen taxYear={jahr} onDone={zurueck} onBack={zurueck} />
+    if (!Number.isInteger(year)) navigation.replace('App')
+  }, [year, navigation])
+  if (!Number.isInteger(year)) return null
+  const back = () => setScreen(null)
+  if (screen === 'lstb') return <LstbScreen taxYear={year} onDone={back} onBack={back} />
+  if (screen === 'rente') return <PensionerScreen taxYear={year} onDone={back} onBack={back} />
+  if (screen === 'kapital') return <CapitalScreen taxYear={year} onDone={back} onBack={back} />
+  if (screen === 'vermietung') return <RentalScreen taxYear={year} onDone={back} onBack={back} />
   return (
-    <BestaetigungScreen
-      jahr={jahr}
-      onZurueck={() => (navigation.canGoBack() ? navigation.goBack() : navigation.replace('App'))}
-      onMaskeOeffnen={setMaske}
+    <ConfirmationScreen
+      year={year}
+      onBack={() => (navigation.canGoBack() ? navigation.goBack() : navigation.replace('App'))}
+      onOpenScreen={setScreen}
     />
   )
 }
@@ -256,10 +257,10 @@ function AppRoute({ navigation, route }: NativeStackScreenProps<RootStackParamLi
       tab={tab}
       onTabChange={setTab}
       startInInterview={route.params?.start === 'interview'}
-      onRegister={() => navigation.replace('Registrierung')}
+      onRegister={() => navigation.replace('Registration')}
       onLogin={() => navigation.replace('Login')}
-      onOpenAusdruck={(jahr) => navigation.navigate('Ausdruck', { jahr: String(jahr) })}
-      onOpenBestaetigung={(jahr) => navigation.navigate('Bestaetigung', { jahr: String(jahr) })}
+      onOpenPrintout={(year) => navigation.navigate('Printout', { year: String(year) })}
+      onOpenConfirmation={(year) => navigation.navigate('Confirmation', { year: String(year) })}
       onSignedOut={() => {
         queryClient.clear()
         setTab('cockpit')
@@ -277,18 +278,18 @@ interface TabbedShellProps {
   readonly startInInterview?: boolean
   readonly onRegister?: () => void
   readonly onLogin?: () => void
-  readonly onOpenAusdruck?: (jahr: number) => void
-  readonly onOpenBestaetigung?: (jahr: number) => void
+  readonly onOpenPrintout?: (year: number) => void
+  readonly onOpenConfirmation?: (year: number) => void
 }
 
-function TabbedShell({ tab, onTabChange, onSignedOut, startInInterview = false, onRegister = () => {}, onLogin = () => {}, onOpenAusdruck, onOpenBestaetigung }: TabbedShellProps) {
+function TabbedShell({ tab, onTabChange, onSignedOut, startInInterview = false, onRegister = () => {}, onLogin = () => {}, onOpenPrintout, onOpenConfirmation }: TabbedShellProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const { state: sessionState } = useAccountSession()
   const insets = useSafeAreaInsets()
-  const [funnelPfad, setFunnelPfad] = useState<FunnelPfad>('angestellte')
+  const [funnelPath, setFunnelPath] = useState<FunnelPath>('angestellte')
 
-  const [profilView, setProfilView] = useState<'main' | 'datenschutz' | 'sicherheit' | 'stammdaten'>('main')
+  const [profileView, setProfileView] = useState<'main' | 'datenschutz' | 'sicherheit' | 'stammdaten'>('main')
   const [cockpitView, setCockpitView] = useState<
     | 'main'
     | 'interview'
@@ -310,33 +311,33 @@ function TabbedShell({ tab, onTabChange, onSignedOut, startInInterview = false, 
     | 'stammdaten'
     | 'partner'
   >(startInInterview ? 'interview' : 'main')
-  const [ausstehenderPfad, setAusstehenderPfad] = useState<FunnelPfad | null>(null)
-  const [steuerjahr, setSteuerjahrState] = useState(() => rememberedTaxYear(CURRENT_TAX_YEAR, AUSWAHL_STEUERJAHRE))
-  const setSteuerjahr = (jahr: number) => {
-    rememberTaxYear(jahr)
-    setSteuerjahrState(jahr)
+  const [pendingPath, setPendingPath] = useState<FunnelPath | null>(null)
+  const [taxYear, setTaxYearState] = useState(() => rememberedTaxYear(CURRENT_TAX_YEAR, SELECTABLE_TAX_YEARS))
+  const setTaxYear = (year: number) => {
+    rememberTaxYear(year)
+    setTaxYearState(year)
   }
   // ADR-0054: Person A records a partner's figures (no own account) in the regular masks.
-  const [partnerMaske, setPartnerMaske] = useState<{ readonly bereich: 'lstb' | 'arbeitsweg'; readonly name: string } | null>(null)
+  const [partnerScreen, setPartnerScreen] = useState<{ readonly area: 'lstb' | 'arbeitsweg'; readonly name: string } | null>(null)
 
   useEffect(() => {
-    if (ausstehenderPfad === null) return
-    const ansicht = ansichtNachDemInterview(ausstehenderPfad, sessionState.status)
-    if (ansicht === null) return
-    setAusstehenderPfad(null)
+    if (pendingPath === null) return
+    const view = viewAfterInterview(pendingPath, sessionState.status)
+    if (view === null) return
+    setPendingPath(null)
     // A guest goes to the Konto-Wand and leaves for registration — remember where they were heading.
-    rememberPendingPath(ansicht === 'konto-wand' ? ausstehenderPfad : null)
-    setCockpitView(ansicht)
-  }, [ausstehenderPfad, sessionState.status])
+    rememberPendingPath(view === 'konto-wand' ? pendingPath : null)
+    setCockpitView(view)
+  }, [pendingPath, sessionState.status])
 
   // Back from registration / onboarding with an account: carry on with the path the guest started.
   useEffect(() => {
     if (sessionState.status !== 'signed-in') return
-    const gemerkt = rememberedPendingPath()
-    if (gemerkt === null) return
+    const remembered = rememberedPendingPath()
+    if (remembered === null) return
     rememberPendingPath(null)
-    setFunnelPfad(gemerkt)
-    setAusstehenderPfad(gemerkt)
+    setFunnelPath(remembered)
+    setPendingPath(remembered)
   }, [sessionState.status])
 
   const iconColor = (id: Tab) => (id === tab ? t.color.tinte : t.color.tinte2)
@@ -360,131 +361,131 @@ function TabbedShell({ tab, onTabChange, onSignedOut, startInInterview = false, 
   ]
 
   function changeTab(next: Tab) {
-    setProfilView('main')
+    setProfileView('main')
     setCockpitView('main')
     onTabChange(next)
   }
 
-  const zeigtTabBar = profilView === 'main'
+  const showsTabBar = profileView === 'main'
 
   return (
     <View style={{ flex: 1 }}>
-      <View style={{ flex: 1, backgroundColor: t.color.grund, paddingBottom: zeigtTabBar ? tabBarClearance(t, insets.bottom) : 0 }}>
+      <View style={{ flex: 1, backgroundColor: t.color.grund, paddingBottom: showsTabBar ? tabBarClearance(t, insets.bottom) : 0 }}>
         {tab === 'cockpit' && cockpitView === 'main' ? <CockpitScreen
-            taxYear={steuerjahr}
-            onJahrWechsel={setSteuerjahr}
+            taxYear={taxYear}
+            onYearChange={setTaxYear}
             onOpenInterview={() => setCockpitView('interview')}
-            onOpenBescheid={() => setCockpitView('bescheid')}
-            onOpenKapital={() => setCockpitView('kapital')}
-            onOpenVermietung={() => setCockpitView('vermietung')}
+            onOpenAssessment={() => setCockpitView('bescheid')}
+            onOpenCapital={() => setCockpitView('kapital')}
+            onOpenRental={() => setCockpitView('vermietung')}
             onOpenKinder={() => setCockpitView('kinder')}
-            onOpenEulenModus={() => setCockpitView('eulen-modus')}
-            onOpenStammdaten={() => setCockpitView('stammdaten')}
-            onContinuePath={(pfad) => {
-              setFunnelPfad(pfad)
-              setAusstehenderPfad(pfad)
+            onOpenOwlMode={() => setCockpitView('eulen-modus')}
+            onOpenMasterData={() => setCockpitView('stammdaten')}
+            onContinuePath={(path) => {
+              setFunnelPath(path)
+              setPendingPath(path)
             }}
-            {...(onOpenAusdruck ? { onOpenAusdruck } : {})}
-            {...(onOpenBestaetigung ? { onOpenBestaetigung } : {})}
+            {...(onOpenPrintout ? { onOpenPrintout } : {})}
+            {...(onOpenConfirmation ? { onOpenConfirmation } : {})}
           /> : null}
         {tab === 'cockpit' && cockpitView === 'interview' ? (
-          <InterviewScreen taxYear={steuerjahr}
+          <InterviewScreen taxYear={taxYear}
             onDone={(answers) => {
-              const pfad = pfadAusAntworten(answers)
-              setFunnelPfad(pfad)
-              setAusstehenderPfad(pfad)
+              const path = pathFromAnswers(answers)
+              setFunnelPath(path)
+              setPendingPath(path)
             }}
           />
         ) : null}
-        {tab === 'cockpit' && cockpitView === 'stammdaten' ? <StammdatenScreen
-            taxYear={steuerjahr}
-            onZurueck={() => setCockpitView('main')}
-            onPartnerErfassen={(bereich, name) => {
-              setPartnerMaske({ bereich, name })
+        {tab === 'cockpit' && cockpitView === 'stammdaten' ? <MasterDataScreen
+            taxYear={taxYear}
+            onBack={() => setCockpitView('main')}
+            onRecordPartner={(area, name) => {
+              setPartnerScreen({ area, name })
               setCockpitView('partner')
             }}
           /> : null}
-        {tab === 'cockpit' && cockpitView === 'partner' && partnerMaske?.bereich === 'lstb' ? (
-          <LstbScreen taxYear={steuerjahr} partnerName={partnerMaske.name} onDone={() => setCockpitView('stammdaten')} onBack={() => setCockpitView('stammdaten')} />
+        {tab === 'cockpit' && cockpitView === 'partner' && partnerScreen?.area === 'lstb' ? (
+          <LstbScreen taxYear={taxYear} partnerName={partnerScreen.name} onDone={() => setCockpitView('stammdaten')} onBack={() => setCockpitView('stammdaten')} />
         ) : null}
-        {tab === 'cockpit' && cockpitView === 'partner' && partnerMaske?.bereich === 'arbeitsweg' ? (
-          <ArbeitstageScreen taxYear={steuerjahr} partnerName={partnerMaske.name} onDone={() => setCockpitView('stammdaten')} onBack={() => setCockpitView('stammdaten')} />
+        {tab === 'cockpit' && cockpitView === 'partner' && partnerScreen?.area === 'arbeitsweg' ? (
+          <WorkdaysScreen taxYear={taxYear} partnerName={partnerScreen.name} onDone={() => setCockpitView('stammdaten')} onBack={() => setCockpitView('stammdaten')} />
         ) : null}
         {tab === 'cockpit' && cockpitView === 'konto-wand' ? (
-          <KontoWandScreen pfad={funnelPfad} onRegister={onRegister} onLogin={onLogin} onLater={() => setCockpitView('main')} />
+          <AccountWallScreen path={funnelPath} onRegister={onRegister} onLogin={onLogin} onLater={() => setCockpitView('main')} />
         ) : null}
         {tab === 'cockpit' && cockpitView === 'rente' ? (
-          <RentnerScreen taxYear={steuerjahr} onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
+          <PensionerScreen taxYear={taxYear} onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
         ) : null}
-        {tab === 'cockpit' && cockpitView === 'ch' ? <GrenzgaengerScreen taxYear={steuerjahr} onDone={() => setCockpitView('katalog-einkuenfte')} /> : null}
+        {tab === 'cockpit' && cockpitView === 'ch' ? <CrossBorderScreen taxYear={taxYear} onDone={() => setCockpitView('katalog-einkuenfte')} /> : null}
         {tab === 'cockpit' && cockpitView === 'lstb' ? (
-          <LstbScreen taxYear={steuerjahr} onDone={() => setCockpitView('katalog-lebenslagen')} onBack={() => setCockpitView('main')} />
+          <LstbScreen taxYear={taxYear} onDone={() => setCockpitView('katalog-lebenslagen')} onBack={() => setCockpitView('main')} />
         ) : null}
         {tab === 'cockpit' && cockpitView === 'katalog-lebenslagen' ? (
-          <KatalogScreen taxYear={steuerjahr} entry="lebenslagen" onDone={() => setCockpitView('katalog-einkuenfte')} onBack={() => setCockpitView('lstb')} />
+          <CatalogScreen taxYear={taxYear} entry="lebenslagen" onDone={() => setCockpitView('katalog-einkuenfte')} onBack={() => setCockpitView('lstb')} />
         ) : null}
         {tab === 'cockpit' && cockpitView === 'katalog-einkuenfte' ? (
-          <KatalogScreen
-            taxYear={steuerjahr}
+          <CatalogScreen
+            taxYear={taxYear}
             entry="einkuenfte"
             onDone={() => setCockpitView('katalog-sonderausgaben')}
-            onBack={() => setCockpitView(funnelPfad === 'ch' ? 'ch' : 'katalog-lebenslagen')}
+            onBack={() => setCockpitView(funnelPath === 'ch' ? 'ch' : 'katalog-lebenslagen')}
           />
         ) : null}
         {tab === 'cockpit' && cockpitView === 'katalog-sonderausgaben' ? (
-          <KatalogScreen
-            taxYear={steuerjahr}
+          <CatalogScreen
+            taxYear={taxYear}
             entry="sonderausgaben"
             onDone={() => setCockpitView('arbeitstage')}
             onBack={() => setCockpitView('katalog-einkuenfte')}
           />
         ) : null}
         {tab === 'cockpit' && cockpitView === 'arbeitstage' ? (
-          <ArbeitstageScreen
-            taxYear={steuerjahr}
-            onDone={() => setCockpitView(funnelPfad === 'ch' ? 'main' : 'plausibilitaet')}
+          <WorkdaysScreen
+            taxYear={taxYear}
+            onDone={() => setCockpitView(funnelPath === 'ch' ? 'main' : 'plausibilitaet')}
             onBack={() => setCockpitView('katalog-sonderausgaben')}
           />
         ) : null}
         {tab === 'cockpit' && cockpitView === 'plausibilitaet' ? (
-          <PlausibilitaetScreen taxYear={steuerjahr} onBack={() => setCockpitView('main')} onDone={() => setCockpitView('veranlagungsartenvergleich')} />
+          <PlausibilityScreen taxYear={taxYear} onBack={() => setCockpitView('main')} onDone={() => setCockpitView('veranlagungsartenvergleich')} />
         ) : null}
         {tab === 'cockpit' && cockpitView === 'veranlagungsartenvergleich' ? (
-          <VeranlagungsartenvergleichScreen taxYear={steuerjahr} onBack={() => setCockpitView('plausibilitaet')} onDone={() => setCockpitView('main')} />
+          <FilingTypeComparisonScreen taxYear={taxYear} onBack={() => setCockpitView('plausibilitaet')} onDone={() => setCockpitView('main')} />
         ) : null}
         {tab === 'cockpit' && cockpitView === 'bescheid' ? (
-          <BescheidScreen taxYear={steuerjahr} onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
+          <AssessmentScreen taxYear={taxYear} onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
         ) : null}
         {tab === 'cockpit' && cockpitView === 'kapital' ? (
-          <KapitalScreen taxYear={steuerjahr} onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
+          <CapitalScreen taxYear={taxYear} onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
         ) : null}
         {tab === 'cockpit' && cockpitView === 'vermietung' ? (
-          <VermietungScreen taxYear={steuerjahr} onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
+          <RentalScreen taxYear={taxYear} onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
         ) : null}
         {tab === 'cockpit' && cockpitView === 'kinder' ? (
-          <KinderScreen taxYear={steuerjahr} onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
+          <ChildrenScreen taxYear={taxYear} onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
         ) : null}
         {tab === 'cockpit' && cockpitView === 'eulen-modus' ? (
-          <EulenModusScreen taxYear={steuerjahr} onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
+          <OwlModeScreen taxYear={taxYear} onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
         ) : null}
-        {tab === 'belege' ? <BelegeScreen /> : null}
-        {tab === 'profil' && profilView === 'main' ? (
-          <ProfilScreen
-            onOpenDatenschutz={() => setProfilView('datenschutz')}
-            onOpenSicherheit={() => setProfilView('sicherheit')}
-            onOpenStammdaten={() => setProfilView('stammdaten')}
+        {tab === 'belege' ? <ReceiptsScreen /> : null}
+        {tab === 'profil' && profileView === 'main' ? (
+          <ProfileScreen
+            onOpenPrivacy={() => setProfileView('datenschutz')}
+            onOpenSecurity={() => setProfileView('sicherheit')}
+            onOpenMasterData={() => setProfileView('stammdaten')}
             onSignedOut={onSignedOut}
           />
         ) : null}
-        {tab === 'profil' && profilView === 'datenschutz' ? (
-          <DatenschutzScreen onZurueck={() => setProfilView('main')} onAccountDeleted={onSignedOut} />
+        {tab === 'profil' && profileView === 'datenschutz' ? (
+          <PrivacyScreen onBack={() => setProfileView('main')} onAccountDeleted={onSignedOut} />
         ) : null}
-        {tab === 'profil' && profilView === 'stammdaten' ? <StammdatenScreen onZurueck={() => setProfilView('main')} /> : null}
-        {tab === 'profil' && profilView === 'sicherheit' ? (
-          <SicherheitScreen onZurueck={() => setProfilView('main')} />
+        {tab === 'profil' && profileView === 'stammdaten' ? <MasterDataScreen onBack={() => setProfileView('main')} /> : null}
+        {tab === 'profil' && profileView === 'sicherheit' ? (
+          <SecurityScreen onBack={() => setProfileView('main')} />
         ) : null}
       </View>
-      {zeigtTabBar ? <TabBar tabs={tabs} aktiv={tab} onWechsel={(id) => changeTab(id as Tab)} bottomInset={insets.bottom} /> : null}
+      {showsTabBar ? <TabBar tabs={tabs} active={tab} onChange={(id) => changeTab(id as Tab)} bottomInset={insets.bottom} /> : null}
     </View>
   )
 }

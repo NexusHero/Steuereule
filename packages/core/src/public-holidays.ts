@@ -1,4 +1,4 @@
-import type { IsoWeekday } from './werktage'
+import type { IsoWeekday } from './workdays'
 
 /**
  * Public holidays for the commute (finding F4 of the 2025 test run: without them the Pendlertage were
@@ -37,7 +37,7 @@ const fromEaster = (year: number, offset: number) => {
 }
 
 /** Buß- und Bettag: the Wednesday before 23 November. */
-function bussUndBettag(year: number): string {
+function repentanceDay(year: number): string {
   const d = new Date(Date.UTC(year, 10, 22))
   while (d.getUTCDay() !== 3) d.setUTCDate(d.getUTCDate() - 1)
   return iso(d)
@@ -75,7 +75,7 @@ export function publicHolidays(year: number, region: HolidayRegion): readonly st
     fixed(year, 10, 3),
     ...(has('BB', 'HB', 'HH', 'MV', 'NI', 'SN', 'ST', 'SH', 'TH') ? [fixed(year, 10, 31)] : []),
     ...(has('BW', 'BY', 'NW', 'RP', 'SL') ? [fixed(year, 11, 1)] : []),
-    ...(has('SN') ? [bussUndBettag(year)] : []),
+    ...(has('SN') ? [repentanceDay(year)] : []),
     fixed(year, 12, 25),
     fixed(year, 12, 26),
   ]

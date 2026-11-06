@@ -1,19 +1,19 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service.js'
-import type { AssistentenRepository, ClientInfo, VerbundenerAssistent } from './assistenten.repository.js'
+import type { AssistantRepository, ClientInfo, ConnectedAssistant } from './assistenten.repository.js'
 
 @Injectable()
-export class PrismaAssistentenRepository implements AssistentenRepository {
+export class PrismaAssistantsRepository implements AssistantRepository {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
-  async findConnectedForUser(userId: string): Promise<VerbundenerAssistent[]> {
+  async findConnectedForUser(userId: string): Promise<ConnectedAssistant[]> {
     const consents = await this.prisma.oauthConsent.findMany({
       where: { userId },
       include: { client: true },
       orderBy: { createdAt: 'desc' },
     })
 
-    const results: VerbundenerAssistent[] = []
+    const results: ConnectedAssistant[] = []
     for (const consent of consents) {
       const latestToken = await this.prisma.oauthAccessToken.findFirst({
         where: { userId, clientId: consent.clientId },
@@ -24,8 +24,8 @@ export class PrismaAssistentenRepository implements AssistentenRepository {
       results.push({
         clientId: consent.clientId,
         name: consent.client?.name ?? 'Unbekannter Assistent',
-        verbundenSeit: consent.createdAt ?? new Date(),
-        zuletztGenutzt: latestToken?.createdAt ?? null,
+        linkedSince: consent.createdAt ?? new Date(),
+        lastUsed: latestToken?.createdAt ?? null,
       })
     }
 

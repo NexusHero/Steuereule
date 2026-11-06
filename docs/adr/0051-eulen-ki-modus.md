@@ -10,7 +10,7 @@ SteuerEule soll über den rein reaktiven Vorschlags-Helfer hinauswachsen und im 
 4. **Offline / Fallback:** Wenn kein LLM-API-Schlüssel konfiguriert ist oder das Netzwerk offline ist, schlägt der Eulen-Modus deterministisch auf Basis der statischen Wissensbasis an.
 
 ## Entscheidung
-1. **Core-Engine (`packages/core/src/eulen-modus.ts`):**
+1. **Core-Engine (`packages/core/src/owl-mode.ts`):**
    - 4 Trigger:
      - `musterluecke` (z.B. Fortbildung erfasst ohne Fahrtkosten/Werbungskosten)
      - `vorjahresvergleich` (z.B. Abweichungen zu Vorjahresposten)

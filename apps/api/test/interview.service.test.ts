@@ -17,7 +17,7 @@ import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
 import { FakeInterviewAnswerRepository } from './fakes/fake-interview-answer.repository.js'
 
 const USER_ID = 'user-1'
-const STEUERJAHR = 2026
+const TAX_YEAR = 2026
 
 describe('InterviewService', () => {
   let repository: FakeInterviewAnswerRepository
@@ -32,20 +32,20 @@ describe('InterviewService', () => {
 
   describe('getState', () => {
     it('a fresh tax year opens with the job question and 3 open items, empty answers', async () => {
-      const state = await service.getState(USER_ID, STEUERJAHR)
+      const state = await service.getState(USER_ID, TAX_YEAR)
 
       expect(state).toEqual({ answers: {}, nextStep: { kind: 'question', id: 'job' }, openItems: 4 })
     })
 
     it('does not append a READ audit entry when there is nothing to read yet', async () => {
-      await service.getState(USER_ID, STEUERJAHR)
+      await service.getState(USER_ID, TAX_YEAR)
       expect(auditRepository.all()).toEqual([])
     })
 
     it('reflects stored answers into nextStep/openItems, and appends a READ audit entry', async () => {
-      repository.seed(USER_ID, STEUERJAHR, { job: 'Angestellt' })
+      repository.seed(USER_ID, TAX_YEAR, { job: 'Angestellt' })
 
-      const state = await service.getState(USER_ID, STEUERJAHR)
+      const state = await service.getState(USER_ID, TAX_YEAR)
 
       expect(state).toEqual({
         answers: { job: 'Angestellt' },
@@ -56,10 +56,10 @@ describe('InterviewService', () => {
     })
 
     it('is scoped strictly to userId and steuerjahr — never leaks another user’s or year’s answers', async () => {
-      repository.seed('someone-else', STEUERJAHR, { job: 'Selbstständig' })
+      repository.seed('someone-else', TAX_YEAR, { job: 'Selbstständig' })
       repository.seed(USER_ID, 2025, { job: 'Selbstständig' })
 
-      const state = await service.getState(USER_ID, STEUERJAHR)
+      const state = await service.getState(USER_ID, TAX_YEAR)
 
       expect(state).toEqual({ answers: {}, nextStep: { kind: 'question', id: 'job' }, openItems: 4 })
     })
@@ -67,10 +67,10 @@ describe('InterviewService', () => {
 
   describe('postAnswer — #318 P2, the server’s admission check', () => {
     it('admits and persists a reachable, valid answer, returning the next step and updated openItems', async () => {
-      const result = await service.postAnswer(USER_ID, STEUERJAHR, { questionId: 'job', value: 'Angestellt' })
+      const result = await service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'job', value: 'Angestellt' })
 
       expect(result).toEqual({ nextStep: { kind: 'question', id: 'ausland' }, openItems: 3 })
-      await expect(repository.findAllForUserAndYear(USER_ID, STEUERJAHR)).resolves.toEqual([
+      await expect(repository.findAllForUserAndYear(USER_ID, TAX_YEAR)).resolves.toEqual([
         { questionId: 'job', value: 'Angestellt' },
       ])
     })
@@ -85,17 +85,17 @@ describe('InterviewService', () => {
     it('REJECTS an answer for a step not yet reached (409) and writes nothing', async () => {
       // No `job` answered yet — `ausland` was never offered.
       await expect(
-        service.postAnswer(USER_ID, STEUERJAHR, { questionId: 'ausland', value: 'Nein' }),
+        service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'ausland', value: 'Nein' }),
       ).rejects.toBeInstanceOf(UnreachableAnswerError)
 
-      await expect(repository.findAllForUserAndYear(USER_ID, STEUERJAHR)).resolves.toEqual([])
+      await expect(repository.findAllForUserAndYear(USER_ID, TAX_YEAR)).resolves.toEqual([])
       expect(repository.writes).toEqual([])
       expect(auditRepository.all()).toEqual([])
     })
 
     it('REJECTS a value outside the accepted set for a reachable step (400) and writes nothing', async () => {
       await expect(
-        service.postAnswer(USER_ID, STEUERJAHR, { questionId: 'job', value: 'Freiberuflich' }),
+        service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'job', value: 'Freiberuflich' }),
       ).rejects.toBeInstanceOf(InvalidAnswerValueError)
 
       expect(repository.writes).toEqual([])
@@ -103,29 +103,29 @@ describe('InterviewService', () => {
 
     it('REJECTS an entirely unknown questionId (409 — never reachable) and writes nothing', async () => {
       await expect(
-        service.postAnswer(USER_ID, STEUERJAHR, { questionId: 'not-a-real-step', value: 'anything' }),
+        service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'not-a-real-step', value: 'anything' }),
       ).rejects.toBeInstanceOf(UnreachableAnswerError)
 
       expect(repository.writes).toEqual([])
     })
 
     it('REJECTS everything behind a terminal gate, even the acknowledged gate itself again', async () => {
-      repository.seed(USER_ID, STEUERJAHR, { job: 'Selbstständig', gewerbe: GATE_ACKNOWLEDGED })
+      repository.seed(USER_ID, TAX_YEAR, { job: 'Selbstständig', gewerbe: GATE_ACKNOWLEDGED })
 
       await expect(
-        service.postAnswer(USER_ID, STEUERJAHR, { questionId: 'ausland', value: 'Nein' }),
+        service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'ausland', value: 'Nein' }),
       ).rejects.toBeInstanceOf(UnreachableAnswerError)
       await expect(
-        service.postAnswer(USER_ID, STEUERJAHR, { questionId: 'kinder', value: 'Nein' }),
+        service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'kinder', value: 'Nein' }),
       ).rejects.toBeInstanceOf(UnreachableAnswerError)
 
       expect(repository.writes).toEqual([])
     })
 
     it('admits the Gewerbe gate acknowledgement for a self-employed answer, and it stays a full stop after', async () => {
-      await service.postAnswer(USER_ID, STEUERJAHR, { questionId: 'job', value: 'Selbstständig' })
+      await service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'job', value: 'Selbstständig' })
 
-      const acknowledged = await service.postAnswer(USER_ID, STEUERJAHR, {
+      const acknowledged = await service.postAnswer(USER_ID, TAX_YEAR, {
         questionId: 'gewerbe',
         value: GATE_ACKNOWLEDGED,
       })
@@ -133,31 +133,31 @@ describe('InterviewService', () => {
       expect(acknowledged).toEqual({ nextStep: { kind: 'gate', id: 'gewerbe' }, openItems: 0 })
 
       await expect(
-        service.postAnswer(USER_ID, STEUERJAHR, { questionId: 'ausland', value: 'Nein' }),
+        service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'ausland', value: 'Nein' }),
       ).rejects.toBeInstanceOf(UnreachableAnswerError)
     })
 
     it('“Beides” passes the Gewerbe gate and continues to the rest of the interview', async () => {
-      await service.postAnswer(USER_ID, STEUERJAHR, { questionId: 'job', value: 'Beides' })
-      const acknowledged = await service.postAnswer(USER_ID, STEUERJAHR, {
+      await service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'job', value: 'Beides' })
+      const acknowledged = await service.postAnswer(USER_ID, TAX_YEAR, {
         questionId: 'gewerbe',
         value: GATE_ACKNOWLEDGED,
       })
       expect(acknowledged).toEqual({ nextStep: { kind: 'question', id: 'ausland' }, openItems: 3 })
 
-      const result = await service.postAnswer(USER_ID, STEUERJAHR, { questionId: 'ausland', value: 'Nein' })
+      const result = await service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'ausland', value: 'Nein' })
       expect(result).toEqual({ nextStep: { kind: 'question', id: 'kinder' }, openItems: 2 })
     })
 
     it('the CH-only gate opens on “In ein anderes Land” and, once acknowledged, carries on to kinder', async () => {
-      await service.postAnswer(USER_ID, STEUERJAHR, { questionId: 'job', value: 'Angestellt' })
-      const gate = await service.postAnswer(USER_ID, STEUERJAHR, {
+      await service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'job', value: 'Angestellt' })
+      const gate = await service.postAnswer(USER_ID, TAX_YEAR, {
         questionId: 'ausland',
         value: 'In ein anderes Land',
       })
       expect(gate).toEqual({ nextStep: { kind: 'gate', id: 'ch-only' }, openItems: 2 })
 
-      const acknowledged = await service.postAnswer(USER_ID, STEUERJAHR, {
+      const acknowledged = await service.postAnswer(USER_ID, TAX_YEAR, {
         questionId: 'ch-only',
         value: GATE_ACKNOWLEDGED,
       })
@@ -165,52 +165,52 @@ describe('InterviewService', () => {
     })
 
     it('re-answering an already-answered, still-reachable question is idempotent (back navigation)', async () => {
-      await service.postAnswer(USER_ID, STEUERJAHR, { questionId: 'job', value: 'Angestellt' })
-      const result = await service.postAnswer(USER_ID, STEUERJAHR, { questionId: 'job', value: 'Rente' })
+      await service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'job', value: 'Angestellt' })
+      const result = await service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'job', value: 'Rente' })
 
       expect(result).toEqual({ nextStep: { kind: 'question', id: 'ausland' }, openItems: 3 })
-      await expect(repository.findAllForUserAndYear(USER_ID, STEUERJAHR)).resolves.toEqual([
+      await expect(repository.findAllForUserAndYear(USER_ID, TAX_YEAR)).resolves.toEqual([
         { questionId: 'job', value: 'Rente' },
       ])
     })
 
     it('answering all four questions reaches done, with openItems 0 — the Familienstand comes last (ADR-0054)', async () => {
-      await service.postAnswer(USER_ID, STEUERJAHR, { questionId: 'job', value: 'Angestellt' })
-      await service.postAnswer(USER_ID, STEUERJAHR, { questionId: 'ausland', value: 'Nein' })
-      const nachKinder = await service.postAnswer(USER_ID, STEUERJAHR, { questionId: 'kinder', value: 'Nein' })
-      expect(nachKinder).toEqual({ nextStep: { kind: 'question', id: 'familienstand' }, openItems: 1 })
-      const result = await service.postAnswer(USER_ID, STEUERJAHR, { questionId: 'familienstand', value: 'Verheiratet' })
+      await service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'job', value: 'Angestellt' })
+      await service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'ausland', value: 'Nein' })
+      const afterChildren = await service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'kinder', value: 'Nein' })
+      expect(afterChildren).toEqual({ nextStep: { kind: 'question', id: 'familienstand' }, openItems: 1 })
+      const result = await service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'familienstand', value: 'Verheiratet' })
 
       expect(result).toEqual({ nextStep: { kind: 'done' }, openItems: 0 })
     })
 
     it('is scoped strictly to userId — one user’s answers never admit another’s path', async () => {
-      repository.seed('someone-else', STEUERJAHR, { job: 'Angestellt' })
+      repository.seed('someone-else', TAX_YEAR, { job: 'Angestellt' })
 
       // USER_ID has answered nothing, so `ausland` must still be unreachable for them,
       // even though "someone-else" has already answered `job`.
       await expect(
-        service.postAnswer(USER_ID, STEUERJAHR, { questionId: 'ausland', value: 'Nein' }),
+        service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'ausland', value: 'Nein' }),
       ).rejects.toBeInstanceOf(UnreachableAnswerError)
     })
   })
 
   describe('postAnswer — Grenzgänger-CH entry (segment-ch, ADR-013/036) on the same engine', () => {
     it('admits ch-wohnsitz as the CH entry’s first question and returns the CH next step, without touching the Minimal-Gate’s openItems', async () => {
-      const result = await service.postAnswer(USER_ID, STEUERJAHR, { questionId: 'ch-wohnsitz', value: 'Deutschland' })
+      const result = await service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'ch-wohnsitz', value: 'Deutschland' })
 
       // Entry-scoped openItems (union with ticket 08's semantics): 1 of 2 segment-ch questions
       // answered → 1 remaining. The Minimal-Gate's own count stays untouched (see the repository
       // write below — openItems is the Minimal-Gate projection, unchanged by CH answers).
       expect(result).toEqual({ nextStep: { kind: 'question', id: 'ch-nichtrueckkehrtage' }, openItems: 1 })
-      await expect(repository.findAllForUserAndYear(USER_ID, STEUERJAHR)).resolves.toEqual([
+      await expect(repository.findAllForUserAndYear(USER_ID, TAX_YEAR)).resolves.toEqual([
         { questionId: 'ch-wohnsitz', value: 'Deutschland' },
       ])
     })
 
     it('rejects (409) ch-nichtrueckkehrtage before ch-wohnsitz is answered — order is enforced, not just client-shown', async () => {
       await expect(
-        service.postAnswer(USER_ID, STEUERJAHR, { questionId: 'ch-nichtrueckkehrtage', value: '20' }),
+        service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'ch-nichtrueckkehrtage', value: '20' }),
       ).rejects.toBeInstanceOf(UnreachableAnswerError)
 
       expect(repository.writes).toEqual([])
@@ -218,25 +218,25 @@ describe('InterviewService', () => {
 
     it('rejects (400) a value outside the accepted set for ch-wohnsitz', async () => {
       await expect(
-        service.postAnswer(USER_ID, STEUERJAHR, { questionId: 'ch-wohnsitz', value: 'Frankreich' }),
+        service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'ch-wohnsitz', value: 'Frankreich' }),
       ).rejects.toBeInstanceOf(InvalidAnswerValueError)
 
       expect(repository.writes).toEqual([])
     })
 
     it('rejects (400) a non-integer for ch-nichtrueckkehrtage (its integer form, D5)', async () => {
-      await service.postAnswer(USER_ID, STEUERJAHR, { questionId: 'ch-wohnsitz', value: 'Deutschland' })
+      await service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'ch-wohnsitz', value: 'Deutschland' })
       await expect(
-        service.postAnswer(USER_ID, STEUERJAHR, { questionId: 'ch-nichtrueckkehrtage', value: 'sieben' }),
+        service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'ch-nichtrueckkehrtage', value: 'sieben' }),
       ).rejects.toBeInstanceOf(InvalidAnswerValueError)
     })
 
     it('the CH entry reaches done after both answers, independent of the Minimal-Gate', async () => {
-      await service.postAnswer(USER_ID, STEUERJAHR, { questionId: 'ch-wohnsitz', value: 'Schweiz' })
-      const result = await service.postAnswer(USER_ID, STEUERJAHR, { questionId: 'ch-nichtrueckkehrtage', value: '0' })
+      await service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'ch-wohnsitz', value: 'Schweiz' })
+      const result = await service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'ch-nichtrueckkehrtage', value: '0' })
 
       expect(result).toEqual({ nextStep: { kind: 'done' }, openItems: 0 })
-      await expect(repository.findAllForUserAndYear(USER_ID, STEUERJAHR)).resolves.toEqual([
+      await expect(repository.findAllForUserAndYear(USER_ID, TAX_YEAR)).resolves.toEqual([
         { questionId: 'ch-wohnsitz', value: 'Schweiz' },
         { questionId: 'ch-nichtrueckkehrtage', value: '0' },
       ])
@@ -250,16 +250,16 @@ describe('InterviewService', () => {
     // R2's job" (packages/core/src/interview.ts header), refused here with 409 and no row write.
     it('rejects (409) a Segment-2 id (partner) and writes nothing', async () => {
       await expect(
-        service.postAnswer(USER_ID, STEUERJAHR, { questionId: 'partner', value: 'Ja' }),
+        service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'partner', value: 'Ja' }),
       ).rejects.toBeInstanceOf(UnreachableAnswerError)
 
       expect(repository.writes).toEqual([])
-      await expect(repository.findAllForUserAndYear(USER_ID, STEUERJAHR)).resolves.toEqual([])
+      await expect(repository.findAllForUserAndYear(USER_ID, TAX_YEAR)).resolves.toEqual([])
     })
 
     it('rejects (409) a Segment-2 follow-up id (kap-depot) and writes nothing', async () => {
       await expect(
-        service.postAnswer(USER_ID, STEUERJAHR, { questionId: 'kap-depot', value: 'Krypto' }),
+        service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'kap-depot', value: 'Krypto' }),
       ).rejects.toBeInstanceOf(UnreachableAnswerError)
 
       expect(repository.writes).toEqual([])
@@ -268,33 +268,33 @@ describe('InterviewService', () => {
 
   describe('ADR-0045 — guests may use the Minimal-Gate only', () => {
     it('a guest reads and answers the Minimal-Gate exactly like an account', async () => {
-      await expect(service.getState(USER_ID, STEUERJAHR, undefined, 'guest')).resolves.toEqual({
+      await expect(service.getState(USER_ID, TAX_YEAR, undefined, 'guest')).resolves.toEqual({
         answers: {},
         nextStep: { kind: 'question', id: 'job' },
         openItems: 4,
       })
-      await expect(service.postAnswer(USER_ID, STEUERJAHR, { questionId: 'job', value: 'Angestellt' }, 'guest')).resolves.toEqual({
+      await expect(service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'job', value: 'Angestellt' }, 'guest')).resolves.toEqual({
         nextStep: { kind: 'question', id: 'ausland' },
         openItems: 3,
       })
     })
 
     it('a guest is refused any other catalogue entry on GET, before storage is read', async () => {
-      await expect(service.getState(USER_ID, STEUERJAHR, 'lebenslagen', 'guest')).rejects.toBeInstanceOf(GuestCannotUseThisEndpointError)
+      await expect(service.getState(USER_ID, TAX_YEAR, 'lebenslagen', 'guest')).rejects.toBeInstanceOf(GuestCannotUseThisEndpointError)
       expect(auditRepository.all()).toEqual([])
     })
 
     it('a guest is refused a write to any other catalogue entry, and nothing is persisted', async () => {
-      repository.seed(USER_ID, STEUERJAHR, { job: 'Angestellt', ausland: 'Nein', kinder: 'Nein' })
-      await expect(service.postAnswer(USER_ID, STEUERJAHR, { questionId: 'dhf', value: 'Nein' }, 'guest')).rejects.toBeInstanceOf(
+      repository.seed(USER_ID, TAX_YEAR, { job: 'Angestellt', ausland: 'Nein', kinder: 'Nein' })
+      await expect(service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'dhf', value: 'Nein' }, 'guest')).rejects.toBeInstanceOf(
         GuestCannotUseThisEndpointError,
       )
-      const state = await service.getState(USER_ID, STEUERJAHR)
+      const state = await service.getState(USER_ID, TAX_YEAR)
       expect(state.answers).toEqual({ job: 'Angestellt', ausland: 'Nein', kinder: 'Nein' })
     })
 
     it('an unknown entry is still a 400 for a guest, not masked as a 401', async () => {
-      await expect(service.getState(USER_ID, STEUERJAHR, 'nope', 'guest')).rejects.toThrow('is not a known catalogue entry')
+      await expect(service.getState(USER_ID, TAX_YEAR, 'nope', 'guest')).rejects.toThrow('is not a known catalogue entry')
     })
   })
 })

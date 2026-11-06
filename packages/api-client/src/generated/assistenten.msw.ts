@@ -18,56 +18,56 @@ import type {
 } from 'msw';
 
 import type {
+  ConnectedAssistantDto,
   OauthClientInfoDto,
-  RevokeAssistentResponseDto,
-  VerbundenerAssistentDto
+  RevokeAssistantResponseDto
 } from './assistenten.schemas';
 
 
-export const getAssistentenControllerListConnectedResponseMock = (): VerbundenerAssistentDto[] => (Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({clientId: faker.string.alpha({length: {min: 10, max: 20}}), name: faker.string.alpha({length: {min: 10, max: 20}}), verbundenSeit: faker.string.alpha({length: {min: 10, max: 20}}), zuletztGenutzt: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null])})))
+export const getAssistantsControllerListConnectedResponseMock = (): ConnectedAssistantDto[] => (Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({clientId: faker.string.alpha({length: {min: 10, max: 20}}), name: faker.string.alpha({length: {min: 10, max: 20}}), linkedSince: faker.string.alpha({length: {min: 10, max: 20}}), lastUsed: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null])})))
 
-export const getAssistentenControllerRevokeResponseMock = (overrideResponse: Partial<Extract<RevokeAssistentResponseDto, object>> = {}): RevokeAssistentResponseDto => ({success: faker.datatype.boolean(), ...overrideResponse})
+export const getAssistantsControllerRevokeResponseMock = (overrideResponse: Partial<Extract<RevokeAssistantResponseDto, object>> = {}): RevokeAssistantResponseDto => ({success: faker.datatype.boolean(), ...overrideResponse})
 
-export const getAssistentenControllerGetClientInfoResponseMock = (overrideResponse: Partial<Extract<OauthClientInfoDto, object>> = {}): OauthClientInfoDto => ({clientId: faker.string.alpha({length: {min: 10, max: 20}}), name: faker.string.alpha({length: {min: 10, max: 20}}), uri: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), icon: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), ...overrideResponse})
+export const getAssistantsControllerGetClientInfoResponseMock = (overrideResponse: Partial<Extract<OauthClientInfoDto, object>> = {}): OauthClientInfoDto => ({clientId: faker.string.alpha({length: {min: 10, max: 20}}), name: faker.string.alpha({length: {min: 10, max: 20}}), uri: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), icon: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), ...overrideResponse})
 
 
-export const getAssistentenControllerListConnectedMockHandler = (overrideResponse?: VerbundenerAssistentDto[] | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<VerbundenerAssistentDto[]> | VerbundenerAssistentDto[]), options?: RequestHandlerOptions) => {
+export const getAssistantsControllerListConnectedMockHandler = (overrideResponse?: ConnectedAssistantDto[] | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<ConnectedAssistantDto[]> | ConnectedAssistantDto[]), options?: RequestHandlerOptions) => {
   return http.get('*/v1/assistenten', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
 
 
     return HttpResponse.json(overrideResponse !== undefined
     ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
-    : getAssistentenControllerListConnectedResponseMock(),
+    : getAssistantsControllerListConnectedResponseMock(),
       { status: 200
       })
   }, options)
 }
 
-export const getAssistentenControllerRevokeMockHandler = (overrideResponse?: RevokeAssistentResponseDto | ((info: Parameters<Parameters<typeof http.delete>[1]>[0]) => Promise<RevokeAssistentResponseDto> | RevokeAssistentResponseDto), options?: RequestHandlerOptions) => {
+export const getAssistantsControllerRevokeMockHandler = (overrideResponse?: RevokeAssistantResponseDto | ((info: Parameters<Parameters<typeof http.delete>[1]>[0]) => Promise<RevokeAssistantResponseDto> | RevokeAssistantResponseDto), options?: RequestHandlerOptions) => {
   return http.delete('*/v1/assistenten/:clientId', async (info: Parameters<Parameters<typeof http.delete>[1]>[0]) => {
 
 
     return HttpResponse.json(overrideResponse !== undefined
     ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
-    : getAssistentenControllerRevokeResponseMock(),
+    : getAssistantsControllerRevokeResponseMock(),
       { status: 200
       })
   }, options)
 }
 
-export const getAssistentenControllerGetClientInfoMockHandler = (overrideResponse?: OauthClientInfoDto | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<OauthClientInfoDto> | OauthClientInfoDto), options?: RequestHandlerOptions) => {
+export const getAssistantsControllerGetClientInfoMockHandler = (overrideResponse?: OauthClientInfoDto | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<OauthClientInfoDto> | OauthClientInfoDto), options?: RequestHandlerOptions) => {
   return http.get('*/v1/oauth/client-info', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
 
 
     return HttpResponse.json(overrideResponse !== undefined
     ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
-    : getAssistentenControllerGetClientInfoResponseMock(),
+    : getAssistantsControllerGetClientInfoResponseMock(),
       { status: 200
       })
   }, options)
 }
 export const getSteuerEuleAPIMock = () => [
-  getAssistentenControllerListConnectedMockHandler(),
-  getAssistentenControllerRevokeMockHandler(),
-  getAssistentenControllerGetClientInfoMockHandler()
+  getAssistantsControllerListConnectedMockHandler(),
+  getAssistantsControllerRevokeMockHandler(),
+  getAssistantsControllerGetClientInfoMockHandler()
 ]

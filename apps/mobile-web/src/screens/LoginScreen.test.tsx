@@ -10,7 +10,7 @@ import { createAppI18n } from '../i18n/app-i18n'
 import { createAppAuthClient } from '../auth/auth-client'
 import { AuthClientProvider } from '../auth/AuthClientProvider'
 import { LoginScreen } from './LoginScreen'
-import type { RechtlicheSeite } from './rechtliches/texte'
+import type { LegalPage } from './legal/texts'
 
 const BASE_URL = 'http://localhost:3000'
 
@@ -51,7 +51,7 @@ function renderLogin(
     // `undefined` is what actually drives LoginScreen's own conditional rendering.
     omitGuestAndRegister?: boolean
     showDeviceQr?: boolean
-    onRechtliches?: (seite: RechtlicheSeite) => void
+    onLegal?: (page: LegalPage) => void
   } = {},
 ) {
   const i18n = createAppI18n(opts.lng ?? 'de')
@@ -63,7 +63,7 @@ function renderLogin(
   const optionalProps = {
     ...(opts.omitGuestAndRegister ? {} : { onGuest: opts.onGuest ?? (() => {}), onRegister: opts.onRegister ?? (() => {}) }),
     ...(opts.showDeviceQr === undefined ? {} : { showDeviceQr: opts.showDeviceQr }),
-    ...(opts.onRechtliches ? { onRechtliches: opts.onRechtliches } : {}),
+    ...(opts.onLegal ? { onLegal: opts.onLegal } : {}),
   }
   return render(
     <QueryClientProvider client={queryClient}>
@@ -1426,12 +1426,12 @@ describe('LoginScreen', () => {
 
 describe('LoginScreen — legal footer (ADR-0050, § 5 DDG)', () => {
   it('links Impressum and Datenschutzerklärung from the public entry screen', () => {
-    const onRechtliches = vi.fn()
-    renderLogin({ onRechtliches })
+    const onLegal = vi.fn()
+    renderLogin({ onLegal })
     fireEvent.click(screen.getByText('Impressum'))
-    expect(onRechtliches).toHaveBeenCalledWith('impressum')
+    expect(onLegal).toHaveBeenCalledWith('impressum')
     fireEvent.click(screen.getByText('Datenschutzerklärung'))
-    expect(onRechtliches).toHaveBeenCalledWith('datenschutz')
+    expect(onLegal).toHaveBeenCalledWith('datenschutz')
   })
 
   it('stays hidden when embedded without the callback (device approval)', () => {

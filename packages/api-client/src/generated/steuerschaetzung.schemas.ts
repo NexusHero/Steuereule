@@ -5,44 +5,44 @@
  * Onboarding profile endpoints (steuereule#29)
  * OpenAPI spec version: 1.0
  */
-export type SteuerschaetzungDtoKind = typeof SteuerschaetzungDtoKind[keyof typeof SteuerschaetzungDtoKind];
+export type TaxEstimateDtoKind = typeof TaxEstimateDtoKind[keyof typeof TaxEstimateDtoKind];
 
 
-export const SteuerschaetzungDtoKind = {
+export const TaxEstimateDtoKind = {
   spanne: 'spanne',
   offen: 'offen',
   'nicht-moeglich': 'nicht-moeglich',
 } as const;
 
-export type SteuerschaetzungDtoGrund = typeof SteuerschaetzungDtoGrund[keyof typeof SteuerschaetzungDtoGrund];
+export type TaxEstimateDtoReason = typeof TaxEstimateDtoReason[keyof typeof TaxEstimateDtoReason];
 
 
-export const SteuerschaetzungDtoGrund = {
+export const TaxEstimateDtoReason = {
   'nur-angestellte': 'nur-angestellte',
   verheiratet: 'verheiratet',
   'besondere-lebenslage': 'besondere-lebenslage',
   'jahr-ohne-tarif': 'jahr-ohne-tarif',
 } as const;
 
-export interface SpanneDto {
-  von: number;
-  bis: number;
+export interface RangeDto {
+  from: number;
+  to: number;
 }
 
-export interface SteuerschaetzungDto {
-  kind: SteuerschaetzungDtoKind;
+export interface TaxEstimateDto {
+  kind: TaxEstimateDtoKind;
   /** Positive = Erstattung, negative = Nachzahlung. */
-  ergebnis?: SpanneDto;
-  einkommensteuer?: SpanneDto;
-  zuVersteuerndesEinkommen?: SpanneDto;
-  vorsorge?: SpanneDto;
+  result?: RangeDto;
+  incomeTax?: RangeDto;
+  taxableIncome?: RangeDto;
+  provision?: RangeDto;
   werbungskosten?: number;
-  sonderausgaben?: number;
+  specialExpenses?: number;
   /** Lohnsteuer or creditable Swiss Quellensteuer already paid. */
   anrechnung?: number;
   /** True when church tax applies but is not part of the estimate. */
-  kirchensteuerOffen?: boolean;
-  fehlt?: string[];
-  grund?: SteuerschaetzungDtoGrund;
+  churchTaxOpen?: boolean;
+  missing?: string[];
+  reason?: TaxEstimateDtoReason;
 }
 

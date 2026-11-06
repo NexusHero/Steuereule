@@ -44,7 +44,7 @@ describe('REQ-011 — DSGVO data export (Art. 15/20), against the real server', 
     await prisma.account.deleteMany()
     await prisma.user.deleteMany()
     await prisma.profile.deleteMany()
-    await prisma.kapital.deleteMany()
+    await prisma.capital.deleteMany()
     await prisma.$executeRawUnsafe(`DELETE FROM "TaxDataAccessLog"`)
   })
 
@@ -109,17 +109,17 @@ describe('REQ-011 — DSGVO data export (Art. 15/20), against the real server', 
     const put = await fetch(`${baseUrl}/v1/steuerjahre/2025/kapital/kapitalertraege`, {
       method: 'PUT',
       headers: { cookie, 'content-type': 'application/json', ...TRUSTED_ORIGIN_HEADERS },
-      body: JSON.stringify({ kind: 'erfasst', wert: 1200 }),
+      body: JSON.stringify({ kind: 'erfasst', value: 1200 }),
     })
     expect(put.status).toBe(200)
 
     const response = await fetch(`${baseUrl}/v1/account/export?format=json`, { headers: { cookie } })
     const document = (await response.json()) as {
-      taxData: { bereich: string; steuerjahr: number | null; felder: Record<string, unknown> }[]
+      taxData: { area: string; taxYear: number | null; fields: Record<string, unknown> }[]
     }
-    const kapital = document.taxData.find((entry) => entry.bereich === 'Kapitalerträge')
-    expect(kapital).toMatchObject({ steuerjahr: 2025, felder: { kapitalertraege: '1200' } })
-    expect(kapital!.felder).not.toHaveProperty('userId')
+    const capital = document.taxData.find((entry) => entry.area === 'Kapitalerträge')
+    expect(capital).toMatchObject({ taxYear: 2025, fields: { kapitalertraege: '1200' } })
+    expect(capital!.fields).not.toHaveProperty('userId')
   })
 
   it('PDF export returns a real PDF document via the PdfRenderer seam (real Chromium, not a stub)', async () => {

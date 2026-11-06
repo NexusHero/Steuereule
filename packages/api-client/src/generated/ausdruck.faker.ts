@@ -10,12 +10,12 @@ import {
 } from '@faker-js/faker';
 
 import type {
-  AusdruckPruefungDto,
-  CheckoutResponseDto
+  CheckoutResponseDto,
+  PrintoutCheckDto
 } from './ausdruck.schemas';
 
 
-export const getAusdruckControllerPruefungResponseMock = (overrideResponse: Partial<Extract<AusdruckPruefungDto, object>> = {}): AusdruckPruefungDto => ({fehlend: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), ...overrideResponse})
+export const getPrintoutControllerCheckResponseMock = (overrideResponse: Partial<Extract<PrintoutCheckDto, object>> = {}): PrintoutCheckDto => ({missing: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), ...overrideResponse})
 
-export const getAusdruckControllerCheckoutResponseMock = (overrideResponse: Partial<Extract<CheckoutResponseDto, object>> = {}): CheckoutResponseDto => ({checkoutUrl: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
+export const getPrintoutControllerCheckoutResponseMock = (overrideResponse: Partial<Extract<CheckoutResponseDto, object>> = {}): CheckoutResponseDto => ({checkoutUrl: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
 

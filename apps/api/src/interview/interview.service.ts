@@ -21,7 +21,7 @@ import {
 import type { InterviewStateDto } from './dto/interview-state.dto.js'
 import type { PostAnswerDto } from './dto/post-answer.dto.js'
 import type { PostAnswerResponseDto } from './dto/post-answer-response.dto.js'
-import { answersAus } from './answers.js'
+import { answersFrom } from './answers.js'
 
 /** QuestionId is not reachable given the answers stored so far. */
 export class UnreachableAnswerError extends ConflictError {
@@ -54,20 +54,20 @@ export class InterviewService {
     @Inject(AuditService) private readonly auditService: AuditService,
   ) {}
 
-  async getState(userId: string, steuerjahr: number, eintrag?: string, kind: UserIdKind = 'session'): Promise<InterviewStateDto> {
-    const requestedEntry = eintrag ?? 'minimal-gate'
+  async getState(userId: string, taxYear: number, entryKey?: string, kind: UserIdKind = 'session'): Promise<InterviewStateDto> {
+    const requestedEntry = entryKey ?? 'minimal-gate'
     if (Object.hasOwn(ENTRIES, requestedEntry)) assertGuestMayUse(kind, requestedEntry as EntryId)
 
-    const rows = await this.repository.findAllForUserAndYear(userId, steuerjahr)
-    const answers = answersAus(rows)
+    const rows = await this.repository.findAllForUserAndYear(userId, taxYear)
+    const answers = answersFrom(rows)
 
     if (rows.length > 0) {
       await this.auditService.append({ userId, action: 'READ', resource: 'interview' })
     }
 
-    const entryId = eintrag ?? 'minimal-gate'
+    const entryId = entryKey ?? 'minimal-gate'
     if (!Object.hasOwn(ENTRIES, entryId)) {
-      throw new InvalidInputError('CATALOGUE_ENTRY_UNKNOWN', `"${eintrag}" is not a known catalogue entry.`)
+      throw new InvalidInputError('CATALOGUE_ENTRY_UNKNOWN', `"${entryKey}" is not a known catalogue entry.`)
     }
     const entry = ENTRIES[entryId as EntryId]
     return {
@@ -77,9 +77,9 @@ export class InterviewService {
     }
   }
 
-  async postAnswer(userId: string, steuerjahr: number, dto: PostAnswerDto, kind: UserIdKind = 'session'): Promise<PostAnswerResponseDto> {
-    const rows = await this.repository.findAllForUserAndYear(userId, steuerjahr)
-    const answers = answersAus(rows)
+  async postAnswer(userId: string, taxYear: number, dto: PostAnswerDto, kind: UserIdKind = 'session'): Promise<PostAnswerResponseDto> {
+    const rows = await this.repository.findAllForUserAndYear(userId, taxYear)
+    const answers = answersFrom(rows)
     const entryId = entryForStep(dto.questionId as never)
     if (entryId === undefined || !ADMITTED_ENTRY_IDS.includes(entryId)) {
       throw new UnreachableAnswerError(dto.questionId)
@@ -95,7 +95,7 @@ export class InterviewService {
 
     await this.repository.write({
       userId,
-      steuerjahr,
+      taxYear,
       questionId: dto.questionId,
       value: dto.value,
       openItems,

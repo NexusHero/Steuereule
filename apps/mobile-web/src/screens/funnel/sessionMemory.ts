@@ -1,4 +1,4 @@
-import type { FunnelPfad } from './KontoWandScreen'
+import type { FunnelPath } from './KontoWandScreen'
 
 /**
  * What the user chose in this browser session must survive leaving the app screen — registration and
@@ -8,7 +8,7 @@ import type { FunnelPfad } from './KontoWandScreen'
  */
 const TAX_YEAR_KEY = 'steuereule.taxYear'
 const PENDING_PATH_KEY = 'steuereule.pendingPath'
-const PATHS: readonly FunnelPfad[] = ['angestellte', 'ch', 'rente']
+const PATHS: readonly FunnelPath[] = ['angestellte', 'ch', 'rente']
 
 function storage(): Storage | null {
   try {
@@ -46,11 +46,11 @@ export function rememberTaxYear(year: number): void {
   write(TAX_YEAR_KEY, String(year))
 }
 
-export function rememberedPendingPath(): FunnelPfad | null {
+export function rememberedPendingPath(): FunnelPath | null {
   const stored = read(PENDING_PATH_KEY)
   return PATHS.find((p) => p === stored) ?? null
 }
 
-export function rememberPendingPath(path: FunnelPfad | null): void {
+export function rememberPendingPath(path: FunnelPath | null): void {
   write(PENDING_PATH_KEY, path)
 }

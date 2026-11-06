@@ -45,20 +45,20 @@ function renderOnboarding(opts: { lng?: 'de' | 'en'; onDone?: () => void } = {})
   )
 }
 
-async function fillNameStep(weiterLabel = 'Weiter') {
+async function fillNameStep(nextLabel = 'Weiter') {
   await screen.findByPlaceholderText('Kim')
   fireEvent.change(screen.getByPlaceholderText('Kim'), { target: { value: 'Kim' } })
   fireEvent.change(screen.getByPlaceholderText('Yilmaz'), { target: { value: 'Yilmaz' } })
-  fireEvent.click(screen.getByText(weiterLabel))
+  fireEvent.click(screen.getByText(nextLabel))
 }
 
-function fillSteuerId(digits: string) {
+function fillTaxId(digits: string) {
   fireEvent.change(screen.getByPlaceholderText('12 345 678 901'), { target: { value: digits } })
 }
 
 async function completeFlowToSummary() {
   await fillNameStep()
-  fillSteuerId('12345678901')
+  fillTaxId('12345678901')
   fireEvent.click(screen.getByText('Weiter'))
   fireEvent.click(screen.getByText('Weiter')) // skip Steuernummer
   await screen.findByText('Deine Maske')
@@ -235,7 +235,7 @@ describe('REQ-012 — Onboarding vertical-join (ATDD acceptance, steuereule#53)'
     await screen.findByText('Just like on your ID — so the form matches exactly.')
 
     await fillNameStep('Continue')
-    fillSteuerId('12345678901')
+    fillTaxId('12345678901')
     fireEvent.click(screen.getByText('Continue'))
     fireEvent.click(screen.getByText('Continue'))
     await screen.findByText('Done.')

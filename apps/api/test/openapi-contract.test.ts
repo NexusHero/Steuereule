@@ -79,15 +79,15 @@ describe('OpenAPI contract for GET /v1/steuerjahre/{jahr}/cockpit (REQ-001)', ()
     const schema = document.components?.schemas?.CockpitSummaryDto
     expect(schema).toBeDefined()
     const properties = (schema as { properties?: Record<string, unknown> }).properties ?? {}
-    expect(Object.keys(properties).sort()).toEqual(['openItems', 'stand', 'taxYear'].sort())
+    expect(Object.keys(properties).sort()).toEqual(['openItems', 'status', 'taxYear'].sort())
   })
 
-  it('exposes CockpitStandDto with the flat discriminated-union fields (kind + optional variants)', () => {
-    const schema = document.components?.schemas?.CockpitStandDto
+  it('exposes CockpitStatusDto with the flat discriminated-union fields (kind + optional variants)', () => {
+    const schema = document.components?.schemas?.CockpitStatusDto
     expect(schema).toBeDefined()
     const properties = (schema as { properties?: Record<string, unknown> }).properties ?? {}
     expect(Object.keys(properties).sort()).toEqual(
-      ['bis', 'gegated', 'kind', 'konflikte', 'offenePosten', 'summe', 'unbestaetigte', 'unbestaetigteSumme', 'von', 'wert'].sort(),
+      ['conflicts', 'from', 'gated', 'kind', 'openItems', 'sum', 'to', 'unconfirmedItems', 'unconfirmedSum', 'value'].sort(),
     )
   })
 })
@@ -307,7 +307,7 @@ describe('OpenAPI contract for /v1/steuerjahre/{jahr}/kinder, kopplung, eulen-mo
     expect(get?.responses['200']).toBeDefined()
     expect(post?.responses['201']).toBeDefined()
     const requestBody = post?.requestBody as { content?: Record<string, { schema?: { $ref?: string } }> } | undefined
-    expect(requestBody?.content?.['application/json']?.schema?.$ref).toBe('#/components/schemas/CreateKindDto')
+    expect(requestBody?.content?.['application/json']?.schema?.$ref).toBe('#/components/schemas/CreateChildDto')
   })
 
   it('documents GET and PUT /v1/steuerjahre/{jahr}/kopplung with SetKopplungDto and KopplungResponseDto', () => {
@@ -316,22 +316,22 @@ describe('OpenAPI contract for /v1/steuerjahre/{jahr}/kinder, kopplung, eulen-mo
     expect(get?.responses['200']).toBeDefined()
     expect(put?.responses['200']).toBeDefined()
     const requestBody = put?.requestBody as { content?: Record<string, { schema?: { $ref?: string } }> } | undefined
-    expect(requestBody?.content?.['application/json']?.schema?.$ref).toBe('#/components/schemas/SetKopplungDto')
+    expect(requestBody?.content?.['application/json']?.schema?.$ref).toBe('#/components/schemas/SetLinkDto')
   })
 
   it('documents Eulen-Modus endpoints (/v1/eulen-modus/einstellung and /v1/steuerjahre/{jahr}/eulen-karten)', () => {
-    const getEinstellung = document.paths['/v1/eulen-modus/einstellung']?.get
-    const putEinstellung = document.paths['/v1/eulen-modus/einstellung']?.put
-    const getKarten = document.paths['/v1/steuerjahre/{jahr}/eulen-karten']?.get
-    expect(getEinstellung?.responses['200']).toBeDefined()
-    expect(putEinstellung?.responses['200']).toBeDefined()
-    expect(getKarten?.responses['200']).toBeDefined()
+    const getSetting = document.paths['/v1/eulen-modus/einstellung']?.get
+    const putSetting = document.paths['/v1/eulen-modus/einstellung']?.put
+    const getCards = document.paths['/v1/steuerjahre/{jahr}/eulen-karten']?.get
+    expect(getSetting?.responses['200']).toBeDefined()
+    expect(putSetting?.responses['200']).toBeDefined()
+    expect(getCards?.responses['200']).toBeDefined()
   })
 
   it('documents PUT /v1/steuerjahre/{jahr}/vermietung/objekte/{objektId}/adresse with PutVermietungAdresseDto', () => {
     const put = document.paths['/v1/steuerjahre/{jahr}/vermietung/objekte/{objektId}/adresse']?.put
     expect(put?.responses['200']).toBeDefined()
     const requestBody = put?.requestBody as { content?: Record<string, { schema?: { $ref?: string } }> } | undefined
-    expect(requestBody?.content?.['application/json']?.schema?.$ref).toBe('#/components/schemas/PutVermietungAdresseDto')
+    expect(requestBody?.content?.['application/json']?.schema?.$ref).toBe('#/components/schemas/PutRentalAddressDto')
   })
 })

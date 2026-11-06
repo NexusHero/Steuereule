@@ -5,7 +5,7 @@ import { useTheme } from '../theme/useTheme'
 export type ButtonVariant = 'primaer' | 'ghost' | 'leise' | 'nacht'
 
 export interface ButtonProps {
-  readonly variante?: ButtonVariant
+  readonly variant?: ButtonVariant
   readonly disabled?: boolean
   readonly onPress?: () => void
   readonly style?: StyleProp<ViewStyle>
@@ -13,7 +13,7 @@ export interface ButtonProps {
   readonly testID?: string
 }
 
-export function Button({ variante = 'primaer', disabled = false, onPress, style, children, testID }: ButtonProps) {
+export function Button({ variant = 'primaer', disabled = false, onPress, style, children, testID }: ButtonProps) {
   const t = useTheme()
 
   const bg: Record<ButtonVariant, string> = {
@@ -22,8 +22,8 @@ export function Button({ variante = 'primaer', disabled = false, onPress, style,
     leise: t.color.funkeWeich,
     nacht: t.color.nacht,
   }
-  const fg = variante === 'nacht' ? t.color.funke : t.color.tinte
-  const shadow = variante === 'leise' ? t.shadow.hartS : t.shadow.hart
+  const fg = variant === 'nacht' ? t.color.funke : t.color.tinte
+  const shadow = variant === 'leise' ? t.shadow.hartS : t.shadow.hart
 
   const container: ViewStyle = {
     width: '100%',
@@ -32,7 +32,7 @@ export function Button({ variante = 'primaer', disabled = false, onPress, style,
     alignItems: 'center',
     minHeight: 52,
     paddingHorizontal: t.space.s5,
-    backgroundColor: bg[variante],
+    backgroundColor: bg[variant],
     borderWidth: 2,
     borderColor: t.color.tinte,
     borderRadius: t.radius.pille,

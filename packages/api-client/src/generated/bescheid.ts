@@ -25,11 +25,11 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
-  BescheidResponseDto,
-  PutBescheidFeldDto,
-  SetBescheidDatumDto,
-  SetBescheidStatusDto,
-  SetEinspruchDto
+  AssessmentResponseDto,
+  PutAssessmentFieldDto,
+  SetAppealDto,
+  SetAssessmentDateDto,
+  SetAssessmentStatusDto
 } from './bescheid.schemas';
 
 import { httpClient } from '../http-client';
@@ -54,26 +54,26 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   return result;
 };
 
-export type bescheidControllerGetResponse200 = {
-  data: BescheidResponseDto
+export type assessmentControllerGetResponse200 = {
+  data: AssessmentResponseDto
   status: 200
 }
 
-export type bescheidControllerGetResponse401 = {
+export type assessmentControllerGetResponse401 = {
   data: void
   status: 401
 }
 
-export type bescheidControllerGetResponseSuccess = (bescheidControllerGetResponse200) & {
+export type assessmentControllerGetResponseSuccess = (assessmentControllerGetResponse200) & {
   headers: Headers;
 };
-export type bescheidControllerGetResponseError = (bescheidControllerGetResponse401) & {
+export type assessmentControllerGetResponseError = (assessmentControllerGetResponse401) & {
   headers: Headers;
 };
 
-export type bescheidControllerGetResponse = (bescheidControllerGetResponseSuccess | bescheidControllerGetResponseError)
+export type assessmentControllerGetResponse = (assessmentControllerGetResponseSuccess | assessmentControllerGetResponseError)
 
-export const getBescheidControllerGetUrl = (jahr: number,) => {
+export const getAssessmentControllerGetUrl = (jahr: number,) => {
 
 
 
@@ -81,9 +81,9 @@ export const getBescheidControllerGetUrl = (jahr: number,) => {
   return `/v1/steuerjahre/${jahr}/bescheid`
 }
 
-export const bescheidControllerGet = async (jahr: number, options?: RequestInit): Promise<bescheidControllerGetResponse> => {
+export const assessmentControllerGet = async (jahr: number, options?: RequestInit): Promise<assessmentControllerGetResponse> => {
 
-  return httpClient<bescheidControllerGetResponse>(getBescheidControllerGetUrl(jahr),
+  return httpClient<assessmentControllerGetResponse>(getAssessmentControllerGetUrl(jahr),
   {
     ...options,
     method: 'GET'
@@ -96,66 +96,66 @@ export const bescheidControllerGet = async (jahr: number, options?: RequestInit)
 
 
 
-export const getBescheidControllerGetQueryKey = (jahr: number,) => {
+export const getAssessmentControllerGetQueryKey = (jahr: number,) => {
     return [
     `/v1/steuerjahre/${jahr}/bescheid`
     ] as const;
     }
 
 
-export const getBescheidControllerGetQueryOptions = <TData = Awaited<ReturnType<typeof bescheidControllerGet>>, TError = void>(jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof bescheidControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export const getAssessmentControllerGetQueryOptions = <TData = Awaited<ReturnType<typeof assessmentControllerGet>>, TError = void>(jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof assessmentControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getBescheidControllerGetQueryKey(jahr);
+  const queryKey =  queryOptions?.queryKey ?? getAssessmentControllerGetQueryKey(jahr);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof bescheidControllerGet>>> = ({ signal }) => bescheidControllerGet(jahr, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof assessmentControllerGet>>> = ({ signal }) => assessmentControllerGet(jahr, { signal, ...requestOptions });
 
 
 
 
 
-   return  { queryKey, queryFn, enabled: jahr !== null && jahr !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof bescheidControllerGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+   return  { queryKey, queryFn, enabled: jahr !== null && jahr !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof assessmentControllerGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
-export type BescheidControllerGetQueryResult = NonNullable<Awaited<ReturnType<typeof bescheidControllerGet>>>
-export type BescheidControllerGetQueryError = void
+export type AssessmentControllerGetQueryResult = NonNullable<Awaited<ReturnType<typeof assessmentControllerGet>>>
+export type AssessmentControllerGetQueryError = void
 
 
-export function useBescheidControllerGet<TData = Awaited<ReturnType<typeof bescheidControllerGet>>, TError = void>(
- jahr: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof bescheidControllerGet>>, TError, TData>> & Pick<
+export function useAssessmentControllerGet<TData = Awaited<ReturnType<typeof assessmentControllerGet>>, TError = void>(
+ jahr: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof assessmentControllerGet>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof bescheidControllerGet>>,
+          Awaited<ReturnType<typeof assessmentControllerGet>>,
           TError,
-          Awaited<ReturnType<typeof bescheidControllerGet>>
+          Awaited<ReturnType<typeof assessmentControllerGet>>
         > , 'initialData'
       >, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useBescheidControllerGet<TData = Awaited<ReturnType<typeof bescheidControllerGet>>, TError = void>(
- jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof bescheidControllerGet>>, TError, TData>> & Pick<
+export function useAssessmentControllerGet<TData = Awaited<ReturnType<typeof assessmentControllerGet>>, TError = void>(
+ jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof assessmentControllerGet>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof bescheidControllerGet>>,
+          Awaited<ReturnType<typeof assessmentControllerGet>>,
           TError,
-          Awaited<ReturnType<typeof bescheidControllerGet>>
+          Awaited<ReturnType<typeof assessmentControllerGet>>
         > , 'initialData'
       >, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useBescheidControllerGet<TData = Awaited<ReturnType<typeof bescheidControllerGet>>, TError = void>(
- jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof bescheidControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export function useAssessmentControllerGet<TData = Awaited<ReturnType<typeof assessmentControllerGet>>, TError = void>(
+ jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof assessmentControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 
-export function useBescheidControllerGet<TData = Awaited<ReturnType<typeof bescheidControllerGet>>, TError = void>(
- jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof bescheidControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export function useAssessmentControllerGet<TData = Awaited<ReturnType<typeof assessmentControllerGet>>, TError = void>(
+ jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof assessmentControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getBescheidControllerGetQueryOptions(jahr,options)
+  const queryOptions = getAssessmentControllerGetQueryOptions(jahr,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
@@ -168,19 +168,19 @@ export function useBescheidControllerGet<TData = Awaited<ReturnType<typeof besch
 
 
 
-export type bescheidControllerSetFeldResponse200 = {
-  data: BescheidResponseDto
+export type assessmentControllerSetFieldResponse200 = {
+  data: AssessmentResponseDto
   status: 200
 }
 
-export type bescheidControllerSetFeldResponseSuccess = (bescheidControllerSetFeldResponse200) & {
+export type assessmentControllerSetFieldResponseSuccess = (assessmentControllerSetFieldResponse200) & {
   headers: Headers;
 };
 ;
 
-export type bescheidControllerSetFeldResponse = (bescheidControllerSetFeldResponseSuccess)
+export type assessmentControllerSetFieldResponse = (assessmentControllerSetFieldResponseSuccess)
 
-export const getBescheidControllerSetFeldUrl = (jahr: number,
+export const getAssessmentControllerSetFieldUrl = (jahr: number,
     feld: string,) => {
 
 
@@ -189,16 +189,16 @@ export const getBescheidControllerSetFeldUrl = (jahr: number,
   return `/v1/steuerjahre/${jahr}/bescheid/feld/${feld}`
 }
 
-export const bescheidControllerSetFeld = async (jahr: number,
+export const assessmentControllerSetField = async (jahr: number,
     feld: string,
-    putBescheidFeldDto: PutBescheidFeldDto, options?: RequestInit): Promise<bescheidControllerSetFeldResponse> => {
+    putAssessmentFieldDto: PutAssessmentFieldDto, options?: RequestInit): Promise<assessmentControllerSetFieldResponse> => {
 
-  return httpClient<bescheidControllerSetFeldResponse>(getBescheidControllerSetFeldUrl(jahr,feld),
+  return httpClient<assessmentControllerSetFieldResponse>(getAssessmentControllerSetFieldUrl(jahr,feld),
   {
     ...options,
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(putBescheidFeldDto)
+    body: JSON.stringify(putAssessmentFieldDto)
   }
 );}
 
@@ -206,11 +206,11 @@ export const bescheidControllerSetFeld = async (jahr: number,
 
 
 
-export const getBescheidControllerSetFeldMutationOptions = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bescheidControllerSetFeld>>, TError,{jahr: number;feld: string;data: PutBescheidFeldDto}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof bescheidControllerSetFeld>>, TError,{jahr: number;feld: string;data: PutBescheidFeldDto}, TContext> => {
+export const getAssessmentControllerSetFieldMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assessmentControllerSetField>>, TError,{jahr: number;feld: string;data: PutAssessmentFieldDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof assessmentControllerSetField>>, TError,{jahr: number;feld: string;data: PutAssessmentFieldDto}, TContext> => {
 
-const mutationKey = ['bescheidControllerSetFeld'];
+const mutationKey = ['assessmentControllerSetField'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -220,10 +220,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof bescheidControllerSetFeld>>, {jahr: number;feld: string;data: PutBescheidFeldDto}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof assessmentControllerSetField>>, {jahr: number;feld: string;data: PutAssessmentFieldDto}> = (props) => {
           const {jahr,feld,data} = props ?? {};
 
-          return  bescheidControllerSetFeld(jahr,feld,data,requestOptions)
+          return  assessmentControllerSetField(jahr,feld,data,requestOptions)
         }
 
 
@@ -233,34 +233,34 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type BescheidControllerSetFeldMutationResult = NonNullable<Awaited<ReturnType<typeof bescheidControllerSetFeld>>>
-    export type BescheidControllerSetFeldMutationBody = PutBescheidFeldDto
-    export type BescheidControllerSetFeldMutationError = unknown
+    export type AssessmentControllerSetFieldMutationResult = NonNullable<Awaited<ReturnType<typeof assessmentControllerSetField>>>
+    export type AssessmentControllerSetFieldMutationBody = PutAssessmentFieldDto
+    export type AssessmentControllerSetFieldMutationError = unknown
 
-    export const useBescheidControllerSetFeld = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bescheidControllerSetFeld>>, TError,{jahr: number;feld: string;data: PutBescheidFeldDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+    export const useAssessmentControllerSetField = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assessmentControllerSetField>>, TError,{jahr: number;feld: string;data: PutAssessmentFieldDto}, TContext>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof bescheidControllerSetFeld>>,
+        Awaited<ReturnType<typeof assessmentControllerSetField>>,
         TError,
-        {jahr: number;feld: string;data: PutBescheidFeldDto},
+        {jahr: number;feld: string;data: PutAssessmentFieldDto},
         TContext
       > => {
-      return useMutation(getBescheidControllerSetFeldMutationOptions(options), queryClient);
+      return useMutation(getAssessmentControllerSetFieldMutationOptions(options), queryClient);
     }
 
-export type bescheidControllerSetDatumResponse200 = {
-  data: BescheidResponseDto
+export type assessmentControllerSetDateResponse200 = {
+  data: AssessmentResponseDto
   status: 200
 }
 
-export type bescheidControllerSetDatumResponseSuccess = (bescheidControllerSetDatumResponse200) & {
+export type assessmentControllerSetDateResponseSuccess = (assessmentControllerSetDateResponse200) & {
   headers: Headers;
 };
 ;
 
-export type bescheidControllerSetDatumResponse = (bescheidControllerSetDatumResponseSuccess)
+export type assessmentControllerSetDateResponse = (assessmentControllerSetDateResponseSuccess)
 
-export const getBescheidControllerSetDatumUrl = (jahr: number,) => {
+export const getAssessmentControllerSetDateUrl = (jahr: number,) => {
 
 
 
@@ -268,15 +268,15 @@ export const getBescheidControllerSetDatumUrl = (jahr: number,) => {
   return `/v1/steuerjahre/${jahr}/bescheid/datum`
 }
 
-export const bescheidControllerSetDatum = async (jahr: number,
-    setBescheidDatumDto: SetBescheidDatumDto, options?: RequestInit): Promise<bescheidControllerSetDatumResponse> => {
+export const assessmentControllerSetDate = async (jahr: number,
+    setAssessmentDateDto: SetAssessmentDateDto, options?: RequestInit): Promise<assessmentControllerSetDateResponse> => {
 
-  return httpClient<bescheidControllerSetDatumResponse>(getBescheidControllerSetDatumUrl(jahr),
+  return httpClient<assessmentControllerSetDateResponse>(getAssessmentControllerSetDateUrl(jahr),
   {
     ...options,
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(setBescheidDatumDto)
+    body: JSON.stringify(setAssessmentDateDto)
   }
 );}
 
@@ -284,11 +284,11 @@ export const bescheidControllerSetDatum = async (jahr: number,
 
 
 
-export const getBescheidControllerSetDatumMutationOptions = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bescheidControllerSetDatum>>, TError,{jahr: number;data: SetBescheidDatumDto}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof bescheidControllerSetDatum>>, TError,{jahr: number;data: SetBescheidDatumDto}, TContext> => {
+export const getAssessmentControllerSetDateMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assessmentControllerSetDate>>, TError,{jahr: number;data: SetAssessmentDateDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof assessmentControllerSetDate>>, TError,{jahr: number;data: SetAssessmentDateDto}, TContext> => {
 
-const mutationKey = ['bescheidControllerSetDatum'];
+const mutationKey = ['assessmentControllerSetDate'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -298,10 +298,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof bescheidControllerSetDatum>>, {jahr: number;data: SetBescheidDatumDto}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof assessmentControllerSetDate>>, {jahr: number;data: SetAssessmentDateDto}> = (props) => {
           const {jahr,data} = props ?? {};
 
-          return  bescheidControllerSetDatum(jahr,data,requestOptions)
+          return  assessmentControllerSetDate(jahr,data,requestOptions)
         }
 
 
@@ -311,34 +311,34 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type BescheidControllerSetDatumMutationResult = NonNullable<Awaited<ReturnType<typeof bescheidControllerSetDatum>>>
-    export type BescheidControllerSetDatumMutationBody = SetBescheidDatumDto
-    export type BescheidControllerSetDatumMutationError = unknown
+    export type AssessmentControllerSetDateMutationResult = NonNullable<Awaited<ReturnType<typeof assessmentControllerSetDate>>>
+    export type AssessmentControllerSetDateMutationBody = SetAssessmentDateDto
+    export type AssessmentControllerSetDateMutationError = unknown
 
-    export const useBescheidControllerSetDatum = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bescheidControllerSetDatum>>, TError,{jahr: number;data: SetBescheidDatumDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+    export const useAssessmentControllerSetDate = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assessmentControllerSetDate>>, TError,{jahr: number;data: SetAssessmentDateDto}, TContext>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof bescheidControllerSetDatum>>,
+        Awaited<ReturnType<typeof assessmentControllerSetDate>>,
         TError,
-        {jahr: number;data: SetBescheidDatumDto},
+        {jahr: number;data: SetAssessmentDateDto},
         TContext
       > => {
-      return useMutation(getBescheidControllerSetDatumMutationOptions(options), queryClient);
+      return useMutation(getAssessmentControllerSetDateMutationOptions(options), queryClient);
     }
 
-export type bescheidControllerSetStatusResponse200 = {
-  data: BescheidResponseDto
+export type assessmentControllerSetStatusResponse200 = {
+  data: AssessmentResponseDto
   status: 200
 }
 
-export type bescheidControllerSetStatusResponseSuccess = (bescheidControllerSetStatusResponse200) & {
+export type assessmentControllerSetStatusResponseSuccess = (assessmentControllerSetStatusResponse200) & {
   headers: Headers;
 };
 ;
 
-export type bescheidControllerSetStatusResponse = (bescheidControllerSetStatusResponseSuccess)
+export type assessmentControllerSetStatusResponse = (assessmentControllerSetStatusResponseSuccess)
 
-export const getBescheidControllerSetStatusUrl = (jahr: number,) => {
+export const getAssessmentControllerSetStatusUrl = (jahr: number,) => {
 
 
 
@@ -346,15 +346,15 @@ export const getBescheidControllerSetStatusUrl = (jahr: number,) => {
   return `/v1/steuerjahre/${jahr}/bescheid/status`
 }
 
-export const bescheidControllerSetStatus = async (jahr: number,
-    setBescheidStatusDto: SetBescheidStatusDto, options?: RequestInit): Promise<bescheidControllerSetStatusResponse> => {
+export const assessmentControllerSetStatus = async (jahr: number,
+    setAssessmentStatusDto: SetAssessmentStatusDto, options?: RequestInit): Promise<assessmentControllerSetStatusResponse> => {
 
-  return httpClient<bescheidControllerSetStatusResponse>(getBescheidControllerSetStatusUrl(jahr),
+  return httpClient<assessmentControllerSetStatusResponse>(getAssessmentControllerSetStatusUrl(jahr),
   {
     ...options,
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(setBescheidStatusDto)
+    body: JSON.stringify(setAssessmentStatusDto)
   }
 );}
 
@@ -362,11 +362,11 @@ export const bescheidControllerSetStatus = async (jahr: number,
 
 
 
-export const getBescheidControllerSetStatusMutationOptions = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bescheidControllerSetStatus>>, TError,{jahr: number;data: SetBescheidStatusDto}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof bescheidControllerSetStatus>>, TError,{jahr: number;data: SetBescheidStatusDto}, TContext> => {
+export const getAssessmentControllerSetStatusMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assessmentControllerSetStatus>>, TError,{jahr: number;data: SetAssessmentStatusDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof assessmentControllerSetStatus>>, TError,{jahr: number;data: SetAssessmentStatusDto}, TContext> => {
 
-const mutationKey = ['bescheidControllerSetStatus'];
+const mutationKey = ['assessmentControllerSetStatus'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -376,10 +376,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof bescheidControllerSetStatus>>, {jahr: number;data: SetBescheidStatusDto}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof assessmentControllerSetStatus>>, {jahr: number;data: SetAssessmentStatusDto}> = (props) => {
           const {jahr,data} = props ?? {};
 
-          return  bescheidControllerSetStatus(jahr,data,requestOptions)
+          return  assessmentControllerSetStatus(jahr,data,requestOptions)
         }
 
 
@@ -389,34 +389,34 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type BescheidControllerSetStatusMutationResult = NonNullable<Awaited<ReturnType<typeof bescheidControllerSetStatus>>>
-    export type BescheidControllerSetStatusMutationBody = SetBescheidStatusDto
-    export type BescheidControllerSetStatusMutationError = unknown
+    export type AssessmentControllerSetStatusMutationResult = NonNullable<Awaited<ReturnType<typeof assessmentControllerSetStatus>>>
+    export type AssessmentControllerSetStatusMutationBody = SetAssessmentStatusDto
+    export type AssessmentControllerSetStatusMutationError = unknown
 
-    export const useBescheidControllerSetStatus = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bescheidControllerSetStatus>>, TError,{jahr: number;data: SetBescheidStatusDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+    export const useAssessmentControllerSetStatus = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assessmentControllerSetStatus>>, TError,{jahr: number;data: SetAssessmentStatusDto}, TContext>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof bescheidControllerSetStatus>>,
+        Awaited<ReturnType<typeof assessmentControllerSetStatus>>,
         TError,
-        {jahr: number;data: SetBescheidStatusDto},
+        {jahr: number;data: SetAssessmentStatusDto},
         TContext
       > => {
-      return useMutation(getBescheidControllerSetStatusMutationOptions(options), queryClient);
+      return useMutation(getAssessmentControllerSetStatusMutationOptions(options), queryClient);
     }
 
-export type bescheidControllerSetEinspruchResponse200 = {
-  data: BescheidResponseDto
+export type assessmentControllerSetAppealResponse200 = {
+  data: AssessmentResponseDto
   status: 200
 }
 
-export type bescheidControllerSetEinspruchResponseSuccess = (bescheidControllerSetEinspruchResponse200) & {
+export type assessmentControllerSetAppealResponseSuccess = (assessmentControllerSetAppealResponse200) & {
   headers: Headers;
 };
 ;
 
-export type bescheidControllerSetEinspruchResponse = (bescheidControllerSetEinspruchResponseSuccess)
+export type assessmentControllerSetAppealResponse = (assessmentControllerSetAppealResponseSuccess)
 
-export const getBescheidControllerSetEinspruchUrl = (jahr: number,) => {
+export const getAssessmentControllerSetAppealUrl = (jahr: number,) => {
 
 
 
@@ -424,15 +424,15 @@ export const getBescheidControllerSetEinspruchUrl = (jahr: number,) => {
   return `/v1/steuerjahre/${jahr}/bescheid/einspruch`
 }
 
-export const bescheidControllerSetEinspruch = async (jahr: number,
-    setEinspruchDto: SetEinspruchDto, options?: RequestInit): Promise<bescheidControllerSetEinspruchResponse> => {
+export const assessmentControllerSetAppeal = async (jahr: number,
+    setAppealDto: SetAppealDto, options?: RequestInit): Promise<assessmentControllerSetAppealResponse> => {
 
-  return httpClient<bescheidControllerSetEinspruchResponse>(getBescheidControllerSetEinspruchUrl(jahr),
+  return httpClient<assessmentControllerSetAppealResponse>(getAssessmentControllerSetAppealUrl(jahr),
   {
     ...options,
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(setEinspruchDto)
+    body: JSON.stringify(setAppealDto)
   }
 );}
 
@@ -440,11 +440,11 @@ export const bescheidControllerSetEinspruch = async (jahr: number,
 
 
 
-export const getBescheidControllerSetEinspruchMutationOptions = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bescheidControllerSetEinspruch>>, TError,{jahr: number;data: SetEinspruchDto}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof bescheidControllerSetEinspruch>>, TError,{jahr: number;data: SetEinspruchDto}, TContext> => {
+export const getAssessmentControllerSetAppealMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assessmentControllerSetAppeal>>, TError,{jahr: number;data: SetAppealDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof assessmentControllerSetAppeal>>, TError,{jahr: number;data: SetAppealDto}, TContext> => {
 
-const mutationKey = ['bescheidControllerSetEinspruch'];
+const mutationKey = ['assessmentControllerSetAppeal'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -454,10 +454,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof bescheidControllerSetEinspruch>>, {jahr: number;data: SetEinspruchDto}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof assessmentControllerSetAppeal>>, {jahr: number;data: SetAppealDto}> = (props) => {
           const {jahr,data} = props ?? {};
 
-          return  bescheidControllerSetEinspruch(jahr,data,requestOptions)
+          return  assessmentControllerSetAppeal(jahr,data,requestOptions)
         }
 
 
@@ -467,18 +467,18 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type BescheidControllerSetEinspruchMutationResult = NonNullable<Awaited<ReturnType<typeof bescheidControllerSetEinspruch>>>
-    export type BescheidControllerSetEinspruchMutationBody = SetEinspruchDto
-    export type BescheidControllerSetEinspruchMutationError = unknown
+    export type AssessmentControllerSetAppealMutationResult = NonNullable<Awaited<ReturnType<typeof assessmentControllerSetAppeal>>>
+    export type AssessmentControllerSetAppealMutationBody = SetAppealDto
+    export type AssessmentControllerSetAppealMutationError = unknown
 
-    export const useBescheidControllerSetEinspruch = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bescheidControllerSetEinspruch>>, TError,{jahr: number;data: SetEinspruchDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+    export const useAssessmentControllerSetAppeal = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assessmentControllerSetAppeal>>, TError,{jahr: number;data: SetAppealDto}, TContext>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof bescheidControllerSetEinspruch>>,
+        Awaited<ReturnType<typeof assessmentControllerSetAppeal>>,
         TError,
-        {jahr: number;data: SetEinspruchDto},
+        {jahr: number;data: SetAppealDto},
         TContext
       > => {
-      return useMutation(getBescheidControllerSetEinspruchMutationOptions(options), queryClient);
+      return useMutation(getAssessmentControllerSetAppealMutationOptions(options), queryClient);
     }
 

@@ -8,7 +8,7 @@ import {
   isSupportedIncomeTaxYear,
   kirchensteuer,
   solidaritaetszuschlag,
-  splittingTarif,
+  splittingTariff,
   zoneBoundaries,
   type IncomeTaxYear,
 } from './tarif'
@@ -86,13 +86,13 @@ describe('isSupportedIncomeTaxYear / zoneBoundaries', () => {
 
 describe('splittingTarif — §32a Abs. 5 Splitting-Verfahren', () => {
   it('is twice the Grundtarif on the floored half of the combined zvE', () => {
-    expect(splittingTarif(100000, 0, 2026)).toBe(2 * incomeTax(50000, 2026))
-    expect(splittingTarif(60000, 20000, 2026)).toBe(2 * incomeTax(40000, 2026))
-    expect(splittingTarif(99999.5, 0, 2026)).toBe(2 * incomeTax(49999, 2026))
+    expect(splittingTariff(100000, 0, 2026)).toBe(2 * incomeTax(50000, 2026))
+    expect(splittingTariff(60000, 20000, 2026)).toBe(2 * incomeTax(40000, 2026))
+    expect(splittingTariff(99999.5, 0, 2026)).toBe(2 * incomeTax(49999, 2026))
   })
 
   it('throws for negative inputs', () => {
-    expect(() => splittingTarif(-1, 0, 2026)).toThrow(RangeError)
+    expect(() => splittingTariff(-1, 0, 2026)).toThrow(RangeError)
   })
 })
 

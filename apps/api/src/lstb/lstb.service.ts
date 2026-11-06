@@ -1,72 +1,72 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { InvalidInputError } from '../common/domain-error.js'
 import {
-  istGueltigerBetrag,
-  lstbZustand,
-  serialisiereLstbFeld,
-  setzeLstbFeld,
-  type LstbDaten,
-  type LstbFeldId,
-  type LstbFeldZustand,
-  type LstbZustand,
-  type LstbWiderspruch,
-  kennzeichnungsKey,
+  isValidAmount,
+  wageTaxCertificateStatus,
+  serializeWageTaxCertificateField,
+  setWageTaxCertificateField,
+  type WageTaxCertificateData,
+  type WageTaxCertificateFieldId,
+  type WageTaxCertificateFieldState,
+  type WageTaxCertificateStatus,
+  type WageTaxCertificateConflict,
+  provenanceKey,
 } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
-import { KENNZEICHNUNG_REPOSITORY, type KennzeichnungRepository } from '../kennzeichnung/kennzeichnung.repository.js'
-import { LSTB_REPOSITORY, type LstbRepository } from './lstb.repository.js'
-import type { LstbFeldDto } from './dto/lstb-feld.dto.js'
+import { PROVENANCE_REPOSITORY, type ProvenanceRepository } from '../marking/marking.repository.js'
+import { WAGE_TAX_CERTIFICATE_REPOSITORY, type WageTaxCertificateRepository } from './lstb.repository.js'
+import type { LstbFieldDto } from './dto/lstb-field.dto.js'
 import type { LstbResponseDto } from './dto/lstb-response.dto.js'
-import type { LstbWiderspruchDto } from './dto/lstb-widerspruch.dto.js'
-import type { LstbZustandDto } from './dto/lstb-zustand.dto.js'
-import { lstbDatenAus } from './lstb-daten.js'
+import type { LstbConflictDto } from './dto/lstb-conflict.dto.js'
+import type { LstbStatusDto } from './dto/lstb-state.dto.js'
+import { wageTaxCertificateDataFrom } from './lstb-data.js'
 
-function zustandAusDto(dto: LstbFeldDto): LstbFeldZustand {
+function stateFromDto(dto: LstbFieldDto): WageTaxCertificateFieldState {
   if (dto.kind === 'offen') return { kind: 'offen' }
   if (dto.kind === 'unklar') return { kind: 'unklar' }
-  if (dto.wert === undefined || !istGueltigerBetrag(dto.wert)) {
+  if (dto.value === undefined || !isValidAmount(dto.value)) {
     throw new InvalidInputError('FIELD_VALUE_INVALID', 'kind "erfasst" requires a non-negative whole-euro `wert`.')
   }
-  return { kind: 'erfasst', wert: dto.wert }
+  return { kind: 'erfasst', value: dto.value }
 }
 
-function toFeldDto(zustand: LstbFeldZustand): LstbFeldDto {
-  switch (zustand.kind) {
+function toFieldDto(state: WageTaxCertificateFieldState): LstbFieldDto {
+  switch (state.kind) {
     case 'offen':
       return { kind: 'offen' }
     case 'unklar':
       return { kind: 'unklar' }
     case 'erfasst':
-      return { kind: 'erfasst', wert: zustand.wert }
+      return { kind: 'erfasst', value: state.value }
   }
 }
 
-function toWiderspruchDto(w: LstbWiderspruch): LstbWiderspruchDto {
-  switch (w.art) {
+function toConflictDto(w: WageTaxCertificateConflict): LstbConflictDto {
+  switch (w.kind) {
     case 'lohnsteuer-uebersteigt-brutto':
-      return { art: 'lohnsteuer-uebersteigt-brutto', lohnsteuer: w.lohnsteuer, bruttoarbeitslohn: w.bruttoarbeitslohn }
+      return { kind: 'lohnsteuer-uebersteigt-brutto', lohnsteuer: w.lohnsteuer, bruttoarbeitslohn: w.bruttoarbeitslohn }
     case 'sozialversicherung-uebersteigt-brutto':
-      return { art: 'sozialversicherung-uebersteigt-brutto', sozialversicherung: w.sozialversicherung, bruttoarbeitslohn: w.bruttoarbeitslohn }
+      return { kind: 'sozialversicherung-uebersteigt-brutto', sozialversicherung: w.sozialversicherung, bruttoarbeitslohn: w.bruttoarbeitslohn }
   }
 }
 
-function toZustandDto(z: LstbZustand): LstbZustandDto {
+function toStateDto(z: WageTaxCertificateStatus): LstbStatusDto {
   switch (z.kind) {
     case 'unvollstaendig':
-      return { kind: 'unvollstaendig', offen: [...z.offen], unklar: [...z.unklar] }
+      return { kind: 'unvollstaendig', open: [...z.open], unclear: [...z.unclear] }
     case 'widerspruch':
-      return { kind: 'widerspruch', widersprueche: z.widersprueche.map(toWiderspruchDto) }
+      return { kind: 'widerspruch', conflicts: z.conflicts.map(toConflictDto) }
     case 'vollstaendig':
       return { kind: 'vollstaendig', bruttoarbeitslohn: z.bruttoarbeitslohn, lohnsteuer: z.lohnsteuer, sozialversicherung: z.sozialversicherung }
   }
 }
 
-function toResponse(daten: LstbDaten): LstbResponseDto {
+function toResponse(data: WageTaxCertificateData): LstbResponseDto {
   return {
-    bruttoarbeitslohn: toFeldDto(daten.bruttoarbeitslohn),
-    lohnsteuer: toFeldDto(daten.lohnsteuer),
-    sozialversicherung: toFeldDto(daten.sozialversicherung),
-    zustand: toZustandDto(lstbZustand(daten)),
+    bruttoarbeitslohn: toFieldDto(data.bruttoarbeitslohn),
+    lohnsteuer: toFieldDto(data.lohnsteuer),
+    sozialversicherung: toFieldDto(data.sozialversicherung),
+    state: toStateDto(wageTaxCertificateStatus(data)),
   }
 }
 
@@ -74,26 +74,26 @@ function toResponse(daten: LstbDaten): LstbResponseDto {
 @Injectable()
 export class LstbService {
   constructor(
-    @Inject(LSTB_REPOSITORY) private readonly repository: LstbRepository,
+    @Inject(WAGE_TAX_CERTIFICATE_REPOSITORY) private readonly repository: WageTaxCertificateRepository,
     @Inject(AuditService) private readonly auditService: AuditService,
-    @Inject(KENNZEICHNUNG_REPOSITORY) private readonly kennzeichnungen: KennzeichnungRepository,
+    @Inject(PROVENANCE_REPOSITORY) private readonly markings: ProvenanceRepository,
   ) {}
 
-  async getState(userId: string, steuerjahr: number): Promise<LstbResponseDto> {
-    const record = await this.repository.findForUserAndYear(userId, steuerjahr)
+  async getState(userId: string, taxYear: number): Promise<LstbResponseDto> {
+    const record = await this.repository.findForUserAndYear(userId, taxYear)
     if (record !== null) {
       await this.auditService.append({ userId, action: 'READ', resource: 'lstb' })
     }
-    return toResponse(lstbDatenAus(record))
+    return toResponse(wageTaxCertificateDataFrom(record))
   }
 
-  async setFeld(userId: string, steuerjahr: number, feld: LstbFeldId, dto: LstbFeldDto): Promise<LstbResponseDto> {
-    const record = await this.repository.findForUserAndYear(userId, steuerjahr)
-    const daten = lstbDatenAus(record)
-    const zustand = zustandAusDto(dto)
-    const next = setzeLstbFeld(daten, feld, zustand)
-    await this.repository.setFeld(userId, steuerjahr, feld, serialisiereLstbFeld(zustand))
-    await this.kennzeichnungen.entferne(userId, steuerjahr, [kennzeichnungsKey('lstb', feld)])
+  async setField(userId: string, taxYear: number, field: WageTaxCertificateFieldId, dto: LstbFieldDto): Promise<LstbResponseDto> {
+    const record = await this.repository.findForUserAndYear(userId, taxYear)
+    const data = wageTaxCertificateDataFrom(record)
+    const state = stateFromDto(dto)
+    const next = setWageTaxCertificateField(data, field, state)
+    await this.repository.setField(userId, taxYear, field, serializeWageTaxCertificateField(state))
+    await this.markings.remove(userId, taxYear, [provenanceKey('lstb', field)])
     return toResponse(next)
   }
 }

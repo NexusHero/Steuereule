@@ -25,8 +25,8 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
-  UebernahmeControllerUebernehmeParams,
-  UebernahmeResponseDto
+  RolloverResponseDto,
+  TakeoverControllerTakeOverParams
 } from './uebernahme.schemas';
 
 import { httpClient } from '../http-client';
@@ -51,26 +51,26 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   return result;
 };
 
-export type uebernahmeControllerGetResponse200 = {
-  data: UebernahmeResponseDto
+export type takeoverControllerGetResponse200 = {
+  data: RolloverResponseDto
   status: 200
 }
 
-export type uebernahmeControllerGetResponse401 = {
+export type takeoverControllerGetResponse401 = {
   data: void
   status: 401
 }
 
-export type uebernahmeControllerGetResponseSuccess = (uebernahmeControllerGetResponse200) & {
+export type takeoverControllerGetResponseSuccess = (takeoverControllerGetResponse200) & {
   headers: Headers;
 };
-export type uebernahmeControllerGetResponseError = (uebernahmeControllerGetResponse401) & {
+export type takeoverControllerGetResponseError = (takeoverControllerGetResponse401) & {
   headers: Headers;
 };
 
-export type uebernahmeControllerGetResponse = (uebernahmeControllerGetResponseSuccess | uebernahmeControllerGetResponseError)
+export type takeoverControllerGetResponse = (takeoverControllerGetResponseSuccess | takeoverControllerGetResponseError)
 
-export const getUebernahmeControllerGetUrl = (jahr: number,) => {
+export const getTakeoverControllerGetUrl = (jahr: number,) => {
 
 
 
@@ -78,9 +78,9 @@ export const getUebernahmeControllerGetUrl = (jahr: number,) => {
   return `/v1/steuerjahre/${jahr}/uebernahme`
 }
 
-export const uebernahmeControllerGet = async (jahr: number, options?: RequestInit): Promise<uebernahmeControllerGetResponse> => {
+export const takeoverControllerGet = async (jahr: number, options?: RequestInit): Promise<takeoverControllerGetResponse> => {
 
-  return httpClient<uebernahmeControllerGetResponse>(getUebernahmeControllerGetUrl(jahr),
+  return httpClient<takeoverControllerGetResponse>(getTakeoverControllerGetUrl(jahr),
   {
     ...options,
     method: 'GET'
@@ -93,66 +93,66 @@ export const uebernahmeControllerGet = async (jahr: number, options?: RequestIni
 
 
 
-export const getUebernahmeControllerGetQueryKey = (jahr: number,) => {
+export const getTakeoverControllerGetQueryKey = (jahr: number,) => {
     return [
     `/v1/steuerjahre/${jahr}/uebernahme`
     ] as const;
     }
 
 
-export const getUebernahmeControllerGetQueryOptions = <TData = Awaited<ReturnType<typeof uebernahmeControllerGet>>, TError = void>(jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof uebernahmeControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export const getTakeoverControllerGetQueryOptions = <TData = Awaited<ReturnType<typeof takeoverControllerGet>>, TError = void>(jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof takeoverControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getUebernahmeControllerGetQueryKey(jahr);
+  const queryKey =  queryOptions?.queryKey ?? getTakeoverControllerGetQueryKey(jahr);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof uebernahmeControllerGet>>> = ({ signal }) => uebernahmeControllerGet(jahr, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof takeoverControllerGet>>> = ({ signal }) => takeoverControllerGet(jahr, { signal, ...requestOptions });
 
 
 
 
 
-   return  { queryKey, queryFn, enabled: jahr !== null && jahr !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof uebernahmeControllerGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+   return  { queryKey, queryFn, enabled: jahr !== null && jahr !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof takeoverControllerGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
-export type UebernahmeControllerGetQueryResult = NonNullable<Awaited<ReturnType<typeof uebernahmeControllerGet>>>
-export type UebernahmeControllerGetQueryError = void
+export type TakeoverControllerGetQueryResult = NonNullable<Awaited<ReturnType<typeof takeoverControllerGet>>>
+export type TakeoverControllerGetQueryError = void
 
 
-export function useUebernahmeControllerGet<TData = Awaited<ReturnType<typeof uebernahmeControllerGet>>, TError = void>(
- jahr: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof uebernahmeControllerGet>>, TError, TData>> & Pick<
+export function useTakeoverControllerGet<TData = Awaited<ReturnType<typeof takeoverControllerGet>>, TError = void>(
+ jahr: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof takeoverControllerGet>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof uebernahmeControllerGet>>,
+          Awaited<ReturnType<typeof takeoverControllerGet>>,
           TError,
-          Awaited<ReturnType<typeof uebernahmeControllerGet>>
+          Awaited<ReturnType<typeof takeoverControllerGet>>
         > , 'initialData'
       >, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useUebernahmeControllerGet<TData = Awaited<ReturnType<typeof uebernahmeControllerGet>>, TError = void>(
- jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof uebernahmeControllerGet>>, TError, TData>> & Pick<
+export function useTakeoverControllerGet<TData = Awaited<ReturnType<typeof takeoverControllerGet>>, TError = void>(
+ jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof takeoverControllerGet>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof uebernahmeControllerGet>>,
+          Awaited<ReturnType<typeof takeoverControllerGet>>,
           TError,
-          Awaited<ReturnType<typeof uebernahmeControllerGet>>
+          Awaited<ReturnType<typeof takeoverControllerGet>>
         > , 'initialData'
       >, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useUebernahmeControllerGet<TData = Awaited<ReturnType<typeof uebernahmeControllerGet>>, TError = void>(
- jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof uebernahmeControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export function useTakeoverControllerGet<TData = Awaited<ReturnType<typeof takeoverControllerGet>>, TError = void>(
+ jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof takeoverControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 
-export function useUebernahmeControllerGet<TData = Awaited<ReturnType<typeof uebernahmeControllerGet>>, TError = void>(
- jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof uebernahmeControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export function useTakeoverControllerGet<TData = Awaited<ReturnType<typeof takeoverControllerGet>>, TError = void>(
+ jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof takeoverControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getUebernahmeControllerGetQueryOptions(jahr,options)
+  const queryOptions = getTakeoverControllerGetQueryOptions(jahr,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
@@ -165,27 +165,27 @@ export function useUebernahmeControllerGet<TData = Awaited<ReturnType<typeof ueb
 
 
 
-export type uebernahmeControllerUebernehmeResponse200 = {
-  data: UebernahmeResponseDto
+export type takeoverControllerTakeOverResponse200 = {
+  data: RolloverResponseDto
   status: 200
 }
 
-export type uebernahmeControllerUebernehmeResponse401 = {
+export type takeoverControllerTakeOverResponse401 = {
   data: void
   status: 401
 }
 
-export type uebernahmeControllerUebernehmeResponseSuccess = (uebernahmeControllerUebernehmeResponse200) & {
+export type takeoverControllerTakeOverResponseSuccess = (takeoverControllerTakeOverResponse200) & {
   headers: Headers;
 };
-export type uebernahmeControllerUebernehmeResponseError = (uebernahmeControllerUebernehmeResponse401) & {
+export type takeoverControllerTakeOverResponseError = (takeoverControllerTakeOverResponse401) & {
   headers: Headers;
 };
 
-export type uebernahmeControllerUebernehmeResponse = (uebernahmeControllerUebernehmeResponseSuccess | uebernahmeControllerUebernehmeResponseError)
+export type takeoverControllerTakeOverResponse = (takeoverControllerTakeOverResponseSuccess | takeoverControllerTakeOverResponseError)
 
-export const getUebernahmeControllerUebernehmeUrl = (jahr: number,
-    params: UebernahmeControllerUebernehmeParams,) => {
+export const getTakeoverControllerTakeOverUrl = (jahr: number,
+    params: TakeoverControllerTakeOverParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -200,10 +200,10 @@ export const getUebernahmeControllerUebernehmeUrl = (jahr: number,
   return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/uebernahme?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/uebernahme`
 }
 
-export const uebernahmeControllerUebernehme = async (jahr: number,
-    params: UebernahmeControllerUebernehmeParams, options?: RequestInit): Promise<uebernahmeControllerUebernehmeResponse> => {
+export const takeoverControllerTakeOver = async (jahr: number,
+    params: TakeoverControllerTakeOverParams, options?: RequestInit): Promise<takeoverControllerTakeOverResponse> => {
 
-  return httpClient<uebernahmeControllerUebernehmeResponse>(getUebernahmeControllerUebernehmeUrl(jahr,params),
+  return httpClient<takeoverControllerTakeOverResponse>(getTakeoverControllerTakeOverUrl(jahr,params),
   {
     ...options,
     method: 'POST'
@@ -216,11 +216,11 @@ export const uebernahmeControllerUebernehme = async (jahr: number,
 
 
 
-export const getUebernahmeControllerUebernehmeMutationOptions = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uebernahmeControllerUebernehme>>, TError,{jahr: number;params: UebernahmeControllerUebernehmeParams}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof uebernahmeControllerUebernehme>>, TError,{jahr: number;params: UebernahmeControllerUebernehmeParams}, TContext> => {
+export const getTakeoverControllerTakeOverMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof takeoverControllerTakeOver>>, TError,{jahr: number;params: TakeoverControllerTakeOverParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof takeoverControllerTakeOver>>, TError,{jahr: number;params: TakeoverControllerTakeOverParams}, TContext> => {
 
-const mutationKey = ['uebernahmeControllerUebernehme'];
+const mutationKey = ['takeoverControllerTakeOver'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -230,10 +230,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof uebernahmeControllerUebernehme>>, {jahr: number;params: UebernahmeControllerUebernehmeParams}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof takeoverControllerTakeOver>>, {jahr: number;params: TakeoverControllerTakeOverParams}> = (props) => {
           const {jahr,params} = props ?? {};
 
-          return  uebernahmeControllerUebernehme(jahr,params,requestOptions)
+          return  takeoverControllerTakeOver(jahr,params,requestOptions)
         }
 
 
@@ -243,18 +243,18 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type UebernahmeControllerUebernehmeMutationResult = NonNullable<Awaited<ReturnType<typeof uebernahmeControllerUebernehme>>>
+    export type TakeoverControllerTakeOverMutationResult = NonNullable<Awaited<ReturnType<typeof takeoverControllerTakeOver>>>
 
-    export type UebernahmeControllerUebernehmeMutationError = void
+    export type TakeoverControllerTakeOverMutationError = void
 
-    export const useUebernahmeControllerUebernehme = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uebernahmeControllerUebernehme>>, TError,{jahr: number;params: UebernahmeControllerUebernehmeParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+    export const useTakeoverControllerTakeOver = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof takeoverControllerTakeOver>>, TError,{jahr: number;params: TakeoverControllerTakeOverParams}, TContext>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof uebernahmeControllerUebernehme>>,
+        Awaited<ReturnType<typeof takeoverControllerTakeOver>>,
         TError,
-        {jahr: number;params: UebernahmeControllerUebernehmeParams},
+        {jahr: number;params: TakeoverControllerTakeOverParams},
         TContext
       > => {
-      return useMutation(getUebernahmeControllerUebernehmeMutationOptions(options), queryClient);
+      return useMutation(getTakeoverControllerTakeOverMutationOptions(options), queryClient);
     }
 

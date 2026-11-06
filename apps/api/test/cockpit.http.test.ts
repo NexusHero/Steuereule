@@ -54,9 +54,9 @@ describe('GET /v1/steuerjahre/:jahr/cockpit', () => {
     const userId = userIdFromCookie(cookie)
     // Seed the real facts the Cockpit now folds (ticket 15): a tax-year projection, the
     // Angestellte declaration, and an LStB with two fields still open.
-    taxYearRepository.seed(userId, { steuerjahr: 2026, openItems: 3 })
+    taxYearRepository.seed(userId, { taxYear: 2026, openItems: 3 })
     interviewRepository.seed(userId, 2026, { job: 'Angestellt' })
-    lstbRepository.seed({ userId, steuerjahr: 2026, bruttoarbeitslohn: '50000', lohnsteuer: null, sozialversicherung: null })
+    lstbRepository.seed({ userId, taxYear: 2026, bruttoarbeitslohn: '50000', lohnsteuer: null, sozialversicherung: null })
 
     const response = await app.inject({
       method: 'GET',
@@ -68,14 +68,14 @@ describe('GET /v1/steuerjahre/:jahr/cockpit', () => {
     expect(response.json()).toEqual({
       taxYear: 2026,
       // 2 open LStB fields × 60 uncertainty around the settled 50000.
-      stand: { kind: 'spanne', von: 49880, bis: 50120, offenePosten: 2, konflikte: 0, unbestaetigte: 0, unbestaetigteSumme: 0 },
+      status: { kind: 'spanne', from: 49880, to: 50120, openItems: 2, conflicts: 0, unconfirmedItems: 0, unconfirmedSum: 0 },
       openItems: 3,
     })
   })
 
   it('REQ-001 scopes strictly to the caller’s userId via UserContextGuard, never a client-supplied id', async () => {
     const seededUserId = 'attacker-does-not-control-this'
-    taxYearRepository.seed(seededUserId, { steuerjahr: 2026, openItems: 3 })
+    taxYearRepository.seed(seededUserId, { taxYear: 2026, openItems: 3 })
 
     // A fresh request has no cookie — the guard mints a brand-new guest userId, which
     // can never equal `seededUserId`, so the seeded row must not be visible.
@@ -88,7 +88,7 @@ describe('GET /v1/steuerjahre/:jahr/cockpit', () => {
   it('REQ-001 scopes strictly to steuerjahr: a seeded 2026 row never answers for 2025', async () => {
     const first = await app.inject({ method: 'GET', url: '/v1/steuerjahre/2026/cockpit' })
     const cookie = extractSessionCookie(first.headers['set-cookie'])!
-    taxYearRepository.seed(userIdFromCookie(cookie), { steuerjahr: 2026, openItems: 3 })
+    taxYearRepository.seed(userIdFromCookie(cookie), { taxYear: 2026, openItems: 3 })
 
     const response = await app.inject({ method: 'GET', url: '/v1/steuerjahre/2025/cockpit', headers: { cookie } })
 

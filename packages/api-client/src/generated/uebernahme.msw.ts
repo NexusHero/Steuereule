@@ -18,39 +18,39 @@ import type {
 } from 'msw';
 
 import type {
-  UebernahmeResponseDto
+  RolloverResponseDto
 } from './uebernahme.schemas';
 
 
-export const getUebernahmeControllerGetResponseMock = (overrideResponse: Partial<Extract<UebernahmeResponseDto, object>> = {}): UebernahmeResponseDto => ({kennzeichnungen: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({postenKey: faker.string.alpha({length: {min: 10, max: 20}}), vorjahr: faker.number.float({fractionDigits: 2}), bestaetigt: faker.datatype.boolean()})), ...overrideResponse})
+export const getTakeoverControllerGetResponseMock = (overrideResponse: Partial<Extract<RolloverResponseDto, object>> = {}): RolloverResponseDto => ({markings: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({itemKey: faker.string.alpha({length: {min: 10, max: 20}}), lastYear: faker.number.float({fractionDigits: 2}), confirmed: faker.datatype.boolean()})), ...overrideResponse})
 
-export const getUebernahmeControllerUebernehmeResponseMock = (overrideResponse: Partial<Extract<UebernahmeResponseDto, object>> = {}): UebernahmeResponseDto => ({kennzeichnungen: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({postenKey: faker.string.alpha({length: {min: 10, max: 20}}), vorjahr: faker.number.float({fractionDigits: 2}), bestaetigt: faker.datatype.boolean()})), ...overrideResponse})
+export const getTakeoverControllerTakeOverResponseMock = (overrideResponse: Partial<Extract<RolloverResponseDto, object>> = {}): RolloverResponseDto => ({markings: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({itemKey: faker.string.alpha({length: {min: 10, max: 20}}), lastYear: faker.number.float({fractionDigits: 2}), confirmed: faker.datatype.boolean()})), ...overrideResponse})
 
 
-export const getUebernahmeControllerGetMockHandler = (overrideResponse?: UebernahmeResponseDto | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<UebernahmeResponseDto> | UebernahmeResponseDto), options?: RequestHandlerOptions) => {
+export const getTakeoverControllerGetMockHandler = (overrideResponse?: RolloverResponseDto | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<RolloverResponseDto> | RolloverResponseDto), options?: RequestHandlerOptions) => {
   return http.get('*/v1/steuerjahre/:jahr/uebernahme', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
 
 
     return HttpResponse.json(overrideResponse !== undefined
     ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
-    : getUebernahmeControllerGetResponseMock(),
+    : getTakeoverControllerGetResponseMock(),
       { status: 200
       })
   }, options)
 }
 
-export const getUebernahmeControllerUebernehmeMockHandler = (overrideResponse?: UebernahmeResponseDto | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<UebernahmeResponseDto> | UebernahmeResponseDto), options?: RequestHandlerOptions) => {
+export const getTakeoverControllerTakeOverMockHandler = (overrideResponse?: RolloverResponseDto | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<RolloverResponseDto> | RolloverResponseDto), options?: RequestHandlerOptions) => {
   return http.post('*/v1/steuerjahre/:jahr/uebernahme', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
 
 
     return HttpResponse.json(overrideResponse !== undefined
     ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
-    : getUebernahmeControllerUebernehmeResponseMock(),
+    : getTakeoverControllerTakeOverResponseMock(),
       { status: 200
       })
   }, options)
 }
 export const getSteuerEuleAPIMock = () => [
-  getUebernahmeControllerGetMockHandler(),
-  getUebernahmeControllerUebernehmeMockHandler()
+  getTakeoverControllerGetMockHandler(),
+  getTakeoverControllerTakeOverMockHandler()
 ]

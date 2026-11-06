@@ -1,35 +1,35 @@
 import type { ProfileResponseDto, PutProfileDto } from '@steuereule/api-client'
-import { formatSteuerId, formatStoredTaxNumber } from './format'
+import { formatTaxId, formatStoredTaxNumber } from './format'
 
-export interface OnboardingProfil {
-  readonly vorname: string
-  readonly nachname: string
+export interface OnboardingProfile {
+  readonly firstName: string
+  readonly lastName: string
   readonly steuerId: string
-  readonly steuerNr: string
+  readonly taxNumber: string
 }
 
-export const EMPTY_ONBOARDING_PROFIL: OnboardingProfil = {
-  vorname: '',
-  nachname: '',
+export const EMPTY_ONBOARDING_PROFILE: OnboardingProfile = {
+  firstName: '',
+  lastName: '',
   steuerId: '',
-  steuerNr: '',
+  taxNumber: '',
 }
 
-export function toOnboardingProfil(dto: ProfileResponseDto): OnboardingProfil {
+export function toOnboardingProfile(dto: ProfileResponseDto): OnboardingProfile {
   return {
-    vorname: dto.firstName ?? '',
-    nachname: dto.lastName ?? '',
-    steuerId: formatSteuerId(dto.steuerId ?? ''),
-    steuerNr: formatStoredTaxNumber(dto.steuernummer ?? ''),
+    firstName: dto.firstName ?? '',
+    lastName: dto.lastName ?? '',
+    steuerId: formatTaxId(dto.steuerId ?? ''),
+    taxNumber: formatStoredTaxNumber(dto.steuernummer ?? ''),
   }
 }
 
-export function toPutProfileDto(profil: OnboardingProfil): PutProfileDto {
-  const steuernummer = profil.steuerNr.replace(/\D/g, '')
-  const steuerId = profil.steuerId.replace(/\D/g, '')
+export function toPutProfileDto(profile: OnboardingProfile): PutProfileDto {
+  const steuernummer = profile.taxNumber.replace(/\D/g, '')
+  const steuerId = profile.steuerId.replace(/\D/g, '')
   return {
-    firstName: profil.vorname.trim(),
-    lastName: profil.nachname.trim(),
+    firstName: profile.firstName.trim(),
+    lastName: profile.lastName.trim(),
     ...(steuerId ? { steuerId } : {}),
     ...(steuernummer ? { steuernummer } : {}),
   }

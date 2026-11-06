@@ -17,12 +17,12 @@ interface GateScreenProps {
 
 export function GateScreen({ gateId, job, onAcknowledge, onBack, bp, notice }: GateScreenProps) {
   if (gateId === 'gewerbe') {
-    return <GewerbeGate job={job} onAcknowledge={onAcknowledge} onBack={onBack} bp={bp} notice={notice} />
+    return <BusinessGate job={job} onAcknowledge={onAcknowledge} onBack={onBack} bp={bp} notice={notice} />
   }
   return <ChOnlyGate onAcknowledge={onAcknowledge} onBack={onBack} bp={bp} notice={notice} />
 }
 
-function GewerbeGate({
+function BusinessGate({
   job,
   onAcknowledge,
   onBack,

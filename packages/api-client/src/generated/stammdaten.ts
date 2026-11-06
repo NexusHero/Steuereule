@@ -25,8 +25,8 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
-  PutStammdatenDto,
-  StammdatenResponseDto
+  MasterDataResponseDto,
+  PutMasterDataDto
 } from './stammdaten.schemas';
 
 import { httpClient } from '../http-client';
@@ -51,26 +51,26 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   return result;
 };
 
-export type stammdatenControllerLeseResponse200 = {
-  data: StammdatenResponseDto
+export type masterDataControllerReadResponse200 = {
+  data: MasterDataResponseDto
   status: 200
 }
 
-export type stammdatenControllerLeseResponse401 = {
+export type masterDataControllerReadResponse401 = {
   data: void
   status: 401
 }
 
-export type stammdatenControllerLeseResponseSuccess = (stammdatenControllerLeseResponse200) & {
+export type masterDataControllerReadResponseSuccess = (masterDataControllerReadResponse200) & {
   headers: Headers;
 };
-export type stammdatenControllerLeseResponseError = (stammdatenControllerLeseResponse401) & {
+export type masterDataControllerReadResponseError = (masterDataControllerReadResponse401) & {
   headers: Headers;
 };
 
-export type stammdatenControllerLeseResponse = (stammdatenControllerLeseResponseSuccess | stammdatenControllerLeseResponseError)
+export type masterDataControllerReadResponse = (masterDataControllerReadResponseSuccess | masterDataControllerReadResponseError)
 
-export const getStammdatenControllerLeseUrl = () => {
+export const getMasterDataControllerReadUrl = () => {
 
 
 
@@ -78,9 +78,9 @@ export const getStammdatenControllerLeseUrl = () => {
   return `/v1/stammdaten`
 }
 
-export const stammdatenControllerLese = async ( options?: RequestInit): Promise<stammdatenControllerLeseResponse> => {
+export const masterDataControllerRead = async ( options?: RequestInit): Promise<masterDataControllerReadResponse> => {
 
-  return httpClient<stammdatenControllerLeseResponse>(getStammdatenControllerLeseUrl(),
+  return httpClient<masterDataControllerReadResponse>(getMasterDataControllerReadUrl(),
   {
     ...options,
     method: 'GET'
@@ -93,66 +93,66 @@ export const stammdatenControllerLese = async ( options?: RequestInit): Promise<
 
 
 
-export const getStammdatenControllerLeseQueryKey = () => {
+export const getMasterDataControllerReadQueryKey = () => {
     return [
     `/v1/stammdaten`
     ] as const;
     }
 
 
-export const getStammdatenControllerLeseQueryOptions = <TData = Awaited<ReturnType<typeof stammdatenControllerLese>>, TError = void>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof stammdatenControllerLese>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export const getMasterDataControllerReadQueryOptions = <TData = Awaited<ReturnType<typeof masterDataControllerRead>>, TError = void>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof masterDataControllerRead>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getStammdatenControllerLeseQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getMasterDataControllerReadQueryKey();
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof stammdatenControllerLese>>> = ({ signal }) => stammdatenControllerLese({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof masterDataControllerRead>>> = ({ signal }) => masterDataControllerRead({ signal, ...requestOptions });
 
 
 
 
 
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof stammdatenControllerLese>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof masterDataControllerRead>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
-export type StammdatenControllerLeseQueryResult = NonNullable<Awaited<ReturnType<typeof stammdatenControllerLese>>>
-export type StammdatenControllerLeseQueryError = void
+export type MasterDataControllerReadQueryResult = NonNullable<Awaited<ReturnType<typeof masterDataControllerRead>>>
+export type MasterDataControllerReadQueryError = void
 
 
-export function useStammdatenControllerLese<TData = Awaited<ReturnType<typeof stammdatenControllerLese>>, TError = void>(
-  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof stammdatenControllerLese>>, TError, TData>> & Pick<
+export function useMasterDataControllerRead<TData = Awaited<ReturnType<typeof masterDataControllerRead>>, TError = void>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof masterDataControllerRead>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof stammdatenControllerLese>>,
+          Awaited<ReturnType<typeof masterDataControllerRead>>,
           TError,
-          Awaited<ReturnType<typeof stammdatenControllerLese>>
+          Awaited<ReturnType<typeof masterDataControllerRead>>
         > , 'initialData'
       >, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useStammdatenControllerLese<TData = Awaited<ReturnType<typeof stammdatenControllerLese>>, TError = void>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof stammdatenControllerLese>>, TError, TData>> & Pick<
+export function useMasterDataControllerRead<TData = Awaited<ReturnType<typeof masterDataControllerRead>>, TError = void>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof masterDataControllerRead>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof stammdatenControllerLese>>,
+          Awaited<ReturnType<typeof masterDataControllerRead>>,
           TError,
-          Awaited<ReturnType<typeof stammdatenControllerLese>>
+          Awaited<ReturnType<typeof masterDataControllerRead>>
         > , 'initialData'
       >, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useStammdatenControllerLese<TData = Awaited<ReturnType<typeof stammdatenControllerLese>>, TError = void>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof stammdatenControllerLese>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export function useMasterDataControllerRead<TData = Awaited<ReturnType<typeof masterDataControllerRead>>, TError = void>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof masterDataControllerRead>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 
-export function useStammdatenControllerLese<TData = Awaited<ReturnType<typeof stammdatenControllerLese>>, TError = void>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof stammdatenControllerLese>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export function useMasterDataControllerRead<TData = Awaited<ReturnType<typeof masterDataControllerRead>>, TError = void>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof masterDataControllerRead>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getStammdatenControllerLeseQueryOptions(options)
+  const queryOptions = getMasterDataControllerReadQueryOptions(options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
@@ -165,31 +165,31 @@ export function useStammdatenControllerLese<TData = Awaited<ReturnType<typeof st
 
 
 
-export type stammdatenControllerSpeichereResponse200 = {
-  data: StammdatenResponseDto
+export type masterDataControllerSaveResponse200 = {
+  data: MasterDataResponseDto
   status: 200
 }
 
-export type stammdatenControllerSpeichereResponse400 = {
+export type masterDataControllerSaveResponse400 = {
   data: void
   status: 400
 }
 
-export type stammdatenControllerSpeichereResponse401 = {
+export type masterDataControllerSaveResponse401 = {
   data: void
   status: 401
 }
 
-export type stammdatenControllerSpeichereResponseSuccess = (stammdatenControllerSpeichereResponse200) & {
+export type masterDataControllerSaveResponseSuccess = (masterDataControllerSaveResponse200) & {
   headers: Headers;
 };
-export type stammdatenControllerSpeichereResponseError = (stammdatenControllerSpeichereResponse400 | stammdatenControllerSpeichereResponse401) & {
+export type masterDataControllerSaveResponseError = (masterDataControllerSaveResponse400 | masterDataControllerSaveResponse401) & {
   headers: Headers;
 };
 
-export type stammdatenControllerSpeichereResponse = (stammdatenControllerSpeichereResponseSuccess | stammdatenControllerSpeichereResponseError)
+export type masterDataControllerSaveResponse = (masterDataControllerSaveResponseSuccess | masterDataControllerSaveResponseError)
 
-export const getStammdatenControllerSpeichereUrl = () => {
+export const getMasterDataControllerSaveUrl = () => {
 
 
 
@@ -197,14 +197,14 @@ export const getStammdatenControllerSpeichereUrl = () => {
   return `/v1/stammdaten`
 }
 
-export const stammdatenControllerSpeichere = async (putStammdatenDto: PutStammdatenDto, options?: RequestInit): Promise<stammdatenControllerSpeichereResponse> => {
+export const masterDataControllerSave = async (putMasterDataDto: PutMasterDataDto, options?: RequestInit): Promise<masterDataControllerSaveResponse> => {
 
-  return httpClient<stammdatenControllerSpeichereResponse>(getStammdatenControllerSpeichereUrl(),
+  return httpClient<masterDataControllerSaveResponse>(getMasterDataControllerSaveUrl(),
   {
     ...options,
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(putStammdatenDto)
+    body: JSON.stringify(putMasterDataDto)
   }
 );}
 
@@ -212,11 +212,11 @@ export const stammdatenControllerSpeichere = async (putStammdatenDto: PutStammda
 
 
 
-export const getStammdatenControllerSpeichereMutationOptions = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof stammdatenControllerSpeichere>>, TError,{data: PutStammdatenDto}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof stammdatenControllerSpeichere>>, TError,{data: PutStammdatenDto}, TContext> => {
+export const getMasterDataControllerSaveMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof masterDataControllerSave>>, TError,{data: PutMasterDataDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof masterDataControllerSave>>, TError,{data: PutMasterDataDto}, TContext> => {
 
-const mutationKey = ['stammdatenControllerSpeichere'];
+const mutationKey = ['masterDataControllerSave'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -226,10 +226,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof stammdatenControllerSpeichere>>, {data: PutStammdatenDto}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof masterDataControllerSave>>, {data: PutMasterDataDto}> = (props) => {
           const {data} = props ?? {};
 
-          return  stammdatenControllerSpeichere(data,requestOptions)
+          return  masterDataControllerSave(data,requestOptions)
         }
 
 
@@ -239,18 +239,18 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type StammdatenControllerSpeichereMutationResult = NonNullable<Awaited<ReturnType<typeof stammdatenControllerSpeichere>>>
-    export type StammdatenControllerSpeichereMutationBody = PutStammdatenDto
-    export type StammdatenControllerSpeichereMutationError = void
+    export type MasterDataControllerSaveMutationResult = NonNullable<Awaited<ReturnType<typeof masterDataControllerSave>>>
+    export type MasterDataControllerSaveMutationBody = PutMasterDataDto
+    export type MasterDataControllerSaveMutationError = void
 
-    export const useStammdatenControllerSpeichere = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof stammdatenControllerSpeichere>>, TError,{data: PutStammdatenDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+    export const useMasterDataControllerSave = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof masterDataControllerSave>>, TError,{data: PutMasterDataDto}, TContext>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof stammdatenControllerSpeichere>>,
+        Awaited<ReturnType<typeof masterDataControllerSave>>,
         TError,
-        {data: PutStammdatenDto},
+        {data: PutMasterDataDto},
         TContext
       > => {
-      return useMutation(getStammdatenControllerSpeichereMutationOptions(options), queryClient);
+      return useMutation(getMasterDataControllerSaveMutationOptions(options), queryClient);
     }
 

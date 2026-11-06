@@ -5,10 +5,10 @@
  * Onboarding profile endpoints (steuereule#29)
  * OpenAPI spec version: 1.0
  */
-export type ZuordnungDtoKind = typeof ZuordnungDtoKind[keyof typeof ZuordnungDtoKind];
+export type AssignmentDtoKind = typeof AssignmentDtoKind[keyof typeof AssignmentDtoKind];
 
 
-export const ZuordnungDtoKind = {
+export const AssignmentDtoKind = {
   ungebunden: 'ungebunden',
   vorgeschlagen: 'vorgeschlagen',
   zugeordnet: 'zugeordnet',
@@ -18,33 +18,33 @@ export const ZuordnungDtoKind = {
 /**
  * vorgeschlagen/konflikt: which date the rule used ("Regel: Zahlungsdatum" chip).
  */
-export type ZuordnungDtoHerkunft = typeof ZuordnungDtoHerkunft[keyof typeof ZuordnungDtoHerkunft];
+export type AssignmentDtoProvenance = typeof AssignmentDtoProvenance[keyof typeof AssignmentDtoProvenance];
 
 
-export const ZuordnungDtoHerkunft = {
+export const AssignmentDtoProvenance = {
   zahlungsdatum: 'zahlungsdatum',
   belegdatum: 'belegdatum',
 } as const;
 
-export interface ZuordnungDto {
-  kind: ZuordnungDtoKind;
+export interface AssignmentDto {
+  kind: AssignmentDtoKind;
   /** vorgeschlagen: the suggested year; zugeordnet/konflikt: the confirmed year. */
-  steuerjahr?: number;
+  taxYear?: number;
   /** konflikt only: the contradicting date-derived suggestion. */
-  vorschlagsJahr?: number;
+  proposalYear?: number;
   /** vorgeschlagen/konflikt: which date the rule used ("Regel: Zahlungsdatum" chip). */
-  herkunft?: ZuordnungDtoHerkunft;
+  provenance?: AssignmentDtoProvenance;
 }
 
-export interface BelegResponseDto {
+export interface ReceiptResponseDto {
   id: string;
   /** Original filename (decrypted for the owner). */
-  dateiname: string;
+  fileName: string;
   /**
      * Document type (ADR-029) — null is the generic receipt.
      * @nullable
      */
-  art: string | null;
+  kind: string | null;
   /**
      * Invoice date (ISO yyyy-mm-dd).
      * @nullable
@@ -56,16 +56,16 @@ export interface BelegResponseDto {
      */
   zahlungsdatum: string | null;
   /** @steuereule/core’s zuordnungAusDaten — never recomputed elsewhere. */
-  zuordnung: ZuordnungDto;
+  assignment: AssignmentDto;
 }
 
 /**
  * Document type (ADR-029). Omitted = null (not classified); pass 'Sonstiges' to classify a generic receipt explicitly.
  */
-export type CreateBelegDtoArt = typeof CreateBelegDtoArt[keyof typeof CreateBelegDtoArt];
+export type CreateReceiptDtoKind = typeof CreateReceiptDtoKind[keyof typeof CreateReceiptDtoKind];
 
 
-export const CreateBelegDtoArt = {
+export const CreateReceiptDtoKind = {
   Lohnausweis: 'Lohnausweis',
   Quellensteuer: 'Quellensteuer',
   Pensionskasse: 'Pensionskasse',
@@ -78,21 +78,21 @@ export const CreateBelegDtoArt = {
   Sonstiges: 'Sonstiges',
 } as const;
 
-export interface CreateBelegDto {
+export interface CreateReceiptDto {
   /** Original filename/storage key — field-encrypted at rest (ADR-0008). */
-  dateiname: string;
+  fileName: string;
   /** Document type (ADR-029). Omitted = null (not classified); pass 'Sonstiges' to classify a generic receipt explicitly. */
-  art?: CreateBelegDtoArt;
+  kind?: CreateReceiptDtoKind;
   /** Invoice date (Rechnungsdatum), ISO yyyy-mm-dd. Optional. */
   belegdatum?: string;
   /** Payment date (Zahlungsdatum), ISO yyyy-mm-dd — § 11 Zufluss fixes the year. Optional. */
   zahlungsdatum?: string;
 }
 
-export interface SetZuordnungDto {
+export interface SetAssignmentDto {
   /** The calendar year to confirm/assign. */
-  steuerjahr: number;
+  taxYear: number;
   /** ADR-008 "bei meinem Jahr bleiben": persist the dismissal of a contradicting date-derived suggestion, keeping `steuerjahr`. Omitted/false = a normal assignment. */
-  vorschlagVerworfen?: boolean;
+  proposalDismissed?: boolean;
 }
 

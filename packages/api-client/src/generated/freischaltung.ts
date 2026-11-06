@@ -21,7 +21,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
-  FreischaltungStatusDto
+  UnlockStatusDto
 } from './freischaltung.schemas';
 
 import { httpClient } from '../http-client';
@@ -46,26 +46,26 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   return result;
 };
 
-export type freischaltungControllerStatusResponse200 = {
-  data: FreischaltungStatusDto
+export type unlockControllerStatusResponse200 = {
+  data: UnlockStatusDto
   status: 200
 }
 
-export type freischaltungControllerStatusResponse401 = {
+export type unlockControllerStatusResponse401 = {
   data: void
   status: 401
 }
 
-export type freischaltungControllerStatusResponseSuccess = (freischaltungControllerStatusResponse200) & {
+export type unlockControllerStatusResponseSuccess = (unlockControllerStatusResponse200) & {
   headers: Headers;
 };
-export type freischaltungControllerStatusResponseError = (freischaltungControllerStatusResponse401) & {
+export type unlockControllerStatusResponseError = (unlockControllerStatusResponse401) & {
   headers: Headers;
 };
 
-export type freischaltungControllerStatusResponse = (freischaltungControllerStatusResponseSuccess | freischaltungControllerStatusResponseError)
+export type unlockControllerStatusResponse = (unlockControllerStatusResponseSuccess | unlockControllerStatusResponseError)
 
-export const getFreischaltungControllerStatusUrl = (jahr: number,) => {
+export const getUnlockControllerStatusUrl = (jahr: number,) => {
 
 
 
@@ -73,9 +73,9 @@ export const getFreischaltungControllerStatusUrl = (jahr: number,) => {
   return `/v1/steuerjahre/${jahr}/freischaltung`
 }
 
-export const freischaltungControllerStatus = async (jahr: number, options?: RequestInit): Promise<freischaltungControllerStatusResponse> => {
+export const unlockControllerStatus = async (jahr: number, options?: RequestInit): Promise<unlockControllerStatusResponse> => {
 
-  return httpClient<freischaltungControllerStatusResponse>(getFreischaltungControllerStatusUrl(jahr),
+  return httpClient<unlockControllerStatusResponse>(getUnlockControllerStatusUrl(jahr),
   {
     ...options,
     method: 'GET'
@@ -88,66 +88,66 @@ export const freischaltungControllerStatus = async (jahr: number, options?: Requ
 
 
 
-export const getFreischaltungControllerStatusQueryKey = (jahr: number,) => {
+export const getUnlockControllerStatusQueryKey = (jahr: number,) => {
     return [
     `/v1/steuerjahre/${jahr}/freischaltung`
     ] as const;
     }
 
 
-export const getFreischaltungControllerStatusQueryOptions = <TData = Awaited<ReturnType<typeof freischaltungControllerStatus>>, TError = void>(jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof freischaltungControllerStatus>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export const getUnlockControllerStatusQueryOptions = <TData = Awaited<ReturnType<typeof unlockControllerStatus>>, TError = void>(jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof unlockControllerStatus>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getFreischaltungControllerStatusQueryKey(jahr);
+  const queryKey =  queryOptions?.queryKey ?? getUnlockControllerStatusQueryKey(jahr);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof freischaltungControllerStatus>>> = ({ signal }) => freischaltungControllerStatus(jahr, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof unlockControllerStatus>>> = ({ signal }) => unlockControllerStatus(jahr, { signal, ...requestOptions });
 
 
 
 
 
-   return  { queryKey, queryFn, enabled: jahr !== null && jahr !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof freischaltungControllerStatus>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+   return  { queryKey, queryFn, enabled: jahr !== null && jahr !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof unlockControllerStatus>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
-export type FreischaltungControllerStatusQueryResult = NonNullable<Awaited<ReturnType<typeof freischaltungControllerStatus>>>
-export type FreischaltungControllerStatusQueryError = void
+export type UnlockControllerStatusQueryResult = NonNullable<Awaited<ReturnType<typeof unlockControllerStatus>>>
+export type UnlockControllerStatusQueryError = void
 
 
-export function useFreischaltungControllerStatus<TData = Awaited<ReturnType<typeof freischaltungControllerStatus>>, TError = void>(
- jahr: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof freischaltungControllerStatus>>, TError, TData>> & Pick<
+export function useUnlockControllerStatus<TData = Awaited<ReturnType<typeof unlockControllerStatus>>, TError = void>(
+ jahr: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof unlockControllerStatus>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof freischaltungControllerStatus>>,
+          Awaited<ReturnType<typeof unlockControllerStatus>>,
           TError,
-          Awaited<ReturnType<typeof freischaltungControllerStatus>>
+          Awaited<ReturnType<typeof unlockControllerStatus>>
         > , 'initialData'
       >, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useFreischaltungControllerStatus<TData = Awaited<ReturnType<typeof freischaltungControllerStatus>>, TError = void>(
- jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof freischaltungControllerStatus>>, TError, TData>> & Pick<
+export function useUnlockControllerStatus<TData = Awaited<ReturnType<typeof unlockControllerStatus>>, TError = void>(
+ jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof unlockControllerStatus>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof freischaltungControllerStatus>>,
+          Awaited<ReturnType<typeof unlockControllerStatus>>,
           TError,
-          Awaited<ReturnType<typeof freischaltungControllerStatus>>
+          Awaited<ReturnType<typeof unlockControllerStatus>>
         > , 'initialData'
       >, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useFreischaltungControllerStatus<TData = Awaited<ReturnType<typeof freischaltungControllerStatus>>, TError = void>(
- jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof freischaltungControllerStatus>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export function useUnlockControllerStatus<TData = Awaited<ReturnType<typeof unlockControllerStatus>>, TError = void>(
+ jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof unlockControllerStatus>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 
-export function useFreischaltungControllerStatus<TData = Awaited<ReturnType<typeof freischaltungControllerStatus>>, TError = void>(
- jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof freischaltungControllerStatus>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export function useUnlockControllerStatus<TData = Awaited<ReturnType<typeof unlockControllerStatus>>, TError = void>(
+ jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof unlockControllerStatus>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getFreischaltungControllerStatusQueryOptions(jahr,options)
+  const queryOptions = getUnlockControllerStatusQueryOptions(jahr,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
