@@ -4,7 +4,7 @@ export const appResources = {
   de: {
     [APP_NS]: {
       brand: { steuer: 'Steuer', eule: 'Eule' },
-      tabs: { cockpit: 'Cockpit', belege: 'Belege', profil: 'Profil' },
+      tabs: { cockpit: 'Cockpit', eule: 'Eule', belege: 'Belege', profil: 'Profil' },
       splash: {
         greeting: 'Steuern? Zack, erledigt.',
         skipLabel: 'Weiter zur App',
@@ -1036,6 +1036,11 @@ export const appResources = {
         checkVermietung: 'Vermietung prüfen',
         checkKinder: 'Kinder verwalten',
         eulenModus: 'Eulen-Modus',
+        berater: {
+          title: 'Deine Eule berät dich',
+          body: 'Sie prüft dein Steuerjahr auf Geld, das du liegen lässt, und sagt dir, was du dieses Jahr noch tun kannst.',
+          cta: 'Eule fragen',
+        },
         jahrAuswahl: 'Steuerjahr wählen',
         bestaetigung: {
           hinweis_one: '{{summe}} wartet noch auf deine Bestätigung.',
@@ -1299,7 +1304,7 @@ export const appResources = {
   en: {
     [APP_NS]: {
       brand: { steuer: 'Steuer', eule: 'Eule' },
-      tabs: { cockpit: 'Cockpit', belege: 'Receipts', profil: 'Profile' },
+      tabs: { cockpit: 'Cockpit', eule: 'Owl', belege: 'Receipts', profil: 'Profile' },
       splash: {
         greeting: 'Taxes? Sorted, just like that.',
         skipLabel: 'Continue to the app',
@@ -2331,6 +2336,11 @@ export const appResources = {
         checkVermietung: 'Review rental property',
         checkKinder: 'Manage children',
         eulenModus: 'Owl Mode',
+        berater: {
+          title: 'Your owl advises you',
+          body: 'It checks your tax year for money you are leaving on the table and tells you what you can still do this year.',
+          cta: 'Ask the owl',
+        },
         jahrAuswahl: 'Choose tax year',
         bestaetigung: {
           hinweis_one: '{{summe}} is still waiting for your confirmation.',

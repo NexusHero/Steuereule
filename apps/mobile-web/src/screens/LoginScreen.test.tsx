@@ -108,6 +108,13 @@ describe('LoginScreen', () => {
     expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('Schön, dass du da bist.')
   })
 
+  // The wordmark is the splash: "Steuer" + the ink owl in place of the word "Eule".
+  it('shows the ink owl mark in the wordmark instead of the word "Eule"', () => {
+    renderLogin()
+    const h1 = screen.getByRole('heading', { level: 1 })
+    expect(h1.querySelector('[data-testid="owl-mark-tinte"]')).not.toBeNull()
+  })
+
   // REQ-008 — Google social sign-in is now live. The button renders and triggers the
   // better-auth social sign-in flow. Apple sign-in is wired but flagged off (no Apple
   // Developer account / no iOS build yet) — see the two tests below.

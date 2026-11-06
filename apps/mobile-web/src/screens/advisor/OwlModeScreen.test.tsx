@@ -96,4 +96,13 @@ describe('EulenModusScreen', () => {
       expect(screen.queryByText('Du hast 50 Tage im Homeoffice gearbeitet.')).toBeNull()
     })
   })
+
+  it('signs every advisor surface with the owl (AiChip "Die Eule"), never the old B dot', () => {
+    renderScreen()
+    expect(screen.getByTestId('eule-sender-card')).toBeDefined()
+    expect(screen.getAllByTestId('owl-glyph').length).toBeGreaterThan(0)
+    fireEvent.click(screen.getByRole('tab', { name: 'Fragen an die Eule' }))
+    expect(screen.getByTestId('eule-sender-chat')).toBeDefined()
+    expect(screen.queryByText('B')).toBeNull()
+  })
 })
