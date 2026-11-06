@@ -1,9 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { LOHNAUSWEIS_BETRAG_FELDER, type LohnausweisBetragFeldId } from '@steuereule/core'
+import { SALARY_CERTIFICATE_AMOUNT_FIELDS, type SalaryCertificateAmountFieldId } from '@steuereule/core'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
-import type { ChLohnausweisFelder, CrossBorderSalaryStatementRecord, CrossBorderSalaryStatementRepository, NGreAngaben } from './ch-lohnausweis.repository.js'
+import type { ChSalaryCertificateFields, CrossBorderSalaryStatementRecord, CrossBorderSalaryStatementRepository, NGreDetails } from './ch-lohnausweis.repository.js'
 
-const FELD_SPALTE: Record<LohnausweisBetragFeldId, string> = {
+const FIELD_COLUMN: Record<SalaryCertificateAmountFieldId, string> = {
   lohn: 'lohn',
   gehaltsnebenleistungen: 'gehaltsnebenleistungen',
   'unregelmaessige-leistungen': 'unregelmaessigeLeistungen',
@@ -20,7 +20,7 @@ const FELD_SPALTE: Record<LohnausweisBetragFeldId, string> = {
   'weitere-nebenleistungen': 'weitereNebenleistungen',
 }
 
-type ChLohnausweisRow = {
+type ChSalaryCertificateRow = {
   userId: string
   steuerjahr: number
   lohn: string | null
@@ -44,15 +44,15 @@ type ChLohnausweisRow = {
   wechselkursKurs: number | null
   wechselkursModus: string | null
   wechselkursBelegId: string | null
-} & NGreAngaben
+} & NGreDetails
 
-function toRecord(row: ChLohnausweisRow): CrossBorderSalaryStatementRecord {
-  const felder = {} as ChLohnausweisFelder
-  for (const feld of LOHNAUSWEIS_BETRAG_FELDER) felder[feld] = row[FELD_SPALTE[feld] as keyof ChLohnausweisRow] as string | null
+function toRecord(row: ChSalaryCertificateRow): CrossBorderSalaryStatementRecord {
+  const fields = {} as ChSalaryCertificateFields
+  for (const field of SALARY_CERTIFICATE_AMOUNT_FIELDS) fields[field] = row[FIELD_COLUMN[field] as keyof ChSalaryCertificateRow] as string | null
   return {
     userId: row.userId,
     steuerjahr: row.steuerjahr,
-    felder,
+    fields,
     bemerkungen: row.bemerkungen,
     saeule3aChf: row.saeule3aChf,
     krankenkasseChf: row.krankenkasseChf,
@@ -77,12 +77,12 @@ function toRecord(row: ChLohnausweisRow): CrossBorderSalaryStatementRecord {
   }
 }
 
-function feldData(feld: LohnausweisBetragFeldId, wert: string | null): Record<string, string | null> {
-  return { [FELD_SPALTE[feld]]: wert }
+function fieldData(field: SalaryCertificateAmountFieldId, value: string | null): Record<string, string | null> {
+  return { [FIELD_COLUMN[field]]: value }
 }
 
 const EMPTY_CREATE: Record<string, null> = Object.fromEntries([
-  ...LOHNAUSWEIS_BETRAG_FELDER.map((f) => [FELD_SPALTE[f], null]),
+  ...SALARY_CERTIFICATE_AMOUNT_FIELDS.map((f) => [FIELD_COLUMN[f], null]),
   ['bemerkungen', null],
   ['saeule3aChf', null],
   ['krankenkasseChf', null],
@@ -105,27 +105,27 @@ const EMPTY_CREATE: Record<string, null> = Object.fromEntries([
 ])
 
 @Injectable()
-export class PrismaChLohnausweisRepository implements CrossBorderSalaryStatementRepository {
+export class PrismaChSalaryCertificateRepository implements CrossBorderSalaryStatementRepository {
   constructor(@Inject(ENCRYPTED_PRISMA) private readonly prisma: EncryptedPrismaClient) {}
 
   async findForUserAndYear(userId: string, steuerjahr: number): Promise<CrossBorderSalaryStatementRecord | null> {
     const row = await this.prisma.chLohnausweis.findUnique({ where: { userId_steuerjahr: { userId, steuerjahr } } })
-    return row === null ? null : toRecord(row as ChLohnausweisRow)
+    return row === null ? null : toRecord(row as ChSalaryCertificateRow)
   }
 
-  async setFeld(userId: string, steuerjahr: number, feld: LohnausweisBetragFeldId, wert: string | null): Promise<CrossBorderSalaryStatementRecord> {
+  async setField(userId: string, steuerjahr: number, field: SalaryCertificateAmountFieldId, value: string | null): Promise<CrossBorderSalaryStatementRecord> {
     const [row] = await this.prisma.$transaction([
       this.prisma.chLohnausweis.upsert({
         where: { userId_steuerjahr: { userId, steuerjahr } },
-        create: { userId, steuerjahr, ...EMPTY_CREATE, ...feldData(feld, wert) },
-        update: feldData(feld, wert),
+        create: { userId, steuerjahr, ...EMPTY_CREATE, ...fieldData(field, value) },
+        update: fieldData(field, value),
       }),
       this.prisma.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: 'ch-lohnausweis' } }),
     ])
-    return toRecord(row as ChLohnausweisRow)
+    return toRecord(row as ChSalaryCertificateRow)
   }
 
-  async setBemerkungen(userId: string, steuerjahr: number, text: string | null): Promise<CrossBorderSalaryStatementRecord> {
+  async setRemarks(userId: string, steuerjahr: number, text: string | null): Promise<CrossBorderSalaryStatementRecord> {
     const [row] = await this.prisma.$transaction([
       this.prisma.chLohnausweis.upsert({
         where: { userId_steuerjahr: { userId, steuerjahr } },
@@ -134,10 +134,10 @@ export class PrismaChLohnausweisRepository implements CrossBorderSalaryStatement
       }),
       this.prisma.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: 'ch-lohnausweis' } }),
     ])
-    return toRecord(row as ChLohnausweisRow)
+    return toRecord(row as ChSalaryCertificateRow)
   }
 
-  async setVorsorge(userId: string, steuerjahr: number, saeule3aChf: string | null, krankenkasseChf: string | null): Promise<CrossBorderSalaryStatementRecord> {
+  async setProvision(userId: string, steuerjahr: number, saeule3aChf: string | null, krankenkasseChf: string | null): Promise<CrossBorderSalaryStatementRecord> {
     const [row] = await this.prisma.$transaction([
       this.prisma.chLohnausweis.upsert({
         where: { userId_steuerjahr: { userId, steuerjahr } },
@@ -146,25 +146,25 @@ export class PrismaChLohnausweisRepository implements CrossBorderSalaryStatement
       }),
       this.prisma.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: 'ch-lohnausweis' } }),
     ])
-    return toRecord(row as ChLohnausweisRow)
+    return toRecord(row as ChSalaryCertificateRow)
   }
 
-  async setNGre(userId: string, steuerjahr: number, angaben: Partial<NGreAngaben>): Promise<CrossBorderSalaryStatementRecord> {
+  async setNGre(userId: string, steuerjahr: number, details: Partial<NGreDetails>): Promise<CrossBorderSalaryStatementRecord> {
     const [row] = await this.prisma.$transaction([
       this.prisma.chLohnausweis.upsert({
         where: { userId_steuerjahr: { userId, steuerjahr } },
-        create: { userId, steuerjahr, ...EMPTY_CREATE, ...angaben },
-        update: angaben,
+        create: { userId, steuerjahr, ...EMPTY_CREATE, ...details },
+        update: details,
       }),
       this.prisma.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: 'ch-lohnausweis' } }),
     ])
-    return toRecord(row as ChLohnausweisRow)
+    return toRecord(row as ChSalaryCertificateRow)
   }
 
-  async setWechselkurs(
+  async setExchangeRate(
     userId: string,
     steuerjahr: number,
-    wechselkurs: { monat: string; kurs: number; modus: string; belegId?: string },
+    exchangeRate: { month: string; rate: number; mode: string; receiptId?: string },
   ): Promise<CrossBorderSalaryStatementRecord> {
     const [row] = await this.prisma.$transaction([
       this.prisma.chLohnausweis.upsert({
@@ -173,20 +173,20 @@ export class PrismaChLohnausweisRepository implements CrossBorderSalaryStatement
           userId,
           steuerjahr,
           ...EMPTY_CREATE,
-          wechselkursMonat: wechselkurs.monat,
-          wechselkursKurs: wechselkurs.kurs,
-          wechselkursModus: wechselkurs.modus,
-          wechselkursBelegId: wechselkurs.belegId ?? null,
+          wechselkursMonat: exchangeRate.month,
+          wechselkursKurs: exchangeRate.rate,
+          wechselkursModus: exchangeRate.mode,
+          wechselkursBelegId: exchangeRate.receiptId ?? null,
         },
         update: {
-          wechselkursMonat: wechselkurs.monat,
-          wechselkursKurs: wechselkurs.kurs,
-          wechselkursModus: wechselkurs.modus,
-          wechselkursBelegId: wechselkurs.belegId ?? null,
+          wechselkursMonat: exchangeRate.month,
+          wechselkursKurs: exchangeRate.rate,
+          wechselkursModus: exchangeRate.mode,
+          wechselkursBelegId: exchangeRate.receiptId ?? null,
         },
       }),
       this.prisma.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: 'ch-lohnausweis' } }),
     ])
-    return toRecord(row as ChLohnausweisRow)
+    return toRecord(row as ChSalaryCertificateRow)
   }
 }

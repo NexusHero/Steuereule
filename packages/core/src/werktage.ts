@@ -54,19 +54,19 @@ export function weekdaysInYear(year: number, workdays: readonly IsoWeekday[]): n
   return count
 }
 
-export type WerktageWiderspruch =
-  | { readonly art: 'urlaub-krank-uebersteigt-wochentage'; readonly wochentage: number; readonly urlaubstage: number; readonly krankheitstage: number }
-  | { readonly art: 'homeoffice-uebersteigt-werktage'; readonly werktage: number; readonly homeofficeTage: number }
-export type WerktageErgebnis =
+export type WorkdaysConflict =
+  | { readonly art: 'urlaub-krank-uebersteigt-wochentage'; readonly weekdays: number; readonly urlaubstage: number; readonly krankheitstage: number }
+  | { readonly art: 'homeoffice-uebersteigt-werktage'; readonly workdays: number; readonly homeofficeTage: number }
+export type WorkdaysResult =
   | {
       readonly kind: 'bestimmt'
-      readonly wochentage: number
-      readonly werktage: number
-      readonly pendlertage: number
+      readonly weekdays: number
+      readonly workdays: number
+      readonly commuteDays: number
     }
-  | { readonly kind: 'widerspruch'; readonly widerspruch: WerktageWiderspruch }
+  | { readonly kind: 'widerspruch'; readonly conflict: WorkdaysConflict }
 
-export function calculateWorkdays(input: WorkdaysInput): WerktageErgebnis & {
+export function calculateWorkdays(input: WorkdaysInput): WorkdaysResult & {
   readonly weekdays?: number
   readonly workdays?: number
   readonly commuteDays?: number
@@ -80,9 +80,9 @@ export function calculateWorkdays(input: WorkdaysInput): WerktageErgebnis & {
   if (workdays < 0) {
     return {
       kind: 'widerspruch',
-      widerspruch: {
+      conflict: {
         art: 'urlaub-krank-uebersteigt-wochentage',
-        wochentage: weekdays,
+        weekdays,
         urlaubstage: vacation,
         krankheitstage: sick,
       },
@@ -92,14 +92,14 @@ export function calculateWorkdays(input: WorkdaysInput): WerktageErgebnis & {
   if (commuteDays < 0) {
     return {
       kind: 'widerspruch',
-      widerspruch: { art: 'homeoffice-uebersteigt-werktage', werktage: workdays, homeofficeTage: homeOffice },
+      conflict: { art: 'homeoffice-uebersteigt-werktage', workdays, homeofficeTage: homeOffice },
     }
   }
   return {
     kind: 'bestimmt',
-    wochentage: weekdays,
-    werktage: workdays,
-    pendlertage: commuteDays,
+    weekdays,
+    workdays,
+    commuteDays,
   }
 }
 

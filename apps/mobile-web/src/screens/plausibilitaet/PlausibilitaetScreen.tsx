@@ -5,7 +5,7 @@ import {
   employeeFromData,
   calculateEmployeeStatus,
   wageTaxCertificateStatus,
-  pruefePlausibilitaet,
+  checkPlausibility,
   type Answers,
   type WageTaxCertificateData,
   type WageTaxCertificateFieldState,
@@ -13,7 +13,7 @@ import {
 import {
   useInterviewControllerGetInterview,
   useLstbControllerGetLstb,
-  useStammdatenControllerLese,
+  useMasterDataControllerRead,
   type LstbResponseDto,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
@@ -21,22 +21,22 @@ import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 
-export interface PlausibilitaetScreenProps {
+export interface PlausibilityScreenProps {
   readonly onBack?: () => void
   readonly onDone?: () => void
   readonly taxYear?: number
 }
 
-export function PlausibilitaetScreen({ onBack, onDone, taxYear = CURRENT_TAX_YEAR }: PlausibilitaetScreenProps) {
+export function PlausibilityScreen({ onBack, onDone, taxYear = CURRENT_TAX_YEAR }: PlausibilityScreenProps) {
   const bp = useBreakpoint()
   const t = useTheme()
   const styles = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
   const lstbQuery = useLstbControllerGetLstb(taxYear)
   const interviewQuery = useInterviewControllerGetInterview(taxYear)
-  const stammdatenQuery = useStammdatenControllerLese()
+  const masterDataQuery = useMasterDataControllerRead()
 
-  if (lstbQuery.isPending || interviewQuery.isPending || stammdatenQuery.isPending) {
+  if (lstbQuery.isPending || interviewQuery.isPending || masterDataQuery.isPending) {
     return <LoadingState bp={bp} label={tr('plausibilitaet.loading')} />
   }
   if (lstbQuery.isError || lstbQuery.data.status !== 200 || interviewQuery.isError || interviewQuery.data.status !== 200) {
@@ -54,14 +54,14 @@ export function PlausibilitaetScreen({ onBack, onDone, taxYear = CURRENT_TAX_YEA
     )
   }
 
-  const daten = datenAusResponse(lstbQuery.data.data)
+  const data = dataFromResponse(lstbQuery.data.data)
   const answers = interviewQuery.data.data.answers as Answers
-  const ergebnis = pruefePlausibilitaet(fold(daten, answers))
+  const result = checkPlausibility(fold(data, answers))
   // The Stammdaten are not part of the core check, but the printout cannot go out without them —
   // "nichts mehr offen" must not be claimed while they (or their state) are missing.
   const missingPersonalDetails =
-    stammdatenQuery.data?.status === 200 ? stammdatenQuery.data.data.fehlend.length : null
-  const allClear = ergebnis.kind === 'einreichbar' && missingPersonalDetails === 0
+    masterDataQuery.data?.status === 200 ? masterDataQuery.data.data.missing.length : null
+  const allClear = result.kind === 'einreichbar' && missingPersonalDetails === 0
 
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
@@ -83,10 +83,10 @@ export function PlausibilitaetScreen({ onBack, onDone, taxYear = CURRENT_TAX_YEA
       ) : null}
       {missingPersonalDetails === null ? <Text style={styles.nichtEinreichbar}>{tr('plausibilitaet.stammdatenUnbekannt')}</Text> : null}
 
-      {ergebnis.kind === 'nicht-einreichbar' && ergebnis.widersprueche.length > 0 ? (
+      {result.kind === 'nicht-einreichbar' && result.conflicts.length > 0 ? (
         <View style={styles.block}>
           <Text style={styles.blockHeading}>{tr('plausibilitaet.widersprueche')}</Text>
-          {ergebnis.widersprueche.map((w, i) => (
+          {result.conflicts.map((w, i) => (
             <Text key={i} style={styles.widerspruchItem}>
               {tr(`plausibilitaet.widerspruch.${w.art}`, { defaultValue: w.art })}
             </Text>
@@ -94,10 +94,10 @@ export function PlausibilitaetScreen({ onBack, onDone, taxYear = CURRENT_TAX_YEA
         </View>
       ) : null}
 
-      {ergebnis.hinweise.length > 0 ? (
+      {result.notices.length > 0 ? (
         <View style={styles.block}>
           <Text style={styles.blockHeading}>{tr('plausibilitaet.hinweise')}</Text>
-          {ergebnis.hinweise.map((h, i) => (
+          {result.notices.map((h, i) => (
             <Text key={i} style={styles.hinweisItem}>
               {tr(`plausibilitaet.hinweis.${h.art}`, { defaultValue: h.art })}
             </Text>
@@ -114,7 +114,7 @@ export function PlausibilitaetScreen({ onBack, onDone, taxYear = CURRENT_TAX_YEA
   )
 }
 
-function datenAusResponse(r: LstbResponseDto): WageTaxCertificateData {
+function dataFromResponse(r: LstbResponseDto): WageTaxCertificateData {
   return {
     bruttoarbeitslohn: r.bruttoarbeitslohn as WageTaxCertificateFieldState,
     lohnsteuer: r.lohnsteuer as WageTaxCertificateFieldState,
@@ -122,21 +122,21 @@ function datenAusResponse(r: LstbResponseDto): WageTaxCertificateData {
   }
 }
 
-function fold(daten: WageTaxCertificateData, answers: Answers) {
-  const fakten = employeeFromData(daten, answers)
+function fold(data: WageTaxCertificateData, answers: Answers) {
+  const facts = employeeFromData(data, answers)
 
   return {
-    lstb: wageTaxCertificateStatus(daten),
-    werktage: { kind: 'bestimmt' as const, wochentage: 0, werktage: 0, pendlertage: 0 },
-    stand: calculateEmployeeStatus({
-      income: fakten.einnahmen,
-      incomeRelatedExpenses: fakten.werbungskosten,
-      specialExpenses: fakten.sonderausgaben,
-      openItems: fakten.offenePosten,
-      conflicts: fakten.konflikte,
-      gated: fakten.gegated,
+    lstb: wageTaxCertificateStatus(data),
+    workdays: { kind: 'bestimmt' as const, weekdays: 0, workdays: 0, commuteDays: 0 },
+    status: calculateEmployeeStatus({
+      income: facts.einnahmen,
+      incomeRelatedExpenses: facts.werbungskosten,
+      specialExpenses: facts.specialExpenses,
+      openItems: facts.openItems,
+      conflicts: facts.conflicts,
+      gated: facts.gated,
     }),
-    erfasstNichtGerechnet: fakten.erfasstNichtGerechnet,
+    recordedNotCalculated: facts.recordedNotCalculated,
   }
 }
 
@@ -159,13 +159,13 @@ function makeStyles(t: UiTheme) {
     color: t.color.tinte,
     marginBottom: t.space.s3,
   }
-  const werktageNote: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.s, marginBottom: t.space.s3 }
-  const einreichbar: TextStyle = { color: t.color.ok, fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size.l, marginBottom: t.space.s4 }
-  const nichtEinreichbar: TextStyle = { color: t.color.warn, fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size.l, marginBottom: t.space.s4 }
+  const workdaysNote: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.s, marginBottom: t.space.s3 }
+  const submittable: TextStyle = { color: t.color.ok, fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size.l, marginBottom: t.space.s4 }
+  const notSubmittable: TextStyle = { color: t.color.warn, fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size.l, marginBottom: t.space.s4 }
   const block: ViewStyle = { marginBottom: t.space.s4, padding: t.space.s3, backgroundColor: t.color.karte, borderWidth: t.space.kontur, borderColor: t.color.linieWeich, borderRadius: t.radius.s }
   const blockHeading: TextStyle = { color: t.color.tinte, fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size.m, marginBottom: t.space.s2 }
-  const widerspruchItem: TextStyle = { color: t.color.fehler, fontFamily: t.font.text, fontSize: t.size.s, marginBottom: t.space.s1 }
-  const hinweisItem: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.s, marginBottom: t.space.s1 }
+  const conflictItem: TextStyle = { color: t.color.fehler, fontFamily: t.font.text, fontSize: t.size.s, marginBottom: t.space.s1 }
+  const noticeItem: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.s, marginBottom: t.space.s1 }
   const doneCta: ViewStyle = { marginTop: t.space.s4 }
-  return { screen, wideScreen, headerRow, heading, werktageNote, einreichbar, nichtEinreichbar, block, blockHeading, widerspruchItem, hinweisItem, doneCta }
+  return { screen, wideScreen, headerRow, heading, werktageNote: workdaysNote, einreichbar: submittable, nichtEinreichbar: notSubmittable, block, blockHeading, widerspruchItem: conflictItem, hinweisItem: noticeItem, doneCta }
 }

@@ -5,70 +5,70 @@
  * Onboarding profile endpoints (steuereule#29)
  * OpenAPI spec version: 1.0
  */
-export interface EulenEinstellungResponseDto {
+export interface OwlSettingResponseDto {
   aktiviert: boolean;
   /** @nullable */
   aktiviertAm?: string | null;
 }
 
-export interface SetEulenEinstellungDto {
+export interface SetOwlSettingDto {
   aktiviert: boolean;
 }
 
-export type EulenKarteDtoTrigger = typeof EulenKarteDtoTrigger[keyof typeof EulenKarteDtoTrigger];
+export type OwlCardDtoTrigger = typeof OwlCardDtoTrigger[keyof typeof OwlCardDtoTrigger];
 
 
-export const EulenKarteDtoTrigger = {
+export const OwlCardDtoTrigger = {
   musterluecke: 'musterluecke',
   vorjahresvergleich: 'vorjahresvergleich',
   rechtsaenderung: 'rechtsaenderung',
   lebenslage_hinweis: 'lebenslage_hinweis',
 } as const;
 
-export type EulenKarteDtoKategorie = typeof EulenKarteDtoKategorie[keyof typeof EulenKarteDtoKategorie];
+export type OwlCardDtoCategory = typeof OwlCardDtoCategory[keyof typeof OwlCardDtoCategory];
 
 
-export const EulenKarteDtoKategorie = {
+export const OwlCardDtoCategory = {
   cockpit_proaktiv: 'cockpit_proaktiv',
   abruf_frage: 'abruf_frage',
   archiv_einspruch: 'archiv_einspruch',
 } as const;
 
-export type EulenWegDtoRisiko = typeof EulenWegDtoRisiko[keyof typeof EulenWegDtoRisiko];
+export type OwlPathDtoRisk = typeof OwlPathDtoRisk[keyof typeof OwlPathDtoRisk];
 
 
-export const EulenWegDtoRisiko = {
+export const OwlPathDtoRisk = {
   sicher: 'sicher',
   risiko: 'risiko',
 } as const;
 
-export interface EulenWegDto {
+export interface OwlPathDto {
   name: string;
-  betragEur: number;
-  beschreibung: string;
-  risiko: EulenWegDtoRisiko;
+  amountEur: number;
+  description: string;
+  risk: OwlPathDtoRisk;
 }
 
-export interface EulenKarteDto {
+export interface OwlCardDto {
   id: string;
   fingerprint: string;
-  trigger: EulenKarteDtoTrigger;
-  kategorie: EulenKarteDtoKategorie;
-  titel: string;
-  botschaft: string;
-  begruendung: string;
+  trigger: OwlCardDtoTrigger;
+  category: OwlCardDtoCategory;
+  title: string;
+  message: string;
+  reason: string;
   /** @nullable */
-  betragEur?: number | null;
-  rechtsstandDatum: string;
-  quelleUebersetzt: string;
-  quelleUrl?: string;
-  wege?: EulenWegDto[];
-  einspruchFristBis?: string;
+  amountEur?: number | null;
+  legalStatusDate: string;
+  sourceTranslated: string;
+  sourceUrl?: string;
+  paths?: OwlPathDto[];
+  appealDeadline?: string;
 }
 
-export interface EulenKartenResponseDto {
+export interface OwlCardsResponseDto {
   aktiviert: boolean;
-  karten: EulenKarteDto[];
-  rechtsstand: string;
+  cards: OwlCardDto[];
+  legalStatus: string;
 }
 

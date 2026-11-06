@@ -7,13 +7,13 @@ const OMITTED_FIELDS = new Set(['id', 'userId', 'personAUserId', 'personBUserId'
 
 type Row = Record<string, unknown> & { steuerjahr?: number | null }
 
-export function toExportEntry(bereich: string, row: Row): ExportTaxDataEntry {
-  const felder: Record<string, ExportTaxDataValue> = {}
+export function toExportEntry(area: string, row: Row): ExportTaxDataEntry {
+  const fields: Record<string, ExportTaxDataValue> = {}
   for (const [key, value] of Object.entries(row)) {
     if (OMITTED_FIELDS.has(key)) continue
-    felder[key] = value instanceof Date ? value.toISOString() : (value as ExportTaxDataValue)
+    fields[key] = value instanceof Date ? value.toISOString() : (value as ExportTaxDataValue)
   }
-  return { bereich, steuerjahr: row.steuerjahr ?? null, felder }
+  return { area, steuerjahr: row.steuerjahr ?? null, fields }
 }
 
 @Injectable()
@@ -22,7 +22,7 @@ export class PrismaTaxDataExportRepository implements TaxDataExportRepository {
 
   async findAllForUser(userId: string): Promise<ExportTaxDataEntry[]> {
     const where = { userId }
-    const [steuerjahre, antworten, belege, lstb, ch, rente, kapital, arbeitsweg, vermietung, bescheide, kennzeichnungen, jahresuebernahmen, stammdaten, kinder, kopplungen, eulenEinstellung, eulenVerwuerfe] =
+    const [taxYears, answers, receipts, lstb, ch, pension, capital, commute, rental, assessments, markings, yearTakeovers, masterData, kinder, links, owlSetting, owlDismissals] =
       await Promise.all([
         this.prisma.taxYear.findMany({ where }),
         this.prisma.interviewAnswer.findMany({ where }),
@@ -46,28 +46,28 @@ export class PrismaTaxDataExportRepository implements TaxDataExportRepository {
       ])
 
     const entries = [
-      ...steuerjahre.map((row) => toExportEntry('Steuerjahr', row)),
-      ...antworten.map((row) => toExportEntry('Interview-Antwort', row)),
-      ...belege.map((row) => toExportEntry('Beleg', row)),
+      ...taxYears.map((row) => toExportEntry('Steuerjahr', row)),
+      ...answers.map((row) => toExportEntry('Interview-Antwort', row)),
+      ...receipts.map((row) => toExportEntry('Beleg', row)),
       ...lstb.map((row) => toExportEntry('Lohnsteuerbescheinigung', row)),
       ...ch.map((row) => toExportEntry('Lohnausweis (CH)', row)),
-      ...rente.map((row) => toExportEntry('Rente', row)),
-      ...kapital.map((row) => toExportEntry('Kapitalerträge', row)),
-      ...arbeitsweg.map((row) => toExportEntry('Arbeitsweg', row)),
-      ...vermietung.map((row) => toExportEntry('Vermietungsobjekt', row)),
-      ...bescheide.map((row) => toExportEntry('Steuerbescheid', row)),
-      ...kennzeichnungen.map((row) => toExportEntry('Herkunft und Bestätigung', row)),
-      ...jahresuebernahmen.map((row) => toExportEntry('Jahresübernahme', row)),
-      ...stammdaten.map((row) => toExportEntry('Erklärungs-Stammdaten', row)),
+      ...pension.map((row) => toExportEntry('Rente', row)),
+      ...capital.map((row) => toExportEntry('Kapitalerträge', row)),
+      ...commute.map((row) => toExportEntry('Arbeitsweg', row)),
+      ...rental.map((row) => toExportEntry('Vermietungsobjekt', row)),
+      ...assessments.map((row) => toExportEntry('Steuerbescheid', row)),
+      ...markings.map((row) => toExportEntry('Herkunft und Bestätigung', row)),
+      ...yearTakeovers.map((row) => toExportEntry('Jahresübernahme', row)),
+      ...masterData.map((row) => toExportEntry('Erklärungs-Stammdaten', row)),
       ...kinder.map((row) => toExportEntry('Kind', row)),
-      ...kopplungen.map((row) => toExportEntry('Steuerjahr-Kopplung', row)),
-      ...eulenEinstellung.map((row) => toExportEntry('Eulen-Modus-Einstellung', row)),
-      ...eulenVerwuerfe.map((row) => toExportEntry('Eulen-Modus-Kartenverwurf', row)),
+      ...links.map((row) => toExportEntry('Steuerjahr-Kopplung', row)),
+      ...owlSetting.map((row) => toExportEntry('Eulen-Modus-Einstellung', row)),
+      ...owlDismissals.map((row) => toExportEntry('Eulen-Modus-Kartenverwurf', row)),
     ]
     return entries.sort(
       (a, b) =>
         (a.steuerjahr ?? Number.MAX_SAFE_INTEGER) - (b.steuerjahr ?? Number.MAX_SAFE_INTEGER) ||
-        a.bereich.localeCompare(b.bereich, 'de'),
+        a.area.localeCompare(b.area, 'de'),
     )
   }
 }

@@ -1,77 +1,77 @@
-export type RechtlicheSeite = 'impressum' | 'datenschutz' | 'agb' | 'hinweise'
+export type LegalPage = 'impressum' | 'datenschutz' | 'agb' | 'hinweise'
 
-export const RECHTLICHE_SEITEN: readonly RechtlicheSeite[] = ['impressum', 'datenschutz', 'agb', 'hinweise']
+export const LEGAL_PAGES: readonly LegalPage[] = ['impressum', 'datenschutz', 'agb', 'hinweise']
 
-export const STAND = 'Stand: Oktober 2026'
+export const STATUS = 'Stand: Oktober 2026'
 
-export interface Abschnitt {
-  readonly titel: string
-  readonly absaetze: readonly string[]
+export interface Section {
+  readonly title: string
+  readonly paragraphs: readonly string[]
 }
 
-export interface Betreiber {
+export interface Operator {
   readonly name: string
-  readonly anschrift: string
+  readonly postalAddress: string
   readonly email: string
-  readonly vertreten?: string
+  readonly represented?: string
   readonly ustId?: string
 }
 
-export function betreiberAusUmgebung(env: Record<string, string | undefined>): Betreiber | null {
+export function operatorFromEnv(env: Record<string, string | undefined>): Operator | null {
   const name = env.EXPO_PUBLIC_BETREIBER_NAME?.trim()
-  const anschrift = env.EXPO_PUBLIC_BETREIBER_ANSCHRIFT?.trim()
+  const postalAddress = env.EXPO_PUBLIC_BETREIBER_ANSCHRIFT?.trim()
   const email = env.EXPO_PUBLIC_BETREIBER_EMAIL?.trim()
-  if (!name || !anschrift || !email) return null
-  const vertreten = env.EXPO_PUBLIC_BETREIBER_VERTRETEN?.trim()
+  if (!name || !postalAddress || !email) return null
+  const represented = env.EXPO_PUBLIC_BETREIBER_VERTRETEN?.trim()
   const ustId = env.EXPO_PUBLIC_BETREIBER_USTID?.trim()
   return {
     name,
-    anschrift: anschrift.replaceAll('\\n', '\n'),
+    postalAddress: postalAddress.replaceAll('\\n', '\n'),
     email,
-    ...(vertreten ? { vertreten } : {}),
+    ...(represented ? { represented } : {}),
     ...(ustId ? { ustId } : {}),
   }
 }
 
-export function impressum(betreiber: Betreiber | null): readonly Abschnitt[] {
-  if (!betreiber) {
+export function legalNotice(operator: Operator | null): readonly Section[] {
+  if (!operator) {
     return [
       {
-        titel: 'Angaben gemäß § 5 DDG',
-        absaetze: ['Die Anbieterangaben sind auf dieser Umgebung noch nicht hinterlegt.'],
+        title: 'Angaben gemäß § 5 DDG',
+        paragraphs: ['Die Anbieterangaben sind auf dieser Umgebung noch nicht hinterlegt.'],
       },
     ]
   }
   return [
     {
-      titel: 'Angaben gemäß § 5 DDG',
-      absaetze: [
-        `${betreiber.name}\n${betreiber.anschrift}`,
-        ...(betreiber.vertreten ? [`Vertreten durch: ${betreiber.vertreten}`] : []),
+      title: 'Angaben gemäß § 5 DDG',
+      paragraphs: [
+        `${operator.name}\n${operator.postalAddress}`,
+        ...(operator.represented ? [`Vertreten durch: ${operator.represented}`] : []),
       ],
     },
-    { titel: 'Kontakt', absaetze: [`E-Mail: ${betreiber.email}`] },
-    ...(betreiber.ustId
-      ? [{ titel: 'Umsatzsteuer-ID', absaetze: [`Umsatzsteuer-Identifikationsnummer gemäß § 27a UStG: ${betreiber.ustId}`] }]
+    { title: 'Kontakt', paragraphs: [`E-Mail: ${operator.email}`] },
+    ...(operator.ustId
+      ? [{ title: 'Umsatzsteuer-ID', paragraphs: [`Umsatzsteuer-Identifikationsnummer gemäß § 27a UStG: ${operator.ustId}`] }]
       : []),
     {
-      titel: 'Verbraucherstreitbeilegung',
-      absaetze: [
+      title: 'Verbraucherstreitbeilegung',
+      paragraphs: [
         'Wir sind nicht bereit und nicht verpflichtet, an Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teilzunehmen.',
       ],
     },
   ]
 }
 
-export function datenschutz(betreiber: Betreiber | null): readonly Abschnitt[] {
-  const verantwortlich = betreiber
-    ? `${betreiber.name}, ${betreiber.anschrift.replaceAll('\n', ', ')}, E-Mail: ${betreiber.email}`
+export function privacy(operator: Operator | null): readonly Section[] {
+  const responsible = operator
+    ? `${operator.name}, ${operator.postalAddress.replaceAll('\n', ', ')}, E-Mail: ${operator.email}`
     : 'Die Angaben zum Verantwortlichen sind auf dieser Umgebung noch nicht hinterlegt (siehe Impressum).'
   return [
-    { titel: '1. Verantwortlicher', absaetze: [verantwortlich] },
+    { title: '1. Verantwortlicher', paragraphs: [responsible] },
     {
-      titel: '2. Welche Daten wir verarbeiten',
-      absaetze: [
+      title: '2. Welche Daten wir verarbeiten',
+      paragraphs: [
         'Gastmodus: Du kannst ohne Konto starten. Wir setzen dafür ein technisch notwendiges Cookie mit einer zufälligen Kennung und speichern deine Interview-Antworten zu dieser Kennung.',
         'Konto: E-Mail-Adresse, Name, Passwort (nur als Hash gespeichert), optional Passkeys und Zwei-Faktor-Daten sowie Sitzungsdaten (Zeitpunkt, IP-Adresse, Browser) zur Absicherung deines Kontos.',
         'Steuerdaten: die Angaben, die du für deine Steuererklärung einträgst (z. B. Lohnsteuerbescheinigung, Renten, Kapitalerträge, Vermietung, Bescheide, Belegnamen) sowie deine Steuer-ID und Steuernummer. Diese Werte speichern wir feldweise verschlüsselt (AES-256-GCM).',
@@ -80,8 +80,8 @@ export function datenschutz(betreiber: Betreiber | null): readonly Abschnitt[] {
       ],
     },
     {
-      titel: '3. Zwecke und Rechtsgrundlagen',
-      absaetze: [
+      title: '3. Zwecke und Rechtsgrundlagen',
+      paragraphs: [
         'Bereitstellung der App und Vorbereitung deiner Steuererklärung: Art. 6 Abs. 1 lit. b DSGVO (Vertrag).',
         'Absicherung deines Kontos (Sitzungen, Anmeldeschutz, Prüfung auf bekannte geleakte Passwörter): Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an einem sicheren Dienst).',
         'Rechnungen und Aufbewahrung von Geschäftsunterlagen: Art. 6 Abs. 1 lit. c DSGVO i. V. m. § 147 AO und § 257 HGB.',
@@ -89,8 +89,8 @@ export function datenschutz(betreiber: Betreiber | null): readonly Abschnitt[] {
       ],
     },
     {
-      titel: '4. Empfänger',
-      absaetze: [
+      title: '4. Empfänger',
+      paragraphs: [
         'Hosting: Unsere Server und die Datenbank betreibt ein Rechenzentrumsanbieter in der EU als Auftragsverarbeiter.',
         'E-Mail-Versand: Bestätigungs- und Passwort-Links versenden wir über Brevo (Sendinblue SAS, Frankreich) als Auftragsverarbeiter.',
         'Zahlungen: Stripe Payments Europe Ltd. (Irland) wickelt Zahlungen ab und ist dafür eigenständig verantwortlich.',
@@ -100,120 +100,120 @@ export function datenschutz(betreiber: Betreiber | null): readonly Abschnitt[] {
       ],
     },
     {
-      titel: '5. Speicherdauer',
-      absaetze: [
+      title: '5. Speicherdauer',
+      paragraphs: [
         'Deine Daten speichern wir, solange du dein Konto nutzt. Löschst du dein Konto, entfernen wir Konto, Profil und alle Steuerdaten sofort; das Zugriffsprotokoll wird anonymisiert. Daten, die wir aus gesetzlichen Gründen aufbewahren müssen, sperren wir bis zum Fristablauf.',
       ],
     },
     {
-      titel: '6. Deine Rechte',
-      absaetze: [
+      title: '6. Deine Rechte',
+      paragraphs: [
         'Du hast das Recht auf Auskunft (Art. 15), Berichtigung (Art. 16), Löschung (Art. 17), Einschränkung (Art. 18), Datenübertragbarkeit (Art. 20) und Widerspruch (Art. 21 DSGVO). Export und Löschung kannst du jederzeit selbst unter „Profil → Datenschutz“ auslösen.',
         'Du kannst dich bei einer Datenschutz-Aufsichtsbehörde beschweren, insbesondere in dem Bundesland deines Wohnsitzes.',
       ],
     },
-    { titel: STAND, absaetze: [] },
+    { title: STATUS, paragraphs: [] },
   ]
 }
 
-export function agb(betreiber: Betreiber | null): readonly Abschnitt[] {
-  const anbieter = betreiber?.name ?? 'der im Impressum genannte Anbieter'
+export function terms(operator: Operator | null): readonly Section[] {
+  const provider = operator?.name ?? 'der im Impressum genannte Anbieter'
   return [
     {
-      titel: '§ 1 Geltungsbereich',
-      absaetze: [
-        `Diese Bedingungen gelten für die Nutzung von SteuerEule, angeboten von ${anbieter} („wir“).`,
+      title: '§ 1 Geltungsbereich',
+      paragraphs: [
+        `Diese Bedingungen gelten für die Nutzung von SteuerEule, angeboten von ${provider} („wir“).`,
       ],
     },
     {
-      titel: '§ 2 Leistung',
-      absaetze: [
+      title: '§ 2 Leistung',
+      paragraphs: [
         'SteuerEule ist eine Software, mit der du die Angaben für deine Einkommensteuererklärung erfasst, prüfst und als ausgefüllte Formulare zum Ausdrucken erhältst.',
         'SteuerEule übermittelt keine Daten an das Finanzamt. Du prüfst die Ausdrucke, unterschreibst sie und reichst sie selbst ein. Für die Richtigkeit und Vollständigkeit deiner Angaben bist du verantwortlich.',
         'SteuerEule ist keine Steuerberatung und keine Hilfeleistung in Steuersachen im Sinne des Steuerberatungsgesetzes. Schätzungen und Hinweise in der App sind unverbindlich.',
       ],
     },
     {
-      titel: '§ 3 Konto',
-      absaetze: [
+      title: '§ 3 Konto',
+      paragraphs: [
         'Für die bezahlte Freischaltung brauchst du ein Konto. Halte deine Zugangsdaten geheim. Du kannst dein Konto jederzeit in der App löschen.',
       ],
     },
     {
-      titel: '§ 4 Preise und Zahlung',
-      absaetze: [
+      title: '§ 4 Preise und Zahlung',
+      paragraphs: [
         'Das Erfassen und Prüfen ist kostenlos. Kostenpflichtig ist die Freischaltung des Formular-Ausdrucks für ein Steuerjahr; der Preis wird vor der Zahlung angezeigt und enthält die gesetzliche Umsatzsteuer.',
         'Die Zahlung wickelt Stripe ab. Du erhältst eine Rechnung per E-Mail.',
       ],
     },
     {
-      titel: '§ 5 Widerrufsrecht',
-      absaetze: [
-        `Widerrufsbelehrung: Du hast das Recht, binnen vierzehn Tagen ohne Angabe von Gründen diesen Vertrag zu widerrufen. Die Widerrufsfrist beträgt vierzehn Tage ab dem Tag des Vertragsabschlusses. Um dein Widerrufsrecht auszuüben, musst du uns (${anbieter}, Kontakt siehe Impressum) mittels einer eindeutigen Erklärung (z. B. per E-Mail) über deinen Entschluss informieren. Zur Wahrung der Frist reicht es, dass du die Mitteilung vor Ablauf der Frist absendest.`,
+      title: '§ 5 Widerrufsrecht',
+      paragraphs: [
+        `Widerrufsbelehrung: Du hast das Recht, binnen vierzehn Tagen ohne Angabe von Gründen diesen Vertrag zu widerrufen. Die Widerrufsfrist beträgt vierzehn Tage ab dem Tag des Vertragsabschlusses. Um dein Widerrufsrecht auszuüben, musst du uns (${provider}, Kontakt siehe Impressum) mittels einer eindeutigen Erklärung (z. B. per E-Mail) über deinen Entschluss informieren. Zur Wahrung der Frist reicht es, dass du die Mitteilung vor Ablauf der Frist absendest.`,
         'Folgen des Widerrufs: Wenn du diesen Vertrag widerrufst, erstatten wir dir alle Zahlungen unverzüglich, spätestens binnen vierzehn Tagen ab Eingang deines Widerrufs, über dasselbe Zahlungsmittel.',
         'Vorzeitiges Erlöschen: Dein Widerrufsrecht erlischt, wenn wir mit der Bereitstellung des Formular-Ausdrucks begonnen haben, nachdem du vor der Zahlung ausdrücklich zugestimmt hast, dass wir vor Ablauf der Widerrufsfrist beginnen, und du bestätigt hast, dass du dadurch dein Widerrufsrecht verlierst (§ 356 Abs. 5 BGB).',
         'Muster-Widerrufsformular: An [Anbieter laut Impressum]: Hiermit widerrufe(n) ich/wir den von mir/uns abgeschlossenen Vertrag über die Freischaltung des Formular-Ausdrucks für das Steuerjahr ___. Bestellt am ___ / Name ___ / Anschrift ___ / Datum ___.',
       ],
     },
     {
-      titel: '§ 6 Haftung',
-      absaetze: [
+      title: '§ 6 Haftung',
+      paragraphs: [
         'Wir haften unbeschränkt bei Vorsatz, grober Fahrlässigkeit, bei Verletzung von Leben, Körper oder Gesundheit und nach dem Produkthaftungsgesetz.',
         'Bei leicht fahrlässiger Verletzung einer wesentlichen Vertragspflicht ist unsere Haftung auf den vertragstypischen, vorhersehbaren Schaden begrenzt. Im Übrigen ist die Haftung für leichte Fahrlässigkeit ausgeschlossen.',
       ],
     },
     {
-      titel: '§ 7 Datenschutz',
-      absaetze: ['Wie wir mit deinen Daten umgehen, steht in der Datenschutzerklärung.'],
+      title: '§ 7 Datenschutz',
+      paragraphs: ['Wie wir mit deinen Daten umgehen, steht in der Datenschutzerklärung.'],
     },
     {
-      titel: '§ 8 Schlussbestimmungen',
-      absaetze: [
+      title: '§ 8 Schlussbestimmungen',
+      paragraphs: [
         'Es gilt deutsches Recht. Bist du Verbraucher, bleiben zwingende Schutzvorschriften des Staates deines gewöhnlichen Aufenthalts unberührt.',
       ],
     },
-    { titel: STAND, absaetze: [] },
+    { title: STATUS, paragraphs: [] },
   ]
 }
 
-export const HINWEISE: readonly Abschnitt[] = [
+export const NOTICES: readonly Section[] = [
   {
-    titel: 'Keine Steuerberatung',
-    absaetze: [
+    title: 'Keine Steuerberatung',
+    paragraphs: [
       'SteuerEule ist eine Software zum Selbstausfüllen deiner Steuererklärung. Sie ersetzt keine Beratung durch eine Steuerberaterin, einen Steuerberater oder einen Lohnsteuerhilfeverein.',
       'Bei Fragen zu deinem Einzelfall – besonders bei Selbstständigkeit, Gewerbe, Auslandsbezug außerhalb der Schweiz oder hohen Beträgen – lass dich beraten.',
     ],
   },
   {
-    titel: 'Spannen statt Versprechen',
-    absaetze: [
+    title: 'Spannen statt Versprechen',
+    paragraphs: [
       'Erstattungen zeigen wir als Spanne. Was das Finanzamt festsetzt, steht erst im Bescheid. Prüfe den Bescheid – SteuerEule hilft dir beim Abgleich.',
     ],
   },
   {
-    titel: 'Abgabe auf Papier',
-    absaetze: [
+    title: 'Abgabe auf Papier',
+    paragraphs: [
       'SteuerEule übermittelt nichts elektronisch an das Finanzamt. Du druckst die ausgefüllten Formulare aus, prüfst sie, unterschreibst den Hauptvordruck und reichst alles bei deinem Finanzamt ein. Wer Gewinneinkünfte hat (z. B. aus Gewerbe oder Selbstständigkeit), muss elektronisch abgeben – diese Fälle unterstützt SteuerEule nicht.',
     ],
   },
 ]
 
-export const SEITEN_TITEL: Record<RechtlicheSeite, string> = {
+export const PAGE_TITLES: Record<LegalPage, string> = {
   impressum: 'Impressum',
   datenschutz: 'Datenschutzerklärung',
   agb: 'AGB & Widerruf',
   hinweise: 'Wichtige Hinweise',
 }
 
-export function inhalt(seite: RechtlicheSeite, betreiber: Betreiber | null): readonly Abschnitt[] {
-  switch (seite) {
+export function content(page: LegalPage, operator: Operator | null): readonly Section[] {
+  switch (page) {
     case 'impressum':
-      return impressum(betreiber)
+      return legalNotice(operator)
     case 'datenschutz':
-      return datenschutz(betreiber)
+      return privacy(operator)
     case 'agb':
-      return agb(betreiber)
+      return terms(operator)
     case 'hinweise':
-      return HINWEISE
+      return NOTICES
   }
 }

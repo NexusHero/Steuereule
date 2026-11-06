@@ -1,8 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger'
-import { VermietungFeldDto } from './vermietung-feld.dto.js'
+import { RentalFieldDto } from './vermietung-feld.dto.js'
 
 /** The Vermietung-Einordnung — what the `vermietung-art` answer MEANS for 1.0. */
-export class VermietungEinordnungDto {
+export class RentalClassificationDto {
   @ApiProperty({
     type: String,
     enum: ['einfach', 'mehrere', 'verkauf-oder-moebliert', 'unbekannt'],
@@ -15,45 +15,45 @@ export class VermietungEinordnungDto {
 }
 
 /** The computed lineare AfA with its § 7 Abs. 4 Herkunft. */
-export class VermietungAfADto {
+export class RentalDepreciationDto {
   @ApiProperty({ type: Number, example: 4000, description: 'Anschaffungskosten × AfA-Satz, rounded to whole euros.' })
-  betrag!: number
+  amount!: number
 
   @ApiProperty({ type: String, example: '§ 7 Abs. 4 Satz 1 EStG — lineare AfA 2 % bei Baujahr 1990', description: 'The statutory citation that produced the percentage.' })
-  herkunft!: string
+  provenance!: string
 }
 
 /** One object's derived facts. */
-export class VermietungsobjektFaktenDto {
+export class RentalPropertyFactsDto {
   @ApiProperty({ type: Number, nullable: true, example: 12000, description: 'The captured Mieteinnahmen, or null while open.' })
   einnahmen!: number | null
 
   @ApiProperty({ type: Number, nullable: true, example: 1500, description: 'The captured Werbungskosten (0 = the user entered 0), or null while open.' })
   werbungskosten!: number | null
 
-  @ApiProperty({ type: VermietungAfADto, nullable: true, description: 'The computed lineare AfA with its § 7 Abs. 4 Herkunft, or null while open.' })
-  afa!: VermietungAfADto | null
+  @ApiProperty({ type: RentalDepreciationDto, nullable: true, description: 'The computed lineare AfA with its § 7 Abs. 4 Herkunft, or null while open.' })
+  depreciation!: RentalDepreciationDto | null
 
   @ApiProperty({ type: Number, example: 0, description: 'The blocked results of this object (Mieteinnahmen/AfA/Werbungskosten — max 3).' })
-  offenePosten!: number
+  openItems!: number
 }
 
 /** ONE Vermietungsobjekt: the four field states plus its derived facts. */
-export class VermietungsobjektDto {
+export class RentalPropertyDto {
   @ApiProperty({ type: String, example: '9c3f…', description: 'The stable object id (assigned by the API on create).' })
   id!: string
 
-  @ApiProperty({ type: VermietungFeldDto })
-  mieteinnahmen!: VermietungFeldDto
+  @ApiProperty({ type: RentalFieldDto })
+  mieteinnahmen!: RentalFieldDto
 
-  @ApiProperty({ type: VermietungFeldDto })
-  anschaffungskosten!: VermietungFeldDto
+  @ApiProperty({ type: RentalFieldDto })
+  anschaffungskosten!: RentalFieldDto
 
-  @ApiProperty({ type: VermietungFeldDto })
-  baujahr!: VermietungFeldDto
+  @ApiProperty({ type: RentalFieldDto })
+  baujahr!: RentalFieldDto
 
-  @ApiProperty({ type: VermietungFeldDto })
-  werbungskosten!: VermietungFeldDto
+  @ApiProperty({ type: RentalFieldDto })
+  werbungskosten!: RentalFieldDto
 
   @ApiProperty({ type: String, nullable: true })
   strasse?: string | null
@@ -85,12 +85,12 @@ export class VermietungsobjektDto {
   @ApiProperty({ type: String, nullable: true })
   anteilA?: string | null
 
-  @ApiProperty({ type: VermietungsobjektFaktenDto })
-  fakten!: VermietungsobjektFaktenDto
+  @ApiProperty({ type: RentalPropertyFactsDto })
+  facts!: RentalPropertyFactsDto
 }
 
 /** The derived fold over ALL objects. */
-export class VermietungStandDto {
+export class RentalStatusDto {
   @ApiProperty({ enum: ['bestimmt', 'offen'], description: 'Determined, or open (naming what blocks).' })
   kind!: 'bestimmt' | 'offen'
 
@@ -107,26 +107,26 @@ export class VermietungStandDto {
   werbungskosten!: number
 
   @ApiProperty({ type: Number, description: 'Sum of the computed lineare AfA.' })
-  afa!: number
+  depreciation!: number
 
   @ApiProperty({ type: Number, description: 'Required-but-empty results across all objects.' })
-  offenePosten!: number
+  openItems!: number
 
   @ApiProperty({ type: Number, description: 'Open conflicts (always 0 this slice).' })
-  konflikte!: number
+  conflicts!: number
 
   @ApiProperty({ type: [String], required: false, description: 'Gated Einkunftsarten (only when offen).' })
-  gegated?: string[]
+  gated?: string[]
 }
 
 /** The response shape for `GET /v1/steuerjahre/{jahr}/vermietung`, `POST …/vermietung/objekte` and every PUT. */
-export class VermietungResponseDto {
-  @ApiProperty({ type: VermietungEinordnungDto })
-  einordnung!: VermietungEinordnungDto
+export class RentalResponseDto {
+  @ApiProperty({ type: RentalClassificationDto })
+  classification!: RentalClassificationDto
 
-  @ApiProperty({ type: [VermietungsobjektDto], description: 'The objects, oldest first.' })
-  objekte!: VermietungsobjektDto[]
+  @ApiProperty({ type: [RentalPropertyDto], description: 'The objects, oldest first.' })
+  properties!: RentalPropertyDto[]
 
-  @ApiProperty({ type: VermietungStandDto })
-  stand!: VermietungStandDto
+  @ApiProperty({ type: RentalStatusDto })
+  status!: RentalStatusDto
 }

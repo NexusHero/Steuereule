@@ -16,12 +16,12 @@ export class AssignmentDto {
     example: 2025,
     description: 'konflikt only: the contradicting date-derived suggestion.',
   })
-  vorschlagsJahr?: number
+  proposalYear?: number
 
   @ApiPropertyOptional({
     type: String,
     enum: ['zahlungsdatum', 'belegdatum'],
     description: 'vorgeschlagen/konflikt: which date the rule used ("Regel: Zahlungsdatum" chip).',
   })
-  herkunft?: 'zahlungsdatum' | 'belegdatum'
+  provenance?: 'zahlungsdatum' | 'belegdatum'
 }

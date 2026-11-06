@@ -14,7 +14,7 @@ export interface HealthInsurance {
   readonly optionalExtrasAmount: number
 }
 
-const ART_MAP: Readonly<Record<string, HealthInsuranceKind>> = {
+const KIND_MAP: Readonly<Record<string, HealthInsuranceKind>> = {
   'Gesetzlich (freiwillig)': 'gesetzlich',
   Privat: 'privat',
   Ausländisch: 'ausland',
@@ -28,7 +28,7 @@ function parseAmount(value: string | undefined): number {
 export function healthInsuranceFromAnswers(answers: Answers): HealthInsurance | null {
   if (answers['kv-pv'] !== 'Ja') return null
   return {
-    kind: ART_MAP[answers['kv-pv-art'] ?? ''] ?? 'gesetzlich',
+    kind: KIND_MAP[answers['kv-pv-art'] ?? ''] ?? 'gesetzlich',
     basicHealthAmount: parseAmount(answers['kv-pv-betrag']),
     withSickPay: answers['kv-krankengeld'] === 'Ja',
     careInsuranceAmount: parseAmount(answers['pv-betrag']),

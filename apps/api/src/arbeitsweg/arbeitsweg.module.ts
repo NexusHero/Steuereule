@@ -1,15 +1,15 @@
 import { Module } from '@nestjs/common'
-import { KopplungModule } from '../kopplung/kopplung.module.js'
+import { LinkModule } from '../kopplung/kopplung.module.js'
 import { PrismaModule } from '../prisma/prisma.module.js'
-import { ArbeitswegController } from './arbeitsweg.controller.js'
+import { CommuteController } from './arbeitsweg.controller.js'
 import { COMMUTE_REPOSITORY } from './arbeitsweg.repository.js'
-import { PrismaArbeitswegRepository } from './arbeitsweg.repository.prisma.js'
-import { ArbeitswegService } from './arbeitsweg.service.js'
+import { PrismaCommuteRepository } from './arbeitsweg.repository.prisma.js'
+import { CommuteService } from './arbeitsweg.service.js'
 
 @Module({
-  imports: [PrismaModule, KopplungModule],
-  controllers: [ArbeitswegController],
-  providers: [ArbeitswegService, { provide: COMMUTE_REPOSITORY, useClass: PrismaArbeitswegRepository }],
+  imports: [PrismaModule, LinkModule],
+  controllers: [CommuteController],
+  providers: [CommuteService, { provide: COMMUTE_REPOSITORY, useClass: PrismaCommuteRepository }],
   exports: [COMMUTE_REPOSITORY],
 })
-export class ArbeitswegModule {}
+export class CommuteModule {}

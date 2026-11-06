@@ -5,8 +5,8 @@ import { Button, Input, Feld, Chip, Pill, Sticker, useTheme, useBreakpoint } fro
 import { isValidTaxId } from '@steuereule/core'
 import { useProfileControllerGetProfile, useProfileControllerPutProfile } from '@steuereule/api-client'
 import { APP_NS } from '../i18n/resources'
-import { formatSteuerId, sanitizeTaxNumberInput, countDigits } from './onboarding/format'
-import { toOnboardingProfil, toPutProfileDto, type OnboardingProfil } from './onboarding/profileMapping'
+import { formatTaxId, sanitizeTaxNumberInput, countDigits } from './onboarding/format'
+import { toOnboardingProfile, toPutProfileDto, type OnboardingProfile } from './onboarding/profileMapping'
 import { makeOnboardingStyles } from './onboarding/styles'
 import { OnboardingSummary } from './onboarding/OnboardingSummary'
 import { LoadingState, ErrorState } from './shared/ScreenState'
@@ -27,20 +27,20 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
   const putProfile = useProfileControllerPutProfile()
   const styles = makeOnboardingStyles(t)
 
-  const [profil, setProfil] = useState<OnboardingProfil | null>(null)
-  const [schritt, setSchritt] = useState(0)
+  const [profile, setProfile] = useState<OnboardingProfile | null>(null)
+  const [step, setStep] = useState(0)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (profil === null && profileQuery.data !== undefined) {
-      setProfil(toOnboardingProfil(profileQuery.data.data))
+    if (profile === null && profileQuery.data !== undefined) {
+      setProfile(toOnboardingProfile(profileQuery.data.data))
     }
-  }, [profileQuery.data, profil])
+  }, [profileQuery.data, profile])
 
   if (profileQuery.isPending) {
     return <LoadingState bp={bp} label={tr('onboarding.loading')} />
   }
-  if (profileQuery.isError || profil === null) {
+  if (profileQuery.isError || profile === null) {
     return (
       <ErrorState
         bp={bp}
@@ -52,24 +52,24 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
     )
   }
 
-  const set = (key: keyof OnboardingProfil) => (value: string) =>
-    setProfil((p) => (p ? { ...p, [key]: value } : p))
-  const idDigits = countDigits(profil.steuerId)
-  const steuerIdOk = isValidTaxId(profil.steuerId.replace(/\D/g, ''))
-  const stepOk = [profil.vorname.trim() !== '' && profil.nachname.trim() !== '', steuerIdOk, true]
+  const set = (key: keyof OnboardingProfile) => (value: string) =>
+    setProfile((p) => (p ? { ...p, [key]: value } : p))
+  const idDigits = countDigits(profile.steuerId)
+  const taxIdOk = isValidTaxId(profile.steuerId.replace(/\D/g, ''))
+  const stepOk = [profile.vorname.trim() !== '' && profile.nachname.trim() !== '', taxIdOk, true]
 
-  function weiter() {
-    setSchritt((s) => (s === STEP_COUNT - 1 ? STEP_COUNT : s + 1))
+  function next() {
+    setStep((s) => (s === STEP_COUNT - 1 ? STEP_COUNT : s + 1))
   }
-  function zurueck() {
-    setSchritt((s) => Math.max(0, s - 1))
+  function back() {
+    setStep((s) => Math.max(0, s - 1))
   }
 
   function submit() {
-    if (profil === null) return
+    if (profile === null) return
     setSubmitError(null)
     putProfile.mutate(
-      { data: toPutProfileDto(profil) },
+      { data: toPutProfileDto(profile) },
       {
         onSuccess: (response) => {
           if (response.status === 200) {
@@ -83,12 +83,12 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
     )
   }
 
-  if (schritt === STEP_COUNT) {
+  if (step === STEP_COUNT) {
     return (
       <OnboardingSummary
-        profil={profil}
+        profile={profile}
         onSubmit={submit}
-        onEdit={() => setSchritt(0)}
+        onEdit={() => setStep(0)}
         isSubmitting={putProfile.isPending}
         submitError={submitError}
         bp={bp}
@@ -99,16 +99,16 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} keyboardShouldPersistTaps="handled" testID="screen-container">
       <View style={styles.headerRow}>
-        {schritt > 0 ? (
-          <BackButton accessibilityLabel={tr('onboarding.back')} onPress={zurueck} />
+        {step > 0 ? (
+          <BackButton accessibilityLabel={tr('onboarding.back')} onPress={back} />
         ) : (
           <BackButtonSpacer />
         )}
-        <StepIndicator step={schritt} total={STEP_COUNT} />
-        <Pill>{`${schritt + 1}/${STEP_COUNT}`}</Pill>
+        <StepIndicator step={step} total={STEP_COUNT} />
+        <Pill>{`${step + 1}/${STEP_COUNT}`}</Pill>
       </View>
 
-      {schritt === 0 ? (
+      {step === 0 ? (
         <>
           <Text style={styles.heading}>
             {tr('onboarding.step1.titleBefore')}
@@ -118,7 +118,7 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
           <Text style={styles.help}>{tr('onboarding.step1.help')}</Text>
           <Feld label={tr('onboarding.step1.firstNameLabel')}>
             <Input
-              value={profil.vorname}
+              value={profile.vorname}
               onChange={set('vorname')}
               placeholder={tr('onboarding.step1.firstNamePlaceholder')}
               accessibilityLabel={tr('onboarding.step1.firstNameLabel')}
@@ -126,7 +126,7 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
           </Feld>
           <Feld label={tr('onboarding.step1.lastNameLabel')}>
             <Input
-              value={profil.nachname}
+              value={profile.nachname}
               onChange={set('nachname')}
               placeholder={tr('onboarding.step1.lastNamePlaceholder')}
               accessibilityLabel={tr('onboarding.step1.lastNameLabel')}
@@ -135,7 +135,7 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
         </>
       ) : null}
 
-      {schritt === 1 ? (
+      {step === 1 ? (
         <>
           <Text style={styles.heading}>
             {tr('onboarding.step2.titleBefore')}
@@ -147,21 +147,21 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
             <Input
               type="numeric"
               mono
-              value={profil.steuerId}
-              onChange={(value) => set('steuerId')(formatSteuerId(value))}
+              value={profile.steuerId}
+              onChange={(value) => set('steuerId')(formatTaxId(value))}
               placeholder={tr('onboarding.step2.placeholder')}
               accessibilityLabel={tr('onboarding.step2.fieldLabel')}
             />
           </Feld>
           <View style={styles.counterRow}>
             <Pill>{tr('onboarding.step2.counter', { count: idDigits })}</Pill>
-            {steuerIdOk ? <Sticker>{tr('onboarding.step2.confirmed')}</Sticker> : null}
+            {taxIdOk ? <Sticker>{tr('onboarding.step2.confirmed')}</Sticker> : null}
           </View>
-          <Chip style={{ marginTop: t.space.s3 }} onPress={() => { set('steuerId')(''); weiter(); }}>{tr('onboarding.step2.later')}</Chip>
+          <Chip style={{ marginTop: t.space.s3 }} onPress={() => { set('steuerId')(''); next(); }}>{tr('onboarding.step2.later')}</Chip>
         </>
       ) : null}
 
-      {schritt === 2 ? (
+      {step === 2 ? (
         <>
           <Text style={styles.heading}>
             {tr('onboarding.step3.titleBefore')}
@@ -173,17 +173,17 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
             <Input
               type="numeric"
               mono
-              value={profil.steuerNr}
-              onChange={(value) => set('steuerNr')(sanitizeTaxNumberInput(value))}
+              value={profile.taxNumber}
+              onChange={(value) => set('taxNumber')(sanitizeTaxNumberInput(value))}
               placeholder={tr('onboarding.step3.placeholder')}
               accessibilityLabel={tr('onboarding.step3.fieldLabel')}
             />
           </Feld>
-          <Chip onPress={() => { set('steuerNr')(''); weiter(); }}>{tr('onboarding.step3.later')}</Chip>
+          <Chip onPress={() => { set('taxNumber')(''); next(); }}>{tr('onboarding.step3.later')}</Chip>
         </>
       ) : null}
 
-      <Button onPress={weiter} disabled={!stepOk[schritt]} style={styles.cta}>
+      <Button onPress={next} disabled={!stepOk[step]} style={styles.cta}>
         {tr('onboarding.weiter')}
       </Button>
     </ScrollView>

@@ -9,14 +9,14 @@ import { useAccountSession } from '../auth/useAccountSession'
 import { downloadAccountExport, type ExportFormat } from './datenschutz/exportDownload'
 import { ExportSection, type ExportButtonState } from './datenschutz/ExportSection'
 import { DeleteSection, type DeleteFlow } from './datenschutz/DeleteSection'
-import { makeDatenschutzStyles } from './datenschutz/styles'
+import { makePrivacyStyles } from './datenschutz/styles'
 
-export interface DatenschutzScreenProps {
-  readonly onZurueck: () => void
+export interface PrivacyScreenProps {
+  readonly onBack: () => void
   readonly onAccountDeleted: () => void
 }
 
-export function DatenschutzScreen({ onZurueck, onAccountDeleted }: DatenschutzScreenProps) {
+export function PrivacyScreen({ onBack, onAccountDeleted }: PrivacyScreenProps) {
   const bp = useBreakpoint()
   const { t } = useTranslation(APP_NS)
   const tr = (key: string): string => t(key)
@@ -77,11 +77,11 @@ export function DatenschutzScreen({ onZurueck, onAccountDeleted }: DatenschutzSc
     }
   }
 
-  const styles = makeDatenschutzStyles(useTheme())
+  const styles = makePrivacyStyles(useTheme())
 
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
-      <Appbar tr={tr} onZurueck={onZurueck} />
+      <Appbar tr={tr} onBack={onBack} />
       <Hero tr={tr} />
       <DeviceSessionsSection tr={tr} />
 
@@ -115,12 +115,12 @@ export function DatenschutzScreen({ onZurueck, onAccountDeleted }: DatenschutzSc
   )
 }
 
-function Appbar({ tr, onZurueck }: { readonly tr: (key: string) => string; readonly onZurueck: () => void }) {
+function Appbar({ tr, onBack }: { readonly tr: (key: string) => string; readonly onBack: () => void }) {
   const t = useTheme()
-  const styles = makeDatenschutzStyles(t)
+  const styles = makePrivacyStyles(t)
   return (
     <View style={styles.appbar}>
-      <Pressable accessibilityRole="button" accessibilityLabel={tr('datenschutz.back')} onPress={onZurueck} style={styles.backButton}>
+      <Pressable accessibilityRole="button" accessibilityLabel={tr('datenschutz.back')} onPress={onBack} style={styles.backButton}>
         <Text style={styles.backGlyph}>←</Text>
       </Pressable>
       <Text style={styles.appbarTitle}>{tr('datenschutz.title')}</Text>
@@ -131,7 +131,7 @@ function Appbar({ tr, onZurueck }: { readonly tr: (key: string) => string; reado
 
 function Hero({ tr }: { readonly tr: (key: string) => string }) {
   const t = useTheme()
-  const styles = makeDatenschutzStyles(t)
+  const styles = makePrivacyStyles(t)
   return (
     <Card variant="nacht">
       <Text style={styles.heroKicker}>{tr('datenschutz.hero.kicker')}</Text>
@@ -143,7 +143,7 @@ function Hero({ tr }: { readonly tr: (key: string) => string }) {
 
 function SessionChecking({ tr }: { readonly tr: (key: string) => string }) {
   const t = useTheme()
-  const styles = makeDatenschutzStyles(t)
+  const styles = makePrivacyStyles(t)
   return (
     <View style={styles.centerBlock}>
       <ActivityIndicator size="large" color={t.color.tinte} accessibilityLabel={tr('datenschutz.sessionChecking')} />
@@ -153,14 +153,14 @@ function SessionChecking({ tr }: { readonly tr: (key: string) => string }) {
 }
 
 function SessionUnknown({ tr, onRetry }: { readonly tr: (key: string) => string; readonly onRetry: () => void }) {
-  const styles = makeDatenschutzStyles(useTheme())
+  const styles = makePrivacyStyles(useTheme())
   return (
     <Card>
       <Text style={styles.sectionTitle} accessibilityRole="alert">
         {tr('datenschutz.sessionUnknown.heading')}
       </Text>
       <Text style={styles.sectionBody}>{tr('datenschutz.sessionUnknown.body')}</Text>
-      <Button variante="ghost" onPress={onRetry}>
+      <Button variant="ghost" onPress={onRetry}>
         {tr('datenschutz.sessionUnknown.retry')}
       </Button>
     </Card>
@@ -169,7 +169,7 @@ function SessionUnknown({ tr, onRetry }: { readonly tr: (key: string) => string;
 
 function DeviceSessionsSection({ tr }: { readonly tr: (key: string) => string }) {
   const t = useTheme()
-  const styles = makeDatenschutzStyles(t)
+  const styles = makePrivacyStyles(t)
   return (
     <Card>
       <Text style={styles.sectionTitle}>{tr('datenschutz.deviceSessions.heading')}</Text>
@@ -182,7 +182,7 @@ function DeviceSessionsSection({ tr }: { readonly tr: (key: string) => string })
 
 function GuestNotice({ tr }: { readonly tr: (key: string) => string }) {
   const t = useTheme()
-  const styles = makeDatenschutzStyles(t)
+  const styles = makePrivacyStyles(t)
   return (
     <Card>
       <Text style={styles.sectionTitle}>{tr('datenschutz.guest.heading')}</Text>

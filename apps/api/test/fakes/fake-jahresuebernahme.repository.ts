@@ -1,6 +1,6 @@
 import type { TaxYearRolloverRecord, TaxYearRolloverRepository } from '../../src/uebernahme/jahresuebernahme.repository.js'
 
-export class FakeJahresuebernahmeRepository implements TaxYearRolloverRepository {
+export class FakeYearTakeoverRepository implements TaxYearRolloverRepository {
   private records: TaxYearRolloverRecord[] = []
 
   async findForUserAndYear(userId: string, steuerjahr: number): Promise<TaxYearRolloverRecord | null> {

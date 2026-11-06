@@ -12,7 +12,7 @@ import {
   serializePensionField,
   setPensionType,
   setPensionField,
-  verwendetBesteuerungsanteil,
+  usedTaxableShare,
   type PensionData,
 } from './rente'
 
@@ -54,8 +54,8 @@ describe('besteuerungsanteilProzent — the Kohorten-Tabelle (aa), verbatim', ()
     [2040, 91],
     [2057, 99.5],
     [2058, 100], // the table's terminal row
-  ] as const)('rentenbeginn %d → %d %%', (jahr, prozent) => {
-    expect(taxableSharePercent(jahr)).toBe(prozent)
+  ] as const)('rentenbeginn %d → %d %%', (year, percent) => {
+    expect(taxableSharePercent(year)).toBe(percent)
   })
 
   it('a year beyond the table (after 2058) is OFFEN, never guessed', () => {
@@ -81,8 +81,8 @@ describe('ertragsanteilProzent — the Ertragsanteil-Tabelle (bb), verbatim', ()
     [96, 2],
     [97, 1], // the "ab 97" terminal row
     [120, 1], // everything above 96 is the terminal row
-  ] as const)('vollendetes Lebensjahr %d → %d %%', (alter, prozent) => {
-    expect(incomePortionPercent(alter)).toBe(prozent)
+  ] as const)('vollendetes Lebensjahr %d → %d %%', (alter, percent) => {
+    expect(incomePortionPercent(alter)).toBe(percent)
   })
 
   it('a negative or non-integer age is OFFEN, never guessed', () => {
@@ -93,124 +93,124 @@ describe('ertragsanteilProzent — the Ertragsanteil-Tabelle (bb), verbatim', ()
 
 describe('verwendetBesteuerungsanteil — which statutory table a Rentenart is taxed through', () => {
   it('everything except the private Rentenversicherung uses the Besteuerungsanteil', () => {
-    expect(verwendetBesteuerungsanteil('GesetzlicheRente')).toBe(true)
-    expect(verwendetBesteuerungsanteil('Betriebsrente')).toBe(true)
-    expect(verwendetBesteuerungsanteil('WitwenWaisenrente')).toBe(true)
-    expect(verwendetBesteuerungsanteil('AuslaendischeRente')).toBe(true)
-    expect(verwendetBesteuerungsanteil('PrivateRentenversicherung')).toBe(false)
+    expect(usedTaxableShare('GesetzlicheRente')).toBe(true)
+    expect(usedTaxableShare('Betriebsrente')).toBe(true)
+    expect(usedTaxableShare('WitwenWaisenrente')).toBe(true)
+    expect(usedTaxableShare('AuslaendischeRente')).toBe(true)
+    expect(usedTaxableShare('PrivateRentenversicherung')).toBe(false)
   })
 })
 
-function rente(overrides: Partial<PensionData> = {}): PensionData {
+function pension(overrides: Partial<PensionData> = {}): PensionData {
   return { ...EMPTY_PENSION, ...overrides }
 }
 
 describe('renteAlsKernposten — the taxable share, with Herkunft, offen where offen', () => {
   it('gesetzliche Rente, Rentenbeginn 2020 → 80 % taxable, citing aa', () => {
-    const posten = pensionAsCoreLineItem(
-      rente({
+    const items = pensionAsCoreLineItem(
+      pension({
         art: 'GesetzlicheRente',
-        jahresbetrag: { kind: 'erfasst', wert: 20000 },
-        rentenbeginnJahr: { kind: 'erfasst', wert: 2020 },
+        jahresbetrag: { kind: 'erfasst', value: 20000 },
+        rentenbeginnJahr: { kind: 'erfasst', value: 2020 },
       }),
     )
-    expect(posten).toEqual({
+    expect(items).toEqual({
       id: 'rente',
-      einkunftsart: 'Rente',
-      betrag: 16000,
-      quelle: { art: 'regel', regel: '§ 22 Nr. 1 Satz 3 Buchst. a Doppelbuchst. aa EStG — Besteuerungsanteil bei Rentenbeginn 2020: 80 %' },
+      incomeType: 'Rente',
+      amount: 16000,
+      source: { art: 'regel', rule: '§ 22 Nr. 1 Satz 3 Buchst. a Doppelbuchst. aa EStG — Besteuerungsanteil bei Rentenbeginn 2020: 80 %' },
     })
   })
 
   it('Betriebsrente, Rentenbeginn 2026 → 84 % taxable (the half-point phase)', () => {
-    const posten = pensionAsCoreLineItem(
-      rente({
+    const items = pensionAsCoreLineItem(
+      pension({
         art: 'Betriebsrente',
-        jahresbetrag: { kind: 'erfasst', wert: 12000 },
-        rentenbeginnJahr: { kind: 'erfasst', wert: 2026 },
+        jahresbetrag: { kind: 'erfasst', value: 12000 },
+        rentenbeginnJahr: { kind: 'erfasst', value: 2026 },
       }),
     )
-    expect(posten?.betrag).toBe(10080) // 12000 × 0.84
-    expect(posten?.quelle).toEqual({
+    expect(items?.amount).toBe(10080) // 12000 × 0.84
+    expect(items?.source).toEqual({
       art: 'regel',
-      regel: '§ 22 Nr. 1 Satz 3 Buchst. a Doppelbuchst. aa EStG — Besteuerungsanteil bei Rentenbeginn 2026: 84 %',
+      rule: '§ 22 Nr. 1 Satz 3 Buchst. a Doppelbuchst. aa EStG — Besteuerungsanteil bei Rentenbeginn 2026: 84 %',
     })
   })
 
   it('private Rentenversicherung, Rentenbeginn mit 65 → 18 % Ertragsanteil, citing bb', () => {
-    const posten = pensionAsCoreLineItem(
-      rente({
+    const items = pensionAsCoreLineItem(
+      pension({
         art: 'PrivateRentenversicherung',
-        jahresbetrag: { kind: 'erfasst', wert: 10000 },
-        alterBeiRentenbeginn: { kind: 'erfasst', wert: 65 },
+        jahresbetrag: { kind: 'erfasst', value: 10000 },
+        alterBeiRentenbeginn: { kind: 'erfasst', value: 65 },
       }),
     )
-    expect(posten).toEqual({
+    expect(items).toEqual({
       id: 'rente',
-      einkunftsart: 'Rente',
-      betrag: 1800,
-      quelle: { art: 'regel', regel: '§ 22 Nr. 1 Satz 3 Buchst. a Doppelbuchst. bb EStG — Ertragsanteil bei Rentenbeginn mit 65 Jahren: 18 %' },
+      incomeType: 'Rente',
+      amount: 1800,
+      source: { art: 'regel', rule: '§ 22 Nr. 1 Satz 3 Buchst. a Doppelbuchst. bb EStG — Ertragsanteil bei Rentenbeginn mit 65 Jahren: 18 %' },
     })
   })
 
   it('no art chosen, or an open/unklar Jahresbetrag → null (offen, never a zero)', () => {
-    expect(pensionAsCoreLineItem(rente())).toBeNull()
-    expect(pensionAsCoreLineItem(rente({ art: 'GesetzlicheRente' }))).toBeNull()
+    expect(pensionAsCoreLineItem(pension())).toBeNull()
+    expect(pensionAsCoreLineItem(pension({ art: 'GesetzlicheRente' }))).toBeNull()
     expect(
-      pensionAsCoreLineItem(rente({ art: 'GesetzlicheRente', jahresbetrag: { kind: 'unklar' }, rentenbeginnJahr: { kind: 'erfasst', wert: 2020 } })),
+      pensionAsCoreLineItem(pension({ art: 'GesetzlicheRente', jahresbetrag: { kind: 'unklar' }, rentenbeginnJahr: { kind: 'erfasst', value: 2020 } })),
     ).toBeNull()
   })
 
   it('a missing Rentenbeginn-Jahr (Besteuerungsanteil path) is offen', () => {
-    expect(pensionAsCoreLineItem(rente({ art: 'GesetzlicheRente', jahresbetrag: { kind: 'erfasst', wert: 20000 } }))).toBeNull()
+    expect(pensionAsCoreLineItem(pension({ art: 'GesetzlicheRente', jahresbetrag: { kind: 'erfasst', value: 20000 } }))).toBeNull()
   })
 
   it('a Rentenbeginn-Jahr outside the table is offen, never guessed', () => {
     expect(
       pensionAsCoreLineItem(
-        rente({ art: 'GesetzlicheRente', jahresbetrag: { kind: 'erfasst', wert: 20000 }, rentenbeginnJahr: { kind: 'erfasst', wert: 2070 } }),
+        pension({ art: 'GesetzlicheRente', jahresbetrag: { kind: 'erfasst', value: 20000 }, rentenbeginnJahr: { kind: 'erfasst', value: 2070 } }),
       ),
     ).toBeNull()
   })
 
   it('a missing Rentenbeginn-Lebensalter (Ertragsanteil path) is offen', () => {
-    expect(pensionAsCoreLineItem(rente({ art: 'PrivateRentenversicherung', jahresbetrag: { kind: 'erfasst', wert: 10000 } }))).toBeNull()
+    expect(pensionAsCoreLineItem(pension({ art: 'PrivateRentenversicherung', jahresbetrag: { kind: 'erfasst', value: 10000 } }))).toBeNull()
   })
 })
 
 describe('renteStand — the fold into the deterministic core', () => {
   it('a determinable rente is bestimmt with the taxable share as einnahmen', () => {
-    const stand = pensionStatus(
-      rente({ art: 'GesetzlicheRente', jahresbetrag: { kind: 'erfasst', wert: 20000 }, rentenbeginnJahr: { kind: 'erfasst', wert: 2020 } }),
+    const status = pensionStatus(
+      pension({ art: 'GesetzlicheRente', jahresbetrag: { kind: 'erfasst', value: 20000 }, rentenbeginnJahr: { kind: 'erfasst', value: 2020 } }),
       [],
     )
-    expect(stand).toEqual({ kind: 'bestimmt', einnahmen: 16000, vorsorgeaufwand: 0, anrechnung: 0 })
+    expect(status).toEqual({ kind: 'bestimmt', einnahmen: 16000, vorsorgeaufwand: 0, anrechnung: 0 })
   })
 
   it('an open rente is offen with one open posten — never a fabricated zero', () => {
-    const stand = pensionStatus(rente(), [])
-    expect(stand).toEqual({ kind: 'offen', einnahmen: 0, vorsorgeaufwand: 0, anrechnung: 0, offenePosten: 1, konflikte: 0, gegated: [], unbestaetigte: 0, unbestaetigteSumme: 0 })
+    const status = pensionStatus(pension(), [])
+    expect(status).toEqual({ kind: 'offen', einnahmen: 0, vorsorgeaufwand: 0, anrechnung: 0, openItems: 1, conflicts: 0, gated: [], unconfirmedItems: 0, unconfirmedSum: 0 })
   })
 
   it('a gated Einkunftsart is named, keeping the result offen (ADR-030/034 combinability)', () => {
-    const stand = pensionStatus(
-      rente({ art: 'GesetzlicheRente', jahresbetrag: { kind: 'erfasst', wert: 20000 }, rentenbeginnJahr: { kind: 'erfasst', wert: 2020 } }),
+    const status = pensionStatus(
+      pension({ art: 'GesetzlicheRente', jahresbetrag: { kind: 'erfasst', value: 20000 }, rentenbeginnJahr: { kind: 'erfasst', value: 2020 } }),
       ['Gewerbe'],
     )
-    expect(stand).toEqual({ kind: 'offen', einnahmen: 16000, vorsorgeaufwand: 0, anrechnung: 0, offenePosten: 0, konflikte: 0, gegated: ['Gewerbe'], unbestaetigte: 0, unbestaetigteSumme: 0 })
+    expect(status).toEqual({ kind: 'offen', einnahmen: 16000, vorsorgeaufwand: 0, anrechnung: 0, openItems: 0, conflicts: 0, gated: ['Gewerbe'], unconfirmedItems: 0, unconfirmedSum: 0 })
   })
 })
 
 describe('setzeRentenFeld / setzeRentenart — the one setters', () => {
   it('setzeRentenFeld replaces one field and leaves the rest untouched', () => {
-    const next = setPensionField(EMPTY_PENSION, 'jahresbetrag', { kind: 'erfasst', wert: 20000 })
-    expect(next.jahresbetrag).toEqual({ kind: 'erfasst', wert: 20000 })
+    const next = setPensionField(EMPTY_PENSION, 'jahresbetrag', { kind: 'erfasst', value: 20000 })
+    expect(next.jahresbetrag).toEqual({ kind: 'erfasst', value: 20000 })
     expect(next.rentenbeginnJahr).toEqual({ kind: 'offen' })
   })
 
   it('rejects an invalid erfasst value (negative / non-integer)', () => {
-    expect(() => setPensionField(EMPTY_PENSION, 'jahresbetrag', { kind: 'erfasst', wert: -5 })).toThrow(RangeError)
-    expect(() => setPensionField(EMPTY_PENSION, 'jahresbetrag', { kind: 'erfasst', wert: 1.5 })).toThrow(RangeError)
+    expect(() => setPensionField(EMPTY_PENSION, 'jahresbetrag', { kind: 'erfasst', value: -5 })).toThrow(RangeError)
+    expect(() => setPensionField(EMPTY_PENSION, 'jahresbetrag', { kind: 'erfasst', value: 1.5 })).toThrow(RangeError)
   })
 
   it('setzeRentenart sets a declared art and rejects an undeclared one', () => {
@@ -224,11 +224,11 @@ describe('serialisiereRentenFeld / deserialisiereRentenFeld — the one encoding
   it('round-trips offen / unklar / erfasst', () => {
     expect(serializePensionField({ kind: 'offen' })).toBeNull()
     expect(serializePensionField({ kind: 'unklar' })).toBe(PENSION_UNCLEAR)
-    expect(serializePensionField({ kind: 'erfasst', wert: 2020 })).toBe('2020')
+    expect(serializePensionField({ kind: 'erfasst', value: 2020 })).toBe('2020')
 
     expect(deserializePensionField(null)).toEqual({ kind: 'offen' })
     expect(deserializePensionField('unklar')).toEqual({ kind: 'unklar' })
-    expect(deserializePensionField('2020')).toEqual({ kind: 'erfasst', wert: 2020 })
+    expect(deserializePensionField('2020')).toEqual({ kind: 'erfasst', value: 2020 })
   })
 
   it('a stored value that is neither offen, unklar, nor a valid integer is corruption — throw', () => {

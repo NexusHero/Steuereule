@@ -10,60 +10,60 @@ import {
   type MasterDataRepository,
 } from '../stammdaten/stammdaten.repository.js'
 import { PARTNER_COUPLING_REPOSITORY, type PartnerCouplingRepository, type PartnerCouplingRecord } from './kopplung.repository.js'
-import type { KopplungPersonBDto, KopplungResponseDto, SetKopplungDto } from './dto/kopplung.dto.js'
+import type { LinkPersonBDto, LinkResponseDto, SetLinkDto } from './dto/kopplung.dto.js'
 
-const SCHATTEN_PRAEFIX = 'spouse_'
+const SHADOW_PREFIX = 'spouse_'
 
-function schattenId(userId: string, steuerjahr: number): string {
-  return `${SCHATTEN_PRAEFIX}${userId}_${steuerjahr}`
+function shadowId(userId: string, steuerjahr: number): string {
+  return `${SHADOW_PREFIX}${userId}_${steuerjahr}`
 }
 
-function hatEigenesKonto(row: PartnerCouplingRecord): boolean {
-  return row.personBUserId !== '' && !row.personBUserId.startsWith(SCHATTEN_PRAEFIX)
+function hasOwnAccount(row: PartnerCouplingRecord): boolean {
+  return row.personBUserId !== '' && !row.personBUserId.startsWith(SHADOW_PREFIX)
 }
 
-const EINLADUNG_GUELTIG_MS = 14 * 24 * 60 * 60 * 1000
+const INVITATION_VALID_MS = 14 * 24 * 60 * 60 * 1000
 
-function neueEinladung(jetzt: Date): { einladungsCode: string; einladungsCodeGueltigBis: Date } {
+function newInvitation(now: Date): { einladungsCode: string; einladungsCodeGueltigBis: Date } {
   return {
     einladungsCode: randomBytes(8).toString('hex').toUpperCase(),
-    einladungsCodeGueltigBis: new Date(jetzt.getTime() + EINLADUNG_GUELTIG_MS),
+    einladungsCodeGueltigBis: new Date(now.getTime() + INVITATION_VALID_MS),
   }
 }
 
-function einladungGueltig(row: PartnerCouplingRecord, jetzt: Date): boolean {
-  return row.einladungsCode !== null && row.einladungsCodeGueltigBis !== null && row.einladungsCodeGueltigBis > jetzt
+function invitationValid(row: PartnerCouplingRecord, now: Date): boolean {
+  return row.einladungsCode !== null && row.einladungsCodeGueltigBis !== null && row.einladungsCodeGueltigBis > now
 }
 
-function leereStammdaten(): MasterDataRecord {
-  const werte = Object.fromEntries(MASTER_DATA_FIELDS.map((feld) => [feld, null])) as Omit<
+function emptyMasterData(): MasterDataRecord {
+  const values = Object.fromEntries(MASTER_DATA_FIELDS.map((field) => [field, null])) as Omit<
     MasterDataRecord,
     'religionEinwilligungAm'
   >
-  return { ...werte, religionEinwilligungAm: null }
+  return { ...values, religionEinwilligungAm: null }
 }
 
 @Injectable()
-export class KopplungService {
+export class LinkService {
   constructor(
     @Inject(PARTNER_COUPLING_REPOSITORY) private readonly repository: PartnerCouplingRepository,
     @Inject(PROFILE_REPOSITORY) private readonly profileRepository: ProfileRepository,
-    @Inject(MASTER_DATA_REPOSITORY) private readonly stammdatenRepository: MasterDataRepository,
+    @Inject(MASTER_DATA_REPOSITORY) private readonly masterDataRepository: MasterDataRepository,
     @Inject(AuditService) private readonly auditService: AuditService,
   ) {}
 
-  async get(userId: string, steuerjahr: number): Promise<KopplungResponseDto> {
+  async get(userId: string, steuerjahr: number): Promise<LinkResponseDto> {
     const row = await this.repository.findByUserAndYear(userId, steuerjahr)
     if (!row) {
       return { veranlagungsart: 'keine' }
     }
 
-    let personB: KopplungPersonBDto | null = null
+    let personB: LinkPersonBDto | null = null
     if (row.veranlagungsart === 'zusammen' && row.personBUserId) {
       const otherId = row.personAUserId === userId ? row.personBUserId : row.personAUserId
       const [prof, sd] = await Promise.all([
         this.profileRepository.findByUserId(otherId),
-        this.stammdatenRepository.findByUserId(otherId),
+        this.masterDataRepository.findByUserId(otherId),
       ])
       personB = {
         firstName: prof?.firstName ?? null,
@@ -81,7 +81,7 @@ export class KopplungService {
       personBUserId: row.personBUserId,
       einladungsCode: row.einladungsCode,
       einladungsCodeGueltigBis: row.einladungsCodeGueltigBis?.toISOString() ?? null,
-      personBHatEigenesKonto: hatEigenesKonto(row),
+      personBHasOwnAccount: hasOwnAccount(row),
       personB,
     }
   }
@@ -91,7 +91,7 @@ export class KopplungService {
    * while B has no account; they live under B's shadow id and move with B on joinWithCode. Once B has an
    * account, the data is B's alone.
    */
-  async datenNutzer(userId: string, steuerjahr: number, person: 'A' | 'B'): Promise<string> {
+  async dataUser(userId: string, steuerjahr: number, person: 'A' | 'B'): Promise<string> {
     if (person === 'A') return userId
     const row = await this.repository.findByUserAndYear(userId, steuerjahr)
     if (!row || row.veranlagungsart !== 'zusammen' || !row.personBUserId) {
@@ -100,30 +100,30 @@ export class KopplungService {
     if (row.personAUserId !== userId) {
       throw new ForbiddenError('ONLY_PERSON_A_RECORDS_FOR_B', 'Only person A records data for person B.')
     }
-    if (hatEigenesKonto(row)) {
+    if (hasOwnAccount(row)) {
       throw new ForbiddenError('PERSON_B_OWNS_DATA', 'Person B maintains their data in their own account.')
     }
     return row.personBUserId
   }
 
-  async set(userId: string, steuerjahr: number, dto: SetKopplungDto, jetzt = new Date()): Promise<KopplungResponseDto> {
+  async set(userId: string, steuerjahr: number, dto: SetLinkDto, now = new Date()): Promise<LinkResponseDto> {
     const existing = await this.repository.findByUserAndYear(userId, steuerjahr)
     if (existing && existing.personAUserId !== userId) {
       throw new ForbiddenError('VERANLAGUNGSART_OWNED_BY_PERSON_A', 'Only person A can choose the Veranlagungsart.')
     }
 
     if (dto.veranlagungsart === 'zusammen') {
-      const bleibt = existing?.veranlagungsart === 'zusammen' && existing.personBUserId !== ''
-      const einladung =
-        bleibt && hatEigenesKonto(existing)
+      const remains = existing?.veranlagungsart === 'zusammen' && existing.personBUserId !== ''
+      const invitation =
+        remains && hasOwnAccount(existing)
           ? { einladungsCode: null, einladungsCodeGueltigBis: null }
-          : bleibt && einladungGueltig(existing, jetzt)
+          : remains && invitationValid(existing, now)
             ? { einladungsCode: existing.einladungsCode, einladungsCodeGueltigBis: existing.einladungsCodeGueltigBis }
-            : neueEinladung(jetzt)
+            : newInvitation(now)
       await this.repository.upsert(userId, steuerjahr, {
         veranlagungsart: 'zusammen',
-        personBUserId: bleibt ? existing.personBUserId : schattenId(userId, steuerjahr),
-        ...einladung,
+        personBUserId: remains ? existing.personBUserId : shadowId(userId, steuerjahr),
+        ...invitation,
       })
     } else {
       await this.repository.upsert(userId, steuerjahr, {
@@ -137,16 +137,16 @@ export class KopplungService {
     return this.get(userId, steuerjahr)
   }
 
-  async updatePersonB(userId: string, steuerjahr: number, data: KopplungPersonBDto): Promise<KopplungResponseDto> {
+  async updatePersonB(userId: string, steuerjahr: number, data: LinkPersonBDto): Promise<LinkResponseDto> {
     const row = await this.repository.findByUserAndYear(userId, steuerjahr)
     if (!row || row.veranlagungsart !== 'zusammen' || !row.personBUserId) {
       throw new InvalidInputError('NO_ACTIVE_ZUSAMMENVERANLAGUNG', 'There is no active Zusammenveranlagung.')
     }
-    if (row.personAUserId !== userId || hatEigenesKonto(row)) {
+    if (row.personAUserId !== userId || hasOwnAccount(row)) {
       throw new ForbiddenError('PERSON_B_OWNS_DATA', 'Person B maintains their data in their own account.')
     }
-    if (data.religion && data.religionEinwilligung !== true) {
-      throw new InvalidInputError('RELIGION_CONSENT_REQUIRED', 'religion requires religionEinwilligung = true (Art. 9 DSGVO).')
+    if (data.religion && data.religionConsent !== true) {
+      throw new InvalidInputError('RELIGION_CONSENT_REQUIRED', 'religion requires religionConsent = true (Art. 9 DSGVO).')
     }
 
     const spouseUserId = row.personBUserId
@@ -162,28 +162,28 @@ export class KopplungService {
     }
 
     if (data.geburtsdatum !== undefined || data.religion !== undefined || data.beruf !== undefined) {
-      const bisher = (await this.stammdatenRepository.findByUserId(spouseUserId)) ?? leereStammdaten()
-      const religion = data.religion !== undefined ? data.religion : bisher.religion
-      await this.stammdatenRepository.speichere(spouseUserId, {
-        ...bisher,
-        geburtsdatum: data.geburtsdatum ?? bisher.geburtsdatum,
-        beruf: data.beruf ?? bisher.beruf,
+      const previous = (await this.masterDataRepository.findByUserId(spouseUserId)) ?? emptyMasterData()
+      const religion = data.religion !== undefined ? data.religion : previous.religion
+      await this.masterDataRepository.save(spouseUserId, {
+        ...previous,
+        geburtsdatum: data.geburtsdatum ?? previous.geburtsdatum,
+        beruf: data.beruf ?? previous.beruf,
         religion,
         familienstand: 'verheiratet',
         religionEinwilligungAm:
-          religion === null ? null : data.religion ? new Date() : bisher.religionEinwilligungAm,
+          religion === null ? null : data.religion ? new Date() : previous.religionEinwilligungAm,
       })
     }
 
     return this.get(userId, steuerjahr)
   }
 
-  async joinWithCode(userId: string, steuerjahr: number, code: string, jetzt = new Date()): Promise<KopplungResponseDto> {
-    const row = await this.repository.findByEinladungsCode(code)
+  async joinWithCode(userId: string, steuerjahr: number, code: string, now = new Date()): Promise<LinkResponseDto> {
+    const row = await this.repository.findByInvitationCode(code)
     if (!row || row.steuerjahr !== steuerjahr) {
       throw new NotFoundError('INVITATION_CODE_INVALID', 'The invitation code is invalid.')
     }
-    if (!einladungGueltig(row, jetzt)) {
+    if (!invitationValid(row, now)) {
       throw new NotFoundError('INVITATION_CODE_EXPIRED', 'The invitation code has expired.')
     }
     if (row.personAUserId === userId) {

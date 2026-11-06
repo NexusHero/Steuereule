@@ -5,20 +5,20 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Button, Feld, Input, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
 import {
   useLstbControllerGetLstb,
-  useLstbControllerSetFeld,
+  useLstbControllerSetField,
   getLstbControllerGetLstbQueryKey,
-  type LstbFeldDto,
+  type LstbFieldDto,
   type LstbResponseDto,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
-import { ganzzahlAus } from '../shared/ganzzahl'
+import { integerFrom } from '../shared/ganzzahl'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 
-type FeldId = 'bruttoarbeitslohn' | 'lohnsteuer' | 'sozialversicherung'
+type FieldId = 'bruttoarbeitslohn' | 'lohnsteuer' | 'sozialversicherung'
 
-const FELDER: readonly { id: FeldId; labelKey: string }[] = [
+const FIELDS: readonly { id: FieldId; labelKey: string }[] = [
   { id: 'bruttoarbeitslohn', labelKey: 'lstb.felder.bruttoarbeitslohn' },
   { id: 'lohnsteuer', labelKey: 'lstb.felder.lohnsteuer' },
   { id: 'sozialversicherung', labelKey: 'lstb.felder.sozialversicherung' },
@@ -40,7 +40,7 @@ export function LstbScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YE
   const { t: tr } = useTranslation(APP_NS)
   const queryClient = useQueryClient()
   const query = useLstbControllerGetLstb(taxYear, params)
-  const setFeld = useLstbControllerSetFeld()
+  const setField = useLstbControllerSetField()
 
   if (query.isPending) {
     return <LoadingState bp={bp} label={tr('lstb.loading')} />
@@ -59,9 +59,9 @@ export function LstbScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YE
 
   const response = query.data.data
 
-  function send(feld: FeldId, data: LstbFeldDto) {
-    setFeld.mutate(
-      { jahr: taxYear, feld, data, ...(params ? { params } : {}) },
+  function send(field: FieldId, data: LstbFieldDto) {
+    setField.mutate(
+      { jahr: taxYear, feld: field, data, ...(params ? { params } : {}) },
       {
         onSuccess: () => {
           void queryClient.invalidateQueries({ queryKey: getLstbControllerGetLstbQueryKey(taxYear, params) })
@@ -78,17 +78,17 @@ export function LstbScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YE
       <Text style={styles.heading}>{partnerName === undefined ? tr('lstb.heading') : tr('lstb.headingPartner', { name: partnerName })}</Text>
       <Text style={styles.help}>{tr('lstb.help')}</Text>
 
-      {FELDER.map((feld) => (
-        <LstbFeldEditor
-          key={feld.id}
-          label={tr(feld.labelKey)}
-          zustand={response[feld.id]}
-          onErfasst={(wert) => send(feld.id, { kind: 'erfasst', wert })}
-          onUnklar={() => send(feld.id, { kind: 'unklar' })}
+      {FIELDS.map((field) => (
+        <LstbFieldEditor
+          key={field.id}
+          label={tr(field.labelKey)}
+          state={response[field.id]}
+          onRecorded={(value) => send(field.id, { kind: 'erfasst', value })}
+          onUnclear={() => send(field.id, { kind: 'unklar' })}
         />
       ))}
 
-      <ZustandNotice response={response} />
+      <StateNotice response={response} />
 
       <Button onPress={onDone} style={styles.cta}>
         {tr('lstb.weiter')}
@@ -97,27 +97,27 @@ export function LstbScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YE
   )
 }
 
-function LstbFeldEditor({
+function LstbFieldEditor({
   label,
-  zustand,
-  onErfasst,
-  onUnklar,
+  state,
+  onRecorded,
+  onUnclear,
 }: {
   readonly label: string
-  readonly zustand: LstbFeldDto
-  readonly onErfasst: (wert: number) => void
-  readonly onUnklar: () => void
+  readonly state: LstbFieldDto
+  readonly onRecorded: (value: number) => void
+  readonly onUnclear: () => void
 }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const s = makeStyles(t)
-  const [text, setText] = useState(zustand.kind === 'erfasst' ? String(zustand.wert) : '')
+  const [text, setText] = useState(state.kind === 'erfasst' ? String(state.value) : '')
 
   function commit() {
-    const wert = ganzzahlAus(text)
-    if (wert === null) return
-    if (zustand.kind === 'erfasst' && zustand.wert === wert) return
-    onErfasst(wert)
+    const value = integerFrom(text)
+    if (value === null) return
+    if (state.kind === 'erfasst' && state.value === value) return
+    onRecorded(value)
   }
 
   return (
@@ -126,26 +126,26 @@ function LstbFeldEditor({
         <Input
           type="numeric"
           mono
-          value={zustand.kind === 'unklar' ? '' : text}
+          value={state.kind === 'unklar' ? '' : text}
           onChange={setText}
           placeholder={tr('lstb.feld.placeholder')}
           onSubmit={commit}
           onBlur={commit}
           accessibilityLabel={`${label} (${tr('lstb.feld.placeholder')})`}
         />
-        <Pressable accessibilityRole="button" onPress={onUnklar} style={s.unklarButton}>
-          <Text style={zustand.kind === 'unklar' ? s.unklarActive : s.unklarLabel}>{tr('lstb.feld.unklar')}</Text>
+        <Pressable accessibilityRole="button" onPress={onUnclear} style={s.unklarButton}>
+          <Text style={state.kind === 'unklar' ? s.unklarActive : s.unklarLabel}>{tr('lstb.feld.unklar')}</Text>
         </Pressable>
       </View>
     </Feld>
   )
 }
 
-function ZustandNotice({ response }: { readonly response: LstbResponseDto }) {
+function StateNotice({ response }: { readonly response: LstbResponseDto }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const s = makeStyles(t)
-  const z = response.zustand
+  const z = response.state
 
   if (z.kind === 'vollstaendig') {
     return <Text style={s.zustandOk}>{tr('lstb.zustand.vollstaendig')}</Text>
@@ -154,7 +154,7 @@ function ZustandNotice({ response }: { readonly response: LstbResponseDto }) {
     return (
       <View style={s.widerspruchBlock}>
         <Text style={s.widerspruchHeading}>{tr('lstb.zustand.widerspruch')}</Text>
-        {(z.widersprueche ?? []).map((w) => (
+        {(z.conflicts ?? []).map((w) => (
           <Text key={w.art} style={s.widerspruchItem}>
             {tr(`lstb.widerspruch.${w.art}`)}
           </Text>
@@ -162,7 +162,7 @@ function ZustandNotice({ response }: { readonly response: LstbResponseDto }) {
       </View>
     )
   }
-  return <Text style={s.zustandOffen}>{tr('lstb.zustand.unvollstaendig', { offen: (z.offen ?? []).length, unklar: (z.unklar ?? []).length })}</Text>
+  return <Text style={s.zustandOffen}>{tr('lstb.zustand.unvollstaendig', { offen: (z.open ?? []).length, unklar: (z.unclear ?? []).length })}</Text>
 }
 
 function makeStyles(t: UiTheme) {
@@ -185,21 +185,21 @@ function makeStyles(t: UiTheme) {
     marginBottom: t.space.s2,
   }
   const help: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.m, marginBottom: t.space.s4 }
-  const feldRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s3 }
-  const unklarButton: ViewStyle = {
+  const fieldRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s3 }
+  const unclearButton: ViewStyle = {
     paddingHorizontal: t.space.s3,
     paddingVertical: t.space.s2,
     borderWidth: t.space.kontur,
     borderColor: t.color.tinte,
     borderRadius: t.radius.s,
   }
-  const unklarLabel: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.s }
-  const unklarActive: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.s }
-  const zustandOk: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontSize: t.size.m, marginVertical: t.space.s3 }
-  const zustandOffen: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.m, marginVertical: t.space.s3 }
-  const widerspruchBlock: ViewStyle = { marginVertical: t.space.s3, padding: t.space.s3, borderWidth: t.space.kontur, borderColor: t.color.warn, borderRadius: t.radius.s }
-  const widerspruchHeading: TextStyle = { color: t.color.tinte, fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size.m, marginBottom: t.space.s2 }
-  const widerspruchItem: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontSize: t.size.s, marginBottom: t.space.s1 }
+  const unclearLabel: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.s }
+  const unclearActive: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.s }
+  const stateOk: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontSize: t.size.m, marginVertical: t.space.s3 }
+  const stateOpen: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.m, marginVertical: t.space.s3 }
+  const conflictBlock: ViewStyle = { marginVertical: t.space.s3, padding: t.space.s3, borderWidth: t.space.kontur, borderColor: t.color.warn, borderRadius: t.radius.s }
+  const conflictHeading: TextStyle = { color: t.color.tinte, fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size.m, marginBottom: t.space.s2 }
+  const conflictItem: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontSize: t.size.s, marginBottom: t.space.s1 }
   const cta: ViewStyle = { marginTop: t.space.s4 }
-  return { screen, wideScreen, headerRow, heading, help, feldRow, unklarButton, unklarLabel, unklarActive, zustandOk, zustandOffen, widerspruchBlock, widerspruchHeading, widerspruchItem, cta }
+  return { screen, wideScreen, headerRow, heading, help, feldRow: fieldRow, unklarButton: unclearButton, unklarLabel: unclearLabel, unklarActive: unclearActive, zustandOk: stateOk, zustandOffen: stateOpen, widerspruchBlock: conflictBlock, widerspruchHeading: conflictHeading, widerspruchItem: conflictItem, cta }
 }

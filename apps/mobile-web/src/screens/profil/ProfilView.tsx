@@ -2,28 +2,28 @@ import { ScrollView, View, Text, Pressable } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Card, Chip, useTheme, type Breakpoint } from '@steuereule/ui'
 import { APP_NS } from '../../i18n/resources'
-import { makeProfilStyles } from './styles'
-import { AssistentenListSection } from './AssistentenListSection'
+import { makeProfileStyles } from './styles'
+import { AssistantsListSection } from './AssistentenListSection'
 import { DeviceListSection } from '../device/DeviceListSection'
-import type { OnboardingProfil } from '../onboarding/profileMapping'
+import type { OnboardingProfile } from '../onboarding/profileMapping'
 
-interface ProfilViewProps {
-  readonly profil: OnboardingProfil
+interface ProfileViewProps {
+  readonly profile: OnboardingProfile
   readonly onEdit: () => void
   readonly justSaved: boolean
   readonly bp: Breakpoint
-  readonly onOpenDatenschutz: () => void
-  readonly onOpenSicherheit: () => void
-  readonly onOpenStammdaten?: () => void
+  readonly onOpenPrivacy: () => void
+  readonly onOpenSecurity: () => void
+  readonly onOpenMasterData?: () => void
   readonly onSignedOut: () => void
 }
 
-export function ProfilView({ profil, onEdit, justSaved, bp, onOpenDatenschutz, onOpenSicherheit, onOpenStammdaten, onSignedOut }: ProfilViewProps) {
+export function ProfileView({ profile, onEdit, justSaved, bp, onOpenPrivacy, onOpenSecurity, onOpenMasterData, onSignedOut }: ProfileViewProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
-  const styles = makeProfilStyles(t)
-  const fullName = `${profil.vorname} ${profil.nachname}`.trim()
-  const initialSource = profil.vorname.trim() || profil.nachname.trim()
+  const styles = makeProfileStyles(t)
+  const fullName = `${profile.vorname} ${profile.nachname}`.trim()
+  const initialSource = profile.vorname.trim() || profile.nachname.trim()
   const initial = initialSource ? initialSource[0]?.toUpperCase() : '?'
 
   return (
@@ -37,7 +37,7 @@ export function ProfilView({ profil, onEdit, justSaved, bp, onOpenDatenschutz, o
           </View>
           <View style={styles.summaryTextCol}>
             <Text style={styles.name}>{fullName || tr('profil.namePlaceholder')}</Text>
-            <Text style={styles.idLine}>{profil.steuerId ? profil.steuerId : tr('profil.emptyNote')}</Text>
+            <Text style={styles.idLine}>{profile.steuerId ? profile.steuerId : tr('profil.emptyNote')}</Text>
           </View>
           <Chip onPress={onEdit}>{tr('profil.edit')}</Chip>
         </View>
@@ -49,9 +49,9 @@ export function ProfilView({ profil, onEdit, justSaved, bp, onOpenDatenschutz, o
         </Text>
       ) : null}
 
-      {onOpenStammdaten ? (
+      {onOpenMasterData ? (
         <Card style={styles.datenCard}>
-          <Pressable accessibilityRole="button" onPress={onOpenStammdaten} style={styles.datenRow}>
+          <Pressable accessibilityRole="button" onPress={onOpenMasterData} style={styles.datenRow}>
             <Text style={styles.datenRowLabel}>{tr('stammdaten.rowLabel')}</Text>
             <Text style={styles.datenRowArrow} aria-hidden={true}>→</Text>
           </Pressable>
@@ -59,20 +59,20 @@ export function ProfilView({ profil, onEdit, justSaved, bp, onOpenDatenschutz, o
       ) : null}
 
       <Card style={styles.datenCard}>
-        <Pressable accessibilityRole="button" onPress={onOpenDatenschutz} style={styles.datenRow}>
+        <Pressable accessibilityRole="button" onPress={onOpenPrivacy} style={styles.datenRow}>
           <Text style={styles.datenRowLabel}>{tr('profil.deineDaten.rowLabel')}</Text>
           <Text style={styles.datenRowArrow} aria-hidden={true}>→</Text>
         </Pressable>
       </Card>
 
       <Card style={styles.datenCard}>
-        <Pressable accessibilityRole="button" onPress={onOpenSicherheit} style={styles.datenRow}>
+        <Pressable accessibilityRole="button" onPress={onOpenSecurity} style={styles.datenRow}>
           <Text style={styles.datenRowLabel}>{tr('profil.sicherheit.rowLabel')}</Text>
           <Text style={styles.datenRowArrow} aria-hidden={true}>→</Text>
         </Pressable>
       </Card>
 
-      <AssistentenListSection />
+      <AssistantsListSection />
 
       <DeviceListSection onCurrentSessionRevoked={onSignedOut} />
     </ScrollView>

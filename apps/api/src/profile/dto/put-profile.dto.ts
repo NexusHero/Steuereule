@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import { IsOptional, IsString } from 'class-validator'
-import { IsNotBlank, IsSteuerId, IsSteuernummer } from './steuer-id.validators.js'
+import { IsNotBlank, IsTaxId, IsTaxNumber } from './steuer-id.validators.js'
 
 /** `type: String` is given explicitly on every. */
 export class PutProfileDto {
@@ -21,7 +21,7 @@ export class PutProfileDto {
   })
   @IsOptional()
   @IsString()
-  @IsSteuerId()
+  @IsTaxId()
   steuerId?: string
 
   @ApiPropertyOptional({
@@ -31,6 +31,6 @@ export class PutProfileDto {
   })
   @IsOptional()
   @IsString()
-  @IsSteuernummer()
+  @IsTaxNumber()
   steuernummer?: string
 }

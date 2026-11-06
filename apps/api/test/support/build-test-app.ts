@@ -30,16 +30,16 @@ import { PROVENANCE_REPOSITORY } from '../../src/kennzeichnung/kennzeichnung.rep
 import { FakeAccountIdentityRepository } from '../fakes/fake-account-identity.repository.js'
 import { FakeAuditRepository } from '../fakes/fake-audit.repository.js'
 import { FakeInterviewAnswerRepository } from '../fakes/fake-interview-answer.repository.js'
-import { FakeKapitalRepository } from '../fakes/fake-kapital.repository.js'
+import { FakeCapitalRepository } from '../fakes/fake-kapital.repository.js'
 import { FakeLstbRepository } from '../fakes/fake-lstb.repository.js'
 import { FakePdfRenderer } from '../fakes/fake-pdf-renderer.js'
 import { FakeTaxDataExportRepository } from '../fakes/fake-tax-data-export.repository.js'
 import { FakeProfileRepository } from '../fakes/fake-profile.repository.js'
-import { FakeRenteRepository } from '../fakes/fake-rente.repository.js'
+import { FakePensionRepository } from '../fakes/fake-rente.repository.js'
 import { FakeTaxYearRepository } from '../fakes/fake-tax-year.repository.js'
-import { FakeKennzeichnungRepository } from '../fakes/fake-kennzeichnung.repository.js'
-import { FakeVermietungRepository } from '../fakes/fake-vermietung.repository.js'
-import { FakeChLohnausweisRepository } from '../fakes/fake-ch-lohnausweis.repository.js'
+import { FakeMarkingRepository } from '../fakes/fake-kennzeichnung.repository.js'
+import { FakeRentalRepository } from '../fakes/fake-vermietung.repository.js'
+import { FakeChSalaryCertificateRepository } from '../fakes/fake-ch-lohnausweis.repository.js'
 import { CROSS_BORDER_SALARY_STATEMENT_REPOSITORY } from '../../src/ch-lohnausweis/ch-lohnausweis.repository.js'
 
 export async function buildTestApp(options?: {
@@ -61,11 +61,11 @@ export async function buildTestApp(options?: {
   const taxYearRepository = new FakeTaxYearRepository()
   const lstbRepository = new FakeLstbRepository()
   const interviewRepository = new FakeInterviewAnswerRepository()
-  const kennzeichnungRepository = new FakeKennzeichnungRepository()
-  const renteRepository = new FakeRenteRepository()
-  const kapitalRepository = new FakeKapitalRepository()
-  const vermietungRepository = new FakeVermietungRepository()
-  const chLohnausweisRepository = new FakeChLohnausweisRepository()
+  const markingRepository = new FakeMarkingRepository()
+  const pensionRepository = new FakePensionRepository()
+  const capitalRepository = new FakeCapitalRepository()
+  const rentalRepository = new FakeRentalRepository()
+  const chSalaryCertificateRepository = new FakeChSalaryCertificateRepository()
   const accountIdentityRepository = new FakeAccountIdentityRepository()
   const pdfRenderer = new FakePdfRenderer()
   const taxDataExportRepository = new FakeTaxDataExportRepository()
@@ -116,15 +116,15 @@ export async function buildTestApp(options?: {
     .overrideProvider(INTERVIEW_ANSWER_REPOSITORY)
     .useValue(interviewRepository)
     .overrideProvider(PROVENANCE_REPOSITORY)
-    .useValue(kennzeichnungRepository)
+    .useValue(markingRepository)
     .overrideProvider(PENSION_REPOSITORY)
-    .useValue(renteRepository)
+    .useValue(pensionRepository)
     .overrideProvider(CAPITAL_REPOSITORY)
-    .useValue(kapitalRepository)
+    .useValue(capitalRepository)
     .overrideProvider(RENTAL_REPOSITORY)
-    .useValue(vermietungRepository)
+    .useValue(rentalRepository)
     .overrideProvider(CROSS_BORDER_SALARY_STATEMENT_REPOSITORY)
-    .useValue(chLohnausweisRepository)
+    .useValue(chSalaryCertificateRepository)
     .overrideProvider(ACCOUNT_IDENTITY_REPOSITORY)
     .useValue(accountIdentityRepository)
     .overrideProvider(PDF_RENDERER)

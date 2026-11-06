@@ -3,19 +3,19 @@ import { employeeFromAnswers } from './angestellte'
 import { ENTRIES, nextStepFor, type Answers } from './interview'
 import { healthInsuranceFromAnswers } from './krankenversicherung'
 
-const SONDERAUSGABEN = ENTRIES.sonderausgaben
+const SPECIAL_EXPENSES = ENTRIES.sonderausgaben
 
 describe('self-paid health and care insurance (Anlage Vorsorgeaufwand Z. 16–33)', () => {
   it('asks the kind of insurance, the Krankengeld claim, KV, PV and the extras after "Ja"', () => {
     const answers: Answers = { spenden: 'Nein', 'kv-pv': 'Ja' }
-    expect(nextStepFor(SONDERAUSGABEN, answers)).toEqual({ kind: 'question', id: 'kv-pv-art' })
-    expect(nextStepFor(SONDERAUSGABEN, { ...answers, 'kv-pv-art': 'Gesetzlich (freiwillig)' })).toEqual({ kind: 'question', id: 'kv-krankengeld' })
-    expect(nextStepFor(SONDERAUSGABEN, { ...answers, 'kv-pv-art': 'Privat' })).toEqual({ kind: 'question', id: 'kv-pv-betrag' })
+    expect(nextStepFor(SPECIAL_EXPENSES, answers)).toEqual({ kind: 'question', id: 'kv-pv-art' })
+    expect(nextStepFor(SPECIAL_EXPENSES, { ...answers, 'kv-pv-art': 'Gesetzlich (freiwillig)' })).toEqual({ kind: 'question', id: 'kv-krankengeld' })
+    expect(nextStepFor(SPECIAL_EXPENSES, { ...answers, 'kv-pv-art': 'Privat' })).toEqual({ kind: 'question', id: 'kv-pv-betrag' })
     expect(
-      nextStepFor(SONDERAUSGABEN, { ...answers, 'kv-pv-art': 'Privat', 'kv-pv-betrag': '3000' }),
+      nextStepFor(SPECIAL_EXPENSES, { ...answers, 'kv-pv-art': 'Privat', 'kv-pv-betrag': '3000' }),
     ).toEqual({ kind: 'question', id: 'pv-betrag' })
     expect(
-      nextStepFor(SONDERAUSGABEN, { ...answers, 'kv-pv-art': 'Privat', 'kv-pv-betrag': '3000', 'pv-betrag': '600' }),
+      nextStepFor(SPECIAL_EXPENSES, { ...answers, 'kv-pv-art': 'Privat', 'kv-pv-betrag': '3000', 'pv-betrag': '600' }),
     ).toEqual({ kind: 'question', id: 'kv-wahl-betrag' })
   })
 

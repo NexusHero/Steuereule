@@ -13,14 +13,14 @@ process.env.BETTER_AUTH_URL = 'http://127.0.0.1:39995'
 const ALLOWED_ORIGIN = 'https://allowed.example.com'
 process.env.CORS_ALLOWED_ORIGINS = ALLOWED_ORIGIN
 
-const VOLLSTAENDIG = {
+const COMPLETE = {
   geburtsdatum: '1990-04-12',
   strasse: 'Musterstraße',
   hausnummer: '12',
   plz: '01067',
   wohnort: 'Dresden',
   religion: 'RK',
-  religionEinwilligung: true,
+  religionConsent: true,
   familienstand: 'ledig',
   iban: 'DE89 3704 0044 0532 0130 00',
   finanzamt: 'Dresden-Nord',
@@ -75,10 +75,10 @@ describe('Stammdaten (ADR-0050), against the real server', () => {
   it('round-trips the data, with IBAN, religion and address as ciphertext at rest', async () => {
     const { cookie, userId } = await signUp('stammdaten-roundtrip@example.com')
 
-    const response = await put(cookie, VOLLSTAENDIG)
+    const response = await put(cookie, COMPLETE)
     expect(response.status).toBe(200)
     const read = (await (await fetch(`${baseUrl}/v1/stammdaten`, { headers: { cookie } })).json()) as Record<string, unknown>
-    expect(read).toMatchObject({ iban: 'DE89370400440532013000', religion: 'RK', plz: '01067', fehlend: [] })
+    expect(read).toMatchObject({ iban: 'DE89370400440532013000', religion: 'RK', plz: '01067', missing: [] })
 
     const [raw] = await prisma.$queryRaw<{ iban: string; religion: string; strasse: string }[]>`
       SELECT iban, religion, strasse FROM "Stammdaten" WHERE "userId" = ${userId}`
@@ -89,21 +89,21 @@ describe('Stammdaten (ADR-0050), against the real server', () => {
 
   it('refuses a religion without explicit consent (Art. 9 DSGVO) and writes nothing', async () => {
     const { cookie, userId } = await signUp('stammdaten-art9@example.com')
-    const response = await put(cookie, { ...VOLLSTAENDIG, religionEinwilligung: undefined })
+    const response = await put(cookie, { ...COMPLETE, religionConsent: undefined })
     expect(response.status).toBe(400)
     expect(await prisma.stammdaten.count({ where: { userId } })).toBe(0)
   })
 
   it('refuses an IBAN with a wrong check digit and an impossible date', async () => {
     const { cookie } = await signUp('stammdaten-validation@example.com')
-    expect((await put(cookie, { ...VOLLSTAENDIG, iban: 'DE89370400440532013001' })).status).toBe(400)
-    expect((await put(cookie, { ...VOLLSTAENDIG, geburtsdatum: '1990-02-30' })).status).toBe(400)
+    expect((await put(cookie, { ...COMPLETE, iban: 'DE89370400440532013001' })).status).toBe(400)
+    expect((await put(cookie, { ...COMPLETE, geburtsdatum: '1990-02-30' })).status).toBe(400)
   })
 
   it('a guest session cannot read or write Stammdaten', async () => {
     const guest = await fetch(`${baseUrl}/v1/stammdaten`)
     const cookie = guest.headers.get('set-cookie')?.split(';')[0] ?? ''
     expect(guest.status).toBe(401)
-    expect((await put(cookie, VOLLSTAENDIG)).status).toBe(401)
+    expect((await put(cookie, COMPLETE)).status).toBe(401)
   })
 })

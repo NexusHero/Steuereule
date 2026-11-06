@@ -1,9 +1,9 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import { IsBoolean, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator'
-import { WechselkursDto } from './wechselkurs.dto.js'
+import { ExchangeRateDto } from './wechselkurs.dto.js'
 
 /** One CH line item with full provenance. */
-export class ChPostenDto {
+export class ChItemDto {
   @ApiProperty({ type: String, description: 'Stable line-item id.' })
   id!: string
 
@@ -11,23 +11,23 @@ export class ChPostenDto {
   art!: string
 
   @ApiPropertyOptional({ type: String, description: 'The Lohnausweis Ziffer (when from the Lohnausweis).' })
-  ziffer?: string
+  digit?: string
 
   @ApiProperty({ type: Number, description: 'CHF amount as entered (ADR-036: CHF führt).' })
-  betragChf!: number
+  amountChf!: number
 
   @ApiProperty({ type: Number, description: 'EUR amount = chfNachEur(betragChf, kurs), rounded to cents.' })
-  betragEur!: number
+  amountEur!: number
 
   @ApiProperty({ enum: ['einnahme', 'vorsorgeaufwand', 'anrechnung'], description: 'The fold bucket (Rolle).' })
-  rolle!: string
+  role!: string
 
-  @ApiProperty({ type: WechselkursDto, description: 'The Kurs the conversion was made with.' })
-  wechselkurs!: WechselkursDto
+  @ApiProperty({ type: ExchangeRateDto, description: 'The Kurs the conversion was made with.' })
+  exchangeRate!: ExchangeRateDto
 }
 
 /** The PUT body for the optional Säule 3a / Krankenkasse amounts. */
-export class PutVorsorgeDto {
+export class PutProvisionDto {
   @ApiPropertyOptional({ type: Number, nullable: true, description: 'Säule 3a whole-CHF amount, or null to clear.' })
   @IsOptional()
   @IsInt()
@@ -42,7 +42,7 @@ export class PutVorsorgeDto {
 }
 
 /** The PUT body for Ziffer 15 Bemerkungen. */
-export class PutBemerkungenDto {
+export class PutRemarksDto {
   @ApiPropertyOptional({ type: String, nullable: true, description: 'The free-text remark, or null to clear.' })
   @IsOptional()
   @IsString()
@@ -122,11 +122,11 @@ export class PutNGreDto {
   @ApiPropertyOptional({ type: Boolean, nullable: true, description: 'Any of N-Gre Zeilen 7, 9–14, 16, 17 or 20–22 applies.' })
   @IsOptional()
   @IsBoolean()
-  sonderfaelle?: boolean | null
+  specialCases?: boolean | null
 }
 
 /** The stored Anlage-N-Gre facts. */
-export class NGreAngabenDto {
+export class NGreDetailsDto {
   @ApiProperty({ type: String, nullable: true })
   arbeitgeberName!: string | null
 
@@ -161,5 +161,5 @@ export class NGreAngabenDto {
   nbuvArbeitgeberChf!: number | null
 
   @ApiProperty({ type: Boolean, nullable: true })
-  sonderfaelle!: boolean | null
+  specialCases!: boolean | null
 }

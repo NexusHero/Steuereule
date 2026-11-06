@@ -10,15 +10,15 @@ import {
 } from '@faker-js/faker';
 
 import type {
+  ConnectedAssistantDto,
   OauthClientInfoDto,
-  RevokeAssistentResponseDto,
-  VerbundenerAssistentDto
+  RevokeAssistantResponseDto
 } from './assistenten.schemas';
 
 
-export const getAssistentenControllerListConnectedResponseMock = (): VerbundenerAssistentDto[] => (Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({clientId: faker.string.alpha({length: {min: 10, max: 20}}), name: faker.string.alpha({length: {min: 10, max: 20}}), verbundenSeit: faker.string.alpha({length: {min: 10, max: 20}}), zuletztGenutzt: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null])})))
+export const getAssistantsControllerListConnectedResponseMock = (): ConnectedAssistantDto[] => (Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({clientId: faker.string.alpha({length: {min: 10, max: 20}}), name: faker.string.alpha({length: {min: 10, max: 20}}), linkedSince: faker.string.alpha({length: {min: 10, max: 20}}), lastUsed: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null])})))
 
-export const getAssistentenControllerRevokeResponseMock = (overrideResponse: Partial<Extract<RevokeAssistentResponseDto, object>> = {}): RevokeAssistentResponseDto => ({success: faker.datatype.boolean(), ...overrideResponse})
+export const getAssistantsControllerRevokeResponseMock = (overrideResponse: Partial<Extract<RevokeAssistantResponseDto, object>> = {}): RevokeAssistantResponseDto => ({success: faker.datatype.boolean(), ...overrideResponse})
 
-export const getAssistentenControllerGetClientInfoResponseMock = (overrideResponse: Partial<Extract<OauthClientInfoDto, object>> = {}): OauthClientInfoDto => ({clientId: faker.string.alpha({length: {min: 10, max: 20}}), name: faker.string.alpha({length: {min: 10, max: 20}}), uri: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), icon: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), ...overrideResponse})
+export const getAssistantsControllerGetClientInfoResponseMock = (overrideResponse: Partial<Extract<OauthClientInfoDto, object>> = {}): OauthClientInfoDto => ({clientId: faker.string.alpha({length: {min: 10, max: 20}}), name: faker.string.alpha({length: {min: 10, max: 20}}), uri: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), icon: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), ...overrideResponse})
 

@@ -19,5 +19,5 @@ export class ReceiptResponseDto {
   zahlungsdatum!: string | null
 
   @ApiProperty({ type: AssignmentDto, description: '@steuereule/core’s zuordnungAusDaten — never recomputed elsewhere.' })
-  zuordnung!: AssignmentDto
+  assignment!: AssignmentDto
 }

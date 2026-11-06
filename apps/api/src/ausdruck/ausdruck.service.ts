@@ -1,15 +1,15 @@
 import { HttpException, HttpStatus, Inject, Injectable, UnprocessableEntityException } from '@nestjs/common'
 import { NotFoundError } from '../common/domain-error.js'
 import {
-  CH_WOHNSITZ_VALUES,
+  CH_RESIDENCE_VALUES,
   YEAR_INDEPENDENT,
   calculateWorkdays,
   missingConfirmations,
-  grenzgaengerStatus,
+  crossBorderStatus,
   healthInsuranceFromAnswers,
   classifyCapitalDepot,
-  type ChWohnsitz,
-  type GrenzgaengerStatus,
+  type ChResidence,
+  type CrossBorderStatus,
   type HealthInsurance,
 } from '@steuereule/core'
 import { COMMUTE_REPOSITORY, type CommuteInputs, type CommuteRepository } from '../arbeitsweg/arbeitsweg.repository.js'
@@ -26,137 +26,137 @@ import { PROFILE_REPOSITORY, type ProfileRepository } from '../profile/profile.r
 import { PENSION_REPOSITORY, type PensionRepository } from '../rente/rente.repository.js'
 import { MASTER_DATA_REPOSITORY, type MasterDataRepository } from '../stammdaten/stammdaten.repository.js'
 import { RENTAL_REPOSITORY, type RentalRepository } from '../vermietung/vermietung.repository.js'
-import { ausdruckWerte, type ArbeitswegFakten, type ChLohnausweisFakten, type PersonBFakten } from './ausdruck-werte.js'
-import { FELDSAETZE, rendereVordrucke, UeberlaufFehler } from './vordruck-renderer.js'
+import { printoutValues, type CommuteFacts, type ChSalaryCertificateFacts, type PersonBFacts } from './ausdruck-werte.js'
+import { FIELD_SETS, renderForms, OverflowError } from './vordruck-renderer.js'
 
-export const VORLAGEN_BASIS = Symbol('VORLAGEN_BASIS')
+export const TEMPLATES_BASE = Symbol('VORLAGEN_BASIS')
 
-function grenzgaengerStatusAus(answers: Record<string, string>): GrenzgaengerStatus | null {
-  const wohnsitz = answers['ch-wohnsitz']
-  const tage = answers['ch-nichtrueckkehrtage']
-  if (!(CH_WOHNSITZ_VALUES as readonly string[]).includes(wohnsitz ?? '')) return null
-  if (wohnsitz === 'Schweiz') return 'kein-grenzgaenger'
-  return tage && /^\d+$/.test(tage) ? grenzgaengerStatus(wohnsitz as ChWohnsitz, Number(tage)) : null
+function crossBorderStatusFrom(answers: Record<string, string>): CrossBorderStatus | null {
+  const residence = answers['ch-wohnsitz']
+  const days = answers['ch-nichtrueckkehrtage']
+  if (!(CH_RESIDENCE_VALUES as readonly string[]).includes(residence ?? '')) return null
+  if (residence === 'Schweiz') return 'kein-grenzgaenger'
+  return days && /^\d+$/.test(days) ? crossBorderStatus(residence as ChResidence, Number(days)) : null
 }
 
 /** The Formular-Ausdruck: the paid, printable return for one tax year. */
 @Injectable()
-export class AusdruckService {
+export class PrintoutService {
   constructor(
     @Inject(PROFILE_REPOSITORY) private readonly profile: ProfileRepository,
-    @Inject(MASTER_DATA_REPOSITORY) private readonly stammdaten: MasterDataRepository,
+    @Inject(MASTER_DATA_REPOSITORY) private readonly masterData: MasterDataRepository,
     @Inject(WAGE_TAX_CERTIFICATE_REPOSITORY) private readonly lstb: WageTaxCertificateRepository,
-    @Inject(PENSION_REPOSITORY) private readonly rente: PensionRepository,
-    @Inject(CAPITAL_REPOSITORY) private readonly kapital: CapitalRepository,
-    @Inject(RENTAL_REPOSITORY) private readonly vermietung: RentalRepository,
-    @Inject(CROSS_BORDER_SALARY_STATEMENT_REPOSITORY) private readonly chLohnausweis: CrossBorderSalaryStatementRepository,
+    @Inject(PENSION_REPOSITORY) private readonly pension: PensionRepository,
+    @Inject(CAPITAL_REPOSITORY) private readonly capital: CapitalRepository,
+    @Inject(RENTAL_REPOSITORY) private readonly rental: RentalRepository,
+    @Inject(CROSS_BORDER_SALARY_STATEMENT_REPOSITORY) private readonly chSalaryCertificate: CrossBorderSalaryStatementRepository,
     @Inject(CHILD_REPOSITORY) private readonly kinder: ChildRepository,
-    @Inject(PARTNER_COUPLING_REPOSITORY) private readonly kopplung: PartnerCouplingRepository,
+    @Inject(PARTNER_COUPLING_REPOSITORY) private readonly link: PartnerCouplingRepository,
     @Inject(INTERVIEW_ANSWER_REPOSITORY) private readonly interview: InterviewAnswerRepository,
-    @Inject(PROVENANCE_REPOSITORY) private readonly kennzeichnungen: ProvenanceRepository,
-    @Inject(COMMUTE_REPOSITORY) private readonly arbeitsweg: CommuteRepository,
-    @Inject(UnlockService) private readonly freischaltung: UnlockService,
+    @Inject(PROVENANCE_REPOSITORY) private readonly markings: ProvenanceRepository,
+    @Inject(COMMUTE_REPOSITORY) private readonly commute: CommuteRepository,
+    @Inject(UnlockService) private readonly unlock: UnlockService,
     @Inject(AuditService) private readonly audit: AuditService,
-    @Inject(VORLAGEN_BASIS) private readonly vorlagenBasis: URL,
+    @Inject(TEMPLATES_BASE) private readonly templatesBase: URL,
   ) {}
 
-  async pruefe(userId: string, jahr: number): Promise<{ fehlend: string[] }> {
-    if (!FELDSAETZE[jahr]) throw new NotFoundError('VORDRUCKE_MISSING', `No Vordrucke are available for tax year ${jahr} yet.`)
-    return { fehlend: (await this.sammle(userId, jahr)).fehlend }
+  async check(userId: string, year: number): Promise<{ missing: string[] }> {
+    if (!FIELD_SETS[year]) throw new NotFoundError('VORDRUCKE_MISSING', `No Vordrucke are available for tax year ${year} yet.`)
+    return { missing: (await this.collect(userId, year)).missing }
   }
 
-  async starteCheckout(userId: string, jahr: number): Promise<{ checkoutUrl: string }> {
-    const { fehlend } = await this.pruefe(userId, jahr)
-    if (fehlend.length > 0) {
-      throw new UnprocessableEntityException({ message: 'Für den Ausdruck fehlen noch Angaben.', fehlend })
+  async startCheckout(userId: string, year: number): Promise<{ checkoutUrl: string }> {
+    const { missing } = await this.check(userId, year)
+    if (missing.length > 0) {
+      throw new UnprocessableEntityException({ message: 'Für den Ausdruck fehlen noch Angaben.', missing })
     }
-    return this.freischaltung.starteCheckout(userId, jahr)
+    return this.unlock.startCheckout(userId, year)
   }
 
-  async erstelle(userId: string, jahr: number, { bearbeitbar = false }: { bearbeitbar?: boolean } = {}): Promise<Uint8Array> {
-    const feldsatz = FELDSAETZE[jahr]
-    if (!feldsatz) throw new NotFoundError('VORDRUCKE_MISSING', `No Vordrucke are available for tax year ${jahr} yet.`)
+  async create(userId: string, year: number, { editable = false }: { editable?: boolean } = {}): Promise<Uint8Array> {
+    const fieldSet = FIELD_SETS[year]
+    if (!fieldSet) throw new NotFoundError('VORDRUCKE_MISSING', `No Vordrucke are available for tax year ${year} yet.`)
 
-    if ((await this.freischaltung.status(userId, jahr)) !== 'freigeschaltet') {
-      throw new HttpException(`Der Ausdruck für ${jahr} ist noch nicht freigeschaltet.`, HttpStatus.PAYMENT_REQUIRED)
+    if ((await this.unlock.status(userId, year)) !== 'freigeschaltet') {
+      throw new HttpException(`Der Ausdruck für ${year} ist noch nicht freigeschaltet.`, HttpStatus.PAYMENT_REQUIRED)
     }
 
-    const { werte, instanzen, fehlend } = await this.sammle(userId, jahr)
-    if (fehlend.length > 0) {
-      throw new UnprocessableEntityException({ message: 'Für den Ausdruck fehlen noch Angaben.', fehlend })
+    const { values, instances, missing } = await this.collect(userId, year)
+    if (missing.length > 0) {
+      throw new UnprocessableEntityException({ message: 'Für den Ausdruck fehlen noch Angaben.', missing })
     }
 
     try {
-      const pdf = await rendereVordrucke(feldsatz, werte, {
-        vorlagenVerzeichnis: new URL(`${jahr}/`, this.vorlagenBasis),
-        instanzen,
-        bearbeitbar,
+      const pdf = await renderForms(fieldSet, values, {
+        templatesDirectory: new URL(`${year}/`, this.templatesBase),
+        instances,
+        editable,
       })
       await this.audit.append({ userId, action: 'READ', resource: 'ausdruck' })
       return pdf
-    } catch (fehler) {
-      if (fehler instanceof UeberlaufFehler) {
-        throw new UnprocessableEntityException({ message: 'Eine Angabe ist zu lang für ihr Feld.', zuLang: fehler.felder })
+    } catch (error) {
+      if (error instanceof OverflowError) {
+        throw new UnprocessableEntityException({ message: 'Eine Angabe ist zu lang für ihr Feld.', tooLong: error.fields })
       }
-      throw fehler
+      throw error
     }
   }
 
-  private async unbestaetigt(userId: string, jahr: number, personBUserId: string | null): Promise<string[]> {
-    const jahre = [jahr, YEAR_INDEPENDENT]
-    const eigene = missingConfirmations((await this.kennzeichnungen.listForUserAndYears(userId, jahre)).map((k) => ({ ...k, wert: null })))
-    if (personBUserId === null) return eigene
-    const personB = missingConfirmations((await this.kennzeichnungen.listForUserAndYears(personBUserId, jahre)).map((k) => ({ ...k, wert: null })))
-    return personB.length > 0 ? [...eigene, 'unbestaetigt.personB'] : eigene
+  private async unconfirmed(userId: string, year: number, personBUserId: string | null): Promise<string[]> {
+    const years = [year, YEAR_INDEPENDENT]
+    const own = missingConfirmations((await this.markings.listForUserAndYears(userId, years)).map((k) => ({ ...k, value: null })))
+    if (personBUserId === null) return own
+    const personB = missingConfirmations((await this.markings.listForUserAndYears(personBUserId, years)).map((k) => ({ ...k, value: null })))
+    return personB.length > 0 ? [...own, 'unbestaetigt.personB'] : own
   }
 
-  private async sammle(userId: string, jahr: number) {
-    const kopplung = await this.kopplung.findByUserAndYear(userId, jahr)
+  private async collect(userId: string, year: number) {
+    const link = await this.link.findByUserAndYear(userId, year)
     // ADR-0054: a couple files one return, printed by Person A. Person B sees it but never prints a
     // second one with themselves as Person A.
-    if (kopplung?.veranlagungsart === 'zusammen' && kopplung.personAUserId !== userId) {
-      return { werte: {}, instanzen: {}, fehlend: ['personADruckt'] }
+    if (link?.veranlagungsart === 'zusammen' && link.personAUserId !== userId) {
+      return { values: {}, instances: {}, missing: ['personADruckt'] }
     }
-    const werte = await this.sammleWerte(userId, jahr)
-    const personBUserId = kopplung?.veranlagungsart === 'zusammen' && kopplung.personBUserId ? kopplung.personBUserId : null
-    return { ...werte, fehlend: [...werte.fehlend, ...(await this.unbestaetigt(userId, jahr, personBUserId))] }
+    const values = await this.collectValues(userId, year)
+    const personBUserId = link?.veranlagungsart === 'zusammen' && link.personBUserId ? link.personBUserId : null
+    return { ...values, missing: [...values.missing, ...(await this.unconfirmed(userId, year, personBUserId))] }
   }
 
-  private async sammleWerte(userId: string, jahr: number) {
-    const [profil, stammdaten, lstb, rente, kapital, objekte, ch, kinder, kopplung, interviewRows, arbeitsweg] = await Promise.all([
+  private async collectValues(userId: string, year: number) {
+    const [profile, masterData, lstb, pension, capital, properties, ch, kinder, link, interviewRows, commute] = await Promise.all([
       this.profile.findByUserId(userId),
-      this.stammdaten.findByUserId(userId),
-      this.lstb.findForUserAndYear(userId, jahr),
-      this.rente.findForUserAndYear(userId, jahr),
-      this.kapital.findForUserAndYear(userId, jahr),
-      this.vermietung.listForUserAndYear(userId, jahr),
-      this.chLohnausweis.findForUserAndYear(userId, jahr),
-      this.kinder.listForUserAndYear(userId, jahr),
-      this.kopplung.findByUserAndYear(userId, jahr),
-      this.interview.findAllForUserAndYear(userId, jahr),
-      this.arbeitsweg.findForUserAndYear(userId, jahr),
+      this.masterData.findByUserId(userId),
+      this.lstb.findForUserAndYear(userId, year),
+      this.pension.findForUserAndYear(userId, year),
+      this.capital.findForUserAndYear(userId, year),
+      this.rental.listForUserAndYear(userId, year),
+      this.chSalaryCertificate.findForUserAndYear(userId, year),
+      this.kinder.listForUserAndYear(userId, year),
+      this.link.findByUserAndYear(userId, year),
+      this.interview.findAllForUserAndYear(userId, year),
+      this.commute.findForUserAndYear(userId, year),
     ])
 
     const answers: Record<string, string> = {}
     for (const row of interviewRows) answers[row.questionId] = row.value
 
-    let personBFakten: PersonBFakten | null = null
-    let spouseChRecord: Awaited<ReturnType<typeof this.chLohnausweis.findForUserAndYear>> = null
-    if (kopplung?.veranlagungsart === 'zusammen' && kopplung.personBUserId) {
-      const spouseId = kopplung.personBUserId
-      const [spouseProf, spouseSd, spouseLstb, spouseRente, spouseCh, spouseWeg, spouseInterview] = await Promise.all([
+    let personBFacts: PersonBFacts | null = null
+    let spouseChRecord: Awaited<ReturnType<typeof this.chSalaryCertificate.findForUserAndYear>> = null
+    if (link?.veranlagungsart === 'zusammen' && link.personBUserId) {
+      const spouseId = link.personBUserId
+      const [spouseProf, spouseSd, spouseLstb, spousePension, spouseCh, spouseCommute, spouseInterview] = await Promise.all([
         this.profile.findByUserId(spouseId),
-        this.stammdaten.findByUserId(spouseId),
-        this.lstb.findForUserAndYear(spouseId, jahr),
-        this.rente.findForUserAndYear(spouseId, jahr),
-        this.chLohnausweis.findForUserAndYear(spouseId, jahr),
-        this.arbeitsweg.findForUserAndYear(spouseId, jahr),
-        this.interview.findAllForUserAndYear(spouseId, jahr),
+        this.masterData.findByUserId(spouseId),
+        this.lstb.findForUserAndYear(spouseId, year),
+        this.pension.findForUserAndYear(spouseId, year),
+        this.chSalaryCertificate.findForUserAndYear(spouseId, year),
+        this.commute.findForUserAndYear(spouseId, year),
+        this.interview.findAllForUserAndYear(spouseId, year),
       ])
       spouseChRecord = spouseCh
       const spouseAnswers: Record<string, string> = {}
       for (const row of spouseInterview) spouseAnswers[row.questionId] = row.value
-      personBFakten = {
+      personBFacts = {
         firstName: spouseProf?.firstName ?? null,
         lastName: spouseProf?.lastName ?? null,
         steuerId: spouseProf?.steuerId ?? null,
@@ -164,14 +164,14 @@ export class AusdruckService {
         religion: spouseSd?.religion ?? null,
         beruf: spouseSd?.beruf ?? null,
         bruttoarbeitslohn: spouseLstb?.bruttoarbeitslohn ?? null,
-        rente: spouseRente ? { rentenart: spouseRente.rentenart, jahresbetrag: spouseRente.jahresbetrag } : null,
-        chLohnausweis: chLohnausweisFakten(spouseCh, spouseAnswers),
-        arbeitsweg: arbeitswegFakten(jahr, spouseWeg),
-        krankenversicherung: krankenversicherungen(spouseAnswers, spouseCh),
+        pension: spousePension ? { rentenart: spousePension.rentenart, jahresbetrag: spousePension.jahresbetrag } : null,
+        chSalaryCertificate: chSalaryCertificateFacts(spouseCh, spouseAnswers),
+        commute: commuteFacts(year, spouseCommute),
+        healthInsurance: healthInsurances(spouseAnswers, spouseCh),
       }
     }
 
-    const vermietungFakten = objekte.map((obj, i) => ({
+    const rentalFacts = properties.map((obj, i) => ({
       lfdNr: String(i + 1),
       strasse: [obj.strasse, obj.hausnummer].filter(Boolean).join(' ') || null,
       plz: obj.plz ?? null,
@@ -188,14 +188,14 @@ export class AusdruckService {
       anteilA: obj.anteilA ?? null,
     }))
 
-    const kinderFakten = kinder.map((k, i) => {
+    const childrenFacts = kinder.map((k, i) => {
       let schweizerKinderzulageEur = k.schweizerKinderzulageEur
       if (!schweizerKinderzulageEur && kinder.length > 0) {
-        const zulagenChf = ch?.nGre.familienzulagenChf ?? spouseChRecord?.nGre.familienzulagenChf
-        const kurs = ch?.wechselkursKurs ?? spouseChRecord?.wechselkursKurs
-        if (zulagenChf && Number(zulagenChf) > 0 && kurs && kurs > 0) {
-          const proKindChf = Math.round(Number(zulagenChf) / kinder.length)
-          schweizerKinderzulageEur = String(Math.round(proKindChf * kurs))
+        const allowancesChf = ch?.nGre.familienzulagenChf ?? spouseChRecord?.nGre.familienzulagenChf
+        const rate = ch?.wechselkursKurs ?? spouseChRecord?.wechselkursKurs
+        if (allowancesChf && Number(allowancesChf) > 0 && rate && rate > 0) {
+          const perChildChf = Math.round(Number(allowancesChf) / kinder.length)
+          schweizerKinderzulageEur = String(Math.round(perChildChf * rate))
         }
       }
       return {
@@ -223,55 +223,55 @@ export class AusdruckService {
       }
     })
 
-    return ausdruckWerte({
-      steuerjahr: jahr,
-      profil: {
-        firstName: profil?.firstName ?? null,
-        lastName: profil?.lastName ?? null,
-        steuerId: profil?.steuerId ?? null,
-        steuernummer: profil?.steuernummer ?? null,
+    return printoutValues({
+      steuerjahr: year,
+      profile: {
+        firstName: profile?.firstName ?? null,
+        lastName: profile?.lastName ?? null,
+        steuerId: profile?.steuerId ?? null,
+        steuernummer: profile?.steuernummer ?? null,
       },
-      stammdaten,
+      masterData,
       bruttoarbeitslohn: lstb?.bruttoarbeitslohn ?? null,
-      rente: rente ? { rentenart: rente.rentenart, jahresbetrag: rente.jahresbetrag } : null,
-      kapital: kapital
+      pension: pension ? { rentenart: pension.rentenart, jahresbetrag: pension.jahresbetrag } : null,
+      capital: capital
         ? {
             depot: classifyCapitalDepot(answers['kap-depot']).kind,
-            kapitalertraege: kapital.kapitalertraege,
-            sparerPauschbetrag: kapital.sparerPauschbetrag,
-            kapitalertragsteuer: kapital.kapitalertragsteuer,
-            solidaritaetszuschlag: kapital.solidaritaetszuschlag,
-            kirchensteuer: kapital.kirchensteuer,
-            inhaber: kapital.inhaber ?? null,
+            kapitalertraege: capital.kapitalertraege,
+            sparerPauschbetrag: capital.sparerPauschbetrag,
+            kapitalertragsteuer: capital.kapitalertragsteuer,
+            solidaritaetszuschlag: capital.solidaritaetszuschlag,
+            kirchensteuer: capital.kirchensteuer,
+            inhaber: capital.inhaber ?? null,
           }
         : null,
-      chLohnausweis: chLohnausweisFakten(ch, answers),
-      vermietung: vermietungFakten.length > 0 ? vermietungFakten : null,
-      kinder: kinderFakten.length > 0 ? kinderFakten : null,
-      kopplung: kopplung ? { veranlagungsart: kopplung.veranlagungsart, personB: personBFakten } : null,
-      sonderausgaben: answers['spenden-betrag'] ? { spenden: answers['spenden-betrag'] } : null,
-      krankenversicherung: krankenversicherungen(answers, ch),
-      alleinerziehend: {
-        weiterePerson: answers['ae-weitere-person'] ?? null,
-        haushaltsgemeinschaft: answers['ae-haushaltsgemeinschaft'] ?? null,
+      chSalaryCertificate: chSalaryCertificateFacts(ch, answers),
+      rental: rentalFacts.length > 0 ? rentalFacts : null,
+      kinder: childrenFacts.length > 0 ? childrenFacts : null,
+      link: link ? { veranlagungsart: link.veranlagungsart, personB: personBFacts } : null,
+      specialExpenses: answers['spenden-betrag'] ? { donations: answers['spenden-betrag'] } : null,
+      healthInsurance: healthInsurances(answers, ch),
+      singleParent: {
+        otherPerson: answers['ae-weitere-person'] ?? null,
+        householdCommunity: answers['ae-haushaltsgemeinschaft'] ?? null,
       },
       riester:
         answers['riester'] === 'Ja'
-          ? { art: answers['riester-art'] ?? null, einnahmenVorjahr: answers['riester-einnahmen-vorjahr'] ?? null }
+          ? { art: answers['riester-art'] ?? null, incomeLastYear: answers['riester-einnahmen-vorjahr'] ?? null }
           : null,
-      arbeitsweg: arbeitswegFakten(jahr, arbeitsweg),
+      commute: commuteFacts(year, commute),
     })
   }
 }
 
-function chLohnausweisFakten(ch: CrossBorderSalaryStatementRecord | null, answers: Record<string, string>): ChLohnausweisFakten | null {
+function chSalaryCertificateFacts(ch: CrossBorderSalaryStatementRecord | null, answers: Record<string, string>): ChSalaryCertificateFacts | null {
   if (!ch) return null
   return {
-    status: grenzgaengerStatusAus(answers),
-    kurs: ch.wechselkursKurs,
-    bruttolohnChf: ch.felder['bruttolohn-total'],
-    ahvBeitraegeChf: ch.felder['ahv-beitraege'],
-    quellensteuerChf: ch.felder['quellensteuer'],
+    status: crossBorderStatusFrom(answers),
+    rate: ch.wechselkursKurs,
+    grossWageChf: ch.fields['bruttolohn-total'],
+    ahvContributionsChf: ch.fields['ahv-beitraege'],
+    withholdingTaxChf: ch.fields['quellensteuer'],
     arbeitgeberName: ch.nGre.arbeitgeberName,
     arbeitgeberStrasse: ch.nGre.arbeitgeberStrasse,
     arbeitgeberPlzOrt: ch.nGre.arbeitgeberPlzOrt,
@@ -283,28 +283,28 @@ function chLohnausweisFakten(ch: CrossBorderSalaryStatementRecord | null, answer
     krankentaggeldArbeitgeberChf: ch.nGre.krankentaggeldArbeitgeberChf,
     nbuvArbeitgeberProzent: ch.nGre.nbuvArbeitgeberProzent,
     nbuvArbeitgeberChf: ch.nGre.nbuvArbeitgeberChf,
-    sonderfaelle: ch.nGre.nGreSonderfaelle,
+    specialCases: ch.nGre.nGreSonderfaelle,
   }
 }
 
-function arbeitswegFakten(jahr: number, eingaben: CommuteInputs | null): ArbeitswegFakten | null {
-  if (eingaben === null) return null
-  const ergebnis = calculateWorkdays({
-    year: jahr,
-    workdays: eingaben.arbeitstage,
-    vacationDays: eingaben.urlaubstage,
-    sickDays: eingaben.krankheitstage,
-    homeOfficeDays: eingaben.homeofficeTage,
-    publicHolidays: eingaben.feiertage ?? 0,
+function commuteFacts(year: number, inputs: CommuteInputs | null): CommuteFacts | null {
+  if (inputs === null) return null
+  const result = calculateWorkdays({
+    year,
+    workdays: inputs.arbeitstage,
+    vacationDays: inputs.urlaubstage,
+    sickDays: inputs.krankheitstage,
+    homeOfficeDays: inputs.homeofficeTage,
+    publicHolidays: inputs.feiertage ?? 0,
   })
-  if (ergebnis.kind !== 'bestimmt') return null
+  if (result.kind !== 'bestimmt') return null
   return {
-    arbeitstageJeWoche: eingaben.arbeitstage.length,
-    freieTage: eingaben.urlaubstage + eingaben.krankheitstage + eingaben.homeofficeTage,
-    pendlertage: ergebnis.pendlertage,
-    einfacheKm: eingaben.einfacheKm,
-    mitPkw: eingaben.verkehrsmittel === 'pkw',
-    taetigkeitsstaette: eingaben.taetigkeitsstaette,
+    workdaysPerWeek: inputs.arbeitstage.length,
+    daysOff: inputs.urlaubstage + inputs.krankheitstage + inputs.homeofficeTage,
+    commuteDays: result.commuteDays,
+    einfacheKm: inputs.einfacheKm,
+    withCar: inputs.verkehrsmittel === 'pkw',
+    taetigkeitsstaette: inputs.taetigkeitsstaette,
   }
 }
 
@@ -312,16 +312,16 @@ function arbeitswegFakten(jahr: number, eingaben: CommuteInputs | null): Arbeits
  * Self-paid insurance for the Anlage Vorsorgeaufwand: what the Sonderausgaben interview names, plus a Swiss
  * Krankenkasse from the Grenzgänger mask (foreign, Basisabsicherung, no Krankengeld) converted at the Lohnausweis rate.
  */
-function krankenversicherungen(
+function healthInsurances(
   answers: Record<string, string>,
   ch: { krankenkasseChf: string | null; wechselkursKurs: number | null } | null,
 ): HealthInsurance[] {
-  const liste: HealthInsurance[] = []
-  const ausInterview = healthInsuranceFromAnswers(answers)
-  if (ausInterview) liste.push(ausInterview)
+  const list: HealthInsurance[] = []
+  const fromInterview = healthInsuranceFromAnswers(answers)
+  if (fromInterview) list.push(fromInterview)
   const chf = ch?.krankenkasseChf ? Number(ch.krankenkasseChf) : 0
   if (chf > 0 && ch?.wechselkursKurs) {
-    liste.push({ kind: 'ausland', basicHealthAmount: Math.round(chf * ch.wechselkursKurs), withSickPay: false, careInsuranceAmount: 0, optionalExtrasAmount: 0 })
+    list.push({ kind: 'ausland', basicHealthAmount: Math.round(chf * ch.wechselkursKurs), withSickPay: false, careInsuranceAmount: 0, optionalExtrasAmount: 0 })
   }
-  return liste
+  return list
 }

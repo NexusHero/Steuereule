@@ -3,7 +3,7 @@ import { employeeFromAnswers, employeeFromData, calculateEmployeeStatus, type Em
 import { ENTRIES, entryForStep, isReachableFor, nextStepFor, remainingStepsFor, type Answers } from './interview'
 import { EMPTY_WAGE_TAX_CERTIFICATE, type WageTaxCertificateData } from './lstb'
 
-const EINGABEN: EmployeeInputs = {
+const INPUTS: EmployeeInputs = {
   income: 50000,
   incomeRelatedExpenses: 1200,
   specialExpenses: 3000,
@@ -58,85 +58,85 @@ describe('employeeFromAnswers — the catalogue answers feed the Rechenkern', ()
 
 describe('angestelltenStand — the deterministic fold', () => {
   it('nothing open/conflicting/gated → bestimmt, einkuenfte = einnahmen − werbungskosten', () => {
-    expect(calculateEmployeeStatus(EINGABEN)).toEqual({
+    expect(calculateEmployeeStatus(INPUTS)).toEqual({
       kind: 'bestimmt',
       einnahmen: 50000,
       werbungskosten: 1200,
-      sonderausgaben: 3000,
-      einkuenfte: 48800,
+      specialExpenses: 3000,
+      netIncome: 48800,
     })
   })
 
   it('sonderausgaben are reported, never subtracted (the aggregation is a later slice)', () => {
-    const r = calculateEmployeeStatus(EINGABEN)
-    expect(r.kind === 'bestimmt' ? r.einkuenfte : 0).toBe(48800) // 50000 − 1200, NOT − 3000
+    const r = calculateEmployeeStatus(INPUTS)
+    expect(r.kind === 'bestimmt' ? r.netIncome : 0).toBe(48800) // 50000 − 1200, NOT − 3000
   })
 
   it('open inputs → offen, naming the count', () => {
-    const r = calculateEmployeeStatus({ ...EINGABEN, openItems: 2 })
+    const r = calculateEmployeeStatus({ ...INPUTS, openItems: 2 })
     expect(r.kind).toBe('offen')
-    expect((r as { offenePosten: number }).offenePosten).toBe(2)
+    expect((r as { openItems: number }).openItems).toBe(2)
   })
 
   it('a gated Einkunftsart → offen, naming it', () => {
-    const r = calculateEmployeeStatus({ ...EINGABEN, gated: ['Gewerbe'] })
-    expect(r).toMatchObject({ kind: 'offen', gegated: ['Gewerbe'] })
+    const r = calculateEmployeeStatus({ ...INPUTS, gated: ['Gewerbe'] })
+    expect(r).toMatchObject({ kind: 'offen', gated: ['Gewerbe'] })
   })
 
   it('werbungskosten exceeding einnahmen floors einkuenfte at 0, never negative', () => {
-    const r = calculateEmployeeStatus({ ...EINGABEN, incomeRelatedExpenses: 99999 })
-    expect(r.kind === 'bestimmt' ? r.einkuenfte : null).toBe(0)
+    const r = calculateEmployeeStatus({ ...INPUTS, incomeRelatedExpenses: 99999 })
+    expect(r.kind === 'bestimmt' ? r.netIncome : null).toBe(0)
   })
 
   it('rejects negative or non-integer inputs', () => {
-    expect(() => calculateEmployeeStatus({ ...EINGABEN, income: -1 })).toThrow(RangeError)
-    expect(() => calculateEmployeeStatus({ ...EINGABEN, specialExpenses: 1.5 })).toThrow(RangeError)
+    expect(() => calculateEmployeeStatus({ ...INPUTS, income: -1 })).toThrow(RangeError)
+    expect(() => calculateEmployeeStatus({ ...INPUTS, specialExpenses: 1.5 })).toThrow(RangeError)
   })
 })
 
 describe('angestellteAusDaten — the ONE fold shared by Cockpit API + Plausibilitäts-Screen (ticket 15 review F2)', () => {
-  const VOLLSTAENDIG: WageTaxCertificateData = {
-    bruttoarbeitslohn: { kind: 'erfasst', wert: 50000 },
-    lohnsteuer: { kind: 'erfasst', wert: 8000 },
-    sozialversicherung: { kind: 'erfasst', wert: 9000 },
+  const COMPLETE: WageTaxCertificateData = {
+    bruttoarbeitslohn: { kind: 'erfasst', value: 50000 },
+    lohnsteuer: { kind: 'erfasst', value: 8000 },
+    sozialversicherung: { kind: 'erfasst', value: 9000 },
   }
 
   it('empty answers + empty LStB fold to all-zero facts, nothing gated', () => {
     expect(employeeFromData(EMPTY_WAGE_TAX_CERTIFICATE, {})).toEqual({
       einnahmen: 0,
       werbungskosten: 0,
-      sonderausgaben: 0,
-      offenePosten: 0,
-      konflikte: 0,
-      gegated: [],
-      erfasstNichtGerechnet: 0,
+      specialExpenses: 0,
+      openItems: 0,
+      conflicts: 0,
+      gated: [],
+      recordedNotCalculated: 0,
     })
   })
 
   it('sums LStB Brutto (Angestellte vertical only) + declared Nebenjob-Brutto', () => {
-    expect(employeeFromData(VOLLSTAENDIG, { job: 'Angestellt', nebenjob: 'Nebenjob', 'nebenjob-brutto': '4000' }).einnahmen).toBe(54000)
+    expect(employeeFromData(COMPLETE, { job: 'Angestellt', nebenjob: 'Nebenjob', 'nebenjob-brutto': '4000' }).einnahmen).toBe(54000)
     // A pensioner has no LStB to transcribe, so the (present) LStB must not fold into income.
-    expect(employeeFromData(VOLLSTAENDIG, { job: 'Rente' }).einnahmen).toBe(0)
+    expect(employeeFromData(COMPLETE, { job: 'Rente' }).einnahmen).toBe(0)
   })
 
   it('counts open LStB fields only for the Angestellte vertical', () => {
-    const offen: WageTaxCertificateData = { bruttoarbeitslohn: { kind: 'erfasst', wert: 50000 }, lohnsteuer: { kind: 'offen' }, sozialversicherung: { kind: 'offen' } }
-    expect(employeeFromData(offen, { job: 'Angestellt' }).offenePosten).toBe(2)
-    expect(employeeFromData(offen, { job: 'Rente' }).offenePosten).toBe(0)
+    const open: WageTaxCertificateData = { bruttoarbeitslohn: { kind: 'erfasst', value: 50000 }, lohnsteuer: { kind: 'offen' }, sozialversicherung: { kind: 'offen' } }
+    expect(employeeFromData(open, { job: 'Angestellt' }).openItems).toBe(2)
+    expect(employeeFromData(open, { job: 'Rente' }).openItems).toBe(0)
   })
 
   it('counts a declared Nebenjob without Brutto as an open Posten (never Minijob)', () => {
-    expect(employeeFromData(VOLLSTAENDIG, { job: 'Angestellt', nebenjob: 'Nebenjob' }).offenePosten).toBe(1)
-    expect(employeeFromData(VOLLSTAENDIG, { job: 'Angestellt', nebenjob: 'Minijob' }).offenePosten).toBe(0)
+    expect(employeeFromData(COMPLETE, { job: 'Angestellt', nebenjob: 'Nebenjob' }).openItems).toBe(1)
+    expect(employeeFromData(COMPLETE, { job: 'Angestellt', nebenjob: 'Minijob' }).openItems).toBe(0)
   })
 
   it('counts an LStB widerspruch as a conflict (ADR-008)', () => {
-    const widerspruch: WageTaxCertificateData = { bruttoarbeitslohn: { kind: 'erfasst', wert: 50000 }, lohnsteuer: { kind: 'erfasst', wert: 60000 }, sozialversicherung: { kind: 'erfasst', wert: 0 } }
-    expect(employeeFromData(widerspruch, { job: 'Angestellt' }).konflikte).toBe(1)
+    const conflict: WageTaxCertificateData = { bruttoarbeitslohn: { kind: 'erfasst', value: 50000 }, lohnsteuer: { kind: 'erfasst', value: 60000 }, sozialversicherung: { kind: 'erfasst', value: 0 } }
+    expect(employeeFromData(conflict, { job: 'Angestellt' }).conflicts).toBe(1)
   })
 
   it('names a gated Einkunftsart and sums the captured-but-not-folded amounts', () => {
-    const fakten = employeeFromData(VOLLSTAENDIG, {
+    const facts = employeeFromData(COMPLETE, {
       job: 'Beides',
       dhf: 'Ja',
       'dhf-miete': '650',
@@ -145,8 +145,8 @@ describe('angestellteAusDaten — the ONE fold shared by Cockpit API + Plausibil
       lohnersatz: 'Ja',
       'lohnersatz-betrag': '4000',
     })
-    expect(fakten.gegated).toEqual(['Gewerbe'])
-    expect(fakten.erfasstNichtGerechnet).toBe(650 + 20000 + 4000)
+    expect(facts.gated).toEqual(['Gewerbe'])
+    expect(facts.recordedNotCalculated).toBe(650 + 20000 + 4000)
   })
 })
 
@@ -183,14 +183,14 @@ describe('Lebenslagen/Sonderausgaben catalogue entries — one walker, one regis
 
   it('Riester asks for the kind of eligibility, and the prior-year earnings only when direct (Anlage AV Zeilen 4/5/14)', () => {
     const entry = ENTRIES.sonderausgaben
-    const vorher = { spenden: 'Nein', 'kv-pv': 'Nein', riester: 'Ja', 'riester-betrag': '600' } as Answers
-    expect(nextStepFor(entry, vorher)).toEqual({ kind: 'question', id: 'riester-art' })
-    expect(nextStepFor(entry, { ...vorher, 'riester-art': 'Unmittelbar' })).toEqual({
+    const before = { spenden: 'Nein', 'kv-pv': 'Nein', riester: 'Ja', 'riester-betrag': '600' } as Answers
+    expect(nextStepFor(entry, before)).toEqual({ kind: 'question', id: 'riester-art' })
+    expect(nextStepFor(entry, { ...before, 'riester-art': 'Unmittelbar' })).toEqual({
       kind: 'question',
       id: 'riester-einnahmen-vorjahr',
     })
-    expect(nextStepFor(entry, { ...vorher, 'riester-art': 'Mittelbar' })).toEqual({ kind: 'done' })
-    expect(isReachableFor(entry, { ...vorher, 'riester-art': 'Mittelbar' }, 'riester-einnahmen-vorjahr')).toBe(false)
+    expect(nextStepFor(entry, { ...before, 'riester-art': 'Mittelbar' })).toEqual({ kind: 'done' })
+    expect(isReachableFor(entry, { ...before, 'riester-art': 'Mittelbar' }, 'riester-einnahmen-vorjahr')).toBe(false)
   })
 
   it('the Alleinerziehende entry asks the two household questions of Anlage Kind Zeilen 47/48', () => {

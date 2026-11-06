@@ -25,9 +25,9 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
-  AusdruckControllerAusdruckParams,
-  AusdruckPruefungDto,
-  CheckoutResponseDto
+  CheckoutResponseDto,
+  PrintoutCheckDto,
+  PrintoutControllerPrintoutParams
 } from './ausdruck.schemas';
 
 import { httpClient } from '../http-client';
@@ -52,31 +52,31 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   return result;
 };
 
-export type ausdruckControllerPruefungResponse200 = {
-  data: AusdruckPruefungDto
+export type printoutControllerCheckResponse200 = {
+  data: PrintoutCheckDto
   status: 200
 }
 
-export type ausdruckControllerPruefungResponse401 = {
+export type printoutControllerCheckResponse401 = {
   data: void
   status: 401
 }
 
-export type ausdruckControllerPruefungResponse404 = {
+export type printoutControllerCheckResponse404 = {
   data: void
   status: 404
 }
 
-export type ausdruckControllerPruefungResponseSuccess = (ausdruckControllerPruefungResponse200) & {
+export type printoutControllerCheckResponseSuccess = (printoutControllerCheckResponse200) & {
   headers: Headers;
 };
-export type ausdruckControllerPruefungResponseError = (ausdruckControllerPruefungResponse401 | ausdruckControllerPruefungResponse404) & {
+export type printoutControllerCheckResponseError = (printoutControllerCheckResponse401 | printoutControllerCheckResponse404) & {
   headers: Headers;
 };
 
-export type ausdruckControllerPruefungResponse = (ausdruckControllerPruefungResponseSuccess | ausdruckControllerPruefungResponseError)
+export type printoutControllerCheckResponse = (printoutControllerCheckResponseSuccess | printoutControllerCheckResponseError)
 
-export const getAusdruckControllerPruefungUrl = (jahr: number,) => {
+export const getPrintoutControllerCheckUrl = (jahr: number,) => {
 
 
 
@@ -84,9 +84,9 @@ export const getAusdruckControllerPruefungUrl = (jahr: number,) => {
   return `/v1/steuerjahre/${jahr}/ausdruck/pruefung`
 }
 
-export const ausdruckControllerPruefung = async (jahr: number, options?: RequestInit): Promise<ausdruckControllerPruefungResponse> => {
+export const printoutControllerCheck = async (jahr: number, options?: RequestInit): Promise<printoutControllerCheckResponse> => {
 
-  return httpClient<ausdruckControllerPruefungResponse>(getAusdruckControllerPruefungUrl(jahr),
+  return httpClient<printoutControllerCheckResponse>(getPrintoutControllerCheckUrl(jahr),
   {
     ...options,
     method: 'GET'
@@ -99,66 +99,66 @@ export const ausdruckControllerPruefung = async (jahr: number, options?: Request
 
 
 
-export const getAusdruckControllerPruefungQueryKey = (jahr: number,) => {
+export const getPrintoutControllerCheckQueryKey = (jahr: number,) => {
     return [
     `/v1/steuerjahre/${jahr}/ausdruck/pruefung`
     ] as const;
     }
 
 
-export const getAusdruckControllerPruefungQueryOptions = <TData = Awaited<ReturnType<typeof ausdruckControllerPruefung>>, TError = void>(jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof ausdruckControllerPruefung>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export const getPrintoutControllerCheckQueryOptions = <TData = Awaited<ReturnType<typeof printoutControllerCheck>>, TError = void>(jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof printoutControllerCheck>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getAusdruckControllerPruefungQueryKey(jahr);
+  const queryKey =  queryOptions?.queryKey ?? getPrintoutControllerCheckQueryKey(jahr);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof ausdruckControllerPruefung>>> = ({ signal }) => ausdruckControllerPruefung(jahr, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof printoutControllerCheck>>> = ({ signal }) => printoutControllerCheck(jahr, { signal, ...requestOptions });
 
 
 
 
 
-   return  { queryKey, queryFn, enabled: jahr !== null && jahr !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof ausdruckControllerPruefung>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+   return  { queryKey, queryFn, enabled: jahr !== null && jahr !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof printoutControllerCheck>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
-export type AusdruckControllerPruefungQueryResult = NonNullable<Awaited<ReturnType<typeof ausdruckControllerPruefung>>>
-export type AusdruckControllerPruefungQueryError = void
+export type PrintoutControllerCheckQueryResult = NonNullable<Awaited<ReturnType<typeof printoutControllerCheck>>>
+export type PrintoutControllerCheckQueryError = void
 
 
-export function useAusdruckControllerPruefung<TData = Awaited<ReturnType<typeof ausdruckControllerPruefung>>, TError = void>(
- jahr: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof ausdruckControllerPruefung>>, TError, TData>> & Pick<
+export function usePrintoutControllerCheck<TData = Awaited<ReturnType<typeof printoutControllerCheck>>, TError = void>(
+ jahr: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof printoutControllerCheck>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof ausdruckControllerPruefung>>,
+          Awaited<ReturnType<typeof printoutControllerCheck>>,
           TError,
-          Awaited<ReturnType<typeof ausdruckControllerPruefung>>
+          Awaited<ReturnType<typeof printoutControllerCheck>>
         > , 'initialData'
       >, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useAusdruckControllerPruefung<TData = Awaited<ReturnType<typeof ausdruckControllerPruefung>>, TError = void>(
- jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof ausdruckControllerPruefung>>, TError, TData>> & Pick<
+export function usePrintoutControllerCheck<TData = Awaited<ReturnType<typeof printoutControllerCheck>>, TError = void>(
+ jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof printoutControllerCheck>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof ausdruckControllerPruefung>>,
+          Awaited<ReturnType<typeof printoutControllerCheck>>,
           TError,
-          Awaited<ReturnType<typeof ausdruckControllerPruefung>>
+          Awaited<ReturnType<typeof printoutControllerCheck>>
         > , 'initialData'
       >, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useAusdruckControllerPruefung<TData = Awaited<ReturnType<typeof ausdruckControllerPruefung>>, TError = void>(
- jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof ausdruckControllerPruefung>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export function usePrintoutControllerCheck<TData = Awaited<ReturnType<typeof printoutControllerCheck>>, TError = void>(
+ jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof printoutControllerCheck>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 
-export function useAusdruckControllerPruefung<TData = Awaited<ReturnType<typeof ausdruckControllerPruefung>>, TError = void>(
- jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof ausdruckControllerPruefung>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export function usePrintoutControllerCheck<TData = Awaited<ReturnType<typeof printoutControllerCheck>>, TError = void>(
+ jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof printoutControllerCheck>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getAusdruckControllerPruefungQueryOptions(jahr,options)
+  const queryOptions = getPrintoutControllerCheckQueryOptions(jahr,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
@@ -171,36 +171,36 @@ export function useAusdruckControllerPruefung<TData = Awaited<ReturnType<typeof 
 
 
 
-export type ausdruckControllerCheckoutResponse200 = {
+export type printoutControllerCheckoutResponse200 = {
   data: CheckoutResponseDto
   status: 200
 }
 
-export type ausdruckControllerCheckoutResponse401 = {
+export type printoutControllerCheckoutResponse401 = {
   data: void
   status: 401
 }
 
-export type ausdruckControllerCheckoutResponse422 = {
+export type printoutControllerCheckoutResponse422 = {
   data: void
   status: 422
 }
 
-export type ausdruckControllerCheckoutResponse503 = {
+export type printoutControllerCheckoutResponse503 = {
   data: void
   status: 503
 }
 
-export type ausdruckControllerCheckoutResponseSuccess = (ausdruckControllerCheckoutResponse200) & {
+export type printoutControllerCheckoutResponseSuccess = (printoutControllerCheckoutResponse200) & {
   headers: Headers;
 };
-export type ausdruckControllerCheckoutResponseError = (ausdruckControllerCheckoutResponse401 | ausdruckControllerCheckoutResponse422 | ausdruckControllerCheckoutResponse503) & {
+export type printoutControllerCheckoutResponseError = (printoutControllerCheckoutResponse401 | printoutControllerCheckoutResponse422 | printoutControllerCheckoutResponse503) & {
   headers: Headers;
 };
 
-export type ausdruckControllerCheckoutResponse = (ausdruckControllerCheckoutResponseSuccess | ausdruckControllerCheckoutResponseError)
+export type printoutControllerCheckoutResponse = (printoutControllerCheckoutResponseSuccess | printoutControllerCheckoutResponseError)
 
-export const getAusdruckControllerCheckoutUrl = (jahr: number,) => {
+export const getPrintoutControllerCheckoutUrl = (jahr: number,) => {
 
 
 
@@ -208,9 +208,9 @@ export const getAusdruckControllerCheckoutUrl = (jahr: number,) => {
   return `/v1/steuerjahre/${jahr}/ausdruck/checkout`
 }
 
-export const ausdruckControllerCheckout = async (jahr: number, options?: RequestInit): Promise<ausdruckControllerCheckoutResponse> => {
+export const printoutControllerCheckout = async (jahr: number, options?: RequestInit): Promise<printoutControllerCheckoutResponse> => {
 
-  return httpClient<ausdruckControllerCheckoutResponse>(getAusdruckControllerCheckoutUrl(jahr),
+  return httpClient<printoutControllerCheckoutResponse>(getPrintoutControllerCheckoutUrl(jahr),
   {
     ...options,
     method: 'POST'
@@ -223,11 +223,11 @@ export const ausdruckControllerCheckout = async (jahr: number, options?: Request
 
 
 
-export const getAusdruckControllerCheckoutMutationOptions = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ausdruckControllerCheckout>>, TError,{jahr: number}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof ausdruckControllerCheckout>>, TError,{jahr: number}, TContext> => {
+export const getPrintoutControllerCheckoutMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof printoutControllerCheckout>>, TError,{jahr: number}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof printoutControllerCheckout>>, TError,{jahr: number}, TContext> => {
 
-const mutationKey = ['ausdruckControllerCheckout'];
+const mutationKey = ['printoutControllerCheckout'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -237,10 +237,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof ausdruckControllerCheckout>>, {jahr: number}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof printoutControllerCheckout>>, {jahr: number}> = (props) => {
           const {jahr} = props ?? {};
 
-          return  ausdruckControllerCheckout(jahr,requestOptions)
+          return  printoutControllerCheckout(jahr,requestOptions)
         }
 
 
@@ -250,57 +250,57 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type AusdruckControllerCheckoutMutationResult = NonNullable<Awaited<ReturnType<typeof ausdruckControllerCheckout>>>
+    export type PrintoutControllerCheckoutMutationResult = NonNullable<Awaited<ReturnType<typeof printoutControllerCheckout>>>
 
-    export type AusdruckControllerCheckoutMutationError = void
+    export type PrintoutControllerCheckoutMutationError = void
 
-    export const useAusdruckControllerCheckout = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ausdruckControllerCheckout>>, TError,{jahr: number}, TContext>, request?: SecondParameter<typeof httpClient>}
+    export const usePrintoutControllerCheckout = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof printoutControllerCheckout>>, TError,{jahr: number}, TContext>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof ausdruckControllerCheckout>>,
+        Awaited<ReturnType<typeof printoutControllerCheckout>>,
         TError,
         {jahr: number},
         TContext
       > => {
-      return useMutation(getAusdruckControllerCheckoutMutationOptions(options), queryClient);
+      return useMutation(getPrintoutControllerCheckoutMutationOptions(options), queryClient);
     }
 
-export type ausdruckControllerAusdruckResponse200 = {
+export type printoutControllerPrintoutResponse200 = {
   data: void
   status: 200
 }
 
-export type ausdruckControllerAusdruckResponse401 = {
+export type printoutControllerPrintoutResponse401 = {
   data: void
   status: 401
 }
 
-export type ausdruckControllerAusdruckResponse402 = {
+export type printoutControllerPrintoutResponse402 = {
   data: void
   status: 402
 }
 
-export type ausdruckControllerAusdruckResponse404 = {
+export type printoutControllerPrintoutResponse404 = {
   data: void
   status: 404
 }
 
-export type ausdruckControllerAusdruckResponse422 = {
+export type printoutControllerPrintoutResponse422 = {
   data: void
   status: 422
 }
 
-export type ausdruckControllerAusdruckResponseSuccess = (ausdruckControllerAusdruckResponse200) & {
+export type printoutControllerPrintoutResponseSuccess = (printoutControllerPrintoutResponse200) & {
   headers: Headers;
 };
-export type ausdruckControllerAusdruckResponseError = (ausdruckControllerAusdruckResponse401 | ausdruckControllerAusdruckResponse402 | ausdruckControllerAusdruckResponse404 | ausdruckControllerAusdruckResponse422) & {
+export type printoutControllerPrintoutResponseError = (printoutControllerPrintoutResponse401 | printoutControllerPrintoutResponse402 | printoutControllerPrintoutResponse404 | printoutControllerPrintoutResponse422) & {
   headers: Headers;
 };
 
-export type ausdruckControllerAusdruckResponse = (ausdruckControllerAusdruckResponseSuccess | ausdruckControllerAusdruckResponseError)
+export type printoutControllerPrintoutResponse = (printoutControllerPrintoutResponseSuccess | printoutControllerPrintoutResponseError)
 
-export const getAusdruckControllerAusdruckUrl = (jahr: number,
-    params?: AusdruckControllerAusdruckParams,) => {
+export const getPrintoutControllerPrintoutUrl = (jahr: number,
+    params?: PrintoutControllerPrintoutParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -315,10 +315,10 @@ export const getAusdruckControllerAusdruckUrl = (jahr: number,
   return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/ausdruck?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/ausdruck`
 }
 
-export const ausdruckControllerAusdruck = async (jahr: number,
-    params?: AusdruckControllerAusdruckParams, options?: RequestInit): Promise<ausdruckControllerAusdruckResponse> => {
+export const printoutControllerPrintout = async (jahr: number,
+    params?: PrintoutControllerPrintoutParams, options?: RequestInit): Promise<printoutControllerPrintoutResponse> => {
 
-  return httpClient<ausdruckControllerAusdruckResponse>(getAusdruckControllerAusdruckUrl(jahr,params),
+  return httpClient<printoutControllerPrintoutResponse>(getPrintoutControllerPrintoutUrl(jahr,params),
   {
     ...options,
     method: 'GET'
@@ -331,72 +331,72 @@ export const ausdruckControllerAusdruck = async (jahr: number,
 
 
 
-export const getAusdruckControllerAusdruckQueryKey = (jahr: number,
-    params?: AusdruckControllerAusdruckParams,) => {
+export const getPrintoutControllerPrintoutQueryKey = (jahr: number,
+    params?: PrintoutControllerPrintoutParams,) => {
     return [
     `/v1/steuerjahre/${jahr}/ausdruck`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getAusdruckControllerAusdruckQueryOptions = <TData = Awaited<ReturnType<typeof ausdruckControllerAusdruck>>, TError = void>(jahr: number,
-    params?: AusdruckControllerAusdruckParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof ausdruckControllerAusdruck>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export const getPrintoutControllerPrintoutQueryOptions = <TData = Awaited<ReturnType<typeof printoutControllerPrintout>>, TError = void>(jahr: number,
+    params?: PrintoutControllerPrintoutParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof printoutControllerPrintout>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getAusdruckControllerAusdruckQueryKey(jahr,params);
+  const queryKey =  queryOptions?.queryKey ?? getPrintoutControllerPrintoutQueryKey(jahr,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof ausdruckControllerAusdruck>>> = ({ signal }) => ausdruckControllerAusdruck(jahr,params, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof printoutControllerPrintout>>> = ({ signal }) => printoutControllerPrintout(jahr,params, { signal, ...requestOptions });
 
 
 
 
 
-   return  { queryKey, queryFn, enabled: jahr !== null && jahr !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof ausdruckControllerAusdruck>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+   return  { queryKey, queryFn, enabled: jahr !== null && jahr !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof printoutControllerPrintout>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
-export type AusdruckControllerAusdruckQueryResult = NonNullable<Awaited<ReturnType<typeof ausdruckControllerAusdruck>>>
-export type AusdruckControllerAusdruckQueryError = void
+export type PrintoutControllerPrintoutQueryResult = NonNullable<Awaited<ReturnType<typeof printoutControllerPrintout>>>
+export type PrintoutControllerPrintoutQueryError = void
 
 
-export function useAusdruckControllerAusdruck<TData = Awaited<ReturnType<typeof ausdruckControllerAusdruck>>, TError = void>(
+export function usePrintoutControllerPrintout<TData = Awaited<ReturnType<typeof printoutControllerPrintout>>, TError = void>(
  jahr: number,
-    params: undefined |  AusdruckControllerAusdruckParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof ausdruckControllerAusdruck>>, TError, TData>> & Pick<
+    params: undefined |  PrintoutControllerPrintoutParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof printoutControllerPrintout>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof ausdruckControllerAusdruck>>,
+          Awaited<ReturnType<typeof printoutControllerPrintout>>,
           TError,
-          Awaited<ReturnType<typeof ausdruckControllerAusdruck>>
+          Awaited<ReturnType<typeof printoutControllerPrintout>>
         > , 'initialData'
       >, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useAusdruckControllerAusdruck<TData = Awaited<ReturnType<typeof ausdruckControllerAusdruck>>, TError = void>(
+export function usePrintoutControllerPrintout<TData = Awaited<ReturnType<typeof printoutControllerPrintout>>, TError = void>(
  jahr: number,
-    params?: AusdruckControllerAusdruckParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof ausdruckControllerAusdruck>>, TError, TData>> & Pick<
+    params?: PrintoutControllerPrintoutParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof printoutControllerPrintout>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof ausdruckControllerAusdruck>>,
+          Awaited<ReturnType<typeof printoutControllerPrintout>>,
           TError,
-          Awaited<ReturnType<typeof ausdruckControllerAusdruck>>
+          Awaited<ReturnType<typeof printoutControllerPrintout>>
         > , 'initialData'
       >, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useAusdruckControllerAusdruck<TData = Awaited<ReturnType<typeof ausdruckControllerAusdruck>>, TError = void>(
+export function usePrintoutControllerPrintout<TData = Awaited<ReturnType<typeof printoutControllerPrintout>>, TError = void>(
  jahr: number,
-    params?: AusdruckControllerAusdruckParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof ausdruckControllerAusdruck>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+    params?: PrintoutControllerPrintoutParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof printoutControllerPrintout>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 
-export function useAusdruckControllerAusdruck<TData = Awaited<ReturnType<typeof ausdruckControllerAusdruck>>, TError = void>(
+export function usePrintoutControllerPrintout<TData = Awaited<ReturnType<typeof printoutControllerPrintout>>, TError = void>(
  jahr: number,
-    params?: AusdruckControllerAusdruckParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof ausdruckControllerAusdruck>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+    params?: PrintoutControllerPrintoutParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof printoutControllerPrintout>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getAusdruckControllerAusdruckQueryOptions(jahr,params,options)
+  const queryOptions = getPrintoutControllerPrintoutQueryOptions(jahr,params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

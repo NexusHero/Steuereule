@@ -29,10 +29,10 @@ describe('kinder', () => {
   })
 
   it('a child born in the year counts from its birth month (§ 32 Abs. 6 Satz 5, § 66 Abs. 2 EStG)', () => {
-    const neugeboren: ChildData = { id: 'k', firstName: 'Ida', lastName: 'M', birthDate: '2025-10-20', taxId: null, childBenefit: null }
-    const stand = calculateChildrenStatus([neugeboren], 2025)
-    expect(stand.childBenefitSum).toBe(3 * 255)
-    expect(stand.totalAllowance).toBe(Math.round((9600 * 3) / 12))
+    const newborn: ChildData = { id: 'k', firstName: 'Ida', lastName: 'M', birthDate: '2025-10-20', taxId: null, childBenefit: null }
+    const status = calculateChildrenStatus([newborn], 2025)
+    expect(status.childBenefitSum).toBe(3 * 255)
+    expect(status.totalAllowance).toBe(Math.round((9600 * 3) / 12))
   })
 
   it('folds child facts into deterministic count and figures', () => {
@@ -54,32 +54,32 @@ describe('kinder', () => {
         childBenefit: 3000,
       },
     ]
-    const stand = calculateChildrenStatus(kinder, 2025)
-    expect(stand.count).toBe(2)
-    expect(stand.childBenefitSum).toBe(6000)
-    expect(stand.totalAllowance).toBe(2 * 9600)
+    const status = calculateChildrenStatus(kinder, 2025)
+    expect(status.count).toBe(2)
+    expect(status.childBenefitSum).toBe(6000)
+    expect(status.totalAllowance).toBe(2 * 9600)
   })
 
   it('calculates Differenzkindergeld for Swiss family allowances (ADR-0054, #414)', () => {
     // 2025: 255 €/month = 3.060 €/year
     // Markus Brenner case: 2.580 CHF * 1.065 = 2.748 € Swiss allowance -> 312 € difference
-    const ergebnis = calculateDifferentialChildBenefit('2016-03-14', 2025, 2748)
-    expect(ergebnis.statutoryClaim).toBe(3060)
-    expect(ergebnis.swissAllowanceEur).toBe(2748)
-    expect(ergebnis.differentialChildBenefit).toBe(312)
-    expect(ergebnis.totalClaim).toBe(3060)
+    const result = calculateDifferentialChildBenefit('2016-03-14', 2025, 2748)
+    expect(result.statutoryClaim).toBe(3060)
+    expect(result.swissAllowanceEur).toBe(2748)
+    expect(result.differentialChildBenefit).toBe(312)
+    expect(result.totalClaim).toBe(3060)
 
     // Swiss allowance higher than German Kindergeld: difference is 0, total claim is higher Swiss amount
-    const hoehere = calculateDifferentialChildBenefit('2019-09-02', 2025, 3500)
-    expect(hoehere.statutoryClaim).toBe(3060)
-    expect(hoehere.differentialChildBenefit).toBe(0)
-    expect(hoehere.totalClaim).toBe(3500)
+    const higher = calculateDifferentialChildBenefit('2019-09-02', 2025, 3500)
+    expect(higher.statutoryClaim).toBe(3060)
+    expect(higher.differentialChildBenefit).toBe(0)
+    expect(higher.totalClaim).toBe(3500)
 
     // Child born in October (3 months claim): 3 * 255 = 765 €, Swiss allowance 600 € -> difference 165 €
-    const neugeboren = calculateDifferentialChildBenefit('2025-10-15', 2025, 600)
-    expect(neugeboren.statutoryClaim).toBe(765)
-    expect(neugeboren.differentialChildBenefit).toBe(165)
-    expect(neugeboren.totalClaim).toBe(765)
+    const newborn = calculateDifferentialChildBenefit('2025-10-15', 2025, 600)
+    expect(newborn.statutoryClaim).toBe(765)
+    expect(newborn.differentialChildBenefit).toBe(165)
+    expect(newborn.totalClaim).toBe(765)
 
     expect(() => calculateDifferentialChildBenefit('2020-01-01', 2025, -10)).toThrow(RangeError)
   })
@@ -106,11 +106,11 @@ describe('kinder', () => {
         swissFamilyAllowanceEur: 2748,
       },
     ]
-    const stand = calculateChildrenStatus(kinder, 2025)
-    expect(stand.count).toBe(2)
-    expect(stand.swissFamilyAllowanceSum).toBe(2748 * 2) // 5.496 €
-    expect(stand.differentialChildBenefitSum).toBe(312 * 2) // 624 €
-    expect(stand.childBenefitSum).toBe(3060 * 2) // 6.120 € total claim for Günstigerprüfung
-    expect(stand.totalAllowance).toBe(9600 * 2) // 19.200 € Kinderfreibetrag + BEA
+    const status = calculateChildrenStatus(kinder, 2025)
+    expect(status.count).toBe(2)
+    expect(status.swissFamilyAllowanceSum).toBe(2748 * 2) // 5.496 €
+    expect(status.differentialChildBenefitSum).toBe(312 * 2) // 624 €
+    expect(status.childBenefitSum).toBe(3060 * 2) // 6.120 € total claim for Günstigerprüfung
+    expect(status.totalAllowance).toBe(9600 * 2) // 19.200 € Kinderfreibetrag + BEA
   })
 })

@@ -7,19 +7,19 @@ import { ThemeProvider } from '@steuereule/ui'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import { createAppI18n } from '../../i18n/app-i18n'
-import { PlausibilitaetScreen } from './PlausibilitaetScreen'
+import { PlausibilityScreen } from './PlausibilitaetScreen'
 import { server } from '../../test-msw-server'
 
 const TAX_YEAR = 2026
 
-function renderPlausibilitaet() {
+function renderPlausibility() {
   const i18n = createAppI18n('de')
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={queryClient}>
       <I18nextProvider i18n={i18n}>
         <ThemeProvider mode="light">
-          <PlausibilitaetScreen taxYear={TAX_YEAR} onBack={() => {}} />
+          <PlausibilityScreen taxYear={TAX_YEAR} onBack={() => {}} />
         </ThemeProvider>
       </I18nextProvider>
     </QueryClientProvider>,
@@ -28,7 +28,7 @@ function renderPlausibilitaet() {
 
 describe('PlausibilitaetScreen', () => {
   it('reports "nicht einreichbar" with the honest LStB blocker on an empty mask', async () => {
-    renderPlausibilitaet()
+    renderPlausibility()
 
     expect(await screen.findByText('Da ist noch etwas offen:')).toBeTruthy()
     expect(screen.getByText('Lohnsteuerbescheinigung noch nicht vollständig.')).toBeTruthy()
@@ -39,10 +39,10 @@ describe('PlausibilitaetScreen', () => {
       http.get(`*/v1/steuerjahre/${TAX_YEAR}/lstb`, () =>
         HttpResponse.json(
           {
-            bruttoarbeitslohn: { kind: 'erfasst', wert: 50000 },
-            lohnsteuer: { kind: 'erfasst', wert: 8000 },
-            sozialversicherung: { kind: 'erfasst', wert: 9000 },
-            zustand: { kind: 'vollstaendig', bruttoarbeitslohn: 50000, lohnsteuer: 8000, sozialversicherung: 9000 },
+            bruttoarbeitslohn: { kind: 'erfasst', value: 50000 },
+            lohnsteuer: { kind: 'erfasst', value: 8000 },
+            sozialversicherung: { kind: 'erfasst', value: 9000 },
+            state: { kind: 'vollstaendig', bruttoarbeitslohn: 50000, lohnsteuer: 8000, sozialversicherung: 9000 },
           },
           { status: 200 },
         ),
@@ -51,7 +51,7 @@ describe('PlausibilitaetScreen', () => {
         HttpResponse.json({ answers: { job: 'Angestellt' }, nextStep: { kind: 'done' }, openItems: 0 }, { status: 200 }),
       ),
     )
-    renderPlausibilitaet()
+    renderPlausibility()
 
     expect(await screen.findByText('Alles klar — keine Widersprüche, nichts mehr offen.')).toBeTruthy()
     // ADR-0032 (ticket 15 review F3): "einreichbar" must not read as "everything was checked" —
@@ -64,10 +64,10 @@ describe('PlausibilitaetScreen', () => {
       http.get(`*/v1/steuerjahre/${TAX_YEAR}/lstb`, () =>
         HttpResponse.json(
           {
-            bruttoarbeitslohn: { kind: 'erfasst', wert: 50000 },
-            lohnsteuer: { kind: 'erfasst', wert: 8000 },
-            sozialversicherung: { kind: 'erfasst', wert: 9000 },
-            zustand: { kind: 'vollstaendig', bruttoarbeitslohn: 50000, lohnsteuer: 8000, sozialversicherung: 9000 },
+            bruttoarbeitslohn: { kind: 'erfasst', value: 50000 },
+            lohnsteuer: { kind: 'erfasst', value: 8000 },
+            sozialversicherung: { kind: 'erfasst', value: 9000 },
+            state: { kind: 'vollstaendig', bruttoarbeitslohn: 50000, lohnsteuer: 8000, sozialversicherung: 9000 },
           },
           { status: 200 },
         ),
@@ -75,9 +75,9 @@ describe('PlausibilitaetScreen', () => {
       http.get(`*/v1/steuerjahre/${TAX_YEAR}/interview`, () =>
         HttpResponse.json({ answers: { job: 'Angestellt' }, nextStep: { kind: 'done' }, openItems: 0 }, { status: 200 }),
       ),
-      http.get('*/v1/stammdaten', () => HttpResponse.json({ fehlend: ['iban', 'plz', 'wohnort'] }, { status: 200 })),
+      http.get('*/v1/stammdaten', () => HttpResponse.json({ missing: ['iban', 'plz', 'wohnort'] }, { status: 200 })),
     )
-    renderPlausibilitaet()
+    renderPlausibility()
 
     expect(await screen.findByText('Für den Ausdruck fehlen noch 3 persönliche Angaben (z. B. Adresse oder IBAN).')).toBeTruthy()
     expect(screen.queryByText('Alles klar — keine Widersprüche, nichts mehr offen.')).toBeNull()
@@ -89,7 +89,7 @@ describe('PlausibilitaetScreen', () => {
         HttpResponse.json({ answers: { job: 'Selbstständig' }, nextStep: { kind: 'gate', id: 'gewerbe' }, openItems: 0 }, { status: 200 }),
       ),
     )
-    renderPlausibilitaet()
+    renderPlausibility()
 
     expect(await screen.findByText('Eine Einkunftsart können wir noch nicht rechnen.')).toBeTruthy()
   })

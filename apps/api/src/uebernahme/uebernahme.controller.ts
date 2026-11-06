@@ -3,11 +3,11 @@ import { ApiOkResponse, ApiParam, ApiQuery, ApiTags, ApiUnauthorizedResponse } f
 import { CurrentUser } from '../auth/current-user.decorator.js'
 import { RequiresAccount } from '../auth/requires-account.guard.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
-import { ParseSteuerjahrPipe } from '../cockpit/parse-steuerjahr.pipe.js'
-import { UebernahmeService } from './uebernahme.service.js'
+import { ParseTaxYearPipe } from '../cockpit/parse-steuerjahr.pipe.js'
+import { TakeoverService } from './uebernahme.service.js'
 import { RolloverResponseDto } from './dto/uebernahme-response.dto.js'
 
-function parseVon(raw: unknown): number {
+function parseFrom(raw: unknown): number {
   const parsed = Number(raw)
   if (!Number.isInteger(parsed) || parsed < 1) {
     throw new BadRequestException('von must be a whole year (the source year of the take-over).')
@@ -18,8 +18,8 @@ function parseVon(raw: unknown): number {
 @ApiTags('uebernahme')
 @Controller('v1/steuerjahre')
 @UseGuards(UserContextGuard)
-export class UebernahmeController {
-  constructor(@Inject(UebernahmeService) private readonly uebernahmeService: UebernahmeService) {}
+export class TakeoverController {
+  constructor(@Inject(TakeoverService) private readonly takeoverService: TakeoverService) {}
 
   @Get(':jahr/uebernahme')
   @RequiresAccount()
@@ -31,8 +31,8 @@ export class UebernahmeController {
   })
   @ApiOkResponse({ type: RolloverResponseDto, description: 'The take-over Kennzeichnungen of this tax year.' })
   @ApiUnauthorizedResponse({ description: 'Guest session — this endpoint requires a signed-in account.' })
-  get(@CurrentUser() userId: string, @Param('jahr', ParseSteuerjahrPipe) jahr: number): Promise<RolloverResponseDto> {
-    return this.uebernahmeService.getState(userId, jahr)
+  get(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number): Promise<RolloverResponseDto> {
+    return this.takeoverService.getState(userId, year)
   }
 
   @Post(':jahr/uebernahme')
@@ -53,11 +53,11 @@ export class UebernahmeController {
   })
   @ApiOkResponse({ type: RolloverResponseDto, description: 'The LStB was copied (UNBESTÄTIGT, ADR-021) and the Kennzeichnung recorded.' })
   @ApiUnauthorizedResponse({ description: 'Guest session — this endpoint requires a signed-in account.' })
-  uebernehme(
+  takeOver(
     @CurrentUser() userId: string,
-    @Param('jahr', ParseSteuerjahrPipe) jahr: number,
-    @Query('von') vonRaw: unknown,
+    @Param('jahr', ParseTaxYearPipe) year: number,
+    @Query('von') fromRaw: unknown,
   ): Promise<RolloverResponseDto> {
-    return this.uebernahmeService.uebernehme(userId, jahr, parseVon(vonRaw))
+    return this.takeoverService.takeOver(userId, year, parseFrom(fromRaw))
   }
 }

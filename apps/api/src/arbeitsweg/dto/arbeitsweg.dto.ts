@@ -63,18 +63,18 @@ export class CommuteInputsDto {
 }
 
 export class WorkdaysDto {
-  @ApiProperty({ type: Number }) wochentage!: number
-  @ApiProperty({ type: Number }) werktage!: number
-  @ApiProperty({ type: Number }) pendlertage!: number
+  @ApiProperty({ type: Number }) weekdays!: number
+  @ApiProperty({ type: Number }) workdays!: number
+  @ApiProperty({ type: Number }) commuteDays!: number
 }
 
 export class CommuteResponseDto {
   @ApiProperty({ type: () => CommuteInputsDto, nullable: true })
-  eingaben!: CommuteInputsDto | null
+  inputs!: CommuteInputsDto | null
 
   @ApiProperty({ type: () => WorkdaysDto, nullable: true })
-  werktage!: WorkdaysDto | null
+  workdays!: WorkdaysDto | null
 
   @ApiProperty({ type: Number, nullable: true, description: 'Entfernungspauschale in whole euros; null until distance and means of travel are known.' })
-  pendlerpauschale!: number | null
+  commuterAllowance!: number | null
 }

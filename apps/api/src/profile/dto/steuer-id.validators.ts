@@ -2,7 +2,7 @@ import { isValidTaxId, isValidTaxNumber } from '@steuereule/core'
 import { registerDecorator, ValidatorConstraint, ValidatorConstraintInterface } from 'class-validator'
 
 @ValidatorConstraint({ name: 'isSteuerId', async: false })
-class IsSteuerIdConstraint implements ValidatorConstraintInterface {
+class IsTaxIdConstraint implements ValidatorConstraintInterface {
   validate(value: unknown): boolean {
     return typeof value === 'string' && isValidTaxId(value)
   }
@@ -11,19 +11,19 @@ class IsSteuerIdConstraint implements ValidatorConstraintInterface {
   }
 }
 
-export function IsSteuerId() {
+export function IsTaxId() {
   return function (object: object, propertyName: string) {
     registerDecorator({
       name: 'isSteuerId',
       target: object.constructor,
       propertyName,
-      validator: IsSteuerIdConstraint,
+      validator: IsTaxIdConstraint,
     })
   }
 }
 
 @ValidatorConstraint({ name: 'isSteuernummer', async: false })
-class IsSteuernummerConstraint implements ValidatorConstraintInterface {
+class IsTaxNumberConstraint implements ValidatorConstraintInterface {
   validate(value: unknown): boolean {
     return typeof value === 'string' && isValidTaxNumber(value)
   }
@@ -32,13 +32,13 @@ class IsSteuernummerConstraint implements ValidatorConstraintInterface {
   }
 }
 
-export function IsSteuernummer() {
+export function IsTaxNumber() {
   return function (object: object, propertyName: string) {
     registerDecorator({
       name: 'isSteuernummer',
       target: object.constructor,
       propertyName,
-      validator: IsSteuernummerConstraint,
+      validator: IsTaxNumberConstraint,
     })
   }
 }

@@ -13,7 +13,7 @@ import { createAppI18n } from '../../i18n/app-i18n'
 import { createAppAuthClient } from '../../auth/auth-client'
 import { AuthClientProvider } from '../../auth/AuthClientProvider'
 import { server } from '../../test-msw-server'
-import { SicherheitScreen } from './SicherheitScreen'
+import { SecurityScreen } from './SicherheitScreen'
 
 const BASE_URL = 'http://localhost:3000'
 const TOTP_URI = 'otpauth://totp/SteuerEule:anna@example.com?secret=ABCDEFGHIJKLMNOP&issuer=SteuerEule'
@@ -33,7 +33,7 @@ function signedInSession(twoFactorEnabled: boolean) {
   }
 }
 
-function renderSicherheit() {
+function renderSecurity() {
   const queryClient = new QueryClient()
   const authClient = createAppAuthClient(BASE_URL)
   return render(
@@ -41,7 +41,7 @@ function renderSicherheit() {
       <I18nextProvider i18n={createAppI18n('de')}>
         <ThemeProvider mode="light">
           <AuthClientProvider client={authClient}>
-            <SicherheitScreen onZurueck={() => {}} />
+            <SecurityScreen onBack={() => {}} />
           </AuthClientProvider>
         </ThemeProvider>
       </I18nextProvider>
@@ -52,7 +52,7 @@ function renderSicherheit() {
 describe('SicherheitScreen (REQ-007)', () => {
   it('reads the off state from the session, not from local state', async () => {
     server.use(http.get('*/api/auth/get-session', () => HttpResponse.json(signedInSession(false))))
-    renderSicherheit()
+    renderSecurity()
     await screen.findByText('Zwei-Faktor-Authentifizierung')
     expect(screen.getByText('Aus')).toBeTruthy()
     expect(screen.getByText('Zwei-Faktor aktivieren')).toBeTruthy()
@@ -76,7 +76,7 @@ describe('SicherheitScreen (REQ-007)', () => {
         return HttpResponse.json({ user: signedInSession(true).user, token: 'tok' })
       }),
     )
-    renderSicherheit()
+    renderSecurity()
 
     await screen.findByText('Zwei-Faktor aktivieren')
     fireEvent.click(screen.getByText('Zwei-Faktor aktivieren'))
@@ -110,7 +110,7 @@ describe('SicherheitScreen (REQ-007)', () => {
         return HttpResponse.json({ status: true })
       }),
     )
-    renderSicherheit()
+    renderSecurity()
 
     await screen.findByText('Zwei-Faktor deaktivieren')
     expect(screen.getByText('Aktiv')).toBeTruthy()
@@ -138,7 +138,7 @@ describe('SicherheitScreen (REQ-007)', () => {
         return HttpResponse.json({ status: true })
       }),
     )
-    renderSicherheit()
+    renderSecurity()
 
     await screen.findByText('Passkeys')
     // The honest web-only disclosure renders — native is follow-up work, not silently claimed.

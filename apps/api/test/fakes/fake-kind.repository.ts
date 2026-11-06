@@ -4,7 +4,7 @@ function key(userId: string, steuerjahr: number): string {
   return `${userId}::${steuerjahr}`
 }
 
-export class FakeKindRepository implements ChildRepository {
+export class FakeChildRepository implements ChildRepository {
   private readonly store = new Map<string, ChildRecord>()
   private counter = 0
 
@@ -74,8 +74,8 @@ export class FakeKindRepository implements ChildRepository {
   ): Promise<ChildRecord | null> {
     const record = this.store.get(id)
     if (!record || record.userId !== userId || record.steuerjahr !== steuerjahr) return Promise.resolve(null)
-    const angaben = Object.fromEntries(Object.entries(data).filter(([, wert]) => wert !== undefined))
-    const updated: ChildRecord = { ...record, ...angaben }
+    const details = Object.fromEntries(Object.entries(data).filter(([, value]) => value !== undefined))
+    const updated: ChildRecord = { ...record, ...details }
     this.store.set(id, updated)
     return Promise.resolve(updated)
   }

@@ -29,7 +29,7 @@ async function fillNameStep() {
   fireEvent.click(screen.getByText('Weiter'))
 }
 
-function fillSteuerId(digits: string) {
+function fillTaxId(digits: string) {
   fireEvent.change(screen.getByPlaceholderText('12 345 678 901'), { target: { value: digits } })
 }
 
@@ -119,14 +119,14 @@ describe('OnboardingScreen', () => {
     renderOnboarding()
     await fillNameStep()
 
-    fillSteuerId('1234567890')
+    fillTaxId('1234567890')
     expect(screen.getByText('10/11 Ziffern')).toBeTruthy()
     expect(screen.queryByText('sitzt ✓')).toBeNull()
     fireEvent.click(screen.getByText('Weiter'))
     // CTA stayed disabled: still on step 2.
     expect(screen.queryByText('Steht auf deinem letzten Bescheid. Keinen zur Hand? Später geht auch.')).toBeNull()
 
-    fillSteuerId('12345678901')
+    fillTaxId('12345678901')
     expect(screen.getByDisplayValue('12 345 678 901')).toBeTruthy()
     expect(screen.getByText('11/11 Ziffern')).toBeTruthy()
     expect(screen.getByText('sitzt ✓')).toBeTruthy()
@@ -137,7 +137,7 @@ describe('OnboardingScreen', () => {
   it('lets the Steuernummer step be skipped via the "later" chip without entering digits', async () => {
     renderOnboarding()
     await fillNameStep()
-    fillSteuerId('12345678901')
+    fillTaxId('12345678901')
     fireEvent.click(screen.getByText('Weiter'))
 
     fireEvent.click(screen.getByText('Hab ich nicht zur Hand — später'))
@@ -147,7 +147,7 @@ describe('OnboardingScreen', () => {
   it('reaches the summary with all four values, showing "später" for a skipped Steuernummer', async () => {
     renderOnboarding()
     await fillNameStep()
-    fillSteuerId('12345678901')
+    fillTaxId('12345678901')
     fireEvent.click(screen.getByText('Weiter'))
     // Steuernummer is never required: tap Weiter with the field left empty.
     fireEvent.click(screen.getByText('Weiter'))
@@ -172,7 +172,7 @@ describe('OnboardingScreen', () => {
     const onDone = vi.fn()
     renderOnboarding({ onDone })
     await fillNameStep()
-    fillSteuerId('12345678901')
+    fillTaxId('12345678901')
     fireEvent.click(screen.getByText('Weiter'))
     fireEvent.click(screen.getByText('Weiter'))
     expect(screen.getByText('Deine Maske')).toBeTruthy()
@@ -192,7 +192,7 @@ describe('OnboardingScreen', () => {
     const onDone = vi.fn()
     renderOnboarding({ onDone })
     await fillNameStep()
-    fillSteuerId('12345678901')
+    fillTaxId('12345678901')
     fireEvent.click(screen.getByText('Weiter'))
     fireEvent.click(screen.getByText('Weiter'))
 
@@ -207,7 +207,7 @@ describe('OnboardingScreen', () => {
     const onDone = vi.fn()
     renderOnboarding({ onDone })
     await fillNameStep()
-    fillSteuerId('12345678901')
+    fillTaxId('12345678901')
     fireEvent.click(screen.getByText('Weiter'))
     fireEvent.click(screen.getByText('Weiter'))
 
@@ -220,7 +220,7 @@ describe('OnboardingScreen', () => {
   it('returns to step 1 from "Angaben ändern" and preserves entered values', async () => {
     renderOnboarding()
     await fillNameStep()
-    fillSteuerId('12345678901')
+    fillTaxId('12345678901')
     fireEvent.click(screen.getByText('Weiter'))
     fireEvent.click(screen.getByText('Weiter'))
     expect(screen.getByText('Deine Maske')).toBeTruthy()

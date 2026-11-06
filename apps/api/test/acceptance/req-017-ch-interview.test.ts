@@ -23,7 +23,7 @@ const ALLOWED_ORIGIN = 'https://allowed.example.com'
 process.env.CORS_ALLOWED_ORIGINS = ALLOWED_ORIGIN
 const TRUSTED_ORIGIN_HEADERS = { origin: ALLOWED_ORIGIN }
 
-const STEUERJAHR = 2026
+const TAX_YEAR = 2026
 
 type InterviewAnswerRow = { userId: string; steuerjahr: number; questionId: string; value: string }
 
@@ -76,37 +76,37 @@ describe('REQ-020 — the Grenzgänger-CH interview entry, against the real serv
   it('GWT — the two CH questions answer in order, persist server-side, and each response names the CH next step', async () => {
     const { cookie, userId } = await signUp('ch-gwt@example.com')
 
-    const wohnsitz = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
+    const residence = await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', cookie },
       body: JSON.stringify({ questionId: 'ch-wohnsitz', value: 'Deutschland' }),
     })
-    expect(wohnsitz.status).toBe(200)
+    expect(residence.status).toBe(200)
     // Entry-scoped openItems (union with ticket 08's response semantics): 1 of 2 segment-ch
     // questions answered → 1 remaining. The Minimal-Gate's own count stays untouched.
-    expect(await wohnsitz.json()).toEqual({ nextStep: { kind: 'question', id: 'ch-nichtrueckkehrtage' }, openItems: 1 })
+    expect(await residence.json()).toEqual({ nextStep: { kind: 'question', id: 'ch-nichtrueckkehrtage' }, openItems: 1 })
 
-    const tage = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
+    const days = await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', cookie },
       body: JSON.stringify({ questionId: 'ch-nichtrueckkehrtage', value: '20' }),
     })
-    expect(tage.status).toBe(200)
-    expect(await tage.json()).toEqual({ nextStep: { kind: 'done' }, openItems: 0 })
+    expect(days.status).toBe(200)
+    expect(await days.json()).toEqual({ nextStep: { kind: 'done' }, openItems: 0 })
 
     // Raw SQL proves the two rows exist; the GET proves the values are decrypted back to what
     // the client sent (raw SQL returns ciphertext — asserted as such in the ciphertext test below).
     const rows = await interviewRows(userId)
     expect(rows.map((r) => r.questionId).sort()).toEqual(['ch-nichtrueckkehrtage', 'ch-wohnsitz'])
 
-    const state = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview`, { headers: { cookie } })
+    const state = await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview`, { headers: { cookie } })
     expect(((await state.json()) as { answers: Record<string, string> }).answers).toEqual({ 'ch-wohnsitz': 'Deutschland', 'ch-nichtrueckkehrtage': '20' })
   })
 
   it('server-side order: ch-nichtrueckkehrtage is rejected (409) before ch-wohnsitz is answered, and creates no row', async () => {
     const { cookie, userId } = await signUp('ch-order@example.com')
 
-    const response = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
+    const response = await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', cookie },
       body: JSON.stringify({ questionId: 'ch-nichtrueckkehrtage', value: '20' }),
@@ -118,34 +118,34 @@ describe('REQ-020 — the Grenzgänger-CH interview entry, against the real serv
   it('server-side value validation: an invalid ch-wohnsitz value is rejected (400), an out-of-range day count too', async () => {
     const { cookie, userId } = await signUp('ch-invalid@example.com')
 
-    const badWohnsitz = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
+    const badResidence = await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', cookie },
       body: JSON.stringify({ questionId: 'ch-wohnsitz', value: 'Frankreich' }),
     })
-    expect(badWohnsitz.status).toBe(400)
+    expect(badResidence.status).toBe(400)
 
-    await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
+    await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', cookie },
       body: JSON.stringify({ questionId: 'ch-wohnsitz', value: 'Schweiz' }),
     })
-    const badTage = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
+    const badDays = await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', cookie },
       body: JSON.stringify({ questionId: 'ch-nichtrueckkehrtage', value: '366' }),
     })
-    expect(badTage.status).toBe(400)
+    expect(badDays.status).toBe(400)
 
     const rows = await interviewRows(userId)
     expect(rows.map((r) => r.questionId)).toEqual(['ch-wohnsitz'])
 
-    const state = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview`, { headers: { cookie } })
+    const state = await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview`, { headers: { cookie } })
     expect(((await state.json()) as { answers: Record<string, string> }).answers).toEqual({ 'ch-wohnsitz': 'Schweiz' })
   })
 
   it('a guest (no account session) is rejected with 401 on the CH write, same as the Minimal-Gate', async () => {
-    const response = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
+    const response = await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ questionId: 'ch-wohnsitz', value: 'Deutschland' }),
@@ -160,21 +160,21 @@ describe('REQ-020 — the Grenzgänger-CH interview entry, against the real serv
     const userA = await signUp('ch-a@example.com')
     const userB = await signUp('ch-b@example.com')
 
-    await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
+    await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', cookie: userA.cookie },
       body: JSON.stringify({ questionId: 'ch-wohnsitz', value: 'Deutschland' }),
     })
 
     // B has no ch-wohnsitz, so ch-nichtrueckkehrtage is unreachable for B even though A answered it.
-    const bWrite = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
+    const bWrite = await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', cookie: userB.cookie },
       body: JSON.stringify({ questionId: 'ch-nichtrueckkehrtage', value: '10' }),
     })
     expect(bWrite.status).toBe(409)
 
-    const asB = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview`, { headers: { cookie: userB.cookie } })
+    const asB = await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview`, { headers: { cookie: userB.cookie } })
     expect(((await asB.json()) as { answers: Record<string, string> }).answers).toEqual({})
 
     const rowsA = await interviewRows(userA.userId)
@@ -184,7 +184,7 @@ describe('REQ-020 — the Grenzgänger-CH interview entry, against the real serv
   it('the CH answer value is ciphertext at rest, checked by raw SQL (ADR-0008, same house pattern as REQ-015)', async () => {
     const { cookie, userId } = await signUp('ch-cipher@example.com')
 
-    await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
+    await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', cookie },
       body: JSON.stringify({ questionId: 'ch-wohnsitz', value: 'Deutschland' }),

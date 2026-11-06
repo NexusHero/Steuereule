@@ -2,46 +2,46 @@ import { Text, View, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useTheme, type UiTheme } from '@steuereule/ui'
 import { formatEuro } from '@steuereule/core'
-import { useFristenControllerGetFristen, type FristenResponseDto } from '@steuereule/api-client'
+import { useDeadlinesControllerGetDeadlines, type DeadlinesResponseDto } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 
-function formatDatum(iso: string): string {
-  const [jahr, monat, tag] = iso.split('-')
-  return `${tag}.${monat}.${jahr}`
+function formatDate(iso: string): string {
+  const [year, month, tag] = iso.split('-')
+  return `${tag}.${month}.${year}`
 }
 
-export interface FristenBannerProps {
+export interface DeadlinesBannerProps {
   readonly taxYear?: number
 }
 
-export function FristenBanner({ taxYear = CURRENT_TAX_YEAR }: FristenBannerProps) {
-  const query = useFristenControllerGetFristen(taxYear)
+export function DeadlinesBanner({ taxYear = CURRENT_TAX_YEAR }: DeadlinesBannerProps) {
+  const query = useDeadlinesControllerGetDeadlines(taxYear)
 
   if (query.isPending || query.isError || query.data.status !== 200) return null
-  const dto: FristenResponseDto = query.data.data
-  if (dto.stufe === 'keine') return null
+  const dto: DeadlinesResponseDto = query.data.data
+  if (dto.level === 'keine') return null
 
   return <Banner dto={dto} />
 }
 
-export function Banner({ dto }: { readonly dto: FristenResponseDto }) {
+export function Banner({ dto }: { readonly dto: DeadlinesResponseDto }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
-  const frist = formatDatum(dto.abgabefrist)
-  const mindestsatz = formatEuro(dto.verspaetungszuschlag.mindestsatzEur)
+  const frist = formatDate(dto.filingDeadline)
+  const minimumRate = formatEuro(dto.lateFilingSurcharge.minimumRateEur)
 
-  if (dto.stufe === 'abgelaufen') {
+  if (dto.level === 'abgelaufen') {
     return (
       <View style={styles.banner} testID="fristen-banner-abgelaufen" accessibilityRole="alert">
-        <Text style={styles.text}>{tr('fristen.abgelaufen', { frist, tage: -dto.verbleibendeTage, mindestsatz })}</Text>
+        <Text style={styles.text}>{tr('fristen.abgelaufen', { frist, tage: -dto.remainingDays, mindestsatz: minimumRate })}</Text>
       </View>
     )
   }
   return (
     <View style={styles.banner} testID="fristen-banner-warnung">
-      <Text style={styles.text}>{tr('fristen.warnung', { frist, tage: dto.verbleibendeTage, mindestsatz })}</Text>
+      <Text style={styles.text}>{tr('fristen.warnung', { frist, tage: dto.remainingDays, mindestsatz: minimumRate })}</Text>
     </View>
   )
 }

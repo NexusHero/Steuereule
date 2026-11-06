@@ -25,9 +25,9 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
-  KopplungPersonBDto,
-  KopplungResponseDto,
-  SetKopplungDto
+  LinkPersonBDto,
+  LinkResponseDto,
+  SetLinkDto
 } from './kopplung.schemas';
 
 import { httpClient } from '../http-client';
@@ -52,26 +52,26 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   return result;
 };
 
-export type kopplungControllerGetResponse200 = {
-  data: KopplungResponseDto
+export type linkControllerGetResponse200 = {
+  data: LinkResponseDto
   status: 200
 }
 
-export type kopplungControllerGetResponse401 = {
+export type linkControllerGetResponse401 = {
   data: void
   status: 401
 }
 
-export type kopplungControllerGetResponseSuccess = (kopplungControllerGetResponse200) & {
+export type linkControllerGetResponseSuccess = (linkControllerGetResponse200) & {
   headers: Headers;
 };
-export type kopplungControllerGetResponseError = (kopplungControllerGetResponse401) & {
+export type linkControllerGetResponseError = (linkControllerGetResponse401) & {
   headers: Headers;
 };
 
-export type kopplungControllerGetResponse = (kopplungControllerGetResponseSuccess | kopplungControllerGetResponseError)
+export type linkControllerGetResponse = (linkControllerGetResponseSuccess | linkControllerGetResponseError)
 
-export const getKopplungControllerGetUrl = (jahr: number,) => {
+export const getLinkControllerGetUrl = (jahr: number,) => {
 
 
 
@@ -79,9 +79,9 @@ export const getKopplungControllerGetUrl = (jahr: number,) => {
   return `/v1/steuerjahre/${jahr}/kopplung`
 }
 
-export const kopplungControllerGet = async (jahr: number, options?: RequestInit): Promise<kopplungControllerGetResponse> => {
+export const linkControllerGet = async (jahr: number, options?: RequestInit): Promise<linkControllerGetResponse> => {
 
-  return httpClient<kopplungControllerGetResponse>(getKopplungControllerGetUrl(jahr),
+  return httpClient<linkControllerGetResponse>(getLinkControllerGetUrl(jahr),
   {
     ...options,
     method: 'GET'
@@ -94,66 +94,66 @@ export const kopplungControllerGet = async (jahr: number, options?: RequestInit)
 
 
 
-export const getKopplungControllerGetQueryKey = (jahr: number,) => {
+export const getLinkControllerGetQueryKey = (jahr: number,) => {
     return [
     `/v1/steuerjahre/${jahr}/kopplung`
     ] as const;
     }
 
 
-export const getKopplungControllerGetQueryOptions = <TData = Awaited<ReturnType<typeof kopplungControllerGet>>, TError = void>(jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof kopplungControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export const getLinkControllerGetQueryOptions = <TData = Awaited<ReturnType<typeof linkControllerGet>>, TError = void>(jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof linkControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getKopplungControllerGetQueryKey(jahr);
+  const queryKey =  queryOptions?.queryKey ?? getLinkControllerGetQueryKey(jahr);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof kopplungControllerGet>>> = ({ signal }) => kopplungControllerGet(jahr, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof linkControllerGet>>> = ({ signal }) => linkControllerGet(jahr, { signal, ...requestOptions });
 
 
 
 
 
-   return  { queryKey, queryFn, enabled: jahr !== null && jahr !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof kopplungControllerGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+   return  { queryKey, queryFn, enabled: jahr !== null && jahr !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof linkControllerGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
-export type KopplungControllerGetQueryResult = NonNullable<Awaited<ReturnType<typeof kopplungControllerGet>>>
-export type KopplungControllerGetQueryError = void
+export type LinkControllerGetQueryResult = NonNullable<Awaited<ReturnType<typeof linkControllerGet>>>
+export type LinkControllerGetQueryError = void
 
 
-export function useKopplungControllerGet<TData = Awaited<ReturnType<typeof kopplungControllerGet>>, TError = void>(
- jahr: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof kopplungControllerGet>>, TError, TData>> & Pick<
+export function useLinkControllerGet<TData = Awaited<ReturnType<typeof linkControllerGet>>, TError = void>(
+ jahr: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof linkControllerGet>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof kopplungControllerGet>>,
+          Awaited<ReturnType<typeof linkControllerGet>>,
           TError,
-          Awaited<ReturnType<typeof kopplungControllerGet>>
+          Awaited<ReturnType<typeof linkControllerGet>>
         > , 'initialData'
       >, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useKopplungControllerGet<TData = Awaited<ReturnType<typeof kopplungControllerGet>>, TError = void>(
- jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof kopplungControllerGet>>, TError, TData>> & Pick<
+export function useLinkControllerGet<TData = Awaited<ReturnType<typeof linkControllerGet>>, TError = void>(
+ jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof linkControllerGet>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof kopplungControllerGet>>,
+          Awaited<ReturnType<typeof linkControllerGet>>,
           TError,
-          Awaited<ReturnType<typeof kopplungControllerGet>>
+          Awaited<ReturnType<typeof linkControllerGet>>
         > , 'initialData'
       >, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useKopplungControllerGet<TData = Awaited<ReturnType<typeof kopplungControllerGet>>, TError = void>(
- jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof kopplungControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export function useLinkControllerGet<TData = Awaited<ReturnType<typeof linkControllerGet>>, TError = void>(
+ jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof linkControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 
-export function useKopplungControllerGet<TData = Awaited<ReturnType<typeof kopplungControllerGet>>, TError = void>(
- jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof kopplungControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export function useLinkControllerGet<TData = Awaited<ReturnType<typeof linkControllerGet>>, TError = void>(
+ jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof linkControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getKopplungControllerGetQueryOptions(jahr,options)
+  const queryOptions = getLinkControllerGetQueryOptions(jahr,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
@@ -166,31 +166,31 @@ export function useKopplungControllerGet<TData = Awaited<ReturnType<typeof koppl
 
 
 
-export type kopplungControllerSetResponse200 = {
-  data: KopplungResponseDto
+export type linkControllerSetResponse200 = {
+  data: LinkResponseDto
   status: 200
 }
 
-export type kopplungControllerSetResponse401 = {
+export type linkControllerSetResponse401 = {
   data: void
   status: 401
 }
 
-export type kopplungControllerSetResponse403 = {
+export type linkControllerSetResponse403 = {
   data: void
   status: 403
 }
 
-export type kopplungControllerSetResponseSuccess = (kopplungControllerSetResponse200) & {
+export type linkControllerSetResponseSuccess = (linkControllerSetResponse200) & {
   headers: Headers;
 };
-export type kopplungControllerSetResponseError = (kopplungControllerSetResponse401 | kopplungControllerSetResponse403) & {
+export type linkControllerSetResponseError = (linkControllerSetResponse401 | linkControllerSetResponse403) & {
   headers: Headers;
 };
 
-export type kopplungControllerSetResponse = (kopplungControllerSetResponseSuccess | kopplungControllerSetResponseError)
+export type linkControllerSetResponse = (linkControllerSetResponseSuccess | linkControllerSetResponseError)
 
-export const getKopplungControllerSetUrl = (jahr: number,) => {
+export const getLinkControllerSetUrl = (jahr: number,) => {
 
 
 
@@ -198,15 +198,15 @@ export const getKopplungControllerSetUrl = (jahr: number,) => {
   return `/v1/steuerjahre/${jahr}/kopplung`
 }
 
-export const kopplungControllerSet = async (jahr: number,
-    setKopplungDto: SetKopplungDto, options?: RequestInit): Promise<kopplungControllerSetResponse> => {
+export const linkControllerSet = async (jahr: number,
+    setLinkDto: SetLinkDto, options?: RequestInit): Promise<linkControllerSetResponse> => {
 
-  return httpClient<kopplungControllerSetResponse>(getKopplungControllerSetUrl(jahr),
+  return httpClient<linkControllerSetResponse>(getLinkControllerSetUrl(jahr),
   {
     ...options,
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(setKopplungDto)
+    body: JSON.stringify(setLinkDto)
   }
 );}
 
@@ -214,11 +214,11 @@ export const kopplungControllerSet = async (jahr: number,
 
 
 
-export const getKopplungControllerSetMutationOptions = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof kopplungControllerSet>>, TError,{jahr: number;data: SetKopplungDto}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof kopplungControllerSet>>, TError,{jahr: number;data: SetKopplungDto}, TContext> => {
+export const getLinkControllerSetMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof linkControllerSet>>, TError,{jahr: number;data: SetLinkDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof linkControllerSet>>, TError,{jahr: number;data: SetLinkDto}, TContext> => {
 
-const mutationKey = ['kopplungControllerSet'];
+const mutationKey = ['linkControllerSet'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -228,10 +228,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof kopplungControllerSet>>, {jahr: number;data: SetKopplungDto}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof linkControllerSet>>, {jahr: number;data: SetLinkDto}> = (props) => {
           const {jahr,data} = props ?? {};
 
-          return  kopplungControllerSet(jahr,data,requestOptions)
+          return  linkControllerSet(jahr,data,requestOptions)
         }
 
 
@@ -241,46 +241,46 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type KopplungControllerSetMutationResult = NonNullable<Awaited<ReturnType<typeof kopplungControllerSet>>>
-    export type KopplungControllerSetMutationBody = SetKopplungDto
-    export type KopplungControllerSetMutationError = void
+    export type LinkControllerSetMutationResult = NonNullable<Awaited<ReturnType<typeof linkControllerSet>>>
+    export type LinkControllerSetMutationBody = SetLinkDto
+    export type LinkControllerSetMutationError = void
 
-    export const useKopplungControllerSet = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof kopplungControllerSet>>, TError,{jahr: number;data: SetKopplungDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+    export const useLinkControllerSet = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof linkControllerSet>>, TError,{jahr: number;data: SetLinkDto}, TContext>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof kopplungControllerSet>>,
+        Awaited<ReturnType<typeof linkControllerSet>>,
         TError,
-        {jahr: number;data: SetKopplungDto},
+        {jahr: number;data: SetLinkDto},
         TContext
       > => {
-      return useMutation(getKopplungControllerSetMutationOptions(options), queryClient);
+      return useMutation(getLinkControllerSetMutationOptions(options), queryClient);
     }
 
-export type kopplungControllerUpdatePersonBResponse200 = {
-  data: KopplungResponseDto
+export type linkControllerUpdatePersonBResponse200 = {
+  data: LinkResponseDto
   status: 200
 }
 
-export type kopplungControllerUpdatePersonBResponse401 = {
+export type linkControllerUpdatePersonBResponse401 = {
   data: void
   status: 401
 }
 
-export type kopplungControllerUpdatePersonBResponse403 = {
+export type linkControllerUpdatePersonBResponse403 = {
   data: void
   status: 403
 }
 
-export type kopplungControllerUpdatePersonBResponseSuccess = (kopplungControllerUpdatePersonBResponse200) & {
+export type linkControllerUpdatePersonBResponseSuccess = (linkControllerUpdatePersonBResponse200) & {
   headers: Headers;
 };
-export type kopplungControllerUpdatePersonBResponseError = (kopplungControllerUpdatePersonBResponse401 | kopplungControllerUpdatePersonBResponse403) & {
+export type linkControllerUpdatePersonBResponseError = (linkControllerUpdatePersonBResponse401 | linkControllerUpdatePersonBResponse403) & {
   headers: Headers;
 };
 
-export type kopplungControllerUpdatePersonBResponse = (kopplungControllerUpdatePersonBResponseSuccess | kopplungControllerUpdatePersonBResponseError)
+export type linkControllerUpdatePersonBResponse = (linkControllerUpdatePersonBResponseSuccess | linkControllerUpdatePersonBResponseError)
 
-export const getKopplungControllerUpdatePersonBUrl = (jahr: number,) => {
+export const getLinkControllerUpdatePersonBUrl = (jahr: number,) => {
 
 
 
@@ -288,15 +288,15 @@ export const getKopplungControllerUpdatePersonBUrl = (jahr: number,) => {
   return `/v1/steuerjahre/${jahr}/kopplung/person-b`
 }
 
-export const kopplungControllerUpdatePersonB = async (jahr: number,
-    kopplungPersonBDto: KopplungPersonBDto, options?: RequestInit): Promise<kopplungControllerUpdatePersonBResponse> => {
+export const linkControllerUpdatePersonB = async (jahr: number,
+    linkPersonBDto: LinkPersonBDto, options?: RequestInit): Promise<linkControllerUpdatePersonBResponse> => {
 
-  return httpClient<kopplungControllerUpdatePersonBResponse>(getKopplungControllerUpdatePersonBUrl(jahr),
+  return httpClient<linkControllerUpdatePersonBResponse>(getLinkControllerUpdatePersonBUrl(jahr),
   {
     ...options,
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(kopplungPersonBDto)
+    body: JSON.stringify(linkPersonBDto)
   }
 );}
 
@@ -304,11 +304,11 @@ export const kopplungControllerUpdatePersonB = async (jahr: number,
 
 
 
-export const getKopplungControllerUpdatePersonBMutationOptions = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof kopplungControllerUpdatePersonB>>, TError,{jahr: number;data: KopplungPersonBDto}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof kopplungControllerUpdatePersonB>>, TError,{jahr: number;data: KopplungPersonBDto}, TContext> => {
+export const getLinkControllerUpdatePersonBMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof linkControllerUpdatePersonB>>, TError,{jahr: number;data: LinkPersonBDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof linkControllerUpdatePersonB>>, TError,{jahr: number;data: LinkPersonBDto}, TContext> => {
 
-const mutationKey = ['kopplungControllerUpdatePersonB'];
+const mutationKey = ['linkControllerUpdatePersonB'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -318,10 +318,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof kopplungControllerUpdatePersonB>>, {jahr: number;data: KopplungPersonBDto}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof linkControllerUpdatePersonB>>, {jahr: number;data: LinkPersonBDto}> = (props) => {
           const {jahr,data} = props ?? {};
 
-          return  kopplungControllerUpdatePersonB(jahr,data,requestOptions)
+          return  linkControllerUpdatePersonB(jahr,data,requestOptions)
         }
 
 
@@ -331,41 +331,41 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type KopplungControllerUpdatePersonBMutationResult = NonNullable<Awaited<ReturnType<typeof kopplungControllerUpdatePersonB>>>
-    export type KopplungControllerUpdatePersonBMutationBody = KopplungPersonBDto
-    export type KopplungControllerUpdatePersonBMutationError = void
+    export type LinkControllerUpdatePersonBMutationResult = NonNullable<Awaited<ReturnType<typeof linkControllerUpdatePersonB>>>
+    export type LinkControllerUpdatePersonBMutationBody = LinkPersonBDto
+    export type LinkControllerUpdatePersonBMutationError = void
 
-    export const useKopplungControllerUpdatePersonB = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof kopplungControllerUpdatePersonB>>, TError,{jahr: number;data: KopplungPersonBDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+    export const useLinkControllerUpdatePersonB = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof linkControllerUpdatePersonB>>, TError,{jahr: number;data: LinkPersonBDto}, TContext>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof kopplungControllerUpdatePersonB>>,
+        Awaited<ReturnType<typeof linkControllerUpdatePersonB>>,
         TError,
-        {jahr: number;data: KopplungPersonBDto},
+        {jahr: number;data: LinkPersonBDto},
         TContext
       > => {
-      return useMutation(getKopplungControllerUpdatePersonBMutationOptions(options), queryClient);
+      return useMutation(getLinkControllerUpdatePersonBMutationOptions(options), queryClient);
     }
 
-export type kopplungControllerJoinWithCodeResponse200 = {
-  data: KopplungResponseDto
+export type linkControllerJoinWithCodeResponse200 = {
+  data: LinkResponseDto
   status: 200
 }
 
-export type kopplungControllerJoinWithCodeResponse401 = {
+export type linkControllerJoinWithCodeResponse401 = {
   data: void
   status: 401
 }
 
-export type kopplungControllerJoinWithCodeResponseSuccess = (kopplungControllerJoinWithCodeResponse200) & {
+export type linkControllerJoinWithCodeResponseSuccess = (linkControllerJoinWithCodeResponse200) & {
   headers: Headers;
 };
-export type kopplungControllerJoinWithCodeResponseError = (kopplungControllerJoinWithCodeResponse401) & {
+export type linkControllerJoinWithCodeResponseError = (linkControllerJoinWithCodeResponse401) & {
   headers: Headers;
 };
 
-export type kopplungControllerJoinWithCodeResponse = (kopplungControllerJoinWithCodeResponseSuccess | kopplungControllerJoinWithCodeResponseError)
+export type linkControllerJoinWithCodeResponse = (linkControllerJoinWithCodeResponseSuccess | linkControllerJoinWithCodeResponseError)
 
-export const getKopplungControllerJoinWithCodeUrl = (jahr: number,
+export const getLinkControllerJoinWithCodeUrl = (jahr: number,
     code: string,) => {
 
 
@@ -374,10 +374,10 @@ export const getKopplungControllerJoinWithCodeUrl = (jahr: number,
   return `/v1/steuerjahre/${jahr}/kopplung/beitreten/${code}`
 }
 
-export const kopplungControllerJoinWithCode = async (jahr: number,
-    code: string, options?: RequestInit): Promise<kopplungControllerJoinWithCodeResponse> => {
+export const linkControllerJoinWithCode = async (jahr: number,
+    code: string, options?: RequestInit): Promise<linkControllerJoinWithCodeResponse> => {
 
-  return httpClient<kopplungControllerJoinWithCodeResponse>(getKopplungControllerJoinWithCodeUrl(jahr,code),
+  return httpClient<linkControllerJoinWithCodeResponse>(getLinkControllerJoinWithCodeUrl(jahr,code),
   {
     ...options,
     method: 'POST'
@@ -390,11 +390,11 @@ export const kopplungControllerJoinWithCode = async (jahr: number,
 
 
 
-export const getKopplungControllerJoinWithCodeMutationOptions = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof kopplungControllerJoinWithCode>>, TError,{jahr: number;code: string}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof kopplungControllerJoinWithCode>>, TError,{jahr: number;code: string}, TContext> => {
+export const getLinkControllerJoinWithCodeMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof linkControllerJoinWithCode>>, TError,{jahr: number;code: string}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof linkControllerJoinWithCode>>, TError,{jahr: number;code: string}, TContext> => {
 
-const mutationKey = ['kopplungControllerJoinWithCode'];
+const mutationKey = ['linkControllerJoinWithCode'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -404,10 +404,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof kopplungControllerJoinWithCode>>, {jahr: number;code: string}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof linkControllerJoinWithCode>>, {jahr: number;code: string}> = (props) => {
           const {jahr,code} = props ?? {};
 
-          return  kopplungControllerJoinWithCode(jahr,code,requestOptions)
+          return  linkControllerJoinWithCode(jahr,code,requestOptions)
         }
 
 
@@ -417,18 +417,18 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type KopplungControllerJoinWithCodeMutationResult = NonNullable<Awaited<ReturnType<typeof kopplungControllerJoinWithCode>>>
+    export type LinkControllerJoinWithCodeMutationResult = NonNullable<Awaited<ReturnType<typeof linkControllerJoinWithCode>>>
 
-    export type KopplungControllerJoinWithCodeMutationError = void
+    export type LinkControllerJoinWithCodeMutationError = void
 
-    export const useKopplungControllerJoinWithCode = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof kopplungControllerJoinWithCode>>, TError,{jahr: number;code: string}, TContext>, request?: SecondParameter<typeof httpClient>}
+    export const useLinkControllerJoinWithCode = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof linkControllerJoinWithCode>>, TError,{jahr: number;code: string}, TContext>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof kopplungControllerJoinWithCode>>,
+        Awaited<ReturnType<typeof linkControllerJoinWithCode>>,
         TError,
         {jahr: number;code: string},
         TContext
       > => {
-      return useMutation(getKopplungControllerJoinWithCodeMutationOptions(options), queryClient);
+      return useMutation(getLinkControllerJoinWithCodeMutationOptions(options), queryClient);
     }
 

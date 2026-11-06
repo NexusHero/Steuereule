@@ -1,22 +1,22 @@
-export const ZAHLUNGSANBIETER = Symbol('ZAHLUNGSANBIETER')
+export const PAYMENT_PROVIDER = Symbol('ZAHLUNGSANBIETER')
 
-export interface CheckoutAnfrage {
+export interface CheckoutRequest {
   userId: string
   steuerjahr: number
-  erfolgUrl: string
-  abbruchUrl: string
+  successUrl: string
+  cancelUrl: string
 }
 
-export interface CheckoutSitzung {
+export interface CheckoutSession {
   id: string
   url: string
 }
 
-export type ZahlungsEreignis =
-  | { art: 'bezahlt'; sitzungId: string; betragCent: number | null }
+export type PaymentEvent =
+  | { art: 'bezahlt'; sessionId: string; betragCent: number | null }
   | { art: 'ignoriert' }
 
-export interface Zahlungsanbieter {
-  erstelleCheckout(anfrage: CheckoutAnfrage): Promise<CheckoutSitzung>
-  verifiziereEreignis(rohdaten: Buffer, signatur: string): ZahlungsEreignis
+export interface PaymentProvider {
+  createCheckout(request: CheckoutRequest): Promise<CheckoutSession>
+  verifyEvent(rawData: Buffer, signature: string): PaymentEvent
 }

@@ -10,7 +10,7 @@ function key(userId: string, steuerjahr: number): string {
   return `${userId}::${steuerjahr}`
 }
 
-export class FakeVermietungRepository implements RentalRepository {
+export class FakeRentalRepository implements RentalRepository {
   private readonly store = new Map<string, RentalObjectRecord>()
   private counter = 0
 
@@ -34,25 +34,25 @@ export class FakeVermietungRepository implements RentalRepository {
     return Promise.resolve(record)
   }
 
-  setFeld(userId: string, steuerjahr: number, objektId: string, feld: RentalFieldId, wert: string | null): Promise<RentalObjectRecord | null> {
-    const k = `${key(userId, steuerjahr)}::${objektId}`
+  setField(userId: string, steuerjahr: number, propertyId: string, field: RentalFieldId, value: string | null): Promise<RentalObjectRecord | null> {
+    const k = `${key(userId, steuerjahr)}::${propertyId}`
     const existing = this.store.get(k)
     if (existing === undefined) return Promise.resolve(null)
-    const updated: RentalObjectRecord = { ...existing, [feld]: wert }
+    const updated: RentalObjectRecord = { ...existing, [field]: value }
     this.store.set(k, updated)
     return Promise.resolve(updated)
   }
 
-  setAdresse(
+  setAddress(
     userId: string,
     steuerjahr: number,
-    objektId: string,
-    adresse: { strasse?: string | null; hausnummer?: string | null; plz?: string | null; ort?: string | null; wohnflaeche?: string | null; afaWieVorjahr?: boolean | null },
+    propertyId: string,
+    address: { strasse?: string | null; hausnummer?: string | null; plz?: string | null; ort?: string | null; wohnflaeche?: string | null; afaWieVorjahr?: boolean | null },
   ): Promise<RentalObjectRecord | null> {
-    const k = `${key(userId, steuerjahr)}::${objektId}`
+    const k = `${key(userId, steuerjahr)}::${propertyId}`
     const existing = this.store.get(k)
     if (existing === undefined) return Promise.resolve(null)
-    const updated: RentalObjectRecord = { ...existing, ...adresse }
+    const updated: RentalObjectRecord = { ...existing, ...address }
     this.store.set(k, updated)
     return Promise.resolve(updated)
   }

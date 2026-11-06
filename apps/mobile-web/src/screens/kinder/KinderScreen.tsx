@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { KatalogScreen } from '../katalog/KatalogScreen'
-import { deutschZuIso, isoZuDeutsch } from '../stammdaten/stammdatenMapping'
+import { CatalogScreen } from '../katalog/KatalogScreen'
+import { germanToIso, isoToGerman } from '../stammdaten/stammdatenMapping'
 import { Pressable, ScrollView, Text, View, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
@@ -22,14 +22,14 @@ import {
   useKinderControllerDelete,
   useKinderControllerList,
   useKinderControllerUpdate,
-  useStammdatenControllerLese,
+  useMasterDataControllerRead,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 import { ErrorState, LoadingState } from '../shared/ScreenState'
 
-export interface KindItem {
+export interface ChildItem {
   id: string
   lfdNr: number
   vorname: string
@@ -52,12 +52,12 @@ export interface KindItem {
   kvBasisEur?: string | null
   pvEur?: string | null
   schweizerKinderzulageEur?: string | null
-  differenzkindergeldEur?: string | null
-  gesamtanspruchEur?: string | null
+  differentialChildBenefitEur?: string | null
+  totalClaimEur?: string | null
 }
 
 /** What the form writes: the identity plus the Anlage-Kind facts. */
-export interface KindEingabe {
+export interface ChildInput {
   vorname: string
   nachname: string
   geburtsdatum: string
@@ -80,20 +80,20 @@ export interface KindEingabe {
   schweizerKinderzulageEur?: string | null
 }
 
-const ANDERER_ELTERNTEIL_LABEL: Record<OtherParentStatus, string> = {
+const OTHER_PARENT_LABEL: Record<OtherParentStatus, string> = {
   Inland: 'Lebt in Deutschland',
   Ausland: 'Lebt im Ausland',
   Verstorben: 'Ist verstorben',
   Unbekannt: 'Nicht zu ermitteln',
 }
 
-const KINDSCHAFT_LABEL: Record<ChildRelationship, string> = {
+const KINSHIP_LABEL: Record<ChildRelationship, string> = {
   '1': 'Leibliches Kind / Adoptivkind',
   '2': 'Pflegekind',
   '3': 'Enkelkind / Stiefkind',
 }
 
-function fehltFuerAusdruck(k: KindItem): boolean {
+function missingForPrintout(k: ChildItem): boolean {
   return !k.idnr || !k.kindschaftsverhaeltnis || !k.familienkasse || k.wohnsitzInlandGanzjaehrig == null
 }
 
@@ -101,11 +101,11 @@ export interface KinderScreenProps {
   readonly onDone?: () => void
   readonly onBack?: () => void
   readonly taxYear?: number
-  readonly initialKinder?: readonly KindItem[] | undefined
-  readonly onAddKind?: ((kind: KindEingabe) => Promise<void> | void) | undefined
-  readonly onSaveKind?: ((id: string, kind: KindEingabe) => Promise<void> | void) | undefined
-  readonly onDeleteKind?: ((id: string) => Promise<void> | void) | undefined
-  readonly onAlleinerziehendFragen?: (() => void) | undefined
+  readonly initialKinder?: readonly ChildItem[] | undefined
+  readonly onAddChild?: ((kind: ChildInput) => Promise<void> | void) | undefined
+  readonly onSaveChild?: ((id: string, kind: ChildInput) => Promise<void> | void) | undefined
+  readonly onDeleteChild?: ((id: string) => Promise<void> | void) | undefined
+  readonly onSingleParentQuestions?: (() => void) | undefined
   /** Married people cannot claim the Entlastungsbetrag für Alleinerziehende (§ 24b EStG), so its questions stay hidden. */
   readonly married?: boolean | undefined
 }
@@ -122,12 +122,12 @@ function ConnectedKinderScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TA
   const { t: tr } = useTranslation(APP_NS)
   const queryClient = useQueryClient()
   const query = useKinderControllerList(taxYear)
-  const createKind = useKinderControllerCreate()
-  const updateKind = useKinderControllerUpdate()
-  const deleteKind = useKinderControllerDelete()
-  const stammdaten = useStammdatenControllerLese()
-  const married = stammdaten.data?.status === 200 && stammdaten.data.data.familienstand === 'verheiratet'
-  const [haushaltsfragen, setHaushaltsfragen] = useState(false)
+  const createChild = useKinderControllerCreate()
+  const updateChild = useKinderControllerUpdate()
+  const deleteChild = useKinderControllerDelete()
+  const masterData = useMasterDataControllerRead()
+  const married = masterData.data?.status === 200 && masterData.data.data.familienstand === 'verheiratet'
+  const [householdQuestions, setHouseholdQuestions] = useState(false)
 
   if (query.isPending) {
     return <LoadingState bp={bp} label={tr('kinder.loading', 'Kinder werden geladen …')} />
@@ -148,13 +148,13 @@ function ConnectedKinderScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TA
     await queryClient.invalidateQueries({ queryKey: getKinderControllerListQueryKey(taxYear) })
   }
 
-  if (haushaltsfragen) {
+  if (householdQuestions) {
     return (
-      <KatalogScreen
+      <CatalogScreen
         entry="alleinerziehend"
         taxYear={taxYear}
-        onDone={() => setHaushaltsfragen(false)}
-        onBack={() => setHaushaltsfragen(false)}
+        onDone={() => setHouseholdQuestions(false)}
+        onBack={() => setHouseholdQuestions(false)}
       />
     )
   }
@@ -165,19 +165,19 @@ function ConnectedKinderScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TA
       {...(onBack ? { onBack } : {})}
       taxYear={taxYear}
       initialKinder={query.data.data.kinder}
-      onAddKind={async (data) => {
-        await createKind.mutateAsync({ jahr: taxYear, data })
+      onAddChild={async (data) => {
+        await createChild.mutateAsync({ jahr: taxYear, data })
         await invalidate()
       }}
-      onSaveKind={async (id, data) => {
-        await updateKind.mutateAsync({ jahr: taxYear, id, data })
+      onSaveChild={async (id, data) => {
+        await updateChild.mutateAsync({ jahr: taxYear, id, data })
         await invalidate()
       }}
-      onDeleteKind={async (id) => {
-        await deleteKind.mutateAsync({ jahr: taxYear, id })
+      onDeleteChild={async (id) => {
+        await deleteChild.mutateAsync({ jahr: taxYear, id })
         await invalidate()
       }}
-      onAlleinerziehendFragen={() => setHaushaltsfragen(true)}
+      onSingleParentQuestions={() => setHouseholdQuestions(true)}
       married={married}
     />
   )
@@ -188,39 +188,39 @@ function KinderScreenView({
   onBack,
   taxYear = CURRENT_TAX_YEAR,
   initialKinder = [],
-  onAddKind,
-  onSaveKind,
-  onDeleteKind,
-  onAlleinerziehendFragen,
+  onAddChild,
+  onSaveChild,
+  onDeleteChild,
+  onSingleParentQuestions,
   married = false,
-}: KinderScreenProps & { readonly initialKinder: readonly KindItem[] }) {
+}: KinderScreenProps & { readonly initialKinder: readonly ChildItem[] }) {
   const bp = useBreakpoint()
   const t = useTheme()
   const styles = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
 
-  const [kinder, setKinder] = useState<readonly KindItem[]>(initialKinder)
-  const [vorname, setVorname] = useState('')
-  const [nachname, setNachname] = useState('')
-  const [geburtsdatum, setGeburtsdatum] = useState('')
-  const [idnr, setIdnr] = useState('')
-  const [kindergeld, setKindergeld] = useState('')
-  const [schweizerZulage, setSchweizerZulage] = useState('')
+  const [kinder, setKinder] = useState<readonly ChildItem[]>(initialKinder)
+  const [vorname, setFirstName] = useState('')
+  const [nachname, setLastName] = useState('')
+  const [geburtsdatum, setBirthDate] = useState('')
+  const [idnr, setTaxId] = useState('')
+  const [childBenefit, setChildBenefit] = useState('')
+  const [swissAllowance, setSwissAllowance] = useState('')
   const [kvBasis, setKvBasis] = useState('')
   const [pv, setPv] = useState('')
-  const [verhaeltnis, setVerhaeltnis] = useState<ChildRelationship | null>(null)
-  const [verhaeltnisB, setVerhaeltnisB] = useState<ChildRelationship | null>(null)
-  const [familienkasse, setFamilienkasse] = useState('')
+  const [relationship, setRelationship] = useState<ChildRelationship | null>(null)
+  const [relationshipB, setRelationshipB] = useState<ChildRelationship | null>(null)
+  const [familienkasse, setFamilyBenefitsOffice] = useState('')
   const [inland, setInland] = useState<boolean | null>(null)
   const [ae, setAe] = useState<OtherParentStatus | null>(null)
-  const [aeName, setAeName] = useState('')
-  const [aeGeburtsdatum, setAeGeburtsdatum] = useState('')
-  const [aeAdresse, setAeAdresse] = useState('')
-  const [aeArt, setAeArt] = useState<'1' | '2' | null>(null)
-  const [aeVerstorbenAm, setAeVerstorbenAm] = useState('')
-  const [gemeldet, setGemeldet] = useState<boolean | null>(null)
-  const [kindergeldAnMich, setKindergeldAnMich] = useState<boolean | null>(null)
-  const [bearbeitet, setBearbeitet] = useState<string | null>(null)
+  const [opName, setOpName] = useState('')
+  const [opBirthDate, setOpBirthDate] = useState('')
+  const [opAddress, setOpAddress] = useState('')
+  const [opKind, setOpKind] = useState<'1' | '2' | null>(null)
+  const [opDiedOn, setOpDiedOn] = useState('')
+  const [registered, setRegistered] = useState<boolean | null>(null)
+  const [childBenefitToMe, setChildBenefitToMe] = useState<boolean | null>(null)
+  const [edited, setEdited] = useState<string | null>(null)
   const [formOpen, setFormOpen] = useState(initialKinder.length === 0)
 
   const stand = calculateChildrenStatus(
@@ -236,69 +236,69 @@ function KinderScreenView({
     taxYear,
   )
 
-  function fuelleFormular(k: KindItem | null) {
-    setVorname(k?.vorname ?? '')
-    setNachname(k?.nachname ?? '')
-    setGeburtsdatum(isoZuDeutsch(k?.geburtsdatum ?? null))
-    setIdnr(k?.idnr ?? '')
-    setKindergeld(k?.kindergeldAnspruchEur ?? '')
-    setSchweizerZulage(k?.schweizerKinderzulageEur ?? '')
+  function fillForm(k: ChildItem | null) {
+    setFirstName(k?.vorname ?? '')
+    setLastName(k?.nachname ?? '')
+    setBirthDate(isoToGerman(k?.geburtsdatum ?? null))
+    setTaxId(k?.idnr ?? '')
+    setChildBenefit(k?.kindergeldAnspruchEur ?? '')
+    setSwissAllowance(k?.schweizerKinderzulageEur ?? '')
     setKvBasis(k?.kvBasisEur ?? '')
     setPv(k?.pvEur ?? '')
-    setVerhaeltnis(k?.kindschaftsverhaeltnis ?? null)
-    setVerhaeltnisB(k?.kindschaftsverhaeltnisB ?? null)
-    setFamilienkasse(k?.familienkasse ?? '')
+    setRelationship(k?.kindschaftsverhaeltnis ?? null)
+    setRelationshipB(k?.kindschaftsverhaeltnisB ?? null)
+    setFamilyBenefitsOffice(k?.familienkasse ?? '')
     setInland(k?.wohnsitzInlandGanzjaehrig ?? null)
     setAe(k?.andererElternteil ?? null)
-    setAeName(k?.andererElternteilName ?? '')
-    setAeGeburtsdatum(isoZuDeutsch(k?.andererElternteilGeburtsdatum ?? null))
-    setAeAdresse(k?.andererElternteilAdresse ?? '')
-    setAeArt(k?.andererElternteilArt ?? null)
-    setAeVerstorbenAm(isoZuDeutsch(k?.andererElternteilVerstorbenAm ?? null))
-    setGemeldet(k?.gemeldetBeiMirGanzjaehrig ?? null)
-    setKindergeldAnMich(k?.kindergeldAnMichGanzjaehrig ?? null)
-    setBearbeitet(k?.id ?? null)
+    setOpName(k?.andererElternteilName ?? '')
+    setOpBirthDate(isoToGerman(k?.andererElternteilGeburtsdatum ?? null))
+    setOpAddress(k?.andererElternteilAdresse ?? '')
+    setOpKind(k?.andererElternteilArt ?? null)
+    setOpDiedOn(isoToGerman(k?.andererElternteilVerstorbenAm ?? null))
+    setRegistered(k?.gemeldetBeiMirGanzjaehrig ?? null)
+    setChildBenefitToMe(k?.kindergeldAnMichGanzjaehrig ?? null)
+    setEdited(k?.id ?? null)
   }
 
-  const aeBekannt = ae === 'Inland' || ae === 'Verstorben'
+  const opKnown = ae === 'Inland' || ae === 'Verstorben'
 
   async function handleSave() {
     if (!vorname.trim() || !nachname.trim() || !geburtsdatum.trim()) return
-    const payload: KindEingabe = {
+    const payload: ChildInput = {
       vorname: vorname.trim(),
       nachname: nachname.trim(),
-      geburtsdatum: deutschZuIso(geburtsdatum) ?? '',
+      geburtsdatum: germanToIso(geburtsdatum) ?? '',
       ...(idnr.trim() && { idnr: idnr.trim() }),
-      ...(kindergeld.trim() && { kindergeldAnspruchEur: kindergeld.trim() }),
-      kindschaftsverhaeltnis: verhaeltnis,
-      kindschaftsverhaeltnisB: verhaeltnisB,
+      ...(childBenefit.trim() && { kindergeldAnspruchEur: childBenefit.trim() }),
+      kindschaftsverhaeltnis: relationship,
+      kindschaftsverhaeltnisB: relationshipB,
       familienkasse: familienkasse.trim() || null,
       wohnsitzInlandGanzjaehrig: inland,
       andererElternteil: ae,
-      andererElternteilName: aeBekannt ? aeName.trim() || null : null,
-      andererElternteilGeburtsdatum: aeBekannt ? deutschZuIso(aeGeburtsdatum) : null,
-      andererElternteilAdresse: aeBekannt ? aeAdresse.trim() || null : null,
-      andererElternteilArt: aeBekannt ? aeArt : null,
-      andererElternteilVerstorbenAm: ae === 'Verstorben' ? deutschZuIso(aeVerstorbenAm) : null,
-      gemeldetBeiMirGanzjaehrig: gemeldet,
-      kindergeldAnMichGanzjaehrig: kindergeldAnMich,
+      andererElternteilName: opKnown ? opName.trim() || null : null,
+      andererElternteilGeburtsdatum: opKnown ? germanToIso(opBirthDate) : null,
+      andererElternteilAdresse: opKnown ? opAddress.trim() || null : null,
+      andererElternteilArt: opKnown ? opKind : null,
+      andererElternteilVerstorbenAm: ae === 'Verstorben' ? germanToIso(opDiedOn) : null,
+      gemeldetBeiMirGanzjaehrig: registered,
+      kindergeldAnMichGanzjaehrig: childBenefitToMe,
       kvBasisEur: /^\d+$/.test(kvBasis.trim()) ? kvBasis.trim() : null,
       pvEur: /^\d+$/.test(pv.trim()) ? pv.trim() : null,
-      schweizerKinderzulageEur: /^\d+$/.test(schweizerZulage.trim()) ? schweizerZulage.trim() : null,
+      schweizerKinderzulageEur: /^\d+$/.test(swissAllowance.trim()) ? swissAllowance.trim() : null,
     }
-    if (bearbeitet) {
-      if (onSaveKind) await onSaveKind(bearbeitet, payload)
-      setKinder(kinder.map((k) => (k.id === bearbeitet ? { ...k, ...payload } : k)))
+    if (edited) {
+      if (onSaveChild) await onSaveChild(edited, payload)
+      setKinder(kinder.map((k) => (k.id === edited ? { ...k, ...payload } : k)))
     } else {
-      if (onAddKind) await onAddKind(payload)
+      if (onAddChild) await onAddChild(payload)
       setKinder([...kinder, { id: `local-${Date.now()}`, lfdNr: kinder.length + 1, ...payload }])
     }
-    fuelleFormular(null)
+    fillForm(null)
     setFormOpen(false)
   }
 
   async function handleDelete(id: string) {
-    if (onDeleteKind) await onDeleteKind(id)
+    if (onDeleteChild) await onDeleteChild(id)
     setKinder(kinder.filter((k) => k.id !== id))
   }
 
@@ -352,7 +352,7 @@ function KinderScreenView({
                 accessibilityRole="button"
                 accessibilityLabel={`Kind ${k.vorname} bearbeiten`}
                 onPress={() => {
-                  fuelleFormular(k)
+                  fillForm(k)
                   setFormOpen(true)
                 }}
               >
@@ -367,7 +367,7 @@ function KinderScreenView({
               </Pressable>
             </View>
           </View>
-          <Text style={styles.kindDetail}>Geburtsdatum: {isoZuDeutsch(k.geburtsdatum) || k.geburtsdatum}</Text>
+          <Text style={styles.kindDetail}>Geburtsdatum: {isoToGerman(k.geburtsdatum) || k.geburtsdatum}</Text>
           {k.idnr && <Text style={styles.kindDetail}>Steuer-ID: {k.idnr}</Text>}
           {k.schweizerKinderzulageEur && Number(k.schweizerKinderzulageEur) > 0 ? (
             <>
@@ -375,10 +375,10 @@ function KinderScreenView({
                 {`Schweizer Kinderzulage: ${formatEuro(Number(k.schweizerKinderzulageEur))}`}
               </Text>
               <Text style={styles.kindDetail}>
-                {`Differenz-Kindergeld: ${formatEuro(Number(k.differenzkindergeldEur ?? Math.max(0, monthlyChildBenefitClaim(taxYear) * claimMonths(k.geburtsdatum, taxYear) - Number(k.schweizerKinderzulageEur))))}`}
+                {`Differenz-Kindergeld: ${formatEuro(Number(k.differentialChildBenefitEur ?? Math.max(0, monthlyChildBenefitClaim(taxYear) * claimMonths(k.geburtsdatum, taxYear) - Number(k.schweizerKinderzulageEur))))}`}
               </Text>
               <Text style={styles.kindDetail}>
-                {`Gesamtanspruch (Anlage Kind Z. 6): ${formatEuro(Number(k.gesamtanspruchEur ?? k.kindergeldAnspruchEur ?? Math.max(monthlyChildBenefitClaim(taxYear) * claimMonths(k.geburtsdatum, taxYear), Number(k.schweizerKinderzulageEur))))}`}
+                {`Gesamtanspruch (Anlage Kind Z. 6): ${formatEuro(Number(k.totalClaimEur ?? k.kindergeldAnspruchEur ?? Math.max(monthlyChildBenefitClaim(taxYear) * claimMonths(k.geburtsdatum, taxYear), Number(k.schweizerKinderzulageEur))))}`}
               </Text>
             </>
           ) : (
@@ -389,7 +389,7 @@ function KinderScreenView({
                 : `${formatEuro(monthlyChildBenefitClaim(taxYear) * claimMonths(k.geburtsdatum, taxYear))} (gesetzlich)`}
             </Text>
           )}
-          {fehltFuerAusdruck(k) ? (
+          {missingForPrintout(k) ? (
             <Text style={styles.luecke}>
               {tr('kinder.luecke', 'Für den Ausdruck fehlen noch Angaben (Steuer-ID, Kindschaftsverhältnis, Familienkasse, Wohnsitz).')}
             </Text>
@@ -400,18 +400,18 @@ function KinderScreenView({
       {formOpen ? (
         <Card style={styles.formCard}>
           <Text style={styles.formTitle}>
-            {bearbeitet ? tr('kinder.editTitle', 'Kind bearbeiten') : tr('kinder.addTitle', 'Kind hinzufügen')}
+            {edited ? tr('kinder.editTitle', 'Kind bearbeiten') : tr('kinder.addTitle', 'Kind hinzufügen')}
           </Text>
           <Feld label="Vorname">
-            <Input value={vorname} onChange={setVorname} placeholder="z.B. Lina" accessibilityLabel="Vorname" />
+            <Input value={vorname} onChange={setFirstName} placeholder="z.B. Lina" accessibilityLabel="Vorname" />
           </Feld>
           <Feld label="Nachname">
-            <Input value={nachname} onChange={setNachname} placeholder="z.B. Mustermann" accessibilityLabel="Nachname" />
+            <Input value={nachname} onChange={setLastName} placeholder="z.B. Mustermann" accessibilityLabel="Nachname" />
           </Feld>
           <Feld label="Geburtsdatum (TT.MM.JJJJ)">
             <Input
               value={geburtsdatum}
-              onChange={setGeburtsdatum}
+              onChange={setBirthDate}
               placeholder="z.B. 12.05.2018"
               accessibilityLabel="Geburtsdatum"
             />
@@ -419,7 +419,7 @@ function KinderScreenView({
           <Feld label="Steuer-Identifikationsnummer">
             <Input
               value={idnr}
-              onChange={setIdnr}
+              onChange={setTaxId}
               placeholder="11 Ziffern"
               type="numeric"
               accessibilityLabel="Steuer-Identifikationsnummer"
@@ -427,8 +427,8 @@ function KinderScreenView({
           </Feld>
           <Feld label="Erhaltenes Kindergeld im Steuerjahr (optional in €)">
             <Input
-              value={kindergeld}
-              onChange={setKindergeld}
+              value={childBenefit}
+              onChange={setChildBenefit}
               placeholder="3000"
               type="numeric"
               accessibilityLabel="Kindergeld"
@@ -436,8 +436,8 @@ function KinderScreenView({
           </Feld>
           <Feld label="Schweizer Kinderzulage im Steuerjahr (in €, optional)">
             <Input
-              value={schweizerZulage}
-              onChange={setSchweizerZulage}
+              value={swissAllowance}
+              onChange={setSwissAllowance}
               placeholder="z.B. 2748"
               type="numeric"
               accessibilityLabel="Schweizer Kinderzulage"
@@ -445,21 +445,21 @@ function KinderScreenView({
           </Feld>
           <Feld label="Kindschaftsverhältnis zu dir">
             <View style={styles.chips}>
-              {CHILD_RELATIONSHIPS.map((wert) => (
-                <Chip key={wert} aktiv={verhaeltnis === wert} onPress={() => setVerhaeltnis(wert)} testID={`kind-verhaeltnis-${wert}`}>
-                  {KINDSCHAFT_LABEL[wert]}
+              {CHILD_RELATIONSHIPS.map((value) => (
+                <Chip key={value} active={relationship === value} onPress={() => setRelationship(value)} testID={`kind-verhaeltnis-${value}`}>
+                  {KINSHIP_LABEL[value]}
                 </Chip>
               ))}
             </View>
           </Feld>
           <Feld label="Kindschaftsverhältnis zu deinem Ehepartner (nur bei Zusammenveranlagung)">
             <View style={styles.chips}>
-              {CHILD_RELATIONSHIPS.map((wert) => (
-                <Chip key={wert} aktiv={verhaeltnisB === wert} onPress={() => setVerhaeltnisB(wert)} testID={`kind-verhaeltnis-b-${wert}`}>
-                  {KINDSCHAFT_LABEL[wert]}
+              {CHILD_RELATIONSHIPS.map((value) => (
+                <Chip key={value} active={relationshipB === value} onPress={() => setRelationshipB(value)} testID={`kind-verhaeltnis-b-${value}`}>
+                  {KINSHIP_LABEL[value]}
                 </Chip>
               ))}
-              <Chip aktiv={verhaeltnisB === null} onPress={() => setVerhaeltnisB(null)} testID="kind-verhaeltnis-b-keins">
+              <Chip active={relationshipB === null} onPress={() => setRelationshipB(null)} testID="kind-verhaeltnis-b-keins">
                 Keines
               </Chip>
             </View>
@@ -467,7 +467,7 @@ function KinderScreenView({
           <Feld label="Für das Kindergeld zuständige Familienkasse">
             <Input
               value={familienkasse}
-              onChange={setFamilienkasse}
+              onChange={setFamilyBenefitsOffice}
               placeholder="z.B. Familienkasse Sachsen"
               accessibilityLabel="Familienkasse"
             />
@@ -486,10 +486,10 @@ function KinderScreenView({
           </Feld>
           <Feld label={`Hat das Kind ${taxYear} durchgehend in Deutschland gewohnt?`}>
             <View style={styles.chips}>
-              <Chip aktiv={inland === true} onPress={() => setInland(true)} testID="kind-inland-ja">
+              <Chip active={inland === true} onPress={() => setInland(true)} testID="kind-inland-ja">
                 Ja
               </Chip>
-              <Chip aktiv={inland === false} onPress={() => setInland(false)} testID="kind-inland-nein">
+              <Chip active={inland === false} onPress={() => setInland(false)} testID="kind-inland-nein">
                 Nein
               </Chip>
             </View>
@@ -497,40 +497,40 @@ function KinderScreenView({
           <Feld label="Der andere Elternteil (nicht nötig, wenn ihr beide Eltern seid und zusammen veranlagt werdet)">
             <View style={styles.chips}>
               {OTHER_PARENT_STATUSES.map((status) => (
-                <Chip key={status} aktiv={ae === status} onPress={() => setAe(status)} testID={`kind-ae-${status}`}>
-                  {ANDERER_ELTERNTEIL_LABEL[status]}
+                <Chip key={status} active={ae === status} onPress={() => setAe(status)} testID={`kind-ae-${status}`}>
+                  {OTHER_PARENT_LABEL[status]}
                 </Chip>
               ))}
             </View>
           </Feld>
-          {aeBekannt ? (
+          {opKnown ? (
             <>
               <Feld label="Name, Vorname">
-                <Input value={aeName} onChange={setAeName} placeholder="z.B. Muster, Max" accessibilityLabel="Name des anderen Elternteils" />
+                <Input value={opName} onChange={setOpName} placeholder="z.B. Muster, Max" accessibilityLabel="Name des anderen Elternteils" />
               </Feld>
               <Feld label="Geburtsdatum (TT.MM.JJJJ)">
                 <Input
-                  value={aeGeburtsdatum}
-                  onChange={setAeGeburtsdatum}
+                  value={opBirthDate}
+                  onChange={setOpBirthDate}
                   placeholder="z.B. 11.02.1984"
                   accessibilityLabel="Geburtsdatum des anderen Elternteils"
                 />
               </Feld>
               <Feld label={ae === 'Inland' ? 'Adresse' : 'Letzte bekannte Adresse (optional)'}>
-                <Input value={aeAdresse} onChange={setAeAdresse} accessibilityLabel="Adresse des anderen Elternteils" />
+                <Input value={opAddress} onChange={setOpAddress} accessibilityLabel="Adresse des anderen Elternteils" />
               </Feld>
               <Feld label="Kindschaftsverhältnis zum anderen Elternteil">
                 <View style={styles.chips}>
-                  {OTHER_CHILD_RELATIONSHIPS.map((wert) => (
-                    <Chip key={wert} aktiv={aeArt === wert} onPress={() => setAeArt(wert)} testID={`kind-ae-art-${wert}`}>
-                      {KINDSCHAFT_LABEL[wert]}
+                  {OTHER_CHILD_RELATIONSHIPS.map((value) => (
+                    <Chip key={value} active={opKind === value} onPress={() => setOpKind(value)} testID={`kind-ae-art-${value}`}>
+                      {KINSHIP_LABEL[value]}
                     </Chip>
                   ))}
                 </View>
               </Feld>
               {ae === 'Verstorben' ? (
                 <Feld label="Todestag (TT.MM.JJJJ)">
-                  <Input value={aeVerstorbenAm} onChange={setAeVerstorbenAm} accessibilityLabel="Todestag des anderen Elternteils" />
+                  <Input value={opDiedOn} onChange={setOpDiedOn} accessibilityLabel="Todestag des anderen Elternteils" />
                 </Feld>
               ) : null}
             </>
@@ -546,20 +546,20 @@ function KinderScreenView({
           </Text>
           <Feld label={`War das Kind ${taxYear} das ganze Jahr bei dir gemeldet?`}>
             <View style={styles.chips}>
-              <Chip aktiv={gemeldet === true} onPress={() => setGemeldet(true)} testID="kind-gemeldet-ja">
+              <Chip active={registered === true} onPress={() => setRegistered(true)} testID="kind-gemeldet-ja">
                 Ja
               </Chip>
-              <Chip aktiv={gemeldet === false} onPress={() => setGemeldet(false)} testID="kind-gemeldet-nein">
+              <Chip active={registered === false} onPress={() => setRegistered(false)} testID="kind-gemeldet-nein">
                 Nein
               </Chip>
             </View>
           </Feld>
           <Feld label={`Wurde das Kindergeld ${taxYear} das ganze Jahr an dich ausgezahlt?`}>
             <View style={styles.chips}>
-              <Chip aktiv={kindergeldAnMich === true} onPress={() => setKindergeldAnMich(true)} testID="kind-kindergeld-an-mich-ja">
+              <Chip active={childBenefitToMe === true} onPress={() => setChildBenefitToMe(true)} testID="kind-kindergeld-an-mich-ja">
                 Ja
               </Chip>
-              <Chip aktiv={kindergeldAnMich === false} onPress={() => setKindergeldAnMich(false)} testID="kind-kindergeld-an-mich-nein">
+              <Chip active={childBenefitToMe === false} onPress={() => setChildBenefitToMe(false)} testID="kind-kindergeld-an-mich-nein">
                 Nein
               </Chip>
             </View>
@@ -572,9 +572,9 @@ function KinderScreenView({
         </Card>
       ) : (
         <Button
-          variante="ghost"
+          variant="ghost"
           onPress={() => {
-            fuelleFormular(null)
+            fillForm(null)
             setFormOpen(true)
           }}
           style={styles.toggleButton}
@@ -584,8 +584,8 @@ function KinderScreenView({
         </Button>
       )}
 
-      {onAlleinerziehendFragen && kinder.length > 0 && !married ? (
-        <Button variante="ghost" onPress={onAlleinerziehendFragen} style={styles.toggleButton}>
+      {onSingleParentQuestions && kinder.length > 0 && !married ? (
+        <Button variant="ghost" onPress={onSingleParentQuestions} style={styles.toggleButton}>
           {tr('kinder.entlastungFragen', 'Fragen zum Entlastungsbetrag beantworten')}
         </Button>
       ) : null}
@@ -659,19 +659,19 @@ function makeStyles(t: UiTheme) {
     fontSize: t.size.s,
     color: t.color.tinte,
   }
-  const kindCard: ViewStyle = {
+  const childCard: ViewStyle = {
     padding: t.space.s4,
     marginBottom: t.space.s3,
     backgroundColor: t.color.karte,
     borderRadius: t.radius.m,
   }
-  const kindHeader: ViewStyle = {
+  const childHeader: ViewStyle = {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: t.space.s2,
   }
-  const kindName: TextStyle = {
+  const childName: TextStyle = {
     fontFamily: t.font.display,
     fontWeight: t.weight.fett,
     fontSize: t.size.l,
@@ -682,11 +682,11 @@ function makeStyles(t: UiTheme) {
     fontSize: t.size.s,
     color: t.color.fehler,
   }
-  const kindActions: ViewStyle = { flexDirection: 'row', gap: t.space.s3 }
+  const childActions: ViewStyle = { flexDirection: 'row', gap: t.space.s3 }
   const editButton: TextStyle = { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte }
-  const luecke: TextStyle = { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.fehler, marginTop: t.space.s2 }
+  const gap: TextStyle = { fontFamily: t.font.text, fontSize: t.size.s, color: t.color.fehler, marginTop: t.space.s2 }
   const chips: ViewStyle = { flexDirection: 'row', flexWrap: 'wrap', gap: t.space.s2 }
-  const kindDetail: TextStyle = {
+  const childDetail: TextStyle = {
     fontFamily: t.font.text,
     fontSize: t.size.s,
     color: t.color.tinte2,
@@ -728,15 +728,15 @@ function makeStyles(t: UiTheme) {
     summaryValue,
     summarySubLabel,
     summarySubValue,
-    kindCard,
-    kindHeader,
-    kindName,
+    kindCard: childCard,
+    kindHeader: childHeader,
+    kindName: childName,
     deleteButton,
-    kindActions,
+    kindActions: childActions,
     editButton,
-    luecke,
+    luecke: gap,
     chips,
-    kindDetail,
+    kindDetail: childDetail,
     formCard,
     formTitle,
     addButton,

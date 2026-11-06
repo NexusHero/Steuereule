@@ -11,7 +11,7 @@ import {
 } from '@nestjs/swagger'
 import { CurrentUser, CurrentUserKind } from '../auth/current-user.decorator.js'
 import { UserContextGuard, type UserIdKind } from '../auth/user-context.guard.js'
-import { ParseSteuerjahrPipe } from '../cockpit/parse-steuerjahr.pipe.js'
+import { ParseTaxYearPipe } from '../cockpit/parse-steuerjahr.pipe.js'
 import { InterviewStateDto } from './dto/interview-state.dto.js'
 import { PostAnswerDto } from './dto/post-answer.dto.js'
 import { PostAnswerResponseDto } from './dto/post-answer-response.dto.js'
@@ -36,10 +36,10 @@ export class InterviewController {
   getInterview(
     @CurrentUser() userId: string,
     @CurrentUserKind() kind: UserIdKind,
-    @Param('jahr', ParseSteuerjahrPipe) jahr: number,
-    @Query('eintrag') eintrag?: string,
+    @Param('jahr', ParseTaxYearPipe) year: number,
+    @Query('eintrag') entry?: string,
   ): Promise<InterviewStateDto> {
-    return this.interviewService.getState(userId, jahr, eintrag, kind)
+    return this.interviewService.getState(userId, year, entry, kind)
   }
 
   @Post(':jahr/interview/antworten')
@@ -58,9 +58,9 @@ export class InterviewController {
   postAnswer(
     @CurrentUser() userId: string,
     @CurrentUserKind() kind: UserIdKind,
-    @Param('jahr', ParseSteuerjahrPipe) jahr: number,
+    @Param('jahr', ParseTaxYearPipe) year: number,
     @Body() dto: PostAnswerDto,
   ): Promise<PostAnswerResponseDto> {
-    return this.interviewService.postAnswer(userId, jahr, dto, kind)
+    return this.interviewService.postAnswer(userId, year, dto, kind)
   }
 }

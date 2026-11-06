@@ -1,46 +1,46 @@
-import type { Quelle } from './berechnung'
+import type { Source } from './berechnung'
 
-export type WechselkursModus = 'amtlich' | 'tatsaechlich'
+export type ExchangeRateMode = 'amtlich' | 'tatsaechlich'
 
 /** A CHF→EUR exchange rate with its provenance. */
-export interface Wechselkurs {
-  readonly monat: string
-  readonly kurs: number
-  readonly modus: WechselkursModus
-  readonly belegId?: string
+export interface ExchangeRate {
+  readonly month: string
+  readonly rate: number
+  readonly mode: ExchangeRateMode
+  readonly receiptId?: string
 }
 
-const MONAT = /^\d{4}-\d{2}$/
+const MONTH = /^\d{4}-\d{2}$/
 
-function validate(monat: string, kurs: number): void {
-  if (!MONAT.test(monat)) throw new RangeError('monat must be yyyy-mm')
-  if (!Number.isFinite(kurs) || kurs <= 0) throw new RangeError('kurs must be a positive finite number')
+function validate(month: string, rate: number): void {
+  if (!MONTH.test(month)) throw new RangeError('monat must be yyyy-mm')
+  if (!Number.isFinite(rate) || rate <= 0) throw new RangeError('kurs must be a positive finite number')
 }
 
-export function amtlicherMonatskurs(monat: string, kurs: number): Wechselkurs {
-  validate(monat, kurs)
-  return { monat, kurs, modus: 'amtlich' }
+export function officialMonthlyRate(month: string, rate: number): ExchangeRate {
+  validate(month, rate)
+  return { month, rate, mode: 'amtlich' }
 }
 
-export function tatsaechlicherKurs(monat: string, kurs: number, belegId: string): Wechselkurs {
-  validate(monat, kurs)
-  if (belegId === '') throw new RangeError('a tatsächlicher Kurs requires a Beleg (ADR-012)')
-  return { monat, kurs, modus: 'tatsaechlich', belegId }
+export function actualRate(month: string, rate: number, receiptId: string): ExchangeRate {
+  validate(month, rate)
+  if (receiptId === '') throw new RangeError('a tatsächlicher Kurs requires a Beleg (ADR-012)')
+  return { month, rate, mode: 'tatsaechlich', receiptId }
 }
 
-export function erlaubteModi(hatBeleg: boolean): readonly WechselkursModus[] {
-  return hatBeleg ? (['amtlich', 'tatsaechlich'] as const) : (['amtlich'] as const)
+export function allowedModes(hasReceipt: boolean): readonly ExchangeRateMode[] {
+  return hasReceipt ? (['amtlich', 'tatsaechlich'] as const) : (['amtlich'] as const)
 }
 
-export function chfNachEur(betragChf: number, kurs: number): number {
-  if (!Number.isFinite(betragChf) || betragChf < 0) {
+export function chfToEur(amountChf: number, rate: number): number {
+  if (!Number.isFinite(amountChf) || amountChf < 0) {
     throw new RangeError('betragChf must be a non-negative finite number')
   }
-  if (!Number.isFinite(kurs) || kurs <= 0) throw new RangeError('kurs must be a positive finite number')
-  return Math.round(betragChf * kurs * 100) / 100
+  if (!Number.isFinite(rate) || rate <= 0) throw new RangeError('kurs must be a positive finite number')
+  return Math.round(amountChf * rate * 100) / 100
 }
 
-export function wechselkursQuelle(kurs: Wechselkurs): Quelle {
-  if (kurs.modus === 'amtlich') return { art: 'regel', regel: 'BMF-Monatskurs' }
-  return { art: 'beleg', belegId: kurs.belegId as string }
+export function exchangeRateSource(rate: ExchangeRate): Source {
+  if (rate.mode === 'amtlich') return { art: 'regel', rule: 'BMF-Monatskurs' }
+  return { art: 'beleg', receiptId: rate.receiptId as string }
 }

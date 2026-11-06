@@ -9,34 +9,34 @@ import {
   ApiUnauthorizedResponse,
   getSchemaPath,
 } from '@nestjs/swagger'
-import type { KirchensteuerFaktor } from '@steuereule/core'
+import type { ChurchTaxFactor } from '@steuereule/core'
 import { CurrentUser } from '../auth/current-user.decorator.js'
 import { RequiresAccount } from '../auth/requires-account.guard.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
-import { ParseSteuerjahrPipe } from '../cockpit/parse-steuerjahr.pipe.js'
-import { ParseKapitalFeldPipe } from './parse-kapital-feld.pipe.js'
-import { KapitalService } from './kapital.service.js'
-import { PutKapitalFeldDto, PutKapitalInhaberDto } from './dto/kapital-feld.dto.js'
-import { KapitalResponseDto } from './dto/kapital-response.dto.js'
-import { GuenstigerpruefungDto, GuenstigerpruefungHerkunftDto } from './dto/guenstigerpruefung-response.dto.js'
-import { UnschaerfeDto } from '../veranlagungsartenvergleich/dto/veranlagungsartenvergleich-response.dto.js'
+import { ParseTaxYearPipe } from '../cockpit/parse-steuerjahr.pipe.js'
+import { ParseCapitalFieldPipe } from './parse-kapital-feld.pipe.js'
+import { CapitalService } from './kapital.service.js'
+import { PutCapitalFieldDto, PutCapitalOwnerDto } from './dto/kapital-feld.dto.js'
+import { CapitalResponseDto } from './dto/kapital-response.dto.js'
+import { MostFavourableCheckDto, MostFavourableCheckSourceDto } from './dto/guenstigerpruefung-response.dto.js'
+import { UncertaintyDto } from '../veranlagungsartenvergleich/dto/veranlagungsartenvergleich-response.dto.js'
 
-const KIST_FAKTOREN: readonly KirchensteuerFaktor[] = [0, 0.08, 0.09]
+const CHURCH_TAX_FACTORS: readonly ChurchTaxFactor[] = [0, 0.08, 0.09]
 
-function parseKirchensteuerFaktor(raw: unknown): KirchensteuerFaktor {
+function parseChurchTaxFactor(raw: unknown): ChurchTaxFactor {
   if (raw === undefined) return 0
   const parsed = Number(raw)
-  if (!KIST_FAKTOREN.includes(parsed as KirchensteuerFaktor)) {
+  if (!CHURCH_TAX_FACTORS.includes(parsed as ChurchTaxFactor)) {
     throw new BadRequestException('kirchensteuerFaktor must be one of 0, 0.08, 0.09')
   }
-  return parsed as KirchensteuerFaktor
+  return parsed as ChurchTaxFactor
 }
 
 @ApiTags('kapital')
 @Controller('v1/steuerjahre')
 @UseGuards(UserContextGuard)
-export class KapitalController {
-  constructor(@Inject(KapitalService) private readonly kapitalService: KapitalService) {}
+export class CapitalController {
+  constructor(@Inject(CapitalService) private readonly capitalService: CapitalService) {}
 
   @Get(':jahr/kapital')
   @RequiresAccount()
@@ -46,25 +46,25 @@ export class KapitalController {
     example: 2026,
     description: 'The tax year (Steuerjahr) — validated to a sensible window (ParseSteuerjahrPipe, same as Cockpit).',
   })
-  @ApiOkResponse({ type: KapitalResponseDto, description: 'The caller’s Kapital mask + depot-Einordnung + fold for this tax year — re-entry.' })
+  @ApiOkResponse({ type: CapitalResponseDto, description: 'The caller’s Kapital mask + depot-Einordnung + fold for this tax year — re-entry.' })
   @ApiUnauthorizedResponse({ description: 'Guest session — this endpoint requires a signed-in account.' })
-  get(@CurrentUser() userId: string, @Param('jahr', ParseSteuerjahrPipe) jahr: number): Promise<KapitalResponseDto> {
-    return this.kapitalService.getState(userId, jahr)
+  get(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number): Promise<CapitalResponseDto> {
+    return this.capitalService.getState(userId, year)
   }
 
   @Put(':jahr/kapital/inhaber')
   @HttpCode(200)
   @RequiresAccount()
   @ApiParam({ name: 'jahr', type: Number, example: 2025, description: 'The tax year (Steuerjahr).' })
-  @ApiBody({ type: PutKapitalInhaberDto })
-  @ApiOkResponse({ type: KapitalResponseDto, description: 'The mask with the stored owner.' })
+  @ApiBody({ type: PutCapitalOwnerDto })
+  @ApiOkResponse({ type: CapitalResponseDto, description: 'The mask with the stored owner.' })
   @ApiUnauthorizedResponse({ description: 'Guest session — this endpoint requires a signed-in account.' })
-  setInhaber(
+  setOwner(
     @CurrentUser() userId: string,
-    @Param('jahr', ParseSteuerjahrPipe) jahr: number,
-    @Body() dto: PutKapitalInhaberDto,
-  ): Promise<KapitalResponseDto> {
-    return this.kapitalService.setInhaber(userId, jahr, dto.inhaber)
+    @Param('jahr', ParseTaxYearPipe) year: number,
+    @Body() dto: PutCapitalOwnerDto,
+  ): Promise<CapitalResponseDto> {
+    return this.capitalService.setOwner(userId, year, dto.inhaber)
   }
 
   @Put(':jahr/kapital/:feld')
@@ -77,16 +77,16 @@ export class KapitalController {
     example: 'kapitalertraege',
     description: 'The Kapital field id (ParseKapitalFeldPipe — one of KAPITAL_FELDER).',
   })
-  @ApiBody({ type: PutKapitalFeldDto })
-  @ApiOkResponse({ type: KapitalResponseDto, description: 'The updated mask and its derived fold.' })
+  @ApiBody({ type: PutCapitalFieldDto })
+  @ApiOkResponse({ type: CapitalResponseDto, description: 'The updated mask and its derived fold.' })
   @ApiUnauthorizedResponse({ description: 'Guest session — this endpoint requires a signed-in account.' })
-  setFeld(
+  setField(
     @CurrentUser() userId: string,
-    @Param('jahr', ParseSteuerjahrPipe) jahr: number,
-    @Param('feld', ParseKapitalFeldPipe) feld: Parameters<KapitalService['setFeld']>[2],
-    @Body() dto: PutKapitalFeldDto,
-  ): Promise<KapitalResponseDto> {
-    return this.kapitalService.setFeld(userId, jahr, feld, dto)
+    @Param('jahr', ParseTaxYearPipe) year: number,
+    @Param('feld', ParseCapitalFieldPipe) field: Parameters<CapitalService['setField']>[2],
+    @Body() dto: PutCapitalFieldDto,
+  ): Promise<CapitalResponseDto> {
+    return this.capitalService.setField(userId, year, field, dto)
   }
 
   @Get(':jahr/kapital/guenstigerpruefung')
@@ -99,18 +99,18 @@ export class KapitalController {
     example: 0,
     description: '§51a EStG Kirchensteuer factor (0, 0.08, 0.09). Defaults to 0 — M1 collects none.',
   })
-  @ApiExtraModels(GuenstigerpruefungDto, GuenstigerpruefungHerkunftDto, UnschaerfeDto)
+  @ApiExtraModels(MostFavourableCheckDto, MostFavourableCheckSourceDto, UncertaintyDto)
   @ApiOkResponse({
     description:
       'The § 32d Abs. 6 Günstigerprüfung for the given tax year (Abgeltungsteuer vs. persönlicher Satz, ADR-0034-Muster, Einzelveranlagung in M1), or null when no tax year has been seeded yet (the honest empty state, not a 404).',
-    schema: { allOf: [{ $ref: getSchemaPath(GuenstigerpruefungDto) }], nullable: true },
+    schema: { allOf: [{ $ref: getSchemaPath(MostFavourableCheckDto) }], nullable: true },
   })
-  getGuenstigerpruefung(
+  getMostFavourableCheck(
     @CurrentUser() userId: string,
-    @Param('jahr', ParseSteuerjahrPipe) jahr: number,
-    @Query('kirchensteuerFaktor') kirchensteuerFaktorRaw: unknown,
-  ): Promise<GuenstigerpruefungDto | null> {
-    const kirchensteuerFaktor = parseKirchensteuerFaktor(kirchensteuerFaktorRaw)
-    return this.kapitalService.getGuenstigerpruefung(userId, jahr, kirchensteuerFaktor)
+    @Param('jahr', ParseTaxYearPipe) year: number,
+    @Query('kirchensteuerFaktor') churchTaxFactorRaw: unknown,
+  ): Promise<MostFavourableCheckDto | null> {
+    const churchTaxFactor = parseChurchTaxFactor(churchTaxFactorRaw)
+    return this.capitalService.getMostFavourableCheck(userId, year, churchTaxFactor)
   }
 }

@@ -4,72 +4,72 @@ import { Throttle, ThrottlerGuard } from '@nestjs/throttler'
 import { CurrentUser } from '../auth/current-user.decorator.js'
 import { RequiresAccount } from '../auth/requires-account.guard.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
-import { accountKeyedTracker, KOPPLUNG_BEITRITT_THROTTLE } from '../rate-limit/rate-limit.js'
-import { ParseSteuerjahrPipe } from '../cockpit/parse-steuerjahr.pipe.js'
-import { KopplungService } from './kopplung.service.js'
-import { KopplungPersonBDto, KopplungResponseDto, SetKopplungDto } from './dto/kopplung.dto.js'
+import { accountKeyedTracker, LINK_JOIN_THROTTLE } from '../rate-limit/rate-limit.js'
+import { ParseTaxYearPipe } from '../cockpit/parse-steuerjahr.pipe.js'
+import { LinkService } from './kopplung.service.js'
+import { LinkPersonBDto, LinkResponseDto, SetLinkDto } from './dto/kopplung.dto.js'
 
 @ApiTags('kopplung')
 @Controller('v1/steuerjahre')
 @UseGuards(UserContextGuard)
-export class KopplungController {
-  constructor(@Inject(KopplungService) private readonly kopplungService: KopplungService) {}
+export class LinkController {
+  constructor(@Inject(LinkService) private readonly linkService: LinkService) {}
 
   @Get(':jahr/kopplung')
   @RequiresAccount()
   @ApiParam({ name: 'jahr', type: Number, example: 2025 })
-  @ApiOkResponse({ type: KopplungResponseDto })
+  @ApiOkResponse({ type: LinkResponseDto })
   @ApiUnauthorizedResponse({ description: 'Requires account.' })
-  get(@CurrentUser() userId: string, @Param('jahr', ParseSteuerjahrPipe) jahr: number): Promise<KopplungResponseDto> {
-    return this.kopplungService.get(userId, jahr)
+  get(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number): Promise<LinkResponseDto> {
+    return this.linkService.get(userId, year)
   }
 
   @Put(':jahr/kopplung')
   @HttpCode(200)
   @RequiresAccount()
   @ApiParam({ name: 'jahr', type: Number, example: 2025 })
-  @ApiBody({ type: SetKopplungDto })
-  @ApiOkResponse({ type: KopplungResponseDto })
+  @ApiBody({ type: SetLinkDto })
+  @ApiOkResponse({ type: LinkResponseDto })
   @ApiUnauthorizedResponse({ description: 'Requires account.' })
   @ApiForbiddenResponse({ description: 'Only Person A sets the Veranlagungsart.' })
   set(
     @CurrentUser() userId: string,
-    @Param('jahr', ParseSteuerjahrPipe) jahr: number,
-    @Body() dto: SetKopplungDto,
-  ): Promise<KopplungResponseDto> {
-    return this.kopplungService.set(userId, jahr, dto)
+    @Param('jahr', ParseTaxYearPipe) year: number,
+    @Body() dto: SetLinkDto,
+  ): Promise<LinkResponseDto> {
+    return this.linkService.set(userId, year, dto)
   }
 
   @Put(':jahr/kopplung/person-b')
   @HttpCode(200)
   @RequiresAccount()
   @ApiParam({ name: 'jahr', type: Number, example: 2025 })
-  @ApiBody({ type: KopplungPersonBDto })
-  @ApiOkResponse({ type: KopplungResponseDto })
+  @ApiBody({ type: LinkPersonBDto })
+  @ApiOkResponse({ type: LinkResponseDto })
   @ApiUnauthorizedResponse({ description: 'Requires account.' })
   @ApiForbiddenResponse({ description: 'Person B joined with an own account; only they edit their data.' })
   updatePersonB(
     @CurrentUser() userId: string,
-    @Param('jahr', ParseSteuerjahrPipe) jahr: number,
-    @Body() dto: KopplungPersonBDto,
-  ): Promise<KopplungResponseDto> {
-    return this.kopplungService.updatePersonB(userId, jahr, dto)
+    @Param('jahr', ParseTaxYearPipe) year: number,
+    @Body() dto: LinkPersonBDto,
+  ): Promise<LinkResponseDto> {
+    return this.linkService.updatePersonB(userId, year, dto)
   }
 
   @Post(':jahr/kopplung/beitreten/:code')
   @HttpCode(200)
   @RequiresAccount()
-  @Throttle({ default: { ...KOPPLUNG_BEITRITT_THROTTLE, getTracker: accountKeyedTracker } })
+  @Throttle({ default: { ...LINK_JOIN_THROTTLE, getTracker: accountKeyedTracker } })
   @UseGuards(ThrottlerGuard)
   @ApiParam({ name: 'jahr', type: Number, example: 2025 })
   @ApiParam({ name: 'code', type: String, example: '9F3A0C71B2E4D658' })
-  @ApiOkResponse({ type: KopplungResponseDto })
+  @ApiOkResponse({ type: LinkResponseDto })
   @ApiUnauthorizedResponse({ description: 'Requires account.' })
   joinWithCode(
     @CurrentUser() userId: string,
-    @Param('jahr', ParseSteuerjahrPipe) jahr: number,
+    @Param('jahr', ParseTaxYearPipe) year: number,
     @Param('code') code: string,
-  ): Promise<KopplungResponseDto> {
-    return this.kopplungService.joinWithCode(userId, jahr, code)
+  ): Promise<LinkResponseDto> {
+    return this.linkService.joinWithCode(userId, year, code)
   }
 }

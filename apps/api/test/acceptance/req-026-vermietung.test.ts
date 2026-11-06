@@ -24,9 +24,9 @@ const ALLOWED_ORIGIN = 'https://allowed.example.com'
 process.env.CORS_ALLOWED_ORIGINS = ALLOWED_ORIGIN
 const TRUSTED_ORIGIN_HEADERS = { origin: ALLOWED_ORIGIN }
 
-const STEUERJAHR = 2026
+const TAX_YEAR = 2026
 
-type VermietungRow = { userId: string; mieteinnahmen: string | null }
+type RentalRow = { userId: string; mieteinnahmen: string | null }
 
 describe('REQ-026 — the Vermietung vertical (Anlage V einfach), against the real server', () => {
   let app: NestFastifyApplication
@@ -70,15 +70,15 @@ describe('REQ-026 — the Vermietung vertical (Anlage V einfach), against the re
   }
 
   function get(cookie: string) {
-    return fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/vermietung`, { headers: { cookie } })
+    return fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/vermietung`, { headers: { cookie } })
   }
 
   function create(cookie: string) {
-    return fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/vermietung/objekte`, { method: 'POST', headers: { cookie } })
+    return fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/vermietung/objekte`, { method: 'POST', headers: { cookie } })
   }
 
-  function putFeld(cookie: string, objektId: string, feld: string, body: unknown) {
-    return fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/vermietung/objekte/${objektId}/${feld}`, {
+  function putField(cookie: string, propertyId: string, field: string, body: unknown) {
+    return fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/vermietung/objekte/${propertyId}/${field}`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json', cookie },
       body: JSON.stringify(body),
@@ -86,10 +86,10 @@ describe('REQ-026 — the Vermietung vertical (Anlage V einfach), against the re
   }
 
   /** Seed an interview answer through the production encryption seam (Segment 2 not yet admitted). */
-  async function seedAnswer(userId: string, questionId: string, wert: string): Promise<void> {
+  async function seedAnswer(userId: string, questionId: string, value: string): Promise<void> {
     const { ENCRYPTED_PRISMA } = await import('../../src/prisma/encrypted-prisma.provider.js')
     const encrypted = app.get<{ interviewAnswer: { create: (input: { data: unknown }) => Promise<unknown> } }>(ENCRYPTED_PRISMA)
-    await encrypted.interviewAnswer.create({ data: { userId, steuerjahr: STEUERJAHR, questionId, value: wert } })
+    await encrypted.interviewAnswer.create({ data: { userId, steuerjahr: TAX_YEAR, questionId, value } })
   }
 
   it(
@@ -97,31 +97,31 @@ describe('REQ-026 — the Vermietung vertical (Anlage V einfach), against the re
     async () => {
       const { cookie, userId } = await signUp('gwt-vermietung@example.com')
       await seedAnswer(userId, 'vermietung-art', 'Einfach')
-      const created = (await (await create(cookie)).json()) as { objekte: Array<{ id: string }> }
-      const objektId = created.objekte[0]!.id
+      const created = (await (await create(cookie)).json()) as { properties: Array<{ id: string }> }
+      const propertyId = created.properties[0]!.id
 
-      await putFeld(cookie, objektId, 'mieteinnahmen', { kind: 'erfasst', wert: 12000 })
-      await putFeld(cookie, objektId, 'anschaffungskosten', { kind: 'erfasst', wert: 200000 })
-      await putFeld(cookie, objektId, 'baujahr', { kind: 'erfasst', wert: 1990 })
-      const response = await putFeld(cookie, objektId, 'werbungskosten', { kind: 'erfasst', wert: 1500 })
+      await putField(cookie, propertyId, 'mieteinnahmen', { kind: 'erfasst', value: 12000 })
+      await putField(cookie, propertyId, 'anschaffungskosten', { kind: 'erfasst', value: 200000 })
+      await putField(cookie, propertyId, 'baujahr', { kind: 'erfasst', value: 1990 })
+      const response = await putField(cookie, propertyId, 'werbungskosten', { kind: 'erfasst', value: 1500 })
 
       const body = (await response.json()) as {
-        einordnung: { kind: string }
-        objekte: Array<{ id: string; fakten: { einnahmen: number | null; werbungskosten: number | null; afa: { betrag: number; herkunft: string } | null; offenePosten: number } }>
-        stand: { kind: string; einnahmen: number; werbungskosten: number; afa: number; offenePosten: number }
+        classification: { kind: string }
+        properties: Array<{ id: string; facts: { einnahmen: number | null; werbungskosten: number | null; depreciation: { amount: number; provenance: string } | null; openItems: number } }>
+        status: { kind: string; einnahmen: number; werbungskosten: number; depreciation: number; openItems: number }
       }
 
-      expect(body.einordnung).toEqual({ kind: 'einfach' })
-      expect(body.objekte[0]?.fakten).toEqual({
+      expect(body.classification).toEqual({ kind: 'einfach' })
+      expect(body.properties[0]?.facts).toEqual({
         einnahmen: 12000,
         werbungskosten: 1500,
-        afa: { betrag: 4000, herkunft: '§ 7 Abs. 4 Satz 1 EStG — lineare AfA 2 % bei Baujahr 1990' },
-        offenePosten: 0,
+        depreciation: { amount: 4000, provenance: '§ 7 Abs. 4 Satz 1 EStG — lineare AfA 2 % bei Baujahr 1990' },
+        openItems: 0,
       })
-      expect(body.stand).toMatchObject({ kind: 'bestimmt', einnahmen: 12000, werbungskosten: 1500, afa: 4000, offenePosten: 0 })
+      expect(body.status).toMatchObject({ kind: 'bestimmt', einnahmen: 12000, werbungskosten: 1500, depreciation: 4000, openItems: 0 })
 
       // Ciphertext at rest (ADR-0008): raw SQL shows the column is NOT the plaintext figure.
-      const rows = await prisma.$queryRaw<VermietungRow[]>`SELECT "userId", "mieteinnahmen" FROM "Vermietungsobjekt" WHERE "userId" = ${userId}`
+      const rows = await prisma.$queryRaw<RentalRow[]>`SELECT "userId", "mieteinnahmen" FROM "Vermietungsobjekt" WHERE "userId" = ${userId}`
       expect(rows).toHaveLength(1)
       expect(rows[0]?.mieteinnahmen).not.toBe('12000')
 
@@ -135,48 +135,48 @@ describe('REQ-026 — the Vermietung vertical (Anlage V einfach), against the re
   it('the AfA-Satz follows the three § 7 Abs. 4 bands (2,5 % / 2 % / 3 %) — never invented', async () => {
     const { cookie } = await signUp('afa-bands@example.com')
     const bands: Array<[number, number]> = [[1900, 2.5], [1990, 2], [2025, 3]]
-    for (const [baujahr, prozent] of bands) {
-      const created = (await (await create(cookie)).json()) as { objekte: Array<{ id: string }> }
-      const objektId = created.objekte.at(-1)!.id
-      await putFeld(cookie, objektId, 'mieteinnahmen', { kind: 'erfasst', wert: 12000 })
-      await putFeld(cookie, objektId, 'anschaffungskosten', { kind: 'erfasst', wert: 100000 })
-      const response = await putFeld(cookie, objektId, 'baujahr', { kind: 'erfasst', wert: baujahr })
-      const body = (await response.json()) as { objekte: Array<{ fakten: { afa: { betrag: number; herkunft: string } | null } }> }
-      expect(body.objekte.at(-1)?.fakten.afa).toEqual({
-        betrag: Math.round(100000 * (prozent / 100)),
-        herkunft: `§ 7 Abs. 4 Satz 1 EStG — lineare AfA ${prozent} % bei Baujahr ${baujahr}`,
+    for (const [baujahr, percent] of bands) {
+      const created = (await (await create(cookie)).json()) as { properties: Array<{ id: string }> }
+      const propertyId = created.properties.at(-1)!.id
+      await putField(cookie, propertyId, 'mieteinnahmen', { kind: 'erfasst', value: 12000 })
+      await putField(cookie, propertyId, 'anschaffungskosten', { kind: 'erfasst', value: 100000 })
+      const response = await putField(cookie, propertyId, 'baujahr', { kind: 'erfasst', value: baujahr })
+      const body = (await response.json()) as { properties: Array<{ facts: { depreciation: { amount: number; provenance: string } | null } }> }
+      expect(body.properties.at(-1)?.facts.depreciation).toEqual({
+        amount: Math.round(100000 * (percent / 100)),
+        provenance: `§ 7 Abs. 4 Satz 1 EStG — lineare AfA ${percent} % bei Baujahr ${baujahr}`,
       })
     }
   })
 
   it('an open field stays open — never a fabricated zero (ADR-032)', async () => {
     const { cookie } = await signUp('offen@example.com')
-    const created = (await (await create(cookie)).json()) as { objekte: Array<{ id: string }> }
-    const objektId = created.objekte[0]!.id
+    const created = (await (await create(cookie)).json()) as { properties: Array<{ id: string }> }
+    const propertyId = created.properties[0]!.id
 
-    const body = (await (await get(cookie)).json()) as { objekte: Array<{ fakten: { offenePosten: number } }>; stand: { kind: string; offenePosten: number } }
-    expect(body.objekte[0]?.fakten.offenePosten).toBe(3)
-    expect(body.stand).toMatchObject({ kind: 'offen', offenePosten: 3 })
+    const body = (await (await get(cookie)).json()) as { properties: Array<{ facts: { openItems: number } }>; status: { kind: string; openItems: number } }
+    expect(body.properties[0]?.facts.openItems).toBe(3)
+    expect(body.status).toMatchObject({ kind: 'offen', openItems: 3 })
 
-    const unklar = await putFeld(cookie, objektId, 'mieteinnahmen', { kind: 'unklar' })
-    const unklarBody = (await unklar.json()) as { objekte: Array<{ mieteinnahmen: { kind: string } }> }
-    expect(unklarBody.objekte[0]?.mieteinnahmen).toEqual({ kind: 'unklar' })
+    const unclear = await putField(cookie, propertyId, 'mieteinnahmen', { kind: 'unklar' })
+    const unclearBody = (await unclear.json()) as { properties: Array<{ mieteinnahmen: { kind: string } }> }
+    expect(unclearBody.properties[0]?.mieteinnahmen).toEqual({ kind: 'unklar' })
   })
 
   it('several objects sum separately — je Objekt eine Anlage V', async () => {
     const { cookie } = await signUp('mehrere@example.com')
-    for (const miete of [12000, 6000]) {
-      const created = (await (await create(cookie)).json()) as { objekte: Array<{ id: string }> }
-      const objektId = created.objekte.at(-1)!.id
-      await putFeld(cookie, objektId, 'mieteinnahmen', { kind: 'erfasst', wert: miete })
-      await putFeld(cookie, objektId, 'anschaffungskosten', { kind: 'erfasst', wert: 200000 })
-      await putFeld(cookie, objektId, 'baujahr', { kind: 'erfasst', wert: 1990 })
-      await putFeld(cookie, objektId, 'werbungskosten', { kind: 'erfasst', wert: 0 })
+    for (const rent of [12000, 6000]) {
+      const created = (await (await create(cookie)).json()) as { properties: Array<{ id: string }> }
+      const propertyId = created.properties.at(-1)!.id
+      await putField(cookie, propertyId, 'mieteinnahmen', { kind: 'erfasst', value: rent })
+      await putField(cookie, propertyId, 'anschaffungskosten', { kind: 'erfasst', value: 200000 })
+      await putField(cookie, propertyId, 'baujahr', { kind: 'erfasst', value: 1990 })
+      await putField(cookie, propertyId, 'werbungskosten', { kind: 'erfasst', value: 0 })
     }
 
-    const body = (await (await get(cookie)).json()) as { objekte: unknown[]; stand: { kind: string; einnahmen: number; afa: number; offenePosten: number } }
-    expect(body.objekte).toHaveLength(2)
-    expect(body.stand).toMatchObject({ kind: 'bestimmt', einnahmen: 18000, afa: 8000, offenePosten: 0 })
+    const body = (await (await get(cookie)).json()) as { properties: unknown[]; status: { kind: string; einnahmen: number; depreciation: number; openItems: number } }
+    expect(body.properties).toHaveLength(2)
+    expect(body.status).toMatchObject({ kind: 'bestimmt', einnahmen: 18000, depreciation: 8000, openItems: 0 })
   })
 
   it('Verkauf oder möbliert stays gated (ADR-033): the fold reads offen with the gate named', async () => {
@@ -185,39 +185,39 @@ describe('REQ-026 — the Vermietung vertical (Anlage V einfach), against the re
     await seedAnswer(userId, 'vermietung-art', 'Verkauf oder möbliert')
     await create(cookie)
 
-    const body = (await (await get(cookie)).json()) as { einordnung: { kind: string }; stand: { kind: string; gegated: string[] } }
-    expect(body.einordnung).toEqual({ kind: 'verkauf-oder-moebliert' })
-    expect(body.stand).toMatchObject({ kind: 'offen', gegated: ['Vermietung'] })
+    const body = (await (await get(cookie)).json()) as { classification: { kind: string }; status: { kind: string; gated: string[] } }
+    expect(body.classification).toEqual({ kind: 'verkauf-oder-moebliert' })
+    expect(body.status).toMatchObject({ kind: 'offen', gated: ['Vermietung'] })
   })
 
   it('the endpoints require a real account session — a guest gets 401', async () => {
-    const response = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/vermietung`, { headers: TRUSTED_ORIGIN_HEADERS })
+    const response = await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/vermietung`, { headers: TRUSTED_ORIGIN_HEADERS })
     expect(response.status).toBe(401)
 
-    const createResponse = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/vermietung/objekte`, { method: 'POST', headers: TRUSTED_ORIGIN_HEADERS })
+    const createResponse = await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/vermietung/objekte`, { method: 'POST', headers: TRUSTED_ORIGIN_HEADERS })
     expect(createResponse.status).toBe(401)
   })
 
   it('is scoped strictly to userId — a foreign objektId is a 404, another account reads its own empty list', async () => {
     const { cookie: cookieA, userId: userA } = await signUp('scope-a@example.com')
     const { cookie: cookieB } = await signUp('scope-b@example.com')
-    const created = (await (await create(cookieA)).json()) as { objekte: Array<{ id: string }> }
-    const objektId = created.objekte[0]!.id
+    const created = (await (await create(cookieA)).json()) as { properties: Array<{ id: string }> }
+    const propertyId = created.properties[0]!.id
 
-    const foreign = await putFeld(cookieB, objektId, 'mieteinnahmen', { kind: 'erfasst', wert: 1 })
+    const foreign = await putField(cookieB, propertyId, 'mieteinnahmen', { kind: 'erfasst', value: 1 })
     expect(foreign.status).toBe(404)
 
-    const body = (await (await get(cookieB)).json()) as { objekte: unknown[] }
-    expect(body.objekte).toEqual([])
+    const body = (await (await get(cookieB)).json()) as { properties: unknown[] }
+    expect(body.properties).toEqual([])
     void userA
   })
 
   it('an unknown feld is a 400 at the boundary, never a Prisma column-miss', async () => {
     const { cookie } = await signUp('feld-400@example.com')
-    const created = (await (await create(cookie)).json()) as { objekte: Array<{ id: string }> }
-    const objektId = created.objekte[0]!.id
+    const created = (await (await create(cookie)).json()) as { properties: Array<{ id: string }> }
+    const propertyId = created.properties[0]!.id
 
-    const response = await putFeld(cookie, objektId, 'irgendwas', { kind: 'erfasst', wert: 1 })
+    const response = await putField(cookie, propertyId, 'irgendwas', { kind: 'erfasst', value: 1 })
     expect(response.status).toBe(400)
   })
 })

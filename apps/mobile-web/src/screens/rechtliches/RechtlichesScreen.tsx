@@ -2,22 +2,22 @@ import { Pressable, ScrollView, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useBreakpoint, useTheme } from '@steuereule/ui'
 import { APP_NS } from '../../i18n/resources'
-import { makeDatenschutzStyles } from '../datenschutz/styles'
-import { RechtlichesLinks } from './RechtlichesLinks'
-import { inhalt, SEITEN_TITEL, type Betreiber, type RechtlicheSeite } from './texte'
+import { makePrivacyStyles } from '../datenschutz/styles'
+import { LegalLinks } from './RechtlichesLinks'
+import { content, PAGE_TITLES, type Operator, type LegalPage } from './texte'
 
-export interface RechtlichesScreenProps {
-  readonly seite: RechtlicheSeite
-  readonly betreiber: Betreiber | null
-  readonly onZurueck: () => void
-  readonly onSeite: (seite: RechtlicheSeite) => void
+export interface LegalScreenProps {
+  readonly page: LegalPage
+  readonly operator: Operator | null
+  readonly onBack: () => void
+  readonly onPage: (page: LegalPage) => void
 }
 
-export function RechtlichesScreen({ seite, betreiber, onZurueck, onSeite }: RechtlichesScreenProps) {
+export function LegalScreen({ page, operator, onBack, onPage }: LegalScreenProps) {
   const bp = useBreakpoint()
   const { t } = useTranslation(APP_NS)
   const theme = useTheme()
-  const styles = makeDatenschutzStyles(theme)
+  const styles = makePrivacyStyles(theme)
 
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
@@ -25,30 +25,30 @@ export function RechtlichesScreen({ seite, betreiber, onZurueck, onSeite }: Rech
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t('rechtliches.back')}
-          onPress={onZurueck}
+          onPress={onBack}
           style={styles.backButton}
         >
           <Text style={styles.backGlyph}>←</Text>
         </Pressable>
         <Text style={styles.appbarTitle} accessibilityRole="header">
-          {SEITEN_TITEL[seite]}
+          {PAGE_TITLES[page]}
         </Text>
       </View>
 
-      {inhalt(seite, betreiber).map((abschnitt) => (
-        <View key={abschnitt.titel} style={{ marginBottom: theme.space.s4 }}>
+      {content(page, operator).map((section) => (
+        <View key={section.title} style={{ marginBottom: theme.space.s4 }}>
           <Text style={styles.sectionTitle} accessibilityRole="header">
-            {abschnitt.titel}
+            {section.title}
           </Text>
-          {abschnitt.absaetze.map((absatz) => (
-            <Text key={absatz} style={styles.sectionBody}>
-              {absatz}
+          {section.paragraphs.map((paragraph) => (
+            <Text key={paragraph} style={styles.sectionBody}>
+              {paragraph}
             </Text>
           ))}
         </View>
       ))}
 
-      <RechtlichesLinks aktuell={seite} onSeite={onSeite} />
+      <LegalLinks current={page} onPage={onPage} />
     </ScrollView>
   )
 }

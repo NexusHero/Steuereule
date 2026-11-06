@@ -25,8 +25,8 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
-  BestaetigungResponseDto,
-  VorschlagEntscheidungDto
+  ConfirmationResponseDto,
+  ProposalDecisionDto
 } from './bestaetigung.schemas';
 
 import { httpClient } from '../http-client';
@@ -51,26 +51,26 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   return result;
 };
 
-export type bestaetigungControllerGetResponse200 = {
-  data: BestaetigungResponseDto
+export type confirmationControllerGetResponse200 = {
+  data: ConfirmationResponseDto
   status: 200
 }
 
-export type bestaetigungControllerGetResponse401 = {
+export type confirmationControllerGetResponse401 = {
   data: void
   status: 401
 }
 
-export type bestaetigungControllerGetResponseSuccess = (bestaetigungControllerGetResponse200) & {
+export type confirmationControllerGetResponseSuccess = (confirmationControllerGetResponse200) & {
   headers: Headers;
 };
-export type bestaetigungControllerGetResponseError = (bestaetigungControllerGetResponse401) & {
+export type confirmationControllerGetResponseError = (confirmationControllerGetResponse401) & {
   headers: Headers;
 };
 
-export type bestaetigungControllerGetResponse = (bestaetigungControllerGetResponseSuccess | bestaetigungControllerGetResponseError)
+export type confirmationControllerGetResponse = (confirmationControllerGetResponseSuccess | confirmationControllerGetResponseError)
 
-export const getBestaetigungControllerGetUrl = (jahr: number,) => {
+export const getConfirmationControllerGetUrl = (jahr: number,) => {
 
 
 
@@ -78,9 +78,9 @@ export const getBestaetigungControllerGetUrl = (jahr: number,) => {
   return `/v1/steuerjahre/${jahr}/bestaetigung`
 }
 
-export const bestaetigungControllerGet = async (jahr: number, options?: RequestInit): Promise<bestaetigungControllerGetResponse> => {
+export const confirmationControllerGet = async (jahr: number, options?: RequestInit): Promise<confirmationControllerGetResponse> => {
 
-  return httpClient<bestaetigungControllerGetResponse>(getBestaetigungControllerGetUrl(jahr),
+  return httpClient<confirmationControllerGetResponse>(getConfirmationControllerGetUrl(jahr),
   {
     ...options,
     method: 'GET'
@@ -93,66 +93,66 @@ export const bestaetigungControllerGet = async (jahr: number, options?: RequestI
 
 
 
-export const getBestaetigungControllerGetQueryKey = (jahr: number,) => {
+export const getConfirmationControllerGetQueryKey = (jahr: number,) => {
     return [
     `/v1/steuerjahre/${jahr}/bestaetigung`
     ] as const;
     }
 
 
-export const getBestaetigungControllerGetQueryOptions = <TData = Awaited<ReturnType<typeof bestaetigungControllerGet>>, TError = void>(jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof bestaetigungControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export const getConfirmationControllerGetQueryOptions = <TData = Awaited<ReturnType<typeof confirmationControllerGet>>, TError = void>(jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof confirmationControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getBestaetigungControllerGetQueryKey(jahr);
+  const queryKey =  queryOptions?.queryKey ?? getConfirmationControllerGetQueryKey(jahr);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof bestaetigungControllerGet>>> = ({ signal }) => bestaetigungControllerGet(jahr, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof confirmationControllerGet>>> = ({ signal }) => confirmationControllerGet(jahr, { signal, ...requestOptions });
 
 
 
 
 
-   return  { queryKey, queryFn, enabled: jahr !== null && jahr !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof bestaetigungControllerGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+   return  { queryKey, queryFn, enabled: jahr !== null && jahr !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof confirmationControllerGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
-export type BestaetigungControllerGetQueryResult = NonNullable<Awaited<ReturnType<typeof bestaetigungControllerGet>>>
-export type BestaetigungControllerGetQueryError = void
+export type ConfirmationControllerGetQueryResult = NonNullable<Awaited<ReturnType<typeof confirmationControllerGet>>>
+export type ConfirmationControllerGetQueryError = void
 
 
-export function useBestaetigungControllerGet<TData = Awaited<ReturnType<typeof bestaetigungControllerGet>>, TError = void>(
- jahr: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof bestaetigungControllerGet>>, TError, TData>> & Pick<
+export function useConfirmationControllerGet<TData = Awaited<ReturnType<typeof confirmationControllerGet>>, TError = void>(
+ jahr: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof confirmationControllerGet>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof bestaetigungControllerGet>>,
+          Awaited<ReturnType<typeof confirmationControllerGet>>,
           TError,
-          Awaited<ReturnType<typeof bestaetigungControllerGet>>
+          Awaited<ReturnType<typeof confirmationControllerGet>>
         > , 'initialData'
       >, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useBestaetigungControllerGet<TData = Awaited<ReturnType<typeof bestaetigungControllerGet>>, TError = void>(
- jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof bestaetigungControllerGet>>, TError, TData>> & Pick<
+export function useConfirmationControllerGet<TData = Awaited<ReturnType<typeof confirmationControllerGet>>, TError = void>(
+ jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof confirmationControllerGet>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof bestaetigungControllerGet>>,
+          Awaited<ReturnType<typeof confirmationControllerGet>>,
           TError,
-          Awaited<ReturnType<typeof bestaetigungControllerGet>>
+          Awaited<ReturnType<typeof confirmationControllerGet>>
         > , 'initialData'
       >, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useBestaetigungControllerGet<TData = Awaited<ReturnType<typeof bestaetigungControllerGet>>, TError = void>(
- jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof bestaetigungControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export function useConfirmationControllerGet<TData = Awaited<ReturnType<typeof confirmationControllerGet>>, TError = void>(
+ jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof confirmationControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 
-export function useBestaetigungControllerGet<TData = Awaited<ReturnType<typeof bestaetigungControllerGet>>, TError = void>(
- jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof bestaetigungControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export function useConfirmationControllerGet<TData = Awaited<ReturnType<typeof confirmationControllerGet>>, TError = void>(
+ jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof confirmationControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getBestaetigungControllerGetQueryOptions(jahr,options)
+  const queryOptions = getConfirmationControllerGetQueryOptions(jahr,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
@@ -165,26 +165,26 @@ export function useBestaetigungControllerGet<TData = Awaited<ReturnType<typeof b
 
 
 
-export type bestaetigungControllerBestaetigeAnlageResponse200 = {
-  data: BestaetigungResponseDto
+export type confirmationControllerConfirmAnnexResponse200 = {
+  data: ConfirmationResponseDto
   status: 200
 }
 
-export type bestaetigungControllerBestaetigeAnlageResponse401 = {
+export type confirmationControllerConfirmAnnexResponse401 = {
   data: void
   status: 401
 }
 
-export type bestaetigungControllerBestaetigeAnlageResponseSuccess = (bestaetigungControllerBestaetigeAnlageResponse200) & {
+export type confirmationControllerConfirmAnnexResponseSuccess = (confirmationControllerConfirmAnnexResponse200) & {
   headers: Headers;
 };
-export type bestaetigungControllerBestaetigeAnlageResponseError = (bestaetigungControllerBestaetigeAnlageResponse401) & {
+export type confirmationControllerConfirmAnnexResponseError = (confirmationControllerConfirmAnnexResponse401) & {
   headers: Headers;
 };
 
-export type bestaetigungControllerBestaetigeAnlageResponse = (bestaetigungControllerBestaetigeAnlageResponseSuccess | bestaetigungControllerBestaetigeAnlageResponseError)
+export type confirmationControllerConfirmAnnexResponse = (confirmationControllerConfirmAnnexResponseSuccess | confirmationControllerConfirmAnnexResponseError)
 
-export const getBestaetigungControllerBestaetigeAnlageUrl = (jahr: number,
+export const getConfirmationControllerConfirmAnnexUrl = (jahr: number,
     anlage: 'hauptvordruck' | 'anlageN' | 'anlageNGre' | 'anlageR' | 'anlageKap' | 'anlageV' | 'anlageKind',) => {
 
 
@@ -193,10 +193,10 @@ export const getBestaetigungControllerBestaetigeAnlageUrl = (jahr: number,
   return `/v1/steuerjahre/${jahr}/bestaetigung/anlagen/${anlage}`
 }
 
-export const bestaetigungControllerBestaetigeAnlage = async (jahr: number,
-    anlage: 'hauptvordruck' | 'anlageN' | 'anlageNGre' | 'anlageR' | 'anlageKap' | 'anlageV' | 'anlageKind', options?: RequestInit): Promise<bestaetigungControllerBestaetigeAnlageResponse> => {
+export const confirmationControllerConfirmAnnex = async (jahr: number,
+    anlage: 'hauptvordruck' | 'anlageN' | 'anlageNGre' | 'anlageR' | 'anlageKap' | 'anlageV' | 'anlageKind', options?: RequestInit): Promise<confirmationControllerConfirmAnnexResponse> => {
 
-  return httpClient<bestaetigungControllerBestaetigeAnlageResponse>(getBestaetigungControllerBestaetigeAnlageUrl(jahr,anlage),
+  return httpClient<confirmationControllerConfirmAnnexResponse>(getConfirmationControllerConfirmAnnexUrl(jahr,anlage),
   {
     ...options,
     method: 'PUT'
@@ -209,11 +209,11 @@ export const bestaetigungControllerBestaetigeAnlage = async (jahr: number,
 
 
 
-export const getBestaetigungControllerBestaetigeAnlageMutationOptions = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bestaetigungControllerBestaetigeAnlage>>, TError,{jahr: number;anlage: 'hauptvordruck' | 'anlageN' | 'anlageNGre' | 'anlageR' | 'anlageKap' | 'anlageV' | 'anlageKind'}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof bestaetigungControllerBestaetigeAnlage>>, TError,{jahr: number;anlage: 'hauptvordruck' | 'anlageN' | 'anlageNGre' | 'anlageR' | 'anlageKap' | 'anlageV' | 'anlageKind'}, TContext> => {
+export const getConfirmationControllerConfirmAnnexMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmationControllerConfirmAnnex>>, TError,{jahr: number;anlage: 'hauptvordruck' | 'anlageN' | 'anlageNGre' | 'anlageR' | 'anlageKap' | 'anlageV' | 'anlageKind'}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof confirmationControllerConfirmAnnex>>, TError,{jahr: number;anlage: 'hauptvordruck' | 'anlageN' | 'anlageNGre' | 'anlageR' | 'anlageKap' | 'anlageV' | 'anlageKind'}, TContext> => {
 
-const mutationKey = ['bestaetigungControllerBestaetigeAnlage'];
+const mutationKey = ['confirmationControllerConfirmAnnex'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -223,10 +223,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof bestaetigungControllerBestaetigeAnlage>>, {jahr: number;anlage: 'hauptvordruck' | 'anlageN' | 'anlageNGre' | 'anlageR' | 'anlageKap' | 'anlageV' | 'anlageKind'}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmationControllerConfirmAnnex>>, {jahr: number;anlage: 'hauptvordruck' | 'anlageN' | 'anlageNGre' | 'anlageR' | 'anlageKap' | 'anlageV' | 'anlageKind'}> = (props) => {
           const {jahr,anlage} = props ?? {};
 
-          return  bestaetigungControllerBestaetigeAnlage(jahr,anlage,requestOptions)
+          return  confirmationControllerConfirmAnnex(jahr,anlage,requestOptions)
         }
 
 
@@ -236,46 +236,46 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type BestaetigungControllerBestaetigeAnlageMutationResult = NonNullable<Awaited<ReturnType<typeof bestaetigungControllerBestaetigeAnlage>>>
+    export type ConfirmationControllerConfirmAnnexMutationResult = NonNullable<Awaited<ReturnType<typeof confirmationControllerConfirmAnnex>>>
 
-    export type BestaetigungControllerBestaetigeAnlageMutationError = void
+    export type ConfirmationControllerConfirmAnnexMutationError = void
 
-    export const useBestaetigungControllerBestaetigeAnlage = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bestaetigungControllerBestaetigeAnlage>>, TError,{jahr: number;anlage: 'hauptvordruck' | 'anlageN' | 'anlageNGre' | 'anlageR' | 'anlageKap' | 'anlageV' | 'anlageKind'}, TContext>, request?: SecondParameter<typeof httpClient>}
+    export const useConfirmationControllerConfirmAnnex = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmationControllerConfirmAnnex>>, TError,{jahr: number;anlage: 'hauptvordruck' | 'anlageN' | 'anlageNGre' | 'anlageR' | 'anlageKap' | 'anlageV' | 'anlageKind'}, TContext>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof bestaetigungControllerBestaetigeAnlage>>,
+        Awaited<ReturnType<typeof confirmationControllerConfirmAnnex>>,
         TError,
         {jahr: number;anlage: 'hauptvordruck' | 'anlageN' | 'anlageNGre' | 'anlageR' | 'anlageKap' | 'anlageV' | 'anlageKind'},
         TContext
       > => {
-      return useMutation(getBestaetigungControllerBestaetigeAnlageMutationOptions(options), queryClient);
+      return useMutation(getConfirmationControllerConfirmAnnexMutationOptions(options), queryClient);
     }
 
-export type bestaetigungControllerEntscheideVorschlagResponse200 = {
-  data: BestaetigungResponseDto
+export type confirmationControllerDecideProposalResponse200 = {
+  data: ConfirmationResponseDto
   status: 200
 }
 
-export type bestaetigungControllerEntscheideVorschlagResponse401 = {
+export type confirmationControllerDecideProposalResponse401 = {
   data: void
   status: 401
 }
 
-export type bestaetigungControllerEntscheideVorschlagResponse404 = {
+export type confirmationControllerDecideProposalResponse404 = {
   data: void
   status: 404
 }
 
-export type bestaetigungControllerEntscheideVorschlagResponseSuccess = (bestaetigungControllerEntscheideVorschlagResponse200) & {
+export type confirmationControllerDecideProposalResponseSuccess = (confirmationControllerDecideProposalResponse200) & {
   headers: Headers;
 };
-export type bestaetigungControllerEntscheideVorschlagResponseError = (bestaetigungControllerEntscheideVorschlagResponse401 | bestaetigungControllerEntscheideVorschlagResponse404) & {
+export type confirmationControllerDecideProposalResponseError = (confirmationControllerDecideProposalResponse401 | confirmationControllerDecideProposalResponse404) & {
   headers: Headers;
 };
 
-export type bestaetigungControllerEntscheideVorschlagResponse = (bestaetigungControllerEntscheideVorschlagResponseSuccess | bestaetigungControllerEntscheideVorschlagResponseError)
+export type confirmationControllerDecideProposalResponse = (confirmationControllerDecideProposalResponseSuccess | confirmationControllerDecideProposalResponseError)
 
-export const getBestaetigungControllerEntscheideVorschlagUrl = (jahr: number,
+export const getConfirmationControllerDecideProposalUrl = (jahr: number,
     key: string,) => {
 
 
@@ -284,16 +284,16 @@ export const getBestaetigungControllerEntscheideVorschlagUrl = (jahr: number,
   return `/v1/steuerjahre/${jahr}/bestaetigung/vorschlaege/${key}`
 }
 
-export const bestaetigungControllerEntscheideVorschlag = async (jahr: number,
+export const confirmationControllerDecideProposal = async (jahr: number,
     key: string,
-    vorschlagEntscheidungDto: VorschlagEntscheidungDto, options?: RequestInit): Promise<bestaetigungControllerEntscheideVorschlagResponse> => {
+    proposalDecisionDto: ProposalDecisionDto, options?: RequestInit): Promise<confirmationControllerDecideProposalResponse> => {
 
-  return httpClient<bestaetigungControllerEntscheideVorschlagResponse>(getBestaetigungControllerEntscheideVorschlagUrl(jahr,key),
+  return httpClient<confirmationControllerDecideProposalResponse>(getConfirmationControllerDecideProposalUrl(jahr,key),
   {
     ...options,
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(vorschlagEntscheidungDto)
+    body: JSON.stringify(proposalDecisionDto)
   }
 );}
 
@@ -301,11 +301,11 @@ export const bestaetigungControllerEntscheideVorschlag = async (jahr: number,
 
 
 
-export const getBestaetigungControllerEntscheideVorschlagMutationOptions = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bestaetigungControllerEntscheideVorschlag>>, TError,{jahr: number;key: string;data: VorschlagEntscheidungDto}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof bestaetigungControllerEntscheideVorschlag>>, TError,{jahr: number;key: string;data: VorschlagEntscheidungDto}, TContext> => {
+export const getConfirmationControllerDecideProposalMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmationControllerDecideProposal>>, TError,{jahr: number;key: string;data: ProposalDecisionDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof confirmationControllerDecideProposal>>, TError,{jahr: number;key: string;data: ProposalDecisionDto}, TContext> => {
 
-const mutationKey = ['bestaetigungControllerEntscheideVorschlag'];
+const mutationKey = ['confirmationControllerDecideProposal'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -315,10 +315,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof bestaetigungControllerEntscheideVorschlag>>, {jahr: number;key: string;data: VorschlagEntscheidungDto}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmationControllerDecideProposal>>, {jahr: number;key: string;data: ProposalDecisionDto}> = (props) => {
           const {jahr,key,data} = props ?? {};
 
-          return  bestaetigungControllerEntscheideVorschlag(jahr,key,data,requestOptions)
+          return  confirmationControllerDecideProposal(jahr,key,data,requestOptions)
         }
 
 
@@ -328,18 +328,18 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type BestaetigungControllerEntscheideVorschlagMutationResult = NonNullable<Awaited<ReturnType<typeof bestaetigungControllerEntscheideVorschlag>>>
-    export type BestaetigungControllerEntscheideVorschlagMutationBody = VorschlagEntscheidungDto
-    export type BestaetigungControllerEntscheideVorschlagMutationError = void
+    export type ConfirmationControllerDecideProposalMutationResult = NonNullable<Awaited<ReturnType<typeof confirmationControllerDecideProposal>>>
+    export type ConfirmationControllerDecideProposalMutationBody = ProposalDecisionDto
+    export type ConfirmationControllerDecideProposalMutationError = void
 
-    export const useBestaetigungControllerEntscheideVorschlag = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bestaetigungControllerEntscheideVorschlag>>, TError,{jahr: number;key: string;data: VorschlagEntscheidungDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+    export const useConfirmationControllerDecideProposal = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmationControllerDecideProposal>>, TError,{jahr: number;key: string;data: ProposalDecisionDto}, TContext>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof bestaetigungControllerEntscheideVorschlag>>,
+        Awaited<ReturnType<typeof confirmationControllerDecideProposal>>,
         TError,
-        {jahr: number;key: string;data: VorschlagEntscheidungDto},
+        {jahr: number;key: string;data: ProposalDecisionDto},
         TContext
       > => {
-      return useMutation(getBestaetigungControllerEntscheideVorschlagMutationOptions(options), queryClient);
+      return useMutation(getConfirmationControllerDecideProposalMutationOptions(options), queryClient);
     }
 

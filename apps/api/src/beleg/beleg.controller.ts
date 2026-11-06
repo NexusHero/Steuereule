@@ -9,7 +9,7 @@ import {
 } from '@nestjs/swagger'
 import { CurrentUser } from '../auth/current-user.decorator.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
-import { BelegService } from './beleg.service.js'
+import { ReceiptService } from './beleg.service.js'
 import { ReceiptResponseDto } from './dto/beleg-response.dto.js'
 import { CreateReceiptDto } from './dto/create-beleg.dto.js'
 import { SetAssignmentDto } from './dto/set-zuordnung.dto.js'
@@ -17,20 +17,20 @@ import { SetAssignmentDto } from './dto/set-zuordnung.dto.js'
 @ApiTags('belege')
 @Controller('v1/belege')
 @UseGuards(UserContextGuard)
-export class BelegController {
-  constructor(@Inject(BelegService) private readonly belegService: BelegService) {}
+export class ReceiptController {
+  constructor(@Inject(ReceiptService) private readonly receiptService: ReceiptService) {}
 
   @Get()
   @ApiOkResponse({ type: ReceiptResponseDto, isArray: true, description: 'The caller’s Beleg inbox, newest first.' })
   list(@CurrentUser() userId: string): Promise<ReceiptResponseDto[]> {
-    return this.belegService.list(userId)
+    return this.receiptService.list(userId)
   }
 
   @Post()
   @ApiBody({ type: CreateReceiptDto })
   @ApiCreatedResponse({ type: ReceiptResponseDto, description: 'The created, unbound Beleg with its derived Zuordnung.' })
   create(@CurrentUser() userId: string, @Body() dto: CreateReceiptDto): Promise<ReceiptResponseDto> {
-    return this.belegService.create(userId, dto)
+    return this.receiptService.create(userId, dto)
   }
 
   @Post(':id/zuordnung')
@@ -39,11 +39,11 @@ export class BelegController {
   @ApiBody({ type: SetAssignmentDto })
   @ApiOkResponse({ type: ReceiptResponseDto, description: 'The Beleg with its confirmed year and derived Zuordnung.' })
   @ApiNotFoundResponse({ description: 'No such Beleg for this account — nothing was persisted.' })
-  setZuordnung(
+  setAssignment(
     @CurrentUser() userId: string,
     @Param('id') id: string,
     @Body() dto: SetAssignmentDto,
   ): Promise<ReceiptResponseDto> {
-    return this.belegService.setZuordnung(userId, id, dto)
+    return this.receiptService.setAssignment(userId, id, dto)
   }
 }

@@ -9,18 +9,18 @@ import {
 import { CurrentUser } from '../auth/current-user.decorator.js'
 import { RequiresAccount } from '../auth/requires-account.guard.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
-import { ParseSteuerjahrPipe } from '../cockpit/parse-steuerjahr.pipe.js'
-import { ParseRenteFeldPipe } from './parse-rente-feld.pipe.js'
-import { RenteService } from './rente.service.js'
-import { PutRenteFeldDto } from './dto/rente-feld.dto.js'
-import { PutRentenartDto } from './dto/rente-art.dto.js'
-import { RenteResponseDto } from './dto/rente-response.dto.js'
+import { ParseTaxYearPipe } from '../cockpit/parse-steuerjahr.pipe.js'
+import { ParsePensionFieldPipe } from './parse-rente-feld.pipe.js'
+import { PensionService } from './rente.service.js'
+import { PutPensionFieldDto } from './dto/rente-feld.dto.js'
+import { PutPensionKindDto } from './dto/rente-art.dto.js'
+import { PensionResponseDto } from './dto/rente-response.dto.js'
 
 @ApiTags('rente')
 @Controller('v1/steuerjahre')
 @UseGuards(UserContextGuard)
-export class RenteController {
-  constructor(@Inject(RenteService) private readonly renteService: RenteService) {}
+export class PensionController {
+  constructor(@Inject(PensionService) private readonly pensionService: PensionService) {}
 
   @Get(':jahr/rente')
   @RequiresAccount()
@@ -30,25 +30,25 @@ export class RenteController {
     example: 2026,
     description: 'The tax year (Steuerjahr) — validated to a sensible window (ParseSteuerjahrPipe, same as Cockpit).',
   })
-  @ApiOkResponse({ type: RenteResponseDto, description: 'The caller’s Rentner mask + fold for this tax year — re-entry.' })
+  @ApiOkResponse({ type: PensionResponseDto, description: 'The caller’s Rentner mask + fold for this tax year — re-entry.' })
   @ApiUnauthorizedResponse({ description: 'Guest session — this endpoint requires a signed-in account.' })
-  get(@CurrentUser() userId: string, @Param('jahr', ParseSteuerjahrPipe) jahr: number): Promise<RenteResponseDto> {
-    return this.renteService.getState(userId, jahr)
+  get(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number): Promise<PensionResponseDto> {
+    return this.pensionService.getState(userId, year)
   }
 
   @Put(':jahr/rente/art')
   @HttpCode(200)
   @RequiresAccount()
   @ApiParam({ name: 'jahr', type: Number, example: 2026, description: 'The tax year (Steuerjahr).' })
-  @ApiBody({ type: PutRentenartDto })
-  @ApiOkResponse({ type: RenteResponseDto, description: 'The updated mask and its derived fold.' })
+  @ApiBody({ type: PutPensionKindDto })
+  @ApiOkResponse({ type: PensionResponseDto, description: 'The updated mask and its derived fold.' })
   @ApiUnauthorizedResponse({ description: 'Guest session — this endpoint requires a signed-in account.' })
-  setRentenart(
+  setPensionKind(
     @CurrentUser() userId: string,
-    @Param('jahr', ParseSteuerjahrPipe) jahr: number,
-    @Body() dto: PutRentenartDto,
-  ): Promise<RenteResponseDto> {
-    return this.renteService.setRentenart(userId, jahr, dto)
+    @Param('jahr', ParseTaxYearPipe) year: number,
+    @Body() dto: PutPensionKindDto,
+  ): Promise<PensionResponseDto> {
+    return this.pensionService.setPensionKind(userId, year, dto)
   }
 
   @Put(':jahr/rente/:feld')
@@ -66,15 +66,15 @@ export class RenteController {
     example: 'jahresbetrag',
     description: 'One of jahresbetrag | rentenbeginnJahr | alterBeiRentenbeginn (ParseRenteFeldPipe).',
   })
-  @ApiBody({ type: PutRenteFeldDto })
-  @ApiOkResponse({ type: RenteResponseDto, description: 'The updated mask and its derived fold.' })
+  @ApiBody({ type: PutPensionFieldDto })
+  @ApiOkResponse({ type: PensionResponseDto, description: 'The updated mask and its derived fold.' })
   @ApiUnauthorizedResponse({ description: 'Guest session — this endpoint requires a signed-in account.' })
-  setFeld(
+  setField(
     @CurrentUser() userId: string,
-    @Param('jahr', ParseSteuerjahrPipe) jahr: number,
-    @Param('feld', ParseRenteFeldPipe) feld: Parameters<RenteService['setFeld']>[2],
-    @Body() dto: PutRenteFeldDto,
-  ): Promise<RenteResponseDto> {
-    return this.renteService.setFeld(userId, jahr, feld, dto)
+    @Param('jahr', ParseTaxYearPipe) year: number,
+    @Param('feld', ParsePensionFieldPipe) field: Parameters<PensionService['setField']>[2],
+    @Body() dto: PutPensionFieldDto,
+  ): Promise<PensionResponseDto> {
+    return this.pensionService.setField(userId, year, field, dto)
   }
 }

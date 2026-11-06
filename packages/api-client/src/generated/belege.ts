@@ -25,9 +25,9 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
-  BelegResponseDto,
-  CreateBelegDto,
-  SetZuordnungDto
+  CreateReceiptDto,
+  ReceiptResponseDto,
+  SetAssignmentDto
 } from './belege.schemas';
 
 import { httpClient } from '../http-client';
@@ -52,19 +52,19 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   return result;
 };
 
-export type belegControllerListResponse200 = {
-  data: BelegResponseDto[]
+export type receiptControllerListResponse200 = {
+  data: ReceiptResponseDto[]
   status: 200
 }
 
-export type belegControllerListResponseSuccess = (belegControllerListResponse200) & {
+export type receiptControllerListResponseSuccess = (receiptControllerListResponse200) & {
   headers: Headers;
 };
 ;
 
-export type belegControllerListResponse = (belegControllerListResponseSuccess)
+export type receiptControllerListResponse = (receiptControllerListResponseSuccess)
 
-export const getBelegControllerListUrl = () => {
+export const getReceiptControllerListUrl = () => {
 
 
 
@@ -72,9 +72,9 @@ export const getBelegControllerListUrl = () => {
   return `/v1/belege`
 }
 
-export const belegControllerList = async ( options?: RequestInit): Promise<belegControllerListResponse> => {
+export const receiptControllerList = async ( options?: RequestInit): Promise<receiptControllerListResponse> => {
 
-  return httpClient<belegControllerListResponse>(getBelegControllerListUrl(),
+  return httpClient<receiptControllerListResponse>(getReceiptControllerListUrl(),
   {
     ...options,
     method: 'GET'
@@ -87,66 +87,66 @@ export const belegControllerList = async ( options?: RequestInit): Promise<beleg
 
 
 
-export const getBelegControllerListQueryKey = () => {
+export const getReceiptControllerListQueryKey = () => {
     return [
     `/v1/belege`
     ] as const;
     }
 
 
-export const getBelegControllerListQueryOptions = <TData = Awaited<ReturnType<typeof belegControllerList>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof belegControllerList>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export const getReceiptControllerListQueryOptions = <TData = Awaited<ReturnType<typeof receiptControllerList>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof receiptControllerList>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getBelegControllerListQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getReceiptControllerListQueryKey();
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof belegControllerList>>> = ({ signal }) => belegControllerList({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof receiptControllerList>>> = ({ signal }) => receiptControllerList({ signal, ...requestOptions });
 
 
 
 
 
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof belegControllerList>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof receiptControllerList>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
-export type BelegControllerListQueryResult = NonNullable<Awaited<ReturnType<typeof belegControllerList>>>
-export type BelegControllerListQueryError = unknown
+export type ReceiptControllerListQueryResult = NonNullable<Awaited<ReturnType<typeof receiptControllerList>>>
+export type ReceiptControllerListQueryError = unknown
 
 
-export function useBelegControllerList<TData = Awaited<ReturnType<typeof belegControllerList>>, TError = unknown>(
-  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof belegControllerList>>, TError, TData>> & Pick<
+export function useReceiptControllerList<TData = Awaited<ReturnType<typeof receiptControllerList>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof receiptControllerList>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof belegControllerList>>,
+          Awaited<ReturnType<typeof receiptControllerList>>,
           TError,
-          Awaited<ReturnType<typeof belegControllerList>>
+          Awaited<ReturnType<typeof receiptControllerList>>
         > , 'initialData'
       >, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useBelegControllerList<TData = Awaited<ReturnType<typeof belegControllerList>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof belegControllerList>>, TError, TData>> & Pick<
+export function useReceiptControllerList<TData = Awaited<ReturnType<typeof receiptControllerList>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof receiptControllerList>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof belegControllerList>>,
+          Awaited<ReturnType<typeof receiptControllerList>>,
           TError,
-          Awaited<ReturnType<typeof belegControllerList>>
+          Awaited<ReturnType<typeof receiptControllerList>>
         > , 'initialData'
       >, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useBelegControllerList<TData = Awaited<ReturnType<typeof belegControllerList>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof belegControllerList>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export function useReceiptControllerList<TData = Awaited<ReturnType<typeof receiptControllerList>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof receiptControllerList>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 
-export function useBelegControllerList<TData = Awaited<ReturnType<typeof belegControllerList>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof belegControllerList>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export function useReceiptControllerList<TData = Awaited<ReturnType<typeof receiptControllerList>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof receiptControllerList>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getBelegControllerListQueryOptions(options)
+  const queryOptions = getReceiptControllerListQueryOptions(options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
@@ -159,19 +159,19 @@ export function useBelegControllerList<TData = Awaited<ReturnType<typeof belegCo
 
 
 
-export type belegControllerCreateResponse201 = {
-  data: BelegResponseDto
+export type receiptControllerCreateResponse201 = {
+  data: ReceiptResponseDto
   status: 201
 }
 
-export type belegControllerCreateResponseSuccess = (belegControllerCreateResponse201) & {
+export type receiptControllerCreateResponseSuccess = (receiptControllerCreateResponse201) & {
   headers: Headers;
 };
 ;
 
-export type belegControllerCreateResponse = (belegControllerCreateResponseSuccess)
+export type receiptControllerCreateResponse = (receiptControllerCreateResponseSuccess)
 
-export const getBelegControllerCreateUrl = () => {
+export const getReceiptControllerCreateUrl = () => {
 
 
 
@@ -179,14 +179,14 @@ export const getBelegControllerCreateUrl = () => {
   return `/v1/belege`
 }
 
-export const belegControllerCreate = async (createBelegDto: CreateBelegDto, options?: RequestInit): Promise<belegControllerCreateResponse> => {
+export const receiptControllerCreate = async (createReceiptDto: CreateReceiptDto, options?: RequestInit): Promise<receiptControllerCreateResponse> => {
 
-  return httpClient<belegControllerCreateResponse>(getBelegControllerCreateUrl(),
+  return httpClient<receiptControllerCreateResponse>(getReceiptControllerCreateUrl(),
   {
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(createBelegDto)
+    body: JSON.stringify(createReceiptDto)
   }
 );}
 
@@ -194,11 +194,11 @@ export const belegControllerCreate = async (createBelegDto: CreateBelegDto, opti
 
 
 
-export const getBelegControllerCreateMutationOptions = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof belegControllerCreate>>, TError,{data: CreateBelegDto}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof belegControllerCreate>>, TError,{data: CreateBelegDto}, TContext> => {
+export const getReceiptControllerCreateMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof receiptControllerCreate>>, TError,{data: CreateReceiptDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof receiptControllerCreate>>, TError,{data: CreateReceiptDto}, TContext> => {
 
-const mutationKey = ['belegControllerCreate'];
+const mutationKey = ['receiptControllerCreate'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -208,10 +208,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof belegControllerCreate>>, {data: CreateBelegDto}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof receiptControllerCreate>>, {data: CreateReceiptDto}> = (props) => {
           const {data} = props ?? {};
 
-          return  belegControllerCreate(data,requestOptions)
+          return  receiptControllerCreate(data,requestOptions)
         }
 
 
@@ -221,41 +221,41 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type BelegControllerCreateMutationResult = NonNullable<Awaited<ReturnType<typeof belegControllerCreate>>>
-    export type BelegControllerCreateMutationBody = CreateBelegDto
-    export type BelegControllerCreateMutationError = unknown
+    export type ReceiptControllerCreateMutationResult = NonNullable<Awaited<ReturnType<typeof receiptControllerCreate>>>
+    export type ReceiptControllerCreateMutationBody = CreateReceiptDto
+    export type ReceiptControllerCreateMutationError = unknown
 
-    export const useBelegControllerCreate = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof belegControllerCreate>>, TError,{data: CreateBelegDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+    export const useReceiptControllerCreate = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof receiptControllerCreate>>, TError,{data: CreateReceiptDto}, TContext>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof belegControllerCreate>>,
+        Awaited<ReturnType<typeof receiptControllerCreate>>,
         TError,
-        {data: CreateBelegDto},
+        {data: CreateReceiptDto},
         TContext
       > => {
-      return useMutation(getBelegControllerCreateMutationOptions(options), queryClient);
+      return useMutation(getReceiptControllerCreateMutationOptions(options), queryClient);
     }
 
-export type belegControllerSetZuordnungResponse200 = {
-  data: BelegResponseDto
+export type receiptControllerSetAssignmentResponse200 = {
+  data: ReceiptResponseDto
   status: 200
 }
 
-export type belegControllerSetZuordnungResponse404 = {
+export type receiptControllerSetAssignmentResponse404 = {
   data: void
   status: 404
 }
 
-export type belegControllerSetZuordnungResponseSuccess = (belegControllerSetZuordnungResponse200) & {
+export type receiptControllerSetAssignmentResponseSuccess = (receiptControllerSetAssignmentResponse200) & {
   headers: Headers;
 };
-export type belegControllerSetZuordnungResponseError = (belegControllerSetZuordnungResponse404) & {
+export type receiptControllerSetAssignmentResponseError = (receiptControllerSetAssignmentResponse404) & {
   headers: Headers;
 };
 
-export type belegControllerSetZuordnungResponse = (belegControllerSetZuordnungResponseSuccess | belegControllerSetZuordnungResponseError)
+export type receiptControllerSetAssignmentResponse = (receiptControllerSetAssignmentResponseSuccess | receiptControllerSetAssignmentResponseError)
 
-export const getBelegControllerSetZuordnungUrl = (id: string,) => {
+export const getReceiptControllerSetAssignmentUrl = (id: string,) => {
 
 
 
@@ -263,15 +263,15 @@ export const getBelegControllerSetZuordnungUrl = (id: string,) => {
   return `/v1/belege/${id}/zuordnung`
 }
 
-export const belegControllerSetZuordnung = async (id: string,
-    setZuordnungDto: SetZuordnungDto, options?: RequestInit): Promise<belegControllerSetZuordnungResponse> => {
+export const receiptControllerSetAssignment = async (id: string,
+    setAssignmentDto: SetAssignmentDto, options?: RequestInit): Promise<receiptControllerSetAssignmentResponse> => {
 
-  return httpClient<belegControllerSetZuordnungResponse>(getBelegControllerSetZuordnungUrl(id),
+  return httpClient<receiptControllerSetAssignmentResponse>(getReceiptControllerSetAssignmentUrl(id),
   {
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(setZuordnungDto)
+    body: JSON.stringify(setAssignmentDto)
   }
 );}
 
@@ -279,11 +279,11 @@ export const belegControllerSetZuordnung = async (id: string,
 
 
 
-export const getBelegControllerSetZuordnungMutationOptions = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof belegControllerSetZuordnung>>, TError,{id: string;data: SetZuordnungDto}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof belegControllerSetZuordnung>>, TError,{id: string;data: SetZuordnungDto}, TContext> => {
+export const getReceiptControllerSetAssignmentMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof receiptControllerSetAssignment>>, TError,{id: string;data: SetAssignmentDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof receiptControllerSetAssignment>>, TError,{id: string;data: SetAssignmentDto}, TContext> => {
 
-const mutationKey = ['belegControllerSetZuordnung'];
+const mutationKey = ['receiptControllerSetAssignment'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -293,10 +293,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof belegControllerSetZuordnung>>, {id: string;data: SetZuordnungDto}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof receiptControllerSetAssignment>>, {id: string;data: SetAssignmentDto}> = (props) => {
           const {id,data} = props ?? {};
 
-          return  belegControllerSetZuordnung(id,data,requestOptions)
+          return  receiptControllerSetAssignment(id,data,requestOptions)
         }
 
 
@@ -306,18 +306,18 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type BelegControllerSetZuordnungMutationResult = NonNullable<Awaited<ReturnType<typeof belegControllerSetZuordnung>>>
-    export type BelegControllerSetZuordnungMutationBody = SetZuordnungDto
-    export type BelegControllerSetZuordnungMutationError = void
+    export type ReceiptControllerSetAssignmentMutationResult = NonNullable<Awaited<ReturnType<typeof receiptControllerSetAssignment>>>
+    export type ReceiptControllerSetAssignmentMutationBody = SetAssignmentDto
+    export type ReceiptControllerSetAssignmentMutationError = void
 
-    export const useBelegControllerSetZuordnung = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof belegControllerSetZuordnung>>, TError,{id: string;data: SetZuordnungDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+    export const useReceiptControllerSetAssignment = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof receiptControllerSetAssignment>>, TError,{id: string;data: SetAssignmentDto}, TContext>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof belegControllerSetZuordnung>>,
+        Awaited<ReturnType<typeof receiptControllerSetAssignment>>,
         TError,
-        {id: string;data: SetZuordnungDto},
+        {id: string;data: SetAssignmentDto},
         TContext
       > => {
-      return useMutation(getBelegControllerSetZuordnungMutationOptions(options), queryClient);
+      return useMutation(getReceiptControllerSetAssignmentMutationOptions(options), queryClient);
     }
 

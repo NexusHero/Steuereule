@@ -12,7 +12,7 @@ export const PARTNER_COUPLING_REPOSITORY = Symbol('PARTNER_COUPLING_REPOSITORY')
 
 export interface PartnerCouplingRepository {
   findByUserAndYear(userId: string, steuerjahr: number): Promise<PartnerCouplingRecord | null>
-  findByEinladungsCode(code: string): Promise<PartnerCouplingRecord | null>
+  findByInvitationCode(code: string): Promise<PartnerCouplingRecord | null>
   upsert(
     personAUserId: string,
     steuerjahr: number,

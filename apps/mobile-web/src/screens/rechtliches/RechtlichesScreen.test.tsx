@@ -3,73 +3,73 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@steuereule/ui'
 import { createAppI18n } from '../../i18n/app-i18n'
-import { RechtlichesScreen } from './RechtlichesScreen'
-import { betreiberAusUmgebung, inhalt, RECHTLICHE_SEITEN, type Betreiber, type RechtlicheSeite } from './texte'
+import { LegalScreen } from './RechtlichesScreen'
+import { operatorFromEnv, content, LEGAL_PAGES, type Operator, type LegalPage } from './texte'
 
-const BETREIBER: Betreiber = {
+const OPERATOR: Operator = {
   name: 'Eule GmbH',
-  anschrift: 'Musterstraße 1\n12345 Musterstadt',
+  postalAddress: 'Musterstraße 1\n12345 Musterstadt',
   email: 'hallo@steuereule.de',
 }
 
-function renderSeite(seite: RechtlicheSeite, betreiber: Betreiber | null = BETREIBER) {
-  const onZurueck = vi.fn()
-  const onSeite = vi.fn()
+function renderPage(page: LegalPage, operator: Operator | null = OPERATOR) {
+  const onBack = vi.fn()
+  const onPage = vi.fn()
   render(
     <I18nextProvider i18n={createAppI18n('de')}>
       <ThemeProvider mode="light">
-        <RechtlichesScreen seite={seite} betreiber={betreiber} onZurueck={onZurueck} onSeite={onSeite} />
+        <LegalScreen page={page} operator={operator} onBack={onBack} onPage={onPage} />
       </ThemeProvider>
     </I18nextProvider>,
   )
-  return { onZurueck, onSeite }
+  return { onBack, onSeite: onPage }
 }
 
 describe('betreiberAusUmgebung', () => {
   it('reads the operator from the build env, turning a literal \\n into address lines', () => {
     expect(
-      betreiberAusUmgebung({
+      operatorFromEnv({
         EXPO_PUBLIC_BETREIBER_NAME: 'Eule GmbH',
         EXPO_PUBLIC_BETREIBER_ANSCHRIFT: 'Musterstraße 1\\n12345 Musterstadt',
         EXPO_PUBLIC_BETREIBER_EMAIL: 'hallo@steuereule.de',
       }),
-    ).toEqual(BETREIBER)
+    ).toEqual(OPERATOR)
   })
 
   it('is null when a mandatory § 5 DDG value is missing — never a half Impressum', () => {
-    expect(betreiberAusUmgebung({ EXPO_PUBLIC_BETREIBER_NAME: 'Eule GmbH' })).toBeNull()
+    expect(operatorFromEnv({ EXPO_PUBLIC_BETREIBER_NAME: 'Eule GmbH' })).toBeNull()
   })
 })
 
 describe('RechtlichesScreen', () => {
   it('the Impressum shows the configured operator', () => {
-    renderSeite('impressum')
+    renderPage('impressum')
     expect(screen.getByText(/Eule GmbH/)).toBeTruthy()
     expect(screen.getByText('E-Mail: hallo@steuereule.de')).toBeTruthy()
   })
 
   it('without operator data the Impressum says so honestly instead of inventing one', () => {
-    renderSeite('impressum', null)
+    renderPage('impressum', null)
     expect(screen.getByText('Die Anbieterangaben sind auf dieser Umgebung noch nicht hinterlegt.')).toBeTruthy()
   })
 
   it('links every other legal page and goes back', () => {
-    const { onSeite, onZurueck } = renderSeite('agb')
+    const { onSeite: onPage, onBack } = renderPage('agb')
     fireEvent.click(screen.getByText('Datenschutzerklärung'))
-    expect(onSeite).toHaveBeenCalledWith('datenschutz')
+    expect(onPage).toHaveBeenCalledWith('datenschutz')
     fireEvent.click(screen.getByLabelText('Zurück'))
-    expect(onZurueck).toHaveBeenCalled()
+    expect(onBack).toHaveBeenCalled()
   })
 
   it('the AGB carry the § 356 Abs. 5 BGB withdrawal wording the Stripe checkout asks consent for', () => {
-    renderSeite('agb')
+    renderPage('agb')
     expect(screen.getByText(/§ 356 Abs\. 5 BGB/)).toBeTruthy()
   })
 })
 
 describe('legal texts stay honest about what the product does', () => {
-  const alles = RECHTLICHE_SEITEN.flatMap((seite) => inhalt(seite, BETREIBER))
-    .flatMap((abschnitt) => [abschnitt.titel, ...abschnitt.absaetze])
+  const alles = LEGAL_PAGES.flatMap((page) => content(page, OPERATOR))
+    .flatMap((section) => [section.title, ...section.paragraphs])
     .join('\n')
 
   it('never promise an electronic transmission to the Finanzamt (ADR-0050: Papierweg)', () => {
@@ -78,8 +78,8 @@ describe('legal texts stay honest about what the product does', () => {
   })
 
   it('name every real data recipient (Art. 13 Abs. 1 lit. e DSGVO)', () => {
-    for (const empfaenger of ['Brevo', 'Stripe', 'Google', 'Have I Been Pwned']) {
-      expect(alles).toContain(empfaenger)
+    for (const recipient of ['Brevo', 'Stripe', 'Google', 'Have I Been Pwned']) {
+      expect(alles).toContain(recipient)
     }
   })
 })

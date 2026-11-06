@@ -40,7 +40,7 @@ function fromIsoDate(value: string): Date {
 }
 
 @Injectable()
-export class PrismaBelegRepository implements ReceiptRepository {
+export class PrismaReceiptRepository implements ReceiptRepository {
   constructor(@Inject(ENCRYPTED_PRISMA) private readonly prisma: EncryptedPrismaClient) {}
 
   async findAllForUser(userId: string): Promise<ReceiptRecord[]> {
@@ -71,7 +71,7 @@ export class PrismaBelegRepository implements ReceiptRepository {
     return toRecord(row)
   }
 
-  async setZuordnung(userId: string, id: string, data: SetAssignmentData): Promise<ReceiptRecord | null> {
+  async setAssignment(userId: string, id: string, data: SetAssignmentData): Promise<ReceiptRecord | null> {
     const row = await this.prisma.beleg.findFirst({ where: { id, userId } })
     if (row === null) return null
 

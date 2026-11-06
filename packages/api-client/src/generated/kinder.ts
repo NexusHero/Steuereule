@@ -25,9 +25,9 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
-  CreateKindDto,
+  CreateChildDto,
   KinderResponseDto,
-  UpdateKindDto
+  UpdateChildDto
 } from './kinder.schemas';
 
 import { httpClient } from '../http-client';
@@ -194,14 +194,14 @@ export const getKinderControllerCreateUrl = (jahr: number,) => {
 }
 
 export const kinderControllerCreate = async (jahr: number,
-    createKindDto: CreateKindDto, options?: RequestInit): Promise<kinderControllerCreateResponse> => {
+    createChildDto: CreateChildDto, options?: RequestInit): Promise<kinderControllerCreateResponse> => {
 
   return httpClient<kinderControllerCreateResponse>(getKinderControllerCreateUrl(jahr),
   {
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(createKindDto)
+    body: JSON.stringify(createChildDto)
   }
 );}
 
@@ -210,8 +210,8 @@ export const kinderControllerCreate = async (jahr: number,
 
 
 export const getKinderControllerCreateMutationOptions = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof kinderControllerCreate>>, TError,{jahr: number;data: CreateKindDto}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof kinderControllerCreate>>, TError,{jahr: number;data: CreateKindDto}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof kinderControllerCreate>>, TError,{jahr: number;data: CreateChildDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof kinderControllerCreate>>, TError,{jahr: number;data: CreateChildDto}, TContext> => {
 
 const mutationKey = ['kinderControllerCreate'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -223,7 +223,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof kinderControllerCreate>>, {jahr: number;data: CreateKindDto}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof kinderControllerCreate>>, {jahr: number;data: CreateChildDto}> = (props) => {
           const {jahr,data} = props ?? {};
 
           return  kinderControllerCreate(jahr,data,requestOptions)
@@ -237,15 +237,15 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type KinderControllerCreateMutationResult = NonNullable<Awaited<ReturnType<typeof kinderControllerCreate>>>
-    export type KinderControllerCreateMutationBody = CreateKindDto
+    export type KinderControllerCreateMutationBody = CreateChildDto
     export type KinderControllerCreateMutationError = void
 
     export const useKinderControllerCreate = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof kinderControllerCreate>>, TError,{jahr: number;data: CreateKindDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof kinderControllerCreate>>, TError,{jahr: number;data: CreateChildDto}, TContext>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof kinderControllerCreate>>,
         TError,
-        {jahr: number;data: CreateKindDto},
+        {jahr: number;data: CreateChildDto},
         TContext
       > => {
       return useMutation(getKinderControllerCreateMutationOptions(options), queryClient);
@@ -281,14 +281,14 @@ export const getKinderControllerUpdateUrl = (jahr: number,
 
 export const kinderControllerUpdate = async (jahr: number,
     id: string,
-    updateKindDto: UpdateKindDto, options?: RequestInit): Promise<kinderControllerUpdateResponse> => {
+    updateChildDto: UpdateChildDto, options?: RequestInit): Promise<kinderControllerUpdateResponse> => {
 
   return httpClient<kinderControllerUpdateResponse>(getKinderControllerUpdateUrl(jahr,id),
   {
     ...options,
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(updateKindDto)
+    body: JSON.stringify(updateChildDto)
   }
 );}
 
@@ -297,8 +297,8 @@ export const kinderControllerUpdate = async (jahr: number,
 
 
 export const getKinderControllerUpdateMutationOptions = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof kinderControllerUpdate>>, TError,{jahr: number;id: string;data: UpdateKindDto}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof kinderControllerUpdate>>, TError,{jahr: number;id: string;data: UpdateKindDto}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof kinderControllerUpdate>>, TError,{jahr: number;id: string;data: UpdateChildDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof kinderControllerUpdate>>, TError,{jahr: number;id: string;data: UpdateChildDto}, TContext> => {
 
 const mutationKey = ['kinderControllerUpdate'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -310,7 +310,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof kinderControllerUpdate>>, {jahr: number;id: string;data: UpdateKindDto}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof kinderControllerUpdate>>, {jahr: number;id: string;data: UpdateChildDto}> = (props) => {
           const {jahr,id,data} = props ?? {};
 
           return  kinderControllerUpdate(jahr,id,data,requestOptions)
@@ -324,15 +324,15 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type KinderControllerUpdateMutationResult = NonNullable<Awaited<ReturnType<typeof kinderControllerUpdate>>>
-    export type KinderControllerUpdateMutationBody = UpdateKindDto
+    export type KinderControllerUpdateMutationBody = UpdateChildDto
     export type KinderControllerUpdateMutationError = void
 
     export const useKinderControllerUpdate = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof kinderControllerUpdate>>, TError,{jahr: number;id: string;data: UpdateKindDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof kinderControllerUpdate>>, TError,{jahr: number;id: string;data: UpdateChildDto}, TContext>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof kinderControllerUpdate>>,
         TError,
-        {jahr: number;id: string;data: UpdateKindDto},
+        {jahr: number;id: string;data: UpdateChildDto},
         TContext
       > => {
       return useMutation(getKinderControllerUpdateMutationOptions(options), queryClient);

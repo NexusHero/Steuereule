@@ -84,7 +84,7 @@ describe('GET /v1/steuerjahre/:jahr/cockpit — real Postgres (REQ-001 + ticket 
     // Seed through the real seams: job=Angestellt (writes the TaxYear projection), then only the
     // Bruttoarbeitslohn — lohnsteuer + sozialversicherung stay open (honest, never a fabricated 0).
     await interviewRepository.write({ userId, steuerjahr: 2026, questionId: 'job', value: 'Angestellt', openItems: 2 })
-    await lstbRepository.setFeld(userId, 2026, 'bruttoarbeitslohn', '50000')
+    await lstbRepository.setField(userId, 2026, 'bruttoarbeitslohn', '50000')
 
     const response = await app.inject({
       method: 'GET',
@@ -96,7 +96,7 @@ describe('GET /v1/steuerjahre/:jahr/cockpit — real Postgres (REQ-001 + ticket 
     expect(response.json()).toEqual({
       taxYear: 2026,
       // 2 open LStB fields × 60 uncertainty around the settled 50000.
-      stand: { kind: 'spanne', von: 49880, bis: 50120, offenePosten: 2, konflikte: 0, unbestaetigte: 0, unbestaetigteSumme: 0 },
+      status: { kind: 'spanne', from: 49880, to: 50120, openItems: 2, conflicts: 0, unconfirmedItems: 0, unconfirmedSum: 0 },
       openItems: 2,
     })
   })
@@ -120,7 +120,7 @@ describe('GET /v1/steuerjahre/:jahr/cockpit — real Postgres (REQ-001 + ticket 
     // userA declared Angestellt but has not started the LStB yet → all three fields open.
     expect(userAResponse.json()).toEqual({
       taxYear: 2026,
-      stand: { kind: 'spanne', von: 0, bis: 180, offenePosten: 3, konflikte: 0, unbestaetigte: 0, unbestaetigteSumme: 0 },
+      status: { kind: 'spanne', from: 0, to: 180, openItems: 3, conflicts: 0, unconfirmedItems: 0, unconfirmedSum: 0 },
       openItems: 2,
     })
   })
@@ -148,9 +148,9 @@ describe('GET /v1/steuerjahre/:jahr/cockpit — real Postgres (REQ-001 + ticket 
     const userId = userIdFromCookie(cookie)
 
     await interviewRepository.write({ userId, steuerjahr: 2026, questionId: 'job', value: 'Angestellt', openItems: 2 })
-    await lstbRepository.setFeld(userId, 2026, 'bruttoarbeitslohn', '50000')
-    await lstbRepository.setFeld(userId, 2026, 'lohnsteuer', '8000')
-    await lstbRepository.setFeld(userId, 2026, 'sozialversicherung', '9000')
+    await lstbRepository.setField(userId, 2026, 'bruttoarbeitslohn', '50000')
+    await lstbRepository.setField(userId, 2026, 'lohnsteuer', '8000')
+    await lstbRepository.setField(userId, 2026, 'sozialversicherung', '9000')
 
     const response = await app.inject({
       method: 'GET',
@@ -158,6 +158,6 @@ describe('GET /v1/steuerjahre/:jahr/cockpit — real Postgres (REQ-001 + ticket 
       headers: { cookie },
     })
 
-    expect(response.json()).toEqual({ taxYear: 2026, stand: { kind: 'bestimmt', wert: 50000 }, openItems: 2 })
+    expect(response.json()).toEqual({ taxYear: 2026, status: { kind: 'bestimmt', value: 50000 }, openItems: 2 })
   })
 })

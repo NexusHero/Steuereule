@@ -10,51 +10,51 @@ import { ThemeProvider } from '@steuereule/ui'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import { createAppI18n } from '../../i18n/app-i18n'
-import { KapitalScreen } from './KapitalScreen'
+import { CapitalScreen } from './KapitalScreen'
 import { server } from '../../test-msw-server'
 import type { KapitalResponseDto } from '@steuereule/api-client'
 
 const TAX_YEAR = 2026
-const KAPITAL_URL = `*/v1/steuerjahre/${TAX_YEAR}/kapital`
+const CAPITAL_URL = `*/v1/steuerjahre/${TAX_YEAR}/kapital`
 const GP_URL = `*/v1/steuerjahre/${TAX_YEAR}/kapital/guenstigerpruefung`
 
-const DEUTSCHER_BROKER: KapitalResponseDto = {
-  kapitalertraege: { kind: 'erfasst', wert: 20000 },
+const GERMAN_BROKER: KapitalResponseDto = {
+  kapitalertraege: { kind: 'erfasst', value: 20000 },
   sparerPauschbetrag: { kind: 'offen' },
   kapitalertragsteuer: { kind: 'offen' },
   solidaritaetszuschlag: { kind: 'offen' },
   kirchensteuer: { kind: 'offen' },
-  pflichtfelder: ['kapitalertraege', 'sparerPauschbetrag', 'kapitalertragsteuer', 'solidaritaetszuschlag', 'kirchensteuer'],
+  requiredFields: ['kapitalertraege', 'sparerPauschbetrag', 'kapitalertragsteuer', 'solidaritaetszuschlag', 'kirchensteuer'],
   depot: { kind: 'deutscher-broker' },
-  posten: [{ id: 'kapital', betrag: 20000, herkunft: 'eingabe' }],
-  stand: { kind: 'bestimmt', einnahmen: 20000, vorsorgeaufwand: 0, anrechnung: 0 },
+  items: [{ id: 'kapital', amount: 20000, provenance: 'eingabe' }],
+  status: { kind: 'bestimmt', einnahmen: 20000, vorsorgeaufwand: 0, anrechnung: 0 },
   inhaber: null,
 }
 
-const EINDEUTIG_ABGELTUNG = {
+const UNAMBIGUOUS_FLAT_RATE = {
   kind: 'eindeutig',
-  empfehlung: 'abgeltung',
-  abgeltung: 4750,
-  persoenlich: 8482,
+  recommendation: 'abgeltung',
+  flatRateTax: 4750,
+  personal: 8482,
   delta: 3732,
-  unschaerfe: { kind: 'bestimmt', obergrenze: 0 },
-  herkunft: {
+  uncertainty: { kind: 'bestimmt', upperLimit: 0 },
+  provenance: {
     kapitalertraege: 20000,
-    uebrigesZvE: 60000,
-    sparerpauschbetrag: 1000,
-    veranlagung: 'einzel',
-    bestandteile: ['einkommensteuer', 'solidaritaetszuschlag'],
+    remainingZvE: 60000,
+    saversAllowance: 1000,
+    assessmentType: 'einzel',
+    components: ['einkommensteuer', 'solidaritaetszuschlag'],
   },
 }
 
-function renderKapital() {
+function renderCapital() {
   const i18n = createAppI18n('de')
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={queryClient}>
       <I18nextProvider i18n={i18n}>
         <ThemeProvider mode="light">
-          <KapitalScreen taxYear={TAX_YEAR} onDone={() => {}} />
+          <CapitalScreen taxYear={TAX_YEAR} onDone={() => {}} />
         </ThemeProvider>
       </I18nextProvider>
     </QueryClientProvider>,
@@ -63,7 +63,7 @@ function renderKapital() {
 
 describe('KapitalScreen', () => {
   it('renders the depot-Einordnung and the Kapitalerträge field from the GET response', async () => {
-    renderKapital()
+    renderCapital()
 
     expect(await screen.findByText('Kapitalerträge (Einkünfte aus Kapitalvermögen)')).toBeTruthy()
     // The default mask has no kap-depot answer yet — the honest "unbekannt" notice, never a guess.
@@ -73,39 +73,39 @@ describe('KapitalScreen', () => {
   it('asks a couple whose depot it is and saves the answer (ADR-0054)', async () => {
     const bodies: unknown[] = []
     server.use(
-      http.get(KAPITAL_URL, () => HttpResponse.json(DEUTSCHER_BROKER, { status: 200 })),
+      http.get(CAPITAL_URL, () => HttpResponse.json(GERMAN_BROKER, { status: 200 })),
       http.get(GP_URL, () => HttpResponse.json(null, { status: 200 })),
       http.get(`*/v1/steuerjahre/${TAX_YEAR}/kopplung`, () => HttpResponse.json({ veranlagungsart: 'zusammen' })),
-      http.put(`${KAPITAL_URL}/inhaber`, async ({ request }) => {
+      http.put(`${CAPITAL_URL}/inhaber`, async ({ request }) => {
         bodies.push(await request.json())
-        return HttpResponse.json(DEUTSCHER_BROKER, { status: 200 })
+        return HttpResponse.json(GERMAN_BROKER, { status: 200 })
       }),
     )
-    renderKapital()
+    renderCapital()
     fireEvent.click(await screen.findByTestId('kapital-inhaber-gemeinsam'))
     await waitFor(() => expect(bodies).toEqual([{ inhaber: 'gemeinsam' }]))
   })
 
   it('does not ask single people whose depot it is', async () => {
-    server.use(http.get(KAPITAL_URL, () => HttpResponse.json(DEUTSCHER_BROKER, { status: 200 })))
+    server.use(http.get(CAPITAL_URL, () => HttpResponse.json(GERMAN_BROKER, { status: 200 })))
     server.use(http.get(GP_URL, () => HttpResponse.json(null, { status: 200 })))
-    renderKapital()
+    renderCapital()
     await screen.findByText(/Abgeltungsteuer einbehalten/)
     expect(screen.queryByTestId('kapital-inhaber-gemeinsam')).toBeNull()
   })
 
   it('renders the German-broker notice (Abgeltungsteuer withheld) from the GET response', async () => {
-    server.use(http.get(KAPITAL_URL, () => HttpResponse.json(DEUTSCHER_BROKER, { status: 200 })))
+    server.use(http.get(CAPITAL_URL, () => HttpResponse.json(GERMAN_BROKER, { status: 200 })))
     server.use(http.get(GP_URL, () => HttpResponse.json(null, { status: 200 })))
-    renderKapital()
+    renderCapital()
 
     expect(await screen.findByText(/Abgeltungsteuer einbehalten/)).toBeTruthy()
   })
 
   it('shows the derived Posten with its Herkunft once determined', async () => {
-    server.use(http.get(KAPITAL_URL, () => HttpResponse.json(DEUTSCHER_BROKER, { status: 200 })))
+    server.use(http.get(CAPITAL_URL, () => HttpResponse.json(GERMAN_BROKER, { status: 200 })))
     server.use(http.get(GP_URL, () => HttpResponse.json(null, { status: 200 })))
-    renderKapital()
+    renderCapital()
 
     expect(await screen.findByText('Deine Kapitalerträge')).toBeTruthy()
     expect(screen.getByText('20000 €')).toBeTruthy()
@@ -114,15 +114,15 @@ describe('KapitalScreen', () => {
 
   it('a German broker also asks the withheld taxes and the used Sparer-Pauschbetrag (Anlage KAP)', async () => {
     let url = ''
-    server.use(http.get(KAPITAL_URL, () => HttpResponse.json(DEUTSCHER_BROKER, { status: 200 })))
+    server.use(http.get(CAPITAL_URL, () => HttpResponse.json(GERMAN_BROKER, { status: 200 })))
     server.use(
-      http.put(`${KAPITAL_URL}/:feld`, ({ request }) => {
+      http.put(`${CAPITAL_URL}/:feld`, ({ request }) => {
         url = request.url
-        return HttpResponse.json(DEUTSCHER_BROKER, { status: 200 })
+        return HttpResponse.json(GERMAN_BROKER, { status: 200 })
       }),
     )
     server.use(http.get(GP_URL, () => HttpResponse.json(null, { status: 200 })))
-    renderKapital()
+    renderCapital()
     expect(await screen.findByText('Bereits genutzter Sparer-Pauschbetrag (laut Steuerbescheinigung, ggf. 0)')).toBeTruthy()
     const input = screen.getByLabelText(/Einbehaltene Kapitalertragsteuer/)
     fireEvent.change(input, { target: { value: '4750' } })
@@ -134,14 +134,14 @@ describe('KapitalScreen', () => {
     let body: unknown
     let url = ''
     server.use(
-      http.put(`${KAPITAL_URL}/kapitalertraege`, async ({ request }) => {
+      http.put(`${CAPITAL_URL}/kapitalertraege`, async ({ request }) => {
         url = request.url
         body = await request.json()
-        return HttpResponse.json(DEUTSCHER_BROKER, { status: 200 })
+        return HttpResponse.json(GERMAN_BROKER, { status: 200 })
       }),
     )
     server.use(http.get(GP_URL, () => HttpResponse.json(null, { status: 200 })))
-    renderKapital()
+    renderCapital()
     await screen.findByText('Kapitalerträge (Einkünfte aus Kapitalvermögen)')
 
     const input = screen.getByLabelText(/Kapitalerträge \(Einkünfte aus Kapitalvermögen\)/)
@@ -149,14 +149,14 @@ describe('KapitalScreen', () => {
     // react-native-web fires onSubmitEditing from its keyDown handler on Enter.
     fireEvent.keyDown(input, { key: 'Enter' })
 
-    await waitFor(() => expect(body).toEqual({ kind: 'erfasst', wert: 20000 }))
+    await waitFor(() => expect(body).toEqual({ kind: 'erfasst', value: 20000 }))
     expect(url).toContain('/kapital/kapitalertraege')
   })
 
   it('renders the Günstigerprüfung verdict FIRST — eindeutig with the recommendation', async () => {
-    server.use(http.get(KAPITAL_URL, () => HttpResponse.json(DEUTSCHER_BROKER, { status: 200 })))
-    server.use(http.get(GP_URL, () => HttpResponse.json(EINDEUTIG_ABGELTUNG, { status: 200 })))
-    renderKapital()
+    server.use(http.get(CAPITAL_URL, () => HttpResponse.json(GERMAN_BROKER, { status: 200 })))
+    server.use(http.get(GP_URL, () => HttpResponse.json(UNAMBIGUOUS_FLAT_RATE, { status: 200 })))
+    renderCapital()
 
     expect(await screen.findByTestId('guenstigerpruefung-aussage')).toBeTruthy()
     expect(screen.getByText('Die Abgeltungsteuer ist günstiger.')).toBeTruthy()
@@ -166,14 +166,14 @@ describe('KapitalScreen', () => {
 
   it('renders the honest no-verdict states and the foreign-broker KAP-Pflicht notice', async () => {
     server.use(
-      http.get(KAPITAL_URL, () =>
+      http.get(CAPITAL_URL, () =>
         HttpResponse.json(
-          { ...DEUTSCHER_BROKER, depot: { kind: 'auslaendischer-broker' } },
+          { ...GERMAN_BROKER, depot: { kind: 'auslaendischer-broker' } },
           { status: 200 },
         ),
       ),
     )
-    renderKapital()
+    renderCapital()
 
     // Foreign broker: the KAP-Pflicht notice is shown, the Günstigerprüfung is never requested.
     expect(await screen.findByText(/keine deutsche Steuer abgeführt/)).toBeTruthy()
@@ -182,14 +182,14 @@ describe('KapitalScreen', () => {
 
   it('shows the honest Krypto gate statement', async () => {
     server.use(
-      http.get(KAPITAL_URL, () =>
+      http.get(CAPITAL_URL, () =>
         HttpResponse.json(
-          { ...DEUTSCHER_BROKER, depot: { kind: 'krypto' }, stand: { kind: 'offen', einnahmen: 0, vorsorgeaufwand: 0, anrechnung: 0, offenePosten: 0, konflikte: 0, gegated: ['Kapital'] } },
+          { ...GERMAN_BROKER, depot: { kind: 'krypto' }, status: { kind: 'offen', einnahmen: 0, vorsorgeaufwand: 0, anrechnung: 0, openItems: 0, conflicts: 0, gated: ['Kapital'] } },
           { status: 200 },
         ),
       ),
     )
-    renderKapital()
+    renderCapital()
 
     expect(await screen.findByText(/Krypto bleibt in 1.0 ehrlich außen vor/)).toBeTruthy()
   })

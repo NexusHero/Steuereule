@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
-import { ANNEXES, MASKEN } from '@steuereule/core'
+import { ANNEXES, SCREENS } from '@steuereule/core'
 import { IsIn } from 'class-validator'
 
 export class ProvenanceDto {
@@ -10,7 +10,7 @@ export class ProvenanceDto {
   name?: string
 
   @ApiPropertyOptional({ type: String, description: 'Der Beleg, aus dem der Wert stammt.' })
-  belegId?: string
+  receiptId?: string
 
   @ApiPropertyOptional({ type: Number, example: 2024, description: 'Quelljahr der Jahresübernahme (art = uebernahme).' })
   vorjahr?: number
@@ -18,36 +18,36 @@ export class ProvenanceDto {
 
 export class ProposalDto {
   @ApiProperty({ type: String, nullable: true, example: '4800', description: 'Der vorgeschlagene Feld-Wert (null = leeren).' })
-  wert!: string | null
+  value!: string | null
 
   @ApiProperty({ type: ProvenanceDto })
-  herkunft!: ProvenanceDto
+  provenance!: ProvenanceDto
 }
 
 export class FieldProvenanceDto {
   @ApiProperty({ type: String, example: 'lstb.bruttoarbeitslohn' })
   key!: string
 
-  @ApiProperty({ type: String, enum: MASKEN, example: 'lstb' })
-  maske!: (typeof MASKEN)[number]
+  @ApiProperty({ type: String, enum: SCREENS, example: 'lstb' })
+  screen!: (typeof SCREENS)[number]
 
   @ApiProperty({ type: String, nullable: true, description: 'Instanz (Vermietungsobjekt, Kind) oder null.' })
-  instanz!: string | null
+  instance!: string | null
 
   @ApiProperty({ type: String, example: 'bruttoarbeitslohn' })
-  feld!: string
+  field!: string
 
   @ApiProperty({ type: String, nullable: true, example: '4750', description: 'Der aktuell gespeicherte Feld-Wert (null = offen, "unklar").' })
-  wert!: string | null
+  value!: string | null
 
   @ApiProperty({ type: ProvenanceDto })
-  herkunft!: ProvenanceDto
+  provenance!: ProvenanceDto
 
   @ApiProperty({ type: Boolean })
   bestaetigt!: boolean
 
   @ApiProperty({ type: ProposalDto, nullable: true })
-  vorschlag!: ProposalDto | null
+  proposal!: ProposalDto | null
 }
 
 export class AnnexConfirmationDto {
@@ -55,20 +55,20 @@ export class AnnexConfirmationDto {
   anlage!: (typeof ANNEXES)[number]
 
   @ApiProperty({ type: Number, description: 'Wie viele Werte dieser Anlage noch unbestätigt sind.' })
-  unbestaetigt!: number
+  unconfirmed!: number
 
   @ApiProperty({ type: [FieldProvenanceDto] })
-  werte!: FieldProvenanceDto[]
+  values!: FieldProvenanceDto[]
 }
 
 /** Was der Nutzer noch prüfen muss: je Anlage die unbestätigten Werte und offenen Vorschläge. */
 export class ConfirmationResponseDto {
   @ApiProperty({ type: [AnnexConfirmationDto] })
-  anlagen!: AnnexConfirmationDto[]
+  annexes!: AnnexConfirmationDto[]
 }
 
 export class ProposalDecisionDto {
   @ApiProperty({ type: String, enum: ['annehmen', 'verwerfen'] })
   @IsIn(['annehmen', 'verwerfen'])
-  entscheidung!: 'annehmen' | 'verwerfen'
+  decision!: 'annehmen' | 'verwerfen'
 }

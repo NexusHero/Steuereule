@@ -2,22 +2,22 @@ import { Module } from '@nestjs/common'
 import { AuditModule } from '../audit/audit.module.js'
 import { PrismaModule } from '../prisma/prisma.module.js'
 import { ProfileModule } from '../profile/profile.module.js'
-import { StammdatenModule } from '../stammdaten/stammdaten.module.js'
-import { KopplungController } from './kopplung.controller.js'
-import { KopplungService } from './kopplung.service.js'
+import { MasterDataModule } from '../stammdaten/stammdaten.module.js'
+import { LinkController } from './kopplung.controller.js'
+import { LinkService } from './kopplung.service.js'
 import { PARTNER_COUPLING_REPOSITORY } from './kopplung.repository.js'
-import { PrismaKopplungRepository } from './kopplung.repository.prisma.js'
+import { PrismaLinkRepository } from './kopplung.repository.prisma.js'
 
 @Module({
-  imports: [PrismaModule, AuditModule, ProfileModule, StammdatenModule],
-  controllers: [KopplungController],
+  imports: [PrismaModule, AuditModule, ProfileModule, MasterDataModule],
+  controllers: [LinkController],
   providers: [
-    KopplungService,
+    LinkService,
     {
       provide: PARTNER_COUPLING_REPOSITORY,
-      useClass: PrismaKopplungRepository,
+      useClass: PrismaLinkRepository,
     },
   ],
-  exports: [KopplungService, PARTNER_COUPLING_REPOSITORY],
+  exports: [LinkService, PARTNER_COUPLING_REPOSITORY],
 })
-export class KopplungModule {}
+export class LinkModule {}

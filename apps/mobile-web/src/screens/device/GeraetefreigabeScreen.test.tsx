@@ -5,7 +5,7 @@ import { ThemeProvider } from '@steuereule/ui'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import { createAppI18n } from '../../i18n/app-i18n'
-import { GeraetefreigabeScreen } from './GeraetefreigabeScreen'
+import { DeviceApprovalScreen } from './GeraetefreigabeScreen'
 import { server } from '../../test-msw-server'
 
 const BASE_URL = 'http://localhost:3000'
@@ -17,7 +17,7 @@ function renderApproval(opts: { lng?: 'de' | 'en'; userCode?: string } = {}) {
     <QueryClientProvider client={queryClient}>
       <I18nextProvider i18n={i18n}>
         <ThemeProvider mode="light">
-          <GeraetefreigabeScreen userCode={opts.userCode ?? 'K7QX-9F2M'} />
+          <DeviceApprovalScreen userCode={opts.userCode ?? 'K7QX-9F2M'} />
         </ThemeProvider>
       </I18nextProvider>
     </QueryClientProvider>,

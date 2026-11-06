@@ -7,13 +7,13 @@ import { APP_NS } from '../../i18n/resources'
 import { parseUserAgent, resolveRegionName, formatRequestedAt } from './deviceContext'
 import { LoadingState, ErrorState, SuccessState } from '../shared/ScreenState'
 
-export interface GeraetefreigabeScreenProps {
+export interface DeviceApprovalScreenProps {
   readonly userCode: string
 }
 
 type ApproveState = 'idle' | 'approving' | 'approved' | 'error'
 
-export function GeraetefreigabeScreen({ userCode }: GeraetefreigabeScreenProps) {
+export function DeviceApprovalScreen({ userCode }: DeviceApprovalScreenProps) {
   const t = useTheme()
   const bp = useBreakpoint()
   const { t: tr, i18n } = useTranslation(APP_NS)

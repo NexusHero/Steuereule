@@ -44,8 +44,8 @@ describe('ordneKapDepotEin — the kap-depot answer mapped onto what it means', 
 
 describe('setzeKapitalFeld — the one setter', () => {
   it('captures a non-negative integer as erfasst', () => {
-    const next = setCapitalField(EMPTY_CAPITAL, 'kapitalertraege', { kind: 'erfasst', wert: 2500 })
-    expect(next.kapitalertraege).toEqual({ kind: 'erfasst', wert: 2500 })
+    const next = setCapitalField(EMPTY_CAPITAL, 'kapitalertraege', { kind: 'erfasst', value: 2500 })
+    expect(next.kapitalertraege).toEqual({ kind: 'erfasst', value: 2500 })
   })
 
   it('accepts offen and unklar', () => {
@@ -54,9 +54,9 @@ describe('setzeKapitalFeld — the one setter', () => {
   })
 
   it('throws on an invalid erfasst value', () => {
-    expect(() => setCapitalField(EMPTY_CAPITAL, 'kapitalertraege', { kind: 'erfasst', wert: -1 })).toThrow(RangeError)
-    expect(() => setCapitalField(EMPTY_CAPITAL, 'kapitalertraege', { kind: 'erfasst', wert: 1.5 })).toThrow(RangeError)
-    expect(() => setCapitalField(EMPTY_CAPITAL, 'kapitalertraege', { kind: 'erfasst', wert: Number.NaN })).toThrow(RangeError)
+    expect(() => setCapitalField(EMPTY_CAPITAL, 'kapitalertraege', { kind: 'erfasst', value: -1 })).toThrow(RangeError)
+    expect(() => setCapitalField(EMPTY_CAPITAL, 'kapitalertraege', { kind: 'erfasst', value: 1.5 })).toThrow(RangeError)
+    expect(() => setCapitalField(EMPTY_CAPITAL, 'kapitalertraege', { kind: 'erfasst', value: Number.NaN })).toThrow(RangeError)
   })
 })
 
@@ -64,11 +64,11 @@ describe('the persistence encoding — the ONE place offen/unklar/erfasst maps t
   it('round-trips all three states', () => {
     expect(serializeCapitalField({ kind: 'offen' })).toBeNull()
     expect(serializeCapitalField({ kind: 'unklar' })).toBe('unklar')
-    expect(serializeCapitalField({ kind: 'erfasst', wert: 2500 })).toBe('2500')
+    expect(serializeCapitalField({ kind: 'erfasst', value: 2500 })).toBe('2500')
 
     expect(deserializeCapitalField(null)).toEqual({ kind: 'offen' })
     expect(deserializeCapitalField('unklar')).toEqual({ kind: 'unklar' })
-    expect(deserializeCapitalField('2500')).toEqual({ kind: 'erfasst', wert: 2500 })
+    expect(deserializeCapitalField('2500')).toEqual({ kind: 'erfasst', value: 2500 })
   })
 
   it('throws on a stored value that is neither (corruption, never guessed)', () => {
@@ -79,12 +79,12 @@ describe('the persistence encoding — the ONE place offen/unklar/erfasst maps t
 
 describe('kapitalAlsKernposten — the fold into the deterministic core', () => {
   it('an erfasst field becomes a Kapital-Posten with Herkunft eingabe', () => {
-    const posten = capitalAsCoreLineItem({ ...EMPTY_CAPITAL, kapitalertraege: { kind: 'erfasst', wert: 2500 } })
-    expect(posten).toEqual({
+    const items = capitalAsCoreLineItem({ ...EMPTY_CAPITAL, kapitalertraege: { kind: 'erfasst', value: 2500 } })
+    expect(items).toEqual({
       id: 'kapital',
-      einkunftsart: 'Kapital',
-      betrag: 2500,
-      quelle: { art: 'eingabe' },
+      incomeType: 'Kapital',
+      amount: 2500,
+      source: { art: 'eingabe' },
     })
   })
 
@@ -96,20 +96,20 @@ describe('kapitalAlsKernposten — the fold into the deterministic core', () => 
 
 describe('kapitalStand — the honest Berechnungsstand', () => {
   it('is bestimmt when the field is captured', () => {
-    const stand = capitalStatus({ ...EMPTY_CAPITAL, kapitalertraege: { kind: 'erfasst', wert: 2500 } }, [])
-    expect(stand).toEqual({ kind: 'bestimmt', einnahmen: 2500, vorsorgeaufwand: 0, anrechnung: 0 })
+    const status = capitalStatus({ ...EMPTY_CAPITAL, kapitalertraege: { kind: 'erfasst', value: 2500 } }, [])
+    expect(status).toEqual({ kind: 'bestimmt', einnahmen: 2500, vorsorgeaufwand: 0, anrechnung: 0 })
   })
 
   it('is offen with one open posten when the field is open', () => {
-    const stand = capitalStatus(EMPTY_CAPITAL, [])
-    expect(stand.kind).toBe('offen')
-    if (stand.kind === 'offen') expect(stand.offenePosten).toBe(1)
+    const status = capitalStatus(EMPTY_CAPITAL, [])
+    expect(status.kind).toBe('offen')
+    if (status.kind === 'offen') expect(status.openItems).toBe(1)
   })
 
   it('passes gegated through — a Krypto-Anleger reads offen with the gate named', () => {
-    const stand = capitalStatus({ ...EMPTY_CAPITAL, kapitalertraege: { kind: 'erfasst', wert: 2500 } }, ['Kapital'])
-    expect(stand.kind).toBe('offen')
-    if (stand.kind === 'offen') expect(stand.gegated).toEqual(['Kapital'])
+    const status = capitalStatus({ ...EMPTY_CAPITAL, kapitalertraege: { kind: 'erfasst', value: 2500 } }, ['Kapital'])
+    expect(status.kind).toBe('offen')
+    if (status.kind === 'offen') expect(status.gated).toEqual(['Kapital'])
   })
 })
 

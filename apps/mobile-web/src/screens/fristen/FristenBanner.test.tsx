@@ -9,12 +9,12 @@ import { ThemeProvider } from '@steuereule/ui'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import { createAppI18n } from '../../i18n/app-i18n'
-import { FristenBanner, Banner } from './FristenBanner'
+import { DeadlinesBanner, Banner } from './FristenBanner'
 import { server } from '../../test-msw-server'
-import type { FristenResponseDto } from '@steuereule/api-client'
+import type { DeadlinesResponseDto } from '@steuereule/api-client'
 
 const TAX_YEAR = 2026
-const FRISTEN_URL = `*/v1/steuerjahre/${TAX_YEAR}/fristen`
+const DEADLINES_URL = `*/v1/steuerjahre/${TAX_YEAR}/fristen`
 
 function renderBanner() {
   const i18n = createAppI18n('de')
@@ -23,34 +23,34 @@ function renderBanner() {
     <QueryClientProvider client={queryClient}>
       <I18nextProvider i18n={i18n}>
         <ThemeProvider mode="light">
-          <FristenBanner taxYear={TAX_YEAR} />
+          <DeadlinesBanner taxYear={TAX_YEAR} />
         </ThemeProvider>
       </I18nextProvider>
     </QueryClientProvider>,
   )
 }
 
-const WARNUNG: FristenResponseDto = {
-  abgabefrist: '2027-07-31',
-  heute: '2027-06-01',
-  stufe: 'warnung',
-  verbleibendeTage: 60,
-  verspaetungszuschlag: { mindestsatzEur: 25, prozentProMonat: 0.25 },
+const WARNING: DeadlinesResponseDto = {
+  filingDeadline: '2027-07-31',
+  today: '2027-06-01',
+  level: 'warnung',
+  remainingDays: 60,
+  lateFilingSurcharge: { minimumRateEur: 25, percentPerMonth: 0.25 },
 }
 
-const ABGELAUFEN: FristenResponseDto = {
-  abgabefrist: '2027-07-31',
-  heute: '2027-08-01',
-  stufe: 'abgelaufen',
-  verbleibendeTage: -1,
-  verspaetungszuschlag: { mindestsatzEur: 25, prozentProMonat: 0.25 },
+const EXPIRED: DeadlinesResponseDto = {
+  filingDeadline: '2027-07-31',
+  today: '2027-08-01',
+  level: 'abgelaufen',
+  remainingDays: -1,
+  lateFilingSurcharge: { minimumRateEur: 25, percentPerMonth: 0.25 },
 }
 
 describe('FristenBanner', () => {
   it('renders nothing at stufe keine — the honest absence, not a permanent banner', async () => {
     server.use(
-      http.get(FRISTEN_URL, () =>
-        HttpResponse.json({ ...WARNUNG, stufe: 'keine', verbleibendeTage: 279, heute: '2026-10-25' }, { status: 200 }),
+      http.get(DEADLINES_URL, () =>
+        HttpResponse.json({ ...WARNING, level: 'keine', remainingDays: 279, today: '2026-10-25' }, { status: 200 }),
       ),
     )
     const { container } = renderBanner()
@@ -60,7 +60,7 @@ describe('FristenBanner', () => {
   })
 
   it('warns soberly with the frist and the § 152 AO minimum from 60 days out', async () => {
-    server.use(http.get(FRISTEN_URL, () => HttpResponse.json(WARNUNG, { status: 200 })))
+    server.use(http.get(DEADLINES_URL, () => HttpResponse.json(WARNING, { status: 200 })))
     renderBanner()
 
     const banner = await screen.findByTestId('fristen-banner-warnung')
@@ -70,7 +70,7 @@ describe('FristenBanner', () => {
   })
 
   it('names the missed frist soberly — a banner, never a verspätet status (ADR-0039)', async () => {
-    server.use(http.get(FRISTEN_URL, () => HttpResponse.json(ABGELAUFEN, { status: 200 })))
+    server.use(http.get(DEADLINES_URL, () => HttpResponse.json(EXPIRED, { status: 200 })))
     renderBanner()
 
     const banner = await screen.findByTestId('fristen-banner-abgelaufen')
@@ -85,7 +85,7 @@ describe('Banner (pure presentational)', () => {
     render(
       <I18nextProvider i18n={i18n}>
         <ThemeProvider mode="light">
-          <Banner dto={WARNUNG} />
+          <Banner dto={WARNING} />
         </ThemeProvider>
       </I18nextProvider>,
     )

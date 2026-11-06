@@ -10,20 +10,20 @@ import manifest from '../src/ausdruck/vordrucke-2025.json' with { type: 'json' }
 const DIR = new URL('../assets/vordrucke/2025/', import.meta.url)
 
 describe('Vordruck-Vorlagen 2025', () => {
-  it.each(Object.entries(manifest))('%s matches its pinned hash', (_name, eintrag) => {
-    const sha256 = createHash('sha256').update(readFileSync(new URL(eintrag.datei, DIR))).digest('hex')
-    expect(sha256).toBe(eintrag.sha256)
+  it.each(Object.entries(manifest))('%s matches its pinned hash', (_name, entry) => {
+    const sha256 = createHash('sha256').update(readFileSync(new URL(entry.datei, DIR))).digest('hex')
+    expect(sha256).toBe(entry.sha256)
   })
 
   it('every template file is in the manifest, and every manifest entry has a file', () => {
-    const dateien = readdirSync(DIR).filter((name) => name.endsWith('.pdf')).sort()
-    expect(dateien).toEqual(Object.values(manifest).map((eintrag) => eintrag.datei).sort())
+    const files = readdirSync(DIR).filter((name) => name.endsWith('.pdf')).sort()
+    expect(files).toEqual(Object.values(manifest).map((entry) => entry.datei).sort())
   })
 
   it('every page carries a 2025 form key — the year is the one the rules are written for', () => {
-    for (const eintrag of Object.values(manifest)) {
-      expect(eintrag.formularschluessel.length).toBeGreaterThan(0)
-      for (const schluessel of eintrag.formularschluessel) expect(schluessel).toMatch(/^2025.+NET$/)
+    for (const entry of Object.values(manifest)) {
+      expect(entry.formularschluessel.length).toBeGreaterThan(0)
+      for (const key of entry.formularschluessel) expect(key).toMatch(/^2025.+NET$/)
     }
   })
 })

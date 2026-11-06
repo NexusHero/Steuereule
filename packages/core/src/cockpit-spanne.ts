@@ -1,76 +1,76 @@
-import { calculate, type BerechnungsInput, type Berechnungsstand } from './berechnung'
+import { calculate, type CalculationInput, type CalculationStatus } from './berechnung'
 import type { IncomeType } from './einkunftsarten'
 import { UNCERTAINTY_PER_CONFLICT, UNCERTAINTY_PER_ITEM } from './cockpit'
 
 export type CockpitRange =
-  | { readonly kind: 'bestimmt'; readonly wert: number }
+  | { readonly kind: 'bestimmt'; readonly value: number }
   | {
       readonly kind: 'spanne'
-      readonly von: number
-      readonly bis: number
-      readonly offenePosten: number
-      readonly konflikte: number
-      readonly unbestaetigte: number
-      readonly unbestaetigteSumme: number
+      readonly from: number
+      readonly to: number
+      readonly openItems: number
+      readonly conflicts: number
+      readonly unconfirmedItems: number
+      readonly unconfirmedSum: number
     }
-  | { readonly kind: 'gated'; readonly summe: number; readonly gegated: readonly IncomeType[] }
+  | { readonly kind: 'gated'; readonly sum: number; readonly gated: readonly IncomeType[] }
 
 /** The count-based inputs a caller holds before any Posten objects exist. */
 export interface CockpitRangeInputs {
-  readonly summe: number
-  readonly offenePosten: number
-  readonly konflikte: number
-  readonly gegated: readonly IncomeType[]
-  readonly unbestaetigte?: number
-  readonly unbestaetigteSumme?: number
+  readonly sum: number
+  readonly openItems: number
+  readonly conflicts: number
+  readonly gated: readonly IncomeType[]
+  readonly unconfirmedItems?: number
+  readonly unconfirmedSum?: number
 }
 
-function spanneAusZahlen(
-  summe: number,
-  offenePosten: number,
-  konflikte: number,
-  gegated: readonly IncomeType[],
-  unbestaetigte = 0,
-  unbestaetigteSumme = 0,
+function rangeFromNumbers(
+  sum: number,
+  openItems: number,
+  conflicts: number,
+  gated: readonly IncomeType[],
+  unconfirmedItems = 0,
+  unconfirmedSum = 0,
 ): CockpitRange {
-  if (gegated.length > 0) return { kind: 'gated', summe, gegated }
-  if (offenePosten === 0 && konflikte === 0 && unbestaetigte === 0) return { kind: 'bestimmt', wert: summe }
+  if (gated.length > 0) return { kind: 'gated', sum, gated }
+  if (openItems === 0 && conflicts === 0 && unconfirmedItems === 0) return { kind: 'bestimmt', value: sum }
 
-  const uncertainty = offenePosten * UNCERTAINTY_PER_ITEM + konflikte * UNCERTAINTY_PER_CONFLICT + unbestaetigteSumme
+  const uncertainty = openItems * UNCERTAINTY_PER_ITEM + conflicts * UNCERTAINTY_PER_CONFLICT + unconfirmedSum
   return {
     kind: 'spanne',
-    von: Math.max(0, summe - uncertainty),
-    bis: summe + uncertainty,
-    offenePosten,
-    konflikte,
-    unbestaetigte,
-    unbestaetigteSumme,
+    from: Math.max(0, sum - uncertainty),
+    to: sum + uncertainty,
+    openItems,
+    conflicts,
+    unconfirmedItems,
+    unconfirmedSum,
   }
 }
 
-export function calculateCockpitRange(stand: Berechnungsstand): CockpitRange {
-  if (stand.kind === 'bestimmt') return { kind: 'bestimmt', wert: stand.einnahmen }
-  return spanneAusZahlen(
-    stand.einnahmen,
-    stand.offenePosten,
-    stand.konflikte,
-    stand.gegated,
-    stand.unbestaetigte,
-    stand.unbestaetigteSumme,
+export function calculateCockpitRange(status: CalculationStatus): CockpitRange {
+  if (status.kind === 'bestimmt') return { kind: 'bestimmt', value: status.einnahmen }
+  return rangeFromNumbers(
+    status.einnahmen,
+    status.openItems,
+    status.conflicts,
+    status.gated,
+    status.unconfirmedItems,
+    status.unconfirmedSum,
   )
 }
 
-export function cockpitRangeFromInputs(eingaben: CockpitRangeInputs): CockpitRange {
-  return spanneAusZahlen(
-    eingaben.summe,
-    eingaben.offenePosten,
-    eingaben.konflikte,
-    eingaben.gegated,
-    eingaben.unbestaetigte ?? 0,
-    eingaben.unbestaetigteSumme ?? 0,
+export function cockpitRangeFromInputs(inputs: CockpitRangeInputs): CockpitRange {
+  return rangeFromNumbers(
+    inputs.sum,
+    inputs.openItems,
+    inputs.conflicts,
+    inputs.gated,
+    inputs.unconfirmedItems ?? 0,
+    inputs.unconfirmedSum ?? 0,
   )
 }
 
-export function rangeFromCalculation(input: BerechnungsInput): CockpitRange {
+export function rangeFromCalculation(input: CalculationInput): CockpitRange {
   return calculateCockpitRange(calculate(input))
 }

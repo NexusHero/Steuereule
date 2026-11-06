@@ -1,15 +1,15 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import { IsBoolean, IsNotEmpty } from 'class-validator'
-import type { OwlRecommendationPath, EulenKartenAnzeige } from '@steuereule/core'
+import type { OwlRecommendationPath, OwlCardsDisplay } from '@steuereule/core'
 
-export class SetEulenEinstellungDto {
+export class SetOwlSettingDto {
   @ApiProperty({ type: Boolean, example: true })
   @IsNotEmpty()
   @IsBoolean()
   aktiviert!: boolean
 }
 
-export class EulenEinstellungResponseDto {
+export class OwlSettingResponseDto {
   @ApiProperty({ type: Boolean, example: true })
   aktiviert!: boolean
 
@@ -17,21 +17,21 @@ export class EulenEinstellungResponseDto {
   aktiviertAm?: string | null
 }
 
-export class EulenWegDto implements OwlRecommendationPath {
+export class OwlPathDto implements OwlRecommendationPath {
   @ApiProperty({ type: String, example: 'Tagespauschale ansetzen' })
   name!: string
 
   @ApiProperty({ type: Number, example: 300 })
-  betragEur!: number
+  amountEur!: number
 
   @ApiProperty({ type: String, example: 'Einfacher Nachweis ohne separates Arbeitszimmer' })
-  beschreibung!: string
+  description!: string
 
   @ApiProperty({ type: String, enum: ['sicher', 'risiko'], example: 'sicher' })
-  risiko!: 'sicher' | 'risiko'
+  risk!: 'sicher' | 'risiko'
 }
 
-export class EulenKarteDto implements EulenKartenAnzeige {
+export class OwlCardDto implements OwlCardsDisplay {
   @ApiProperty({ type: String, example: 'eule-ra-homeoffice-2025' })
   id!: string
 
@@ -42,43 +42,43 @@ export class EulenKarteDto implements EulenKartenAnzeige {
   trigger!: 'musterluecke' | 'vorjahresvergleich' | 'rechtsaenderung' | 'lebenslage_hinweis'
 
   @ApiProperty({ type: String, enum: ['cockpit_proaktiv', 'abruf_frage', 'archiv_einspruch'] })
-  kategorie!: 'cockpit_proaktiv' | 'abruf_frage' | 'archiv_einspruch'
+  category!: 'cockpit_proaktiv' | 'abruf_frage' | 'archiv_einspruch'
 
   @ApiProperty({ type: String, example: 'Homeoffice-Tagespauschale 6 €' })
-  titel!: string
+  title!: string
 
   @ApiProperty({ type: String, example: 'Du hast 50 Tage im Homeoffice gearbeitet.' })
-  botschaft!: string
+  message!: string
 
   @ApiProperty({ type: String, example: 'weil der Gesetzgeber die Pauschale dauerhaft angehoben hat.' })
-  begruendung!: string
+  reason!: string
 
   @ApiPropertyOptional({ type: Number, nullable: true, example: 300 })
-  betragEur!: number | null
+  amountEur!: number | null
 
   @ApiProperty({ type: String, example: '01.01.2025' })
-  rechtsstandDatum!: string
+  legalStatusDate!: string
 
   @ApiProperty({ type: String, example: 'Jahressteuergesetz § 4 Abs. 5 Satz 1 Nr. 6b EStG' })
-  quelleUebersetzt!: string
+  sourceTranslated!: string
 
   @ApiPropertyOptional({ type: String, example: 'https://...' })
-  quelleUrl?: string | undefined
+  sourceUrl?: string | undefined
 
-  @ApiPropertyOptional({ type: [EulenWegDto] })
-  wege?: readonly [EulenWegDto, EulenWegDto] | undefined
+  @ApiPropertyOptional({ type: [OwlPathDto] })
+  paths?: readonly [OwlPathDto, OwlPathDto] | undefined
 
   @ApiPropertyOptional({ type: String, example: '01.10.2025' })
-  einspruchFristBis?: string | undefined
+  appealDeadline?: string | undefined
 }
 
-export class EulenKartenResponseDto {
+export class OwlCardsResponseDto {
   @ApiProperty({ type: Boolean, example: true })
   aktiviert!: boolean
 
-  @ApiProperty({ type: [EulenKarteDto] })
-  karten!: readonly EulenKarteDto[]
+  @ApiProperty({ type: [OwlCardDto] })
+  cards!: readonly OwlCardDto[]
 
   @ApiProperty({ type: String, example: '01.01.2025' })
-  rechtsstand!: string
+  legalStatus!: string
 }

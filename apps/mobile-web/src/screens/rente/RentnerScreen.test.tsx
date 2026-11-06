@@ -8,30 +8,30 @@ import { ThemeProvider } from '@steuereule/ui'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import { createAppI18n } from '../../i18n/app-i18n'
-import { RentnerScreen } from './RentnerScreen'
+import { PensionerScreen } from './RentnerScreen'
 import { server } from '../../test-msw-server'
-import type { RenteResponseDto } from '@steuereule/api-client'
+import type { PensionResponseDto } from '@steuereule/api-client'
 
 const TAX_YEAR = 2026
-const RENTE_URL = `*/v1/steuerjahre/${TAX_YEAR}/rente`
+const PENSION_URL = `*/v1/steuerjahre/${TAX_YEAR}/rente`
 
-const GESETZLICHE_RENTE: RenteResponseDto = {
+const STATUTORY_PENSION: PensionResponseDto = {
   art: 'GesetzlicheRente',
-  jahresbetrag: { kind: 'erfasst', wert: 20000 },
-  rentenbeginnJahr: { kind: 'erfasst', wert: 2020 },
+  jahresbetrag: { kind: 'erfasst', value: 20000 },
+  rentenbeginnJahr: { kind: 'erfasst', value: 2020 },
   alterBeiRentenbeginn: { kind: 'offen' },
-  posten: [{ id: 'rente', betrag: 16000, herkunft: '§ 22 Nr. 1 Satz 3 Buchst. a Doppelbuchst. aa EStG — Besteuerungsanteil bei Rentenbeginn 2020: 80 %' }],
-  stand: { kind: 'bestimmt', einnahmen: 16000, vorsorgeaufwand: 0, anrechnung: 0 },
+  items: [{ id: 'rente', amount: 16000, provenance: '§ 22 Nr. 1 Satz 3 Buchst. a Doppelbuchst. aa EStG — Besteuerungsanteil bei Rentenbeginn 2020: 80 %' }],
+  status: { kind: 'bestimmt', einnahmen: 16000, vorsorgeaufwand: 0, anrechnung: 0 },
 }
 
-function renderRentner() {
+function renderPensioner() {
   const i18n = createAppI18n('de')
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={queryClient}>
       <I18nextProvider i18n={i18n}>
         <ThemeProvider mode="light">
-          <RentnerScreen taxYear={TAX_YEAR} onDone={() => {}} />
+          <PensionerScreen taxYear={TAX_YEAR} onDone={() => {}} />
         </ThemeProvider>
       </I18nextProvider>
     </QueryClientProvider>,
@@ -40,7 +40,7 @@ function renderRentner() {
 
 describe('RentnerScreen', () => {
   it('renders the Rentenart picker and the Jahresbetrag field from the GET response', async () => {
-    renderRentner()
+    renderPensioner()
 
     expect(await screen.findByText('Welche Rente beziehst du?')).toBeTruthy()
     expect(screen.getByText('Gesetzliche Rente')).toBeTruthy()
@@ -49,8 +49,8 @@ describe('RentnerScreen', () => {
   })
 
   it('shows the derived taxable share with its § 22 Herkunft once determined', async () => {
-    server.use(http.get(RENTE_URL, () => HttpResponse.json(GESETZLICHE_RENTE, { status: 200 })))
-    renderRentner()
+    server.use(http.get(PENSION_URL, () => HttpResponse.json(STATUTORY_PENSION, { status: 200 })))
+    renderPensioner()
 
     expect(await screen.findByText('Steuerpflichtiger Anteil')).toBeTruthy()
     expect(screen.getByText('16000 €')).toBeTruthy()
@@ -61,13 +61,13 @@ describe('RentnerScreen', () => {
     let body: unknown
     let url = ''
     server.use(
-      http.put(`${RENTE_URL}/art`, async ({ request }) => {
+      http.put(`${PENSION_URL}/art`, async ({ request }) => {
         url = request.url
         body = await request.json()
-        return HttpResponse.json({ ...GESETZLICHE_RENTE, art: 'GesetzlicheRente' }, { status: 200 })
+        return HttpResponse.json({ ...STATUTORY_PENSION, art: 'GesetzlicheRente' }, { status: 200 })
       }),
     )
-    renderRentner()
+    renderPensioner()
     await screen.findByText('Welche Rente beziehst du?')
 
     fireEvent.click(screen.getByText('Gesetzliche Rente'))
@@ -80,17 +80,17 @@ describe('RentnerScreen', () => {
     let body: unknown
     let url = ''
     server.use(
-      http.put(`${RENTE_URL}/jahresbetrag`, async ({ request }) => {
+      http.put(`${PENSION_URL}/jahresbetrag`, async ({ request }) => {
         url = request.url
         body = await request.json()
-        return HttpResponse.json({ ...GESETZLICHE_RENTE, jahresbetrag: { kind: 'unklar' } }, { status: 200 })
+        return HttpResponse.json({ ...STATUTORY_PENSION, jahresbetrag: { kind: 'unklar' } }, { status: 200 })
       }),
     )
-    renderRentner()
+    renderPensioner()
     await screen.findByText('Jahresbetrag der Rente')
 
-    const unklarButtons = screen.getAllByText('unlesbar')
-    fireEvent.click(unklarButtons[0]!)
+    const unclearButtons = screen.getAllByText('unlesbar')
+    fireEvent.click(unclearButtons[0]!)
 
     await waitFor(() => expect(body).toEqual({ kind: 'unklar' }))
     expect(url).toContain('/rente/jahresbetrag')

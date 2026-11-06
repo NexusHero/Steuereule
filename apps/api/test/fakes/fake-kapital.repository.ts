@@ -10,14 +10,14 @@ function key(userId: string, steuerjahr: number): string {
   return `${userId}::${steuerjahr}`
 }
 
-export class FakeKapitalRepository implements CapitalRepository {
+export class FakeCapitalRepository implements CapitalRepository {
   private readonly store = new Map<string, CapitalRecord>()
 
   findForUserAndYear(userId: string, steuerjahr: number): Promise<CapitalRecord | null> {
     return Promise.resolve(this.store.get(key(userId, steuerjahr)) ?? null)
   }
 
-  setFeld(userId: string, steuerjahr: number, feld: CapitalFieldId, wert: string | null): Promise<CapitalRecord> {
+  setField(userId: string, steuerjahr: number, field: CapitalFieldId, value: string | null): Promise<CapitalRecord> {
     const k = key(userId, steuerjahr)
     const existing = this.store.get(k)
     const record: CapitalRecord = existing ?? {
@@ -29,12 +29,12 @@ export class FakeKapitalRepository implements CapitalRepository {
       solidaritaetszuschlag: null,
       kirchensteuer: null,
     }
-    const updated: CapitalRecord = { ...record, [feld]: wert }
+    const updated: CapitalRecord = { ...record, [field]: value }
     this.store.set(k, updated)
     return Promise.resolve(updated)
   }
 
-  setInhaber(userId: string, steuerjahr: number, inhaber: CapitalOwner): Promise<CapitalRecord> {
+  setOwner(userId: string, steuerjahr: number, inhaber: CapitalOwner): Promise<CapitalRecord> {
     const k = key(userId, steuerjahr)
     const record: CapitalRecord = this.store.get(k) ?? {
       userId,

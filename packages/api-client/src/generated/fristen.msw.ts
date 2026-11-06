@@ -18,24 +18,24 @@ import type {
 } from 'msw';
 
 import type {
-  FristenResponseDto
+  DeadlinesResponseDto
 } from './fristen.schemas';
 
 
-export const getFristenControllerGetFristenResponseMock = (overrideResponse: Partial<Extract<FristenResponseDto, object>> = {}): FristenResponseDto => ({abgabefrist: faker.string.alpha({length: {min: 10, max: 20}}), heute: faker.string.alpha({length: {min: 10, max: 20}}), stufe: faker.helpers.arrayElement(['keine','warnung','abgelaufen'] as const), verbleibendeTage: faker.number.float({fractionDigits: 2}), verspaetungszuschlag: {mindestsatzEur: faker.number.float({fractionDigits: 2}), prozentProMonat: faker.number.float({fractionDigits: 2})}, ...overrideResponse})
+export const getDeadlinesControllerGetDeadlinesResponseMock = (overrideResponse: Partial<Extract<DeadlinesResponseDto, object>> = {}): DeadlinesResponseDto => ({filingDeadline: faker.string.alpha({length: {min: 10, max: 20}}), today: faker.string.alpha({length: {min: 10, max: 20}}), level: faker.helpers.arrayElement(['keine','warnung','abgelaufen'] as const), remainingDays: faker.number.float({fractionDigits: 2}), lateFilingSurcharge: {minimumRateEur: faker.number.float({fractionDigits: 2}), percentPerMonth: faker.number.float({fractionDigits: 2})}, ...overrideResponse})
 
 
-export const getFristenControllerGetFristenMockHandler = (overrideResponse?: FristenResponseDto | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<FristenResponseDto> | FristenResponseDto), options?: RequestHandlerOptions) => {
+export const getDeadlinesControllerGetDeadlinesMockHandler = (overrideResponse?: DeadlinesResponseDto | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<DeadlinesResponseDto> | DeadlinesResponseDto), options?: RequestHandlerOptions) => {
   return http.get('*/v1/steuerjahre/:jahr/fristen', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
 
 
     return HttpResponse.json(overrideResponse !== undefined
     ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
-    : getFristenControllerGetFristenResponseMock(),
+    : getDeadlinesControllerGetDeadlinesResponseMock(),
       { status: 200
       })
   }, options)
 }
 export const getSteuerEuleAPIMock = () => [
-  getFristenControllerGetFristenMockHandler()
+  getDeadlinesControllerGetDeadlinesMockHandler()
 ]

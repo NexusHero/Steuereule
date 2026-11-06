@@ -1,19 +1,19 @@
 const AHV_IV = 0.0505
 const EO = 0.0025
 const ALV = 0.011
-const ALV_HOECHSTBETRAG_CHF = 148200
-const ABZUGSSTEUER_HOECHSTSATZ = 0.045
+const ALV_MAX_AMOUNT_CHF = 148200
+const WITHHOLDING_TAX_MAX_RATE = 0.045
 
 /** The CHF facts from the Lohnausweis and the Vorsorgeausweis, plus the EUR-per-CHF Kurs. */
-export interface NGreEingabe {
-  readonly bruttolohnChf: number
+export interface NGreInput {
+  readonly grossWageChf: number
   readonly familienzulagenChf: number
-  readonly ahvBeitraegeChf: number
-  readonly quellensteuerChf: number
+  readonly ahvContributionsChf: number
+  readonly withholdingTaxChf: number
   readonly krankentaggeldChf: number
   readonly pkArbeitnehmerChf: number
   readonly pkArbeitgeberChf: number
-  readonly kurs: number
+  readonly rate: number
   /** Employer share of the Kollektivkrankentaggeld premium in percent (0–100); absent = 0. */
   readonly krankentaggeldArbeitgeberProzent?: number | undefined
   /** Employer contribution in CHF — only needed when the employer pays everything, so nothing can be derived. */
@@ -23,66 +23,66 @@ export interface NGreEingabe {
   readonly nbuvArbeitgeberChf?: number | undefined
 }
 
-export type NGreZeile =
+export type NGreRow =
   | 'z6' | 'z8' | 'z15' | 'z18' | 'z19' | 'z23' | 'z25'
   | 'z75' | 'z76' | 'z77' | 'z78' | 'z79' | 'z80' | 'z81' | 'z82'
   | 'z83' | 'z84' | 'z85' | 'z86' | 'z87' | 'z88'
 
 /** Who pays a premium (N-Gre Zeilen 95/96 for Krankentaggeld, 97/98 for NBUV) — percent and CHF. */
-export interface PraemienAufteilung {
-  readonly arbeitgeberProzent: number
-  readonly arbeitnehmerProzent: number
-  readonly arbeitgeberChf: number
-  readonly arbeitnehmerChf: number
+export interface PremiumSplit {
+  readonly employerPercent: number
+  readonly employeePercent: number
+  readonly employerChf: number
+  readonly employeeChf: number
 }
 
-export interface NGreBetraege {
-  readonly chf: Readonly<Record<NGreZeile, number>>
-  readonly eur: Readonly<Record<NGreZeile, number>>
-  readonly aufteilung: { readonly krankentaggeld: PraemienAufteilung; readonly nbuv: PraemienAufteilung }
+export interface NGreAmounts {
+  readonly chf: Readonly<Record<NGreRow, number>>
+  readonly eur: Readonly<Record<NGreRow, number>>
+  readonly split: { readonly dailySicknessAllowance: PremiumSplit; readonly nbuv: PremiumSplit }
 }
 
 /**
  * The employer's part of a premium the employee pays the rest of. With 100 % the employee part is 0 and
  * nothing can be derived — then the given CHF amount is used.
  */
-function aufteilung(arbeitnehmerChf: number, prozent: number | undefined, arbeitgeberChfGegeben: number | undefined): PraemienAufteilung {
-  const arbeitgeberProzent = Math.min(100, Math.max(0, prozent ?? 0))
-  const arbeitgeberChf =
-    arbeitgeberChfGegeben !== undefined
-      ? arbeitgeberChfGegeben
-      : arbeitgeberProzent === 0 || arbeitgeberProzent === 100
+function split(employeeChf: number, percent: number | undefined, employerChfGiven: number | undefined): PremiumSplit {
+  const employerPercent = Math.min(100, Math.max(0, percent ?? 0))
+  const employerChf =
+    employerChfGiven !== undefined
+      ? employerChfGiven
+      : employerPercent === 0 || employerPercent === 100
         ? 0
-        : Math.round((arbeitnehmerChf * arbeitgeberProzent) / (100 - arbeitgeberProzent))
-  return { arbeitgeberProzent, arbeitnehmerProzent: 100 - arbeitgeberProzent, arbeitgeberChf, arbeitnehmerChf }
+        : Math.round((employeeChf * employerPercent) / (100 - employerPercent))
+  return { employerPercent, employeePercent: 100 - employerPercent, employerChf, employeeChf }
 }
 
-export function anlageNGreBetraege(e: NGreEingabe): NGreBetraege {
-  const basis = e.bruttolohnChf - e.familienzulagenChf
+export function annexNGreAmounts(e: NGreInput): NGreAmounts {
+  const basis = e.grossWageChf - e.familienzulagenChf
   const ahv = Math.round(basis * AHV_IV)
   const eo = Math.round(basis * EO)
-  const alv = Math.round(Math.min(basis, ALV_HOECHSTBETRAG_CHF) * ALV)
-  const nbuvArbeitnehmer = Math.max(0, e.ahvBeitraegeChf - ahv - eo - alv)
-  const krankentaggeld = aufteilung(e.krankentaggeldChf, e.krankentaggeldArbeitgeberProzent, e.krankentaggeldArbeitgeberChf)
-  const nbuv = aufteilung(nbuvArbeitnehmer, e.nbuvArbeitgeberProzent, e.nbuvArbeitgeberChf)
+  const alv = Math.round(Math.min(basis, ALV_MAX_AMOUNT_CHF) * ALV)
+  const nbuvEmployee = Math.max(0, e.ahvContributionsChf - ahv - eo - alv)
+  const dailySicknessAllowance = split(e.krankentaggeldChf, e.krankentaggeldArbeitgeberProzent, e.krankentaggeldArbeitgeberChf)
+  const nbuv = split(nbuvEmployee, e.nbuvArbeitgeberProzent, e.nbuvArbeitgeberChf)
 
-  const teile = {
-    z6: e.bruttolohnChf,
+  const parts = {
+    z6: e.grossWageChf,
     z8: e.familienzulagenChf,
     // The employer's premiums are taxable wage (Z. 18/19, "vgl. Zeile 80/81") and therefore also count
     // as the employee's contributions in Z. 80/81.
-    z18: krankentaggeld.arbeitgeberChf,
-    z19: nbuv.arbeitgeberChf,
-    z25: Math.min(e.quellensteuerChf, Math.round(e.bruttolohnChf * ABZUGSSTEUER_HOECHSTSATZ)),
+    z18: dailySicknessAllowance.employerChf,
+    z19: nbuv.employerChf,
+    z25: Math.min(e.withholdingTaxChf, Math.round(e.grossWageChf * WITHHOLDING_TAX_MAX_RATE)),
     z78: eo,
     z79: alv,
-    z80: krankentaggeld.arbeitnehmerChf + krankentaggeld.arbeitgeberChf,
-    z81: Math.round((nbuv.arbeitnehmerChf + nbuv.arbeitgeberChf) / 2),
+    z80: dailySicknessAllowance.employeeChf + dailySicknessAllowance.employerChf,
+    z81: Math.round((nbuv.employeeChf + nbuv.employerChf) / 2),
     z83: ahv,
     z84: e.pkArbeitnehmerChf,
     z87: e.pkArbeitgeberChf,
   }
-  const summen = (t: typeof teile): Record<NGreZeile, number> => ({
+  const sums = (t: typeof parts): Record<NGreRow, number> => ({
     ...t,
     z15: t.z6 - t.z8,
     z23: t.z6 - t.z8 + t.z18 + t.z19,
@@ -94,6 +94,6 @@ export function anlageNGreBetraege(e: NGreEingabe): NGreBetraege {
     z86: t.z83,
     z88: t.z83 + t.z87,
   })
-  const inEur = Object.fromEntries(Object.entries(teile).map(([zeile, chf]) => [zeile, Math.round(chf * e.kurs)])) as typeof teile
-  return { chf: summen(teile), eur: summen(inEur), aufteilung: { krankentaggeld, nbuv } }
+  const inEur = Object.fromEntries(Object.entries(parts).map(([row, chf]) => [row, Math.round(chf * e.rate)])) as typeof parts
+  return { chf: sums(parts), eur: sums(inEur), split: { dailySicknessAllowance, nbuv } }
 }

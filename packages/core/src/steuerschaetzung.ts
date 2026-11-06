@@ -1,137 +1,137 @@
-import { incomeTax, isSupportedIncomeTaxYear, soliFreigrenzen, solidaritaetszuschlag } from './tarif'
+import { incomeTax, isSupportedIncomeTaxYear, soliExemptionLimits, solidaritaetszuschlag } from './tarif'
 
-export interface Spanne {
-  readonly von: number
-  readonly bis: number
+export interface Range {
+  readonly from: number
+  readonly to: number
 }
 
-export type Steuerschaetzung =
+export type TaxEstimate =
   | {
       readonly kind: 'spanne'
       readonly werbungskosten: number
-      readonly vorsorge: Spanne
-      readonly sonderausgaben: number
-      readonly zuVersteuerndesEinkommen: Spanne
-      readonly einkommensteuer: Spanne
-      readonly solidaritaetszuschlag: Spanne
+      readonly provision: Range
+      readonly specialExpenses: number
+      readonly taxableIncome: Range
+      readonly incomeTax: Range
+      readonly solidaritaetszuschlag: Range
       readonly anrechnung: number
       /** Positive = Erstattung, negative = Nachzahlung. */
-      readonly ergebnis: Spanne
+      readonly result: Range
     }
-  | { readonly kind: 'nicht-moeglich'; readonly grund: 'jahr-ohne-tarif' }
+  | { readonly kind: 'nicht-moeglich'; readonly reason: 'jahr-ohne-tarif' }
 
-export interface AngestelltEingaben {
-  readonly jahr: number
+export interface EmployeeEstimateInput {
+  readonly year: number
   readonly bruttoarbeitslohn: number
   readonly lohnsteuer: number
   readonly sozialversicherung: number
-  readonly pendlerpauschale: number
-  readonly weitereWerbungskosten: number
-  readonly spenden: number
-  readonly selbstGezahlteKvPv: number
+  readonly commuterAllowance: number
+  readonly otherIncomeRelatedExpenses: number
+  readonly donations: number
+  readonly selfPaidKvPv: number
 }
 
 /** The EUR lines of the Anlage N-Gre (anlageNGreBetraege) plus what the user pays outside the salary. */
-export interface GrenzgaengerEingaben {
-  readonly jahr: number
+export interface CrossBorderEstimateInput {
+  readonly year: number
   /** Z. 23: Arbeitslohn after Familienzulagen. */
-  readonly arbeitslohnEur: number
+  readonly wageEur: number
   /** Z. 25: creditable Swiss withholding tax, at most 4.5 %. */
-  readonly quellensteuerEur: number
+  readonly withholdingTaxEur: number
   /** Z. 85: employee AHV/IV plus Pensionskasse Obligatorium — treated like gesetzliche Rentenversicherung. */
-  readonly altersvorsorgeEur: number
+  readonly retirementProvisionEur: number
   /** Z. 82: EO, ALV, Krankentaggeld and half the NBUV — sonstige Vorsorgeaufwendungen. */
-  readonly sonstigeVorsorgeEur: number
+  readonly otherProvisionEur: number
   /** Basic health and care insurance paid outside the salary (Swiss Krankenkasse, German KV/PV). */
-  readonly krankenversicherungEur: number
-  readonly pendlerpauschale: number
-  readonly spenden: number
+  readonly healthInsuranceEur: number
+  readonly commuterAllowance: number
+  readonly donations: number
 }
 
-const ARBEITNEHMER_PAUSCHBETRAG = 1230
-const SONDERAUSGABEN_PAUSCHBETRAG = 36
+const EMPLOYEE_LUMP_SUM = 1230
+const SPECIAL_EXPENSES_LUMP_SUM = 36
 
 /**
  * Deductible share of the employee's social security contributions (RV fully, KV less 4 % for Krankengeld, PV
  * fully, AV absorbed by the Höchstbetrag): 91–93 % depending on Zusatzbeitrag and Kinderlosenzuschlag.
  */
-const SV_ABZIEHBAR: Spanne = { von: 0.91, bis: 0.93 }
+const SV_DEDUCTIBLE: Range = { from: 0.91, to: 0.93 }
 
 /** § 10 Abs. 4 EStG for someone who pays their health insurance entirely themselves, as a Grenzgänger does. */
-const HOECHSTBETRAG_SONSTIGE_VORSORGE = 2800
+const MAX_OTHER_PROVISION = 2800
 
 /** A ranged estimate of the Einkommensteuer for one single Angestellte — never a point value (product ADR-015). */
-export function steuerschaetzungAngestellt(e: AngestelltEingaben): Steuerschaetzung {
-  if (!isSupportedIncomeTaxYear(e.jahr)) return { kind: 'nicht-moeglich', grund: 'jahr-ohne-tarif' }
-  const vorsorge = {
-    von: Math.round(e.sozialversicherung * SV_ABZIEHBAR.von) + e.selbstGezahlteKvPv,
-    bis: Math.round(e.sozialversicherung * SV_ABZIEHBAR.bis) + e.selbstGezahlteKvPv,
+export function taxEstimateEmployee(e: EmployeeEstimateInput): TaxEstimate {
+  if (!isSupportedIncomeTaxYear(e.year)) return { kind: 'nicht-moeglich', reason: 'jahr-ohne-tarif' }
+  const provision = {
+    from: Math.round(e.sozialversicherung * SV_DEDUCTIBLE.from) + e.selfPaidKvPv,
+    to: Math.round(e.sozialversicherung * SV_DEDUCTIBLE.to) + e.selfPaidKvPv,
   }
-  const werbungskosten = Math.max(ARBEITNEHMER_PAUSCHBETRAG, e.pendlerpauschale + e.weitereWerbungskosten)
-  return schaetzung({
-    jahr: e.jahr,
+  const werbungskosten = Math.max(EMPLOYEE_LUMP_SUM, e.commuterAllowance + e.otherIncomeRelatedExpenses)
+  return estimate({
+    year: e.year,
     einnahmen: e.bruttoarbeitslohn,
     werbungskosten,
-    vorsorge,
-    spenden: e.spenden,
-    bereitsGezahlt: (est) => e.lohnsteuer - est + soli(e.lohnsteuer, e.jahr),
+    provision,
+    donations: e.donations,
+    alreadyPaid: (est) => e.lohnsteuer - est + soli(e.lohnsteuer, e.year),
     anrechnung: e.lohnsteuer,
   })
 }
 
 /** A ranged estimate for a Grenzgänger CH: German tax against the creditable Swiss withholding tax (Art. 15a DBA). */
-export function steuerschaetzungGrenzgaenger(e: GrenzgaengerEingaben): Steuerschaetzung {
-  if (!isSupportedIncomeTaxYear(e.jahr)) return { kind: 'nicht-moeglich', grund: 'jahr-ohne-tarif' }
-  const sonstigeAbziehbar = Math.max(e.krankenversicherungEur, Math.min(HOECHSTBETRAG_SONSTIGE_VORSORGE, e.krankenversicherungEur + e.sonstigeVorsorgeEur))
-  const vorsorge = {
-    von: e.altersvorsorgeEur + e.krankenversicherungEur,
-    bis: e.altersvorsorgeEur + sonstigeAbziehbar,
+export function taxEstimateCrossBorder(e: CrossBorderEstimateInput): TaxEstimate {
+  if (!isSupportedIncomeTaxYear(e.year)) return { kind: 'nicht-moeglich', reason: 'jahr-ohne-tarif' }
+  const otherDeductible = Math.max(e.healthInsuranceEur, Math.min(MAX_OTHER_PROVISION, e.healthInsuranceEur + e.otherProvisionEur))
+  const provision = {
+    from: e.retirementProvisionEur + e.healthInsuranceEur,
+    to: e.retirementProvisionEur + otherDeductible,
   }
-  return schaetzung({
-    jahr: e.jahr,
-    einnahmen: e.arbeitslohnEur,
-    werbungskosten: Math.max(ARBEITNEHMER_PAUSCHBETRAG, e.pendlerpauschale),
-    vorsorge,
-    spenden: e.spenden,
-    bereitsGezahlt: (est) => e.quellensteuerEur - est,
-    anrechnung: e.quellensteuerEur,
+  return estimate({
+    year: e.year,
+    einnahmen: e.wageEur,
+    werbungskosten: Math.max(EMPLOYEE_LUMP_SUM, e.commuterAllowance),
+    provision,
+    donations: e.donations,
+    alreadyPaid: (est) => e.withholdingTaxEur - est,
+    anrechnung: e.withholdingTaxEur,
   })
 }
 
-function schaetzung(input: {
-  readonly jahr: number
+function estimate(input: {
+  readonly year: number
   readonly einnahmen: number
   readonly werbungskosten: number
-  readonly vorsorge: Spanne
-  readonly spenden: number
-  readonly bereitsGezahlt: (einkommensteuer: number) => number
+  readonly provision: Range
+  readonly donations: number
+  readonly alreadyPaid: (einkommensteuer: number) => number
   readonly anrechnung: number
-}): Steuerschaetzung {
-  const sonderausgaben = Math.max(SONDERAUSGABEN_PAUSCHBETRAG, input.spenden)
-  const zve = (vorsorge: number) => Math.max(0, input.einnahmen - input.werbungskosten - vorsorge - sonderausgaben)
-  const zuVersteuerndesEinkommen = { von: zve(input.vorsorge.bis), bis: zve(input.vorsorge.von) }
+}): TaxEstimate {
+  const specialExpenses = Math.max(SPECIAL_EXPENSES_LUMP_SUM, input.donations)
+  const zve = (provision: number) => Math.max(0, input.einnahmen - input.werbungskosten - provision - specialExpenses)
+  const taxableIncome = { from: zve(input.provision.to), to: zve(input.provision.from) }
   const einkommensteuer = {
-    von: incomeTax(zuVersteuerndesEinkommen.von, input.jahr),
-    bis: incomeTax(zuVersteuerndesEinkommen.bis, input.jahr),
+    from: incomeTax(taxableIncome.from, input.year),
+    to: incomeTax(taxableIncome.to, input.year),
   }
-  const soliSpanne = { von: soli(einkommensteuer.von, input.jahr), bis: soli(einkommensteuer.bis, input.jahr) }
+  const soliRange = { from: soli(einkommensteuer.from, input.year), to: soli(einkommensteuer.to, input.year) }
   return {
     kind: 'spanne',
     werbungskosten: input.werbungskosten,
-    vorsorge: input.vorsorge,
-    sonderausgaben,
-    zuVersteuerndesEinkommen,
-    einkommensteuer,
-    solidaritaetszuschlag: soliSpanne,
+    provision: input.provision,
+    specialExpenses,
+    taxableIncome,
+    incomeTax: einkommensteuer,
+    solidaritaetszuschlag: soliRange,
     anrechnung: input.anrechnung,
-    ergebnis: {
-      von: input.bereitsGezahlt(einkommensteuer.bis) - soliSpanne.bis,
-      bis: input.bereitsGezahlt(einkommensteuer.von) - soliSpanne.von,
+    result: {
+      from: input.alreadyPaid(einkommensteuer.to) - soliRange.to,
+      to: input.alreadyPaid(einkommensteuer.from) - soliRange.from,
     },
   }
 }
 
-function soli(einkommensteuer: number, jahr: number): number {
-  if (!isSupportedIncomeTaxYear(jahr)) return 0
-  return solidaritaetszuschlag(einkommensteuer, soliFreigrenzen(jahr).einzel)
+function soli(einkommensteuer: number, year: number): number {
+  if (!isSupportedIncomeTaxYear(year)) return 0
+  return solidaritaetszuschlag(einkommensteuer, soliExemptionLimits(year).single)
 }

@@ -4,36 +4,36 @@ import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@steuereule/ui'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
-import type { BestaetigungResponseDto } from '@steuereule/api-client'
+import type { ConfirmationResponseDto } from '@steuereule/api-client'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
-import { BestaetigungScreen } from './BestaetigungScreen'
+import { ConfirmationScreen } from './BestaetigungScreen'
 
-const MIT_WERTEN: BestaetigungResponseDto = {
-  anlagen: [
+const WITH_VALUES: ConfirmationResponseDto = {
+  annexes: [
     {
       anlage: 'anlageN',
-      unbestaetigt: 1,
-      werte: [
+      unconfirmed: 1,
+      values: [
         {
           key: 'lstb.bruttoarbeitslohn',
-          maske: 'lstb',
-          instanz: null,
-          feld: 'bruttoarbeitslohn',
-          wert: '4750',
-          herkunft: { art: 'nutzer' },
+          screen: 'lstb',
+          instance: null,
+          field: 'bruttoarbeitslohn',
+          value: '4750',
+          provenance: { art: 'nutzer' },
           bestaetigt: true,
-          vorschlag: { wert: '4800', herkunft: { art: 'assistent', name: 'Claude' } },
+          proposal: { value: '4800', provenance: { art: 'assistent', name: 'Claude' } },
         },
         {
           key: 'lstb.lohnsteuer',
-          maske: 'lstb',
-          instanz: null,
-          feld: 'lohnsteuer',
-          wert: '700',
-          herkunft: { art: 'uebernahme', vorjahr: 2024 },
+          screen: 'lstb',
+          instance: null,
+          field: 'lohnsteuer',
+          value: '700',
+          provenance: { art: 'uebernahme', vorjahr: 2024 },
           bestaetigt: false,
-          vorschlag: null,
+          proposal: null,
         },
       ],
     },
@@ -42,25 +42,25 @@ const MIT_WERTEN: BestaetigungResponseDto = {
 
 function renderScreen(locale: 'de' | 'en' = 'de') {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
-  const onZurueck = vi.fn()
-  const onMaskeOeffnen = vi.fn()
+  const onBack = vi.fn()
+  const onOpenScreen = vi.fn()
   render(
     <QueryClientProvider client={queryClient}>
       <I18nextProvider i18n={createAppI18n(locale)}>
         <ThemeProvider mode="light">
-          <BestaetigungScreen jahr={2025} onZurueck={onZurueck} onMaskeOeffnen={onMaskeOeffnen} />
+          <ConfirmationScreen year={2025} onBack={onBack} onOpenScreen={onOpenScreen} />
         </ThemeProvider>
       </I18nextProvider>
     </QueryClientProvider>,
   )
-  return { onZurueck, onMaskeOeffnen }
+  return { onBack, onMaskeOeffnen: onOpenScreen }
 }
 
 afterEach(() => server.resetHandlers())
 
 describe('BestaetigungScreen (REQ-032, ADR-0052 §6/§7)', () => {
   it('shows every new value per Anlage with its Herkunft, and a proposal as "X statt Y"', async () => {
-    server.use(http.get('*/v1/steuerjahre/2025/bestaetigung', () => HttpResponse.json(MIT_WERTEN)))
+    server.use(http.get('*/v1/steuerjahre/2025/bestaetigung', () => HttpResponse.json(WITH_VALUES)))
     renderScreen()
 
     expect(await screen.findByText('Anlage N')).toBeTruthy()
@@ -74,10 +74,10 @@ describe('BestaetigungScreen (REQ-032, ADR-0052 §6/§7)', () => {
   it('confirming the Anlage calls the endpoint and shows the honest empty state afterwards', async () => {
     let bestaetigt = false
     server.use(
-      http.get('*/v1/steuerjahre/2025/bestaetigung', () => HttpResponse.json(bestaetigt ? { anlagen: [] } : MIT_WERTEN)),
+      http.get('*/v1/steuerjahre/2025/bestaetigung', () => HttpResponse.json(bestaetigt ? { annexes: [] } : WITH_VALUES)),
       http.put('*/v1/steuerjahre/2025/bestaetigung/anlagen/anlageN', () => {
         bestaetigt = true
-        return HttpResponse.json({ anlagen: [] })
+        return HttpResponse.json({ annexes: [] })
       }),
     )
     renderScreen()
@@ -89,32 +89,32 @@ describe('BestaetigungScreen (REQ-032, ADR-0052 §6/§7)', () => {
   })
 
   it('accepting or discarding a proposal sends the decision for exactly that field', async () => {
-    const entscheidungen: { key: string; body: unknown }[] = []
+    const decisions: { key: string; body: unknown }[] = []
     server.use(
-      http.get('*/v1/steuerjahre/2025/bestaetigung', () => HttpResponse.json(MIT_WERTEN)),
+      http.get('*/v1/steuerjahre/2025/bestaetigung', () => HttpResponse.json(WITH_VALUES)),
       http.put('*/v1/steuerjahre/2025/bestaetigung/vorschlaege/:key', async ({ params, request }) => {
-        entscheidungen.push({ key: String(params.key), body: await request.json() })
-        return HttpResponse.json(MIT_WERTEN)
+        decisions.push({ key: String(params.key), body: await request.json() })
+        return HttpResponse.json(WITH_VALUES)
       }),
     )
     renderScreen()
 
     fireEvent.click(await screen.findByTestId('vorschlag-annehmen-lstb.bruttoarbeitslohn'))
-    await waitFor(() => expect(entscheidungen).toEqual([{ key: 'lstb.bruttoarbeitslohn', body: { entscheidung: 'annehmen' } }]))
+    await waitFor(() => expect(decisions).toEqual([{ key: 'lstb.bruttoarbeitslohn', body: { decision: 'annehmen' } }]))
     fireEvent.click(screen.getByTestId('vorschlag-verwerfen-lstb.bruttoarbeitslohn'))
-    await waitFor(() => expect(entscheidungen[1]).toEqual({ key: 'lstb.bruttoarbeitslohn', body: { entscheidung: 'verwerfen' } }))
+    await waitFor(() => expect(decisions[1]).toEqual({ key: 'lstb.bruttoarbeitslohn', body: { decision: 'verwerfen' } }))
   })
 
   it('"einzeln ändern" opens the mask the value belongs to', async () => {
-    server.use(http.get('*/v1/steuerjahre/2025/bestaetigung', () => HttpResponse.json(MIT_WERTEN)))
-    const { onMaskeOeffnen } = renderScreen()
+    server.use(http.get('*/v1/steuerjahre/2025/bestaetigung', () => HttpResponse.json(WITH_VALUES)))
+    const { onMaskeOeffnen: onOpenScreen } = renderScreen()
 
     fireEvent.click(await screen.findByTestId('aendern-anlageN'))
-    expect(onMaskeOeffnen).toHaveBeenCalledWith('lstb')
+    expect(onOpenScreen).toHaveBeenCalledWith('lstb')
   })
 
   it('speaks English too', async () => {
-    server.use(http.get('*/v1/steuerjahre/2025/bestaetigung', () => HttpResponse.json(MIT_WERTEN)))
+    server.use(http.get('*/v1/steuerjahre/2025/bestaetigung', () => HttpResponse.json(WITH_VALUES)))
     renderScreen('en')
 
     expect(await screen.findByText('1 value unconfirmed')).toBeTruthy()

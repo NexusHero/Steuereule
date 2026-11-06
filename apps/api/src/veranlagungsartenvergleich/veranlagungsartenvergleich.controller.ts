@@ -1,15 +1,15 @@
 import { BadRequestException, Controller, Get, Inject, Param, Query, UseGuards } from '@nestjs/common'
 import { ApiExtraModels, ApiOkResponse, ApiParam, ApiQuery, ApiTags, getSchemaPath } from '@nestjs/swagger'
-import type { KirchensteuerFaktor } from '@steuereule/core'
+import type { ChurchTaxFactor } from '@steuereule/core'
 import { CurrentUser } from '../auth/current-user.decorator.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
-import { ParseSteuerjahrPipe } from '../cockpit/parse-steuerjahr.pipe.js'
-import { VeranlagungsartenvergleichDto, VergleichsHerkunftDto, UnschaerfeDto } from './dto/veranlagungsartenvergleich-response.dto.js'
+import { ParseTaxYearPipe } from '../cockpit/parse-steuerjahr.pipe.js'
+import { FilingTypeComparisonDto, ComparisonSourceDto, UncertaintyDto } from './dto/veranlagungsartenvergleich-response.dto.js'
 import { AssessmentComparisonService } from './veranlagungsartenvergleich.service.js'
 
-const KIST_FAKTOREN: readonly KirchensteuerFaktor[] = [0, 0.08, 0.09]
+const CHURCH_TAX_FACTORS: readonly ChurchTaxFactor[] = [0, 0.08, 0.09]
 
-function parseVerheiratet(raw: unknown): boolean {
+function parseMarried(raw: unknown): boolean {
   if (raw === undefined) return false
   if (raw === 'true') return true
   if (raw === 'false') return false
@@ -25,19 +25,19 @@ function parseZveB(raw: unknown): number | undefined {
   return parsed
 }
 
-function parseKirchensteuerFaktor(raw: unknown): KirchensteuerFaktor {
+function parseChurchTaxFactor(raw: unknown): ChurchTaxFactor {
   if (raw === undefined) return 0
   const parsed = Number(raw)
-  if (!KIST_FAKTOREN.includes(parsed as KirchensteuerFaktor)) {
+  if (!CHURCH_TAX_FACTORS.includes(parsed as ChurchTaxFactor)) {
     throw new BadRequestException('kirchensteuerFaktor must be one of 0, 0.08, 0.09')
   }
-  return parsed as KirchensteuerFaktor
+  return parsed as ChurchTaxFactor
 }
 
 @ApiTags('veranlagungsartenvergleich')
 @Controller('v1/steuerjahre')
 @UseGuards(UserContextGuard)
-export class VeranlagungsartenvergleichController {
+export class FilingTypeComparisonController {
   constructor(@Inject(AssessmentComparisonService) private readonly service: AssessmentComparisonService) {}
 
   @Get(':jahr/veranlagungsartenvergleich')
@@ -70,22 +70,22 @@ export class VeranlagungsartenvergleichController {
     example: 0,
     description: '§51a EStG Kirchensteuer factor (0, 0.08, 0.09). Defaults to 0 — M1 collects none.',
   })
-  @ApiExtraModels(VeranlagungsartenvergleichDto, UnschaerfeDto, VergleichsHerkunftDto)
+  @ApiExtraModels(FilingTypeComparisonDto, UncertaintyDto, ComparisonSourceDto)
   @ApiOkResponse({
     description:
       'The Veranlagungsartenvergleich for the given tax year (Einzel- vs. Zusammenveranlagung, ADR-0034), or null when no tax year has been seeded yet (the honest empty state, not a 404).',
-    schema: { allOf: [{ $ref: getSchemaPath(VeranlagungsartenvergleichDto) }], nullable: true },
+    schema: { allOf: [{ $ref: getSchemaPath(FilingTypeComparisonDto) }], nullable: true },
   })
-  getVergleich(
+  getComparison(
     @CurrentUser() userId: string,
-    @Param('jahr', ParseSteuerjahrPipe) jahr: number,
-    @Query('verheiratet') verheiratetRaw: unknown,
+    @Param('jahr', ParseTaxYearPipe) year: number,
+    @Query('verheiratet') marriedRaw: unknown,
     @Query('zveB') zveBRaw: unknown,
-    @Query('kirchensteuerFaktor') kirchensteuerFaktorRaw: unknown,
-  ): Promise<VeranlagungsartenvergleichDto | null> {
-    const verheiratet = parseVerheiratet(verheiratetRaw)
+    @Query('kirchensteuerFaktor') churchTaxFactorRaw: unknown,
+  ): Promise<FilingTypeComparisonDto | null> {
+    const married = parseMarried(marriedRaw)
     const zveB = parseZveB(zveBRaw)
-    const kirchensteuerFaktor = parseKirchensteuerFaktor(kirchensteuerFaktorRaw)
-    return this.service.getVergleich(userId, jahr, verheiratet, zveB, kirchensteuerFaktor)
+    const churchTaxFactor = parseChurchTaxFactor(churchTaxFactorRaw)
+    return this.service.getComparison(userId, year, married, zveB, churchTaxFactor)
   }
 }

@@ -5,10 +5,10 @@
  * Onboarding profile endpoints (steuereule#29)
  * OpenAPI spec version: 1.0
  */
-export type KapitalResponseDtoPflichtfelderItem = typeof KapitalResponseDtoPflichtfelderItem[keyof typeof KapitalResponseDtoPflichtfelderItem];
+export type CapitalResponseDtoRequiredFieldsItem = typeof CapitalResponseDtoRequiredFieldsItem[keyof typeof CapitalResponseDtoRequiredFieldsItem];
 
 
-export const KapitalResponseDtoPflichtfelderItem = {
+export const CapitalResponseDtoRequiredFieldsItem = {
   kapitalertraege: 'kapitalertraege',
   sparerPauschbetrag: 'sparerPauschbetrag',
   kapitalertragsteuer: 'kapitalertragsteuer',
@@ -20,10 +20,10 @@ export const KapitalResponseDtoPflichtfelderItem = {
  * Whose depot (ADR-0054); null = Person A.
  * @nullable
  */
-export type KapitalResponseDtoInhaber = typeof KapitalResponseDtoInhaber[keyof typeof KapitalResponseDtoInhaber] | null;
+export type CapitalResponseDtoInhaber = typeof CapitalResponseDtoInhaber[keyof typeof CapitalResponseDtoInhaber] | null;
 
 
-export const KapitalResponseDtoInhaber = {
+export const CapitalResponseDtoInhaber = {
   A: 'A',
   B: 'B',
   gemeinsam: 'gemeinsam',
@@ -32,63 +32,63 @@ export const KapitalResponseDtoInhaber = {
 /**
  * The field’s capture state.
  */
-export type KapitalFeldDtoKind = typeof KapitalFeldDtoKind[keyof typeof KapitalFeldDtoKind];
+export type CapitalFieldDtoKind = typeof CapitalFieldDtoKind[keyof typeof CapitalFieldDtoKind];
 
 
-export const KapitalFeldDtoKind = {
+export const CapitalFieldDtoKind = {
   erfasst: 'erfasst',
   offen: 'offen',
   unklar: 'unklar',
 } as const;
 
-export interface KapitalFeldDto {
+export interface CapitalFieldDto {
   /** The field’s capture state. */
-  kind: KapitalFeldDtoKind;
+  kind: CapitalFieldDtoKind;
   /** The value — present only when kind === "erfasst" (validated via @steuereule/core). */
-  wert?: number;
+  value?: number;
 }
 
 /**
  * deutscher-broker = Abgeltungsteuer was withheld (Günstigerprüfung applies); auslaendischer-broker = no German tax withheld — KAP-Pflicht, personal tariff; krypto = gated in 1.0 (product ADR-032 §2); unbekannt = kap-depot not answered.
  */
-export type DepotEinordnungDtoKind = typeof DepotEinordnungDtoKind[keyof typeof DepotEinordnungDtoKind];
+export type DepotClassificationDtoKind = typeof DepotClassificationDtoKind[keyof typeof DepotClassificationDtoKind];
 
 
-export const DepotEinordnungDtoKind = {
+export const DepotClassificationDtoKind = {
   'deutscher-broker': 'deutscher-broker',
   'auslaendischer-broker': 'auslaendischer-broker',
   krypto: 'krypto',
   unbekannt: 'unbekannt',
 } as const;
 
-export interface DepotEinordnungDto {
+export interface DepotClassificationDto {
   /** deutscher-broker = Abgeltungsteuer was withheld (Günstigerprüfung applies); auslaendischer-broker = no German tax withheld — KAP-Pflicht, personal tariff; krypto = gated in 1.0 (product ADR-032 §2); unbekannt = kap-depot not answered. */
-  kind: DepotEinordnungDtoKind;
+  kind: DepotClassificationDtoKind;
 }
 
-export interface KapitalPostenDto {
+export interface CapitalItemDto {
   /** The stable posten id. */
   id: string;
   /** The Kapitalerträge (whole euros). */
-  betrag: number;
+  amount: number;
   /** The Herkunft (Quelle art) of the amount. */
-  herkunft: string;
+  provenance: string;
 }
 
 /**
  * Determined, or open (naming what blocks).
  */
-export type KapitalStandDtoKind = typeof KapitalStandDtoKind[keyof typeof KapitalStandDtoKind];
+export type CapitalStatusDtoKind = typeof CapitalStatusDtoKind[keyof typeof CapitalStatusDtoKind];
 
 
-export const KapitalStandDtoKind = {
+export const CapitalStatusDtoKind = {
   bestimmt: 'bestimmt',
   offen: 'offen',
 } as const;
 
-export interface KapitalStandDto {
+export interface CapitalStatusDto {
   /** Determined, or open (naming what blocks). */
-  kind: KapitalStandDtoKind;
+  kind: CapitalStatusDtoKind;
   /** Sum of Einnahme Posten (whole euros). */
   einnahmen: number;
   /** Sum of Vorsorgeaufwand Posten (whole euros). */
@@ -96,72 +96,72 @@ export interface KapitalStandDto {
   /** Sum of Anrechnung Posten (whole euros). */
   anrechnung: number;
   /** Required-but-empty line items (only when offen). */
-  offenePosten?: number;
+  openItems?: number;
   /** Open conflicts (only when offen). */
-  konflikte?: number;
+  conflicts?: number;
   /** Gated Einkunftsarten (only when offen). */
-  gegated?: string[];
+  gated?: string[];
 }
 
-export interface KapitalResponseDto {
-  kapitalertraege: KapitalFeldDto;
-  sparerPauschbetrag: KapitalFeldDto;
-  kapitalertragsteuer: KapitalFeldDto;
-  solidaritaetszuschlag: KapitalFeldDto;
-  kirchensteuer: KapitalFeldDto;
+export interface CapitalResponseDto {
+  kapitalertraege: CapitalFieldDto;
+  sparerPauschbetrag: CapitalFieldDto;
+  kapitalertragsteuer: CapitalFieldDto;
+  solidaritaetszuschlag: CapitalFieldDto;
+  kirchensteuer: CapitalFieldDto;
   /** The fields Anlage KAP needs for this depot. */
-  pflichtfelder: KapitalResponseDtoPflichtfelderItem[];
-  depot: DepotEinordnungDto;
+  requiredFields: CapitalResponseDtoRequiredFieldsItem[];
+  depot: DepotClassificationDto;
   /** The Kapital-Posten (empty while not determinable). */
-  posten: KapitalPostenDto[];
-  stand: KapitalStandDto;
+  items: CapitalItemDto[];
+  status: CapitalStatusDto;
   /**
      * Whose depot (ADR-0054); null = Person A.
      * @nullable
      */
-  inhaber: KapitalResponseDtoInhaber;
+  inhaber: CapitalResponseDtoInhaber;
 }
 
 /**
  * Person A, Person B, or a joint account split half and half.
  */
-export type PutKapitalInhaberDtoInhaber = typeof PutKapitalInhaberDtoInhaber[keyof typeof PutKapitalInhaberDtoInhaber];
+export type PutCapitalOwnerDtoInhaber = typeof PutCapitalOwnerDtoInhaber[keyof typeof PutCapitalOwnerDtoInhaber];
 
 
-export const PutKapitalInhaberDtoInhaber = {
+export const PutCapitalOwnerDtoInhaber = {
   A: 'A',
   B: 'B',
   gemeinsam: 'gemeinsam',
 } as const;
 
-export interface PutKapitalInhaberDto {
+export interface PutCapitalOwnerDto {
   /** Person A, Person B, or a joint account split half and half. */
-  inhaber: PutKapitalInhaberDtoInhaber;
+  inhaber: PutCapitalOwnerDtoInhaber;
 }
 
 /**
  * The field’s capture state.
  */
-export type PutKapitalFeldDtoKind = typeof PutKapitalFeldDtoKind[keyof typeof PutKapitalFeldDtoKind];
+export type PutCapitalFieldDtoKind = typeof PutCapitalFieldDtoKind[keyof typeof PutCapitalFieldDtoKind];
 
 
-export const PutKapitalFeldDtoKind = {
+export const PutCapitalFieldDtoKind = {
   erfasst: 'erfasst',
   offen: 'offen',
   unklar: 'unklar',
 } as const;
 
-export interface PutKapitalFeldDto {
+export interface PutCapitalFieldDto {
   /** The field’s capture state. */
-  kind: PutKapitalFeldDtoKind;
+  kind: PutCapitalFieldDtoKind;
   /** The value — present only when kind === "erfasst" (validated via @steuereule/core). */
-  wert?: number;
+  value?: number;
 }
 
-export type GuenstigerpruefungDtoKind = typeof GuenstigerpruefungDtoKind[keyof typeof GuenstigerpruefungDtoKind];
+export type MostFavourableCheckDtoKind = typeof MostFavourableCheckDtoKind[keyof typeof MostFavourableCheckDtoKind];
 
 
-export const GuenstigerpruefungDtoKind = {
+export const MostFavourableCheckDtoKind = {
   eindeutig: 'eindeutig',
   'zu-knapp': 'zu-knapp',
   unbestimmt: 'unbestimmt',
@@ -171,10 +171,10 @@ export const GuenstigerpruefungDtoKind = {
 /**
  * The recommendation (only when kind === "eindeutig").
  */
-export type GuenstigerpruefungDtoEmpfehlung = typeof GuenstigerpruefungDtoEmpfehlung[keyof typeof GuenstigerpruefungDtoEmpfehlung];
+export type MostFavourableCheckDtoRecommendation = typeof MostFavourableCheckDtoRecommendation[keyof typeof MostFavourableCheckDtoRecommendation];
 
 
-export const GuenstigerpruefungDtoEmpfehlung = {
+export const MostFavourableCheckDtoRecommendation = {
   abgeltung: 'abgeltung',
   persoenlich: 'persoenlich',
 } as const;
@@ -182,20 +182,20 @@ export const GuenstigerpruefungDtoEmpfehlung = {
 /**
  * Why the Günstigerprüfung does not apply (only when kind === "nicht-anwendbar").
  */
-export type GuenstigerpruefungDtoGrund = typeof GuenstigerpruefungDtoGrund[keyof typeof GuenstigerpruefungDtoGrund];
+export type MostFavourableCheckDtoReason = typeof MostFavourableCheckDtoReason[keyof typeof MostFavourableCheckDtoReason];
 
 
-export const GuenstigerpruefungDtoGrund = {
+export const MostFavourableCheckDtoReason = {
   'keine-abgeltung-einbehalten': 'keine-abgeltung-einbehalten',
   'krypto-gegated': 'krypto-gegated',
   'kap-depot-nicht-beantwortet': 'kap-depot-nicht-beantwortet',
   'keine-kapitalertraege': 'keine-kapitalertraege',
 } as const;
 
-export type UnschaerfeDtoKind = typeof UnschaerfeDtoKind[keyof typeof UnschaerfeDtoKind];
+export type UncertaintyDtoKind = typeof UncertaintyDtoKind[keyof typeof UncertaintyDtoKind];
 
 
-export const UnschaerfeDtoKind = {
+export const UncertaintyDtoKind = {
   bestimmt: 'bestimmt',
   unbestimmt: 'unbestimmt',
 } as const;
@@ -203,64 +203,64 @@ export const UnschaerfeDtoKind = {
 /**
  * Why no bound exists (only when kind === "unbestimmt").
  */
-export type UnschaerfeDtoGrund = typeof UnschaerfeDtoGrund[keyof typeof UnschaerfeDtoGrund];
+export type UncertaintyDtoReason = typeof UncertaintyDtoReason[keyof typeof UncertaintyDtoReason];
 
 
-export const UnschaerfeDtoGrund = {
+export const UncertaintyDtoReason = {
   'progressionsvorbehalt-nicht-eingegeben': 'progressionsvorbehalt-nicht-eingegeben',
 } as const;
 
-export interface UnschaerfeDto {
-  kind: UnschaerfeDtoKind;
+export interface UncertaintyDto {
+  kind: UncertaintyDtoKind;
   /** The computed bound (only when kind === "bestimmt"). */
-  obergrenze?: number;
+  upperLimit?: number;
   /** Why no bound exists (only when kind === "unbestimmt"). */
-  grund?: UnschaerfeDtoGrund;
+  reason?: UncertaintyDtoReason;
 }
 
 /**
  * Which Veranlagungsart both amounts compute.
  */
-export type GuenstigerpruefungHerkunftDtoVeranlagung = typeof GuenstigerpruefungHerkunftDtoVeranlagung[keyof typeof GuenstigerpruefungHerkunftDtoVeranlagung];
+export type MostFavourableCheckSourceDtoAssessmentType = typeof MostFavourableCheckSourceDtoAssessmentType[keyof typeof MostFavourableCheckSourceDtoAssessmentType];
 
 
-export const GuenstigerpruefungHerkunftDtoVeranlagung = {
+export const MostFavourableCheckSourceDtoAssessmentType = {
   einzel: 'einzel',
   zusammen: 'zusammen',
 } as const;
 
-export interface GuenstigerpruefungHerkunftDto {
+export interface MostFavourableCheckSourceDto {
   /** The Kapitalerträge (whole euros) — the basis of both amounts. */
   kapitalertraege: number;
   /** The übrige zvE-basis (Einnahmen-Basis from @steuereule/core — layer 3 open, no real zvE yet). */
-  uebrigesZvE: number;
+  remainingZvE: number;
   /** The applied Sparerpauschbetrag (§ 20 Abs. 9 EStG). */
-  sparerpauschbetrag: number;
+  saversAllowance: number;
   /** Which Veranlagungsart both amounts compute. */
-  veranlagung: GuenstigerpruefungHerkunftDtoVeranlagung;
+  assessmentType: MostFavourableCheckSourceDtoAssessmentType;
   /** Which tax components are folded into both amounts. */
-  bestandteile: string[];
+  components: string[];
 }
 
-export interface GuenstigerpruefungDto {
-  kind: GuenstigerpruefungDtoKind;
+export interface MostFavourableCheckDto {
+  kind: MostFavourableCheckDtoKind;
   /** The recommendation (only when kind === "eindeutig"). */
-  empfehlung?: GuenstigerpruefungDtoEmpfehlung;
+  recommendation?: MostFavourableCheckDtoRecommendation;
   /** Abgeltungsteuer + Soli + KiSt-Ermäßigung (only when kind !== "nicht-anwendbar"). */
-  abgeltung?: number;
+  flatRateTax?: number;
   /** The personal (tariff) tax on the capital income (only when kind !== "nicht-anwendbar"). */
-  persoenlich?: number;
+  personal?: number;
   /** persoenlich − abgeltung (only when kind !== "nicht-anwendbar"). */
   delta?: number;
   /** The computed margin (only when kind !== "nicht-anwendbar"). */
-  unschaerfe?: UnschaerfeDto;
+  uncertainty?: UncertaintyDto;
   /** Origin metadata on both numbers (only when kind !== "nicht-anwendbar"). */
-  herkunft?: GuenstigerpruefungHerkunftDto;
+  provenance?: MostFavourableCheckSourceDto;
   /** Why the Günstigerprüfung does not apply (only when kind === "nicht-anwendbar"). */
-  grund?: GuenstigerpruefungDtoGrund;
+  reason?: MostFavourableCheckDtoReason;
 }
 
-export type KapitalControllerGetGuenstigerpruefungParams = {
+export type CapitalControllerGetMostFavourableCheckParams = {
 /**
  * §51a EStG Kirchensteuer factor (0, 0.08, 0.09). Defaults to 0 — M1 collects none.
  */

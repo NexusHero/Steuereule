@@ -1,20 +1,20 @@
 import { ApiProperty } from '@nestjs/swagger'
-import { RenteFeldDto } from './rente-feld.dto.js'
+import { PensionFieldDto } from './rente-feld.dto.js'
 
 /** The derived taxable Posten. */
-export class RentePostenDto {
+export class PensionItemDto {
   @ApiProperty({ type: String, example: 'rente', description: 'The stable posten id.' })
   id!: string
 
   @ApiProperty({ type: Number, example: 16000, description: 'The taxable share (whole euros).' })
-  betrag!: number
+  amount!: number
 
   @ApiProperty({ type: String, description: 'The § 22 Nr. 1 Satz 3 EStG rule citation (Herkunft).' })
-  herkunft!: string
+  provenance!: string
 }
 
 /** The derived fold result. */
-export class RenteStandDto {
+export class PensionStatusDto {
   @ApiProperty({ enum: ['bestimmt', 'offen'], description: 'Determined, or open (naming what blocks).' })
   kind!: 'bestimmt' | 'offen'
 
@@ -28,17 +28,17 @@ export class RenteStandDto {
   anrechnung!: number
 
   @ApiProperty({ type: Number, required: false, description: 'Required-but-empty line items (only when offen).' })
-  offenePosten?: number
+  openItems?: number
 
   @ApiProperty({ type: Number, required: false, description: 'Open conflicts (only when offen).' })
-  konflikte?: number
+  conflicts?: number
 
   @ApiProperty({ type: [String], required: false, description: 'Gated Einkunftsarten (only when offen).' })
-  gegated?: string[]
+  gated?: string[]
 }
 
 /** The response shape for `GET /v1/steuerjahre/{jahr}/rente` and every PUT. */
-export class RenteResponseDto {
+export class PensionResponseDto {
   @ApiProperty({
     type: String,
     enum: ['GesetzlicheRente', 'Betriebsrente', 'PrivateRentenversicherung', 'WitwenWaisenrente', 'AuslaendischeRente'],
@@ -47,18 +47,18 @@ export class RenteResponseDto {
   })
   art!: string | null
 
-  @ApiProperty({ type: RenteFeldDto })
-  jahresbetrag!: RenteFeldDto
+  @ApiProperty({ type: PensionFieldDto })
+  jahresbetrag!: PensionFieldDto
 
-  @ApiProperty({ type: RenteFeldDto })
-  rentenbeginnJahr!: RenteFeldDto
+  @ApiProperty({ type: PensionFieldDto })
+  rentenbeginnJahr!: PensionFieldDto
 
-  @ApiProperty({ type: RenteFeldDto })
-  alterBeiRentenbeginn!: RenteFeldDto
+  @ApiProperty({ type: PensionFieldDto })
+  alterBeiRentenbeginn!: PensionFieldDto
 
-  @ApiProperty({ type: [RentePostenDto], description: 'The taxable posten (empty while not determinable).' })
-  posten!: RentePostenDto[]
+  @ApiProperty({ type: [PensionItemDto], description: 'The taxable posten (empty while not determinable).' })
+  items!: PensionItemDto[]
 
-  @ApiProperty({ type: RenteStandDto })
-  stand!: RenteStandDto
+  @ApiProperty({ type: PensionStatusDto })
+  status!: PensionStatusDto
 }

@@ -4,37 +4,37 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button, Feld, Input, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
 import {
-  useRenteControllerGet,
-  useRenteControllerSetFeld,
-  useRenteControllerSetRentenart,
-  getRenteControllerGetQueryKey,
-  type RenteFeldDto,
-  type RenteResponseDto,
+  usePensionControllerGet,
+  usePensionControllerSetField,
+  usePensionControllerSetPensionKind,
+  getPensionControllerGetQueryKey,
+  type PensionFieldDto,
+  type PensionResponseDto,
 } from '@steuereule/api-client'
 import { PENSION_TYPES, type PensionType } from '@steuereule/core'
 import { APP_NS } from '../../i18n/resources'
-import { ganzzahlAus } from '../shared/ganzzahl'
+import { integerFrom } from '../shared/ganzzahl'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 
-type FeldId = 'jahresbetrag' | 'rentenbeginnJahr' | 'alterBeiRentenbeginn'
+type FieldId = 'jahresbetrag' | 'rentenbeginnJahr' | 'alterBeiRentenbeginn'
 
-export interface RentnerScreenProps {
+export interface PensionerScreenProps {
   readonly onDone?: () => void
   readonly onBack?: () => void
   readonly taxYear?: number
 }
 
-export function RentnerScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YEAR }: RentnerScreenProps) {
+export function PensionerScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YEAR }: PensionerScreenProps) {
   const bp = useBreakpoint()
   const t = useTheme()
   const styles = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
   const queryClient = useQueryClient()
-  const query = useRenteControllerGet(taxYear)
-  const setArt = useRenteControllerSetRentenart()
-  const setFeld = useRenteControllerSetFeld()
+  const query = usePensionControllerGet(taxYear)
+  const setKind = usePensionControllerSetPensionKind()
+  const setField = usePensionControllerSetField()
 
   if (query.isPending) {
     return <LoadingState bp={bp} label={tr('rente.loading')} />
@@ -54,18 +54,18 @@ export function RentnerScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX
   const response = query.data.data
 
   function invalidate() {
-    void queryClient.invalidateQueries({ queryKey: getRenteControllerGetQueryKey(taxYear) })
+    void queryClient.invalidateQueries({ queryKey: getPensionControllerGetQueryKey(taxYear) })
   }
 
-  function sendArt(art: PensionType | null) {
-    setArt.mutate({ jahr: taxYear, data: { art } }, { onSuccess: invalidate })
+  function sendKind(art: PensionType | null) {
+    setKind.mutate({ jahr: taxYear, data: { art } }, { onSuccess: invalidate })
   }
 
-  function send(feld: FeldId, data: RenteFeldDto) {
-    setFeld.mutate({ jahr: taxYear, feld, data }, { onSuccess: invalidate })
+  function send(field: FieldId, data: PensionFieldDto) {
+    setField.mutate({ jahr: taxYear, feld: field, data }, { onSuccess: invalidate })
   }
 
-  const showsRentenbeginnJahr = response.art !== null && response.art !== 'PrivateRentenversicherung'
+  const showsPensionStartYear = response.art !== null && response.art !== 'PrivateRentenversicherung'
   const showsAlter = response.art === 'PrivateRentenversicherung'
 
   return (
@@ -81,37 +81,37 @@ export function RentnerScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX
         <Pressable
           key={art}
           accessibilityRole="button"
-          onPress={() => sendArt(art)}
+          onPress={() => sendKind(art)}
           style={[styles.artButton, response.art === art ? styles.artButtonActive : null]}
         >
           <Text style={response.art === art ? styles.artLabelActive : styles.artLabel}>{tr(`rente.arten.${art}`)}</Text>
         </Pressable>
       ))}
 
-      <RenteFeldEditor
+      <PensionFieldEditor
         label={tr('rente.felder.jahresbetrag')}
-        zustand={response.jahresbetrag}
-        onErfasst={(wert) => send('jahresbetrag', { kind: 'erfasst', wert })}
-        onUnklar={() => send('jahresbetrag', { kind: 'unklar' })}
+        state={response.jahresbetrag}
+        onRecorded={(value) => send('jahresbetrag', { kind: 'erfasst', value })}
+        onUnclear={() => send('jahresbetrag', { kind: 'unklar' })}
       />
-      {showsRentenbeginnJahr ? (
-        <RenteFeldEditor
+      {showsPensionStartYear ? (
+        <PensionFieldEditor
           label={tr('rente.felder.rentenbeginnJahr')}
-          zustand={response.rentenbeginnJahr}
-          onErfasst={(wert) => send('rentenbeginnJahr', { kind: 'erfasst', wert })}
-          onUnklar={() => send('rentenbeginnJahr', { kind: 'unklar' })}
+          state={response.rentenbeginnJahr}
+          onRecorded={(value) => send('rentenbeginnJahr', { kind: 'erfasst', value })}
+          onUnclear={() => send('rentenbeginnJahr', { kind: 'unklar' })}
         />
       ) : null}
       {showsAlter ? (
-        <RenteFeldEditor
+        <PensionFieldEditor
           label={tr('rente.felder.alterBeiRentenbeginn')}
-          zustand={response.alterBeiRentenbeginn}
-          onErfasst={(wert) => send('alterBeiRentenbeginn', { kind: 'erfasst', wert })}
-          onUnklar={() => send('alterBeiRentenbeginn', { kind: 'unklar' })}
+          state={response.alterBeiRentenbeginn}
+          onRecorded={(value) => send('alterBeiRentenbeginn', { kind: 'erfasst', value })}
+          onUnclear={() => send('alterBeiRentenbeginn', { kind: 'unklar' })}
         />
       ) : null}
 
-      <PostenNotice response={response} />
+      <ItemNotice response={response} />
 
       <Button onPress={onDone} style={styles.cta}>
         {tr('rente.weiter')}
@@ -120,27 +120,27 @@ export function RentnerScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX
   )
 }
 
-function RenteFeldEditor({
+function PensionFieldEditor({
   label,
-  zustand,
-  onErfasst,
-  onUnklar,
+  state,
+  onRecorded,
+  onUnclear,
 }: {
   readonly label: string
-  readonly zustand: RenteFeldDto
-  readonly onErfasst: (wert: number) => void
-  readonly onUnklar: () => void
+  readonly state: PensionFieldDto
+  readonly onRecorded: (value: number) => void
+  readonly onUnclear: () => void
 }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const s = makeStyles(t)
-  const [text, setText] = useState(zustand.kind === 'erfasst' ? String(zustand.wert) : '')
+  const [text, setText] = useState(state.kind === 'erfasst' ? String(state.value) : '')
 
   function commit() {
-    const wert = ganzzahlAus(text)
-    if (wert === null) return
-    if (zustand.kind === 'erfasst' && zustand.wert === wert) return
-    onErfasst(wert)
+    const value = integerFrom(text)
+    if (value === null) return
+    if (state.kind === 'erfasst' && state.value === value) return
+    onRecorded(value)
   }
 
   return (
@@ -149,35 +149,35 @@ function RenteFeldEditor({
         <Input
           type="numeric"
           mono
-          value={zustand.kind === 'unklar' ? '' : text}
+          value={state.kind === 'unklar' ? '' : text}
           onChange={setText}
           placeholder={tr('rente.feld.placeholder')}
           onSubmit={commit}
           onBlur={commit}
           accessibilityLabel={`${label} (${tr('rente.feld.placeholder')})`}
         />
-        <Pressable accessibilityRole="button" onPress={onUnklar} style={s.unklarButton}>
-          <Text style={zustand.kind === 'unklar' ? s.unklarActive : s.unklarLabel}>{tr('rente.feld.unklar')}</Text>
+        <Pressable accessibilityRole="button" onPress={onUnclear} style={s.unklarButton}>
+          <Text style={state.kind === 'unklar' ? s.unklarActive : s.unklarLabel}>{tr('rente.feld.unklar')}</Text>
         </Pressable>
       </View>
     </Feld>
   )
 }
 
-function PostenNotice({ response }: { readonly response: RenteResponseDto }) {
+function ItemNotice({ response }: { readonly response: PensionResponseDto }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const s = makeStyles(t)
-  const posten = response.posten[0]
+  const items = response.items[0]
 
-  if (posten === undefined) {
+  if (items === undefined) {
     return <Text style={s.postenOffen}>{tr('rente.posten.offen')}</Text>
   }
   return (
     <View style={s.postenBlock}>
       <Text style={s.postenHeading}>{tr('rente.posten.heading')}</Text>
-      <Text style={s.postenBetrag}>{`${posten.betrag} €`}</Text>
-      <Text style={s.postenHerkunft}>{posten.herkunft}</Text>
+      <Text style={s.postenBetrag}>{`${items.amount} €`}</Text>
+      <Text style={s.postenHerkunft}>{items.provenance}</Text>
     </View>
   )
 }
@@ -203,7 +203,7 @@ function makeStyles(t: UiTheme) {
   }
   const help: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.m, marginBottom: t.space.s4 }
   const sectionHeading: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.m, marginBottom: t.space.s2 }
-  const artButton: ViewStyle = {
+  const kindButton: ViewStyle = {
     paddingHorizontal: t.space.s3,
     paddingVertical: t.space.s2,
     borderWidth: t.space.kontur,
@@ -211,24 +211,24 @@ function makeStyles(t: UiTheme) {
     borderRadius: t.radius.s,
     marginBottom: t.space.s2,
   }
-  const artButtonActive: ViewStyle = { backgroundColor: t.color.funke, borderColor: t.color.funke }
-  const artLabel: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.s }
-  const artLabelActive: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.s }
-  const feldRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s3 }
-  const unklarButton: ViewStyle = {
+  const kindButtonActive: ViewStyle = { backgroundColor: t.color.funke, borderColor: t.color.funke }
+  const kindLabel: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.s }
+  const kindLabelActive: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.s }
+  const fieldRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s3 }
+  const unclearButton: ViewStyle = {
     paddingHorizontal: t.space.s3,
     paddingVertical: t.space.s2,
     borderWidth: t.space.kontur,
     borderColor: t.color.tinte,
     borderRadius: t.radius.s,
   }
-  const unklarLabel: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.s }
-  const unklarActive: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.s }
-  const postenBlock: ViewStyle = { marginVertical: t.space.s3, padding: t.space.s3, borderWidth: t.space.kontur, borderColor: t.color.tinte, borderRadius: t.radius.s }
-  const postenHeading: TextStyle = { color: t.color.tinte, fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size.m, marginBottom: t.space.s1 }
-  const postenBetrag: TextStyle = { color: t.color.tinte, fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size['2xl'] }
-  const postenHerkunft: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.s, marginTop: t.space.s1 }
-  const postenOffen: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.m, marginVertical: t.space.s3 }
+  const unclearLabel: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.s }
+  const unclearActive: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.s }
+  const itemsBlock: ViewStyle = { marginVertical: t.space.s3, padding: t.space.s3, borderWidth: t.space.kontur, borderColor: t.color.tinte, borderRadius: t.radius.s }
+  const itemsHeading: TextStyle = { color: t.color.tinte, fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size.m, marginBottom: t.space.s1 }
+  const itemAmount: TextStyle = { color: t.color.tinte, fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size['2xl'] }
+  const itemSource: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.s, marginTop: t.space.s1 }
+  const itemsOpen: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.m, marginVertical: t.space.s3 }
   const cta: ViewStyle = { marginTop: t.space.s4 }
   return {
     screen,
@@ -237,19 +237,19 @@ function makeStyles(t: UiTheme) {
     heading,
     help,
     sectionHeading,
-    artButton,
-    artButtonActive,
-    artLabel,
-    artLabelActive,
-    feldRow,
-    unklarButton,
-    unklarLabel,
-    unklarActive,
-    postenBlock,
-    postenHeading,
-    postenBetrag,
-    postenHerkunft,
-    postenOffen,
+    artButton: kindButton,
+    artButtonActive: kindButtonActive,
+    artLabel: kindLabel,
+    artLabelActive: kindLabelActive,
+    feldRow: fieldRow,
+    unklarButton: unclearButton,
+    unklarLabel: unclearLabel,
+    unklarActive: unclearActive,
+    postenBlock: itemsBlock,
+    postenHeading: itemsHeading,
+    postenBetrag: itemAmount,
+    postenHerkunft: itemSource,
+    postenOffen: itemsOpen,
     cta,
   }
 }

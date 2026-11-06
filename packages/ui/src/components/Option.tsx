@@ -3,14 +3,14 @@ import { type ReactNode } from 'react'
 import { useTheme } from '../theme/useTheme'
 
 export interface OptionProps {
-  readonly gewaehlt?: boolean
+  readonly selected?: boolean
   readonly onPress?: () => void
   readonly style?: StyleProp<ViewStyle>
   readonly children: ReactNode
   readonly testID?: string
 }
 
-export function Option({ gewaehlt = false, onPress, style, children, testID }: OptionProps) {
+export function Option({ selected = false, onPress, style, children, testID }: OptionProps) {
   const t = useTheme()
   const container: ViewStyle = {
     width: '100%',
@@ -18,11 +18,11 @@ export function Option({ gewaehlt = false, onPress, style, children, testID }: O
     justifyContent: 'center',
     padding: t.space.s4,
     marginBottom: t.space.s3,
-    backgroundColor: gewaehlt ? t.color.funke : t.color.karte,
+    backgroundColor: selected ? t.color.funke : t.color.karte,
     borderWidth: t.space.kontur,
     borderColor: t.color.tinte,
     borderRadius: t.radius.s,
-    ...(gewaehlt ? t.shadow.hartS : null),
+    ...(selected ? t.shadow.hartS : null),
   }
   const label: TextStyle = {
     textAlign: 'left',
@@ -35,11 +35,11 @@ export function Option({ gewaehlt = false, onPress, style, children, testID }: O
     <Pressable
       testID={testID}
       accessibilityRole="button"
-      aria-pressed={gewaehlt}
+      aria-pressed={selected}
       onPress={onPress}
       style={({ pressed }) => [
         container,
-        pressed && !gewaehlt && { transform: [{ translateX: -1 }, { translateY: -1 }], ...t.shadow.hartS },
+        pressed && !selected && { transform: [{ translateX: -1 }, { translateY: -1 }], ...t.shadow.hartS },
         style,
       ]}
     >

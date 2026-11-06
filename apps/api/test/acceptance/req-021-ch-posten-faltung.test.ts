@@ -20,10 +20,10 @@ const ALLOWED_ORIGIN = 'https://allowed.example.com'
 process.env.CORS_ALLOWED_ORIGINS = ALLOWED_ORIGIN
 const TRUSTED_ORIGIN_HEADERS = { origin: ALLOWED_ORIGIN }
 
-const STEUERJAHR = 2026
-const KURS = 0.9412
+const TAX_YEAR = 2026
+const RATE = 0.9412
 
-type ChLohnausweisRow = { userId: string; bruttolohnTotal: string | null }
+type ChSalaryCertificateRow = { userId: string; bruttolohnTotal: string | null }
 
 describe('REQ-021 — the CH-Posten folding (Vorsorge + Quellensteuer-Anrechnung), against the real server', () => {
   let app: NestFastifyApplication
@@ -67,35 +67,35 @@ describe('REQ-021 — the CH-Posten folding (Vorsorge + Quellensteuer-Anrechnung
   }
 
   /** Answer the two CH-interview questions in order so a Grenzgänger-Status is derived. */
-  async function antworteChInterview(cookie: string) {
-    const wohnsitz = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
+  async function answerChInterview(cookie: string) {
+    const residence = await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', cookie },
       body: JSON.stringify({ questionId: 'ch-wohnsitz', value: 'Deutschland' }),
     })
-    expect(wohnsitz.status).toBe(200)
-    const tage = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
+    expect(residence.status).toBe(200)
+    const days = await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', cookie },
       body: JSON.stringify({ questionId: 'ch-nichtrueckkehrtage', value: '10' }),
     })
-    expect(tage.status).toBe(200)
+    expect(days.status).toBe(200)
   }
 
   function get(cookie: string) {
-    return fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/ch-lohnausweis`, { headers: { cookie } })
+    return fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/ch-lohnausweis`, { headers: { cookie } })
   }
 
-  function putFeld(cookie: string, feld: string, body: unknown) {
-    return fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/ch-lohnausweis/${feld}`, {
+  function putField(cookie: string, field: string, body: unknown) {
+    return fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/ch-lohnausweis/${field}`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json', cookie },
       body: JSON.stringify(body),
     })
   }
 
-  function putWechselkurs(cookie: string, body: unknown) {
-    return fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/ch-lohnausweis/wechselkurs`, {
+  function putExchangeRate(cookie: string, body: unknown) {
+    return fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/ch-lohnausweis/wechselkurs`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json', cookie },
       body: JSON.stringify(body),
@@ -107,79 +107,79 @@ describe('REQ-021 — the CH-Posten folding (Vorsorge + Quellensteuer-Anrechnung
       'Quellensteuer→Anrechnung, each with "Lohnausweis Ziffer n × Kurs" provenance',
     async () => {
       const { cookie } = await signUp('gwt-fold@example.com')
-      await antworteChInterview(cookie)
+      await answerChInterview(cookie)
 
-      await putWechselkurs(cookie, { monat: '2026-01', kurs: KURS, modus: 'amtlich' })
-      await putFeld(cookie, 'bruttolohn-total', { kind: 'erfasst', wert: 84000 })
-      await putFeld(cookie, 'berufliche-vorsorge', { kind: 'erfasst', wert: 5000 })
-      const response = await putFeld(cookie, 'quellensteuer', { kind: 'erfasst', wert: 3780 })
+      await putExchangeRate(cookie, { month: '2026-01', rate: RATE, mode: 'amtlich' })
+      await putField(cookie, 'bruttolohn-total', { kind: 'erfasst', value: 84000 })
+      await putField(cookie, 'berufliche-vorsorge', { kind: 'erfasst', value: 5000 })
+      const response = await putField(cookie, 'quellensteuer', { kind: 'erfasst', value: 3780 })
 
       const body = (await response.json()) as {
         status: string
-        wechselkurs: { monat: string; kurs: number; modus: string }
-        posten: Array<{ id: string; art: string; ziffer: string; betragChf: number; betragEur: number; rolle: string }>
-        stand: { kind: string; einnahmen: number; vorsorgeaufwand: number; anrechnung: number }
+        exchangeRate: { month: string; rate: number; mode: string }
+        items: Array<{ id: string; art: string; digit: string; amountChf: number; amountEur: number; role: string }>
+        foldStatus: { kind: string; einnahmen: number; vorsorgeaufwand: number; anrechnung: number }
       }
 
       expect(body.status).toBe('echter-grenzgaenger')
-      expect(body.wechselkurs).toMatchObject({ monat: '2026-01', kurs: KURS, modus: 'amtlich' })
+      expect(body.exchangeRate).toMatchObject({ month: '2026-01', rate: RATE, mode: 'amtlich' })
 
-      expect(body.posten).toEqual([
+      expect(body.items).toEqual([
         {
           id: 'ch-lohnausweis-bruttolohn-total',
           art: 'Bruttolohn',
-          ziffer: '8',
-          betragChf: 84000,
-          betragEur: 79060.8,
-          rolle: 'einnahme',
-          wechselkurs: { monat: '2026-01', kurs: KURS, modus: 'amtlich' },
+          digit: '8',
+          amountChf: 84000,
+          amountEur: 79060.8,
+          role: 'einnahme',
+          exchangeRate: { month: '2026-01', rate: RATE, mode: 'amtlich' },
         },
         {
           id: 'ch-lohnausweis-berufliche-vorsorge',
           art: 'Pensionskasse',
-          ziffer: '10',
-          betragChf: 5000,
-          betragEur: 4706,
-          rolle: 'vorsorgeaufwand',
-          wechselkurs: { monat: '2026-01', kurs: KURS, modus: 'amtlich' },
+          digit: '10',
+          amountChf: 5000,
+          amountEur: 4706,
+          role: 'vorsorgeaufwand',
+          exchangeRate: { month: '2026-01', rate: RATE, mode: 'amtlich' },
         },
         {
           id: 'ch-lohnausweis-quellensteuer',
           art: 'Quellensteuer',
-          ziffer: '12',
-          betragChf: 3780,
-          betragEur: 3557.74,
-          rolle: 'anrechnung',
-          wechselkurs: { monat: '2026-01', kurs: KURS, modus: 'amtlich' },
+          digit: '12',
+          amountChf: 3780,
+          amountEur: 3557.74,
+          role: 'anrechnung',
+          exchangeRate: { month: '2026-01', rate: RATE, mode: 'amtlich' },
         },
       ])
 
-      expect(body.stand).toEqual({ kind: 'bestimmt', einnahmen: 79061, vorsorgeaufwand: 4706, anrechnung: 3558 })
+      expect(body.foldStatus).toEqual({ kind: 'bestimmt', einnahmen: 79061, vorsorgeaufwand: 4706, anrechnung: 3558 })
     },
   )
 
   it('an empty required field stays open, never a fabricated zero (ADR-032 honesty)', async () => {
     const { cookie } = await signUp('open-field@example.com')
-    await antworteChInterview(cookie)
-    await putWechselkurs(cookie, { monat: '2026-01', kurs: KURS, modus: 'amtlich' })
+    await answerChInterview(cookie)
+    await putExchangeRate(cookie, { month: '2026-01', rate: RATE, mode: 'amtlich' })
 
     const body = (await (await get(cookie)).json()) as {
-      posten: unknown[]
-      stand: { kind: string; einnahmen: number; vorsorgeaufwand: number; anrechnung: number; offenePosten?: number }
+      items: unknown[]
+      foldStatus: { kind: string; einnahmen: number; vorsorgeaufwand: number; anrechnung: number; openItems?: number }
     }
-    expect(body.posten).toEqual([])
-    expect(body.stand.kind).toBe('offen')
-    expect(body.stand).toMatchObject({
+    expect(body.items).toEqual([])
+    expect(body.foldStatus.kind).toBe('offen')
+    expect(body.foldStatus).toMatchObject({
       einnahmen: 0,
       vorsorgeaufwand: 0,
       anrechnung: 0,
-      offenePosten: 3, // bruttolohn-total + berufliche-vorsorge + quellensteuer
+      openItems: 3, // bruttolohn-total + berufliche-vorsorge + quellensteuer
     })
   })
 
   it('stores the Anlage-N-Gre facts beyond the Lohnausweis (PUT .../n-gre) and returns them', async () => {
     const { cookie } = await signUp('n-gre@example.com')
-    const put = await putFeld(cookie, 'n-gre', {
+    const put = await putField(cookie, 'n-gre', {
       arbeitgeberName: 'Muster AG',
       arbeitgeberStrasse: 'Bahnhofstrasse 1',
       arbeitgeberPlzOrt: '4051 Basel',
@@ -188,7 +188,7 @@ describe('REQ-021 — the CH-Posten folding (Vorsorge + Quellensteuer-Anrechnung
       pkArbeitnehmerChf: 5000,
       pkArbeitgeberChf: 6000,
       krankentaggeldArbeitgeberProzent: 10,
-      sonderfaelle: false,
+      specialCases: false,
     })
     expect(put.status).toBe(200)
     const body = (await (await get(cookie)).json()) as { nGre: Record<string, unknown> }
@@ -204,16 +204,16 @@ describe('REQ-021 — the CH-Posten folding (Vorsorge + Quellensteuer-Anrechnung
       krankentaggeldArbeitgeberChf: null,
       nbuvArbeitgeberProzent: null,
       nbuvArbeitgeberChf: null,
-      sonderfaelle: false,
+      specialCases: false,
     })
-    expect((await putFeld(cookie, 'n-gre', { krankentaggeldArbeitgeberProzent: 101 })).status).toBe(400)
-    expect((await putFeld(cookie, 'n-gre', { familienzulagenChf: -1 })).status).toBe(400)
+    expect((await putField(cookie, 'n-gre', { krankentaggeldArbeitgeberProzent: 101 })).status).toBe(400)
+    expect((await putField(cookie, 'n-gre', { familienzulagenChf: -1 })).status).toBe(400)
   })
 
   it('a tatsächlicher Kurs without a Beleg is rejected (ADR-012: "ohne Beleg kein tatsächlicher Kurs")', async () => {
     const { cookie } = await signUp('tatsaechlich@example.com')
 
-    const response = await putWechselkurs(cookie, { monat: '2026-01', kurs: 0.95, modus: 'tatsaechlich' })
+    const response = await putExchangeRate(cookie, { month: '2026-01', rate: 0.95, mode: 'tatsaechlich' })
     expect(response.status).toBe(400)
   })
 
@@ -224,9 +224,9 @@ describe('REQ-021 — the CH-Posten folding (Vorsorge + Quellensteuer-Anrechnung
     })
 
     it('PUT without an account session is 401 and creates no row', async () => {
-      const response = await putFeld('', 'bruttolohn-total', { kind: 'erfasst', wert: 1 })
+      const response = await putField('', 'bruttolohn-total', { kind: 'erfasst', value: 1 })
       expect(response.status).toBe(401)
-      const rows = await prisma.$queryRaw<ChLohnausweisRow[]>`SELECT "userId" FROM "ChLohnausweis"`
+      const rows = await prisma.$queryRaw<ChSalaryCertificateRow[]>`SELECT "userId" FROM "ChLohnausweis"`
       expect(rows).toEqual([])
     })
   })
@@ -235,26 +235,26 @@ describe('REQ-021 — the CH-Posten folding (Vorsorge + Quellensteuer-Anrechnung
     it('user B can neither read nor write user A’s CH-Lohnausweis row', async () => {
       const userA = await signUp('p4-a@example.com')
       const userB = await signUp('p4-b@example.com')
-      await antworteChInterview(userA.cookie)
-      await putWechselkurs(userA.cookie, { monat: '2026-01', kurs: KURS, modus: 'amtlich' })
-      await putFeld(userA.cookie, 'bruttolohn-total', { kind: 'erfasst', wert: 84000 })
+      await answerChInterview(userA.cookie)
+      await putExchangeRate(userA.cookie, { month: '2026-01', rate: RATE, mode: 'amtlich' })
+      await putField(userA.cookie, 'bruttolohn-total', { kind: 'erfasst', value: 84000 })
 
-      const asB = await (await get(userB.cookie)).json() as { felder: Array<{ id: string; kind: string }> }
-      const bruttoB = asB.felder.find((f) => f.id === 'bruttolohn-total')
-      expect(bruttoB).toMatchObject({ kind: 'offen' })
+      const asB = await (await get(userB.cookie)).json() as { fields: Array<{ id: string; kind: string }> }
+      const grossB = asB.fields.find((f) => f.id === 'bruttolohn-total')
+      expect(grossB).toMatchObject({ kind: 'offen' })
 
-      const asA = await (await get(userA.cookie)).json() as { felder: Array<{ id: string; kind: string; wert?: number }> }
-      const bruttoA = asA.felder.find((f) => f.id === 'bruttolohn-total')
-      expect(bruttoA).toMatchObject({ kind: 'erfasst', wert: 84000 })
+      const asA = await (await get(userA.cookie)).json() as { fields: Array<{ id: string; kind: string; value?: number }> }
+      const grossA = asA.fields.find((f) => f.id === 'bruttolohn-total')
+      expect(grossA).toMatchObject({ kind: 'erfasst', value: 84000 })
     })
   })
 
   describe('P5 — figures are ciphertext at rest, checked by raw SQL, never through the Prisma client', () => {
     it('a real PUT’s Bruttolohn is not stored as plaintext', async () => {
       const { cookie, userId } = await signUp('p5-cipher@example.com')
-      await antworteChInterview(cookie)
-      await putWechselkurs(cookie, { monat: '2026-01', kurs: KURS, modus: 'amtlich' })
-      await putFeld(cookie, 'bruttolohn-total', { kind: 'erfasst', wert: 84000 })
+      await answerChInterview(cookie)
+      await putExchangeRate(cookie, { month: '2026-01', rate: RATE, mode: 'amtlich' })
+      await putField(cookie, 'bruttolohn-total', { kind: 'erfasst', value: 84000 })
 
       const rawRows = await prisma.$queryRaw<{ bruttolohnTotal: string | null }[]>`
         SELECT "bruttolohnTotal" FROM "ChLohnausweis" WHERE "userId" = ${userId}
@@ -271,8 +271,8 @@ describe('REQ-021 — the CH-Posten folding (Vorsorge + Quellensteuer-Anrechnung
     it('each admitted write appends exactly one WRITE audit entry, atomic with the row', async () => {
       const { cookie, userId } = await signUp('audit-write@example.com')
 
-      await putWechselkurs(cookie, { monat: '2026-01', kurs: KURS, modus: 'amtlich' })
-      await putFeld(cookie, 'bruttolohn-total', { kind: 'erfasst', wert: 84000 })
+      await putExchangeRate(cookie, { month: '2026-01', rate: RATE, mode: 'amtlich' })
+      await putField(cookie, 'bruttolohn-total', { kind: 'erfasst', value: 84000 })
 
       const rows = await prisma.$queryRaw<{ action: string; resource: string }[]>`
         SELECT "action", "resource" FROM "TaxDataAccessLog" WHERE "userId" = ${userId}

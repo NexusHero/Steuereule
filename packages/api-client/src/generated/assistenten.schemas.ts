@@ -5,15 +5,15 @@
  * Onboarding profile endpoints (steuereule#29)
  * OpenAPI spec version: 1.0
  */
-export interface VerbundenerAssistentDto {
+export interface ConnectedAssistantDto {
   clientId: string;
   name: string;
-  verbundenSeit: string;
+  linkedSince: string;
   /** @nullable */
-  zuletztGenutzt?: string | null;
+  lastUsed?: string | null;
 }
 
-export interface RevokeAssistentResponseDto {
+export interface RevokeAssistantResponseDto {
   success: boolean;
 }
 
@@ -26,7 +26,7 @@ export interface OauthClientInfoDto {
   icon?: string | null;
 }
 
-export type AssistentenControllerGetClientInfoParams = {
+export type AssistantsControllerGetClientInfoParams = {
 clientId: string;
 };
 

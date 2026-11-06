@@ -1,21 +1,21 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { InvalidInputError } from '../common/domain-error.js'
 import {
-  LOHNAUSWEIS_FELDER,
-  amtlicherMonatskurs,
-  chPostenAlsKernposten,
-  deserialisiereLohnausweisFeld,
+  SALARY_CERTIFICATE_FIELDS,
+  officialMonthlyRate,
+  chItemsAsCoreItems,
+  deserializeSalaryCertificateField,
   gatedIncomeTypes,
-  grenzgaengerChPosten,
+  crossBorderChItems,
   grenzgaengerStand,
-  istGueltigerLohnausweisBetrag,
-  serialisiereLohnausweisFeld,
-  tatsaechlicherKurs,
+  isValidSalaryCertificateAmount,
+  serializeSalaryCertificateField,
+  actualRate,
   type Answers,
-  type Berechnungsstand,
-  type ChPosten,
-  type LohnausweisWerte,
-  type Wechselkurs,
+  type CalculationStatus,
+  type ChItem,
+  type SalaryCertificateValues,
+  type ExchangeRate,
 } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
 import {
@@ -24,157 +24,157 @@ import {
 } from '../interview/interview-answer.repository.js'
 import {
   CROSS_BORDER_SALARY_STATEMENT_REPOSITORY,
-  LEERE_N_GRE,
+  EMPTY_N_GRE,
   type CrossBorderSalaryStatementRecord,
   type CrossBorderSalaryStatementRepository,
-  type NGreAngaben,
+  type NGreDetails,
 } from './ch-lohnausweis.repository.js'
-import type { LohnausweisFeldDto, PutLohnausweisFeldDto } from './dto/lohnausweis-feld.dto.js'
-import type { PutWechselkursDto, WechselkursDto } from './dto/wechselkurs.dto.js'
-import type { ChPostenDto, NGreAngabenDto, PutBemerkungenDto, PutNGreDto, PutVorsorgeDto } from './dto/ch-posten.dto.js'
-import type { BerechnungsstandDto, ChLohnausweisResponseDto } from './dto/ch-lohnausweis-response.dto.js'
-import { grenzgaengerStatusAusAnswers, wechselkursAusRecord } from './lohnausweis-daten.js'
+import type { SalaryCertificateFieldDto, PutSalaryCertificateFieldDto } from './dto/lohnausweis-feld.dto.js'
+import type { PutExchangeRateDto, ExchangeRateDto } from './dto/wechselkurs.dto.js'
+import type { ChItemDto, NGreDetailsDto, PutRemarksDto, PutNGreDto, PutProvisionDto } from './dto/ch-posten.dto.js'
+import type { CalculationStatusDto, ChSalaryCertificateResponseDto } from './dto/ch-lohnausweis-response.dto.js'
+import { crossBorderStatusFromAnswers, exchangeRateFromRecord } from './lohnausweis-daten.js'
 
-function felderAusRecord(record: CrossBorderSalaryStatementRecord | null): { felder: LohnausweisFeldDto[]; werte: LohnausweisWerte } {
-  const felder: LohnausweisFeldDto[] = []
-  const werte: LohnausweisWerte = {}
-  for (const feld of LOHNAUSWEIS_FELDER) {
-    if (feld.art !== 'chf-betrag') continue
-    const stored = record === null ? null : record.felder[feld.id as keyof CrossBorderSalaryStatementRecord['felder']]
-    const wert = deserialisiereLohnausweisFeld(stored)
-    if (wert === null) {
-      felder.push({ id: feld.id, ziffer: feld.ziffer, kind: 'offen' })
-    } else if (wert === 'unklar') {
-      felder.push({ id: feld.id, ziffer: feld.ziffer, kind: 'unklar' })
+function fieldsFromRecord(record: CrossBorderSalaryStatementRecord | null): { fields: SalaryCertificateFieldDto[]; values: SalaryCertificateValues } {
+  const fields: SalaryCertificateFieldDto[] = []
+  const values: SalaryCertificateValues = {}
+  for (const field of SALARY_CERTIFICATE_FIELDS) {
+    if (field.art !== 'chf-betrag') continue
+    const stored = record === null ? null : record.fields[field.id as keyof CrossBorderSalaryStatementRecord['fields']]
+    const value = deserializeSalaryCertificateField(stored)
+    if (value === null) {
+      fields.push({ id: field.id, digit: field.digit, kind: 'offen' })
+    } else if (value === 'unklar') {
+      fields.push({ id: field.id, digit: field.digit, kind: 'unklar' })
     } else {
-      felder.push({ id: feld.id, ziffer: feld.ziffer, kind: 'erfasst', wert })
-      werte[feld.id] = wert
+      fields.push({ id: field.id, digit: field.digit, kind: 'erfasst', value })
+      values[field.id] = value
     }
   }
-  return { felder, werte }
+  return { fields, values }
 }
 
 
-function wechselkursZuDto(kurs: Wechselkurs): WechselkursDto {
-  return { monat: kurs.monat, kurs: kurs.kurs, modus: kurs.modus, ...(kurs.belegId !== undefined ? { belegId: kurs.belegId } : {}) }
+function exchangeRateToDto(rate: ExchangeRate): ExchangeRateDto {
+  return { month: rate.month, rate: rate.rate, mode: rate.mode, ...(rate.receiptId !== undefined ? { receiptId: rate.receiptId } : {}) }
 }
 
-function standZuDto(stand: Berechnungsstand): BerechnungsstandDto {
-  if (stand.kind === 'bestimmt') {
-    return { kind: 'bestimmt', einnahmen: stand.einnahmen, vorsorgeaufwand: stand.vorsorgeaufwand, anrechnung: stand.anrechnung }
+function statusToDto(status: CalculationStatus): CalculationStatusDto {
+  if (status.kind === 'bestimmt') {
+    return { kind: 'bestimmt', einnahmen: status.einnahmen, vorsorgeaufwand: status.vorsorgeaufwand, anrechnung: status.anrechnung }
   }
   return {
     kind: 'offen',
-    einnahmen: stand.einnahmen,
-    vorsorgeaufwand: stand.vorsorgeaufwand,
-    anrechnung: stand.anrechnung,
-    offenePosten: stand.offenePosten,
-    konflikte: stand.konflikte,
-    gegated: [...stand.gegated],
+    einnahmen: status.einnahmen,
+    vorsorgeaufwand: status.vorsorgeaufwand,
+    anrechnung: status.anrechnung,
+    openItems: status.openItems,
+    conflicts: status.conflicts,
+    gated: [...status.gated],
   }
 }
 
-function postenZuDto(posten: ChPosten): ChPostenDto {
-  const kern = chPostenAlsKernposten(posten)
+function itemToDto(items: ChItem): ChItemDto {
+  const kern = chItemsAsCoreItems(items)
   return {
-    id: posten.id,
-    art: posten.art,
-    ...(posten.ziffer !== undefined ? { ziffer: posten.ziffer } : {}),
-    betragChf: posten.betragChf,
-    betragEur: posten.betragEur,
-    rolle: kern?.rolle ?? 'einnahme',
-    wechselkurs: wechselkursZuDto(posten.wechselkurs),
+    id: items.id,
+    art: items.art,
+    ...(items.digit !== undefined ? { digit: items.digit } : {}),
+    amountChf: items.amountChf,
+    amountEur: items.amountEur,
+    role: kern?.role ?? 'einnahme',
+    exchangeRate: exchangeRateToDto(items.exchangeRate),
   }
 }
 
-function wertAusDto(dto: PutLohnausweisFeldDto): string | null {
+function valueFromDto(dto: PutSalaryCertificateFieldDto): string | null {
   if (dto.kind === 'offen') return null
   if (dto.kind === 'unklar') return 'unklar'
-  if (dto.wert === undefined || !istGueltigerLohnausweisBetrag(dto.wert)) {
+  if (dto.value === undefined || !isValidSalaryCertificateAmount(dto.value)) {
     throw new InvalidInputError('FIELD_VALUE_INVALID', 'kind "erfasst" requires a non-negative whole-CHF `wert`.')
   }
-  return serialisiereLohnausweisFeld(dto.wert)
+  return serializeSalaryCertificateField(dto.value)
 }
 
 
-function nGreZuDto(n: NGreAngaben): NGreAngabenDto {
-  const zahl = (wert: string | null): number | null => (wert === null ? null : Number(wert))
+function nGreToDto(n: NGreDetails): NGreDetailsDto {
+  const number = (value: string | null): number | null => (value === null ? null : Number(value))
   return {
     arbeitgeberName: n.arbeitgeberName,
     arbeitgeberStrasse: n.arbeitgeberStrasse,
     arbeitgeberPlzOrt: n.arbeitgeberPlzOrt,
-    familienzulagenChf: zahl(n.familienzulagenChf),
-    krankentaggeldChf: zahl(n.krankentaggeldChf),
-    pkArbeitnehmerChf: zahl(n.pkArbeitnehmerChf),
-    pkArbeitgeberChf: zahl(n.pkArbeitgeberChf),
-    krankentaggeldArbeitgeberProzent: zahl(n.krankentaggeldArbeitgeberProzent),
-    krankentaggeldArbeitgeberChf: zahl(n.krankentaggeldArbeitgeberChf),
-    nbuvArbeitgeberProzent: zahl(n.nbuvArbeitgeberProzent),
-    nbuvArbeitgeberChf: zahl(n.nbuvArbeitgeberChf),
-    sonderfaelle: n.nGreSonderfaelle,
+    familienzulagenChf: number(n.familienzulagenChf),
+    krankentaggeldChf: number(n.krankentaggeldChf),
+    pkArbeitnehmerChf: number(n.pkArbeitnehmerChf),
+    pkArbeitgeberChf: number(n.pkArbeitgeberChf),
+    krankentaggeldArbeitgeberProzent: number(n.krankentaggeldArbeitgeberProzent),
+    krankentaggeldArbeitgeberChf: number(n.krankentaggeldArbeitgeberChf),
+    nbuvArbeitgeberProzent: number(n.nbuvArbeitgeberProzent),
+    nbuvArbeitgeberChf: number(n.nbuvArbeitgeberChf),
+    specialCases: n.nGreSonderfaelle,
   }
 }
 
 /** Application logic for the CH-Lohnausweis guided mask + fold. */
 @Injectable()
-export class ChLohnausweisService {
+export class ChSalaryCertificateService {
   constructor(
     @Inject(CROSS_BORDER_SALARY_STATEMENT_REPOSITORY) private readonly repository: CrossBorderSalaryStatementRepository,
     @Inject(INTERVIEW_ANSWER_REPOSITORY) private readonly interviewRepository: InterviewAnswerRepository,
     @Inject(AuditService) private readonly auditService: AuditService,
   ) {}
 
-  private async antworten(userId: string, steuerjahr: number): Promise<Answers> {
+  private async answers(userId: string, steuerjahr: number): Promise<Answers> {
     const rows = await this.interviewRepository.findAllForUserAndYear(userId, steuerjahr)
     const answers: Record<string, string> = {}
     for (const row of rows) answers[row.questionId] = row.value
     return answers as Answers
   }
 
-  private async toResponse(userId: string, steuerjahr: number, record: CrossBorderSalaryStatementRecord | null): Promise<ChLohnausweisResponseDto> {
-    const { felder, werte } = felderAusRecord(record)
-    const wechselkurs = wechselkursAusRecord(record)
-    const answers = await this.antworten(userId, steuerjahr)
-    const status = grenzgaengerStatusAusAnswers(answers)
-    const gegated = gatedIncomeTypes(answers)
+  private async toResponse(userId: string, steuerjahr: number, record: CrossBorderSalaryStatementRecord | null): Promise<ChSalaryCertificateResponseDto> {
+    const { fields, values } = fieldsFromRecord(record)
+    const exchangeRate = exchangeRateFromRecord(record)
+    const answers = await this.answers(userId, steuerjahr)
+    const status = crossBorderStatusFromAnswers(answers)
+    const gated = gatedIncomeTypes(answers)
 
     const saeule3aChf = record === null || record.saeule3aChf === null ? undefined : Number(record.saeule3aChf)
     const krankenkasseChf = record === null || record.krankenkasseChf === null ? undefined : Number(record.krankenkasseChf)
 
-    let posten: ChPostenDto[] = []
-    let stand: BerechnungsstandDto | null = null
-    if (wechselkurs !== null && status !== null) {
-      const chPosten = grenzgaengerChPosten({
-        lohnausweis: werte,
+    let items: ChItemDto[] = []
+    let foldStatus: CalculationStatusDto | null = null
+    if (exchangeRate !== null && status !== null) {
+      const chItems = crossBorderChItems({
+        salaryCertificate: values,
         ...(saeule3aChf !== undefined ? { saeule3aChf } : {}),
         ...(krankenkasseChf !== undefined ? { krankenkasseChf } : {}),
-        wechselkurs,
+        exchangeRate,
       })
-      posten = chPosten.map(postenZuDto)
-      stand = standZuDto(
+      items = chItems.map(itemToDto)
+      foldStatus = statusToDto(
         grenzgaengerStand({
-          lohnausweis: werte,
+          salaryCertificate: values,
           ...(saeule3aChf !== undefined ? { saeule3aChf } : {}),
           ...(krankenkasseChf !== undefined ? { krankenkasseChf } : {}),
           status,
-          wechselkurs,
-          gegated,
+          exchangeRate,
+          gated,
         }),
       )
     }
 
     return {
-      felder,
+      fields,
       bemerkungen: record?.bemerkungen ?? null,
-      wechselkurs: wechselkurs === null ? null : wechselkursZuDto(wechselkurs),
+      exchangeRate: exchangeRate === null ? null : exchangeRateToDto(exchangeRate),
       status,
-      posten,
-      stand,
-      nGre: nGreZuDto(record?.nGre ?? LEERE_N_GRE),
+      items,
+      foldStatus,
+      nGre: nGreToDto(record?.nGre ?? EMPTY_N_GRE),
     }
   }
 
-  async getState(userId: string, steuerjahr: number): Promise<ChLohnausweisResponseDto> {
+  async getState(userId: string, steuerjahr: number): Promise<ChSalaryCertificateResponseDto> {
     const record = await this.repository.findForUserAndYear(userId, steuerjahr)
     if (record !== null) {
       await this.auditService.append({ userId, action: 'READ', resource: 'ch-lohnausweis' })
@@ -182,67 +182,67 @@ export class ChLohnausweisService {
     return this.toResponse(userId, steuerjahr, record)
   }
 
-  async setFeld(
+  async setField(
     userId: string,
     steuerjahr: number,
-    feld: Parameters<CrossBorderSalaryStatementRepository['setFeld']>[2],
-    dto: PutLohnausweisFeldDto,
-  ): Promise<ChLohnausweisResponseDto> {
-    const record = await this.repository.setFeld(userId, steuerjahr, feld, wertAusDto(dto))
+    field: Parameters<CrossBorderSalaryStatementRepository['setField']>[2],
+    dto: PutSalaryCertificateFieldDto,
+  ): Promise<ChSalaryCertificateResponseDto> {
+    const record = await this.repository.setField(userId, steuerjahr, field, valueFromDto(dto))
     return this.toResponse(userId, steuerjahr, record)
   }
 
-  async setBemerkungen(userId: string, steuerjahr: number, dto: PutBemerkungenDto): Promise<ChLohnausweisResponseDto> {
-    const record = await this.repository.setBemerkungen(userId, steuerjahr, dto.text ?? null)
+  async setRemarks(userId: string, steuerjahr: number, dto: PutRemarksDto): Promise<ChSalaryCertificateResponseDto> {
+    const record = await this.repository.setRemarks(userId, steuerjahr, dto.text ?? null)
     return this.toResponse(userId, steuerjahr, record)
   }
 
-  async setVorsorge(userId: string, steuerjahr: number, dto: PutVorsorgeDto): Promise<ChLohnausweisResponseDto> {
-    const saeule3aChf = this.serialisiereOptional(dto.saeule3aChf)
-    const krankenkasseChf = this.serialisiereOptional(dto.krankenkasseChf)
-    const record = await this.repository.setVorsorge(userId, steuerjahr, saeule3aChf, krankenkasseChf)
+  async setProvision(userId: string, steuerjahr: number, dto: PutProvisionDto): Promise<ChSalaryCertificateResponseDto> {
+    const saeule3aChf = this.serializeOptional(dto.saeule3aChf)
+    const krankenkasseChf = this.serializeOptional(dto.krankenkasseChf)
+    const record = await this.repository.setProvision(userId, steuerjahr, saeule3aChf, krankenkasseChf)
     return this.toResponse(userId, steuerjahr, record)
   }
 
-  async setNGre(userId: string, steuerjahr: number, dto: PutNGreDto): Promise<ChLohnausweisResponseDto> {
-    const { sonderfaelle, ...rest } = dto
-    const angaben: Partial<NGreAngaben> = {}
-    for (const [feld, wert] of Object.entries(rest)) {
-      if (wert === undefined) continue
-      angaben[feld as Exclude<keyof NGreAngaben, 'nGreSonderfaelle'>] = wert === null ? null : String(wert)
+  async setNGre(userId: string, steuerjahr: number, dto: PutNGreDto): Promise<ChSalaryCertificateResponseDto> {
+    const { specialCases, ...rest } = dto
+    const details: Partial<NGreDetails> = {}
+    for (const [field, value] of Object.entries(rest)) {
+      if (value === undefined) continue
+      details[field as Exclude<keyof NGreDetails, 'nGreSonderfaelle'>] = value === null ? null : String(value)
     }
-    if (sonderfaelle !== undefined) angaben.nGreSonderfaelle = sonderfaelle
-    const record = await this.repository.setNGre(userId, steuerjahr, angaben)
+    if (specialCases !== undefined) details.nGreSonderfaelle = specialCases
+    const record = await this.repository.setNGre(userId, steuerjahr, details)
     return this.toResponse(userId, steuerjahr, record)
   }
 
-  async setWechselkurs(userId: string, steuerjahr: number, dto: PutWechselkursDto): Promise<ChLohnausweisResponseDto> {
-    let kurs: Wechselkurs
+  async setExchangeRate(userId: string, steuerjahr: number, dto: PutExchangeRateDto): Promise<ChSalaryCertificateResponseDto> {
+    let rate: ExchangeRate
     try {
-      kurs =
-        dto.modus === 'amtlich'
-          ? amtlicherMonatskurs(dto.monat, dto.kurs)
-          : tatsaechlicherKurs(dto.monat, dto.kurs, dto.belegId ?? '')
+      rate =
+        dto.mode === 'amtlich'
+          ? officialMonthlyRate(dto.month, dto.rate)
+          : actualRate(dto.month, dto.rate, dto.receiptId ?? '')
     } catch (error) {
       if (error instanceof RangeError) {
         throw new InvalidInputError('WECHSELKURS_INVALID', error.message)
       }
       throw error
     }
-    const record = await this.repository.setWechselkurs(userId, steuerjahr, {
-      monat: kurs.monat,
-      kurs: kurs.kurs,
-      modus: kurs.modus,
-      ...(kurs.belegId !== undefined ? { belegId: kurs.belegId } : {}),
+    const record = await this.repository.setExchangeRate(userId, steuerjahr, {
+      month: rate.month,
+      rate: rate.rate,
+      mode: rate.mode,
+      ...(rate.receiptId !== undefined ? { receiptId: rate.receiptId } : {}),
     })
     return this.toResponse(userId, steuerjahr, record)
   }
 
-  private serialisiereOptional(wert: number | null | undefined): string | null {
-    if (wert === null || wert === undefined) return null
-    if (!istGueltigerLohnausweisBetrag(wert)) {
+  private serializeOptional(value: number | null | undefined): string | null {
+    if (value === null || value === undefined) return null
+    if (!isValidSalaryCertificateAmount(value)) {
       throw new InvalidInputError('FIELD_VALUE_INVALID', 'A whole-CHF amount must be a non-negative integer.')
     }
-    return String(wert)
+    return String(value)
   }
 }

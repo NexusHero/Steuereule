@@ -12,42 +12,42 @@ import { ThemeProvider } from '@steuereule/ui'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import { createAppI18n } from '../../i18n/app-i18n'
-import { BescheidScreen } from './BescheidScreen'
+import { AssessmentScreen } from './BescheidScreen'
 import { server } from '../../test-msw-server'
-import type { BescheidResponseDto } from '@steuereule/api-client'
+import type { AssessmentResponseDto } from '@steuereule/api-client'
 
-const BESCHEID_URL = '*/v1/steuerjahre/2026/bescheid'
+const ASSESSMENT_URL = '*/v1/steuerjahre/2026/bescheid'
 
-function leererBescheid(): BescheidResponseDto {
+function emptyAssessment(): AssessmentResponseDto {
   return {
     status: 'eingegangen',
     bescheiddatum: null,
     einspruchGrund: null,
-    felder: [
+    fields: [
       { id: 'einnahmen', kind: 'offen' },
       { id: 'vorsorgeaufwand', kind: 'offen' },
       { id: 'anrechnung', kind: 'offen' },
       { id: 'festgesetzteSteuer', kind: 'offen' },
       { id: 'erstattung', kind: 'offen' },
     ],
-    abgleich: { abweichungen: [], berechnungUnvollstaendig: false },
-    frist: { bescheiddatum: null, fristEnde: null, verbleibendeTage: null },
-    naechsteZustaende: ['geprüft'],
+    reconciliation: { deviations: [], calculationIncomplete: false },
+    frist: { bescheiddatum: null, deadlineEnd: null, remainingDays: null },
+    nextStates: ['geprüft'],
   }
 }
 
-function mockBescheid(data: BescheidResponseDto, status = 200) {
-  server.use(http.get(BESCHEID_URL, () => HttpResponse.json(data, { status })))
+function mockAssessment(data: AssessmentResponseDto, status = 200) {
+  server.use(http.get(ASSESSMENT_URL, () => HttpResponse.json(data, { status })))
 }
 
-function renderBescheid() {
+function renderAssessment() {
   const i18n = createAppI18n('de')
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={queryClient}>
       <I18nextProvider i18n={i18n}>
         <ThemeProvider mode="light">
-          <BescheidScreen />
+          <AssessmentScreen />
         </ThemeProvider>
       </I18nextProvider>
     </QueryClientProvider>,
@@ -56,16 +56,16 @@ function renderBescheid() {
 
 describe('BescheidScreen', () => {
   it('shows a real loading state while the Bescheid is fetched', async () => {
-    mockBescheid(leererBescheid())
-    renderBescheid()
+    mockAssessment(emptyAssessment())
+    renderAssessment()
     expect(screen.getByLabelText('Dein Bescheid wird geladen …')).toBeTruthy()
     await screen.findByText('Dein Steuerbescheid')
     expect(screen.queryByLabelText('Dein Bescheid wird geladen …')).toBeNull()
   })
 
   it('renders the five figures and the honest "noch kein Bescheiddatum" state', async () => {
-    mockBescheid(leererBescheid())
-    renderBescheid()
+    mockAssessment(emptyAssessment())
+    renderAssessment()
     await screen.findByText('Dein Steuerbescheid')
     expect(screen.getByText('Einkünfte laut Bescheid')).toBeTruthy()
     expect(screen.getByText('Vorsorgeaufwendungen laut Bescheid')).toBeTruthy()
@@ -76,42 +76,42 @@ describe('BescheidScreen', () => {
   })
 
   it('renders a deviation as a visible diff, never silent (ADR-008/032)', async () => {
-    const data = leererBescheid()
-    data.felder[0] = { id: 'einnahmen', kind: 'erfasst', wert: 48_000 }
-    data.abgleich = {
-      abweichungen: [{ feld: 'einnahmen', bescheid: 48_000, berechnet: 50_000, differenz: -2_000 }],
-      berechnungUnvollstaendig: false,
+    const data = emptyAssessment()
+    data.fields[0] = { id: 'einnahmen', kind: 'erfasst', value: 48_000 }
+    data.reconciliation = {
+      deviations: [{ field: 'einnahmen', assessment: 48_000, calculated: 50_000, difference: -2_000 }],
+      calculationIncomplete: false,
     }
-    mockBescheid(data)
-    renderBescheid()
+    mockAssessment(data)
+    renderAssessment()
     await screen.findByText('Dein Steuerbescheid')
     expect(screen.getByText('Abgleich mit deiner Berechnung')).toBeTruthy()
     expect(screen.getByText('Bescheid: 48.000 € · berechnet: 50.000 €')).toBeTruthy()
   })
 
   it('renders "alles stimmt überein" when there are no deviations', async () => {
-    mockBescheid(leererBescheid())
-    renderBescheid()
+    mockAssessment(emptyAssessment())
+    renderAssessment()
     await screen.findByText('Dein Steuerbescheid')
     expect(screen.getByText('Alles stimmt überein ✓')).toBeTruthy()
   })
 
   it('shows the § 355 AO Fristen-Countdown from the Bescheiddatum', async () => {
-    const data = leererBescheid()
-    data.frist = { bescheiddatum: '2026-03-15', fristEnde: '2026-04-15', verbleibendeTage: 31 }
-    mockBescheid(data)
-    renderBescheid()
+    const data = emptyAssessment()
+    data.frist = { bescheiddatum: '2026-03-15', deadlineEnd: '2026-04-15', remainingDays: 31 }
+    mockAssessment(data)
+    renderAssessment()
     await screen.findByText('Dein Steuerbescheid')
     expect(screen.getByText('Einspruchsfrist')).toBeTruthy()
     expect(screen.getByText(/Noch 31 Tage — bis 2026-04-15/)).toBeTruthy()
   })
 
   it('offers the Einspruch flow (Grund-Auswahl) only when the server allows geprüft → einspruch-eingelegt', async () => {
-    const data = leererBescheid()
+    const data = emptyAssessment()
     data.status = 'geprüft'
-    data.naechsteZustaende = ['einspruch-eingelegt']
-    mockBescheid(data)
-    renderBescheid()
+    data.nextStates = ['einspruch-eingelegt']
+    mockAssessment(data)
+    renderAssessment()
     await screen.findByText('Dein Steuerbescheid')
     expect(screen.getByText('Einspruch')).toBeTruthy()
     expect(screen.getByText('Ein Betrag ist falsch')).toBeTruthy()
@@ -120,46 +120,46 @@ describe('BescheidScreen', () => {
   })
 
   it('never renders a "Korrigieren" button after the Bescheid (ADR-009/ADR-032)', async () => {
-    const data = leererBescheid()
+    const data = emptyAssessment()
     data.status = 'geprüft'
-    data.naechsteZustaende = ['einspruch-eingelegt']
-    mockBescheid(data)
-    renderBescheid()
+    data.nextStates = ['einspruch-eingelegt']
+    mockAssessment(data)
+    renderAssessment()
     await screen.findByText('Dein Steuerbescheid')
     expect(screen.queryByText('Korrigieren')).toBeNull()
     expect(screen.queryByText(/Korrigieren/)).toBeNull()
   })
 
   it('files an Einspruch with a chosen Grund, then refetches to the filed state', async () => {
-    let state: BescheidResponseDto = { ...leererBescheid(), status: 'geprüft', naechsteZustaende: ['einspruch-eingelegt'] }
+    let state: AssessmentResponseDto = { ...emptyAssessment(), status: 'geprüft', nextStates: ['einspruch-eingelegt'] }
     let posted: unknown = null
     server.use(
-      http.get(BESCHEID_URL, () => HttpResponse.json(state, { status: 200 })),
+      http.get(ASSESSMENT_URL, () => HttpResponse.json(state, { status: 200 })),
       http.put('*/v1/steuerjahre/2026/bescheid/einspruch', async ({ request }) => {
         posted = await request.json()
-        state = { ...state, status: 'einspruch-eingelegt', einspruchGrund: 'betrag-falsch', naechsteZustaende: [] }
+        state = { ...state, status: 'einspruch-eingelegt', einspruchGrund: 'betrag-falsch', nextStates: [] }
         return HttpResponse.json(state, { status: 200 })
       }),
     )
-    renderBescheid()
+    renderAssessment()
 
     await screen.findByText('Ein Betrag ist falsch')
     fireEvent.click(screen.getByText('Ein Betrag ist falsch'))
 
     await screen.findByText('Einspruch eingelegt: Ein Betrag ist falsch.')
-    expect(posted).toEqual({ grund: 'betrag-falsch' })
+    expect(posted).toEqual({ reason: 'betrag-falsch' })
   })
 
   it('shows a retryable error state on a genuine network failure', async () => {
-    server.use(http.get(BESCHEID_URL, () => HttpResponse.error()))
-    renderBescheid()
+    server.use(http.get(ASSESSMENT_URL, () => HttpResponse.error()))
+    renderAssessment()
     await screen.findByText('Das hat nicht geklappt.')
     expect(screen.getByText('Dein Bescheid konnte nicht geladen werden. Prüf die Verbindung und versuch es noch mal.')).toBeTruthy()
   })
 
   it('treats a non-200 response as an honest error, not a silent empty fallthrough', async () => {
-    server.use(http.get(BESCHEID_URL, () => HttpResponse.json({}, { status: 500 })))
-    renderBescheid()
+    server.use(http.get(ASSESSMENT_URL, () => HttpResponse.json({}, { status: 500 })))
+    renderAssessment()
     await screen.findByText('Das hat nicht geklappt.')
   })
 })

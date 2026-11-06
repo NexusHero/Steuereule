@@ -4,7 +4,7 @@ import { CurrentUser } from '../auth/current-user.decorator.js'
 import { ForbidAssistant } from '../auth/forbid-assistant.guard.js'
 import { RequiresAccount } from '../auth/requires-account.guard.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
-import { AssistentenService } from './assistenten.service.js'
+import { AssistantsService } from './assistenten.service.js'
 import {
   OauthClientInfoDto,
   RevokeAssistantResponseDto,
@@ -14,8 +14,8 @@ import {
 @ApiTags('assistenten')
 @Controller('v1')
 @UseGuards(UserContextGuard)
-export class AssistentenController {
-  constructor(@Inject(AssistentenService) private readonly service: AssistentenService) {}
+export class AssistantsController {
+  constructor(@Inject(AssistantsService) private readonly service: AssistantsService) {}
 
   @Get('assistenten')
   @RequiresAccount()

@@ -7,8 +7,8 @@ import {
   classifyRental,
   serializeRentalField,
   setRentalField,
-  vermietungsobjektFakten,
-  vermietungStand,
+  rentalPropertyFacts,
+  rentalStatus,
   type Answers,
   type RentalFieldId,
   type RentalFieldState,
@@ -21,18 +21,18 @@ import {
   type InterviewAnswerRepository,
 } from '../interview/interview-answer.repository.js'
 import { RENTAL_REPOSITORY, type RentalObjectRecord, type RentalRepository } from './vermietung.repository.js'
-import type { PutVermietungFeldDto, VermietungFeldDto } from './dto/vermietung-feld.dto.js'
-import type { PutVermietungAdresseDto } from './dto/vermietung-adresse.dto.js'
+import type { PutRentalFieldDto, RentalFieldDto } from './dto/vermietung-feld.dto.js'
+import type { PutRentalAddressDto } from './dto/vermietung-adresse.dto.js'
 import type {
-  VermietungEinordnungDto,
-  VermietungsobjektDto,
-  VermietungsobjektFaktenDto,
-  VermietungResponseDto,
-  VermietungStandDto,
+  RentalClassificationDto,
+  RentalPropertyDto,
+  RentalPropertyFactsDto,
+  RentalResponseDto,
+  RentalStatusDto,
 } from './dto/vermietung-response.dto.js'
 import { answersFrom } from '../interview/answers.js'
 
-function datenAusRecord(record: RentalObjectRecord) {
+function dataFromRecord(record: RentalObjectRecord) {
   return {
     id: record.id,
     mieteinnahmen: deserializeRentalField(record.mieteinnahmen),
@@ -42,41 +42,41 @@ function datenAusRecord(record: RentalObjectRecord) {
   }
 }
 
-function zustandAusDto(dto: PutVermietungFeldDto): RentalFieldState {
+function stateFromDto(dto: PutRentalFieldDto): RentalFieldState {
   if (dto.kind === 'offen') return { kind: 'offen' }
   if (dto.kind === 'unklar') return { kind: 'unklar' }
-  if (dto.wert === undefined || !isValidRentalAmount(dto.wert)) {
+  if (dto.value === undefined || !isValidRentalAmount(dto.value)) {
     throw new InvalidInputError('FIELD_VALUE_INVALID', 'kind "erfasst" requires a non-negative integer `wert`.')
   }
-  return { kind: 'erfasst', wert: dto.wert }
+  return { kind: 'erfasst', value: dto.value }
 }
 
-function toFeldDto(zustand: RentalFieldState): VermietungFeldDto {
-  switch (zustand.kind) {
+function toFieldDto(state: RentalFieldState): RentalFieldDto {
+  switch (state.kind) {
     case 'offen':
       return { kind: 'offen' }
     case 'unklar':
       return { kind: 'unklar' }
     case 'erfasst':
-      return { kind: 'erfasst', wert: zustand.wert }
+      return { kind: 'erfasst', value: state.value }
   }
 }
 
-function objektZuDto(record: RentalObjectRecord): VermietungsobjektDto {
-  const daten = datenAusRecord(record)
-  const fakten = vermietungsobjektFakten(daten)
-  const faktenDto: VermietungsobjektFaktenDto = {
-    einnahmen: fakten.einnahmen,
-    werbungskosten: fakten.werbungskosten,
-    afa: fakten.afa,
-    offenePosten: fakten.offenePosten,
+function propertyToDto(record: RentalObjectRecord): RentalPropertyDto {
+  const data = dataFromRecord(record)
+  const facts = rentalPropertyFacts(data)
+  const factsDto: RentalPropertyFactsDto = {
+    einnahmen: facts.einnahmen,
+    werbungskosten: facts.werbungskosten,
+    depreciation: facts.depreciation,
+    openItems: facts.openItems,
   }
   return {
-    id: daten.id,
-    mieteinnahmen: toFeldDto(daten.mieteinnahmen),
-    anschaffungskosten: toFeldDto(daten.anschaffungskosten),
-    baujahr: toFeldDto(daten.baujahr),
-    werbungskosten: toFeldDto(daten.werbungskosten),
+    id: data.id,
+    mieteinnahmen: toFieldDto(data.mieteinnahmen),
+    anschaffungskosten: toFieldDto(data.anschaffungskosten),
+    baujahr: toFieldDto(data.baujahr),
+    werbungskosten: toFieldDto(data.werbungskosten),
     strasse: record.strasse ?? null,
     hausnummer: record.hausnummer ?? null,
     plz: record.plz ?? null,
@@ -87,65 +87,65 @@ function objektZuDto(record: RentalObjectRecord): VermietungsobjektDto {
     schuldzinsen: record.schuldzinsen ?? null,
     einheiten: record.einheiten ?? null,
     anteilA: record.anteilA ?? null,
-    fakten: faktenDto,
+    facts: factsDto,
   }
 }
 
 /** Application logic for the Vermietung guided mask + fold. */
 @Injectable()
-export class VermietungService {
+export class RentalService {
   constructor(
     @Inject(RENTAL_REPOSITORY) private readonly repository: RentalRepository,
     @Inject(INTERVIEW_ANSWER_REPOSITORY) private readonly interviewRepository: InterviewAnswerRepository,
     @Inject(AuditService) private readonly auditService: AuditService,
-    @Inject(PROVENANCE_REPOSITORY) private readonly kennzeichnungen: ProvenanceRepository,
+    @Inject(PROVENANCE_REPOSITORY) private readonly markings: ProvenanceRepository,
   ) {}
 
-  private async antworten(userId: string, steuerjahr: number): Promise<Answers> {
+  private async answers(userId: string, steuerjahr: number): Promise<Answers> {
     const rows = await this.interviewRepository.findAllForUserAndYear(userId, steuerjahr)
     return answersFrom(rows)
   }
 
-  private async toResponse(userId: string, steuerjahr: number, records: RentalObjectRecord[]): Promise<VermietungResponseDto> {
-    const answers = await this.antworten(userId, steuerjahr)
-    const gegated = gatedIncomeTypes(answers)
-    const einordnung: VermietungEinordnungDto = classifyRental(answers['vermietung-art'])
+  private async toResponse(userId: string, steuerjahr: number, records: RentalObjectRecord[]): Promise<RentalResponseDto> {
+    const answers = await this.answers(userId, steuerjahr)
+    const gated = gatedIncomeTypes(answers)
+    const classification: RentalClassificationDto = classifyRental(answers['vermietung-art'])
 
-    const objekte = records.map((record) => datenAusRecord(record))
-    const stand = vermietungStand(objekte, gegated)
+    const properties = records.map((record) => dataFromRecord(record))
+    const status = rentalStatus(properties, gated)
 
-    const standDto: VermietungStandDto =
-      stand.kind === 'bestimmt'
+    const statusDto: RentalStatusDto =
+      status.kind === 'bestimmt'
         ? {
             kind: 'bestimmt',
-            einnahmen: stand.einnahmen,
-            vorsorgeaufwand: stand.vorsorgeaufwand,
-            anrechnung: stand.anrechnung,
-            werbungskosten: stand.werbungskosten,
-            afa: stand.afa,
-            offenePosten: stand.offenePosten,
-            konflikte: stand.konflikte,
+            einnahmen: status.einnahmen,
+            vorsorgeaufwand: status.vorsorgeaufwand,
+            anrechnung: status.anrechnung,
+            werbungskosten: status.werbungskosten,
+            depreciation: status.depreciation,
+            openItems: status.openItems,
+            conflicts: status.conflicts,
           }
         : {
             kind: 'offen',
-            einnahmen: stand.einnahmen,
-            vorsorgeaufwand: stand.vorsorgeaufwand,
-            anrechnung: stand.anrechnung,
-            werbungskosten: stand.werbungskosten,
-            afa: stand.afa,
-            offenePosten: stand.offenePosten,
-            konflikte: stand.konflikte,
-            gegated: [...stand.gegated],
+            einnahmen: status.einnahmen,
+            vorsorgeaufwand: status.vorsorgeaufwand,
+            anrechnung: status.anrechnung,
+            werbungskosten: status.werbungskosten,
+            depreciation: status.depreciation,
+            openItems: status.openItems,
+            conflicts: status.conflicts,
+            gated: [...status.gated],
           }
 
     return {
-      einordnung,
-      objekte: records.map(objektZuDto),
-      stand: standDto,
+      classification,
+      properties: records.map(propertyToDto),
+      status: statusDto,
     }
   }
 
-  async getState(userId: string, steuerjahr: number): Promise<VermietungResponseDto> {
+  async getState(userId: string, steuerjahr: number): Promise<RentalResponseDto> {
     const records = await this.repository.listForUserAndYear(userId, steuerjahr)
     if (records.length > 0) {
       await this.auditService.append({ userId, action: 'READ', resource: 'vermietung' })
@@ -153,32 +153,32 @@ export class VermietungService {
     return this.toResponse(userId, steuerjahr, records)
   }
 
-  async createObjekt(userId: string, steuerjahr: number): Promise<VermietungResponseDto> {
+  async createProperty(userId: string, steuerjahr: number): Promise<RentalResponseDto> {
     await this.repository.create(userId, steuerjahr)
     const records = await this.repository.listForUserAndYear(userId, steuerjahr)
     return this.toResponse(userId, steuerjahr, records)
   }
 
-  async setFeld(userId: string, steuerjahr: number, objektId: string, feld: RentalFieldId, dto: PutVermietungFeldDto): Promise<VermietungResponseDto> {
-    const zustand = zustandAusDto(dto)
-    const record = await this.repository.setFeld(userId, steuerjahr, objektId, feld, serializeRentalField(zustand))
+  async setField(userId: string, steuerjahr: number, propertyId: string, field: RentalFieldId, dto: PutRentalFieldDto): Promise<RentalResponseDto> {
+    const state = stateFromDto(dto)
+    const record = await this.repository.setField(userId, steuerjahr, propertyId, field, serializeRentalField(state))
     if (record === null) {
       throw new NotFoundError('VERMIETUNGSOBJEKT_NOT_FOUND', 'No such Vermietungsobjekt for this account and tax year.')
     }
-    await this.kennzeichnungen.entferne(userId, steuerjahr, [provenanceKey('vermietung', feld, objektId)])
-    const daten = datenAusRecord(record)
-    setRentalField(daten, feld, zustand)
+    await this.markings.remove(userId, steuerjahr, [provenanceKey('vermietung', field, propertyId)])
+    const data = dataFromRecord(record)
+    setRentalField(data, field, state)
     const records = await this.repository.listForUserAndYear(userId, steuerjahr)
     return this.toResponse(userId, steuerjahr, records)
   }
 
-  async setAdresse(
+  async setAddress(
     userId: string,
     steuerjahr: number,
-    objektId: string,
-    dto: PutVermietungAdresseDto,
-  ): Promise<VermietungResponseDto> {
-    const record = await this.repository.setAdresse(userId, steuerjahr, objektId, dto)
+    propertyId: string,
+    dto: PutRentalAddressDto,
+  ): Promise<RentalResponseDto> {
+    const record = await this.repository.setAddress(userId, steuerjahr, propertyId, dto)
     if (record === null) {
       throw new NotFoundError('VERMIETUNGSOBJEKT_NOT_FOUND', 'No such Vermietungsobjekt for this account and tax year.')
     }

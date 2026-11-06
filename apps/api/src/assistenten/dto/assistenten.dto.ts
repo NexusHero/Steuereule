@@ -8,10 +8,10 @@ export class ConnectedAssistantDto {
   name!: string
 
   @ApiProperty({ type: String, example: '2026-11-03T18:00:00.000Z' })
-  verbundenSeit!: string
+  linkedSince!: string
 
   @ApiPropertyOptional({ type: String, example: '2026-11-03T19:30:00.000Z', nullable: true })
-  zuletztGenutzt!: string | null
+  lastUsed!: string | null
 }
 
 export class OauthClientInfoDto {

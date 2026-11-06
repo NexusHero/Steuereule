@@ -4,52 +4,52 @@ import { CurrentUser } from '../auth/current-user.decorator.js'
 import { ForbidAssistant } from '../auth/forbid-assistant.guard.js'
 import { RequiresAccount } from '../auth/requires-account.guard.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
-import { ParseSteuerjahrPipe } from '../cockpit/parse-steuerjahr.pipe.js'
+import { ParseTaxYearPipe } from '../cockpit/parse-steuerjahr.pipe.js'
 import { OwlModeService } from './eulen-modus.service.js'
 import {
-  EulenEinstellungResponseDto,
-  EulenKartenResponseDto,
-  SetEulenEinstellungDto,
+  OwlSettingResponseDto,
+  OwlCardsResponseDto,
+  SetOwlSettingDto,
 } from './dto/eulen-modus.dto.js'
 
 @ApiTags('eulen-modus')
 @Controller('v1')
 @UseGuards(UserContextGuard)
-export class EulenModusController {
+export class OwlModeController {
   constructor(@Inject(OwlModeService) private readonly service: OwlModeService) {}
 
   @Get('eulen-modus/einstellung')
   @RequiresAccount()
-  @ApiOkResponse({ type: EulenEinstellungResponseDto })
+  @ApiOkResponse({ type: OwlSettingResponseDto })
   @ApiUnauthorizedResponse({ description: 'Requires account.' })
-  getEinstellung(@CurrentUser() userId: string): Promise<EulenEinstellungResponseDto> {
-    return this.service.getEinstellung(userId)
+  getSetting(@CurrentUser() userId: string): Promise<OwlSettingResponseDto> {
+    return this.service.getSetting(userId)
   }
 
   @Put('eulen-modus/einstellung')
   @HttpCode(200)
   @RequiresAccount()
   @ForbidAssistant()
-  @ApiBody({ type: SetEulenEinstellungDto })
-  @ApiOkResponse({ type: EulenEinstellungResponseDto })
+  @ApiBody({ type: SetOwlSettingDto })
+  @ApiOkResponse({ type: OwlSettingResponseDto })
   @ApiUnauthorizedResponse({ description: 'Requires account.' })
-  setEinstellung(
+  setSetting(
     @CurrentUser() userId: string,
-    @Body() dto: SetEulenEinstellungDto,
-  ): Promise<EulenEinstellungResponseDto> {
-    return this.service.setEinstellung(userId, dto.aktiviert)
+    @Body() dto: SetOwlSettingDto,
+  ): Promise<OwlSettingResponseDto> {
+    return this.service.setSetting(userId, dto.aktiviert)
   }
 
   @Get('steuerjahre/:jahr/eulen-karten')
   @RequiresAccount()
   @ApiParam({ name: 'jahr', type: Number, example: 2025 })
-  @ApiOkResponse({ type: EulenKartenResponseDto })
+  @ApiOkResponse({ type: OwlCardsResponseDto })
   @ApiUnauthorizedResponse({ description: 'Requires account.' })
-  getKarten(
+  getCards(
     @CurrentUser() userId: string,
-    @Param('jahr', ParseSteuerjahrPipe) jahr: number,
-  ): Promise<EulenKartenResponseDto> {
-    return this.service.getKarten(userId, jahr)
+    @Param('jahr', ParseTaxYearPipe) year: number,
+  ): Promise<OwlCardsResponseDto> {
+    return this.service.getCards(userId, year)
   }
 
   @Post('steuerjahre/:jahr/eulen-karten/:fingerprint/verwerfen')
@@ -59,12 +59,12 @@ export class EulenModusController {
   @ApiParam({ name: 'fingerprint', type: String, example: '1234abcd5678efgh' })
   @ApiOkResponse({ description: 'Card successfully dismissed.' })
   @ApiUnauthorizedResponse({ description: 'Requires account.' })
-  async verwerfeKarte(
+  async dismissCard(
     @CurrentUser() userId: string,
-    @Param('jahr', ParseSteuerjahrPipe) jahr: number,
+    @Param('jahr', ParseTaxYearPipe) year: number,
     @Param('fingerprint') fingerprint: string,
   ): Promise<{ status: string }> {
-    await this.service.verwerfeKarte(userId, jahr, fingerprint)
+    await this.service.dismissCard(userId, year, fingerprint)
     return { status: 'ok' }
   }
 }

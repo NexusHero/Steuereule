@@ -4,37 +4,37 @@ import { useTranslation } from 'react-i18next'
 import { Button, Card, HerkunftsChip, Input, Option, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
 import { formatEuro } from '@steuereule/core'
 import {
-  useVeranlagungsartenvergleichControllerGetVergleich,
-  type VeranlagungsartenvergleichControllerGetVergleichParams,
-  type VeranlagungsartenvergleichDto,
+  useFilingTypeComparisonControllerGetComparison,
+  type FilingTypeComparisonControllerGetComparisonParams,
+  type FilingTypeComparisonDto,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 
-export interface VeranlagungsartenvergleichScreenProps {
+export interface FilingTypeComparisonScreenProps {
   readonly onBack?: () => void
   readonly onDone?: () => void
   readonly taxYear?: number
 }
 
-export function VeranlagungsartenvergleichScreen({ onBack, onDone, taxYear = CURRENT_TAX_YEAR }: VeranlagungsartenvergleichScreenProps) {
+export function FilingTypeComparisonScreen({ onBack, onDone, taxYear = CURRENT_TAX_YEAR }: FilingTypeComparisonScreenProps) {
   const bp = useBreakpoint()
   const t = useTheme()
   const styles = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
 
-  const [verheiratet, setVerheiratet] = useState(false)
+  const [married, setMarried] = useState(false)
   const [zveB, setZveB] = useState('')
   const zveBWert = Number(zveB)
-  const bereit = verheiratet && zveB !== '' && Number.isFinite(zveBWert) && zveBWert >= 0
+  const ready = married && zveB !== '' && Number.isFinite(zveBWert) && zveBWert >= 0
 
-  const params: VeranlagungsartenvergleichControllerGetVergleichParams = bereit
-    ? { verheiratet, zveB: zveBWert }
-    : { verheiratet }
+  const params: FilingTypeComparisonControllerGetComparisonParams = ready
+    ? { verheiratet: married, zveB: zveBWert }
+    : { verheiratet: married }
 
-  const query = useVeranlagungsartenvergleichControllerGetVergleich(taxYear, params, { query: { enabled: bereit } })
+  const query = useFilingTypeComparisonControllerGetComparison(taxYear, params, { query: { enabled: ready } })
 
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
@@ -46,15 +46,15 @@ export function VeranlagungsartenvergleichScreen({ onBack, onDone, taxYear = CUR
 
       <Text style={styles.label}>{tr('veranlagungsartenvergleich.verheiratetLabel')}</Text>
       <View style={styles.optionRow}>
-        <Option gewaehlt={verheiratet} onPress={() => setVerheiratet(true)} testID="verheiratet-ja">
+        <Option selected={married} onPress={() => setMarried(true)} testID="verheiratet-ja">
           {tr('veranlagungsartenvergleich.ja')}
         </Option>
-        <Option gewaehlt={!verheiratet} onPress={() => setVerheiratet(false)} testID="verheiratet-nein">
+        <Option selected={!married} onPress={() => setMarried(false)} testID="verheiratet-nein">
           {tr('veranlagungsartenvergleich.nein')}
         </Option>
       </View>
 
-      {verheiratet ? (
+      {married ? (
         <View style={styles.inputBlock}>
           <Text style={styles.label}>{tr('veranlagungsartenvergleich.partnerEinkommenLabel')}</Text>
           <Input
@@ -71,8 +71,8 @@ export function VeranlagungsartenvergleichScreen({ onBack, onDone, taxYear = CUR
         <Text style={styles.hinweis}>{tr('veranlagungsartenvergleich.nichtVerheiratet')}</Text>
       )}
 
-      {bereit && query.isPending ? <LoadingState bp={bp} label={tr('veranlagungsartenvergleich.loading')} /> : null}
-      {bereit && (query.isError || query.data?.status !== 200) ? (
+      {ready && query.isPending ? <LoadingState bp={bp} label={tr('veranlagungsartenvergleich.loading')} /> : null}
+      {ready && (query.isError || query.data?.status !== 200) ? (
         <ErrorState
           bp={bp}
           heading={tr('veranlagungsartenvergleich.loadError.heading')}
@@ -82,8 +82,8 @@ export function VeranlagungsartenvergleichScreen({ onBack, onDone, taxYear = CUR
         />
       ) : null}
 
-      {bereit && !query.isPending && query.data?.status === 200 && query.data.data !== null ? (
-        <Ergebnis dto={query.data.data} />
+      {ready && !query.isPending && query.data?.status === 200 && query.data.data !== null ? (
+        <Result dto={query.data.data} />
       ) : null}
 
       {onDone ? (
@@ -95,48 +95,48 @@ export function VeranlagungsartenvergleichScreen({ onBack, onDone, taxYear = CUR
   )
 }
 
-function Ergebnis({ dto }: { readonly dto: VeranlagungsartenvergleichDto }) {
+function Result({ dto }: { readonly dto: FilingTypeComparisonDto }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
 
   if (dto.kind === 'nicht-anwendbar') {
-    const text = dto.grund === 'keine-einnahmen' ? tr('veranlagungsartenvergleich.keineEinnahmen') : tr('veranlagungsartenvergleich.nichtVerheiratet')
+    const text = dto.reason === 'keine-einnahmen' ? tr('veranlagungsartenvergleich.keineEinnahmen') : tr('veranlagungsartenvergleich.nichtVerheiratet')
     return <Text style={styles.aussage}>{text}</Text>
   }
 
-  const aussage =
+  const statement =
     dto.kind === 'eindeutig'
-      ? dto.empfehlung === 'zusammen'
+      ? dto.recommendation === 'zusammen'
         ? tr('veranlagungsartenvergleich.eindeutigZusammen')
         : tr('veranlagungsartenvergleich.eindeutigEinzel')
       : dto.kind === 'zu-knapp'
         ? tr('veranlagungsartenvergleich.zuKnapp')
         : tr('veranlagungsartenvergleich.unbestimmt')
 
-  const zveA = dto.herkunft?.zveA ?? 0
-  const zveB = dto.herkunft?.zveB ?? 0
-  const rechenweg = tr('veranlagungsartenvergleich.herkunftRechenweg', { zveA, zveB })
+  const zveA = dto.provenance?.zveA ?? 0
+  const zveB = dto.provenance?.zveB ?? 0
+  const calculationPath = tr('veranlagungsartenvergleich.herkunftRechenweg', { zveA, zveB })
 
   return (
     <View style={styles.resultBlock}>
       <Text style={styles.aussage} testID="aussage">
-        {aussage}
+        {statement}
       </Text>
 
       <Card>
         <Text style={styles.zahlLabel}>{tr('veranlagungsartenvergleich.einzel')}</Text>
-        <Text style={styles.zahl}>{formatEuro(dto.einzel ?? 0)}</Text>
-        <HerkunftsChip quelle={{ regel: tr('veranlagungsartenvergleich.herkunftRegelEinzel'), rechenweg }} />
+        <Text style={styles.zahl}>{formatEuro(dto.single ?? 0)}</Text>
+        <HerkunftsChip source={{ rule: tr('veranlagungsartenvergleich.herkunftRegelEinzel'), calculationPath }} />
       </Card>
 
       <Card>
         <Text style={styles.zahlLabel}>{tr('veranlagungsartenvergleich.zusammen')}</Text>
-        <Text style={styles.zahl}>{formatEuro(dto.zusammen ?? 0)}</Text>
-        <HerkunftsChip quelle={{ regel: tr('veranlagungsartenvergleich.herkunftRegelZusammen'), rechenweg }} />
+        <Text style={styles.zahl}>{formatEuro(dto.joint ?? 0)}</Text>
+        <HerkunftsChip source={{ rule: tr('veranlagungsartenvergleich.herkunftRegelZusammen'), calculationPath }} />
       </Card>
 
-      {dto.unschaerfe?.kind === 'unbestimmt' ? (
+      {dto.uncertainty?.kind === 'unbestimmt' ? (
         <Text style={styles.hinweis}>{tr('veranlagungsartenvergleich.progressionsvorbehaltHinweis')}</Text>
       ) : null}
     </View>
@@ -165,11 +165,11 @@ function makeStyles(t: UiTheme) {
   const label: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.s, marginBottom: t.space.s2 }
   const optionRow: ViewStyle = { flexDirection: 'row', gap: t.space.s3 }
   const inputBlock: ViewStyle = { marginTop: t.space.s3 }
-  const hinweis: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.s, marginTop: t.space.s3 }
+  const notice: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.s, marginTop: t.space.s3 }
   const resultBlock: ViewStyle = { marginTop: t.space.s5 }
-  const aussage: TextStyle = { color: t.color.tinte, fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size.xl, marginBottom: t.space.s4 }
-  const zahlLabel: TextStyle = { color: t.color.tinte2, fontFamily: t.font.mono, fontSize: t.size.xs, textTransform: 'uppercase', letterSpacing: 0.08 * t.size.xs, marginBottom: t.space.s1 }
-  const zahl: TextStyle = { color: t.color.tinte, fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size['2xl'], fontVariant: ['tabular-nums'], marginBottom: t.space.s2 }
+  const statement: TextStyle = { color: t.color.tinte, fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size.xl, marginBottom: t.space.s4 }
+  const numberLabel: TextStyle = { color: t.color.tinte2, fontFamily: t.font.mono, fontSize: t.size.xs, textTransform: 'uppercase', letterSpacing: 0.08 * t.size.xs, marginBottom: t.space.s1 }
+  const number: TextStyle = { color: t.color.tinte, fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size['2xl'], fontVariant: ['tabular-nums'], marginBottom: t.space.s2 }
   const doneCta: ViewStyle = { marginTop: t.space.s5 }
-  return { screen, wideScreen, headerRow, heading, label, optionRow, inputBlock, hinweis, resultBlock, aussage, zahlLabel, zahl, doneCta }
+  return { screen, wideScreen, headerRow, heading, label, optionRow, inputBlock, hinweis: notice, resultBlock, aussage: statement, zahlLabel: numberLabel, zahl: number, doneCta }
 }

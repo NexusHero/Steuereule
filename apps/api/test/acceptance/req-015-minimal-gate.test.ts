@@ -28,7 +28,7 @@ process.env.CORS_ALLOWED_ORIGINS = ALLOWED_ORIGIN
 // call needs a trusted Origin, same as a real browser (see req-005/req-006/req-009).
 const TRUSTED_ORIGIN_HEADERS = { origin: ALLOWED_ORIGIN }
 
-const STEUERJAHR = 2026
+const TAX_YEAR = 2026
 
 type InterviewAnswerRow = { userId: string; steuerjahr: number; questionId: string; value: string }
 
@@ -85,7 +85,7 @@ describe('REQ-015 — the Minimal-Gate, against the real server', () => {
     async () => {
       const { cookie } = await signUp('gwt@example.com')
 
-      const initial = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview`, { headers: { cookie } })
+      const initial = await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview`, { headers: { cookie } })
       expect(initial.status).toBe(200)
       expect(await initial.json()).toEqual({
         answers: {},
@@ -93,7 +93,7 @@ describe('REQ-015 — the Minimal-Gate, against the real server', () => {
         openItems: 4,
       })
 
-      const job = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
+      const job = await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', cookie },
         body: JSON.stringify({ questionId: 'job', value: 'Angestellt' }),
@@ -101,28 +101,28 @@ describe('REQ-015 — the Minimal-Gate, against the real server', () => {
       expect(job.status).toBe(200)
       expect(await job.json()).toEqual({ nextStep: { kind: 'question', id: 'ausland' }, openItems: 3 })
 
-      const ausland = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
+      const foreign = await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', cookie },
         body: JSON.stringify({ questionId: 'ausland', value: 'Nein' }),
       })
-      expect(await ausland.json()).toEqual({ nextStep: { kind: 'question', id: 'kinder' }, openItems: 2 })
+      expect(await foreign.json()).toEqual({ nextStep: { kind: 'question', id: 'kinder' }, openItems: 2 })
 
-      const kinder = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
+      const kinder = await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', cookie },
         body: JSON.stringify({ questionId: 'kinder', value: '1 Kind' }),
       })
       expect(await kinder.json()).toEqual({ nextStep: { kind: 'question', id: 'familienstand' }, openItems: 1 })
 
-      const familienstand = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
+      const familienstand = await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', cookie },
         body: JSON.stringify({ questionId: 'familienstand', value: 'Ledig' }),
       })
       expect(await familienstand.json()).toEqual({ nextStep: { kind: 'done' }, openItems: 0 })
 
-      const final = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview`, { headers: { cookie } })
+      const final = await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview`, { headers: { cookie } })
       expect(await final.json()).toEqual({
         answers: { job: 'Angestellt', ausland: 'Nein', kinder: '1 Kind', familienstand: 'Ledig' },
         nextStep: { kind: 'done' },
@@ -134,7 +134,7 @@ describe('REQ-015 — the Minimal-Gate, against the real server', () => {
   it('GWT — "Selbstständig" on question 1 makes the Gewerbe-Gate the next screen', async () => {
     const { cookie } = await signUp('gwt-gewerbe@example.com')
 
-    const response = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
+    const response = await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', cookie },
       body: JSON.stringify({ questionId: 'job', value: 'Selbstständig' }),
@@ -146,12 +146,12 @@ describe('REQ-015 — the Minimal-Gate, against the real server', () => {
   it('GWT — "In ein anderes Land" on question 2 makes the CH-only-Gate the next screen', async () => {
     const { cookie } = await signUp('gwt-chonly@example.com')
 
-    await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
+    await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', cookie },
       body: JSON.stringify({ questionId: 'job', value: 'Angestellt' }),
     })
-    const response = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
+    const response = await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', cookie },
       body: JSON.stringify({ questionId: 'ausland', value: 'In ein anderes Land' }),
@@ -163,18 +163,18 @@ describe('REQ-015 — the Minimal-Gate, against the real server', () => {
   it('a terminal Gewerbe-Gate (Selbstständig) rejects every answer behind it, acknowledged or not', async () => {
     const { cookie, userId } = await signUp('terminal-gate@example.com')
 
-    await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
+    await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', cookie },
       body: JSON.stringify({ questionId: 'job', value: 'Selbstständig' }),
     })
-    await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
+    await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', cookie },
       body: JSON.stringify({ questionId: 'gewerbe', value: 'weiter' }),
     })
 
-    const blocked = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
+    const blocked = await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', cookie },
       body: JSON.stringify({ questionId: 'ausland', value: 'Nein' }),
@@ -190,7 +190,7 @@ describe('REQ-015 — the Minimal-Gate, against the real server', () => {
       const { cookie, userId } = await signUp('p2-unreachable@example.com')
 
       // No `job` answered — `ausland` was never offered.
-      const response = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
+      const response = await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', cookie },
         body: JSON.stringify({ questionId: 'ausland', value: 'Nein' }),
@@ -203,7 +203,7 @@ describe('REQ-015 — the Minimal-Gate, against the real server', () => {
     it('rejects (400) a value outside the accepted set for a reachable step, and creates no row', async () => {
       const { cookie, userId } = await signUp('p2-invalid-value@example.com')
 
-      const response = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
+      const response = await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', cookie },
         body: JSON.stringify({ questionId: 'job', value: 'Freiberuflich' }),
@@ -216,7 +216,7 @@ describe('REQ-015 — the Minimal-Gate, against the real server', () => {
     it('rejects (409) an entirely unknown questionId smuggled into the body, and creates no row', async () => {
       const { cookie, userId } = await signUp('p2-unknown-id@example.com')
 
-      const response = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
+      const response = await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', cookie },
         body: JSON.stringify({ questionId: 'vermietung', value: 'Ja' }),
@@ -230,20 +230,20 @@ describe('REQ-015 — the Minimal-Gate, against the real server', () => {
   describe('P3 (ADR-0045) — guests may use the Minimal-Gate, never any other catalogue entry', () => {
     async function mintGuestCookie(): Promise<string> {
       // A guest cookie is minted by any unauthenticated GET on a route behind UserContextGuard.
-      const guestProbe = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/cockpit`)
+      const guestProbe = await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/cockpit`)
       return guestProbe.headers.get('set-cookie')!.split(';')[0]!
     }
 
     it('a guest reads the empty Minimal-Gate state (200), same shape as an account', async () => {
       const guestCookie = await mintGuestCookie()
-      const response = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview`, { headers: { cookie: guestCookie } })
+      const response = await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview`, { headers: { cookie: guestCookie } })
       expect(response.status).toBe(200)
       expect(await response.json()).toEqual({ answers: {}, nextStep: { kind: 'question', id: 'job' }, openItems: 4 })
     })
 
     it('a guest answers the Minimal-Gate: the row persists encrypted under the guest id, and the server still enforces the graph', async () => {
       const guestCookie = await mintGuestCookie()
-      const ok = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
+      const ok = await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', cookie: guestCookie },
         body: JSON.stringify({ questionId: 'job', value: 'Angestellt' }),
@@ -254,7 +254,7 @@ describe('REQ-015 — the Minimal-Gate, against the real server', () => {
       expect(rows[0]!.value).not.toBe('Angestellt') // ciphertext at rest, same as an account's row
 
       // P2 still holds for guests: an unreachable answer is a 409, nothing persisted.
-      const unreachable = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
+      const unreachable = await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', cookie: guestCookie },
         body: JSON.stringify({ questionId: 'kinder', value: '1 Kind' }),
@@ -264,10 +264,10 @@ describe('REQ-015 — the Minimal-Gate, against the real server', () => {
 
     it('a guest is refused (401) any catalogue entry beyond the Minimal-Gate, on GET and POST', async () => {
       const guestCookie = await mintGuestCookie()
-      const get = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview?eintrag=lebenslagen`, { headers: { cookie: guestCookie } })
+      const get = await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview?eintrag=lebenslagen`, { headers: { cookie: guestCookie } })
       expect(get.status).toBe(401)
 
-      const post = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
+      const post = await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', cookie: guestCookie },
         body: JSON.stringify({ questionId: 'dhf', value: 'Nein' }),
@@ -283,18 +283,18 @@ describe('REQ-015 — the Minimal-Gate, against the real server', () => {
       const userA = await signUp('p4-a-read@example.com')
       const userB = await signUp('p4-b-read@example.com')
 
-      await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
+      await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', cookie: userA.cookie },
         body: JSON.stringify({ questionId: 'job', value: 'Angestellt' }),
       })
 
-      const asB = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview`, {
+      const asB = await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview`, {
         headers: { cookie: userB.cookie },
       })
       expect(await asB.json()).toEqual({ answers: {}, nextStep: { kind: 'question', id: 'job' }, openItems: 4 })
 
-      const asA = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview`, {
+      const asA = await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview`, {
         headers: { cookie: userA.cookie },
       })
       expect(await asA.json()).toEqual({
@@ -309,14 +309,14 @@ describe('REQ-015 — the Minimal-Gate, against the real server', () => {
       const userB = await signUp('p4-b-write@example.com')
 
       // User A has answered `job`, so `ausland` is reachable — but only for user A.
-      await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
+      await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', cookie: userA.cookie },
         body: JSON.stringify({ questionId: 'job', value: 'Angestellt' }),
       })
 
       // User B, with no answers of their own, must NOT be able to write `ausland`.
-      const bWrite = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
+      const bWrite = await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', cookie: userB.cookie },
         body: JSON.stringify({ questionId: 'ausland', value: 'Nein' }),
@@ -334,7 +334,7 @@ describe('REQ-015 — the Minimal-Gate, against the real server', () => {
     it('a real POST’s value is not stored as plaintext in the database column', async () => {
       const { cookie, userId } = await signUp('p5-ciphertext@example.com')
 
-      const response = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
+      const response = await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', cookie },
         body: JSON.stringify({ questionId: 'job', value: 'Angestellt' }),
@@ -358,7 +358,7 @@ describe('REQ-015 — the Minimal-Gate, against the real server', () => {
       const userB = await signUp('p5-random-b@example.com')
 
       for (const user of [userA, userB]) {
-        await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
+        await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, {
           method: 'POST',
           headers: { 'content-type': 'application/json', cookie: user.cookie },
           body: JSON.stringify({ questionId: 'job', value: 'Angestellt' }),
@@ -379,44 +379,44 @@ describe('REQ-015 — the Minimal-Gate, against the real server', () => {
     it('three real HTTP POSTs leave exactly three InterviewAnswer rows and TaxYear.openItems counting down to 0', async () => {
       const { cookie, userId } = await signUp('p6-vertical@example.com')
 
-      await expect(prisma.taxYear.findUnique({ where: { userId_steuerjahr: { userId, steuerjahr: STEUERJAHR } } })).resolves.toBeNull()
+      await expect(prisma.taxYear.findUnique({ where: { userId_steuerjahr: { userId, steuerjahr: TAX_YEAR } } })).resolves.toBeNull()
 
-      await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
+      await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', cookie },
         body: JSON.stringify({ questionId: 'job', value: 'Angestellt' }),
       })
-      let taxYear = await prisma.taxYear.findUnique({ where: { userId_steuerjahr: { userId, steuerjahr: STEUERJAHR } } })
+      let taxYear = await prisma.taxYear.findUnique({ where: { userId_steuerjahr: { userId, steuerjahr: TAX_YEAR } } })
       expect(taxYear?.openItems).toBe(3)
 
-      await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
+      await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', cookie },
         body: JSON.stringify({ questionId: 'ausland', value: 'Nein' }),
       })
-      taxYear = await prisma.taxYear.findUnique({ where: { userId_steuerjahr: { userId, steuerjahr: STEUERJAHR } } })
+      taxYear = await prisma.taxYear.findUnique({ where: { userId_steuerjahr: { userId, steuerjahr: TAX_YEAR } } })
       expect(taxYear?.openItems).toBe(2)
 
-      await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
+      await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', cookie },
         body: JSON.stringify({ questionId: 'kinder', value: 'Nein' }),
       })
-      taxYear = await prisma.taxYear.findUnique({ where: { userId_steuerjahr: { userId, steuerjahr: STEUERJAHR } } })
+      taxYear = await prisma.taxYear.findUnique({ where: { userId_steuerjahr: { userId, steuerjahr: TAX_YEAR } } })
       expect(taxYear?.openItems).toBe(1)
 
-      await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
+      await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', cookie },
         body: JSON.stringify({ questionId: 'familienstand', value: 'Ledig' }),
       })
-      taxYear = await prisma.taxYear.findUnique({ where: { userId_steuerjahr: { userId, steuerjahr: STEUERJAHR } } })
+      taxYear = await prisma.taxYear.findUnique({ where: { userId_steuerjahr: { userId, steuerjahr: TAX_YEAR } } })
       expect(taxYear?.openItems).toBe(0)
 
       const rows = await interviewRows(userId)
       expect(rows).toHaveLength(4)
       expect(rows.map((r) => r.questionId).sort()).toEqual(['ausland', 'familienstand', 'job', 'kinder'])
-      expect(rows.every((r) => r.steuerjahr === STEUERJAHR)).toBe(true)
+      expect(rows.every((r) => r.steuerjahr === TAX_YEAR)).toBe(true)
     })
   })
 
@@ -424,7 +424,7 @@ describe('REQ-015 — the Minimal-Gate, against the real server', () => {
     it('each admitted write appends exactly one WRITE audit entry, atomic with the answer row', async () => {
       const { cookie, userId } = await signUp('audit-write@example.com')
 
-      await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
+      await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', cookie },
         body: JSON.stringify({ questionId: 'job', value: 'Angestellt' }),
@@ -439,7 +439,7 @@ describe('REQ-015 — the Minimal-Gate, against the real server', () => {
     it('a rejected write (409/400) appends no audit entry', async () => {
       const { cookie, userId } = await signUp('audit-rejected@example.com')
 
-      await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
+      await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', cookie },
         body: JSON.stringify({ questionId: 'ausland', value: 'Nein' }),
@@ -454,18 +454,18 @@ describe('REQ-015 — the Minimal-Gate, against the real server', () => {
     it('a real GET on an unanswered tax year appends no READ entry; a GET after an answer appends exactly one', async () => {
       const { cookie, userId } = await signUp('audit-read@example.com')
 
-      await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview`, { headers: { cookie } })
+      await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview`, { headers: { cookie } })
       const emptyReads = await prisma.$queryRaw<{ action: string }[]>`
         SELECT "action" FROM "TaxDataAccessLog" WHERE "userId" = ${userId} AND "action" = 'READ'
       `
       expect(emptyReads).toEqual([])
 
-      await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
+      await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', cookie },
         body: JSON.stringify({ questionId: 'job', value: 'Angestellt' }),
       })
-      await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview`, { headers: { cookie } })
+      await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview`, { headers: { cookie } })
 
       const reads = await prisma.$queryRaw<{ action: string; resource: string }[]>`
         SELECT "action", "resource" FROM "TaxDataAccessLog" WHERE "userId" = ${userId} AND "action" = 'READ' AND "resource" = 'interview'
@@ -477,12 +477,12 @@ describe('REQ-015 — the Minimal-Gate, against the real server', () => {
   it('re-answering an already-answered, still-reachable question is idempotent (back navigation between the three questions)', async () => {
     const { cookie, userId } = await signUp('back-nav@example.com')
 
-    await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
+    await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', cookie },
       body: JSON.stringify({ questionId: 'job', value: 'Angestellt' }),
     })
-    const secondAnswer = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
+    const secondAnswer = await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', cookie },
       body: JSON.stringify({ questionId: 'job', value: 'Rente' }),

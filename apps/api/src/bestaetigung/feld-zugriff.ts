@@ -5,7 +5,7 @@ import {
   RENTAL_FIELDS,
   type CapitalFieldId,
   type WageTaxCertificateFieldId,
-  type Maske,
+  type Screen,
   type PensionFieldId,
   type RentalFieldId,
 } from '@steuereule/core'
@@ -14,45 +14,45 @@ import type { WageTaxCertificateRepository } from '../lstb/lstb.repository.js'
 import type { PensionRepository } from '../rente/rente.repository.js'
 import type { RentalRepository } from '../vermietung/vermietung.repository.js'
 
-export interface MaskenZugriff {
-  readonly felder: readonly string[]
-  readonly mitInstanz: boolean
-  lese(userId: string, steuerjahr: number, instanz: string | null): Promise<Readonly<Record<string, string | null>> | null>
-  schreibe(userId: string, steuerjahr: number, instanz: string | null, feld: string, wert: string | null): Promise<boolean>
+export interface ScreenAccess {
+  readonly fields: readonly string[]
+  readonly withInstance: boolean
+  read(userId: string, steuerjahr: number, instance: string | null): Promise<Readonly<Record<string, string | null>> | null>
+  write(userId: string, steuerjahr: number, instance: string | null, field: string, value: string | null): Promise<boolean>
 }
 
-export type FeldZugriff = Readonly<Partial<Record<Maske, MaskenZugriff>>>
+export type FieldAccess = Readonly<Partial<Record<Screen, ScreenAccess>>>
 
-export const FELD_ZUGRIFF = Symbol('FELD_ZUGRIFF')
+export const FIELD_ACCESS = Symbol('FELD_ZUGRIFF')
 
-export interface FeldZugriffRepositories {
+export interface FieldAccessRepositories {
   readonly lstb: WageTaxCertificateRepository
-  readonly rente: PensionRepository
-  readonly kapital: CapitalRepository
-  readonly vermietung: RentalRepository
+  readonly pension: PensionRepository
+  readonly capital: CapitalRepository
+  readonly rental: RentalRepository
 }
 
-const RENTE_ZUGRIFF_FELDER = ['rentenart', ...PENSION_FIELDS] as const
+const PENSION_ACCESS_FIELDS = ['rentenart', ...PENSION_FIELDS] as const
 
-export function feldZugriffAus({ lstb, rente, kapital, vermietung }: FeldZugriffRepositories): FeldZugriff {
+export function fieldAccessFrom({ lstb, pension, capital, rental }: FieldAccessRepositories): FieldAccess {
   return {
     lstb: {
-      felder: WAGE_TAX_CERTIFICATE_FIELDS,
-      mitInstanz: false,
-      async lese(userId, steuerjahr) {
+      fields: WAGE_TAX_CERTIFICATE_FIELDS,
+      withInstance: false,
+      async read(userId, steuerjahr) {
         const r = await lstb.findForUserAndYear(userId, steuerjahr)
         return { bruttoarbeitslohn: r?.bruttoarbeitslohn ?? null, lohnsteuer: r?.lohnsteuer ?? null, sozialversicherung: r?.sozialversicherung ?? null }
       },
-      async schreibe(userId, steuerjahr, _instanz, feld, wert) {
-        await lstb.setFeld(userId, steuerjahr, feld as WageTaxCertificateFieldId, wert)
+      async write(userId, steuerjahr, _instance, field, value) {
+        await lstb.setField(userId, steuerjahr, field as WageTaxCertificateFieldId, value)
         return true
       },
     },
     rente: {
-      felder: RENTE_ZUGRIFF_FELDER,
-      mitInstanz: false,
-      async lese(userId, steuerjahr) {
-        const r = await rente.findForUserAndYear(userId, steuerjahr)
+      fields: PENSION_ACCESS_FIELDS,
+      withInstance: false,
+      async read(userId, steuerjahr) {
+        const r = await pension.findForUserAndYear(userId, steuerjahr)
         return {
           rentenart: r?.rentenart ?? null,
           jahresbetrag: r?.jahresbetrag ?? null,
@@ -60,35 +60,35 @@ export function feldZugriffAus({ lstb, rente, kapital, vermietung }: FeldZugriff
           alterBeiRentenbeginn: r?.alterBeiRentenbeginn ?? null,
         }
       },
-      async schreibe(userId, steuerjahr, _instanz, feld, wert) {
-        if (feld === 'rentenart') await rente.setRentenart(userId, steuerjahr, wert)
-        else await rente.setFeld(userId, steuerjahr, feld as PensionFieldId, wert)
+      async write(userId, steuerjahr, _instance, field, value) {
+        if (field === 'rentenart') await pension.setPensionKind(userId, steuerjahr, value)
+        else await pension.setField(userId, steuerjahr, field as PensionFieldId, value)
         return true
       },
     },
     kapital: {
-      felder: CAPITAL_FIELDS,
-      mitInstanz: false,
-      async lese(userId, steuerjahr) {
-        const r = await kapital.findForUserAndYear(userId, steuerjahr)
+      fields: CAPITAL_FIELDS,
+      withInstance: false,
+      async read(userId, steuerjahr) {
+        const r = await capital.findForUserAndYear(userId, steuerjahr)
         return Object.fromEntries(CAPITAL_FIELDS.map((f) => [f, r?.[f] ?? null]))
       },
-      async schreibe(userId, steuerjahr, _instanz, feld, wert) {
-        await kapital.setFeld(userId, steuerjahr, feld as CapitalFieldId, wert)
+      async write(userId, steuerjahr, _instance, field, value) {
+        await capital.setField(userId, steuerjahr, field as CapitalFieldId, value)
         return true
       },
     },
     vermietung: {
-      felder: RENTAL_FIELDS,
-      mitInstanz: true,
-      async lese(userId, steuerjahr, instanz) {
-        const objekt = (await vermietung.listForUserAndYear(userId, steuerjahr)).find((o) => o.id === instanz)
-        if (objekt === undefined) return null
-        return Object.fromEntries(RENTAL_FIELDS.map((f) => [f, objekt[f]]))
+      fields: RENTAL_FIELDS,
+      withInstance: true,
+      async read(userId, steuerjahr, instance) {
+        const property = (await rental.listForUserAndYear(userId, steuerjahr)).find((o) => o.id === instance)
+        if (property === undefined) return null
+        return Object.fromEntries(RENTAL_FIELDS.map((f) => [f, property[f]]))
       },
-      async schreibe(userId, steuerjahr, instanz, feld, wert) {
-        if (instanz === null) return false
-        return (await vermietung.setFeld(userId, steuerjahr, instanz, feld as RentalFieldId, wert)) !== null
+      async write(userId, steuerjahr, instance, field, value) {
+        if (instance === null) return false
+        return (await rental.setField(userId, steuerjahr, instance, field as RentalFieldId, value)) !== null
       },
     },
   }

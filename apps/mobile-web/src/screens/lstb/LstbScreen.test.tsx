@@ -14,13 +14,13 @@ import type { LstbResponseDto } from '@steuereule/api-client'
 const TAX_YEAR = 2026
 const LSTB_URL = `*/v1/steuerjahre/${TAX_YEAR}/lstb`
 
-const WIDERSPRUCH: LstbResponseDto = {
-  bruttoarbeitslohn: { kind: 'erfasst', wert: 50000 },
-  lohnsteuer: { kind: 'erfasst', wert: 60000 },
-  sozialversicherung: { kind: 'erfasst', wert: 0 },
-  zustand: {
+const CONFLICT: LstbResponseDto = {
+  bruttoarbeitslohn: { kind: 'erfasst', value: 50000 },
+  lohnsteuer: { kind: 'erfasst', value: 60000 },
+  sozialversicherung: { kind: 'erfasst', value: 0 },
+  state: {
     kind: 'widerspruch',
-    widersprueche: [{ art: 'lohnsteuer-uebersteigt-brutto', lohnsteuer: 60000, bruttoarbeitslohn: 50000 }],
+    conflicts: [{ art: 'lohnsteuer-uebersteigt-brutto', lohnsteuer: 60000, bruttoarbeitslohn: 50000 }],
   },
 }
 
@@ -48,7 +48,7 @@ describe('LstbScreen', () => {
   })
 
   it('shows a named widerspruch when one figure exceeds the Bruttoarbeitslohn (ADR-008)', async () => {
-    server.use(http.get(LSTB_URL, () => HttpResponse.json(WIDERSPRUCH, { status: 200 })))
+    server.use(http.get(LSTB_URL, () => HttpResponse.json(CONFLICT, { status: 200 })))
     renderLstb()
 
     expect(await screen.findByText('Das passt nicht zusammen:')).toBeTruthy()
@@ -62,14 +62,14 @@ describe('LstbScreen', () => {
       http.put(`${LSTB_URL}/bruttoarbeitslohn`, async ({ request }) => {
         url = request.url
         body = await request.json()
-        return HttpResponse.json({ ...WIDERSPRUCH, zustand: { kind: 'unvollstaendig', offen: ['lohnsteuer', 'sozialversicherung'], unklar: ['bruttoarbeitslohn'] } }, { status: 200 })
+        return HttpResponse.json({ ...CONFLICT, state: { kind: 'unvollstaendig', open: ['lohnsteuer', 'sozialversicherung'], unclear: ['bruttoarbeitslohn'] } }, { status: 200 })
       }),
     )
     renderLstb()
     await screen.findByText('Bruttoarbeitslohn (Zeile 3)')
 
-    const unklarButtons = screen.getAllByText('unlesbar')
-    fireEvent.click(unklarButtons[0]!)
+    const unclearButtons = screen.getAllByText('unlesbar')
+    fireEvent.click(unclearButtons[0]!)
 
     await waitFor(() => expect(body).toEqual({ kind: 'unklar' }))
     expect(url).toContain('/lstb/bruttoarbeitslohn')
@@ -84,14 +84,14 @@ describe('LstbScreen', () => {
       }),
     )
     renderLstb()
-    const brutto = await screen.findByLabelText('Bruttoarbeitslohn (Zeile 3) (Ganzzahlige Euro)')
+    const gross = await screen.findByLabelText('Bruttoarbeitslohn (Zeile 3) (Ganzzahlige Euro)')
 
-    fireEvent.change(brutto, { target: { value: '45000' } })
-    fireEvent.blur(brutto)
+    fireEvent.change(gross, { target: { value: '45000' } })
+    fireEvent.blur(gross)
 
     await waitFor(() => expect(puts).toHaveLength(1))
     expect(puts[0]!.url).toMatch(/\/lstb\/bruttoarbeitslohn$/)
-    expect(puts[0]!.body).toEqual({ kind: 'erfasst', wert: 45000 })
+    expect(puts[0]!.body).toEqual({ kind: 'erfasst', value: 45000 })
   })
 
   it("records the partner's certificate as person=B and says whose it is (ADR-0054)", async () => {
@@ -108,9 +108,9 @@ describe('LstbScreen', () => {
     )
     renderLstb('Sabine')
     expect(await screen.findByText('Lohnsteuerbescheinigung von Sabine')).toBeTruthy()
-    const brutto = screen.getByLabelText('Bruttoarbeitslohn (Zeile 3) (Ganzzahlige Euro)')
-    fireEvent.change(brutto, { target: { value: '48000' } })
-    fireEvent.blur(brutto)
+    const gross = screen.getByLabelText('Bruttoarbeitslohn (Zeile 3) (Ganzzahlige Euro)')
+    fireEvent.change(gross, { target: { value: '48000' } })
+    fireEvent.blur(gross)
 
     await waitFor(() => expect(urls.some((u) => u.endsWith('/lstb/bruttoarbeitslohn?person=B'))).toBe(true))
     expect(urls[0]).toMatch(/\/lstb\?person=B$/)
@@ -120,10 +120,10 @@ describe('LstbScreen', () => {
     const puts: unknown[] = []
     server.use(http.put(`${LSTB_URL}/:feld`, () => { puts.push(1); return HttpResponse.json({}, { status: 200 }) }))
     renderLstb()
-    const brutto = await screen.findByLabelText('Bruttoarbeitslohn (Zeile 3) (Ganzzahlige Euro)')
+    const gross = await screen.findByLabelText('Bruttoarbeitslohn (Zeile 3) (Ganzzahlige Euro)')
 
-    fireEvent.focus(brutto)
-    fireEvent.blur(brutto)
+    fireEvent.focus(gross)
+    fireEvent.blur(gross)
 
     await new Promise((resolve) => setTimeout(resolve, 50))
     expect(puts).toHaveLength(0)

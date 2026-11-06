@@ -3,8 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { Option, useTheme, type Breakpoint } from '@steuereule/ui'
 import {
   JOB_VALUES,
-  AUSLAND_VALUES,
-  FAMILIENSTAND_VALUES,
+  FOREIGN_VALUES,
+  MARITAL_STATUS_VALUES,
   KINDER_VALUES,
   QUESTION_ORDER,
   type QuestionId,
@@ -26,7 +26,7 @@ const JOB_OPTIONS: ReadonlyArray<OptionSpec<(typeof JOB_VALUES)[number]>> = [
   { value: 'Beides', labelKey: 'interview.job.options.beides' },
   { value: 'Rente', labelKey: 'interview.job.options.rente' },
 ]
-const AUSLAND_OPTIONS: ReadonlyArray<OptionSpec<(typeof AUSLAND_VALUES)[number]>> = [
+const FOREIGN_OPTIONS: ReadonlyArray<OptionSpec<(typeof FOREIGN_VALUES)[number]>> = [
   { value: 'Ja, in die Schweiz', labelKey: 'interview.ausland.options.schweiz' },
   { value: 'In ein anderes Land', labelKey: 'interview.ausland.options.andereLand' },
   { value: 'Nein', labelKey: 'interview.ausland.options.nein' },
@@ -36,7 +36,7 @@ const KINDER_OPTIONS: ReadonlyArray<OptionSpec<(typeof KINDER_VALUES)[number]>> 
   { value: '1 Kind', labelKey: 'interview.kinder.options.einKind' },
   { value: '2 oder mehr', labelKey: 'interview.kinder.options.mehrere' },
 ]
-const FAMILIENSTAND_OPTIONS: ReadonlyArray<OptionSpec<(typeof FAMILIENSTAND_VALUES)[number]>> = [
+const MARITAL_STATUS_OPTIONS: ReadonlyArray<OptionSpec<(typeof MARITAL_STATUS_VALUES)[number]>> = [
   { value: 'Ledig', labelKey: 'interview.familienstand.options.ledig' },
   { value: 'Verheiratet', labelKey: 'interview.familienstand.options.verheiratet' },
   { value: 'Geschieden oder getrennt', labelKey: 'interview.familienstand.options.geschieden' },
@@ -45,9 +45,9 @@ const FAMILIENSTAND_OPTIONS: ReadonlyArray<OptionSpec<(typeof FAMILIENSTAND_VALU
 
 const QUESTION_COPY: Record<QuestionId, { readonly titleKey: string; readonly helpKey: string; readonly options: ReadonlyArray<OptionSpec<string>> }> = {
   job: { titleKey: 'interview.job', helpKey: 'interview.job.help', options: JOB_OPTIONS },
-  ausland: { titleKey: 'interview.ausland', helpKey: 'interview.ausland.help', options: AUSLAND_OPTIONS },
+  ausland: { titleKey: 'interview.ausland', helpKey: 'interview.ausland.help', options: FOREIGN_OPTIONS },
   kinder: { titleKey: 'interview.kinder', helpKey: 'interview.kinder.help', options: KINDER_OPTIONS },
-  familienstand: { titleKey: 'interview.familienstand', helpKey: 'interview.familienstand.help', options: FAMILIENSTAND_OPTIONS },
+  familienstand: { titleKey: 'interview.familienstand', helpKey: 'interview.familienstand.help', options: MARITAL_STATUS_OPTIONS },
 }
 
 interface QuestionScreenProps {

@@ -15,5 +15,5 @@ export class RolloverProvenanceDto {
 /** Die Antwort aller Übernahme-Endpoints: die Kennzeichnungen des Zieljahres. */
 export class RolloverResponseDto {
   @ApiProperty({ type: [RolloverProvenanceDto], description: 'Die Übernahme-Kennzeichnungen, älteste zuerst.' })
-  kennzeichnungen!: RolloverProvenanceDto[]
+  markings!: RolloverProvenanceDto[]
 }

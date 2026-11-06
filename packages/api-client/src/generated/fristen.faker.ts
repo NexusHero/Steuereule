@@ -10,9 +10,9 @@ import {
 } from '@faker-js/faker';
 
 import type {
-  FristenResponseDto
+  DeadlinesResponseDto
 } from './fristen.schemas';
 
 
-export const getFristenControllerGetFristenResponseMock = (overrideResponse: Partial<Extract<FristenResponseDto, object>> = {}): FristenResponseDto => ({abgabefrist: faker.string.alpha({length: {min: 10, max: 20}}), heute: faker.string.alpha({length: {min: 10, max: 20}}), stufe: faker.helpers.arrayElement(['keine','warnung','abgelaufen'] as const), verbleibendeTage: faker.number.float({fractionDigits: 2}), verspaetungszuschlag: {mindestsatzEur: faker.number.float({fractionDigits: 2}), prozentProMonat: faker.number.float({fractionDigits: 2})}, ...overrideResponse})
+export const getDeadlinesControllerGetDeadlinesResponseMock = (overrideResponse: Partial<Extract<DeadlinesResponseDto, object>> = {}): DeadlinesResponseDto => ({filingDeadline: faker.string.alpha({length: {min: 10, max: 20}}), today: faker.string.alpha({length: {min: 10, max: 20}}), level: faker.helpers.arrayElement(['keine','warnung','abgelaufen'] as const), remainingDays: faker.number.float({fractionDigits: 2}), lateFilingSurcharge: {minimumRateEur: faker.number.float({fractionDigits: 2}), percentPerMonth: faker.number.float({fractionDigits: 2})}, ...overrideResponse})
 

@@ -1,65 +1,65 @@
 import {
-  grenzgaengerStatus,
-  offeneLohnausweisFelder,
-  GRENZGAENGER_NICHTRUECKKEHRTAGE,
+  crossBorderStatus,
+  openSalaryCertificateFields,
+  CROSS_BORDER_NON_RETURN_DAYS,
   type ChWohnsitz,
-  type LohnausweisFeldId,
-  type LohnausweisWerte,
+  type SalaryCertificateFieldId,
+  type SalaryCertificateValues,
 } from './grenzgaenger'
-import type { Wechselkurs } from './wechselkurs'
+import type { ExchangeRate } from './wechselkurs'
 
-export type PlausibilitaetsGrad = 'widerspruch' | 'hinweis' | 'offen'
+export type PlausibilityLevel = 'widerspruch' | 'hinweis' | 'offen'
 
-export interface PlausibilitaetsPunkt {
-  readonly grad: PlausibilitaetsGrad
+export interface PlausibilityPoint {
+  readonly grad: PlausibilityLevel
   readonly code: string
-  readonly feld?: LohnausweisFeldId
+  readonly field?: SalaryCertificateFieldId
 }
 
-export interface PlausibilitaetsBefund {
-  readonly einreichbar: boolean
-  readonly punkte: readonly PlausibilitaetsPunkt[]
+export interface PlausibilityFinding {
+  readonly submittable: boolean
+  readonly points: readonly PlausibilityPoint[]
 }
 
-export interface GrenzgaengerPlausibilitaetsInput {
-  readonly wohnsitz: ChWohnsitz
-  readonly nichtrueckkehrtage: number
-  readonly wechselkurs: Wechselkurs
-  readonly lohnausweis: LohnausweisWerte
-  readonly hatKinder: boolean
-  readonly hatFamilienzulagen: boolean
+export interface CrossBorderPlausibilityInput {
+  readonly residence: ChWohnsitz
+  readonly nonReturnDays: number
+  readonly exchangeRate: ExchangeRate
+  readonly salaryCertificate: SalaryCertificateValues
+  readonly hasChildren: boolean
+  readonly hasFamilyAllowances: boolean
 }
 
-export function pruefeGrenzgaenger(input: GrenzgaengerPlausibilitaetsInput): PlausibilitaetsBefund {
-  const status = grenzgaengerStatus(input.wohnsitz, input.nichtrueckkehrtage)
-  const punkte: PlausibilitaetsPunkt[] = []
+export function checkCrossBorder(input: CrossBorderPlausibilityInput): PlausibilityFinding {
+  const status = crossBorderStatus(input.residence, input.nonReturnDays)
+  const points: PlausibilityPoint[] = []
 
-  if (input.wechselkurs.modus === 'tatsaechlich' && input.wechselkurs.belegId === undefined) {
-    punkte.push({ grad: 'widerspruch', code: 'wechselkurs-tatsaechlich-ohne-beleg' })
+  if (input.exchangeRate.mode === 'tatsaechlich' && input.exchangeRate.receiptId === undefined) {
+    points.push({ grad: 'widerspruch', code: 'wechselkurs-tatsaechlich-ohne-beleg' })
   }
 
-  for (const feld of offeneLohnausweisFelder(input.lohnausweis, status)) {
-    punkte.push({ grad: 'offen', code: 'lohnausweis-fehlt', feld })
+  for (const field of openSalaryCertificateFields(input.salaryCertificate, status)) {
+    points.push({ grad: 'offen', code: 'lohnausweis-fehlt', field })
   }
 
-  const bruttolohn = input.lohnausweis['bruttolohn-total']
-  const nettolohn = input.lohnausweis.nettolohn
-  const ahv = input.lohnausweis['ahv-beitraege']
-  const pk = input.lohnausweis['berufliche-vorsorge']
-  if (bruttolohn !== undefined && nettolohn !== undefined && ahv !== undefined && pk !== undefined) {
-    if (nettolohn !== bruttolohn - ahv - pk) {
-      punkte.push({ grad: 'widerspruch', code: 'lohnausweis-nettolohn-inkonsistent' })
+  const grossWage = input.salaryCertificate['bruttolohn-total']
+  const nettolohn = input.salaryCertificate.nettolohn
+  const ahv = input.salaryCertificate['ahv-beitraege']
+  const pk = input.salaryCertificate['berufliche-vorsorge']
+  if (grossWage !== undefined && nettolohn !== undefined && ahv !== undefined && pk !== undefined) {
+    if (nettolohn !== grossWage - ahv - pk) {
+      points.push({ grad: 'widerspruch', code: 'lohnausweis-nettolohn-inkonsistent' })
     }
   }
 
-  if (input.hatFamilienzulagen && !input.hatKinder) {
-    punkte.push({ grad: 'widerspruch', code: 'zulagen-ohne-kinder' })
+  if (input.hasFamilyAllowances && !input.hasChildren) {
+    points.push({ grad: 'widerspruch', code: 'zulagen-ohne-kinder' })
   }
 
-  if (input.wohnsitz === 'Deutschland' && input.nichtrueckkehrtage > GRENZGAENGER_NICHTRUECKKEHRTAGE) {
-    punkte.push({ grad: 'hinweis', code: 'grenzgaenger-status-verloren' })
+  if (input.residence === 'Deutschland' && input.nonReturnDays > CROSS_BORDER_NON_RETURN_DAYS) {
+    points.push({ grad: 'hinweis', code: 'grenzgaenger-status-verloren' })
   }
 
-  const einreichbar = punkte.every((p) => p.grad === 'hinweis')
-  return { einreichbar, punkte }
+  const submittable = points.every((p) => p.grad === 'hinweis')
+  return { submittable, points }
 }

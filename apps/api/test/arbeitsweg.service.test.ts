@@ -1,20 +1,20 @@
 import { describe, expect, it } from 'vitest'
 import type { CommuteInputs, CommuteRepository } from '../src/arbeitsweg/arbeitsweg.repository.js'
-import { ArbeitswegService } from '../src/arbeitsweg/arbeitsweg.service.js'
+import { CommuteService } from '../src/arbeitsweg/arbeitsweg.service.js'
 
-function fakeRepository(): CommuteRepository & { gespeichert: Map<string, CommuteInputs> } {
-  const gespeichert = new Map<string, CommuteInputs>()
+function fakeRepository(): CommuteRepository & { saved: Map<string, CommuteInputs> } {
+  const saved = new Map<string, CommuteInputs>()
   return {
-    gespeichert,
-    findForUserAndYear: async (userId, jahr) => gespeichert.get(`${userId}:${jahr}`) ?? null,
-    save: async (userId, jahr, eingaben) => {
-      gespeichert.set(`${userId}:${jahr}`, eingaben)
-      return eingaben
+    saved,
+    findForUserAndYear: async (userId, year) => saved.get(`${userId}:${year}`) ?? null,
+    save: async (userId, year, inputs) => {
+      saved.set(`${userId}:${year}`, inputs)
+      return inputs
     },
   }
 }
 
-const EINGABEN: CommuteInputs = {
+const INPUTS: CommuteInputs = {
   arbeitstage: [1, 2, 3, 4, 5],
   urlaubstage: 30,
   krankheitstage: 5,
@@ -26,46 +26,46 @@ const EINGABEN: CommuteInputs = {
 
 describe('ArbeitswegService', () => {
   it('reports nothing entered yet for a fresh tax year', async () => {
-    const service = new ArbeitswegService(fakeRepository())
+    const service = new CommuteService(fakeRepository())
 
-    const stand = await service.getState('user-1', 2025)
+    const status = await service.getState('user-1', 2025)
 
-    expect(stand).toEqual({ eingaben: null, werktage: null, pendlerpauschale: null })
+    expect(status).toEqual({ inputs: null, workdays: null, commuterAllowance: null })
   })
 
   it('stores the facts and derives Pendlertage and the Entfernungspauschale from the core', async () => {
-    const service = new ArbeitswegService(fakeRepository())
+    const service = new CommuteService(fakeRepository())
 
-    const stand = await service.save('user-1', 2025, EINGABEN)
+    const status = await service.save('user-1', 2025, INPUTS)
 
-    expect(stand.eingaben).toEqual(EINGABEN)
-    expect(stand.werktage).toEqual({ wochentage: 261, werktage: 226, pendlertage: 206 })
-    expect(stand.pendlerpauschale).toBe(2019)
+    expect(status.inputs).toEqual(INPUTS)
+    expect(status.workdays).toEqual({ weekdays: 261, workdays: 226, commuteDays: 206 })
+    expect(status.commuterAllowance).toBe(2019)
   })
 
   it('subtracts the confirmed public holidays from the commute days (F4)', async () => {
-    const service = new ArbeitswegService(fakeRepository())
-    const ohne = await service.save('user-1', 2025, EINGABEN)
-    const mit = await service.save('user-1', 2025, { ...EINGABEN, feiertage: 11, feiertageRegion: 'BW' })
+    const service = new CommuteService(fakeRepository())
+    const without = await service.save('user-1', 2025, INPUTS)
+    const withValue = await service.save('user-1', 2025, { ...INPUTS, feiertage: 11, feiertageRegion: 'BW' })
 
-    expect(mit.werktage!.pendlertage).toBe(ohne.werktage!.pendlertage - 11)
-    expect(mit.pendlerpauschale!).toBeLessThan(ohne.pendlerpauschale!)
+    expect(withValue.workdays!.commuteDays).toBe(without.workdays!.commuteDays - 11)
+    expect(withValue.commuterAllowance!).toBeLessThan(without.commuterAllowance!)
   })
 
   it('leaves the Pauschale open until distance and means of travel are known', async () => {
-    const service = new ArbeitswegService(fakeRepository())
+    const service = new CommuteService(fakeRepository())
 
-    const stand = await service.save('user-1', 2025, { ...EINGABEN, einfacheKm: null })
+    const status = await service.save('user-1', 2025, { ...INPUTS, einfacheKm: null })
 
-    expect(stand.werktage?.pendlertage).toBe(206)
-    expect(stand.pendlerpauschale).toBeNull()
+    expect(status.workdays?.commuteDays).toBe(206)
+    expect(status.commuterAllowance).toBeNull()
   })
 
   it('refuses more days off than working days', async () => {
-    const service = new ArbeitswegService(fakeRepository())
+    const service = new CommuteService(fakeRepository())
 
-    const speichern = service.save('user-1', 2025, { ...EINGABEN, urlaubstage: 300 })
+    const save = service.save('user-1', 2025, { ...INPUTS, urlaubstage: 300 })
 
-    await expect(speichern).rejects.toMatchObject({ code: 'ARBEITSTAGE_WIDERSPRUCH' })
+    await expect(save).rejects.toMatchObject({ code: 'ARBEITSTAGE_WIDERSPRUCH' })
   })
 })

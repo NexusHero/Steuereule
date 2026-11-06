@@ -10,15 +10,15 @@ import { weekdaysInYear } from '@steuereule/core'
 import { http, HttpResponse } from 'msw'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
-import { ArbeitstageScreen } from './ArbeitstageScreen'
+import { WorkdaysScreen } from './ArbeitstageScreen'
 
-function renderArbeitstage(onDone: () => void = () => {}, taxYear = 2026) {
+function renderWorkdays(onDone: () => void = () => {}, taxYear = 2026) {
   const i18n = createAppI18n('de')
   return render(
     <QueryClientProvider client={new QueryClient()}>
       <I18nextProvider i18n={i18n}>
         <ThemeProvider mode="light">
-          <ArbeitstageScreen taxYear={taxYear} onDone={onDone} />
+          <WorkdaysScreen taxYear={taxYear} onDone={onDone} />
         </ThemeProvider>
       </I18nextProvider>
     </QueryClientProvider>,
@@ -27,16 +27,16 @@ function renderArbeitstage(onDone: () => void = () => {}, taxYear = 2026) {
 
 describe('ArbeitstageScreen', () => {
   it('counts the default Mo–Fr work week from the real calendar (no free text)', async () => {
-    renderArbeitstage()
+    renderWorkdays()
 
     expect(await screen.findByText('Wochentage im Jahr')).toBeTruthy()
     // 2026 Mo–Fr, before any vacation/sick/home-office subtraction.
-    const wochentage = weekdaysInYear(2026, [1, 2, 3, 4, 5])
-    expect(screen.getAllByText(String(wochentage)).length).toBeGreaterThan(0)
+    const weekdays = weekdaysInYear(2026, [1, 2, 3, 4, 5])
+    expect(screen.getAllByText(String(weekdays)).length).toBeGreaterThan(0)
   })
 
   it('names a widerspruch when vacation days exceed the work days, never clamps', async () => {
-    renderArbeitstage()
+    renderWorkdays()
 
     // 999 vacation days is far more than the Mo–Fr weekdays in any year.
     fireEvent.change(await screen.findByLabelText('Urlaubstage'), { target: { value: '999' } })
@@ -44,35 +44,35 @@ describe('ArbeitstageScreen', () => {
   })
 
   it('subtracts vacation/sick/home-office days from the weekday count', async () => {
-    renderArbeitstage()
+    renderWorkdays()
 
-    const urlaub = await screen.findByLabelText('Urlaubstage')
-    fireEvent.change(urlaub, { target: { value: '10' } })
-    const krank = screen.getByLabelText('Krankheitstage')
-    fireEvent.change(krank, { target: { value: '5' } })
+    const vacation = await screen.findByLabelText('Urlaubstage')
+    fireEvent.change(vacation, { target: { value: '10' } })
+    const sick = screen.getByLabelText('Krankheitstage')
+    fireEvent.change(sick, { target: { value: '5' } })
 
-    const wochentage = weekdaysInYear(2026, [1, 2, 3, 4, 5])
-    expect(screen.getAllByText(String(wochentage - 15)).length).toBeGreaterThan(0)
+    const weekdays = weekdaysInYear(2026, [1, 2, 3, 4, 5])
+    expect(screen.getAllByText(String(weekdays - 15)).length).toBeGreaterThan(0)
   })
 
   it('shows the facts saved last time instead of starting empty', async () => {
     server.use(
       http.get('*/v1/steuerjahre/2025/arbeitsweg', () =>
         HttpResponse.json({
-          eingaben: { arbeitstage: [1, 2, 3, 4, 5], urlaubstage: 30, krankheitstage: 5, homeofficeTage: 20, einfacheKm: 30, verkehrsmittel: 'pkw', taetigkeitsstaette: 'Lörrach' },
-          werktage: { wochentage: 261, werktage: 226, pendlertage: 206 },
-          pendlerpauschale: 2019,
+          inputs: { arbeitstage: [1, 2, 3, 4, 5], urlaubstage: 30, krankheitstage: 5, homeofficeTage: 20, einfacheKm: 30, verkehrsmittel: 'pkw', taetigkeitsstaette: 'Lörrach' },
+          workdays: { weekdays: 261, workdays: 226, commuteDays: 206 },
+          commuterAllowance: 2019,
         }),
       ),
     )
-    renderArbeitstage(() => {}, 2025)
+    renderWorkdays(() => {}, 2025)
 
     expect(((await screen.findByLabelText('Urlaubstage')) as HTMLInputElement).value).toBe('30')
     expect((screen.getByLabelText('Einfache Entfernung in km') as HTMLInputElement).value).toBe('30')
   })
 
   it('previews the Entfernungspauschale once distance and means of travel are known', async () => {
-    renderArbeitstage(() => {}, 2025)
+    renderWorkdays(() => {}, 2025)
 
     fireEvent.change(await screen.findByLabelText('Einfache Entfernung in km'), { target: { value: '15' } })
     fireEvent.click(screen.getByText('Eigenes Auto'))
@@ -85,11 +85,11 @@ describe('ArbeitstageScreen', () => {
     server.use(
       http.put('*/v1/steuerjahre/2025/arbeitsweg', async ({ request }) => {
         bodies.push(await request.json())
-        return HttpResponse.json({ eingaben: null, werktage: null, pendlerpauschale: null })
+        return HttpResponse.json({ inputs: null, workdays: null, commuterAllowance: null })
       }),
     )
     const onDone = vi.fn()
-    renderArbeitstage(onDone, 2025)
+    renderWorkdays(onDone, 2025)
 
     fireEvent.change(await screen.findByLabelText('Urlaubstage'), { target: { value: '30' } })
     fireEvent.change(screen.getByLabelText('Einfache Entfernung in km'), { target: { value: '15' } })

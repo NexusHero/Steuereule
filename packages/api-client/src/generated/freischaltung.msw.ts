@@ -18,24 +18,24 @@ import type {
 } from 'msw';
 
 import type {
-  FreischaltungStatusDto
+  UnlockStatusDto
 } from './freischaltung.schemas';
 
 
-export const getFreischaltungControllerStatusResponseMock = (overrideResponse: Partial<Extract<FreischaltungStatusDto, object>> = {}): FreischaltungStatusDto => ({status: faker.helpers.arrayElement(['freigeschaltet','offen','nicht-verfuegbar'] as const), ...overrideResponse})
+export const getUnlockControllerStatusResponseMock = (overrideResponse: Partial<Extract<UnlockStatusDto, object>> = {}): UnlockStatusDto => ({status: faker.helpers.arrayElement(['freigeschaltet','offen','nicht-verfuegbar'] as const), ...overrideResponse})
 
 
-export const getFreischaltungControllerStatusMockHandler = (overrideResponse?: FreischaltungStatusDto | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<FreischaltungStatusDto> | FreischaltungStatusDto), options?: RequestHandlerOptions) => {
+export const getUnlockControllerStatusMockHandler = (overrideResponse?: UnlockStatusDto | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<UnlockStatusDto> | UnlockStatusDto), options?: RequestHandlerOptions) => {
   return http.get('*/v1/steuerjahre/:jahr/freischaltung', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
 
 
     return HttpResponse.json(overrideResponse !== undefined
     ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
-    : getFreischaltungControllerStatusResponseMock(),
+    : getUnlockControllerStatusResponseMock(),
       { status: 200
       })
   }, options)
 }
 export const getSteuerEuleAPIMock = () => [
-  getFreischaltungControllerStatusMockHandler()
+  getUnlockControllerStatusMockHandler()
 ]

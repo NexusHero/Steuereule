@@ -10,9 +10,9 @@ import {
 } from '@faker-js/faker';
 
 import type {
-  FreischaltungStatusDto
+  UnlockStatusDto
 } from './freischaltung.schemas';
 
 
-export const getFreischaltungControllerStatusResponseMock = (overrideResponse: Partial<Extract<FreischaltungStatusDto, object>> = {}): FreischaltungStatusDto => ({status: faker.helpers.arrayElement(['freigeschaltet','offen','nicht-verfuegbar'] as const), ...overrideResponse})
+export const getUnlockControllerStatusResponseMock = (overrideResponse: Partial<Extract<UnlockStatusDto, object>> = {}): UnlockStatusDto => ({status: faker.helpers.arrayElement(['freigeschaltet','offen','nicht-verfuegbar'] as const), ...overrideResponse})
 

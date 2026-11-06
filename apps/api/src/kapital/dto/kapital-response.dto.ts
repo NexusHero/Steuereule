@@ -1,9 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger'
 import { CAPITAL_FIELDS, type CapitalFieldId } from '@steuereule/core'
-import { KapitalFeldDto } from './kapital-feld.dto.js'
+import { CapitalFieldDto } from './kapital-feld.dto.js'
 
 /** The depot-Einordnung — what the `kap-depot` answer MEANS for the Steuererklärung. */
-export class DepotEinordnungDto {
+export class DepotClassificationDto {
   @ApiProperty({
     type: String,
     enum: ['deutscher-broker', 'auslaendischer-broker', 'krypto', 'unbekannt'],
@@ -17,19 +17,19 @@ export class DepotEinordnungDto {
 }
 
 /** The derived Kapital-Posten. */
-export class KapitalPostenDto {
+export class CapitalItemDto {
   @ApiProperty({ type: String, example: 'kapital', description: 'The stable posten id.' })
   id!: string
 
   @ApiProperty({ type: Number, example: 2500, description: 'The Kapitalerträge (whole euros).' })
-  betrag!: number
+  amount!: number
 
   @ApiProperty({ type: String, example: 'eingabe', description: 'The Herkunft (Quelle art) of the amount.' })
-  herkunft!: string
+  provenance!: string
 }
 
 /** The derived fold result. */
-export class KapitalStandDto {
+export class CapitalStatusDto {
   @ApiProperty({ enum: ['bestimmt', 'offen'], description: 'Determined, or open (naming what blocks).' })
   kind!: 'bestimmt' | 'offen'
 
@@ -43,43 +43,43 @@ export class KapitalStandDto {
   anrechnung!: number
 
   @ApiProperty({ type: Number, required: false, description: 'Required-but-empty line items (only when offen).' })
-  offenePosten?: number
+  openItems?: number
 
   @ApiProperty({ type: Number, required: false, description: 'Open conflicts (only when offen).' })
-  konflikte?: number
+  conflicts?: number
 
   @ApiProperty({ type: [String], required: false, description: 'Gated Einkunftsarten (only when offen).' })
-  gegated?: string[]
+  gated?: string[]
 }
 
 /** The response shape for `GET /v1/steuerjahre/{jahr}/kapital` and `PUT .../kapital/kapitalertraege`. */
-export class KapitalResponseDto {
-  @ApiProperty({ type: KapitalFeldDto })
-  kapitalertraege!: KapitalFeldDto
+export class CapitalResponseDto {
+  @ApiProperty({ type: CapitalFieldDto })
+  kapitalertraege!: CapitalFieldDto
 
-  @ApiProperty({ type: KapitalFeldDto })
-  sparerPauschbetrag!: KapitalFeldDto
+  @ApiProperty({ type: CapitalFieldDto })
+  sparerPauschbetrag!: CapitalFieldDto
 
-  @ApiProperty({ type: KapitalFeldDto })
-  kapitalertragsteuer!: KapitalFeldDto
+  @ApiProperty({ type: CapitalFieldDto })
+  kapitalertragsteuer!: CapitalFieldDto
 
-  @ApiProperty({ type: KapitalFeldDto })
-  solidaritaetszuschlag!: KapitalFeldDto
+  @ApiProperty({ type: CapitalFieldDto })
+  solidaritaetszuschlag!: CapitalFieldDto
 
-  @ApiProperty({ type: KapitalFeldDto })
-  kirchensteuer!: KapitalFeldDto
+  @ApiProperty({ type: CapitalFieldDto })
+  kirchensteuer!: CapitalFieldDto
 
   @ApiProperty({ enum: CAPITAL_FIELDS, isArray: true, description: 'The fields Anlage KAP needs for this depot.' })
-  pflichtfelder!: CapitalFieldId[]
+  requiredFields!: CapitalFieldId[]
 
-  @ApiProperty({ type: DepotEinordnungDto })
-  depot!: DepotEinordnungDto
+  @ApiProperty({ type: DepotClassificationDto })
+  depot!: DepotClassificationDto
 
-  @ApiProperty({ type: [KapitalPostenDto], description: 'The Kapital-Posten (empty while not determinable).' })
-  posten!: KapitalPostenDto[]
+  @ApiProperty({ type: [CapitalItemDto], description: 'The Kapital-Posten (empty while not determinable).' })
+  items!: CapitalItemDto[]
 
-  @ApiProperty({ type: KapitalStandDto })
-  stand!: KapitalStandDto
+  @ApiProperty({ type: CapitalStatusDto })
+  status!: CapitalStatusDto
 
   @ApiProperty({ enum: ['A', 'B', 'gemeinsam'], nullable: true, description: 'Whose depot (ADR-0054); null = Person A.' })
   inhaber!: 'A' | 'B' | 'gemeinsam' | null

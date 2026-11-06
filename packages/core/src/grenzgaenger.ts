@@ -1,24 +1,24 @@
 import type { IncomeType } from './einkunftsarten'
-import { calculate, type Berechnungsstand, type Posten } from './berechnung'
-import { chfNachEur, type Wechselkurs } from './wechselkurs'
-import { CH_WOHNSITZ_VALUES, type ChWohnsitz } from './interview'
+import { calculate, type CalculationStatus, type Item } from './berechnung'
+import { chfToEur, type ExchangeRate } from './wechselkurs'
+import { CH_RESIDENCE_VALUES, type ChResidence } from './interview'
 
-export { CH_WOHNSITZ_VALUES }
-export type { ChWohnsitz }
+export { CH_RESIDENCE_VALUES as CH_WOHNSITZ_VALUES }
+export type { ChResidence as ChWohnsitz }
 
-export const GRENZGAENGER_NICHTRUECKKEHRTAGE = 60
+export const CROSS_BORDER_NON_RETURN_DAYS = 60
 
-export type GrenzgaengerStatus = 'echter-grenzgaenger' | 'kein-grenzgaenger'
+export type CrossBorderStatus = 'echter-grenzgaenger' | 'kein-grenzgaenger'
 
-export function grenzgaengerStatus(wohnsitz: ChWohnsitz, nichtrueckkehrtage: number): GrenzgaengerStatus {
-  if (!Number.isInteger(nichtrueckkehrtage) || nichtrueckkehrtage < 0) {
+export function crossBorderStatus(residence: ChResidence, nonReturnDays: number): CrossBorderStatus {
+  if (!Number.isInteger(nonReturnDays) || nonReturnDays < 0) {
     throw new RangeError('nichtrueckkehrtage must be a non-negative integer')
   }
-  if (wohnsitz === 'Schweiz') return 'kein-grenzgaenger'
-  return nichtrueckkehrtage > GRENZGAENGER_NICHTRUECKKEHRTAGE ? 'kein-grenzgaenger' : 'echter-grenzgaenger'
+  if (residence === 'Schweiz') return 'kein-grenzgaenger'
+  return nonReturnDays > CROSS_BORDER_NON_RETURN_DAYS ? 'kein-grenzgaenger' : 'echter-grenzgaenger'
 }
 
-export type LohnausweisFeldId =
+export type SalaryCertificateFieldId =
   | 'lohn'
   | 'gehaltsnebenleistungen'
   | 'unregelmaessige-leistungen'
@@ -35,46 +35,46 @@ export type LohnausweisFeldId =
   | 'weitere-nebenleistungen'
   | 'bemerkungen'
 
-export interface LohnausweisFeld {
-  readonly ziffer: string
-  readonly id: LohnausweisFeldId
+export interface SalaryCertificateField {
+  readonly digit: string
+  readonly id: SalaryCertificateFieldId
   readonly art: 'chf-betrag' | 'freitext'
-  readonly postenRelevant: boolean
+  readonly itemsRelevant: boolean
 }
 
-export const LOHNAUSWEIS_FELDER: readonly LohnausweisFeld[] = [
-  { ziffer: '1', id: 'lohn', art: 'chf-betrag', postenRelevant: false },
-  { ziffer: '2', id: 'gehaltsnebenleistungen', art: 'chf-betrag', postenRelevant: false },
-  { ziffer: '3', id: 'unregelmaessige-leistungen', art: 'chf-betrag', postenRelevant: false },
-  { ziffer: '4', id: 'kapitalleistungen', art: 'chf-betrag', postenRelevant: false },
-  { ziffer: '5', id: 'beteiligungsrechte', art: 'chf-betrag', postenRelevant: false },
-  { ziffer: '6', id: 'sitzungsgelder', art: 'chf-betrag', postenRelevant: false },
-  { ziffer: '7', id: 'andere-leistungen', art: 'chf-betrag', postenRelevant: false },
-  { ziffer: '8', id: 'bruttolohn-total', art: 'chf-betrag', postenRelevant: true },
-  { ziffer: '9', id: 'ahv-beitraege', art: 'chf-betrag', postenRelevant: false },
-  { ziffer: '10', id: 'berufliche-vorsorge', art: 'chf-betrag', postenRelevant: true },
-  { ziffer: '11', id: 'nettolohn', art: 'chf-betrag', postenRelevant: false },
-  { ziffer: '12', id: 'quellensteuer', art: 'chf-betrag', postenRelevant: true },
-  { ziffer: '13', id: 'spesen', art: 'chf-betrag', postenRelevant: false },
-  { ziffer: '14', id: 'weitere-nebenleistungen', art: 'chf-betrag', postenRelevant: false },
-  { ziffer: '15', id: 'bemerkungen', art: 'freitext', postenRelevant: false },
+export const SALARY_CERTIFICATE_FIELDS: readonly SalaryCertificateField[] = [
+  { digit: '1', id: 'lohn', art: 'chf-betrag', itemsRelevant: false },
+  { digit: '2', id: 'gehaltsnebenleistungen', art: 'chf-betrag', itemsRelevant: false },
+  { digit: '3', id: 'unregelmaessige-leistungen', art: 'chf-betrag', itemsRelevant: false },
+  { digit: '4', id: 'kapitalleistungen', art: 'chf-betrag', itemsRelevant: false },
+  { digit: '5', id: 'beteiligungsrechte', art: 'chf-betrag', itemsRelevant: false },
+  { digit: '6', id: 'sitzungsgelder', art: 'chf-betrag', itemsRelevant: false },
+  { digit: '7', id: 'andere-leistungen', art: 'chf-betrag', itemsRelevant: false },
+  { digit: '8', id: 'bruttolohn-total', art: 'chf-betrag', itemsRelevant: true },
+  { digit: '9', id: 'ahv-beitraege', art: 'chf-betrag', itemsRelevant: false },
+  { digit: '10', id: 'berufliche-vorsorge', art: 'chf-betrag', itemsRelevant: true },
+  { digit: '11', id: 'nettolohn', art: 'chf-betrag', itemsRelevant: false },
+  { digit: '12', id: 'quellensteuer', art: 'chf-betrag', itemsRelevant: true },
+  { digit: '13', id: 'spesen', art: 'chf-betrag', itemsRelevant: false },
+  { digit: '14', id: 'weitere-nebenleistungen', art: 'chf-betrag', itemsRelevant: false },
+  { digit: '15', id: 'bemerkungen', art: 'freitext', itemsRelevant: false },
 ]
 
-export type LohnausweisWerte = Partial<Record<LohnausweisFeldId, number>>
+export type SalaryCertificateValues = Partial<Record<SalaryCertificateFieldId, number>>
 
-export type LohnausweisBetragFeldId = Exclude<LohnausweisFeldId, 'bemerkungen'>
+export type SalaryCertificateAmountFieldId = Exclude<SalaryCertificateFieldId, 'bemerkungen'>
 
-export const LOHNAUSWEIS_BETRAG_FELDER: readonly LohnausweisBetragFeldId[] = LOHNAUSWEIS_FELDER.filter(
-  (feld) => feld.art === 'chf-betrag',
-).map((feld) => feld.id) as readonly LohnausweisBetragFeldId[]
+export const SALARY_CERTIFICATE_AMOUNT_FIELDS: readonly SalaryCertificateAmountFieldId[] = SALARY_CERTIFICATE_FIELDS.filter(
+  (field) => field.art === 'chf-betrag',
+).map((field) => field.id) as readonly SalaryCertificateAmountFieldId[]
 
-export function offeneLohnausweisFelder(werte: LohnausweisWerte, status: GrenzgaengerStatus): readonly LohnausweisFeldId[] {
-  const required = new Set<LohnausweisFeldId>(['bruttolohn-total', 'berufliche-vorsorge'])
+export function openSalaryCertificateFields(values: SalaryCertificateValues, status: CrossBorderStatus): readonly SalaryCertificateFieldId[] {
+  const required = new Set<SalaryCertificateFieldId>(['bruttolohn-total', 'berufliche-vorsorge'])
   if (status === 'echter-grenzgaenger') required.add('quellensteuer')
-  return LOHNAUSWEIS_FELDER.filter((feld) => required.has(feld.id) && werte[feld.id] === undefined).map((feld) => feld.id)
+  return SALARY_CERTIFICATE_FIELDS.filter((field) => required.has(field.id) && values[field.id] === undefined).map((field) => field.id)
 }
 
-export type ChPostenArt =
+export type ChItemKind =
   | 'Bruttolohn'
   | 'Quellensteuer'
   | 'Pensionskasse'
@@ -84,17 +84,17 @@ export type ChPostenArt =
   | 'Familienzulage'
 
 /** A CH line item with full provenance: Lohnausweis-Ziffer times exchange rate. */
-export interface ChPosten {
+export interface ChItem {
   readonly id: string
-  readonly art: ChPostenArt
-  readonly ziffer?: string
-  readonly betragChf: number
-  readonly wechselkurs: Wechselkurs
-  readonly betragEur: number
+  readonly art: ChItemKind
+  readonly digit?: string
+  readonly amountChf: number
+  readonly exchangeRate: ExchangeRate
+  readonly amountEur: number
 }
 
-function feldZuPostenArt(feld: LohnausweisFeldId): ChPostenArt {
-  switch (feld) {
+function fieldToItemKind(field: SalaryCertificateFieldId): ChItemKind {
+  switch (field) {
     case 'bruttolohn-total':
       return 'Bruttolohn'
     case 'quellensteuer':
@@ -104,130 +104,130 @@ function feldZuPostenArt(feld: LohnausweisFeldId): ChPostenArt {
     case 'ahv-beitraege':
       return 'AHV'
     default:
-      throw new RangeError(`Lohnausweis field "${feld}" has no ChPosten mapping`)
+      throw new RangeError(`Lohnausweis field "${field}" has no ChPosten mapping`)
   }
 }
 
-function makeChPosten(id: string, art: ChPostenArt, betragChf: number, wechselkurs: Wechselkurs, ziffer?: string): ChPosten {
-  return { id, art, betragChf, wechselkurs, betragEur: chfNachEur(betragChf, wechselkurs.kurs), ...(ziffer !== undefined ? { ziffer } : {}) }
+function makeChItem(id: string, art: ChItemKind, amountChf: number, exchangeRate: ExchangeRate, digit?: string): ChItem {
+  return { id, art, amountChf, exchangeRate, amountEur: chfToEur(amountChf, exchangeRate.rate), ...(digit !== undefined ? { digit } : {}) }
 }
 
-export function chPostenAusLohnausweis(werte: LohnausweisWerte, wechselkurs: Wechselkurs): readonly ChPosten[] {
-  const posten: ChPosten[] = []
-  for (const feld of LOHNAUSWEIS_FELDER) {
-    if (!feld.postenRelevant || feld.art !== 'chf-betrag') continue
-    const betragChf = werte[feld.id]
-    if (betragChf === undefined) continue
-    posten.push(makeChPosten(`ch-lohnausweis-${feld.id}`, feldZuPostenArt(feld.id), betragChf, wechselkurs, feld.ziffer))
+export function chItemsFromSalaryCertificate(values: SalaryCertificateValues, exchangeRate: ExchangeRate): readonly ChItem[] {
+  const items: ChItem[] = []
+  for (const field of SALARY_CERTIFICATE_FIELDS) {
+    if (!field.itemsRelevant || field.art !== 'chf-betrag') continue
+    const amountChf = values[field.id]
+    if (amountChf === undefined) continue
+    items.push(makeChItem(`ch-lohnausweis-${field.id}`, fieldToItemKind(field.id), amountChf, exchangeRate, field.digit))
   }
-  return posten
+  return items
 }
 
-export function saeule3aAbzug(eingezahltChf: number, wechselkurs: Wechselkurs): ChPosten {
-  return makeChPosten('ch-saeule-3a', 'Saeule3a', eingezahltChf, wechselkurs)
+export function pillar3aDeduction(paidInChf: number, exchangeRate: ExchangeRate): ChItem {
+  return makeChItem('ch-saeule-3a', 'Saeule3a', paidInChf, exchangeRate)
 }
 
-export function krankenkasseAbzug(beitragChf: number, wechselkurs: Wechselkurs): ChPosten {
-  return makeChPosten('ch-krankenkasse', 'Krankenkasse', beitragChf, wechselkurs)
+export function healthInsurerDeduction(contributionChf: number, exchangeRate: ExchangeRate): ChItem {
+  return makeChItem('ch-krankenkasse', 'Krankenkasse', contributionChf, exchangeRate)
 }
 
-export function zulagenVerrechnen(chZulagenEur: number, deKindergeldEur: number): number {
-  if (!Number.isFinite(chZulagenEur) || chZulagenEur < 0) throw new RangeError('chZulagenEur must be a non-negative finite number')
-  if (!Number.isFinite(deKindergeldEur) || deKindergeldEur < 0) {
+export function offsetAllowances(chAllowancesEur: number, deChildBenefitEur: number): number {
+  if (!Number.isFinite(chAllowancesEur) || chAllowancesEur < 0) throw new RangeError('chZulagenEur must be a non-negative finite number')
+  if (!Number.isFinite(deChildBenefitEur) || deChildBenefitEur < 0) {
     throw new RangeError('deKindergeldEur must be a non-negative finite number')
   }
-  return Math.round((chZulagenEur - deKindergeldEur) * 100) / 100
+  return Math.round((chAllowancesEur - deChildBenefitEur) * 100) / 100
 }
 
-export function bruttolohnAlsKernposten(posten: ChPosten): Posten | null {
-  if (posten.art !== 'Bruttolohn') return null
-  return chPostenAlsKernposten(posten)
+export function grossWageAsCoreItem(items: ChItem): Item | null {
+  if (items.art !== 'Bruttolohn') return null
+  return chItemsAsCoreItems(items)
 }
 
-export function chPostenAlsKernposten(posten: ChPosten): Posten | null {
-  let rolle: Posten['rolle']
-  let quelle: Posten['quelle']
-  switch (posten.art) {
+export function chItemsAsCoreItems(items: ChItem): Item | null {
+  let role: Item['role']
+  let source: Item['source']
+  switch (items.art) {
     case 'Bruttolohn':
-      rolle = 'einnahme'
-      quelle = { art: 'beleg', belegId: 'lohnausweis' }
+      role = 'einnahme'
+      source = { art: 'beleg', receiptId: 'lohnausweis' }
       break
     case 'Pensionskasse':
-      rolle = 'vorsorgeaufwand'
-      quelle = { art: 'beleg', belegId: 'lohnausweis' }
+      role = 'vorsorgeaufwand'
+      source = { art: 'beleg', receiptId: 'lohnausweis' }
       break
     case 'Quellensteuer':
-      rolle = 'anrechnung'
-      quelle = { art: 'beleg', belegId: 'lohnausweis' }
+      role = 'anrechnung'
+      source = { art: 'beleg', receiptId: 'lohnausweis' }
       break
     case 'Saeule3a':
     case 'Krankenkasse':
-      rolle = 'vorsorgeaufwand'
-      quelle = { art: 'eingabe' }
+      role = 'vorsorgeaufwand'
+      source = { art: 'eingabe' }
       break
     case 'AHV':
     case 'Familienzulage':
       return null
   }
   return {
-    id: posten.id,
-    einkunftsart: 'Grenzgänger',
-    rolle,
-    betrag: Math.round(posten.betragEur),
-    quelle,
+    id: items.id,
+    incomeType: 'Grenzgänger',
+    role,
+    amount: Math.round(items.amountEur),
+    source,
   }
 }
 
 /** The CH line items to fold, plus the honest open/gated facts that may block a determined result. */
-export interface GrenzgaengerBerechnungsInput {
-  readonly lohnausweis: LohnausweisWerte
+export interface CrossBorderCalculationInput {
+  readonly salaryCertificate: SalaryCertificateValues
   readonly saeule3aChf?: number
   readonly krankenkasseChf?: number
-  readonly status: GrenzgaengerStatus
-  readonly wechselkurs: Wechselkurs
-  readonly gegated: readonly IncomeType[]
+  readonly status: CrossBorderStatus
+  readonly exchangeRate: ExchangeRate
+  readonly gated: readonly IncomeType[]
 }
 
-export function grenzgaengerChPosten(input: {
-  readonly lohnausweis: LohnausweisWerte
+export function crossBorderChItems(input: {
+  readonly salaryCertificate: SalaryCertificateValues
   readonly saeule3aChf?: number
   readonly krankenkasseChf?: number
-  readonly wechselkurs: Wechselkurs
-}): readonly ChPosten[] {
-  const posten: ChPosten[] = [...chPostenAusLohnausweis(input.lohnausweis, input.wechselkurs)]
-  if (input.saeule3aChf !== undefined) posten.push(saeule3aAbzug(input.saeule3aChf, input.wechselkurs))
-  if (input.krankenkasseChf !== undefined) posten.push(krankenkasseAbzug(input.krankenkasseChf, input.wechselkurs))
-  return posten
+  readonly exchangeRate: ExchangeRate
+}): readonly ChItem[] {
+  const items: ChItem[] = [...chItemsFromSalaryCertificate(input.salaryCertificate, input.exchangeRate)]
+  if (input.saeule3aChf !== undefined) items.push(pillar3aDeduction(input.saeule3aChf, input.exchangeRate))
+  if (input.krankenkasseChf !== undefined) items.push(healthInsurerDeduction(input.krankenkasseChf, input.exchangeRate))
+  return items
 }
 
-export function grenzgaengerStand(input: GrenzgaengerBerechnungsInput): Berechnungsstand {
-  const kernposten = grenzgaengerChPosten(input)
-    .map(chPostenAlsKernposten)
-    .filter((p): p is Posten => p !== null)
-  const offenePosten = offeneLohnausweisFelder(input.lohnausweis, input.status).length
-  return calculate({ posten: kernposten, offenePosten, konflikte: [], gegated: input.gegated })
+export function grenzgaengerStand(input: CrossBorderCalculationInput): CalculationStatus {
+  const coreItems = crossBorderChItems(input)
+    .map(chItemsAsCoreItems)
+    .filter((p): p is Item => p !== null)
+  const openItems = openSalaryCertificateFields(input.salaryCertificate, input.status).length
+  return calculate({ items: coreItems, openItems, conflicts: [], gated: input.gated })
 }
 
-export const LOHNAUSWEIS_UNKLAR = 'unklar'
+export const SALARY_CERTIFICATE_UNCLEAR = 'unklar'
 
-export function istGueltigerLohnausweisBetrag(wert: number): boolean {
-  return Number.isFinite(wert) && Number.isInteger(wert) && wert >= 0
+export function isValidSalaryCertificateAmount(value: number): boolean {
+  return Number.isFinite(value) && Number.isInteger(value) && value >= 0
 }
 
-export function serialisiereLohnausweisFeld(wert: number | null | typeof LOHNAUSWEIS_UNKLAR): string | null {
-  if (wert === null) return null
-  if (wert === LOHNAUSWEIS_UNKLAR) return LOHNAUSWEIS_UNKLAR
-  if (!istGueltigerLohnausweisBetrag(wert)) {
+export function serializeSalaryCertificateField(value: number | null | typeof SALARY_CERTIFICATE_UNCLEAR): string | null {
+  if (value === null) return null
+  if (value === SALARY_CERTIFICATE_UNCLEAR) return SALARY_CERTIFICATE_UNCLEAR
+  if (!isValidSalaryCertificateAmount(value)) {
     throw new RangeError(`lohnausweis: erfasst value must be a non-negative integer`)
   }
-  return String(wert)
+  return String(value)
 }
 
-export function deserialisiereLohnausweisFeld(value: string | null): number | null | typeof LOHNAUSWEIS_UNKLAR {
+export function deserializeSalaryCertificateField(value: string | null): number | null | typeof SALARY_CERTIFICATE_UNCLEAR {
   if (value === null) return null
-  if (value === LOHNAUSWEIS_UNKLAR) return LOHNAUSWEIS_UNKLAR
+  if (value === SALARY_CERTIFICATE_UNCLEAR) return SALARY_CERTIFICATE_UNCLEAR
   const wert = Number(value)
-  if (!istGueltigerLohnausweisBetrag(wert)) {
+  if (!isValidSalaryCertificateAmount(wert)) {
     throw new Error(`lohnausweis: stored value "${value}" is neither offen, unklar, nor a valid amount`)
   }
   return wert

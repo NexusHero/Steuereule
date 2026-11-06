@@ -8,31 +8,31 @@
 /**
  * keine | warnung (ab 60 Tage vor der Frist) | abgelaufen.
  */
-export type FristenResponseDtoStufe = typeof FristenResponseDtoStufe[keyof typeof FristenResponseDtoStufe];
+export type DeadlinesResponseDtoLevel = typeof DeadlinesResponseDtoLevel[keyof typeof DeadlinesResponseDtoLevel];
 
 
-export const FristenResponseDtoStufe = {
+export const DeadlinesResponseDtoLevel = {
   keine: 'keine',
   warnung: 'warnung',
   abgelaufen: 'abgelaufen',
 } as const;
 
-export interface VerspaetungszuschlagDto {
+export interface LateFilingFeeDto {
   /** § 152 Abs. 2 Satz 2 AO — der Mindestzuschlag je angefangenem Monat, in Euro. */
-  mindestsatzEur: number;
+  minimumRateEur: number;
   /** § 152 Abs. 2 Satz 1 AO — 0,25 % der festgesetzten Steuer je angefangenem Monat. */
-  prozentProMonat: number;
+  percentPerMonth: number;
 }
 
-export interface FristenResponseDto {
+export interface DeadlinesResponseDto {
   /** Die Abgabefrist (§ 149 Abs. 2 AO), ISO yyyy-mm-dd. */
-  abgabefrist: string;
+  filingDeadline: string;
   /** Der Server-Stichtag in Europe/Berlin, ISO yyyy-mm-dd. */
-  heute: string;
+  today: string;
   /** keine | warnung (ab 60 Tage vor der Frist) | abgelaufen. */
-  stufe: FristenResponseDtoStufe;
+  level: DeadlinesResponseDtoLevel;
   /** Whole days from heute (exclusive) to the frist; negative = abgelaufen. */
-  verbleibendeTage: number;
-  verspaetungszuschlag: VerspaetungszuschlagDto;
+  remainingDays: number;
+  lateFilingSurcharge: LateFilingFeeDto;
 }
 

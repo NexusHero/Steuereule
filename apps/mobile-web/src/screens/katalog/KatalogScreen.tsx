@@ -17,19 +17,19 @@ import {
   getCockpitControllerGetCockpitSummaryQueryKey,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
-import { ganzzahlAus } from '../shared/ganzzahl'
+import { integerFrom } from '../shared/ganzzahl'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 
-export interface KatalogScreenProps {
+export interface CatalogScreenProps {
   readonly entry: 'lebenslagen' | 'einkuenfte' | 'sonderausgaben' | 'alleinerziehend'
   readonly onDone?: () => void
   readonly onBack?: () => void
   readonly taxYear?: number
 }
 
-export function KatalogScreen({ entry, onDone = () => {}, onBack, taxYear = CURRENT_TAX_YEAR }: KatalogScreenProps) {
+export function CatalogScreen({ entry, onDone = () => {}, onBack, taxYear = CURRENT_TAX_YEAR }: CatalogScreenProps) {
   const bp = useBreakpoint()
   const t = useTheme()
   const styles = makeStyles(t)
@@ -142,7 +142,7 @@ function IntegerFollowUp({ step, onAnswer }: { readonly step: EntryStepId; reado
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
   const [text, setText] = useState('')
-  const wert = ganzzahlAus(text)
+  const wert = integerFrom(text)
 
   function submit() {
     if (wert !== null) onAnswer(String(wert))
@@ -187,6 +187,6 @@ function makeStyles(t: UiTheme) {
     color: t.color.tinte,
     marginBottom: t.space.s4,
   }
-  const weiter: ViewStyle = { marginTop: t.space.s4 }
-  return { screen, wideScreen, headerRow, stepPill, conflict, heading, weiter }
+  const next: ViewStyle = { marginTop: t.space.s4 }
+  return { screen, wideScreen, headerRow, stepPill, conflict, heading, weiter: next }
 }

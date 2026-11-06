@@ -9,22 +9,22 @@ import { ThemeProvider } from '@steuereule/ui'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import { createAppI18n } from '../../i18n/app-i18n'
-import { VermietungScreen } from './VermietungScreen'
+import { RentalScreen } from './VermietungScreen'
 import { server } from '../../test-msw-server'
-import type { VermietungResponseDto } from '@steuereule/api-client'
+import type { RentalResponseDto } from '@steuereule/api-client'
 
 const TAX_YEAR = 2026
-const VERMIETUNG_URL = `*/v1/steuerjahre/${TAX_YEAR}/vermietung`
+const RENTAL_URL = `*/v1/steuerjahre/${TAX_YEAR}/vermietung`
 
-const VOLLES_OBJEKT: VermietungResponseDto = {
-  einordnung: { kind: 'einfach' },
-  objekte: [
+const FULL_PROPERTY: RentalResponseDto = {
+  classification: { kind: 'einfach' },
+  properties: [
     {
       id: 'obj-1',
-      mieteinnahmen: { kind: 'erfasst', wert: 12000 },
-      anschaffungskosten: { kind: 'erfasst', wert: 200000 },
-      baujahr: { kind: 'erfasst', wert: 1990 },
-      werbungskosten: { kind: 'erfasst', wert: 1500 },
+      mieteinnahmen: { kind: 'erfasst', value: 12000 },
+      anschaffungskosten: { kind: 'erfasst', value: 200000 },
+      baujahr: { kind: 'erfasst', value: 1990 },
+      werbungskosten: { kind: 'erfasst', value: 1500 },
       strasse: null,
       hausnummer: null,
       plz: null,
@@ -35,25 +35,25 @@ const VOLLES_OBJEKT: VermietungResponseDto = {
       schuldzinsen: null,
       einheiten: null,
       anteilA: null,
-      fakten: {
+      facts: {
         einnahmen: 12000,
         werbungskosten: 1500,
-        afa: { betrag: 4000, herkunft: '§ 7 Abs. 4 Satz 1 EStG — lineare AfA 2 % bei Baujahr 1990' },
-        offenePosten: 0,
+        depreciation: { amount: 4000, provenance: '§ 7 Abs. 4 Satz 1 EStG — lineare AfA 2 % bei Baujahr 1990' },
+        openItems: 0,
       },
     },
   ],
-  stand: { kind: 'bestimmt', einnahmen: 12000, vorsorgeaufwand: 0, anrechnung: 0, werbungskosten: 1500, afa: 4000, offenePosten: 0, konflikte: 0 },
+  status: { kind: 'bestimmt', einnahmen: 12000, vorsorgeaufwand: 0, anrechnung: 0, werbungskosten: 1500, depreciation: 4000, openItems: 0, conflicts: 0 },
 }
 
-function renderVermietung() {
+function renderRental() {
   const i18n = createAppI18n('de')
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={queryClient}>
       <I18nextProvider i18n={i18n}>
         <ThemeProvider mode="light">
-          <VermietungScreen taxYear={TAX_YEAR} onDone={() => {}} />
+          <RentalScreen taxYear={TAX_YEAR} onDone={() => {}} />
         </ThemeProvider>
       </I18nextProvider>
     </QueryClientProvider>,
@@ -62,15 +62,15 @@ function renderVermietung() {
 
 describe('VermietungScreen', () => {
   it('renders the empty state with the honest "unbekannt" Einordnung and the add CTA', async () => {
-    renderVermietung()
+    renderRental()
 
     expect(await screen.findByText(/ob du vermietest/)).toBeTruthy()
     expect(screen.getByTestId('objekt-hinzufuegen')).toBeTruthy()
   })
 
   it('renders the object\'s fields and its derived facts with the § 7 Abs. 4 Herkunft', async () => {
-    server.use(http.get(VERMIETUNG_URL, () => HttpResponse.json(VOLLES_OBJEKT, { status: 200 })))
-    renderVermietung()
+    server.use(http.get(RENTAL_URL, () => HttpResponse.json(FULL_PROPERTY, { status: 200 })))
+    renderRental()
 
     expect(await screen.findByText('Objekt 1')).toBeTruthy()
     expect(screen.getByText('Mieteinnahmen (Jahreskaltmiete)')).toBeTruthy()
@@ -84,12 +84,12 @@ describe('VermietungScreen', () => {
   it('POSTs a new object when "Weiteres Objekt hinzufügen" is tapped', async () => {
     let postUrl = ''
     server.use(
-      http.post(`${VERMIETUNG_URL}/objekte`, ({ request }) => {
+      http.post(`${RENTAL_URL}/objekte`, ({ request }) => {
         postUrl = request.url
-        return HttpResponse.json(VOLLES_OBJEKT, { status: 201 })
+        return HttpResponse.json(FULL_PROPERTY, { status: 201 })
       }),
     )
-    renderVermietung()
+    renderRental()
     await screen.findByTestId('objekt-hinzufuegen')
 
     fireEvent.click(screen.getByTestId('objekt-hinzufuegen'))
@@ -100,47 +100,47 @@ describe('VermietungScreen', () => {
   it('PUTs the captured Mieteinnahmen as whole euros', async () => {
     let body: unknown
     let url = ''
-    server.use(http.get(VERMIETUNG_URL, () => HttpResponse.json(VOLLES_OBJEKT, { status: 200 })))
+    server.use(http.get(RENTAL_URL, () => HttpResponse.json(FULL_PROPERTY, { status: 200 })))
     server.use(
-      http.put(`${VERMIETUNG_URL}/objekte/:objektId/:feld`, async ({ request }) => {
+      http.put(`${RENTAL_URL}/objekte/:objektId/:feld`, async ({ request }) => {
         url = request.url
         body = await request.json()
-        return HttpResponse.json(VOLLES_OBJEKT, { status: 200 })
+        return HttpResponse.json(FULL_PROPERTY, { status: 200 })
       }),
     )
-    renderVermietung()
+    renderRental()
     const input = await screen.findByLabelText(/Mieteinnahmen \(Jahreskaltmiete\)/)
     fireEvent.change(input, { target: { value: '13500' } })
     fireEvent.keyDown(input, { key: 'Enter' })
 
-    await waitFor(() => expect(body).toEqual({ kind: 'erfasst', wert: 13500 }))
+    await waitFor(() => expect(body).toEqual({ kind: 'erfasst', value: 13500 }))
     expect(url).toContain('/vermietung/objekte/obj-1/mieteinnahmen')
   })
 
   it('asks whether the AfA is unchanged from last year (Anlage V Zeile 33) and saves it with the object', async () => {
     let body: unknown
-    server.use(http.get(VERMIETUNG_URL, () => HttpResponse.json(VOLLES_OBJEKT, { status: 200 })))
+    server.use(http.get(RENTAL_URL, () => HttpResponse.json(FULL_PROPERTY, { status: 200 })))
     server.use(
-      http.put(`${VERMIETUNG_URL}/objekte/:objektId/adresse`, async ({ request }) => {
+      http.put(`${RENTAL_URL}/objekte/:objektId/adresse`, async ({ request }) => {
         body = await request.json()
-        return HttpResponse.json(VOLLES_OBJEKT, { status: 200 })
+        return HttpResponse.json(FULL_PROPERTY, { status: 200 })
       }),
     )
-    renderVermietung()
+    renderRental()
     fireEvent.click(await screen.findByTestId('vermietung-afa-wie-vorjahr-ja'))
     await waitFor(() => expect(body).toEqual({ afaWieVorjahr: true }))
   })
 
   it('saves Umlagen and Schuldzinsen with the object, and asks the share only in a joint return', async () => {
     const bodies: unknown[] = []
-    server.use(http.get(VERMIETUNG_URL, () => HttpResponse.json(VOLLES_OBJEKT, { status: 200 })))
+    server.use(http.get(RENTAL_URL, () => HttpResponse.json(FULL_PROPERTY, { status: 200 })))
     server.use(
-      http.put(`${VERMIETUNG_URL}/objekte/:objektId/adresse`, async ({ request }) => {
+      http.put(`${RENTAL_URL}/objekte/:objektId/adresse`, async ({ request }) => {
         bodies.push(await request.json())
-        return HttpResponse.json(VOLLES_OBJEKT, { status: 200 })
+        return HttpResponse.json(FULL_PROPERTY, { status: 200 })
       }),
     )
-    renderVermietung()
+    renderRental()
     fireEvent.change(await screen.findByLabelText('Umlagen / Nebenkosten, die die Mieter gezahlt haben (€ im Jahr)'), { target: { value: '4200' } })
     fireEvent.change(screen.getByLabelText('Schuldzinsen für das Objekt, ohne Tilgung (€ im Jahr)'), { target: { value: '6100' } })
     await waitFor(() => expect(bodies).toEqual([{ umlagen: '4200' }, { schuldzinsen: '6100' }]))
@@ -149,19 +149,19 @@ describe('VermietungScreen', () => {
 
   it('names the Verkauf/möbliert gate honestly and hides the add CTA', async () => {
     server.use(
-      http.get(VERMIETUNG_URL, () =>
+      http.get(RENTAL_URL, () =>
         HttpResponse.json(
           {
-            ...VOLLES_OBJEKT,
-            einordnung: { kind: 'verkauf-oder-moebliert' },
-            objekte: [],
-            stand: { kind: 'offen', einnahmen: 0, vorsorgeaufwand: 0, anrechnung: 0, werbungskosten: 0, afa: 0, offenePosten: 0, konflikte: 0, gegated: ['Vermietung'] },
+            ...FULL_PROPERTY,
+            classification: { kind: 'verkauf-oder-moebliert' },
+            properties: [],
+            status: { kind: 'offen', einnahmen: 0, vorsorgeaufwand: 0, anrechnung: 0, werbungskosten: 0, depreciation: 0, openItems: 0, conflicts: 0, gated: ['Vermietung'] },
           },
           { status: 200 },
         ),
       ),
     )
-    renderVermietung()
+    renderRental()
 
     expect(await screen.findByText(/Verkauf oder möbliert-auf-Zeit bleibt in 1.0 ehrlich außen vor/)).toBeTruthy()
     expect(screen.queryByTestId('objekt-hinzufuegen')).toBeNull()

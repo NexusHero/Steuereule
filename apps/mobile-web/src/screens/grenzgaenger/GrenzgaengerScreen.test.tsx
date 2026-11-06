@@ -10,10 +10,10 @@ import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@steuereule/ui'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
-import type { InterviewStateDto, ChLohnausweisResponseDto } from '@steuereule/api-client'
-import { LOHNAUSWEIS_FELDER } from '@steuereule/core'
+import type { InterviewStateDto, ChSalaryCertificateResponseDto } from '@steuereule/api-client'
+import { SALARY_CERTIFICATE_FIELDS } from '@steuereule/core'
 import { createAppI18n } from '../../i18n/app-i18n'
-import { GrenzgaengerScreen } from './GrenzgaengerScreen'
+import { CrossBorderScreen } from './GrenzgaengerScreen'
 import { server } from '../../test-msw-server'
 
 const TAX_YEAR = 2026
@@ -32,7 +32,7 @@ function renderScreen(onDone: () => void = () => {}) {
     <QueryClientProvider client={queryClient}>
       <I18nextProvider i18n={i18n}>
         <ThemeProvider mode="light">
-          <GrenzgaengerScreen onDone={onDone} taxYear={TAX_YEAR} />
+          <CrossBorderScreen onDone={onDone} taxYear={TAX_YEAR} />
         </ThemeProvider>
       </I18nextProvider>
     </QueryClientProvider>,
@@ -50,13 +50,13 @@ const DONE_CH_INTERVIEW: InterviewStateDto = {
 }
 
 /** The empty CH-Lohnausweis mask (no Wechselkurs, no status, no fold). */
-const EMPTY_CH: ChLohnausweisResponseDto = {
-  felder: LOHNAUSWEIS_FELDER.filter((f) => f.art === 'chf-betrag').map((f) => ({ id: f.id, ziffer: f.ziffer, kind: 'offen' as const })),
+const EMPTY_CH: ChSalaryCertificateResponseDto = {
+  fields: SALARY_CERTIFICATE_FIELDS.filter((f) => f.art === 'chf-betrag').map((f) => ({ id: f.id, digit: f.digit, kind: 'offen' as const })),
   bemerkungen: null,
-  wechselkurs: null,
+  exchangeRate: null,
   status: null,
-  posten: [],
-  stand: null,
+  items: [],
+  foldStatus: null,
   nGre: {
     arbeitgeberName: null,
     arbeitgeberStrasse: null,
@@ -69,22 +69,22 @@ const EMPTY_CH: ChLohnausweisResponseDto = {
     krankentaggeldArbeitgeberChf: null,
     nbuvArbeitgeberProzent: null,
     nbuvArbeitgeberChf: null,
-    sonderfaelle: null,
+    specialCases: null,
   },
 }
 
 /** A folded CH-Lohnausweis: status derived, fold bestimmt (Bruttolohn/PK/Quellensteuer). */
-const FOLDED_CH: ChLohnausweisResponseDto = {
-  felder: LOHNAUSWEIS_FELDER.filter((f) => f.art === 'chf-betrag').map((f) =>
+const FOLDED_CH: ChSalaryCertificateResponseDto = {
+  fields: SALARY_CERTIFICATE_FIELDS.filter((f) => f.art === 'chf-betrag').map((f) =>
     f.id === 'bruttolohn-total' || f.id === 'berufliche-vorsorge' || f.id === 'quellensteuer'
-      ? { id: f.id, ziffer: f.ziffer, kind: 'erfasst' as const, wert: f.id === 'bruttolohn-total' ? 84000 : f.id === 'berufliche-vorsorge' ? 5000 : 3780 }
-      : { id: f.id, ziffer: f.ziffer, kind: 'offen' as const },
+      ? { id: f.id, digit: f.digit, kind: 'erfasst' as const, value: f.id === 'bruttolohn-total' ? 84000 : f.id === 'berufliche-vorsorge' ? 5000 : 3780 }
+      : { id: f.id, digit: f.digit, kind: 'offen' as const },
   ),
   bemerkungen: null,
-  wechselkurs: { monat: '2026-01', kurs: 0.9412, modus: 'amtlich' },
+  exchangeRate: { month: '2026-01', rate: 0.9412, mode: 'amtlich' },
   status: 'echter-grenzgaenger',
-  posten: [],
-  stand: { kind: 'bestimmt', einnahmen: 79061, vorsorgeaufwand: 4706, anrechnung: 3558 },
+  items: [],
+  foldStatus: { kind: 'bestimmt', einnahmen: 79061, vorsorgeaufwand: 4706, anrechnung: 3558 },
   nGre: {
     arbeitgeberName: null,
     arbeitgeberStrasse: null,
@@ -97,7 +97,7 @@ const FOLDED_CH: ChLohnausweisResponseDto = {
     krankentaggeldArbeitgeberChf: null,
     nbuvArbeitgeberProzent: null,
     nbuvArbeitgeberChf: null,
-    sonderfaelle: null,
+    specialCases: null,
   },
 }
 
@@ -191,7 +191,7 @@ describe('GrenzgaengerScreen — Anlage N-Gre facts', () => {
     fireEvent.keyDown(pk, { key: 'Enter' })
     fireEvent.click(screen.getByTestId('ch-ngre-sonderfaelle-nein'))
 
-    await waitFor(() => expect(bodies).toEqual([{ arbeitgeberName: 'Muster AG' }, { pkArbeitgeberChf: 6000 }, { sonderfaelle: false }]))
+    await waitFor(() => expect(bodies).toEqual([{ arbeitgeberName: 'Muster AG' }, { pkArbeitgeberChf: 6000 }, { specialCases: false }]))
   })
 
   it('asks who pays the Krankentaggeld premium and, only at 100 %, the employer amount', async () => {
@@ -208,16 +208,16 @@ describe('GrenzgaengerScreen — Anlage N-Gre facts', () => {
       }),
     )
     renderScreen()
-    const prozent = await screen.findByTestId('ch-ngre-krankentaggeldArbeitgeberProzent')
+    const percent = await screen.findByTestId('ch-ngre-krankentaggeldArbeitgeberProzent')
     expect(screen.queryByTestId('ch-ngre-krankentaggeldArbeitgeberChf')).toBeNull()
 
-    fireEvent.change(prozent, { target: { value: '10' } })
-    fireEvent.blur(prozent)
+    fireEvent.change(percent, { target: { value: '10' } })
+    fireEvent.blur(percent)
     await waitFor(() => expect(bodies).toEqual([{ krankentaggeldArbeitgeberProzent: 10 }]))
     expect(screen.queryByTestId('ch-ngre-krankentaggeldArbeitgeberChf')).toBeNull()
 
-    fireEvent.change(prozent, { target: { value: '100' } })
-    fireEvent.blur(prozent)
+    fireEvent.change(percent, { target: { value: '100' } })
+    fireEvent.blur(percent)
     expect(await screen.findByTestId('ch-ngre-krankentaggeldArbeitgeberChf')).toBeTruthy()
   })
 
@@ -231,7 +231,7 @@ describe('GrenzgaengerScreen — Anlage N-Gre facts', () => {
 
   it('saves employer facts and Lohnausweis figures when the field loses focus — no Enter needed', async () => {
     const nGre: unknown[] = []
-    const felder: unknown[] = []
+    const fields: unknown[] = []
     server.use(http.get(INTERVIEW_URL, () => HttpResponse.json(DONE_CH_INTERVIEW, { status: 200 })))
     server.use(
       http.put(`${CH_URL}/n-gre`, async ({ request }) => {
@@ -239,7 +239,7 @@ describe('GrenzgaengerScreen — Anlage N-Gre facts', () => {
         return HttpResponse.json(EMPTY_CH, { status: 200 })
       }),
       http.put(`${CH_URL}/:feld`, async ({ request }) => {
-        felder.push(await request.json())
+        fields.push(await request.json())
         return HttpResponse.json(EMPTY_CH, { status: 200 })
       }),
     )
@@ -253,7 +253,7 @@ describe('GrenzgaengerScreen — Anlage N-Gre facts', () => {
     fireEvent.blur(lohn)
 
     await waitFor(() => expect(nGre).toEqual([{ arbeitgeberName: 'Muster AG' }]))
-    await waitFor(() => expect(felder).toEqual([{ kind: 'erfasst', wert: 90000 }]))
+    await waitFor(() => expect(fields).toEqual([{ kind: 'erfasst', value: 90000 }]))
   })
 
   it('does not send anything when an untouched field loses focus', async () => {
@@ -282,13 +282,13 @@ describe('GrenzgaengerScreen — Wechselkurs', () => {
       }),
     )
     renderScreen()
-    const monat = await screen.findByTestId('ch-wechselkurs-monat')
+    const month = await screen.findByTestId('ch-wechselkurs-monat')
 
-    fireEvent.change(monat, { target: { value: '2026-12' } })
+    fireEvent.change(month, { target: { value: '2026-12' } })
     fireEvent.change(screen.getByTestId('ch-wechselkurs-kurs'), { target: { value: '1,07' } })
     fireEvent.click(screen.getByText('Kurs speichern'))
 
-    await waitFor(() => expect(bodies).toEqual([{ monat: '2026-12', kurs: 1.07, modus: 'amtlich' }]))
+    await waitFor(() => expect(bodies).toEqual([{ month: '2026-12', rate: 1.07, mode: 'amtlich' }]))
   })
 
   it('says what is missing instead of silently doing nothing', async () => {
@@ -312,10 +312,10 @@ describe('GrenzgaengerScreen — Vorsorge außerhalb des Lohns', () => {
       }),
     )
     renderScreen()
-    const krankenkasse = await screen.findByTestId('ch-vorsorge-krankenkasseChf')
+    const healthInsurer = await screen.findByTestId('ch-vorsorge-krankenkasseChf')
 
-    fireEvent.change(krankenkasse, { target: { value: '4200' } })
-    fireEvent.blur(krankenkasse)
+    fireEvent.change(healthInsurer, { target: { value: '4200' } })
+    fireEvent.blur(healthInsurer)
     fireEvent.change(screen.getByTestId('ch-vorsorge-saeule3aChf'), { target: { value: '7000' } })
     fireEvent.blur(screen.getByTestId('ch-vorsorge-saeule3aChf'))
 

@@ -20,7 +20,7 @@ const ALLOWED_ORIGIN = 'https://allowed.example.com'
 process.env.CORS_ALLOWED_ORIGINS = ALLOWED_ORIGIN
 const TRUSTED_ORIGIN_HEADERS = { origin: ALLOWED_ORIGIN }
 
-const STEUERJAHR = 2026
+const TAX_YEAR = 2026
 
 describe('REQ-022 — the Veranlagungsartenvergleich, against the real server', () => {
   let app: NestFastifyApplication
@@ -64,31 +64,31 @@ describe('REQ-022 — the Veranlagungsartenvergleich, against the real server', 
   }
 
   function postAnswer(cookie: string, questionId: string, value: string) {
-    return fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
+    return fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', cookie },
       body: JSON.stringify({ questionId, value }),
     })
   }
 
-  function putLstb(cookie: string, feld: string, wert: number) {
-    return fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/lstb/${feld}`, {
+  function putLstb(cookie: string, field: string, value: number) {
+    return fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/lstb/${field}`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json', cookie },
-      body: JSON.stringify({ kind: 'erfasst', wert }),
+      body: JSON.stringify({ kind: 'erfasst', value }),
     })
   }
 
-  function getVergleich(cookie: string, query: string) {
-    return fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/veranlagungsartenvergleich${query}`, { headers: { cookie } })
+  function getComparison(cookie: string, query: string) {
+    return fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/veranlagungsartenvergleich${query}`, { headers: { cookie } })
   }
 
   /** Minimal-Gate in order (creates the TaxYear row), plus optional Lohnersatz (Lebenslagen). */
-  async function seed(cookie: string, withLohnersatz = false) {
+  async function seed(cookie: string, withWageReplacement = false) {
     for (const [q, v] of [['job', 'Angestellt'], ['ausland', 'Nein'], ['kinder', 'Nein']] as const) {
       expect((await postAnswer(cookie, q, v)).status).toBe(200)
     }
-    if (withLohnersatz) {
+    if (withWageReplacement) {
       for (const [q, v] of [['dhf', 'Nein'], ['umzug', 'Nein'], ['abfindung', 'Nein'], ['lohnersatz', 'Nein']] as const) {
         expect((await postAnswer(cookie, q, v)).status).toBe(200)
       }
@@ -100,17 +100,17 @@ describe('REQ-022 — the Veranlagungsartenvergleich, against the real server', 
     await seed(cookie, true)
     expect((await putLstb(cookie, 'bruttoarbeitslohn', 100000)).status).toBe(200)
 
-    const response = await getVergleich(cookie, '?verheiratet=true&zveB=0')
+    const response = await getComparison(cookie, '?verheiratet=true&zveB=0')
     expect(response.status).toBe(200)
     // zveA=100000, zveB=0 → ESt 30864 vs 21096, Soli 1251 vs 0 → einzel 32115, zusammen 21096.
     expect(await response.json()).toEqual({
       kind: 'eindeutig',
-      empfehlung: 'zusammen',
-      einzel: 32115,
-      zusammen: 21096,
+      recommendation: 'zusammen',
+      single: 32115,
+      joint: 21096,
       delta: -11019,
-      unschaerfe: { kind: 'bestimmt', obergrenze: 0 },
-      herkunft: { zveA: 100000, zveB: 0, bestandteile: ['einkommensteuer', 'solidaritaetszuschlag'] },
+      uncertainty: { kind: 'bestimmt', upperLimit: 0 },
+      provenance: { zveA: 100000, zveB: 0, components: ['einkommensteuer', 'solidaritaetszuschlag'] },
     })
   })
 
@@ -120,9 +120,9 @@ describe('REQ-022 — the Veranlagungsartenvergleich, against the real server', 
       expect((await postAnswer(cookie, q, v)).status).toBe(200)
     }
 
-    const response = await getVergleich(cookie, '?verheiratet=false')
+    const response = await getComparison(cookie, '?verheiratet=false')
     expect(response.status).toBe(200)
-    expect(await response.json()).toEqual({ kind: 'nicht-anwendbar', grund: 'nicht-verheiratet' })
+    expect(await response.json()).toEqual({ kind: 'nicht-anwendbar', reason: 'nicht-verheiratet' })
   })
 
   it('GWT — without the Progressionsvorbehalt input the comparison is honest `unbestimmt`', async () => {
@@ -130,11 +130,11 @@ describe('REQ-022 — the Veranlagungsartenvergleich, against the real server', 
     await seed(cookie, false) // lohnersatz never answered
     expect((await putLstb(cookie, 'bruttoarbeitslohn', 100000)).status).toBe(200)
 
-    const response = await getVergleich(cookie, '?verheiratet=true&zveB=0')
+    const response = await getComparison(cookie, '?verheiratet=true&zveB=0')
     expect(response.status).toBe(200)
     expect(await response.json()).toMatchObject({
       kind: 'unbestimmt',
-      unschaerfe: { kind: 'unbestimmt', grund: 'progressionsvorbehalt-nicht-eingegeben' },
+      uncertainty: { kind: 'unbestimmt', reason: 'progressionsvorbehalt-nicht-eingegeben' },
     })
   })
 
@@ -147,17 +147,17 @@ describe('REQ-022 — the Veranlagungsartenvergleich, against the real server', 
     expect((await postAnswer(cookie, 'lohnersatz', 'Ja')).status).toBe(200)
     expect((await putLstb(cookie, 'bruttoarbeitslohn', 100000)).status).toBe(200)
 
-    const response = await getVergleich(cookie, '?verheiratet=true&zveB=0')
+    const response = await getComparison(cookie, '?verheiratet=true&zveB=0')
     expect(response.status).toBe(200)
     expect(await response.json()).toMatchObject({
       kind: 'unbestimmt',
-      unschaerfe: { kind: 'unbestimmt', grund: 'progressionsvorbehalt-nicht-eingegeben' },
+      uncertainty: { kind: 'unbestimmt', reason: 'progressionsvorbehalt-nicht-eingegeben' },
     })
   })
 
   it('returns null (honest empty state) when no tax year is seeded yet', async () => {
     const { cookie } = await signUp('empty@example.com')
-    const response = await getVergleich(cookie, '?verheiratet=true&zveB=0')
+    const response = await getComparison(cookie, '?verheiratet=true&zveB=0')
     expect(response.status).toBe(200)
     expect(await response.json()).toBeNull()
   })

@@ -4,45 +4,45 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button, Card, Chip, Feld, Input, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
 import {
-  useKapitalControllerGet,
-  useKapitalControllerSetFeld,
-  useKapitalControllerSetInhaber,
-  useKopplungControllerGet,
-  useKapitalControllerGetGuenstigerpruefung,
-  getKapitalControllerGetQueryKey,
-  getKapitalControllerGetGuenstigerpruefungQueryKey,
+  useCapitalControllerGet,
+  useCapitalControllerSetField,
+  useCapitalControllerSetOwner,
+  useLinkControllerGet,
+  useCapitalControllerGetMostFavourableCheck,
+  getCapitalControllerGetQueryKey,
+  getCapitalControllerGetMostFavourableCheckQueryKey,
   type KapitalFeldDto,
   type KapitalResponseDto,
   type GuenstigerpruefungDto,
 } from '@steuereule/api-client'
 import type { CapitalFieldId } from '@steuereule/core'
 import { APP_NS } from '../../i18n/resources'
-import { ganzzahlAus } from '../shared/ganzzahl'
+import { integerFrom } from '../shared/ganzzahl'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
-import { KatalogScreen } from '../katalog/KatalogScreen'
+import { CatalogScreen } from '../katalog/KatalogScreen'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 
-export interface KapitalScreenProps {
+export interface CapitalScreenProps {
   readonly onDone?: () => void
   readonly onBack?: () => void
   readonly taxYear?: number
 }
 
-export function KapitalScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YEAR }: KapitalScreenProps) {
+export function CapitalScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YEAR }: CapitalScreenProps) {
   const bp = useBreakpoint()
   const t = useTheme()
   const styles = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
   const queryClient = useQueryClient()
-  const query = useKapitalControllerGet(taxYear)
-  const setFeld = useKapitalControllerSetFeld()
-  const setInhaber = useKapitalControllerSetInhaber()
-  const kopplung = useKopplungControllerGet(taxYear)
-  const zusammen = kopplung.data?.status === 200 && kopplung.data.data.veranlagungsart === 'zusammen'
+  const query = useCapitalControllerGet(taxYear)
+  const setField = useCapitalControllerSetField()
+  const setOwner = useCapitalControllerSetOwner()
+  const link = useLinkControllerGet(taxYear)
+  const joint = link.data?.status === 200 && link.data.data.veranlagungsart === 'zusammen'
 
   // The depot / the kind of letting is a catalogue answer; the mask can ask it right here.
-  const [frageOffen, setFrageOffen] = useState(false)
+  const [questionOpen, setQuestionOpen] = useState(false)
 
   if (query.isPending) {
     return <LoadingState bp={bp} label={tr('kapital.loading')} />
@@ -61,21 +61,21 @@ export function KapitalScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX
 
   const response = query.data.data
 
-  if (frageOffen) {
-    const zurueck = () => {
-      setFrageOffen(false)
+  if (questionOpen) {
+    const back = () => {
+      setQuestionOpen(false)
       void query.refetch()
     }
-    return <KatalogScreen taxYear={taxYear} entry="einkuenfte" onDone={zurueck} onBack={zurueck} />
+    return <CatalogScreen taxYear={taxYear} entry="einkuenfte" onDone={back} onBack={back} />
   }
 
   function invalidate() {
-    void queryClient.invalidateQueries({ queryKey: getKapitalControllerGetQueryKey(taxYear) })
-    void queryClient.invalidateQueries({ queryKey: getKapitalControllerGetGuenstigerpruefungQueryKey(taxYear) })
+    void queryClient.invalidateQueries({ queryKey: getCapitalControllerGetQueryKey(taxYear) })
+    void queryClient.invalidateQueries({ queryKey: getCapitalControllerGetMostFavourableCheckQueryKey(taxYear) })
   }
 
-  function send(feld: CapitalFieldId, data: KapitalFeldDto) {
-    setFeld.mutate({ jahr: taxYear, feld, data }, { onSuccess: invalidate })
+  function send(field: CapitalFieldId, data: KapitalFeldDto) {
+    setField.mutate({ jahr: taxYear, feld: field, data }, { onSuccess: invalidate })
   }
 
   return (
@@ -88,19 +88,19 @@ export function KapitalScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX
 
       <DepotNotice kind={response.depot.kind} />
       {response.depot.kind === 'unbekannt' ? (
-        <Button variante="ghost" onPress={() => setFrageOffen(true)} testID="kapital-frage-beantworten">
+        <Button variant="ghost" onPress={() => setQuestionOpen(true)} testID="kapital-frage-beantworten">
           {tr('katalog.einkuenfteBeantworten')}
         </Button>
       ) : null}
 
-      {zusammen ? (
+      {joint ? (
         <Feld label={tr('kapital.inhaber.frage')}>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.s2 }}>
             {(['A', 'B', 'gemeinsam'] as const).map((inhaber) => (
               <Chip
                 key={inhaber}
-                aktiv={(response.inhaber ?? 'A') === inhaber}
-                onPress={() => setInhaber.mutate({ jahr: taxYear, data: { inhaber } }, { onSuccess: invalidate })}
+                active={(response.inhaber ?? 'A') === inhaber}
+                onPress={() => setOwner.mutate({ jahr: taxYear, data: { inhaber } }, { onSuccess: invalidate })}
                 testID={`kapital-inhaber-${inhaber}`}
               >
                 {tr(`kapital.inhaber.${inhaber}`)}
@@ -110,19 +110,19 @@ export function KapitalScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX
         </Feld>
       ) : null}
 
-      {response.pflichtfelder.map((feld) => (
-        <KapitalFeldEditor
-          key={feld}
-          label={feld === 'kapitalertraege' ? tr('kapital.feld.label') : tr(`kapital.felder.${feld}`)}
-          zustand={response[feld]}
-          onErfasst={(wert) => send(feld, { kind: 'erfasst', wert })}
-          onUnklar={() => send(feld, { kind: 'unklar' })}
+      {response.requiredFields.map((field) => (
+        <CapitalFieldEditor
+          key={field}
+          label={field === 'kapitalertraege' ? tr('kapital.feld.label') : tr(`kapital.felder.${field}`)}
+          state={response[field]}
+          onRecorded={(value) => send(field, { kind: 'erfasst', value })}
+          onUnclear={() => send(field, { kind: 'unklar' })}
         />
       ))}
 
-      <PostenNotice response={response} />
+      <ItemNotice response={response} />
 
-      <GuenstigerpruefungAbschnitt taxYear={taxYear} />
+      <MostFavourableCheckSection taxYear={taxYear} />
 
       <Button onPress={onDone} style={styles.cta}>
         {tr('kapital.weiter')}
@@ -146,27 +146,27 @@ function DepotNotice({ kind }: { readonly kind: KapitalResponseDto['depot']['kin
   return <Text style={s.depotText}>{text}</Text>
 }
 
-function KapitalFeldEditor({
+function CapitalFieldEditor({
   label,
-  zustand,
-  onErfasst,
-  onUnklar,
+  state,
+  onRecorded,
+  onUnclear,
 }: {
   readonly label: string
-  readonly zustand: KapitalFeldDto
-  readonly onErfasst: (wert: number) => void
-  readonly onUnklar: () => void
+  readonly state: KapitalFeldDto
+  readonly onRecorded: (value: number) => void
+  readonly onUnclear: () => void
 }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const s = makeStyles(t)
-  const [text, setText] = useState(zustand.kind === 'erfasst' ? String(zustand.wert) : '')
+  const [text, setText] = useState(state.kind === 'erfasst' ? String(state.value) : '')
 
   function commit() {
-    const wert = ganzzahlAus(text)
-    if (wert === null) return
-    if (zustand.kind === 'erfasst' && zustand.wert === wert) return
-    onErfasst(wert)
+    const value = integerFrom(text)
+    if (value === null) return
+    if (state.kind === 'erfasst' && state.value === value) return
+    onRecorded(value)
   }
 
   return (
@@ -175,44 +175,44 @@ function KapitalFeldEditor({
         <Input
           type="numeric"
           mono
-          value={zustand.kind === 'unklar' ? '' : text}
+          value={state.kind === 'unklar' ? '' : text}
           onChange={setText}
           placeholder={tr('kapital.feld.placeholder')}
           onSubmit={commit}
           onBlur={commit}
           accessibilityLabel={`${label} (${tr('kapital.feld.placeholder')})`}
         />
-        <Pressable accessibilityRole="button" onPress={onUnklar} style={s.unklarButton}>
-          <Text style={zustand.kind === 'unklar' ? s.unklarActive : s.unklarLabel}>{tr('kapital.feld.unklar')}</Text>
+        <Pressable accessibilityRole="button" onPress={onUnclear} style={s.unklarButton}>
+          <Text style={state.kind === 'unklar' ? s.unklarActive : s.unklarLabel}>{tr('kapital.feld.unklar')}</Text>
         </Pressable>
       </View>
     </Feld>
   )
 }
 
-function PostenNotice({ response }: { readonly response: KapitalResponseDto }) {
+function ItemNotice({ response }: { readonly response: KapitalResponseDto }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const s = makeStyles(t)
-  const posten = response.posten[0]
+  const items = response.items[0]
 
-  if (posten === undefined) {
+  if (items === undefined) {
     return <Text style={s.postenOffen}>{tr('kapital.posten.offen')}</Text>
   }
   return (
     <View style={s.postenBlock}>
       <Text style={s.postenHeading}>{tr('kapital.posten.heading')}</Text>
-      <Text style={s.postenBetrag}>{`${posten.betrag} €`}</Text>
+      <Text style={s.postenBetrag}>{`${items.amount} €`}</Text>
       <Text style={s.postenHerkunft}>{tr('kapital.posten.herkunft')}</Text>
     </View>
   )
 }
 
-function GuenstigerpruefungAbschnitt({ taxYear }: { readonly taxYear: number }) {
+function MostFavourableCheckSection({ taxYear }: { readonly taxYear: number }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const s = makeStyles(t)
-  const query = useKapitalControllerGetGuenstigerpruefung(taxYear, undefined)
+  const query = useCapitalControllerGetMostFavourableCheck(taxYear, undefined)
 
   if (query.isPending) return null
   if (query.isError || query.data.status !== 200) return null
@@ -222,31 +222,31 @@ function GuenstigerpruefungAbschnitt({ taxYear }: { readonly taxYear: number }) 
   return (
     <View style={s.resultBlock}>
       <Text style={s.resultHeading}>{tr('kapital.guenstigerpruefung.heading')}</Text>
-      <Ergebnis dto={dto} />
+      <Result dto={dto} />
     </View>
   )
 }
 
-function Ergebnis({ dto }: { readonly dto: GuenstigerpruefungDto }) {
+function Result({ dto }: { readonly dto: GuenstigerpruefungDto }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const s = makeStyles(t)
 
   if (dto.kind === 'nicht-anwendbar') {
     const text =
-      dto.grund === 'keine-abgeltung-einbehalten'
+      dto.reason === 'keine-abgeltung-einbehalten'
         ? tr('kapital.guenstigerpruefung.keineAbgeltungEinbehalten')
-        : dto.grund === 'krypto-gegated'
+        : dto.reason === 'krypto-gegated'
           ? tr('kapital.guenstigerpruefung.kryptoGegated')
-          : dto.grund === 'keine-kapitalertraege'
+          : dto.reason === 'keine-kapitalertraege'
             ? tr('kapital.guenstigerpruefung.keineKapitalertraege')
             : tr('kapital.guenstigerpruefung.kapDepotNichtBeantwortet')
     return <Text style={s.aussage}>{text}</Text>
   }
 
-  const aussage =
+  const statement =
     dto.kind === 'eindeutig'
-      ? dto.empfehlung === 'persoenlich'
+      ? dto.recommendation === 'persoenlich'
         ? tr('kapital.guenstigerpruefung.eindeutigPersoenlich')
         : tr('kapital.guenstigerpruefung.eindeutigAbgeltung')
       : dto.kind === 'zu-knapp'
@@ -256,20 +256,20 @@ function Ergebnis({ dto }: { readonly dto: GuenstigerpruefungDto }) {
   return (
     <View>
       <Text style={s.aussage} testID="guenstigerpruefung-aussage">
-        {aussage}
+        {statement}
       </Text>
 
       <Card>
         <Text style={s.zahlLabel}>{tr('kapital.guenstigerpruefung.abgeltung')}</Text>
-        <Text style={s.zahl}>{`${dto.abgeltung ?? 0} €`}</Text>
+        <Text style={s.zahl}>{`${dto.flatRateTax ?? 0} €`}</Text>
       </Card>
 
       <Card>
         <Text style={s.zahlLabel}>{tr('kapital.guenstigerpruefung.persoenlich')}</Text>
-        <Text style={s.zahl}>{`${dto.persoenlich ?? 0} €`}</Text>
+        <Text style={s.zahl}>{`${dto.personal ?? 0} €`}</Text>
       </Card>
 
-      {dto.unschaerfe?.kind === 'unbestimmt' ? (
+      {dto.uncertainty?.kind === 'unbestimmt' ? (
         <Text style={s.hinweis}>{tr('kapital.guenstigerpruefung.progressionsvorbehaltHinweis')}</Text>
       ) : null}
     </View>
@@ -297,27 +297,27 @@ function makeStyles(t: UiTheme) {
   }
   const help: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.m, marginBottom: t.space.s4 }
   const depotText: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontSize: t.size.m, marginBottom: t.space.s3 }
-  const feldRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s3 }
-  const unklarButton: ViewStyle = {
+  const fieldRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s3 }
+  const unclearButton: ViewStyle = {
     paddingHorizontal: t.space.s3,
     paddingVertical: t.space.s2,
     borderWidth: t.space.kontur,
     borderColor: t.color.tinte,
     borderRadius: t.radius.s,
   }
-  const unklarLabel: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.s }
-  const unklarActive: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.s }
-  const postenBlock: ViewStyle = { marginVertical: t.space.s3, padding: t.space.s3, borderWidth: t.space.kontur, borderColor: t.color.tinte, borderRadius: t.radius.s }
-  const postenHeading: TextStyle = { color: t.color.tinte, fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size.m, marginBottom: t.space.s1 }
-  const postenBetrag: TextStyle = { color: t.color.tinte, fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size['2xl'] }
-  const postenHerkunft: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.s, marginTop: t.space.s1 }
-  const postenOffen: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.m, marginVertical: t.space.s3 }
+  const unclearLabel: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.s }
+  const unclearActive: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.s }
+  const itemsBlock: ViewStyle = { marginVertical: t.space.s3, padding: t.space.s3, borderWidth: t.space.kontur, borderColor: t.color.tinte, borderRadius: t.radius.s }
+  const itemsHeading: TextStyle = { color: t.color.tinte, fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size.m, marginBottom: t.space.s1 }
+  const itemAmount: TextStyle = { color: t.color.tinte, fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size['2xl'] }
+  const itemSource: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.s, marginTop: t.space.s1 }
+  const itemsOpen: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.m, marginVertical: t.space.s3 }
   const resultBlock: ViewStyle = { marginTop: t.space.s4 }
   const resultHeading: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.m, marginBottom: t.space.s2 }
-  const aussage: TextStyle = { color: t.color.tinte, fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size.xl, marginBottom: t.space.s3 }
-  const zahlLabel: TextStyle = { color: t.color.tinte2, fontFamily: t.font.mono, fontSize: t.size.xs, textTransform: 'uppercase', letterSpacing: 0.08 * t.size.xs, marginBottom: t.space.s1 }
-  const zahl: TextStyle = { color: t.color.tinte, fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size['2xl'], fontVariant: ['tabular-nums'], marginBottom: t.space.s2 }
-  const hinweis: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.s, marginTop: t.space.s3 }
+  const statement: TextStyle = { color: t.color.tinte, fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size.xl, marginBottom: t.space.s3 }
+  const numberLabel: TextStyle = { color: t.color.tinte2, fontFamily: t.font.mono, fontSize: t.size.xs, textTransform: 'uppercase', letterSpacing: 0.08 * t.size.xs, marginBottom: t.space.s1 }
+  const number: TextStyle = { color: t.color.tinte, fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size['2xl'], fontVariant: ['tabular-nums'], marginBottom: t.space.s2 }
+  const notice: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.s, marginTop: t.space.s3 }
   const cta: ViewStyle = { marginTop: t.space.s4 }
   return {
     screen,
@@ -326,21 +326,21 @@ function makeStyles(t: UiTheme) {
     heading,
     help,
     depotText,
-    feldRow,
-    unklarButton,
-    unklarLabel,
-    unklarActive,
-    postenBlock,
-    postenHeading,
-    postenBetrag,
-    postenHerkunft,
-    postenOffen,
+    feldRow: fieldRow,
+    unklarButton: unclearButton,
+    unklarLabel: unclearLabel,
+    unklarActive: unclearActive,
+    postenBlock: itemsBlock,
+    postenHeading: itemsHeading,
+    postenBetrag: itemAmount,
+    postenHerkunft: itemSource,
+    postenOffen: itemsOpen,
     resultBlock,
     resultHeading,
-    aussage,
-    zahlLabel,
-    zahl,
-    hinweis,
+    aussage: statement,
+    zahlLabel: numberLabel,
+    zahl: number,
+    hinweis: notice,
     cta,
   }
 }

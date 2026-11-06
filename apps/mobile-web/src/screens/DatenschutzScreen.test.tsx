@@ -12,7 +12,7 @@ import { http, HttpResponse } from 'msw'
 import { createAppI18n } from '../i18n/app-i18n'
 import { createAppAuthClient, type AppAuthClient } from '../auth/auth-client'
 import { AuthClientProvider } from '../auth/AuthClientProvider'
-import { DatenschutzScreen } from './DatenschutzScreen'
+import { PrivacyScreen } from './DatenschutzScreen'
 import { server } from '../test-msw-server'
 
 const BASE_URL = 'http://localhost:3000'
@@ -34,7 +34,7 @@ function mockSession(session: typeof REAL_SESSION | null) {
   server.use(http.get(`${BASE_URL}/api/auth/get-session`, () => HttpResponse.json(session)))
 }
 
-function renderDatenschutz(opts: { lng?: 'de' | 'en'; onZurueck?: () => void; onAccountDeleted?: () => void; queryClient?: QueryClient; authClient?: AppAuthClient } = {}) {
+function renderPrivacy(opts: { lng?: 'de' | 'en'; onBack?: () => void; onAccountDeleted?: () => void; queryClient?: QueryClient; authClient?: AppAuthClient } = {}) {
   const i18n = createAppI18n(opts.lng ?? 'de')
   // Defaults to a fresh client per render, same as before — but a caller can pass its own,
   // already-constructed client (and reuse it across an unmount/re-mount) to prove F2: whether
@@ -48,7 +48,7 @@ function renderDatenschutz(opts: { lng?: 'de' | 'en'; onZurueck?: () => void; on
       <I18nextProvider i18n={i18n}>
         <ThemeProvider mode="light">
           <AuthClientProvider client={authClient}>
-            <DatenschutzScreen onZurueck={opts.onZurueck ?? (() => {})} onAccountDeleted={opts.onAccountDeleted ?? (() => {})} />
+            <PrivacyScreen onBack={opts.onBack ?? (() => {})} onAccountDeleted={opts.onAccountDeleted ?? (() => {})} />
           </AuthClientProvider>
         </ThemeProvider>
       </I18nextProvider>
@@ -56,9 +56,9 @@ function renderDatenschutz(opts: { lng?: 'de' | 'en'; onZurueck?: () => void; on
   )
 }
 
-async function openAccountScreen(opts: Parameters<typeof renderDatenschutz>[0] = {}) {
+async function openAccountScreen(opts: Parameters<typeof renderPrivacy>[0] = {}) {
   mockSession(REAL_SESSION)
-  renderDatenschutz(opts)
+  renderPrivacy(opts)
   await screen.findByText('Konto & Daten löschen')
 }
 
@@ -69,15 +69,15 @@ describe('DatenschutzScreen', () => {
 
   it('calls onZurueck from the back button', () => {
     mockSession(REAL_SESSION)
-    const onZurueck = vi.fn()
-    renderDatenschutz({ onZurueck })
+    const onBack = vi.fn()
+    renderPrivacy({ onBack })
     fireEvent.click(screen.getByLabelText('Zurück'))
-    expect(onZurueck).toHaveBeenCalledOnce()
+    expect(onBack).toHaveBeenCalledOnce()
   })
 
   it('shows an honest loading state while the session is being checked', async () => {
     mockSession(REAL_SESSION)
-    renderDatenschutz()
+    renderPrivacy()
     expect(screen.getByText('Wird geprüft …')).toBeTruthy()
     await screen.findByText('Konto & Daten löschen')
   })
@@ -89,7 +89,7 @@ describe('DatenschutzScreen', () => {
   describe('cold-start session-read failure (#349)', () => {
     it('never shows the guest notice on a cold-start 429 — shows the honest "could not check" state instead', async () => {
       server.use(http.get(`${BASE_URL}/api/auth/get-session`, () => HttpResponse.json({ message: 'nope' }, { status: 429 })))
-      renderDatenschutz()
+      renderPrivacy()
 
       await screen.findByText('Das können wir gerade nicht prüfen.')
       expect(screen.getByText('Wir können gerade nicht feststellen, ob du angemeldet bist. Versuch es noch mal.')).toBeTruthy()
@@ -99,7 +99,7 @@ describe('DatenschutzScreen', () => {
 
     it('never shows the guest notice on a cold-start genuine network failure', async () => {
       server.use(http.get(`${BASE_URL}/api/auth/get-session`, () => HttpResponse.error()))
-      renderDatenschutz()
+      renderPrivacy()
 
       await screen.findByText('Das können wir gerade nicht prüfen.')
       expect(screen.queryByText('Noch kein Konto')).toBeNull()
@@ -114,7 +114,7 @@ describe('DatenschutzScreen', () => {
           return HttpResponse.json(REAL_SESSION, { status: 200 })
         }),
       )
-      renderDatenschutz()
+      renderPrivacy()
 
       await screen.findByText('Das können wir gerade nicht prüfen.')
       fireEvent.click(screen.getByText('Noch mal versuchen'))
@@ -127,13 +127,13 @@ describe('DatenschutzScreen', () => {
     // The one status better-auth's own atom already treats as authoritative — must still work.
     it('does show the guest notice on a cold-start 401 (the one status that genuinely means "signed out")', async () => {
       server.use(http.get(`${BASE_URL}/api/auth/get-session`, () => HttpResponse.json({ message: 'nope' }, { status: 401 })))
-      renderDatenschutz()
+      renderPrivacy()
       await screen.findByText('Noch kein Konto')
     })
 
     it('renders correctly in English (ADR-0006)', async () => {
       server.use(http.get(`${BASE_URL}/api/auth/get-session`, () => HttpResponse.json({ message: 'nope' }, { status: 429 })))
-      renderDatenschutz({ lng: 'en' })
+      renderPrivacy({ lng: 'en' })
       await screen.findByText("We can't check that right now.")
       expect(screen.getByText("We can't tell right now whether you're signed in. Try again.")).toBeTruthy()
     })
@@ -142,7 +142,7 @@ describe('DatenschutzScreen', () => {
   describe('guest (no real better-auth account)', () => {
     it('shows an honest "no account" notice instead of export/delete actions', async () => {
       mockSession(null)
-      renderDatenschutz()
+      renderPrivacy()
       await screen.findByText('Noch kein Konto')
       expect(screen.queryByText('Konto & Daten löschen')).toBeNull()
       expect(screen.queryByText('Als JSON herunterladen')).toBeNull()
@@ -266,7 +266,7 @@ describe('DatenschutzScreen', () => {
       const clearSpy = vi.spyOn(queryClient, 'clear')
       const onAccountDeleted = vi.fn()
       mockSession(REAL_SESSION)
-      renderDatenschutz({ onAccountDeleted, queryClient })
+      renderPrivacy({ onAccountDeleted, queryClient })
       await screen.findByText('Konto & Daten löschen')
 
       fireEvent.click(screen.getByText('Konto & Daten löschen'))
@@ -463,7 +463,7 @@ describe('DatenschutzScreen', () => {
         ),
       )
       const onAccountDeleted = vi.fn()
-      const { unmount } = renderDatenschutz({ authClient, onAccountDeleted })
+      const { unmount } = renderPrivacy({ authClient, onAccountDeleted })
       await screen.findByText('Konto & Daten löschen')
 
       fireEvent.click(screen.getByText('Konto & Daten löschen'))
@@ -477,7 +477,7 @@ describe('DatenschutzScreen', () => {
 
       // Re-mount with the *same* auth-client instance — the only way this proves the atom
       // itself was invalidated, rather than a fresh client just fetching its own first answer.
-      renderDatenschutz({ authClient })
+      renderPrivacy({ authClient })
 
       await screen.findByText('Noch kein Konto')
       expect(screen.queryByText('Konto & Daten löschen')).toBeNull()
@@ -486,7 +486,7 @@ describe('DatenschutzScreen', () => {
 
   it('renders correctly in English (ADR-0006)', async () => {
     mockSession(REAL_SESSION)
-    renderDatenschutz({ lng: 'en' })
+    renderPrivacy({ lng: 'en' })
     await screen.findByText('Delete account & data')
     expect(screen.getByText('Download as JSON')).toBeTruthy()
     expect(screen.getByText('Download as PDF report')).toBeTruthy()
@@ -502,7 +502,7 @@ describe('DatenschutzScreen', () => {
   describe('device-sessions & geo-IP disclosure (#238 task 0c)', () => {
     it('names that session IP/User-Agent are now user-visible, shown to a guest as well as an account holder', async () => {
       mockSession(null)
-      renderDatenschutz()
+      renderPrivacy()
       await screen.findByText('Anmeldungen & Geräte')
       expect(
         screen.getByText(
@@ -523,13 +523,13 @@ describe('DatenschutzScreen', () => {
     })
 
     it('carries the geo-IP source attribution (CC BY 4.0, DB-IP)', async () => {
-      renderDatenschutz()
+      renderPrivacy()
       await screen.findByText('Anmeldungen & Geräte')
       expect(screen.getByText('Länderdaten: DB-IP.com, Lizenz CC BY 4.0.')).toBeTruthy()
     })
 
     it('renders both disclosures and the attribution in English too (ADR-0006)', async () => {
-      renderDatenschutz({ lng: 'en' })
+      renderPrivacy({ lng: 'en' })
       await screen.findByText('Sign-ins & devices')
       expect(screen.getByText(/QR code, you now see that data yourself/)).toBeTruthy()
       expect(screen.getByText(/never leaves our infrastructure/)).toBeTruthy()

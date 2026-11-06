@@ -1,19 +1,19 @@
 import { getApiClientBaseUrl } from '@steuereule/api-client'
 import { triggerBrowserDownload } from '../datenschutz/exportDownload'
 
-export interface AusdruckErgebnis {
+export interface PrintoutResult {
   readonly ok: boolean
   readonly status: number
-  readonly fehlend?: readonly string[]
+  readonly missing?: readonly string[]
 }
 
-export async function ladeAusdruck(jahr: number, { bearbeitbar = false }: { bearbeitbar?: boolean } = {}): Promise<AusdruckErgebnis> {
-  const query = bearbeitbar ? '?bearbeitbar=true' : ''
-  const response = await fetch(`${getApiClientBaseUrl()}/v1/steuerjahre/${jahr}/ausdruck${query}`, { credentials: 'include' })
+export async function loadPrintout(year: number, { editable = false }: { editable?: boolean } = {}): Promise<PrintoutResult> {
+  const query = editable ? '?bearbeitbar=true' : ''
+  const response = await fetch(`${getApiClientBaseUrl()}/v1/steuerjahre/${year}/ausdruck${query}`, { credentials: 'include' })
   if (!response.ok) {
-    const body = response.status === 422 ? ((await response.json().catch(() => ({}))) as { fehlend?: string[] }) : {}
-    return { ok: false, status: response.status, ...(body.fehlend ? { fehlend: body.fehlend } : {}) }
+    const body = response.status === 422 ? ((await response.json().catch(() => ({}))) as { missing?: string[] }) : {}
+    return { ok: false, status: response.status, ...(body.missing ? { missing: body.missing } : {}) }
   }
-  triggerBrowserDownload(await response.blob(), `steuererklaerung-${jahr}${bearbeitbar ? '-bearbeitbar' : ''}.pdf`)
+  triggerBrowserDownload(await response.blob(), `steuererklaerung-${year}${editable ? '-bearbeitbar' : ''}.pdf`)
   return { ok: true, status: response.status }
 }

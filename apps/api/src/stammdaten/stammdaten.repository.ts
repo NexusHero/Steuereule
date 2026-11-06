@@ -26,5 +26,5 @@ export const MASTER_DATA_REPOSITORY = Symbol('MASTER_DATA_REPOSITORY')
 /** Persistence seam for the Erklärungs-Stammdaten / master data. */
 export interface MasterDataRepository {
   findByUserId(userId: string): Promise<MasterDataRecord | null>
-  speichere(userId: string, record: MasterDataRecord): Promise<MasterDataRecord>
+  save(userId: string, record: MasterDataRecord): Promise<MasterDataRecord>
 }

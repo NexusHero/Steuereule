@@ -3,7 +3,7 @@ import type { IsoWeekday } from '@steuereule/core'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
 import { MEANS_OF_TRANSPORT, type CommuteInputs, type CommuteRepository, type MeansOfTransport } from './arbeitsweg.repository.js'
 
-interface ArbeitswegRow {
+interface CommuteRow {
   arbeitstage: string
   urlaubstage: number
   krankheitstage: number
@@ -15,7 +15,7 @@ interface ArbeitswegRow {
   feiertageRegion?: string | null
 }
 
-function eingabenAus(row: ArbeitswegRow): CommuteInputs {
+function inputsFrom(row: CommuteRow): CommuteInputs {
   return {
     arbeitstage: row.arbeitstage === '' ? [] : row.arbeitstage.split(',').map((tag) => Number(tag) as IsoWeekday),
     urlaubstage: row.urlaubstage,
@@ -30,25 +30,25 @@ function eingabenAus(row: ArbeitswegRow): CommuteInputs {
 }
 
 @Injectable()
-export class PrismaArbeitswegRepository implements CommuteRepository {
+export class PrismaCommuteRepository implements CommuteRepository {
   constructor(@Inject(ENCRYPTED_PRISMA) private readonly prisma: EncryptedPrismaClient) {}
 
   async findForUserAndYear(userId: string, steuerjahr: number): Promise<CommuteInputs | null> {
     const row = await this.prisma.arbeitsweg.findUnique({ where: { userId_steuerjahr: { userId, steuerjahr } } })
-    return row === null ? null : eingabenAus(row)
+    return row === null ? null : inputsFrom(row)
   }
 
-  async save(userId: string, steuerjahr: number, eingaben: CommuteInputs): Promise<CommuteInputs> {
+  async save(userId: string, steuerjahr: number, inputs: CommuteInputs): Promise<CommuteInputs> {
     const data = {
-      arbeitstage: eingaben.arbeitstage.join(','),
-      urlaubstage: eingaben.urlaubstage,
-      krankheitstage: eingaben.krankheitstage,
-      homeofficeTage: eingaben.homeofficeTage,
-      einfacheKm: eingaben.einfacheKm,
-      verkehrsmittel: eingaben.verkehrsmittel,
-      taetigkeitsstaette: eingaben.taetigkeitsstaette,
-      feiertage: eingaben.feiertage ?? null,
-      feiertageRegion: eingaben.feiertageRegion ?? null,
+      arbeitstage: inputs.arbeitstage.join(','),
+      urlaubstage: inputs.urlaubstage,
+      krankheitstage: inputs.krankheitstage,
+      homeofficeTage: inputs.homeofficeTage,
+      einfacheKm: inputs.einfacheKm,
+      verkehrsmittel: inputs.verkehrsmittel,
+      taetigkeitsstaette: inputs.taetigkeitsstaette,
+      feiertage: inputs.feiertage ?? null,
+      feiertageRegion: inputs.feiertageRegion ?? null,
     }
     const [row] = await this.prisma.$transaction([
       this.prisma.arbeitsweg.upsert({
@@ -58,6 +58,6 @@ export class PrismaArbeitswegRepository implements CommuteRepository {
       }),
       this.prisma.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: 'arbeitsweg' } }),
     ])
-    return eingabenAus(row)
+    return inputsFrom(row)
   }
 }

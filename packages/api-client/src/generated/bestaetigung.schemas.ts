@@ -5,10 +5,10 @@
  * Onboarding profile endpoints (steuereule#29)
  * OpenAPI spec version: 1.0
  */
-export type AnlageBestaetigungDtoAnlage = typeof AnlageBestaetigungDtoAnlage[keyof typeof AnlageBestaetigungDtoAnlage];
+export type AnnexConfirmationDtoAnlage = typeof AnnexConfirmationDtoAnlage[keyof typeof AnnexConfirmationDtoAnlage];
 
 
-export const AnlageBestaetigungDtoAnlage = {
+export const AnnexConfirmationDtoAnlage = {
   hauptvordruck: 'hauptvordruck',
   anlageN: 'anlageN',
   anlageNGre: 'anlageNGre',
@@ -18,10 +18,10 @@ export const AnlageBestaetigungDtoAnlage = {
   anlageKind: 'anlageKind',
 } as const;
 
-export type KennzeichnungWertDtoMaske = typeof KennzeichnungWertDtoMaske[keyof typeof KennzeichnungWertDtoMaske];
+export type FieldProvenanceDtoScreen = typeof FieldProvenanceDtoScreen[keyof typeof FieldProvenanceDtoScreen];
 
 
-export const KennzeichnungWertDtoMaske = {
+export const FieldProvenanceDtoScreen = {
   profil: 'profil',
   stammdaten: 'stammdaten',
   kopplung: 'kopplung',
@@ -34,75 +34,75 @@ export const KennzeichnungWertDtoMaske = {
   kind: 'kind',
 } as const;
 
-export type HerkunftDtoArt = typeof HerkunftDtoArt[keyof typeof HerkunftDtoArt];
+export type ProvenanceDtoArt = typeof ProvenanceDtoArt[keyof typeof ProvenanceDtoArt];
 
 
-export const HerkunftDtoArt = {
+export const ProvenanceDtoArt = {
   nutzer: 'nutzer',
   uebernahme: 'uebernahme',
   assistent: 'assistent',
   beleg: 'beleg',
 } as const;
 
-export interface HerkunftDto {
-  art: HerkunftDtoArt;
+export interface ProvenanceDto {
+  art: ProvenanceDtoArt;
   /** Name des Assistenten (art = assistent). */
   name?: string;
   /** Der Beleg, aus dem der Wert stammt. */
-  belegId?: string;
+  receiptId?: string;
   /** Quelljahr der Jahresübernahme (art = uebernahme). */
   vorjahr?: number;
 }
 
-export interface VorschlagDto {
+export interface ProposalDto {
   /**
      * Der vorgeschlagene Feld-Wert (null = leeren).
      * @nullable
      */
-  wert: string | null;
-  herkunft: HerkunftDto;
+  value: string | null;
+  provenance: ProvenanceDto;
 }
 
-export interface KennzeichnungWertDto {
+export interface FieldProvenanceDto {
   key: string;
-  maske: KennzeichnungWertDtoMaske;
+  screen: FieldProvenanceDtoScreen;
   /**
      * Instanz (Vermietungsobjekt, Kind) oder null.
      * @nullable
      */
-  instanz: string | null;
-  feld: string;
+  instance: string | null;
+  field: string;
   /**
      * Der aktuell gespeicherte Feld-Wert (null = offen, "unklar").
      * @nullable
      */
-  wert: string | null;
-  herkunft: HerkunftDto;
+  value: string | null;
+  provenance: ProvenanceDto;
   bestaetigt: boolean;
   /** @nullable */
-  vorschlag: VorschlagDto | null;
+  proposal: ProposalDto | null;
 }
 
-export interface AnlageBestaetigungDto {
-  anlage: AnlageBestaetigungDtoAnlage;
+export interface AnnexConfirmationDto {
+  anlage: AnnexConfirmationDtoAnlage;
   /** Wie viele Werte dieser Anlage noch unbestätigt sind. */
-  unbestaetigt: number;
-  werte: KennzeichnungWertDto[];
+  unconfirmed: number;
+  values: FieldProvenanceDto[];
 }
 
-export interface BestaetigungResponseDto {
-  anlagen: AnlageBestaetigungDto[];
+export interface ConfirmationResponseDto {
+  annexes: AnnexConfirmationDto[];
 }
 
-export type VorschlagEntscheidungDtoEntscheidung = typeof VorschlagEntscheidungDtoEntscheidung[keyof typeof VorschlagEntscheidungDtoEntscheidung];
+export type ProposalDecisionDtoDecision = typeof ProposalDecisionDtoDecision[keyof typeof ProposalDecisionDtoDecision];
 
 
-export const VorschlagEntscheidungDtoEntscheidung = {
+export const ProposalDecisionDtoDecision = {
   annehmen: 'annehmen',
   verwerfen: 'verwerfen',
 } as const;
 
-export interface VorschlagEntscheidungDto {
-  entscheidung: VorschlagEntscheidungDtoEntscheidung;
+export interface ProposalDecisionDto {
+  decision: ProposalDecisionDtoDecision;
 }
 

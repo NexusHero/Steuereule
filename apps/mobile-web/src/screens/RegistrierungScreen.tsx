@@ -10,7 +10,7 @@ import { SocialSignInSection } from './shared/SocialSignInSection'
 import { EmailVerificationBanner } from './shared/EmailVerificationBanner'
 import { MIN_PASSWORD_LENGTH } from '../auth/password-policy'
 
-export interface RegistrierungScreenProps {
+export interface RegistrationScreenProps {
   readonly onDone: () => void
   readonly onLogin?: () => void
 }
@@ -20,7 +20,7 @@ type Stage =
   | { readonly kind: 'submitting' }
   | { readonly kind: 'success'; readonly email: string }
 
-export function RegistrierungScreen({ onDone, onLogin }: RegistrierungScreenProps) {
+export function RegistrationScreen({ onDone, onLogin }: RegistrationScreenProps) {
   const t = useTheme()
   const bp = useBreakpoint()
   const { t: tr } = useTranslation(APP_NS)
@@ -29,30 +29,30 @@ export function RegistrierungScreen({ onDone, onLogin }: RegistrierungScreenProp
 
   const [mail, setMail] = useState('')
   const [pass, setPass] = useState('')
-  const [fehler, setFehler] = useState('')
+  const [fehler, setError] = useState('')
   const [stage, setStage] = useState<Stage>({ kind: 'form' })
   const verifiedForThisAccount = useEmailVerified(stage.kind === 'success' ? stage.email : undefined)
 
   const ok = mail.includes('@') && pass.length >= MIN_PASSWORD_LENGTH
 
-  async function anlegen() {
+  async function create() {
     if (!ok) {
-      setFehler(mail.includes('@') ? tr('registrierung.errPass') : tr('registrierung.errEmail'))
+      setError(mail.includes('@') ? tr('registrierung.errPass') : tr('registrierung.errEmail'))
       return
     }
-    setFehler('')
+    setError('')
     setStage({ kind: 'submitting' })
     try {
       const { data, error } = await authClient.signUp.email({ name: '', email: mail, password: pass })
       if (error || !data) {
         setStage({ kind: 'form' })
-        setFehler(tr(`auth.${authErrorKey(error)}`))
+        setError(tr(`auth.${authErrorKey(error)}`))
         return
       }
       setStage({ kind: 'success', email: data.user.email })
     } catch {
       setStage({ kind: 'form' })
-      setFehler(tr('auth.errGeneric'))
+      setError(tr('auth.errGeneric'))
     }
   }
 
@@ -83,21 +83,21 @@ export function RegistrierungScreen({ onDone, onLogin }: RegistrierungScreenProp
       </Text>
       <Text style={styles.subtitle}>{tr('registrierung.subtitle')}</Text>
 
-      <SocialSignInSection disabled={stage.kind === 'submitting'} onSignedIn={onDone} onError={setFehler} />
+      <SocialSignInSection disabled={stage.kind === 'submitting'} onSignedIn={onDone} onError={setError} />
 
       <Feld label={tr('registrierung.emailLabel')}>
         <Input type="email" value={mail} onChange={setMail} placeholder={tr('registrierung.emailPlaceholder')} />
       </Feld>
-      <Feld label={tr('registrierung.passwordLabel')} fehler={fehler}>
+      <Feld label={tr('registrierung.passwordLabel')} error={fehler}>
         <Input
           type="password"
           value={pass}
           onChange={setPass}
           placeholder={tr('registrierung.passwordPlaceholder')}
-          onSubmit={() => void anlegen()}
+          onSubmit={() => void create()}
         />
       </Feld>
-      <Button onPress={() => void anlegen()} disabled={stage.kind === 'submitting'}>
+      <Button onPress={() => void create()} disabled={stage.kind === 'submitting'}>
         {stage.kind === 'submitting' ? (
           <View style={styles.submittingRow}>
             <ActivityIndicator size="small" color={t.color.tinte} />

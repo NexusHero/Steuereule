@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 
-export class LstbWiderspruchDto {
+export class LstbConflictDto {
   @ApiProperty({
     type: String,
     enum: ['lohnsteuer-uebersteigt-brutto', 'sozialversicherung-uebersteigt-brutto'],

@@ -14,7 +14,7 @@ export type SegmentTwoQuestionId =
 
 export type SegmentTwoGateId = 'krypto-gate' | 'vermietung-gate'
 
-export type LebenslageQuestionId =
+export type LifeSituationQuestionId =
   | 'dhf'
   | 'dhf-miete'
   | 'umzug'
@@ -26,7 +26,7 @@ export type LebenslageQuestionId =
   | 'nebenjob'
   | 'nebenjob-brutto'
 
-export type SonderausgabeQuestionId =
+export type SpecialExpenseQuestionId =
   | 'spenden'
   | 'spenden-betrag'
   | 'kv-pv'
@@ -40,7 +40,7 @@ export type SonderausgabeQuestionId =
   | 'riester-art'
   | 'riester-einnahmen-vorjahr'
 
-export type AlleinerziehendQuestionId = 'ae-weitere-person' | 'ae-haushaltsgemeinschaft'
+export type SingleParentQuestionId = 'ae-weitere-person' | 'ae-haushaltsgemeinschaft'
 
 export type SegmentChQuestionId = 'ch-wohnsitz' | 'ch-nichtrueckkehrtage'
 
@@ -58,10 +58,10 @@ export type Step =
 export type EntryQuestionId =
   | MinimalGateQuestionId
   | SegmentTwoQuestionId
-  | LebenslageQuestionId
-  | SonderausgabeQuestionId
+  | LifeSituationQuestionId
+  | SpecialExpenseQuestionId
   | SegmentChQuestionId
-  | AlleinerziehendQuestionId
+  | SingleParentQuestionId
 export type EntryGateId = MinimalGateGateId | SegmentTwoGateId
 
 export type EntryStepId = EntryQuestionId | EntryGateId
@@ -75,37 +75,37 @@ export type Answers = Partial<Record<EntryStepId, string>>
 
 export const JOB_VALUES = ['Angestellt', 'Selbstständig', 'Beides', 'Rente'] as const
 
-export const AUSLAND_VALUES = ['Ja, in die Schweiz', 'In ein anderes Land', 'Nein'] as const
+export const FOREIGN_VALUES = ['Ja, in die Schweiz', 'In ein anderes Land', 'Nein'] as const
 
 export const KINDER_VALUES = ['Nein', '1 Kind', '2 oder mehr'] as const
 
 /** Asked up front so the estimate never treats a married couple as single (ADR-0054). */
-export const FAMILIENSTAND_VALUES = ['Ledig', 'Verheiratet', 'Geschieden oder getrennt', 'Verwitwet'] as const
+export const MARITAL_STATUS_VALUES = ['Ledig', 'Verheiratet', 'Geschieden oder getrennt', 'Verwitwet'] as const
 
 export const PARTNER_VALUES = ['Ja', 'Nein'] as const
 
-export const HOMEOFFICE_VALUES = ['Nie', '1–2 Tage pro Woche', 'Fast immer'] as const
+export const HOME_OFFICE_VALUES = ['Nie', '1–2 Tage pro Woche', 'Fast immer'] as const
 
-export const FORTBILDUNG_VALUES = ['Ja', 'Nein'] as const
+export const TRAINING_VALUES = ['Ja', 'Nein'] as const
 
-export const EINKUENFTE_VALUES = ['Nein', 'Kapitalerträge', 'Vermietung', 'Beides'] as const
+export const INCOME_VALUES = ['Nein', 'Kapitalerträge', 'Vermietung', 'Beides'] as const
 
 export const KAP_DEPOT_VALUES = ['Deutscher Broker', 'Ausländischer Broker', 'Krypto'] as const
 
-export const VERMIETUNG_ART_VALUES = ['Einfach', 'Mehrere', 'Verkauf oder möbliert'] as const
+export const RENTAL_KIND_VALUES = ['Einfach', 'Mehrere', 'Verkauf oder möbliert'] as const
 
-export const JA_NEIN_VALUES = ['Ja', 'Nein'] as const
+export const YES_NO_VALUES = ['Ja', 'Nein'] as const
 
-export const RIESTER_ART_VALUES = ['Unmittelbar', 'Mittelbar'] as const
+export const RIESTER_KIND_VALUES = ['Unmittelbar', 'Mittelbar'] as const
 
 /** Anlage Vorsorgeaufwand: voluntary statutory (Z. 16–18), private (Z. 23–27) or foreign (Z. 28–33) insurance. */
-export const KV_ART_VALUES = ['Gesetzlich (freiwillig)', 'Privat', 'Ausländisch'] as const
+export const KV_KIND_VALUES = ['Gesetzlich (freiwillig)', 'Privat', 'Ausländisch'] as const
 
-export const NEBENJOB_VALUES = ['Nein', 'Minijob', 'Midijob', 'Nebenjob'] as const
+export const SIDE_JOB_VALUES = ['Nein', 'Minijob', 'Midijob', 'Nebenjob'] as const
 
-export const CH_WOHNSITZ_VALUES = ['Deutschland', 'Schweiz'] as const
+export const CH_RESIDENCE_VALUES = ['Deutschland', 'Schweiz'] as const
 
-export type ChWohnsitz = (typeof CH_WOHNSITZ_VALUES)[number]
+export type ChResidence = (typeof CH_RESIDENCE_VALUES)[number]
 
 export const QUESTION_ORDER: readonly MinimalGateQuestionId[] = ['job', 'ausland', 'kinder', 'familienstand']
 
@@ -141,25 +141,25 @@ export const QUESTIONS: Readonly<Record<EntryStepId, QuestionDeclaration>> = {
   ausland: {
     id: 'ausland',
     kind: 'question',
-    form: { kind: 'enum', values: AUSLAND_VALUES },
+    form: { kind: 'enum', values: FOREIGN_VALUES },
     followUps: {
       'In ein anderes Land': ['ch-only'],
     },
   },
   kinder: { id: 'kinder', kind: 'question', form: { kind: 'enum', values: KINDER_VALUES } },
-  familienstand: { id: 'familienstand', kind: 'question', form: { kind: 'enum', values: FAMILIENSTAND_VALUES } },
+  familienstand: { id: 'familienstand', kind: 'question', form: { kind: 'enum', values: MARITAL_STATUS_VALUES } },
   gewerbe: { id: 'gewerbe', kind: 'gate', form: { kind: 'enum', values: [GATE_ACKNOWLEDGED] } },
   'ch-only': { id: 'ch-only', kind: 'gate', form: { kind: 'enum', values: [GATE_ACKNOWLEDGED] } },
 
   partner: { id: 'partner', kind: 'question', form: { kind: 'enum', values: PARTNER_VALUES } },
-  homeoffice: { id: 'homeoffice', kind: 'question', form: { kind: 'enum', values: HOMEOFFICE_VALUES } },
+  homeoffice: { id: 'homeoffice', kind: 'question', form: { kind: 'enum', values: HOME_OFFICE_VALUES } },
   weg: { id: 'weg', kind: 'question', form: { kind: 'integer', min: 0, max: 999 } },
   tage: { id: 'tage', kind: 'question', form: { kind: 'integer', min: 0, max: 366 } },
-  fortbildung: { id: 'fortbildung', kind: 'question', form: { kind: 'enum', values: FORTBILDUNG_VALUES } },
+  fortbildung: { id: 'fortbildung', kind: 'question', form: { kind: 'enum', values: TRAINING_VALUES } },
   einkuenfte: {
     id: 'einkuenfte',
     kind: 'question',
-    form: { kind: 'enum', values: EINKUENFTE_VALUES },
+    form: { kind: 'enum', values: INCOME_VALUES },
     followUps: {
       Kapitalerträge: ['kap-depot'],
       Vermietung: ['vermietung-art'],
@@ -178,35 +178,35 @@ export const QUESTIONS: Readonly<Record<EntryStepId, QuestionDeclaration>> = {
   'vermietung-art': {
     id: 'vermietung-art',
     kind: 'question',
-    form: { kind: 'enum', values: VERMIETUNG_ART_VALUES },
+    form: { kind: 'enum', values: RENTAL_KIND_VALUES },
     followUps: {
       'Verkauf oder möbliert': ['vermietung-gate'],
     },
   },
   'vermietung-gate': { id: 'vermietung-gate', kind: 'gate', form: { kind: 'enum', values: [GATE_ACKNOWLEDGED] } },
 
-  dhf: { id: 'dhf', kind: 'question', form: { kind: 'enum', values: JA_NEIN_VALUES }, followUps: { Ja: ['dhf-miete'] } },
+  dhf: { id: 'dhf', kind: 'question', form: { kind: 'enum', values: YES_NO_VALUES }, followUps: { Ja: ['dhf-miete'] } },
   'dhf-miete': { id: 'dhf-miete', kind: 'question', form: { kind: 'integer', min: 0, max: 10000 } },
-  umzug: { id: 'umzug', kind: 'question', form: { kind: 'enum', values: JA_NEIN_VALUES }, followUps: { Ja: ['umzug-kosten'] } },
+  umzug: { id: 'umzug', kind: 'question', form: { kind: 'enum', values: YES_NO_VALUES }, followUps: { Ja: ['umzug-kosten'] } },
   'umzug-kosten': { id: 'umzug-kosten', kind: 'question', form: { kind: 'integer', min: 0, max: 100000 } },
   abfindung: {
     id: 'abfindung',
     kind: 'question',
-    form: { kind: 'enum', values: JA_NEIN_VALUES },
+    form: { kind: 'enum', values: YES_NO_VALUES },
     followUps: { Ja: ['abfindung-betrag'] },
   },
   'abfindung-betrag': { id: 'abfindung-betrag', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
   lohnersatz: {
     id: 'lohnersatz',
     kind: 'question',
-    form: { kind: 'enum', values: JA_NEIN_VALUES },
+    form: { kind: 'enum', values: YES_NO_VALUES },
     followUps: { Ja: ['lohnersatz-betrag'] },
   },
   'lohnersatz-betrag': { id: 'lohnersatz-betrag', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
   nebenjob: {
     id: 'nebenjob',
     kind: 'question',
-    form: { kind: 'enum', values: NEBENJOB_VALUES },
+    form: { kind: 'enum', values: SIDE_JOB_VALUES },
     followUps: {
       Midijob: ['nebenjob-brutto'],
       Nebenjob: ['nebenjob-brutto'],
@@ -214,38 +214,38 @@ export const QUESTIONS: Readonly<Record<EntryStepId, QuestionDeclaration>> = {
   },
   'nebenjob-brutto': { id: 'nebenjob-brutto', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
 
-  spenden: { id: 'spenden', kind: 'question', form: { kind: 'enum', values: JA_NEIN_VALUES }, followUps: { Ja: ['spenden-betrag'] } },
+  spenden: { id: 'spenden', kind: 'question', form: { kind: 'enum', values: YES_NO_VALUES }, followUps: { Ja: ['spenden-betrag'] } },
   'spenden-betrag': { id: 'spenden-betrag', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
   'kv-pv': {
     id: 'kv-pv',
     kind: 'question',
-    form: { kind: 'enum', values: JA_NEIN_VALUES },
+    form: { kind: 'enum', values: YES_NO_VALUES },
     followUps: { Ja: ['kv-pv-art', 'kv-pv-betrag', 'pv-betrag', 'kv-wahl-betrag'] },
   },
   'kv-pv-art': {
     id: 'kv-pv-art',
     kind: 'question',
-    form: { kind: 'enum', values: KV_ART_VALUES },
+    form: { kind: 'enum', values: KV_KIND_VALUES },
     // Only statutory and foreign contributions are split by the Krankengeld claim on the form.
     followUps: { 'Gesetzlich (freiwillig)': ['kv-krankengeld'], Ausländisch: ['kv-krankengeld'], Privat: [] },
   },
-  'kv-krankengeld': { id: 'kv-krankengeld', kind: 'question', form: { kind: 'enum', values: JA_NEIN_VALUES } },
+  'kv-krankengeld': { id: 'kv-krankengeld', kind: 'question', form: { kind: 'enum', values: YES_NO_VALUES } },
   'kv-pv-betrag': { id: 'kv-pv-betrag', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
   'pv-betrag': { id: 'pv-betrag', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
   'kv-wahl-betrag': { id: 'kv-wahl-betrag', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
-  riester: { id: 'riester', kind: 'question', form: { kind: 'enum', values: JA_NEIN_VALUES }, followUps: { Ja: ['riester-betrag', 'riester-art'] } },
+  riester: { id: 'riester', kind: 'question', form: { kind: 'enum', values: YES_NO_VALUES }, followUps: { Ja: ['riester-betrag', 'riester-art'] } },
   'riester-betrag': { id: 'riester-betrag', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
   'riester-art': {
     id: 'riester-art',
     kind: 'question',
-    form: { kind: 'enum', values: RIESTER_ART_VALUES },
+    form: { kind: 'enum', values: RIESTER_KIND_VALUES },
     followUps: { Unmittelbar: ['riester-einnahmen-vorjahr'], Mittelbar: [] },
   },
-  'ae-weitere-person': { id: 'ae-weitere-person', kind: 'question', form: { kind: 'enum', values: JA_NEIN_VALUES } },
-  'ae-haushaltsgemeinschaft': { id: 'ae-haushaltsgemeinschaft', kind: 'question', form: { kind: 'enum', values: JA_NEIN_VALUES } },
+  'ae-weitere-person': { id: 'ae-weitere-person', kind: 'question', form: { kind: 'enum', values: YES_NO_VALUES } },
+  'ae-haushaltsgemeinschaft': { id: 'ae-haushaltsgemeinschaft', kind: 'question', form: { kind: 'enum', values: YES_NO_VALUES } },
   'riester-einnahmen-vorjahr': { id: 'riester-einnahmen-vorjahr', kind: 'question', form: { kind: 'integer', min: 0, max: 1000000 } },
 
-  'ch-wohnsitz': { id: 'ch-wohnsitz', kind: 'question', form: { kind: 'enum', values: CH_WOHNSITZ_VALUES } },
+  'ch-wohnsitz': { id: 'ch-wohnsitz', kind: 'question', form: { kind: 'enum', values: CH_RESIDENCE_VALUES } },
   'ch-nichtrueckkehrtage': { id: 'ch-nichtrueckkehrtage', kind: 'question', form: { kind: 'integer', min: 0, max: 365 } },
 }
 

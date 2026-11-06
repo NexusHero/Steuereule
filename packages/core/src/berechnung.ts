@@ -1,36 +1,36 @@
 import type { IncomeType } from './einkunftsarten.js'
-export type Quelle =
+export type Source =
   | { readonly art: 'eingabe' }
-  | { readonly art: 'beleg'; readonly belegId: string }
-  | { readonly art: 'ki-vorschlag'; readonly vorschlagId: string; readonly belegId?: string }
-  | { readonly art: 'regel'; readonly regel: string }
+  | { readonly art: 'beleg'; readonly receiptId: string }
+  | { readonly art: 'ki-vorschlag'; readonly proposalId: string; readonly receiptId?: string }
+  | { readonly art: 'regel'; readonly rule: string }
   | { readonly art: 'uebernahme'; readonly vorjahr: number }
-export type Rolle = 'einnahme' | 'vorsorgeaufwand' | 'anrechnung'
+export type Role = 'einnahme' | 'vorsorgeaufwand' | 'anrechnung'
 
-export interface Posten {
+export interface Item {
   readonly id: string
-  readonly einkunftsart: IncomeType
-  readonly rolle?: Rolle
-  readonly betrag: number
-  readonly quelle: Quelle
-  readonly unbestaetigt?: boolean
+  readonly incomeType: IncomeType
+  readonly role?: Role
+  readonly amount: number
+  readonly source: Source
+  readonly unconfirmed?: boolean
 }
 
 /** A LineItem / Posten with conflicting sources. */
-export interface PostenKonflikt {
-  readonly postenId: string
-  readonly einkunftsart: IncomeType
-  readonly quellen: readonly (Quelle & { readonly betrag: number })[]
+export interface ItemConflict {
+  readonly itemId: string
+  readonly incomeType: IncomeType
+  readonly sources: readonly (Source & { readonly amount: number })[]
 }
 
-export interface BerechnungsInput {
-  readonly posten: readonly Posten[]
-  readonly offenePosten: number
-  readonly konflikte: readonly PostenKonflikt[]
-  readonly gegated: readonly IncomeType[]
+export interface CalculationInput {
+  readonly items: readonly Item[]
+  readonly openItems: number
+  readonly conflicts: readonly ItemConflict[]
+  readonly gated: readonly IncomeType[]
 }
 
-export type Berechnungsstand =
+export type CalculationStatus =
   | {
       readonly kind: 'bestimmt'
       readonly einnahmen: number
@@ -42,60 +42,60 @@ export type Berechnungsstand =
       readonly einnahmen: number
       readonly vorsorgeaufwand: number
       readonly anrechnung: number
-      readonly offenePosten: number
-      readonly konflikte: number
-      readonly gegated: readonly IncomeType[]
-      readonly unbestaetigte: number
-      readonly unbestaetigteSumme: number
+      readonly openItems: number
+      readonly conflicts: number
+      readonly gated: readonly IncomeType[]
+      readonly unconfirmedItems: number
+      readonly unconfirmedSum: number
     }
 
-function validate(input: BerechnungsInput): void {
-  if (!Number.isInteger(input.offenePosten) || input.offenePosten < 0) {
+function validate(input: CalculationInput): void {
+  if (!Number.isInteger(input.openItems) || input.openItems < 0) {
     throw new RangeError('offenePosten must be a non-negative integer')
   }
-  for (const posten of input.posten) {
-    if (!Number.isFinite(posten.betrag) || posten.betrag < 0) {
+  for (const items of input.items) {
+    if (!Number.isFinite(items.amount) || items.amount < 0) {
       throw new RangeError('posten.betrag must be a non-negative finite number')
     }
   }
 }
 
-function roleOf(posten: Posten): Rolle {
-  return posten.rolle ?? 'einnahme'
+function roleOf(items: Item): Role {
+  return items.role ?? 'einnahme'
 }
 
-export function calculate(input: BerechnungsInput): Berechnungsstand {
+export function calculate(input: CalculationInput): CalculationStatus {
   validate(input)
   let einnahmen = 0
   let vorsorgeaufwand = 0
   let anrechnung = 0
-  let unbestaetigte = 0
-  let unbestaetigteSumme = 0
-  for (const posten of input.posten) {
-    switch (roleOf(posten)) {
+  let unconfirmedItems = 0
+  let unconfirmedSum = 0
+  for (const items of input.items) {
+    switch (roleOf(items)) {
       case 'einnahme':
-        einnahmen += posten.betrag
+        einnahmen += items.amount
         break
       case 'vorsorgeaufwand':
-        vorsorgeaufwand += posten.betrag
+        vorsorgeaufwand += items.amount
         break
       case 'anrechnung':
-        anrechnung += posten.betrag
+        anrechnung += items.amount
         break
     }
-    if (posten.unbestaetigt === true) {
-      unbestaetigte += 1
-      if (roleOf(posten) === 'einnahme') unbestaetigteSumme += posten.betrag
+    if (items.unconfirmed === true) {
+      unconfirmedItems += 1
+      if (roleOf(items) === 'einnahme') unconfirmedSum += items.amount
     }
   }
 
-  const offen =
-    input.offenePosten > 0 ||
-    input.konflikte.length > 0 ||
-    input.gegated.length > 0 ||
-    unbestaetigte > 0
+  const open =
+    input.openItems > 0 ||
+    input.conflicts.length > 0 ||
+    input.gated.length > 0 ||
+    unconfirmedItems > 0
 
-  if (!offen) {
+  if (!open) {
     return { kind: 'bestimmt', einnahmen, vorsorgeaufwand, anrechnung }
   }
 
@@ -104,23 +104,23 @@ export function calculate(input: BerechnungsInput): Berechnungsstand {
     einnahmen,
     vorsorgeaufwand,
     anrechnung,
-    offenePosten: input.offenePosten,
-    konflikte: input.konflikte.length,
-    gegated: input.gegated,
-    unbestaetigte,
-    unbestaetigteSumme,
+    openItems: input.openItems,
+    conflicts: input.conflicts.length,
+    gated: input.gated,
+    unconfirmedItems,
+    unconfirmedSum,
   }
 }
 
-export type KonfliktAufloesung =
-  | { readonly art: 'quelle-waehlen'; readonly quelle: Quelle; readonly betrag: number }
-  | { readonly art: 'wert-korrigieren'; readonly betrag: number }
+export type ConflictResolution =
+  | { readonly art: 'quelle-waehlen'; readonly source: Source; readonly amount: number }
+  | { readonly art: 'wert-korrigieren'; readonly amount: number }
 
-export function resolveConflict(konflikt: PostenKonflikt, aufloesung: KonfliktAufloesung): Posten {
-  const quelle: Quelle = aufloesung.art === 'quelle-waehlen' ? aufloesung.quelle : { art: 'eingabe' }
-  const betrag = aufloesung.betrag
-  if (!Number.isFinite(betrag) || betrag < 0) {
+export function resolveConflict(conflict: ItemConflict, resolution: ConflictResolution): Item {
+  const source: Source = resolution.art === 'quelle-waehlen' ? resolution.source : { art: 'eingabe' }
+  const amount = resolution.amount
+  if (!Number.isFinite(amount) || amount < 0) {
     throw new RangeError('aufloesung.betrag must be a non-negative finite number')
   }
-  return { id: konflikt.postenId, einkunftsart: konflikt.einkunftsart, betrag, quelle }
+  return { id: conflict.itemId, incomeType: conflict.incomeType, amount, source }
 }

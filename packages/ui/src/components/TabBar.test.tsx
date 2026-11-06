@@ -10,13 +10,13 @@ const TABS: TabItem[] = [
   { id: 'profil', label: 'Profil' },
 ]
 
-function renderTabBar(opts: { aktiv?: string; onWechsel?: (id: string) => void; tabs?: TabItem[] } = {}) {
+function renderTabBar(opts: { active?: string; onChange?: (id: string) => void; tabs?: TabItem[] } = {}) {
   return render(
     <ThemeProvider mode="light">
       <TabBar
         tabs={opts.tabs ?? TABS}
-        aktiv={opts.aktiv ?? 'cockpit'}
-        onWechsel={opts.onWechsel ?? (() => {})}
+        active={opts.active ?? 'cockpit'}
+        onChange={opts.onChange ?? (() => {})}
         testID="tabbar"
       />
     </ThemeProvider>,
@@ -36,32 +36,32 @@ describe('TabBar', () => {
   })
 
   it('reports the active tab to assistive tech, not just visually', () => {
-    renderTabBar({ aktiv: 'profil' })
+    renderTabBar({ active: 'profil' })
 
     const tabs = screen.getAllByRole('tab')
-    const profil = tabs.find((tab) => tab.textContent?.includes('Profil'))
+    const profile = tabs.find((tab) => tab.textContent?.includes('Profil'))
     const cockpit = tabs.find((tab) => tab.textContent?.includes('Cockpit'))
 
-    expect(profil?.getAttribute('aria-current')).toBe('page')
+    expect(profile?.getAttribute('aria-current')).toBe('page')
     expect(cockpit?.getAttribute('aria-current')).toBeNull()
   })
 
   it('calls onWechsel with the pressed tab id', () => {
-    const onWechsel = vi.fn()
-    renderTabBar({ onWechsel })
+    const onChange = vi.fn()
+    renderTabBar({ onChange })
 
     fireEvent.click(screen.getByText('Profil'))
 
-    expect(onWechsel).toHaveBeenCalledWith('profil')
+    expect(onChange).toHaveBeenCalledWith('profil')
   })
 
   it('still calls onWechsel when the already-active tab is pressed — the caller decides what that means', () => {
-    const onWechsel = vi.fn()
-    renderTabBar({ aktiv: 'cockpit', onWechsel })
+    const onChange = vi.fn()
+    renderTabBar({ active: 'cockpit', onChange })
 
     fireEvent.click(screen.getByText('Cockpit'))
 
-    expect(onWechsel).toHaveBeenCalledWith('cockpit')
+    expect(onChange).toHaveBeenCalledWith('cockpit')
   })
 
   it('renders the icon slot above the label when one is given', () => {
@@ -81,7 +81,7 @@ describe('TabBar', () => {
   it('sits above the bottom safe-area inset, not on top of the home indicator', () => {
     render(
       <ThemeProvider mode="light">
-        <TabBar tabs={TABS} aktiv="cockpit" onWechsel={() => {}} bottomInset={34} testID="tabbar" />
+        <TabBar tabs={TABS} active="cockpit" onChange={() => {}} bottomInset={34} testID="tabbar" />
       </ThemeProvider>,
     )
     const { result } = renderHook(() => useTheme())

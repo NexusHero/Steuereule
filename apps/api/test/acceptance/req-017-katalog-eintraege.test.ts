@@ -22,7 +22,7 @@ const ALLOWED_ORIGIN = 'https://allowed.example.com'
 process.env.CORS_ALLOWED_ORIGINS = ALLOWED_ORIGIN
 const TRUSTED_ORIGIN_HEADERS = { origin: ALLOWED_ORIGIN }
 
-const STEUERJAHR = 2026
+const TAX_YEAR = 2026
 
 describe('REQ-017 — the on-demand catalogue entries (Lebenslagen + Sonderausgaben), real server', () => {
   let app: NestFastifyApplication
@@ -64,12 +64,12 @@ describe('REQ-017 — the on-demand catalogue entries (Lebenslagen + Sonderausga
     return { cookie, userId: body.user.id }
   }
 
-  function getEntry(cookie: string, eintrag: string) {
-    return fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview?eintrag=${eintrag}`, { headers: { cookie } })
+  function getEntry(cookie: string, entry: string) {
+    return fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview?eintrag=${entry}`, { headers: { cookie } })
   }
 
   function postAnswer(cookie: string, questionId: string, value: string) {
-    return fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
+    return fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', cookie },
       body: JSON.stringify({ questionId, value }),

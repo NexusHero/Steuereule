@@ -169,14 +169,14 @@ describe('REQ-006 — guest -> account upgrade, against the real server', () => 
   // ADR-0045 (value-first funnel) — a guest answers the Minimal-Gate over real HTTP BEFORE
   // signing up; the sign-up must carry those answers (and the TaxYear row they seeded) over.
   describe('ADR-0045 — interview answers travel with the guest', () => {
-    const STEUERJAHR = 2026
+    const TAX_YEAR = 2026
 
     async function guestAnswers(): Promise<{ guestUserId: string; guestCookie: string }> {
       const { newGuestUserId, signGuestSession } = await import('../../src/auth/guest-session.js')
       const guestUserId = newGuestUserId()
       const guestCookie = `se_guest_session=${signGuestSession(guestUserId, GUEST_SESSION_SECRET)}`
       for (const [questionId, value] of [['job', 'Angestellt'], ['ausland', 'Nein'], ['kinder', '1 Kind'], ['familienstand', 'Ledig']] as const) {
-        const response = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
+        const response = await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, {
           method: 'POST',
           headers: { 'content-type': 'application/json', cookie: guestCookie },
           body: JSON.stringify({ questionId, value }),
@@ -200,9 +200,9 @@ describe('REQ-006 — guest -> account upgrade, against the real server', () => 
 
       await expect(prisma.interviewAnswer.count({ where: { userId: guestUserId } })).resolves.toBe(0)
       await expect(prisma.interviewAnswer.count({ where: { userId: user.id } })).resolves.toBe(4)
-      await expect(prisma.taxYear.count({ where: { userId: user.id, steuerjahr: STEUERJAHR } })).resolves.toBe(1)
+      await expect(prisma.taxYear.count({ where: { userId: user.id, steuerjahr: TAX_YEAR } })).resolves.toBe(1)
 
-      const state = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview`, { headers: { cookie: accountCookie } })
+      const state = await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview`, { headers: { cookie: accountCookie } })
       expect(state.status).toBe(200)
       expect(await state.json()).toEqual({
         answers: { job: 'Angestellt', ausland: 'Nein', kinder: '1 Kind', familienstand: 'Ledig' },
@@ -219,7 +219,7 @@ describe('REQ-006 — guest -> account upgrade, against the real server', () => 
       })
       const { user } = (await signUp.json()) as { user: { id: string } }
       const accountCookie = signUp.headers.get('set-cookie')!.split(';')[0]!
-      const own = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
+      const own = await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', cookie: accountCookie },
         body: JSON.stringify({ questionId: 'job', value: 'Rente' }),

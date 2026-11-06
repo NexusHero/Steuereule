@@ -13,20 +13,20 @@ process.env.BETTER_AUTH_URL = 'http://127.0.0.1:39995'
 const ALLOWED_ORIGIN = 'https://allowed.example.com'
 process.env.CORS_ALLOWED_ORIGINS = ALLOWED_ORIGIN
 
-const STAMMDATEN = {
+const MASTER_DATA = {
   geburtsdatum: '1990-04-12',
   strasse: 'Musterstraße',
   hausnummer: '12',
   plz: '01067',
   wohnort: 'Dresden',
   religion: 'VD',
-  religionEinwilligung: true,
+  religionConsent: true,
   familienstand: 'ledig',
   iban: 'DE89370400440532013000',
   finanzamt: 'Dresden-Nord',
 }
 
-const ANLAGE_V_SEITEN = 4
+const ANNEX_V_PAGES = 4
 
 describe('Formular-Ausdruck (ADR-0050), against the real server', () => {
   let app: NestFastifyApplication
@@ -44,8 +44,8 @@ describe('Formular-Ausdruck (ADR-0050), against the real server', () => {
 
   afterEach(async () => {
     resetRateLimiters(app)
-    for (const tabelle of ['Stammdaten', 'Lstb', 'Profile', 'Freischaltung', 'TaxDataAccessLog']) {
-      await prisma.$executeRawUnsafe(`DELETE FROM "${tabelle}"`)
+    for (const table of ['Stammdaten', 'Lstb', 'Profile', 'Freischaltung', 'TaxDataAccessLog']) {
+      await prisma.$executeRawUnsafe(`DELETE FROM "${table}"`)
     }
     await prisma.session.deleteMany()
     await prisma.account.deleteMany()
@@ -67,8 +67,8 @@ describe('Formular-Ausdruck (ADR-0050), against the real server', () => {
     return { cookie: response.headers.get('set-cookie')!.split(';')[0]!, userId: body.user.id }
   }
 
-  async function put(cookie: string, pfad: string, body: unknown): Promise<void> {
-    const response = await fetch(`${baseUrl}${pfad}`, {
+  async function put(cookie: string, path: string, body: unknown): Promise<void> {
+    const response = await fetch(`${baseUrl}${path}`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json', cookie },
       body: JSON.stringify(body),
@@ -76,26 +76,26 @@ describe('Formular-Ausdruck (ADR-0050), against the real server', () => {
     expect(response.status).toBe(200)
   }
 
-  async function vollstaendig(cookie: string): Promise<void> {
+  async function complete(cookie: string): Promise<void> {
     await put(cookie, '/v1/profile', { firstName: 'Anna', lastName: 'Beispiel', steuerId: '02476291358' })
-    await put(cookie, '/v1/stammdaten', STAMMDATEN)
-    await put(cookie, '/v1/steuerjahre/2025/lstb/bruttoarbeitslohn', { kind: 'erfasst', wert: 42000 })
+    await put(cookie, '/v1/stammdaten', MASTER_DATA)
+    await put(cookie, '/v1/steuerjahre/2025/lstb/bruttoarbeitslohn', { kind: 'erfasst', value: 42000 })
   }
 
-  async function bezahle(userId: string): Promise<void> {
+  async function pay(userId: string): Promise<void> {
     await prisma.freischaltung.create({
       data: { userId, steuerjahr: 2025, stripeCheckoutSessionId: `cs_${userId}`, status: 'bezahlt', bezahltAm: new Date() },
     })
   }
 
-  const ausdruck = (cookie: string, jahr = 2025) => fetch(`${baseUrl}/v1/steuerjahre/${jahr}/ausdruck`, { headers: { cookie } })
+  const printout = (cookie: string, year = 2025) => fetch(`${baseUrl}/v1/steuerjahre/${year}/ausdruck`, { headers: { cookie } })
 
   it('a complete, paid year downloads ESt 1 A + Anlage N as one PDF, and the access is audited', async () => {
     const { cookie, userId } = await signUp('ausdruck-ok@example.com')
-    await vollstaendig(cookie)
-    await bezahle(userId)
+    await complete(cookie)
+    await pay(userId)
 
-    const response = await ausdruck(cookie)
+    const response = await printout(cookie)
 
     expect(response.status).toBe(200)
     expect(response.headers.get('content-type')).toContain('application/pdf')
@@ -107,10 +107,10 @@ describe('Formular-Ausdruck (ADR-0050), against the real server', () => {
 
   it('the editable variant (?bearbeitbar=true) carries named AcroForm fields, same gates', async () => {
     const { cookie, userId } = await signUp('ausdruck-bearbeitbar@example.com')
-    await vollstaendig(cookie)
+    await complete(cookie)
     const url = `${baseUrl}/v1/steuerjahre/2025/ausdruck?bearbeitbar=true`
     expect((await fetch(url, { headers: { cookie } })).status).toBe(402)
-    await bezahle(userId)
+    await pay(userId)
 
     const response = await fetch(url, { headers: { cookie } })
     expect(response.status).toBe(200)
@@ -121,60 +121,60 @@ describe('Formular-Ausdruck (ADR-0050), against the real server', () => {
 
   it('unpaid: 402, nothing rendered', async () => {
     const { cookie } = await signUp('ausdruck-unbezahlt@example.com')
-    await vollstaendig(cookie)
-    expect((await ausdruck(cookie)).status).toBe(402)
+    await complete(cookie)
+    expect((await printout(cookie)).status).toBe(402)
   })
 
   it('paid but incomplete: 422 naming exactly what is missing', async () => {
     const { cookie, userId } = await signUp('ausdruck-fehlend@example.com')
     await put(cookie, '/v1/profile', { firstName: 'Anna', lastName: 'Beispiel' })
-    await bezahle(userId)
+    await pay(userId)
 
-    const response = await ausdruck(cookie)
+    const response = await printout(cookie)
     expect(response.status).toBe(422)
-    const body = (await response.json()) as { fehlend: string[] }
-    expect(body.fehlend).toEqual(['steuerId', 'geburtsdatum', 'strasse', 'hausnummer', 'plz', 'wohnort', 'religion', 'familienstand', 'iban', 'finanzamt'])
+    const body = (await response.json()) as { missing: string[] }
+    expect(body.missing).toEqual(['steuerId', 'geburtsdatum', 'strasse', 'hausnummer', 'plz', 'wohnort', 'religion', 'familienstand', 'iban', 'finanzamt'])
   })
 
   it('a year without measured templates is a 404, not an empty PDF', async () => {
     const { cookie } = await signUp('ausdruck-jahr@example.com')
-    expect((await ausdruck(cookie, 2024)).status).toBe(404)
+    expect((await printout(cookie, 2024)).status).toBe(404)
   })
 
   it('a pension is printed on Anlage R: ESt 1 A + Anlage N + Anlage R = 8 pages', async () => {
     const { cookie, userId } = await signUp('ausdruck-rente@example.com')
-    await vollstaendig(cookie)
+    await complete(cookie)
     await prisma.rente.create({ data: { userId, steuerjahr: 2025, rentenart: 'GesetzlicheRente', jahresbetrag: '14400' } })
-    await bezahle(userId)
+    await pay(userId)
 
-    const pdf = await PDFDocument.load(new Uint8Array(await (await ausdruck(cookie)).arrayBuffer()))
+    const pdf = await PDFDocument.load(new Uint8Array(await (await printout(cookie)).arrayBuffer()))
     expect(pdf.getPageCount()).toBe(8)
     await prisma.rente.deleteMany({ where: { userId } })
   })
 
   it('rented property is printed on Anlage V, one instance per Objekt', async () => {
     const { cookie, userId } = await signUp('ausdruck-vermietung@example.com')
-    await vollstaendig(cookie)
+    await complete(cookie)
     await prisma.vermietungsobjekt.create({
       data: { userId, steuerjahr: 2025, strasse: 'Hauptstraße', hausnummer: '3', plz: '01067', ort: 'Dresden', mieteinnahmen: '9600', werbungskosten: '0' },
     })
-    await bezahle(userId)
+    await pay(userId)
 
-    const pruefung = await fetch(`${baseUrl}/v1/steuerjahre/2025/ausdruck/pruefung`, { headers: { cookie } })
-    expect(await pruefung.json()).toEqual({ fehlend: [] })
+    const check = await fetch(`${baseUrl}/v1/steuerjahre/2025/ausdruck/pruefung`, { headers: { cookie } })
+    expect(await check.json()).toEqual({ missing: [] })
 
-    const pdf = await PDFDocument.load(new Uint8Array(await (await ausdruck(cookie)).arrayBuffer()))
-    expect(pdf.getPageCount()).toBe(6 + ANLAGE_V_SEITEN)
+    const pdf = await PDFDocument.load(new Uint8Array(await (await printout(cookie)).arrayBuffer()))
+    expect(pdf.getPageCount()).toBe(6 + ANNEX_V_PAGES)
     await prisma.vermietungsobjekt.deleteMany({ where: { userId } })
   })
 
   it('the pre-check names an Anlage that is not printable yet, and checkout refuses before anyone pays', async () => {
     const { cookie, userId } = await signUp('ausdruck-betriebsrente@example.com')
-    await vollstaendig(cookie)
+    await complete(cookie)
     await prisma.rente.create({ data: { userId, steuerjahr: 2025, rentenart: 'Betriebsrente', jahresbetrag: '3000' } })
 
-    const pruefung = await fetch(`${baseUrl}/v1/steuerjahre/2025/ausdruck/pruefung`, { headers: { cookie } })
-    expect(await pruefung.json()).toEqual({ fehlend: ['anlageRAvBav'] })
+    const check = await fetch(`${baseUrl}/v1/steuerjahre/2025/ausdruck/pruefung`, { headers: { cookie } })
+    expect(await check.json()).toEqual({ missing: ['anlageRAvBav'] })
 
     const checkout = await fetch(`${baseUrl}/v1/steuerjahre/2025/ausdruck/checkout`, { method: 'POST', headers: { cookie } })
     expect(checkout.status).toBe(422)

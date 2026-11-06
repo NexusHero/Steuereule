@@ -1,11 +1,11 @@
 import type {
-  PutStammdatenDto,
-  PutStammdatenDtoFamilienstand,
-  PutStammdatenDtoReligion,
-  StammdatenResponseDto,
+  PutMasterDataDto,
+  PutMasterDataDtoFamilienstand,
+  PutMasterDataDtoReligion,
+  MasterDataResponseDto,
 } from '@steuereule/api-client'
 
-export interface StammdatenEntwurf {
+export interface MasterDataDraft {
   geburtsdatum: string
   strasse: string
   hausnummer: string
@@ -14,7 +14,7 @@ export interface StammdatenEntwurf {
   wohnort: string
   beruf: string
   religion: string | null
-  religionEinwilligung: boolean
+  religionConsent: boolean
   familienstand: string | null
   familienstandSeit: string
   iban: string
@@ -23,60 +23,60 @@ export interface StammdatenEntwurf {
   telefon: string
 }
 
-export function isoZuDeutsch(iso: string | null): string {
+export function isoToGerman(iso: string | null): string {
   const match = iso ? /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso) : null
   return match ? `${match[3]}.${match[2]}.${match[1]}` : ''
 }
 
-export function deutschZuIso(eingabe: string): string | null {
-  const wert = eingabe.trim()
-  if (wert === '') return null
-  const match = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/.exec(wert)
-  if (!match) return wert
+export function germanToIso(input: string): string | null {
+  const value = input.trim()
+  if (value === '') return null
+  const match = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/.exec(value)
+  if (!match) return value
   return `${match[3]}-${match[2]!.padStart(2, '0')}-${match[1]!.padStart(2, '0')}`
 }
 
-function leerZuNull(wert: string): string | null {
-  const getrimmt = wert.trim()
-  return getrimmt === '' ? null : getrimmt
+function emptyToNull(value: string): string | null {
+  const trimmed = value.trim()
+  return trimmed === '' ? null : trimmed
 }
 
-export function zuEntwurf(stand: StammdatenResponseDto): StammdatenEntwurf {
+export function toDraft(status: MasterDataResponseDto): MasterDataDraft {
   return {
-    geburtsdatum: isoZuDeutsch(stand.geburtsdatum),
-    strasse: stand.strasse ?? '',
-    hausnummer: stand.hausnummer ?? '',
-    hausnummerZusatz: stand.hausnummerZusatz ?? '',
-    plz: stand.plz ?? '',
-    wohnort: stand.wohnort ?? '',
-    beruf: stand.beruf ?? '',
-    religion: stand.religion,
-    religionEinwilligung: stand.religion !== null,
-    familienstand: stand.familienstand,
-    familienstandSeit: isoZuDeutsch(stand.familienstandSeit),
-    iban: stand.iban ?? '',
-    kontoinhaber: stand.kontoinhaber ?? '',
-    finanzamt: stand.finanzamt ?? '',
-    telefon: stand.telefon ?? '',
+    geburtsdatum: isoToGerman(status.geburtsdatum),
+    strasse: status.strasse ?? '',
+    hausnummer: status.hausnummer ?? '',
+    hausnummerZusatz: status.hausnummerZusatz ?? '',
+    plz: status.plz ?? '',
+    wohnort: status.wohnort ?? '',
+    beruf: status.beruf ?? '',
+    religion: status.religion,
+    religionConsent: status.religion !== null,
+    familienstand: status.familienstand,
+    familienstandSeit: isoToGerman(status.familienstandSeit),
+    iban: status.iban ?? '',
+    kontoinhaber: status.kontoinhaber ?? '',
+    finanzamt: status.finanzamt ?? '',
+    telefon: status.telefon ?? '',
   }
 }
 
-export function zuPutDto(entwurf: StammdatenEntwurf): PutStammdatenDto {
+export function zuPutDto(draft: MasterDataDraft): PutMasterDataDto {
   return {
-    geburtsdatum: deutschZuIso(entwurf.geburtsdatum),
-    strasse: leerZuNull(entwurf.strasse),
-    hausnummer: leerZuNull(entwurf.hausnummer),
-    hausnummerZusatz: leerZuNull(entwurf.hausnummerZusatz),
-    plz: leerZuNull(entwurf.plz),
-    wohnort: leerZuNull(entwurf.wohnort),
-    beruf: leerZuNull(entwurf.beruf),
-    religion: entwurf.religion as PutStammdatenDtoReligion,
-    religionEinwilligung: entwurf.religionEinwilligung,
-    familienstand: entwurf.familienstand as PutStammdatenDtoFamilienstand,
-    familienstandSeit: entwurf.familienstand === 'ledig' ? null : deutschZuIso(entwurf.familienstandSeit),
-    iban: leerZuNull(entwurf.iban),
-    kontoinhaber: leerZuNull(entwurf.kontoinhaber),
-    finanzamt: leerZuNull(entwurf.finanzamt),
-    telefon: leerZuNull(entwurf.telefon),
+    geburtsdatum: germanToIso(draft.geburtsdatum),
+    strasse: emptyToNull(draft.strasse),
+    hausnummer: emptyToNull(draft.hausnummer),
+    hausnummerZusatz: emptyToNull(draft.hausnummerZusatz),
+    plz: emptyToNull(draft.plz),
+    wohnort: emptyToNull(draft.wohnort),
+    beruf: emptyToNull(draft.beruf),
+    religion: draft.religion as PutMasterDataDtoReligion,
+    religionConsent: draft.religionConsent,
+    familienstand: draft.familienstand as PutMasterDataDtoFamilienstand,
+    familienstandSeit: draft.familienstand === 'ledig' ? null : germanToIso(draft.familienstandSeit),
+    iban: emptyToNull(draft.iban),
+    kontoinhaber: emptyToNull(draft.kontoinhaber),
+    finanzamt: emptyToNull(draft.finanzamt),
+    telefon: emptyToNull(draft.telefon),
   }
 }

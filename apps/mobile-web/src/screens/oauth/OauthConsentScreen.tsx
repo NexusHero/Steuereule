@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { ActivityIndicator, ScrollView, Text, View, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Button, Card, useTheme, type UiTheme } from '@steuereule/ui'
-import { useAssistentenControllerGetClientInfo, getApiClientBaseUrl } from '@steuereule/api-client'
+import { useAssistantsControllerGetClientInfo, getApiClientBaseUrl } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 
 export interface OauthConsentScreenProps {
@@ -45,7 +45,7 @@ export function OauthConsentScreen({
     }
   }, [propClientId, propScope, propOauthQuery])
 
-  const clientInfoQuery = useAssistentenControllerGetClientInfo(
+  const clientInfoQuery = useAssistantsControllerGetClientInfo(
     { clientId: params.clientId },
     { query: { enabled: Boolean(params.clientId) } },
   )
@@ -147,7 +147,7 @@ export function OauthConsentScreen({
 
         <View style={styles.actionRow}>
           <Button
-            variante="primaer"
+            variant="primaer"
             disabled={submitting}
             onPress={() => void handleDecision(true)}
             style={styles.actionBtn}
@@ -156,7 +156,7 @@ export function OauthConsentScreen({
           </Button>
 
           <Button
-            variante="ghost"
+            variant="ghost"
             disabled={submitting}
             onPress={() => void handleDecision(false)}
             style={styles.actionBtn}

@@ -5,24 +5,24 @@ import { useTheme } from '../theme/useTheme'
 export type ChipVariant = 'standard' | 'src' | 'pro'
 
 export interface ChipProps {
-  readonly variante?: ChipVariant
-  readonly aktiv?: boolean
+  readonly variant?: ChipVariant
+  readonly active?: boolean
   readonly onPress?: () => void
   readonly style?: StyleProp<ViewStyle>
   readonly children: ReactNode
   readonly testID?: string
 }
 
-export function Chip({ variante = 'standard', aktiv = false, onPress, style, children, testID }: ChipProps) {
+export function Chip({ variant = 'standard', active = false, onPress, style, children, testID }: ChipProps) {
   const t = useTheme()
-  const bg = aktiv
+  const bg = active
     ? t.color.funke
-    : variante === 'src'
+    : variant === 'src'
       ? t.color.funkeWeich
-      : variante === 'pro'
+      : variant === 'pro'
         ? t.color.nacht
         : t.color.karte
-  const fg = variante === 'pro' ? t.color.funke : t.color.tinte
+  const fg = variant === 'pro' ? t.color.funke : t.color.tinte
 
   const container: ViewStyle = {
     alignSelf: 'flex-start',
@@ -44,7 +44,7 @@ export function Chip({ variante = 'standard', aktiv = false, onPress, style, chi
     <Pressable
       testID={testID}
       accessibilityRole="button"
-      accessibilityState={{ selected: aktiv }}
+      accessibilityState={{ selected: active }}
       onPress={onPress}
       style={({ pressed }) => [
         container,

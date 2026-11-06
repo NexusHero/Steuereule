@@ -3,11 +3,11 @@ import { InvalidInputError } from '../common/domain-error.js'
 import {
   LATE_FILING_FEE_MINIMUM_EUR,
   LATE_FILING_FEE_PERCENT_PER_MONTH,
-  fristenWarnung,
+  deadlineWarning,
 } from '@steuereule/core'
 import type { DeadlinesResponseDto } from './dto/fristen-response.dto.js'
 
-export function heuteInBerlin(now: Date = new Date()): string {
+export function todayInBerlin(now: Date = new Date()): string {
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Europe/Berlin',
     year: 'numeric',
@@ -15,23 +15,23 @@ export function heuteInBerlin(now: Date = new Date()): string {
     day: '2-digit',
   }).formatToParts(now)
   const get = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value
-  const jahr = get('year')
-  const monat = get('month')
+  const year = get('year')
+  const month = get('month')
   const tag = get('day')
-  if (jahr === undefined || monat === undefined || tag === undefined) {
+  if (year === undefined || month === undefined || tag === undefined) {
     throw new Error('heuteInBerlin: the Berlin date parts are incomplete')
   }
-  return `${jahr}-${monat}-${tag}`
+  return `${year}-${month}-${tag}`
 }
 
 /** Application logic for the Fristen-/Verspätungszuschlag-Warnmodus. */
 @Injectable()
 export class DeadlinesService {
-  async getFristen(steuerjahr: number): Promise<DeadlinesResponseDto> {
-    const heute = heuteInBerlin()
-    let warnung
+  async getDeadlines(steuerjahr: number): Promise<DeadlinesResponseDto> {
+    const today = todayInBerlin()
+    let warning
     try {
-      warnung = fristenWarnung(steuerjahr, heute)
+      warning = deadlineWarning(steuerjahr, today)
     } catch (error) {
       if (error instanceof RangeError) {
         throw new InvalidInputError('STEUERJAHR_UNSUPPORTED', error.message)
@@ -40,13 +40,13 @@ export class DeadlinesService {
     }
 
     return {
-      abgabefrist: warnung.abgabefrist,
-      heute,
-      stufe: warnung.stufe,
-      verbleibendeTage: warnung.verbleibendeTage,
-      verspaetungszuschlag: {
-        mindestsatzEur: LATE_FILING_FEE_MINIMUM_EUR,
-        prozentProMonat: LATE_FILING_FEE_PERCENT_PER_MONTH,
+      filingDeadline: warning.filingDeadline,
+      today,
+      level: warning.level,
+      remainingDays: warning.remainingDays,
+      lateFilingSurcharge: {
+        minimumRateEur: LATE_FILING_FEE_MINIMUM_EUR,
+        percentPerMonth: LATE_FILING_FEE_PERCENT_PER_MONTH,
       },
     }
   }

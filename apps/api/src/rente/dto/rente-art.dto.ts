@@ -2,7 +2,7 @@ import { ApiProperty } from '@nestjs/swagger'
 import { IsIn, IsOptional } from 'class-validator'
 
 /** The PUT body for choosing the Rentenart. */
-export class PutRentenartDto {
+export class PutPensionKindDto {
   @ApiProperty({
     type: String,
     enum: ['GesetzlicheRente', 'Betriebsrente', 'PrivateRentenversicherung', 'WitwenWaisenrente', 'AuslaendischeRente'],

@@ -43,24 +43,24 @@ function toRecord(row: {
   }
 }
 
-function feldData(
-  feld: RentalFieldId,
-  wert: string | null,
+function fieldData(
+  field: RentalFieldId,
+  value: string | null,
 ): { mieteinnahmen?: string | null; anschaffungskosten?: string | null; baujahr?: string | null; werbungskosten?: string | null } {
-  switch (feld) {
+  switch (field) {
     case 'mieteinnahmen':
-      return { mieteinnahmen: wert }
+      return { mieteinnahmen: value }
     case 'anschaffungskosten':
-      return { anschaffungskosten: wert }
+      return { anschaffungskosten: value }
     case 'baujahr':
-      return { baujahr: wert }
+      return { baujahr: value }
     case 'werbungskosten':
-      return { werbungskosten: wert }
+      return { werbungskosten: value }
   }
 }
 
 @Injectable()
-export class PrismaVermietungRepository implements RentalRepository {
+export class PrismaRentalRepository implements RentalRepository {
   constructor(@Inject(ENCRYPTED_PRISMA) private readonly prisma: EncryptedPrismaClient) {}
 
   async listForUserAndYear(userId: string, steuerjahr: number): Promise<RentalObjectRecord[]> {
@@ -83,18 +83,18 @@ export class PrismaVermietungRepository implements RentalRepository {
     return toRecord(row)
   }
 
-  async setFeld(
+  async setField(
     userId: string,
     steuerjahr: number,
-    objektId: string,
-    feld: RentalFieldId,
-    wert: string | null,
+    propertyId: string,
+    field: RentalFieldId,
+    value: string | null,
   ): Promise<RentalObjectRecord | null> {
-    const existing = await this.prisma.vermietungsobjekt.findFirst({ where: { id: objektId, userId, steuerjahr } })
+    const existing = await this.prisma.vermietungsobjekt.findFirst({ where: { id: propertyId, userId, steuerjahr } })
     if (existing === null) return null
 
     const [row] = await this.prisma.$transaction([
-      this.prisma.vermietungsobjekt.update({ where: { id: objektId }, data: feldData(feld, wert) }),
+      this.prisma.vermietungsobjekt.update({ where: { id: propertyId }, data: fieldData(field, value) }),
       this.prisma.taxDataAccessLog.create({
         data: { userId, action: 'WRITE', resource: 'vermietung' },
       }),
@@ -102,13 +102,13 @@ export class PrismaVermietungRepository implements RentalRepository {
     return toRecord(row)
   }
 
-  async setAdresse(
+  async setAddress(
     userId: string,
     steuerjahr: number,
-    objektId: string,
-    adresse: { strasse?: string | null; hausnummer?: string | null; plz?: string | null; ort?: string | null; wohnflaeche?: string | null; afaWieVorjahr?: boolean | null; umlagen?: string | null; schuldzinsen?: string | null; einheiten?: string | null; anteilA?: string | null },
+    propertyId: string,
+    address: { strasse?: string | null; hausnummer?: string | null; plz?: string | null; ort?: string | null; wohnflaeche?: string | null; afaWieVorjahr?: boolean | null; umlagen?: string | null; schuldzinsen?: string | null; einheiten?: string | null; anteilA?: string | null },
   ): Promise<RentalObjectRecord | null> {
-    const existing = await this.prisma.vermietungsobjekt.findFirst({ where: { id: objektId, userId, steuerjahr } })
+    const existing = await this.prisma.vermietungsobjekt.findFirst({ where: { id: propertyId, userId, steuerjahr } })
     if (existing === null) return null
 
     const updateData: {
@@ -123,19 +123,19 @@ export class PrismaVermietungRepository implements RentalRepository {
       einheiten?: string | null
       anteilA?: string | null
     } = {}
-    if (adresse.strasse !== undefined) updateData.strasse = adresse.strasse
-    if (adresse.hausnummer !== undefined) updateData.hausnummer = adresse.hausnummer
-    if (adresse.plz !== undefined) updateData.plz = adresse.plz
-    if (adresse.ort !== undefined) updateData.ort = adresse.ort
-    if (adresse.wohnflaeche !== undefined) updateData.wohnflaeche = adresse.wohnflaeche
-    if (adresse.afaWieVorjahr !== undefined) updateData.afaWieVorjahr = adresse.afaWieVorjahr
-    if (adresse.umlagen !== undefined) updateData.umlagen = adresse.umlagen
-    if (adresse.schuldzinsen !== undefined) updateData.schuldzinsen = adresse.schuldzinsen
-    if (adresse.einheiten !== undefined) updateData.einheiten = adresse.einheiten
-    if (adresse.anteilA !== undefined) updateData.anteilA = adresse.anteilA
+    if (address.strasse !== undefined) updateData.strasse = address.strasse
+    if (address.hausnummer !== undefined) updateData.hausnummer = address.hausnummer
+    if (address.plz !== undefined) updateData.plz = address.plz
+    if (address.ort !== undefined) updateData.ort = address.ort
+    if (address.wohnflaeche !== undefined) updateData.wohnflaeche = address.wohnflaeche
+    if (address.afaWieVorjahr !== undefined) updateData.afaWieVorjahr = address.afaWieVorjahr
+    if (address.umlagen !== undefined) updateData.umlagen = address.umlagen
+    if (address.schuldzinsen !== undefined) updateData.schuldzinsen = address.schuldzinsen
+    if (address.einheiten !== undefined) updateData.einheiten = address.einheiten
+    if (address.anteilA !== undefined) updateData.anteilA = address.anteilA
 
     const [row] = await this.prisma.$transaction([
-      this.prisma.vermietungsobjekt.update({ where: { id: objektId }, data: updateData }),
+      this.prisma.vermietungsobjekt.update({ where: { id: propertyId }, data: updateData }),
       this.prisma.taxDataAccessLog.create({
         data: { userId, action: 'WRITE', resource: 'vermietung' },
       }),

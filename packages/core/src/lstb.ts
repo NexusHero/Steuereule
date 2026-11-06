@@ -1,6 +1,6 @@
 export type WageTaxCertificateFieldId = 'bruttoarbeitslohn' | 'lohnsteuer' | 'sozialversicherung'
 export type WageTaxCertificateFieldState =
-  | { readonly kind: 'erfasst'; readonly wert: number }
+  | { readonly kind: 'erfasst'; readonly value: number }
   | { readonly kind: 'offen' }
   | { readonly kind: 'unklar' }
 
@@ -16,19 +16,19 @@ export const EMPTY_WAGE_TAX_CERTIFICATE: WageTaxCertificateData = {
   sozialversicherung: { kind: 'offen' },
 }
 
-export function isValidAmount(wert: number): boolean {
-  return Number.isFinite(wert) && Number.isInteger(wert) && wert >= 0
+export function isValidAmount(value: number): boolean {
+  return Number.isFinite(value) && Number.isInteger(value) && value >= 0
 }
 
 export function setWageTaxCertificateField(
-  daten: WageTaxCertificateData,
-  feld: WageTaxCertificateFieldId,
-  zustand: WageTaxCertificateFieldState,
+  data: WageTaxCertificateData,
+  field: WageTaxCertificateFieldId,
+  state: WageTaxCertificateFieldState,
 ): WageTaxCertificateData {
-  if (zustand.kind === 'erfasst' && !isValidAmount(zustand.wert)) {
-    throw new RangeError(`lstb: "${feld}" erfasst value must be a non-negative integer`)
+  if (state.kind === 'erfasst' && !isValidAmount(state.value)) {
+    throw new RangeError(`lstb: "${field}" erfasst value must be a non-negative integer`)
   }
-  return { ...daten, [feld]: zustand }
+  return { ...data, [field]: state }
 }
 
 export type WageTaxCertificateConflict =
@@ -39,8 +39,8 @@ export type WageTaxCertificateConflict =
       readonly bruttoarbeitslohn: number
     }
 export type WageTaxCertificateStatus =
-  | { readonly kind: 'unvollstaendig'; readonly offen: readonly WageTaxCertificateFieldId[]; readonly unklar: readonly WageTaxCertificateFieldId[] }
-  | { readonly kind: 'widerspruch'; readonly widersprueche: readonly WageTaxCertificateConflict[] }
+  | { readonly kind: 'unvollstaendig'; readonly open: readonly WageTaxCertificateFieldId[]; readonly unclear: readonly WageTaxCertificateFieldId[] }
+  | { readonly kind: 'widerspruch'; readonly conflicts: readonly WageTaxCertificateConflict[] }
   | {
       readonly kind: 'vollstaendig'
       readonly bruttoarbeitslohn: number
@@ -53,58 +53,58 @@ export const WAGE_TAX_CERTIFICATE_FIELDS: readonly WageTaxCertificateFieldId[] =
   'sozialversicherung',
 ]
 
-function conflicts(daten: WageTaxCertificateData): readonly WageTaxCertificateConflict[] {
-  const brutto = (daten.bruttoarbeitslohn as { kind: 'erfasst'; wert: number }).wert
-  const lohnsteuer = (daten.lohnsteuer as { kind: 'erfasst'; wert: number }).wert
-  const sozialversicherung = (daten.sozialversicherung as { kind: 'erfasst'; wert: number }).wert
+function conflicts(data: WageTaxCertificateData): readonly WageTaxCertificateConflict[] {
+  const gross = (data.bruttoarbeitslohn as { kind: 'erfasst'; value: number }).value
+  const lohnsteuer = (data.lohnsteuer as { kind: 'erfasst'; value: number }).value
+  const sozialversicherung = (data.sozialversicherung as { kind: 'erfasst'; value: number }).value
 
   const result: WageTaxCertificateConflict[] = []
-  if (lohnsteuer > brutto) {
-    result.push({ art: 'lohnsteuer-uebersteigt-brutto', lohnsteuer, bruttoarbeitslohn: brutto })
+  if (lohnsteuer > gross) {
+    result.push({ art: 'lohnsteuer-uebersteigt-brutto', lohnsteuer, bruttoarbeitslohn: gross })
   }
-  if (sozialversicherung > brutto) {
-    result.push({ art: 'sozialversicherung-uebersteigt-brutto', sozialversicherung, bruttoarbeitslohn: brutto })
+  if (sozialversicherung > gross) {
+    result.push({ art: 'sozialversicherung-uebersteigt-brutto', sozialversicherung, bruttoarbeitslohn: gross })
   }
   return result
 }
 
-export function wageTaxCertificateStatus(daten: WageTaxCertificateData): WageTaxCertificateStatus {
-  const offen: WageTaxCertificateFieldId[] = []
-  const unklar: WageTaxCertificateFieldId[] = []
-  let alleErfasst = true
+export function wageTaxCertificateStatus(data: WageTaxCertificateData): WageTaxCertificateStatus {
+  const open: WageTaxCertificateFieldId[] = []
+  const unclear: WageTaxCertificateFieldId[] = []
+  let allRecorded = true
 
-  for (const feld of WAGE_TAX_CERTIFICATE_FIELDS) {
-    const zustand = daten[feld]
-    if (zustand.kind === 'offen') {
-      alleErfasst = false
-      offen.push(feld)
-    } else if (zustand.kind === 'unklar') {
-      alleErfasst = false
-      unklar.push(feld)
+  for (const field of WAGE_TAX_CERTIFICATE_FIELDS) {
+    const state = data[field]
+    if (state.kind === 'offen') {
+      allRecorded = false
+      open.push(field)
+    } else if (state.kind === 'unklar') {
+      allRecorded = false
+      unclear.push(field)
     }
   }
 
-  if (!alleErfasst) return { kind: 'unvollstaendig', offen, unklar }
+  if (!allRecorded) return { kind: 'unvollstaendig', open, unclear }
 
-  const brutto = (daten.bruttoarbeitslohn as { kind: 'erfasst'; wert: number }).wert
-  const lohnsteuer = (daten.lohnsteuer as { kind: 'erfasst'; wert: number }).wert
-  const sozialversicherung = (daten.sozialversicherung as { kind: 'erfasst'; wert: number }).wert
-  const widerspr = conflicts(daten)
-  if (widerspr.length > 0) return { kind: 'widerspruch', widersprueche: widerspr }
+  const gross = (data.bruttoarbeitslohn as { kind: 'erfasst'; value: number }).value
+  const lohnsteuer = (data.lohnsteuer as { kind: 'erfasst'; value: number }).value
+  const sozialversicherung = (data.sozialversicherung as { kind: 'erfasst'; value: number }).value
+  const conflictsShort = conflicts(data)
+  if (conflictsShort.length > 0) return { kind: 'widerspruch', conflicts: conflictsShort }
 
-  return { kind: 'vollstaendig', bruttoarbeitslohn: brutto, lohnsteuer, sozialversicherung }
+  return { kind: 'vollstaendig', bruttoarbeitslohn: gross, lohnsteuer, sozialversicherung }
 }
 
 export const WAGE_TAX_CERTIFICATE_UNCLEAR = 'unklar'
 
-export function serializeWageTaxCertificateField(zustand: WageTaxCertificateFieldState): string | null {
-  switch (zustand.kind) {
+export function serializeWageTaxCertificateField(state: WageTaxCertificateFieldState): string | null {
+  switch (state.kind) {
     case 'offen':
       return null
     case 'unklar':
       return WAGE_TAX_CERTIFICATE_UNCLEAR
     case 'erfasst':
-      return String(zustand.wert)
+      return String(state.value)
   }
 }
 
@@ -115,5 +115,5 @@ export function deserializeWageTaxCertificateField(value: string | null): WageTa
   if (!isValidAmount(wert)) {
     throw new Error(`lstb: stored value "${value}" is neither offen, unklar, nor a valid amount`)
   }
-  return { kind: 'erfasst', wert }
+  return { kind: 'erfasst', value: wert }
 }

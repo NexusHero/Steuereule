@@ -1,4 +1,4 @@
-import { calculate, type Berechnungsstand, type Posten } from './berechnung'
+import { calculate, type CalculationStatus, type Item } from './berechnung'
 import type { IncomeType } from './einkunftsarten'
 export type CapitalDepotClassification =
   | { readonly kind: 'deutscher-broker' }
@@ -19,8 +19,8 @@ export function classifyCapitalDepot(kapDepot: string | undefined): CapitalDepot
   }
 }
 
-export function isFavorableTaxTestApplicable(einordnung: CapitalDepotClassification): boolean {
-  return einordnung.kind === 'deutscher-broker'
+export function isFavorableTaxTestApplicable(classification: CapitalDepotClassification): boolean {
+  return classification.kind === 'deutscher-broker'
 }
 
 export type CapitalFieldId =
@@ -46,7 +46,7 @@ export function mandatoryCapitalFields(depot: CapitalDepotClassification['kind']
 export type CapitalFieldState =
   | { readonly kind: 'offen' }
   | { readonly kind: 'unklar' }
-  | { readonly kind: 'erfasst'; readonly wert: number }
+  | { readonly kind: 'erfasst'; readonly value: number }
 export type CapitalData = { readonly [feld in CapitalFieldId]: CapitalFieldState }
 export const EMPTY_CAPITAL: CapitalData = {
   kapitalertraege: { kind: 'offen' },
@@ -56,27 +56,27 @@ export const EMPTY_CAPITAL: CapitalData = {
   kirchensteuer: { kind: 'offen' },
 }
 
-export function isValidCapitalAmount(wert: number): boolean {
-  return Number.isFinite(wert) && Number.isInteger(wert) && wert >= 0
+export function isValidCapitalAmount(value: number): boolean {
+  return Number.isFinite(value) && Number.isInteger(value) && value >= 0
 }
 
-export function setCapitalField(daten: CapitalData, feld: CapitalFieldId, zustand: CapitalFieldState): CapitalData {
-  if (zustand.kind === 'erfasst' && !isValidCapitalAmount(zustand.wert)) {
-    throw new RangeError(`kapital: "${feld}" erfasst value must be a non-negative integer`)
+export function setCapitalField(data: CapitalData, field: CapitalFieldId, state: CapitalFieldState): CapitalData {
+  if (state.kind === 'erfasst' && !isValidCapitalAmount(state.value)) {
+    throw new RangeError(`kapital: "${field}" erfasst value must be a non-negative integer`)
   }
-  return { ...daten, [feld]: zustand }
+  return { ...data, [field]: state }
 }
 
 export const CAPITAL_UNCLEAR = 'unklar'
 
-export function serializeCapitalField(zustand: CapitalFieldState): string | null {
-  switch (zustand.kind) {
+export function serializeCapitalField(state: CapitalFieldState): string | null {
+  switch (state.kind) {
     case 'offen':
       return null
     case 'unklar':
       return CAPITAL_UNCLEAR
     case 'erfasst':
-      return String(zustand.wert)
+      return String(state.value)
   }
 }
 
@@ -87,22 +87,22 @@ export function deserializeCapitalField(value: string | null): CapitalFieldState
   if (!isValidCapitalAmount(wert)) {
     throw new Error(`kapital: stored value "${value}" is neither offen, unklar, nor a valid integer`)
   }
-  return { kind: 'erfasst', wert }
+  return { kind: 'erfasst', value: wert }
 }
 
-export function capitalAsCoreLineItem(kapital: CapitalData): Posten | null {
-  if (kapital.kapitalertraege.kind !== 'erfasst') return null
+export function capitalAsCoreLineItem(capital: CapitalData): Item | null {
+  if (capital.kapitalertraege.kind !== 'erfasst') return null
   return {
     id: 'kapital',
-    einkunftsart: 'Kapital',
-    betrag: kapital.kapitalertraege.wert,
-    quelle: { art: 'eingabe' },
+    incomeType: 'Kapital',
+    amount: capital.kapitalertraege.value,
+    source: { art: 'eingabe' },
   }
 }
 
-export function capitalStatus(kapital: CapitalData, gegated: readonly (IncomeType | IncomeType)[]): Berechnungsstand {
-  const kernposten = capitalAsCoreLineItem(kapital)
-  const posten: Posten[] = kernposten === null ? [] : [kernposten]
-  const offenePosten = kernposten === null ? 1 : 0
-  return calculate({ posten, offenePosten, konflikte: [], gegated: gegated as readonly IncomeType[] })
+export function capitalStatus(capital: CapitalData, gated: readonly (IncomeType | IncomeType)[]): CalculationStatus {
+  const coreItems = capitalAsCoreLineItem(capital)
+  const items: Item[] = coreItems === null ? [] : [coreItems]
+  const openItems = coreItems === null ? 1 : 0
+  return calculate({ items, openItems, conflicts: [], gated: gated as readonly IncomeType[] })
 }

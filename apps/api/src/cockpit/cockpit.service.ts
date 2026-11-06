@@ -1,10 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common'
 import {
   employeeFromData,
-  chfNachEur,
+  chfToEur,
   cockpitRangeFromInputs,
   gatedIncomeTypes,
-  offeneLohnausweisFelder,
+  openSalaryCertificateFields,
   type Answers,
   type CockpitRange,
 } from '@steuereule/core'
@@ -15,51 +15,51 @@ import { PENSION_REPOSITORY, type PensionRepository } from '../rente/rente.repos
 import { PROVENANCE_REPOSITORY, type ProvenanceRepository } from '../kennzeichnung/kennzeichnung.repository.js'
 import { RENTAL_REPOSITORY, type RentalRepository } from '../vermietung/vermietung.repository.js'
 import { TAX_YEAR_REPOSITORY, type TaxYearRepository } from './tax-year.repository.js'
-import type { CockpitStandDto, CockpitSummaryDto } from './dto/cockpit-summary.dto.js'
+import type { CockpitStatusDto, CockpitSummaryDto } from './dto/cockpit-summary.dto.js'
 import { answersFrom } from '../interview/answers.js'
 import { wageTaxCertificateDataFrom } from '../lstb/lstb-daten.js'
 import { CROSS_BORDER_SALARY_STATEMENT_REPOSITORY, type CrossBorderSalaryStatementRecord, type CrossBorderSalaryStatementRepository } from '../ch-lohnausweis/ch-lohnausweis.repository.js'
-import { grenzgaengerStatusAusAnswers, lohnausweisWerteAusRecord, wechselkursAusRecord } from '../ch-lohnausweis/lohnausweis-daten.js'
+import { crossBorderStatusFromAnswers, salaryCertificateValuesFromRecord, exchangeRateFromRecord } from '../ch-lohnausweis/lohnausweis-daten.js'
 
-function erfassterWert(raw: string | null): number | null {
+function recordedValue(raw: string | null): number | null {
   if (raw === null || raw === 'unklar') return null
   if (!/^\d+$/.test(raw)) return null
   return Number(raw)
 }
 
-function toStandDto(stand: CockpitRange): CockpitStandDto {
-  switch (stand.kind) {
+function toStatusDto(status: CockpitRange): CockpitStatusDto {
+  switch (status.kind) {
     case 'bestimmt':
-      return { kind: 'bestimmt', wert: stand.wert }
+      return { kind: 'bestimmt', value: status.value }
     case 'spanne':
       return {
         kind: 'spanne',
-        von: stand.von,
-        bis: stand.bis,
-        offenePosten: stand.offenePosten,
-        konflikte: stand.konflikte,
-        unbestaetigte: stand.unbestaetigte,
-        unbestaetigteSumme: stand.unbestaetigteSumme,
+        from: status.from,
+        to: status.to,
+        openItems: status.openItems,
+        conflicts: status.conflicts,
+        unconfirmedItems: status.unconfirmedItems,
+        unconfirmedSum: status.unconfirmedSum,
       }
     case 'gated':
-      return { kind: 'gated', summe: stand.summe, gegated: [...stand.gegated] }
+      return { kind: 'gated', sum: status.sum, gated: [...status.gated] }
   }
 }
 
-const CH_AUSLAND = 'Ja, in die Schweiz'
+const CH_FOREIGN = 'Ja, in die Schweiz'
 
 /** A Grenzgänger's income is the converted Lohnausweis; a missing rate or figure is open, never a guessed zero. */
-function grenzgaengerFakten(record: CrossBorderSalaryStatementRecord | null, answers: Answers) {
-  const werte = lohnausweisWerteAusRecord(record)
-  const wechselkurs = wechselkursAusRecord(record)
-  const status = grenzgaengerStatusAusAnswers(answers)
-  const brutto = werte['bruttolohn-total']
-  const offeneFelder = status === null ? 1 : offeneLohnausweisFelder(werte, status).length
+function crossBorderFacts(record: CrossBorderSalaryStatementRecord | null, answers: Answers) {
+  const values = salaryCertificateValuesFromRecord(record)
+  const exchangeRate = exchangeRateFromRecord(record)
+  const status = crossBorderStatusFromAnswers(answers)
+  const gross = values['bruttolohn-total']
+  const openFields = status === null ? 1 : openSalaryCertificateFields(values, status).length
   return {
-    einnahmen: brutto !== undefined && wechselkurs !== null ? Math.round(chfNachEur(brutto, wechselkurs.kurs)) : 0,
-    offenePosten: offeneFelder + (wechselkurs === null ? 1 : 0),
-    konflikte: 0,
-    gegated: gatedIncomeTypes(answers),
+    einnahmen: gross !== undefined && exchangeRate !== null ? Math.round(chfToEur(gross, exchangeRate.rate)) : 0,
+    openItems: openFields + (exchangeRate === null ? 1 : 0),
+    conflicts: 0,
+    gated: gatedIncomeTypes(answers),
   }
 }
 
@@ -70,64 +70,64 @@ export class CockpitService {
     @Inject(TAX_YEAR_REPOSITORY) private readonly taxYearRepository: TaxYearRepository,
     @Inject(WAGE_TAX_CERTIFICATE_REPOSITORY) private readonly lstbRepository: WageTaxCertificateRepository,
     @Inject(INTERVIEW_ANSWER_REPOSITORY) private readonly interviewRepository: InterviewAnswerRepository,
-    @Inject(PROVENANCE_REPOSITORY) private readonly kennzeichnungRepository: ProvenanceRepository,
-    @Inject(PENSION_REPOSITORY) private readonly renteRepository: PensionRepository,
-    @Inject(CAPITAL_REPOSITORY) private readonly kapitalRepository: CapitalRepository,
-    @Inject(RENTAL_REPOSITORY) private readonly vermietungRepository: RentalRepository,
-    @Inject(CROSS_BORDER_SALARY_STATEMENT_REPOSITORY) private readonly chLohnausweisRepository: CrossBorderSalaryStatementRepository,
+    @Inject(PROVENANCE_REPOSITORY) private readonly markingRepository: ProvenanceRepository,
+    @Inject(PENSION_REPOSITORY) private readonly pensionRepository: PensionRepository,
+    @Inject(CAPITAL_REPOSITORY) private readonly capitalRepository: CapitalRepository,
+    @Inject(RENTAL_REPOSITORY) private readonly rentalRepository: RentalRepository,
+    @Inject(CROSS_BORDER_SALARY_STATEMENT_REPOSITORY) private readonly chSalaryCertificateRepository: CrossBorderSalaryStatementRepository,
   ) {}
 
   async getSummary(userId: string, steuerjahr: number): Promise<CockpitSummaryDto | null> {
     const record = await this.taxYearRepository.findByUserAndYear(userId, steuerjahr)
     if (!record) return null
 
-    const [lstbRecord, interviewRows, kennzeichnungen, renteRecord, kapitalRecord, vermietungRecords, chRecord] = await Promise.all([
+    const [lstbRecord, interviewRows, markings, pensionRecord, capitalRecord, rentalRecords, chRecord] = await Promise.all([
       this.lstbRepository.findForUserAndYear(userId, steuerjahr),
       this.interviewRepository.findAllForUserAndYear(userId, steuerjahr),
-      this.kennzeichnungRepository.listForUserAndYears(userId, [steuerjahr]),
-      this.renteRepository.findForUserAndYear(userId, steuerjahr),
-      this.kapitalRepository.findForUserAndYear(userId, steuerjahr),
-      this.vermietungRepository.listForUserAndYear(userId, steuerjahr),
-      this.chLohnausweisRepository.findForUserAndYear(userId, steuerjahr),
+      this.markingRepository.listForUserAndYears(userId, [steuerjahr]),
+      this.pensionRepository.findForUserAndYear(userId, steuerjahr),
+      this.capitalRepository.findForUserAndYear(userId, steuerjahr),
+      this.rentalRepository.listForUserAndYear(userId, steuerjahr),
+      this.chSalaryCertificateRepository.findForUserAndYear(userId, steuerjahr),
     ])
 
-    const daten = wageTaxCertificateDataFrom(lstbRecord)
+    const data = wageTaxCertificateDataFrom(lstbRecord)
     const answers = answersFrom(interviewRows)
 
-    const unbestaetigteFakten = new Set(
-      kennzeichnungen.filter((k) => !k.bestaetigt).map((k) => k.key.slice(0, k.key.indexOf('.'))),
+    const unconfirmedFacts = new Set(
+      markings.filter((k) => !k.bestaetigt).map((k) => k.key.slice(0, k.key.indexOf('.'))),
     )
-    let unbestaetigte = 0
-    let unbestaetigteSumme = 0
-    for (const fakt of unbestaetigteFakten) {
-      let wert: number | null = null
-      if (fakt === 'lstb' && daten.bruttoarbeitslohn.kind === 'erfasst') {
-        wert = daten.bruttoarbeitslohn.wert
-      } else if (fakt === 'rente') {
-        wert = erfassterWert(renteRecord?.jahresbetrag ?? null)
-      } else if (fakt === 'kapital') {
-        wert = erfassterWert(kapitalRecord?.kapitalertraege ?? null)
-      } else if (fakt.startsWith('vermietung:')) {
-        const objektId = fakt.slice('vermietung:'.length)
-        const objekt = vermietungRecords.find((o) => o.id === objektId)
-        wert = erfassterWert(objekt?.mieteinnahmen ?? null)
+    let unconfirmedItems = 0
+    let unconfirmedSum = 0
+    for (const fact of unconfirmedFacts) {
+      let value: number | null = null
+      if (fact === 'lstb' && data.bruttoarbeitslohn.kind === 'erfasst') {
+        value = data.bruttoarbeitslohn.value
+      } else if (fact === 'rente') {
+        value = recordedValue(pensionRecord?.jahresbetrag ?? null)
+      } else if (fact === 'kapital') {
+        value = recordedValue(capitalRecord?.kapitalertraege ?? null)
+      } else if (fact.startsWith('vermietung:')) {
+        const propertyId = fact.slice('vermietung:'.length)
+        const property = rentalRecords.find((o) => o.id === propertyId)
+        value = recordedValue(property?.mieteinnahmen ?? null)
       }
-      if (wert !== null) {
-        unbestaetigte += 1
-        unbestaetigteSumme += wert
+      if (value !== null) {
+        unconfirmedItems += 1
+        unconfirmedSum += value
       }
     }
 
-    const fakten = answers.ausland === CH_AUSLAND ? grenzgaengerFakten(chRecord, answers) : employeeFromData(daten, answers)
-    const stand = cockpitRangeFromInputs({
-      summe: fakten.einnahmen,
-      offenePosten: fakten.offenePosten,
-      konflikte: fakten.konflikte,
-      gegated: fakten.gegated,
-      unbestaetigte,
-      unbestaetigteSumme,
+    const facts = answers.ausland === CH_FOREIGN ? crossBorderFacts(chRecord, answers) : employeeFromData(data, answers)
+    const status = cockpitRangeFromInputs({
+      sum: facts.einnahmen,
+      openItems: facts.openItems,
+      conflicts: facts.conflicts,
+      gated: facts.gated,
+      unconfirmedItems,
+      unconfirmedSum,
     })
 
-    return { taxYear: record.steuerjahr, stand: toStandDto(stand), openItems: record.openItems }
+    return { taxYear: record.steuerjahr, status: toStatusDto(status), openItems: record.openItems }
   }
 }

@@ -18,24 +18,24 @@ import type {
 } from 'msw';
 
 import type {
-  SteuerschaetzungDto
+  TaxEstimateDto
 } from './steuerschaetzung.schemas';
 
 
-export const getSteuerschaetzungControllerGetResponseMock = (overrideResponse: Partial<Extract<SteuerschaetzungDto, object>> = {}): SteuerschaetzungDto => ({kind: faker.helpers.arrayElement(['spanne','offen','nicht-moeglich'] as const), ergebnis: {...{von: faker.number.float({fractionDigits: 2}), bis: faker.number.float({fractionDigits: 2})},}, einkommensteuer: {von: faker.number.float({fractionDigits: 2}), bis: faker.number.float({fractionDigits: 2})}, zuVersteuerndesEinkommen: {von: faker.number.float({fractionDigits: 2}), bis: faker.number.float({fractionDigits: 2})}, vorsorge: {von: faker.number.float({fractionDigits: 2}), bis: faker.number.float({fractionDigits: 2})}, werbungskosten: faker.number.float({fractionDigits: 2}), sonderausgaben: faker.number.float({fractionDigits: 2}), anrechnung: faker.number.float({fractionDigits: 2}), kirchensteuerOffen: faker.datatype.boolean(), fehlt: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), grund: faker.helpers.arrayElement(['nur-angestellte','verheiratet','besondere-lebenslage','jahr-ohne-tarif'] as const), ...overrideResponse})
+export const getTaxEstimateControllerGetResponseMock = (overrideResponse: Partial<Extract<TaxEstimateDto, object>> = {}): TaxEstimateDto => ({kind: faker.helpers.arrayElement(['spanne','offen','nicht-moeglich'] as const), result: {...{from: faker.number.float({fractionDigits: 2}), to: faker.number.float({fractionDigits: 2})},}, incomeTax: {from: faker.number.float({fractionDigits: 2}), to: faker.number.float({fractionDigits: 2})}, taxableIncome: {from: faker.number.float({fractionDigits: 2}), to: faker.number.float({fractionDigits: 2})}, provision: {from: faker.number.float({fractionDigits: 2}), to: faker.number.float({fractionDigits: 2})}, werbungskosten: faker.number.float({fractionDigits: 2}), specialExpenses: faker.number.float({fractionDigits: 2}), anrechnung: faker.number.float({fractionDigits: 2}), churchTaxOpen: faker.datatype.boolean(), fehlt: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), reason: faker.helpers.arrayElement(['nur-angestellte','verheiratet','besondere-lebenslage','jahr-ohne-tarif'] as const), ...overrideResponse})
 
 
-export const getSteuerschaetzungControllerGetMockHandler = (overrideResponse?: SteuerschaetzungDto | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<SteuerschaetzungDto> | SteuerschaetzungDto), options?: RequestHandlerOptions) => {
+export const getTaxEstimateControllerGetMockHandler = (overrideResponse?: TaxEstimateDto | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<TaxEstimateDto> | TaxEstimateDto), options?: RequestHandlerOptions) => {
   return http.get('*/v1/steuerjahre/:jahr/steuerschaetzung', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
 
 
     return HttpResponse.json(overrideResponse !== undefined
     ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
-    : getSteuerschaetzungControllerGetResponseMock(),
+    : getTaxEstimateControllerGetResponseMock(),
       { status: 200
       })
   }, options)
 }
 export const getSteuerEuleAPIMock = () => [
-  getSteuerschaetzungControllerGetMockHandler()
+  getTaxEstimateControllerGetMockHandler()
 ]

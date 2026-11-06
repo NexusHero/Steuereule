@@ -3,48 +3,48 @@ import type { CommuteInputs, CommuteRepository } from '../src/arbeitsweg/arbeits
 import type { CrossBorderSalaryStatementRecord } from '../src/ch-lohnausweis/ch-lohnausweis.repository.js'
 import type { MasterDataRecord } from '../src/stammdaten/stammdaten.repository.js'
 import { TaxEstimateService } from '../src/steuerschaetzung/steuerschaetzung.service.js'
-import { FakeChLohnausweisRepository } from './fakes/fake-ch-lohnausweis.repository.js'
+import { FakeChSalaryCertificateRepository } from './fakes/fake-ch-lohnausweis.repository.js'
 import { FakeInterviewAnswerRepository } from './fakes/fake-interview-answer.repository.js'
 import { FakeLstbRepository } from './fakes/fake-lstb.repository.js'
-import { FakeStammdatenRepository } from './fakes/fake-stammdaten.repository.js'
-import { FakeKopplungRepository } from './fakes/fake-kopplung.repository.js'
-import { FakeKindRepository } from './fakes/fake-kind.repository.js'
-import { FakeVermietungRepository } from './fakes/fake-vermietung.repository.js'
-import type { SteuerschaetzungStand } from '../src/steuerschaetzung/steuerschaetzung.service.js'
+import { FakeMasterDataRepository } from './fakes/fake-stammdaten.repository.js'
+import { FakeLinkRepository } from './fakes/fake-kopplung.repository.js'
+import { FakeChildRepository } from './fakes/fake-kind.repository.js'
+import { FakeRentalRepository } from './fakes/fake-vermietung.repository.js'
+import type { TaxEstimateStatus } from '../src/steuerschaetzung/steuerschaetzung.service.js'
 
-function spanne(stand: SteuerschaetzungStand) {
-  if (stand.kind !== 'spanne') throw new Error(`expected a range, got ${stand.kind}`)
-  return stand
+function range(status: TaxEstimateStatus) {
+  if (status.kind !== 'spanne') throw new Error(`expected a range, got ${status.kind}`)
+  return status
 }
 
-function arbeitsweg(eingaben: CommuteInputs | null): CommuteRepository {
-  return { findForUserAndYear: async () => eingaben, save: async (_u, _j, e) => e }
+function commute(inputs: CommuteInputs | null): CommuteRepository {
+  return { findForUserAndYear: async () => inputs, save: async (_u, _j, e) => e }
 }
 
-function setup(weg: CommuteInputs | null = null) {
+function setup(path: CommuteInputs | null = null) {
   const lstb = new FakeLstbRepository()
   const interview = new FakeInterviewAnswerRepository()
-  const ch = new FakeChLohnausweisRepository()
-  const stammdaten = new FakeStammdatenRepository()
-  const kopplung = new FakeKopplungRepository()
-  const kinder = new FakeKindRepository()
-  const vermietung = new FakeVermietungRepository()
-  const service = new TaxEstimateService(lstb, interview, ch, stammdaten, arbeitsweg(weg), kopplung, kinder, vermietung)
-  return { lstb, interview, ch, stammdaten, kopplung, kinder, vermietung, service }
+  const ch = new FakeChSalaryCertificateRepository()
+  const masterData = new FakeMasterDataRepository()
+  const link = new FakeLinkRepository()
+  const kinder = new FakeChildRepository()
+  const rental = new FakeRentalRepository()
+  const service = new TaxEstimateService(lstb, interview, ch, masterData, commute(path), link, kinder, rental)
+  return { lstb, interview, ch, stammdaten: masterData, kopplung: link, kinder, vermietung: rental, service }
 }
 
-const ANGESTELLT = { job: 'Angestellt', ausland: 'Nein', kinder: 'Nein' }
+const EMPLOYED = { job: 'Angestellt', ausland: 'Nein', kinder: 'Nein' }
 
 describe('SteuerschaetzungService', () => {
   it('estimates the refund for a complete Lohnsteuerbescheinigung', async () => {
     const { lstb, interview, service } = setup()
-    interview.seed('u', 2025, ANGESTELLT)
+    interview.seed('u', 2025, EMPLOYED)
     lstb.seed({ userId: 'u', steuerjahr: 2025, bruttoarbeitslohn: '45000', lohnsteuer: '6100', sozialversicherung: '9200' })
 
-    const stand = spanne(await service.getState('u', 2025))
+    const status = range(await service.getState('u', 2025))
 
-    expect(stand.ergebnis.von).toBeGreaterThan(0)
-    expect(stand.ergebnis.von).toBeLessThan(stand.ergebnis.bis)
+    expect(status.result.from).toBeGreaterThan(0)
+    expect(status.result.from).toBeLessThan(status.result.to)
   })
 
   it('takes the Entfernungspauschale from the stored commute', async () => {
@@ -57,79 +57,79 @@ describe('SteuerschaetzungService', () => {
       verkehrsmittel: 'pkw',
       taetigkeitsstaette: null,
     })
-    interview.seed('u', 2025, ANGESTELLT)
+    interview.seed('u', 2025, EMPLOYED)
     lstb.seed({ userId: 'u', steuerjahr: 2025, bruttoarbeitslohn: '45000', lohnsteuer: '6100', sozialversicherung: '9200' })
 
-    const stand = spanne(await service.getState('u', 2025))
+    const status = range(await service.getState('u', 2025))
 
-    expect(stand.werbungskosten).toBe(2019)
+    expect(status.werbungskosten).toBe(2019)
   })
 
   it('names what is still missing instead of estimating from an incomplete LStB', async () => {
     const { lstb, interview, service } = setup()
-    interview.seed('u', 2025, ANGESTELLT)
+    interview.seed('u', 2025, EMPLOYED)
     lstb.seed({ userId: 'u', steuerjahr: 2025, bruttoarbeitslohn: '45000', lohnsteuer: null, sozialversicherung: null })
 
-    const stand = await service.getState('u', 2025)
+    const status = await service.getState('u', 2025)
 
-    expect(stand).toMatchObject({ kind: 'offen', fehlt: ['lohnsteuer', 'sozialversicherung'] })
+    expect(status).toMatchObject({ kind: 'offen', fehlt: ['lohnsteuer', 'sozialversicherung'] })
   })
 
   it('never estimates a married person as single — it asks for the joint return first (ADR-0054)', async () => {
     const { lstb, interview, service } = setup()
-    interview.seed('u', 2025, { ...ANGESTELLT, familienstand: 'Verheiratet' })
+    interview.seed('u', 2025, { ...EMPLOYED, familienstand: 'Verheiratet' })
     lstb.seed({ userId: 'u', steuerjahr: 2025, bruttoarbeitslohn: '45000', lohnsteuer: '6100', sozialversicherung: '9200' })
 
     expect(await service.getState('u', 2025)).toEqual({ kind: 'offen', fehlt: ['veranlagungsart'] })
   })
 
   it("estimates a couple with the splitting tariff from both spouses' certificates and the rental surplus", async () => {
-    const { lstb, interview, stammdaten, kopplung, vermietung, service } = setup()
-    interview.seed('a', 2025, ANGESTELLT)
-    await stammdaten.speichere('a', { familienstand: 'verheiratet', religion: 'VD' } as MasterDataRecord)
-    await kopplung.upsert('a', 2025, { personBUserId: 'spouse_a_2025', veranlagungsart: 'zusammen' })
+    const { lstb, interview, stammdaten: masterData, kopplung: link, vermietung: rental, service } = setup()
+    interview.seed('a', 2025, EMPLOYED)
+    await masterData.save('a', { familienstand: 'verheiratet', religion: 'VD' } as MasterDataRecord)
+    await link.upsert('a', 2025, { personBUserId: 'spouse_a_2025', veranlagungsart: 'zusammen' })
     lstb.seed({ userId: 'a', steuerjahr: 2025, bruttoarbeitslohn: '82000', lohnsteuer: '9890', sozialversicherung: '15473' })
     lstb.seed({ userId: 'spouse_a_2025', steuerjahr: 2025, bruttoarbeitslohn: '48000', lohnsteuer: '10420', sozialversicherung: '10008' })
-    vermietung.seed({
+    rental.seed({
       id: 'o1', userId: 'a', steuerjahr: 2025, mieteinnahmen: '14400', anschaffungskosten: '280000', baujahr: '1995', werbungskosten: '3200',
     } as never)
 
-    const stand = spanne(await service.getState('a', 2025))
-    expect(stand.zusammenveranlagung).toBe(true)
-    expect(stand.anrechnung).toBe(9890 + 10420)
-    const ohneMiete = spanne(await (async () => {
+    const status = range(await service.getState('a', 2025))
+    expect(status.jointAssessment).toBe(true)
+    expect(status.anrechnung).toBe(9890 + 10420)
+    const withoutRent = range(await (async () => {
       const second = setup()
-      second.interview.seed('a', 2025, ANGESTELLT)
-      await second.stammdaten.speichere('a', { familienstand: 'verheiratet', religion: 'VD' } as MasterDataRecord)
+      second.interview.seed('a', 2025, EMPLOYED)
+      await second.stammdaten.save('a', { familienstand: 'verheiratet', religion: 'VD' } as MasterDataRecord)
       await second.kopplung.upsert('a', 2025, { personBUserId: 'spouse_a_2025', veranlagungsart: 'zusammen' })
       second.lstb.seed({ userId: 'a', steuerjahr: 2025, bruttoarbeitslohn: '82000', lohnsteuer: '9890', sozialversicherung: '15473' })
       second.lstb.seed({ userId: 'spouse_a_2025', steuerjahr: 2025, bruttoarbeitslohn: '48000', lohnsteuer: '10420', sozialversicherung: '10008' })
       return second.service.getState('a', 2025)
     })())
     // 14.400 rent − 3.200 costs − 5.600 AfA = 5.600 more income → more tax.
-    expect(stand.einkommensteuer.von).toBeGreaterThan(ohneMiete.einkommensteuer.von)
+    expect(status.incomeTax.from).toBeGreaterThan(withoutRent.incomeTax.from)
   })
 
   it("names what is missing in Person B's figures", async () => {
-    const { lstb, interview, stammdaten, kopplung, service } = setup()
-    interview.seed('a', 2025, ANGESTELLT)
-    await stammdaten.speichere('a', { familienstand: 'verheiratet' } as MasterDataRecord)
-    await kopplung.upsert('a', 2025, { personBUserId: 'spouse_a_2025', veranlagungsart: 'zusammen' })
+    const { lstb, interview, stammdaten: masterData, kopplung: link, service } = setup()
+    interview.seed('a', 2025, EMPLOYED)
+    await masterData.save('a', { familienstand: 'verheiratet' } as MasterDataRecord)
+    await link.upsert('a', 2025, { personBUserId: 'spouse_a_2025', veranlagungsart: 'zusammen' })
     lstb.seed({ userId: 'a', steuerjahr: 2025, bruttoarbeitslohn: '82000', lohnsteuer: '9890', sozialversicherung: '15473' })
     lstb.seed({ userId: 'spouse_a_2025', steuerjahr: 2025, bruttoarbeitslohn: '48000', lohnsteuer: null, sozialversicherung: '10008' } as never)
 
-    const stand = await service.getState('a', 2025)
-    expect(stand).toMatchObject({ kind: 'offen' })
-    expect(stand.kind === 'offen' && stand.fehlt.some((f) => f.startsWith('personB.'))).toBe(true)
+    const status = await service.getState('a', 2025)
+    expect(status).toMatchObject({ kind: 'offen' })
+    expect(status.kind === 'offen' && status.fehlt.some((f) => f.startsWith('personB.'))).toBe(true)
   })
 
   it('estimates a Grenzgänger from the Lohnausweis against the Quellensteuer', async () => {
     const { interview, ch, service } = setup()
-    interview.seed('u', 2025, { ...ANGESTELLT, ausland: 'Ja, in die Schweiz', 'ch-wohnsitz': 'Deutschland', 'ch-nichtrueckkehrtage': '0' })
+    interview.seed('u', 2025, { ...EMPLOYED, ausland: 'Ja, in die Schweiz', 'ch-wohnsitz': 'Deutschland', 'ch-nichtrueckkehrtage': '0' })
     ch.seed({
       userId: 'u',
       steuerjahr: 2025,
-      felder: { 'bruttolohn-total': '90000', 'ahv-beitraege': '6660', 'berufliche-vorsorge': '4500', quellensteuer: '4050' } as CrossBorderSalaryStatementRecord['felder'],
+      fields: { 'bruttolohn-total': '90000', 'ahv-beitraege': '6660', 'berufliche-vorsorge': '4500', quellensteuer: '4050' } as CrossBorderSalaryStatementRecord['fields'],
       bemerkungen: null,
       saeule3aChf: null,
       krankenkasseChf: null,
@@ -140,19 +140,19 @@ describe('SteuerschaetzungService', () => {
       nGre: { familienzulagenChf: 0, krankentaggeldChf: 0, pkArbeitnehmerChf: 4500, pkArbeitgeberChf: 4500 } as unknown as CrossBorderSalaryStatementRecord['nGre'],
     })
 
-    const stand = spanne(await service.getState('u', 2025))
+    const status = range(await service.getState('u', 2025))
 
-    expect(stand.anrechnung).toBe(4334)
-    expect(stand.ergebnis.bis).toBeLessThan(0)
+    expect(status.anrechnung).toBe(4334)
+    expect(status.result.to).toBeLessThan(0)
   })
 
   it('names the missing Pensionskasse Obligatorium instead of guessing the Altersvorsorge', async () => {
     const { interview, ch, service } = setup()
-    interview.seed('u', 2025, { ...ANGESTELLT, ausland: 'Ja, in die Schweiz', 'ch-wohnsitz': 'Deutschland', 'ch-nichtrueckkehrtage': '0' })
+    interview.seed('u', 2025, { ...EMPLOYED, ausland: 'Ja, in die Schweiz', 'ch-wohnsitz': 'Deutschland', 'ch-nichtrueckkehrtage': '0' })
     ch.seed({
       userId: 'u',
       steuerjahr: 2025,
-      felder: { 'bruttolohn-total': '90000', 'berufliche-vorsorge': '4500', quellensteuer: '4050' } as CrossBorderSalaryStatementRecord['felder'],
+      fields: { 'bruttolohn-total': '90000', 'berufliche-vorsorge': '4500', quellensteuer: '4050' } as CrossBorderSalaryStatementRecord['fields'],
       bemerkungen: null,
       saeule3aChf: null,
       krankenkasseChf: null,
@@ -163,8 +163,8 @@ describe('SteuerschaetzungService', () => {
       nGre: { pkArbeitnehmerChf: null } as CrossBorderSalaryStatementRecord['nGre'],
     })
 
-    const stand = await service.getState('u', 2025)
+    const status = await service.getState('u', 2025)
 
-    expect(stand).toEqual({ kind: 'offen', fehlt: ['pk-obligatorium'] })
+    expect(status).toEqual({ kind: 'offen', fehlt: ['pk-obligatorium'] })
   })
 })

@@ -5,26 +5,26 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Button, Card, Feld, Input, Pill, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
 import { formatEuro } from '@steuereule/core'
 import {
-  useBescheidControllerGet,
-  useBescheidControllerSetDatum,
-  useBescheidControllerSetEinspruch,
-  useBescheidControllerSetFeld,
-  useBescheidControllerSetStatus,
-  getBescheidControllerGetQueryKey,
-  type BescheidAbweichungDto,
-  type BescheidResponseDto,
-  type PutBescheidFeldDto,
-  type SetBescheidStatusDtoStatus,
-  type SetEinspruchDtoGrund,
+  useAssessmentControllerGet,
+  useAssessmentControllerSetDate,
+  useAssessmentControllerSetAppeal,
+  useAssessmentControllerSetField,
+  useAssessmentControllerSetStatus,
+  getAssessmentControllerGetQueryKey,
+  type AssessmentDeviationDto,
+  type AssessmentResponseDto,
+  type PutAssessmentFieldDto,
+  type SetAssessmentStatusDtoStatus,
+  type SetAppealDtoReason,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 
-type FeldId = 'einnahmen' | 'vorsorgeaufwand' | 'anrechnung' | 'festgesetzteSteuer' | 'erstattung'
+type FieldId = 'einnahmen' | 'vorsorgeaufwand' | 'anrechnung' | 'festgesetzteSteuer' | 'erstattung'
 
-const FELDER: readonly { id: FeldId; labelKey: string }[] = [
+const FIELDS: readonly { id: FieldId; labelKey: string }[] = [
   { id: 'einnahmen', labelKey: 'bescheid.felder.einnahmen' },
   { id: 'vorsorgeaufwand', labelKey: 'bescheid.felder.vorsorgeaufwand' },
   { id: 'anrechnung', labelKey: 'bescheid.felder.anrechnung' },
@@ -32,29 +32,29 @@ const FELDER: readonly { id: FeldId; labelKey: string }[] = [
   { id: 'erstattung', labelKey: 'bescheid.felder.erstattung' },
 ]
 
-const GRUENDE: readonly { id: 'betrag-falsch' | 'beleg-nicht-beruecksichtigt' | 'sonstiges'; labelKey: string }[] = [
+const REASONS: readonly { id: 'betrag-falsch' | 'beleg-nicht-beruecksichtigt' | 'sonstiges'; labelKey: string }[] = [
   { id: 'betrag-falsch', labelKey: 'bescheid.einspruch.grund.betrag-falsch' },
   { id: 'beleg-nicht-beruecksichtigt', labelKey: 'bescheid.einspruch.grund.beleg-nicht-beruecksichtigt' },
   { id: 'sonstiges', labelKey: 'bescheid.einspruch.grund.sonstiges' },
 ]
 
-export interface BescheidScreenProps {
+export interface AssessmentScreenProps {
   readonly onDone?: () => void
   readonly onBack?: () => void
   readonly taxYear?: number
 }
 
-export function BescheidScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YEAR }: BescheidScreenProps) {
+export function AssessmentScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YEAR }: AssessmentScreenProps) {
   const bp = useBreakpoint()
   const t = useTheme()
   const styles = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
   const queryClient = useQueryClient()
-  const query = useBescheidControllerGet(taxYear)
-  const setFeld = useBescheidControllerSetFeld()
-  const setDatum = useBescheidControllerSetDatum()
-  const setStatus = useBescheidControllerSetStatus()
-  const setEinspruch = useBescheidControllerSetEinspruch()
+  const query = useAssessmentControllerGet(taxYear)
+  const setField = useAssessmentControllerSetField()
+  const setDate = useAssessmentControllerSetDate()
+  const setStatus = useAssessmentControllerSetStatus()
+  const setAppeal = useAssessmentControllerSetAppeal()
 
   if (query.isPending) {
     return <LoadingState bp={bp} label={tr('bescheid.loading')} />
@@ -73,10 +73,10 @@ export function BescheidScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TA
 
   const response = query.data.data
 
-  const refetch = () => void queryClient.invalidateQueries({ queryKey: getBescheidControllerGetQueryKey(taxYear) })
+  const refetch = () => void queryClient.invalidateQueries({ queryKey: getAssessmentControllerGetQueryKey(taxYear) })
 
-  function sendFeld(feld: FeldId, data: PutBescheidFeldDto) {
-    setFeld.mutate({ jahr: taxYear, feld, data }, { onSuccess: refetch })
+  function sendField(field: FieldId, data: PutAssessmentFieldDto) {
+    setField.mutate({ jahr: taxYear, feld: field, data }, { onSuccess: refetch })
   }
 
   return (
@@ -89,26 +89,26 @@ export function BescheidScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TA
 
       <FristBanner frist={response.frist} />
 
-      {FELDER.map((feld) => (
-        <BescheidFeldEditor
-          key={feld.id}
-          feldId={feld.id}
-          label={tr(feld.labelKey)}
-          zustand={response.felder.find((f) => f.id === feld.id)}
-          onErfasst={(wert) => sendFeld(feld.id, { kind: 'erfasst', wert })}
-          onUnklar={() => sendFeld(feld.id, { kind: 'unklar' })}
+      {FIELDS.map((field) => (
+        <AssessmentFieldEditor
+          key={field.id}
+          fieldId={field.id}
+          label={tr(field.labelKey)}
+          state={response.fields.find((f) => f.id === field.id)}
+          onRecorded={(value) => sendField(field.id, { kind: 'erfasst', value })}
+          onUnclear={() => sendField(field.id, { kind: 'unklar' })}
         />
       ))}
 
-      <DatumEditor datum={response.frist.bescheiddatum} onSet={(datum) => setDatum.mutate({ jahr: taxYear, data: { datum } }, { onSuccess: refetch })} />
+      <DateEditor date={response.frist.bescheiddatum} onSet={(date) => setDate.mutate({ jahr: taxYear, data: { date } }, { onSuccess: refetch })} />
 
-      <AbgleichSection response={response} />
+      <ReconciliationSection response={response} />
 
       <StatusSection response={response} onSetStatus={(status) => setStatus.mutate({ jahr: taxYear, data: { status } }, { onSuccess: refetch })} />
 
-      <EinspruchSection
+      <AppealSection
         response={response}
-        onEinspruch={(grund) => setEinspruch.mutate({ jahr: taxYear, data: { grund } }, { onSuccess: refetch })}
+        onAppeal={(reason) => setAppeal.mutate({ jahr: taxYear, data: { reason } }, { onSuccess: refetch })}
       />
 
       <Button onPress={onDone} style={styles.cta}>
@@ -118,7 +118,7 @@ export function BescheidScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TA
   )
 }
 
-function FristBanner({ frist }: { readonly frist: BescheidResponseDto['frist'] }) {
+function FristBanner({ frist }: { readonly frist: AssessmentResponseDto['frist'] }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const s = makeStyles(t)
@@ -129,45 +129,45 @@ function FristBanner({ frist }: { readonly frist: BescheidResponseDto['frist'] }
       </Card>
     )
   }
-  const abgelaufen = (frist.verbleibendeTage ?? 0) < 0
+  const expired = (frist.remainingDays ?? 0) < 0
   return (
     <Card variant="nacht">
       <Text style={s.fristHeading}>{tr('bescheid.frist.heading')}</Text>
-      {abgelaufen ? (
-        <Text style={s.fristBody}>{tr('bescheid.frist.abgelaufen', { ende: frist.fristEnde })}</Text>
+      {expired ? (
+        <Text style={s.fristBody}>{tr('bescheid.frist.abgelaufen', { ende: frist.deadlineEnd })}</Text>
       ) : (
-        <Text style={s.fristBody}>{tr('bescheid.frist.verbleibend', { tage: frist.verbleibendeTage, ende: frist.fristEnde })}</Text>
+        <Text style={s.fristBody}>{tr('bescheid.frist.verbleibend', { tage: frist.remainingDays, ende: frist.deadlineEnd })}</Text>
       )}
     </Card>
   )
 }
 
-function BescheidFeldEditor({
-  feldId,
+function AssessmentFieldEditor({
+  fieldId,
   label,
-  zustand,
-  onErfasst,
-  onUnklar,
+  state,
+  onRecorded,
+  onUnclear,
 }: {
-  readonly feldId: FeldId
+  readonly fieldId: FieldId
   readonly label: string
-  readonly zustand: { kind: 'erfasst' | 'offen' | 'unklar'; wert?: number } | undefined
-  readonly onErfasst: (wert: number) => void
-  readonly onUnklar: () => void
+  readonly state: { kind: 'erfasst' | 'offen' | 'unklar'; value?: number } | undefined
+  readonly onRecorded: (value: number) => void
+  readonly onUnclear: () => void
 }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const s = makeStyles(t)
-  const kind = zustand?.kind ?? 'offen'
-  const [text, setText] = useState(kind === 'erfasst' ? String(zustand?.wert) : '')
+  const kind = state?.kind ?? 'offen'
+  const [text, setText] = useState(kind === 'erfasst' ? String(state?.value) : '')
 
   function commit() {
-    const getrimmt = text.trim()
-    const muster = feldId === 'erstattung' ? /^-?(0|[1-9]\d*)$/ : /^(0|[1-9]\d*)$/
-    if (!muster.test(getrimmt)) return
-    const wert = Number(getrimmt)
-    if (zustand?.kind === 'erfasst' && zustand.wert === wert) return
-    onErfasst(wert)
+    const trimmed = text.trim()
+    const muster = fieldId === 'erstattung' ? /^-?(0|[1-9]\d*)$/ : /^(0|[1-9]\d*)$/
+    if (!muster.test(trimmed)) return
+    const value = Number(trimmed)
+    if (state?.kind === 'erfasst' && state.value === value) return
+    onRecorded(value)
   }
 
   return (
@@ -183,7 +183,7 @@ function BescheidFeldEditor({
           onBlur={commit}
           accessibilityLabel={`${label} (${tr('bescheid.feld.placeholder')})`}
         />
-        <Pressable accessibilityRole="button" onPress={onUnklar} style={s.unklarButton}>
+        <Pressable accessibilityRole="button" onPress={onUnclear} style={s.unklarButton}>
           <Text style={kind === 'unklar' ? s.unklarActive : s.unklarLabel}>{tr('bescheid.feld.unklar')}</Text>
         </Pressable>
       </View>
@@ -191,14 +191,14 @@ function BescheidFeldEditor({
   )
 }
 
-function DatumEditor({ datum, onSet }: { readonly datum: string | null; readonly onSet: (datum: string | null) => void }) {
+function DateEditor({ date, onSet }: { readonly date: string | null; readonly onSet: (datum: string | null) => void }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const s = makeStyles(t)
-  const [text, setText] = useState(datum ?? '')
+  const [text, setText] = useState(date ?? '')
 
   function commit() {
-    if (text !== datum && /^\d{4}-\d{2}-\d{2}$/.test(text)) onSet(text)
+    if (text !== date && /^\d{4}-\d{2}-\d{2}$/.test(text)) onSet(text)
   }
 
   return (
@@ -219,56 +219,56 @@ function DatumEditor({ datum, onSet }: { readonly datum: string | null; readonly
   )
 }
 
-function AbgleichSection({ response }: { readonly response: BescheidResponseDto }) {
+function ReconciliationSection({ response }: { readonly response: AssessmentResponseDto }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const s = makeStyles(t)
-  const abweichungen = response.abgleich.abweichungen
+  const deviations = response.reconciliation.deviations
 
   return (
     <View style={s.section}>
       <Text style={s.sectionHeading}>{tr('bescheid.abgleich.heading')}</Text>
-      {response.abgleich.berechnungUnvollstaendig ? (
+      {response.reconciliation.calculationIncomplete ? (
         <Text style={s.muted}>{tr('bescheid.abgleich.unvollstaendig')}</Text>
       ) : null}
-      {abweichungen.length === 0 ? (
+      {deviations.length === 0 ? (
         <Text style={s.ok}>{tr('bescheid.abgleich.stimmt')}</Text>
       ) : (
-        abweichungen.map((a) => <AbweichungZeile key={a.feld} a={a} />)
+        deviations.map((a) => <DeviationRow key={a.field} a={a} />)
       )}
     </View>
   )
 }
 
-function AbweichungZeile({ a }: { readonly a: BescheidAbweichungDto }) {
+function DeviationRow({ a }: { readonly a: AssessmentDeviationDto }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const s = makeStyles(t)
   return (
     <Card>
       <View style={s.abweichungHead}>
-        <Text style={s.abweichungFeld}>{tr(`bescheid.felder.${a.feld}`)}</Text>
-        <Text style={s.abweichungDelta}>{a.differenz > 0 ? '+' : ''}{formatEuro(a.differenz)}</Text>
+        <Text style={s.abweichungFeld}>{tr(`bescheid.felder.${a.field}`)}</Text>
+        <Text style={s.abweichungDelta}>{a.difference > 0 ? '+' : ''}{formatEuro(a.difference)}</Text>
       </View>
       <Text style={s.abweichungBody}>
-        {tr('bescheid.abgleich.zeile', { bescheid: formatEuro(a.bescheid), berechnet: formatEuro(a.berechnet) })}
+        {tr('bescheid.abgleich.zeile', { bescheid: formatEuro(a.assessment), berechnet: formatEuro(a.calculated) })}
       </Text>
     </Card>
   )
 }
 
-function StatusSection({ response, onSetStatus }: { readonly response: BescheidResponseDto; readonly onSetStatus: (status: SetBescheidStatusDtoStatus) => void }) {
+function StatusSection({ response, onSetStatus }: { readonly response: AssessmentResponseDto; readonly onSetStatus: (status: SetAssessmentStatusDtoStatus) => void }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const s = makeStyles(t)
-  const naechste = response.naechsteZustaende.filter((z) => z === 'geprüft' || z === 'einspruch-eingelegt') as SetBescheidStatusDtoStatus[]
+  const next = response.nextStates.filter((z) => z === 'geprüft' || z === 'einspruch-eingelegt') as SetAssessmentStatusDtoStatus[]
   return (
     <View style={s.section}>
       <Text style={s.sectionHeading}>{tr('bescheid.status.heading')}</Text>
       <View style={s.statusRow}>
         <Pill>{tr(`bescheid.status.${response.status}`)}</Pill>
       </View>
-      {naechste.includes('geprüft') ? (
+      {next.includes('geprüft') ? (
         <Button onPress={() => onSetStatus('geprüft')} style={s.cta}>
           {tr('bescheid.status.alsGeprueft')}
         </Button>
@@ -277,12 +277,12 @@ function StatusSection({ response, onSetStatus }: { readonly response: BescheidR
   )
 }
 
-function EinspruchSection({ response, onEinspruch }: { readonly response: BescheidResponseDto; readonly onEinspruch: (grund: SetEinspruchDtoGrund) => void }) {
+function AppealSection({ response, onAppeal }: { readonly response: AssessmentResponseDto; readonly onAppeal: (reason: SetAppealDtoReason) => void }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const s = makeStyles(t)
 
-  if (!response.naechsteZustaende.includes('einspruch-eingelegt')) {
+  if (!response.nextStates.includes('einspruch-eingelegt')) {
     if (response.status === 'einspruch-eingelegt') {
       return (
         <View style={s.section}>
@@ -298,8 +298,8 @@ function EinspruchSection({ response, onEinspruch }: { readonly response: Besche
     <View style={s.section}>
       <Text style={s.sectionHeading}>{tr('bescheid.einspruch.heading')}</Text>
       <Text style={s.muted}>{tr('bescheid.einspruch.help')}</Text>
-      {GRUENDE.map((g) => (
-        <Button key={g.id} variante="ghost" onPress={() => onEinspruch(g.id)} style={s.grundButton}>
+      {REASONS.map((g) => (
+        <Button key={g.id} variant="ghost" onPress={() => onAppeal(g.id)} style={s.grundButton}>
           {tr(g.labelKey)}
         </Button>
       ))}
@@ -327,32 +327,32 @@ function makeStyles(t: UiTheme) {
     marginBottom: t.space.s2,
   }
   const help: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.m, marginBottom: t.space.s4 }
-  const feldRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s3 }
-  const unklarButton: ViewStyle = {
+  const fieldRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s3 }
+  const unclearButton: ViewStyle = {
     paddingHorizontal: t.space.s3,
     paddingVertical: t.space.s2,
     borderWidth: t.space.kontur,
     borderColor: t.color.tinte,
     borderRadius: t.radius.s,
   }
-  const unklarLabel: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.s }
-  const unklarActive: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.s }
+  const unclearLabel: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.s }
+  const unclearActive: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.s }
   const section: ViewStyle = { marginTop: t.space.s4 }
   const sectionHeading: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.m, marginBottom: t.space.s2 }
   const muted: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.s, marginBottom: t.space.s2 }
   const ok: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontSize: t.size.s, marginBottom: t.space.s2 }
   const fristHeading: TextStyle = { fontFamily: t.font.mono, fontSize: t.size.xs, color: t.color.funkeHell, textTransform: 'uppercase', letterSpacing: 0.08 * t.size.xs, marginBottom: t.space.s2 }
   const fristBody: TextStyle = { color: t.color.nachtText, opacity: 0.85, fontFamily: t.font.text, fontSize: t.size.s }
-  const abweichungHead: ViewStyle = { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: t.space.s3 }
-  const abweichungFeld: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.s }
-  const abweichungDelta: TextStyle = { color: t.color.warn, fontFamily: t.font.mono, fontWeight: t.weight.schwer, fontSize: t.size.m }
-  const abweichungBody: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.s, marginTop: t.space.s2 }
+  const deviationHead: ViewStyle = { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: t.space.s3 }
+  const deviationField: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.s }
+  const deviationDelta: TextStyle = { color: t.color.warn, fontFamily: t.font.mono, fontWeight: t.weight.schwer, fontSize: t.size.m }
+  const deviationBody: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.s, marginTop: t.space.s2 }
   const statusRow: ViewStyle = { flexDirection: 'row', gap: t.space.s2, marginBottom: t.space.s2 }
   const cta: ViewStyle = { marginTop: t.space.s4 }
-  const grundButton: ViewStyle = { marginTop: t.space.s2 }
+  const reasonButton: ViewStyle = { marginTop: t.space.s2 }
   return {
-    screen, wideScreen, headerRow, heading, help, feldRow, unklarButton, unklarLabel, unklarActive,
-    section, sectionHeading, muted, ok, fristHeading, fristBody, abweichungHead, abweichungFeld,
-    abweichungDelta, abweichungBody, statusRow, cta, grundButton,
+    screen, wideScreen, headerRow, heading, help, feldRow: fieldRow, unklarButton: unclearButton, unklarLabel: unclearLabel, unklarActive: unclearActive,
+    section, sectionHeading, muted, ok, fristHeading, fristBody, abweichungHead: deviationHead, abweichungFeld: deviationField,
+    abweichungDelta: deviationDelta, abweichungBody: deviationBody, statusRow, cta, grundButton: reasonButton,
   }
 }

@@ -10,14 +10,14 @@ function key(userId: string, steuerjahr: number): string {
   return `${userId}::${steuerjahr}`
 }
 
-export class FakeRenteRepository implements PensionRepository {
+export class FakePensionRepository implements PensionRepository {
   private readonly store = new Map<string, PensionRecord>()
 
   findForUserAndYear(userId: string, steuerjahr: number): Promise<PensionRecord | null> {
     return Promise.resolve(this.store.get(key(userId, steuerjahr)) ?? null)
   }
 
-  setFeld(userId: string, steuerjahr: number, feld: PensionFieldId, wert: string | null): Promise<PensionRecord> {
+  setField(userId: string, steuerjahr: number, field: PensionFieldId, value: string | null): Promise<PensionRecord> {
     const k = key(userId, steuerjahr)
     const existing = this.store.get(k)
     const record: PensionRecord = existing ?? {
@@ -28,12 +28,12 @@ export class FakeRenteRepository implements PensionRepository {
       rentenbeginnJahr: null,
       alterBeiRentenbeginn: null,
     }
-    const updated: PensionRecord = { ...record, [feld]: wert }
+    const updated: PensionRecord = { ...record, [field]: value }
     this.store.set(k, updated)
     return Promise.resolve(updated)
   }
 
-  setRentenart(userId: string, steuerjahr: number, art: string | null): Promise<PensionRecord> {
+  setPensionKind(userId: string, steuerjahr: number, art: string | null): Promise<PensionRecord> {
     const k = key(userId, steuerjahr)
     const existing = this.store.get(k)
     const record: PensionRecord = existing ?? {

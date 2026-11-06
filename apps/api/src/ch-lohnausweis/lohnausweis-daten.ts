@@ -1,40 +1,40 @@
 import {
-  amtlicherMonatskurs,
-  deserialisiereLohnausweisFeld,
-  grenzgaengerStatus,
-  tatsaechlicherKurs,
+  officialMonthlyRate,
+  deserializeSalaryCertificateField,
+  crossBorderStatus,
+  actualRate,
   type Answers,
-  type GrenzgaengerStatus,
-  type LohnausweisWerte,
-  type Wechselkurs,
+  type CrossBorderStatus,
+  type SalaryCertificateValues,
+  type ExchangeRate,
 } from '@steuereule/core'
 import type { CrossBorderSalaryStatementRecord } from './ch-lohnausweis.repository.js'
 
-export function lohnausweisWerteAusRecord(record: CrossBorderSalaryStatementRecord | null): LohnausweisWerte {
-  const werte: LohnausweisWerte = {}
-  if (record === null) return werte
-  for (const [feldId, stored] of Object.entries(record.felder)) {
-    const wert = deserialisiereLohnausweisFeld(stored)
-    if (typeof wert === 'number') werte[feldId as keyof LohnausweisWerte] = wert
+export function salaryCertificateValuesFromRecord(record: CrossBorderSalaryStatementRecord | null): SalaryCertificateValues {
+  const values: SalaryCertificateValues = {}
+  if (record === null) return values
+  for (const [fieldId, stored] of Object.entries(record.fields)) {
+    const value = deserializeSalaryCertificateField(stored)
+    if (typeof value === 'number') values[fieldId as keyof SalaryCertificateValues] = value
   }
-  return werte
+  return values
 }
 
-export function wechselkursAusRecord(record: CrossBorderSalaryStatementRecord | null): Wechselkurs | null {
+export function exchangeRateFromRecord(record: CrossBorderSalaryStatementRecord | null): ExchangeRate | null {
   if (record === null || record.wechselkursMonat === null || record.wechselkursKurs === null || record.wechselkursModus === null) {
     return null
   }
-  if (record.wechselkursModus === 'amtlich') return amtlicherMonatskurs(record.wechselkursMonat, record.wechselkursKurs)
+  if (record.wechselkursModus === 'amtlich') return officialMonthlyRate(record.wechselkursMonat, record.wechselkursKurs)
   if (record.wechselkursBelegId === null) return null
-  return tatsaechlicherKurs(record.wechselkursMonat, record.wechselkursKurs, record.wechselkursBelegId)
+  return actualRate(record.wechselkursMonat, record.wechselkursKurs, record.wechselkursBelegId)
 }
 
-export function grenzgaengerStatusAusAnswers(answers: Answers): GrenzgaengerStatus | null {
-  const wohnsitz = answers['ch-wohnsitz']
-  if (wohnsitz !== 'Deutschland' && wohnsitz !== 'Schweiz') return null
-  const tageStr = answers['ch-nichtrueckkehrtage']
-  if (tageStr === undefined) return null
-  const tage = Number(tageStr)
-  if (!Number.isInteger(tage)) return null
-  return grenzgaengerStatus(wohnsitz, tage)
+export function crossBorderStatusFromAnswers(answers: Answers): CrossBorderStatus | null {
+  const residence = answers['ch-wohnsitz']
+  if (residence !== 'Deutschland' && residence !== 'Schweiz') return null
+  const daysStr = answers['ch-nichtrueckkehrtage']
+  if (daysStr === undefined) return null
+  const days = Number(daysStr)
+  if (!Number.isInteger(days)) return null
+  return crossBorderStatus(residence, days)
 }

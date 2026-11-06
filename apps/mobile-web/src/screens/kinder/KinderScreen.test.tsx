@@ -39,21 +39,21 @@ describe('KinderScreen', () => {
   })
 
   it('hides the single-parent relief from married people, who cannot claim it', () => {
-    renderKinder({ married: true, onAlleinerziehendFragen: () => {} })
+    renderKinder({ married: true, onSingleParentQuestions: () => {} })
     fireEvent.click(screen.getByTestId('kind-neu'))
     expect(screen.queryByText('Entlastungsbetrag für Alleinerziehende')).toBeNull()
     expect(screen.queryByText('Fragen zum Entlastungsbetrag beantworten')).toBeNull()
   })
 
   it('offers the single-parent relief to people who are not married', () => {
-    renderKinder({ onAlleinerziehendFragen: () => {} })
+    renderKinder({ onSingleParentQuestions: () => {} })
     fireEvent.click(screen.getByTestId('kind-neu'))
     expect(screen.getByText('Entlastungsbetrag für Alleinerziehende')).toBeTruthy()
   })
 
   it("saves the child's health and care insurance the parents pay (Anlage Kind Z. 27/28)", async () => {
     const onAdd = vi.fn().mockResolvedValue(undefined)
-    renderKinder({ onAddKind: onAdd })
+    renderKinder({ onAddChild: onAdd })
     fireEvent.click(screen.getByTestId('kind-neu'))
     fireEvent.change(screen.getByLabelText('Vorname'), { target: { value: 'Noah' } })
     fireEvent.change(screen.getByLabelText('Nachname'), { target: { value: 'Brenner' } })
@@ -66,18 +66,18 @@ describe('KinderScreen', () => {
 
   it('allows adding a new child', async () => {
     const onAdd = vi.fn().mockResolvedValue(undefined)
-    renderKinder({ onAddKind: onAdd })
+    renderKinder({ onAddChild: onAdd })
 
-    const neuBtn = screen.getByTestId('kind-neu')
-    fireEvent.click(neuBtn)
+    const newBtn = screen.getByTestId('kind-neu')
+    fireEvent.click(newBtn)
 
-    const vornameInput = screen.getByLabelText('Vorname')
-    const nachnameInput = screen.getByLabelText('Nachname')
-    const geburtsdatumInput = screen.getByLabelText('Geburtsdatum')
+    const firstNameInput = screen.getByLabelText('Vorname')
+    const lastNameInput = screen.getByLabelText('Nachname')
+    const birthDateInput = screen.getByLabelText('Geburtsdatum')
 
-    fireEvent.change(vornameInput, { target: { value: 'Noah' } })
-    fireEvent.change(nachnameInput, { target: { value: 'Muster' } })
-    fireEvent.change(geburtsdatumInput, { target: { value: '20.8.2019' } })
+    fireEvent.change(firstNameInput, { target: { value: 'Noah' } })
+    fireEvent.change(lastNameInput, { target: { value: 'Muster' } })
+    fireEvent.change(birthDateInput, { target: { value: '20.8.2019' } })
 
     fireEvent.click(screen.getByTestId('kind-verhaeltnis-1'))
     fireEvent.click(screen.getByTestId('kind-verhaeltnis-b-1'))
@@ -107,7 +107,7 @@ describe('KinderScreen', () => {
 
   it('allows deleting a child', async () => {
     const onDelete = vi.fn().mockResolvedValue(undefined)
-    renderKinder({ onDeleteKind: onDelete })
+    renderKinder({ onDeleteChild: onDelete })
 
     const deleteBtn = screen.getByLabelText('Kind Lina löschen')
     fireEvent.click(deleteBtn)
@@ -122,7 +122,7 @@ describe('KinderScreen', () => {
 
   it('completes an existing child for the printout via Bearbeiten', async () => {
     const onSave = vi.fn().mockResolvedValue(undefined)
-    renderKinder({ onSaveKind: onSave })
+    renderKinder({ onSaveChild: onSave })
 
     fireEvent.click(screen.getByLabelText('Kind Lina bearbeiten'))
     expect((screen.getByLabelText('Vorname') as HTMLInputElement).value).toBe('Lina')
@@ -142,7 +142,7 @@ describe('KinderScreen', () => {
 
   it('captures the other parent for single parents (Anlage Kind Zeilen 11–15)', async () => {
     const onSave = vi.fn().mockResolvedValue(undefined)
-    renderKinder({ onSaveKind: onSave })
+    renderKinder({ onSaveChild: onSave })
 
     fireEvent.click(screen.getByLabelText('Kind Lina bearbeiten'))
     expect(screen.queryByLabelText('Name des anderen Elternteils')).toBeNull()
@@ -171,11 +171,11 @@ describe('KinderScreen', () => {
 
   it('asks the per-child Entlastungsbetrag facts and leads to the household questions', async () => {
     const onSave = vi.fn().mockResolvedValue(undefined)
-    const onAlleinerziehendFragen = vi.fn()
-    renderKinder({ onSaveKind: onSave, onAlleinerziehendFragen })
+    const onSingleParentQuestions = vi.fn()
+    renderKinder({ onSaveChild: onSave, onSingleParentQuestions })
 
     fireEvent.click(screen.getByText('Fragen zum Entlastungsbetrag beantworten'))
-    expect(onAlleinerziehendFragen).toHaveBeenCalled()
+    expect(onSingleParentQuestions).toHaveBeenCalled()
 
     fireEvent.click(screen.getByLabelText('Kind Lina bearbeiten'))
     fireEvent.click(screen.getByTestId('kind-gemeldet-ja'))
@@ -205,7 +205,7 @@ describe('KinderScreen', () => {
         gesamtanspruchEur: '3060',
       },
     ]
-    renderKinder({ initialKinder: KINDER_CH, onSaveKind: onSave })
+    renderKinder({ initialKinder: KINDER_CH, onSaveChild: onSave })
 
     expect(screen.getByText('1. Mia Brenner')).toBeDefined()
     expect(screen.getByText(/Schweizer Kinderzulage: 2\.748/)).toBeDefined()

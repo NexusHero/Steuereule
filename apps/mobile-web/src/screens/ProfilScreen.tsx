@@ -4,35 +4,35 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useBreakpoint } from '@steuereule/ui'
 import { useProfileControllerGetProfile, useProfileControllerPutProfile } from '@steuereule/api-client'
 import { APP_NS } from '../i18n/resources'
-import { toOnboardingProfil, toPutProfileDto, type OnboardingProfil } from './onboarding/profileMapping'
-import { ProfilView } from './profil/ProfilView'
-import { ProfilEdit } from './profil/ProfilEdit'
+import { toOnboardingProfile, toPutProfileDto, type OnboardingProfile } from './onboarding/profileMapping'
+import { ProfileView } from './profil/ProfilView'
+import { ProfileEdit } from './profil/ProfilEdit'
 import { LoadingState, ErrorState } from './shared/ScreenState'
 
-export interface ProfilScreenProps {
-  readonly onOpenDatenschutz: () => void
-  readonly onOpenStammdaten?: () => void
-  readonly onOpenSicherheit: () => void
+export interface ProfileScreenProps {
+  readonly onOpenPrivacy: () => void
+  readonly onOpenMasterData?: () => void
+  readonly onOpenSecurity: () => void
   readonly onSignedOut: () => void
 }
 
-export function ProfilScreen({ onOpenDatenschutz, onOpenSicherheit, onOpenStammdaten, onSignedOut }: ProfilScreenProps) {
+export function ProfileScreen({ onOpenPrivacy, onOpenSecurity, onOpenMasterData, onSignedOut }: ProfileScreenProps) {
   const { t: tr } = useTranslation(APP_NS)
   const bp = useBreakpoint()
   const queryClient = useQueryClient()
   const profileQuery = useProfileControllerGetProfile()
   const putProfile = useProfileControllerPutProfile()
 
-  const [draft, setDraft] = useState<OnboardingProfil | null>(null)
+  const [draft, setDraft] = useState<OnboardingProfile | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [justSaved, setJustSaved] = useState(false)
 
-  const profil = profileQuery.data ? toOnboardingProfil(profileQuery.data.data) : null
+  const profile = profileQuery.data ? toOnboardingProfile(profileQuery.data.data) : null
 
   if (profileQuery.isPending) {
     return <LoadingState bp={bp} label={tr('profil.loading')} />
   }
-  if (profileQuery.isError || profil === null) {
+  if (profileQuery.isError || profile === null) {
     return (
       <ErrorState
         bp={bp}
@@ -45,7 +45,7 @@ export function ProfilScreen({ onOpenDatenschutz, onOpenSicherheit, onOpenStammd
   }
 
   function startEdit() {
-    setDraft(profil)
+    setDraft(profile)
     setSaveError(null)
     setJustSaved(false)
   }
@@ -53,7 +53,7 @@ export function ProfilScreen({ onOpenDatenschutz, onOpenSicherheit, onOpenStammd
     setDraft(null)
     setSaveError(null)
   }
-  function setDraftField(key: keyof OnboardingProfil) {
+  function setDraftField(key: keyof OnboardingProfile) {
     return (value: string) => setDraft((d) => (d ? { ...d, [key]: value } : d))
   }
 
@@ -79,7 +79,7 @@ export function ProfilScreen({ onOpenDatenschutz, onOpenSicherheit, onOpenStammd
 
   if (draft !== null) {
     return (
-      <ProfilEdit
+      <ProfileEdit
         draft={draft}
         onChange={setDraftField}
         onSave={save}
@@ -92,14 +92,14 @@ export function ProfilScreen({ onOpenDatenschutz, onOpenSicherheit, onOpenStammd
   }
 
   return (
-    <ProfilView
-      profil={profil}
+    <ProfileView
+      profile={profile}
       onEdit={startEdit}
       justSaved={justSaved}
       bp={bp}
-      onOpenDatenschutz={onOpenDatenschutz}
-      onOpenSicherheit={onOpenSicherheit}
-      {...(onOpenStammdaten ? { onOpenStammdaten } : {})}
+      onOpenPrivacy={onOpenPrivacy}
+      onOpenSecurity={onOpenSecurity}
+      {...(onOpenMasterData ? { onOpenMasterData } : {})}
       onSignedOut={onSignedOut}
     />
   )

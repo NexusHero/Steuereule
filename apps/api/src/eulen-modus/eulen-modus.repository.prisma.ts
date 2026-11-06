@@ -7,7 +7,7 @@ import type {
 } from './eulen-modus.repository.js'
 
 @Injectable()
-export class PrismaEulenEinstellungRepository implements OwlSettingRepository {
+export class PrismaOwlSettingRepository implements OwlSettingRepository {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async findByUserId(userId: string): Promise<OwlSettingRecord | null> {
@@ -20,7 +20,7 @@ export class PrismaEulenEinstellungRepository implements OwlSettingRepository {
     }
   }
 
-  async setAktiviert(userId: string, aktiviert: boolean): Promise<OwlSettingRecord> {
+  async setEnabled(userId: string, aktiviert: boolean): Promise<OwlSettingRecord> {
     const now = new Date()
     const [row] = await this.prisma.$transaction([
       this.prisma.eulenEinstellung.upsert({
@@ -48,7 +48,7 @@ export class PrismaEulenEinstellungRepository implements OwlSettingRepository {
 }
 
 @Injectable()
-export class PrismaEulenKartenVerwurfRepository implements OwlCardDismissalRepository {
+export class PrismaOwlCardDismissalRepository implements OwlCardDismissalRepository {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async listForUserAndYear(userId: string, steuerjahr: number): Promise<string[]> {
@@ -59,7 +59,7 @@ export class PrismaEulenKartenVerwurfRepository implements OwlCardDismissalRepos
     return rows.map((r) => r.fingerprint)
   }
 
-  async verwerfe(userId: string, steuerjahr: number, fingerprint: string): Promise<void> {
+  async dismiss(userId: string, steuerjahr: number, fingerprint: string): Promise<void> {
     await this.prisma.$transaction([
       this.prisma.eulenKartenVerwurf.create({
         data: { userId, steuerjahr, fingerprint },

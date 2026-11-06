@@ -1,7 +1,7 @@
 import { type ViewStyle, type TextStyle } from 'react-native'
 import { WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
 
-export function makeProfilStyles(t: UiTheme) {
+export function makeProfileStyles(t: UiTheme) {
   const screen: ViewStyle = {
     backgroundColor: t.color.grund,
     paddingHorizontal: t.space.s5,
@@ -59,8 +59,8 @@ export function makeProfilStyles(t: UiTheme) {
   }
   const counterRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s2, marginTop: -t.space.s2, marginBottom: t.space.s3 }
   const saveErrorText: TextStyle = { color: t.color.fehler, fontFamily: t.font.text, fontSize: t.size.s, marginTop: t.space.s2 }
-  const datenCard: ViewStyle = { padding: 0, overflow: 'hidden' }
-  const datenRow: ViewStyle = {
+  const dataCard: ViewStyle = { padding: 0, overflow: 'hidden' }
+  const dataRow: ViewStyle = {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -68,8 +68,8 @@ export function makeProfilStyles(t: UiTheme) {
     paddingHorizontal: t.space.s4,
     paddingVertical: t.space.s3,
   }
-  const datenRowLabel: TextStyle = { fontFamily: t.font.text, fontSize: t.size.m, color: t.color.tinte, flex: 1 }
-  const datenRowArrow: TextStyle = { fontFamily: t.font.text, fontWeight: t.weight.schwer, color: t.color.tinte }
+  const dataRowLabel: TextStyle = { fontFamily: t.font.text, fontSize: t.size.m, color: t.color.tinte, flex: 1 }
+  const dataRowArrow: TextStyle = { fontFamily: t.font.text, fontWeight: t.weight.schwer, color: t.color.tinte }
 
   return {
     screen,
@@ -87,9 +87,9 @@ export function makeProfilStyles(t: UiTheme) {
     savedNotice,
     counterRow,
     saveErrorText,
-    datenCard,
-    datenRow,
-    datenRowLabel,
-    datenRowArrow,
+    datenCard: dataCard,
+    datenRow: dataRow,
+    datenRowLabel: dataRowLabel,
+    datenRowArrow: dataRowArrow,
   }
 }

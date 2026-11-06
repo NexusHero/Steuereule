@@ -23,7 +23,7 @@ const ALLOWED_ORIGIN = 'https://allowed.example.com'
 process.env.CORS_ALLOWED_ORIGINS = ALLOWED_ORIGIN
 const TRUSTED_ORIGIN_HEADERS = { origin: ALLOWED_ORIGIN }
 
-const STEUERJAHR = 2026
+const TAX_YEAR = 2026
 
 describe('REQ-027 — the Fristen-Warnmodus (§ 149/§ 152 AO), against the real server', () => {
   let app: NestFastifyApplication
@@ -63,8 +63,8 @@ describe('REQ-027 — the Fristen-Warnmodus (§ 149/§ 152 AO), against the real
     return response.headers.get('set-cookie')!.split(';')[0]!
   }
 
-  function getFristen(cookie: string, jahr = STEUERJAHR) {
-    return fetch(`${baseUrl}/v1/steuerjahre/${jahr}/fristen`, { headers: { cookie } })
+  function getDeadlines(cookie: string, year = TAX_YEAR) {
+    return fetch(`${baseUrl}/v1/steuerjahre/${year}/fristen`, { headers: { cookie } })
   }
 
   it(
@@ -72,54 +72,54 @@ describe('REQ-027 — the Fristen-Warnmodus (§ 149/§ 152 AO), against the real
     async () => {
       const cookie = await signUp('gwt-fristen@example.com')
 
-      const response = await getFristen(cookie)
+      const response = await getDeadlines(cookie)
       expect(response.status).toBe(200)
       const body = (await response.json()) as {
-        abgabefrist: string
-        heute: string
-        stufe: 'keine' | 'warnung' | 'abgelaufen'
-        verbleibendeTage: number
-        verspaetungszuschlag: { mindestsatzEur: number; prozentProMonat: number }
+        filingDeadline: string
+        today: string
+        level: 'keine' | 'warnung' | 'abgelaufen'
+        remainingDays: number
+        lateFilingSurcharge: { minimumRateEur: number; percentPerMonth: number }
       }
 
-      expect(body.abgabefrist).toBe('2027-07-31')
-      expect(body.heute).toMatch(/^\d{4}-\d{2}-\d{2}$/)
-      expect(['keine', 'warnung', 'abgelaufen']).toContain(body.stufe)
+      expect(body.filingDeadline).toBe('2027-07-31')
+      expect(body.today).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+      expect(['keine', 'warnung', 'abgelaufen']).toContain(body.level)
       // Self-consistency: verbleibendeTage = frist − heute (the core's whole-day arithmetic).
-      const tage = (iso: string) => {
+      const days = (iso: string) => {
         const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso)!
         return Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])) / 86_400_000
       }
-      expect(body.verbleibendeTage).toBe(tage(body.abgabefrist) - tage(body.heute))
-      expect(body.verspaetungszuschlag).toEqual({ mindestsatzEur: 25, prozentProMonat: 0.25 })
+      expect(body.remainingDays).toBe(days(body.filingDeadline) - days(body.today))
+      expect(body.lateFilingSurcharge).toEqual({ minimumRateEur: 25, percentPerMonth: 0.25 })
     },
   )
 
   it('pins each supported year to 31 July of the following year (the explicit Regelwerk)', async () => {
     const cookie = await signUp('regelwerk@example.com')
 
-    for (const [jahr, frist] of [[2024, '2025-07-31'], [2025, '2026-07-31'], [2026, '2027-07-31']] as const) {
-      const response = await getFristen(cookie, jahr)
+    for (const [year, frist] of [[2024, '2025-07-31'], [2025, '2026-07-31'], [2026, '2027-07-31']] as const) {
+      const response = await getDeadlines(cookie, year)
       expect(response.status).toBe(200)
-      const body = (await response.json()) as { abgabefrist: string }
-      expect(body.abgabefrist).toBe(frist)
+      const body = (await response.json()) as { filingDeadline: string }
+      expect(body.filingDeadline).toBe(frist)
     }
   })
 
   it('an unsupported year is an honest 400 — never a neighbour year\'s frist', async () => {
     const cookie = await signUp('jahr-400@example.com')
 
-    const response = await getFristen(cookie, 2023)
+    const response = await getDeadlines(cookie, 2023)
     expect(response.status).toBe(400)
   })
 
   it('is readable for a guest too — statutory facts, never user data (ADR-0045 value-first: the guest Cockpit shows the banner)', async () => {
-    const guestProbe = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/cockpit`)
+    const guestProbe = await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/cockpit`)
     const guestCookie = guestProbe.headers.get('set-cookie')!.split(';')[0]!
 
-    const response = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/fristen`, { headers: { cookie: guestCookie } })
+    const response = await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/fristen`, { headers: { cookie: guestCookie } })
     expect(response.status).toBe(200)
-    const body = (await response.json()) as { abgabefrist: string }
-    expect(body.abgabefrist).toBe('2027-07-31')
+    const body = (await response.json()) as { filingDeadline: string }
+    expect(body.filingDeadline).toBe('2027-07-31')
   })
 })

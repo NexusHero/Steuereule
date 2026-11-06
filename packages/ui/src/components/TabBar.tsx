@@ -32,8 +32,8 @@ export interface TabItem {
 
 export interface TabBarProps {
   readonly tabs: readonly TabItem[]
-  readonly aktiv: string
-  readonly onWechsel: (id: string) => void
+  readonly active: string
+  readonly onChange: (id: string) => void
   readonly bottomInset?: number
   readonly style?: StyleProp<ViewStyle>
   readonly testID?: string
@@ -47,7 +47,7 @@ interface TabLayout {
 
 const PILL_DURATION_MS = 420
 
-export function TabBar({ tabs, aktiv, onWechsel, bottomInset = 0, style, testID }: TabBarProps) {
+export function TabBar({ tabs, active, onChange, bottomInset = 0, style, testID }: TabBarProps) {
   const t = useTheme()
   const reducedMotion = useReducedMotion()
   const [layouts, setLayouts] = useState<Record<string, TabLayout>>({})
@@ -57,7 +57,7 @@ export function TabBar({ tabs, aktiv, onWechsel, bottomInset = 0, style, testID 
   const pillHeight = useRef(new Animated.Value(0)).current
   const settled = useRef(false)
 
-  const activeLayout = layouts[aktiv]
+  const activeLayout = layouts[active]
 
   if (activeLayout) {
     const [x1, y1, x2, y2] = motionTokens.easing.feder
@@ -98,12 +98,12 @@ export function TabBar({ tabs, aktiv, onWechsel, bottomInset = 0, style, testID 
         ) : null}
 
         {tabs.map((tab) => {
-          const an = tab.id === aktiv
+          const an = tab.id === active
           return (
             <Pressable
               key={tab.id}
               onLayout={(event) => rememberLayout(tab.id, event)}
-              onPress={() => onWechsel(tab.id)}
+              onPress={() => onChange(tab.id)}
               accessibilityRole="tab"
               accessibilityState={{ selected: an }}
               aria-current={an ? 'page' : undefined}

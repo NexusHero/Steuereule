@@ -13,14 +13,14 @@ import {
   type HolidayRegion,
   type IsoWeekday,
 } from '@steuereule/core'
-import { useArbeitswegControllerGet, useArbeitswegControllerPut, type ArbeitswegEingabenDto } from '@steuereule/api-client'
+import { useCommuteControllerGet, useCommuteControllerPut, type CommuteInputsDto } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 import { LoadingState } from '../shared/ScreenState'
-import { ganzzahlAus } from '../shared/ganzzahl'
+import { integerFrom } from '../shared/ganzzahl'
 
-export interface ArbeitstageScreenProps {
+export interface WorkdaysScreenProps {
   readonly onDone?: () => void
   readonly onBack?: () => void
   readonly taxYear?: number
@@ -28,16 +28,16 @@ export interface ArbeitstageScreenProps {
   readonly partnerName?: string
 }
 
-export function ArbeitstageScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YEAR, partnerName }: ArbeitstageScreenProps) {
+export function WorkdaysScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YEAR, partnerName }: WorkdaysScreenProps) {
   const bp = useBreakpoint()
   const { t: tr } = useTranslation(APP_NS)
-  const query = useArbeitswegControllerGet(taxYear, partnerName === undefined ? undefined : { person: 'B' })
+  const query = useCommuteControllerGet(taxYear, partnerName === undefined ? undefined : { person: 'B' })
 
   if (query.isPending) return <LoadingState bp={bp} label={tr('arbeitstage.loading')} />
-  const gespeichert = query.data?.status === 200 ? query.data.data.eingaben : null
+  const saved = query.data?.status === 200 ? query.data.data.inputs : null
   return (
-    <ArbeitstageFormular
-      gespeichert={gespeichert}
+    <WorkdaysForm
+      saved={saved}
       taxYear={taxYear}
       onDone={onDone}
       {...(onBack ? { onBack } : {})}
@@ -46,14 +46,14 @@ export function ArbeitstageScreen({ onDone = () => {}, onBack, taxYear = CURRENT
   )
 }
 
-function ArbeitstageFormular({
-  gespeichert,
+function WorkdaysForm({
+  saved,
   taxYear,
   partnerName,
   onDone,
   onBack,
 }: {
-  readonly gespeichert: ArbeitswegEingabenDto | null
+  readonly saved: CommuteInputsDto | null
   readonly taxYear: number
   readonly partnerName?: string
   readonly onDone: () => void
@@ -63,66 +63,66 @@ function ArbeitstageFormular({
   const t = useTheme()
   const styles = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
-  const speichern = useArbeitswegControllerPut()
+  const save = useCommuteControllerPut()
 
-  const [werktage, setWerktage] = useState<readonly IsoWeekday[]>((gespeichert?.arbeitstage as IsoWeekday[] | undefined) ?? [1, 2, 3, 4, 5])
-  const [urlaub, setUrlaub] = useState(textAus(gespeichert?.urlaubstage))
-  const [krank, setKrank] = useState(textAus(gespeichert?.krankheitstage))
-  const [homeoffice, setHomeoffice] = useState(textAus(gespeichert?.homeofficeTage))
-  const [km, setKm] = useState(textAus(gespeichert?.einfacheKm))
-  const [verkehrsmittel, setVerkehrsmittel] = useState<Verkehrsmittel | null>(gespeichert?.verkehrsmittel ?? null)
-  const [arbeitsort, setArbeitsort] = useState(gespeichert?.taetigkeitsstaette ?? '')
-  const [region, setRegion] = useState<HolidayRegion | null>((gespeichert?.feiertageRegion as HolidayRegion | null | undefined) ?? null)
-  const [feiertage, setFeiertage] = useState(textAus(gespeichert?.feiertage))
+  const [workdays, setWorkdays] = useState<readonly IsoWeekday[]>((saved?.arbeitstage as IsoWeekday[] | undefined) ?? [1, 2, 3, 4, 5])
+  const [vacation, setVacation] = useState(textFrom(saved?.urlaubstage))
+  const [sick, setSick] = useState(textFrom(saved?.krankheitstage))
+  const [homeOffice, setHomeOffice] = useState(textFrom(saved?.homeofficeTage))
+  const [km, setKm] = useState(textFrom(saved?.einfacheKm))
+  const [verkehrsmittel, setTransport] = useState<Transport | null>(saved?.verkehrsmittel ?? null)
+  const [workplace, setWorkplace] = useState(saved?.taetigkeitsstaette ?? '')
+  const [region, setRegion] = useState<HolidayRegion | null>((saved?.feiertageRegion as HolidayRegion | null | undefined) ?? null)
+  const [feiertage, setPublicHolidays] = useState(textFrom(saved?.feiertage))
 
   // F4: suggest the holidays that fall on the chosen working days; the user confirms or corrects them.
-  function waehleRegion(neu: HolidayRegion) {
-    setRegion(neu)
-    setFeiertage(String(holidaysOnWorkdays(taxYear, neu, werktage)))
+  function selectRegion(fresh: HolidayRegion) {
+    setRegion(fresh)
+    setPublicHolidays(String(holidaysOnWorkdays(taxYear, fresh, workdays)))
   }
-  const [fehler, setFehler] = useState(false)
+  const [error, setError] = useState(false)
 
   function toggle(tag: IsoWeekday) {
-    setWerktage((prev) => (prev.includes(tag) ? prev.filter((x) => x !== tag) : [...prev, tag].sort()))
+    setWorkdays((prev) => (prev.includes(tag) ? prev.filter((x) => x !== tag) : [...prev, tag].sort()))
   }
 
-  const eingabe = {
+  const input = {
     year: taxYear,
-    workdays: werktage,
-    vacationDays: int(urlaub),
-    sickDays: int(krank),
-    homeOfficeDays: int(homeoffice),
+    workdays,
+    vacationDays: int(vacation),
+    sickDays: int(sick),
+    homeOfficeDays: int(homeOffice),
     publicHolidays: int(feiertage),
   }
-  const ergebnis = werktage.length > 0 ? calculateWorkdays(eingabe) : null
-  const einfacheKm = ganzzahlAus(km)
-  const pauschale =
-    ergebnis?.kind === 'bestimmt' && einfacheKm !== null && verkehrsmittel !== null
-      ? pauschaleOderNull(einfacheKm, ergebnis.pendlertage, taxYear, verkehrsmittel === 'pkw')
+  const result = workdays.length > 0 ? calculateWorkdays(input) : null
+  const einfacheKm = integerFrom(km)
+  const allowance =
+    result?.kind === 'bestimmt' && einfacheKm !== null && verkehrsmittel !== null
+      ? allowanceOrNull(einfacheKm, result.commuteDays, taxYear, verkehrsmittel === 'pkw')
       : null
 
-  function weiter() {
-    if (ergebnis?.kind === 'widerspruch') return
-    setFehler(false)
-    speichern.mutate(
+  function next() {
+    if (result?.kind === 'widerspruch') return
+    setError(false)
+    save.mutate(
       {
         jahr: taxYear,
         data: {
-          arbeitstage: [...werktage],
-          urlaubstage: eingabe.vacationDays,
-          krankheitstage: eingabe.sickDays,
-          homeofficeTage: eingabe.homeOfficeDays,
+          arbeitstage: [...workdays],
+          urlaubstage: input.vacationDays,
+          krankheitstage: input.sickDays,
+          homeofficeTage: input.homeOfficeDays,
           einfacheKm,
           verkehrsmittel,
-          taetigkeitsstaette: arbeitsort.trim() === '' ? null : arbeitsort.trim(),
+          taetigkeitsstaette: workplace.trim() === '' ? null : workplace.trim(),
           feiertage: feiertage.trim() === '' ? null : int(feiertage),
           feiertageRegion: region,
         },
         ...(partnerName === undefined ? {} : { params: { person: 'B' as const } }),
       },
       {
-        onSuccess: (response) => (response.status === 200 ? onDone() : setFehler(true)),
-        onError: () => setFehler(true),
+        onSuccess: (response) => (response.status === 200 ? onDone() : setError(true)),
+        onError: () => setError(true),
       },
     )
   }
@@ -142,11 +142,11 @@ function ArbeitstageFormular({
           <Pressable
             key={tag}
             accessibilityRole="button"
-            aria-pressed={werktage.includes(tag)}
+            aria-pressed={workdays.includes(tag)}
             onPress={() => toggle(tag)}
-            style={[styles.weekday, werktage.includes(tag) ? styles.weekdayActive : null]}
+            style={[styles.weekday, workdays.includes(tag) ? styles.weekdayActive : null]}
           >
-            <Text style={werktage.includes(tag) ? styles.weekdayActiveText : styles.weekdayText}>
+            <Text style={workdays.includes(tag) ? styles.weekdayActiveText : styles.weekdayText}>
               {tr(`arbeitstage.weekdayNames.${tag}`)}
             </Text>
           </Pressable>
@@ -154,19 +154,19 @@ function ArbeitstageFormular({
       </View>
 
       <Feld label={tr('arbeitstage.urlaub')}>
-        <Input type="numeric" mono value={urlaub} onChange={setUrlaub} placeholder={tr('arbeitstage.daysPlaceholder')} accessibilityLabel={tr('arbeitstage.urlaub')} />
+        <Input type="numeric" mono value={vacation} onChange={setVacation} placeholder={tr('arbeitstage.daysPlaceholder')} accessibilityLabel={tr('arbeitstage.urlaub')} />
       </Feld>
       <Feld label={tr('arbeitstage.krank')}>
-        <Input type="numeric" mono value={krank} onChange={setKrank} placeholder={tr('arbeitstage.daysPlaceholder')} accessibilityLabel={tr('arbeitstage.krank')} />
+        <Input type="numeric" mono value={sick} onChange={setSick} placeholder={tr('arbeitstage.daysPlaceholder')} accessibilityLabel={tr('arbeitstage.krank')} />
       </Feld>
       <Feld label={tr('arbeitstage.homeoffice')}>
-        <Input type="numeric" mono value={homeoffice} onChange={setHomeoffice} placeholder={tr('arbeitstage.daysPlaceholder')} accessibilityLabel={tr('arbeitstage.homeoffice')} />
+        <Input type="numeric" mono value={homeOffice} onChange={setHomeOffice} placeholder={tr('arbeitstage.daysPlaceholder')} accessibilityLabel={tr('arbeitstage.homeoffice')} />
       </Feld>
 
       <Feld label={tr('arbeitstage.feiertage.region')}>
         <View style={styles.weekdayRow}>
           {[...GERMAN_STATES, ...SWISS_CANTONS].map((code) => (
-            <Chip key={code} aktiv={region === code} onPress={() => waehleRegion(code)} testID={`feiertage-region-${code}`}>
+            <Chip key={code} active={region === code} onPress={() => selectRegion(code)} testID={`feiertage-region-${code}`}>
               {tr(`arbeitstage.feiertage.regionen.${code}`)}
             </Chip>
           ))}
@@ -177,13 +177,13 @@ function ArbeitstageFormular({
           type="numeric"
           mono
           value={feiertage}
-          onChange={setFeiertage}
+          onChange={setPublicHolidays}
           placeholder={tr('arbeitstage.daysPlaceholder')}
           accessibilityLabel={tr('arbeitstage.feiertage.anzahl')}
         />
       </Feld>
 
-      {ergebnis !== null ? <Ergebnis ergebnis={ergebnis} /> : null}
+      {result !== null ? <Result result={result} /> : null}
 
       <Text style={styles.sectionLabel}>{tr('arbeitstage.weg.titel')}</Text>
       <Feld label={tr('arbeitstage.weg.km')}>
@@ -191,48 +191,48 @@ function ArbeitstageFormular({
       </Feld>
       <Feld label={tr('arbeitstage.weg.verkehrsmittel')}>
         <View style={styles.weekdayRow}>
-          {VERKEHRSMITTEL.map((mittel) => (
-            <Chip key={mittel} aktiv={verkehrsmittel === mittel} onPress={() => setVerkehrsmittel(mittel)}>
-              {tr(`arbeitstage.weg.mittel.${mittel}`)}
+          {TRANSPORT.map((means) => (
+            <Chip key={means} active={verkehrsmittel === means} onPress={() => setTransport(means)}>
+              {tr(`arbeitstage.weg.mittel.${means}`)}
             </Chip>
           ))}
         </View>
       </Feld>
       <Feld label={tr('arbeitstage.weg.arbeitsort')}>
-        <Input type="text" value={arbeitsort} onChange={setArbeitsort} placeholder={tr('arbeitstage.weg.arbeitsortPlaceholder')} accessibilityLabel={tr('arbeitstage.weg.arbeitsort')} />
+        <Input type="text" value={workplace} onChange={setWorkplace} placeholder={tr('arbeitstage.weg.arbeitsortPlaceholder')} accessibilityLabel={tr('arbeitstage.weg.arbeitsort')} />
       </Feld>
-      {pauschale !== null ? <Row label={tr('arbeitstage.weg.pauschale')} value={formatEuro(pauschale)} /> : null}
+      {allowance !== null ? <Row label={tr('arbeitstage.weg.pauschale')} value={formatEuro(allowance)} /> : null}
 
-      {fehler ? <Text style={styles.widerspruchBody}>{tr('arbeitstage.speichernFehler')}</Text> : null}
+      {error ? <Text style={styles.widerspruchBody}>{tr('arbeitstage.speichernFehler')}</Text> : null}
 
-      <Button onPress={weiter} disabled={speichern.isPending || ergebnis?.kind === 'widerspruch'} style={styles.cta}>
+      <Button onPress={next} disabled={save.isPending || result?.kind === 'widerspruch'} style={styles.cta}>
         {tr('arbeitstage.weiter')}
       </Button>
     </ScrollView>
   )
 }
 
-const VERKEHRSMITTEL: readonly Verkehrsmittel[] = ['pkw', 'oepnv', 'andere']
-type Verkehrsmittel = 'pkw' | 'oepnv' | 'andere'
+const TRANSPORT: readonly Transport[] = ['pkw', 'oepnv', 'andere']
+type Transport = 'pkw' | 'oepnv' | 'andere'
 
-function textAus(wert: number | null | undefined): string {
-  return wert === null || wert === undefined || wert === 0 ? '' : String(wert)
+function textFrom(value: number | null | undefined): string {
+  return value === null || value === undefined || value === 0 ? '' : String(value)
 }
 
-function pauschaleOderNull(einfacheKm: number, tage: number, jahr: number, mitPkw: boolean): number | null {
+function allowanceOrNull(einfacheKm: number, days: number, year: number, withCar: boolean): number | null {
   try {
-    return commuterAllowance({ oneWayKm: einfacheKm, days: tage, year: jahr, withCar: mitPkw })
+    return commuterAllowance({ oneWayKm: einfacheKm, days, year, withCar })
   } catch {
     return null
   }
 }
 
-function Ergebnis({ ergebnis }: { readonly ergebnis: ReturnType<typeof calculateWorkdays> }) {
+function Result({ result }: { readonly result: ReturnType<typeof calculateWorkdays> }) {
   const t = useTheme()
   const styles = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
 
-  if (ergebnis.kind === 'widerspruch') {
+  if (result.kind === 'widerspruch') {
     return (
       <View style={styles.widerspruchBlock}>
         <Text style={styles.widerspruchHeading}>{tr('arbeitstage.widerspruch')}</Text>
@@ -243,9 +243,9 @@ function Ergebnis({ ergebnis }: { readonly ergebnis: ReturnType<typeof calculate
 
   return (
     <View style={styles.ergebnisBlock}>
-      <Row label={tr('arbeitstage.wochentage')} value={String(ergebnis.wochentage)} />
-      <Row label={tr('arbeitstage.werktage')} value={String(ergebnis.werktage)} />
-      <Row label={tr('arbeitstage.pendlertage')} value={String(ergebnis.pendlertage)} />
+      <Row label={tr('arbeitstage.wochentage')} value={String(result.weekdays)} />
+      <Row label={tr('arbeitstage.werktage')} value={String(result.workdays)} />
+      <Row label={tr('arbeitstage.pendlertage')} value={String(result.commuteDays)} />
       <Text style={styles.honestyNote}>{tr('arbeitstage.honestyNote')}</Text>
     </View>
   )
@@ -301,17 +301,17 @@ function makeStyles(t: UiTheme) {
   const weekdayActive: ViewStyle = { backgroundColor: t.color.funke }
   const weekdayText: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontSize: t.size.s }
   const weekdayActiveText: TextStyle = { color: t.color.funkeTinte, fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.s }
-  const ergebnisBlock: ViewStyle = { marginTop: t.space.s4, padding: t.space.s4, backgroundColor: t.color.karte, borderWidth: t.space.kontur, borderColor: t.color.tinte, borderRadius: t.radius.s }
+  const resultBlock: ViewStyle = { marginTop: t.space.s4, padding: t.space.s4, backgroundColor: t.color.karte, borderWidth: t.space.kontur, borderColor: t.color.tinte, borderRadius: t.radius.s }
   const resultRow: ViewStyle = { flexDirection: 'row', justifyContent: 'space-between', marginBottom: t.space.s2 }
   const resultLabel: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.m }
   const resultValue: TextStyle = { color: t.color.tinte, fontFamily: t.font.mono, fontSize: t.size.m, fontVariant: ['tabular-nums'] }
   const honestyNote: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.xs, marginTop: t.space.s2 }
-  const widerspruchBlock: ViewStyle = { marginTop: t.space.s4, padding: t.space.s4, borderWidth: t.space.kontur, borderColor: t.color.warn, borderRadius: t.radius.s }
-  const widerspruchHeading: TextStyle = { color: t.color.tinte, fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size.m, marginBottom: t.space.s2 }
-  const widerspruchBody: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontSize: t.size.s }
+  const conflictBlock: ViewStyle = { marginTop: t.space.s4, padding: t.space.s4, borderWidth: t.space.kontur, borderColor: t.color.warn, borderRadius: t.radius.s }
+  const conflictHeading: TextStyle = { color: t.color.tinte, fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size.m, marginBottom: t.space.s2 }
+  const conflictBody: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontSize: t.size.s }
   const cta: ViewStyle = { marginTop: t.space.s4 }
   return {
     screen, wideScreen, headerRow, heading, help, sectionLabel, weekdayRow, weekday, weekdayActive, weekdayText, weekdayActiveText,
-    ergebnisBlock, resultRow, resultLabel, resultValue, honestyNote, widerspruchBlock, widerspruchHeading, widerspruchBody, cta,
+    ergebnisBlock: resultBlock, resultRow, resultLabel, resultValue, honestyNote, widerspruchBlock: conflictBlock, widerspruchHeading: conflictHeading, widerspruchBody: conflictBody, cta,
   }
 }

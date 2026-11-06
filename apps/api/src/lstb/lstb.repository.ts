@@ -14,5 +14,5 @@ export const WAGE_TAX_CERTIFICATE_REPOSITORY = Symbol('LSTB_REPOSITORY')
 /** The persistence seam for the LStB / wage tax certificate guided mask. */
 export interface WageTaxCertificateRepository {
   findForUserAndYear(userId: string, steuerjahr: number): Promise<WageTaxCertificateRecord | null>
-  setFeld(userId: string, steuerjahr: number, feld: WageTaxCertificateFieldId, wert: string | null): Promise<WageTaxCertificateRecord>
+  setField(userId: string, steuerjahr: number, field: WageTaxCertificateFieldId, value: string | null): Promise<WageTaxCertificateRecord>
 }

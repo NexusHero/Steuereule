@@ -8,10 +8,10 @@
 /**
  * @nullable
  */
-export type KindResponseDtoKindschaftsverhaeltnis = typeof KindResponseDtoKindschaftsverhaeltnis[keyof typeof KindResponseDtoKindschaftsverhaeltnis] | null;
+export type ChildResponseDtoKindschaftsverhaeltnis = typeof ChildResponseDtoKindschaftsverhaeltnis[keyof typeof ChildResponseDtoKindschaftsverhaeltnis] | null;
 
 
-export const KindResponseDtoKindschaftsverhaeltnis = {
+export const ChildResponseDtoKindschaftsverhaeltnis = {
   NUMBER_1: '1',
   NUMBER_2: '2',
   NUMBER_3: '3',
@@ -20,10 +20,10 @@ export const KindResponseDtoKindschaftsverhaeltnis = {
 /**
  * @nullable
  */
-export type KindResponseDtoKindschaftsverhaeltnisB = typeof KindResponseDtoKindschaftsverhaeltnisB[keyof typeof KindResponseDtoKindschaftsverhaeltnisB] | null;
+export type ChildResponseDtoKindschaftsverhaeltnisB = typeof ChildResponseDtoKindschaftsverhaeltnisB[keyof typeof ChildResponseDtoKindschaftsverhaeltnisB] | null;
 
 
-export const KindResponseDtoKindschaftsverhaeltnisB = {
+export const ChildResponseDtoKindschaftsverhaeltnisB = {
   NUMBER_1: '1',
   NUMBER_2: '2',
   NUMBER_3: '3',
@@ -32,10 +32,10 @@ export const KindResponseDtoKindschaftsverhaeltnisB = {
 /**
  * @nullable
  */
-export type KindResponseDtoAndererElternteil = typeof KindResponseDtoAndererElternteil[keyof typeof KindResponseDtoAndererElternteil] | null;
+export type ChildResponseDtoAndererElternteil = typeof ChildResponseDtoAndererElternteil[keyof typeof ChildResponseDtoAndererElternteil] | null;
 
 
-export const KindResponseDtoAndererElternteil = {
+export const ChildResponseDtoAndererElternteil = {
   Inland: 'Inland',
   Ausland: 'Ausland',
   Verstorben: 'Verstorben',
@@ -45,15 +45,15 @@ export const KindResponseDtoAndererElternteil = {
 /**
  * @nullable
  */
-export type KindResponseDtoAndererElternteilArt = typeof KindResponseDtoAndererElternteilArt[keyof typeof KindResponseDtoAndererElternteilArt] | null;
+export type ChildResponseDtoAndererElternteilArt = typeof ChildResponseDtoAndererElternteilArt[keyof typeof ChildResponseDtoAndererElternteilArt] | null;
 
 
-export const KindResponseDtoAndererElternteilArt = {
+export const ChildResponseDtoAndererElternteilArt = {
   NUMBER_1: '1',
   NUMBER_2: '2',
 } as const;
 
-export interface KindResponseDto {
+export interface ChildResponseDto {
   id: string;
   lfdNr: number;
   vorname: string;
@@ -64,15 +64,15 @@ export interface KindResponseDto {
   /** @nullable */
   kindergeldAnspruchEur?: string | null;
   /** @nullable */
-  kindschaftsverhaeltnis: KindResponseDtoKindschaftsverhaeltnis;
+  kindschaftsverhaeltnis: ChildResponseDtoKindschaftsverhaeltnis;
   /** @nullable */
-  kindschaftsverhaeltnisB: KindResponseDtoKindschaftsverhaeltnisB;
+  kindschaftsverhaeltnisB: ChildResponseDtoKindschaftsverhaeltnisB;
   /** @nullable */
   familienkasse: string | null;
   /** @nullable */
   wohnsitzInlandGanzjaehrig: boolean | null;
   /** @nullable */
-  andererElternteil: KindResponseDtoAndererElternteil;
+  andererElternteil: ChildResponseDtoAndererElternteil;
   /** @nullable */
   andererElternteilName: string | null;
   /** @nullable */
@@ -80,7 +80,7 @@ export interface KindResponseDto {
   /** @nullable */
   andererElternteilAdresse: string | null;
   /** @nullable */
-  andererElternteilArt: KindResponseDtoAndererElternteilArt;
+  andererElternteilArt: ChildResponseDtoAndererElternteilArt;
   /** @nullable */
   andererElternteilVerstorbenAm: string | null;
   /** @nullable */
@@ -100,33 +100,33 @@ export interface KindResponseDto {
      * Differenz-Kindergeld der deutschen Familienkasse in whole EUR.
      * @nullable
      */
-  differenzkindergeldEur?: string | null;
+  differentialChildBenefitEur?: string | null;
   /**
      * Gesamtanspruch auf Kindergeld oder vergleichbare Leistungen (Zeile 6).
      * @nullable
      */
-  gesamtanspruchEur?: string | null;
+  totalClaimEur?: string | null;
 }
 
 export interface KinderResponseDto {
-  kinder: KindResponseDto[];
-  anzahl: number;
-  kindergeldSumme: number;
-  freibetragGesamt: number;
+  kinder: ChildResponseDto[];
+  count: number;
+  childBenefitSum: number;
+  totalAllowance: number;
   /** Summe der Schweizer Kinderzulagen in EUR. */
-  schweizerKinderzulageSumme: number;
+  swissFamilyAllowanceSum: number;
   /** Summe des Differenz-Kindergeldes in EUR. */
-  differenzkindergeldSumme: number;
+  differentialChildBenefitSum: number;
 }
 
 /**
  * Kz 02: 1 = leiblich/adoptiert, 2 = Pflegekind, 3 = Enkel-/Stiefkind
  * @nullable
  */
-export type CreateKindDtoKindschaftsverhaeltnis = typeof CreateKindDtoKindschaftsverhaeltnis[keyof typeof CreateKindDtoKindschaftsverhaeltnis] | null;
+export type CreateChildDtoKindschaftsverhaeltnis = typeof CreateChildDtoKindschaftsverhaeltnis[keyof typeof CreateChildDtoKindschaftsverhaeltnis] | null;
 
 
-export const CreateKindDtoKindschaftsverhaeltnis = {
+export const CreateChildDtoKindschaftsverhaeltnis = {
   NUMBER_1: '1',
   NUMBER_2: '2',
   NUMBER_3: '3',
@@ -136,10 +136,10 @@ export const CreateKindDtoKindschaftsverhaeltnis = {
  * Kz 03, to the spouse — only for a joint return
  * @nullable
  */
-export type CreateKindDtoKindschaftsverhaeltnisB = typeof CreateKindDtoKindschaftsverhaeltnisB[keyof typeof CreateKindDtoKindschaftsverhaeltnisB] | null;
+export type CreateChildDtoKindschaftsverhaeltnisB = typeof CreateChildDtoKindschaftsverhaeltnisB[keyof typeof CreateChildDtoKindschaftsverhaeltnisB] | null;
 
 
-export const CreateKindDtoKindschaftsverhaeltnisB = {
+export const CreateChildDtoKindschaftsverhaeltnisB = {
   NUMBER_1: '1',
   NUMBER_2: '2',
   NUMBER_3: '3',
@@ -149,10 +149,10 @@ export const CreateKindDtoKindschaftsverhaeltnisB = {
  * The other parent outside this return (Zeilen 11–15).
  * @nullable
  */
-export type CreateKindDtoAndererElternteil = typeof CreateKindDtoAndererElternteil[keyof typeof CreateKindDtoAndererElternteil] | null;
+export type CreateChildDtoAndererElternteil = typeof CreateChildDtoAndererElternteil[keyof typeof CreateChildDtoAndererElternteil] | null;
 
 
-export const CreateKindDtoAndererElternteil = {
+export const CreateChildDtoAndererElternteil = {
   Inland: 'Inland',
   Ausland: 'Ausland',
   Verstorben: 'Verstorben',
@@ -162,25 +162,25 @@ export const CreateKindDtoAndererElternteil = {
 /**
  * @nullable
  */
-export type CreateKindDtoAndererElternteilArt = typeof CreateKindDtoAndererElternteilArt[keyof typeof CreateKindDtoAndererElternteilArt] | null;
+export type CreateChildDtoAndererElternteilArt = typeof CreateChildDtoAndererElternteilArt[keyof typeof CreateChildDtoAndererElternteilArt] | null;
 
 
-export const CreateKindDtoAndererElternteilArt = {
+export const CreateChildDtoAndererElternteilArt = {
   NUMBER_1: '1',
   NUMBER_2: '2',
 } as const;
 
-export interface CreateKindDto {
+export interface CreateChildDto {
   /**
      * Kz 02: 1 = leiblich/adoptiert, 2 = Pflegekind, 3 = Enkel-/Stiefkind
      * @nullable
      */
-  kindschaftsverhaeltnis?: CreateKindDtoKindschaftsverhaeltnis;
+  kindschaftsverhaeltnis?: CreateChildDtoKindschaftsverhaeltnis;
   /**
      * Kz 03, to the spouse — only for a joint return
      * @nullable
      */
-  kindschaftsverhaeltnisB?: CreateKindDtoKindschaftsverhaeltnisB;
+  kindschaftsverhaeltnisB?: CreateChildDtoKindschaftsverhaeltnisB;
   /** @nullable */
   familienkasse?: string | null;
   /**
@@ -192,7 +192,7 @@ export interface CreateKindDto {
      * The other parent outside this return (Zeilen 11–15).
      * @nullable
      */
-  andererElternteil?: CreateKindDtoAndererElternteil;
+  andererElternteil?: CreateChildDtoAndererElternteil;
   /** @nullable */
   andererElternteilName?: string | null;
   /** @nullable */
@@ -200,7 +200,7 @@ export interface CreateKindDto {
   /** @nullable */
   andererElternteilAdresse?: string | null;
   /** @nullable */
-  andererElternteilArt?: CreateKindDtoAndererElternteilArt;
+  andererElternteilArt?: CreateChildDtoAndererElternteilArt;
   /** @nullable */
   andererElternteilVerstorbenAm?: string | null;
   /**
@@ -240,10 +240,10 @@ export interface CreateKindDto {
  * Kz 02: 1 = leiblich/adoptiert, 2 = Pflegekind, 3 = Enkel-/Stiefkind
  * @nullable
  */
-export type UpdateKindDtoKindschaftsverhaeltnis = typeof UpdateKindDtoKindschaftsverhaeltnis[keyof typeof UpdateKindDtoKindschaftsverhaeltnis] | null;
+export type UpdateChildDtoKindschaftsverhaeltnis = typeof UpdateChildDtoKindschaftsverhaeltnis[keyof typeof UpdateChildDtoKindschaftsverhaeltnis] | null;
 
 
-export const UpdateKindDtoKindschaftsverhaeltnis = {
+export const UpdateChildDtoKindschaftsverhaeltnis = {
   NUMBER_1: '1',
   NUMBER_2: '2',
   NUMBER_3: '3',
@@ -253,10 +253,10 @@ export const UpdateKindDtoKindschaftsverhaeltnis = {
  * Kz 03, to the spouse — only for a joint return
  * @nullable
  */
-export type UpdateKindDtoKindschaftsverhaeltnisB = typeof UpdateKindDtoKindschaftsverhaeltnisB[keyof typeof UpdateKindDtoKindschaftsverhaeltnisB] | null;
+export type UpdateChildDtoKindschaftsverhaeltnisB = typeof UpdateChildDtoKindschaftsverhaeltnisB[keyof typeof UpdateChildDtoKindschaftsverhaeltnisB] | null;
 
 
-export const UpdateKindDtoKindschaftsverhaeltnisB = {
+export const UpdateChildDtoKindschaftsverhaeltnisB = {
   NUMBER_1: '1',
   NUMBER_2: '2',
   NUMBER_3: '3',
@@ -266,10 +266,10 @@ export const UpdateKindDtoKindschaftsverhaeltnisB = {
  * The other parent outside this return (Zeilen 11–15).
  * @nullable
  */
-export type UpdateKindDtoAndererElternteil = typeof UpdateKindDtoAndererElternteil[keyof typeof UpdateKindDtoAndererElternteil] | null;
+export type UpdateChildDtoAndererElternteil = typeof UpdateChildDtoAndererElternteil[keyof typeof UpdateChildDtoAndererElternteil] | null;
 
 
-export const UpdateKindDtoAndererElternteil = {
+export const UpdateChildDtoAndererElternteil = {
   Inland: 'Inland',
   Ausland: 'Ausland',
   Verstorben: 'Verstorben',
@@ -279,25 +279,25 @@ export const UpdateKindDtoAndererElternteil = {
 /**
  * @nullable
  */
-export type UpdateKindDtoAndererElternteilArt = typeof UpdateKindDtoAndererElternteilArt[keyof typeof UpdateKindDtoAndererElternteilArt] | null;
+export type UpdateChildDtoAndererElternteilArt = typeof UpdateChildDtoAndererElternteilArt[keyof typeof UpdateChildDtoAndererElternteilArt] | null;
 
 
-export const UpdateKindDtoAndererElternteilArt = {
+export const UpdateChildDtoAndererElternteilArt = {
   NUMBER_1: '1',
   NUMBER_2: '2',
 } as const;
 
-export interface UpdateKindDto {
+export interface UpdateChildDto {
   /**
      * Kz 02: 1 = leiblich/adoptiert, 2 = Pflegekind, 3 = Enkel-/Stiefkind
      * @nullable
      */
-  kindschaftsverhaeltnis?: UpdateKindDtoKindschaftsverhaeltnis;
+  kindschaftsverhaeltnis?: UpdateChildDtoKindschaftsverhaeltnis;
   /**
      * Kz 03, to the spouse — only for a joint return
      * @nullable
      */
-  kindschaftsverhaeltnisB?: UpdateKindDtoKindschaftsverhaeltnisB;
+  kindschaftsverhaeltnisB?: UpdateChildDtoKindschaftsverhaeltnisB;
   /** @nullable */
   familienkasse?: string | null;
   /**
@@ -309,7 +309,7 @@ export interface UpdateKindDto {
      * The other parent outside this return (Zeilen 11–15).
      * @nullable
      */
-  andererElternteil?: UpdateKindDtoAndererElternteil;
+  andererElternteil?: UpdateChildDtoAndererElternteil;
   /** @nullable */
   andererElternteilName?: string | null;
   /** @nullable */
@@ -317,7 +317,7 @@ export interface UpdateKindDto {
   /** @nullable */
   andererElternteilAdresse?: string | null;
   /** @nullable */
-  andererElternteilArt?: UpdateKindDtoAndererElternteilArt;
+  andererElternteilArt?: UpdateChildDtoAndererElternteilArt;
   /** @nullable */
   andererElternteilVerstorbenAm?: string | null;
   /**

@@ -1,27 +1,27 @@
 // Pure mask tests for the Onboarding tax-id fields. Named .test.tsx (not .ts) because the vitest
 // `include` glob for this app is tsx-only (see apps/mobile-web/vitest.config.ts).
 import { describe, it, expect } from 'vitest'
-import { formatSteuerId, countDigits, sanitizeTaxNumberInput, formatStoredTaxNumber } from './format'
+import { formatTaxId, countDigits, sanitizeTaxNumberInput, formatStoredTaxNumber } from './format'
 
 describe('formatSteuerId', () => {
   it('groups 11 digits as 2-3-3-3', () => {
-    expect(formatSteuerId('12345678901')).toBe('12 345 678 901')
+    expect(formatTaxId('12345678901')).toBe('12 345 678 901')
   })
 
   it('strips non-digit characters before grouping', () => {
-    expect(formatSteuerId('12-345/678 901')).toBe('12 345 678 901')
+    expect(formatTaxId('12-345/678 901')).toBe('12 345 678 901')
   })
 
   it('caps input at 11 digits', () => {
-    expect(formatSteuerId('123456789012345')).toBe('12 345 678 901')
+    expect(formatTaxId('123456789012345')).toBe('12 345 678 901')
   })
 
   it('formats partial groups as digits arrive', () => {
-    expect(formatSteuerId('123')).toBe('12 3')
+    expect(formatTaxId('123')).toBe('12 3')
   })
 
   it('returns an empty string for empty input', () => {
-    expect(formatSteuerId('')).toBe('')
+    expect(formatTaxId('')).toBe('')
   })
 })
 

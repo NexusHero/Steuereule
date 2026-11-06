@@ -126,11 +126,11 @@ describe('GET/PUT /v1/profile', () => {
   })
 
   it('accepts a payload with no steuernummer at all (optional field)', async () => {
-    const { steuernummer: _steuernummer, ...withoutSteuernummer } = VALID_PAYLOAD
-    const response = await app.inject({ method: 'PUT', url: '/v1/profile', payload: withoutSteuernummer })
+    const { steuernummer: _taxNumber, ...withoutTaxNumber } = VALID_PAYLOAD
+    const response = await app.inject({ method: 'PUT', url: '/v1/profile', payload: withoutTaxNumber })
 
     expect(response.statusCode).toBe(200)
-    expect(response.json()).toEqual({ ...withoutSteuernummer, steuernummer: null })
+    expect(response.json()).toEqual({ ...withoutTaxNumber, steuernummer: null })
   })
 
   it('ignores a userId supplied in the request body — scoping only ever comes from the guard', async () => {

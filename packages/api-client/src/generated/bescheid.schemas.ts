@@ -8,10 +8,10 @@
 /**
  * The bescheid-phase sub-state.
  */
-export type BescheidResponseDtoStatus = typeof BescheidResponseDtoStatus[keyof typeof BescheidResponseDtoStatus];
+export type AssessmentResponseDtoStatus = typeof AssessmentResponseDtoStatus[keyof typeof AssessmentResponseDtoStatus];
 
 
-export const BescheidResponseDtoStatus = {
+export const AssessmentResponseDtoStatus = {
   eingegangen: 'eingegangen',
   geprüft: 'geprüft',
   'einspruch-eingelegt': 'einspruch-eingelegt',
@@ -20,51 +20,51 @@ export const BescheidResponseDtoStatus = {
 /**
  * The field’s capture state.
  */
-export type BescheidFeldDtoKind = typeof BescheidFeldDtoKind[keyof typeof BescheidFeldDtoKind];
+export type AssessmentFieldDtoKind = typeof AssessmentFieldDtoKind[keyof typeof AssessmentFieldDtoKind];
 
 
-export const BescheidFeldDtoKind = {
+export const AssessmentFieldDtoKind = {
   erfasst: 'erfasst',
   offen: 'offen',
   unklar: 'unklar',
 } as const;
 
-export interface BescheidFeldDto {
+export interface AssessmentFieldDto {
   /** The machine field id (BescheidFeld). */
   id: string;
   /** The field’s capture state. */
-  kind: BescheidFeldDtoKind;
+  kind: AssessmentFieldDtoKind;
   /** The whole-euro amount — present only when kind === "erfasst" (erstattung may be negative). */
-  wert?: number;
+  value?: number;
 }
 
-export type BescheidAbweichungDtoFeld = typeof BescheidAbweichungDtoFeld[keyof typeof BescheidAbweichungDtoFeld];
+export type AssessmentDeviationDtoField = typeof AssessmentDeviationDtoField[keyof typeof AssessmentDeviationDtoField];
 
 
-export const BescheidAbweichungDtoFeld = {
+export const AssessmentDeviationDtoField = {
   einnahmen: 'einnahmen',
   vorsorgeaufwand: 'vorsorgeaufwand',
   anrechnung: 'anrechnung',
 } as const;
 
-export interface BescheidAbweichungDto {
-  feld: BescheidAbweichungDtoFeld;
+export interface AssessmentDeviationDto {
+  field: AssessmentDeviationDtoField;
   /** The Bescheid figure (whole euros). */
-  bescheid: number;
+  assessment: number;
   /** The computed figure (whole euros). */
-  berechnet: number;
+  calculated: number;
   /** bescheid − berechnet. */
-  differenz: number;
+  difference: number;
 }
 
-export interface BescheidAbgleichDto {
+export interface AssessmentComparisonDto {
   /** The deviations (empty = alles stimmt überein). */
-  abweichungen: BescheidAbweichungDto[];
+  deviations: AssessmentDeviationDto[];
   /** The computed side is incomplete (berechne returned "offen"). */
-  berechnungUnvollstaendig: boolean;
+  calculationIncomplete: boolean;
 }
 
-export interface BescheidFristDto {
+export interface AssessmentDeadlineDto {
   /**
      * Bescheiddatum (ISO yyyy-mm-dd), null until set.
      * @nullable
@@ -74,17 +74,17 @@ export interface BescheidFristDto {
      * Einspruchsfrist-Ende (Bescheiddatum + 1 Monat), null until the datum is set.
      * @nullable
      */
-  fristEnde: string | null;
+  deadlineEnd: string | null;
   /**
      * Whole days left (negative = abgelaufen), null until the datum is set.
      * @nullable
      */
-  verbleibendeTage: number | null;
+  remainingDays: number | null;
 }
 
-export interface BescheidResponseDto {
+export interface AssessmentResponseDto {
   /** The bescheid-phase sub-state. */
-  status: BescheidResponseDtoStatus;
+  status: AssessmentResponseDtoStatus;
   /**
      * Bescheiddatum (ISO yyyy-mm-dd).
      * @nullable
@@ -96,73 +96,73 @@ export interface BescheidResponseDto {
      */
   einspruchGrund: string | null;
   /** The five figures, in paper order. */
-  felder: BescheidFeldDto[];
+  fields: AssessmentFieldDto[];
   /** The Abgleich (Bescheid vs. berechnet). */
-  abgleich: BescheidAbgleichDto;
+  reconciliation: AssessmentComparisonDto;
   /** The § 355 AO Einspruchsfrist. */
-  frist: BescheidFristDto;
+  frist: AssessmentDeadlineDto;
   /** The legal next sub-states (for the UI to offer only what is legal). */
-  naechsteZustaende: string[];
+  nextStates: string[];
 }
 
 /**
  * The field’s capture state.
  */
-export type PutBescheidFeldDtoKind = typeof PutBescheidFeldDtoKind[keyof typeof PutBescheidFeldDtoKind];
+export type PutAssessmentFieldDtoKind = typeof PutAssessmentFieldDtoKind[keyof typeof PutAssessmentFieldDtoKind];
 
 
-export const PutBescheidFeldDtoKind = {
+export const PutAssessmentFieldDtoKind = {
   erfasst: 'erfasst',
   offen: 'offen',
   unklar: 'unklar',
 } as const;
 
-export interface PutBescheidFeldDto {
+export interface PutAssessmentFieldDto {
   /** The field’s capture state. */
-  kind: PutBescheidFeldDtoKind;
+  kind: PutAssessmentFieldDtoKind;
   /** The whole-euro amount — present only when kind === "erfasst". Sign/validity per field is validated via @steuereule/core (erstattung may be negative). */
-  wert?: number;
+  value?: number;
 }
 
-export interface SetBescheidDatumDto {
+export interface SetAssessmentDateDto {
   /**
      * Bescheiddatum (ISO yyyy-mm-dd).
      * @nullable
      */
-  datum?: string | null;
+  date?: string | null;
 }
 
 /**
  * The target sub-state.
  */
-export type SetBescheidStatusDtoStatus = typeof SetBescheidStatusDtoStatus[keyof typeof SetBescheidStatusDtoStatus];
+export type SetAssessmentStatusDtoStatus = typeof SetAssessmentStatusDtoStatus[keyof typeof SetAssessmentStatusDtoStatus];
 
 
-export const SetBescheidStatusDtoStatus = {
+export const SetAssessmentStatusDtoStatus = {
   eingegangen: 'eingegangen',
   geprüft: 'geprüft',
   'einspruch-eingelegt': 'einspruch-eingelegt',
 } as const;
 
-export interface SetBescheidStatusDto {
+export interface SetAssessmentStatusDto {
   /** The target sub-state. */
-  status: SetBescheidStatusDtoStatus;
+  status: SetAssessmentStatusDtoStatus;
 }
 
 /**
  * The Einspruch-Grund (closed set).
  */
-export type SetEinspruchDtoGrund = typeof SetEinspruchDtoGrund[keyof typeof SetEinspruchDtoGrund];
+export type SetAppealDtoReason = typeof SetAppealDtoReason[keyof typeof SetAppealDtoReason];
 
 
-export const SetEinspruchDtoGrund = {
+export const SetAppealDtoReason = {
   'betrag-falsch': 'betrag-falsch',
   'beleg-nicht-beruecksichtigt': 'beleg-nicht-beruecksichtigt',
   sonstiges: 'sonstiges',
 } as const;
 
-export interface SetEinspruchDto {
+export interface SetAppealDto {
   /** The Einspruch-Grund (closed set). */
-  grund: SetEinspruchDtoGrund;
+  reason: SetAppealDtoReason;
 }
 

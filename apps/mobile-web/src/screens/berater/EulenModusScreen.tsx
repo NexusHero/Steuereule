@@ -3,51 +3,51 @@ import { Pressable, ScrollView, Text, View, type TextStyle, type ViewStyle } fro
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button, Card, Chip, Option, useBreakpoint, useTheme, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
-import { formatEuro, type EulenKartenAnzeige } from '@steuereule/core'
+import { formatEuro, type OwlCardsDisplay } from '@steuereule/core'
 import {
-  getEulenModusControllerGetEinstellungQueryKey,
-  getEulenModusControllerGetKartenQueryKey,
-  useEulenModusControllerGetEinstellung,
-  useEulenModusControllerGetKarten,
-  useEulenModusControllerSetEinstellung,
-  useEulenModusControllerVerwerfeKarte,
+  getOwlModeControllerGetSettingQueryKey,
+  getOwlModeControllerGetCardsQueryKey,
+  useOwlModeControllerGetSetting,
+  useOwlModeControllerGetCards,
+  useOwlModeControllerSetSetting,
+  useOwlModeControllerDismissCard,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 import { ErrorState, LoadingState } from '../shared/ScreenState'
 
-export interface EulenModusScreenProps {
+export interface OwlModeScreenProps {
   readonly onDone?: () => void
   readonly onBack?: () => void
   readonly taxYear?: number
-  readonly initialKarten?: readonly EulenKartenAnzeige[] | undefined
-  readonly onDismissKarte?: ((fingerprint: string) => Promise<void> | void) | undefined
-  readonly onAcceptWeg?: ((karteId: string, wegIndex: number) => void) | undefined
-  readonly optInAktiviert?: boolean | undefined
+  readonly initialCards?: readonly OwlCardsDisplay[] | undefined
+  readonly onDismissCard?: ((fingerprint: string) => Promise<void> | void) | undefined
+  readonly onAcceptPath?: ((cardId: string, pathIndex: number) => void) | undefined
+  readonly optInEnabled?: boolean | undefined
   readonly onToggleOptIn?: ((aktiviert: boolean) => Promise<void> | void) | undefined
 }
 
-export function EulenModusScreen(props: EulenModusScreenProps) {
-  if (props.initialKarten !== undefined) {
-    return <EulenModusScreenView {...props} initialKarten={props.initialKarten} />
+export function OwlModeScreen(props: OwlModeScreenProps) {
+  if (props.initialCards !== undefined) {
+    return <OwlModeScreenView {...props} initialCards={props.initialCards} />
   }
-  return <ConnectedEulenModusScreen {...props} />
+  return <ConnectedOwlModeScreen {...props} />
 }
 
-function ConnectedEulenModusScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YEAR, onAcceptWeg }: EulenModusScreenProps) {
+function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YEAR, onAcceptPath }: OwlModeScreenProps) {
   const bp = useBreakpoint()
   const { t: tr } = useTranslation(APP_NS)
   const queryClient = useQueryClient()
-  const einstellungQuery = useEulenModusControllerGetEinstellung()
-  const kartenQuery = useEulenModusControllerGetKarten(taxYear)
-  const setEinstellung = useEulenModusControllerSetEinstellung()
-  const verwerfeKarte = useEulenModusControllerVerwerfeKarte()
+  const settingQuery = useOwlModeControllerGetSetting()
+  const cardsQuery = useOwlModeControllerGetCards(taxYear)
+  const setSetting = useOwlModeControllerSetSetting()
+  const dismissCard = useOwlModeControllerDismissCard()
 
-  if (einstellungQuery.isPending || kartenQuery.isPending) {
+  if (settingQuery.isPending || cardsQuery.isPending) {
     return <LoadingState bp={bp} label={tr('eule.loading', 'Eulen-Modus wird geladen …')} />
   }
-  if (einstellungQuery.isError || kartenQuery.isError || einstellungQuery.data.status !== 200 || kartenQuery.data.status !== 200) {
+  if (settingQuery.isError || cardsQuery.isError || settingQuery.data.status !== 200 || cardsQuery.data.status !== 200) {
     return (
       <ErrorState
         bp={bp}
@@ -55,8 +55,8 @@ function ConnectedEulenModusScreen({ onDone = () => {}, onBack, taxYear = CURREN
         message={tr('eule.loadError.message', 'Der Eulen-Modus konnte nicht geladen werden.')}
         retryLabel={tr('eule.loadError.retry', 'Noch mal versuchen')}
         onRetry={() => {
-          void einstellungQuery.refetch()
-          void kartenQuery.refetch()
+          void settingQuery.refetch()
+          void cardsQuery.refetch()
         }}
       />
     )
@@ -64,64 +64,64 @@ function ConnectedEulenModusScreen({ onDone = () => {}, onBack, taxYear = CURREN
 
   const invalidate = async () => {
     await Promise.all([
-      queryClient.invalidateQueries({ queryKey: getEulenModusControllerGetEinstellungQueryKey() }),
-      queryClient.invalidateQueries({ queryKey: getEulenModusControllerGetKartenQueryKey(taxYear) }),
+      queryClient.invalidateQueries({ queryKey: getOwlModeControllerGetSettingQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: getOwlModeControllerGetCardsQueryKey(taxYear) }),
     ])
   }
 
-  const karten: readonly EulenKartenAnzeige[] = kartenQuery.data.data.karten.map((k) => ({
+  const cards: readonly OwlCardsDisplay[] = cardsQuery.data.data.cards.map((k) => ({
     ...k,
-    betragEur: k.betragEur ?? null,
-    ...(k.wege && k.wege.length === 2 ? { wege: [k.wege[0]!, k.wege[1]!] as const } : { wege: undefined }),
+    amountEur: k.amountEur ?? null,
+    ...(k.paths && k.paths.length === 2 ? { paths: [k.paths[0]!, k.paths[1]!] as const } : { paths: undefined }),
   }))
 
   return (
-    <EulenModusScreenView
+    <OwlModeScreenView
       onDone={onDone}
       {...(onBack ? { onBack } : {})}
       taxYear={taxYear}
-      initialKarten={karten}
-      optInAktiviert={einstellungQuery.data.data.aktiviert}
+      initialCards={cards}
+      optInEnabled={settingQuery.data.data.aktiviert}
       onToggleOptIn={async (aktiviert) => {
-        await setEinstellung.mutateAsync({ data: { aktiviert } })
+        await setSetting.mutateAsync({ data: { aktiviert } })
         await invalidate()
       }}
-      onDismissKarte={async (fingerprint) => {
-        await verwerfeKarte.mutateAsync({ jahr: taxYear, fingerprint })
+      onDismissCard={async (fingerprint) => {
+        await dismissCard.mutateAsync({ jahr: taxYear, fingerprint })
         await invalidate()
       }}
-      {...(onAcceptWeg ? { onAcceptWeg } : {})}
+      {...(onAcceptPath ? { onAcceptPath } : {})}
     />
   )
 }
 
-function EulenModusScreenView({
+function OwlModeScreenView({
   onDone = () => {},
   onBack,
   taxYear: _taxYear = CURRENT_TAX_YEAR,
-  initialKarten = [],
-  onDismissKarte,
-  onAcceptWeg,
-  optInAktiviert = true,
+  initialCards = [],
+  onDismissCard,
+  onAcceptPath,
+  optInEnabled = true,
   onToggleOptIn,
-}: EulenModusScreenProps & { readonly initialKarten: readonly EulenKartenAnzeige[] }) {
+}: OwlModeScreenProps & { readonly initialCards: readonly OwlCardsDisplay[] }) {
   const bp = useBreakpoint()
   const t = useTheme()
   const styles = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
 
   const [tab, setTab] = useState<'fragen' | 'eule'>('eule')
-  const [karten, setKarten] = useState<readonly EulenKartenAnzeige[]>(initialKarten)
-  const [aktiverIndex, setAktiverIndex] = useState(0)
+  const [cards, setCards] = useState<readonly OwlCardsDisplay[]>(initialCards)
+  const [activeIndex, setActiveIndex] = useState(0)
 
-  const aktiveKarte = karten[aktiverIndex]
+  const activeCard = cards[activeIndex]
 
   async function handleDismiss(fingerprint: string) {
-    if (onDismissKarte) await onDismissKarte(fingerprint)
-    const neu = karten.filter((k) => k.fingerprint !== fingerprint)
-    setKarten(neu)
-    if (aktiverIndex >= neu.length && neu.length > 0) {
-      setAktiverIndex(neu.length - 1)
+    if (onDismissCard) await onDismissCard(fingerprint)
+    const fresh = cards.filter((k) => k.fingerprint !== fingerprint)
+    setCards(fresh)
+    if (activeIndex >= fresh.length && fresh.length > 0) {
+      setActiveIndex(fresh.length - 1)
     }
   }
 
@@ -134,8 +134,8 @@ function EulenModusScreenView({
       {onToggleOptIn ? (
         <View style={{ marginBottom: t.space.s4 }}>
           <Option
-            gewaehlt={optInAktiviert}
-            onPress={() => void onToggleOptIn(!optInAktiviert)}
+            selected={optInEnabled}
+            onPress={() => void onToggleOptIn(!optInEnabled)}
             testID="eulen-modus-opt-in"
           >
             {tr('eule.optInLabel', 'Eulen-Modus aktivieren (proaktive Hinweise ab 50 €, keine personenbezogenen Daten an KI)')}
@@ -161,7 +161,7 @@ function EulenModusScreenView({
           style={[styles.tabButton, tab === 'eule' && styles.tabButtonActive]}
         >
           <Text style={[styles.tabText, tab === 'eule' && styles.tabTextActive]}>
-            {tr('eule.tabEule', 'Eule fragt dich')} · {karten.length}
+            {tr('eule.tabEule', 'Eule fragt dich')} · {cards.length}
           </Text>
         </Pressable>
       </View>
@@ -176,7 +176,7 @@ function EulenModusScreenView({
             )}
           </Text>
         </View>
-      ) : karten.length === 0 ? (
+      ) : cards.length === 0 ? (
         <Card style={styles.emptyCard}>
           <Text style={styles.emptyTitle}>{tr('eule.emptyTitle', 'Alles geprüft. Keine offenen Fragen!')}</Text>
           <Text style={styles.emptyHelp}>
@@ -187,39 +187,39 @@ function EulenModusScreenView({
           </Text>
           <Text style={styles.rechtsstand}>{tr('eule.rechtsstand', 'Rechtsstand: 01.01.2025 · Zuletzt geprüft: heute')}</Text>
         </Card>
-      ) : aktiveKarte ? (
+      ) : activeCard ? (
         <View>
           <Text style={styles.counter}>
-            {tr('eule.counter', { current: aktiverIndex + 1, total: karten.length, defaultValue: `Frage ${aktiverIndex + 1} von ${karten.length}` })}
+            {tr('eule.counter', { current: activeIndex + 1, total: cards.length, defaultValue: `Frage ${activeIndex + 1} von ${cards.length}` })}
           </Text>
           <Card style={styles.kiCard}>
             <View style={styles.cardHeader}>
-              <Chip aktiv>{aktiveKarte.titel}</Chip>
-              {aktiveKarte.betragEur !== null && (
-                <Text style={styles.betragBadge}>{`+${formatEuro(aktiveKarte.betragEur)}`}</Text>
+              <Chip active>{activeCard.title}</Chip>
+              {activeCard.amountEur !== null && (
+                <Text style={styles.betragBadge}>{`+${formatEuro(activeCard.amountEur)}`}</Text>
               )}
             </View>
 
-            <Text style={styles.botschaft}>{aktiveKarte.botschaft}</Text>
-            <Text style={styles.begruendung}>{aktiveKarte.begruendung}</Text>
+            <Text style={styles.botschaft}>{activeCard.message}</Text>
+            <Text style={styles.begruendung}>{activeCard.reason}</Text>
 
-            {aktiveKarte.wege && (
+            {activeCard.paths && (
               <View style={styles.wegeBlock}>
                 <Text style={styles.wegeTitle}>{tr('eule.wegeTitle', 'Empfohlene Vorgehensweise (StBerG-Grenze):')}</Text>
-                {aktiveKarte.wege.map((weg, idx) => (
+                {activeCard.paths.map((path, idx) => (
                   <Pressable
-                    key={weg.name}
+                    key={path.name}
                     accessibilityRole="button"
-                    onPress={() => onAcceptWeg?.(aktiveKarte.id, idx)}
-                    style={[styles.wegOption, weg.risiko === 'sicher' ? styles.wegSicher : styles.wegRisiko]}
+                    onPress={() => onAcceptPath?.(activeCard.id, idx)}
+                    style={[styles.wegOption, path.risk === 'sicher' ? styles.wegSicher : styles.wegRisiko]}
                   >
                     <View style={styles.wegHeader}>
-                      <Text style={styles.wegName}>{weg.name}</Text>
-                      <Text style={styles.wegBetrag}>{formatEuro(weg.betragEur)}</Text>
+                      <Text style={styles.wegName}>{path.name}</Text>
+                      <Text style={styles.wegBetrag}>{formatEuro(path.amountEur)}</Text>
                     </View>
-                    <Text style={styles.wegDesc}>{weg.beschreibung}</Text>
+                    <Text style={styles.wegDesc}>{path.description}</Text>
                     <Text style={styles.wegBadge}>
-                      {weg.risiko === 'sicher' ? '✓ Sicherer Weg' : '⚠ Riskanterer Weg'}
+                      {path.risk === 'sicher' ? '✓ Sicherer Weg' : '⚠ Riskanterer Weg'}
                     </Text>
                   </Pressable>
                 ))}
@@ -227,22 +227,22 @@ function EulenModusScreenView({
             )}
 
             <View style={styles.quelleRow}>
-              <Text style={styles.quelleText}>{aktiveKarte.quelleUebersetzt}</Text>
+              <Text style={styles.quelleText}>{activeCard.sourceTranslated}</Text>
             </View>
 
             <View style={styles.cardFooter}>
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Stimmt nicht"
-                onPress={() => handleDismiss(aktiveKarte.fingerprint)}
+                onPress={() => handleDismiss(activeCard.fingerprint)}
                 style={styles.dismissButton}
               >
                 <Text style={styles.dismissText}>{tr('eule.dismiss', 'Stimmt nicht')}</Text>
               </Pressable>
-              {aktiverIndex < karten.length - 1 && (
+              {activeIndex < cards.length - 1 && (
                 <Button
-                  variante="ghost"
-                  onPress={() => setAktiverIndex(aktiverIndex + 1)}
+                  variant="ghost"
+                  onPress={() => setActiveIndex(activeIndex + 1)}
                   style={styles.nextButton}
                 >
                   {tr('eule.next', 'Nächste Frage →')}

@@ -1,7 +1,7 @@
 // REQ-022 (ticket 10.2) — Veranlagungsartenvergleich screen: `aussage`/`kind` FIRST (ADR-0034 —
 // `empfehlung` only ever on `eindeutig`), two numbers each with a Herkunfts-Chip, and honest
 // "zu knapp"/"können wir noch nicht" / gate states. Exercises the real generated
-// `useVeranlagungsartenvergleichControllerGetVergleich` hook against the endpoint, with MSW
+// `useFilingTypeComparisonControllerGetComparison` hook against the endpoint, with MSW
 // mocking the wire shape (the same pattern as CockpitScreen.test.tsx).
 import { describe, it, expect } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
@@ -10,43 +10,43 @@ import { ThemeProvider } from '@steuereule/ui'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import { createAppI18n } from '../../i18n/app-i18n'
-import { VeranlagungsartenvergleichScreen } from './VeranlagungsartenvergleichScreen'
+import { FilingTypeComparisonScreen } from './VeranlagungsartenvergleichScreen'
 import { server } from '../../test-msw-server'
-import type { VeranlagungsartenvergleichDto } from '@steuereule/api-client'
+import type { FilingTypeComparisonDto } from '@steuereule/api-client'
 
 const TAX_YEAR = 2026
-const VERGLEICH_URL = `*/v1/steuerjahre/${TAX_YEAR}/veranlagungsartenvergleich`
+const COMPARISON_URL = `*/v1/steuerjahre/${TAX_YEAR}/veranlagungsartenvergleich`
 
-const EINDEUTIG: VeranlagungsartenvergleichDto = {
+const UNAMBIGUOUS: FilingTypeComparisonDto = {
   kind: 'eindeutig',
-  empfehlung: 'zusammen',
-  einzel: 32115,
-  zusammen: 21096,
+  recommendation: 'zusammen',
+  single: 32115,
+  joint: 21096,
   delta: -11019,
-  unschaerfe: { kind: 'bestimmt', obergrenze: 0 },
-  herkunft: { zveA: 100000, zveB: 0, bestandteile: ['einkommensteuer', 'solidaritaetszuschlag'] },
+  uncertainty: { kind: 'bestimmt', upperLimit: 0 },
+  provenance: { zveA: 100000, zveB: 0, components: ['einkommensteuer', 'solidaritaetszuschlag'] },
 }
 
-const ZU_KNAPP: VeranlagungsartenvergleichDto = {
+const TOO_TIGHT: FilingTypeComparisonDto = {
   kind: 'zu-knapp',
-  einzel: 21442,
-  zusammen: 21096,
+  single: 21442,
+  joint: 21096,
   delta: -346,
-  unschaerfe: { kind: 'bestimmt', obergrenze: 450 },
-  herkunft: { zveA: 60000, zveB: 40000, bestandteile: ['einkommensteuer', 'solidaritaetszuschlag'] },
+  uncertainty: { kind: 'bestimmt', upperLimit: 450 },
+  provenance: { zveA: 60000, zveB: 40000, components: ['einkommensteuer', 'solidaritaetszuschlag'] },
 }
 
-const UNBESTIMMT: VeranlagungsartenvergleichDto = {
+const UNDETERMINED: FilingTypeComparisonDto = {
   kind: 'unbestimmt',
-  einzel: 32115,
-  zusammen: 21096,
+  single: 32115,
+  joint: 21096,
   delta: -11019,
-  unschaerfe: { kind: 'unbestimmt', grund: 'progressionsvorbehalt-nicht-eingegeben' },
-  herkunft: { zveA: 100000, zveB: 0, bestandteile: ['einkommensteuer', 'solidaritaetszuschlag'] },
+  uncertainty: { kind: 'unbestimmt', reason: 'progressionsvorbehalt-nicht-eingegeben' },
+  provenance: { zveA: 100000, zveB: 0, components: ['einkommensteuer', 'solidaritaetszuschlag'] },
 }
 
-function mockVergleich(data: VeranlagungsartenvergleichDto | null) {
-  server.use(http.get(VERGLEICH_URL, () => HttpResponse.json(data, { status: 200 })))
+function mockComparison(data: FilingTypeComparisonDto | null) {
+  server.use(http.get(COMPARISON_URL, () => HttpResponse.json(data, { status: 200 })))
 }
 
 function renderScreen(onDone?: () => void) {
@@ -56,7 +56,7 @@ function renderScreen(onDone?: () => void) {
     <QueryClientProvider client={queryClient}>
       <I18nextProvider i18n={i18n}>
         <ThemeProvider mode="light">
-          <VeranlagungsartenvergleichScreen taxYear={TAX_YEAR} {...(onDone ? { onDone } : {})} />
+          <FilingTypeComparisonScreen taxYear={TAX_YEAR} {...(onDone ? { onDone } : {})} />
         </ThemeProvider>
       </I18nextProvider>
     </QueryClientProvider>,
@@ -79,7 +79,7 @@ describe('VeranlagungsartenvergleichScreen', () => {
   })
 
   it('renders `aussage` first: `eindeutig` shows the recommendation, then the two numbers', async () => {
-    mockVergleich(EINDEUTIG)
+    mockComparison(UNAMBIGUOUS)
     renderScreen()
     await chooseMarried('0')
 
@@ -89,7 +89,7 @@ describe('VeranlagungsartenvergleichScreen', () => {
   })
 
   it('renders `eindeutig` in the other direction (Einzelveranlagung) honestly', async () => {
-    mockVergleich({ ...EINDEUTIG, empfehlung: 'einzel' })
+    mockComparison({ ...UNAMBIGUOUS, recommendation: 'einzel' })
     renderScreen()
     await chooseMarried('0')
 
@@ -97,7 +97,7 @@ describe('VeranlagungsartenvergleichScreen', () => {
   })
 
   it('renders `zu-knapp` honestly — "zu knapp, um das zu sagen", no verdict', async () => {
-    mockVergleich(ZU_KNAPP)
+    mockComparison(TOO_TIGHT)
     renderScreen()
     await chooseMarried('40000')
 
@@ -107,7 +107,7 @@ describe('VeranlagungsartenvergleichScreen', () => {
   })
 
   it('renders `unbestimmt` honestly — "das können wir noch nicht", plus the Progressionsvorbehalt note', async () => {
-    mockVergleich(UNBESTIMMT)
+    mockComparison(UNDETERMINED)
     renderScreen()
     await chooseMarried('0')
 
@@ -116,7 +116,7 @@ describe('VeranlagungsartenvergleichScreen', () => {
   })
 
   it('reveals provenance (Herkunfts-Chips) on both numbers, consistent with the zvE-Basen', async () => {
-    mockVergleich(EINDEUTIG)
+    mockComparison(UNAMBIGUOUS)
     renderScreen()
     await chooseMarried('0')
     await screen.findByText('Zusammenveranlagung ist günstiger.')
@@ -129,7 +129,7 @@ describe('VeranlagungsartenvergleichScreen', () => {
   })
 
   it('shows the honest "nur Verheiratete" gate while the married flag is off (no request yet)', async () => {
-    mockVergleich(EINDEUTIG)
+    mockComparison(UNAMBIGUOUS)
     renderScreen()
 
     expect(screen.getByText('Nur Verheiratete können zwischen Einzel- und Zusammenveranlagung wählen.')).toBeTruthy()

@@ -1,6 +1,6 @@
 import { View, Text, ActivityIndicator } from 'react-native'
 import { Button, Card, Feld, Input, useTheme } from '@steuereule/ui'
-import { makeDatenschutzStyles } from './styles'
+import { makePrivacyStyles } from './styles'
 
 export type DeleteFlow =
   | { readonly kind: 'closed' }
@@ -36,7 +36,7 @@ export function DeleteSection({
   onSubmitPassword,
 }: DeleteSectionProps) {
   const t = useTheme()
-  const styles = makeDatenschutzStyles(t)
+  const styles = makePrivacyStyles(t)
 
   return (
     <Card>
@@ -45,7 +45,7 @@ export function DeleteSection({
 
       {flow.kind === 'closed' ? (
         <View style={styles.buttonSpacer}>
-          <Button variante="ghost" onPress={onOpen}>
+          <Button variant="ghost" onPress={onOpen}>
             <Text style={styles.dangerLabel}>{tr('datenschutz.delete.openButton')}</Text>
           </Button>
         </View>
@@ -57,18 +57,18 @@ export function DeleteSection({
           <Text style={styles.warningBody}>{tr('datenschutz.delete.offer.warning1')}</Text>
           <Text style={styles.warningBody}>{tr('datenschutz.delete.offer.warning2')}</Text>
           <View style={styles.buttonSpacer}>
-            <Button variante="leise" onPress={onExportFirst}>
+            <Button variant="leise" onPress={onExportFirst}>
               {tr('datenschutz.delete.offer.exportFirstButton')}
             </Button>
           </View>
           {flow.exported ? <Text style={styles.successNote}>{tr('datenschutz.delete.offer.exportedNote')}</Text> : null}
           <View style={styles.buttonSpacer}>
-            <Button variante="ghost" onPress={onContinueWithoutExport}>
+            <Button variant="ghost" onPress={onContinueWithoutExport}>
               {tr('datenschutz.delete.offer.continueButton')}
             </Button>
           </View>
           <View style={styles.buttonSpacer}>
-            <Button variante="ghost" onPress={onCancel}>
+            <Button variant="ghost" onPress={onCancel}>
               {tr('datenschutz.delete.offer.cancelButton')}
             </Button>
           </View>
@@ -85,12 +85,12 @@ export function DeleteSection({
             </Text>
           ) : null}
           <View style={styles.buttonSpacer}>
-            <Button variante="ghost" onPress={onConfirmDelete}>
+            <Button variant="ghost" onPress={onConfirmDelete}>
               <Text style={styles.dangerLabel}>{tr('datenschutz.delete.confirm.confirmButton')}</Text>
             </Button>
           </View>
           <View style={styles.buttonSpacer}>
-            <Button variante="ghost" onPress={onCancel}>
+            <Button variant="ghost" onPress={onCancel}>
               {tr('datenschutz.delete.confirm.cancelButton')}
             </Button>
           </View>
@@ -120,12 +120,12 @@ export function DeleteSection({
             </Text>
           ) : null}
           <View style={styles.buttonSpacer}>
-            <Button variante="ghost" onPress={onSubmitPassword} disabled={password.trim() === ''}>
+            <Button variant="ghost" onPress={onSubmitPassword} disabled={password.trim() === ''}>
               <Text style={styles.dangerLabel}>{tr('datenschutz.delete.password.submitButton')}</Text>
             </Button>
           </View>
           <View style={styles.buttonSpacer}>
-            <Button variante="ghost" onPress={onCancel}>
+            <Button variant="ghost" onPress={onCancel}>
               {tr('datenschutz.delete.password.cancelButton')}
             </Button>
           </View>

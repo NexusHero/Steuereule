@@ -1,4 +1,4 @@
-import { calculate, type Posten } from './berechnung'
+import { calculate, type Item } from './berechnung'
 import type { IncomeType } from './einkunftsarten'
 export type RentalClassification =
   | { readonly kind: 'einfach' }
@@ -6,8 +6,8 @@ export type RentalClassification =
   | { readonly kind: 'verkauf-oder-moebliert' }
   | { readonly kind: 'unbekannt' }
 
-export function classifyRental(vermietungArt: string | undefined): RentalClassification {
-  switch (vermietungArt) {
+export function classifyRental(rentalKind: string | undefined): RentalClassification {
+  switch (rentalKind) {
     case 'Einfach':
       return { kind: 'einfach' }
     case 'Mehrere':
@@ -19,8 +19,8 @@ export function classifyRental(vermietungArt: string | undefined): RentalClassif
   }
 }
 
-export function isRentalCalculable(einordnung: RentalClassification): boolean {
-  return einordnung.kind === 'einfach' || einordnung.kind === 'mehrere'
+export function isRentalCalculable(classification: RentalClassification): boolean {
+  return classification.kind === 'einfach' || classification.kind === 'mehrere'
 }
 
 export function depreciationRatePercent(baujahr: number): number | null {
@@ -35,7 +35,7 @@ export const RENTAL_FIELDS: readonly RentalFieldId[] = ['mieteinnahmen', 'anscha
 export type RentalFieldState =
   | { readonly kind: 'offen' }
   | { readonly kind: 'unklar' }
-  | { readonly kind: 'erfasst'; readonly wert: number }
+  | { readonly kind: 'erfasst'; readonly value: number }
 
 /** One object's guided-mask data. */
 export interface RentalObjectData {
@@ -56,27 +56,27 @@ export function emptyRentalObject(id: string): RentalObjectData {
   }
 }
 
-export function isValidRentalAmount(wert: number): boolean {
-  return Number.isFinite(wert) && Number.isInteger(wert) && wert >= 0
+export function isValidRentalAmount(value: number): boolean {
+  return Number.isFinite(value) && Number.isInteger(value) && value >= 0
 }
 
-export function setRentalField(objekt: RentalObjectData, feld: RentalFieldId, zustand: RentalFieldState): RentalObjectData {
-  if (zustand.kind === 'erfasst' && !isValidRentalAmount(zustand.wert)) {
-    throw new RangeError(`vermietung: "${feld}" erfasst value must be a non-negative integer`)
+export function setRentalField(property: RentalObjectData, field: RentalFieldId, state: RentalFieldState): RentalObjectData {
+  if (state.kind === 'erfasst' && !isValidRentalAmount(state.value)) {
+    throw new RangeError(`vermietung: "${field}" erfasst value must be a non-negative integer`)
   }
-  return { ...objekt, [feld]: zustand }
+  return { ...property, [field]: state }
 }
 
 export const RENTAL_UNCLEAR = 'unklar'
 
-export function serializeRentalField(zustand: RentalFieldState): string | null {
-  switch (zustand.kind) {
+export function serializeRentalField(state: RentalFieldState): string | null {
+  switch (state.kind) {
     case 'offen':
       return null
     case 'unklar':
       return RENTAL_UNCLEAR
     case 'erfasst':
-      return String(zustand.wert)
+      return String(state.value)
   }
 }
 
@@ -87,50 +87,50 @@ export function deserializeRentalField(value: string | null): RentalFieldState {
   if (!isValidRentalAmount(wert)) {
     throw new Error(`vermietung: stored value "${value}" is neither offen, unklar, nor a valid integer`)
   }
-  return { kind: 'erfasst', wert }
+  return { kind: 'erfasst', value: wert }
 }
 
-export function afaHerkunft(baujahr: number, prozent: number): string {
-  return `§ 7 Abs. 4 Satz 1 EStG — lineare AfA ${prozent} % bei Baujahr ${baujahr}`
+export function depreciationSource(baujahr: number, percent: number): string {
+  return `§ 7 Abs. 4 Satz 1 EStG — lineare AfA ${percent} % bei Baujahr ${baujahr}`
 }
 
 /** One object's honest facts. */
 export interface RentalObjectFacts {
   readonly einnahmen: number | null
   readonly werbungskosten: number | null
-  readonly afa: { readonly betrag: number; readonly herkunft: string } | null
-  readonly offenePosten: number
+  readonly depreciation: { readonly amount: number; readonly provenance: string } | null
+  readonly openItems: number
 }
 
-export function vermietungsobjektFakten(objekt: RentalObjectData): RentalObjectFacts {
-  let offenePosten = 0
+export function rentalPropertyFacts(property: RentalObjectData): RentalObjectFacts {
+  let openItems = 0
 
-  const einnahmen = objekt.mieteinnahmen.kind === 'erfasst' ? objekt.mieteinnahmen.wert : null
-  if (objekt.mieteinnahmen.kind !== 'erfasst') offenePosten += 1
+  const einnahmen = property.mieteinnahmen.kind === 'erfasst' ? property.mieteinnahmen.value : null
+  if (property.mieteinnahmen.kind !== 'erfasst') openItems += 1
 
-  const werbungskosten = objekt.werbungskosten.kind === 'erfasst' ? objekt.werbungskosten.wert : null
-  if (objekt.werbungskosten.kind !== 'erfasst') offenePosten += 1
+  const werbungskosten = property.werbungskosten.kind === 'erfasst' ? property.werbungskosten.value : null
+  if (property.werbungskosten.kind !== 'erfasst') openItems += 1
 
-  let afa: RentalObjectFacts['afa'] = null
-  if (objekt.anschaffungskosten.kind === 'erfasst' && objekt.baujahr.kind === 'erfasst') {
-    const prozent = depreciationRatePercent(objekt.baujahr.wert)
-    if (prozent !== null) {
-      const betrag = Math.round(objekt.anschaffungskosten.wert * (prozent / 100))
-      afa = { betrag, herkunft: afaHerkunft(objekt.baujahr.wert, prozent) }
+  let depreciation: RentalObjectFacts['depreciation'] = null
+  if (property.anschaffungskosten.kind === 'erfasst' && property.baujahr.kind === 'erfasst') {
+    const percent = depreciationRatePercent(property.baujahr.value)
+    if (percent !== null) {
+      const amount = Math.round(property.anschaffungskosten.value * (percent / 100))
+      depreciation = { amount, provenance: depreciationSource(property.baujahr.value, percent) }
     }
   }
-  if (afa === null) offenePosten += 1
+  if (depreciation === null) openItems += 1
 
-  return { einnahmen, werbungskosten, afa, offenePosten }
+  return { einnahmen, werbungskosten, depreciation, openItems }
 }
 
-export function vermietungsobjektAlsEinnahmePosten(objekt: RentalObjectData): Posten | null {
-  if (objekt.mieteinnahmen.kind !== 'erfasst') return null
+export function rentalPropertyAsIncomeItem(property: RentalObjectData): Item | null {
+  if (property.mieteinnahmen.kind !== 'erfasst') return null
   return {
-    id: `vermietung-${objekt.id}`,
-    einkunftsart: 'Vermietung',
-    betrag: objekt.mieteinnahmen.wert,
-    quelle: { art: 'eingabe' },
+    id: `vermietung-${property.id}`,
+    incomeType: 'Vermietung',
+    amount: property.mieteinnahmen.value,
+    source: { art: 'eingabe' },
   }
 }
 
@@ -141,27 +141,27 @@ export interface RentalStatus {
   readonly vorsorgeaufwand: number
   readonly anrechnung: number
   readonly werbungskosten: number
-  readonly afa: number
-  readonly offenePosten: number
-  readonly konflikte: number
-  readonly gegated: readonly IncomeType[]
+  readonly depreciation: number
+  readonly openItems: number
+  readonly conflicts: number
+  readonly gated: readonly IncomeType[]
 }
 
-export function vermietungStand(objekte: readonly RentalObjectData[], gegated: readonly IncomeType[]): RentalStatus {
-  const posten: Posten[] = []
-  let offenePosten = 0
+export function rentalStatus(properties: readonly RentalObjectData[], gated: readonly IncomeType[]): RentalStatus {
+  const items: Item[] = []
+  let openItems = 0
   let werbungskosten = 0
-  let afa = 0
-  for (const objekt of objekte) {
-    const kernposten = vermietungsobjektAlsEinnahmePosten(objekt)
-    if (kernposten !== null) posten.push(kernposten)
-    const fakten = vermietungsobjektFakten(objekt)
-    offenePosten += fakten.offenePosten
-    if (fakten.werbungskosten !== null) werbungskosten += fakten.werbungskosten
-    if (fakten.afa !== null) afa += fakten.afa.betrag
+  let depreciation = 0
+  for (const property of properties) {
+    const coreItems = rentalPropertyAsIncomeItem(property)
+    if (coreItems !== null) items.push(coreItems)
+    const facts = rentalPropertyFacts(property)
+    openItems += facts.openItems
+    if (facts.werbungskosten !== null) werbungskosten += facts.werbungskosten
+    if (facts.depreciation !== null) depreciation += facts.depreciation.amount
   }
 
-  const fold = calculate({ posten, offenePosten, konflikte: [], gegated })
+  const fold = calculate({ items, openItems, conflicts: [], gated })
 
   if (fold.kind === 'bestimmt') {
     return {
@@ -170,10 +170,10 @@ export function vermietungStand(objekte: readonly RentalObjectData[], gegated: r
       vorsorgeaufwand: fold.vorsorgeaufwand,
       anrechnung: fold.anrechnung,
       werbungskosten,
-      afa,
-      offenePosten,
-      konflikte: 0,
-      gegated: [],
+      depreciation,
+      openItems,
+      conflicts: 0,
+      gated: [],
     }
   }
   return {
@@ -182,9 +182,9 @@ export function vermietungStand(objekte: readonly RentalObjectData[], gegated: r
     vorsorgeaufwand: fold.vorsorgeaufwand,
     anrechnung: fold.anrechnung,
     werbungskosten,
-    afa,
-    offenePosten,
-    konflikte: 0,
-    gegated: fold.gegated,
+    depreciation,
+    openItems,
+    conflicts: 0,
+    gated: fold.gated,
   }
 }

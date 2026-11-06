@@ -4,12 +4,12 @@ import { MASTER_DATA_FIELDS, type MasterDataRecord, type MasterDataRepository } 
 
 function toRecord(row: MasterDataRecord): MasterDataRecord {
   const record = { religionEinwilligungAm: row.religionEinwilligungAm } as MasterDataRecord
-  for (const feld of MASTER_DATA_FIELDS) record[feld] = row[feld]
+  for (const field of MASTER_DATA_FIELDS) record[field] = row[field]
   return record
 }
 
 @Injectable()
-export class PrismaStammdatenRepository implements MasterDataRepository {
+export class PrismaMasterDataRepository implements MasterDataRepository {
   constructor(@Inject(ENCRYPTED_PRISMA) private readonly prisma: EncryptedPrismaClient) {}
 
   async findByUserId(userId: string): Promise<MasterDataRecord | null> {
@@ -17,7 +17,7 @@ export class PrismaStammdatenRepository implements MasterDataRepository {
     return row === null ? null : toRecord(row)
   }
 
-  async speichere(userId: string, record: MasterDataRecord): Promise<MasterDataRecord> {
+  async save(userId: string, record: MasterDataRecord): Promise<MasterDataRecord> {
     const [row] = await this.prisma.$transaction([
       this.prisma.stammdaten.upsert({ where: { userId }, create: { userId, ...record }, update: record }),
       this.prisma.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: 'stammdaten' } }),

@@ -101,34 +101,34 @@ describe('REQ-003 — encrypted profile persistence at rest, against the real se
     expect(put.status).toBe(200)
     const userId = userIdFromSetCookie(put.headers.get('set-cookie'))
 
-    const rawSteuerId = await rawProfileColumn(prisma, userId, 'steuerId')
-    const rawSteuernummer = await rawProfileColumn(prisma, userId, 'steuernummer')
+    const rawTaxId = await rawProfileColumn(prisma, userId, 'steuerId')
+    const rawTaxNumber = await rawProfileColumn(prisma, userId, 'steuernummer')
 
-    expect(rawSteuerId).not.toBeNull()
-    expect(rawSteuerId).not.toBe(VALID_PAYLOAD.steuerId)
-    expect(rawSteuerId!.length).toBeGreaterThan(VALID_PAYLOAD.steuerId.length)
+    expect(rawTaxId).not.toBeNull()
+    expect(rawTaxId).not.toBe(VALID_PAYLOAD.steuerId)
+    expect(rawTaxId!.length).toBeGreaterThan(VALID_PAYLOAD.steuerId.length)
     // prisma-field-encryption's cloak envelope: "<envelopeVersion>.aesgcm256.<fingerprint>.<iv>.<ciphertext>"
-    expect(rawSteuerId).toMatch(/^v\d+\.aesgcm256\./)
+    expect(rawTaxId).toMatch(/^v\d+\.aesgcm256\./)
 
-    expect(rawSteuernummer).not.toBeNull()
-    expect(rawSteuernummer).not.toBe(VALID_PAYLOAD.steuernummer)
-    expect(rawSteuernummer).toMatch(/^v\d+\.aesgcm256\./)
+    expect(rawTaxNumber).not.toBeNull()
+    expect(rawTaxNumber).not.toBe(VALID_PAYLOAD.steuernummer)
+    expect(rawTaxNumber).toMatch(/^v\d+\.aesgcm256\./)
   })
 
   it('REQ-003.3 randomized: two accounts with the same Steuer-ID have different ciphertext at rest', async () => {
-    const sameSteuerId = VALID_PAYLOAD.steuerId
+    const sameTaxId = VALID_PAYLOAD.steuerId
 
     const putA = await fetch(`${baseUrl}/v1/profile`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ ...VALID_PAYLOAD, steuerId: sameSteuerId }),
+      body: JSON.stringify({ ...VALID_PAYLOAD, steuerId: sameTaxId }),
     })
     const userIdA = userIdFromSetCookie(putA.headers.get('set-cookie'))
 
     const putB = await fetch(`${baseUrl}/v1/profile`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ ...VALID_PAYLOAD, firstName: 'Jonas', steuerId: sameSteuerId }),
+      body: JSON.stringify({ ...VALID_PAYLOAD, firstName: 'Jonas', steuerId: sameTaxId }),
     })
     const userIdB = userIdFromSetCookie(putB.headers.get('set-cookie'))
 

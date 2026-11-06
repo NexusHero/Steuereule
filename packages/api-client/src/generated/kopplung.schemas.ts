@@ -5,10 +5,10 @@
  * Onboarding profile endpoints (steuereule#29)
  * OpenAPI spec version: 1.0
  */
-export type KopplungResponseDtoVeranlagungsart = typeof KopplungResponseDtoVeranlagungsart[keyof typeof KopplungResponseDtoVeranlagungsart];
+export type LinkResponseDtoVeranlagungsart = typeof LinkResponseDtoVeranlagungsart[keyof typeof LinkResponseDtoVeranlagungsart];
 
 
-export const KopplungResponseDtoVeranlagungsart = {
+export const LinkResponseDtoVeranlagungsart = {
   keine: 'keine',
   einzel: 'einzel',
   zusammen: 'zusammen',
@@ -18,10 +18,10 @@ export const KopplungResponseDtoVeranlagungsart = {
  * Art. 9 DSGVO: requires religionEinwilligung = true, like the own Stammdaten.
  * @nullable
  */
-export type KopplungPersonBDtoReligion = typeof KopplungPersonBDtoReligion[keyof typeof KopplungPersonBDtoReligion] | null;
+export type LinkPersonBDtoReligion = typeof LinkPersonBDtoReligion[keyof typeof LinkPersonBDtoReligion] | null;
 
 
-export const KopplungPersonBDtoReligion = {
+export const LinkPersonBDtoReligion = {
   VD: 'VD',
   EV: 'EV',
   RK: 'RK',
@@ -39,7 +39,7 @@ export const KopplungPersonBDtoReligion = {
   JH: 'JH',
 } as const;
 
-export interface KopplungPersonBDto {
+export interface LinkPersonBDto {
   /** @nullable */
   firstName?: string | null;
   /** @nullable */
@@ -52,15 +52,15 @@ export interface KopplungPersonBDto {
      * Art. 9 DSGVO: requires religionEinwilligung = true, like the own Stammdaten.
      * @nullable
      */
-  religion?: KopplungPersonBDtoReligion;
+  religion?: LinkPersonBDtoReligion;
   /** Explicit consent to store the religion (Art. 9 Abs. 2 lit. a DSGVO). */
-  religionEinwilligung?: boolean;
+  religionConsent?: boolean;
   /** @nullable */
   beruf?: string | null;
 }
 
-export interface KopplungResponseDto {
-  veranlagungsart: KopplungResponseDtoVeranlagungsart;
+export interface LinkResponseDto {
+  veranlagungsart: LinkResponseDtoVeranlagungsart;
   /** @nullable */
   personBUserId?: string | null;
   /** @nullable */
@@ -71,20 +71,20 @@ export interface KopplungResponseDto {
      */
   einladungsCodeGueltigBis?: string | null;
   /** Person B joined with an own account and maintains their data there — Person A cannot edit it. */
-  personBHatEigenesKonto?: boolean;
+  personBHasOwnAccount?: boolean;
   /** @nullable */
-  personB?: KopplungPersonBDto | null;
+  personB?: LinkPersonBDto | null;
 }
 
-export type SetKopplungDtoVeranlagungsart = typeof SetKopplungDtoVeranlagungsart[keyof typeof SetKopplungDtoVeranlagungsart];
+export type SetLinkDtoVeranlagungsart = typeof SetLinkDtoVeranlagungsart[keyof typeof SetLinkDtoVeranlagungsart];
 
 
-export const SetKopplungDtoVeranlagungsart = {
+export const SetLinkDtoVeranlagungsart = {
   einzel: 'einzel',
   zusammen: 'zusammen',
 } as const;
 
-export interface SetKopplungDto {
-  veranlagungsart: SetKopplungDtoVeranlagungsart;
+export interface SetLinkDto {
+  veranlagungsart: SetLinkDtoVeranlagungsart;
 }
 

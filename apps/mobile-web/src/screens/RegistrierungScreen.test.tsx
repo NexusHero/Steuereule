@@ -9,11 +9,11 @@ import { getAuthCapabilitiesControllerGetCapabilitiesMockHandler } from '@steuer
 import { createAppI18n } from '../i18n/app-i18n'
 import { createAppAuthClient } from '../auth/auth-client'
 import { AuthClientProvider } from '../auth/AuthClientProvider'
-import { RegistrierungScreen } from './RegistrierungScreen'
+import { RegistrationScreen } from './RegistrierungScreen'
 
 const BASE_URL = 'http://localhost:3000'
 
-function renderRegistrierung(opts: { lng?: 'de' | 'en'; onDone?: () => void } = {}) {
+function renderRegistration(opts: { lng?: 'de' | 'en'; onDone?: () => void } = {}) {
   const i18n = createAppI18n(opts.lng ?? 'de')
   const authClient = createAppAuthClient(BASE_URL)
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -22,7 +22,7 @@ function renderRegistrierung(opts: { lng?: 'de' | 'en'; onDone?: () => void } = 
     <I18nextProvider i18n={i18n}>
       <ThemeProvider mode="light">
         <AuthClientProvider client={authClient}>
-          <RegistrierungScreen onDone={opts.onDone ?? (() => {})} />
+          <RegistrationScreen onDone={opts.onDone ?? (() => {})} />
         </AuthClientProvider>
       </ThemeProvider>
     </I18nextProvider>
@@ -37,13 +37,13 @@ function fillCredentials(email = 'neu@beispiel.de', password = 'geheim-123') {
 
 describe('RegistrierungScreen', () => {
   it('renders the German "create account" form by default', () => {
-    renderRegistrierung()
+    renderRegistration()
     expect(screen.getByText('Konto anlegen')).toBeTruthy()
     expect(screen.getByText('Mit dem Anlegen akzeptierst du AGB & Datenschutz.')).toBeTruthy()
   })
 
   it('switches to English (ADR-0006)', () => {
-    renderRegistrierung({ lng: 'en' })
+    renderRegistration({ lng: 'en' })
     expect(screen.getByText('Create account')).toBeTruthy()
   })
 
@@ -52,42 +52,42 @@ describe('RegistrierungScreen', () => {
   // this page's title as a real `<h1>`; this screen's own title was visual only. Standing
   // assertion, not a one-off DOM check — drops red if `role`/`aria-level` regress.
   it('gives the form title real heading semantics, not just visual size (#298 F8 class)', () => {
-    renderRegistrierung()
+    renderRegistration()
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Leg dein Konto an.')
   })
 
   // REQ-008 — Google social sign-in is now live. The button renders on Registrierung too.
   // Apple sign-in (#45) remains hidden (backlog-gated).
   it('renders the Google social sign-in button (REQ-008)', async () => {
-    renderRegistrierung()
+    renderRegistration()
     expect(await screen.findByText('Weiter mit Google')).toBeTruthy()
   })
 
   it('does not render the Apple social button (REQ-008b, backlog-gated)', () => {
-    renderRegistrierung()
+    renderRegistration()
     expect(screen.queryByText(/Apple/)).toBeNull()
   })
 
   it('renders the "or with email" divider (DS auth.html)', async () => {
-    renderRegistrierung()
+    renderRegistration()
     expect(await screen.findByText('oder mit E-Mail')).toBeTruthy()
   })
 
   // Honesty rule: "Passwort vergessen?" still has no real flow behind it
   it('does not render a dead "forgot password" affordance', () => {
-    renderRegistrierung()
+    renderRegistration()
     expect(screen.queryByText('Passwort vergessen?')).toBeNull()
     expect(screen.queryByText('Forgot password?')).toBeNull()
   })
 
   it('shows an email error for an invalid address', () => {
-    renderRegistrierung()
+    renderRegistration()
     fireEvent.click(screen.getByText('Konto anlegen'))
     expect(screen.getByText('Das sieht noch nicht nach einer E-Mail aus.')).toBeTruthy()
   })
 
   it('shows a password error once the email is valid but the password is short', () => {
-    renderRegistrierung()
+    renderRegistration()
     fireEvent.change(screen.getByPlaceholderText('du@beispiel.de'), { target: { value: 'a@b.de' } })
     fireEvent.click(screen.getByText('Konto anlegen'))
     expect(screen.getByText('Mindestens 8 Zeichen fürs Passwort.')).toBeTruthy()
@@ -104,7 +104,7 @@ describe('RegistrierungScreen', () => {
         })
       }),
     )
-    renderRegistrierung()
+    renderRegistration()
     fillCredentials()
     fireEvent.click(screen.getByText('Konto anlegen'))
 
@@ -115,7 +115,7 @@ describe('RegistrierungScreen', () => {
   it('shows the honest generic error on a genuine network failure (not just a server-returned error)', async () => {
     server.use(http.post(`${BASE_URL}/api/auth/sign-up/email`, () => HttpResponse.error()))
     const onDone = vi.fn()
-    renderRegistrierung({ onDone })
+    renderRegistration({ onDone })
     fillCredentials()
     fireEvent.click(screen.getByText('Konto anlegen'))
 
@@ -130,7 +130,7 @@ describe('RegistrierungScreen', () => {
         HttpResponse.json({ code: 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL', message: 'exists' }, { status: 422 }),
       ),
     )
-    renderRegistrierung()
+    renderRegistration()
     fillCredentials()
     fireEvent.click(screen.getByText('Konto anlegen'))
 
@@ -144,7 +144,7 @@ describe('RegistrierungScreen', () => {
         HttpResponse.json({ code: 'PASSWORD_COMPROMISED', message: 'breached' }, { status: 400 }),
       ),
     )
-    renderRegistrierung()
+    renderRegistration()
     fillCredentials()
     fireEvent.click(screen.getByText('Konto anlegen'))
 
@@ -161,7 +161,7 @@ describe('RegistrierungScreen', () => {
       ),
     )
     const onDone = vi.fn()
-    renderRegistrierung({ onDone })
+    renderRegistration({ onDone })
     fillCredentials()
     fireEvent.click(screen.getByText('Konto anlegen'))
 
@@ -189,7 +189,7 @@ describe('RegistrierungScreen', () => {
         HttpResponse.json({ token: 'tok_1', user: { id: 'u1', email: 'neu@beispiel.de', emailVerified: false, name: '' } }),
       ),
     )
-    renderRegistrierung()
+    renderRegistration()
     fillCredentials()
     fireEvent.click(screen.getByText('Konto anlegen'))
 
@@ -213,7 +213,7 @@ describe('RegistrierungScreen', () => {
         }),
       ),
     )
-    renderRegistrierung()
+    renderRegistration()
     fillCredentials()
     fireEvent.click(screen.getByText('Konto anlegen'))
 
@@ -239,7 +239,7 @@ describe('RegistrierungScreen', () => {
         }),
       ),
     )
-    renderRegistrierung()
+    renderRegistration()
     fillCredentials()
     fireEvent.click(screen.getByText('Konto anlegen'))
 
@@ -269,7 +269,7 @@ describe('RegistrierungScreen', () => {
         }),
       ),
     )
-    renderRegistrierung()
+    renderRegistration()
     fillCredentials()
     fireEvent.click(screen.getByText('Konto anlegen'))
 
@@ -303,7 +303,7 @@ describe('RegistrierungScreen', () => {
       ),
       http.get(`${BASE_URL}/api/auth/get-session`, () => HttpResponse.json({ message: 'Internal Server Error' }, { status: 500 })),
     )
-    renderRegistrierung()
+    renderRegistration()
     fillCredentials()
     fireEvent.click(screen.getByText('Konto anlegen'))
 
@@ -324,19 +324,19 @@ describe('RegistrierungScreen', () => {
   // this hook. `KONTO_EMAIL` is shared between both mocks on purpose, structurally — not a
   // coincidence of two literals — so the two can't silently drift apart.
   it('keeps the unverified banner when the session for this account never positively answers emailVerified', async () => {
-    const KONTO_EMAIL = 'neu@beispiel.de'
+    const ACCOUNT_EMAIL = 'neu@beispiel.de'
     server.use(
       http.post(`${BASE_URL}/api/auth/sign-up/email`, () =>
-        HttpResponse.json({ token: 'tok_1', user: { id: 'u1', email: KONTO_EMAIL, emailVerified: false, name: '' } }),
+        HttpResponse.json({ token: 'tok_1', user: { id: 'u1', email: ACCOUNT_EMAIL, emailVerified: false, name: '' } }),
       ),
       http.get(`${BASE_URL}/api/auth/get-session`, () =>
         HttpResponse.json({
-          user: { id: 'u1', email: KONTO_EMAIL, name: '' },
+          user: { id: 'u1', email: ACCOUNT_EMAIL, name: '' },
           session: { id: 's1', createdAt: new Date().toISOString() },
         }),
       ),
     )
-    renderRegistrierung()
+    renderRegistration()
     fillCredentials()
     fireEvent.click(screen.getByText('Konto anlegen'))
 
@@ -356,7 +356,7 @@ describe('RegistrierungScreen', () => {
         return HttpResponse.error()
       }),
     )
-    renderRegistrierung()
+    renderRegistration()
     fillCredentials()
     fireEvent.click(screen.getByText('Konto anlegen'))
 
@@ -377,7 +377,7 @@ describe('RegistrierungScreen', () => {
       ),
     )
     const onDone = vi.fn()
-    renderRegistrierung({ onDone })
+    renderRegistration({ onDone })
     fillCredentials()
     fireEvent.click(screen.getByText('Konto anlegen'))
 
@@ -396,7 +396,7 @@ describe('RegistrierungScreen', () => {
   // in that slot to separate the email form from).
   it('shows the DS honest fallback instead of the Google button when the deployment has no social provider configured (#283)', async () => {
     server.use(getAuthCapabilitiesControllerGetCapabilitiesMockHandler(CAPABILITIES_WITHOUT_SOCIAL))
-    renderRegistrierung()
+    renderRegistration()
 
     // Email sign-in is unaffected — it always works, so it proves the screen rendered.
     await screen.findByPlaceholderText('du@beispiel.de')
@@ -413,7 +413,7 @@ describe('RegistrierungScreen', () => {
         return HttpResponse.json(CAPABILITIES_WITH_GOOGLE)
       }),
     )
-    renderRegistrierung()
+    renderRegistration()
 
     await screen.findByPlaceholderText('du@beispiel.de')
     // Rendering the button first and removing it on the answer would flicker; staying
@@ -427,7 +427,7 @@ describe('RegistrierungScreen', () => {
   // so 'unknown' stays silent regardless of whether it's still in flight or has actually failed.
   it('renders neither the Google button nor the not-configured fallback when the capability probe itself fails (#283)', async () => {
     server.use(http.get(`${BASE_URL}/v1/auth/capabilities`, () => HttpResponse.error()))
-    renderRegistrierung()
+    renderRegistration()
 
     await screen.findByPlaceholderText('du@beispiel.de')
     expect(screen.queryByText('Weiter mit Google')).toBeNull()

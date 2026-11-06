@@ -1,23 +1,23 @@
 import { Module } from '@nestjs/common'
-import { BestaetigungModule } from '../bestaetigung/bestaetigung.module.js'
-import { KapitalModule } from '../kapital/kapital.module.js'
-import { KennzeichnungModule } from '../kennzeichnung/kennzeichnung.module.js'
+import { ConfirmationModule } from '../bestaetigung/bestaetigung.module.js'
+import { CapitalModule } from '../kapital/kapital.module.js'
+import { MarkingModule } from '../kennzeichnung/kennzeichnung.module.js'
 import { LstbModule } from '../lstb/lstb.module.js'
-import { RenteModule } from '../rente/rente.module.js'
-import { VermietungModule } from '../vermietung/vermietung.module.js'
+import { PensionModule } from '../rente/rente.module.js'
+import { RentalModule } from '../vermietung/vermietung.module.js'
 import { PrismaModule } from '../prisma/prisma.module.js'
-import { UebernahmeController } from './uebernahme.controller.js'
-import { UebernahmeService } from './uebernahme.service.js'
+import { TakeoverController } from './uebernahme.controller.js'
+import { TakeoverService } from './uebernahme.service.js'
 import { TAX_YEAR_ROLLOVER_REPOSITORY } from './jahresuebernahme.repository.js'
-import { PrismaJahresuebernahmeRepository } from './jahresuebernahme.repository.prisma.js'
+import { PrismaYearTakeoverRepository } from './jahresuebernahme.repository.prisma.js'
 
 @Module({
-  imports: [PrismaModule, KennzeichnungModule, BestaetigungModule, LstbModule, RenteModule, KapitalModule, VermietungModule],
-  controllers: [UebernahmeController],
+  imports: [PrismaModule, MarkingModule, ConfirmationModule, LstbModule, PensionModule, CapitalModule, RentalModule],
+  controllers: [TakeoverController],
   providers: [
-    UebernahmeService,
-    { provide: TAX_YEAR_ROLLOVER_REPOSITORY, useClass: PrismaJahresuebernahmeRepository },
+    TakeoverService,
+    { provide: TAX_YEAR_ROLLOVER_REPOSITORY, useClass: PrismaYearTakeoverRepository },
   ],
-  exports: [UebernahmeService, TAX_YEAR_ROLLOVER_REPOSITORY],
+  exports: [TakeoverService, TAX_YEAR_ROLLOVER_REPOSITORY],
 })
-export class UebernahmeModule {}
+export class TakeoverModule {}

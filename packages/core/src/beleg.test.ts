@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { assignReceipt, steuerjahrVorschlag, dismissSuggestion, assignmentFromData, type BelegDaten } from './beleg'
+import { assignReceipt, taxYearProposal, dismissSuggestion, assignmentFromData, type ReceiptData } from './beleg'
 
 // ADR-007/008 — the receipt inbox. The load-bearing properties: (1) a Beleg lands unbound,
 // (2) the year suggestion prefers the payment date over the invoice date (§ 11 EStG
 // Zufluss/Abfluss), (3) assigning a year that contradicts the dates yields a visible
 // KONFLIKT, never a silent overwrite.
 
-function beleg(overrides: Partial<BelegDaten> = {}): BelegDaten {
+function receipt(overrides: Partial<ReceiptData> = {}): ReceiptData {
   return {
     id: 'beleg-1',
     userId: 'person-1',
@@ -19,113 +19,113 @@ function beleg(overrides: Partial<BelegDaten> = {}): BelegDaten {
 
 describe('steuerjahrVorschlag — § 11 EStG: payment date fixes the year, not the invoice date (ADR-007)', () => {
   it('prefers the payment date’s year', () => {
-    const daten = beleg({ belegdatum: '2025-12-20', zahlungsdatum: '2026-01-15' })
-    expect(steuerjahrVorschlag(daten)).toEqual({ steuerjahr: 2026, herkunft: 'zahlungsdatum' })
+    const data = receipt({ belegdatum: '2025-12-20', zahlungsdatum: '2026-01-15' })
+    expect(taxYearProposal(data)).toEqual({ steuerjahr: 2026, provenance: 'zahlungsdatum' })
   })
 
   it('falls back to the invoice date’s year when there is no payment date', () => {
-    const daten = beleg({ belegdatum: '2025-12-20' })
-    expect(steuerjahrVorschlag(daten)).toEqual({ steuerjahr: 2025, herkunft: 'belegdatum' })
+    const data = receipt({ belegdatum: '2025-12-20' })
+    expect(taxYearProposal(data)).toEqual({ steuerjahr: 2025, provenance: 'belegdatum' })
   })
 
   it('returns no suggestion when there are no dates at all', () => {
-    expect(steuerjahrVorschlag(beleg())).toBeNull()
+    expect(taxYearProposal(receipt())).toBeNull()
   })
 
   it('the cross-year case is exactly the silent-error ADR-007 names: invoice Dec 2025, paid Jan 2026 → 2026', () => {
     // Rechnungsdatum ≠ Zahlungsdatum: a naive "use the invoice year" rule would quietly
     // attribute this to 2025. The rule must return 2026.
-    const daten = beleg({ belegdatum: '2025-12-31', zahlungsdatum: '2026-01-02' })
-    expect(steuerjahrVorschlag(daten)).toEqual({ steuerjahr: 2026, herkunft: 'zahlungsdatum' })
+    const data = receipt({ belegdatum: '2025-12-31', zahlungsdatum: '2026-01-02' })
+    expect(taxYearProposal(data)).toEqual({ steuerjahr: 2026, provenance: 'zahlungsdatum' })
   })
 
   it('a malformed date yields no suggestion rather than a wrong year', () => {
-    expect(steuerjahrVorschlag(beleg({ belegdatum: 'nicht-ein-datum' }))).toBeNull()
+    expect(taxYearProposal(receipt({ belegdatum: 'nicht-ein-datum' }))).toBeNull()
   })
 })
 
 describe('zuordnungAusDaten — the derived state', () => {
   it('no dates, no confirmed year → ungebunden (ADR-007: lands in the inbox unbound)', () => {
-    expect(assignmentFromData(beleg())).toEqual({ kind: 'ungebunden' })
+    expect(assignmentFromData(receipt())).toEqual({ kind: 'ungebunden' })
   })
 
   it('a date but no confirmed year → vorgeschlagen with the rule’s origin', () => {
-    const daten = beleg({ zahlungsdatum: '2026-03-01' })
-    expect(assignmentFromData(daten)).toEqual({ kind: 'vorgeschlagen', vorschlag: { steuerjahr: 2026, herkunft: 'zahlungsdatum' } })
+    const data = receipt({ zahlungsdatum: '2026-03-01' })
+    expect(assignmentFromData(data)).toEqual({ kind: 'vorgeschlagen', proposal: { steuerjahr: 2026, provenance: 'zahlungsdatum' } })
   })
 
   it('a confirmed year that matches the suggestion → zugeordnet', () => {
-    const daten = beleg({ zahlungsdatum: '2026-03-01', steuerjahr: 2026 })
-    expect(assignmentFromData(daten)).toEqual({ kind: 'zugeordnet', steuerjahr: 2026 })
+    const data = receipt({ zahlungsdatum: '2026-03-01', steuerjahr: 2026 })
+    expect(assignmentFromData(data)).toEqual({ kind: 'zugeordnet', steuerjahr: 2026 })
   })
 
   it('a confirmed year that contradicts the dates → konflikt, BOTH years visible (ADR-008)', () => {
-    const daten = beleg({ zahlungsdatum: '2026-01-15', steuerjahr: 2025 })
-    expect(assignmentFromData(daten)).toEqual({
+    const data = receipt({ zahlungsdatum: '2026-01-15', steuerjahr: 2025 })
+    expect(assignmentFromData(data)).toEqual({
       kind: 'konflikt',
-      zugeordnet: 2025,
-      vorschlag: { steuerjahr: 2026, herkunft: 'zahlungsdatum' },
+      assigned: 2025,
+      proposal: { steuerjahr: 2026, provenance: 'zahlungsdatum' },
     })
   })
 
   it('a dismissed suggestion resolves the conflict to zugeordnet on the user’s own year (ADR-008 "bei meinem Jahr bleiben")', () => {
-    const daten = beleg({ zahlungsdatum: '2026-01-15', steuerjahr: 2025, vorschlagVerworfen: true })
-    expect(assignmentFromData(daten)).toEqual({ kind: 'zugeordnet', steuerjahr: 2025 })
+    const data = receipt({ zahlungsdatum: '2026-01-15', steuerjahr: 2025, vorschlagVerworfen: true })
+    expect(assignmentFromData(data)).toEqual({ kind: 'zugeordnet', steuerjahr: 2025 })
     // The contradicting dates are untouched — nothing was silently overwritten.
-    expect(daten.zahlungsdatum).toBe('2026-01-15')
+    expect(data.zahlungsdatum).toBe('2026-01-15')
   })
 })
 
 describe('ordneZu — the one assignment operation (tap or manual), conflict is derived, never silent', () => {
   it('sets the confirmed year on an unbound Beleg', () => {
-    const zugeordnet = assignReceipt(beleg(), 2026)
-    expect(assignmentFromData(zugeordnet)).toEqual({ kind: 'zugeordnet', steuerjahr: 2026 })
+    const assigned = assignReceipt(receipt(), 2026)
+    expect(assignmentFromData(assigned)).toEqual({ kind: 'zugeordnet', steuerjahr: 2026 })
   })
 
   it('assigning a year that contradicts the dates persists the year and REPORTS konflikt, without overwriting the dates', () => {
-    const daten = beleg({ zahlungsdatum: '2026-01-15' })
-    const zugeordnet = assignReceipt(daten, 2025)
+    const data = receipt({ zahlungsdatum: '2026-01-15' })
+    const assigned = assignReceipt(data, 2025)
 
-    expect(assignmentFromData(zugeordnet)).toEqual({
+    expect(assignmentFromData(assigned)).toEqual({
       kind: 'konflikt',
-      zugeordnet: 2025,
-      vorschlag: { steuerjahr: 2026, herkunft: 'zahlungsdatum' },
+      assigned: 2025,
+      proposal: { steuerjahr: 2026, provenance: 'zahlungsdatum' },
     })
     // The facts that caused the conflict are still there — nothing was silently discarded.
-    expect(zugeordnet.zahlungsdatum).toBe('2026-01-15')
-    expect(zugeordnet.steuerjahr).toBe(2025)
+    expect(assigned.zahlungsdatum).toBe('2026-01-15')
+    expect(assigned.steuerjahr).toBe(2025)
   })
 
   it('confirming the suggestion (assigning the suggested year) resolves to zugeordnet, not konflikt', () => {
-    const daten = beleg({ zahlungsdatum: '2026-01-15' })
-    expect(assignmentFromData(assignReceipt(daten, 2026))).toEqual({ kind: 'zugeordnet', steuerjahr: 2026 })
+    const data = receipt({ zahlungsdatum: '2026-01-15' })
+    expect(assignmentFromData(assignReceipt(data, 2026))).toEqual({ kind: 'zugeordnet', steuerjahr: 2026 })
   })
 
   it('rejects a non-integer year', () => {
-    expect(() => assignReceipt(beleg(), 2026.5)).toThrow(RangeError)
+    expect(() => assignReceipt(receipt(), 2026.5)).toThrow(RangeError)
   })
 
   it('a fresh assignment clears a prior dismissal, re-opening the decision', () => {
-    const dismissed = beleg({ zahlungsdatum: '2026-01-15', steuerjahr: 2025, vorschlagVerworfen: true })
+    const dismissed = receipt({ zahlungsdatum: '2026-01-15', steuerjahr: 2025, vorschlagVerworfen: true })
     expect(assignmentFromData(dismissed)).toEqual({ kind: 'zugeordnet', steuerjahr: 2025 })
     // Re-assign to a different year → the dismissal is cleared and the conflict re-derives.
     const reassigned = assignReceipt(dismissed, 2024)
     expect(assignmentFromData(reassigned)).toEqual({
       kind: 'konflikt',
-      zugeordnet: 2024,
-      vorschlag: { steuerjahr: 2026, herkunft: 'zahlungsdatum' },
+      assigned: 2024,
+      proposal: { steuerjahr: 2026, provenance: 'zahlungsdatum' },
     })
   })
 })
 
 describe('verwerfeVorschlag — the "bei meinem Jahr bleiben" resolution (ADR-008)', () => {
   it('persists the dismissal and keeps the confirmed year, resolving the conflict', () => {
-    const daten = beleg({ zahlungsdatum: '2026-01-15', steuerjahr: 2025 })
-    const verworfen = dismissSuggestion(daten)
-    expect(verworfen.vorschlagVerworfen).toBe(true)
-    expect(verworfen.steuerjahr).toBe(2025)
-    expect(assignmentFromData(verworfen)).toEqual({ kind: 'zugeordnet', steuerjahr: 2025 })
+    const data = receipt({ zahlungsdatum: '2026-01-15', steuerjahr: 2025 })
+    const dismissed = dismissSuggestion(data)
+    expect(dismissed.vorschlagVerworfen).toBe(true)
+    expect(dismissed.steuerjahr).toBe(2025)
+    expect(assignmentFromData(dismissed)).toEqual({ kind: 'zugeordnet', steuerjahr: 2025 })
     // The facts that caused the conflict are still there — nothing was silently discarded.
-    expect(verworfen.zahlungsdatum).toBe('2026-01-15')
+    expect(dismissed.zahlungsdatum).toBe('2026-01-15')
   })
 })

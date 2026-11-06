@@ -10,18 +10,18 @@ import {
 import { CurrentUser } from '../auth/current-user.decorator.js'
 import { RequiresAccount } from '../auth/requires-account.guard.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
-import { ParseSteuerjahrPipe } from '../cockpit/parse-steuerjahr.pipe.js'
-import { ParseVermietungFeldPipe } from './parse-vermietung-feld.pipe.js'
-import { VermietungService } from './vermietung.service.js'
-import { PutVermietungFeldDto } from './dto/vermietung-feld.dto.js'
-import { PutVermietungAdresseDto } from './dto/vermietung-adresse.dto.js'
-import { VermietungResponseDto } from './dto/vermietung-response.dto.js'
+import { ParseTaxYearPipe } from '../cockpit/parse-steuerjahr.pipe.js'
+import { ParseRentalFieldPipe } from './parse-vermietung-feld.pipe.js'
+import { RentalService } from './vermietung.service.js'
+import { PutRentalFieldDto } from './dto/vermietung-feld.dto.js'
+import { PutRentalAddressDto } from './dto/vermietung-adresse.dto.js'
+import { RentalResponseDto } from './dto/vermietung-response.dto.js'
 
 @ApiTags('vermietung')
 @Controller('v1/steuerjahre')
 @UseGuards(UserContextGuard)
-export class VermietungController {
-  constructor(@Inject(VermietungService) private readonly vermietungService: VermietungService) {}
+export class RentalController {
+  constructor(@Inject(RentalService) private readonly rentalService: RentalService) {}
 
   @Get(':jahr/vermietung')
   @RequiresAccount()
@@ -31,10 +31,10 @@ export class VermietungController {
     example: 2026,
     description: 'The tax year (Steuerjahr) — validated to a sensible window (ParseSteuerjahrPipe, same as Cockpit).',
   })
-  @ApiOkResponse({ type: VermietungResponseDto, description: 'The caller’s Vermietung objects + fold for this tax year — re-entry.' })
+  @ApiOkResponse({ type: RentalResponseDto, description: 'The caller’s Vermietung objects + fold for this tax year — re-entry.' })
   @ApiUnauthorizedResponse({ description: 'Guest session — this endpoint requires a signed-in account.' })
-  get(@CurrentUser() userId: string, @Param('jahr', ParseSteuerjahrPipe) jahr: number): Promise<VermietungResponseDto> {
-    return this.vermietungService.getState(userId, jahr)
+  get(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number): Promise<RentalResponseDto> {
+    return this.rentalService.getState(userId, year)
   }
 
   @Post(':jahr/vermietung/objekte')
@@ -45,10 +45,10 @@ export class VermietungController {
     example: 2026,
     description: 'The tax year (Steuerjahr) — validated to a sensible window (ParseSteuerjahrPipe, same as Cockpit).',
   })
-  @ApiCreatedResponse({ type: VermietungResponseDto, description: 'A fresh object (all fields offen) was created; the response carries the updated list + fold.' })
+  @ApiCreatedResponse({ type: RentalResponseDto, description: 'A fresh object (all fields offen) was created; the response carries the updated list + fold.' })
   @ApiUnauthorizedResponse({ description: 'Guest session — this endpoint requires a signed-in account.' })
-  create(@CurrentUser() userId: string, @Param('jahr', ParseSteuerjahrPipe) jahr: number): Promise<VermietungResponseDto> {
-    return this.vermietungService.createObjekt(userId, jahr)
+  create(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number): Promise<RentalResponseDto> {
+    return this.rentalService.createProperty(userId, year)
   }
 
   @Put(':jahr/vermietung/objekte/:objektId/:feld')
@@ -67,17 +67,17 @@ export class VermietungController {
     example: 'mieteinnahmen',
     description: 'One of mieteinnahmen | anschaffungskosten | baujahr | werbungskosten (ParseVermietungFeldPipe).',
   })
-  @ApiBody({ type: PutVermietungFeldDto })
-  @ApiOkResponse({ type: VermietungResponseDto, description: 'The updated objects and their derived fold.' })
+  @ApiBody({ type: PutRentalFieldDto })
+  @ApiOkResponse({ type: RentalResponseDto, description: 'The updated objects and their derived fold.' })
   @ApiUnauthorizedResponse({ description: 'Guest session — this endpoint requires a signed-in account.' })
-  setFeld(
+  setField(
     @CurrentUser() userId: string,
-    @Param('jahr', ParseSteuerjahrPipe) jahr: number,
-    @Param('objektId') objektId: string,
-    @Param('feld', ParseVermietungFeldPipe) feld: Parameters<VermietungService['setFeld']>[3],
-    @Body() dto: PutVermietungFeldDto,
-  ): Promise<VermietungResponseDto> {
-    return this.vermietungService.setFeld(userId, jahr, objektId, feld, dto)
+    @Param('jahr', ParseTaxYearPipe) year: number,
+    @Param('objektId') propertyId: string,
+    @Param('feld', ParseRentalFieldPipe) field: Parameters<RentalService['setField']>[3],
+    @Body() dto: PutRentalFieldDto,
+  ): Promise<RentalResponseDto> {
+    return this.rentalService.setField(userId, year, propertyId, field, dto)
   }
 
   @Put(':jahr/vermietung/objekte/:objektId/adresse')
@@ -85,15 +85,15 @@ export class VermietungController {
   @RequiresAccount()
   @ApiParam({ name: 'jahr', type: Number, example: 2026 })
   @ApiParam({ name: 'objektId', type: String, example: '9c3f…' })
-  @ApiBody({ type: PutVermietungAdresseDto })
-  @ApiOkResponse({ type: VermietungResponseDto })
+  @ApiBody({ type: PutRentalAddressDto })
+  @ApiOkResponse({ type: RentalResponseDto })
   @ApiUnauthorizedResponse({ description: 'Guest session — this endpoint requires a signed-in account.' })
-  setAdresse(
+  setAddress(
     @CurrentUser() userId: string,
-    @Param('jahr', ParseSteuerjahrPipe) jahr: number,
-    @Param('objektId') objektId: string,
-    @Body() dto: PutVermietungAdresseDto,
-  ): Promise<VermietungResponseDto> {
-    return this.vermietungService.setAdresse(userId, jahr, objektId, dto)
+    @Param('jahr', ParseTaxYearPipe) year: number,
+    @Param('objektId') propertyId: string,
+    @Body() dto: PutRentalAddressDto,
+  ): Promise<RentalResponseDto> {
+    return this.rentalService.setAddress(userId, year, propertyId, dto)
   }
 }

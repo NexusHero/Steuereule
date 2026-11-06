@@ -4,7 +4,7 @@ import type {
   ConnectedAssistant,
 } from '../../src/assistenten/assistenten.repository.js'
 
-export class FakeAssistentenRepository implements AssistantRepository {
+export class FakeAssistantsRepository implements AssistantRepository {
   private connected: Map<string, ConnectedAssistant[]> = new Map()
   private clients: Map<string, ClientInfo> = new Map()
 

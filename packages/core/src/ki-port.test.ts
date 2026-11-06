@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { nehmeVorschlagAn, type KiVorschlag } from './ki-port'
+import { acceptAiProposal, type AiProposal } from './ki-port'
 
 // ADR-014/048 — the port contract. The deterministic core is fully testable with NO KiPort
 // injected: `nehmeVorschlagAn` is a pure function over an already-materialized suggestion.
@@ -8,27 +8,27 @@ import { nehmeVorschlagAn, type KiVorschlag } from './ki-port'
 
 describe('nehmeVorschlagAn — a suggestion becomes a Posten only by acceptance (ADR-014)', () => {
   it('produces a Posten with the suggestion’s Einkunftsart and amount', () => {
-    const vorschlag: KiVorschlag = { id: 'v1', einkunftsart: 'Vermietung', betrag: 480 }
-    expect(nehmeVorschlagAn(vorschlag, 'p1')).toEqual({
+    const proposal: AiProposal = { id: 'v1', incomeType: 'Vermietung', amount: 480 }
+    expect(acceptAiProposal(proposal, 'p1')).toEqual({
       id: 'p1',
-      einkunftsart: 'Vermietung',
-      betrag: 480,
-      quelle: { art: 'ki-vorschlag', vorschlagId: 'v1' },
+      incomeType: 'Vermietung',
+      amount: 480,
+      source: { art: 'ki-vorschlag', proposalId: 'v1' },
     })
   })
 
   it('records the Beleg it was derived from, when one is present (ADR-014 "Beleg + KI-Vorschlag, bestätigt")', () => {
-    const vorschlag: KiVorschlag = { id: 'v1', einkunftsart: 'Kapital', betrag: 123, belegId: 'b1' }
-    expect(nehmeVorschlagAn(vorschlag, 'p1').quelle).toEqual({
+    const proposal: AiProposal = { id: 'v1', incomeType: 'Kapital', amount: 123, receiptId: 'b1' }
+    expect(acceptAiProposal(proposal, 'p1').source).toEqual({
       art: 'ki-vorschlag',
-      vorschlagId: 'v1',
-      belegId: 'b1',
+      proposalId: 'v1',
+      receiptId: 'b1',
     })
   })
 
   it('a suggestion without a Beleg carries no belegId on its Quelle', () => {
-    const vorschlag: KiVorschlag = { id: 'v1', einkunftsart: 'Kapital', betrag: 123 }
-    const posten = nehmeVorschlagAn(vorschlag, 'p1')
-    expect('belegId' in posten.quelle).toBe(false)
+    const proposal: AiProposal = { id: 'v1', incomeType: 'Kapital', amount: 123 }
+    const items = acceptAiProposal(proposal, 'p1')
+    expect('receiptId' in items.source).toBe(false)
   })
 })

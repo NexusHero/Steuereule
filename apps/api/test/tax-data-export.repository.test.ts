@@ -35,7 +35,7 @@ describe('PrismaTaxDataExportRepository', () => {
     }
     const prisma = new Proxy({}, { get: (_t, model) => ({ findMany: async () => rows[String(model)] ?? [] }) })
     const entries = await new PrismaTaxDataExportRepository(prisma as never).findAllForUser('u')
-    expect(entries.map((entry) => [entry.bereich, entry.steuerjahr])).toEqual([
+    expect(entries.map((entry) => [entry.area, entry.steuerjahr])).toEqual([
       ['Lohnsteuerbescheinigung', 2024],
       ['Kapitalerträge', 2025],
       ['Beleg', null],
@@ -53,9 +53,9 @@ describe('toExportEntry', () => {
       updatedAt: new Date('2026-02-01T09:30:00.000Z'),
     })
     expect(entry).toEqual({
-      bereich: 'Kapitalerträge',
+      area: 'Kapitalerträge',
       steuerjahr: 2025,
-      felder: { kapitalertraege: '1200', updatedAt: '2026-02-01T09:30:00.000Z' },
+      fields: { kapitalertraege: '1200', updatedAt: '2026-02-01T09:30:00.000Z' },
     })
   })
 })

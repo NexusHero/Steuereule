@@ -11,7 +11,7 @@ import { getProfileControllerGetProfileQueryKey } from '@steuereule/api-client'
 import { createAppI18n } from '../i18n/app-i18n'
 import { createAppAuthClient } from '../auth/auth-client'
 import { AuthClientProvider } from '../auth/AuthClientProvider'
-import { ProfilScreen } from './ProfilScreen'
+import { ProfileScreen } from './ProfilScreen'
 import { server, EMPTY_PROFILE_RESPONSE } from '../test-msw-server'
 import { stubStorageSetItem, assertNoStorageWrites } from '../test-storage-guard'
 
@@ -21,13 +21,13 @@ function makeTestQueryClient() {
   return new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
 }
 
-function renderProfil(
+function renderProfile(
   opts: {
     lng?: 'de' | 'en'
     queryClient?: QueryClient
-    onOpenDatenschutz?: () => void
-    onOpenSicherheit?: () => void
-    onOpenStammdaten?: () => void
+    onOpenPrivacy?: () => void
+    onOpenSecurity?: () => void
+    onOpenMasterData?: () => void
     onSignedOut?: () => void
   } = {},
 ) {
@@ -39,10 +39,10 @@ function renderProfil(
       <I18nextProvider i18n={i18n}>
         <ThemeProvider mode="light">
           <AuthClientProvider client={authClient}>
-            <ProfilScreen
-              onOpenDatenschutz={opts.onOpenDatenschutz ?? (() => {})}
-              onOpenSicherheit={opts.onOpenSicherheit ?? (() => {})}
-              {...(opts.onOpenStammdaten ? { onOpenStammdaten: opts.onOpenStammdaten } : {})}
+            <ProfileScreen
+              onOpenPrivacy={opts.onOpenPrivacy ?? (() => {})}
+              onOpenSecurity={opts.onOpenSecurity ?? (() => {})}
+              {...(opts.onOpenMasterData ? { onOpenMasterData: opts.onOpenMasterData } : {})}
               onSignedOut={opts.onSignedOut ?? (() => {})}
             />
           </AuthClientProvider>
@@ -63,7 +63,7 @@ function mockSavedProfile() {
 describe('ProfilScreen', () => {
   it('shows an honest loading state while the profile is fetched', async () => {
     mockSavedProfile()
-    renderProfil()
+    renderProfile()
     expect(screen.getByLabelText('Dein Profil wird geladen …')).toBeTruthy()
     await screen.findByText('Anna Beispiel')
     expect(screen.queryByLabelText('Dein Profil wird geladen …')).toBeNull()
@@ -71,14 +71,14 @@ describe('ProfilScreen', () => {
 
   it('renders the view state with the real name + formatted Steuer-ID from GET /v1/profile', async () => {
     mockSavedProfile()
-    renderProfil()
+    renderProfile()
     await screen.findByText('Anna Beispiel')
     expect(screen.getByText('02 476 291 358')).toBeTruthy()
     expect(screen.getByText('A')).toBeTruthy() // avatar initial
   })
 
   it('shows an honest empty state for a brand-new profile (never mock data)', async () => {
-    renderProfil() // default MSW handler resolves the all-null profile
+    renderProfile() // default MSW handler resolves the all-null profile
     await screen.findByText('Noch keine Angaben gespeichert.')
     expect(screen.queryByText('Anna Beispiel')).toBeNull()
   })
@@ -100,7 +100,7 @@ describe('ProfilScreen', () => {
     // what Profil's mount-time background refetch receives.
     mockSavedProfile()
 
-    renderProfil({ queryClient })
+    renderProfile({ queryClient })
 
     // Must self-correct to the real data once the refetch resolves, not latch onto the stale
     // cached empty snapshot.
@@ -117,7 +117,7 @@ describe('ProfilScreen', () => {
         return HttpResponse.json({ firstName: 'Anna', lastName: 'Beispiel', steuerId: '02476291358', steuernummer: null }, { status: 200 })
       }),
     )
-    renderProfil()
+    renderProfile()
 
     await screen.findByText('Das hat nicht geklappt.')
     expect(screen.getByText('Dein Profil konnte nicht geladen werden. Prüf die Verbindung und versuch es noch mal.')).toBeTruthy()
@@ -128,7 +128,7 @@ describe('ProfilScreen', () => {
 
   it('opens the edit form prefilled with the current values, grouped like the typed input', async () => {
     mockSavedProfile()
-    renderProfil()
+    renderProfile()
     await screen.findByText('Anna Beispiel')
 
     fireEvent.click(screen.getByText('Bearbeiten'))
@@ -142,7 +142,7 @@ describe('ProfilScreen', () => {
     mockSavedProfile()
     let putCalls = 0
     server.use(http.put('*/v1/profile', () => { putCalls += 1; return HttpResponse.error() }))
-    renderProfil()
+    renderProfile()
     await screen.findByText('Anna Beispiel')
     fireEvent.click(screen.getByText('Bearbeiten'))
 
@@ -168,7 +168,7 @@ describe('ProfilScreen', () => {
         return HttpResponse.json({ firstName: 'Anna', lastName: 'Neu', steuerId: null, steuernummer: null }, { status: 200 })
       }),
     )
-    renderProfil()
+    renderProfile()
     await screen.findByText('Anna Beispiel')
     fireEvent.click(screen.getByText('Bearbeiten'))
 
@@ -189,7 +189,7 @@ describe('ProfilScreen', () => {
         return HttpResponse.json({ firstName: 'Anna', lastName: 'Neu', steuerId: '02476291358', steuernummer: '1234567890' }, { status: 200 })
       }),
     )
-    renderProfil()
+    renderProfile()
     await screen.findByText('Anna Beispiel')
     fireEvent.click(screen.getByText('Bearbeiten'))
 
@@ -208,7 +208,7 @@ describe('ProfilScreen', () => {
         HttpResponse.json({ statusCode: 400, error: 'Bad Request', fields: [{ field: 'steuerId', message: 'invalid' }] }, { status: 400 }),
       ),
     )
-    renderProfil()
+    renderProfile()
     await screen.findByText('Anna Beispiel')
     fireEvent.click(screen.getByText('Bearbeiten'))
     fireEvent.change(screen.getByDisplayValue('Beispiel'), { target: { value: 'Neu' } })
@@ -221,7 +221,7 @@ describe('ProfilScreen', () => {
   it('shows a retryable inline error on a network failure while saving', async () => {
     mockSavedProfile()
     server.use(http.put('*/v1/profile', () => HttpResponse.error()))
-    renderProfil()
+    renderProfile()
     await screen.findByText('Anna Beispiel')
     fireEvent.click(screen.getByText('Bearbeiten'))
     fireEvent.click(screen.getByText('Speichern'))
@@ -231,7 +231,7 @@ describe('ProfilScreen', () => {
 
   it('shows the Steuer-ID digit counter and confirmation while editing, matching the Onboarding field pattern', async () => {
     mockSavedProfile()
-    renderProfil()
+    renderProfile()
     await screen.findByText('Anna Beispiel')
     fireEvent.click(screen.getByText('Bearbeiten'))
 
@@ -241,7 +241,7 @@ describe('ProfilScreen', () => {
 
   it('discards edits and returns to the original values on Abbrechen', async () => {
     mockSavedProfile()
-    renderProfil()
+    renderProfile()
     await screen.findByText('Anna Beispiel')
     fireEvent.click(screen.getByText('Bearbeiten'))
     fireEvent.change(screen.getByDisplayValue('Beispiel'), { target: { value: 'Verworfen' } })
@@ -276,7 +276,7 @@ describe('ProfilScreen', () => {
           return HttpResponse.json({ ...body, steuernummer: '1234567890' }, { status: 200 })
         }),
       )
-      renderProfil()
+      renderProfile()
       await screen.findByText('Anna Beispiel')
       fireEvent.click(screen.getByText('Bearbeiten'))
       fireEvent.change(screen.getByDisplayValue('Beispiel'), { target: { value: 'Neu' } })
@@ -290,7 +290,7 @@ describe('ProfilScreen', () => {
 
   it('renders correctly in English (ADR-0006, no gap on new strings)', async () => {
     mockSavedProfile()
-    renderProfil({ lng: 'en' })
+    renderProfile({ lng: 'en' })
     await screen.findByText('Anna Beispiel')
     expect(screen.getByText('Edit')).toBeTruthy()
 
@@ -301,7 +301,7 @@ describe('ProfilScreen', () => {
 
   it('exposes the edit button as an accessible button', async () => {
     mockSavedProfile()
-    renderProfil()
+    renderProfile()
     await screen.findByText('Anna Beispiel')
     expect(screen.getByRole('button', { name: 'Bearbeiten' })).toBeTruthy()
   })
@@ -309,18 +309,18 @@ describe('ProfilScreen', () => {
   describe('the "Deine Daten" row (REQ-011, steuereule#152)', () => {
     it('reaches the Datenschutz screen via onOpenDatenschutz — a real navigation, not a dead row', async () => {
       mockSavedProfile()
-      const onOpenDatenschutz = vi.fn()
-      renderProfil({ onOpenDatenschutz })
+      const onOpenPrivacy = vi.fn()
+      renderProfile({ onOpenPrivacy })
       await screen.findByText('Anna Beispiel')
 
       fireEvent.click(screen.getByText('So schützen wir deine Daten (DSGVO)'))
 
-      expect(onOpenDatenschutz).toHaveBeenCalledOnce()
+      expect(onOpenPrivacy).toHaveBeenCalledOnce()
     })
 
     it('renders the row in English too (ADR-0006)', async () => {
       mockSavedProfile()
-      renderProfil({ lng: 'en' })
+      renderProfile({ lng: 'en' })
       await screen.findByText('Anna Beispiel')
       expect(screen.getByText('How we protect your data (GDPR)')).toBeTruthy()
     })
@@ -330,9 +330,9 @@ describe('ProfilScreen', () => {
 describe('ProfilScreen — Erklärungs-Stammdaten entry (ADR-0050)', () => {
   it('opens the Stammdaten drill-down from its own row', async () => {
     mockSavedProfile()
-    const onOpenStammdaten = vi.fn()
-    renderProfil({ onOpenStammdaten })
+    const onOpenMasterData = vi.fn()
+    renderProfile({ onOpenMasterData })
     fireEvent.click(await screen.findByText('Angaben für die Steuererklärung'))
-    expect(onOpenStammdaten).toHaveBeenCalled()
+    expect(onOpenMasterData).toHaveBeenCalled()
   })
 })

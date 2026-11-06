@@ -8,41 +8,41 @@
 /**
  * The field’s capture state.
  */
-export type LstbFeldDtoKind = typeof LstbFeldDtoKind[keyof typeof LstbFeldDtoKind];
+export type LstbFieldDtoKind = typeof LstbFieldDtoKind[keyof typeof LstbFieldDtoKind];
 
 
-export const LstbFeldDtoKind = {
+export const LstbFieldDtoKind = {
   erfasst: 'erfasst',
   offen: 'offen',
   unklar: 'unklar',
 } as const;
 
-export interface LstbFeldDto {
+export interface LstbFieldDto {
   /** The field’s capture state. */
-  kind: LstbFeldDtoKind;
+  kind: LstbFieldDtoKind;
   /** The whole-euro amount — present only when kind === "erfasst" (validated in the service via @steuereule/core). */
-  wert?: number;
+  value?: number;
 }
 
-export type LstbZustandDtoKind = typeof LstbZustandDtoKind[keyof typeof LstbZustandDtoKind];
+export type LstbStatusDtoKind = typeof LstbStatusDtoKind[keyof typeof LstbStatusDtoKind];
 
 
-export const LstbZustandDtoKind = {
+export const LstbStatusDtoKind = {
   unvollstaendig: 'unvollstaendig',
   widerspruch: 'widerspruch',
   vollstaendig: 'vollstaendig',
 } as const;
 
-export type LstbWiderspruchDtoArt = typeof LstbWiderspruchDtoArt[keyof typeof LstbWiderspruchDtoArt];
+export type LstbConflictDtoArt = typeof LstbConflictDtoArt[keyof typeof LstbConflictDtoArt];
 
 
-export const LstbWiderspruchDtoArt = {
+export const LstbConflictDtoArt = {
   'lohnsteuer-uebersteigt-brutto': 'lohnsteuer-uebersteigt-brutto',
   'sozialversicherung-uebersteigt-brutto': 'sozialversicherung-uebersteigt-brutto',
 } as const;
 
-export interface LstbWiderspruchDto {
-  art: LstbWiderspruchDtoArt;
+export interface LstbConflictDto {
+  art: LstbConflictDtoArt;
   /** The einbehaltene Lohnsteuer (only when art is lohnsteuer-uebersteigt-brutto). */
   lohnsteuer?: number;
   /** The Bruttoarbeitslohn (both arts). */
@@ -51,14 +51,14 @@ export interface LstbWiderspruchDto {
   sozialversicherung?: number;
 }
 
-export interface LstbZustandDto {
-  kind: LstbZustandDtoKind;
+export interface LstbStatusDto {
+  kind: LstbStatusDtoKind;
   /** Fields not yet reached (only when kind is unvollstaendig). */
-  offen?: string[];
+  open?: string[];
   /** Fields looked at but unreadable (only when kind is unvollstaendig). */
-  unklar?: string[];
+  unclear?: string[];
   /** The named contradictions (only when kind is widerspruch). */
-  widersprueche?: LstbWiderspruchDto[];
+  conflicts?: LstbConflictDto[];
   /** Bruttoarbeitslohn, whole euros (only when kind is vollstaendig). */
   bruttoarbeitslohn?: number;
   /** Einbehaltene Lohnsteuer, whole euros (only when kind is vollstaendig). */
@@ -68,10 +68,10 @@ export interface LstbZustandDto {
 }
 
 export interface LstbResponseDto {
-  bruttoarbeitslohn: LstbFeldDto;
-  lohnsteuer: LstbFeldDto;
-  sozialversicherung: LstbFeldDto;
-  zustand: LstbZustandDto;
+  bruttoarbeitslohn: LstbFieldDto;
+  lohnsteuer: LstbFieldDto;
+  sozialversicherung: LstbFieldDto;
+  state: LstbStatusDto;
 }
 
 export type LstbControllerGetLstbParams = {
@@ -89,17 +89,17 @@ export const LstbControllerGetLstbPerson = {
   B: 'B',
 } as const;
 
-export type LstbControllerSetFeldParams = {
+export type LstbControllerSetFieldParams = {
 /**
  * B: Person A records the figures of a partner without an own account (ADR-0054).
  */
-person?: LstbControllerSetFeldPerson;
+person?: LstbControllerSetFieldPerson;
 };
 
-export type LstbControllerSetFeldPerson = typeof LstbControllerSetFeldPerson[keyof typeof LstbControllerSetFeldPerson];
+export type LstbControllerSetFieldPerson = typeof LstbControllerSetFieldPerson[keyof typeof LstbControllerSetFieldPerson];
 
 
-export const LstbControllerSetFeldPerson = {
+export const LstbControllerSetFieldPerson = {
   A: 'A',
   B: 'B',
 } as const;

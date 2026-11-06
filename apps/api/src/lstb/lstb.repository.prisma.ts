@@ -19,17 +19,17 @@ function toRecord(row: {
   }
 }
 
-function feldData(
-  feld: WageTaxCertificateFieldId,
-  wert: string | null,
+function fieldData(
+  field: WageTaxCertificateFieldId,
+  value: string | null,
 ): { bruttoarbeitslohn?: string | null; lohnsteuer?: string | null; sozialversicherung?: string | null } {
-  switch (feld) {
+  switch (field) {
     case 'bruttoarbeitslohn':
-      return { bruttoarbeitslohn: wert }
+      return { bruttoarbeitslohn: value }
     case 'lohnsteuer':
-      return { lohnsteuer: wert }
+      return { lohnsteuer: value }
     case 'sozialversicherung':
-      return { sozialversicherung: wert }
+      return { sozialversicherung: value }
   }
 }
 
@@ -42,12 +42,12 @@ export class PrismaLstbRepository implements WageTaxCertificateRepository {
     return row === null ? null : toRecord(row)
   }
 
-  async setFeld(userId: string, steuerjahr: number, feld: WageTaxCertificateFieldId, wert: string | null): Promise<WageTaxCertificateRecord> {
+  async setField(userId: string, steuerjahr: number, field: WageTaxCertificateFieldId, value: string | null): Promise<WageTaxCertificateRecord> {
     const [row] = await this.prisma.$transaction([
       this.prisma.lstb.upsert({
         where: { userId_steuerjahr: { userId, steuerjahr } },
-        create: { userId, steuerjahr, bruttoarbeitslohn: null, lohnsteuer: null, sozialversicherung: null, ...feldData(feld, wert) },
-        update: feldData(feld, wert),
+        create: { userId, steuerjahr, bruttoarbeitslohn: null, lohnsteuer: null, sozialversicherung: null, ...fieldData(field, value) },
+        update: fieldData(field, value),
       }),
       this.prisma.taxDataAccessLog.create({
         data: { userId, action: 'WRITE', resource: 'lstb' },

@@ -8,9 +8,9 @@ import {
   serializeRentalField,
   deserializeRentalField,
   setRentalField,
-  vermietungsobjektAlsEinnahmePosten,
-  vermietungsobjektFakten,
-  vermietungStand,
+  rentalPropertyAsIncomeItem,
+  rentalPropertyFacts,
+  rentalStatus,
   type RentalObjectData,
 } from './vermietung'
 
@@ -64,121 +64,121 @@ describe('afaSatzProzent — § 7 Abs. 4 Satz 1 EStG, the three statutory bands 
 
 describe('the guided mask — one Vermietungsobjekt', () => {
   it('starts with every field open', () => {
-    const objekt = emptyRentalObject('obj-1')
-    expect(objekt.mieteinnahmen).toEqual({ kind: 'offen' })
-    expect(objekt.anschaffungskosten).toEqual({ kind: 'offen' })
-    expect(objekt.baujahr).toEqual({ kind: 'offen' })
-    expect(objekt.werbungskosten).toEqual({ kind: 'offen' })
+    const property = emptyRentalObject('obj-1')
+    expect(property.mieteinnahmen).toEqual({ kind: 'offen' })
+    expect(property.anschaffungskosten).toEqual({ kind: 'offen' })
+    expect(property.baujahr).toEqual({ kind: 'offen' })
+    expect(property.werbungskosten).toEqual({ kind: 'offen' })
   })
 
   it('setzeVermietungFeld captures and rejects invalid erfasst values', () => {
-    const objekt = setRentalField(emptyRentalObject('o1'), 'mieteinnahmen', { kind: 'erfasst', wert: 12000 })
-    expect(objekt.mieteinnahmen).toEqual({ kind: 'erfasst', wert: 12000 })
-    expect(() => setRentalField(emptyRentalObject('o1'), 'baujahr', { kind: 'erfasst', wert: -1 })).toThrow(RangeError)
-    expect(() => setRentalField(emptyRentalObject('o1'), 'baujahr', { kind: 'erfasst', wert: 1.5 })).toThrow(RangeError)
+    const property = setRentalField(emptyRentalObject('o1'), 'mieteinnahmen', { kind: 'erfasst', value: 12000 })
+    expect(property.mieteinnahmen).toEqual({ kind: 'erfasst', value: 12000 })
+    expect(() => setRentalField(emptyRentalObject('o1'), 'baujahr', { kind: 'erfasst', value: -1 })).toThrow(RangeError)
+    expect(() => setRentalField(emptyRentalObject('o1'), 'baujahr', { kind: 'erfasst', value: 1.5 })).toThrow(RangeError)
   })
 
   it('round-trips the persistence encoding', () => {
     expect(serializeRentalField({ kind: 'offen' })).toBeNull()
     expect(serializeRentalField({ kind: 'unklar' })).toBe('unklar')
-    expect(serializeRentalField({ kind: 'erfasst', wert: 12000 })).toBe('12000')
+    expect(serializeRentalField({ kind: 'erfasst', value: 12000 })).toBe('12000')
     expect(deserializeRentalField(null)).toEqual({ kind: 'offen' })
     expect(deserializeRentalField('unklar')).toEqual({ kind: 'unklar' })
-    expect(deserializeRentalField('12000')).toEqual({ kind: 'erfasst', wert: 12000 })
+    expect(deserializeRentalField('12000')).toEqual({ kind: 'erfasst', value: 12000 })
     expect(() => deserializeRentalField('zwölf')).toThrow()
   })
 })
 
-function objektMit(id: string, overrides: Partial<RentalObjectData> = {}): RentalObjectData {
+function propertyWith(id: string, overrides: Partial<RentalObjectData> = {}): RentalObjectData {
   return { ...emptyRentalObject(id), ...overrides }
 }
 
-const VOLL = (id: string): RentalObjectData =>
-  objektMit(id, {
-    mieteinnahmen: { kind: 'erfasst', wert: 12000 },
-    anschaffungskosten: { kind: 'erfasst', wert: 200000 },
-    baujahr: { kind: 'erfasst', wert: 1990 },
-    werbungskosten: { kind: 'erfasst', wert: 1500 },
+const FULL = (id: string): RentalObjectData =>
+  propertyWith(id, {
+    mieteinnahmen: { kind: 'erfasst', value: 12000 },
+    anschaffungskosten: { kind: 'erfasst', value: 200000 },
+    baujahr: { kind: 'erfasst', value: 1990 },
+    werbungskosten: { kind: 'erfasst', value: 1500 },
   })
 
 describe('vermietungsobjektFakten — one object\'s honest facts', () => {
   it('a complete object yields Mieteinnahmen, Werbungskosten and the lineare AfA with Herkunft', () => {
-    const fakten = vermietungsobjektFakten(VOLL('a'))
-    expect(fakten.einnahmen).toBe(12000)
-    expect(fakten.werbungskosten).toBe(1500)
+    const facts = rentalPropertyFacts(FULL('a'))
+    expect(facts.einnahmen).toBe(12000)
+    expect(facts.werbungskosten).toBe(1500)
     // 200.000 × 2 % (Baujahr 1990) = 4.000.
-    expect(fakten.afa).toEqual({ betrag: 4000, herkunft: '§ 7 Abs. 4 Satz 1 EStG — lineare AfA 2 % bei Baujahr 1990' })
-    expect(fakten.offenePosten).toBe(0)
+    expect(facts.depreciation).toEqual({ amount: 4000, provenance: '§ 7 Abs. 4 Satz 1 EStG — lineare AfA 2 % bei Baujahr 1990' })
+    expect(facts.openItems).toBe(0)
   })
 
   it('an empty object has three blocked results — Mieteinnahmen, AfA, Werbungskosten', () => {
-    const fakten = vermietungsobjektFakten(emptyRentalObject('a'))
-    expect(fakten.einnahmen).toBeNull()
-    expect(fakten.werbungskosten).toBeNull()
-    expect(fakten.afa).toBeNull()
-    expect(fakten.offenePosten).toBe(3)
+    const facts = rentalPropertyFacts(emptyRentalObject('a'))
+    expect(facts.einnahmen).toBeNull()
+    expect(facts.werbungskosten).toBeNull()
+    expect(facts.depreciation).toBeNull()
+    expect(facts.openItems).toBe(3)
   })
 
   it('Werbungskosten may be 0 — the USER\'s entry, never a kernel-invented zero', () => {
-    const fakten = vermietungsobjektFakten(objektMit('a', { mieteinnahmen: { kind: 'erfasst', wert: 12000 }, anschaffungskosten: { kind: 'erfasst', wert: 200000 }, baujahr: { kind: 'erfasst', wert: 1990 }, werbungskosten: { kind: 'erfasst', wert: 0 } }))
-    expect(fakten.werbungskosten).toBe(0)
-    expect(fakten.offenePosten).toBe(0)
+    const facts = rentalPropertyFacts(propertyWith('a', { mieteinnahmen: { kind: 'erfasst', value: 12000 }, anschaffungskosten: { kind: 'erfasst', value: 200000 }, baujahr: { kind: 'erfasst', value: 1990 }, werbungskosten: { kind: 'erfasst', value: 0 } }))
+    expect(facts.werbungskosten).toBe(0)
+    expect(facts.openItems).toBe(0)
   })
 
   it('an unklar field blocks its result honestly', () => {
-    const fakten = vermietungsobjektFakten(objektMit('a', { mieteinnahmen: { kind: 'unklar' } }))
-    expect(fakten.einnahmen).toBeNull()
-    expect(fakten.offenePosten).toBe(3)
+    const facts = rentalPropertyFacts(propertyWith('a', { mieteinnahmen: { kind: 'unklar' } }))
+    expect(facts.einnahmen).toBeNull()
+    expect(facts.openItems).toBe(3)
   })
 })
 
 describe('vermietungsobjektAlsEinnahmePosten — the fold into the deterministic core', () => {
   it('an erfasst Mieteinnahmen becomes a Vermietung-Posten with Herkunft eingabe', () => {
-    const posten = vermietungsobjektAlsEinnahmePosten(VOLL('a'))
-    expect(posten).toEqual({
+    const items = rentalPropertyAsIncomeItem(FULL('a'))
+    expect(items).toEqual({
       id: 'vermietung-a',
-      einkunftsart: 'Vermietung',
-      betrag: 12000,
-      quelle: { art: 'eingabe' },
+      incomeType: 'Vermietung',
+      amount: 12000,
+      source: { art: 'eingabe' },
     })
   })
 
   it('an open field stays null — OFFEN, never a fabricated zero', () => {
-    expect(vermietungsobjektAlsEinnahmePosten(emptyRentalObject('a'))).toBeNull()
+    expect(rentalPropertyAsIncomeItem(emptyRentalObject('a'))).toBeNull()
   })
 })
 
 describe('vermietungStand — the honest fold over ALL objects', () => {
   it('is bestimmt with the separate sums when every object is complete', () => {
-    const stand = vermietungStand([VOLL('a'), VOLL('b')], [])
-    expect(stand).toEqual({
+    const status = rentalStatus([FULL('a'), FULL('b')], [])
+    expect(status).toEqual({
       kind: 'bestimmt',
       einnahmen: 24000,
       vorsorgeaufwand: 0,
       anrechnung: 0,
       werbungskosten: 3000,
-      afa: 8000,
-      offenePosten: 0,
-      konflikte: 0,
-      gegated: [],
+      depreciation: 8000,
+      openItems: 0,
+      conflicts: 0,
+      gated: [],
     })
   })
 
   it('is offen naming the blocked count when an object is incomplete — never a guessed zero', () => {
-    const stand = vermietungStand([VOLL('a'), emptyRentalObject('b')], [])
-    expect(stand.kind).toBe('offen')
-    if (stand.kind === 'offen') {
-      expect(stand.offenePosten).toBe(3)
-      expect(stand.einnahmen).toBe(12000) // partial truth stated as a partial truth
-      expect(stand.werbungskosten).toBe(1500)
-      expect(stand.afa).toBe(4000)
+    const status = rentalStatus([FULL('a'), emptyRentalObject('b')], [])
+    expect(status.kind).toBe('offen')
+    if (status.kind === 'offen') {
+      expect(status.openItems).toBe(3)
+      expect(status.einnahmen).toBe(12000) // partial truth stated as a partial truth
+      expect(status.werbungskosten).toBe(1500)
+      expect(status.depreciation).toBe(4000)
     }
   })
 
   it('passes gegated through — a Verkauf/möbliert-Anleger reads offen with the gate named (ADR-030/033 combinability)', () => {
-    const stand = vermietungStand([VOLL('a')], ['Vermietung'])
-    expect(stand.kind).toBe('offen')
-    if (stand.kind === 'offen') expect(stand.gegated).toEqual(['Vermietung'])
+    const status = rentalStatus([FULL('a')], ['Vermietung'])
+    expect(status.kind).toBe('offen')
+    if (status.kind === 'offen') expect(status.gated).toEqual(['Vermietung'])
   })
 })
 

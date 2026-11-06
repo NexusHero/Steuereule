@@ -22,5 +22,5 @@ export const COMMUTE_REPOSITORY = Symbol('COMMUTE_REPOSITORY')
 /** The persistence seam for the commute facts behind the Entfernungspauschale. */
 export interface CommuteRepository {
   findForUserAndYear(userId: string, steuerjahr: number): Promise<CommuteInputs | null>
-  save(userId: string, steuerjahr: number, eingaben: CommuteInputs): Promise<CommuteInputs>
+  save(userId: string, steuerjahr: number, inputs: CommuteInputs): Promise<CommuteInputs>
 }

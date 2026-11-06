@@ -133,8 +133,8 @@ describe('PROFILE /v1/profile — real Postgres', () => {
   })
 
   it('ADR-0045 — PUT without steuerId stores NULL (not an encrypted blank) and reads back as null, name kept', async () => {
-    const { steuerId: _skipped, ...withoutSteuerId } = VALID_PAYLOAD
-    const put = await app.inject({ method: 'PUT', url: '/v1/profile', payload: withoutSteuerId })
+    const { steuerId: _skipped, ...withoutTaxId } = VALID_PAYLOAD
+    const put = await app.inject({ method: 'PUT', url: '/v1/profile', payload: withoutTaxId })
     expect(put.statusCode).toBe(200)
     const cookie = extractSessionCookie(put.headers['set-cookie'])!
 
@@ -143,7 +143,7 @@ describe('PROFILE /v1/profile — real Postgres', () => {
 
     const get = await app.inject({ method: 'GET', url: '/v1/profile', headers: { cookie } })
     expect(get.statusCode).toBe(200)
-    expect(get.json()).toEqual({ ...withoutSteuerId, steuerId: null })
+    expect(get.json()).toEqual({ ...withoutTaxId, steuerId: null })
   })
 
   it('an invalid payload (10-digit steuerId) returns 400 and writes zero rows', async () => {
@@ -192,12 +192,12 @@ describe('PROFILE /v1/profile — real Postgres', () => {
       const cookie = extractSessionCookie(put.headers['set-cookie'])!
       const userId = userIdFromCookie(cookie)
 
-      const rawSteuerId = await rawProfileColumn(prisma, userId, 'steuerId')
-      const rawSteuernummer = await rawProfileColumn(prisma, userId, 'steuernummer')
+      const rawTaxId = await rawProfileColumn(prisma, userId, 'steuerId')
+      const rawTaxNumber = await rawProfileColumn(prisma, userId, 'steuernummer')
 
-      expect(rawSteuerId).not.toBeNull()
-      expect(rawSteuerId).not.toBe(VALID_PAYLOAD.steuerId)
-      expect(rawSteuerId!.length).toBeGreaterThan(VALID_PAYLOAD.steuerId.length)
+      expect(rawTaxId).not.toBeNull()
+      expect(rawTaxId).not.toBe(VALID_PAYLOAD.steuerId)
+      expect(rawTaxId!.length).toBeGreaterThan(VALID_PAYLOAD.steuerId.length)
       // prisma-field-encryption's cloak envelope: "<envelopeVersion>.aesgcm256.<fingerprint>.<iv>.<ciphertext>"
       // — namespaced by cipher name, never a bare 11-digit string. Corrected from
       // `k\d+` (that's the *key* encoding prefix, e.g. `k1.aesgcm256.<key>` — used for
@@ -206,27 +206,27 @@ describe('PROFILE /v1/profile — real Postgres', () => {
       // node_modules/@47ng/cloak/dist/message.js `encodeEncryptedString`, which
       // hardcodes 'v1'; not configurable). Verified against the real library output,
       // not asserted from memory.
-      expect(rawSteuerId).toMatch(/^v\d+\.aesgcm256\./)
+      expect(rawTaxId).toMatch(/^v\d+\.aesgcm256\./)
 
-      expect(rawSteuernummer).not.toBeNull()
-      expect(rawSteuernummer).not.toBe(VALID_PAYLOAD.steuernummer)
-      expect(rawSteuernummer).toMatch(/^v\d+\.aesgcm256\./)
+      expect(rawTaxNumber).not.toBeNull()
+      expect(rawTaxNumber).not.toBe(VALID_PAYLOAD.steuernummer)
+      expect(rawTaxNumber).toMatch(/^v\d+\.aesgcm256\./)
     })
 
     it('REQ-003.3 randomized: two userIds with the same Steuer-ID have different ciphertext at rest', async () => {
-      const sameSteuerId = VALID_PAYLOAD.steuerId
+      const sameTaxId = VALID_PAYLOAD.steuerId
 
       const putA = await app.inject({
         method: 'PUT',
         url: '/v1/profile',
-        payload: { ...VALID_PAYLOAD, steuerId: sameSteuerId },
+        payload: { ...VALID_PAYLOAD, steuerId: sameTaxId },
       })
       const userIdA = userIdFromCookie(extractSessionCookie(putA.headers['set-cookie'])!)
 
       const putB = await app.inject({
         method: 'PUT',
         url: '/v1/profile',
-        payload: { ...VALID_PAYLOAD, firstName: 'Jonas', steuerId: sameSteuerId },
+        payload: { ...VALID_PAYLOAD, firstName: 'Jonas', steuerId: sameTaxId },
       })
       const userIdB = userIdFromCookie(extractSessionCookie(putB.headers['set-cookie'])!)
 
@@ -340,14 +340,14 @@ describe('PROFILE /v1/profile — real Postgres', () => {
       const cookie = extractSessionCookie(put.headers['set-cookie'])!
       const userId = userIdFromCookie(cookie)
 
-      const rawSteuerIdAtRest = await rawProfileColumn(prisma, userId, 'steuerId')
+      const rawTaxIdAtRest = await rawProfileColumn(prisma, userId, 'steuerId')
       const rows = await auditRows(prisma, userId)
       expect(rows.length).toBeGreaterThan(0)
 
       const serializedRows = JSON.stringify(rows)
       expect(serializedRows).not.toContain(VALID_PAYLOAD.steuerId)
-      if (rawSteuerIdAtRest) {
-        expect(serializedRows).not.toContain(rawSteuerIdAtRest)
+      if (rawTaxIdAtRest) {
+        expect(serializedRows).not.toContain(rawTaxIdAtRest)
       }
 
       // The row shape itself carries no value column at all — only who/what/when.

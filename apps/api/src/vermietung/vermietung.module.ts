@@ -1,17 +1,17 @@
 import { Module } from '@nestjs/common'
-import { KennzeichnungModule } from '../kennzeichnung/kennzeichnung.module.js'
+import { MarkingModule } from '../kennzeichnung/kennzeichnung.module.js'
 import { AuditModule } from '../audit/audit.module.js'
 import { InterviewModule } from '../interview/interview.module.js'
 import { PrismaModule } from '../prisma/prisma.module.js'
-import { VermietungController } from './vermietung.controller.js'
+import { RentalController } from './vermietung.controller.js'
 import { RENTAL_REPOSITORY } from './vermietung.repository.js'
-import { PrismaVermietungRepository } from './vermietung.repository.prisma.js'
-import { VermietungService } from './vermietung.service.js'
+import { PrismaRentalRepository } from './vermietung.repository.prisma.js'
+import { RentalService } from './vermietung.service.js'
 
 @Module({
-  imports: [KennzeichnungModule, PrismaModule, AuditModule, InterviewModule],
-  controllers: [VermietungController],
-  providers: [VermietungService, { provide: RENTAL_REPOSITORY, useClass: PrismaVermietungRepository }],
+  imports: [MarkingModule, PrismaModule, AuditModule, InterviewModule],
+  controllers: [RentalController],
+  providers: [RentalService, { provide: RENTAL_REPOSITORY, useClass: PrismaRentalRepository }],
   exports: [RENTAL_REPOSITORY],
 })
-export class VermietungModule {}
+export class RentalModule {}

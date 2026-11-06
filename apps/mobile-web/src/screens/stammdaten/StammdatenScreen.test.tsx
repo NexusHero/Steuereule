@@ -4,12 +4,12 @@ import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@steuereule/ui'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
-import type { KopplungResponseDto, StammdatenResponseDto } from '@steuereule/api-client'
+import type { LinkResponseDto, MasterDataResponseDto } from '@steuereule/api-client'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
-import { StammdatenScreen } from './StammdatenScreen'
+import { MasterDataScreen } from './StammdatenScreen'
 
-const LEER: StammdatenResponseDto = {
+const LEER: MasterDataResponseDto = {
   geburtsdatum: null,
   strasse: null,
   hausnummer: null,
@@ -24,7 +24,7 @@ const LEER: StammdatenResponseDto = {
   kontoinhaber: null,
   finanzamt: null,
   telefon: null,
-  fehlend: ['geburtsdatum', 'strasse', 'hausnummer', 'plz', 'wohnort', 'religion', 'familienstand', 'iban', 'finanzamt'],
+  missing: ['geburtsdatum', 'strasse', 'hausnummer', 'plz', 'wohnort', 'religion', 'familienstand', 'iban', 'finanzamt'],
 }
 
 function renderScreen(taxYear?: number) {
@@ -33,15 +33,15 @@ function renderScreen(taxYear?: number) {
     <QueryClientProvider client={queryClient}>
       <I18nextProvider i18n={createAppI18n('de')}>
         <ThemeProvider mode="light">
-          <StammdatenScreen onZurueck={() => {}} {...(taxYear ? { taxYear } : {})} />
+          <MasterDataScreen onBack={() => {}} {...(taxYear ? { taxYear } : {})} />
         </ThemeProvider>
       </I18nextProvider>
     </QueryClientProvider>,
   )
 }
 
-function eingabe(testId: string, wert: string) {
-  fireEvent.change(screen.getByTestId(testId), { target: { value: wert } })
+function input(testId: string, value: string) {
+  fireEvent.change(screen.getByTestId(testId), { target: { value } })
 }
 
 afterEach(() => server.resetHandlers())
@@ -76,17 +76,17 @@ describe('StammdatenScreen (ADR-0050)', () => {
       http.get('*/v1/stammdaten', () => HttpResponse.json(LEER)),
       http.put('*/v1/stammdaten', async ({ request }) => {
         body = (await request.json()) as Record<string, unknown>
-        return HttpResponse.json({ ...LEER, geburtsdatum: '1990-04-12', religion: 'EV', fehlend: [] })
+        return HttpResponse.json({ ...LEER, geburtsdatum: '1990-04-12', religion: 'EV', missing: [] })
       }),
     )
     renderScreen()
     await screen.findByText('Für den Ausdruck fehlen noch 9 Angaben.')
-    eingabe('stammdaten-geburtsdatum', '12.4.1990')
+    input('stammdaten-geburtsdatum', '12.4.1990')
     fireEvent.click(screen.getByText('evangelisch'))
     fireEvent.click(screen.getByTestId('stammdaten-einwilligung'))
     fireEvent.click(screen.getByTestId('stammdaten-speichern'))
 
-    await waitFor(() => expect(body).toMatchObject({ geburtsdatum: '1990-04-12', religion: 'EV', religionEinwilligung: true }))
+    await waitFor(() => expect(body).toMatchObject({ geburtsdatum: '1990-04-12', religion: 'EV', religionConsent: true }))
     expect(await screen.findByText('Gespeichert.')).toBeTruthy()
     expect(await screen.findByText('Alles da für den Ausdruck.')).toBeTruthy()
   })
@@ -98,25 +98,25 @@ describe('StammdatenScreen (ADR-0050)', () => {
     )
     renderScreen()
     await screen.findByText('Für den Ausdruck fehlen noch 9 Angaben.')
-    eingabe('stammdaten-iban', 'DE00')
+    input('stammdaten-iban', 'DE00')
     fireEvent.click(screen.getByTestId('stammdaten-speichern'))
     expect(await screen.findByText('Bitte prüf deine Eingaben — z. B. Datum, Postleitzahl oder IBAN.')).toBeTruthy()
   })
 
   describe('Kopplung (Zusammenveranlagung)', () => {
-    const VERHEIRATET: StammdatenResponseDto = { ...LEER, familienstand: 'verheiratet' }
-    const ZUSAMMEN: KopplungResponseDto = {
+    const MARRIED: MasterDataResponseDto = { ...LEER, familienstand: 'verheiratet' }
+    const JOINT: LinkResponseDto = {
       veranlagungsart: 'zusammen',
       personBUserId: 'spouse_user-a_2025',
       einladungsCode: '9F3A0C71B2E4D658',
-      personBHatEigenesKonto: false,
+      personBHasOwnAccount: false,
       personB: { firstName: 'Bea', lastName: 'Muster', steuerId: null, geburtsdatum: null, religion: null, beruf: null },
     }
 
     it('lets Person A fill in a partner who has no own account yet', async () => {
       server.use(
-        http.get('*/v1/stammdaten', () => HttpResponse.json(VERHEIRATET)),
-        http.get('*/v1/steuerjahre/:jahr/kopplung', () => HttpResponse.json(ZUSAMMEN)),
+        http.get('*/v1/stammdaten', () => HttpResponse.json(MARRIED)),
+        http.get('*/v1/steuerjahre/:jahr/kopplung', () => HttpResponse.json(JOINT)),
       )
       renderScreen()
       expect(await screen.findByTestId('personb-vorname')).toBeTruthy()
@@ -124,9 +124,9 @@ describe('StammdatenScreen (ADR-0050)', () => {
 
     it('names how long the invite code is valid, and when it has expired', async () => {
       server.use(
-        http.get('*/v1/stammdaten', () => HttpResponse.json(VERHEIRATET)),
+        http.get('*/v1/stammdaten', () => HttpResponse.json(MARRIED)),
         http.get('*/v1/steuerjahre/:jahr/kopplung', () =>
-          HttpResponse.json({ ...ZUSAMMEN, einladungsCodeGueltigBis: '2999-01-14T10:00:00.000Z' }),
+          HttpResponse.json({ ...JOINT, einladungsCodeGueltigBis: '2999-01-14T10:00:00.000Z' }),
         ),
       )
       renderScreen()
@@ -135,9 +135,9 @@ describe('StammdatenScreen (ADR-0050)', () => {
 
     it('says an expired invite code is expired instead of showing it', async () => {
       server.use(
-        http.get('*/v1/stammdaten', () => HttpResponse.json(VERHEIRATET)),
+        http.get('*/v1/stammdaten', () => HttpResponse.json(MARRIED)),
         http.get('*/v1/steuerjahre/:jahr/kopplung', () =>
-          HttpResponse.json({ ...ZUSAMMEN, einladungsCodeGueltigBis: '2000-01-01T00:00:00.000Z' }),
+          HttpResponse.json({ ...JOINT, einladungsCodeGueltigBis: '2000-01-01T00:00:00.000Z' }),
         ),
       )
       renderScreen()
@@ -147,45 +147,45 @@ describe('StammdatenScreen (ADR-0050)', () => {
 
     it("opens the partner's masks while the partner has no own account", async () => {
       server.use(
-        http.get('*/v1/stammdaten', () => HttpResponse.json(VERHEIRATET)),
-        http.get('*/v1/steuerjahre/:jahr/kopplung', () => HttpResponse.json(ZUSAMMEN)),
+        http.get('*/v1/stammdaten', () => HttpResponse.json(MARRIED)),
+        http.get('*/v1/steuerjahre/:jahr/kopplung', () => HttpResponse.json(JOINT)),
       )
-      const geoeffnet: string[] = []
+      const opened: string[] = []
       const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
       render(
         <QueryClientProvider client={queryClient}>
           <I18nextProvider i18n={createAppI18n('de')}>
             <ThemeProvider mode="light">
-              <StammdatenScreen onZurueck={() => {}} taxYear={2025} onPartnerErfassen={(bereich, name) => geoeffnet.push(`${bereich}:${name}`)} />
+              <MasterDataScreen onBack={() => {}} taxYear={2025} onRecordPartner={(area, name) => opened.push(`${area}:${name}`)} />
             </ThemeProvider>
           </I18nextProvider>
         </QueryClientProvider>,
       )
       fireEvent.click(await screen.findByText('Lohnsteuerbescheinigung von Bea erfassen'))
       fireEvent.click(screen.getByText('Arbeitsweg von Bea erfassen'))
-      expect(geoeffnet).toEqual(['lstb:Bea', 'arbeitsweg:Bea'])
+      expect(opened).toEqual(['lstb:Bea', 'arbeitsweg:Bea'])
     })
 
     it('sets the Veranlagungsart for the tax year the cockpit shows, not the current one', async () => {
-      const gesetzt: string[] = []
+      const set: string[] = []
       server.use(
-        http.get('*/v1/stammdaten', () => HttpResponse.json(VERHEIRATET)),
+        http.get('*/v1/stammdaten', () => HttpResponse.json(MARRIED)),
         http.get('*/v1/steuerjahre/:jahr/kopplung', () => HttpResponse.json({ veranlagungsart: 'keine' })),
         http.put('*/v1/steuerjahre/:jahr/kopplung', ({ params }) => {
-          gesetzt.push(String(params.jahr))
-          return HttpResponse.json(ZUSAMMEN)
+          set.push(String(params.jahr))
+          return HttpResponse.json(JOINT)
         }),
       )
       renderScreen(2025)
       expect(await screen.findByText(/Veranlagungsart 2025/)).toBeTruthy()
       fireEvent.click(screen.getByTestId('kopplung-zusammen'))
-      await waitFor(() => expect(gesetzt).toEqual(['2025']))
+      await waitFor(() => expect(set).toEqual(['2025']))
     })
 
     it('lets the invited partner redeem the code, and says plainly when it is unknown', async () => {
       const codes: string[] = []
       server.use(
-        http.get('*/v1/stammdaten', () => HttpResponse.json(VERHEIRATET)),
+        http.get('*/v1/stammdaten', () => HttpResponse.json(MARRIED)),
         http.get('*/v1/steuerjahre/:jahr/kopplung', () => HttpResponse.json({ veranlagungsart: 'keine' })),
         http.post('*/v1/steuerjahre/:jahr/kopplung/beitreten/:code', ({ params }) => {
           codes.push(`${String(params.jahr)}:${String(params.code)}`)
@@ -202,9 +202,9 @@ describe('StammdatenScreen (ADR-0050)', () => {
 
     it("shows a joined partner's data read-only — it is theirs to change", async () => {
       server.use(
-        http.get('*/v1/stammdaten', () => HttpResponse.json(VERHEIRATET)),
+        http.get('*/v1/stammdaten', () => HttpResponse.json(MARRIED)),
         http.get('*/v1/steuerjahre/:jahr/kopplung', () =>
-          HttpResponse.json({ ...ZUSAMMEN, personBUserId: 'user-b', einladungsCode: null, personBHatEigenesKonto: true }),
+          HttpResponse.json({ ...JOINT, personBUserId: 'user-b', einladungsCode: null, personBHasOwnAccount: true }),
         ),
       )
       renderScreen()

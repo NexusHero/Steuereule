@@ -4,15 +4,15 @@ import { LstbModule } from '../lstb/lstb.module.js'
 import { PrismaModule } from '../prisma/prisma.module.js'
 import { TAX_YEAR_REPOSITORY } from '../cockpit/tax-year.repository.js'
 import { PrismaTaxYearRepository } from '../cockpit/tax-year.repository.prisma.js'
-import { VeranlagungsartenvergleichController } from './veranlagungsartenvergleich.controller.js'
+import { FilingTypeComparisonController } from './veranlagungsartenvergleich.controller.js'
 import { AssessmentComparisonService } from './veranlagungsartenvergleich.service.js'
 
 @Module({
   imports: [PrismaModule, LstbModule, InterviewModule],
-  controllers: [VeranlagungsartenvergleichController],
+  controllers: [FilingTypeComparisonController],
   providers: [
     AssessmentComparisonService,
     { provide: TAX_YEAR_REPOSITORY, useClass: PrismaTaxYearRepository },
   ],
 })
-export class VeranlagungsartenvergleichModule {}
+export class FilingTypeComparisonModule {}

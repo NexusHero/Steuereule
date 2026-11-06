@@ -1,73 +1,73 @@
 import { describe, expect, it } from 'vitest'
-import { amtlicherMonatskurs, tatsaechlicherKurs } from './wechselkurs'
-import { pruefeGrenzgaenger, type GrenzgaengerPlausibilitaetsInput } from './grenzgaenger-plausibilitaet'
+import { officialMonthlyRate, actualRate } from './wechselkurs'
+import { checkCrossBorder, type CrossBorderPlausibilityInput } from './grenzgaenger-plausibilitaet'
 
 // M2 — the CH plausibility check: Widersprüche block, Hinweise flag, offene Felder are named.
 
-function input(overrides: Partial<GrenzgaengerPlausibilitaetsInput> = {}): GrenzgaengerPlausibilitaetsInput {
+function input(overrides: Partial<CrossBorderPlausibilityInput> = {}): CrossBorderPlausibilityInput {
   return {
-    wohnsitz: 'Deutschland',
-    nichtrueckkehrtage: 10,
-    wechselkurs: amtlicherMonatskurs('2026-01', 0.9412),
-    lohnausweis: { 'bruttolohn-total': 84000, 'berufliche-vorsorge': 5000, quellensteuer: 3780 },
-    hatKinder: false,
-    hatFamilienzulagen: false,
+    residence: 'Deutschland',
+    nonReturnDays: 10,
+    exchangeRate: officialMonthlyRate('2026-01', 0.9412),
+    salaryCertificate: { 'bruttolohn-total': 84000, 'berufliche-vorsorge': 5000, quellensteuer: 3780 },
+    hasChildren: false,
+    hasFamilyAllowances: false,
     ...overrides,
   }
 }
 
 describe('pruefeGrenzgaenger — M2 CH', () => {
   it('a complete, consistent echter Grenzgänger is einreichbar with no points', () => {
-    expect(pruefeGrenzgaenger(input())).toEqual({ einreichbar: true, punkte: [] })
+    expect(checkCrossBorder(input())).toEqual({ submittable: true, points: [] })
   })
 
   it('a tatsächlicher Kurs without its Beleg is a Widerspruch (ADR-012)', () => {
-    const befund = pruefeGrenzgaenger(
-      input({ wechselkurs: { monat: '2026-01', kurs: 0.92, modus: 'tatsaechlich' } }),
+    const finding = checkCrossBorder(
+      input({ exchangeRate: { month: '2026-01', rate: 0.92, mode: 'tatsaechlich' } }),
     )
-    expect(befund.einreichbar).toBe(false)
-    expect(befund.punkte).toContainEqual({ grad: 'widerspruch', code: 'wechselkurs-tatsaechlich-ohne-beleg' })
+    expect(finding.submittable).toBe(false)
+    expect(finding.points).toContainEqual({ grad: 'widerspruch', code: 'wechselkurs-tatsaechlich-ohne-beleg' })
   })
 
   it('a tatsächlicher Kurs WITH a Beleg raises no Widerspruch', () => {
-    const befund = pruefeGrenzgaenger(
-      input({ wechselkurs: tatsaechlicherKurs('2026-01', 0.92, 'beleg-7') }),
+    const finding = checkCrossBorder(
+      input({ exchangeRate: actualRate('2026-01', 0.92, 'beleg-7') }),
     )
-    expect(befund.punkte).not.toContainEqual({ grad: 'widerspruch', code: 'wechselkurs-tatsaechlich-ohne-beleg' })
+    expect(finding.points).not.toContainEqual({ grad: 'widerspruch', code: 'wechselkurs-tatsaechlich-ohne-beleg' })
   })
 
   it('missing required Lohnausweis fields are offen and block submission', () => {
-    const befund = pruefeGrenzgaenger(input({ lohnausweis: {} }))
-    expect(befund.einreichbar).toBe(false)
-    expect(befund.punkte).toContainEqual({ grad: 'offen', code: 'lohnausweis-fehlt', feld: 'bruttolohn-total' })
-    expect(befund.punkte).toContainEqual({ grad: 'offen', code: 'lohnausweis-fehlt', feld: 'berufliche-vorsorge' })
-    expect(befund.punkte).toContainEqual({ grad: 'offen', code: 'lohnausweis-fehlt', feld: 'quellensteuer' })
+    const finding = checkCrossBorder(input({ salaryCertificate: {} }))
+    expect(finding.submittable).toBe(false)
+    expect(finding.points).toContainEqual({ grad: 'offen', code: 'lohnausweis-fehlt', field: 'bruttolohn-total' })
+    expect(finding.points).toContainEqual({ grad: 'offen', code: 'lohnausweis-fehlt', field: 'berufliche-vorsorge' })
+    expect(finding.points).toContainEqual({ grad: 'offen', code: 'lohnausweis-fehlt', field: 'quellensteuer' })
   })
 
   it('a Nettolohn that contradicts the Lohnausweis arithmetic is a Widerspruch', () => {
-    const befund = pruefeGrenzgaenger(
-      input({ lohnausweis: { 'bruttolohn-total': 84000, 'berufliche-vorsorge': 5000, 'ahv-beitraege': 4200, quellensteuer: 3780, nettolohn: 1 } }),
+    const finding = checkCrossBorder(
+      input({ salaryCertificate: { 'bruttolohn-total': 84000, 'berufliche-vorsorge': 5000, 'ahv-beitraege': 4200, quellensteuer: 3780, nettolohn: 1 } }),
     )
-    expect(befund.punkte).toContainEqual({ grad: 'widerspruch', code: 'lohnausweis-nettolohn-inkonsistent' })
+    expect(finding.points).toContainEqual({ grad: 'widerspruch', code: 'lohnausweis-nettolohn-inkonsistent' })
   })
 
   it('a consistent Nettolohn raises no Widerspruch', () => {
-    const befund = pruefeGrenzgaenger(
-      input({ lohnausweis: { 'bruttolohn-total': 84000, 'berufliche-vorsorge': 5000, 'ahv-beitraege': 4200, quellensteuer: 3780, nettolohn: 74800 } }),
+    const finding = checkCrossBorder(
+      input({ salaryCertificate: { 'bruttolohn-total': 84000, 'berufliche-vorsorge': 5000, 'ahv-beitraege': 4200, quellensteuer: 3780, nettolohn: 74800 } }),
     )
-    expect(befund.punkte).not.toContainEqual({ grad: 'widerspruch', code: 'lohnausweis-nettolohn-inkonsistent' })
+    expect(finding.points).not.toContainEqual({ grad: 'widerspruch', code: 'lohnausweis-nettolohn-inkonsistent' })
   })
 
   it('Familienzulagen without children is a Widerspruch (ADR-029 point 6)', () => {
-    const befund = pruefeGrenzgaenger(input({ hatKinder: false, hatFamilienzulagen: true }))
-    expect(befund.einreichbar).toBe(false)
-    expect(befund.punkte).toContainEqual({ grad: 'widerspruch', code: 'zulagen-ohne-kinder' })
+    const finding = checkCrossBorder(input({ hasChildren: false, hasFamilyAllowances: true }))
+    expect(finding.submittable).toBe(false)
+    expect(finding.points).toContainEqual({ grad: 'widerspruch', code: 'zulagen-ohne-kinder' })
   })
 
   it('more than 60 Nichtrückkehrtage is a Hinweis (status loss), not a block', () => {
-    expect(pruefeGrenzgaenger(input({ nichtrueckkehrtage: 60 })).punkte).not.toContainEqual({ grad: 'hinweis', code: 'grenzgaenger-status-verloren' })
-    const befund = pruefeGrenzgaenger(input({ nichtrueckkehrtage: 61 }))
-    expect(befund.punkte).toContainEqual({ grad: 'hinweis', code: 'grenzgaenger-status-verloren' })
-    expect(befund.einreichbar).toBe(true) // a Hinweis never blocks
+    expect(checkCrossBorder(input({ nonReturnDays: 60 })).points).not.toContainEqual({ grad: 'hinweis', code: 'grenzgaenger-status-verloren' })
+    const finding = checkCrossBorder(input({ nonReturnDays: 61 }))
+    expect(finding.points).toContainEqual({ grad: 'hinweis', code: 'grenzgaenger-status-verloren' })
+    expect(finding.submittable).toBe(true) // a Hinweis never blocks
   })
 })

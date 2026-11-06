@@ -2,63 +2,63 @@
 // real-Postgres proofs live in test/acceptance/req-032-herkunft-bestaetigung.test.ts.
 import { beforeEach, describe, expect, it } from 'vitest'
 import { ConfirmationService } from '../src/bestaetigung/bestaetigung.service.js'
-import { feldZugriffAus } from '../src/bestaetigung/feld-zugriff.js'
+import { fieldAccessFrom } from '../src/bestaetigung/feld-zugriff.js'
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
-import { FakeKapitalRepository } from './fakes/fake-kapital.repository.js'
-import { FakeKennzeichnungRepository } from './fakes/fake-kennzeichnung.repository.js'
+import { FakeCapitalRepository } from './fakes/fake-kapital.repository.js'
+import { FakeMarkingRepository } from './fakes/fake-kennzeichnung.repository.js'
 import { FakeLstbRepository } from './fakes/fake-lstb.repository.js'
-import { FakeRenteRepository } from './fakes/fake-rente.repository.js'
-import { FakeVermietungRepository } from './fakes/fake-vermietung.repository.js'
+import { FakePensionRepository } from './fakes/fake-rente.repository.js'
+import { FakeRentalRepository } from './fakes/fake-vermietung.repository.js'
 import { AuditService } from '../src/audit/audit.service.js'
 
 const USER = 'user-1'
-const JAHR = 2025
+const YEAR = 2025
 const CLAUDE = { art: 'assistent', name: 'Claude' } as const
 
 describe('BestaetigungService', () => {
-  let kennzeichnungen: FakeKennzeichnungRepository
+  let markings: FakeMarkingRepository
   let lstb: FakeLstbRepository
-  let rente: FakeRenteRepository
-  let vermietung: FakeVermietungRepository
+  let pension: FakePensionRepository
+  let rental: FakeRentalRepository
   let service: ConfirmationService
 
   beforeEach(() => {
-    kennzeichnungen = new FakeKennzeichnungRepository()
+    markings = new FakeMarkingRepository()
     lstb = new FakeLstbRepository()
-    rente = new FakeRenteRepository()
-    vermietung = new FakeVermietungRepository()
-    const zugriff = feldZugriffAus({ lstb, rente, kapital: new FakeKapitalRepository(), vermietung })
-    service = new ConfirmationService(kennzeichnungen, zugriff, new AuditService(new FakeAuditRepository()))
+    pension = new FakePensionRepository()
+    rental = new FakeRentalRepository()
+    const access = fieldAccessFrom({ lstb, pension, capital: new FakeCapitalRepository(), rental })
+    service = new ConfirmationService(markings, access, new AuditService(new FakeAuditRepository()))
   })
 
   it('a non-user write into an empty field writes the value and leaves it unconfirmed', async () => {
-    expect(await service.schreibe(USER, JAHR, 'lstb.bruttoarbeitslohn', '50000', CLAUDE)).toBe('geschrieben')
-    expect((await lstb.findForUserAndYear(USER, JAHR))?.bruttoarbeitslohn).toBe('50000')
-    expect(await service.fehlend(USER, JAHR)).toEqual(['unbestaetigt.anlageN'])
+    expect(await service.write(USER, YEAR, 'lstb.bruttoarbeitslohn', '50000', CLAUDE)).toBe('geschrieben')
+    expect((await lstb.findForUserAndYear(USER, YEAR))?.bruttoarbeitslohn).toBe('50000')
+    expect(await service.missing(USER, YEAR)).toEqual(['unbestaetigt.anlageN'])
   })
 
   it('der Nutzer gewinnt: a typed value stays, the new one becomes a proposal', async () => {
-    await lstb.setFeld(USER, JAHR, 'bruttoarbeitslohn', '4750')
+    await lstb.setField(USER, YEAR, 'bruttoarbeitslohn', '4750')
 
-    expect(await service.schreibe(USER, JAHR, 'lstb.bruttoarbeitslohn', '4800', CLAUDE)).toBe('vorschlag')
+    expect(await service.write(USER, YEAR, 'lstb.bruttoarbeitslohn', '4800', CLAUDE)).toBe('vorschlag')
 
-    expect((await lstb.findForUserAndYear(USER, JAHR))?.bruttoarbeitslohn).toBe('4750')
-    expect(await service.fehlend(USER, JAHR)).toEqual([])
-    const uebersicht = await service.uebersicht(USER, JAHR)
-    expect(uebersicht.anlagen).toEqual([
+    expect((await lstb.findForUserAndYear(USER, YEAR))?.bruttoarbeitslohn).toBe('4750')
+    expect(await service.missing(USER, YEAR)).toEqual([])
+    const overview = await service.overview(USER, YEAR)
+    expect(overview.annexes).toEqual([
       {
         anlage: 'anlageN',
-        unbestaetigt: 0,
-        werte: [
+        unconfirmed: 0,
+        values: [
           {
             key: 'lstb.bruttoarbeitslohn',
-            maske: 'lstb',
-            instanz: null,
-            feld: 'bruttoarbeitslohn',
-            wert: '4750',
-            herkunft: { art: 'nutzer' },
+            screen: 'lstb',
+            instance: null,
+            field: 'bruttoarbeitslohn',
+            value: '4750',
+            provenance: { art: 'nutzer' },
             bestaetigt: true,
-            vorschlag: { wert: '4800', herkunft: { art: 'assistent', name: 'Claude' } },
+            proposal: { value: '4800', provenance: { art: 'assistent', name: 'Claude' } },
           },
         ],
       },
@@ -66,55 +66,55 @@ describe('BestaetigungService', () => {
   })
 
   it('confirming an Anlage lifts its block and only its block', async () => {
-    await service.schreibe(USER, JAHR, 'lstb.lohnsteuer', '700', CLAUDE)
-    await service.schreibe(USER, JAHR, 'rente.jahresbetrag', '12000', { art: 'uebernahme', vorjahr: 2024 })
-    expect(await service.fehlend(USER, JAHR)).toEqual(['unbestaetigt.anlageN', 'unbestaetigt.anlageR'])
+    await service.write(USER, YEAR, 'lstb.lohnsteuer', '700', CLAUDE)
+    await service.write(USER, YEAR, 'rente.jahresbetrag', '12000', { art: 'uebernahme', vorjahr: 2024 })
+    expect(await service.missing(USER, YEAR)).toEqual(['unbestaetigt.anlageN', 'unbestaetigt.anlageR'])
 
-    await service.bestaetigeAnlage(USER, JAHR, 'anlageR')
+    await service.confirmAnnex(USER, YEAR, 'anlageR')
 
-    expect(await service.fehlend(USER, JAHR)).toEqual(['unbestaetigt.anlageN'])
-    expect((await service.uebersicht(USER, JAHR)).anlagen.map((a) => a.anlage)).toEqual(['anlageN'])
+    expect(await service.missing(USER, YEAR)).toEqual(['unbestaetigt.anlageN'])
+    expect((await service.overview(USER, YEAR)).annexes.map((a) => a.anlage)).toEqual(['anlageN'])
   })
 
   it('accepting a proposal writes it into the mask as confirmed; discarding leaves the user value without a marker', async () => {
-    await lstb.setFeld(USER, JAHR, 'bruttoarbeitslohn', '4750')
-    await lstb.setFeld(USER, JAHR, 'lohnsteuer', '700')
-    await service.schreibe(USER, JAHR, 'lstb.bruttoarbeitslohn', '4800', CLAUDE)
-    await service.schreibe(USER, JAHR, 'lstb.lohnsteuer', '720', CLAUDE)
+    await lstb.setField(USER, YEAR, 'bruttoarbeitslohn', '4750')
+    await lstb.setField(USER, YEAR, 'lohnsteuer', '700')
+    await service.write(USER, YEAR, 'lstb.bruttoarbeitslohn', '4800', CLAUDE)
+    await service.write(USER, YEAR, 'lstb.lohnsteuer', '720', CLAUDE)
 
-    await service.entscheideVorschlag(USER, JAHR, 'lstb.bruttoarbeitslohn', 'annehmen')
-    await service.entscheideVorschlag(USER, JAHR, 'lstb.lohnsteuer', 'verwerfen')
+    await service.decideProposal(USER, YEAR, 'lstb.bruttoarbeitslohn', 'annehmen')
+    await service.decideProposal(USER, YEAR, 'lstb.lohnsteuer', 'verwerfen')
 
-    expect(await lstb.findForUserAndYear(USER, JAHR)).toMatchObject({ bruttoarbeitslohn: '4800', lohnsteuer: '700' })
-    expect(kennzeichnungen.alle()).toEqual([
-      { userId: USER, steuerjahr: JAHR, key: 'lstb.bruttoarbeitslohn', herkunft: CLAUDE, bestaetigt: true, vorschlag: null },
+    expect(await lstb.findForUserAndYear(USER, YEAR)).toMatchObject({ bruttoarbeitslohn: '4800', lohnsteuer: '700' })
+    expect(markings.all()).toEqual([
+      { userId: USER, steuerjahr: YEAR, key: 'lstb.bruttoarbeitslohn', provenance: CLAUDE, bestaetigt: true, proposal: null },
     ])
-    expect(await service.fehlend(USER, JAHR)).toEqual([])
+    expect(await service.missing(USER, YEAR)).toEqual([])
   })
 
   it('a proposal decision on a field without a proposal is a 404, an unknown key a 400', async () => {
-    await expect(service.entscheideVorschlag(USER, JAHR, 'lstb.lohnsteuer', 'annehmen')).rejects.toMatchObject({ code: 'PROPOSAL_NOT_FOUND' })
-    await expect(service.entscheideVorschlag(USER, JAHR, 'gewerbe.gewinn', 'annehmen')).rejects.toMatchObject({ code: 'FIELD_UNKNOWN' })
+    await expect(service.decideProposal(USER, YEAR, 'lstb.lohnsteuer', 'annehmen')).rejects.toMatchObject({ code: 'PROPOSAL_NOT_FOUND' })
+    await expect(service.decideProposal(USER, YEAR, 'gewerbe.gewinn', 'annehmen')).rejects.toMatchObject({ code: 'FIELD_UNKNOWN' })
   })
 
   it('an unknown Anlage is a 400, never a silent no-op', async () => {
-    await expect(service.bestaetigeAnlage(USER, JAHR, 'anlageX' as never)).rejects.toMatchObject({ code: 'ANLAGE_UNKNOWN' })
+    await expect(service.confirmAnnex(USER, YEAR, 'anlageX' as never)).rejects.toMatchObject({ code: 'ANLAGE_UNKNOWN' })
   })
 
   it('writes into a Vermietungsobjekt by instance and refuses an object of another user', async () => {
-    const eigenes = await vermietung.create(USER, JAHR)
-    const fremdes = await vermietung.create('user-2', JAHR)
+    const own = await rental.create(USER, YEAR)
+    const fremdes = await rental.create('user-2', YEAR)
 
-    await service.schreibe(USER, JAHR, `vermietung:${eigenes.id}.mieteinnahmen`, '9000', CLAUDE)
-    await expect(service.schreibe(USER, JAHR, `vermietung:${fremdes.id}.mieteinnahmen`, '1', CLAUDE)).rejects.toMatchObject({ code: 'FIELD_NOT_FOUND' })
+    await service.write(USER, YEAR, `vermietung:${own.id}.mieteinnahmen`, '9000', CLAUDE)
+    await expect(service.write(USER, YEAR, `vermietung:${fremdes.id}.mieteinnahmen`, '1', CLAUDE)).rejects.toMatchObject({ code: 'FIELD_NOT_FOUND' })
 
-    expect((await vermietung.listForUserAndYear('user-2', JAHR))[0]?.mieteinnahmen).toBeNull()
-    expect(await service.fehlend(USER, JAHR)).toEqual(['unbestaetigt.anlageV'])
+    expect((await rental.listForUserAndYear('user-2', YEAR))[0]?.mieteinnahmen).toBeNull()
+    expect(await service.missing(USER, YEAR)).toEqual(['unbestaetigt.anlageV'])
   })
 
   it('the overview is scoped to the caller', async () => {
-    await service.schreibe('user-2', JAHR, 'lstb.lohnsteuer', '700', CLAUDE)
-    expect(await service.uebersicht(USER, JAHR)).toEqual({ anlagen: [] })
-    expect(await service.fehlend(USER, JAHR)).toEqual([])
+    await service.write('user-2', YEAR, 'lstb.lohnsteuer', '700', CLAUDE)
+    expect(await service.overview(USER, YEAR)).toEqual({ annexes: [] })
+    expect(await service.missing(USER, YEAR)).toEqual([])
   })
 })

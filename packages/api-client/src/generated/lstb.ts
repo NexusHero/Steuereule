@@ -26,8 +26,8 @@ import type {
 
 import type {
   LstbControllerGetLstbParams,
-  LstbControllerSetFeldParams,
-  LstbFeldDto,
+  LstbControllerSetFieldParams,
+  LstbFieldDto,
   LstbResponseDto
 } from './lstb.schemas';
 
@@ -182,28 +182,28 @@ export function useLstbControllerGetLstb<TData = Awaited<ReturnType<typeof lstbC
 
 
 
-export type lstbControllerSetFeldResponse200 = {
+export type lstbControllerSetFieldResponse200 = {
   data: LstbResponseDto
   status: 200
 }
 
-export type lstbControllerSetFeldResponse401 = {
+export type lstbControllerSetFieldResponse401 = {
   data: void
   status: 401
 }
 
-export type lstbControllerSetFeldResponseSuccess = (lstbControllerSetFeldResponse200) & {
+export type lstbControllerSetFieldResponseSuccess = (lstbControllerSetFieldResponse200) & {
   headers: Headers;
 };
-export type lstbControllerSetFeldResponseError = (lstbControllerSetFeldResponse401) & {
+export type lstbControllerSetFieldResponseError = (lstbControllerSetFieldResponse401) & {
   headers: Headers;
 };
 
-export type lstbControllerSetFeldResponse = (lstbControllerSetFeldResponseSuccess | lstbControllerSetFeldResponseError)
+export type lstbControllerSetFieldResponse = (lstbControllerSetFieldResponseSuccess | lstbControllerSetFieldResponseError)
 
-export const getLstbControllerSetFeldUrl = (jahr: number,
+export const getLstbControllerSetFieldUrl = (jahr: number,
     feld: string,
-    params?: LstbControllerSetFeldParams,) => {
+    params?: LstbControllerSetFieldParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -218,17 +218,17 @@ export const getLstbControllerSetFeldUrl = (jahr: number,
   return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/lstb/${feld}?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/lstb/${feld}`
 }
 
-export const lstbControllerSetFeld = async (jahr: number,
+export const lstbControllerSetField = async (jahr: number,
     feld: string,
-    lstbFeldDto: LstbFeldDto,
-    params?: LstbControllerSetFeldParams, options?: RequestInit): Promise<lstbControllerSetFeldResponse> => {
+    lstbFieldDto: LstbFieldDto,
+    params?: LstbControllerSetFieldParams, options?: RequestInit): Promise<lstbControllerSetFieldResponse> => {
 
-  return httpClient<lstbControllerSetFeldResponse>(getLstbControllerSetFeldUrl(jahr,feld,params),
+  return httpClient<lstbControllerSetFieldResponse>(getLstbControllerSetFieldUrl(jahr,feld,params),
   {
     ...options,
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(lstbFeldDto)
+    body: JSON.stringify(lstbFieldDto)
   }
 );}
 
@@ -236,11 +236,11 @@ export const lstbControllerSetFeld = async (jahr: number,
 
 
 
-export const getLstbControllerSetFeldMutationOptions = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof lstbControllerSetFeld>>, TError,{jahr: number;feld: string;data: LstbFeldDto;params?: LstbControllerSetFeldParams}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof lstbControllerSetFeld>>, TError,{jahr: number;feld: string;data: LstbFeldDto;params?: LstbControllerSetFeldParams}, TContext> => {
+export const getLstbControllerSetFieldMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof lstbControllerSetField>>, TError,{jahr: number;feld: string;data: LstbFieldDto;params?: LstbControllerSetFieldParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof lstbControllerSetField>>, TError,{jahr: number;feld: string;data: LstbFieldDto;params?: LstbControllerSetFieldParams}, TContext> => {
 
-const mutationKey = ['lstbControllerSetFeld'];
+const mutationKey = ['lstbControllerSetField'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -250,10 +250,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof lstbControllerSetFeld>>, {jahr: number;feld: string;data: LstbFeldDto;params?: LstbControllerSetFeldParams}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof lstbControllerSetField>>, {jahr: number;feld: string;data: LstbFieldDto;params?: LstbControllerSetFieldParams}> = (props) => {
           const {jahr,feld,data,params} = props ?? {};
 
-          return  lstbControllerSetFeld(jahr,feld,data,params,requestOptions)
+          return  lstbControllerSetField(jahr,feld,data,params,requestOptions)
         }
 
 
@@ -263,18 +263,18 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type LstbControllerSetFeldMutationResult = NonNullable<Awaited<ReturnType<typeof lstbControllerSetFeld>>>
-    export type LstbControllerSetFeldMutationBody = LstbFeldDto
-    export type LstbControllerSetFeldMutationError = void
+    export type LstbControllerSetFieldMutationResult = NonNullable<Awaited<ReturnType<typeof lstbControllerSetField>>>
+    export type LstbControllerSetFieldMutationBody = LstbFieldDto
+    export type LstbControllerSetFieldMutationError = void
 
-    export const useLstbControllerSetFeld = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof lstbControllerSetFeld>>, TError,{jahr: number;feld: string;data: LstbFeldDto;params?: LstbControllerSetFeldParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+    export const useLstbControllerSetField = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof lstbControllerSetField>>, TError,{jahr: number;feld: string;data: LstbFieldDto;params?: LstbControllerSetFieldParams}, TContext>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof lstbControllerSetFeld>>,
+        Awaited<ReturnType<typeof lstbControllerSetField>>,
         TError,
-        {jahr: number;feld: string;data: LstbFeldDto;params?: LstbControllerSetFeldParams},
+        {jahr: number;feld: string;data: LstbFieldDto;params?: LstbControllerSetFieldParams},
         TContext
       > => {
-      return useMutation(getLstbControllerSetFeldMutationOptions(options), queryClient);
+      return useMutation(getLstbControllerSetFieldMutationOptions(options), queryClient);
     }
 

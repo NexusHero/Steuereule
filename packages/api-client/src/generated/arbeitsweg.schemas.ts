@@ -8,16 +8,16 @@
 /**
  * @nullable
  */
-export type ArbeitswegEingabenDtoVerkehrsmittel = typeof ArbeitswegEingabenDtoVerkehrsmittel[keyof typeof ArbeitswegEingabenDtoVerkehrsmittel] | null;
+export type CommuteInputsDtoVerkehrsmittel = typeof CommuteInputsDtoVerkehrsmittel[keyof typeof CommuteInputsDtoVerkehrsmittel] | null;
 
 
-export const ArbeitswegEingabenDtoVerkehrsmittel = {
+export const CommuteInputsDtoVerkehrsmittel = {
   pkw: 'pkw',
   oepnv: 'oepnv',
   andere: 'andere',
 } as const;
 
-export interface ArbeitswegEingabenDto {
+export interface CommuteInputsDto {
   /** ISO weekdays worked (1 = Monday … 7 = Sunday). */
   arbeitstage: number[];
   urlaubstage: number;
@@ -29,7 +29,7 @@ export interface ArbeitswegEingabenDto {
      */
   einfacheKm: number | null;
   /** @nullable */
-  verkehrsmittel: ArbeitswegEingabenDtoVerkehrsmittel;
+  verkehrsmittel: CommuteInputsDtoVerkehrsmittel;
   /** @nullable */
   taetigkeitsstaette: string | null;
   /**
@@ -44,50 +44,50 @@ export interface ArbeitswegEingabenDto {
   feiertageRegion?: string | null;
 }
 
-export interface WerktageDto {
-  wochentage: number;
-  werktage: number;
-  pendlertage: number;
+export interface WorkdaysDto {
+  weekdays: number;
+  workdays: number;
+  commuteDays: number;
 }
 
-export interface ArbeitswegResponseDto {
+export interface CommuteResponseDto {
   /** @nullable */
-  eingaben: ArbeitswegEingabenDto | null;
+  inputs: CommuteInputsDto | null;
   /** @nullable */
-  werktage: WerktageDto | null;
+  workdays: WorkdaysDto | null;
   /**
      * Entfernungspauschale in whole euros; null until distance and means of travel are known.
      * @nullable
      */
-  pendlerpauschale: number | null;
+  commuterAllowance: number | null;
 }
 
-export type ArbeitswegControllerGetParams = {
+export type CommuteControllerGetParams = {
 /**
  * B: Person A reads the commute of a partner without an own account (ADR-0054).
  */
-person?: ArbeitswegControllerGetPerson;
+person?: CommuteControllerGetPerson;
 };
 
-export type ArbeitswegControllerGetPerson = typeof ArbeitswegControllerGetPerson[keyof typeof ArbeitswegControllerGetPerson];
+export type CommuteControllerGetPerson = typeof CommuteControllerGetPerson[keyof typeof CommuteControllerGetPerson];
 
 
-export const ArbeitswegControllerGetPerson = {
+export const CommuteControllerGetPerson = {
   A: 'A',
   B: 'B',
 } as const;
 
-export type ArbeitswegControllerPutParams = {
+export type CommuteControllerPutParams = {
 /**
  * B: Person A records the commute of a partner without an own account (ADR-0054).
  */
-person?: ArbeitswegControllerPutPerson;
+person?: CommuteControllerPutPerson;
 };
 
-export type ArbeitswegControllerPutPerson = typeof ArbeitswegControllerPutPerson[keyof typeof ArbeitswegControllerPutPerson];
+export type CommuteControllerPutPerson = typeof CommuteControllerPutPerson[keyof typeof CommuteControllerPutPerson];
 
 
-export const ArbeitswegControllerPutPerson = {
+export const CommuteControllerPutPerson = {
   A: 'A',
   B: 'B',
 } as const;

@@ -3,7 +3,7 @@ import { OTHER_CHILD_RELATIONSHIPS, OTHER_PARENT_STATUSES, CHILD_RELATIONSHIPS }
 import { IsBoolean, IsIn, IsNotEmpty, IsOptional, IsString, Matches, MaxLength } from 'class-validator'
 
 /** The Anlage-Kind facts beyond the child's identity — optional on write. */
-class KindAngabenDto {
+class ChildDetailsDto {
   @ApiPropertyOptional({ enum: CHILD_RELATIONSHIPS, nullable: true, description: 'Kz 02: 1 = leiblich/adoptiert, 2 = Pflegekind, 3 = Enkel-/Stiefkind' })
   @IsOptional()
   @IsIn(CHILD_RELATIONSHIPS)
@@ -83,7 +83,7 @@ class KindAngabenDto {
   schweizerKinderzulageEur?: string | null
 }
 
-export class CreateKindDto extends KindAngabenDto {
+export class CreateChildDto extends ChildDetailsDto {
   @ApiProperty({ type: String, example: 'Lina' })
   @IsNotEmpty()
   @IsString()
@@ -115,7 +115,7 @@ export class CreateKindDto extends KindAngabenDto {
   kindergeldAnspruchEur?: string
 }
 
-export class UpdateKindDto extends KindAngabenDto {
+export class UpdateChildDto extends ChildDetailsDto {
   @ApiPropertyOptional({ type: String, example: 'Lina' })
   @IsOptional()
   @IsString()
@@ -147,7 +147,7 @@ export class UpdateKindDto extends KindAngabenDto {
   kindergeldAnspruchEur?: string
 }
 
-export class KindResponseDto {
+export class ChildResponseDto {
   @ApiProperty({ type: String, example: 'uuid' })
   id!: string
 
@@ -215,28 +215,28 @@ export class KindResponseDto {
   schweizerKinderzulageEur?: string | null
 
   @ApiPropertyOptional({ type: String, nullable: true, example: '312', description: 'Differenz-Kindergeld der deutschen Familienkasse in whole EUR.' })
-  differenzkindergeldEur?: string | null
+  differentialChildBenefitEur?: string | null
 
   @ApiPropertyOptional({ type: String, nullable: true, example: '3060', description: 'Gesamtanspruch auf Kindergeld oder vergleichbare Leistungen (Zeile 6).' })
-  gesamtanspruchEur?: string | null
+  totalClaimEur?: string | null
 }
 
 export class KinderResponseDto {
-  @ApiProperty({ type: [KindResponseDto] })
-  kinder!: KindResponseDto[]
+  @ApiProperty({ type: [ChildResponseDto] })
+  kinder!: ChildResponseDto[]
 
   @ApiProperty({ type: Number, example: 1 })
-  anzahl!: number
+  count!: number
 
   @ApiProperty({ type: Number, example: 3000 })
-  kindergeldSumme!: number
+  childBenefitSum!: number
 
   @ApiProperty({ type: Number, example: 9600 })
-  freibetragGesamt!: number
+  totalAllowance!: number
 
   @ApiProperty({ type: Number, example: 5496, description: 'Summe der Schweizer Kinderzulagen in EUR.' })
-  schweizerKinderzulageSumme!: number
+  swissFamilyAllowanceSum!: number
 
   @ApiProperty({ type: Number, example: 624, description: 'Summe des Differenz-Kindergeldes in EUR.' })
-  differenzkindergeldSumme!: number
+  differentialChildBenefitSum!: number
 }

@@ -1,4 +1,4 @@
-export type SteuerjahrStatus =
+export type TaxYearStatus =
   | 'entwurf'
   | 'pruefung'
   | 'eingereicht'
@@ -7,7 +7,7 @@ export type SteuerjahrStatus =
   | 'abgeschlossen'
   | 'extern-erledigt'
 
-const UEBERGAENGE_DE: Readonly<Record<SteuerjahrStatus, readonly SteuerjahrStatus[]>> = {
+const TRANSITIONS_DE: Readonly<Record<TaxYearStatus, readonly TaxYearStatus[]>> = {
   entwurf: ['pruefung', 'extern-erledigt'],
   pruefung: ['eingereicht', 'entwurf', 'extern-erledigt'],
   eingereicht: ['rueckfrage', 'bescheid'],
@@ -17,26 +17,26 @@ const UEBERGAENGE_DE: Readonly<Record<SteuerjahrStatus, readonly SteuerjahrStatu
   'extern-erledigt': [],
 }
 
-export function isTransitionAllowed(from: SteuerjahrStatus, to: SteuerjahrStatus): boolean {
-  return UEBERGAENGE_DE[from].includes(to)
+export function isTransitionAllowed(from: TaxYearStatus, to: TaxYearStatus): boolean {
+  return TRANSITIONS_DE[from].includes(to)
 }
 
-export function naechsteZustaende(von: SteuerjahrStatus): readonly SteuerjahrStatus[] {
-  return UEBERGAENGE_DE[von] ?? []
+export function nextStates(from: TaxYearStatus): readonly TaxYearStatus[] {
+  return TRANSITIONS_DE[from] ?? []
 }
 
-export type BescheidStatus = 'eingegangen' | 'geprüft' | 'einspruch-eingelegt'
+export type AssessmentStatus = 'eingegangen' | 'geprüft' | 'einspruch-eingelegt'
 
-const BESCHEID_UEBERGAENGE: Readonly<Record<BescheidStatus, readonly BescheidStatus[]>> = {
+const ASSESSMENT_TRANSITIONS: Readonly<Record<AssessmentStatus, readonly AssessmentStatus[]>> = {
   eingegangen: ['geprüft'],
   geprüft: ['einspruch-eingelegt'],
   'einspruch-eingelegt': [],
 }
 
-export function istBescheidUebergangErlaubt(von: BescheidStatus, nach: BescheidStatus): boolean {
-  return BESCHEID_UEBERGAENGE[von].includes(nach)
+export function isAssessmentTransitionAllowed(from: AssessmentStatus, after: AssessmentStatus): boolean {
+  return ASSESSMENT_TRANSITIONS[from].includes(after)
 }
 
-export function naechsteBescheidZustaende(von: BescheidStatus): readonly BescheidStatus[] {
-  return BESCHEID_UEBERGAENGE[von]
+export function nextAssessmentStates(from: AssessmentStatus): readonly AssessmentStatus[] {
+  return ASSESSMENT_TRANSITIONS[from]
 }

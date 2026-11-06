@@ -3,150 +3,150 @@ import {
   isSupportedIncomeTaxYear,
   kirchensteuer,
   solidaritaetszuschlag,
-  soliFreigrenzen,
-  splittingTarif,
+  soliExemptionLimits,
+  splittingTariff,
   type IncomeTaxYear,
-  type KirchensteuerFaktor,
+  type ChurchTaxFactor,
 } from './tarif'
 import {
-  progressionsvorbehaltSchranke,
-  type ProgressionsvorbehaltEingabe,
-  type TarifBestandteil,
-  type Unschaerfe,
+  progressionClauseLimit,
+  type ProgressionClauseInput,
+  type TariffComponent,
+  type Uncertainty,
 } from './veranlagungsartenvergleich'
 
-const SPARERPAUSCHBETRAG_EINZEL = 1000
-const SPARERPAUSCHBETRAG_ZUSAMMEN = 2000
+const SAVERS_ALLOWANCE_SINGLE = 1000
+const SAVERS_ALLOWANCE_JOINT = 2000
 
-const ABGELTUNGSSATZ = 0.25
+const FLAT_RATE_TAX_RATE = 0.25
 
-const KIST_ERMAESSIGUNG_ANTEIL = 0.25
+const CHURCH_TAX_REDUCTION_SHARE = 0.25
 
-export interface GuenstigerpruefungEingaben {
+export interface MostFavourableCheckInput {
   readonly kapitalertraege: number
-  readonly uebrigesZvE: number
+  readonly remainingZvE: number
   readonly year: number
-  readonly veranlagung: 'einzel' | 'zusammen'
-  readonly progressionsvorbehalt: ProgressionsvorbehaltEingabe
-  readonly kirchensteuerFaktor?: KirchensteuerFaktor
+  readonly assessmentType: 'einzel' | 'zusammen'
+  readonly progressionClause: ProgressionClauseInput
+  readonly churchTaxFactor?: ChurchTaxFactor
 }
 
 /** Herkunfts-Metadaten an beiden Zahlen: beide tragen dieselben Eingaben und Bestandteile — die Unschärfe steckt im `unschaerfe`-Feld. */
-export interface GuenstigerpruefungHerkunft {
+export interface MostFavourableCheckSource {
   readonly kapitalertraege: number
-  readonly uebrigesZvE: number
-  readonly sparerpauschbetrag: number
-  readonly veranlagung: 'einzel' | 'zusammen'
-  readonly bestandteile: readonly TarifBestandteil[]
+  readonly remainingZvE: number
+  readonly saversAllowance: number
+  readonly assessmentType: 'einzel' | 'zusammen'
+  readonly components: readonly TariffComponent[]
 }
 
-export type Guenstigerpruefung =
+export type MostFavourableCheck =
   | {
-      readonly aussage: 'eindeutig'
-      readonly empfehlung: 'abgeltung' | 'persoenlich'
-      readonly abgeltung: number
-      readonly persoenlich: number
+      readonly statement: 'eindeutig'
+      readonly recommendation: 'abgeltung' | 'persoenlich'
+      readonly flatRateTax: number
+      readonly personal: number
       readonly delta: number
-      readonly unschaerfe: Unschaerfe
-      readonly herkunft: GuenstigerpruefungHerkunft
+      readonly uncertainty: Uncertainty
+      readonly provenance: MostFavourableCheckSource
     }
   | {
-      readonly aussage: 'zu-knapp'
-      readonly abgeltung: number
-      readonly persoenlich: number
+      readonly statement: 'zu-knapp'
+      readonly flatRateTax: number
+      readonly personal: number
       readonly delta: number
-      readonly unschaerfe: Unschaerfe
-      readonly herkunft: GuenstigerpruefungHerkunft
+      readonly uncertainty: Uncertainty
+      readonly provenance: MostFavourableCheckSource
     }
   | {
-      readonly aussage: 'unbestimmt'
-      readonly abgeltung: number
-      readonly persoenlich: number
+      readonly statement: 'unbestimmt'
+      readonly flatRateTax: number
+      readonly personal: number
       readonly delta: number
-      readonly unschaerfe: Unschaerfe
-      readonly herkunft: GuenstigerpruefungHerkunft
+      readonly uncertainty: Uncertainty
+      readonly provenance: MostFavourableCheckSource
     }
 
-function validate(input: GuenstigerpruefungEingaben): void {
-  if (!Number.isFinite(input.kapitalertraege) || !Number.isFinite(input.uebrigesZvE)) {
+function validate(input: MostFavourableCheckInput): void {
+  if (!Number.isFinite(input.kapitalertraege) || !Number.isFinite(input.remainingZvE)) {
     throw new RangeError('kapitalertraege and uebrigesZvE must be finite numbers')
   }
-  if (input.kapitalertraege < 0 || input.uebrigesZvE < 0) {
+  if (input.kapitalertraege < 0 || input.remainingZvE < 0) {
     throw new RangeError('kapitalertraege and uebrigesZvE must not be negative')
   }
-  if (!Number.isInteger(input.kapitalertraege) || !Number.isInteger(input.uebrigesZvE)) {
+  if (!Number.isInteger(input.kapitalertraege) || !Number.isInteger(input.remainingZvE)) {
     throw new RangeError('kapitalertraege and uebrigesZvE must be whole euros (integers)')
   }
 }
 
-function tarifAufBasis(basis: number, veranlagung: 'einzel' | 'zusammen', year: IncomeTaxYear): number {
-  if (veranlagung === 'einzel') return incomeTax(basis, year)
-  return splittingTarif(basis, 0, year)
+function tariffOnBasis(basis: number, assessmentType: 'einzel' | 'zusammen', year: IncomeTaxYear): number {
+  if (assessmentType === 'einzel') return incomeTax(basis, year)
+  return splittingTariff(basis, 0, year)
 }
 
-function persoenlicheSteuer(input: GuenstigerpruefungEingaben, year: IncomeTaxYear, faktor: KirchensteuerFaktor): number {
-  const { kapitalertraege, uebrigesZvE, veranlagung } = input
-  const freigrenze = veranlagung === 'einzel' ? soliFreigrenzen(year).einzel : soliFreigrenzen(year).zusammen
+function personalTax(input: MostFavourableCheckInput, year: IncomeTaxYear, factor: ChurchTaxFactor): number {
+  const { kapitalertraege, remainingZvE, assessmentType } = input
+  const exemptionLimit = assessmentType === 'einzel' ? soliExemptionLimits(year).single : soliExemptionLimits(year).joint
 
-  const estMit = tarifAufBasis(uebrigesZvE + kapitalertraege, veranlagung, year)
-  const estOhne = tarifAufBasis(uebrigesZvE, veranlagung, year)
-  const estDifferenz = estMit - estOhne
+  const incomeTaxWith = tariffOnBasis(remainingZvE + kapitalertraege, assessmentType, year)
+  const incomeTaxWithout = tariffOnBasis(remainingZvE, assessmentType, year)
+  const incomeTaxDifference = incomeTaxWith - incomeTaxWithout
 
-  const soliDifferenz = solidaritaetszuschlag(estMit, freigrenze) - solidaritaetszuschlag(estOhne, freigrenze)
-  const kist = kirchensteuer(estDifferenz, faktor)
+  const soliDifference = solidaritaetszuschlag(incomeTaxWith, exemptionLimit) - solidaritaetszuschlag(incomeTaxWithout, exemptionLimit)
+  const kist = kirchensteuer(incomeTaxDifference, factor)
 
-  return estDifferenz + soliDifferenz + kist
+  return incomeTaxDifference + soliDifference + kist
 }
 
-export function guenstigerpruefung(input: GuenstigerpruefungEingaben): Guenstigerpruefung {
+export function mostFavourableCheck(input: MostFavourableCheckInput): MostFavourableCheck {
   validate(input)
-  const { kapitalertraege, uebrigesZvE, veranlagung, progressionsvorbehalt } = input
+  const { kapitalertraege, remainingZvE, assessmentType, progressionClause } = input
   if (!isSupportedIncomeTaxYear(input.year)) {
     throw new RangeError(`Unsupported tax year for §32a EStG: ${input.year}`)
   }
   const year: IncomeTaxYear = input.year
-  const faktor = input.kirchensteuerFaktor ?? 0
+  const factor = input.churchTaxFactor ?? 0
 
-  const sparerpauschbetrag = veranlagung === 'einzel' ? SPARERPAUSCHBETRAG_EINZEL : SPARERPAUSCHBETRAG_ZUSAMMEN
-  const bemessung = Math.max(0, kapitalertraege - sparerpauschbetrag)
-  const abgeltungESt = Math.floor(ABGELTUNGSSATZ * bemessung)
+  const saversAllowance = assessmentType === 'einzel' ? SAVERS_ALLOWANCE_SINGLE : SAVERS_ALLOWANCE_JOINT
+  const assessmentBase = Math.max(0, kapitalertraege - saversAllowance)
+  const flatRateTaxAmount = Math.floor(FLAT_RATE_TAX_RATE * assessmentBase)
 
-  const soliFreigrenze = veranlagung === 'einzel' ? soliFreigrenzen(year).einzel : soliFreigrenzen(year).zusammen
-  const soliAbgeltung = solidaritaetszuschlag(abgeltungESt, soliFreigrenze)
+  const soliExemptionLimit = assessmentType === 'einzel' ? soliExemptionLimits(year).single : soliExemptionLimits(year).joint
+  const soliFlatRate = solidaritaetszuschlag(flatRateTaxAmount, soliExemptionLimit)
 
-  const kistAbgeltung = kirchensteuer(abgeltungESt, faktor)
-  const ermaessigung = Math.floor(KIST_ERMAESSIGUNG_ANTEIL * kistAbgeltung)
-  const abgeltung = abgeltungESt - ermaessigung + kistAbgeltung + soliAbgeltung
+  const churchTaxFlatRate = kirchensteuer(flatRateTaxAmount, factor)
+  const reduction = Math.floor(CHURCH_TAX_REDUCTION_SHARE * churchTaxFlatRate)
+  const flatRateTax = flatRateTaxAmount - reduction + churchTaxFlatRate + soliFlatRate
 
-  const persoenlich = persoenlicheSteuer(input, year, faktor)
+  const personal = personalTax(input, year, factor)
 
-  const delta = persoenlich - abgeltung
+  const delta = personal - flatRateTax
 
-  const bestandteile: TarifBestandteil[] =
-    faktor === 0 ? ['einkommensteuer', 'solidaritaetszuschlag'] : ['einkommensteuer', 'solidaritaetszuschlag', 'kirchensteuer']
-  const herkunft: GuenstigerpruefungHerkunft = {
+  const components: TariffComponent[] =
+    factor === 0 ? ['einkommensteuer', 'solidaritaetszuschlag'] : ['einkommensteuer', 'solidaritaetszuschlag', 'kirchensteuer']
+  const provenance: MostFavourableCheckSource = {
     kapitalertraege,
-    uebrigesZvE,
-    sparerpauschbetrag,
-    veranlagung,
-    bestandteile,
+    remainingZvE,
+    saversAllowance,
+    assessmentType,
+    components,
   }
 
-  const unschaerfe = progressionsvorbehaltSchranke(progressionsvorbehalt)
+  const uncertainty = progressionClauseLimit(progressionClause)
 
-  if (unschaerfe.kind === 'unbestimmt') {
-    return { aussage: 'unbestimmt', abgeltung, persoenlich, delta, unschaerfe, herkunft }
+  if (uncertainty.kind === 'unbestimmt') {
+    return { statement: 'unbestimmt', flatRateTax, personal, delta, uncertainty, provenance }
   }
-  if (Math.abs(delta) > unschaerfe.obergrenze) {
+  if (Math.abs(delta) > uncertainty.upperLimit) {
     return {
-      aussage: 'eindeutig',
-      empfehlung: delta < 0 ? 'persoenlich' : 'abgeltung',
-      abgeltung,
-      persoenlich,
+      statement: 'eindeutig',
+      recommendation: delta < 0 ? 'persoenlich' : 'abgeltung',
+      flatRateTax,
+      personal,
       delta,
-      unschaerfe,
-      herkunft,
+      uncertainty,
+      provenance,
     }
   }
-  return { aussage: 'zu-knapp', abgeltung, persoenlich, delta, unschaerfe, herkunft }
+  return { statement: 'zu-knapp', flatRateTax, personal, delta, uncertainty, provenance }
 }

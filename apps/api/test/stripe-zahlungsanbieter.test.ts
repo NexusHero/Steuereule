@@ -3,15 +3,15 @@
 // any network, and that a tampered body or wrong secret is refused.
 import Stripe from 'stripe'
 import { describe, expect, it } from 'vitest'
-import { resolveStripeConfig, StripeZahlungsanbieter } from '../src/freischaltung/stripe-zahlungsanbieter.js'
+import { resolveStripeConfig, StripePaymentProvider } from '../src/freischaltung/stripe-zahlungsanbieter.js'
 
 const config = { secretKey: 'sk_test_unit', webhookSecret: 'whsec_unit_test_secret', priceId: 'price_unit' }
-const anbieter = new StripeZahlungsanbieter(config)
+const provider = new StripePaymentProvider(config)
 
-function signed(payload: object, secret = config.webhookSecret): { body: Buffer; signatur: string } {
+function signed(payload: object, secret = config.webhookSecret): { body: Buffer; signature: string } {
   const body = JSON.stringify(payload)
-  const signatur = new Stripe('sk_test_unit').webhooks.generateTestHeaderString({ payload: body, secret })
-  return { body: Buffer.from(body), signatur }
+  const signature = new Stripe('sk_test_unit').webhooks.generateTestHeaderString({ payload: body, secret })
+  return { body: Buffer.from(body), signature }
 }
 
 function sessionEvent(type: string, paymentStatus: string) {
@@ -25,31 +25,31 @@ function sessionEvent(type: string, paymentStatus: string) {
 
 describe('StripeZahlungsanbieter.verifiziereEreignis', () => {
   it('a correctly signed, paid checkout.session.completed is "bezahlt"', () => {
-    const { body, signatur } = signed(sessionEvent('checkout.session.completed', 'paid'))
-    expect(anbieter.verifiziereEreignis(body, signatur)).toEqual({
+    const { body, signature } = signed(sessionEvent('checkout.session.completed', 'paid'))
+    expect(provider.verifyEvent(body, signature)).toEqual({
       art: 'bezahlt',
-      sitzungId: 'cs_test_1',
+      sessionId: 'cs_test_1',
       betragCent: 1999,
     })
   })
 
   it('a completed but unpaid session (SEPA pending) is ignored until async_payment_succeeded', () => {
     const pending = signed(sessionEvent('checkout.session.completed', 'unpaid'))
-    expect(anbieter.verifiziereEreignis(pending.body, pending.signatur)).toEqual({ art: 'ignoriert' })
+    expect(provider.verifyEvent(pending.body, pending.signature)).toEqual({ art: 'ignoriert' })
 
     const later = signed(sessionEvent('checkout.session.async_payment_succeeded', 'paid'))
-    expect(anbieter.verifiziereEreignis(later.body, later.signatur)).toMatchObject({ art: 'bezahlt' })
+    expect(provider.verifyEvent(later.body, later.signature)).toMatchObject({ art: 'bezahlt' })
   })
 
   it('refuses a tampered body', () => {
-    const { signatur } = signed(sessionEvent('checkout.session.completed', 'paid'))
+    const { signature } = signed(sessionEvent('checkout.session.completed', 'paid'))
     const forged = Buffer.from(JSON.stringify(sessionEvent('checkout.session.completed', 'paid')).replace('1999', '1'))
-    expect(() => anbieter.verifiziereEreignis(forged, signatur)).toThrow()
+    expect(() => provider.verifyEvent(forged, signature)).toThrow()
   })
 
   it('refuses a signature made with another secret', () => {
-    const { body, signatur } = signed(sessionEvent('checkout.session.completed', 'paid'), 'whsec_attacker')
-    expect(() => anbieter.verifiziereEreignis(body, signatur)).toThrow()
+    const { body, signature } = signed(sessionEvent('checkout.session.completed', 'paid'), 'whsec_attacker')
+    expect(() => provider.verifyEvent(body, signature)).toThrow()
   })
 })
 

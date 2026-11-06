@@ -42,7 +42,7 @@ function toRecord(row: {
 }
 
 @Injectable()
-export class PrismaKindRepository implements ChildRepository {
+export class PrismaChildRepository implements ChildRepository {
   constructor(@Inject(ENCRYPTED_PRISMA) private readonly prisma: EncryptedPrismaClient) {}
 
   async listForUserAndYear(userId: string, steuerjahr: number): Promise<ChildRecord[]> {

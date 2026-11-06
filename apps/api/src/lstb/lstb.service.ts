@@ -15,33 +15,33 @@ import {
 import { AuditService } from '../audit/audit.service.js'
 import { PROVENANCE_REPOSITORY, type ProvenanceRepository } from '../kennzeichnung/kennzeichnung.repository.js'
 import { WAGE_TAX_CERTIFICATE_REPOSITORY, type WageTaxCertificateRepository } from './lstb.repository.js'
-import type { LstbFeldDto } from './dto/lstb-feld.dto.js'
+import type { LstbFieldDto } from './dto/lstb-feld.dto.js'
 import type { LstbResponseDto } from './dto/lstb-response.dto.js'
-import type { LstbWiderspruchDto } from './dto/lstb-widerspruch.dto.js'
-import type { LstbZustandDto } from './dto/lstb-zustand.dto.js'
+import type { LstbConflictDto } from './dto/lstb-widerspruch.dto.js'
+import type { LstbStatusDto } from './dto/lstb-zustand.dto.js'
 import { wageTaxCertificateDataFrom } from './lstb-daten.js'
 
-function zustandAusDto(dto: LstbFeldDto): WageTaxCertificateFieldState {
+function stateFromDto(dto: LstbFieldDto): WageTaxCertificateFieldState {
   if (dto.kind === 'offen') return { kind: 'offen' }
   if (dto.kind === 'unklar') return { kind: 'unklar' }
-  if (dto.wert === undefined || !isValidAmount(dto.wert)) {
+  if (dto.value === undefined || !isValidAmount(dto.value)) {
     throw new InvalidInputError('FIELD_VALUE_INVALID', 'kind "erfasst" requires a non-negative whole-euro `wert`.')
   }
-  return { kind: 'erfasst', wert: dto.wert }
+  return { kind: 'erfasst', value: dto.value }
 }
 
-function toFeldDto(zustand: WageTaxCertificateFieldState): LstbFeldDto {
-  switch (zustand.kind) {
+function toFieldDto(state: WageTaxCertificateFieldState): LstbFieldDto {
+  switch (state.kind) {
     case 'offen':
       return { kind: 'offen' }
     case 'unklar':
       return { kind: 'unklar' }
     case 'erfasst':
-      return { kind: 'erfasst', wert: zustand.wert }
+      return { kind: 'erfasst', value: state.value }
   }
 }
 
-function toWiderspruchDto(w: WageTaxCertificateConflict): LstbWiderspruchDto {
+function toConflictDto(w: WageTaxCertificateConflict): LstbConflictDto {
   switch (w.art) {
     case 'lohnsteuer-uebersteigt-brutto':
       return { art: 'lohnsteuer-uebersteigt-brutto', lohnsteuer: w.lohnsteuer, bruttoarbeitslohn: w.bruttoarbeitslohn }
@@ -50,23 +50,23 @@ function toWiderspruchDto(w: WageTaxCertificateConflict): LstbWiderspruchDto {
   }
 }
 
-function toZustandDto(z: WageTaxCertificateStatus): LstbZustandDto {
+function toStateDto(z: WageTaxCertificateStatus): LstbStatusDto {
   switch (z.kind) {
     case 'unvollstaendig':
-      return { kind: 'unvollstaendig', offen: [...z.offen], unklar: [...z.unklar] }
+      return { kind: 'unvollstaendig', open: [...z.open], unclear: [...z.unclear] }
     case 'widerspruch':
-      return { kind: 'widerspruch', widersprueche: z.widersprueche.map(toWiderspruchDto) }
+      return { kind: 'widerspruch', conflicts: z.conflicts.map(toConflictDto) }
     case 'vollstaendig':
       return { kind: 'vollstaendig', bruttoarbeitslohn: z.bruttoarbeitslohn, lohnsteuer: z.lohnsteuer, sozialversicherung: z.sozialversicherung }
   }
 }
 
-function toResponse(daten: WageTaxCertificateData): LstbResponseDto {
+function toResponse(data: WageTaxCertificateData): LstbResponseDto {
   return {
-    bruttoarbeitslohn: toFeldDto(daten.bruttoarbeitslohn),
-    lohnsteuer: toFeldDto(daten.lohnsteuer),
-    sozialversicherung: toFeldDto(daten.sozialversicherung),
-    zustand: toZustandDto(wageTaxCertificateStatus(daten)),
+    bruttoarbeitslohn: toFieldDto(data.bruttoarbeitslohn),
+    lohnsteuer: toFieldDto(data.lohnsteuer),
+    sozialversicherung: toFieldDto(data.sozialversicherung),
+    state: toStateDto(wageTaxCertificateStatus(data)),
   }
 }
 
@@ -76,7 +76,7 @@ export class LstbService {
   constructor(
     @Inject(WAGE_TAX_CERTIFICATE_REPOSITORY) private readonly repository: WageTaxCertificateRepository,
     @Inject(AuditService) private readonly auditService: AuditService,
-    @Inject(PROVENANCE_REPOSITORY) private readonly kennzeichnungen: ProvenanceRepository,
+    @Inject(PROVENANCE_REPOSITORY) private readonly markings: ProvenanceRepository,
   ) {}
 
   async getState(userId: string, steuerjahr: number): Promise<LstbResponseDto> {
@@ -87,13 +87,13 @@ export class LstbService {
     return toResponse(wageTaxCertificateDataFrom(record))
   }
 
-  async setFeld(userId: string, steuerjahr: number, feld: WageTaxCertificateFieldId, dto: LstbFeldDto): Promise<LstbResponseDto> {
+  async setField(userId: string, steuerjahr: number, field: WageTaxCertificateFieldId, dto: LstbFieldDto): Promise<LstbResponseDto> {
     const record = await this.repository.findForUserAndYear(userId, steuerjahr)
-    const daten = wageTaxCertificateDataFrom(record)
-    const zustand = zustandAusDto(dto)
-    const next = setWageTaxCertificateField(daten, feld, zustand)
-    await this.repository.setFeld(userId, steuerjahr, feld, serializeWageTaxCertificateField(zustand))
-    await this.kennzeichnungen.entferne(userId, steuerjahr, [provenanceKey('lstb', feld)])
+    const data = wageTaxCertificateDataFrom(record)
+    const state = stateFromDto(dto)
+    const next = setWageTaxCertificateField(data, field, state)
+    await this.repository.setField(userId, steuerjahr, field, serializeWageTaxCertificateField(state))
+    await this.markings.remove(userId, steuerjahr, [provenanceKey('lstb', field)])
     return toResponse(next)
   }
 }

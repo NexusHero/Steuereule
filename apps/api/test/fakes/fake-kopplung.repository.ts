@@ -4,7 +4,7 @@ function key(userId: string, steuerjahr: number): string {
   return `${userId}::${steuerjahr}`
 }
 
-export class FakeKopplungRepository implements PartnerCouplingRepository {
+export class FakeLinkRepository implements PartnerCouplingRepository {
   private readonly store = new Map<string, PartnerCouplingRecord>()
   private counter = 0
 
@@ -17,7 +17,7 @@ export class FakeKopplungRepository implements PartnerCouplingRepository {
     return Promise.resolve(null)
   }
 
-  findByEinladungsCode(code: string): Promise<PartnerCouplingRecord | null> {
+  findByInvitationCode(code: string): Promise<PartnerCouplingRecord | null> {
     for (const r of this.store.values()) {
       if (r.einladungsCode === code) return Promise.resolve(r)
     }

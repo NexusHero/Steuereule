@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { AssistentenService } from '../src/assistenten/assistenten.service.js'
+import { AssistantsService } from '../src/assistenten/assistenten.service.js'
 import type { AssistantRepository, ConnectedAssistant } from '../src/assistenten/assistenten.repository.js'
 
 describe('AssistentenService (ADR-0052 §10 / Issue #385)', () => {
@@ -8,8 +8,8 @@ describe('AssistentenService (ADR-0052 §10 / Issue #385)', () => {
       {
         clientId: 'c1',
         name: 'Claude Desktop',
-        verbundenSeit: new Date('2026-11-01T10:00:00Z'),
-        zuletztGenutzt: new Date('2026-11-03T18:00:00Z'),
+        linkedSince: new Date('2026-11-01T10:00:00Z'),
+        lastUsed: new Date('2026-11-03T18:00:00Z'),
       },
     ]
     const fakeRepo: AssistantRepository = {
@@ -18,15 +18,15 @@ describe('AssistentenService (ADR-0052 §10 / Issue #385)', () => {
       findClientInfo: vi.fn().mockResolvedValue(null),
     }
 
-    const service = new AssistentenService(fakeRepo)
+    const service = new AssistantsService(fakeRepo)
     const result = await service.listConnected('user-1')
 
     expect(result).toHaveLength(1)
     expect(result[0]).toEqual({
       clientId: 'c1',
       name: 'Claude Desktop',
-      verbundenSeit: '2026-11-01T10:00:00.000Z',
-      zuletztGenutzt: '2026-11-03T18:00:00.000Z',
+      linkedSince: '2026-11-01T10:00:00.000Z',
+      lastUsed: '2026-11-03T18:00:00.000Z',
     })
     expect(fakeRepo.findConnectedForUser).toHaveBeenCalledWith('user-1')
   })
@@ -38,7 +38,7 @@ describe('AssistentenService (ADR-0052 §10 / Issue #385)', () => {
       findClientInfo: vi.fn().mockResolvedValue(null),
     }
 
-    const service = new AssistentenService(fakeRepo)
+    const service = new AssistantsService(fakeRepo)
     await service.revoke('user-1', 'c1')
 
     expect(fakeRepo.revokeForUser).toHaveBeenCalledWith('user-1', 'c1')
@@ -56,7 +56,7 @@ describe('AssistentenService (ADR-0052 §10 / Issue #385)', () => {
       }),
     }
 
-    const service = new AssistentenService(fakeRepo)
+    const service = new AssistantsService(fakeRepo)
     const info = await service.getClientInfo('c1')
 
     expect(info).toEqual({

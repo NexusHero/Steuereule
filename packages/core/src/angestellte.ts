@@ -15,23 +15,23 @@ export interface EmployeeAnswerFigures {
   readonly wageReplacementAmount: number
 }
 
-function intAus(value: string | undefined): number {
+function intFrom(value: string | undefined): number {
   if (value === undefined) return 0
   const n = Number(value)
   return Number.isFinite(n) ? n : 0
 }
 
 export function employeeFromAnswers(answers: Answers): EmployeeAnswerFigures {
-  const nebenjob = answers.nebenjob === 'Midijob' || answers.nebenjob === 'Nebenjob' ? intAus(answers['nebenjob-brutto']) : 0
+  const sideJob = answers.nebenjob === 'Midijob' || answers.nebenjob === 'Nebenjob' ? intFrom(answers['nebenjob-brutto']) : 0
   return {
-    sideJobGross: nebenjob,
-    relocationCosts: answers.umzug === 'Ja' ? intAus(answers['umzug-kosten']) : 0,
-    donations: answers.spenden === 'Ja' ? intAus(answers['spenden-betrag']) : 0,
+    sideJobGross: sideJob,
+    relocationCosts: answers.umzug === 'Ja' ? intFrom(answers['umzug-kosten']) : 0,
+    donations: answers.spenden === 'Ja' ? intFrom(answers['spenden-betrag']) : 0,
     healthCareContributions: deductibleBasicProvision(healthInsuranceFromAnswers(answers)),
-    riester: answers.riester === 'Ja' ? intAus(answers['riester-betrag']) : 0,
-    doubleHouseholdRent: answers.dhf === 'Ja' ? intAus(answers['dhf-miete']) : 0,
-    severanceAmount: answers.abfindung === 'Ja' ? intAus(answers['abfindung-betrag']) : 0,
-    wageReplacementAmount: answers.lohnersatz === 'Ja' ? intAus(answers['lohnersatz-betrag']) : 0,
+    riester: answers.riester === 'Ja' ? intFrom(answers['riester-betrag']) : 0,
+    doubleHouseholdRent: answers.dhf === 'Ja' ? intFrom(answers['dhf-miete']) : 0,
+    severanceAmount: answers.abfindung === 'Ja' ? intFrom(answers['abfindung-betrag']) : 0,
+    wageReplacementAmount: answers.lohnersatz === 'Ja' ? intFrom(answers['lohnersatz-betrag']) : 0,
   }
 }
 
@@ -44,88 +44,88 @@ export interface EmployeeInputs {
   readonly gated: readonly IncomeType[]
 }
 
-export type AngestelltenStand =
-  | { readonly kind: 'bestimmt'; readonly einnahmen: number; readonly werbungskosten: number; readonly sonderausgaben: number; readonly einkuenfte: number }
+export type EmployeeStatus =
+  | { readonly kind: 'bestimmt'; readonly einnahmen: number; readonly werbungskosten: number; readonly specialExpenses: number; readonly netIncome: number }
   | {
       readonly kind: 'offen'
       readonly einnahmen: number
       readonly werbungskosten: number
-      readonly sonderausgaben: number
-      readonly einkuenfte: number
-      readonly offenePosten: number
-      readonly konflikte: number
-      readonly gegated: readonly IncomeType[]
+      readonly specialExpenses: number
+      readonly netIncome: number
+      readonly openItems: number
+      readonly conflicts: number
+      readonly gated: readonly IncomeType[]
     }
 
-function validate(eingaben: EmployeeInputs): void {
+function validate(inputs: EmployeeInputs): void {
   for (const [name, n] of [
-    ['einnahmen', eingaben.income],
-    ['werbungskosten', eingaben.incomeRelatedExpenses],
-    ['sonderausgaben', eingaben.specialExpenses],
-    ['offenePosten', eingaben.openItems],
-    ['konflikte', eingaben.conflicts],
+    ['einnahmen', inputs.income],
+    ['werbungskosten', inputs.incomeRelatedExpenses],
+    ['sonderausgaben', inputs.specialExpenses],
+    ['offenePosten', inputs.openItems],
+    ['konflikte', inputs.conflicts],
   ] as const) {
     if (!Number.isInteger(n) || n < 0) throw new RangeError(`${name} must be a non-negative integer`)
   }
 }
 
-export function calculateEmployeeStatus(eingaben: EmployeeInputs): AngestelltenStand {
-  validate(eingaben)
-  const einkuenfte = Math.max(0, eingaben.income - eingaben.incomeRelatedExpenses)
-  const offen = eingaben.openItems > 0 || eingaben.conflicts > 0 || eingaben.gated.length > 0
-  if (!offen) {
+export function calculateEmployeeStatus(inputs: EmployeeInputs): EmployeeStatus {
+  validate(inputs)
+  const netIncome = Math.max(0, inputs.income - inputs.incomeRelatedExpenses)
+  const open = inputs.openItems > 0 || inputs.conflicts > 0 || inputs.gated.length > 0
+  if (!open) {
     return {
       kind: 'bestimmt',
-      einnahmen: eingaben.income,
-      werbungskosten: eingaben.incomeRelatedExpenses,
-      sonderausgaben: eingaben.specialExpenses,
-      einkuenfte,
+      einnahmen: inputs.income,
+      werbungskosten: inputs.incomeRelatedExpenses,
+      specialExpenses: inputs.specialExpenses,
+      netIncome,
     }
   }
   return {
     kind: 'offen',
-    einnahmen: eingaben.income,
-    werbungskosten: eingaben.incomeRelatedExpenses,
-    sonderausgaben: eingaben.specialExpenses,
-    einkuenfte,
-    offenePosten: eingaben.openItems,
-    konflikte: eingaben.conflicts,
-    gegated: eingaben.gated,
+    einnahmen: inputs.income,
+    werbungskosten: inputs.incomeRelatedExpenses,
+    specialExpenses: inputs.specialExpenses,
+    netIncome,
+    openItems: inputs.openItems,
+    conflicts: inputs.conflicts,
+    gated: inputs.gated,
   }
 }
 
 /** The ONE fold from the readable Angestellte facts → every numeric input both the Cockpit spanne AND the Plausibilitäts-Prüfung need. */
-export interface AngestellteFakten {
+export interface EmployeeFacts {
   readonly einnahmen: number
   readonly werbungskosten: number
-  readonly sonderausgaben: number
-  readonly offenePosten: number
-  readonly konflikte: number
-  readonly gegated: readonly IncomeType[]
-  readonly erfasstNichtGerechnet: number
+  readonly specialExpenses: number
+  readonly openItems: number
+  readonly conflicts: number
+  readonly gated: readonly IncomeType[]
+  readonly recordedNotCalculated: number
 }
 
-export function employeeFromData(daten: WageTaxCertificateData, answers: Answers): AngestellteFakten {
-  const zahlen = employeeFromAnswers(answers)
-  const zustand = wageTaxCertificateStatus(daten)
-  const angestellt = answers.job === 'Angestellt' || answers.job === 'Beides'
+export function employeeFromData(data: WageTaxCertificateData, answers: Answers): EmployeeFacts {
+  const numbers = employeeFromAnswers(answers)
+  const state = wageTaxCertificateStatus(data)
+  const employed = answers.job === 'Angestellt' || answers.job === 'Beides'
 
   const einnahmen =
-    (angestellt && daten.bruttoarbeitslohn.kind === 'erfasst' ? daten.bruttoarbeitslohn.wert : 0) + zahlen.sideJobGross
+    (employed && data.bruttoarbeitslohn.kind === 'erfasst' ? data.bruttoarbeitslohn.value : 0) + numbers.sideJobGross
 
-  const offeneLstb =
-    angestellt && zustand.kind === 'unvollstaendig' ? zustand.offen.length + zustand.unklar.length : 0
-  const nebenjobOffen =
-    (answers.nebenjob === 'Midijob' || answers.nebenjob === 'Nebenjob') && zahlen.sideJobGross === 0
-  const offenePosten = offeneLstb + (nebenjobOffen ? 1 : 0)
+  const openLstb =
+    employed && state.kind === 'unvollstaendig' ? state.open.length + state.unclear.length : 0
+  const sideJobOpen =
+    (answers.nebenjob === 'Midijob' || answers.nebenjob === 'Nebenjob') && numbers.sideJobGross === 0
+  const openItems = openLstb + (sideJobOpen ? 1 : 0)
 
   return {
     einnahmen,
-    werbungskosten: zahlen.relocationCosts,
-    sonderausgaben: zahlen.donations + zahlen.healthCareContributions + zahlen.riester,
-    offenePosten,
-    konflikte: angestellt && zustand.kind === 'widerspruch' ? zustand.widersprueche.length : 0,
-    gegated: gatedIncomeTypes(answers),
-    erfasstNichtGerechnet: zahlen.doubleHouseholdRent + zahlen.severanceAmount + zahlen.wageReplacementAmount,
+    werbungskosten: numbers.relocationCosts,
+    specialExpenses: numbers.donations + numbers.healthCareContributions + numbers.riester,
+    openItems,
+    conflicts: employed && state.kind === 'widerspruch' ? state.conflicts.length : 0,
+    gated: gatedIncomeTypes(answers),
+    recordedNotCalculated: numbers.doubleHouseholdRent + numbers.severanceAmount + numbers.wageReplacementAmount,
   }
 }

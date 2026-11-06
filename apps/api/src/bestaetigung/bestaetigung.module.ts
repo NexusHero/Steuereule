@@ -1,30 +1,30 @@
 import { Module } from '@nestjs/common'
 import { AuditModule } from '../audit/audit.module.js'
 import { CAPITAL_REPOSITORY, type CapitalRepository } from '../kapital/kapital.repository.js'
-import { KapitalModule } from '../kapital/kapital.module.js'
-import { KennzeichnungModule } from '../kennzeichnung/kennzeichnung.module.js'
+import { CapitalModule } from '../kapital/kapital.module.js'
+import { MarkingModule } from '../kennzeichnung/kennzeichnung.module.js'
 import { WAGE_TAX_CERTIFICATE_REPOSITORY, type WageTaxCertificateRepository } from '../lstb/lstb.repository.js'
 import { LstbModule } from '../lstb/lstb.module.js'
 import { PENSION_REPOSITORY, type PensionRepository } from '../rente/rente.repository.js'
-import { RenteModule } from '../rente/rente.module.js'
+import { PensionModule } from '../rente/rente.module.js'
 import { RENTAL_REPOSITORY, type RentalRepository } from '../vermietung/vermietung.repository.js'
-import { VermietungModule } from '../vermietung/vermietung.module.js'
-import { BestaetigungController } from './bestaetigung.controller.js'
+import { RentalModule } from '../vermietung/vermietung.module.js'
+import { ConfirmationController } from './bestaetigung.controller.js'
 import { ConfirmationService } from './bestaetigung.service.js'
-import { FELD_ZUGRIFF, feldZugriffAus } from './feld-zugriff.js'
+import { FIELD_ACCESS, fieldAccessFrom } from './feld-zugriff.js'
 
 @Module({
-  imports: [AuditModule, KennzeichnungModule, LstbModule, RenteModule, KapitalModule, VermietungModule],
-  controllers: [BestaetigungController],
+  imports: [AuditModule, MarkingModule, LstbModule, PensionModule, CapitalModule, RentalModule],
+  controllers: [ConfirmationController],
   providers: [
     ConfirmationService,
     {
-      provide: FELD_ZUGRIFF,
+      provide: FIELD_ACCESS,
       inject: [WAGE_TAX_CERTIFICATE_REPOSITORY, PENSION_REPOSITORY, CAPITAL_REPOSITORY, RENTAL_REPOSITORY],
-      useFactory: (lstb: WageTaxCertificateRepository, rente: PensionRepository, kapital: CapitalRepository, vermietung: RentalRepository) =>
-        feldZugriffAus({ lstb, rente, kapital, vermietung }),
+      useFactory: (lstb: WageTaxCertificateRepository, pension: PensionRepository, capital: CapitalRepository, rental: RentalRepository) =>
+        fieldAccessFrom({ lstb, pension, capital, rental }),
     },
   ],
   exports: [ConfirmationService],
 })
-export class BestaetigungModule {}
+export class ConfirmationModule {}

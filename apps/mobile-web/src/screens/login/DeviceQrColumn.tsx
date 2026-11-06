@@ -23,20 +23,20 @@ interface DeviceQrColumnProps {
 
 export function DeviceQrColumn({ t, tr, state, requestNewCode, screenBannerShown, autoRetryStatus }: DeviceQrColumnProps) {
   const styles = makeStyles(t)
-  const knapp = state.kind === 'ready' && state.secondsRemaining <= 20
-  const [kopiert, setKopiert] = useState(false)
-  const kopiertTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
+  const tight = state.kind === 'ready' && state.secondsRemaining <= 20
+  const [copied, setCopied] = useState(false)
+  const copiedTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
 
-  useEffect(() => () => clearTimeout(kopiertTimer.current), [])
+  useEffect(() => () => clearTimeout(copiedTimer.current), [])
 
   function copyCode(code: string) {
     try {
       void navigator.clipboard?.writeText(code)
     } catch {
     }
-    setKopiert(true)
-    clearTimeout(kopiertTimer.current)
-    kopiertTimer.current = setTimeout(() => setKopiert(false), 1400)
+    setCopied(true)
+    clearTimeout(copiedTimer.current)
+    copiedTimer.current = setTimeout(() => setCopied(false), 1400)
   }
 
   return (
@@ -58,7 +58,7 @@ export function DeviceQrColumn({ t, tr, state, requestNewCode, screenBannerShown
             <View style={styles.qrCodeRow}>
               <Text style={styles.qrCode}>{state.userCode}</Text>
               <Chip onPress={() => copyCode(state.userCode)} style={styles.qrCopyChip} testID="qr-copy-chip">
-                <Text style={styles.qrCopyChipLabel}>{kopiert ? tr('login.qr.copied') : tr('login.qr.copy')}</Text>
+                <Text style={styles.qrCopyChipLabel}>{copied ? tr('login.qr.copied') : tr('login.qr.copy')}</Text>
               </Chip>
             </View>
             <View style={styles.qrLifetime} accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: state.totalSeconds, now: state.secondsRemaining }}>
@@ -67,12 +67,12 @@ export function DeviceQrColumn({ t, tr, state, requestNewCode, screenBannerShown
                   style={[
                     styles.qrLifetimeFill,
                     { width: `${(state.secondsRemaining / state.totalSeconds) * 100}%` },
-                    knapp && styles.qrLifetimeFillKnapp,
+                    tight && styles.qrLifetimeFillKnapp,
                   ]}
                 />
               </View>
-              <Text style={[styles.qrLifetimeLabel, knapp && styles.qrLifetimeLabelKnapp]}>
-                {knapp ? tr('login.qr.knapp', { time: formatCountdown(state.secondsRemaining) }) : tr('login.qr.remaining', { time: formatCountdown(state.secondsRemaining) })}
+              <Text style={[styles.qrLifetimeLabel, tight && styles.qrLifetimeLabelKnapp]}>
+                {tight ? tr('login.qr.knapp', { time: formatCountdown(state.secondsRemaining) }) : tr('login.qr.remaining', { time: formatCountdown(state.secondsRemaining) })}
               </Text>
             </View>
           </View>
@@ -167,9 +167,9 @@ function makeStyles(t: UiTheme) {
   const qrLifetime: ViewStyle = { width: '100%', marginTop: t.space.s3, gap: t.space.s1 }
   const qrLifetimeTrack: ViewStyle = { height: 5, borderRadius: 99, backgroundColor: t.color.nachtLinie, overflow: 'hidden', width: '100%' }
   const qrLifetimeFill: ViewStyle = { height: '100%', backgroundColor: t.color.funke, borderRadius: 99 }
-  const qrLifetimeFillKnapp: ViewStyle = { backgroundColor: t.color.warn }
+  const qrLifetimeFillTight: ViewStyle = { backgroundColor: t.color.warn }
   const qrLifetimeLabel: TextStyle = { fontFamily: t.font.mono, fontSize: t.size.xs, color: t.color.nachtText, opacity: 0.6, textAlign: 'center' }
-  const qrLifetimeLabelKnapp: TextStyle = { color: t.color.warn, opacity: 1, fontWeight: t.weight.schwer }
+  const qrLifetimeLabelTight: TextStyle = { color: t.color.warn, opacity: 1, fontWeight: t.weight.schwer }
 
   return {
     qrColumn,
@@ -190,8 +190,8 @@ function makeStyles(t: UiTheme) {
     qrLifetime,
     qrLifetimeTrack,
     qrLifetimeFill,
-    qrLifetimeFillKnapp,
+    qrLifetimeFillKnapp: qrLifetimeFillTight,
     qrLifetimeLabel,
-    qrLifetimeLabelKnapp,
+    qrLifetimeLabelKnapp: qrLifetimeLabelTight,
   }
 }

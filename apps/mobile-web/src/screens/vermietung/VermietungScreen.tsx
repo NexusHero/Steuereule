@@ -5,44 +5,44 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Button, Card, Chip, Feld, Input, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
 import { formatEuro, RENTAL_FIELDS, type RentalFieldId } from '@steuereule/core'
 import {
-  useKopplungControllerGet,
-  getVermietungControllerGetQueryKey,
-  useVermietungControllerCreate,
-  useVermietungControllerGet,
-  useVermietungControllerSetAdresse,
-  useVermietungControllerSetFeld,
-  type PutVermietungAdresseDto,
-  type VermietungFeldDto,
-  type VermietungResponseDto,
-  type VermietungsobjektDto,
+  useLinkControllerGet,
+  getRentalControllerGetQueryKey,
+  useRentalControllerCreate,
+  useRentalControllerGet,
+  useRentalControllerSetAddress,
+  useRentalControllerSetField,
+  type PutRentalAddressDto,
+  type RentalFieldDto,
+  type RentalResponseDto,
+  type RentalPropertyDto,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
-import { ganzzahlAus } from '../shared/ganzzahl'
+import { integerFrom } from '../shared/ganzzahl'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
-import { KatalogScreen } from '../katalog/KatalogScreen'
+import { CatalogScreen } from '../katalog/KatalogScreen'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 
-export interface VermietungScreenProps {
+export interface RentalScreenProps {
   readonly onDone?: () => void
   readonly onBack?: () => void
   readonly taxYear?: number
 }
 
-export function VermietungScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YEAR }: VermietungScreenProps) {
+export function RentalScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YEAR }: RentalScreenProps) {
   const bp = useBreakpoint()
   const t = useTheme()
   const styles = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
   const queryClient = useQueryClient()
-  const query = useVermietungControllerGet(taxYear)
-  const createObjekt = useVermietungControllerCreate()
-  const setFeld = useVermietungControllerSetFeld()
-  const setAdresse = useVermietungControllerSetAdresse()
+  const query = useRentalControllerGet(taxYear)
+  const createProperty = useRentalControllerCreate()
+  const setField = useRentalControllerSetField()
+  const setAddress = useRentalControllerSetAddress()
 
   // The depot / the kind of letting is a catalogue answer; the mask can ask it right here.
-  const [frageOffen, setFrageOffen] = useState(false)
-  const kopplung = useKopplungControllerGet(taxYear)
+  const [questionOpen, setQuestionOpen] = useState(false)
+  const link = useLinkControllerGet(taxYear)
 
   if (query.isPending) {
     return <LoadingState bp={bp} label={tr('vermietung.loading')} />
@@ -60,30 +60,30 @@ export function VermietungScreen({ onDone = () => {}, onBack, taxYear = CURRENT_
   }
 
   const response = query.data.data
-  const paar = kopplung.data?.status === 200 && kopplung.data.data.veranlagungsart === 'zusammen'
+  const paar = link.data?.status === 200 && link.data.data.veranlagungsart === 'zusammen'
 
-  if (frageOffen) {
-    const zurueck = () => {
-      setFrageOffen(false)
+  if (questionOpen) {
+    const back = () => {
+      setQuestionOpen(false)
       void query.refetch()
     }
-    return <KatalogScreen taxYear={taxYear} entry="einkuenfte" onDone={zurueck} onBack={zurueck} />
+    return <CatalogScreen taxYear={taxYear} entry="einkuenfte" onDone={back} onBack={back} />
   }
 
   function invalidate() {
-    void queryClient.invalidateQueries({ queryKey: getVermietungControllerGetQueryKey(taxYear) })
+    void queryClient.invalidateQueries({ queryKey: getRentalControllerGetQueryKey(taxYear) })
   }
 
-  function send(objektId: string, feld: RentalFieldId, data: VermietungFeldDto) {
-    setFeld.mutate({ jahr: taxYear, objektId, feld, data }, { onSuccess: invalidate })
+  function send(propertyId: string, field: RentalFieldId, data: RentalFieldDto) {
+    setField.mutate({ jahr: taxYear, objektId: propertyId, feld: field, data }, { onSuccess: invalidate })
   }
 
-  function sendAdresse(objektId: string, data: PutVermietungAdresseDto) {
-    setAdresse.mutate({ jahr: taxYear, objektId, data }, { onSuccess: invalidate })
+  function sendAddress(propertyId: string, data: PutRentalAddressDto) {
+    setAddress.mutate({ jahr: taxYear, objektId: propertyId, data }, { onSuccess: invalidate })
   }
 
-  function addObjekt() {
-    createObjekt.mutate({ jahr: taxYear }, { onSuccess: invalidate })
+  function addProperty() {
+    createProperty.mutate({ jahr: taxYear }, { onSuccess: invalidate })
   }
 
   return (
@@ -94,31 +94,31 @@ export function VermietungScreen({ onDone = () => {}, onBack, taxYear = CURRENT_
       <Text style={styles.heading}>{tr('vermietung.heading')}</Text>
       <Text style={styles.help}>{tr('vermietung.help')}</Text>
 
-      <EinordnungNotice kind={response.einordnung.kind} />
-      {response.einordnung.kind === 'unbekannt' ? (
-        <Button variante="ghost" onPress={() => setFrageOffen(true)} testID="vermietung-frage-beantworten">
+      <ClassificationNotice kind={response.classification.kind} />
+      {response.classification.kind === 'unbekannt' ? (
+        <Button variant="ghost" onPress={() => setQuestionOpen(true)} testID="vermietung-frage-beantworten">
           {tr('katalog.einkuenfteBeantworten')}
         </Button>
       ) : null}
 
-      {response.objekte.map((objekt, index) => (
-        <ObjektCard
-          key={objekt.id}
-          objekt={objekt}
+      {response.properties.map((property, index) => (
+        <PropertyCard
+          key={property.id}
+          property={property}
           index={index}
-          onSend={(feld, data) => send(objekt.id, feld, data)}
-          onSendAdresse={(data) => sendAdresse(objekt.id, data)}
+          onSend={(field, data) => send(property.id, field, data)}
+          onSendAddress={(data) => sendAddress(property.id, data)}
           paar={paar}
         />
       ))}
 
-      {response.einordnung.kind === 'verkauf-oder-moebliert' ? null : (
-        <Button variante="ghost" onPress={addObjekt} style={styles.addCta} testID="objekt-hinzufuegen">
+      {response.classification.kind === 'verkauf-oder-moebliert' ? null : (
+        <Button variant="ghost" onPress={addProperty} style={styles.addCta} testID="objekt-hinzufuegen">
           {tr('vermietung.addObjekt')}
         </Button>
       )}
 
-      <StandNotice response={response} />
+      <StatusNotice response={response} />
 
       <Button onPress={onDone} style={styles.cta}>
         {tr('vermietung.weiter')}
@@ -127,7 +127,7 @@ export function VermietungScreen({ onDone = () => {}, onBack, taxYear = CURRENT_
   )
 }
 
-function EinordnungNotice({ kind }: { readonly kind: VermietungResponseDto['einordnung']['kind'] }) {
+function ClassificationNotice({ kind }: { readonly kind: RentalResponseDto['classification']['kind'] }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
@@ -140,18 +140,18 @@ function EinordnungNotice({ kind }: { readonly kind: VermietungResponseDto['eino
   return <Text style={styles.notice}>{text}</Text>
 }
 
-function ObjektCard({
-  objekt,
+function PropertyCard({
+  property,
   index,
   onSend,
-  onSendAdresse,
+  onSendAddress,
   paar = false,
 }: {
   readonly paar?: boolean
-  readonly objekt: VermietungsobjektDto
+  readonly property: RentalPropertyDto
   readonly index: number
-  readonly onSend: (feld: RentalFieldId, data: VermietungFeldDto) => void
-  readonly onSendAdresse?: (adresse: PutVermietungAdresseDto) => void
+  readonly onSend: (field: RentalFieldId, data: RentalFieldDto) => void
+  readonly onSendAddress?: (address: PutRentalAddressDto) => void
 }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
@@ -160,13 +160,13 @@ function ObjektCard({
   return (
     <Card style={styles.objektCard}>
       <Text style={styles.objektHeading}>{tr('vermietung.objektHeading', { index: index + 1 })}</Text>
-      {RENTAL_FIELDS.map((feld) => (
-        <VermietungFeldEditor
-          key={feld}
-          label={tr(`vermietung.felder.${feld}`)}
-          zustand={objekt[feld]}
-          onErfasst={(wert) => onSend(feld, { kind: 'erfasst', wert })}
-          onUnklar={() => onSend(feld, { kind: 'unklar' })}
+      {RENTAL_FIELDS.map((field) => (
+        <RentalFieldEditor
+          key={field}
+          label={tr(`vermietung.felder.${field}`)}
+          state={property[field]}
+          onRecorded={(value) => onSend(field, { kind: 'erfasst', value })}
+          onUnclear={() => onSend(field, { kind: 'unklar' })}
         />
       ))}
 
@@ -176,7 +176,7 @@ function ObjektCard({
         </Text>
         <Feld label="Straße & Hausnummer">
           <Input
-            value={[objekt.strasse, objekt.hausnummer].filter(Boolean).join(' ')}
+            value={[property.strasse, property.hausnummer].filter(Boolean).join(' ')}
             placeholder="Musterstraße 12"
             accessibilityLabel="Straße und Hausnummer"
             onChange={(val) => {
@@ -184,7 +184,7 @@ function ObjektCard({
               const h = parts.length > 1 ? parts.pop() : ''
               const hausnummer = h ? h : undefined
               const strasse = parts.join(' ')
-              onSendAdresse?.({ strasse, ...(hausnummer ? { hausnummer } : {}) })
+              onSendAddress?.({ strasse, ...(hausnummer ? { hausnummer } : {}) })
             }}
           />
         </Feld>
@@ -192,32 +192,32 @@ function ObjektCard({
           <View style={{ flex: 1 }}>
             <Feld label="PLZ">
               <Input
-                value={objekt.plz ?? ''}
+                value={property.plz ?? ''}
                 placeholder="10115"
                 type="numeric"
                 accessibilityLabel="Postleitzahl"
-                onChange={(plz) => onSendAdresse?.({ plz })}
+                onChange={(plz) => onSendAddress?.({ plz })}
               />
             </Feld>
           </View>
           <View style={{ flex: 2 }}>
             <Feld label="Ort">
               <Input
-                value={objekt.ort ?? ''}
+                value={property.ort ?? ''}
                 placeholder="Berlin"
                 accessibilityLabel="Ort"
-                onChange={(ort) => onSendAdresse?.({ ort })}
+                onChange={(ort) => onSendAddress?.({ ort })}
               />
             </Feld>
           </View>
         </View>
         <Feld label="Gesamtwohnfläche (m²)">
           <Input
-            value={objekt.wohnflaeche ?? ''}
+            value={property.wohnflaeche ?? ''}
             placeholder="85"
             type="numeric"
             accessibilityLabel="Gesamtwohnfläche"
-            onChange={(wohnflaeche) => onSendAdresse?.({ wohnflaeche })}
+            onChange={(wohnflaeche) => onSendAddress?.({ wohnflaeche })}
           />
         </Feld>
         {(
@@ -227,15 +227,15 @@ function ObjektCard({
             ['schuldzinsen', 'Schuldzinsen für das Objekt, ohne Tilgung (€ im Jahr)', '3100'],
             ...(paar ? ([['anteilA', 'Dein Anteil am Objekt in % (der Rest gehört deinem Partner)', '50']] as const) : []),
           ] as const
-        ).map(([feld, label, beispiel]) => (
-          <Feld key={feld} label={label}>
+        ).map(([field, label, example]) => (
+          <Feld key={field} label={label}>
             <Input
-              value={objekt[feld] ?? ''}
-              placeholder={beispiel}
+              value={property[field] ?? ''}
+              placeholder={example}
               type="numeric"
               accessibilityLabel={label}
-              onChange={(wert) => {
-                if (/^\d+$/.test(wert.trim())) onSendAdresse?.({ [feld]: wert.trim() })
+              onChange={(value) => {
+                if (/^\d+$/.test(value.trim())) onSendAddress?.({ [field]: value.trim() })
               }}
             />
           </Feld>
@@ -243,15 +243,15 @@ function ObjektCard({
         <Feld label="Ist die Gebäude-AfA unverändert wie im Vorjahr?">
           <View style={{ flexDirection: 'row', gap: t.space.s2 }}>
             <Chip
-              aktiv={objekt.afaWieVorjahr === true}
-              onPress={() => onSendAdresse?.({ afaWieVorjahr: true })}
+              active={property.afaWieVorjahr === true}
+              onPress={() => onSendAddress?.({ afaWieVorjahr: true })}
               testID="vermietung-afa-wie-vorjahr-ja"
             >
               Ja
             </Chip>
             <Chip
-              aktiv={objekt.afaWieVorjahr === false}
-              onPress={() => onSendAdresse?.({ afaWieVorjahr: false })}
+              active={property.afaWieVorjahr === false}
+              onPress={() => onSendAddress?.({ afaWieVorjahr: false })}
               testID="vermietung-afa-wie-vorjahr-nein"
             >
               Nein, im Jahr gekauft oder geändert
@@ -260,32 +260,32 @@ function ObjektCard({
         </Feld>
       </View>
 
-      <FaktenNotice objekt={objekt} />
+      <FactsNotice property={property} />
     </Card>
   )
 }
 
-function VermietungFeldEditor({
+function RentalFieldEditor({
   label,
-  zustand,
-  onErfasst,
-  onUnklar,
+  state,
+  onRecorded,
+  onUnclear,
 }: {
   readonly label: string
-  readonly zustand: VermietungFeldDto
-  readonly onErfasst: (wert: number) => void
-  readonly onUnklar: () => void
+  readonly state: RentalFieldDto
+  readonly onRecorded: (value: number) => void
+  readonly onUnclear: () => void
 }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const s = makeStyles(t)
-  const [text, setText] = useState(zustand.kind === 'erfasst' ? String(zustand.wert) : '')
+  const [text, setText] = useState(state.kind === 'erfasst' ? String(state.value) : '')
 
   function commit() {
-    const wert = ganzzahlAus(text)
-    if (wert === null) return
-    if (zustand.kind === 'erfasst' && zustand.wert === wert) return
-    onErfasst(wert)
+    const value = integerFrom(text)
+    if (value === null) return
+    if (state.kind === 'erfasst' && state.value === value) return
+    onRecorded(value)
   }
 
   return (
@@ -294,69 +294,69 @@ function VermietungFeldEditor({
         <Input
           type="numeric"
           mono
-          value={zustand.kind === 'unklar' ? '' : text}
+          value={state.kind === 'unklar' ? '' : text}
           onChange={setText}
           placeholder={tr('vermietung.feld.placeholder')}
           onSubmit={commit}
           onBlur={commit}
           accessibilityLabel={`${label} (${tr('vermietung.feld.placeholder')})`}
         />
-        <Pressable accessibilityRole="button" onPress={onUnklar} style={s.unklarButton}>
-          <Text style={zustand.kind === 'unklar' ? s.unklarActive : s.unklarLabel}>{tr('vermietung.feld.unklar')}</Text>
+        <Pressable accessibilityRole="button" onPress={onUnclear} style={s.unklarButton}>
+          <Text style={state.kind === 'unklar' ? s.unklarActive : s.unklarLabel}>{tr('vermietung.feld.unklar')}</Text>
         </Pressable>
       </View>
     </Feld>
   )
 }
 
-function FaktenNotice({ objekt }: { readonly objekt: VermietungsobjektDto }) {
+function FactsNotice({ property }: { readonly property: RentalPropertyDto }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
-  const { fakten } = objekt
+  const { facts } = property
 
-  if (fakten.offenePosten === 3 && fakten.einnahmen === null && fakten.afa === null) {
+  if (facts.openItems === 3 && facts.einnahmen === null && facts.depreciation === null) {
     return <Text style={styles.faktenOffen}>{tr('vermietung.fakten.leer')}</Text>
   }
 
   return (
     <View style={styles.faktenBlock}>
-      {fakten.einnahmen !== null ? (
-        <Text style={styles.faktenZeile}>{tr('vermietung.fakten.miete', { betrag: formatEuro(fakten.einnahmen) })}</Text>
+      {facts.einnahmen !== null ? (
+        <Text style={styles.faktenZeile}>{tr('vermietung.fakten.miete', { betrag: formatEuro(facts.einnahmen) })}</Text>
       ) : null}
-      {fakten.werbungskosten !== null ? (
-        <Text style={styles.faktenZeile}>{tr('vermietung.fakten.werbungskosten', { betrag: formatEuro(fakten.werbungskosten) })}</Text>
+      {facts.werbungskosten !== null ? (
+        <Text style={styles.faktenZeile}>{tr('vermietung.fakten.werbungskosten', { betrag: formatEuro(facts.werbungskosten) })}</Text>
       ) : null}
-      {fakten.afa !== null ? (
+      {facts.depreciation !== null ? (
         <View>
-          <Text style={styles.faktenZeile}>{tr('vermietung.fakten.afa', { betrag: formatEuro(fakten.afa.betrag) })}</Text>
-          <Text style={styles.faktenHerkunft}>{fakten.afa.herkunft}</Text>
+          <Text style={styles.faktenZeile}>{tr('vermietung.fakten.afa', { betrag: formatEuro(facts.depreciation.amount) })}</Text>
+          <Text style={styles.faktenHerkunft}>{facts.depreciation.provenance}</Text>
         </View>
       ) : null}
-      {fakten.offenePosten > 0 ? (
-        <Text style={styles.faktenOffen}>{tr('vermietung.fakten.offen', { count: fakten.offenePosten })}</Text>
+      {facts.openItems > 0 ? (
+        <Text style={styles.faktenOffen}>{tr('vermietung.fakten.offen', { count: facts.openItems })}</Text>
       ) : null}
     </View>
   )
 }
 
-function StandNotice({ response }: { readonly response: VermietungResponseDto }) {
+function StatusNotice({ response }: { readonly response: RentalResponseDto }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
-  const { stand } = response
-  if (response.objekte.length === 0) return null
+  const { status } = response
+  if (response.properties.length === 0) return null
 
   return (
     <View style={styles.standBlock}>
       <Text style={styles.standHeading}>{tr('vermietung.stand.heading')}</Text>
-      <Text style={styles.standZeile}>{tr('vermietung.stand.einnahmen', { betrag: formatEuro(stand.einnahmen) })}</Text>
-      <Text style={styles.standZeile}>{tr('vermietung.stand.werbungskosten', { betrag: formatEuro(stand.werbungskosten) })}</Text>
-      <Text style={styles.standZeile}>{tr('vermietung.stand.afa', { betrag: formatEuro(stand.afa) })}</Text>
-      {stand.kind === 'offen' ? (
-        <Text style={styles.standOffen}>{tr('vermietung.stand.offen', { count: stand.offenePosten })}</Text>
+      <Text style={styles.standZeile}>{tr('vermietung.stand.einnahmen', { betrag: formatEuro(status.einnahmen) })}</Text>
+      <Text style={styles.standZeile}>{tr('vermietung.stand.werbungskosten', { betrag: formatEuro(status.werbungskosten) })}</Text>
+      <Text style={styles.standZeile}>{tr('vermietung.stand.afa', { betrag: formatEuro(status.depreciation) })}</Text>
+      {status.kind === 'offen' ? (
+        <Text style={styles.standOffen}>{tr('vermietung.stand.offen', { count: status.openItems })}</Text>
       ) : null}
-      {stand.kind === 'offen' && stand.gegated !== undefined && stand.gegated.includes('Vermietung') ? (
+      {status.kind === 'offen' && status.gated !== undefined && status.gated.includes('Vermietung') ? (
         <Text style={styles.standOffen}>{tr('vermietung.stand.gated')}</Text>
       ) : null}
     </View>
@@ -392,27 +392,27 @@ function makeStyles(t: UiTheme) {
     paddingLeft: t.space.s3,
     marginBottom: t.space.s4,
   }
-  const objektCard: ViewStyle = { marginBottom: t.space.s4 }
-  const objektHeading: TextStyle = { color: t.color.tinte, fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size.l, marginBottom: t.space.s3 }
-  const feldRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s3 }
-  const unklarButton: ViewStyle = {
+  const propertyCard: ViewStyle = { marginBottom: t.space.s4 }
+  const propertyHeading: TextStyle = { color: t.color.tinte, fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size.l, marginBottom: t.space.s3 }
+  const fieldRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s3 }
+  const unclearButton: ViewStyle = {
     paddingHorizontal: t.space.s3,
     paddingVertical: t.space.s2,
     borderWidth: t.space.kontur,
     borderColor: t.color.tinte,
     borderRadius: t.radius.s,
   }
-  const unklarLabel: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.s }
-  const unklarActive: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.s }
-  const faktenBlock: ViewStyle = { marginTop: t.space.s3, padding: t.space.s3, borderWidth: t.space.kontur, borderColor: t.color.tinte, borderRadius: t.radius.s }
-  const faktenZeile: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontSize: t.size.m, marginBottom: t.space.s1 }
-  const faktenHerkunft: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.s }
-  const faktenOffen: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.s, marginTop: t.space.s2 }
+  const unclearLabel: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.s }
+  const unclearActive: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.s }
+  const factsBlock: ViewStyle = { marginTop: t.space.s3, padding: t.space.s3, borderWidth: t.space.kontur, borderColor: t.color.tinte, borderRadius: t.radius.s }
+  const factsRow: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontSize: t.size.m, marginBottom: t.space.s1 }
+  const factsSource: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.s }
+  const factsOpen: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.s, marginTop: t.space.s2 }
   const addCta: ViewStyle = { marginTop: t.space.s2 }
-  const standBlock: ViewStyle = { marginTop: t.space.s4, padding: t.space.s3, borderWidth: t.space.kontur, borderColor: t.color.tinte, borderRadius: t.radius.s }
-  const standHeading: TextStyle = { color: t.color.tinte, fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size.m, marginBottom: t.space.s2 }
-  const standZeile: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontSize: t.size.m, marginBottom: t.space.s1 }
-  const standOffen: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.s, marginTop: t.space.s2 }
+  const statusBlock: ViewStyle = { marginTop: t.space.s4, padding: t.space.s3, borderWidth: t.space.kontur, borderColor: t.color.tinte, borderRadius: t.radius.s }
+  const statusHeading: TextStyle = { color: t.color.tinte, fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size.m, marginBottom: t.space.s2 }
+  const statusLine: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontSize: t.size.m, marginBottom: t.space.s1 }
+  const statusOpen: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.s, marginTop: t.space.s2 }
   const cta: ViewStyle = { marginTop: t.space.s4 }
   return {
     screen,
@@ -421,21 +421,21 @@ function makeStyles(t: UiTheme) {
     heading,
     help,
     notice,
-    objektCard,
-    objektHeading,
-    feldRow,
-    unklarButton,
-    unklarLabel,
-    unklarActive,
-    faktenBlock,
-    faktenZeile,
-    faktenHerkunft,
-    faktenOffen,
+    objektCard: propertyCard,
+    objektHeading: propertyHeading,
+    feldRow: fieldRow,
+    unklarButton: unclearButton,
+    unklarLabel: unclearLabel,
+    unklarActive: unclearActive,
+    faktenBlock: factsBlock,
+    faktenZeile: factsRow,
+    faktenHerkunft: factsSource,
+    faktenOffen: factsOpen,
     addCta,
-    standBlock,
-    standHeading,
-    standZeile,
-    standOffen,
+    standBlock: statusBlock,
+    standHeading: statusHeading,
+    standZeile: statusLine,
+    standOffen: statusOpen,
     cta,
   }
 }

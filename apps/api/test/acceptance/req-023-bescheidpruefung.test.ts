@@ -23,9 +23,9 @@ const ALLOWED_ORIGIN = 'https://allowed.example.com'
 process.env.CORS_ALLOWED_ORIGINS = ALLOWED_ORIGIN
 const TRUSTED_ORIGIN_HEADERS = { origin: ALLOWED_ORIGIN }
 
-const STEUERJAHR = 2026
+const TAX_YEAR = 2026
 
-type BescheidRow = { userId: string; einnahmen: string | null }
+type AssessmentRow = { userId: string; einnahmen: string | null }
 
 describe('REQ-023 — Bescheidprüfung, against the real server', () => {
   let app: NestFastifyApplication
@@ -71,55 +71,55 @@ describe('REQ-023 — Bescheidprüfung, against the real server', () => {
   }
 
   /** Seeds a computed Einnahmen side of `brutto` € (Angestellt) through the real endpoints. */
-  async function seedAngestellt(cookie: string, brutto: number) {
-    const job = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/interview/antworten`, {
+  async function seedEmployed(cookie: string, gross: number) {
+    const job = await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', cookie },
       body: JSON.stringify({ questionId: 'job', value: 'Angestellt' }),
     })
     expect(job.status).toBe(200)
 
-    const lstb = await fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/lstb/bruttoarbeitslohn`, {
+    const lstb = await fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/lstb/bruttoarbeitslohn`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json', cookie },
-      body: JSON.stringify({ kind: 'erfasst', wert: brutto }),
+      body: JSON.stringify({ kind: 'erfasst', value: gross }),
     })
     expect(lstb.status).toBe(200)
   }
 
-  function getBescheid(cookie: string) {
-    return fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/bescheid`, { headers: { cookie } })
+  function getAssessment(cookie: string) {
+    return fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/bescheid`, { headers: { cookie } })
   }
 
-  function putFeld(cookie: string, feld: string, body: unknown) {
-    return fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/bescheid/feld/${feld}`, {
+  function putField(cookie: string, field: string, body: unknown) {
+    return fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/bescheid/feld/${field}`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json', cookie },
       body: JSON.stringify(body),
     })
   }
 
-  function putDatum(cookie: string, datum: string) {
-    return fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/bescheid/datum`, {
+  function putDate(cookie: string, date: string) {
+    return fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/bescheid/datum`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json', cookie },
-      body: JSON.stringify({ datum }),
+      body: JSON.stringify({ date }),
     })
   }
 
   function putStatus(cookie: string, status: string) {
-    return fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/bescheid/status`, {
+    return fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/bescheid/status`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json', cookie },
       body: JSON.stringify({ status }),
     })
   }
 
-  function putEinspruch(cookie: string, grund: string) {
-    return fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/bescheid/einspruch`, {
+  function putAppeal(cookie: string, reason: string) {
+    return fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/bescheid/einspruch`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json', cookie },
-      body: JSON.stringify({ grund }),
+      body: JSON.stringify({ reason }),
     })
   }
 
@@ -128,35 +128,35 @@ describe('REQ-023 — Bescheidprüfung, against the real server', () => {
       '§ 355 AO Frist runs from the Bescheiddatum, and the phase transitions are server-validated',
     async () => {
       const { cookie } = await signUp('gwt-bescheid@example.com')
-      await seedAngestellt(cookie, 50_000)
+      await seedEmployed(cookie, 50_000)
 
       // Empty re-entry: no Bescheid yet, but the computed side is already 50.000 €.
-      const empty = await getBescheid(cookie)
+      const empty = await getAssessment(cookie)
       expect(empty.status).toBe(200)
-      const emptyBody = (await empty.json()) as { status: string; felder: { kind: string }[]; abgleich: { abweichungen: unknown[] } }
+      const emptyBody = (await empty.json()) as { status: string; fields: { kind: string }[]; reconciliation: { deviations: unknown[] } }
       expect(emptyBody.status).toBe('eingegangen')
-      expect(emptyBody.felder.map((f) => f.kind)).toEqual(['offen', 'offen', 'offen', 'offen', 'offen'])
-      expect(emptyBody.abgleich.abweichungen).toEqual([])
+      expect(emptyBody.fields.map((f) => f.kind)).toEqual(['offen', 'offen', 'offen', 'offen', 'offen'])
+      expect(emptyBody.reconciliation.deviations).toEqual([])
 
       // A deviating figure is a named diff, never silent.
-      const dev = await putFeld(cookie, 'einnahmen', { kind: 'erfasst', wert: 48_000 })
+      const dev = await putField(cookie, 'einnahmen', { kind: 'erfasst', value: 48_000 })
       expect(dev.status).toBe(200)
-      expect(((await dev.json()) as { abgleich: { abweichungen: unknown[] } }).abgleich.abweichungen).toEqual([
-        { feld: 'einnahmen', bescheid: 48_000, berechnet: 50_000, differenz: -2_000 },
+      expect(((await dev.json()) as { reconciliation: { deviations: unknown[] } }).reconciliation.deviations).toEqual([
+        { field: 'einnahmen', assessment: 48_000, calculated: 50_000, difference: -2_000 },
       ])
 
       // The Frist is Bescheiddatum + 1 Monat.
-      const datum = await putDatum(cookie, '2026-03-15')
-      expect(((await datum.json()) as { frist: { fristEnde: string } }).frist.fristEnde).toBe('2026-04-15')
+      const date = await putDate(cookie, '2026-03-15')
+      expect(((await date.json()) as { frist: { deadlineEnd: string } }).frist.deadlineEnd).toBe('2026-04-15')
 
       // eingegangen → geprüft is legal; geprüft → einspruch-eingelegt (with a Grund) is legal.
-      const geprueft = await putStatus(cookie, 'geprüft')
-      expect(((await geprueft.json()) as { status: string }).status).toBe('geprüft')
+      const checked = await putStatus(cookie, 'geprüft')
+      expect(((await checked.json()) as { status: string }).status).toBe('geprüft')
 
-      const einspruch = await putEinspruch(cookie, 'betrag-falsch')
-      const einspruchBody = (await einspruch.json()) as { status: string; einspruchGrund: string }
-      expect(einspruchBody.status).toBe('einspruch-eingelegt')
-      expect(einspruchBody.einspruchGrund).toBe('betrag-falsch')
+      const appeal = await putAppeal(cookie, 'betrag-falsch')
+      const appealBody = (await appeal.json()) as { status: string; einspruchGrund: string }
+      expect(appealBody.status).toBe('einspruch-eingelegt')
+      expect(appealBody.einspruchGrund).toBe('betrag-falsch')
     },
   )
 
@@ -171,36 +171,36 @@ describe('REQ-023 — Bescheidprüfung, against the real server', () => {
   it('P2 — an unknown field id or a bad amount is a 400 and persists nothing', async () => {
     const { cookie } = await signUp('bad-feld@example.com')
 
-    expect((await putFeld(cookie, 'wohnort', { kind: 'erfasst', wert: 1 })).status).toBe(400)
-    expect((await putFeld(cookie, 'einnahmen', { kind: 'erfasst', wert: -5 })).status).toBe(400)
-    expect((await putDatum(cookie, '15.03.2026')).status).toBe(400)
+    expect((await putField(cookie, 'wohnort', { kind: 'erfasst', value: 1 })).status).toBe(400)
+    expect((await putField(cookie, 'einnahmen', { kind: 'erfasst', value: -5 })).status).toBe(400)
+    expect((await putDate(cookie, '15.03.2026')).status).toBe(400)
   })
 
   it('P3 — no guest path: @RequiresAccount() rejects a guest with 401, no row created', async () => {
-    expect((await getBescheid('')).status).toBe(401)
-    expect((await putFeld('', 'einnahmen', { kind: 'erfasst', wert: 1 })).status).toBe(401)
-    const rows = await prisma.$queryRaw<BescheidRow[]>`SELECT "userId" FROM "Bescheid"`
+    expect((await getAssessment('')).status).toBe(401)
+    expect((await putField('', 'einnahmen', { kind: 'erfasst', value: 1 })).status).toBe(401)
+    const rows = await prisma.$queryRaw<AssessmentRow[]>`SELECT "userId" FROM "Bescheid"`
     expect(rows).toEqual([])
   })
 
   it('P4 — cross-user isolation: user B can neither read nor write user A’s Bescheid', async () => {
     const userA = await signUp('p4-a@example.com')
     const userB = await signUp('p4-b@example.com')
-    await seedAngestellt(userA.cookie, 50_000)
+    await seedEmployed(userA.cookie, 50_000)
 
-    await putFeld(userA.cookie, 'einnahmen', { kind: 'erfasst', wert: 48_000 })
+    await putField(userA.cookie, 'einnahmen', { kind: 'erfasst', value: 48_000 })
 
-    const asB = await getBescheid(userB.cookie)
-    expect(((await asB.json()) as { felder: { kind: string }[] }).felder[0]).toEqual({ id: 'einnahmen', kind: 'offen' })
+    const asB = await getAssessment(userB.cookie)
+    expect(((await asB.json()) as { fields: { kind: string }[] }).fields[0]).toEqual({ id: 'einnahmen', kind: 'offen' })
 
-    const asA = await getBescheid(userA.cookie)
-    expect(((await asA.json()) as { felder: { kind: string; wert: number }[] }).felder[0]).toEqual({ id: 'einnahmen', kind: 'erfasst', wert: 48_000 })
+    const asA = await getAssessment(userA.cookie)
+    expect(((await asA.json()) as { fields: { kind: string; value: number }[] }).fields[0]).toEqual({ id: 'einnahmen', kind: 'erfasst', value: 48_000 })
   })
 
   it('P5 — figures are ciphertext at rest, checked by raw SQL, never through the Prisma client', async () => {
     const { cookie, userId } = await signUp('p5-cipher@example.com')
 
-    await putFeld(cookie, 'einnahmen', { kind: 'erfasst', wert: 50_000 })
+    await putField(cookie, 'einnahmen', { kind: 'erfasst', value: 50_000 })
 
     const rawRows = await prisma.$queryRaw<{ einnahmen: string | null }[]>`
       SELECT "einnahmen" FROM "Bescheid" WHERE "userId" = ${userId}
@@ -215,7 +215,7 @@ describe('REQ-023 — Bescheidprüfung, against the real server', () => {
   it('audit — each admitted write appends exactly one WRITE entry, atomic with the row', async () => {
     const { cookie, userId } = await signUp('audit-write@example.com')
 
-    await putFeld(cookie, 'einnahmen', { kind: 'erfasst', wert: 50_000 })
+    await putField(cookie, 'einnahmen', { kind: 'erfasst', value: 50_000 })
 
     const rows = await prisma.$queryRaw<{ action: string; resource: string }[]>`
       SELECT "action", "resource" FROM "TaxDataAccessLog" WHERE "userId" = ${userId}

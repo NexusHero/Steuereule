@@ -14,7 +14,7 @@ const ALLOWED_ORIGIN = 'https://allowed.example.com'
 process.env.CORS_ALLOWED_ORIGINS = ALLOWED_ORIGIN
 const ORIGIN = { origin: ALLOWED_ORIGIN }
 
-const EINGABEN = {
+const INPUTS = {
   arbeitstage: [1, 2, 3, 4, 5],
   urlaubstage: 30,
   krankheitstage: 5,
@@ -69,15 +69,15 @@ describe('Arbeitsweg, against the real server', () => {
     const put = await fetch(`${baseUrl}/v1/steuerjahre/2025/arbeitsweg`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json', cookie, ...ORIGIN },
-      body: JSON.stringify(EINGABEN),
+      body: JSON.stringify(INPUTS),
     })
     const get = await fetch(`${baseUrl}/v1/steuerjahre/2025/arbeitsweg`, { headers: { cookie } })
 
     expect(put.status).toBe(200)
     expect(await get.json()).toEqual({
-      eingaben: EINGABEN,
-      werktage: { wochentage: 261, werktage: 226, pendlertage: 206 },
-      pendlerpauschale: 2019,
+      inputs: INPUTS,
+      workdays: { weekdays: 261, workdays: 226, commuteDays: 206 },
+      commuterAllowance: 2019,
     })
   })
 
@@ -87,7 +87,7 @@ describe('Arbeitsweg, against the real server', () => {
     await fetch(`${baseUrl}/v1/steuerjahre/2025/arbeitsweg`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json', cookie, ...ORIGIN },
-      body: JSON.stringify(EINGABEN),
+      body: JSON.stringify(INPUTS),
     })
     const [row] = await prisma.$queryRawUnsafe<{ taetigkeitsstaette: string }[]>(`SELECT "taetigkeitsstaette" FROM "Arbeitsweg"`)
 
@@ -106,7 +106,7 @@ describe('Arbeitsweg, against the real server', () => {
     const response = await fetch(`${baseUrl}/v1/steuerjahre/2025/arbeitsweg`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json', cookie, ...ORIGIN },
-      body: JSON.stringify({ ...EINGABEN, urlaubstage: 300 }),
+      body: JSON.stringify({ ...INPUTS, urlaubstage: 300 }),
     })
 
     expect(response.status).toBe(400)

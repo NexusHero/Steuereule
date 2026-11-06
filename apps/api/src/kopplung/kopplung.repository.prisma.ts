@@ -23,7 +23,7 @@ function toRecord(row: {
 }
 
 @Injectable()
-export class PrismaKopplungRepository implements PartnerCouplingRepository {
+export class PrismaLinkRepository implements PartnerCouplingRepository {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async findByUserAndYear(userId: string, steuerjahr: number): Promise<PartnerCouplingRecord | null> {
@@ -36,7 +36,7 @@ export class PrismaKopplungRepository implements PartnerCouplingRepository {
     return row ? toRecord(row) : null
   }
 
-  async findByEinladungsCode(code: string): Promise<PartnerCouplingRecord | null> {
+  async findByInvitationCode(code: string): Promise<PartnerCouplingRecord | null> {
     const row = await this.prisma.steuerjahrKopplung.findUnique({
       where: { einladungsCode: code },
     })

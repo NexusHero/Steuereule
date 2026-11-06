@@ -18,24 +18,24 @@ import type {
 } from 'msw';
 
 import type {
-  VeranlagungsartenvergleichDto
+  FilingTypeComparisonDto
 } from './veranlagungsartenvergleich.schemas';
 
 
-export const getVeranlagungsartenvergleichControllerGetVergleichResponseMock = (): VeranlagungsartenvergleichDto | null => ({...{kind: faker.helpers.arrayElement(['eindeutig','zu-knapp','unbestimmt','nicht-anwendbar'] as const), empfehlung: faker.helpers.arrayElement(['einzel','zusammen'] as const), einzel: faker.number.float({fractionDigits: 2}), zusammen: faker.number.float({fractionDigits: 2}), delta: faker.number.float({fractionDigits: 2}), unschaerfe: {...{kind: faker.helpers.arrayElement(['bestimmt','unbestimmt'] as const), obergrenze: faker.number.float({fractionDigits: 2}), grund: faker.helpers.arrayElement(['progressionsvorbehalt-nicht-eingegeben'] as const)},}, herkunft: {...{zveA: faker.number.float({fractionDigits: 2}), zveB: faker.number.float({fractionDigits: 2}), bestandteile: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}})))},}, grund: faker.helpers.arrayElement(['nicht-verheiratet','keine-einnahmen'] as const)},})
+export const getFilingTypeComparisonControllerGetComparisonResponseMock = (): FilingTypeComparisonDto | null => ({...{kind: faker.helpers.arrayElement(['eindeutig','zu-knapp','unbestimmt','nicht-anwendbar'] as const), recommendation: faker.helpers.arrayElement(['einzel','zusammen'] as const), single: faker.number.float({fractionDigits: 2}), joint: faker.number.float({fractionDigits: 2}), delta: faker.number.float({fractionDigits: 2}), uncertainty: {...{kind: faker.helpers.arrayElement(['bestimmt','unbestimmt'] as const), upperLimit: faker.number.float({fractionDigits: 2}), reason: faker.helpers.arrayElement(['progressionsvorbehalt-nicht-eingegeben'] as const)},}, provenance: {...{zveA: faker.number.float({fractionDigits: 2}), zveB: faker.number.float({fractionDigits: 2}), components: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}})))},}, reason: faker.helpers.arrayElement(['nicht-verheiratet','keine-einnahmen'] as const)},})
 
 
-export const getVeranlagungsartenvergleichControllerGetVergleichMockHandler = (overrideResponse?: VeranlagungsartenvergleichDto | null | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<VeranlagungsartenvergleichDto | null> | VeranlagungsartenvergleichDto | null), options?: RequestHandlerOptions) => {
+export const getFilingTypeComparisonControllerGetComparisonMockHandler = (overrideResponse?: FilingTypeComparisonDto | null | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<FilingTypeComparisonDto | null> | FilingTypeComparisonDto | null), options?: RequestHandlerOptions) => {
   return http.get('*/v1/steuerjahre/:jahr/veranlagungsartenvergleich', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
 
 
     return HttpResponse.json(overrideResponse !== undefined
     ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
-    : getVeranlagungsartenvergleichControllerGetVergleichResponseMock(),
+    : getFilingTypeComparisonControllerGetComparisonResponseMock(),
       { status: 200
       })
   }, options)
 }
 export const getSteuerEuleAPIMock = () => [
-  getVeranlagungsartenvergleichControllerGetVergleichMockHandler()
+  getFilingTypeComparisonControllerGetComparisonMockHandler()
 ]

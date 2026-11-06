@@ -6,46 +6,46 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { server } from '../../test-msw-server'
-import { AusdruckScreen } from './AusdruckScreen'
+import { PrintoutScreen } from './AusdruckScreen'
 
 
-function mock(status: string, fehlend: string[] = []) {
+function mock(status: string, missing: string[] = []) {
   server.use(
     http.get('*/v1/steuerjahre/2025/freischaltung', () => HttpResponse.json({ status })),
-    http.get('*/v1/steuerjahre/2025/ausdruck/pruefung', () => HttpResponse.json({ fehlend })),
+    http.get('*/v1/steuerjahre/2025/ausdruck/pruefung', () => HttpResponse.json({ missing })),
   )
 }
 
-function renderScreen(props: { zahlung?: 'erfolg' | 'abbruch'; oeffneCheckout?: (url: string) => void } = {}) {
+function renderScreen(props: { payment?: 'erfolg' | 'abbruch'; openCheckout?: (url: string) => void } = {}) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
-  const onAngabenErgaenzen = vi.fn()
-  const onRiesterErgaenzen = vi.fn()
-  const onKinderErgaenzen = vi.fn()
-  const onVermietungErgaenzen = vi.fn()
-  const onKapitalErgaenzen = vi.fn()
-  const onGrenzgaengerErgaenzen = vi.fn()
-  const onBestaetigen = vi.fn()
+  const onCompleteDetails = vi.fn()
+  const onCompleteRiester = vi.fn()
+  const onCompleteChildren = vi.fn()
+  const onCompleteRental = vi.fn()
+  const onCompleteCapital = vi.fn()
+  const onCompleteCrossBorder = vi.fn()
+  const onConfirm = vi.fn()
   render(
     <QueryClientProvider client={queryClient}>
       <I18nextProvider i18n={createAppI18n('de')}>
         <ThemeProvider mode="light">
-          <AusdruckScreen
-            jahr={2025}
-            onZurueck={() => {}}
-            onAngabenErgaenzen={onAngabenErgaenzen}
-            onRiesterErgaenzen={onRiesterErgaenzen}
-            onKinderErgaenzen={onKinderErgaenzen}
-            onVermietungErgaenzen={onVermietungErgaenzen}
-            onKapitalErgaenzen={onKapitalErgaenzen}
-            onGrenzgaengerErgaenzen={onGrenzgaengerErgaenzen}
-            onBestaetigen={onBestaetigen}
+          <PrintoutScreen
+            year={2025}
+            onBack={() => {}}
+            onCompleteDetails={onCompleteDetails}
+            onCompleteRiester={onCompleteRiester}
+            onCompleteChildren={onCompleteChildren}
+            onCompleteRental={onCompleteRental}
+            onCompleteCapital={onCompleteCapital}
+            onCompleteCrossBorder={onCompleteCrossBorder}
+            onConfirm={onConfirm}
             {...props}
           />
         </ThemeProvider>
       </I18nextProvider>
     </QueryClientProvider>,
   )
-  return { onAngabenErgaenzen, onRiesterErgaenzen, onKinderErgaenzen, onVermietungErgaenzen, onKapitalErgaenzen, onGrenzgaengerErgaenzen, onBestaetigen }
+  return { onCompleteDetails, onCompleteRiester, onCompleteChildren, onCompleteRental, onCompleteCapital, onCompleteCrossBorder, onConfirm }
 }
 
 afterEach(() => server.resetHandlers())
@@ -71,16 +71,16 @@ describe('AusdruckScreen (ADR-0050)', () => {
         HttpResponse.json({ checkoutUrl: 'https://checkout.stripe.com/c/pay/cs_test_1' }),
       ),
     )
-    const oeffneCheckout = vi.fn()
-    renderScreen({ oeffneCheckout })
+    const openCheckout = vi.fn()
+    renderScreen({ openCheckout })
 
     fireEvent.click(await screen.findByTestId('ausdruck-bezahlen'))
-    await waitFor(() => expect(oeffneCheckout).toHaveBeenCalledWith('https://checkout.stripe.com/c/pay/cs_test_1'))
+    await waitFor(() => expect(openCheckout).toHaveBeenCalledWith('https://checkout.stripe.com/c/pay/cs_test_1'))
   })
 
   it('back from Stripe with "erfolg" but not yet confirmed: a waiting state, never a download', async () => {
     mock('offen')
-    renderScreen({ zahlung: 'erfolg' })
+    renderScreen({ payment: 'erfolg' })
     expect(await screen.findByText('Deine Zahlung wird bestätigt. Das dauert meist nur Sekunden.')).toBeTruthy()
     expect(screen.queryByTestId('ausdruck-herunterladen')).toBeNull()
     expect(screen.queryByTestId('ausdruck-bezahlen')).toBeNull()
@@ -95,76 +95,76 @@ describe('AusdruckScreen (ADR-0050)', () => {
 
   it('unlocked: also offers an editable PDF, named as such, requested with ?bearbeitbar=true', async () => {
     mock('freigeschaltet')
-    let angefragt = ''
+    let requested = ''
     server.use(
       http.get('*/v1/steuerjahre/2025/ausdruck', ({ request }) => {
-        angefragt = request.url
+        requested = request.url
         return new HttpResponse(new Uint8Array([37, 80, 68, 70]), { status: 200, headers: { 'content-type': 'application/pdf' } })
       }),
     )
     renderScreen()
     fireEvent.click(await screen.findByTestId('ausdruck-herunterladen-bearbeitbar'))
     expect(screen.getByText(/Zum Korrigieren vor dem Druck/)).toBeTruthy()
-    await waitFor(() => expect(angefragt).toContain('/ausdruck?bearbeitbar=true'))
+    await waitFor(() => expect(requested).toContain('/ausdruck?bearbeitbar=true'))
   })
 
   it('missing details: names it, links to the form, and does not let you pay first', async () => {
     mock('offen', ['iban'])
-    const { onAngabenErgaenzen } = renderScreen()
+    const { onCompleteDetails } = renderScreen()
     fireEvent.click(await screen.findByText('Angaben ergänzen'))
-    expect(onAngabenErgaenzen).toHaveBeenCalled()
+    expect(onCompleteDetails).toHaveBeenCalled()
     expect(screen.getByTestId('ausdruck-bezahlen').getAttribute('aria-disabled')).toBe('true')
   })
 
   it('married without a chosen Veranlagungsart: points to the Stammdaten where it is chosen', async () => {
     mock('offen', ['ehegatte'])
-    const { onAngabenErgaenzen } = renderScreen()
+    const { onCompleteDetails } = renderScreen()
     expect(await screen.findByText(/Leg in den Stammdaten fest, ob ihr zusammen oder einzeln veranlagt werdet/)).toBeTruthy()
     fireEvent.click(screen.getByText('Angaben ergänzen'))
-    expect(onAngabenErgaenzen).toHaveBeenCalled()
+    expect(onCompleteDetails).toHaveBeenCalled()
   })
 
   it('Riester without the Anlage-AV details: names them and leads to the Sonderausgaben questions', async () => {
     mock('offen', ['riester'])
-    const { onRiesterErgaenzen, onAngabenErgaenzen } = renderScreen()
+    const { onCompleteRiester, onCompleteDetails } = renderScreen()
     expect(await screen.findByText(/Für deinen Riester-Vertrag fehlen noch Angaben/)).toBeTruthy()
     expect(screen.queryByText('Angaben ergänzen')).toBeNull()
     fireEvent.click(screen.getByText('Riester-Angaben ergänzen'))
-    expect(onRiesterErgaenzen).toHaveBeenCalled()
-    expect(onAngabenErgaenzen).not.toHaveBeenCalled()
+    expect(onCompleteRiester).toHaveBeenCalled()
+    expect(onCompleteDetails).not.toHaveBeenCalled()
   })
 
   it('missing child details lead to the Kinder screen; uncovered child cases are named', async () => {
     mock('offen', ['kinder', 'anlageKindVolljaehrig'])
-    const { onKinderErgaenzen } = renderScreen()
+    const { onCompleteChildren } = renderScreen()
     expect(await screen.findByText(/Für die Anlage Kind fehlen noch Angaben zu deinen Kindern/)).toBeTruthy()
     expect(screen.getByText(/Angaben zu einem volljährigen Kind \(Anlage Kind\) gibt es den Ausdruck noch nicht/)).toBeTruthy()
     fireEvent.click(screen.getByText('Kinder-Angaben ergänzen'))
-    expect(onKinderErgaenzen).toHaveBeenCalled()
+    expect(onCompleteChildren).toHaveBeenCalled()
   })
 
   it('missing cross-border facts lead to the Grenzgänger screen', async () => {
     mock('offen', ['grenzgaenger'])
-    const { onGrenzgaengerErgaenzen } = renderScreen()
+    const { onCompleteCrossBorder } = renderScreen()
     expect(await screen.findByText(/Für die Anlage N-Gre fehlen noch Angaben/)).toBeTruthy()
     fireEvent.click(screen.getByText('Grenzgänger-Angaben ergänzen'))
-    expect(onGrenzgaengerErgaenzen).toHaveBeenCalled()
+    expect(onCompleteCrossBorder).toHaveBeenCalled()
   })
 
   it('missing capital facts lead to the Kapital screen', async () => {
     mock('offen', ['kapital'])
-    const { onKapitalErgaenzen } = renderScreen()
+    const { onCompleteCapital } = renderScreen()
     expect(await screen.findByText(/Für die Anlage KAP fehlen noch Angaben/)).toBeTruthy()
     fireEvent.click(screen.getByText('Kapital-Angaben ergänzen'))
-    expect(onKapitalErgaenzen).toHaveBeenCalled()
+    expect(onCompleteCapital).toHaveBeenCalled()
   })
 
   it('missing rental facts lead to the Vermietung screen', async () => {
     mock('offen', ['vermietung'])
-    const { onVermietungErgaenzen } = renderScreen()
+    const { onCompleteRental } = renderScreen()
     expect(await screen.findByText(/Für die Anlage V fehlen noch Angaben zu deiner Vermietung/)).toBeTruthy()
     fireEvent.click(screen.getByText('Vermietungs-Angaben ergänzen'))
-    expect(onVermietungErgaenzen).toHaveBeenCalled()
+    expect(onCompleteRental).toHaveBeenCalled()
   })
 
   it('an Anlage that is not printable yet is named, and paying is not offered', async () => {
@@ -177,14 +177,14 @@ describe('AusdruckScreen (ADR-0050)', () => {
 
   it('REQ-032: unconfirmed values block like missing ones, name their Anlagen and lead to „Prüfen & bestätigen“', async () => {
     mock('offen', ['unbestaetigt.anlageN', 'unbestaetigt.anlageKap'])
-    const { onBestaetigen } = renderScreen()
+    const { onConfirm } = renderScreen()
 
     expect(await screen.findByText('Noch nicht bestätigt: Anlage N, Anlage KAP. Prüf die neuen Werte und bestätige sie – erst dann kannst du drucken.')).toBeTruthy()
     // Not mistaken for missing Stammdaten.
     expect(screen.queryByText('Ergänze zuerst deine Angaben für die Steuererklärung.')).toBeNull()
     expect(screen.getByTestId('ausdruck-bezahlen').getAttribute('aria-disabled')).toBe('true')
     fireEvent.click(screen.getByText('Prüfen & bestätigen'))
-    expect(onBestaetigen).toHaveBeenCalled()
+    expect(onConfirm).toHaveBeenCalled()
   })
 
   it('REQ-032: in a joint return, Person B\'s unconfirmed values are named too', async () => {

@@ -3,46 +3,46 @@ import { ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-na
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button, Card, Chip, Input, Feld, Option, Pill, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme, type Breakpoint } from '@steuereule/ui'
-import { ENTRIES, LOHNAUSWEIS_FELDER, formatEuro, nextStepFor, type Answers, type EntryQuestionId } from '@steuereule/core'
+import { ENTRIES, SALARY_CERTIFICATE_FIELDS, formatEuro, nextStepFor, type Answers, type EntryQuestionId } from '@steuereule/core'
 import {
   useInterviewControllerGetInterview,
   useInterviewControllerPostAnswer,
-  useChLohnausweisControllerGet,
-  useChLohnausweisControllerSetFeld,
-  useChLohnausweisControllerSetNGre,
-  useChLohnausweisControllerSetVorsorge,
-  useChLohnausweisControllerSetWechselkurs,
-  getChLohnausweisControllerGetQueryKey,
-  type ChLohnausweisResponseDto,
-  type PutLohnausweisFeldDto,
-  type NGreAngabenDto,
+  useChSalaryCertificateControllerGet,
+  useChSalaryCertificateControllerSetField,
+  useChSalaryCertificateControllerSetNGre,
+  useChSalaryCertificateControllerSetProvision,
+  useChSalaryCertificateControllerSetExchangeRate,
+  getChSalaryCertificateControllerGetQueryKey,
+  type ChSalaryCertificateResponseDto,
+  type PutSalaryCertificateFieldDto,
+  type NGreDetailsDto,
   type PutNGreDto,
-  type PutVorsorgeDto,
+  type PutProvisionDto,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
-import { ganzzahlAus } from '../shared/ganzzahl'
+import { integerFrom } from '../shared/ganzzahl'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 
-export interface GrenzgaengerScreenProps {
+export interface CrossBorderScreenProps {
   readonly onDone: () => void
   readonly taxYear?: number
 }
 
 const SEGMENT_CH = ENTRIES['segment-ch']
 
-export function GrenzgaengerScreen({ onDone, taxYear = CURRENT_TAX_YEAR }: GrenzgaengerScreenProps) {
+export function CrossBorderScreen({ onDone, taxYear = CURRENT_TAX_YEAR }: CrossBorderScreenProps) {
   const bp = useBreakpoint()
   const { t: tr } = useTranslation(APP_NS)
   const queryClient = useQueryClient()
   const interviewQuery = useInterviewControllerGetInterview(taxYear, { eintrag: 'segment-ch' })
-  const lohnausweisQuery = useChLohnausweisControllerGet(taxYear)
+  const salaryCertificateQuery = useChSalaryCertificateControllerGet(taxYear)
   const postAnswer = useInterviewControllerPostAnswer()
-  const setFeld = useChLohnausweisControllerSetFeld()
-  const setWechselkurs = useChLohnausweisControllerSetWechselkurs()
-  const setNGre = useChLohnausweisControllerSetNGre()
-  const setVorsorge = useChLohnausweisControllerSetVorsorge()
+  const setField = useChSalaryCertificateControllerSetField()
+  const setExchangeRate = useChSalaryCertificateControllerSetExchangeRate()
+  const setNGre = useChSalaryCertificateControllerSetNGre()
+  const setProvision = useChSalaryCertificateControllerSetProvision()
 
   const [interviewAnswers, setInterviewAnswers] = useState<Answers>({})
   const [seeded, setSeeded] = useState(false)
@@ -52,10 +52,10 @@ export function GrenzgaengerScreen({ onDone, taxYear = CURRENT_TAX_YEAR }: Grenz
     setSeeded(true)
   }
 
-  if (interviewQuery.isPending || lohnausweisQuery.isPending) {
+  if (interviewQuery.isPending || salaryCertificateQuery.isPending) {
     return <LoadingState bp={bp} label={tr('grenzgaenger.loading')} />
   }
-  if (interviewQuery.isError || interviewQuery.data.status !== 200 || lohnausweisQuery.isError || lohnausweisQuery.data.status !== 200) {
+  if (interviewQuery.isError || interviewQuery.data.status !== 200 || salaryCertificateQuery.isError || salaryCertificateQuery.data.status !== 200) {
     return (
       <ErrorState
         bp={bp}
@@ -64,14 +64,14 @@ export function GrenzgaengerScreen({ onDone, taxYear = CURRENT_TAX_YEAR }: Grenz
         retryLabel={tr('grenzgaenger.loadError.retry')}
         onRetry={() => {
           void interviewQuery.refetch()
-          void lohnausweisQuery.refetch()
+          void salaryCertificateQuery.refetch()
         }}
       />
     )
   }
 
   const step = seeded ? nextStepFor(SEGMENT_CH, interviewAnswers) : null
-  const lohnausweis = lohnausweisQuery.data.data
+  const salaryCertificate = salaryCertificateQuery.data.data
 
   function answer(questionId: EntryQuestionId, value: string) {
     const previous = interviewAnswers
@@ -81,7 +81,7 @@ export function GrenzgaengerScreen({ onDone, taxYear = CURRENT_TAX_YEAR }: Grenz
       {
         onSuccess: (response) => {
           if (response.status === 200) {
-            void queryClient.invalidateQueries({ queryKey: getChLohnausweisControllerGetQueryKey(taxYear) })
+            void queryClient.invalidateQueries({ queryKey: getChSalaryCertificateControllerGetQueryKey(taxYear) })
             return
           }
           setInterviewAnswers(previous)
@@ -100,21 +100,21 @@ export function GrenzgaengerScreen({ onDone, taxYear = CURRENT_TAX_YEAR }: Grenz
   }
 
   return (
-    <LohnausweisStep
-      lohnausweis={lohnausweis}
+    <SalaryCertificateStep
+      salaryCertificate={salaryCertificate}
       taxYear={taxYear}
-      onSetFeld={setFeld.mutate}
-      onSetWechselkurs={setWechselkurs.mutate}
-      onSetVorsorge={(data) =>
-        setVorsorge.mutate(
+      onSetField={setField.mutate}
+      onSetExchangeRate={setExchangeRate.mutate}
+      onSetProvision={(data) =>
+        setProvision.mutate(
           { jahr: taxYear, data },
-          { onSuccess: () => void queryClient.invalidateQueries({ queryKey: getChLohnausweisControllerGetQueryKey(taxYear) }) },
+          { onSuccess: () => void queryClient.invalidateQueries({ queryKey: getChSalaryCertificateControllerGetQueryKey(taxYear) }) },
         )
       }
       onSetNGre={(data) =>
         setNGre.mutate(
           { jahr: taxYear, data },
-          { onSuccess: () => void queryClient.invalidateQueries({ queryKey: getChLohnausweisControllerGetQueryKey(taxYear) }) },
+          { onSuccess: () => void queryClient.invalidateQueries({ queryKey: getChSalaryCertificateControllerGetQueryKey(taxYear) }) },
         )
       }
       onDone={onDone}
@@ -157,12 +157,12 @@ function ChInterviewStep({ stepId, onAnswer, bp, onBack }: { readonly stepId: En
         {tr('grenzgaenger.interview.tage.titleAfter')}
       </Text>
       <Text style={styles.help}>{tr('grenzgaenger.interview.tage.help')}</Text>
-      <TageInput onAnswer={onAnswer} />
+      <DaysInput onAnswer={onAnswer} />
     </ScrollView>
   )
 }
 
-function TageInput({ onAnswer }: { readonly onAnswer: (id: EntryQuestionId, value: string) => void }) {
+function DaysInput({ onAnswer }: { readonly onAnswer: (id: EntryQuestionId, value: string) => void }) {
   const { t: tr } = useTranslation(APP_NS)
   const [text, setText] = useState('')
   const valid = /^(0|[1-9]\d*)$/.test(text) && Number(text) <= 365
@@ -188,35 +188,35 @@ function TageInput({ onAnswer }: { readonly onAnswer: (id: EntryQuestionId, valu
   )
 }
 
-function LohnausweisStep({
-  lohnausweis,
+function SalaryCertificateStep({
+  salaryCertificate,
   taxYear,
-  onSetFeld,
-  onSetWechselkurs,
+  onSetField,
+  onSetExchangeRate,
   onSetNGre,
-  onSetVorsorge,
+  onSetProvision,
   onDone,
   bp,
 }: {
-  readonly lohnausweis: ChLohnausweisResponseDto
+  readonly salaryCertificate: ChSalaryCertificateResponseDto
   readonly taxYear: number
-  readonly onSetFeld: (vars: { jahr: number; feld: string; data: PutLohnausweisFeldDto }) => void
-  readonly onSetWechselkurs: (vars: { jahr: number; data: { monat: string; kurs: number; modus: 'amtlich' | 'tatsaechlich' } }) => void
+  readonly onSetField: (vars: { jahr: number; feld: string; data: PutSalaryCertificateFieldDto }) => void
+  readonly onSetExchangeRate: (vars: { jahr: number; data: { month: string; rate: number; mode: 'amtlich' | 'tatsaechlich' } }) => void
   readonly onSetNGre: (data: PutNGreDto) => void
-  readonly onSetVorsorge: (data: PutVorsorgeDto) => void
+  readonly onSetProvision: (data: PutProvisionDto) => void
   readonly onDone: () => void
   readonly bp: Breakpoint
 }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
-  const [monat, setMonat] = useState(lohnausweis.wechselkurs?.monat ?? "")
-  const [kursFehler, setKursFehler] = useState(false)
-  const [kurs, setKurs] = useState(lohnausweis.wechselkurs !== null && lohnausweis.wechselkurs !== undefined ? String(lohnausweis.wechselkurs.kurs) : '')
+  const [month, setMonth] = useState(salaryCertificate.exchangeRate?.month ?? "")
+  const [rateError, setRateError] = useState(false)
+  const [rate, setRate] = useState(salaryCertificate.exchangeRate !== null && salaryCertificate.exchangeRate !== undefined ? String(salaryCertificate.exchangeRate.rate) : '')
 
-  const betragFelder = LOHNAUSWEIS_FELDER.filter((f) => f.art === 'chf-betrag')
-  const stand = lohnausweis.stand
-  const status = lohnausweis.status
+  const amountFields = SALARY_CERTIFICATE_FIELDS.filter((f) => f.art === 'chf-betrag')
+  const stand = salaryCertificate.foldStatus
+  const status = salaryCertificate.status
 
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
@@ -226,34 +226,34 @@ function LohnausweisStep({
       </View>
       <Text style={styles.help}>{tr('grenzgaenger.lohnausweis.help')}</Text>
 
-      {betragFelder.map((feld) => (
-        <ChFeldInput key={feld.id} feldId={feld.id} ziffer={feld.ziffer} initial={wertAusResponse(lohnausweis, feld.id)} onCommit={(wert) => onSetFeld({ jahr: taxYear, feld: feld.id, data: wert })} />
+      {amountFields.map((field) => (
+        <ChFieldInput key={field.id} fieldId={field.id} digit={field.digit} initial={valueFromResponse(salaryCertificate, field.id)} onCommit={(value) => onSetField({ jahr: taxYear, feld: field.id, data: value })} />
       ))}
 
       <Text style={styles.sectionTitle}>{tr('grenzgaenger.lohnausweis.wechselkurs.title')}</Text>
       <Text style={styles.help}>{tr('grenzgaenger.lohnausweis.wechselkurs.help')}</Text>
       <Feld label={tr('grenzgaenger.lohnausweis.wechselkurs.monat')}>
-        <Input type="text" value={monat} onChange={setMonat} placeholder={`${taxYear}-12`} accessibilityLabel={tr('grenzgaenger.lohnausweis.wechselkurs.monat')} testID="ch-wechselkurs-monat" />
+        <Input type="text" value={month} onChange={setMonth} placeholder={`${taxYear}-12`} accessibilityLabel={tr('grenzgaenger.lohnausweis.wechselkurs.monat')} testID="ch-wechselkurs-monat" />
       </Feld>
       <Feld label={tr('grenzgaenger.lohnausweis.wechselkurs.kurs')}>
-        <Input type="numeric" value={kurs} onChange={setKurs} placeholder="1,07" accessibilityLabel={tr('grenzgaenger.lohnausweis.wechselkurs.kurs')} testID="ch-wechselkurs-kurs" />
+        <Input type="numeric" value={rate} onChange={setRate} placeholder="1,07" accessibilityLabel={tr('grenzgaenger.lohnausweis.wechselkurs.kurs')} testID="ch-wechselkurs-kurs" />
       </Feld>
-      {kursFehler ? <Text style={styles.help}>{tr('grenzgaenger.lohnausweis.wechselkurs.fehlt')}</Text> : null}
+      {rateError ? <Text style={styles.help}>{tr('grenzgaenger.lohnausweis.wechselkurs.fehlt')}</Text> : null}
       <Button
-        variante="ghost"
+        variant="ghost"
         onPress={() => {
-          const n = Number(kurs.trim().replace(',', '.'))
-          const gueltig = /^\d{4}-(0[1-9]|1[0-2])$/.test(monat) && Number.isFinite(n) && n > 0
-          setKursFehler(!gueltig)
-          if (gueltig) onSetWechselkurs({ jahr: taxYear, data: { monat, kurs: n, modus: 'amtlich' } })
+          const n = Number(rate.trim().replace(',', '.'))
+          const valid = /^\d{4}-(0[1-9]|1[0-2])$/.test(month) && Number.isFinite(n) && n > 0
+          setRateError(!valid)
+          if (valid) onSetExchangeRate({ jahr: taxYear, data: { month, rate: n, mode: 'amtlich' } })
         }}
       >
         {tr('grenzgaenger.lohnausweis.wechselkurs.speichern')}
       </Button>
 
-      <VorsorgeAbschnitt lohnausweis={lohnausweis} onSet={onSetVorsorge} />
+      <ProvisionSection salaryCertificate={salaryCertificate} onSet={onSetProvision} />
 
-      <NGreAbschnitt nGre={lohnausweis.nGre} onSet={onSetNGre} />
+      <NGreSection nGre={salaryCertificate.nGre} onSet={onSetNGre} />
 
       {status !== null ? (
         <Card variant="default" style={styles.statusCard}>
@@ -276,8 +276,8 @@ function LohnausweisStep({
           <Text style={styles.standRow}>
             {tr('grenzgaenger.lohnausweis.stand.anrechnung')}: {formatEuro(stand.anrechnung)}
           </Text>
-          {stand.kind === 'offen' && stand.offenePosten !== undefined ? (
-            <Text style={styles.help}>{tr('grenzgaenger.lohnausweis.stand.offen', { count: stand.offenePosten })}</Text>
+          {stand.kind === 'offen' && stand.openItems !== undefined ? (
+            <Text style={styles.help}>{tr('grenzgaenger.lohnausweis.stand.offen', { count: stand.openItems })}</Text>
           ) : null}
         </Card>
       ) : null}
@@ -289,15 +289,15 @@ function LohnausweisStep({
   )
 }
 
-const N_GRE_TEXTFELDER = ['arbeitgeberName', 'arbeitgeberStrasse', 'arbeitgeberPlzOrt'] as const
-const N_GRE_BETRAGSFELDER = ['familienzulagenChf', 'krankentaggeldChf', 'pkArbeitnehmerChf', 'pkArbeitgeberChf'] as const
+const N_GRE_TEXT_FIELDS = ['arbeitgeberName', 'arbeitgeberStrasse', 'arbeitgeberPlzOrt'] as const
+const N_GRE_AMOUNT_FIELDS = ['familienzulagenChf', 'krankentaggeldChf', 'pkArbeitnehmerChf', 'pkArbeitgeberChf'] as const
 /** Who pays the premium (N-Gre Zeilen 18/19, 95–98); the CHF field only matters when the employer pays it all. */
-const PRAEMIEN = [
+const PREMIUMS = [
   { prozent: 'krankentaggeldArbeitgeberProzent', chf: 'krankentaggeldArbeitgeberChf' },
   { prozent: 'nbuvArbeitgeberProzent', chf: 'nbuvArbeitgeberChf' },
 ] as const
 
-function NGreAbschnitt({ nGre, onSet }: { readonly nGre: NGreAngabenDto; readonly onSet: (data: PutNGreDto) => void }) {
+function NGreSection({ nGre, onSet }: { readonly nGre: NGreDetailsDto; readonly onSet: (data: PutNGreDto) => void }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
@@ -305,42 +305,42 @@ function NGreAbschnitt({ nGre, onSet }: { readonly nGre: NGreAngabenDto; readonl
     <>
       <Text style={styles.sectionTitle}>{tr('grenzgaenger.nGre.title')}</Text>
       <Text style={styles.help}>{tr('grenzgaenger.nGre.help')}</Text>
-      {N_GRE_TEXTFELDER.map((feld) => (
-        <NGreEingabe
-          key={feld}
-          label={tr(`grenzgaenger.nGre.felder.${feld}`)}
-          initial={nGre[feld] ?? ''}
-          testID={`ch-ngre-${feld}`}
-          onCommit={(text) => onSet({ [feld]: text === '' ? null : text })}
+      {N_GRE_TEXT_FIELDS.map((field) => (
+        <NGreInput
+          key={field}
+          label={tr(`grenzgaenger.nGre.felder.${field}`)}
+          initial={nGre[field] ?? ''}
+          testID={`ch-ngre-${field}`}
+          onCommit={(text) => onSet({ [field]: text === '' ? null : text })}
         />
       ))}
-      {N_GRE_BETRAGSFELDER.map((feld) => (
-        <NGreEingabe
-          key={feld}
-          label={tr(`grenzgaenger.nGre.felder.${feld}`)}
-          initial={nGre[feld] === null ? '' : String(nGre[feld])}
+      {N_GRE_AMOUNT_FIELDS.map((field) => (
+        <NGreInput
+          key={field}
+          label={tr(`grenzgaenger.nGre.felder.${field}`)}
+          initial={nGre[field] === null ? '' : String(nGre[field])}
           numeric
-          testID={`ch-ngre-${feld}`}
+          testID={`ch-ngre-${field}`}
           onCommit={(text) => {
-            if (text === '') onSet({ [feld]: null })
-            else if (/^(0|[1-9]\d*)$/.test(text)) onSet({ [feld]: Number(text) })
+            if (text === '') onSet({ [field]: null })
+            else if (/^(0|[1-9]\d*)$/.test(text)) onSet({ [field]: Number(text) })
           }}
         />
       ))}
-      {PRAEMIEN.map(({ prozent, chf }) => (
-        <View key={prozent}>
-          <NGreEingabe
-            label={tr(`grenzgaenger.nGre.felder.${prozent}`)}
-            initial={nGre[prozent] === null ? '' : String(nGre[prozent])}
+      {PREMIUMS.map(({ prozent: percent, chf }) => (
+        <View key={percent}>
+          <NGreInput
+            label={tr(`grenzgaenger.nGre.felder.${percent}`)}
+            initial={nGre[percent] === null ? '' : String(nGre[percent])}
             numeric
-            testID={`ch-ngre-${prozent}`}
+            testID={`ch-ngre-${percent}`}
             onCommit={(text) => {
-              if (text === '') onSet({ [prozent]: null })
-              else if (/^(0|[1-9]\d?|100)$/.test(text)) onSet({ [prozent]: Number(text) })
+              if (text === '') onSet({ [percent]: null })
+              else if (/^(0|[1-9]\d?|100)$/.test(text)) onSet({ [percent]: Number(text) })
             }}
           />
-          {nGre[prozent] === 100 ? (
-            <NGreEingabe
+          {nGre[percent] === 100 ? (
+            <NGreInput
               label={tr(`grenzgaenger.nGre.felder.${chf}`)}
               initial={nGre[chf] === null ? '' : String(nGre[chf])}
               numeric
@@ -355,10 +355,10 @@ function NGreAbschnitt({ nGre, onSet }: { readonly nGre: NGreAngabenDto; readonl
       ))}
       <Feld label={tr('grenzgaenger.nGre.sonderfaelle')}>
         <View style={{ flexDirection: 'row', gap: t.space.s2 }}>
-          <Chip aktiv={nGre.sonderfaelle === false} onPress={() => onSet({ sonderfaelle: false })} testID="ch-ngre-sonderfaelle-nein">
+          <Chip active={nGre.specialCases === false} onPress={() => onSet({ specialCases: false })} testID="ch-ngre-sonderfaelle-nein">
             {tr('grenzgaenger.nGre.nein')}
           </Chip>
-          <Chip aktiv={nGre.sonderfaelle === true} onPress={() => onSet({ sonderfaelle: true })} testID="ch-ngre-sonderfaelle-ja">
+          <Chip active={nGre.specialCases === true} onPress={() => onSet({ specialCases: true })} testID="ch-ngre-sonderfaelle-ja">
             {tr('grenzgaenger.nGre.ja')}
           </Chip>
         </View>
@@ -367,11 +367,11 @@ function NGreAbschnitt({ nGre, onSet }: { readonly nGre: NGreAngabenDto; readonl
   )
 }
 
-function VorsorgeAbschnitt({ lohnausweis, onSet }: { readonly lohnausweis: ChLohnausweisResponseDto; readonly onSet: (data: PutVorsorgeDto) => void }) {
+function ProvisionSection({ salaryCertificate, onSet }: { readonly salaryCertificate: ChSalaryCertificateResponseDto; readonly onSet: (data: PutProvisionDto) => void }) {
   const t = useTheme()
   const styles = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
-  const gespeichert = (art: string) => lohnausweis.posten.find((p) => p.art === art)?.betragChf
+  const saved = (art: string) => salaryCertificate.items.find((p) => p.art === art)?.amountChf
   return (
     <>
       <Text style={styles.sectionTitle}>{tr('grenzgaenger.vorsorge.title')}</Text>
@@ -381,18 +381,18 @@ function VorsorgeAbschnitt({ lohnausweis, onSet }: { readonly lohnausweis: ChLoh
           ['krankenkasseChf', 'Krankenkasse'],
           ['saeule3aChf', 'Saeule3a'],
         ] as const
-      ).map(([feld, art]) => {
-        const initial = gespeichert(art)
+      ).map(([field, art]) => {
+        const initial = saved(art)
         return (
-          <NGreEingabe
-            key={feld}
-            label={tr(`grenzgaenger.vorsorge.${feld}`)}
+          <NGreInput
+            key={field}
+            label={tr(`grenzgaenger.vorsorge.${field}`)}
             initial={initial === undefined ? '' : String(initial)}
             numeric
-            testID={`ch-vorsorge-${feld}`}
+            testID={`ch-vorsorge-${field}`}
             onCommit={(text) => {
-              if (text === '') onSet({ [feld]: null })
-              else if (/^(0|[1-9]\d*)$/.test(text)) onSet({ [feld]: Number(text) })
+              if (text === '') onSet({ [field]: null })
+              else if (/^(0|[1-9]\d*)$/.test(text)) onSet({ [field]: Number(text) })
             }}
           />
         )
@@ -401,7 +401,7 @@ function VorsorgeAbschnitt({ lohnausweis, onSet }: { readonly lohnausweis: ChLoh
   )
 }
 
-function NGreEingabe({
+function NGreInput({
   label,
   initial,
   numeric = false,
@@ -416,8 +416,8 @@ function NGreEingabe({
 }) {
   const [text, setText] = useState(initial)
   function commit() {
-    const getrimmt = text.trim()
-    if (getrimmt !== initial) onCommit(getrimmt)
+    const trimmed = text.trim()
+    if (trimmed !== initial) onCommit(trimmed)
   }
   return (
     <Feld label={label}>
@@ -434,27 +434,27 @@ function NGreEingabe({
   )
 }
 
-function ChFeldInput({
-  feldId,
-  ziffer,
+function ChFieldInput({
+  fieldId,
+  digit,
   initial,
   onCommit,
 }: {
-  readonly feldId: string
-  readonly ziffer: string
+  readonly fieldId: string
+  readonly digit: string
   readonly initial: string
-  readonly onCommit: (wert: PutLohnausweisFeldDto) => void
+  readonly onCommit: (value: PutSalaryCertificateFieldDto) => void
 }) {
   const { t: tr } = useTranslation(APP_NS)
   const [text, setText] = useState(initial)
   function commit() {
-    const getrimmt = text.trim()
-    if (getrimmt === initial) return
-    if (getrimmt === '') return onCommit({ kind: 'offen' })
-    const wert = ganzzahlAus(getrimmt)
-    if (wert !== null) onCommit({ kind: 'erfasst', wert })
+    const trimmed = text.trim()
+    if (trimmed === initial) return
+    if (trimmed === '') return onCommit({ kind: 'offen' })
+    const value = integerFrom(trimmed)
+    if (value !== null) onCommit({ kind: 'erfasst', value })
   }
-  const label = `${tr('grenzgaenger.lohnausweis.ziffer', { n: ziffer })} · ${tr(`grenzgaenger.lohnausweis.felder.${feldId}`)}`
+  const label = `${tr('grenzgaenger.lohnausweis.ziffer', { n: digit })} · ${tr(`grenzgaenger.lohnausweis.felder.${fieldId}`)}`
   return (
     <Feld label={label}>
       <Input
@@ -466,15 +466,15 @@ function ChFeldInput({
         mono
         onSubmit={commit}
         onBlur={commit}
-        testID={`ch-feld-${feldId}`}
+        testID={`ch-feld-${fieldId}`}
       />
     </Feld>
   )
 }
 
-function wertAusResponse(lohnausweis: ChLohnausweisResponseDto, id: string): string {
-  const feld = lohnausweis.felder.find((x) => x.id === id)
-  return feld?.kind === 'erfasst' && feld.wert !== undefined ? String(feld.wert) : ''
+function valueFromResponse(salaryCertificate: ChSalaryCertificateResponseDto, id: string): string {
+  const field = salaryCertificate.fields.find((x) => x.id === id)
+  return field?.kind === 'erfasst' && field.value !== undefined ? String(field.value) : ''
 }
 
 function makeStyles(t: UiTheme) {
@@ -500,7 +500,7 @@ function makeStyles(t: UiTheme) {
   const help: TextStyle = { color: t.color.tinte2, fontFamily: t.font.text, fontSize: t.size.m, marginBottom: t.space.s3 }
   const sectionTitle: TextStyle = { fontFamily: t.font.display, fontWeight: t.weight.fett, fontSize: t.size.l, color: t.color.tinte, marginBottom: t.space.s2 }
   const statusCard: ViewStyle = { marginTop: t.space.s4 }
-  const standRow: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontSize: t.size.m, marginBottom: t.space.s1 }
+  const statusRow: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontSize: t.size.m, marginBottom: t.space.s1 }
   const cta: ViewStyle = { marginTop: t.space.s4 }
-  return { screen, wideScreen, headerRow, heading, mark, help, sectionTitle, statusCard, standRow, cta }
+  return { screen, wideScreen, headerRow, heading, mark, help, sectionTitle, statusCard, standRow: statusRow, cta }
 }

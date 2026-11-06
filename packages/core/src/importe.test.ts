@@ -8,14 +8,14 @@ const SRC = new URL('.', import.meta.url)
 
 describe('packages/core imports', () => {
   it('has no value import of a sibling with a .js suffix (Metro cannot resolve it)', () => {
-    const treffer = readdirSync(SRC)
-      .filter((datei) => datei.endsWith('.ts') && !datei.endsWith('.test.ts'))
-      .flatMap((datei) =>
-        readFileSync(new URL(datei, SRC), 'utf8')
+    const hits = readdirSync(SRC)
+      .filter((file) => file.endsWith('.ts') && !file.endsWith('.test.ts'))
+      .flatMap((file) =>
+        readFileSync(new URL(file, SRC), 'utf8')
           .split('\n')
-          .filter((zeile) => /^import\s+(?!type\b)[^;]*from\s+'\.\/[^']+\.js'/.test(zeile))
-          .map((zeile) => `${datei}: ${zeile}`),
+          .filter((row) => /^import\s+(?!type\b)[^;]*from\s+'\.\/[^']+\.js'/.test(row))
+          .map((row) => `${file}: ${row}`),
       )
-    expect(treffer).toEqual([])
+    expect(hits).toEqual([])
   })
 })

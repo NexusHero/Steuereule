@@ -2,7 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import { IsIn, IsInt, IsOptional, Min } from 'class-validator'
 
 /** One field's honest capture state. */
-export class LstbFeldDto {
+export class LstbFieldDto {
   @ApiProperty({ enum: ['erfasst', 'offen', 'unklar'], description: 'The field’s capture state.' })
   @IsIn(['erfasst', 'offen', 'unklar'])
   kind!: 'erfasst' | 'offen' | 'unklar'
@@ -15,5 +15,5 @@ export class LstbFeldDto {
   @IsOptional()
   @IsInt()
   @Min(0)
-  wert?: number
+  value?: number
 }

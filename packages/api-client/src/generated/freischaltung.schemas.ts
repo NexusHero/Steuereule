@@ -8,17 +8,17 @@
 /**
  * freigeschaltet = paid for this tax year; offen = payable; nicht-verfuegbar = payment is not configured on this environment.
  */
-export type FreischaltungStatusDtoStatus = typeof FreischaltungStatusDtoStatus[keyof typeof FreischaltungStatusDtoStatus];
+export type UnlockStatusDtoStatus = typeof UnlockStatusDtoStatus[keyof typeof UnlockStatusDtoStatus];
 
 
-export const FreischaltungStatusDtoStatus = {
+export const UnlockStatusDtoStatus = {
   freigeschaltet: 'freigeschaltet',
   offen: 'offen',
   'nicht-verfuegbar': 'nicht-verfuegbar',
 } as const;
 
-export interface FreischaltungStatusDto {
+export interface UnlockStatusDto {
   /** freigeschaltet = paid for this tax year; offen = payable; nicht-verfuegbar = payment is not configured on this environment. */
-  status: FreischaltungStatusDtoStatus;
+  status: UnlockStatusDtoStatus;
 }
 

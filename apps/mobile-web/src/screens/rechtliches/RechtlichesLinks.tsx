@@ -2,14 +2,14 @@ import { Pressable, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '@steuereule/ui'
 import { APP_NS } from '../../i18n/resources'
-import { RECHTLICHE_SEITEN, SEITEN_TITEL, type RechtlicheSeite } from './texte'
+import { LEGAL_PAGES, PAGE_TITLES, type LegalPage } from './texte'
 
-export interface RechtlichesLinksProps {
-  readonly onSeite: (seite: RechtlicheSeite) => void
-  readonly aktuell?: RechtlicheSeite
+export interface LegalLinksProps {
+  readonly onPage: (page: LegalPage) => void
+  readonly current?: LegalPage
 }
 
-export function RechtlichesLinks({ onSeite, aktuell }: RechtlichesLinksProps) {
+export function LegalLinks({ onPage, current }: LegalLinksProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const text = { fontFamily: t.font.text, fontSize: t.size.xs, color: t.color.tinte2 }
@@ -20,14 +20,14 @@ export function RechtlichesLinks({ onSeite, aktuell }: RechtlichesLinksProps) {
       accessibilityLabel={tr('rechtliches.links')}
       style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: t.space.s3, marginTop: t.space.s5 }}
     >
-      {RECHTLICHE_SEITEN.map((seite) =>
-        seite === aktuell ? (
-          <Text key={seite} style={text}>
-            {SEITEN_TITEL[seite]}
+      {LEGAL_PAGES.map((page) =>
+        page === current ? (
+          <Text key={page} style={text}>
+            {PAGE_TITLES[page]}
           </Text>
         ) : (
-          <Pressable key={seite} accessibilityRole="link" onPress={() => onSeite(seite)}>
-            <Text style={{ ...text, textDecorationLine: 'underline' }}>{SEITEN_TITEL[seite]}</Text>
+          <Pressable key={page} accessibilityRole="link" onPress={() => onPage(page)}>
+            <Text style={{ ...text, textDecorationLine: 'underline' }}>{PAGE_TITLES[page]}</Text>
           </Pressable>
         ),
       )}

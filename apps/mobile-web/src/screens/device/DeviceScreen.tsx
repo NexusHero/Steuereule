@@ -3,7 +3,7 @@ import { useBreakpoint } from '@steuereule/ui'
 import { APP_NS } from '../../i18n/resources'
 import { useAccountSession } from '../../auth/useAccountSession'
 import { LoginScreen } from '../LoginScreen'
-import { GeraetefreigabeScreen } from './GeraetefreigabeScreen'
+import { DeviceApprovalScreen } from './GeraetefreigabeScreen'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 
 export interface DeviceScreenProps {
@@ -39,5 +39,5 @@ export function DeviceScreen({ userCode }: DeviceScreenProps) {
     return <ErrorState bp={bp} heading={tr('device.missingCode.heading')} message={tr('device.missingCode.body')} />
   }
 
-  return <GeraetefreigabeScreen userCode={userCode} />
+  return <DeviceApprovalScreen userCode={userCode} />
 }

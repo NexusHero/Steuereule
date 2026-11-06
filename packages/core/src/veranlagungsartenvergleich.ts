@@ -3,83 +3,83 @@ import {
   isSupportedIncomeTaxYear,
   kirchensteuer,
   solidaritaetszuschlag,
-  soliFreigrenzen,
-  splittingTarif,
+  soliExemptionLimits,
+  splittingTariff,
   type IncomeTaxYear,
-  type KirchensteuerFaktor,
+  type ChurchTaxFactor,
 } from './tarif'
 
-export type ProgressionsvorbehaltEingabe =
+export type ProgressionClauseInput =
   | { readonly art: 'keine' }
-  | { readonly art: 'lohnersatzleistungen'; readonly betrag: number }
+  | { readonly art: 'lohnersatzleistungen'; readonly amount: number }
   | { readonly art: 'nicht-angegeben' }
 
-export type Unschaerfe =
-  | { readonly kind: 'bestimmt'; readonly obergrenze: number }
-  | { readonly kind: 'unbestimmt'; readonly grund: 'progressionsvorbehalt-nicht-eingegeben' }
+export type Uncertainty =
+  | { readonly kind: 'bestimmt'; readonly upperLimit: number }
+  | { readonly kind: 'unbestimmt'; readonly reason: 'progressionsvorbehalt-nicht-eingegeben' }
 
-export type TarifBestandteil = 'einkommensteuer' | 'solidaritaetszuschlag' | 'kirchensteuer'
+export type TariffComponent = 'einkommensteuer' | 'solidaritaetszuschlag' | 'kirchensteuer'
 
 /** Herkunfts-Metadaten an beiden Zahlen. */
-export interface VergleichsHerkunft {
+export interface ComparisonSource {
   readonly zveA: number
   readonly zveB: number
-  readonly bestandteile: readonly TarifBestandteil[]
+  readonly components: readonly TariffComponent[]
 }
 
-export type Veranlagungsartenvergleich =
+export type FilingTypeComparison =
   | {
-      readonly aussage: 'eindeutig'
-      readonly empfehlung: 'einzel' | 'zusammen'
-      readonly einzel: number
-      readonly zusammen: number
+      readonly statement: 'eindeutig'
+      readonly recommendation: 'einzel' | 'zusammen'
+      readonly single: number
+      readonly joint: number
       readonly delta: number
-      readonly unschaerfe: Unschaerfe
-      readonly herkunft: VergleichsHerkunft
+      readonly uncertainty: Uncertainty
+      readonly provenance: ComparisonSource
     }
   | {
-      readonly aussage: 'zu-knapp'
-      readonly einzel: number
-      readonly zusammen: number
+      readonly statement: 'zu-knapp'
+      readonly single: number
+      readonly joint: number
       readonly delta: number
-      readonly unschaerfe: Unschaerfe
-      readonly herkunft: VergleichsHerkunft
+      readonly uncertainty: Uncertainty
+      readonly provenance: ComparisonSource
     }
   | {
-      readonly aussage: 'unbestimmt'
-      readonly einzel: number
-      readonly zusammen: number
+      readonly statement: 'unbestimmt'
+      readonly single: number
+      readonly joint: number
       readonly delta: number
-      readonly unschaerfe: Unschaerfe
-      readonly herkunft: VergleichsHerkunft
+      readonly uncertainty: Uncertainty
+      readonly provenance: ComparisonSource
     }
 
-export interface VeranlagungsartenvergleichEingaben {
+export interface FilingTypeComparisonInput {
   readonly zveA: number
   readonly zveB: number
   readonly year: number
-  readonly progressionsvorbehalt: ProgressionsvorbehaltEingabe
-  readonly kirchensteuerFaktor?: KirchensteuerFaktor
+  readonly progressionClause: ProgressionClauseInput
+  readonly churchTaxFactor?: ChurchTaxFactor
 }
 
-const MAX_GRENZSTEUERSATZ = 0.45
+const MAX_MARGINAL_TAX_RATE = 0.45
 
-export function progressionsvorbehaltSchranke(pv: ProgressionsvorbehaltEingabe): Unschaerfe {
+export function progressionClauseLimit(pv: ProgressionClauseInput): Uncertainty {
   switch (pv.art) {
     case 'keine':
-      return { kind: 'bestimmt', obergrenze: 0 }
+      return { kind: 'bestimmt', upperLimit: 0 }
     case 'lohnersatzleistungen': {
-      if (!Number.isFinite(pv.betrag) || pv.betrag < 0) {
+      if (!Number.isFinite(pv.amount) || pv.amount < 0) {
         throw new RangeError('lohnersatzleistungen betrag must be a non-negative finite number')
       }
-      return { kind: 'bestimmt', obergrenze: Math.ceil(MAX_GRENZSTEUERSATZ * pv.betrag) }
+      return { kind: 'bestimmt', upperLimit: Math.ceil(MAX_MARGINAL_TAX_RATE * pv.amount) }
     }
     case 'nicht-angegeben':
-      return { kind: 'unbestimmt', grund: 'progressionsvorbehalt-nicht-eingegeben' }
+      return { kind: 'unbestimmt', reason: 'progressionsvorbehalt-nicht-eingegeben' }
   }
 }
 
-function validate(input: VeranlagungsartenvergleichEingaben): void {
+function validate(input: FilingTypeComparisonInput): void {
   if (!Number.isFinite(input.zveA) || !Number.isFinite(input.zveB)) {
     throw new RangeError('zvE must be a finite number')
   }
@@ -88,41 +88,41 @@ function validate(input: VeranlagungsartenvergleichEingaben): void {
   }
 }
 
-export function veranlagungsartenvergleich(input: VeranlagungsartenvergleichEingaben): Veranlagungsartenvergleich {
+export function filingTypeComparison(input: FilingTypeComparisonInput): FilingTypeComparison {
   validate(input)
-  const { zveA, zveB, progressionsvorbehalt } = input
+  const { zveA, zveB, progressionClause } = input
   if (!isSupportedIncomeTaxYear(input.year)) {
     throw new RangeError(`Unsupported tax year for §32a EStG: ${input.year}`)
   }
   const year: IncomeTaxYear = input.year
-  const faktor = input.kirchensteuerFaktor ?? 0
+  const factor = input.churchTaxFactor ?? 0
 
-  const freigrenzen = soliFreigrenzen(year)
-  const estA = incomeTax(zveA, year)
-  const estB = incomeTax(zveB, year)
-  const estEinzel = estA + estB
-  const estZusammen = splittingTarif(zveA, zveB, year)
+  const exemptionLimits = soliExemptionLimits(year)
+  const incomeTaxA = incomeTax(zveA, year)
+  const incomeTaxB = incomeTax(zveB, year)
+  const incomeTaxSeparate = incomeTaxA + incomeTaxB
+  const incomeTaxJoint = splittingTariff(zveA, zveB, year)
 
-  const soliEinzel = solidaritaetszuschlag(estA, freigrenzen.einzel) + solidaritaetszuschlag(estB, freigrenzen.einzel)
-  const soliZusammen = solidaritaetszuschlag(estZusammen, freigrenzen.zusammen)
+  const soliSeparate = solidaritaetszuschlag(incomeTaxA, exemptionLimits.single) + solidaritaetszuschlag(incomeTaxB, exemptionLimits.single)
+  const soliJoint = solidaritaetszuschlag(incomeTaxJoint, exemptionLimits.joint)
 
-  const kistEinzel = kirchensteuer(estA, faktor) + kirchensteuer(estB, faktor)
-  const kistZusammen = kirchensteuer(estZusammen, faktor)
+  const churchTaxSeparate = kirchensteuer(incomeTaxA, factor) + kirchensteuer(incomeTaxB, factor)
+  const churchTaxJoint = kirchensteuer(incomeTaxJoint, factor)
 
-  const einzel = estEinzel + soliEinzel + kistEinzel
-  const zusammen = estZusammen + soliZusammen + kistZusammen
-  const delta = zusammen - einzel
+  const single = incomeTaxSeparate + soliSeparate + churchTaxSeparate
+  const joint = incomeTaxJoint + soliJoint + churchTaxJoint
+  const delta = joint - single
 
-  const bestandteile: TarifBestandteil[] = faktor === 0 ? ['einkommensteuer', 'solidaritaetszuschlag'] : ['einkommensteuer', 'solidaritaetszuschlag', 'kirchensteuer']
-  const herkunft: VergleichsHerkunft = { zveA: Math.floor(zveA), zveB: Math.floor(zveB), bestandteile }
+  const components: TariffComponent[] = factor === 0 ? ['einkommensteuer', 'solidaritaetszuschlag'] : ['einkommensteuer', 'solidaritaetszuschlag', 'kirchensteuer']
+  const provenance: ComparisonSource = { zveA: Math.floor(zveA), zveB: Math.floor(zveB), components }
 
-  const unschaerfe = progressionsvorbehaltSchranke(progressionsvorbehalt)
+  const uncertainty = progressionClauseLimit(progressionClause)
 
-  if (unschaerfe.kind === 'unbestimmt') {
-    return { aussage: 'unbestimmt', einzel, zusammen, delta, unschaerfe, herkunft }
+  if (uncertainty.kind === 'unbestimmt') {
+    return { statement: 'unbestimmt', single, joint, delta, uncertainty, provenance }
   }
-  if (Math.abs(delta) > unschaerfe.obergrenze) {
-    return { aussage: 'eindeutig', empfehlung: delta < 0 ? 'zusammen' : 'einzel', einzel, zusammen, delta, unschaerfe, herkunft }
+  if (Math.abs(delta) > uncertainty.upperLimit) {
+    return { statement: 'eindeutig', recommendation: delta < 0 ? 'zusammen' : 'einzel', single, joint, delta, uncertainty, provenance }
   }
-  return { aussage: 'zu-knapp', einzel, zusammen, delta, unschaerfe, herkunft }
+  return { statement: 'zu-knapp', single, joint, delta, uncertainty, provenance }
 }

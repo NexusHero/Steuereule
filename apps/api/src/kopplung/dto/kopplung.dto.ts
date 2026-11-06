@@ -1,15 +1,15 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import { RELIGION_KEYS } from '@steuereule/core'
 import { IsBoolean, IsIn, IsOptional, IsString } from 'class-validator'
-import { IsSteuerId } from '../../profile/dto/steuer-id.validators.js'
+import { IsTaxId } from '../../profile/dto/steuer-id.validators.js'
 
-export class SetKopplungDto {
+export class SetLinkDto {
   @ApiProperty({ type: String, enum: ['einzel', 'zusammen'], example: 'zusammen' })
   @IsIn(['einzel', 'zusammen'])
   veranlagungsart!: 'einzel' | 'zusammen'
 }
 
-export class KopplungPersonBDto {
+export class LinkPersonBDto {
   @ApiPropertyOptional({ type: String, nullable: true, example: 'Erika' })
   @IsOptional()
   @IsString()
@@ -22,7 +22,7 @@ export class KopplungPersonBDto {
 
   @ApiPropertyOptional({ type: String, nullable: true, example: '12345678901' })
   @IsOptional()
-  @IsSteuerId()
+  @IsTaxId()
   steuerId?: string | null
 
   @ApiPropertyOptional({ type: String, nullable: true, example: '1985-04-12' })
@@ -33,7 +33,7 @@ export class KopplungPersonBDto {
   @ApiPropertyOptional({
     enum: RELIGION_KEYS,
     nullable: true,
-    description: 'Art. 9 DSGVO: requires religionEinwilligung = true, like the own Stammdaten.',
+    description: 'Art. 9 DSGVO: requires religionConsent = true, like the own Stammdaten.',
   })
   @IsOptional()
   @IsIn(RELIGION_KEYS)
@@ -42,7 +42,7 @@ export class KopplungPersonBDto {
   @ApiPropertyOptional({ type: Boolean, description: 'Explicit consent to store the religion (Art. 9 Abs. 2 lit. a DSGVO).' })
   @IsOptional()
   @IsBoolean()
-  religionEinwilligung?: boolean
+  religionConsent?: boolean
 
   @ApiPropertyOptional({ type: String, nullable: true, example: 'Angestellte' })
   @IsOptional()
@@ -50,7 +50,7 @@ export class KopplungPersonBDto {
   beruf?: string | null
 }
 
-export class KopplungResponseDto {
+export class LinkResponseDto {
   @ApiProperty({ type: String, enum: ['keine', 'einzel', 'zusammen'], example: 'zusammen' })
   veranlagungsart!: 'keine' | 'einzel' | 'zusammen'
 
@@ -67,8 +67,8 @@ export class KopplungResponseDto {
     type: Boolean,
     description: 'Person B joined with an own account and maintains their data there — Person A cannot edit it.',
   })
-  personBHatEigenesKonto?: boolean
+  personBHasOwnAccount?: boolean
 
-  @ApiPropertyOptional({ type: KopplungPersonBDto, nullable: true })
-  personB?: KopplungPersonBDto | null
+  @ApiPropertyOptional({ type: LinkPersonBDto, nullable: true })
+  personB?: LinkPersonBDto | null
 }

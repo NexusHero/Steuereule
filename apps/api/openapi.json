@@ -169,7 +169,7 @@
     },
     "/v1/steuerjahre/{jahr}/lstb/{feld}": {
       "put": {
-        "operationId": "LstbController_setFeld",
+        "operationId": "LstbController_setField",
         "parameters": [
           {
             "name": "person",
@@ -210,7 +210,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/LstbFeldDto"
+                "$ref": "#/components/schemas/LstbFieldDto"
               }
             }
           }
@@ -237,7 +237,7 @@
     },
     "/v1/steuerjahre/{jahr}/kopplung": {
       "get": {
-        "operationId": "KopplungController_get",
+        "operationId": "LinkController_get",
         "parameters": [
           {
             "name": "jahr",
@@ -255,7 +255,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/KopplungResponseDto"
+                  "$ref": "#/components/schemas/LinkResponseDto"
                 }
               }
             }
@@ -269,7 +269,7 @@
         ]
       },
       "put": {
-        "operationId": "KopplungController_set",
+        "operationId": "LinkController_set",
         "parameters": [
           {
             "name": "jahr",
@@ -286,7 +286,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/SetKopplungDto"
+                "$ref": "#/components/schemas/SetLinkDto"
               }
             }
           }
@@ -297,7 +297,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/KopplungResponseDto"
+                  "$ref": "#/components/schemas/LinkResponseDto"
                 }
               }
             }
@@ -316,7 +316,7 @@
     },
     "/v1/steuerjahre/{jahr}/kopplung/person-b": {
       "put": {
-        "operationId": "KopplungController_updatePersonB",
+        "operationId": "LinkController_updatePersonB",
         "parameters": [
           {
             "name": "jahr",
@@ -333,7 +333,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/KopplungPersonBDto"
+                "$ref": "#/components/schemas/LinkPersonBDto"
               }
             }
           }
@@ -344,7 +344,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/KopplungResponseDto"
+                  "$ref": "#/components/schemas/LinkResponseDto"
                 }
               }
             }
@@ -363,7 +363,7 @@
     },
     "/v1/steuerjahre/{jahr}/kopplung/beitreten/{code}": {
       "post": {
-        "operationId": "KopplungController_joinWithCode",
+        "operationId": "LinkController_joinWithCode",
         "parameters": [
           {
             "name": "code",
@@ -390,7 +390,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/KopplungResponseDto"
+                  "$ref": "#/components/schemas/LinkResponseDto"
                 }
               }
             }
@@ -406,7 +406,7 @@
     },
     "/v1/stammdaten": {
       "get": {
-        "operationId": "StammdatenController_lese",
+        "operationId": "MasterDataController_read",
         "parameters": [],
         "responses": {
           "200": {
@@ -414,7 +414,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/StammdatenResponseDto"
+                  "$ref": "#/components/schemas/MasterDataResponseDto"
                 }
               }
             }
@@ -428,14 +428,14 @@
         ]
       },
       "put": {
-        "operationId": "StammdatenController_speichere",
+        "operationId": "MasterDataController_save",
         "parameters": [],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/PutStammdatenDto"
+                "$ref": "#/components/schemas/PutMasterDataDto"
               }
             }
           }
@@ -446,7 +446,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/StammdatenResponseDto"
+                  "$ref": "#/components/schemas/MasterDataResponseDto"
                 }
               }
             }
@@ -569,7 +569,7 @@
     },
     "/v1/steuerjahre/{jahr}/rente": {
       "get": {
-        "operationId": "RenteController_get",
+        "operationId": "PensionController_get",
         "parameters": [
           {
             "name": "jahr",
@@ -588,7 +588,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RenteResponseDto"
+                  "$ref": "#/components/schemas/PensionResponseDto"
                 }
               }
             }
@@ -604,7 +604,7 @@
     },
     "/v1/steuerjahre/{jahr}/rente/art": {
       "put": {
-        "operationId": "RenteController_setRentenart",
+        "operationId": "PensionController_setPensionKind",
         "parameters": [
           {
             "name": "jahr",
@@ -622,7 +622,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/PutRentenartDto"
+                "$ref": "#/components/schemas/PutPensionKindDto"
               }
             }
           }
@@ -633,7 +633,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RenteResponseDto"
+                  "$ref": "#/components/schemas/PensionResponseDto"
                 }
               }
             }
@@ -649,7 +649,7 @@
     },
     "/v1/steuerjahre/{jahr}/rente/{feld}": {
       "put": {
-        "operationId": "RenteController_setFeld",
+        "operationId": "PensionController_setField",
         "parameters": [
           {
             "name": "feld",
@@ -677,7 +677,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/PutRenteFeldDto"
+                "$ref": "#/components/schemas/PutPensionFieldDto"
               }
             }
           }
@@ -688,7 +688,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RenteResponseDto"
+                  "$ref": "#/components/schemas/PensionResponseDto"
                 }
               }
             }
@@ -704,7 +704,7 @@
     },
     "/v1/steuerjahre/{jahr}/kapital": {
       "get": {
-        "operationId": "KapitalController_get",
+        "operationId": "CapitalController_get",
         "parameters": [
           {
             "name": "jahr",
@@ -723,7 +723,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/KapitalResponseDto"
+                  "$ref": "#/components/schemas/CapitalResponseDto"
                 }
               }
             }
@@ -739,7 +739,7 @@
     },
     "/v1/steuerjahre/{jahr}/kapital/inhaber": {
       "put": {
-        "operationId": "KapitalController_setInhaber",
+        "operationId": "CapitalController_setOwner",
         "parameters": [
           {
             "name": "jahr",
@@ -757,7 +757,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/PutKapitalInhaberDto"
+                "$ref": "#/components/schemas/PutCapitalOwnerDto"
               }
             }
           }
@@ -768,7 +768,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/KapitalResponseDto"
+                  "$ref": "#/components/schemas/CapitalResponseDto"
                 }
               }
             }
@@ -784,7 +784,7 @@
     },
     "/v1/steuerjahre/{jahr}/kapital/{feld}": {
       "put": {
-        "operationId": "KapitalController_setFeld",
+        "operationId": "CapitalController_setField",
         "parameters": [
           {
             "name": "feld",
@@ -812,7 +812,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/PutKapitalFeldDto"
+                "$ref": "#/components/schemas/PutCapitalFieldDto"
               }
             }
           }
@@ -823,7 +823,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/KapitalResponseDto"
+                  "$ref": "#/components/schemas/CapitalResponseDto"
                 }
               }
             }
@@ -839,7 +839,7 @@
     },
     "/v1/steuerjahre/{jahr}/kapital/guenstigerpruefung": {
       "get": {
-        "operationId": "KapitalController_getGuenstigerpruefung",
+        "operationId": "CapitalController_getMostFavourableCheck",
         "parameters": [
           {
             "name": "kirchensteuerFaktor",
@@ -870,7 +870,7 @@
                 "schema": {
                   "allOf": [
                     {
-                      "$ref": "#/components/schemas/GuenstigerpruefungDto"
+                      "$ref": "#/components/schemas/MostFavourableCheckDto"
                     }
                   ],
                   "nullable": true
@@ -886,7 +886,7 @@
     },
     "/v1/steuerjahre/{jahr}/vermietung": {
       "get": {
-        "operationId": "VermietungController_get",
+        "operationId": "RentalController_get",
         "parameters": [
           {
             "name": "jahr",
@@ -905,7 +905,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/VermietungResponseDto"
+                  "$ref": "#/components/schemas/RentalResponseDto"
                 }
               }
             }
@@ -921,7 +921,7 @@
     },
     "/v1/steuerjahre/{jahr}/vermietung/objekte": {
       "post": {
-        "operationId": "VermietungController_create",
+        "operationId": "RentalController_create",
         "parameters": [
           {
             "name": "jahr",
@@ -940,7 +940,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/VermietungResponseDto"
+                  "$ref": "#/components/schemas/RentalResponseDto"
                 }
               }
             }
@@ -956,7 +956,7 @@
     },
     "/v1/steuerjahre/{jahr}/vermietung/objekte/{objektId}/{feld}": {
       "put": {
-        "operationId": "VermietungController_setFeld",
+        "operationId": "RentalController_setField",
         "parameters": [
           {
             "name": "feld",
@@ -994,7 +994,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/PutVermietungFeldDto"
+                "$ref": "#/components/schemas/PutRentalFieldDto"
               }
             }
           }
@@ -1005,7 +1005,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/VermietungResponseDto"
+                  "$ref": "#/components/schemas/RentalResponseDto"
                 }
               }
             }
@@ -1021,7 +1021,7 @@
     },
     "/v1/steuerjahre/{jahr}/vermietung/objekte/{objektId}/adresse": {
       "put": {
-        "operationId": "VermietungController_setAdresse",
+        "operationId": "RentalController_setAddress",
         "parameters": [
           {
             "name": "objektId",
@@ -1047,7 +1047,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/PutVermietungAdresseDto"
+                "$ref": "#/components/schemas/PutRentalAddressDto"
               }
             }
           }
@@ -1058,7 +1058,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/VermietungResponseDto"
+                  "$ref": "#/components/schemas/RentalResponseDto"
                 }
               }
             }
@@ -1074,7 +1074,7 @@
     },
     "/v1/steuerjahre/{jahr}/ch-lohnausweis": {
       "get": {
-        "operationId": "ChLohnausweisController_get",
+        "operationId": "ChSalaryCertificateController_get",
         "parameters": [
           {
             "name": "jahr",
@@ -1093,7 +1093,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ChLohnausweisResponseDto"
+                  "$ref": "#/components/schemas/ChSalaryCertificateResponseDto"
                 }
               }
             }
@@ -1109,7 +1109,7 @@
     },
     "/v1/steuerjahre/{jahr}/ch-lohnausweis/{feld}": {
       "put": {
-        "operationId": "ChLohnausweisController_setFeld",
+        "operationId": "ChSalaryCertificateController_setField",
         "parameters": [
           {
             "name": "feld",
@@ -1137,7 +1137,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/PutLohnausweisFeldDto"
+                "$ref": "#/components/schemas/PutSalaryCertificateFieldDto"
               }
             }
           }
@@ -1148,7 +1148,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ChLohnausweisResponseDto"
+                  "$ref": "#/components/schemas/ChSalaryCertificateResponseDto"
                 }
               }
             }
@@ -1164,7 +1164,7 @@
     },
     "/v1/steuerjahre/{jahr}/ch-lohnausweis/bemerkungen": {
       "put": {
-        "operationId": "ChLohnausweisController_setBemerkungen",
+        "operationId": "ChSalaryCertificateController_setRemarks",
         "parameters": [
           {
             "name": "jahr",
@@ -1182,7 +1182,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/PutBemerkungenDto"
+                "$ref": "#/components/schemas/PutRemarksDto"
               }
             }
           }
@@ -1193,7 +1193,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ChLohnausweisResponseDto"
+                  "$ref": "#/components/schemas/ChSalaryCertificateResponseDto"
                 }
               }
             }
@@ -1206,7 +1206,7 @@
     },
     "/v1/steuerjahre/{jahr}/ch-lohnausweis/vorsorge": {
       "put": {
-        "operationId": "ChLohnausweisController_setVorsorge",
+        "operationId": "ChSalaryCertificateController_setProvision",
         "parameters": [
           {
             "name": "jahr",
@@ -1224,7 +1224,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/PutVorsorgeDto"
+                "$ref": "#/components/schemas/PutProvisionDto"
               }
             }
           }
@@ -1235,7 +1235,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ChLohnausweisResponseDto"
+                  "$ref": "#/components/schemas/ChSalaryCertificateResponseDto"
                 }
               }
             }
@@ -1248,7 +1248,7 @@
     },
     "/v1/steuerjahre/{jahr}/ch-lohnausweis/n-gre": {
       "put": {
-        "operationId": "ChLohnausweisController_setNGre",
+        "operationId": "ChSalaryCertificateController_setNGre",
         "parameters": [
           {
             "name": "jahr",
@@ -1277,7 +1277,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ChLohnausweisResponseDto"
+                  "$ref": "#/components/schemas/ChSalaryCertificateResponseDto"
                 }
               }
             }
@@ -1290,7 +1290,7 @@
     },
     "/v1/steuerjahre/{jahr}/ch-lohnausweis/wechselkurs": {
       "put": {
-        "operationId": "ChLohnausweisController_setWechselkurs",
+        "operationId": "ChSalaryCertificateController_setExchangeRate",
         "parameters": [
           {
             "name": "jahr",
@@ -1308,7 +1308,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/PutWechselkursDto"
+                "$ref": "#/components/schemas/PutExchangeRateDto"
               }
             }
           }
@@ -1319,7 +1319,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ChLohnausweisResponseDto"
+                  "$ref": "#/components/schemas/ChSalaryCertificateResponseDto"
                 }
               }
             }
@@ -1332,7 +1332,7 @@
     },
     "/v1/steuerjahre/{jahr}/arbeitsweg": {
       "get": {
-        "operationId": "ArbeitswegController_get",
+        "operationId": "CommuteController_get",
         "parameters": [
           {
             "name": "person",
@@ -1363,7 +1363,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ArbeitswegResponseDto"
+                  "$ref": "#/components/schemas/CommuteResponseDto"
                 }
               }
             }
@@ -1377,7 +1377,7 @@
         ]
       },
       "put": {
-        "operationId": "ArbeitswegController_put",
+        "operationId": "CommuteController_put",
         "parameters": [
           {
             "name": "person",
@@ -1407,7 +1407,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ArbeitswegEingabenDto"
+                "$ref": "#/components/schemas/CommuteInputsDto"
               }
             }
           }
@@ -1418,7 +1418,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ArbeitswegResponseDto"
+                  "$ref": "#/components/schemas/CommuteResponseDto"
                 }
               }
             }
@@ -1434,7 +1434,7 @@
     },
     "/v1/steuerjahre/{jahr}/steuerschaetzung": {
       "get": {
-        "operationId": "SteuerschaetzungController_get",
+        "operationId": "TaxEstimateController_get",
         "parameters": [
           {
             "name": "jahr",
@@ -1452,7 +1452,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SteuerschaetzungDto"
+                  "$ref": "#/components/schemas/TaxEstimateDto"
                 }
               }
             }
@@ -1517,7 +1517,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateKindDto"
+                "$ref": "#/components/schemas/CreateChildDto"
               }
             }
           }
@@ -1570,7 +1570,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/UpdateKindDto"
+                "$ref": "#/components/schemas/UpdateChildDto"
               }
             }
           }
@@ -1638,7 +1638,7 @@
     },
     "/v1/belege": {
       "get": {
-        "operationId": "BelegController_list",
+        "operationId": "ReceiptController_list",
         "parameters": [],
         "responses": {
           "200": {
@@ -1648,7 +1648,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/BelegResponseDto"
+                    "$ref": "#/components/schemas/ReceiptResponseDto"
                   }
                 }
               }
@@ -1660,14 +1660,14 @@
         ]
       },
       "post": {
-        "operationId": "BelegController_create",
+        "operationId": "ReceiptController_create",
         "parameters": [],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateBelegDto"
+                "$ref": "#/components/schemas/CreateReceiptDto"
               }
             }
           }
@@ -1678,7 +1678,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/BelegResponseDto"
+                  "$ref": "#/components/schemas/ReceiptResponseDto"
                 }
               }
             }
@@ -1691,7 +1691,7 @@
     },
     "/v1/belege/{id}/zuordnung": {
       "post": {
-        "operationId": "BelegController_setZuordnung",
+        "operationId": "ReceiptController_setAssignment",
         "parameters": [
           {
             "name": "id",
@@ -1708,7 +1708,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/SetZuordnungDto"
+                "$ref": "#/components/schemas/SetAssignmentDto"
               }
             }
           }
@@ -1719,7 +1719,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/BelegResponseDto"
+                  "$ref": "#/components/schemas/ReceiptResponseDto"
                 }
               }
             }
@@ -1735,7 +1735,7 @@
     },
     "/v1/steuerjahre/{jahr}/bescheid": {
       "get": {
-        "operationId": "BescheidController_get",
+        "operationId": "AssessmentController_get",
         "parameters": [
           {
             "name": "jahr",
@@ -1754,7 +1754,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/BescheidResponseDto"
+                  "$ref": "#/components/schemas/AssessmentResponseDto"
                 }
               }
             }
@@ -1770,7 +1770,7 @@
     },
     "/v1/steuerjahre/{jahr}/bescheid/feld/{feld}": {
       "put": {
-        "operationId": "BescheidController_setFeld",
+        "operationId": "AssessmentController_setField",
         "parameters": [
           {
             "name": "feld",
@@ -1798,7 +1798,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/PutBescheidFeldDto"
+                "$ref": "#/components/schemas/PutAssessmentFieldDto"
               }
             }
           }
@@ -1809,7 +1809,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/BescheidResponseDto"
+                  "$ref": "#/components/schemas/AssessmentResponseDto"
                 }
               }
             }
@@ -1822,7 +1822,7 @@
     },
     "/v1/steuerjahre/{jahr}/bescheid/datum": {
       "put": {
-        "operationId": "BescheidController_setDatum",
+        "operationId": "AssessmentController_setDate",
         "parameters": [
           {
             "name": "jahr",
@@ -1840,7 +1840,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/SetBescheidDatumDto"
+                "$ref": "#/components/schemas/SetAssessmentDateDto"
               }
             }
           }
@@ -1851,7 +1851,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/BescheidResponseDto"
+                  "$ref": "#/components/schemas/AssessmentResponseDto"
                 }
               }
             }
@@ -1864,7 +1864,7 @@
     },
     "/v1/steuerjahre/{jahr}/bescheid/status": {
       "put": {
-        "operationId": "BescheidController_setStatus",
+        "operationId": "AssessmentController_setStatus",
         "parameters": [
           {
             "name": "jahr",
@@ -1882,7 +1882,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/SetBescheidStatusDto"
+                "$ref": "#/components/schemas/SetAssessmentStatusDto"
               }
             }
           }
@@ -1893,7 +1893,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/BescheidResponseDto"
+                  "$ref": "#/components/schemas/AssessmentResponseDto"
                 }
               }
             }
@@ -1906,7 +1906,7 @@
     },
     "/v1/steuerjahre/{jahr}/bescheid/einspruch": {
       "put": {
-        "operationId": "BescheidController_setEinspruch",
+        "operationId": "AssessmentController_setAppeal",
         "parameters": [
           {
             "name": "jahr",
@@ -1924,7 +1924,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/SetEinspruchDto"
+                "$ref": "#/components/schemas/SetAppealDto"
               }
             }
           }
@@ -1935,7 +1935,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/BescheidResponseDto"
+                  "$ref": "#/components/schemas/AssessmentResponseDto"
                 }
               }
             }
@@ -2034,7 +2034,7 @@
     },
     "/v1/assistenten": {
       "get": {
-        "operationId": "AssistentenController_listConnected",
+        "operationId": "AssistantsController_listConnected",
         "parameters": [],
         "responses": {
           "200": {
@@ -2044,7 +2044,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/VerbundenerAssistentDto"
+                    "$ref": "#/components/schemas/ConnectedAssistantDto"
                   }
                 }
               }
@@ -2064,7 +2064,7 @@
     },
     "/v1/assistenten/{clientId}": {
       "delete": {
-        "operationId": "AssistentenController_revoke",
+        "operationId": "AssistantsController_revoke",
         "parameters": [
           {
             "name": "clientId",
@@ -2082,7 +2082,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RevokeAssistentResponseDto"
+                  "$ref": "#/components/schemas/RevokeAssistantResponseDto"
                 }
               }
             }
@@ -2101,7 +2101,7 @@
     },
     "/v1/oauth/client-info": {
       "get": {
-        "operationId": "AssistentenController_getClientInfo",
+        "operationId": "AssistantsController_getClientInfo",
         "parameters": [
           {
             "name": "clientId",
@@ -2298,7 +2298,7 @@
     },
     "/v1/steuerjahre/{jahr}/veranlagungsartenvergleich": {
       "get": {
-        "operationId": "VeranlagungsartenvergleichController_getVergleich",
+        "operationId": "FilingTypeComparisonController_getComparison",
         "parameters": [
           {
             "name": "kirchensteuerFaktor",
@@ -2349,7 +2349,7 @@
                 "schema": {
                   "allOf": [
                     {
-                      "$ref": "#/components/schemas/VeranlagungsartenvergleichDto"
+                      "$ref": "#/components/schemas/FilingTypeComparisonDto"
                     }
                   ],
                   "nullable": true
@@ -2365,7 +2365,7 @@
     },
     "/v1/steuerjahre/{jahr}/fristen": {
       "get": {
-        "operationId": "FristenController_getFristen",
+        "operationId": "DeadlinesController_getDeadlines",
         "parameters": [
           {
             "name": "jahr",
@@ -2384,7 +2384,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/FristenResponseDto"
+                  "$ref": "#/components/schemas/DeadlinesResponseDto"
                 }
               }
             }
@@ -2397,7 +2397,7 @@
     },
     "/v1/steuerjahre/{jahr}/uebernahme": {
       "get": {
-        "operationId": "UebernahmeController_get",
+        "operationId": "TakeoverController_get",
         "parameters": [
           {
             "name": "jahr",
@@ -2416,7 +2416,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/UebernahmeResponseDto"
+                  "$ref": "#/components/schemas/RolloverResponseDto"
                 }
               }
             }
@@ -2430,7 +2430,7 @@
         ]
       },
       "post": {
-        "operationId": "UebernahmeController_uebernehme",
+        "operationId": "TakeoverController_takeOver",
         "parameters": [
           {
             "name": "von",
@@ -2459,7 +2459,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/UebernahmeResponseDto"
+                  "$ref": "#/components/schemas/RolloverResponseDto"
                 }
               }
             }
@@ -2475,7 +2475,7 @@
     },
     "/v1/steuerjahre/{jahr}/bestaetigung": {
       "get": {
-        "operationId": "BestaetigungController_get",
+        "operationId": "ConfirmationController_get",
         "parameters": [
           {
             "name": "jahr",
@@ -2494,7 +2494,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/BestaetigungResponseDto"
+                  "$ref": "#/components/schemas/ConfirmationResponseDto"
                 }
               }
             }
@@ -2510,7 +2510,7 @@
     },
     "/v1/steuerjahre/{jahr}/bestaetigung/anlagen/{anlage}": {
       "put": {
-        "operationId": "BestaetigungController_bestaetigeAnlage",
+        "operationId": "ConfirmationController_confirmAnnex",
         "parameters": [
           {
             "name": "anlage",
@@ -2546,7 +2546,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/BestaetigungResponseDto"
+                  "$ref": "#/components/schemas/ConfirmationResponseDto"
                 }
               }
             }
@@ -2562,7 +2562,7 @@
     },
     "/v1/steuerjahre/{jahr}/bestaetigung/vorschlaege/{key}": {
       "put": {
-        "operationId": "BestaetigungController_entscheideVorschlag",
+        "operationId": "ConfirmationController_decideProposal",
         "parameters": [
           {
             "name": "key",
@@ -2589,7 +2589,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/VorschlagEntscheidungDto"
+                "$ref": "#/components/schemas/ProposalDecisionDto"
               }
             }
           }
@@ -2600,7 +2600,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/BestaetigungResponseDto"
+                  "$ref": "#/components/schemas/ConfirmationResponseDto"
                 }
               }
             }
@@ -2619,7 +2619,7 @@
     },
     "/v1/steuerjahre/{jahr}/freischaltung": {
       "get": {
-        "operationId": "FreischaltungController_status",
+        "operationId": "UnlockController_status",
         "parameters": [
           {
             "name": "jahr",
@@ -2637,7 +2637,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/FreischaltungStatusDto"
+                  "$ref": "#/components/schemas/UnlockStatusDto"
                 }
               }
             }
@@ -2653,7 +2653,7 @@
     },
     "/v1/steuerjahre/{jahr}/ausdruck/pruefung": {
       "get": {
-        "operationId": "AusdruckController_pruefung",
+        "operationId": "PrintoutController_check",
         "parameters": [
           {
             "name": "jahr",
@@ -2671,7 +2671,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AusdruckPruefungDto"
+                  "$ref": "#/components/schemas/PrintoutCheckDto"
                 }
               }
             }
@@ -2690,7 +2690,7 @@
     },
     "/v1/steuerjahre/{jahr}/ausdruck/checkout": {
       "post": {
-        "operationId": "AusdruckController_checkout",
+        "operationId": "PrintoutController_checkout",
         "parameters": [
           {
             "name": "jahr",
@@ -2730,7 +2730,7 @@
     },
     "/v1/steuerjahre/{jahr}/ausdruck": {
       "get": {
-        "operationId": "AusdruckController_ausdruck",
+        "operationId": "PrintoutController_printout",
         "parameters": [
           {
             "name": "bearbeitbar",
@@ -2778,7 +2778,7 @@
     },
     "/v1/eulen-modus/einstellung": {
       "get": {
-        "operationId": "EulenModusController_getEinstellung",
+        "operationId": "OwlModeController_getSetting",
         "parameters": [],
         "responses": {
           "200": {
@@ -2786,7 +2786,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/EulenEinstellungResponseDto"
+                  "$ref": "#/components/schemas/OwlSettingResponseDto"
                 }
               }
             }
@@ -2800,14 +2800,14 @@
         ]
       },
       "put": {
-        "operationId": "EulenModusController_setEinstellung",
+        "operationId": "OwlModeController_setSetting",
         "parameters": [],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/SetEulenEinstellungDto"
+                "$ref": "#/components/schemas/SetOwlSettingDto"
               }
             }
           }
@@ -2818,7 +2818,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/EulenEinstellungResponseDto"
+                  "$ref": "#/components/schemas/OwlSettingResponseDto"
                 }
               }
             }
@@ -2834,7 +2834,7 @@
     },
     "/v1/steuerjahre/{jahr}/eulen-karten": {
       "get": {
-        "operationId": "EulenModusController_getKarten",
+        "operationId": "OwlModeController_getCards",
         "parameters": [
           {
             "name": "jahr",
@@ -2852,7 +2852,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/EulenKartenResponseDto"
+                  "$ref": "#/components/schemas/OwlCardsResponseDto"
                 }
               }
             }
@@ -2868,7 +2868,7 @@
     },
     "/v1/steuerjahre/{jahr}/eulen-karten/{fingerprint}/verwerfen": {
       "post": {
-        "operationId": "EulenModusController_verwerfeKarte",
+        "operationId": "OwlModeController_dismissCard",
         "parameters": [
           {
             "name": "fingerprint",
@@ -3032,7 +3032,7 @@
           "fields"
         ]
       },
-      "CockpitStandDto": {
+      "CockpitStatusDto": {
         "type": "object",
         "properties": {
           "kind": {
@@ -3044,47 +3044,47 @@
             ],
             "example": "spanne"
           },
-          "wert": {
+          "value": {
             "type": "number",
             "example": 1444,
             "description": "The settled point value (only when kind === \"bestimmt\")."
           },
-          "von": {
+          "from": {
             "type": "number",
             "example": 1227,
             "description": "Lower bound (only when kind === \"spanne\")."
           },
-          "bis": {
+          "to": {
             "type": "number",
             "example": 1587,
             "description": "Upper bound (only when kind === \"spanne\")."
           },
-          "offenePosten": {
+          "openItems": {
             "type": "number",
             "example": 3,
             "description": "Still-open required line items (only when kind === \"spanne\")."
           },
-          "konflikte": {
+          "conflicts": {
             "type": "number",
             "example": 1,
             "description": "Open posten conflicts, ADR-008 (only when kind === \"spanne\")."
           },
-          "unbestaetigte": {
+          "unconfirmedItems": {
             "type": "number",
             "example": 1,
             "description": "Übernommene, noch unbestätigte Posten (ADR-021, only when kind === \"spanne\")."
           },
-          "unbestaetigteSumme": {
+          "unconfirmedSum": {
             "type": "number",
             "example": 50000,
             "description": "Einnahmen-Summe der unbestätigten Posten (ADR-021, only when kind === \"spanne\")."
           },
-          "summe": {
+          "sum": {
             "type": "number",
             "example": 0,
             "description": "The settled partial sum (only when kind === \"gated\")."
           },
-          "gegated": {
+          "gated": {
             "example": [
               "Gewerbe"
             ],
@@ -3106,8 +3106,8 @@
             "type": "number",
             "example": 2026
           },
-          "stand": {
-            "$ref": "#/components/schemas/CockpitStandDto"
+          "status": {
+            "$ref": "#/components/schemas/CockpitStatusDto"
           },
           "openItems": {
             "type": "number",
@@ -3117,11 +3117,11 @@
         },
         "required": [
           "taxYear",
-          "stand",
+          "status",
           "openItems"
         ]
       },
-      "LstbFeldDto": {
+      "LstbFieldDto": {
         "type": "object",
         "properties": {
           "kind": {
@@ -3133,7 +3133,7 @@
             ],
             "description": "The field’s capture state."
           },
-          "wert": {
+          "value": {
             "type": "number",
             "example": 50000,
             "description": "The whole-euro amount — present only when kind === \"erfasst\" (validated in the service via @steuereule/core)."
@@ -3143,7 +3143,7 @@
           "kind"
         ]
       },
-      "LstbWiderspruchDto": {
+      "LstbConflictDto": {
         "type": "object",
         "properties": {
           "art": {
@@ -3171,7 +3171,7 @@
           "art"
         ]
       },
-      "LstbZustandDto": {
+      "LstbStatusDto": {
         "type": "object",
         "properties": {
           "kind": {
@@ -3183,25 +3183,25 @@
             ],
             "example": "unvollstaendig"
           },
-          "offen": {
+          "open": {
             "description": "Fields not yet reached (only when kind is unvollstaendig).",
             "type": "array",
             "items": {
               "type": "string"
             }
           },
-          "unklar": {
+          "unclear": {
             "description": "Fields looked at but unreadable (only when kind is unvollstaendig).",
             "type": "array",
             "items": {
               "type": "string"
             }
           },
-          "widersprueche": {
+          "conflicts": {
             "description": "The named contradictions (only when kind is widerspruch).",
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/LstbWiderspruchDto"
+              "$ref": "#/components/schemas/LstbConflictDto"
             }
           },
           "bruttoarbeitslohn": {
@@ -3225,26 +3225,26 @@
         "type": "object",
         "properties": {
           "bruttoarbeitslohn": {
-            "$ref": "#/components/schemas/LstbFeldDto"
+            "$ref": "#/components/schemas/LstbFieldDto"
           },
           "lohnsteuer": {
-            "$ref": "#/components/schemas/LstbFeldDto"
+            "$ref": "#/components/schemas/LstbFieldDto"
           },
           "sozialversicherung": {
-            "$ref": "#/components/schemas/LstbFeldDto"
+            "$ref": "#/components/schemas/LstbFieldDto"
           },
-          "zustand": {
-            "$ref": "#/components/schemas/LstbZustandDto"
+          "state": {
+            "$ref": "#/components/schemas/LstbStatusDto"
           }
         },
         "required": [
           "bruttoarbeitslohn",
           "lohnsteuer",
           "sozialversicherung",
-          "zustand"
+          "state"
         ]
       },
-      "KopplungPersonBDto": {
+      "LinkPersonBDto": {
         "type": "object",
         "properties": {
           "firstName": {
@@ -3289,7 +3289,7 @@
             "nullable": true,
             "description": "Art. 9 DSGVO: requires religionEinwilligung = true, like the own Stammdaten."
           },
-          "religionEinwilligung": {
+          "religionConsent": {
             "type": "boolean",
             "description": "Explicit consent to store the religion (Art. 9 Abs. 2 lit. a DSGVO)."
           },
@@ -3300,7 +3300,7 @@
           }
         }
       },
-      "KopplungResponseDto": {
+      "LinkResponseDto": {
         "type": "object",
         "properties": {
           "veranlagungsart": {
@@ -3328,7 +3328,7 @@
             "nullable": true,
             "description": "After this moment the code no longer links."
           },
-          "personBHatEigenesKonto": {
+          "personBHasOwnAccount": {
             "type": "boolean",
             "description": "Person B joined with an own account and maintains their data there — Person A cannot edit it."
           },
@@ -3337,7 +3337,7 @@
             "type": "object",
             "allOf": [
               {
-                "$ref": "#/components/schemas/KopplungPersonBDto"
+                "$ref": "#/components/schemas/LinkPersonBDto"
               }
             ]
           }
@@ -3346,7 +3346,7 @@
           "veranlagungsart"
         ]
       },
-      "SetKopplungDto": {
+      "SetLinkDto": {
         "type": "object",
         "properties": {
           "veranlagungsart": {
@@ -3362,7 +3362,7 @@
           "veranlagungsart"
         ]
       },
-      "StammdatenResponseDto": {
+      "MasterDataResponseDto": {
         "type": "object",
         "properties": {
           "geburtsdatum": {
@@ -3445,7 +3445,7 @@
             "type": "string",
             "nullable": true
           },
-          "fehlend": {
+          "missing": {
             "description": "Fields the Hauptvordruck needs that are still empty — the honest gap list for the Ausdruck.",
             "type": "array",
             "items": {
@@ -3468,10 +3468,10 @@
           "kontoinhaber",
           "finanzamt",
           "telefon",
-          "fehlend"
+          "missing"
         ]
       },
-      "PutStammdatenDto": {
+      "PutMasterDataDto": {
         "type": "object",
         "properties": {
           "geburtsdatum": {
@@ -3533,7 +3533,7 @@
             "nullable": true,
             "description": "Religionsschlüssel per ESt 1 A guide (VD = none). Art. 9 DSGVO: requires religionEinwilligung = true."
           },
-          "religionEinwilligung": {
+          "religionConsent": {
             "type": "boolean",
             "description": "Explicit consent to store the religion (Art. 9 Abs. 2 lit. a DSGVO)."
           },
@@ -3675,7 +3675,7 @@
           "openItems"
         ]
       },
-      "RenteFeldDto": {
+      "PensionFieldDto": {
         "type": "object",
         "properties": {
           "kind": {
@@ -3687,7 +3687,7 @@
             ],
             "description": "The field’s capture state."
           },
-          "wert": {
+          "value": {
             "type": "number",
             "example": 20000,
             "description": "The value — present only when kind === \"erfasst\" (validated via @steuereule/core)."
@@ -3697,7 +3697,7 @@
           "kind"
         ]
       },
-      "RentePostenDto": {
+      "PensionItemDto": {
         "type": "object",
         "properties": {
           "id": {
@@ -3705,23 +3705,23 @@
             "example": "rente",
             "description": "The stable posten id."
           },
-          "betrag": {
+          "amount": {
             "type": "number",
             "example": 16000,
             "description": "The taxable share (whole euros)."
           },
-          "herkunft": {
+          "provenance": {
             "type": "string",
             "description": "The § 22 Nr. 1 Satz 3 EStG rule citation (Herkunft)."
           }
         },
         "required": [
           "id",
-          "betrag",
-          "herkunft"
+          "amount",
+          "provenance"
         ]
       },
-      "RenteStandDto": {
+      "PensionStatusDto": {
         "type": "object",
         "properties": {
           "kind": {
@@ -3744,15 +3744,15 @@
             "type": "number",
             "description": "Sum of Anrechnung Posten (whole euros)."
           },
-          "offenePosten": {
+          "openItems": {
             "type": "number",
             "description": "Required-but-empty line items (only when offen)."
           },
-          "konflikte": {
+          "conflicts": {
             "type": "number",
             "description": "Open conflicts (only when offen)."
           },
-          "gegated": {
+          "gated": {
             "description": "Gated Einkunftsarten (only when offen).",
             "type": "array",
             "items": {
@@ -3767,7 +3767,7 @@
           "anrechnung"
         ]
       },
-      "RenteResponseDto": {
+      "PensionResponseDto": {
         "type": "object",
         "properties": {
           "art": {
@@ -3783,23 +3783,23 @@
             "description": "The chosen Rentenart (product ADR-036 §3), null when not yet chosen."
           },
           "jahresbetrag": {
-            "$ref": "#/components/schemas/RenteFeldDto"
+            "$ref": "#/components/schemas/PensionFieldDto"
           },
           "rentenbeginnJahr": {
-            "$ref": "#/components/schemas/RenteFeldDto"
+            "$ref": "#/components/schemas/PensionFieldDto"
           },
           "alterBeiRentenbeginn": {
-            "$ref": "#/components/schemas/RenteFeldDto"
+            "$ref": "#/components/schemas/PensionFieldDto"
           },
-          "posten": {
+          "items": {
             "description": "The taxable posten (empty while not determinable).",
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/RentePostenDto"
+              "$ref": "#/components/schemas/PensionItemDto"
             }
           },
-          "stand": {
-            "$ref": "#/components/schemas/RenteStandDto"
+          "status": {
+            "$ref": "#/components/schemas/PensionStatusDto"
           }
         },
         "required": [
@@ -3807,11 +3807,11 @@
           "jahresbetrag",
           "rentenbeginnJahr",
           "alterBeiRentenbeginn",
-          "posten",
-          "stand"
+          "items",
+          "status"
         ]
       },
-      "PutRentenartDto": {
+      "PutPensionKindDto": {
         "type": "object",
         "properties": {
           "art": {
@@ -3832,7 +3832,7 @@
           "art"
         ]
       },
-      "PutRenteFeldDto": {
+      "PutPensionFieldDto": {
         "type": "object",
         "properties": {
           "kind": {
@@ -3844,7 +3844,7 @@
             ],
             "description": "The field’s capture state."
           },
-          "wert": {
+          "value": {
             "type": "number",
             "example": 20000,
             "description": "The value — present only when kind === \"erfasst\" (validated via @steuereule/core)."
@@ -3854,7 +3854,7 @@
           "kind"
         ]
       },
-      "KapitalFeldDto": {
+      "CapitalFieldDto": {
         "type": "object",
         "properties": {
           "kind": {
@@ -3866,7 +3866,7 @@
             ],
             "description": "The field’s capture state."
           },
-          "wert": {
+          "value": {
             "type": "number",
             "example": 2500,
             "description": "The value — present only when kind === \"erfasst\" (validated via @steuereule/core)."
@@ -3876,7 +3876,7 @@
           "kind"
         ]
       },
-      "DepotEinordnungDto": {
+      "DepotClassificationDto": {
         "type": "object",
         "properties": {
           "kind": {
@@ -3895,7 +3895,7 @@
           "kind"
         ]
       },
-      "KapitalPostenDto": {
+      "CapitalItemDto": {
         "type": "object",
         "properties": {
           "id": {
@@ -3903,12 +3903,12 @@
             "example": "kapital",
             "description": "The stable posten id."
           },
-          "betrag": {
+          "amount": {
             "type": "number",
             "example": 2500,
             "description": "The Kapitalerträge (whole euros)."
           },
-          "herkunft": {
+          "provenance": {
             "type": "string",
             "example": "eingabe",
             "description": "The Herkunft (Quelle art) of the amount."
@@ -3916,11 +3916,11 @@
         },
         "required": [
           "id",
-          "betrag",
-          "herkunft"
+          "amount",
+          "provenance"
         ]
       },
-      "KapitalStandDto": {
+      "CapitalStatusDto": {
         "type": "object",
         "properties": {
           "kind": {
@@ -3943,15 +3943,15 @@
             "type": "number",
             "description": "Sum of Anrechnung Posten (whole euros)."
           },
-          "offenePosten": {
+          "openItems": {
             "type": "number",
             "description": "Required-but-empty line items (only when offen)."
           },
-          "konflikte": {
+          "conflicts": {
             "type": "number",
             "description": "Open conflicts (only when offen)."
           },
-          "gegated": {
+          "gated": {
             "description": "Gated Einkunftsarten (only when offen).",
             "type": "array",
             "items": {
@@ -3966,25 +3966,25 @@
           "anrechnung"
         ]
       },
-      "KapitalResponseDto": {
+      "CapitalResponseDto": {
         "type": "object",
         "properties": {
           "kapitalertraege": {
-            "$ref": "#/components/schemas/KapitalFeldDto"
+            "$ref": "#/components/schemas/CapitalFieldDto"
           },
           "sparerPauschbetrag": {
-            "$ref": "#/components/schemas/KapitalFeldDto"
+            "$ref": "#/components/schemas/CapitalFieldDto"
           },
           "kapitalertragsteuer": {
-            "$ref": "#/components/schemas/KapitalFeldDto"
+            "$ref": "#/components/schemas/CapitalFieldDto"
           },
           "solidaritaetszuschlag": {
-            "$ref": "#/components/schemas/KapitalFeldDto"
+            "$ref": "#/components/schemas/CapitalFieldDto"
           },
           "kirchensteuer": {
-            "$ref": "#/components/schemas/KapitalFeldDto"
+            "$ref": "#/components/schemas/CapitalFieldDto"
           },
-          "pflichtfelder": {
+          "requiredFields": {
             "type": "array",
             "description": "The fields Anlage KAP needs for this depot.",
             "items": {
@@ -3999,17 +3999,17 @@
             }
           },
           "depot": {
-            "$ref": "#/components/schemas/DepotEinordnungDto"
+            "$ref": "#/components/schemas/DepotClassificationDto"
           },
-          "posten": {
+          "items": {
             "description": "The Kapital-Posten (empty while not determinable).",
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/KapitalPostenDto"
+              "$ref": "#/components/schemas/CapitalItemDto"
             }
           },
-          "stand": {
-            "$ref": "#/components/schemas/KapitalStandDto"
+          "status": {
+            "$ref": "#/components/schemas/CapitalStatusDto"
           },
           "inhaber": {
             "type": "string",
@@ -4028,14 +4028,14 @@
           "kapitalertragsteuer",
           "solidaritaetszuschlag",
           "kirchensteuer",
-          "pflichtfelder",
+          "requiredFields",
           "depot",
-          "posten",
-          "stand",
+          "items",
+          "status",
           "inhaber"
         ]
       },
-      "PutKapitalInhaberDto": {
+      "PutCapitalOwnerDto": {
         "type": "object",
         "properties": {
           "inhaber": {
@@ -4052,7 +4052,7 @@
           "inhaber"
         ]
       },
-      "PutKapitalFeldDto": {
+      "PutCapitalFieldDto": {
         "type": "object",
         "properties": {
           "kind": {
@@ -4064,7 +4064,7 @@
             ],
             "description": "The field’s capture state."
           },
-          "wert": {
+          "value": {
             "type": "number",
             "example": 2500,
             "description": "The value — present only when kind === \"erfasst\" (validated via @steuereule/core)."
@@ -4074,7 +4074,7 @@
           "kind"
         ]
       },
-      "UnschaerfeDto": {
+      "UncertaintyDto": {
         "type": "object",
         "properties": {
           "kind": {
@@ -4085,12 +4085,12 @@
             ],
             "example": "bestimmt"
           },
-          "obergrenze": {
+          "upperLimit": {
             "type": "number",
             "example": 0,
             "description": "The computed bound (only when kind === \"bestimmt\")."
           },
-          "grund": {
+          "reason": {
             "type": "string",
             "enum": [
               "progressionsvorbehalt-nicht-eingegeben"
@@ -4102,7 +4102,7 @@
           "kind"
         ]
       },
-      "GuenstigerpruefungHerkunftDto": {
+      "MostFavourableCheckSourceDto": {
         "type": "object",
         "properties": {
           "kapitalertraege": {
@@ -4110,17 +4110,17 @@
             "example": 20000,
             "description": "The Kapitalerträge (whole euros) — the basis of both amounts."
           },
-          "uebrigesZvE": {
+          "remainingZvE": {
             "type": "number",
             "example": 60000,
             "description": "The übrige zvE-basis (Einnahmen-Basis from @steuereule/core — layer 3 open, no real zvE yet)."
           },
-          "sparerpauschbetrag": {
+          "saversAllowance": {
             "type": "number",
             "example": 1000,
             "description": "The applied Sparerpauschbetrag (§ 20 Abs. 9 EStG)."
           },
-          "veranlagung": {
+          "assessmentType": {
             "type": "string",
             "enum": [
               "einzel",
@@ -4128,7 +4128,7 @@
             ],
             "description": "Which Veranlagungsart both amounts compute."
           },
-          "bestandteile": {
+          "components": {
             "example": [
               "einkommensteuer",
               "solidaritaetszuschlag"
@@ -4142,13 +4142,13 @@
         },
         "required": [
           "kapitalertraege",
-          "uebrigesZvE",
-          "sparerpauschbetrag",
-          "veranlagung",
-          "bestandteile"
+          "remainingZvE",
+          "saversAllowance",
+          "assessmentType",
+          "components"
         ]
       },
-      "GuenstigerpruefungDto": {
+      "MostFavourableCheckDto": {
         "type": "object",
         "properties": {
           "kind": {
@@ -4161,7 +4161,7 @@
             ],
             "example": "eindeutig"
           },
-          "empfehlung": {
+          "recommendation": {
             "type": "string",
             "enum": [
               "abgeltung",
@@ -4169,12 +4169,12 @@
             ],
             "description": "The recommendation (only when kind === \"eindeutig\")."
           },
-          "abgeltung": {
+          "flatRateTax": {
             "type": "number",
             "example": 4750,
             "description": "Abgeltungsteuer + Soli + KiSt-Ermäßigung (only when kind !== \"nicht-anwendbar\")."
           },
-          "persoenlich": {
+          "personal": {
             "type": "number",
             "example": 8482,
             "description": "The personal (tariff) tax on the capital income (only when kind !== \"nicht-anwendbar\")."
@@ -4184,23 +4184,23 @@
             "example": 3732,
             "description": "persoenlich − abgeltung (only when kind !== \"nicht-anwendbar\")."
           },
-          "unschaerfe": {
+          "uncertainty": {
             "description": "The computed margin (only when kind !== \"nicht-anwendbar\").",
             "allOf": [
               {
-                "$ref": "#/components/schemas/UnschaerfeDto"
+                "$ref": "#/components/schemas/UncertaintyDto"
               }
             ]
           },
-          "herkunft": {
+          "provenance": {
             "description": "Origin metadata on both numbers (only when kind !== \"nicht-anwendbar\").",
             "allOf": [
               {
-                "$ref": "#/components/schemas/GuenstigerpruefungHerkunftDto"
+                "$ref": "#/components/schemas/MostFavourableCheckSourceDto"
               }
             ]
           },
-          "grund": {
+          "reason": {
             "type": "string",
             "enum": [
               "keine-abgeltung-einbehalten",
@@ -4215,7 +4215,7 @@
           "kind"
         ]
       },
-      "VermietungEinordnungDto": {
+      "RentalClassificationDto": {
         "type": "object",
         "properties": {
           "kind": {
@@ -4234,7 +4234,7 @@
           "kind"
         ]
       },
-      "VermietungFeldDto": {
+      "RentalFieldDto": {
         "type": "object",
         "properties": {
           "kind": {
@@ -4246,7 +4246,7 @@
             ],
             "description": "The field’s capture state."
           },
-          "wert": {
+          "value": {
             "type": "number",
             "example": 12000,
             "description": "The value — present only when kind === \"erfasst\" (validated via @steuereule/core)."
@@ -4256,26 +4256,26 @@
           "kind"
         ]
       },
-      "VermietungAfADto": {
+      "RentalDepreciationDto": {
         "type": "object",
         "properties": {
-          "betrag": {
+          "amount": {
             "type": "number",
             "example": 4000,
             "description": "Anschaffungskosten × AfA-Satz, rounded to whole euros."
           },
-          "herkunft": {
+          "provenance": {
             "type": "string",
             "example": "§ 7 Abs. 4 Satz 1 EStG — lineare AfA 2 % bei Baujahr 1990",
             "description": "The statutory citation that produced the percentage."
           }
         },
         "required": [
-          "betrag",
-          "herkunft"
+          "amount",
+          "provenance"
         ]
       },
-      "VermietungsobjektFaktenDto": {
+      "RentalPropertyFactsDto": {
         "type": "object",
         "properties": {
           "einnahmen": {
@@ -4290,17 +4290,17 @@
             "example": 1500,
             "description": "The captured Werbungskosten (0 = the user entered 0), or null while open."
           },
-          "afa": {
+          "depreciation": {
             "nullable": true,
             "description": "The computed lineare AfA with its § 7 Abs. 4 Herkunft, or null while open.",
             "type": "object",
             "allOf": [
               {
-                "$ref": "#/components/schemas/VermietungAfADto"
+                "$ref": "#/components/schemas/RentalDepreciationDto"
               }
             ]
           },
-          "offenePosten": {
+          "openItems": {
             "type": "number",
             "example": 0,
             "description": "The blocked results of this object (Mieteinnahmen/AfA/Werbungskosten — max 3)."
@@ -4309,11 +4309,11 @@
         "required": [
           "einnahmen",
           "werbungskosten",
-          "afa",
-          "offenePosten"
+          "depreciation",
+          "openItems"
         ]
       },
-      "VermietungsobjektDto": {
+      "RentalPropertyDto": {
         "type": "object",
         "properties": {
           "id": {
@@ -4322,16 +4322,16 @@
             "description": "The stable object id (assigned by the API on create)."
           },
           "mieteinnahmen": {
-            "$ref": "#/components/schemas/VermietungFeldDto"
+            "$ref": "#/components/schemas/RentalFieldDto"
           },
           "anschaffungskosten": {
-            "$ref": "#/components/schemas/VermietungFeldDto"
+            "$ref": "#/components/schemas/RentalFieldDto"
           },
           "baujahr": {
-            "$ref": "#/components/schemas/VermietungFeldDto"
+            "$ref": "#/components/schemas/RentalFieldDto"
           },
           "werbungskosten": {
-            "$ref": "#/components/schemas/VermietungFeldDto"
+            "$ref": "#/components/schemas/RentalFieldDto"
           },
           "strasse": {
             "type": "string",
@@ -4373,8 +4373,8 @@
             "type": "string",
             "nullable": true
           },
-          "fakten": {
-            "$ref": "#/components/schemas/VermietungsobjektFaktenDto"
+          "facts": {
+            "$ref": "#/components/schemas/RentalPropertyFactsDto"
           }
         },
         "required": [
@@ -4393,10 +4393,10 @@
           "schuldzinsen",
           "einheiten",
           "anteilA",
-          "fakten"
+          "facts"
         ]
       },
-      "VermietungStandDto": {
+      "RentalStatusDto": {
         "type": "object",
         "properties": {
           "kind": {
@@ -4423,19 +4423,19 @@
             "type": "number",
             "description": "Sum of CAPTURED Werbungskosten — reported, never subtracted (partial truth as a partial truth)."
           },
-          "afa": {
+          "depreciation": {
             "type": "number",
             "description": "Sum of the computed lineare AfA."
           },
-          "offenePosten": {
+          "openItems": {
             "type": "number",
             "description": "Required-but-empty results across all objects."
           },
-          "konflikte": {
+          "conflicts": {
             "type": "number",
             "description": "Open conflicts (always 0 this slice)."
           },
-          "gegated": {
+          "gated": {
             "description": "Gated Einkunftsarten (only when offen).",
             "type": "array",
             "items": {
@@ -4449,35 +4449,35 @@
           "vorsorgeaufwand",
           "anrechnung",
           "werbungskosten",
-          "afa",
-          "offenePosten",
-          "konflikte"
+          "depreciation",
+          "openItems",
+          "conflicts"
         ]
       },
-      "VermietungResponseDto": {
+      "RentalResponseDto": {
         "type": "object",
         "properties": {
-          "einordnung": {
-            "$ref": "#/components/schemas/VermietungEinordnungDto"
+          "classification": {
+            "$ref": "#/components/schemas/RentalClassificationDto"
           },
-          "objekte": {
+          "properties": {
             "description": "The objects, oldest first.",
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/VermietungsobjektDto"
+              "$ref": "#/components/schemas/RentalPropertyDto"
             }
           },
-          "stand": {
-            "$ref": "#/components/schemas/VermietungStandDto"
+          "status": {
+            "$ref": "#/components/schemas/RentalStatusDto"
           }
         },
         "required": [
-          "einordnung",
-          "objekte",
-          "stand"
+          "classification",
+          "properties",
+          "status"
         ]
       },
-      "PutVermietungFeldDto": {
+      "PutRentalFieldDto": {
         "type": "object",
         "properties": {
           "kind": {
@@ -4489,7 +4489,7 @@
             ],
             "description": "The field’s capture state."
           },
-          "wert": {
+          "value": {
             "type": "number",
             "example": 12000,
             "description": "The value — present only when kind === \"erfasst\" (validated via @steuereule/core)."
@@ -4499,7 +4499,7 @@
           "kind"
         ]
       },
-      "PutVermietungAdresseDto": {
+      "PutRentalAddressDto": {
         "type": "object",
         "properties": {
           "strasse": {
@@ -4548,14 +4548,14 @@
           }
         }
       },
-      "LohnausweisFeldDto": {
+      "SalaryCertificateFieldDto": {
         "type": "object",
         "properties": {
           "id": {
             "type": "string",
             "description": "The machine field id (LohnausweisFeldId)."
           },
-          "ziffer": {
+          "digit": {
             "type": "string",
             "description": "The box number on the paper (1–15)."
           },
@@ -4568,7 +4568,7 @@
             ],
             "description": "The field’s capture state."
           },
-          "wert": {
+          "value": {
             "type": "number",
             "example": 84000,
             "description": "The whole-CHF amount — present only when kind === \"erfasst\"."
@@ -4576,24 +4576,24 @@
         },
         "required": [
           "id",
-          "ziffer",
+          "digit",
           "kind"
         ]
       },
-      "WechselkursDto": {
+      "ExchangeRateDto": {
         "type": "object",
         "properties": {
-          "monat": {
+          "month": {
             "type": "string",
             "example": "2026-01",
             "description": "yyyy-mm the rate applies to."
           },
-          "kurs": {
+          "rate": {
             "type": "number",
             "example": 0.9412,
             "description": "EUR per 1 CHF, strictly positive."
           },
-          "modus": {
+          "mode": {
             "type": "string",
             "enum": [
               "amtlich",
@@ -4601,18 +4601,18 @@
             ],
             "description": "The rate mode (ADR-012)."
           },
-          "belegId": {
+          "receiptId": {
             "type": "string",
             "description": "Beleg id — required iff modus === \"tatsaechlich\"."
           }
         },
         "required": [
-          "monat",
-          "kurs",
-          "modus"
+          "month",
+          "rate",
+          "mode"
         ]
       },
-      "ChPostenDto": {
+      "ChItemDto": {
         "type": "object",
         "properties": {
           "id": {
@@ -4630,19 +4630,19 @@
             ],
             "description": "The CH line-item kind."
           },
-          "ziffer": {
+          "digit": {
             "type": "string",
             "description": "The Lohnausweis Ziffer (when from the Lohnausweis)."
           },
-          "betragChf": {
+          "amountChf": {
             "type": "number",
             "description": "CHF amount as entered (ADR-036: CHF führt)."
           },
-          "betragEur": {
+          "amountEur": {
             "type": "number",
             "description": "EUR amount = chfNachEur(betragChf, kurs), rounded to cents."
           },
-          "rolle": {
+          "role": {
             "type": "string",
             "enum": [
               "einnahme",
@@ -4651,11 +4651,11 @@
             ],
             "description": "The fold bucket (Rolle)."
           },
-          "wechselkurs": {
+          "exchangeRate": {
             "description": "The Kurs the conversion was made with.",
             "allOf": [
               {
-                "$ref": "#/components/schemas/WechselkursDto"
+                "$ref": "#/components/schemas/ExchangeRateDto"
               }
             ]
           }
@@ -4663,13 +4663,13 @@
         "required": [
           "id",
           "art",
-          "betragChf",
-          "betragEur",
-          "rolle",
-          "wechselkurs"
+          "amountChf",
+          "amountEur",
+          "role",
+          "exchangeRate"
         ]
       },
-      "BerechnungsstandDto": {
+      "CalculationStatusDto": {
         "type": "object",
         "properties": {
           "kind": {
@@ -4692,15 +4692,15 @@
             "type": "number",
             "description": "Sum of Anrechnung Posten (whole euros)."
           },
-          "offenePosten": {
+          "openItems": {
             "type": "number",
             "description": "Required-but-empty line items (only when offen)."
           },
-          "konflikte": {
+          "conflicts": {
             "type": "number",
             "description": "Open conflicts (only when offen)."
           },
-          "gegated": {
+          "gated": {
             "description": "Gated Einkunftsarten (only when offen).",
             "type": "array",
             "items": {
@@ -4715,7 +4715,7 @@
           "anrechnung"
         ]
       },
-      "NGreAngabenDto": {
+      "NGreDetailsDto": {
         "type": "object",
         "properties": {
           "arbeitgeberName": {
@@ -4762,7 +4762,7 @@
             "type": "number",
             "nullable": true
           },
-          "sonderfaelle": {
+          "specialCases": {
             "type": "boolean",
             "nullable": true
           }
@@ -4779,17 +4779,17 @@
           "krankentaggeldArbeitgeberChf",
           "nbuvArbeitgeberProzent",
           "nbuvArbeitgeberChf",
-          "sonderfaelle"
+          "specialCases"
         ]
       },
-      "ChLohnausweisResponseDto": {
+      "ChSalaryCertificateResponseDto": {
         "type": "object",
         "properties": {
-          "felder": {
+          "fields": {
             "description": "The 14 CHF-betrag fields, in paper order (Ziffern 1–14).",
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/LohnausweisFeldDto"
+              "$ref": "#/components/schemas/SalaryCertificateFieldDto"
             }
           },
           "bemerkungen": {
@@ -4797,13 +4797,13 @@
             "nullable": true,
             "description": "Ziffer 15 Bemerkungen (Freitext), null when not entered."
           },
-          "wechselkurs": {
+          "exchangeRate": {
             "nullable": true,
             "description": "The Wechselkurs, null when not yet set.",
             "type": "object",
             "allOf": [
               {
-                "$ref": "#/components/schemas/WechselkursDto"
+                "$ref": "#/components/schemas/ExchangeRateDto"
               }
             ]
           },
@@ -4816,20 +4816,20 @@
             "nullable": true,
             "description": "The derived Grenzgänger-Status (ADR-013); null while ch-wohnsitz is unanswered."
           },
-          "posten": {
+          "items": {
             "description": "The folded CH line items (empty until the Kurs + status exist).",
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/ChPostenDto"
+              "$ref": "#/components/schemas/ChItemDto"
             }
           },
-          "stand": {
+          "foldStatus": {
             "nullable": true,
             "description": "The fold result, null until foldable.",
             "type": "object",
             "allOf": [
               {
-                "$ref": "#/components/schemas/BerechnungsstandDto"
+                "$ref": "#/components/schemas/CalculationStatusDto"
               }
             ]
           },
@@ -4837,22 +4837,22 @@
             "description": "The Anlage-N-Gre facts beyond the Lohnausweis.",
             "allOf": [
               {
-                "$ref": "#/components/schemas/NGreAngabenDto"
+                "$ref": "#/components/schemas/NGreDetailsDto"
               }
             ]
           }
         },
         "required": [
-          "felder",
+          "fields",
           "bemerkungen",
-          "wechselkurs",
+          "exchangeRate",
           "status",
-          "posten",
-          "stand",
+          "items",
+          "foldStatus",
           "nGre"
         ]
       },
-      "PutLohnausweisFeldDto": {
+      "PutSalaryCertificateFieldDto": {
         "type": "object",
         "properties": {
           "kind": {
@@ -4864,7 +4864,7 @@
             ],
             "description": "The field’s capture state."
           },
-          "wert": {
+          "value": {
             "type": "number",
             "example": 84000,
             "description": "The whole-CHF amount — present only when kind === \"erfasst\" (validated via @steuereule/core)."
@@ -4874,7 +4874,7 @@
           "kind"
         ]
       },
-      "PutBemerkungenDto": {
+      "PutRemarksDto": {
         "type": "object",
         "properties": {
           "text": {
@@ -4884,7 +4884,7 @@
           }
         }
       },
-      "PutVorsorgeDto": {
+      "PutProvisionDto": {
         "type": "object",
         "properties": {
           "saeule3aChf": {
@@ -4957,27 +4957,27 @@
             "nullable": true,
             "description": "Whole CHF — employer NBUV contribution; only needed when the employer pays 100 %."
           },
-          "sonderfaelle": {
+          "specialCases": {
             "type": "boolean",
             "nullable": true,
             "description": "Any of N-Gre Zeilen 7, 9–14, 16, 17 or 20–22 applies."
           }
         }
       },
-      "PutWechselkursDto": {
+      "PutExchangeRateDto": {
         "type": "object",
         "properties": {
-          "monat": {
+          "month": {
             "type": "string",
             "example": "2026-01",
             "description": "yyyy-mm the rate applies to."
           },
-          "kurs": {
+          "rate": {
             "type": "number",
             "example": 0.9412,
             "description": "EUR per 1 CHF, strictly positive."
           },
-          "modus": {
+          "mode": {
             "type": "string",
             "enum": [
               "amtlich",
@@ -4985,18 +4985,18 @@
             ],
             "description": "The rate mode (ADR-012)."
           },
-          "belegId": {
+          "receiptId": {
             "type": "string",
             "description": "Beleg id — required iff modus === \"tatsaechlich\"."
           }
         },
         "required": [
-          "monat",
-          "kurs",
-          "modus"
+          "month",
+          "rate",
+          "mode"
         ]
       },
-      "ArbeitswegEingabenDto": {
+      "CommuteInputsDto": {
         "type": "object",
         "properties": {
           "arbeitstage": {
@@ -5069,74 +5069,74 @@
           "taetigkeitsstaette"
         ]
       },
-      "WerktageDto": {
+      "WorkdaysDto": {
         "type": "object",
         "properties": {
-          "wochentage": {
+          "weekdays": {
             "type": "number"
           },
-          "werktage": {
+          "workdays": {
             "type": "number"
           },
-          "pendlertage": {
+          "commuteDays": {
             "type": "number"
           }
         },
         "required": [
-          "wochentage",
-          "werktage",
-          "pendlertage"
+          "weekdays",
+          "workdays",
+          "commuteDays"
         ]
       },
-      "ArbeitswegResponseDto": {
+      "CommuteResponseDto": {
         "type": "object",
         "properties": {
-          "eingaben": {
+          "inputs": {
             "nullable": true,
             "type": "object",
             "allOf": [
               {
-                "$ref": "#/components/schemas/ArbeitswegEingabenDto"
+                "$ref": "#/components/schemas/CommuteInputsDto"
               }
             ]
           },
-          "werktage": {
+          "workdays": {
             "nullable": true,
             "type": "object",
             "allOf": [
               {
-                "$ref": "#/components/schemas/WerktageDto"
+                "$ref": "#/components/schemas/WorkdaysDto"
               }
             ]
           },
-          "pendlerpauschale": {
+          "commuterAllowance": {
             "type": "number",
             "nullable": true,
             "description": "Entfernungspauschale in whole euros; null until distance and means of travel are known."
           }
         },
         "required": [
-          "eingaben",
-          "werktage",
-          "pendlerpauschale"
+          "inputs",
+          "workdays",
+          "commuterAllowance"
         ]
       },
-      "SpanneDto": {
+      "RangeDto": {
         "type": "object",
         "properties": {
-          "von": {
+          "from": {
             "type": "number"
           },
-          "bis": {
+          "to": {
             "type": "number"
           }
         },
         "required": [
-          "von",
-          "bis"
+          "from",
+          "to"
         ]
       },
-      "SteuerschaetzungDto": {
+      "TaxEstimateDto": {
         "type": "object",
         "properties": {
           "kind": {
@@ -5147,34 +5147,34 @@
               "nicht-moeglich"
             ]
           },
-          "ergebnis": {
+          "result": {
             "description": "Positive = Erstattung, negative = Nachzahlung.",
             "allOf": [
               {
-                "$ref": "#/components/schemas/SpanneDto"
+                "$ref": "#/components/schemas/RangeDto"
               }
             ]
           },
-          "einkommensteuer": {
-            "$ref": "#/components/schemas/SpanneDto"
+          "incomeTax": {
+            "$ref": "#/components/schemas/RangeDto"
           },
-          "zuVersteuerndesEinkommen": {
-            "$ref": "#/components/schemas/SpanneDto"
+          "taxableIncome": {
+            "$ref": "#/components/schemas/RangeDto"
           },
-          "vorsorge": {
-            "$ref": "#/components/schemas/SpanneDto"
+          "provision": {
+            "$ref": "#/components/schemas/RangeDto"
           },
           "werbungskosten": {
             "type": "number"
           },
-          "sonderausgaben": {
+          "specialExpenses": {
             "type": "number"
           },
           "anrechnung": {
             "type": "number",
             "description": "Lohnsteuer or creditable Swiss Quellensteuer already paid."
           },
-          "kirchensteuerOffen": {
+          "churchTaxOpen": {
             "type": "boolean",
             "description": "True when church tax applies but is not part of the estimate."
           },
@@ -5184,7 +5184,7 @@
               "type": "string"
             }
           },
-          "grund": {
+          "reason": {
             "type": "string",
             "enum": [
               "nur-angestellte",
@@ -5198,7 +5198,7 @@
           "kind"
         ]
       },
-      "KindResponseDto": {
+      "ChildResponseDto": {
         "type": "object",
         "properties": {
           "id": {
@@ -5313,13 +5313,13 @@
             "example": "2748",
             "description": "Zeile 6 (Kz 15): Schweizer Kinderzulage in whole EUR."
           },
-          "differenzkindergeldEur": {
+          "differentialChildBenefitEur": {
             "type": "string",
             "nullable": true,
             "example": "312",
             "description": "Differenz-Kindergeld der deutschen Familienkasse in whole EUR."
           },
-          "gesamtanspruchEur": {
+          "totalClaimEur": {
             "type": "string",
             "nullable": true,
             "example": "3060",
@@ -5354,27 +5354,27 @@
           "kinder": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/KindResponseDto"
+              "$ref": "#/components/schemas/ChildResponseDto"
             }
           },
-          "anzahl": {
+          "count": {
             "type": "number",
             "example": 1
           },
-          "kindergeldSumme": {
+          "childBenefitSum": {
             "type": "number",
             "example": 3000
           },
-          "freibetragGesamt": {
+          "totalAllowance": {
             "type": "number",
             "example": 9600
           },
-          "schweizerKinderzulageSumme": {
+          "swissFamilyAllowanceSum": {
             "type": "number",
             "example": 5496,
             "description": "Summe der Schweizer Kinderzulagen in EUR."
           },
-          "differenzkindergeldSumme": {
+          "differentialChildBenefitSum": {
             "type": "number",
             "example": 624,
             "description": "Summe des Differenz-Kindergeldes in EUR."
@@ -5382,14 +5382,14 @@
         },
         "required": [
           "kinder",
-          "anzahl",
-          "kindergeldSumme",
-          "freibetragGesamt",
-          "schweizerKinderzulageSumme",
-          "differenzkindergeldSumme"
+          "count",
+          "childBenefitSum",
+          "totalAllowance",
+          "swissFamilyAllowanceSum",
+          "differentialChildBenefitSum"
         ]
       },
-      "CreateKindDto": {
+      "CreateChildDto": {
         "type": "object",
         "properties": {
           "kindschaftsverhaeltnis": {
@@ -5517,7 +5517,7 @@
           "geburtsdatum"
         ]
       },
-      "UpdateKindDto": {
+      "UpdateChildDto": {
         "type": "object",
         "properties": {
           "kindschaftsverhaeltnis": {
@@ -5639,7 +5639,7 @@
           }
         }
       },
-      "ZuordnungDto": {
+      "AssignmentDto": {
         "type": "object",
         "properties": {
           "kind": {
@@ -5656,12 +5656,12 @@
             "example": 2026,
             "description": "vorgeschlagen: the suggested year; zugeordnet/konflikt: the confirmed year."
           },
-          "vorschlagsJahr": {
+          "proposalYear": {
             "type": "number",
             "example": 2025,
             "description": "konflikt only: the contradicting date-derived suggestion."
           },
-          "herkunft": {
+          "provenance": {
             "type": "string",
             "enum": [
               "zahlungsdatum",
@@ -5674,7 +5674,7 @@
           "kind"
         ]
       },
-      "BelegResponseDto": {
+      "ReceiptResponseDto": {
         "type": "object",
         "properties": {
           "id": {
@@ -5704,11 +5704,11 @@
             "example": "2026-01-15",
             "description": "Payment date (ISO yyyy-mm-dd)."
           },
-          "zuordnung": {
+          "assignment": {
             "description": "@steuereule/core’s zuordnungAusDaten — never recomputed elsewhere.",
             "allOf": [
               {
-                "$ref": "#/components/schemas/ZuordnungDto"
+                "$ref": "#/components/schemas/AssignmentDto"
               }
             ]
           }
@@ -5719,10 +5719,10 @@
           "art",
           "belegdatum",
           "zahlungsdatum",
-          "zuordnung"
+          "assignment"
         ]
       },
-      "CreateBelegDto": {
+      "CreateReceiptDto": {
         "type": "object",
         "properties": {
           "dateiname": {
@@ -5762,7 +5762,7 @@
           "dateiname"
         ]
       },
-      "SetZuordnungDto": {
+      "SetAssignmentDto": {
         "type": "object",
         "properties": {
           "steuerjahr": {
@@ -5780,7 +5780,7 @@
           "steuerjahr"
         ]
       },
-      "BescheidFeldDto": {
+      "AssessmentFieldDto": {
         "type": "object",
         "properties": {
           "id": {
@@ -5796,7 +5796,7 @@
             ],
             "description": "The field’s capture state."
           },
-          "wert": {
+          "value": {
             "type": "number",
             "example": 50000,
             "description": "The whole-euro amount — present only when kind === \"erfasst\" (erstattung may be negative)."
@@ -5807,10 +5807,10 @@
           "kind"
         ]
       },
-      "BescheidAbweichungDto": {
+      "AssessmentDeviationDto": {
         "type": "object",
         "properties": {
-          "feld": {
+          "field": {
             "type": "string",
             "enum": [
               "einnahmen",
@@ -5818,47 +5818,47 @@
               "anrechnung"
             ]
           },
-          "bescheid": {
+          "assessment": {
             "type": "number",
             "description": "The Bescheid figure (whole euros)."
           },
-          "berechnet": {
+          "calculated": {
             "type": "number",
             "description": "The computed figure (whole euros)."
           },
-          "differenz": {
+          "difference": {
             "type": "number",
             "description": "bescheid − berechnet."
           }
         },
         "required": [
-          "feld",
-          "bescheid",
-          "berechnet",
-          "differenz"
+          "field",
+          "assessment",
+          "calculated",
+          "difference"
         ]
       },
-      "BescheidAbgleichDto": {
+      "AssessmentComparisonDto": {
         "type": "object",
         "properties": {
-          "abweichungen": {
+          "deviations": {
             "description": "The deviations (empty = alles stimmt überein).",
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/BescheidAbweichungDto"
+              "$ref": "#/components/schemas/AssessmentDeviationDto"
             }
           },
-          "berechnungUnvollstaendig": {
+          "calculationIncomplete": {
             "type": "boolean",
             "description": "The computed side is incomplete (berechne returned \"offen\")."
           }
         },
         "required": [
-          "abweichungen",
-          "berechnungUnvollstaendig"
+          "deviations",
+          "calculationIncomplete"
         ]
       },
-      "BescheidFristDto": {
+      "AssessmentDeadlineDto": {
         "type": "object",
         "properties": {
           "bescheiddatum": {
@@ -5866,12 +5866,12 @@
             "nullable": true,
             "description": "Bescheiddatum (ISO yyyy-mm-dd), null until set."
           },
-          "fristEnde": {
+          "deadlineEnd": {
             "type": "string",
             "nullable": true,
             "description": "Einspruchsfrist-Ende (Bescheiddatum + 1 Monat), null until the datum is set."
           },
-          "verbleibendeTage": {
+          "remainingDays": {
             "type": "number",
             "nullable": true,
             "description": "Whole days left (negative = abgelaufen), null until the datum is set."
@@ -5879,11 +5879,11 @@
         },
         "required": [
           "bescheiddatum",
-          "fristEnde",
-          "verbleibendeTage"
+          "deadlineEnd",
+          "remainingDays"
         ]
       },
-      "BescheidResponseDto": {
+      "AssessmentResponseDto": {
         "type": "object",
         "properties": {
           "status": {
@@ -5905,18 +5905,18 @@
             "nullable": true,
             "description": "Einspruch-Grund (closed set), null until filed."
           },
-          "felder": {
+          "fields": {
             "description": "The five figures, in paper order.",
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/BescheidFeldDto"
+              "$ref": "#/components/schemas/AssessmentFieldDto"
             }
           },
-          "abgleich": {
+          "reconciliation": {
             "description": "The Abgleich (Bescheid vs. berechnet).",
             "allOf": [
               {
-                "$ref": "#/components/schemas/BescheidAbgleichDto"
+                "$ref": "#/components/schemas/AssessmentComparisonDto"
               }
             ]
           },
@@ -5924,11 +5924,11 @@
             "description": "The § 355 AO Einspruchsfrist.",
             "allOf": [
               {
-                "$ref": "#/components/schemas/BescheidFristDto"
+                "$ref": "#/components/schemas/AssessmentDeadlineDto"
               }
             ]
           },
-          "naechsteZustaende": {
+          "nextStates": {
             "description": "The legal next sub-states (for the UI to offer only what is legal).",
             "type": "array",
             "items": {
@@ -5940,13 +5940,13 @@
           "status",
           "bescheiddatum",
           "einspruchGrund",
-          "felder",
-          "abgleich",
+          "fields",
+          "reconciliation",
           "frist",
-          "naechsteZustaende"
+          "nextStates"
         ]
       },
-      "PutBescheidFeldDto": {
+      "PutAssessmentFieldDto": {
         "type": "object",
         "properties": {
           "kind": {
@@ -5958,7 +5958,7 @@
             ],
             "description": "The field’s capture state."
           },
-          "wert": {
+          "value": {
             "type": "number",
             "example": 50000,
             "description": "The whole-euro amount — present only when kind === \"erfasst\". Sign/validity per field is validated via @steuereule/core (erstattung may be negative)."
@@ -5968,10 +5968,10 @@
           "kind"
         ]
       },
-      "SetBescheidDatumDto": {
+      "SetAssessmentDateDto": {
         "type": "object",
         "properties": {
-          "datum": {
+          "date": {
             "type": "string",
             "nullable": true,
             "example": "2026-04-15",
@@ -5979,7 +5979,7 @@
           }
         }
       },
-      "SetBescheidStatusDto": {
+      "SetAssessmentStatusDto": {
         "type": "object",
         "properties": {
           "status": {
@@ -5996,10 +5996,10 @@
           "status"
         ]
       },
-      "SetEinspruchDto": {
+      "SetAppealDto": {
         "type": "object",
         "properties": {
-          "grund": {
+          "reason": {
             "type": "string",
             "enum": [
               "betrag-falsch",
@@ -6010,7 +6010,7 @@
           }
         },
         "required": [
-          "grund"
+          "reason"
         ]
       },
       "DeleteAccountRequestDto": {
@@ -6157,7 +6157,7 @@
       "ExportTaxDataEntryDto": {
         "type": "object",
         "properties": {
-          "bereich": {
+          "area": {
             "type": "string",
             "example": "Kapitalerträge"
           },
@@ -6166,7 +6166,7 @@
             "nullable": true,
             "example": 2025
           },
-          "felder": {
+          "fields": {
             "type": "object",
             "additionalProperties": {
               "oneOf": [
@@ -6189,9 +6189,9 @@
           }
         },
         "required": [
-          "bereich",
+          "area",
           "steuerjahr",
-          "felder"
+          "fields"
         ]
       },
       "ExportAccessLogEntryDto": {
@@ -6262,7 +6262,7 @@
           "accessLog"
         ]
       },
-      "VerbundenerAssistentDto": {
+      "ConnectedAssistantDto": {
         "type": "object",
         "properties": {
           "clientId": {
@@ -6273,11 +6273,11 @@
             "type": "string",
             "example": "Claude Desktop"
           },
-          "verbundenSeit": {
+          "linkedSince": {
             "type": "string",
             "example": "2026-11-03T18:00:00.000Z"
           },
-          "zuletztGenutzt": {
+          "lastUsed": {
             "type": "string",
             "example": "2026-11-03T19:30:00.000Z",
             "nullable": true
@@ -6286,10 +6286,10 @@
         "required": [
           "clientId",
           "name",
-          "verbundenSeit"
+          "linkedSince"
         ]
       },
-      "RevokeAssistentResponseDto": {
+      "RevokeAssistantResponseDto": {
         "type": "object",
         "properties": {
           "success": {
@@ -6453,7 +6453,7 @@
           "status"
         ]
       },
-      "VergleichsHerkunftDto": {
+      "ComparisonSourceDto": {
         "type": "object",
         "properties": {
           "zveA": {
@@ -6466,7 +6466,7 @@
             "example": 40000,
             "description": "The partner zvE-basis (query param — M1 does not yet collect it)."
           },
-          "bestandteile": {
+          "components": {
             "example": [
               "einkommensteuer",
               "solidaritaetszuschlag"
@@ -6481,10 +6481,10 @@
         "required": [
           "zveA",
           "zveB",
-          "bestandteile"
+          "components"
         ]
       },
-      "VeranlagungsartenvergleichDto": {
+      "FilingTypeComparisonDto": {
         "type": "object",
         "properties": {
           "kind": {
@@ -6497,7 +6497,7 @@
             ],
             "example": "eindeutig"
           },
-          "empfehlung": {
+          "recommendation": {
             "type": "string",
             "enum": [
               "einzel",
@@ -6505,12 +6505,12 @@
             ],
             "description": "The recommendation (only when kind === \"eindeutig\")."
           },
-          "einzel": {
+          "single": {
             "type": "number",
             "example": 21442,
             "description": "Full assessed tax, single filing (only when kind !== \"nicht-anwendbar\")."
           },
-          "zusammen": {
+          "joint": {
             "type": "number",
             "example": 21096,
             "description": "Full assessed tax, joint filing (only when kind !== \"nicht-anwendbar\")."
@@ -6520,23 +6520,23 @@
             "example": -346,
             "description": "zusammen − einzel (only when kind !== \"nicht-anwendbar\")."
           },
-          "unschaerfe": {
+          "uncertainty": {
             "description": "The computed margin (only when kind !== \"nicht-anwendbar\").",
             "allOf": [
               {
-                "$ref": "#/components/schemas/UnschaerfeDto"
+                "$ref": "#/components/schemas/UncertaintyDto"
               }
             ]
           },
-          "herkunft": {
+          "provenance": {
             "description": "Origin metadata on both numbers (only when kind !== \"nicht-anwendbar\").",
             "allOf": [
               {
-                "$ref": "#/components/schemas/VergleichsHerkunftDto"
+                "$ref": "#/components/schemas/ComparisonSourceDto"
               }
             ]
           },
-          "grund": {
+          "reason": {
             "type": "string",
             "enum": [
               "nicht-verheiratet",
@@ -6549,39 +6549,39 @@
           "kind"
         ]
       },
-      "VerspaetungszuschlagDto": {
+      "LateFilingFeeDto": {
         "type": "object",
         "properties": {
-          "mindestsatzEur": {
+          "minimumRateEur": {
             "type": "number",
             "example": 25,
             "description": "§ 152 Abs. 2 Satz 2 AO — der Mindestzuschlag je angefangenem Monat, in Euro."
           },
-          "prozentProMonat": {
+          "percentPerMonth": {
             "type": "number",
             "example": 0.25,
             "description": "§ 152 Abs. 2 Satz 1 AO — 0,25 % der festgesetzten Steuer je angefangenem Monat."
           }
         },
         "required": [
-          "mindestsatzEur",
-          "prozentProMonat"
+          "minimumRateEur",
+          "percentPerMonth"
         ]
       },
-      "FristenResponseDto": {
+      "DeadlinesResponseDto": {
         "type": "object",
         "properties": {
-          "abgabefrist": {
+          "filingDeadline": {
             "type": "string",
             "example": "2027-07-31",
             "description": "Die Abgabefrist (§ 149 Abs. 2 AO), ISO yyyy-mm-dd."
           },
-          "heute": {
+          "today": {
             "type": "string",
             "example": "2027-06-01",
             "description": "Der Server-Stichtag in Europe/Berlin, ISO yyyy-mm-dd."
           },
-          "stufe": {
+          "level": {
             "type": "string",
             "enum": [
               "keine",
@@ -6590,24 +6590,24 @@
             ],
             "description": "keine | warnung (ab 60 Tage vor der Frist) | abgelaufen."
           },
-          "verbleibendeTage": {
+          "remainingDays": {
             "type": "number",
             "example": 60,
             "description": "Whole days from heute (exclusive) to the frist; negative = abgelaufen."
           },
-          "verspaetungszuschlag": {
-            "$ref": "#/components/schemas/VerspaetungszuschlagDto"
+          "lateFilingSurcharge": {
+            "$ref": "#/components/schemas/LateFilingFeeDto"
           }
         },
         "required": [
-          "abgabefrist",
-          "heute",
-          "stufe",
-          "verbleibendeTage",
-          "verspaetungszuschlag"
+          "filingDeadline",
+          "today",
+          "level",
+          "remainingDays",
+          "lateFilingSurcharge"
         ]
       },
-      "UebernahmeKennzeichnungDto": {
+      "RolloverProvenanceDto": {
         "type": "object",
         "properties": {
           "postenKey": {
@@ -6632,22 +6632,22 @@
           "bestaetigt"
         ]
       },
-      "UebernahmeResponseDto": {
+      "RolloverResponseDto": {
         "type": "object",
         "properties": {
-          "kennzeichnungen": {
+          "markings": {
             "description": "Die Übernahme-Kennzeichnungen, älteste zuerst.",
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/UebernahmeKennzeichnungDto"
+              "$ref": "#/components/schemas/RolloverProvenanceDto"
             }
           }
         },
         "required": [
-          "kennzeichnungen"
+          "markings"
         ]
       },
-      "HerkunftDto": {
+      "ProvenanceDto": {
         "type": "object",
         "properties": {
           "art": {
@@ -6665,7 +6665,7 @@
             "example": "Claude",
             "description": "Name des Assistenten (art = assistent)."
           },
-          "belegId": {
+          "receiptId": {
             "type": "string",
             "description": "Der Beleg, aus dem der Wert stammt."
           },
@@ -6679,32 +6679,32 @@
           "art"
         ]
       },
-      "VorschlagDto": {
+      "ProposalDto": {
         "type": "object",
         "properties": {
-          "wert": {
+          "value": {
             "type": "string",
             "nullable": true,
             "example": "4800",
             "description": "Der vorgeschlagene Feld-Wert (null = leeren)."
           },
-          "herkunft": {
-            "$ref": "#/components/schemas/HerkunftDto"
+          "provenance": {
+            "$ref": "#/components/schemas/ProvenanceDto"
           }
         },
         "required": [
-          "wert",
-          "herkunft"
+          "value",
+          "provenance"
         ]
       },
-      "KennzeichnungWertDto": {
+      "FieldProvenanceDto": {
         "type": "object",
         "properties": {
           "key": {
             "type": "string",
             "example": "lstb.bruttoarbeitslohn"
           },
-          "maske": {
+          "screen": {
             "type": "string",
             "enum": [
               "profil",
@@ -6720,49 +6720,49 @@
             ],
             "example": "lstb"
           },
-          "instanz": {
+          "instance": {
             "type": "string",
             "nullable": true,
             "description": "Instanz (Vermietungsobjekt, Kind) oder null."
           },
-          "feld": {
+          "field": {
             "type": "string",
             "example": "bruttoarbeitslohn"
           },
-          "wert": {
+          "value": {
             "type": "string",
             "nullable": true,
             "example": "4750",
             "description": "Der aktuell gespeicherte Feld-Wert (null = offen, \"unklar\")."
           },
-          "herkunft": {
-            "$ref": "#/components/schemas/HerkunftDto"
+          "provenance": {
+            "$ref": "#/components/schemas/ProvenanceDto"
           },
           "bestaetigt": {
             "type": "boolean"
           },
-          "vorschlag": {
+          "proposal": {
             "nullable": true,
             "type": "object",
             "allOf": [
               {
-                "$ref": "#/components/schemas/VorschlagDto"
+                "$ref": "#/components/schemas/ProposalDto"
               }
             ]
           }
         },
         "required": [
           "key",
-          "maske",
-          "instanz",
-          "feld",
-          "wert",
-          "herkunft",
+          "screen",
+          "instance",
+          "field",
+          "value",
+          "provenance",
           "bestaetigt",
-          "vorschlag"
+          "proposal"
         ]
       },
-      "AnlageBestaetigungDto": {
+      "AnnexConfirmationDto": {
         "type": "object",
         "properties": {
           "anlage": {
@@ -6778,41 +6778,41 @@
             ],
             "example": "anlageN"
           },
-          "unbestaetigt": {
+          "unconfirmed": {
             "type": "number",
             "description": "Wie viele Werte dieser Anlage noch unbestätigt sind."
           },
-          "werte": {
+          "values": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/KennzeichnungWertDto"
+              "$ref": "#/components/schemas/FieldProvenanceDto"
             }
           }
         },
         "required": [
           "anlage",
-          "unbestaetigt",
-          "werte"
+          "unconfirmed",
+          "values"
         ]
       },
-      "BestaetigungResponseDto": {
+      "ConfirmationResponseDto": {
         "type": "object",
         "properties": {
-          "anlagen": {
+          "annexes": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/AnlageBestaetigungDto"
+              "$ref": "#/components/schemas/AnnexConfirmationDto"
             }
           }
         },
         "required": [
-          "anlagen"
+          "annexes"
         ]
       },
-      "VorschlagEntscheidungDto": {
+      "ProposalDecisionDto": {
         "type": "object",
         "properties": {
-          "entscheidung": {
+          "decision": {
             "type": "string",
             "enum": [
               "annehmen",
@@ -6821,10 +6821,10 @@
           }
         },
         "required": [
-          "entscheidung"
+          "decision"
         ]
       },
-      "FreischaltungStatusDto": {
+      "UnlockStatusDto": {
         "type": "object",
         "properties": {
           "status": {
@@ -6841,10 +6841,10 @@
           "status"
         ]
       },
-      "AusdruckPruefungDto": {
+      "PrintoutCheckDto": {
         "type": "object",
         "properties": {
-          "fehlend": {
+          "missing": {
             "example": [
               "iban",
               "anlageV"
@@ -6857,7 +6857,7 @@
           }
         },
         "required": [
-          "fehlend"
+          "missing"
         ]
       },
       "CheckoutResponseDto": {
@@ -6872,7 +6872,7 @@
           "checkoutUrl"
         ]
       },
-      "EulenEinstellungResponseDto": {
+      "OwlSettingResponseDto": {
         "type": "object",
         "properties": {
           "aktiviert": {
@@ -6889,7 +6889,7 @@
           "aktiviert"
         ]
       },
-      "SetEulenEinstellungDto": {
+      "SetOwlSettingDto": {
         "type": "object",
         "properties": {
           "aktiviert": {
@@ -6901,22 +6901,22 @@
           "aktiviert"
         ]
       },
-      "EulenWegDto": {
+      "OwlPathDto": {
         "type": "object",
         "properties": {
           "name": {
             "type": "string",
             "example": "Tagespauschale ansetzen"
           },
-          "betragEur": {
+          "amountEur": {
             "type": "number",
             "example": 300
           },
-          "beschreibung": {
+          "description": {
             "type": "string",
             "example": "Einfacher Nachweis ohne separates Arbeitszimmer"
           },
-          "risiko": {
+          "risk": {
             "type": "string",
             "enum": [
               "sicher",
@@ -6927,12 +6927,12 @@
         },
         "required": [
           "name",
-          "betragEur",
-          "beschreibung",
-          "risiko"
+          "amountEur",
+          "description",
+          "risk"
         ]
       },
-      "EulenKarteDto": {
+      "OwlCardDto": {
         "type": "object",
         "properties": {
           "id": {
@@ -6952,7 +6952,7 @@
               "lebenslage_hinweis"
             ]
           },
-          "kategorie": {
+          "category": {
             "type": "string",
             "enum": [
               "cockpit_proaktiv",
@@ -6960,42 +6960,42 @@
               "archiv_einspruch"
             ]
           },
-          "titel": {
+          "title": {
             "type": "string",
             "example": "Homeoffice-Tagespauschale 6 €"
           },
-          "botschaft": {
+          "message": {
             "type": "string",
             "example": "Du hast 50 Tage im Homeoffice gearbeitet."
           },
-          "begruendung": {
+          "reason": {
             "type": "string",
             "example": "weil der Gesetzgeber die Pauschale dauerhaft angehoben hat."
           },
-          "betragEur": {
+          "amountEur": {
             "type": "number",
             "nullable": true,
             "example": 300
           },
-          "rechtsstandDatum": {
+          "legalStatusDate": {
             "type": "string",
             "example": "01.01.2025"
           },
-          "quelleUebersetzt": {
+          "sourceTranslated": {
             "type": "string",
             "example": "Jahressteuergesetz § 4 Abs. 5 Satz 1 Nr. 6b EStG"
           },
-          "quelleUrl": {
+          "sourceUrl": {
             "type": "string",
             "example": "https://..."
           },
-          "wege": {
+          "paths": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/EulenWegDto"
+              "$ref": "#/components/schemas/OwlPathDto"
             }
           },
-          "einspruchFristBis": {
+          "appealDeadline": {
             "type": "string",
             "example": "01.10.2025"
           }
@@ -7004,36 +7004,36 @@
           "id",
           "fingerprint",
           "trigger",
-          "kategorie",
-          "titel",
-          "botschaft",
-          "begruendung",
-          "rechtsstandDatum",
-          "quelleUebersetzt"
+          "category",
+          "title",
+          "message",
+          "reason",
+          "legalStatusDate",
+          "sourceTranslated"
         ]
       },
-      "EulenKartenResponseDto": {
+      "OwlCardsResponseDto": {
         "type": "object",
         "properties": {
           "aktiviert": {
             "type": "boolean",
             "example": true
           },
-          "karten": {
+          "cards": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/EulenKarteDto"
+              "$ref": "#/components/schemas/OwlCardDto"
             }
           },
-          "rechtsstand": {
+          "legalStatus": {
             "type": "string",
             "example": "01.01.2025"
           }
         },
         "required": [
           "aktiviert",
-          "karten",
-          "rechtsstand"
+          "cards",
+          "legalStatus"
         ]
       }
     }

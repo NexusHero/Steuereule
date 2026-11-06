@@ -1,19 +1,19 @@
-import type { Posten } from './berechnung'
+import type { Item } from './berechnung'
 
-export function adoptedLineItem(lineItem: Posten, priorYear: number): Posten {
+export function adoptedLineItem(lineItem: Item, priorYear: number): Item {
   if (!Number.isInteger(priorYear) || priorYear < 0) {
     throw new RangeError(`adoptedLineItem: "${priorYear}" is not a valid year`)
   }
   return {
     ...lineItem,
-    quelle: { art: 'uebernahme', vorjahr: priorYear },
-    unbestaetigt: true,
+    source: { art: 'uebernahme', vorjahr: priorYear },
+    unconfirmed: true,
   }
 }
 
-export function confirmLineItem(lineItem: Posten): Posten {
-  if (lineItem.unbestaetigt !== true) return lineItem
-  return { ...lineItem, unbestaetigt: false }
+export function confirmLineItem(lineItem: Item): Item {
+  if (lineItem.unconfirmed !== true) return lineItem
+  return { ...lineItem, unconfirmed: false }
 }
 
 export function adoptionProvenance(priorYear: number): string {

@@ -1,18 +1,18 @@
 import { ApiProperty } from '@nestjs/swagger'
-import { LstbFeldDto } from './lstb-feld.dto.js'
-import { LstbZustandDto } from './lstb-zustand.dto.js'
+import { LstbFieldDto } from './lstb-feld.dto.js'
+import { LstbStatusDto } from './lstb-zustand.dto.js'
 
 /** The response shape for `GET /v1/steuerjahre/{jahr}/lstb` and the `PUT .../lstb/{feld}` response. */
 export class LstbResponseDto {
-  @ApiProperty({ type: LstbFeldDto })
-  bruttoarbeitslohn!: LstbFeldDto
+  @ApiProperty({ type: LstbFieldDto })
+  bruttoarbeitslohn!: LstbFieldDto
 
-  @ApiProperty({ type: LstbFeldDto })
-  lohnsteuer!: LstbFeldDto
+  @ApiProperty({ type: LstbFieldDto })
+  lohnsteuer!: LstbFieldDto
 
-  @ApiProperty({ type: LstbFeldDto })
-  sozialversicherung!: LstbFeldDto
+  @ApiProperty({ type: LstbFieldDto })
+  sozialversicherung!: LstbFieldDto
 
-  @ApiProperty({ type: LstbZustandDto })
-  zustand!: LstbZustandDto
+  @ApiProperty({ type: LstbStatusDto })
+  state!: LstbStatusDto
 }

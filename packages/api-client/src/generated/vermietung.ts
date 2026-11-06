@@ -25,9 +25,9 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
-  PutVermietungAdresseDto,
-  PutVermietungFeldDto,
-  VermietungResponseDto
+  PutRentalAddressDto,
+  PutRentalFieldDto,
+  RentalResponseDto
 } from './vermietung.schemas';
 
 import { httpClient } from '../http-client';
@@ -52,26 +52,26 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   return result;
 };
 
-export type vermietungControllerGetResponse200 = {
-  data: VermietungResponseDto
+export type rentalControllerGetResponse200 = {
+  data: RentalResponseDto
   status: 200
 }
 
-export type vermietungControllerGetResponse401 = {
+export type rentalControllerGetResponse401 = {
   data: void
   status: 401
 }
 
-export type vermietungControllerGetResponseSuccess = (vermietungControllerGetResponse200) & {
+export type rentalControllerGetResponseSuccess = (rentalControllerGetResponse200) & {
   headers: Headers;
 };
-export type vermietungControllerGetResponseError = (vermietungControllerGetResponse401) & {
+export type rentalControllerGetResponseError = (rentalControllerGetResponse401) & {
   headers: Headers;
 };
 
-export type vermietungControllerGetResponse = (vermietungControllerGetResponseSuccess | vermietungControllerGetResponseError)
+export type rentalControllerGetResponse = (rentalControllerGetResponseSuccess | rentalControllerGetResponseError)
 
-export const getVermietungControllerGetUrl = (jahr: number,) => {
+export const getRentalControllerGetUrl = (jahr: number,) => {
 
 
 
@@ -79,9 +79,9 @@ export const getVermietungControllerGetUrl = (jahr: number,) => {
   return `/v1/steuerjahre/${jahr}/vermietung`
 }
 
-export const vermietungControllerGet = async (jahr: number, options?: RequestInit): Promise<vermietungControllerGetResponse> => {
+export const rentalControllerGet = async (jahr: number, options?: RequestInit): Promise<rentalControllerGetResponse> => {
 
-  return httpClient<vermietungControllerGetResponse>(getVermietungControllerGetUrl(jahr),
+  return httpClient<rentalControllerGetResponse>(getRentalControllerGetUrl(jahr),
   {
     ...options,
     method: 'GET'
@@ -94,66 +94,66 @@ export const vermietungControllerGet = async (jahr: number, options?: RequestIni
 
 
 
-export const getVermietungControllerGetQueryKey = (jahr: number,) => {
+export const getRentalControllerGetQueryKey = (jahr: number,) => {
     return [
     `/v1/steuerjahre/${jahr}/vermietung`
     ] as const;
     }
 
 
-export const getVermietungControllerGetQueryOptions = <TData = Awaited<ReturnType<typeof vermietungControllerGet>>, TError = void>(jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof vermietungControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export const getRentalControllerGetQueryOptions = <TData = Awaited<ReturnType<typeof rentalControllerGet>>, TError = void>(jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof rentalControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getVermietungControllerGetQueryKey(jahr);
+  const queryKey =  queryOptions?.queryKey ?? getRentalControllerGetQueryKey(jahr);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof vermietungControllerGet>>> = ({ signal }) => vermietungControllerGet(jahr, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof rentalControllerGet>>> = ({ signal }) => rentalControllerGet(jahr, { signal, ...requestOptions });
 
 
 
 
 
-   return  { queryKey, queryFn, enabled: jahr !== null && jahr !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof vermietungControllerGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+   return  { queryKey, queryFn, enabled: jahr !== null && jahr !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof rentalControllerGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
-export type VermietungControllerGetQueryResult = NonNullable<Awaited<ReturnType<typeof vermietungControllerGet>>>
-export type VermietungControllerGetQueryError = void
+export type RentalControllerGetQueryResult = NonNullable<Awaited<ReturnType<typeof rentalControllerGet>>>
+export type RentalControllerGetQueryError = void
 
 
-export function useVermietungControllerGet<TData = Awaited<ReturnType<typeof vermietungControllerGet>>, TError = void>(
- jahr: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof vermietungControllerGet>>, TError, TData>> & Pick<
+export function useRentalControllerGet<TData = Awaited<ReturnType<typeof rentalControllerGet>>, TError = void>(
+ jahr: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof rentalControllerGet>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof vermietungControllerGet>>,
+          Awaited<ReturnType<typeof rentalControllerGet>>,
           TError,
-          Awaited<ReturnType<typeof vermietungControllerGet>>
+          Awaited<ReturnType<typeof rentalControllerGet>>
         > , 'initialData'
       >, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useVermietungControllerGet<TData = Awaited<ReturnType<typeof vermietungControllerGet>>, TError = void>(
- jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof vermietungControllerGet>>, TError, TData>> & Pick<
+export function useRentalControllerGet<TData = Awaited<ReturnType<typeof rentalControllerGet>>, TError = void>(
+ jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof rentalControllerGet>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof vermietungControllerGet>>,
+          Awaited<ReturnType<typeof rentalControllerGet>>,
           TError,
-          Awaited<ReturnType<typeof vermietungControllerGet>>
+          Awaited<ReturnType<typeof rentalControllerGet>>
         > , 'initialData'
       >, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useVermietungControllerGet<TData = Awaited<ReturnType<typeof vermietungControllerGet>>, TError = void>(
- jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof vermietungControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export function useRentalControllerGet<TData = Awaited<ReturnType<typeof rentalControllerGet>>, TError = void>(
+ jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof rentalControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 
-export function useVermietungControllerGet<TData = Awaited<ReturnType<typeof vermietungControllerGet>>, TError = void>(
- jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof vermietungControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export function useRentalControllerGet<TData = Awaited<ReturnType<typeof rentalControllerGet>>, TError = void>(
+ jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof rentalControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getVermietungControllerGetQueryOptions(jahr,options)
+  const queryOptions = getRentalControllerGetQueryOptions(jahr,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
@@ -166,26 +166,26 @@ export function useVermietungControllerGet<TData = Awaited<ReturnType<typeof ver
 
 
 
-export type vermietungControllerCreateResponse201 = {
-  data: VermietungResponseDto
+export type rentalControllerCreateResponse201 = {
+  data: RentalResponseDto
   status: 201
 }
 
-export type vermietungControllerCreateResponse401 = {
+export type rentalControllerCreateResponse401 = {
   data: void
   status: 401
 }
 
-export type vermietungControllerCreateResponseSuccess = (vermietungControllerCreateResponse201) & {
+export type rentalControllerCreateResponseSuccess = (rentalControllerCreateResponse201) & {
   headers: Headers;
 };
-export type vermietungControllerCreateResponseError = (vermietungControllerCreateResponse401) & {
+export type rentalControllerCreateResponseError = (rentalControllerCreateResponse401) & {
   headers: Headers;
 };
 
-export type vermietungControllerCreateResponse = (vermietungControllerCreateResponseSuccess | vermietungControllerCreateResponseError)
+export type rentalControllerCreateResponse = (rentalControllerCreateResponseSuccess | rentalControllerCreateResponseError)
 
-export const getVermietungControllerCreateUrl = (jahr: number,) => {
+export const getRentalControllerCreateUrl = (jahr: number,) => {
 
 
 
@@ -193,9 +193,9 @@ export const getVermietungControllerCreateUrl = (jahr: number,) => {
   return `/v1/steuerjahre/${jahr}/vermietung/objekte`
 }
 
-export const vermietungControllerCreate = async (jahr: number, options?: RequestInit): Promise<vermietungControllerCreateResponse> => {
+export const rentalControllerCreate = async (jahr: number, options?: RequestInit): Promise<rentalControllerCreateResponse> => {
 
-  return httpClient<vermietungControllerCreateResponse>(getVermietungControllerCreateUrl(jahr),
+  return httpClient<rentalControllerCreateResponse>(getRentalControllerCreateUrl(jahr),
   {
     ...options,
     method: 'POST'
@@ -208,11 +208,11 @@ export const vermietungControllerCreate = async (jahr: number, options?: Request
 
 
 
-export const getVermietungControllerCreateMutationOptions = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof vermietungControllerCreate>>, TError,{jahr: number}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof vermietungControllerCreate>>, TError,{jahr: number}, TContext> => {
+export const getRentalControllerCreateMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rentalControllerCreate>>, TError,{jahr: number}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof rentalControllerCreate>>, TError,{jahr: number}, TContext> => {
 
-const mutationKey = ['vermietungControllerCreate'];
+const mutationKey = ['rentalControllerCreate'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -222,10 +222,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof vermietungControllerCreate>>, {jahr: number}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof rentalControllerCreate>>, {jahr: number}> = (props) => {
           const {jahr} = props ?? {};
 
-          return  vermietungControllerCreate(jahr,requestOptions)
+          return  rentalControllerCreate(jahr,requestOptions)
         }
 
 
@@ -235,41 +235,41 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type VermietungControllerCreateMutationResult = NonNullable<Awaited<ReturnType<typeof vermietungControllerCreate>>>
+    export type RentalControllerCreateMutationResult = NonNullable<Awaited<ReturnType<typeof rentalControllerCreate>>>
 
-    export type VermietungControllerCreateMutationError = void
+    export type RentalControllerCreateMutationError = void
 
-    export const useVermietungControllerCreate = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof vermietungControllerCreate>>, TError,{jahr: number}, TContext>, request?: SecondParameter<typeof httpClient>}
+    export const useRentalControllerCreate = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rentalControllerCreate>>, TError,{jahr: number}, TContext>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof vermietungControllerCreate>>,
+        Awaited<ReturnType<typeof rentalControllerCreate>>,
         TError,
         {jahr: number},
         TContext
       > => {
-      return useMutation(getVermietungControllerCreateMutationOptions(options), queryClient);
+      return useMutation(getRentalControllerCreateMutationOptions(options), queryClient);
     }
 
-export type vermietungControllerSetFeldResponse200 = {
-  data: VermietungResponseDto
+export type rentalControllerSetFieldResponse200 = {
+  data: RentalResponseDto
   status: 200
 }
 
-export type vermietungControllerSetFeldResponse401 = {
+export type rentalControllerSetFieldResponse401 = {
   data: void
   status: 401
 }
 
-export type vermietungControllerSetFeldResponseSuccess = (vermietungControllerSetFeldResponse200) & {
+export type rentalControllerSetFieldResponseSuccess = (rentalControllerSetFieldResponse200) & {
   headers: Headers;
 };
-export type vermietungControllerSetFeldResponseError = (vermietungControllerSetFeldResponse401) & {
+export type rentalControllerSetFieldResponseError = (rentalControllerSetFieldResponse401) & {
   headers: Headers;
 };
 
-export type vermietungControllerSetFeldResponse = (vermietungControllerSetFeldResponseSuccess | vermietungControllerSetFeldResponseError)
+export type rentalControllerSetFieldResponse = (rentalControllerSetFieldResponseSuccess | rentalControllerSetFieldResponseError)
 
-export const getVermietungControllerSetFeldUrl = (jahr: number,
+export const getRentalControllerSetFieldUrl = (jahr: number,
     objektId: string,
     feld: string,) => {
 
@@ -279,17 +279,17 @@ export const getVermietungControllerSetFeldUrl = (jahr: number,
   return `/v1/steuerjahre/${jahr}/vermietung/objekte/${objektId}/${feld}`
 }
 
-export const vermietungControllerSetFeld = async (jahr: number,
+export const rentalControllerSetField = async (jahr: number,
     objektId: string,
     feld: string,
-    putVermietungFeldDto: PutVermietungFeldDto, options?: RequestInit): Promise<vermietungControllerSetFeldResponse> => {
+    putRentalFieldDto: PutRentalFieldDto, options?: RequestInit): Promise<rentalControllerSetFieldResponse> => {
 
-  return httpClient<vermietungControllerSetFeldResponse>(getVermietungControllerSetFeldUrl(jahr,objektId,feld),
+  return httpClient<rentalControllerSetFieldResponse>(getRentalControllerSetFieldUrl(jahr,objektId,feld),
   {
     ...options,
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(putVermietungFeldDto)
+    body: JSON.stringify(putRentalFieldDto)
   }
 );}
 
@@ -297,11 +297,11 @@ export const vermietungControllerSetFeld = async (jahr: number,
 
 
 
-export const getVermietungControllerSetFeldMutationOptions = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof vermietungControllerSetFeld>>, TError,{jahr: number;objektId: string;feld: string;data: PutVermietungFeldDto}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof vermietungControllerSetFeld>>, TError,{jahr: number;objektId: string;feld: string;data: PutVermietungFeldDto}, TContext> => {
+export const getRentalControllerSetFieldMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rentalControllerSetField>>, TError,{jahr: number;objektId: string;feld: string;data: PutRentalFieldDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof rentalControllerSetField>>, TError,{jahr: number;objektId: string;feld: string;data: PutRentalFieldDto}, TContext> => {
 
-const mutationKey = ['vermietungControllerSetFeld'];
+const mutationKey = ['rentalControllerSetField'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -311,10 +311,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof vermietungControllerSetFeld>>, {jahr: number;objektId: string;feld: string;data: PutVermietungFeldDto}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof rentalControllerSetField>>, {jahr: number;objektId: string;feld: string;data: PutRentalFieldDto}> = (props) => {
           const {jahr,objektId,feld,data} = props ?? {};
 
-          return  vermietungControllerSetFeld(jahr,objektId,feld,data,requestOptions)
+          return  rentalControllerSetField(jahr,objektId,feld,data,requestOptions)
         }
 
 
@@ -324,41 +324,41 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type VermietungControllerSetFeldMutationResult = NonNullable<Awaited<ReturnType<typeof vermietungControllerSetFeld>>>
-    export type VermietungControllerSetFeldMutationBody = PutVermietungFeldDto
-    export type VermietungControllerSetFeldMutationError = void
+    export type RentalControllerSetFieldMutationResult = NonNullable<Awaited<ReturnType<typeof rentalControllerSetField>>>
+    export type RentalControllerSetFieldMutationBody = PutRentalFieldDto
+    export type RentalControllerSetFieldMutationError = void
 
-    export const useVermietungControllerSetFeld = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof vermietungControllerSetFeld>>, TError,{jahr: number;objektId: string;feld: string;data: PutVermietungFeldDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+    export const useRentalControllerSetField = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rentalControllerSetField>>, TError,{jahr: number;objektId: string;feld: string;data: PutRentalFieldDto}, TContext>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof vermietungControllerSetFeld>>,
+        Awaited<ReturnType<typeof rentalControllerSetField>>,
         TError,
-        {jahr: number;objektId: string;feld: string;data: PutVermietungFeldDto},
+        {jahr: number;objektId: string;feld: string;data: PutRentalFieldDto},
         TContext
       > => {
-      return useMutation(getVermietungControllerSetFeldMutationOptions(options), queryClient);
+      return useMutation(getRentalControllerSetFieldMutationOptions(options), queryClient);
     }
 
-export type vermietungControllerSetAdresseResponse200 = {
-  data: VermietungResponseDto
+export type rentalControllerSetAddressResponse200 = {
+  data: RentalResponseDto
   status: 200
 }
 
-export type vermietungControllerSetAdresseResponse401 = {
+export type rentalControllerSetAddressResponse401 = {
   data: void
   status: 401
 }
 
-export type vermietungControllerSetAdresseResponseSuccess = (vermietungControllerSetAdresseResponse200) & {
+export type rentalControllerSetAddressResponseSuccess = (rentalControllerSetAddressResponse200) & {
   headers: Headers;
 };
-export type vermietungControllerSetAdresseResponseError = (vermietungControllerSetAdresseResponse401) & {
+export type rentalControllerSetAddressResponseError = (rentalControllerSetAddressResponse401) & {
   headers: Headers;
 };
 
-export type vermietungControllerSetAdresseResponse = (vermietungControllerSetAdresseResponseSuccess | vermietungControllerSetAdresseResponseError)
+export type rentalControllerSetAddressResponse = (rentalControllerSetAddressResponseSuccess | rentalControllerSetAddressResponseError)
 
-export const getVermietungControllerSetAdresseUrl = (jahr: number,
+export const getRentalControllerSetAddressUrl = (jahr: number,
     objektId: string,) => {
 
 
@@ -367,16 +367,16 @@ export const getVermietungControllerSetAdresseUrl = (jahr: number,
   return `/v1/steuerjahre/${jahr}/vermietung/objekte/${objektId}/adresse`
 }
 
-export const vermietungControllerSetAdresse = async (jahr: number,
+export const rentalControllerSetAddress = async (jahr: number,
     objektId: string,
-    putVermietungAdresseDto: PutVermietungAdresseDto, options?: RequestInit): Promise<vermietungControllerSetAdresseResponse> => {
+    putRentalAddressDto: PutRentalAddressDto, options?: RequestInit): Promise<rentalControllerSetAddressResponse> => {
 
-  return httpClient<vermietungControllerSetAdresseResponse>(getVermietungControllerSetAdresseUrl(jahr,objektId),
+  return httpClient<rentalControllerSetAddressResponse>(getRentalControllerSetAddressUrl(jahr,objektId),
   {
     ...options,
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(putVermietungAdresseDto)
+    body: JSON.stringify(putRentalAddressDto)
   }
 );}
 
@@ -384,11 +384,11 @@ export const vermietungControllerSetAdresse = async (jahr: number,
 
 
 
-export const getVermietungControllerSetAdresseMutationOptions = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof vermietungControllerSetAdresse>>, TError,{jahr: number;objektId: string;data: PutVermietungAdresseDto}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof vermietungControllerSetAdresse>>, TError,{jahr: number;objektId: string;data: PutVermietungAdresseDto}, TContext> => {
+export const getRentalControllerSetAddressMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rentalControllerSetAddress>>, TError,{jahr: number;objektId: string;data: PutRentalAddressDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof rentalControllerSetAddress>>, TError,{jahr: number;objektId: string;data: PutRentalAddressDto}, TContext> => {
 
-const mutationKey = ['vermietungControllerSetAdresse'];
+const mutationKey = ['rentalControllerSetAddress'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -398,10 +398,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof vermietungControllerSetAdresse>>, {jahr: number;objektId: string;data: PutVermietungAdresseDto}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof rentalControllerSetAddress>>, {jahr: number;objektId: string;data: PutRentalAddressDto}> = (props) => {
           const {jahr,objektId,data} = props ?? {};
 
-          return  vermietungControllerSetAdresse(jahr,objektId,data,requestOptions)
+          return  rentalControllerSetAddress(jahr,objektId,data,requestOptions)
         }
 
 
@@ -411,18 +411,18 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type VermietungControllerSetAdresseMutationResult = NonNullable<Awaited<ReturnType<typeof vermietungControllerSetAdresse>>>
-    export type VermietungControllerSetAdresseMutationBody = PutVermietungAdresseDto
-    export type VermietungControllerSetAdresseMutationError = void
+    export type RentalControllerSetAddressMutationResult = NonNullable<Awaited<ReturnType<typeof rentalControllerSetAddress>>>
+    export type RentalControllerSetAddressMutationBody = PutRentalAddressDto
+    export type RentalControllerSetAddressMutationError = void
 
-    export const useVermietungControllerSetAdresse = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof vermietungControllerSetAdresse>>, TError,{jahr: number;objektId: string;data: PutVermietungAdresseDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+    export const useRentalControllerSetAddress = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rentalControllerSetAddress>>, TError,{jahr: number;objektId: string;data: PutRentalAddressDto}, TContext>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof vermietungControllerSetAdresse>>,
+        Awaited<ReturnType<typeof rentalControllerSetAddress>>,
         TError,
-        {jahr: number;objektId: string;data: PutVermietungAdresseDto},
+        {jahr: number;objektId: string;data: PutRentalAddressDto},
         TContext
       > => {
-      return useMutation(getVermietungControllerSetAdresseMutationOptions(options), queryClient);
+      return useMutation(getRentalControllerSetAddressMutationOptions(options), queryClient);
     }
 

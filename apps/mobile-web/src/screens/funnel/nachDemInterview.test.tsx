@@ -1,34 +1,34 @@
 import { describe, expect, it } from 'vitest'
-import { ansichtNachDemInterview } from './nachDemInterview'
+import { viewAfterInterview } from './nachDemInterview'
 
 describe('ansichtNachDemInterview', () => {
   it('shows the account wall only to someone who is definitely signed out', () => {
-    const ansicht = ansichtNachDemInterview('ch', 'signed-out')
+    const view = viewAfterInterview('ch', 'signed-out')
 
-    expect(ansicht).toBe('konto-wand')
+    expect(view).toBe('konto-wand')
   })
 
   it('decides nothing while the session is still loading', () => {
-    const ansicht = ansichtNachDemInterview('ch', 'loading')
+    const view = viewAfterInterview('ch', 'loading')
 
-    expect(ansicht).toBeNull()
+    expect(view).toBeNull()
   })
 
   it.each(['signed-in', 'unknown'] as const)('continues the CH path when the session is %s', (status) => {
-    const ansicht = ansichtNachDemInterview('ch', status)
+    const view = viewAfterInterview('ch', status)
 
-    expect(ansicht).toBe('ch')
+    expect(view).toBe('ch')
   })
 
   it('continues with the pension path', () => {
-    const ansicht = ansichtNachDemInterview('rente', 'signed-in')
+    const view = viewAfterInterview('rente', 'signed-in')
 
-    expect(ansicht).toBe('rente')
+    expect(view).toBe('rente')
   })
 
   it('continues employees with the wage statement', () => {
-    const ansicht = ansichtNachDemInterview('angestellte', 'signed-in')
+    const view = viewAfterInterview('angestellte', 'signed-in')
 
-    expect(ansicht).toBe('lstb')
+    expect(view).toBe('lstb')
   })
 })

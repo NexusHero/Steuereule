@@ -5,92 +5,92 @@ import { useState } from 'react'
 import { Button, Card, useBreakpoint, useTheme } from '@steuereule/ui'
 import { formatEuro } from '@steuereule/core'
 import {
-  useBestaetigungControllerBestaetigeAnlage,
-  useBestaetigungControllerEntscheideVorschlag,
-  useBestaetigungControllerGet,
-  type AnlageBestaetigungDto,
-  type HerkunftDto,
-  type KennzeichnungWertDto,
+  useConfirmationControllerConfirmAnnex,
+  useConfirmationControllerDecideProposal,
+  useConfirmationControllerGet,
+  type AnnexConfirmationDto,
+  type ProvenanceDto,
+  type FieldProvenanceDto,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
-import { makeDatenschutzStyles } from '../datenschutz/styles'
+import { makePrivacyStyles } from '../datenschutz/styles'
 import { ErrorState, LoadingState } from '../shared/ScreenState'
 
-export type BestaetigungsMaske = KennzeichnungWertDto['maske']
+export type ConfirmationForm = FieldProvenanceDto['screen']
 
-export interface BestaetigungScreenProps {
-  readonly jahr: number
-  readonly onZurueck: () => void
-  readonly onMaskeOeffnen: (maske: BestaetigungsMaske) => void
+export interface ConfirmationScreenProps {
+  readonly year: number
+  readonly onBack: () => void
+  readonly onOpenScreen: (screen: ConfirmationForm) => void
 }
 
 type Tr = ReturnType<typeof useTranslation>['t']
 
-const KEINE_BETRAEGE = new Set(['rente.rentenbeginnJahr', 'rente.alterBeiRentenbeginn', 'rente.rentenart', 'vermietung.baujahr'])
+const NO_AMOUNTS = new Set(['rente.rentenbeginnJahr', 'rente.alterBeiRentenbeginn', 'rente.rentenart', 'vermietung.baujahr'])
 
-function herkunftText(tr: Tr, h: HerkunftDto): string {
+function provenanceText(tr: Tr, h: ProvenanceDto): string {
   switch (h.art) {
     case 'nutzer':
       return tr('bestaetigung.herkunft.nutzer')
     case 'uebernahme':
       return tr('bestaetigung.herkunft.uebernahme', { vorjahr: h.vorjahr })
     case 'assistent':
-      return h.belegId ? tr('bestaetigung.herkunft.assistentBeleg', { name: h.name }) : tr('bestaetigung.herkunft.assistent', { name: h.name })
+      return h.receiptId ? tr('bestaetigung.herkunft.assistentBeleg', { name: h.name }) : tr('bestaetigung.herkunft.assistent', { name: h.name })
     case 'beleg':
       return tr('bestaetigung.herkunft.beleg')
   }
 }
 
-function feldLabel(tr: Tr, w: KennzeichnungWertDto): string {
-  if (w.maske === 'kapital' && w.feld === 'kapitalertraege') return tr('kapital.feld.label')
-  if (w.maske === 'rente' && w.feld === 'rentenart') return tr('bestaetigung.felder.rentenart')
-  if (w.maske === 'lstb' || w.maske === 'rente' || w.maske === 'kapital' || w.maske === 'vermietung') {
-    return tr(`${w.maske}.felder.${w.feld}`, { defaultValue: w.feld })
+function fieldLabel(tr: Tr, w: FieldProvenanceDto): string {
+  if (w.screen === 'kapital' && w.field === 'kapitalertraege') return tr('kapital.feld.label')
+  if (w.screen === 'rente' && w.field === 'rentenart') return tr('bestaetigung.felder.rentenart')
+  if (w.screen === 'lstb' || w.screen === 'rente' || w.screen === 'kapital' || w.screen === 'vermietung') {
+    return tr(`${w.screen}.felder.${w.field}`, { defaultValue: w.field })
   }
-  return w.feld
+  return w.field
 }
 
-function wertText(tr: Tr, w: KennzeichnungWertDto, wert: string | null): string {
-  if (wert === null) return tr('bestaetigung.leererWert')
-  if (wert === 'unklar') return tr('bestaetigung.unklar')
-  if (w.maske === 'rente' && w.feld === 'rentenart') return tr(`rente.arten.${wert}`, { defaultValue: wert })
-  const betrag = Number(wert)
-  if (KEINE_BETRAEGE.has(`${w.maske}.${w.feld}`) || !Number.isFinite(betrag)) return wert
-  return formatEuro(betrag)
+function valueText(tr: Tr, w: FieldProvenanceDto, value: string | null): string {
+  if (value === null) return tr('bestaetigung.leererWert')
+  if (value === 'unklar') return tr('bestaetigung.unklar')
+  if (w.screen === 'rente' && w.field === 'rentenart') return tr(`rente.arten.${value}`, { defaultValue: value })
+  const amount = Number(value)
+  if (NO_AMOUNTS.has(`${w.screen}.${w.field}`) || !Number.isFinite(amount)) return value
+  return formatEuro(amount)
 }
 
-export function BestaetigungScreen({ jahr, onZurueck, onMaskeOeffnen }: BestaetigungScreenProps) {
+export function ConfirmationScreen({ year, onBack, onOpenScreen }: ConfirmationScreenProps) {
   const bp = useBreakpoint()
   const theme = useTheme()
-  const styles = makeDatenschutzStyles(theme)
+  const styles = makePrivacyStyles(theme)
   const { t } = useTranslation(APP_NS)
   const queryClient = useQueryClient()
-  const uebersicht = useBestaetigungControllerGet(jahr)
-  const bestaetige = useBestaetigungControllerBestaetigeAnlage()
-  const entscheide = useBestaetigungControllerEntscheideVorschlag()
-  const [fehler, setFehler] = useState(false)
+  const overview = useConfirmationControllerGet(year)
+  const confirm = useConfirmationControllerConfirmAnnex()
+  const decide = useConfirmationControllerDecideProposal()
+  const [error, setError] = useState(false)
 
-  if (uebersicht.isPending) return <LoadingState bp={bp} label={t('bestaetigung.loading')} />
-  if (uebersicht.data?.status !== 200) {
+  if (overview.isPending) return <LoadingState bp={bp} label={t('bestaetigung.loading')} />
+  if (overview.data?.status !== 200) {
     return (
       <ErrorState
         bp={bp}
         heading={t('bestaetigung.loadError.heading')}
         message={t('bestaetigung.loadError.message')}
         retryLabel={t('bestaetigung.loadError.retry')}
-        onRetry={() => void uebersicht.refetch()}
+        onRetry={() => void overview.refetch()}
       />
     )
   }
-  const { anlagen } = uebersicht.data.data
+  const { annexes } = overview.data.data
 
-  const nachAenderung = async (aktion: () => Promise<{ status: number }>) => {
-    setFehler(false)
+  const afterChange = async (action: () => Promise<{ status: number }>) => {
+    setError(false)
     try {
-      const ergebnis = await aktion()
-      if (ergebnis.status !== 200) setFehler(true)
+      const result = await action()
+      if (result.status !== 200) setError(true)
     } catch {
-      setFehler(true)
+      setError(true)
     }
     await queryClient.invalidateQueries()
   }
@@ -98,60 +98,60 @@ export function BestaetigungScreen({ jahr, onZurueck, onMaskeOeffnen }: Bestaeti
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
       <View style={styles.appbar}>
-        <Pressable accessibilityRole="button" accessibilityLabel={t('bestaetigung.back')} onPress={onZurueck} style={styles.backButton}>
+        <Pressable accessibilityRole="button" accessibilityLabel={t('bestaetigung.back')} onPress={onBack} style={styles.backButton}>
           <Text style={styles.backGlyph}>←</Text>
         </Pressable>
-        <Text style={styles.appbarTitle}>{t('bestaetigung.title', { jahr })}</Text>
+        <Text style={styles.appbarTitle}>{t('bestaetigung.title', { jahr: year })}</Text>
       </View>
 
-      {anlagen.length === 0 ? (
+      {annexes.length === 0 ? (
         <Text style={styles.sectionBody}>{t('bestaetigung.leer')}</Text>
       ) : (
         <Text style={styles.sectionBody}>{t('bestaetigung.intro')}</Text>
       )}
-      {fehler ? (
+      {error ? (
         <Text style={styles.hint} accessibilityLiveRegion="polite">
           {t('bestaetigung.fehler')}
         </Text>
       ) : null}
 
-      {anlagen.map((anlage: AnlageBestaetigungDto) => {
-        const anlageName = t(`bestaetigung.anlagen.${anlage.anlage}`)
-        const ersteMaske = anlage.werte[0]?.maske
+      {annexes.map((anlage: AnnexConfirmationDto) => {
+        const annexName = t(`bestaetigung.anlagen.${anlage.anlage}`)
+        const firstScreen = anlage.values[0]?.screen
         return (
           <Card key={anlage.anlage} style={{ marginBottom: theme.space.s4 }} testID={`anlage-${anlage.anlage}`}>
-            <Text style={styles.sectionTitle}>{anlageName}</Text>
+            <Text style={styles.sectionTitle}>{annexName}</Text>
             <Text style={styles.hint}>
-              {anlage.unbestaetigt > 0 ? t('bestaetigung.unbestaetigt', { count: anlage.unbestaetigt }) : t('bestaetigung.nurVorschlaege')}
+              {anlage.unconfirmed > 0 ? t('bestaetigung.unbestaetigt', { count: anlage.unconfirmed }) : t('bestaetigung.nurVorschlaege')}
             </Text>
-            {anlage.werte.map((w) => (
+            {anlage.values.map((w) => (
               <View key={w.key} style={{ gap: theme.space.s1, marginTop: theme.space.s3 }}>
-                <Text style={styles.sectionBody}>{feldLabel(t, w)}</Text>
-                <Text style={styles.sectionTitle}>{wertText(t, w, w.wert)}</Text>
-                <Text style={styles.hint}>{herkunftText(t, w.herkunft)}</Text>
-                {w.vorschlag ? (
+                <Text style={styles.sectionBody}>{fieldLabel(t, w)}</Text>
+                <Text style={styles.sectionTitle}>{valueText(t, w, w.value)}</Text>
+                <Text style={styles.hint}>{provenanceText(t, w.provenance)}</Text>
+                {w.proposal ? (
                   <View style={{ gap: theme.space.s2 }}>
                     <Text style={styles.sectionBody}>
                       {t('bestaetigung.vorschlag', {
-                        herkunft: herkunftText(t, w.vorschlag.herkunft),
-                        neu: wertText(t, w, w.vorschlag.wert),
-                        alt: wertText(t, w, w.wert),
+                        herkunft: provenanceText(t, w.proposal.provenance),
+                        neu: valueText(t, w, w.proposal.value),
+                        alt: valueText(t, w, w.value),
                       })}
                     </Text>
                     <View style={{ flexDirection: 'row', gap: theme.space.s2 }}>
                       <Button
-                        variante="ghost"
-                        disabled={entscheide.isPending}
+                        variant="ghost"
+                        disabled={decide.isPending}
                         testID={`vorschlag-annehmen-${w.key}`}
-                        onPress={() => void nachAenderung(() => entscheide.mutateAsync({ jahr, key: w.key, data: { entscheidung: 'annehmen' } }))}
+                        onPress={() => void afterChange(() => decide.mutateAsync({ jahr: year, key: w.key, data: { decision: 'annehmen' } }))}
                       >
                         {t('bestaetigung.vorschlagAnnehmen')}
                       </Button>
                       <Button
-                        variante="ghost"
-                        disabled={entscheide.isPending}
+                        variant="ghost"
+                        disabled={decide.isPending}
                         testID={`vorschlag-verwerfen-${w.key}`}
-                        onPress={() => void nachAenderung(() => entscheide.mutateAsync({ jahr, key: w.key, data: { entscheidung: 'verwerfen' } }))}
+                        onPress={() => void afterChange(() => decide.mutateAsync({ jahr: year, key: w.key, data: { decision: 'verwerfen' } }))}
                       >
                         {t('bestaetigung.vorschlagVerwerfen')}
                       </Button>
@@ -161,17 +161,17 @@ export function BestaetigungScreen({ jahr, onZurueck, onMaskeOeffnen }: Bestaeti
               </View>
             ))}
             <View style={{ gap: theme.space.s2, marginTop: theme.space.s4 }}>
-              {anlage.unbestaetigt > 0 ? (
+              {anlage.unconfirmed > 0 ? (
                 <Button
-                  disabled={bestaetige.isPending}
+                  disabled={confirm.isPending}
                   testID={`bestaetige-${anlage.anlage}`}
-                  onPress={() => void nachAenderung(() => bestaetige.mutateAsync({ jahr, anlage: anlage.anlage }))}
+                  onPress={() => void afterChange(() => confirm.mutateAsync({ jahr: year, anlage: anlage.anlage }))}
                 >
-                  {t('bestaetigung.anlageBestaetigen', { anlage: anlageName })}
+                  {t('bestaetigung.anlageBestaetigen', { anlage: annexName })}
                 </Button>
               ) : null}
-              {ersteMaske ? (
-                <Button variante="ghost" testID={`aendern-${anlage.anlage}`} onPress={() => onMaskeOeffnen(ersteMaske)}>
+              {firstScreen ? (
+                <Button variant="ghost" testID={`aendern-${anlage.anlage}`} onPress={() => onOpenScreen(firstScreen)}>
                   {t('bestaetigung.einzelnAendern')}
                 </Button>
               ) : null}

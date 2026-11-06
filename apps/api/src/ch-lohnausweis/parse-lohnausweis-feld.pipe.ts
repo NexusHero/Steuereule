@@ -1,12 +1,12 @@
 import { BadRequestException, Injectable, type PipeTransform } from '@nestjs/common'
-import { LOHNAUSWEIS_BETRAG_FELDER, type LohnausweisBetragFeldId } from '@steuereule/core'
+import { SALARY_CERTIFICATE_AMOUNT_FIELDS, type SalaryCertificateAmountFieldId } from '@steuereule/core'
 
 @Injectable()
-export class ParseLohnausweisFeldPipe implements PipeTransform<unknown, LohnausweisBetragFeldId> {
-  transform(value: unknown): LohnausweisBetragFeldId {
-    if (typeof value !== 'string' || !(LOHNAUSWEIS_BETRAG_FELDER as readonly string[]).includes(value)) {
-      throw new BadRequestException(`feld must be one of: ${LOHNAUSWEIS_BETRAG_FELDER.join(', ')}`)
+export class ParseSalaryCertificateFieldPipe implements PipeTransform<unknown, SalaryCertificateAmountFieldId> {
+  transform(value: unknown): SalaryCertificateAmountFieldId {
+    if (typeof value !== 'string' || !(SALARY_CERTIFICATE_AMOUNT_FIELDS as readonly string[]).includes(value)) {
+      throw new BadRequestException(`feld must be one of: ${SALARY_CERTIFICATE_AMOUNT_FIELDS.join(', ')}`)
     }
-    return value as LohnausweisBetragFeldId
+    return value as SalaryCertificateAmountFieldId
   }
 }

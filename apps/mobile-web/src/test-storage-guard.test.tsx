@@ -60,10 +60,10 @@ describe('#329 finding 2 — the stand-in must keep the real Storage API, not ju
     const setItem = vi.fn()
     // Reproduces the pre-fix `{ ...window.localStorage, setItem }` construction directly, without
     // going through stubStorageSetItem (which is already fixed) — this is the control.
-    const spreadStandIn = { ...window.localStorage, setItem }
-    expect(Object.keys(spreadStandIn)).toEqual(['preexisting', 'setItem'])
-    expect(spreadStandIn.getItem).toBeUndefined()
-    expect(spreadStandIn.length).toBeUndefined()
+    const spreadStatusIn = { ...window.localStorage, setItem }
+    expect(Object.keys(spreadStatusIn)).toEqual(['preexisting', 'setItem'])
+    expect(spreadStatusIn.getItem).toBeUndefined()
+    expect(spreadStatusIn.length).toBeUndefined()
   })
 
   it('fix: getItem/removeItem/clear/key/length on the installed stub delegate to the real store', () => {

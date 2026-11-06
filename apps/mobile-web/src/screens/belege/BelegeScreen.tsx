@@ -3,11 +3,11 @@ import { ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-na
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button, Card, Chip, HerkunftsChip, Input, Pill, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
-import { useBelegControllerList, useBelegControllerSetZuordnung, getBelegControllerListQueryKey, type BelegResponseDto } from '@steuereule/api-client'
+import { useReceiptControllerList, useReceiptControllerSetAssignment, getReceiptControllerListQueryKey, type ReceiptResponseDto } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 
-const ART_LABEL_KEYS: Readonly<Record<string, string>> = {
+const KIND_LABEL_KEYS: Readonly<Record<string, string>> = {
   Lohnausweis: 'belege.art.lohnausweis',
   Quellensteuer: 'belege.art.quellensteuer',
   Pensionskasse: 'belege.art.pensionskasse',
@@ -18,16 +18,16 @@ const ART_LABEL_KEYS: Readonly<Record<string, string>> = {
   Sonstiges: 'belege.art.sonstiges',
 }
 
-const JAHR_RE = /^\d{4}$/
+const YEAR_RE = /^\d{4}$/
 
-export function BelegeScreen() {
+export function ReceiptsScreen() {
   const bp = useBreakpoint()
   const t = useTheme()
   const styles = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
   const queryClient = useQueryClient()
-  const query = useBelegControllerList()
-  const setZuordnung = useBelegControllerSetZuordnung()
+  const query = useReceiptControllerList()
+  const setAssignment = useReceiptControllerSetAssignment()
 
   if (query.isPending) {
     return <LoadingState bp={bp} label={tr('belege.loading')} />
@@ -44,16 +44,16 @@ export function BelegeScreen() {
     )
   }
 
-  const belege = query.data.data
-  const offen = belege.filter((b) => b.zuordnung.kind !== 'zugeordnet').length
+  const receipts = query.data.data
+  const open = receipts.filter((b) => b.assignment.kind !== 'zugeordnet').length
 
-  function ordneZu(id: string, steuerjahr: number, vorschlagVerworfen = false) {
-    setZuordnung.mutate(
+  function assign(id: string, steuerjahr: number, vorschlagVerworfen = false) {
+    setAssignment.mutate(
       { id, data: { steuerjahr, vorschlagVerworfen } },
       {
         onSuccess: (response) => {
           if (response.status === 200) {
-            void queryClient.invalidateQueries({ queryKey: getBelegControllerListQueryKey() })
+            void queryClient.invalidateQueries({ queryKey: getReceiptControllerListQueryKey() })
           }
         },
       },
@@ -62,30 +62,30 @@ export function BelegeScreen() {
 
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
-      <Appbar offen={offen} />
-      <ScanFolgt />
-      {belege.length === 0 ? (
+      <Appbar open={open} />
+      <ScanFollows />
+      {receipts.length === 0 ? (
         <Empty />
       ) : (
-        belege.map((beleg) => <BelegCard key={beleg.id} beleg={beleg} onZuordnen={ordneZu} />)
+        receipts.map((receipt) => <ReceiptCard key={receipt.id} receipt={receipt} onAssign={assign} />)
       )}
     </ScrollView>
   )
 }
 
-function Appbar({ offen }: { readonly offen: number }) {
+function Appbar({ open }: { readonly open: number }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const s = makeStyles(t)
   return (
     <View style={s.appbar}>
       <Text style={s.appbarTitle}>{tr('belege.appbarTitle')}</Text>
-      <Pill>{tr('belege.offen', { count: offen })}</Pill>
+      <Pill>{tr('belege.offen', { count: open })}</Pill>
     </View>
   )
 }
 
-function ScanFolgt() {
+function ScanFollows() {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const s = makeStyles(t)
@@ -109,50 +109,50 @@ function Empty() {
   )
 }
 
-interface BelegCardProps {
-  readonly beleg: BelegResponseDto
-  readonly onZuordnen: (id: string, steuerjahr: number, vorschlagVerworfen?: boolean) => void
+interface ReceiptCardProps {
+  readonly receipt: ReceiptResponseDto
+  readonly onAssign: (id: string, steuerjahr: number, vorschlagVerworfen?: boolean) => void
 }
 
-function BelegCard({ beleg, onZuordnen }: BelegCardProps) {
+function ReceiptCard({ receipt, onAssign }: ReceiptCardProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const s = makeStyles(t)
-  const artKey = beleg.art === null ? undefined : ART_LABEL_KEYS[beleg.art]
-  const artLabel = artKey !== undefined ? tr(artKey) : beleg.art === null ? tr('belege.art.generic') : beleg.art
+  const kindKey = receipt.art === null ? undefined : KIND_LABEL_KEYS[receipt.art]
+  const kindLabel = kindKey !== undefined ? tr(kindKey) : receipt.art === null ? tr('belege.art.generic') : receipt.art
 
   return (
     <Card>
       <View style={s.cardHead}>
         <Text style={s.cardTitle} numberOfLines={2}>
-          {beleg.dateiname}
+          {receipt.dateiname}
         </Text>
-        <Chip variante="src">{artLabel}</Chip>
+        <Chip variant="src">{kindLabel}</Chip>
       </View>
-      {(beleg.belegdatum !== null || beleg.zahlungsdatum !== null) && (
+      {(receipt.belegdatum !== null || receipt.zahlungsdatum !== null) && (
         <View style={s.dates}>
-          {beleg.belegdatum !== null && (
+          {receipt.belegdatum !== null && (
             <Text style={s.dateLine}>
-              {tr('belege.datum.belegdatum')}: <Text style={s.mono}>{beleg.belegdatum}</Text>
+              {tr('belege.datum.belegdatum')}: <Text style={s.mono}>{receipt.belegdatum}</Text>
             </Text>
           )}
-          {beleg.zahlungsdatum !== null && (
+          {receipt.zahlungsdatum !== null && (
             <Text style={s.dateLine}>
-              {tr('belege.datum.zahlungsdatum')}: <Text style={s.mono}>{beleg.zahlungsdatum}</Text>
+              {tr('belege.datum.zahlungsdatum')}: <Text style={s.mono}>{receipt.zahlungsdatum}</Text>
             </Text>
           )}
         </View>
       )}
-      <ZuordnungSection beleg={beleg} onZuordnen={onZuordnen} />
+      <AssignmentSection receipt={receipt} onAssign={onAssign} />
     </Card>
   )
 }
 
-function ZuordnungSection({ beleg, onZuordnen }: BelegCardProps) {
+function AssignmentSection({ receipt, onAssign }: ReceiptCardProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const s = makeStyles(t)
-  const z = beleg.zuordnung
+  const z = receipt.assignment
 
   if (z.kind === 'ungebunden') {
     return <Text style={s.zuordnungMuted}>{tr('belege.zuordnung.ungebunden')}</Text>
@@ -162,10 +162,10 @@ function ZuordnungSection({ beleg, onZuordnen }: BelegCardProps) {
   }
   if (z.kind === 'vorgeschlagen') {
     return (
-      <Vorgeschlagen
-        vorschlagsJahr={z.steuerjahr ?? 0}
-        herkunft={z.herkunft ?? 'zahlungsdatum'}
-        onZuordnen={(jahr) => onZuordnen(beleg.id, jahr)}
+      <Proposed
+        proposalYear={z.steuerjahr ?? 0}
+        provenance={z.provenance ?? 'zahlungsdatum'}
+        onAssign={(year) => onAssign(receipt.id, year)}
       />
     )
   }
@@ -173,13 +173,13 @@ function ZuordnungSection({ beleg, onZuordnen }: BelegCardProps) {
     <View style={s.konfliktBox}>
       <Text style={s.konfliktHeading}>{tr('belege.zuordnung.konflikt.heading')}</Text>
       <Text style={s.konfliktBody}>
-        {tr('belege.zuordnung.konflikt.body', { zugeordnet: z.steuerjahr, vorschlag: z.vorschlagsJahr })}
+        {tr('belege.zuordnung.konflikt.body', { zugeordnet: z.steuerjahr, vorschlag: z.proposalYear })}
       </Text>
       <View style={s.actionRow}>
-        <Button onPress={() => onZuordnen(beleg.id, z.vorschlagsJahr ?? 0)}>
-          {tr('belege.zuordnung.konflikt.resolve', { jahr: z.vorschlagsJahr })}
+        <Button onPress={() => onAssign(receipt.id, z.proposalYear ?? 0)}>
+          {tr('belege.zuordnung.konflikt.resolve', { jahr: z.proposalYear })}
         </Button>
-        <Button variante="leise" onPress={() => onZuordnen(beleg.id, z.steuerjahr ?? 0, true)}>
+        <Button variant="leise" onPress={() => onAssign(receipt.id, z.steuerjahr ?? 0, true)}>
           {tr('belege.zuordnung.konflikt.keep', { jahr: z.steuerjahr })}
         </Button>
       </View>
@@ -187,33 +187,33 @@ function ZuordnungSection({ beleg, onZuordnen }: BelegCardProps) {
   )
 }
 
-interface VorgeschlagenProps {
-  readonly vorschlagsJahr: number
-  readonly herkunft: 'zahlungsdatum' | 'belegdatum'
-  readonly onZuordnen: (jahr: number) => void
+interface ProposedProps {
+  readonly proposalYear: number
+  readonly provenance: 'zahlungsdatum' | 'belegdatum'
+  readonly onAssign: (year: number) => void
 }
 
-function Vorgeschlagen({ vorschlagsJahr, herkunft, onZuordnen }: VorgeschlagenProps) {
+function Proposed({ proposalYear, provenance, onAssign }: ProposedProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const s = makeStyles(t)
   const [override, setOverride] = useState(false)
-  const [jahrText, setJahrText] = useState(String(vorschlagsJahr))
-  const jahr = Number.parseInt(jahrText, 10)
-  const jahrGueltig = JAHR_RE.test(jahrText) && Number.isInteger(jahr)
+  const [yearText, setYearText] = useState(String(proposalYear))
+  const year = Number.parseInt(yearText, 10)
+  const yearValid = YEAR_RE.test(yearText) && Number.isInteger(year)
 
   return (
     <View>
       <View style={s.vorschlagRow}>
-        <Text style={s.zuordnungMuted}>{tr('belege.zuordnung.vorgeschlagen', { jahr: vorschlagsJahr })}</Text>
+        <Text style={s.zuordnungMuted}>{tr('belege.zuordnung.vorgeschlagen', { jahr: proposalYear })}</Text>
         <HerkunftsChip
-          quelle={{ regel: herkunft === 'zahlungsdatum' ? tr('belege.zuordnung.regelZahlungsdatum') : tr('belege.zuordnung.regelBelegdatum') }}
+          source={{ rule: provenance === 'zahlungsdatum' ? tr('belege.zuordnung.regelZahlungsdatum') : tr('belege.zuordnung.regelBelegdatum') }}
         />
       </View>
       {!override ? (
         <View style={s.actionRow}>
-          <Button onPress={() => onZuordnen(vorschlagsJahr)}>{tr('belege.zuordnung.confirm', { jahr: vorschlagsJahr })}</Button>
-          <Button variante="ghost" onPress={() => setOverride(true)}>
+          <Button onPress={() => onAssign(proposalYear)}>{tr('belege.zuordnung.confirm', { jahr: proposalYear })}</Button>
+          <Button variant="ghost" onPress={() => setOverride(true)}>
             {tr('belege.zuordnung.otherYear')}
           </Button>
         </View>
@@ -223,20 +223,20 @@ function Vorgeschlagen({ vorschlagsJahr, herkunft, onZuordnen }: VorgeschlagenPr
             type="numeric"
             mono
             accessibilityLabel={tr('belege.zuordnung.otherYearLabel')}
-            value={jahrText}
-            onChange={setJahrText}
+            value={yearText}
+            onChange={setYearText}
           />
-          {!jahrGueltig && <Text style={s.konfliktBody}>{tr('belege.zuordnung.yearInvalid')}</Text>}
+          {!yearValid && <Text style={s.konfliktBody}>{tr('belege.zuordnung.yearInvalid')}</Text>}
           <View style={s.actionRow}>
             <Button
-              disabled={!jahrGueltig}
+              disabled={!yearValid}
               onPress={() => {
-                if (jahrGueltig) onZuordnen(jahr)
+                if (yearValid) onAssign(year)
               }}
             >
               {tr('belege.zuordnung.otherYearConfirm')}
             </Button>
-            <Button variante="ghost" onPress={() => setOverride(false)}>
+            <Button variant="ghost" onPress={() => setOverride(false)}>
               {tr('belege.zuordnung.otherYearCancel')}
             </Button>
           </View>
@@ -269,7 +269,7 @@ function makeStyles(t: UiTheme) {
     fontSize: t.size['2xl'],
     color: t.color.tinte,
   }
-  const scanFolgtHeading: TextStyle = {
+  const scanFollowsHeading: TextStyle = {
     fontFamily: t.font.mono,
     fontSize: t.size.xs,
     color: t.color.funkeHell,
@@ -277,7 +277,7 @@ function makeStyles(t: UiTheme) {
     letterSpacing: 0.08 * t.size.xs,
     marginBottom: t.space.s2,
   }
-  const scanFolgtBody: TextStyle = {
+  const scanFollowsBody: TextStyle = {
     color: t.color.nachtText,
     opacity: 0.85,
     fontFamily: t.font.text,
@@ -314,11 +314,11 @@ function makeStyles(t: UiTheme) {
   const dates: ViewStyle = { marginTop: t.space.s3, gap: t.space.s1 }
   const dateLine: TextStyle = { color: t.color.tinte2, fontSize: t.size.s }
   const mono: TextStyle = { fontFamily: t.font.mono, fontSize: t.size.s, fontVariant: ['tabular-nums'] }
-  const zuordnungMuted: TextStyle = { color: t.color.tinte2, fontSize: t.size.s, marginTop: t.space.s3 }
-  const zuordnungSettled: TextStyle = { color: t.color.tinte, fontWeight: t.weight.fett, fontSize: t.size.s, marginTop: t.space.s3 }
-  const vorschlagRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s3, marginTop: t.space.s3, flexWrap: 'wrap' }
+  const assignmentMuted: TextStyle = { color: t.color.tinte2, fontSize: t.size.s, marginTop: t.space.s3 }
+  const assignmentSettled: TextStyle = { color: t.color.tinte, fontWeight: t.weight.fett, fontSize: t.size.s, marginTop: t.space.s3 }
+  const proposalRow: ViewStyle = { flexDirection: 'row', alignItems: 'center', gap: t.space.s3, marginTop: t.space.s3, flexWrap: 'wrap' }
   const actionRow: ViewStyle = { flexDirection: 'row', gap: t.space.s3, marginTop: t.space.s3 }
-  const konfliktBox: ViewStyle = {
+  const conflictBox: ViewStyle = {
     marginTop: t.space.s3,
     borderWidth: 2,
     borderColor: t.color.warn,
@@ -327,12 +327,12 @@ function makeStyles(t: UiTheme) {
     backgroundColor: t.color.warnWeich,
     gap: t.space.s2,
   }
-  const konfliktHeading: TextStyle = { color: t.color.warn, fontWeight: t.weight.schwer, fontSize: t.size.s }
-  const konfliktBody: TextStyle = { color: t.color.tinte2, fontSize: t.size.s }
+  const conflictHeading: TextStyle = { color: t.color.warn, fontWeight: t.weight.schwer, fontSize: t.size.s }
+  const conflictBody: TextStyle = { color: t.color.tinte2, fontSize: t.size.s }
 
   return {
-    screen, wideScreen, appbar, appbarTitle, scanFolgtHeading, scanFolgtBody,
+    screen, wideScreen, appbar, appbarTitle, scanFolgtHeading: scanFollowsHeading, scanFolgtBody: scanFollowsBody,
     emptyBlock, emptyHeading, emptyBody, cardHead, cardTitle, dates, dateLine, mono,
-    zuordnungMuted, zuordnungSettled, vorschlagRow, actionRow, konfliktBox, konfliktHeading, konfliktBody,
+    zuordnungMuted: assignmentMuted, zuordnungSettled: assignmentSettled, vorschlagRow: proposalRow, actionRow, konfliktBox: conflictBox, konfliktHeading: conflictHeading, konfliktBody: conflictBody,
   }
 }

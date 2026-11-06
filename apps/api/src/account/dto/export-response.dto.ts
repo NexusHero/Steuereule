@@ -50,7 +50,7 @@ export class ExportAccessLogEntryDto {
 
 export class ExportTaxDataEntryDto {
   @ApiProperty({ type: String, example: 'Kapitalerträge' })
-  bereich!: string
+  area!: string
 
   @ApiProperty({ type: Number, nullable: true, example: 2025 })
   steuerjahr!: number | null
@@ -60,7 +60,7 @@ export class ExportTaxDataEntryDto {
     additionalProperties: { oneOf: [{ type: 'string' }, { type: 'number' }, { type: 'boolean' }], nullable: true },
     example: { kapitalertraege: '1200', updatedAt: '2026-02-01T09:30:00.000Z' },
   })
-  felder!: Record<string, string | number | boolean | null>
+  fields!: Record<string, string | number | boolean | null>
 }
 
 export class ExportDocumentDto {

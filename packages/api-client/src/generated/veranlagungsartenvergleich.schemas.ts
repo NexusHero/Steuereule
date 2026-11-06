@@ -5,10 +5,10 @@
  * Onboarding profile endpoints (steuereule#29)
  * OpenAPI spec version: 1.0
  */
-export type VeranlagungsartenvergleichDtoKind = typeof VeranlagungsartenvergleichDtoKind[keyof typeof VeranlagungsartenvergleichDtoKind];
+export type FilingTypeComparisonDtoKind = typeof FilingTypeComparisonDtoKind[keyof typeof FilingTypeComparisonDtoKind];
 
 
-export const VeranlagungsartenvergleichDtoKind = {
+export const FilingTypeComparisonDtoKind = {
   eindeutig: 'eindeutig',
   'zu-knapp': 'zu-knapp',
   unbestimmt: 'unbestimmt',
@@ -18,10 +18,10 @@ export const VeranlagungsartenvergleichDtoKind = {
 /**
  * The recommendation (only when kind === "eindeutig").
  */
-export type VeranlagungsartenvergleichDtoEmpfehlung = typeof VeranlagungsartenvergleichDtoEmpfehlung[keyof typeof VeranlagungsartenvergleichDtoEmpfehlung];
+export type FilingTypeComparisonDtoRecommendation = typeof FilingTypeComparisonDtoRecommendation[keyof typeof FilingTypeComparisonDtoRecommendation];
 
 
-export const VeranlagungsartenvergleichDtoEmpfehlung = {
+export const FilingTypeComparisonDtoRecommendation = {
   einzel: 'einzel',
   zusammen: 'zusammen',
 } as const;
@@ -29,18 +29,18 @@ export const VeranlagungsartenvergleichDtoEmpfehlung = {
 /**
  * Why the comparison does not apply (only when kind === "nicht-anwendbar").
  */
-export type VeranlagungsartenvergleichDtoGrund = typeof VeranlagungsartenvergleichDtoGrund[keyof typeof VeranlagungsartenvergleichDtoGrund];
+export type FilingTypeComparisonDtoReason = typeof FilingTypeComparisonDtoReason[keyof typeof FilingTypeComparisonDtoReason];
 
 
-export const VeranlagungsartenvergleichDtoGrund = {
+export const FilingTypeComparisonDtoReason = {
   'nicht-verheiratet': 'nicht-verheiratet',
   'keine-einnahmen': 'keine-einnahmen',
 } as const;
 
-export type UnschaerfeDtoKind = typeof UnschaerfeDtoKind[keyof typeof UnschaerfeDtoKind];
+export type UncertaintyDtoKind = typeof UncertaintyDtoKind[keyof typeof UncertaintyDtoKind];
 
 
-export const UnschaerfeDtoKind = {
+export const UncertaintyDtoKind = {
   bestimmt: 'bestimmt',
   unbestimmt: 'unbestimmt',
 } as const;
@@ -48,49 +48,49 @@ export const UnschaerfeDtoKind = {
 /**
  * Why no bound exists (only when kind === "unbestimmt").
  */
-export type UnschaerfeDtoGrund = typeof UnschaerfeDtoGrund[keyof typeof UnschaerfeDtoGrund];
+export type UncertaintyDtoReason = typeof UncertaintyDtoReason[keyof typeof UncertaintyDtoReason];
 
 
-export const UnschaerfeDtoGrund = {
+export const UncertaintyDtoReason = {
   'progressionsvorbehalt-nicht-eingegeben': 'progressionsvorbehalt-nicht-eingegeben',
 } as const;
 
-export interface UnschaerfeDto {
-  kind: UnschaerfeDtoKind;
+export interface UncertaintyDto {
+  kind: UncertaintyDtoKind;
   /** The computed bound (only when kind === "bestimmt"). */
-  obergrenze?: number;
+  upperLimit?: number;
   /** Why no bound exists (only when kind === "unbestimmt"). */
-  grund?: UnschaerfeDtoGrund;
+  reason?: UncertaintyDtoReason;
 }
 
-export interface VergleichsHerkunftDto {
+export interface ComparisonSourceDto {
   /** The primary zvE-basis (Einnahmen from @steuereule/core — layer 3 open, no real zvE yet). */
   zveA: number;
   /** The partner zvE-basis (query param — M1 does not yet collect it). */
   zveB: number;
   /** Which tax components are folded into both amounts. */
-  bestandteile: string[];
+  components: string[];
 }
 
-export interface VeranlagungsartenvergleichDto {
-  kind: VeranlagungsartenvergleichDtoKind;
+export interface FilingTypeComparisonDto {
+  kind: FilingTypeComparisonDtoKind;
   /** The recommendation (only when kind === "eindeutig"). */
-  empfehlung?: VeranlagungsartenvergleichDtoEmpfehlung;
+  recommendation?: FilingTypeComparisonDtoRecommendation;
   /** Full assessed tax, single filing (only when kind !== "nicht-anwendbar"). */
-  einzel?: number;
+  single?: number;
   /** Full assessed tax, joint filing (only when kind !== "nicht-anwendbar"). */
-  zusammen?: number;
+  joint?: number;
   /** zusammen − einzel (only when kind !== "nicht-anwendbar"). */
   delta?: number;
   /** The computed margin (only when kind !== "nicht-anwendbar"). */
-  unschaerfe?: UnschaerfeDto;
+  uncertainty?: UncertaintyDto;
   /** Origin metadata on both numbers (only when kind !== "nicht-anwendbar"). */
-  herkunft?: VergleichsHerkunftDto;
+  provenance?: ComparisonSourceDto;
   /** Why the comparison does not apply (only when kind === "nicht-anwendbar"). */
-  grund?: VeranlagungsartenvergleichDtoGrund;
+  reason?: FilingTypeComparisonDtoReason;
 }
 
-export type VeranlagungsartenvergleichControllerGetVergleichParams = {
+export type FilingTypeComparisonControllerGetComparisonParams = {
 /**
  * §51a EStG Kirchensteuer factor (0, 0.08, 0.09). Defaults to 0 — M1 collects none.
  */

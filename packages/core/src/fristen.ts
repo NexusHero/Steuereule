@@ -28,17 +28,17 @@ function daysSince(iso: string): number {
   return Date.UTC(Number(m[1]!), Number(m[2]!) - 1, Number(m[3]!)) / 86_400_000
 }
 
-export type FristenStufe = 'keine' | 'warnung' | 'abgelaufen'
+export type DeadlineLevel = 'keine' | 'warnung' | 'abgelaufen'
 
-export interface FristenWarnung {
-  readonly stufe: FristenStufe
-  readonly abgabefrist: string
-  readonly verbleibendeTage: number
+export interface DeadlineWarning {
+  readonly level: DeadlineLevel
+  readonly filingDeadline: string
+  readonly remainingDays: number
 }
 
-export function fristenWarnung(steuerjahr: number, heute: string): FristenWarnung {
-  const abgabefrist = filingDeadlineFor(steuerjahr)
-  const verbleibendeTage = daysSince(abgabefrist) - daysSince(heute)
-  const stufe: FristenStufe = verbleibendeTage < 0 ? 'abgelaufen' : verbleibendeTage <= DEADLINE_WARNING_THRESHOLD_DAYS ? 'warnung' : 'keine'
-  return { stufe, abgabefrist, verbleibendeTage }
+export function deadlineWarning(steuerjahr: number, today: string): DeadlineWarning {
+  const filingDeadline = filingDeadlineFor(steuerjahr)
+  const remainingDays = daysSince(filingDeadline) - daysSince(today)
+  const level: DeadlineLevel = remainingDays < 0 ? 'abgelaufen' : remainingDays <= DEADLINE_WARNING_THRESHOLD_DAYS ? 'warnung' : 'keine'
+  return { level, filingDeadline, remainingDays }
 }

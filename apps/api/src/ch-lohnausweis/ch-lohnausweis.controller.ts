@@ -9,19 +9,19 @@ import {
 import { CurrentUser } from '../auth/current-user.decorator.js'
 import { RequiresAccount } from '../auth/requires-account.guard.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
-import { ParseSteuerjahrPipe } from '../cockpit/parse-steuerjahr.pipe.js'
-import { ParseLohnausweisFeldPipe } from './parse-lohnausweis-feld.pipe.js'
-import { ChLohnausweisService } from './ch-lohnausweis.service.js'
-import { PutLohnausweisFeldDto } from './dto/lohnausweis-feld.dto.js'
-import { PutWechselkursDto } from './dto/wechselkurs.dto.js'
-import { PutBemerkungenDto, PutVorsorgeDto, PutNGreDto } from './dto/ch-posten.dto.js'
-import { ChLohnausweisResponseDto } from './dto/ch-lohnausweis-response.dto.js'
+import { ParseTaxYearPipe } from '../cockpit/parse-steuerjahr.pipe.js'
+import { ParseSalaryCertificateFieldPipe } from './parse-lohnausweis-feld.pipe.js'
+import { ChSalaryCertificateService } from './ch-lohnausweis.service.js'
+import { PutSalaryCertificateFieldDto } from './dto/lohnausweis-feld.dto.js'
+import { PutExchangeRateDto } from './dto/wechselkurs.dto.js'
+import { PutRemarksDto, PutProvisionDto, PutNGreDto } from './dto/ch-posten.dto.js'
+import { ChSalaryCertificateResponseDto } from './dto/ch-lohnausweis-response.dto.js'
 
 @ApiTags('ch-lohnausweis')
 @Controller('v1/steuerjahre')
 @UseGuards(UserContextGuard)
-export class ChLohnausweisController {
-  constructor(@Inject(ChLohnausweisService) private readonly service: ChLohnausweisService) {}
+export class ChSalaryCertificateController {
+  constructor(@Inject(ChSalaryCertificateService) private readonly service: ChSalaryCertificateService) {}
 
   @Get(':jahr/ch-lohnausweis')
   @RequiresAccount()
@@ -31,10 +31,10 @@ export class ChLohnausweisController {
     example: 2026,
     description: 'The tax year (Steuerjahr) — validated to a sensible window (ParseSteuerjahrPipe, same as Cockpit).',
   })
-  @ApiOkResponse({ type: ChLohnausweisResponseDto, description: 'The caller’s CH-Lohnausweis mask + fold for this tax year — re-entry.' })
+  @ApiOkResponse({ type: ChSalaryCertificateResponseDto, description: 'The caller’s CH-Lohnausweis mask + fold for this tax year — re-entry.' })
   @ApiUnauthorizedResponse({ description: 'Guest session — this endpoint requires a signed-in account.' })
-  get(@CurrentUser() userId: string, @Param('jahr', ParseSteuerjahrPipe) jahr: number): Promise<ChLohnausweisResponseDto> {
-    return this.service.getState(userId, jahr)
+  get(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number): Promise<ChSalaryCertificateResponseDto> {
+    return this.service.getState(userId, year)
   }
 
   @Put(':jahr/ch-lohnausweis/:feld')
@@ -52,44 +52,44 @@ export class ChLohnausweisController {
     example: 'bruttolohn-total',
     description: 'One of the 14 CHF-betrag Lohnausweis fields (ParseLohnausweisFeldPipe).',
   })
-  @ApiBody({ type: PutLohnausweisFeldDto })
-  @ApiOkResponse({ type: ChLohnausweisResponseDto, description: 'The updated mask and its derived fold.' })
+  @ApiBody({ type: PutSalaryCertificateFieldDto })
+  @ApiOkResponse({ type: ChSalaryCertificateResponseDto, description: 'The updated mask and its derived fold.' })
   @ApiUnauthorizedResponse({ description: 'Guest session — this endpoint requires a signed-in account.' })
-  setFeld(
+  setField(
     @CurrentUser() userId: string,
-    @Param('jahr', ParseSteuerjahrPipe) jahr: number,
-    @Param('feld', ParseLohnausweisFeldPipe) feld: Parameters<ChLohnausweisService['setFeld']>[2],
-    @Body() dto: PutLohnausweisFeldDto,
-  ): Promise<ChLohnausweisResponseDto> {
-    return this.service.setFeld(userId, jahr, feld, dto)
+    @Param('jahr', ParseTaxYearPipe) year: number,
+    @Param('feld', ParseSalaryCertificateFieldPipe) field: Parameters<ChSalaryCertificateService['setField']>[2],
+    @Body() dto: PutSalaryCertificateFieldDto,
+  ): Promise<ChSalaryCertificateResponseDto> {
+    return this.service.setField(userId, year, field, dto)
   }
 
   @Put(':jahr/ch-lohnausweis/bemerkungen')
   @HttpCode(200)
   @RequiresAccount()
   @ApiParam({ name: 'jahr', type: Number, example: 2026, description: 'The tax year (Steuerjahr).' })
-  @ApiBody({ type: PutBemerkungenDto })
-  @ApiOkResponse({ type: ChLohnausweisResponseDto, description: 'The updated mask and its derived fold.' })
-  setBemerkungen(
+  @ApiBody({ type: PutRemarksDto })
+  @ApiOkResponse({ type: ChSalaryCertificateResponseDto, description: 'The updated mask and its derived fold.' })
+  setRemarks(
     @CurrentUser() userId: string,
-    @Param('jahr', ParseSteuerjahrPipe) jahr: number,
-    @Body() dto: PutBemerkungenDto,
-  ): Promise<ChLohnausweisResponseDto> {
-    return this.service.setBemerkungen(userId, jahr, dto)
+    @Param('jahr', ParseTaxYearPipe) year: number,
+    @Body() dto: PutRemarksDto,
+  ): Promise<ChSalaryCertificateResponseDto> {
+    return this.service.setRemarks(userId, year, dto)
   }
 
   @Put(':jahr/ch-lohnausweis/vorsorge')
   @HttpCode(200)
   @RequiresAccount()
   @ApiParam({ name: 'jahr', type: Number, example: 2026, description: 'The tax year (Steuerjahr).' })
-  @ApiBody({ type: PutVorsorgeDto })
-  @ApiOkResponse({ type: ChLohnausweisResponseDto, description: 'The updated mask and its derived fold.' })
-  setVorsorge(
+  @ApiBody({ type: PutProvisionDto })
+  @ApiOkResponse({ type: ChSalaryCertificateResponseDto, description: 'The updated mask and its derived fold.' })
+  setProvision(
     @CurrentUser() userId: string,
-    @Param('jahr', ParseSteuerjahrPipe) jahr: number,
-    @Body() dto: PutVorsorgeDto,
-  ): Promise<ChLohnausweisResponseDto> {
-    return this.service.setVorsorge(userId, jahr, dto)
+    @Param('jahr', ParseTaxYearPipe) year: number,
+    @Body() dto: PutProvisionDto,
+  ): Promise<ChSalaryCertificateResponseDto> {
+    return this.service.setProvision(userId, year, dto)
   }
 
   @Put(':jahr/ch-lohnausweis/n-gre')
@@ -97,26 +97,26 @@ export class ChLohnausweisController {
   @RequiresAccount()
   @ApiParam({ name: 'jahr', type: Number, example: 2025, description: 'The tax year (Steuerjahr).' })
   @ApiBody({ type: PutNGreDto })
-  @ApiOkResponse({ type: ChLohnausweisResponseDto, description: 'The updated mask including the Anlage-N-Gre facts.' })
+  @ApiOkResponse({ type: ChSalaryCertificateResponseDto, description: 'The updated mask including the Anlage-N-Gre facts.' })
   setNGre(
     @CurrentUser() userId: string,
-    @Param('jahr', ParseSteuerjahrPipe) jahr: number,
+    @Param('jahr', ParseTaxYearPipe) year: number,
     @Body() dto: PutNGreDto,
-  ): Promise<ChLohnausweisResponseDto> {
-    return this.service.setNGre(userId, jahr, dto)
+  ): Promise<ChSalaryCertificateResponseDto> {
+    return this.service.setNGre(userId, year, dto)
   }
 
   @Put(':jahr/ch-lohnausweis/wechselkurs')
   @HttpCode(200)
   @RequiresAccount()
   @ApiParam({ name: 'jahr', type: Number, example: 2026, description: 'The tax year (Steuerjahr).' })
-  @ApiBody({ type: PutWechselkursDto })
-  @ApiOkResponse({ type: ChLohnausweisResponseDto, description: 'The updated mask and its derived fold.' })
-  setWechselkurs(
+  @ApiBody({ type: PutExchangeRateDto })
+  @ApiOkResponse({ type: ChSalaryCertificateResponseDto, description: 'The updated mask and its derived fold.' })
+  setExchangeRate(
     @CurrentUser() userId: string,
-    @Param('jahr', ParseSteuerjahrPipe) jahr: number,
-    @Body() dto: PutWechselkursDto,
-  ): Promise<ChLohnausweisResponseDto> {
-    return this.service.setWechselkurs(userId, jahr, dto)
+    @Param('jahr', ParseTaxYearPipe) year: number,
+    @Body() dto: PutExchangeRateDto,
+  ): Promise<ChSalaryCertificateResponseDto> {
+    return this.service.setExchangeRate(userId, year, dto)
   }
 }

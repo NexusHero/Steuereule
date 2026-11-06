@@ -7,10 +7,10 @@ import { useAccountSession } from '../../auth/useAccountSession'
 import { useTwoFactor, type TotpSetup } from '../../auth/useTwoFactor'
 import { usePasskey, type PasskeyInfo } from '../../auth/usePasskey'
 import { QrMark } from '../../marks/QrMark'
-import { makeSicherheitStyles } from './styles'
+import { makeSecurityStyles } from './styles'
 
-export interface SicherheitScreenProps {
-  readonly onZurueck: () => void
+export interface SecurityScreenProps {
+  readonly onBack: () => void
 }
 
 type Stage =
@@ -19,7 +19,7 @@ type Stage =
   | { readonly kind: 'enable-setup'; readonly setup: TotpSetup; readonly error: string; readonly busy: boolean }
   | { readonly kind: 'disable-password'; readonly error: string; readonly busy: boolean }
 
-export function SicherheitScreen({ onZurueck }: SicherheitScreenProps) {
+export function SecurityScreen({ onBack }: SecurityScreenProps) {
   const t = useTheme()
   const bp = useBreakpoint()
   const { t: tr } = useTranslation(APP_NS)
@@ -37,7 +37,7 @@ export function SicherheitScreen({ onZurueck }: SicherheitScreenProps) {
   const [passkeyBusy, setPasskeyBusy] = useState(false)
 
   const twoFactorEnabled = sessionState.status === 'signed-in' ? readTwoFactorEnabled(sessionState.session) : false
-  const styles = makeSicherheitStyles(t)
+  const styles = makeSecurityStyles(t)
 
   useEffect(() => {
     if (sessionState.status !== 'signed-in') return
@@ -128,7 +128,7 @@ export function SicherheitScreen({ onZurueck }: SicherheitScreenProps) {
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
       <View style={styles.appbar}>
-        <Pressable accessibilityRole="button" accessibilityLabel={tr('sicherheit.back')} onPress={onZurueck} style={styles.backButton}>
+        <Pressable accessibilityRole="button" accessibilityLabel={tr('sicherheit.back')} onPress={onBack} style={styles.backButton}>
           <Text style={styles.backGlyph}>←</Text>
         </Pressable>
         <Text style={styles.appbarTitle}>{tr('sicherheit.title')}</Text>
@@ -166,7 +166,7 @@ export function SicherheitScreen({ onZurueck }: SicherheitScreenProps) {
           {stage.kind === 'idle' && twoFactorEnabled ? (
             <Card style={styles.card}>
               <Text style={styles.sectionBody}>{tr('sicherheit.disable.explainer')}</Text>
-              <Button variante="ghost" onPress={() => setStage({ kind: 'disable-password', error: '', busy: false })}>
+              <Button variant="ghost" onPress={() => setStage({ kind: 'disable-password', error: '', busy: false })}>
                 {tr('sicherheit.disable.start')}
               </Button>
             </Card>
@@ -175,7 +175,7 @@ export function SicherheitScreen({ onZurueck }: SicherheitScreenProps) {
           {stage.kind === 'enable-password' ? (
             <Card style={styles.card}>
               <Text style={styles.sectionTitle}>{tr('sicherheit.enable.passwordTitle')}</Text>
-              <Feld label={tr('sicherheit.password')} fehler={stage.error}>
+              <Feld label={tr('sicherheit.password')} error={stage.error}>
                 <Input type="password" value={password} onChange={setPassword} placeholder="••••••••" onSubmit={() => void submitEnablePassword()} />
               </Feld>
               <Button onPress={() => void submitEnablePassword()} disabled={stage.busy || !password}>
@@ -191,7 +191,7 @@ export function SicherheitScreen({ onZurueck }: SicherheitScreenProps) {
               <Text style={styles.secret}>{stage.setup.totpURI}</Text>
               <Text style={styles.sectionBody}>{tr('sicherheit.enable.backupCodes')}</Text>
               <Text style={styles.codes}>{stage.setup.backupCodes.join('  ')}</Text>
-              <Feld label={tr('sicherheit.enable.codeLabel')} fehler={stage.error}>
+              <Feld label={tr('sicherheit.enable.codeLabel')} error={stage.error}>
                 <Input type="text" value={code} onChange={setCode} placeholder="123456" onSubmit={() => void submitCode()} />
               </Feld>
               <Button onPress={() => void submitCode()} disabled={stage.busy || !code}>
@@ -203,7 +203,7 @@ export function SicherheitScreen({ onZurueck }: SicherheitScreenProps) {
           {stage.kind === 'disable-password' ? (
             <Card style={styles.card}>
               <Text style={styles.sectionTitle}>{tr('sicherheit.disable.passwordTitle')}</Text>
-              <Feld label={tr('sicherheit.password')} fehler={stage.error}>
+              <Feld label={tr('sicherheit.password')} error={stage.error}>
                 <Input type="password" value={password} onChange={setPassword} placeholder="••••••••" onSubmit={() => void submitDisablePassword()} />
               </Feld>
               <Button onPress={() => void submitDisablePassword()} disabled={stage.busy || !password}>
@@ -239,7 +239,7 @@ export function SicherheitScreen({ onZurueck }: SicherheitScreenProps) {
               ? passkeys.map((p) => (
                   <View key={p.id} style={styles.statusRow}>
                     <Text style={styles.sectionBody}>{p.name ?? tr('sicherheit.passkey.unnamed')}</Text>
-                    <Button variante="ghost" onPress={() => void submitRemovePasskey(p.id)} disabled={passkeyBusy}>
+                    <Button variant="ghost" onPress={() => void submitRemovePasskey(p.id)} disabled={passkeyBusy}>
                       {tr('sicherheit.passkey.remove')}
                     </Button>
                   </View>

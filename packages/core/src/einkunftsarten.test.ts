@@ -38,8 +38,8 @@ describe('einkunftsartenFromAnswers — the onboarding-shorthand → Einkunftsar
     ['Ja, in die Schweiz', ['Grenzgänger'] as const],
     ['Nein', [] as const],
     ['In ein anderes Land', [] as const], // the CH-only gate — no computable category (honest)
-  ] as const)('ausland=%s declares exactly the expected Einkunftsart set', (ausland, expected) => {
-    expect(incomeTypesFromAnswers({ job: 'Angestellt', ausland })).toEqual(['Nichtselbstständig', ...expected])
+  ] as const)('ausland=%s declares exactly the expected Einkunftsart set', (foreign, expected) => {
+    expect(incomeTypesFromAnswers({ job: 'Angestellt', ausland: foreign })).toEqual(['Nichtselbstständig', ...expected])
   })
 
   it.each([
@@ -48,8 +48,8 @@ describe('einkunftsartenFromAnswers — the onboarding-shorthand → Einkunftsar
     // canonical order (EINKUNFTSARTEN): Vermietung precedes Kapital.
     ['Beides', ['Vermietung', 'Kapital'] as const],
     ['Nein', [] as const],
-  ] as const)('einkuenfte=%s declares exactly the expected Einkunftsart set', (einkuenfte, expected) => {
-    expect(incomeTypesFromAnswers({ job: 'Angestellt', einkuenfte })).toEqual(['Nichtselbstständig', ...expected])
+  ] as const)('einkuenfte=%s declares exactly the expected Einkunftsart set', (netIncome, expected) => {
+    expect(incomeTypesFromAnswers({ job: 'Angestellt', einkuenfte: netIncome })).toEqual(['Nichtselbstständig', ...expected])
   })
 
   // ADR-030/034 — the combinability cases. Each is a NORMAL real person, not a synthetic

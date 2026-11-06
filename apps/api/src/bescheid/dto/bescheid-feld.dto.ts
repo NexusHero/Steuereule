@@ -14,7 +14,7 @@ export class AssessmentFieldDto {
     example: 50000,
     description: 'The whole-euro amount — present only when kind === "erfasst" (erstattung may be negative).',
   })
-  wert?: number
+  value?: number
 }
 
 /** The PUT body for one figure. */
@@ -30,5 +30,5 @@ export class PutAssessmentFieldDto {
   })
   @IsOptional()
   @IsInt()
-  wert?: number
+  value?: number
 }

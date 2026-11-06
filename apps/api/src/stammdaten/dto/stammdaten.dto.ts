@@ -2,23 +2,23 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import { MARITAL_STATUSES, isValidIban, isValidPostalCode, isValidDate, RELIGION_KEYS } from '@steuereule/core'
 import { IsBoolean, IsIn, IsOptional, IsString, MaxLength, registerDecorator, type ValidationOptions } from 'class-validator'
 
-function Erfuellt(praedikat: (wert: string) => boolean, meldung: string, options?: ValidationOptions) {
+function Fulfilled(predicate: (value: string) => boolean, message: string, options?: ValidationOptions) {
   return (object: object, propertyName: string) =>
     registerDecorator({
       name: 'erfuellt',
       target: object.constructor,
       propertyName,
-      options: { message: meldung, ...options },
-      validator: { validate: (wert: unknown) => typeof wert === 'string' && praedikat(wert) },
+      options: { message, ...options },
+      validator: { validate: (value: unknown) => typeof value === 'string' && predicate(value) },
     })
 }
 
 const TEXT = { type: String, nullable: true } as const
 
-export class PutStammdatenDto {
+export class PutMasterDataDto {
   @ApiPropertyOptional({ ...TEXT, example: '1990-04-12', description: 'YYYY-MM-DD' })
   @IsOptional()
-  @Erfuellt(isValidDate, 'geburtsdatum must be a real date (YYYY-MM-DD)')
+  @Fulfilled(isValidDate, 'geburtsdatum must be a real date (YYYY-MM-DD)')
   geburtsdatum?: string | null
 
   @ApiPropertyOptional({ ...TEXT, example: 'Musterstraße' })
@@ -41,7 +41,7 @@ export class PutStammdatenDto {
 
   @ApiPropertyOptional({ ...TEXT, example: '01067', description: 'Five digits (Inland).' })
   @IsOptional()
-  @Erfuellt(isValidPostalCode, 'plz must be exactly five digits')
+  @Fulfilled(isValidPostalCode, 'plz must be exactly five digits')
   plz?: string | null
 
   @ApiPropertyOptional({ ...TEXT, example: 'Dresden' })
@@ -59,7 +59,7 @@ export class PutStammdatenDto {
   @ApiPropertyOptional({
     enum: RELIGION_KEYS,
     nullable: true,
-    description: 'Religionsschlüssel per ESt 1 A guide (VD = none). Art. 9 DSGVO: requires religionEinwilligung = true.',
+    description: 'Religionsschlüssel per ESt 1 A guide (VD = none). Art. 9 DSGVO: requires religionConsent = true.',
   })
   @IsOptional()
   @IsIn(RELIGION_KEYS)
@@ -68,7 +68,7 @@ export class PutStammdatenDto {
   @ApiPropertyOptional({ type: Boolean, description: 'Explicit consent to store the religion (Art. 9 Abs. 2 lit. a DSGVO).' })
   @IsOptional()
   @IsBoolean()
-  religionEinwilligung?: boolean
+  religionConsent?: boolean
 
   @ApiPropertyOptional({ enum: MARITAL_STATUSES, nullable: true })
   @IsOptional()
@@ -77,12 +77,12 @@ export class PutStammdatenDto {
 
   @ApiPropertyOptional({ ...TEXT, example: '2018-06-01', description: 'YYYY-MM-DD; not for ledig.' })
   @IsOptional()
-  @Erfuellt(isValidDate, 'familienstandSeit must be a real date (YYYY-MM-DD)')
+  @Fulfilled(isValidDate, 'familienstandSeit must be a real date (YYYY-MM-DD)')
   familienstandSeit?: string | null
 
   @ApiPropertyOptional({ ...TEXT, example: 'DE89370400440532013000', description: 'Mod-97-checked; stored without spaces.' })
   @IsOptional()
-  @Erfuellt(isValidIban, 'iban is not a valid IBAN')
+  @Fulfilled(isValidIban, 'iban is not a valid IBAN')
   iban?: string | null
 
   @ApiPropertyOptional({ ...TEXT, example: 'Anna Beispiel', description: 'Only when the account holder is someone else.' })
@@ -104,7 +104,7 @@ export class PutStammdatenDto {
   telefon?: string | null
 }
 
-export class StammdatenResponseDto {
+export class MasterDataResponseDto {
   @ApiProperty(TEXT) geburtsdatum!: string | null
   @ApiProperty(TEXT) strasse!: string | null
   @ApiProperty(TEXT) hausnummer!: string | null
@@ -124,5 +124,5 @@ export class StammdatenResponseDto {
     type: [String],
     description: 'Fields the Hauptvordruck needs that are still empty — the honest gap list for the Ausdruck.',
   })
-  fehlend!: string[]
+  missing!: string[]
 }

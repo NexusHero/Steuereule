@@ -4,49 +4,49 @@
 // through Prisma) lives in beleg.integration.test.ts.
 import { beforeEach, describe, expect, it } from 'vitest'
 import { AuditService } from '../src/audit/audit.service.js'
-import { BelegService } from '../src/beleg/beleg.service.js'
+import { ReceiptService } from '../src/beleg/beleg.service.js'
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
-import { FakeBelegRepository } from './fakes/fake-beleg.repository.js'
+import { FakeReceiptRepository } from './fakes/fake-beleg.repository.js'
 
 const USER_ID = 'user-1'
 
 describe('BelegService', () => {
-  let repository: FakeBelegRepository
+  let repository: FakeReceiptRepository
   let auditRepository: FakeAuditRepository
-  let service: BelegService
+  let service: ReceiptService
 
   beforeEach(() => {
-    repository = new FakeBelegRepository()
+    repository = new FakeReceiptRepository()
     auditRepository = new FakeAuditRepository()
-    service = new BelegService(repository, new AuditService(auditRepository))
+    service = new ReceiptService(repository, new AuditService(auditRepository))
   })
 
   describe('create — lands UNBOUND (ADR-007)', () => {
     it('a Beleg with no dates creates ungebunden', async () => {
-      const beleg = await service.create(USER_ID, { dateiname: 'quittung.pdf' })
-      expect(beleg.zuordnung).toEqual({ kind: 'ungebunden' })
-      expect(beleg.dateiname).toBe('quittung.pdf')
-      expect(beleg.belegdatum).toBeNull()
+      const receipt = await service.create(USER_ID, { dateiname: 'quittung.pdf' })
+      expect(receipt.assignment).toEqual({ kind: 'ungebunden' })
+      expect(receipt.dateiname).toBe('quittung.pdf')
+      expect(receipt.belegdatum).toBeNull()
     })
 
     it('a Beleg with a payment date creates vorgeschlagen, preferring the payment year (§ 11 Zufluss)', async () => {
-      const beleg = await service.create(USER_ID, {
+      const receipt = await service.create(USER_ID, {
         dateiname: 'quittung.pdf',
         belegdatum: '2025-12-20',
         zahlungsdatum: '2026-01-15',
       })
-      expect(beleg.zuordnung).toEqual({ kind: 'vorgeschlagen', steuerjahr: 2026, herkunft: 'zahlungsdatum' })
+      expect(receipt.assignment).toEqual({ kind: 'vorgeschlagen', steuerjahr: 2026, provenance: 'zahlungsdatum' })
     })
 
     it('a CH document type (ADR-029) is carried through and read back on the response', async () => {
-      const beleg = await service.create(USER_ID, { dateiname: 'lohnausweis.pdf', art: 'Lohnausweis' })
-      expect(beleg.art).toBe('Lohnausweis')
-      expect(beleg.zuordnung).toEqual({ kind: 'ungebunden' })
+      const receipt = await service.create(USER_ID, { dateiname: 'lohnausweis.pdf', art: 'Lohnausweis' })
+      expect(receipt.art).toBe('Lohnausweis')
+      expect(receipt.assignment).toEqual({ kind: 'ungebunden' })
     })
 
     it('an omitted art is read back as null (the generic pre-CH receipt)', async () => {
-      const beleg = await service.create(USER_ID, { dateiname: 'quittung.pdf' })
-      expect(beleg.art).toBeNull()
+      const receipt = await service.create(USER_ID, { dateiname: 'quittung.pdf' })
+      expect(receipt.art).toBeNull()
     })
   })
 
@@ -77,37 +77,37 @@ describe('BelegService', () => {
   describe('setZuordnung — the tap, with a derived conflict (ADR-008)', () => {
     it('confirms the suggested year → zugeordnet', async () => {
       const created = await service.create(USER_ID, { dateiname: 'a.pdf', zahlungsdatum: '2026-03-01' })
-      const result = await service.setZuordnung(USER_ID, created.id, { steuerjahr: 2026 })
-      expect(result.zuordnung).toEqual({ kind: 'zugeordnet', steuerjahr: 2026 })
+      const result = await service.setAssignment(USER_ID, created.id, { steuerjahr: 2026 })
+      expect(result.assignment).toEqual({ kind: 'zugeordnet', steuerjahr: 2026 })
     })
 
     it('assigning a year that contradicts the dates reports konflikt, never a silent overwrite', async () => {
       const created = await service.create(USER_ID, { dateiname: 'a.pdf', zahlungsdatum: '2026-01-15' })
-      const result = await service.setZuordnung(USER_ID, created.id, { steuerjahr: 2025 })
-      expect(result.zuordnung).toEqual({
+      const result = await service.setAssignment(USER_ID, created.id, { steuerjahr: 2025 })
+      expect(result.assignment).toEqual({
         kind: 'konflikt',
         steuerjahr: 2025,
-        vorschlagsJahr: 2026,
-        herkunft: 'zahlungsdatum',
+        proposalYear: 2026,
+        provenance: 'zahlungsdatum',
       })
     })
 
     it('dismissing a contradicting suggestion (vorschlagVerworfen) resolves the conflict to zugeordnet (ADR-008 "bei meinem Jahr bleiben")', async () => {
       const created = await service.create(USER_ID, { dateiname: 'a.pdf', zahlungsdatum: '2026-01-15' })
-      const conflict = await service.setZuordnung(USER_ID, created.id, { steuerjahr: 2025 })
-      expect(conflict.zuordnung).toMatchObject({ kind: 'konflikt', steuerjahr: 2025 })
+      const conflict = await service.setAssignment(USER_ID, created.id, { steuerjahr: 2025 })
+      expect(conflict.assignment).toMatchObject({ kind: 'konflikt', steuerjahr: 2025 })
 
-      const resolved = await service.setZuordnung(USER_ID, created.id, { steuerjahr: 2025, vorschlagVerworfen: true })
-      expect(resolved.zuordnung).toEqual({ kind: 'zugeordnet', steuerjahr: 2025 })
+      const resolved = await service.setAssignment(USER_ID, created.id, { steuerjahr: 2025, vorschlagVerworfen: true })
+      expect(resolved.assignment).toEqual({ kind: 'zugeordnet', steuerjahr: 2025 })
     })
 
     it('a foreign or missing id throws NotFound, never leaks existence', async () => {
-      await expect(service.setZuordnung(USER_ID, 'not-mine', { steuerjahr: 2026 })).rejects.toThrow(/does not exist/)
+      await expect(service.setAssignment(USER_ID, 'not-mine', { steuerjahr: 2026 })).rejects.toThrow(/does not exist/)
     })
 
     it('a foreign id under the caller’s userId is still not found', async () => {
       const created = await service.create('someone-else', { dateiname: 'theirs.pdf' })
-      await expect(service.setZuordnung(USER_ID, created.id, { steuerjahr: 2026 })).rejects.toThrow(/does not exist/)
+      await expect(service.setAssignment(USER_ID, created.id, { steuerjahr: 2026 })).rejects.toThrow(/does not exist/)
     })
   })
 })

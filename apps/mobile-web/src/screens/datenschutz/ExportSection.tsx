@@ -1,6 +1,6 @@
 import { View, Text } from 'react-native'
 import { Button, Card, useTheme } from '@steuereule/ui'
-import { makeDatenschutzStyles } from './styles'
+import { makePrivacyStyles } from './styles'
 import type { ExportFormat } from './exportDownload'
 
 export type ExportButtonState = 'idle' | 'loading' | 'success' | 'error'
@@ -13,7 +13,7 @@ interface ExportSectionProps {
 
 export function ExportSection({ tr, state, onExport }: ExportSectionProps) {
   const t = useTheme()
-  const styles = makeDatenschutzStyles(t)
+  const styles = makePrivacyStyles(t)
   return (
     <Card>
       <Text style={styles.sectionTitle}>{tr('datenschutz.export.title')}</Text>
@@ -50,10 +50,10 @@ interface ExportFormatRowProps {
 
 function ExportFormatRow({ tr, label, hint, state, onPress }: ExportFormatRowProps) {
   const t = useTheme()
-  const styles = makeDatenschutzStyles(t)
+  const styles = makePrivacyStyles(t)
   return (
     <View style={styles.exportRow}>
-      <Button variante="ghost" onPress={onPress} disabled={state === 'loading'}>
+      <Button variant="ghost" onPress={onPress} disabled={state === 'loading'}>
         {state === 'loading' ? tr('datenschutz.export.preparing') : label}
       </Button>
       <Text style={styles.hint}>{hint}</Text>

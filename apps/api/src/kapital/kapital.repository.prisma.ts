@@ -17,7 +17,7 @@ function toRecord(row: Omit<CapitalRecord, 'inhaber'> & { inhaber?: string | nul
 }
 
 @Injectable()
-export class PrismaKapitalRepository implements CapitalRepository {
+export class PrismaCapitalRepository implements CapitalRepository {
   constructor(@Inject(ENCRYPTED_PRISMA) private readonly prisma: EncryptedPrismaClient) {}
 
   async findForUserAndYear(userId: string, steuerjahr: number): Promise<CapitalRecord | null> {
@@ -25,12 +25,12 @@ export class PrismaKapitalRepository implements CapitalRepository {
     return row === null ? null : toRecord(row)
   }
 
-  async setFeld(userId: string, steuerjahr: number, feld: CapitalFieldId, wert: string | null): Promise<CapitalRecord> {
+  async setField(userId: string, steuerjahr: number, field: CapitalFieldId, value: string | null): Promise<CapitalRecord> {
     const [row] = await this.prisma.$transaction([
       this.prisma.kapital.upsert({
         where: { userId_steuerjahr: { userId, steuerjahr } },
-        create: { userId, steuerjahr, ...feldData(feld, wert) },
-        update: feldData(feld, wert),
+        create: { userId, steuerjahr, ...fieldData(field, value) },
+        update: fieldData(field, value),
       }),
       this.prisma.taxDataAccessLog.create({
         data: { userId, action: 'WRITE', resource: 'kapital' },
@@ -39,7 +39,7 @@ export class PrismaKapitalRepository implements CapitalRepository {
     return toRecord(row)
   }
 
-  async setInhaber(userId: string, steuerjahr: number, inhaber: CapitalOwner): Promise<CapitalRecord> {
+  async setOwner(userId: string, steuerjahr: number, inhaber: CapitalOwner): Promise<CapitalRecord> {
     const row = await this.prisma.kapital.upsert({
       where: { userId_steuerjahr: { userId, steuerjahr } },
       create: { userId, steuerjahr, inhaber },
@@ -49,17 +49,17 @@ export class PrismaKapitalRepository implements CapitalRepository {
   }
 }
 
-function feldData(feld: CapitalFieldId, wert: string | null): Partial<Record<CapitalFieldId, string | null>> {
-  switch (feld) {
+function fieldData(field: CapitalFieldId, value: string | null): Partial<Record<CapitalFieldId, string | null>> {
+  switch (field) {
     case 'kapitalertraege':
-      return { kapitalertraege: wert }
+      return { kapitalertraege: value }
     case 'sparerPauschbetrag':
-      return { sparerPauschbetrag: wert }
+      return { sparerPauschbetrag: value }
     case 'kapitalertragsteuer':
-      return { kapitalertragsteuer: wert }
+      return { kapitalertragsteuer: value }
     case 'solidaritaetszuschlag':
-      return { solidaritaetszuschlag: wert }
+      return { solidaritaetszuschlag: value }
     case 'kirchensteuer':
-      return { kirchensteuer: wert }
+      return { kirchensteuer: value }
   }
 }

@@ -3,7 +3,7 @@ import { PrismaService } from '../prisma/prisma.service.js'
 import type { TaxYearRolloverRecord, TaxYearRolloverRepository } from './jahresuebernahme.repository.js'
 
 @Injectable()
-export class PrismaJahresuebernahmeRepository implements TaxYearRolloverRepository {
+export class PrismaYearTakeoverRepository implements TaxYearRolloverRepository {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async findForUserAndYear(userId: string, steuerjahr: number): Promise<TaxYearRolloverRecord | null> {

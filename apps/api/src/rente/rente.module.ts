@@ -1,17 +1,17 @@
 import { Module } from '@nestjs/common'
-import { KennzeichnungModule } from '../kennzeichnung/kennzeichnung.module.js'
+import { MarkingModule } from '../kennzeichnung/kennzeichnung.module.js'
 import { AuditModule } from '../audit/audit.module.js'
 import { InterviewModule } from '../interview/interview.module.js'
 import { PrismaModule } from '../prisma/prisma.module.js'
-import { RenteController } from './rente.controller.js'
+import { PensionController } from './rente.controller.js'
 import { PENSION_REPOSITORY } from './rente.repository.js'
-import { PrismaRenteRepository } from './rente.repository.prisma.js'
-import { RenteService } from './rente.service.js'
+import { PrismaPensionRepository } from './rente.repository.prisma.js'
+import { PensionService } from './rente.service.js'
 
 @Module({
-  imports: [KennzeichnungModule, PrismaModule, AuditModule, InterviewModule],
-  controllers: [RenteController],
-  providers: [RenteService, { provide: PENSION_REPOSITORY, useClass: PrismaRenteRepository }],
+  imports: [MarkingModule, PrismaModule, AuditModule, InterviewModule],
+  controllers: [PensionController],
+  providers: [PensionService, { provide: PENSION_REPOSITORY, useClass: PrismaPensionRepository }],
   exports: [PENSION_REPOSITORY],
 })
-export class RenteModule {}
+export class PensionModule {}

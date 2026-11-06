@@ -1,7 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger'
 import { IsBoolean, IsOptional, IsString, Matches, MaxLength } from 'class-validator'
 
-export class PutVermietungAdresseDto {
+export class PutRentalAddressDto {
   @ApiPropertyOptional({ type: String, example: 'Musterstraße' })
   @IsOptional()
   @IsString()

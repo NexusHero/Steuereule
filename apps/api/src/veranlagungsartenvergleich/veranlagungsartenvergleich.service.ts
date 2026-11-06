@@ -2,43 +2,43 @@ import { Inject, Injectable } from '@nestjs/common'
 import { InvalidInputError } from '../common/domain-error.js'
 import {
   employeeFromData,
-  progressionsvorbehaltAus,
-  veranlagungsartenvergleich,
-  type KirchensteuerFaktor,
-  type Veranlagungsartenvergleich as Vergleich,
+  progressionClauseFrom,
+  filingTypeComparison,
+  type ChurchTaxFactor,
+  type FilingTypeComparison as Vergleich,
 } from '@steuereule/core'
 import { INTERVIEW_ANSWER_REPOSITORY, type InterviewAnswerRepository } from '../interview/interview-answer.repository.js'
 import { WAGE_TAX_CERTIFICATE_REPOSITORY, type WageTaxCertificateRepository } from '../lstb/lstb.repository.js'
 import { TAX_YEAR_REPOSITORY, type TaxYearRepository } from '../cockpit/tax-year.repository.js'
-import type { UnschaerfeDto, VeranlagungsartenvergleichDto, VergleichsHerkunftDto } from './dto/veranlagungsartenvergleich-response.dto.js'
+import type { UncertaintyDto, FilingTypeComparisonDto, ComparisonSourceDto } from './dto/veranlagungsartenvergleich-response.dto.js'
 import { answersFrom } from '../interview/answers.js'
 import { wageTaxCertificateDataFrom } from '../lstb/lstb-daten.js'
 
-function toDto(vergleich: Vergleich): VeranlagungsartenvergleichDto {
-  const unschaerfe: UnschaerfeDto =
-    vergleich.unschaerfe.kind === 'bestimmt'
-      ? { kind: 'bestimmt', obergrenze: vergleich.unschaerfe.obergrenze }
-      : { kind: 'unbestimmt', grund: vergleich.unschaerfe.grund }
-  const herkunft: VergleichsHerkunftDto = {
-    zveA: vergleich.herkunft.zveA,
-    zveB: vergleich.herkunft.zveB,
-    bestandteile: [...vergleich.herkunft.bestandteile],
+function toDto(comparison: Vergleich): FilingTypeComparisonDto {
+  const uncertainty: UncertaintyDto =
+    comparison.uncertainty.kind === 'bestimmt'
+      ? { kind: 'bestimmt', upperLimit: comparison.uncertainty.upperLimit }
+      : { kind: 'unbestimmt', reason: comparison.uncertainty.reason }
+  const provenance: ComparisonSourceDto = {
+    zveA: comparison.provenance.zveA,
+    zveB: comparison.provenance.zveB,
+    components: [...comparison.provenance.components],
   }
-  switch (vergleich.aussage) {
+  switch (comparison.statement) {
     case 'eindeutig':
       return {
         kind: 'eindeutig',
-        empfehlung: vergleich.empfehlung,
-        einzel: vergleich.einzel,
-        zusammen: vergleich.zusammen,
-        delta: vergleich.delta,
-        unschaerfe,
-        herkunft,
+        recommendation: comparison.recommendation,
+        single: comparison.single,
+        joint: comparison.joint,
+        delta: comparison.delta,
+        uncertainty,
+        provenance,
       }
     case 'zu-knapp':
-      return { kind: 'zu-knapp', einzel: vergleich.einzel, zusammen: vergleich.zusammen, delta: vergleich.delta, unschaerfe, herkunft }
+      return { kind: 'zu-knapp', single: comparison.single, joint: comparison.joint, delta: comparison.delta, uncertainty, provenance }
     case 'unbestimmt':
-      return { kind: 'unbestimmt', einzel: vergleich.einzel, zusammen: vergleich.zusammen, delta: vergleich.delta, unschaerfe, herkunft }
+      return { kind: 'unbestimmt', single: comparison.single, joint: comparison.joint, delta: comparison.delta, uncertainty, provenance }
   }
 }
 
@@ -51,13 +51,13 @@ export class AssessmentComparisonService {
     @Inject(INTERVIEW_ANSWER_REPOSITORY) private readonly interviewRepository: InterviewAnswerRepository,
   ) {}
 
-  async getVergleich(
+  async getComparison(
     userId: string,
     steuerjahr: number,
-    verheiratet: boolean,
+    married: boolean,
     zveB: number | undefined,
-    kirchensteuerFaktor: KirchensteuerFaktor,
-  ): Promise<VeranlagungsartenvergleichDto | null> {
+    churchTaxFactor: ChurchTaxFactor,
+  ): Promise<FilingTypeComparisonDto | null> {
     const record = await this.taxYearRepository.findByUserAndYear(userId, steuerjahr)
     if (!record) return null
 
@@ -66,27 +66,27 @@ export class AssessmentComparisonService {
       this.interviewRepository.findAllForUserAndYear(userId, steuerjahr),
     ])
 
-    const daten = wageTaxCertificateDataFrom(lstbRecord)
+    const data = wageTaxCertificateDataFrom(lstbRecord)
     const answers = answersFrom(interviewRows)
 
-    if (!verheiratet) {
-      return { kind: 'nicht-anwendbar', grund: 'nicht-verheiratet' }
+    if (!married) {
+      return { kind: 'nicht-anwendbar', reason: 'nicht-verheiratet' }
     }
-    const fakten = employeeFromData(daten, answers)
-    if (fakten.einnahmen === 0) {
-      return { kind: 'nicht-anwendbar', grund: 'keine-einnahmen' }
+    const facts = employeeFromData(data, answers)
+    if (facts.einnahmen === 0) {
+      return { kind: 'nicht-anwendbar', reason: 'keine-einnahmen' }
     }
     if (zveB === undefined) {
       throw new InvalidInputError('ZVE_B_REQUIRED', 'zveB is required to run the Veranlagungsartenvergleich.')
     }
 
-    const vergleich = veranlagungsartenvergleich({
-      zveA: fakten.einnahmen,
+    const comparison = filingTypeComparison({
+      zveA: facts.einnahmen,
       zveB,
       year: steuerjahr,
-      progressionsvorbehalt: progressionsvorbehaltAus(answers),
-      kirchensteuerFaktor,
+      progressionClause: progressionClauseFrom(answers),
+      churchTaxFactor,
     })
-    return toDto(vergleich)
+    return toDto(comparison)
   }
 }

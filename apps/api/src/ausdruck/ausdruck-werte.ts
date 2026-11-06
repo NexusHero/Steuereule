@@ -1,18 +1,18 @@
 import {
   depreciationRatePercent,
-  anlageNGreBetraege,
+  annexNGreAmounts,
   calculateDifferentialChildBenefit,
   formatGermanDate,
-  type GrenzgaengerStatus,
-  type NGreZeile,
+  type CrossBorderStatus,
+  type NGreRow,
   mandatoryCapitalFields,
   type CapitalDepotClassification,
   type CapitalFieldId,
   type HealthInsurance,
 } from '@steuereule/core'
-import type { FeldWerte } from './vordruck-renderer.js'
+import type { FieldValues } from './vordruck-renderer.js'
 
-export interface PersonBFakten {
+export interface PersonBFacts {
   firstName: string | null
   lastName: string | null
   steuerId: string | null
@@ -20,18 +20,18 @@ export interface PersonBFakten {
   religion?: string | null
   beruf?: string | null
   bruttoarbeitslohn?: string | null
-  rente?: { rentenart: string | null; jahresbetrag: string | null } | null
-  chLohnausweis?: ChLohnausweisFakten | null
-  arbeitsweg?: ArbeitswegFakten | null
-  krankenversicherung?: readonly HealthInsurance[] | null
+  pension?: { rentenart: string | null; jahresbetrag: string | null } | null
+  chSalaryCertificate?: ChSalaryCertificateFacts | null
+  commute?: CommuteFacts | null
+  healthInsurance?: readonly HealthInsurance[] | null
 }
 
-export interface KopplungFakten {
+export interface LinkFacts {
   veranlagungsart: 'einzel' | 'zusammen'
-  personB?: PersonBFakten | null
+  personB?: PersonBFacts | null
 }
 
-export interface KindFakten {
+export interface ChildFacts {
   lfdNr?: string
   vorname: string | null
   nachname: string | null
@@ -56,39 +56,39 @@ export interface KindFakten {
 }
 
 /** Anlage Kind Zeilen 47/48 — answered once per year in the interview. */
-export interface AlleinerziehendFakten {
-  weiterePerson: string | null
-  haushaltsgemeinschaft: string | null
+export interface SingleParentFacts {
+  otherPerson: string | null
+  householdCommunity: string | null
 }
 
-function brauchtAnderenElternteil(k: KindFakten, zusammen: boolean): boolean {
-  return !zusammen || !k.kindschaftsverhaeltnisB
+function needsOtherParent(k: ChildFacts, joint: boolean): boolean {
+  return !joint || !k.kindschaftsverhaeltnisB
 }
 
-function andererElternteilLuecke(k: KindFakten): string | null {
-  const bekannt = Boolean(k.andererElternteilName && k.andererElternteilGeburtsdatum && k.andererElternteilArt)
+function otherParentGap(k: ChildFacts): string | null {
+  const known = Boolean(k.andererElternteilName && k.andererElternteilGeburtsdatum && k.andererElternteilArt)
   switch (k.andererElternteil) {
     case 'Unbekannt':
       return null
     case 'Ausland':
       return 'anlageKindAndererElternteilAusland'
     case 'Inland':
-      return bekannt && k.andererElternteilAdresse ? null : 'kinder'
+      return known && k.andererElternteilAdresse ? null : 'kinder'
     case 'Verstorben':
-      return bekannt && k.andererElternteilVerstorbenAm ? null : 'kinder'
+      return known && k.andererElternteilVerstorbenAm ? null : 'kinder'
     default:
       return 'kinder'
   }
 }
 
-function kindLuecke(k: KindFakten, steuerjahr: number, zusammen: boolean): string | null {
+function childGap(k: ChildFacts, steuerjahr: number, joint: boolean): string | null {
   if (!k.idnr || !k.kindschaftsverhaeltnis || !k.familienkasse || k.wohnsitzInlandGanzjaehrig == null) return 'kinder'
   if (!k.wohnsitzInlandGanzjaehrig) return 'anlageKindAusland'
   if (k.geburtsdatum && Number(k.geburtsdatum.slice(0, 4)) <= steuerjahr - 18) return 'anlageKindVolljaehrig'
-  return brauchtAnderenElternteil(k, zusammen) ? andererElternteilLuecke(k) : null
+  return needsOtherParent(k, joint) ? otherParentGap(k) : null
 }
 
-export interface VermietungFakten {
+export interface RentalFacts {
   lfdNr?: string
   strasse: string | null
   plz: string | null
@@ -106,34 +106,34 @@ export interface VermietungFakten {
   anteilA?: string | null
 }
 
-const ganzeZahl = (wert: string | null): number | null => (wert !== null && /^\d+$/.test(wert) ? Number(wert) : null)
+const integer = (value: string | null): number | null => (value !== null && /^\d+$/.test(value) ? Number(value) : null)
 
-function vermietungLuecke(obj: VermietungFakten): string | null {
-  const unklar = [obj.mieteinnahmen, obj.werbungskosten, obj.anschaffungskosten, obj.baujahr].includes('unklar')
-  if (unklar || ganzeZahl(obj.mieteinnahmen) === null || ganzeZahl(obj.werbungskosten) === null) return 'vermietung'
+function rentalGap(obj: RentalFacts): string | null {
+  const unclear = [obj.mieteinnahmen, obj.werbungskosten, obj.anschaffungskosten, obj.baujahr].includes('unklar')
+  if (unclear || integer(obj.mieteinnahmen) === null || integer(obj.werbungskosten) === null) return 'vermietung'
   if (!obj.strasse || !obj.plz || !obj.ort) return 'vermietung'
-  if (vermietungAfa(obj) === null) return null
+  if (rentalDepreciation(obj) === null) return null
   if (obj.afaWieVorjahr === null) return 'vermietung'
   return obj.afaWieVorjahr ? null : 'anlageVAfaNeu'
 }
 
-function vermietungAfa(obj: VermietungFakten): { satz: number; betrag: number } | null {
-  const kosten = ganzeZahl(obj.anschaffungskosten)
-  const baujahr = ganzeZahl(obj.baujahr)
-  if (kosten === null || baujahr === null) return null
-  const satz = depreciationRatePercent(baujahr)
-  return satz === null ? null : { satz, betrag: Math.round((kosten * satz) / 100) }
+function rentalDepreciation(obj: RentalFacts): { rate: number; amount: number } | null {
+  const costs = integer(obj.anschaffungskosten)
+  const baujahr = integer(obj.baujahr)
+  if (costs === null || baujahr === null) return null
+  const rate = depreciationRatePercent(baujahr)
+  return rate === null ? null : { rate, amount: Math.round((costs * rate) / 100) }
 }
 
-export type KapitalFakten = { depot: CapitalDepotClassification['kind']; inhaber?: 'A' | 'B' | 'gemeinsam' | null } & Partial<Record<CapitalFieldId, string | null>>
+export type CapitalFacts = { depot: CapitalDepotClassification['kind']; inhaber?: 'A' | 'B' | 'gemeinsam' | null } & Partial<Record<CapitalFieldId, string | null>>
 
 /** The Lohnausweis Ziffern and the N-Gre facts as stored, plus status and Kurs. */
-export interface ChLohnausweisFakten {
-  status: GrenzgaengerStatus | null
-  kurs: number | null
-  bruttolohnChf: string | null
-  ahvBeitraegeChf: string | null
-  quellensteuerChf: string | null
+export interface ChSalaryCertificateFacts {
+  status: CrossBorderStatus | null
+  rate: number | null
+  grossWageChf: string | null
+  ahvContributionsChf: string | null
+  withholdingTaxChf: string | null
   arbeitgeberName: string | null
   arbeitgeberStrasse: string | null
   arbeitgeberPlzOrt: string | null
@@ -145,192 +145,192 @@ export interface ChLohnausweisFakten {
   krankentaggeldArbeitgeberChf: string | null
   nbuvArbeitgeberProzent: string | null
   nbuvArbeitgeberChf: string | null
-  sonderfaelle: boolean | null
+  specialCases: boolean | null
 }
 
 /**
  * Who pays a premium must be stated once the employee pays some of it (otherwise Z. 18/19 and 95–98
  * cannot be filled); an employer paying everything also has to give its CHF amount.
  */
-function praemieGeklaert(arbeitnehmerChf: number | null, prozent: string | null, arbeitgeberChf: string | null): boolean {
-  const anteil = ganzeZahl(prozent)
-  if (anteil === null) return arbeitnehmerChf === 0
-  return anteil < 100 || ganzeZahl(arbeitgeberChf) !== null
+function premiumClarified(employeeChf: number | null, percent: string | null, employerChf: string | null): boolean {
+  const share = integer(percent)
+  if (share === null) return employeeChf === 0
+  return share < 100 || integer(employerChf) !== null
 }
 
-function nbuvArbeitnehmerChf(ch: ChLohnausweisFakten): number | null {
-  const ahv = ganzeZahl(ch.ahvBeitraegeChf)
-  const brutto = ganzeZahl(ch.bruttolohnChf)
-  const zulagen = ganzeZahl(ch.familienzulagenChf)
-  if (ahv === null || brutto === null || zulagen === null || ch.kurs === null) return null
-  return anlageNGreBetraege({
-    bruttolohnChf: brutto,
-    familienzulagenChf: zulagen,
-    ahvBeitraegeChf: ahv,
-    quellensteuerChf: 0,
+function nbuvEmployeeChf(ch: ChSalaryCertificateFacts): number | null {
+  const ahv = integer(ch.ahvContributionsChf)
+  const gross = integer(ch.grossWageChf)
+  const allowances = integer(ch.familienzulagenChf)
+  if (ahv === null || gross === null || allowances === null || ch.rate === null) return null
+  return annexNGreAmounts({
+    grossWageChf: gross,
+    familienzulagenChf: allowances,
+    ahvContributionsChf: ahv,
+    withholdingTaxChf: 0,
     krankentaggeldChf: 0,
     pkArbeitnehmerChf: 0,
     pkArbeitgeberChf: 0,
-    kurs: ch.kurs,
-  }).aufteilung.nbuv.arbeitnehmerChf
+    rate: ch.rate,
+  }).split.nbuv.employeeChf
 }
 
-function nGreLuecke(ch: ChLohnausweisFakten): string | null {
+function nGreGap(ch: ChSalaryCertificateFacts): string | null {
   if (ch.status === 'kein-grenzgaenger') return 'anlageNGreKeinGrenzgaenger'
-  if (ch.sonderfaelle) return 'anlageNGreSonderfall'
-  const betraege = [ch.bruttolohnChf, ch.ahvBeitraegeChf, ch.quellensteuerChf, ch.familienzulagenChf, ch.krankentaggeldChf, ch.pkArbeitnehmerChf, ch.pkArbeitgeberChf]
-  const vollstaendig =
+  if (ch.specialCases) return 'anlageNGreSonderfall'
+  const amounts = [ch.grossWageChf, ch.ahvContributionsChf, ch.withholdingTaxChf, ch.familienzulagenChf, ch.krankentaggeldChf, ch.pkArbeitnehmerChf, ch.pkArbeitgeberChf]
+  const complete =
     ch.status !== null &&
-    ch.sonderfaelle === false &&
-    ch.kurs !== null &&
-    betraege.every((wert) => ganzeZahl(wert) !== null) &&
-    praemieGeklaert(ganzeZahl(ch.krankentaggeldChf), ch.krankentaggeldArbeitgeberProzent, ch.krankentaggeldArbeitgeberChf) &&
-    praemieGeklaert(nbuvArbeitnehmerChf(ch), ch.nbuvArbeitgeberProzent, ch.nbuvArbeitgeberChf) &&
+    ch.specialCases === false &&
+    ch.rate !== null &&
+    amounts.every((value) => integer(value) !== null) &&
+    premiumClarified(integer(ch.krankentaggeldChf), ch.krankentaggeldArbeitgeberProzent, ch.krankentaggeldArbeitgeberChf) &&
+    premiumClarified(nbuvEmployeeChf(ch), ch.nbuvArbeitgeberProzent, ch.nbuvArbeitgeberChf) &&
     Boolean(ch.arbeitgeberName && ch.arbeitgeberStrasse && ch.arbeitgeberPlzOrt)
-  return vollstaendig ? null : 'grenzgaenger'
+  return complete ? null : 'grenzgaenger'
 }
 
 /**
  * One Anlage KAP. `haelfte` -1 = the whole amount, 0 = the first half (rounded up), 1 = the second half.
  */
-function kapWerte(
-  kapital: KapitalFakten,
-  rolle: 'A' | 'B',
-  haelfte: -1 | 0 | 1 | number,
-  kopf: { name: string | null; vorname: string | null },
+function kapValues(
+  capital: CapitalFacts,
+  role: 'A' | 'B',
+  half: -1 | 0 | 1 | number,
+  header: { name: string | null; vorname: string | null },
   steuernummer: string | null,
 ): Record<string, string | true> {
-  const anteil = (wert: string | null | undefined): number => {
-    const zahl = Number(wert ?? 0)
-    if (haelfte === -1) return zahl
-    return haelfte === 0 ? Math.ceil(zahl / 2) : Math.floor(zahl / 2)
+  const share = (value: string | null | undefined): number => {
+    const number = Number(value ?? 0)
+    if (half === -1) return number
+    return half === 0 ? Math.ceil(number / 2) : Math.floor(number / 2)
   }
-  const werte: Record<string, string | true> = {}
-  werte[rolle === 'A' ? 'anlKap.personA' : 'anlKap.personB'] = true
-  if (kopf.name) werte['anlKap.name'] = kopf.name
-  if (kopf.vorname) werte['anlKap.vorname'] = kopf.vorname
-  if (steuernummer) werte['anlKap.steuernummer'] = steuernummer
-  werte['anlKap.guenstigerpruefung'] = '1'
-  if (kapital.depot === 'deutscher-broker') {
-    werte['anlKap.kz210'] = String(anteil(kapital.kapitalertraege))
-    werte['anlKap.kz217'] = String(anteil(kapital.sparerPauschbetrag))
-    werte['anlKap.kz280'] = `${anteil(kapital.kapitalertragsteuer)},00`
-    werte['anlKap.kz281'] = `${anteil(kapital.solidaritaetszuschlag)},00`
-    werte['anlKap.kz282'] = `${anteil(kapital.kirchensteuer)},00`
+  const values: Record<string, string | true> = {}
+  values[role === 'A' ? 'anlKap.personA' : 'anlKap.personB'] = true
+  if (header.name) values['anlKap.name'] = header.name
+  if (header.vorname) values['anlKap.vorname'] = header.vorname
+  if (steuernummer) values['anlKap.steuernummer'] = steuernummer
+  values['anlKap.guenstigerpruefung'] = '1'
+  if (capital.depot === 'deutscher-broker') {
+    values['anlKap.kz210'] = String(share(capital.kapitalertraege))
+    values['anlKap.kz217'] = String(share(capital.sparerPauschbetrag))
+    values['anlKap.kz280'] = `${share(capital.kapitalertragsteuer)},00`
+    values['anlKap.kz281'] = `${share(capital.solidaritaetszuschlag)},00`
+    values['anlKap.kz282'] = `${share(capital.kirchensteuer)},00`
   } else {
-    werte['anlKap.kz234'] = String(anteil(kapital.kapitalertraege))
-    werte['anlKap.kz217'] = '0'
-    werte['anlKap.kz218'] = String(anteil(kapital.sparerPauschbetrag))
+    values['anlKap.kz234'] = String(share(capital.kapitalertraege))
+    values['anlKap.kz217'] = '0'
+    values['anlKap.kz218'] = String(share(capital.sparerPauschbetrag))
   }
-  return werte
+  return values
 }
 
-interface NGreErgebnis {
-  readonly werte: Record<string, string | true>
-  readonly luecke: string | null
+interface NGreResult {
+  readonly values: Record<string, string | true>
+  readonly gap: string | null
 }
 
 /** One Anlage N-Gre for Person A or B, or null when that person has no Swiss wage. */
-function nGreWerte(
-  ch: ChLohnausweisFakten | null | undefined,
-  arbeitsweg: ArbeitswegFakten | null | undefined,
-  rolle: 'A' | 'B',
-  kopf: { name: string | null; vorname: string | null; beruf: string | null; steuernummer: string | null },
-): NGreErgebnis | null {
-  if (!ch || ch.bruttolohnChf === null) return null
-  const luecke = nGreLuecke(ch)
-  if (luecke) return { werte: {}, luecke: rolle === 'B' && luecke === 'grenzgaenger' ? 'grenzgaengerPersonB' : luecke }
-  const werte: Record<string, string | true> = {}
-  const setze = (id: string, wert: string | null) => {
-    if (wert) werte[id] = wert
+function nGreValues(
+  ch: ChSalaryCertificateFacts | null | undefined,
+  commute: CommuteFacts | null | undefined,
+  role: 'A' | 'B',
+  header: { name: string | null; vorname: string | null; beruf: string | null; steuernummer: string | null },
+): NGreResult | null {
+  if (!ch || ch.grossWageChf === null) return null
+  const gap = nGreGap(ch)
+  if (gap) return { values: {}, gap: role === 'B' && gap === 'grenzgaenger' ? 'grenzgaengerPersonB' : gap }
+  const values: Record<string, string | true> = {}
+  const set = (id: string, value: string | null) => {
+    if (value) values[id] = value
   }
-  werte[rolle === 'A' ? 'anlNGre.personA' : 'anlNGre.personB'] = true
-  setze('anlNGre.name', kopf.name)
-  setze('anlNGre.vorname', kopf.vorname)
-  setze('anlNGre.steuernummer', kopf.steuernummer)
-  werte['anlNGre.kz117'] = '3'
-  setze('anlNGre.beruf', kopf.beruf)
-  const { chf, eur, aufteilung } = anlageNGreBetraege({
-    bruttolohnChf: Number(ch.bruttolohnChf),
+  values[role === 'A' ? 'anlNGre.personA' : 'anlNGre.personB'] = true
+  set('anlNGre.name', header.name)
+  set('anlNGre.vorname', header.vorname)
+  set('anlNGre.steuernummer', header.steuernummer)
+  values['anlNGre.kz117'] = '3'
+  set('anlNGre.beruf', header.beruf)
+  const { chf, eur, split } = annexNGreAmounts({
+    grossWageChf: Number(ch.grossWageChf),
     familienzulagenChf: Number(ch.familienzulagenChf),
-    ahvBeitraegeChf: Number(ch.ahvBeitraegeChf),
-    quellensteuerChf: Number(ch.quellensteuerChf),
+    ahvContributionsChf: Number(ch.ahvContributionsChf),
+    withholdingTaxChf: Number(ch.withholdingTaxChf),
     krankentaggeldChf: Number(ch.krankentaggeldChf),
     pkArbeitnehmerChf: Number(ch.pkArbeitnehmerChf),
     pkArbeitgeberChf: Number(ch.pkArbeitgeberChf),
-    kurs: ch.kurs!,
-    krankentaggeldArbeitgeberProzent: optionaleZahl(ch.krankentaggeldArbeitgeberProzent),
-    krankentaggeldArbeitgeberChf: optionaleZahl(ch.krankentaggeldArbeitgeberChf),
-    nbuvArbeitgeberProzent: optionaleZahl(ch.nbuvArbeitgeberProzent),
-    nbuvArbeitgeberChf: optionaleZahl(ch.nbuvArbeitgeberChf),
+    rate: ch.rate!,
+    krankentaggeldArbeitgeberProzent: optionalNumber(ch.krankentaggeldArbeitgeberProzent),
+    krankentaggeldArbeitgeberChf: optionalNumber(ch.krankentaggeldArbeitgeberChf),
+    nbuvArbeitgeberProzent: optionalNumber(ch.nbuvArbeitgeberProzent),
+    nbuvArbeitgeberChf: optionalNumber(ch.nbuvArbeitgeberChf),
   })
-  for (const zeile of Object.keys(chf) as NGreZeile[]) {
+  for (const row of Object.keys(chf) as NGreRow[]) {
     // Z. 18/19 only apply when the employer pays part of a premium; an empty line stays empty.
-    if ((zeile === 'z18' || zeile === 'z19') && chf[zeile] === 0) continue
-    werte[`anlNGre.${zeile}Chf`] = String(chf[zeile])
-    werte[`anlNGre.${zeile}Eur`] = String(eur[zeile])
+    if ((row === 'z18' || row === 'z19') && chf[row] === 0) continue
+    values[`anlNGre.${row}Chf`] = String(chf[row])
+    values[`anlNGre.${row}Eur`] = String(eur[row])
   }
-  for (const [zeilen, teil] of [
-    [['z95', 'z96'], aufteilung.krankentaggeld],
-    [['z97', 'z98'], aufteilung.nbuv],
+  for (const [rows, teil] of [
+    [['z95', 'z96'], split.dailySicknessAllowance],
+    [['z97', 'z98'], split.nbuv],
   ] as const) {
-    if (teil.arbeitgeberChf + teil.arbeitnehmerChf === 0) continue
-    werte[`anlNGre.${zeilen[0]}Arbeitgeber`] = String(teil.arbeitgeberProzent)
-    werte[`anlNGre.${zeilen[0]}Arbeitnehmer`] = String(teil.arbeitnehmerProzent)
-    werte[`anlNGre.${zeilen[1]}Arbeitgeber`] = String(teil.arbeitgeberChf)
-    werte[`anlNGre.${zeilen[1]}Arbeitnehmer`] = String(teil.arbeitnehmerChf)
+    if (teil.employerChf + teil.employeeChf === 0) continue
+    values[`anlNGre.${rows[0]}Arbeitgeber`] = String(teil.employerPercent)
+    values[`anlNGre.${rows[0]}Arbeitnehmer`] = String(teil.employeePercent)
+    values[`anlNGre.${rows[1]}Arbeitgeber`] = String(teil.employerChf)
+    values[`anlNGre.${rows[1]}Arbeitnehmer`] = String(teil.employeeChf)
   }
-  Object.assign(werte, arbeitswegWerte(arbeitsweg, 'anlNGre'))
-  setze('anlNGre.arbeitgeberName', ch.arbeitgeberName)
-  setze('anlNGre.arbeitgeberStrasse', ch.arbeitgeberStrasse)
-  setze('anlNGre.arbeitgeberPlzOrt', ch.arbeitgeberPlzOrt)
-  return { werte, luecke: null }
+  Object.assign(values, commuteValues(commute, 'anlNGre'))
+  set('anlNGre.arbeitgeberName', ch.arbeitgeberName)
+  set('anlNGre.arbeitgeberStrasse', ch.arbeitgeberStrasse)
+  set('anlNGre.arbeitgeberPlzOrt', ch.arbeitgeberPlzOrt)
+  return { values, gap: null }
 }
 
-export interface SonderausgabenFakten {
-  spenden?: string | null
+export interface SpecialExpensesFacts {
+  donations?: string | null
 }
 
 /** Anlage AV: the contributions come from the provider; the form needs the kind of eligibility. */
-export interface RiesterFakten {
+export interface RiesterFacts {
   art: string | null
-  einnahmenVorjahr: string | null
+  incomeLastYear: string | null
 }
 
 /** Anlage N Zeilen 27–31: the facts only — the Finanzamt computes the Entfernungspauschale itself. */
-export interface ArbeitswegFakten {
-  arbeitstageJeWoche: number
-  freieTage: number
-  pendlertage: number
+export interface CommuteFacts {
+  workdaysPerWeek: number
+  daysOff: number
+  commuteDays: number
   einfacheKm: number | null
-  mitPkw: boolean
+  withCar: boolean
   taetigkeitsstaette: string | null
 }
 
 /** Anlage N Z. 27–31 and Anlage N-Gre Z. 32–36 ask the same facts under their own field prefix. */
-function arbeitswegWerte(a: ArbeitswegFakten | null | undefined, prefix: 'anlN' | 'anlNGre' = 'anlN'): Record<string, string> {
+function commuteValues(a: CommuteFacts | null | undefined, prefix: 'anlN' | 'anlNGre' = 'anlN'): Record<string, string> {
   if (!a || a.einfacheKm === null) return {}
-  const werte: Record<string, string> = {
+  const values: Record<string, string> = {
     [`${prefix}.wegArt`]: '1',
-    [`${prefix}.wegTageJeWoche`]: String(a.arbeitstageJeWoche),
-    [`${prefix}.wegFreieTage`]: String(a.freieTage),
-    [`${prefix}.kz110Tage`]: String(a.pendlertage),
+    [`${prefix}.wegTageJeWoche`]: String(a.workdaysPerWeek),
+    [`${prefix}.wegFreieTage`]: String(a.daysOff),
+    [`${prefix}.kz110Tage`]: String(a.commuteDays),
     [`${prefix}.kz111`]: String(a.einfacheKm),
   }
-  if (a.taetigkeitsstaette) werte[`${prefix}.wegOrt`] = a.taetigkeitsstaette
-  if (a.mitPkw) werte[`${prefix}.kz112`] = String(a.einfacheKm)
-  return werte
+  if (a.taetigkeitsstaette) values[`${prefix}.wegOrt`] = a.taetigkeitsstaette
+  if (a.withCar) values[`${prefix}.kz112`] = String(a.einfacheKm)
+  return values
 }
 
-const optionaleZahl = (wert: string | null): number | undefined => {
-  const zahl = ganzeZahl(wert)
-  return zahl === null ? undefined : zahl
+const optionalNumber = (value: string | null): number | undefined => {
+  const number = integer(value)
+  return number === null ? undefined : number
 }
 
-export interface AusdruckFakten {
+export interface PrintoutFacts {
   steuerjahr: number
-  profil: { firstName: string | null; lastName: string | null; steuerId: string | null; steuernummer: string | null }
-  stammdaten: {
+  profile: { firstName: string | null; lastName: string | null; steuerId: string | null; steuernummer: string | null }
+  masterData: {
     geburtsdatum: string | null
     strasse: string | null
     hausnummer: string | null
@@ -347,18 +347,18 @@ export interface AusdruckFakten {
     telefon: string | null
   } | null
   bruttoarbeitslohn: string | null
-  rente?: { rentenart: string | null; jahresbetrag: string | null } | null
-  kopplung?: KopplungFakten | null
-  kapital?: KapitalFakten | null
-  chLohnausweis?: ChLohnausweisFakten | null
-  vermietung?: readonly VermietungFakten[] | null
-  kinder?: readonly KindFakten[] | null
-  sonderausgaben?: SonderausgabenFakten | null
-  riester?: RiesterFakten | null
-  alleinerziehend?: AlleinerziehendFakten | null
-  arbeitsweg?: ArbeitswegFakten | null
+  pension?: { rentenart: string | null; jahresbetrag: string | null } | null
+  link?: LinkFacts | null
+  capital?: CapitalFacts | null
+  chSalaryCertificate?: ChSalaryCertificateFacts | null
+  rental?: readonly RentalFacts[] | null
+  kinder?: readonly ChildFacts[] | null
+  specialExpenses?: SpecialExpensesFacts | null
+  riester?: RiesterFacts | null
+  singleParent?: SingleParentFacts | null
+  commute?: CommuteFacts | null
   /** Self-paid health and care insurance of Person A (Anlage Vorsorgeaufwand Z. 16–33). */
-  krankenversicherung?: readonly HealthInsurance[] | null
+  healthInsurance?: readonly HealthInsurance[] | null
 }
 
 /**
@@ -366,415 +366,415 @@ export interface AusdruckFakten {
  * and 22, private Z. 23, 24 and 27, foreign Z. 28–30 and 33. Contributions withheld from a German salary
  * are e-data (Z. 11–13) and Swiss ones via the employer are in the Anlage N-Gre — neither is repeated here.
  */
-function vorsorgeaufwandWerte(versicherungen: readonly HealthInsurance[] | null | undefined, rolle: 'A' | 'B' = 'A'): Record<string, string> {
-  const summen = new Map<string, number>()
-  const addiere = (kz: string, betrag: number) => summen.set(kz, (summen.get(kz) ?? 0) + betrag)
-  for (const kv of versicherungen ?? []) {
+function provisionExpensesValues(insurances: readonly HealthInsurance[] | null | undefined, role: 'A' | 'B' = 'A'): Record<string, string> {
+  const sums = new Map<string, number>()
+  const add = (kz: string, amount: number) => sums.set(kz, (sums.get(kz) ?? 0) + amount)
+  for (const kv of insurances ?? []) {
     if (kv.kind === 'gesetzlich') {
-      addiere('326', kv.basicHealthAmount)
-      if (kv.withSickPay) addiere('328', kv.basicHealthAmount)
-      addiere('329', kv.careInsuranceAmount)
-      addiere('338', kv.optionalExtrasAmount)
+      add('326', kv.basicHealthAmount)
+      if (kv.withSickPay) add('328', kv.basicHealthAmount)
+      add('329', kv.careInsuranceAmount)
+      add('338', kv.optionalExtrasAmount)
     } else if (kv.kind === 'privat') {
-      addiere('350', kv.basicHealthAmount)
-      addiere('351', kv.careInsuranceAmount)
-      addiere('354', kv.optionalExtrasAmount)
+      add('350', kv.basicHealthAmount)
+      add('351', kv.careInsuranceAmount)
+      add('354', kv.optionalExtrasAmount)
     } else {
-      addiere('333', kv.basicHealthAmount)
-      if (!kv.withSickPay) addiere('334', kv.basicHealthAmount)
-      addiere('335', kv.careInsuranceAmount)
-      addiere('339', kv.optionalExtrasAmount)
+      add('333', kv.basicHealthAmount)
+      if (!kv.withSickPay) add('334', kv.basicHealthAmount)
+      add('335', kv.careInsuranceAmount)
+      add('339', kv.optionalExtrasAmount)
     }
   }
-  const werte: Record<string, string> = {}
+  const values: Record<string, string> = {}
   // Person B's column carries the same Kennzahlen with a leading 4 instead of 3.
-  for (const [kz, betrag] of summen) if (betrag > 0) werte[`anlVor.kz${rolle === 'A' ? kz : `4${kz.slice(1)}`}`] = String(betrag)
-  return werte
+  for (const [kz, betrag] of sums) if (betrag > 0) values[`anlVor.kz${role === 'A' ? kz : `4${kz.slice(1)}`}`] = String(betrag)
+  return values
 }
 
-const RENTE_KENNZAHL: Record<string, string> = {
+const PENSION_CODE: Record<string, string> = {
   GesetzlicheRente: 'anlR.kz101',
   WitwenWaisenrente: 'anlR.kz101',
   PrivateRentenversicherung: 'anlR.kz131',
 }
 
-const RENTE_ANDERER_VORDRUCK: Record<string, string> = {
+const PENSION_OTHER_FORM: Record<string, string> = {
   Betriebsrente: 'anlageRAvBav',
   AuslaendischeRente: 'anlageRAus',
 }
 
-export interface AusdruckWerte {
-  werte: FeldWerte
-  instanzen?: Record<string, FeldWerte[]>
-  fehlend: string[]
+export interface PrintoutValues {
+  values: FieldValues
+  instances?: Record<string, FieldValues[]>
+  missing: string[]
 }
 
-const PFLICHT_STAMMDATEN = ['geburtsdatum', 'strasse', 'hausnummer', 'plz', 'wohnort', 'religion', 'familienstand', 'iban', 'finanzamt'] as const
+const REQUIRED_MASTER_DATA = ['geburtsdatum', 'strasse', 'hausnummer', 'plz', 'wohnort', 'religion', 'familienstand', 'iban', 'finanzamt'] as const
 
-const SEIT_FELD: Record<string, string> = {
+const SINCE_FIELD: Record<string, string> = {
   verheiratet: 'est1a.verheiratetSeit',
   verwitwet: 'est1a.verwitwetSeit',
   geschieden: 'est1a.geschiedenSeit',
   'dauernd-getrennt': 'est1a.getrenntSeit',
 }
 
-export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
-  const { profil, stammdaten: sd } = fakten
-  const fehlend: string[] = []
-  if (!profil.lastName) fehlend.push('name')
-  if (!profil.firstName) fehlend.push('vorname')
-  if (!profil.steuerId) fehlend.push('steuerId')
-  for (const feld of PFLICHT_STAMMDATEN) if (!sd?.[feld]) fehlend.push(feld)
+export function printoutValues(facts: PrintoutFacts): PrintoutValues {
+  const { profile, masterData: sd } = facts
+  const missing: string[] = []
+  if (!profile.lastName) missing.push('name')
+  if (!profile.firstName) missing.push('vorname')
+  if (!profile.steuerId) missing.push('steuerId')
+  for (const field of REQUIRED_MASTER_DATA) if (!sd?.[field]) missing.push(field)
 
-  const werte: Record<string, string | true> = {}
-  const instanzen: Record<string, FeldWerte[]> = {}
-  const setze = (id: string, wert: string | null | undefined) => {
-    if (wert) werte[id] = wert
+  const values: Record<string, string | true> = {}
+  const instances: Record<string, FieldValues[]> = {}
+  const set = (id: string, value: string | null | undefined) => {
+    if (value) values[id] = value
   }
 
   if (sd?.familienstand === 'verheiratet') {
-    if (!fakten.kopplung) {
-      fehlend.push('ehegatte')
-    } else if (fakten.kopplung.veranlagungsart === 'zusammen') {
-      werte['est1a.zusammenveranlagung'] = true
-      const b = fakten.kopplung.personB
+    if (!facts.link) {
+      missing.push('ehegatte')
+    } else if (facts.link.veranlagungsart === 'zusammen') {
+      values['est1a.zusammenveranlagung'] = true
+      const b = facts.link.personB
       if (!b || !b.lastName || !b.firstName || !b.steuerId || !b.geburtsdatum) {
-        fehlend.push('personB')
+        missing.push('personB')
       } else {
-        setze('est1a.idnrB', b.steuerId)
-        setze('est1a.geburtsdatumB', formatGermanDate(b.geburtsdatum))
-        setze('est1a.nameB', b.lastName)
-        setze('est1a.vornameB', b.firstName)
-        setze('est1a.religionB', b.religion)
-        setze('est1a.berufB', b.beruf)
+        set('est1a.idnrB', b.steuerId)
+        set('est1a.geburtsdatumB', formatGermanDate(b.geburtsdatum))
+        set('est1a.nameB', b.lastName)
+        set('est1a.vornameB', b.firstName)
+        set('est1a.religionB', b.religion)
+        set('est1a.berufB', b.beruf)
       }
-    } else if (fakten.kopplung.veranlagungsart === 'einzel') {
-      werte['est1a.einzelveranlagung'] = true
+    } else if (facts.link.veranlagungsart === 'einzel') {
+      values['est1a.einzelveranlagung'] = true
     }
   }
 
-  werte['est1a.einkommensteuererklaerung'] = true
-  setze('est1a.steuernummer', profil.steuernummer)
-  setze('est1a.idnr', profil.steuerId)
-  setze('est1a.name', profil.lastName)
-  setze('est1a.vorname', profil.firstName)
-  setze(
+  values['est1a.einkommensteuererklaerung'] = true
+  set('est1a.steuernummer', profile.steuernummer)
+  set('est1a.idnr', profile.steuerId)
+  set('est1a.name', profile.lastName)
+  set('est1a.vorname', profile.firstName)
+  set(
     'est1a.kopfSeite2',
-    [profil.steuernummer, profil.lastName, profil.firstName].filter(Boolean).join(', ') || null,
+    [profile.steuernummer, profile.lastName, profile.firstName].filter(Boolean).join(', ') || null,
   )
 
   if (sd) {
-    setze('est1a.finanzamt', sd.finanzamt)
-    setze('est1a.telefon', sd.telefon)
-    setze('est1a.geburtsdatum', sd.geburtsdatum ? formatGermanDate(sd.geburtsdatum) : null)
-    setze('est1a.religion', sd.religion)
-    setze('est1a.beruf', sd.beruf)
-    setze('est1a.strasse', sd.strasse)
-    setze('est1a.hausnummer', sd.hausnummer)
-    setze('est1a.hausnummerZusatz', sd.hausnummerZusatz)
-    setze('est1a.plz', sd.plz)
-    setze('est1a.wohnort', sd.wohnort)
-    const seitFeld = sd.familienstand ? SEIT_FELD[sd.familienstand] : undefined
-    if (seitFeld) setze(seitFeld, sd.familienstandSeit ? formatGermanDate(sd.familienstandSeit) : null)
-    if (sd.iban?.startsWith('DE')) setze('est1a.ibanInland', sd.iban.slice(2))
-    else setze('est1a.ibanAusland', sd.iban)
-    if (sd.kontoinhaber) setze('est1a.kontoinhaberName', sd.kontoinhaber)
-    else if (sd.iban) werte['est1a.kontoinhaberSelbst'] = true
+    set('est1a.finanzamt', sd.finanzamt)
+    set('est1a.telefon', sd.telefon)
+    set('est1a.geburtsdatum', sd.geburtsdatum ? formatGermanDate(sd.geburtsdatum) : null)
+    set('est1a.religion', sd.religion)
+    set('est1a.beruf', sd.beruf)
+    set('est1a.strasse', sd.strasse)
+    set('est1a.hausnummer', sd.hausnummer)
+    set('est1a.hausnummerZusatz', sd.hausnummerZusatz)
+    set('est1a.plz', sd.plz)
+    set('est1a.wohnort', sd.wohnort)
+    const sinceField = sd.familienstand ? SINCE_FIELD[sd.familienstand] : undefined
+    if (sinceField) set(sinceField, sd.familienstandSeit ? formatGermanDate(sd.familienstandSeit) : null)
+    if (sd.iban?.startsWith('DE')) set('est1a.ibanInland', sd.iban.slice(2))
+    else set('est1a.ibanAusland', sd.iban)
+    if (sd.kontoinhaber) set('est1a.kontoinhaberName', sd.kontoinhaber)
+    else if (sd.iban) values['est1a.kontoinhaberSelbst'] = true
   }
 
-  const brutto = fakten.bruttoarbeitslohn
-  const bruttoB = fakten.kopplung?.veranlagungsart === 'zusammen' ? fakten.kopplung.personB?.bruttoarbeitslohn ?? null : null
-  const hatBruttoA = brutto !== null && /^\d+$/.test(brutto)
-  const hatBruttoB = bruttoB !== null && /^\d+$/.test(bruttoB)
+  const gross = facts.bruttoarbeitslohn
+  const grossB = facts.link?.veranlagungsart === 'zusammen' ? facts.link.personB?.bruttoarbeitslohn ?? null : null
+  const hasGrossA = gross !== null && /^\d+$/.test(gross)
+  const hasGrossB = grossB !== null && /^\d+$/.test(grossB)
 
-  if (hatBruttoA && !hatBruttoB) {
-    werte['anlN.kz110'] = brutto!
-    werte['anlN.personA'] = true
-    Object.assign(werte, arbeitswegWerte(fakten.arbeitsweg))
-    setze('anlN.name', profil.lastName)
-    setze('anlN.vorname', profil.firstName)
-    setze('anlN.steuernummer', profil.steuernummer)
-  } else if (hatBruttoB) {
-    const nInstanzen: FeldWerte[] = []
-    if (hatBruttoA) {
-      const nA: Record<string, string | true> = { 'anlN.kz110': brutto!, 'anlN.personA': true, ...arbeitswegWerte(fakten.arbeitsweg) }
-      if (profil.lastName) nA['anlN.name'] = profil.lastName
-      if (profil.firstName) nA['anlN.vorname'] = profil.firstName
-      if (profil.steuernummer) nA['anlN.steuernummer'] = profil.steuernummer
-      nInstanzen.push(nA)
+  if (hasGrossA && !hasGrossB) {
+    values['anlN.kz110'] = gross!
+    values['anlN.personA'] = true
+    Object.assign(values, commuteValues(facts.commute))
+    set('anlN.name', profile.lastName)
+    set('anlN.vorname', profile.firstName)
+    set('anlN.steuernummer', profile.steuernummer)
+  } else if (hasGrossB) {
+    const nInstances: FieldValues[] = []
+    if (hasGrossA) {
+      const nA: Record<string, string | true> = { 'anlN.kz110': gross!, 'anlN.personA': true, ...commuteValues(facts.commute) }
+      if (profile.lastName) nA['anlN.name'] = profile.lastName
+      if (profile.firstName) nA['anlN.vorname'] = profile.firstName
+      if (profile.steuernummer) nA['anlN.steuernummer'] = profile.steuernummer
+      nInstances.push(nA)
     }
-    const b = fakten.kopplung?.personB
-    const nB: Record<string, string | true> = { 'anlN.kz110': bruttoB!, 'anlN.personB': true }
+    const b = facts.link?.personB
+    const nB: Record<string, string | true> = { 'anlN.kz110': grossB!, 'anlN.personB': true }
     // B's commute belongs to their Anlage N unless they are a Grenzgänger (then it is in their N-Gre).
-    if (!b?.chLohnausweis) Object.assign(nB, arbeitswegWerte(b?.arbeitsweg))
+    if (!b?.chSalaryCertificate) Object.assign(nB, commuteValues(b?.commute))
     if (b?.lastName) nB['anlN.name'] = b.lastName
     if (b?.firstName) nB['anlN.vorname'] = b.firstName
-    if (profil.steuernummer) nB['anlN.steuernummer'] = profil.steuernummer
-    nInstanzen.push(nB)
-    instanzen['anlage-n'] = nInstanzen
+    if (profile.steuernummer) nB['anlN.steuernummer'] = profile.steuernummer
+    nInstances.push(nB)
+    instances['anlage-n'] = nInstances
   }
 
-  const rente = fakten.rente
-  const renteB = fakten.kopplung?.veranlagungsart === 'zusammen' ? fakten.kopplung.personB?.rente ?? null : null
-  if (rente?.rentenart) {
-    const andererVordruck = RENTE_ANDERER_VORDRUCK[rente.rentenart]
-    if (andererVordruck) fehlend.push(andererVordruck)
+  const pension = facts.pension
+  const pensionB = facts.link?.veranlagungsart === 'zusammen' ? facts.link.personB?.pension ?? null : null
+  if (pension?.rentenart) {
+    const otherForm = PENSION_OTHER_FORM[pension.rentenart]
+    if (otherForm) missing.push(otherForm)
   }
-  if (renteB?.rentenart) {
-    const andererVordruckB = RENTE_ANDERER_VORDRUCK[renteB.rentenart]
-    if (andererVordruckB && !fehlend.includes(andererVordruckB)) fehlend.push(andererVordruckB)
+  if (pensionB?.rentenart) {
+    const otherFormB = PENSION_OTHER_FORM[pensionB.rentenart]
+    if (otherFormB && !missing.includes(otherFormB)) missing.push(otherFormB)
   }
 
-  const kennzahlA = rente?.rentenart ? RENTE_KENNZAHL[rente.rentenart] : undefined
-  const hatRenteA = Boolean(kennzahlA && rente?.jahresbetrag !== null && rente?.jahresbetrag !== undefined && /^\d+$/.test(rente.jahresbetrag))
-  const kennzahlB = renteB?.rentenart ? RENTE_KENNZAHL[renteB.rentenart] : undefined
-  const hatRenteB = Boolean(kennzahlB && renteB?.jahresbetrag !== null && renteB?.jahresbetrag !== undefined && /^\d+$/.test(renteB.jahresbetrag))
+  const codeA = pension?.rentenart ? PENSION_CODE[pension.rentenart] : undefined
+  const hasPensionA = Boolean(codeA && pension?.jahresbetrag !== null && pension?.jahresbetrag !== undefined && /^\d+$/.test(pension.jahresbetrag))
+  const codeB = pensionB?.rentenart ? PENSION_CODE[pensionB.rentenart] : undefined
+  const hasPensionB = Boolean(codeB && pensionB?.jahresbetrag !== null && pensionB?.jahresbetrag !== undefined && /^\d+$/.test(pensionB.jahresbetrag))
 
-  if (hatRenteA && !hatRenteB) {
-    werte[kennzahlA!] = rente!.jahresbetrag!
-    werte['anlR.personA'] = true
-    werte['anlR.lfdNr'] = '1'
-    setze('anlR.name', profil.lastName)
-    setze('anlR.vorname', profil.firstName)
-    setze('anlR.steuernummer', profil.steuernummer)
-  } else if (hatRenteB) {
-    const rInstanzen: FeldWerte[] = []
-    if (hatRenteA) {
+  if (hasPensionA && !hasPensionB) {
+    values[codeA!] = pension!.jahresbetrag!
+    values['anlR.personA'] = true
+    values['anlR.lfdNr'] = '1'
+    set('anlR.name', profile.lastName)
+    set('anlR.vorname', profile.firstName)
+    set('anlR.steuernummer', profile.steuernummer)
+  } else if (hasPensionB) {
+    const rInstances: FieldValues[] = []
+    if (hasPensionA) {
       const rA: Record<string, string | true> = {
-        [kennzahlA!]: rente!.jahresbetrag!,
+        [codeA!]: pension!.jahresbetrag!,
         'anlR.personA': true,
         'anlR.lfdNr': '1',
       }
-      if (profil.lastName) rA['anlR.name'] = profil.lastName
-      if (profil.firstName) rA['anlR.vorname'] = profil.firstName
-      if (profil.steuernummer) rA['anlR.steuernummer'] = profil.steuernummer
-      rInstanzen.push(rA)
+      if (profile.lastName) rA['anlR.name'] = profile.lastName
+      if (profile.firstName) rA['anlR.vorname'] = profile.firstName
+      if (profile.steuernummer) rA['anlR.steuernummer'] = profile.steuernummer
+      rInstances.push(rA)
     }
-    const b = fakten.kopplung?.personB
+    const b = facts.link?.personB
     const rB: Record<string, string | true> = {
-      [kennzahlB!]: renteB!.jahresbetrag!,
+      [codeB!]: pensionB!.jahresbetrag!,
       'anlR.personB': true,
       'anlR.lfdNr': '1',
     }
     if (b?.lastName) rB['anlR.name'] = b.lastName
     if (b?.firstName) rB['anlR.vorname'] = b.firstName
-    if (profil.steuernummer) rB['anlR.steuernummer'] = profil.steuernummer
-    rInstanzen.push(rB)
-    instanzen['anlage-r'] = rInstanzen
+    if (profile.steuernummer) rB['anlR.steuernummer'] = profile.steuernummer
+    rInstances.push(rB)
+    instances['anlage-r'] = rInstances
   }
 
-  const kapital = fakten.kapital
-  if (kapital && kapital.kapitalertraege != null) {
-    const pflicht = mandatoryCapitalFields(kapital.depot)
-    const vollstaendig = pflicht.every((feld) => ganzeZahl(kapital[feld] ?? null) !== null)
-    if (kapital.depot === 'krypto') fehlend.push('anlageKapKrypto')
-    else if (kapital.depot === 'unbekannt' || !vollstaendig) fehlend.push('kapital')
+  const capital = facts.capital
+  if (capital && capital.kapitalertraege != null) {
+    const required = mandatoryCapitalFields(capital.depot)
+    const complete = required.every((field) => integer(capital[field] ?? null) !== null)
+    if (capital.depot === 'krypto') missing.push('anlageKapKrypto')
+    else if (capital.depot === 'unbekannt' || !complete) missing.push('kapital')
     else {
       // ADR-0054: in a joint return a joint account is split half and half across an Anlage KAP for
       // each spouse; an account of Person B goes onto B's Anlage KAP. A gets the odd euro.
-      const zusammen = fakten.kopplung?.veranlagungsart === 'zusammen'
-      const b = zusammen ? fakten.kopplung?.personB ?? null : null
-      const inhaber = zusammen ? (kapital.inhaber ?? 'A') : 'A'
-      const kopfA = { name: profil.lastName, vorname: profil.firstName }
-      const kopfB = { name: b?.lastName ?? null, vorname: b?.firstName ?? null }
-      const teile: [('A' | 'B'), number][] =
+      const joint = facts.link?.veranlagungsart === 'zusammen'
+      const b = joint ? facts.link?.personB ?? null : null
+      const inhaber = joint ? (capital.inhaber ?? 'A') : 'A'
+      const headerA = { name: profile.lastName, vorname: profile.firstName }
+      const headerB = { name: b?.lastName ?? null, vorname: b?.firstName ?? null }
+      const parts: [('A' | 'B'), number][] =
         inhaber === 'gemeinsam' ? [['A', 0], ['B', 1]] : inhaber === 'B' ? [['B', -1]] : [['A', -1]]
-      const kapInstanzen = teile.map(([rolle, haelfte]) =>
-        kapWerte(kapital, rolle, haelfte, rolle === 'A' ? kopfA : kopfB, profil.steuernummer),
+      const kapInstances = parts.map(([role, half]) =>
+        kapValues(capital, role, half, role === 'A' ? headerA : headerB, profile.steuernummer),
       )
-      if (kapInstanzen.length === 1 && teile[0]![0] === 'A') Object.assign(werte, kapInstanzen[0])
-      else instanzen['anlage-kap'] = kapInstanzen
+      if (kapInstances.length === 1 && parts[0]![0] === 'A') Object.assign(values, kapInstances[0])
+      else instances['anlage-kap'] = kapInstances
     }
   }
 
   // Anlage N-Gre: one per Grenzgänger. A couple where both commute to Switzerland gets two instances.
-  const personB = fakten.kopplung?.veranlagungsart === 'zusammen' ? fakten.kopplung.personB : null
-  const nGreA = nGreWerte(fakten.chLohnausweis, fakten.arbeitsweg, 'A', {
-    name: profil.lastName,
-    vorname: profil.firstName,
+  const personB = facts.link?.veranlagungsart === 'zusammen' ? facts.link.personB : null
+  const nGreA = nGreValues(facts.chSalaryCertificate, facts.commute, 'A', {
+    name: profile.lastName,
+    vorname: profile.firstName,
     beruf: sd?.beruf ?? null,
-    steuernummer: profil.steuernummer,
+    steuernummer: profile.steuernummer,
   })
-  const nGreB = nGreWerte(personB?.chLohnausweis, personB?.arbeitsweg, 'B', {
+  const nGreB = nGreValues(personB?.chSalaryCertificate, personB?.commute, 'B', {
     name: personB?.lastName ?? null,
     vorname: personB?.firstName ?? null,
     beruf: personB?.beruf ?? null,
-    steuernummer: profil.steuernummer,
+    steuernummer: profile.steuernummer,
   })
-  for (const n of [nGreA, nGreB]) if (n?.luecke) fehlend.push(n.luecke)
-  const nGreInstanzen = [nGreA, nGreB].filter((n): n is NGreErgebnis => n !== null && n.luecke === null).map((n) => n.werte)
-  if (nGreInstanzen.length === 1 && nGreA?.luecke === null) Object.assign(werte, nGreInstanzen[0])
-  else if (nGreInstanzen.length > 0) instanzen['anlage-n-gre'] = nGreInstanzen
+  for (const n of [nGreA, nGreB]) if (n?.gap) missing.push(n.gap)
+  const nGreInstances = [nGreA, nGreB].filter((n): n is NGreResult => n !== null && n.gap === null).map((n) => n.values)
+  if (nGreInstances.length === 1 && nGreA?.gap === null) Object.assign(values, nGreInstances[0])
+  else if (nGreInstances.length > 0) instances['anlage-n-gre'] = nGreInstances
 
-  if (fakten.vermietung && fakten.vermietung.length > 0) {
-    instanzen['anlage-v'] = fakten.vermietung.map((obj, i) => {
-      const vWerte: Record<string, string | true> = {}
-      if (profil.lastName) vWerte['anlV.name'] = profil.lastName
-      if (profil.firstName) vWerte['anlV.vorname'] = profil.firstName
-      if (profil.steuernummer) vWerte['anlV.steuernummer'] = profil.steuernummer
-      vWerte['anlV.lfdNr'] = obj.lfdNr ?? String(i + 1)
-      if (obj.strasse) vWerte['anlV.strasse'] = obj.strasse
-      if (obj.plz) vWerte['anlV.plz'] = obj.plz
-      if (obj.ort) vWerte['anlV.ort'] = obj.ort
+  if (facts.rental && facts.rental.length > 0) {
+    instances['anlage-v'] = facts.rental.map((obj, i) => {
+      const vValues: Record<string, string | true> = {}
+      if (profile.lastName) vValues['anlV.name'] = profile.lastName
+      if (profile.firstName) vValues['anlV.vorname'] = profile.firstName
+      if (profile.steuernummer) vValues['anlV.steuernummer'] = profile.steuernummer
+      vValues['anlV.lfdNr'] = obj.lfdNr ?? String(i + 1)
+      if (obj.strasse) vValues['anlV.strasse'] = obj.strasse
+      if (obj.plz) vValues['anlV.plz'] = obj.plz
+      if (obj.ort) vValues['anlV.ort'] = obj.ort
       if (obj.wohnflaeche) {
-        vWerte['anlV.wohnflaeche'] = obj.wohnflaeche
-        vWerte['anlV.z13Wohnflaeche'] = obj.wohnflaeche
+        vValues['anlV.wohnflaeche'] = obj.wohnflaeche
+        vValues['anlV.z13Wohnflaeche'] = obj.wohnflaeche
       }
       // Several flats of one building go into Z. 13 together, named as such.
-      const einheiten = ganzeZahl(obj.einheiten ?? null)
-      if (einheiten !== null && einheiten > 1) vWerte['anlV.z13Bezeichnung'] = `${einheiten} Wohneinheiten`
-      const miete = ganzeZahl(obj.mieteinnahmen)
-      const laufend = ganzeZahl(obj.werbungskosten)
-      if (miete === null || laufend === null) return vWerte
-      vWerte['anlV.z13Miete'] = String(miete)
-      vWerte['anlV.kz01'] = String(miete)
-      const umlagen = ganzeZahl(obj.umlagen ?? null) ?? 0
-      if (umlagen > 0) vWerte['anlV.kz04'] = String(umlagen)
-      vWerte['anlV.z32Einnahmen'] = String(miete + umlagen)
-      const schuldzinsen = ganzeZahl(obj.schuldzinsen ?? null) ?? 0
+      const einheiten = integer(obj.einheiten ?? null)
+      if (einheiten !== null && einheiten > 1) vValues['anlV.z13Bezeichnung'] = `${einheiten} Wohneinheiten`
+      const rent = integer(obj.mieteinnahmen)
+      const ongoing = integer(obj.werbungskosten)
+      if (rent === null || ongoing === null) return vValues
+      vValues['anlV.z13Miete'] = String(rent)
+      vValues['anlV.kz01'] = String(rent)
+      const umlagen = integer(obj.umlagen ?? null) ?? 0
+      if (umlagen > 0) vValues['anlV.kz04'] = String(umlagen)
+      vValues['anlV.z32Einnahmen'] = String(rent + umlagen)
+      const schuldzinsen = integer(obj.schuldzinsen ?? null) ?? 0
       if (schuldzinsen > 0) {
-        vWerte['anlV.z46Text'] = 'Darlehen für das Objekt'
-        vWerte['anlV.z46Betrag'] = String(schuldzinsen)
-        vWerte['anlV.kz33'] = String(schuldzinsen)
+        vValues['anlV.z46Text'] = 'Darlehen für das Objekt'
+        vValues['anlV.z46Betrag'] = String(schuldzinsen)
+        vValues['anlV.kz33'] = String(schuldzinsen)
       }
-      const afa = vermietungAfa(obj)
-      if (afa && obj.afaWieVorjahr) {
-        vWerte['anlV.z33Linear'] = '1'
-        vWerte['anlV.z33Satz'] = String(afa.satz).replace('.', ',')
-        vWerte['anlV.z33WieVorjahr'] = '1'
-        vWerte['anlV.z33Afa'] = String(afa.betrag)
-        vWerte['anlV.kz30'] = String(afa.betrag)
+      const depreciation = rentalDepreciation(obj)
+      if (depreciation && obj.afaWieVorjahr) {
+        vValues['anlV.z33Linear'] = '1'
+        vValues['anlV.z33Satz'] = String(depreciation.rate).replace('.', ',')
+        vValues['anlV.z33WieVorjahr'] = '1'
+        vValues['anlV.z33Afa'] = String(depreciation.amount)
+        vValues['anlV.kz30'] = String(depreciation.amount)
       }
-      if (laufend > 0) {
-        vWerte['anlV.z80Text'] = 'Laufende Werbungskosten'
-        vWerte['anlV.z80Betrag'] = String(laufend)
-        vWerte['anlV.kz49'] = String(laufend)
+      if (ongoing > 0) {
+        vValues['anlV.z80Text'] = 'Laufende Werbungskosten'
+        vValues['anlV.z80Betrag'] = String(ongoing)
+        vValues['anlV.kz49'] = String(ongoing)
       }
-      const summe = laufend + schuldzinsen + (afa && obj.afaWieVorjahr ? afa.betrag : 0)
-      const ueberschuss = miete + umlagen - summe
-      vWerte['anlV.werbungskostenSumme'] = String(summe)
-      vWerte['anlV.ueberschuss'] = String(ueberschuss)
+      const sum = ongoing + schuldzinsen + (depreciation && obj.afaWieVorjahr ? depreciation.amount : 0)
+      const surplus = rent + umlagen - sum
+      vValues['anlV.werbungskostenSumme'] = String(sum)
+      vValues['anlV.ueberschuss'] = String(surplus)
       // Z. 86: in a joint return the result is attributed to both spouses (ADR-0054), half and half by default.
-      if (fakten.kopplung?.veranlagungsart === 'zusammen') {
-        const anteilA = Math.min(100, ganzeZahl(obj.anteilA ?? null) ?? 50)
-        const teilA = Math.round((ueberschuss * anteilA) / 100)
-        vWerte['anlV.kz20'] = String(teilA)
-        vWerte['anlV.kz21'] = String(ueberschuss - teilA)
-      } else vWerte['anlV.kz20'] = String(ueberschuss)
-      return vWerte
+      if (facts.link?.veranlagungsart === 'zusammen') {
+        const anteilA = Math.min(100, integer(obj.anteilA ?? null) ?? 50)
+        const teilA = Math.round((surplus * anteilA) / 100)
+        vValues['anlV.kz20'] = String(teilA)
+        vValues['anlV.kz21'] = String(surplus - teilA)
+      } else vValues['anlV.kz20'] = String(surplus)
+      return vValues
     })
-    for (const obj of fakten.vermietung) {
-      const luecke = vermietungLuecke(obj)
-      if (luecke && !fehlend.includes(luecke)) fehlend.push(luecke)
+    for (const obj of facts.rental) {
+      const gap = rentalGap(obj)
+      if (gap && !missing.includes(gap)) missing.push(gap)
     }
   }
 
-  if (fakten.kinder && fakten.kinder.length > 0) {
-    const zusammen = fakten.kopplung?.veranlagungsart === 'zusammen'
-    const alleinstehend =
+  if (facts.kinder && facts.kinder.length > 0) {
+    const zusammen = facts.link?.veranlagungsart === 'zusammen'
+    const single =
       !zusammen &&
       sd?.familienstand !== 'verheiratet' &&
-      fakten.alleinerziehend?.weiterePerson === 'Nein' &&
-      fakten.alleinerziehend.haushaltsgemeinschaft === 'Nein'
-    instanzen['anlage-kind'] = fakten.kinder.map((k, i) => {
-      const kWerte: Record<string, string | true> = {}
-      if (profil.lastName) kWerte['anlKind.name'] = profil.lastName
-      if (profil.firstName) kWerte['anlKind.vornameEltern'] = profil.firstName
-      if (profil.steuernummer) kWerte['anlKind.steuernummer'] = profil.steuernummer
-      kWerte['anlKind.lfdNr'] = k.lfdNr ?? String(i + 1)
-      if (k.idnr) kWerte['anlKind.idnr'] = k.idnr
-      if (k.vorname) kWerte['anlKind.vorname'] = k.vorname
-      if (k.nachname && k.nachname !== profil.lastName) kWerte['anlKind.nachname'] = k.nachname
-      if (k.geburtsdatum) kWerte['anlKind.geburtsdatum'] = formatGermanDate(k.geburtsdatum)
+      facts.singleParent?.otherPerson === 'Nein' &&
+      facts.singleParent.householdCommunity === 'Nein'
+    instances['anlage-kind'] = facts.kinder.map((k, i) => {
+      const kValues: Record<string, string | true> = {}
+      if (profile.lastName) kValues['anlKind.name'] = profile.lastName
+      if (profile.firstName) kValues['anlKind.vornameEltern'] = profile.firstName
+      if (profile.steuernummer) kValues['anlKind.steuernummer'] = profile.steuernummer
+      kValues['anlKind.lfdNr'] = k.lfdNr ?? String(i + 1)
+      if (k.idnr) kValues['anlKind.idnr'] = k.idnr
+      if (k.vorname) kValues['anlKind.vorname'] = k.vorname
+      if (k.nachname && k.nachname !== profile.lastName) kValues['anlKind.nachname'] = k.nachname
+      if (k.geburtsdatum) kValues['anlKind.geburtsdatum'] = formatGermanDate(k.geburtsdatum)
       if (k.schweizerKinderzulageEur && Number(k.schweizerKinderzulageEur) > 0) {
         const swissEur = Number(k.schweizerKinderzulageEur)
-        const diff = calculateDifferentialChildBenefit(k.geburtsdatum ?? `${fakten.steuerjahr}-01-01`, fakten.steuerjahr, swissEur)
-        const anspruchEur = k.kindergeldAnspruchEur ? Number(k.kindergeldAnspruchEur) : 0
-        kWerte['anlKind.kindergeld'] = String(Math.max(anspruchEur, diff.totalClaim))
+        const diff = calculateDifferentialChildBenefit(k.geburtsdatum ?? `${facts.steuerjahr}-01-01`, facts.steuerjahr, swissEur)
+        const claimEur = k.kindergeldAnspruchEur ? Number(k.kindergeldAnspruchEur) : 0
+        kValues['anlKind.kindergeld'] = String(Math.max(claimEur, diff.totalClaim))
       } else if (k.kindergeldAnspruchEur) {
-        kWerte['anlKind.kindergeld'] = k.kindergeldAnspruchEur
+        kValues['anlKind.kindergeld'] = k.kindergeldAnspruchEur
       }
-      if (k.familienkasse) kWerte['anlKind.familienkasse'] = k.familienkasse
+      if (k.familienkasse) kValues['anlKind.familienkasse'] = k.familienkasse
       // Z. 27/28: KV/PV of the child the parents pay as policyholders — an empty or zero line stays empty.
-      if (k.kvBasisEur && Number(k.kvBasisEur) > 0) kWerte['anlKind.kz66'] = k.kvBasisEur
-      if (k.pvEur && Number(k.pvEur) > 0) kWerte['anlKind.kz67'] = k.pvEur
-      const beginn = k.geburtsdatum?.startsWith(`${fakten.steuerjahr}-`) ? k.geburtsdatum : `${fakten.steuerjahr}-01-01`
-      const ende = `${fakten.steuerjahr}-12-31`
+      if (k.kvBasisEur && Number(k.kvBasisEur) > 0) kValues['anlKind.kz66'] = k.kvBasisEur
+      if (k.pvEur && Number(k.pvEur) > 0) kValues['anlKind.kz67'] = k.pvEur
+      const start = k.geburtsdatum?.startsWith(`${facts.steuerjahr}-`) ? k.geburtsdatum : `${facts.steuerjahr}-01-01`
+      const end = `${facts.steuerjahr}-12-31`
       if (k.wohnsitzInlandGanzjaehrig) {
-        kWerte['anlKind.inlandVon'] = formatGermanDate(beginn)
-        kWerte['anlKind.inlandBis'] = formatGermanDate(ende)
+        kValues['anlKind.inlandVon'] = formatGermanDate(start)
+        kValues['anlKind.inlandBis'] = formatGermanDate(end)
       }
-      if (k.kindschaftsverhaeltnis) kWerte['anlKind.kz02'] = k.kindschaftsverhaeltnis
-      if (zusammen && k.kindschaftsverhaeltnisB) kWerte['anlKind.kz03'] = k.kindschaftsverhaeltnisB
-      if (alleinstehend && k.gemeldetBeiMirGanzjaehrig && k.kindergeldAnMichGanzjaehrig) {
-        kWerte['anlKind.kz42Von'] = formatGermanDate(beginn)
-        kWerte['anlKind.kz42Bis'] = formatGermanDate(ende)
-        kWerte['anlKind.kz44Von'] = formatGermanDate(beginn)
-        kWerte['anlKind.kz44Bis'] = formatGermanDate(ende)
-        kWerte['anlKind.kz46'] = '2'
-        kWerte['anlKind.kz49'] = '2'
+      if (k.kindschaftsverhaeltnis) kValues['anlKind.kz02'] = k.kindschaftsverhaeltnis
+      if (zusammen && k.kindschaftsverhaeltnisB) kValues['anlKind.kz03'] = k.kindschaftsverhaeltnisB
+      if (single && k.gemeldetBeiMirGanzjaehrig && k.kindergeldAnMichGanzjaehrig) {
+        kValues['anlKind.kz42Von'] = formatGermanDate(start)
+        kValues['anlKind.kz42Bis'] = formatGermanDate(end)
+        kValues['anlKind.kz44Von'] = formatGermanDate(start)
+        kValues['anlKind.kz44Bis'] = formatGermanDate(end)
+        kValues['anlKind.kz46'] = '2'
+        kValues['anlKind.kz49'] = '2'
       }
-      if (brauchtAnderenElternteil(k, zusammen)) {
-        if (k.andererElternteil === 'Unbekannt') kWerte['anlKind.kz05'] = '1'
+      if (needsOtherParent(k, zusammen)) {
+        if (k.andererElternteil === 'Unbekannt') kValues['anlKind.kz05'] = '1'
         if (k.andererElternteil === 'Inland' || k.andererElternteil === 'Verstorben') {
-          if (k.andererElternteilName) kWerte['anlKind.aeName'] = k.andererElternteilName
-          if (k.andererElternteilGeburtsdatum) kWerte['anlKind.aeGeburtsdatum'] = formatGermanDate(k.andererElternteilGeburtsdatum)
-          if (k.andererElternteilAdresse) kWerte['anlKind.aeAdresse'] = k.andererElternteilAdresse
-          if (k.andererElternteilArt) kWerte['anlKind.aeArt'] = k.andererElternteilArt
+          if (k.andererElternteilName) kValues['anlKind.aeName'] = k.andererElternteilName
+          if (k.andererElternteilGeburtsdatum) kValues['anlKind.aeGeburtsdatum'] = formatGermanDate(k.andererElternteilGeburtsdatum)
+          if (k.andererElternteilAdresse) kValues['anlKind.aeAdresse'] = k.andererElternteilAdresse
+          if (k.andererElternteilArt) kValues['anlKind.aeArt'] = k.andererElternteilArt
           const tod = k.andererElternteil === 'Verstorben' ? k.andererElternteilVerstorbenAm : null
-          if (tod) kWerte['anlKind.kz06'] = formatGermanDate(tod)
-          const bis = tod && tod < ende ? tod : ende
-          if (bis >= beginn) {
-            kWerte['anlKind.aeVon'] = formatGermanDate(beginn)
-            kWerte['anlKind.aeBis'] = formatGermanDate(bis)
+          if (tod) kValues['anlKind.kz06'] = formatGermanDate(tod)
+          const to = tod && tod < end ? tod : end
+          if (to >= start) {
+            kValues['anlKind.aeVon'] = formatGermanDate(start)
+            kValues['anlKind.aeBis'] = formatGermanDate(to)
           }
         }
       }
-      return kWerte
+      return kValues
     })
-    for (const kind of fakten.kinder) {
-      const luecke = kindLuecke(kind, fakten.steuerjahr, zusammen)
-      if (luecke && !fehlend.includes(luecke)) fehlend.push(luecke)
+    for (const kind of facts.kinder) {
+      const luecke = childGap(kind, facts.steuerjahr, zusammen)
+      if (luecke && !missing.includes(luecke)) missing.push(luecke)
     }
   }
 
-  if (fakten.sonderausgaben?.spenden && /^\d+$/.test(fakten.sonderausgaben.spenden)) {
-    setze('anlSo.name', profil.lastName)
-    setze('anlSo.vorname', profil.firstName)
-    setze('anlSo.steuernummer', profil.steuernummer)
-    werte['anlSo.spenden'] = fakten.sonderausgaben.spenden
+  if (facts.specialExpenses?.donations && /^\d+$/.test(facts.specialExpenses.donations)) {
+    set('anlSo.name', profile.lastName)
+    set('anlSo.vorname', profile.firstName)
+    set('anlSo.steuernummer', profile.steuernummer)
+    values['anlSo.spenden'] = facts.specialExpenses.donations
   }
 
-  const vorsorge = {
-    ...vorsorgeaufwandWerte(fakten.krankenversicherung),
-    ...vorsorgeaufwandWerte(personB?.krankenversicherung, 'B'),
+  const provision = {
+    ...provisionExpensesValues(facts.healthInsurance),
+    ...provisionExpensesValues(personB?.healthInsurance, 'B'),
   }
-  if (Object.keys(vorsorge).length > 0) {
-    setze('anlVor.name', profil.lastName)
-    setze('anlVor.vorname', profil.firstName)
-    setze('anlVor.steuernummer', profil.steuernummer)
-    Object.assign(werte, vorsorge)
+  if (Object.keys(provision).length > 0) {
+    set('anlVor.name', profile.lastName)
+    set('anlVor.vorname', profile.firstName)
+    set('anlVor.steuernummer', profile.steuernummer)
+    Object.assign(values, provision)
   }
 
-  if (fakten.riester) {
-    const { art, einnahmenVorjahr } = fakten.riester
-    const unmittelbar = art === 'Unmittelbar' && einnahmenVorjahr !== null && /^\d+$/.test(einnahmenVorjahr)
-    if (unmittelbar || art === 'Mittelbar') {
-      setze('anlAv.name', profil.lastName)
-      setze('anlAv.vorname', profil.firstName)
-      setze('anlAv.steuernummer', profil.steuernummer)
-      if (unmittelbar) {
-        werte['anlAv.unmittelbar'] = '1'
-        werte['anlAv.kz100'] = einnahmenVorjahr
+  if (facts.riester) {
+    const { art, incomeLastYear } = facts.riester
+    const direct = art === 'Unmittelbar' && incomeLastYear !== null && /^\d+$/.test(incomeLastYear)
+    if (direct || art === 'Mittelbar') {
+      set('anlAv.name', profile.lastName)
+      set('anlAv.vorname', profile.firstName)
+      set('anlAv.steuernummer', profile.steuernummer)
+      if (direct) {
+        values['anlAv.unmittelbar'] = '1'
+        values['anlAv.kz100'] = incomeLastYear
       } else {
-        werte['anlAv.mittelbar'] = '2'
+        values['anlAv.mittelbar'] = '2'
       }
     } else {
-      fehlend.push('riester')
+      missing.push('riester')
     }
   }
 
-  const ergebnis: AusdruckWerte = { werte, fehlend }
-  if (Object.keys(instanzen).length > 0) ergebnis.instanzen = instanzen
-  return ergebnis
+  const result: PrintoutValues = { values, missing }
+  if (Object.keys(instances).length > 0) result.instances = instances
+  return result
 }

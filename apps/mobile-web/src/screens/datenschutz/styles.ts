@@ -1,7 +1,7 @@
 import { type ViewStyle, type TextStyle } from 'react-native'
 import { WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
 
-export function makeDatenschutzStyles(t: UiTheme) {
+export function makePrivacyStyles(t: UiTheme) {
   const screen: ViewStyle = {
     backgroundColor: t.color.grund,
     paddingHorizontal: t.space.s5,

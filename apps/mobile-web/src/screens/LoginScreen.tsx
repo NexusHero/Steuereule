@@ -14,8 +14,8 @@ import { DeviceQrColumn } from './login/DeviceQrColumn'
 import { makeLoginStyles } from './login/loginStyles'
 import { SocialSignInSection } from './shared/SocialSignInSection'
 import { EmailVerificationBanner } from './shared/EmailVerificationBanner'
-import { RechtlichesLinks } from './rechtliches/RechtlichesLinks'
-import type { RechtlicheSeite } from './rechtliches/texte'
+import { LegalLinks } from './rechtliches/RechtlichesLinks'
+import type { LegalPage } from './rechtliches/texte'
 import { MIN_PASSWORD_LENGTH } from '../auth/password-policy'
 
 export interface LoginScreenProps {
@@ -23,7 +23,7 @@ export interface LoginScreenProps {
   readonly onGuest?: () => void
   readonly onRegister?: () => void
   readonly showDeviceQr?: boolean
-  readonly onRechtliches?: (seite: RechtlicheSeite) => void
+  readonly onLegal?: (page: LegalPage) => void
 }
 
 type Stage =
@@ -32,7 +32,7 @@ type Stage =
   | { readonly kind: 'unverified'; readonly email: string }
   | { readonly kind: 'two-factor'; readonly email: string }
 
-export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true, onRechtliches }: LoginScreenProps) {
+export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true, onLegal }: LoginScreenProps) {
   const t = useTheme()
   const bp = useBreakpoint()
   const { t: tr } = useTranslation(APP_NS)
@@ -41,7 +41,7 @@ export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true, 
 
   const [mail, setMail] = useState('')
   const [pass, setPass] = useState('')
-  const [fehler, setFehler] = useState('')
+  const [fehler, setError] = useState('')
   const [stage, setStage] = useState<Stage>({ kind: 'form' })
   const emailVerified = useEmailVerified(stage.kind === 'unverified' ? stage.email : undefined)
 
@@ -61,17 +61,17 @@ export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true, 
 
   async function login() {
     if (!ok) {
-      setFehler(mail.includes('@') ? tr('login.errPass') : tr('login.errEmail'))
+      setError(mail.includes('@') ? tr('login.errPass') : tr('login.errEmail'))
       return
     }
-    setFehler('')
+    setError('')
     setFormTransportError(false)
     setStage({ kind: 'submitting' })
     try {
       const { data, error } = await authClient.signIn.email({ email: mail, password: pass })
       if (error || !data) {
         setStage({ kind: 'form' })
-        setFehler(tr(`auth.${authErrorKey(error)}`))
+        setError(tr(`auth.${authErrorKey(error)}`))
         return
       }
       if (isTwoFactorChallenge(data)) {
@@ -111,14 +111,14 @@ export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true, 
     )
   }
 
-  const passwordFehler = formTransportError ? '' : fehler
+  const passwordError = formTransportError ? '' : fehler
 
   const formColumn = (
     <View style={bp === 's' ? undefined : styles.formColumn}>
       <SocialSignInSection
         disabled={stage.kind === 'submitting'}
         onSignedIn={onDone}
-        onError={setFehler}
+        onError={setError}
         showUnknownFallback={anySurfaceUnreachable}
       />
 
@@ -134,7 +134,7 @@ export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true, 
       <Feld label={tr('login.emailLabel')}>
         <Input type="email" value={mail} onChange={setMail} placeholder={tr('login.emailPlaceholder')} />
       </Feld>
-      <Feld label={tr('login.passwordLabel')} fehler={passwordFehler}>
+      <Feld label={tr('login.passwordLabel')} error={passwordError}>
         <Input type="password" value={pass} onChange={setPass} placeholder="••••••••" onSubmit={() => void login()} />
       </Feld>
       <Button onPress={() => void login()} disabled={stage.kind === 'submitting'}>
@@ -163,7 +163,7 @@ export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true, 
         </View>
       ) : null}
 
-      {onRechtliches ? <RechtlichesLinks onSeite={onRechtliches} /> : null}
+      {onLegal ? <LegalLinks onPage={onLegal} /> : null}
     </View>
   )
 
@@ -227,7 +227,7 @@ function TwoFactorChallenge({ email, onDone }: { readonly email: string; readonl
       <Text style={{ fontFamily: t.font.text, fontSize: t.size.s, color: t.color.tinte2 }}>
         {tr('login.twoFactor.body', { email })}
       </Text>
-      <Feld label={tr('login.twoFactor.codeLabel')} fehler={error}>
+      <Feld label={tr('login.twoFactor.codeLabel')} error={error}>
         <Input type="text" value={code} onChange={setCode} placeholder="123456" onSubmit={() => void submit()} />
       </Feld>
       <Button onPress={() => void submit()} disabled={busy || !code}>

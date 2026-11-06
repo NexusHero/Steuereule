@@ -5,40 +5,40 @@
  * Onboarding profile endpoints (steuereule#29)
  * OpenAPI spec version: 1.0
  */
-export type CockpitStandDtoKind = typeof CockpitStandDtoKind[keyof typeof CockpitStandDtoKind];
+export type CockpitStatusDtoKind = typeof CockpitStatusDtoKind[keyof typeof CockpitStatusDtoKind];
 
 
-export const CockpitStandDtoKind = {
+export const CockpitStatusDtoKind = {
   bestimmt: 'bestimmt',
   spanne: 'spanne',
   gated: 'gated',
 } as const;
 
-export interface CockpitStandDto {
-  kind: CockpitStandDtoKind;
+export interface CockpitStatusDto {
+  kind: CockpitStatusDtoKind;
   /** The settled point value (only when kind === "bestimmt"). */
-  wert?: number;
+  value?: number;
   /** Lower bound (only when kind === "spanne"). */
-  von?: number;
+  from?: number;
   /** Upper bound (only when kind === "spanne"). */
-  bis?: number;
+  to?: number;
   /** Still-open required line items (only when kind === "spanne"). */
-  offenePosten?: number;
+  openItems?: number;
   /** Open posten conflicts, ADR-008 (only when kind === "spanne"). */
-  konflikte?: number;
+  conflicts?: number;
   /** Übernommene, noch unbestätigte Posten (ADR-021, only when kind === "spanne"). */
-  unbestaetigte?: number;
+  unconfirmedItems?: number;
   /** Einnahmen-Summe der unbestätigten Posten (ADR-021, only when kind === "spanne"). */
-  unbestaetigteSumme?: number;
+  unconfirmedSum?: number;
   /** The settled partial sum (only when kind === "gated"). */
-  summe?: number;
+  sum?: number;
   /** The gated Einkunftsarten (only when kind === "gated"). */
-  gegated?: string[];
+  gated?: string[];
 }
 
 export interface CockpitSummaryDto {
   taxYear: number;
-  stand: CockpitStandDto;
+  status: CockpitStatusDto;
   /** Minimal-Gate questions still open (REQ-015 remainingSteps). */
   openItems: number;
 }

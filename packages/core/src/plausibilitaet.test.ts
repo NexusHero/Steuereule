@@ -1,85 +1,85 @@
 import { describe, expect, it } from 'vitest'
 import {
-  pruefePlausibilitaet,
-  type Hinweis,
-  type PlausibilitaetsErgebnis,
-  type PlausibilitaetsEingaben,
-  type Widerspruch,
+  checkPlausibility,
+  type Notice,
+  type PlausibilityResult,
+  type PlausibilityInput,
+  type Conflict,
 } from './plausibilitaet'
-import { calculateEmployeeStatus, type AngestelltenStand } from './angestellte'
+import { calculateEmployeeStatus, type EmployeeStatus } from './angestellte'
 import { wageTaxCertificateStatus } from './lstb'
-import { calculateWorkdays, type WerktageErgebnis } from './werktage'
+import { calculateWorkdays, type WorkdaysResult } from './werktage'
 
 /** Narrows to the blocker list (empty when einreichbar — the guard, not a cast). */
-function widersprueche(r: PlausibilitaetsErgebnis): readonly Widerspruch[] {
-  return r.kind === 'nicht-einreichbar' ? r.widersprueche : []
+function conflicts(r: PlausibilityResult): readonly Conflict[] {
+  return r.kind === 'nicht-einreichbar' ? r.conflicts : []
 }
 
 /** Hinweise live on both variants, so this is a convenience, not a narrowing. */
-function hinweise(r: PlausibilitaetsErgebnis): readonly Hinweis[] {
-  return r.hinweise
+function notices(r: PlausibilityResult): readonly Notice[] {
+  return r.notices
 }
 
-function eingaben(over: {
+function inputs(over: {
   lstb?: ReturnType<typeof wageTaxCertificateStatus>
-  werktage?: WerktageErgebnis
-  stand?: AngestelltenStand
-  erfasstNichtGerechnet?: number
-} = {}): PlausibilitaetsEingaben {
+  workdays?: WorkdaysResult
+  status?: EmployeeStatus
+  recordedNotCalculated?: number
+} = {}): PlausibilityInput {
   return {
     lstb:
       over.lstb ??
-      wageTaxCertificateStatus({ bruttoarbeitslohn: { kind: 'erfasst', wert: 50000 }, lohnsteuer: { kind: 'erfasst', wert: 9000 }, sozialversicherung: { kind: 'erfasst', wert: 10000 } }),
-    werktage: over.werktage ?? calculateWorkdays({ year: 2026, workdays: [1, 2, 3, 4, 5], vacationDays: 30, sickDays: 5, homeOfficeDays: 40 }),
-    stand:
-      over.stand ??
+      wageTaxCertificateStatus({ bruttoarbeitslohn: { kind: 'erfasst', value: 50000 }, lohnsteuer: { kind: 'erfasst', value: 9000 }, sozialversicherung: { kind: 'erfasst', value: 10000 } }),
+    workdays: over.workdays ?? calculateWorkdays({ year: 2026, workdays: [1, 2, 3, 4, 5], vacationDays: 30, sickDays: 5, homeOfficeDays: 40 }),
+    status:
+      over.status ??
       calculateEmployeeStatus({ income: 50000, incomeRelatedExpenses: 1200, specialExpenses: 3000, openItems: 0, conflicts: 0, gated: [] }),
-    erfasstNichtGerechnet: over.erfasstNichtGerechnet ?? 0,
+    recordedNotCalculated: over.recordedNotCalculated ?? 0,
   }
 }
 
 describe('pruefePlausibilitaet (M2)', () => {
   it('a complete, consistent case is einreichbar', () => {
-    expect(pruefePlausibilitaet(eingaben())).toEqual({ kind: 'einreichbar', hinweise: [] })
+    expect(checkPlausibility(inputs())).toEqual({ kind: 'einreichbar', notices: [] })
   })
 
   it('an open LStB field blocks, naming the field', () => {
-    const r = pruefePlausibilitaet(
-      eingaben({ lstb: wageTaxCertificateStatus({ bruttoarbeitslohn: { kind: 'offen' }, lohnsteuer: { kind: 'offen' }, sozialversicherung: { kind: 'offen' } }) }),
+    const r = checkPlausibility(
+      inputs({ lstb: wageTaxCertificateStatus({ bruttoarbeitslohn: { kind: 'offen' }, lohnsteuer: { kind: 'offen' }, sozialversicherung: { kind: 'offen' } }) }),
     )
-    expect(widersprueche(r)).toEqual([{ art: 'lstb-offen', felder: ['bruttoarbeitslohn', 'lohnsteuer', 'sozialversicherung'] }])
+    expect(conflicts(r)).toEqual([{ art: 'lstb-offen', fields: ['bruttoarbeitslohn', 'lohnsteuer', 'sozialversicherung'] }])
   })
 
   it('an unreadable ("unklar") LStB field blocks separately from merely-open', () => {
-    const zustand = wageTaxCertificateStatus({ bruttoarbeitslohn: { kind: 'erfasst', wert: 50000 }, lohnsteuer: { kind: 'unklar' }, sozialversicherung: { kind: 'erfasst', wert: 10000 } })
-    expect(widersprueche(pruefePlausibilitaet(eingaben({ lstb: zustand })))).toContainEqual({ art: 'lstb-unklar', felder: ['lohnsteuer'] })
+    const state = wageTaxCertificateStatus({ bruttoarbeitslohn: { kind: 'erfasst', value: 50000 }, lohnsteuer: { kind: 'unklar' }, sozialversicherung: { kind: 'erfasst', value: 10000 } })
+    expect(conflicts(checkPlausibility(inputs({ lstb: state })))).toContainEqual({ art: 'lstb-unklar', fields: ['lohnsteuer'] })
   })
 
   it('an LStB contradiction blocks', () => {
-    const zustand = wageTaxCertificateStatus({ bruttoarbeitslohn: { kind: 'erfasst', wert: 1000 }, lohnsteuer: { kind: 'erfasst', wert: 2000 }, sozialversicherung: { kind: 'erfasst', wert: 0 } })
-    expect(widersprueche(pruefePlausibilitaet(eingaben({ lstb: zustand })))).toContainEqual({ art: 'lstb-widerspruch' })
+    const state = wageTaxCertificateStatus({ bruttoarbeitslohn: { kind: 'erfasst', value: 1000 }, lohnsteuer: { kind: 'erfasst', value: 2000 }, sozialversicherung: { kind: 'erfasst', value: 0 } })
+    expect(conflicts(checkPlausibility(inputs({ lstb: state })))).toContainEqual({ art: 'lstb-widerspruch' })
   })
 
   it('a werktage contradiction blocks', () => {
-    const arbeit = calculateWorkdays({ year: 2026, workdays: [1], vacationDays: 0, sickDays: 0, homeOfficeDays: 99 })
-    expect(widersprueche(pruefePlausibilitaet(eingaben({ werktage: arbeit })))).toContainEqual({ art: 'werktage-widerspruch' })
+    const work = calculateWorkdays({ year: 2026, workdays: [1], vacationDays: 0, sickDays: 0, homeOfficeDays: 99 })
+    expect(conflicts(checkPlausibility(inputs({ workdays: work })))).toContainEqual({ art: 'werktage-widerspruch' })
   })
 
   it('a gated Einkunftsart blocks, naming it', () => {
-    const stand = calculateEmployeeStatus({ income: 0, incomeRelatedExpenses: 0, specialExpenses: 0, openItems: 0, conflicts: 0, gated: ['Kapital'] })
-    expect(widersprueche(pruefePlausibilitaet(eingaben({ stand })))).toContainEqual({ art: 'gated-einkunftsart', einkunftsart: 'Kapital' })
+    const status = calculateEmployeeStatus({ income: 0, incomeRelatedExpenses: 0, specialExpenses: 0, openItems: 0, conflicts: 0, gated: ['Kapital'] })
+    expect(conflicts(checkPlausibility(inputs({ status })))).toContainEqual({ art: 'gated-einkunftsart', incomeType: 'Kapital' })
   })
 
   it('captured-but-not-computed amounts are a Hinweis, never a blocker', () => {
-    expect(pruefePlausibilitaet(eingaben({ erfasstNichtGerechnet: 24650 }))).toEqual({
+    expect(checkPlausibility(inputs({ recordedNotCalculated: 24650 }))).toEqual({
       kind: 'einreichbar',
-      hinweise: [{ art: 'erfasst-nicht-gerechnet', betrag: 24650 }],
+      notices: [{ art: 'erfasst-nicht-gerechnet', amount: 24650 }],
     })
   })
 
   it('Werbungskosten over Einnahmen is a Hinweis (possible Verlust, not a contradiction)', () => {
-    const stand = calculateEmployeeStatus({ income: 1000, incomeRelatedExpenses: 1500, specialExpenses: 0, openItems: 0, conflicts: 0, gated: [] })
-    expect(hinweise(pruefePlausibilitaet(eingaben({ stand })))).toContainEqual({
+    const status = calculateEmployeeStatus({ income: 1000, incomeRelatedExpenses: 1500, specialExpenses: 0, openItems: 0, conflicts: 0, gated: [] })
+    expect(notices(checkPlausibility(inputs({ status })))).toContainEqual({
       art: 'werbungskosten-uebersteigt-einnahmen',
       werbungskosten: 1500,
       einnahmen: 1000,

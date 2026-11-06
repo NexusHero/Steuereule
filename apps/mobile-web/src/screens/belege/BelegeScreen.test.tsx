@@ -1,5 +1,5 @@
 // BelegeScreen (Ticket 10, Phase 2 Slice 1) — the Beleg-Posteingang (ADR-007/008) against the
-// real generated `useBelegControllerList`/`useBelegControllerSetZuordnung` hooks
+// real generated `useReceiptControllerList`/`useReceiptControllerSetAssignment` hooks
 // (@steuereule/api-client) and the real `GET /v1/belege` + `POST /v1/belege/:id/zuordnung`
 // wire, MSW-mocked to the contract. Proves: honest loading/empty/error states, the derived
 // Zuordnung states render (ungebunden/vorgeschlagen/zugeordnet/konflikt) with art + dates, the
@@ -12,64 +12,64 @@ import { ThemeProvider } from '@steuereule/ui'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import { createAppI18n } from '../../i18n/app-i18n'
-import { BelegeScreen } from './BelegeScreen'
+import { ReceiptsScreen } from './BelegeScreen'
 import { server } from '../../test-msw-server'
-import type { BelegResponseDto } from '@steuereule/api-client'
+import type { ReceiptResponseDto } from '@steuereule/api-client'
 
-const BELEGE_URL = '*/v1/belege'
+const RECEIPTS_URL = '*/v1/belege'
 
-const UNGEBUNDEN: BelegResponseDto = {
+const UNBOUND: ReceiptResponseDto = {
   id: 'b-ungebunden',
   dateiname: 'miete-januar.pdf',
   art: null,
   belegdatum: null,
   zahlungsdatum: null,
-  zuordnung: { kind: 'ungebunden' },
+  assignment: { kind: 'ungebunden' },
 }
 
-const VORGESCHLAGEN: BelegResponseDto = {
+const PROPOSED: ReceiptResponseDto = {
   id: 'b-vorschlag',
   dateiname: 'rechnung-fortbildung.pdf',
   art: 'Sonstiges',
   belegdatum: '2025-12-20',
   zahlungsdatum: '2026-01-15',
-  zuordnung: { kind: 'vorgeschlagen', steuerjahr: 2026, herkunft: 'zahlungsdatum' },
+  assignment: { kind: 'vorgeschlagen', steuerjahr: 2026, provenance: 'zahlungsdatum' },
 }
 
-const ZUGEORDNET: BelegResponseDto = {
+const ASSIGNED: ReceiptResponseDto = {
   id: 'b-zugeordnet',
   dateiname: 'lohnausweis-2026.pdf',
   art: 'Lohnausweis',
   belegdatum: '2026-02-01',
   zahlungsdatum: null,
-  zuordnung: { kind: 'zugeordnet', steuerjahr: 2026 },
+  assignment: { kind: 'zugeordnet', steuerjahr: 2026 },
 }
 
-const KONFLIKT: BelegResponseDto = {
+const CONFLICT: ReceiptResponseDto = {
   id: 'b-konflikt',
   dateiname: 'spende-drk.pdf',
   art: 'Sonstiges',
   belegdatum: '2026-01-02',
   zahlungsdatum: null,
-  zuordnung: { kind: 'konflikt', steuerjahr: 2025, vorschlagsJahr: 2026, herkunft: 'belegdatum' },
+  assignment: { kind: 'konflikt', steuerjahr: 2025, proposalYear: 2026, provenance: 'belegdatum' },
 }
 
-function mockBelege(data: BelegResponseDto[], status = 200) {
-  server.use(http.get(BELEGE_URL, () => HttpResponse.json(data, { status })))
+function mockReceipts(data: ReceiptResponseDto[], status = 200) {
+  server.use(http.get(RECEIPTS_URL, () => HttpResponse.json(data, { status })))
 }
 
-function mockBelegeError() {
-  server.use(http.get(BELEGE_URL, () => HttpResponse.error()))
+function mockReceiptsError() {
+  server.use(http.get(RECEIPTS_URL, () => HttpResponse.error()))
 }
 
-function renderBelege(opts: { lng?: 'de' | 'en' } = {}) {
+function renderReceipts(opts: { lng?: 'de' | 'en' } = {}) {
   const i18n = createAppI18n(opts.lng ?? 'de')
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={queryClient}>
       <I18nextProvider i18n={i18n}>
         <ThemeProvider mode="light">
-          <BelegeScreen />
+          <ReceiptsScreen />
         </ThemeProvider>
       </I18nextProvider>
     </QueryClientProvider>,
@@ -78,16 +78,16 @@ function renderBelege(opts: { lng?: 'de' | 'en' } = {}) {
 
 describe('BelegeScreen', () => {
   it('shows a real loading state while the inbox is fetched', async () => {
-    mockBelege([])
-    renderBelege()
+    mockReceipts([])
+    renderReceipts()
     expect(screen.getByLabelText('Deine Belege werden geladen …')).toBeTruthy()
     await screen.findByText('Noch keine Belege.')
     expect(screen.queryByLabelText('Deine Belege werden geladen …')).toBeNull()
   })
 
   it('renders an honest empty state when the inbox is empty', async () => {
-    mockBelege([])
-    renderBelege()
+    mockReceipts([])
+    renderReceipts()
     await screen.findByText('Noch keine Belege.')
     expect(
       screen.getByText('Wirf Belege übers ganze Jahr rein — hier landen sie und warten auf das richtige Steuerjahr.'),
@@ -95,8 +95,8 @@ describe('BelegeScreen', () => {
   })
 
   it('renders the honest "Scan folgt" placeholder instead of a fake scan/upload button (ADR-032 §2)', async () => {
-    mockBelege([])
-    renderBelege()
+    mockReceipts([])
+    renderReceipts()
     await screen.findByText('Wirf alles rein — wir sortieren')
     expect(screen.getByText(/Das Scannen und Fotografieren der Belege folgt noch/)).toBeTruthy()
     expect(screen.queryByText('Beleg scannen')).toBeNull()
@@ -104,8 +104,8 @@ describe('BelegeScreen', () => {
   })
 
   it('renders every Zuordnung state with its art and dates, from the API (never hard-coded)', async () => {
-    mockBelege([UNGEBUNDEN, VORGESCHLAGEN, ZUGEORDNET, KONFLIKT])
-    renderBelege()
+    mockReceipts([UNBOUND, PROPOSED, ASSIGNED, CONFLICT])
+    renderReceipts()
 
     // ungebunden
     expect(await screen.findByText('miete-januar.pdf')).toBeTruthy()
@@ -123,8 +123,8 @@ describe('BelegeScreen', () => {
   })
 
   it('renders the art discriminator: CH types map to labels, null is the generic receipt', async () => {
-    mockBelege([VORGESCHLAGEN, ZUGEORDNET, UNGEBUNDEN])
-    renderBelege()
+    mockReceipts([PROPOSED, ASSIGNED, UNBOUND])
+    renderReceipts()
     await screen.findByText('rechnung-fortbildung.pdf')
     // `art: 'Lohnausweis'` → label; `art: null` → the generic "Beleg"
     expect(screen.getByText('Lohnausweis')).toBeTruthy()
@@ -133,8 +133,8 @@ describe('BelegeScreen', () => {
   })
 
   it('counts "offen" (everything not zugeordnet) in the appbar pill', async () => {
-    mockBelege([UNGEBUNDEN, VORGESCHLAGEN, ZUGEORDNET, KONFLIKT])
-    renderBelege()
+    mockReceipts([UNBOUND, PROPOSED, ASSIGNED, CONFLICT])
+    renderReceipts()
     await screen.findByText('rechnung-fortbildung.pdf')
     expect(screen.getByText('3 offen')).toBeTruthy()
   })
@@ -143,17 +143,17 @@ describe('BelegeScreen', () => {
     // Stateful GET+POST: the API's real behaviour — after a successful write, a re-read of the
     // inbox returns the updated Beleg, so a static `mockBelege([VORGESCHLAGEN])` would re-render
     // the old state and fail this assertion on the refetch.
-    let list: BelegResponseDto[] = [VORGESCHLAGEN]
+    let list: ReceiptResponseDto[] = [PROPOSED]
     let posted: { id: string; body: unknown } | null = null
     server.use(
-      http.get(BELEGE_URL, () => HttpResponse.json(list, { status: 200 })),
+      http.get(RECEIPTS_URL, () => HttpResponse.json(list, { status: 200 })),
       http.post('*/v1/belege/:id/zuordnung', async ({ params, request }) => {
         posted = { id: String(params.id), body: await request.json() }
-        list = [{ ...VORGESCHLAGEN, zuordnung: { kind: 'zugeordnet', steuerjahr: 2026 } }]
+        list = [{ ...PROPOSED, assignment: { kind: 'zugeordnet', steuerjahr: 2026 } }]
         return HttpResponse.json(list[0], { status: 200 })
       }),
     )
-    renderBelege()
+    renderReceipts()
 
     await screen.findByText('Vorschlag: 2026')
     fireEvent.click(screen.getByText('Zuordnen zu 2026'))
@@ -163,20 +163,20 @@ describe('BelegeScreen', () => {
   })
 
   it('shows a CONFLICT (both years) when a different year is assigned, never a silent overwrite (ADR-008)', async () => {
-    let list: BelegResponseDto[] = [VORGESCHLAGEN]
+    let list: ReceiptResponseDto[] = [PROPOSED]
     let posted: unknown = null
     server.use(
-      http.get(BELEGE_URL, () => HttpResponse.json(list, { status: 200 })),
+      http.get(RECEIPTS_URL, () => HttpResponse.json(list, { status: 200 })),
       http.post('*/v1/belege/:id/zuordnung', async ({ request }) => {
         posted = await request.json()
         // The API's real derived state: confirmed 2025 contradicts the date-derived 2026.
         list = [
-          { ...VORGESCHLAGEN, zuordnung: { kind: 'konflikt', steuerjahr: 2025, vorschlagsJahr: 2026, herkunft: 'zahlungsdatum' } },
+          { ...PROPOSED, assignment: { kind: 'konflikt', steuerjahr: 2025, proposalYear: 2026, provenance: 'zahlungsdatum' } },
         ]
         return HttpResponse.json(list[0], { status: 200 })
       }),
     )
-    renderBelege()
+    renderReceipts()
 
     await screen.findByText('Vorschlag: 2026')
     fireEvent.click(screen.getByText('Anderes Jahr'))
@@ -189,15 +189,15 @@ describe('BelegeScreen', () => {
   })
 
   it('rejects a non-four-digit year in the manual override instead of POSTing it', async () => {
-    mockBelege([VORGESCHLAGEN])
+    mockReceipts([PROPOSED])
     let postCalls = 0
     server.use(
       http.post('*/v1/belege/:id/zuordnung', () => {
         postCalls += 1
-        return HttpResponse.json(ZUGEORDNET, { status: 200 })
+        return HttpResponse.json(ASSIGNED, { status: 200 })
       }),
     )
-    renderBelege()
+    renderReceipts()
 
     await screen.findByText('Vorschlag: 2026')
     fireEvent.click(screen.getByText('Anderes Jahr'))
@@ -209,17 +209,17 @@ describe('BelegeScreen', () => {
   })
 
   it('resolves a conflict by adopting the suggestion (one explicit choice)', async () => {
-    let list: BelegResponseDto[] = [KONFLIKT]
+    let list: ReceiptResponseDto[] = [CONFLICT]
     let posted: unknown = null
     server.use(
-      http.get(BELEGE_URL, () => HttpResponse.json(list, { status: 200 })),
+      http.get(RECEIPTS_URL, () => HttpResponse.json(list, { status: 200 })),
       http.post('*/v1/belege/:id/zuordnung', async ({ request }) => {
         posted = await request.json()
-        list = [{ ...KONFLIKT, zuordnung: { kind: 'zugeordnet', steuerjahr: 2026 } }]
+        list = [{ ...CONFLICT, assignment: { kind: 'zugeordnet', steuerjahr: 2026 } }]
         return HttpResponse.json(list[0], { status: 200 })
       }),
     )
-    renderBelege()
+    renderReceipts()
 
     await screen.findByText('Zwei Jahre für diesen Beleg — du entscheidest.')
     fireEvent.click(screen.getByText('Vorschlag 2026 übernehmen'))
@@ -228,19 +228,19 @@ describe('BelegeScreen', () => {
   })
 
   it('resolves a conflict by keeping the user’s own year (ADR-008 "bei meinem Jahr bleiben" — no dead end)', async () => {
-    let list: BelegResponseDto[] = [KONFLIKT]
+    let list: ReceiptResponseDto[] = [CONFLICT]
     let posted: unknown = null
     server.use(
-      http.get(BELEGE_URL, () => HttpResponse.json(list, { status: 200 })),
+      http.get(RECEIPTS_URL, () => HttpResponse.json(list, { status: 200 })),
       http.post('*/v1/belege/:id/zuordnung', async ({ request }) => {
         posted = await request.json()
         // The API's real derived state: dismissing the suggestion resolves to zugeordnet on the
         // user's own confirmed year (2025), the contradicting suggestion no longer a conflict.
-        list = [{ ...KONFLIKT, zuordnung: { kind: 'zugeordnet', steuerjahr: 2025 } }]
+        list = [{ ...CONFLICT, assignment: { kind: 'zugeordnet', steuerjahr: 2025 } }]
         return HttpResponse.json(list[0], { status: 200 })
       }),
     )
-    renderBelege()
+    renderReceipts()
 
     await screen.findByText('Zwei Jahre für diesen Beleg — du entscheidest.')
     fireEvent.click(screen.getByText('Bei 2025 bleiben'))
@@ -249,26 +249,26 @@ describe('BelegeScreen', () => {
   })
 
   it('shows a retryable error state on a genuine network failure, and recovers on retry', async () => {
-    mockBelegeError()
-    renderBelege()
+    mockReceiptsError()
+    renderReceipts()
 
     await screen.findByText('Das hat nicht geklappt.')
     expect(screen.getByText('Deine Belege konnten nicht geladen werden. Prüf die Verbindung und versuch es noch mal.')).toBeTruthy()
 
-    mockBelege([ZUGEORDNET])
+    mockReceipts([ASSIGNED])
     fireEvent.click(screen.getByText('Noch mal versuchen'))
     await screen.findByText('Zugeordnet: 2026')
   })
 
   it('treats a non-200 response as an honest error, not a silent empty fallthrough', async () => {
-    server.use(http.get(BELEGE_URL, () => HttpResponse.json([], { status: 500 })))
-    renderBelege()
+    server.use(http.get(RECEIPTS_URL, () => HttpResponse.json([], { status: 500 })))
+    renderReceipts()
     await screen.findByText('Das hat nicht geklappt.')
   })
 
   it('switches to English when the locale changes (ADR-0006)', async () => {
-    mockBelege([VORGESCHLAGEN, KONFLIKT])
-    renderBelege({ lng: 'en' })
+    mockReceipts([PROPOSED, CONFLICT])
+    renderReceipts({ lng: 'en' })
     expect(await screen.findByText('Receipts')).toBeTruthy()
     expect(screen.getByText('Suggestion: 2026')).toBeTruthy()
     expect(screen.getByText('Two years for this receipt — you decide.')).toBeTruthy()
@@ -279,13 +279,13 @@ describe('BelegeScreen', () => {
   it('refetches the inbox after a successful assignment so the derived state never goes stale', async () => {
     let getCalls = 0
     server.use(
-      http.get(BELEGE_URL, () => {
+      http.get(RECEIPTS_URL, () => {
         getCalls += 1
-        return HttpResponse.json(getCalls === 1 ? [VORGESCHLAGEN] : [ZUGEORDNET], { status: 200 })
+        return HttpResponse.json(getCalls === 1 ? [PROPOSED] : [ASSIGNED], { status: 200 })
       }),
-      http.post('*/v1/belege/:id/zuordnung', () => HttpResponse.json(ZUGEORDNET, { status: 200 })),
+      http.post('*/v1/belege/:id/zuordnung', () => HttpResponse.json(ASSIGNED, { status: 200 })),
     )
-    renderBelege()
+    renderReceipts()
 
     await screen.findByText('Vorschlag: 2026')
     fireEvent.click(screen.getByText('Zuordnen zu 2026'))

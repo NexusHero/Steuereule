@@ -1,16 +1,16 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { anlageVon, type Annex, type Herkunft, type Kennzeichnung } from '@steuereule/core'
+import { annexOf, type Annex, type Provenance, type Kennzeichnung } from '@steuereule/core'
 import { ENCRYPTED_PRISMA, type EncryptedPrismaClient } from '../prisma/encrypted-prisma.provider.js'
 import type { ProvenanceRecord, ProvenanceRepository } from './kennzeichnung.repository.js'
 
-interface HerkunftSpalten {
+interface ProvenanceColumns {
   art: string
   name: string | null
-  belegId: string | null
+  receiptId: string | null
   vorjahr: number | null
 }
 
-function herkunftAusSpalten({ art, name, belegId, vorjahr }: HerkunftSpalten): Herkunft {
+function provenanceFromColumns({ art, name, receiptId, vorjahr }: ProvenanceColumns): Provenance {
   switch (art) {
     case 'nutzer':
       return { art: 'nutzer' }
@@ -19,19 +19,19 @@ function herkunftAusSpalten({ art, name, belegId, vorjahr }: HerkunftSpalten): H
       return { art: 'uebernahme', vorjahr }
     case 'assistent':
       if (name === null) break
-      return belegId === null ? { art: 'assistent', name } : { art: 'assistent', name, belegId }
+      return receiptId === null ? { art: 'assistent', name } : { art: 'assistent', name, receiptId }
     case 'beleg':
-      if (belegId === null) break
-      return { art: 'beleg', belegId }
+      if (receiptId === null) break
+      return { art: 'beleg', receiptId }
   }
   throw new Error(`Kennzeichnung: stored Herkunft "${art}" is incomplete`)
 }
 
-function herkunftZuSpalten(h: Herkunft): HerkunftSpalten {
+function provenanceToColumns(h: Provenance): ProvenanceColumns {
   return {
     art: h.art,
     name: h.art === 'assistent' ? h.name : null,
-    belegId: h.art === 'beleg' || (h.art === 'assistent' && h.belegId !== undefined) ? (h.belegId ?? null) : null,
+    receiptId: h.art === 'beleg' || (h.art === 'assistent' && h.receiptId !== undefined) ? (h.receiptId ?? null) : null,
     vorjahr: h.art === 'uebernahme' ? h.vorjahr : null,
   }
 }
@@ -57,43 +57,43 @@ function toRecord(row: Row): ProvenanceRecord {
     userId: row.userId,
     steuerjahr: row.steuerjahr,
     key: row.postenKey,
-    herkunft: herkunftAusSpalten({ art: row.herkunftArt, name: row.herkunftName, belegId: row.herkunftBelegId, vorjahr: row.vorjahr }),
+    provenance: provenanceFromColumns({ art: row.herkunftArt, name: row.herkunftName, receiptId: row.herkunftBelegId, vorjahr: row.vorjahr }),
     bestaetigt: row.bestaetigt,
-    vorschlag:
+    proposal:
       row.vorschlagHerkunftArt === null
         ? null
         : {
-            wert: row.vorschlagWert,
-            herkunft: herkunftAusSpalten({ art: row.vorschlagHerkunftArt, name: row.vorschlagHerkunftName, belegId: row.vorschlagBelegId, vorjahr: row.vorschlagVorjahr }),
+            value: row.vorschlagWert,
+            provenance: provenanceFromColumns({ art: row.vorschlagHerkunftArt, name: row.vorschlagHerkunftName, receiptId: row.vorschlagBelegId, vorjahr: row.vorschlagVorjahr }),
           },
   }
 }
 
-function toData(k: Omit<Kennzeichnung, 'wert'>) {
-  const h = herkunftZuSpalten(k.herkunft)
-  const v = k.vorschlag === null ? null : herkunftZuSpalten(k.vorschlag.herkunft)
+function toData(k: Omit<Kennzeichnung, 'value'>) {
+  const h = provenanceToColumns(k.provenance)
+  const v = k.proposal === null ? null : provenanceToColumns(k.proposal.provenance)
   return {
-    anlage: anlageVon(k.key),
+    anlage: annexOf(k.key),
     herkunftArt: h.art,
     herkunftName: h.name,
-    herkunftBelegId: h.belegId,
+    herkunftBelegId: h.receiptId,
     vorjahr: h.vorjahr,
     bestaetigt: k.bestaetigt,
     vorschlagHerkunftArt: v?.art ?? null,
     vorschlagHerkunftName: v?.name ?? null,
-    vorschlagBelegId: v?.belegId ?? null,
+    vorschlagBelegId: v?.receiptId ?? null,
     vorschlagVorjahr: v?.vorjahr ?? null,
-    vorschlagWert: k.vorschlag?.wert ?? null,
+    vorschlagWert: k.proposal?.value ?? null,
   }
 }
 
 @Injectable()
-export class PrismaKennzeichnungRepository implements ProvenanceRepository {
+export class PrismaMarkingRepository implements ProvenanceRepository {
   constructor(@Inject(ENCRYPTED_PRISMA) private readonly prisma: EncryptedPrismaClient) {}
 
-  async listForUserAndYears(userId: string, steuerjahre: readonly number[]): Promise<ProvenanceRecord[]> {
+  async listForUserAndYears(userId: string, taxYears: readonly number[]): Promise<ProvenanceRecord[]> {
     const rows = await this.prisma.kennzeichnung.findMany({
-      where: { userId, steuerjahr: { in: [...steuerjahre] } },
+      where: { userId, steuerjahr: { in: [...taxYears] } },
       orderBy: { postenKey: 'asc' },
     })
     return rows.map(toRecord)
@@ -106,12 +106,12 @@ export class PrismaKennzeichnungRepository implements ProvenanceRepository {
     return row === null ? null : toRecord(row)
   }
 
-  async speichere(userId: string, steuerjahr: number, kennzeichnung: Omit<Kennzeichnung, 'wert'>): Promise<ProvenanceRecord> {
-    const data = toData(kennzeichnung)
+  async save(userId: string, steuerjahr: number, marking: Omit<Kennzeichnung, 'value'>): Promise<ProvenanceRecord> {
+    const data = toData(marking)
     const [row] = await this.prisma.$transaction([
       this.prisma.kennzeichnung.upsert({
-        where: { userId_steuerjahr_postenKey: { userId, steuerjahr, postenKey: kennzeichnung.key } },
-        create: { userId, steuerjahr, postenKey: kennzeichnung.key, ...data },
+        where: { userId_steuerjahr_postenKey: { userId, steuerjahr, postenKey: marking.key } },
+        create: { userId, steuerjahr, postenKey: marking.key, ...data },
         update: data,
       }),
       this.prisma.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: 'kennzeichnung' } }),
@@ -119,7 +119,7 @@ export class PrismaKennzeichnungRepository implements ProvenanceRepository {
     return toRecord(row)
   }
 
-  async entferne(userId: string, steuerjahr: number, keys: readonly string[]): Promise<number> {
+  async remove(userId: string, steuerjahr: number, keys: readonly string[]): Promise<number> {
     if (keys.length === 0) return 0
     const { count } = await this.prisma.kennzeichnung.deleteMany({ where: { userId, steuerjahr, postenKey: { in: [...keys] } } })
     if (count > 0) {
@@ -128,10 +128,10 @@ export class PrismaKennzeichnungRepository implements ProvenanceRepository {
     return count
   }
 
-  async bestaetigeAnlage(userId: string, steuerjahre: readonly number[], anlage: Annex): Promise<number> {
+  async confirmAnnex(userId: string, taxYears: readonly number[], anlage: Annex): Promise<number> {
     const [{ count }] = await this.prisma.$transaction([
       this.prisma.kennzeichnung.updateMany({
-        where: { userId, steuerjahr: { in: [...steuerjahre] }, anlage, bestaetigt: false },
+        where: { userId, steuerjahr: { in: [...taxYears] }, anlage, bestaetigt: false },
         data: { bestaetigt: true },
       }),
       this.prisma.taxDataAccessLog.create({ data: { userId, action: 'WRITE', resource: 'kennzeichnung' } }),

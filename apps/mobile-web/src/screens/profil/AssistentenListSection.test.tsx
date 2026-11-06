@@ -5,12 +5,12 @@ import { ThemeProvider } from '@steuereule/ui'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import { createAppI18n } from '../../i18n/app-i18n'
-import { AssistentenListSection } from './AssistentenListSection'
+import { AssistantsListSection } from './AssistentenListSection'
 import { server } from '../../test-msw-server'
 
 const BASE_URL = 'http://localhost:3000'
 
-function renderAssistentenList() {
+function renderAssistantsList() {
   const i18n = createAppI18n('de')
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
@@ -19,7 +19,7 @@ function renderAssistentenList() {
     <QueryClientProvider client={queryClient}>
       <I18nextProvider i18n={i18n}>
         <ThemeProvider mode="light">
-          <AssistentenListSection />
+          <AssistantsListSection />
         </ThemeProvider>
       </I18nextProvider>
     </QueryClientProvider>,
@@ -32,7 +32,7 @@ describe('AssistentenListSection (ADR-0052 §10)', () => {
       http.get(`${BASE_URL}/v1/assistenten`, () => HttpResponse.json([])),
     )
 
-    renderAssistentenList()
+    renderAssistantsList()
 
     expect(await screen.findByText('Keine Assistenten verbunden.')).toBeTruthy()
   })
@@ -45,8 +45,8 @@ describe('AssistentenListSection (ADR-0052 §10)', () => {
           {
             clientId: 'claude-desktop',
             name: 'Claude Desktop',
-            verbundenSeit: '2026-11-01T12:00:00.000Z',
-            zuletztGenutzt: '2026-11-03T18:00:00.000Z',
+            linkedSince: '2026-11-01T12:00:00.000Z',
+            lastUsed: '2026-11-03T18:00:00.000Z',
           },
         ]),
       ),
@@ -56,7 +56,7 @@ describe('AssistentenListSection (ADR-0052 §10)', () => {
       }),
     )
 
-    renderAssistentenList()
+    renderAssistantsList()
 
     expect(await screen.findByText('Claude Desktop')).toBeTruthy()
 

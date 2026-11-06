@@ -9,21 +9,21 @@ import {
 import { CurrentUser } from '../auth/current-user.decorator.js'
 import { RequiresAccount } from '../auth/requires-account.guard.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
-import { ParseSteuerjahrPipe } from '../cockpit/parse-steuerjahr.pipe.js'
+import { ParseTaxYearPipe } from '../cockpit/parse-steuerjahr.pipe.js'
 import { AssessmentService } from './bescheid.service.js'
-import { ParseBescheidFeldPipe } from './parse-bescheid-feld.pipe.js'
+import { ParseAssessmentFieldPipe } from './parse-bescheid-feld.pipe.js'
 import { PutAssessmentFieldDto } from './dto/bescheid-feld.dto.js'
 import {
   AssessmentResponseDto,
   SetAssessmentDateDto,
-  SetBescheidStatusDto,
+  SetAssessmentStatusDto,
   SetAppealDto,
 } from './dto/bescheid-response.dto.js'
 
 @ApiTags('bescheid')
 @Controller('v1/steuerjahre')
 @UseGuards(UserContextGuard)
-export class BescheidController {
+export class AssessmentController {
   constructor(@Inject(AssessmentService) private readonly service: AssessmentService) {}
 
   @Get(':jahr/bescheid')
@@ -31,8 +31,8 @@ export class BescheidController {
   @ApiParam({ name: 'jahr', type: Number, example: 2026, description: 'The tax year (Steuerjahr).' })
   @ApiOkResponse({ type: AssessmentResponseDto, description: 'The caller’s Bescheid — re-entry (fields + Abgleich + Frist).' })
   @ApiUnauthorizedResponse({ description: 'Guest session — this endpoint requires a signed-in account.' })
-  get(@CurrentUser() userId: string, @Param('jahr', ParseSteuerjahrPipe) jahr: number): Promise<AssessmentResponseDto> {
-    return this.service.getState(userId, jahr)
+  get(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number): Promise<AssessmentResponseDto> {
+    return this.service.getState(userId, year)
   }
 
   @Put(':jahr/bescheid/feld/:feld')
@@ -42,13 +42,13 @@ export class BescheidController {
   @ApiParam({ name: 'feld', type: String, example: 'einnahmen', description: 'One of the five Bescheid figures (ParseBescheidFeldPipe).' })
   @ApiBody({ type: PutAssessmentFieldDto })
   @ApiOkResponse({ type: AssessmentResponseDto, description: 'The updated Bescheid and its derived Abgleich + Frist.' })
-  setFeld(
+  setField(
     @CurrentUser() userId: string,
-    @Param('jahr', ParseSteuerjahrPipe) jahr: number,
-    @Param('feld', ParseBescheidFeldPipe) feld: Parameters<AssessmentService['setFeld']>[2],
+    @Param('jahr', ParseTaxYearPipe) year: number,
+    @Param('feld', ParseAssessmentFieldPipe) field: Parameters<AssessmentService['setField']>[2],
     @Body() dto: PutAssessmentFieldDto,
   ): Promise<AssessmentResponseDto> {
-    return this.service.setFeld(userId, jahr, feld, dto)
+    return this.service.setField(userId, year, field, dto)
   }
 
   @Put(':jahr/bescheid/datum')
@@ -57,26 +57,26 @@ export class BescheidController {
   @ApiParam({ name: 'jahr', type: Number, example: 2026, description: 'The tax year (Steuerjahr).' })
   @ApiBody({ type: SetAssessmentDateDto })
   @ApiOkResponse({ type: AssessmentResponseDto, description: 'The updated Bescheid (Bescheiddatum + Frist).' })
-  setDatum(
+  setDate(
     @CurrentUser() userId: string,
-    @Param('jahr', ParseSteuerjahrPipe) jahr: number,
+    @Param('jahr', ParseTaxYearPipe) year: number,
     @Body() dto: SetAssessmentDateDto,
   ): Promise<AssessmentResponseDto> {
-    return this.service.setDatum(userId, jahr, dto)
+    return this.service.setDate(userId, year, dto)
   }
 
   @Put(':jahr/bescheid/status')
   @HttpCode(200)
   @RequiresAccount()
   @ApiParam({ name: 'jahr', type: Number, example: 2026, description: 'The tax year (Steuerjahr).' })
-  @ApiBody({ type: SetBescheidStatusDto })
+  @ApiBody({ type: SetAssessmentStatusDto })
   @ApiOkResponse({ type: AssessmentResponseDto, description: 'The Bescheid after the validated transition.' })
   setStatus(
     @CurrentUser() userId: string,
-    @Param('jahr', ParseSteuerjahrPipe) jahr: number,
-    @Body() dto: SetBescheidStatusDto,
+    @Param('jahr', ParseTaxYearPipe) year: number,
+    @Body() dto: SetAssessmentStatusDto,
   ): Promise<AssessmentResponseDto> {
-    return this.service.setStatus(userId, jahr, dto)
+    return this.service.setStatus(userId, year, dto)
   }
 
   @Put(':jahr/bescheid/einspruch')
@@ -85,11 +85,11 @@ export class BescheidController {
   @ApiParam({ name: 'jahr', type: Number, example: 2026, description: 'The tax year (Steuerjahr).' })
   @ApiBody({ type: SetAppealDto })
   @ApiOkResponse({ type: AssessmentResponseDto, description: 'The Bescheid after filing the Einspruch (validated transition).' })
-  setEinspruch(
+  setAppeal(
     @CurrentUser() userId: string,
-    @Param('jahr', ParseSteuerjahrPipe) jahr: number,
+    @Param('jahr', ParseTaxYearPipe) year: number,
     @Body() dto: SetAppealDto,
   ): Promise<AssessmentResponseDto> {
-    return this.service.setEinspruch(userId, jahr, dto)
+    return this.service.setAppeal(userId, year, dto)
   }
 }

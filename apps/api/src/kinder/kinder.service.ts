@@ -5,7 +5,7 @@ import { AuditService } from '../audit/audit.service.js'
 import { CROSS_BORDER_SALARY_STATEMENT_REPOSITORY, type CrossBorderSalaryStatementRepository } from '../ch-lohnausweis/ch-lohnausweis.repository.js'
 import { PARTNER_COUPLING_REPOSITORY, type PartnerCouplingRepository } from '../kopplung/kopplung.repository.js'
 import { CHILD_REPOSITORY, type ChildRecord, type ChildRepository } from './kind.repository.js'
-import type { CreateKindDto, KinderResponseDto, KindResponseDto, UpdateKindDto } from './dto/kind.dto.js'
+import type { CreateChildDto, KinderResponseDto, ChildResponseDto, UpdateChildDto } from './dto/kind.dto.js'
 
 function toChildData(r: ChildRecord, effectiveSwissEur: number | null): ChildData {
   return {
@@ -19,8 +19,8 @@ function toChildData(r: ChildRecord, effectiveSwissEur: number | null): ChildDat
   }
 }
 
-function toDto(r: ChildRecord, effectiveSwissEur: number | null, jahr: number): KindResponseDto {
-  const diff = effectiveSwissEur != null ? calculateDifferentialChildBenefit(r.geburtsdatum, jahr, effectiveSwissEur) : null
+function toDto(r: ChildRecord, effectiveSwissEur: number | null, year: number): ChildResponseDto {
+  const diff = effectiveSwissEur != null ? calculateDifferentialChildBenefit(r.geburtsdatum, year, effectiveSwissEur) : null
   return {
     id: r.id,
     lfdNr: r.lfdNr,
@@ -44,8 +44,8 @@ function toDto(r: ChildRecord, effectiveSwissEur: number | null, jahr: number): 
     kvBasisEur: r.kvBasisEur,
     pvEur: r.pvEur,
     schweizerKinderzulageEur: effectiveSwissEur != null ? String(effectiveSwissEur) : null,
-    differenzkindergeldEur: diff != null ? String(diff.differentialChildBenefit) : null,
-    gesamtanspruchEur: diff != null ? String(diff.totalClaim) : null,
+    differentialChildBenefitEur: diff != null ? String(diff.differentialChildBenefit) : null,
+    totalClaimEur: diff != null ? String(diff.totalClaim) : null,
   }
 }
 
@@ -54,46 +54,46 @@ export class ChildrenService {
   constructor(
     @Inject(CHILD_REPOSITORY) private readonly repository: ChildRepository,
     @Inject(AuditService) private readonly auditService: AuditService,
-    @Optional() @Inject(CROSS_BORDER_SALARY_STATEMENT_REPOSITORY) private readonly chLohnausweis?: CrossBorderSalaryStatementRepository,
-    @Optional() @Inject(PARTNER_COUPLING_REPOSITORY) private readonly kopplung?: PartnerCouplingRepository,
+    @Optional() @Inject(CROSS_BORDER_SALARY_STATEMENT_REPOSITORY) private readonly chSalaryCertificate?: CrossBorderSalaryStatementRepository,
+    @Optional() @Inject(PARTNER_COUPLING_REPOSITORY) private readonly link?: PartnerCouplingRepository,
   ) {}
 
-  private async getProKindSwissAllowanceEur(userId: string, jahr: number, count: number): Promise<number | null> {
-    if (!this.chLohnausweis || count <= 0) return null
-    let chRecord = await this.chLohnausweis.findForUserAndYear(userId, jahr)
-    if ((!chRecord?.nGre.familienzulagenChf || Number(chRecord.nGre.familienzulagenChf) <= 0) && this.kopplung) {
-      const k = await this.kopplung.findByUserAndYear(userId, jahr)
+  private async getPerChildSwissAllowanceEur(userId: string, year: number, count: number): Promise<number | null> {
+    if (!this.chSalaryCertificate || count <= 0) return null
+    let chRecord = await this.chSalaryCertificate.findForUserAndYear(userId, year)
+    if ((!chRecord?.nGre.familienzulagenChf || Number(chRecord.nGre.familienzulagenChf) <= 0) && this.link) {
+      const k = await this.link.findByUserAndYear(userId, year)
       if (k?.veranlagungsart === 'zusammen' && k.personBUserId) {
-        const spouseCh = await this.chLohnausweis.findForUserAndYear(k.personBUserId, jahr)
+        const spouseCh = await this.chSalaryCertificate.findForUserAndYear(k.personBUserId, year)
         if (spouseCh?.nGre.familienzulagenChf && Number(spouseCh.nGre.familienzulagenChf) > 0) {
           chRecord = spouseCh
         }
       }
     }
-    const zulagenChf = chRecord?.nGre.familienzulagenChf
-    if (!zulagenChf || Number(zulagenChf) <= 0) return null
-    const kurs = chRecord?.wechselkursKurs ?? 1.0
-    const proKindChf = Math.round(Number(zulagenChf) / count)
-    return Math.round(proKindChf * kurs)
+    const allowancesChf = chRecord?.nGre.familienzulagenChf
+    if (!allowancesChf || Number(allowancesChf) <= 0) return null
+    const rate = chRecord?.wechselkursKurs ?? 1.0
+    const perChildChf = Math.round(Number(allowancesChf) / count)
+    return Math.round(perChildChf * rate)
   }
 
-  private async toResponse(userId: string, records: ChildRecord[], jahr: number): Promise<KinderResponseDto> {
-    const proKindEur = await this.getProKindSwissAllowanceEur(userId, jahr, records.length)
-    const daten = records.map((r) => {
-      const effectiveSwissEur = r.schweizerKinderzulageEur ? Number(r.schweizerKinderzulageEur) : proKindEur
+  private async toResponse(userId: string, records: ChildRecord[], year: number): Promise<KinderResponseDto> {
+    const perChildEur = await this.getPerChildSwissAllowanceEur(userId, year, records.length)
+    const data = records.map((r) => {
+      const effectiveSwissEur = r.schweizerKinderzulageEur ? Number(r.schweizerKinderzulageEur) : perChildEur
       return toChildData(r, effectiveSwissEur)
     })
-    const stand = calculateChildrenStatus(daten, jahr)
+    const status = calculateChildrenStatus(data, year)
     return {
       kinder: records.map((r) => {
-        const effectiveSwissEur = r.schweizerKinderzulageEur ? Number(r.schweizerKinderzulageEur) : proKindEur
-        return toDto(r, effectiveSwissEur, jahr)
+        const effectiveSwissEur = r.schweizerKinderzulageEur ? Number(r.schweizerKinderzulageEur) : perChildEur
+        return toDto(r, effectiveSwissEur, year)
       }),
-      anzahl: stand.count,
-      kindergeldSumme: stand.childBenefitSum,
-      freibetragGesamt: stand.totalAllowance,
-      schweizerKinderzulageSumme: stand.swissFamilyAllowanceSum,
-      differenzkindergeldSumme: stand.differentialChildBenefitSum,
+      count: status.count,
+      childBenefitSum: status.childBenefitSum,
+      totalAllowance: status.totalAllowance,
+      swissFamilyAllowanceSum: status.swissFamilyAllowanceSum,
+      differentialChildBenefitSum: status.differentialChildBenefitSum,
     }
   }
 
@@ -105,7 +105,7 @@ export class ChildrenService {
     return this.toResponse(userId, records, steuerjahr)
   }
 
-  async create(userId: string, steuerjahr: number, dto: CreateKindDto): Promise<KinderResponseDto> {
+  async create(userId: string, steuerjahr: number, dto: CreateChildDto): Promise<KinderResponseDto> {
     if (!isValidChildBirthDate(dto.geburtsdatum, steuerjahr)) {
       throw new InvalidInputError('GEBURTSDATUM_INVALID', 'The birth date is not valid for this tax year.')
     }
@@ -114,7 +114,7 @@ export class ChildrenService {
     return this.toResponse(userId, records, steuerjahr)
   }
 
-  async update(userId: string, steuerjahr: number, id: string, dto: UpdateKindDto): Promise<KinderResponseDto> {
+  async update(userId: string, steuerjahr: number, id: string, dto: UpdateChildDto): Promise<KinderResponseDto> {
     if (dto.geburtsdatum && !isValidChildBirthDate(dto.geburtsdatum, steuerjahr)) {
       throw new InvalidInputError('GEBURTSDATUM_INVALID', 'The birth date is not valid for this tax year.')
     }

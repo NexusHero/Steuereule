@@ -25,11 +25,11 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
-  GuenstigerpruefungDto,
-  KapitalControllerGetGuenstigerpruefungParams,
-  KapitalResponseDto,
-  PutKapitalFeldDto,
-  PutKapitalInhaberDto
+  CapitalControllerGetMostFavourableCheckParams,
+  CapitalResponseDto,
+  MostFavourableCheckDto,
+  PutCapitalFieldDto,
+  PutCapitalOwnerDto
 } from './kapital.schemas';
 
 import { httpClient } from '../http-client';
@@ -54,26 +54,26 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   return result;
 };
 
-export type kapitalControllerGetResponse200 = {
-  data: KapitalResponseDto
+export type capitalControllerGetResponse200 = {
+  data: CapitalResponseDto
   status: 200
 }
 
-export type kapitalControllerGetResponse401 = {
+export type capitalControllerGetResponse401 = {
   data: void
   status: 401
 }
 
-export type kapitalControllerGetResponseSuccess = (kapitalControllerGetResponse200) & {
+export type capitalControllerGetResponseSuccess = (capitalControllerGetResponse200) & {
   headers: Headers;
 };
-export type kapitalControllerGetResponseError = (kapitalControllerGetResponse401) & {
+export type capitalControllerGetResponseError = (capitalControllerGetResponse401) & {
   headers: Headers;
 };
 
-export type kapitalControllerGetResponse = (kapitalControllerGetResponseSuccess | kapitalControllerGetResponseError)
+export type capitalControllerGetResponse = (capitalControllerGetResponseSuccess | capitalControllerGetResponseError)
 
-export const getKapitalControllerGetUrl = (jahr: number,) => {
+export const getCapitalControllerGetUrl = (jahr: number,) => {
 
 
 
@@ -81,9 +81,9 @@ export const getKapitalControllerGetUrl = (jahr: number,) => {
   return `/v1/steuerjahre/${jahr}/kapital`
 }
 
-export const kapitalControllerGet = async (jahr: number, options?: RequestInit): Promise<kapitalControllerGetResponse> => {
+export const capitalControllerGet = async (jahr: number, options?: RequestInit): Promise<capitalControllerGetResponse> => {
 
-  return httpClient<kapitalControllerGetResponse>(getKapitalControllerGetUrl(jahr),
+  return httpClient<capitalControllerGetResponse>(getCapitalControllerGetUrl(jahr),
   {
     ...options,
     method: 'GET'
@@ -96,66 +96,66 @@ export const kapitalControllerGet = async (jahr: number, options?: RequestInit):
 
 
 
-export const getKapitalControllerGetQueryKey = (jahr: number,) => {
+export const getCapitalControllerGetQueryKey = (jahr: number,) => {
     return [
     `/v1/steuerjahre/${jahr}/kapital`
     ] as const;
     }
 
 
-export const getKapitalControllerGetQueryOptions = <TData = Awaited<ReturnType<typeof kapitalControllerGet>>, TError = void>(jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof kapitalControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export const getCapitalControllerGetQueryOptions = <TData = Awaited<ReturnType<typeof capitalControllerGet>>, TError = void>(jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof capitalControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getKapitalControllerGetQueryKey(jahr);
+  const queryKey =  queryOptions?.queryKey ?? getCapitalControllerGetQueryKey(jahr);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof kapitalControllerGet>>> = ({ signal }) => kapitalControllerGet(jahr, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof capitalControllerGet>>> = ({ signal }) => capitalControllerGet(jahr, { signal, ...requestOptions });
 
 
 
 
 
-   return  { queryKey, queryFn, enabled: jahr !== null && jahr !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof kapitalControllerGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+   return  { queryKey, queryFn, enabled: jahr !== null && jahr !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof capitalControllerGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
-export type KapitalControllerGetQueryResult = NonNullable<Awaited<ReturnType<typeof kapitalControllerGet>>>
-export type KapitalControllerGetQueryError = void
+export type CapitalControllerGetQueryResult = NonNullable<Awaited<ReturnType<typeof capitalControllerGet>>>
+export type CapitalControllerGetQueryError = void
 
 
-export function useKapitalControllerGet<TData = Awaited<ReturnType<typeof kapitalControllerGet>>, TError = void>(
- jahr: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof kapitalControllerGet>>, TError, TData>> & Pick<
+export function useCapitalControllerGet<TData = Awaited<ReturnType<typeof capitalControllerGet>>, TError = void>(
+ jahr: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof capitalControllerGet>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof kapitalControllerGet>>,
+          Awaited<ReturnType<typeof capitalControllerGet>>,
           TError,
-          Awaited<ReturnType<typeof kapitalControllerGet>>
+          Awaited<ReturnType<typeof capitalControllerGet>>
         > , 'initialData'
       >, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useKapitalControllerGet<TData = Awaited<ReturnType<typeof kapitalControllerGet>>, TError = void>(
- jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof kapitalControllerGet>>, TError, TData>> & Pick<
+export function useCapitalControllerGet<TData = Awaited<ReturnType<typeof capitalControllerGet>>, TError = void>(
+ jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof capitalControllerGet>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof kapitalControllerGet>>,
+          Awaited<ReturnType<typeof capitalControllerGet>>,
           TError,
-          Awaited<ReturnType<typeof kapitalControllerGet>>
+          Awaited<ReturnType<typeof capitalControllerGet>>
         > , 'initialData'
       >, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useKapitalControllerGet<TData = Awaited<ReturnType<typeof kapitalControllerGet>>, TError = void>(
- jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof kapitalControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export function useCapitalControllerGet<TData = Awaited<ReturnType<typeof capitalControllerGet>>, TError = void>(
+ jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof capitalControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 
-export function useKapitalControllerGet<TData = Awaited<ReturnType<typeof kapitalControllerGet>>, TError = void>(
- jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof kapitalControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export function useCapitalControllerGet<TData = Awaited<ReturnType<typeof capitalControllerGet>>, TError = void>(
+ jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof capitalControllerGet>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getKapitalControllerGetQueryOptions(jahr,options)
+  const queryOptions = getCapitalControllerGetQueryOptions(jahr,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
@@ -168,26 +168,26 @@ export function useKapitalControllerGet<TData = Awaited<ReturnType<typeof kapita
 
 
 
-export type kapitalControllerSetInhaberResponse200 = {
-  data: KapitalResponseDto
+export type capitalControllerSetOwnerResponse200 = {
+  data: CapitalResponseDto
   status: 200
 }
 
-export type kapitalControllerSetInhaberResponse401 = {
+export type capitalControllerSetOwnerResponse401 = {
   data: void
   status: 401
 }
 
-export type kapitalControllerSetInhaberResponseSuccess = (kapitalControllerSetInhaberResponse200) & {
+export type capitalControllerSetOwnerResponseSuccess = (capitalControllerSetOwnerResponse200) & {
   headers: Headers;
 };
-export type kapitalControllerSetInhaberResponseError = (kapitalControllerSetInhaberResponse401) & {
+export type capitalControllerSetOwnerResponseError = (capitalControllerSetOwnerResponse401) & {
   headers: Headers;
 };
 
-export type kapitalControllerSetInhaberResponse = (kapitalControllerSetInhaberResponseSuccess | kapitalControllerSetInhaberResponseError)
+export type capitalControllerSetOwnerResponse = (capitalControllerSetOwnerResponseSuccess | capitalControllerSetOwnerResponseError)
 
-export const getKapitalControllerSetInhaberUrl = (jahr: number,) => {
+export const getCapitalControllerSetOwnerUrl = (jahr: number,) => {
 
 
 
@@ -195,15 +195,15 @@ export const getKapitalControllerSetInhaberUrl = (jahr: number,) => {
   return `/v1/steuerjahre/${jahr}/kapital/inhaber`
 }
 
-export const kapitalControllerSetInhaber = async (jahr: number,
-    putKapitalInhaberDto: PutKapitalInhaberDto, options?: RequestInit): Promise<kapitalControllerSetInhaberResponse> => {
+export const capitalControllerSetOwner = async (jahr: number,
+    putCapitalOwnerDto: PutCapitalOwnerDto, options?: RequestInit): Promise<capitalControllerSetOwnerResponse> => {
 
-  return httpClient<kapitalControllerSetInhaberResponse>(getKapitalControllerSetInhaberUrl(jahr),
+  return httpClient<capitalControllerSetOwnerResponse>(getCapitalControllerSetOwnerUrl(jahr),
   {
     ...options,
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(putKapitalInhaberDto)
+    body: JSON.stringify(putCapitalOwnerDto)
   }
 );}
 
@@ -211,11 +211,11 @@ export const kapitalControllerSetInhaber = async (jahr: number,
 
 
 
-export const getKapitalControllerSetInhaberMutationOptions = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof kapitalControllerSetInhaber>>, TError,{jahr: number;data: PutKapitalInhaberDto}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof kapitalControllerSetInhaber>>, TError,{jahr: number;data: PutKapitalInhaberDto}, TContext> => {
+export const getCapitalControllerSetOwnerMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof capitalControllerSetOwner>>, TError,{jahr: number;data: PutCapitalOwnerDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof capitalControllerSetOwner>>, TError,{jahr: number;data: PutCapitalOwnerDto}, TContext> => {
 
-const mutationKey = ['kapitalControllerSetInhaber'];
+const mutationKey = ['capitalControllerSetOwner'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -225,10 +225,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof kapitalControllerSetInhaber>>, {jahr: number;data: PutKapitalInhaberDto}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof capitalControllerSetOwner>>, {jahr: number;data: PutCapitalOwnerDto}> = (props) => {
           const {jahr,data} = props ?? {};
 
-          return  kapitalControllerSetInhaber(jahr,data,requestOptions)
+          return  capitalControllerSetOwner(jahr,data,requestOptions)
         }
 
 
@@ -238,41 +238,41 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type KapitalControllerSetInhaberMutationResult = NonNullable<Awaited<ReturnType<typeof kapitalControllerSetInhaber>>>
-    export type KapitalControllerSetInhaberMutationBody = PutKapitalInhaberDto
-    export type KapitalControllerSetInhaberMutationError = void
+    export type CapitalControllerSetOwnerMutationResult = NonNullable<Awaited<ReturnType<typeof capitalControllerSetOwner>>>
+    export type CapitalControllerSetOwnerMutationBody = PutCapitalOwnerDto
+    export type CapitalControllerSetOwnerMutationError = void
 
-    export const useKapitalControllerSetInhaber = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof kapitalControllerSetInhaber>>, TError,{jahr: number;data: PutKapitalInhaberDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+    export const useCapitalControllerSetOwner = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof capitalControllerSetOwner>>, TError,{jahr: number;data: PutCapitalOwnerDto}, TContext>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof kapitalControllerSetInhaber>>,
+        Awaited<ReturnType<typeof capitalControllerSetOwner>>,
         TError,
-        {jahr: number;data: PutKapitalInhaberDto},
+        {jahr: number;data: PutCapitalOwnerDto},
         TContext
       > => {
-      return useMutation(getKapitalControllerSetInhaberMutationOptions(options), queryClient);
+      return useMutation(getCapitalControllerSetOwnerMutationOptions(options), queryClient);
     }
 
-export type kapitalControllerSetFeldResponse200 = {
-  data: KapitalResponseDto
+export type capitalControllerSetFieldResponse200 = {
+  data: CapitalResponseDto
   status: 200
 }
 
-export type kapitalControllerSetFeldResponse401 = {
+export type capitalControllerSetFieldResponse401 = {
   data: void
   status: 401
 }
 
-export type kapitalControllerSetFeldResponseSuccess = (kapitalControllerSetFeldResponse200) & {
+export type capitalControllerSetFieldResponseSuccess = (capitalControllerSetFieldResponse200) & {
   headers: Headers;
 };
-export type kapitalControllerSetFeldResponseError = (kapitalControllerSetFeldResponse401) & {
+export type capitalControllerSetFieldResponseError = (capitalControllerSetFieldResponse401) & {
   headers: Headers;
 };
 
-export type kapitalControllerSetFeldResponse = (kapitalControllerSetFeldResponseSuccess | kapitalControllerSetFeldResponseError)
+export type capitalControllerSetFieldResponse = (capitalControllerSetFieldResponseSuccess | capitalControllerSetFieldResponseError)
 
-export const getKapitalControllerSetFeldUrl = (jahr: number,
+export const getCapitalControllerSetFieldUrl = (jahr: number,
     feld: string,) => {
 
 
@@ -281,16 +281,16 @@ export const getKapitalControllerSetFeldUrl = (jahr: number,
   return `/v1/steuerjahre/${jahr}/kapital/${feld}`
 }
 
-export const kapitalControllerSetFeld = async (jahr: number,
+export const capitalControllerSetField = async (jahr: number,
     feld: string,
-    putKapitalFeldDto: PutKapitalFeldDto, options?: RequestInit): Promise<kapitalControllerSetFeldResponse> => {
+    putCapitalFieldDto: PutCapitalFieldDto, options?: RequestInit): Promise<capitalControllerSetFieldResponse> => {
 
-  return httpClient<kapitalControllerSetFeldResponse>(getKapitalControllerSetFeldUrl(jahr,feld),
+  return httpClient<capitalControllerSetFieldResponse>(getCapitalControllerSetFieldUrl(jahr,feld),
   {
     ...options,
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(putKapitalFeldDto)
+    body: JSON.stringify(putCapitalFieldDto)
   }
 );}
 
@@ -298,11 +298,11 @@ export const kapitalControllerSetFeld = async (jahr: number,
 
 
 
-export const getKapitalControllerSetFeldMutationOptions = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof kapitalControllerSetFeld>>, TError,{jahr: number;feld: string;data: PutKapitalFeldDto}, TContext>, request?: SecondParameter<typeof httpClient>}
-): UseMutationOptions<Awaited<ReturnType<typeof kapitalControllerSetFeld>>, TError,{jahr: number;feld: string;data: PutKapitalFeldDto}, TContext> => {
+export const getCapitalControllerSetFieldMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof capitalControllerSetField>>, TError,{jahr: number;feld: string;data: PutCapitalFieldDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof capitalControllerSetField>>, TError,{jahr: number;feld: string;data: PutCapitalFieldDto}, TContext> => {
 
-const mutationKey = ['kapitalControllerSetFeld'];
+const mutationKey = ['capitalControllerSetField'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -312,10 +312,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof kapitalControllerSetFeld>>, {jahr: number;feld: string;data: PutKapitalFeldDto}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof capitalControllerSetField>>, {jahr: number;feld: string;data: PutCapitalFieldDto}> = (props) => {
           const {jahr,feld,data} = props ?? {};
 
-          return  kapitalControllerSetFeld(jahr,feld,data,requestOptions)
+          return  capitalControllerSetField(jahr,feld,data,requestOptions)
         }
 
 
@@ -325,35 +325,35 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type KapitalControllerSetFeldMutationResult = NonNullable<Awaited<ReturnType<typeof kapitalControllerSetFeld>>>
-    export type KapitalControllerSetFeldMutationBody = PutKapitalFeldDto
-    export type KapitalControllerSetFeldMutationError = void
+    export type CapitalControllerSetFieldMutationResult = NonNullable<Awaited<ReturnType<typeof capitalControllerSetField>>>
+    export type CapitalControllerSetFieldMutationBody = PutCapitalFieldDto
+    export type CapitalControllerSetFieldMutationError = void
 
-    export const useKapitalControllerSetFeld = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof kapitalControllerSetFeld>>, TError,{jahr: number;feld: string;data: PutKapitalFeldDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+    export const useCapitalControllerSetField = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof capitalControllerSetField>>, TError,{jahr: number;feld: string;data: PutCapitalFieldDto}, TContext>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof kapitalControllerSetFeld>>,
+        Awaited<ReturnType<typeof capitalControllerSetField>>,
         TError,
-        {jahr: number;feld: string;data: PutKapitalFeldDto},
+        {jahr: number;feld: string;data: PutCapitalFieldDto},
         TContext
       > => {
-      return useMutation(getKapitalControllerSetFeldMutationOptions(options), queryClient);
+      return useMutation(getCapitalControllerSetFieldMutationOptions(options), queryClient);
     }
 
-export type kapitalControllerGetGuenstigerpruefungResponse200 = {
-  data: GuenstigerpruefungDto | null
+export type capitalControllerGetMostFavourableCheckResponse200 = {
+  data: MostFavourableCheckDto | null
   status: 200
 }
 
-export type kapitalControllerGetGuenstigerpruefungResponseSuccess = (kapitalControllerGetGuenstigerpruefungResponse200) & {
+export type capitalControllerGetMostFavourableCheckResponseSuccess = (capitalControllerGetMostFavourableCheckResponse200) & {
   headers: Headers;
 };
 ;
 
-export type kapitalControllerGetGuenstigerpruefungResponse = (kapitalControllerGetGuenstigerpruefungResponseSuccess)
+export type capitalControllerGetMostFavourableCheckResponse = (capitalControllerGetMostFavourableCheckResponseSuccess)
 
-export const getKapitalControllerGetGuenstigerpruefungUrl = (jahr: number,
-    params?: KapitalControllerGetGuenstigerpruefungParams,) => {
+export const getCapitalControllerGetMostFavourableCheckUrl = (jahr: number,
+    params?: CapitalControllerGetMostFavourableCheckParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -368,10 +368,10 @@ export const getKapitalControllerGetGuenstigerpruefungUrl = (jahr: number,
   return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/kapital/guenstigerpruefung?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/kapital/guenstigerpruefung`
 }
 
-export const kapitalControllerGetGuenstigerpruefung = async (jahr: number,
-    params?: KapitalControllerGetGuenstigerpruefungParams, options?: RequestInit): Promise<kapitalControllerGetGuenstigerpruefungResponse> => {
+export const capitalControllerGetMostFavourableCheck = async (jahr: number,
+    params?: CapitalControllerGetMostFavourableCheckParams, options?: RequestInit): Promise<capitalControllerGetMostFavourableCheckResponse> => {
 
-  return httpClient<kapitalControllerGetGuenstigerpruefungResponse>(getKapitalControllerGetGuenstigerpruefungUrl(jahr,params),
+  return httpClient<capitalControllerGetMostFavourableCheckResponse>(getCapitalControllerGetMostFavourableCheckUrl(jahr,params),
   {
     ...options,
     method: 'GET'
@@ -384,72 +384,72 @@ export const kapitalControllerGetGuenstigerpruefung = async (jahr: number,
 
 
 
-export const getKapitalControllerGetGuenstigerpruefungQueryKey = (jahr: number,
-    params?: KapitalControllerGetGuenstigerpruefungParams,) => {
+export const getCapitalControllerGetMostFavourableCheckQueryKey = (jahr: number,
+    params?: CapitalControllerGetMostFavourableCheckParams,) => {
     return [
     `/v1/steuerjahre/${jahr}/kapital/guenstigerpruefung`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getKapitalControllerGetGuenstigerpruefungQueryOptions = <TData = Awaited<ReturnType<typeof kapitalControllerGetGuenstigerpruefung>>, TError = unknown>(jahr: number,
-    params?: KapitalControllerGetGuenstigerpruefungParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof kapitalControllerGetGuenstigerpruefung>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+export const getCapitalControllerGetMostFavourableCheckQueryOptions = <TData = Awaited<ReturnType<typeof capitalControllerGetMostFavourableCheck>>, TError = unknown>(jahr: number,
+    params?: CapitalControllerGetMostFavourableCheckParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof capitalControllerGetMostFavourableCheck>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getKapitalControllerGetGuenstigerpruefungQueryKey(jahr,params);
+  const queryKey =  queryOptions?.queryKey ?? getCapitalControllerGetMostFavourableCheckQueryKey(jahr,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof kapitalControllerGetGuenstigerpruefung>>> = ({ signal }) => kapitalControllerGetGuenstigerpruefung(jahr,params, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof capitalControllerGetMostFavourableCheck>>> = ({ signal }) => capitalControllerGetMostFavourableCheck(jahr,params, { signal, ...requestOptions });
 
 
 
 
 
-   return  { queryKey, queryFn, enabled: jahr !== null && jahr !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof kapitalControllerGetGuenstigerpruefung>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+   return  { queryKey, queryFn, enabled: jahr !== null && jahr !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof capitalControllerGetMostFavourableCheck>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
-export type KapitalControllerGetGuenstigerpruefungQueryResult = NonNullable<Awaited<ReturnType<typeof kapitalControllerGetGuenstigerpruefung>>>
-export type KapitalControllerGetGuenstigerpruefungQueryError = unknown
+export type CapitalControllerGetMostFavourableCheckQueryResult = NonNullable<Awaited<ReturnType<typeof capitalControllerGetMostFavourableCheck>>>
+export type CapitalControllerGetMostFavourableCheckQueryError = unknown
 
 
-export function useKapitalControllerGetGuenstigerpruefung<TData = Awaited<ReturnType<typeof kapitalControllerGetGuenstigerpruefung>>, TError = unknown>(
+export function useCapitalControllerGetMostFavourableCheck<TData = Awaited<ReturnType<typeof capitalControllerGetMostFavourableCheck>>, TError = unknown>(
  jahr: number,
-    params: undefined |  KapitalControllerGetGuenstigerpruefungParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof kapitalControllerGetGuenstigerpruefung>>, TError, TData>> & Pick<
+    params: undefined |  CapitalControllerGetMostFavourableCheckParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof capitalControllerGetMostFavourableCheck>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof kapitalControllerGetGuenstigerpruefung>>,
+          Awaited<ReturnType<typeof capitalControllerGetMostFavourableCheck>>,
           TError,
-          Awaited<ReturnType<typeof kapitalControllerGetGuenstigerpruefung>>
+          Awaited<ReturnType<typeof capitalControllerGetMostFavourableCheck>>
         > , 'initialData'
       >, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useKapitalControllerGetGuenstigerpruefung<TData = Awaited<ReturnType<typeof kapitalControllerGetGuenstigerpruefung>>, TError = unknown>(
+export function useCapitalControllerGetMostFavourableCheck<TData = Awaited<ReturnType<typeof capitalControllerGetMostFavourableCheck>>, TError = unknown>(
  jahr: number,
-    params?: KapitalControllerGetGuenstigerpruefungParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof kapitalControllerGetGuenstigerpruefung>>, TError, TData>> & Pick<
+    params?: CapitalControllerGetMostFavourableCheckParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof capitalControllerGetMostFavourableCheck>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof kapitalControllerGetGuenstigerpruefung>>,
+          Awaited<ReturnType<typeof capitalControllerGetMostFavourableCheck>>,
           TError,
-          Awaited<ReturnType<typeof kapitalControllerGetGuenstigerpruefung>>
+          Awaited<ReturnType<typeof capitalControllerGetMostFavourableCheck>>
         > , 'initialData'
       >, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useKapitalControllerGetGuenstigerpruefung<TData = Awaited<ReturnType<typeof kapitalControllerGetGuenstigerpruefung>>, TError = unknown>(
+export function useCapitalControllerGetMostFavourableCheck<TData = Awaited<ReturnType<typeof capitalControllerGetMostFavourableCheck>>, TError = unknown>(
  jahr: number,
-    params?: KapitalControllerGetGuenstigerpruefungParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof kapitalControllerGetGuenstigerpruefung>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+    params?: CapitalControllerGetMostFavourableCheckParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof capitalControllerGetMostFavourableCheck>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 
-export function useKapitalControllerGetGuenstigerpruefung<TData = Awaited<ReturnType<typeof kapitalControllerGetGuenstigerpruefung>>, TError = unknown>(
+export function useCapitalControllerGetMostFavourableCheck<TData = Awaited<ReturnType<typeof capitalControllerGetMostFavourableCheck>>, TError = unknown>(
  jahr: number,
-    params?: KapitalControllerGetGuenstigerpruefungParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof kapitalControllerGetGuenstigerpruefung>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+    params?: CapitalControllerGetMostFavourableCheckParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof capitalControllerGetMostFavourableCheck>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
  , queryClient?: QueryClient
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
-  const queryOptions = getKapitalControllerGetGuenstigerpruefungQueryOptions(jahr,params,options)
+  const queryOptions = getCapitalControllerGetMostFavourableCheckQueryOptions(jahr,params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

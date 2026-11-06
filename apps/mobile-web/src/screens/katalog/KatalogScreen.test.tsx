@@ -9,19 +9,19 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import { getInterviewControllerGetInterviewQueryKey } from '@steuereule/api-client'
 import { createAppI18n } from '../../i18n/app-i18n'
-import { KatalogScreen } from './KatalogScreen'
+import { CatalogScreen } from './KatalogScreen'
 import { server } from '../../test-msw-server'
 
 const TAX_YEAR = 2026
 
-function renderKatalog(entry: 'lebenslagen' | 'sonderausgaben', opts: { onDone?: () => void; queryClient?: QueryClient } = {}) {
+function renderCatalog(entry: 'lebenslagen' | 'sonderausgaben', opts: { onDone?: () => void; queryClient?: QueryClient } = {}) {
   const i18n = createAppI18n('de')
   const queryClient = opts.queryClient ?? new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={queryClient}>
       <I18nextProvider i18n={i18n}>
         <ThemeProvider mode="light">
-          <KatalogScreen entry={entry} taxYear={TAX_YEAR} onDone={opts.onDone ?? (() => {})} />
+          <CatalogScreen entry={entry} taxYear={TAX_YEAR} onDone={opts.onDone ?? (() => {})} />
         </ThemeProvider>
       </I18nextProvider>
     </QueryClientProvider>,
@@ -38,7 +38,7 @@ describe('KatalogScreen', () => {
           : HttpResponse.json({ answers: {}, nextStep: { kind: 'question', id: 'job' }, openItems: 3 }, { status: 200 })
       }),
     )
-    renderKatalog('lebenslagen')
+    renderCatalog('lebenslagen')
 
     expect(await screen.findByText('Hast du eine doppelte Haushaltsführung?')).toBeTruthy()
     expect(screen.getByText('Ja')).toBeTruthy()
@@ -54,7 +54,7 @@ describe('KatalogScreen', () => {
         HttpResponse.json({ nextStep: { kind: 'question', id: 'dhf-miete' }, openItems: 4 }, { status: 200 }),
       ),
     )
-    renderKatalog('lebenslagen')
+    renderCatalog('lebenslagen')
     fireEvent.click(await screen.findByText('Ja'))
 
     expect(await screen.findByText('Monatliche Miete am Arbeitsort')).toBeTruthy()
@@ -72,10 +72,10 @@ describe('KatalogScreen', () => {
         return HttpResponse.json({ nextStep: { kind: 'question', id: 'umzug' }, openItems: 3 }, { status: 200 })
       }),
     )
-    renderKatalog('lebenslagen')
-    const miete = await screen.findByLabelText('Monatliche Miete am Arbeitsort (Ganzzahlige Euro)')
+    renderCatalog('lebenslagen')
+    const rent = await screen.findByLabelText('Monatliche Miete am Arbeitsort (Ganzzahlige Euro)')
 
-    fireEvent.change(miete, { target: { value: '650' } })
+    fireEvent.change(rent, { target: { value: '650' } })
     fireEvent.click(screen.getByText('Weiter'))
 
     await waitFor(() => expect(bodies).toEqual([{ questionId: 'dhf-miete', value: '650' }]))
@@ -87,7 +87,7 @@ describe('KatalogScreen', () => {
         HttpResponse.json({ answers: {}, nextStep: { kind: 'question', id: 'spenden' }, openItems: 3 }, { status: 200 }),
       ),
     )
-    renderKatalog('sonderausgaben')
+    renderCatalog('sonderausgaben')
 
     expect(await screen.findByText('Hast du gespendet?')).toBeTruthy()
   })
@@ -109,7 +109,7 @@ describe('KatalogScreen', () => {
     )
     const onDone = vi.fn()
 
-    renderKatalog('lebenslagen', { onDone, queryClient })
+    renderCatalog('lebenslagen', { onDone, queryClient })
 
     await waitFor(() => expect(onDone).toHaveBeenCalledOnce())
     expect(screen.queryByText('Hast du eine doppelte Haushaltsführung?')).toBeNull()

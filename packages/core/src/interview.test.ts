@@ -46,14 +46,14 @@ import {
 //  - D3 (#321): two entries claiming the same step id must be rejected by `buildStepIndex`.
 //  - D5 (#321): an integer-typed step's range check must be provably breakable.
 
-const ANGESTELLT: Answers = { job: 'Angestellt' }
+const EMPLOYED: Answers = { job: 'Angestellt' }
 
 describe('nextStep — the identity of the next screen (product ADR-016)', () => {
   const cases: ReadonlyArray<readonly [string, Answers, Step]> = [
     ['nothing answered yet opens with the money-source question', {}, { kind: 'question', id: 'job' }],
 
     // Product ADR-016's three questions, straight through.
-    ['Angestellt goes to the foreign-work question', ANGESTELLT, { kind: 'question', id: 'ausland' }],
+    ['Angestellt goes to the foreign-work question', EMPLOYED, { kind: 'question', id: 'ausland' }],
     [
       'Rente goes to the foreign-work question too — it is an option, not a branch (ADR-034)',
       { job: 'Rente' },
@@ -77,23 +77,23 @@ describe('nextStep — the identity of the next screen (product ADR-016)', () =>
     // Gate 2 — CH-only (product ADR-016/029).
     [
       'another country hits the CH-only gate',
-      { ...ANGESTELLT, ausland: 'In ein anderes Land' },
+      { ...EMPLOYED, ausland: 'In ein anderes Land' },
       { kind: 'gate', id: 'ch-only' },
     ],
     [
       'Switzerland does not — we cover it fully (ADR-029)',
-      { ...ANGESTELLT, ausland: 'Ja, in die Schweiz' },
+      { ...EMPLOYED, ausland: 'Ja, in die Schweiz' },
       { kind: 'question', id: 'kinder' },
     ],
-    ['no foreign work does not either', { ...ANGESTELLT, ausland: 'Nein' }, { kind: 'question', id: 'kinder' }],
+    ['no foreign work does not either', { ...EMPLOYED, ausland: 'Nein' }, { kind: 'question', id: 'kinder' }],
     [
       'the CH-only gate drops the foreign part and carries on with the rest of the year',
-      { ...ANGESTELLT, ausland: 'In ein anderes Land', 'ch-only': GATE_ACKNOWLEDGED },
+      { ...EMPLOYED, ausland: 'In ein anderes Land', 'ch-only': GATE_ACKNOWLEDGED },
       { kind: 'question', id: 'kinder' },
     ],
 
-    ['kinder answered asks the Familienstand', { ...ANGESTELLT, ausland: 'Nein', kinder: '1 Kind' }, { kind: 'question', id: 'familienstand' }],
-    ['all four answered is done', { ...ANGESTELLT, ausland: 'Nein', kinder: '1 Kind', familienstand: 'Verheiratet' }, { kind: 'done' }],
+    ['kinder answered asks the Familienstand', { ...EMPLOYED, ausland: 'Nein', kinder: '1 Kind' }, { kind: 'question', id: 'familienstand' }],
+    ['all four answered is done', { ...EMPLOYED, ausland: 'Nein', kinder: '1 Kind', familienstand: 'Verheiratet' }, { kind: 'done' }],
   ]
 
   it.each(cases)('%s', (_name, answers, expected) => {
@@ -110,7 +110,7 @@ describe('nextStep — the identity of the next screen (product ADR-016)', () =>
     // (Interview.jsx:14, 52). Asserted here so the ordering cannot regress into that shape.
     const determines: ReadonlyArray<readonly [StepId, Answers, Answers]> = [
       ['gewerbe', {}, { job: 'Selbstständig' }],
-      ['ch-only', ANGESTELLT, { ...ANGESTELLT, ausland: 'In ein anderes Land' }],
+      ['ch-only', EMPLOYED, { ...EMPLOYED, ausland: 'In ein anderes Land' }],
     ]
 
     for (const [gate, before, after] of determines) {
@@ -120,7 +120,7 @@ describe('nextStep — the identity of the next screen (product ADR-016)', () =>
   })
 })
 
-type GewerbeGateDecision = 'exempt' | 'gated-passable' | 'gated-terminal'
+type BusinessGateDecision = 'exempt' | 'gated-passable' | 'gated-terminal'
 
 /**
  * Review F1 (#341) — `main`'s original deny-list (`job !== 'Angestellt' && job !== 'Rente'`,
@@ -132,7 +132,7 @@ type GewerbeGateDecision = 'exempt' | 'gated-passable' | 'gated-terminal'
  * temporarily adding `'Werkstudent mit Gewerbe'` to `JOB_VALUES` and observing exactly that error;
  * see this PR's evidence block for the command and output, then reverted.
  */
-const GEWERBE_GATE_DECISIONS: Record<(typeof JOB_VALUES)[number], GewerbeGateDecision> = {
+const BUSINESS_GATE_DECISIONS: Record<(typeof JOB_VALUES)[number], BusinessGateDecision> = {
   Angestellt: 'exempt',
   Selbstständig: 'gated-terminal',
   Beides: 'gated-passable',
@@ -140,7 +140,7 @@ const GEWERBE_GATE_DECISIONS: Record<(typeof JOB_VALUES)[number], GewerbeGateDec
 }
 
 describe('Gewerbe gate default (review F1, #341) — every JOB_VALUES entry has a declared, checked decision', () => {
-  it.each(JOB_VALUES.map((job) => [job, GEWERBE_GATE_DECISIONS[job]] as const))(
+  it.each(JOB_VALUES.map((job) => [job, BUSINESS_GATE_DECISIONS[job]] as const))(
     'job=%s → %s',
     (job, decision) => {
       const beforeAck = nextStep({ job })
@@ -209,8 +209,8 @@ describe('isValidAnswer — the QUESTIONS lookup must not treat an Object.protot
 describe('isReachable — the server admission check (#318 P2)', () => {
   it('accepts the step the user is actually standing on', () => {
     expect(isReachable({}, 'job')).toBe(true)
-    expect(isReachable(ANGESTELLT, 'ausland')).toBe(true)
-    expect(isReachable({ ...ANGESTELLT, ausland: 'Nein' }, 'kinder')).toBe(true)
+    expect(isReachable(EMPLOYED, 'ausland')).toBe(true)
+    expect(isReachable({ ...EMPLOYED, ausland: 'Nein' }, 'kinder')).toBe(true)
   })
 
   it('rejects a step the user has not reached yet', () => {
@@ -237,13 +237,13 @@ describe('isReachable — the server admission check (#318 P2)', () => {
   })
 
   it('accepts a gate only on the path that actually opens it', () => {
-    expect(isReachable({ ...ANGESTELLT, ausland: 'In ein anderes Land' }, 'ch-only')).toBe(true)
-    expect(isReachable({ ...ANGESTELLT, ausland: 'Nein' }, 'ch-only')).toBe(false)
-    expect(isReachable(ANGESTELLT, 'gewerbe')).toBe(false)
+    expect(isReachable({ ...EMPLOYED, ausland: 'In ein anderes Land' }, 'ch-only')).toBe(true)
+    expect(isReachable({ ...EMPLOYED, ausland: 'Nein' }, 'ch-only')).toBe(false)
+    expect(isReachable(EMPLOYED, 'gewerbe')).toBe(false)
   })
 
   it('rejects anything once the interview is done', () => {
-    const finished: Answers = { ...ANGESTELLT, ausland: 'Nein', kinder: 'Nein' }
+    const finished: Answers = { ...EMPLOYED, ausland: 'Nein', kinder: 'Nein' }
     expect(isReachable(finished, 'gewerbe')).toBe(false)
   })
 
@@ -347,10 +347,10 @@ describe('isValidAnswer', () => {
 describe('remainingSteps — what TaxYear.openItems is written from (Minimal-Gate)', () => {
   it('counts the questions still to answer', () => {
     expect(remainingSteps({})).toBe(4)
-    expect(remainingSteps(ANGESTELLT)).toBe(3)
-    expect(remainingSteps({ ...ANGESTELLT, ausland: 'Nein' })).toBe(2)
-    expect(remainingSteps({ ...ANGESTELLT, ausland: 'Nein', kinder: 'Nein' })).toBe(1)
-    expect(remainingSteps({ ...ANGESTELLT, ausland: 'Nein', kinder: 'Nein', familienstand: 'Ledig' })).toBe(0)
+    expect(remainingSteps(EMPLOYED)).toBe(3)
+    expect(remainingSteps({ ...EMPLOYED, ausland: 'Nein' })).toBe(2)
+    expect(remainingSteps({ ...EMPLOYED, ausland: 'Nein', kinder: 'Nein' })).toBe(1)
+    expect(remainingSteps({ ...EMPLOYED, ausland: 'Nein', kinder: 'Nein', familienstand: 'Ledig' })).toBe(0)
   })
 
   it('does not count gates — a gate is something we tell the user, not something we await', () => {
@@ -376,7 +376,7 @@ describe('Segment 2 (#321) — same engine, entry-derived answers, over ENTRIES[
   const entry = ENTRIES['segment-2']
   // einkuenfte moved into its own catalogue entry (the masks for Kapital/Vermietung need it); the branch
   // logic below is unchanged and the base answers are simply ignored by it.
-  const einkuenfteEntry = ENTRIES.einkuenfte
+  const incomeEntry = ENTRIES.einkuenfte
 
   it('opens with partner, straight through the five base questions when nothing branches', () => {
     expect(nextStepFor(entry, {})).toEqual({ kind: 'question', id: 'partner' })
@@ -394,7 +394,7 @@ describe('Segment 2 (#321) — same engine, entry-derived answers, over ENTRIES[
       fortbildung: 'Nein',
       einkuenfte: 'Kapitalerträge',
     }
-    expect(nextStepFor(einkuenfteEntry, answers)).toEqual({ kind: 'question', id: 'kap-depot' })
+    expect(nextStepFor(incomeEntry, answers)).toEqual({ kind: 'question', id: 'kap-depot' })
   })
 
   it('Q2 — einkuenfte: Vermietung opens vermietung-art, not kap-depot', () => {
@@ -406,7 +406,7 @@ describe('Segment 2 (#321) — same engine, entry-derived answers, over ENTRIES[
       fortbildung: 'Nein',
       einkuenfte: 'Vermietung',
     }
-    expect(nextStepFor(einkuenfteEntry, answers)).toEqual({ kind: 'question', id: 'vermietung-art' })
+    expect(nextStepFor(incomeEntry, answers)).toEqual({ kind: 'question', id: 'vermietung-art' })
   })
 
   it('Q2 — einkuenfte: Nein opens neither branch — straight to done', () => {
@@ -418,8 +418,8 @@ describe('Segment 2 (#321) — same engine, entry-derived answers, over ENTRIES[
       fortbildung: 'Nein',
       einkuenfte: 'Nein',
     }
-    expect(nextStepFor(einkuenfteEntry, answers)).toEqual({ kind: 'done' })
-    expect(remainingStepsFor(einkuenfteEntry, answers)).toBe(0)
+    expect(nextStepFor(incomeEntry, answers)).toEqual({ kind: 'done' })
+    expect(remainingStepsFor(incomeEntry, answers)).toBe(0)
   })
 
   it('Q2 — einkuenfte: Beides opens BOTH branches, in a fixed order (kap-depot first)', () => {
@@ -431,14 +431,14 @@ describe('Segment 2 (#321) — same engine, entry-derived answers, over ENTRIES[
       fortbildung: 'Nein',
       einkuenfte: 'Beides',
     }
-    expect(nextStepFor(einkuenfteEntry, answered)).toEqual({ kind: 'question', id: 'kap-depot' })
+    expect(nextStepFor(incomeEntry, answered)).toEqual({ kind: 'question', id: 'kap-depot' })
     // Both are already-certain future obligations regardless of asking order — remainingSteps
     // must count BOTH, not just the one nextStep happens to show first.
-    expect(remainingStepsFor(einkuenfteEntry, answered)).toBe(2)
+    expect(remainingStepsFor(incomeEntry, answered)).toBe(2)
 
     const kapAnswered: Answers = { ...answered, 'kap-depot': 'Deutscher Broker' }
-    expect(nextStepFor(einkuenfteEntry, kapAnswered)).toEqual({ kind: 'question', id: 'vermietung-art' })
-    expect(remainingStepsFor(einkuenfteEntry, kapAnswered)).toBe(1)
+    expect(nextStepFor(incomeEntry, kapAnswered)).toEqual({ kind: 'question', id: 'vermietung-art' })
+    expect(remainingStepsFor(incomeEntry, kapAnswered)).toBe(1)
   })
 
   // The five base questions, fully answered, harmlessly — the common prefix every branch
@@ -448,10 +448,10 @@ describe('Segment 2 (#321) — same engine, entry-derived answers, over ENTRIES[
 
   it('Q3 — the crypto gate is server-side: kap-depot: Krypto is reachable, krypto-gate only after it', () => {
     const beforeKap: Answers = { ...BASE_ANSWERED, einkuenfte: 'Kapitalerträge' }
-    expect(isReachableFor(einkuenfteEntry, beforeKap, 'krypto-gate')).toBe(false)
+    expect(isReachableFor(incomeEntry, beforeKap, 'krypto-gate')).toBe(false)
 
     const afterKap: Answers = { ...beforeKap, 'kap-depot': 'Krypto' }
-    expect(isReachableFor(einkuenfteEntry, afterKap, 'krypto-gate')).toBe(true)
+    expect(isReachableFor(incomeEntry, afterKap, 'krypto-gate')).toBe(true)
 
     // passability — every base step answered, so acknowledging the gate ends the walk
     // (review F12 — F8's `fortbildung`-omitted form never reached this branch at all: `walk`
@@ -459,7 +459,7 @@ describe('Segment 2 (#321) — same engine, entry-derived answers, over ENTRIES[
     // `ENTRIES['segment-2'].steps`, so removing it made the assertion pass independent of
     // krypto-gate's own passability).
     const acknowledged: Answers = { ...afterKap, 'krypto-gate': GATE_ACKNOWLEDGED }
-    expect(nextStepFor(einkuenfteEntry, acknowledged)).toEqual({ kind: 'done' })
+    expect(nextStepFor(incomeEntry, acknowledged)).toEqual({ kind: 'done' })
 
     // resumption — 'Beides' opens BOTH branches in fixed order, so a resolved krypto-gate
     // must carry on into vermietung-art. This is the only fixture in this entry where a
@@ -471,24 +471,24 @@ describe('Segment 2 (#321) — same engine, entry-derived answers, over ENTRIES[
       'kap-depot': 'Krypto',
       'krypto-gate': GATE_ACKNOWLEDGED,
     }
-    expect(nextStepFor(einkuenfteEntry, bothBranches)).toEqual({ kind: 'question', id: 'vermietung-art' })
+    expect(nextStepFor(incomeEntry, bothBranches)).toEqual({ kind: 'question', id: 'vermietung-art' })
   })
 
   it('Q3 — the sale/furnished-short-term gate is server-side: vermietung-gate only after vermietung-art: Verkauf oder möbliert', () => {
     const before: Answers = { ...BASE_ANSWERED, einkuenfte: 'Vermietung' }
-    expect(isReachableFor(einkuenfteEntry, before, 'vermietung-gate')).toBe(false)
+    expect(isReachableFor(incomeEntry, before, 'vermietung-gate')).toBe(false)
 
     const after: Answers = { ...before, 'vermietung-art': 'Verkauf oder möbliert' }
-    expect(isReachableFor(einkuenfteEntry, after, 'vermietung-gate')).toBe(true)
+    expect(isReachableFor(incomeEntry, after, 'vermietung-gate')).toBe(true)
     // Not reachable at all when a non-gating vermietung-art answer was given instead.
-    const einfach: Answers = { ...before, 'vermietung-art': 'Einfach' }
-    expect(isReachableFor(einkuenfteEntry, einfach, 'vermietung-gate')).toBe(false)
+    const simple: Answers = { ...before, 'vermietung-art': 'Einfach' }
+    expect(isReachableFor(incomeEntry, simple, 'vermietung-gate')).toBe(false)
 
     // passability — every base step answered, so acknowledging the gate ends the walk
     // (review F12 — this gate had the same unproven-passability hole as krypto-gate's F8,
     // undetected because this case never asserted post-acknowledgement behaviour at all).
-    const acknowledgedVermietung: Answers = { ...after, 'vermietung-gate': GATE_ACKNOWLEDGED }
-    expect(nextStepFor(einkuenfteEntry, acknowledgedVermietung)).toEqual({ kind: 'done' })
+    const acknowledgedRental: Answers = { ...after, 'vermietung-gate': GATE_ACKNOWLEDGED }
+    expect(nextStepFor(incomeEntry, acknowledgedRental)).toEqual({ kind: 'done' })
   })
 
   it('Q5 — leaving the entry mid-way and returning: answers already given persist and remain reachable', () => {

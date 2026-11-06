@@ -17,10 +17,10 @@ export const OWL_CARD_DISMISSAL_REPOSITORY = Symbol('OWL_CARD_DISMISSAL_REPOSITO
 
 export interface OwlSettingRepository {
   findByUserId(userId: string): Promise<OwlSettingRecord | null>
-  setAktiviert(userId: string, aktiviert: boolean): Promise<OwlSettingRecord>
+  setEnabled(userId: string, aktiviert: boolean): Promise<OwlSettingRecord>
 }
 
 export interface OwlCardDismissalRepository {
   listForUserAndYear(userId: string, steuerjahr: number): Promise<string[]>
-  verwerfe(userId: string, steuerjahr: number, fingerprint: string): Promise<void>
+  dismiss(userId: string, steuerjahr: number, fingerprint: string): Promise<void>
 }

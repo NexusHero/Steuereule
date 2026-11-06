@@ -2,7 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import { IsIn, IsInt, IsOptional, Min } from 'class-validator'
 
 /** One Kapital field's honest capture state. */
-export class KapitalFeldDto {
+export class CapitalFieldDto {
   @ApiProperty({ enum: ['erfasst', 'offen', 'unklar'], description: 'The field’s capture state.' })
   kind!: 'erfasst' | 'offen' | 'unklar'
 
@@ -11,11 +11,11 @@ export class KapitalFeldDto {
     example: 2500,
     description: 'The value — present only when kind === "erfasst" (validated via @steuereule/core).',
   })
-  wert?: number
+  value?: number
 }
 
 /** The PUT body for the Kapitalerträge field. */
-export class PutKapitalFeldDto {
+export class PutCapitalFieldDto {
   @ApiProperty({ enum: ['erfasst', 'offen', 'unklar'], description: 'The field’s capture state.' })
   @IsIn(['erfasst', 'offen', 'unklar'])
   kind!: 'erfasst' | 'offen' | 'unklar'
@@ -28,11 +28,11 @@ export class PutKapitalFeldDto {
   @IsOptional()
   @IsInt()
   @Min(0)
-  wert?: number
+  value?: number
 }
 
 /** The PUT body for the depot owner (ADR-0054). */
-export class PutKapitalInhaberDto {
+export class PutCapitalOwnerDto {
   @ApiProperty({ enum: ['A', 'B', 'gemeinsam'], description: 'Person A, Person B, or a joint account split half and half.' })
   @IsIn(['A', 'B', 'gemeinsam'])
   inhaber!: 'A' | 'B' | 'gemeinsam'

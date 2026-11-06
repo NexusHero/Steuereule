@@ -3,7 +3,7 @@ import { PrismaService } from '../prisma/prisma.service.js'
 import type { AssistantRepository, ClientInfo, ConnectedAssistant } from './assistenten.repository.js'
 
 @Injectable()
-export class PrismaAssistentenRepository implements AssistantRepository {
+export class PrismaAssistantsRepository implements AssistantRepository {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async findConnectedForUser(userId: string): Promise<ConnectedAssistant[]> {
@@ -24,8 +24,8 @@ export class PrismaAssistentenRepository implements AssistantRepository {
       results.push({
         clientId: consent.clientId,
         name: consent.client?.name ?? 'Unbekannter Assistent',
-        verbundenSeit: consent.createdAt ?? new Date(),
-        zuletztGenutzt: latestToken?.createdAt ?? null,
+        linkedSince: consent.createdAt ?? new Date(),
+        lastUsed: latestToken?.createdAt ?? null,
       })
     }
 

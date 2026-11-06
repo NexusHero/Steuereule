@@ -3,7 +3,7 @@ import { ASSISTANT_REPOSITORY, type AssistantRepository } from './assistenten.re
 import type { OauthClientInfoDto, ConnectedAssistantDto } from './dto/assistenten.dto.js'
 
 @Injectable()
-export class AssistentenService {
+export class AssistantsService {
   constructor(
     @Inject(ASSISTANT_REPOSITORY)
     private readonly repository: AssistantRepository,
@@ -14,8 +14,8 @@ export class AssistentenService {
     return list.map((item) => ({
       clientId: item.clientId,
       name: item.name,
-      verbundenSeit: item.verbundenSeit.toISOString(),
-      zuletztGenutzt: item.zuletztGenutzt?.toISOString() ?? null,
+      linkedSince: item.linkedSince.toISOString(),
+      lastUsed: item.lastUsed?.toISOString() ?? null,
     }))
   }
 

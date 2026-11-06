@@ -2,13 +2,13 @@ import { View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { type ReactNode } from 'react'
 import { useTheme } from '../theme/useTheme'
 
-export interface FeldProps {
+export interface FieldProps {
   readonly label: string
-  readonly fehler?: string
+  readonly error?: string
   readonly children: ReactNode
 }
 
-export function Feld({ label, fehler, children }: FeldProps) {
+export function Field({ label, error, children }: FieldProps) {
   const t = useTheme()
   const wrap: ViewStyle = { marginBottom: t.space.s3 }
   const labelStyle: TextStyle = {
@@ -22,9 +22,9 @@ export function Feld({ label, fehler, children }: FeldProps) {
     <View style={wrap}>
       <Text style={labelStyle}>{label}</Text>
       {children}
-      {fehler !== undefined && fehler !== '' ? (
+      {error !== undefined && error !== '' ? (
         <Text style={errorStyle} accessibilityRole="alert">
-          {fehler}
+          {error}
         </Text>
       ) : null}
     </View>

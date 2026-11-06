@@ -2,9 +2,9 @@ import { readFileSync } from 'node:fs'
 import { PDFDocument, rgb, StandardFonts, TextAlignment, type PDFFont, type PDFForm, type PDFPage } from 'pdf-lib'
 import felder2025 from './felder-2025.json' with { type: 'json' }
 
-export type FeldArt = 'text' | 'euro' | 'euroCent' | 'kreuz'
+export type FieldKind = 'text' | 'euro' | 'euroCent' | 'kreuz'
 
-export interface Feld {
+export interface Field {
   id: string
   formular: string
   seite: number
@@ -13,18 +13,18 @@ export interface Feld {
   textAb?: number
 }
 
-export interface Feldsatz {
+export interface FieldSet {
   jahr: number
   vorlagen: Record<string, string>
-  felder: Feld[]
+  felder: Field[]
 }
 
-export type FeldWerte = Readonly<Record<string, string | true>>
+export type FieldValues = Readonly<Record<string, string | true>>
 
-const SCHRIFTGROESSE = 10
-const INNENABSTAND = 3
+const FONT_SIZE = 10
+const INNER_PADDING = 3
 
-const REIHENFOLGE = [
+const ORDER = [
   'est-1-a',
   'anlage-n',
   'anlage-r',
@@ -37,87 +37,87 @@ const REIHENFOLGE = [
   'anlage-vorsorgeaufwand',
 ]
 
-export const FELDSAETZE: Readonly<Record<number, Feldsatz>> = { 2025: felder2025 as Feldsatz }
+export const FIELD_SETS: Readonly<Record<number, FieldSet>> = { 2025: felder2025 as FieldSet }
 
 /** Writes field values onto the checked-in Vordruck templates. */
-export class UeberlaufFehler extends Error {
-  constructor(readonly felder: string[]) {
-    super(`Wert passt nicht in sein Feld: ${felder.join(', ')}`)
+export class OverflowError extends Error {
+  constructor(readonly fields: string[]) {
+    super(`Wert passt nicht in sein Feld: ${fields.join(', ')}`)
   }
 }
 
-export interface RendererOptionen {
-  vorlagenVerzeichnis: URL
-  instanzen?: Record<string, readonly FeldWerte[]> | undefined
-  bearbeitbar?: boolean | undefined
+export interface RendererOptions {
+  templatesDirectory: URL
+  instances?: Record<string, readonly FieldValues[]> | undefined
+  editable?: boolean | undefined
 }
 
-export async function rendereVordrucke(feldsatz: Feldsatz, werte: FeldWerte, optionen: RendererOptionen): Promise<Uint8Array> {
-  const bekannt = new Map(feldsatz.felder.map((feld) => [feld.id, feld]))
-  const alleWerte = [werte, ...Object.values(optionen.instanzen ?? {}).flat()]
-  const unbekannt = alleWerte.flatMap((w) => Object.keys(w)).filter((id) => !bekannt.has(id))
-  if (unbekannt.length > 0) throw new Error(`Unbekannte Feld-IDs: ${[...new Set(unbekannt)].join(', ')}`)
+export async function renderForms(fieldSet: FieldSet, values: FieldValues, options: RendererOptions): Promise<Uint8Array> {
+  const known = new Map(fieldSet.felder.map((field) => [field.id, field]))
+  const allValues = [values, ...Object.values(options.instances ?? {}).flat()]
+  const unknown = allValues.flatMap((w) => Object.keys(w)).filter((id) => !known.has(id))
+  if (unknown.length > 0) throw new Error(`Unbekannte Feld-IDs: ${[...new Set(unknown)].join(', ')}`)
 
-  const ausgabe = await PDFDocument.create()
-  const schrift = await ausgabe.embedFont(StandardFonts.Helvetica)
-  const form = optionen.bearbeitbar ? ausgabe.getForm() : null
-  const ueberlaeufe: string[] = []
-  const instanzNummer = new Map<string, number>()
+  const output = await PDFDocument.create()
+  const font = await output.embedFont(StandardFonts.Helvetica)
+  const form = options.editable ? output.getForm() : null
+  const overflows: string[] = []
+  const instanceNumber = new Map<string, number>()
 
-  for (const formular of REIHENFOLGE) {
-    const listenInstanzen = optionen.instanzen?.[formular]
-    const instanzenZuRendern: readonly FeldWerte[] =
-      listenInstanzen && listenInstanzen.length > 0
-        ? listenInstanzen
-        : [werte]
+  for (const formular of ORDER) {
+    const listInstances = options.instances?.[formular]
+    const instancesToRender: readonly FieldValues[] =
+      listInstances && listInstances.length > 0
+        ? listInstances
+        : [values]
 
-    for (const instanzWerte of instanzenZuRendern) {
-      const felder = feldsatz.felder.filter((feld) => feld.formular === formular && instanzWerte[feld.id] !== undefined)
-      if (felder.length === 0 && formular !== 'est-1-a') continue
-      const nummer = (instanzNummer.get(formular) ?? 0) + 1
-      instanzNummer.set(formular, nummer)
-      const vorlage = await PDFDocument.load(readFileSync(new URL(`${formular}.pdf`, optionen.vorlagenVerzeichnis)))
-      const seiten = await ausgabe.copyPages(vorlage, vorlage.getPageIndices())
-      seiten.forEach((seite, index) => {
-        ausgabe.addPage(seite)
-        for (const feld of felder.filter((f) => f.seite === index + 1)) {
-          const wert = instanzWerte[feld.id]!
-          const lage = platziere(schrift, feld, wert)
-          if (lage === null) ueberlaeufe.push(feld.id)
-          else if (form) setzeFormularfeld(form, seite, schrift, feld, nummer === 1 ? feld.id : `${feld.id}#${nummer}`, wert)
-          else seite.drawText(lage.text, { x: lage.x, y: lage.grundlinie, size: SCHRIFTGROESSE, font: schrift, color: rgb(0, 0, 0) })
+    for (const instanceValues of instancesToRender) {
+      const fields = fieldSet.felder.filter((field) => field.formular === formular && instanceValues[field.id] !== undefined)
+      if (fields.length === 0 && formular !== 'est-1-a') continue
+      const number = (instanceNumber.get(formular) ?? 0) + 1
+      instanceNumber.set(formular, number)
+      const template = await PDFDocument.load(readFileSync(new URL(`${formular}.pdf`, options.templatesDirectory)))
+      const pages = await output.copyPages(template, template.getPageIndices())
+      pages.forEach((page, index) => {
+        output.addPage(page)
+        for (const field of fields.filter((f) => f.seite === index + 1)) {
+          const value = instanceValues[field.id]!
+          const situation = place(font, field, value)
+          if (situation === null) overflows.push(field.id)
+          else if (form) setFormField(form, page, font, field, number === 1 ? field.id : `${field.id}#${number}`, value)
+          else page.drawText(situation.text, { x: situation.x, y: situation.baseline, size: FONT_SIZE, font, color: rgb(0, 0, 0) })
         }
       })
     }
   }
 
-  if (ueberlaeufe.length > 0) throw new UeberlaufFehler(ueberlaeufe)
-  form?.updateFieldAppearances(schrift)
-  ausgabe.setCreator('SteuerEule')
-  ausgabe.setProducer('SteuerEule')
-  return ausgabe.save()
+  if (overflows.length > 0) throw new OverflowError(overflows)
+  form?.updateFieldAppearances(font)
+  output.setCreator('SteuerEule')
+  output.setProducer('SteuerEule')
+  return output.save()
 }
 
-const istBetrag = (feld: Feld) => feld.art === 'euro' || feld.art === 'euroCent'
+const isAmount = (field: Field) => field.art === 'euro' || field.art === 'euroCent'
 
-function platziere(schrift: PDFFont, feld: Feld, wert: string | true): { text: string; x: number; grundlinie: number } | null {
-  const { x, y, breite, hoehe } = feld.kasten
-  const grundlinie = y + (hoehe - schrift.heightAtSize(SCHRIFTGROESSE, { descender: false })) / 2
-  const text = wert === true ? 'X' : wert
-  const textbreite = schrift.widthOfTextAtSize(text, SCHRIFTGROESSE)
-  const links = feld.textAb ?? x + INNENABSTAND
-  const rechts = x + breite - INNENABSTAND
-  const start = wert === true ? x + (breite - textbreite) / 2 : istBetrag(feld) ? rechts - textbreite : links
-  if (start < x || start + textbreite > x + breite) return null
-  return { text, x: start, grundlinie }
+function place(font: PDFFont, field: Field, value: string | true): { text: string; x: number; baseline: number } | null {
+  const { x, y, breite: width, hoehe: amount } = field.kasten
+  const baseline = y + (amount - font.heightAtSize(FONT_SIZE, { descender: false })) / 2
+  const text = value === true ? 'X' : value
+  const textWidth = font.widthOfTextAtSize(text, FONT_SIZE)
+  const links = field.textAb ?? x + INNER_PADDING
+  const right = x + width - INNER_PADDING
+  const start = value === true ? x + (width - textWidth) / 2 : isAmount(field) ? right - textWidth : links
+  if (start < x || start + textWidth > x + width) return null
+  return { text, x: start, baseline }
 }
 
-function setzeFormularfeld(form: PDFForm, seite: PDFPage, schrift: PDFFont, feld: Feld, name: string, wert: string | true): void {
-  const { x, y, breite, hoehe } = feld.kasten
-  const links = feld.textAb ?? x
-  const textfeld = form.createTextField(name)
-  textfeld.setText(wert === true ? 'X' : wert)
-  textfeld.setAlignment(wert === true ? TextAlignment.Center : istBetrag(feld) ? TextAlignment.Right : TextAlignment.Left)
-  textfeld.addToPage(seite, { x: links, y, width: x + breite - links, height: hoehe, font: schrift, textColor: rgb(0, 0, 0), borderWidth: 0 })
-  textfeld.setFontSize(SCHRIFTGROESSE)
+function setFormField(form: PDFForm, page: PDFPage, font: PDFFont, field: Field, name: string, value: string | true): void {
+  const { x, y, breite: width, hoehe: amount } = field.kasten
+  const links = field.textAb ?? x
+  const textField = form.createTextField(name)
+  textField.setText(value === true ? 'X' : value)
+  textField.setAlignment(value === true ? TextAlignment.Center : isAmount(field) ? TextAlignment.Right : TextAlignment.Left)
+  textField.addToPage(page, { x: links, y, width: x + width - links, height: amount, font, textColor: rgb(0, 0, 0), borderWidth: 0 })
+  textField.setFontSize(FONT_SIZE)
 }

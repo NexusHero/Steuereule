@@ -186,7 +186,7 @@ describe('App', () => {
     async () => {
       server.use(
         http.get(`${API_BASE_URL}/v1/steuerjahre/2026/cockpit`, () =>
-          HttpResponse.json({ taxYear: 2026, stand: { kind: 'spanne', von: 100, bis: 300, offenePosten: 3, konflikte: 0 }, openItems: 3 }, { status: 200 }),
+          HttpResponse.json({ taxYear: 2026, status: { kind: 'spanne', from: 100, to: 300, openItems: 3, conflicts: 0 }, openItems: 3 }, { status: 200 }),
         ),
         http.get(`${API_BASE_URL}/v1/steuerjahre/2026/interview`, () =>
           HttpResponse.json({ answers: {}, nextStep: { kind: 'question', id: 'job' }, openItems: 3 }, { status: 200 }),
@@ -219,7 +219,7 @@ describe('App', () => {
       // next Cockpit render reads it, not a value carried over in memory.
       server.use(
         http.get(`${API_BASE_URL}/v1/steuerjahre/2026/cockpit`, () =>
-          HttpResponse.json({ taxYear: 2026, stand: { kind: 'spanne', von: 100, bis: 300, offenePosten: 3, konflikte: 0 }, openItems: 2 }, { status: 200 }),
+          HttpResponse.json({ taxYear: 2026, status: { kind: 'spanne', from: 100, to: 300, openItems: 3, conflicts: 0 }, openItems: 2 }, { status: 200 }),
         ),
       )
       fireEvent.click(screen.getByText('Nein')) // ausland: no gate

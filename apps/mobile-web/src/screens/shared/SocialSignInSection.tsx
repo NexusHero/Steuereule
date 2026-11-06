@@ -30,7 +30,7 @@ export function SocialSignInSection({ disabled, onSignedIn, onError, showUnknown
   }
 
   const providerButton = (provider: SocialProvider, label: string, icon: ReactElement, key: string) => (
-    <Button key={key} variante="ghost" onPress={() => void handleSignIn(provider)} disabled={isSubmitting || disabled}>
+    <Button key={key} variant="ghost" onPress={() => void handleSignIn(provider)} disabled={isSubmitting || disabled}>
       {icon} {label}
     </Button>
   )

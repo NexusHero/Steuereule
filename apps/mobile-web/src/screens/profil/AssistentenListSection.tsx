@@ -3,21 +3,21 @@ import { ActivityIndicator, Text, View, type TextStyle, type ViewStyle } from 'r
 import { useTranslation } from 'react-i18next'
 import { Button, Card, Chip, Feld, Pill, useTheme, type UiTheme } from '@steuereule/ui'
 import {
-  useAssistentenControllerListConnected,
-  useAssistentenControllerRevoke,
+  useAssistantsControllerListConnected,
+  useAssistantsControllerRevoke,
 } from '@steuereule/api-client'
 import { useQueryClient } from '@tanstack/react-query'
 import { APP_NS } from '../../i18n/resources'
 import { formatRequestedAt } from '../device/deviceContext'
 
-export function AssistentenListSection() {
+export function AssistantsListSection() {
   const t = useTheme()
   const { t: tr, i18n } = useTranslation(APP_NS)
   const styles = makeStyles(t)
   const queryClient = useQueryClient()
 
-  const listQuery = useAssistentenControllerListConnected()
-  const revokeMutation = useAssistentenControllerRevoke()
+  const listQuery = useAssistantsControllerListConnected()
+  const revokeMutation = useAssistantsControllerRevoke()
 
   const [revokingId, setRevokingId] = useState<string | null>(null)
   const [revokeError, setRevokeError] = useState<string | null>(null)
@@ -66,9 +66,9 @@ export function AssistentenListSection() {
       ) : null}
 
       {assistants.map((assistant) => {
-        const connectedSince = formatRequestedAt(assistant.verbundenSeit, i18n.language)
-        const lastActive = assistant.zuletztGenutzt
-          ? formatRequestedAt(assistant.zuletztGenutzt, i18n.language)
+        const connectedSince = formatRequestedAt(assistant.linkedSince, i18n.language)
+        const lastActive = assistant.lastUsed
+          ? formatRequestedAt(assistant.lastUsed, i18n.language)
           : tr('profil.assistenten.neverActive')
         const isRevoking = revokingId === assistant.clientId && revokeMutation.isPending
 
@@ -77,10 +77,10 @@ export function AssistentenListSection() {
             <View style={styles.assistantInfo}>
               <Text style={styles.assistantName}>{assistant.name}</Text>
               <Feld label={tr('profil.assistenten.connectedSince')}>
-                <Text style={styles.valueText}>{connectedSince ?? assistant.verbundenSeit}</Text>
+                <Text style={styles.valueText}>{connectedSince ?? assistant.linkedSince}</Text>
               </Feld>
               <Feld label={tr('profil.assistenten.lastActive')}>
-                <Pill>{lastActive ?? assistant.zuletztGenutzt ?? tr('profil.assistenten.neverActive')}</Pill>
+                <Pill>{lastActive ?? assistant.lastUsed ?? tr('profil.assistenten.neverActive')}</Pill>
               </Feld>
             </View>
 

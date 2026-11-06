@@ -42,11 +42,11 @@ function renderTaxDataSection(entries: ExportDocument['taxData']): string {
   }
   return entries
     .map((entry) => {
-      const jahr = entry.steuerjahr === null ? 'ohne Steuerjahr' : `Steuerjahr ${entry.steuerjahr}`
-      const rows = Object.entries(entry.felder)
-        .map(([feld, wert]) => `<tr><th>${escapeHtml(feld)}</th><td>${formatTaxValue(wert)}</td></tr>`)
+      const year = entry.steuerjahr === null ? 'ohne Steuerjahr' : `Steuerjahr ${entry.steuerjahr}`
+      const rows = Object.entries(entry.fields)
+        .map(([field, value]) => `<tr><th>${escapeHtml(field)}</th><td>${formatTaxValue(value)}</td></tr>`)
         .join('')
-      return `<h3>${escapeHtml(entry.bereich)} · ${jahr}</h3><table><tbody>${rows}</tbody></table>`
+      return `<h3>${escapeHtml(entry.area)} · ${year}</h3><table><tbody>${rows}</tbody></table>`
     })
     .join('')
 }

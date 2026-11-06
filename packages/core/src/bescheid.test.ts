@@ -1,20 +1,20 @@
 import { describe, expect, it } from 'vitest'
 import {
-  BESCHEID_FELD_IDS,
-  BESCHEID_VERGLEICHBARE_FELDER,
-  EINSPRUCHS_GRUENDE,
-  bescheidBerechnungsstand,
+  ASSESSMENT_FIELD_IDS,
+  ASSESSMENT_COMPARABLE_FIELDS,
+  APPEAL_REASONS,
+  assessmentCalculationStatus,
   deserializeAssessmentField,
   appealDeadlineEnd,
   reconcileAssessment,
   isAppealReason,
   isValidAssessmentAmount,
-  korrigiereFassung,
+  correctVersion,
   serializeAssessmentField,
   remainingAppealDays,
   type Fassung,
 } from './bescheid'
-import type { AngestellteFakten } from './angestellte'
+import type { EmployeeFacts } from './angestellte'
 
 // Bescheidprüfung 1.0 (ticket 10.3) — the deterministic core: the Bescheid data model, the
 // Abgleich (vs berechne), the Korrektur (copy the eingereichte Fassung + diff) and the Einspruch
@@ -22,92 +22,92 @@ import type { AngestellteFakten } from './angestellte'
 
 describe('BESCHEID_FELDER — the transcribable figures', () => {
   it('lists the five figures in paper order', () => {
-    expect(BESCHEID_FELD_IDS).toEqual(['einnahmen', 'vorsorgeaufwand', 'anrechnung', 'festgesetzteSteuer', 'erstattung'])
+    expect(ASSESSMENT_FIELD_IDS).toEqual(['einnahmen', 'vorsorgeaufwand', 'anrechnung', 'festgesetzteSteuer', 'erstattung'])
   })
 
   it('only the three `berechne` buckets are comparable', () => {
-    expect(BESCHEID_VERGLEICHBARE_FELDER).toEqual(['einnahmen', 'vorsorgeaufwand', 'anrechnung'])
+    expect(ASSESSMENT_COMPARABLE_FIELDS).toEqual(['einnahmen', 'vorsorgeaufwand', 'anrechnung'])
   })
 })
 
 describe('gleicheBescheidAb — Abgleich Bescheid vs. berechne', () => {
-  const stand = { kind: 'bestimmt' as const, einnahmen: 50_000, vorsorgeaufwand: 4_000, anrechnung: 1_000 }
+  const status = { kind: 'bestimmt' as const, einnahmen: 50_000, vorsorgeaufwand: 4_000, anrechnung: 1_000 }
 
   it('reports no deviations when every entered comparable field matches', () => {
-    const ab = reconcileAssessment({ einnahmen: 50_000, vorsorgeaufwand: 4_000, anrechnung: 1_000 }, stand)
-    expect(ab.abweichungen).toEqual([])
-    expect(ab.berechnungUnvollstaendig).toBe(false)
+    const ab = reconcileAssessment({ einnahmen: 50_000, vorsorgeaufwand: 4_000, anrechnung: 1_000 }, status)
+    expect(ab.deviations).toEqual([])
+    expect(ab.calculationIncomplete).toBe(false)
   })
 
   it('lists deviations as a diff, never silent', () => {
-    const ab = reconcileAssessment({ einnahmen: 48_000, anrechnung: 1_000 }, stand)
-    expect(ab.abweichungen).toEqual([{ feld: 'einnahmen', bescheid: 48_000, berechnet: 50_000, differenz: -2_000 }])
+    const ab = reconcileAssessment({ einnahmen: 48_000, anrechnung: 1_000 }, status)
+    expect(ab.deviations).toEqual([{ field: 'einnahmen', assessment: 48_000, calculated: 50_000, difference: -2_000 }])
   })
 
   it('ignores a still-offen Bescheid field (no fabricated zero)', () => {
-    const ab = reconcileAssessment({ vorsorgeaufwand: 4_000 }, stand)
-    expect(ab.abweichungen).toEqual([]) // einnahmen/anrechnung not entered → not compared
+    const ab = reconcileAssessment({ vorsorgeaufwand: 4_000 }, status)
+    expect(ab.deviations).toEqual([]) // einnahmen/anrechnung not entered → not compared
   })
 
   it('flags an incomplete computed side (berechne "offen") as a partial truth', () => {
-    const offenerStand = { kind: 'offen' as const, einnahmen: 50_000, vorsorgeaufwand: 4_000, anrechnung: 1_000, offenePosten: 2, konflikte: 0, gegated: [], unbestaetigte: 0, unbestaetigteSumme: 0 }
-    const ab = reconcileAssessment({ einnahmen: 50_000 }, offenerStand)
-    expect(ab.berechnungUnvollstaendig).toBe(true)
-    expect(ab.abweichungen).toEqual([])
+    const openStatus = { kind: 'offen' as const, einnahmen: 50_000, vorsorgeaufwand: 4_000, anrechnung: 1_000, openItems: 2, conflicts: 0, gated: [], unconfirmedItems: 0, unconfirmedSum: 0 }
+    const ab = reconcileAssessment({ einnahmen: 50_000 }, openStatus)
+    expect(ab.calculationIncomplete).toBe(true)
+    expect(ab.deviations).toEqual([])
   })
 })
 
 describe('bescheidBerechnungsstand — the merged computed side', () => {
-  const angestellte: AngestellteFakten = {
+  const employee: EmployeeFacts = {
     einnahmen: 50_000,
     werbungskosten: 0,
-    sonderausgaben: 0,
-    offenePosten: 0,
-    konflikte: 0,
-    gegated: [],
-    erfasstNichtGerechnet: 0,
+    specialExpenses: 0,
+    openItems: 0,
+    conflicts: 0,
+    gated: [],
+    recordedNotCalculated: 0,
   }
 
   it('merges Angestellte + CH into one bestimmt stand', () => {
     const ch = { kind: 'bestimmt' as const, einnahmen: 80_000, vorsorgeaufwand: 7_000, anrechnung: 3_600 }
-    const stand = bescheidBerechnungsstand(angestellte, ch)
-    expect(stand).toEqual({ kind: 'bestimmt', einnahmen: 130_000, vorsorgeaufwand: 7_000, anrechnung: 3_600 })
+    const status = assessmentCalculationStatus(employee, ch)
+    expect(status).toEqual({ kind: 'bestimmt', einnahmen: 130_000, vorsorgeaufwand: 7_000, anrechnung: 3_600 })
   })
 
   it('treats a missing CH fold as zero, without fabricating open items', () => {
-    const stand = bescheidBerechnungsstand(angestellte, null)
-    expect(stand).toEqual({ kind: 'bestimmt', einnahmen: 50_000, vorsorgeaufwand: 0, anrechnung: 0 })
+    const status = assessmentCalculationStatus(employee, null)
+    expect(status).toEqual({ kind: 'bestimmt', einnahmen: 50_000, vorsorgeaufwand: 0, anrechnung: 0 })
   })
 
   it('is offen when either side is open', () => {
-    const chOffen = { kind: 'offen' as const, einnahmen: 80_000, vorsorgeaufwand: 7_000, anrechnung: 3_600, offenePosten: 1, konflikte: 0, gegated: [], unbestaetigte: 0, unbestaetigteSumme: 0 }
-    const stand = bescheidBerechnungsstand({ ...angestellte, offenePosten: 2 }, chOffen)
-    expect(stand.kind).toBe('offen')
-    if (stand.kind === 'offen') expect(stand.offenePosten).toBe(3)
+    const chOpen = { kind: 'offen' as const, einnahmen: 80_000, vorsorgeaufwand: 7_000, anrechnung: 3_600, openItems: 1, conflicts: 0, gated: [], unconfirmedItems: 0, unconfirmedSum: 0 }
+    const status = assessmentCalculationStatus({ ...employee, openItems: 2 }, chOpen)
+    expect(status.kind).toBe('offen')
+    if (status.kind === 'offen') expect(status.openItems).toBe(3)
   })
 })
 
 describe('korrigiereFassung — Kopie der eingereichten Fassung + Diff (ADR-009)', () => {
-  const eingereicht: Fassung = { nummer: 1, einnahmen: 50_000, vorsorgeaufwand: 4_000, anrechnung: 1_000 }
+  const submitted: Fassung = { number: 1, einnahmen: 50_000, vorsorgeaufwand: 4_000, anrechnung: 1_000 }
 
   it('produces Fassung n+1 as a copy, leaving Fassung n unverändert', () => {
-    const { fassung, abweichungen } = korrigiereFassung(eingereicht, [{ feld: 'einnahmen', neuerBetrag: 52_000 }])
-    expect(fassung).toEqual({ nummer: 2, einnahmen: 52_000, vorsorgeaufwand: 4_000, anrechnung: 1_000 })
-    expect(abweichungen).toEqual([{ feld: 'einnahmen', vorher: 50_000, nachher: 52_000, differenz: 2_000 }])
+    const { version, deviations } = correctVersion(submitted, [{ field: 'einnahmen', newAmount: 52_000 }])
+    expect(version).toEqual({ number: 2, einnahmen: 52_000, vorsorgeaufwand: 4_000, anrechnung: 1_000 })
+    expect(deviations).toEqual([{ field: 'einnahmen', before: 50_000, after: 52_000, difference: 2_000 }])
     // Fassung n is untouched — the copy, never the original, was changed.
-    expect(eingereicht.einnahmen).toBe(50_000)
+    expect(submitted.einnahmen).toBe(50_000)
   })
 
   it('reports only the changed fields as a diff', () => {
-    const { abweichungen } = korrigiereFassung(eingereicht, [
-      { feld: 'einnahmen', neuerBetrag: 50_000 }, // unchanged
-      { feld: 'anrechnung', neuerBetrag: 900 },
+    const { deviations } = correctVersion(submitted, [
+      { field: 'einnahmen', newAmount: 50_000 }, // unchanged
+      { field: 'anrechnung', newAmount: 900 },
     ])
-    expect(abweichungen).toEqual([{ feld: 'anrechnung', vorher: 1_000, nachher: 900, differenz: -100 }])
+    expect(deviations).toEqual([{ field: 'anrechnung', before: 1_000, after: 900, difference: -100 }])
   })
 
   it('rejects a negative correction (the figures are whole-euro, >= 0)', () => {
-    expect(() => korrigiereFassung(eingereicht, [{ feld: 'einnahmen', neuerBetrag: -1 }])).toThrow(RangeError)
+    expect(() => correctVersion(submitted, [{ field: 'einnahmen', newAmount: -1 }])).toThrow(RangeError)
   })
 })
 
@@ -138,7 +138,7 @@ describe('einspruchsfristEnde / verbleibendeEinspruchstage — § 355 AO, 1 Mona
 
 describe('EINSPRUCHS_GRUENDE — the closed Grund-Auswahl', () => {
   it('offers the three Gründe', () => {
-    expect(EINSPRUCHS_GRUENDE).toEqual(['betrag-falsch', 'beleg-nicht-beruecksichtigt', 'sonstiges'])
+    expect(APPEAL_REASONS).toEqual(['betrag-falsch', 'beleg-nicht-beruecksichtigt', 'sonstiges'])
   })
 
   it('istEinspruchGrund is total over string', () => {

@@ -19,7 +19,7 @@ const ALLOWED_ORIGIN = 'https://allowed.example.com'
 process.env.CORS_ALLOWED_ORIGINS = ALLOWED_ORIGIN
 const TRUSTED_ORIGIN_HEADERS = { origin: ALLOWED_ORIGIN }
 
-const STEUERJAHR = 2026
+const TAX_YEAR = 2026
 
 type LstbRow = { userId: string; steuerjahr: number; bruttoarbeitslohn: string | null }
 
@@ -64,11 +64,11 @@ describe('REQ-016 — the LStB guided mask, against the real server', () => {
   }
 
   function getLstb(cookie: string) {
-    return fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/lstb`, { headers: { cookie } })
+    return fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/lstb`, { headers: { cookie } })
   }
 
-  function putFeld(cookie: string, feld: string, body: unknown) {
-    return fetch(`${baseUrl}/v1/steuerjahre/${STEUERJAHR}/lstb/${feld}`, {
+  function putField(cookie: string, field: string, body: unknown) {
+    return fetch(`${baseUrl}/v1/steuerjahre/${TAX_YEAR}/lstb/${field}`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json', cookie },
       body: JSON.stringify(body),
@@ -87,25 +87,25 @@ describe('REQ-016 — the LStB guided mask, against the real server', () => {
         bruttoarbeitslohn: { kind: 'offen' },
         lohnsteuer: { kind: 'offen' },
         sozialversicherung: { kind: 'offen' },
-        zustand: { kind: 'unvollstaendig', offen: ['bruttoarbeitslohn', 'lohnsteuer', 'sozialversicherung'], unklar: [] },
+        state: { kind: 'unvollstaendig', open: ['bruttoarbeitslohn', 'lohnsteuer', 'sozialversicherung'], unclear: [] },
       })
 
-      const brutto = await putFeld(cookie, 'bruttoarbeitslohn', { kind: 'erfasst', wert: 50000 })
-      expect(await brutto.json()).toMatchObject({
-        bruttoarbeitslohn: { kind: 'erfasst', wert: 50000 },
+      const gross = await putField(cookie, 'bruttoarbeitslohn', { kind: 'erfasst', value: 50000 })
+      expect(await gross.json()).toMatchObject({
+        bruttoarbeitslohn: { kind: 'erfasst', value: 50000 },
         lohnsteuer: { kind: 'offen' },
-        zustand: { kind: 'unvollstaendig', offen: ['lohnsteuer', 'sozialversicherung'], unklar: [] },
+        state: { kind: 'unvollstaendig', open: ['lohnsteuer', 'sozialversicherung'], unclear: [] },
       })
 
-      const lohnsteuer = await putFeld(cookie, 'lohnsteuer', { kind: 'erfasst', wert: 9000 })
-      expect(((await lohnsteuer.json()) as { zustand: unknown }).zustand).toMatchObject({ kind: 'unvollstaendig', offen: ['sozialversicherung'] })
+      const lohnsteuer = await putField(cookie, 'lohnsteuer', { kind: 'erfasst', value: 9000 })
+      expect(((await lohnsteuer.json()) as { state: unknown }).state).toMatchObject({ kind: 'unvollstaendig', open: ['sozialversicherung'] })
 
-      const sozialversicherung = await putFeld(cookie, 'sozialversicherung', { kind: 'erfasst', wert: 10000 })
+      const sozialversicherung = await putField(cookie, 'sozialversicherung', { kind: 'erfasst', value: 10000 })
       expect(await sozialversicherung.json()).toEqual({
-        bruttoarbeitslohn: { kind: 'erfasst', wert: 50000 },
-        lohnsteuer: { kind: 'erfasst', wert: 9000 },
-        sozialversicherung: { kind: 'erfasst', wert: 10000 },
-        zustand: { kind: 'vollstaendig', bruttoarbeitslohn: 50000, lohnsteuer: 9000, sozialversicherung: 10000 },
+        bruttoarbeitslohn: { kind: 'erfasst', value: 50000 },
+        lohnsteuer: { kind: 'erfasst', value: 9000 },
+        sozialversicherung: { kind: 'erfasst', value: 10000 },
+        state: { kind: 'vollstaendig', bruttoarbeitslohn: 50000, lohnsteuer: 9000, sozialversicherung: 10000 },
       })
     },
   )
@@ -113,14 +113,14 @@ describe('REQ-016 — the LStB guided mask, against the real server', () => {
   it('GWT — an unreadable field is reported under unklar, never guessed (ADR-036 honest fallback)', async () => {
     const { cookie } = await signUp('gwt-unklar@example.com')
 
-    const response = await putFeld(cookie, 'lohnsteuer', { kind: 'unklar' })
+    const response = await putField(cookie, 'lohnsteuer', { kind: 'unklar' })
 
     expect(await response.json()).toMatchObject({
       lohnsteuer: { kind: 'unklar' },
-      zustand: {
+      state: {
         kind: 'unvollstaendig',
-        offen: ['bruttoarbeitslohn', 'sozialversicherung'],
-        unklar: ['lohnsteuer'],
+        open: ['bruttoarbeitslohn', 'sozialversicherung'],
+        unclear: ['lohnsteuer'],
       },
     })
   })
@@ -128,13 +128,13 @@ describe('REQ-016 — the LStB guided mask, against the real server', () => {
   it('a figure exceeding the Bruttoarbeitslohn reports a widerspruch, never a silent fix (ADR-008)', async () => {
     const { cookie } = await signUp('widerspruch@example.com')
 
-    await putFeld(cookie, 'bruttoarbeitslohn', { kind: 'erfasst', wert: 10000 })
-    await putFeld(cookie, 'lohnsteuer', { kind: 'erfasst', wert: 20000 })
-    const response = await putFeld(cookie, 'sozialversicherung', { kind: 'erfasst', wert: 0 })
+    await putField(cookie, 'bruttoarbeitslohn', { kind: 'erfasst', value: 10000 })
+    await putField(cookie, 'lohnsteuer', { kind: 'erfasst', value: 20000 })
+    const response = await putField(cookie, 'sozialversicherung', { kind: 'erfasst', value: 0 })
 
-    expect(((await response.json()) as { zustand: unknown }).zustand).toEqual({
+    expect(((await response.json()) as { state: unknown }).state).toEqual({
       kind: 'widerspruch',
-      widersprueche: [{ art: 'lohnsteuer-uebersteigt-brutto', lohnsteuer: 20000, bruttoarbeitslohn: 10000 }],
+      conflicts: [{ art: 'lohnsteuer-uebersteigt-brutto', lohnsteuer: 20000, bruttoarbeitslohn: 10000 }],
     })
   })
 
@@ -142,17 +142,17 @@ describe('REQ-016 — the LStB guided mask, against the real server', () => {
     it('an unknown field id is a 400', async () => {
       const { cookie } = await signUp('bad-feld@example.com')
 
-      const response = await putFeld(cookie, 'wohnort', { kind: 'erfasst', wert: 1 })
+      const response = await putField(cookie, 'wohnort', { kind: 'erfasst', value: 1 })
       expect(response.status).toBe(400)
     })
 
     it('an erfasst value without a valid whole-euro amount is a 400', async () => {
       const { cookie } = await signUp('bad-wert@example.com')
 
-      const response = await putFeld(cookie, 'bruttoarbeitslohn', { kind: 'erfasst', wert: -5 })
+      const response = await putField(cookie, 'bruttoarbeitslohn', { kind: 'erfasst', value: -5 })
       expect(response.status).toBe(400)
 
-      const missing = await putFeld(cookie, 'bruttoarbeitslohn', { kind: 'erfasst' })
+      const missing = await putField(cookie, 'bruttoarbeitslohn', { kind: 'erfasst' })
       expect(missing.status).toBe(400)
     })
   })
@@ -164,7 +164,7 @@ describe('REQ-016 — the LStB guided mask, against the real server', () => {
     })
 
     it('PUT without an account session is 401 and creates no row', async () => {
-      const response = await putFeld('', 'bruttoarbeitslohn', { kind: 'erfasst', wert: 1 })
+      const response = await putField('', 'bruttoarbeitslohn', { kind: 'erfasst', value: 1 })
       expect(response.status).toBe(401)
       const rows = await prisma.$queryRaw<LstbRow[]>`SELECT "userId" FROM "Lstb"`
       expect(rows).toEqual([])
@@ -176,13 +176,13 @@ describe('REQ-016 — the LStB guided mask, against the real server', () => {
       const userA = await signUp('p4-a@example.com')
       const userB = await signUp('p4-b@example.com')
 
-      await putFeld(userA.cookie, 'bruttoarbeitslohn', { kind: 'erfasst', wert: 50000 })
+      await putField(userA.cookie, 'bruttoarbeitslohn', { kind: 'erfasst', value: 50000 })
 
       const asB = await getLstb(userB.cookie)
       expect(await asB.json()).toMatchObject({ bruttoarbeitslohn: { kind: 'offen' } })
 
       const asA = await getLstb(userA.cookie)
-      expect(await asA.json()).toMatchObject({ bruttoarbeitslohn: { kind: 'erfasst', wert: 50000 } })
+      expect(await asA.json()).toMatchObject({ bruttoarbeitslohn: { kind: 'erfasst', value: 50000 } })
     })
   })
 
@@ -190,7 +190,7 @@ describe('REQ-016 — the LStB guided mask, against the real server', () => {
     it('a real PUT’s Bruttoarbeitslohn is not stored as plaintext', async () => {
       const { cookie, userId } = await signUp('p5-cipher@example.com')
 
-      await putFeld(cookie, 'bruttoarbeitslohn', { kind: 'erfasst', wert: 50000 })
+      await putField(cookie, 'bruttoarbeitslohn', { kind: 'erfasst', value: 50000 })
 
       const rawRows = await prisma.$queryRaw<{ bruttoarbeitslohn: string | null }[]>`
         SELECT "bruttoarbeitslohn" FROM "Lstb" WHERE "userId" = ${userId}
@@ -208,7 +208,7 @@ describe('REQ-016 — the LStB guided mask, against the real server', () => {
     it('each admitted write appends exactly one WRITE audit entry, atomic with the row', async () => {
       const { cookie, userId } = await signUp('audit-write@example.com')
 
-      await putFeld(cookie, 'bruttoarbeitslohn', { kind: 'erfasst', wert: 50000 })
+      await putField(cookie, 'bruttoarbeitslohn', { kind: 'erfasst', value: 50000 })
 
       const rows = await prisma.$queryRaw<{ action: string; resource: string }[]>`
         SELECT "action", "resource" FROM "TaxDataAccessLog" WHERE "userId" = ${userId}
@@ -225,7 +225,7 @@ describe('REQ-016 — the LStB guided mask, against the real server', () => {
       `
       expect(emptyReads).toEqual([])
 
-      await putFeld(cookie, 'bruttoarbeitslohn', { kind: 'erfasst', wert: 50000 })
+      await putField(cookie, 'bruttoarbeitslohn', { kind: 'erfasst', value: 50000 })
       await getLstb(cookie)
 
       const reads = await prisma.$queryRaw<{ action: string; resource: string }[]>`
