@@ -62,7 +62,7 @@ async function registerAndOnboard(page, { email, password, firstName, lastName, 
   await saveButton.click()
 
   // Wait for Cockpit to load
-  await page.locator('[data-testid="screen-container"]').waitFor({ state: 'visible', timeout: 15_000 })
+  await page.locator('[data-testid="cockpit-interview"]').waitFor({ state: 'visible', timeout: 15_000 })
 }
 
 /** Switches the Cockpit tax year to 2025. */
@@ -99,7 +99,7 @@ async function confirmAnnexesIfPresent(page) {
     }
 
     await page.locator('[data-testid="bestaetigung-zurueck"]').click()
-    await page.locator('[data-testid="screen-container"]').waitFor({ state: 'visible', timeout: 10_000 })
+    await page.locator('[data-testid="ausdruck-zurueck"]').waitFor({ state: 'visible', timeout: 10_000 })
   }
 }
 
@@ -107,6 +107,11 @@ async function confirmAnnexesIfPresent(page) {
 async function downloadAndVerifyPdf(page, expectedFields) {
   const downloadButton = page.locator('[data-testid="ausdruck-herunterladen-bearbeitbar"]')
   await downloadButton.waitFor({ state: 'visible', timeout: 15_000 })
+  const isDisabled = await downloadButton.isDisabled().catch(() => false)
+  if (isDisabled) {
+    const errorCard = await page.locator('[data-testid="screen-container"]').first().innerText().catch(() => '')
+    fail(`downloadAndVerifyPdf: download button is disabled. Screen content:\n${errorCard}`)
+  }
 
   const [download] = await Promise.all([
     page.waitForEvent('download', { timeout: 20_000 }),
@@ -251,7 +256,7 @@ async function runScenario1(browser, webOrigin, sql) {
   unlockTaxYearInDb(sql, s1.email, s1.year)
 
   await page.locator('[data-testid="cockpit-ausdruck"]').click()
-  await page.locator('[data-testid="screen-container"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator('[data-testid="ausdruck-zurueck"]').waitFor({ state: 'visible', timeout: 10_000 })
 
   await confirmAnnexesIfPresent(page)
   await downloadAndVerifyPdf(page, s1.expectedPdfFields)
@@ -476,12 +481,8 @@ async function runScenario2And3(browser, webOrigin, sql) {
   // --- Step C: Markus prints the joint return ---
   unlockTaxYearInDb(sql, s.markus.email, s.year)
 
-  // Reload Markus's cockpit to refresh coupling status
-  await pageMarkus.reload()
-  await selectTaxYear2025(pageMarkus)
-
   await pageMarkus.locator('[data-testid="cockpit-ausdruck"]').click()
-  await pageMarkus.locator('[data-testid="screen-container"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await pageMarkus.locator('[data-testid="ausdruck-zurueck"]').waitFor({ state: 'visible', timeout: 10_000 })
 
   await confirmAnnexesIfPresent(pageMarkus)
   await downloadAndVerifyPdf(pageMarkus, s.expectedPdfFields)
@@ -665,7 +666,7 @@ async function runScenario4(browser, webOrigin, sql) {
   unlockTaxYearInDb(sql, s.email, s.year)
 
   await page.locator('[data-testid="cockpit-ausdruck"]').click()
-  await page.locator('[data-testid="screen-container"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator('[data-testid="ausdruck-zurueck"]').waitFor({ state: 'visible', timeout: 10_000 })
 
   await confirmAnnexesIfPresent(page)
   await downloadAndVerifyPdf(page, s.expectedPdfFields)
