@@ -43,6 +43,15 @@ describe('ArbeitswegService', () => {
     expect(stand.pendlerpauschale).toBe(2019)
   })
 
+  it('subtracts the confirmed public holidays from the commute days (F4)', async () => {
+    const service = new ArbeitswegService(fakeRepository())
+    const ohne = await service.save('user-1', 2025, EINGABEN)
+    const mit = await service.save('user-1', 2025, { ...EINGABEN, feiertage: 11, feiertageRegion: 'BW' })
+
+    expect(mit.werktage!.pendlertage).toBe(ohne.werktage!.pendlertage - 11)
+    expect(mit.pendlerpauschale!).toBeLessThan(ohne.pendlerpauschale!)
+  })
+
   it('leaves the Pauschale open until distance and means of travel are known', async () => {
     const service = new ArbeitswegService(fakeRepository())
 

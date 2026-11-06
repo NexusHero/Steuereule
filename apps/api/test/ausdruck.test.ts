@@ -188,6 +188,36 @@ describe('ausdruckWerte', () => {
     })
   })
 
+  describe('Anlage V — typical lines (S6)', () => {
+    const OBJEKT = {
+      strasse: 'Mühlstraße 21', plz: '73728', ort: 'Esslingen', wohnflaeche: '240', mieteinnahmen: '38400',
+      anschaffungskosten: '620000', baujahr: '1978', werbungskosten: '9800', afaWieVorjahr: true,
+      umlagen: '4200', schuldzinsen: '6100', einheiten: '3',
+    }
+
+    it('prints Umlagen (Z. 20), Schuldzinsen (Z. 46/48) and several flats in Z. 13, and nets them in the result', () => {
+      const v = ausdruckWerte({ ...FAKTEN, vermietung: [OBJEKT] }).instanzen?.['anlage-v']?.[0]
+      expect(v).toMatchObject({
+        'anlV.z13Bezeichnung': '3 Wohneinheiten',
+        'anlV.kz04': '4200',
+        'anlV.z32Einnahmen': String(38400 + 4200),
+        'anlV.kz33': '6100',
+        'anlV.werbungskostenSumme': String(9800 + 6100 + 12400),
+        'anlV.ueberschuss': String(38400 + 4200 - 9800 - 6100 - 12400),
+        'anlV.kz20': String(38400 + 4200 - 9800 - 6100 - 12400),
+      })
+      expect(v?.['anlV.kz21']).toBeUndefined()
+    })
+
+    it('attributes the result to both spouses in a joint return — half and half unless a share is given (Z. 86)', () => {
+      const kopplung = { veranlagungsart: 'zusammen' as const, personB: { firstName: 'Sabine', lastName: 'Weber', steuerId: null, geburtsdatum: null } }
+      const haelftig = ausdruckWerte({ ...FAKTEN, kopplung, vermietung: [OBJEKT] }).instanzen?.['anlage-v']?.[0]
+      expect(haelftig).toMatchObject({ 'anlV.kz20': '7150', 'anlV.kz21': '7150' })
+      const siebzigProzent = ausdruckWerte({ ...FAKTEN, kopplung, vermietung: [{ ...OBJEKT, anteilA: '70' }] }).instanzen?.['anlage-v']?.[0]
+      expect(siebzigProzent).toMatchObject({ 'anlV.kz20': '10010', 'anlV.kz21': '4290' })
+    })
+  })
+
   describe('Anlage KAP', () => {
     const DEUTSCH = {
       depot: 'deutscher-broker',
@@ -220,6 +250,32 @@ describe('ausdruckWerte', () => {
       expect(werte).toMatchObject({ 'anlKap.kz234': '800', 'anlKap.kz217': '0', 'anlKap.kz218': '200' })
       expect(werte['anlKap.kz210']).toBeUndefined()
       expect(werte['anlKap.kz280']).toBeUndefined()
+    })
+
+    const EHEPAAR = {
+      veranlagungsart: 'zusammen' as const,
+      personB: { firstName: 'Sabine', lastName: 'Weber', steuerId: '51234567891', geburtsdatum: '1975-04-30' },
+    }
+
+    it('a joint account in a joint return: an Anlage KAP for each spouse with half of every amount (ADR-0054)', () => {
+      const { werte, instanzen, fehlend } = ausdruckWerte({
+        ...FAKTEN,
+        kopplung: EHEPAAR,
+        kapital: { ...DEUTSCH, kapitalertraege: '50001', sparerPauschbetrag: '2000', kapitalertragsteuer: '12000', solidaritaetszuschlag: '660', inhaber: 'gemeinsam' } as never,
+      })
+      expect(fehlend).toEqual([])
+      expect(werte['anlKap.kz210']).toBeUndefined()
+      const [a, b] = instanzen?.['anlage-kap'] ?? []
+      expect(a).toMatchObject({ 'anlKap.personA': true, 'anlKap.vorname': 'Anna', 'anlKap.kz210': '25001', 'anlKap.kz217': '1000', 'anlKap.kz280': '6000,00', 'anlKap.kz281': '330,00' })
+      expect(b).toMatchObject({ 'anlKap.personB': true, 'anlKap.vorname': 'Sabine', 'anlKap.kz210': '25000', 'anlKap.kz217': '1000', 'anlKap.kz280': '6000,00' })
+    })
+
+    it("Person B's own depot goes onto B's Anlage KAP; outside a joint return the owner is ignored", () => {
+      const nurB = ausdruckWerte({ ...FAKTEN, kopplung: EHEPAAR, kapital: { ...DEUTSCH, inhaber: 'B' } as never })
+      expect(nurB.instanzen?.['anlage-kap']).toHaveLength(1)
+      expect(nurB.instanzen?.['anlage-kap']?.[0]).toMatchObject({ 'anlKap.personB': true, 'anlKap.kz210': '20000' })
+      const einzeln = ausdruckWerte({ ...FAKTEN, kapital: { ...DEUTSCH, inhaber: 'gemeinsam' } as never })
+      expect(einzeln.werte).toMatchObject({ 'anlKap.personA': true, 'anlKap.kz210': '20000' })
     })
 
     it('missing facts or an unanswered depot block as "kapital"; Krypto is named as not printable', () => {

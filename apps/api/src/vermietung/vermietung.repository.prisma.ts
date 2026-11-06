@@ -17,6 +17,10 @@ function toRecord(row: {
   ort?: string | null
   wohnflaeche?: string | null
   afaWieVorjahr?: boolean | null
+  umlagen?: string | null
+  schuldzinsen?: string | null
+  einheiten?: string | null
+  anteilA?: string | null
 }): VermietungsobjektRecord {
   return {
     id: row.id,
@@ -32,6 +36,10 @@ function toRecord(row: {
     ort: row.ort ?? null,
     wohnflaeche: row.wohnflaeche ?? null,
     afaWieVorjahr: row.afaWieVorjahr ?? null,
+    umlagen: row.umlagen ?? null,
+    schuldzinsen: row.schuldzinsen ?? null,
+    einheiten: row.einheiten ?? null,
+    anteilA: row.anteilA ?? null,
   }
 }
 
@@ -108,7 +116,7 @@ export class PrismaVermietungRepository implements VermietungRepository {
     userId: string,
     taxYear: number,
     objectId: string,
-    address: { strasse?: string | null; hausnummer?: string | null; plz?: string | null; ort?: string | null; wohnflaeche?: string | null; afaWieVorjahr?: boolean | null },
+    address: { strasse?: string | null; hausnummer?: string | null; plz?: string | null; ort?: string | null; wohnflaeche?: string | null; afaWieVorjahr?: boolean | null; umlagen?: string | null; schuldzinsen?: string | null; einheiten?: string | null; anteilA?: string | null },
   ): Promise<VermietungsobjektRecord | null> {
     return this.setAdresse(userId, taxYear, objectId, address)
   }
@@ -117,7 +125,7 @@ export class PrismaVermietungRepository implements VermietungRepository {
     userId: string,
     steuerjahr: number,
     objektId: string,
-    adresse: { strasse?: string | null; hausnummer?: string | null; plz?: string | null; ort?: string | null; wohnflaeche?: string | null; afaWieVorjahr?: boolean | null },
+    adresse: { strasse?: string | null; hausnummer?: string | null; plz?: string | null; ort?: string | null; wohnflaeche?: string | null; afaWieVorjahr?: boolean | null; umlagen?: string | null; schuldzinsen?: string | null; einheiten?: string | null; anteilA?: string | null },
   ): Promise<VermietungsobjektRecord | null> {
     const existing = await this.prisma.vermietungsobjekt.findFirst({ where: { id: objektId, userId, steuerjahr } })
     if (existing === null) return null
@@ -129,6 +137,10 @@ export class PrismaVermietungRepository implements VermietungRepository {
       ort?: string | null
       wohnflaeche?: string | null
       afaWieVorjahr?: boolean | null
+      umlagen?: string | null
+      schuldzinsen?: string | null
+      einheiten?: string | null
+      anteilA?: string | null
     } = {}
     if (adresse.strasse !== undefined) updateData.strasse = adresse.strasse
     if (adresse.hausnummer !== undefined) updateData.hausnummer = adresse.hausnummer
@@ -136,6 +148,10 @@ export class PrismaVermietungRepository implements VermietungRepository {
     if (adresse.ort !== undefined) updateData.ort = adresse.ort
     if (adresse.wohnflaeche !== undefined) updateData.wohnflaeche = adresse.wohnflaeche
     if (adresse.afaWieVorjahr !== undefined) updateData.afaWieVorjahr = adresse.afaWieVorjahr
+    if (adresse.umlagen !== undefined) updateData.umlagen = adresse.umlagen
+    if (adresse.schuldzinsen !== undefined) updateData.schuldzinsen = adresse.schuldzinsen
+    if (adresse.einheiten !== undefined) updateData.einheiten = adresse.einheiten
+    if (adresse.anteilA !== undefined) updateData.anteilA = adresse.anteilA
 
     const [row] = await this.prisma.$transaction([
       this.prisma.vermietungsobjekt.update({ where: { id: objektId }, data: updateData }),

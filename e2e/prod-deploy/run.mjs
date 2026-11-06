@@ -76,6 +76,7 @@ const COPY = {
   job: 'Angestellt',
   nein: 'Nein',
   kinder: '2 oder mehr',
+  familienstand: 'Ledig',
   kontoWandLater: 'Später — erst mal ins Cockpit',
   loginEmailPlaceholder: 'du@beispiel.de',
   loginPasswordPlaceholder: '••••••••',
@@ -144,7 +145,8 @@ async function guestFlow(browser, webOrigin, target) {
     // to end (the same "the flow genuinely completed" standard the onboarding walk used to hold).
     await jobQuestion.click()
     await page.getByText(COPY.nein).click() // ausland: no gate
-    await page.getByText(COPY.kinder).click() // completes the Minimal-Gate
+    await page.getByText(COPY.kinder).click()
+    await page.getByText(COPY.familienstand).click() // completes the Minimal-Gate (Familienstand, ADR-0054)
 
     // The Konto-Wand is the funnel's honest next step for a guest; "Später" reaches the Cockpit.
     await page.getByText(COPY.kontoWandLater).waitFor({ state: 'visible', timeout: 15_000 }).catch(async () => {

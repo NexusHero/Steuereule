@@ -67,6 +67,8 @@ async function enterAsGuestThroughInterview() {
   fireEvent.click(screen.getByText('Nein'))
   await screen.findByText('Kindergeld, Freibeträge, Betreuungskosten — die Günstigerprüfung Kindergeld vs. Freibetrag läuft automatisch.')
   fireEvent.click(screen.getByText('2 oder mehr'))
+  await screen.findByText('Verheiratete geben meist eine gemeinsame Erklärung ab — dann rechnen wir mit dem Splittingtarif.')
+  fireEvent.click(screen.getByText('Ledig'))
 
   // The Konto-Wand is the honest next step for a guest — "Später" reaches the Cockpit.
   await screen.findByText('Später — erst mal ins Cockpit')
@@ -222,7 +224,9 @@ describe('App', () => {
       )
       fireEvent.click(screen.getByText('Nein')) // ausland: no gate
       await screen.findByText('Kindergeld, Freibeträge, Betreuungskosten — die Günstigerprüfung Kindergeld vs. Freibetrag läuft automatisch.') // kinder question
-      fireEvent.click(screen.getByText('2 oder mehr')) // completes the Minimal-Gate
+      fireEvent.click(screen.getByText('2 oder mehr'))
+      await screen.findByText('Verheiratete geben meist eine gemeinsame Erklärung ab — dann rechnen wir mit dem Splittingtarif.')
+      fireEvent.click(screen.getByText('Ledig')) // completes the Minimal-Gate (Familienstand, ADR-0054)
 
       // ADR-0045: a guest's onDone leads to the Konto-Wand — "Später" reaches the Cockpit,
       // whose query was invalidated by the last successful write (a real re-fetch, not stale

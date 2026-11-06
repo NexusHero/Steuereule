@@ -7,6 +7,9 @@ import { FakeChLohnausweisRepository } from './fakes/fake-ch-lohnausweis.reposit
 import { FakeInterviewAnswerRepository } from './fakes/fake-interview-answer.repository.js'
 import { FakeLstbRepository } from './fakes/fake-lstb.repository.js'
 import { FakeStammdatenRepository } from './fakes/fake-stammdaten.repository.js'
+import { FakeKopplungRepository } from './fakes/fake-kopplung.repository.js'
+import { FakeKindRepository } from './fakes/fake-kind.repository.js'
+import { FakeVermietungRepository } from './fakes/fake-vermietung.repository.js'
 import type { SteuerschaetzungStand } from '../src/steuerschaetzung/steuerschaetzung.service.js'
 
 function spanne(stand: SteuerschaetzungStand) {
@@ -23,8 +26,11 @@ function setup(weg: ArbeitswegEingaben | null = null) {
   const interview = new FakeInterviewAnswerRepository()
   const ch = new FakeChLohnausweisRepository()
   const stammdaten = new FakeStammdatenRepository()
-  const service = new SteuerschaetzungService(lstb, interview, ch, stammdaten, arbeitsweg(weg))
-  return { lstb, interview, ch, stammdaten, service }
+  const kopplung = new FakeKopplungRepository()
+  const kinder = new FakeKindRepository()
+  const vermietung = new FakeVermietungRepository()
+  const service = new SteuerschaetzungService(lstb, interview, ch, stammdaten, arbeitsweg(weg), kopplung, kinder, vermietung)
+  return { lstb, interview, ch, stammdaten, kopplung, kinder, vermietung, service }
 }
 
 const ANGESTELLT = { job: 'Angestellt', ausland: 'Nein', kinder: 'Nein' }
@@ -69,15 +75,52 @@ describe('SteuerschaetzungService', () => {
     expect(stand).toMatchObject({ kind: 'offen', fehlt: ['lohnsteuer', 'sozialversicherung'] })
   })
 
-  it('does not estimate for married couples yet', async () => {
-    const { lstb, interview, stammdaten, service } = setup()
-    interview.seed('u', 2025, ANGESTELLT)
+  it('never estimates a married person as single — it asks for the joint return first (ADR-0054)', async () => {
+    const { lstb, interview, service } = setup()
+    interview.seed('u', 2025, { ...ANGESTELLT, familienstand: 'Verheiratet' })
     lstb.seed({ userId: 'u', steuerjahr: 2025, bruttoarbeitslohn: '45000', lohnsteuer: '6100', sozialversicherung: '9200' })
-    await stammdaten.speichere('u', { familienstand: 'verheiratet' } as StammdatenRecord)
 
-    const stand = await service.getState('u', 2025)
+    expect(await service.getState('u', 2025)).toEqual({ kind: 'offen', fehlt: ['veranlagungsart'] })
+  })
 
-    expect(stand).toEqual({ kind: 'nicht-moeglich', grund: 'verheiratet' })
+  it("estimates a couple with the splitting tariff from both spouses' certificates and the rental surplus", async () => {
+    const { lstb, interview, stammdaten, kopplung, vermietung, service } = setup()
+    interview.seed('a', 2025, ANGESTELLT)
+    await stammdaten.speichere('a', { familienstand: 'verheiratet', religion: 'VD' } as StammdatenRecord)
+    await kopplung.upsert('a', 2025, { personBUserId: 'spouse_a_2025', veranlagungsart: 'zusammen' })
+    lstb.seed({ userId: 'a', steuerjahr: 2025, bruttoarbeitslohn: '82000', lohnsteuer: '9890', sozialversicherung: '15473' })
+    lstb.seed({ userId: 'spouse_a_2025', steuerjahr: 2025, bruttoarbeitslohn: '48000', lohnsteuer: '10420', sozialversicherung: '10008' })
+    vermietung.seed({
+      id: 'o1', userId: 'a', steuerjahr: 2025, mieteinnahmen: '14400', anschaffungskosten: '280000', baujahr: '1995', werbungskosten: '3200',
+    } as never)
+
+    const stand = spanne(await service.getState('a', 2025))
+    expect(stand.zusammenveranlagung).toBe(true)
+    expect(stand.anrechnung).toBe(9890 + 10420)
+    const ohneMiete = spanne(await (async () => {
+      const second = setup()
+      second.interview.seed('a', 2025, ANGESTELLT)
+      await second.stammdaten.speichere('a', { familienstand: 'verheiratet', religion: 'VD' } as StammdatenRecord)
+      await second.kopplung.upsert('a', 2025, { personBUserId: 'spouse_a_2025', veranlagungsart: 'zusammen' })
+      second.lstb.seed({ userId: 'a', steuerjahr: 2025, bruttoarbeitslohn: '82000', lohnsteuer: '9890', sozialversicherung: '15473' })
+      second.lstb.seed({ userId: 'spouse_a_2025', steuerjahr: 2025, bruttoarbeitslohn: '48000', lohnsteuer: '10420', sozialversicherung: '10008' })
+      return second.service.getState('a', 2025)
+    })())
+    // 14.400 rent − 3.200 costs − 5.600 AfA = 5.600 more income → more tax.
+    expect(stand.einkommensteuer.von).toBeGreaterThan(ohneMiete.einkommensteuer.von)
+  })
+
+  it("names what is missing in Person B's figures", async () => {
+    const { lstb, interview, stammdaten, kopplung, service } = setup()
+    interview.seed('a', 2025, ANGESTELLT)
+    await stammdaten.speichere('a', { familienstand: 'verheiratet' } as StammdatenRecord)
+    await kopplung.upsert('a', 2025, { personBUserId: 'spouse_a_2025', veranlagungsart: 'zusammen' })
+    lstb.seed({ userId: 'a', steuerjahr: 2025, bruttoarbeitslohn: '82000', lohnsteuer: '9890', sozialversicherung: '15473' })
+    lstb.seed({ userId: 'spouse_a_2025', steuerjahr: 2025, bruttoarbeitslohn: '48000', lohnsteuer: null, sozialversicherung: '10008' } as never)
+
+    const stand = await service.getState('a', 2025)
+    expect(stand).toMatchObject({ kind: 'offen' })
+    expect(stand.kind === 'offen' && stand.fehlt.some((f) => f.startsWith('personB.'))).toBe(true)
   })
 
   it('estimates a Grenzgänger from the Lohnausweis against the Quellensteuer', async () => {

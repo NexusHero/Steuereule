@@ -92,7 +92,8 @@ describe('nextStep — the identity of the next screen (product ADR-016)', () =>
       { kind: 'question', id: 'kinder' },
     ],
 
-    ['all three answered is done', { ...ANGESTELLT, ausland: 'Nein', kinder: '1 Kind' }, { kind: 'done' }],
+    ['kinder answered asks the Familienstand', { ...ANGESTELLT, ausland: 'Nein', kinder: '1 Kind' }, { kind: 'question', id: 'familienstand' }],
+    ['all four answered is done', { ...ANGESTELLT, ausland: 'Nein', kinder: '1 Kind', familienstand: 'Verheiratet' }, { kind: 'done' }],
   ]
 
   it.each(cases)('%s', (_name, answers, expected) => {
@@ -345,14 +346,15 @@ describe('isValidAnswer', () => {
 
 describe('remainingSteps — what TaxYear.openItems is written from (Minimal-Gate)', () => {
   it('counts the questions still to answer', () => {
-    expect(remainingSteps({})).toBe(3)
-    expect(remainingSteps(ANGESTELLT)).toBe(2)
-    expect(remainingSteps({ ...ANGESTELLT, ausland: 'Nein' })).toBe(1)
-    expect(remainingSteps({ ...ANGESTELLT, ausland: 'Nein', kinder: 'Nein' })).toBe(0)
+    expect(remainingSteps({})).toBe(4)
+    expect(remainingSteps(ANGESTELLT)).toBe(3)
+    expect(remainingSteps({ ...ANGESTELLT, ausland: 'Nein' })).toBe(2)
+    expect(remainingSteps({ ...ANGESTELLT, ausland: 'Nein', kinder: 'Nein' })).toBe(1)
+    expect(remainingSteps({ ...ANGESTELLT, ausland: 'Nein', kinder: 'Nein', familienstand: 'Ledig' })).toBe(0)
   })
 
   it('does not count gates — a gate is something we tell the user, not something we await', () => {
-    expect(remainingSteps({ job: 'Beides', gewerbe: GATE_ACKNOWLEDGED })).toBe(2)
+    expect(remainingSteps({ job: 'Beides', gewerbe: GATE_ACKNOWLEDGED })).toBe(3)
   })
 
   it('is zero behind a terminal gate — an honest zero, not a finished one', () => {

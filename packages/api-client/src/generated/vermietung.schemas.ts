@@ -88,6 +88,14 @@ export interface VermietungsobjektDto {
   wohnflaeche: string | null;
   /** @nullable */
   afaWieVorjahr: boolean | null;
+  /** @nullable */
+  umlagen: string | null;
+  /** @nullable */
+  schuldzinsen: string | null;
+  /** @nullable */
+  einheiten: string | null;
+  /** @nullable */
+  anteilA: string | null;
   fakten: VermietungsobjektFaktenDto;
 }
 
@@ -157,5 +165,13 @@ export interface PutVermietungAdresseDto {
   wohnflaeche?: string;
   /** Anlage V Zeile 33: the building AfA is unchanged from last year. */
   afaWieVorjahr?: boolean;
+  /** Anlage V Zeile 20: laufende Umlagen / Nebenkosten received, whole euros. */
+  umlagen?: string;
+  /** Anlage V Zeilen 46/48: Schuldzinsen (without repayment), whole euros. */
+  schuldzinsen?: string;
+  /** Number of flats let in this building (Anlage V Zeile 13). */
+  einheiten?: string;
+  /** Person A's share in percent, the rest is Person B's (Anlage V Zeile 86, ADR-0054). */
+  anteilA?: string;
 }
 

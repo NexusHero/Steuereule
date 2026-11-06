@@ -99,6 +99,11 @@ export interface VermietungFakten {
   baujahr: string | null
   werbungskosten: string | null
   afaWieVorjahr: boolean | null
+  umlagen?: string | null
+  schuldzinsen?: string | null
+  einheiten?: string | null
+  /** Person A's share in percent (Anlage V Z. 86); null in a joint return = half and half. */
+  anteilA?: string | null
 }
 
 const ganzeZahl = (wert: string | null): number | null => (wert !== null && /^\d+$/.test(wert) ? Number(wert) : null)
@@ -615,12 +620,23 @@ export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
         vWerte['anlV.wohnflaeche'] = obj.wohnflaeche
         vWerte['anlV.z13Wohnflaeche'] = obj.wohnflaeche
       }
+      // Several flats of one building go into Z. 13 together, named as such.
+      const einheiten = ganzeZahl(obj.einheiten ?? null)
+      if (einheiten !== null && einheiten > 1) vWerte['anlV.z13Bezeichnung'] = `${einheiten} Wohneinheiten`
       const miete = ganzeZahl(obj.mieteinnahmen)
       const laufend = ganzeZahl(obj.werbungskosten)
       if (miete === null || laufend === null) return vWerte
       vWerte['anlV.z13Miete'] = String(miete)
       vWerte['anlV.kz01'] = String(miete)
-      vWerte['anlV.z32Einnahmen'] = String(miete)
+      const umlagen = ganzeZahl(obj.umlagen ?? null) ?? 0
+      if (umlagen > 0) vWerte['anlV.kz04'] = String(umlagen)
+      vWerte['anlV.z32Einnahmen'] = String(miete + umlagen)
+      const schuldzinsen = ganzeZahl(obj.schuldzinsen ?? null) ?? 0
+      if (schuldzinsen > 0) {
+        vWerte['anlV.z46Text'] = 'Darlehen für das Objekt'
+        vWerte['anlV.z46Betrag'] = String(schuldzinsen)
+        vWerte['anlV.kz33'] = String(schuldzinsen)
+      }
       const afa = vermietungAfa(obj)
       if (afa && obj.afaWieVorjahr) {
         vWerte['anlV.z33Linear'] = '1'
@@ -634,10 +650,17 @@ export function ausdruckWerte(fakten: AusdruckFakten): AusdruckWerte {
         vWerte['anlV.z80Betrag'] = String(laufend)
         vWerte['anlV.kz49'] = String(laufend)
       }
-      const summe = laufend + (afa && obj.afaWieVorjahr ? afa.betrag : 0)
+      const summe = laufend + schuldzinsen + (afa && obj.afaWieVorjahr ? afa.betrag : 0)
+      const ueberschuss = miete + umlagen - summe
       vWerte['anlV.werbungskostenSumme'] = String(summe)
-      vWerte['anlV.ueberschuss'] = String(miete - summe)
-      vWerte['anlV.kz20'] = String(miete - summe)
+      vWerte['anlV.ueberschuss'] = String(ueberschuss)
+      // Z. 86: in a joint return the result is attributed to both spouses (ADR-0054), half and half by default.
+      if (fakten.kopplung?.veranlagungsart === 'zusammen') {
+        const anteilA = Math.min(100, ganzeZahl(obj.anteilA ?? null) ?? 50)
+        const teilA = Math.round((ueberschuss * anteilA) / 100)
+        vWerte['anlV.kz20'] = String(teilA)
+        vWerte['anlV.kz21'] = String(ueberschuss - teilA)
+      } else vWerte['anlV.kz20'] = String(ueberschuss)
       return vWerte
     })
     for (const obj of fakten.vermietung) {

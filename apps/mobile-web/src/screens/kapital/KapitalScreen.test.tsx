@@ -4,7 +4,7 @@
 // Empfehlung, zu-knapp/unbestimmt as honest no-verdict states, nicht-anwendbar naming the gate.
 // The client stays dumb: the fold and the comparison come from the server.
 import { describe, it, expect } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
 import { ThemeProvider } from '@steuereule/ui'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -68,6 +68,30 @@ describe('KapitalScreen', () => {
     expect(await screen.findByText('Kapitalerträge (Einkünfte aus Kapitalvermögen)')).toBeTruthy()
     // The default mask has no kap-depot answer yet — the honest "unbekannt" notice, never a guess.
     expect(screen.getByText(/ob dein Depot bei einem deutschen oder ausländischen Broker liegt/)).toBeTruthy()
+  })
+
+  it('asks a couple whose depot it is and saves the answer (ADR-0054)', async () => {
+    const bodies: unknown[] = []
+    server.use(
+      http.get(KAPITAL_URL, () => HttpResponse.json(DEUTSCHER_BROKER, { status: 200 })),
+      http.get(GP_URL, () => HttpResponse.json(null, { status: 200 })),
+      http.get(`*/v1/steuerjahre/${TAX_YEAR}/kopplung`, () => HttpResponse.json({ veranlagungsart: 'zusammen' })),
+      http.put(`${KAPITAL_URL}/inhaber`, async ({ request }) => {
+        bodies.push(await request.json())
+        return HttpResponse.json(DEUTSCHER_BROKER, { status: 200 })
+      }),
+    )
+    renderKapital()
+    fireEvent.click(await screen.findByTestId('kapital-inhaber-gemeinsam'))
+    await waitFor(() => expect(bodies).toEqual([{ inhaber: 'gemeinsam' }]))
+  })
+
+  it('does not ask single people whose depot it is', async () => {
+    server.use(http.get(KAPITAL_URL, () => HttpResponse.json(DEUTSCHER_BROKER, { status: 200 })))
+    server.use(http.get(GP_URL, () => HttpResponse.json(null, { status: 200 })))
+    renderKapital()
+    await screen.findByText(/Abgeltungsteuer einbehalten/)
+    expect(screen.queryByTestId('kapital-inhaber-gemeinsam')).toBeNull()
   })
 
   it('renders the German-broker notice (Abgeltungsteuer withheld) from the GET response', async () => {

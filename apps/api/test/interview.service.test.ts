@@ -34,7 +34,7 @@ describe('InterviewService', () => {
     it('a fresh tax year opens with the job question and 3 open items, empty answers', async () => {
       const state = await service.getState(USER_ID, STEUERJAHR)
 
-      expect(state).toEqual({ answers: {}, nextStep: { kind: 'question', id: 'job' }, openItems: 3 })
+      expect(state).toEqual({ answers: {}, nextStep: { kind: 'question', id: 'job' }, openItems: 4 })
     })
 
     it('does not append a READ audit entry when there is nothing to read yet', async () => {
@@ -50,7 +50,7 @@ describe('InterviewService', () => {
       expect(state).toEqual({
         answers: { job: 'Angestellt' },
         nextStep: { kind: 'question', id: 'ausland' },
-        openItems: 2,
+        openItems: 3,
       })
       expect(auditRepository.all()).toMatchObject([{ userId: USER_ID, action: 'READ', resource: 'interview' }])
     })
@@ -61,7 +61,7 @@ describe('InterviewService', () => {
 
       const state = await service.getState(USER_ID, STEUERJAHR)
 
-      expect(state).toEqual({ answers: {}, nextStep: { kind: 'question', id: 'job' }, openItems: 3 })
+      expect(state).toEqual({ answers: {}, nextStep: { kind: 'question', id: 'job' }, openItems: 4 })
     })
   })
 
@@ -69,7 +69,7 @@ describe('InterviewService', () => {
     it('admits and persists a reachable, valid answer, returning the next step and updated openItems', async () => {
       const result = await service.postAnswer(USER_ID, STEUERJAHR, { questionId: 'job', value: 'Angestellt' })
 
-      expect(result).toEqual({ nextStep: { kind: 'question', id: 'ausland' }, openItems: 2 })
+      expect(result).toEqual({ nextStep: { kind: 'question', id: 'ausland' }, openItems: 3 })
       await expect(repository.findAllForUserAndYear(USER_ID, STEUERJAHR)).resolves.toEqual([
         { questionId: 'job', value: 'Angestellt' },
       ])
@@ -143,10 +143,10 @@ describe('InterviewService', () => {
         questionId: 'gewerbe',
         value: GATE_ACKNOWLEDGED,
       })
-      expect(acknowledged).toEqual({ nextStep: { kind: 'question', id: 'ausland' }, openItems: 2 })
+      expect(acknowledged).toEqual({ nextStep: { kind: 'question', id: 'ausland' }, openItems: 3 })
 
       const result = await service.postAnswer(USER_ID, STEUERJAHR, { questionId: 'ausland', value: 'Nein' })
-      expect(result).toEqual({ nextStep: { kind: 'question', id: 'kinder' }, openItems: 1 })
+      expect(result).toEqual({ nextStep: { kind: 'question', id: 'kinder' }, openItems: 2 })
     })
 
     it('the CH-only gate opens on “In ein anderes Land” and, once acknowledged, carries on to kinder', async () => {
@@ -155,29 +155,31 @@ describe('InterviewService', () => {
         questionId: 'ausland',
         value: 'In ein anderes Land',
       })
-      expect(gate).toEqual({ nextStep: { kind: 'gate', id: 'ch-only' }, openItems: 1 })
+      expect(gate).toEqual({ nextStep: { kind: 'gate', id: 'ch-only' }, openItems: 2 })
 
       const acknowledged = await service.postAnswer(USER_ID, STEUERJAHR, {
         questionId: 'ch-only',
         value: GATE_ACKNOWLEDGED,
       })
-      expect(acknowledged).toEqual({ nextStep: { kind: 'question', id: 'kinder' }, openItems: 1 })
+      expect(acknowledged).toEqual({ nextStep: { kind: 'question', id: 'kinder' }, openItems: 2 })
     })
 
     it('re-answering an already-answered, still-reachable question is idempotent (back navigation)', async () => {
       await service.postAnswer(USER_ID, STEUERJAHR, { questionId: 'job', value: 'Angestellt' })
       const result = await service.postAnswer(USER_ID, STEUERJAHR, { questionId: 'job', value: 'Rente' })
 
-      expect(result).toEqual({ nextStep: { kind: 'question', id: 'ausland' }, openItems: 2 })
+      expect(result).toEqual({ nextStep: { kind: 'question', id: 'ausland' }, openItems: 3 })
       await expect(repository.findAllForUserAndYear(USER_ID, STEUERJAHR)).resolves.toEqual([
         { questionId: 'job', value: 'Rente' },
       ])
     })
 
-    it('answering all three questions reaches done, with openItems 0', async () => {
+    it('answering all four questions reaches done, with openItems 0 — the Familienstand comes last (ADR-0054)', async () => {
       await service.postAnswer(USER_ID, STEUERJAHR, { questionId: 'job', value: 'Angestellt' })
       await service.postAnswer(USER_ID, STEUERJAHR, { questionId: 'ausland', value: 'Nein' })
-      const result = await service.postAnswer(USER_ID, STEUERJAHR, { questionId: 'kinder', value: 'Nein' })
+      const nachKinder = await service.postAnswer(USER_ID, STEUERJAHR, { questionId: 'kinder', value: 'Nein' })
+      expect(nachKinder).toEqual({ nextStep: { kind: 'question', id: 'familienstand' }, openItems: 1 })
+      const result = await service.postAnswer(USER_ID, STEUERJAHR, { questionId: 'familienstand', value: 'Verheiratet' })
 
       expect(result).toEqual({ nextStep: { kind: 'done' }, openItems: 0 })
     })
@@ -269,11 +271,11 @@ describe('InterviewService', () => {
       await expect(service.getState(USER_ID, STEUERJAHR, undefined, 'guest')).resolves.toEqual({
         answers: {},
         nextStep: { kind: 'question', id: 'job' },
-        openItems: 3,
+        openItems: 4,
       })
       await expect(service.postAnswer(USER_ID, STEUERJAHR, { questionId: 'job', value: 'Angestellt' }, 'guest')).resolves.toEqual({
         nextStep: { kind: 'question', id: 'ausland' },
-        openItems: 2,
+        openItems: 3,
       })
     })
 

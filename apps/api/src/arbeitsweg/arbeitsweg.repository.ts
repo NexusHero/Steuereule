@@ -14,6 +14,10 @@ export interface CommuteInputs {
   readonly einfacheKm: number | null
   readonly verkehrsmittel: MeansOfTransport | null
   readonly taetigkeitsstaette: string | null
+  /** Confirmed public holidays on working days (F4); null = none counted. */
+  readonly feiertage?: number | null
+  /** The state or canton the suggestion came from (public-holidays.ts). */
+  readonly feiertageRegion?: string | null
 }
 export type ArbeitswegEingaben = CommuteInputs
 

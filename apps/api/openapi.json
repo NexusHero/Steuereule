@@ -1466,6 +1466,176 @@
         ]
       }
     },
+    "/v1/steuerjahre/{jahr}/kinder": {
+      "get": {
+        "operationId": "KinderController_list",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KinderResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Requires account."
+          }
+        },
+        "tags": [
+          "kinder"
+        ]
+      },
+      "post": {
+        "operationId": "KinderController_create",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateKindDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KinderResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Requires account."
+          }
+        },
+        "tags": [
+          "kinder"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/kinder/{id}": {
+      "put": {
+        "operationId": "KinderController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateKindDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KinderResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Requires account."
+          }
+        },
+        "tags": [
+          "kinder"
+        ]
+      },
+      "delete": {
+        "operationId": "KinderController_delete",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KinderResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Requires account."
+          }
+        },
+        "tags": [
+          "kinder"
+        ]
+      }
+    },
     "/v1/belege": {
       "get": {
         "operationId": "BelegController_list",
@@ -2603,176 +2773,6 @@
         },
         "tags": [
           "ausdruck"
-        ]
-      }
-    },
-    "/v1/steuerjahre/{jahr}/kinder": {
-      "get": {
-        "operationId": "KinderController_list",
-        "parameters": [
-          {
-            "name": "jahr",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "example": 2025,
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/KinderResponseDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Requires account."
-          }
-        },
-        "tags": [
-          "kinder"
-        ]
-      },
-      "post": {
-        "operationId": "KinderController_create",
-        "parameters": [
-          {
-            "name": "jahr",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "example": 2025,
-              "type": "number"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateKindDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/KinderResponseDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Requires account."
-          }
-        },
-        "tags": [
-          "kinder"
-        ]
-      }
-    },
-    "/v1/steuerjahre/{jahr}/kinder/{id}": {
-      "put": {
-        "operationId": "KinderController_update",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "example": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "name": "jahr",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "example": 2025,
-              "type": "number"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateKindDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/KinderResponseDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Requires account."
-          }
-        },
-        "tags": [
-          "kinder"
-        ]
-      },
-      "delete": {
-        "operationId": "KinderController_delete",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "example": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "name": "jahr",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "example": 2025,
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/KinderResponseDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Requires account."
-          }
-        },
-        "tags": [
-          "kinder"
         ]
       }
     },
@@ -4357,6 +4357,22 @@
             "type": "boolean",
             "nullable": true
           },
+          "umlagen": {
+            "type": "string",
+            "nullable": true
+          },
+          "schuldzinsen": {
+            "type": "string",
+            "nullable": true
+          },
+          "einheiten": {
+            "type": "string",
+            "nullable": true
+          },
+          "anteilA": {
+            "type": "string",
+            "nullable": true
+          },
           "fakten": {
             "$ref": "#/components/schemas/VermietungsobjektFaktenDto"
           }
@@ -4373,6 +4389,10 @@
           "ort",
           "wohnflaeche",
           "afaWieVorjahr",
+          "umlagen",
+          "schuldzinsen",
+          "einheiten",
+          "anteilA",
           "fakten"
         ]
       },
@@ -4505,6 +4525,26 @@
           "afaWieVorjahr": {
             "type": "boolean",
             "description": "Anlage V Zeile 33: the building AfA is unchanged from last year."
+          },
+          "umlagen": {
+            "type": "string",
+            "example": "2400",
+            "description": "Anlage V Zeile 20: laufende Umlagen / Nebenkosten received, whole euros."
+          },
+          "schuldzinsen": {
+            "type": "string",
+            "example": "3100",
+            "description": "Anlage V Zeilen 46/48: Schuldzinsen (without repayment), whole euros."
+          },
+          "einheiten": {
+            "type": "string",
+            "example": "3",
+            "description": "Number of flats let in this building (Anlage V Zeile 13)."
+          },
+          "anteilA": {
+            "type": "string",
+            "example": "50",
+            "description": "Person A's share in percent, the rest is Person B's (Anlage V Zeile 86, ADR-0054)."
           }
         }
       },
@@ -5005,6 +5045,18 @@
             "type": "string",
             "nullable": true,
             "example": "79539 Lörrach, Hauptstraße 1"
+          },
+          "feiertage": {
+            "type": "number",
+            "nullable": true,
+            "example": 11,
+            "description": "Confirmed public holidays on working days, subtracted from the commute days."
+          },
+          "feiertageRegion": {
+            "type": "string",
+            "nullable": true,
+            "example": "BW",
+            "description": "German state or Swiss canton the holiday suggestion came from."
           }
         },
         "required": [
@@ -5145,6 +5197,447 @@
         "required": [
           "kind"
         ]
+      },
+      "KindResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "uuid"
+          },
+          "lfdNr": {
+            "type": "number",
+            "example": 1
+          },
+          "vorname": {
+            "type": "string",
+            "example": "Lina"
+          },
+          "nachname": {
+            "type": "string",
+            "example": "Muster"
+          },
+          "geburtsdatum": {
+            "type": "string",
+            "example": "2018-05-12"
+          },
+          "idnr": {
+            "type": "string",
+            "nullable": true,
+            "example": "12345678901"
+          },
+          "kindergeldAnspruchEur": {
+            "type": "string",
+            "nullable": true,
+            "example": "3000"
+          },
+          "kindschaftsverhaeltnis": {
+            "type": "string",
+            "enum": [
+              "1",
+              "2",
+              "3"
+            ],
+            "nullable": true
+          },
+          "kindschaftsverhaeltnisB": {
+            "type": "string",
+            "enum": [
+              "1",
+              "2",
+              "3"
+            ],
+            "nullable": true
+          },
+          "familienkasse": {
+            "type": "string",
+            "nullable": true
+          },
+          "wohnsitzInlandGanzjaehrig": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "andererElternteil": {
+            "type": "string",
+            "enum": [
+              "Inland",
+              "Ausland",
+              "Verstorben",
+              "Unbekannt"
+            ],
+            "nullable": true
+          },
+          "andererElternteilName": {
+            "type": "string",
+            "nullable": true
+          },
+          "andererElternteilGeburtsdatum": {
+            "type": "string",
+            "nullable": true
+          },
+          "andererElternteilAdresse": {
+            "type": "string",
+            "nullable": true
+          },
+          "andererElternteilArt": {
+            "type": "string",
+            "enum": [
+              "1",
+              "2"
+            ],
+            "nullable": true
+          },
+          "andererElternteilVerstorbenAm": {
+            "type": "string",
+            "nullable": true
+          },
+          "gemeldetBeiMirGanzjaehrig": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "kindergeldAnMichGanzjaehrig": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "kvBasisEur": {
+            "type": "string",
+            "nullable": true
+          },
+          "pvEur": {
+            "type": "string",
+            "nullable": true
+          },
+          "schweizerKinderzulageEur": {
+            "type": "string",
+            "nullable": true,
+            "example": "2748",
+            "description": "Zeile 6 (Kz 15): Schweizer Kinderzulage in whole EUR."
+          },
+          "differenzkindergeldEur": {
+            "type": "string",
+            "nullable": true,
+            "example": "312",
+            "description": "Differenz-Kindergeld der deutschen Familienkasse in whole EUR."
+          },
+          "gesamtanspruchEur": {
+            "type": "string",
+            "nullable": true,
+            "example": "3060",
+            "description": "Gesamtanspruch auf Kindergeld oder vergleichbare Leistungen (Zeile 6)."
+          }
+        },
+        "required": [
+          "id",
+          "lfdNr",
+          "vorname",
+          "nachname",
+          "geburtsdatum",
+          "kindschaftsverhaeltnis",
+          "kindschaftsverhaeltnisB",
+          "familienkasse",
+          "wohnsitzInlandGanzjaehrig",
+          "andererElternteil",
+          "andererElternteilName",
+          "andererElternteilGeburtsdatum",
+          "andererElternteilAdresse",
+          "andererElternteilArt",
+          "andererElternteilVerstorbenAm",
+          "gemeldetBeiMirGanzjaehrig",
+          "kindergeldAnMichGanzjaehrig",
+          "kvBasisEur",
+          "pvEur"
+        ]
+      },
+      "KinderResponseDto": {
+        "type": "object",
+        "properties": {
+          "kinder": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KindResponseDto"
+            }
+          },
+          "anzahl": {
+            "type": "number",
+            "example": 1
+          },
+          "kindergeldSumme": {
+            "type": "number",
+            "example": 3000
+          },
+          "freibetragGesamt": {
+            "type": "number",
+            "example": 9600
+          },
+          "schweizerKinderzulageSumme": {
+            "type": "number",
+            "example": 5496,
+            "description": "Summe der Schweizer Kinderzulagen in EUR."
+          },
+          "differenzkindergeldSumme": {
+            "type": "number",
+            "example": 624,
+            "description": "Summe des Differenz-Kindergeldes in EUR."
+          }
+        },
+        "required": [
+          "kinder",
+          "anzahl",
+          "kindergeldSumme",
+          "freibetragGesamt",
+          "schweizerKinderzulageSumme",
+          "differenzkindergeldSumme"
+        ]
+      },
+      "CreateKindDto": {
+        "type": "object",
+        "properties": {
+          "kindschaftsverhaeltnis": {
+            "type": "string",
+            "enum": [
+              "1",
+              "2",
+              "3"
+            ],
+            "nullable": true,
+            "description": "Kz 02: 1 = leiblich/adoptiert, 2 = Pflegekind, 3 = Enkel-/Stiefkind"
+          },
+          "kindschaftsverhaeltnisB": {
+            "type": "string",
+            "enum": [
+              "1",
+              "2",
+              "3"
+            ],
+            "nullable": true,
+            "description": "Kz 03, to the spouse — only for a joint return"
+          },
+          "familienkasse": {
+            "type": "string",
+            "nullable": true,
+            "example": "Familienkasse Sachsen"
+          },
+          "wohnsitzInlandGanzjaehrig": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "The child lived in Germany all year (Zeile 8)."
+          },
+          "andererElternteil": {
+            "type": "string",
+            "enum": [
+              "Inland",
+              "Ausland",
+              "Verstorben",
+              "Unbekannt"
+            ],
+            "nullable": true,
+            "description": "The other parent outside this return (Zeilen 11–15)."
+          },
+          "andererElternteilName": {
+            "type": "string",
+            "nullable": true,
+            "example": "Muster, Max"
+          },
+          "andererElternteilGeburtsdatum": {
+            "type": "string",
+            "nullable": true,
+            "example": "1984-02-11"
+          },
+          "andererElternteilAdresse": {
+            "type": "string",
+            "nullable": true,
+            "example": "Hauptstraße 3, 01067 Dresden"
+          },
+          "andererElternteilArt": {
+            "type": "string",
+            "enum": [
+              "1",
+              "2"
+            ],
+            "nullable": true
+          },
+          "andererElternteilVerstorbenAm": {
+            "type": "string",
+            "nullable": true,
+            "example": "2025-06-30"
+          },
+          "gemeldetBeiMirGanzjaehrig": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Zeile 45: the child was registered with the filer all year."
+          },
+          "kindergeldAnMichGanzjaehrig": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Zeile 46: the Kindergeld was paid to the filer all year."
+          },
+          "kvBasisEur": {
+            "type": "string",
+            "nullable": true,
+            "example": "1080",
+            "description": "Zeile 27 (Kz 66): KV Basisabsicherung of the child paid by the parents, whole euros."
+          },
+          "pvEur": {
+            "type": "string",
+            "nullable": true,
+            "example": "0",
+            "description": "Zeile 28 (Kz 67): PV of the child paid by the parents, whole euros."
+          },
+          "schweizerKinderzulageEur": {
+            "type": "string",
+            "nullable": true,
+            "example": "2748",
+            "description": "Zeile 6 (Kz 15): Schweizer Kinderzulage / Familienzulage in whole EUR."
+          },
+          "vorname": {
+            "type": "string",
+            "example": "Lina"
+          },
+          "nachname": {
+            "type": "string",
+            "example": "Muster"
+          },
+          "geburtsdatum": {
+            "type": "string",
+            "example": "2018-05-12",
+            "description": "ISO date YYYY-MM-DD"
+          },
+          "idnr": {
+            "type": "string",
+            "example": "12345678901"
+          },
+          "kindergeldAnspruchEur": {
+            "type": "string",
+            "example": "3000"
+          }
+        },
+        "required": [
+          "vorname",
+          "nachname",
+          "geburtsdatum"
+        ]
+      },
+      "UpdateKindDto": {
+        "type": "object",
+        "properties": {
+          "kindschaftsverhaeltnis": {
+            "type": "string",
+            "enum": [
+              "1",
+              "2",
+              "3"
+            ],
+            "nullable": true,
+            "description": "Kz 02: 1 = leiblich/adoptiert, 2 = Pflegekind, 3 = Enkel-/Stiefkind"
+          },
+          "kindschaftsverhaeltnisB": {
+            "type": "string",
+            "enum": [
+              "1",
+              "2",
+              "3"
+            ],
+            "nullable": true,
+            "description": "Kz 03, to the spouse — only for a joint return"
+          },
+          "familienkasse": {
+            "type": "string",
+            "nullable": true,
+            "example": "Familienkasse Sachsen"
+          },
+          "wohnsitzInlandGanzjaehrig": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "The child lived in Germany all year (Zeile 8)."
+          },
+          "andererElternteil": {
+            "type": "string",
+            "enum": [
+              "Inland",
+              "Ausland",
+              "Verstorben",
+              "Unbekannt"
+            ],
+            "nullable": true,
+            "description": "The other parent outside this return (Zeilen 11–15)."
+          },
+          "andererElternteilName": {
+            "type": "string",
+            "nullable": true,
+            "example": "Muster, Max"
+          },
+          "andererElternteilGeburtsdatum": {
+            "type": "string",
+            "nullable": true,
+            "example": "1984-02-11"
+          },
+          "andererElternteilAdresse": {
+            "type": "string",
+            "nullable": true,
+            "example": "Hauptstraße 3, 01067 Dresden"
+          },
+          "andererElternteilArt": {
+            "type": "string",
+            "enum": [
+              "1",
+              "2"
+            ],
+            "nullable": true
+          },
+          "andererElternteilVerstorbenAm": {
+            "type": "string",
+            "nullable": true,
+            "example": "2025-06-30"
+          },
+          "gemeldetBeiMirGanzjaehrig": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Zeile 45: the child was registered with the filer all year."
+          },
+          "kindergeldAnMichGanzjaehrig": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Zeile 46: the Kindergeld was paid to the filer all year."
+          },
+          "kvBasisEur": {
+            "type": "string",
+            "nullable": true,
+            "example": "1080",
+            "description": "Zeile 27 (Kz 66): KV Basisabsicherung of the child paid by the parents, whole euros."
+          },
+          "pvEur": {
+            "type": "string",
+            "nullable": true,
+            "example": "0",
+            "description": "Zeile 28 (Kz 67): PV of the child paid by the parents, whole euros."
+          },
+          "schweizerKinderzulageEur": {
+            "type": "string",
+            "nullable": true,
+            "example": "2748",
+            "description": "Zeile 6 (Kz 15): Schweizer Kinderzulage / Familienzulage in whole EUR."
+          },
+          "vorname": {
+            "type": "string",
+            "example": "Lina"
+          },
+          "nachname": {
+            "type": "string",
+            "example": "Muster"
+          },
+          "geburtsdatum": {
+            "type": "string",
+            "example": "2018-05-12"
+          },
+          "idnr": {
+            "type": "string",
+            "example": "12345678901"
+          },
+          "kindergeldAnspruchEur": {
+            "type": "string",
+            "example": "3000"
+          }
+        }
       },
       "ZuordnungDto": {
         "type": "object",
@@ -6378,447 +6871,6 @@
         "required": [
           "checkoutUrl"
         ]
-      },
-      "KindResponseDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "example": "uuid"
-          },
-          "lfdNr": {
-            "type": "number",
-            "example": 1
-          },
-          "vorname": {
-            "type": "string",
-            "example": "Lina"
-          },
-          "nachname": {
-            "type": "string",
-            "example": "Muster"
-          },
-          "geburtsdatum": {
-            "type": "string",
-            "example": "2018-05-12"
-          },
-          "idnr": {
-            "type": "string",
-            "nullable": true,
-            "example": "12345678901"
-          },
-          "kindergeldAnspruchEur": {
-            "type": "string",
-            "nullable": true,
-            "example": "3000"
-          },
-          "kindschaftsverhaeltnis": {
-            "type": "string",
-            "enum": [
-              "1",
-              "2",
-              "3"
-            ],
-            "nullable": true
-          },
-          "kindschaftsverhaeltnisB": {
-            "type": "string",
-            "enum": [
-              "1",
-              "2",
-              "3"
-            ],
-            "nullable": true
-          },
-          "familienkasse": {
-            "type": "string",
-            "nullable": true
-          },
-          "wohnsitzInlandGanzjaehrig": {
-            "type": "boolean",
-            "nullable": true
-          },
-          "andererElternteil": {
-            "type": "string",
-            "enum": [
-              "Inland",
-              "Ausland",
-              "Verstorben",
-              "Unbekannt"
-            ],
-            "nullable": true
-          },
-          "andererElternteilName": {
-            "type": "string",
-            "nullable": true
-          },
-          "andererElternteilGeburtsdatum": {
-            "type": "string",
-            "nullable": true
-          },
-          "andererElternteilAdresse": {
-            "type": "string",
-            "nullable": true
-          },
-          "andererElternteilArt": {
-            "type": "string",
-            "enum": [
-              "1",
-              "2"
-            ],
-            "nullable": true
-          },
-          "andererElternteilVerstorbenAm": {
-            "type": "string",
-            "nullable": true
-          },
-          "gemeldetBeiMirGanzjaehrig": {
-            "type": "boolean",
-            "nullable": true
-          },
-          "kindergeldAnMichGanzjaehrig": {
-            "type": "boolean",
-            "nullable": true
-          },
-          "kvBasisEur": {
-            "type": "string",
-            "nullable": true
-          },
-          "pvEur": {
-            "type": "string",
-            "nullable": true
-          },
-          "schweizerKinderzulageEur": {
-            "type": "string",
-            "nullable": true,
-            "example": "2748",
-            "description": "Zeile 6 (Kz 15): Schweizer Kinderzulage in whole EUR."
-          },
-          "differenzkindergeldEur": {
-            "type": "string",
-            "nullable": true,
-            "example": "312",
-            "description": "Differenz-Kindergeld der deutschen Familienkasse in whole EUR."
-          },
-          "gesamtanspruchEur": {
-            "type": "string",
-            "nullable": true,
-            "example": "3060",
-            "description": "Gesamtanspruch auf Kindergeld oder vergleichbare Leistungen (Zeile 6)."
-          }
-        },
-        "required": [
-          "id",
-          "lfdNr",
-          "vorname",
-          "nachname",
-          "geburtsdatum",
-          "kindschaftsverhaeltnis",
-          "kindschaftsverhaeltnisB",
-          "familienkasse",
-          "wohnsitzInlandGanzjaehrig",
-          "andererElternteil",
-          "andererElternteilName",
-          "andererElternteilGeburtsdatum",
-          "andererElternteilAdresse",
-          "andererElternteilArt",
-          "andererElternteilVerstorbenAm",
-          "gemeldetBeiMirGanzjaehrig",
-          "kindergeldAnMichGanzjaehrig",
-          "kvBasisEur",
-          "pvEur"
-        ]
-      },
-      "KinderResponseDto": {
-        "type": "object",
-        "properties": {
-          "kinder": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/KindResponseDto"
-            }
-          },
-          "anzahl": {
-            "type": "number",
-            "example": 1
-          },
-          "kindergeldSumme": {
-            "type": "number",
-            "example": 3000
-          },
-          "freibetragGesamt": {
-            "type": "number",
-            "example": 9600
-          },
-          "schweizerKinderzulageSumme": {
-            "type": "number",
-            "example": 5496,
-            "description": "Summe der Schweizer Kinderzulagen in EUR."
-          },
-          "differenzkindergeldSumme": {
-            "type": "number",
-            "example": 624,
-            "description": "Summe des Differenz-Kindergeldes in EUR."
-          }
-        },
-        "required": [
-          "kinder",
-          "anzahl",
-          "kindergeldSumme",
-          "freibetragGesamt",
-          "schweizerKinderzulageSumme",
-          "differenzkindergeldSumme"
-        ]
-      },
-      "CreateKindDto": {
-        "type": "object",
-        "properties": {
-          "kindschaftsverhaeltnis": {
-            "type": "string",
-            "enum": [
-              "1",
-              "2",
-              "3"
-            ],
-            "nullable": true,
-            "description": "Kz 02: 1 = leiblich/adoptiert, 2 = Pflegekind, 3 = Enkel-/Stiefkind"
-          },
-          "kindschaftsverhaeltnisB": {
-            "type": "string",
-            "enum": [
-              "1",
-              "2",
-              "3"
-            ],
-            "nullable": true,
-            "description": "Kz 03, to the spouse — only for a joint return"
-          },
-          "familienkasse": {
-            "type": "string",
-            "nullable": true,
-            "example": "Familienkasse Sachsen"
-          },
-          "wohnsitzInlandGanzjaehrig": {
-            "type": "boolean",
-            "nullable": true,
-            "description": "The child lived in Germany all year (Zeile 8)."
-          },
-          "andererElternteil": {
-            "type": "string",
-            "enum": [
-              "Inland",
-              "Ausland",
-              "Verstorben",
-              "Unbekannt"
-            ],
-            "nullable": true,
-            "description": "The other parent outside this return (Zeilen 11–15)."
-          },
-          "andererElternteilName": {
-            "type": "string",
-            "nullable": true,
-            "example": "Muster, Max"
-          },
-          "andererElternteilGeburtsdatum": {
-            "type": "string",
-            "nullable": true,
-            "example": "1984-02-11"
-          },
-          "andererElternteilAdresse": {
-            "type": "string",
-            "nullable": true,
-            "example": "Hauptstraße 3, 01067 Dresden"
-          },
-          "andererElternteilArt": {
-            "type": "string",
-            "enum": [
-              "1",
-              "2"
-            ],
-            "nullable": true
-          },
-          "andererElternteilVerstorbenAm": {
-            "type": "string",
-            "nullable": true,
-            "example": "2025-06-30"
-          },
-          "gemeldetBeiMirGanzjaehrig": {
-            "type": "boolean",
-            "nullable": true,
-            "description": "Zeile 45: the child was registered with the filer all year."
-          },
-          "kindergeldAnMichGanzjaehrig": {
-            "type": "boolean",
-            "nullable": true,
-            "description": "Zeile 46: the Kindergeld was paid to the filer all year."
-          },
-          "kvBasisEur": {
-            "type": "string",
-            "nullable": true,
-            "example": "1080",
-            "description": "Zeile 27 (Kz 66): KV Basisabsicherung of the child paid by the parents, whole euros."
-          },
-          "pvEur": {
-            "type": "string",
-            "nullable": true,
-            "example": "0",
-            "description": "Zeile 28 (Kz 67): PV of the child paid by the parents, whole euros."
-          },
-          "schweizerKinderzulageEur": {
-            "type": "string",
-            "nullable": true,
-            "example": "2748",
-            "description": "Zeile 6 (Kz 15): Schweizer Kinderzulage / Familienzulage in whole EUR."
-          },
-          "vorname": {
-            "type": "string",
-            "example": "Lina"
-          },
-          "nachname": {
-            "type": "string",
-            "example": "Muster"
-          },
-          "geburtsdatum": {
-            "type": "string",
-            "example": "2018-05-12",
-            "description": "ISO date YYYY-MM-DD"
-          },
-          "idnr": {
-            "type": "string",
-            "example": "12345678901"
-          },
-          "kindergeldAnspruchEur": {
-            "type": "string",
-            "example": "3000"
-          }
-        },
-        "required": [
-          "vorname",
-          "nachname",
-          "geburtsdatum"
-        ]
-      },
-      "UpdateKindDto": {
-        "type": "object",
-        "properties": {
-          "kindschaftsverhaeltnis": {
-            "type": "string",
-            "enum": [
-              "1",
-              "2",
-              "3"
-            ],
-            "nullable": true,
-            "description": "Kz 02: 1 = leiblich/adoptiert, 2 = Pflegekind, 3 = Enkel-/Stiefkind"
-          },
-          "kindschaftsverhaeltnisB": {
-            "type": "string",
-            "enum": [
-              "1",
-              "2",
-              "3"
-            ],
-            "nullable": true,
-            "description": "Kz 03, to the spouse — only for a joint return"
-          },
-          "familienkasse": {
-            "type": "string",
-            "nullable": true,
-            "example": "Familienkasse Sachsen"
-          },
-          "wohnsitzInlandGanzjaehrig": {
-            "type": "boolean",
-            "nullable": true,
-            "description": "The child lived in Germany all year (Zeile 8)."
-          },
-          "andererElternteil": {
-            "type": "string",
-            "enum": [
-              "Inland",
-              "Ausland",
-              "Verstorben",
-              "Unbekannt"
-            ],
-            "nullable": true,
-            "description": "The other parent outside this return (Zeilen 11–15)."
-          },
-          "andererElternteilName": {
-            "type": "string",
-            "nullable": true,
-            "example": "Muster, Max"
-          },
-          "andererElternteilGeburtsdatum": {
-            "type": "string",
-            "nullable": true,
-            "example": "1984-02-11"
-          },
-          "andererElternteilAdresse": {
-            "type": "string",
-            "nullable": true,
-            "example": "Hauptstraße 3, 01067 Dresden"
-          },
-          "andererElternteilArt": {
-            "type": "string",
-            "enum": [
-              "1",
-              "2"
-            ],
-            "nullable": true
-          },
-          "andererElternteilVerstorbenAm": {
-            "type": "string",
-            "nullable": true,
-            "example": "2025-06-30"
-          },
-          "gemeldetBeiMirGanzjaehrig": {
-            "type": "boolean",
-            "nullable": true,
-            "description": "Zeile 45: the child was registered with the filer all year."
-          },
-          "kindergeldAnMichGanzjaehrig": {
-            "type": "boolean",
-            "nullable": true,
-            "description": "Zeile 46: the Kindergeld was paid to the filer all year."
-          },
-          "kvBasisEur": {
-            "type": "string",
-            "nullable": true,
-            "example": "1080",
-            "description": "Zeile 27 (Kz 66): KV Basisabsicherung of the child paid by the parents, whole euros."
-          },
-          "pvEur": {
-            "type": "string",
-            "nullable": true,
-            "example": "0",
-            "description": "Zeile 28 (Kz 67): PV of the child paid by the parents, whole euros."
-          },
-          "schweizerKinderzulageEur": {
-            "type": "string",
-            "nullable": true,
-            "example": "2748",
-            "description": "Zeile 6 (Kz 15): Schweizer Kinderzulage / Familienzulage in whole EUR."
-          },
-          "vorname": {
-            "type": "string",
-            "example": "Lina"
-          },
-          "nachname": {
-            "type": "string",
-            "example": "Muster"
-          },
-          "geburtsdatum": {
-            "type": "string",
-            "example": "2018-05-12"
-          },
-          "idnr": {
-            "type": "string",
-            "example": "12345678901"
-          },
-          "kindergeldAnspruchEur": {
-            "type": "string",
-            "example": "3000"
-          }
-        }
       },
       "EulenEinstellungResponseDto": {
         "type": "object",

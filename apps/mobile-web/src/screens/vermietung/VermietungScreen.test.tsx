@@ -31,6 +31,10 @@ const VOLLES_OBJEKT: VermietungResponseDto = {
       ort: null,
       wohnflaeche: null,
       afaWieVorjahr: null,
+      umlagen: null,
+      schuldzinsen: null,
+      einheiten: null,
+      anteilA: null,
       fakten: {
         einnahmen: 12000,
         werbungskosten: 1500,
@@ -125,6 +129,22 @@ describe('VermietungScreen', () => {
     renderVermietung()
     fireEvent.click(await screen.findByTestId('vermietung-afa-wie-vorjahr-ja'))
     await waitFor(() => expect(body).toEqual({ afaWieVorjahr: true }))
+  })
+
+  it('saves Umlagen and Schuldzinsen with the object, and asks the share only in a joint return', async () => {
+    const bodies: unknown[] = []
+    server.use(http.get(VERMIETUNG_URL, () => HttpResponse.json(VOLLES_OBJEKT, { status: 200 })))
+    server.use(
+      http.put(`${VERMIETUNG_URL}/objekte/:objektId/adresse`, async ({ request }) => {
+        bodies.push(await request.json())
+        return HttpResponse.json(VOLLES_OBJEKT, { status: 200 })
+      }),
+    )
+    renderVermietung()
+    fireEvent.change(await screen.findByLabelText('Umlagen / Nebenkosten, die die Mieter gezahlt haben (€ im Jahr)'), { target: { value: '4200' } })
+    fireEvent.change(screen.getByLabelText('Schuldzinsen für das Objekt, ohne Tilgung (€ im Jahr)'), { target: { value: '6100' } })
+    await waitFor(() => expect(bodies).toEqual([{ umlagen: '4200' }, { schuldzinsen: '6100' }]))
+    expect(screen.queryByLabelText('Dein Anteil am Objekt in % (der Rest gehört deinem Partner)')).toBeNull()
   })
 
   it('names the Verkauf/möbliert gate honestly and hides the add CTA', async () => {

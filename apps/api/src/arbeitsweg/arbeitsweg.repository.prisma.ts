@@ -11,6 +11,8 @@ interface ArbeitswegRow {
   einfacheKm: number | null
   verkehrsmittel: string | null
   taetigkeitsstaette: string | null
+  feiertage?: number | null
+  feiertageRegion?: string | null
 }
 
 function eingabenAus(row: ArbeitswegRow): ArbeitswegEingaben {
@@ -22,6 +24,8 @@ function eingabenAus(row: ArbeitswegRow): ArbeitswegEingaben {
     einfacheKm: row.einfacheKm,
     verkehrsmittel: VERKEHRSMITTEL.includes(row.verkehrsmittel as Verkehrsmittel) ? (row.verkehrsmittel as Verkehrsmittel) : null,
     taetigkeitsstaette: row.taetigkeitsstaette,
+    feiertage: row.feiertage ?? null,
+    feiertageRegion: row.feiertageRegion ?? null,
   }
 }
 
@@ -43,6 +47,8 @@ export class PrismaArbeitswegRepository implements ArbeitswegRepository {
       einfacheKm: eingaben.einfacheKm,
       verkehrsmittel: eingaben.verkehrsmittel,
       taetigkeitsstaette: eingaben.taetigkeitsstaette,
+      feiertage: eingaben.feiertage ?? null,
+      feiertageRegion: eingaben.feiertageRegion ?? null,
     }
     const [row] = await this.prisma.$transaction([
       this.prisma.arbeitsweg.upsert({

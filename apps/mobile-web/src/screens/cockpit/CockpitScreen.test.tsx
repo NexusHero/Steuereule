@@ -519,6 +519,13 @@ describe('CockpitScreen — die voraussichtliche Erstattung als ehrliche Spanne 
     expect(await screen.findByText('Voraussichtlich rund 31.192 € Nachzahlung')).toBeTruthy()
   })
 
+  it('tells a married person to set up the joint return instead of estimating them as single (ADR-0054)', async () => {
+    mockCockpit(LOADED_SUMMARY)
+    server.use(http.get(SCHAETZUNG_URL, () => HttpResponse.json({ kind: 'offen', fehlt: ['veranlagungsart'] })))
+    renderCockpit()
+    expect(await screen.findByText(/Leg in „Angaben für die Erklärung“ die Zusammenveranlagung an/)).toBeTruthy()
+  })
+
   it('names a back-payment as such, never as a negative refund', async () => {
     mockCockpit(LOADED_SUMMARY)
     server.use(http.get(SCHAETZUNG_URL, () => HttpResponse.json({ kind: 'spanne', ergebnis: { von: -21200, bis: -20400 }, kirchensteuerOffen: true })))

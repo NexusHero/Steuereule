@@ -99,7 +99,17 @@ describe('ArbeitstageScreen', () => {
 
     await waitFor(() => expect(onDone).toHaveBeenCalledOnce())
     expect(bodies).toEqual([
-      { arbeitstage: [1, 2, 3, 4, 5], urlaubstage: 30, krankheitstage: 0, homeofficeTage: 0, einfacheKm: 15, verkehrsmittel: 'pkw', taetigkeitsstaette: '79539 Lörrach, Hauptstraße 1' },
+      {
+        arbeitstage: [1, 2, 3, 4, 5],
+        urlaubstage: 30,
+        krankheitstage: 0,
+        homeofficeTage: 0,
+        feiertage: null,
+        feiertageRegion: null,
+        einfacheKm: 15,
+        verkehrsmittel: 'pkw',
+        taetigkeitsstaette: '79539 Lörrach, Hauptstraße 1',
+      },
     ])
   })
 })

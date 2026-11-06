@@ -182,6 +182,10 @@ export class AusdruckService {
       baujahr: obj.baujahr,
       werbungskosten: obj.werbungskosten,
       afaWieVorjahr: obj.afaWieVorjahr ?? null,
+      umlagen: obj.umlagen ?? null,
+      schuldzinsen: obj.schuldzinsen ?? null,
+      einheiten: obj.einheiten ?? null,
+      anteilA: obj.anteilA ?? null,
     }))
 
     const kinderFakten = kinder.map((k, i) => {
@@ -291,6 +295,7 @@ function arbeitswegFakten(jahr: number, eingaben: ArbeitswegEingaben | null): Ar
     urlaubstage: eingaben.urlaubstage,
     krankheitstage: eingaben.krankheitstage,
     homeofficeTage: eingaben.homeofficeTage,
+    feiertage: eingaben.feiertage ?? 0,
   })
   if (ergebnis.kind !== 'bestimmt') return null
   return {

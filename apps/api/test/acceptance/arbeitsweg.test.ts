@@ -19,6 +19,8 @@ const EINGABEN = {
   urlaubstage: 30,
   krankheitstage: 5,
   homeofficeTage: 20,
+  feiertage: null,
+  feiertageRegion: null,
   einfacheKm: 30,
   verkehrsmittel: 'pkw',
   taetigkeitsstaette: '79539 Lörrach, Hauptstraße 1',

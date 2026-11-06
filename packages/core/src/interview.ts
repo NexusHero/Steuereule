@@ -1,4 +1,4 @@
-export type MinimalGateQuestionId = 'job' | 'ausland' | 'kinder'
+export type MinimalGateQuestionId = 'job' | 'ausland' | 'kinder' | 'familienstand'
 
 export type MinimalGateGateId = 'gewerbe' | 'ch-only'
 
@@ -79,6 +79,9 @@ export const AUSLAND_VALUES = ['Ja, in die Schweiz', 'In ein anderes Land', 'Nei
 
 export const KINDER_VALUES = ['Nein', '1 Kind', '2 oder mehr'] as const
 
+/** Asked up front so the estimate never treats a married couple as single (ADR-0054). */
+export const FAMILIENSTAND_VALUES = ['Ledig', 'Verheiratet', 'Geschieden oder getrennt', 'Verwitwet'] as const
+
 export const PARTNER_VALUES = ['Ja', 'Nein'] as const
 
 export const HOMEOFFICE_VALUES = ['Nie', '1–2 Tage pro Woche', 'Fast immer'] as const
@@ -104,7 +107,7 @@ export const CH_WOHNSITZ_VALUES = ['Deutschland', 'Schweiz'] as const
 
 export type ChWohnsitz = (typeof CH_WOHNSITZ_VALUES)[number]
 
-export const QUESTION_ORDER: readonly MinimalGateQuestionId[] = ['job', 'ausland', 'kinder']
+export const QUESTION_ORDER: readonly MinimalGateQuestionId[] = ['job', 'ausland', 'kinder', 'familienstand']
 
 export const GATE_ACKNOWLEDGED = 'weiter'
 
@@ -144,6 +147,7 @@ export const QUESTIONS: Readonly<Record<EntryStepId, QuestionDeclaration>> = {
     },
   },
   kinder: { id: 'kinder', kind: 'question', form: { kind: 'enum', values: KINDER_VALUES } },
+  familienstand: { id: 'familienstand', kind: 'question', form: { kind: 'enum', values: FAMILIENSTAND_VALUES } },
   gewerbe: { id: 'gewerbe', kind: 'gate', form: { kind: 'enum', values: [GATE_ACKNOWLEDGED] } },
   'ch-only': { id: 'ch-only', kind: 'gate', form: { kind: 'enum', values: [GATE_ACKNOWLEDGED] } },
 
@@ -253,7 +257,7 @@ export interface CatalogueEntry {
 }
 
 export const ENTRIES: Readonly<Record<EntryId, CatalogueEntry>> = {
-  'minimal-gate': { id: 'minimal-gate', steps: ['job', 'ausland', 'kinder'] },
+  'minimal-gate': { id: 'minimal-gate', steps: ['job', 'ausland', 'kinder', 'familienstand'] },
   'segment-2': { id: 'segment-2', steps: ['partner', 'homeoffice', 'weg', 'tage', 'fortbildung'] },
   /** Kapital and Vermietung: the depot and the kind of letting decide what the masks and the Anlagen ask. */
   einkuenfte: { id: 'einkuenfte', steps: ['einkuenfte'] },

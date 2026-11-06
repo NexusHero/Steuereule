@@ -32,6 +32,16 @@ export interface ArbeitswegEingabenDto {
   verkehrsmittel: ArbeitswegEingabenDtoVerkehrsmittel;
   /** @nullable */
   taetigkeitsstaette: string | null;
+  /**
+     * Confirmed public holidays on working days, subtracted from the commute days.
+     * @nullable
+     */
+  feiertage?: number | null;
+  /**
+     * German state or Swiss canton the holiday suggestion came from.
+     * @nullable
+     */
+  feiertageRegion?: string | null;
 }
 
 export interface WerktageDto {

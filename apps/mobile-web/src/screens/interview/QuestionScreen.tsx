@@ -4,6 +4,7 @@ import { Option, useTheme, type Breakpoint } from '@steuereule/ui'
 import {
   JOB_VALUES,
   AUSLAND_VALUES,
+  FAMILIENSTAND_VALUES,
   KINDER_VALUES,
   QUESTION_ORDER,
   type QuestionId,
@@ -35,11 +36,18 @@ const KINDER_OPTIONS: ReadonlyArray<OptionSpec<(typeof KINDER_VALUES)[number]>> 
   { value: '1 Kind', labelKey: 'interview.kinder.options.einKind' },
   { value: '2 oder mehr', labelKey: 'interview.kinder.options.mehrere' },
 ]
+const FAMILIENSTAND_OPTIONS: ReadonlyArray<OptionSpec<(typeof FAMILIENSTAND_VALUES)[number]>> = [
+  { value: 'Ledig', labelKey: 'interview.familienstand.options.ledig' },
+  { value: 'Verheiratet', labelKey: 'interview.familienstand.options.verheiratet' },
+  { value: 'Geschieden oder getrennt', labelKey: 'interview.familienstand.options.geschieden' },
+  { value: 'Verwitwet', labelKey: 'interview.familienstand.options.verwitwet' },
+]
 
 const QUESTION_COPY: Record<QuestionId, { readonly titleKey: string; readonly helpKey: string; readonly options: ReadonlyArray<OptionSpec<string>> }> = {
   job: { titleKey: 'interview.job', helpKey: 'interview.job.help', options: JOB_OPTIONS },
   ausland: { titleKey: 'interview.ausland', helpKey: 'interview.ausland.help', options: AUSLAND_OPTIONS },
   kinder: { titleKey: 'interview.kinder', helpKey: 'interview.kinder.help', options: KINDER_OPTIONS },
+  familienstand: { titleKey: 'interview.familienstand', helpKey: 'interview.familienstand.help', options: FAMILIENSTAND_OPTIONS },
 }
 
 interface QuestionScreenProps {

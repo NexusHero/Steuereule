@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger'
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import { ArrayMaxSize, ArrayUnique, IsArray, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator'
 import { VERKEHRSMITTEL, type Verkehrsmittel } from '../arbeitsweg.repository.js'
 
@@ -47,6 +47,19 @@ export class ArbeitswegEingabenDto {
   @IsString()
   @MaxLength(120)
   taetigkeitsstaette!: string | null
+
+  @ApiPropertyOptional({ type: Number, nullable: true, example: 11, description: 'Confirmed public holidays on working days, subtracted from the commute days.' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(30)
+  feiertage?: number | null
+
+  @ApiPropertyOptional({ type: String, nullable: true, example: 'BW', description: 'German state or Swiss canton the holiday suggestion came from.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(8)
+  feiertageRegion?: string | null
 }
 
 export class WerktageDto {
