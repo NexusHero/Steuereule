@@ -140,8 +140,8 @@ function ChInterviewStep({ stepId, onAnswer, bp, onBack }: { readonly stepId: En
           {tr('grenzgaenger.interview.wohnsitz.titleAfter')}
         </Text>
         <Text style={styles.help}>{tr('grenzgaenger.interview.wohnsitz.help')}</Text>
-        <Option onPress={() => onAnswer('ch-wohnsitz', 'Deutschland')}>{tr('grenzgaenger.interview.wohnsitz.deutschland')}</Option>
-        <Option onPress={() => onAnswer('ch-wohnsitz', 'Schweiz')}>{tr('grenzgaenger.interview.wohnsitz.schweiz')}</Option>
+        <Option onPress={() => onAnswer('ch-wohnsitz', 'Deutschland')} testID="ch-wohnsitz-deutschland">{tr('grenzgaenger.interview.wohnsitz.deutschland')}</Option>
+        <Option onPress={() => onAnswer('ch-wohnsitz', 'Schweiz')} testID="ch-wohnsitz-schweiz">{tr('grenzgaenger.interview.wohnsitz.schweiz')}</Option>
       </ScrollView>
     )
   }

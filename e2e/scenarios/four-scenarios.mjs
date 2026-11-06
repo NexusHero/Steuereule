@@ -295,7 +295,10 @@ async function runScenario2And3(browser, webOrigin, sql) {
   await pageMarkus.locator(`[data-testid="interview-option-kinder-${s.markus.interview.kinder}"]`).click()
   await pageMarkus.locator(`[data-testid="interview-option-familienstand-${s.markus.interview.familienstand}"]`).click()
 
-  // CrossBorderScreen: Nichtrückkehrtage
+  // CrossBorderScreen: Wohnsitz & Nichtrückkehrtage
+  await pageMarkus.locator('[data-testid="ch-wohnsitz-deutschland"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await pageMarkus.locator('[data-testid="ch-wohnsitz-deutschland"]').click()
+
   await pageMarkus.locator('[data-testid="ch-tage-input"]').waitFor({ state: 'visible', timeout: 10_000 })
   await pageMarkus.locator('[data-testid="ch-tage-input"]').fill(String(s.markus.crossBorder.nonReturnDays))
   await pageMarkus.locator('[data-testid="ch-tage-weiter"]').click()
@@ -422,7 +425,10 @@ async function runScenario2And3(browser, webOrigin, sql) {
   await pageJulia.locator(`[data-testid="interview-option-kinder-${s.julia.interview.kinder}"]`).click()
   await pageJulia.locator(`[data-testid="interview-option-familienstand-${s.julia.interview.familienstand}"]`).click()
 
-  // CrossBorderScreen for Julia
+  // CrossBorderScreen for Julia: Wohnsitz & Nichtrückkehrtage
+  await pageJulia.locator('[data-testid="ch-wohnsitz-deutschland"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await pageJulia.locator('[data-testid="ch-wohnsitz-deutschland"]').click()
+
   await pageJulia.locator('[data-testid="ch-tage-input"]').waitFor({ state: 'visible', timeout: 10_000 })
   await pageJulia.locator('[data-testid="ch-tage-input"]').fill(String(s.julia.crossBorder.nonReturnDays))
   await pageJulia.locator('[data-testid="ch-tage-weiter"]').click()
