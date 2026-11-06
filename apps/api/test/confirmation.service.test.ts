@@ -9,6 +9,12 @@ import { FakeMarkingRepository } from './fakes/fake-marking.repository.js'
 import { FakeLstbRepository } from './fakes/fake-lstb.repository.js'
 import { FakePensionRepository } from './fakes/fake-pension.repository.js'
 import { FakeRentalRepository } from './fakes/fake-rental.repository.js'
+import { FakeProfileRepository } from './fakes/fake-profile.repository.js'
+import { FakeMasterDataRepository } from './fakes/fake-master-data.repository.js'
+import { FakeLinkRepository } from './fakes/fake-link.repository.js'
+import { FakeInterviewAnswerRepository } from './fakes/fake-interview-answer.repository.js'
+import { FakeChSalaryCertificateRepository } from './fakes/fake-ch-salary-certificate.repository.js'
+import { FakeChildRepository } from './fakes/fake-child.repository.js'
 import { AuditService } from '../src/audit/audit.service.js'
 
 const USER = 'user-1'
@@ -20,6 +26,12 @@ describe('BestaetigungService', () => {
   let lstb: FakeLstbRepository
   let pension: FakePensionRepository
   let rental: FakeRentalRepository
+  let profile: FakeProfileRepository
+  let masterData: FakeMasterDataRepository
+  let link: FakeLinkRepository
+  let interview: FakeInterviewAnswerRepository
+  let chSalary: FakeChSalaryCertificateRepository
+  let child: FakeChildRepository
   let service: ConfirmationService
 
   beforeEach(() => {
@@ -27,7 +39,25 @@ describe('BestaetigungService', () => {
     lstb = new FakeLstbRepository()
     pension = new FakePensionRepository()
     rental = new FakeRentalRepository()
-    const access = fieldAccessFrom({ lstb, pension, capital: new FakeCapitalRepository(), rental })
+    profile = new FakeProfileRepository()
+    masterData = new FakeMasterDataRepository()
+    link = new FakeLinkRepository()
+    interview = new FakeInterviewAnswerRepository()
+    chSalary = new FakeChSalaryCertificateRepository()
+    child = new FakeChildRepository()
+
+    const access = fieldAccessFrom({
+      lstb,
+      pension,
+      capital: new FakeCapitalRepository(),
+      rental,
+      profile,
+      masterData,
+      link,
+      interview,
+      chSalaryCertificate: chSalary,
+      child,
+    })
     service = new ConfirmationService(markings, access, new AuditService(new FakeAuditRepository()))
   })
 
@@ -116,5 +146,37 @@ describe('BestaetigungService', () => {
     await service.write('user-2', YEAR, 'lstb.lohnsteuer', '700', CLAUDE)
     expect(await service.overview(USER, YEAR)).toEqual({ annexes: [] })
     expect(await service.missing(USER, YEAR)).toEqual([])
+  })
+
+  it('supports writes to all remaining screens (profil, stammdaten, kopplung, interview, chLohnausweis, kind)', async () => {
+    // 1. profil
+    expect(await service.write(USER, YEAR, 'profil.firstName', 'Lena', CLAUDE)).toBe('geschrieben')
+    expect((await profile.findByUserId(USER))?.firstName).toBe('Lena')
+
+    // 2. stammdaten
+    expect(await service.write(USER, YEAR, 'stammdaten.beruf', 'Software Engineer', CLAUDE)).toBe('geschrieben')
+    expect((await masterData.findByUserId(USER))?.beruf).toBe('Software Engineer')
+
+    // 3. kopplung
+    expect(await service.write(USER, YEAR, 'kopplung.filingType', 'zusammen', CLAUDE)).toBe('geschrieben')
+    expect((await link.findByUserAndYear(USER, YEAR))?.filingType).toBe('zusammen')
+
+    // 4. interview
+    expect(await service.write(USER, YEAR, 'interview.job', 'Angestellt', CLAUDE)).toBe('geschrieben')
+    const answers = await interview.findAllForUserAndYear(USER, YEAR)
+    expect(answers.find((a) => a.questionId === 'job')?.value).toBe('Angestellt')
+
+    // 5. chLohnausweis
+    expect(await service.write(USER, YEAR, 'chLohnausweis.bruttolohn-total', '120000', CLAUDE)).toBe('geschrieben')
+    expect(await service.write(USER, YEAR, 'chLohnausweis.arbeitgeberName', 'Rheinpharma AG', CLAUDE)).toBe('geschrieben')
+    const cert = await chSalary.findForUserAndYear(USER, YEAR)
+    expect(cert?.fields['bruttolohn-total']).toBe('120000')
+    expect(cert?.nGre.arbeitgeberName).toBe('Rheinpharma AG')
+
+    // 6. kind (with instance)
+    const newChild = await child.create(USER, YEAR, { firstName: 'Noah', lastName: 'Brenner', geburtsdatum: '2020-01-01' })
+    expect(await service.write(USER, YEAR, `kind:${newChild.id}.kinship`, '1', CLAUDE)).toBe('geschrieben')
+    const kids = await child.listForUserAndYear(USER, YEAR)
+    expect(kids[0]?.kinship).toBe('1')
   })
 })

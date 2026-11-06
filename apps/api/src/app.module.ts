@@ -28,6 +28,7 @@ import { RentalModule } from './rental/rental.module.js'
 import { ChildrenModule } from './children/children.module.js'
 import { LinkModule } from './link/link.module.js'
 import { OwlModeModule } from './owl-mode/owl-mode.module.js'
+import { McpModule } from './mcp/mcp.module.js'
 import { DomainErrorFilter } from './common/domain-error.filter.js'
 
 @Module({
@@ -60,6 +61,7 @@ import { DomainErrorFilter } from './common/domain-error.filter.js'
     ChildrenModule,
     LinkModule,
     OwlModeModule,
+    McpModule,
   ],
   providers: [{ provide: APP_FILTER, useClass: DomainErrorFilter }],
 })
