@@ -663,3 +663,17 @@ describe('D3 (#321) — entries must partition the question-id space', () => {
     expect(() => buildStepIndex({ a }, customQuestions)).toThrow(/"typo-target" is referenced by entry "a" but has no QUESTIONS declaration/)
   })
 })
+
+describe('Berufsprofil — the occupation group, asked where the advice lives', () => {
+  it('is its own catalogue entry, outside the Minimal-Gate', () => {
+    expect(entryForStep('beruf')).toBe('berufsprofil')
+    expect(nextStepFor(ENTRIES.berufsprofil, {})).toEqual({ kind: 'question', id: 'beruf' })
+    expect(nextStepFor(ENTRIES.berufsprofil, { beruf: 'IT & Software' })).toEqual({ kind: 'done' })
+    expect(remainingSteps({ job: 'Angestellt', ausland: 'Nein', kinder: 'Nein', familienstand: 'Ledig' })).toBe(0)
+  })
+
+  it('accepts only the declared occupation groups', () => {
+    expect(isValidAnswer('beruf', 'Pflege & Gesundheit')).toBe(true)
+    expect(isValidAnswer('beruf', 'Astronaut')).toBe(false)
+  })
+})

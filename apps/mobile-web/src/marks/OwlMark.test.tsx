@@ -70,4 +70,19 @@ describe('OwlMark', () => {
     })
     expect(lidLayerHtml(container)).toContain('transform: scaleY(1)')
   })
+
+  it('renders the ink variant for light grounds (login) and the lime variant by default', () => {
+    const { getByTestId, rerender } = render(
+      <ThemeProvider mode="light">
+        <OwlMark />
+      </ThemeProvider>,
+    )
+    expect(getByTestId('owl-mark-funke')).toBeTruthy()
+    rerender(
+      <ThemeProvider mode="light">
+        <OwlMark variant="tinte" />
+      </ThemeProvider>,
+    )
+    expect(getByTestId('owl-mark-tinte')).toBeTruthy()
+  })
 })

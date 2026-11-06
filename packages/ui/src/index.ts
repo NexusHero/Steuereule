@@ -9,6 +9,7 @@ export { Button, type ButtonProps, type ButtonVariant } from './components/Butto
 export { Pill, type PillProps } from './components/Pill'
 export { Sticker, type StickerProps } from './components/Sticker'
 export { AiChip, type AiChipProps } from './components/AiChip'
+export { OwlGlyph, type OwlGlyphProps } from './components/OwlGlyph'
 export { ProvenanceChip as HerkunftsChip, type ProvenanceChipProps as HerkunftsChipProps, type Provenance as Herkunft } from './components/HerkunftsChip'
 export { Input, type InputProps, type InputType } from './components/Input'
 export { Field as Feld, type FieldProps as FeldProps } from './components/Field'

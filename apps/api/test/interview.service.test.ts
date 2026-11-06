@@ -297,4 +297,24 @@ describe('InterviewService', () => {
       await expect(service.getState(USER_ID, TAX_YEAR, 'nope', 'guest')).rejects.toThrow('is not a known catalogue entry')
     })
   })
+
+  describe('Berufsprofil — the occupation group for the owl\'s profession tips', () => {
+    it('admits the occupation group for an account, without touching the Minimal-Gate', async () => {
+      const result = await service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'beruf', value: 'IT & Software' })
+      expect(result.nextStep).toEqual({ kind: 'done' })
+      expect((await repository.findAllForUserAndYear(USER_ID, TAX_YEAR)).map((r) => r.questionId)).toEqual(['beruf'])
+    })
+
+    it('keeps it for accounts — a guest is turned away (ADR-0045)', async () => {
+      await expect(
+        service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'beruf', value: 'IT & Software' }, 'guest'),
+      ).rejects.toBeInstanceOf(GuestCannotUseThisEndpointError)
+    })
+
+    it('rejects a value outside the occupation groups', async () => {
+      await expect(service.postAnswer(USER_ID, TAX_YEAR, { questionId: 'beruf', value: 'Astronaut' })).rejects.toBeInstanceOf(
+        InvalidAnswerValueError,
+      )
+    })
+  })
 })

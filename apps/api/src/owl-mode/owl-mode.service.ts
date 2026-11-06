@@ -4,6 +4,8 @@ import {
   appealDeadlineEnd,
   generateOwlCards,
   homeOfficeDaysFromInterview,
+  PROFESSION_VALUES,
+  type Profession,
   LEGAL_STATUS_DATE,
   type OwlArchiveYear,
   type OwlInputFacts,
@@ -31,6 +33,10 @@ function toAnswerMap(rows: InterviewAnswerRecord[]): Record<string, string> {
   const map: Record<string, string> = {}
   for (const row of rows) map[row.questionId] = row.value
   return map
+}
+
+function professionFrom(value: string | undefined): Profession | undefined {
+  return (PROFESSION_VALUES as readonly string[]).includes(value ?? '') ? (value as Profession) : undefined
 }
 
 function integer(value: string | undefined): number | null {
@@ -110,6 +116,7 @@ export class OwlModeService {
     const input: OwlInputFacts = {
       taxYear,
       hasTraining: answers['fortbildung'] === 'Ja',
+      profession: professionFrom(answers['beruf']),
       homeOfficeDays: homeOfficeDaysFromInterview(answers),
       lastYearFacts: lastYearDonationsEur !== null ? { donationsEur: lastYearDonationsEur } : null,
       childrenPerInterview: answers['kinder'] !== undefined && answers['kinder'] !== 'Nein',

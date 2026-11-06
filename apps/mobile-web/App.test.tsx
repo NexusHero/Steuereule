@@ -176,6 +176,23 @@ describe('App', () => {
     15_000,
   )
 
+  // The advisor owl has its own tab, right after Cockpit — advice is a place in the app, not a
+  // button at the bottom of the Cockpit.
+  it(
+    'reaches the Eule tab from Cockpit through the tab bar',
+    async () => {
+      const { default: App } = await import('./App')
+      render(<App />)
+      await enterAsGuestThroughInterview()
+      await screen.findByText('Cockpit')
+      expect(screen.getByTestId('tab-icon-eule')).toBeTruthy()
+
+      fireEvent.click(screen.getByText('Eule'))
+      await screen.findByTestId('eulen-modus-screen')
+    },
+    15_000,
+  )
+
   // REQ-015/#318 task 2 — the GWT's own closing clause, walked through the real app shell and
   // router: the Cockpit CTA reaches the real Minimal-Gate (not a dead affordance, closing the
   // revisit CockpitScreen.tsx itself announced), the tab bar stays visible while inside it (no

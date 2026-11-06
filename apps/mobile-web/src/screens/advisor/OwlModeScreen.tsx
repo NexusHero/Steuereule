@@ -2,8 +2,8 @@ import { useState } from 'react'
 import { Pressable, ScrollView, Text, View, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { Button, Card, Chip, Option, useBreakpoint, useTheme, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
-import { formatEuro, type OwlCardsDisplay } from '@steuereule/core'
+import { AiChip, Button, Card, Chip, Option, useBreakpoint, useTheme, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
+import { formatEuro, PROFESSION_VALUES, type OwlCardsDisplay, type Profession } from '@steuereule/core'
 import {
   getOwlModeControllerGetSettingQueryKey,
   getOwlModeControllerGetCardsQueryKey,
@@ -11,11 +11,17 @@ import {
   useOwlModeControllerGetCards,
   useOwlModeControllerSetSetting,
   useOwlModeControllerDismissCard,
+  useInterviewControllerGetInterview,
+  useInterviewControllerPostAnswer,
+  getInterviewControllerGetInterviewQueryKey,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
-import { BackButton, BackButtonSpacer } from '../shared/BackButton'
+import { BackButton } from '../shared/BackButton'
 import { ErrorState, LoadingState } from '../shared/ScreenState'
+import { OwlMark } from '../../marks/OwlMark'
+import { useOwlEntrance } from '../../marks/useOwlEntrance'
+import { ProfessionPicker } from './ProfessionPicker'
 
 export interface OwlModeScreenProps {
   readonly onDone?: () => void
@@ -26,6 +32,13 @@ export interface OwlModeScreenProps {
   readonly onAcceptPath?: ((cardId: string, pathIndex: number) => void) | undefined
   readonly optInEnabled?: boolean | undefined
   readonly onToggleOptIn?: ((enabled: boolean) => Promise<void> | void) | undefined
+  /** The interview's occupation group; null = not chosen yet, undefined = no picker (not loaded). */
+  readonly profession?: Profession | null | undefined
+  readonly onChooseProfession?: ((profession: Profession) => Promise<void> | void) | undefined
+}
+
+function professionFrom(value: string | undefined): Profession | null {
+  return (PROFESSION_VALUES as readonly string[]).includes(value ?? '') ? (value as Profession) : null
 }
 
 export function OwlModeScreen(props: OwlModeScreenProps) {
@@ -43,6 +56,9 @@ function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CURRENT_T
   const cardsQuery = useOwlModeControllerGetCards(taxYear)
   const setSetting = useOwlModeControllerSetSetting()
   const dismissCard = useOwlModeControllerDismissCard()
+  const interviewQuery = useInterviewControllerGetInterview(taxYear)
+  const postAnswer = useInterviewControllerPostAnswer()
+  const interviewAnswers = interviewQuery.data?.status === 200 ? (interviewQuery.data.data.answers as Record<string, string>) : undefined
 
   if (settingQuery.isPending || cardsQuery.isPending) {
     return <LoadingState bp={bp} label={tr('eule.loading', 'Eulen-Modus wird geladen …')} />
@@ -91,6 +107,15 @@ function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CURRENT_T
         await invalidate()
       }}
       {...(onAcceptPath ? { onAcceptPath } : {})}
+      profession={interviewAnswers === undefined ? undefined : professionFrom(interviewAnswers['beruf'])}
+      onChooseProfession={async (profession) => {
+        const response = await postAnswer.mutateAsync({ jahr: taxYear, data: { questionId: 'beruf', value: profession } })
+        if (response.status !== 200) throw new Error(`profession not stored (HTTP ${response.status})`)
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: getInterviewControllerGetInterviewQueryKey(taxYear) }),
+          invalidate(),
+        ])
+      }}
     />
   )
 }
@@ -104,11 +129,14 @@ function OwlModeScreenView({
   onAcceptPath,
   optInEnabled = true,
   onToggleOptIn,
+  profession,
+  onChooseProfession,
 }: OwlModeScreenProps & { readonly initialCards: readonly OwlCardsDisplay[] }) {
   const bp = useBreakpoint()
   const t = useTheme()
   const styles = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
+  const owl = useOwlEntrance()
 
   const [tab, setTab] = useState<'fragen' | 'eule'>('eule')
   const [cards, setCards] = useState<readonly OwlCardsDisplay[]>(initialCards)
@@ -127,9 +155,28 @@ function OwlModeScreenView({
 
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="eulen-modus-screen">
-      <View style={styles.headerRow}>
-        {onBack ? <BackButton accessibilityLabel={tr('eule.back', 'Zurück')} onPress={onBack} /> : <BackButtonSpacer />}
+      {onBack ? (
+        <View style={styles.headerRow}>
+          <BackButton accessibilityLabel={tr('eule.back', 'Zurück')} onPress={onBack} />
+        </View>
+      ) : null}
+
+      {/* The owl is your advisor: it greets you at the top of its own tab. */}
+      <View style={styles.hero} testID="eule-hero">
+        <OwlMark variant="tinte" size={72} {...owl} />
+        <View style={styles.heroCopy}>
+          <Text style={styles.heroTitle} role="heading" aria-level={1}>
+            {tr('eule.heroTitle', 'Deine Eule')}
+          </Text>
+          <Text style={styles.help}>
+            {tr('eule.heroBody', 'Sie kennt dein Steuerjahr und sagt dir, wo Geld liegen bleibt — mit Rechtsgrundlage, damit du selbst entscheidest.')}
+          </Text>
+        </View>
       </View>
+
+      {profession !== undefined && onChooseProfession ? (
+        <ProfessionPicker profession={profession} onChoose={onChooseProfession} />
+      ) : null}
 
       {onToggleOptIn ? (
         <View style={{ marginBottom: t.space.s4 }}>
@@ -168,6 +215,7 @@ function OwlModeScreenView({
 
       {tab === 'fragen' ? (
         <View style={styles.chatPlaceholder}>
+          <AiChip style={styles.sender} testID="eule-sender-chat">{tr('eule.sender', 'Die Eule')}</AiChip>
           <Text style={styles.heading}>{tr('eule.chatTitle', 'Steuer-Assistent')}</Text>
           <Text style={styles.help}>
             {tr(
@@ -193,6 +241,8 @@ function OwlModeScreenView({
             {tr('eule.counter', { current: activeIndex + 1, total: cards.length, defaultValue: `Frage ${activeIndex + 1} von ${cards.length}` })}
           </Text>
           <Card style={styles.kiCard}>
+            {/* The advisor speaks as the owl — every proactive hint is signed by it. */}
+            <AiChip style={styles.sender} testID="eule-sender-card">{tr('eule.sender', 'Die Eule')}</AiChip>
             <View style={styles.cardHeader}>
               <Chip active>{activeCard.title}</Chip>
               {activeCard.amountEur !== null && (
@@ -265,6 +315,15 @@ function makeStyles(t: UiTheme) {
   const kiBg = t.color.kiWeich
 
   return {
+    hero: { flexDirection: 'row', alignItems: 'center', gap: t.space.s4, marginBottom: t.space.s5 } as ViewStyle,
+    heroCopy: { flex: 1, flexShrink: 1 } as ViewStyle,
+    heroTitle: {
+      fontFamily: t.font.display,
+      fontWeight: t.weight.schwer,
+      fontSize: t.size['2xl'],
+      color: t.color.tinte,
+      marginBottom: t.space.s1,
+    } as TextStyle,
     screen: {
       backgroundColor: t.color.grund,
       paddingHorizontal: t.space.s5,
@@ -327,6 +386,9 @@ function makeStyles(t: UiTheme) {
     } as TextStyle,
     chatPlaceholder: {
       padding: t.space.s4,
+    } as ViewStyle,
+    sender: {
+      marginBottom: t.space.s3,
     } as ViewStyle,
     emptyCard: {
       padding: t.space.s5,
