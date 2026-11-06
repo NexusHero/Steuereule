@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger'
-import { LstbFieldDto } from './lstb-feld.dto.js'
-import { LstbStatusDto } from './lstb-zustand.dto.js'
+import { LstbFieldDto } from './lstb-field.dto.js'
+import { LstbStatusDto } from './lstb-state.dto.js'
 
 /** The response shape for `GET /v1/steuerjahre/{jahr}/lstb` and the `PUT .../lstb/{feld}` response. */
 export class LstbResponseDto {

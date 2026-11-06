@@ -14,8 +14,8 @@ import { DeviceQrColumn } from './login/DeviceQrColumn'
 import { makeLoginStyles } from './login/loginStyles'
 import { SocialSignInSection } from './shared/SocialSignInSection'
 import { EmailVerificationBanner } from './shared/EmailVerificationBanner'
-import { LegalLinks } from './rechtliches/RechtlichesLinks'
-import type { LegalPage } from './rechtliches/texte'
+import { LegalLinks } from './legal/LegalLinks'
+import type { LegalPage } from './legal/texts'
 import { MIN_PASSWORD_LENGTH } from '../auth/password-policy'
 
 export interface LoginScreenProps {

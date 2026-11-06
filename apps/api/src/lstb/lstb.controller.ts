@@ -10,12 +10,12 @@ import {
 import { CurrentUser } from '../auth/current-user.decorator.js'
 import { RequiresAccount } from '../auth/requires-account.guard.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
-import { ParseTaxYearPipe } from '../cockpit/parse-steuerjahr.pipe.js'
-import { LinkService } from '../kopplung/kopplung.service.js'
-import { ParsePersonPipe } from '../kopplung/parse-person.pipe.js'
-import { ParseLstbFieldPipe } from './parse-lstb-feld.pipe.js'
+import { ParseTaxYearPipe } from '../cockpit/parse-tax-year.pipe.js'
+import { LinkService } from '../link/link.service.js'
+import { ParsePersonPipe } from '../link/parse-person.pipe.js'
+import { ParseLstbFieldPipe } from './parse-lstb-field.pipe.js'
 import { LstbService } from './lstb.service.js'
-import { LstbFieldDto } from './dto/lstb-feld.dto.js'
+import { LstbFieldDto } from './dto/lstb-field.dto.js'
 import { LstbResponseDto } from './dto/lstb-response.dto.js'
 
 @ApiTags('lstb')

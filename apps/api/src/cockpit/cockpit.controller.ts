@@ -4,7 +4,7 @@ import { CurrentUser } from '../auth/current-user.decorator.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
 import { CockpitStatusDto, CockpitSummaryDto } from './dto/cockpit-summary.dto.js'
 import { CockpitService } from './cockpit.service.js'
-import { ParseTaxYearPipe } from './parse-steuerjahr.pipe.js'
+import { ParseTaxYearPipe } from './parse-tax-year.pipe.js'
 
 @ApiTags('cockpit')
 @Controller('v1/steuerjahre')

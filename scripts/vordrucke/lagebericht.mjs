@@ -23,7 +23,7 @@ if (!/^\d{4}$/.test(jahr ?? '')) {
   process.exit(1)
 }
 const VORLAGEN = path.join(ROOT, 'apps/api/assets/vordrucke', jahr)
-const AUSDRUCK = path.join(ROOT, 'apps/api/src/ausdruck')
+const AUSDRUCK = path.join(ROOT, 'apps/api/src/printout')
 const { felder } = JSON.parse(readFileSync(path.join(AUSDRUCK, `felder-${jahr}.json`), 'utf8'))
 
 const cache = new Map()
@@ -81,5 +81,5 @@ if (process.argv.includes('--check')) {
   console.log(`${felder.length} Felder: Lagebericht ${jahr} unverändert.`)
 } else {
   writeFileSync(ziel, bericht)
-  console.log(`${felder.length} Felder → apps/api/src/ausdruck/felder-${jahr}.lage.txt`)
+  console.log(`${felder.length} Felder → apps/api/src/printout/felder-${jahr}.lage.txt`)
 }

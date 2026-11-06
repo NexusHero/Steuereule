@@ -3,7 +3,7 @@
 // real-Postgres proof (ciphertext at rest, audit atomicity, cross-user isolation, the real
 // derived zustand through Prisma) lives in test/acceptance/req-016-lstb-angestellte.test.ts.
 import { beforeEach, describe, expect, it } from 'vitest'
-import { FakeMarkingRepository } from './fakes/fake-kennzeichnung.repository.js'
+import { FakeMarkingRepository } from './fakes/fake-marking.repository.js'
 import { AuditService } from '../src/audit/audit.service.js'
 import { LstbService } from '../src/lstb/lstb.service.js'
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'

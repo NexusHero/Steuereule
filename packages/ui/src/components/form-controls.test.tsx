@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { screen, fireEvent } from '@testing-library/react'
 import { Text } from 'react-native'
 import { Input } from './Input'
-import { Field } from './Feld'
+import { Field } from './Field'
 import { Chip } from './Chip'
 import { renderUi } from '../test-utils'
 

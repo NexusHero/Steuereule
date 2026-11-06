@@ -30,8 +30,8 @@ verschiedene Vergleiche, zwei Namen, nie wieder einer.
 
 ## Decision
 
-Ein reines, UI-freies Modul `packages/core/src/kapital.ts`, ein zweites
-`packages/core/src/guenstigerpruefung.ts` (ADR-0004, kein I/O), plus eine Belegart-Erweiterung,
+Ein reines, UI-freies Modul `packages/core/src/capital.ts`, ein zweites
+`packages/core/src/most-favourable-check.ts` (ADR-0004, kein I/O), plus eine Belegart-Erweiterung,
 plus der übliche API-/Screen-Ausbau:
 
 1. **Depot-Einordnung (`ordneKapDepotEin`)** — die `kap-depot`-Antwort wird auf das abgebildet,

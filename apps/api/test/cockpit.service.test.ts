@@ -5,14 +5,14 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { CockpitService } from '../src/cockpit/cockpit.service.js'
 import { FakeInterviewAnswerRepository } from './fakes/fake-interview-answer.repository.js'
-import { FakeCapitalRepository } from './fakes/fake-kapital.repository.js'
+import { FakeCapitalRepository } from './fakes/fake-capital.repository.js'
 import { FakeLstbRepository } from './fakes/fake-lstb.repository.js'
-import { FakePensionRepository } from './fakes/fake-rente.repository.js'
+import { FakePensionRepository } from './fakes/fake-pension.repository.js'
 import { FakeTaxYearRepository } from './fakes/fake-tax-year.repository.js'
-import { FakeMarkingRepository } from './fakes/fake-kennzeichnung.repository.js'
-import { FakeRentalRepository } from './fakes/fake-vermietung.repository.js'
-import { FakeChSalaryCertificateRepository } from './fakes/fake-ch-lohnausweis.repository.js'
-import type { CrossBorderSalaryStatementRecord } from '../src/ch-lohnausweis/ch-lohnausweis.repository.js'
+import { FakeMarkingRepository } from './fakes/fake-marking.repository.js'
+import { FakeRentalRepository } from './fakes/fake-rental.repository.js'
+import { FakeChSalaryCertificateRepository } from './fakes/fake-ch-salary-certificate.repository.js'
+import type { CrossBorderSalaryStatementRecord } from '../src/ch-salary-certificate/ch-salary-certificate.repository.js'
 
 describe('CockpitService', () => {
   let taxYear: FakeTaxYearRepository

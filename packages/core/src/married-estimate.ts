@@ -1,5 +1,5 @@
-import type { Range, TaxEstimate } from './steuerschaetzung'
-import { childTaxAllowance } from './kinder'
+import type { Range, TaxEstimate } from './tax-estimate'
+import { childTaxAllowance } from './children'
 import { isSupportedIncomeTaxYear, soliExemptionLimits, solidaritaetszuschlag, splittingTariff } from './tarif'
 
 /** One spouse's wage income, as either the German Lohnsteuerbescheinigung or the Swiss Anlage N-Gre gives it. */

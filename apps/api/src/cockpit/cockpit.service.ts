@@ -9,17 +9,17 @@ import {
   type CockpitRange,
 } from '@steuereule/core'
 import { INTERVIEW_ANSWER_REPOSITORY, type InterviewAnswerRepository } from '../interview/interview-answer.repository.js'
-import { CAPITAL_REPOSITORY, type CapitalRepository } from '../kapital/kapital.repository.js'
+import { CAPITAL_REPOSITORY, type CapitalRepository } from '../capital/capital.repository.js'
 import { WAGE_TAX_CERTIFICATE_REPOSITORY, type WageTaxCertificateRepository } from '../lstb/lstb.repository.js'
-import { PENSION_REPOSITORY, type PensionRepository } from '../rente/rente.repository.js'
-import { PROVENANCE_REPOSITORY, type ProvenanceRepository } from '../kennzeichnung/kennzeichnung.repository.js'
-import { RENTAL_REPOSITORY, type RentalRepository } from '../vermietung/vermietung.repository.js'
+import { PENSION_REPOSITORY, type PensionRepository } from '../pension/pension.repository.js'
+import { PROVENANCE_REPOSITORY, type ProvenanceRepository } from '../marking/marking.repository.js'
+import { RENTAL_REPOSITORY, type RentalRepository } from '../rental/rental.repository.js'
 import { TAX_YEAR_REPOSITORY, type TaxYearRepository } from './tax-year.repository.js'
 import type { CockpitStatusDto, CockpitSummaryDto } from './dto/cockpit-summary.dto.js'
 import { answersFrom } from '../interview/answers.js'
-import { wageTaxCertificateDataFrom } from '../lstb/lstb-daten.js'
-import { CROSS_BORDER_SALARY_STATEMENT_REPOSITORY, type CrossBorderSalaryStatementRecord, type CrossBorderSalaryStatementRepository } from '../ch-lohnausweis/ch-lohnausweis.repository.js'
-import { crossBorderStatusFromAnswers, salaryCertificateValuesFromRecord, exchangeRateFromRecord } from '../ch-lohnausweis/lohnausweis-daten.js'
+import { wageTaxCertificateDataFrom } from '../lstb/lstb-data.js'
+import { CROSS_BORDER_SALARY_STATEMENT_REPOSITORY, type CrossBorderSalaryStatementRecord, type CrossBorderSalaryStatementRepository } from '../ch-salary-certificate/ch-salary-certificate.repository.js'
+import { crossBorderStatusFromAnswers, salaryCertificateValuesFromRecord, exchangeRateFromRecord } from '../ch-salary-certificate/salary-certificate-data.js'
 
 function recordedValue(raw: string | null): number | null {
   if (raw === null || raw === 'unklar') return null

@@ -21,7 +21,7 @@ steuerpflichtigen Anteils in den deterministischen Kern.
 
 ## Decision
 
-Ein reines, UI-freies Modul `packages/core/src/rente.ts` (ADR-0004, kein I/O), plus eine Belegart-
+Ein reines, UI-freies Modul `packages/core/src/pension.ts` (ADR-0004, kein I/O), plus eine Belegart-
 Erweiterung, plus der übliche API-/Screen-Ausbau:
 
 1. **`Rentenart`-Vokabular (Produkt-ADR-036 §3)** — die fünf Rentenarten als geschlossene Union

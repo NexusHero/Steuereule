@@ -29,7 +29,7 @@ Vermietung unterscheidet sich von Rente (10.4) und Kapital (10.5) strukturell: e
 
 ## Decision
 
-Ein reines, UI-freies Modul `packages/core/src/vermietung.ts` (ADR-0004, kein I/O), plus der
+Ein reines, UI-freies Modul `packages/core/src/rental.ts` (ADR-0004, kein I/O), plus der
 übliche API-/Screen-Ausbau:
 
 1. **Vermietung-Einordnung (`ordneVermietungEin`)** — die `vermietung-art`-Antwort wird auf das

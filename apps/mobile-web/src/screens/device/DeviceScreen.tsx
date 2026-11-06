@@ -3,7 +3,7 @@ import { useBreakpoint } from '@steuereule/ui'
 import { APP_NS } from '../../i18n/resources'
 import { useAccountSession } from '../../auth/useAccountSession'
 import { LoginScreen } from '../LoginScreen'
-import { DeviceApprovalScreen } from './GeraetefreigabeScreen'
+import { DeviceApprovalScreen } from './DeviceApprovalScreen'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 
 export interface DeviceScreenProps {

@@ -325,14 +325,14 @@ jobs:
         run: sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends poppler-utils
       - name: Vermessung — felder-<jahr>.json equals what templates + spec measure
         run: |
-          for spec in apps/api/src/ausdruck/felder-*.spec.json; do
+          for spec in apps/api/src/printout/felder-*.spec.json; do
             jahr=$(basename "$spec" | grep -oE '[0-9]{4}')
             node scripts/vordrucke/vermessen.mjs "$jahr" --check
           done
       - name: Lage — felder-<jahr>.lage.txt unchanged (a change needs a human review)
         if: '!cancelled()'
         run: |
-          for spec in apps/api/src/ausdruck/felder-*.spec.json; do
+          for spec in apps/api/src/printout/felder-*.spec.json; do
             jahr=$(basename "$spec" | grep -oE '[0-9]{4}')
             node scripts/vordrucke/lagebericht.mjs "$jahr" --check
           done

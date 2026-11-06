@@ -1,5 +1,5 @@
 import type { Item, Source } from './berechnung.js'
-import type { IncomeType } from './einkunftsarten.js'
+import type { IncomeType } from './income-types.js'
 
 /** The schema the LLM must answer. */
 export interface AiProposal {

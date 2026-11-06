@@ -1,0 +1,76 @@
+import { Inject, Injectable } from '@nestjs/common'
+import { NotFoundError } from '../common/domain-error.js'
+import { assignmentFromData, type ReceiptAssignment } from '@steuereule/core'
+import { AuditService } from '../audit/audit.service.js'
+import { RECEIPT_REPOSITORY, type ReceiptRecord, type ReceiptRepository } from './receipt.repository.js'
+import type { ReceiptResponseDto } from './dto/receipt-response.dto.js'
+import type { CreateReceiptDto } from './dto/create-receipt.dto.js'
+import type { SetAssignmentDto } from './dto/set-assignment.dto.js'
+import type { AssignmentDto } from './dto/assignment.dto.js'
+
+function toAssignmentDto(assignment: ReceiptAssignment): AssignmentDto {
+  switch (assignment.kind) {
+    case 'ungebunden':
+      return { kind: 'ungebunden' }
+    case 'vorgeschlagen':
+      return { kind: 'vorgeschlagen', taxYear: assignment.proposal.taxYear, provenance: assignment.proposal.provenance }
+    case 'zugeordnet':
+      return { kind: 'zugeordnet', taxYear: assignment.taxYear }
+    case 'konflikt':
+      return {
+        kind: 'konflikt',
+        taxYear: assignment.assigned,
+        proposalYear: assignment.proposal.taxYear,
+        provenance: assignment.proposal.provenance,
+      }
+  }
+}
+
+function toReceiptResponse(record: ReceiptRecord): ReceiptResponseDto {
+  return {
+    id: record.id,
+    fileName: record.fileName,
+    kind: record.kind ?? null,
+    belegdatum: record.belegdatum ?? null,
+    zahlungsdatum: record.zahlungsdatum ?? null,
+    assignment: toAssignmentDto(assignmentFromData(record)),
+  }
+}
+
+/** Application logic for the Beleg-Posteingang: userId-scoped reads/writes, then the derived-Zuordnung mapping. */
+@Injectable()
+export class ReceiptService {
+  constructor(
+    @Inject(RECEIPT_REPOSITORY) private readonly repository: ReceiptRepository,
+    @Inject(AuditService) private readonly auditService: AuditService,
+  ) {}
+
+  async list(userId: string): Promise<ReceiptResponseDto[]> {
+    const rows = await this.repository.findAllForUser(userId)
+    if (rows.length > 0) {
+      await this.auditService.append({ userId, action: 'READ', resource: 'beleg' })
+    }
+    return rows.map(toReceiptResponse)
+  }
+
+  async create(userId: string, dto: CreateReceiptDto): Promise<ReceiptResponseDto> {
+    const record = await this.repository.create(userId, {
+      fileName: dto.fileName,
+      ...(dto.kind !== undefined ? { kind: dto.kind } : {}),
+      ...(dto.belegdatum !== undefined ? { belegdatum: dto.belegdatum } : {}),
+      ...(dto.zahlungsdatum !== undefined ? { zahlungsdatum: dto.zahlungsdatum } : {}),
+    })
+    return toReceiptResponse(record)
+  }
+
+  async setAssignment(userId: string, id: string, dto: SetAssignmentDto): Promise<ReceiptResponseDto> {
+    const record = await this.repository.setAssignment(userId, id, {
+      taxYear: dto.taxYear,
+      proposalDismissed: dto.proposalDismissed ?? false,
+    })
+    if (record === null) {
+      throw new NotFoundError('BELEG_NOT_FOUND', `Beleg "${id}" does not exist for this account.`)
+    }
+    return toReceiptResponse(record)
+  }
+}

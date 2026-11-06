@@ -13,13 +13,13 @@ import {
   provenanceKey,
 } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
-import { PROVENANCE_REPOSITORY, type ProvenanceRepository } from '../kennzeichnung/kennzeichnung.repository.js'
+import { PROVENANCE_REPOSITORY, type ProvenanceRepository } from '../marking/marking.repository.js'
 import { WAGE_TAX_CERTIFICATE_REPOSITORY, type WageTaxCertificateRepository } from './lstb.repository.js'
-import type { LstbFieldDto } from './dto/lstb-feld.dto.js'
+import type { LstbFieldDto } from './dto/lstb-field.dto.js'
 import type { LstbResponseDto } from './dto/lstb-response.dto.js'
-import type { LstbConflictDto } from './dto/lstb-widerspruch.dto.js'
-import type { LstbStatusDto } from './dto/lstb-zustand.dto.js'
-import { wageTaxCertificateDataFrom } from './lstb-daten.js'
+import type { LstbConflictDto } from './dto/lstb-conflict.dto.js'
+import type { LstbStatusDto } from './dto/lstb-state.dto.js'
+import { wageTaxCertificateDataFrom } from './lstb-data.js'
 
 function stateFromDto(dto: LstbFieldDto): WageTaxCertificateFieldState {
   if (dto.kind === 'offen') return { kind: 'offen' }

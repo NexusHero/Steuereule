@@ -10,7 +10,7 @@ import { createAppI18n } from '../i18n/app-i18n'
 import { createAppAuthClient } from '../auth/auth-client'
 import { AuthClientProvider } from '../auth/AuthClientProvider'
 import { LoginScreen } from './LoginScreen'
-import type { LegalPage } from './rechtliches/texte'
+import type { LegalPage } from './legal/texts'
 
 const BASE_URL = 'http://localhost:3000'
 

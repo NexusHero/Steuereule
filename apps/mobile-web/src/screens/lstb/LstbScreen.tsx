@@ -11,7 +11,7 @@ import {
   type LstbResponseDto,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
-import { integerFrom } from '../shared/ganzzahl'
+import { integerFrom } from '../shared/integer'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'

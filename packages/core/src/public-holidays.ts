@@ -1,4 +1,4 @@
-import type { IsoWeekday } from './werktage'
+import type { IsoWeekday } from './workdays'
 
 /**
  * Public holidays for the commute (finding F4 of the 2025 test run: without them the Pendlertage were

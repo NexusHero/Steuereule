@@ -3,7 +3,7 @@ import { ActivityIndicator, RefreshControl, ScrollView, View, Text, type ViewSty
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import { Button, Card, Chip, HerkunftsChip, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme, type Breakpoint } from '@steuereule/ui'
-import { DeadlinesBanner } from '../fristen/FristenBanner'
+import { DeadlinesBanner } from '../deadlines/DeadlinesBanner'
 import { formatEuro, formatEuroRange, UNCERTAINTY_PER_ITEM } from '@steuereule/core'
 import {
   useCockpitControllerGetCockpitSummary,

@@ -21,7 +21,7 @@ and whose document set is the CH-Lohnausweis, the Quellensteuer-Abrechnung, the 
 
 ## Decision
 
-1. **Belegart-Vokabular (`packages/core/src/belegart.ts`)** — the CH document types join the shared
+1. **Belegart-Vokabular (`packages/core/src/receipt-type.ts`)** — the CH document types join the shared
    Beleg-Posteingang vocabulary (ADR-007/008) as one extensible `Belegart` union. The `Beleg` table
    gains a plain `art` discriminator (nullable: `null` = the pre-CH undifferentiated receipt). `art`
    is **clear**, not field-encrypted — same reasoning as the dates (the inbox groups by it without

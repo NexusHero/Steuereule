@@ -23,7 +23,7 @@ passiert, was tun, keine Pointe, nie Schuld beim Nutzer.
 
 ## Decision
 
-Ein reines, UI-freies Modul `packages/core/src/fristen.ts` (ADR-0004, kein I/O), ein
+Ein reines, UI-freies Modul `packages/core/src/deadlines.ts` (ADR-0004, kein I/O), ein
 read-only-API-Modul, ein Banner im Cockpit:
 
 1. **Abgabefrist als explizites Regelwerk (`abgabefristFuer`)** — § 149 Abs. 2 AO: 31. Juli des

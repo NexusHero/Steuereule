@@ -53,7 +53,7 @@ A decision to adopt a tool that "should work" is worth nothing until someone has
 |---|---|---|
 | NestJS decorators (`@Injectable`, `@Controller`) | `apps/api/src/auth/user-context.guard.ts` | EOF violation flagged — full parse |
 | ESM `.js`-extension imports | `apps/api/src/prisma/encrypted-prisma.provider.ts` | EOF violation flagged — full parse |
-| RN-Web `.tsx` (≈500 lines) | `apps/mobile-web/src/screens/DatenschutzScreen.tsx` | EOF violation flagged at line 495 — full parse |
+| RN-Web `.tsx` (≈500 lines) | `apps/mobile-web/src/screens/PrivacyScreen.tsx` | EOF violation flagged at line 495 — full parse |
 
 ### 2. The ruleset earns its place, rule by rule
 
