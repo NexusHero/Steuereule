@@ -72,7 +72,8 @@ export class ChildrenService {
     }
     const allowancesChf = chRecord?.nGre.familienzulagenChf
     if (!allowancesChf || Number(allowancesChf) <= 0) return null
-    const rate = chRecord?.exchangeRateValue ?? 1.0
+    const rate = chRecord?.exchangeRateValue
+    if (rate == null || rate <= 0) return null
     const perChildChf = Math.round(Number(allowancesChf) / count)
     return Math.round(perChildChf * rate)
   }
