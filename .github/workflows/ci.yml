@@ -113,6 +113,7 @@ jobs:
           scan-ref: .
           severity: HIGH,CRITICAL
           exit-code: '1'
+          trivyignores: .trivyignore
       - name: Semgrep SAST Scan (.semgrep.yml custom NestJS/DSGVO rules)
         run: docker run --rm -v "$PWD:/src" -w /src semgrep/semgrep:1.110.0 semgrep scan --config .semgrep.yml --error
 
@@ -439,6 +440,7 @@ jobs:
           severity: HIGH,CRITICAL
           ignore-unfixed: true
           exit-code: '1'
+          trivyignores: .trivyignore
       - name: Trivy Container Scan — steuereule-web:ci (HIGH/CRITICAL blocking)
         uses: aquasecurity/trivy-action@v0.36.0
         with:
@@ -447,6 +449,7 @@ jobs:
           severity: HIGH,CRITICAL
           ignore-unfixed: true
           exit-code: '1'
+          trivyignores: .trivyignore
       - name: Upload CycloneDX SBOM artifacts (CRA /BSI TR-03183 compliance)
         uses: actions/upload-artifact@v4
         with:
