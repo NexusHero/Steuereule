@@ -15,6 +15,7 @@ import { integerFrom } from '../shared/integer'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
+import { InMaskAdvisorCompanion } from '../advisor/InMaskAdvisorCompanion'
 
 type FieldId = 'bruttoarbeitslohn' | 'lohnsteuer' | 'sozialversicherung'
 
@@ -90,6 +91,8 @@ export function LstbScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YE
       ))}
 
       <StateNotice response={response} />
+
+      <InMaskAdvisorCompanion screen="lstb" taxYear={taxYear} />
 
       <Button onPress={onDone} style={styles.cta} testID="lstb-weiter">
         {tr('lstb.weiter')}

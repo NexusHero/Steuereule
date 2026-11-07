@@ -25,8 +25,12 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AdvisorActionMutationResponseDto,
+  AdvisorSessionResponseDto,
   OwlCardsResponseDto,
   OwlSettingResponseDto,
+  SendAdvisorMessageDto,
+  SendAdvisorMessageResponseDto,
   SetOwlSettingDto
 } from './eulen-modus.schemas';
 
@@ -448,5 +452,376 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getOwlModeControllerDismissCardMutationOptions(options), queryClient);
+    }
+
+export type advisorControllerGetSessionResponse200 = {
+  data: AdvisorSessionResponseDto
+  status: 200
+}
+
+export type advisorControllerGetSessionResponse401 = {
+  data: void
+  status: 401
+}
+
+export type advisorControllerGetSessionResponseSuccess = (advisorControllerGetSessionResponse200) & {
+  headers: Headers;
+};
+export type advisorControllerGetSessionResponseError = (advisorControllerGetSessionResponse401) & {
+  headers: Headers;
+};
+
+export type advisorControllerGetSessionResponse = (advisorControllerGetSessionResponseSuccess | advisorControllerGetSessionResponseError)
+
+export const getAdvisorControllerGetSessionUrl = (jahr: number,) => {
+
+
+
+
+  return `/v1/steuerjahre/${jahr}/advisor/session`
+}
+
+export const advisorControllerGetSession = async (jahr: number, options?: RequestInit): Promise<advisorControllerGetSessionResponse> => {
+
+  return httpClient<advisorControllerGetSessionResponse>(getAdvisorControllerGetSessionUrl(jahr),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getAdvisorControllerGetSessionQueryKey = (jahr: number,) => {
+    return [
+    `/v1/steuerjahre/${jahr}/advisor/session`
+    ] as const;
+    }
+
+
+export const getAdvisorControllerGetSessionQueryOptions = <TData = Awaited<ReturnType<typeof advisorControllerGetSession>>, TError = void>(jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof advisorControllerGetSession>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getAdvisorControllerGetSessionQueryKey(jahr);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof advisorControllerGetSession>>> = ({ signal }) => advisorControllerGetSession(jahr, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: jahr !== null && jahr !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof advisorControllerGetSession>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type AdvisorControllerGetSessionQueryResult = NonNullable<Awaited<ReturnType<typeof advisorControllerGetSession>>>
+export type AdvisorControllerGetSessionQueryError = void
+
+
+export function useAdvisorControllerGetSession<TData = Awaited<ReturnType<typeof advisorControllerGetSession>>, TError = void>(
+ jahr: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof advisorControllerGetSession>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof advisorControllerGetSession>>,
+          TError,
+          Awaited<ReturnType<typeof advisorControllerGetSession>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useAdvisorControllerGetSession<TData = Awaited<ReturnType<typeof advisorControllerGetSession>>, TError = void>(
+ jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof advisorControllerGetSession>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof advisorControllerGetSession>>,
+          TError,
+          Awaited<ReturnType<typeof advisorControllerGetSession>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useAdvisorControllerGetSession<TData = Awaited<ReturnType<typeof advisorControllerGetSession>>, TError = void>(
+ jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof advisorControllerGetSession>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useAdvisorControllerGetSession<TData = Awaited<ReturnType<typeof advisorControllerGetSession>>, TError = void>(
+ jahr: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof advisorControllerGetSession>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getAdvisorControllerGetSessionQueryOptions(jahr,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type advisorControllerSendMessageResponse200 = {
+  data: SendAdvisorMessageResponseDto
+  status: 200
+}
+
+export type advisorControllerSendMessageResponse401 = {
+  data: void
+  status: 401
+}
+
+export type advisorControllerSendMessageResponseSuccess = (advisorControllerSendMessageResponse200) & {
+  headers: Headers;
+};
+export type advisorControllerSendMessageResponseError = (advisorControllerSendMessageResponse401) & {
+  headers: Headers;
+};
+
+export type advisorControllerSendMessageResponse = (advisorControllerSendMessageResponseSuccess | advisorControllerSendMessageResponseError)
+
+export const getAdvisorControllerSendMessageUrl = (jahr: number,) => {
+
+
+
+
+  return `/v1/steuerjahre/${jahr}/advisor/chat`
+}
+
+export const advisorControllerSendMessage = async (jahr: number,
+    sendAdvisorMessageDto: SendAdvisorMessageDto, options?: RequestInit): Promise<advisorControllerSendMessageResponse> => {
+
+  return httpClient<advisorControllerSendMessageResponse>(getAdvisorControllerSendMessageUrl(jahr),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(sendAdvisorMessageDto)
+  }
+);}
+
+
+
+
+
+export const getAdvisorControllerSendMessageMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof advisorControllerSendMessage>>, TError,{jahr: number;data: SendAdvisorMessageDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof advisorControllerSendMessage>>, TError,{jahr: number;data: SendAdvisorMessageDto}, TContext> => {
+
+const mutationKey = ['advisorControllerSendMessage'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof advisorControllerSendMessage>>, {jahr: number;data: SendAdvisorMessageDto}> = (props) => {
+          const {jahr,data} = props ?? {};
+
+          return  advisorControllerSendMessage(jahr,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AdvisorControllerSendMessageMutationResult = NonNullable<Awaited<ReturnType<typeof advisorControllerSendMessage>>>
+    export type AdvisorControllerSendMessageMutationBody = SendAdvisorMessageDto
+    export type AdvisorControllerSendMessageMutationError = void
+
+    export const useAdvisorControllerSendMessage = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof advisorControllerSendMessage>>, TError,{jahr: number;data: SendAdvisorMessageDto}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof advisorControllerSendMessage>>,
+        TError,
+        {jahr: number;data: SendAdvisorMessageDto},
+        TContext
+      > => {
+      return useMutation(getAdvisorControllerSendMessageMutationOptions(options), queryClient);
+    }
+
+export type advisorControllerApplyActionResponse200 = {
+  data: AdvisorActionMutationResponseDto
+  status: 200
+}
+
+export type advisorControllerApplyActionResponse401 = {
+  data: void
+  status: 401
+}
+
+export type advisorControllerApplyActionResponseSuccess = (advisorControllerApplyActionResponse200) & {
+  headers: Headers;
+};
+export type advisorControllerApplyActionResponseError = (advisorControllerApplyActionResponse401) & {
+  headers: Headers;
+};
+
+export type advisorControllerApplyActionResponse = (advisorControllerApplyActionResponseSuccess | advisorControllerApplyActionResponseError)
+
+export const getAdvisorControllerApplyActionUrl = (jahr: number,
+    actionId: string,) => {
+
+
+
+
+  return `/v1/steuerjahre/${jahr}/advisor/actions/${actionId}/apply`
+}
+
+export const advisorControllerApplyAction = async (jahr: number,
+    actionId: string, options?: RequestInit): Promise<advisorControllerApplyActionResponse> => {
+
+  return httpClient<advisorControllerApplyActionResponse>(getAdvisorControllerApplyActionUrl(jahr,actionId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getAdvisorControllerApplyActionMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof advisorControllerApplyAction>>, TError,{jahr: number;actionId: string}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof advisorControllerApplyAction>>, TError,{jahr: number;actionId: string}, TContext> => {
+
+const mutationKey = ['advisorControllerApplyAction'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof advisorControllerApplyAction>>, {jahr: number;actionId: string}> = (props) => {
+          const {jahr,actionId} = props ?? {};
+
+          return  advisorControllerApplyAction(jahr,actionId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AdvisorControllerApplyActionMutationResult = NonNullable<Awaited<ReturnType<typeof advisorControllerApplyAction>>>
+
+    export type AdvisorControllerApplyActionMutationError = void
+
+    export const useAdvisorControllerApplyAction = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof advisorControllerApplyAction>>, TError,{jahr: number;actionId: string}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof advisorControllerApplyAction>>,
+        TError,
+        {jahr: number;actionId: string},
+        TContext
+      > => {
+      return useMutation(getAdvisorControllerApplyActionMutationOptions(options), queryClient);
+    }
+
+export type advisorControllerUndoActionResponse200 = {
+  data: AdvisorActionMutationResponseDto
+  status: 200
+}
+
+export type advisorControllerUndoActionResponse401 = {
+  data: void
+  status: 401
+}
+
+export type advisorControllerUndoActionResponseSuccess = (advisorControllerUndoActionResponse200) & {
+  headers: Headers;
+};
+export type advisorControllerUndoActionResponseError = (advisorControllerUndoActionResponse401) & {
+  headers: Headers;
+};
+
+export type advisorControllerUndoActionResponse = (advisorControllerUndoActionResponseSuccess | advisorControllerUndoActionResponseError)
+
+export const getAdvisorControllerUndoActionUrl = (jahr: number,
+    actionId: string,) => {
+
+
+
+
+  return `/v1/steuerjahre/${jahr}/advisor/actions/${actionId}/undo`
+}
+
+export const advisorControllerUndoAction = async (jahr: number,
+    actionId: string, options?: RequestInit): Promise<advisorControllerUndoActionResponse> => {
+
+  return httpClient<advisorControllerUndoActionResponse>(getAdvisorControllerUndoActionUrl(jahr,actionId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getAdvisorControllerUndoActionMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof advisorControllerUndoAction>>, TError,{jahr: number;actionId: string}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof advisorControllerUndoAction>>, TError,{jahr: number;actionId: string}, TContext> => {
+
+const mutationKey = ['advisorControllerUndoAction'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof advisorControllerUndoAction>>, {jahr: number;actionId: string}> = (props) => {
+          const {jahr,actionId} = props ?? {};
+
+          return  advisorControllerUndoAction(jahr,actionId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AdvisorControllerUndoActionMutationResult = NonNullable<Awaited<ReturnType<typeof advisorControllerUndoAction>>>
+
+    export type AdvisorControllerUndoActionMutationError = void
+
+    export const useAdvisorControllerUndoAction = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof advisorControllerUndoAction>>, TError,{jahr: number;actionId: string}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof advisorControllerUndoAction>>,
+        TError,
+        {jahr: number;actionId: string},
+        TContext
+      > => {
+      return useMutation(getAdvisorControllerUndoActionMutationOptions(options), queryClient);
     }
 

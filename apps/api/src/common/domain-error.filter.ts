@@ -9,6 +9,7 @@ const HTTP_MAPPING: Record<DomainErrorKind, { status: HttpStatus; reason: string
   forbidden: { status: HttpStatus.FORBIDDEN, reason: 'Forbidden' },
   unauthenticated: { status: HttpStatus.UNAUTHORIZED, reason: 'Unauthorized' },
   unavailable: { status: HttpStatus.SERVICE_UNAVAILABLE, reason: 'Service Unavailable' },
+  'rate-limited': { status: HttpStatus.TOO_MANY_REQUESTS, reason: 'Too Many Requests' },
 }
 
 export interface ErrorResponseBody {

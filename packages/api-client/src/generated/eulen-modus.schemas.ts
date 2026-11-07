@@ -72,3 +72,253 @@ export interface OwlCardsResponseDto {
   legalStatus: string;
 }
 
+export type AdvisorChatMessageDtoRole = typeof AdvisorChatMessageDtoRole[keyof typeof AdvisorChatMessageDtoRole];
+
+
+export const AdvisorChatMessageDtoRole = {
+  user: 'user',
+  assistant: 'assistant',
+} as const;
+
+export type AdvisorActionProposalDtoStatus = typeof AdvisorActionProposalDtoStatus[keyof typeof AdvisorActionProposalDtoStatus];
+
+
+export const AdvisorActionProposalDtoStatus = {
+  pending: 'pending',
+  applied: 'applied',
+  dismissed: 'dismissed',
+  undone: 'undone',
+} as const;
+
+export type AdvisorActionProposalDtoScreen = typeof AdvisorActionProposalDtoScreen[keyof typeof AdvisorActionProposalDtoScreen];
+
+
+export const AdvisorActionProposalDtoScreen = {
+  profil: 'profil',
+  stammdaten: 'stammdaten',
+  kopplung: 'kopplung',
+  interview: 'interview',
+  lstb: 'lstb',
+  chLohnausweis: 'chLohnausweis',
+  rente: 'rente',
+  kapital: 'kapital',
+  vermietung: 'vermietung',
+  kind: 'kind',
+} as const;
+
+export type AdvisorActionProposalDtoSourceId = typeof AdvisorActionProposalDtoSourceId[keyof typeof AdvisorActionProposalDtoSourceId];
+
+
+export const AdvisorActionProposalDtoSourceId = {
+  'estg-4-5-6c': 'estg-4-5-6c',
+  'estg-9-1': 'estg-9-1',
+  'estg-9-1-4a': 'estg-9-1-4a',
+  'estg-9-1-6': 'estg-9-1-6',
+  'estg-9-4a': 'estg-9-4a',
+  'estg-9-6': 'estg-9-6',
+  'estg-10b': 'estg-10b',
+  'estg-10-1-5': 'estg-10-1-5',
+  'ao-355': 'ao-355',
+} as const;
+
+export type AdvisorActionProposalDtoCompanionFields = {[key: string]: string};
+
+export interface AdvisorActionProposalDto {
+  actionId: string;
+  status: AdvisorActionProposalDtoStatus;
+  screen: AdvisorActionProposalDtoScreen;
+  field: string;
+  /** @nullable */
+  instance?: string | null;
+  companionFields?: AdvisorActionProposalDtoCompanionFields;
+  label: string;
+  /** @nullable */
+  previousValue?: string | null;
+  newValue: string;
+  beforeRefundEur: number;
+  afterRefundEur: number;
+  deltaEur: number;
+  reason: string;
+  sourceId: AdvisorActionProposalDtoSourceId;
+}
+
+export type AdvisorMaxPathProposalDtoStatus = typeof AdvisorMaxPathProposalDtoStatus[keyof typeof AdvisorMaxPathProposalDtoStatus];
+
+
+export const AdvisorMaxPathProposalDtoStatus = {
+  pending: 'pending',
+  applied: 'applied',
+  dismissed: 'dismissed',
+  undone: 'undone',
+} as const;
+
+export type AdvisorMaxPathProposalDtoScreen = typeof AdvisorMaxPathProposalDtoScreen[keyof typeof AdvisorMaxPathProposalDtoScreen];
+
+
+export const AdvisorMaxPathProposalDtoScreen = {
+  profil: 'profil',
+  stammdaten: 'stammdaten',
+  kopplung: 'kopplung',
+  interview: 'interview',
+  lstb: 'lstb',
+  chLohnausweis: 'chLohnausweis',
+  rente: 'rente',
+  kapital: 'kapital',
+  vermietung: 'vermietung',
+  kind: 'kind',
+} as const;
+
+export type AdvisorMaxPathProposalDtoSourceId = typeof AdvisorMaxPathProposalDtoSourceId[keyof typeof AdvisorMaxPathProposalDtoSourceId];
+
+
+export const AdvisorMaxPathProposalDtoSourceId = {
+  'estg-4-5-6c': 'estg-4-5-6c',
+  'estg-9-1': 'estg-9-1',
+  'estg-9-1-4a': 'estg-9-1-4a',
+  'estg-9-1-6': 'estg-9-1-6',
+  'estg-9-4a': 'estg-9-4a',
+  'estg-9-6': 'estg-9-6',
+  'estg-10b': 'estg-10b',
+  'estg-10-1-5': 'estg-10-1-5',
+  'ao-355': 'ao-355',
+} as const;
+
+export type AdvisorMaxPathProposalDtoCompanionFields = {[key: string]: string};
+
+export interface AdvisorMaxPathProposalDto {
+  actionId: string;
+  status: AdvisorMaxPathProposalDtoStatus;
+  screen: AdvisorMaxPathProposalDtoScreen;
+  field: string;
+  /** @nullable */
+  instance?: string | null;
+  companionFields?: AdvisorMaxPathProposalDtoCompanionFields;
+  label: string;
+  /** @nullable */
+  previousValue?: string | null;
+  newValue: string;
+  beforeRefundEur: number;
+  afterRefundEur: number;
+  deltaEur: number;
+  reason: string;
+  sourceId: AdvisorMaxPathProposalDtoSourceId;
+  evidenceHint: string;
+}
+
+export type AdvisorTwoPathsProposalDtoSourceId = typeof AdvisorTwoPathsProposalDtoSourceId[keyof typeof AdvisorTwoPathsProposalDtoSourceId];
+
+
+export const AdvisorTwoPathsProposalDtoSourceId = {
+  'estg-4-5-6c': 'estg-4-5-6c',
+  'estg-9-1': 'estg-9-1',
+  'estg-9-1-4a': 'estg-9-1-4a',
+  'estg-9-1-6': 'estg-9-1-6',
+  'estg-9-4a': 'estg-9-4a',
+  'estg-9-6': 'estg-9-6',
+  'estg-10b': 'estg-10b',
+  'estg-10-1-5': 'estg-10-1-5',
+  'ao-355': 'ao-355',
+} as const;
+
+export interface AdvisorTwoPathsProposalDto {
+  title: string;
+  safePath: AdvisorActionProposalDto;
+  maxPath: AdvisorMaxPathProposalDto;
+  sourceId: AdvisorTwoPathsProposalDtoSourceId;
+}
+
+export type AdvisorMessageMetaDtoSourcesItem = typeof AdvisorMessageMetaDtoSourcesItem[keyof typeof AdvisorMessageMetaDtoSourcesItem];
+
+
+export const AdvisorMessageMetaDtoSourcesItem = {
+  'estg-4-5-6c': 'estg-4-5-6c',
+  'estg-9-1': 'estg-9-1',
+  'estg-9-1-4a': 'estg-9-1-4a',
+  'estg-9-1-6': 'estg-9-1-6',
+  'estg-9-4a': 'estg-9-4a',
+  'estg-9-6': 'estg-9-6',
+  'estg-10b': 'estg-10b',
+  'estg-10-1-5': 'estg-10-1-5',
+  'ao-355': 'ao-355',
+} as const;
+
+export interface AdvisorMessageMetaDto {
+  choices?: string[];
+  action?: AdvisorActionProposalDto;
+  twoPaths?: AdvisorTwoPathsProposalDto;
+  sources?: AdvisorMessageMetaDtoSourcesItem[];
+}
+
+export interface AdvisorChatMessageDto {
+  id: string;
+  role: AdvisorChatMessageDtoRole;
+  content: string;
+  /** @nullable */
+  meta?: AdvisorMessageMetaDto | null;
+  createdAt: string;
+}
+
+export type AdvisorLegalSourceDtoSourceId = typeof AdvisorLegalSourceDtoSourceId[keyof typeof AdvisorLegalSourceDtoSourceId];
+
+
+export const AdvisorLegalSourceDtoSourceId = {
+  'estg-4-5-6c': 'estg-4-5-6c',
+  'estg-9-1': 'estg-9-1',
+  'estg-9-1-4a': 'estg-9-1-4a',
+  'estg-9-1-6': 'estg-9-1-6',
+  'estg-9-4a': 'estg-9-4a',
+  'estg-9-6': 'estg-9-6',
+  'estg-10b': 'estg-10b',
+  'estg-10-1-5': 'estg-10-1-5',
+  'ao-355': 'ao-355',
+} as const;
+
+export interface AdvisorLegalSourceDto {
+  sourceId: AdvisorLegalSourceDtoSourceId;
+  paragraph: string;
+  title: string;
+  summary: string;
+  legalStatusDate: string;
+  url: string;
+}
+
+export interface AdvisorSessionResponseDto {
+  enabled: boolean;
+  greeting: string;
+  openCards: OwlCardDto[];
+  messages: AdvisorChatMessageDto[];
+  quickChips: string[];
+  legalSources: AdvisorLegalSourceDto[];
+}
+
+export type SendAdvisorMessageDtoActiveScreen = typeof SendAdvisorMessageDtoActiveScreen[keyof typeof SendAdvisorMessageDtoActiveScreen];
+
+
+export const SendAdvisorMessageDtoActiveScreen = {
+  profil: 'profil',
+  stammdaten: 'stammdaten',
+  kopplung: 'kopplung',
+  interview: 'interview',
+  lstb: 'lstb',
+  chLohnausweis: 'chLohnausweis',
+  rente: 'rente',
+  kapital: 'kapital',
+  vermietung: 'vermietung',
+  kind: 'kind',
+} as const;
+
+export interface SendAdvisorMessageDto {
+  message: string;
+  activeScreen?: SendAdvisorMessageDtoActiveScreen;
+}
+
+export interface SendAdvisorMessageResponseDto {
+  userMessage: AdvisorChatMessageDto;
+  assistantMessage: AdvisorChatMessageDto;
+}
+
+export interface AdvisorActionMutationResponseDto {
+  message: AdvisorChatMessageDto;
+  action: AdvisorActionProposalDto;
+}
+

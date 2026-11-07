@@ -1,4 +1,11 @@
-export type DomainErrorKind = 'invalid-input' | 'not-found' | 'conflict' | 'forbidden' | 'unauthenticated' | 'unavailable'
+export type DomainErrorKind =
+  | 'invalid-input'
+  | 'not-found'
+  | 'conflict'
+  | 'forbidden'
+  | 'unauthenticated'
+  | 'unavailable'
+  | 'rate-limited'
 
 /** A failure of the application core, free of any transport concern; the HTTP mapping lives in DomainErrorFilter. */
 export abstract class DomainError extends Error {
@@ -36,3 +43,8 @@ export class UnauthenticatedError extends DomainError {
 export class UnavailableError extends DomainError {
   readonly kind = 'unavailable'
 }
+
+export class TooManyRequestsError extends DomainError {
+  readonly kind = 'rate-limited'
+}
+

@@ -99,6 +99,45 @@ export class ConfirmationService {
     }
   }
 
+  /**
+   * Direct user-confirmed write triggered by clicking "✓ Jetzt übernehmen" on an In-App
+   * SteuerEule Action Card. Writes the value, records provenance `{ kind: 'assistent', name: 'SteuerEule' }`
+   * with `confirmed: true` (no double confirmation needed), and returns the previous value for 1-click Undo.
+   */
+  async writeConfirmedByAdvisor(
+    userId: string,
+    taxYear: number,
+    key: string,
+    newValue: string | null,
+  ): Promise<{ previousValue: string | null }> {
+    const a = this.address(key, taxYear)
+    const previousValue = await this.currentValue(userId, a)
+    await this.writeValue(userId, a, newValue)
+    await this.repository.save(userId, a.taxYear, {
+      key,
+      provenance: { kind: 'assistent', name: 'SteuerEule' },
+      confirmed: true,
+      proposal: null,
+    })
+    return { previousValue }
+  }
+
+  /**
+   * 1-click Undo ("↩ Rückgängig machen") for an applied SteuerEule Action Card.
+   * Restores the exact previous value and removes the advisor marking.
+   */
+  async restoreValueByAdvisor(
+    userId: string,
+    taxYear: number,
+    key: string,
+    previousValue: string | null,
+  ): Promise<void> {
+    const a = this.address(key, taxYear)
+    await this.writeValue(userId, a, previousValue)
+    await this.repository.remove(userId, a.taxYear, [key])
+  }
+
+
   async list(userId: string, taxYear: number): Promise<ProvenanceRecord[]> {
     return this.repository.listForUserAndYears(userId, [taxYear, YEAR_INDEPENDENT])
   }

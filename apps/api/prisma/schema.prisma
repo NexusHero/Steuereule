@@ -1147,3 +1147,20 @@ model Commute {
   @@unique([userId, taxYear])
   @@map("Arbeitsweg")
 }
+
+/// Encrypted chat history and pending/applied action proposals for the In-App Steuerberater
+/// Agent ("Deine Eule", product ADR-037 / ADR-048 / ADR-0052). Both the message text (`content`)
+/// and the structured action/choices metadata (`metaJson`) are field-encrypted at rest (ADR-0008).
+model AdvisorChatMessage {
+  id        String   @id @default(uuid())
+  userId    String
+  taxYear   Int      @map("steuerjahr")
+  role      String   @map("rolle")
+  content   String   @map("inhalt") /// @encrypted?mode=strict
+  metaJson  String?  @map("metaDaten") /// @encrypted?mode=strict
+  createdAt DateTime @default(now())
+
+  @@index([userId, taxYear, createdAt])
+  @@map("BeraterNachricht")
+}
+

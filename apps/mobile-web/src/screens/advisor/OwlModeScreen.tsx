@@ -3,10 +3,24 @@ import { Pressable, ScrollView, Text, View, type TextStyle, type ViewStyle } fro
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { AiChip, Button, Card, Chip, Option, useBreakpoint, useTheme, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
-import { formatEuro, PROFESSION_VALUES, type OwlCardsDisplay, type Profession } from '@steuereule/core'
 import {
+  evaluateAdvisorTurn,
+  formatEuro,
+  PROFESSION_VALUES,
+  type AdvisorActionProposal,
+  type AdvisorChatMessageView,
+  type CaseDigest,
+  type OwlCardsDisplay,
+  type Profession,
+} from '@steuereule/core'
+import {
+  getAdvisorControllerGetSessionQueryKey,
   getOwlModeControllerGetSettingQueryKey,
   getOwlModeControllerGetCardsQueryKey,
+  useAdvisorControllerApplyAction,
+  useAdvisorControllerGetSession,
+  useAdvisorControllerSendMessage,
+  useAdvisorControllerUndoAction,
   useOwlModeControllerGetSetting,
   useOwlModeControllerGetCards,
   useOwlModeControllerSetSetting,
@@ -22,12 +36,14 @@ import { ErrorState, LoadingState } from '../shared/ScreenState'
 import { OwlMark } from '../../marks/OwlMark'
 import { useOwlEntrance } from '../../marks/useOwlEntrance'
 import { ProfessionPicker } from './ProfessionPicker'
+import { AdvisorChatPanel } from './AdvisorChatPanel'
 
 export interface OwlModeScreenProps {
   readonly onDone?: () => void
   readonly onBack?: () => void
   readonly taxYear?: number
   readonly initialCards?: readonly OwlCardsDisplay[] | undefined
+  readonly initialMessages?: readonly AdvisorChatMessageView[] | undefined
   readonly onDismissCard?: ((fingerprint: string) => Promise<void> | void) | undefined
   readonly onAcceptPath?: ((cardId: string, pathIndex: number) => void) | undefined
   readonly optInEnabled?: boolean | undefined
@@ -35,10 +51,49 @@ export interface OwlModeScreenProps {
   /** The interview's occupation group; null = not chosen yet, undefined = no picker (not loaded). */
   readonly profession?: Profession | null | undefined
   readonly onChooseProfession?: ((profession: Profession) => Promise<void> | void) | undefined
+  readonly onSendMessage?: ((text: string) => Promise<void> | void) | undefined
+  readonly onApplyAction?: ((actionId: string) => Promise<void> | void) | undefined
+  readonly onUndoAction?: ((actionId: string) => Promise<void> | void) | undefined
 }
 
 function professionFrom(value: string | undefined): Profession | null {
   return (PROFESSION_VALUES as readonly string[]).includes(value ?? '') ? (value as Profession) : null
+}
+
+const DEFAULT_LOCAL_DIGEST: CaseDigest = {
+  taxYear: CURRENT_TAX_YEAR,
+  filingStatus: 'einzel',
+  lstbPersonA: { grossWageEur: 62000, wageTaxEur: 11800, socialSecurityEur: 11400 },
+  crossBorder: {
+    isCrossBorderCh: false,
+    grossWageChf: null,
+    withholdingTaxChf: null,
+    pillar3aChf: null,
+    healthInsuranceChf: null,
+    dailySicknessBenefitChf: null,
+    nonReturnDays: null,
+  },
+  commuteAndWorkdays: {
+    workdays: 220,
+    homeOfficeAnswer: 'Nie',
+    homeOfficeDays: 0,
+    distanceKm: 18,
+  },
+  catalogExpenses: {
+    hasTraining: false,
+    relocationCostsEur: null,
+    donationsEur: null,
+    selfPaidKvPvEur: null,
+    riesterEur: null,
+    doubleHouseholdRentEur: null,
+  },
+  childrenCount: 0,
+  rentalObjectsCount: 0,
+  capitalGainEur: null,
+  priorYearComparison: { donationsEur: 200 },
+  openOwlHints: [],
+  printoutMissingFields: ['stammdaten.iban'],
+  estimatedRefundEur: 480,
 }
 
 export function OwlModeScreen(props: OwlModeScreenProps) {
@@ -54,6 +109,10 @@ function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CURRENT_T
   const queryClient = useQueryClient()
   const settingQuery = useOwlModeControllerGetSetting()
   const cardsQuery = useOwlModeControllerGetCards(taxYear)
+  const sessionQuery = useAdvisorControllerGetSession(taxYear, { query: { retry: false } })
+  const sendMessageMutation = useAdvisorControllerSendMessage()
+  const applyActionMutation = useAdvisorControllerApplyAction()
+  const undoActionMutation = useAdvisorControllerUndoAction()
   const setSetting = useOwlModeControllerSetSetting()
   const dismissCard = useOwlModeControllerDismissCard()
   const interviewQuery = useInterviewControllerGetInterview(taxYear)
@@ -73,6 +132,7 @@ function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CURRENT_T
         onRetry={() => {
           void settingQuery.refetch()
           void cardsQuery.refetch()
+          void sessionQuery.refetch()
         }}
       />
     )
@@ -82,6 +142,8 @@ function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CURRENT_T
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: getOwlModeControllerGetSettingQueryKey() }),
       queryClient.invalidateQueries({ queryKey: getOwlModeControllerGetCardsQueryKey(taxYear) }),
+      queryClient.invalidateQueries({ queryKey: getAdvisorControllerGetSessionQueryKey(taxYear) }),
+      queryClient.invalidateQueries({ queryKey: getInterviewControllerGetInterviewQueryKey(taxYear) }),
     ])
   }
 
@@ -91,12 +153,18 @@ function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CURRENT_T
     ...(k.paths && k.paths.length === 2 ? { paths: [k.paths[0]!, k.paths[1]!] as const } : { paths: undefined }),
   }))
 
+  const serverMessages =
+    sessionQuery.data?.status === 200
+      ? (sessionQuery.data.data.messages as unknown as readonly AdvisorChatMessageView[])
+      : undefined
+
   return (
     <OwlModeScreenView
       onDone={onDone}
       {...(onBack ? { onBack } : {})}
       taxYear={taxYear}
       initialCards={cards}
+      initialMessages={serverMessages}
       optInEnabled={settingQuery.data.data.enabled}
       onToggleOptIn={async (enabled) => {
         await setSetting.mutateAsync({ data: { enabled } })
@@ -111,26 +179,80 @@ function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CURRENT_T
       onChooseProfession={async (profession) => {
         const response = await postAnswer.mutateAsync({ jahr: taxYear, data: { questionId: 'beruf', value: profession } })
         if (response.status !== 200) throw new Error(`profession not stored (HTTP ${response.status})`)
-        await Promise.all([
-          queryClient.invalidateQueries({ queryKey: getInterviewControllerGetInterviewQueryKey(taxYear) }),
-          invalidate(),
-        ])
+        await invalidate()
+      }}
+      onSendMessage={async (text) => {
+        await sendMessageMutation.mutateAsync({ jahr: taxYear, data: { message: text } })
+        await invalidate()
+      }}
+      onApplyAction={async (actionId) => {
+        await applyActionMutation.mutateAsync({ jahr: taxYear, actionId })
+        await invalidate()
+      }}
+      onUndoAction={async (actionId) => {
+        await undoActionMutation.mutateAsync({ jahr: taxYear, actionId })
+        await invalidate()
       }}
     />
   )
 }
 
+function updateActionStatusInMessage(
+  msg: AdvisorChatMessageView,
+  actionId: string,
+  status: AdvisorActionProposal['status'],
+): AdvisorChatMessageView {
+  if (!msg.meta) return msg
+  if (msg.meta.action?.actionId === actionId) {
+    return {
+      ...msg,
+      meta: { ...msg.meta, action: { ...msg.meta.action, status } },
+    }
+  }
+  if (msg.meta.twoPaths) {
+    if (msg.meta.twoPaths.safePath.actionId === actionId) {
+      return {
+        ...msg,
+        meta: {
+          ...msg.meta,
+          twoPaths: {
+            ...msg.meta.twoPaths,
+            safePath: { ...msg.meta.twoPaths.safePath, status },
+          },
+        },
+      }
+    }
+    if (msg.meta.twoPaths.maxPath.actionId === actionId) {
+      return {
+        ...msg,
+        meta: {
+          ...msg.meta,
+          twoPaths: {
+            ...msg.meta.twoPaths,
+            maxPath: { ...msg.meta.twoPaths.maxPath, status },
+          },
+        },
+      }
+    }
+  }
+  return msg
+}
+
 function OwlModeScreenView({
   onDone = () => {},
   onBack,
-  taxYear: _taxYear = CURRENT_TAX_YEAR,
+  taxYear = CURRENT_TAX_YEAR,
   initialCards = [],
+  initialMessages,
   onDismissCard,
   onAcceptPath,
   optInEnabled = true,
   onToggleOptIn,
   profession,
   onChooseProfession,
+  onSendMessage,
+  onApplyAction,
+  onUndoAction,
 }: OwlModeScreenProps & { readonly initialCards: readonly OwlCardsDisplay[] }) {
   const bp = useBreakpoint()
   const t = useTheme()
@@ -141,7 +263,10 @@ function OwlModeScreenView({
   const [tab, setTab] = useState<'fragen' | 'eule'>('eule')
   const [cards, setCards] = useState<readonly OwlCardsDisplay[]>(initialCards)
   const [activeIndex, setActiveIndex] = useState(0)
+  const [localMessages, setLocalMessages] = useState<readonly AdvisorChatMessageView[]>(initialMessages ?? [])
+  const [isSending, setIsSending] = useState(false)
 
+  const displayedMessages = initialMessages ?? localMessages
   const activeCard = cards[activeIndex]
 
   async function handleDismiss(fingerprint: string) {
@@ -151,6 +276,69 @@ function OwlModeScreenView({
     if (activeIndex >= fresh.length && fresh.length > 0) {
       setActiveIndex(fresh.length - 1)
     }
+  }
+
+  async function handleSendChat(text: string) {
+    setIsSending(true)
+    try {
+      if (onSendMessage) {
+        await onSendMessage(text)
+        return
+      }
+      const userMsg: AdvisorChatMessageView = {
+        id: `msg-u-${Date.now()}`,
+        role: 'user',
+        content: text,
+        meta: null,
+        createdAt: new Date().toISOString(),
+      }
+      const turn = evaluateAdvisorTurn({
+        message: text,
+        digest: {
+          ...DEFAULT_LOCAL_DIGEST,
+          taxYear,
+          openOwlHints: cards.map((c) => ({
+            id: c.id,
+            fingerprint: c.fingerprint,
+            title: c.title,
+            message: c.message,
+            sourceId: 'estg-9-1',
+            amountEur: c.amountEur,
+          })),
+        },
+      })
+      const assistantMsg: AdvisorChatMessageView = {
+        id: `msg-a-${Date.now() + 1}`,
+        role: 'assistant',
+        content: turn.replyText,
+        meta: turn.meta,
+        createdAt: new Date().toISOString(),
+      }
+      setLocalMessages((prev) => [...prev, userMsg, assistantMsg])
+    } finally {
+      setIsSending(false)
+    }
+  }
+
+  async function handleClarifyCardWithEule(card: OwlCardsDisplay) {
+    setTab('fragen')
+    await handleSendChat(`${card.title}: ${card.message}`)
+  }
+
+  async function handleApplyAction(actionId: string) {
+    if (onApplyAction) {
+      await onApplyAction(actionId)
+      return
+    }
+    setLocalMessages((prev) => prev.map((m) => updateActionStatusInMessage(m, actionId, 'applied')))
+  }
+
+  async function handleUndoAction(actionId: string) {
+    if (onUndoAction) {
+      await onUndoAction(actionId)
+      return
+    }
+    setLocalMessages((prev) => prev.map((m) => updateActionStatusInMessage(m, actionId, 'undone')))
   }
 
   return (
@@ -171,6 +359,11 @@ function OwlModeScreenView({
           <Text style={styles.help}>
             {tr('eule.heroBody', 'Sie kennt dein Steuerjahr und sagt dir, wo Geld liegen bleibt — mit Rechtsgrundlage, damit du selbst entscheidest.')}
           </Text>
+          <View style={styles.privacyBadge} testID="eule-privacy-badge">
+            <Text style={styles.privacyBadgeText}>
+              🔒 Mandantengeheimnis aktiv — Keine Klarnamen, Steuer-IDs oder IBANs an KI
+            </Text>
+          </View>
         </View>
       </View>
 
@@ -214,16 +407,19 @@ function OwlModeScreenView({
       </View>
 
       {tab === 'fragen' ? (
-        <View style={styles.chatPlaceholder}>
-          <AiChip style={styles.sender} testID="eule-sender-chat">{tr('eule.sender', 'Die Eule')}</AiChip>
-          <Text style={styles.heading}>{tr('eule.chatTitle', 'Steuer-Assistent')}</Text>
-          <Text style={styles.help}>
-            {tr(
-              'eule.chatHelp',
-              'Stelle Fragen zu deinen Werbungskosten, Freibeträgen oder Belegen. Antworten erfolgen transparent mit Angabe der Rechtsgrundlage.',
-            )}
-          </Text>
-        </View>
+        <AdvisorChatPanel
+          messages={displayedMessages}
+          quickChips={[
+            'Kanzlei-Endprüfung starten',
+            'Homeoffice vs. Arbeitszimmer prüfen',
+            'Fortbildung & Reisekosten klären',
+            'Spenden aus dem Vorjahr prüfen',
+          ]}
+          isSending={isSending}
+          onSendMessage={handleSendChat}
+          onApplyAction={handleApplyAction}
+          onUndoAction={handleUndoAction}
+        />
       ) : cards.length === 0 ? (
         <Card style={styles.emptyCard}>
           <Text style={styles.emptyTitle}>{tr('eule.emptyTitle', 'Alles geprüft. Keine offenen Fragen!')}</Text>
@@ -289,6 +485,17 @@ function OwlModeScreenView({
               >
                 <Text style={styles.dismissText}>{tr('eule.dismiss', 'Stimmt nicht')}</Text>
               </Pressable>
+
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Mit Eule klären"
+                onPress={() => void handleClarifyCardWithEule(activeCard)}
+                style={styles.clarifyButton}
+                testID="card-clarify-with-eule"
+              >
+                <Text style={styles.clarifyButtonText}>Mit Eule klären 💬</Text>
+              </Pressable>
+
               {activeIndex < cards.length - 1 && (
                 <Button
                   variant="ghost"
@@ -323,6 +530,20 @@ function makeStyles(t: UiTheme) {
       fontSize: t.size['2xl'],
       color: t.color.tinte,
       marginBottom: t.space.s1,
+    } as TextStyle,
+    privacyBadge: {
+      alignSelf: 'flex-start',
+      backgroundColor: t.color.karte,
+      borderRadius: t.radius.s,
+      paddingHorizontal: t.space.s2,
+      paddingVertical: 4,
+      borderWidth: 1,
+      borderColor: t.color.linie,
+    } as ViewStyle,
+    privacyBadgeText: {
+      fontFamily: t.font.text,
+      fontSize: t.size.xs,
+      color: t.color.tinte2,
     } as TextStyle,
     screen: {
       backgroundColor: t.color.grund,
@@ -371,22 +592,12 @@ function makeStyles(t: UiTheme) {
       fontWeight: t.weight.fett,
       color: t.color.tinte,
     } as TextStyle,
-    heading: {
-      fontFamily: t.font.display,
-      fontWeight: t.weight.schwer,
-      fontSize: t.size['2xl'],
-      color: t.color.tinte,
-      marginBottom: t.space.s2,
-    } as TextStyle,
     help: {
       fontFamily: t.font.text,
       fontSize: t.size.m,
       color: t.color.tinte2,
-      marginBottom: t.space.s4,
+      marginBottom: t.space.s2,
     } as TextStyle,
-    chatPlaceholder: {
-      padding: t.space.s4,
-    } as ViewStyle,
     sender: {
       marginBottom: t.space.s3,
     } as ViewStyle,
@@ -526,6 +737,8 @@ function makeStyles(t: UiTheme) {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
+      flexWrap: 'wrap',
+      gap: t.space.s2,
     } as ViewStyle,
     dismissButton: {
       paddingVertical: t.space.s2,
@@ -535,6 +748,18 @@ function makeStyles(t: UiTheme) {
       fontFamily: t.font.text,
       fontSize: t.size.m,
       color: t.color.fehler,
+    } as TextStyle,
+    clarifyButton: {
+      paddingVertical: t.space.s2,
+      paddingHorizontal: t.space.s3,
+      borderRadius: t.radius.s,
+      backgroundColor: t.color.tinte,
+    } as ViewStyle,
+    clarifyButtonText: {
+      fontFamily: t.font.display,
+      fontWeight: t.weight.fett,
+      fontSize: t.size.s,
+      color: t.color.grund,
     } as TextStyle,
     nextButton: {
       marginLeft: 'auto',

@@ -32,7 +32,7 @@ export class PrismaTaxDataExportRepository implements TaxDataExportRepository {
 
   async findAllForUser(userId: string): Promise<ExportTaxDataEntry[]> {
     const where = { userId }
-    const [taxYears, answers, receipts, lstb, ch, pension, capital, commute, rental, assessments, markings, yearTakeovers, masterData, kinder, links, owlSetting, owlDismissals] =
+    const [taxYears, answers, receipts, lstb, ch, pension, capital, commute, rental, assessments, markings, yearTakeovers, masterData, kinder, links, owlSetting, owlDismissals, advisorMessages] =
       await Promise.all([
         this.prisma.taxYear.findMany({ where }),
         this.prisma.interviewAnswer.findMany({ where }),
@@ -53,6 +53,7 @@ export class PrismaTaxDataExportRepository implements TaxDataExportRepository {
         }),
         this.prisma.owlSetting.findMany({ where }),
         this.prisma.owlCardDismissal.findMany({ where }),
+        this.prisma.advisorChatMessage.findMany({ where }),
       ])
 
     const entries = [
@@ -73,6 +74,7 @@ export class PrismaTaxDataExportRepository implements TaxDataExportRepository {
       ...links.map((row) => toExportEntry('Steuerjahr-Kopplung', 'TaxYearLink', row)),
       ...owlSetting.map((row) => toExportEntry('Eulen-Modus-Einstellung', 'OwlSetting', row)),
       ...owlDismissals.map((row) => toExportEntry('Eulen-Modus-Kartenverwurf', 'OwlCardDismissal', row)),
+      ...advisorMessages.map((row) => toExportEntry('Steuerberater-Chat', 'AdvisorChatMessage', row)),
     ]
     return entries.sort(
       (a, b) =>

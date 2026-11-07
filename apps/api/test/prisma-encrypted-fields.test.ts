@@ -151,6 +151,8 @@ const EXPECTED_ENCRYPTED_FIELDS: ExpectedEncryptedField[] = [
   { model: 'Assessment', field: 'anrechnung', encrypt: true, strictDecryption: true },
   { model: 'Assessment', field: 'festgesetzteSteuer', encrypt: true, strictDecryption: true },
   { model: 'Assessment', field: 'erstattung', encrypt: true, strictDecryption: true },
+  { model: 'AdvisorChatMessage', field: 'content', encrypt: true, strictDecryption: true },
+  { model: 'AdvisorChatMessage', field: 'metaJson', encrypt: true, strictDecryption: true },
 ].sort(byModelField)
 
 // prisma-field-encryption's hash annotation (`@encryption:hash(field)`, dist/dmmf.js:79)
@@ -201,6 +203,7 @@ const EXPECTED_CURSORS: Record<string, string> = {
   OauthConsent: 'id',
   OauthClientAssertion: 'id',
   Jwks: 'id',
+  AdvisorChatMessage: 'id',
 }
 
 describe('encrypted/hashed field set (#325) — derived from Prisma.dmmf, not comment text', () => {

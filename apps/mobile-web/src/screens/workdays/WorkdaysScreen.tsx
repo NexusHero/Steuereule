@@ -19,6 +19,7 @@ import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 import { LoadingState } from '../shared/ScreenState'
 import { integerFrom } from '../shared/integer'
+import { InMaskAdvisorCompanion } from '../advisor/InMaskAdvisorCompanion'
 
 export interface WorkdaysScreenProps {
   readonly onDone?: () => void
@@ -205,6 +206,8 @@ function WorkdaysForm({
       {allowance !== null ? <Row label={tr('arbeitstage.weg.pauschale')} value={formatEuro(allowance)} /> : null}
 
       {error ? <Text style={styles.widerspruchBody}>{tr('arbeitstage.speichernFehler')}</Text> : null}
+
+      <InMaskAdvisorCompanion screen="interview" taxYear={taxYear} />
 
       <Button onPress={next} disabled={save.isPending || result?.kind === 'widerspruch'} style={styles.cta} testID="arbeitstage-weiter">
         {tr('arbeitstage.weiter')}

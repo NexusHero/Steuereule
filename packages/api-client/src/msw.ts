@@ -148,6 +148,14 @@ export {
   getOwlModeControllerGetCardsResponseMock,
   getOwlModeControllerGetCardsMockHandler,
   getOwlModeControllerDismissCardMockHandler,
+  getAdvisorControllerGetSessionResponseMock,
+  getAdvisorControllerGetSessionMockHandler,
+  getAdvisorControllerSendMessageResponseMock,
+  getAdvisorControllerSendMessageMockHandler,
+  getAdvisorControllerApplyActionResponseMock,
+  getAdvisorControllerApplyActionMockHandler,
+  getAdvisorControllerUndoActionResponseMock,
+  getAdvisorControllerUndoActionMockHandler,
   getSteuerEuleAPIMock as getEulenModusApiMock,
 } from './generated/eulen-modus.msw'
 export {
