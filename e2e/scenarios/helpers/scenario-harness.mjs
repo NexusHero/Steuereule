@@ -1,0 +1,241 @@
+// Shared Playwright harness for standalone and composite E2E scenarios.
+import { createRequire } from 'node:module'
+import fs from 'node:fs/promises'
+import { launchBrowser, closeBrowser, newContextAtBreakpoint, guardAgainst429 } from '../../harness/browser.mjs'
+import { startStack } from '../../harness/stack.mjs'
+import { fail, waitForBucketHeadroom } from '../../harness/rate-limit.mjs'
+import { skipSplash } from '../../harness/flows.mjs'
+
+const require = createRequire(import.meta.url)
+const { PDFDocument } = require('../../../apps/api/node_modules/pdf-lib')
+
+export const AUTH_BUCKET = { windowMs: 10_000, max: 3, shared: true }
+export const TEST_PASSWORD = 'Sicheres-Passwort-1!'
+
+export {
+  launchBrowser,
+  closeBrowser,
+  newContextAtBreakpoint,
+  guardAgainst429,
+  startStack,
+  fail,
+  waitForBucketHeadroom,
+  skipSplash,
+  PDFDocument,
+}
+
+/** Registers a new user account through RegistrationScreen, then completes OnboardingScreen. */
+export async function registerAndOnboard(
+  page,
+  { email, password = TEST_PASSWORD, firstName, lastName, taxId, taxNumber },
+  webOrigin,
+  callerLabel = 'scenario',
+) {
+  await waitForBucketHeadroom(AUTH_BUCKET, 'auth', callerLabel)
+  await skipSplash(page, webOrigin)
+
+  // Navigate to RegistrationScreen from LoginScreen
+  const registerLink = page.locator('[data-testid="login-register-link"]')
+  await registerLink.waitFor({ state: 'visible', timeout: 10_000 })
+  await registerLink.click()
+
+  // Registration form
+  const emailInput = page.locator('[data-testid="registrierung-email"]')
+  await emailInput.waitFor({ state: 'visible', timeout: 10_000 })
+  await emailInput.fill(email)
+  await page.locator('[data-testid="registrierung-passwort"]').fill(password)
+  await page.locator('[data-testid="registrierung-submit"]').click()
+
+  // Registration success screen
+  const continueButton = page.locator('[data-testid="registrierung-success-weiter"]')
+  await continueButton.waitFor({ state: 'visible', timeout: 10_000 })
+  await continueButton.click()
+
+  // Onboarding Step 0: Name
+  await page.locator('[data-testid="onboarding-vorname"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator('[data-testid="onboarding-vorname"]').fill(firstName)
+  await page.locator('[data-testid="onboarding-nachname"]').fill(lastName)
+  await page.locator('[data-testid="onboarding-weiter"]').click()
+
+  // Onboarding Step 1: Steuer-ID
+  await page.locator('[data-testid="onboarding-steuerid"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator('[data-testid="onboarding-steuerid"]').fill(taxId)
+  await page.locator('[data-testid="onboarding-weiter"]').click()
+
+  // Onboarding Step 2: Steuernummer
+  if (taxNumber) {
+    await page.locator('[data-testid="onboarding-steuernummer"]').fill(taxNumber)
+  }
+  await page.locator('[data-testid="onboarding-weiter"]').click()
+
+  // Onboarding Step 3: Summary save
+  const saveButton = page.locator('[data-testid="onboarding-speichern"]')
+  await saveButton.waitFor({ state: 'visible', timeout: 10_000 })
+  await saveButton.click()
+
+  // Wait for Cockpit to load
+  await page.locator('[data-testid="cockpit-interview"]').waitFor({ state: 'visible', timeout: 15_000 })
+}
+
+/** Switches the Cockpit tax year to 2025. */
+export async function selectTaxYear2025(page) {
+  await selectTaxYear(page, 2025)
+}
+
+/** Switches the Cockpit tax year to a given year. */
+export async function selectTaxYear(page, year) {
+  const chip = page.locator(`[data-testid="jahr-${year}"]`)
+  await chip.waitFor({ state: 'visible', timeout: 10_000 })
+  await chip.click()
+  await page.waitForTimeout(400)
+}
+
+/**
+ * Reads the Cockpit estimate ("Voraussichtlich 1.234 – 1.456 € Erstattung", or one value) and checks it
+ * against the scenario's independent reference.
+ */
+export async function assertEstimate(page, label, { direction, contains } = {}) {
+  const locator = page.locator('[data-testid="cockpit-erstattung"]')
+  await locator.waitFor({ state: 'visible', timeout: 10_000 })
+  await page.waitForLoadState('networkidle').catch(() => {})
+  const check = (text) => {
+    const named = direction === undefined ? ['Erstattung', 'Nachzahlung'].some((w) => text.includes(w)) : text.includes(direction)
+    if (!named) return `expected a ${direction ?? 'refund or back-payment'} estimate`
+    const amounts = [...text.matchAll(/\d{1,3}(?:\.\d{3})*/g)].map((m) => Number(m[0].replace(/\./g, '')))
+    if (amounts.length === 0) return 'the estimate names no amount'
+    const from = Math.min(...amounts)
+    const to = Math.max(...amounts)
+    if (contains !== undefined && (contains < from || contains > to)) {
+      return `the hand-calculated ${direction} of ${contains} € is outside the Cockpit's ${from}–${to} €`
+    }
+    return null
+  }
+  const deadline = Date.now() + 15_000
+  let text = await locator.innerText()
+  let problem = check(text)
+  while (problem !== null && Date.now() < deadline) {
+    await page.waitForTimeout(500)
+    text = await locator.innerText()
+    problem = check(text)
+  }
+  console.log(`[${label}] Cockpit estimate text: "${text}"`)
+  if (problem !== null) fail(`[${label}] ${problem}: "${text}"`)
+}
+
+/** Asserts Cockpit estimate direction, minAmount, or exact expectedText. */
+export async function assertCockpitEstimate(page, label, { direction, minAmount, expectedText } = {}) {
+  const locator = page.locator('[data-testid="cockpit-erstattung"]')
+  await locator.waitFor({ state: 'visible', timeout: 10_000 })
+  await page.waitForLoadState('networkidle').catch(() => {})
+
+  const check = (text) => {
+    if (expectedText !== undefined) {
+      return text.includes(expectedText) ? null : `expected estimate to contain "${expectedText}"`
+    }
+    const named = direction === undefined ? ['Erstattung', 'Nachzahlung'].some((w) => text.includes(w)) : text.includes(direction)
+    if (!named) return `expected a ${direction ?? 'refund or back-payment'} estimate`
+    const amounts = [...text.matchAll(/\d{1,3}(?:\.\d{3})*/g)].map((m) => Number(m[0].replace(/\./g, '')))
+    if (amounts.length === 0) return 'the estimate names no amount'
+    const max = Math.max(...amounts)
+    if (minAmount !== undefined && max < minAmount) return `expected amount to be at least ${minAmount} € but got max ${max} €`
+    return null
+  }
+
+  const deadline = Date.now() + 15_000
+  let text = await locator.innerText()
+  let problem = check(text)
+  while (problem !== null && Date.now() < deadline) {
+    await page.waitForTimeout(500)
+    text = await locator.innerText()
+    problem = check(text)
+  }
+  console.log(`[${label}] Cockpit estimate text: "${text}"`)
+  if (problem !== null) fail(`[${label}] ${problem}: "${text}"`)
+}
+
+/** Unlocks a tax year directly in the database for payment-free e2e printout access. */
+export function unlockTaxYearInDb(sql, email, year) {
+  const userId = sql(`SELECT id FROM "User" WHERE email = '${email}';`).trim()
+  if (!userId) fail(`unlockTaxYearInDb: user with email ${email} not found in database`)
+  sql(
+    `INSERT INTO "Freischaltung" ("id", "userId", "steuerjahr", "status", "stripeCheckoutSessionId", "createdAt", "updatedAt") ` +
+      `VALUES (gen_random_uuid(), '${userId}', ${year}, 'bezahlt', 'e2e-${Date.now()}-${Math.random().toString(36).slice(2, 7)}', NOW(), NOW()) ` +
+      `ON CONFLICT DO NOTHING;`,
+  )
+}
+
+/** Confirms all unconfirmed annexes on ConfirmationScreen if any are pending. */
+export async function confirmAnnexesIfPresent(page) {
+  const openConfirmButton = page.locator('[data-testid="ausdruck-bestaetigung-oeffnen"]')
+  if ((await openConfirmButton.count()) > 0 && (await openConfirmButton.isVisible())) {
+    await openConfirmButton.click()
+    await page.locator('[data-testid="bestaetigung-zurueck"]').waitFor({ state: 'visible', timeout: 10_000 })
+
+    while (true) {
+      const confirmButton = page.locator('[data-testid^="bestaetige-"]').first()
+      if ((await confirmButton.count()) === 0 || !(await confirmButton.isVisible())) break
+      await confirmButton.click()
+      await page.waitForTimeout(400)
+    }
+
+    await page.locator('[data-testid="bestaetigung-zurueck"]').click()
+    await page.locator('[data-testid="ausdruck-zurueck"]').waitFor({ state: 'visible', timeout: 10_000 })
+  }
+}
+
+/** Downloads the editable PDF and verifies expected PDF form field values. */
+export async function downloadAndVerifyPdf(page, expectedFields) {
+  const downloadButton = page.locator('[data-testid="ausdruck-herunterladen-bearbeitbar"]')
+  await downloadButton.waitFor({ state: 'visible', timeout: 15_000 })
+  const isDisabled = await downloadButton.isDisabled().catch(() => false)
+  if (isDisabled) {
+    const errorCard = await page.locator('[data-testid="screen-container"]').first().innerText().catch(() => '')
+    fail(`downloadAndVerifyPdf: download button is disabled. Screen content:\n${errorCard}`)
+  }
+
+  const [download] = await Promise.all([
+    page.waitForEvent('download', { timeout: 20_000 }),
+    downloadButton.click(),
+  ])
+
+  const filePath = await download.path()
+  const pdfBytes = await fs.readFile(filePath)
+  const doc = await PDFDocument.load(pdfBytes)
+  const form = doc.getForm()
+
+  for (const [key, expectedValue] of Object.entries(expectedFields)) {
+    let actualValue
+    try {
+      const field = form.getField(key)
+      actualValue = typeof field.getText === 'function' ? (field.getText() ?? '') : field.isChecked?.() ? 'X' : ''
+    } catch (error) {
+      fail(`downloadAndVerifyPdf: missing PDF form field "${key}" — ${error.message}`)
+    }
+    if (actualValue !== expectedValue) {
+      fail(`downloadAndVerifyPdf: field "${key}" expected "${expectedValue}" but got "${actualValue}"`)
+    }
+  }
+}
+
+/** Runs a single scenario function standalone (starts/attaches stack and browser, runs scenario, cleans up). */
+export async function runStandaloneScenario(title, fn) {
+  console.log('='.repeat(80))
+  console.log(`STARTING SCENARIO: ${title}`)
+  console.log('='.repeat(80))
+
+  const stack = await startStack()
+  const browser = await launchBrowser()
+  try {
+    await fn(browser, stack.webOrigin, stack.sql)
+    console.log('\n' + '='.repeat(80))
+    console.log(`PASS: ${title}`)
+    console.log('='.repeat(80) + '\n')
+  } catch (error) {
+    fail(`${title} failed: ${error.message}\n${error.stack}`)
+  } finally {
+    await closeBrowser(browser)
+    if (typeof stack.stop === 'function') {
+      await stack.stop()
+    }
+  }
+}

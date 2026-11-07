@@ -9,6 +9,7 @@ import {
   nextStepFor,
   remainingStepsFor,
   type Answers,
+  type CatalogueEntry,
   type EntryStepId,
 } from '@steuereule/core'
 import {
@@ -22,14 +23,60 @@ import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 
+function collectFollowUpStepIds(stepId: EntryStepId, acc = new Set<EntryStepId>()): ReadonlySet<EntryStepId> {
+  if (acc.has(stepId)) return acc
+  acc.add(stepId)
+  const decl = QUESTIONS[stepId]
+  if (decl.followUps !== undefined) {
+    for (const branch of Object.values(decl.followUps)) {
+      for (const target of branch) {
+        const id = typeof target === 'string' ? target : target.step
+        collectFollowUpStepIds(id, acc)
+      }
+    }
+  }
+  if (decl.defaultFollowUp !== undefined) {
+    for (const target of decl.defaultFollowUp) {
+      const id = typeof target === 'string' ? target : target.step
+      collectFollowUpStepIds(id, acc)
+    }
+  }
+  return acc
+}
+
+function clearStepAndFollowUps(answers: Answers, stepId: EntryStepId): Answers {
+  const toDelete = collectFollowUpStepIds(stepId)
+  const next: Answers = { ...answers }
+  for (const id of toDelete) {
+    delete next[id]
+  }
+  return next
+}
+
+function walkedStepsFor(entry: CatalogueEntry, answers: Answers): readonly EntryStepId[] {
+  const walked: EntryStepId[] = []
+  let reached: Answers = {}
+  for (;;) {
+    const step = nextStepFor(entry, reached)
+    if (step.kind === 'done') return walked
+    const id = step.id
+    const answer = answers[id]
+    if (answer === undefined) return walked
+    if (walked.includes(id)) return walked
+    walked.push(id)
+    reached = { ...reached, [id]: answer }
+  }
+}
+
 export interface CatalogScreenProps {
   readonly entry: 'lebenslagen' | 'einkuenfte' | 'sonderausgaben' | 'alleinerziehend'
   readonly onDone?: () => void
   readonly onBack?: () => void
   readonly taxYear?: number
+  readonly revisit?: boolean
 }
 
-export function CatalogScreen({ entry, onDone = () => {}, onBack, taxYear = CURRENT_TAX_YEAR }: CatalogScreenProps) {
+export function CatalogScreen({ entry, onDone = () => {}, onBack, taxYear = CURRENT_TAX_YEAR, revisit = false }: CatalogScreenProps) {
   const bp = useBreakpoint()
   const t = useTheme()
   const styles = makeStyles(t)
@@ -45,10 +92,24 @@ export function CatalogScreen({ entry, onDone = () => {}, onBack, taxYear = CURR
 
   useEffect(() => {
     if (!seeded && interviewQuery.isFetchedAfterMount && interviewQuery.data?.status === 200) {
-      setAnswers(interviewQuery.data.data.answers as Answers)
+      const loaded = interviewQuery.data.data.answers as Answers
+      const walked = walkedStepsFor(ENTRIES[entry], loaded)
+      if (revisit && nextStepFor(ENTRIES[entry], loaded).kind === 'done' && walked.length > 0) {
+        const last = walked[walked.length - 1]
+        if (last !== undefined) {
+          setHistory(walked.slice(0, -1))
+          setAnswers(clearStepAndFollowUps(loaded, last))
+        } else {
+          setHistory(walked)
+          setAnswers(loaded)
+        }
+      } else {
+        setHistory(walked)
+        setAnswers(loaded)
+      }
       setSeeded(true)
     }
-  }, [seeded, interviewQuery.isFetchedAfterMount, interviewQuery.data])
+  }, [seeded, interviewQuery.isFetchedAfterMount, interviewQuery.data, entry, revisit])
 
   const current = seeded ? nextStepFor(ENTRIES[entry], answers) : null
 
@@ -104,17 +165,29 @@ export function CatalogScreen({ entry, onDone = () => {}, onBack, taxYear = CURR
     )
   }
 
+  function back() {
+    setConflict(false)
+    setHistory((h) => {
+      if (h.length === 0) return h
+      const prev = h[h.length - 1]
+      if (prev === undefined) return h
+      setAnswers((a) => clearStepAndFollowUps(a, prev))
+      return h.slice(0, -1)
+    })
+  }
+
   if (current.kind === 'done') {
     return null
   }
 
   const step = current.id as EntryStepId
   const decl = QUESTIONS[step]
+  const handleBack = history.length > 0 ? back : onBack
 
   return (
     <ScrollView contentContainerStyle={bp === 's' ? styles.screen : styles.wideScreen} testID="screen-container">
       <View style={styles.headerRow}>
-        {onBack ? <BackButton accessibilityLabel={tr('katalog.back')} onPress={onBack} /> : <BackButtonSpacer />}
+        {handleBack ? <BackButton accessibilityLabel={tr('katalog.back')} onPress={handleBack} /> : <BackButtonSpacer />}
         <Text style={styles.stepPill}>
           {tr('katalog.progress', { done: history.length, total: history.length + remainingStepsFor(ENTRIES[entry], answers) })}
         </Text>
@@ -131,7 +204,7 @@ export function CatalogScreen({ entry, onDone = () => {}, onBack, taxYear = CURR
           </Option>
         ))
       ) : (
-        <IntegerFollowUp step={step} onAnswer={(value) => answer(step, value)} />
+        <IntegerFollowUp key={step} step={step} onAnswer={(value) => answer(step, value)} />
       )}
     </ScrollView>
   )

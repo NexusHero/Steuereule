@@ -14,14 +14,23 @@ import { server } from '../../test-msw-server'
 
 const TAX_YEAR = 2026
 
-function renderCatalog(entry: 'lebenslagen' | 'sonderausgaben', opts: { onDone?: () => void; queryClient?: QueryClient } = {}) {
+function renderCatalog(
+  entry: 'lebenslagen' | 'sonderausgaben',
+  opts: { onDone?: () => void; onBack?: () => void; revisit?: boolean; queryClient?: QueryClient } = {},
+) {
   const i18n = createAppI18n('de')
   const queryClient = opts.queryClient ?? new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={queryClient}>
       <I18nextProvider i18n={i18n}>
         <ThemeProvider mode="light">
-          <CatalogScreen entry={entry} taxYear={TAX_YEAR} onDone={opts.onDone ?? (() => {})} />
+          <CatalogScreen
+            entry={entry}
+            taxYear={TAX_YEAR}
+            onDone={opts.onDone ?? (() => {})}
+            {...(opts.onBack ? { onBack: opts.onBack } : {})}
+            {...(opts.revisit !== undefined ? { revisit: opts.revisit } : {})}
+          />
         </ThemeProvider>
       </I18nextProvider>
     </QueryClientProvider>,
@@ -113,5 +122,47 @@ describe('KatalogScreen', () => {
 
     await waitFor(() => expect(onDone).toHaveBeenCalledOnce())
     expect(screen.queryByText('Hast du eine doppelte Haushaltsführung?')).toBeNull()
+  })
+
+  it('steps back within the catalogue question-by-question before calling onBack', async () => {
+    const onBack = vi.fn()
+    server.use(
+      http.get(`*/v1/steuerjahre/${TAX_YEAR}/interview`, () =>
+        HttpResponse.json({ answers: {}, nextStep: { kind: 'question', id: 'dhf' }, openItems: 5 }, { status: 200 }),
+      ),
+      http.post(`*/v1/steuerjahre/${TAX_YEAR}/interview/antworten`, () =>
+        HttpResponse.json({ nextStep: { kind: 'question', id: 'dhf-miete' }, openItems: 4 }, { status: 200 }),
+      ),
+    )
+    renderCatalog('lebenslagen', { onBack })
+
+    fireEvent.click(await screen.findByText('Ja'))
+    expect(await screen.findByText('Monatliche Miete am Arbeitsort')).toBeTruthy()
+
+    // First Back click returns to the previous question in the catalogue, NOT exiting immediately.
+    fireEvent.click(screen.getByLabelText('Zurück'))
+    expect(await screen.findByText('Hast du eine doppelte Haushaltsführung?')).toBeTruthy()
+    expect(onBack).not.toHaveBeenCalled()
+
+    // Second Back click on the first question delegates to onBack.
+    fireEvent.click(screen.getByLabelText('Zurück'))
+    expect(onBack).toHaveBeenCalledOnce()
+  })
+
+  it('reopens on the last question instead of immediately firing onDone when revisited via Back (revisit=true)', async () => {
+    const onDone = vi.fn()
+    server.use(
+      http.get(`*/v1/steuerjahre/${TAX_YEAR}/interview`, () =>
+        HttpResponse.json(
+          { answers: { dhf: 'Nein', umzug: 'Nein', abfindung: 'Nein', lohnersatz: 'Nein', nebenjob: 'Nein' }, nextStep: { kind: 'done' }, openItems: 0 },
+          { status: 200 },
+        ),
+      ),
+    )
+
+    renderCatalog('lebenslagen', { onDone, revisit: true })
+
+    expect(await screen.findByTestId('katalog-option-nebenjob-Minijob')).toBeTruthy()
+    expect(onDone).not.toHaveBeenCalled()
   })
 })

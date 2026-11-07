@@ -199,6 +199,7 @@ function PrintoutRoute({ navigation, route }: NativeStackScreenProps<RootStackPa
       <CatalogScreen
         entry="sonderausgaben"
         taxYear={year}
+        revisit
         onDone={() => setView('ausdruck')}
         onBack={() => setView('ausdruck')}
       />
@@ -319,6 +320,7 @@ function TabbedShell({ tab, onTabChange, onSignedOut, startInInterview = false, 
   }
   // ADR-0054: Person A records a partner's figures (no own account) in the regular masks.
   const [partnerScreen, setPartnerScreen] = useState<{ readonly area: 'lstb' | 'arbeitsweg'; readonly name: string } | null>(null)
+  const [catalogRevisit, setCatalogRevisit] = useState(false)
 
   useEffect(() => {
     if (pendingPath === null) return
@@ -422,34 +424,75 @@ function TabbedShell({ tab, onTabChange, onSignedOut, startInInterview = false, 
         {tab === 'cockpit' && cockpitView === 'rente' ? (
           <PensionerScreen taxYear={taxYear} onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
         ) : null}
-        {tab === 'cockpit' && cockpitView === 'ch' ? <CrossBorderScreen taxYear={taxYear} onDone={() => setCockpitView('katalog-einkuenfte')} /> : null}
+        {tab === 'cockpit' && cockpitView === 'ch' ? (
+          <CrossBorderScreen
+            taxYear={taxYear}
+            onDone={() => {
+              setCatalogRevisit(false)
+              setCockpitView('katalog-einkuenfte')
+            }}
+          />
+        ) : null}
         {tab === 'cockpit' && cockpitView === 'lstb' ? (
-          <LstbScreen taxYear={taxYear} onDone={() => setCockpitView('katalog-lebenslagen')} onBack={() => setCockpitView('main')} />
+          <LstbScreen
+            taxYear={taxYear}
+            onDone={() => {
+              setCatalogRevisit(false)
+              setCockpitView('katalog-lebenslagen')
+            }}
+            onBack={() => setCockpitView('main')}
+          />
         ) : null}
         {tab === 'cockpit' && cockpitView === 'katalog-lebenslagen' ? (
-          <CatalogScreen taxYear={taxYear} entry="lebenslagen" onDone={() => setCockpitView('katalog-einkuenfte')} onBack={() => setCockpitView('lstb')} />
+          <CatalogScreen
+            taxYear={taxYear}
+            entry="lebenslagen"
+            revisit={catalogRevisit}
+            onDone={() => {
+              setCatalogRevisit(false)
+              setCockpitView('katalog-einkuenfte')
+            }}
+            onBack={() => setCockpitView('lstb')}
+          />
         ) : null}
         {tab === 'cockpit' && cockpitView === 'katalog-einkuenfte' ? (
           <CatalogScreen
             taxYear={taxYear}
             entry="einkuenfte"
-            onDone={() => setCockpitView('katalog-sonderausgaben')}
-            onBack={() => setCockpitView(funnelPath === 'ch' ? 'ch' : 'katalog-lebenslagen')}
+            revisit={catalogRevisit}
+            onDone={() => {
+              setCatalogRevisit(false)
+              setCockpitView('katalog-sonderausgaben')
+            }}
+            onBack={() => {
+              setCatalogRevisit(true)
+              setCockpitView(funnelPath === 'ch' ? 'ch' : 'katalog-lebenslagen')
+            }}
           />
         ) : null}
         {tab === 'cockpit' && cockpitView === 'katalog-sonderausgaben' ? (
           <CatalogScreen
             taxYear={taxYear}
             entry="sonderausgaben"
-            onDone={() => setCockpitView('arbeitstage')}
-            onBack={() => setCockpitView('katalog-einkuenfte')}
+            revisit={catalogRevisit}
+            onDone={() => {
+              setCatalogRevisit(false)
+              setCockpitView('arbeitstage')
+            }}
+            onBack={() => {
+              setCatalogRevisit(true)
+              setCockpitView('katalog-einkuenfte')
+            }}
           />
         ) : null}
         {tab === 'cockpit' && cockpitView === 'arbeitstage' ? (
           <WorkdaysScreen
             taxYear={taxYear}
             onDone={() => setCockpitView(funnelPath === 'ch' ? 'main' : 'plausibilitaet')}
-            onBack={() => setCockpitView('katalog-sonderausgaben')}
+            onBack={() => {
+              setCatalogRevisit(true)
+              setCockpitView('katalog-sonderausgaben')
+            }}
           />
         ) : null}
         {tab === 'cockpit' && cockpitView === 'plausibilitaet' ? (
