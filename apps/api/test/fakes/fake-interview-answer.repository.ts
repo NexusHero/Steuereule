@@ -23,7 +23,11 @@ export class FakeInterviewAnswerRepository implements InterviewAnswerRepository 
     this.writes.push(params)
     const k = key(params.userId, params.taxYear)
     const rows = this.store.get(k) ?? new Map<string, string>()
-    rows.set(params.questionId, params.value)
+    if (params.value === '') {
+      rows.delete(params.questionId)
+    } else {
+      rows.set(params.questionId, params.value)
+    }
     this.store.set(k, rows)
     return Promise.resolve()
   }

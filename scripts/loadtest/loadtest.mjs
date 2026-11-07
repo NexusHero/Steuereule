@@ -35,25 +35,32 @@ function extractCookieHeader(res) {
 
 async function createAuthenticatedSession() {
   if (IS_MOCK) return 'mock=1'
-  const email = `loadtest.${Date.now()}.${Math.random().toString(36).slice(2, 7)}@steuereule.test`
-  const res = await fetch(`${BASE_URL}/v1/auth/sign-up/email`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Origin: ORIGIN },
-    body: JSON.stringify({
-      email,
-      password: 'LoadTest-Password-2026!',
-      name: 'Load Tester',
-    }),
-  })
-  if (!res.ok) {
-    const text = await res.text().catch(() => '')
-    throw new Error(`Auth bootstrap failed with HTTP ${res.status}: ${text}`)
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const email = `loadtest.${Date.now()}.${Math.random().toString(36).slice(2, 7)}@steuereule.test`
+    const res = await fetch(`${BASE_URL}/api/auth/sign-up/email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: ORIGIN },
+      body: JSON.stringify({
+        email,
+        password: 'LoadTest-Password-2026!',
+        name: 'Load Tester',
+      }),
+    })
+    if (res.status === 429 && attempt < 3) {
+      await new Promise((r) => setTimeout(r, 11_000))
+      continue
+    }
+    if (!res.ok) {
+      const text = await res.text().catch(() => '')
+      throw new Error(`Auth bootstrap failed with HTTP ${res.status}: ${text}`)
+    }
+    const cookie = extractCookieHeader(res)
+    if (!cookie) {
+      throw new Error('Auth bootstrap succeeded but returned no session cookie')
+    }
+    return cookie
   }
-  const cookie = extractCookieHeader(res)
-  if (!cookie) {
-    throw new Error('Auth bootstrap succeeded but returned no session cookie')
-  }
-  return cookie
+  throw new Error('Auth bootstrap exhausted retries')
 }
 
 async function runJourney(cookie, workerId, iter) {
@@ -89,7 +96,7 @@ async function runJourney(cookie, workerId, iter) {
       body: JSON.stringify({
         firstName: `Load${workerId}`,
         lastName: `Tester${iter}`,
-        steuerId: '04444444444',
+        steuerId: '02476291358',
       }),
     })
     if (res.status !== 200) throw new Error(`Profile returned ${res.status}`)
@@ -154,6 +161,8 @@ async function runJourney(cookie, workerId, iter) {
 
 async function main() {
   const cookie = await createAuthenticatedSession()
+  // Warm up 1 journey so user rows exist before concurrent workers start
+  await runJourney(cookie, 0, 0)
   const allLatencies = []
   const failureReasons = []
   let failed = 0

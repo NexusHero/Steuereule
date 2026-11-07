@@ -422,6 +422,17 @@ export class AdvisorService {
       key,
       targetAction.previousValue,
     )
+    if (targetAction.previousValue === null && targetAction.companionFields) {
+      for (const [compField, compVal] of Object.entries(targetAction.companionFields)) {
+        const compKey = provenanceKey(targetAction.screen, compField, targetAction.instance ?? undefined)
+        await this.confirmationService.restoreValueByAdvisor(
+          userId,
+          taxYear,
+          compKey,
+          compVal === 'Ja' ? 'Nein' : null,
+        )
+      }
+    }
 
     const updatedAction: AdvisorActionProposal = {
       ...targetAction,

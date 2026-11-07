@@ -89,6 +89,7 @@ export function CatalogScreen({ entry, onDone = () => {}, onBack, taxYear = CURR
   const [history, setHistory] = useState<readonly EntryStepId[]>([])
   const [seeded, setSeeded] = useState(false)
   const [conflict, setConflict] = useState(false)
+  const [pendingCount, setPendingCount] = useState(0)
   const mutationQueue = useRef<Promise<void>>(Promise.resolve())
 
   useEffect(() => {
@@ -115,9 +116,9 @@ export function CatalogScreen({ entry, onDone = () => {}, onBack, taxYear = CURR
   const current = seeded ? nextStepFor(ENTRIES[entry], answers) : null
 
   useEffect(() => {
-    if (current?.kind === 'done' && !postAnswer.isPending) onDone()
+    if (current?.kind === 'done' && pendingCount === 0 && !postAnswer.isPending) onDone()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [current?.kind, postAnswer.isPending])
+  }, [current?.kind, pendingCount, postAnswer.isPending])
 
   if (interviewQuery.isPending) {
     return <LoadingState bp={bp} label={tr('katalog.loading')} />
@@ -143,6 +144,7 @@ export function CatalogScreen({ entry, onDone = () => {}, onBack, taxYear = CURR
     const previousHistory = history
     setHistory((h) => [...h, stepId])
     setAnswers((a) => ({ ...a, [stepId]: value }))
+    setPendingCount((c) => c + 1)
 
     mutationQueue.current = mutationQueue.current
       .then(async () => {
@@ -159,6 +161,8 @@ export function CatalogScreen({ entry, onDone = () => {}, onBack, taxYear = CURR
         } catch {
           setAnswers(previousAnswers)
           setHistory(previousHistory)
+        } finally {
+          setPendingCount((c) => c - 1)
         }
       })
       .catch(() => {})
