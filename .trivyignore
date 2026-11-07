@@ -1,0 +1,12 @@
+# .trivyignore — Trivy security scan suppressions
+# Governs accepted trade-offs documented in ADRs / architecture decisions.
+
+# Cloud SQL Beta deployment uses public IP with SSL ENCRYPTED_ONLY (no VPC connector in beta)
+AVD-GCP-0017
+GCP-0017
+
+# Template K8s manifests in infra/manifests/base/ (Active production runtime is GCP Cloud Run)
+AVD-KSV-0014
+KSV-0014
+AVD-KSV-0118
+KSV-0118

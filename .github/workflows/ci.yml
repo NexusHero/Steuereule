@@ -106,14 +106,12 @@ jobs:
           failure-threshold: error
       - name: Actionlint — Lint .github/workflows/*.yml
         run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.7 -color
-      - name: Trivy FS Scan (SCA dependencies + IaC infra/ & docker-compose*.yml — HIGH/CRITICAL)
+      - name: Trivy IaC Scan (Terraform, Dockerfiles, Compose & K8s — HIGH/CRITICAL)
         uses: aquasecurity/trivy-action@v0.36.0
         with:
-          scan-type: fs
+          scan-type: config
           scan-ref: .
-          scanners: vuln,misconfig
           severity: HIGH,CRITICAL
-          ignore-unfixed: true
           exit-code: '1'
       - name: Semgrep SAST Scan (.semgrep.yml custom NestJS/DSGVO rules)
         run: docker run --rm -v "$PWD:/src" -w /src semgrep/semgrep:1.110.0 semgrep scan --config .semgrep.yml --error

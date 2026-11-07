@@ -52,7 +52,10 @@ rules:
         - packages/
 
   - id: steuereule-no-dangerously-set-inner-html
-    pattern: dangerouslySetInnerHTML={{...}}
+    patterns:
+      - pattern-either:
+          - pattern: "{dangerouslySetInnerHTML: $X}"
+          - pattern: "$PROP.dangerouslySetInnerHTML"
     message: >
       XSS risk: dangerouslySetInnerHTML is forbidden in SteuerEule UI components.
     languages: [typescript, javascript]
