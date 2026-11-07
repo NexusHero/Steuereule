@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Pressable, Text, View, type TextStyle, type ViewStyle } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { Card, OwlGlyph, useTheme, type UiTheme } from '@steuereule/ui'
 import {
@@ -23,6 +24,7 @@ import {
   useAdvisorControllerApplyAction,
   useAdvisorControllerUndoAction,
 } from '@steuereule/api-client'
+import { APP_NS } from '../../i18n/resources'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { AdvisorChatPanel } from './AdvisorChatPanel'
 
@@ -32,35 +34,23 @@ export interface InMaskAdvisorCompanionProps {
   readonly title?: string | undefined
 }
 
-const SCREEN_QUICK_CHIPS: Readonly<Partial<Record<Screen, readonly string[]>>> = {
-  lstb: [
-    'Homeoffice vs. Arbeitszimmer prüfen',
-    'Fortbildung & Reisekosten klären',
-    'Arbeitsmittel & Laptop absetzen',
-  ],
-  chLohnausweis: [
-    'Krankenkasse (z. B. 4.200 CHF) eintragen',
-    'Homeoffice-Pauschale prüfen',
-    'Kanzlei-Endprüfung starten',
-  ],
-  interview: [
-    'Homeoffice vs. Arbeitszimmer prüfen',
-    'Fortbildung & Reisekosten klären',
-    'Spenden aus dem Vorjahr prüfen',
-  ],
-  kind: [
-    'Kinderbetreuungskosten (Kita/Hort) prüfen',
-    'Spenden aus dem Vorjahr prüfen',
-    'Kanzlei-Endprüfung starten',
-  ],
-  vermietung: [
-    'Homeoffice vs. Arbeitszimmer prüfen',
-    'Kanzlei-Endprüfung starten',
-  ],
-  kapital: [
-    'Spenden aus dem Vorjahr prüfen',
-    'Kanzlei-Endprüfung starten',
-  ],
+type QuickChipKey =
+  | 'homeofficeCheck'
+  | 'trainingTravel'
+  | 'workEquipment'
+  | 'healthInsuranceCh'
+  | 'homeofficeLumpSum'
+  | 'finalReview'
+  | 'priorDonations'
+  | 'childcareCosts'
+
+const SCREEN_QUICK_CHIP_KEYS: Readonly<Partial<Record<Screen, readonly QuickChipKey[]>>> = {
+  lstb: ['homeofficeCheck', 'trainingTravel', 'workEquipment'],
+  chLohnausweis: ['healthInsuranceCh', 'homeofficeLumpSum', 'finalReview'],
+  interview: ['homeofficeCheck', 'trainingTravel', 'priorDonations'],
+  kind: ['childcareCosts', 'priorDonations', 'finalReview'],
+  vermietung: ['homeofficeCheck', 'finalReview'],
+  kapital: ['priorDonations', 'finalReview'],
 }
 
 const DEFAULT_FALLBACK_DIGEST: CaseDigest = {
@@ -102,13 +92,18 @@ const DEFAULT_FALLBACK_DIGEST: CaseDigest = {
 export function InMaskAdvisorCompanion({
   screen,
   taxYear = CURRENT_TAX_YEAR,
-  title = 'Eule zu dieser Maske fragen',
+  title,
 }: InMaskAdvisorCompanionProps) {
   const t = useTheme()
+  const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
   const [open, setOpen] = useState(false)
   const [localMessages, setLocalMessages] = useState<readonly AdvisorChatMessageView[]>([])
   const queryClient = useQueryClient()
+  const resolvedTitle = title ?? tr('advisor.companion.triggerTitle', 'Eule zu dieser Maske fragen')
+
+  const chipKeys = SCREEN_QUICK_CHIP_KEYS[screen] ?? SCREEN_QUICK_CHIP_KEYS.interview ?? []
+  const quickChips = chipKeys.map((key) => tr(`advisor.companion.chips.${key}`))
 
   const sessionQuery = useAdvisorControllerGetSession(taxYear, {
     query: { enabled: open, retry: false },
@@ -218,16 +213,16 @@ export function InMaskAdvisorCompanion({
     return (
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={title}
+        accessibilityLabel={resolvedTitle}
         onPress={() => setOpen(true)}
         style={styles.triggerBar}
         testID="in-mask-advisor-trigger"
       >
         <View style={styles.triggerLeft}>
           <OwlGlyph size={18} ink={t.color.ki} ground={t.color.kiWeich} />
-          <Text style={styles.triggerTitle}>{title}</Text>
+          <Text style={styles.triggerTitle}>{resolvedTitle}</Text>
         </View>
-        <Text style={styles.triggerHint}>Kanzlei-Begleiter öffnen ▾</Text>
+        <Text style={styles.triggerHint}>{tr('advisor.companion.triggerHint', 'Kanzlei-Begleiter öffnen ▾')}</Text>
       </Pressable>
     )
   }
@@ -237,27 +232,33 @@ export function InMaskAdvisorCompanion({
       <View style={styles.sheetHeader}>
         <View style={styles.sheetTitleRow}>
           <OwlGlyph size={20} ink={t.color.ki} ground={t.color.kiWeich} />
-          <Text style={styles.sheetTitle}>Deine Eule · Direkt-Beratung an der Maske</Text>
+          <Text style={styles.sheetTitle}>{tr('advisor.companion.sheetTitle', 'Deine Eule · Direkt-Beratung an der Maske')}</Text>
         </View>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Begleiter einklappen"
+          accessibilityLabel={tr('advisor.companion.closeAria', 'Begleiter einklappen')}
           onPress={() => setOpen(false)}
           style={styles.closeBtn}
           testID="in-mask-advisor-close"
         >
-          <Text style={styles.closeBtnText}>Einklappen ▴</Text>
+          <Text style={styles.closeBtnText}>{tr('advisor.companion.closeButton', 'Einklappen ▴')}</Text>
         </Pressable>
       </View>
 
       <Text style={styles.privacyNotice}>
-        🔒 Mandantengeheimnis aktiv — Werte werden erst nach deinem Klick auf „✓ Jetzt übernehmen“ direkt in diese Maske eingetragen.
+        {tr(
+          'advisor.companion.privacyNotice',
+          '🔒 Mandantengeheimnis aktiv — Werte werden erst nach deinem Klick auf „✓ Jetzt übernehmen“ direkt in diese Maske eingetragen.',
+        )}
       </Text>
 
       <AdvisorChatPanel
-        greeting="Frag mich direkt zu diesem Formularbereich. Ich rechne dir vorab die genaue Steuerwirkung aus."
+        greeting={tr(
+          'advisor.companion.greeting',
+          'Frag mich direkt zu diesem Formularbereich. Ich rechne dir vorab die genaue Steuerwirkung aus.',
+        )}
         messages={displayedMessages}
-        quickChips={SCREEN_QUICK_CHIPS[screen] ?? SCREEN_QUICK_CHIPS.interview}
+        quickChips={quickChips}
         isSending={sendMutation.isPending}
         onSendMessage={handleSendMessage}
         onApplyAction={handleApplyAction}
