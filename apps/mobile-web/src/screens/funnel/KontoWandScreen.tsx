@@ -59,7 +59,7 @@ export function AccountWallScreen({ path, onRegister, onLogin, onLater }: Accoun
         {tr('funnel.kontoWand.login')}
       </Button>
       <View style={styles.laterRow}>
-        <Chip onPress={onLater}>{tr('funnel.kontoWand.later')}</Chip>
+        <Chip onPress={onLater} testID="konto-wand-spaeter">{tr('funnel.kontoWand.later')}</Chip>
       </View>
       <Text style={styles.note}>{tr('funnel.kontoWand.note')}</Text>
     </ScrollView>
