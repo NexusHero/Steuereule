@@ -202,6 +202,7 @@ describe('PlaywrightPdfRenderer — launch caching lifecycle (#285)', () => {
 
     // Start 6 concurrent PDF exports (default limit is 3).
     const exports = Array.from({ length: 6 }, () => renderer.renderPdf(HTML))
+    const settledPromise = Promise.allSettled(exports)
 
     // Wait a microtask tick so the first batch reaches page.pdf()
     await new Promise((resolve) => setTimeout(resolve, 10))
@@ -222,7 +223,7 @@ describe('PlaywrightPdfRenderer — launch caching lifecycle (#285)', () => {
       deferred.resolve(Buffer.from('%PDF-1.4 rest'))
     }
 
-    const results = await Promise.allSettled(exports)
+    const results = await settledPromise
     expect(results.map((r) => r.status)).toEqual([
       'rejected',
       'fulfilled',
