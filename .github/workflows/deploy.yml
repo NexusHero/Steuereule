@@ -187,7 +187,7 @@ jobs:
 
       - name: Generate CycloneDX Release SBOMs (CRA / BSI TR-03183)
         if: steps.gate.outputs.ready == 'true'
-        uses: aquasecurity/trivy-action@0.30.0
+        uses: aquasecurity/trivy-action@v0.30.0
         with:
           image-ref: ${{ env.API_IMAGE }}
           format: cyclonedx

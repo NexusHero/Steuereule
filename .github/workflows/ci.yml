@@ -107,7 +107,7 @@ jobs:
       - name: Actionlint — Lint .github/workflows/*.yml
         run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.7 -color
       - name: Trivy FS Scan (SCA dependencies + IaC infra/ & docker-compose*.yml — HIGH/CRITICAL)
-        uses: aquasecurity/trivy-action@0.30.0
+        uses: aquasecurity/trivy-action@v0.30.0
         with:
           scan-type: fs
           scan-ref: .
@@ -415,26 +415,26 @@ jobs:
       - name: Build production Web Docker image (non-root USER node)
         run: docker build -f apps/mobile-web/Dockerfile --build-arg EXPO_PUBLIC_API_BASE_URL=https://api.steuereule.de -t steuereule-web:ci .
       - name: Generate CycloneDX SBOM for repository (pnpm-lock.yaml)
-        uses: aquasecurity/trivy-action@0.30.0
+        uses: aquasecurity/trivy-action@v0.30.0
         with:
           scan-type: fs
           scan-ref: .
           format: cyclonedx
           output: sbom-repo.cdx.json
       - name: Generate CycloneDX SBOM for API container image
-        uses: aquasecurity/trivy-action@0.30.0
+        uses: aquasecurity/trivy-action@v0.30.0
         with:
           image-ref: steuereule-api:ci
           format: cyclonedx
           output: sbom-api.cdx.json
       - name: Generate CycloneDX SBOM for Web container image
-        uses: aquasecurity/trivy-action@0.30.0
+        uses: aquasecurity/trivy-action@v0.30.0
         with:
           image-ref: steuereule-web:ci
           format: cyclonedx
           output: sbom-web.cdx.json
       - name: Trivy Container Scan — steuereule-api:ci (HIGH/CRITICAL blocking)
-        uses: aquasecurity/trivy-action@0.30.0
+        uses: aquasecurity/trivy-action@v0.30.0
         with:
           image-ref: steuereule-api:ci
           format: table
@@ -442,7 +442,7 @@ jobs:
           ignore-unfixed: true
           exit-code: '1'
       - name: Trivy Container Scan — steuereule-web:ci (HIGH/CRITICAL blocking)
-        uses: aquasecurity/trivy-action@0.30.0
+        uses: aquasecurity/trivy-action@v0.30.0
         with:
           image-ref: steuereule-web:ci
           format: table
