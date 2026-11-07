@@ -1,4 +1,5 @@
-// Master E2E Runner: executes all 23 scenarios (01–23) sequentially against a shared stack and browser.
+// Master E2E Runner: executes all 24 scenarios (01–24) sequentially against a shared stack and browser.
+// Supports optional sharding for CI matrix parallelism: `node e2e/scenarios/run-all-scenarios.mjs --shard 1/4`
 import { launchBrowser, closeBrowser, startStack, fail } from './helpers/scenario-harness.mjs'
 import { runScenario01 } from './01-lena-hoffmann-angestellt.mjs'
 import { runScenario02 } from './02-markus-brenner-grenzgaenger-ch.mjs'
@@ -23,42 +24,91 @@ import { runScenario20 } from './20-dialog-matrix-kataloge-zickzack.mjs'
 import { runScenario21 } from './21-dialog-matrix-submasken-und-partner-b.mjs'
 import { runScenario22 } from './22-dialog-matrix-crud-detailmasken.mjs'
 import { runScenario23 } from './23-dialog-matrix-gast-upgrade-und-steuerjahre.mjs'
+import { runScenario24 } from './24-advisor-chat-steuereule.mjs'
+
+function parseShardArgs(argv) {
+  const idx = argv.indexOf('--shard')
+  if (idx === -1 || !argv[idx + 1]) {
+    return null
+  }
+  const match = /^(\d+)\/(\d+)$/.exec(argv[idx + 1])
+  if (!match) {
+    throw new Error(`Invalid --shard format '${argv[idx + 1]}'. Expected '<index>/<total>', e.g. '1/4'.`)
+  }
+  const shardIndex = Number(match[1])
+  const shardTotal = Number(match[2])
+  if (shardIndex < 1 || shardTotal < 1 || shardIndex > shardTotal) {
+    throw new Error(`Invalid --shard bounds '${argv[idx + 1]}'.`)
+  }
+  return { shardIndex, shardTotal }
+}
+
+// Scenario 02 & 03 are coupled (Julia couples with Markus's open session), so they form a single execution unit.
+const SCENARIO_UNITS = [
+  {
+    name: 'Scenario 01',
+    run: (browser, webOrigin, sql) => runScenario01(browser, webOrigin, sql),
+  },
+  {
+    name: 'Scenario 02 + 03 (Coupled Cross-Border Household)',
+    run: async (browser, webOrigin, sql) => {
+      const markusSession = await runScenario02(browser, webOrigin, sql, { keepOpen: true })
+      await runScenario03(browser, webOrigin, sql, markusSession)
+    },
+  },
+  { name: 'Scenario 04', run: (browser, webOrigin, sql) => runScenario04(browser, webOrigin, sql) },
+  { name: 'Scenario 05', run: (browser, webOrigin, sql) => runScenario05(browser, webOrigin, sql) },
+  { name: 'Scenario 06', run: (browser, webOrigin, sql) => runScenario06(browser, webOrigin, sql) },
+  { name: 'Scenario 07', run: (browser, webOrigin, sql) => runScenario07(browser, webOrigin, sql) },
+  { name: 'Scenario 08', run: (browser, webOrigin, sql) => runScenario08(browser, webOrigin, sql) },
+  { name: 'Scenario 09', run: (browser, webOrigin, sql) => runScenario09(browser, webOrigin, sql) },
+  { name: 'Scenario 10', run: (browser, webOrigin, sql) => runScenario10(browser, webOrigin, sql) },
+  { name: 'Scenario 11', run: (browser, webOrigin, sql) => runScenario11(browser, webOrigin, sql) },
+  { name: 'Scenario 12', run: (browser, webOrigin, sql) => runScenario12(browser, webOrigin, sql) },
+  { name: 'Scenario 13', run: (browser, webOrigin, sql) => runScenario13(browser, webOrigin, sql) },
+  { name: 'Scenario 14', run: (browser, webOrigin, sql) => runScenario14(browser, webOrigin, sql) },
+  { name: 'Scenario 15', run: (browser, webOrigin, sql) => runScenario15(browser, webOrigin, sql) },
+  { name: 'Scenario 16', run: (browser, webOrigin, sql) => runScenario16(browser, webOrigin, sql) },
+  { name: 'Scenario 17', run: (browser, webOrigin, sql) => runScenario17(browser, webOrigin, sql) },
+  { name: 'Scenario 18', run: (browser, webOrigin, sql) => runScenario18(browser, webOrigin, sql) },
+  { name: 'Scenario 19', run: (browser, webOrigin, sql) => runScenario19(browser, webOrigin, sql) },
+  { name: 'Scenario 20', run: (browser, webOrigin, sql) => runScenario20(browser, webOrigin, sql) },
+  { name: 'Scenario 21', run: (browser, webOrigin, sql) => runScenario21(browser, webOrigin, sql) },
+  { name: 'Scenario 22', run: (browser, webOrigin, sql) => runScenario22(browser, webOrigin, sql) },
+  { name: 'Scenario 23', run: (browser, webOrigin, sql) => runScenario23(browser, webOrigin, sql) },
+  { name: 'Scenario 24', run: (browser, webOrigin, sql) => runScenario24(browser, webOrigin, sql) },
+]
 
 async function main() {
+  const shard = parseShardArgs(process.argv.slice(2))
+  const selectedUnits = shard
+    ? SCENARIO_UNITS.filter((_, i) => i % shard.shardTotal === shard.shardIndex - 1)
+    : SCENARIO_UNITS
+
   console.log('='.repeat(80))
-  console.log('STARTING COMPLETE 23-SCENARIO PLAYWRIGHT ACCEPTANCE & DIALOG-MATRIX SUITE')
+  if (shard) {
+    console.log(
+      `STARTING SHARD ${shard.shardIndex}/${shard.shardTotal} (${selectedUnits.map((u) => u.name).join(', ')})`,
+    )
+  } else {
+    console.log('STARTING COMPLETE 24-SCENARIO PLAYWRIGHT ACCEPTANCE & DIALOG-MATRIX SUITE')
+  }
   console.log('='.repeat(80))
 
   const stack = await startStack()
   const browser = await launchBrowser()
 
   try {
-    await runScenario01(browser, stack.webOrigin, stack.sql)
-    const markusSession = await runScenario02(browser, stack.webOrigin, stack.sql, { keepOpen: true })
-    await runScenario03(browser, stack.webOrigin, stack.sql, markusSession)
-    await runScenario04(browser, stack.webOrigin, stack.sql)
-    await runScenario05(browser, stack.webOrigin, stack.sql)
-    await runScenario06(browser, stack.webOrigin, stack.sql)
-    await runScenario07(browser, stack.webOrigin, stack.sql)
-    await runScenario08(browser, stack.webOrigin, stack.sql)
-    await runScenario09(browser, stack.webOrigin, stack.sql)
-    await runScenario10(browser, stack.webOrigin, stack.sql)
-    await runScenario11(browser, stack.webOrigin, stack.sql)
-    await runScenario12(browser, stack.webOrigin, stack.sql)
-    await runScenario13(browser, stack.webOrigin, stack.sql)
-    await runScenario14(browser, stack.webOrigin, stack.sql)
-    await runScenario15(browser, stack.webOrigin, stack.sql)
-    await runScenario16(browser, stack.webOrigin, stack.sql)
-    await runScenario17(browser, stack.webOrigin, stack.sql)
-    await runScenario18(browser, stack.webOrigin, stack.sql)
-    await runScenario19(browser, stack.webOrigin, stack.sql)
-    await runScenario20(browser, stack.webOrigin, stack.sql)
-    await runScenario21(browser, stack.webOrigin, stack.sql)
-    await runScenario22(browser, stack.webOrigin, stack.sql)
-    await runScenario23(browser, stack.webOrigin, stack.sql)
+    for (const unit of selectedUnits) {
+      await unit.run(browser, stack.webOrigin, stack.sql)
+    }
 
     console.log('\n' + '='.repeat(80))
-    console.log('ALL 23 SCENARIOS PASSED WITH ZERO FINDINGS OR REGRESSIONS!')
+    console.log(
+      shard
+        ? `SHARD ${shard.shardIndex}/${shard.shardTotal} PASSED WITH ZERO FINDINGS OR REGRESSIONS!`
+        : 'ALL 24 SCENARIOS PASSED WITH ZERO FINDINGS OR REGRESSIONS!',
+    )
     console.log('='.repeat(80) + '\n')
   } catch (error) {
     fail(`Complete E2E suite failed: ${error.message}\n${error.stack}`)

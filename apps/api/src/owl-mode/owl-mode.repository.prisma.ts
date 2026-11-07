@@ -32,7 +32,7 @@ export class PrismaOwlSettingRepository implements OwlSettingRepository {
         },
         update: {
           enabled,
-          ...(enabled && { aktiviertAm: now }),
+          ...(enabled ? { enabledAt: now } : {}),
         },
       }),
       this.prisma.taxDataAccessLog.create({

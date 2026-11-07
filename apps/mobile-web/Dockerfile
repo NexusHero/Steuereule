@@ -42,8 +42,9 @@ RUN pnpm --filter @steuereule/mobile-web exec expo export --platform web --clear
 # a `serve`/`http-server` package) the e2e harness knows nothing about.
 FROM node:24-bookworm-slim AS runtime
 WORKDIR /app
-COPY --from=build /repo/apps/mobile-web/dist ./dist
-COPY --from=build /repo/e2e/cross-origin/static-server.mjs ./static-server.mjs
+COPY --from=build --chown=node:node /repo/apps/mobile-web/dist ./dist
+COPY --from=build --chown=node:node /repo/e2e/cross-origin/static-server.mjs ./static-server.mjs
+USER node
 EXPOSE 8080
 # --host 0.0.0.0, not the script's own 127.0.0.1 default — this must accept connections
 # from outside the container (Docker's own network namespace), not just from itself.

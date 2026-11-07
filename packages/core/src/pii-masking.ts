@@ -85,11 +85,12 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
-const IBAN_TEXT_REGEX = /\b[A-Z]{2}\d{2}(?:\s?[A-Z0-9]{4}){3,7}(?:\s?[A-Z0-9]{1,4})?\b/gi
-const STEUER_ID_TEXT_REGEX = /\b\d{2}[\s-]?\d{3}[\s-]?\d{3}[\s-]?\d{3}\b|\b\d{11}\b/g
+const IBAN_TEXT_REGEX = /\b[A-Z]{2}\d{2}(?:[\s.-]?[A-Z0-9]{4}){3,7}(?:[\s.-]?[A-Z0-9]{1,4})?\b/gi
+const STEUER_ID_TEXT_REGEX =
+  /\b\d{2}[\s.-]?\d{3}[\s.-]?\d{3}[\s.-]?\d{3}\b|\b\d{3}[\s.-]?\d{3}[\s.-]?\d{3}[\s.-]?\d{2}\b|\b\d{11}\b/g
 const STEUERNR_TEXT_REGEX = /\b\d{2,5}\/\d{3,4}\/\d{4,5}\b/g
 const EMAIL_TEXT_REGEX = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g
-const PHONE_TEXT_REGEX = /(?:\+(?:49|41|43)\s?\d{2,4}|0\d{2,4})[\s/-]\d{3,4}(?:[\s/-]?\d{2,5})?\b/g
+const PHONE_TEXT_REGEX = /(?:\+(?:49|41|43)[\s/-]?\d{2,4}|0\d{2,4})[\s/-]?\d{3,4}(?:[\s/-]?\d{2,5})?\b/g
 
 /**
  * Scrubs free-text user chat messages before sending them to an external LLM.
@@ -103,7 +104,15 @@ export function scrubUserMessagePii(
 
   let scrubbed = text
 
-  // 1. Replace known names from the user's tax profile (first/last names, partner, children)
+  // 1. Replace structured PII patterns first (so emails like markus.brenner@firma.ch are
+  // scrubbed as a complete [KONTAKT-GESCHÜTZT] unit rather than split by name replacement).
+  scrubbed = scrubbed.replace(IBAN_TEXT_REGEX, '[IBAN-GESCHÜTZT]')
+  scrubbed = scrubbed.replace(STEUER_ID_TEXT_REGEX, '[STEUER-ID-GESCHÜTZT]')
+  scrubbed = scrubbed.replace(STEUERNR_TEXT_REGEX, '[STEUERNR-GESCHÜTZT]')
+  scrubbed = scrubbed.replace(EMAIL_TEXT_REGEX, '[KONTAKT-GESCHÜTZT]')
+  scrubbed = scrubbed.replace(PHONE_TEXT_REGEX, '[KONTAKT-GESCHÜTZT]')
+
+  // 2. Replace known names from the user's tax profile (first/last names, partner, children)
   for (const rawName of knownNames) {
     if (!rawName) continue
     const parts = rawName
@@ -116,13 +125,6 @@ export function scrubUserMessagePii(
       scrubbed = scrubbed.replace(pattern, '[MANDANT]')
     }
   }
-
-  // 2. Replace structured PII patterns (IBAN first so its digits don't partially match tax IDs)
-  scrubbed = scrubbed.replace(IBAN_TEXT_REGEX, '[IBAN-GESCHÜTZT]')
-  scrubbed = scrubbed.replace(STEUER_ID_TEXT_REGEX, '[STEUER-ID-GESCHÜTZT]')
-  scrubbed = scrubbed.replace(STEUERNR_TEXT_REGEX, '[STEUERNR-GESCHÜTZT]')
-  scrubbed = scrubbed.replace(EMAIL_TEXT_REGEX, '[KONTAKT-GESCHÜTZT]')
-  scrubbed = scrubbed.replace(PHONE_TEXT_REGEX, '[KONTAKT-GESCHÜTZT]')
 
   return scrubbed
 }

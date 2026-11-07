@@ -5,6 +5,7 @@ import {
   Headers,
   HttpCode,
   Inject,
+  Injectable,
   Param,
   Post,
   Res,
@@ -19,6 +20,17 @@ import {
 } from '@nestjs/swagger'
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler'
 import type { FastifyReply } from 'fastify'
+
+@Injectable()
+export class FastifyThrottlerGuard extends ThrottlerGuard {
+  protected override async getTracker(req: Record<string, unknown>): Promise<string> {
+    const ips = req.ips
+    if (Array.isArray(ips) && typeof ips[0] === 'string') {
+      return ips[0]
+    }
+    return typeof req.ip === 'string' ? req.ip : '127.0.0.1'
+  }
+}
 import { CurrentUser } from '../auth/current-user.decorator.js'
 import { ForbidAssistant } from '../auth/forbid-assistant.guard.js'
 import { RequiresAccount } from '../auth/requires-account.guard.js'
@@ -55,7 +67,7 @@ export class AdvisorController {
   @HttpCode(200)
   @RequiresAccount()
   @ForbidAssistant()
-  @UseGuards(ThrottlerGuard)
+  @UseGuards(FastifyThrottlerGuard)
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @ApiParam({ name: 'jahr', type: Number, example: 2025 })
   @ApiBody({ type: SendAdvisorMessageDto })

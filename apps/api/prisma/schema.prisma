@@ -659,6 +659,7 @@ model Capital {
   updatedAt             DateTime @updatedAt
 
   @@unique([userId, taxYear])
+  @@index([userId])
   @@map("Kapital")
 }
 
