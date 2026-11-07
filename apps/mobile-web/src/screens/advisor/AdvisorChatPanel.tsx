@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Linking, Pressable, Text, TextInput, View, type TextStyle, type ViewStyle } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { AiChip, Button, Card, useTheme, type UiTheme } from '@steuereule/ui'
 import {
   ADVISOR_LEGAL_SOURCES,
@@ -10,6 +11,8 @@ import {
   type AdvisorTwoPathsProposal,
   type OwlSourceId,
 } from '@steuereule/core'
+import { APP_NS } from '../../i18n/resources'
+import type { Tr } from '../shared/tr'
 
 export interface AdvisorChatPanelProps {
   readonly greeting?: string | undefined
@@ -28,6 +31,7 @@ function renderMessageWithLawChips(
   content: string,
   onSelectSource: (source: AdvisorLegalSource) => void,
   styles: ReturnType<typeof makeStyles>,
+  tr: Tr,
 ) {
   const parts: React.ReactNode[] = []
   let lastIndex = 0
@@ -45,7 +49,10 @@ function renderMessageWithLawChips(
         <Pressable
           key={`${sourceId}-${match.index}`}
           accessibilityRole="button"
-          accessibilityLabel={`Rechtsquelle ${legalSource.paragraph}`}
+          accessibilityLabel={tr('advisor.chat.legalSourceAria', {
+            paragraph: legalSource.paragraph,
+            defaultValue: `Rechtsquelle ${legalSource.paragraph}`,
+          })}
           onPress={() => onSelectSource(legalSource)}
           style={styles.inlineLawChip}
           testID={`law-chip-${sourceId}`}
@@ -81,6 +88,7 @@ function ActionProposalCardView({
   readonly styles: ReturnType<typeof makeStyles>
   readonly testIDPrefix?: string
 }) {
+  const { t: tr } = useTranslation(APP_NS)
   const [busy, setBusy] = useState(false)
   const legalSource = ADVISOR_LEGAL_SOURCES[action.sourceId]
 
@@ -110,21 +118,24 @@ function ActionProposalCardView({
         <Text style={styles.actionLabel}>{action.label}</Text>
         {action.deltaEur > 0 ? (
           <Text style={styles.actionDeltaBadge} testID={`${testIDPrefix}-delta`}>
-            {`+${formatEuro(action.deltaEur)} Steuer-Effekt`}
+            {tr('advisor.chat.taxEffect', {
+              amount: formatEuro(action.deltaEur),
+              defaultValue: `+${formatEuro(action.deltaEur)} Steuer-Effekt`,
+            })}
           </Text>
         ) : null}
       </View>
 
       <View style={styles.diffBox}>
         <View style={styles.diffRow}>
-          <Text style={styles.diffCaption}>Eintrag:</Text>
+          <Text style={styles.diffCaption}>{tr('advisor.chat.entryLabel', 'Eintrag:')}</Text>
           <Text style={styles.diffValues}>
-            {`${action.previousValue ?? 'Nicht erfasst'} → `}
+            {`${action.previousValue ?? tr('advisor.chat.notRecorded', 'Nicht erfasst')} → `}
             <Text style={styles.diffNewValue}>{action.newValue}</Text>
           </Text>
         </View>
         <View style={styles.diffRow}>
-          <Text style={styles.diffCaption}>Erstattung (Simulation):</Text>
+          <Text style={styles.diffCaption}>{tr('advisor.chat.refundSimulation', 'Erstattung (Simulation):')}</Text>
           <Text style={styles.diffValues}>
             {`${formatEuro(action.beforeRefundEur)} → `}
             <Text style={styles.diffNewValue}>{formatEuro(action.afterRefundEur)}</Text>
@@ -141,7 +152,11 @@ function ActionProposalCardView({
           style={styles.sourcePill}
         >
           <Text style={styles.sourcePillText}>
-            {`${legalSource.paragraph} · Rechtsstand ${legalSource.legalStatusDate}`}
+            {tr('advisor.chat.legalStatusDate', {
+              paragraph: legalSource.paragraph,
+              date: legalSource.legalStatusDate,
+              defaultValue: `${legalSource.paragraph} · Rechtsstand ${legalSource.legalStatusDate}`,
+            })}
           </Text>
         </Pressable>
       ) : null}
@@ -150,18 +165,18 @@ function ActionProposalCardView({
         {action.status === 'applied' ? (
           <View style={styles.appliedRow}>
             <Text style={styles.appliedBadge} testID={`${testIDPrefix}-applied-badge`}>
-              ✓ Übernommen & bestätigt (SteuerEule)
+              {tr('advisor.chat.appliedBadge', '✓ Übernommen & bestätigt (SteuerEule)')}
             </Text>
             {onUndo ? (
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Rückgängig machen"
+                accessibilityLabel={tr('advisor.chat.undoAria', 'Rückgängig machen')}
                 disabled={busy}
                 onPress={() => void handleUndo()}
                 style={styles.undoButton}
                 testID={`${testIDPrefix}-undo-btn`}
               >
-                <Text style={styles.undoButtonText}>↩ Rückgängig machen</Text>
+                <Text style={styles.undoButtonText}>{tr('advisor.chat.undoButton', '↩ Rückgängig machen')}</Text>
               </Pressable>
             ) : null}
           </View>
@@ -171,7 +186,9 @@ function ActionProposalCardView({
             disabled={busy}
             testID={`${testIDPrefix}-apply-btn`}
           >
-            {action.status === 'undone' ? '✓ Erneut übernehmen' : '✓ Jetzt übernehmen'}
+            {action.status === 'undone'
+              ? tr('advisor.chat.applyAgain', '✓ Erneut übernehmen')
+              : tr('advisor.chat.applyNow', '✓ Jetzt übernehmen')}
           </Button>
         )}
       </View>
@@ -227,8 +244,9 @@ export function AdvisorChatPanel({
   onApplyAction,
   onUndoAction,
 }: AdvisorChatPanelProps) {
-  const t = useTheme()
-  const styles = makeStyles(t)
+  const theme = useTheme()
+  const { t: tr } = useTranslation(APP_NS)
+  const styles = makeStyles(theme)
   const [inputText, setInputText] = useState('')
   const [selectedSource, setSelectedSource] = useState<AdvisorLegalSource | null>(null)
 
@@ -245,12 +263,15 @@ export function AdvisorChatPanel({
     <View style={styles.container} testID="advisor-chat-panel">
       <View style={styles.chatHeader}>
         <AiChip style={styles.sender} testID="eule-sender-chat">
-          Die Eule
+          {tr('advisor.chat.sender', 'Die Eule')}
         </AiChip>
-        <Text style={styles.heading}>Steuer-Assistent</Text>
+        <Text style={styles.heading}>{tr('advisor.chat.heading', 'Steuer-Assistent')}</Text>
         <Text style={styles.help}>
           {greeting ??
-            'Stelle Fragen zu deinen Werbungskosten, Freibeträgen oder Belegen. Antworten erfolgen transparent mit Angabe der Rechtsgrundlage.'}
+            tr(
+              'advisor.chat.help',
+              'Stelle Fragen zu deinen Werbungskosten, Freibeträgen oder Belegen. Antworten erfolgen transparent mit Angabe der Rechtsgrundlage.',
+            )}
         </Text>
       </View>
 
@@ -280,9 +301,9 @@ export function AdvisorChatPanel({
           ) : (
             <Card key={msg.id} style={styles.assistantBubble} testID="advisor-assistant-message">
               <View style={styles.assistantBubbleHeader}>
-                <AiChip>Die Eule</AiChip>
+                <AiChip>{tr('advisor.chat.sender', 'Die Eule')}</AiChip>
               </View>
-              {renderMessageWithLawChips(msg.content, setSelectedSource, styles)}
+              {renderMessageWithLawChips(msg.content, setSelectedSource, styles, tr)}
 
               {/* Source Pills when sources are in meta */}
               {msg.meta?.sources && msg.meta.sources.length > 0 ? (
@@ -308,7 +329,7 @@ export function AdvisorChatPanel({
               {/* Mandanten-Anamnese Follow-up Choice Pills */}
               {msg.meta?.choices && msg.meta.choices.length > 0 ? (
                 <View style={styles.choicesContainer} testID="advisor-followup-choices">
-                  <Text style={styles.choicesCaption}>Schnellantwort wählen:</Text>
+                  <Text style={styles.choicesCaption}>{tr('advisor.chat.choicesCaption', 'Schnellantwort wählen:')}</Text>
                   <View style={styles.choicesRow}>
                     {msg.meta.choices.map((choice) => (
                       <Pressable
@@ -352,7 +373,7 @@ export function AdvisorChatPanel({
 
         {isSending ? (
           <View style={styles.thinkingBox} testID="advisor-thinking">
-            <Text style={styles.thinkingText}>Eule prüft deine Akte & Paragraphen …</Text>
+            <Text style={styles.thinkingText}>{tr('advisor.chat.thinking', 'Eule prüft deine Akte & Paragraphen …')}</Text>
           </View>
         ) : null}
       </View>
@@ -367,24 +388,27 @@ export function AdvisorChatPanel({
             </View>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Rechtsquelle schließen"
+              accessibilityLabel={tr('advisor.chat.legalSourceCloseAria', 'Rechtsquelle schließen')}
               onPress={() => setSelectedSource(null)}
               style={styles.lawModalCloseBtn}
               testID="law-source-close"
             >
-              <Text style={styles.lawModalCloseText}>✕ Schließen</Text>
+              <Text style={styles.lawModalCloseText}>{tr('advisor.chat.legalSourceClose', '✕ Schließen')}</Text>
             </Pressable>
           </View>
           <Text style={styles.lawModalSummary}>{selectedSource.summary}</Text>
           <View style={styles.lawModalFooter}>
             <Text style={styles.lawModalDate}>
-              {`Rechtsstand: ${selectedSource.legalStatusDate}`}
+              {tr('advisor.chat.legalStatus', {
+                date: selectedSource.legalStatusDate,
+                defaultValue: `Rechtsstand: ${selectedSource.legalStatusDate}`,
+              })}
             </Text>
             <Pressable
               accessibilityRole="link"
               onPress={() => void Linking.openURL(selectedSource.url)}
             >
-              <Text style={styles.lawModalLink}>Offizieller Gesetzestext ↗</Text>
+              <Text style={styles.lawModalLink}>{tr('advisor.chat.officialLawLink', 'Offizieller Gesetzestext ↗')}</Text>
             </Pressable>
           </View>
         </Card>
@@ -395,8 +419,11 @@ export function AdvisorChatPanel({
         <TextInput
           value={inputText}
           onChangeText={setInputText}
-          placeholder="Frag deine Eule (z. B. Fortbildung, Laptop, Spenden, Endprüfung) …"
-          placeholderTextColor={t.color.tinte2}
+          placeholder={tr(
+            'advisor.chat.inputPlaceholder',
+            'Frag deine Eule (z. B. Fortbildung, Laptop, Spenden, Endprüfung) …',
+          )}
+          placeholderTextColor={theme.color.tinte2}
           style={styles.textInput}
           onSubmitEditing={() => void handleSubmit()}
           testID="advisor-chat-input"
@@ -406,7 +433,7 @@ export function AdvisorChatPanel({
           disabled={isSending || inputText.trim().length === 0}
           testID="advisor-chat-send"
         >
-          Fragen
+          {tr('advisor.chat.sendButton', 'Fragen')}
         </Button>
       </View>
     </View>

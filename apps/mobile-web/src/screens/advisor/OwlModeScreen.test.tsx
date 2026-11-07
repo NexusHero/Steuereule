@@ -218,5 +218,33 @@ describe('EulenModusScreen', () => {
       fireEvent.click(screen.getByTestId('in-mask-advisor-close'))
       expect(screen.queryByTestId('in-mask-advisor-sheet')).toBeNull()
     })
+
+    it('translates advisor chat and companion into English when i18n language is set to en', async () => {
+      const i18n = createAppI18n('en')
+      const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      render(
+        <QueryClientProvider client={qc}>
+          <I18nextProvider i18n={i18n}>
+            <ThemeProvider mode="light">
+              <InMaskAdvisorCompanion screen="lstb" taxYear={2025} />
+            </ThemeProvider>
+          </I18nextProvider>
+        </QueryClientProvider>,
+      )
+
+      expect(screen.getByText('Ask Owl about this screen')).toBeDefined()
+      expect(screen.getByText('Open advisor companion ▾')).toBeDefined()
+
+      const trigger = screen.getByTestId('in-mask-advisor-trigger')
+      fireEvent.click(trigger)
+
+      expect(await screen.findByTestId('in-mask-advisor-sheet')).toBeDefined()
+      expect(screen.getByText('Your Owl · In-screen tax advisory')).toBeDefined()
+      expect(screen.getByText('Collapse ▴')).toBeDefined()
+      expect(screen.getByText('Tax Assistant')).toBeDefined()
+      expect(screen.getByText('The Owl')).toBeDefined()
+      expect(screen.getByRole('button', { name: 'Ask' })).toBeDefined()
+      expect(screen.getByText('Check home office vs. dedicated study')).toBeDefined()
+    })
   })
 })
