@@ -39,6 +39,7 @@ export function taxDataTables(tx: TransactionClient): UserKeyedTable[] {
     tx.child,
     tx.owlSetting,
     tx.owlCardDismissal,
+    tx.advisorChatMessage,
   ]
 }
 

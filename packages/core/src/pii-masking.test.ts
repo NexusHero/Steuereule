@@ -7,6 +7,7 @@ import {
   maskName,
   maskEmployer,
   maskPhone,
+  scrubUserMessagePii,
 } from './pii-masking.js'
 
 describe('PII Masking (ADR-0052 §8 — Personenbezogene Daten: schreiben ja, lesen maskiert)', () => {
@@ -92,6 +93,27 @@ describe('PII Masking (ADR-0052 §8 — Personenbezogene Daten: schreiben ja, le
       expect(maskPhone('07621 123456')).toBe('07621 ***')
       expect(maskPhone('+49 170 1234567')).toBe('+49 ***')
       expect(maskPhone(null)).toBeNull()
+    })
+  })
+
+  describe('scrubUserMessagePii', () => {
+    it('replaces known profile names, tax IDs, IBANs, tax numbers, emails, and phones while preserving euro amounts', () => {
+      const input =
+        'Hallo, ich bin Markus Brenner (Steuer-ID 12 345 678 901, Steuernr 09/123/45678, IBAN DE89 3704 0044 0532 0130 00, Mail markus@example.com, Tel +49 170 1234567) und habe 1.250 € Fortbildung bezahlt.'
+      const output = scrubUserMessagePii(input, ['Markus', 'Brenner', 'Lena'])
+      expect(output).not.toContain('Markus')
+      expect(output).not.toContain('Brenner')
+      expect(output).not.toContain('12 345 678 901')
+      expect(output).not.toContain('09/123/45678')
+      expect(output).not.toContain('DE89 3704')
+      expect(output).not.toContain('markus@example.com')
+      expect(output).not.toContain('1234567')
+      expect(output).toContain('[MANDANT]')
+      expect(output).toContain('[STEUER-ID-GESCHÜTZT]')
+      expect(output).toContain('[STEUERNR-GESCHÜTZT]')
+      expect(output).toContain('[IBAN-GESCHÜTZT]')
+      expect(output).toContain('[KONTAKT-GESCHÜTZT]')
+      expect(output).toContain('1.250 € Fortbildung')
     })
   })
 })

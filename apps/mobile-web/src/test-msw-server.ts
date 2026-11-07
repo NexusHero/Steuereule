@@ -29,6 +29,7 @@ import {
   getLinkControllerGetMockHandler,
   getOwlModeControllerGetSettingMockHandler,
   getOwlModeControllerGetCardsMockHandler,
+  getAdvisorControllerGetSessionMockHandler,
   getAssistantsControllerListConnectedMockHandler,
 } from '@steuereule/api-client/msw'
 import { SALARY_CERTIFICATE_FIELDS } from '@steuereule/core'
@@ -263,6 +264,14 @@ export const server = setupServer(
   http.put('*/v1/steuerjahre/:jahr/kopplung/person-b', () => HttpResponse.json(EMPTY_LINK_RESPONSE, { status: 200 })),
   getOwlModeControllerGetSettingMockHandler(EMPTY_OWL_SETTING_RESPONSE),
   getOwlModeControllerGetCardsMockHandler(EMPTY_OWL_CARDS_RESPONSE),
+  getAdvisorControllerGetSessionMockHandler({
+    enabled: false,
+    greeting: 'Hallo! Ich bin deine SteuerEule.',
+    openCards: [],
+    messages: [],
+    quickChips: ['Kanzlei-Endprüfung starten', 'Homeoffice vs. Arbeitszimmer prüfen'],
+    legalSources: [],
+  }),
   // REQ-027 (ticket 10.7) — der Fristen-Warnmodus: `keine` by default (the honest no-banner
   // state, ADR-0039 — a fresh account far from the frist shows nothing), pinned not faked;
   // banner tests override with `server.use(...)`.

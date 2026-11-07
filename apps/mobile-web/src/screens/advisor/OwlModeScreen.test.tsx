@@ -5,6 +5,8 @@ import { ThemeProvider } from '@steuereule/ui'
 import type { OwlCardsDisplay } from '@steuereule/core'
 import { createAppI18n } from '../../i18n/app-i18n'
 import { OwlModeScreen } from './OwlModeScreen'
+import { InMaskAdvisorCompanion } from './InMaskAdvisorCompanion'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 const CARDS_FIXTURE: readonly OwlCardsDisplay[] = [
   {
@@ -135,6 +137,86 @@ describe('EulenModusScreen', () => {
       renderScreen({ onChooseProfession: vi.fn() })
       expect(screen.queryByTestId('beruf-picker')).toBeNull()
       expect(screen.queryByTestId('beruf-summary')).toBeNull()
+    })
+  })
+
+  describe('Kanzlei-Tisch & Steuerberater-Chat ("Deine Eule")', () => {
+    it('displays the Mandantengeheimnis privacy badge in the header', () => {
+      renderScreen()
+      expect(screen.getByTestId('eule-privacy-badge').textContent).toContain('Mandantengeheimnis aktiv')
+    })
+
+    it('jumps from a proactive impulse card into the advisor chat when clicking "Mit Eule klären"', async () => {
+      renderScreen()
+      const clarifyBtn = screen.getByTestId('card-clarify-with-eule')
+      fireEvent.click(clarifyBtn)
+
+      expect(await screen.findByTestId('advisor-chat-panel')).toBeDefined()
+      expect(await screen.findByTestId('advisor-two-paths-card')).toBeDefined()
+    })
+
+    it('conducts Mandanten-Anamnese with clickable follow-up pills and supports 1-click Apply and 1-click Undo', async () => {
+      renderScreen()
+      fireEvent.click(screen.getByRole('tab', { name: 'Fragen an die Eule' }))
+
+      // 1. Click Quick-Starter chip for Fortbildung
+      fireEvent.click(screen.getByText('Fortbildung & Reisekosten klären'))
+
+      // 2. Eule asks Anamnese question with clickable choice pills
+      const pills = await screen.findAllByTestId('advisor-choice-pill')
+      expect(pills.length).toBeGreaterThanOrEqual(3)
+
+      // 3. Click a follow-up pill to complete Anamnese
+      fireEvent.click(screen.getByText('Mehr als 8 Std. unterwegs (ohne Übernachtung)'))
+
+      // 4. Eule emits ActionProposalCard with exact tax delta
+      expect(await screen.findByTestId('advisor-action-card')).toBeDefined()
+      expect(screen.getByTestId('advisor-action-delta').textContent).toContain('Steuer-Effekt')
+
+      // 5. Click "✓ Jetzt übernehmen" (1-click Apply)
+      fireEvent.click(screen.getByTestId('advisor-action-apply-btn'))
+      expect(await screen.findByTestId('advisor-action-applied-badge')).toBeDefined()
+
+      // 6. Click "↩ Rückgängig machen" (1-click Undo)
+      fireEvent.click(screen.getByTestId('advisor-action-undo-btn'))
+      expect(await screen.findByText('✓ Erneut übernehmen')).toBeDefined()
+    })
+
+    it('opens the interactive LawSourceModal when clicking a § LawChip', async () => {
+      renderScreen()
+      fireEvent.click(screen.getByRole('tab', { name: 'Fragen an die Eule' }))
+      fireEvent.click(screen.getByText('Spenden aus dem Vorjahr prüfen'))
+
+      const lawChip = await screen.findByTestId('law-chip-estg-10b')
+      fireEvent.click(lawChip)
+
+      const modal = await screen.findByTestId('law-source-modal')
+      expect(modal.textContent).toContain('§ 10b EStG')
+      expect(modal.textContent).toContain('Rechtsstand: 01.01.2025')
+
+      fireEvent.click(screen.getByTestId('law-source-close'))
+      expect(screen.queryByTestId('law-source-modal')).toBeNull()
+    })
+
+    it('renders InMaskAdvisorCompanion trigger and expands the contextual advisor sheet', async () => {
+      const i18n = createAppI18n('de')
+      const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      render(
+        <QueryClientProvider client={qc}>
+          <I18nextProvider i18n={i18n}>
+            <ThemeProvider mode="light">
+              <InMaskAdvisorCompanion screen="lstb" taxYear={2025} />
+            </ThemeProvider>
+          </I18nextProvider>
+        </QueryClientProvider>,
+      )
+
+      const trigger = screen.getByTestId('in-mask-advisor-trigger')
+      fireEvent.click(trigger)
+
+      expect(await screen.findByTestId('in-mask-advisor-sheet')).toBeDefined()
+      fireEvent.click(screen.getByTestId('in-mask-advisor-close'))
+      expect(screen.queryByTestId('in-mask-advisor-sheet')).toBeNull()
     })
   })
 })

@@ -2903,6 +2903,170 @@
         ]
       }
     },
+    "/v1/steuerjahre/{jahr}/advisor/session": {
+      "get": {
+        "operationId": "AdvisorController_getSession",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdvisorSessionResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Requires account."
+          }
+        },
+        "tags": [
+          "eulen-modus"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/advisor/chat": {
+      "post": {
+        "operationId": "AdvisorController_sendMessage",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendAdvisorMessageDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SendAdvisorMessageResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Requires account."
+          }
+        },
+        "tags": [
+          "eulen-modus"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/advisor/actions/{actionId}/apply": {
+      "post": {
+        "operationId": "AdvisorController_applyAction",
+        "parameters": [
+          {
+            "name": "actionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": "act-123456",
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdvisorActionMutationResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Requires account."
+          }
+        },
+        "tags": [
+          "eulen-modus"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/advisor/actions/{actionId}/undo": {
+      "post": {
+        "operationId": "AdvisorController_undoAction",
+        "parameters": [
+          {
+            "name": "actionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": "act-123456",
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdvisorActionMutationResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Requires account."
+          }
+        },
+        "tags": [
+          "eulen-modus"
+        ]
+      }
+    },
     "/mcp/sse": {
       "get": {
         "operationId": "McpController_sse",
@@ -7063,6 +7227,486 @@
           "enabled",
           "cards",
           "legalStatus"
+        ]
+      },
+      "AdvisorActionProposalDto": {
+        "type": "object",
+        "properties": {
+          "actionId": {
+            "type": "string",
+            "example": "act-1730970000"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "applied",
+              "dismissed",
+              "undone"
+            ],
+            "example": "pending"
+          },
+          "screen": {
+            "type": "string",
+            "enum": [
+              "profil",
+              "stammdaten",
+              "kopplung",
+              "interview",
+              "lstb",
+              "chLohnausweis",
+              "rente",
+              "kapital",
+              "vermietung",
+              "kind"
+            ],
+            "example": "interview"
+          },
+          "field": {
+            "type": "string",
+            "example": "spenden-betrag"
+          },
+          "instance": {
+            "type": "string",
+            "nullable": true,
+            "example": null
+          },
+          "companionFields": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "label": {
+            "type": "string",
+            "example": "Spenden & Zuwendungen (Sonderausgaben)"
+          },
+          "previousValue": {
+            "type": "string",
+            "nullable": true,
+            "example": "0 €"
+          },
+          "newValue": {
+            "type": "string",
+            "example": "250"
+          },
+          "beforeRefundEur": {
+            "type": "number",
+            "example": 840
+          },
+          "afterRefundEur": {
+            "type": "number",
+            "example": 925
+          },
+          "deltaEur": {
+            "type": "number",
+            "example": 85
+          },
+          "reason": {
+            "type": "string",
+            "example": "Sonderausgabenabzug nach § 10b EStG."
+          },
+          "sourceId": {
+            "type": "string",
+            "enum": [
+              "estg-4-5-6c",
+              "estg-9-1",
+              "estg-9-1-4a",
+              "estg-9-1-6",
+              "estg-9-4a",
+              "estg-9-6",
+              "estg-10b",
+              "estg-10-1-5",
+              "ao-355"
+            ],
+            "example": "estg-10b"
+          }
+        },
+        "required": [
+          "actionId",
+          "status",
+          "screen",
+          "field",
+          "label",
+          "newValue",
+          "beforeRefundEur",
+          "afterRefundEur",
+          "deltaEur",
+          "reason",
+          "sourceId"
+        ]
+      },
+      "AdvisorMaxPathProposalDto": {
+        "type": "object",
+        "properties": {
+          "actionId": {
+            "type": "string",
+            "example": "act-1730970000"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "applied",
+              "dismissed",
+              "undone"
+            ],
+            "example": "pending"
+          },
+          "screen": {
+            "type": "string",
+            "enum": [
+              "profil",
+              "stammdaten",
+              "kopplung",
+              "interview",
+              "lstb",
+              "chLohnausweis",
+              "rente",
+              "kapital",
+              "vermietung",
+              "kind"
+            ],
+            "example": "interview"
+          },
+          "field": {
+            "type": "string",
+            "example": "spenden-betrag"
+          },
+          "instance": {
+            "type": "string",
+            "nullable": true,
+            "example": null
+          },
+          "companionFields": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "label": {
+            "type": "string",
+            "example": "Spenden & Zuwendungen (Sonderausgaben)"
+          },
+          "previousValue": {
+            "type": "string",
+            "nullable": true,
+            "example": "0 €"
+          },
+          "newValue": {
+            "type": "string",
+            "example": "250"
+          },
+          "beforeRefundEur": {
+            "type": "number",
+            "example": 840
+          },
+          "afterRefundEur": {
+            "type": "number",
+            "example": 925
+          },
+          "deltaEur": {
+            "type": "number",
+            "example": 85
+          },
+          "reason": {
+            "type": "string",
+            "example": "Sonderausgabenabzug nach § 10b EStG."
+          },
+          "sourceId": {
+            "type": "string",
+            "enum": [
+              "estg-4-5-6c",
+              "estg-9-1",
+              "estg-9-1-4a",
+              "estg-9-1-6",
+              "estg-9-4a",
+              "estg-9-6",
+              "estg-10b",
+              "estg-10-1-5",
+              "ao-355"
+            ],
+            "example": "estg-10b"
+          },
+          "evidenceHint": {
+            "type": "string",
+            "example": "Nachweis-Hinweis: Das Finanzamt kann eine kurze Bestätigung des Arbeitgebers anfordern."
+          }
+        },
+        "required": [
+          "actionId",
+          "status",
+          "screen",
+          "field",
+          "label",
+          "newValue",
+          "beforeRefundEur",
+          "afterRefundEur",
+          "deltaEur",
+          "reason",
+          "sourceId",
+          "evidenceHint"
+        ]
+      },
+      "AdvisorTwoPathsProposalDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "example": "Zwei-Wege-Empfehlung: Homeoffice & Arbeitszimmer"
+          },
+          "safePath": {
+            "$ref": "#/components/schemas/AdvisorActionProposalDto"
+          },
+          "maxPath": {
+            "$ref": "#/components/schemas/AdvisorMaxPathProposalDto"
+          },
+          "sourceId": {
+            "type": "string",
+            "enum": [
+              "estg-4-5-6c",
+              "estg-9-1",
+              "estg-9-1-4a",
+              "estg-9-1-6",
+              "estg-9-4a",
+              "estg-9-6",
+              "estg-10b",
+              "estg-10-1-5",
+              "ao-355"
+            ],
+            "example": "estg-4-5-6c"
+          }
+        },
+        "required": [
+          "title",
+          "safePath",
+          "maxPath",
+          "sourceId"
+        ]
+      },
+      "AdvisorMessageMetaDto": {
+        "type": "object",
+        "properties": {
+          "choices": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "action": {
+            "$ref": "#/components/schemas/AdvisorActionProposalDto"
+          },
+          "twoPaths": {
+            "$ref": "#/components/schemas/AdvisorTwoPathsProposalDto"
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "estg-4-5-6c",
+                "estg-9-1",
+                "estg-9-1-4a",
+                "estg-9-1-6",
+                "estg-9-4a",
+                "estg-9-6",
+                "estg-10b",
+                "estg-10-1-5",
+                "ao-355"
+              ]
+            }
+          }
+        }
+      },
+      "AdvisorChatMessageDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "msg-123"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "user",
+              "assistant"
+            ],
+            "example": "assistant"
+          },
+          "content": {
+            "type": "string",
+            "example": "Ich habe deine Akte 2025 geprüft."
+          },
+          "meta": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AdvisorMessageMetaDto"
+              }
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-11-07T09:00:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "role",
+          "content",
+          "createdAt"
+        ]
+      },
+      "AdvisorLegalSourceDto": {
+        "type": "object",
+        "properties": {
+          "sourceId": {
+            "type": "string",
+            "enum": [
+              "estg-4-5-6c",
+              "estg-9-1",
+              "estg-9-1-4a",
+              "estg-9-1-6",
+              "estg-9-4a",
+              "estg-9-6",
+              "estg-10b",
+              "estg-10-1-5",
+              "ao-355"
+            ],
+            "example": "estg-9-1-4a"
+          },
+          "paragraph": {
+            "type": "string",
+            "example": "§ 9 Abs. 1 Nr. 4a EStG"
+          },
+          "title": {
+            "type": "string",
+            "example": "Reise- und Fahrtkosten bei Auswärtstätigkeit"
+          },
+          "summary": {
+            "type": "string",
+            "example": "Fahrten zu einer Fortbildungsstätte sind mit 0,30 € pro gefahrenem Kilometer absetzbar."
+          },
+          "legalStatusDate": {
+            "type": "string",
+            "example": "01.01.2025"
+          },
+          "url": {
+            "type": "string",
+            "example": "https://www.gesetze-im-internet.de/estg/__9.html"
+          }
+        },
+        "required": [
+          "sourceId",
+          "paragraph",
+          "title",
+          "summary",
+          "legalStatusDate",
+          "url"
+        ]
+      },
+      "AdvisorSessionResponseDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "example": true
+          },
+          "greeting": {
+            "type": "string",
+            "example": "Hallo! Ich habe deine Akte 2025 durchgesehen. Wollen wir die offenen Punkte gemeinsam durchgehen?"
+          },
+          "openCards": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OwlCardDto"
+            }
+          },
+          "messages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdvisorChatMessageDto"
+            }
+          },
+          "quickChips": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "legalSources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdvisorLegalSourceDto"
+            }
+          }
+        },
+        "required": [
+          "enabled",
+          "greeting",
+          "openCards",
+          "messages",
+          "quickChips",
+          "legalSources"
+        ]
+      },
+      "SendAdvisorMessageDto": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "example": "Ich hatte dieses Jahr eine Fortbildung."
+          },
+          "activeScreen": {
+            "type": "string",
+            "enum": [
+              "profil",
+              "stammdaten",
+              "kopplung",
+              "interview",
+              "lstb",
+              "chLohnausweis",
+              "rente",
+              "kapital",
+              "vermietung",
+              "kind"
+            ],
+            "example": "interview"
+          }
+        },
+        "required": [
+          "message"
+        ]
+      },
+      "SendAdvisorMessageResponseDto": {
+        "type": "object",
+        "properties": {
+          "userMessage": {
+            "$ref": "#/components/schemas/AdvisorChatMessageDto"
+          },
+          "assistantMessage": {
+            "$ref": "#/components/schemas/AdvisorChatMessageDto"
+          }
+        },
+        "required": [
+          "userMessage",
+          "assistantMessage"
+        ]
+      },
+      "AdvisorActionMutationResponseDto": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "$ref": "#/components/schemas/AdvisorChatMessageDto"
+          },
+          "action": {
+            "$ref": "#/components/schemas/AdvisorActionProposalDto"
+          }
+        },
+        "required": [
+          "message",
+          "action"
         ]
       }
     }
