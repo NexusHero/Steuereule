@@ -8,19 +8,13 @@ import {
   type IncomeTaxYear,
   type ChurchTaxFactor,
 } from './tarif'
+import { getTaxYearParameters } from './tax-parameters'
 import {
   progressionClauseLimit,
   type ProgressionClauseInput,
   type TariffComponent,
   type Uncertainty,
 } from './filing-type-comparison'
-
-const SAVERS_ALLOWANCE_SINGLE = 1000
-const SAVERS_ALLOWANCE_JOINT = 2000
-
-const FLAT_RATE_TAX_RATE = 0.25
-
-const CHURCH_TAX_REDUCTION_SHARE = 0.25
 
 export interface MostFavourableCheckInput {
   readonly kapitalertraege: number
@@ -106,16 +100,17 @@ export function mostFavourableCheck(input: MostFavourableCheckInput): MostFavour
   }
   const year: IncomeTaxYear = input.year
   const factor = input.churchTaxFactor ?? 0
+  const params = getTaxYearParameters(year)
 
-  const saversAllowance = assessmentType === 'einzel' ? SAVERS_ALLOWANCE_SINGLE : SAVERS_ALLOWANCE_JOINT
+  const saversAllowance = assessmentType === 'einzel' ? params.lumpSums.saverSingle : params.lumpSums.saverJoint
   const assessmentBase = Math.max(0, kapitalertraege - saversAllowance)
-  const flatRateTaxAmount = Math.floor(FLAT_RATE_TAX_RATE * assessmentBase)
+  const flatRateTaxAmount = Math.floor(params.capital.flatRateTaxRate * assessmentBase)
 
-  const soliExemptionLimit = assessmentType === 'einzel' ? soliExemptionLimits(year).single : soliExemptionLimits(year).joint
+  const soliExemptionLimit = assessmentType === 'einzel' ? params.soliLimits.single : params.soliLimits.joint
   const soliFlatRate = solidaritaetszuschlag(flatRateTaxAmount, soliExemptionLimit)
 
   const churchTaxFlatRate = kirchensteuer(flatRateTaxAmount, factor)
-  const reduction = Math.floor(CHURCH_TAX_REDUCTION_SHARE * churchTaxFlatRate)
+  const reduction = Math.floor(params.capital.churchTaxReductionShare * churchTaxFlatRate)
   const flatRateTax = flatRateTaxAmount - reduction + churchTaxFlatRate + soliFlatRate
 
   const personal = personalTax(input, year, factor)

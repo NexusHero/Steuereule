@@ -26,14 +26,31 @@ describe('TaxYearParameters (Temporal Parameter Registry)', () => {
 
   it('provides statutory commute distance rates and home office allowances', () => {
     const p2024 = getTaxYearParameters(2024)
-    expect(p2024.commute).toEqual({ firstKmThreshold: 20, rateFirstEur: 0.3, rateAdditionalEur: 0.38 })
+    expect(p2024.commute).toEqual({ firstKmThreshold: 20, rateFirstEur: 0.3, rateAdditionalEur: 0.38, maxWithoutCarEur: 4500 })
     expect(p2024.homeOffice).toEqual({ dailyRateEur: 6, maxDays: 210, maxAnnualEur: 1260 })
 
     const p2025 = getTaxYearParameters(2025)
-    expect(p2025.commute).toEqual({ firstKmThreshold: 20, rateFirstEur: 0.3, rateAdditionalEur: 0.38 })
+    expect(p2025.commute).toEqual({ firstKmThreshold: 20, rateFirstEur: 0.3, rateAdditionalEur: 0.38, maxWithoutCarEur: 4500 })
 
     const p2026 = getTaxYearParameters(2026)
-    expect(p2026.commute).toEqual({ firstKmThreshold: 0, rateFirstEur: 0.38, rateAdditionalEur: 0.38 })
+    expect(p2026.commute).toEqual({ firstKmThreshold: 0, rateFirstEur: 0.38, rateAdditionalEur: 0.38, maxWithoutCarEur: 4500 })
+  })
+
+  it('provides statutory AO filing deadlines, capital tax and provision parameters', () => {
+    const p2024 = getTaxYearParameters(2024)
+    expect(p2024.deadlines.standardFilingDeadline).toBe('2025-07-31')
+    expect(p2024.deadlines.warningThresholdDays).toBe(60)
+    expect(p2024.deadlines.lateFilingMinEur).toBe(25)
+    expect(p2024.deadlines.lateFilingPercentPerMonth).toBe(0.25)
+    expect(p2024.capital.flatRateTaxRate).toBe(0.25)
+    expect(p2024.capital.churchTaxReductionShare).toBe(0.25)
+    expect(p2024.provision.sickPayReductionRate).toBe(0.04)
+
+    const p2025 = getTaxYearParameters(2025)
+    expect(p2025.deadlines.standardFilingDeadline).toBe('2026-07-31')
+
+    const p2026 = getTaxYearParameters(2026)
+    expect(p2026.deadlines.standardFilingDeadline).toBe('2027-07-31')
   })
 
   it('provides year-specific Kindergeld and Freibeträge', () => {

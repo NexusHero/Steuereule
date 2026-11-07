@@ -1,6 +1,9 @@
 export type IsoWeekday = 1 | 2 | 3 | 4 | 5 | 6 | 7
 export const ISO_WEEKDAYS: readonly IsoWeekday[] = [1, 2, 3, 4, 5, 6, 7]
 
+import { isSupportedIncomeTaxYear } from './tarif'
+import { getTaxYearParameters } from './tax-parameters'
+
 export interface WorkdaysInput {
   readonly year: number
   readonly workdays: readonly IsoWeekday[]
@@ -133,11 +136,29 @@ export function commuterAllowance(input: CommuterAllowanceInput): number {
 
   if (!Number.isFinite(kmInput) || kmInput < 0) throw new RangeError('km must be a non-negative finite number')
   if (!Number.isInteger(days) || days < 0) throw new RangeError('days must be a non-negative integer')
-  const tier = TIERS[year]
-  if (tier === undefined) throw new RangeError(`no commuter allowance rates for ${year}`)
+
+  let firstKmLimit: number
+  let rateFirst: number
+  let rateAdditional: number
+  let maxCap = MAXIMUM_AMOUNT_WITHOUT_CAR
+
+  if (isSupportedIncomeTaxYear(year)) {
+    const commute = getTaxYearParameters(year).commute
+    firstKmLimit = commute.firstKmThreshold
+    rateFirst = commute.rateFirstEur
+    rateAdditional = commute.rateAdditionalEur
+    maxCap = commute.maxWithoutCarEur
+  } else {
+    const tier = TIERS[year]
+    if (tier === undefined) throw new RangeError(`no commuter allowance rates for ${year}`)
+    firstKmLimit = tier.firstKm
+    rateFirst = tier.rateFirst
+    rateAdditional = tier.rateAdditional
+  }
+
   const km = Math.floor(kmInput)
-  const firstKm = Math.min(km, tier.firstKm)
+  const firstKm = Math.min(km, firstKmLimit)
   const additionalKm = km - firstKm
-  const amount = Math.round(days * (firstKm * tier.rateFirst + additionalKm * tier.rateAdditional))
-  return withCar ? amount : Math.min(amount, MAXIMUM_AMOUNT_WITHOUT_CAR)
+  const amount = Math.round(days * (firstKm * rateFirst + additionalKm * rateAdditional))
+  return withCar ? amount : Math.min(amount, maxCap)
 }
