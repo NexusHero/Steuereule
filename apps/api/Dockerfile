@@ -70,8 +70,7 @@ RUN pnpm install --frozen-lockfile
 # suspenders alongside apps/api/package.json's own `postinstall` hook) — both now run AFTER
 # openssl is installed above, so both see the real runtime environment.
 RUN pnpm --filter @steuereule/api prisma:generate \
-  && pnpm --filter @steuereule/api build \
-  && rm -rf /repo/node_modules/.pnpm/@esbuild* /repo/node_modules/.pnpm/esbuild* /repo/node_modules/.pnpm/@typescript*
+  && pnpm --filter @steuereule/api build
 
 # REQ-011 (Musti's #274 review, F1) — `pdf-renderer.playwright.ts`'s own header comment states
 # the requirement plainly: "the API's production image must bundle the Chromium binary", named

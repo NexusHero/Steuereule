@@ -61,7 +61,12 @@ export function DeviceQrColumn({ t, tr, state, requestNewCode, screenBannerShown
                 <Text style={styles.qrCopyChipLabel}>{copied ? tr('login.qr.copied') : tr('login.qr.copy')}</Text>
               </Chip>
             </View>
-            <View style={styles.qrLifetime} accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: state.totalSeconds, now: state.secondsRemaining }}>
+            <View
+              style={styles.qrLifetime}
+              accessibilityRole="progressbar"
+              accessibilityLabel={tight ? tr('login.qr.knapp', { time: formatCountdown(state.secondsRemaining) }) : tr('login.qr.remaining', { time: formatCountdown(state.secondsRemaining) })}
+              accessibilityValue={{ min: 0, max: state.totalSeconds, now: state.secondsRemaining }}
+            >
               <View style={[styles.qrLifetimeTrack]}>
                 <View
                   style={[
