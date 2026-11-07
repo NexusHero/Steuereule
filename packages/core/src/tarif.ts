@@ -1,6 +1,6 @@
 export type IncomeTaxYear = 2024 | 2025 | 2026
 
-interface TariffCoefficients {
+export interface TariffCoefficients {
   readonly basicAllowance: number
   readonly zone2Upper: number
   readonly zone2C1: number
@@ -16,7 +16,7 @@ interface TariffCoefficients {
   readonly zone5Sub: number
 }
 
-const TAX_YEARS: Readonly<Record<IncomeTaxYear, TariffCoefficients>> = {
+export const TAX_YEARS: Readonly<Record<IncomeTaxYear, TariffCoefficients>> = {
   2024: {
     basicAllowance: 11784,
     zone2Upper: 17005,
