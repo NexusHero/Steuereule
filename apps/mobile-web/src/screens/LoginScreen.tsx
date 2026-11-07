@@ -158,7 +158,7 @@ export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true, 
 
       {onGuest ? (
         <View style={{ alignItems: 'center', marginTop: t.space.s5 }}>
-          <Chip onPress={onGuest}>{tr('login.guest')}</Chip>
+          <Chip onPress={onGuest} testID="login-guest-link">{tr('login.guest')}</Chip>
           <Text style={styles.guestNote}>{tr('login.guestNote')}</Text>
         </View>
       ) : null}

@@ -53,9 +53,9 @@ export function CatalogScreen({ entry, onDone = () => {}, onBack, taxYear = CURR
   const current = seeded ? nextStepFor(ENTRIES[entry], answers) : null
 
   useEffect(() => {
-    if (current?.kind === 'done') onDone()
+    if (current?.kind === 'done' && !postAnswer.isPending) onDone()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [current?.kind])
+  }, [current?.kind, postAnswer.isPending])
 
   if (interviewQuery.isPending) {
     return <LoadingState bp={bp} label={tr('katalog.loading')} />
