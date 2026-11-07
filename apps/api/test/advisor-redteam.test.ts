@@ -162,4 +162,36 @@ describe('DevMLOps Backend Red-Team & Egress Boundary Suite', () => {
       }),
     ).rejects.toThrow(TooManyRequestsError)
   })
+
+  it('executes a full multi-turn Choice-Chip dialog, applies action, undoes null-previousValue cleanly, and re-applies', async () => {
+    // Turn 1: User asks general question about training -> Eule responds with follow-up Choice-Chips
+    const turn1 = await advisorService.sendMessage(USER_A, YEAR, {
+      message: 'Ich hatte dieses Jahr eine berufliche Fortbildung',
+    })
+    expect(turn1.assistantMessage.meta?.choices).toContain('Online-Kurs von zu Hause (350 €)')
+    expect(turn1.assistantMessage.meta?.action).toBeUndefined()
+
+    // Turn 2: User selects Choice-Chip -> Eule proposes concrete action with legal citations
+    const turn2 = await advisorService.sendMessage(USER_A, YEAR, {
+      message: 'Online-Kurs von zu Hause (350 €)',
+    })
+    const action = turn2.assistantMessage.meta?.action
+    expect(action).toBeDefined()
+    expect(action?.field).toBe('fortbildung')
+    expect(action?.newValue).toBe('Ja')
+
+    // Apply -> Undo -> Re-Apply round-trip
+    const applied = await advisorService.applyAction(USER_A, YEAR, action!.actionId)
+    expect(applied.action.status).toBe('applied')
+    const rowsAfterApply = await interviewRepo.findAllForUserAndYear(USER_A, YEAR)
+    expect(rowsAfterApply.find((r) => r.questionId === 'fortbildung')?.value).toBe('Ja')
+
+    const undone = await advisorService.undoAction(USER_A, YEAR, action!.actionId)
+    expect(undone.action.status).toBe('undone')
+    const rowsAfterUndo = await interviewRepo.findAllForUserAndYear(USER_A, YEAR)
+    expect(rowsAfterUndo.find((r) => r.questionId === 'fortbildung')).toBeUndefined()
+
+    const reapplied = await advisorService.applyAction(USER_A, YEAR, action!.actionId)
+    expect(reapplied.action.status).toBe('applied')
+  })
 })

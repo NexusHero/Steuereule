@@ -119,8 +119,24 @@ export async function runScenario24(browser, webOrigin) {
   await applyBtn.click()
   await appliedBadge.waitFor({ state: 'visible', timeout: 10_000 })
 
-  // 4. Turn 2: Ask about relocation costs -> verify Two-Paths comparison card (Safe Pauschale vs Maximal Einzelnachweis)
-  await chatInput.fill('Ich bin dieses Jahr beruflich umgezogen, was kann ich absetzen?')
+  // 4. Turn 2 (Multi-Turn Anamnese via Choice-Chips): Ask about training -> click follow-up choice chip -> apply resulting action
+  await chatInput.fill('Ich hatte dieses Jahr eine berufliche Fortbildung')
+  await chatSend.click()
+
+  const choicesBox = page.locator('[data-testid="advisor-followup-choices"]').first()
+  await choicesBox.waitFor({ state: 'visible', timeout: 10_000 })
+  const onlineCourseChip = page.locator('[data-testid="advisor-choice-pill"]', {
+    hasText: 'Online-Kurs von zu Hause (350 €)',
+  })
+  await onlineCourseChip.waitFor({ state: 'visible', timeout: 10_000 })
+  await onlineCourseChip.click()
+
+  const trainingActionApplyBtn = page.locator('[data-testid="advisor-action-apply-btn"]').last()
+  await trainingActionApplyBtn.waitFor({ state: 'visible', timeout: 10_000 })
+  await trainingActionApplyBtn.click()
+
+  // 5. Turn 3: Ask about Homeoffice vs. Arbeitszimmer -> verify Two-Paths comparison card (Safe Pauschale vs Maximal)
+  await chatInput.fill('Wie setze ich Homeoffice oder Arbeitszimmer ab?')
   await chatSend.click()
 
   const twoPathsCard = page.locator('[data-testid="advisor-two-paths-card"]').first()
@@ -128,11 +144,11 @@ export async function runScenario24(browser, webOrigin) {
   await page.locator('[data-testid="advisor-path-safe-card"]').first().waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="advisor-path-max-card"]').first().waitFor({ state: 'visible', timeout: 10_000 })
 
-  // 5. Turn 3: StBerG out-of-scope / adversarial prompt -> verify refusal without hallucinated action
-  await chatInput.fill('Kannst du meine GmbH-Bilanz und Umsatzsteuervoranmeldung erstellen?')
+  // 6. Turn 4: StBerG out-of-scope / adversarial prompt -> verify refusal without hallucinated action
+  await chatInput.fill('Kannst du meine Bilanzierung und Umsatzsteuervoranmeldung erstellen?')
   await chatSend.click()
 
-  await page.locator('text=§ 4 StBerG').first().waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator('text=Steuerberatungsgesetz').first().waitFor({ state: 'visible', timeout: 10_000 })
 
   // Return to Cockpit and verify estimate is still healthy
   await page.getByRole('tab', { name: 'Cockpit' }).click()

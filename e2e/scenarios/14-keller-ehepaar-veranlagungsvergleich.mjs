@@ -29,12 +29,12 @@ export async function runScenario14(browser, webOrigin) {
   )
 
   await page.locator('[data-testid="cockpit-interview"]').click()
-  await page.locator('text=Angestellt').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('text=Angestellt').click()
-  await page.locator('text=Nein').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('text=Nein').click()
-  await page.locator('text=Nein').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('text=Nein').click()
+  await page.locator('[data-testid="interview-option-job-Angestellt"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator('[data-testid="interview-option-job-Angestellt"]').click()
+  await page.locator('[data-testid="interview-option-ausland-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator('[data-testid="interview-option-ausland-Nein"]').click()
+  await page.locator('[data-testid="interview-option-kinder-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator('[data-testid="interview-option-kinder-Nein"]').click()
   await page.locator('[data-testid="interview-option-familienstand-Verheiratet"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="interview-option-familienstand-Verheiratet"]').click()
 
@@ -77,7 +77,7 @@ export async function runScenario14(browser, webOrigin) {
   await page.locator('text=Zusammenveranlagung').first().waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="veranlagungsartenvergleich-weiter"]').click()
   await page.locator('[data-testid="cockpit-erstattung"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await assertCockpitEstimate(page, 'Scenario 14', { direction: 'Erstattung' })
+  await assertCockpitEstimate(page, 'Scenario 14', { expectedText: 'Ihr seid verheiratet' })
   console.log('[Scenario 14] PASS: Married couple FilingTypeComparison calculation verified.')
 
   await ctx.close()

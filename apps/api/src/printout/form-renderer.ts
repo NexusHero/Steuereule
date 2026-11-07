@@ -1,6 +1,23 @@
-import { readFileSync } from 'node:fs'
+import { readFile } from 'node:fs/promises'
 import { PDFDocument, rgb, StandardFonts, TextAlignment, type PDFFont, type PDFForm, type PDFPage } from 'pdf-lib'
 import felder2025 from './felder-2025.json' with { type: 'json' }
+
+const templateBytesCache = new Map<string, Promise<Uint8Array>>()
+
+function loadTemplateBytes(url: URL): Promise<Uint8Array> {
+  const key = url.href
+  const cached = templateBytesCache.get(key)
+  if (cached) return cached
+  const pending = readFile(url).then(
+    (buffer) => new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength),
+    (error: unknown) => {
+      templateBytesCache.delete(key)
+      throw error
+    },
+  )
+  templateBytesCache.set(key, pending)
+  return pending
+}
 
 export type FieldKind = 'text' | 'euro' | 'euroCent' | 'kreuz'
 
@@ -76,7 +93,8 @@ export async function renderForms(fieldSet: FieldSet, values: FieldValues, optio
       if (fields.length === 0 && formular !== 'est-1-a') continue
       const number = (instanceNumber.get(formular) ?? 0) + 1
       instanceNumber.set(formular, number)
-      const template = await PDFDocument.load(readFileSync(new URL(`${formular}.pdf`, options.templatesDirectory)))
+      const templateBytes = await loadTemplateBytes(new URL(`${formular}.pdf`, options.templatesDirectory))
+      const template = await PDFDocument.load(templateBytes)
       const pages = await output.copyPages(template, template.getPageIndices())
       pages.forEach((page, index) => {
         output.addPage(page)

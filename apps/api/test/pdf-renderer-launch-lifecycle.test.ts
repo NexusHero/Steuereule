@@ -173,4 +173,65 @@ describe('PlaywrightPdfRenderer — launch caching lifecycle (#285)', () => {
 
     expect(renderer.launchCalls).toBe(1)
   })
+
+  it('caps concurrent Chromium pages to maxConcurrentRenders and releases slots when a render finishes or fails', async () => {
+    let openPages = 0
+    let maxObservedOpenPages = 0
+    const pendingPdfDeferreds: Array<{ resolve: (buf: Buffer) => void; reject: (err: Error) => void }> = []
+
+    const browser = {
+      newPage: () => {
+        openPages += 1
+        maxObservedOpenPages = Math.max(maxObservedOpenPages, openPages)
+        return Promise.resolve({
+          setContent: (): Promise<void> => Promise.resolve(),
+          pdf: (): Promise<Buffer> =>
+            new Promise<Buffer>((resolve, reject) => {
+              pendingPdfDeferreds.push({ resolve, reject })
+            }),
+          close: (): Promise<void> => {
+            openPages -= 1
+            return Promise.resolve()
+          },
+        })
+      },
+      close: (): Promise<void> => Promise.resolve(),
+    } as unknown as Browser
+
+    const renderer = new ScriptedLaunchRenderer(() => Promise.resolve(browser))
+
+    // Start 6 concurrent PDF exports (default limit is 3).
+    const exports = Array.from({ length: 6 }, () => renderer.renderPdf(HTML))
+
+    // Wait a microtask tick so the first batch reaches page.pdf()
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    expect(openPages).toBe(3)
+    expect(maxObservedOpenPages).toBe(3)
+    expect(pendingPdfDeferreds).toHaveLength(3)
+
+    // Fail the 1st render and resolve the 2nd and 3rd — all 3 slots must be freed for callers 4..6
+    pendingPdfDeferreds[0]!.reject(new Error('page.pdf crashed'))
+    pendingPdfDeferreds[1]!.resolve(Buffer.from('%PDF-1.4 #2'))
+    pendingPdfDeferreds[2]!.resolve(Buffer.from('%PDF-1.4 #3'))
+
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    expect(pendingPdfDeferreds).toHaveLength(6)
+    expect(maxObservedOpenPages).toBe(3)
+
+    for (const deferred of pendingPdfDeferreds.slice(3)) {
+      deferred.resolve(Buffer.from('%PDF-1.4 rest'))
+    }
+
+    const results = await Promise.allSettled(exports)
+    expect(results.map((r) => r.status)).toEqual([
+      'rejected',
+      'fulfilled',
+      'fulfilled',
+      'fulfilled',
+      'fulfilled',
+      'fulfilled',
+    ])
+    expect(openPages).toBe(0)
+    expect(maxObservedOpenPages).toBe(3)
+  })
 })

@@ -2,11 +2,16 @@ import { Injectable, Logger, type OnModuleDestroy, type OnModuleInit } from '@ne
 import { chromium, type Browser } from 'playwright-core'
 import type { PdfRenderer } from './pdf-renderer.js'
 
+export const DEFAULT_MAX_CONCURRENT_RENDERS = 3
+
 @Injectable()
 export class PlaywrightPdfRenderer implements PdfRenderer, OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(PlaywrightPdfRenderer.name)
+  protected readonly maxConcurrentRenders: number = DEFAULT_MAX_CONCURRENT_RENDERS
   private browser: Browser | undefined
   private launching: Promise<Browser> | undefined
+  private activeRenders = 0
+  private readonly waitQueue: Array<() => void> = []
 
   async onModuleInit(): Promise<void> {
     try {
@@ -24,12 +29,36 @@ export class PlaywrightPdfRenderer implements PdfRenderer, OnModuleInit, OnModul
 
   async renderPdf(html: string): Promise<Buffer> {
     const browser = this.browser ?? (await this.getOrLaunch())
-    const page = await browser.newPage()
+    await this.acquireRenderSlot()
     try {
-      await page.setContent(html, { waitUntil: 'load' })
-      return await page.pdf({ format: 'A4', printBackground: true })
+      const page = await browser.newPage()
+      try {
+        await page.setContent(html, { waitUntil: 'load' })
+        return await page.pdf({ format: 'A4', printBackground: true })
+      } finally {
+        await page.close()
+      }
     } finally {
-      await page.close()
+      this.releaseRenderSlot()
+    }
+  }
+
+  private acquireRenderSlot(): Promise<void> {
+    if (this.activeRenders < this.maxConcurrentRenders) {
+      this.activeRenders += 1
+      return Promise.resolve()
+    }
+    return new Promise<void>((resolve) => {
+      this.waitQueue.push(resolve)
+    })
+  }
+
+  private releaseRenderSlot(): void {
+    const next = this.waitQueue.shift()
+    if (next) {
+      next()
+    } else {
+      this.activeRenders -= 1
     }
   }
 
