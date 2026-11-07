@@ -69,8 +69,8 @@ RUN pnpm install --frozen-lockfile
 # Explicit, mirroring CI's own `smoke`/`cross-origin-smoke` steps exactly (belt-and-
 # suspenders alongside apps/api/package.json's own `postinstall` hook) — both now run AFTER
 # openssl is installed above, so both see the real runtime environment.
-RUN pnpm --filter @steuereule/api prisma:generate
-RUN pnpm --filter @steuereule/api build
+RUN pnpm --filter @steuereule/api prisma:generate \
+  && pnpm --filter @steuereule/api build
 
 # REQ-011 (Musti's #274 review, F1) — `pdf-renderer.playwright.ts`'s own header comment states
 # the requirement plainly: "the API's production image must bundle the Chromium binary", named
@@ -83,12 +83,16 @@ RUN pnpm --filter @steuereule/api build
 # earlier version of this file combined them into one `RUN`/one `apt-get`, per Musti's original
 # review) — needs `node_modules` already installed (`pnpm --filter ... exec`), so it cannot run
 # before `pnpm install`, and openssl now genuinely must.
-RUN pnpm --filter @steuereule/api exec playwright-core install chromium --with-deps
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+RUN pnpm --filter @steuereule/api exec playwright-core install chromium --with-deps \
+  && chown -R node:node /repo /ms-playwright
 
 ENV NODE_ENV=production
 EXPOSE 3000
 
 WORKDIR /repo/apps/api
+
+USER node
 
 # Same bridge CI's own smoke job boots (ADR-0010a). docker-compose.prod.yml's one-shot
 # `migrate` service overrides this CMD to run `prisma migrate deploy` instead — same

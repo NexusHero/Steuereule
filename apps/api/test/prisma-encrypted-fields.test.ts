@@ -252,4 +252,43 @@ describe('encrypted/hashed field set (#325) — derived from Prisma.dmmf, not co
 
     expect(actual).toEqual(EXPECTED_CURSORS)
   })
+
+  it('every userId-scoped model is governed by either @encrypted fields or the explicit metadata allowlist', () => {
+    // Models that carry a `userId` column but store only non-PII operational metadata/tokens/flags
+    // (never raw tax amounts, names, addresses, IBANs, or Steuer-IDs). Any NEW userId-scoped model
+    // added to schema.prisma must either encrypt its sensitive fields (joining EXPECTED_ENCRYPTED_FIELDS)
+    // or be consciously reviewed and added here.
+    const UNENCRYPTED_METADATA_MODELS = new Set([
+      'Account',
+      'AdvisorChatSession',
+      'DeviceCode',
+      'LegalHold',
+      'OauthAccessToken',
+      'OauthClient',
+      'OauthConsent',
+      'OauthRefreshToken',
+      'OwlCardDismissal',
+      'OwlSetting',
+      'Passkey',
+      'Session',
+      'TaxDataAccessLog',
+      'TaxYear',
+      'TaxYearLink',
+      'TwoFactor',
+      'Unlock',
+      'YearTakeover',
+    ])
+
+    const encryptedModels = new Set(EXPECTED_ENCRYPTED_FIELDS.map((f) => f.model))
+    const userScopedModels = Prisma.dmmf.datamodel.models
+      .filter((m) => m.fields.some((f) => f.name === 'userId' && f.kind === 'scalar'))
+      .map((m) => m.name)
+      .sort()
+
+    const ungoverned = userScopedModels.filter(
+      (model) => !encryptedModels.has(model) && !UNENCRYPTED_METADATA_MODELS.has(model),
+    )
+
+    expect(ungoverned).toEqual([])
+  })
 })

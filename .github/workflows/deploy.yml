@@ -137,6 +137,23 @@ jobs:
           done
           echo "API_SECRETS=${secrets#,}" >> "$GITHUB_ENV"
 
+      - name: Capture current Cloud Run revisions for rollback safety
+        if: steps.gate.outputs.ready == 'true'
+        run: |
+          prev_api="$(gcloud run services describe steuereule-api --region "$REGION" --format='value(status.latestReadyRevisionName)' 2>/dev/null || true)"
+          prev_web="$(gcloud run services describe steuereule-web --region "$REGION" --format='value(status.latestReadyRevisionName)' 2>/dev/null || true)"
+          echo "PREV_API_REVISION=$prev_api" >> "$GITHUB_ENV"
+          echo "PREV_WEB_REVISION=$prev_web" >> "$GITHUB_ENV"
+
+      - name: Create pre-migration Cloud SQL on-demand backup
+        if: steps.gate.outputs.ready == 'true'
+        run: |
+          sql_instance_name="${SQL_INSTANCE##*:}"
+          gcloud sql backups create \
+            --instance="$sql_instance_name" \
+            --description="Pre-deploy backup for $(git rev-parse --short=12 HEAD)" \
+            --quiet
+
       - name: Run database migrations
         if: steps.gate.outputs.ready == 'true'
         run: |
@@ -159,7 +176,7 @@ jobs:
             --set-secrets "$API_SECRETS" \
             --set-env-vars "^@^NODE_ENV=production@BETTER_AUTH_URL=$API_ORIGIN@CORS_ALLOWED_ORIGINS=$WEB_ORIGIN@WEB_APP_URL=$WEB_ORIGIN@TRUSTED_PROXIES=$TRUSTED_PROXIES@EMAIL_FROM=$EMAIL_FROM" \
             --cpu 1 --memory 2Gi --cpu-boost \
-            --min-instances 0 --max-instances 2 --concurrency 20 --timeout 120 \
+            --min-instances 0 --max-instances 10 --concurrency 80 --timeout 120 \
             --allow-unauthenticated
 
       - name: Build and push web image
@@ -168,6 +185,22 @@ jobs:
           docker build -f apps/mobile-web/Dockerfile --build-arg "EXPO_PUBLIC_API_BASE_URL=$API_ORIGIN" -t "$WEB_IMAGE" .
           docker push "$WEB_IMAGE"
 
+      - name: Generate CycloneDX Release SBOMs (CRA / BSI TR-03183)
+        if: steps.gate.outputs.ready == 'true'
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ env.API_IMAGE }}
+          format: cyclonedx
+          output: sbom-release-api.cdx.json
+
+      - name: Upload CycloneDX Release SBOM artifact
+        if: steps.gate.outputs.ready == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-cyclonedx-sbom
+          path: sbom-release-api.cdx.json
+          retention-days: 90
+
       - name: Deploy web
         if: steps.gate.outputs.ready == 'true'
         run: |
@@ -175,14 +208,31 @@ jobs:
             --image "$WEB_IMAGE" --region "$REGION" \
             --service-account "$WEB_SA" \
             --cpu 1 --memory 512Mi \
-            --min-instances 0 --max-instances 2 \
+            --min-instances 0 --max-instances 10 --concurrency 160 \
             --allow-unauthenticated
 
-      - name: Smoke test
+      - name: Post-deploy smoke test (Health + Auth Capabilities + CORS + Web)
         if: steps.gate.outputs.ready == 'true'
         run: |
           api_url="$(gcloud run services describe steuereule-api --region "$REGION" --format='value(status.url)')"
           web_url="$(gcloud run services describe steuereule-web --region "$REGION" --format='value(status.url)')"
           curl -fsS --retry 5 --retry-delay 5 --retry-all-errors "$api_url/v1/health/ready"
+          curl -fsS --retry 5 --retry-delay 5 --retry-all-errors "$api_url/v1/auth/capabilities"
+          cors_headers="$(curl -fsS --retry 5 --retry-delay 5 --retry-all-errors -D - -o /dev/null -H "Origin: $WEB_ORIGIN" "$api_url/v1/auth/capabilities" | tr -d '\r')"
+          echo "$cors_headers" | grep -qi "^access-control-allow-origin: $WEB_ORIGIN$" || {
+            echo "::error::Post-deploy CORS verification failed for Origin $WEB_ORIGIN"
+            exit 1
+          }
           curl -fsS --retry 5 --retry-delay 5 --retry-all-errors -o /dev/null "$web_url/"
           echo "::notice::Deployed $API_IMAGE → $API_ORIGIN, $WEB_IMAGE → $WEB_ORIGIN"
+
+      - name: Automatic Cloud Run Traffic Rollback (on deploy or smoke failure)
+        if: failure() && steps.gate.outputs.ready == 'true'
+        run: |
+          echo "::warning::Deployment or post-deploy smoke test failed! Rolling back Cloud Run traffic to previous revisions..."
+          if [ -n "${PREV_API_REVISION:-}" ]; then
+            gcloud run services update-traffic steuereule-api --region "$REGION" --to-revisions="$PREV_API_REVISION=100" --quiet || true
+          fi
+          if [ -n "${PREV_WEB_REVISION:-}" ]; then
+            gcloud run services update-traffic steuereule-web --region "$REGION" --to-revisions="$PREV_WEB_REVISION=100" --quiet || true
+          fi

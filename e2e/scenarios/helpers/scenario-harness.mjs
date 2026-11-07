@@ -9,7 +9,7 @@ import { skipSplash } from '../../harness/flows.mjs'
 const require = createRequire(import.meta.url)
 const { PDFDocument } = require('../../../apps/api/node_modules/pdf-lib')
 
-export const AUTH_BUCKET = { windowMs: 10_000, max: 3, shared: true }
+export const AUTH_BUCKET = { windowMs: 11_000, max: 2, shared: true }
 export const TEST_PASSWORD = 'Sicheres-Passwort-1!'
 
 export {

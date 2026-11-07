@@ -37,12 +37,12 @@ export async function runScenario10(browser, webOrigin) {
   await acknowledgeOption.waitFor({ state: 'visible', timeout: 10_000 })
   await acknowledgeOption.click()
 
-  await page.locator('text=Nein').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('text=Nein').click()
-  await page.locator('text=Nein').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('text=Nein').click()
-  await page.locator('text=Ledig').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('text=Ledig').click()
+  await page.locator('[data-testid="interview-option-ausland-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator('[data-testid="interview-option-ausland-Nein"]').click()
+  await page.locator('[data-testid="interview-option-kinder-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator('[data-testid="interview-option-kinder-Nein"]').click()
+  await page.locator('[data-testid="interview-option-familienstand-Ledig"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator('[data-testid="interview-option-familienstand-Ledig"]').click()
 
   await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').fill('55000')
@@ -51,7 +51,9 @@ export async function runScenario10(browser, webOrigin) {
   await page.locator('[data-testid="lstb-weiter"]').click()
 
   await page.getByRole('tab', { name: 'Cockpit' }).click()
-  await assertCockpitEstimate(page, 'Scenario 10', { direction: 'Erstattung' })
+  await assertCockpitEstimate(page, 'Scenario 10', {
+    expectedText: 'Die Erstattung rechnen wir bisher nur für Angestellte.',
+  })
   console.log('[Scenario 10] PASS: Hybrid "Beides" passable gate and employee calculation verified.')
 
   await ctx.close()

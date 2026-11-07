@@ -383,12 +383,13 @@ function OwlModeScreenView({
         </View>
       ) : null}
 
-      <View style={styles.tabBar}>
+      <View style={styles.tabBar} accessibilityRole="tablist" role="tablist">
         <Pressable
           accessibilityRole="tab"
           accessibilityState={{ selected: tab === 'fragen' }}
           onPress={() => setTab('fragen')}
           style={[styles.tabButton, tab === 'fragen' && styles.tabButtonActive]}
+          testID="eule-tab-fragen"
         >
           <Text style={[styles.tabText, tab === 'fragen' && styles.tabTextActive]}>
             {tr('eule.tabFragen', 'Fragen an die Eule')}
@@ -399,6 +400,7 @@ function OwlModeScreenView({
           accessibilityState={{ selected: tab === 'eule' }}
           onPress={() => setTab('eule')}
           style={[styles.tabButton, tab === 'eule' && styles.tabButtonActive]}
+          testID="eule-tab-eule"
         >
           <Text style={[styles.tabText, tab === 'eule' && styles.tabTextActive]}>
             {tr('eule.tabEule', 'Eule fragt dich')} · {cards.length}

@@ -94,10 +94,27 @@ export const LEGAL_SOURCES: Readonly<Record<OwlSourceId | 'estg-32', LegalSource
   },
 }
 
-const IBAN_REGEX = /\b[A-Z]{2}\d{2}[A-Z0-9]{11,30}\b/
-const TAX_ID_REGEX = /\b\d{11}\b/
+const IBAN_REGEX = /\b[A-Z]{2}\d{2}(?:[\s.-]?[A-Z0-9]{4}){3,7}(?:[\s.-]?[A-Z0-9]{1,4})?\b|\b[A-Z]{2}\d{2}[A-Z0-9]{11,30}\b/i
+const TAX_ID_REGEX = /\b\d{2}[\s.-]?\d{3}[\s.-]?\d{3}[\s.-]?\d{3}\b|\b\d{3}[\s.-]?\d{3}[\s.-]?\d{3}[\s.-]?\d{2}\b|\b\d{11}\b/
 // German and English spellings: payloads carry the code's English names, older records the German ones.
-const PERSON_KEYS = new Set(['firstName', 'lastName', 'vorname', 'nachname', 'steuerId', 'taxId', 'idnr', 'iban', 'strasse', 'street', 'telefon', 'phone', 'birthDate', 'geburtsdatum'])
+const PERSON_KEYS = new Set([
+  'firstName',
+  'lastName',
+  'vorname',
+  'nachname',
+  'steuerId',
+  'taxId',
+  'idnr',
+  'iban',
+  'strasse',
+  'street',
+  'telefon',
+  'phone',
+  'birthDate',
+  'geburtsdatum',
+  'email',
+  'kontoinhaber',
+])
 
 function findPersonKey(value: unknown): string | null {
   if (typeof value !== 'object' || value === null) return null

@@ -3,9 +3,11 @@
 // answer plain GETs for the handful of file types Metro's web export produces, on its
 // own origin/port, so the cross-origin gate (run.mjs) can prove real browser-enforced
 // CORS between two distinct localhost origins (API vs web), not same-origin.
+import { createHash } from 'node:crypto'
 import { createServer } from 'node:http'
 import { readFile, stat } from 'node:fs/promises'
 import { extname, join, normalize, resolve } from 'node:path'
+import { gzipSync } from 'node:zlib'
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -24,33 +26,84 @@ const MIME_TYPES = {
   '.wasm': 'application/wasm',
 }
 
+const COMPRESSIBLE_EXTENSIONS = new Set(['.html', '.js', '.mjs', '.css', '.json', '.svg', '.map', '.wasm'])
+
 /**
  * Starts a static file server rooted at `rootDir`, falling back to `index.html` for any
  * path that doesn't resolve to a real file (Expo's web export is a single-page bundle).
  * Resolves once the server is actually listening.
  */
 export function startStaticServer(rootDir, port, host = '127.0.0.1') {
+  const fileCache = new Map()
+
+  async function loadAsset(filePath) {
+    const cached = fileCache.get(filePath)
+    if (cached) return cached
+
+    const fileStat = await stat(filePath).catch(() => null)
+    if (!fileStat || fileStat.isDirectory()) return null
+
+    const body = await readFile(filePath)
+    const ext = extname(filePath)
+    const contentType = MIME_TYPES[ext] ?? 'application/octet-stream'
+    const etag = `"${createHash('sha1').update(body).digest('hex')}"`
+    const gzipBody = COMPRESSIBLE_EXTENSIONS.has(ext) && body.length >= 256 ? gzipSync(body) : null
+
+    const asset = { body, gzipBody, contentType, etag }
+    fileCache.set(filePath, asset)
+    return asset
+  }
+
   const server = createServer(async (req, res) => {
     try {
       const requestPath = normalize(decodeURIComponent(new URL(req.url ?? '/', 'http://placeholder').pathname))
       const safeSuffix = requestPath.replace(/^(\.\.[/\\])+/, '')
-      let filePath = join(rootDir, safeSuffix)
+      const candidatePath = join(rootDir, safeSuffix)
 
-      let fileStat = await stat(filePath).catch(() => null)
-      if (!fileStat || fileStat.isDirectory()) {
-        filePath = join(rootDir, 'index.html')
-        fileStat = await stat(filePath).catch(() => null)
+      let isImmutableAsset = requestPath.startsWith('/_expo/static/')
+      let asset = await loadAsset(candidatePath)
+      if (!asset) {
+        isImmutableAsset = false
+        asset = await loadAsset(join(rootDir, 'index.html'))
       }
-      if (!fileStat) {
+      if (!asset) {
         res.writeHead(404, { 'content-type': 'text/plain' })
         res.end('Not found')
         return
       }
 
-      const body = await readFile(filePath)
-      const contentType = MIME_TYPES[extname(filePath)] ?? 'application/octet-stream'
-      res.writeHead(200, { 'content-type': contentType, 'content-length': body.length })
-      res.end(body)
+      const cacheControl = isImmutableAsset ? 'public, max-age=31536000, immutable' : 'no-cache'
+
+      if (req.headers['if-none-match'] === asset.etag) {
+        res.writeHead(304, {
+          etag: asset.etag,
+          'cache-control': cacheControl,
+        })
+        res.end()
+        return
+      }
+
+      const acceptEncoding = String(req.headers['accept-encoding'] ?? '')
+      const useGzip = asset.gzipBody !== null && /\bgzip\b/.test(acceptEncoding)
+      const payload = useGzip ? asset.gzipBody : asset.body
+
+      const headers = {
+        'content-type': asset.contentType,
+        'content-length': payload.length,
+        'cache-control': cacheControl,
+        etag: asset.etag,
+        vary: 'Accept-Encoding',
+      }
+      if (useGzip) {
+        headers['content-encoding'] = 'gzip'
+      }
+
+      res.writeHead(200, headers)
+      if (req.method === 'HEAD') {
+        res.end()
+        return
+      }
+      res.end(payload)
     } catch (error) {
       res.writeHead(500, { 'content-type': 'text/plain' })
       res.end(`Internal error: ${String(error)}`)

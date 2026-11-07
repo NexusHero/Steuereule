@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { useBreakpoint } from '@steuereule/ui'
@@ -84,6 +84,7 @@ export function InterviewScreen({ onDone, taxYear = CURRENT_TAX_YEAR }: Intervie
   const [history, setHistory] = useState<readonly StepId[]>([])
   const [postError, setPostError] = useState<PostErrorKind | null>(null)
   const [seeded, setSeeded] = useState(false)
+  const mutationQueue = useRef<Promise<void>>(Promise.resolve())
 
   useEffect(() => {
     if (!seeded && interviewQuery.isFetchedAfterMount && interviewQuery.data?.status === 200) {
@@ -126,23 +127,23 @@ export function InterviewScreen({ onDone, taxYear = CURRENT_TAX_YEAR }: Intervie
     setHistory((h) => [...h, stepId])
     setAnswers((a) => ({ ...a, [stepId]: value }))
 
-    postAnswer.mutate(
-      { jahr: taxYear, data: { questionId: stepId, value } },
-      {
-        onSuccess: (response) => {
-          if (response.status === 200) return
-          setPostError(response.status === 409 ? 'conflict' : 'invalid')
-          setHistory([])
-          setSeeded(false)
-          void interviewQuery.refetch()
-        },
-        onError: () => {
+    mutationQueue.current = mutationQueue.current
+      .then(async () => {
+        try {
+          const response = await postAnswer.mutateAsync({ jahr: taxYear, data: { questionId: stepId, value } })
+          if (response.status !== 200) {
+            setPostError(response.status === 409 ? 'conflict' : 'invalid')
+            setHistory([])
+            setSeeded(false)
+            void interviewQuery.refetch()
+          }
+        } catch {
           setAnswers(previousAnswers)
           setHistory(previousHistory)
           setPostError('network')
-        },
-      },
-    )
+        }
+      })
+      .catch(() => {})
   }
 
   function back() {

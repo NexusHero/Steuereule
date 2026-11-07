@@ -1,0 +1,23 @@
+title = "SteuerEule Gitleaks Configuration"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Synthetic dev/test-only secrets documented per ADR-0008 and ADR-0012"
+paths = [
+  '''\.env\.example$''',
+  '''apps/api/\.env\.example$''',
+  '''infra/manifests/base/secrets\.example\.yaml$''',
+  '''\.github/workflows/ci\.yml$''',
+  '''apps/api/src/prisma/field-encryption-key\.ts$''',
+  '''apps/api/test/.*''',
+  '''packages/core/src/.*\.test\.ts$''',
+  '''e2e/.*''',
+  '''scripts/checks/bundle-security-check\.mjs$''',
+]
+regexes = [
+  '''k1\.aesgcm256\.MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=''',
+  '''k2\.aesgcm256\.[A-Za-z0-9+/=]+''',
+  '''ci-(smoke|integration|cross-origin-smoke)-test-[a-z0-9-]+''',
+]

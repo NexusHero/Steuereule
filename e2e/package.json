@@ -38,9 +38,12 @@
     "scenario:20": "node scenarios/20-dialog-matrix-kataloge-zickzack.mjs",
     "scenario:21": "node scenarios/21-dialog-matrix-submasken-und-partner-b.mjs",
     "scenario:22": "node scenarios/22-dialog-matrix-crud-detailmasken.mjs",
-    "scenario:23": "node scenarios/23-dialog-matrix-gast-upgrade-und-steuerjahre.mjs"
+    "scenario:23": "node scenarios/23-dialog-matrix-gast-upgrade-und-steuerjahre.mjs",
+    "scenario:24": "node scenarios/24-advisor-chat-steuereule.mjs",
+    "a11y-audit": "node a11y/bfsg-wcag-audit.mjs"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
     "playwright-core": "1.56.1"
   }
 }

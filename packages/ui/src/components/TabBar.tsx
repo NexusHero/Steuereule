@@ -88,7 +88,7 @@ export function TabBar({ tabs, active, onChange, bottomInset = 0, style, testID 
 
   return (
     <View style={[styles.bar, { bottom: t.space.s3 + bottomInset }, style]} testID={testID}>
-      <View style={styles.inner}>
+      <View style={styles.inner} accessibilityRole="tablist" role="tablist">
         {activeLayout ? (
           <Animated.View
             accessibilityElementsHidden

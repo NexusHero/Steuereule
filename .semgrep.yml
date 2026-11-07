@@ -1,0 +1,66 @@
+rules:
+  - id: steuereule-no-client-storage-writes
+    patterns:
+      - pattern-either:
+          - pattern: localStorage.setItem(...)
+          - pattern: sessionStorage.setItem(...)
+          - pattern: window.localStorage.setItem(...)
+          - pattern: window.sessionStorage.setItem(...)
+          - pattern: AsyncStorage.setItem(...)
+    message: >
+      REQ-003 / REQ-012 / ADR-0008 violation: Tax or user data must never be persisted
+      in client-side Web Storage (localStorage / sessionStorage / AsyncStorage).
+    languages: [typescript, javascript]
+    severity: ERROR
+    paths:
+      include:
+        - apps/mobile-web/src
+        - packages/core/src
+        - packages/ui/src
+        - packages/api-client/src
+      exclude:
+        - "**/*.test.ts"
+        - "**/*.test.tsx"
+        - "**/test-*.ts"
+
+  - id: steuereule-no-unsafe-raw-sql-in-prod
+    patterns:
+      - pattern-either:
+          - pattern: $PRISMA.$queryRawUnsafe(...)
+          - pattern: $PRISMA.$executeRawUnsafe(...)
+    message: >
+      SQL Injection risk: Never use $queryRawUnsafe or $executeRawUnsafe in production
+      API code. Use parameterized tagged template literals ($queryRaw`...`) instead.
+    languages: [typescript, javascript]
+    severity: ERROR
+    paths:
+      include:
+        - apps/api/src
+
+  - id: steuereule-no-eval-or-new-function
+    patterns:
+      - pattern-either:
+          - pattern: eval(...)
+          - pattern: new Function(...)
+    message: >
+      Code injection risk: eval() and new Function() are strictly forbidden.
+    languages: [typescript, javascript]
+    severity: ERROR
+    paths:
+      include:
+        - apps/
+        - packages/
+
+  - id: steuereule-no-dangerously-set-inner-html
+    patterns:
+      - pattern-either:
+          - pattern: "{dangerouslySetInnerHTML: $X}"
+          - pattern: "$PROP.dangerouslySetInnerHTML"
+    message: >
+      XSS risk: dangerouslySetInnerHTML is forbidden in SteuerEule UI components.
+    languages: [typescript, javascript]
+    severity: ERROR
+    paths:
+      include:
+        - apps/mobile-web/src
+        - packages/ui/src

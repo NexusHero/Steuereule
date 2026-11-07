@@ -29,6 +29,12 @@ export class PrismaInterviewAnswerRepository implements InterviewAnswerRepositor
 
   async write(params: WriteAnswerParams): Promise<void> {
     const { userId, taxYear, questionId, value, openItems } = params
+    if (value === '') {
+      await this.prisma.interviewAnswer.deleteMany({
+        where: { userId, taxYear, questionId },
+      })
+      return
+    }
     await this.prisma.$transaction([
       this.prisma.interviewAnswer.upsert({
         where: { userId_taxYear_questionId: { userId, taxYear, questionId } },

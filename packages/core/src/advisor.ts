@@ -402,17 +402,27 @@ function extractKilometers(text: string): number | null {
 
 const PROMPT_INJECTION_PATTERNS = [
   /ignore\s+(all\s+)?previous\s+instructions/i,
+  /disregard\s+(all\s+)?(prior|previous)\s+instructions/i,
   /system[\s-]*prompt/i,
   /api[\s_-]*key/i,
-  /sk-ant-/i,
+  /sk-ant-|sk_live_|whsec_/i,
   /geheime\s+instruktionen/i,
-  /vergiss\s+deine\s+regeln/i,
+  /vergiss\s+(alle\s+)?deine\s+(bisherigen\s+)?regeln/i,
+  /developer\s+mode|jailbreak|\bDAN\b/i,
+  /<script\b|javascript:|onerror\s*=/i,
+  /drop\s+table|union\s+select/i,
+  /__proto__|constructor\.prototype/i,
 ]
 
 const OFF_TOPIC_PATTERNS = [
   /kuchenrezept|pfannkuchen|backrezept/i,
   /schreibe\s+ein\s+gedicht/i,
-  /krypto.*verstecken|schwarzgeld|steuerhinterziehung/i,
+  /krypto.*verstecken|schwarzgeld|steuerhinterziehung|belege?\s+fälschen|fiktive\s+rechnung/i,
+]
+
+const STBERG_OUT_OF_SCOPE_PATTERNS = [
+  /\b(gewerbesteuer|umsatzsteuervoranmeldung|bilanzierung|gmbh-gründung|erbschaftsteuer|schenkungsteuer)\b/i,
+  /\b(verbindliche\s+rechtsauskunft|rechtsverbindliche\s+beratung)\b/i,
 ]
 
 /**
@@ -438,6 +448,17 @@ export function evaluateAdvisorTurn(input: {
     return {
       replyText:
         'Ich bin deine SteuerEule und ausschließlich auf deine Einkommensteuererklärung (Anlage N, Anlage N-Gre, Sonderausgaben, Kinder, Kapital und Vermietung) spezialisiert. Systeminterne Anweisungen, Schlüssel oder steuerfremde Themen gebe ich grundsätzlich nicht aus. Wollen wir stattdessen deine offenen Steuer-Hinweise durchgehen?',
+      meta: {
+        choices: ['Kanzlei-Endprüfung starten', 'Homeoffice-Pauschale prüfen', 'Spenden aus dem Vorjahr prüfen'],
+      },
+    }
+  }
+
+  // 1b. StBerG & Scope Boundary (Gewerbesteuer, Bilanzierung, UStVA, Erbschaftsteuer, verbindliche Rechtsauskunft)
+  if (STBERG_OUT_OF_SCOPE_PATTERNS.some((rx) => rx.test(message))) {
+    return {
+      replyText:
+        'Dieser Bereich (Gewerbesteuer, Bilanzierung, Umsatzsteuervoranmeldung, Erbschaftsteuer oder eine rechtsverbindliche Einzelfallberatung nach dem Steuerberatungsgesetz) liegt außerhalb des Unterstützungsrahmens von SteuerEule. Für diese Sachverhalte wende dich bitte an eine Steuerberaterin, einen Steuerberater oder einen Lohnsteuerhilfeverein. Für deine private Einkommensteuererklärung (Anlage N, N-Gre, R, KAP, V, Kind und Sonderausgaben) helfe ich dir gerne weiter.',
       meta: {
         choices: ['Kanzlei-Endprüfung starten', 'Homeoffice-Pauschale prüfen', 'Spenden aus dem Vorjahr prüfen'],
       },
