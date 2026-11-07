@@ -383,7 +383,7 @@ function OwlModeScreenView({
         </View>
       ) : null}
 
-      <View style={styles.tabBar}>
+      <View style={styles.tabBar} accessibilityRole="tablist" role="tablist">
         <Pressable
           accessibilityRole="tab"
           accessibilityState={{ selected: tab === 'fragen' }}

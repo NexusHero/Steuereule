@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
@@ -89,6 +89,7 @@ export function CatalogScreen({ entry, onDone = () => {}, onBack, taxYear = CURR
   const [history, setHistory] = useState<readonly EntryStepId[]>([])
   const [seeded, setSeeded] = useState(false)
   const [conflict, setConflict] = useState(false)
+  const mutationQueue = useRef<Promise<void>>(Promise.resolve())
 
   useEffect(() => {
     if (!seeded && interviewQuery.isFetchedAfterMount && interviewQuery.data?.status === 200) {
@@ -138,12 +139,15 @@ export function CatalogScreen({ entry, onDone = () => {}, onBack, taxYear = CURR
 
   function answer(stepId: EntryStepId, value: string) {
     setConflict(false)
+    const previousAnswers = answers
+    const previousHistory = history
     setHistory((h) => [...h, stepId])
     setAnswers((a) => ({ ...a, [stepId]: value }))
-    postAnswer.mutate(
-      { jahr: taxYear, data: { questionId: stepId, value } },
-      {
-        onSuccess: (response) => {
+
+    mutationQueue.current = mutationQueue.current
+      .then(async () => {
+        try {
+          const response = await postAnswer.mutateAsync({ jahr: taxYear, data: { questionId: stepId, value } })
           if (response.status === 200) {
             void queryClient.invalidateQueries({ queryKey: getCockpitControllerGetCockpitSummaryQueryKey(taxYear) })
             return
@@ -152,17 +156,12 @@ export function CatalogScreen({ entry, onDone = () => {}, onBack, taxYear = CURR
           setHistory([])
           setSeeded(false)
           void interviewQuery.refetch()
-        },
-        onError: () => {
-          setAnswers((a) => {
-            const next = { ...a }
-            delete next[stepId]
-            return next
-          })
-          setHistory((h) => h.slice(0, -1))
-        },
-      },
-    )
+        } catch {
+          setAnswers(previousAnswers)
+          setHistory(previousHistory)
+        }
+      })
+      .catch(() => {})
   }
 
   function back() {

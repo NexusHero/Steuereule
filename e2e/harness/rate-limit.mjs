@@ -99,8 +99,10 @@ export async function waitForBucketHeadroom(config, label, scriptTag) {
 
   if (state.count >= config.max) {
     const waitMs = config.windowMs - (Date.now() - state.lastRequest) + 250
-    console.log(`[${scriptTag}] ${label} bucket is at ${state.count}/${config.max} — waiting ${waitMs}ms rather than clearing it.`)
-    await new Promise((resolvePromise) => setTimeout(resolvePromise, waitMs))
+    if (waitMs > 0) {
+      console.log(`[${scriptTag}] ${label} bucket is at ${state.count}/${config.max} — waiting ${waitMs}ms rather than clearing it.`)
+      await new Promise((resolvePromise) => setTimeout(resolvePromise, waitMs))
+    }
     state = { count: 0, lastRequest: Date.now() }
     buckets.set(label, state)
   }
