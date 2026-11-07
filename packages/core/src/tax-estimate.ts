@@ -1,4 +1,5 @@
 import { incomeTax, isSupportedIncomeTaxYear, soliExemptionLimits, solidaritaetszuschlag } from './tarif'
+import { getTaxYearParameters } from './tax-parameters'
 
 export interface Range {
   readonly from: number
@@ -48,26 +49,21 @@ export interface CrossBorderEstimateInput {
   readonly donations: number
 }
 
-const EMPLOYEE_LUMP_SUM = 1230
-const SPECIAL_EXPENSES_LUMP_SUM = 36
-
 /**
  * Deductible share of the employee's social security contributions (RV fully, KV less 4 % for Krankengeld, PV
  * fully, AV absorbed by the Höchstbetrag): 91–93 % depending on Zusatzbeitrag and Kinderlosenzuschlag.
  */
 const SV_DEDUCTIBLE: Range = { from: 0.91, to: 0.93 }
 
-/** § 10 Abs. 4 EStG for someone who pays their health insurance entirely themselves, as a Grenzgänger does. */
-const MAX_OTHER_PROVISION = 2800
-
 /** A ranged estimate of the Einkommensteuer for one single Angestellte — never a point value (product ADR-015). */
 export function taxEstimateEmployee(e: EmployeeEstimateInput): TaxEstimate {
   if (!isSupportedIncomeTaxYear(e.year)) return { kind: 'nicht-moeglich', reason: 'jahr-ohne-tarif' }
+  const params = getTaxYearParameters(e.year)
   const provision = {
     from: Math.round(e.sozialversicherung * SV_DEDUCTIBLE.from) + e.selfPaidKvPv,
     to: Math.round(e.sozialversicherung * SV_DEDUCTIBLE.to) + e.selfPaidKvPv,
   }
-  const werbungskosten = Math.max(EMPLOYEE_LUMP_SUM, e.commuterAllowance + e.otherIncomeRelatedExpenses)
+  const werbungskosten = Math.max(params.lumpSums.employee, e.commuterAllowance + e.otherIncomeRelatedExpenses)
   return estimate({
     year: e.year,
     einnahmen: e.bruttoarbeitslohn,
@@ -76,13 +72,18 @@ export function taxEstimateEmployee(e: EmployeeEstimateInput): TaxEstimate {
     donations: e.donations,
     alreadyPaid: (taxAmount) => e.lohnsteuer - taxAmount + soli(e.lohnsteuer, e.year),
     anrechnung: e.lohnsteuer,
+    specialExpensesLumpSum: params.lumpSums.specialExpensesSingle,
   })
 }
 
 /** A ranged estimate for a Grenzgänger CH: German tax against the creditable Swiss withholding tax (Art. 15a DBA). */
 export function taxEstimateCrossBorder(e: CrossBorderEstimateInput): TaxEstimate {
   if (!isSupportedIncomeTaxYear(e.year)) return { kind: 'nicht-moeglich', reason: 'jahr-ohne-tarif' }
-  const otherDeductible = Math.max(e.healthInsuranceEur, Math.min(MAX_OTHER_PROVISION, e.healthInsuranceEur + e.otherProvisionEur))
+  const params = getTaxYearParameters(e.year)
+  const otherDeductible = Math.max(
+    e.healthInsuranceEur,
+    Math.min(params.maxOtherProvisionEur, e.healthInsuranceEur + e.otherProvisionEur),
+  )
   const provision = {
     from: e.retirementProvisionEur + e.healthInsuranceEur,
     to: e.retirementProvisionEur + otherDeductible,
@@ -90,11 +91,12 @@ export function taxEstimateCrossBorder(e: CrossBorderEstimateInput): TaxEstimate
   return estimate({
     year: e.year,
     einnahmen: e.wageEur,
-    werbungskosten: Math.max(EMPLOYEE_LUMP_SUM, e.commuterAllowance),
+    werbungskosten: Math.max(params.lumpSums.employee, e.commuterAllowance),
     provision,
     donations: e.donations,
     alreadyPaid: (taxAmount) => e.withholdingTaxEur - taxAmount,
     anrechnung: e.withholdingTaxEur,
+    specialExpensesLumpSum: params.lumpSums.specialExpensesSingle,
   })
 }
 
@@ -106,8 +108,9 @@ function estimate(input: {
   readonly donations: number
   readonly alreadyPaid: (incomeTaxAmount: number) => number
   readonly anrechnung: number
+  readonly specialExpensesLumpSum: number
 }): TaxEstimate {
-  const specialExpenses = Math.max(SPECIAL_EXPENSES_LUMP_SUM, input.donations)
+  const specialExpenses = Math.max(input.specialExpensesLumpSum, input.donations)
   const zve = (provision: number) => Math.max(0, input.einnahmen - input.werbungskosten - provision - specialExpenses)
   const taxableIncome = { from: zve(input.provision.to), to: zve(input.provision.from) }
   const incomeTaxOwed = {

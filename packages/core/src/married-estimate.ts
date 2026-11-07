@@ -1,6 +1,7 @@
 import type { Range, TaxEstimate } from './tax-estimate'
 import { childTaxAllowance } from './children'
 import { isSupportedIncomeTaxYear, soliExemptionLimits, solidaritaetszuschlag, splittingTariff } from './tarif'
+import { getTaxYearParameters } from './tax-parameters'
 
 /** One spouse's wage income, as either the German Lohnsteuerbescheinigung or the Swiss Anlage N-Gre gives it. */
 export type SpouseIncome =
@@ -50,13 +51,8 @@ export type MarriedEstimate =
     })
   | { readonly kind: 'nicht-moeglich'; readonly reason: 'jahr-ohne-tarif' }
 
-const EMPLOYEE_ALLOWANCE = 1230
-/** § 10c EStG, doubled for a joint return. */
-const SPECIAL_EXPENSES_ALLOWANCE_JOINT = 72
 /** Deductible share of German employee social security (see steuerschaetzung.ts). */
 const SOCIAL_SECURITY_DEDUCTIBLE: Range = { from: 0.91, to: 0.93 }
-/** § 10 Abs. 4 EStG for someone who pays their health insurance entirely themselves. */
-const OTHER_PROVISION_CAP = 2800
 /** Kirchensteuer is 8 % in Baden-Württemberg and Bayern, 9 % elsewhere — a range until the Land is known. */
 const CHURCH_TAX_RATE: Range = { from: 0.08, to: 0.09 }
 
@@ -67,9 +63,10 @@ interface SpouseFigures {
 }
 
 function spouseFigures(s: SpouseIncome, year: number): SpouseFigures {
+  const params = getTaxYearParameters(year)
   if (s.kind === 'employee') {
     return {
-      income: s.grossWage - Math.max(EMPLOYEE_ALLOWANCE, s.commuteAllowance),
+      income: s.grossWage - Math.max(params.lumpSums.employee, s.commuteAllowance),
       provision: {
         from: Math.round(s.socialSecurity * SOCIAL_SECURITY_DEDUCTIBLE.from) + s.selfPaidHealthCare,
         to: Math.round(s.socialSecurity * SOCIAL_SECURITY_DEDUCTIBLE.to) + s.selfPaidHealthCare,
@@ -77,9 +74,12 @@ function spouseFigures(s: SpouseIncome, year: number): SpouseFigures {
       credit: s.wageTax + solidaritaetszuschlag(s.wageTax, soliExemptionLimits(year as never).single),
     }
   }
-  const other = Math.max(s.selfPaidHealthCare, Math.min(OTHER_PROVISION_CAP, s.selfPaidHealthCare + s.otherProvisionEur))
+  const other = Math.max(
+    s.selfPaidHealthCare,
+    Math.min(params.maxOtherProvisionEur, s.selfPaidHealthCare + s.otherProvisionEur),
+  )
   return {
-    income: s.wageEur - Math.max(EMPLOYEE_ALLOWANCE, s.commuteAllowance),
+    income: s.wageEur - Math.max(params.lumpSums.employee, s.commuteAllowance),
     provision: { from: s.pensionContributionsEur + s.selfPaidHealthCare, to: s.pensionContributionsEur + other },
     credit: s.swissWithholdingEur,
   }
@@ -92,13 +92,14 @@ function spouseFigures(s: SpouseIncome, year: number): SpouseFigures {
  */
 export function estimateMarriedCouple(input: MarriedEstimateInput): MarriedEstimate {
   if (!isSupportedIncomeTaxYear(input.year)) return { kind: 'nicht-moeglich', reason: 'jahr-ohne-tarif' }
+  const params = getTaxYearParameters(input.year)
   const spouses = [input.a, ...(input.b ? [input.b] : [])].map((s) => spouseFigures(s, input.year))
   const income = spouses.reduce((sum, s) => sum + s.income, 0) + input.rentalSurplus
   const provision = {
     from: spouses.reduce((sum, s) => sum + s.provision.from, 0),
     to: spouses.reduce((sum, s) => sum + s.provision.to, 0),
   }
-  const specialExpenses = Math.max(SPECIAL_EXPENSES_ALLOWANCE_JOINT, input.donations)
+  const specialExpenses = Math.max(params.lumpSums.specialExpensesJoint, input.donations)
   const taxableIncome = (deduction: number) => Math.max(0, income - deduction - specialExpenses)
   const zve = { from: taxableIncome(provision.to), to: taxableIncome(provision.from) }
 

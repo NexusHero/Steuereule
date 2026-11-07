@@ -39,4 +39,5 @@ export * from './married-estimate'
 export * from './public-holidays'
 export * from './pii-masking'
 export * from './advisor'
+export * from './tax-parameters'
 
