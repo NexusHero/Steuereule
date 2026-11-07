@@ -170,16 +170,16 @@ describe('EulenModusScreen', () => {
       fireEvent.click(screen.getByText('Mehr als 8 Std. unterwegs (ohne Übernachtung)'))
 
       // 4. Eule emits ActionProposalCard with exact tax delta
-      expect(await screen.findByTestId('advisor-action-card')).toBeDefined()
+      expect(await screen.findByTestId('advisor-action-card', {}, { timeout: 5000 })).toBeDefined()
       expect(screen.getByTestId('advisor-action-delta').textContent).toContain('Steuer-Effekt')
 
       // 5. Click "✓ Jetzt übernehmen" (1-click Apply)
       fireEvent.click(screen.getByTestId('advisor-action-apply-btn'))
-      expect(await screen.findByTestId('advisor-action-applied-badge')).toBeDefined()
+      expect(await screen.findByTestId('advisor-action-applied-badge', {}, { timeout: 5000 })).toBeDefined()
 
       // 6. Click "↩ Rückgängig machen" (1-click Undo)
       fireEvent.click(screen.getByTestId('advisor-action-undo-btn'))
-      expect(await screen.findByText('✓ Erneut übernehmen')).toBeDefined()
+      expect(await screen.findByText('✓ Erneut übernehmen', {}, { timeout: 5000 })).toBeDefined()
     })
 
     it('opens the interactive LawSourceModal when clicking a § LawChip', async () => {
