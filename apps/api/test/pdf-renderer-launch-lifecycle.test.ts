@@ -52,9 +52,20 @@ function stubBrowser(): Browser {
  *  latch, too many means a herd. */
 class ScriptedLaunchRenderer extends PlaywrightPdfRenderer {
   launchCalls = 0
+  protected override readonly maxConcurrentRenders: number
+  private readonly memoryHeadroomFn: () => boolean
 
-  constructor(private readonly launcher: (call: number) => Promise<Browser>) {
+  constructor(
+    private readonly launcher: (call: number) => Promise<Browser>,
+    options: { maxConcurrentRenders?: number; hasMemoryHeadroom?: () => boolean } = {},
+  ) {
     super()
+    this.maxConcurrentRenders = options.maxConcurrentRenders ?? 3
+    this.memoryHeadroomFn = options.hasMemoryHeadroom ?? (() => true)
+  }
+
+  protected override hasMemoryHeadroom(): boolean {
+    return this.memoryHeadroomFn()
   }
 
   protected override launch(): Promise<Browser> {

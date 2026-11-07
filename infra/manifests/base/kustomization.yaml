@@ -19,4 +19,5 @@ resources:
   - web-service.yaml
   - redis-deployment.yaml
   - redis-service.yaml
+  - hpa.yaml
   - ingress.yaml

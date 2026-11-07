@@ -1,13 +1,19 @@
 import { Injectable, Logger, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common'
 import { chromium, type Browser } from 'playwright-core'
+import {
+  computeAdaptivePdfConcurrency,
+  detectContainerMemoryBytes,
+  isUnderMemoryPressure,
+} from '../../config/runtime-capacity.js'
 import type { PdfRenderer } from './pdf-renderer.js'
-
-export const DEFAULT_MAX_CONCURRENT_RENDERS = 3
 
 @Injectable()
 export class PlaywrightPdfRenderer implements PdfRenderer, OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(PlaywrightPdfRenderer.name)
-  protected readonly maxConcurrentRenders: number = DEFAULT_MAX_CONCURRENT_RENDERS
+  protected readonly containerMemoryBytes: number = detectContainerMemoryBytes()
+  protected readonly maxConcurrentRenders: number = computeAdaptivePdfConcurrency({
+    containerMemoryBytes: this.containerMemoryBytes,
+  })
   private browser: Browser | undefined
   private launching: Promise<Browser> | undefined
   private activeRenders = 0
@@ -43,8 +49,20 @@ export class PlaywrightPdfRenderer implements PdfRenderer, OnModuleInit, OnModul
     }
   }
 
+  protected hasMemoryHeadroom(): boolean {
+    return !isUnderMemoryPressure({ containerMemoryBytes: this.containerMemoryBytes })
+  }
+
+  private canStartRenderNow(): boolean {
+    if (this.activeRenders === 0) {
+      // Always allow at least 1 render so the queue can never deadlock.
+      return true
+    }
+    return this.activeRenders < this.maxConcurrentRenders && this.hasMemoryHeadroom()
+  }
+
   private acquireRenderSlot(): Promise<void> {
-    if (this.activeRenders < this.maxConcurrentRenders) {
+    if (this.canStartRenderNow()) {
       this.activeRenders += 1
       return Promise.resolve()
     }
@@ -54,11 +72,11 @@ export class PlaywrightPdfRenderer implements PdfRenderer, OnModuleInit, OnModul
   }
 
   private releaseRenderSlot(): void {
-    const next = this.waitQueue.shift()
-    if (next) {
+    this.activeRenders -= 1
+    while (this.waitQueue.length > 0 && this.canStartRenderNow()) {
+      const next = this.waitQueue.shift()!
+      this.activeRenders += 1
       next()
-    } else {
-      this.activeRenders -= 1
     }
   }
 
