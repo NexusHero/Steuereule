@@ -1,5 +1,5 @@
 import { bench, describe } from 'vitest'
-import { incomeTax, splittingTariff, solidaritaetszuschlag } from './tarif.js'
+import { incomeTax, splittingTariff, solidaritaetszuschlag } from './tarif'
 
 describe('Tarif & Tax Engine Throughput Benchmark', () => {
   bench('incomeTax (§ 32a EStG Grundtarif single evaluation)', () => {
