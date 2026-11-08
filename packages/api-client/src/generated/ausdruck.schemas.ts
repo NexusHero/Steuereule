@@ -14,6 +14,46 @@ export interface CheckoutResponseDto {
   checkoutUrl: string;
 }
 
+/**
+ * Current state of the background PDF rendering job.
+ */
+export type PrintoutJobDtoStatus = typeof PrintoutJobDtoStatus[keyof typeof PrintoutJobDtoStatus];
+
+
+export const PrintoutJobDtoStatus = {
+  queued: 'queued',
+  processing: 'processing',
+  completed: 'completed',
+  failed: 'failed',
+} as const;
+
+export interface PrintoutJobDto {
+  /** Unique asynchronous export job identifier. */
+  jobId: string;
+  /** Current state of the background PDF rendering job. */
+  status: PrintoutJobDtoStatus;
+  /** Polling URL to check job progress. */
+  statusUrl: string;
+  /** Download URL when status is completed. */
+  downloadUrl?: string;
+  /** Error explanation if job failed. */
+  error?: string;
+}
+
+export type PrintoutControllerExportAsyncParams = {
+/**
+ * true → editable PDF
+ */
+bearbeitbar?: PrintoutControllerExportAsyncBearbeitbar;
+};
+
+export type PrintoutControllerExportAsyncBearbeitbar = typeof PrintoutControllerExportAsyncBearbeitbar[keyof typeof PrintoutControllerExportAsyncBearbeitbar];
+
+
+export const PrintoutControllerExportAsyncBearbeitbar = {
+  true: 'true',
+} as const;
+
 export type PrintoutControllerPrintoutParams = {
 /**
  * true → the values as named, editable AcroForm fields (for a correction before printing).

@@ -11,11 +11,16 @@ import {
 
 import type {
   CheckoutResponseDto,
-  PrintoutCheckDto
+  PrintoutCheckDto,
+  PrintoutJobDto
 } from './ausdruck.schemas';
 
 
 export const getPrintoutControllerCheckResponseMock = (overrideResponse: Partial<Extract<PrintoutCheckDto, object>> = {}): PrintoutCheckDto => ({missing: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), ...overrideResponse})
 
 export const getPrintoutControllerCheckoutResponseMock = (overrideResponse: Partial<Extract<CheckoutResponseDto, object>> = {}): CheckoutResponseDto => ({checkoutUrl: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
+
+export const getPrintoutControllerExportAsyncResponseMock = (overrideResponse: Partial<Extract<PrintoutJobDto, object>> = {}): PrintoutJobDto => ({jobId: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.helpers.arrayElement(['queued','processing','completed','failed'] as const), statusUrl: faker.string.alpha({length: {min: 10, max: 20}}), downloadUrl: faker.string.alpha({length: {min: 10, max: 20}}), error: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
+
+export const getPrintoutControllerGetJobResponseMock = (overrideResponse: Partial<Extract<PrintoutJobDto, object>> = {}): PrintoutJobDto => ({jobId: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.helpers.arrayElement(['queued','processing','completed','failed'] as const), statusUrl: faker.string.alpha({length: {min: 10, max: 20}}), downloadUrl: faker.string.alpha({length: {min: 10, max: 20}}), error: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
 
