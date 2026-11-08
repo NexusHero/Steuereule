@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { calculate } from '../engine/berechnung.js'
-import { UNCERTAINTY_PER_CONFLICT, UNCERTAINTY_PER_ITEM } from './cockpit.js'
-import { calculateCockpitRange, cockpitRangeFromInputs, rangeFromCalculation } from './cockpit-range.js'
+import { calculate } from '../engine/berechnung'
+import { UNCERTAINTY_PER_CONFLICT, UNCERTAINTY_PER_ITEM } from './cockpit'
+import { calculateCockpitRange, cockpitRangeFromInputs, rangeFromCalculation } from './cockpit-range'
 
 describe('cockpitSpanne', () => {
   it('bestimmt collapses to a point value (ADR-015)', () => {

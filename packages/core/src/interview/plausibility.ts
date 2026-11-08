@@ -1,7 +1,7 @@
-import type { WageTaxCertificateFieldId, WageTaxCertificateStatus } from '../domains/lstb.js'
-import type { WorkdaysResult } from '../common/workdays.js'
-import type { EmployeeStatus } from '../domains/employee.js'
-import type { IncomeType } from '../domains/income-types.js'
+import type { WageTaxCertificateFieldId, WageTaxCertificateStatus } from '../domains/lstb'
+import type { WorkdaysResult } from '../common/workdays'
+import type { EmployeeStatus } from '../domains/employee'
+import type { IncomeType } from '../domains/income-types'
 
 export type Conflict =
   | { readonly kind: 'lstb-offen'; readonly fields: readonly WageTaxCertificateFieldId[] }

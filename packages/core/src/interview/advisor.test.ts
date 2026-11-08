@@ -4,7 +4,7 @@ import {
   evaluateAdvisorTurn,
   simulateAdvisorFieldDelta,
   type CaseDigest,
-} from './advisor.js'
+} from './advisor'
 
 const sampleDigest: CaseDigest = {
   taxYear: 2025,

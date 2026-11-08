@@ -1,2 +1,2 @@
-export * from './tarif.js'
-export * from './tax-parameters.js'
+export * from './tarif'
+export * from './tax-parameters'

@@ -4,8 +4,8 @@ import {
   homeOfficeDaysFromInterview,
   LEGAL_STATUS_DATE,
   type OwlInputFacts,
-} from './owl-mode.js'
-import { PROFESSION_VALUES } from './interview.js'
+} from './owl-mode'
+import { PROFESSION_VALUES } from './interview'
 
 describe('eulen-modus', () => {
   it('triggers musterluecke for a Fortbildung, without inventing an amount', () => {

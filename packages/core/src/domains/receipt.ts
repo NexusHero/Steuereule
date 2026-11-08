@@ -1,4 +1,4 @@
-import type { ReceiptType } from './receipt-type.js'
+import type { ReceiptType } from './receipt-type'
 
 export type ReceiptData = {
   readonly id: string

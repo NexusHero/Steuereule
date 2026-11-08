@@ -1,5 +1,5 @@
-import type { Answers } from './interview.js'
-import type { ProgressionClauseInput } from '../engine/filing-type-comparison.js'
+import type { Answers } from './interview'
+import type { ProgressionClauseInput } from '../engine/filing-type-comparison'
 
 function integerFrom(value: string | undefined): number {
   if (value === undefined) return 0

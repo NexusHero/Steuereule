@@ -6,7 +6,7 @@ import {
   monthlyChildBenefitClaim,
   calculateChildrenStatus,
   type ChildData,
-} from './children.js'
+} from './children'
 
 describe('kinder', () => {
   it('validates child birthdate (not in the future, valid calendar date)', () => {

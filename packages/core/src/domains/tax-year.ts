@@ -1,4 +1,4 @@
-import type { IncomeType } from './income-types.js'
+import type { IncomeType } from './income-types'
 
 export type AssessmentType =
   | { readonly kind: 'einzeln' }

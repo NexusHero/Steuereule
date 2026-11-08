@@ -8,7 +8,7 @@ import {
   maskEmployer,
   maskPhone,
   scrubUserMessagePii,
-} from './pii-masking.js'
+} from './pii-masking'
 
 describe('PII Masking (ADR-0052 §8 — Personenbezogene Daten: schreiben ja, lesen maskiert)', () => {
   describe('maskTaxId', () => {

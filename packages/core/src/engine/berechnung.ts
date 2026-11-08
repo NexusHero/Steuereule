@@ -1,4 +1,4 @@
-import type { IncomeType } from '../domains/income-types.js'
+import type { IncomeType } from '../domains/income-types'
 export type Source =
   | { readonly kind: 'eingabe' }
   | { readonly kind: 'beleg'; readonly receiptId: string }

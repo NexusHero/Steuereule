@@ -8,8 +8,8 @@ import {
   evaluateAdvisorTurn,
   simulateAdvisorFieldDelta,
   type CaseDigest,
-} from './advisor.js'
-import type { OwlSourceId } from './owl-mode.js'
+} from './advisor'
+import type { OwlSourceId } from './owl-mode'
 import {
   maskEmployer,
   maskHouseNumber,
@@ -19,7 +19,7 @@ import {
   maskStreet,
   maskTaxId,
   scrubUserMessagePii,
-} from '../common/pii-masking.js'
+} from '../common/pii-masking'
 
 function makeDigest(overrides: Partial<CaseDigest> = {}): CaseDigest {
   return {
