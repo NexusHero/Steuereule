@@ -109,7 +109,7 @@ describe('REQ-027 — the Fristen-Warnmodus (§ 149/§ 152 AO), against the real
   it('an unsupported year is an honest 400 — never a neighbour year\'s frist', async () => {
     const cookie = await signUp('jahr-400@example.com')
 
-    const response = await getDeadlines(cookie, 2023)
+    const response = await getDeadlines(cookie, 2021)
     expect(response.status).toBe(400)
   })
 

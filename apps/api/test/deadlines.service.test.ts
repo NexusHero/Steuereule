@@ -44,6 +44,6 @@ describe('FristenService', () => {
   })
 
   it('maps an unsupported year to an honest 400 — never a neighbour year\'s frist', async () => {
-    await expect(service.getDeadlines(2023)).rejects.toThrow('Unsupported tax year for the Abgabefrist')
+    await expect(service.getDeadlines(2021)).rejects.toThrow('Unsupported tax year for the Abgabefrist')
   })
 })

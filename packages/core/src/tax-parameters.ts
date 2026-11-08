@@ -53,10 +53,12 @@ export interface ChildrenParameters {
   readonly singleParentReliefEur: number
 }
 
-/** § 149 Abs. 2 AO / § 152 AO: Gesetzliche Abgabefristen und Verspätungszuschläge. */
+/** § 149 Abs. 2 AO / § 152 AO / § 169 AO: Gesetzliche Abgabefristen und Verspätungszuschläge. */
 export interface DeadlineParameters {
-  /** Gesetzliche Abgabefrist für die Steuererklärung. */
+  /** Gesetzliche Abgabefrist für die Pflichtveranlagung (§ 149 Abs. 2 AO). */
   readonly standardFilingDeadline: string
+  /** Gesetzliche Festsetzungsverjährung für die Antragsveranlagung (§ 169 Abs. 2 Satz 1 Nr. 2 AO: 4 Jahre). */
+  readonly voluntaryFilingDeadline: string
   /** Vorwarnschwelle in Tagen. */
   readonly warningThresholdDays: number
   /** § 152 Abs. 5 Satz 2 AO: Mindest-Verspätungszuschlag (25 € pro Monat). */
@@ -118,16 +120,28 @@ export interface TaxYearParameters {
 
 const STATIC_BEA_EUR = 2928
 
-const CHILDREN_BY_YEAR: Readonly<Record<IncomeTaxYear, { monthly: number; childAllowanceOnly: number }>> = {
-  2024: { monthly: 250, childAllowanceOnly: 6612 },
-  2025: { monthly: 255, childAllowanceOnly: 6672 },
-  2026: { monthly: 259, childAllowanceOnly: 6828 },
+const CHILDREN_BY_YEAR: Readonly<Record<IncomeTaxYear, { monthly: number; childAllowanceOnly: number; singleParentRelief: number }>> = {
+  2022: { monthly: 219, childAllowanceOnly: 5620, singleParentRelief: 4008 },
+  2023: { monthly: 250, childAllowanceOnly: 6024, singleParentRelief: 4260 },
+  2024: { monthly: 250, childAllowanceOnly: 6612, singleParentRelief: 4260 },
+  2025: { monthly: 255, childAllowanceOnly: 6672, singleParentRelief: 4260 },
+  2026: { monthly: 259, childAllowanceOnly: 6828, singleParentRelief: 4260 },
 }
 
 const FILING_DEADLINES_BY_YEAR: Readonly<Record<IncomeTaxYear, string>> = {
+  2022: '2023-10-02',
+  2023: '2024-09-02',
   2024: '2025-07-31',
   2025: '2026-07-31',
   2026: '2027-07-31',
+}
+
+const VOLUNTARY_FILING_DEADLINES_BY_YEAR: Readonly<Record<IncomeTaxYear, string>> = {
+  2022: '2026-12-31',
+  2023: '2027-12-31',
+  2024: '2028-12-31',
+  2025: '2029-12-31',
+  2026: '2030-12-31',
 }
 
 function buildParametersForYear(year: IncomeTaxYear): TaxYearParameters {
@@ -146,28 +160,28 @@ function buildParametersForYear(year: IncomeTaxYear): TaxYearParameters {
     tariff,
     soliLimits: soli,
     lumpSums: {
-      employee: 1230,
+      employee: year === 2022 ? 1200 : 1230,
       specialExpensesSingle: 36,
       specialExpensesJoint: 72,
-      saverSingle: 1000,
-      saverJoint: 2000,
+      saverSingle: year === 2022 ? 801 : 1000,
+      saverJoint: year === 2022 ? 1602 : 2000,
     },
     commute,
-    homeOffice: {
-      dailyRateEur: 6,
-      maxDays: 210,
-      maxAnnualEur: 1260,
-    },
+    homeOffice:
+      year === 2022
+        ? { dailyRateEur: 5, maxDays: 120, maxAnnualEur: 600 }
+        : { dailyRateEur: 6, maxDays: 210, maxAnnualEur: 1260 },
     children: {
       monthlyBenefitEur: childData.monthly,
       annualBenefitEur: childData.monthly * 12,
       childAllowanceOnlyEur: childData.childAllowanceOnly,
       beaAllowanceEur: STATIC_BEA_EUR,
       childAllowanceTotalEur: childData.childAllowanceOnly + STATIC_BEA_EUR,
-      singleParentReliefEur: 4260,
+      singleParentReliefEur: childData.singleParentRelief,
     },
     deadlines: {
       standardFilingDeadline: FILING_DEADLINES_BY_YEAR[year],
+      voluntaryFilingDeadline: VOLUNTARY_FILING_DEADLINES_BY_YEAR[year],
       warningThresholdDays: 60,
       lateFilingMinEur: 25,
       lateFilingPercentPerMonth: 0.25,
@@ -186,6 +200,8 @@ function buildParametersForYear(year: IncomeTaxYear): TaxYearParameters {
 }
 
 const TAX_YEAR_REGISTRY: Readonly<Record<IncomeTaxYear, TaxYearParameters>> = {
+  2022: buildParametersForYear(2022),
+  2023: buildParametersForYear(2023),
   2024: buildParametersForYear(2024),
   2025: buildParametersForYear(2025),
   2026: buildParametersForYear(2026),

@@ -16,13 +16,19 @@ describe('kinder', () => {
   })
 
   it('statutory Kinderfreibetrag + BEA (§ 32 Abs. 6 EStG), both parents together', () => {
+    // 2022: 5.620 + 2.928 = 8.548
+    expect(childTaxAllowance(2022)).toBe(5620 + 2928)
+    // 2023: 6.024 + 2.928 = 8.952
+    expect(childTaxAllowance(2023)).toBe(6024 + 2928)
     // 2024 after the retroactive raise: 6.612 + 2.928
     expect(childTaxAllowance(2024)).toBe(9540)
     expect(childTaxAllowance(2025)).toBe(6672 + 2928)
     expect(childTaxAllowance(2026)).toBe(6828 + 2928)
   })
 
-  it('monthly Kindergeld (§ 66 EStG): 250 € through 2024, 255 € in 2025, 259 € from 2026', () => {
+  it('monthly Kindergeld (§ 66 EStG): 219 € in 2022, 250 € through 2024, 255 € in 2025, 259 € from 2026', () => {
+    expect(monthlyChildBenefitClaim(2022)).toBe(219)
+    expect(monthlyChildBenefitClaim(2023)).toBe(250)
     expect(monthlyChildBenefitClaim(2024)).toBe(250)
     expect(monthlyChildBenefitClaim(2025)).toBe(255)
     expect(monthlyChildBenefitClaim(2026)).toBe(259)

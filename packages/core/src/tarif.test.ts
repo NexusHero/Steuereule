@@ -15,6 +15,9 @@ import {
 
 describe('incomeTax — §32a EStG Grundtarif', () => {
   it('is zero at and below the Grundfreibetrag for every supported year', () => {
+    expect(incomeTax(0, 2022)).toBe(0)
+    expect(incomeTax(10347, 2022)).toBe(0)
+    expect(incomeTax(10908, 2023)).toBe(0)
     expect(incomeTax(0, 2024)).toBe(0)
     expect(incomeTax(11784, 2024)).toBe(0)
     expect(incomeTax(12096, 2025)).toBe(0)
@@ -22,7 +25,9 @@ describe('incomeTax — §32a EStG Grundtarif', () => {
   })
 
   it('computes the exact 42 % zone (linear) for clean inputs', () => {
-    // 0.42 × 100000 − sub, floored — sub per year (2024: 10636.31, 2025: 10911.92, 2026: 11135.63).
+    // 0.42 × 100000 − sub, floored — sub per year (2022: 9336.45, 2023: 9972.98, 2024: 10636.31, 2025: 10911.92, 2026: 11135.63).
+    expect(incomeTax(100000, 2022)).toBe(32663)
+    expect(incomeTax(100000, 2023)).toBe(32027)
     expect(incomeTax(100000, 2024)).toBe(31363)
     expect(incomeTax(100000, 2025)).toBe(31088)
     expect(incomeTax(100000, 2026)).toBe(30864)
@@ -65,17 +70,19 @@ describe('incomeTax — §32a EStG Grundtarif', () => {
   })
 
   it('throws for an unsupported year rather than approximating', () => {
-    expect(() => incomeTax(50000, 2023)).toThrow(RangeError)
+    expect(() => incomeTax(50000, 2021)).toThrow(RangeError)
     expect(() => incomeTax(50000, 2027)).toThrow(RangeError)
   })
 })
 
 describe('isSupportedIncomeTaxYear / zoneBoundaries', () => {
   it('accepts only integer years this module holds coefficients for', () => {
+    expect(isSupportedIncomeTaxYear(2022)).toBe(true)
+    expect(isSupportedIncomeTaxYear(2023)).toBe(true)
     expect(isSupportedIncomeTaxYear(2024)).toBe(true)
     expect(isSupportedIncomeTaxYear(2025)).toBe(true)
     expect(isSupportedIncomeTaxYear(2026)).toBe(true)
-    expect(isSupportedIncomeTaxYear(2023)).toBe(false)
+    expect(isSupportedIncomeTaxYear(2021)).toBe(false)
     expect(isSupportedIncomeTaxYear(2024.5)).toBe(false)
   })
 
@@ -137,6 +144,6 @@ describe('kirchensteuer — §51a EStG', () => {
   })
 })
 
-// Compile-time guard: the year union stays exactly {2024, 2025, 2026}.
-const _allYears: readonly IncomeTaxYear[] = [2024, 2025, 2026]
+// Compile-time guard: the year union stays exactly {2022, 2023, 2024, 2025, 2026}.
+const _allYears: readonly IncomeTaxYear[] = [2022, 2023, 2024, 2025, 2026]
 void _allYears

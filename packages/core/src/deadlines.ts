@@ -5,7 +5,7 @@ export const DEADLINE_WARNING_THRESHOLD_DAYS = 60
 export const LATE_FILING_FEE_MINIMUM_EUR = 25
 export const LATE_FILING_FEE_PERCENT_PER_MONTH = 0.25
 
-export type DeadlineYear = 2024 | 2025 | 2026
+export type DeadlineYear = 2022 | 2023 | 2024 | 2025 | 2026
 
 export function isSupportedDeadlineYear(year: number): year is DeadlineYear {
   return isSupportedIncomeTaxYear(year)
@@ -16,6 +16,25 @@ export function filingDeadlineFor(taxYear: number): string {
     throw new RangeError(`Unsupported tax year for the Abgabefrist / filing deadline (§ 149 Abs. 2 AO): ${taxYear}`)
   }
   return getTaxYearParameters(taxYear).deadlines.standardFilingDeadline
+}
+
+/**
+ * Gesetzliche Festsetzungsverjährung für die freiwillige Steuererklärung / Antragsveranlagung
+ * (§ 169 Abs. 2 Satz 1 Nr. 2 AO: 4 Jahre ab Ablauf des Besteuerungszeitraums).
+ */
+export function voluntaryFilingDeadlineFor(taxYear: number): string {
+  if (!isSupportedIncomeTaxYear(taxYear)) {
+    throw new RangeError(`Unsupported tax year for the Festsetzungsverjährung (§ 169 AO): ${taxYear}`)
+  }
+  return getTaxYearParameters(taxYear).deadlines.voluntaryFilingDeadline
+}
+
+/**
+ * Prüft, ob ein Steuerjahr für die freiwillige Veranlagung (§ 169 AO) bezogen auf ein Datum bereits verjährt ist.
+ */
+export function isFestsetzungsverjaehrt(taxYear: number, today: string): boolean {
+  const voluntaryDeadline = voluntaryFilingDeadlineFor(taxYear)
+  return daysSince(voluntaryDeadline) - daysSince(today) < 0
 }
 
 const ISO_DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/

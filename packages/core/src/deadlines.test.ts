@@ -4,6 +4,8 @@ import {
   LATE_FILING_FEE_PERCENT_PER_MONTH,
   DEADLINE_WARNING_THRESHOLD_DAYS,
   filingDeadlineFor,
+  voluntaryFilingDeadlineFor,
+  isFestsetzungsverjaehrt,
   deadlineWarning,
   isSupportedDeadlineYear,
 } from './deadlines'
@@ -13,22 +15,43 @@ import {
 // keine | warnung (ab 60 Tage) | abgelaufen — a banner input, never a `verspätet` status (ADR-0039).
 
 describe('abgabefristFuer — § 149 Abs. 2 AO, the explicit per-year table', () => {
-  it('pins the three supported years to 31 July of the following year', () => {
+  it('pins the supported years to statutory deadlines', () => {
+    expect(filingDeadlineFor(2022)).toBe('2023-10-02')
+    expect(filingDeadlineFor(2023)).toBe('2024-09-02')
     expect(filingDeadlineFor(2024)).toBe('2025-07-31')
     expect(filingDeadlineFor(2025)).toBe('2026-07-31')
     expect(filingDeadlineFor(2026)).toBe('2027-07-31')
   })
 
   it('throws for an unsupported year — never falls back to a neighbour year', () => {
-    expect(() => filingDeadlineFor(2023)).toThrow(RangeError)
+    expect(() => filingDeadlineFor(2021)).toThrow(RangeError)
     expect(() => filingDeadlineFor(2027)).toThrow(RangeError)
   })
 
   it('istUnterstuetztesFristenJahr is total over integer years', () => {
+    expect(isSupportedDeadlineYear(2022)).toBe(true)
+    expect(isSupportedDeadlineYear(2023)).toBe(true)
     expect(isSupportedDeadlineYear(2026)).toBe(true)
-    expect(isSupportedDeadlineYear(2023)).toBe(false)
+    expect(isSupportedDeadlineYear(2021)).toBe(false)
     expect(isSupportedDeadlineYear(2026.5)).toBe(false)
     expect(isSupportedDeadlineYear('2026' as never)).toBe(false)
+  })
+})
+
+describe('voluntaryFilingDeadlineFor & isFestsetzungsverjaehrt — § 169 Abs. 2 Satz 1 Nr. 2 AO', () => {
+  it('returns the statutory 4-year statute of limitations deadline', () => {
+    expect(voluntaryFilingDeadlineFor(2022)).toBe('2026-12-31')
+    expect(voluntaryFilingDeadlineFor(2023)).toBe('2027-12-31')
+    expect(voluntaryFilingDeadlineFor(2024)).toBe('2028-12-31')
+    expect(voluntaryFilingDeadlineFor(2025)).toBe('2029-12-31')
+    expect(voluntaryFilingDeadlineFor(2026)).toBe('2030-12-31')
+  })
+
+  it('identifies whether voluntary filing is verjährt', () => {
+    // 2022: Frist 31.12.2026
+    expect(isFestsetzungsverjaehrt(2022, '2026-11-08')).toBe(false)
+    expect(isFestsetzungsverjaehrt(2022, '2026-12-31')).toBe(false)
+    expect(isFestsetzungsverjaehrt(2022, '2027-01-01')).toBe(true)
   })
 })
 
