@@ -1,0 +1,151 @@
+{
+  "anlage-aus": {
+    "datei": "anlage-aus.pdf",
+    "sha256": "35ad79c5c3456391c0cf9670a14dfe8b3f144b451ea83fb16e85f4b197bbc33e",
+    "formularschluessel": [
+      "2022AnlAUS141NET",
+      "2022AnlAUS142NET",
+      "2022AnlAUS143NET"
+    ]
+  },
+  "anlage-aussergewoehnliche-belastungen": {
+    "datei": "anlage-aussergewoehnliche-belastungen.pdf",
+    "sha256": "adead569969f5ce1da684db7f6df6d5cbe4f503d3e4bd431fc7bf4178bba8ac7",
+    "formularschluessel": [
+      "2022Anl-agB391NET",
+      "2022Anl-agB392NET"
+    ]
+  },
+  "anlage-av": {
+    "datei": "anlage-av.pdf",
+    "sha256": "bc6db85107e1eb5b2fe6047eedf308db1adff7a1cbd74f33c1340d68e879f3c7",
+    "formularschluessel": [
+      "2022AnlAV041NET",
+      "2022AnlAV042NET"
+    ]
+  },
+  "anlage-energetische-massnahmen": {
+    "datei": "anlage-energetische-massnahmen.pdf",
+    "sha256": "74e135090ea887cf604037aedb82902ec3d2869c059de02a1794fc103d56a4ee",
+    "formularschluessel": [
+      "2022Anl35c431NET",
+      "2022Anl35c432NET"
+    ]
+  },
+  "anlage-haushaltsnahe-aufwendungen": {
+    "datei": "anlage-haushaltsnahe-aufwendungen.pdf",
+    "sha256": "65134971c449b396ae761edd7472c09d3157a291a5ca1bd5aea65641d0512090",
+    "formularschluessel": [
+      "2022Anl35a381NET"
+    ]
+  },
+  "anlage-kap-inv": {
+    "datei": "anlage-kap-inv.pdf",
+    "sha256": "c75f46224bcec88d6e0a96fa01ba5a07c56fb9f2a51b461464c09a4abb7c1890",
+    "formularschluessel": [
+      "2022AnlKAP-INV361NET",
+      "2022AnlKAP-INV362NET"
+    ]
+  },
+  "anlage-kap": {
+    "datei": "anlage-kap.pdf",
+    "sha256": "c1b1491f117b03bcb2c787a0d80cea872c47907a2e18e5e554052520eb40b556",
+    "formularschluessel": [
+      "2022AnlKAP051NET",
+      "2022AnlKAP052NET",
+      "2022AnlKAP053NET"
+    ]
+  },
+  "anlage-kind": {
+    "datei": "anlage-kind.pdf",
+    "sha256": "8694abaa5dff6037687d77c1544408fd5f559dca3408c430dadedf165430a090",
+    "formularschluessel": [
+      "2022AnlKind021NET",
+      "2022AnlKind022NET",
+      "2022AnlKind023NET"
+    ]
+  },
+  "anlage-n-gre": {
+    "datei": "anlage-n-gre.pdf",
+    "sha256": "82b1e425820e3f078b7ae89e286e29e1e862c86e6b44071448a0f67013843c2d",
+    "formularschluessel": [
+      "2022AnlNGre161NET",
+      "2022AnlNGre162NET",
+      "2022AnlNGre163NET",
+      "2022AnlNGre164NET"
+    ]
+  },
+  "anlage-n": {
+    "datei": "anlage-n.pdf",
+    "sha256": "cb8cf0806ca9d2f20b5adf271c40e2a8b62279a2edab0a6e338eae7883a7bc31",
+    "formularschluessel": [
+      "2022AnlN031NET",
+      "2022AnlN032NET",
+      "2022AnlN033NET",
+      "2022AnlN034NET"
+    ]
+  },
+  "anlage-r": {
+    "datei": "anlage-r.pdf",
+    "sha256": "1f26ec5dccd130783348d77327752a6cb8458dd356a42777f4a5cf5392075b95",
+    "formularschluessel": [
+      "2022AnlR121NET",
+      "2022AnlR122NET"
+    ]
+  },
+  "anlage-so": {
+    "datei": "anlage-so.pdf",
+    "sha256": "77fabf521e7026361ab30abb67e4ea93a1469af1c349323303e2f115d0c7eb8b",
+    "formularschluessel": [
+      "2022AnlSO131NET",
+      "2022AnlSO132NET"
+    ]
+  },
+  "anlage-sonderausgaben": {
+    "datei": "anlage-sonderausgaben.pdf",
+    "sha256": "a69c066f7223717eed355f955aeb31f9248600cc17181ac032154451c79fd3d3",
+    "formularschluessel": [
+      "2022AnlSonderausgaben401NET",
+      "2022AnlSonderausgaben402NET"
+    ]
+  },
+  "anlage-sonstiges": {
+    "datei": "anlage-sonstiges.pdf",
+    "sha256": "454fa481ee546f35a8c89632e5652ccd03ef99ddc6b5de82f0a969cb579411bd",
+    "formularschluessel": [
+      "2022AnlSonstiges411NET"
+    ]
+  },
+  "anlage-v": {
+    "datei": "anlage-v.pdf",
+    "sha256": "5b5070029ee550883a5599c3746ac9af1c54c368a790dde32815c5436e8a89eb",
+    "formularschluessel": [
+      "2022AnlV101NET",
+      "2022AnlV102NET"
+    ]
+  },
+  "anlage-vorsorgeaufwand": {
+    "datei": "anlage-vorsorgeaufwand.pdf",
+    "sha256": "e1f92328df12e59b4e12aca1dc785241f26e71f6492df5a5b69d96c606426bfb",
+    "formularschluessel": [
+      "2022AnlVor241NET",
+      "2022AnlVor242NET"
+    ]
+  },
+  "anlage-wa-est": {
+    "datei": "anlage-wa-est.pdf",
+    "sha256": "70165a8b90a1e71306a32f4c1bfd631c7d7001e40baceb0a807f309edcb3f9e3",
+    "formularschluessel": [
+      "2022AnlWA-ESt291NET",
+      "2022AnlWA-ESt292NET"
+    ]
+  },
+  "est-1-a": {
+    "datei": "est-1-a.pdf",
+    "sha256": "56e6d301a3a458fea8f07c3641078a2ce541c2d9bc16371935ee54fbbba87819",
+    "formularschluessel": [
+      "2022ESt1A011NET",
+      "2022ESt1A012NET"
+    ]
+  }
+}

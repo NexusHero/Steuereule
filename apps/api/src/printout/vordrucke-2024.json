@@ -1,0 +1,160 @@
+{
+  "anlage-aus": {
+    "datei": "anlage-aus.pdf",
+    "sha256": "1fbe14e172b4bbb22fcaf14aae87fe9e01e05cb6065e1774e58aa5d937eca037",
+    "formularschluessel": [
+      "2024AnlAUS141NET",
+      "2024AnlAUS142NET",
+      "2024AnlAUS143NET"
+    ]
+  },
+  "anlage-aussergewoehnliche-belastungen": {
+    "datei": "anlage-aussergewoehnliche-belastungen.pdf",
+    "sha256": "69a217956396835c9f3c281c4e5e1c1e89f9d6f1385ab32d2fe81752b54d2edd",
+    "formularschluessel": [
+      "2024Anl-agB391NET",
+      "2024Anl-agB392NET"
+    ]
+  },
+  "anlage-av": {
+    "datei": "anlage-av.pdf",
+    "sha256": "654dab629be839b70fbe996087b130f86a997f9b67a4fa82916d9c82fae14363",
+    "formularschluessel": [
+      "2024AnlAV041NET",
+      "2024AnlAV042NET"
+    ]
+  },
+  "anlage-energetische-massnahmen": {
+    "datei": "anlage-energetische-massnahmen.pdf",
+    "sha256": "e504834140e4af84db898e11b973f10c230495ed1d1fde96e2b800e463ee241a",
+    "formularschluessel": [
+      "2024Anl35c431NET",
+      "2024Anl35c432NET",
+      "2024Anl35c433NET"
+    ]
+  },
+  "anlage-haushaltsnahe-aufwendungen": {
+    "datei": "anlage-haushaltsnahe-aufwendungen.pdf",
+    "sha256": "33adf16cf45196ea356f947c1653667ae7e82133bf02415de9b200f7fda6ff0a",
+    "formularschluessel": [
+      "2024Anl35a381NET"
+    ]
+  },
+  "anlage-kap-inv": {
+    "datei": "anlage-kap-inv.pdf",
+    "sha256": "643a6cf3d809213629e2eba1ef148250215b9353dbf4c6d006bad20cbcd1282e",
+    "formularschluessel": [
+      "2024AnlKAP-INV361NET",
+      "2024AnlKAP-INV362NET",
+      "2024AnlKAP-INV363NET"
+    ]
+  },
+  "anlage-kap": {
+    "datei": "anlage-kap.pdf",
+    "sha256": "1332f5d79fb47d63ae700c7e62ce0fc03e9d88ddabd23dc1a5457f54ec594b8e",
+    "formularschluessel": [
+      "2024AnlKAP051NET",
+      "2024AnlKAP052NET",
+      "2024AnlKAP053NET"
+    ]
+  },
+  "anlage-kind": {
+    "datei": "anlage-kind.pdf",
+    "sha256": "97d89a517c522bc1e2686e1c5ccb1c9abff313eb67636c16cd3adad365e46e16",
+    "formularschluessel": [
+      "2024AnlKind021NET",
+      "2024AnlKind022NET",
+      "2024AnlKind023NET",
+      "2024AnlKind024NET"
+    ]
+  },
+  "anlage-n-gre": {
+    "datei": "anlage-n-gre.pdf",
+    "sha256": "da541690ebc5c18ee4d2d6e5bd3fbb1d01b314b5c2be94bfcf860655bb96c7fe",
+    "formularschluessel": [
+      "2024AnlNGre161NET",
+      "2024AnlNGre162NET",
+      "2024AnlNGre163NET",
+      "2024AnlNGre164NET",
+      "2024AnlNGre165NET"
+    ]
+  },
+  "anlage-n": {
+    "datei": "anlage-n.pdf",
+    "sha256": "df64f35631dbdb4d9d356d2885cdba95c5541028cd2de8c18bf7648599aede69",
+    "formularschluessel": [
+      "2024AnlN031NET",
+      "2024AnlN032NET",
+      "2024AnlN033NET",
+      "2024AnlN034NET"
+    ]
+  },
+  "anlage-r": {
+    "datei": "anlage-r.pdf",
+    "sha256": "cfe262bfcc2f4e77a6a82ae019c9433dd5820d7d4f0a291b388c10195d640e9e",
+    "formularschluessel": [
+      "2024AnlR121NET",
+      "2024AnlR122NET"
+    ]
+  },
+  "anlage-so": {
+    "datei": "anlage-so.pdf",
+    "sha256": "3257097ac35d38c031c98e63f7d0fbfde132dfbc5c9168c582356a9fb43c0b7f",
+    "formularschluessel": [
+      "2024AnlSO131NET",
+      "2024AnlSO132NET",
+      "2024AnlSO133NET"
+    ]
+  },
+  "anlage-sonderausgaben": {
+    "datei": "anlage-sonderausgaben.pdf",
+    "sha256": "11175a90ad49dbbdf3961b39d34050193144d1ba89f48b8c03a5605259614688",
+    "formularschluessel": [
+      "2024AnlSonderausgaben401NET",
+      "2024AnlSonderausgaben402NET"
+    ]
+  },
+  "anlage-sonstiges": {
+    "datei": "anlage-sonstiges.pdf",
+    "sha256": "f35bda6e594f582b6a2b17484ffa947ac6077013fb588c1a1f8317798e67963e",
+    "formularschluessel": [
+      "2024AnlSonstiges411NET",
+      "2024AnlSonstiges412NET"
+    ]
+  },
+  "anlage-v": {
+    "datei": "anlage-v.pdf",
+    "sha256": "10ff84530a1d9dd4da2d6fc27c6d796e364419341db635a6d0910b412515fc3e",
+    "formularschluessel": [
+      "2024AnlV101NET",
+      "2024AnlV102NET",
+      "2024AnlV103NET",
+      "2024AnlV104NET"
+    ]
+  },
+  "anlage-vorsorgeaufwand": {
+    "datei": "anlage-vorsorgeaufwand.pdf",
+    "sha256": "a55899f55fc10d65a80b0fd67aadf1488d0a188641c7a20d842a16397715919f",
+    "formularschluessel": [
+      "2024AnlVor241NET",
+      "2024AnlVor242NET",
+      "2024AnlVor243NET"
+    ]
+  },
+  "anlage-wa-est": {
+    "datei": "anlage-wa-est.pdf",
+    "sha256": "648778a29f417bb1b097b49d6272c091ad87ebe49f7d362c2e2c661f7f97df6e",
+    "formularschluessel": [
+      "2024AnlWA-ESt291NET",
+      "2024AnlWA-ESt292NET"
+    ]
+  },
+  "est-1-a": {
+    "datei": "est-1-a.pdf",
+    "sha256": "e8bf51d48c946d89de5d967921c2ce329991f7117eed8d9d16bb7d7038c2d2fd",
+    "formularschluessel": [
+      "2024ESt1A011NET",
+      "2024ESt1A012NET"
+    ]
+  }
+}
