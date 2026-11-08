@@ -15,6 +15,7 @@ import { LinkModule } from '../link/link.module.js'
 import { MarkingModule } from '../marking/marking.module.js'
 import { PrintoutController } from './printout.controller.js'
 import { PrintoutService, TEMPLATES_BASE } from './printout.service.js'
+import { PrintoutJobService } from './printout-job.service.js'
 
 @Module({
   imports: [
@@ -36,8 +37,9 @@ import { PrintoutService, TEMPLATES_BASE } from './printout.service.js'
   controllers: [PrintoutController],
   providers: [
     PrintoutService,
+    PrintoutJobService,
     { provide: TEMPLATES_BASE, useValue: new URL('../../assets/vordrucke/', import.meta.url) },
   ],
-  exports: [PrintoutService],
+  exports: [PrintoutService, PrintoutJobService],
 })
 export class PrintoutModule {}

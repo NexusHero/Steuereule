@@ -19,13 +19,18 @@ import type {
 
 import type {
   CheckoutResponseDto,
-  PrintoutCheckDto
+  PrintoutCheckDto,
+  PrintoutJobDto
 } from './ausdruck.schemas';
 
 
 export const getPrintoutControllerCheckResponseMock = (overrideResponse: Partial<Extract<PrintoutCheckDto, object>> = {}): PrintoutCheckDto => ({missing: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), ...overrideResponse})
 
 export const getPrintoutControllerCheckoutResponseMock = (overrideResponse: Partial<Extract<CheckoutResponseDto, object>> = {}): CheckoutResponseDto => ({checkoutUrl: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
+
+export const getPrintoutControllerExportAsyncResponseMock = (overrideResponse: Partial<Extract<PrintoutJobDto, object>> = {}): PrintoutJobDto => ({jobId: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.helpers.arrayElement(['queued','processing','completed','failed'] as const), statusUrl: faker.string.alpha({length: {min: 10, max: 20}}), downloadUrl: faker.string.alpha({length: {min: 10, max: 20}}), error: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
+
+export const getPrintoutControllerGetJobResponseMock = (overrideResponse: Partial<Extract<PrintoutJobDto, object>> = {}): PrintoutJobDto => ({jobId: faker.string.alpha({length: {min: 10, max: 20}}), status: faker.helpers.arrayElement(['queued','processing','completed','failed'] as const), statusUrl: faker.string.alpha({length: {min: 10, max: 20}}), downloadUrl: faker.string.alpha({length: {min: 10, max: 20}}), error: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
 
 
 export const getPrintoutControllerCheckMockHandler = (overrideResponse?: PrintoutCheckDto | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<PrintoutCheckDto> | PrintoutCheckDto), options?: RequestHandlerOptions) => {
@@ -52,6 +57,30 @@ export const getPrintoutControllerCheckoutMockHandler = (overrideResponse?: Chec
   }, options)
 }
 
+export const getPrintoutControllerExportAsyncMockHandler = (overrideResponse?: PrintoutJobDto | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<PrintoutJobDto> | PrintoutJobDto), options?: RequestHandlerOptions) => {
+  return http.post('*/v1/steuerjahre/:jahr/ausdruck/async', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getPrintoutControllerExportAsyncResponseMock(),
+      { status: 202
+      })
+  }, options)
+}
+
+export const getPrintoutControllerGetJobMockHandler = (overrideResponse?: PrintoutJobDto | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<PrintoutJobDto> | PrintoutJobDto), options?: RequestHandlerOptions) => {
+  return http.get('*/v1/steuerjahre/:jahr/ausdruck/jobs/:jobId', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getPrintoutControllerGetJobResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
 export const getPrintoutControllerPrintoutMockHandler = (overrideResponse?: void | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<void> | void), options?: RequestHandlerOptions) => {
   return http.get('*/v1/steuerjahre/:jahr/ausdruck', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {
   if (typeof overrideResponse === 'function') {await overrideResponse(info); }
@@ -64,5 +93,7 @@ export const getPrintoutControllerPrintoutMockHandler = (overrideResponse?: void
 export const getSteuerEuleAPIMock = () => [
   getPrintoutControllerCheckMockHandler(),
   getPrintoutControllerCheckoutMockHandler(),
+  getPrintoutControllerExportAsyncMockHandler(),
+  getPrintoutControllerGetJobMockHandler(),
   getPrintoutControllerPrintoutMockHandler()
 ]

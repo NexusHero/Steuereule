@@ -27,7 +27,9 @@ import type {
 import type {
   CheckoutResponseDto,
   PrintoutCheckDto,
-  PrintoutControllerPrintoutParams
+  PrintoutControllerExportAsyncParams,
+  PrintoutControllerPrintoutParams,
+  PrintoutJobDto
 } from './ausdruck.schemas';
 
 import { httpClient } from '../http-client';
@@ -264,6 +266,207 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       > => {
       return useMutation(getPrintoutControllerCheckoutMutationOptions(options), queryClient);
     }
+
+export type printoutControllerExportAsyncResponse202 = {
+  data: PrintoutJobDto
+  status: 202
+}
+
+export type printoutControllerExportAsyncResponseSuccess = (printoutControllerExportAsyncResponse202) & {
+  headers: Headers;
+};
+;
+
+export type printoutControllerExportAsyncResponse = (printoutControllerExportAsyncResponseSuccess)
+
+export const getPrintoutControllerExportAsyncUrl = (jahr: number,
+    params?: PrintoutControllerExportAsyncParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/v1/steuerjahre/${jahr}/ausdruck/async?${stringifiedParams}` : `/v1/steuerjahre/${jahr}/ausdruck/async`
+}
+
+export const printoutControllerExportAsync = async (jahr: number,
+    params?: PrintoutControllerExportAsyncParams, options?: RequestInit): Promise<printoutControllerExportAsyncResponse> => {
+
+  return httpClient<printoutControllerExportAsyncResponse>(getPrintoutControllerExportAsyncUrl(jahr,params),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getPrintoutControllerExportAsyncMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof printoutControllerExportAsync>>, TError,{jahr: number;params?: PrintoutControllerExportAsyncParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof printoutControllerExportAsync>>, TError,{jahr: number;params?: PrintoutControllerExportAsyncParams}, TContext> => {
+
+const mutationKey = ['printoutControllerExportAsync'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof printoutControllerExportAsync>>, {jahr: number;params?: PrintoutControllerExportAsyncParams}> = (props) => {
+          const {jahr,params} = props ?? {};
+
+          return  printoutControllerExportAsync(jahr,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PrintoutControllerExportAsyncMutationResult = NonNullable<Awaited<ReturnType<typeof printoutControllerExportAsync>>>
+
+    export type PrintoutControllerExportAsyncMutationError = unknown
+
+    export const usePrintoutControllerExportAsync = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof printoutControllerExportAsync>>, TError,{jahr: number;params?: PrintoutControllerExportAsyncParams}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof printoutControllerExportAsync>>,
+        TError,
+        {jahr: number;params?: PrintoutControllerExportAsyncParams},
+        TContext
+      > => {
+      return useMutation(getPrintoutControllerExportAsyncMutationOptions(options), queryClient);
+    }
+
+export type printoutControllerGetJobResponse200 = {
+  data: PrintoutJobDto
+  status: 200
+}
+
+export type printoutControllerGetJobResponseSuccess = (printoutControllerGetJobResponse200) & {
+  headers: Headers;
+};
+;
+
+export type printoutControllerGetJobResponse = (printoutControllerGetJobResponseSuccess)
+
+export const getPrintoutControllerGetJobUrl = (jahr: number,
+    jobId: string,) => {
+
+
+
+
+  return `/v1/steuerjahre/${jahr}/ausdruck/jobs/${jobId}`
+}
+
+export const printoutControllerGetJob = async (jahr: number,
+    jobId: string, options?: RequestInit): Promise<printoutControllerGetJobResponse> => {
+
+  return httpClient<printoutControllerGetJobResponse>(getPrintoutControllerGetJobUrl(jahr,jobId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getPrintoutControllerGetJobQueryKey = (jahr: number,
+    jobId: string,) => {
+    return [
+    `/v1/steuerjahre/${jahr}/ausdruck/jobs/${jobId}`
+    ] as const;
+    }
+
+
+export const getPrintoutControllerGetJobQueryOptions = <TData = Awaited<ReturnType<typeof printoutControllerGetJob>>, TError = unknown>(jahr: number,
+    jobId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof printoutControllerGetJob>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getPrintoutControllerGetJobQueryKey(jahr,jobId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof printoutControllerGetJob>>> = ({ signal }) => printoutControllerGetJob(jahr,jobId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: jahr !== null && jahr !== undefined && jobId !== null && jobId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof printoutControllerGetJob>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type PrintoutControllerGetJobQueryResult = NonNullable<Awaited<ReturnType<typeof printoutControllerGetJob>>>
+export type PrintoutControllerGetJobQueryError = unknown
+
+
+export function usePrintoutControllerGetJob<TData = Awaited<ReturnType<typeof printoutControllerGetJob>>, TError = unknown>(
+ jahr: number,
+    jobId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof printoutControllerGetJob>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof printoutControllerGetJob>>,
+          TError,
+          Awaited<ReturnType<typeof printoutControllerGetJob>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function usePrintoutControllerGetJob<TData = Awaited<ReturnType<typeof printoutControllerGetJob>>, TError = unknown>(
+ jahr: number,
+    jobId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof printoutControllerGetJob>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof printoutControllerGetJob>>,
+          TError,
+          Awaited<ReturnType<typeof printoutControllerGetJob>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function usePrintoutControllerGetJob<TData = Awaited<ReturnType<typeof printoutControllerGetJob>>, TError = unknown>(
+ jahr: number,
+    jobId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof printoutControllerGetJob>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function usePrintoutControllerGetJob<TData = Awaited<ReturnType<typeof printoutControllerGetJob>>, TError = unknown>(
+ jahr: number,
+    jobId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof printoutControllerGetJob>>, TError, TData>>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getPrintoutControllerGetJobQueryOptions(jahr,jobId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export type printoutControllerPrintoutResponse200 = {
   data: void

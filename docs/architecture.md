@@ -141,8 +141,18 @@ flowchart TD
     McpModule["MCP Server & Advisor Module\n(PII Masking, Gemini Adapter)"]
   end
 
-  subgraph SharedCore ["Pure Domain Core Layer"]
-    CorePkg["packages/core\nTarife, Fristen, Berechnungen,\nTaxYearParameters Registry"]
+  subgraph SharedCore ["Pure Domain Core Layer (@steuereule/core)"]
+    direction TB
+    InterviewCore["interview/\n(Fragebaum, Vorbehalt, Regeln)"]
+    DomainsCore["domains/\n(LStB, Rente, V&V, CH-Spezifika)"]
+    EngineCore["engine/\n(Berechnung, Status, Vergleich)"]
+    MathCore["math/\n(Tarif §32a, Parameter-Registry)"]
+    CommonCore["common/\n(Geldbeträge, Hilfsfunktionen)"]
+
+    InterviewCore --> DomainsCore
+    DomainsCore --> EngineCore
+    EngineCore --> MathCore
+    CommonCore --> MathCore
   end
 
   subgraph Persistence ["Persistence Layer"]
@@ -159,11 +169,27 @@ flowchart TD
   API --> CoreService
   API --> McpModule
 
-  CoreService --> CorePkg
-  McpModule --> CorePkg
+  CoreService --> InterviewCore
+  CoreService --> DomainsCore
+  CoreService --> EngineCore
+  CoreService --> MathCore
+  McpModule --> InterviewCore
   CoreService --> PrismaDB
   API --> AuditDB
 ```
+
+```
+
+### 5.1 Schichtenarchitektur & Abhängigkeits-DAG in `@steuereule/core`
+Der Rechenkern ist streng modularisiert und schützt sich über einen automatisierten Architektur-Test (`packages/core/src/architecture.test.ts`) gegen Regressionsschulden und Schichtenverletzungen:
+1. **`math/` (Reine Steuer-Mathematik):** Grundpolynome nach § 32a EStG, Tariftabellen, Temporal Parameter Registry (`tax-parameters.ts`). **Darf keine übergeordneten Module importieren.**
+2. **`engine/` (Rechen-Engine & Status):** Aggregation von Einkunftsarten, Berechnung von Summen und Erstattungsspannen, Veranlagungsartenvergleich (§ 26 EStG).
+3. **`domains/` (Fachliche Domänen):** Spezifische Steuervertikalen wie LStB, Rente (§ 22 EStG), Vermietung & Verpachtung (§ 21 EStG), Kapitalvermögen (§ 20 EStG), Grenzgänger CH (Art. 15a DBA).
+4. **`interview/` (Dynamische Frageführung & Regeln):** Fragebaum (`InterviewGraph`), Erreichbarkeitsprüfung, Progressionsvorbehaltsregeln (§ 32b EStG).
+5. **`common/` (Geteilte Basistypen):** Währungsbeträge, gemeinsame Datentypen.
+
+Die Abhängigkeiten fließen ausnahmslos top-down:
+$$\text{interview} \longrightarrow \text{domains} \longrightarrow \text{engine} \longrightarrow \text{math}$$
 
 *Für eine detaillierte Aufschlüsselung der Komponenten auf C4 Level 3 siehe [`architecture-subsystems.md`](./architecture-subsystems.md).*
 
@@ -198,7 +224,7 @@ sequenceDiagram
   API-->>App: Cockpit zeigt punktgenaue Schätzung
 ```
 
-## 6.2 Freischaltung & Ausdruck-Generierung
+## 6.2 Freischaltung & Synchroner Ausdruck
 
 ```mermaid
 sequenceDiagram
@@ -230,6 +256,35 @@ sequenceDiagram
   API-->>App: PDF Download (Druckfertiges Paket)
 ```
 
+## 6.3 Asynchrone Headless-Chromium PDF Queue ([ADR-0056](adr/0056-asynchronous-pdf-generation-job-queue.md))
+
+Zum Schutz vor RAM-Erschöpfung und Blockieren des Fastify-Event-Loops bei hoher Last (z. B. Abgabestichtag) bietet die API ein asynchrones Job-Muster mit vollständiger Fault Isolation:
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor Client as Mobile / Web Client
+  participant API as Fastify API Controller
+  participant JobService as PrintoutJobService
+  participant Worker as Background PDF Worker
+  participant DB as DB & Encrypted Storage
+
+  Client->>API: POST /v1/steuerjahre/2024/ausdruck/async
+  API->>JobService: enqueueJob(userId, jahr, fields)
+  JobService-->>API: jobId (Status: queued)
+  API-->>Client: 202 Accepted { "jobId": "job-123", "status": "queued" }
+
+  Worker->>JobService: processNext()
+  JobService->>Worker: Rendert amtliche BMF-Vordrucke
+  Worker->>DB: Speichert verschlüsseltes PDF
+  JobService->>JobService: Markiert jobId = completed, downloadUrl
+
+  Client->>API: GET /v1/steuerjahre/2024/ausdruck/jobs/job-123
+  API->>JobService: getJobStatus(jobId)
+  JobService-->>API: { "jobId": "job-123", "status": "completed", "downloadUrl": "..." }
+  API-->>Client: 200 OK
+```
+
 ---
 
 # 7. Querschnittliche Konzepte {#section-concepts}
@@ -246,11 +301,39 @@ Alle gesetzlichen Variablen sind in der temporalen Registry [`packages/core/src/
 * **Key-Rotation:** Schlüssel tragen einen Versions-Präfix (`k1:`, `k2:`). Beim Rotieren entschlüsselt die API alte Versionen über den Schlüsselbund und re-verschlüsselt mit dem aktiven Schlüssel.
 * **Boot-Guards:** Beim Serverstart prüft `assertEnvNotFileSourced`, dass Produktions-Secrets niemals aus `.env`-Dateien auf der Platte stammen, und `assertDatabaseMigrated` erzwingt die vollständige Konsistenz zwischen Prisma-Migrations und der Datenbank.
 
-## 7.3 DevSecOps & DevMLOps Pipeline
+## 7.3 DevSecOps & Supply Chain Security
 * **Statische Sicherheit (Shift-Left):** Gitleaks (Secret Detection), Trivy Config (IaC Scanning), Semgrep (SAST), Hadolint (Dockerfiles) und Actionlint (CI Workflows).
 * **Software Supply Chain:** Automatische Generierung von CycloneDX SBOMs für Root-Repo, API- und Web-Container-Images.
 * **Container Security:** Blockierender Trivy-Scan auf HIGH/CRITICAL Vulnerabilities für Produktions-Images.
 * **End-to-End Verifikation:** 24 vollautomatisierte Playwright-Szenarien testen reale Nutzerreisen im echten Browser.
+
+## 7.4 Request Correlation & W3C Trace-Context
+Zur lückenlosen Nachverfolgbarkeit von Fehlern und Latenzen über Frontend, API-Schichten und Logs hinweg nutzt das Backend standardisierte Correlation-IDs:
+* **W3C `traceparent` & `x-request-id`:** Fastify extrahiert vorhandene W3C Trace IDs (`00-<trace_id>-<parent_id>-<flags>`) oder `x-request-id`-Header und generiert bei Fehlen eine eindeutige Request-ID ([`apps/api/src/common/request-id.ts`](file:///Users/suhaysevinc/source/Steuereule/apps/api/src/common/request-id.ts)).
+* **Log-Präfix & Client Propagation:** Jedes strukturierte Logzeile im Fehlerfilter (`DomainErrorFilter`) wird mit `[requestId]` annotiert. Der Header `x-request-id` wird in jeder HTTP-Antwort zurückgeliefert; Fehler-Payloads enthalten die ID transparent im JSON-Body (`{ "statusCode": 404, "requestId": "req-..." }`).
+
+## 7.5 OpenTelemetry (OTel) Distributed Tracing
+* **Vendor-agnostisches Tracing:** Über `@opentelemetry/api` und den Wrapper [`withSpan`](file:///Users/suhaysevinc/source/Steuereule/apps/api/src/telemetry/tracer.ts) werden rechenintensive Operationen (z. B. `tax_estimate.calculate`) transparent in OpenTelemetry-Spans gekapselt.
+* **Google Cloud Trace Export:** In Google Cloud Run fließen die Trace-Kontexte automatisch in Cloud Trace und Cloud Monitoring, ohne proprietäre SDK-Abhängigkeiten im Business-Code.
+
+## 7.6 SRE Reliability, SLOs & Chaos Resilience ([`docs/sre/reliability-spec.md`](sre/reliability-spec.md))
+* **Service Level Objectives:**
+  - Berechnungs-Engine: 99,9 % der Requests $< 150\,\text{ms}$.
+  - Asynchrone PDF-Generierung: 99 % der Jobs $< 4\,\text{s}$.
+  - System-Verfügbarkeit (Availability): 99,9 % fehlerfreie HTTP-Requests.
+* **Error Budget & Burn-Rate Alerts:** 30 Tage rollierendes Fehlerbudget von 0,1 % ($\approx 43{,}2\,\text{Minuten}$ Gesamtausfall). Multi-Window Burn-Rate Alerting bei $14{,}4\times$ (1h-Window) und $6\times$ (6h-Window) Budget-Verbrauch mit dedizierten On-Call Playbooks.
+* **Chaos- & Transient-Recovery:** Automatische CI-Resilience-Tests (`database-chaos-recovery.test.ts`) stellen sicher, dass temporäre PostgreSQL-Verbindungsabbrüche sauber mit `503 Service Unavailable` beantwortet werden und der Pool sich ohne Node-Prozess-Neustart selbstständig erholt.
+* **Kapazitätsplanung & Resource Envelopes:** Quantitatives Speichermodell für Headless-Chromium ($180\,\text{MB} - 320\,\text{MB}$ pro Render, Concurrency-Deckelung auf $C=3$, Backpressure-Limit $K=50$) und mathematische PostgreSQL-Connection-Pool-Dimensionierung.
+* **Disaster Recovery (DR):** RPO $< 5\,\text{Minuten}$ (Continuous WAL Archiving via Cloud SQL PITR) und RTO $< 15\,\text{Minuten}$ (deklaratives OpenTofu Re-Provisioning).
+
+## 7.7 Zero-Downtime Database Migrations ([ADR-0055](adr/0055-zero-downtime-database-migrations-expand-contract.md))
+* **Expand and Contract Pattern:** Schema-Änderungen auf Produktiv-Datenbanken (Cloud SQL) erfolgen immer in zwei separaten Phasen:
+  1. *Expand:* Neue Spalten/Tabellen werden rein additiv und nullable angelegt. Alte und neue Container-Instanzen können parallel arbeiten.
+  2. *Contract:* Nach vollständigem Rollout und Daten-Backfill werden alte Spalten in einer nachfolgenden Migration sicher entfernt. Keine Downtime bei Rolling Updates.
+
+## 7.8 Zero-Trust Threat Model & Vertrauensgrenzen
+* **Trust Boundaries:** Aufteilung in drei formale Vertrauenszonen: Untrusted Client Zone $\rightarrow$ Authenticated Cloud Run Memory Boundary $\rightarrow$ Encrypted PostgreSQL Storage.
+* **Zero-Persistence:** PII und Steuerdaten verlassen den In-Memory-Zustand ausschließlich als AES-256-GCM Chiffrat; Klartexte werden weder geloggt noch in persistenten Caches abgelegt.
 
 ---
 
@@ -272,6 +355,8 @@ Ausführlich begründet in [`docs/adr/`](adr/index.md) und lückenlos protokolli
 | **ADR-0045** | *Value-First-Funnel:* Gäste dürfen Minimal-Gate ausfüllen; Daten wandern beim Upgrade mit. | Accepted | Conversion Optimization (#491) |
 | **ADR-0050** | *Papierweg statt ELSTER in 1.0:* Amtliche BMF-Vordrucke auf Papier, Bezahlung beim Ausdruck via Stripe. | Accepted | 1.0 Readiness (#496) |
 | **ADR-0051** | *Eulen-Modus KI-Architektur:* PII-Maskierung, Tool-Calling, Herkunftsnachweis und Undo-Garantie. | Accepted | AI Advisor (#471) |
+| **ADR-0055** | *Zero-Downtime Database Migrations:* Expand & Contract Pattern für unterbrechungsfreie Cloud Run Deployments. | Accepted | FAANG Architecture Hardening (#510) |
+| **ADR-0056** | *Asynchronous PDF Generation Job Queue:* Entkoppelte Worker-Queue für rechen- und RAM-intensive BMF-Formular-Renderings. | Accepted | FAANG Architecture Hardening (#510) |
 
 ---
 
@@ -281,8 +366,8 @@ Die Software-Qualität wird über ein **4-Ebenen-Testmodell** sichergestellt:
 
 ```mermaid
 flowchart TD
-  T1["Ebene 1: Unit- & Eigenschaftstests (Vitest)\n@steuereule/core (662 Tests)\nReine Funktionen, Tarife, Rundungsregeln"]
-  T2["Ebene 2: API-Integrations- & Vertragstests (Vitest)\n@steuereule/api (793 Tests)\nEchte Postgres Container, Fastify Inject, OpenAPI Contracts"]
+  T1["Ebene 1: Unit- & Eigenschaftstests (Vitest)\n@steuereule/core (662 Tests)\nReine Funktionen, Tarife, Rundungsregeln,\nArchitektur-Linter (DAG-Guard)"]
+  T2["Ebene 2: API-Integrations- & Vertragstests (Vitest)\n@steuereule/api (800+ Tests)\nEchte Postgres Container, Fastify Inject, Chaos Recovery,\nOpenAPI Contracts, W3C Trace-Context"]
   T3["Ebene 3: UI-Komponenten & Screen-Tests (Vitest/RTL)\n@steuereule/mobile-web (619 Tests)\nMock Service Worker (MSW), ARIA Accessibility"]
   T4["Ebene 4: End-to-End Browser-Matrix (Playwright)\n24 reale Lebenslagen-Szenarien\nEchter Chromium, echter Node API Monolith, echte Datenbank"]
 

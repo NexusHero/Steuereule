@@ -12,7 +12,7 @@
 <p align="center">
   <a href="https://demo.steuereule.de"><img src="https://img.shields.io/badge/Live_Demo-Google_Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white" alt="Live Demo on Google Cloud Run" /></a>
   <a href="docs/arc42/README.md"><img src="https://img.shields.io/badge/Architecture-arc42_Specification-191B12?style=for-the-badge&labelColor=C9F229&color=191B12" alt="arc42 Architecture" /></a>
-  <a href="docs/adr/"><img src="https://img.shields.io/badge/Decisions-56_ADRs-191B12?style=for-the-badge&labelColor=C9F229&color=191B12" alt="56 ADRs" /></a>
+  <a href="docs/adr/"><img src="https://img.shields.io/badge/Decisions-58_ADRs-191B12?style=for-the-badge&labelColor=C9F229&color=191B12" alt="58 ADRs" /></a>
   <img src="https://img.shields.io/badge/Tests-230%2B_Suites-1F9D55?style=for-the-badge" alt="230+ Test Suites" />
   <img src="https://img.shields.io/badge/Throughput-15.6M_ops%2Fsec-blue?style=for-the-badge" alt="15.6M ops/sec" />
   <img src="https://img.shields.io/badge/Security-AES--256--GCM_Field_Encryption-1F9D55?style=for-the-badge" alt="Security: AES-256-GCM" />
@@ -37,8 +37,8 @@
 
 | File | Focus Area | Why It Matters |
 |:---|:---|:---|
-| [`packages/core/src/tarif.ts`](packages/core/src/tarif.ts) | **Pure Deterministic Math** | Pure TypeScript implementation of the German progressive income tax formula (§ 32a EStG) and splitting tariff. Zero dependencies, zero I/O, runs in **~64 nanoseconds** ($>15.6\text{M}$ ops/sec). |
-| [`packages/core/src/matrix-fuzzing.test.ts`](packages/core/src/matrix-fuzzing.test.ts) | **Combinatorial Fuzzing & Invariants** | Exhaustively traverses all **144 permutations** of the interview state machine and proves mathematical boundary invariants up to €100M (non-negativity, tariff monotonicity, absence contradiction gates). |
+| [`packages/core/src/math/tarif.ts`](packages/core/src/math/tarif.ts) | **Pure Deterministic Math** | Pure TypeScript implementation of the German progressive income tax formula (§ 32a EStG) and splitting tariff. Zero dependencies, zero I/O, runs in **~64 nanoseconds** ($>15.6\text{M}$ ops/sec). |
+| [`packages/core/src/interview/matrix-fuzzing.test.ts`](packages/core/src/interview/matrix-fuzzing.test.ts) | **Combinatorial Fuzzing & Invariants** | Exhaustively traverses all **144 permutations** of the interview state machine and proves mathematical boundary invariants up to €100M (non-negativity, tariff monotonicity, absence contradiction gates). |
 | [`apps/api/src/prisma/encrypted-prisma.provider.ts`](apps/api/src/prisma/encrypted-prisma.provider.ts) | **Zero-Trust Field Encryption** | Transparent server-side **AES-256-GCM** encryption extension for Prisma, with zero-leak key rotation policies ([ADR-0008](docs/adr/0008-steuer-id-verschluesselung-aes-256-gcm.md)). |
 | [`apps/api/src/health/health.controller.ts`](apps/api/src/health/health.controller.ts) | **SRE Health Probes** | Cloud-native `/v1/health/live` and `/v1/health/ready` probes with active pooled database reachability checks and graceful shutdown hooks (`app.enableShutdownHooks()`). |
 
@@ -86,7 +86,7 @@ Traditional tax software presents dense tabular forms without proactive guidance
 * **Zero-Trust Security & Field-Level Encryption:**
   Sensitive Personal Identifiable Information (PII) and Tax Identification Numbers are encrypted server-side using **AES-256-GCM** with authenticated key management. PII is never stored in browser local storage or persistent client-side state.
 * **Rigorous Architecture Discipline:**
-  Over **56 Architecture Decision Records ([docs/adr/](docs/adr/))** document every technical decision, trade-off, and alternative considered. Comprehensive architectural blueprints follow the international **[arc42](docs/arc42/README.md)** standard with PlantUML component models.
+  Over **58 Architecture Decision Records ([docs/adr/](docs/adr/))** document every technical decision, trade-off, and alternative considered. Comprehensive architectural blueprints follow the international **[arc42](docs/arc42/README.md)** standard with PlantUML component models.
 * **Contract-First API Design:**
   The REST API (NestJS + Fastify) generates an OpenAPI specification that compiles into end-to-end typed TypeScript SDKs via Orval, guaranteeing compile-time type safety across frontend and backend boundaries.
 * **Automated Hardened CI/CD ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)):**
@@ -99,12 +99,12 @@ Traditional tax software presents dense tabular forms without proactive guidance
 The core mathematical engine is continuously benchmarked using Vitest Bench (`pnpm --filter @steuereule/core bench`):
 
 ```text
- ✓ src/tarif.bench.ts (4)
+ ✓ src/math/tarif.bench.ts (4)
    ✓ Tarif & Tax Engine Throughput Benchmark
-     · incomeTax (§ 32a EStG Grundtarif single)      15,641,833 ops/sec  (mean: 0.064 µs)
-     · splittingTariff (§ 32a Abs. 5 married)         10,372,813 ops/sec  (mean: 0.096 µs)
-     · solidaritaetszuschlag (Surcharge)              32,637,683 ops/sec  (mean: 0.030 µs)
-     · full calculation loop (100 income tiers)          209,643 loops/sec (>20.9M evaluations/sec)
+     · incomeTax (§ 32a EStG Grundtarif single)      16,484,019 ops/sec  (mean: 0.060 µs)
+     · splittingTariff (§ 32a Abs. 5 married)         10,654,069 ops/sec  (mean: 0.093 µs)
+     · solidaritaetszuschlag (Surcharge)              32,839,177 ops/sec  (mean: 0.030 µs)
+     · full calculation loop (100 income tiers)          222,094 loops/sec (>22.2M evaluations/sec)
 ```
 
 * **Zero Heap Allocations:** Hot evaluation loops operate strictly with native primitives and stack variables.
@@ -131,7 +131,12 @@ Steuereule is structured as a modular TypeScript monorepo powered by `pnpm` and 
 │   ├── mobile-web       # React Native Web + Expo (TanStack Query, i18n, Funke UI)
 │   └── api              # NestJS + Fastify REST API (/v1/*), Prisma ORM on PostgreSQL
 ├── packages/
-│   ├── core             # Pure, deterministic German tax calculation engine (§ 32a EStG)
+│   ├── core             # Pure, deterministic German tax calculation engine (§ 32a EStG):
+│   │   ├── math/        # Pure statutory formulas & tax tariffs (§ 32a, Soli)
+│   │   ├── engine/      # Assessment orchestrators & optimal filing comparison
+│   │   ├── domains/     # Regulatory verticals (cross-border, rental, capital, pension)
+│   │   ├── interview/   # Combinatorial state machine & dynamic quiz guidance
+│   │   └── common/      # Tax ID validators, PII masking, workday calendar
 │   ├── ui               # Neobrutalist "Funke" design system component library
 │   ├── tokens           # Style Dictionary tokens (colors, typography, geometry)
 │   └── api-client       # Generated type-safe client SDK (OpenAPI via Orval)
@@ -139,7 +144,7 @@ Steuereule is structured as a modular TypeScript monorepo powered by `pnpm` and 
 ├── infra/               # OpenTofu infrastructure definitions (Google Cloud Run, Cloud SQL)
 └── docs/
     ├── arc42/           # arc42 architecture specification and PlantUML diagrams
-    └── adr/             # 56 Architecture Decision Records (ADRs)
+    └── adr/             # 58 Architecture Decision Records (ADRs)
 ```
 
 ---
@@ -192,7 +197,7 @@ scripts/local.sh dev
 
 The codebase enforces a multi-tiered testing and verification pipeline:
 
-* **Exhaustive State-Machine Fuzzing ([`matrix-fuzzing.test.ts`](packages/core/src/matrix-fuzzing.test.ts)):**
+* **Exhaustive State-Machine Fuzzing ([`matrix-fuzzing.test.ts`](packages/core/src/interview/matrix-fuzzing.test.ts)):**
   Traverses all **144 combinatorial gate variations** across user employment, cross-border status, children, and marital configurations. Validates mathematical invariants up to €100,000,000 without numeric exceptions.
 * **Deterministic Unit Tests:** 45+ isolated test suites in `@steuereule/core` (660+ unit tests executing in under 500ms) covering exact statutory tax formulas.
 * **Integration Tests:** 75+ test suites in `@steuereule/api` running against ephemeral real PostgreSQL instances with test database isolation.

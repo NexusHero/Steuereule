@@ -17,6 +17,7 @@ export interface ErrorResponseBody {
   error: string
   code: string
   message: string
+  requestId?: string
 }
 
 /** Translates every DomainError into one uniform HTTP error body and logs it without request data. */
@@ -29,14 +30,21 @@ export class DomainErrorFilter implements ExceptionFilter<DomainError> {
     const request = http.getRequest<FastifyRequest>()
     const reply = http.getResponse<FastifyReply>()
     const { status, reason } = HTTP_MAPPING[error.kind]
-    const body: ErrorResponseBody = { statusCode: status, error: reason, code: error.code, message: error.message }
+    const body: ErrorResponseBody = {
+      statusCode: status,
+      error: reason,
+      code: error.code,
+      message: error.message,
+      ...(request?.id ? { requestId: request.id } : {}),
+    }
 
     this.log(error, status, request)
     void reply.status(status).send(body)
   }
 
   private log(error: DomainError, status: number, request: FastifyRequest): void {
-    const line = `${request.method} ${request.routeOptions?.url ?? request.url} → ${status} ${error.code}`
+    const prefix = request?.id ? `[${request.id}] ` : ''
+    const line = `${prefix}${request.method} ${request.routeOptions?.url ?? request.url} → ${status} ${error.code}`
     if (status >= 500) this.logger.error(line)
     else this.logger.warn(line)
   }
