@@ -28,6 +28,9 @@ export async function buildApp(): Promise<NestFastifyApplication> {
 
   app.enableCors(buildCorsOptions(process.env))
 
+  // Graceful shutdown on SIGTERM/SIGINT for Cloud Run and Kubernetes SRE posture
+  app.enableShutdownHooks()
+
   await app.register(fastifyCookie)
 
   await registerHelmet(app)
