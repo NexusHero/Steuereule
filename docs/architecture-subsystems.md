@@ -13,7 +13,7 @@ Jedes Subsystem in Steuereule unterliegt denselben strengen Architektur-Garantie
 1. **Echtes Modul-Scoping & Tenant-Isolation:**
    Jeder Controller sitzt hinter `UserContextGuard` bzw. `RequiresAccountGuard`. Das Scoping auf `userId` und `Steuerjahr` wird serverseitig garantiert — kein Client kann Daten fremder Mandanten adressieren oder manipulieren.
 2. **Delegation an den deterministischen Kern (`@steuereule/core`):**
-   Kein Controller und kein Service erfindet steuerliche Berechnungen oder Tarife. Sämtliche Beträge, Tarife (§ 32a EStG), Freibeträge, AfA-Sätze, Besteuerungsanteile und Verjährungsfristen werden von rein funktionalen, zustandslosen Funktionen in `@steuereule/core` berechnet ([ADR-0005](adr/0005-deterministic-core-llm-assist.md)).
+   Kein Controller und kein Service erfindet steuerliche Berechnungen oder Tarife. Sämtliche Beträge, Tarife (§ 32a EStG), Freibeträge, AfA-Sätze, Besteuerungsanteile und Verjährungsfristen werden von rein funktionalen, zustandslosen Funktionen in `@steuereule/core` berechnet ([ADR-0005](adr/0005-deterministic-core-llm-assist.md)). Der Kern ist streng in fünf Schichten unterteilt (`math/`, `engine/`, `domains/`, `interview/`, `common/`) und wird durch automatisierte Architektur-Linter (`architecture.test.ts`) gegen zyklische Abhängigkeiten geschützt.
 3. **Feldverschlüsselung im Ruhezustand (Encryption at Rest, [ADR-0008](adr/0008-keine-erfundenen-daten.md)):**
    Alle steuerlichen Werte, Stammdaten und PII werden vor dem Schreiben in PostgreSQL über AES-256-GCM verschlüsselt. In der Datenbank stehen ausschließlich Chiffre-Texte mit zufälligem Nonce.
 4. **Enge Vendor-Seams (Ports & Adapters):**
@@ -220,7 +220,7 @@ flowchart TD
 
 ## 7. Formular-Ausdruck Pipeline (Printout)
 
-Schreibt die berechneten Daten exakt an die vermessenen Positionen der amtlichen BMF-NET-Vordrucke ([ADR-0050](adr/0050-papierweg-statt-elster-in-1-0.md)).
+Schreibt die berechneten Daten exakt an die vermessenen Positionen der amtlichen BMF-NET-Vordrucke ([ADR-0050](adr/0050-papierweg-statt-elster-in-1-0.md)). Unterstützt sowohl synchrones Streaming als auch eine entkoppelte asynchrone Job-Queue ([ADR-0056](adr/0056-asynchronous-pdf-generation-job-queue.md)).
 
 ```mermaid
 flowchart TD
@@ -229,15 +229,18 @@ flowchart TD
   classDef core fill:#fff5e6,stroke:#dd6b20,color:#7b341e;
   classDef db fill:#f0f0f5,stroke:#718096,color:#2d3748;
 
-  PrintoutCtrl["PrintoutController\nGET /v1/.../ausdruck\nGET /v1/.../ausdruck/pruefung"]:::ctrl
+  PrintoutCtrl["PrintoutController\nGET /v1/.../ausdruck\nGET /v1/.../ausdruck/pruefung\nPOST /v1/.../ausdruck/async\nGET /v1/.../ausdruck/jobs/:jobId"]:::ctrl
 
   PrintoutSvc["PrintoutService\n(Vorprüfung & Datenassemblierung)"]:::svc
+  PrintoutJobSvc["PrintoutJobService\n(Asynchrone Worker-Queue & Status)"]:::svc
 
   Renderer["FormRenderer\n(pdf-lib Engine)"]:::svc
   FieldSets["FIELD_SETS\n(felder-<jahr>.json)"]:::core
   Templates["assets/vordrucke/<jahr>/\n(Amtliche BMF NET-PDFs)"]:::db
 
   PrintoutCtrl --> PrintoutSvc
+  PrintoutCtrl --> PrintoutJobSvc
+  PrintoutJobSvc --> PrintoutSvc
   PrintoutSvc --> Renderer
   Renderer --> FieldSets
   Renderer --> Templates
@@ -301,4 +304,32 @@ flowchart TD
   AccountSvc --> ExportRepo
   AccountSvc --> AuditRepo
   AccountSvc --> PrismaAll
+```
+
+---
+
+## 10. Observability, Tracing & Resilience Subsystem
+
+Sichert Systemzuverlässigkeit, Tracing und Fault Isolation gemäß [SRE Reliability Spec](sre/reliability-spec.md).
+
+```mermaid
+flowchart TD
+  classDef ctrl fill:#e3f0ff,stroke:#2b6cb0,color:#1a365d;
+  classDef svc fill:#eef7ee,stroke:#38a169,color:#1c4532;
+  classDef port fill:#f3e8ff,stroke:#7e22ce,color:#581c87;
+  classDef db fill:#f0f0f5,stroke:#718096,color:#2d3748;
+
+  ReqMiddleware["Fastify genReqId / onSend\n(W3C traceparent, x-request-id)"]:::ctrl
+  ErrorFilter["DomainErrorFilter\n(Embeds requestId in error response)"]:::ctrl
+
+  TracerModule["OpenTelemetry Tracer\n(withSpan helper)"]:::svc
+  EstimateSpan["TaxEstimateService\n(Span: tax_estimate.calculate)"]:::svc
+
+  CloudTrace["Google Cloud Trace / Monitoring\n(Distributed Traces)"]:::port
+  PrismaPool["Prisma Connection Pool\n(Circuit Breaker / Transient Recovery)"]:::db
+
+  ReqMiddleware --> ErrorFilter
+  EstimateSpan --> TracerModule
+  TracerModule --> CloudTrace
+  ErrorFilter -.-> PrismaPool
 ```
