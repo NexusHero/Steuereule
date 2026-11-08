@@ -56,6 +56,7 @@ export async function runScenario03(browser, webOrigin, sql, markusSession = nul
   await pageJulia.locator('[data-testid="ch-tage-input"]').waitFor({ state: 'visible', timeout: 10_000 })
   await pageJulia.locator('[data-testid="ch-tage-input"]').fill(String(s.julia.crossBorder.nonReturnDays))
   await pageJulia.locator('[data-testid="ch-tage-weiter"]').click()
+  await pageJulia.waitForLoadState('networkidle').catch(() => {})
 
   await pageJulia.locator('[data-testid="ch-feld-lohn"]').waitFor({ state: 'visible', timeout: 10_000 })
   await pageJulia.locator('[data-testid="ch-feld-lohn"]').fill(String(s.julia.crossBorder.wageChf))

@@ -42,6 +42,8 @@ export async function runScenario13(browser, webOrigin) {
   await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').fill('45000')
   await page.locator('[data-testid="lstb-lohnsteuer"]').fill('6200')
   await page.locator('[data-testid="lstb-sozialversicherung"]').fill('9200')
+  await page.locator('[data-testid="lstb-sozialversicherung"]').blur()
+  await page.waitForLoadState('networkidle').catch(() => {})
   await page.locator('[data-testid="lstb-weiter"]').click()
 
   await page.getByRole('tab', { name: 'Cockpit' }).click()
