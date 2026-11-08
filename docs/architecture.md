@@ -321,13 +321,19 @@ Zur lückenlosen Nachverfolgbarkeit von Fehlern und Latenzen über Frontend, API
   - Berechnungs-Engine: 99,9 % der Requests $< 150\,\text{ms}$.
   - Asynchrone PDF-Generierung: 99 % der Jobs $< 4\,\text{s}$.
   - System-Verfügbarkeit (Availability): 99,9 % fehlerfreie HTTP-Requests.
-* **Error Budget & Burn-Rate Alerts:** 30 Tage rollierendes Fehlerbudget von 0,1 % ($\approx 43{,}2\,\text{Minuten}$ Gesamtausfall). Alerting bei $14{,}4\times$ (1h-Window) und $6\times$ (6h-Window) Budget-Verbrauch.
+* **Error Budget & Burn-Rate Alerts:** 30 Tage rollierendes Fehlerbudget von 0,1 % ($\approx 43{,}2\,\text{Minuten}$ Gesamtausfall). Multi-Window Burn-Rate Alerting bei $14{,}4\times$ (1h-Window) und $6\times$ (6h-Window) Budget-Verbrauch mit dedizierten On-Call Playbooks.
 * **Chaos- & Transient-Recovery:** Automatische CI-Resilience-Tests (`database-chaos-recovery.test.ts`) stellen sicher, dass temporäre PostgreSQL-Verbindungsabbrüche sauber mit `503 Service Unavailable` beantwortet werden und der Pool sich ohne Node-Prozess-Neustart selbstständig erholt.
+* **Kapazitätsplanung & Resource Envelopes:** Quantitatives Speichermodell für Headless-Chromium ($180\,\text{MB} - 320\,\text{MB}$ pro Render, Concurrency-Deckelung auf $C=3$, Backpressure-Limit $K=50$) und mathematische PostgreSQL-Connection-Pool-Dimensionierung.
+* **Disaster Recovery (DR):** RPO $< 5\,\text{Minuten}$ (Continuous WAL Archiving via Cloud SQL PITR) und RTO $< 15\,\text{Minuten}$ (deklaratives OpenTofu Re-Provisioning).
 
 ## 7.7 Zero-Downtime Database Migrations ([ADR-0055](adr/0055-zero-downtime-database-migrations-expand-contract.md))
 * **Expand and Contract Pattern:** Schema-Änderungen auf Produktiv-Datenbanken (Cloud SQL) erfolgen immer in zwei separaten Phasen:
   1. *Expand:* Neue Spalten/Tabellen werden rein additiv und nullable angelegt. Alte und neue Container-Instanzen können parallel arbeiten.
   2. *Contract:* Nach vollständigem Rollout und Daten-Backfill werden alte Spalten in einer nachfolgenden Migration sicher entfernt. Keine Downtime bei Rolling Updates.
+
+## 7.8 Zero-Trust Threat Model & Vertrauensgrenzen
+* **Trust Boundaries:** Aufteilung in drei formale Vertrauenszonen: Untrusted Client Zone $\rightarrow$ Authenticated Cloud Run Memory Boundary $\rightarrow$ Encrypted PostgreSQL Storage.
+* **Zero-Persistence:** PII und Steuerdaten verlassen den In-Memory-Zustand ausschließlich als AES-256-GCM Chiffrat; Klartexte werden weder geloggt noch in persistenten Caches abgelegt.
 
 ---
 
