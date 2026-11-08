@@ -1,23 +1,21 @@
+import { isSupportedIncomeTaxYear } from './tarif'
+import { getTaxYearParameters } from './tax-parameters'
+
 export const DEADLINE_WARNING_THRESHOLD_DAYS = 60
 export const LATE_FILING_FEE_MINIMUM_EUR = 25
 export const LATE_FILING_FEE_PERCENT_PER_MONTH = 0.25
-const FILING_DEADLINES: Readonly<Record<number, string>> = {
-  2024: '2025-07-31',
-  2025: '2026-07-31',
-  2026: '2027-07-31',
-}
 
 export type DeadlineYear = 2024 | 2025 | 2026
 
 export function isSupportedDeadlineYear(year: number): year is DeadlineYear {
-  return Number.isInteger(year) && Object.prototype.hasOwnProperty.call(FILING_DEADLINES, year)
+  return isSupportedIncomeTaxYear(year)
 }
 
 export function filingDeadlineFor(taxYear: number): string {
-  if (!isSupportedDeadlineYear(taxYear)) {
+  if (!isSupportedIncomeTaxYear(taxYear)) {
     throw new RangeError(`Unsupported tax year for the Abgabefrist / filing deadline (§ 149 Abs. 2 AO): ${taxYear}`)
   }
-  return FILING_DEADLINES[taxYear]!
+  return getTaxYearParameters(taxYear).deadlines.standardFilingDeadline
 }
 
 const ISO_DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/

@@ -7,6 +7,8 @@ import {
   useLstbControllerGetLstb,
   useLstbControllerSetField,
   getLstbControllerGetLstbQueryKey,
+  getCockpitControllerGetCockpitSummaryQueryKey,
+  getTaxEstimateControllerGetQueryKey,
   type LstbFieldDto,
   type LstbResponseDto,
 } from '@steuereule/api-client'
@@ -66,6 +68,8 @@ export function LstbScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YE
       {
         onSuccess: () => {
           void queryClient.invalidateQueries({ queryKey: getLstbControllerGetLstbQueryKey(taxYear, params) })
+          void queryClient.invalidateQueries({ queryKey: getCockpitControllerGetCockpitSummaryQueryKey(taxYear) })
+          void queryClient.invalidateQueries({ queryKey: getTaxEstimateControllerGetQueryKey(taxYear) })
         },
       },
     )

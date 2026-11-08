@@ -1,4 +1,6 @@
 import { createHash } from 'node:crypto'
+import { isSupportedIncomeTaxYear } from './tarif'
+import { getTaxYearParameters } from './tax-parameters'
 import type { HOME_OFFICE_VALUES, Profession } from './interview'
 import { professionTipsFor } from './profession-tips'
 
@@ -87,8 +89,14 @@ export function homeOfficeDaysFromInterview(answers: Readonly<Record<string, str
   return Math.min(Math.round(workdays * share), HOME_OFFICE_MAX_DAYS)
 }
 
-function homeOfficeAllowanceEur(days: number): number {
-  return Math.min(days, HOME_OFFICE_MAX_DAYS) * HOME_OFFICE_DAILY_RATE_EUR
+function homeOfficeAllowanceEur(days: number, taxYear?: number): number {
+  const params =
+    taxYear !== undefined && isSupportedIncomeTaxYear(taxYear)
+      ? getTaxYearParameters(taxYear).homeOffice
+      : null
+  const maxDays = params ? params.maxDays : HOME_OFFICE_MAX_DAYS
+  const rate = params ? params.dailyRateEur : HOME_OFFICE_DAILY_RATE_EUR
+  return Math.min(days, maxDays) * rate
 }
 
 export function generateOwlCards(facts: OwlInputFacts): readonly OwlCard[] {
@@ -159,7 +167,9 @@ export function generateOwlCards(facts: OwlInputFacts): readonly OwlCard[] {
   }
 
   if (facts.homeOfficeDays && facts.homeOfficeDays >= 10) {
-    const amount = homeOfficeAllowanceEur(facts.homeOfficeDays)
+    const amount = homeOfficeAllowanceEur(facts.homeOfficeDays, facts.taxYear)
+    const hoParams = isSupportedIncomeTaxYear(facts.taxYear) ? getTaxYearParameters(facts.taxYear).homeOffice : null
+    const hoAnnualMax = hoParams ? hoParams.maxAnnualEur : 1260
     if (amount >= 50) {
       const fp = calculateOwlCardFingerprint('rechtsaenderung', `homeoffice_pauschale_${facts.taxYear}_${amount}`)
       if (!dismissed.has(fp)) {
@@ -185,7 +195,7 @@ export function generateOwlCards(facts: OwlInputFacts): readonly OwlCard[] {
             },
             {
               name: 'Häusliches Arbeitszimmer prüfen',
-              amountEur: 1260,
+              amountEur: hoAnnualMax,
               description: 'Höherer Abzug möglich, wenn das Arbeitszimmer der Mittelpunkt der gesamten Tätigkeit ist',
               risk: 'risiko',
             },

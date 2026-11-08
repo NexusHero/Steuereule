@@ -1,4 +1,6 @@
 import { LEGAL_STATUS_DATE, type OwlSourceId } from './owl-mode'
+import { isSupportedIncomeTaxYear } from './tarif'
+import { getTaxYearParameters } from './tax-parameters'
 import type { Screen } from './marking'
 import type { Profession } from './interview'
 import { taxEstimateCrossBorder, taxEstimateEmployee } from './tax-estimate'
@@ -187,29 +189,41 @@ export interface CaseDigest {
   readonly estimatedRefundEur: number | null
 }
 
-function commuterAllowanceFrom(workdays: number, distanceKm: number): number {
+function commuterAllowanceFrom(workdays: number, distanceKm: number, taxYear?: number): number {
   if (workdays <= 0 || distanceKm <= 0) return 0
-  const first20 = Math.min(distanceKm, 20) * 0.3
-  const above20 = Math.max(0, distanceKm - 20) * 0.38
-  return Math.round(workdays * (first20 + above20))
+  const commute =
+    taxYear !== undefined && isSupportedIncomeTaxYear(taxYear)
+      ? getTaxYearParameters(taxYear).commute
+      : { firstKmThreshold: 20, rateFirstEur: 0.3, rateAdditionalEur: 0.38 }
+  const first = Math.min(distanceKm, commute.firstKmThreshold) * commute.rateFirstEur
+  const above = Math.max(0, distanceKm - commute.firstKmThreshold) * commute.rateAdditionalEur
+  return Math.round(workdays * (first + above))
 }
 
-function homeOfficeDaysForAnswer(answer: string | null, workdays: number): number {
-  if (answer === '1–2 Tage pro Woche') return Math.min(Math.round(workdays * 0.3), 210)
-  if (answer === 'Fast immer') return Math.min(workdays, 210)
+function homeOfficeDaysForAnswer(answer: string | null, workdays: number, taxYear?: number): number {
+  const maxDays =
+    taxYear !== undefined && isSupportedIncomeTaxYear(taxYear)
+      ? getTaxYearParameters(taxYear).homeOffice.maxDays
+      : 210
+  if (answer === '1–2 Tage pro Woche') return Math.min(Math.round(workdays * 0.3), maxDays)
+  if (answer === 'Fast immer') return Math.min(workdays, maxDays)
   return 0
 }
 
 function computeRefundMidpoint(digest: CaseDigest): number {
+  const params = isSupportedIncomeTaxYear(digest.taxYear) ? getTaxYearParameters(digest.taxYear) : null
+  const hoRate = params ? params.homeOffice.dailyRateEur : 6
+  const hoMaxDays = params ? params.homeOffice.maxDays : 210
+
   if (digest.crossBorder.isCrossBorderCh && digest.crossBorder.grossWageChf) {
     const rate = 1.05
     const wageEur = Math.round(digest.crossBorder.grossWageChf * rate)
     const withholdingTaxEur = Math.round((digest.crossBorder.withholdingTaxChf ?? digest.crossBorder.grossWageChf * 0.045) * rate)
     const workdays = digest.commuteAndWorkdays.workdays ?? 220
     const distanceKm = digest.commuteAndWorkdays.distanceKm ?? 0
-    const hoDays = digest.commuteAndWorkdays.homeOfficeDays ?? homeOfficeDaysForAnswer(digest.commuteAndWorkdays.homeOfficeAnswer, workdays)
+    const hoDays = digest.commuteAndWorkdays.homeOfficeDays ?? homeOfficeDaysForAnswer(digest.commuteAndWorkdays.homeOfficeAnswer, workdays, digest.taxYear)
     const commuteDays = Math.max(0, workdays - hoDays)
-    const commuterAllowance = commuterAllowanceFrom(commuteDays, distanceKm) + hoDays * 6
+    const commuterAllowance = commuterAllowanceFrom(commuteDays, distanceKm, digest.taxYear) + hoDays * hoRate
     const est = taxEstimateCrossBorder({
       year: digest.taxYear,
       wageEur,
@@ -231,10 +245,10 @@ function computeRefundMidpoint(digest: CaseDigest): number {
 
   const workdays = digest.commuteAndWorkdays.workdays ?? 220
   const distanceKm = digest.commuteAndWorkdays.distanceKm ?? 15
-  const hoDays = digest.commuteAndWorkdays.homeOfficeDays ?? homeOfficeDaysForAnswer(digest.commuteAndWorkdays.homeOfficeAnswer, workdays)
+  const hoDays = digest.commuteAndWorkdays.homeOfficeDays ?? homeOfficeDaysForAnswer(digest.commuteAndWorkdays.homeOfficeAnswer, workdays, digest.taxYear)
   const commuteDays = Math.max(0, workdays - hoDays)
-  const commuterAllowance = commuterAllowanceFrom(commuteDays, distanceKm)
-  const hoAllowance = Math.min(hoDays, 210) * 6
+  const commuterAllowance = commuterAllowanceFrom(commuteDays, distanceKm, digest.taxYear)
+  const hoAllowance = Math.min(hoDays, hoMaxDays) * hoRate
   const trainingAllowance = digest.catalogExpenses.hasTraining ? 450 : 0
   const otherExpenses =
     hoAllowance +
@@ -298,7 +312,7 @@ function applyCandidateToDigest(digest: CaseDigest, screen: Screen, field: strin
         commuteAndWorkdays: {
           ...digest.commuteAndWorkdays,
           homeOfficeAnswer: newValue,
-          homeOfficeDays: homeOfficeDaysForAnswer(newValue, workdays),
+          homeOfficeDays: homeOfficeDaysForAnswer(newValue, workdays, digest.taxYear),
         },
       }
     }

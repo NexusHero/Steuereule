@@ -6,13 +6,14 @@ import {
   type SoliExemptionLimits,
   type TariffCoefficients,
 } from './tarif'
-import { childTaxAllowance, monthlyChildBenefitClaim } from './children'
 
 /** § 9 Abs. 1 Satz 3 Nr. 4 EStG: Entfernungspauschale je Arbeitstag. */
 export interface CommuteParameters {
   readonly firstKmThreshold: number
   readonly rateFirstEur: number
   readonly rateAdditionalEur: number
+  /** Höchstbetrag ohne PKW nach § 9 Abs. 1 Satz 3 Nr. 4 Satz 2 EStG (4.500 €). */
+  readonly maxWithoutCarEur: number
 }
 
 /** § 4 Abs. 5 Satz 1 Nr. 6b EStG / § 9 Abs. 5 EStG: Homeoffice-Tagespauschale. */
@@ -36,16 +37,50 @@ export interface LumpSumParameters {
   readonly saverJoint: number
 }
 
-/** Kinderbezogene Beträge und Freibeträge je Steuerjahr. */
+/** Kinderbezogene Beträge und Freibeträge je Steuerjahr (§ 32 Abs. 6 & § 66 EStG). */
 export interface ChildrenParameters {
   /** Gesetzlicher monatlicher Anspruch auf Kindergeld je Kind. */
   readonly monthlyBenefitEur: number
   /** Jahresanspruch auf Kindergeld je Kind (`monthlyBenefitEur * 12`). */
   readonly annualBenefitEur: number
-  /** § 32 Abs. 6 EStG: Kinderfreibetrag inkl. BEA-Freibetrag für beide Elternteile. */
+  /** § 32 Abs. 6 EStG: Kinderfreibetrag (ohne BEA) für beide Elternteile. */
+  readonly childAllowanceOnlyEur: number
+  /** § 32 Abs. 6 EStG: Freibetrag für Betreuung, Erziehung oder Ausbildung (BEA). */
+  readonly beaAllowanceEur: number
+  /** § 32 Abs. 6 EStG: Gesamter Freibetrag (Kinderfreibetrag + BEA) für beide Elternteile. */
   readonly childAllowanceTotalEur: number
   /** § 24b EStG: Entlastungsbetrag für Alleinerziehende. */
   readonly singleParentReliefEur: number
+}
+
+/** § 149 Abs. 2 AO / § 152 AO: Gesetzliche Abgabefristen und Verspätungszuschläge. */
+export interface DeadlineParameters {
+  /** Gesetzliche Abgabefrist für die Steuererklärung. */
+  readonly standardFilingDeadline: string
+  /** Vorwarnschwelle in Tagen. */
+  readonly warningThresholdDays: number
+  /** § 152 Abs. 5 Satz 2 AO: Mindest-Verspätungszuschlag (25 € pro Monat). */
+  readonly lateFilingMinEur: number
+  /** § 152 Abs. 5 Satz 1 AO: Monatlicher Verspätungszuschlag in Prozent (0,25 %). */
+  readonly lateFilingPercentPerMonth: number
+}
+
+/** § 32d EStG: Parameter für die Besteuerung von Kapitalerträgen. */
+export interface CapitalParameters {
+  /** § 32d Abs. 1 EStG: Abgeltungsteuersatz (25 %). */
+  readonly flatRateTaxRate: number
+  /** § 32d Abs. 1 Satz 4 EStG: Kirchensteuer-Abzugsfaktor (0,25). */
+  readonly churchTaxReductionShare: number
+}
+
+/** § 10 Abs. 1 Nr. 3 & Abs. 4 EStG: Vorsorgeaufwendungen. */
+export interface ProvisionParameters {
+  /** § 10 Abs. 1 Nr. 3 Satz 2 EStG: Gesetzliche Kürzung bei Krankengeldanspruch (4 %). */
+  readonly sickPayReductionRate: number
+  /** § 10 Abs. 4 EStG: Höchstbetrag sonstige Vorsorgeaufwendungen (Selbstzahler/Grenzgänger: 2.800 €). */
+  readonly maxOtherProvisionSingleEur: number
+  /** § 10 Abs. 4 EStG: Höchstbetrag sonstige Vorsorgeaufwendungen (Arbeitnehmer mit AG-Anteil: 1.900 €). */
+  readonly maxOtherProvisionEmployeeEur: number
 }
 
 /**
@@ -71,20 +106,39 @@ export interface TaxYearParameters {
   readonly homeOffice: HomeOfficeParameters
   /** Kinder- und Familienleistungen. */
   readonly children: ChildrenParameters
-  /** § 10 Abs. 4 EStG: Höchstbetrag für sonstige Vorsorgeaufwendungen (Selbstzahler / Grenzgänger). */
+  /** Gesetzliche Fristen und Verspätungszuschläge nach AO. */
+  readonly deadlines: DeadlineParameters
+  /** Abgeltungsteuer und Kapitalertragsparameter. */
+  readonly capital: CapitalParameters
+  /** Vorsorgeaufwendungen (§ 10 EStG). */
+  readonly provision: ProvisionParameters
+  /** § 10 Abs. 4 EStG: Höchstbetrag für sonstige Vorsorgeaufwendungen (Selbstzahler / Grenzgänger: 2.800 €). */
   readonly maxOtherProvisionEur: number
+}
+
+const STATIC_BEA_EUR = 2928
+
+const CHILDREN_BY_YEAR: Readonly<Record<IncomeTaxYear, { monthly: number; childAllowanceOnly: number }>> = {
+  2024: { monthly: 250, childAllowanceOnly: 6612 },
+  2025: { monthly: 255, childAllowanceOnly: 6672 },
+  2026: { monthly: 259, childAllowanceOnly: 6828 },
+}
+
+const FILING_DEADLINES_BY_YEAR: Readonly<Record<IncomeTaxYear, string>> = {
+  2024: '2025-07-31',
+  2025: '2026-07-31',
+  2026: '2027-07-31',
 }
 
 function buildParametersForYear(year: IncomeTaxYear): TaxYearParameters {
   const tariff = TAX_YEARS[year]
   const soli = soliExemptionLimits(year)
-  const monthlyBenefit = monthlyChildBenefitClaim(year)
-  const childAllowance = childTaxAllowance(year)
+  const childData = CHILDREN_BY_YEAR[year]
 
   const commute: CommuteParameters =
     year >= 2026
-      ? { firstKmThreshold: 0, rateFirstEur: 0.38, rateAdditionalEur: 0.38 }
-      : { firstKmThreshold: 20, rateFirstEur: 0.3, rateAdditionalEur: 0.38 }
+      ? { firstKmThreshold: 0, rateFirstEur: 0.38, rateAdditionalEur: 0.38, maxWithoutCarEur: 4500 }
+      : { firstKmThreshold: 20, rateFirstEur: 0.3, rateAdditionalEur: 0.38, maxWithoutCarEur: 4500 }
 
   return {
     year,
@@ -105,10 +159,27 @@ function buildParametersForYear(year: IncomeTaxYear): TaxYearParameters {
       maxAnnualEur: 1260,
     },
     children: {
-      monthlyBenefitEur: monthlyBenefit,
-      annualBenefitEur: monthlyBenefit * 12,
-      childAllowanceTotalEur: childAllowance,
+      monthlyBenefitEur: childData.monthly,
+      annualBenefitEur: childData.monthly * 12,
+      childAllowanceOnlyEur: childData.childAllowanceOnly,
+      beaAllowanceEur: STATIC_BEA_EUR,
+      childAllowanceTotalEur: childData.childAllowanceOnly + STATIC_BEA_EUR,
       singleParentReliefEur: 4260,
+    },
+    deadlines: {
+      standardFilingDeadline: FILING_DEADLINES_BY_YEAR[year],
+      warningThresholdDays: 60,
+      lateFilingMinEur: 25,
+      lateFilingPercentPerMonth: 0.25,
+    },
+    capital: {
+      flatRateTaxRate: 0.25,
+      churchTaxReductionShare: 0.25,
+    },
+    provision: {
+      sickPayReductionRate: 0.04,
+      maxOtherProvisionSingleEur: 2800,
+      maxOtherProvisionEmployeeEur: 1900,
     },
     maxOtherProvisionEur: 2800,
   }
