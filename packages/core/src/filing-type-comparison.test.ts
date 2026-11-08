@@ -104,7 +104,7 @@ describe('veranlagungsartenvergleich — ADR-0034 bounded comparison', () => {
       filingTypeComparison({ zveA: -1, zveB: 0, year: 2026, progressionClause: { kind: 'keine' } }),
     ).toThrow(RangeError)
     expect(() =>
-      filingTypeComparison({ zveA: 1000, zveB: 0, year: 2023, progressionClause: { kind: 'keine' } }),
+      filingTypeComparison({ zveA: 1000, zveB: 0, year: 2021, progressionClause: { kind: 'keine' } }),
     ).toThrow(RangeError)
     expect(() =>
       filingTypeComparison({

@@ -1,4 +1,4 @@
-export type IncomeTaxYear = 2024 | 2025 | 2026
+export type IncomeTaxYear = 2022 | 2023 | 2024 | 2025 | 2026
 
 export interface TariffCoefficients {
   readonly basicAllowance: number
@@ -17,6 +17,36 @@ export interface TariffCoefficients {
 }
 
 export const TAX_YEARS: Readonly<Record<IncomeTaxYear, TariffCoefficients>> = {
+  2022: {
+    basicAllowance: 10347,
+    zone2Upper: 14926,
+    zone2C1: 1088.67,
+    zone2C2: 1400,
+    zone3Upper: 58596,
+    zone3C1: 206.43,
+    zone3C2: 2397,
+    zone3Const: 869.32,
+    zone4Upper: 277825,
+    zone4Rate: 0.42,
+    zone4Sub: 9336.45,
+    zone5Rate: 0.45,
+    zone5Sub: 17671.2,
+  },
+  2023: {
+    basicAllowance: 10908,
+    zone2Upper: 15999,
+    zone2C1: 995.21,
+    zone2C2: 1400,
+    zone3Upper: 62809,
+    zone3C1: 208.85,
+    zone3C2: 2397,
+    zone3Const: 970.28,
+    zone4Upper: 277825,
+    zone4Rate: 0.42,
+    zone4Sub: 9972.98,
+    zone5Rate: 0.45,
+    zone5Sub: 18307.73,
+  },
   2024: {
     basicAllowance: 11784,
     zone2Upper: 17005,
@@ -71,6 +101,8 @@ export interface SoliExemptionLimits {
 }
 
 const SOLI_EXEMPTION_LIMITS: Readonly<Record<IncomeTaxYear, SoliExemptionLimits>> = {
+  2022: { single: 16956, joint: 33912 },
+  2023: { single: 17543, joint: 35086 },
   2024: { single: 18130, joint: 36260 },
   2025: { single: 19950, joint: 39900 },
   2026: { single: 20350, joint: 40700 },

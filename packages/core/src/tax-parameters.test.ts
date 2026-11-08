@@ -3,13 +3,22 @@ import { getTaxYearParameters, taxParameters } from './tax-parameters'
 
 describe('TaxYearParameters (Temporal Parameter Registry)', () => {
   it('provides the official § 32a EStG Grundfreibetrag per supported year', () => {
+    expect(getTaxYearParameters(2022).basicAllowance).toBe(10347)
+    expect(getTaxYearParameters(2023).basicAllowance).toBe(10908)
     expect(getTaxYearParameters(2024).basicAllowance).toBe(11784)
     expect(getTaxYearParameters(2025).basicAllowance).toBe(12096)
     expect(getTaxYearParameters(2026).basicAllowance).toBe(12348)
   })
 
   it('provides statutory lump sums (Pauschbeträge)', () => {
-    for (const year of [2024, 2025, 2026] as const) {
+    // 2022: Arbeitnehmer-Pauschbetrag 1.200 €, Sparer-Pauschbetrag 801 / 1.602 €
+    const p2022 = getTaxYearParameters(2022)
+    expect(p2022.lumpSums.employee).toBe(1200)
+    expect(p2022.lumpSums.saverSingle).toBe(801)
+    expect(p2022.lumpSums.saverJoint).toBe(1602)
+    expect(p2022.homeOffice).toEqual({ dailyRateEur: 5, maxDays: 120, maxAnnualEur: 600 })
+
+    for (const year of [2023, 2024, 2025, 2026] as const) {
       const p = getTaxYearParameters(year)
       // § 9a Satz 1 Nr. 1 Buchst. a EStG: Arbeitnehmer-Pauschbetrag
       expect(p.lumpSums.employee).toBe(1230)
@@ -37,8 +46,17 @@ describe('TaxYearParameters (Temporal Parameter Registry)', () => {
   })
 
   it('provides statutory AO filing deadlines, capital tax and provision parameters', () => {
+    const p2022 = getTaxYearParameters(2022)
+    expect(p2022.deadlines.standardFilingDeadline).toBe('2023-10-02')
+    expect(p2022.deadlines.voluntaryFilingDeadline).toBe('2026-12-31')
+
+    const p2023 = getTaxYearParameters(2023)
+    expect(p2023.deadlines.standardFilingDeadline).toBe('2024-09-02')
+    expect(p2023.deadlines.voluntaryFilingDeadline).toBe('2027-12-31')
+
     const p2024 = getTaxYearParameters(2024)
     expect(p2024.deadlines.standardFilingDeadline).toBe('2025-07-31')
+    expect(p2024.deadlines.voluntaryFilingDeadline).toBe('2028-12-31')
     expect(p2024.deadlines.warningThresholdDays).toBe(60)
     expect(p2024.deadlines.lateFilingMinEur).toBe(25)
     expect(p2024.deadlines.lateFilingPercentPerMonth).toBe(0.25)
@@ -48,12 +66,28 @@ describe('TaxYearParameters (Temporal Parameter Registry)', () => {
 
     const p2025 = getTaxYearParameters(2025)
     expect(p2025.deadlines.standardFilingDeadline).toBe('2026-07-31')
+    expect(p2025.deadlines.voluntaryFilingDeadline).toBe('2029-12-31')
 
     const p2026 = getTaxYearParameters(2026)
     expect(p2026.deadlines.standardFilingDeadline).toBe('2027-07-31')
+    expect(p2026.deadlines.voluntaryFilingDeadline).toBe('2030-12-31')
   })
 
   it('provides year-specific Kindergeld and Freibeträge', () => {
+    // 2022: 219 € / Monat
+    const p2022 = getTaxYearParameters(2022)
+    expect(p2022.children.monthlyBenefitEur).toBe(219)
+    expect(p2022.children.annualBenefitEur).toBe(219 * 12)
+    expect(p2022.children.childAllowanceTotalEur).toBe(5620 + 2928)
+    expect(p2022.children.singleParentReliefEur).toBe(4008)
+
+    // 2023: 250 € / Monat
+    const p2023 = getTaxYearParameters(2023)
+    expect(p2023.children.monthlyBenefitEur).toBe(250)
+    expect(p2023.children.annualBenefitEur).toBe(3000)
+    expect(p2023.children.childAllowanceTotalEur).toBe(6024 + 2928)
+    expect(p2023.children.singleParentReliefEur).toBe(4260)
+
     // 2024: 250 € / Monat (3.000 € / Jahr)
     const p2024 = getTaxYearParameters(2024)
     expect(p2024.children.monthlyBenefitEur).toBe(250)

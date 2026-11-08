@@ -141,6 +141,6 @@ describe('guenstigerpruefung — validation (throw, don\'t approximate)', () => 
   })
 
   it('throws on an unsupported tax year — never falls back to a neighbour year', () => {
-    expect(() => mostFavourableCheck({ ...basis, year: 2023 })).toThrow(RangeError)
+    expect(() => mostFavourableCheck({ ...basis, year: 2021 })).toThrow(RangeError)
   })
 })
