@@ -6,7 +6,12 @@
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./math": "./src/math/index.ts",
+    "./engine": "./src/engine/index.ts",
+    "./domains": "./src/domains/index.ts",
+    "./interview": "./src/interview/index.ts",
+    "./common": "./src/common/index.ts"
   },
   "scripts": {
     "test": "vitest run",
