@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import type { Answers } from '../interview/interview'
-import { progressionClauseFrom } from './progression-clause'
+import type { Answers } from './interview.js'
+import { progressionClauseFrom } from './progression-clause.js'
 
 describe('progressionsvorbehaltAus', () => {
   it('reads a declared Lohnersatzleistung with its amount', () => {

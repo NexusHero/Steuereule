@@ -12,7 +12,7 @@
 <p align="center">
   <a href="https://demo.steuereule.de"><img src="https://img.shields.io/badge/Live_Demo-Google_Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white" alt="Live Demo on Google Cloud Run" /></a>
   <a href="docs/arc42/README.md"><img src="https://img.shields.io/badge/Architecture-arc42_Specification-191B12?style=for-the-badge&labelColor=C9F229&color=191B12" alt="arc42 Architecture" /></a>
-  <a href="docs/adr/"><img src="https://img.shields.io/badge/Decisions-56_ADRs-191B12?style=for-the-badge&labelColor=C9F229&color=191B12" alt="56 ADRs" /></a>
+  <a href="docs/adr/"><img src="https://img.shields.io/badge/Decisions-58_ADRs-191B12?style=for-the-badge&labelColor=C9F229&color=191B12" alt="58 ADRs" /></a>
   <img src="https://img.shields.io/badge/Tests-230%2B_Suites-1F9D55?style=for-the-badge" alt="230+ Test Suites" />
   <img src="https://img.shields.io/badge/Throughput-15.6M_ops%2Fsec-blue?style=for-the-badge" alt="15.6M ops/sec" />
   <img src="https://img.shields.io/badge/Security-AES--256--GCM_Field_Encryption-1F9D55?style=for-the-badge" alt="Security: AES-256-GCM" />
@@ -86,7 +86,7 @@ Traditional tax software presents dense tabular forms without proactive guidance
 * **Zero-Trust Security & Field-Level Encryption:**
   Sensitive Personal Identifiable Information (PII) and Tax Identification Numbers are encrypted server-side using **AES-256-GCM** with authenticated key management. PII is never stored in browser local storage or persistent client-side state.
 * **Rigorous Architecture Discipline:**
-  Over **56 Architecture Decision Records ([docs/adr/](docs/adr/))** document every technical decision, trade-off, and alternative considered. Comprehensive architectural blueprints follow the international **[arc42](docs/arc42/README.md)** standard with PlantUML component models.
+  Over **58 Architecture Decision Records ([docs/adr/](docs/adr/))** document every technical decision, trade-off, and alternative considered. Comprehensive architectural blueprints follow the international **[arc42](docs/arc42/README.md)** standard with PlantUML component models.
 * **Contract-First API Design:**
   The REST API (NestJS + Fastify) generates an OpenAPI specification that compiles into end-to-end typed TypeScript SDKs via Orval, guaranteeing compile-time type safety across frontend and backend boundaries.
 * **Automated Hardened CI/CD ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)):**
@@ -144,7 +144,7 @@ Steuereule is structured as a modular TypeScript monorepo powered by `pnpm` and 
 ├── infra/               # OpenTofu infrastructure definitions (Google Cloud Run, Cloud SQL)
 └── docs/
     ├── arc42/           # arc42 architecture specification and PlantUML diagrams
-    └── adr/             # 56 Architecture Decision Records (ADRs)
+    └── adr/             # 58 Architecture Decision Records (ADRs)
 ```
 
 ---

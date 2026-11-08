@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { officialMonthlyRate } from '../common/exchange-rate'
+import { officialMonthlyRate } from './exchange-rate.js'
 import {
   grossWageAsCoreItem,
   chItemsAsCoreItems,

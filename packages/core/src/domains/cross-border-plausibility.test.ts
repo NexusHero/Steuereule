@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { officialMonthlyRate, actualRate } from '../common/exchange-rate'
+import { officialMonthlyRate, actualRate } from './exchange-rate.js'
 import { checkCrossBorder, type CrossBorderPlausibilityInput } from './cross-border-plausibility'
 
 // M2 — the CH plausibility check: Widersprüche block, Hinweise flag, offene Felder are named.

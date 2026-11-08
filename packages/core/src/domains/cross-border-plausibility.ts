@@ -6,7 +6,7 @@ import {
   type SalaryCertificateFieldId,
   type SalaryCertificateValues,
 } from './cross-border'
-import type { ExchangeRate } from '../common/exchange-rate'
+import type { ExchangeRate } from './exchange-rate.js'
 
 export type PlausibilityLevel = 'widerspruch' | 'hinweis' | 'offen'
 

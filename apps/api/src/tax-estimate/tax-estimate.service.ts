@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common'
+import { withSpan } from '../telemetry/tracer.js'
 import {
   annexNGreAmounts,
   employeeFromAnswers,
@@ -52,7 +53,8 @@ export class TaxEstimateService {
   ) {}
 
   async getState(userId: string, year: number): Promise<TaxEstimateStatus> {
-    const [lstbRecord, interviewRows, chRecord, masterData, path] = await Promise.all([
+    return withSpan('tax_estimate.calculate', async () => {
+      const [lstbRecord, interviewRows, chRecord, masterData, path] = await Promise.all([
       this.lstb.findForUserAndYear(userId, year),
       this.interview.findAllForUserAndYear(userId, year),
       this.chSalaryCertificate.findForUserAndYear(userId, year),
@@ -117,19 +119,20 @@ export class TaxEstimateService {
     const state = wageTaxCertificateStatus(wageTaxCertificateDataFrom(lstbRecord))
     if (state.kind === 'unvollstaendig') return { kind: 'offen', missing: [...state.open, ...state.unclear] }
     if (state.kind === 'widerspruch') return { kind: 'offen', missing: state.conflicts.map((w) => w.kind) }
-    return withChurchTax(
-      taxEstimateEmployee({
-        year,
-        bruttoarbeitslohn: state.bruttoarbeitslohn,
-        lohnsteuer: state.lohnsteuer,
-        sozialversicherung: state.sozialversicherung,
-        commuterAllowance: allowance,
-        otherIncomeRelatedExpenses: numbers.relocationCosts,
-        donations: numbers.donations,
-        selfPaidKvPv: numbers.healthCareContributions,
-      }),
-      churchTaxOpen,
-    )
+      return withChurchTax(
+        taxEstimateEmployee({
+          year,
+          bruttoarbeitslohn: state.bruttoarbeitslohn,
+          lohnsteuer: state.lohnsteuer,
+          sozialversicherung: state.sozialversicherung,
+          commuterAllowance: allowance,
+          otherIncomeRelatedExpenses: numbers.relocationCosts,
+          donations: numbers.donations,
+          selfPaidKvPv: numbers.healthCareContributions,
+        }),
+        churchTaxOpen,
+      )
+    }, { 'tax.year': year, 'user.id': userId })
   }
 
   /** ADR-0054: a couple's estimate from both spouses' figures — only once the joint return for the year is set up. */

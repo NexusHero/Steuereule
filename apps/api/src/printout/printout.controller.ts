@@ -1,5 +1,6 @@
 import { Controller, Get, HttpCode, Inject, Param, Post, Query, Res, UseGuards } from '@nestjs/common'
 import {
+  ApiAcceptedResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiParam,
@@ -17,14 +18,18 @@ import { RequiresAccount } from '../auth/requires-account.guard.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
 import { ParseTaxYearPipe } from '../cockpit/parse-tax-year.pipe.js'
 import { CheckoutResponseDto } from '../unlock/dto/unlock.dto.js'
-import { PrintoutCheckDto } from './dto/printout.dto.js'
+import { PrintoutCheckDto, PrintoutJobDto } from './dto/printout.dto.js'
 import { PrintoutService } from './printout.service.js'
+import { PrintoutJobService } from './printout-job.service.js'
 
 @ApiTags('ausdruck')
 @Controller('v1/steuerjahre')
 @UseGuards(UserContextGuard)
 export class PrintoutController {
-  constructor(@Inject(PrintoutService) private readonly service: PrintoutService) {}
+  constructor(
+    @Inject(PrintoutService) private readonly service: PrintoutService,
+    @Inject(PrintoutJobService) private readonly jobService: PrintoutJobService,
+  ) {}
 
   @Get(':jahr/ausdruck/pruefung')
   @RequiresAccount()
@@ -46,6 +51,39 @@ export class PrintoutController {
   @ApiUnauthorizedResponse({ description: 'Guest session — this endpoint requires a signed-in account.' })
   checkout(@CurrentUser() userId: string, @Param('jahr', ParseTaxYearPipe) year: number): Promise<CheckoutResponseDto> {
     return this.service.startCheckout(userId, year)
+  }
+
+  @Post(':jahr/ausdruck/async')
+  @HttpCode(202)
+  @RequiresAccount()
+  @ApiParam({ name: 'jahr', type: Number, example: 2025 })
+  @ApiQuery({
+    name: 'bearbeitbar',
+    required: false,
+    enum: ['true'],
+    description: 'true → editable PDF',
+  })
+  @ApiAcceptedResponse({ type: PrintoutJobDto, description: 'Asynchronous PDF rendering job enqueued (ADR-0056).' })
+  exportAsync(
+    @CurrentUser() userId: string,
+    @Param('jahr', ParseTaxYearPipe) year: number,
+    @Query('bearbeitbar') editableParam?: string,
+  ): Promise<PrintoutJobDto> {
+    const editable = editableParam === 'true'
+    return this.jobService.queueExport(userId, year, { editable })
+  }
+
+  @Get(':jahr/ausdruck/jobs/:jobId')
+  @RequiresAccount()
+  @ApiParam({ name: 'jahr', type: Number, example: 2025 })
+  @ApiParam({ name: 'jobId', type: String, example: 'job_4bf92f3577b34da6a3ce929d0e0e4736' })
+  @ApiOkResponse({ type: PrintoutJobDto, description: 'Status of the asynchronous PDF export job.' })
+  getJob(
+    @CurrentUser() userId: string,
+    @Param('jahr', ParseTaxYearPipe) year: number,
+    @Param('jobId') jobId: string,
+  ): Promise<PrintoutJobDto> {
+    return this.jobService.getJobStatus(userId, year, jobId)
   }
 
   @Get(':jahr/ausdruck')
