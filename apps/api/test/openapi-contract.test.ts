@@ -335,3 +335,56 @@ describe('OpenAPI contract for /v1/steuerjahre/{jahr}/kinder, kopplung, eulen-mo
     expect(requestBody?.content?.['application/json']?.schema?.$ref).toBe('#/components/schemas/PutRentalAddressDto')
   })
 })
+
+describe('OpenAPI contract for /v1/steuerjahre/{jahr}/advisor/actions/apply-batch (#446 Slice 1 & 2)', () => {
+  it('documents POST /v1/steuerjahre/{jahr}/advisor/actions/apply-batch accepting ApplyBatchActionsDto and returning ApplyBatchActionsResponseDto', () => {
+    const post = document.paths['/v1/steuerjahre/{jahr}/advisor/actions/apply-batch']?.post
+    expect(post).toBeDefined()
+    expect(post?.responses['200']).toBeDefined()
+    const requestBody = post?.requestBody as { content?: Record<string, { schema?: { $ref?: string } }> } | undefined
+    expect(requestBody?.content?.['application/json']?.schema?.$ref).toBe('#/components/schemas/ApplyBatchActionsDto')
+    const okSchema = (
+      post?.responses['200'] as { content?: Record<string, { schema?: { $ref?: string } }> } | undefined
+    )?.content?.['application/json']?.schema
+    expect(okSchema?.$ref).toBe('#/components/schemas/ApplyBatchActionsResponseDto')
+  })
+
+  it('documents POST /v1/steuerjahre/{jahr}/advisor/stream accepting SendAdvisorMessageDto and exposing 200 response (#446 Slice 2)', () => {
+    const post = document.paths['/v1/steuerjahre/{jahr}/advisor/stream']?.post
+    expect(post).toBeDefined()
+    expect(post?.responses['200']).toBeDefined()
+    const requestBody = post?.requestBody as { content?: Record<string, { schema?: { $ref?: string } }> } | undefined
+    expect(requestBody?.content?.['application/json']?.schema?.$ref).toBe('#/components/schemas/SendAdvisorMessageDto')
+  })
+
+  it('documents POST /v1/belege/parse accepting ParseReceiptDto and returning ParseReceiptResponseDto (#446 Slice 3)', () => {
+    const post = document.paths['/v1/belege/parse']?.post
+    expect(post).toBeDefined()
+    expect(post?.responses['200']).toBeDefined()
+    const requestBody = post?.requestBody as { content?: Record<string, { schema?: { $ref?: string } }> } | undefined
+    expect(requestBody?.content?.['application/json']?.schema?.$ref).toBe('#/components/schemas/ParseReceiptDto')
+    const okSchema = (
+      post?.responses['200'] as { content?: Record<string, { schema?: { $ref?: string } }> } | undefined
+    )?.content?.['application/json']?.schema
+    expect(okSchema?.$ref).toBe('#/components/schemas/ParseReceiptResponseDto')
+  })
+
+  it('exposes superseded status, expectedPreviousValue, paragraph, and commute/assessment screens on AdvisorActionProposalDto', () => {
+    const schema = document.components?.schemas?.AdvisorActionProposalDto as
+      | {
+          properties?: Record<
+            string,
+            {
+              enum?: string[]
+            }
+          >
+        }
+      | undefined
+    expect(schema).toBeDefined()
+    expect(schema?.properties?.status?.enum).toContain('superseded')
+    expect(schema?.properties?.screen?.enum).toContain('commute')
+    expect(schema?.properties?.screen?.enum).toContain('assessment')
+    expect(Object.keys(schema?.properties ?? {})).toContain('expectedPreviousValue')
+    expect(Object.keys(schema?.properties ?? {})).toContain('paragraph')
+  })
+})

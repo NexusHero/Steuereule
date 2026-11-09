@@ -5,80 +5,85 @@
  * Onboarding profile endpoints (steuereule#29)
  * OpenAPI spec version: 1.0
  */
-export interface OwlSettingResponseDto {
-  enabled: boolean;
+export type ParseReceiptDtoMimeType = typeof ParseReceiptDtoMimeType[keyof typeof ParseReceiptDtoMimeType];
+
+
+export const ParseReceiptDtoMimeType = {
+  'image/jpeg': 'image/jpeg',
+  'image/png': 'image/png',
+  'image/webp': 'image/webp',
+  'application/pdf': 'application/pdf',
+} as const;
+
+export interface ParseReceiptDto {
+  taxYear: number;
+  fileName: string;
+  rawText?: string;
+  /** Base64-encoded image/PDF content for vision_ocr extraction (max ~5 MB). */
+  imageBase64?: string;
+  mimeType?: ParseReceiptDtoMimeType;
+  /** Stages an unconfirmed pending draft in Eulen-Modus when true (default true). */
+  stageDraft?: boolean;
+}
+
+export type ParseReceiptResponseDtoMode = typeof ParseReceiptResponseDtoMode[keyof typeof ParseReceiptResponseDtoMode];
+
+
+export const ParseReceiptResponseDtoMode = {
+  vision_ocr: 'vision_ocr',
+  deterministic_fallback: 'deterministic_fallback',
+} as const;
+
+export type ParsedReceiptDataDtoVendorCategory = typeof ParsedReceiptDataDtoVendorCategory[keyof typeof ParsedReceiptDataDtoVendorCategory];
+
+
+export const ParsedReceiptDataDtoVendorCategory = {
+  arbeitsmittel: 'arbeitsmittel',
+  spende: 'spende',
+  fortbildung: 'fortbildung',
+  kinderbetreuung: 'kinderbetreuung',
+  handwerker: 'handwerker',
+  entfernung: 'entfernung',
+  sonstiges: 'sonstiges',
+} as const;
+
+/**
+ * @nullable
+ */
+export type ParsedReceiptDataDtoSuggestedScreen = typeof ParsedReceiptDataDtoSuggestedScreen[keyof typeof ParsedReceiptDataDtoSuggestedScreen] | null;
+
+
+export const ParsedReceiptDataDtoSuggestedScreen = {
+  profil: 'profil',
+  stammdaten: 'stammdaten',
+  kopplung: 'kopplung',
+  interview: 'interview',
+  lstb: 'lstb',
+  commute: 'commute',
+  chLohnausweis: 'chLohnausweis',
+  rente: 'rente',
+  kapital: 'kapital',
+  vermietung: 'vermietung',
+  kind: 'kind',
+  assessment: 'assessment',
+} as const;
+
+export interface ParsedReceiptDataDto {
+  vendorCategory: ParsedReceiptDataDtoVendorCategory;
   /** @nullable */
-  enabledAt?: string | null;
-}
-
-export interface SetOwlSettingDto {
-  enabled: boolean;
-}
-
-export type OwlCardDtoTrigger = typeof OwlCardDtoTrigger[keyof typeof OwlCardDtoTrigger];
-
-
-export const OwlCardDtoTrigger = {
-  musterluecke: 'musterluecke',
-  vorjahresvergleich: 'vorjahresvergleich',
-  rechtsaenderung: 'rechtsaenderung',
-  lebenslage_hinweis: 'lebenslage_hinweis',
-} as const;
-
-export type OwlCardDtoCategory = typeof OwlCardDtoCategory[keyof typeof OwlCardDtoCategory];
-
-
-export const OwlCardDtoCategory = {
-  cockpit_proaktiv: 'cockpit_proaktiv',
-  abruf_frage: 'abruf_frage',
-  archiv_einspruch: 'archiv_einspruch',
-} as const;
-
-export type OwlPathDtoRisk = typeof OwlPathDtoRisk[keyof typeof OwlPathDtoRisk];
-
-
-export const OwlPathDtoRisk = {
-  sicher: 'sicher',
-  risiko: 'risiko',
-} as const;
-
-export interface OwlPathDto {
-  name: string;
-  amountEur: number;
-  description: string;
-  risk: OwlPathDtoRisk;
-}
-
-export interface OwlCardDto {
-  id: string;
-  fingerprint: string;
-  trigger: OwlCardDtoTrigger;
-  category: OwlCardDtoCategory;
-  title: string;
-  message: string;
-  reason: string;
+  receiptDate: string | null;
   /** @nullable */
-  amountEur?: number | null;
-  legalStatusDate: string;
-  sourceTranslated: string;
-  sourceUrl?: string;
-  paths?: OwlPathDto[];
-  appealDeadline?: string;
+  amountEur: number | null;
+  /** @nullable */
+  suggestedScreen: ParsedReceiptDataDtoSuggestedScreen;
+  /** @nullable */
+  suggestedField: string | null;
+  /** @nullable */
+  suggestedValue: string | null;
+  summary: string;
+  /** @nullable */
+  taxYear: number | null;
 }
-
-export interface OwlCardsResponseDto {
-  enabled: boolean;
-  cards: OwlCardDto[];
-  legalStatus: string;
-}
-
-export type AdvisorChatMessageDtoRole = typeof AdvisorChatMessageDtoRole[keyof typeof AdvisorChatMessageDtoRole];
-
-
-export const AdvisorChatMessageDtoRole = {
-  user: 'user',
-  assistant: 'assistant',
-} as const;
 
 export type AdvisorActionProposalDtoStatus = typeof AdvisorActionProposalDtoStatus[keyof typeof AdvisorActionProposalDtoStatus];
 
@@ -87,6 +92,7 @@ export const AdvisorActionProposalDtoStatus = {
   pending: 'pending',
   applied: 'applied',
   dismissed: 'dismissed',
+  superseded: 'superseded',
   undone: 'undone',
 } as const;
 
@@ -99,11 +105,13 @@ export const AdvisorActionProposalDtoScreen = {
   kopplung: 'kopplung',
   interview: 'interview',
   lstb: 'lstb',
+  commute: 'commute',
   chLohnausweis: 'chLohnausweis',
   rente: 'rente',
   kapital: 'kapital',
   vermietung: 'vermietung',
   kind: 'kind',
+  assessment: 'assessment',
 } as const;
 
 export type AdvisorActionProposalDtoSourceId = typeof AdvisorActionProposalDtoSourceId[keyof typeof AdvisorActionProposalDtoSourceId];
@@ -134,13 +142,24 @@ export interface AdvisorActionProposalDto {
   label: string;
   /** @nullable */
   previousValue?: string | null;
+  /** @nullable */
+  expectedPreviousValue?: string | null;
   newValue: string;
   beforeRefundEur: number;
   afterRefundEur: number;
   deltaEur: number;
   reason: string;
   sourceId: AdvisorActionProposalDtoSourceId;
+  paragraph?: string;
 }
+
+export type AdvisorChatMessageDtoRole = typeof AdvisorChatMessageDtoRole[keyof typeof AdvisorChatMessageDtoRole];
+
+
+export const AdvisorChatMessageDtoRole = {
+  user: 'user',
+  assistant: 'assistant',
+} as const;
 
 export type AdvisorMaxPathProposalDtoStatus = typeof AdvisorMaxPathProposalDtoStatus[keyof typeof AdvisorMaxPathProposalDtoStatus];
 
@@ -149,6 +168,7 @@ export const AdvisorMaxPathProposalDtoStatus = {
   pending: 'pending',
   applied: 'applied',
   dismissed: 'dismissed',
+  superseded: 'superseded',
   undone: 'undone',
 } as const;
 
@@ -161,11 +181,13 @@ export const AdvisorMaxPathProposalDtoScreen = {
   kopplung: 'kopplung',
   interview: 'interview',
   lstb: 'lstb',
+  commute: 'commute',
   chLohnausweis: 'chLohnausweis',
   rente: 'rente',
   kapital: 'kapital',
   vermietung: 'vermietung',
   kind: 'kind',
+  assessment: 'assessment',
 } as const;
 
 export type AdvisorMaxPathProposalDtoSourceId = typeof AdvisorMaxPathProposalDtoSourceId[keyof typeof AdvisorMaxPathProposalDtoSourceId];
@@ -196,12 +218,15 @@ export interface AdvisorMaxPathProposalDto {
   label: string;
   /** @nullable */
   previousValue?: string | null;
+  /** @nullable */
+  expectedPreviousValue?: string | null;
   newValue: string;
   beforeRefundEur: number;
   afterRefundEur: number;
   deltaEur: number;
   reason: string;
   sourceId: AdvisorMaxPathProposalDtoSourceId;
+  paragraph?: string;
   evidenceHint: string;
 }
 
@@ -258,6 +283,67 @@ export interface AdvisorChatMessageDto {
   createdAt: string;
 }
 
+export interface ParseReceiptResponseDto {
+  mode: ParseReceiptResponseDtoMode;
+  securityBlocked: boolean;
+  parsed: ParsedReceiptDataDto;
+  /** @nullable */
+  stagedAction?: AdvisorActionProposalDto | null;
+  /** @nullable */
+  assistantMessage?: AdvisorChatMessageDto | null;
+}
+
+export type OwlCardDtoTrigger = typeof OwlCardDtoTrigger[keyof typeof OwlCardDtoTrigger];
+
+
+export const OwlCardDtoTrigger = {
+  musterluecke: 'musterluecke',
+  vorjahresvergleich: 'vorjahresvergleich',
+  rechtsaenderung: 'rechtsaenderung',
+  lebenslage_hinweis: 'lebenslage_hinweis',
+} as const;
+
+export type OwlCardDtoCategory = typeof OwlCardDtoCategory[keyof typeof OwlCardDtoCategory];
+
+
+export const OwlCardDtoCategory = {
+  cockpit_proaktiv: 'cockpit_proaktiv',
+  abruf_frage: 'abruf_frage',
+  archiv_einspruch: 'archiv_einspruch',
+} as const;
+
+export type OwlPathDtoRisk = typeof OwlPathDtoRisk[keyof typeof OwlPathDtoRisk];
+
+
+export const OwlPathDtoRisk = {
+  sicher: 'sicher',
+  risiko: 'risiko',
+} as const;
+
+export interface OwlPathDto {
+  name: string;
+  amountEur: number;
+  description: string;
+  risk: OwlPathDtoRisk;
+}
+
+export interface OwlCardDto {
+  id: string;
+  fingerprint: string;
+  trigger: OwlCardDtoTrigger;
+  category: OwlCardDtoCategory;
+  title: string;
+  message: string;
+  reason: string;
+  /** @nullable */
+  amountEur?: number | null;
+  legalStatusDate: string;
+  sourceTranslated: string;
+  sourceUrl?: string;
+  paths?: OwlPathDto[];
+  appealDeadline?: string;
+}
+
 export type AdvisorLegalSourceDtoSourceId = typeof AdvisorLegalSourceDtoSourceId[keyof typeof AdvisorLegalSourceDtoSourceId];
 
 
@@ -300,11 +386,13 @@ export const SendAdvisorMessageDtoActiveScreen = {
   kopplung: 'kopplung',
   interview: 'interview',
   lstb: 'lstb',
+  commute: 'commute',
   chLohnausweis: 'chLohnausweis',
   rente: 'rente',
   kapital: 'kapital',
   vermietung: 'vermietung',
   kind: 'kind',
+  assessment: 'assessment',
 } as const;
 
 export interface SendAdvisorMessageDto {
@@ -317,8 +405,39 @@ export interface SendAdvisorMessageResponseDto {
   assistantMessage: AdvisorChatMessageDto;
 }
 
+export interface ApplyBatchActionItemDto {
+  actionId: string;
+  /** @nullable */
+  expectedPreviousValue?: string | null;
+}
+
+export interface ApplyBatchActionsDto {
+  drafts: ApplyBatchActionItemDto[];
+}
+
+export interface ApplyBatchActionsResponseDto {
+  actions: AdvisorActionProposalDto[];
+  messages: AdvisorChatMessageDto[];
+}
+
 export interface AdvisorActionMutationResponseDto {
   message: AdvisorChatMessageDto;
   action: AdvisorActionProposalDto;
+}
+
+export interface OwlSettingResponseDto {
+  enabled: boolean;
+  /** @nullable */
+  enabledAt?: string | null;
+}
+
+export interface SetOwlSettingDto {
+  enabled: boolean;
+}
+
+export interface OwlCardsResponseDto {
+  enabled: boolean;
+  cards: OwlCardDto[];
+  legalStatus: string;
 }
 

@@ -1,5 +1,17 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
-import { IsIn, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator'
+import { Type } from 'class-transformer'
+import {
+  ArrayMaxSize,
+  ArrayMinSize,
+  IsArray,
+  IsIn,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MaxLength,
+  ValidateIf,
+  ValidateNested,
+} from 'class-validator'
 import {
   SCREENS,
   type AdvisorActionProposal,
@@ -49,7 +61,11 @@ export class AdvisorActionProposalDto implements AdvisorActionProposal {
   @ApiProperty({ type: String, example: 'act-1730970000' })
   actionId!: string
 
-  @ApiProperty({ type: String, enum: ['pending', 'applied', 'dismissed', 'undone'], example: 'pending' })
+  @ApiProperty({
+    type: String,
+    enum: ['pending', 'applied', 'dismissed', 'superseded', 'undone'],
+    example: 'pending',
+  })
   status!: AdvisorActionStatus
 
   @ApiProperty({ type: String, enum: SCREENS, example: 'interview' })
@@ -70,6 +86,9 @@ export class AdvisorActionProposalDto implements AdvisorActionProposal {
   @ApiPropertyOptional({ type: String, nullable: true, example: '0 €' })
   previousValue!: string | null
 
+  @ApiPropertyOptional({ type: String, nullable: true, example: '0' })
+  expectedPreviousValue?: string | null | undefined
+
   @ApiProperty({ type: String, example: '250' })
   newValue!: string
 
@@ -87,6 +106,9 @@ export class AdvisorActionProposalDto implements AdvisorActionProposal {
 
   @ApiProperty({ type: String, enum: OWL_SOURCE_IDS, example: 'estg-10b' })
   sourceId!: OwlSourceId
+
+  @ApiPropertyOptional({ type: String, example: '§ 10b EStG' })
+  paragraph?: string | undefined
 }
 
 export class AdvisorMaxPathProposalDto extends AdvisorActionProposalDto {
@@ -193,4 +215,34 @@ export class AdvisorActionMutationResponseDto {
 
   @ApiProperty({ type: AdvisorActionProposalDto })
   action!: AdvisorActionProposalDto
+}
+
+export class ApplyBatchActionItemDto {
+  @ApiProperty({ type: String, example: 'act-1730970000' })
+  @IsString()
+  @IsNotEmpty()
+  actionId!: string
+
+  @ApiPropertyOptional({ type: String, nullable: true, example: '100' })
+  @ValidateIf((_, value) => value !== null && value !== undefined)
+  @IsString()
+  expectedPreviousValue?: string | null | undefined
+}
+
+export class ApplyBatchActionsDto {
+  @ApiProperty({ type: [ApplyBatchActionItemDto] })
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(20)
+  @ValidateNested({ each: true })
+  @Type(() => ApplyBatchActionItemDto)
+  drafts!: ApplyBatchActionItemDto[]
+}
+
+export class ApplyBatchActionsResponseDto {
+  @ApiProperty({ type: [AdvisorActionProposalDto] })
+  actions!: AdvisorActionProposalDto[]
+
+  @ApiProperty({ type: [AdvisorChatMessageDto] })
+  messages!: AdvisorChatMessageDto[]
 }

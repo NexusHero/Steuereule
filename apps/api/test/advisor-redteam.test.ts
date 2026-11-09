@@ -136,6 +136,9 @@ describe('DevMLOps Backend Red-Team & Egress Boundary Suite', () => {
 
     // User B tries to apply User A's actionId
     await expect(advisorService.applyAction(USER_B, YEAR, actionId!)).rejects.toThrow(NotFoundError)
+    await expect(
+      advisorService.applyBatch(USER_B, YEAR, { drafts: [{ actionId: actionId! }] }),
+    ).rejects.toThrow(NotFoundError)
 
     // User A applies it legitimately
     const applied = await advisorService.applyAction(USER_A, YEAR, actionId!)

@@ -11,6 +11,7 @@ import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
 import { FakeCapitalRepository } from './fakes/fake-capital.repository.js'
 import { FakeChSalaryCertificateRepository } from './fakes/fake-ch-salary-certificate.repository.js'
 import { FakeChildRepository } from './fakes/fake-child.repository.js'
+import { FakeCommuteRepository } from './fakes/fake-commute.repository.js'
 import { FakeInterviewAnswerRepository } from './fakes/fake-interview-answer.repository.js'
 import { FakeLinkRepository } from './fakes/fake-link.repository.js'
 import { FakeLstbRepository } from './fakes/fake-lstb.repository.js'
@@ -34,6 +35,8 @@ describe('AdvisorService (In-App Steuerberater Agent "Deine Eule")', () => {
   let chRepo: FakeChSalaryCertificateRepository
   let childRepo: FakeChildRepository
   let profileRepo: FakeProfileRepository
+  let commuteRepo: FakeCommuteRepository
+  let assessmentRepo: FakeAssessmentRepository
   let markingRepo: FakeMarkingRepository
   let auditRepo: FakeAuditRepository
   let confirmationService: ConfirmationService
@@ -47,6 +50,8 @@ describe('AdvisorService (In-App Steuerberater Agent "Deine Eule")', () => {
     chRepo = new FakeChSalaryCertificateRepository()
     childRepo = new FakeChildRepository()
     profileRepo = new FakeProfileRepository()
+    commuteRepo = new FakeCommuteRepository()
+    assessmentRepo = new FakeAssessmentRepository()
     markingRepo = new FakeMarkingRepository()
     auditRepo = new FakeAuditRepository()
 
@@ -62,6 +67,8 @@ describe('AdvisorService (In-App Steuerberater Agent "Deine Eule")', () => {
       interview: interviewRepo,
       chSalaryCertificate: chRepo,
       child: childRepo,
+      commute: commuteRepo,
+      assessment: assessmentRepo,
     })
 
     confirmationService = new ConfirmationService(markingRepo, access, auditService)
@@ -70,7 +77,7 @@ describe('AdvisorService (In-App Steuerberater Agent "Deine Eule")', () => {
       new FakeOwlCardDismissalRepository(),
       childRepo,
       interviewRepo,
-      new FakeAssessmentRepository(),
+      assessmentRepo,
       new RagKiAdapter(),
       auditService,
     )
@@ -83,7 +90,7 @@ describe('AdvisorService (In-App Steuerberater Agent "Deine Eule")', () => {
       interviewRepo,
       lstbRepo,
       chRepo,
-      undefined,
+      commuteRepo,
       childRepo,
       new FakeRentalRepository(),
       new FakeCapitalRepository(),
@@ -205,5 +212,123 @@ describe('AdvisorService (In-App Steuerberater Agent "Deine Eule")', () => {
     ).rejects.toMatchObject({
       code: 'ADVISOR_DAILY_LIMIT_EXCEEDED',
     })
+  })
+
+  it('captures raw expectedPreviousValue on drafts, rejects stale applies with 409 conflict, and marks older drafts superseded', async () => {
+    await interviewRepo.write({ userId: USER, taxYear: YEAR, questionId: 'spenden', value: 'Ja', openItems: 0 })
+    await interviewRepo.write({ userId: USER, taxYear: YEAR, questionId: 'spenden-betrag', value: '100', openItems: 0 })
+
+    const turn1 = await advisorService.sendMessage(USER, YEAR, { message: 'Bitte 250 € Spenden eintragen' })
+    const draft1 = turn1.assistantMessage.meta?.action
+    expect(draft1?.expectedPreviousValue).toBe('100')
+
+    // Sending a newer draft for the same field supersedes the earlier pending draft
+    const turn2 = await advisorService.sendMessage(USER, YEAR, { message: 'Bitte 400 € Spenden eintragen' })
+    const draft2 = turn2.assistantMessage.meta?.action
+    expect(draft2?.expectedPreviousValue).toBe('100')
+
+    const session = await advisorService.getSession(USER, YEAR)
+    const oldMsg = session.messages.find((m) => m.id === turn1.assistantMessage.id)
+    expect(oldMsg?.meta?.action?.status).toBe('superseded')
+    await expect(advisorService.applyAction(USER, YEAR, draft1!.actionId)).rejects.toMatchObject({
+      code: 'ADVISOR_ACTION_SUPERSEDED',
+    })
+
+    // User manually changes the field in the mask before applying draft2 -> 409 Stale-Check conflict
+    await interviewRepo.write({ userId: USER, taxYear: YEAR, questionId: 'spenden-betrag', value: '180', openItems: 0 })
+    await expect(advisorService.applyAction(USER, YEAR, draft2!.actionId)).rejects.toMatchObject({
+      code: 'ADVISOR_ACTION_STALE_CONFLICT',
+    })
+    const stillUnchanged = await interviewRepo.findAllForUserAndYear(USER, YEAR)
+    expect(stillUnchanged.find((r) => r.questionId === 'spenden-betrag')?.value).toBe('180')
+  })
+
+  it('applies multiple drafts atomically via applyBatch and aborts all-or-nothing when any draft is stale', async () => {
+    await interviewRepo.write({ userId: USER, taxYear: YEAR, questionId: 'weg', value: '15', openItems: 0 })
+
+    const t1 = await advisorService.sendMessage(USER, YEAR, { message: 'Bitte 300 € Spenden eintragen' })
+    const t2 = await advisorService.sendMessage(USER, YEAR, { message: 'Mein Arbeitsweg beträgt 28 km' })
+    const d1 = t1.assistantMessage.meta!.action!
+    const d2 = t2.assistantMessage.meta!.action!
+
+    // Stale conflict on second item must prevent first item from writing anything!
+    await interviewRepo.write({ userId: USER, taxYear: YEAR, questionId: 'weg', value: '20', openItems: 0 })
+    await expect(
+      advisorService.applyBatch(USER, YEAR, {
+        drafts: [
+          { actionId: d1.actionId, expectedPreviousValue: d1.expectedPreviousValue },
+          { actionId: d2.actionId, expectedPreviousValue: '15' },
+        ],
+      }),
+    ).rejects.toMatchObject({ code: 'ADVISOR_ACTION_STALE_CONFLICT' })
+
+    const afterAbort = await interviewRepo.findAllForUserAndYear(USER, YEAR)
+    expect(afterAbort.find((r) => r.questionId === 'spenden-betrag')).toBeUndefined()
+    expect(afterAbort.find((r) => r.questionId === 'weg')?.value).toBe('20')
+
+    // Now re-stage d2 cleanly against '20' and batch-apply both atomically
+    const t2Fresh = await advisorService.sendMessage(USER, YEAR, { message: 'Mein Arbeitsweg beträgt 28 km' })
+    const d2Fresh = t2Fresh.assistantMessage.meta!.action!
+    expect(d2Fresh.expectedPreviousValue).toBe('20')
+
+    const batchRes = await advisorService.applyBatch(USER, YEAR, {
+      drafts: [
+        { actionId: d1.actionId, expectedPreviousValue: d1.expectedPreviousValue },
+        { actionId: d2Fresh.actionId, expectedPreviousValue: '20' },
+      ],
+    })
+    expect(batchRes.actions).toHaveLength(2)
+    expect(batchRes.actions.every((a) => a.status === 'applied')).toBe(true)
+
+    const afterCommit = await interviewRepo.findAllForUserAndYear(USER, YEAR)
+    expect(afterCommit.find((r) => r.questionId === 'spenden-betrag')?.value).toBe('300')
+    expect(afterCommit.find((r) => r.questionId === 'weg')?.value).toBe('28')
+    expect(await confirmationService.missing(USER, YEAR)).toEqual([])
+  })
+
+  it('rolls back already-written fields in applyBatch when a later item fails mid-commit', async () => {
+    const t1 = await advisorService.sendMessage(USER, YEAR, { message: 'Bitte 250 € Spenden eintragen' })
+    const d1 = t1.assistantMessage.meta!.action!
+
+    // Stage a valid draft 1 followed by an invalid commute draft stored in history
+    const badMsg = await advisorRepo.createMessage({
+      userId: USER,
+      taxYear: YEAR,
+      role: 'assistant',
+      content: 'Urlaub korrigieren',
+      meta: {
+        action: {
+          actionId: 'act-bad-commute',
+          status: 'pending',
+          screen: 'commute',
+          field: 'vacationDays',
+          instance: null,
+          label: 'Urlaubstage',
+          previousValue: null,
+          expectedPreviousValue: null,
+          newValue: '300',
+          beforeRefundEur: 500,
+          afterRefundEur: 500,
+          deltaEur: 0,
+          reason: 'Test rollback',
+          sourceId: 'estg-9-1',
+        },
+      },
+    })
+    expect(badMsg.id).toBeDefined()
+
+    await expect(
+      advisorService.applyBatch(USER, YEAR, {
+        drafts: [{ actionId: d1.actionId }, { actionId: 'act-bad-commute' }],
+      }),
+    ).rejects.toMatchObject({ code: 'ARBEITSTAGE_WIDERSPRUCH' })
+
+    // Draft 1 & its companion field must have been rolled back completely!
+    const afterRollback = await interviewRepo.findAllForUserAndYear(USER, YEAR)
+    expect(afterRollback.find((r) => r.questionId === 'spenden-betrag')).toBeUndefined()
+    expect(afterRollback.find((r) => r.questionId === 'spenden')).toBeUndefined()
+    const session = await advisorService.getSession(USER, YEAR)
+    const d1After = session.messages.find((m) => m.id === t1.assistantMessage.id)?.meta?.action
+    expect(d1After?.status).toBe('pending')
   })
 })

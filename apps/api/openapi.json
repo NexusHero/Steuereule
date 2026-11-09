@@ -1734,6 +1734,418 @@
         ]
       }
     },
+    "/v1/belege/parse": {
+      "post": {
+        "operationId": "ReceiptParseController_parseReceipt",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ParseReceiptDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Two-stage isolated vision_ocr parse and Zero-Write pending draft staging.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParseReceiptResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Requires account."
+          }
+        },
+        "tags": [
+          "eulen-modus"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/advisor/session": {
+      "get": {
+        "operationId": "AdvisorController_getSession",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdvisorSessionResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Requires account."
+          }
+        },
+        "tags": [
+          "eulen-modus"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/advisor/chat": {
+      "post": {
+        "operationId": "AdvisorController_sendMessage",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendAdvisorMessageDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SendAdvisorMessageResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Requires account."
+          }
+        },
+        "tags": [
+          "eulen-modus"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/advisor/stream": {
+      "post": {
+        "operationId": "AdvisorController_streamMessage",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendAdvisorMessageDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SendAdvisorMessageResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Requires account."
+          }
+        },
+        "tags": [
+          "eulen-modus"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/advisor/actions/apply-batch": {
+      "post": {
+        "operationId": "AdvisorController_applyBatch",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplyBatchActionsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplyBatchActionsResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Requires account."
+          }
+        },
+        "tags": [
+          "eulen-modus"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/advisor/actions/{actionId}/apply": {
+      "post": {
+        "operationId": "AdvisorController_applyAction",
+        "parameters": [
+          {
+            "name": "actionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": "act-123456",
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdvisorActionMutationResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Requires account."
+          }
+        },
+        "tags": [
+          "eulen-modus"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/advisor/actions/{actionId}/undo": {
+      "post": {
+        "operationId": "AdvisorController_undoAction",
+        "parameters": [
+          {
+            "name": "actionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": "act-123456",
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdvisorActionMutationResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Requires account."
+          }
+        },
+        "tags": [
+          "eulen-modus"
+        ]
+      }
+    },
+    "/v1/eulen-modus/einstellung": {
+      "get": {
+        "operationId": "OwlModeController_getSetting",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwlSettingResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Requires account."
+          }
+        },
+        "tags": [
+          "eulen-modus"
+        ]
+      },
+      "put": {
+        "operationId": "OwlModeController_setSetting",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetOwlSettingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwlSettingResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Requires account."
+          }
+        },
+        "tags": [
+          "eulen-modus"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/eulen-karten": {
+      "get": {
+        "operationId": "OwlModeController_getCards",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwlCardsResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Requires account."
+          }
+        },
+        "tags": [
+          "eulen-modus"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/eulen-karten/{fingerprint}/verwerfen": {
+      "post": {
+        "operationId": "OwlModeController_dismissCard",
+        "parameters": [
+          {
+            "name": "fingerprint",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": "1234abcd5678efgh",
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Card successfully dismissed."
+          },
+          "401": {
+            "description": "Requires account."
+          }
+        },
+        "tags": [
+          "eulen-modus"
+        ]
+      }
+    },
     "/v1/steuerjahre/{jahr}/bescheid": {
       "get": {
         "operationId": "AssessmentController_get",
@@ -1944,6 +2356,150 @@
         },
         "tags": [
           "bescheid"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/bestaetigung": {
+      "get": {
+        "operationId": "ConfirmationController_get",
+        "parameters": [
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (ParseSteuerjahrPipe, same as Cockpit).",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Per Anlage: the unconfirmed values and open proposals, with their Herkunft.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfirmationResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "bestaetigung"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/bestaetigung/anlagen/{anlage}": {
+      "put": {
+        "operationId": "ConfirmationController_confirmAnnex",
+        "parameters": [
+          {
+            "name": "anlage",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "enum": [
+                "hauptvordruck",
+                "anlageN",
+                "anlageNGre",
+                "anlageR",
+                "anlageKap",
+                "anlageV",
+                "anlageKind"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (ParseSteuerjahrPipe, same as Cockpit).",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "All values of the Anlage are confirmed; the remaining overview.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfirmationResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "bestaetigung"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/bestaetigung/vorschlaege/{key}": {
+      "put": {
+        "operationId": "ConfirmationController_decideProposal",
+        "parameters": [
+          {
+            "name": "key",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": "lstb.bruttoarbeitslohn",
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (ParseSteuerjahrPipe, same as Cockpit).",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProposalDecisionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The proposal was accepted (written, confirmed) or discarded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfirmationResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          },
+          "404": {
+            "description": "No open proposal for this field."
+          }
+        },
+        "tags": [
+          "bestaetigung"
         ]
       }
     },
@@ -2474,150 +3030,6 @@
         ]
       }
     },
-    "/v1/steuerjahre/{jahr}/bestaetigung": {
-      "get": {
-        "operationId": "ConfirmationController_get",
-        "parameters": [
-          {
-            "name": "jahr",
-            "required": true,
-            "in": "path",
-            "description": "The tax year (ParseSteuerjahrPipe, same as Cockpit).",
-            "schema": {
-              "example": 2025,
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Per Anlage: the unconfirmed values and open proposals, with their Herkunft.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConfirmationResponseDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Guest session — this endpoint requires a signed-in account."
-          }
-        },
-        "tags": [
-          "bestaetigung"
-        ]
-      }
-    },
-    "/v1/steuerjahre/{jahr}/bestaetigung/anlagen/{anlage}": {
-      "put": {
-        "operationId": "ConfirmationController_confirmAnnex",
-        "parameters": [
-          {
-            "name": "anlage",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "enum": [
-                "hauptvordruck",
-                "anlageN",
-                "anlageNGre",
-                "anlageR",
-                "anlageKap",
-                "anlageV",
-                "anlageKind"
-              ],
-              "type": "string"
-            }
-          },
-          {
-            "name": "jahr",
-            "required": true,
-            "in": "path",
-            "description": "The tax year (ParseSteuerjahrPipe, same as Cockpit).",
-            "schema": {
-              "example": 2025,
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "All values of the Anlage are confirmed; the remaining overview.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConfirmationResponseDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Guest session — this endpoint requires a signed-in account."
-          }
-        },
-        "tags": [
-          "bestaetigung"
-        ]
-      }
-    },
-    "/v1/steuerjahre/{jahr}/bestaetigung/vorschlaege/{key}": {
-      "put": {
-        "operationId": "ConfirmationController_decideProposal",
-        "parameters": [
-          {
-            "name": "key",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "example": "lstb.bruttoarbeitslohn",
-              "type": "string"
-            }
-          },
-          {
-            "name": "jahr",
-            "required": true,
-            "in": "path",
-            "description": "The tax year (ParseSteuerjahrPipe, same as Cockpit).",
-            "schema": {
-              "example": 2025,
-              "type": "number"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ProposalDecisionDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "The proposal was accepted (written, confirmed) or discarded.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConfirmationResponseDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Guest session — this endpoint requires a signed-in account."
-          },
-          "404": {
-            "description": "No open proposal for this field."
-          }
-        },
-        "tags": [
-          "bestaetigung"
-        ]
-      }
-    },
     "/v1/steuerjahre/{jahr}/freischaltung": {
       "get": {
         "operationId": "UnlockController_status",
@@ -2857,296 +3269,6 @@
         },
         "tags": [
           "ausdruck"
-        ]
-      }
-    },
-    "/v1/eulen-modus/einstellung": {
-      "get": {
-        "operationId": "OwlModeController_getSetting",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OwlSettingResponseDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Requires account."
-          }
-        },
-        "tags": [
-          "eulen-modus"
-        ]
-      },
-      "put": {
-        "operationId": "OwlModeController_setSetting",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SetOwlSettingDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OwlSettingResponseDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Requires account."
-          }
-        },
-        "tags": [
-          "eulen-modus"
-        ]
-      }
-    },
-    "/v1/steuerjahre/{jahr}/eulen-karten": {
-      "get": {
-        "operationId": "OwlModeController_getCards",
-        "parameters": [
-          {
-            "name": "jahr",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "example": 2025,
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OwlCardsResponseDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Requires account."
-          }
-        },
-        "tags": [
-          "eulen-modus"
-        ]
-      }
-    },
-    "/v1/steuerjahre/{jahr}/eulen-karten/{fingerprint}/verwerfen": {
-      "post": {
-        "operationId": "OwlModeController_dismissCard",
-        "parameters": [
-          {
-            "name": "fingerprint",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "example": "1234abcd5678efgh",
-              "type": "string"
-            }
-          },
-          {
-            "name": "jahr",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "example": 2025,
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Card successfully dismissed."
-          },
-          "401": {
-            "description": "Requires account."
-          }
-        },
-        "tags": [
-          "eulen-modus"
-        ]
-      }
-    },
-    "/v1/steuerjahre/{jahr}/advisor/session": {
-      "get": {
-        "operationId": "AdvisorController_getSession",
-        "parameters": [
-          {
-            "name": "jahr",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "example": 2025,
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AdvisorSessionResponseDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Requires account."
-          }
-        },
-        "tags": [
-          "eulen-modus"
-        ]
-      }
-    },
-    "/v1/steuerjahre/{jahr}/advisor/chat": {
-      "post": {
-        "operationId": "AdvisorController_sendMessage",
-        "parameters": [
-          {
-            "name": "jahr",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "example": 2025,
-              "type": "number"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SendAdvisorMessageDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SendAdvisorMessageResponseDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Requires account."
-          }
-        },
-        "tags": [
-          "eulen-modus"
-        ]
-      }
-    },
-    "/v1/steuerjahre/{jahr}/advisor/actions/{actionId}/apply": {
-      "post": {
-        "operationId": "AdvisorController_applyAction",
-        "parameters": [
-          {
-            "name": "actionId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "example": "act-123456",
-              "type": "string"
-            }
-          },
-          {
-            "name": "jahr",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "example": 2025,
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AdvisorActionMutationResponseDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Requires account."
-          }
-        },
-        "tags": [
-          "eulen-modus"
-        ]
-      }
-    },
-    "/v1/steuerjahre/{jahr}/advisor/actions/{actionId}/undo": {
-      "post": {
-        "operationId": "AdvisorController_undoAction",
-        "parameters": [
-          {
-            "name": "actionId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "example": "act-123456",
-              "type": "string"
-            }
-          },
-          {
-            "name": "jahr",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "example": 2025,
-              "type": "number"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AdvisorActionMutationResponseDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Requires account."
-          }
-        },
-        "tags": [
-          "eulen-modus"
         ]
       }
     },
@@ -6056,6 +6178,887 @@
           "taxYear"
         ]
       },
+      "ParseReceiptDto": {
+        "type": "object",
+        "properties": {
+          "taxYear": {
+            "type": "number",
+            "example": 2025
+          },
+          "fileName": {
+            "type": "string",
+            "example": "monitor-rechnung.pdf"
+          },
+          "rawText": {
+            "type": "string",
+            "example": "Dell UltraSharp Monitor 480 EUR am 2025-05-10"
+          },
+          "imageBase64": {
+            "type": "string",
+            "description": "Base64-encoded image/PDF content for vision_ocr extraction (max ~5 MB)."
+          },
+          "mimeType": {
+            "type": "string",
+            "enum": [
+              "image/jpeg",
+              "image/png",
+              "image/webp",
+              "application/pdf"
+            ],
+            "example": "application/pdf"
+          },
+          "stageDraft": {
+            "type": "boolean",
+            "example": true,
+            "description": "Stages an unconfirmed pending draft in Eulen-Modus when true (default true)."
+          }
+        },
+        "required": [
+          "taxYear",
+          "fileName"
+        ]
+      },
+      "ParsedReceiptDataDto": {
+        "type": "object",
+        "properties": {
+          "vendorCategory": {
+            "type": "string",
+            "enum": [
+              "arbeitsmittel",
+              "spende",
+              "fortbildung",
+              "kinderbetreuung",
+              "handwerker",
+              "entfernung",
+              "sonstiges"
+            ],
+            "example": "arbeitsmittel"
+          },
+          "receiptDate": {
+            "type": "string",
+            "nullable": true,
+            "example": "2025-05-10"
+          },
+          "amountEur": {
+            "type": "number",
+            "nullable": true,
+            "example": 480
+          },
+          "suggestedScreen": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "profil",
+              "stammdaten",
+              "kopplung",
+              "interview",
+              "lstb",
+              "commute",
+              "chLohnausweis",
+              "rente",
+              "kapital",
+              "vermietung",
+              "kind",
+              "assessment"
+            ],
+            "example": "interview"
+          },
+          "suggestedField": {
+            "type": "string",
+            "nullable": true,
+            "example": "fortbildung"
+          },
+          "suggestedValue": {
+            "type": "string",
+            "nullable": true,
+            "example": "Ja"
+          },
+          "summary": {
+            "type": "string",
+            "example": "Arbeitsmittel-Rechnung über 480 € erkannt."
+          },
+          "taxYear": {
+            "type": "number",
+            "nullable": true,
+            "example": 2025
+          }
+        },
+        "required": [
+          "vendorCategory",
+          "receiptDate",
+          "amountEur",
+          "suggestedScreen",
+          "suggestedField",
+          "suggestedValue",
+          "summary",
+          "taxYear"
+        ]
+      },
+      "AdvisorActionProposalDto": {
+        "type": "object",
+        "properties": {
+          "actionId": {
+            "type": "string",
+            "example": "act-1730970000"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "applied",
+              "dismissed",
+              "superseded",
+              "undone"
+            ],
+            "example": "pending"
+          },
+          "screen": {
+            "type": "string",
+            "enum": [
+              "profil",
+              "stammdaten",
+              "kopplung",
+              "interview",
+              "lstb",
+              "commute",
+              "chLohnausweis",
+              "rente",
+              "kapital",
+              "vermietung",
+              "kind",
+              "assessment"
+            ],
+            "example": "interview"
+          },
+          "field": {
+            "type": "string",
+            "example": "spenden-betrag"
+          },
+          "instance": {
+            "type": "string",
+            "nullable": true,
+            "example": null
+          },
+          "companionFields": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "label": {
+            "type": "string",
+            "example": "Spenden & Zuwendungen (Sonderausgaben)"
+          },
+          "previousValue": {
+            "type": "string",
+            "nullable": true,
+            "example": "0 €"
+          },
+          "expectedPreviousValue": {
+            "type": "string",
+            "nullable": true,
+            "example": "0"
+          },
+          "newValue": {
+            "type": "string",
+            "example": "250"
+          },
+          "beforeRefundEur": {
+            "type": "number",
+            "example": 840
+          },
+          "afterRefundEur": {
+            "type": "number",
+            "example": 925
+          },
+          "deltaEur": {
+            "type": "number",
+            "example": 85
+          },
+          "reason": {
+            "type": "string",
+            "example": "Sonderausgabenabzug nach § 10b EStG."
+          },
+          "sourceId": {
+            "type": "string",
+            "enum": [
+              "estg-4-5-6c",
+              "estg-9-1",
+              "estg-9-1-4a",
+              "estg-9-1-6",
+              "estg-9-4a",
+              "estg-9-6",
+              "estg-10b",
+              "estg-10-1-5",
+              "ao-355"
+            ],
+            "example": "estg-10b"
+          },
+          "paragraph": {
+            "type": "string",
+            "example": "§ 10b EStG"
+          }
+        },
+        "required": [
+          "actionId",
+          "status",
+          "screen",
+          "field",
+          "label",
+          "newValue",
+          "beforeRefundEur",
+          "afterRefundEur",
+          "deltaEur",
+          "reason",
+          "sourceId"
+        ]
+      },
+      "AdvisorMaxPathProposalDto": {
+        "type": "object",
+        "properties": {
+          "actionId": {
+            "type": "string",
+            "example": "act-1730970000"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "applied",
+              "dismissed",
+              "superseded",
+              "undone"
+            ],
+            "example": "pending"
+          },
+          "screen": {
+            "type": "string",
+            "enum": [
+              "profil",
+              "stammdaten",
+              "kopplung",
+              "interview",
+              "lstb",
+              "commute",
+              "chLohnausweis",
+              "rente",
+              "kapital",
+              "vermietung",
+              "kind",
+              "assessment"
+            ],
+            "example": "interview"
+          },
+          "field": {
+            "type": "string",
+            "example": "spenden-betrag"
+          },
+          "instance": {
+            "type": "string",
+            "nullable": true,
+            "example": null
+          },
+          "companionFields": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "label": {
+            "type": "string",
+            "example": "Spenden & Zuwendungen (Sonderausgaben)"
+          },
+          "previousValue": {
+            "type": "string",
+            "nullable": true,
+            "example": "0 €"
+          },
+          "expectedPreviousValue": {
+            "type": "string",
+            "nullable": true,
+            "example": "0"
+          },
+          "newValue": {
+            "type": "string",
+            "example": "250"
+          },
+          "beforeRefundEur": {
+            "type": "number",
+            "example": 840
+          },
+          "afterRefundEur": {
+            "type": "number",
+            "example": 925
+          },
+          "deltaEur": {
+            "type": "number",
+            "example": 85
+          },
+          "reason": {
+            "type": "string",
+            "example": "Sonderausgabenabzug nach § 10b EStG."
+          },
+          "sourceId": {
+            "type": "string",
+            "enum": [
+              "estg-4-5-6c",
+              "estg-9-1",
+              "estg-9-1-4a",
+              "estg-9-1-6",
+              "estg-9-4a",
+              "estg-9-6",
+              "estg-10b",
+              "estg-10-1-5",
+              "ao-355"
+            ],
+            "example": "estg-10b"
+          },
+          "paragraph": {
+            "type": "string",
+            "example": "§ 10b EStG"
+          },
+          "evidenceHint": {
+            "type": "string",
+            "example": "Nachweis-Hinweis: Das Finanzamt kann eine kurze Bestätigung des Arbeitgebers anfordern."
+          }
+        },
+        "required": [
+          "actionId",
+          "status",
+          "screen",
+          "field",
+          "label",
+          "newValue",
+          "beforeRefundEur",
+          "afterRefundEur",
+          "deltaEur",
+          "reason",
+          "sourceId",
+          "evidenceHint"
+        ]
+      },
+      "AdvisorTwoPathsProposalDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "example": "Zwei-Wege-Empfehlung: Homeoffice & Arbeitszimmer"
+          },
+          "safePath": {
+            "$ref": "#/components/schemas/AdvisorActionProposalDto"
+          },
+          "maxPath": {
+            "$ref": "#/components/schemas/AdvisorMaxPathProposalDto"
+          },
+          "sourceId": {
+            "type": "string",
+            "enum": [
+              "estg-4-5-6c",
+              "estg-9-1",
+              "estg-9-1-4a",
+              "estg-9-1-6",
+              "estg-9-4a",
+              "estg-9-6",
+              "estg-10b",
+              "estg-10-1-5",
+              "ao-355"
+            ],
+            "example": "estg-4-5-6c"
+          }
+        },
+        "required": [
+          "title",
+          "safePath",
+          "maxPath",
+          "sourceId"
+        ]
+      },
+      "AdvisorMessageMetaDto": {
+        "type": "object",
+        "properties": {
+          "choices": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "action": {
+            "$ref": "#/components/schemas/AdvisorActionProposalDto"
+          },
+          "twoPaths": {
+            "$ref": "#/components/schemas/AdvisorTwoPathsProposalDto"
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "estg-4-5-6c",
+                "estg-9-1",
+                "estg-9-1-4a",
+                "estg-9-1-6",
+                "estg-9-4a",
+                "estg-9-6",
+                "estg-10b",
+                "estg-10-1-5",
+                "ao-355"
+              ]
+            }
+          }
+        }
+      },
+      "AdvisorChatMessageDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "msg-123"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "user",
+              "assistant"
+            ],
+            "example": "assistant"
+          },
+          "content": {
+            "type": "string",
+            "example": "Ich habe deine Akte 2025 geprüft."
+          },
+          "meta": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AdvisorMessageMetaDto"
+              }
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-11-07T09:00:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "role",
+          "content",
+          "createdAt"
+        ]
+      },
+      "ParseReceiptResponseDto": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "vision_ocr",
+              "deterministic_fallback"
+            ],
+            "example": "vision_ocr"
+          },
+          "securityBlocked": {
+            "type": "boolean",
+            "example": false
+          },
+          "parsed": {
+            "$ref": "#/components/schemas/ParsedReceiptDataDto"
+          },
+          "stagedAction": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AdvisorActionProposalDto"
+              }
+            ]
+          },
+          "assistantMessage": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AdvisorChatMessageDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "mode",
+          "securityBlocked",
+          "parsed"
+        ]
+      },
+      "OwlPathDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Tagespauschale ansetzen"
+          },
+          "amountEur": {
+            "type": "number",
+            "example": 300
+          },
+          "description": {
+            "type": "string",
+            "example": "Einfacher Nachweis ohne separates Arbeitszimmer"
+          },
+          "risk": {
+            "type": "string",
+            "enum": [
+              "sicher",
+              "risiko"
+            ],
+            "example": "sicher"
+          }
+        },
+        "required": [
+          "name",
+          "amountEur",
+          "description",
+          "risk"
+        ]
+      },
+      "OwlCardDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "eule-ra-homeoffice-2025"
+          },
+          "fingerprint": {
+            "type": "string",
+            "example": "1234abcd5678efgh"
+          },
+          "trigger": {
+            "type": "string",
+            "enum": [
+              "musterluecke",
+              "vorjahresvergleich",
+              "rechtsaenderung",
+              "lebenslage_hinweis"
+            ]
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "cockpit_proaktiv",
+              "abruf_frage",
+              "archiv_einspruch"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "example": "Homeoffice-Tagespauschale 6 €"
+          },
+          "message": {
+            "type": "string",
+            "example": "Du hast 50 Tage im Homeoffice gearbeitet."
+          },
+          "reason": {
+            "type": "string",
+            "example": "weil der Gesetzgeber die Pauschale dauerhaft angehoben hat."
+          },
+          "amountEur": {
+            "type": "number",
+            "nullable": true,
+            "example": 300
+          },
+          "legalStatusDate": {
+            "type": "string",
+            "example": "01.01.2025"
+          },
+          "sourceTranslated": {
+            "type": "string",
+            "example": "Jahressteuergesetz § 4 Abs. 5 Satz 1 Nr. 6b EStG"
+          },
+          "sourceUrl": {
+            "type": "string",
+            "example": "https://..."
+          },
+          "paths": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OwlPathDto"
+            }
+          },
+          "appealDeadline": {
+            "type": "string",
+            "example": "01.10.2025"
+          }
+        },
+        "required": [
+          "id",
+          "fingerprint",
+          "trigger",
+          "category",
+          "title",
+          "message",
+          "reason",
+          "legalStatusDate",
+          "sourceTranslated"
+        ]
+      },
+      "AdvisorLegalSourceDto": {
+        "type": "object",
+        "properties": {
+          "sourceId": {
+            "type": "string",
+            "enum": [
+              "estg-4-5-6c",
+              "estg-9-1",
+              "estg-9-1-4a",
+              "estg-9-1-6",
+              "estg-9-4a",
+              "estg-9-6",
+              "estg-10b",
+              "estg-10-1-5",
+              "ao-355"
+            ],
+            "example": "estg-9-1-4a"
+          },
+          "paragraph": {
+            "type": "string",
+            "example": "§ 9 Abs. 1 Nr. 4a EStG"
+          },
+          "title": {
+            "type": "string",
+            "example": "Reise- und Fahrtkosten bei Auswärtstätigkeit"
+          },
+          "summary": {
+            "type": "string",
+            "example": "Fahrten zu einer Fortbildungsstätte sind mit 0,30 € pro gefahrenem Kilometer absetzbar."
+          },
+          "legalStatusDate": {
+            "type": "string",
+            "example": "01.01.2025"
+          },
+          "url": {
+            "type": "string",
+            "example": "https://www.gesetze-im-internet.de/estg/__9.html"
+          }
+        },
+        "required": [
+          "sourceId",
+          "paragraph",
+          "title",
+          "summary",
+          "legalStatusDate",
+          "url"
+        ]
+      },
+      "AdvisorSessionResponseDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "example": true
+          },
+          "greeting": {
+            "type": "string",
+            "example": "Hallo! Ich habe deine Akte 2025 durchgesehen. Wollen wir die offenen Punkte gemeinsam durchgehen?"
+          },
+          "openCards": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OwlCardDto"
+            }
+          },
+          "messages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdvisorChatMessageDto"
+            }
+          },
+          "quickChips": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "legalSources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdvisorLegalSourceDto"
+            }
+          }
+        },
+        "required": [
+          "enabled",
+          "greeting",
+          "openCards",
+          "messages",
+          "quickChips",
+          "legalSources"
+        ]
+      },
+      "SendAdvisorMessageDto": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "example": "Ich hatte dieses Jahr eine Fortbildung."
+          },
+          "activeScreen": {
+            "type": "string",
+            "enum": [
+              "profil",
+              "stammdaten",
+              "kopplung",
+              "interview",
+              "lstb",
+              "commute",
+              "chLohnausweis",
+              "rente",
+              "kapital",
+              "vermietung",
+              "kind",
+              "assessment"
+            ],
+            "example": "interview"
+          }
+        },
+        "required": [
+          "message"
+        ]
+      },
+      "SendAdvisorMessageResponseDto": {
+        "type": "object",
+        "properties": {
+          "userMessage": {
+            "$ref": "#/components/schemas/AdvisorChatMessageDto"
+          },
+          "assistantMessage": {
+            "$ref": "#/components/schemas/AdvisorChatMessageDto"
+          }
+        },
+        "required": [
+          "userMessage",
+          "assistantMessage"
+        ]
+      },
+      "ApplyBatchActionItemDto": {
+        "type": "object",
+        "properties": {
+          "actionId": {
+            "type": "string",
+            "example": "act-1730970000"
+          },
+          "expectedPreviousValue": {
+            "type": "string",
+            "nullable": true,
+            "example": "100"
+          }
+        },
+        "required": [
+          "actionId"
+        ]
+      },
+      "ApplyBatchActionsDto": {
+        "type": "object",
+        "properties": {
+          "drafts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApplyBatchActionItemDto"
+            }
+          }
+        },
+        "required": [
+          "drafts"
+        ]
+      },
+      "ApplyBatchActionsResponseDto": {
+        "type": "object",
+        "properties": {
+          "actions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdvisorActionProposalDto"
+            }
+          },
+          "messages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdvisorChatMessageDto"
+            }
+          }
+        },
+        "required": [
+          "actions",
+          "messages"
+        ]
+      },
+      "AdvisorActionMutationResponseDto": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "$ref": "#/components/schemas/AdvisorChatMessageDto"
+          },
+          "action": {
+            "$ref": "#/components/schemas/AdvisorActionProposalDto"
+          }
+        },
+        "required": [
+          "message",
+          "action"
+        ]
+      },
+      "OwlSettingResponseDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "example": true
+          },
+          "enabledAt": {
+            "type": "string",
+            "nullable": true,
+            "example": "2026-11-03T10:00:00Z"
+          }
+        },
+        "required": [
+          "enabled"
+        ]
+      },
+      "SetOwlSettingDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "example": true
+          }
+        },
+        "required": [
+          "enabled"
+        ]
+      },
+      "OwlCardsResponseDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "example": true
+          },
+          "cards": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OwlCardDto"
+            }
+          },
+          "legalStatus": {
+            "type": "string",
+            "example": "01.01.2025"
+          }
+        },
+        "required": [
+          "enabled",
+          "cards",
+          "legalStatus"
+        ]
+      },
       "AssessmentFieldDto": {
         "type": "object",
         "properties": {
@@ -6287,6 +7290,185 @@
         },
         "required": [
           "reason"
+        ]
+      },
+      "ProvenanceDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "nutzer",
+              "uebernahme",
+              "assistent",
+              "beleg"
+            ],
+            "example": "assistent"
+          },
+          "name": {
+            "type": "string",
+            "example": "Claude",
+            "description": "Name des Assistenten (art = assistent)."
+          },
+          "receiptId": {
+            "type": "string",
+            "description": "Der Beleg, aus dem der Wert stammt."
+          },
+          "lastYear": {
+            "type": "number",
+            "example": 2024,
+            "description": "Quelljahr der Jahresübernahme (art = uebernahme)."
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "ProposalDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string",
+            "nullable": true,
+            "example": "4800",
+            "description": "Der vorgeschlagene Feld-Wert (null = leeren)."
+          },
+          "provenance": {
+            "$ref": "#/components/schemas/ProvenanceDto"
+          }
+        },
+        "required": [
+          "value",
+          "provenance"
+        ]
+      },
+      "FieldProvenanceDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "example": "lstb.bruttoarbeitslohn"
+          },
+          "screen": {
+            "type": "string",
+            "enum": [
+              "profil",
+              "stammdaten",
+              "kopplung",
+              "interview",
+              "lstb",
+              "commute",
+              "chLohnausweis",
+              "rente",
+              "kapital",
+              "vermietung",
+              "kind",
+              "assessment"
+            ],
+            "example": "lstb"
+          },
+          "instance": {
+            "type": "string",
+            "nullable": true,
+            "description": "Instanz (Vermietungsobjekt, Kind) oder null."
+          },
+          "field": {
+            "type": "string",
+            "example": "bruttoarbeitslohn"
+          },
+          "value": {
+            "type": "string",
+            "nullable": true,
+            "example": "4750",
+            "description": "Der aktuell gespeicherte Feld-Wert (null = offen, \"unklar\")."
+          },
+          "provenance": {
+            "$ref": "#/components/schemas/ProvenanceDto"
+          },
+          "confirmed": {
+            "type": "boolean"
+          },
+          "proposal": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ProposalDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "key",
+          "screen",
+          "instance",
+          "field",
+          "value",
+          "provenance",
+          "confirmed",
+          "proposal"
+        ]
+      },
+      "AnnexConfirmationDto": {
+        "type": "object",
+        "properties": {
+          "annex": {
+            "type": "string",
+            "enum": [
+              "hauptvordruck",
+              "anlageN",
+              "anlageNGre",
+              "anlageR",
+              "anlageKap",
+              "anlageV",
+              "anlageKind"
+            ],
+            "example": "anlageN"
+          },
+          "unconfirmed": {
+            "type": "number",
+            "description": "Wie viele Werte dieser Anlage noch unbestätigt sind."
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FieldProvenanceDto"
+            }
+          }
+        },
+        "required": [
+          "annex",
+          "unconfirmed",
+          "values"
+        ]
+      },
+      "ConfirmationResponseDto": {
+        "type": "object",
+        "properties": {
+          "annexes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AnnexConfirmationDto"
+            }
+          }
+        },
+        "required": [
+          "annexes"
+        ]
+      },
+      "ProposalDecisionDto": {
+        "type": "object",
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": [
+              "annehmen",
+              "verwerfen"
+            ]
+          }
+        },
+        "required": [
+          "decision"
         ]
       },
       "DeleteAccountRequestDto": {
@@ -6923,183 +8105,6 @@
           "markings"
         ]
       },
-      "ProvenanceDto": {
-        "type": "object",
-        "properties": {
-          "kind": {
-            "type": "string",
-            "enum": [
-              "nutzer",
-              "uebernahme",
-              "assistent",
-              "beleg"
-            ],
-            "example": "assistent"
-          },
-          "name": {
-            "type": "string",
-            "example": "Claude",
-            "description": "Name des Assistenten (art = assistent)."
-          },
-          "receiptId": {
-            "type": "string",
-            "description": "Der Beleg, aus dem der Wert stammt."
-          },
-          "lastYear": {
-            "type": "number",
-            "example": 2024,
-            "description": "Quelljahr der Jahresübernahme (art = uebernahme)."
-          }
-        },
-        "required": [
-          "kind"
-        ]
-      },
-      "ProposalDto": {
-        "type": "object",
-        "properties": {
-          "value": {
-            "type": "string",
-            "nullable": true,
-            "example": "4800",
-            "description": "Der vorgeschlagene Feld-Wert (null = leeren)."
-          },
-          "provenance": {
-            "$ref": "#/components/schemas/ProvenanceDto"
-          }
-        },
-        "required": [
-          "value",
-          "provenance"
-        ]
-      },
-      "FieldProvenanceDto": {
-        "type": "object",
-        "properties": {
-          "key": {
-            "type": "string",
-            "example": "lstb.bruttoarbeitslohn"
-          },
-          "screen": {
-            "type": "string",
-            "enum": [
-              "profil",
-              "stammdaten",
-              "kopplung",
-              "interview",
-              "lstb",
-              "chLohnausweis",
-              "rente",
-              "kapital",
-              "vermietung",
-              "kind"
-            ],
-            "example": "lstb"
-          },
-          "instance": {
-            "type": "string",
-            "nullable": true,
-            "description": "Instanz (Vermietungsobjekt, Kind) oder null."
-          },
-          "field": {
-            "type": "string",
-            "example": "bruttoarbeitslohn"
-          },
-          "value": {
-            "type": "string",
-            "nullable": true,
-            "example": "4750",
-            "description": "Der aktuell gespeicherte Feld-Wert (null = offen, \"unklar\")."
-          },
-          "provenance": {
-            "$ref": "#/components/schemas/ProvenanceDto"
-          },
-          "confirmed": {
-            "type": "boolean"
-          },
-          "proposal": {
-            "nullable": true,
-            "type": "object",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/ProposalDto"
-              }
-            ]
-          }
-        },
-        "required": [
-          "key",
-          "screen",
-          "instance",
-          "field",
-          "value",
-          "provenance",
-          "confirmed",
-          "proposal"
-        ]
-      },
-      "AnnexConfirmationDto": {
-        "type": "object",
-        "properties": {
-          "annex": {
-            "type": "string",
-            "enum": [
-              "hauptvordruck",
-              "anlageN",
-              "anlageNGre",
-              "anlageR",
-              "anlageKap",
-              "anlageV",
-              "anlageKind"
-            ],
-            "example": "anlageN"
-          },
-          "unconfirmed": {
-            "type": "number",
-            "description": "Wie viele Werte dieser Anlage noch unbestätigt sind."
-          },
-          "values": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/FieldProvenanceDto"
-            }
-          }
-        },
-        "required": [
-          "annex",
-          "unconfirmed",
-          "values"
-        ]
-      },
-      "ConfirmationResponseDto": {
-        "type": "object",
-        "properties": {
-          "annexes": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/AnnexConfirmationDto"
-            }
-          }
-        },
-        "required": [
-          "annexes"
-        ]
-      },
-      "ProposalDecisionDto": {
-        "type": "object",
-        "properties": {
-          "decision": {
-            "type": "string",
-            "enum": [
-              "annehmen",
-              "verwerfen"
-            ]
-          }
-        },
-        "required": [
-          "decision"
-        ]
-      },
       "UnlockStatusDto": {
         "type": "object",
         "properties": {
@@ -7187,650 +8192,6 @@
           "jobId",
           "status",
           "statusUrl"
-        ]
-      },
-      "OwlSettingResponseDto": {
-        "type": "object",
-        "properties": {
-          "enabled": {
-            "type": "boolean",
-            "example": true
-          },
-          "enabledAt": {
-            "type": "string",
-            "nullable": true,
-            "example": "2026-11-03T10:00:00Z"
-          }
-        },
-        "required": [
-          "enabled"
-        ]
-      },
-      "SetOwlSettingDto": {
-        "type": "object",
-        "properties": {
-          "enabled": {
-            "type": "boolean",
-            "example": true
-          }
-        },
-        "required": [
-          "enabled"
-        ]
-      },
-      "OwlPathDto": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "example": "Tagespauschale ansetzen"
-          },
-          "amountEur": {
-            "type": "number",
-            "example": 300
-          },
-          "description": {
-            "type": "string",
-            "example": "Einfacher Nachweis ohne separates Arbeitszimmer"
-          },
-          "risk": {
-            "type": "string",
-            "enum": [
-              "sicher",
-              "risiko"
-            ],
-            "example": "sicher"
-          }
-        },
-        "required": [
-          "name",
-          "amountEur",
-          "description",
-          "risk"
-        ]
-      },
-      "OwlCardDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "example": "eule-ra-homeoffice-2025"
-          },
-          "fingerprint": {
-            "type": "string",
-            "example": "1234abcd5678efgh"
-          },
-          "trigger": {
-            "type": "string",
-            "enum": [
-              "musterluecke",
-              "vorjahresvergleich",
-              "rechtsaenderung",
-              "lebenslage_hinweis"
-            ]
-          },
-          "category": {
-            "type": "string",
-            "enum": [
-              "cockpit_proaktiv",
-              "abruf_frage",
-              "archiv_einspruch"
-            ]
-          },
-          "title": {
-            "type": "string",
-            "example": "Homeoffice-Tagespauschale 6 €"
-          },
-          "message": {
-            "type": "string",
-            "example": "Du hast 50 Tage im Homeoffice gearbeitet."
-          },
-          "reason": {
-            "type": "string",
-            "example": "weil der Gesetzgeber die Pauschale dauerhaft angehoben hat."
-          },
-          "amountEur": {
-            "type": "number",
-            "nullable": true,
-            "example": 300
-          },
-          "legalStatusDate": {
-            "type": "string",
-            "example": "01.01.2025"
-          },
-          "sourceTranslated": {
-            "type": "string",
-            "example": "Jahressteuergesetz § 4 Abs. 5 Satz 1 Nr. 6b EStG"
-          },
-          "sourceUrl": {
-            "type": "string",
-            "example": "https://..."
-          },
-          "paths": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/OwlPathDto"
-            }
-          },
-          "appealDeadline": {
-            "type": "string",
-            "example": "01.10.2025"
-          }
-        },
-        "required": [
-          "id",
-          "fingerprint",
-          "trigger",
-          "category",
-          "title",
-          "message",
-          "reason",
-          "legalStatusDate",
-          "sourceTranslated"
-        ]
-      },
-      "OwlCardsResponseDto": {
-        "type": "object",
-        "properties": {
-          "enabled": {
-            "type": "boolean",
-            "example": true
-          },
-          "cards": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/OwlCardDto"
-            }
-          },
-          "legalStatus": {
-            "type": "string",
-            "example": "01.01.2025"
-          }
-        },
-        "required": [
-          "enabled",
-          "cards",
-          "legalStatus"
-        ]
-      },
-      "AdvisorActionProposalDto": {
-        "type": "object",
-        "properties": {
-          "actionId": {
-            "type": "string",
-            "example": "act-1730970000"
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "pending",
-              "applied",
-              "dismissed",
-              "undone"
-            ],
-            "example": "pending"
-          },
-          "screen": {
-            "type": "string",
-            "enum": [
-              "profil",
-              "stammdaten",
-              "kopplung",
-              "interview",
-              "lstb",
-              "chLohnausweis",
-              "rente",
-              "kapital",
-              "vermietung",
-              "kind"
-            ],
-            "example": "interview"
-          },
-          "field": {
-            "type": "string",
-            "example": "spenden-betrag"
-          },
-          "instance": {
-            "type": "string",
-            "nullable": true,
-            "example": null
-          },
-          "companionFields": {
-            "type": "object",
-            "additionalProperties": {
-              "type": "string"
-            }
-          },
-          "label": {
-            "type": "string",
-            "example": "Spenden & Zuwendungen (Sonderausgaben)"
-          },
-          "previousValue": {
-            "type": "string",
-            "nullable": true,
-            "example": "0 €"
-          },
-          "newValue": {
-            "type": "string",
-            "example": "250"
-          },
-          "beforeRefundEur": {
-            "type": "number",
-            "example": 840
-          },
-          "afterRefundEur": {
-            "type": "number",
-            "example": 925
-          },
-          "deltaEur": {
-            "type": "number",
-            "example": 85
-          },
-          "reason": {
-            "type": "string",
-            "example": "Sonderausgabenabzug nach § 10b EStG."
-          },
-          "sourceId": {
-            "type": "string",
-            "enum": [
-              "estg-4-5-6c",
-              "estg-9-1",
-              "estg-9-1-4a",
-              "estg-9-1-6",
-              "estg-9-4a",
-              "estg-9-6",
-              "estg-10b",
-              "estg-10-1-5",
-              "ao-355"
-            ],
-            "example": "estg-10b"
-          }
-        },
-        "required": [
-          "actionId",
-          "status",
-          "screen",
-          "field",
-          "label",
-          "newValue",
-          "beforeRefundEur",
-          "afterRefundEur",
-          "deltaEur",
-          "reason",
-          "sourceId"
-        ]
-      },
-      "AdvisorMaxPathProposalDto": {
-        "type": "object",
-        "properties": {
-          "actionId": {
-            "type": "string",
-            "example": "act-1730970000"
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "pending",
-              "applied",
-              "dismissed",
-              "undone"
-            ],
-            "example": "pending"
-          },
-          "screen": {
-            "type": "string",
-            "enum": [
-              "profil",
-              "stammdaten",
-              "kopplung",
-              "interview",
-              "lstb",
-              "chLohnausweis",
-              "rente",
-              "kapital",
-              "vermietung",
-              "kind"
-            ],
-            "example": "interview"
-          },
-          "field": {
-            "type": "string",
-            "example": "spenden-betrag"
-          },
-          "instance": {
-            "type": "string",
-            "nullable": true,
-            "example": null
-          },
-          "companionFields": {
-            "type": "object",
-            "additionalProperties": {
-              "type": "string"
-            }
-          },
-          "label": {
-            "type": "string",
-            "example": "Spenden & Zuwendungen (Sonderausgaben)"
-          },
-          "previousValue": {
-            "type": "string",
-            "nullable": true,
-            "example": "0 €"
-          },
-          "newValue": {
-            "type": "string",
-            "example": "250"
-          },
-          "beforeRefundEur": {
-            "type": "number",
-            "example": 840
-          },
-          "afterRefundEur": {
-            "type": "number",
-            "example": 925
-          },
-          "deltaEur": {
-            "type": "number",
-            "example": 85
-          },
-          "reason": {
-            "type": "string",
-            "example": "Sonderausgabenabzug nach § 10b EStG."
-          },
-          "sourceId": {
-            "type": "string",
-            "enum": [
-              "estg-4-5-6c",
-              "estg-9-1",
-              "estg-9-1-4a",
-              "estg-9-1-6",
-              "estg-9-4a",
-              "estg-9-6",
-              "estg-10b",
-              "estg-10-1-5",
-              "ao-355"
-            ],
-            "example": "estg-10b"
-          },
-          "evidenceHint": {
-            "type": "string",
-            "example": "Nachweis-Hinweis: Das Finanzamt kann eine kurze Bestätigung des Arbeitgebers anfordern."
-          }
-        },
-        "required": [
-          "actionId",
-          "status",
-          "screen",
-          "field",
-          "label",
-          "newValue",
-          "beforeRefundEur",
-          "afterRefundEur",
-          "deltaEur",
-          "reason",
-          "sourceId",
-          "evidenceHint"
-        ]
-      },
-      "AdvisorTwoPathsProposalDto": {
-        "type": "object",
-        "properties": {
-          "title": {
-            "type": "string",
-            "example": "Zwei-Wege-Empfehlung: Homeoffice & Arbeitszimmer"
-          },
-          "safePath": {
-            "$ref": "#/components/schemas/AdvisorActionProposalDto"
-          },
-          "maxPath": {
-            "$ref": "#/components/schemas/AdvisorMaxPathProposalDto"
-          },
-          "sourceId": {
-            "type": "string",
-            "enum": [
-              "estg-4-5-6c",
-              "estg-9-1",
-              "estg-9-1-4a",
-              "estg-9-1-6",
-              "estg-9-4a",
-              "estg-9-6",
-              "estg-10b",
-              "estg-10-1-5",
-              "ao-355"
-            ],
-            "example": "estg-4-5-6c"
-          }
-        },
-        "required": [
-          "title",
-          "safePath",
-          "maxPath",
-          "sourceId"
-        ]
-      },
-      "AdvisorMessageMetaDto": {
-        "type": "object",
-        "properties": {
-          "choices": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "action": {
-            "$ref": "#/components/schemas/AdvisorActionProposalDto"
-          },
-          "twoPaths": {
-            "$ref": "#/components/schemas/AdvisorTwoPathsProposalDto"
-          },
-          "sources": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "enum": [
-                "estg-4-5-6c",
-                "estg-9-1",
-                "estg-9-1-4a",
-                "estg-9-1-6",
-                "estg-9-4a",
-                "estg-9-6",
-                "estg-10b",
-                "estg-10-1-5",
-                "ao-355"
-              ]
-            }
-          }
-        }
-      },
-      "AdvisorChatMessageDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "example": "msg-123"
-          },
-          "role": {
-            "type": "string",
-            "enum": [
-              "user",
-              "assistant"
-            ],
-            "example": "assistant"
-          },
-          "content": {
-            "type": "string",
-            "example": "Ich habe deine Akte 2025 geprüft."
-          },
-          "meta": {
-            "nullable": true,
-            "type": "object",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/AdvisorMessageMetaDto"
-              }
-            ]
-          },
-          "createdAt": {
-            "type": "string",
-            "example": "2026-11-07T09:00:00.000Z"
-          }
-        },
-        "required": [
-          "id",
-          "role",
-          "content",
-          "createdAt"
-        ]
-      },
-      "AdvisorLegalSourceDto": {
-        "type": "object",
-        "properties": {
-          "sourceId": {
-            "type": "string",
-            "enum": [
-              "estg-4-5-6c",
-              "estg-9-1",
-              "estg-9-1-4a",
-              "estg-9-1-6",
-              "estg-9-4a",
-              "estg-9-6",
-              "estg-10b",
-              "estg-10-1-5",
-              "ao-355"
-            ],
-            "example": "estg-9-1-4a"
-          },
-          "paragraph": {
-            "type": "string",
-            "example": "§ 9 Abs. 1 Nr. 4a EStG"
-          },
-          "title": {
-            "type": "string",
-            "example": "Reise- und Fahrtkosten bei Auswärtstätigkeit"
-          },
-          "summary": {
-            "type": "string",
-            "example": "Fahrten zu einer Fortbildungsstätte sind mit 0,30 € pro gefahrenem Kilometer absetzbar."
-          },
-          "legalStatusDate": {
-            "type": "string",
-            "example": "01.01.2025"
-          },
-          "url": {
-            "type": "string",
-            "example": "https://www.gesetze-im-internet.de/estg/__9.html"
-          }
-        },
-        "required": [
-          "sourceId",
-          "paragraph",
-          "title",
-          "summary",
-          "legalStatusDate",
-          "url"
-        ]
-      },
-      "AdvisorSessionResponseDto": {
-        "type": "object",
-        "properties": {
-          "enabled": {
-            "type": "boolean",
-            "example": true
-          },
-          "greeting": {
-            "type": "string",
-            "example": "Hallo! Ich habe deine Akte 2025 durchgesehen. Wollen wir die offenen Punkte gemeinsam durchgehen?"
-          },
-          "openCards": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/OwlCardDto"
-            }
-          },
-          "messages": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/AdvisorChatMessageDto"
-            }
-          },
-          "quickChips": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "legalSources": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/AdvisorLegalSourceDto"
-            }
-          }
-        },
-        "required": [
-          "enabled",
-          "greeting",
-          "openCards",
-          "messages",
-          "quickChips",
-          "legalSources"
-        ]
-      },
-      "SendAdvisorMessageDto": {
-        "type": "object",
-        "properties": {
-          "message": {
-            "type": "string",
-            "example": "Ich hatte dieses Jahr eine Fortbildung."
-          },
-          "activeScreen": {
-            "type": "string",
-            "enum": [
-              "profil",
-              "stammdaten",
-              "kopplung",
-              "interview",
-              "lstb",
-              "chLohnausweis",
-              "rente",
-              "kapital",
-              "vermietung",
-              "kind"
-            ],
-            "example": "interview"
-          }
-        },
-        "required": [
-          "message"
-        ]
-      },
-      "SendAdvisorMessageResponseDto": {
-        "type": "object",
-        "properties": {
-          "userMessage": {
-            "$ref": "#/components/schemas/AdvisorChatMessageDto"
-          },
-          "assistantMessage": {
-            "$ref": "#/components/schemas/AdvisorChatMessageDto"
-          }
-        },
-        "required": [
-          "userMessage",
-          "assistantMessage"
-        ]
-      },
-      "AdvisorActionMutationResponseDto": {
-        "type": "object",
-        "properties": {
-          "message": {
-            "$ref": "#/components/schemas/AdvisorChatMessageDto"
-          },
-          "action": {
-            "$ref": "#/components/schemas/AdvisorActionProposalDto"
-          }
-        },
-        "required": [
-          "message",
-          "action"
         ]
       }
     }

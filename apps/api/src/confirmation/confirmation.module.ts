@@ -1,7 +1,11 @@
 import { Module } from '@nestjs/common'
+import { ASSESSMENT_REPOSITORY, type AssessmentRepository } from '../assessment/assessment.repository.js'
+import { AssessmentModule } from '../assessment/assessment.module.js'
 import { AuditModule } from '../audit/audit.module.js'
 import { CAPITAL_REPOSITORY, type CapitalRepository } from '../capital/capital.repository.js'
 import { CapitalModule } from '../capital/capital.module.js'
+import { COMMUTE_REPOSITORY, type CommuteRepository } from '../commute/commute.repository.js'
+import { CommuteModule } from '../commute/commute.module.js'
 import { MarkingModule } from '../marking/marking.module.js'
 import { WAGE_TAX_CERTIFICATE_REPOSITORY, type WageTaxCertificateRepository } from '../lstb/lstb.repository.js'
 import { LstbModule } from '../lstb/lstb.module.js'
@@ -39,6 +43,8 @@ import { FIELD_ACCESS, fieldAccessFrom } from './field-access.js'
     InterviewModule,
     ChSalaryCertificateModule,
     ChildrenModule,
+    CommuteModule,
+    AssessmentModule,
   ],
   controllers: [ConfirmationController],
   providers: [
@@ -56,6 +62,8 @@ import { FIELD_ACCESS, fieldAccessFrom } from './field-access.js'
         INTERVIEW_ANSWER_REPOSITORY,
         CROSS_BORDER_SALARY_STATEMENT_REPOSITORY,
         CHILD_REPOSITORY,
+        COMMUTE_REPOSITORY,
+        ASSESSMENT_REPOSITORY,
       ],
       useFactory: (
         lstb: WageTaxCertificateRepository,
@@ -68,6 +76,8 @@ import { FIELD_ACCESS, fieldAccessFrom } from './field-access.js'
         interview: InterviewAnswerRepository,
         chSalaryCertificate: CrossBorderSalaryStatementRepository,
         child: ChildRepository,
+        commute: CommuteRepository,
+        assessment: AssessmentRepository,
       ) =>
         fieldAccessFrom({
           lstb,
@@ -80,6 +90,8 @@ import { FIELD_ACCESS, fieldAccessFrom } from './field-access.js'
           interview,
           chSalaryCertificate,
           child,
+          commute,
+          assessment,
         }),
     },
   ],

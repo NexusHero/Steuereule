@@ -1,10 +1,13 @@
 // Fast, no-DB unit tier (ADR-0004): BestaetigungService against the fake repositories. The
 // real-Postgres proofs live in test/acceptance/req-032-herkunft-bestaetigung.test.ts.
 import { beforeEach, describe, expect, it } from 'vitest'
+import { ForbiddenError } from '../src/common/domain-error.js'
 import { ConfirmationService } from '../src/confirmation/confirmation.service.js'
 import { fieldAccessFrom } from '../src/confirmation/field-access.js'
+import { FakeAssessmentRepository } from './fakes/fake-assessment.repository.js'
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
 import { FakeCapitalRepository } from './fakes/fake-capital.repository.js'
+import { FakeCommuteRepository } from './fakes/fake-commute.repository.js'
 import { FakeMarkingRepository } from './fakes/fake-marking.repository.js'
 import { FakeLstbRepository } from './fakes/fake-lstb.repository.js'
 import { FakePensionRepository } from './fakes/fake-pension.repository.js'
@@ -32,6 +35,8 @@ describe('BestaetigungService', () => {
   let interview: FakeInterviewAnswerRepository
   let chSalary: FakeChSalaryCertificateRepository
   let child: FakeChildRepository
+  let commute: FakeCommuteRepository
+  let assessment: FakeAssessmentRepository
   let service: ConfirmationService
 
   beforeEach(() => {
@@ -45,6 +50,8 @@ describe('BestaetigungService', () => {
     interview = new FakeInterviewAnswerRepository()
     chSalary = new FakeChSalaryCertificateRepository()
     child = new FakeChildRepository()
+    commute = new FakeCommuteRepository()
+    assessment = new FakeAssessmentRepository()
 
     const access = fieldAccessFrom({
       lstb,
@@ -57,6 +64,8 @@ describe('BestaetigungService', () => {
       interview,
       chSalaryCertificate: chSalary,
       child,
+      commute,
+      assessment,
     })
     service = new ConfirmationService(markings, access, new AuditService(new FakeAuditRepository()))
   })
@@ -178,5 +187,50 @@ describe('BestaetigungService', () => {
     expect(await service.write(USER, YEAR, `kind:${newChild.id}.kinship`, '1', CLAUDE)).toBe('geschrieben')
     const kids = await child.listForUserAndYear(USER, YEAR)
     expect(kids[0]?.kinship).toBe('1')
+  })
+
+  it('supports advisor-confirmed writes and reads for commute (excluding PII workplace) and assessment', async () => {
+    const resKm = await service.writeConfirmedByAdvisor(USER, YEAR, 'commute.oneWayKm', '32')
+    expect(resKm.previousValue).toBeNull()
+    const resHo = await service.writeConfirmedByAdvisor(USER, YEAR, 'commute.homeOfficeDays', '120')
+    expect(resHo.previousValue).toBe('0')
+
+    const savedCommute = await commute.findForUserAndYear(USER, YEAR)
+    expect(savedCommute?.oneWayKm).toBe(32)
+    expect(savedCommute?.homeOfficeDays).toBe(120)
+    expect(await service.readRawValue(USER, YEAR, 'commute.oneWayKm')).toBe('32')
+
+    // PII workplace address must never be writable via fieldAccess
+    await expect(service.writeConfirmedByAdvisor(USER, YEAR, 'commute.workplace', 'Secret St 1')).rejects.toMatchObject({
+      code: 'FIELD_NOT_WRITABLE',
+    })
+
+    // Contradictory days off must be rejected
+    await expect(service.writeConfirmedByAdvisor(USER, YEAR, 'commute.vacationDays', '300')).rejects.toMatchObject({
+      code: 'ARBEITSTAGE_WIDERSPRUCH',
+    })
+
+    // Assessment fields + date
+    await service.writeConfirmedByAdvisor(USER, YEAR, 'assessment.festgesetzteSteuer', '11450')
+    await service.writeConfirmedByAdvisor(USER, YEAR, 'assessment.assessmentDate', '2026-06-15')
+    const savedAssessment = await assessment.findForUserAndYear(USER, YEAR)
+    expect(savedAssessment?.fields.festgesetzteSteuer).toBe('11450')
+    expect(savedAssessment?.assessmentDate).toBe('2026-06-15')
+    expect(await service.readRawValue(USER, YEAR, 'assessment.festgesetzteSteuer')).toBe('11450')
+  })
+
+  it('enforces hard AI_WRITE_FORBIDDEN lock on profil, stammdaten, and kopplung in advisor write & restore paths', async () => {
+    for (const key of ['profil.firstName', 'stammdaten.iban', 'kopplung.filingType']) {
+      await expect(service.writeConfirmedByAdvisor(USER, YEAR, key, 'tampered')).rejects.toBeInstanceOf(ForbiddenError)
+      await expect(service.writeConfirmedByAdvisor(USER, YEAR, key, 'tampered')).rejects.toMatchObject({
+        code: 'AI_WRITE_FORBIDDEN',
+      })
+      await expect(service.restoreValueByAdvisor(USER, YEAR, key, null)).rejects.toMatchObject({
+        code: 'AI_WRITE_FORBIDDEN',
+      })
+    }
+    expect(await profile.findByUserId(USER)).toBeNull()
+    expect(await masterData.findByUserId(USER)).toBeNull()
+    expect(await link.findByUserAndYear(USER, YEAR)).toBeNull()
   })
 })

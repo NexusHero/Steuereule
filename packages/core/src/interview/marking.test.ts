@@ -44,6 +44,8 @@ describe('anlageVon — every mask belongs to exactly one Anlage', () => {
     ['kapital.kapitalertraege', 'anlageKap'],
     ['vermietung:o1.mieteinnahmen', 'anlageV'],
     ['kind:k1.vorname', 'anlageKind'],
+    ['commute.oneWayKm', 'anlageN'],
+    ['assessment.festgesetzteSteuer', 'hauptvordruck'],
   ])('%s → %s', (key, annex) => {
     expect(annexOf(key)).toBe(annex)
   })

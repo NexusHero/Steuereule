@@ -5,7 +5,7 @@ import type { Screen } from './marking'
 import type { Profession } from './interview'
 import { taxEstimateCrossBorder, taxEstimateEmployee } from '../engine/tax-estimate'
 
-export type AdvisorActionStatus = 'pending' | 'applied' | 'dismissed' | 'undone'
+export type AdvisorActionStatus = 'pending' | 'applied' | 'dismissed' | 'superseded' | 'undone'
 
 export interface AdvisorLegalSource {
   readonly sourceId: OwlSourceId
@@ -109,12 +109,14 @@ export interface AdvisorActionProposal {
   readonly companionFields?: Readonly<Record<string, string>> | undefined
   readonly label: string
   readonly previousValue: string | null
+  readonly expectedPreviousValue?: string | null | undefined
   readonly newValue: string
   readonly beforeRefundEur: number
   readonly afterRefundEur: number
   readonly deltaEur: number
   readonly reason: string
   readonly sourceId: OwlSourceId
+  readonly paragraph?: string | undefined
 }
 
 export interface AdvisorTwoPathsProposal {
@@ -289,6 +291,10 @@ function readCurrentValueFromDigest(digest: CaseDigest, screen: Screen, field: s
     if (field === 'lohnsteuer') return digest.lstbPersonA.wageTaxEur !== null ? String(digest.lstbPersonA.wageTaxEur) : null
     if (field === 'sozialversicherung') return digest.lstbPersonA.socialSecurityEur !== null ? String(digest.lstbPersonA.socialSecurityEur) : null
   }
+  if (screen === 'commute') {
+    if (field === 'oneWayKm') return digest.commuteAndWorkdays.distanceKm !== null ? String(digest.commuteAndWorkdays.distanceKm) : null
+    if (field === 'homeOfficeDays') return digest.commuteAndWorkdays.homeOfficeDays !== null ? String(digest.commuteAndWorkdays.homeOfficeDays) : null
+  }
   if (screen === 'chLohnausweis') {
     if (field === 'krankenkasseChf') return digest.crossBorder.healthInsuranceChf !== null ? String(digest.crossBorder.healthInsuranceChf) : null
     if (field === 'krankentaggeldChf') return digest.crossBorder.dailySicknessBenefitChf !== null ? String(digest.crossBorder.dailySicknessBenefitChf) : null
@@ -301,6 +307,31 @@ function applyCandidateToDigest(digest: CaseDigest, screen: Screen, field: strin
   const num = Number.parseInt(newValue.replace(/[^\d-]/g, ''), 10)
   const parsedNum = Number.isFinite(num) ? num : 0
 
+  if (screen === 'lstb') {
+    if (field === 'bruttoarbeitslohn') {
+      return { ...digest, lstbPersonA: { ...digest.lstbPersonA, grossWageEur: Math.max(0, parsedNum) } }
+    }
+    if (field === 'lohnsteuer') {
+      return { ...digest, lstbPersonA: { ...digest.lstbPersonA, wageTaxEur: Math.max(0, parsedNum) } }
+    }
+    if (field === 'sozialversicherung') {
+      return { ...digest, lstbPersonA: { ...digest.lstbPersonA, socialSecurityEur: Math.max(0, parsedNum) } }
+    }
+  }
+  if (screen === 'commute') {
+    if (field === 'oneWayKm') {
+      return {
+        ...digest,
+        commuteAndWorkdays: { ...digest.commuteAndWorkdays, distanceKm: Math.max(0, parsedNum) },
+      }
+    }
+    if (field === 'homeOfficeDays') {
+      return {
+        ...digest,
+        commuteAndWorkdays: { ...digest.commuteAndWorkdays, homeOfficeDays: Math.max(0, parsedNum) },
+      }
+    }
+  }
   if (screen === 'interview') {
     if (field === 'spenden-betrag') {
       return { ...digest, catalogExpenses: { ...digest.catalogExpenses, donationsEur: parsedNum } }
@@ -439,6 +470,33 @@ const STBERG_OUT_OF_SCOPE_PATTERNS = [
   /\b(verbindliche\s+rechtsauskunft|rechtsverbindliche\s+beratung)\b/i,
 ]
 
+export function checkAdvisorInputBoundary(message: string): {
+  readonly replyText: string
+  readonly meta: AdvisorMessageMeta
+} | null {
+  if (PROMPT_INJECTION_PATTERNS.some((rx) => rx.test(message)) || OFF_TOPIC_PATTERNS.some((rx) => rx.test(message))) {
+    return {
+      replyText:
+        'Ich bin deine SteuerEule und ausschließlich auf deine Einkommensteuererklärung (Anlage N, Anlage N-Gre, Sonderausgaben, Kinder, Kapital und Vermietung) spezialisiert. Systeminterne Anweisungen, Schlüssel oder steuerfremde Themen gebe ich grundsätzlich nicht aus. Wollen wir stattdessen deine offenen Steuer-Hinweise durchgehen?',
+      meta: {
+        choices: ['Kanzlei-Endprüfung starten', 'Homeoffice-Pauschale prüfen', 'Spenden aus dem Vorjahr prüfen'],
+      },
+    }
+  }
+
+  if (STBERG_OUT_OF_SCOPE_PATTERNS.some((rx) => rx.test(message))) {
+    return {
+      replyText:
+        'Dieser Bereich (Gewerbesteuer, Bilanzierung, Umsatzsteuervoranmeldung, Erbschaftsteuer oder eine rechtsverbindliche Einzelfallberatung nach dem Steuerberatungsgesetz) liegt außerhalb des Unterstützungsrahmens von SteuerEule. Für diese Sachverhalte wende dich bitte an eine Steuerberaterin, einen Steuerberater oder einen Lohnsteuerhilfeverein. Für deine private Einkommensteuererklärung (Anlage N, N-Gre, R, KAP, V, Kind und Sonderausgaben) helfe ich dir gerne weiter.',
+      meta: {
+        choices: ['Kanzlei-Endprüfung starten', 'Homeoffice-Pauschale prüfen', 'Spenden aus dem Vorjahr prüfen'],
+      },
+    }
+  }
+
+  return null
+}
+
 /**
  * Deterministic Kanzlei-Steuerberater engine ("Deine Eule").
  * Handles multi-turn Anamnese (clickable follow-up pills), Two-Paths comparisons,
@@ -457,27 +515,9 @@ export function evaluateAdvisorTurn(input: {
   const makeActionId = input.actionIdFactory ?? (() => `act-${Date.now()}`)
   const lower = message.toLowerCase()
 
-  // 1. Security & Scope Guardrail (Prompt Injection / Off-topic)
-  if (PROMPT_INJECTION_PATTERNS.some((rx) => rx.test(message)) || OFF_TOPIC_PATTERNS.some((rx) => rx.test(message))) {
-    return {
-      replyText:
-        'Ich bin deine SteuerEule und ausschließlich auf deine Einkommensteuererklärung (Anlage N, Anlage N-Gre, Sonderausgaben, Kinder, Kapital und Vermietung) spezialisiert. Systeminterne Anweisungen, Schlüssel oder steuerfremde Themen gebe ich grundsätzlich nicht aus. Wollen wir stattdessen deine offenen Steuer-Hinweise durchgehen?',
-      meta: {
-        choices: ['Kanzlei-Endprüfung starten', 'Homeoffice-Pauschale prüfen', 'Spenden aus dem Vorjahr prüfen'],
-      },
-    }
-  }
-
-  // 1b. StBerG & Scope Boundary (Gewerbesteuer, Bilanzierung, UStVA, Erbschaftsteuer, verbindliche Rechtsauskunft)
-  if (STBERG_OUT_OF_SCOPE_PATTERNS.some((rx) => rx.test(message))) {
-    return {
-      replyText:
-        'Dieser Bereich (Gewerbesteuer, Bilanzierung, Umsatzsteuervoranmeldung, Erbschaftsteuer oder eine rechtsverbindliche Einzelfallberatung nach dem Steuerberatungsgesetz) liegt außerhalb des Unterstützungsrahmens von SteuerEule. Für diese Sachverhalte wende dich bitte an eine Steuerberaterin, einen Steuerberater oder einen Lohnsteuerhilfeverein. Für deine private Einkommensteuererklärung (Anlage N, N-Gre, R, KAP, V, Kind und Sonderausgaben) helfe ich dir gerne weiter.',
-      meta: {
-        choices: ['Kanzlei-Endprüfung starten', 'Homeoffice-Pauschale prüfen', 'Spenden aus dem Vorjahr prüfen'],
-      },
-    }
-  }
+  // 1. Security, Off-Topic & StBerG Scope Guardrail
+  const blocked = checkAdvisorInputBoundary(message)
+  if (blocked !== null) return blocked
 
   // 2. Kanzlei-Endprüfung (holistic pre-printout review)
   if (
@@ -547,12 +587,14 @@ export function evaluateAdvisorTurn(input: {
             companionFields: { spenden: 'Ja' },
             label: 'Spenden & Zuwendungen (Sonderausgaben)',
             previousValue: sim.previousValue ? `${sim.previousValue} €` : '0 €',
+            expectedPreviousValue: sim.previousValue,
             newValue: String(targetAmount),
             beforeRefundEur: sim.beforeRefundEur,
             afterRefundEur: sim.afterRefundEur,
             deltaEur: sim.deltaEur,
             reason: 'Sonderausgabenabzug nach § 10b EStG mindert das zu versteuernde Einkommen ab dem ersten Euro über dem Pauschbetrag (36 €).',
             sourceId: 'estg-10b',
+            paragraph: ADVISOR_LEGAL_SOURCES['estg-10b'].paragraph,
           },
         },
       }
@@ -591,12 +633,14 @@ export function evaluateAdvisorTurn(input: {
             instance: null,
             label: 'Weg A (Sicher): Homeoffice 1–2 Tage/Woche',
             previousValue: digest.commuteAndWorkdays.homeOfficeAnswer ?? 'Nie',
+            expectedPreviousValue: safeSim.previousValue,
             newValue: '1–2 Tage pro Woche',
             beforeRefundEur: safeSim.beforeRefundEur,
             afterRefundEur: safeSim.afterRefundEur,
             deltaEur: safeSim.deltaEur,
             reason: '6 € Tagespauschale ohne Nachweis eines separaten Arbeitszimmers (§ 4 Abs. 5 Nr. 6c EStG).',
             sourceId: 'estg-4-5-6c',
+            paragraph: ADVISOR_LEGAL_SOURCES['estg-4-5-6c'].paragraph,
           },
           maxPath: {
             actionId: `${makeActionId()}-max`,
@@ -606,6 +650,7 @@ export function evaluateAdvisorTurn(input: {
             instance: null,
             label: 'Weg B (Maximal): Fast immer im Homeoffice (bis 1.260 €)',
             previousValue: digest.commuteAndWorkdays.homeOfficeAnswer ?? 'Nie',
+            expectedPreviousValue: maxSim.previousValue,
             newValue: 'Fast immer',
             beforeRefundEur: maxSim.beforeRefundEur,
             afterRefundEur: maxSim.afterRefundEur,
@@ -613,6 +658,7 @@ export function evaluateAdvisorTurn(input: {
             reason: 'Volle Ausschöpfung der 210 Homeoffice-Tage (1.260 € Werbungskosten).',
             evidenceHint: 'Nachweis-Hinweis: Das Finanzamt kann bei fast ausschließlichem Homeoffice eine kurze Bestätigung des Arbeitgebers anfordern.',
             sourceId: 'estg-4-5-6c',
+            paragraph: ADVISOR_LEGAL_SOURCES['estg-4-5-6c'].paragraph,
           },
         },
       },
@@ -650,12 +696,14 @@ export function evaluateAdvisorTurn(input: {
             instance: null,
             label: 'Berufliche Fortbildungskosten aktivieren',
             previousValue: digest.catalogExpenses.hasTraining ? 'Ja' : 'Nein',
+            expectedPreviousValue: sim.previousValue,
             newValue: 'Ja',
             beforeRefundEur: sim.beforeRefundEur,
             afterRefundEur: sim.afterRefundEur,
             deltaEur: sim.deltaEur,
             reason: 'Berücksichtigung von Kursgebühren, Reisekosten (§ 9 Abs. 1 Nr. 4a EStG) und Verpflegungsmehraufwand (§ 9 Abs. 4a EStG).',
             sourceId: 'estg-9-1-4a',
+            paragraph: ADVISOR_LEGAL_SOURCES['estg-9-1-4a'].paragraph,
           },
         },
       }
@@ -708,12 +756,14 @@ export function evaluateAdvisorTurn(input: {
             instance: null,
             label: 'Berufliche Arbeitsmittel & Fortbildung in Anlage N berücksichtigen',
             previousValue: digest.catalogExpenses.hasTraining ? 'Ja' : 'Nein',
+            expectedPreviousValue: sim.previousValue,
             newValue: 'Ja',
             beforeRefundEur: sim.beforeRefundEur,
             afterRefundEur: sim.afterRefundEur,
             deltaEur: sim.deltaEur,
             reason: 'Sofortabschreibung beruflicher Arbeitsmittel nach § 9 Abs. 1 Satz 3 Nr. 6 EStG.',
             sourceId: 'estg-9-1-6',
+            paragraph: ADVISOR_LEGAL_SOURCES['estg-9-1-6'].paragraph,
           },
         },
       }
@@ -749,12 +799,14 @@ export function evaluateAdvisorTurn(input: {
           companionFields: { umzug: 'Ja' },
           label: 'Berufliche Umzugskosten (Anlage N)',
           previousValue: sim.previousValue ? `${sim.previousValue} €` : '0 €',
+          expectedPreviousValue: sim.previousValue,
           newValue: String(amount),
           beforeRefundEur: sim.beforeRefundEur,
           afterRefundEur: sim.afterRefundEur,
           deltaEur: sim.deltaEur,
           reason: 'Werbungskostenabzug für beruflich veranlasste Umzugskosten (§ 9 Abs. 1 EStG).',
           sourceId: 'estg-9-1',
+          paragraph: ADVISOR_LEGAL_SOURCES['estg-9-1'].paragraph,
         },
       },
     }
@@ -777,12 +829,14 @@ export function evaluateAdvisorTurn(input: {
             instance: null,
             label: 'Einfacher Arbeitsweg (Entfernungspauschale)',
             previousValue: sim.previousValue ? `${sim.previousValue} km` : 'Nicht erfasst',
+            expectedPreviousValue: sim.previousValue,
             newValue: String(km),
             beforeRefundEur: sim.beforeRefundEur,
             afterRefundEur: sim.afterRefundEur,
             deltaEur: sim.deltaEur,
             reason: 'Entfernungspauschale (0,30 € bis 20 km, 0,38 € ab dem 21. km) nach § 9 Abs. 1 EStG.',
             sourceId: 'estg-9-1',
+            paragraph: ADVISOR_LEGAL_SOURCES['estg-9-1'].paragraph,
           },
         },
       }
@@ -813,12 +867,14 @@ export function evaluateAdvisorTurn(input: {
             instance: null,
             label: 'Schweizer Krankenversicherung (CHF)',
             previousValue: sim.previousValue ? `${sim.previousValue} CHF` : 'Nicht erfasst',
+            expectedPreviousValue: sim.previousValue,
             newValue: String(chfAmount),
             beforeRefundEur: sim.beforeRefundEur,
             afterRefundEur: sim.afterRefundEur,
             deltaEur: sim.deltaEur,
             reason: 'Berücksichtigung der Basis-Krankenversicherung für Grenzgänger in der Anlage Vorsorgeaufwand / N-Gre.',
             sourceId: 'estg-9-1',
+            paragraph: ADVISOR_LEGAL_SOURCES['estg-9-1'].paragraph,
           },
         },
       }

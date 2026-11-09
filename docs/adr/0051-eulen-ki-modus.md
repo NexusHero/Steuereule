@@ -25,6 +25,8 @@ SteuerEule soll über den rein reaktiven Vorschlags-Helfer hinauswachsen und im 
    - Anfragen an den LLM-Adapter werden strikt anonymisiert (nur aggregierte Posten und anonyme Metadaten).
    - Bei fehlendem API-Schlüssel liefert der deterministische Fallback exakt dieselben fundierten Regelsätze.
 
-3. **UI (`apps/mobile-web`):**
-   - Berater-Screen mit Segmented Control („Fragen an Berater" vs. „Eule fragt dich").
-   - Violette Signalfarbe (`--ki`) ausschließlich für KI-Meinungen.
+3. **UI (`apps/mobile-web`) — Update `#446` (Cockpit ↔ Eulen-Modus Split-Pane App-Agent):**
+   - **Strikte Modus-Trennung:** Das **Cockpit** (`Cockpit`, `Belege`, `Profil`) bleibt ruhig ohne permanente Sidebars, Docks oder Diff-Overlays. Der aktive Co-Pilot lebt im dedizierten **Eulen-Modus** (`🦉 Eule` / Kachel im Cockpit).
+   - **3-Breakpoint-Workbench (`OwlModeScreen`):** Desktop (62 % linke Werkbank mit Artefakten/Diff-Review & inline Fachmasken / 38 % KI-Chat rechts), Tablet (Split-View/Slide-Over-Drawer) und Mobile (maximierter Chat mit 20-%-Mini-Dock unten).
+   - **Drafts, Stale-Check & Hard-Lock:** Entwürfe (`pending` / `superseded` / `applied` / `undone`) werden mit `expectedPreviousValue` per Stale-Check (`409`) einzeln oder per `apply-batch` atomar übernommen; `profil`, `stammdaten` und `kopplung` sind per `403 AI_WRITE_FORBIDDEN` hart für die KI gesperrt.
+   - Violette Signalfarbe (`--ki`) ausschließlich für KI-Meinungen; Theme-Tokens konsequent über `useTheme()` (`tokens.dark`-kompatibel).

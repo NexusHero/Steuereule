@@ -19,6 +19,7 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger'
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler'
+import type { AdvisorStreamEvent } from '@steuereule/core'
 import type { FastifyReply } from 'fastify'
 
 @Injectable()
@@ -40,6 +41,8 @@ import { AdvisorService } from './advisor.service.js'
 import {
   AdvisorActionMutationResponseDto,
   AdvisorSessionResponseDto,
+  ApplyBatchActionsDto,
+  ApplyBatchActionsResponseDto,
   SendAdvisorMessageDto,
   SendAdvisorMessageResponseDto,
 } from './dto/advisor.dto.js'
@@ -63,6 +66,42 @@ export class AdvisorController {
     return this.service.getSession(userId, year)
   }
 
+  private async writeSseStream(
+    stream: AsyncIterable<AdvisorStreamEvent>,
+    reply: FastifyReply,
+  ): Promise<void> {
+    const iterator = stream[Symbol.asyncIterator]()
+    const first = await iterator.next()
+
+    reply.raw.writeHead(200, {
+      'Content-Type': 'text/event-stream; charset=utf-8',
+      'Cache-Control': 'no-cache, no-transform',
+      Connection: 'keep-alive',
+    })
+
+    const sendEvent = (event: string, data: unknown) => {
+      if (!reply.raw.writableEnded && !reply.raw.destroyed) {
+        reply.raw.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
+      }
+    }
+
+    try {
+      if (!first.done) {
+        sendEvent(first.value.event, first.value.data)
+      }
+      while (!reply.raw.destroyed) {
+        const next = await iterator.next()
+        if (next.done) break
+        sendEvent(next.value.event, next.value.data)
+      }
+    } finally {
+      await iterator.return?.().catch(() => {})
+      if (!reply.raw.writableEnded) {
+        reply.raw.end()
+      }
+    }
+  }
+
   @Post('chat')
   @HttpCode(200)
   @RequiresAccount()
@@ -80,34 +119,47 @@ export class AdvisorController {
     @Headers('accept') accept: string | undefined,
     @Res({ passthrough: true }) reply?: FastifyReply,
   ): Promise<SendAdvisorMessageResponseDto | void> {
-    const result = await this.service.sendMessage(userId, year, dto)
-
     if (accept?.includes('text/event-stream') && reply) {
-      reply.raw.writeHead(200, {
-        'Content-Type': 'text/event-stream; charset=utf-8',
-        'Cache-Control': 'no-cache, no-transform',
-        Connection: 'keep-alive',
-      })
-      const sendEvent = (event: string, data: unknown) => {
-        reply.raw.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
-      }
-      sendEvent('status', { text: 'Eule prüft deine Akte & Paragraphen …' })
-      sendEvent('token', { text: result.assistantMessage.content })
-      if (result.assistantMessage.meta?.choices) {
-        sendEvent('choices', { choices: result.assistantMessage.meta.choices })
-      }
-      if (result.assistantMessage.meta?.action) {
-        sendEvent('action', result.assistantMessage.meta.action)
-      }
-      if (result.assistantMessage.meta?.twoPaths) {
-        sendEvent('twoPaths', result.assistantMessage.meta.twoPaths)
-      }
-      sendEvent('done', result)
-      reply.raw.end()
+      await this.writeSseStream(this.service.streamMessage(userId, year, dto), reply)
       return
     }
 
-    return result
+    return this.service.sendMessage(userId, year, dto)
+  }
+
+  @Post('stream')
+  @HttpCode(200)
+  @RequiresAccount()
+  @ForbidAssistant()
+  @UseGuards(FastifyThrottlerGuard)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @ApiParam({ name: 'jahr', type: Number, example: 2025 })
+  @ApiBody({ type: SendAdvisorMessageDto })
+  @ApiOkResponse({ type: SendAdvisorMessageResponseDto })
+  @ApiUnauthorizedResponse({ description: 'Requires account.' })
+  async streamMessage(
+    @CurrentUser() userId: string,
+    @Param('jahr', ParseTaxYearPipe) year: number,
+    @Body() dto: SendAdvisorMessageDto,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ): Promise<void> {
+    await this.writeSseStream(this.service.streamMessage(userId, year, dto), reply)
+  }
+
+  @Post('actions/apply-batch')
+  @HttpCode(200)
+  @RequiresAccount()
+  @ForbidAssistant()
+  @ApiParam({ name: 'jahr', type: Number, example: 2025 })
+  @ApiBody({ type: ApplyBatchActionsDto })
+  @ApiOkResponse({ type: ApplyBatchActionsResponseDto })
+  @ApiUnauthorizedResponse({ description: 'Requires account.' })
+  applyBatch(
+    @CurrentUser() userId: string,
+    @Param('jahr', ParseTaxYearPipe) year: number,
+    @Body() dto: ApplyBatchActionsDto,
+  ): Promise<ApplyBatchActionsResponseDto> {
+    return this.service.applyBatch(userId, year, dto)
   }
 
   @Post('actions/:actionId/apply')

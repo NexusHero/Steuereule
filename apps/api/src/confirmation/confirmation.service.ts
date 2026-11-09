@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { InvalidInputError, NotFoundError } from '../common/domain-error.js'
+import { ForbiddenError, InvalidInputError, NotFoundError } from '../common/domain-error.js'
 import {
   ANNEXES,
   YEAR_INDEPENDENT,
@@ -21,6 +21,17 @@ import { FIELD_ACCESS, type FieldAccess, type ScreenAccess } from './field-acces
 import type { ConfirmationResponseDto, ProvenanceDto, FieldProvenanceDto } from './dto/confirmation.dto.js'
 
 export type WriteResult = 'geschrieben' | 'vorschlag' | 'unveraendert'
+
+export const AI_FORBIDDEN_SCREENS: ReadonlySet<Screen> = new Set<Screen>(['profil', 'stammdaten', 'kopplung'])
+
+export function assertAiWritableScreen(screen: Screen, key?: string): void {
+  if (AI_FORBIDDEN_SCREENS.has(screen)) {
+    throw new ForbiddenError(
+      'AI_WRITE_FORBIDDEN',
+      `Felder der Maske "${key ?? screen}" dürfen niemals durch den Eulen-Modus geschrieben werden.`,
+    )
+  }
+}
 
 interface Address {
   key: string
@@ -99,6 +110,11 @@ export class ConfirmationService {
     }
   }
 
+  async readRawValue(userId: string, taxYear: number, key: string): Promise<string | null> {
+    const a = this.address(key, taxYear)
+    return this.currentValue(userId, a)
+  }
+
   /**
    * Direct user-confirmed write triggered by clicking "✓ Jetzt übernehmen" on an In-App
    * SteuerEule Action Card. Writes the value, records provenance `{ kind: 'assistent', name: 'SteuerEule' }`
@@ -111,6 +127,7 @@ export class ConfirmationService {
     newValue: string | null,
   ): Promise<{ previousValue: string | null }> {
     const a = this.address(key, taxYear)
+    assertAiWritableScreen(a.screen, key)
     const previousValue = await this.currentValue(userId, a)
     await this.writeValue(userId, a, newValue)
     await this.repository.save(userId, a.taxYear, {
@@ -133,6 +150,7 @@ export class ConfirmationService {
     previousValue: string | null,
   ): Promise<void> {
     const a = this.address(key, taxYear)
+    assertAiWritableScreen(a.screen, key)
     await this.writeValue(userId, a, previousValue)
     await this.repository.remove(userId, a.taxYear, [key])
   }
