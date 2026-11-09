@@ -14,7 +14,7 @@ export class PrismaAuditRepository implements AuditRepository {
     return this.prisma.taxDataAccessLog.findMany({
       where: { userId },
       orderBy: { createdAt: 'asc' },
-      select: { action: true, resource: true, source: true, createdAt: true },
+      select: { action: true, resource: true, source: true, detail: true, createdAt: true },
     })
   }
 }

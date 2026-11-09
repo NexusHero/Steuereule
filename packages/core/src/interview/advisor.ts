@@ -1,7 +1,7 @@
 import { LEGAL_STATUS_DATE, type OwlSourceId } from './owl-mode'
 import { isSupportedIncomeTaxYear } from '../math/tarif'
 import { getTaxYearParameters } from '../math/tax-parameters'
-import type { Screen } from './marking'
+import type { Marking, Screen } from './marking'
 import type { Profession } from './interview'
 import { taxEstimateCrossBorder, taxEstimateEmployee } from '../engine/tax-estimate'
 
@@ -107,6 +107,10 @@ export interface AdvisorActionProposal {
   readonly field: string
   readonly instance: string | null
   readonly companionFields?: Readonly<Record<string, string>> | undefined
+  /** Raw values of the companion fields when the draft was created; the stale check compares against them. */
+  readonly companionExpectedValues?: Readonly<Record<string, string | null>> | undefined
+  /** Server-internal: exact pre-apply state of every written field, so undo restores value and provenance. */
+  readonly undoSnapshot?: readonly AdvisorUndoEntry[] | undefined
   readonly label: string
   readonly previousValue: string | null
   readonly expectedPreviousValue?: string | null | undefined
@@ -117,6 +121,19 @@ export interface AdvisorActionProposal {
   readonly reason: string
   readonly sourceId: OwlSourceId
   readonly paragraph?: string | undefined
+}
+
+export interface AdvisorUndoEntry {
+  readonly key: string
+  readonly previousValue: string | null
+  readonly appliedValue: string | null
+  readonly previousMarking: Omit<Marking, 'key' | 'value'> | null
+}
+
+export interface AdvisorEngineInfo {
+  readonly mode: 'langgraph' | 'deterministic_fallback'
+  readonly provider?: string | undefined
+  readonly model?: string | undefined
 }
 
 export interface AdvisorTwoPathsProposal {
@@ -131,6 +148,8 @@ export interface AdvisorMessageMeta {
   readonly action?: AdvisorActionProposal | undefined
   readonly twoPaths?: AdvisorTwoPathsProposal | undefined
   readonly sources?: readonly OwlSourceId[] | undefined
+  /** Server-internal: which engine produced the turn, for the audit trail of applied drafts. */
+  readonly engine?: AdvisorEngineInfo | undefined
 }
 
 export interface AdvisorChatMessageView {

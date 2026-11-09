@@ -23,6 +23,7 @@ export interface AdvisorChatPanelProps {
   readonly streamSteps?: readonly string[] | undefined
   readonly streamedText?: string | undefined
   readonly chatError?: string | null | undefined
+  readonly basisMode?: boolean | undefined
   readonly onSendMessage: (text: string) => Promise<void> | void
   readonly onApplyAction?: ((actionId: string) => Promise<void> | void) | undefined
   readonly onUndoAction?: ((actionId: string) => Promise<void> | void) | undefined
@@ -297,6 +298,7 @@ export function AdvisorChatPanel({
   streamSteps = [],
   streamedText = '',
   chatError = null,
+  basisMode = false,
   onSendMessage,
   onApplyAction,
   onUndoAction,
@@ -466,6 +468,12 @@ export function AdvisorChatPanel({
           </View>
         ) : null}
       </View>
+
+      {basisMode && !isSending ? (
+        <Text style={styles.streamStepText} testID="advisor-basis-mode">
+          {tr('advisor.chat.basisMode')}
+        </Text>
+      ) : null}
 
       {chatError ? (
         <View style={styles.errorBox} role="alert" testID="advisor-chat-error">

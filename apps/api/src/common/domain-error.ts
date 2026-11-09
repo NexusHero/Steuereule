@@ -14,6 +14,8 @@ export abstract class DomainError extends Error {
   constructor(
     readonly code: string,
     message: string,
+    /** Machine-readable context the client needs to recover, e.g. the current value behind a stale conflict. */
+    readonly details?: Readonly<Record<string, unknown>>,
   ) {
     super(message)
     this.name = new.target.name

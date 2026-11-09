@@ -131,6 +131,11 @@ export const AdvisorActionProposalDtoSourceId = {
 
 export type AdvisorActionProposalDtoCompanionFields = {[key: string]: string};
 
+/**
+ * Raw values of the companion fields when the draft was created (stale-check baseline).
+ */
+export type AdvisorActionProposalDtoCompanionExpectedValues = {[key: string]: string | null};
+
 export interface AdvisorActionProposalDto {
   actionId: string;
   status: AdvisorActionProposalDtoStatus;
@@ -139,6 +144,8 @@ export interface AdvisorActionProposalDto {
   /** @nullable */
   instance?: string | null;
   companionFields?: AdvisorActionProposalDtoCompanionFields;
+  /** Raw values of the companion fields when the draft was created (stale-check baseline). */
+  companionExpectedValues?: AdvisorActionProposalDtoCompanionExpectedValues;
   label: string;
   /** @nullable */
   previousValue?: string | null;
@@ -207,6 +214,11 @@ export const AdvisorMaxPathProposalDtoSourceId = {
 
 export type AdvisorMaxPathProposalDtoCompanionFields = {[key: string]: string};
 
+/**
+ * Raw values of the companion fields when the draft was created (stale-check baseline).
+ */
+export type AdvisorMaxPathProposalDtoCompanionExpectedValues = {[key: string]: string | null};
+
 export interface AdvisorMaxPathProposalDto {
   actionId: string;
   status: AdvisorMaxPathProposalDtoStatus;
@@ -215,6 +227,8 @@ export interface AdvisorMaxPathProposalDto {
   /** @nullable */
   instance?: string | null;
   companionFields?: AdvisorMaxPathProposalDtoCompanionFields;
+  /** Raw values of the companion fields when the draft was created (stale-check baseline). */
+  companionExpectedValues?: AdvisorMaxPathProposalDtoCompanionExpectedValues;
   label: string;
   /** @nullable */
   previousValue?: string | null;
@@ -400,15 +414,33 @@ export interface SendAdvisorMessageDto {
   activeScreen?: SendAdvisorMessageDtoActiveScreen;
 }
 
+/**
+ * deterministic_fallback means no model answered; the UI labels the reply as Basis-Modus.
+ */
+export type SendAdvisorMessageResponseDtoMode = typeof SendAdvisorMessageResponseDtoMode[keyof typeof SendAdvisorMessageResponseDtoMode];
+
+
+export const SendAdvisorMessageResponseDtoMode = {
+  langgraph: 'langgraph',
+  deterministic_fallback: 'deterministic_fallback',
+} as const;
+
 export interface SendAdvisorMessageResponseDto {
   userMessage: AdvisorChatMessageDto;
   assistantMessage: AdvisorChatMessageDto;
+  /** deterministic_fallback means no model answered; the UI labels the reply as Basis-Modus. */
+  mode: SendAdvisorMessageResponseDtoMode;
 }
+
+/**
+ * Re-baselines fields after a stale conflict: provenance key → the value the field holds now (from the 409 details). The write remains a compare-and-set.
+ */
+export type ApplyBatchActionItemDtoAcknowledgedCurrentValues = {[key: string]: string | null};
 
 export interface ApplyBatchActionItemDto {
   actionId: string;
-  /** @nullable */
-  expectedPreviousValue?: string | null;
+  /** Re-baselines fields after a stale conflict: provenance key → the value the field holds now (from the 409 details). The write remains a compare-and-set. */
+  acknowledgedCurrentValues?: ApplyBatchActionItemDtoAcknowledgedCurrentValues;
 }
 
 export interface ApplyBatchActionsDto {

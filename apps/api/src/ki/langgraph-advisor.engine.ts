@@ -31,7 +31,9 @@ import {
 } from '@steuereule/core'
 import {
   AI_RUNTIME_CONFIG_SERVICE,
+  DEFAULT_AI_TURN_LIMITS,
   type AiRuntimeConfigService,
+  type AiTurnLimits,
   type ResolvedAiSlotConfig,
 } from './ai-runtime-config.service.js'
 import {
@@ -39,12 +41,12 @@ import {
   createChatModelFromConfig,
   type ChatModelFactory,
 } from './chat-model.factory.js'
-import { normalizeSourceId, validateStageTarget } from './advisor-safety.js'
+import { normalizeSourceId, validateStageTarget, type StageTargetCheck } from './advisor-safety.js'
 import { checkPiiFree } from './ki.adapter.js'
 
 export const ADVISOR_ENGINE = Symbol('ADVISOR_ENGINE')
 
-const MAX_AGENT_TOOL_ROUNDS = 4
+const MAX_COMPANION_FIELDS = 3
 
 const TOOL_LABELS: Readonly<Record<string, string>> = {
   simulate_tax_delta: 'Simuliere Vorher/Nachher-Steuerwirkung …',
@@ -117,97 +119,66 @@ const AdvisorGraphState = Annotation.Root({
   }),
 })
 
+const draftTargetSchema = z.object({
+  screen: z.string().max(40),
+  field: z.string().max(100),
+  newValue: z.string().max(200),
+  label: z.string().max(160),
+  reason: z.string().max(400).default(''),
+})
+
+/** One schema per tool: the model sees it via bindTools, and toolsNode parses every call with it. */
+const TOOL_ARG_SCHEMAS = {
+  simulate_tax_delta: z.object({
+    screen: z.string().max(40),
+    field: z.string().max(100),
+    newValue: z.string().max(200),
+  }),
+  stage_field_draft: draftTargetSchema.extend({
+    instance: z.string().max(80).nullable().optional(),
+    sourceId: z.string().max(40).default('estg-9-1'),
+    companionFields: z.record(z.string().max(100), z.string().max(200)).optional(),
+  }),
+  propose_two_paths: z.object({
+    title: z.string().max(160),
+    sourceId: z.string().max(40).default('estg-4-5-6c'),
+    safePath: draftTargetSchema,
+    maxPath: draftTargetSchema.extend({ evidenceHint: z.string().max(260).default('Bitte entsprechenden Nachweis aufbewahren.') }),
+  }),
+  ask_clarification: z.object({
+    choices: z.array(z.string().max(120)).min(1).max(4),
+  }),
+  lookup_legal_source: z.object({
+    sourceId: z.string().max(40),
+  }),
+} as const
+
+type ToolName = keyof typeof TOOL_ARG_SCHEMAS
+
+const TOOL_DESCRIPTIONS: Readonly<Record<ToolName, string>> = {
+  simulate_tax_delta:
+    'Simuliert deterministisch die exakte Vorher/Nachher-Erstattungswirkung eines Feldes ohne etwas in der Datenbank zu ändern.',
+  stage_field_draft:
+    'Erstellt einen unverbindlichen Feld-Entwurf (Status pending) zur Prüfung und Freigabe im Eulen-Modus. Rechnet das Steuerdelta deterministisch aus.',
+  propose_two_paths:
+    'Stellt zwei Alternativen (Sicher-Weg vs. Maximal-Weg mit Nachweishinweis) zur Auswahl durch den Nutzer gegenüber.',
+  ask_clarification: 'Schlägt 2 bis 4 anklickbare Quick-Chips als nächste Rückfragen im Chat vor.',
+  lookup_legal_source: 'Ruft Wortlaut, Paragraph und Rechtsstand einer EStG/AO-Rechtsquelle aus dem verifizierten Katalog ab.',
+}
+
+// The bodies are never invoked: toolsNode executes the calls itself so it can update graph state.
 function buildToolSchemas(): readonly StructuredToolInterface[] {
-  const simulateTaxDeltaTool = tool(
-    async () => 'simulated',
-    {
-      name: 'simulate_tax_delta',
-      description:
-        'Simuliert deterministisch die exakte Vorher/Nachher-Erstattungswirkung eines Feldes ohne etwas in der Datenbank zu ändern.',
-      schema: z.object({
-        screen: z.string(),
-        field: z.string(),
-        newValue: z.string(),
-      }),
-    },
+  return (Object.keys(TOOL_ARG_SCHEMAS) as ToolName[]).map((name) =>
+    tool(async () => '', { name, description: TOOL_DESCRIPTIONS[name], schema: TOOL_ARG_SCHEMAS[name] }),
   )
+}
 
-  const stageFieldDraftTool = tool(
-    async () => 'staged',
-    {
-      name: 'stage_field_draft',
-      description:
-        'Erstellt einen unverbindlichen Feld-Entwurf (Status pending) zur Prüfung und Freigabe im Eulen-Modus. Rechnet das Steuerdelta deterministisch aus.',
-      schema: z.object({
-        screen: z.string(),
-        field: z.string(),
-        instance: z.string().nullable().optional(),
-        newValue: z.string(),
-        label: z.string(),
-        reason: z.string(),
-        sourceId: z.string().default('estg-9-1'),
-        companionFields: z.record(z.string(), z.string()).optional(),
-      }),
-    },
-  )
+function isToolName(name: string): name is ToolName {
+  return Object.hasOwn(TOOL_ARG_SCHEMAS, name)
+}
 
-  const proposeTwoPathsTool = tool(
-    async () => 'staged-two-paths',
-    {
-      name: 'propose_two_paths',
-      description:
-        'Stellt zwei Alternativen (Sicher-Weg vs. Maximal-Weg mit Nachweishinweis) zur Auswahl durch den Nutzer gegenüber.',
-      schema: z.object({
-        title: z.string(),
-        sourceId: z.string().default('estg-4-5-6c'),
-        safePath: z.object({
-          screen: z.string(),
-          field: z.string(),
-          newValue: z.string(),
-          label: z.string(),
-          reason: z.string(),
-        }),
-        maxPath: z.object({
-          screen: z.string(),
-          field: z.string(),
-          newValue: z.string(),
-          label: z.string(),
-          reason: z.string(),
-          evidenceHint: z.string(),
-        }),
-      }),
-    },
-  )
-
-  const askClarificationTool = tool(
-    async () => 'choices-recorded',
-    {
-      name: 'ask_clarification',
-      description: 'Schlägt 2 bis 4 anklickbare Quick-Chips als nächste Rückfragen im Chat vor.',
-      schema: z.object({
-        choices: z.array(z.string()).min(1).max(4),
-      }),
-    },
-  )
-
-  const lookupLegalSourceTool = tool(
-    async () => 'source-looked-up',
-    {
-      name: 'lookup_legal_source',
-      description: 'Ruft Wortlaut, Paragraph und Rechtsstand einer EStG/AO-Rechtsquelle aus dem verifizierten Katalog ab.',
-      schema: z.object({
-        sourceId: z.string(),
-      }),
-    },
-  )
-
-  return [
-    simulateTaxDeltaTool,
-    stageFieldDraftTool,
-    proposeTwoPathsTool,
-    askClarificationTool,
-    lookupLegalSourceTool,
-  ]
+function toolResult(callId: string, name: string, payload: Record<string, unknown>): ToolMessage {
+  return new ToolMessage({ tool_call_id: callId, name, content: JSON.stringify(payload) })
 }
 
 @Injectable()
@@ -224,6 +195,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
   private buildCompiledGraph(
     model: BaseChatModel,
     request: AdvisorTurnRequest,
+    maxToolRounds: number,
   ) {
     const tools = buildToolSchemas()
     const boundModel = typeof model.bindTools === 'function' ? model.bindTools([...tools]) : model
@@ -286,16 +258,37 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
           },
         } satisfies AdvisorStreamEvent)
 
-        const args = (tc.args ?? {}) as Record<string, unknown>
         const callId = tc.id ?? `call-${randomUUID().slice(0, 8)}`
+        if (!isToolName(tc.name)) {
+          toolMessages.push(toolResult(callId, tc.name, { ok: false, error: `UNKNOWN_TOOL: "${tc.name}" wird nicht unterstützt.` }))
+          continue
+        }
+        const parseArgs = <S extends z.ZodTypeAny>(schema: S): z.infer<S> | null => {
+          const parsed = schema.safeParse(tc.args ?? {})
+          if (parsed.success) return parsed.data as z.infer<S>
+          const fields = parsed.error.issues.map((issue) => issue.path.join('.')).join(', ')
+          toolMessages.push(toolResult(callId, tc.name, { ok: false, error: `INVALID_ARGUMENTS: ${fields}` }))
+          return null
+        }
+
+        const rejectTarget = (target: Extract<StageTargetCheck, { ok: false }>): void => {
+          // A locked field is not a dead end for the user: the workbench opens it for manual entry.
+          if (target.locked) {
+            config?.writer?.({
+              event: 'ui_command',
+              data: { openMask: target.locked.screen, focus: target.locked.field },
+            } satisfies AdvisorStreamEvent)
+          }
+          toolMessages.push(toolResult(callId, tc.name, { ok: false, error: target.error }))
+        }
 
         if (tc.name === 'simulate_tax_delta') {
-          const screen = String(args.screen ?? '')
-          const field = String(args.field ?? '')
-          const newValue = String(args.newValue ?? '')
+          const args = parseArgs(TOOL_ARG_SCHEMAS.simulate_tax_delta)
+          if (args === null) continue
+          const { screen, field, newValue } = args
           const target = validateStageTarget(screen, field)
           if (!target.ok) {
-            toolMessages.push(new ToolMessage({ tool_call_id: callId, name: tc.name, content: JSON.stringify({ ok: false, error: target.error }) }))
+            rejectTarget(target)
             continue
           }
           const sim = simulateAdvisorFieldDelta(request.digest, target.screen, field.trim(), newValue)
@@ -304,29 +297,34 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
         }
 
         if (tc.name === 'stage_field_draft') {
-          const screen = String(args.screen ?? '')
-          const field = String(args.field ?? '')
-          const newValue = String(args.newValue ?? '').slice(0, 200)
-          const label = String(args.label ?? `${screen}.${field}`).slice(0, 160)
-          const reason = String(args.reason ?? '').slice(0, 400)
-          const instance = typeof args.instance === 'string' && args.instance.trim().length > 0 ? args.instance.trim() : null
-          const sourceId = normalizeSourceId(typeof args.sourceId === 'string' ? args.sourceId : undefined)
-          const companionFieldsRaw = args.companionFields
-          const companionFields =
-            companionFieldsRaw && typeof companionFieldsRaw === 'object' && !Array.isArray(companionFieldsRaw)
-              ? Object.fromEntries(
-                  Object.entries(companionFieldsRaw).map(([k, v]) => [k, String(v)]),
-                )
-              : undefined
+          const args = parseArgs(TOOL_ARG_SCHEMAS.stage_field_draft)
+          if (args === null) continue
+          const { screen, field, newValue, label, reason } = args
+          const instance = args.instance && args.instance.trim().length > 0 ? args.instance.trim() : null
+          const sourceId = normalizeSourceId(args.sourceId)
+          const companionEntries = Object.entries(args.companionFields ?? {}).map(([k, v]) => [k.trim(), v] as const)
 
           const target = validateStageTarget(screen, field)
           if (!target.ok) {
-            toolMessages.push(new ToolMessage({ tool_call_id: callId, name: tc.name, content: JSON.stringify({ ok: false, error: target.error }) }))
+            rejectTarget(target)
             continue
           }
+          if (companionEntries.length > MAX_COMPANION_FIELDS) {
+            toolMessages.push(toolResult(callId, tc.name, { ok: false, error: `INVALID_ARGUMENTS: höchstens ${MAX_COMPANION_FIELDS} Begleitfelder.` }))
+            continue
+          }
+          // Companion fields are written with the same rights as the main field, so they pass the same gate.
+          const lockedCompanion = companionEntries
+            .map(([companionField]) => validateStageTarget(screen, companionField))
+            .find((check): check is Extract<StageTargetCheck, { ok: false }> => !check.ok)
+          if (lockedCompanion) {
+            rejectTarget(lockedCompanion)
+            continue
+          }
+          const companionFields = companionEntries.length > 0 ? Object.fromEntries(companionEntries) : undefined
 
           try {
-            checkPiiFree({ newValue, label, reason })
+            checkPiiFree({ newValue, label, reason, companionFields: companionFields ?? {} })
           } catch (error) {
             toolMessages.push(
               new ToolMessage({
@@ -364,37 +362,36 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
             paragraph: ADVISOR_LEGAL_SOURCES[sourceId].paragraph,
           }
 
-          toolMessages.push(
-            new ToolMessage({
-              tool_call_id: callId,
-              name: tc.name,
-              content: JSON.stringify({ ok: true, stagedAction: pendingAction }),
-            }),
-          )
+          toolMessages.push(toolResult(callId, tc.name, { ok: true, stagedAction: pendingAction }))
           continue
         }
 
         if (tc.name === 'propose_two_paths') {
-          const title = String(args.title ?? 'Zwei-Wege-Empfehlung').slice(0, 160)
-          const sourceId = normalizeSourceId(typeof args.sourceId === 'string' ? args.sourceId : 'estg-4-5-6c')
-          const rawSafe = (args.safePath ?? {}) as Record<string, unknown>
-          const rawMax = (args.maxPath ?? {}) as Record<string, unknown>
+          const args = parseArgs(TOOL_ARG_SCHEMAS.propose_two_paths)
+          if (args === null) continue
+          const title = args.title
+          const sourceId = normalizeSourceId(args.sourceId)
+          const rawSafe = args.safePath
+          const rawMax = args.maxPath
 
-          const safeCheck = validateStageTarget(String(rawSafe.screen ?? ''), String(rawSafe.field ?? ''))
-          const maxCheck = validateStageTarget(String(rawMax.screen ?? ''), String(rawMax.field ?? ''))
-          if (!safeCheck.ok || !maxCheck.ok) {
-            const err = !safeCheck.ok ? safeCheck.error : (!maxCheck.ok ? maxCheck.error : 'Invalid target')
-            toolMessages.push(new ToolMessage({ tool_call_id: callId, name: tc.name, content: JSON.stringify({ ok: false, error: err }) }))
+          const safeCheck = validateStageTarget(rawSafe.screen, rawSafe.field)
+          if (!safeCheck.ok) {
+            rejectTarget(safeCheck)
+            continue
+          }
+          const maxCheck = validateStageTarget(rawMax.screen, rawMax.field)
+          if (!maxCheck.ok) {
+            rejectTarget(maxCheck)
             continue
           }
 
-          const safeField = String(rawSafe.field ?? '').trim()
-          const safeNewValue = String(rawSafe.newValue ?? '').slice(0, 200)
-          const maxField = String(rawMax.field ?? '').trim()
-          const maxNewValue = String(rawMax.newValue ?? '').slice(0, 200)
+          const safeField = rawSafe.field.trim()
+          const safeNewValue = rawSafe.newValue
+          const maxField = rawMax.field.trim()
+          const maxNewValue = rawMax.newValue
 
           try {
-            checkPiiFree({ safeNewValue, maxNewValue, title })
+            checkPiiFree({ safeNewValue, maxNewValue, title, safeLabel: rawSafe.label, maxLabel: rawMax.label })
           } catch (error) {
             toolMessages.push(
               new ToolMessage({
@@ -423,14 +420,14 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
               screen: safeCheck.screen,
               field: safeField,
               instance: null,
-              label: String(rawSafe.label ?? safeField).slice(0, 160),
+              label: rawSafe.label,
               previousValue: safeSim.previousValue,
               expectedPreviousValue: safeSim.previousValue,
               newValue: safeNewValue,
               beforeRefundEur: safeSim.beforeRefundEur,
               afterRefundEur: safeSim.afterRefundEur,
               deltaEur: safeSim.deltaEur,
-              reason: String(rawSafe.reason ?? '').slice(0, 400),
+              reason: rawSafe.reason,
               sourceId,
               paragraph: ADVISOR_LEGAL_SOURCES[sourceId].paragraph,
             },
@@ -440,46 +437,37 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
               screen: maxCheck.screen,
               field: maxField,
               instance: null,
-              label: String(rawMax.label ?? maxField).slice(0, 160),
+              label: rawMax.label,
               previousValue: maxSim.previousValue,
               expectedPreviousValue: maxSim.previousValue,
               newValue: maxNewValue,
               beforeRefundEur: maxSim.beforeRefundEur,
               afterRefundEur: maxSim.afterRefundEur,
               deltaEur: maxSim.deltaEur,
-              reason: String(rawMax.reason ?? '').slice(0, 400),
-              evidenceHint: String(rawMax.evidenceHint ?? 'Bitte entsprechenden Nachweis aufbewahren.').slice(0, 260),
+              reason: rawMax.reason,
+              evidenceHint: rawMax.evidenceHint,
               sourceId,
               paragraph: ADVISOR_LEGAL_SOURCES[sourceId].paragraph,
             },
           }
 
-          toolMessages.push(new ToolMessage({ tool_call_id: callId, name: tc.name, content: JSON.stringify({ ok: true, twoPaths: pendingTwoPaths }) }))
+          toolMessages.push(toolResult(callId, tc.name, { ok: true, twoPaths: pendingTwoPaths }))
           continue
         }
 
         if (tc.name === 'ask_clarification') {
-          const rawChoices = Array.isArray(args.choices) ? args.choices : []
-          choices = rawChoices.map((c) => String(c).trim()).filter((c) => c.length > 0).slice(0, 4)
-          toolMessages.push(new ToolMessage({ tool_call_id: callId, name: tc.name, content: JSON.stringify({ ok: true, choices }) }))
+          const args = parseArgs(TOOL_ARG_SCHEMAS.ask_clarification)
+          if (args === null) continue
+          choices = args.choices.map((c) => c.trim()).filter((c) => c.length > 0)
+          toolMessages.push(toolResult(callId, tc.name, { ok: true, choices }))
           continue
         }
 
-        if (tc.name === 'lookup_legal_source') {
-          const sourceId = normalizeSourceId(typeof args.sourceId === 'string' ? args.sourceId : undefined)
-          const src = ADVISOR_LEGAL_SOURCES[sourceId]
-          sources.push(sourceId)
-          toolMessages.push(new ToolMessage({ tool_call_id: callId, name: tc.name, content: JSON.stringify({ ok: true, source: src }) }))
-          continue
-        }
-
-        toolMessages.push(
-          new ToolMessage({
-            tool_call_id: callId,
-            name: tc.name,
-            content: JSON.stringify({ ok: false, error: `UNKNOWN_TOOL: "${tc.name}" wird nicht unterstützt.` }),
-          }),
-        )
+        const lookupArgs = parseArgs(TOOL_ARG_SCHEMAS.lookup_legal_source)
+        if (lookupArgs === null) continue
+        const sourceId = normalizeSourceId(lookupArgs.sourceId)
+        sources.push(sourceId)
+        toolMessages.push(toolResult(callId, tc.name, { ok: true, source: ADVISOR_LEGAL_SOURCES[sourceId] }))
       }
 
       return {
@@ -493,7 +481,7 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
     }
 
     const shouldContinue = (state: typeof AdvisorGraphState.State) => {
-      if (state.toolRounds >= MAX_AGENT_TOOL_ROUNDS) return END
+      if (state.toolRounds >= maxToolRounds) return END
       const last = state.messages[state.messages.length - 1]
       const toolCalls =
         last && 'tool_calls' in last && Array.isArray((last as AIMessage).tool_calls)
@@ -564,8 +552,10 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
 
     let slotConfig: ResolvedAiSlotConfig | null = null
     let chatModel: BaseChatModel | null = null
+    let limits: AiTurnLimits = DEFAULT_AI_TURN_LIMITS
 
     try {
+      limits = await this.runtimeConfig.resolveLimits()
       if (!(await this.runtimeConfig.isKillSwitchActive())) {
         slotConfig = await this.runtimeConfig.resolveSlot('advisor_chat')
         chatModel = this.resolveChatModel(slotConfig)
@@ -593,11 +583,16 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
     let choices: string[] = []
     let sources: OwlSourceId[] = []
 
+    const timeout = AbortSignal.timeout(limits.turnTimeoutMs)
+    const signal = request.signal ? AbortSignal.any([request.signal, timeout]) : timeout
+    const abortReason = (): 'client' | 'timeout' | null =>
+      request.signal?.aborted ? 'client' : timeout.aborted ? 'timeout' : null
+
     try {
-      const graph = this.buildCompiledGraph(chatModel, request)
+      const graph = this.buildCompiledGraph(chatModel, request, limits.maxToolRounds)
       const stream = await graph.stream(
         { messages: initialMessages },
-        { streamMode: ['custom', 'updates'] },
+        { streamMode: ['custom', 'updates'], signal },
       )
 
       for await (const [mode, payload] of stream) {
@@ -634,10 +629,22 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
         }
       }
     } catch {
+      const aborted = abortReason()
+      // Nobody is listening any more; persisting a turn for a closed connection would only cost money.
+      if (aborted === 'client') return
       if (streamedTokenCount === 0) {
         yield* this.emitFallbackTurn(request)
         return
       }
+      // Half an answer must not be stored as if it were complete: the client discards it.
+      yield {
+        event: 'error',
+        data:
+          aborted === 'timeout'
+            ? { code: 'ADVISOR_TURN_TIMEOUT', message: 'Die Eule hat zu lange gebraucht. Bitte stelle deine Frage erneut.' }
+            : { code: 'ADVISOR_TURN_FAILED', message: 'Die Antwort der Eule ist unterwegs abgebrochen. Bitte versuche es erneut.' },
+      }
+      return
     }
 
     let lastAiMessage: BaseMessage | undefined

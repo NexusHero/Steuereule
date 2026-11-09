@@ -6,11 +6,12 @@ import {
   IsArray,
   IsIn,
   IsNotEmpty,
+  IsObject,
   IsOptional,
   IsString,
   MaxLength,
-  ValidateIf,
   ValidateNested,
+  registerDecorator,
 } from 'class-validator'
 import {
   SCREENS,
@@ -24,6 +25,29 @@ import {
   type Screen,
 } from '@steuereule/core'
 import { OwlCardDto } from '../../owl-mode/dto/owl-mode.dto.js'
+
+/** At most a handful of provenance keys, each mapped to a short string or null. */
+function IsAcknowledgedValueMap(): PropertyDecorator {
+  return (target, propertyName) => {
+    registerDecorator({
+      name: 'isAcknowledgedValueMap',
+      target: target.constructor,
+      propertyName: String(propertyName),
+      options: { message: 'acknowledgedCurrentValues must map up to 10 field keys to a string (max. 200) or null.' },
+      validator: {
+        validate(value: unknown): boolean {
+          if (value === undefined) return true
+          if (value === null || typeof value !== 'object' || Array.isArray(value)) return false
+          const entries = Object.entries(value as Record<string, unknown>)
+          return (
+            entries.length <= 10 &&
+            entries.every(([key, v]) => key.length <= 120 && (v === null || (typeof v === 'string' && v.length <= 200)))
+          )
+        },
+      },
+    })
+  }
+}
 
 const OWL_SOURCE_IDS: readonly OwlSourceId[] = [
   'estg-4-5-6c',
@@ -79,6 +103,13 @@ export class AdvisorActionProposalDto implements AdvisorActionProposal {
 
   @ApiPropertyOptional({ type: Object, additionalProperties: { type: 'string' } })
   companionFields?: Readonly<Record<string, string>> | undefined
+
+  @ApiPropertyOptional({
+    type: Object,
+    additionalProperties: { type: 'string', nullable: true },
+    description: 'Raw values of the companion fields when the draft was created (stale-check baseline).',
+  })
+  companionExpectedValues?: Readonly<Record<string, string | null>> | undefined
 
   @ApiProperty({ type: String, example: 'Spenden & Zuwendungen (Sonderausgaben)' })
   label!: string
@@ -207,6 +238,12 @@ export class SendAdvisorMessageResponseDto {
 
   @ApiProperty({ type: AdvisorChatMessageDto })
   assistantMessage!: AdvisorChatMessageDto
+
+  @ApiProperty({
+    enum: ['langgraph', 'deterministic_fallback'],
+    description: 'deterministic_fallback means no model answered; the UI labels the reply as Basis-Modus.',
+  })
+  mode!: 'langgraph' | 'deterministic_fallback'
 }
 
 export class AdvisorActionMutationResponseDto {
@@ -223,10 +260,17 @@ export class ApplyBatchActionItemDto {
   @IsNotEmpty()
   actionId!: string
 
-  @ApiPropertyOptional({ type: String, nullable: true, example: '100' })
-  @ValidateIf((_, value) => value !== null && value !== undefined)
-  @IsString()
-  expectedPreviousValue?: string | null | undefined
+  @ApiPropertyOptional({
+    description:
+      'Re-baselines fields after a stale conflict: provenance key → the value the field holds now (from the 409 details). The write remains a compare-and-set.',
+    type: 'object',
+    additionalProperties: { type: 'string', nullable: true },
+    example: { 'commute.homeOfficeDays': '40' },
+  })
+  @IsOptional()
+  @IsObject()
+  @IsAcknowledgedValueMap()
+  acknowledgedCurrentValues?: Record<string, string | null> | undefined
 }
 
 export class ApplyBatchActionsDto {

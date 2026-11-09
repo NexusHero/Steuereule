@@ -225,7 +225,9 @@ describe('BestaetigungService', () => {
       await expect(service.writeConfirmedByAdvisor(USER, YEAR, key, 'tampered')).rejects.toMatchObject({
         code: 'AI_WRITE_FORBIDDEN',
       })
-      await expect(service.restoreValueByAdvisor(USER, YEAR, key, null)).rejects.toMatchObject({
+      await expect(
+        service.restoreByAdvisor(USER, YEAR, { key, previousValue: null, appliedValue: 'tampered', previousMarking: null }),
+      ).rejects.toMatchObject({
         code: 'AI_WRITE_FORBIDDEN',
       })
     }

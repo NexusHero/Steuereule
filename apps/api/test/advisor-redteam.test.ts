@@ -1,10 +1,11 @@
 // DevMLOps Backend Red-Team & Boundary Gate:
 //   1. Egress PII guard (`checkPiiFree`) against obfuscated IBANs, formatted Steuer-IDs, and forbidden keys.
 //   2. Cross-user isolation on Advisor chat sessions, messages, and action mutations (`applyAction`/`undoAction`).
-//   3. Daily rate-limit enforcement (`ADVISOR_DAILY_MESSAGE_LIMIT = 50`).
+//   3. Daily rate-limit enforcement (`DEFAULT_AI_TURN_LIMITS.dailyMessageLimit = 50`).
 //   4. MCP Server tool scope enforcement (`steuerdaten:read` cannot invoke write/payment tools).
 import { beforeEach, describe, expect, it } from 'vitest'
-import { AdvisorService, ADVISOR_DAILY_MESSAGE_LIMIT } from '../src/advisor/advisor.service.js'
+import { AdvisorService } from '../src/advisor/advisor.service.js'
+import { DEFAULT_AI_TURN_LIMITS } from '../src/ki/ai-runtime-config.service.js'
 import { InMemoryAdvisorRepository } from '../src/advisor/advisor.repository.js'
 import { AuditService } from '../src/audit/audit.service.js'
 import { NotFoundError, TooManyRequestsError } from '../src/common/domain-error.js'
@@ -152,8 +153,8 @@ describe('DevMLOps Backend Red-Team & Egress Boundary Suite', () => {
     expect(sessionB.messages).toHaveLength(0)
   })
 
-  it('enforces daily cost/abuse budget (ADVISOR_DAILY_MESSAGE_LIMIT = 50) and blocks message 51', async () => {
-    for (let i = 0; i < ADVISOR_DAILY_MESSAGE_LIMIT; i++) {
+  it('enforces daily cost/abuse budget (dailyMessageLimit = 50) and blocks message 51', async () => {
+    for (let i = 0; i < DEFAULT_AI_TURN_LIMITS.dailyMessageLimit; i++) {
       await advisorService.sendMessage(USER_A, YEAR, {
         message: `Testfrage ${i + 1} zu Werbungskosten`,
       })

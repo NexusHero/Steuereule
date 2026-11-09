@@ -12,6 +12,24 @@ export interface ResolvedAiSlotConfig {
   readonly baseUrl?: string | undefined
   readonly temperature?: number | undefined
   readonly maxTokens?: number | undefined
+  /**
+   * Whether raw document images may be sent to this slot's provider. Off by default: an image
+   * cannot be scrubbed, so it may only go to a provider with an EU data processing agreement.
+   */
+  readonly allowsDocumentImages?: boolean | undefined
+}
+
+/** Per-turn budget of the Eulen-Modus agent (#446: max. 5 steps, 25 s, daily quota). */
+export interface AiTurnLimits {
+  readonly turnTimeoutMs: number
+  readonly maxToolRounds: number
+  readonly dailyMessageLimit: number
+}
+
+export const DEFAULT_AI_TURN_LIMITS: AiTurnLimits = {
+  turnTimeoutMs: 25_000,
+  maxToolRounds: 5,
+  dailyMessageLimit: 50,
 }
 
 export const AI_RUNTIME_CONFIG_SERVICE = Symbol('AI_RUNTIME_CONFIG_SERVICE')
@@ -20,6 +38,7 @@ export const AI_ENV_SOURCE = Symbol('AI_ENV_SOURCE')
 export interface AiRuntimeConfigService {
   isKillSwitchActive(): Promise<boolean>
   resolveSlot(slot: AiTaskSlot): Promise<ResolvedAiSlotConfig>
+  resolveLimits(): Promise<AiTurnLimits>
 }
 
 const VALID_PROVIDERS: ReadonlySet<string> = new Set<AiProviderKind>([
@@ -40,6 +59,11 @@ function isTruthyFlag(raw: string | undefined): boolean {
   if (!raw) return false
   const normalized = raw.trim().toLowerCase()
   return normalized === 'true' || normalized === '1' || normalized === 'yes' || normalized === 'on'
+}
+
+function positiveIntOr(raw: string | undefined, fallback: number, max: number): number {
+  const parsed = raw ? Number.parseInt(raw.trim(), 10) : Number.NaN
+  return Number.isInteger(parsed) && parsed > 0 ? Math.min(parsed, max) : fallback
 }
 
 function normalizeProvider(raw: string | undefined): AiProviderKind | null {
@@ -72,6 +96,14 @@ export class EnvAiRuntimeConfigService implements AiRuntimeConfigService {
 
   async isKillSwitchActive(): Promise<boolean> {
     return isTruthyFlag(this.env.AI_KILL_SWITCH)
+  }
+
+  async resolveLimits(): Promise<AiTurnLimits> {
+    return {
+      turnTimeoutMs: positiveIntOr(this.env.AI_TURN_TIMEOUT_MS, DEFAULT_AI_TURN_LIMITS.turnTimeoutMs, 120_000),
+      maxToolRounds: positiveIntOr(this.env.AI_MAX_TOOL_ROUNDS, DEFAULT_AI_TURN_LIMITS.maxToolRounds, 10),
+      dailyMessageLimit: positiveIntOr(this.env.AI_DAILY_MESSAGE_LIMIT, DEFAULT_AI_TURN_LIMITS.dailyMessageLimit, 1_000),
+    }
   }
 
   private inferProvider(): AiProviderKind {
@@ -156,6 +188,7 @@ export class EnvAiRuntimeConfigService implements AiRuntimeConfigService {
       apiKey,
       ...(baseUrl !== undefined ? { baseUrl } : {}),
       ...(temperature !== undefined ? { temperature } : {}),
+      ...(slot === 'vision_ocr' ? { allowsDocumentImages: isTruthyFlag(this.env.AI_VISION_ALLOW_DOCUMENT_IMAGES) } : {}),
     }
   }
 }

@@ -33,6 +33,7 @@ export class FastifyThrottlerGuard extends ThrottlerGuard {
   }
 }
 import { CurrentUser } from '../auth/current-user.decorator.js'
+import { DomainError } from '../common/domain-error.js'
 import { ForbidAssistant } from '../auth/forbid-assistant.guard.js'
 import { RequiresAccount } from '../auth/requires-account.guard.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
@@ -66,11 +67,17 @@ export class AdvisorController {
     return this.service.getSession(userId, year)
   }
 
+  /**
+   * Errors before the first event (quota, auth) still become plain HTTP errors via the filter;
+   * after the headers are out they can only travel as an SSE `error` event.
+   */
   private async writeSseStream(
-    stream: AsyncIterable<AdvisorStreamEvent>,
+    openStream: (signal: AbortSignal) => AsyncIterable<AdvisorStreamEvent>,
     reply: FastifyReply,
   ): Promise<void> {
-    const iterator = stream[Symbol.asyncIterator]()
+    const disconnect = new AbortController()
+    reply.raw.once('close', () => disconnect.abort())
+    const iterator = openStream(disconnect.signal)[Symbol.asyncIterator]()
     const first = await iterator.next()
 
     // Forward Fastify-managed headers (CORS, Vary, Helmet) onto reply.raw before hijacking the response.
@@ -104,6 +111,13 @@ export class AdvisorController {
         if (next.done) break
         sendEvent(next.value.event, next.value.data)
       }
+    } catch (error) {
+      sendEvent(
+        'error',
+        error instanceof DomainError
+          ? { code: error.code, message: error.message }
+          : { code: 'ADVISOR_STREAM_FAILED', message: 'Die Verbindung zur Eule ist abgebrochen. Bitte versuche es erneut.' },
+      )
     } finally {
       await iterator.return?.().catch(() => {})
       if (!reply.raw.writableEnded) {
@@ -130,7 +144,7 @@ export class AdvisorController {
     @Res({ passthrough: true }) reply?: FastifyReply,
   ): Promise<SendAdvisorMessageResponseDto | void> {
     if (accept?.includes('text/event-stream') && reply) {
-      await this.writeSseStream(this.service.streamMessage(userId, year, dto), reply)
+      await this.writeSseStream((signal) => this.service.streamMessage(userId, year, dto, signal), reply)
       return
     }
 
@@ -153,7 +167,7 @@ export class AdvisorController {
     @Body() dto: SendAdvisorMessageDto,
     @Res({ passthrough: true }) reply: FastifyReply,
   ): Promise<void> {
-    await this.writeSseStream(this.service.streamMessage(userId, year, dto), reply)
+    await this.writeSseStream((signal) => this.service.streamMessage(userId, year, dto, signal), reply)
   }
 
   @Post('actions/apply-batch')

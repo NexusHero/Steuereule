@@ -583,10 +583,11 @@ function OwlModeScreenView({
     setLocalMessages((prev) => prev.map((m) => updateActionStatusInMessage(m, actionId, 'undone')))
   }
 
-  async function handleBatchApply(ignoreBaseline = false) {
+  async function handleBatchApply(acceptCurrentValues = false) {
     if (pendingDrafts.length === 0) return
     if (bridge) {
-      const ok = await bridge.applyAllPending(pendingDrafts, ignoreBaseline ? { ignoreBaseline: true } : undefined)
+      const acknowledgedConflict = acceptCurrentValues ? (bridge.staleConflict ?? undefined) : undefined
+      const ok = await bridge.applyAllPending(pendingDrafts, acknowledgedConflict ? { acknowledgedConflict } : undefined)
       if (ok) {
         for (const d of pendingDrafts) {
           setLocalMessages((prev) => prev.map((m) => updateActionStatusInMessage(m, d.actionId, 'applied')))
@@ -620,6 +621,7 @@ function OwlModeScreenView({
         streamSteps={bridge?.streamSteps}
         streamedText={bridge?.streamedText}
         chatError={bridge?.chatError}
+        basisMode={bridge?.basisMode}
         onSendMessage={handleSendChat}
         onApplyAction={handleApplyAction}
         onUndoAction={handleUndoAction}

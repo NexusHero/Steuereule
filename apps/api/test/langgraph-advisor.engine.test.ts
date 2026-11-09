@@ -10,7 +10,7 @@ import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fa
 import { Test } from '@nestjs/testing'
 import { ThrottlerModule } from '@nestjs/throttler'
 import { describe, expect, it } from 'vitest'
-import type { CaseDigest } from '@steuereule/core'
+import type { AdvisorStreamEvent, CaseDigest } from '@steuereule/core'
 import { AdvisorController, FastifyThrottlerGuard } from '../src/advisor/advisor.controller.js'
 import { AdvisorService } from '../src/advisor/advisor.service.js'
 import { InMemoryAdvisorRepository } from '../src/advisor/advisor.repository.js'
@@ -26,7 +26,12 @@ import { buildCorsOptions } from '../src/cors/build-cors-options.js'
 import { registerHelmet } from '../src/security/register-helmet.js'
 import { ConfirmationService } from '../src/confirmation/confirmation.service.js'
 import { fieldAccessFrom } from '../src/confirmation/field-access.js'
-import { EnvAiRuntimeConfigService, type AiRuntimeConfigService } from '../src/ki/ai-runtime-config.service.js'
+import {
+  DEFAULT_AI_TURN_LIMITS,
+  EnvAiRuntimeConfigService,
+  type AiRuntimeConfigService,
+  type AiTurnLimits,
+} from '../src/ki/ai-runtime-config.service.js'
 import { createChatModelFromConfig } from '../src/ki/chat-model.factory.js'
 import { RagKiAdapter } from '../src/ki/ki.adapter.js'
 import { LangGraphAdvisorEngine } from '../src/ki/langgraph-advisor.engine.js'
@@ -139,8 +144,15 @@ class ScriptedChatModel extends BaseChatModel {
   }
 }
 
-function runtimeWithProvider(provider: 'google-genai' | 'deterministic', enabled = true): AiRuntimeConfigService {
+function runtimeWithProvider(
+  provider: 'google-genai' | 'deterministic',
+  enabled = true,
+  limits: Partial<AiTurnLimits> = {},
+): AiRuntimeConfigService {
   return {
+    async resolveLimits() {
+      return { ...DEFAULT_AI_TURN_LIMITS, ...limits }
+    },
     async isKillSwitchActive() {
       return !enabled
     },
@@ -593,5 +605,147 @@ describe('AiRuntimeConfigService & LangGraphAdvisorEngine (#446 Slice 2)', () =>
     } finally {
       await app.close()
     }
+  })
+})
+
+/** Streams an optional first token, then hangs until the call is aborted — like a stalled provider. */
+class StallingChatModel extends BaseChatModel {
+  public sawAbort = false
+
+  constructor(private readonly firstToken: string | null) {
+    super({})
+  }
+
+  _llmType(): string {
+    return 'stalling-test'
+  }
+
+  override bindTools(_tools: BindToolsInput[]): Runnable<BaseLanguageModelInput, AIMessageChunk, BaseChatModelCallOptions> {
+    return this as unknown as Runnable<BaseLanguageModelInput, AIMessageChunk, BaseChatModelCallOptions>
+  }
+
+  async _generate(): Promise<ChatResult> {
+    throw new Error('not used')
+  }
+
+  override async *_streamResponseChunks(
+    _messages: BaseMessage[],
+    options: this['ParsedCallOptions'],
+  ): AsyncGenerator<ChatGenerationChunk> {
+    if (this.firstToken !== null) {
+      yield new ChatGenerationChunk({ text: this.firstToken, message: new AIMessageChunk({ content: this.firstToken }) })
+    }
+    await new Promise<never>((_resolve, reject) => {
+      options.signal?.addEventListener('abort', () => {
+        this.sawAbort = true
+        reject(new Error('aborted'))
+      })
+    })
+  }
+}
+
+async function collect(stream: AsyncIterable<AdvisorStreamEvent>): Promise<AdvisorStreamEvent[]> {
+  const events: AdvisorStreamEvent[] = []
+  for await (const ev of stream) events.push(ev)
+  return events
+}
+
+describe('LangGraphAdvisorEngine — turn budget and tool-argument hardening (#447 review)', () => {
+  it('rejects tool calls whose arguments do not match the declared schema, without staging anything', async () => {
+    const model = new ScriptedChatModel([
+      new AIMessage({
+        content: '',
+        tool_calls: [
+          { id: 'tc-1', name: 'stage_field_draft', args: { screen: 'interview', field: { nested: true }, newValue: 12 } },
+        ],
+      }),
+      new AIMessage('Das hat nicht geklappt.'),
+    ])
+    const engine = new LangGraphAdvisorEngine(runtimeWithProvider('google-genai'), () => model)
+    const result = await engine.runTurn({ message: 'Bitte Spenden eintragen', digest: sampleDigest })
+    expect(result.mode).toBe('langgraph')
+    expect(result.meta.action).toBeUndefined()
+  })
+
+  it('sends a ui_command to open the locked field instead of drafting it', async () => {
+    const model = new ScriptedChatModel([
+      new AIMessage({
+        content: '',
+        tool_calls: [
+          {
+            id: 'tc-iban',
+            name: 'stage_field_draft',
+            args: { screen: 'stammdaten', field: 'iban', newValue: 'x', label: 'IBAN', reason: 'r' },
+          },
+        ],
+      }),
+      new AIMessage('Die IBAN trägst du bitte selbst ein.'),
+    ])
+    const engine = new LangGraphAdvisorEngine(runtimeWithProvider('google-genai'), () => model)
+    const events = await collect(engine.streamTurn({ message: 'Meine Bankverbindung ändern', digest: sampleDigest }))
+    expect(events).toContainEqual({ event: 'ui_command', data: { openMask: 'stammdaten', focus: 'iban' } })
+    expect(events.some((e) => e.event === 'action')).toBe(false)
+  })
+
+  it('rejects a draft whose companion field is locked', async () => {
+    const model = new ScriptedChatModel([
+      new AIMessage({
+        content: '',
+        tool_calls: [
+          {
+            id: 'tc-comp',
+            name: 'stage_field_draft',
+            args: {
+              screen: 'interview',
+              field: 'spenden-betrag',
+              newValue: '50',
+              label: 'Spenden',
+              reason: 'r',
+              companionFields: { spenden: 'Ja', firstName: 'Mallory' },
+            },
+          },
+        ],
+      }),
+      new AIMessage('Fertig.'),
+    ])
+    const engine = new LangGraphAdvisorEngine(runtimeWithProvider('google-genai'), () => model)
+    const result = await engine.runTurn({ message: 'Spenden 50 €', digest: sampleDigest })
+    expect(result.meta.action).toBeUndefined()
+  })
+
+  it('falls back to the deterministic answer when the model stalls past the turn timeout before any token', async () => {
+    const model = new StallingChatModel(null)
+    const engine = new LangGraphAdvisorEngine(runtimeWithProvider('google-genai', true, { turnTimeoutMs: 50 }), () => model)
+    const events = await collect(engine.streamTurn({ message: 'Bitte 250 € Spenden eintragen', digest: sampleDigest }))
+    expect(model.sawAbort).toBe(true)
+    const done = events.find((e) => e.event === 'done')
+    expect(done?.data).toMatchObject({ mode: 'deterministic_fallback' })
+  })
+
+  it('emits an error event and no done when the model stalls after streaming part of the answer', async () => {
+    const model = new StallingChatModel('Ich prüfe gerade deine ')
+    const engine = new LangGraphAdvisorEngine(runtimeWithProvider('google-genai', true, { turnTimeoutMs: 50 }), () => model)
+    const events = await collect(engine.streamTurn({ message: 'Was kann ich absetzen?', digest: sampleDigest }))
+    expect(events.some((e) => e.event === 'token')).toBe(true)
+    expect(events).toContainEqual({ event: 'error', data: expect.objectContaining({ code: 'ADVISOR_TURN_TIMEOUT' }) })
+    expect(events.some((e) => e.event === 'done')).toBe(false)
+  })
+
+  it('stops the model call and ends silently when the client disconnects', async () => {
+    const model = new StallingChatModel('Ich prüfe ')
+    const engine = new LangGraphAdvisorEngine(runtimeWithProvider('google-genai'), () => model)
+    const disconnect = new AbortController()
+    setTimeout(() => disconnect.abort(), 30)
+    const events = await collect(
+      engine.streamTurn({ message: 'Was kann ich absetzen?', digest: sampleDigest, signal: disconnect.signal }),
+    )
+    expect(model.sawAbort).toBe(true)
+    expect(events.some((e) => e.event === 'done' || e.event === 'error')).toBe(false)
+  })
+
+  it('reads the turn budget from the environment', async () => {
+    const config = new EnvAiRuntimeConfigService({ AI_TURN_TIMEOUT_MS: '9000', AI_MAX_TOOL_ROUNDS: '3', AI_DAILY_MESSAGE_LIMIT: 'x' })
+    expect(await config.resolveLimits()).toEqual({ turnTimeoutMs: 9000, maxToolRounds: 3, dailyMessageLimit: 50 })
+    expect(await new EnvAiRuntimeConfigService({}).resolveLimits()).toEqual(DEFAULT_AI_TURN_LIMITS)
   })
 })

@@ -132,7 +132,17 @@ function BridgeProbe() {
       <span data-testid="probe-banner">{bridge.cockpitBanner ? String(bridge.cockpitBanner.appliedCount) : 'none'}</span>
       <button onClick={() => void bridge.sendStreamingMessage('Homeoffice prüfen', 'interview')}>send-stream</button>
       <button onClick={() => void bridge.applyAllPending([PENDING_WORKDAYS_DRAFT])}>apply-batch</button>
-      <button onClick={() => void bridge.applyAllPending([PENDING_WORKDAYS_DRAFT], { ignoreBaseline: true })}>force-apply</button>
+      <button
+        onClick={() =>
+          void bridge.applyAllPending(
+            [PENDING_WORKDAYS_DRAFT],
+            bridge.staleConflict ? { acknowledgedConflict: bridge.staleConflict } : undefined,
+          )
+        }
+      >
+        force-apply
+      </button>
+      <span data-testid="probe-error">{bridge.chatError ?? ''}</span>
       <button onClick={() => void bridge.undoSingleAction('act-ho-1')}>undo-single</button>
       <button
         onClick={() =>
@@ -247,7 +257,7 @@ describe('Slice 4: CopilotBridgeProvider & 3-Breakpoint OwlMode Workspace', () =
       expect(screen.getByTestId('probe-prov').textContent).toBe('eule')
       expect(screen.getByTestId('probe-banner').textContent).toBe('1')
     })
-    expect(appliedPayloads).toEqual([{ drafts: [{ actionId: 'act-ho-1', expectedPreviousValue: '0' }] }])
+    expect(appliedPayloads).toEqual([{ drafts: [{ actionId: 'act-ho-1' }] }])
 
     // Confirmed banner + provenance chip shown cleanly in Cockpit, then dismissible
     const banner = await screen.findByTestId('cockpit-eule-banner')
@@ -259,15 +269,21 @@ describe('Slice 4: CopilotBridgeProvider & 3-Breakpoint OwlMode Workspace', () =
     fireEvent.click(screen.getByText('undo-single'))
   })
 
-  it('keeps Eulen-Modus open on HTTP 409 stale conflict and supports force-override without stale baseline', async () => {
+  it('keeps Eulen-Modus open on HTTP 409 and re-applies by acknowledging exactly the values the server reported', async () => {
     const payloads: unknown[] = []
     server.use(
       http.post('*/v1/steuerjahre/2025/advisor/actions/apply-batch', async ({ request }) => {
-        const body = (await request.json()) as { drafts: Array<{ expectedPreviousValue?: string | null }> }
+        const body = (await request.json()) as {
+          drafts: Array<{ acknowledgedCurrentValues?: Record<string, string | null> }>
+        }
         payloads.push(body)
-        if (body.drafts[0]?.expectedPreviousValue !== undefined) {
+        if (body.drafts[0]?.acknowledgedCurrentValues?.['interview.homeoffice'] !== '40') {
           return HttpResponse.json(
-            { code: 'ADVISOR_ACTION_STALE_CONFLICT', message: 'Das Feld wurde zwischenzeitlich manuell geändert.' },
+            {
+              code: 'ADVISOR_ACTION_STALE_CONFLICT',
+              message: 'Das Feld wurde zwischenzeitlich manuell geändert.',
+              details: { conflicts: [{ actionId: 'act-ho-1', key: 'interview.homeoffice', currentValue: '40' }] },
+            },
             { status: 409 },
           )
         }
@@ -293,7 +309,32 @@ describe('Slice 4: CopilotBridgeProvider & 3-Breakpoint OwlMode Workspace', () =
     await waitFor(() => {
       expect(screen.getByTestId('probe-mode').textContent).toBe('cockpit')
     })
-    expect(payloads[1]).toEqual({ drafts: [{ actionId: 'act-ho-1' }] })
+    expect(payloads[1]).toEqual({
+      drafts: [{ actionId: 'act-ho-1', acknowledgedCurrentValues: { 'interview.homeoffice': '40' } }],
+    })
+  })
+
+  it('surfaces an SSE error event as a chat error instead of a half answer', async () => {
+    server.use(
+      http.post('*/v1/steuerjahre/2025/advisor/stream', () =>
+        new HttpResponse(
+          'event: token\ndata: {"text":"Ich prüfe "}\n\nevent: error\ndata: {"code":"ADVISOR_TURN_TIMEOUT","message":"Die Eule hat zu lange gebraucht."}\n\n',
+          { headers: { 'Content-Type': 'text/event-stream' } },
+        ),
+      ),
+    )
+
+    render(
+      <BridgeHarness initialMode="eulen-modus">
+        <BridgeProbe />
+      </BridgeHarness>,
+    )
+
+    fireEvent.click(screen.getByText('send-stream'))
+    await waitFor(() => {
+      expect(screen.getByTestId('probe-error').textContent).toBe('Die Eule hat zu lange gebraucht.')
+    })
+    expect(screen.getByTestId('probe-tokens').textContent).toBe('')
   })
 
   it('upgrades provenance from eule to beleg+eule when receipt-staged draft is applied', async () => {
@@ -764,10 +805,16 @@ describe('Slice 4: CopilotBridgeProvider & 3-Breakpoint OwlMode Workspace', () =
       ),
       http.post('*/v1/steuerjahre/2025/advisor/actions/apply-batch', async ({ request }) => {
         attempt += 1
-        const body = (await request.json()) as { drafts: Array<{ expectedPreviousValue?: string | null }> }
-        if (attempt <= 2 && body.drafts[0]?.expectedPreviousValue !== undefined) {
+        const body = (await request.json()) as {
+          drafts: Array<{ acknowledgedCurrentValues?: Record<string, string | null> }>
+        }
+        if (attempt <= 2 && body.drafts[0]?.acknowledgedCurrentValues === undefined) {
           return HttpResponse.json(
-            { code: 'ADVISOR_ACTION_STALE_CONFLICT', message: 'Manuell geaendert' },
+            {
+              code: 'ADVISOR_ACTION_STALE_CONFLICT',
+              message: 'Manuell geaendert',
+              details: { conflicts: [{ actionId: 'act-ho-1', key: 'interview.homeoffice', currentValue: '40' }] },
+            },
             { status: 409 },
           )
         }

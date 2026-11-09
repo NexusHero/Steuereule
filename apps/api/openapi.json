@@ -6345,6 +6345,14 @@
               "type": "string"
             }
           },
+          "companionExpectedValues": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "nullable": true
+            },
+            "description": "Raw values of the companion fields when the draft was created (stale-check baseline)."
+          },
           "label": {
             "type": "string",
             "example": "Spenden & Zuwendungen (Sonderausgaben)"
@@ -6463,6 +6471,14 @@
             "additionalProperties": {
               "type": "string"
             }
+          },
+          "companionExpectedValues": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "nullable": true
+            },
+            "description": "Raw values of the companion fields when the draft was created (stale-check baseline)."
           },
           "label": {
             "type": "string",
@@ -6932,11 +6948,20 @@
           },
           "assistantMessage": {
             "$ref": "#/components/schemas/AdvisorChatMessageDto"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "langgraph",
+              "deterministic_fallback"
+            ],
+            "description": "deterministic_fallback means no model answered; the UI labels the reply as Basis-Modus."
           }
         },
         "required": [
           "userMessage",
-          "assistantMessage"
+          "assistantMessage",
+          "mode"
         ]
       },
       "ApplyBatchActionItemDto": {
@@ -6946,10 +6971,16 @@
             "type": "string",
             "example": "act-1730970000"
           },
-          "expectedPreviousValue": {
-            "type": "string",
-            "nullable": true,
-            "example": "100"
+          "acknowledgedCurrentValues": {
+            "type": "object",
+            "description": "Re-baselines fields after a stale conflict: provenance key → the value the field holds now (from the 409 details). The write remains a compare-and-set.",
+            "additionalProperties": {
+              "type": "string",
+              "nullable": true
+            },
+            "example": {
+              "commute.homeOfficeDays": "40"
+            }
           }
         },
         "required": [

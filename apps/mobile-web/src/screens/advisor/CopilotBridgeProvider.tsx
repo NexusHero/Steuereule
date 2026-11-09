@@ -44,9 +44,17 @@ export interface CockpitBannerState {
   readonly timestamp: number
 }
 
+export interface StaleFieldConflict {
+  readonly actionId?: string | undefined
+  readonly key: string
+  readonly currentValue: string | null
+}
+
 export interface StaleConflictState {
   readonly actionIds: readonly string[]
   readonly message: string
+  /** Fields that changed under the draft, with the value the server saw — re-sent to re-baseline. */
+  readonly conflicts: readonly StaleFieldConflict[]
 }
 
 export interface ParseReceiptInput {
@@ -69,6 +77,8 @@ export interface CopilotBridgeContextValue {
   readonly streaming: boolean
   readonly streamSteps: readonly string[]
   readonly streamedText: string
+  /** True when the last answer came from the deterministic engine because no model answered. */
+  readonly basisMode: boolean
   readonly chatError: string | null
   readonly clearChatError: () => void
   readonly sendStreamingMessage: (message: string, activeScreen?: Screen) => Promise<AdvisorChatMessageView[] | null>
@@ -77,7 +87,7 @@ export interface CopilotBridgeContextValue {
   readonly clearStaleConflict: () => void
   readonly applyAllPending: (
     drafts: readonly AdvisorActionProposal[],
-    options?: { readonly ignoreBaseline?: boolean },
+    options?: { readonly acknowledgedConflict?: StaleConflictState | undefined },
   ) => Promise<boolean>
   readonly applySingleAction: (actionId: string) => Promise<boolean>
   readonly undoSingleAction: (actionId: string) => Promise<boolean>
@@ -113,6 +123,30 @@ function upgradeProvenance(
 ): TileProvenanceKind {
   if (!current) return next
   return PROVENANCE_PRIORITY[next] > PROVENANCE_PRIORITY[current] ? next : current
+}
+
+function extractStaleConflicts(payload: unknown): StaleFieldConflict[] {
+  if (typeof payload !== 'object' || payload === null || !('details' in payload)) return []
+  const details = (payload as { details: unknown }).details
+  if (typeof details !== 'object' || details === null || !('conflicts' in details)) return []
+  const conflicts = (details as { conflicts: unknown }).conflicts
+  if (!Array.isArray(conflicts)) return []
+  return conflicts.flatMap((c: unknown) => {
+    if (typeof c !== 'object' || c === null) return []
+    const { actionId, key, currentValue } = c as Record<string, unknown>
+    if (typeof key !== 'string' || (currentValue !== null && typeof currentValue !== 'string')) return []
+    return [{ ...(typeof actionId === 'string' ? { actionId } : {}), key, currentValue }]
+  })
+}
+
+/** Per draft, the fields the user accepted at their current value after seeing the conflict. */
+function acknowledgedValuesFor(
+  actionId: string,
+  conflict: StaleConflictState | undefined,
+): Record<string, string | null> | undefined {
+  if (!conflict) return undefined
+  const own = conflict.conflicts.filter((c) => c.actionId === undefined || c.actionId === actionId)
+  return own.length === 0 ? undefined : Object.fromEntries(own.map((c) => [c.key, c.currentValue]))
 }
 
 function extractErrorMessage(payload: unknown): string | null {
@@ -176,6 +210,7 @@ export function CopilotBridgeProvider({
   const [streaming, setStreaming] = useState(false)
   const [streamSteps, setStreamSteps] = useState<readonly string[]>([])
   const [streamedText, setStreamedText] = useState('')
+  const [basisMode, setBasisMode] = useState(false)
   const [chatError, setChatError] = useState<string | null>(null)
   const [batchApplying, setBatchApplying] = useState(false)
   const [staleConflict, setStaleConflict] = useState<StaleConflictState | null>(null)
@@ -267,8 +302,15 @@ export function CopilotBridgeProvider({
           } else if (event === 'token' && typeof data === 'object' && data !== null && 'text' in data) {
             const chunk = String((data as { text: unknown }).text)
             setStreamedText((prev) => prev + chunk)
+          } else if (event === 'ui_command' && typeof data === 'object' && data !== null && 'openMask' in data) {
+            const { openMask, focus } = data as { openMask: Screen; focus?: unknown }
+            openMaskPreview(openMask, typeof focus === 'string' ? focus : undefined)
+          } else if (event === 'error' && typeof data === 'object' && data !== null) {
+            setStreamedText('')
+            setChatError(extractErrorMessage(data) ?? 'Die Antwort der Eule ist unterwegs abgebrochen.')
           } else if (event === 'done' && typeof data === 'object' && data !== null) {
             doneResponse = data as SendAdvisorMessageResponseDto
+            setBasisMode(doneResponse.mode === 'deterministic_fallback')
           }
         }
 
@@ -323,13 +365,13 @@ export function CopilotBridgeProvider({
         setStreaming(false)
       }
     },
-    [isAuthenticated, queryClient, taxYear],
+    [isAuthenticated, openMaskPreview, queryClient, taxYear],
   )
 
   const applyAllPending = useCallback(
     async (
       drafts: readonly AdvisorActionProposal[],
-      options?: { readonly ignoreBaseline?: boolean },
+      options?: { readonly acknowledgedConflict?: StaleConflictState | undefined },
     ): Promise<boolean> => {
       if (!isAuthenticated || drafts.length === 0) return false
       setBatchApplying(true)
@@ -337,11 +379,10 @@ export function CopilotBridgeProvider({
       setChatError(null)
       try {
         const res = await advisorControllerApplyBatch(taxYear, {
-          drafts: drafts.map((d) =>
-            !options?.ignoreBaseline && d.expectedPreviousValue !== undefined
-              ? { actionId: d.actionId, expectedPreviousValue: d.expectedPreviousValue }
-              : { actionId: d.actionId },
-          ),
+          drafts: drafts.map((d) => {
+            const acknowledgedCurrentValues = acknowledgedValuesFor(d.actionId, options?.acknowledgedConflict)
+            return acknowledgedCurrentValues ? { actionId: d.actionId, acknowledgedCurrentValues } : { actionId: d.actionId }
+          }),
         })
 
         if (res.status === 200) {
@@ -367,6 +408,7 @@ export function CopilotBridgeProvider({
             message:
               extractErrorMessage(res.data) ??
               'Ein Wert wurde zwischenzeitlich manuell geändert. Bitte prüfen oder mit neuem Stand übernehmen.',
+            conflicts: extractStaleConflicts(res.data),
           })
           await queryClient.invalidateQueries({ queryKey: getAdvisorControllerGetSessionQueryKey(taxYear) })
           return false
@@ -401,6 +443,7 @@ export function CopilotBridgeProvider({
           setStaleConflict({
             actionIds: [actionId],
             message: extractErrorMessage(res.data) ?? 'Wert wurde zwischenzeitlich manuell geändert.',
+            conflicts: extractStaleConflicts(res.data),
           })
           return false
         }
@@ -421,6 +464,8 @@ export function CopilotBridgeProvider({
           await invalidateAllTaxQueries(queryClient, taxYear)
           return true
         }
+        // A manual edit after the apply wins over the undo; tell the user instead of failing silently.
+        setChatError(extractErrorMessage(res.data) ?? `Rückgängig machen fehlgeschlagen (HTTP ${res.status}).`)
         return false
       } catch {
         return false
@@ -498,6 +543,7 @@ export function CopilotBridgeProvider({
       streaming,
       streamSteps,
       streamedText,
+      basisMode,
       chatError,
       clearChatError: () => setChatError(null),
       sendStreamingMessage,
@@ -527,6 +573,7 @@ export function CopilotBridgeProvider({
       streaming,
       streamSteps,
       streamedText,
+      basisMode,
       chatError,
       sendStreamingMessage,
       batchApplying,

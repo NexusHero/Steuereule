@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { AdvisorService, ADVISOR_DAILY_MESSAGE_LIMIT } from '../src/advisor/advisor.service.js'
+import { AdvisorService } from '../src/advisor/advisor.service.js'
+import { DEFAULT_AI_TURN_LIMITS } from '../src/ki/ai-runtime-config.service.js'
+import type { TransactionRunner } from '../src/prisma/transaction.js'
 import { InMemoryAdvisorRepository } from '../src/advisor/advisor.repository.js'
 import { AuditService } from '../src/audit/audit.service.js'
 import { ConfirmationService } from '../src/confirmation/confirmation.service.js'
@@ -197,7 +199,7 @@ describe('AdvisorService (In-App Steuerberater Agent "Deine Eule")', () => {
   })
 
   it('enforces the daily quota of 50 messages per user', async () => {
-    for (let i = 0; i < ADVISOR_DAILY_MESSAGE_LIMIT; i++) {
+    for (let i = 0; i < DEFAULT_AI_TURN_LIMITS.dailyMessageLimit; i++) {
       await advisorRepo.createMessage({
         userId: USER,
         taxYear: YEAR,
@@ -256,8 +258,8 @@ describe('AdvisorService (In-App Steuerberater Agent "Deine Eule")', () => {
     await expect(
       advisorService.applyBatch(USER, YEAR, {
         drafts: [
-          { actionId: d1.actionId, expectedPreviousValue: d1.expectedPreviousValue },
-          { actionId: d2.actionId, expectedPreviousValue: '15' },
+          { actionId: d1.actionId },
+          { actionId: d2.actionId },
         ],
       }),
     ).rejects.toMatchObject({ code: 'ADVISOR_ACTION_STALE_CONFLICT' })
@@ -273,8 +275,8 @@ describe('AdvisorService (In-App Steuerberater Agent "Deine Eule")', () => {
 
     const batchRes = await advisorService.applyBatch(USER, YEAR, {
       drafts: [
-        { actionId: d1.actionId, expectedPreviousValue: d1.expectedPreviousValue },
-        { actionId: d2Fresh.actionId, expectedPreviousValue: '20' },
+        { actionId: d1.actionId },
+        { actionId: d2Fresh.actionId },
       ],
     })
     expect(batchRes.actions).toHaveLength(2)
@@ -286,12 +288,10 @@ describe('AdvisorService (In-App Steuerberater Agent "Deine Eule")', () => {
     expect(await confirmationService.missing(USER, YEAR)).toEqual([])
   })
 
-  it('rolls back already-written fields in applyBatch when a later item fails mid-commit', async () => {
+  it('runs every write of a batch inside one transaction and lets a mid-commit failure escape it, so the database rolls back', async () => {
     const t1 = await advisorService.sendMessage(USER, YEAR, { message: 'Bitte 250 € Spenden eintragen' })
     const d1 = t1.assistantMessage.meta!.action!
-
-    // Stage a valid draft 1 followed by an invalid commute draft stored in history
-    const badMsg = await advisorRepo.createMessage({
+    await advisorRepo.createMessage({
       userId: USER,
       taxYear: YEAR,
       role: 'assistant',
@@ -315,20 +315,183 @@ describe('AdvisorService (In-App Steuerberater Agent "Deine Eule")', () => {
         },
       },
     })
-    expect(badMsg.id).toBeDefined()
+
+    const runs: Array<{ outcome: 'committed' | 'rolled-back'; error?: unknown }> = []
+    let insideTransaction = false
+    const recordingRunner: TransactionRunner = {
+      async run(work) {
+        insideTransaction = true
+        try {
+          const result = await work()
+          runs.push({ outcome: 'committed' })
+          return result
+        } catch (error) {
+          runs.push({ outcome: 'rolled-back', error })
+          throw error
+        } finally {
+          insideTransaction = false
+        }
+      },
+    }
+    const writesOutsideTransaction: string[] = []
+    const originalWrite = confirmationService.writeConfirmedByAdvisor.bind(confirmationService)
+    confirmationService.writeConfirmedByAdvisor = async (...args) => {
+      if (!insideTransaction) writesOutsideTransaction.push(args[2])
+      return originalWrite(...args)
+    }
+    const transactional = new AdvisorService(
+      advisorRepo,
+      owlModeService,
+      confirmationService,
+      new AuditService(auditRepo),
+      interviewRepo,
+      lstbRepo,
+      chRepo,
+      commuteRepo,
+      childRepo,
+      new FakeRentalRepository(),
+      new FakeCapitalRepository(),
+      profileRepo,
+      undefined,
+      undefined,
+      recordingRunner,
+    )
 
     await expect(
-      advisorService.applyBatch(USER, YEAR, {
-        drafts: [{ actionId: d1.actionId }, { actionId: 'act-bad-commute' }],
-      }),
+      transactional.applyBatch(USER, YEAR, { drafts: [{ actionId: d1.actionId }, { actionId: 'act-bad-commute' }] }),
     ).rejects.toMatchObject({ code: 'ARBEITSTAGE_WIDERSPRUCH' })
 
-    // Draft 1 & its companion field must have been rolled back completely!
-    const afterRollback = await interviewRepo.findAllForUserAndYear(USER, YEAR)
-    expect(afterRollback.find((r) => r.questionId === 'spenden-betrag')).toBeUndefined()
-    expect(afterRollback.find((r) => r.questionId === 'spenden')).toBeUndefined()
-    const session = await advisorService.getSession(USER, YEAR)
-    const d1After = session.messages.find((m) => m.id === t1.assistantMessage.id)?.meta?.action
-    expect(d1After?.status).toBe('pending')
+    expect(runs).toHaveLength(1)
+    expect(runs[0]!.outcome).toBe('rolled-back')
+    expect(writesOutsideTransaction).toEqual([])
+    // The draft keeps its pending status because the meta update sits in the same transaction.
+    const session = await transactional.getSession(USER, YEAR)
+    expect(session.messages.find((m) => m.id === t1.assistantMessage.id)?.meta?.action?.status).toBe('pending')
+  })
+
+  it('reports every stale field with its current value and applies once the client acknowledges exactly that value', async () => {
+    await interviewRepo.write({ userId: USER, taxYear: YEAR, questionId: 'spenden', value: 'Ja', openItems: 0 })
+    await interviewRepo.write({ userId: USER, taxYear: YEAR, questionId: 'spenden-betrag', value: '100', openItems: 0 })
+    const turn = await advisorService.sendMessage(USER, YEAR, { message: 'Bitte 300 € Spenden eintragen' })
+    const draft = turn.assistantMessage.meta!.action!
+
+    await interviewRepo.write({ userId: USER, taxYear: YEAR, questionId: 'spenden-betrag', value: '180', openItems: 0 })
+    const conflict = await advisorService.applyBatch(USER, YEAR, { drafts: [{ actionId: draft.actionId }] }).catch((e: unknown) => e)
+    expect(conflict).toMatchObject({
+      code: 'ADVISOR_ACTION_STALE_CONFLICT',
+      details: { conflicts: [{ actionId: draft.actionId, key: 'interview.spenden-betrag', currentValue: '180' }] },
+    })
+
+    // Acknowledging a value the field does not hold is still rejected: it is a compare-and-set, not an override.
+    await expect(
+      advisorService.applyBatch(USER, YEAR, {
+        drafts: [{ actionId: draft.actionId, acknowledgedCurrentValues: { 'interview.spenden-betrag': '999' } }],
+      }),
+    ).rejects.toMatchObject({ code: 'ADVISOR_ACTION_STALE_CONFLICT' })
+
+    const applied = await advisorService.applyBatch(USER, YEAR, {
+      drafts: [{ actionId: draft.actionId, acknowledgedCurrentValues: { 'interview.spenden-betrag': '180' } }],
+    })
+    expect(applied.actions[0]!.status).toBe('applied')
+    expect(applied.actions[0]!.previousValue).toBe('180')
+    expect(applied.actions[0]).not.toHaveProperty('undoSnapshot')
+    const rows = await interviewRepo.findAllForUserAndYear(USER, YEAR)
+    expect(rows.find((r) => r.questionId === 'spenden-betrag')?.value).toBe('300')
+  })
+
+  it('stale-checks companion fields too', async () => {
+    const turn = await advisorService.sendMessage(USER, YEAR, { message: 'Bitte 300 € Spenden eintragen' })
+    const draft = turn.assistantMessage.meta!.action!
+    expect(draft.companionFields).toEqual({ spenden: 'Ja' })
+    expect(draft.companionExpectedValues).toEqual({ spenden: null })
+
+    await interviewRepo.write({ userId: USER, taxYear: YEAR, questionId: 'spenden', value: 'Nein', openItems: 0 })
+    await expect(advisorService.applyAction(USER, YEAR, draft.actionId)).rejects.toMatchObject({
+      code: 'ADVISOR_ACTION_STALE_CONFLICT',
+      details: { conflicts: [{ key: 'interview.spenden', currentValue: 'Nein' }] },
+    })
+  })
+
+  it('undo restores the exact prior value and provenance of main and companion fields, and refuses after a manual edit', async () => {
+    await interviewRepo.write({ userId: USER, taxYear: YEAR, questionId: 'spenden', value: 'Ja', openItems: 0 })
+    await interviewRepo.write({ userId: USER, taxYear: YEAR, questionId: 'spenden-betrag', value: '100', openItems: 0 })
+    await markingRepo.save(USER, YEAR, {
+      key: 'interview.spenden-betrag',
+      provenance: { kind: 'uebernahme', lastYear: YEAR - 1 },
+      confirmed: true,
+      proposal: null,
+    })
+
+    const turn = await advisorService.sendMessage(USER, YEAR, { message: 'Bitte 300 € Spenden eintragen' })
+    const draft = turn.assistantMessage.meta!.action!
+    await advisorService.applyAction(USER, YEAR, draft.actionId)
+    await advisorService.undoAction(USER, YEAR, draft.actionId)
+
+    const rows = await interviewRepo.findAllForUserAndYear(USER, YEAR)
+    expect(rows.find((r) => r.questionId === 'spenden-betrag')?.value).toBe('100')
+    expect(rows.find((r) => r.questionId === 'spenden')?.value).toBe('Ja')
+    expect(markingRepo.all().find((m) => m.key === 'interview.spenden-betrag')).toMatchObject({
+      provenance: { kind: 'uebernahme', lastYear: YEAR - 1 },
+      confirmed: true,
+    })
+
+    await advisorService.applyAction(USER, YEAR, draft.actionId)
+    await interviewRepo.write({ userId: USER, taxYear: YEAR, questionId: 'spenden-betrag', value: '320', openItems: 0 })
+    await expect(advisorService.undoAction(USER, YEAR, draft.actionId)).rejects.toMatchObject({
+      code: 'ADVISOR_ACTION_STALE_CONFLICT',
+    })
+    const afterRefusedUndo = await interviewRepo.findAllForUserAndYear(USER, YEAR)
+    expect(afterRefusedUndo.find((r) => r.questionId === 'spenden-betrag')?.value).toBe('320')
+  })
+
+  it('refuses to apply a stored draft that targets a locked field, even if it slipped past proposal validation', async () => {
+    await advisorRepo.createMessage({
+      userId: USER,
+      taxYear: YEAR,
+      role: 'assistant',
+      content: 'Manipulierter Entwurf',
+      meta: {
+        action: {
+          actionId: 'act-companion-pii',
+          status: 'pending',
+          screen: 'interview',
+          field: 'spenden-betrag',
+          instance: null,
+          companionFields: { firstName: 'Mallory' },
+          label: 'Spenden',
+          previousValue: null,
+          expectedPreviousValue: null,
+          newValue: '50',
+          beforeRefundEur: 0,
+          afterRefundEur: 0,
+          deltaEur: 0,
+          reason: 'Test',
+          sourceId: 'estg-10b',
+        },
+      },
+    })
+    await expect(advisorService.applyAction(USER, YEAR, 'act-companion-pii')).rejects.toMatchObject({
+      code: 'AI_WRITE_FORBIDDEN',
+    })
+    const rows = await interviewRepo.findAllForUserAndYear(USER, YEAR)
+    expect(rows.find((r) => r.questionId === 'spenden-betrag')).toBeUndefined()
+  })
+
+  it('records non-sensitive context of applied drafts in the audit trail', async () => {
+    const turn = await advisorService.sendMessage(USER, YEAR, { message: 'Bitte 300 € Spenden eintragen' })
+    const draft = turn.assistantMessage.meta!.action!
+    await advisorService.applyAction(USER, YEAR, draft.actionId)
+
+    const row = (await auditRepo.findOwnRows(USER)).find((r) => r.resource === 'berater_aktion')
+    expect(row?.source).toBe('Assistent: SteuerEule')
+    const detail = JSON.parse(row!.detail!) as { actions: Array<Record<string, unknown>> }
+    expect(detail.actions[0]).toMatchObject({
+      actionId: draft.actionId,
+      key: 'interview.spenden-betrag',
+      companionKeys: ['interview.spenden'],
+      sourceId: draft.sourceId,
+      engine: { mode: 'deterministic_fallback' },
+    })
+    expect(row!.detail).not.toContain('300')
   })
 })

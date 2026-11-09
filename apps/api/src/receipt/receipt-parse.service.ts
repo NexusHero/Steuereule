@@ -9,6 +9,7 @@ import { InvalidInputError } from '../common/domain-error.js'
 import {
   AI_RUNTIME_CONFIG_SERVICE,
   type AiRuntimeConfigService,
+  type ResolvedAiSlotConfig,
 } from '../ki/ai-runtime-config.service.js'
 import { validateStageTarget } from '../ki/advisor-safety.js'
 import {
@@ -25,7 +26,6 @@ import {
   type ParsedReceiptDataDto,
   type ReceiptVendorCategory,
 } from './dto/parse-receipt.dto.js'
-import { ReceiptService } from './receipt.service.js'
 
 const STAGE1_EXTRACTION_SCHEMA = z.object({
   vendorCategory: z.enum(RECEIPT_VENDOR_CATEGORIES).default('sonstiges'),
@@ -42,6 +42,8 @@ const STAGE1_EXTRACTION_SCHEMA = z.object({
   summary: z.string().max(600).optional().default('Beleg ausgewertet.'),
   taxYear: z.number().int().min(2020).max(2030).nullable().optional().default(null),
 })
+
+const RECEIPT_EXTRACTION_TIMEOUT_MS = 20_000
 
 const SAFE_RECEIPT_TARGETS: Readonly<Record<string, readonly string[]>> = {
   interview: ['spenden-betrag', 'fortbildung', 'umzug-kosten', 'dhf-miete', 'riester-betrag', 'homeoffice'],
@@ -99,6 +101,27 @@ function extractEuroAmount(text: string): number | null {
   return Number.isFinite(num) && num >= 0 ? Math.round(num) : null
 }
 
+const CATEGORY_LABELS: Readonly<Record<ReceiptVendorCategory, string>> = {
+  arbeitsmittel: 'Arbeitsmittel',
+  spende: 'Spende',
+  fortbildung: 'Fortbildung',
+  kinderbetreuung: 'Kinderbetreuung',
+  handwerker: 'Handwerkerleistung',
+  entfernung: 'Fahrtkosten',
+  sonstiges: 'Sonstiges',
+}
+
+/**
+ * The only receipt text that is persisted and later fed back to the chat model. It is built
+ * from validated structured fields, never from model or document free text, so a prompt
+ * injection or a name printed on the receipt has no path into the chat.
+ */
+function describeReceipt(category: ReceiptVendorCategory, amountEur: number | null, receiptDate: string | null): string {
+  const amount = amountEur !== null ? ` über ${amountEur} €` : ''
+  const date = receiptDate !== null ? ` vom ${receiptDate}` : ''
+  return `Beleg (${CATEGORY_LABELS[category]})${amount}${date} erkannt.`
+}
+
 function extractDeterministically(dto: ParseReceiptDto): ParsedReceiptDataDto {
   const combined = `${dto.fileName} ${dto.rawText ?? ''}`.toLowerCase()
   const receiptDate = parseGermanOrIsoDate(dto.rawText ?? '')
@@ -147,31 +170,26 @@ function extractDeterministically(dto: ParseReceiptDto): ParsedReceiptDataDto {
     suggestedScreen,
     suggestedField,
     suggestedValue,
-    summary:
-      amountEur !== null
-        ? `Beleg „${dto.fileName}“ (${vendorCategory}) über ${amountEur} € erkannt.`
-        : `Beleg „${dto.fileName}“ (${vendorCategory}) erkannt.`,
+    summary: describeReceipt(vendorCategory, amountEur, receiptDate),
     taxYear: Number.isFinite(derivedYear) ? derivedYear : dto.taxYear,
   }
 }
 
-function proposalDetailsFor(
-  parsed: ParsedReceiptDataDto,
-  fileName: string,
-): {
+function proposalDetailsFor(parsed: ParsedReceiptDataDto): {
   readonly label: string
   readonly reason: string
   readonly sourceId: OwlSourceId
   readonly companionFields?: Readonly<Record<string, string>> | undefined
   readonly summaryText: string
 } {
+  const summary = describeReceipt(parsed.vendorCategory, parsed.amountEur, parsed.receiptDate)
   if (parsed.suggestedScreen === 'interview' && parsed.suggestedField === 'spenden-betrag') {
     return {
-      label: `Spendenbeleg („${fileName}“)`,
+      label: 'Spendenbeleg',
       reason: 'Sonderausgabenabzug für gemeinnützige Zuwendungen nach § 10b EStG aus geprüftem Beleg.',
       sourceId: 'estg-10b',
       companionFields: { spenden: 'Ja' },
-      summaryText: `${parsed.summary} Nach [estg-10b] habe ich dir den Sonderausgaben-Entwurf bereitgestellt:`,
+      summaryText: `${summary} Nach [estg-10b] habe ich dir den Sonderausgaben-Entwurf bereitgestellt:`,
     }
   }
   if (parsed.suggestedScreen === 'interview' && parsed.suggestedField === 'fortbildung') {
@@ -179,30 +197,30 @@ function proposalDetailsFor(
     return {
       label:
         parsed.vendorCategory === 'arbeitsmittel'
-          ? `Arbeitsmittel-Beleg („${fileName}“)`
-          : `Fortbildungsbeleg („${fileName}“)` ,
+          ? 'Arbeitsmittel-Beleg'
+          : 'Fortbildungsbeleg',
       reason:
         parsed.vendorCategory === 'arbeitsmittel'
           ? 'Sofortabzug beruflicher Arbeitsmittel nach § 9 Abs. 1 Nr. 6 EStG aus geprüftem Beleg.'
           : 'Werbungskostenabzug für berufliche Fortbildung nach § 9 Abs. 1 Nr. 4a EStG.',
       sourceId,
-      summaryText: `${parsed.summary} Nach [${sourceId}] habe ich den Werbungskosten-Entwurf für deine Akte vorbereitet:`,
+      summaryText: `${summary} Nach [${sourceId}] habe ich den Werbungskosten-Entwurf für deine Akte vorbereitet:`,
     }
   }
   if (parsed.suggestedScreen === 'interview' && parsed.suggestedField === 'umzug-kosten') {
     return {
-      label: `Umzugsbeleg („${fileName}“)` ,
+      label: 'Umzugsbeleg',
       reason: 'Beruflich veranlasste Umzugskosten als Werbungskosten nach § 9 Abs. 1 EStG.',
       sourceId: 'estg-9-1',
       companionFields: { umzug: 'Ja' },
-      summaryText: `${parsed.summary} Nach [estg-9-1] liegt der Umzugskosten-Entwurf zur Freigabe bereit:`,
+      summaryText: `${summary} Nach [estg-9-1] liegt der Umzugskosten-Entwurf zur Freigabe bereit:`,
     }
   }
   return {
-    label: `Belegvorschlag („${fileName}“)` ,
+    label: 'Belegvorschlag',
     reason: 'Aus geprüftem Beleg abgeleiteter Einkommensteuer-Vorschlag (§ 9 Abs. 1 EStG).',
     sourceId: 'estg-9-1',
-    summaryText: `${parsed.summary} Ich habe einen unverbindlichen Entwurf zur Freigabe vorbereitet:`,
+    summaryText: `${summary} Ich habe einen unverbindlichen Entwurf zur Freigabe vorbereitet:`,
   }
 }
 
@@ -213,7 +231,6 @@ export class ReceiptParseService {
   constructor(
     @Inject(AI_RUNTIME_CONFIG_SERVICE) private readonly runtimeConfig: AiRuntimeConfigService,
     @Inject(AdvisorService) private readonly advisorService: AdvisorService,
-    @Inject(ReceiptService) private readonly receiptService: ReceiptService,
     @Inject(AuditService) private readonly auditService: AuditService,
     @Optional() @Inject(CHAT_MODEL_FACTORY) modelFactory?: ChatModelFactory,
   ) {
@@ -232,7 +249,10 @@ export class ReceiptParseService {
     }
   }
 
-  private sanitizeExtractedTarget(raw: z.infer<typeof STAGE1_EXTRACTION_SCHEMA>): {
+  private sanitizeExtractedTarget(
+    raw: z.infer<typeof STAGE1_EXTRACTION_SCHEMA>,
+    knownNames: readonly string[],
+  ): {
     parsed: ParsedReceiptDataDto
     securityBlocked: boolean
   } {
@@ -257,7 +277,7 @@ export class ReceiptParseService {
 
     const summaryText = securityBlocked
       ? 'Der Beleg enthielt unzulässige Schreibziele; der Änderungsvorschlag wurde aus Sicherheitsgründen blockiert.'
-      : scrubUserMessagePii(raw.summary.trim().slice(0, 400), []) || 'Beleg ausgewertet.'
+      : scrubUserMessagePii(raw.summary.trim().slice(0, 400), [...knownNames]) || 'Beleg ausgewertet.'
 
     const parsed: ParsedReceiptDataDto = {
       vendorCategory: raw.vendorCategory,
@@ -276,67 +296,55 @@ export class ReceiptParseService {
   async parseReceipt(userId: string, dto: ParseReceiptDto): Promise<ParseReceiptResponseDto> {
     this.assertValidReceiptPayload(dto)
 
-    // Keep unused receiptService touch-free for Zero-Write guarantee, read inbox ownership only if needed later
-    void this.receiptService
-
     let mode: 'vision_ocr' | 'deterministic_fallback' = 'deterministic_fallback'
     let securityBlocked = false
-    let parsed: ParsedReceiptDataDto
+    let parsed: ParsedReceiptDataDto = extractDeterministically(dto)
 
     let visionModel: BaseChatModel | null = null
+    let visionSlot: ResolvedAiSlotConfig | null = null
     try {
       if (!(await this.runtimeConfig.isKillSwitchActive())) {
         const slot = await this.runtimeConfig.resolveSlot('vision_ocr')
         if (slot.enabled && slot.provider !== 'deterministic') {
           visionModel = this.resolveChatModel(slot)
+          visionSlot = slot
         }
       }
     } catch {
       visionModel = null
     }
 
-    if (visionModel) {
+    const sendImage = visionSlot?.allowsDocumentImages === true && Boolean(dto.imageBase64) && dto.mimeType?.startsWith('image/') === true
+    const knownNames = await this.advisorService.knownNamesForScrubbing(userId, dto.taxYear)
+    const safeText = dto.rawText ? scrubUserMessagePii(dto.rawText, knownNames) : ''
+
+    // Without an approved image path and without text there is nothing the model may see.
+    if (visionModel && (sendImage || safeText.length > 0)) {
       try {
-        // Outbound PII scrub before transmitting raw receipt text to Stage 1 external model
-        const safeText = dto.rawText ? scrubUserMessagePii(dto.rawText, []) : ''
-        const safeFileName = scrubUserMessagePii(dto.fileName, [])
+        // Single-shot and isolated: no chat history, no profile, no tools, and no file name
+        // (users name files after themselves).
+        const context = `Steuerjahr-Kontext: ${dto.taxYear}`
+        const userMessage = sendImage
+          ? new HumanMessage({
+              content: [
+                { type: 'text', text: safeText ? `${context}\nExtrahierter Text:\n${safeText}` : context },
+                { type: 'image_url', image_url: { url: `data:${dto.mimeType};base64,${dto.imageBase64}` } },
+              ],
+            })
+          : new HumanMessage(`${context}\nBelegtext:\n${safeText}`)
 
-        // Strictly isolated 2-message Single-Shot prompt (NO chat history, NO profile/PII, NO tools!)
-        const userMessage =
-          dto.imageBase64 && dto.mimeType?.startsWith('image/')
-            ? new HumanMessage({
-                content: [
-                  {
-                    type: 'text',
-                    text: `Dateiname: ${safeFileName}\nSteuerjahr-Kontext: ${dto.taxYear}\n${safeText ? `Extrahierter Text:\n${safeText}` : ''}`,
-                  },
-                  {
-                    type: 'image_url',
-                    image_url: { url: `data:${dto.mimeType};base64,${dto.imageBase64}` },
-                  },
-                ],
-              })
-            : new HumanMessage(
-                `Dateiname: ${safeFileName}\nSteuerjahr-Kontext: ${dto.taxYear}\nBelegtext:\n${safeText}`,
-              )
-
-        const aiResult = await visionModel.invoke([
-          new SystemMessage(STAGE1_ISOLATED_SYSTEM_PROMPT),
-          userMessage,
-        ])
+        const aiResult = await visionModel.invoke([new SystemMessage(STAGE1_ISOLATED_SYSTEM_PROMPT), userMessage], {
+          signal: AbortSignal.timeout(RECEIPT_EXTRACTION_TIMEOUT_MS),
+        })
         const rawJson = extractJsonObject(extractMessageText(aiResult.content))
         const validated = STAGE1_EXTRACTION_SCHEMA.parse(rawJson)
-        const sanitized = this.sanitizeExtractedTarget(validated)
+        const sanitized = this.sanitizeExtractedTarget(validated, knownNames)
         parsed = sanitized.parsed
         securityBlocked = sanitized.securityBlocked
         mode = 'vision_ocr'
       } catch {
-        parsed = extractDeterministically(dto)
         mode = 'deterministic_fallback'
       }
-    } else {
-      parsed = extractDeterministically(dto)
-      mode = 'deterministic_fallback'
     }
 
     // Security Firewall Bridge between Stage 1 (untrusted doc OCR) and Stage 2 (advisor staging):
@@ -367,7 +375,7 @@ export class ReceiptParseService {
     }
 
     const targetTaxYear = parsed.taxYear ?? dto.taxYear
-    const proposalMeta = proposalDetailsFor(parsed, dto.fileName)
+    const proposalMeta = proposalDetailsFor(parsed)
     const staged = await this.advisorService.stageReceiptProposal(userId, targetTaxYear, {
       screen: parsed.suggestedScreen,
       field: parsed.suggestedField,
@@ -377,6 +385,10 @@ export class ReceiptParseService {
       reason: proposalMeta.reason,
       sourceId: proposalMeta.sourceId,
       summaryText: proposalMeta.summaryText,
+      engine:
+        mode === 'vision_ocr' && visionSlot
+          ? { mode: 'langgraph', provider: visionSlot.provider, model: visionSlot.model }
+          : { mode: 'deterministic_fallback', provider: 'deterministic' },
     })
 
     return {

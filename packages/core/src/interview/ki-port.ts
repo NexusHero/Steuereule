@@ -22,6 +22,8 @@ export interface AdvisorTurnRequest {
   readonly digest: CaseDigest
   readonly history?: readonly AdvisorHistoryEntry[] | undefined
   readonly actionIdFactory?: (() => string) | undefined
+  /** Aborted when the client disconnects or the turn budget runs out; stops the paid model call. */
+  readonly signal?: AbortSignal | undefined
 }
 
 export interface AdvisorTurnResult {
@@ -39,7 +41,15 @@ export type AdvisorStreamEvent =
   | { readonly event: 'choices'; readonly data: { readonly choices: readonly string[] } }
   | { readonly event: 'action'; readonly data: AdvisorActionProposal }
   | { readonly event: 'twoPaths'; readonly data: AdvisorTwoPathsProposal }
+  | { readonly event: 'ui_command'; readonly data: AdvisorUiCommand }
+  | { readonly event: 'error'; readonly data: { readonly code: string; readonly message: string } }
   | { readonly event: 'done'; readonly data: unknown }
+
+/** Tells the workbench to open a mask itself, e.g. when the model aimed at a field it may never write. */
+export interface AdvisorUiCommand {
+  readonly openMask: Screen
+  readonly focus: string
+}
 
 export interface AdvisorEnginePort {
   runTurn(input: AdvisorTurnRequest): Promise<AdvisorTurnResult>

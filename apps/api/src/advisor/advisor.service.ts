@@ -9,11 +9,13 @@ import {
   scrubUserMessagePii,
   simulateAdvisorFieldDelta,
   type AdvisorActionProposal,
+  type AdvisorEngineInfo,
   type AdvisorEnginePort,
   type AdvisorHistoryEntry,
   type AdvisorMessageMeta,
   type AdvisorStreamEvent,
   type AdvisorTurnResult,
+  type AdvisorUndoEntry,
   type CaseDigest,
   type OwlSourceId,
   type Profession,
@@ -22,6 +24,12 @@ import {
 import { AuditService } from '../audit/audit.service.js'
 import { checkPiiFree } from '../ki/ki.adapter.js'
 import { ADVISOR_ENGINE } from '../ki/langgraph-advisor.engine.js'
+import {
+  AI_RUNTIME_CONFIG_SERVICE,
+  DEFAULT_AI_TURN_LIMITS,
+  type AiRuntimeConfigService,
+} from '../ki/ai-runtime-config.service.js'
+import { TRANSACTION_RUNNER, passThroughTransactionRunner, type TransactionRunner } from '../prisma/transaction.js'
 import { CAPITAL_REPOSITORY, type CapitalRepository } from '../capital/capital.repository.js'
 import {
   CROSS_BORDER_SALARY_STATEMENT_REPOSITORY,
@@ -29,7 +37,8 @@ import {
 } from '../ch-salary-certificate/ch-salary-certificate.repository.js'
 import { CHILD_REPOSITORY, type ChildRepository } from '../children/child.repository.js'
 import { COMMUTE_REPOSITORY, type CommuteRepository } from '../commute/commute.repository.js'
-import { ConfirmationService, assertAiWritableScreen } from '../confirmation/confirmation.service.js'
+import { assertAiWritable } from '../confirmation/ai-write-policy.js'
+import { ConfirmationService } from '../confirmation/confirmation.service.js'
 import {
   INTERVIEW_ANSWER_REPOSITORY,
   type InterviewAnswerRepository,
@@ -38,7 +47,7 @@ import { WAGE_TAX_CERTIFICATE_REPOSITORY, type WageTaxCertificateRepository } fr
 import { OwlModeService } from '../owl-mode/owl-mode.service.js'
 import { PROFILE_REPOSITORY, type ProfileRepository } from '../profile/profile.repository.js'
 import { RENTAL_REPOSITORY, type RentalRepository } from '../rental/rental.repository.js'
-import { ConflictError, InvalidInputError, NotFoundError, TooManyRequestsError } from '../common/domain-error.js'
+import { ConflictError, InvalidInputError, NotFoundError, TooManyRequestsError, UnavailableError } from '../common/domain-error.js'
 import {
   ADVISOR_REPOSITORY,
   type AdvisorChatMessageRecord,
@@ -54,7 +63,13 @@ import type {
   SendAdvisorMessageResponseDto,
 } from './dto/advisor.dto.js'
 
-export const ADVISOR_DAILY_MESSAGE_LIMIT = 50
+const DETERMINISTIC_ENGINE: AdvisorEngineInfo = { mode: 'deterministic_fallback', provider: 'deterministic' }
+
+interface ResolvedDraft {
+  readonly messageRecord: AdvisorChatMessageRecord
+  readonly action: AdvisorActionProposal
+  readonly key: string
+}
 
 function parseNum(raw: string | null | undefined): number | null {
   if (!raw || raw === 'unklar') return null
@@ -62,12 +77,36 @@ function parseNum(raw: string | null | undefined): number | null {
   return Number.isFinite(n) ? n : null
 }
 
+/** Strips the server-internal undo snapshot; the client never needs prior provenance rows. */
+function toPublicAction<T extends AdvisorActionProposal>(action: T): T {
+  if (action.undoSnapshot === undefined) return action
+  const { undoSnapshot: _internal, ...rest } = action
+  return rest as T
+}
+
+function toPublicMeta(meta: AdvisorMessageMeta): AdvisorMessageMeta {
+  const { engine: _internal, ...rest } = meta
+  return {
+    ...rest,
+    ...(rest.action ? { action: toPublicAction(rest.action) } : {}),
+    ...(rest.twoPaths
+      ? {
+          twoPaths: {
+            ...rest.twoPaths,
+            safePath: toPublicAction(rest.twoPaths.safePath),
+            maxPath: toPublicAction(rest.twoPaths.maxPath),
+          },
+        }
+      : {}),
+  }
+}
+
 function toMessageDto(record: AdvisorChatMessageRecord): AdvisorChatMessageDto {
   return {
     id: record.id,
     role: record.role,
     content: record.content,
-    meta: record.meta ?? null,
+    meta: record.meta ? toPublicMeta(record.meta) : null,
     createdAt: record.createdAt.toISOString(),
   }
 }
@@ -90,9 +129,12 @@ export class AdvisorService {
     @Optional() @Inject(CAPITAL_REPOSITORY) private readonly capitalRepo?: CapitalRepository,
     @Optional() @Inject(PROFILE_REPOSITORY) private readonly profileRepo?: ProfileRepository,
     @Optional() @Inject(ADVISOR_ENGINE) private readonly advisorEngine?: AdvisorEnginePort,
+    @Optional() @Inject(AI_RUNTIME_CONFIG_SERVICE) private readonly runtimeConfig?: AiRuntimeConfigService,
+    @Optional() @Inject(TRANSACTION_RUNNER) private readonly transactions: TransactionRunner = passThroughTransactionRunner,
   ) {}
 
-  private async collectKnownNamesForScrubbing(userId: string, taxYear: number): Promise<string[]> {
+  /** Names of the user and their children, so free text can be scrubbed before it reaches any model. */
+  async knownNamesForScrubbing(userId: string, taxYear: number): Promise<string[]> {
     const names: string[] = []
     if (this.profileRepo) {
       const profile = await this.profileRepo.findByUserId(userId)
@@ -254,6 +296,7 @@ export class AdvisorService {
   ): Promise<SendAdvisorMessageResponseDto> {
     let finalResponse: SendAdvisorMessageResponseDto | null = null
     for await (const event of this.streamMessage(userId, taxYear, dto)) {
+      if (event.event === 'error') throw new UnavailableError(event.data.code, event.data.message)
       if (event.event === 'done') {
         finalResponse = event.data as SendAdvisorMessageResponseDto
       }
@@ -268,15 +311,17 @@ export class AdvisorService {
     userId: string,
     taxYear: number,
     dto: SendAdvisorMessageDto,
+    signal?: AbortSignal,
   ): AsyncIterable<AdvisorStreamEvent> {
-    // 1. Enforce daily user message quota (50 messages/day) BEFORE opening stream or calling LLM
+    // The quota is checked before the stream opens, so a 429 still reaches the client as plain HTTP.
+    const { dailyMessageLimit } = this.runtimeConfig ? await this.runtimeConfig.resolveLimits() : DEFAULT_AI_TURN_LIMITS
     const startOfDayUtc = new Date()
     startOfDayUtc.setUTCHours(0, 0, 0, 0)
     const todayCount = await this.advisorRepo.countUserMessagesSince(userId, startOfDayUtc)
-    if (todayCount >= ADVISOR_DAILY_MESSAGE_LIMIT) {
+    if (todayCount >= dailyMessageLimit) {
       throw new TooManyRequestsError(
         'ADVISOR_DAILY_LIMIT_EXCEEDED',
-        `Du hast dein Tageskontingent von ${ADVISOR_DAILY_MESSAGE_LIMIT} Nachrichten an die SteuerEule erreicht. Morgen früh steht dir deine Eule wieder frisch zur Verfügung.`,
+        `Du hast dein Tageskontingent von ${dailyMessageLimit} Nachrichten an die SteuerEule erreicht. Morgen früh steht dir deine Eule wieder frisch zur Verfügung.`,
       )
     }
 
@@ -287,7 +332,7 @@ export class AdvisorService {
     }
 
     // 3. Double PII Shield: scrub known names, Steuer-IDs, IBANs, emails, and phones from user free-text & history
-    const knownNames = await this.collectKnownNamesForScrubbing(userId, taxYear)
+    const knownNames = await this.knownNamesForScrubbing(userId, taxYear)
     const scrubbedUserText = scrubUserMessagePii(dto.message.trim(), knownNames)
     const priorRecords = await this.advisorRepo.listForUserAndYear(userId, taxYear)
     const history: AdvisorHistoryEntry[] = priorRecords.slice(-10).map((msg) => ({
@@ -324,12 +369,13 @@ export class AdvisorService {
         taxYear,
         role: 'assistant',
         content: turn.replyText,
-        meta: enrichedMeta,
+        meta: { ...enrichedMeta, engine: DETERMINISTIC_ENGINE },
       })
 
       const response: SendAdvisorMessageResponseDto = {
         userMessage: toMessageDto(userMessage),
         assistantMessage: toMessageDto(assistantMessage),
+        mode: 'deterministic_fallback',
       }
 
       yield { event: 'status', data: { text: 'Eule prüft deine Akte & Paragraphen …' } }
@@ -338,10 +384,10 @@ export class AdvisorService {
         yield { event: 'choices', data: { choices: enrichedMeta.choices } }
       }
       if (enrichedMeta.action) {
-        yield { event: 'action', data: enrichedMeta.action }
+        yield { event: 'action', data: toPublicAction(enrichedMeta.action) }
       }
       if (enrichedMeta.twoPaths) {
-        yield { event: 'twoPaths', data: enrichedMeta.twoPaths }
+        yield { event: 'twoPaths', data: toPublicMeta({ twoPaths: enrichedMeta.twoPaths }).twoPaths! }
       }
       yield { event: 'done', data: response }
       return
@@ -353,10 +399,11 @@ export class AdvisorService {
       digest,
       history,
       actionIdFactory,
+      signal,
     })) {
       if (ev.event === 'action') {
         const enriched = await this.enrichSingleDraft(userId, taxYear, ev.data)
-        yield { event: 'action', data: enriched }
+        yield { event: 'action', data: toPublicAction(enriched) }
         continue
       }
 
@@ -369,11 +416,8 @@ export class AdvisorService {
           event: 'twoPaths',
           data: {
             ...ev.data,
-            safePath,
-            maxPath: {
-              ...maxPath,
-              evidenceHint: ev.data.maxPath.evidenceHint,
-            },
+            safePath: toPublicAction(safePath),
+            maxPath: toPublicAction({ ...maxPath, evidenceHint: ev.data.maxPath.evidenceHint }),
           },
         }
         continue
@@ -384,17 +428,23 @@ export class AdvisorService {
         const enrichedMeta = await this.enrichDraftsWithRawBaseline(userId, taxYear, turnResult.meta)
         await this.supersedePendingDraftsForSameTargets(userId, taxYear, this.collectPendingTargetKeys(enrichedMeta))
 
+        const engine: AdvisorEngineInfo = {
+          mode: turnResult.mode,
+          ...(turnResult.provider !== undefined ? { provider: turnResult.provider } : {}),
+          ...(turnResult.model !== undefined ? { model: turnResult.model } : {}),
+        }
         const assistantMessage = await this.advisorRepo.createMessage({
           userId,
           taxYear,
           role: 'assistant',
           content: turnResult.replyText,
-          meta: enrichedMeta,
+          meta: { ...enrichedMeta, engine },
         })
 
         const response: SendAdvisorMessageResponseDto = {
           userMessage: toMessageDto(userMessage),
           assistantMessage: toMessageDto(assistantMessage),
+          mode: turnResult.mode,
         }
         yield { event: 'done', data: response }
         continue
@@ -416,9 +466,11 @@ export class AdvisorService {
       readonly reason: string
       readonly sourceId: OwlSourceId
       readonly summaryText: string
+      readonly engine: AdvisorEngineInfo
     },
   ): Promise<{ action: AdvisorActionProposal; assistantMessage: AdvisorChatMessageDto }> {
-    assertAiWritableScreen(input.screen, input.field)
+    assertAiWritable(input.screen, input.field)
+    for (const companionField of Object.keys(input.companionFields ?? {})) assertAiWritable(input.screen, companionField)
     checkPiiFree(input)
 
     const setting = await this.owlModeService.getSetting(userId)
@@ -460,11 +512,11 @@ export class AdvisorService {
       taxYear,
       role: 'assistant',
       content: input.summaryText,
-      meta: enrichedMeta,
+      meta: { ...enrichedMeta, engine: input.engine },
     })
 
     return {
-      action: enrichedMeta.action!,
+      action: toPublicAction(enrichedMeta.action!),
       assistantMessage: toMessageDto(assistantMessage),
     }
   }
@@ -487,18 +539,37 @@ export class AdvisorService {
     taxYear: number,
     draft: AdvisorActionProposal,
   ): Promise<AdvisorActionProposal> {
-    assertAiWritableScreen(draft.screen, draft.field)
-    const key = this.targetKeyOf(draft)
-    let rawPreviousValue = draft.expectedPreviousValue
-    try {
-      rawPreviousValue = await this.confirmationService.readRawValue(userId, taxYear, key)
-    } catch (error) {
-      if (!(error instanceof InvalidInputError)) throw error
+    assertAiWritable(draft.screen, draft.field)
+    const rawPreviousValue = await this.readBaseline(userId, taxYear, this.targetKeyOf(draft), draft.expectedPreviousValue)
+    let companionExpectedValues: Record<string, string | null> | undefined
+    if (draft.companionFields) {
+      companionExpectedValues = {}
+      for (const companionField of Object.keys(draft.companionFields)) {
+        assertAiWritable(draft.screen, companionField)
+        const companionKey = provenanceKey(draft.screen, companionField, draft.instance ?? undefined)
+        companionExpectedValues[companionField] = (await this.readBaseline(userId, taxYear, companionKey, null)) ?? null
+      }
     }
     return {
       ...draft,
       expectedPreviousValue: rawPreviousValue ?? null,
+      ...(companionExpectedValues ? { companionExpectedValues } : {}),
       paragraph: draft.paragraph ?? ADVISOR_LEGAL_SOURCES[draft.sourceId].paragraph,
+    }
+  }
+
+  /** A field that does not exist yet (e.g. no commute record) has no baseline; the draft's own one stands. */
+  private async readBaseline(
+    userId: string,
+    taxYear: number,
+    key: string,
+    fallback: string | null | undefined,
+  ): Promise<string | null | undefined> {
+    try {
+      return await this.confirmationService.readRawValue(userId, taxYear, key)
+    } catch (error) {
+      if (error instanceof InvalidInputError || error instanceof NotFoundError) return fallback
+      throw error
     }
   }
 
@@ -638,251 +709,188 @@ export class AdvisorService {
     if (action.status === 'dismissed') {
       throw new ConflictError('ADVISOR_ACTION_DISMISSED', 'Dieser Entwurf wurde bereits verworfen.')
     }
-    assertAiWritableScreen(action.screen, action.field)
+    assertAiWritable(action.screen, action.field)
+    for (const companionField of Object.keys(action.companionFields ?? {})) assertAiWritable(action.screen, companionField)
   }
 
-  private async assertNotStale(
-    userId: string,
-    taxYear: number,
-    key: string,
-    expectedPreviousValue: string | null | undefined,
-  ): Promise<void> {
-    if (expectedPreviousValue === undefined) return
-    const currentValue = await this.confirmationService.readRawValue(userId, taxYear, key)
-    if ((currentValue ?? null) !== (expectedPreviousValue ?? null)) {
-      throw new ConflictError(
-        'ADVISOR_ACTION_STALE_CONFLICT',
-        `Das Feld "${key}" wurde zwischenzeitlich manuell geändert.`,
-      )
-    }
-  }
-
-  async applyAction(
-    userId: string,
-    taxYear: number,
-    actionId: string,
-  ): Promise<AdvisorActionMutationResponseDto> {
+  private async resolveDraft(userId: string, taxYear: number, actionId: string): Promise<ResolvedDraft> {
     const messageRecord = await this.advisorRepo.findMessageByActionId(userId, taxYear, actionId)
-    if (!messageRecord || !messageRecord.meta) {
+    const action = messageRecord?.meta ? this.findActionInMeta(messageRecord.meta, actionId) : null
+    if (!messageRecord || !action) {
       throw new NotFoundError('ADVISOR_ACTION_NOT_FOUND', `Aktion "${actionId}" wurde nicht gefunden.`)
     }
-
-    const targetAction = this.findActionInMeta(messageRecord.meta, actionId)
-    if (!targetAction) {
-      throw new NotFoundError('ADVISOR_ACTION_NOT_FOUND', `Aktion "${actionId}" wurde nicht gefunden.`)
-    }
-    this.assertActionApplicable(targetAction)
-
-    const key = this.targetKeyOf(targetAction)
-    await this.assertNotStale(userId, taxYear, key, targetAction.expectedPreviousValue)
-
-    // Write companion fields first if present (e.g., spenden = 'Ja' when writing spenden-betrag)
-    if (targetAction.companionFields) {
-      for (const [compField, compVal] of Object.entries(targetAction.companionFields)) {
-        const compKey = provenanceKey(targetAction.screen, compField, targetAction.instance ?? undefined)
-        await this.confirmationService.writeConfirmedByAdvisor(userId, taxYear, compKey, compVal)
-      }
-    }
-
-    const { previousValue } = await this.confirmationService.writeConfirmedByAdvisor(
-      userId,
-      taxYear,
-      key,
-      targetAction.newValue,
-    )
-
-    const updatedAction: AdvisorActionProposal = {
-      ...targetAction,
-      status: 'applied',
-      previousValue,
-    }
-
-    const updatedMeta = this.replaceActionInMeta(messageRecord.meta, updatedAction)
-    const updatedMessage = await this.advisorRepo.updateMessageMeta(messageRecord.id, userId, updatedMeta)
-    await this.supersedePendingDraftsForSameTargets(userId, taxYear, new Set([key]), new Set([actionId]))
-
-    await this.auditService.append({
-      userId,
-      action: 'WRITE',
-      resource: 'berater_aktion',
-      source: 'Assistent: SteuerEule',
-    })
-
-    return {
-      message: toMessageDto(updatedMessage),
-      action: updatedAction,
-    }
+    return { messageRecord, action, key: this.targetKeyOf(action) }
   }
 
-  async applyBatch(
+  /**
+   * Every field a draft writes, with the value it must still hold. After a stale conflict the
+   * client can re-baseline a field by naming the value it now holds (from the 409 details);
+   * the write stays a compare-and-set, so a further change in between still fails.
+   */
+  private writePlan(
+    draft: ResolvedDraft,
+    acknowledged: Readonly<Record<string, string | null>> | undefined,
+  ): Array<{ key: string; newValue: string; expected: string | null }> {
+    const { action, key } = draft
+    const baseline = (writeKey: string, own: string | null): string | null =>
+      acknowledged !== undefined && Object.hasOwn(acknowledged, writeKey) ? (acknowledged[writeKey] ?? null) : own
+    const companions = Object.entries(action.companionFields ?? {}).map(([field, newValue]) => {
+      const companionKey = provenanceKey(action.screen, field, action.instance ?? undefined)
+      return { key: companionKey, newValue, expected: baseline(companionKey, action.companionExpectedValues?.[field] ?? null) }
+    })
+    return [
+      ...companions,
+      {
+        key,
+        newValue: action.newValue,
+        // `previousValue` is display text ("0 €"); it is only a baseline for drafts stored before raw baselines existed.
+        expected: baseline(key, action.expectedPreviousValue !== undefined ? action.expectedPreviousValue : action.previousValue),
+      },
+    ]
+  }
+
+  private async collectStaleConflicts(
     userId: string,
     taxYear: number,
-    dto: ApplyBatchActionsDto,
-  ): Promise<ApplyBatchActionsResponseDto> {
-    const seenIds = new Set<string>()
-    const resolved: Array<{
-      messageRecord: AdvisorChatMessageRecord
-      targetAction: AdvisorActionProposal
-      key: string
-    }> = []
-    const targetKeys = new Set<string>()
-
-    // Preflight 1: Resolve all actions, check ownership, applicability, Forbidden screens & Stale-Check BEFORE any writes
-    for (const item of dto.drafts) {
-      if (seenIds.has(item.actionId)) {
-        throw new InvalidInputError('ADVISOR_BATCH_DUPLICATE_ACTION', `Aktion "${item.actionId}" ist doppelt im Batch enthalten.`)
+    plans: ReadonlyArray<{ actionId: string; writes: ReadonlyArray<{ key: string; expected: string | null }> }>,
+  ): Promise<Array<{ actionId: string; key: string; currentValue: string | null }>> {
+    const conflicts: Array<{ actionId: string; key: string; currentValue: string | null }> = []
+    for (const plan of plans) {
+      for (const write of plan.writes) {
+        const currentValue = (await this.confirmationService.readRawValue(userId, taxYear, write.key)) ?? null
+        if (currentValue !== write.expected) conflicts.push({ actionId: plan.actionId, key: write.key, currentValue })
       }
-      seenIds.add(item.actionId)
+    }
+    return conflicts
+  }
 
-      const messageRecord = await this.advisorRepo.findMessageByActionId(userId, taxYear, item.actionId)
-      if (!messageRecord || !messageRecord.meta) {
-        throw new NotFoundError('ADVISOR_ACTION_NOT_FOUND', `Aktion "${item.actionId}" wurde nicht gefunden.`)
-      }
+  private auditDetail(drafts: readonly ResolvedDraft[]): string {
+    return JSON.stringify({
+      actions: drafts.map(({ messageRecord, action, key }) => ({
+        actionId: action.actionId,
+        key,
+        companionKeys: Object.keys(action.companionFields ?? {}).map((f) => provenanceKey(action.screen, f, action.instance ?? undefined)),
+        sourceId: action.sourceId,
+        engine: messageRecord.meta?.engine ?? null,
+      })),
+    })
+  }
 
-      const targetAction = this.findActionInMeta(messageRecord.meta, item.actionId)
-      if (!targetAction) {
-        throw new NotFoundError('ADVISOR_ACTION_NOT_FOUND', `Aktion "${item.actionId}" wurde nicht gefunden.`)
-      }
-      this.assertActionApplicable(targetAction)
+  async applyAction(userId: string, taxYear: number, actionId: string): Promise<AdvisorActionMutationResponseDto> {
+    const result = await this.applyBatch(userId, taxYear, { drafts: [{ actionId }] })
+    return { message: result.messages[0]!, action: result.actions[0]! }
+  }
 
-      const key = this.targetKeyOf(targetAction)
-      if (targetKeys.has(key)) {
-        throw new ConflictError(
-          'ADVISOR_BATCH_TARGET_CONFLICT',
-          `Mehrere Entwürfe im Batch zielen auf dasselbe Feld "${key}".`,
-        )
-      }
-      targetKeys.add(key)
-
-      const expectedPreviousValue =
-        item.expectedPreviousValue !== undefined ? item.expectedPreviousValue : targetAction.expectedPreviousValue
-      await this.assertNotStale(userId, taxYear, key, expectedPreviousValue)
-
-      resolved.push({ messageRecord, targetAction, key })
+  /**
+   * Applies several drafts as one unit: one transaction, a compare-and-set per field, and
+   * every stale field reported at once so the client can show the whole conflict.
+   */
+  async applyBatch(userId: string, taxYear: number, dto: ApplyBatchActionsDto): Promise<ApplyBatchActionsResponseDto> {
+    const actionIds = dto.drafts.map((d) => d.actionId)
+    if (new Set(actionIds).size !== actionIds.length) {
+      throw new InvalidInputError('ADVISOR_BATCH_DUPLICATE_ACTION', 'Eine Aktion ist doppelt im Batch enthalten.')
     }
 
-    // Commit phase with explicit rollback stack so partial failures leave 0 dirty writes
-    const writtenBackups: Array<{ key: string; previousValue: string | null }> = []
-    const appliedResults: Array<{ messageRecord: AdvisorChatMessageRecord; updatedAction: AdvisorActionProposal }> = []
-
-    try {
-      for (const entry of resolved) {
-        const { targetAction, key, messageRecord } = entry
-        if (targetAction.companionFields) {
-          for (const [compField, compVal] of Object.entries(targetAction.companionFields)) {
-            const compKey = provenanceKey(targetAction.screen, compField, targetAction.instance ?? undefined)
-            const compRes = await this.confirmationService.writeConfirmedByAdvisor(userId, taxYear, compKey, compVal)
-            writtenBackups.push({ key: compKey, previousValue: compRes.previousValue })
-          }
+    return this.transactions.run(async () => {
+      const drafts: ResolvedDraft[] = []
+      const targetKeys = new Set<string>()
+      for (const item of dto.drafts) {
+        const draft = await this.resolveDraft(userId, taxYear, item.actionId)
+        this.assertActionApplicable(draft.action)
+        if (targetKeys.has(draft.key)) {
+          throw new ConflictError('ADVISOR_BATCH_TARGET_CONFLICT', `Mehrere Entwürfe im Batch zielen auf dasselbe Feld "${draft.key}".`)
         }
-        const { previousValue } = await this.confirmationService.writeConfirmedByAdvisor(
-          userId,
-          taxYear,
-          key,
-          targetAction.newValue,
-        )
-        writtenBackups.push({ key, previousValue })
+        targetKeys.add(draft.key)
+        drafts.push(draft)
+      }
 
-        appliedResults.push({
-          messageRecord,
-          updatedAction: {
-            ...targetAction,
-            status: 'applied',
-            previousValue,
-          },
+      const plans = drafts.map((draft, i) => ({
+        draft,
+        actionId: draft.action.actionId,
+        writes: this.writePlan(draft, dto.drafts[i]!.acknowledgedCurrentValues),
+      }))
+      const conflicts = await this.collectStaleConflicts(userId, taxYear, plans)
+      if (conflicts.length > 0) {
+        const first = conflicts[0]!
+        throw new ConflictError(
+          'ADVISOR_ACTION_STALE_CONFLICT',
+          conflicts.length === 1
+            ? `Das Feld "${first.key}" wurde zwischenzeitlich manuell geändert.`
+            : `${conflicts.length} Felder wurden zwischenzeitlich manuell geändert.`,
+          { conflicts },
+        )
+      }
+
+      const appliedActions: AdvisorActionProposal[] = []
+      for (const { draft, writes } of plans) {
+        const undoSnapshot: AdvisorUndoEntry[] = []
+        for (const write of writes) {
+          undoSnapshot.push(
+            await this.confirmationService.writeConfirmedByAdvisor(userId, taxYear, write.key, write.newValue, write.expected),
+          )
+        }
+        appliedActions.push({
+          ...draft.action,
+          status: 'applied',
+          previousValue: undoSnapshot[undoSnapshot.length - 1]!.previousValue,
+          undoSnapshot,
         })
       }
-    } catch (error) {
-      for (let i = writtenBackups.length - 1; i >= 0; i--) {
-        const backup = writtenBackups[i]!
-        await this.confirmationService.restoreValueByAdvisor(userId, taxYear, backup.key, backup.previousValue).catch(() => {})
+
+      // Drafts flip to "applied" only once every field write went through.
+      const updatedMessages = new Map<string, AdvisorChatMessageRecord>()
+      for (const [i, applied] of appliedActions.entries()) {
+        const record = updatedMessages.get(drafts[i]!.messageRecord.id) ?? drafts[i]!.messageRecord
+        const persisted = await this.advisorRepo.updateMessageMeta(record.id, userId, this.replaceActionInMeta(record.meta!, applied))
+        updatedMessages.set(persisted.id, persisted)
       }
-      throw error
-    }
 
-    // Group metadata updates per message so messages with multiple applied actions (rare) remain consistent
-    const updatedMessagesMap = new Map<string, AdvisorChatMessageRecord>()
-    for (const { messageRecord, updatedAction } of appliedResults) {
-      const currentRecord = updatedMessagesMap.get(messageRecord.id) ?? messageRecord
-      if (!currentRecord.meta) continue
-      const nextMeta = this.replaceActionInMeta(currentRecord.meta, updatedAction)
-      const persisted = await this.advisorRepo.updateMessageMeta(currentRecord.id, userId, nextMeta)
-      updatedMessagesMap.set(persisted.id, persisted)
-    }
+      await this.supersedePendingDraftsForSameTargets(userId, taxYear, targetKeys, new Set(actionIds))
+      await this.auditService.append({
+        userId,
+        action: 'WRITE',
+        resource: drafts.length === 1 ? 'berater_aktion' : 'berater_batch_aktion',
+        source: 'Assistent: SteuerEule',
+        detail: this.auditDetail(drafts),
+      })
 
-    await this.supersedePendingDraftsForSameTargets(userId, taxYear, targetKeys, seenIds)
-
-    await this.auditService.append({
-      userId,
-      action: 'WRITE',
-      resource: 'berater_batch_aktion',
-      source: 'Assistent: SteuerEule',
+      return {
+        actions: appliedActions.map(toPublicAction),
+        messages: [...updatedMessages.values()].map(toMessageDto),
+      }
     })
-
-    return {
-      actions: appliedResults.map((r) => r.updatedAction),
-      messages: [...updatedMessagesMap.values()].map(toMessageDto),
-    }
   }
 
-  async undoAction(
-    userId: string,
-    taxYear: number,
-    actionId: string,
-  ): Promise<AdvisorActionMutationResponseDto> {
-    const messageRecord = await this.advisorRepo.findMessageByActionId(userId, taxYear, actionId)
-    if (!messageRecord || !messageRecord.meta) {
-      throw new NotFoundError('ADVISOR_ACTION_NOT_FOUND', `Aktion "${actionId}" wurde nicht gefunden.`)
-    }
-
-    const targetAction = this.findActionInMeta(messageRecord.meta, actionId)
-    if (!targetAction) {
-      throw new NotFoundError('ADVISOR_ACTION_NOT_FOUND', `Aktion "${actionId}" wurde nicht gefunden.`)
-    }
-    if (targetAction.status !== 'applied') {
-      throw new ConflictError(
-        'ADVISOR_ACTION_NOT_APPLIED',
-        'Nur bereits übernommene Vorschläge können rückgängig gemacht werden.',
-      )
-    }
-
-    const key = provenanceKey(targetAction.screen, targetAction.field, targetAction.instance ?? undefined)
-    await this.confirmationService.restoreValueByAdvisor(
-      userId,
-      taxYear,
-      key,
-      targetAction.previousValue,
-    )
-    if (targetAction.previousValue === null && targetAction.companionFields) {
-      for (const [compField, compVal] of Object.entries(targetAction.companionFields)) {
-        const compKey = provenanceKey(targetAction.screen, compField, targetAction.instance ?? undefined)
-        await this.confirmationService.restoreValueByAdvisor(
-          userId,
-          taxYear,
-          compKey,
-          compVal === 'Ja' ? 'Nein' : null,
-        )
+  async undoAction(userId: string, taxYear: number, actionId: string): Promise<AdvisorActionMutationResponseDto> {
+    return this.transactions.run(async () => {
+      const draft = await this.resolveDraft(userId, taxYear, actionId)
+      if (draft.action.status !== 'applied') {
+        throw new ConflictError('ADVISOR_ACTION_NOT_APPLIED', 'Nur bereits übernommene Vorschläge können rückgängig gemacht werden.')
       }
-    }
+      // Drafts applied before snapshots existed only remember the main field's previous value.
+      const snapshot: readonly AdvisorUndoEntry[] = draft.action.undoSnapshot ?? [
+        { key: draft.key, previousValue: draft.action.previousValue, appliedValue: draft.action.newValue, previousMarking: null },
+      ]
+      // Main field first, companions after — the reverse of the apply order.
+      for (let i = snapshot.length - 1; i >= 0; i -= 1) {
+        await this.confirmationService.restoreByAdvisor(userId, taxYear, snapshot[i]!)
+      }
 
-    const updatedAction: AdvisorActionProposal = {
-      ...targetAction,
-      status: 'undone',
-    }
-
-    const updatedMeta = this.replaceActionInMeta(messageRecord.meta, updatedAction)
-    const updatedMessage = await this.advisorRepo.updateMessageMeta(messageRecord.id, userId, updatedMeta)
-
-    await this.auditService.append({
-      userId,
-      action: 'WRITE',
-      resource: 'berater_undo',
-      source: 'Assistent: SteuerEule',
+      const { undoSnapshot: _consumed, ...rest } = draft.action
+      const undone: AdvisorActionProposal = { ...rest, status: 'undone' }
+      const updatedMessage = await this.advisorRepo.updateMessageMeta(
+        draft.messageRecord.id,
+        userId,
+        this.replaceActionInMeta(draft.messageRecord.meta!, undone),
+      )
+      await this.auditService.append({
+        userId,
+        action: 'WRITE',
+        resource: 'berater_undo',
+        source: 'Assistent: SteuerEule',
+        detail: this.auditDetail([draft]),
+      })
+      return { message: toMessageDto(updatedMessage), action: undone }
     })
-
-    return {
-      message: toMessageDto(updatedMessage),
-      action: updatedAction,
-    }
   }
 }

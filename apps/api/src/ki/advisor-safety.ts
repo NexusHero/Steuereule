@@ -1,39 +1,5 @@
 import { ADVISOR_LEGAL_SOURCES, SCREENS, type OwlSourceId, type Screen } from '@steuereule/core'
-import { AI_FORBIDDEN_SCREENS } from '../confirmation/confirmation.service.js'
-
-export const FORBIDDEN_PII_FIELDS: ReadonlySet<string> = new Set([
-  'workplace',
-  'steuerId',
-  'taxId',
-  'idnr',
-  'steuernummer',
-  'iban',
-  'kontoinhaber',
-  'firstName',
-  'lastName',
-  'vorname',
-  'nachname',
-  'geburtsdatum',
-  'birthDate',
-  'strasse',
-  'hausnummer',
-  'hausnummerZusatz',
-  'plz',
-  'wohnort',
-  'telefon',
-  'phone',
-  'email',
-  'invitationCode',
-  'arbeitgeberName',
-  'arbeitgeberStrasse',
-  'arbeitgeberPlzOrt',
-  'otherParentName',
-  'otherParentBirthDate',
-  'otherParentAddress',
-  'otherParentKind',
-  'otherParentDiedOn',
-  'familyBenefitsOffice',
-])
+import { AI_FORBIDDEN_FIELDS, AI_FORBIDDEN_SCREENS } from '../confirmation/ai-write-policy.js'
 
 export const OWL_SOURCE_KEY_SET: ReadonlySet<string> = new Set(Object.keys(ADVISOR_LEGAL_SOURCES))
 
@@ -44,7 +10,11 @@ export function normalizeSourceId(raw: string | undefined): OwlSourceId {
   return 'estg-9-1'
 }
 
-export function validateStageTarget(screen: string, field: string): { ok: true; screen: Screen } | { ok: false; error: string } {
+export type StageTargetCheck =
+  | { readonly ok: true; readonly screen: Screen }
+  | { readonly ok: false; readonly error: string; readonly locked?: { readonly screen: Screen; readonly field: string } }
+
+export function validateStageTarget(screen: string, field: string): StageTargetCheck {
   if (!(SCREENS as readonly string[]).includes(screen)) {
     return { ok: false, error: `FORBIDDEN_TARGET: Unbekannte Maske "${screen}".` }
   }
@@ -52,6 +22,7 @@ export function validateStageTarget(screen: string, field: string): { ok: true; 
   if (AI_FORBIDDEN_SCREENS.has(typedScreen)) {
     return {
       ok: false,
+      locked: { screen: typedScreen, field: field.trim() },
       error: `AI_WRITE_FORBIDDEN: Maske "${screen}" gehört zu Profil/Stammdaten/Kopplung und darf niemals geändert werden.`,
     }
   }
@@ -59,9 +30,10 @@ export function validateStageTarget(screen: string, field: string): { ok: true; 
   if (cleanField.length === 0 || cleanField.length > 100) {
     return { ok: false, error: 'INVALID_FIELD: Feldname darf nicht leer sein.' }
   }
-  if (FORBIDDEN_PII_FIELDS.has(cleanField)) {
+  if (AI_FORBIDDEN_FIELDS.has(cleanField)) {
     return {
       ok: false,
+      locked: { screen: typedScreen, field: cleanField },
       error: `AI_WRITE_FORBIDDEN: Feld "${screen}.${cleanField}" enthält personenbezogene Daten und ist gesperrt.`,
     }
   }
