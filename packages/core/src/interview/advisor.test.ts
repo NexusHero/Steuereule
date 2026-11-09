@@ -3,6 +3,7 @@ import {
   ADVISOR_LEGAL_SOURCES,
   evaluateAdvisorTurn,
   simulateAdvisorFieldDelta,
+  type AdvisorActionStatus,
   type CaseDigest,
 } from './advisor'
 
@@ -137,5 +138,29 @@ describe('Advisor Engine ("Deine Eule")', () => {
     })
     expect(turn.replyText).toContain('ausschließlich auf deine Einkommensteuererklärung')
     expect(turn.meta.action).toBeUndefined()
+  })
+
+  it('simulates commute fields (oneWayKm and homeOfficeDays) and emits paragraph + expectedPreviousValue on action drafts', () => {
+    const kmSim = simulateAdvisorFieldDelta(sampleDigest, 'commute', 'oneWayKm', '35')
+    expect(kmSim.previousValue).toBe('20')
+    expect(kmSim.afterRefundEur).toBeGreaterThan(kmSim.beforeRefundEur)
+
+    const hoSim = simulateAdvisorFieldDelta(
+      { ...sampleDigest, commuteAndWorkdays: { ...sampleDigest.commuteAndWorkdays, distanceKm: 0 } },
+      'commute',
+      'homeOfficeDays',
+      '100',
+    )
+    expect(hoSim.previousValue).toBe('0')
+    expect(hoSim.afterRefundEur).toBeGreaterThanOrEqual(hoSim.beforeRefundEur)
+
+    const turn = evaluateAdvisorTurn({
+      message: 'Bitte 250 € Spenden eintragen',
+      digest: sampleDigest,
+    })
+    const supersededStatus: AdvisorActionStatus = 'superseded'
+    expect(supersededStatus).toBe('superseded')
+    expect(turn.meta.action?.paragraph).toBe('§ 10b EStG')
+    expect(turn.meta.action?.expectedPreviousValue).toBeNull()
   })
 })

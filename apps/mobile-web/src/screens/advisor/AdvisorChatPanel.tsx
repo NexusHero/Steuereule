@@ -10,6 +10,7 @@ import {
   type AdvisorLegalSource,
   type AdvisorTwoPathsProposal,
   type OwlSourceId,
+  type Screen,
 } from '@steuereule/core'
 import { APP_NS } from '../../i18n/resources'
 import type { Tr } from '../shared/tr'
@@ -19,9 +20,17 @@ export interface AdvisorChatPanelProps {
   readonly messages: readonly AdvisorChatMessageView[]
   readonly quickChips?: readonly string[] | undefined
   readonly isSending?: boolean | undefined
+  readonly streamSteps?: readonly string[] | undefined
+  readonly streamedText?: string | undefined
+  readonly chatError?: string | null | undefined
+  readonly basisMode?: boolean | undefined
   readonly onSendMessage: (text: string) => Promise<void> | void
   readonly onApplyAction?: ((actionId: string) => Promise<void> | void) | undefined
   readonly onUndoAction?: ((actionId: string) => Promise<void> | void) | undefined
+  readonly onInspectMask?: ((screen: Screen, field?: string) => void) | undefined
+  readonly receiptLinkedActionIds?: ReadonlySet<string> | undefined
+  readonly onAttachReceipt?: ((input: { readonly fileName: string; readonly rawText: string }) => Promise<void> | void) | undefined
+  readonly isParsingReceipt?: boolean | undefined
   readonly compact?: boolean | undefined
 }
 
@@ -77,6 +86,8 @@ function ActionProposalCardView({
   action,
   onApply,
   onUndo,
+  onInspectMask,
+  receiptLinked,
   onSelectSource,
   styles,
   testIDPrefix = 'advisor-action',
@@ -84,31 +95,38 @@ function ActionProposalCardView({
   readonly action: AdvisorActionProposal
   readonly onApply?: ((actionId: string) => Promise<void> | void) | undefined
   readonly onUndo?: ((actionId: string) => Promise<void> | void) | undefined
+  readonly onInspectMask?: ((screen: Screen, field?: string) => void) | undefined
+  readonly receiptLinked?: boolean | undefined
   readonly onSelectSource: (source: AdvisorLegalSource) => void
   readonly styles: ReturnType<typeof makeStyles>
   readonly testIDPrefix?: string
 }) {
   const { t: tr } = useTranslation(APP_NS)
-  const [busy, setBusy] = useState(false)
+  const [busyStatus, setBusyStatus] = useState<AdvisorActionProposal['status'] | null>(null)
+  const isBusy = busyStatus === action.status
   const legalSource = ADVISOR_LEGAL_SOURCES[action.sourceId]
+  const showPauschbetrag =
+    action.deltaEur === 0 && (action.sourceId.startsWith('estg-9') || action.sourceId === 'estg-4-5-6c')
 
   async function handleApply() {
-    if (!onApply || busy) return
-    setBusy(true)
+    if (!onApply || isBusy) return
+    const startingStatus = action.status
+    setBusyStatus(startingStatus)
     try {
       await onApply(action.actionId)
     } finally {
-      setBusy(false)
+      setBusyStatus((current) => (current === startingStatus ? null : current))
     }
   }
 
   async function handleUndo() {
-    if (!onUndo || busy) return
-    setBusy(true)
+    if (!onUndo || isBusy) return
+    const startingStatus = action.status
+    setBusyStatus(startingStatus)
     try {
       await onUndo(action.actionId)
     } finally {
-      setBusy(false)
+      setBusyStatus((current) => (current === startingStatus ? null : current))
     }
   }
 
@@ -123,8 +141,18 @@ function ActionProposalCardView({
               defaultValue: `+${formatEuro(action.deltaEur)} Steuer-Effekt`,
             })}
           </Text>
+        ) : showPauschbetrag ? (
+          <Text style={styles.pauschbetragBadge} testID={`${testIDPrefix}-pauschbetrag-badge`}>
+            {tr('advisor.chat.pauschbetragBadge', 'Im Pauschbetrag (1.230 €)')}
+          </Text>
         ) : null}
       </View>
+
+      {receiptLinked ? (
+        <Text style={styles.receiptLinkedBadge} testID={`${testIDPrefix}-receipt-badge`}>
+          {tr('eule.workspace.provenanceReceiptOwl', '📎 Beleg + Eule')}
+        </Text>
+      ) : null}
 
       <View style={styles.diffBox}>
         <View style={styles.diffRow}>
@@ -162,7 +190,15 @@ function ActionProposalCardView({
       ) : null}
 
       <View style={styles.actionFooter}>
-        {action.status === 'applied' ? (
+        {action.status === 'superseded' ? (
+          <Text style={styles.mutedStatusBadge} testID={`${testIDPrefix}-superseded-badge`}>
+            {tr('advisor.chat.supersededBadge', 'Ersetzt durch neueren Entwurf')}
+          </Text>
+        ) : action.status === 'dismissed' ? (
+          <Text style={styles.mutedStatusBadge} testID={`${testIDPrefix}-dismissed-badge`}>
+            {tr('advisor.chat.dismissedBadge', 'Verworfen')}
+          </Text>
+        ) : action.status === 'applied' ? (
           <View style={styles.appliedRow}>
             <Text style={styles.appliedBadge} testID={`${testIDPrefix}-applied-badge`}>
               {tr('advisor.chat.appliedBadge', '✓ Übernommen & bestätigt (SteuerEule)')}
@@ -171,7 +207,7 @@ function ActionProposalCardView({
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={tr('advisor.chat.undoAria', 'Rückgängig machen')}
-                disabled={busy}
+                disabled={isBusy}
                 onPress={() => void handleUndo()}
                 style={styles.undoButton}
                 testID={`${testIDPrefix}-undo-btn`}
@@ -183,7 +219,7 @@ function ActionProposalCardView({
         ) : (
           <Button
             onPress={() => void handleApply()}
-            disabled={busy}
+            disabled={isBusy}
             testID={`${testIDPrefix}-apply-btn`}
           >
             {action.status === 'undone'
@@ -191,6 +227,17 @@ function ActionProposalCardView({
               : tr('advisor.chat.applyNow', '✓ Jetzt übernehmen')}
           </Button>
         )}
+
+        {onInspectMask ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => onInspectMask(action.screen, action.field)}
+            style={styles.inspectMaskBtn}
+            testID={`${testIDPrefix}-inspect-mask-btn`}
+          >
+            <Text style={styles.inspectMaskText}>{tr('advisor.chat.inspectMask', 'Maske ansehen →')}</Text>
+          </Pressable>
+        ) : null}
       </View>
     </View>
   )
@@ -200,12 +247,16 @@ function TwoPathsCardView({
   twoPaths,
   onApply,
   onUndo,
+  onInspectMask,
+  receiptLinkedActionIds,
   onSelectSource,
   styles,
 }: {
   readonly twoPaths: AdvisorTwoPathsProposal
   readonly onApply?: ((actionId: string) => Promise<void> | void) | undefined
   readonly onUndo?: ((actionId: string) => Promise<void> | void) | undefined
+  readonly onInspectMask?: ((screen: Screen, field?: string) => void) | undefined
+  readonly receiptLinkedActionIds?: ReadonlySet<string> | undefined
   readonly onSelectSource: (source: AdvisorLegalSource) => void
   readonly styles: ReturnType<typeof makeStyles>
 }) {
@@ -216,6 +267,8 @@ function TwoPathsCardView({
         action={twoPaths.safePath}
         onApply={onApply}
         onUndo={onUndo}
+        onInspectMask={onInspectMask}
+        receiptLinked={receiptLinkedActionIds?.has(twoPaths.safePath.actionId)}
         onSelectSource={onSelectSource}
         styles={styles}
         testIDPrefix="advisor-path-safe"
@@ -226,6 +279,8 @@ function TwoPathsCardView({
           action={twoPaths.maxPath}
           onApply={onApply}
           onUndo={onUndo}
+          onInspectMask={onInspectMask}
+          receiptLinked={receiptLinkedActionIds?.has(twoPaths.maxPath.actionId)}
           onSelectSource={onSelectSource}
           styles={styles}
           testIDPrefix="advisor-path-max"
@@ -240,15 +295,27 @@ export function AdvisorChatPanel({
   messages,
   quickChips = [],
   isSending = false,
+  streamSteps = [],
+  streamedText = '',
+  chatError = null,
+  basisMode = false,
   onSendMessage,
   onApplyAction,
   onUndoAction,
+  onInspectMask,
+  receiptLinkedActionIds,
+  onAttachReceipt,
+  isParsingReceipt = false,
+  compact = false,
 }: AdvisorChatPanelProps) {
   const theme = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(theme)
   const [inputText, setInputText] = useState('')
   const [selectedSource, setSelectedSource] = useState<AdvisorLegalSource | null>(null)
+  const [receiptOpen, setReceiptOpen] = useState(false)
+  const [receiptFileName, setReceiptFileName] = useState('beleg.pdf')
+  const [receiptRawText, setReceiptRawText] = useState('')
 
   async function handleSubmit(rawText?: string) {
     const text = (rawText ?? inputText).trim()
@@ -257,6 +324,16 @@ export function AdvisorChatPanel({
       setInputText('')
     }
     await onSendMessage(text)
+  }
+
+  async function handleReceiptSubmit() {
+    if (!onAttachReceipt || isParsingReceipt) return
+    const fileName = receiptFileName.trim() || 'beleg.pdf'
+    const rawText = receiptRawText.trim()
+    if (!rawText) return
+    await onAttachReceipt({ fileName, rawText })
+    setReceiptRawText('')
+    setReceiptOpen(false)
   }
 
   return (
@@ -352,6 +429,8 @@ export function AdvisorChatPanel({
                   action={msg.meta.action}
                   onApply={onApplyAction}
                   onUndo={onUndoAction}
+                  onInspectMask={onInspectMask}
+                  receiptLinked={receiptLinkedActionIds?.has(msg.meta.action.actionId)}
                   onSelectSource={setSelectedSource}
                   styles={styles}
                 />
@@ -363,6 +442,8 @@ export function AdvisorChatPanel({
                   twoPaths={msg.meta.twoPaths}
                   onApply={onApplyAction}
                   onUndo={onUndoAction}
+                  onInspectMask={onInspectMask}
+                  receiptLinkedActionIds={receiptLinkedActionIds}
                   onSelectSource={setSelectedSource}
                   styles={styles}
                 />
@@ -374,9 +455,76 @@ export function AdvisorChatPanel({
         {isSending ? (
           <View style={styles.thinkingBox} testID="advisor-thinking">
             <Text style={styles.thinkingText}>{tr('advisor.chat.thinking', 'Eule prüft deine Akte & Paragraphen …')}</Text>
+            {streamSteps.length > 0 ? (
+              <Text style={styles.streamStepText} testID="advisor-stream-step">
+                {streamSteps.join(' · ')}
+              </Text>
+            ) : null}
+            {streamedText.length > 0 ? (
+              <Text style={styles.streamTokenPreview} testID="advisor-stream-token-preview">
+                {streamedText}
+              </Text>
+            ) : null}
           </View>
         ) : null}
       </View>
+
+      {basisMode && !isSending ? (
+        <Text style={styles.streamStepText} testID="advisor-basis-mode">
+          {tr('advisor.chat.basisMode')}
+        </Text>
+      ) : null}
+
+      {chatError ? (
+        <View style={styles.errorBox} role="alert" testID="advisor-chat-error">
+          <Text style={styles.errorText}>{chatError}</Text>
+        </View>
+      ) : null}
+
+      {/* Inline Receipt Parsing Panel (Two-Stage Isolated vision_ocr) */}
+      {onAttachReceipt && receiptOpen ? (
+        <Card style={styles.receiptPanel} testID="advisor-receipt-panel">
+          <TextInput
+            accessibilityLabel={tr('advisor.chat.receiptNamePlaceholder', 'Dateiname (z. B. rechnung.pdf)')}
+            value={receiptFileName}
+            onChangeText={setReceiptFileName}
+            placeholder={tr('advisor.chat.receiptNamePlaceholder', 'Dateiname (z. B. rechnung.pdf)')}
+            placeholderTextColor={theme.color.tinte2}
+            style={styles.textInput}
+            testID="advisor-receipt-filename"
+          />
+          <TextInput
+            accessibilityLabel={tr('advisor.chat.receiptTextPlaceholder', 'Belegtext oder Betrag (z. B. Monitor 349 EUR)')}
+            value={receiptRawText}
+            onChangeText={setReceiptRawText}
+            placeholder={tr('advisor.chat.receiptTextPlaceholder', 'Belegtext oder Betrag (z. B. Monitor 349 EUR)')}
+            placeholderTextColor={theme.color.tinte2}
+            style={styles.textInput}
+            multiline
+            testID="advisor-receipt-rawtext"
+          />
+          <View style={styles.receiptActionsRow}>
+            <Button
+              onPress={() => void handleReceiptSubmit()}
+              disabled={isParsingReceipt || receiptRawText.trim().length === 0}
+              style={{ flex: 1 }}
+              testID="advisor-receipt-submit-btn"
+            >
+              {isParsingReceipt
+                ? tr('advisor.chat.parsingReceipt', 'Beleg wird geprüft …')
+                : tr('advisor.chat.receiptSubmit', 'Beleg prüfen')}
+            </Button>
+            <Button
+              variant="ghost"
+              onPress={() => setReceiptOpen(false)}
+              style={{ flex: 1 }}
+              testID="advisor-receipt-cancel-btn"
+            >
+              {tr('advisor.chat.receiptCancel', 'Abbrechen')}
+            </Button>
+          </View>
+        </Card>
+      ) : null}
 
       {/* Interactive Law Source Popover / Modal */}
       {selectedSource ? (
@@ -415,8 +563,23 @@ export function AdvisorChatPanel({
       ) : null}
 
       {/* Chat Input Bar */}
-      <View style={styles.inputRow}>
+      <View style={[styles.inputRow, compact && styles.inputRowCompact]}>
+        {onAttachReceipt ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={tr('advisor.chat.attachReceiptAria', 'Beleg anhängen')}
+            onPress={() => setReceiptOpen((prev) => !prev)}
+            style={styles.attachButton}
+            testID="advisor-receipt-attach-btn"
+          >
+            <Text style={styles.attachButtonText}>📎</Text>
+          </Pressable>
+        ) : null}
         <TextInput
+          accessibilityLabel={tr(
+            'advisor.chat.inputPlaceholder',
+            'Frag deine Eule (z. B. Fortbildung, Laptop, Spenden, Endprüfung) …',
+          )}
           value={inputText}
           onChangeText={setInputText}
           placeholder={tr(
@@ -431,6 +594,7 @@ export function AdvisorChatPanel({
         <Button
           onPress={() => void handleSubmit()}
           disabled={isSending || inputText.trim().length === 0}
+          style={styles.sendButton}
           testID="advisor-chat-send"
         >
           {tr('advisor.chat.sendButton', 'Fragen')}
@@ -507,7 +671,7 @@ function makeStyles(t: UiTheme) {
       borderRadius: t.radius.m,
       backgroundColor: t.color.karte,
       borderWidth: 1,
-      borderColor: '#DDD6FE',
+      borderColor: t.color.kiLinie,
     } as ViewStyle,
     assistantBubbleHeader: {
       marginBottom: t.space.s2,
@@ -611,6 +775,23 @@ function makeStyles(t: UiTheme) {
       fontSize: t.size.m,
       color: t.color.ok,
     } as TextStyle,
+    pauschbetragBadge: {
+      fontFamily: t.font.text,
+      fontWeight: t.weight.fett,
+      fontSize: t.size.xs,
+      color: t.color.tinte2,
+      backgroundColor: t.color.grund,
+      paddingHorizontal: t.space.s2,
+      paddingVertical: 2,
+      borderRadius: t.radius.s,
+    } as TextStyle,
+    receiptLinkedBadge: {
+      fontFamily: t.font.text,
+      fontWeight: t.weight.fett,
+      fontSize: t.size.xs,
+      color: t.color.kiTinte,
+      marginBottom: t.space.s2,
+    } as TextStyle,
     diffBox: {
       backgroundColor: t.color.karte,
       borderRadius: t.radius.s,
@@ -675,6 +856,28 @@ function makeStyles(t: UiTheme) {
       fontSize: t.size.s,
       color: t.color.tinte,
     } as TextStyle,
+    mutedStatusBadge: {
+      fontFamily: t.font.text,
+      fontWeight: t.weight.fett,
+      fontSize: t.size.s,
+      color: t.color.tinte2,
+    } as TextStyle,
+    inspectMaskBtn: {
+      marginTop: t.space.s2,
+      alignSelf: 'flex-start',
+      paddingVertical: t.space.s1,
+      paddingHorizontal: t.space.s2,
+      borderRadius: t.radius.s,
+      borderWidth: 1,
+      borderColor: t.color.ki,
+      backgroundColor: t.color.karte,
+    } as ViewStyle,
+    inspectMaskText: {
+      fontFamily: t.font.text,
+      fontWeight: t.weight.fett,
+      fontSize: t.size.xs,
+      color: t.color.ki,
+    } as TextStyle,
     twoPathsContainer: {
       marginTop: t.space.s3,
       gap: t.space.s2,
@@ -707,6 +910,42 @@ function makeStyles(t: UiTheme) {
       fontSize: t.size.s,
       color: t.color.ki,
     } as TextStyle,
+    streamStepText: {
+      fontFamily: t.font.text,
+      fontSize: t.size.xs,
+      color: t.color.tinte2,
+      marginTop: 4,
+    } as TextStyle,
+    streamTokenPreview: {
+      fontFamily: t.font.text,
+      fontSize: t.size.s,
+      color: t.color.tinte,
+      marginTop: t.space.s2,
+    } as TextStyle,
+    errorBox: {
+      padding: t.space.s3,
+      borderRadius: t.radius.m,
+      backgroundColor: t.color.fehlerWeich,
+      borderWidth: 1,
+      borderColor: t.color.fehler,
+      marginBottom: t.space.s3,
+    } as ViewStyle,
+    errorText: {
+      fontFamily: t.font.text,
+      fontWeight: t.weight.fett,
+      fontSize: t.size.s,
+      color: t.color.fehler,
+    } as TextStyle,
+    receiptPanel: {
+      padding: t.space.s3,
+      gap: t.space.s2,
+      borderColor: t.color.kiLinie,
+      marginBottom: t.space.s3,
+    } as ViewStyle,
+    receiptActionsRow: {
+      flexDirection: 'row',
+      gap: t.space.s2,
+    } as ViewStyle,
     lawModal: {
       padding: t.space.s4,
       borderRadius: t.radius.m,
@@ -772,6 +1011,25 @@ function makeStyles(t: UiTheme) {
       flexDirection: 'row',
       alignItems: 'center',
       gap: t.space.s2,
+    } as ViewStyle,
+    inputRowCompact: {
+      gap: t.space.s1,
+    } as ViewStyle,
+    attachButton: {
+      paddingHorizontal: t.space.s3,
+      paddingVertical: t.space.s3,
+      borderRadius: t.radius.m,
+      borderWidth: 1,
+      borderColor: t.color.linieWeich,
+      backgroundColor: t.color.karte,
+    } as ViewStyle,
+    attachButtonText: {
+      fontSize: t.size.m,
+      color: t.color.tinte,
+    } as TextStyle,
+    sendButton: {
+      width: 'auto',
+      paddingHorizontal: t.space.s4,
     } as ViewStyle,
     textInput: {
       flex: 1,

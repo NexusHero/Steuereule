@@ -27,6 +27,7 @@ import {
 import { APP_NS } from '../../i18n/resources'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { AdvisorChatPanel } from './AdvisorChatPanel'
+import { useOptionalCopilotBridge } from './CopilotBridgeProvider'
 
 export interface InMaskAdvisorCompanionProps {
   readonly screen: Screen
@@ -97,6 +98,8 @@ export function InMaskAdvisorCompanion({
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
+  const bridge = useOptionalCopilotBridge()
+  const insideOwlWorkspace = bridge?.insideOwlWorkspace ?? false
   const [open, setOpen] = useState(false)
   const [localMessages, setLocalMessages] = useState<readonly AdvisorChatMessageView[]>([])
   const queryClient = useQueryClient()
@@ -106,11 +109,15 @@ export function InMaskAdvisorCompanion({
   const quickChips = chipKeys.map((key) => tr(`advisor.companion.chips.${key}`))
 
   const sessionQuery = useAdvisorControllerGetSession(taxYear, {
-    query: { enabled: open, retry: false },
+    query: { enabled: open && !insideOwlWorkspace, retry: false },
   })
   const sendMutation = useAdvisorControllerSendMessage()
   const applyMutation = useAdvisorControllerApplyAction()
   const undoMutation = useAdvisorControllerUndoAction()
+
+  if (insideOwlWorkspace) {
+    return null
+  }
 
   const serverMessages =
     sessionQuery.data?.status === 200

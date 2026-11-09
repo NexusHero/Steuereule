@@ -1,18 +1,27 @@
 import {
+  ASSESSMENT_FIELD_IDS,
   CAPITAL_FIELDS,
   WAGE_TAX_CERTIFICATE_FIELDS,
   PENSION_FIELDS,
   RENTAL_FIELDS,
   SALARY_CERTIFICATE_AMOUNT_FIELDS,
   QUESTIONS,
+  calculateWorkdays,
+  isValidAssessmentAmount,
+  serializeAssessmentField,
+  type AssessmentField,
   type CapitalFieldId,
+  type IsoWeekday,
   type WageTaxCertificateFieldId,
   type Screen,
   type PensionFieldId,
   type RentalFieldId,
   type SalaryCertificateAmountFieldId,
 } from '@steuereule/core'
+import { InvalidInputError } from '../common/domain-error.js'
+import type { AssessmentRepository } from '../assessment/assessment.repository.js'
 import type { CapitalRepository } from '../capital/capital.repository.js'
+import { MEANS_OF_TRANSPORT, type CommuteInputs, type CommuteRepository, type MeansOfTransport } from '../commute/commute.repository.js'
 import type { WageTaxCertificateRepository } from '../lstb/lstb.repository.js'
 import type { PensionRepository } from '../pension/pension.repository.js'
 import type { RentalRepository } from '../rental/rental.repository.js'
@@ -45,7 +54,23 @@ export interface FieldAccessRepositories {
   readonly interview?: InterviewAnswerRepository
   readonly chSalaryCertificate?: CrossBorderSalaryStatementRepository
   readonly child?: ChildRepository
+  readonly commute?: CommuteRepository
+  readonly assessment?: AssessmentRepository
 }
+
+const COMMUTE_ACCESS_FIELDS = [
+  'workdays',
+  'vacationDays',
+  'sickDays',
+  'homeOfficeDays',
+  'oneWayKm',
+  'transport',
+  'publicHolidays',
+  'publicHolidayRegion',
+] as const
+const ASSESSMENT_ACCESS_FIELDS = [...ASSESSMENT_FIELD_IDS, 'assessmentDate'] as const
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+const INTEGER_RE = /^-?\d+$/
 
 const PENSION_ACCESS_FIELDS = ['rentenart', ...PENSION_FIELDS] as const
 const PROFILE_ACCESS_FIELDS = ['firstName', 'lastName', 'steuerId', 'steuernummer'] as const
@@ -105,6 +130,8 @@ export function fieldAccessFrom({
   interview,
   chSalaryCertificate,
   child,
+  commute,
+  assessment,
 }: FieldAccessRepositories): FieldAccess {
   const access: Partial<Record<Screen, ScreenAccess>> = {
     lstb: {
@@ -368,6 +395,168 @@ export function fieldAccessFrom({
         const parsedValue = boolFields.includes(field) ? (value === 'true' ? true : value === 'false' ? false : null) : value
         const updated = await child.update(userId, taxYear, instance, { [field]: parsedValue })
         return updated !== null
+      },
+    }
+  }
+
+  if (commute) {
+    access.commute = {
+      fields: COMMUTE_ACCESS_FIELDS,
+      withInstance: false,
+      async read(userId, taxYear) {
+        const r = await commute.findForUserAndYear(userId, taxYear)
+        if (r === null) {
+          return Object.fromEntries(COMMUTE_ACCESS_FIELDS.map((f) => [f, null]))
+        }
+        return {
+          workdays: r.workdays.join(','),
+          vacationDays: String(r.vacationDays),
+          sickDays: String(r.sickDays),
+          homeOfficeDays: String(r.homeOfficeDays),
+          oneWayKm: r.oneWayKm === null ? null : String(r.oneWayKm),
+          transport: r.transport,
+          publicHolidays: r.publicHolidays === null || r.publicHolidays === undefined ? null : String(r.publicHolidays),
+          publicHolidayRegion: r.publicHolidayRegion ?? null,
+        }
+      },
+      async write(userId, taxYear, _instance, field, value) {
+        const current: CommuteInputs = (await commute.findForUserAndYear(userId, taxYear)) ?? {
+          workdays: [1, 2, 3, 4, 5],
+          vacationDays: 0,
+          sickDays: 0,
+          homeOfficeDays: 0,
+          oneWayKm: null,
+          transport: null,
+          workplace: null,
+          publicHolidays: null,
+          publicHolidayRegion: null,
+        }
+
+        const parseBoundedInt = (raw: string | null, min: number, max: number, label: string): number | null => {
+          if (raw === null) return null
+          const trimmed = raw.trim()
+          if (!INTEGER_RE.test(trimmed)) {
+            throw new InvalidInputError('FIELD_VALUE_INVALID', `"${label}" must be an integer between ${min} and ${max}.`)
+          }
+          const n = Number(trimmed)
+          if (!Number.isInteger(n) || n < min || n > max) {
+            throw new InvalidInputError('FIELD_VALUE_INVALID', `"${label}" must be an integer between ${min} and ${max}.`)
+          }
+          return n
+        }
+
+        let updated: CommuteInputs = current
+        switch (field) {
+          case 'workdays': {
+            if (value === null) {
+              throw new InvalidInputError('FIELD_VALUE_INVALID', '"workdays" cannot be null.')
+            }
+            const parsed = [...new Set(value.split(',').map((part) => part.trim()).filter((part) => part !== ''))].map((part) => {
+              const n = parseBoundedInt(part, 1, 7, 'workdays')
+              return n as IsoWeekday
+            })
+            if (parsed.length === 0) {
+              throw new InvalidInputError('FIELD_VALUE_INVALID', '"workdays" must contain at least one ISO weekday (1-7).')
+            }
+            updated = { ...current, workdays: parsed }
+            break
+          }
+          case 'vacationDays':
+            updated = { ...current, vacationDays: parseBoundedInt(value, 0, 366, 'vacationDays') ?? 0 }
+            break
+          case 'sickDays':
+            updated = { ...current, sickDays: parseBoundedInt(value, 0, 366, 'sickDays') ?? 0 }
+            break
+          case 'homeOfficeDays':
+            updated = { ...current, homeOfficeDays: parseBoundedInt(value, 0, 366, 'homeOfficeDays') ?? 0 }
+            break
+          case 'oneWayKm':
+            updated = { ...current, oneWayKm: parseBoundedInt(value, 0, 999, 'oneWayKm') }
+            break
+          case 'transport': {
+            if (value !== null && !MEANS_OF_TRANSPORT.includes(value as MeansOfTransport)) {
+              throw new InvalidInputError('FIELD_VALUE_INVALID', `"transport" must be one of: ${MEANS_OF_TRANSPORT.join(', ')}.`)
+            }
+            updated = { ...current, transport: value as MeansOfTransport | null }
+            break
+          }
+          case 'publicHolidays':
+            updated = { ...current, publicHolidays: parseBoundedInt(value, 0, 30, 'publicHolidays') }
+            break
+          case 'publicHolidayRegion': {
+            const trimmed = value === null ? null : value.trim()
+            if (trimmed !== null && trimmed.length > 8) {
+              throw new InvalidInputError('FIELD_VALUE_INVALID', '"publicHolidayRegion" must be at most 8 characters.')
+            }
+            updated = { ...current, publicHolidayRegion: trimmed === '' ? null : trimmed }
+            break
+          }
+          default:
+            return false
+        }
+
+        const workdaysRes = calculateWorkdays({
+          year: taxYear,
+          workdays: updated.workdays,
+          vacationDays: updated.vacationDays,
+          sickDays: updated.sickDays,
+          homeOfficeDays: updated.homeOfficeDays,
+          publicHolidays: updated.publicHolidays ?? 0,
+        })
+        if (workdaysRes.kind === 'widerspruch') {
+          throw new InvalidInputError(
+            'ARBEITSTAGE_WIDERSPRUCH',
+            `The days off exceed the working days (${workdaysRes.conflict.kind}).`,
+          )
+        }
+
+        await commute.save(userId, taxYear, updated)
+        return true
+      },
+    }
+  }
+
+  if (assessment) {
+    access.assessment = {
+      fields: ASSESSMENT_ACCESS_FIELDS,
+      withInstance: false,
+      async read(userId, taxYear) {
+        const r = await assessment.findForUserAndYear(userId, taxYear)
+        return {
+          einnahmen: r?.fields.einnahmen ?? null,
+          vorsorgeaufwand: r?.fields.vorsorgeaufwand ?? null,
+          anrechnung: r?.fields.anrechnung ?? null,
+          festgesetzteSteuer: r?.fields.festgesetzteSteuer ?? null,
+          erstattung: r?.fields.erstattung ?? null,
+          assessmentDate: r?.assessmentDate ?? null,
+        }
+      },
+      async write(userId, taxYear, _instance, field, value) {
+        if (field === 'assessmentDate') {
+          if (value !== null && !ISO_DATE_RE.test(value)) {
+            throw new InvalidInputError('BESCHEIDDATUM_INVALID', 'assessmentDate must be an ISO yyyy-mm-dd date.')
+          }
+          await assessment.setDate(userId, taxYear, value)
+          return true
+        }
+        if ((ASSESSMENT_FIELD_IDS as readonly string[]).includes(field)) {
+          const typedField = field as AssessmentField
+          if (value === null || value === 'unklar') {
+            await assessment.setField(userId, taxYear, typedField, value)
+            return true
+          }
+          const trimmed = value.trim()
+          if (!INTEGER_RE.test(trimmed)) {
+            throw new InvalidInputError('FIELD_VALUE_INVALID', `"${field}" requires a whole-euro integer or "unklar".`)
+          }
+          const n = Number(trimmed)
+          if (!isValidAssessmentAmount(typedField, n)) {
+            throw new InvalidInputError('FIELD_VALUE_INVALID', `"${field}" value "${value}" is out of allowed range.`)
+          }
+          await assessment.setField(userId, taxYear, typedField, serializeAssessmentField(typedField, n))
+          return true
+        }
+        return false
       },
     }
   }

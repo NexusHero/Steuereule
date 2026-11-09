@@ -1,9 +1,9 @@
 # Ausführliches Produkt-, UX- & Architektur-Konzept: In-App Steuerberater („Deine Eule“)
 
-> **Dokumenten-Status:** Akzeptiert & Umsetzungsbereit (Ergebnis der zweistufigen `/grill-me`-Sessions vom 07.11.2026)  
-> **Gültig ab:** Version 1.0 (November 2026)  
+> **Dokumenten-Status:** Akzeptiert & Aktueller Stand (`#446` Antigravity Split-Pane App-Agent: Cockpit ↔ Eulen-Modus)  
+> **Gültig ab:** Version 2.0 (November 2026)  
 > **Zielgruppe:** Engineering, Produktmanagement, Legal & Datenschutz, Stakeholder  
-> **Bezüge:** Epic #16 (E7 Berater & Eulen-Modus), [ADR-0051](adr/0051-eulen-ki-modus.md), [ADR-0052](adr/0052-agenten-zugang-mcp.md), [DSFA & StBerG-Dokumentation](legal/agenten-zugang-dsfa-stberg.md)
+> **Bezüge:** Epic #16 (E7 Berater & Eulen-Modus), `#446`, [ADR-0051](adr/0051-eulen-ki-modus.md), [ADR-0052](adr/0052-agenten-zugang-mcp.md), [DSFA & StBerG-Dokumentation](legal/agenten-zugang-dsfa-stberg.md)
 
 ---
 
@@ -66,8 +66,8 @@ Bestehende Steuer-Apps am deutschen Markt (Taxfix, WISO Steuer, wundertax, Steue
 
 | # | Prinzip | Ausprägung & Warum es sich wie ein echter Steuerberater anfühlt |
 | :--- | :--- | :--- |
-| **P1** | **Vereinter Kanzlei-Tisch** | Keine künstliche Trennung zwischen „Eule fragt dich“ und „Du fragst die Eule“. Offene Hinweise der Eule liegen als Impuls-Deck oben bereit und münden per Klick nahtlos in das gemeinsame Beratungsgespräch. |
-| **P2** | **Direkt an der Maske griffbereit** | Auf jeder Eingabemaske öffnet „Eule zu dieser Maske fragen“ ein Bottom-Sheet (Mobile) bzw. eine Split-Pane (Desktop). Änderungen fließen live vor den Augen des Nutzers in das Formular. |
+| **P1** | **Dedizierter Eulen-Modus statt überfrachtetem Cockpit** | Das **Cockpit** bleibt ruhig und diff-/overlay-frei (`Cockpit`, `Belege`, `Profil`). Sobald der Nutzer mit der Eule arbeitet, wechselt er in den dedizierten **Eulen-Modus** (Desktop 62/38 Split-Pane, Tablet Slide-Over-Drawer, Mobile 20-%-Eulen-Dock) und kehrt per `← Cockpit` zurück. |
+| **P2** | **Werkbank + Inplace-Maskenprüfung** | Im Eulen-Modus stehen links die Werkbank mit Artefakten/Live-Änderungen (Freigeben/Verwerfen) und inline gerenderte Fachmasken (`Maske ansehen →`), rechts der KI-Chat mit Werkzeugaufrufen und Beleg-Dropzone. Auf normalen Cockpit-Masken bleibt `InMaskAdvisorCompanion` im Eulen-Modus deaktiviert. |
 | **P3** | **Mandanten-Anamnese statt Raten** | Fehlen Tatbestandsmerkmale, stellt die Eule erst 1–2 kurze Rückfragen mit klickbaren Antwort-Chips, bevor ein Betrag berechnet und vorgeschlagen wird. |
 | **P4** | **Echte Vorher/Nachher-Simulation** | Jeder Vorschlag zeigt über `@steuereule/core` die exakte Auswirkung auf die Steuererstattung (`Aktuell: 1.120 € → Neu: 1.291 € | +171 €`). Die KI rechnet niemals selbst. |
 | **P5** | **Zero-Write im Stream + 1-Klick-Buchen mit Undo** | Während die KI antwortet, wird nichts in die Steuer-DB geschrieben. Erst der Klick des Menschen auf *„Übernehmen“* verbucht und bestätigt den Wert sofort (keine doppelte Bestätigung vor dem Druck nötig!) und bietet einen *„Rückgängig“*-Button. |
@@ -323,9 +323,9 @@ Belege (Rechnungen, PDFs) enthalten potenziell feindlichen Dritttext.
 ### 4.4 3-Schichten-Schutz gegen Direct Prompt Injection & Jailbreaks
 
 1. **Harte Mandanten-Isolation:** Alle Services erhalten `userId` ausschließlich aus dem kryptografisch verifizierten Request-Context (`@CurrentUser()`), niemals aus LLM-Parametern.
-2. **Strikte Allowlist beschreibbarer Felder (`ADVISOR_WRITABLE_FIELDS`):**
-   * Erlaubt sind ausschließlich steuerliche Betrags- und Sachverhaltsfelder (`lstb`, `interview`, `chLohnausweis`, `rente`, `kapital`, `vermietung`, `kind`).
-   * Sperrliste für den Chat-Agenten: `profil` (Name, Steuer-ID), `stammdaten` (IBAN, Adresse), `kopplung` (Einladungscodes), Konto-Löschung und Sicherheitseinstellungen.
+2. **Strikte Allowlist beschreibbarer Felder (`fieldAccessFrom`):**
+   * Erlaubt sind ausschließlich steuerliche Betrags- und Sachverhaltsfelder (`lstb`, `commute` ohne PII-`workplace`, `interview`, `chLohnausweis`, `rente`, `kapital`, `vermietung`, `kind`, `assessment`).
+   * **Hard-Lock (`AI_WRITE_FORBIDDEN`, HTTP `403`):** `profil` (Name, Steuer-ID), `stammdaten` (IBAN, Adresse), `kopplung` (Einladungscodes), `commute.workplace`, Konto-Löschung und Sicherheitseinstellungen werden im Berater-/Tool-Pfad strikt blockiert.
 3. **System-Prompt-Versiegelung:** Strikte Ablehnung von Rollenwechseln, Code-Generierung oder System-Prompt-Offenlegung.
 
 ---
@@ -504,12 +504,12 @@ Nimmt `{ message: string, activeScreen?: Screen }` entgegen und streamt:
 * `event: action` $\rightarrow$ `{"actionId": "act_1", "status": "pending", "screen": "interview", "field": "katalog_fortbildung", "label": "Fortbildungskosten", "previousValue": "450", "newValue": "562", "beforeRefundEur": 1420, "afterRefundEur": 1459, "deltaEur": 39, "sourceId": "estg-9-4a"}`
 * `event: done` $\rightarrow$ `{"messageId": "msg_123"}`
 
-#### 3. `POST /v1/steuerjahre/:jahr/advisor/actions/:actionId/apply`
-Verbucht eine vorgeschlagene Aktion mit 1 Klick:
-* Schreibt `newValue` über `FieldAccess` in die Maske.
+#### 3. `POST /v1/steuerjahre/:jahr/advisor/actions/:actionId/apply` & `POST /v1/steuerjahre/:jahr/advisor/actions/apply-batch`
+Verbucht einen oder mehrere Entwürfe (`pending`) atomar nach humaner Freigabe:
+* **Stale-Check (`409 ADVISOR_ACTION_STALE_CONFLICT`):** Prüft `currentValue === expectedPreviousValue`, bevor geschrieben wird; veraltete Entwürfe desselben Zielfelds erhalten `status: 'superseded'`.
+* Schreibt `newValue` über `FieldAccess` in die Maske (`apply-batch` mit Rollback bei Teilfehler) und sperrt `profil`/`stammdaten`/`kopplung` hart mit `403 AI_WRITE_FORBIDDEN`.
 * Markiert das Feld in `ConfirmationService` als `confirmed: true` mit Herkunft `{ kind: 'assistent', name: 'SteuerEule' }`.
 * Aktualisiert `metaEnc` der Nachricht auf `status: 'applied'` und speichert `previousValue`.
-* Gibt `{ status: 'applied', previousValue, newValue, deltaEur }` zurück.
 
 #### 4. `POST /v1/steuerjahre/:jahr/advisor/actions/:actionId/undo`
 Macht eine übernommene Aktion mit 1 Klick rückgängig:

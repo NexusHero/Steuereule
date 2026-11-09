@@ -17,7 +17,7 @@ export interface Marking {
   readonly proposal: Proposal | null
 }
 
-export const SCREENS = ['profil', 'stammdaten', 'kopplung', 'interview', 'lstb', 'chLohnausweis', 'rente', 'kapital', 'vermietung', 'kind'] as const
+export const SCREENS = ['profil', 'stammdaten', 'kopplung', 'interview', 'lstb', 'commute', 'chLohnausweis', 'rente', 'kapital', 'vermietung', 'kind', 'assessment'] as const
 export type Screen = (typeof SCREENS)[number]
 
 export const ANNEXES = ['hauptvordruck', 'anlageN', 'anlageNGre', 'anlageR', 'anlageKap', 'anlageV', 'anlageKind'] as const
@@ -28,11 +28,13 @@ const ANNEX_PER_SCREEN: Readonly<Record<Screen, Annex>> = {
   kopplung: 'hauptvordruck',
   interview: 'hauptvordruck',
   lstb: 'anlageN',
+  commute: 'anlageN',
   chLohnausweis: 'anlageNGre',
   rente: 'anlageR',
   kapital: 'anlageKap',
   vermietung: 'anlageV',
   kind: 'anlageKind',
+  assessment: 'hauptvordruck',
 }
 
 export const YEAR_INDEPENDENT = 0

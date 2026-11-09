@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ActivityIndicator, RefreshControl, ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import { Button, Card, Chip, HerkunftsChip, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme, type Breakpoint } from '@steuereule/ui'
@@ -17,6 +17,7 @@ import {
   type CockpitSummaryDto,
 } from '@steuereule/api-client'
 import { OwlAdvisorCard } from '../advisor/OwlAdvisorCard'
+import { useOptionalCopilotBridge } from '../advisor/CopilotBridgeProvider'
 import { APP_NS } from '../../i18n/resources'
 import { SELECTABLE_TAX_YEARS, CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
@@ -230,6 +231,55 @@ interface CockpitEmptyProps {
   readonly bp: Breakpoint
 }
 
+function EuleBannerNotice() {
+  const t = useTheme()
+  const { t: tr } = useTranslation(APP_NS)
+  const styles = makeStyles(t)
+  const bridge = useOptionalCopilotBridge()
+  const banner = bridge?.cockpitBanner
+  if (!bridge || !banner) return null
+
+  const provenance = bridge.bestTileProvenance(banner.screens)
+  const provenanceLabel =
+    provenance === 'beleg+eule'
+      ? tr('cockpit.euleBanner.provenanceReceiptOwl', '📎 Beleg + Eule')
+      : provenance === 'eule'
+        ? tr('cockpit.euleBanner.provenanceOwl', '🦉 Von Eule')
+        : provenance === 'nutzer'
+          ? tr('cockpit.euleBanner.provenanceUser', '✓ Selbst eingetragen')
+          : null
+
+  return (
+    <Card variant="ai" style={styles.euleBannerCard} testID="cockpit-eule-banner">
+      <View style={styles.euleBannerRow}>
+        <View style={styles.euleBannerCopy}>
+          <Text style={styles.euleBannerTitle}>
+            {tr('cockpit.euleBanner.applied', { count: banner.appliedCount })}
+          </Text>
+          {banner.lastDeltaEur > 0 ? (
+            <Text style={styles.euleBannerEffect}>
+              {tr('cockpit.euleBanner.effect', { betrag: formatEuro(banner.lastDeltaEur) })}
+            </Text>
+          ) : null}
+          {provenanceLabel ? (
+            <Text style={styles.euleBannerProvenance} testID="cockpit-provenance-chip">
+              {provenanceLabel}
+            </Text>
+          ) : null}
+        </View>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => bridge.dismissCockpitBanner()}
+          style={styles.euleBannerDismissBtn}
+          testID="cockpit-eule-banner-dismiss"
+        >
+          <Text style={styles.euleBannerDismissText}>{tr('cockpit.euleBanner.dismiss', '✕ Schließen')}</Text>
+        </Pressable>
+      </View>
+    </Card>
+  )
+}
+
 function CockpitEmpty({ year, onYearChange, refresh, isRefreshing, next, masterData, onOpenInterview, onOpenAssessment, onOpenCapital, onOpenRental, onOpenKinder, onOpenOwlMode, bp }: CockpitEmptyProps) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
@@ -242,6 +292,7 @@ function CockpitEmpty({ year, onYearChange, refresh, isRefreshing, next, masterD
     >
       <Appbar year={year} onYearChange={onYearChange} isRefreshing={isRefreshing} />
       <DeadlinesBanner taxYear={year} />
+      <EuleBannerNotice />
       <View style={styles.emptyBlock}>
         <Text style={styles.heading}>{tr('cockpit.empty.heading')}</Text>
         <Text style={styles.help}>{tr('cockpit.empty.message')}</Text>
@@ -352,6 +403,7 @@ function CockpitLoaded({ summary, year, onYearChange, confirmation, onOpenConfir
     >
       <Appbar year={year} onYearChange={onYearChange} isRefreshing={isRefreshing} />
       <DeadlinesBanner taxYear={year} />
+      <EuleBannerNotice />
       <ConfirmationNotice annexes={confirmation} status={status} {...(onOpenConfirmation ? { onOpenConfirmation } : {})} />
       <Card variant="nacht">
         <Text style={styles.heroLabel}>{tr('cockpit.hero.label')}</Text>
@@ -583,6 +635,47 @@ function makeStyles(t: UiTheme) {
     fontSize: t.size.m,
     marginBottom: t.space.s2,
   }
+  const euleBannerCard: ViewStyle = {
+    marginBottom: t.space.s4,
+  }
+  const euleBannerRow: ViewStyle = {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: t.space.s3,
+  }
+  const euleBannerCopy: ViewStyle = {
+    flex: 1,
+    gap: 4,
+  }
+  const euleBannerTitle: TextStyle = {
+    fontFamily: t.font.display,
+    fontWeight: t.weight.schwer,
+    fontSize: t.size.m,
+    color: t.color.tinte,
+  }
+  const euleBannerEffect: TextStyle = {
+    fontFamily: t.font.display,
+    fontWeight: t.weight.fett,
+    fontSize: t.size.s,
+    color: t.color.ok,
+  }
+  const euleBannerProvenance: TextStyle = {
+    fontFamily: t.font.text,
+    fontWeight: t.weight.fett,
+    fontSize: t.size.xs,
+    color: t.color.kiTinte,
+  }
+  const euleBannerDismissBtn: ViewStyle = {
+    paddingHorizontal: t.space.s2,
+    paddingVertical: 4,
+  }
+  const euleBannerDismissText: TextStyle = {
+    fontFamily: t.font.text,
+    fontWeight: t.weight.fett,
+    fontSize: t.size.xs,
+    color: t.color.tinte2,
+  }
 
-  return { screen, wideScreen, appbar, appbarTitleReihe: appbarTitleRow, appbarTitle, jahrReihe: yearRow, uebernahmeZeile: takeoverRow, uebernahmeZeileText: takeoverRowText, heading, help, cta, secondaryCta, berater, emptyBlock, heroLabel, heroValue, openItems, offenePosten: openItemCount, refundLater, gatedHeading, gatedBody }
+  return { screen, wideScreen, appbar, appbarTitleReihe: appbarTitleRow, appbarTitle, jahrReihe: yearRow, uebernahmeZeile: takeoverRow, uebernahmeZeileText: takeoverRowText, heading, help, cta, secondaryCta, berater, emptyBlock, heroLabel, heroValue, openItems, offenePosten: openItemCount, refundLater, gatedHeading, gatedBody, euleBannerCard, euleBannerRow, euleBannerCopy, euleBannerTitle, euleBannerEffect, euleBannerProvenance, euleBannerDismissBtn, euleBannerDismissText }
 }

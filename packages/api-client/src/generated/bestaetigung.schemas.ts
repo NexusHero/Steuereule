@@ -27,11 +27,13 @@ export const FieldProvenanceDtoScreen = {
   kopplung: 'kopplung',
   interview: 'interview',
   lstb: 'lstb',
+  commute: 'commute',
   chLohnausweis: 'chLohnausweis',
   rente: 'rente',
   kapital: 'kapital',
   vermietung: 'vermietung',
   kind: 'kind',
+  assessment: 'assessment',
 } as const;
 
 export type ProvenanceDtoKind = typeof ProvenanceDtoKind[keyof typeof ProvenanceDtoKind];

@@ -19,6 +19,7 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger'
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler'
+import type { AdvisorStreamEvent } from '@steuereule/core'
 import type { FastifyReply } from 'fastify'
 
 @Injectable()
@@ -32,6 +33,7 @@ export class FastifyThrottlerGuard extends ThrottlerGuard {
   }
 }
 import { CurrentUser } from '../auth/current-user.decorator.js'
+import { DomainError } from '../common/domain-error.js'
 import { ForbidAssistant } from '../auth/forbid-assistant.guard.js'
 import { RequiresAccount } from '../auth/requires-account.guard.js'
 import { UserContextGuard } from '../auth/user-context.guard.js'
@@ -40,6 +42,8 @@ import { AdvisorService } from './advisor.service.js'
 import {
   AdvisorActionMutationResponseDto,
   AdvisorSessionResponseDto,
+  ApplyBatchActionsDto,
+  ApplyBatchActionsResponseDto,
   SendAdvisorMessageDto,
   SendAdvisorMessageResponseDto,
 } from './dto/advisor.dto.js'
@@ -63,6 +67,65 @@ export class AdvisorController {
     return this.service.getSession(userId, year)
   }
 
+  /**
+   * Errors before the first event (quota, auth) still become plain HTTP errors via the filter;
+   * after the headers are out they can only travel as an SSE `error` event.
+   */
+  private async writeSseStream(
+    openStream: (signal: AbortSignal) => AsyncIterable<AdvisorStreamEvent>,
+    reply: FastifyReply,
+  ): Promise<void> {
+    const disconnect = new AbortController()
+    reply.raw.once('close', () => disconnect.abort())
+    const iterator = openStream(disconnect.signal)[Symbol.asyncIterator]()
+    const first = await iterator.next()
+
+    // Forward Fastify-managed headers (CORS, Vary, Helmet) onto reply.raw before hijacking the response.
+    const existingHeaders: Record<string, number | string | string[]> = {}
+    for (const [key, value] of Object.entries(reply.getHeaders())) {
+      if (value !== undefined) {
+        existingHeaders[key] = value
+      }
+    }
+
+    reply.hijack()
+    reply.raw.writeHead(200, {
+      ...existingHeaders,
+      'Content-Type': 'text/event-stream; charset=utf-8',
+      'Cache-Control': 'no-cache, no-transform',
+      Connection: 'keep-alive',
+    })
+
+    const sendEvent = (event: string, data: unknown) => {
+      if (!reply.raw.writableEnded && !reply.raw.destroyed) {
+        reply.raw.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
+      }
+    }
+
+    try {
+      if (!first.done) {
+        sendEvent(first.value.event, first.value.data)
+      }
+      while (!reply.raw.destroyed) {
+        const next = await iterator.next()
+        if (next.done) break
+        sendEvent(next.value.event, next.value.data)
+      }
+    } catch (error) {
+      sendEvent(
+        'error',
+        error instanceof DomainError
+          ? { code: error.code, message: error.message }
+          : { code: 'ADVISOR_STREAM_FAILED', message: 'Die Verbindung zur Eule ist abgebrochen. Bitte versuche es erneut.' },
+      )
+    } finally {
+      await iterator.return?.().catch(() => {})
+      if (!reply.raw.writableEnded) {
+        reply.raw.end()
+      }
+    }
+  }
+
   @Post('chat')
   @HttpCode(200)
   @RequiresAccount()
@@ -80,34 +143,47 @@ export class AdvisorController {
     @Headers('accept') accept: string | undefined,
     @Res({ passthrough: true }) reply?: FastifyReply,
   ): Promise<SendAdvisorMessageResponseDto | void> {
-    const result = await this.service.sendMessage(userId, year, dto)
-
     if (accept?.includes('text/event-stream') && reply) {
-      reply.raw.writeHead(200, {
-        'Content-Type': 'text/event-stream; charset=utf-8',
-        'Cache-Control': 'no-cache, no-transform',
-        Connection: 'keep-alive',
-      })
-      const sendEvent = (event: string, data: unknown) => {
-        reply.raw.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
-      }
-      sendEvent('status', { text: 'Eule prüft deine Akte & Paragraphen …' })
-      sendEvent('token', { text: result.assistantMessage.content })
-      if (result.assistantMessage.meta?.choices) {
-        sendEvent('choices', { choices: result.assistantMessage.meta.choices })
-      }
-      if (result.assistantMessage.meta?.action) {
-        sendEvent('action', result.assistantMessage.meta.action)
-      }
-      if (result.assistantMessage.meta?.twoPaths) {
-        sendEvent('twoPaths', result.assistantMessage.meta.twoPaths)
-      }
-      sendEvent('done', result)
-      reply.raw.end()
+      await this.writeSseStream((signal) => this.service.streamMessage(userId, year, dto, signal), reply)
       return
     }
 
-    return result
+    return this.service.sendMessage(userId, year, dto)
+  }
+
+  @Post('stream')
+  @HttpCode(200)
+  @RequiresAccount()
+  @ForbidAssistant()
+  @UseGuards(FastifyThrottlerGuard)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @ApiParam({ name: 'jahr', type: Number, example: 2025 })
+  @ApiBody({ type: SendAdvisorMessageDto })
+  @ApiOkResponse({ type: SendAdvisorMessageResponseDto })
+  @ApiUnauthorizedResponse({ description: 'Requires account.' })
+  async streamMessage(
+    @CurrentUser() userId: string,
+    @Param('jahr', ParseTaxYearPipe) year: number,
+    @Body() dto: SendAdvisorMessageDto,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ): Promise<void> {
+    await this.writeSseStream((signal) => this.service.streamMessage(userId, year, dto, signal), reply)
+  }
+
+  @Post('actions/apply-batch')
+  @HttpCode(200)
+  @RequiresAccount()
+  @ForbidAssistant()
+  @ApiParam({ name: 'jahr', type: Number, example: 2025 })
+  @ApiBody({ type: ApplyBatchActionsDto })
+  @ApiOkResponse({ type: ApplyBatchActionsResponseDto })
+  @ApiUnauthorizedResponse({ description: 'Requires account.' })
+  applyBatch(
+    @CurrentUser() userId: string,
+    @Param('jahr', ParseTaxYearPipe) year: number,
+    @Body() dto: ApplyBatchActionsDto,
+  ): Promise<ApplyBatchActionsResponseDto> {
+    return this.service.applyBatch(userId, year, dto)
   }
 
   @Post('actions/:actionId/apply')

@@ -6,6 +6,7 @@ import { ChildrenModule } from '../children/children.module.js'
 import { CommuteModule } from '../commute/commute.module.js'
 import { ConfirmationModule } from '../confirmation/confirmation.module.js'
 import { InterviewModule } from '../interview/interview.module.js'
+import { KiModule } from '../ki/ki.module.js'
 import { LstbModule } from '../lstb/lstb.module.js'
 import { OwlModeModule } from '../owl-mode/owl-mode.module.js'
 import { PrismaModule } from '../prisma/prisma.module.js'
@@ -23,6 +24,7 @@ import { AdvisorService } from './advisor.service.js'
     OwlModeModule,
     ConfirmationModule,
     InterviewModule,
+    KiModule,
     LstbModule,
     ChSalaryCertificateModule,
     CommuteModule,

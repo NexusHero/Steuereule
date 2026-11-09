@@ -1,5 +1,18 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
-import { IsIn, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator'
+import { Type } from 'class-transformer'
+import {
+  ArrayMaxSize,
+  ArrayMinSize,
+  IsArray,
+  IsIn,
+  IsNotEmpty,
+  IsObject,
+  IsOptional,
+  IsString,
+  MaxLength,
+  ValidateNested,
+  registerDecorator,
+} from 'class-validator'
 import {
   SCREENS,
   type AdvisorActionProposal,
@@ -12,6 +25,29 @@ import {
   type Screen,
 } from '@steuereule/core'
 import { OwlCardDto } from '../../owl-mode/dto/owl-mode.dto.js'
+
+/** At most a handful of provenance keys, each mapped to a short string or null. */
+function IsAcknowledgedValueMap(): PropertyDecorator {
+  return (target, propertyName) => {
+    registerDecorator({
+      name: 'isAcknowledgedValueMap',
+      target: target.constructor,
+      propertyName: String(propertyName),
+      options: { message: 'acknowledgedCurrentValues must map up to 10 field keys to a string (max. 200) or null.' },
+      validator: {
+        validate(value: unknown): boolean {
+          if (value === undefined) return true
+          if (value === null || typeof value !== 'object' || Array.isArray(value)) return false
+          const entries = Object.entries(value as Record<string, unknown>)
+          return (
+            entries.length <= 10 &&
+            entries.every(([key, v]) => key.length <= 120 && (v === null || (typeof v === 'string' && v.length <= 200)))
+          )
+        },
+      },
+    })
+  }
+}
 
 const OWL_SOURCE_IDS: readonly OwlSourceId[] = [
   'estg-4-5-6c',
@@ -49,7 +85,11 @@ export class AdvisorActionProposalDto implements AdvisorActionProposal {
   @ApiProperty({ type: String, example: 'act-1730970000' })
   actionId!: string
 
-  @ApiProperty({ type: String, enum: ['pending', 'applied', 'dismissed', 'undone'], example: 'pending' })
+  @ApiProperty({
+    type: String,
+    enum: ['pending', 'applied', 'dismissed', 'superseded', 'undone'],
+    example: 'pending',
+  })
   status!: AdvisorActionStatus
 
   @ApiProperty({ type: String, enum: SCREENS, example: 'interview' })
@@ -64,11 +104,27 @@ export class AdvisorActionProposalDto implements AdvisorActionProposal {
   @ApiPropertyOptional({ type: Object, additionalProperties: { type: 'string' } })
   companionFields?: Readonly<Record<string, string>> | undefined
 
+  @ApiPropertyOptional({
+    type: Object,
+    additionalProperties: { type: 'string', nullable: true },
+    description: 'Raw values of the companion fields when the draft was created (stale-check baseline).',
+  })
+  companionExpectedValues?: Readonly<Record<string, string | null>> | undefined
+
+  @ApiPropertyOptional({ type: String, format: 'date-time', description: 'When the draft was last applied.' })
+  appliedAt?: string | undefined
+
+  @ApiPropertyOptional({ type: String, format: 'date-time', description: 'When the applied draft was last undone.' })
+  undoneAt?: string | undefined
+
   @ApiProperty({ type: String, example: 'Spenden & Zuwendungen (Sonderausgaben)' })
   label!: string
 
   @ApiPropertyOptional({ type: String, nullable: true, example: '0 €' })
   previousValue!: string | null
+
+  @ApiPropertyOptional({ type: String, nullable: true, example: '0' })
+  expectedPreviousValue?: string | null | undefined
 
   @ApiProperty({ type: String, example: '250' })
   newValue!: string
@@ -87,6 +143,9 @@ export class AdvisorActionProposalDto implements AdvisorActionProposal {
 
   @ApiProperty({ type: String, enum: OWL_SOURCE_IDS, example: 'estg-10b' })
   sourceId!: OwlSourceId
+
+  @ApiPropertyOptional({ type: String, example: '§ 10b EStG' })
+  paragraph?: string | undefined
 }
 
 export class AdvisorMaxPathProposalDto extends AdvisorActionProposalDto {
@@ -185,6 +244,12 @@ export class SendAdvisorMessageResponseDto {
 
   @ApiProperty({ type: AdvisorChatMessageDto })
   assistantMessage!: AdvisorChatMessageDto
+
+  @ApiProperty({
+    enum: ['langgraph', 'deterministic_fallback'],
+    description: 'deterministic_fallback means no model answered; the UI labels the reply as Basis-Modus.',
+  })
+  mode!: 'langgraph' | 'deterministic_fallback'
 }
 
 export class AdvisorActionMutationResponseDto {
@@ -193,4 +258,41 @@ export class AdvisorActionMutationResponseDto {
 
   @ApiProperty({ type: AdvisorActionProposalDto })
   action!: AdvisorActionProposalDto
+}
+
+export class ApplyBatchActionItemDto {
+  @ApiProperty({ type: String, example: 'act-1730970000' })
+  @IsString()
+  @IsNotEmpty()
+  actionId!: string
+
+  @ApiPropertyOptional({
+    description:
+      'Re-baselines fields after a stale conflict: provenance key → the value the field holds now (from the 409 details). The write remains a compare-and-set.',
+    type: 'object',
+    additionalProperties: { type: 'string', nullable: true },
+    example: { 'commute.homeOfficeDays': '40' },
+  })
+  @IsOptional()
+  @IsObject()
+  @IsAcknowledgedValueMap()
+  acknowledgedCurrentValues?: Record<string, string | null> | undefined
+}
+
+export class ApplyBatchActionsDto {
+  @ApiProperty({ type: [ApplyBatchActionItemDto] })
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(20)
+  @ValidateNested({ each: true })
+  @Type(() => ApplyBatchActionItemDto)
+  drafts!: ApplyBatchActionItemDto[]
+}
+
+export class ApplyBatchActionsResponseDto {
+  @ApiProperty({ type: [AdvisorActionProposalDto] })
+  actions!: AdvisorActionProposalDto[]
+
+  @ApiProperty({ type: [AdvisorChatMessageDto] })
+  messages!: AdvisorChatMessageDto[]
 }

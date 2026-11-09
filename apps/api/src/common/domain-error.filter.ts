@@ -17,6 +17,7 @@ export interface ErrorResponseBody {
   error: string
   code: string
   message: string
+  details?: Readonly<Record<string, unknown>>
   requestId?: string
 }
 
@@ -35,6 +36,7 @@ export class DomainErrorFilter implements ExceptionFilter<DomainError> {
       error: reason,
       code: error.code,
       message: error.message,
+      ...(error.details !== undefined ? { details: error.details } : {}),
       ...(request?.id ? { requestId: request.id } : {}),
     }
 

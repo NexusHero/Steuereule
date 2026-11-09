@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { InvalidInputError, NotFoundError } from '../common/domain-error.js'
+import { ConflictError, InvalidInputError, NotFoundError } from '../common/domain-error.js'
 import {
   ANNEXES,
   YEAR_INDEPENDENT,
@@ -10,6 +10,7 @@ import {
   acceptProposal,
   dismissProposal,
   decomposeProvenanceKey,
+  type AdvisorUndoEntry,
   type Annex,
   type Provenance,
   type Marking,
@@ -17,10 +18,17 @@ import {
 } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
 import { PROVENANCE_REPOSITORY, type ProvenanceRecord, type ProvenanceRepository } from '../marking/marking.repository.js'
+import { assertAiWritable } from './ai-write-policy.js'
 import { FIELD_ACCESS, type FieldAccess, type ScreenAccess } from './field-access.js'
 import type { ConfirmationResponseDto, ProvenanceDto, FieldProvenanceDto } from './dto/confirmation.dto.js'
 
 export type WriteResult = 'geschrieben' | 'vorschlag' | 'unveraendert'
+
+export function staleValueConflict(key: string, currentValue: string | null): ConflictError {
+  return new ConflictError('ADVISOR_ACTION_STALE_CONFLICT', `Das Feld "${key}" wurde zwischenzeitlich manuell geändert.`, {
+    conflicts: [{ key, currentValue }],
+  })
+}
 
 interface Address {
   key: string
@@ -99,19 +107,31 @@ export class ConfirmationService {
     }
   }
 
+  async readRawValue(userId: string, taxYear: number, key: string): Promise<string | null> {
+    const a = this.address(key, taxYear)
+    return this.currentValue(userId, a)
+  }
+
   /**
-   * Direct user-confirmed write triggered by clicking "✓ Jetzt übernehmen" on an In-App
-   * SteuerEule Action Card. Writes the value, records provenance `{ kind: 'assistent', name: 'SteuerEule' }`
-   * with `confirmed: true` (no double confirmation needed), and returns the previous value for 1-click Undo.
+   * User-confirmed write of an Eulen-Modus draft ("✓ Jetzt übernehmen"). The field policy is
+   * enforced here, on the write path, not only when the draft was proposed. With
+   * `expectedCurrentValue` the write is a compare-and-set; inside a TransactionRunner the
+   * comparison and the write see the same snapshot.
    */
   async writeConfirmedByAdvisor(
     userId: string,
     taxYear: number,
     key: string,
     newValue: string | null,
-  ): Promise<{ previousValue: string | null }> {
+    expectedCurrentValue?: string | null,
+  ): Promise<AdvisorUndoEntry> {
     const a = this.address(key, taxYear)
+    assertAiWritable(a.screen, a.field, key)
     const previousValue = await this.currentValue(userId, a)
+    if (expectedCurrentValue !== undefined && previousValue !== expectedCurrentValue) {
+      throw staleValueConflict(key, previousValue)
+    }
+    const existing = await this.repository.find(userId, a.taxYear, key)
     await this.writeValue(userId, a, newValue)
     await this.repository.save(userId, a.taxYear, {
       key,
@@ -119,24 +139,28 @@ export class ConfirmationService {
       confirmed: true,
       proposal: null,
     })
-    return { previousValue }
+    return {
+      key,
+      previousValue,
+      appliedValue: newValue,
+      previousMarking:
+        existing === null ? null : { provenance: existing.provenance, confirmed: existing.confirmed, proposal: existing.proposal },
+    }
   }
 
   /**
-   * 1-click Undo ("↩ Rückgängig machen") for an applied SteuerEule Action Card.
-   * Restores the exact previous value and removes the advisor marking.
+   * 1-click undo of an applied draft: restores value and provenance exactly as they were,
+   * but only while the field still holds what the Eule wrote — a later manual edit wins.
    */
-  async restoreValueByAdvisor(
-    userId: string,
-    taxYear: number,
-    key: string,
-    previousValue: string | null,
-  ): Promise<void> {
-    const a = this.address(key, taxYear)
-    await this.writeValue(userId, a, previousValue)
-    await this.repository.remove(userId, a.taxYear, [key])
+  async restoreByAdvisor(userId: string, taxYear: number, entry: AdvisorUndoEntry): Promise<void> {
+    const a = this.address(entry.key, taxYear)
+    assertAiWritable(a.screen, a.field, entry.key)
+    const currentValue = await this.currentValue(userId, a)
+    if (currentValue !== entry.appliedValue) throw staleValueConflict(entry.key, currentValue)
+    await this.writeValue(userId, a, entry.previousValue)
+    if (entry.previousMarking === null) await this.repository.remove(userId, a.taxYear, [entry.key])
+    else await this.repository.save(userId, a.taxYear, { key: entry.key, ...entry.previousMarking })
   }
-
 
   async list(userId: string, taxYear: number): Promise<ProvenanceRecord[]> {
     return this.repository.listForUserAndYears(userId, [taxYear, YEAR_INDEPENDENT])

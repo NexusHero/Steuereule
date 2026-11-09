@@ -43,6 +43,7 @@ import { OauthConsentScreen } from './src/screens/oauth/OauthConsentScreen'
 import { ChildrenScreen } from './src/screens/children/ChildrenScreen'
 import { rememberPendingPath, rememberTaxYear, rememberedPendingPath, rememberedTaxYear } from './src/screens/funnel/sessionMemory'
 import { OwlModeScreen } from './src/screens/advisor/OwlModeScreen'
+import { CopilotBridgeProvider } from './src/screens/advisor/CopilotBridgeProvider'
 import { operatorFromEnv, LEGAL_PAGES, type LegalPage } from './src/screens/legal/texts'
 import { AccountWallScreen, pathFromAnswers, type FunnelPath } from './src/screens/funnel/KontoWandScreen'
 import { useAccountSession } from './src/auth/useAccountSession'
@@ -376,7 +377,13 @@ function TabbedShell({ tab, onTabChange, onSignedOut, startInInterview = false, 
   const showsTabBar = profileView === 'main'
 
   return (
-    <View style={{ flex: 1 }}>
+    <CopilotBridgeProvider
+      mode={tab === 'eule' ? 'eulen-modus' : 'cockpit'}
+      onModeChange={(next) => changeTab(next === 'eulen-modus' ? 'eule' : 'cockpit')}
+      taxYear={taxYear}
+      isAuthenticated={sessionState.status === 'signed-in'}
+    >
+      <View style={{ flex: 1 }}>
       <View style={{ flex: 1, backgroundColor: t.color.grund, paddingBottom: showsTabBar ? tabBarClearance(t, insets.bottom) : 0 }}>
         {tab === 'cockpit' && cockpitView === 'main' ? <CockpitScreen
             taxYear={taxYear}
@@ -513,7 +520,15 @@ function TabbedShell({ tab, onTabChange, onSignedOut, startInInterview = false, 
         {tab === 'cockpit' && cockpitView === 'kinder' ? (
           <ChildrenScreen taxYear={taxYear} onDone={() => setCockpitView('main')} onBack={() => setCockpitView('main')} />
         ) : null}
-        {tab === 'eule' ? <OwlModeScreen taxYear={taxYear} onDone={() => changeTab('cockpit')} /> : null}
+        {tab === 'eule' ? (
+          <OwlModeScreen
+            taxYear={taxYear}
+            isGuest={sessionState.status !== 'signed-in'}
+            onRegister={onRegister}
+            onLogin={onLogin}
+            onDone={() => changeTab('cockpit')}
+          />
+        ) : null}
         {tab === 'belege' ? <ReceiptsScreen /> : null}
         {tab === 'profil' && profileView === 'main' ? (
           <ProfileScreen
@@ -533,5 +548,6 @@ function TabbedShell({ tab, onTabChange, onSignedOut, startInInterview = false, 
       </View>
       {showsTabBar ? <TabBar tabs={tabs} active={tab} onChange={(id) => changeTab(id as Tab)} bottomInset={insets.bottom} /> : null}
     </View>
+    </CopilotBridgeProvider>
   )
 }
