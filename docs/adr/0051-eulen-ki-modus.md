@@ -41,7 +41,7 @@ Die Review deckte auf, dass „atomar“ und „strikt anonymisiert“ im Code n
    - Ein `409 ADVISOR_ACTION_STALE_CONFLICT` nennt in `details.conflicts` alle betroffenen Felder mit ihrem aktuellen Wert. „Mit neuem Stand übernehmen“ schickt genau diese Werte als `acknowledgedCurrentValues` zurück. Das bleibt ein Compare-and-Set, kein Überschreiben ohne Prüfung.
    - `undo` stellt Wert **und** Herkunftsmarkierung exakt wieder her (`undoSnapshot`, serverintern) und verweigert sich, wenn das Feld nach der Übernahme manuell geändert wurde.
    - Die Feldsperre (`apps/api/src/confirmation/ai-write-policy.ts`) gilt auf dem **Schreibpfad**, nicht nur beim Vorschlag, und ebenso für Begleitfelder.
-   - Das Audit-Log führt je KI-Übernahme Feldschlüssel, `actionId`, Rechtsquelle und Engine (Modus/Anbieter/Modell) in der neuen Spalte `detail`, aber nie Steuerwerte.
+   - Nachvollziehbarkeit: Jede übernommene Aktion trägt `appliedAt` bzw. `undoneAt` neben Feld, Werten, Rechtsquelle und Engine (Modus/Anbieter/Modell) in ihren Nachrichten-Metadaten. Das Audit-Log bleibt bei „wer/was/wann“ ohne wertführende Spalte (REQ-004.5).
 
 5. **Beleg-Isolation:** Ein Belegbild verlässt das System nur, wenn der Vision-Slot dafür ausdrücklich freigegeben ist (`AI_VISION_ALLOW_DOCUMENT_IMAGES`, nur für Anbieter mit EU-AVV). Andernfalls geht nur geschwärzter Text hinaus (Namen aus Profil und Kindern). Der Dateiname wird nie gesendet. Gespeichert und später dem Chat-Modell als Verlauf gezeigt wird ausschließlich eine Zusammenfassung aus validierten Strukturfeldern, nie Freitext aus Dokument oder Modell.
 

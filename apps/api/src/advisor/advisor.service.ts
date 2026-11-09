@@ -764,18 +764,6 @@ export class AdvisorService {
     return conflicts
   }
 
-  private auditDetail(drafts: readonly ResolvedDraft[]): string {
-    return JSON.stringify({
-      actions: drafts.map(({ messageRecord, action, key }) => ({
-        actionId: action.actionId,
-        key,
-        companionKeys: Object.keys(action.companionFields ?? {}).map((f) => provenanceKey(action.screen, f, action.instance ?? undefined)),
-        sourceId: action.sourceId,
-        engine: messageRecord.meta?.engine ?? null,
-      })),
-    })
-  }
-
   async applyAction(userId: string, taxYear: number, actionId: string): Promise<AdvisorActionMutationResponseDto> {
     const result = await this.applyBatch(userId, taxYear, { drafts: [{ actionId }] })
     return { message: result.messages[0]!, action: result.actions[0]! }
@@ -821,6 +809,10 @@ export class AdvisorService {
         )
       }
 
+      // Recorded on the draft itself, next to field, values, legal source and engine: together with
+      // the audit row this answers "which AI suggestion changed which field when" (StBerG), while
+      // the audit table keeps carrying no value-bearing column (REQ-004.5).
+      const appliedAt = new Date().toISOString()
       const appliedActions: AdvisorActionProposal[] = []
       for (const { draft, writes } of plans) {
         const undoSnapshot: AdvisorUndoEntry[] = []
@@ -829,9 +821,11 @@ export class AdvisorService {
             await this.confirmationService.writeConfirmedByAdvisor(userId, taxYear, write.key, write.newValue, write.expected),
           )
         }
+        const { undoneAt: _previousUndo, ...reapplicable } = draft.action
         appliedActions.push({
-          ...draft.action,
+          ...reapplicable,
           status: 'applied',
+          appliedAt,
           previousValue: undoSnapshot[undoSnapshot.length - 1]!.previousValue,
           undoSnapshot,
         })
@@ -851,7 +845,6 @@ export class AdvisorService {
         action: 'WRITE',
         resource: drafts.length === 1 ? 'berater_aktion' : 'berater_batch_aktion',
         source: 'Assistent: SteuerEule',
-        detail: this.auditDetail(drafts),
       })
 
       return {
@@ -877,7 +870,7 @@ export class AdvisorService {
       }
 
       const { undoSnapshot: _consumed, ...rest } = draft.action
-      const undone: AdvisorActionProposal = { ...rest, status: 'undone' }
+      const undone: AdvisorActionProposal = { ...rest, status: 'undone', undoneAt: new Date().toISOString() }
       const updatedMessage = await this.advisorRepo.updateMessageMeta(
         draft.messageRecord.id,
         userId,
@@ -888,7 +881,6 @@ export class AdvisorService {
         action: 'WRITE',
         resource: 'berater_undo',
         source: 'Assistent: SteuerEule',
-        detail: this.auditDetail([draft]),
       })
       return { message: toMessageDto(updatedMessage), action: undone }
     })

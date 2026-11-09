@@ -477,21 +477,23 @@ describe('AdvisorService (In-App Steuerberater Agent "Deine Eule")', () => {
     expect(rows.find((r) => r.questionId === 'spenden-betrag')).toBeUndefined()
   })
 
-  it('records non-sensitive context of applied drafts in the audit trail', async () => {
+  it('keeps the trail of an AI-applied change on the draft and a value-free row in the audit log', async () => {
     const turn = await advisorService.sendMessage(USER, YEAR, { message: 'Bitte 300 € Spenden eintragen' })
     const draft = turn.assistantMessage.meta!.action!
-    await advisorService.applyAction(USER, YEAR, draft.actionId)
+    const applied = await advisorService.applyAction(USER, YEAR, draft.actionId)
+    expect(applied.action.appliedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/)
 
-    const row = (await auditRepo.findOwnRows(USER)).find((r) => r.resource === 'berater_aktion')
-    expect(row?.source).toBe('Assistent: SteuerEule')
-    const detail = JSON.parse(row!.detail!) as { actions: Array<Record<string, unknown>> }
-    expect(detail.actions[0]).toMatchObject({
-      actionId: draft.actionId,
-      key: 'interview.spenden-betrag',
-      companionKeys: ['interview.spenden'],
-      sourceId: draft.sourceId,
-      engine: { mode: 'deterministic_fallback' },
-    })
-    expect(row!.detail).not.toContain('300')
+    const auditRow = (await auditRepo.findOwnRows(USER)).find((r) => r.resource === 'berater_aktion')
+    expect(auditRow).toMatchObject({ action: 'WRITE', source: 'Assistent: SteuerEule' })
+    expect(JSON.stringify(auditRow)).not.toContain('300')
+
+    const stored = await advisorRepo.findMessageByActionId(USER, YEAR, draft.actionId)
+    expect(stored?.meta?.engine).toEqual({ mode: 'deterministic_fallback', provider: 'deterministic' })
+    expect(stored?.meta?.action).toMatchObject({ field: 'spenden-betrag', newValue: '300', appliedAt: applied.action.appliedAt })
+
+    const undone = await advisorService.undoAction(USER, YEAR, draft.actionId)
+    expect(undone.action.undoneAt).toBeDefined()
+    const reapplied = await advisorService.applyAction(USER, YEAR, draft.actionId)
+    expect(reapplied.action.undoneAt).toBeUndefined()
   })
 })

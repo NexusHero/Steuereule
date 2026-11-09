@@ -111,6 +111,9 @@ export interface AdvisorActionProposal {
   readonly companionExpectedValues?: Readonly<Record<string, string | null>> | undefined
   /** Server-internal: exact pre-apply state of every written field, so undo restores value and provenance. */
   readonly undoSnapshot?: readonly AdvisorUndoEntry[] | undefined
+  /** ISO timestamps of the last apply / undo — the per-field trail of AI-applied changes. */
+  readonly appliedAt?: string | undefined
+  readonly undoneAt?: string | undefined
   readonly label: string
   readonly previousValue: string | null
   readonly expectedPreviousValue?: string | null | undefined
@@ -148,7 +151,7 @@ export interface AdvisorMessageMeta {
   readonly action?: AdvisorActionProposal | undefined
   readonly twoPaths?: AdvisorTwoPathsProposal | undefined
   readonly sources?: readonly OwlSourceId[] | undefined
-  /** Server-internal: which engine produced the turn, for the audit trail of applied drafts. */
+  /** Server-internal: which engine produced the turn, kept with the drafts it proposed. */
   readonly engine?: AdvisorEngineInfo | undefined
 }
 

@@ -70,8 +70,6 @@ model TaxDataAccessLog {
   resource  String
   /// Optional actor / client source, e.g. "Assistent: Claude" for OAuth bearer token requests.
   source    String?
-  /// Optional JSON with non-sensitive context (field keys, action ids, model) — never a tax value.
-  detail    String?
   createdAt DateTime    @default(now())
 
   @@index([userId])

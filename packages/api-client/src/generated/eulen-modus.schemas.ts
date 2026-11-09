@@ -146,6 +146,10 @@ export interface AdvisorActionProposalDto {
   companionFields?: AdvisorActionProposalDtoCompanionFields;
   /** Raw values of the companion fields when the draft was created (stale-check baseline). */
   companionExpectedValues?: AdvisorActionProposalDtoCompanionExpectedValues;
+  /** When the draft was last applied. */
+  appliedAt?: string;
+  /** When the applied draft was last undone. */
+  undoneAt?: string;
   label: string;
   /** @nullable */
   previousValue?: string | null;
@@ -229,6 +233,10 @@ export interface AdvisorMaxPathProposalDto {
   companionFields?: AdvisorMaxPathProposalDtoCompanionFields;
   /** Raw values of the companion fields when the draft was created (stale-check baseline). */
   companionExpectedValues?: AdvisorMaxPathProposalDtoCompanionExpectedValues;
+  /** When the draft was last applied. */
+  appliedAt?: string;
+  /** When the applied draft was last undone. */
+  undoneAt?: string;
   label: string;
   /** @nullable */
   previousValue?: string | null;

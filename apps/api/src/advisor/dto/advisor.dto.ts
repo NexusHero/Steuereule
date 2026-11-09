@@ -111,6 +111,12 @@ export class AdvisorActionProposalDto implements AdvisorActionProposal {
   })
   companionExpectedValues?: Readonly<Record<string, string | null>> | undefined
 
+  @ApiPropertyOptional({ type: String, format: 'date-time', description: 'When the draft was last applied.' })
+  appliedAt?: string | undefined
+
+  @ApiPropertyOptional({ type: String, format: 'date-time', description: 'When the applied draft was last undone.' })
+  undoneAt?: string | undefined
+
   @ApiProperty({ type: String, example: 'Spenden & Zuwendungen (Sonderausgaben)' })
   label!: string
 

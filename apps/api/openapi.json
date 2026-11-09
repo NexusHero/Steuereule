@@ -6353,6 +6353,16 @@
             },
             "description": "Raw values of the companion fields when the draft was created (stale-check baseline)."
           },
+          "appliedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the draft was last applied."
+          },
+          "undoneAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the applied draft was last undone."
+          },
           "label": {
             "type": "string",
             "example": "Spenden & Zuwendungen (Sonderausgaben)"
@@ -6479,6 +6489,16 @@
               "nullable": true
             },
             "description": "Raw values of the companion fields when the draft was created (stale-check baseline)."
+          },
+          "appliedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the draft was last applied."
+          },
+          "undoneAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the applied draft was last undone."
           },
           "label": {
             "type": "string",

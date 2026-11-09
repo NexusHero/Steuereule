@@ -5,8 +5,6 @@ export interface AuditEntry {
   action: AuditAction
   resource: string
   source?: string | null
-  /** JSON with non-sensitive context (field keys, action ids, model) — never a tax value. */
-  detail?: string | null
 }
 
 /** One persisted audit row, as read back for the account holder's own DSGVO export. */
@@ -14,7 +12,6 @@ export interface AuditLogRow {
   action: AuditAction
   resource: string
   source?: string | null
-  detail?: string | null
   createdAt: Date
 }
 
