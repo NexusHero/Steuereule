@@ -101,28 +101,31 @@ function ActionProposalCardView({
   readonly testIDPrefix?: string
 }) {
   const { t: tr } = useTranslation(APP_NS)
-  const [busy, setBusy] = useState(false)
+  const [busyStatus, setBusyStatus] = useState<AdvisorActionProposal['status'] | null>(null)
+  const isBusy = busyStatus === action.status
   const legalSource = ADVISOR_LEGAL_SOURCES[action.sourceId]
   const showPauschbetrag =
     action.deltaEur === 0 && (action.sourceId.startsWith('estg-9') || action.sourceId === 'estg-4-5-6c')
 
   async function handleApply() {
-    if (!onApply || busy) return
-    setBusy(true)
+    if (!onApply || isBusy) return
+    const startingStatus = action.status
+    setBusyStatus(startingStatus)
     try {
       await onApply(action.actionId)
     } finally {
-      setBusy(false)
+      setBusyStatus((current) => (current === startingStatus ? null : current))
     }
   }
 
   async function handleUndo() {
-    if (!onUndo || busy) return
-    setBusy(true)
+    if (!onUndo || isBusy) return
+    const startingStatus = action.status
+    setBusyStatus(startingStatus)
     try {
       await onUndo(action.actionId)
     } finally {
-      setBusy(false)
+      setBusyStatus((current) => (current === startingStatus ? null : current))
     }
   }
 
@@ -203,7 +206,7 @@ function ActionProposalCardView({
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={tr('advisor.chat.undoAria', 'Rückgängig machen')}
-                disabled={busy}
+                disabled={isBusy}
                 onPress={() => void handleUndo()}
                 style={styles.undoButton}
                 testID={`${testIDPrefix}-undo-btn`}
@@ -215,7 +218,7 @@ function ActionProposalCardView({
         ) : (
           <Button
             onPress={() => void handleApply()}
-            disabled={busy}
+            disabled={isBusy}
             testID={`${testIDPrefix}-apply-btn`}
           >
             {action.status === 'undone'
@@ -474,6 +477,7 @@ export function AdvisorChatPanel({
       {onAttachReceipt && receiptOpen ? (
         <Card style={styles.receiptPanel} testID="advisor-receipt-panel">
           <TextInput
+            accessibilityLabel={tr('advisor.chat.receiptNamePlaceholder', 'Dateiname (z. B. rechnung.pdf)')}
             value={receiptFileName}
             onChangeText={setReceiptFileName}
             placeholder={tr('advisor.chat.receiptNamePlaceholder', 'Dateiname (z. B. rechnung.pdf)')}
@@ -482,6 +486,7 @@ export function AdvisorChatPanel({
             testID="advisor-receipt-filename"
           />
           <TextInput
+            accessibilityLabel={tr('advisor.chat.receiptTextPlaceholder', 'Belegtext oder Betrag (z. B. Monitor 349 EUR)')}
             value={receiptRawText}
             onChangeText={setReceiptRawText}
             placeholder={tr('advisor.chat.receiptTextPlaceholder', 'Belegtext oder Betrag (z. B. Monitor 349 EUR)')}
@@ -563,6 +568,10 @@ export function AdvisorChatPanel({
           </Pressable>
         ) : null}
         <TextInput
+          accessibilityLabel={tr(
+            'advisor.chat.inputPlaceholder',
+            'Frag deine Eule (z. B. Fortbildung, Laptop, Spenden, Endprüfung) …',
+          )}
           value={inputText}
           onChangeText={setInputText}
           placeholder={tr(

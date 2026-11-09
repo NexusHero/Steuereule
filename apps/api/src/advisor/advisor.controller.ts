@@ -73,7 +73,17 @@ export class AdvisorController {
     const iterator = stream[Symbol.asyncIterator]()
     const first = await iterator.next()
 
+    // Forward Fastify-managed headers (CORS, Vary, Helmet) onto reply.raw before hijacking the response.
+    const existingHeaders: Record<string, number | string | string[]> = {}
+    for (const [key, value] of Object.entries(reply.getHeaders())) {
+      if (value !== undefined) {
+        existingHeaders[key] = value
+      }
+    }
+
+    reply.hijack()
     reply.raw.writeHead(200, {
+      ...existingHeaders,
       'Content-Type': 'text/event-stream; charset=utf-8',
       'Cache-Control': 'no-cache, no-transform',
       Connection: 'keep-alive',

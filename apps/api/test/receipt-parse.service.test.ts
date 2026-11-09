@@ -70,7 +70,7 @@ function makeVisionRuntime(enabled: boolean): AiRuntimeConfigService {
         slot,
         enabled,
         provider: enabled ? 'google-genai' : 'deterministic',
-        model: enabled ? 'gemini-2.5-flash' : 'deterministic-fallback',
+        model: enabled ? 'gemini-3.8-flash' : 'deterministic-fallback',
         apiKey: enabled ? 'test-vision-key' : null,
       }
     },

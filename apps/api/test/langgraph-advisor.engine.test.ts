@@ -5,14 +5,29 @@ import type { ChatResult } from '@langchain/core/outputs'
 import { ChatGenerationChunk } from '@langchain/core/outputs'
 import type { Runnable } from '@langchain/core/runnables'
 import type { BaseLanguageModelInput } from '@langchain/core/language_models/base'
+import { type ExecutionContext } from '@nestjs/common'
+import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify'
+import { Test } from '@nestjs/testing'
+import { ThrottlerModule } from '@nestjs/throttler'
 import { describe, expect, it } from 'vitest'
 import type { CaseDigest } from '@steuereule/core'
+import { AdvisorController, FastifyThrottlerGuard } from '../src/advisor/advisor.controller.js'
 import { AdvisorService } from '../src/advisor/advisor.service.js'
 import { InMemoryAdvisorRepository } from '../src/advisor/advisor.repository.js'
 import { AuditService } from '../src/audit/audit.service.js'
+import { BETTER_AUTH_BUNDLE } from '../src/auth/auth.tokens.js'
+import {
+  AUTH_CONTEXT_REQUEST_KEY,
+  USER_ID_KIND_REQUEST_KEY,
+  USER_ID_REQUEST_KEY,
+  UserContextGuard,
+} from '../src/auth/user-context.guard.js'
+import { buildCorsOptions } from '../src/cors/build-cors-options.js'
+import { registerHelmet } from '../src/security/register-helmet.js'
 import { ConfirmationService } from '../src/confirmation/confirmation.service.js'
 import { fieldAccessFrom } from '../src/confirmation/field-access.js'
 import { EnvAiRuntimeConfigService, type AiRuntimeConfigService } from '../src/ki/ai-runtime-config.service.js'
+import { createChatModelFromConfig } from '../src/ki/chat-model.factory.js'
 import { RagKiAdapter } from '../src/ki/ki.adapter.js'
 import { LangGraphAdvisorEngine } from '../src/ki/langgraph-advisor.engine.js'
 import { OwlModeService } from '../src/owl-mode/owl-mode.service.js'
@@ -134,7 +149,7 @@ function runtimeWithProvider(provider: 'google-genai' | 'deterministic', enabled
         slot,
         enabled,
         provider: enabled ? provider : 'deterministic',
-        model: provider === 'google-genai' ? 'gemini-2.5-flash' : 'deterministic-fallback',
+        model: provider === 'google-genai' ? 'gemini-3.8-flash' : 'deterministic-fallback',
         apiKey: enabled && provider === 'google-genai' ? 'test-only-key' : null,
       }
     },
@@ -142,7 +157,7 @@ function runtimeWithProvider(provider: 'google-genai' | 'deterministic', enabled
 }
 
 describe('AiRuntimeConfigService & LangGraphAdvisorEngine (#446 Slice 2)', () => {
-  it('resolves deterministic fallback by default and enforces AI_KILL_SWITCH env flag', async () => {
+  it('resolves deterministic fallback by default, enforces AI_KILL_SWITCH, defaults google-genai to gemini-3.8-flash and temperature 1.0', async () => {
     const offConfig = new EnvAiRuntimeConfigService({ AI_KILL_SWITCH: 'true', GEMINI_API_KEY: 'live-like-key' })
     expect(await offConfig.isKillSwitchActive()).toBe(true)
     expect(await offConfig.resolveSlot('advisor_chat')).toMatchObject({
@@ -152,11 +167,53 @@ describe('AiRuntimeConfigService & LangGraphAdvisorEngine (#446 Slice 2)', () =>
       apiKey: null,
     })
 
+    const defaultGeminiConfig = new EnvAiRuntimeConfigService({ GEMINI_API_KEY: 'test-gemini-key' })
+    expect(await defaultGeminiConfig.isKillSwitchActive()).toBe(false)
+    for (const slot of ['advisor_chat', 'vision_ocr', 'fallback'] as const) {
+      const resolved = await defaultGeminiConfig.resolveSlot(slot)
+      expect(resolved).toMatchObject({
+        slot,
+        enabled: true,
+        provider: 'google-genai',
+        model: 'gemini-3.8-flash',
+      })
+      const model = createChatModelFromConfig(resolved) as { model?: string; temperature?: number } | null
+      expect(model?.model).toBe('gemini-3.8-flash')
+      expect(model?.temperature).toBe(1.0)
+    }
+
+    const explicitTempConfig = new EnvAiRuntimeConfigService({
+      GEMINI_API_KEY: 'test-gemini-key',
+      AI_TEMPERATURE: '0.4',
+    })
+    const explicitGemini = createChatModelFromConfig(await explicitTempConfig.resolveSlot('advisor_chat')) as {
+      temperature?: number
+    } | null
+    expect(explicitGemini?.temperature).toBe(0.4)
+
+    const anthropicConfig = new EnvAiRuntimeConfigService({
+      AI_ADVISOR_PROVIDER: 'anthropic',
+      ANTHROPIC_API_KEY: 'test-anthropic-key',
+    })
+    const anthropicModel = createChatModelFromConfig(await anthropicConfig.resolveSlot('advisor_chat')) as {
+      temperature?: number
+    } | null
+    expect(anthropicModel?.temperature).toBe(0.2)
+
+    const openAiConfig = new EnvAiRuntimeConfigService({
+      AI_ADVISOR_PROVIDER: 'openai',
+      OPENAI_API_KEY: 'test-openai-key',
+    })
+    const openAiModel = createChatModelFromConfig(await openAiConfig.resolveSlot('advisor_chat')) as {
+      temperature?: number
+    } | null
+    expect(openAiModel?.temperature).toBe(0.2)
+
     const envConfig = new EnvAiRuntimeConfigService({
       AI_ADVISOR_PROVIDER: 'google-genai',
       AI_ADVISOR_MODEL: 'gemini-2.5-pro',
       GEMINI_API_KEY: 'test-gemini-key',
-      AI_VISION_MODEL: 'gemini-2.5-flash',
+      AI_VISION_MODEL: 'gemini-3.8-flash',
     })
     expect(await envConfig.isKillSwitchActive()).toBe(false)
     expect(await envConfig.resolveSlot('advisor_chat')).toMatchObject({
@@ -168,7 +225,7 @@ describe('AiRuntimeConfigService & LangGraphAdvisorEngine (#446 Slice 2)', () =>
     expect(await envConfig.resolveSlot('vision_ocr')).toMatchObject({
       slot: 'vision_ocr',
       provider: 'google-genai',
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.8-flash',
     })
   })
 
@@ -409,5 +466,132 @@ describe('AiRuntimeConfigService & LangGraphAdvisorEngine (#446 Slice 2)', () =>
 
     // Zero-Write confirmed: commute repo still holds 18 km until user explicitly applies
     expect((await commuteRepo.findForUserAndYear('user-s2', 2025))?.oneWayKm).toBe(18)
+  })
+
+  it('preserves CORS headers on hijacked SSE responses for POST /v1/steuerjahre/:jahr/advisor/stream', async () => {
+    const advisorRepo = new InMemoryAdvisorRepository()
+    const interviewRepo = new FakeInterviewAnswerRepository()
+    const lstbRepo = new FakeLstbRepository()
+    const chRepo = new FakeChSalaryCertificateRepository()
+    const childRepo = new FakeChildRepository()
+    const commuteRepo = new FakeCommuteRepository()
+    const assessmentRepo = new FakeAssessmentRepository()
+    const auditService = new AuditService(new FakeAuditRepository())
+
+    const access = fieldAccessFrom({
+      lstb: lstbRepo,
+      pension: new FakePensionRepository(),
+      capital: new FakeCapitalRepository(),
+      rental: new FakeRentalRepository(),
+      profile: new FakeProfileRepository(),
+      masterData: new FakeMasterDataRepository(),
+      link: new FakeLinkRepository(),
+      interview: interviewRepo,
+      chSalaryCertificate: chRepo,
+      child: childRepo,
+      commute: commuteRepo,
+      assessment: assessmentRepo,
+    })
+
+    const confirmationService = new ConfirmationService(new FakeMarkingRepository(), access, auditService)
+    const owlModeService = new OwlModeService(
+      new FakeOwlSettingRepository(),
+      new FakeOwlCardDismissalRepository(),
+      childRepo,
+      interviewRepo,
+      assessmentRepo,
+      new RagKiAdapter(),
+      auditService,
+    )
+
+    const scriptedModel = new ScriptedChatModel([
+      new AIMessage('Ich prüfe deinen Arbeitsweg direkt für das Steuerjahr 2025.'),
+    ])
+    const engine = new LangGraphAdvisorEngine(runtimeWithProvider('google-genai'), () => scriptedModel)
+    const service = new AdvisorService(
+      advisorRepo,
+      owlModeService,
+      confirmationService,
+      auditService,
+      interviewRepo,
+      lstbRepo,
+      chRepo,
+      commuteRepo,
+      childRepo,
+      new FakeRentalRepository(),
+      new FakeCapitalRepository(),
+      new FakeProfileRepository(),
+      engine,
+    )
+
+    const moduleRef = await Test.createTestingModule({
+      imports: [ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 10 }])],
+      controllers: [AdvisorController],
+      providers: [
+        { provide: AdvisorService, useValue: service },
+        {
+          provide: BETTER_AUTH_BUNDLE,
+          useValue: {
+            sessionCookieName: 'se.session',
+            auth: { api: { getSession: async () => null } },
+          },
+        },
+        UserContextGuard,
+      ],
+    })
+      .overrideGuard(UserContextGuard)
+      .useValue({
+        canActivate(ctx: ExecutionContext) {
+          const req = ctx.switchToHttp().getRequest<Record<string, unknown>>()
+          req[USER_ID_REQUEST_KEY] = 'user-sse-cors'
+          req[USER_ID_KIND_REQUEST_KEY] = 'session'
+          req[AUTH_CONTEXT_REQUEST_KEY] = { source: 'nutzer' }
+          return true
+        },
+      })
+      .overrideGuard(FastifyThrottlerGuard)
+      .useValue({ canActivate: () => true })
+      .compile()
+
+    const app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter(), { logger: false })
+    app.enableCors(buildCorsOptions({ CORS_ALLOWED_ORIGINS: 'http://localhost:4173' } as NodeJS.ProcessEnv))
+    await registerHelmet(app)
+    await app.init()
+    await app.listen(0, '127.0.0.1')
+
+    try {
+      const baseUrl = await app.getUrl()
+      const res = await fetch(`${baseUrl}/v1/steuerjahre/2025/advisor/stream`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'text/event-stream',
+          Origin: 'http://localhost:4173',
+        },
+        body: JSON.stringify({ message: 'Hallo Eule' }),
+      })
+
+      expect(res.status).toBe(200)
+      expect(res.headers.get('access-control-allow-origin')).toBe('http://localhost:4173')
+      expect(res.headers.get('access-control-allow-credentials')).toBe('true')
+      expect(res.headers.get('content-type')).toBe('text/event-stream; charset=utf-8')
+      const body = await res.text()
+      expect(body).toContain('event: token')
+      expect(body).toContain('event: done')
+
+      const blockedOriginRes = await fetch(`${baseUrl}/v1/steuerjahre/2025/advisor/stream`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'text/event-stream',
+          Origin: 'https://disallowed.example.com',
+        },
+        body: JSON.stringify({ message: 'Noch eine Frage' }),
+      })
+      expect(blockedOriginRes.status).toBe(200)
+      expect(blockedOriginRes.headers.get('access-control-allow-origin')).toBeNull()
+    } finally {
+      await app.close()
+    }
   })
 })

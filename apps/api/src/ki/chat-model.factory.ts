@@ -13,7 +13,8 @@ export function createChatModelFromConfig(config: ResolvedAiSlotConfig): BaseCha
     return null
   }
 
-  const temperature = config.temperature ?? 0.2
+  // Gemini 3 models recommend temperature 1.0 by default to prevent tool-looping or degraded reasoning.
+  const temperature = config.temperature ?? (config.provider === 'google-genai' ? 1.0 : 0.2)
 
   switch (config.provider) {
     case 'google-genai':

@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import { Pressable, ScrollView, Text, TextInput, View, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
@@ -470,6 +470,7 @@ function OwlModeScreenView({
   const [localMessages, setLocalMessages] = useState<readonly AdvisorChatMessageView[]>(initialMessages ?? [])
   const [localViewMode, setLocalViewMode] = useState<OwlViewMode>({ kind: 'stage' })
   const [isSending, setIsSending] = useState(false)
+  const nextLocalMsgIdRef = useRef(1)
 
   const displayedMessages = initialMessages ?? localMessages
   const activeCard = cards[activeIndex]
@@ -517,7 +518,7 @@ function OwlModeScreenView({
         }
       }
       const userMsg: AdvisorChatMessageView = {
-        id: `msg-u-${Date.now()}`,
+        id: `msg-u-${nextLocalMsgIdRef.current++}`,
         role: 'user',
         content: text,
         meta: null,
@@ -539,7 +540,7 @@ function OwlModeScreenView({
         },
       })
       const assistantMsg: AdvisorChatMessageView = {
-        id: `msg-a-${Date.now() + 1}`,
+        id: `msg-a-${nextLocalMsgIdRef.current++}`,
         role: 'assistant',
         content: turn.replyText,
         meta: turn.meta,
@@ -1058,6 +1059,7 @@ function OwlModeScreenView({
                   </Pressable>
                 ) : null}
                 <TextInput
+                  accessibilityLabel={tr('eule.workspace.dockPlaceholder', 'Kurze Frage an die Eule …')}
                   value={dockInput}
                   onChangeText={setDockInput}
                   placeholder={tr('eule.workspace.dockPlaceholder', 'Kurze Frage an die Eule …')}

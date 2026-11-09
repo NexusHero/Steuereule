@@ -84,12 +84,15 @@ async function main() {
     await selectTaxYear2025(page)
     await assertScreenAccessible(page, 'CockpitScreen')
 
-    // 3. OwlModeScreen (Hinweise + Advisor Chat)
+    // 3. OwlModeScreen (Desktop Split-Pane on 'l' or 2-tab Hinweise + Advisor Chat on mobile)
     await page.getByRole('tab', { name: 'Eule' }).click()
     await page.locator('[data-testid="eule-privacy-badge"]').waitFor({ state: 'visible', timeout: 10_000 })
     await assertScreenAccessible(page, 'OwlModeScreen (Hinweise)')
 
-    await page.locator('[data-testid="eule-tab-fragen"]').click()
+    const fragenTab = page.locator('[data-testid="eule-tab-fragen"]')
+    if (await fragenTab.isVisible().catch(() => false)) {
+      await fragenTab.click()
+    }
     await page.locator('[data-testid="advisor-chat-panel"]').waitFor({ state: 'visible', timeout: 10_000 })
     await assertScreenAccessible(page, 'OwlModeScreen (AdvisorChatPanel)')
 

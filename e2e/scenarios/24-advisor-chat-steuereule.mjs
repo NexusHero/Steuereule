@@ -72,10 +72,15 @@ export async function runScenario24(browser, webOrigin) {
 
   await assertCockpitEstimate(page, 'Scenario 24 Baseline', { direction: 'Erstattung' })
 
-  // 2. Navigate to Eule tab & verify privacy badge + switch to "Fragen & Antworten"
+  // 2. Navigate to Eule tab & verify privacy badge + split-pane chat (or tab switch on mobile)
   await page.getByRole('tab', { name: 'Eule' }).click()
   await page.locator('[data-testid="eule-privacy-badge"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="eule-tab-fragen"]').click()
+  const fragenTab = page.locator('[data-testid="eule-tab-fragen"]')
+  if (await fragenTab.isVisible().catch(() => false)) {
+    await fragenTab.click()
+  } else {
+    await page.locator('[data-testid="eule-desktop-split"]').waitFor({ state: 'visible', timeout: 10_000 })
+  }
   await page.locator('[data-testid="advisor-chat-panel"]').waitFor({ state: 'visible', timeout: 10_000 })
 
   // 3. Turn 1: Ask Eule to record 400 € donations -> verify Law Chip Modal + Action Apply & Undo

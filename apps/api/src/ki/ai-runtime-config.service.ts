@@ -30,7 +30,7 @@ const VALID_PROVIDERS: ReadonlySet<string> = new Set<AiProviderKind>([
 ])
 
 const DEFAULT_MODEL_BY_PROVIDER: Readonly<Record<AiProviderKind, string>> = {
-  'google-genai': 'gemini-2.5-flash',
+  'google-genai': 'gemini-3.8-flash',
   anthropic: 'claude-sonnet-4-5',
   openai: 'gpt-4o-mini',
   deterministic: 'deterministic-fallback',
@@ -58,9 +58,9 @@ function validateHttpsBaseUrl(raw: string | undefined): string | undefined {
 }
 
 /**
- * Env-backed runtime config adapter aligned with ADR-0057 slots
- * (`advisor_chat`, `vision_ocr`, `fallback`) until the persistent admin
- * backoffice adapter from #445 lands.
+ * Env-backed runtime config adapter for per-capability slots
+ * (`advisor_chat`, `vision_ocr`, `fallback`) until a persistent admin
+ * backoffice configuration adapter (#445) lands.
  */
 @Injectable()
 export class EnvAiRuntimeConfigService implements AiRuntimeConfigService {
