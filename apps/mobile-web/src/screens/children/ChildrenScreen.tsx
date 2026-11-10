@@ -1,4 +1,6 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
+import { HouseholdChildrenSection } from './HouseholdChildrenSection'
+import { TaxIdHint } from '../shared/TaxIdHint'
 import { CatalogScreen } from '../catalog/CatalogScreen'
 import { germanToIso, isoToGerman } from '../master-data/masterDataMapping'
 import { Pressable, ScrollView, Text, View, type TextStyle, type ViewStyle } from 'react-native'
@@ -113,6 +115,8 @@ export interface ChildrenScreenProps {
   readonly onSingleParentQuestions?: (() => void) | undefined
   /** Married people cannot claim the Entlastungsbetrag für Alleinerziehende (§ 24b EStG), so its questions stay hidden. */
   readonly married?: boolean | undefined
+  /** The household at account level (#452): last year's children to take over, duplicates, leaving. */
+  readonly householdSlot?: ReactNode
 }
 
 export function ChildrenScreen(props: ChildrenScreenProps) {
@@ -203,12 +207,14 @@ function ConnectedKinderScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TA
       }}
       onSingleParentQuestions={() => setHouseholdQuestions(true)}
       married={married}
+      householdSlot={<HouseholdChildrenSection taxYear={taxYear} onChanged={invalidate} />}
     />
     </>
   )
 }
 
 function KinderScreenView({
+  householdSlot = null,
   onDone = () => {},
   onBack,
   taxYear = CURRENT_TAX_YEAR,
@@ -352,6 +358,8 @@ function KinderScreenView({
         )}
       </Text>
 
+      {householdSlot}
+
       {kinder.length > 0 && (
         <Card style={styles.summaryCard}>
           <Text style={styles.summaryTitle}>{tr('kinder.summaryTitle', 'Steuerliche Entlastung')}</Text>
@@ -464,6 +472,7 @@ function KinderScreenView({
               accessibilityLabel="Steuer-Identifikationsnummer"
               testID="kind-steuerid"
             />
+            <TaxIdHint value={taxId} testID="kind-steuerid-hinweis" />
           </Feld>
           <Feld label="Erhaltenes Kindergeld im Steuerjahr (optional in €)">
             <Input

@@ -279,3 +279,49 @@ describe('StammdatenScreen PLZ → Ort (#451 slice 3)', () => {
     expect(screen.getByTestId('stammdaten-plz-unbekannt')).toBeTruthy()
   })
 })
+
+describe('StammdatenScreen small helpers (#452 slice 5)', () => {
+  it('names the bank of a German IBAN offline (AC 8)', async () => {
+    server.use(http.get('*/v1/stammdaten', () => HttpResponse.json(LEER)))
+    renderScreen()
+    await screen.findByTestId('stammdaten-iban')
+    input('stammdaten-iban', 'DE89 3704 0044 0532 0130 00')
+    expect(screen.getByTestId('stammdaten-iban-bank').textContent).toMatch(/Commerzbank.*aus der IBAN/)
+  })
+
+  it('checks the partner’s Steuer-ID while typing, without blocking (AC 9)', async () => {
+    server.use(
+      http.get('*/v1/stammdaten', () => HttpResponse.json({ ...LEER, familienstand: 'verheiratet' })),
+      http.get('*/v1/steuerjahre/:jahr/kopplung', () =>
+        HttpResponse.json({ filingType: 'zusammen', personBUserId: 'spouse_x', invitationCode: null, invitationCodeValidUntil: null, personBHasOwnAccount: false, personB: null }),
+      ),
+    )
+    renderScreen(2025)
+    const field = await screen.findByTestId('personb-steuerid')
+    fireEvent.change(field, { target: { value: '86095742718' } })
+    expect(screen.getByTestId('personb-steuerid-hinweis')).toBeTruthy()
+    fireEvent.change(field, { target: { value: '86095742719' } })
+    expect(screen.queryByTestId('personb-steuerid-hinweis')).toBeNull()
+  })
+
+  it('shows a lasting spouse link and offers to end it from this year (AC 2)', async () => {
+    let ended = 0
+    server.use(
+      http.get('*/v1/stammdaten', () => HttpResponse.json({ ...LEER, familienstand: 'verheiratet' })),
+      http.get('*/v1/steuerjahre/:jahr/kopplung', () =>
+        HttpResponse.json({ filingType: 'zusammen', personBUserId: 'user-b', invitationCode: null, invitationCodeValidUntil: null, personBHasOwnAccount: true, personB: null }),
+      ),
+      http.get('*/v1/steuerjahre/:jahr/haushalt', () =>
+        HttpResponse.json({ householdUserId: 'u', persons: [], candidates: [], partnerLink: { validFromYear: 2025, endedFromYear: null, ownAccount: true } }),
+      ),
+      http.post('*/v1/steuerjahre/2026/haushalt/partner/nicht-mehr-dabei', () => {
+        ended += 1
+        return HttpResponse.json({ householdUserId: 'u', persons: [], candidates: [], partnerLink: { validFromYear: 2025, endedFromYear: 2026, ownAccount: true } })
+      }),
+    )
+    renderScreen(2026)
+    expect((await screen.findByTestId('kopplung-verknuepft')).textContent).toContain('seit 2025')
+    fireEvent.click(screen.getByTestId('kopplung-beenden'))
+    await waitFor(() => expect(ended).toBe(1))
+  })
+})

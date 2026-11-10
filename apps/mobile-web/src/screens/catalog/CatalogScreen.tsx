@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { Button, Input, Option, useTheme, useBreakpoint, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
 import {
+  formatEuro,
   AMOUNT_LATER,
   ENTRIES,
   LATER_ALLOWED_STEPS,
@@ -99,6 +100,9 @@ export function CatalogScreen({ entry, onDone = () => {}, onBack, taxYear = CURR
   const { t: tr } = useTranslation(APP_NS)
   const queryClient = useQueryClient()
   const interviewQuery = useInterviewControllerGetInterview(taxYear, { eintrag: entry })
+  // #452 slice 4: last year's amounts (Spenden, Riester), offered on a click.
+  const priorQuery = useInterviewControllerGetInterview(taxYear - 1, { eintrag: entry }, { query: { retry: false } })
+  const priorAnswers = priorQuery.data?.status === 200 ? (priorQuery.data.data.answers as Answers) : {}
   const postAnswer = useInterviewControllerPostAnswer()
 
   const [answers, setAnswers] = useState<Answers>({})
@@ -239,17 +243,43 @@ export function CatalogScreen({ entry, onDone = () => {}, onBack, taxYear = CURR
           </Option>
         ))
       ) : (
-        <IntegerFollowUp key={step} step={step} onAnswer={(value) => answer(step, value)} />
+        <IntegerFollowUp
+          key={step}
+          step={step}
+          onAnswer={(value) => answer(step, value)}
+          priorYear={taxYear - 1}
+          priorValue={PRIOR_YEAR_STEPS.has(step) ? priorAmount(priorAnswers[step]) : null}
+        />
       )}
     </ScrollView>
   )
 }
 
-function IntegerFollowUp({ step, onAnswer }: { readonly step: EntryStepId; readonly onAnswer: (value: string) => void }) {
+/** Amounts that rarely change and may be taken over from last year (#452 decision 8). */
+const PRIOR_YEAR_STEPS: ReadonlySet<EntryStepId> = new Set<EntryStepId>(['spenden-betrag', 'riester-betrag'])
+
+function priorAmount(raw: string | undefined): number | null {
+  if (raw === undefined || raw === AMOUNT_LATER) return null
+  const value = Number(raw)
+  return Number.isInteger(value) && value > 0 ? value : null
+}
+
+function IntegerFollowUp({
+  step,
+  onAnswer,
+  priorYear,
+  priorValue = null,
+}: {
+  readonly step: EntryStepId
+  readonly onAnswer: (value: string) => void
+  readonly priorYear?: number
+  readonly priorValue?: number | null
+}) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeStyles(t)
   const [text, setText] = useState('')
+  const [takenOver, setTakenOver] = useState(false)
   const rawValue = integerFrom(text)
   const canEnterLater = LATER_ALLOWED_SET.has(step)
 
@@ -259,11 +289,32 @@ function IntegerFollowUp({ step, onAnswer }: { readonly step: EntryStepId; reado
 
   return (
     <View>
+      {priorValue !== null && priorYear !== undefined && !takenOver ? (
+        <Button
+          variant="leise"
+          onPress={() => {
+            setText(String(priorValue))
+            setTakenOver(true)
+          }}
+          style={styles.later}
+          testID={`wie-vorjahr-${step}`}
+        >
+          {tr('vorjahr.betrag', { year: priorYear, amount: formatEuro(priorValue) })}
+        </Button>
+      ) : null}
+      {takenOver && priorYear !== undefined ? (
+        <Text style={styles.hint} accessibilityLiveRegion="polite" testID={`wie-vorjahr-markiert-${step}`}>
+          {tr('vorjahr.markiert', { year: priorYear })}
+        </Text>
+      ) : null}
       <Input
         type="numeric"
         mono
         value={text}
-        onChange={setText}
+        onChange={(next) => {
+          setText(next)
+          setTakenOver(false)
+        }}
         placeholder={tr('katalog.amountPlaceholder')}
         onSubmit={submit}
         accessibilityLabel={`${tr(`katalog.questions.${step}`, { defaultValue: step })} (${tr('katalog.amountPlaceholder')})`}
