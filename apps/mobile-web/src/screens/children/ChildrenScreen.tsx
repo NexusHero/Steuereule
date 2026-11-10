@@ -31,6 +31,7 @@ import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 import { ErrorState, LoadingState } from '../shared/ScreenState'
 import { usePendingMutations } from '../shared/usePendingMutations'
+import { SaveFailedNotice } from '../shared/SaveFailedNotice'
 import { watchSaveResult } from '../shared/saveFeedback'
 
 export interface ChildItem {
@@ -132,7 +133,7 @@ function ConnectedKinderScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TA
   const masterData = useMasterDataControllerRead()
   const married = masterData.data?.status === 200 && masterData.data.data.familienstand === 'verheiratet'
   const [householdQuestions, setHouseholdQuestions] = useState(false)
-  const { track, flushThen } = usePendingMutations()
+  const { track, flushThen, saveFailed } = usePendingMutations()
 
   if (query.isPending) {
     return <LoadingState bp={bp} label={tr('kinder.loading', 'Kinder werden geladen …')} />
@@ -169,6 +170,8 @@ function ConnectedKinderScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TA
   }
 
   return (
+    <>
+    <SaveFailedNotice visible={saveFailed} />
     <KinderScreenView
       onDone={() => flushThen(onDone)}
       {...(onBack ? { onBack: () => flushThen(onBack) } : {})}
@@ -201,6 +204,7 @@ function ConnectedKinderScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TA
       onSingleParentQuestions={() => setHouseholdQuestions(true)}
       married={married}
     />
+    </>
   )
 }
 
@@ -307,11 +311,19 @@ function KinderScreenView({
       careEur: /^\d+$/.test(pv.trim()) ? pv.trim() : null,
       swissFamilyAllowanceEur: /^\d+$/.test(swissAllowance.trim()) ? swissAllowance.trim() : null,
     }
+    try {
+      if (edited) {
+        if (onSaveChild) await onSaveChild(edited, payload)
+      } else if (onAddChild) {
+        await onAddChild(payload)
+      }
+    } catch {
+      // The save did not reach the server: keep the form open with the user's input.
+      return
+    }
     if (edited) {
-      if (onSaveChild) await onSaveChild(edited, payload)
       setKinder(kinder.map((k) => (k.id === edited ? { ...k, ...payload } : k)))
     } else {
-      if (onAddChild) await onAddChild(payload)
       setKinder([...kinder, { id: `local-${Date.now()}`, sequenceNumber: kinder.length + 1, ...payload }])
     }
     fillForm(null)
@@ -319,7 +331,11 @@ function KinderScreenView({
   }
 
   async function handleDelete(id: string) {
-    if (onDeleteChild) await onDeleteChild(id)
+    try {
+      if (onDeleteChild) await onDeleteChild(id)
+    } catch {
+      return
+    }
     setKinder(kinder.filter((k) => k.id !== id))
   }
 

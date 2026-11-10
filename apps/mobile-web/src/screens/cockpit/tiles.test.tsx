@@ -13,6 +13,7 @@ import {
   FINDING_TILE,
   TILES,
   hasAnswersForEntry,
+  nextStep,
   nextStepTile,
   partitionTiles,
   tileById,
@@ -351,6 +352,17 @@ describe('cockpit tiles (§ 2.2–2.4 & Slice 5 § 5.2)', () => {
 
       expect(tileById('gesundheit').status(baseFacts({ answers: {} }))).toBe('offen')
       expect(tileById('gesundheit').status(baseFacts({ answers: { 'gesundheit-gate': 'Nein' } }))).toBe('erledigt')
+    })
+  })
+
+  describe('nextStep while a tile is still loading or failed', () => {
+    it('suggests no step when an earlier tile in the order has an unknown status', () => {
+      expect(nextStep(baseFacts({ pendingTiles: new Set(['lstb']) }))).toEqual({ kind: 'unknown' })
+    })
+
+    it('still suggests the first open tile when only a later tile is unknown', () => {
+      const step = nextStep(baseFacts({ pendingTiles: new Set(['arbeitsweg']) }))
+      expect(step.kind === 'tile' ? step.tile.id : step.kind).toBe('lstb')
     })
   })
 

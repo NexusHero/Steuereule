@@ -20,6 +20,7 @@ import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 import { usePendingMutations } from '../shared/usePendingMutations'
+import { SaveFailedNotice } from '../shared/SaveFailedNotice'
 import { watchSaveResult } from '../shared/saveFeedback'
 
 type FieldId = 'jahresbetrag' | 'rentenbeginnJahr' | 'alterBeiRentenbeginn'
@@ -39,7 +40,7 @@ export function PensionerScreen({ onDone = () => {}, onBack, taxYear = CURRENT_T
   const query = usePensionControllerGet(taxYear)
   const setKind = usePensionControllerSetPensionKind()
   const setField = usePensionControllerSetField()
-  const { track, flushThen } = usePendingMutations()
+  const { track, flushThen, saveFailed } = usePendingMutations()
 
   if (query.isPending) {
     return <LoadingState bp={bp} label={tr('rente.loading')} />
@@ -120,6 +121,7 @@ export function PensionerScreen({ onDone = () => {}, onBack, taxYear = CURRENT_T
 
       <ItemNotice response={response} />
 
+      <SaveFailedNotice visible={saveFailed} />
       <Button onPress={() => flushThen(onDone)} style={styles.cta}>
         {tr('rente.weiter')}
       </Button>

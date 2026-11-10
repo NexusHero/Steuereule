@@ -19,6 +19,7 @@ import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 import { usePendingMutations } from '../shared/usePendingMutations'
+import { SaveFailedNotice } from '../shared/SaveFailedNotice'
 import { watchSaveResult } from '../shared/saveFeedback'
 import { InMaskAdvisorCompanion } from '../advisor/InMaskAdvisorCompanion'
 import { FIELDS, type FieldId, type StagedFieldDraft } from './scan/lstbScanDraft'
@@ -48,7 +49,7 @@ export function LstbScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YE
   const setField = useLstbControllerSetField()
   const scan = useLstbScan({ taxYear, person: expectedPerson })
   const stagedScan = scan.stagedScan
-  const { track, flushThen: finish } = usePendingMutations()
+  const { track, flushThen: finish, saveFailed } = usePendingMutations()
 
   if (query.isPending) {
     return <LoadingState bp={bp} label={tr('lstb.loading')} />
@@ -110,6 +111,7 @@ export function LstbScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YE
 
       <InMaskAdvisorCompanion screen="lstb" taxYear={taxYear} />
 
+      <SaveFailedNotice visible={saveFailed} />
       <Button onPress={() => finish(onDone)} style={styles.cta} testID="lstb-weiter">
         {tr('lstb.weiter')}
       </Button>

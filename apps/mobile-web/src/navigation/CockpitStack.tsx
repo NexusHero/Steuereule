@@ -50,6 +50,7 @@ function CockpitHomeRoute({ navigation }: Props<'CockpitHome'>) {
       key={taxYear}
       taxYear={taxYear}
       isSignedIn={sessionState.status === 'signed-in'}
+      sessionPending={sessionState.status === 'loading'}
       onYearChange={setTaxYear}
       onOpenInterview={() => navigation.navigate('Interview', { year: taxYear })}
       onOpenAssessment={() => navigation.navigate('Assessment', { year: taxYear })}

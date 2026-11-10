@@ -28,6 +28,7 @@ import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 import { usePendingMutations } from '../shared/usePendingMutations'
+import { SaveFailedNotice } from '../shared/SaveFailedNotice'
 import { triggerSaveErrorHaptic, watchSaveResult } from '../shared/saveFeedback'
 
 export interface CrossBorderScreenProps {
@@ -52,7 +53,7 @@ export function CrossBorderScreen({ onDone, onBack, taxYear = CURRENT_TAX_YEAR }
 
   const [interviewAnswers, setInterviewAnswers] = useState<Answers>({})
   const [seeded, setSeeded] = useState(false)
-  const { track, flushThen: finish } = usePendingMutations()
+  const { track, flushThen: finish, saveFailed } = usePendingMutations()
 
   function invalidateCertificate(): void {
     void queryClient.invalidateQueries({ queryKey: getChSalaryCertificateControllerGetQueryKey(taxYear) })
@@ -122,6 +123,8 @@ export function CrossBorderScreen({ onDone, onBack, taxYear = CURRENT_TAX_YEAR }
   }
 
   return (
+    <>
+    <SaveFailedNotice visible={saveFailed} />
     <SalaryCertificateStep
       salaryCertificate={salaryCertificate}
       taxYear={taxYear}
@@ -133,6 +136,7 @@ export function CrossBorderScreen({ onDone, onBack, taxYear = CURRENT_TAX_YEAR }
       {...(onBack ? { onBack: () => finish(onBack) } : {})}
       bp={bp}
     />
+    </>
   )
 }
 

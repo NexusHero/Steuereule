@@ -911,6 +911,9 @@ export const appResources = {
         warnung: 'Abgabefrist: {{frist}} (noch {{tage}} Tage). Bei Verspätung fällt ein Verspätungszuschlag an — mindestens {{mindestsatz}} pro Monat (§ 152 AO).',
         abgelaufen: 'Die Abgabefrist {{frist}} ist um {{tage}} Tage überschritten. Verspätungszuschlag (§ 152 AO): mindestens {{mindestsatz}} pro Monat — reich die Erklärung bald ein.',
       },
+      shared: {
+        saveFailed: 'Mindestens eine Eingabe wurde nicht gespeichert. Prüf deine Verbindung und gib sie noch einmal ein – oder tipp noch einmal, um trotzdem weiterzugehen.',
+      },
       katalog: {
         einkuenfteBeantworten: 'Frage jetzt beantworten',
         back: 'Zurück',
@@ -2542,6 +2545,9 @@ export const appResources = {
       fristen: {
         warnung: 'Filing deadline: {{frist}} ({{tage}} days left). Late filing incurs a late-filing surcharge — at least {{mindestsatz}} per month (§ 152 AO).',
         abgelaufen: 'The filing deadline {{frist}} passed {{tage}} days ago. Late-filing surcharge (§ 152 AO): at least {{mindestsatz}} per month — file soon.',
+      },
+      shared: {
+        saveFailed: 'At least one entry was not saved. Check your connection and enter it again — or tap again to continue anyway.',
       },
       katalog: {
         einkuenfteBeantworten: 'Answer the question now',
