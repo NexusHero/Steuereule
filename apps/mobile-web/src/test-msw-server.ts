@@ -324,4 +324,13 @@ export const server = setupServer(
   http.get('*/api/auth/passkey/list-user-passkeys', () => HttpResponse.json([])),
   // ADR-0052 §10 — connected assistants read defaults to an empty list.
   getAssistantsControllerListConnectedMockHandler([]),
+  // #451 slice 3 — the Arbeitstage mask reads the address for the holiday region; a fresh
+  // account has none, so the default is the honest empty answer, not random faker data.
+  http.get('*/v1/stammdaten', () =>
+    HttpResponse.json({
+      geburtsdatum: null, strasse: null, hausnummer: null, hausnummerZusatz: null, plz: null, wohnort: null, beruf: null,
+      religion: null, familienstand: null, familienstandSeit: null, iban: null, kontoinhaber: null, finanzamt: null, telefon: null,
+      missing: [],
+    }),
+  ),
 )

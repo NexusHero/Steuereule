@@ -25,6 +25,21 @@ describe('Input', () => {
     expect(screen.getByTestId('num').getAttribute('inputmode')).toBe('numeric')
   })
 
+  it('passes an autofill hint to the DOM (#451 slice 2)', () => {
+    renderUi(<Input value="" onChange={() => {}} testID="plz" autoComplete="postal-code" />)
+    expect(screen.getByTestId('plz').getAttribute('autocomplete')).toBe('postal-code')
+  })
+
+  it('switches autofill off on numeric (amount) fields by default', () => {
+    renderUi(<Input type="numeric" value="" onChange={() => {}} testID="betrag" />)
+    expect(screen.getByTestId('betrag').getAttribute('autocomplete')).toBe('off')
+  })
+
+  it('lets a numeric field ask for a one-time code instead', () => {
+    renderUi(<Input type="numeric" value="" onChange={() => {}} testID="otp" autoComplete="one-time-code" />)
+    expect(screen.getByTestId('otp').getAttribute('autocomplete')).toBe('one-time-code')
+  })
+
   it('does not set numeric inputmode on plain text inputs', () => {
     renderUi(<Input type="text" value="" onChange={() => {}} testID="txt" />)
     expect(screen.getByTestId('txt').getAttribute('inputmode')).not.toBe('numeric')

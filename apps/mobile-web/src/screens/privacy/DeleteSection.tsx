@@ -102,7 +102,7 @@ export function DeleteSection({
           <Text style={styles.offerHeading}>{tr('datenschutz.delete.password.heading')}</Text>
           <Text style={styles.warningBody}>{tr('datenschutz.delete.password.explain')}</Text>
           <Feld label={tr('datenschutz.delete.password.label')}>
-            <Input type="password" value={password} onChange={onPasswordChange} accessibilityLabel={tr('datenschutz.delete.password.label')} />
+            <Input type="password" value={password} onChange={onPasswordChange} accessibilityLabel={tr('datenschutz.delete.password.label')} autoComplete="current-password" />
           </Feld>
           {flow.error === 'wrong' ? (
             <Text style={styles.errorNote} accessibilityRole="alert">

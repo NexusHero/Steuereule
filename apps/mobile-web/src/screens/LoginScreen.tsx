@@ -132,10 +132,10 @@ export function LoginScreen({ onDone, onGuest, onRegister, showDeviceQr = true, 
       ) : null}
 
       <Feld label={tr('login.emailLabel')}>
-        <Input type="email" value={mail} onChange={setMail} placeholder={tr('login.emailPlaceholder')} />
+        <Input type="email" value={mail} onChange={setMail} placeholder={tr('login.emailPlaceholder')} autoComplete="email" />
       </Feld>
       <Feld label={tr('login.passwordLabel')} error={passwordError}>
-        <Input type="password" value={pass} onChange={setPass} placeholder="••••••••" onSubmit={() => void login()} />
+        <Input type="password" value={pass} onChange={setPass} placeholder="••••••••" autoComplete="current-password" onSubmit={() => void login()} />
       </Feld>
       <Button onPress={() => void login()} disabled={stage.kind === 'submitting'}>
         {stage.kind === 'submitting' ? (
@@ -228,7 +228,7 @@ function TwoFactorChallenge({ email, onDone }: { readonly email: string; readonl
         {tr('login.twoFactor.body', { email })}
       </Text>
       <Feld label={tr('login.twoFactor.codeLabel')} error={error}>
-        <Input type="numeric" value={code} onChange={setCode} placeholder="123456" onSubmit={() => void submit()} />
+        <Input type="numeric" value={code} onChange={setCode} placeholder="123456" autoComplete="one-time-code" onSubmit={() => void submit()} />
       </Feld>
       <Button onPress={() => void submit()} disabled={busy || !code}>
         {busy ? tr('login.submitting') : tr('login.twoFactor.submit')}

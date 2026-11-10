@@ -837,6 +837,10 @@ jobs:
         # Same stack as the gates above; needs DATABASE_URL (job env) to verify the out-of-band
         # sign-up. Holds the stream open with page.route, so it needs no language model.
         run: node e2e/advisor/chat-experience.mjs
+      - name: Input aids gate (#451 slices 2–4) — autofill attributes, PLZ → Ort/Bundesland on the device, dictation hint
+        # Fails on any request to a host other than API_ORIGIN/WEB_ORIGIN (decision 7: the postal
+        # code never leaves the device). Needs DATABASE_URL (job env) to verify the sign-up.
+        run: node e2e/advisor/input-aids.mjs
       - name: Visibility-refetch gate (#223) — live re-read of email verification, both screens
         # Needs DATABASE_URL (already set in this job's env, above) to flip `emailVerified`
         # directly — there is no mail client in this environment (#224 is the still-manual,

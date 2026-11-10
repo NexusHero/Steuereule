@@ -127,6 +127,7 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
               onChange={set('firstName')}
               placeholder={tr('onboarding.step1.firstNamePlaceholder')}
               accessibilityLabel={tr('onboarding.step1.firstNameLabel')}
+              autoComplete="given-name"
               testID="onboarding-vorname"
             />
           </Feld>
@@ -136,6 +137,7 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
               onChange={set('lastName')}
               placeholder={tr('onboarding.step1.lastNamePlaceholder')}
               accessibilityLabel={tr('onboarding.step1.lastNameLabel')}
+              autoComplete="family-name"
               testID="onboarding-nachname"
             />
           </Feld>

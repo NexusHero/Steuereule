@@ -176,7 +176,7 @@ export function SecurityScreen({ onBack }: SecurityScreenProps) {
             <Card style={styles.card}>
               <Text style={styles.sectionTitle}>{tr('sicherheit.enable.passwordTitle')}</Text>
               <Feld label={tr('sicherheit.password')} error={stage.error}>
-                <Input type="password" value={password} onChange={setPassword} placeholder="••••••••" onSubmit={() => void submitEnablePassword()} />
+                <Input type="password" value={password} onChange={setPassword} placeholder="••••••••" autoComplete="current-password" onSubmit={() => void submitEnablePassword()} />
               </Feld>
               <Button onPress={() => void submitEnablePassword()} disabled={stage.busy || !password}>
                 {stage.busy ? tr('sicherheit.busy') : tr('sicherheit.enable.confirm')}
@@ -192,7 +192,7 @@ export function SecurityScreen({ onBack }: SecurityScreenProps) {
               <Text style={styles.sectionBody}>{tr('sicherheit.enable.backupCodes')}</Text>
               <Text style={styles.codes}>{stage.setup.backupCodes.join('  ')}</Text>
               <Feld label={tr('sicherheit.enable.codeLabel')} error={stage.error}>
-                <Input type="numeric" value={code} onChange={setCode} placeholder="123456" onSubmit={() => void submitCode()} />
+                <Input type="numeric" value={code} onChange={setCode} placeholder="123456" autoComplete="one-time-code" onSubmit={() => void submitCode()} />
               </Feld>
               <Button onPress={() => void submitCode()} disabled={stage.busy || !code}>
                 {stage.busy ? tr('sicherheit.busy') : tr('sicherheit.enable.verify')}
@@ -204,7 +204,7 @@ export function SecurityScreen({ onBack }: SecurityScreenProps) {
             <Card style={styles.card}>
               <Text style={styles.sectionTitle}>{tr('sicherheit.disable.passwordTitle')}</Text>
               <Feld label={tr('sicherheit.password')} error={stage.error}>
-                <Input type="password" value={password} onChange={setPassword} placeholder="••••••••" onSubmit={() => void submitDisablePassword()} />
+                <Input type="password" value={password} onChange={setPassword} placeholder="••••••••" autoComplete="current-password" onSubmit={() => void submitDisablePassword()} />
               </Feld>
               <Button onPress={() => void submitDisablePassword()} disabled={stage.busy || !password}>
                 {stage.busy ? tr('sicherheit.busy') : tr('sicherheit.disable.confirm')}

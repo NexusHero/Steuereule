@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Linking, Pressable, Text, TextInput, View, type TextStyle, type ViewStyle } from 'react-native'
 import { ChatComposer } from './chat/ChatComposer'
 import { ThinkingIndicator } from './chat/ThinkingIndicator'
+import { DictationHint } from './chat/DictationHint'
 import type { AbortedTurn } from './CopilotBridgeProvider'
 import { useTranslation } from 'react-i18next'
 import { AiChip, Button, Card, useTheme, type UiTheme } from '@steuereule/ui'
@@ -687,6 +688,8 @@ export function AdvisorChatPanel({
           </View>
         </Card>
       ) : null}
+
+      <DictationHint />
 
       {/* Chat Input Bar */}
       <View style={[styles.inputRow, compact && styles.inputRowCompact]}>

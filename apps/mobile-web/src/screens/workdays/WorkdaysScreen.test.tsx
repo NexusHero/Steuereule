@@ -147,3 +147,35 @@ describe('ArbeitstageScreen', () => {
     expect(queryClient.getQueryState(estimateKey)?.isInvalidated).toBe(true)
   })
 })
+
+describe('ArbeitstageScreen holiday region from the address (#451 slice 3)', () => {
+  const address = (plz: string, wohnort: string) =>
+    http.get('*/v1/stammdaten', () =>
+      HttpResponse.json({
+        geburtsdatum: null, strasse: null, hausnummer: null, hausnummerZusatz: null, plz, wohnort, beruf: null, religion: null,
+        familienstand: null, familienstandSeit: null, iban: null, kontoinhaber: null, finanzamt: null, telefon: null, missing: [],
+      }),
+    )
+
+  it('preselects the Bundesland of the master-data postal code, marked and with a holiday suggestion', async () => {
+    server.use(address('80331', 'München'))
+    renderWorkdays()
+    const hint = await screen.findByTestId('feiertage-region-aus-plz')
+    expect(hint.textContent).toBe('Bayern · aus deiner PLZ')
+    expect((screen.getByTestId('arbeitstage-feiertage-anzahl') as HTMLInputElement).value).not.toBe('')
+  })
+
+  it('stays changeable: picking another region drops the mark', async () => {
+    server.use(address('80331', 'München'))
+    renderWorkdays()
+    await screen.findByTestId('feiertage-region-aus-plz')
+    fireEvent.click(screen.getByTestId('feiertage-region-BE'))
+    expect(screen.queryByTestId('feiertage-region-aus-plz')).toBeNull()
+  })
+
+  it('suggests nothing without an address', async () => {
+    renderWorkdays()
+    await screen.findByText('Wochentage im Jahr')
+    expect(screen.queryByTestId('feiertage-region-aus-plz')).toBeNull()
+  })
+})

@@ -1,3 +1,4 @@
+import { POSTAL_CODE_SOURCE } from '@steuereule/core'
 export type LegalPage = 'impressum' | 'datenschutz' | 'agb' | 'hinweise'
 
 export const LEGAL_PAGES: readonly LegalPage[] = ['impressum', 'datenschutz', 'agb', 'hinweise']
@@ -199,6 +200,13 @@ export const NOTICES: readonly Section[] = [
     title: 'Abgabe auf Papier',
     paragraphs: [
       'SteuerEule übermittelt nichts elektronisch an das Finanzamt. Du druckst die ausgefüllten Formulare aus, prüfst sie, unterschreibst den Hauptvordruck und reichst alles bei deinem Finanzamt ein. Wer Gewinneinkünfte hat (z. B. aus Gewerbe oder Selbstständigkeit), muss elektronisch abgeben – diese Fälle unterstützt SteuerEule nicht.',
+    ],
+  },
+  {
+    title: 'Datenquellen',
+    paragraphs: [
+      `Postleitzahlen, Orte und Bundesländer: © OpenStreetMap-Mitwirkende, verfügbar unter der Open Database License (ODbL) 1.0 (opendatacommons.org/licenses/odbl/1-0/). Auszug des Projekts OpenPLZ API, Stand ${POSTAL_CODE_SOURCE.retrieved}.`,
+      'Die Zuordnung läuft auf deinem Gerät. Deine Postleitzahl wird dafür nirgendwohin geschickt.',
     ],
   },
 ]

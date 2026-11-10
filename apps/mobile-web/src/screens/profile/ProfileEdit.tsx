@@ -35,6 +35,7 @@ export function ProfileEdit({ draft, onChange, onSave, onCancel, isSaving, saveE
           onChange={onChange('firstName')}
           placeholder={tr('profil.firstNamePlaceholder')}
           accessibilityLabel={tr('profil.firstNameLabel')}
+          autoComplete="given-name"
         />
       </Feld>
       <Feld label={tr('profil.lastNameLabel')}>
@@ -43,6 +44,7 @@ export function ProfileEdit({ draft, onChange, onSave, onCancel, isSaving, saveE
           onChange={onChange('lastName')}
           placeholder={tr('profil.lastNamePlaceholder')}
           accessibilityLabel={tr('profil.lastNameLabel')}
+          autoComplete="family-name"
         />
       </Feld>
       <Feld label={tr('profil.steuerIdLabel')}>

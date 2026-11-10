@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Pressable, ScrollView, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { Button, Card, Chip, Feld, Input, Option, useBreakpoint, useTheme } from '@steuereule/ui'
+import { Button, Card, Chip, Feld, Input, Option, useBreakpoint, useTheme, type InputAutoComplete } from '@steuereule/ui'
 import { formatGermanDate, MARITAL_STATUSES, RELIGION_KEYS } from '@steuereule/core'
 import {
   getLinkControllerGetQueryKey,
@@ -19,6 +19,8 @@ import { makePrivacyStyles } from '../privacy/styles'
 import { ErrorState, LoadingState } from '../shared/ScreenState'
 import { triggerSaveErrorHaptic, warnOnHttpError } from '../shared/saveFeedback'
 import { germanToIso, isoToGerman, toDraft, zuPutDto, type MasterDataDraft } from './masterDataMapping'
+import { PostalCodeHint } from '../shared/PostalCodeHint'
+import { prefillCity } from '../shared/postalCodePrefill'
 
 export interface MasterDataScreenProps {
   readonly onBack: () => void
@@ -30,6 +32,14 @@ export interface MasterDataScreenProps {
 
 type TextField = Exclude<keyof MasterDataDraft, 'religion' | 'religionConsent' | 'familienstand'>
 
+/** The user's own address and birth date come from the browser's autofill (#451 slice 2). */
+const MASTER_DATA_AUTOFILL: Partial<Record<TextField, InputAutoComplete>> = {
+  geburtsdatum: 'bday',
+  strasse: 'address-line1',
+  plz: 'postal-code',
+  wohnort: 'address-level2',
+}
+
 export function MasterDataScreen({ onBack, taxYear = CURRENT_TAX_YEAR, onRecordPartner }: MasterDataScreenProps) {
   const bp = useBreakpoint()
   const theme = useTheme()
@@ -40,6 +50,7 @@ export function MasterDataScreen({ onBack, taxYear = CURRENT_TAX_YEAR, onRecordP
   const save = useMasterDataControllerSave()
   const [draft, setDraft] = useState<MasterDataDraft | null>(null)
   const [message, setMessage] = useState<{ kind: 'ok' | 'fehler'; text: string } | null>(null)
+  const [cityPrefill, setCityPrefill] = useState<string | null>(null)
 
   if (query.isPending) return <LoadingState bp={bp} label={t('stammdaten.loading')} />
   if (query.isError || query.data?.status !== 200) {
@@ -58,11 +69,25 @@ export function MasterDataScreen({ onBack, taxYear = CURRENT_TAX_YEAR, onRecordP
   const form = draft ?? toDraft(status)
   const set = (patch: Partial<MasterDataDraft>) => {
     setMessage(null)
-    setDraft({ ...form, ...patch })
+    const next = { ...form, ...patch }
+    if (patch.plz !== undefined) {
+      // #451 slice 3: a postal code with one place fills the Ort; a typed Ort is never overwritten.
+      const { city, prefill } = prefillCity({ plz: next.plz, city: next.wohnort, lastPrefill: cityPrefill })
+      next.wohnort = city
+      setCityPrefill(prefill)
+    }
+    setDraft(next)
   }
   const textField = (field: TextField, type: 'text' | 'numeric' = 'text') => (
     <Feld label={t(`stammdaten.${field}`)}>
-      <Input type={type} value={form[field]} onChange={(value) => set({ [field]: value })} accessibilityLabel={t(`stammdaten.${field}`)} testID={`stammdaten-${field}`} />
+      <Input
+        type={type}
+        value={form[field]}
+        onChange={(value) => set({ [field]: value })}
+        accessibilityLabel={t(`stammdaten.${field}`)}
+        {...(MASTER_DATA_AUTOFILL[field] ? { autoComplete: MASTER_DATA_AUTOFILL[field] } : {})}
+        testID={`stammdaten-${field}`}
+      />
     </Feld>
   )
 
@@ -115,6 +140,18 @@ export function MasterDataScreen({ onBack, taxYear = CURRENT_TAX_YEAR, onRecordP
       </View>
       {textField('plz', 'numeric')}
       {textField('wohnort')}
+      <PostalCodeHint
+        plz={form.plz}
+        city={form.wohnort}
+        prefill={cityPrefill}
+        onChooseCity={(city) => {
+          set({ wohnort: city })
+          setCityPrefill(city)
+        }}
+        testIDPrefix="stammdaten"
+        showState
+        churchMember={form.religion !== null && form.religion !== 'VD'}
+      />
 
       <Feld label={t('stammdaten.familienstand')}>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.space.s2 }}>
@@ -289,16 +326,16 @@ function TaxYearLinkSection({
             </Text>
           ) : null}
           <Feld label="Vorname Partner (Person B)">
-            <Input value={firstNameB || (personB?.firstName ?? '')} onChange={setFirstNameB} testID="personb-vorname" />
+            <Input value={firstNameB || (personB?.firstName ?? '')} onChange={setFirstNameB} autoComplete="off" testID="personb-vorname" />
           </Feld>
           <Feld label="Nachname Partner (Person B)">
-            <Input value={lastNameB || (personB?.lastName ?? '')} onChange={setLastNameB} testID="personb-nachname" />
+            <Input value={lastNameB || (personB?.lastName ?? '')} onChange={setLastNameB} autoComplete="off" testID="personb-nachname" />
           </Feld>
           <Feld label="Steuer-ID Partner (11 Ziffern)">
             <Input type="numeric" value={taxIdB || (personB?.steuerId ?? '')} onChange={setTaxIdB} testID="personb-steuerid" />
           </Feld>
           <Feld label="Geburtsdatum Partner (TT.MM.JJJJ)">
-            <Input value={birthDateB || isoToGerman(personB?.geburtsdatum ?? null)} onChange={setBirthDateB} testID="personb-geburtsdatum" />
+            <Input value={birthDateB || isoToGerman(personB?.geburtsdatum ?? null)} onChange={setBirthDateB} autoComplete="off" testID="personb-geburtsdatum" />
           </Feld>
           <Feld label="Beruf Partner">
             <Input value={occupationB || (personB?.beruf ?? '')} onChange={setOccupationB} testID="personb-beruf" />

@@ -26,6 +26,7 @@ export { TabBar, TAB_BAR_HEIGHT, TAB_ICON_PATHS, tabBarClearance, type TabBarPro
 export { Gallery } from './gallery/Gallery'
 
 export { useReducedMotion } from './motion/useReducedMotion'
+export { autoCompleteProps, type InputAutoComplete } from './lib/autoComplete'
 export { useBreakpoint, resolveBreakpoint, type Breakpoint } from './responsive/useBreakpoint'
 export { WIDE_CONTENT_MAX_WIDTH } from './responsive/contentWidth'
 export {

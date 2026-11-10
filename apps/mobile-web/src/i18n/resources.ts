@@ -525,6 +525,13 @@ export const appResources = {
         back: 'Zurück',
         links: 'Rechtliches',
       },
+      plz: {
+        fromPostalCode: 'aus deiner PLZ',
+        choose: 'Welcher Ort gehört zu deiner PLZ?',
+        unknown: 'Diese PLZ kennen wir nicht. Trag den Ort bitte selbst ein.',
+        state: 'Bundesland: {{state}}',
+        churchTax: 'Kirchensteuersatz in {{state}}: {{rate}} %',
+      },
       datenschutz: {
         back: 'Zurück',
         title: 'Datenschutz',
@@ -1563,6 +1570,9 @@ export const appResources = {
           aborted: 'abgebrochen',
           retry: 'Noch mal fragen',
           answering: 'Die Eule antwortet …',
+          dictationHintTouch: 'Tipp: Lieber sprechen als tippen? Tipp auf das Mikrofon deiner Tastatur – der Text landet hier im Feld und du schickst ihn selbst ab.',
+          dictationHintDesktop: 'Tipp: Lieber sprechen als tippen? Nutze die Diktierfunktion deines Computers (Mac: zweimal fn bzw. 🌐, Windows: Windows-Taste + H) – der Text landet hier im Feld und du schickst ihn selbst ab.',
+          dictationHintDismiss: 'Hinweis ausblenden',
           thinkingPhrases: [
             'Die Eule blättert in deiner Akte …',
             'Die Eule rückt die Brille zurecht …',
@@ -2180,6 +2190,13 @@ export const appResources = {
       rechtliches: {
         back: 'Back',
         links: 'Legal',
+      },
+      plz: {
+        fromPostalCode: 'from your postcode',
+        choose: 'Which place belongs to your postcode?',
+        unknown: 'We don’t know this postcode. Please enter the place yourself.',
+        state: 'Federal state: {{state}}',
+        churchTax: 'Church tax rate in {{state}}: {{rate}} %',
       },
       datenschutz: {
         back: 'Back',
@@ -3220,6 +3237,9 @@ export const appResources = {
           aborted: 'stopped',
           retry: 'Ask again',
           answering: 'The Owl is answering …',
+          dictationHintTouch: 'Tip: rather speak than type? Tap the microphone on your keyboard – the text lands in this field and you send it yourself.',
+          dictationHintDesktop: 'Tip: rather speak than type? Use your computer’s dictation (Mac: press fn or 🌐 twice, Windows: Windows key + H) – the text lands in this field and you send it yourself.',
+          dictationHintDismiss: 'Hide tip',
           thinkingPhrases: [
             'The Owl is leafing through your file …',
             'The Owl is adjusting its glasses …',

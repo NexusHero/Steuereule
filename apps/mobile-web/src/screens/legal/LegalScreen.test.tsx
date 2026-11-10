@@ -91,3 +91,11 @@ describe('legal texts stay honest about what the product does', () => {
     expect(alles).toContain('Die steuerliche Verantwortung verbleibt stets bei dir als Steuerpflichtigem')
   })
 })
+
+describe('OSM attribution (#451 slice 3, decision 8)', () => {
+  it('names OpenStreetMap and the ODbL under Wichtige Hinweise', () => {
+    renderPage('hinweise')
+    expect(screen.getByText('Datenquellen')).toBeTruthy()
+    expect(screen.getByText(/© OpenStreetMap-Mitwirkende, verfügbar unter der Open Database License \(ODbL\) 1\.0/)).toBeTruthy()
+  })
+})

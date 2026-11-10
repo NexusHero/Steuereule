@@ -440,10 +440,10 @@ function KinderScreenView({
             {edited ? tr('kinder.editTitle', 'Kind bearbeiten') : tr('kinder.addTitle', 'Kind hinzufügen')}
           </Text>
           <Feld label="Vorname">
-            <Input value={firstName} onChange={setFirstName} placeholder="z.B. Lina" accessibilityLabel="Vorname" testID="kind-vorname" />
+            <Input value={firstName} onChange={setFirstName} placeholder="z.B. Lina" accessibilityLabel="Vorname" autoComplete="given-name" testID="kind-vorname" />
           </Feld>
           <Feld label="Nachname">
-            <Input value={lastName} onChange={setLastName} placeholder="z.B. Mustermann" accessibilityLabel="Nachname" testID="kind-nachname" />
+            <Input value={lastName} onChange={setLastName} placeholder="z.B. Mustermann" accessibilityLabel="Nachname" autoComplete="family-name" testID="kind-nachname" />
           </Feld>
           <Feld label="Geburtsdatum (TT.MM.JJJJ)">
             <Input
@@ -451,6 +451,7 @@ function KinderScreenView({
               onChange={setBirthDate}
               placeholder="z.B. 12.05.2018"
               accessibilityLabel="Geburtsdatum"
+              autoComplete="bday"
               testID="kind-geburtsdatum"
             />
           </Feld>
@@ -548,7 +549,7 @@ function KinderScreenView({
           {opKnown ? (
             <>
               <Feld label="Name, Vorname">
-                <Input value={opName} onChange={setOpName} placeholder="z.B. Muster, Max" accessibilityLabel="Name des anderen Elternteils" />
+                <Input value={opName} onChange={setOpName} placeholder="z.B. Muster, Max" accessibilityLabel="Name des anderen Elternteils" autoComplete="off" />
               </Feld>
               <Feld label="Geburtsdatum (TT.MM.JJJJ)">
                 <Input
@@ -556,10 +557,11 @@ function KinderScreenView({
                   onChange={setOpBirthDate}
                   placeholder="z.B. 11.02.1984"
                   accessibilityLabel="Geburtsdatum des anderen Elternteils"
+                  autoComplete="off"
                 />
               </Feld>
               <Feld label={ae === 'Inland' ? 'Adresse' : 'Letzte bekannte Adresse (optional)'}>
-                <Input value={opAddress} onChange={setOpAddress} accessibilityLabel="Adresse des anderen Elternteils" />
+                <Input value={opAddress} onChange={setOpAddress} accessibilityLabel="Adresse des anderen Elternteils" autoComplete="off" />
               </Feld>
               <Feld label="Kindschaftsverhältnis zum anderen Elternteil">
                 <View style={styles.chips}>

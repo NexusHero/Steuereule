@@ -11,6 +11,7 @@ import {
   formatEuro,
   holidaysOnWorkdays,
   commuterAllowance,
+  type GermanState,
   type HolidayRegion,
   type IsoWeekday,
 } from '@steuereule/core'
@@ -20,6 +21,7 @@ import {
   getTaxEstimateControllerGetQueryKey,
   useCommuteControllerGet,
   useCommuteControllerPut,
+  useMasterDataControllerRead,
   type CommuteInputsDto,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
@@ -29,6 +31,7 @@ import { LoadingState } from '../shared/ScreenState'
 import { integerFrom } from '../shared/integer'
 import { InMaskAdvisorCompanion } from '../advisor/InMaskAdvisorCompanion'
 import { triggerSaveErrorHaptic } from '../shared/saveFeedback'
+import { stateForAddress } from '../shared/postalCodePrefill'
 
 export interface WorkdaysScreenProps {
   readonly onDone?: () => void
@@ -42,12 +45,17 @@ export function WorkdaysScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TA
   const bp = useBreakpoint()
   const { t: tr } = useTranslation(APP_NS)
   const query = useCommuteControllerGet(taxYear, partnerName === undefined ? undefined : { person: 'B' })
+  // #451 slice 3: the user's own address suggests the holiday region; the partner's may differ.
+  const masterData = useMasterDataControllerRead({ query: { enabled: partnerName === undefined, retry: false } })
 
-  if (query.isPending) return <LoadingState bp={bp} label={tr('arbeitstage.loading')} />
+  if (query.isPending || (partnerName === undefined && masterData.isPending)) return <LoadingState bp={bp} label={tr('arbeitstage.loading')} />
   const saved = query.data?.status === 200 ? query.data.data.inputs : null
+  const address = masterData.data?.status === 200 ? masterData.data.data : null
+  const addressState = address?.plz ? stateForAddress(address.plz, address.wohnort ?? '') : null
   return (
     <WorkdaysForm
       saved={saved}
+      addressState={partnerName === undefined ? addressState : null}
       taxYear={taxYear}
       onDone={onDone}
       {...(onBack ? { onBack } : {})}
@@ -58,12 +66,15 @@ export function WorkdaysScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TA
 
 function WorkdaysForm({
   saved,
+  addressState,
   taxYear,
   partnerName,
   onDone,
   onBack,
 }: {
   readonly saved: CommuteInputsDto | null
+  /** Bundesland from the master-data address, used only while no region is saved. */
+  readonly addressState: GermanState | null
   readonly taxYear: number
   readonly partnerName?: string
   readonly onDone: () => void
@@ -83,12 +94,19 @@ function WorkdaysForm({
   const [km, setKm] = useState(textFrom(saved?.oneWayKm))
   const [transport, setTransport] = useState<Transport | null>(saved?.transport ?? null)
   const [workplace, setWorkplace] = useState(saved?.workplace ?? '')
-  const [region, setRegion] = useState<HolidayRegion | null>((saved?.publicHolidayRegion as HolidayRegion | null | undefined) ?? null)
-  const [publicHolidays, setPublicHolidays] = useState(textFrom(saved?.publicHolidays))
+  const savedRegion = (saved?.publicHolidayRegion as HolidayRegion | null | undefined) ?? null
+  const [region, setRegion] = useState<HolidayRegion | null>(savedRegion ?? addressState)
+  const [regionFromAddress, setRegionFromAddress] = useState(savedRegion === null && addressState !== null)
+  const [publicHolidays, setPublicHolidays] = useState(() =>
+    saved?.publicHolidays == null && savedRegion === null && addressState !== null
+      ? String(holidaysOnWorkdays(taxYear, addressState, (saved?.workdays as IsoWeekday[] | undefined) ?? [1, 2, 3, 4, 5]))
+      : textFrom(saved?.publicHolidays),
+  )
 
   // F4: suggest the holidays that fall on the chosen working days; the user confirms or corrects them.
   function selectRegion(fresh: HolidayRegion) {
     setRegion(fresh)
+    setRegionFromAddress(false)
     setPublicHolidays(String(holidaysOnWorkdays(taxYear, fresh, workdays)))
   }
   const [error, setError] = useState(false)
@@ -196,6 +214,11 @@ function WorkdaysForm({
             </Chip>
           ))}
         </View>
+        {regionFromAddress && region !== null ? (
+          <Text style={styles.regionHint} testID="feiertage-region-aus-plz">
+            {tr(`arbeitstage.feiertage.regionen.${region}`)} · {tr('plz.fromPostalCode')}
+          </Text>
+        ) : null}
       </Feld>
       <Feld label={tr('arbeitstage.feiertage.anzahl')}>
         <Input
@@ -338,7 +361,9 @@ function makeStyles(t: UiTheme) {
   const conflictHeading: TextStyle = { color: t.color.tinte, fontFamily: t.font.display, fontWeight: t.weight.schwer, fontSize: t.size.m, marginBottom: t.space.s2 }
   const conflictBody: TextStyle = { color: t.color.tinte, fontFamily: t.font.text, fontSize: t.size.s }
   const cta: ViewStyle = { marginTop: t.space.s4 }
+  const regionHint: TextStyle = { color: t.color.ki, fontFamily: t.font.text, fontWeight: t.weight.fett, fontSize: t.size.xs, marginTop: -t.space.s2 }
   return {
+    regionHint,
     screen, wideScreen, headerRow, heading, help, sectionLabel, weekdayRow, weekday, weekdayActive, weekdayText, weekdayActiveText,
     ergebnisBlock: resultBlock, resultRow, resultLabel, resultValue, honestyNote, widerspruchBlock: conflictBlock, widerspruchHeading: conflictHeading, widerspruchBody: conflictBody, cta,
   }
