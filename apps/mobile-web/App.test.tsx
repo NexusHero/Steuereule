@@ -901,5 +901,88 @@ describe('App', () => {
       expect(await screen.findByText('Zwei-Faktor-Authentifizierung')).toBeTruthy()
       await waitFor(() => expect(window.sessionStorage.getItem('steuereule.returnTo')).toBeNull())
     })
+
+    it('clears steuereule.returnTo when signing out after visiting /app/steuerjahr/2025/kapital', async () => {
+      let signedIn = true
+      const session = {
+        user: { id: 'u1', email: 'lena@beispiel.de', emailVerified: true, name: '' },
+        session: {
+          id: 's1',
+          token: 'tok-current',
+          createdAt: '2026-08-01T14:32:00.000Z',
+          updatedAt: '2026-08-01T14:32:00.000Z',
+        },
+      }
+      server.use(
+        http.get(`${API_BASE_URL}/api/auth/get-session`, () => HttpResponse.json(signedIn ? session : null)),
+        http.get(`${API_BASE_URL}/api/auth/list-sessions`, () =>
+          HttpResponse.json([
+            {
+              id: 's1',
+              userId: 'u1',
+              token: 'tok-current',
+              userAgent: 'Chrome/126.0',
+              createdAt: '2026-08-01T14:32:00.000Z',
+              updatedAt: '2026-08-01T14:32:00.000Z',
+              expiresAt: '2026-08-08T14:32:00.000Z',
+            },
+          ]),
+        ),
+        http.post(`${API_BASE_URL}/api/auth/revoke-session`, () => {
+          signedIn = false
+          return HttpResponse.json({ status: true })
+        }),
+      )
+
+      window.history.pushState({}, '', '/app/steuerjahr/2025/kapital')
+      const { default: App } = await import('./App')
+      render(<App />)
+
+      await screen.findByTestId('kapital-weiter')
+      fireEvent.click(screen.getByRole('tab', { name: 'Profil' }))
+      await screen.findByText('Dieses Gerät')
+      fireEvent.click(screen.getByText('Abmelden'))
+
+      await screen.findByText('Einloggen')
+      expect(window.sessionStorage.getItem('steuereule.returnTo')).toBeNull()
+    })
+
+    it('clears steuereule.returnTo when account deletion transitions session to signed-out while /app/steuerjahr/2025/kapital is mounted', async () => {
+      let signedIn = true
+      const session = {
+        user: { id: 'u1', email: 'lena@beispiel.de', emailVerified: true, name: '' },
+        session: {
+          id: 's1',
+          token: 'tok-current',
+          createdAt: '2026-08-01T14:32:00.000Z',
+          updatedAt: '2026-08-01T14:32:00.000Z',
+        },
+      }
+      server.use(
+        http.get(`${API_BASE_URL}/api/auth/get-session`, () => HttpResponse.json(signedIn ? session : null)),
+        http.delete(`${API_BASE_URL}/v1/account`, () => {
+          signedIn = false
+          return HttpResponse.json({ deleted: { profile: true, account: true }, retainedAnonymisedAuditRows: 0, retainedUnderLegalHold: 0 })
+        }),
+      )
+
+      window.history.pushState({}, '', '/app/steuerjahr/2025/kapital')
+      const { default: App } = await import('./App')
+      render(<App />)
+
+      await screen.findByTestId('kapital-weiter')
+      fireEvent.click(screen.getByRole('tab', { name: 'Profil' }))
+      await screen.findByText('Deine Angaben')
+      fireEvent.click(screen.getByText('So schützen wir deine Daten (DSGVO)'))
+      await screen.findByText('Konto & Daten löschen')
+      fireEvent.click(screen.getByText('Konto & Daten löschen'))
+      await screen.findByText('Weiter ohne Export')
+      fireEvent.click(screen.getByText('Weiter ohne Export'))
+      await screen.findByText('Ja, endgültig löschen')
+      fireEvent.click(screen.getByText('Ja, endgültig löschen'))
+
+      await screen.findByText('Einloggen')
+      expect(window.sessionStorage.getItem('steuereule.returnTo')).toBeNull()
+    })
   })
 })
