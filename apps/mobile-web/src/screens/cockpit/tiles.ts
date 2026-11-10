@@ -5,7 +5,9 @@ import {
   nextStepFor,
   wageTaxCertificateStatus,
   type Answers,
+  type Conflict,
   type EntryStepId,
+  type Notice,
   type WageTaxCertificateFieldState,
 } from '@steuereule/core'
 import type {
@@ -198,4 +200,46 @@ export function hasAnswersForEntry(entry: CatalogEntryParam, answers: Answers): 
   return (Object.keys(answers) as EntryStepId[]).some(
     (step) => answers[step] !== undefined && entryForStep(step) === entry,
   )
+}
+
+export type FindingTileTarget = TileId | 'abgabe'
+export type TileHintSeverity = 'blocker' | 'warnung'
+
+export const FINDING_TILE: Record<Conflict['kind'] | Notice['kind'], FindingTileTarget> = {
+  'lstb-offen': 'lstb',
+  'lstb-unklar': 'lstb',
+  'lstb-widerspruch': 'lstb',
+  'werktage-widerspruch': 'arbeitsweg',
+  'gated-einkunftsart': 'einkuenfte',
+  'erfasst-nicht-gerechnet': 'lebenslagen',
+  'werbungskosten-uebersteigt-einnahmen': 'abgabe',
+  'betrag-spaeter': 'abgabe',
+}
+
+export function tilesForFinding(finding: Conflict | Notice): readonly FindingTileTarget[] {
+  if (finding.kind === 'betrag-spaeter') {
+    const resolved: TileId[] = []
+    for (const step of finding.steps) {
+      const entry = entryForStep(step)
+      if (entry && entry in TILES_BY_ID) {
+        const tileId = entry as TileId
+        if (!resolved.includes(tileId)) resolved.push(tileId)
+      }
+    }
+    return resolved.length > 0 ? resolved : [FINDING_TILE['betrag-spaeter']]
+  }
+  if (finding.kind === 'gated-einkunftsart' && finding.incomeType === 'Gewerbe') {
+    return ['abgabe']
+  }
+  return [FINDING_TILE[finding.kind]]
+}
+
+export function tileHintSeverity(
+  tileId: TileId,
+  conflicts: readonly Conflict[],
+  notices: readonly Notice[],
+): TileHintSeverity | null {
+  if (conflicts.some((c) => tilesForFinding(c).includes(tileId))) return 'blocker'
+  if (notices.some((n) => tilesForFinding(n).includes(tileId))) return 'warnung'
+  return null
 }
