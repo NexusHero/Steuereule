@@ -9,6 +9,7 @@ import {
   fail,
   registerAndOnboard,
   selectTaxYear2025,
+  nextStep,
   unlockTaxYearInDb,
   runStandaloneScenario,
 } from './helpers/scenario-harness.mjs'
@@ -47,12 +48,14 @@ export async function runScenario21(browser, webOrigin, sql) {
   await page.locator('[data-testid="lstb-lohnsteuer"]').fill('13500')
   await page.locator('[data-testid="lstb-sozialversicherung"]').fill('13100')
   await page.locator('[data-testid="lstb-weiter"]').click()
+  await nextStep(page)
 
   // Lebenslagen: all Nein
   for (const step of ['dhf', 'umzug', 'abfindung', 'lohnersatz', 'nebenjob']) {
     await page.locator(`[data-testid="katalog-option-${step}-Nein"]`).waitFor({ state: 'visible', timeout: 10_000 })
     await page.locator(`[data-testid="katalog-option-${step}-Nein"]`).click()
   }
+  await nextStep(page)
 
   // Einkünfte: Beides -> Deutscher Broker -> Einfach (triggers missing kapital & vermietung on Printout until filled)
   await page.locator('[data-testid="katalog-option-einkuenfte-Beides"]').waitFor({ state: 'visible', timeout: 10_000 })
@@ -61,19 +64,23 @@ export async function runScenario21(browser, webOrigin, sql) {
   await page.locator('[data-testid="katalog-option-kap-depot-Deutscher Broker"]').click()
   await page.locator('[data-testid="katalog-option-vermietung-art-Einfach"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="katalog-option-vermietung-art-Einfach"]').click()
+  await nextStep(page)
 
   // Sonderausgaben: all Nein
   for (const step of ['spenden', 'kv-pv', 'riester']) {
     await page.locator(`[data-testid="katalog-option-${step}-Nein"]`).waitFor({ state: 'visible', timeout: 10_000 })
     await page.locator(`[data-testid="katalog-option-${step}-Nein"]`).click()
   }
+  await nextStep(page)
 
-  // Workdays -> Plausibility -> FilingTypeComparison -> Cockpit
+  // Workdays -> Cockpit -> Plausibility -> FilingTypeComparison -> Cockpit
   await page.locator('[data-testid="arbeitstage-km"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="arbeitstage-km"]').fill('12')
   await page.locator('[data-testid="arbeitstage-transport-pkw"]').click()
   await page.locator('[data-testid="arbeitstage-arbeitsort"]').fill('Stuttgart')
   await page.locator('[data-testid="arbeitstage-weiter"]').click()
+  await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.goto(`${webOrigin}/app/steuerjahr/2025/plausibilitaet`, { waitUntil: 'networkidle' })
   await page.locator('[data-testid="plausibilitaet-weiter"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="plausibilitaet-weiter"]').click()
   await page.locator('[data-testid="verheiratet-ja"]').waitFor({ state: 'visible', timeout: 10_000 })

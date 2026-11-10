@@ -9,6 +9,7 @@ import {
   fail,
   registerAndOnboard,
   selectTaxYear2025,
+  nextStep,
   assertEstimate,
   unlockTaxYearInDb,
   confirmAnnexesIfPresent,
@@ -94,15 +95,18 @@ export async function runScenario03(browser, webOrigin, sql, markusSession = nul
   await pageJulia.waitForTimeout(500)
 
   await pageJulia.locator('[data-testid="ch-lohnausweis-weiter"]').click()
+  await nextStep(pageJulia)
 
   await pageJulia.locator('[data-testid="katalog-option-einkuenfte-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
   await pageJulia.locator('[data-testid="katalog-option-einkuenfte-Nein"]').click()
+  await nextStep(pageJulia)
   await pageJulia.locator('[data-testid="katalog-option-spenden-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
   await pageJulia.locator('[data-testid="katalog-option-spenden-Nein"]').click()
   await pageJulia.locator('[data-testid="katalog-option-kv-pv-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
   await pageJulia.locator('[data-testid="katalog-option-kv-pv-Nein"]').click()
   await pageJulia.locator('[data-testid="katalog-option-riester-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
   await pageJulia.locator('[data-testid="katalog-option-riester-Nein"]').click()
+  await nextStep(pageJulia)
 
   await pageJulia.locator('[data-testid="arbeitstage-urlaub"]').waitFor({ state: 'visible', timeout: 10_000 })
   await pageJulia.locator('[data-testid="arbeitstage-urlaub"]').fill(String(s.julia.commute.vacationDays))

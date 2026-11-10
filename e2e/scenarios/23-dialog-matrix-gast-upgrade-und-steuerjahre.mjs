@@ -97,6 +97,7 @@ export async function runScenario23(browser, webOrigin) {
   await page.locator('[data-testid="lstb-weiter"]').click()
 
   // Return to Cockpit and check 2025 now has `cockpit-weiter` (Angestellte)
+  await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.getByRole('tab', { name: 'Cockpit' }).click()
   await page.locator('[data-testid="cockpit-weiter"]').waitFor({ state: 'visible', timeout: 10_000 })
 

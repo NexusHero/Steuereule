@@ -45,6 +45,7 @@ export async function runScenario22(browser, webOrigin) {
   await page.locator('[data-testid="lstb-lohnsteuer"]').fill('12000')
   await page.locator('[data-testid="lstb-sozialversicherung"]').fill('12500')
   await page.locator('[data-testid="lstb-weiter"]').click()
+  await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.getByRole('tab', { name: 'Cockpit' }).click()
 
   // --- 1. ChildrenScreen: Add 2 Children with Chip Permutations ---
