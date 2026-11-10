@@ -23,7 +23,7 @@ export function usePendingMutations() {
 
   function flushThen(callback?: () => void): void {
     if (!callback) return
-    void Promise.allSettled([...pending.current]).then(() => {
+    const leaveOrWarn = () => {
       if (failedSinceLastExit.current && !saveFailed) {
         setSaveFailed(true)
         return
@@ -31,7 +31,12 @@ export function usePendingMutations() {
       failedSinceLastExit.current = false
       setSaveFailed(false)
       callback()
-    })
+    }
+    if (pending.current.size === 0) {
+      leaveOrWarn()
+      return
+    }
+    void Promise.allSettled(pending.current).then(leaveOrWarn)
   }
 
   return { track, flushThen, saveFailed }
