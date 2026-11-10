@@ -628,6 +628,9 @@ function OwlModeScreenView({
         onInspectMask={handleInspectMask}
         receiptLinkedActionIds={bridge?.receiptLinkedActionIds}
         onAttachReceipt={handleAttachReceipt}
+        onAttachReceiptFile={bridge ? (file) => void bridge.captureReceiptFile(file) : undefined}
+        receiptProgress={bridge?.receiptPhase ? tr(`advisor.chat.receiptProgress.${bridge.receiptPhase}`) : null}
+        receiptNotice={bridge?.receiptNotice ?? null}
         isParsingReceipt={bridge?.parsingReceipt}
         compact={compact}
       />

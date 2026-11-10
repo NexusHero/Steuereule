@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
@@ -13,6 +13,7 @@ import {
   type ReceiptResponseDto,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
+import { ReceiptPickerButton } from '../shared/ReceiptPickerButton'
 import { detectDocumentMimeType } from '../../lib/documentOcr'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { ReceiptFileModal } from './ReceiptFileModal'
@@ -165,7 +166,6 @@ function UploadCard({ onUploaded }: { readonly onUploaded: () => void }) {
   const t = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const s = makeStyles(t)
-  const fileInputRef = useRef<HTMLInputElement | null>(null)
   const [selectedKind, setSelectedKind] = useState<CreateReceiptDtoKind>(CreateReceiptDtoKind.Sonstiges)
   const [uploading, setUploading] = useState(false)
   const [statusMessage, setStatusMessage] = useState<{ readonly kind: 'ok' | 'error'; readonly text: string } | null>(null)
@@ -198,9 +198,6 @@ function UploadCard({ onUploaded }: { readonly onUploaded: () => void }) {
       setStatusMessage({ kind: 'error', text: tr('belege.upload.errorFailed') })
     } finally {
       setUploading(false)
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ''
-      }
     }
   }
 
@@ -236,25 +233,14 @@ function UploadCard({ onUploaded }: { readonly onUploaded: () => void }) {
             })}
           </select>
 
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="application/pdf,image/jpeg,image/png,image/webp"
-            data-testid="belege-file-input"
-            style={{ display: 'none' }}
-            onChange={(event) => {
-              const file = event.target.files?.[0]
-              void handleFileSelected(file)
-            }}
-          />
-
-          <Button
-            onPress={() => fileInputRef.current?.click()}
+          <ReceiptPickerButton
+            onFile={(file) => void handleFileSelected(file)}
             disabled={uploading}
             testID="belege-upload-cta"
+            inputTestID="belege-file-input"
           >
             {uploading ? tr('belege.upload.uploading') : tr('belege.upload.cta')}
-          </Button>
+          </ReceiptPickerButton>
         </View>
       )}
 

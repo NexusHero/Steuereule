@@ -1,0 +1,23 @@
+/** Document kinds the parse endpoint has a strategy for (`auto` = generic receipt classifier). */
+export type DetectedDocumentKind = 'lstb' | 'auto'
+
+const LSTB_TITLE = /lohnsteuerbescheinigung/i
+const LSTB_ROW_MARKERS = [
+  /\bBruttoarbeitslohn\b/i,
+  /\bEinbehaltene\s+Lohnsteuer\b/i,
+  /Arbeitnehmeranteil.*Rentenversicherung/i,
+  /Arbeitnehmerbeitr(?:ä|ae)ge.*(?:Kranken|Pflege|Arbeitslosen)versicherung/i,
+  /\beTIN\b/i,
+]
+
+/**
+ * Deterministic routing of an uploaded document to its parse strategy (#444): a
+ * Lohnsteuerbescheinigung is recognised by its title plus at least one certificate row,
+ * or by two certificate rows when OCR lost the title. Everything else is a generic receipt.
+ */
+export function classifyDocumentKind(text: string): DetectedDocumentKind {
+  if (!text) return 'auto'
+  const rows = LSTB_ROW_MARKERS.filter((marker) => marker.test(text)).length
+  if (LSTB_TITLE.test(text) && rows >= 1) return 'lstb'
+  return rows >= 2 ? 'lstb' : 'auto'
+}
