@@ -19,6 +19,7 @@ import {
   getAdvisorControllerGetSessionQueryKey,
   uploadReceiptFile,
   type AdvisorChatMessageDto,
+  type CalculationTermDto,
   type LstbExtractedFieldDto,
   type LstbExtractedFieldDtoReason,
   type LstbFieldDto,
@@ -26,6 +27,7 @@ import {
   type LstbYearConflictDto,
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
+import { formatCalculation } from '../../lib/lstb/formatCalculation'
 import { detectDocumentMimeType, extractDocumentTextOnDevice, type OcrStage } from '../../lib/documentOcr'
 import { integerFrom } from '../shared/integer'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
@@ -47,7 +49,7 @@ interface StagedFieldDraft {
   readonly status: 'ok' | 'pruefen'
   readonly confirmed: boolean
   readonly sourceLines: readonly string[]
-  readonly calculationPath: string | null
+  readonly calculation: readonly CalculationTermDto[]
   readonly reason: LstbExtractedFieldDtoReason
 }
 
@@ -79,7 +81,7 @@ function buildFieldDraft(field: LstbExtractedFieldDto): StagedFieldDraft {
     status: field.status,
     confirmed: field.status === 'ok',
     sourceLines: field.sourceLines ?? [],
-    calculationPath: field.calculationPath ?? null,
+    calculation: field.calculation ?? [],
     reason: field.reason ?? null,
   }
 }
@@ -109,7 +111,7 @@ function rehydrateDraftFromAdvisorMessages(
         status,
         confirmed: status === 'ok',
         sourceLines: action?.sourceLines ?? [],
-        calculationPath: action?.calculationPath ?? null,
+        calculation: action?.calculation ?? [],
         reason: action?.fieldReason ?? null,
       }
     }
@@ -654,6 +656,7 @@ function LstbFieldEditor({
   }
 
   const displayedValue = stagedDraft !== null ? stagedDraft.text : state.kind === 'unklar' ? '' : text
+  const stagedCalculation = stagedDraft !== null ? formatCalculation(stagedDraft.calculation, (line, amount) => tr('lstb.scan.field.calculationTerm', { line, amount })) : null
 
   return (
     <Feld label={label}>
@@ -665,7 +668,7 @@ function LstbFieldEditor({
             source={{
               ...(stagedReceiptName ? { receipt: stagedReceiptName } : {}),
               rule: tr('lstb.scan.field.ruleLabel'),
-              ...(stagedDraft.calculationPath ? { calculationPath: stagedDraft.calculationPath } : {}),
+              ...(stagedCalculation !== null ? { calculationPath: stagedCalculation } : {}),
               ...(stagedDraft.reason ? { reason: tr(`lstb.scan.field.reason.${stagedDraft.reason}`) } : {}),
             }}
           />

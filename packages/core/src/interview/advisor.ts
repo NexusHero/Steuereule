@@ -3,7 +3,7 @@ import { isSupportedIncomeTaxYear } from '../math/tarif'
 import { getTaxYearParameters } from '../math/tax-parameters'
 import type { Marking, Screen } from './marking'
 import type { Profession } from './interview'
-import type { LstbExtractedFieldStatus, LstbFieldReason } from '../domains/lstb-parser'
+import type { LstbCalculationTerm, LstbExtractedFieldStatus, LstbFieldReason } from '../domains/lstb-parser'
 import { taxEstimateCrossBorder, taxEstimateEmployee } from '../engine/tax-estimate'
 
 export type AdvisorActionStatus = 'pending' | 'applied' | 'dismissed' | 'superseded' | 'undone'
@@ -129,7 +129,7 @@ export interface AdvisorActionProposal {
   readonly receiptId?: string | undefined
   readonly confidenceStatus?: LstbExtractedFieldStatus | undefined
   readonly sourceLines?: readonly string[] | undefined
-  readonly calculationPath?: string | null | undefined
+  readonly calculation?: readonly LstbCalculationTerm[] | undefined
   readonly fieldReason?: LstbFieldReason | null | undefined
 }
 

@@ -163,6 +163,11 @@ export const AdvisorActionProposalDtoConfidenceStatus = {
   pruefen: 'pruefen',
 } as const;
 
+export interface CalculationTermDto {
+  line: string;
+  amount: number;
+}
+
 /**
  * @nullable
  */
@@ -212,8 +217,7 @@ export interface AdvisorActionProposalDto {
   receiptId?: string;
   confidenceStatus?: AdvisorActionProposalDtoConfidenceStatus;
   sourceLines?: string[];
-  /** @nullable */
-  calculationPath?: string | null;
+  calculation?: CalculationTermDto[];
   /** @nullable */
   fieldReason?: AdvisorActionProposalDtoFieldReason;
 }
@@ -353,8 +357,7 @@ export interface AdvisorMaxPathProposalDto {
   receiptId?: string;
   confidenceStatus?: AdvisorMaxPathProposalDtoConfidenceStatus;
   sourceLines?: string[];
-  /** @nullable */
-  calculationPath?: string | null;
+  calculation?: CalculationTermDto[];
   /** @nullable */
   fieldReason?: AdvisorMaxPathProposalDtoFieldReason;
   evidenceHint: string;
@@ -468,8 +471,8 @@ export interface LstbExtractedFieldDto {
   value: number | null;
   status: LstbExtractedFieldDtoStatus;
   sourceLines: string[];
-  /** @nullable */
-  calculationPath: string | null;
+  /** Summands of `value`; formatted by the client. */
+  calculation: CalculationTermDto[];
   /** @nullable */
   reason: LstbExtractedFieldDtoReason;
 }

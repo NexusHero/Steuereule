@@ -95,21 +95,26 @@ function makeParseResponse(overrides?: Partial<NonNullable<ParseReceiptResponseD
         value: 54000,
         status: 'ok',
         sourceLines: ['3'],
-        calculationPath: 'Zeile 3',
+        calculation: [{ line: '3', amount: 54000 }],
         reason: null,
       },
       lohnsteuer: {
         value: 8200,
         status: 'ok',
         sourceLines: ['4'],
-        calculationPath: 'Zeile 4',
+        calculation: [{ line: '4', amount: 8200 }],
         reason: null,
       },
       sozialversicherung: {
         value: 11100,
         status: 'ok',
         sourceLines: ['23a', '25', '26', '27'],
-        calculationPath: 'Z23(4800)+Z25(4300)+Z26(1200)+Z27(800)',
+        calculation: [
+          { line: '23', amount: 4800 },
+          { line: '25', amount: 4300 },
+          { line: '26', amount: 1200 },
+          { line: '27', amount: 800 },
+        ],
         reason: null,
       },
     },
@@ -417,13 +422,16 @@ describe('LstbScreen', () => {
         HttpResponse.json(
           makeParseResponse({
             fields: {
-              bruttoarbeitslohn: { value: 54000, status: 'ok', sourceLines: ['3'], calculationPath: 'Zeile 3', reason: null },
-              lohnsteuer: { value: 8200, status: 'ok', sourceLines: ['4'], calculationPath: 'Zeile 4', reason: null },
+              bruttoarbeitslohn: { value: 54000, status: 'ok', sourceLines: ['3'], calculation: [{ line: '3', amount: 54000 }], reason: null },
+              lohnsteuer: { value: 8200, status: 'ok', sourceLines: ['4'], calculation: [{ line: '4', amount: 8200 }], reason: null },
               sozialversicherung: {
                 value: 6500,
                 status: 'pruefen',
                 sourceLines: ['23a', '25'],
-                calculationPath: 'Z23(4500)+Z25(2000)',
+                calculation: [
+                  { line: '23', amount: 4500 },
+                  { line: '25', amount: 2000 },
+                ],
                 reason: 'partial_sv_lines',
               },
             },
@@ -469,9 +477,9 @@ describe('LstbScreen', () => {
         HttpResponse.json(
           makeParseResponse({
             fields: {
-              bruttoarbeitslohn: { value: 40000, status: 'ok', sourceLines: ['3'], calculationPath: 'Zeile 3', reason: null },
-              lohnsteuer: { value: 45000, status: 'ok', sourceLines: ['4'], calculationPath: 'Zeile 4', reason: null },
-              sozialversicherung: { value: 8000, status: 'ok', sourceLines: ['23a'], calculationPath: 'Zeile 23a', reason: null },
+              bruttoarbeitslohn: { value: 40000, status: 'ok', sourceLines: ['3'], calculation: [{ line: '3', amount: 54000 }], reason: null },
+              lohnsteuer: { value: 45000, status: 'ok', sourceLines: ['4'], calculation: [{ line: '4', amount: 8200 }], reason: null },
+              sozialversicherung: { value: 8000, status: 'ok', sourceLines: ['23a'], calculation: [{ line: '23a', amount: 8000 }], reason: null },
             },
           }),
           { status: 200 },
@@ -564,7 +572,7 @@ describe('LstbScreen', () => {
             reason: 'LStB-Scan',
             sourceId: 'estg-9-1',
             confidenceStatus: 'ok',
-            calculationPath: 'Zeile 3',
+            calculation: [{ line: '3', amount: 54000 }],
           },
           {
             actionId: 'act-r2',
@@ -579,7 +587,7 @@ describe('LstbScreen', () => {
             reason: 'LStB-Scan',
             sourceId: 'estg-9-1',
             confidenceStatus: 'ok',
-            calculationPath: 'Zeile 4',
+            calculation: [{ line: '4', amount: 8200 }],
           },
           {
             actionId: 'act-r3',
@@ -594,7 +602,7 @@ describe('LstbScreen', () => {
             reason: 'LStB-Scan',
             sourceId: 'estg-9-1',
             confidenceStatus: 'ok',
-            calculationPath: 'Zeilen 23-27',
+            calculation: [{ line: '23', amount: 4000 }],
           },
         ],
       },

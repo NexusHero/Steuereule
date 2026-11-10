@@ -735,6 +735,7 @@ export const appResources = {
             confirm: 'Wert bestätigen',
             confirmed: 'Bestätigt ✓',
             ruleLabel: 'LStB-Scan',
+            calculationTerm: 'Zeile {{line}} ({{amount}})',
             reason: {
               missing: 'Feld konnte nicht sicher erkannt werden — bitte prüfen oder nachtragen.',
               unreadable: 'Feld auf dem Beleg schwer lesbar — bitte prüfen.',
@@ -2254,6 +2255,7 @@ export const appResources = {
             confirm: 'Confirm value',
             confirmed: 'Confirmed ✓',
             ruleLabel: 'LStB scan',
+            calculationTerm: 'Line {{line}} ({{amount}})',
             reason: {
               missing: 'Field could not be detected reliably — please review or enter.',
               unreadable: 'Field is hard to read on the document — please verify.',

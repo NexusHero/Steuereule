@@ -109,7 +109,7 @@ export class LstbScanParseStrategy implements DocumentParseStrategy, OnModuleIni
     let mode: 'vision_ocr' | 'deterministic_fallback' = 'deterministic_fallback'
     let visionSlot: ResolvedAiSlotConfig | null = null
 
-    if (stage1.needsLlmFallback && rawText.trim().length > 0) {
+    if ((stage1.taxYear === null || stage1.unresolvedFields.length > 0) && rawText.trim().length > 0) {
       const resolved = await this.resolveVisionSlotAndModel()
       if (resolved.visionModel && resolved.visionSlot) {
         visionSlot = resolved.visionSlot
@@ -184,7 +184,7 @@ export class LstbScanParseStrategy implements DocumentParseStrategy, OnModuleIni
       value: f.value,
       status: f.status,
       sourceLines: [...f.sourceLines],
-      calculationPath: f.calculationPath,
+      calculation: f.calculation.map((term) => ({ line: term.line, amount: term.amount })),
       reason: f.reason,
     })
 

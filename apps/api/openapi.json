@@ -6499,6 +6499,23 @@
           "taxYear"
         ]
       },
+      "CalculationTermDto": {
+        "type": "object",
+        "properties": {
+          "line": {
+            "type": "string",
+            "example": "23a"
+          },
+          "amount": {
+            "type": "number",
+            "example": 5051.76
+          }
+        },
+        "required": [
+          "line",
+          "amount"
+        ]
+      },
       "AdvisorActionProposalDto": {
         "type": "object",
         "properties": {
@@ -6642,10 +6659,11 @@
               "type": "string"
             }
           },
-          "calculationPath": {
-            "type": "string",
-            "nullable": true,
-            "example": "Zeile 3: 54.320,00 €"
+          "calculation": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CalculationTermDto"
+            }
           },
           "fieldReason": {
             "type": "string",
@@ -6864,10 +6882,11 @@
               "type": "string"
             }
           },
-          "calculationPath": {
-            "type": "string",
-            "nullable": true,
-            "example": "Zeile 3: 54.320,00 €"
+          "calculation": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CalculationTermDto"
+            }
           },
           "fieldReason": {
             "type": "string",
@@ -7102,10 +7121,12 @@
               "type": "string"
             }
           },
-          "calculationPath": {
-            "type": "string",
-            "nullable": true,
-            "example": "Zeile 3: 54.320,00 €"
+          "calculation": {
+            "description": "Summands of `value`; formatted by the client.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CalculationTermDto"
+            }
           },
           "reason": {
             "type": "string",
@@ -7123,7 +7144,7 @@
           "value",
           "status",
           "sourceLines",
-          "calculationPath",
+          "calculation",
           "reason"
         ]
       },

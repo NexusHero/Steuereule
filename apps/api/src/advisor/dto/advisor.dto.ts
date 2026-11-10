@@ -64,6 +64,15 @@ const OWL_SOURCE_IDS: readonly OwlSourceId[] = [
   'ao-355',
 ]
 
+/** One summand of a scanned value: the certificate line and the amount printed there (#444). */
+export class CalculationTermDto {
+  @ApiProperty({ type: String, example: '23a' })
+  line!: string
+
+  @ApiProperty({ type: Number, example: 5051.76 })
+  amount!: number
+}
+
 export class AdvisorLegalSourceDto implements AdvisorLegalSource {
   @ApiProperty({ type: String, enum: OWL_SOURCE_IDS, example: 'estg-9-1-4a' })
   sourceId!: OwlSourceId
@@ -159,8 +168,8 @@ export class AdvisorActionProposalDto implements AdvisorActionProposal {
   @ApiPropertyOptional({ type: [String], example: ['3'] })
   sourceLines?: readonly string[] | undefined
 
-  @ApiPropertyOptional({ type: String, nullable: true, example: 'Zeile 3: 54.320,00 €' })
-  calculationPath?: string | null | undefined
+  @ApiPropertyOptional({ type: () => [CalculationTermDto] })
+  calculation?: readonly CalculationTermDto[] | undefined
 
   @ApiPropertyOptional({
     type: String,
