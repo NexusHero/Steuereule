@@ -130,6 +130,19 @@ export async function runScenario08(browser, webOrigin) {
     await page.locator('[data-testid="cockpit-interview"], [data-testid="cockpit-weiter"], [data-testid="cockpit-bescheid"]').first().waitFor({ state: 'visible', timeout: 10_000 })
   }
 
+  // Submission gate guard (§ 3.6): direct visit to /app/steuerjahr/2025/ausdruck with open LStB redirects to Submission
+  await page.goto(`${webOrigin}/app/steuerjahr/2025/ausdruck`, { waitUntil: 'networkidle' })
+  const gatedPrintBtn = page.locator('[data-testid="abgabe-zum-ausdruck"]')
+  await gatedPrintBtn.waitFor({ state: 'visible', timeout: 10_000 })
+  if (!(await gatedPrintBtn.isDisabled())) {
+    fail('[Scenario 08] Expected abgabe-zum-ausdruck to be disabled when LStB is still incomplete')
+  }
+  if (!page.url().includes('/app/steuerjahr/2025/abgabe')) {
+    fail(`[Scenario 08] Expected redirect to /app/steuerjahr/2025/abgabe, got ${page.url()}`)
+  }
+  await page.locator('[data-testid="abgabe-zurueck"]').click()
+  await page.locator('[data-testid="cockpit-interview"], [data-testid="cockpit-weiter"], [data-testid="cockpit-bescheid"]').first().waitFor({ state: 'visible', timeout: 10_000 })
+
   // Browser history check across full page loads: goto + reload + goBack returns to Cockpit
   await page.goto(`${webOrigin}/app/steuerjahr/2025/kapital`, { waitUntil: 'networkidle' })
   await page.locator('[data-testid="kapital-weiter"]').waitFor({ state: 'visible', timeout: 10_000 })

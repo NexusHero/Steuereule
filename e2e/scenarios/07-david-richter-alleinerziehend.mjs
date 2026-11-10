@@ -75,11 +75,11 @@ export async function runScenario07(browser, webOrigin) {
   await page.locator('[data-testid="arbeitstage-weiter"]').click()
 
   await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.goto(`${webOrigin}/app/steuerjahr/2025/plausibilitaet`, { waitUntil: 'networkidle' })
-  await page.locator('[data-testid="plausibilitaet-weiter"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="plausibilitaet-weiter"]').click()
-  await page.locator('[data-testid="verheiratet-nein"]').click()
-  await page.locator('[data-testid="veranlagungsartenvergleich-weiter"]').click()
+  await page.locator('[data-testid="cockpit-abgabe-vorbereiten"]').click()
+  const printBtn = page.locator('[data-testid="abgabe-zum-ausdruck"]')
+  await printBtn.waitFor({ state: 'visible', timeout: 10_000 })
+  if (await printBtn.isDisabled()) fail('Expected abgabe-zum-ausdruck enabled for Scenario 07')
+  await page.locator('[data-testid="abgabe-zurueck"]').click()
 
   const kinderBtn = page.locator('[data-testid="cockpit-kinder"]')
   await kinderBtn.waitFor({ state: 'visible', timeout: 10_000 })

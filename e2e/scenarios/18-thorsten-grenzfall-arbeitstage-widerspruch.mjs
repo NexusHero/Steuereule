@@ -90,8 +90,10 @@ export async function runScenario18(browser, webOrigin) {
     state: 'visible',
     timeout: 10_000,
   })
-  await page.goto(`${webOrigin}/app/steuerjahr/2026/plausibilitaet`, { waitUntil: 'networkidle' })
-  await page.locator('[data-testid="plausibilitaet-weiter"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator('[data-testid="cockpit-abgabe-vorbereiten"]').click()
+  const printBtn = page.locator('[data-testid="abgabe-zum-ausdruck"]')
+  await printBtn.waitFor({ state: 'visible', timeout: 10_000 })
+  if (await printBtn.isDisabled()) fail('Expected abgabe-zum-ausdruck enabled after correcting absences in Scenario 18')
   console.log('[Scenario 18] PASS: WorkdaysScreen contradiction boundary and recovery verified.')
 
   await ctx.close()

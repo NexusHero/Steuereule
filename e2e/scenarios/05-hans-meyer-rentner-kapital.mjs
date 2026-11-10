@@ -119,6 +119,8 @@ export async function runScenario05(browser, webOrigin, sql) {
 
   unlockTaxYearInDb(sql, email, 2025)
   await page.locator('[data-testid="cockpit-ausdruck"]').click()
+  await page.locator('[data-testid="abgabe-zum-ausdruck"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator('[data-testid="abgabe-zum-ausdruck"]').click()
   await page.locator('[data-testid="ausdruck-zurueck"]').waitFor({ state: 'visible', timeout: 10_000 })
   await confirmAnnexesIfPresent(page)
 
