@@ -31,7 +31,8 @@
       "react-i18next": "15.7.4",
       "i18next": "24.2.3",
       "@huggingface/transformers>onnxruntime-node": "-",
-      "@huggingface/transformers>sharp": "-"
+      "@huggingface/transformers>sharp": "-",
+      "node-forge": "1.4.2"
     },
     "onlyBuiltDependencies": [
       "@bundled-es-modules/glob",
