@@ -832,6 +832,9 @@ describe('Slice 4: CopilotBridgeProvider & 3-Breakpoint OwlMode Workspace', () =
 
     // Attach receipt from inside OwlModeScreen chat panel -> shows eule-receipt-result & securityBlocked warning
     fireEvent.click(screen.getByTestId('advisor-receipt-attach-btn'))
+    // A PDF or photo is the primary path; pasted text sits behind an explicit toggle.
+    expect(screen.getByTestId('advisor-receipt-file')).toBeTruthy()
+    fireEvent.click(screen.getByTestId('advisor-receipt-text-toggle'))
     fireEvent.change(screen.getByTestId('advisor-receipt-rawtext'), { target: { value: 'Tastatur 199 EUR' } })
     fireEvent.click(screen.getByTestId('advisor-receipt-submit-btn'))
     expect(await screen.findByTestId('eule-receipt-result')).toBeTruthy()

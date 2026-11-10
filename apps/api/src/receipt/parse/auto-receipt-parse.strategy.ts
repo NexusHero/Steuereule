@@ -2,7 +2,7 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import { HumanMessage, SystemMessage } from '@langchain/core/messages'
 import { Inject, Injectable, Optional } from '@nestjs/common'
 import { z } from 'zod'
-import { scrubUserMessagePii, type OwlSourceId, type Screen } from '@steuereule/core'
+import { scrubDocumentTextPii, scrubUserMessagePii, type OwlSourceId, type Screen } from '@steuereule/core'
 import { AdvisorService } from '../../advisor/advisor.service.js'
 import { AuditService } from '../../audit/audit.service.js'
 import {
@@ -283,7 +283,8 @@ export class AutoReceiptParseStrategy implements DocumentParseStrategy {
     }
 
     const knownNames = await this.advisorService.knownNamesForScrubbing(userId, dto.taxYear)
-    const safeText = dto.rawText ? scrubUserMessagePii(dto.rawText, knownNames) : ''
+    // Uploaded documents carry address blocks, employer lines and IDs that chat text does not.
+    const safeText = dto.rawText ? scrubDocumentTextPii(dto.rawText, knownNames) : ''
 
     // Text only (ADR-0051): document pixels never reach a model. Without text there is nothing to send.
     if (visionModel && safeText.length > 0) {

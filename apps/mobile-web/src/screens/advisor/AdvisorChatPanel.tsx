@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Linking, Pressable, Text, TextInput, View, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { AiChip, Button, Card, useTheme, type UiTheme } from '@steuereule/ui'
+import { ReceiptPickerButton } from '../shared/ReceiptPickerButton'
 import {
   ADVISOR_LEGAL_SOURCES,
   formatEuro,
@@ -30,6 +31,11 @@ export interface AdvisorChatPanelProps {
   readonly onInspectMask?: ((screen: Screen, field?: string) => void) | undefined
   readonly receiptLinkedActionIds?: ReadonlySet<string> | undefined
   readonly onAttachReceipt?: ((input: { readonly fileName: string; readonly rawText: string }) => Promise<void> | void) | undefined
+  /** Upload a PDF or photo: stored encrypted, read on the device, parsed (#444). */
+  readonly onAttachReceiptFile?: ((file: File) => Promise<void> | void) | undefined
+  /** Visible progress text of the running receipt capture, if any. */
+  readonly receiptProgress?: string | null | undefined
+  readonly receiptNotice?: string | null | undefined
   readonly isParsingReceipt?: boolean | undefined
   readonly compact?: boolean | undefined
 }
@@ -243,6 +249,54 @@ function ActionProposalCardView({
   )
 }
 
+/**
+ * A scanned Lohnsteuerbescheinigung stages several fields at once (meta.actions). The chat
+ * shows what was read and how sure it is; taking the values over happens in the LStB mask,
+ * where yellow fields need a single confirmation and conflicts are shown (ADR-0008).
+ */
+function ScannedCertificateCardView({
+  actions,
+  onInspectMask,
+  styles,
+}: {
+  readonly actions: readonly AdvisorActionProposal[]
+  readonly onInspectMask?: ((screen: Screen, field?: string) => void) | undefined
+  readonly styles: ReturnType<typeof makeStyles>
+}) {
+  const { t: tr } = useTranslation(APP_NS)
+  const pending = actions.filter((a) => a.status === 'pending')
+  const allApplied = pending.length === 0
+  return (
+    <View style={styles.actionCard} testID="advisor-lstb-scan-card">
+      <Text style={styles.actionLabel}>{tr('advisor.chat.lstbScan.title', 'Lohnsteuerbescheinigung erkannt')}</Text>
+      {actions.map((a) => (
+        <View key={a.actionId} style={styles.actionHeader} testID={`advisor-lstb-scan-row-${a.field}`}>
+          <Text style={styles.actionReason}>
+            {a.label}: {a.newValue === '' ? tr('advisor.chat.lstbScan.notRead', 'nicht gelesen') : formatEuro(Number(a.newValue))}
+          </Text>
+          <Text
+            style={a.confidenceStatus === 'pruefen' ? styles.pauschbetragBadge : styles.actionDeltaBadge}
+            testID={`advisor-lstb-scan-status-${a.field}`}
+          >
+            {a.confidenceStatus === 'pruefen'
+              ? tr('advisor.chat.lstbScan.check', 'bitte prüfen')
+              : tr('advisor.chat.lstbScan.ok', 'sicher gelesen')}
+          </Text>
+        </View>
+      ))}
+      {allApplied ? (
+        <Text style={styles.actionReason} testID="advisor-lstb-scan-applied">
+          {tr('advisor.chat.lstbScan.applied', 'Übernommen.')}
+        </Text>
+      ) : onInspectMask ? (
+        <Button onPress={() => onInspectMask('lstb')} testID="advisor-lstb-scan-review">
+          {tr('advisor.chat.lstbScan.review', 'Prüfen & übernehmen')}
+        </Button>
+      ) : null}
+    </View>
+  )
+}
+
 function TwoPathsCardView({
   twoPaths,
   onApply,
@@ -305,6 +359,9 @@ export function AdvisorChatPanel({
   onInspectMask,
   receiptLinkedActionIds,
   onAttachReceipt,
+  onAttachReceiptFile,
+  receiptProgress = null,
+  receiptNotice = null,
   isParsingReceipt = false,
   compact = false,
 }: AdvisorChatPanelProps) {
@@ -314,6 +371,7 @@ export function AdvisorChatPanel({
   const [inputText, setInputText] = useState('')
   const [selectedSource, setSelectedSource] = useState<AdvisorLegalSource | null>(null)
   const [receiptOpen, setReceiptOpen] = useState(false)
+  const [receiptTextOpen, setReceiptTextOpen] = useState(false)
   const [receiptFileName, setReceiptFileName] = useState('beleg.pdf')
   const [receiptRawText, setReceiptRawText] = useState('')
 
@@ -436,6 +494,11 @@ export function AdvisorChatPanel({
                 />
               ) : null}
 
+              {/* Scanned LStB: several staged fields at once */}
+              {msg.meta?.lstbScan && msg.meta.actions && msg.meta.actions.length > 0 ? (
+                <ScannedCertificateCardView actions={msg.meta.actions} onInspectMask={onInspectMask} styles={styles} />
+              ) : null}
+
               {/* Two-Paths Comparison Card */}
               {msg.meta?.twoPaths ? (
                 <TwoPathsCardView
@@ -481,48 +544,87 @@ export function AdvisorChatPanel({
         </View>
       ) : null}
 
-      {/* Inline Receipt Parsing Panel (Two-Stage Isolated vision_ocr) */}
-      {onAttachReceipt && receiptOpen ? (
+      {/* Receipt attach panel: a PDF or photo first (read on the device, #444), pasted text as fallback */}
+      {(onAttachReceipt || onAttachReceiptFile) && receiptOpen ? (
         <Card style={styles.receiptPanel} testID="advisor-receipt-panel">
-          <TextInput
-            accessibilityLabel={tr('advisor.chat.receiptNamePlaceholder', 'Dateiname (z. B. rechnung.pdf)')}
-            value={receiptFileName}
-            onChangeText={setReceiptFileName}
-            placeholder={tr('advisor.chat.receiptNamePlaceholder', 'Dateiname (z. B. rechnung.pdf)')}
-            placeholderTextColor={theme.color.tinte2}
-            style={styles.textInput}
-            testID="advisor-receipt-filename"
-          />
-          <TextInput
-            accessibilityLabel={tr('advisor.chat.receiptTextPlaceholder', 'Belegtext oder Betrag (z. B. Monitor 349 EUR)')}
-            value={receiptRawText}
-            onChangeText={setReceiptRawText}
-            placeholder={tr('advisor.chat.receiptTextPlaceholder', 'Belegtext oder Betrag (z. B. Monitor 349 EUR)')}
-            placeholderTextColor={theme.color.tinte2}
-            style={styles.textInput}
-            multiline
-            testID="advisor-receipt-rawtext"
-          />
-          <View style={styles.receiptActionsRow}>
-            <Button
-              onPress={() => void handleReceiptSubmit()}
-              disabled={isParsingReceipt || receiptRawText.trim().length === 0}
-              style={{ flex: 1 }}
-              testID="advisor-receipt-submit-btn"
+          {onAttachReceiptFile ? (
+            <ReceiptPickerButton
+              onFile={(file) => void onAttachReceiptFile(file)}
+              disabled={isParsingReceipt}
+              testID="advisor-receipt-file"
+              unsupportedHint={tr('advisor.chat.receiptNativeHint', 'Kamera-Scan folgt in der App — lade im Web ein PDF oder Foto hoch.')}
             >
               {isParsingReceipt
-                ? tr('advisor.chat.parsingReceipt', 'Beleg wird geprüft …')
-                : tr('advisor.chat.receiptSubmit', 'Beleg prüfen')}
-            </Button>
-            <Button
-              variant="ghost"
-              onPress={() => setReceiptOpen(false)}
-              style={{ flex: 1 }}
-              testID="advisor-receipt-cancel-btn"
+                ? (receiptProgress ?? tr('advisor.chat.parsingReceipt', 'Beleg wird geprüft …'))
+                : tr('advisor.chat.receiptFileCta', 'PDF oder Foto auswählen')}
+            </ReceiptPickerButton>
+          ) : null}
+          <Text style={styles.actionReason}>
+            {tr('advisor.chat.receiptPrivacy', 'Der Text wird auf deinem Gerät gelesen. Das Bild geht an keine KI; das Original liegt verschlüsselt in deinen Belegen.')}
+          </Text>
+          {onAttachReceipt ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => setReceiptTextOpen((prev) => !prev)}
+              testID="advisor-receipt-text-toggle"
             >
+              <Text style={styles.actionReason}>{tr('advisor.chat.receiptPasteText', 'Stattdessen Text einfügen')}</Text>
+            </Pressable>
+          ) : null}
+          {onAttachReceipt && (receiptTextOpen || !onAttachReceiptFile) ? (
+            <>
+              <TextInput
+                accessibilityLabel={tr('advisor.chat.receiptNamePlaceholder', 'Dateiname (z. B. rechnung.pdf)')}
+                value={receiptFileName}
+                onChangeText={setReceiptFileName}
+                placeholder={tr('advisor.chat.receiptNamePlaceholder', 'Dateiname (z. B. rechnung.pdf)')}
+                placeholderTextColor={theme.color.tinte2}
+                style={styles.textInput}
+                testID="advisor-receipt-filename"
+              />
+              <TextInput
+                accessibilityLabel={tr('advisor.chat.receiptTextPlaceholder', 'Belegtext oder Betrag (z. B. Monitor 349 EUR)')}
+                value={receiptRawText}
+                onChangeText={setReceiptRawText}
+                placeholder={tr('advisor.chat.receiptTextPlaceholder', 'Belegtext oder Betrag (z. B. Monitor 349 EUR)')}
+                placeholderTextColor={theme.color.tinte2}
+                style={styles.textInput}
+                multiline
+                testID="advisor-receipt-rawtext"
+              />
+              <View style={styles.receiptActionsRow}>
+                <Button
+                  onPress={() => void handleReceiptSubmit()}
+                  disabled={isParsingReceipt || receiptRawText.trim().length === 0}
+                  style={{ flex: 1 }}
+                  testID="advisor-receipt-submit-btn"
+                >
+                  {isParsingReceipt
+                    ? tr('advisor.chat.parsingReceipt', 'Beleg wird geprüft …')
+                    : tr('advisor.chat.receiptSubmit', 'Beleg prüfen')}
+                </Button>
+                <Button
+                  variant="ghost"
+                  onPress={() => setReceiptOpen(false)}
+                  style={{ flex: 1 }}
+                  testID="advisor-receipt-cancel-btn"
+                >
+                  {tr('advisor.chat.receiptCancel', 'Abbrechen')}
+                </Button>
+              </View>
+            </>
+          ) : null}
+          {!onAttachReceipt || !(receiptTextOpen || !onAttachReceiptFile) ? (
+            <Button variant="leise" onPress={() => setReceiptOpen(false)} testID="advisor-receipt-close-btn">
               {tr('advisor.chat.receiptCancel', 'Abbrechen')}
             </Button>
-          </View>
+          ) : null}
+        </Card>
+      ) : null}
+
+      {receiptNotice ? (
+        <Card style={styles.receiptPanel} testID="advisor-receipt-notice">
+          <Text style={styles.actionReason}>{receiptNotice}</Text>
         </Card>
       ) : null}
 
@@ -564,7 +666,7 @@ export function AdvisorChatPanel({
 
       {/* Chat Input Bar */}
       <View style={[styles.inputRow, compact && styles.inputRowCompact]}>
-        {onAttachReceipt ? (
+        {onAttachReceipt || onAttachReceiptFile ? (
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={tr('advisor.chat.attachReceiptAria', 'Beleg anhängen')}

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ScrollView, View, Text, Pressable, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
@@ -8,7 +8,6 @@ import {
   useLstbControllerGetLstb,
   useLstbControllerSetField,
   useLstbScanControllerConfirmScan,
-  useReceiptParseControllerParseReceipt,
   useAdvisorControllerGetSession,
   useAdvisorControllerDismissAction,
   getLstbControllerGetLstbQueryKey,
@@ -17,7 +16,6 @@ import {
   getConfirmationControllerGetQueryKey,
   getReceiptControllerListQueryKey,
   getAdvisorControllerGetSessionQueryKey,
-  uploadReceiptFile,
   type AdvisorChatMessageDto,
   type CalculationTermDto,
   type LstbExtractedFieldDto,
@@ -28,7 +26,9 @@ import {
 } from '@steuereule/api-client'
 import { APP_NS } from '../../i18n/resources'
 import { formatCalculation } from '../../lib/lstb/formatCalculation'
-import { detectDocumentMimeType, extractDocumentTextOnDevice, type OcrStage } from '../../lib/documentOcr'
+import type { OcrStage } from '../../lib/documentOcr'
+import { captureReceipt } from '../../lib/receipts/captureReceipt'
+import { ReceiptPickerButton } from '../shared/ReceiptPickerButton'
 import { integerFrom } from '../shared/integer'
 import { CURRENT_TAX_YEAR } from '../../config/taxYear'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
@@ -140,12 +140,10 @@ export function LstbScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YE
   const styles = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
   const queryClient = useQueryClient()
-  const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const query = useLstbControllerGetLstb(taxYear, params)
   const setField = useLstbControllerSetField()
   const confirmScan = useLstbScanControllerConfirmScan()
-  const parseReceipt = useReceiptParseControllerParseReceipt()
   const dismissAction = useAdvisorControllerDismissAction()
   const advisorSessionQuery = useAdvisorControllerGetSession(taxYear, { query: { retry: false } })
 
@@ -193,7 +191,6 @@ export function LstbScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YE
   }
 
   const response = query.data.data
-  const isWeb = typeof document !== 'undefined'
 
   function send(field: FieldId, data: LstbFieldDto) {
     setField.mutate(
@@ -215,65 +212,34 @@ export function LstbScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YE
     setOverwriteConflict(false)
     setLocallyDismissed(false)
 
-    const prelimMime = detectDocumentMimeType(new Uint8Array(0), file.type, file.name)
-    if (prelimMime === null) {
-      setScanError(tr('lstb.scan.error.unsupportedFile'))
-      return
-    }
-
     try {
-      setScanBusyPhase('uploading')
-      let uploadedReceiptId: string | null = null
-      try {
-        const uploadRes = await uploadReceiptFile({
-          file,
-          fileName: file.name,
-          kind: 'Sonstiges',
-        })
-        if (uploadRes.ok) {
-          uploadedReceiptId = uploadRes.data.id
-          void queryClient.invalidateQueries({ queryKey: getReceiptControllerListQueryKey() })
-        }
-      } catch {
-        // Continue OCR + parse even if binary receipt upload is unavailable (e.g. guest mode)
-      }
-
-      setScanBusyPhase('detecting')
-      const ocrResult = await extractDocumentTextOnDevice(file, {
-        fileName: file.name,
-        mimeType: file.type,
-        onProgress: (p) => {
-          if (p.stage !== 'done') {
-            setScanBusyPhase(p.stage)
-          }
-        },
+      const captured = await captureReceipt(file, {
+        taxYear,
+        kind: 'lstb',
+        person: params ? 'B' : 'A',
+        onPhase: setScanBusyPhase,
       })
-
-      if (ocrResult.text.trim().length === 0) {
-        setScanError(tr('lstb.scan.error.emptyOcr'))
+      // The original lands in the Belege inbox even when reading or parsing fails.
+      void queryClient.invalidateQueries({ queryKey: getReceiptControllerListQueryKey() })
+      if (!captured.ok) {
+        setScanError(
+          tr(
+            captured.failure === 'unsupported_file'
+              ? 'lstb.scan.error.unsupportedFile'
+              : captured.failure === 'empty_text'
+                ? 'lstb.scan.error.emptyOcr'
+                : 'lstb.scan.error.parseFailed',
+          ),
+        )
         return
       }
-
-      setScanBusyPhase('parsing')
-      const parseRes = await parseReceipt.mutateAsync({
-        data: {
-          taxYear,
-          kind: 'lstb',
-          fileName: file.name,
-          ...(uploadedReceiptId !== null ? { receiptId: uploadedReceiptId } : {}),
-          rawText: ocrResult.text,
-          textSource: ocrResult.kind === 'pdf' && !ocrResult.usedOcrFallback ? 'pdf_text' : 'ocr',
-          stageDraft: true,
-          ...(params ? { person: 'B' } : {}),
-        },
-      })
-
-      if (parseRes.status !== 200 || !parseRes.data.lstb) {
+      if (!captured.response.lstb) {
         setScanError(tr('lstb.scan.error.parseFailed'))
         return
       }
+      const uploadedReceiptId = captured.receiptId
 
-      const lstbScan = parseRes.data.lstb
+      const lstbScan = captured.response.lstb
       if (lstbScan.yearConflict !== null) {
         // Year mismatch: stage nothing and surface explicit switch-year dialog
         setStagedScan(null)
@@ -298,9 +264,6 @@ export function LstbScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YE
       setScanError(tr('lstb.scan.error.parseFailed'))
     } finally {
       setScanBusyPhase(null)
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ''
-      }
     }
   }
 
@@ -430,30 +393,16 @@ export function LstbScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_YE
       <Card variant="nacht" style={styles.scanCard} testID="lstb-scan-card">
         <Text style={styles.scanHeading}>{tr('lstb.scan.heading')}</Text>
         <Text style={styles.scanBody}>{tr('lstb.scan.help')}</Text>
-        {isWeb ? (
-          <>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="application/pdf,image/jpeg,image/png,image/webp"
-              data-testid="lstb-scan-file-input"
-              style={{ display: 'none' }}
-              onChange={(event) => {
-                const file = event.target.files?.[0]
-                void handleScanFile(file)
-              }}
-            />
-            <Button
-              onPress={() => fileInputRef.current?.click()}
-              disabled={scanBusyPhase !== null}
-              testID="lstb-scan-cta"
-            >
-              {scanBusyPhase !== null ? tr(`lstb.scan.progress.${scanBusyPhase}`) : tr('lstb.scan.cta')}
-            </Button>
-          </>
-        ) : (
-          <Text style={styles.scanBody}>{tr('lstb.scan.nativeUnsupported')}</Text>
-        )}
+        <ReceiptPickerButton
+          onFile={(file) => void handleScanFile(file)}
+          disabled={scanBusyPhase !== null}
+          testID="lstb-scan-cta"
+          inputTestID="lstb-scan-file-input"
+          unsupportedHint={tr('lstb.scan.nativeUnsupported')}
+          hintStyle={styles.scanBody}
+        >
+          {scanBusyPhase !== null ? tr(`lstb.scan.progress.${scanBusyPhase}`) : tr('lstb.scan.cta')}
+        </ReceiptPickerButton>
         {scanError !== null && <Text style={styles.scanErrorText}>{scanError}</Text>}
       </Card>
 

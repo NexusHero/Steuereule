@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
 import { useQueryClient, type QueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import type { AdvisorActionProposal, AdvisorChatMessageView, Screen } from '@steuereule/core'
 import {
   advisorControllerApplyAction,
@@ -21,6 +22,7 @@ import {
   getOwlModeControllerGetSettingQueryKey,
   getPensionControllerGetQueryKey,
   getPrintoutControllerCheckQueryKey,
+  getReceiptControllerListQueryKey,
   getRentalControllerGetQueryKey,
   getTaxEstimateControllerGetQueryKey,
   receiptParseControllerParseReceipt,
@@ -28,6 +30,8 @@ import {
   type ParseReceiptResponseDto,
   type SendAdvisorMessageResponseDto,
 } from '@steuereule/api-client'
+import { APP_NS } from '../../i18n/resources'
+import { captureReceipt, type CapturePhase, type CaptureResult } from '../../lib/receipts/captureReceipt'
 
 export type CopilotMode = 'cockpit' | 'eulen-modus'
 
@@ -94,6 +98,12 @@ export interface CopilotBridgeContextValue {
   readonly lastParsedReceipt: ParseReceiptResponseDto | null
   readonly receiptLinkedActionIds: ReadonlySet<string>
   readonly parseReceipt: (input: ParseReceiptInput) => Promise<ParseReceiptResponseDto | null>
+  /** Upload a PDF or photo from the chat: stored encrypted, read on the device, parsed (#444). */
+  readonly captureReceiptFile: (file: File) => Promise<CaptureResult | null>
+  readonly receiptPhase: CapturePhase | null
+  /** Plain-language outcome the chat shows after a capture (year conflict, unreadable file …). */
+  readonly receiptNotice: string | null
+  readonly clearReceiptNotice: () => void
   readonly provenanceByScreen: Readonly<Partial<Record<Screen, TileProvenanceKind>>>
   readonly bestTileProvenance: (screens: readonly Screen[]) => TileProvenanceKind | null
   readonly cockpitBanner: CockpitBannerState | null
@@ -205,6 +215,7 @@ export function CopilotBridgeProvider({
   children,
 }: CopilotBridgeProviderProps) {
   const queryClient = useQueryClient()
+  const { t: tr } = useTranslation(APP_NS)
   const [owlViewMode, setOwlViewMode] = useState<OwlViewMode>({ kind: 'stage' })
   const [streaming, setStreaming] = useState(false)
   const [streamSteps, setStreamSteps] = useState<readonly string[]>([])
@@ -215,6 +226,8 @@ export function CopilotBridgeProvider({
   const [staleConflict, setStaleConflict] = useState<StaleConflictState | null>(null)
   const [parsingReceipt, setParsingReceipt] = useState(false)
   const [lastParsedReceipt, setLastParsedReceipt] = useState<ParseReceiptResponseDto | null>(null)
+  const [receiptPhase, setReceiptPhase] = useState<CapturePhase | null>(null)
+  const [receiptNotice, setReceiptNotice] = useState<string | null>(null)
   const [receiptLinkedActionIds, setReceiptLinkedActionIds] = useState<ReadonlySet<string>>(() => new Set())
   const [provenanceByScreen, setProvenanceByScreen] = useState<Readonly<Partial<Record<Screen, TileProvenanceKind>>>>({})
   const [cockpitBanner, setCockpitBanner] = useState<CockpitBannerState | null>(null)
@@ -514,6 +527,46 @@ export function CopilotBridgeProvider({
     [isAuthenticated, queryClient, taxYear],
   )
 
+  const captureReceiptFile = useCallback(
+    async (file: File): Promise<CaptureResult | null> => {
+      if (!isAuthenticated) return null
+      setParsingReceipt(true)
+      setChatError(null)
+      setReceiptNotice(null)
+      try {
+        const result = await captureReceipt(file, { taxYear, onPhase: setReceiptPhase })
+        if (!result.ok) {
+          setReceiptNotice(tr(`advisor.chat.receiptFailure.${result.failure}`))
+          return result
+        }
+        setLastParsedReceipt(result.response)
+        const yearConflict = result.response.lstb?.yearConflict ?? null
+        if (yearConflict !== null) {
+          setReceiptNotice(
+            tr('advisor.chat.receiptYearConflict', {
+              documentYear: yearConflict.documentYear,
+              activeYear: yearConflict.activeYear,
+            }),
+          )
+        }
+        const stagedId = result.response.stagedAction?.actionId
+        if (stagedId) {
+          setReceiptLinkedActionIds((prev) => new Set(prev).add(stagedId))
+        }
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: getAdvisorControllerGetSessionQueryKey(taxYear) }),
+          queryClient.invalidateQueries({ queryKey: getOwlModeControllerGetCardsQueryKey(taxYear) }),
+          queryClient.invalidateQueries({ queryKey: getReceiptControllerListQueryKey() }),
+        ])
+        return result
+      } finally {
+        setParsingReceipt(false)
+        setReceiptPhase(null)
+      }
+    },
+    [isAuthenticated, queryClient, taxYear, tr],
+  )
+
   const bestTileProvenance = useCallback(
     (screens: readonly Screen[]): TileProvenanceKind | null => {
       let best: TileProvenanceKind | null = null
@@ -555,6 +608,10 @@ export function CopilotBridgeProvider({
       lastParsedReceipt,
       receiptLinkedActionIds,
       parseReceipt,
+      captureReceiptFile,
+      receiptPhase,
+      receiptNotice,
+      clearReceiptNotice: () => setReceiptNotice(null),
       provenanceByScreen,
       bestTileProvenance,
       cockpitBanner,
@@ -583,6 +640,9 @@ export function CopilotBridgeProvider({
       lastParsedReceipt,
       receiptLinkedActionIds,
       parseReceipt,
+      captureReceiptFile,
+      receiptPhase,
+      receiptNotice,
       provenanceByScreen,
       bestTileProvenance,
       cockpitBanner,
