@@ -119,11 +119,13 @@ async function main() {
     console.log(`[${TAG}] ✅ Row B — finished plan collapses to „2 Schritte erledigt ▸“ above the answer and expands`)
 
     // Row C — Stop in the middle of a plan: finished steps stay, the running one is aborted (AC 14).
-    await page.unroute('**/advisor/session', { behavior: 'ignoreErrors' })
+    // The session stub stays: removing it while the post-answer re-read is in flight can leave that
+    // read hanging, and the chat would then stay "answering". Wait until it is idle instead.
+    await page.locator('[data-testid="advisor-chat-send"]').waitFor({ state: 'visible', timeout: 10_000 })
     const input = page.locator('[data-testid="advisor-chat-input"]')
     await input.fill('Prüf bitte Arbeitsweg und Riester')
     await input.press('Enter')
-    await page.waitForFunction(() => window.__kiStub.bodies.length === 2, null, { timeout: 5_000 })
+    await page.waitForFunction(() => window.__kiStub.bodies.length === 2, null, { timeout: 10_000 })
     await push(page, 'plan', { steps: [{ text: 'Arbeitsweg prüfen', status: 'erledigt' }, { text: 'Riester prüfen', status: 'laeuft' }] })
     await waitForStep(page, 2, '◐', 'Row C')
     await page.locator('[data-testid="advisor-chat-stop"]').click()
