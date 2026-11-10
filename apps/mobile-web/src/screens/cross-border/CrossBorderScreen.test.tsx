@@ -147,6 +147,42 @@ describe('GrenzgaengerScreen — the CH interview', () => {
   })
 })
 
+describe('GrenzgaengerScreen — CH answers are posted in order', () => {
+  it('sends Tage only after the server stored Wohnsitz, so it is never unreachable', async () => {
+    const received: string[] = []
+    let releaseWohnsitz: () => void = () => {}
+    const wohnsitzHeld = new Promise<void>((resolve) => {
+      releaseWohnsitz = resolve
+    })
+    server.use(
+      http.post(POST_URL, async ({ request }) => {
+        const body = (await request.json()) as { questionId: string }
+        received.push(body.questionId)
+        if (body.questionId === 'ch-wohnsitz') await wohnsitzHeld
+        return HttpResponse.json(
+          body.questionId === 'ch-wohnsitz'
+            ? { nextStep: { kind: 'question', id: 'ch-nichtrueckkehrtage' }, openItems: 1 }
+            : { nextStep: { kind: 'done' }, openItems: 0 },
+          { status: 200 },
+        )
+      }),
+    )
+
+    renderScreen()
+    await screen.findByText(/Wo wohnst/)
+    fireEvent.click(screen.getByText('Deutschland'))
+    await screen.findByText(/zurückgekehrt/)
+    fireEvent.change(screen.getByTestId('ch-tage-input'), { target: { value: '10' } })
+    fireEvent.click(screen.getByTestId('ch-tage-weiter'))
+
+    await new Promise((r) => setTimeout(r, 30))
+    expect(received).toEqual(['ch-wohnsitz'])
+    releaseWohnsitz()
+    await waitFor(() => expect(received).toEqual(['ch-wohnsitz', 'ch-nichtrueckkehrtage']))
+    await screen.findByText('CH-Lohnausweis')
+  })
+})
+
 describe('GrenzgaengerScreen — the Lohnausweis mask + derived status + fold', () => {
   it('shows the derived Grenzgänger-Status and the fold from the server response', async () => {
     server.use(http.get(INTERVIEW_URL, () => HttpResponse.json(DONE_CH_INTERVIEW, { status: 200 })))

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { ScrollView, View, Text, type ViewStyle, type TextStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
@@ -46,6 +46,9 @@ export function CrossBorderScreen({ onDone, taxYear = CURRENT_TAX_YEAR }: CrossB
 
   const [interviewAnswers, setInterviewAnswers] = useState<Answers>({})
   const [seeded, setSeeded] = useState(false)
+  // The CH answers depend on each other (Tage is only reachable after Wohnsitz): posting them in
+  // parallel let the second one overtake the first and come back 409 ANSWER_UNREACHABLE.
+  const answerQueue = useRef<Promise<unknown>>(Promise.resolve())
 
   if (!seeded && interviewQuery.data?.status === 200) {
     setInterviewAnswers(interviewQuery.data.data.answers as Answers)
@@ -76,21 +79,20 @@ export function CrossBorderScreen({ onDone, taxYear = CURRENT_TAX_YEAR }: CrossB
   function answer(questionId: EntryQuestionId, value: string) {
     const previous = interviewAnswers
     setInterviewAnswers((a) => ({ ...a, [questionId]: value }))
-    postAnswer.mutate(
-      { jahr: taxYear, data: { questionId, value } },
-      {
-        onSuccess: (response) => {
-          if (response.status === 200) {
-            void queryClient.invalidateQueries({ queryKey: getChSalaryCertificateControllerGetQueryKey(taxYear) })
-            return
-          }
-          setInterviewAnswers(previous)
-          setSeeded(false)
-          void interviewQuery.refetch()
-        },
-        onError: () => {
-          setInterviewAnswers(previous)
-        },
+    const post = answerQueue.current.then(() => postAnswer.mutateAsync({ jahr: taxYear, data: { questionId, value } }))
+    answerQueue.current = post.catch(() => {})
+    void post.then(
+      (response) => {
+        if (response.status === 200) {
+          void queryClient.invalidateQueries({ queryKey: getChSalaryCertificateControllerGetQueryKey(taxYear) })
+          return
+        }
+        setInterviewAnswers(previous)
+        setSeeded(false)
+        void interviewQuery.refetch()
+      },
+      () => {
+        setInterviewAnswers(previous)
       },
     )
   }
