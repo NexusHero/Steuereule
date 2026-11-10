@@ -96,6 +96,9 @@ export function CrossBorderScreen({ onDone, onBack, taxYear = CURRENT_TAX_YEAR }
             void queryClient.invalidateQueries({
               queryKey: getInterviewControllerGetInterviewQueryKey(taxYear),
               exact: true,
+            })
+            void queryClient.invalidateQueries({
+              queryKey: getInterviewControllerGetInterviewQueryKey(taxYear, { eintrag: 'segment-ch' }),
               refetchType: 'none',
             })
             return
