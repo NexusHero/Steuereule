@@ -85,6 +85,7 @@ export async function runScenario04(browser, webOrigin, sql) {
   await page.locator(`[data-testid="arbeitstage-transport-${s.thomas.commute.transport}"]`).click()
   await page.locator('[data-testid="arbeitstage-arbeitsort"]').fill(s.thomas.commute.workplace)
   await page.locator('[data-testid="arbeitstage-weiter"]').click()
+  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
 
   await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="cockpit-abgabe-vorbereiten"]').click()
@@ -153,6 +154,7 @@ export async function runScenario04(browser, webOrigin, sql) {
   await page.locator('[data-testid="kapital-solidaritaetszuschlag"]').fill(String(s.capital.solidaritaetszuschlag))
   await page.locator('[data-testid="kapital-kirchensteuer"]').fill(String(s.capital.kirchensteuer))
   await page.locator('[data-testid="kapital-weiter"]').click()
+  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
 
   await page.locator('[data-testid="cockpit-vermietung"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="cockpit-vermietung"]').click()
@@ -190,6 +192,7 @@ export async function runScenario04(browser, webOrigin, sql) {
   }
 
   await page.locator('[data-testid="vermietung-weiter"]').click()
+  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
 
   await assertEstimate(page, 'Scenario 04', {})
 

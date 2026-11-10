@@ -106,6 +106,7 @@ export async function runScenario08(browser, webOrigin) {
   await rentalBtn.click()
   await page.locator('text=Deine Vermietung').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('text=←').first().click()
+  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
   await page.locator('[data-testid="cockpit-interview"], [data-testid="cockpit-weiter"], [data-testid="cockpit-bescheid"]').first().waitFor({ state: 'visible', timeout: 10_000 })
 
   await page.goto(`${webOrigin}/rechtliches/impressum`, { waitUntil: 'networkidle' })
@@ -154,6 +155,7 @@ export async function runScenario08(browser, webOrigin) {
   await page.locator('[data-testid="cockpit-kapital"]').click()
   await page.locator('[data-testid="kapital-weiter"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.goBack()
+  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
   await page.locator('[data-testid="cockpit-interview"], [data-testid="cockpit-weiter"], [data-testid="cockpit-bescheid"]').first().waitFor({ state: 'visible', timeout: 10_000 })
 
   console.log('\n[Scenario 08] PASS: Exhaustive navigation, all pages, subviews, settings, and back buttons verified.')

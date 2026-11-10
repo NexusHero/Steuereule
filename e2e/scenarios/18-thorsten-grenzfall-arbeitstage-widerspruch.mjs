@@ -85,6 +85,7 @@ export async function runScenario18(browser, webOrigin) {
     fail('Submit button should be enabled after correcting absences')
   }
   await submitBtn.click()
+  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
 
   await page.locator('[data-testid="cockpit-kachel-arbeitsweg-status"]', { hasText: 'Erledigt' }).waitFor({
     state: 'visible',

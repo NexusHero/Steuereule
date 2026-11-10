@@ -9,6 +9,7 @@ import {
   fail,
   registerAndOnboard,
   selectTaxYear2025,
+  openTile,
   runStandaloneScenario,
 } from './helpers/scenario-harness.mjs'
 
@@ -45,6 +46,7 @@ export async function runScenario22(browser, webOrigin) {
   await page.locator('[data-testid="lstb-lohnsteuer"]').fill('12000')
   await page.locator('[data-testid="lstb-sozialversicherung"]').fill('12500')
   await page.locator('[data-testid="lstb-weiter"]').click()
+  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
   await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.getByRole('tab', { name: 'Cockpit' }).click()
 
@@ -86,6 +88,7 @@ export async function runScenario22(browser, webOrigin) {
   await page.waitForTimeout(400)
 
   await page.locator('[data-testid="kinder-weiter"]').click()
+  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
   console.log('[Scenario 22] Verified: ChildrenScreen multi-child creation and chip toggles.')
 
   // --- 2. CapitalScreen: Prompt resolution + Fields & Unklar Toggles ---
@@ -115,6 +118,7 @@ export async function runScenario22(browser, webOrigin) {
   }
   await page.waitForTimeout(400)
   await page.locator('[data-testid="kapital-weiter"]').click()
+  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
   console.log('[Scenario 22] Verified: CapitalScreen inline catalog gate and field persistence.')
 
   // --- 2b. RentalScreen: Multi-object creation & AfA chip toggles ---
@@ -129,6 +133,7 @@ export async function runScenario22(browser, webOrigin) {
   await page.locator('[data-testid="vermietung-afa-wie-vorjahr-ja"]').click()
   await page.waitForTimeout(300)
   await page.locator('[data-testid="vermietung-weiter"]').click()
+  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
   console.log('[Scenario 22] Verified: RentalScreen object creation and AfA chip toggles.')
 
   // --- 3. AssessmentScreen (Bescheidvergleich): Fields, Unlesbar Toggle & Date Frist ---
@@ -153,7 +158,49 @@ export async function runScenario22(browser, webOrigin) {
 
   await page.getByLabel('Zurück').click()
   await page.locator('[data-testid="cockpit-erstattung"]').waitFor({ state: 'visible', timeout: 10_000 })
-  console.log('[Scenario 22] PASS: Detail screens CRUD, chip toggles, and AssessmentScreen reconciliation verified.')
+
+  // --- 4. Slice 4: Closing a Sheet via button and Escape flushes active input PUT without prior blur ---
+  await openTile(page, 'lstb')
+  const grossInput = page.locator('[data-testid="lstb-bruttoarbeitslohn"]')
+  await grossInput.waitFor({ state: 'visible', timeout: 10_000 })
+  await grossInput.fill('65000')
+  await Promise.all([
+    page.waitForResponse(
+      (res) => res.url().includes('/lstb') && res.request().method() === 'PUT' && res.status() < 400,
+      { timeout: 10_000 },
+    ),
+    page.locator('[data-testid="sheet-schliessen"]').click(),
+  ])
+  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
+  await page.waitForLoadState('networkidle').catch(() => {})
+
+  await openTile(page, 'lstb')
+  await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').waitFor({ state: 'visible', timeout: 10_000 })
+  if ((await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').inputValue()) !== '65000') {
+    fail('[Scenario 22] Expected Sheet close button to auto-save focused input value 65000')
+  }
+
+  await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').fill('64000')
+  await Promise.all([
+    page.waitForResponse(
+      (res) => res.url().includes('/lstb') && res.request().method() === 'PUT' && res.status() < 400,
+      { timeout: 10_000 },
+    ),
+    page.keyboard.press('Escape'),
+  ])
+  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
+  await page.waitForLoadState('networkidle').catch(() => {})
+
+  await openTile(page, 'lstb')
+  await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').waitFor({ state: 'visible', timeout: 10_000 })
+  if ((await page.locator('[data-testid="lstb-bruttoarbeitslohn"]').inputValue()) !== '64000') {
+    fail('[Scenario 22] Expected Escape key on Sheet to auto-save focused input value 64000')
+  }
+  await page.locator('[data-testid="sheet-schliessen"]').click()
+  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
+  console.log('[Scenario 22] Verified: Sheet close button and Escape auto-save focused inputs.')
+
+  console.log('[Scenario 22] PASS: Detail screens CRUD, chip toggles, Sheet close auto-save, and AssessmentScreen reconciliation verified.')
 
   await ctx.close()
 }

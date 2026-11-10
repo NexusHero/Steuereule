@@ -92,6 +92,7 @@ const TILE_READY_CSS = {
 const ANY_TILE_CSS = Object.values(TILE_READY_CSS).join(', ')
 
 async function waitForCockpitSettled(page) {
+  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 15_000 })
   await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 15_000 })
   await page.waitForTimeout(100)
   await page.waitForLoadState('networkidle').catch(() => {})
@@ -144,6 +145,7 @@ export async function selectTaxYear(page, year) {
  * against the scenario's independent reference.
  */
 export async function assertEstimate(page, label, { direction, contains } = {}) {
+  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 15_000 })
   const locator = page.locator('[data-testid="cockpit-erstattung"]')
   await locator.waitFor({ state: 'visible', timeout: 10_000 })
   await page.waitForLoadState('networkidle').catch(() => {})
@@ -173,6 +175,7 @@ export async function assertEstimate(page, label, { direction, contains } = {}) 
 
 /** Asserts Cockpit estimate direction, minAmount, or exact expectedText. */
 export async function assertCockpitEstimate(page, label, { direction, minAmount, expectedText } = {}) {
+  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 15_000 })
   const locator = page.locator('[data-testid="cockpit-erstattung"]')
   await locator.waitFor({ state: 'visible', timeout: 10_000 })
   await page.waitForLoadState('networkidle').catch(() => {})
