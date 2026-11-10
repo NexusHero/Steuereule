@@ -849,6 +849,10 @@ jobs:
         # Stubs only WebGPU/memory/microphone and answers Hugging Face with non-matching bytes, so
         # it never downloads the real model. Needs DATABASE_URL (job env) to verify the sign-up.
         run: node e2e/advisor/dictation.mjs
+      - name: Household gate (#452, ADR-0062) — migration result-neutral, new-year preselection, spouse linked once, sharing, divorce, delete
+        # Two real accounts driven through the API with their own sessions, plus the Kinder mask in
+        # the browser. Needs DATABASE_URL (job env) to verify the sign-ups.
+        run: node e2e/household/household.mjs
       - name: Visibility-refetch gate (#223) — live re-read of email verification, both screens
         # Needs DATABASE_URL (already set in this job's env, above) to flip `emailVerified`
         # directly — there is no mail client in this environment (#224 is the still-manual,
