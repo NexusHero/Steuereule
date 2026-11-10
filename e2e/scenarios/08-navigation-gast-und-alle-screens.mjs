@@ -130,6 +130,18 @@ export async function runScenario08(browser, webOrigin) {
     await page.locator('[data-testid="cockpit-interview"], [data-testid="cockpit-weiter"], [data-testid="cockpit-bescheid"]').first().waitFor({ state: 'visible', timeout: 10_000 })
   }
 
+  // Slice 1 AC-2: direct mask URL survives page.reload() and browser Back returns to Cockpit
+  await page.goto(`${webOrigin}/app/steuerjahr/2025/kapital`, { waitUntil: 'networkidle' })
+  await page.locator('[data-testid="kapital-weiter"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.reload({ waitUntil: 'networkidle' })
+  await page.locator('[data-testid="kapital-weiter"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.goBack({ waitUntil: 'networkidle' })
+  await page.locator('[data-testid="cockpit-interview"], [data-testid="cockpit-weiter"], [data-testid="cockpit-bescheid"]').first().waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator('[data-testid="cockpit-kapital"]').click()
+  await page.locator('[data-testid="kapital-weiter"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.goBack()
+  await page.locator('[data-testid="cockpit-interview"], [data-testid="cockpit-weiter"], [data-testid="cockpit-bescheid"]').first().waitFor({ state: 'visible', timeout: 10_000 })
+
   console.log('\n[Scenario 08] PASS: Exhaustive navigation, all pages, subviews, settings, and back buttons verified.')
   await ctx.close()
 }
