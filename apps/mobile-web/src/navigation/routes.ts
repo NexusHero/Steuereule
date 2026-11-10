@@ -13,6 +13,7 @@ export type CockpitStackParamList = {
   CrossBorder: { year: number }
   Catalog: { year: number; entry: CatalogEntryParam; revisit?: boolean }
   Workdays: { year: number }
+  Submission: { year: number }
   Plausibility: { year: number }
   FilingTypeComparison: { year: number }
   Assessment: { year: number }
@@ -42,7 +43,7 @@ export type RootStackParamList = {
   Login: undefined
   Registration: undefined
   Onboarding: undefined
-  App: { start?: 'interview' } | undefined
+  App: { start?: 'interview' } | (NavigatorScreenParams<AppTabParamList> & { start?: 'interview' }) | undefined
   Device: { user_code?: string } | undefined
   Legal: { page: LegalPage }
   // `zahlung` is the query parameter in the Stripe return URL; it stays as the API writes it.

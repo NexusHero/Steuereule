@@ -4,12 +4,19 @@ import { useTheme, type UiTheme } from '@steuereule/ui'
 interface BackButtonProps {
   readonly accessibilityLabel: string
   readonly onPress: () => void
+  readonly testID?: string
 }
 
-export function BackButton({ accessibilityLabel, onPress }: BackButtonProps) {
+export function BackButton({ accessibilityLabel, onPress, testID }: BackButtonProps) {
   const t = useTheme()
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={accessibilityLabel} onPress={onPress} style={makeStyles(t).backButton}>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      onPress={onPress}
+      style={makeStyles(t).backButton}
+      {...(testID ? { testID } : {})}
+    >
       <Text style={makeStyles(t).backArrow}>←</Text>
     </Pressable>
   )
