@@ -65,6 +65,23 @@ describe('HTTP E2E (no-DB): Beleg upload/download/delete, LStB parse & atomic LS
     expect(confirmGuest.statusCode).toBe(401)
   })
 
+  it('rejects any document image in the parse payload with 400 — pixels never reach a model (AC 1, ADR-0021)', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/belege/parse',
+      headers: { cookie: 'better-auth.session_token=tok-user-a' },
+      payload: {
+        taxYear: 2025,
+        fileName: 'quittung.png',
+        mimeType: 'image/png',
+        rawText: 'Spende 80 EUR',
+        imageBase64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB',
+      },
+    })
+    expect(res.statusCode).toBe(400)
+    expect(res.body).toContain('imageBase64')
+  })
+
   it('uploads PDF, serves decrypted binary with security headers, isolates cross-user, stages LStB & confirms atomically', async () => {
     const cookieA = 'better-auth.session_token=tok-user-a'
     const cookieB = 'better-auth.session_token=tok-user-b'

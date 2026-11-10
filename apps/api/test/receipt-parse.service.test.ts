@@ -59,7 +59,7 @@ class RecordingVisionModel extends BaseChatModel {
   }
 }
 
-function makeVisionRuntime(enabled: boolean, allowsDocumentImages = false): AiRuntimeConfigService {
+function makeVisionRuntime(enabled: boolean): AiRuntimeConfigService {
   return {
     async resolveLimits() {
       return DEFAULT_AI_TURN_LIMITS
@@ -74,13 +74,12 @@ function makeVisionRuntime(enabled: boolean, allowsDocumentImages = false): AiRu
         provider: enabled ? 'google-genai' : 'deterministic',
         model: enabled ? 'gemini-3.8-flash' : 'deterministic-fallback',
         apiKey: enabled ? 'test-vision-key' : null,
-        allowsDocumentImages,
       }
     },
   }
 }
 
-function buildTestHarness(responses: string[], visionEnabled = true, allowsDocumentImages = false) {
+function buildTestHarness(responses: string[], visionEnabled = true) {
   const advisorRepo = new InMemoryAdvisorRepository()
   const interviewRepo = new FakeInterviewAnswerRepository()
   const lstbRepo = new FakeLstbRepository()
@@ -134,7 +133,7 @@ function buildTestHarness(responses: string[], visionEnabled = true, allowsDocum
   )
   const visionModel = new RecordingVisionModel(responses)
   const parseService = new ReceiptParseService(
-    makeVisionRuntime(visionEnabled, allowsDocumentImages),
+    makeVisionRuntime(visionEnabled),
     advisorService,
     auditService,
     () => visionModel,
@@ -312,13 +311,13 @@ describe('ReceiptParseService — Two-Stage Receipt Isolation (#446 Slice 3)', (
       h.parseService.parseReceipt('user-r5', {
         taxYear: 2025,
         fileName: 'evil.html',
-        imageBase64: 'SGVsbG8=',
+        rawText: 'Rechnung 20 EUR',
         mimeType: 'text/html' as unknown as 'image/png',
       }),
     ).rejects.toThrow(/Dateityp|MIME/i)
   })
 
-  it('never sends a receipt image unless the vision slot is approved for document images, and never sends the file name', async () => {
+  it('never sends document pixels or the file name to a model — only scrubbed text (ADR-0051 §5, AC 1)', async () => {
     const extraction = JSON.stringify({
       vendorCategory: 'spende',
       receiptDate: '2025-11-02',
@@ -329,26 +328,28 @@ describe('ReceiptParseService — Two-Stage Receipt Isolation (#446 Slice 3)', (
       summary: 'Spende 80 €.',
       taxYear: 2025,
     })
-    const image = { imageBase64: 'iVBORw0KGgo=', mimeType: 'image/png' as const }
 
-    const locked = buildTestHarness([extraction])
-    const lockedRes = await locked.parseService.parseReceipt('user-r6', {
+    const imageOnly = buildTestHarness([extraction])
+    const imageOnlyRes = await imageOnly.parseService.parseReceipt('user-r6', {
       taxYear: 2025,
       fileName: 'Quittung_Erika_Mustermann.png',
-      ...image,
+      mimeType: 'image/png',
     })
-    // No approved image path and no text: nothing may leave the system.
-    expect(locked.visionModel.calls).toHaveLength(0)
-    expect(lockedRes.mode).toBe('deterministic_fallback')
+    // Without on-device text there is nothing the model may see.
+    expect(imageOnly.visionModel.calls).toHaveLength(0)
+    expect(imageOnlyRes.mode).toBe('deterministic_fallback')
 
-    const approved = buildTestHarness([extraction], true, true)
-    await approved.parseService.parseReceipt('user-r6', {
+    const withText = buildTestHarness([extraction])
+    await withText.parseService.parseReceipt('user-r6', {
       taxYear: 2025,
       fileName: 'Quittung_Erika_Mustermann.png',
-      ...image,
+      mimeType: 'image/png',
+      rawText: 'Spende 80 EUR',
     })
-    const dump = JSON.stringify(approved.visionModel.calls[0])
-    expect(dump).toContain('data:image/png;base64')
+    expect(withText.visionModel.calls).toHaveLength(1)
+    const dump = JSON.stringify(withText.visionModel.calls[0])
+    expect(dump).not.toContain('image_url')
+    expect(dump).not.toContain('base64')
     expect(dump).not.toContain('Mustermann')
   })
 
@@ -387,7 +388,7 @@ describe('ReceiptParseService — Two-Stage Receipt Isolation (#446 Slice 3)', (
 
 describe('ReceiptParseService — Two-Stage LStB Cascade (#444)', () => {
   it('Stage 1 parses standard LStB deterministically at 0 EUR (no LLM call) with Zero-Write staging', async () => {
-    const h = buildTestHarness(['SHOULD_NOT_BE_CALLED'], true, true)
+    const h = buildTestHarness(['SHOULD_NOT_BE_CALLED'], true)
     const ownedReceipt = await h.receiptRepo.create('user-lstb-1', { fileName: 'lstb-2025.pdf' })
 
     const rawText = [
@@ -449,7 +450,6 @@ describe('ReceiptParseService — Two-Stage LStB Cascade (#444)', () => {
         }),
       ],
       true,
-      true, // allowsDocumentImages is true, YET kind:'lstb' MUST NEVER send raw image bytes!
     )
     await h.profileRepo.upsert('user-lstb-2', {
       firstName: 'Erika',
@@ -477,7 +477,6 @@ describe('ReceiptParseService — Two-Stage LStB Cascade (#444)', () => {
       kind: 'lstb',
       fileName: 'LStB_Erika_Mustermann.png',
       rawText,
-      imageBase64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB',
       mimeType: 'image/png',
     })
 

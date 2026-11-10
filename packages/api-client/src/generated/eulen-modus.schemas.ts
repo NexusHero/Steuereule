@@ -47,8 +47,6 @@ export interface ParseReceiptDto {
   receiptId?: string;
   /** Taxpayer slot when parsing a partner LStB (ADR-0054). */
   person?: ParseReceiptDtoPerson;
-  /** Base64-encoded image/PDF content for vision_ocr extraction (max ~5 MB). */
-  imageBase64?: string;
   mimeType?: ParseReceiptDtoMimeType;
   /** Stages an unconfirmed pending draft in Eulen-Modus when true (default true). */
   stageDraft?: boolean;

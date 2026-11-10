@@ -6449,10 +6449,6 @@
             "example": "A",
             "description": "Taxpayer slot when parsing a partner LStB (ADR-0054)."
           },
-          "imageBase64": {
-            "type": "string",
-            "description": "Base64-encoded image/PDF content for vision_ocr extraction (max ~5 MB)."
-          },
           "mimeType": {
             "type": "string",
             "enum": [

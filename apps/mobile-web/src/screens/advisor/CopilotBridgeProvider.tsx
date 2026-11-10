@@ -60,7 +60,6 @@ export interface StaleConflictState {
 export interface ParseReceiptInput {
   readonly fileName: string
   readonly rawText?: string | undefined
-  readonly imageBase64?: string | undefined
   readonly mimeType?: ParseReceiptDtoMimeType | undefined
   readonly stageDraft?: boolean | undefined
 }
@@ -484,7 +483,6 @@ export function CopilotBridgeProvider({
           taxYear,
           fileName: input.fileName,
           ...(input.rawText !== undefined ? { rawText: input.rawText } : {}),
-          ...(input.imageBase64 !== undefined ? { imageBase64: input.imageBase64 } : {}),
           ...(input.mimeType !== undefined ? { mimeType: input.mimeType } : {}),
           stageDraft: input.stageDraft ?? true,
         })

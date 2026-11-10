@@ -12,11 +12,6 @@ export interface ResolvedAiSlotConfig {
   readonly baseUrl?: string | undefined
   readonly temperature?: number | undefined
   readonly maxTokens?: number | undefined
-  /**
-   * Whether raw document images may be sent to this slot's provider. Off by default: an image
-   * cannot be scrubbed, so it may only go to a provider with an EU data processing agreement.
-   */
-  readonly allowsDocumentImages?: boolean | undefined
 }
 
 /** Per-turn budget of the Eulen-Modus agent (#446: max. 5 steps, 25 s, daily quota). */
@@ -188,7 +183,6 @@ export class EnvAiRuntimeConfigService implements AiRuntimeConfigService {
       apiKey,
       ...(baseUrl !== undefined ? { baseUrl } : {}),
       ...(temperature !== undefined ? { temperature } : {}),
-      ...(slot === 'vision_ocr' ? { allowsDocumentImages: isTruthyFlag(this.env.AI_VISION_ALLOW_DOCUMENT_IMAGES) } : {}),
     }
   }
 }
