@@ -11,6 +11,7 @@ import {
   PROFESSION_VALUES,
   type AdvisorActionProposal,
   type AdvisorChatMessageView,
+  type AdvisorQuickAction,
   type CaseDigest,
   type OwlCardsDisplay,
   type Profession,
@@ -65,7 +66,7 @@ export interface OwlModeScreenProps {
   /** The interview's occupation group; null = not chosen yet, undefined = no picker (not loaded). */
   readonly profession?: Profession | null | undefined
   readonly onChooseProfession?: ((profession: Profession) => Promise<void> | void) | undefined
-  readonly onSendMessage?: ((text: string) => Promise<void> | void) | undefined
+  readonly onSendMessage?: ((text: string, quickAction?: AdvisorQuickAction) => Promise<void> | void) | undefined
   readonly onApplyAction?: ((actionId: string) => Promise<void> | void) | undefined
   readonly onUndoAction?: ((actionId: string) => Promise<void> | void) | undefined
   readonly isGuest?: boolean | undefined
@@ -330,10 +331,10 @@ function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = CURRENT_T
         if (response.status !== 200) throw new Error(`profession not stored (HTTP ${response.status})`)
         await invalidate()
       }}
-      onSendMessage={async (text) => {
+      onSendMessage={async (text, quickAction) => {
         if (bridge) {
           const activeScreen = bridge.owlViewMode.kind === 'mask' ? bridge.owlViewMode.screen : undefined
-          await bridge.sendStreamingMessage(text, activeScreen)
+          await bridge.sendStreamingMessage(text, activeScreen, quickAction ? { quickAction } : undefined)
           return
         }
         await sendMessageMutation.mutateAsync({ jahr: taxYear, data: { message: text } })
@@ -506,15 +507,19 @@ function OwlModeScreenView({
     }
   }
 
-  async function handleSendChat(text: string) {
+  async function handleSendChat(text: string, quickAction?: AdvisorQuickAction) {
     setIsSending(true)
     try {
       if (onSendMessage) {
-        await onSendMessage(text)
+        await onSendMessage(text, quickAction)
         return
       }
       if (bridge && bridge.isAuthenticated) {
-        const res = await bridge.sendStreamingMessage(text, viewMode.kind === 'mask' ? viewMode.screen : undefined)
+        const res = await bridge.sendStreamingMessage(
+          text,
+          viewMode.kind === 'mask' ? viewMode.screen : undefined,
+          quickAction ? { quickAction } : undefined,
+        )
         // A stopped answer stays stopped: no local stand-in reply (#451 decision 2).
         if (res === 'aborted') return
         if (res && res.length > 0) {
@@ -617,6 +622,7 @@ function OwlModeScreenView({
       <AdvisorChatPanel
         messages={displayedMessages}
         quickChips={[
+          { label: tr('advisor.chat.forgottenChip'), testID: 'advisor-chip-vergessen', quickAction: 'forgotten_check' },
           'Kanzlei-Endprüfung starten',
           'Homeoffice vs. Arbeitszimmer prüfen',
           'Fortbildung & Reisekosten klären',
@@ -630,6 +636,7 @@ function OwlModeScreenView({
         onSendMessage={handleSendChat}
         onStop={bridge?.stopStreaming}
         abortedTurn={bridge?.abortedTurn}
+        plan={bridge?.plan}
         onApplyAction={handleApplyAction}
         onUndoAction={handleUndoAction}
         onInspectMask={handleInspectMask}

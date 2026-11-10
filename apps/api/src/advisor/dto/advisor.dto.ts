@@ -14,7 +14,9 @@ import {
   registerDecorator,
 } from 'class-validator'
 import {
+  ADVISOR_QUICK_ACTIONS,
   SCREENS,
+  type AdvisorQuickAction,
   type AdvisorActionProposal,
   type AdvisorActionStatus,
   type AdvisorChatMessageView,
@@ -291,6 +293,15 @@ export class SendAdvisorMessageDto {
   @IsString()
   @IsIn(SCREENS)
   activeScreen?: Screen | undefined
+
+  @ApiPropertyOptional({
+    type: String,
+    enum: ADVISOR_QUICK_ACTIONS,
+    description: 'Quick start that shapes the turn: forgotten_check always opens with a visible plan (#451).',
+  })
+  @IsOptional()
+  @IsIn(ADVISOR_QUICK_ACTIONS)
+  quickAction?: AdvisorQuickAction | undefined
 }
 
 export class SendAdvisorMessageResponseDto {

@@ -24,6 +24,8 @@ export interface AdvisorTurnRequest {
   readonly actionIdFactory?: (() => string) | undefined
   /** Aborted when the client disconnects or the turn budget runs out; stops the paid model call. */
   readonly signal?: AbortSignal | undefined
+  /** The „Was hab ich vergessen?“ quick start always opens with a plan (#451 decision 17). */
+  readonly planRequired?: boolean | undefined
 }
 
 export interface AdvisorTurnResult {
@@ -34,6 +36,20 @@ export interface AdvisorTurnResult {
   readonly model?: string | undefined
 }
 
+/** Status of one step of the owl's visible plan (#451 slice 6). */
+export const ADVISOR_PLAN_STEP_STATUSES = ['offen', 'laeuft', 'erledigt'] as const
+export type AdvisorPlanStepStatus = (typeof ADVISOR_PLAN_STEP_STATUSES)[number]
+export const ADVISOR_PLAN_MAX_STEPS = 8
+
+export interface AdvisorPlanStep {
+  readonly text: string
+  readonly status: AdvisorPlanStepStatus
+}
+
+/** Quick starts that change how the turn runs, sent alongside the message. */
+export const ADVISOR_QUICK_ACTIONS = ['forgotten_check'] as const
+export type AdvisorQuickAction = (typeof ADVISOR_QUICK_ACTIONS)[number]
+
 export type AdvisorStreamEvent =
   | { readonly event: 'status'; readonly data: { readonly text: string } }
   | { readonly event: 'tool'; readonly data: { readonly name: string; readonly label: string } }
@@ -42,6 +58,8 @@ export type AdvisorStreamEvent =
   | { readonly event: 'action'; readonly data: AdvisorActionProposal }
   | { readonly event: 'twoPaths'; readonly data: AdvisorTwoPathsProposal }
   | { readonly event: 'ui_command'; readonly data: AdvisorUiCommand }
+  /** The full current plan (never a diff), sent whenever the model updates it. */
+  | { readonly event: 'plan'; readonly data: { readonly steps: readonly AdvisorPlanStep[] } }
   | { readonly event: 'error'; readonly data: { readonly code: string; readonly message: string } }
   | { readonly event: 'done'; readonly data: unknown }
 

@@ -16,6 +16,8 @@ import { Inject, Injectable, Optional } from '@nestjs/common'
 import { z } from 'zod'
 import {
   ADVISOR_LEGAL_SOURCES,
+  ADVISOR_PLAN_MAX_STEPS,
+  ADVISOR_PLAN_STEP_STATUSES,
   checkAdvisorInputBoundary,
   evaluateAdvisorTurn,
   simulateAdvisorFieldDelta,
@@ -55,6 +57,7 @@ const TOOL_LABELS: Readonly<Record<string, string>> = {
   propose_two_paths: 'Vergleiche Zwei-Wege-Strategien …',
   ask_clarification: 'Prüfe Rückfragen …',
   lookup_legal_source: 'Prüfe EStG-Paragraph …',
+  plan_steps: 'Plane die nächsten Schritte …',
 }
 
 function extractMessageText(content: unknown): string {
@@ -86,6 +89,8 @@ function buildSystemPrompt(digest: CaseDigest, activeScreen?: Screen): string {
     '3. Behaupte niemals eigene Euro-Schätzungen ohne Berechnung: nutze `simulate_tax_delta`, `stage_field_draft` oder `propose_two_paths`. Bei Werbungskosten unter dem Arbeitnehmer-Pauschbetrag (1.230 €) erkläre ehrlich den Pauschbetrag statt falscher Erstattung.',
     '4. Zitiere Rechtsgrundlagen nur mit `[sourceId]` aus folgendem Katalog:',
     sourceCatalog,
+    '',
+    '5. Plan: Braucht eine Aufgabe mehrere Schritte (z. B. „Was hab ich vergessen?“ oder mehrere Bereiche prüfen), lege mit `plan_steps` eine kurze Liste an (höchstens 8 Schritte) und rufe `plan_steps` bei jedem Fortschritt mit der vollständigen Liste und neuen Status auf (`offen`, `laeuft`, `erledigt`). Einfache Fragen beantwortest du direkt, ohne Plan. Ein Plan schreibt nie etwas: Änderungen bleiben Entwürfe über `stage_field_draft`.',
     '',
     `Aktive Maske: ${activeScreen ?? 'cockpit'}`,
     'PII-freier Fall-Überblick (CaseDigest):',
@@ -152,6 +157,12 @@ const TOOL_ARG_SCHEMAS = {
   lookup_legal_source: z.object({
     sourceId: z.string().max(40),
   }),
+  plan_steps: z.object({
+    steps: z
+      .array(z.object({ text: z.string().min(1).max(120), status: z.enum(ADVISOR_PLAN_STEP_STATUSES) }))
+      .min(1)
+      .max(ADVISOR_PLAN_MAX_STEPS),
+  }),
 } as const
 
 type ToolName = keyof typeof TOOL_ARG_SCHEMAS
@@ -165,6 +176,8 @@ const TOOL_DESCRIPTIONS: Readonly<Record<ToolName, string>> = {
     'Stellt zwei Alternativen (Sicher-Weg vs. Maximal-Weg mit Nachweishinweis) zur Auswahl durch den Nutzer gegenüber.',
   ask_clarification: 'Schlägt 2 bis 4 anklickbare Quick-Chips als nächste Rückfragen im Chat vor.',
   lookup_legal_source: 'Ruft Wortlaut, Paragraph und Rechtsstand einer EStG/AO-Rechtsquelle aus dem verifizierten Katalog ab.',
+  plan_steps:
+    'Zeigt dem Nutzer deinen Plan als Checkliste (höchstens 8 Schritte, Status offen/laeuft/erledigt). Immer die vollständige Liste senden. Schreibt nichts in die Akte.',
 }
 
 // The bodies are never invoked: toolsNode executes the calls itself so it can update graph state.
@@ -199,7 +212,11 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
     maxToolRounds: number,
   ) {
     const tools = buildToolSchemas()
-    const boundModel = typeof model.bindTools === 'function' ? model.bindTools([...tools]) : model
+    const bind = typeof model.bindTools === 'function' ? model.bindTools.bind(model) : null
+    const boundModel = bind ? bind([...tools]) : model
+    // The quick start „Was hab ich vergessen?“ must open with a plan (decision 17): only the first
+    // round is forced, later rounds are free to work through the steps and answer.
+    const planFirstModel = bind && request.planRequired ? bind([...tools], { tool_choice: 'plan_steps' }) : boundModel
     const makeActionId = request.actionIdFactory ?? (newActionId)
 
     const agentNode = async (
@@ -209,7 +226,8 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
       let aggregated: AIMessageChunk | null = null
       let lastFallbackMsg: AIMessage | null = null
 
-      const streamOrValue = await boundModel.stream(state.messages, config)
+      const roundModel = state.toolRounds === 0 ? planFirstModel : boundModel
+      const streamOrValue = await roundModel.stream(state.messages, config)
       for await (const chunk of streamOrValue) {
         if (chunk instanceof AIMessageChunk) {
           const text = extractMessageText(chunk.content)
@@ -461,6 +479,21 @@ export class LangGraphAdvisorEngine implements AdvisorEnginePort {
           if (args === null) continue
           choices = args.choices.map((c) => c.trim()).filter((c) => c.length > 0)
           toolMessages.push(toolResult(callId, tc.name, { ok: true, choices }))
+          continue
+        }
+
+        if (tc.name === 'plan_steps') {
+          const args = parseArgs(TOOL_ARG_SCHEMAS.plan_steps)
+          if (args === null) continue
+          const steps = args.steps.map((step) => ({ text: step.text.trim(), status: step.status }))
+          try {
+            checkPiiFree({ steps })
+          } catch (error) {
+            toolMessages.push(toolResult(callId, tc.name, { ok: false, error: error instanceof Error ? error.message : 'PII boundary rejected plan.' }))
+            continue
+          }
+          config?.writer?.({ event: 'plan', data: { steps } } satisfies AdvisorStreamEvent)
+          toolMessages.push(toolResult(callId, tc.name, { ok: true, shown: steps.length }))
           continue
         }
 

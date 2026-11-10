@@ -1558,6 +1558,12 @@ export const appResources = {
         },
       },
       advisor: {
+        plan: {
+          heading: 'Plan der Eule',
+          summary: '{{count}} von {{total}} Schritten erledigt',
+          summaryAll: '{{count}} Schritte erledigt',
+          status: { offen: 'offen', laeuft: 'läuft', erledigt: 'erledigt', abgebrochen: 'abgebrochen' },
+        },
         chat: {
           sender: 'Die Eule',
           heading: 'Steuer-Assistent',
@@ -1573,6 +1579,7 @@ export const appResources = {
           dictationHintTouch: 'Tipp: Lieber sprechen als tippen? Tipp auf das Mikrofon deiner Tastatur – der Text landet hier im Feld und du schickst ihn selbst ab.',
           dictationHintDesktop: 'Tipp: Lieber sprechen als tippen? Nutze die Diktierfunktion deines Computers (Mac: zweimal fn bzw. 🌐, Windows: Windows-Taste + H) – der Text landet hier im Feld und du schickst ihn selbst ab.',
           dictationHintDismiss: 'Hinweis ausblenden',
+          forgottenChip: 'Was hab ich vergessen?',
           thinkingPhrases: [
             'Die Eule blättert in deiner Akte …',
             'Die Eule rückt die Brille zurecht …',
@@ -3225,6 +3232,12 @@ export const appResources = {
         },
       },
       advisor: {
+        plan: {
+          heading: 'The Owl’s plan',
+          summary: '{{count}} of {{total}} steps done',
+          summaryAll: '{{count}} steps done',
+          status: { offen: 'open', laeuft: 'running', erledigt: 'done', abgebrochen: 'stopped' },
+        },
         chat: {
           sender: 'The Owl',
           heading: 'Tax Assistant',
@@ -3240,6 +3253,7 @@ export const appResources = {
           dictationHintTouch: 'Tip: rather speak than type? Tap the microphone on your keyboard – the text lands in this field and you send it yourself.',
           dictationHintDesktop: 'Tip: rather speak than type? Use your computer’s dictation (Mac: press fn or 🌐 twice, Windows: Windows key + H) – the text lands in this field and you send it yourself.',
           dictationHintDismiss: 'Hide tip',
+          forgottenChip: 'What did I forget?',
           thinkingPhrases: [
             'The Owl is leafing through your file …',
             'The Owl is adjusting its glasses …',

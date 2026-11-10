@@ -413,6 +413,7 @@ export class AdvisorService {
       history,
       actionIdFactory,
       signal,
+      planRequired: dto.quickAction === 'forgotten_check',
     })) {
       if (ev.event === 'action') {
         const enriched = await this.enrichSingleDraft(userId, taxYear, ev.data)

@@ -1,3 +1,4 @@
+import type { AdvisorEnginePort } from '@steuereule/core'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { AdvisorService } from '../src/advisor/advisor.service.js'
 import { DEFAULT_AI_TURN_LIMITS } from '../src/ki/ai-runtime-config.service.js'
@@ -521,5 +522,36 @@ describe('AdvisorService (In-App Steuerberater Agent "Deine Eule")', () => {
       doubleHouseholdRentEur: null,
     })
     expect(digest.priorYearComparison.donationsEur).toBeNull()
+  })
+
+  it('tells the engine to open with a plan only for the „Was hab ich vergessen?“ quick start (#451 slice 6)', async () => {
+    const seen: Array<boolean | undefined> = []
+    const recordingEngine: AdvisorEnginePort = {
+      async runTurn() {
+        throw new Error('not used')
+      },
+      async *streamTurn(request) {
+        seen.push(request.planRequired)
+        yield { event: 'done', data: { replyText: 'Ok.', meta: {}, mode: 'langgraph' } }
+      },
+    }
+    const withEngine = new AdvisorService(
+      advisorRepo,
+      owlModeService,
+      confirmationService,
+      new AuditService(auditRepo),
+      interviewRepo,
+      lstbRepo,
+      chRepo,
+      commuteRepo,
+      childRepo,
+      new FakeRentalRepository(),
+      new FakeCapitalRepository(),
+      profileRepo,
+      recordingEngine,
+    )
+    await withEngine.sendMessage(USER, YEAR, { message: 'Was hab ich vergessen?', quickAction: 'forgotten_check' })
+    await withEngine.sendMessage(USER, YEAR, { message: 'Was hab ich vergessen?' })
+    expect(seen).toEqual([true, false])
   })
 })

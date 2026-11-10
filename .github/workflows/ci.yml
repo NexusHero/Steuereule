@@ -841,6 +841,10 @@ jobs:
         # Fails on any request to a host other than API_ORIGIN/WEB_ORIGIN (decision 7: the postal
         # code never leaves the device). Needs DATABASE_URL (job env) to verify the sign-up.
         run: node e2e/advisor/input-aids.mjs
+      - name: Plan-in-chat gate (#451 slice 6) — live checklist, collapse, Stop mid-plan, no write without a click
+        # The model is stubbed inside the page (controllable SSE stream); sign-in, session and the
+        # apply endpoints are the real stack. Needs DATABASE_URL (job env) to verify the sign-up.
+        run: node e2e/advisor/plan-in-chat.mjs
       - name: Visibility-refetch gate (#223) — live re-read of email verification, both screens
         # Needs DATABASE_URL (already set in this job's env, above) to flip `emailVerified`
         # directly — there is no mail client in this environment (#224 is the still-manual,

@@ -3,7 +3,8 @@ import { Linking, Pressable, Text, TextInput, View, type TextStyle, type ViewSty
 import { ChatComposer } from './chat/ChatComposer'
 import { ThinkingIndicator } from './chat/ThinkingIndicator'
 import { DictationHint } from './chat/DictationHint'
-import type { AbortedTurn } from './CopilotBridgeProvider'
+import type { AbortedTurn, AdvisorPlanView } from './CopilotBridgeProvider'
+import { PlanChecklist } from './chat/PlanChecklist'
 import { useTranslation } from 'react-i18next'
 import { AiChip, Button, Card, useTheme, type UiTheme } from '@steuereule/ui'
 import { ReceiptPickerButton } from '../shared/ReceiptPickerButton'
@@ -13,6 +14,7 @@ import {
   type AdvisorActionProposal,
   type AdvisorChatMessageView,
   type AdvisorLegalSource,
+  type AdvisorQuickAction,
   type AdvisorTwoPathsProposal,
   type OwlSourceId,
   type Screen,
@@ -23,13 +25,15 @@ import type { Tr } from '../shared/tr'
 export interface AdvisorChatPanelProps {
   readonly greeting?: string | undefined
   readonly messages: readonly AdvisorChatMessageView[]
-  readonly quickChips?: readonly string[] | undefined
+  readonly quickChips?: readonly (string | AdvisorQuickChip)[] | undefined
   readonly isSending?: boolean | undefined
   readonly streamSteps?: readonly string[] | undefined
   readonly streamedText?: string | undefined
   readonly chatError?: string | null | undefined
   readonly basisMode?: boolean | undefined
-  readonly onSendMessage: (text: string) => Promise<void> | void
+  readonly onSendMessage: (text: string, quickAction?: AdvisorQuickAction) => Promise<void> | void
+  /** The plan of the current or last answer (#451 slice 6). */
+  readonly plan?: AdvisorPlanView | null | undefined
   /** Stops the running answer; without it the chat offers no Stop (e.g. the non-streaming companion). */
   readonly onStop?: (() => void) | undefined
   /** The last answer the user stopped: partial text, marked as aborted, with „Noch mal fragen“. */
@@ -46,6 +50,13 @@ export interface AdvisorChatPanelProps {
   readonly receiptNotice?: string | null | undefined
   readonly isParsingReceipt?: boolean | undefined
   readonly compact?: boolean | undefined
+}
+
+/** A quick-start chip that also tells the server how to run the turn (e.g. always with a plan). */
+export interface AdvisorQuickChip {
+  readonly label: string
+  readonly testID: string
+  readonly quickAction?: AdvisorQuickAction | undefined
 }
 
 const SOURCE_TAG_REGEX = /\[(estg-[a-z0-9-]+|ao-355)\]/g
@@ -364,6 +375,7 @@ export function AdvisorChatPanel({
   onSendMessage,
   onStop,
   abortedTurn = null,
+  plan = null,
   onApplyAction,
   onUndoAction,
   onInspectMask,
@@ -385,14 +397,18 @@ export function AdvisorChatPanel({
   const [receiptFileName, setReceiptFileName] = useState('beleg.pdf')
   const [receiptRawText, setReceiptRawText] = useState('')
 
-  async function handleSubmit(rawText?: string) {
+  async function handleSubmit(rawText?: string, quickAction?: AdvisorQuickAction) {
     const text = (rawText ?? inputText).trim()
     if (!text || isSending) return
     if (rawText === undefined) {
       setInputText('')
     }
-    await onSendMessage(text)
+    await (quickAction ? onSendMessage(text, quickAction) : onSendMessage(text))
   }
+
+  // The plan sits above the answer it belongs to: the live one, the stopped one, or the last one.
+  const lastAssistantIndex = messages.reduce((last, m, i) => (m.role === 'assistant' ? i : last), -1)
+  const planAboveLastAnswer = plan !== null && !isSending && abortedTurn === null
 
   async function handleReceiptSubmit() {
     if (!onAttachReceipt || isParsingReceipt) return
@@ -423,28 +439,34 @@ export function AdvisorChatPanel({
       {/* Quick-Starter Chips */}
       {quickChips.length > 0 && messages.length === 0 ? (
         <View style={styles.quickChipsRow} testID="advisor-quick-chips">
-          {quickChips.map((chip) => (
-            <Pressable
-              key={chip}
-              accessibilityRole="button"
-              onPress={() => void handleSubmit(chip)}
-              style={styles.quickChipButton}
-            >
-              <Text style={styles.quickChipText}>{chip}</Text>
-            </Pressable>
-          ))}
+          {quickChips.map((entry) => {
+            const chip = typeof entry === 'string' ? { label: entry, testID: undefined, quickAction: undefined } : entry
+            return (
+              <Pressable
+                key={chip.label}
+                accessibilityRole="button"
+                onPress={() => void handleSubmit(chip.label, chip.quickAction)}
+                style={styles.quickChipButton}
+                testID={chip.testID}
+              >
+                <Text style={styles.quickChipText}>{chip.label}</Text>
+              </Pressable>
+            )
+          })}
         </View>
       ) : null}
 
       {/* Conversation History */}
       <View style={styles.messagesList}>
-        {messages.map((msg) =>
+        {messages.map((msg, index) =>
           msg.role === 'user' ? (
             <View key={msg.id} style={styles.userBubble} testID="advisor-user-message">
               <Text style={styles.userBubbleText}>{msg.content}</Text>
             </View>
           ) : (
-            <Card key={msg.id} style={styles.assistantBubble} testID="advisor-assistant-message">
+            <View key={msg.id}>
+            {planAboveLastAnswer && index === lastAssistantIndex ? <PlanChecklist plan={plan} /> : null}
+            <Card style={styles.assistantBubble} testID="advisor-assistant-message">
               <View style={styles.assistantBubbleHeader}>
                 <AiChip>{tr('advisor.chat.sender', 'Die Eule')}</AiChip>
               </View>
@@ -522,8 +544,11 @@ export function AdvisorChatPanel({
                 />
               ) : null}
             </Card>
+            </View>
           ),
         )}
+
+        {plan !== null && (isSending || abortedTurn !== null) ? <PlanChecklist plan={plan} /> : null}
 
         {isSending && streamedText.length > 0 ? (
           <Card style={styles.assistantBubble} testID="advisor-streaming-message">
