@@ -39,14 +39,16 @@ export function useCockpitTileFacts(
 
   if (!active || path === null) return null
 
+  // Tiles whose query is still loading or failed: their status is unknown, so none is shown (honest states).
+  const unknown = (q: { readonly isPending: boolean; readonly isError: boolean }) => q.isPending || q.isError
   const pendingTiles = new Set<TileId>()
-  if (path === 'angestellte' && lstb.isPending) pendingTiles.add('lstb')
-  if (path === 'ch' && ch.isPending) pendingTiles.add('ch')
-  if (path === 'rente' && pension.isPending) pendingTiles.add('rente')
-  if (path !== 'rente' && commute.isPending) pendingTiles.add('arbeitsweg')
-  if (capital.isPending) pendingTiles.add('kapital')
-  if (rental.isPending) pendingTiles.add('vermietung')
-  if (hasChildren && children.isPending) pendingTiles.add('kinder')
+  if (path === 'angestellte' && unknown(lstb)) pendingTiles.add('lstb')
+  if (path === 'ch' && unknown(ch)) pendingTiles.add('ch')
+  if (path === 'rente' && unknown(pension)) pendingTiles.add('rente')
+  if (path !== 'rente' && unknown(commute)) pendingTiles.add('arbeitsweg')
+  if (unknown(capital)) pendingTiles.add('kapital')
+  if (unknown(rental)) pendingTiles.add('vermietung')
+  if (hasChildren && unknown(children)) pendingTiles.add('kinder')
 
   return {
     path,
@@ -143,9 +145,11 @@ export function CockpitTiles({
       >
         <Card variant="default" style={styles.card}>
           <Text style={styles.title}>{tr(tile.titleKey)}</Text>
-          <Text style={statusStyle(status, styles)} testID={`cockpit-kachel-${tile.id}-status`}>
-            {statusLabel(status, tr)}
-          </Text>
+          {facts.pendingTiles?.has(tile.id) ? null : (
+            <Text style={statusStyle(status, styles)} testID={`cockpit-kachel-${tile.id}-status`}>
+              {statusLabel(status, tr)}
+            </Text>
+          )}
           {severity !== null ? (
             <Text
               style={severity === 'blocker' ? styles.hintBlocker : styles.hintWarning}

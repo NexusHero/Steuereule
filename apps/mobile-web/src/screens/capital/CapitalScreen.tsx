@@ -25,6 +25,7 @@ import { CatalogScreen } from '../catalog/CatalogScreen'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 import { usePendingMutations } from '../shared/usePendingMutations'
+import { SaveFailedNotice } from '../shared/SaveFailedNotice'
 import { watchSaveResult } from '../shared/saveFeedback'
 
 export interface CapitalScreenProps {
@@ -43,7 +44,7 @@ export function CapitalScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX
   const setField = useCapitalControllerSetField()
   const setOwner = useCapitalControllerSetOwner()
   const link = useLinkControllerGet(taxYear)
-  const { track, flushThen } = usePendingMutations()
+  const { track, flushThen, saveFailed } = usePendingMutations()
   const joint = link.data?.status === 200 && link.data.data.filingType === 'zusammen'
 
   // The depot / the kind of letting is a catalogue answer; the mask can ask it right here.
@@ -132,6 +133,7 @@ export function CapitalScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX
 
       <MostFavourableCheckSection taxYear={taxYear} />
 
+      <SaveFailedNotice visible={saveFailed} />
       <Button onPress={() => flushThen(onDone)} style={styles.cta} testID="kapital-weiter">
         {tr('kapital.weiter')}
       </Button>

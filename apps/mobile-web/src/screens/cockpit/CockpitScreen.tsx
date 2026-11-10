@@ -27,7 +27,7 @@ import { pathFromAnswers, type FunnelPath } from '../funnel/KontoWandScreen'
 import { usePlausibility } from '../plausibility/usePlausibility'
 import { CockpitTiles, tileRevisitFlag, useCockpitTileFacts } from './CockpitTiles'
 import { derivePersonas } from './personas'
-import { nextStepTile, type TileDefinition, type TileFacts } from './tiles'
+import { nextStep, type TileDefinition, type TileFacts } from './tiles'
 
 
 const SELECTABLE_YEARS = SELECTABLE_TAX_YEARS
@@ -35,6 +35,8 @@ const SELECTABLE_YEARS = SELECTABLE_TAX_YEARS
 export interface CockpitScreenProps {
   readonly taxYear?: number
   readonly isSignedIn?: boolean
+  /** The session is still resolving: no guest „Weiter“ button for a user who may well be signed in. */
+  readonly sessionPending?: boolean
   readonly onOpenInterview?: () => void
   readonly onOpenAssessment?: () => void
   readonly onOpenCapital?: () => void
@@ -59,6 +61,7 @@ interface Next {
 export function CockpitScreen({
   taxYear = CURRENT_TAX_YEAR,
   isSignedIn = true,
+  sessionPending = false,
   onOpenInterview = () => {},
   onOpenAssessment = () => {},
   onOpenCapital = () => {},
@@ -137,19 +140,21 @@ export function CockpitScreen({
         }
   const openTile = onOpenTile ?? (() => {})
   const submissionHandler = onOpenSubmission ?? onOpenPrintout
-  const nextTile = tileFacts !== null ? nextStepTile(tileFacts) : null
+  const step = tileFacts !== null ? nextStep(tileFacts) : null
   const next: Next | null =
-    tileFacts !== null
-      ? nextTile !== null
+    tileFacts !== null && step !== null
+      ? step.kind === 'unknown'
+        ? null
+        : step.kind === 'tile'
         ? {
-            label: tr('cockpit.naechsterSchritt', { titel: tr(nextTile.titleKey) }),
-            onPress: () => openTile(nextTile, tileRevisitFlag(nextTile, tileFacts.answers)),
+            label: tr('cockpit.naechsterSchritt', { titel: tr(step.tile.titleKey) }),
+            onPress: () => openTile(step.tile, tileRevisitFlag(step.tile, tileFacts.answers)),
           }
         : {
             label: tr('cockpit.naechsterSchritt', { titel: tr('cockpit.abgabe.titel') }),
             onPress: () => submissionHandler?.(year),
           }
-      : path !== null && onContinuePath
+      : path !== null && onContinuePath && !sessionPending
         ? { label: tr('cockpit.weiterMitDeinemWeg', { pfad: tr(`funnel.kontoWand.pfad.${path}`) }), onPress: () => onContinuePath(path) }
         : null
 

@@ -25,6 +25,7 @@ import { CatalogScreen } from '../catalog/CatalogScreen'
 import { LoadingState, ErrorState } from '../shared/ScreenState'
 import { BackButton, BackButtonSpacer } from '../shared/BackButton'
 import { usePendingMutations } from '../shared/usePendingMutations'
+import { SaveFailedNotice } from '../shared/SaveFailedNotice'
 import { watchSaveResult } from '../shared/saveFeedback'
 
 export interface RentalScreenProps {
@@ -43,7 +44,7 @@ export function RentalScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_
   const createProperty = useRentalControllerCreate()
   const setField = useRentalControllerSetField()
   const setAddress = useRentalControllerSetAddress()
-  const { track, flushThen } = usePendingMutations()
+  const { track, flushThen, saveFailed } = usePendingMutations()
 
   // The depot / the kind of letting is a catalogue answer; the mask can ask it right here.
   const [questionOpen, setQuestionOpen] = useState(false)
@@ -127,6 +128,7 @@ export function RentalScreen({ onDone = () => {}, onBack, taxYear = CURRENT_TAX_
 
       <StatusNotice response={response} />
 
+      <SaveFailedNotice visible={saveFailed} />
       <Button onPress={() => flushThen(onDone)} style={styles.cta} testID="vermietung-weiter">
         {tr('vermietung.weiter')}
       </Button>

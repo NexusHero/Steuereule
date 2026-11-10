@@ -251,13 +251,25 @@ function isSequenceStepDone(tile: TileDefinition, facts: TileFacts): boolean {
   return tile.status(facts) === 'erledigt'
 }
 
-export function nextStepTile(facts: TileFacts): TileDefinition | null {
+export type NextStep =
+  | { readonly kind: 'tile'; readonly tile: TileDefinition }
+  | { readonly kind: 'done' }
+  /** A tile earlier in the order is still loading or failed: no step is suggested rather than a wrong one. */
+  | { readonly kind: 'unknown' }
+
+export function nextStep(facts: TileFacts): NextStep {
   for (const id of NEXT_STEP_ORDER[facts.path]) {
     const tile = tileById(id)
     if (!tile.isVisible(facts)) continue
-    if (!isSequenceStepDone(tile, facts)) return tile
+    if (facts.pendingTiles?.has(id)) return { kind: 'unknown' }
+    if (!isSequenceStepDone(tile, facts)) return { kind: 'tile', tile }
   }
-  return null
+  return { kind: 'done' }
+}
+
+export function nextStepTile(facts: TileFacts): TileDefinition | null {
+  const step = nextStep(facts)
+  return step.kind === 'tile' ? step.tile : null
 }
 
 export function hasAnswersForEntry(entry: CatalogEntryParam, answers: Answers): boolean {
