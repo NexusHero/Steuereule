@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, type ReactNode } from 'react'
-import { Animated, PanResponder, Platform, Pressable, StyleSheet, Text, View, type TextStyle, type ViewStyle } from 'react-native'
+import { Animated, KeyboardAvoidingView, PanResponder, Platform, Pressable, StyleSheet, Text, View, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { theme as motionTokens } from '@steuereule/tokens'
 import { useTheme } from '../theme/useTheme'
@@ -10,6 +10,10 @@ import { UI_NS } from '../i18n/resources'
 
 const DISMISS_DRAG_DISTANCE_PX = 120
 const COMPACT_ENTRY_OFFSET_PX = 40
+
+export function sheetKeyboardBehavior(os: string): 'padding' | undefined {
+  return os === 'ios' ? 'padding' : undefined
+}
 
 export interface SheetProps {
   readonly onClose: () => void
@@ -192,7 +196,7 @@ export function Sheet({ onClose, closeLabel, children, testID }: SheetProps) {
   }
 
   return (
-    <View testID={testID} style={overlayStyle}>
+    <KeyboardAvoidingView testID={testID} style={overlayStyle} behavior={sheetKeyboardBehavior(Platform.OS)}>
       <Pressable testID="sheet-backdrop" accessible={false} onPress={onClose} style={backdropStyle} />
       <Animated.View
         ref={panelRef}
@@ -220,6 +224,6 @@ export function Sheet({ onClose, closeLabel, children, testID }: SheetProps) {
         </View>
         <View style={bodyStyle}>{children}</View>
       </Animated.View>
-    </View>
+    </KeyboardAvoidingView>
   )
 }

@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import { screen, fireEvent } from '@testing-library/react'
-import { Text } from 'react-native'
+import { Platform, Text } from 'react-native'
 import { Input } from './Input'
-import { Sheet } from './Sheet'
+import { Sheet, sheetKeyboardBehavior } from './Sheet'
 import { WIDE_CONTENT_MAX_WIDTH } from '../responsive/contentWidth'
 import { renderUi } from '../test-utils'
 
@@ -189,5 +189,25 @@ describe('Sheet', () => {
       { mode: 'dark' },
     )
     expect(screen.getByText('Dunkel')).toBeTruthy()
+  })
+
+  it('uses padding keyboard-avoiding behavior on iOS only', () => {
+    expect(sheetKeyboardBehavior('ios')).toBe('padding')
+    expect(sheetKeyboardBehavior('android')).toBeUndefined()
+    expect(sheetKeyboardBehavior('web')).toBeUndefined()
+
+    const originalOs = Platform.OS
+    try {
+      ;(Platform as { OS: typeof Platform.OS }).OS = 'ios'
+      renderUi(
+        <Sheet onClose={() => {}} closeLabel="Schließen" testID="ios-sheet">
+          <Text>Formular</Text>
+        </Sheet>,
+      )
+      expect(screen.getByTestId('ios-sheet')).toBeTruthy()
+      expect(screen.getByText('Formular')).toBeTruthy()
+    } finally {
+      ;(Platform as { OS: typeof Platform.OS }).OS = originalOs
+    }
   })
 })

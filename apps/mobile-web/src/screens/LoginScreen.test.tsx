@@ -237,7 +237,9 @@ describe('LoginScreen', () => {
     await screen.findByText('Zweiter Faktor')
     expect(onDone).not.toHaveBeenCalled()
 
-    fireEvent.change(screen.getByPlaceholderText('123456'), { target: { value: '123456' } })
+    const totpInput = screen.getByPlaceholderText('123456')
+    expect(totpInput.getAttribute('inputmode')).toBe('numeric')
+    fireEvent.change(totpInput, { target: { value: '123456' } })
     fireEvent.click(screen.getByText('Bestätigen'))
 
     await waitFor(() => expect(onDone).toHaveBeenCalledOnce())

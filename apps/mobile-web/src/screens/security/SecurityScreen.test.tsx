@@ -92,7 +92,9 @@ describe('SicherheitScreen (REQ-007)', () => {
     expect(screen.getByText(/333-444/)).toBeTruthy()
     expect(enableCalled).toBe(true)
 
-    fireEvent.change(screen.getByPlaceholderText('123456'), { target: { value: '123456' } })
+    const totpInput = screen.getByPlaceholderText('123456')
+    expect(totpInput.getAttribute('inputmode')).toBe('numeric')
+    fireEvent.change(totpInput, { target: { value: '123456' } })
     fireEvent.click(screen.getByText('Code bestätigen'))
 
     await screen.findByText('Zwei-Faktor-Authentifizierung ist jetzt aktiv.')
