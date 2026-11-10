@@ -15,6 +15,7 @@ describe('navigation linking config (#443 slice 1)', () => {
     { path: '/app/steuerjahr/2025/katalog/sonderausgaben' },
     { path: '/app/steuerjahr/2025/katalog/lebenslagen?revisit=1' },
     { path: '/app/steuerjahr/2025/arbeitstage' },
+    { path: '/app/steuerjahr/2025/abgabe' },
     { path: '/app/steuerjahr/2025/plausibilitaet' },
     { path: '/app/steuerjahr/2025/veranlagungsvergleich' },
     { path: '/app/steuerjahr/2025/bescheid' },

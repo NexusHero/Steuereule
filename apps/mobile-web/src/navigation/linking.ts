@@ -19,6 +19,7 @@ const cockpitScreens: NonNullable<PathConfig<CockpitStackParamList>['screens']> 
     },
   },
   Workdays: { path: 'steuerjahr/:year/arbeitstage', parse: { year: Number } },
+  Submission: { path: 'steuerjahr/:year/abgabe', parse: { year: Number } },
   Plausibility: { path: 'steuerjahr/:year/plausibilitaet', parse: { year: Number } },
   FilingTypeComparison: { path: 'steuerjahr/:year/veranlagungsvergleich', parse: { year: Number } },
   Assessment: { path: 'steuerjahr/:year/bescheid', parse: { year: Number } },

@@ -28,6 +28,7 @@ export interface PlausibilityHookResult {
   readonly conflicts: readonly Conflict[]
   readonly notices: readonly Notice[]
   readonly missingPersonalDetails: number | null
+  readonly answers: Answers
   readonly retry: () => void
 }
 
@@ -81,11 +82,11 @@ export function usePlausibility(
   }
 
   if (!enabled) {
-    return { status: 'ready', conflicts: [], notices: [], missingPersonalDetails: null, retry }
+    return { status: 'ready', conflicts: [], notices: [], missingPersonalDetails: null, answers: {}, retry }
   }
 
   if (lstbQuery.isPending || interviewQuery.isPending || masterDataQuery.isPending) {
-    return { status: 'loading', conflicts: [], notices: [], missingPersonalDetails: null, retry }
+    return { status: 'loading', conflicts: [], notices: [], missingPersonalDetails: null, answers: {}, retry }
   }
 
   if (
@@ -94,7 +95,7 @@ export function usePlausibility(
     interviewQuery.isError ||
     interviewQuery.data?.status !== 200
   ) {
-    return { status: 'error', conflicts: [], notices: [], missingPersonalDetails: null, retry }
+    return { status: 'error', conflicts: [], notices: [], missingPersonalDetails: null, answers: {}, retry }
   }
 
   const data = dataFromResponse(lstbQuery.data.data)
@@ -108,6 +109,7 @@ export function usePlausibility(
     conflicts: result.kind === 'nicht-einreichbar' ? result.conflicts : [],
     notices: result.notices,
     missingPersonalDetails,
+    answers,
     retry,
   }
 }
