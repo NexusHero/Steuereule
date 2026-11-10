@@ -98,7 +98,7 @@ async function main() {
 
     // 4. BelegeScreen
     await page.getByRole('tab', { name: 'Belege' }).click()
-    await page.locator('text=Wirf alles rein — wir sortieren').waitFor({ state: 'visible', timeout: 10_000 })
+    await page.locator('text=Beleg hochladen (PDF / Foto)').waitFor({ state: 'visible', timeout: 10_000 })
     await assertScreenAccessible(page, 'BelegeScreen')
 
     // 5. ProfilScreen
