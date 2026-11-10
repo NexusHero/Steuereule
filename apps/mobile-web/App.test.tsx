@@ -620,4 +620,286 @@ describe('App', () => {
       await waitFor(() => expect(deviceCodeRequests).toBe(1))
     })
   })
+
+  describe('tab stacks, URL per screen, and guest deep-link return-to (#443 slice 1)', () => {
+    beforeEach(() => {
+      vi.resetModules()
+    })
+
+    function isElementDisplayed(el: HTMLElement): boolean {
+      let node: HTMLElement | null = el
+      while (node) {
+        if (window.getComputedStyle(node).display === 'none') return false
+        node = node.parentElement
+      }
+      return true
+    }
+
+    function mockSignedInSession() {
+      server.use(
+        http.get(`${API_BASE_URL}/api/auth/get-session`, () =>
+          HttpResponse.json({ user: { id: 'u1', email: 'lena@beispiel.de', emailVerified: true, name: '' }, session: { id: 's1' } }),
+        ),
+      )
+    }
+
+    function mockCompletedEmployeeInterview(year = 2026) {
+      server.use(
+        http.get(`${API_BASE_URL}/v1/steuerjahre/${year}/interview`, () =>
+          HttpResponse.json(
+            {
+              answers: { job: 'Angestellt', ausland: 'Nein', kinder: 'Nein', familienstand: 'Ledig' },
+              nextStep: { kind: 'done' },
+              openItems: 0,
+            },
+            { status: 200 },
+          ),
+        ),
+      )
+    }
+
+    it('AC-1: preserves LStB mask and typed input value across switching to Belege tab and back', async () => {
+      mockSignedInSession()
+      mockCompletedEmployeeInterview(2026)
+      let lstbPutCount = 0
+      server.use(
+        http.put('*/v1/steuerjahre/:jahr/lstb/:feld', () => {
+          lstbPutCount += 1
+          return HttpResponse.json({}, { status: 200 })
+        }),
+      )
+
+      window.history.pushState({}, '', '/app')
+      const { default: App } = await import('./App')
+      render(<App />)
+
+      fireEvent.click(await screen.findByTestId('cockpit-weiter'))
+      const grossInput = (await screen.findByTestId('lstb-bruttoarbeitslohn')) as HTMLInputElement
+      fireEvent.change(grossInput, { target: { value: '52000' } })
+
+      fireEvent.click(screen.getByRole('tab', { name: 'Belege' }))
+      await screen.findByText('Beleg hochladen (PDF / Foto)')
+      expect(isElementDisplayed(grossInput)).toBe(false)
+
+      fireEvent.click(screen.getByRole('tab', { name: 'Cockpit' }))
+      await waitFor(() => expect(isElementDisplayed(screen.getByTestId('lstb-bruttoarbeitslohn'))).toBe(true))
+      expect((screen.getByTestId('lstb-bruttoarbeitslohn') as HTMLInputElement).value).toBe('52000')
+      expect(lstbPutCount).toBe(0)
+    })
+
+    it('Pop-to-Root: tapping the active Cockpit tab returns from LStB to CockpitHome', async () => {
+      mockSignedInSession()
+      mockCompletedEmployeeInterview(2026)
+
+      window.history.pushState({}, '', '/app')
+      const { default: App } = await import('./App')
+      render(<App />)
+
+      fireEvent.click(await screen.findByTestId('cockpit-weiter'))
+      await screen.findByTestId('lstb-bruttoarbeitslohn')
+
+      fireEvent.click(screen.getByRole('tab', { name: 'Cockpit' }))
+      await screen.findByTestId('cockpit-weiter')
+      expect(screen.queryByTestId('lstb-bruttoarbeitslohn')).toBeNull()
+    })
+
+    it('AC-2: opening /app/steuerjahr/2025/lstb signed-in loads the 2025 LStB screen', async () => {
+      mockSignedInSession()
+      const requestedYears: string[] = []
+      server.use(
+        http.get('*/v1/steuerjahre/:jahr/lstb', ({ params }) => {
+          requestedYears.push(String(params.jahr))
+          return HttpResponse.json({
+            bruttoarbeitslohn: { kind: 'offen' },
+            lohnsteuer: { kind: 'offen' },
+            sozialversicherung: { kind: 'offen' },
+            state: { kind: 'unvollstaendig', open: ['bruttoarbeitslohn', 'lohnsteuer', 'sozialversicherung'], unclear: [] },
+          })
+        }),
+      )
+
+      window.history.pushState({}, '', '/app/steuerjahr/2025/lstb')
+      const { default: App } = await import('./App')
+      render(<App />)
+
+      await screen.findByTestId('lstb-bruttoarbeitslohn')
+      expect(screen.getByText('Deine Lohnsteuerbescheinigung')).toBeTruthy()
+      expect(requestedYears).toContain('2025')
+      expect(window.sessionStorage.getItem('steuereule.taxYear')).toBe('2025')
+    })
+
+    it('AC-2: opening /app/steuerjahr/2025/katalog/einkuenfte opens Catalog on entry einkuenfte', async () => {
+      mockSignedInSession()
+
+      window.history.pushState({}, '', '/app/steuerjahr/2025/katalog/einkuenfte')
+      const { default: App } = await import('./App')
+      render(<App />)
+
+      expect(await screen.findByTestId('katalog-option-einkuenfte-Kapitalerträge')).toBeTruthy()
+    })
+
+    it('year guard: opening /app/steuerjahr/1999/lstb replaces with CockpitHome', async () => {
+      mockSignedInSession()
+
+      window.history.pushState({}, '', '/app/steuerjahr/1999/lstb')
+      const { default: App } = await import('./App')
+      render(<App />)
+
+      await screen.findByText('Steuerjahr')
+      expect(screen.queryByTestId('lstb-bruttoarbeitslohn')).toBeNull()
+    })
+
+    it('Partner after reload: opening /app/steuerjahr/2025/partner/lstb without partner state redirects to CockpitMasterData', async () => {
+      mockSignedInSession()
+
+      window.history.pushState({}, '', '/app/steuerjahr/2025/partner/lstb')
+      const { default: App } = await import('./App')
+      render(<App />)
+
+      await screen.findByTestId('stammdaten-geburtsdatum')
+      expect(screen.getByText('Angaben für die Erklärung')).toBeTruthy()
+      expect(screen.queryByTestId('lstb-bruttoarbeitslohn')).toBeNull()
+    })
+
+    it('AC-3: guest opening /app/steuerjahr/2025/kapital lands on AccountWall and saves steuereule.returnTo', async () => {
+      server.use(http.get(`${API_BASE_URL}/api/auth/get-session`, () => HttpResponse.json(null)))
+
+      window.history.pushState({}, '', '/app/steuerjahr/2025/kapital')
+      const { default: App } = await import('./App')
+      render(<App />)
+
+      await screen.findByTestId('konto-wand-spaeter')
+      expect(screen.queryByTestId('kapital-weiter')).toBeNull()
+      expect(window.sessionStorage.getItem('steuereule.returnTo')).toBe('/app/steuerjahr/2025/kapital')
+    })
+
+    it('AC-3: after signing in from the deep-link AccountWall, redirects straight back to Capital 2025 and clears steuereule.returnTo', async () => {
+      let signedIn = false
+      const capitalYears: string[] = []
+      server.use(
+        http.get(`${API_BASE_URL}/api/auth/get-session`, () =>
+          HttpResponse.json(
+            signedIn ? { user: { id: 'u1', email: 'lena@beispiel.de', emailVerified: true, name: '' }, session: { id: 's1' } } : null,
+          ),
+        ),
+        http.post(`${API_BASE_URL}/api/auth/sign-in/email`, () => {
+          signedIn = true
+          return HttpResponse.json({ user: { id: 'u1', email: 'lena@beispiel.de', emailVerified: true, name: '' }, token: 'tok-cap' })
+        }),
+        http.get('*/v1/steuerjahre/:jahr/kapital', ({ params }) => {
+          capitalYears.push(String(params.jahr))
+          return HttpResponse.json({
+            kapitalertraege: { kind: 'offen' },
+            sparerPauschbetrag: { kind: 'offen' },
+            kapitalertragsteuer: { kind: 'offen' },
+            solidaritaetszuschlag: { kind: 'offen' },
+            kirchensteuer: { kind: 'offen' },
+            requiredFields: ['kapitalertraege'],
+            depot: { kind: 'unbekannt' },
+            items: [],
+            status: { kind: 'offen', einnahmen: 0, vorsorgeaufwand: 0, anrechnung: 0, openItems: 1, conflicts: 0, gated: [] },
+            inhaber: null,
+          })
+        }),
+      )
+
+      window.history.pushState({}, '', '/app/steuerjahr/2025/kapital')
+      const { default: App } = await import('./App')
+      render(<App />)
+
+      fireEvent.click(await screen.findByText('Ich hab schon ein Konto'))
+      await screen.findByText('Einloggen')
+      fireEvent.change(screen.getByPlaceholderText('du@beispiel.de'), { target: { value: 'lena@beispiel.de' } })
+      fireEvent.change(screen.getByPlaceholderText('••••••••'), { target: { value: 'geheim-123' } })
+      fireEvent.click(screen.getByText('Einloggen'))
+
+      expect(await screen.findByTestId('kapital-weiter')).toBeTruthy()
+      expect(screen.getByText('Kapital & Depot')).toBeTruthy()
+      expect(capitalYears).toContain('2025')
+      await waitFor(() => expect(window.sessionStorage.getItem('steuereule.returnTo')).toBeNull())
+    })
+
+    it('tunnel unchanged: LStB onDone -> Catalog lebenslagen -> onDone -> Catalog einkuenfte -> onBack -> lebenslagen with revisit', async () => {
+      mockSignedInSession()
+      const interviewAnswers: Record<string, string> = {
+        dhf: 'Nein',
+        umzug: 'Nein',
+        abfindung: 'Nein',
+        lohnersatz: 'Nein',
+      }
+      server.use(
+        http.get('*/v1/steuerjahre/2025/interview', () =>
+          HttpResponse.json({
+            answers: { ...interviewAnswers },
+            nextStep: interviewAnswers.nebenjob ? { kind: 'done' } : { kind: 'question', id: 'nebenjob' },
+            openItems: 0,
+          }),
+        ),
+        http.post('*/v1/steuerjahre/2025/interview/antworten', async ({ request }) => {
+          const body = (await request.json()) as { questionId: string; value: string }
+          interviewAnswers[body.questionId] = body.value
+          return HttpResponse.json({ nextStep: { kind: 'done' }, openItems: 0 }, { status: 200 })
+        }),
+      )
+
+      window.history.pushState({}, '', '/app/steuerjahr/2025/lstb')
+      const { default: App } = await import('./App')
+      render(<App />)
+
+      fireEvent.click(await screen.findByTestId('lstb-weiter'))
+      fireEvent.click(await screen.findByTestId('katalog-option-nebenjob-Minijob'))
+
+      expect(await screen.findByTestId('katalog-option-einkuenfte-Kapitalerträge')).toBeTruthy()
+      expect(window.location.search).toBe('')
+
+      fireEvent.click(screen.getByLabelText('Zurück'))
+      expect(await screen.findByTestId('katalog-option-nebenjob-Minijob')).toBeTruthy()
+      await waitFor(() => expect(window.location.pathname + window.location.search).toBe('/app/steuerjahr/2025/katalog/lebenslagen?revisit=1'))
+    })
+
+    it('keeps /app/steuerjahr/2025/ausdruck mapped to the root Printout screen', async () => {
+      mockSignedInSession()
+      server.use(
+        http.get('*/v1/steuerjahre/2025/freischaltung', () => HttpResponse.json({ status: 'offen' })),
+        http.get('*/v1/steuerjahre/2025/ausdruck/pruefung', () => HttpResponse.json({ missing: [] })),
+      )
+
+      window.history.pushState({}, '', '/app/steuerjahr/2025/ausdruck')
+      const { default: App } = await import('./App')
+      render(<App />)
+
+      expect(await screen.findByText('Ausdruck 2025')).toBeTruthy()
+    })
+
+    it('AC-2/AC-3 on ProfileStack: /app/profil/sicherheit redirects guests via AccountWall and back after login', async () => {
+      let signedIn = false
+      server.use(
+        http.get(`${API_BASE_URL}/api/auth/get-session`, () =>
+          HttpResponse.json(
+            signedIn ? { user: { id: 'u1', email: 'lena@beispiel.de', emailVerified: true, name: '' }, session: { id: 's1' } } : null,
+          ),
+        ),
+        http.post(`${API_BASE_URL}/api/auth/sign-in/email`, () => {
+          signedIn = true
+          return HttpResponse.json({ user: { id: 'u1', email: 'lena@beispiel.de', emailVerified: true, name: '' }, token: 'tok-sec' })
+        }),
+      )
+
+      window.history.pushState({}, '', '/app/profil/sicherheit')
+      const { default: App } = await import('./App')
+      render(<App />)
+
+      await screen.findByTestId('konto-wand-spaeter')
+      expect(window.sessionStorage.getItem('steuereule.returnTo')).toBe('/app/profil/sicherheit')
+
+      fireEvent.click(screen.getByText('Ich hab schon ein Konto'))
+      await screen.findByText('Einloggen')
+      fireEvent.change(screen.getByPlaceholderText('du@beispiel.de'), { target: { value: 'lena@beispiel.de' } })
+      fireEvent.change(screen.getByPlaceholderText('••••••••'), { target: { value: 'geheim-123' } })
+      fireEvent.click(screen.getByText('Einloggen'))
+
+      expect(await screen.findByText('Zwei-Faktor-Authentifizierung')).toBeTruthy()
+      await waitFor(() => expect(window.sessionStorage.getItem('steuereule.returnTo')).toBeNull())
+    })
+  })
 })
