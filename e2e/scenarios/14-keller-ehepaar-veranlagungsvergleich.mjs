@@ -69,9 +69,21 @@ export async function runScenario14(browser, webOrigin) {
   await page.locator('[data-testid="arbeitstage-weiter"]').click()
 
   await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.goto(`${webOrigin}/app/steuerjahr/2026/plausibilitaet`, { waitUntil: 'networkidle' })
-  await page.locator('[data-testid="plausibilitaet-weiter"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="plausibilitaet-weiter"]').click()
+  await page.locator('[data-testid="cockpit-erstattung"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await assertCockpitEstimate(page, 'Scenario 14', { expectedText: 'Ihr seid verheiratet' })
+
+  await page.locator('[data-testid="cockpit-stammdaten"]').click()
+  await page.locator('[data-testid="stammdaten-familienstand-verheiratet"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator('[data-testid="stammdaten-familienstand-verheiratet"]').click()
+  await page.locator('[data-testid="stammdaten-speichern"]').click()
+  await page.waitForTimeout(400)
+  await page.locator('[data-testid="kopplung-zusammen"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator('[data-testid="kopplung-zusammen"]').click()
+  await page.waitForTimeout(400)
+  await page.locator('[data-testid="stammdaten-zurueck"]').click()
+
+  await page.locator('[data-testid="cockpit-abgabe-vorbereiten"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator('[data-testid="cockpit-abgabe-vorbereiten"]').click()
 
   await page.locator('[data-testid="verheiratet-ja"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="verheiratet-ja"]').click()
@@ -83,8 +95,11 @@ export async function runScenario14(browser, webOrigin) {
 
   await page.locator('text=Zusammenveranlagung').first().waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="veranlagungsartenvergleich-weiter"]').click()
-  await page.locator('[data-testid="cockpit-erstattung"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await assertCockpitEstimate(page, 'Scenario 14', { expectedText: 'Ihr seid verheiratet' })
+  const printBtn = page.locator('[data-testid="abgabe-zum-ausdruck"]')
+  await printBtn.waitFor({ state: 'visible', timeout: 10_000 })
+  if (await printBtn.isDisabled()) fail('Expected abgabe-zum-ausdruck enabled after FilingTypeComparison in Scenario 14')
+  await page.locator('[data-testid="abgabe-zurueck"]').click()
+  await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 10_000 })
   console.log('[Scenario 14] PASS: Married couple FilingTypeComparison calculation verified.')
 
   await ctx.close()

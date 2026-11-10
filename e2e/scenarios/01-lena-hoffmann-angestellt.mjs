@@ -91,13 +91,11 @@ export async function runScenario01(browser, webOrigin, sql) {
   await page.locator('[data-testid="arbeitstage-weiter"]').click()
 
   await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.goto(`${webOrigin}/app/steuerjahr/2025/plausibilitaet`, { waitUntil: 'networkidle' })
-  await page.locator('[data-testid="plausibilitaet-weiter"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="plausibilitaet-weiter"]').click()
-
-  await page.locator('[data-testid="verheiratet-nein"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="verheiratet-nein"]').click()
-  await page.locator('[data-testid="veranlagungsartenvergleich-weiter"]').click()
+  await page.locator('[data-testid="cockpit-abgabe-vorbereiten"]').click()
+  const printBtnStep = page.locator('[data-testid="abgabe-zum-ausdruck"]')
+  await printBtnStep.waitFor({ state: 'visible', timeout: 10_000 })
+  if (await printBtnStep.isDisabled()) fail('Expected abgabe-zum-ausdruck enabled for Scenario 01')
+  await page.locator('[data-testid="abgabe-zurueck"]').click()
 
   await page.locator('[data-testid="cockpit-stammdaten"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="cockpit-stammdaten"]').click()
@@ -123,6 +121,8 @@ export async function runScenario01(browser, webOrigin, sql) {
   unlockTaxYearInDb(sql, s1.email, s1.year)
 
   await page.locator('[data-testid="cockpit-ausdruck"]').click()
+  await page.locator('[data-testid="abgabe-zum-ausdruck"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator('[data-testid="abgabe-zum-ausdruck"]').click()
   await page.locator('[data-testid="ausdruck-zurueck"]').waitFor({ state: 'visible', timeout: 10_000 })
 
   await confirmAnnexesIfPresent(page)

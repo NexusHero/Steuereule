@@ -139,6 +139,10 @@ export async function runScenario03(browser, webOrigin, sql, markusSession = nul
   unlockTaxYearInDb(sql, s.markus.email, s.year)
 
   await pageMarkus.locator('[data-testid="cockpit-ausdruck"]').click()
+  await pageMarkus.locator('[data-testid="abgabe-vergleich-ueberspringen"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await pageMarkus.locator('[data-testid="abgabe-vergleich-ueberspringen"]').click()
+  await pageMarkus.locator('[data-testid="abgabe-zum-ausdruck"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await pageMarkus.locator('[data-testid="abgabe-zum-ausdruck"]').click()
   await pageMarkus.locator('[data-testid="ausdruck-zurueck"]').waitFor({ state: 'visible', timeout: 10_000 })
 
   await confirmAnnexesIfPresent(pageMarkus)

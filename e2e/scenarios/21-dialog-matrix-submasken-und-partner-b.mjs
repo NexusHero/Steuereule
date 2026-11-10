@@ -73,19 +73,18 @@ export async function runScenario21(browser, webOrigin, sql) {
   }
   await nextStep(page)
 
-  // Workdays -> Cockpit -> Plausibility -> FilingTypeComparison -> Cockpit
+  // Workdays -> Cockpit -> Submission check -> Cockpit
   await page.locator('[data-testid="arbeitstage-km"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="arbeitstage-km"]').fill('12')
   await page.locator('[data-testid="arbeitstage-transport-pkw"]').click()
   await page.locator('[data-testid="arbeitstage-arbeitsort"]').fill('Stuttgart')
   await page.locator('[data-testid="arbeitstage-weiter"]').click()
   await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.goto(`${webOrigin}/app/steuerjahr/2025/plausibilitaet`, { waitUntil: 'networkidle' })
-  await page.locator('[data-testid="plausibilitaet-weiter"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="plausibilitaet-weiter"]').click()
-  await page.locator('[data-testid="verheiratet-ja"]').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('[data-testid="verheiratet-ja"]').click()
-  await page.locator('[data-testid="veranlagungsartenvergleich-weiter"]').click()
+  await page.locator('[data-testid="cockpit-abgabe-vorbereiten"]').click()
+  const printBtnStep = page.locator('[data-testid="abgabe-zum-ausdruck"]')
+  await printBtnStep.waitFor({ state: 'visible', timeout: 10_000 })
+  if (await printBtnStep.isDisabled()) fail('Expected abgabe-zum-ausdruck enabled before Stammdaten in Scenario 21')
+  await page.locator('[data-testid="abgabe-zurueck"]').click()
 
   // --- 1. MasterDataScreen Partner B inline sub-screens (Back + Save roundtrips) ---
   await page.locator('[data-testid="cockpit-stammdaten"]').waitFor({ state: 'visible', timeout: 10_000 })
@@ -172,6 +171,10 @@ export async function runScenario21(browser, webOrigin, sql) {
   // --- 2. PrintoutRoute Embedded Sub-Screens ---
   unlockTaxYearInDb(sql, email, 2025)
   await page.locator('[data-testid="cockpit-ausdruck"]').click()
+  await page.locator('[data-testid="abgabe-vergleich-ueberspringen"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator('[data-testid="abgabe-vergleich-ueberspringen"]').click()
+  await page.locator('[data-testid="abgabe-zum-ausdruck"]').waitFor({ state: 'visible', timeout: 10_000 })
+  await page.locator('[data-testid="abgabe-zum-ausdruck"]').click()
   await page.locator('[data-testid="ausdruck-zurueck"]').waitFor({ state: 'visible', timeout: 10_000 })
 
   // 2.1 Printout -> Stammdaten ergänzen -> Back to Printout
