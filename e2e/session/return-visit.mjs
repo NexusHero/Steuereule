@@ -512,8 +512,8 @@ async function testCloseAndReopenReLogin(apiOrigin, webOrigin, sql) {
 /** Row D — guest, same-tab reload, the guest stays honestly a guest (ADR-0007: identity only at
  *  filing). The guest's own data marker changed with ADR-0045 (value-first funnel): a guest no
  *  longer reaches Onboarding — the Minimal-Gate answers ARE the guest's own data now. Positive:
- *  a reload lands on the Konto-Wand (the funnel remembers the answered guest) and "Später" still
- *  reaches the answered Cockpit ("0 Fragen offen"). Calibrated against clearing the guest cookie
+ *  a reload restores the answered Cockpit at /app ("0 Fragen offen", #443 decision 15: one URL
+ *  per mask). Calibrated against clearing the guest cookie
  *  (negative control): that MUST produce a fresh, empty guest — the empty job question, never the
  *  answered state — otherwise the positive assertion below would pass even if the guest cookie
  *  were silently ignored altogether. */
@@ -539,28 +539,24 @@ async function testGuestReload(browser, webOrigin) {
     if (new URL(page.url()).pathname !== '/app') {
       fail(`Row D: reloading while guest at /app landed on ${page.url()} instead — the guest cookie did not survive a same-tab reload.`)
     }
-    // ADR-0045: the funnel REMEMBERS a guest who has answered — the boot restores the interview
-    // entry, sees the stored answers and lands on the Konto-Wand. That IS the proof the SAME
-    // guest's data survived the reload (a fresh guest would see the empty job question instead).
-    await page.getByText(COPY.kontoWandLater).waitFor({ state: 'visible', timeout: 15_000 }).catch(async () => {
+    // #443 decision 15: every mask has its own URL, so a reload restores the screen the guest was on
+    // (/app → the answered Cockpit) instead of detouring through the Konto-Wand. Seeing the SAME
+    // guest's answered state ("0 Fragen offen") IS the proof the guest data survived the reload —
+    // a fresh guest would see the empty job question instead (negative control below).
+    await page.getByText('0 Fragen offen', { exact: true }).waitFor({ state: 'visible', timeout: 15_000 }).catch(async () => {
       const bodyText = await page.evaluate(() => document.body.innerText.slice(0, 800))
-      fail(`Row D (positive): reloading while guest did not land on the Konto-Wand (the answered-guest marker) within 15s. Page shows: ${JSON.stringify(bodyText)}`)
+      fail(`Row D (positive): reloading while guest did not re-render the SAME guest's answered Cockpit ("0 Fragen offen") within 15s. Page shows: ${JSON.stringify(bodyText)}`)
     })
-    // And the data is genuinely there — "Später" reaches the answered Cockpit again.
-    await page.getByText(COPY.kontoWandLater).click()
-    await page.getByText('0 Fragen offen', { exact: true }).waitFor({ state: 'visible', timeout: 15_000 }).catch(() => {
-      fail('Row D (positive): after the Konto-Wand "Später", the Cockpit did not re-render the SAME guest\'s own data ("0 Fragen offen") within 15s.')
-    })
-    console.log('[return-visit] Row D (positive): a same-tab reload while guest lands on the Konto-Wand and re-renders the SAME guest\'s own data — the guest identity is honestly preserved.')
+    console.log('[return-visit] Row D (positive): a same-tab reload while guest restores the answered Cockpit at /app — the guest identity is honestly preserved.')
 
     // --- negative control: guest cookie cleared, THEN reload ---
     await ctx.clearCookies()
     await page.reload({ waitUntil: 'networkidle' })
     await page.waitForTimeout(500)
-    const staleGuestDataStillShown = await page.getByText(COPY.kontoWandLater).isVisible({ timeout: 5_000 }).catch(() => false)
+    const staleGuestDataStillShown = await page.getByText('0 Fragen offen', { exact: true }).isVisible({ timeout: 5_000 }).catch(() => false)
     if (staleGuestDataStillShown) {
       fail(
-        'Row D (control): clearing the guest cookie and reloading STILL lands on the Konto-Wand — the previous guest\'s ' +
+        'Row D (control): clearing the guest cookie and reloading STILL shows the answered Cockpit — the previous guest\'s ' +
           'answered state leaked into a fresh guest session. The positive assertion above cannot be trusted; this is also ' +
           'a real data-scoping concern on its own (REQ-002).',
       )
