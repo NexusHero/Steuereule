@@ -5744,6 +5744,10 @@
               "besondere-lebenslage",
               "jahr-ohne-tarif"
             ]
+          },
+          "laterAmounts": {
+            "type": "number",
+            "description": "Number of deferred catalog deduction amounts."
           }
         },
         "required": [

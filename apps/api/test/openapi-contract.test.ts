@@ -408,4 +408,11 @@ describe('OpenAPI contract for /v1/steuerjahre/{jahr}/advisor/actions/apply-batc
     const parseRespSchema = document.components?.schemas?.ParseReceiptResponseDto as { properties?: Record<string, unknown> } | undefined
     expect(Object.keys(parseRespSchema?.properties ?? {})).toContain('lstb')
   })
+
+  it('documents optional laterAmounts on TaxEstimateDto (#443 Slice 2)', () => {
+    const schema = document.components?.schemas?.TaxEstimateDto as
+      | { properties?: Record<string, { type?: string }> }
+      | undefined
+    expect(schema?.properties?.laterAmounts?.type).toBe('number')
+  })
 })
