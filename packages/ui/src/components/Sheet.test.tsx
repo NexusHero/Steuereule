@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import { screen, fireEvent } from '@testing-library/react'
 import { Text } from 'react-native'
+import { Input } from './Input'
 import { Sheet } from './Sheet'
 import { WIDE_CONTENT_MAX_WIDTH } from '../responsive/contentWidth'
 import { renderUi } from '../test-utils'
@@ -145,6 +146,20 @@ describe('Sheet', () => {
     expect(onClose).not.toHaveBeenCalled()
 
     fireEvent.keyDown(window, { key: 'Escape' })
+    expect(onClose).toHaveBeenCalledOnce()
+  })
+
+  it('calls_onClose_on_Escape_even_when_a_nested_Input_has_focus', () => {
+    const onClose = vi.fn()
+    renderUi(
+      <Sheet onClose={onClose} closeLabel="Schließen">
+        <Input testID="sheet-inner-input" value="123" onChange={() => {}} />
+      </Sheet>,
+    )
+
+    const input = screen.getByTestId('sheet-inner-input')
+    input.focus()
+    fireEvent.keyDown(input, { key: 'Escape' })
     expect(onClose).toHaveBeenCalledOnce()
   })
 

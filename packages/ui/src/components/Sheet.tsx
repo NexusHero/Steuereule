@@ -58,8 +58,9 @@ export function Sheet({ onClose, closeLabel, children, testID }: SheetProps) {
         onCloseRef.current()
       }
     }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
+    // Capture phase ensures Escape still closes the Sheet when a focused react-native-web TextInput calls stopPropagation().
+    window.addEventListener('keydown', handleKeyDown, true)
+    return () => window.removeEventListener('keydown', handleKeyDown, true)
   }, [])
 
   const panResponder = useMemo(
