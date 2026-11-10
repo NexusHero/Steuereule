@@ -1,6 +1,7 @@
 import { useRef, useState, type ReactNode } from 'react'
 import { Animated, Easing, Pressable, Text, View, type LayoutChangeEvent, type StyleProp, type TextStyle, type ViewStyle } from 'react-native'
 import { theme as motionTokens } from '@steuereule/tokens'
+import { hapticSelection } from '../lib/haptics'
 import { inkOnFunke, useTheme } from '../theme/useTheme'
 import { useReducedMotion } from '../motion/useReducedMotion'
 
@@ -103,7 +104,12 @@ export function TabBar({ tabs, active, onChange, bottomInset = 0, style, testID 
             <Pressable
               key={tab.id}
               onLayout={(event) => rememberLayout(tab.id, event)}
-              onPress={() => onChange(tab.id)}
+              onPress={() => {
+                if (tab.id !== active) {
+                  void hapticSelection()
+                }
+                onChange(tab.id)
+              }}
               accessibilityRole="tab"
               accessibilityState={{ selected: an }}
               aria-current={an ? 'page' : undefined}

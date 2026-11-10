@@ -28,3 +28,12 @@ export { Gallery } from './gallery/Gallery'
 export { useReducedMotion } from './motion/useReducedMotion'
 export { useBreakpoint, resolveBreakpoint, type Breakpoint } from './responsive/useBreakpoint'
 export { WIDE_CONTENT_MAX_WIDTH } from './responsive/contentWidth'
+export {
+  hapticSelection,
+  hapticLight,
+  hapticMedium,
+  hapticSuccess,
+  hapticWarning,
+  setHapticsEnabled,
+  isHapticsEnabled,
+} from './lib/haptics'

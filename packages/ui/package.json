@@ -13,7 +13,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@steuereule/tokens": "workspace:*"
+    "@steuereule/tokens": "workspace:*",
+    "expo-haptics": "~14.1.4"
   },
   "peerDependencies": {
     "i18next": "*",

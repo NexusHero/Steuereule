@@ -1,5 +1,6 @@
 import { Pressable, Text, type ViewStyle, type TextStyle, type StyleProp } from 'react-native'
 import { type ReactNode } from 'react'
+import { hapticMedium } from '../lib/haptics'
 import { inkOnFunke, useTheme } from '../theme/useTheme'
 
 export type ButtonVariant = 'primaer' | 'ghost' | 'leise' | 'nacht'
@@ -50,7 +51,10 @@ export function Button({ variant = 'primaer', disabled = false, onPress, style, 
       testID={testID}
       accessibilityRole="button"
       disabled={disabled}
-      onPress={onPress}
+      onPress={() => {
+        if (variant === 'primaer') void hapticMedium()
+        onPress?.()
+      }}
       style={({ pressed }) => [
         container,
         disabled && { opacity: 0.4 },
