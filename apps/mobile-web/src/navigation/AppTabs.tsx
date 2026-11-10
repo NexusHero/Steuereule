@@ -160,6 +160,8 @@ export function AppTabs() {
             flex: 1,
             backgroundColor: t.color.grund,
             paddingBottom: showsTabBar ? tabBarClearance(t, insets.bottom) : 0,
+            // Keep inactive tabs hidden in layout/focus order and jsdom visibility checks (BottomTabView
+            // only toggles zIndex and aria-hidden when react-native-screens is inactive on web).
             display: navigation.isFocused() ? 'flex' : 'none',
           },
         }

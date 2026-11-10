@@ -130,13 +130,14 @@ export async function runScenario08(browser, webOrigin) {
     await page.locator('[data-testid="cockpit-interview"], [data-testid="cockpit-weiter"], [data-testid="cockpit-bescheid"]').first().waitFor({ state: 'visible', timeout: 10_000 })
   }
 
-  // Slice 1 AC-2: direct mask URL survives page.reload() and browser Back returns to Cockpit
+  // Browser history check across full page loads: goto + reload + goBack returns to Cockpit
   await page.goto(`${webOrigin}/app/steuerjahr/2025/kapital`, { waitUntil: 'networkidle' })
   await page.locator('[data-testid="kapital-weiter"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.reload({ waitUntil: 'networkidle' })
   await page.locator('[data-testid="kapital-weiter"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.goBack({ waitUntil: 'networkidle' })
   await page.locator('[data-testid="cockpit-interview"], [data-testid="cockpit-weiter"], [data-testid="cockpit-bescheid"]').first().waitFor({ state: 'visible', timeout: 10_000 })
+  // In-app navigation check: clicking Cockpit tile pushes /kapital and goBack pops to Cockpit
   await page.locator('[data-testid="cockpit-kapital"]').click()
   await page.locator('[data-testid="kapital-weiter"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.goBack()
