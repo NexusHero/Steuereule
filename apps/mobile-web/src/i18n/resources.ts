@@ -913,6 +913,7 @@ export const appResources = {
         conflict: 'Deine Antwort passte nicht zum gespeicherten Stand. Wir haben deinen Fortschritt aktualisiert.',
         progress: '{{done}} von {{total}}',
         amountPlaceholder: 'Ganzzahlige Euro',
+        amountLater: 'Betrag später eintragen',
         weiter: 'Weiter',
         questions: {
           dhf: 'Hast du eine doppelte Haushaltsführung?',
@@ -1054,6 +1055,7 @@ export const appResources = {
         hinweis: {
           'erfasst-nicht-gerechnet': 'Erfasste, aber noch nicht gerechnete Beträge sind vorhanden.',
           'werbungskosten-uebersteigt-einnahmen': 'Deine Werbungskosten übersteigen die Einnahmen.',
+          'betrag-spaeter': 'Mindestens ein Betrag ist noch mit „Später eintragen“ markiert.',
         },
       },
       cockpit: {
@@ -1085,6 +1087,24 @@ export const appResources = {
         refreshing: 'Wird aktualisiert …',
         answerQuestions: 'Fragen beantworten',
         weiterMitDeinemWeg: 'Weiter mit deinem Weg · {{pfad}}',
+        naechsterSchritt: 'Nächster Schritt: {{titel}}',
+        kachel: {
+          status: {
+            offen: 'Offen',
+            erledigt: 'Erledigt',
+            betragOffen: '⏳ Betrag offen',
+          },
+          lstb: { titel: 'Lohnsteuerbescheinigung' },
+          ch: { titel: 'Schweizer Lohnausweis' },
+          rente: { titel: 'Rente' },
+          lebenslagen: { titel: 'Lebenslagen' },
+          einkuenfte: { titel: 'Weitere Einkünfte' },
+          sonderausgaben: { titel: 'Sonderausgaben' },
+          arbeitsweg: { titel: 'Arbeitstage & Weg' },
+          kapital: { titel: 'Kapital & Zinsen' },
+          vermietung: { titel: 'Vermietete Objekte' },
+          kinder: { titel: 'Kinder' },
+        },
         stammdatenErgaenzen: 'Angaben für die Erklärung ergänzen · {{anzahl}} fehlen',
         stammdatenAnsehen: 'Angaben für die Erklärung & Partner',
         erstattung: {
@@ -2461,6 +2481,7 @@ export const appResources = {
         conflict: "Your answer didn't match what was saved. We've updated your progress.",
         progress: '{{done}} of {{total}}',
         amountPlaceholder: 'Whole euros',
+        amountLater: 'Enter amount later',
         weiter: 'Continue',
         questions: {
           dhf: 'Do you keep a second household for work?',
@@ -2602,6 +2623,7 @@ export const appResources = {
         hinweis: {
           'erfasst-nicht-gerechnet': 'Some captured amounts are not yet calculated.',
           'werbungskosten-uebersteigt-einnahmen': 'Your work-related expenses exceed your income.',
+          'betrag-spaeter': 'At least one amount is still marked to be entered later.',
         },
       },
       cockpit: {
@@ -2633,6 +2655,24 @@ export const appResources = {
         refreshing: 'Refreshing …',
         answerQuestions: 'Answer questions',
         weiterMitDeinemWeg: 'Continue your path · {{pfad}}',
+        naechsterSchritt: 'Next step: {{titel}}',
+        kachel: {
+          status: {
+            offen: 'Open',
+            erledigt: 'Done',
+            betragOffen: '⏳ Amount open',
+          },
+          lstb: { titel: 'Wage tax certificate' },
+          ch: { titel: 'Swiss salary certificate' },
+          rente: { titel: 'Pension' },
+          lebenslagen: { titel: 'Life events' },
+          einkuenfte: { titel: 'Other income' },
+          sonderausgaben: { titel: 'Special expenses' },
+          arbeitsweg: { titel: 'Workdays & commute' },
+          kapital: { titel: 'Capital & interest' },
+          vermietung: { titel: 'Rental property' },
+          kinder: { titel: 'Children' },
+        },
         stammdatenErgaenzen: 'Complete the details for your return · {{anzahl}} missing',
         stammdatenAnsehen: 'Details for your return & partner',
         erstattung: {
