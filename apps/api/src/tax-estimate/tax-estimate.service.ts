@@ -15,6 +15,8 @@ import {
   claimMonths,
   estimateMarriedCouple,
   monthlyChildBenefitClaim,
+  laterAmountSteps,
+  widenForLaterAmounts,
   type Answers,
   type SpouseIncome,
   type TaxEstimate,
@@ -32,7 +34,11 @@ import { PARTNER_COUPLING_REPOSITORY, type PartnerCouplingRepository } from '../
 import { RENTAL_REPOSITORY, type RentalRepository } from '../rental/rental.repository.js'
 
 export type TaxEstimateStatus =
-  | (Extract<TaxEstimate, { kind: 'spanne' }> & { readonly churchTaxOpen: boolean; readonly jointAssessment?: boolean })
+  | (Extract<TaxEstimate, { kind: 'spanne' }> & {
+      readonly churchTaxOpen: boolean
+      readonly jointAssessment?: boolean
+      readonly laterAmounts?: number
+    })
   | { readonly kind: 'offen'; readonly missing: readonly string[] }
   | { readonly kind: 'nicht-moeglich'; readonly reason: string }
 
@@ -74,6 +80,7 @@ export class TaxEstimateService {
     const numbers = employeeFromAnswers(answers)
     const allowance = commuterAllowanceFrom(year, path)
     const churchTaxOpen = masterData?.religion !== undefined && masterData?.religion !== null && masterData.religion !== 'VD'
+    const laterCount = laterAmountSteps(answers).length
 
     if (answers.ausland === CH_FOREIGN) {
       const values = salaryCertificateValuesFromRecord(chRecord)
@@ -101,7 +108,7 @@ export class TaxEstimateService {
         rate: exchangeRate.rate,
       }).eur
       const krankenkasseChf = chRecord?.krankenkasseChf === null || chRecord?.krankenkasseChf === undefined ? 0 : Number(chRecord.krankenkasseChf)
-      return withChurchTax(
+      return withEstimateExtras(
         taxEstimateCrossBorder({
           year,
           wageEur: rows.z23,
@@ -113,13 +120,14 @@ export class TaxEstimateService {
           donations: numbers.donations,
         }),
         churchTaxOpen,
+        laterCount,
       )
     }
 
     const state = wageTaxCertificateStatus(wageTaxCertificateDataFrom(lstbRecord))
     if (state.kind === 'unvollstaendig') return { kind: 'offen', missing: [...state.open, ...state.unclear] }
     if (state.kind === 'widerspruch') return { kind: 'offen', missing: state.conflicts.map((w) => w.kind) }
-      return withChurchTax(
+      return withEstimateExtras(
         taxEstimateEmployee({
           year,
           bruttoarbeitslohn: state.bruttoarbeitslohn,
@@ -131,6 +139,7 @@ export class TaxEstimateService {
           selfPaidKvPv: numbers.healthCareContributions,
         }),
         churchTaxOpen,
+        laterCount,
       )
     }, { 'tax.year': year, 'user.id': userId })
   }
@@ -144,8 +153,8 @@ export class TaxEstimateService {
       link.personBUserId ? this.income(link.personBUserId, year) : Promise.resolve(null),
     ])
     const missing = [...(a?.kind === 'offen' ? a.missing : []), ...(b?.kind === 'offen' ? b.missing.map((f) => `personB.${f}`) : [])]
-    if (a === null) missing.unshift('einkommen')
-    if (missing.length > 0 || a?.kind !== 'ok') return { kind: 'offen', missing }
+    if (a.kind === 'none') missing.unshift('einkommen')
+    if (missing.length > 0 || a.kind !== 'ok') return { kind: 'offen', missing }
     const [kinder, properties, sdA, sdB] = await Promise.all([
       this.kinder ? this.kinder.listForUserAndYear(link.personAUserId, year) : Promise.resolve([]),
       this.rental ? this.rental.listForUserAndYear(link.personAUserId, year) : Promise.resolve([]),
@@ -165,14 +174,25 @@ export class TaxEstimateService {
     })
     if (estimate.kind !== 'spanne') return { kind: 'nicht-moeglich', reason: estimate.reason }
     const { childAllowanceUsed: _k, churchTax: _c, churchTaxOpen, ...range } = estimate
-    return { ...range, churchTaxOpen, jointAssessment: true }
+    const laterCount = a.laterCount + (b && b.kind !== 'offen' ? b.laterCount : 0)
+    return {
+      ...range,
+      result: widenForLaterAmounts(range.result, laterCount),
+      churchTaxOpen,
+      jointAssessment: true,
+      ...(laterCount > 0 ? { laterAmounts: laterCount } : {}),
+    }
   }
 
-  /** One spouse's wage income for the couple estimate; null when they have none. */
+  /** One spouse's wage income for the couple estimate; kind 'none' when they have none. */
   private async income(
     userId: string,
     year: number,
-  ): Promise<{ kind: 'ok'; spouse: SpouseIncome; donations: number } | { kind: 'offen'; missing: string[] } | null> {
+  ): Promise<
+    | { kind: 'ok'; spouse: SpouseIncome; donations: number; laterCount: number }
+    | { kind: 'offen'; missing: string[] }
+    | { kind: 'none'; laterCount: number }
+  > {
     const [lstbRecord, interviewRows, chRecord, path] = await Promise.all([
       this.lstb.findForUserAndYear(userId, year),
       this.interview.findAllForUserAndYear(userId, year),
@@ -180,6 +200,7 @@ export class TaxEstimateService {
       this.commute.findForUserAndYear(userId, year),
     ])
     const answers = answersFrom(interviewRows)
+    const laterCount = laterAmountSteps(answers).length
     const numbers = employeeFromAnswers(answers)
     const allowance = commuterAllowanceFrom(year, path)
     if (chRecord && (answers.ausland === CH_FOREIGN || lstbRecord === null)) {
@@ -207,6 +228,7 @@ export class TaxEstimateService {
       return {
         kind: 'ok',
         donations: numbers.donations,
+        laterCount,
         spouse: {
           kind: 'crossBorder',
           wageEur: rows.z23,
@@ -218,13 +240,14 @@ export class TaxEstimateService {
         },
       }
     }
-    if (lstbRecord === null) return null
+    if (lstbRecord === null) return { kind: 'none', laterCount }
     const state = wageTaxCertificateStatus(wageTaxCertificateDataFrom(lstbRecord))
     if (state.kind === 'unvollstaendig') return { kind: 'offen', missing: [...state.open, ...state.unclear] }
     if (state.kind === 'widerspruch') return { kind: 'offen', missing: state.conflicts.map((w) => w.kind) }
     return {
       kind: 'ok',
       donations: numbers.donations,
+      laterCount,
       spouse: {
         kind: 'employee',
         grossWage: state.bruttoarbeitslohn,
@@ -279,7 +302,12 @@ function commuterAllowanceFrom(year: number, path: CommuteInputs | null): number
   }
 }
 
-function withChurchTax(estimate: TaxEstimate, churchTaxOpen: boolean): TaxEstimateStatus {
+function withEstimateExtras(estimate: TaxEstimate, churchTaxOpen: boolean, laterCount: number): TaxEstimateStatus {
   if (estimate.kind !== 'spanne') return { kind: 'nicht-moeglich', reason: estimate.reason }
-  return { ...estimate, churchTaxOpen }
+  return {
+    ...estimate,
+    result: widenForLaterAmounts(estimate.result, laterCount),
+    churchTaxOpen,
+    ...(laterCount > 0 ? { laterAmounts: laterCount } : {}),
+  }
 }

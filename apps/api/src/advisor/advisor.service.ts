@@ -3,6 +3,7 @@ import { Inject, Injectable, Optional } from '@nestjs/common'
 import {
   ADVISOR_LEGAL_SOURCES,
   PROFESSION_VALUES,
+  amountFromAnswer,
   evaluateAdvisorTurn,
   homeOfficeDaysFromInterview,
   provenanceKey,
@@ -234,20 +235,20 @@ export class AdvisorService {
       },
       catalogExpenses: {
         hasTraining: answerMap['fortbildung'] === 'Ja' || answerMap['katalog_fortbildung'] === 'ja',
-        relocationCostsEur: answerMap['umzug'] === 'Ja' ? parseNum(answerMap['umzug-kosten']) : null,
+        relocationCostsEur: answerMap['umzug'] === 'Ja' ? amountFromAnswer(answerMap['umzug-kosten']) : null,
         donationsEur:
           answerMap['spenden'] === 'Ja'
-            ? parseNum(answerMap['spenden-betrag'])
-            : parseNum(answerMap['katalog_spenden']),
-        selfPaidKvPvEur: answerMap['kv-pv'] === 'Ja' ? parseNum(answerMap['kv-pv-betrag']) : null,
-        riesterEur: answerMap['riester'] === 'Ja' ? parseNum(answerMap['riester-betrag']) : null,
-        doubleHouseholdRentEur: answerMap['dhf'] === 'Ja' ? parseNum(answerMap['dhf-miete']) : null,
+            ? amountFromAnswer(answerMap['spenden-betrag'])
+            : amountFromAnswer(answerMap['katalog_spenden']),
+        selfPaidKvPvEur: answerMap['kv-pv'] === 'Ja' ? amountFromAnswer(answerMap['kv-pv-betrag']) : null,
+        riesterEur: answerMap['riester'] === 'Ja' ? amountFromAnswer(answerMap['riester-betrag']) : null,
+        doubleHouseholdRentEur: answerMap['dhf'] === 'Ja' ? amountFromAnswer(answerMap['dhf-miete']) : null,
       },
       childrenCount: children.length,
       rentalObjectsCount: rentals.length,
       capitalGainEur: parseNum(capitalRecord?.kapitalertraege),
       priorYearComparison: {
-        donationsEur: parseNum(lastYearMap['spenden-betrag']) ?? parseNum(lastYearMap['katalog_spenden']),
+        donationsEur: amountFromAnswer(lastYearMap['spenden-betrag']) ?? amountFromAnswer(lastYearMap['katalog_spenden']),
       },
       openOwlHints: owlCardsResponse.cards.map((c) => ({
         id: c.id,

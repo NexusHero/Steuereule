@@ -496,4 +496,30 @@ describe('AdvisorService (In-App Steuerberater Agent "Deine Eule")', () => {
     const reapplied = await advisorService.applyAction(USER, YEAR, draft.actionId)
     expect(reapplied.action.undoneAt).toBeUndefined()
   })
+
+  it('treats AMOUNT_LATER catalog amounts as null (not NaN) in CaseDigest', async () => {
+    await interviewRepo.write({ userId: USER, taxYear: YEAR, questionId: 'umzug', value: 'Ja', openItems: 0 })
+    await interviewRepo.write({ userId: USER, taxYear: YEAR, questionId: 'umzug-kosten', value: 'spaeter', openItems: 0 })
+    await interviewRepo.write({ userId: USER, taxYear: YEAR, questionId: 'spenden', value: 'Ja', openItems: 0 })
+    await interviewRepo.write({ userId: USER, taxYear: YEAR, questionId: 'spenden-betrag', value: 'spaeter', openItems: 0 })
+    await interviewRepo.write({ userId: USER, taxYear: YEAR, questionId: 'kv-pv', value: 'Ja', openItems: 0 })
+    await interviewRepo.write({ userId: USER, taxYear: YEAR, questionId: 'kv-pv-betrag', value: 'spaeter', openItems: 0 })
+    await interviewRepo.write({ userId: USER, taxYear: YEAR, questionId: 'riester', value: 'Ja', openItems: 0 })
+    await interviewRepo.write({ userId: USER, taxYear: YEAR, questionId: 'riester-betrag', value: 'spaeter', openItems: 0 })
+    await interviewRepo.write({ userId: USER, taxYear: YEAR, questionId: 'dhf', value: 'Ja', openItems: 0 })
+    await interviewRepo.write({ userId: USER, taxYear: YEAR, questionId: 'dhf-miete', value: 'spaeter', openItems: 0 })
+    await interviewRepo.write({ userId: USER, taxYear: YEAR - 1, questionId: 'spenden-betrag', value: 'spaeter', openItems: 0 })
+
+    const digest = await advisorService.buildCaseDigest(USER, YEAR)
+
+    expect(digest.catalogExpenses).toEqual({
+      hasTraining: false,
+      relocationCostsEur: null,
+      donationsEur: null,
+      selfPaidKvPvEur: null,
+      riesterEur: null,
+      doubleHouseholdRentEur: null,
+    })
+    expect(digest.priorYearComparison.donationsEur).toBeNull()
+  })
 })

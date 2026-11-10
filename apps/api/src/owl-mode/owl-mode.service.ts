@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common'
 import {
   formatGermanDate,
   appealDeadlineEnd,
+  amountFromAnswer,
   generateOwlCards,
   homeOfficeDaysFromInterview,
   PROFESSION_VALUES,
@@ -37,10 +38,6 @@ function toAnswerMap(rows: InterviewAnswerRecord[]): Record<string, string> {
 
 function professionFrom(value: string | undefined): Profession | undefined {
   return (PROFESSION_VALUES as readonly string[]).includes(value ?? '') ? (value as Profession) : undefined
-}
-
-function integer(value: string | undefined): number | null {
-  return value && /^\d+$/.test(value) ? Number(value) : null
 }
 
 function archiveYear(
@@ -110,7 +107,8 @@ export class OwlModeService {
 
     const answers = toAnswerMap(interviewRows)
     const lastYearAnswers = toAnswerMap(lastYearInterviewRows)
-    const lastYearDonationsEur = answers['spenden-betrag'] ? null : integer(lastYearAnswers['spenden-betrag'])
+    const lastYearDonationsEur =
+      amountFromAnswer(answers['spenden-betrag']) !== null ? null : amountFromAnswer(lastYearAnswers['spenden-betrag'])
     const archive = archiveYear(lastYearAssessment, lastYearAnswers, today)
 
     const input: OwlInputFacts = {
