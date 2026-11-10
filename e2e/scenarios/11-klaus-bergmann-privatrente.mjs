@@ -57,7 +57,8 @@ export async function runScenario11(browser, webOrigin) {
   await alterInput.blur()
 
   await page.locator('text=3240 €').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('text=Weiter').last().click()
+  await page.getByRole('button', { name: 'Weiter', exact: true }).click()
+  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
   await page.locator('[data-testid="cockpit-erstattung"]').waitFor({ state: 'visible', timeout: 10_000 })
   await assertCockpitEstimate(page, 'Scenario 11', { expectedText: 'Die Erstattung rechnen wir bisher nur für Angestellte.' })
   console.log('[Scenario 11] PASS: Private Pension Ertragsanteil calculation and honest cockpit notice verified.')

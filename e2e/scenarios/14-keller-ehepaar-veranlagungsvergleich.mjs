@@ -67,6 +67,7 @@ export async function runScenario14(browser, webOrigin) {
   await page.locator('[data-testid="arbeitstage-km"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="arbeitstage-km"]').fill('10')
   await page.locator('[data-testid="arbeitstage-weiter"]').click()
+  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
 
   await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="cockpit-erstattung"]').waitFor({ state: 'visible', timeout: 10_000 })

@@ -63,7 +63,8 @@ export async function runScenario05(browser, webOrigin, sql) {
   await page.waitForTimeout(500)
 
   await page.locator('text=Steuerpflichtiger Anteil').waitFor({ state: 'visible', timeout: 10_000 })
-  await page.locator('text=Weiter').click()
+  await page.getByRole('button', { name: 'Weiter', exact: true }).click()
+  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
 
   const capitalBtn = page.locator('[data-testid="cockpit-kapital"]')
   await capitalBtn.waitFor({ state: 'visible', timeout: 10_000 })

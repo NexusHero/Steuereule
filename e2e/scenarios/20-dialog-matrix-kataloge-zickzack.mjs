@@ -81,6 +81,7 @@ export async function runScenario20(browser, webOrigin) {
   await page.locator('[data-testid="katalog-option-nebenjob-Nebenjob"]').click()
   await page.locator('[data-testid="katalog-input-nebenjob-brutto"]').fill('3600')
   await page.locator('[data-testid="katalog-submit-nebenjob-brutto"]').click()
+  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
 
   // --- 2. Bumerang-Bug Check #1: Revisit completed Lebenslagen via Cockpit tile & Back from Einkünfte ---
   await page.locator('[data-testid="cockpit-kachel-lebenslagen-status"]', { hasText: 'Erledigt' }).waitFor({
@@ -97,6 +98,7 @@ export async function runScenario20(browser, webOrigin) {
   await nextStep(page)
   await page.locator('[data-testid="katalog-option-einkuenfte-Nein"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.getByLabel('Zurück').click()
+  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
   await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 10_000 })
   await nextStep(page)
   console.log('[Scenario 20] Verified: Revisit of completed Lebenslagen and Back from Einkünfte to Cockpit work cleanly.')
@@ -176,6 +178,7 @@ export async function runScenario20(browser, webOrigin) {
   await page.locator('[data-testid="katalog-submit-riester-betrag"]').click()
   await page.locator('[data-testid="katalog-option-riester-art-Mittelbar"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="katalog-option-riester-art-Mittelbar"]').click()
+  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
 
   // --- 5. Bumerang-Bug Check #2: Revisit completed Sonderausgaben & Back from WorkdaysScreen ---
   await page.locator('[data-testid="cockpit-kachel-sonderausgaben-status"]', { hasText: 'Erledigt' }).waitFor({
@@ -188,6 +191,7 @@ export async function runScenario20(browser, webOrigin) {
   await nextStep(page)
   await page.locator('[data-testid="arbeitstage-urlaub"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.getByLabel('Zurück').click()
+  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
   await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 10_000 })
 
   console.log('[Scenario 20] PASS: All catalog branches, gates, consecutive integer inputs, and revisit Back-navigation verified.')

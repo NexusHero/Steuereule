@@ -56,6 +56,7 @@ export async function runScenario06(browser, webOrigin) {
   await page.locator('[data-testid="katalog-option-abfindung-Nein"]').click()
   await page.locator('[data-testid="katalog-option-lohnersatz-Nein"]').click()
   await page.locator('[data-testid="katalog-option-nebenjob-Nein"]').click()
+  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
 
   await page.locator('[data-testid="cockpit-kachel-lebenslagen-status"]', { hasText: '⏳ Betrag offen' }).waitFor({
     state: 'visible',
@@ -65,6 +66,7 @@ export async function runScenario06(browser, webOrigin) {
   await page.locator('[data-testid="katalog-input-umzug-kosten"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="katalog-input-umzug-kosten"]').fill('1500')
   await page.locator('[data-testid="katalog-submit-umzug-kosten"]').click()
+  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
   await page.locator('[data-testid="cockpit-kachel-lebenslagen-status"]', { hasText: 'Erledigt' }).waitFor({
     state: 'visible',
     timeout: 10_000,
@@ -100,6 +102,7 @@ export async function runScenario06(browser, webOrigin) {
   await page.locator('[data-testid="arbeitstage-transport-pkw"]').click()
   await page.locator('[data-testid="arbeitstage-arbeitsort"]').fill('München')
   await page.locator('[data-testid="arbeitstage-weiter"]').click()
+  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
 
   await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="cockpit-abgabe-vorbereiten"]').click()

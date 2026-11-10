@@ -71,8 +71,9 @@ export async function runScenario23(browser, webOrigin) {
   await page.locator('[data-testid="ch-wohnsitz-deutschland"]').waitFor({ state: 'visible', timeout: 15_000 })
   console.log('[Scenario 23] Verified: Guest-to-Account upgrade automatically resumed CrossBorderScreen (rememberedPendingPath).')
 
-  // Return to Cockpit via TabBar
-  await page.getByRole('tab', { name: 'Cockpit' }).click()
+  // Return to Cockpit by closing the Sheet (TabBar is hidden while Sheet is open)
+  await page.locator('[data-testid="sheet-schliessen"]').click()
+  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
   await page.locator('[data-testid="cockpit-erstattung"]').waitFor({ state: 'visible', timeout: 10_000 })
 
   // 6. Multi-Tax-Year Isolation: 2026 (migrated from Guest with CH path) vs 2025 (fresh year)
@@ -97,6 +98,7 @@ export async function runScenario23(browser, webOrigin) {
   await page.locator('[data-testid="lstb-weiter"]').click()
 
   // Return to Cockpit and check 2025 now has `cockpit-weiter` (Angestellte)
+  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
   await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.getByRole('tab', { name: 'Cockpit' }).click()
   await page.locator('[data-testid="cockpit-weiter"]').waitFor({ state: 'visible', timeout: 10_000 })

@@ -79,6 +79,7 @@ export async function runScenario21(browser, webOrigin, sql) {
   await page.locator('[data-testid="arbeitstage-transport-pkw"]').click()
   await page.locator('[data-testid="arbeitstage-arbeitsort"]').fill('Stuttgart')
   await page.locator('[data-testid="arbeitstage-weiter"]').click()
+  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
   await page.locator('[data-testid="cockpit-kacheln"]').waitFor({ state: 'visible', timeout: 10_000 })
   await page.locator('[data-testid="cockpit-abgabe-vorbereiten"]').click()
   const printBtnStep = page.locator('[data-testid="abgabe-zum-ausdruck"]')
@@ -147,6 +148,7 @@ export async function runScenario21(browser, webOrigin, sql) {
   await page.locator('[data-testid="kind-speichern"]').click()
   await page.waitForTimeout(400)
   await page.locator('[data-testid="kinder-weiter"]').click()
+  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
 
   // 2) Partial Capital (only kapitalertraege filled -> triggers Kapitalerträge ergänzen)
   await page.locator('[data-testid="cockpit-kapital"]').waitFor({ state: 'visible', timeout: 10_000 })
@@ -156,6 +158,7 @@ export async function runScenario21(browser, webOrigin, sql) {
   await page.locator('[data-testid="kapital-kapitalertraege"]').blur()
   await page.waitForTimeout(400)
   await page.locator('[data-testid="kapital-weiter"]').click()
+  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
 
   // 3) Partial Rental (create 1 object with only mieteinnahmen filled -> triggers Vermietung ergänzen)
   await page.locator('[data-testid="cockpit-vermietung"]').waitFor({ state: 'visible', timeout: 10_000 })
@@ -167,6 +170,7 @@ export async function runScenario21(browser, webOrigin, sql) {
   await page.locator('[data-testid="vermietung-0-mieteinnahmen"]').blur()
   await page.waitForTimeout(300)
   await page.locator('[data-testid="vermietung-weiter"]').click()
+  await page.locator('[data-testid="sheet-schliessen"]').waitFor({ state: 'detached', timeout: 10_000 })
 
   // --- 2. PrintoutRoute Embedded Sub-Screens ---
   unlockTaxYearInDb(sql, email, 2025)
