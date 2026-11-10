@@ -104,17 +104,17 @@ export const LstbControllerGetLstbPerson = {
   B: 'B',
 } as const;
 
-export type LstbControllerConfirmScanParams = {
+export type LstbScanControllerConfirmScanParams = {
 /**
  * B: Person A records the figures of a partner without an own account (ADR-0054).
  */
-person?: LstbControllerConfirmScanPerson;
+person?: LstbScanControllerConfirmScanPerson;
 };
 
-export type LstbControllerConfirmScanPerson = typeof LstbControllerConfirmScanPerson[keyof typeof LstbControllerConfirmScanPerson];
+export type LstbScanControllerConfirmScanPerson = typeof LstbScanControllerConfirmScanPerson[keyof typeof LstbScanControllerConfirmScanPerson];
 
 
-export const LstbControllerConfirmScanPerson = {
+export const LstbScanControllerConfirmScanPerson = {
   A: 'A',
   B: 'B',
 } as const;

@@ -38,33 +38,6 @@ export function matchesActionId(meta: AdvisorMessageMeta | null, actionId: strin
   return false
 }
 
-export async function markLstbActionsAppliedInRepo(
-  advisorRepo: AdvisorRepository,
-  userId: string,
-  taxYear: number,
-  actionIds: readonly string[],
-): Promise<void> {
-  if (actionIds.length === 0) return
-  const targetIds = new Set(actionIds)
-  const history = await advisorRepo.listForUserAndYear(userId, taxYear)
-  const appliedAt = new Date().toISOString()
-
-  for (const msg of history) {
-    if (!msg.meta?.actions) continue
-    let changed = false
-    const nextActions = msg.meta.actions.map((a) => {
-      if (targetIds.has(a.actionId) && a.status === 'pending') {
-        changed = true
-        return { ...a, status: 'applied' as const, appliedAt }
-      }
-      return a
-    })
-    if (changed) {
-      await advisorRepo.updateMessageMeta(msg.id, userId, { ...msg.meta, actions: nextActions })
-    }
-  }
-}
-
 export class InMemoryAdvisorRepository implements AdvisorRepository {
   private readonly rows: AdvisorChatMessageRecord[] = []
 

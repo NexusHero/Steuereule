@@ -13,6 +13,11 @@ import { fieldAccessFrom } from '../src/confirmation/field-access.js'
 import { DEFAULT_AI_TURN_LIMITS, type AiRuntimeConfigService } from '../src/ki/ai-runtime-config.service.js'
 import { RagKiAdapter } from '../src/ki/ki.adapter.js'
 import { OwlModeService } from '../src/owl-mode/owl-mode.service.js'
+import { LinkService } from '../src/link/link.service.js'
+import { LstbScanParseStrategy } from '../src/lstb-scan/lstb-scan.parse-strategy.js'
+import { LstbService } from '../src/lstb/lstb.service.js'
+import { AutoReceiptParseStrategy } from '../src/receipt/parse/auto-receipt-parse.strategy.js'
+import { DocumentParseRegistry } from '../src/receipt/parse/document-parse.registry.js'
 import { ReceiptParseService } from '../src/receipt/receipt-parse.service.js'
 import { FakeAssessmentRepository } from './fakes/fake-assessment.repository.js'
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
@@ -132,14 +137,24 @@ function buildTestHarness(responses: string[], visionEnabled = true) {
     profileRepo,
   )
   const visionModel = new RecordingVisionModel(responses)
-  const parseService = new ReceiptParseService(
-    makeVisionRuntime(visionEnabled),
+  const registry = new DocumentParseRegistry()
+  const runtime = makeVisionRuntime(visionEnabled)
+  const modelFactory = () => visionModel
+  const lstbService = new LstbService(lstbRepo, auditService, new FakeMarkingRepository())
+  const linkService = new LinkService(new FakeLinkRepository(), profileRepo, new FakeMasterDataRepository(), auditService)
+  const autoStrategy = new AutoReceiptParseStrategy(runtime, advisorService, auditService, modelFactory)
+  const lstbStrategy = new LstbScanParseStrategy(
+    registry,
+    runtime,
     advisorService,
     auditService,
-    () => visionModel,
-    receiptRepo,
-    lstbRepo,
+    lstbService,
+    linkService,
+    modelFactory,
   )
+  const parseService = new ReceiptParseService(registry, autoStrategy, receiptRepo)
+  parseService.onModuleInit()
+  lstbStrategy.onModuleInit()
 
   return {
     advisorRepo,
