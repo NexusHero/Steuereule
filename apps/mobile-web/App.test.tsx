@@ -901,14 +901,95 @@ describe('App', () => {
       await waitFor(() => expect(window.location.pathname).toBe('/app'))
     })
 
-    it('keeps /app/steuerjahr/2025/ausdruck mapped to the root Printout screen', async () => {
+    it('keeps /app/steuerjahr/2025/ausdruck mapped to the root Printout screen when plausibility gate passes', async () => {
       mockSignedInSession()
       server.use(
+        http.get('*/v1/steuerjahre/2025/lstb', () =>
+          HttpResponse.json({
+            bruttoarbeitslohn: { kind: 'erfasst', value: 50000 },
+            lohnsteuer: { kind: 'erfasst', value: 8000 },
+            sozialversicherung: { kind: 'erfasst', value: 9000 },
+            state: { kind: 'vollstaendig', bruttoarbeitslohn: 50000, lohnsteuer: 8000, sozialversicherung: 9000 },
+          }),
+        ),
         http.get('*/v1/steuerjahre/2025/freischaltung', () => HttpResponse.json({ status: 'offen' })),
         http.get('*/v1/steuerjahre/2025/ausdruck/pruefung', () => HttpResponse.json({ missing: [] })),
       )
 
       window.history.pushState({}, '', '/app/steuerjahr/2025/ausdruck')
+      const { default: App } = await import('./App')
+      render(<App />)
+
+      expect(await screen.findByText('Ausdruck 2025')).toBeTruthy()
+    })
+
+    it('submission gate (§ 3.5–3.6): redirects /app/steuerjahr/2025/ausdruck to Submission on conflict', async () => {
+      mockSignedInSession()
+
+      window.history.pushState({}, '', '/app/steuerjahr/2025/ausdruck')
+      const { default: App } = await import('./App')
+      render(<App />)
+
+      const printBtn = await screen.findByTestId('abgabe-zum-ausdruck')
+      expect((printBtn as HTMLButtonElement).disabled).toBe(true)
+      expect(screen.queryByText('Ausdruck 2025')).toBeNull()
+      await waitFor(() => expect(window.location.pathname).toBe('/app/steuerjahr/2025/abgabe'))
+    })
+
+    it('submission gate (§ 3.4–3.5): unconfirmed notices redirect Printout to Submission, confirming unlocks, reload resets', async () => {
+      mockSignedInSession()
+      server.use(
+        http.get('*/v1/steuerjahre/2025/lstb', () =>
+          HttpResponse.json({
+            bruttoarbeitslohn: { kind: 'erfasst', value: 50000 },
+            lohnsteuer: { kind: 'erfasst', value: 8000 },
+            sozialversicherung: { kind: 'erfasst', value: 9000 },
+            state: { kind: 'vollstaendig', bruttoarbeitslohn: 50000, lohnsteuer: 8000, sozialversicherung: 9000 },
+          }),
+        ),
+        http.get('*/v1/steuerjahre/2025/interview', () =>
+          HttpResponse.json({
+            answers: { job: 'Angestellt', ausland: 'Nein', kinder: 'Nein', familienstand: 'Ledig', dhf: 'Ja', 'dhf-miete': 'spaeter' },
+            nextStep: { kind: 'done' },
+            openItems: 0,
+          }),
+        ),
+        http.get('*/v1/steuerjahre/2025/freischaltung', () => HttpResponse.json({ status: 'offen' })),
+        http.get('*/v1/steuerjahre/2025/ausdruck/pruefung', () => HttpResponse.json({ missing: [] })),
+      )
+
+      window.history.pushState({}, '', '/app/steuerjahr/2025/ausdruck')
+      const { default: App } = await import('./App')
+      const firstMount = render(<App />)
+
+      fireEvent.click(await screen.findByTestId('gate-warnung-bestaetigen'))
+      fireEvent.click(screen.getByTestId('abgabe-zum-ausdruck'))
+      expect(await screen.findByText('Ausdruck 2025')).toBeTruthy()
+      firstMount.unmount()
+
+      // Simulated reload: in-memory notice confirmation is gone, Printout redirects back to Submission
+      window.history.pushState({}, '', '/app/steuerjahr/2025/ausdruck')
+      render(<App />)
+      expect(await screen.findByTestId('gate-warnung-bestaetigen')).toBeTruthy()
+      expect(screen.queryByText('Ausdruck 2025')).toBeNull()
+    })
+
+    it('allows Stripe payment return URL on Printout when submission gate passes', async () => {
+      mockSignedInSession()
+      server.use(
+        http.get('*/v1/steuerjahre/2025/lstb', () =>
+          HttpResponse.json({
+            bruttoarbeitslohn: { kind: 'erfasst', value: 50000 },
+            lohnsteuer: { kind: 'erfasst', value: 8000 },
+            sozialversicherung: { kind: 'erfasst', value: 9000 },
+            state: { kind: 'vollstaendig', bruttoarbeitslohn: 50000, lohnsteuer: 8000, sozialversicherung: 9000 },
+          }),
+        ),
+        http.get('*/v1/steuerjahre/2025/freischaltung', () => HttpResponse.json({ status: 'bezahlt' })),
+        http.get('*/v1/steuerjahre/2025/ausdruck/pruefung', () => HttpResponse.json({ missing: [] })),
+      )
+
+      window.history.pushState({}, '', '/app/steuerjahr/2025/ausdruck?zahlung=erfolg')
       const { default: App } = await import('./App')
       render(<App />)
 

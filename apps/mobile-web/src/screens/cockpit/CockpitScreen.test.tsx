@@ -77,6 +77,7 @@ function renderCockpit(opts: {
   onOpenKinder?: () => void
   onOpenOwlMode?: (year: number) => void
   onOpenPrintout?: (year: number) => void
+  onOpenSubmission?: (year: number) => void
   onOpenConfirmation?: (year: number) => void
   onContinuePath?: (path: FunnelPath) => void
   onOpenTile?: (tile: TileDefinition, revisit: boolean) => void
@@ -97,6 +98,7 @@ function renderCockpit(opts: {
             {...(opts.onOpenKinder ? { onOpenKinder: opts.onOpenKinder } : {})}
             {...(opts.onOpenOwlMode ? { onOpenOwlMode: opts.onOpenOwlMode } : {})}
             {...(opts.onOpenPrintout ? { onOpenPrintout: opts.onOpenPrintout } : {})}
+            {...(opts.onOpenSubmission ? { onOpenSubmission: opts.onOpenSubmission } : {})}
             {...(opts.onOpenConfirmation ? { onOpenConfirmation: opts.onOpenConfirmation } : {})}
             {...(opts.onContinuePath ? { onContinuePath: opts.onContinuePath } : {})}
             {...(opts.onOpenTile ? { onOpenTile: opts.onOpenTile } : {})}
@@ -502,7 +504,7 @@ describe('CockpitScreen — Kinder & Eulen-Modus entries', () => {
       expect(onOpenTile).toHaveBeenCalledWith(expect.objectContaining({ id: 'lebenslagen' }), true)
     })
 
-    it('renders tiles in empty state too and hides cockpit-weiter when all path tiles are erledigt', async () => {
+    it('renders tiles in empty state too and points cockpit-weiter to Abgabe vorbereiten when all path tiles are erledigt', async () => {
       mockCockpit(null)
       mockInterview({
         job: 'Rente',
@@ -526,14 +528,31 @@ describe('CockpitScreen — Kinder & Eulen-Modus entries', () => {
           }),
         ),
       )
-      renderCockpit({ isSignedIn: true, onOpenTile: vi.fn() })
+      const onOpenSubmission = vi.fn()
+      renderCockpit({ isSignedIn: true, onOpenTile: vi.fn(), onOpenSubmission })
 
       expect((await screen.findByTestId('cockpit-kachel-rente-status')).textContent).toBe('Erledigt')
       expect(screen.getByTestId('cockpit-kachel-einkuenfte-status').textContent).toBe('Erledigt')
       expect(screen.getByTestId('cockpit-kachel-sonderausgaben-status').textContent).toBe('Erledigt')
       expect(screen.queryByTestId('cockpit-kachel-lstb')).toBeNull()
       expect(screen.queryByTestId('cockpit-kachel-arbeitsweg')).toBeNull()
-      expect(screen.queryByTestId('cockpit-weiter')).toBeNull()
+
+      const nextButton = screen.getByTestId('cockpit-weiter')
+      expect(nextButton.textContent).toContain('Nächster Schritt: Abgabe vorbereiten')
+      fireEvent.click(nextButton)
+      expect(onOpenSubmission).toHaveBeenCalledWith(TAX_YEAR)
+    })
+
+    it('renders the wide cockpit-abgabe-vorbereiten tile and opens Submission on press (§ 3.4)', async () => {
+      mockCockpit(LOADED_SUMMARY)
+      mockInterview({ job: 'Angestellt', ausland: 'Nein', kinder: 'Nein', familienstand: 'Ledig' })
+      const onOpenSubmission = vi.fn()
+      renderCockpit({ isSignedIn: true, onOpenTile: vi.fn(), onOpenSubmission })
+
+      const subTile = await screen.findByTestId('cockpit-abgabe-vorbereiten')
+      expect(subTile.textContent).toContain('Abgabe vorbereiten')
+      fireEvent.click(subTile)
+      expect(onOpenSubmission).toHaveBeenCalledWith(TAX_YEAR)
     })
 
     it('keeps existing secondary buttons accessible alongside hub tiles', async () => {

@@ -55,9 +55,10 @@ export interface CockpitTilesProps {
   readonly conflicts?: readonly Conflict[]
   readonly notices?: readonly Notice[]
   readonly onOpenTile: (tile: TileDefinition, revisit: boolean) => void
+  readonly onOpenSubmission?: () => void
 }
 
-export function CockpitTiles({ facts, conflicts = [], notices = [], onOpenTile }: CockpitTilesProps) {
+export function CockpitTiles({ facts, conflicts = [], notices = [], onOpenTile, onOpenSubmission }: CockpitTilesProps) {
   const bp = useBreakpoint()
   const t = useTheme()
   const styles = makeStyles(t)
@@ -65,36 +66,48 @@ export function CockpitTiles({ facts, conflicts = [], notices = [], onOpenTile }
   const tiles = visibleTiles(facts)
 
   return (
-    <View style={styles.grid} testID="cockpit-kacheln">
-      {tiles.map((tile) => {
-        const status = tile.status(facts)
-        const revisit = tileRevisitFlag(tile, facts.answers)
-        const severity = tileHintSeverity(tile.id, conflicts, notices)
-        return (
-          <Pressable
-            key={tile.id}
-            accessibilityRole="button"
-            onPress={() => onOpenTile(tile, revisit)}
-            style={bp === 's' ? styles.tileWrapNarrow : styles.tileWrapWide}
-            testID={`cockpit-kachel-${tile.id}`}
-          >
-            <Card variant="default" style={styles.card}>
-              <Text style={styles.title}>{tr(tile.titleKey)}</Text>
-              <Text style={statusStyle(status, styles)} testID={`cockpit-kachel-${tile.id}-status`}>
-                {statusLabel(status, tr)}
-              </Text>
-              {severity !== null ? (
-                <Text
-                  style={severity === 'blocker' ? styles.hintBlocker : styles.hintWarning}
-                  testID={`cockpit-kachel-${tile.id}-hinweis`}
-                >
-                  {tr(severity === 'blocker' ? 'cockpit.kachel.hinweis.blocker' : 'cockpit.kachel.hinweis.warnung')}
+    <View style={styles.section} testID="cockpit-kacheln">
+      <View style={styles.grid}>
+        {tiles.map((tile) => {
+          const status = tile.status(facts)
+          const revisit = tileRevisitFlag(tile, facts.answers)
+          const severity = tileHintSeverity(tile.id, conflicts, notices)
+          return (
+            <Pressable
+              key={tile.id}
+              accessibilityRole="button"
+              onPress={() => onOpenTile(tile, revisit)}
+              style={bp === 's' ? styles.tileWrapNarrow : styles.tileWrapWide}
+              testID={`cockpit-kachel-${tile.id}`}
+            >
+              <Card variant="default" style={styles.card}>
+                <Text style={styles.title}>{tr(tile.titleKey)}</Text>
+                <Text style={statusStyle(status, styles)} testID={`cockpit-kachel-${tile.id}-status`}>
+                  {statusLabel(status, tr)}
                 </Text>
-              ) : null}
-            </Card>
-          </Pressable>
-        )
-      })}
+                {severity !== null ? (
+                  <Text
+                    style={severity === 'blocker' ? styles.hintBlocker : styles.hintWarning}
+                    testID={`cockpit-kachel-${tile.id}-hinweis`}
+                  >
+                    {tr(severity === 'blocker' ? 'cockpit.kachel.hinweis.blocker' : 'cockpit.kachel.hinweis.warnung')}
+                  </Text>
+                ) : null}
+              </Card>
+            </Pressable>
+          )
+        })}
+      </View>
+      <Pressable
+        accessibilityRole="button"
+        onPress={onOpenSubmission}
+        style={styles.submissionWrap}
+        testID="cockpit-abgabe-vorbereiten"
+      >
+        <Card variant="default" style={styles.card}>
+          <Text style={styles.submissionTitle}>{tr('cockpit.abgabe.titel')}</Text>
+        </Card>
+      </Pressable>
     </View>
   )
 }
@@ -112,12 +125,23 @@ function statusStyle(status: TileStatus, styles: ReturnType<typeof makeStyles>):
 }
 
 function makeStyles(t: UiTheme) {
+  const section: ViewStyle = {
+    width: '100%',
+    marginTop: t.space.s4,
+    gap: t.space.s3,
+  }
   const grid: ViewStyle = {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: t.space.s3,
     width: '100%',
-    marginTop: t.space.s4,
+  }
+  const submissionWrap: ViewStyle = { width: '100%' }
+  const submissionTitle: TextStyle = {
+    fontFamily: t.font.display,
+    fontWeight: t.weight.schwer,
+    fontSize: t.size.l,
+    color: t.color.tinte,
   }
   const tileWrapNarrow: ViewStyle = {
     width: '100%',
@@ -157,9 +181,12 @@ function makeStyles(t: UiTheme) {
   const hintWarning: TextStyle = { ...hintBase, color: t.color.warn }
 
   return {
+    section,
     grid,
     tileWrapNarrow,
     tileWrapWide,
+    submissionWrap,
+    submissionTitle,
     card,
     title,
     statusOpen,
