@@ -16,6 +16,7 @@ import {
   getCockpitControllerGetCockpitSummaryQueryKey,
   getInterviewControllerGetInterviewQueryKey,
   getTaxEstimateControllerGetQueryKey,
+  useInterviewControllerGetInterview,
   type InterviewStateDto,
 } from '@steuereule/api-client'
 import { createAppI18n } from '../../i18n/app-i18n'
@@ -228,6 +229,72 @@ describe('InterviewScreen', () => {
       expect(queryClient.getQueryState(estimateKey)?.isInvalidated).toBe(true)
       expect(queryClient.getQueryState(interviewKey)?.isInvalidated).toBe(true)
     })
+  })
+
+  it('refetches active interview observers (such as CockpitHome mounted behind a post-interview Sheet) once the closing write confirms', async () => {
+    const queryClient = makeTestQueryClient()
+    let postedFinalAnswer = false
+    let getCalls = 0
+    let confirmPost: () => void = () => {}
+    const postGate = new Promise<void>((resolve) => {
+      confirmPost = resolve
+    })
+    const incompleteState: InterviewStateDto = {
+      answers: { job: 'Angestellt', ausland: 'Nein', kinder: 'Nein' },
+      nextStep: { kind: 'question', id: 'familienstand' },
+      openItems: 1,
+    }
+    const doneState: InterviewStateDto = {
+      answers: { job: 'Angestellt', ausland: 'Nein', kinder: 'Nein', familienstand: 'Ledig' },
+      nextStep: { kind: 'done' },
+      openItems: 0,
+    }
+    server.use(
+      http.get(GET_URL, () => {
+        getCalls += 1
+        return HttpResponse.json(postedFinalAnswer ? doneState : incompleteState, { status: 200 })
+      }),
+      http.post(POST_URL, async () => {
+        await postGate
+        postedFinalAnswer = true
+        return HttpResponse.json({ answers: doneState.answers, nextStep: { kind: 'done' }, openItems: 0 }, { status: 200 })
+      }),
+    )
+
+    function CockpitBehindSheetObserver() {
+      const query = useInterviewControllerGetInterview(TAX_YEAR)
+      const kind = query.data?.status === 200 ? query.data.data.nextStep.kind : 'loading'
+      return <span data-testid="observer-next-step">{kind}</span>
+    }
+
+    const i18n = createAppI18n('de')
+    const interviewView = render(
+      <QueryClientProvider client={queryClient}>
+        <I18nextProvider i18n={i18n}>
+          <ThemeProvider mode="light">
+            <InterviewScreen taxYear={TAX_YEAR} onDone={() => interviewView.unmount()} />
+          </ThemeProvider>
+        </I18nextProvider>
+      </QueryClientProvider>,
+    )
+
+    await onMaritalStatusQuestion()
+    const callsAfterInterviewMount = getCalls
+    fireEvent.click(screen.getByText('Ledig'))
+    await waitFor(() => expect(screen.queryByText('Ledig')).toBeNull())
+
+    // Simulate CockpitHome mounting behind the post-interview Sheet and settling its initial GET BEFORE the final POST resolves.
+    const observerView = render(
+      <QueryClientProvider client={queryClient}>
+        <CockpitBehindSheetObserver />
+      </QueryClientProvider>,
+    )
+    await waitFor(() => expect(getCalls).toBeGreaterThan(callsAfterInterviewMount))
+    expect(observerView.getByTestId('observer-next-step').textContent).toBe('question')
+
+    // Now the closing POST resolves — the mounted observer must actively refetch and see 'done'.
+    confirmPost()
+    await waitFor(() => expect(observerView.getByTestId('observer-next-step').textContent).toBe('done'))
   })
 
   describe('a rejected write (400/409) — the server and the local graph disagree, never swallowed', () => {
