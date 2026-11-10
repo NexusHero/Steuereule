@@ -1,5 +1,8 @@
 import { useState } from 'react'
 import { Linking, Pressable, Text, TextInput, View, type TextStyle, type ViewStyle } from 'react-native'
+import { ChatComposer } from './chat/ChatComposer'
+import { ThinkingIndicator } from './chat/ThinkingIndicator'
+import type { AbortedTurn } from './CopilotBridgeProvider'
 import { useTranslation } from 'react-i18next'
 import { AiChip, Button, Card, useTheme, type UiTheme } from '@steuereule/ui'
 import { ReceiptPickerButton } from '../shared/ReceiptPickerButton'
@@ -26,6 +29,10 @@ export interface AdvisorChatPanelProps {
   readonly chatError?: string | null | undefined
   readonly basisMode?: boolean | undefined
   readonly onSendMessage: (text: string) => Promise<void> | void
+  /** Stops the running answer; without it the chat offers no Stop (e.g. the non-streaming companion). */
+  readonly onStop?: (() => void) | undefined
+  /** The last answer the user stopped: partial text, marked as aborted, with „Noch mal fragen“. */
+  readonly abortedTurn?: AbortedTurn | null | undefined
   readonly onApplyAction?: ((actionId: string) => Promise<void> | void) | undefined
   readonly onUndoAction?: ((actionId: string) => Promise<void> | void) | undefined
   readonly onInspectMask?: ((screen: Screen, field?: string) => void) | undefined
@@ -354,6 +361,8 @@ export function AdvisorChatPanel({
   chatError = null,
   basisMode = false,
   onSendMessage,
+  onStop,
+  abortedTurn = null,
   onApplyAction,
   onUndoAction,
   onInspectMask,
@@ -515,20 +524,35 @@ export function AdvisorChatPanel({
           ),
         )}
 
-        {isSending ? (
-          <View style={styles.thinkingBox} testID="advisor-thinking">
-            <Text style={styles.thinkingText}>{tr('advisor.chat.thinking', 'Eule prüft deine Akte & Paragraphen …')}</Text>
-            {streamSteps.length > 0 ? (
-              <Text style={styles.streamStepText} testID="advisor-stream-step">
-                {streamSteps.join(' · ')}
-              </Text>
-            ) : null}
-            {streamedText.length > 0 ? (
-              <Text style={styles.streamTokenPreview} testID="advisor-stream-token-preview">
-                {streamedText}
-              </Text>
-            ) : null}
-          </View>
+        {isSending && streamedText.length > 0 ? (
+          <Card style={styles.assistantBubble} testID="advisor-streaming-message">
+            <View style={styles.assistantBubbleHeader}>
+              <AiChip>{tr('advisor.chat.sender', 'Die Eule')}</AiChip>
+            </View>
+            <View testID="advisor-stream-token-preview" accessibilityLabel={tr('advisor.chat.answering')}>
+              {renderMessageWithLawChips(streamedText, setSelectedSource, styles, tr)}
+            </View>
+          </Card>
+        ) : isSending ? (
+          <ThinkingIndicator steps={streamSteps} />
+        ) : null}
+
+        {abortedTurn && !isSending ? (
+          <Card style={styles.assistantBubble} testID="advisor-message-aborted">
+            <View style={styles.assistantBubbleHeader}>
+              <AiChip>{tr('advisor.chat.sender', 'Die Eule')}</AiChip>
+              <Text style={styles.abortedBadge}>{tr('advisor.chat.aborted')}</Text>
+            </View>
+            {abortedTurn.partialText.length > 0 ? renderMessageWithLawChips(abortedTurn.partialText, setSelectedSource, styles, tr) : null}
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => void handleSubmit(abortedTurn.question)}
+              style={styles.choicePill}
+              testID="advisor-retry"
+            >
+              <Text style={styles.choicePillText}>{tr('advisor.chat.retry')}</Text>
+            </Pressable>
+          </Card>
         ) : null}
       </View>
 
@@ -677,30 +701,21 @@ export function AdvisorChatPanel({
             <Text style={styles.attachButtonText}>📎</Text>
           </Pressable>
         ) : null}
-        <TextInput
-          accessibilityLabel={tr(
-            'advisor.chat.inputPlaceholder',
-            'Frag deine Eule (z. B. Fortbildung, Laptop, Spenden, Endprüfung) …',
-          )}
-          value={inputText}
-          onChangeText={setInputText}
-          placeholder={tr(
-            'advisor.chat.inputPlaceholder',
-            'Frag deine Eule (z. B. Fortbildung, Laptop, Spenden, Endprüfung) …',
-          )}
-          placeholderTextColor={theme.color.tinte2}
-          style={styles.textInput}
-          onSubmitEditing={() => void handleSubmit()}
-          testID="advisor-chat-input"
-        />
-        <Button
-          onPress={() => void handleSubmit()}
-          disabled={isSending || inputText.trim().length === 0}
-          style={styles.sendButton}
-          testID="advisor-chat-send"
-        >
-          {tr('advisor.chat.sendButton', 'Fragen')}
-        </Button>
+        <View style={styles.composer}>
+          <ChatComposer
+            value={inputText}
+            onChangeText={setInputText}
+            onSend={(text) => {
+              setInputText('')
+              void onSendMessage(text)
+            }}
+            onStop={onStop}
+            sending={isSending}
+            placeholder={tr('advisor.chat.inputPlaceholder', 'Frag deine Eule (z. B. Fortbildung, Laptop, Spenden, Endprüfung) …')}
+            inputTestID="advisor-chat-input"
+            sendTestID="advisor-chat-send"
+          />
+        </View>
       </View>
     </View>
   )
@@ -776,6 +791,8 @@ function makeStyles(t: UiTheme) {
       borderColor: t.color.kiLinie,
     } as ViewStyle,
     assistantBubbleHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
       marginBottom: t.space.s2,
     } as ViewStyle,
     assistantText: {
@@ -1000,29 +1017,11 @@ function makeStyles(t: UiTheme) {
       color: t.color.warn,
       marginBottom: 4,
     } as TextStyle,
-    thinkingBox: {
-      padding: t.space.s3,
-      borderRadius: t.radius.m,
-      backgroundColor: t.color.kiWeich,
-      alignItems: 'center',
-    } as ViewStyle,
-    thinkingText: {
-      fontFamily: t.font.text,
-      fontWeight: t.weight.fett,
-      fontSize: t.size.s,
-      color: t.color.kiTinte,
-    } as TextStyle,
     streamStepText: {
       fontFamily: t.font.text,
       fontSize: t.size.xs,
       color: t.color.tinte2,
       marginTop: 4,
-    } as TextStyle,
-    streamTokenPreview: {
-      fontFamily: t.font.text,
-      fontSize: t.size.s,
-      color: t.color.tinte,
-      marginTop: t.space.s2,
     } as TextStyle,
     errorBox: {
       padding: t.space.s3,
@@ -1117,6 +1116,13 @@ function makeStyles(t: UiTheme) {
     inputRowCompact: {
       gap: t.space.s1,
     } as ViewStyle,
+    composer: { flex: 1 } as ViewStyle,
+    abortedBadge: {
+      fontFamily: t.font.text,
+      fontSize: t.size.xs,
+      color: t.color.tinte2,
+      marginLeft: t.space.s2,
+    } as TextStyle,
     attachButton: {
       paddingHorizontal: t.space.s3,
       paddingVertical: t.space.s3,
@@ -1129,10 +1135,6 @@ function makeStyles(t: UiTheme) {
       fontSize: t.size.m,
       color: t.color.tinte,
     } as TextStyle,
-    sendButton: {
-      width: 'auto',
-      paddingHorizontal: t.space.s4,
-    } as ViewStyle,
     textInput: {
       flex: 1,
       backgroundColor: t.color.karte,

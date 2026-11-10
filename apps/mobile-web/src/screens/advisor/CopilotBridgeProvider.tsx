@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import type { AdvisorActionProposal, AdvisorChatMessageView, Screen } from '@steuereule/core'
@@ -61,6 +61,15 @@ export interface StaleConflictState {
   readonly conflicts: readonly StaleFieldConflict[]
 }
 
+/** A turn the user stopped: its partial text stays visible, nothing of it is persisted or applicable. */
+export interface AbortedTurn {
+  readonly question: string
+  readonly partialText: string
+}
+
+/** Messages on success, `null` on a failure (shown via `chatError`), `'aborted'` when the user stopped. */
+export type StreamOutcome = AdvisorChatMessageView[] | null | 'aborted'
+
 export interface ParseReceiptInput {
   readonly fileName: string
   readonly rawText?: string | undefined
@@ -84,7 +93,11 @@ export interface CopilotBridgeContextValue {
   readonly basisMode: boolean
   readonly chatError: string | null
   readonly clearChatError: () => void
-  readonly sendStreamingMessage: (message: string, activeScreen?: Screen) => Promise<AdvisorChatMessageView[] | null>
+  readonly sendStreamingMessage: (message: string, activeScreen?: Screen) => Promise<StreamOutcome>
+  /** Stops the running answer (Stop button, Escape). The partial text becomes `abortedTurn`. */
+  readonly stopStreaming: () => void
+  readonly abortedTurn: AbortedTurn | null
+  readonly clearAbortedTurn: () => void
   readonly batchApplying: boolean
   readonly staleConflict: StaleConflictState | null
   readonly clearStaleConflict: () => void
@@ -222,6 +235,8 @@ export function CopilotBridgeProvider({
   const [streamedText, setStreamedText] = useState('')
   const [basisMode, setBasisMode] = useState(false)
   const [chatError, setChatError] = useState<string | null>(null)
+  const [abortedTurn, setAbortedTurn] = useState<AbortedTurn | null>(null)
+  const abortRef = useRef<AbortController | null>(null)
   const [batchApplying, setBatchApplying] = useState(false)
   const [staleConflict, setStaleConflict] = useState<StaleConflictState | null>(null)
   const [parsingReceipt, setParsingReceipt] = useState(false)
@@ -266,9 +281,21 @@ export function CopilotBridgeProvider({
   )
 
   const sendStreamingMessage = useCallback(
-    async (message: string, activeScreen?: Screen): Promise<AdvisorChatMessageView[] | null> => {
+    async (message: string, activeScreen?: Screen): Promise<StreamOutcome> => {
       if (!isAuthenticated) return null
+      abortRef.current?.abort()
+      const controller = new AbortController()
+      abortRef.current = controller
+      let partialText = ''
+      // The server drops an aborted turn without storing it; only the text read so far survives,
+      // never a proposal (#451 decision 2). The user message was stored, so re-read the session.
+      const markAborted = (): 'aborted' => {
+        setAbortedTurn({ question: message, partialText })
+        void queryClient.invalidateQueries({ queryKey: getAdvisorControllerGetSessionQueryKey(taxYear) })
+        return 'aborted'
+      }
       setChatError(null)
+      setAbortedTurn(null)
       setStreamSteps([])
       setStreamedText('')
       setStreaming(true)
@@ -277,6 +304,7 @@ export function CopilotBridgeProvider({
         const url = `${getApiClientBaseUrl()}${getAdvisorControllerStreamMessageUrl(taxYear)}`
         const response = await fetch(url, {
           method: 'POST',
+          signal: controller.signal,
           credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
@@ -313,6 +341,7 @@ export function CopilotBridgeProvider({
             setStreamSteps((prev) => [...prev, label])
           } else if (event === 'token' && typeof data === 'object' && data !== null && 'text' in data) {
             const chunk = String((data as { text: unknown }).text)
+            partialText += chunk
             setStreamedText((prev) => prev + chunk)
           } else if (event === 'ui_command' && typeof data === 'object' && data !== null && 'openMask' in data) {
             const { openMask, focus } = data as { openMask: Screen; focus?: unknown }
@@ -329,6 +358,9 @@ export function CopilotBridgeProvider({
         if (contentType.includes('text/event-stream')) {
           if (response.body && typeof response.body.getReader === 'function') {
             const reader = response.body.getReader()
+            // Cancelling the reader closes the stream even where the fetch implementation does not
+            // tie the body to the abort signal; the server then sees the connection close.
+            controller.signal.addEventListener('abort', () => void reader.cancel().catch(() => {}), { once: true })
             const decoder = new TextDecoder()
             let buffer = ''
             for (;;) {
@@ -356,6 +388,7 @@ export function CopilotBridgeProvider({
         } else {
           doneResponse = (await response.json()) as SendAdvisorMessageResponseDto
         }
+        if (controller.signal.aborted) return markAborted()
 
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: getAdvisorControllerGetSessionQueryKey(taxYear) }),
@@ -371,14 +404,22 @@ export function CopilotBridgeProvider({
         }
         return []
       } catch (error) {
+        if (controller.signal.aborted) return markAborted()
         setChatError(error instanceof Error ? error.message : 'Verbindung unterbrochen.')
         return null
       } finally {
-        setStreaming(false)
+        if (abortRef.current === controller) {
+          abortRef.current = null
+          setStreaming(false)
+        }
       }
     },
     [isAuthenticated, openMaskPreview, queryClient, taxYear],
   )
+
+  const stopStreaming = useCallback(() => {
+    abortRef.current?.abort()
+  }, [])
 
   const applyAllPending = useCallback(
     async (
@@ -602,6 +643,9 @@ export function CopilotBridgeProvider({
       chatError,
       clearChatError: () => setChatError(null),
       sendStreamingMessage,
+      stopStreaming,
+      abortedTurn,
+      clearAbortedTurn: () => setAbortedTurn(null),
       batchApplying,
       staleConflict,
       clearStaleConflict: () => setStaleConflict(null),
@@ -635,6 +679,8 @@ export function CopilotBridgeProvider({
       basisMode,
       chatError,
       sendStreamingMessage,
+      stopStreaming,
+      abortedTurn,
       batchApplying,
       staleConflict,
       applyAllPending,

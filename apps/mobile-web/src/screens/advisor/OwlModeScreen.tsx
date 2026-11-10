@@ -1,8 +1,10 @@
 import { useRef, useState, type ReactNode } from 'react'
-import { Pressable, ScrollView, Text, TextInput, View, type TextStyle, type ViewStyle } from 'react-native'
+import { Pressable, ScrollView, Text, View, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { AiChip, Button, Card, Chip, Option, inkOnFunke, useBreakpoint, useTheme, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
+import { ChatComposer } from './chat/ChatComposer'
+import { useStickToBottom } from './chat/useStickToBottom'
+import { AiChip, Button, Card, Chip, Option, useBreakpoint, useTheme, WIDE_CONTENT_MAX_WIDTH, type UiTheme } from '@steuereule/ui'
 import {
   evaluateAdvisorTurn,
   formatEuro,
@@ -465,6 +467,7 @@ function OwlModeScreenView({
   const [tabletDrawerOpen, setTabletDrawerOpen] = useState(false)
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false)
   const [dockInput, setDockInput] = useState('')
+  const chatScroll = useStickToBottom()
   const [cards, setCards] = useState<readonly OwlCardsDisplay[]>(initialCards)
   const [activeIndex, setActiveIndex] = useState(0)
   const [localMessages, setLocalMessages] = useState<readonly AdvisorChatMessageView[]>(initialMessages ?? [])
@@ -512,6 +515,8 @@ function OwlModeScreenView({
       }
       if (bridge && bridge.isAuthenticated) {
         const res = await bridge.sendStreamingMessage(text, viewMode.kind === 'mask' ? viewMode.screen : undefined)
+        // A stopped answer stays stopped: no local stand-in reply (#451 decision 2).
+        if (res === 'aborted') return
         if (res && res.length > 0) {
           setLocalMessages((prev) => [...prev, ...res])
           return
@@ -623,6 +628,8 @@ function OwlModeScreenView({
         chatError={bridge?.chatError}
         basisMode={bridge?.basisMode}
         onSendMessage={handleSendChat}
+        onStop={bridge?.stopStreaming}
+        abortedTurn={bridge?.abortedTurn}
         onApplyAction={handleApplyAction}
         onUndoAction={handleUndoAction}
         onInspectMask={handleInspectMask}
@@ -925,6 +932,7 @@ function OwlModeScreenView({
 
           {desktopChatOpen ? (
             <ScrollView
+              {...chatScroll}
               style={styles.desktopChatPane}
               contentContainerStyle={styles.paneContent}
               testID="eule-desktop-chat-pane"
@@ -970,7 +978,7 @@ function OwlModeScreenView({
                 <Text style={styles.toolbarToggleText}>{tr('eule.workspace.tabletChatClose', '✕ Schließen')}</Text>
               </Pressable>
             </View>
-            <ScrollView contentContainerStyle={styles.paneContent}>
+            <ScrollView {...chatScroll} contentContainerStyle={styles.paneContent}>
               {renderChatPanel(true)}
             </ScrollView>
           </View>
@@ -995,7 +1003,7 @@ function OwlModeScreenView({
               <Text style={styles.toolbarToggleText}>{tr('eule.workspace.minimize', '▾ Verkleinern')}</Text>
             </Pressable>
           </View>
-          <ScrollView contentContainerStyle={styles.paneContent}>
+          <ScrollView {...chatScroll} contentContainerStyle={styles.paneContent}>
             {renderChatPanel(true)}
           </ScrollView>
         </View>
@@ -1063,30 +1071,24 @@ function OwlModeScreenView({
                     <Text style={styles.dockReceiptText}>📎</Text>
                   </Pressable>
                 ) : null}
-                <TextInput
-                  accessibilityLabel={tr('eule.workspace.dockPlaceholder', 'Kurze Frage an die Eule …')}
-                  value={dockInput}
-                  onChangeText={setDockInput}
-                  placeholder={tr('eule.workspace.dockPlaceholder', 'Kurze Frage an die Eule …')}
-                  placeholderTextColor={t.color.tinte2}
-                  style={styles.dockInput}
-                  testID="eule-mobile-dock-input"
-                />
-                <Pressable
-                  accessibilityRole="button"
-                  disabled={effectiveSending || dockInput.trim().length === 0}
-                  onPress={() => {
-                    const q = dockInput.trim()
-                    if (!q || effectiveSending) return
-                    setDockInput('')
-                    setMobileSheetOpen(true)
-                    void handleSendChat(q)
-                  }}
-                  style={styles.dockSendBtn}
-                  testID="eule-mobile-dock-send-btn"
-                >
-                  <Text style={styles.dockSendText}>{tr('advisor.chat.sendButton', 'Fragen')}</Text>
-                </Pressable>
+                <View style={styles.dockComposer}>
+                  <ChatComposer
+                    value={dockInput}
+                    onChangeText={setDockInput}
+                    onSend={(q) => {
+                      setDockInput('')
+                      setMobileSheetOpen(true)
+                      void handleSendChat(q)
+                    }}
+                    onStop={bridge?.stopStreaming}
+                    sending={effectiveSending}
+                    placeholder={tr('eule.workspace.dockPlaceholder', 'Kurze Frage an die Eule …')}
+                    inputTestID="eule-mobile-dock-input"
+                    sendTestID="eule-mobile-dock-send-btn"
+                    stopTestID="eule-mobile-dock-stop-btn"
+                    variant="dock"
+                  />
+                </View>
               </View>
             </View>
           ) : null}
@@ -1199,6 +1201,7 @@ function makeStyles(t: UiTheme) {
       alignItems: 'center',
       gap: t.space.s2,
     } as ViewStyle,
+    dockComposer: { flex: 1 } as ViewStyle,
     dockReceiptBtn: {
       paddingHorizontal: t.space.s2,
       paddingVertical: t.space.s2,
@@ -1210,32 +1213,6 @@ function makeStyles(t: UiTheme) {
     dockReceiptText: {
       fontSize: t.size.m,
       color: t.color.tinte,
-    } as TextStyle,
-    dockInput: {
-      flex: 1,
-      backgroundColor: t.color.grund,
-      borderWidth: 1,
-      borderColor: t.color.linieWeich,
-      borderRadius: t.radius.s,
-      paddingHorizontal: t.space.s3,
-      paddingVertical: t.space.s2,
-      fontFamily: t.font.text,
-      fontSize: t.size.s,
-      color: t.color.tinte,
-    } as TextStyle,
-    dockSendBtn: {
-      paddingHorizontal: t.space.s3,
-      paddingVertical: t.space.s2,
-      borderRadius: t.radius.pille,
-      backgroundColor: t.color.funke,
-      borderWidth: 1.5,
-      borderColor: t.color.tinte,
-    } as ViewStyle,
-    dockSendText: {
-      fontFamily: t.font.text,
-      fontWeight: t.weight.schwer,
-      fontSize: t.size.s,
-      color: inkOnFunke(t),
     } as TextStyle,
     drawerHeader: {
       flexDirection: 'row',
