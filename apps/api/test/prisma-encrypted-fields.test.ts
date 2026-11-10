@@ -204,6 +204,8 @@ const EXPECTED_CURSORS: Record<string, string> = {
   OauthClientAssertion: 'id',
   Jwks: 'id',
   AdvisorChatMessage: 'id',
+  UserEncryptionKey: 'id',
+  ReceiptFile: 'id',
 }
 
 describe('encrypted/hashed field set (#325) — derived from Prisma.dmmf, not comment text', () => {
@@ -270,12 +272,14 @@ describe('encrypted/hashed field set (#325) — derived from Prisma.dmmf, not co
       'OwlCardDismissal',
       'OwlSetting',
       'Passkey',
+      'ReceiptFile',
       'Session',
       'TaxDataAccessLog',
       'TaxYear',
       'TaxYearLink',
       'TwoFactor',
       'Unlock',
+      'UserEncryptionKey',
       'YearTakeover',
     ])
 

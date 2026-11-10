@@ -15,6 +15,7 @@ import { LinkService } from '../link/link.service.js'
 import { ParsePersonPipe } from '../link/parse-person.pipe.js'
 import { ParseLstbFieldPipe } from './parse-lstb-field.pipe.js'
 import { LstbService } from './lstb.service.js'
+import { ConfirmLstbScanDto } from './dto/confirm-lstb-scan.dto.js'
 import { LstbFieldDto } from './dto/lstb-field.dto.js'
 import { LstbResponseDto } from './dto/lstb-response.dto.js'
 
@@ -44,6 +45,28 @@ export class LstbController {
     @Query('person', ParsePersonPipe) person: 'A' | 'B',
   ): Promise<LstbResponseDto> {
     return this.lstbService.getState(await this.link.dataUser(userId, year, person), year)
+  }
+
+  @Put(':jahr/lstb')
+  @HttpCode(200)
+  @RequiresAccount()
+  @ApiParam({
+    name: 'jahr',
+    type: Number,
+    example: 2026,
+    description: 'The tax year (Steuerjahr).',
+  })
+  @ApiBody({ type: ConfirmLstbScanDto })
+  @ApiOkResponse({ type: LstbResponseDto, description: 'Atomically saves confirmed LStB values with Beleg provenance.' })
+  @ApiUnauthorizedResponse({ description: 'Guest session — this endpoint requires a signed-in account.' })
+  @ApiQuery({ name: 'person', required: false, enum: ['A', 'B'], description: 'B: Person A records the figures of a partner without an own account (ADR-0054).' })
+  async confirmScan(
+    @CurrentUser() userId: string,
+    @Param('jahr', ParseTaxYearPipe) year: number,
+    @Body() dto: ConfirmLstbScanDto,
+    @Query('person', ParsePersonPipe) person: 'A' | 'B',
+  ): Promise<LstbResponseDto> {
+    return this.lstbService.applyConfirmedScan(userId, await this.link.dataUser(userId, year, person), year, dto)
   }
 
   @Put(':jahr/lstb/:feld')

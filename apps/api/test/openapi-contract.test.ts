@@ -386,5 +386,26 @@ describe('OpenAPI contract for /v1/steuerjahre/{jahr}/advisor/actions/apply-batc
     expect(schema?.properties?.screen?.enum).toContain('assessment')
     expect(Object.keys(schema?.properties ?? {})).toContain('expectedPreviousValue')
     expect(Object.keys(schema?.properties ?? {})).toContain('paragraph')
+    expect(Object.keys(schema?.properties ?? {})).toContain('receiptId')
+    expect(Object.keys(schema?.properties ?? {})).toContain('confidenceStatus')
+  })
+
+  it('documents ReceiptResponseDto file metadata, DELETE /v1/belege/{id}, PUT /v1/steuerjahre/{jahr}/lstb & LStB parse schema (#444)', () => {
+    const receiptSchema = document.components?.schemas?.ReceiptResponseDto as { properties?: Record<string, unknown> } | undefined
+    expect(Object.keys(receiptSchema?.properties ?? {})).toEqual(
+      expect.arrayContaining(['hasFile', 'mimeType', 'byteLength']),
+    )
+
+    const delBeleg = document.paths['/v1/belege/{id}']?.delete
+    expect(delBeleg?.responses['200']).toBeDefined()
+
+    const putLstb = document.paths['/v1/steuerjahre/{jahr}/lstb']?.put
+    expect(putLstb).toBeDefined()
+    expect(putLstb?.responses['200']).toBeDefined()
+    const putLstbBody = putLstb?.requestBody as { content?: Record<string, { schema?: { $ref?: string } }> } | undefined
+    expect(putLstbBody?.content?.['application/json']?.schema?.$ref).toBe('#/components/schemas/ConfirmLstbScanDto')
+
+    const parseRespSchema = document.components?.schemas?.ParseReceiptResponseDto as { properties?: Record<string, unknown> } | undefined
+    expect(Object.keys(parseRespSchema?.properties ?? {})).toContain('lstb')
   })
 })

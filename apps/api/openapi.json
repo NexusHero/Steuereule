@@ -165,6 +165,62 @@
         "tags": [
           "lstb"
         ]
+      },
+      "put": {
+        "operationId": "LstbController_confirmScan",
+        "parameters": [
+          {
+            "name": "person",
+            "required": false,
+            "in": "query",
+            "description": "B: Person A records the figures of a partner without an own account (ADR-0054).",
+            "schema": {
+              "enum": [
+                "A",
+                "B"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "description": "The tax year (Steuerjahr).",
+            "schema": {
+              "example": 2026,
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmLstbScanDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Atomically saves confirmed LStB values with Beleg provenance.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LstbResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Guest session — this endpoint requires a signed-in account."
+          }
+        },
+        "tags": [
+          "lstb"
+        ]
       }
     },
     "/v1/steuerjahre/{jahr}/lstb/{feld}": {
@@ -1690,6 +1746,27 @@
         ]
       }
     },
+    "/v1/belege/upload": {
+      "post": {
+        "operationId": "ReceiptController_upload",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "Uploads and encrypts an original PDF/image receipt binary (max 10 MB) and creates the Beleg.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceiptResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "belege"
+        ]
+      }
+    },
     "/v1/belege/{id}/zuordnung": {
       "post": {
         "operationId": "ReceiptController_setAssignment",
@@ -1727,6 +1804,40 @@
           },
           "404": {
             "description": "No such Beleg for this account — nothing was persisted."
+          }
+        },
+        "tags": [
+          "belege"
+        ]
+      }
+    },
+    "/v1/belege/{id}": {
+      "delete": {
+        "operationId": "ReceiptController_delete",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "The Beleg id (the caller’s own).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deletes the Beleg and its encrypted original binary.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteReceiptResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such Beleg for this account — nothing was deleted."
           }
         },
         "tags": [
@@ -1980,6 +2091,49 @@
     "/v1/steuerjahre/{jahr}/advisor/actions/{actionId}/undo": {
       "post": {
         "operationId": "AdvisorController_undoAction",
+        "parameters": [
+          {
+            "name": "actionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": "act-123456",
+              "type": "string"
+            }
+          },
+          {
+            "name": "jahr",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": 2025,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdvisorActionMutationResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Requires account."
+          }
+        },
+        "tags": [
+          "eulen-modus"
+        ]
+      }
+    },
+    "/v1/steuerjahre/{jahr}/advisor/actions/{actionId}/dismiss": {
+      "post": {
+        "operationId": "AdvisorController_dismissAction",
         "parameters": [
           {
             "name": "actionId",
@@ -3640,6 +3794,53 @@
           "lohnsteuer",
           "sozialversicherung",
           "state"
+        ]
+      },
+      "ConfirmLstbScanDto": {
+        "type": "object",
+        "properties": {
+          "bruttoarbeitslohn": {
+            "type": "number",
+            "example": 54320,
+            "description": "Bruttoarbeitslohn (Zeile 3) in whole EUR."
+          },
+          "lohnsteuer": {
+            "type": "number",
+            "example": 9840,
+            "description": "Einbehaltene Lohnsteuer (Zeile 4) in whole EUR."
+          },
+          "sozialversicherung": {
+            "type": "number",
+            "example": 10912,
+            "description": "SV-Arbeitnehmeranteil (Summe Zeilen 23/23a/23b, 25, 26 und 27) in whole EUR."
+          },
+          "receiptId": {
+            "type": "string",
+            "example": "beleg-123",
+            "description": "Optional receipt id for { kind: \"beleg\", receiptId } provenance."
+          },
+          "overwriteExisting": {
+            "type": "boolean",
+            "example": false,
+            "description": "Must be true to overwrite already captured LStB fields (ADR-0008)."
+          },
+          "actionIds": {
+            "example": [
+              "act-1",
+              "act-2",
+              "act-3"
+            ],
+            "description": "Staged advisor actionIds fulfilled by this confirmation.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "bruttoarbeitslohn",
+          "lohnsteuer",
+          "sozialversicherung"
         ]
       },
       "LinkPersonBDto": {
@@ -6102,6 +6303,23 @@
             "example": "2026-01-15",
             "description": "Payment date (ISO yyyy-mm-dd)."
           },
+          "hasFile": {
+            "type": "boolean",
+            "example": true,
+            "description": "Whether an encrypted original document binary is attached."
+          },
+          "mimeType": {
+            "type": "string",
+            "nullable": true,
+            "example": "application/pdf",
+            "description": "Sniffed MIME type when a binary file is attached."
+          },
+          "byteLength": {
+            "type": "number",
+            "nullable": true,
+            "example": 142850,
+            "description": "Original file size in bytes when attached."
+          },
           "assignment": {
             "description": "@steuereule/core’s zuordnungAusDaten — never recomputed elsewhere.",
             "allOf": [
@@ -6117,6 +6335,9 @@
           "kind",
           "belegdatum",
           "zahlungsdatum",
+          "hasFile",
+          "mimeType",
+          "byteLength",
           "assignment"
         ]
       },
@@ -6178,6 +6399,18 @@
           "taxYear"
         ]
       },
+      "DeleteReceiptResponseDto": {
+        "type": "object",
+        "properties": {
+          "deleted": {
+            "type": "boolean",
+            "example": true
+          }
+        },
+        "required": [
+          "deleted"
+        ]
+      },
       "ParseReceiptDto": {
         "type": "object",
         "properties": {
@@ -6192,6 +6425,29 @@
           "rawText": {
             "type": "string",
             "example": "Dell UltraSharp Monitor 480 EUR am 2025-05-10"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "lstb"
+            ],
+            "example": "lstb",
+            "description": "Explicit document parser cascade: \"lstb\" uses deterministic two-stage German LStB extraction."
+          },
+          "receiptId": {
+            "type": "string",
+            "example": "beleg-123",
+            "description": "Optional existing Beleg id owned by the caller to link provenance."
+          },
+          "person": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B"
+            ],
+            "example": "A",
+            "description": "Taxpayer slot when parsing a partner LStB (ADR-0054)."
           },
           "imageBase64": {
             "type": "string",
@@ -6415,6 +6671,43 @@
           "paragraph": {
             "type": "string",
             "example": "§ 10b EStG"
+          },
+          "receiptId": {
+            "type": "string",
+            "example": "beleg-123"
+          },
+          "confidenceStatus": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "pruefen"
+            ],
+            "example": "ok"
+          },
+          "sourceLines": {
+            "example": [
+              "3"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "calculationPath": {
+            "type": "string",
+            "nullable": true,
+            "example": "Zeile 3: 54.320,00 €"
+          },
+          "fieldReason": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "missing",
+              "unreadable",
+              "plausibility_conflict",
+              "partial_sv_lines"
+            ],
+            "example": null
           }
         },
         "required": [
@@ -6429,6 +6722,54 @@
           "deltaEur",
           "reason",
           "sourceId"
+        ]
+      },
+      "AdvisorLstbScanMetaDto": {
+        "type": "object",
+        "properties": {
+          "receiptId": {
+            "type": "string",
+            "nullable": true,
+            "example": "beleg-123"
+          },
+          "stage": {
+            "type": "string",
+            "enum": [
+              "deterministic",
+              "llm_text_fallback"
+            ],
+            "example": "deterministic"
+          },
+          "taxYearOnDocument": {
+            "type": "number",
+            "nullable": true,
+            "example": 2025
+          },
+          "person": {
+            "type": "string",
+            "enum": [
+              "A",
+              "B"
+            ],
+            "example": "A"
+          },
+          "actionIds": {
+            "example": [
+              "act-1",
+              "act-2",
+              "act-3"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "receiptId",
+          "stage",
+          "taxYearOnDocument",
+          "actionIds"
         ]
       },
       "AdvisorMaxPathProposalDto": {
@@ -6553,6 +6894,43 @@
             "type": "string",
             "example": "§ 10b EStG"
           },
+          "receiptId": {
+            "type": "string",
+            "example": "beleg-123"
+          },
+          "confidenceStatus": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "pruefen"
+            ],
+            "example": "ok"
+          },
+          "sourceLines": {
+            "example": [
+              "3"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "calculationPath": {
+            "type": "string",
+            "nullable": true,
+            "example": "Zeile 3: 54.320,00 €"
+          },
+          "fieldReason": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "missing",
+              "unreadable",
+              "plausibility_conflict",
+              "partial_sv_lines"
+            ],
+            "example": null
+          },
           "evidenceHint": {
             "type": "string",
             "example": "Nachweis-Hinweis: Das Finanzamt kann eine kurze Bestätigung des Arbeitgebers anfordern."
@@ -6621,6 +6999,15 @@
           "action": {
             "$ref": "#/components/schemas/AdvisorActionProposalDto"
           },
+          "actions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdvisorActionProposalDto"
+            }
+          },
+          "lstbScan": {
+            "$ref": "#/components/schemas/AdvisorLstbScanMetaDto"
+          },
           "twoPaths": {
             "$ref": "#/components/schemas/AdvisorTwoPathsProposalDto"
           },
@@ -6683,6 +7070,196 @@
           "createdAt"
         ]
       },
+      "LstbYearConflictDto": {
+        "type": "object",
+        "properties": {
+          "documentYear": {
+            "type": "number",
+            "example": 2024
+          },
+          "activeYear": {
+            "type": "number",
+            "example": 2025
+          }
+        },
+        "required": [
+          "documentYear",
+          "activeYear"
+        ]
+      },
+      "LstbExistingValuesDto": {
+        "type": "object",
+        "properties": {
+          "bruttoarbeitslohn": {
+            "type": "number",
+            "nullable": true,
+            "example": 50000
+          },
+          "lohnsteuer": {
+            "type": "number",
+            "nullable": true,
+            "example": 9000
+          },
+          "sozialversicherung": {
+            "type": "number",
+            "nullable": true,
+            "example": 10000
+          }
+        },
+        "required": [
+          "bruttoarbeitslohn",
+          "lohnsteuer",
+          "sozialversicherung"
+        ]
+      },
+      "LstbExistingConflictDto": {
+        "type": "object",
+        "properties": {
+          "hasExisting": {
+            "type": "boolean",
+            "example": false
+          },
+          "existing": {
+            "$ref": "#/components/schemas/LstbExistingValuesDto"
+          }
+        },
+        "required": [
+          "hasExisting",
+          "existing"
+        ]
+      },
+      "LstbExtractedFieldDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "number",
+            "nullable": true,
+            "example": 54320
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "pruefen"
+            ],
+            "example": "ok"
+          },
+          "sourceLines": {
+            "example": [
+              "3"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "calculationPath": {
+            "type": "string",
+            "nullable": true,
+            "example": "Zeile 3: 54.320,00 €"
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "missing",
+              "unreadable",
+              "plausibility_conflict",
+              "partial_sv_lines"
+            ],
+            "example": null
+          }
+        },
+        "required": [
+          "value",
+          "status",
+          "sourceLines",
+          "calculationPath",
+          "reason"
+        ]
+      },
+      "LstbExtractedFieldsDto": {
+        "type": "object",
+        "properties": {
+          "bruttoarbeitslohn": {
+            "$ref": "#/components/schemas/LstbExtractedFieldDto"
+          },
+          "lohnsteuer": {
+            "$ref": "#/components/schemas/LstbExtractedFieldDto"
+          },
+          "sozialversicherung": {
+            "$ref": "#/components/schemas/LstbExtractedFieldDto"
+          }
+        },
+        "required": [
+          "bruttoarbeitslohn",
+          "lohnsteuer",
+          "sozialversicherung"
+        ]
+      },
+      "ParsedLstbResponseDto": {
+        "type": "object",
+        "properties": {
+          "stage": {
+            "type": "string",
+            "enum": [
+              "deterministic",
+              "llm_text_fallback"
+            ],
+            "example": "deterministic"
+          },
+          "receiptId": {
+            "type": "string",
+            "nullable": true,
+            "example": "beleg-123"
+          },
+          "taxYearOnDocument": {
+            "type": "number",
+            "nullable": true,
+            "example": 2025
+          },
+          "yearConflict": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LstbYearConflictDto"
+              }
+            ]
+          },
+          "existingLstbConflict": {
+            "$ref": "#/components/schemas/LstbExistingConflictDto"
+          },
+          "fields": {
+            "$ref": "#/components/schemas/LstbExtractedFieldsDto"
+          },
+          "stagedActionIds": {
+            "example": [
+              "act-1",
+              "act-2",
+              "act-3"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "securityBlocked": {
+            "type": "boolean",
+            "example": false
+          }
+        },
+        "required": [
+          "stage",
+          "receiptId",
+          "taxYearOnDocument",
+          "yearConflict",
+          "existingLstbConflict",
+          "fields",
+          "stagedActionIds",
+          "securityBlocked"
+        ]
+      },
       "ParseReceiptResponseDto": {
         "type": "object",
         "properties": {
@@ -6716,6 +7293,15 @@
             "allOf": [
               {
                 "$ref": "#/components/schemas/AdvisorChatMessageDto"
+              }
+            ]
+          },
+          "lstb": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ParsedLstbResponseDto"
               }
             ]
           }

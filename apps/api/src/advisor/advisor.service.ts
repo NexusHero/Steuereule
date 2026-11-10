@@ -17,9 +17,11 @@ import {
   type AdvisorTurnResult,
   type AdvisorUndoEntry,
   type CaseDigest,
+  type LstbExtractedField,
   type OwlSourceId,
   type Profession,
   type Screen,
+  type WageTaxCertificateFieldId,
 } from '@steuereule/core'
 import { AuditService } from '../audit/audit.service.js'
 import { checkPiiFree } from '../ki/ki.adapter.js'
@@ -89,6 +91,7 @@ function toPublicMeta(meta: AdvisorMessageMeta): AdvisorMessageMeta {
   return {
     ...rest,
     ...(rest.action ? { action: toPublicAction(rest.action) } : {}),
+    ...(rest.actions ? { actions: rest.actions.map((a) => toPublicAction(a)) } : {}),
     ...(rest.twoPaths
       ? {
           twoPaths: {
@@ -521,6 +524,119 @@ export class AdvisorService {
     }
   }
 
+  async stageLstbScanBatch(
+    userId: string,
+    taxYear: number,
+    input: {
+      readonly digestUserId?: string | undefined
+      readonly receiptId: string | null
+      readonly stage: 'deterministic' | 'llm_text_fallback'
+      readonly taxYearOnDocument: number | null
+      readonly person?: 'A' | 'B' | undefined
+      readonly engine: AdvisorEngineInfo
+      readonly summaryText: string
+      readonly fields: ReadonlyArray<{
+        readonly field: WageTaxCertificateFieldId
+        readonly label: string
+        readonly extracted: LstbExtractedField
+      }>
+    },
+  ): Promise<{ actions: AdvisorActionProposal[]; assistantMessage: AdvisorChatMessageDto }> {
+    for (const item of input.fields) {
+      assertAiWritable('lstb', item.field)
+    }
+
+    const setting = await this.owlModeService.getSetting(userId)
+    if (!setting.enabled) {
+      await this.owlModeService.setSetting(userId, true)
+    }
+
+    const digest = await this.buildCaseDigest(input.digestUserId ?? userId, taxYear)
+    const rawActions: AdvisorActionProposal[] = input.fields.map((item) => {
+      const valueStr = item.extracted.value !== null ? String(item.extracted.value) : ''
+      const sim =
+        item.extracted.value !== null
+          ? simulateAdvisorFieldDelta(digest, 'lstb', item.field, valueStr)
+          : { previousValue: null, beforeRefundEur: 0, afterRefundEur: 0, deltaEur: 0 }
+
+      return {
+        actionId: `act-${randomUUID().slice(0, 12)}`,
+        status: 'pending',
+        screen: 'lstb',
+        field: item.field,
+        instance: null,
+        label: item.label,
+        previousValue: sim.previousValue,
+        expectedPreviousValue: sim.previousValue,
+        newValue: valueStr,
+        beforeRefundEur: sim.beforeRefundEur,
+        afterRefundEur: sim.afterRefundEur,
+        deltaEur: sim.deltaEur,
+        reason:
+          item.extracted.calculationPath ??
+          'Aus Lohnsteuerbescheinigung extrahierter Wert (§ 9 Abs. 1 EStG).',
+        sourceId: 'estg-9-1',
+        paragraph: ADVISOR_LEGAL_SOURCES['estg-9-1'].paragraph,
+        ...(input.receiptId ? { receiptId: input.receiptId } : {}),
+        confidenceStatus: item.extracted.status,
+        sourceLines: item.extracted.sourceLines,
+        calculationPath: item.extracted.calculationPath,
+        fieldReason: item.extracted.reason,
+      }
+    })
+
+    const initialMeta: AdvisorMessageMeta = {
+      sources: ['estg-9-1'],
+      actions: rawActions,
+      lstbScan: {
+        receiptId: input.receiptId,
+        stage: input.stage,
+        taxYearOnDocument: input.taxYearOnDocument,
+        ...(input.person !== undefined ? { person: input.person } : {}),
+        actionIds: rawActions.map((a) => a.actionId),
+      },
+    }
+
+    const enrichedMeta = await this.enrichDraftsWithRawBaseline(userId, taxYear, initialMeta)
+    checkPiiFree(enrichedMeta)
+    await this.supersedePendingDraftsForSameTargets(userId, taxYear, this.collectPendingTargetKeys(enrichedMeta))
+
+    const assistantMessage = await this.advisorRepo.createMessage({
+      userId,
+      taxYear,
+      role: 'assistant',
+      content: input.summaryText,
+      meta: { ...enrichedMeta, engine: input.engine },
+    })
+
+    return {
+      actions: (enrichedMeta.actions ?? []).map((a) => toPublicAction(a)),
+      assistantMessage: toMessageDto(assistantMessage),
+    }
+  }
+
+  async markLstbActionsApplied(userId: string, taxYear: number, actionIds: readonly string[]): Promise<void> {
+    if (actionIds.length === 0) return
+    const targetIds = new Set(actionIds)
+    const history = await this.advisorRepo.listForUserAndYear(userId, taxYear)
+    const appliedAt = new Date().toISOString()
+
+    for (const msg of history) {
+      if (!msg.meta?.actions) continue
+      let changed = false
+      const nextActions = msg.meta.actions.map((a) => {
+        if (targetIds.has(a.actionId) && a.status === 'pending') {
+          changed = true
+          return { ...a, status: 'applied' as const, appliedAt }
+        }
+        return a
+      })
+      if (changed) {
+        await this.advisorRepo.updateMessageMeta(msg.id, userId, { ...msg.meta, actions: nextActions })
+      }
+    }
+  }
+
   private targetKeyOf(action: Pick<AdvisorActionProposal, 'screen' | 'field' | 'instance'>): string {
     return provenanceKey(action.screen, action.field, action.instance ?? undefined)
   }
@@ -529,6 +645,9 @@ export class AdvisorService {
     const keys = new Set<string>()
     if (!meta) return keys
     if (meta.action?.status === 'pending') keys.add(this.targetKeyOf(meta.action))
+    for (const a of meta.actions ?? []) {
+      if (a.status === 'pending') keys.add(this.targetKeyOf(a))
+    }
     if (meta.twoPaths?.safePath.status === 'pending') keys.add(this.targetKeyOf(meta.twoPaths.safePath))
     if (meta.twoPaths?.maxPath.status === 'pending') keys.add(this.targetKeyOf(meta.twoPaths.maxPath))
     return keys
@@ -585,6 +704,12 @@ export class AdvisorService {
         action: await this.enrichSingleDraft(userId, taxYear, nextMeta.action),
       }
     }
+    if (nextMeta.actions) {
+      nextMeta = {
+        ...nextMeta,
+        actions: await Promise.all(nextMeta.actions.map((a) => this.enrichSingleDraft(userId, taxYear, a))),
+      }
+    }
     if (nextMeta.twoPaths) {
       const [safePath, maxPath] = await Promise.all([
         this.enrichSingleDraft(userId, taxYear, nextMeta.twoPaths.safePath),
@@ -633,6 +758,9 @@ export class AdvisorService {
       if (updatedMeta.action) {
         updatedMeta = { ...updatedMeta, action: maybeSupersede(updatedMeta.action) }
       }
+      if (updatedMeta.actions) {
+        updatedMeta = { ...updatedMeta, actions: updatedMeta.actions.map(maybeSupersede) }
+      }
       if (updatedMeta.twoPaths) {
         const nextSafe = maybeSupersede(updatedMeta.twoPaths.safePath)
         const nextMax = maybeSupersede(updatedMeta.twoPaths.maxPath)
@@ -661,6 +789,8 @@ export class AdvisorService {
   ): AdvisorActionProposal | null {
     if (!meta) return null
     if (meta.action?.actionId === actionId) return meta.action
+    const inActions = meta.actions?.find((a) => a.actionId === actionId)
+    if (inActions) return inActions
     if (meta.twoPaths?.safePath.actionId === actionId) return meta.twoPaths.safePath
     if (meta.twoPaths?.maxPath.actionId === actionId) return meta.twoPaths.maxPath
     return null
@@ -672,6 +802,12 @@ export class AdvisorService {
   ): AdvisorMessageMeta {
     if (meta.action?.actionId === updatedAction.actionId) {
       return { ...meta, action: updatedAction }
+    }
+    if (meta.actions?.some((a) => a.actionId === updatedAction.actionId)) {
+      return {
+        ...meta,
+        actions: meta.actions.map((a) => (a.actionId === updatedAction.actionId ? updatedAction : a)),
+      }
     }
     if (meta.twoPaths) {
       if (meta.twoPaths.safePath.actionId === updatedAction.actionId) {
@@ -816,9 +952,19 @@ export class AdvisorService {
       const appliedActions: AdvisorActionProposal[] = []
       for (const { draft, writes } of plans) {
         const undoSnapshot: AdvisorUndoEntry[] = []
+        const provenanceOverride = draft.action.receiptId
+          ? ({ kind: 'beleg', receiptId: draft.action.receiptId } as const)
+          : undefined
         for (const write of writes) {
           undoSnapshot.push(
-            await this.confirmationService.writeConfirmedByAdvisor(userId, taxYear, write.key, write.newValue, write.expected),
+            await this.confirmationService.writeConfirmedByAdvisor(
+              userId,
+              taxYear,
+              write.key,
+              write.newValue,
+              write.expected,
+              provenanceOverride,
+            ),
           )
         }
         const { undoneAt: _previousUndo, ...reapplicable } = draft.action
@@ -883,6 +1029,30 @@ export class AdvisorService {
         source: 'Assistent: SteuerEule',
       })
       return { message: toMessageDto(updatedMessage), action: undone }
+    })
+  }
+
+  async dismissAction(userId: string, taxYear: number, actionId: string): Promise<AdvisorActionMutationResponseDto> {
+    return this.transactions.run(async () => {
+      const draft = await this.resolveDraft(userId, taxYear, actionId)
+      this.assertActionApplicable(draft.action)
+
+      let nextMeta = draft.messageRecord.meta!
+      if (nextMeta.lstbScan && nextMeta.actions) {
+        nextMeta = {
+          ...nextMeta,
+          actions: nextMeta.actions.map((a) => (a.status === 'pending' ? { ...a, status: 'dismissed' as const } : a)),
+        }
+      } else {
+        nextMeta = this.replaceActionInMeta(nextMeta, { ...draft.action, status: 'dismissed' })
+      }
+
+      const updatedMessage = await this.advisorRepo.updateMessageMeta(draft.messageRecord.id, userId, nextMeta)
+      const dismissedAction = this.findActionInMeta(updatedMessage.meta, actionId) ?? { ...draft.action, status: 'dismissed' as const }
+      return {
+        message: toMessageDto(updatedMessage),
+        action: toPublicAction(dismissedAction),
+      }
     })
   }
 }

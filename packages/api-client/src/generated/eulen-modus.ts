@@ -685,6 +685,92 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getAdvisorControllerUndoActionMutationOptions(options), queryClient);
     }
 
+export type advisorControllerDismissActionResponse200 = {
+  data: AdvisorActionMutationResponseDto
+  status: 200
+}
+
+export type advisorControllerDismissActionResponse401 = {
+  data: void
+  status: 401
+}
+
+export type advisorControllerDismissActionResponseSuccess = (advisorControllerDismissActionResponse200) & {
+  headers: Headers;
+};
+export type advisorControllerDismissActionResponseError = (advisorControllerDismissActionResponse401) & {
+  headers: Headers;
+};
+
+export type advisorControllerDismissActionResponse = (advisorControllerDismissActionResponseSuccess | advisorControllerDismissActionResponseError)
+
+export const getAdvisorControllerDismissActionUrl = (jahr: number,
+    actionId: string,) => {
+
+
+
+
+  return `/v1/steuerjahre/${jahr}/advisor/actions/${actionId}/dismiss`
+}
+
+export const advisorControllerDismissAction = async (jahr: number,
+    actionId: string, options?: RequestInit): Promise<advisorControllerDismissActionResponse> => {
+
+  return httpClient<advisorControllerDismissActionResponse>(getAdvisorControllerDismissActionUrl(jahr,actionId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getAdvisorControllerDismissActionMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof advisorControllerDismissAction>>, TError,{jahr: number;actionId: string}, TContext>, request?: SecondParameter<typeof httpClient>}
+): UseMutationOptions<Awaited<ReturnType<typeof advisorControllerDismissAction>>, TError,{jahr: number;actionId: string}, TContext> => {
+
+const mutationKey = ['advisorControllerDismissAction'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof advisorControllerDismissAction>>, {jahr: number;actionId: string}> = (props) => {
+          const {jahr,actionId} = props ?? {};
+
+          return  advisorControllerDismissAction(jahr,actionId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AdvisorControllerDismissActionMutationResult = NonNullable<Awaited<ReturnType<typeof advisorControllerDismissAction>>>
+
+    export type AdvisorControllerDismissActionMutationError = void
+
+    export const useAdvisorControllerDismissAction = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof advisorControllerDismissAction>>, TError,{jahr: number;actionId: string}, TContext>, request?: SecondParameter<typeof httpClient>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof advisorControllerDismissAction>>,
+        TError,
+        {jahr: number;actionId: string},
+        TContext
+      > => {
+      return useMutation(getAdvisorControllerDismissActionMutationOptions(options), queryClient);
+    }
+
 export type owlModeControllerGetSettingResponse200 = {
   data: OwlSettingResponseDto
   status: 200

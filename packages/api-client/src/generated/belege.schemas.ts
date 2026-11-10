@@ -55,6 +55,18 @@ export interface ReceiptResponseDto {
      * @nullable
      */
   zahlungsdatum: string | null;
+  /** Whether an encrypted original document binary is attached. */
+  hasFile: boolean;
+  /**
+     * Sniffed MIME type when a binary file is attached.
+     * @nullable
+     */
+  mimeType: string | null;
+  /**
+     * Original file size in bytes when attached.
+     * @nullable
+     */
+  byteLength: number | null;
   /** @steuereule/core’s zuordnungAusDaten — never recomputed elsewhere. */
   assignment: AssignmentDto;
 }
@@ -94,5 +106,9 @@ export interface SetAssignmentDto {
   taxYear: number;
   /** ADR-008 "bei meinem Jahr bleiben": persist the dismissal of a contradicting date-derived suggestion, keeping `steuerjahr`. Omitted/false = a normal assignment. */
   proposalDismissed?: boolean;
+}
+
+export interface DeleteReceiptResponseDto {
+  deleted: boolean;
 }
 

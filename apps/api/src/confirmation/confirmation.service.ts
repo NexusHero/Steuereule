@@ -124,6 +124,7 @@ export class ConfirmationService {
     key: string,
     newValue: string | null,
     expectedCurrentValue?: string | null,
+    provenanceOverride?: Provenance,
   ): Promise<AdvisorUndoEntry> {
     const a = this.address(key, taxYear)
     assertAiWritable(a.screen, a.field, key)
@@ -135,7 +136,7 @@ export class ConfirmationService {
     await this.writeValue(userId, a, newValue)
     await this.repository.save(userId, a.taxYear, {
       key,
-      provenance: { kind: 'assistent', name: 'SteuerEule' },
+      provenance: provenanceOverride ?? { kind: 'assistent', name: 'SteuerEule' },
       confirmed: true,
       proposal: null,
     })

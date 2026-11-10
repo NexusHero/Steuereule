@@ -18,15 +18,20 @@ import type {
 } from 'msw';
 
 import type {
+  DeleteReceiptResponseDto,
   ReceiptResponseDto
 } from './belege.schemas';
 
 
-export const getReceiptControllerListResponseMock = (): ReceiptResponseDto[] => (Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), fileName: faker.string.alpha({length: {min: 10, max: 20}}), kind: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), belegdatum: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), zahlungsdatum: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), assignment: {...{kind: faker.helpers.arrayElement(['ungebunden','vorgeschlagen','zugeordnet','konflikt'] as const), taxYear: faker.number.float({fractionDigits: 2}), proposalYear: faker.number.float({fractionDigits: 2}), provenance: faker.helpers.arrayElement(['zahlungsdatum','belegdatum'] as const)},}})))
+export const getReceiptControllerListResponseMock = (): ReceiptResponseDto[] => (Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), fileName: faker.string.alpha({length: {min: 10, max: 20}}), kind: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), belegdatum: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), zahlungsdatum: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), hasFile: faker.datatype.boolean(), mimeType: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), byteLength: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), assignment: {...{kind: faker.helpers.arrayElement(['ungebunden','vorgeschlagen','zugeordnet','konflikt'] as const), taxYear: faker.number.float({fractionDigits: 2}), proposalYear: faker.number.float({fractionDigits: 2}), provenance: faker.helpers.arrayElement(['zahlungsdatum','belegdatum'] as const)},}})))
 
-export const getReceiptControllerCreateResponseMock = (overrideResponse: Partial<Extract<ReceiptResponseDto, object>> = {}): ReceiptResponseDto => ({id: faker.string.alpha({length: {min: 10, max: 20}}), fileName: faker.string.alpha({length: {min: 10, max: 20}}), kind: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), belegdatum: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), zahlungsdatum: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), assignment: {...{kind: faker.helpers.arrayElement(['ungebunden','vorgeschlagen','zugeordnet','konflikt'] as const), taxYear: faker.number.float({fractionDigits: 2}), proposalYear: faker.number.float({fractionDigits: 2}), provenance: faker.helpers.arrayElement(['zahlungsdatum','belegdatum'] as const)},}, ...overrideResponse})
+export const getReceiptControllerCreateResponseMock = (overrideResponse: Partial<Extract<ReceiptResponseDto, object>> = {}): ReceiptResponseDto => ({id: faker.string.alpha({length: {min: 10, max: 20}}), fileName: faker.string.alpha({length: {min: 10, max: 20}}), kind: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), belegdatum: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), zahlungsdatum: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), hasFile: faker.datatype.boolean(), mimeType: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), byteLength: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), assignment: {...{kind: faker.helpers.arrayElement(['ungebunden','vorgeschlagen','zugeordnet','konflikt'] as const), taxYear: faker.number.float({fractionDigits: 2}), proposalYear: faker.number.float({fractionDigits: 2}), provenance: faker.helpers.arrayElement(['zahlungsdatum','belegdatum'] as const)},}, ...overrideResponse})
 
-export const getReceiptControllerSetAssignmentResponseMock = (overrideResponse: Partial<Extract<ReceiptResponseDto, object>> = {}): ReceiptResponseDto => ({id: faker.string.alpha({length: {min: 10, max: 20}}), fileName: faker.string.alpha({length: {min: 10, max: 20}}), kind: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), belegdatum: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), zahlungsdatum: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), assignment: {...{kind: faker.helpers.arrayElement(['ungebunden','vorgeschlagen','zugeordnet','konflikt'] as const), taxYear: faker.number.float({fractionDigits: 2}), proposalYear: faker.number.float({fractionDigits: 2}), provenance: faker.helpers.arrayElement(['zahlungsdatum','belegdatum'] as const)},}, ...overrideResponse})
+export const getReceiptControllerUploadResponseMock = (overrideResponse: Partial<Extract<ReceiptResponseDto, object>> = {}): ReceiptResponseDto => ({id: faker.string.alpha({length: {min: 10, max: 20}}), fileName: faker.string.alpha({length: {min: 10, max: 20}}), kind: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), belegdatum: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), zahlungsdatum: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), hasFile: faker.datatype.boolean(), mimeType: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), byteLength: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), assignment: {...{kind: faker.helpers.arrayElement(['ungebunden','vorgeschlagen','zugeordnet','konflikt'] as const), taxYear: faker.number.float({fractionDigits: 2}), proposalYear: faker.number.float({fractionDigits: 2}), provenance: faker.helpers.arrayElement(['zahlungsdatum','belegdatum'] as const)},}, ...overrideResponse})
+
+export const getReceiptControllerSetAssignmentResponseMock = (overrideResponse: Partial<Extract<ReceiptResponseDto, object>> = {}): ReceiptResponseDto => ({id: faker.string.alpha({length: {min: 10, max: 20}}), fileName: faker.string.alpha({length: {min: 10, max: 20}}), kind: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), belegdatum: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), zahlungsdatum: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), hasFile: faker.datatype.boolean(), mimeType: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), byteLength: faker.helpers.arrayElement([faker.number.float({fractionDigits: 2}), null]), assignment: {...{kind: faker.helpers.arrayElement(['ungebunden','vorgeschlagen','zugeordnet','konflikt'] as const), taxYear: faker.number.float({fractionDigits: 2}), proposalYear: faker.number.float({fractionDigits: 2}), provenance: faker.helpers.arrayElement(['zahlungsdatum','belegdatum'] as const)},}, ...overrideResponse})
+
+export const getReceiptControllerDeleteResponseMock = (overrideResponse: Partial<Extract<DeleteReceiptResponseDto, object>> = {}): DeleteReceiptResponseDto => ({deleted: faker.datatype.boolean(), ...overrideResponse})
 
 
 export const getReceiptControllerListMockHandler = (overrideResponse?: ReceiptResponseDto[] | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<ReceiptResponseDto[]> | ReceiptResponseDto[]), options?: RequestHandlerOptions) => {
@@ -53,6 +58,18 @@ export const getReceiptControllerCreateMockHandler = (overrideResponse?: Receipt
   }, options)
 }
 
+export const getReceiptControllerUploadMockHandler = (overrideResponse?: ReceiptResponseDto | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<ReceiptResponseDto> | ReceiptResponseDto), options?: RequestHandlerOptions) => {
+  return http.post('*/v1/belege/upload', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getReceiptControllerUploadResponseMock(),
+      { status: 201
+      })
+  }, options)
+}
+
 export const getReceiptControllerSetAssignmentMockHandler = (overrideResponse?: ReceiptResponseDto | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<ReceiptResponseDto> | ReceiptResponseDto), options?: RequestHandlerOptions) => {
   return http.post('*/v1/belege/:id/zuordnung', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {
 
@@ -64,8 +81,22 @@ export const getReceiptControllerSetAssignmentMockHandler = (overrideResponse?: 
       })
   }, options)
 }
+
+export const getReceiptControllerDeleteMockHandler = (overrideResponse?: DeleteReceiptResponseDto | ((info: Parameters<Parameters<typeof http.delete>[1]>[0]) => Promise<DeleteReceiptResponseDto> | DeleteReceiptResponseDto), options?: RequestHandlerOptions) => {
+  return http.delete('*/v1/belege/:id', async (info: Parameters<Parameters<typeof http.delete>[1]>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getReceiptControllerDeleteResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
 export const getSteuerEuleAPIMock = () => [
   getReceiptControllerListMockHandler(),
   getReceiptControllerCreateMockHandler(),
-  getReceiptControllerSetAssignmentMockHandler()
+  getReceiptControllerUploadMockHandler(),
+  getReceiptControllerSetAssignmentMockHandler(),
+  getReceiptControllerDeleteMockHandler()
 ]

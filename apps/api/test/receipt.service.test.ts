@@ -7,18 +7,25 @@ import { AuditService } from '../src/audit/audit.service.js'
 import { ReceiptService } from '../src/receipt/receipt.service.js'
 import { FakeAuditRepository } from './fakes/fake-audit.repository.js'
 import { FakeReceiptRepository } from './fakes/fake-receipt.repository.js'
+import { InMemoryStorageAdapter } from './fakes/in-memory-storage.adapter.js'
 
 const USER_ID = 'user-1'
+const PDF_HEADER = Buffer.from('%PDF-1.4\n1 0 obj\n<<>>\nendobj\n', 'utf8')
+const JPEG_HEADER = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10])
+const PNG_HEADER = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00])
+const WEBP_HEADER = Buffer.from('RIFF\x24\x00\x00\x00WEBPVP8 ', 'latin1')
 
 describe('BelegService', () => {
   let repository: FakeReceiptRepository
   let auditRepository: FakeAuditRepository
+  let storage: InMemoryStorageAdapter
   let service: ReceiptService
 
   beforeEach(() => {
     repository = new FakeReceiptRepository()
     auditRepository = new FakeAuditRepository()
-    service = new ReceiptService(repository, new AuditService(auditRepository))
+    storage = new InMemoryStorageAdapter()
+    service = new ReceiptService(repository, new AuditService(auditRepository), storage)
   })
 
   describe('create — lands UNBOUND (ADR-007)', () => {
@@ -108,6 +115,74 @@ describe('BelegService', () => {
     it('a foreign id under the caller’s userId is still not found', async () => {
       const created = await service.create('someone-else', { fileName: 'theirs.pdf' })
       await expect(service.setAssignment(USER_ID, created.id, { taxYear: 2026 })).rejects.toThrow(/does not exist/)
+    })
+  })
+
+  describe('encrypted original receipt upload, download & delete (#444)', () => {
+    it('accepts PDF, JPEG, PNG and WebP by magic bytes, returns hasFile metadata, and round-trips decrypted bytes', async () => {
+      const cases = [
+        { fileName: 'lstb.pdf', buffer: PDF_HEADER, expectedMime: 'application/pdf' },
+        { fileName: 'foto.jpg', buffer: JPEG_HEADER, expectedMime: 'image/jpeg' },
+        { fileName: 'scan.png', buffer: PNG_HEADER, expectedMime: 'image/png' },
+        { fileName: 'mobile.webp', buffer: WEBP_HEADER, expectedMime: 'image/webp' },
+      ]
+
+      for (const item of cases) {
+        const uploaded = await service.upload(USER_ID, {
+          fileName: item.fileName,
+          buffer: item.buffer,
+          kind: 'Sonstiges',
+          belegdatum: '2025-11-10',
+        })
+        expect(uploaded.hasFile).toBe(true)
+        expect(uploaded.mimeType).toBe(item.expectedMime)
+        expect(uploaded.byteLength).toBe(item.buffer.length)
+
+        const downloaded = await service.getFile(USER_ID, uploaded.id)
+        expect(downloaded.mimeType).toBe(item.expectedMime)
+        expect(downloaded.fileName).toBe(item.fileName)
+        expect(downloaded.buffer.equals(item.buffer)).toBe(true)
+      }
+
+      const listed = await service.list(USER_ID)
+      expect(listed).toHaveLength(4)
+      expect(listed.every((r) => r.hasFile)).toBe(true)
+    })
+
+    it('rejects HTML, SVG, scripts or oversized payloads even if named .pdf and leaves zero records', async () => {
+      await expect(
+        service.upload(USER_ID, {
+          fileName: 'evil.pdf',
+          buffer: Buffer.from('<html><script>alert(1)</script></html>', 'utf8'),
+        }),
+      ).rejects.toThrow(/Dateiformat/)
+
+      await expect(
+        service.upload(USER_ID, {
+          fileName: 'tiny.png',
+          buffer: Buffer.alloc(0),
+        }),
+      ).rejects.toThrow(/leer/)
+
+      expect(repository.recordCount()).toBe(0)
+    })
+
+    it('isolates getFile and delete across users, and returns 404 after crypto-shredding / delete', async () => {
+      const uploaded = await service.upload(USER_ID, {
+        fileName: 'lstb-2025.pdf',
+        buffer: PDF_HEADER,
+      })
+
+      await expect(service.getFile('other-user', uploaded.id)).rejects.toThrow(/does not exist/)
+      await expect(service.delete('other-user', uploaded.id)).rejects.toThrow(/does not exist/)
+
+      // Simulate crypto-shredding wiping DEK/stored binary while record metadata check still fails with 404
+      storage.cryptoShredUser(USER_ID)
+      await expect(service.getFile(USER_ID, uploaded.id)).rejects.toThrow(/keine entschlüsselbare Originaldatei/)
+
+      const deleted = await service.delete(USER_ID, uploaded.id)
+      expect(deleted).toEqual({ deleted: true })
+      expect(repository.recordCount()).toBe(0)
     })
   })
 })

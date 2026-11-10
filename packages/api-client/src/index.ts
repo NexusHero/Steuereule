@@ -61,3 +61,11 @@ export * from './generated/eulen-modus.schemas'
 export * from './generated/assistenten'
 export * from './generated/assistenten.schemas'
 export { configureApiClient, resetApiClientConfig, getApiClientBaseUrl, type ApiClientConfig } from './http-client'
+export {
+  getReceiptFileUrl,
+  uploadReceiptFile,
+  fetchReceiptFileBlob,
+  type UploadReceiptFileInput,
+  type UploadReceiptFileResult,
+  type FetchReceiptFileResult,
+} from './receipt-files'

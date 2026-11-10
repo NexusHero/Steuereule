@@ -461,9 +461,10 @@ model Receipt {
   /// date-derived suggestion to keep their own confirmed year — a persisted FACT (not the
   /// derived state), so `zuordnungAusDaten` can resolve the conflict without silently
   /// overwriting the contradicting dates.
-  proposalDismissed Boolean   @default(false) @map("vorschlagVerworfen")
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  proposalDismissed Boolean      @default(false) @map("vorschlagVerworfen")
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  file              ReceiptFile?
 
   @@index([userId])
   @@index([userId, taxYear])
@@ -1163,5 +1164,39 @@ model AdvisorChatMessage {
 
   @@index([userId, taxYear, createdAt])
   @@map("BeraterNachricht")
+}
+
+// Per-user data encryption key (DEK) wrapped by HKDF-SHA256 KEK derived from
+// resolveFieldEncryptionKey() (ADR-0008). Destroyed in deleteAccountTransaction for
+// crypto-shredding unless taxData is under LegalHold.
+model UserEncryptionKey {
+  id         String   @id @default(uuid())
+  userId     String   @unique
+  wrappedDek String
+  keyVersion Int      @default(1)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("NutzerSchluessel")
+}
+
+// AES-256-GCM envelope-encrypted original receipt files (PDF/JPEG/PNG/WebP).
+// Binary cipherBytes/iv/authTag use per-user DEK + AAD (userId:receiptId).
+model ReceiptFile {
+  id          String   @id @default(uuid())
+  receiptId   String   @unique @map("belegId")
+  userId      String
+  mimeType    String
+  byteLength  Int      @map("dateigroesse")
+  sha256      String
+  iv          Bytes
+  authTag     Bytes
+  cipherBytes Bytes    @map("verschluesselteDaten")
+  keyVersion  Int      @default(1)
+  createdAt   DateTime @default(now())
+  receipt     Receipt  @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("BelegDatei")
 }
 

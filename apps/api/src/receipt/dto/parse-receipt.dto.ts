@@ -41,8 +41,40 @@ export class ParseReceiptDto {
   })
   @IsOptional()
   @IsString()
-  @MaxLength(16_000)
+  @MaxLength(32_000)
   rawText?: string
+
+  @ApiPropertyOptional({
+    type: String,
+    enum: ['auto', 'lstb'],
+    example: 'lstb',
+    description: 'Explicit document parser cascade: "lstb" uses deterministic two-stage German LStB extraction.',
+  })
+  @IsOptional()
+  @IsString()
+  @IsIn(['auto', 'lstb'])
+  kind?: 'auto' | 'lstb'
+
+  @ApiPropertyOptional({
+    type: String,
+    example: 'beleg-123',
+    description: 'Optional existing Beleg id owned by the caller to link provenance.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  receiptId?: string
+
+  @ApiPropertyOptional({
+    type: String,
+    enum: ['A', 'B'],
+    example: 'A',
+    description: 'Taxpayer slot when parsing a partner LStB (ADR-0054).',
+  })
+  @IsOptional()
+  @IsString()
+  @IsIn(['A', 'B'])
+  person?: 'A' | 'B'
 
   @ApiPropertyOptional({
     type: String,
@@ -99,6 +131,92 @@ export class ParsedReceiptDataDto {
   taxYear!: number | null
 }
 
+export class LstbExtractedFieldDto {
+  @ApiProperty({ type: Number, nullable: true, example: 54320 })
+  value!: number | null
+
+  @ApiProperty({ type: String, enum: ['ok', 'pruefen'], example: 'ok' })
+  status!: 'ok' | 'pruefen'
+
+  @ApiProperty({ type: [String], example: ['3'] })
+  sourceLines!: string[]
+
+  @ApiProperty({ type: String, nullable: true, example: 'Zeile 3: 54.320,00 €' })
+  calculationPath!: string | null
+
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    enum: ['missing', 'unreadable', 'plausibility_conflict', 'partial_sv_lines'],
+    example: null,
+  })
+  reason!: 'missing' | 'unreadable' | 'plausibility_conflict' | 'partial_sv_lines' | null
+}
+
+export class LstbExtractedFieldsDto {
+  @ApiProperty({ type: LstbExtractedFieldDto })
+  bruttoarbeitslohn!: LstbExtractedFieldDto
+
+  @ApiProperty({ type: LstbExtractedFieldDto })
+  lohnsteuer!: LstbExtractedFieldDto
+
+  @ApiProperty({ type: LstbExtractedFieldDto })
+  sozialversicherung!: LstbExtractedFieldDto
+}
+
+export class LstbYearConflictDto {
+  @ApiProperty({ type: Number, example: 2024 })
+  documentYear!: number
+
+  @ApiProperty({ type: Number, example: 2025 })
+  activeYear!: number
+}
+
+export class LstbExistingValuesDto {
+  @ApiProperty({ type: Number, nullable: true, example: 50000 })
+  bruttoarbeitslohn!: number | null
+
+  @ApiProperty({ type: Number, nullable: true, example: 9000 })
+  lohnsteuer!: number | null
+
+  @ApiProperty({ type: Number, nullable: true, example: 10000 })
+  sozialversicherung!: number | null
+}
+
+export class LstbExistingConflictDto {
+  @ApiProperty({ type: Boolean, example: false })
+  hasExisting!: boolean
+
+  @ApiProperty({ type: LstbExistingValuesDto })
+  existing!: LstbExistingValuesDto
+}
+
+export class ParsedLstbResponseDto {
+  @ApiProperty({ type: String, enum: ['deterministic', 'llm_text_fallback'], example: 'deterministic' })
+  stage!: 'deterministic' | 'llm_text_fallback'
+
+  @ApiProperty({ type: String, nullable: true, example: 'beleg-123' })
+  receiptId!: string | null
+
+  @ApiProperty({ type: Number, nullable: true, example: 2025 })
+  taxYearOnDocument!: number | null
+
+  @ApiProperty({ type: LstbYearConflictDto, nullable: true })
+  yearConflict!: LstbYearConflictDto | null
+
+  @ApiProperty({ type: LstbExistingConflictDto })
+  existingLstbConflict!: LstbExistingConflictDto
+
+  @ApiProperty({ type: LstbExtractedFieldsDto })
+  fields!: LstbExtractedFieldsDto
+
+  @ApiProperty({ type: [String], example: ['act-1', 'act-2', 'act-3'] })
+  stagedActionIds!: string[]
+
+  @ApiProperty({ type: Boolean, example: false })
+  securityBlocked!: boolean
+}
+
 export class ParseReceiptResponseDto {
   @ApiProperty({ type: String, enum: ['vision_ocr', 'deterministic_fallback'], example: 'vision_ocr' })
   mode!: 'vision_ocr' | 'deterministic_fallback'
@@ -114,4 +232,7 @@ export class ParseReceiptResponseDto {
 
   @ApiPropertyOptional({ type: AdvisorChatMessageDto, nullable: true })
   assistantMessage!: AdvisorChatMessageDto | null
+
+  @ApiPropertyOptional({ type: ParsedLstbResponseDto, nullable: true })
+  lstb?: ParsedLstbResponseDto | null
 }

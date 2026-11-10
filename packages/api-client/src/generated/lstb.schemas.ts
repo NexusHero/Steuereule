@@ -74,6 +74,21 @@ export interface LstbResponseDto {
   state: LstbStatusDto;
 }
 
+export interface ConfirmLstbScanDto {
+  /** Bruttoarbeitslohn (Zeile 3) in whole EUR. */
+  bruttoarbeitslohn: number;
+  /** Einbehaltene Lohnsteuer (Zeile 4) in whole EUR. */
+  lohnsteuer: number;
+  /** SV-Arbeitnehmeranteil (Summe Zeilen 23/23a/23b, 25, 26 und 27) in whole EUR. */
+  sozialversicherung: number;
+  /** Optional receipt id for { kind: "beleg", receiptId } provenance. */
+  receiptId?: string;
+  /** Must be true to overwrite already captured LStB fields (ADR-0008). */
+  overwriteExisting?: boolean;
+  /** Staged advisor actionIds fulfilled by this confirmation. */
+  actionIds?: string[];
+}
+
 export type LstbControllerGetLstbParams = {
 /**
  * B: Person A reads the figures of a partner without an own account (ADR-0054).
@@ -85,6 +100,21 @@ export type LstbControllerGetLstbPerson = typeof LstbControllerGetLstbPerson[key
 
 
 export const LstbControllerGetLstbPerson = {
+  A: 'A',
+  B: 'B',
+} as const;
+
+export type LstbControllerConfirmScanParams = {
+/**
+ * B: Person A records the figures of a partner without an own account (ADR-0054).
+ */
+person?: LstbControllerConfirmScanPerson;
+};
+
+export type LstbControllerConfirmScanPerson = typeof LstbControllerConfirmScanPerson[keyof typeof LstbControllerConfirmScanPerson];
+
+
+export const LstbControllerConfirmScanPerson = {
   A: 'A',
   B: 'B',
 } as const;

@@ -231,7 +231,16 @@ function ConfirmationRoute({ navigation, route }: NativeStackScreenProps<RootSta
   }, [year, navigation])
   if (!Number.isInteger(year)) return null
   const back = () => setScreen(null)
-  if (screen === 'lstb') return <LstbScreen taxYear={year} onDone={back} onBack={back} />
+  if (screen === 'lstb') {
+    return (
+      <LstbScreen
+        taxYear={year}
+        onDone={back}
+        onBack={back}
+        onSwitchTaxYear={(nextYear) => navigation.setParams({ year: String(nextYear) })}
+      />
+    )
+  }
   if (screen === 'rente') return <PensionerScreen taxYear={year} onDone={back} onBack={back} />
   if (screen === 'kapital') return <CapitalScreen taxYear={year} onDone={back} onBack={back} />
   if (screen === 'vermietung') return <RentalScreen taxYear={year} onDone={back} onBack={back} />
@@ -420,7 +429,13 @@ function TabbedShell({ tab, onTabChange, onSignedOut, startInInterview = false, 
             }}
           /> : null}
         {tab === 'cockpit' && cockpitView === 'partner' && partnerScreen?.area === 'lstb' ? (
-          <LstbScreen taxYear={taxYear} partnerName={partnerScreen.name} onDone={() => setCockpitView('stammdaten')} onBack={() => setCockpitView('stammdaten')} />
+          <LstbScreen
+            taxYear={taxYear}
+            partnerName={partnerScreen.name}
+            onSwitchTaxYear={setTaxYear}
+            onDone={() => setCockpitView('stammdaten')}
+            onBack={() => setCockpitView('stammdaten')}
+          />
         ) : null}
         {tab === 'cockpit' && cockpitView === 'partner' && partnerScreen?.area === 'arbeitsweg' ? (
           <WorkdaysScreen taxYear={taxYear} partnerName={partnerScreen.name} onDone={() => setCockpitView('stammdaten')} onBack={() => setCockpitView('stammdaten')} />
@@ -443,6 +458,7 @@ function TabbedShell({ tab, onTabChange, onSignedOut, startInInterview = false, 
         {tab === 'cockpit' && cockpitView === 'lstb' ? (
           <LstbScreen
             taxYear={taxYear}
+            onSwitchTaxYear={setTaxYear}
             onDone={() => {
               setCatalogRevisit(false)
               setCockpitView('katalog-lebenslagen')

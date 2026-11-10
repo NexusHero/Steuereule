@@ -63,4 +63,30 @@ describe('toExportEntry', () => {
     const entry = toExportEntry('Kind', 'Child', { id: 'c', userId: 'u', taxYear: 2025, firstName: 'Mia', lastName: 'Beispiel' })
     expect(entry.fields).toEqual({ vorname: 'Mia', nachname: 'Beispiel' })
   })
+
+  it('exports ReceiptFile metadata while stripping binary cipherBytes, iv, authTag, and keyVersion', () => {
+    const entry = toExportEntry('Beleg-Datei', 'ReceiptFile', {
+      id: 'rf-1',
+      receiptId: 'rec-1',
+      userId: 'u',
+      mimeType: 'application/pdf',
+      byteLength: 4096,
+      sha256: 'abc123',
+      iv: Buffer.from([1, 2, 3]),
+      authTag: Buffer.from([4, 5, 6]),
+      cipherBytes: Buffer.from([7, 8, 9]),
+      keyVersion: 1,
+      createdAt: new Date('2026-03-01T10:00:00.000Z'),
+    })
+    expect(entry).toEqual({
+      area: 'Beleg-Datei',
+      taxYear: null,
+      fields: {
+        mimeType: 'application/pdf',
+        dateigroesse: 4096,
+        sha256: 'abc123',
+        createdAt: '2026-03-01T10:00:00.000Z',
+      },
+    })
+  })
 })

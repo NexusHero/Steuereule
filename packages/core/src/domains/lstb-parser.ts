@@ -1,0 +1,538 @@
+import {
+  EMPTY_WAGE_TAX_CERTIFICATE,
+  isValidAmount,
+  setWageTaxCertificateField,
+  wageTaxCertificateStatus,
+  type WageTaxCertificateData,
+  type WageTaxCertificateFieldId,
+} from './lstb'
+
+export type LstbExtractedFieldStatus = 'ok' | 'pruefen'
+
+export type LstbFieldReason =
+  | 'missing'
+  | 'unreadable'
+  | 'plausibility_conflict'
+  | 'partial_sv_lines'
+
+export interface LstbExtractedField {
+  readonly value: number | null
+  readonly status: LstbExtractedFieldStatus
+  readonly sourceLines: readonly string[]
+  readonly calculationPath: string | null
+  readonly reason: LstbFieldReason | null
+}
+
+export interface LstbSvBreakdown {
+  readonly line23: number | null
+  readonly line23a: number | null
+  readonly line23b: number | null
+  readonly line25: number | null
+  readonly line26: number | null
+  readonly line27: number | null
+}
+
+export interface LstbExtractionResult {
+  readonly taxYear: number | null
+  readonly fields: {
+    readonly bruttoarbeitslohn: LstbExtractedField
+    readonly lohnsteuer: LstbExtractedField
+    readonly sozialversicherung: LstbExtractedField
+  }
+  readonly svBreakdown: LstbSvBreakdown
+  readonly needsLlmFallback: boolean
+}
+
+export interface LstbExtractionInput {
+  readonly taxYear: number | null
+  readonly line3Brutto: number | null
+  readonly line4Lohnsteuer: number | null
+  readonly svBreakdown: LstbSvBreakdown
+  readonly unreadableFields?: readonly WageTaxCertificateFieldId[] | undefined
+  readonly hasAmbiguity?: readonly WageTaxCertificateFieldId[] | undefined
+}
+
+const MIN_LSTB_YEAR = 2020
+const MAX_LSTB_YEAR = 2030
+const MAX_REASONABLE_EUR = 10_000_000
+
+function isSupportedLstbYear(year: number): boolean {
+  return Number.isInteger(year) && year >= MIN_LSTB_YEAR && year <= MAX_LSTB_YEAR
+}
+
+function formatDeAmount(amount: number): string {
+  const isWhole = Math.abs(amount - Math.round(amount)) < 0.005
+  if (isWhole) {
+    return `${Math.round(amount).toLocaleString('de-DE')} €`
+  }
+  return `${amount.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`
+}
+
+/**
+ * Parses a German or OCR-noisy Euro amount string (e.g. "54.320,00", "5.051.76",
+ * "48 000,50 EUR", "48000") into a non-negative finite number (up to 2 decimal places).
+ * Returns null for dates, line ordinals ("9."), percentages, or unreadable noise.
+ */
+export function parseGermanOcrAmount(raw: string): number | null {
+  if (!raw) return null
+  const trimmed = raw
+    .trim()
+    .replace(/[€]/g, '')
+    .replace(/\b(?:EUR|Euro)\b/gi, '')
+    .trim()
+
+  if (!trimmed || /%/.test(trimmed)) return null
+  // Reject German dates DD.MM.YYYY or DD.MM.YY
+  if (/^\d{1,2}\.\d{1,2}\.\d{2,4}$/.test(trimmed)) return null
+
+  const compact = trimmed.replace(/\s+/g, '')
+
+  // Standard German decimal comma: "54.320,00" or "54320,5" or "0,00"
+  if (/^\d{1,3}(?:\.\d{3})*,\d{1,2}$/.test(compact) || /^\d+,\d{1,2}$/.test(compact)) {
+    const num = Number.parseFloat(compact.replace(/\./g, '').replace(',', '.'))
+    return Number.isFinite(num) && num >= 0 && num <= MAX_REASONABLE_EUR ? num : null
+  }
+
+  // Standard German thousands without decimal comma: "54.320" or "1.200.000"
+  if (/^\d{1,3}(?:\.\d{3})+$/.test(compact)) {
+    const num = Number.parseInt(compact.replace(/\./g, ''), 10)
+    return Number.isFinite(num) && num >= 0 && num <= MAX_REASONABLE_EUR ? num : null
+  }
+
+  // OCR dot-decimal artifact: "5.051.76" or "48.000.00" or "5051.76"
+  const dotDecimalMatch = /^(\d{1,3}(?:\.\d{3})*|\d+)\.(\d{2})$/.exec(compact)
+  if (dotDecimalMatch && dotDecimalMatch[1] && dotDecimalMatch[2]) {
+    const intPart = dotDecimalMatch[1].replace(/\./g, '')
+    const num = Number.parseFloat(`${intPart}.${dotDecimalMatch[2]}`)
+    return Number.isFinite(num) && num >= 0 && num <= MAX_REASONABLE_EUR ? num : null
+  }
+
+  // Plain integer: "48000" or "0"
+  if (/^\d{1,7}$/.test(compact)) {
+    const num = Number.parseInt(compact, 10)
+    return Number.isFinite(num) && num >= 0 && num <= MAX_REASONABLE_EUR ? num : null
+  }
+
+  return null
+}
+
+/**
+ * Extracts the tax year printed on a Lohnsteuerbescheinigung, preferring explicit certificate
+ * headers and employment period dates over secondary print timestamps or birth years.
+ */
+export function extractLstbTaxYear(rawText: string): number | null {
+  if (!rawText) return null
+
+  const highPriorityPatterns = [
+    /Lohnsteuerbescheinigung\s+(?:für\s+(?:das\s+)?)?(?:Kalenderjahr\s+)?(20\d{2})\b/i,
+    /(?:für\s+das\s+Kalenderjahr|Kalenderjahr)\s*[:-]?\s*(20\d{2})\b/i,
+    /Bescheinigungszeitraum[^\n]*?(20\d{2})\b/i,
+    /Zeitraum\s*[:-]?\s*\d{2}\.\d{2}\.(20\d{2})\s*(?:-|bis)\s*\d{2}\.\d{2}\.(20\d{2})\b/i,
+  ]
+
+  for (const rx of highPriorityPatterns) {
+    const match = rx.exec(rawText)
+    if (match?.[1]) {
+      const year = Number.parseInt(match[1], 10)
+      if (isSupportedLstbYear(year)) return year
+    }
+  }
+
+  // Line-by-line fallback skipping DOB / print timestamp lines
+  for (const line of rawText.split(/\r?\n/)) {
+    if (/\b(?:geb\.?|geburtsdatum|druckdatum|erstellt|datum|ausgestellt)\b/i.test(line)) {
+      continue
+    }
+    const yearMatch = /\b(202[0-9]|2030)\b/.exec(line)
+    if (yearMatch?.[1]) {
+      const year = Number.parseInt(yearMatch[1], 10)
+      if (isSupportedLstbYear(year)) return year
+    }
+  }
+
+  return null
+}
+
+function normalizeNonNegNum(val: number | null | undefined): number | null {
+  if (val === null || val === undefined || !Number.isFinite(val) || val < 0 || val > MAX_REASONABLE_EUR) {
+    return null
+  }
+  return val
+}
+
+/**
+ * Deterministically sums employee SV contributions (lines 23/23a/23b, 25, 26, 27), checks
+ * statutory plausibility (LSt <= Brutto, SV <= Brutto), and assigns 'ok' vs 'pruefen' per field.
+ * Used identically after BOTH Stage 1 regex extraction and Stage 2 LLM text extraction.
+ */
+export function evaluateLstbExtraction(input: LstbExtractionInput): LstbExtractionResult {
+  const taxYear = input.taxYear !== null && isSupportedLstbYear(input.taxYear) ? input.taxYear : null
+  const unreadableSet = new Set(input.unreadableFields ?? [])
+  const ambiguousSet = new Set(input.hasAmbiguity ?? [])
+
+  const line3 = normalizeNonNegNum(input.line3Brutto)
+  const line4 = normalizeNonNegNum(input.line4Lohnsteuer)
+
+  const sv23a = normalizeNonNegNum(input.svBreakdown.line23a)
+  const sv23b = normalizeNonNegNum(input.svBreakdown.line23b)
+  const sv23 = normalizeNonNegNum(input.svBreakdown.line23)
+  const sv25 = normalizeNonNegNum(input.svBreakdown.line25)
+  const sv26 = normalizeNonNegNum(input.svBreakdown.line26)
+  const sv27 = normalizeNonNegNum(input.svBreakdown.line27)
+
+  const svBreakdown: LstbSvBreakdown = {
+    line23: sv23,
+    line23a: sv23a,
+    line23b: sv23b,
+    line25: sv25,
+    line26: sv26,
+    line27: sv27,
+  }
+
+  // Employee SV sum: lines (23a + 23b) OR (23), plus 25 (KV), 26 (PV), 27 (ALV).
+  // Never includes lines 22a/22b (employer share).
+  const svEntries: { line: string; amount: number; category: 'rv' | 'kv' | 'pv' | 'alv' }[] = []
+  if (sv23a !== null || sv23b !== null) {
+    if (sv23a !== null) svEntries.push({ line: '23a', amount: sv23a, category: 'rv' })
+    if (sv23b !== null) svEntries.push({ line: '23b', amount: sv23b, category: 'rv' })
+  } else if (sv23 !== null) {
+    svEntries.push({ line: '23', amount: sv23, category: 'rv' })
+  }
+  if (sv25 !== null) svEntries.push({ line: '25', amount: sv25, category: 'kv' })
+  if (sv26 !== null) svEntries.push({ line: '26', amount: sv26, category: 'pv' })
+  if (sv27 !== null) svEntries.push({ line: '27', amount: sv27, category: 'alv' })
+
+  const svCategoriesPresent = new Set(svEntries.map((e) => e.category))
+  const svRawSum = svEntries.reduce((acc, item) => acc + item.amount, 0)
+  const svRounded = svEntries.length > 0 ? Math.round(svRawSum) : null
+  const bruttoRounded = line3 !== null ? Math.round(line3) : null
+  const lohnsteuerRounded = line4 !== null ? Math.round(line4) : null
+
+  // Plausibility check via shared domain rule wageTaxCertificateStatus
+  let certData: WageTaxCertificateData = EMPTY_WAGE_TAX_CERTIFICATE
+  if (bruttoRounded !== null && isValidAmount(bruttoRounded)) {
+    certData = setWageTaxCertificateField(certData, 'bruttoarbeitslohn', { kind: 'erfasst', value: bruttoRounded })
+  }
+  if (lohnsteuerRounded !== null && isValidAmount(lohnsteuerRounded)) {
+    certData = setWageTaxCertificateField(certData, 'lohnsteuer', { kind: 'erfasst', value: lohnsteuerRounded })
+  }
+  if (svRounded !== null && isValidAmount(svRounded)) {
+    certData = setWageTaxCertificateField(certData, 'sozialversicherung', { kind: 'erfasst', value: svRounded })
+  }
+  const certStatus = wageTaxCertificateStatus(certData)
+  const lstExceedsBrutto =
+    bruttoRounded !== null &&
+    lohnsteuerRounded !== null &&
+    (lohnsteuerRounded > bruttoRounded ||
+      (certStatus.kind === 'widerspruch' &&
+        certStatus.conflicts.some((c) => c.kind === 'lohnsteuer-uebersteigt-brutto')))
+  const svExceedsBrutto =
+    bruttoRounded !== null &&
+    svRounded !== null &&
+    (svRounded > bruttoRounded ||
+      (certStatus.kind === 'widerspruch' &&
+        certStatus.conflicts.some((c) => c.kind === 'sozialversicherung-uebersteigt-brutto')))
+
+  let bruttoField: LstbExtractedField
+  if (bruttoRounded === null) {
+    bruttoField = {
+      value: null,
+      status: 'pruefen',
+      sourceLines: ['3'],
+      calculationPath: null,
+      reason: unreadableSet.has('bruttoarbeitslohn') ? 'unreadable' : 'missing',
+    }
+  } else if (unreadableSet.has('bruttoarbeitslohn') || ambiguousSet.has('bruttoarbeitslohn')) {
+    bruttoField = {
+      value: bruttoRounded,
+      status: 'pruefen',
+      sourceLines: ['3'],
+      calculationPath: `Zeile 3: ${formatDeAmount(line3!)}`,
+      reason: 'unreadable',
+    }
+  } else {
+    bruttoField = {
+      value: bruttoRounded,
+      status: lstExceedsBrutto || svExceedsBrutto ? 'pruefen' : 'ok',
+      sourceLines: ['3'],
+      calculationPath: `Zeile 3: ${formatDeAmount(line3!)}`,
+      reason: lstExceedsBrutto || svExceedsBrutto ? 'plausibility_conflict' : null,
+    }
+  }
+
+  let lohnsteuerField: LstbExtractedField
+  if (lohnsteuerRounded === null) {
+    lohnsteuerField = {
+      value: null,
+      status: 'pruefen',
+      sourceLines: ['4'],
+      calculationPath: null,
+      reason: unreadableSet.has('lohnsteuer') ? 'unreadable' : 'missing',
+    }
+  } else if (lstExceedsBrutto) {
+    lohnsteuerField = {
+      value: lohnsteuerRounded,
+      status: 'pruefen',
+      sourceLines: ['4'],
+      calculationPath: `Zeile 4: ${formatDeAmount(line4!)}`,
+      reason: 'plausibility_conflict',
+    }
+  } else if (unreadableSet.has('lohnsteuer') || ambiguousSet.has('lohnsteuer')) {
+    lohnsteuerField = {
+      value: lohnsteuerRounded,
+      status: 'pruefen',
+      sourceLines: ['4'],
+      calculationPath: `Zeile 4: ${formatDeAmount(line4!)}`,
+      reason: 'unreadable',
+    }
+  } else {
+    lohnsteuerField = {
+      value: lohnsteuerRounded,
+      status: 'ok',
+      sourceLines: ['4'],
+      calculationPath: `Zeile 4: ${formatDeAmount(line4!)}`,
+      reason: null,
+    }
+  }
+
+  let svField: LstbExtractedField
+  if (svRounded === null) {
+    svField = {
+      value: null,
+      status: 'pruefen',
+      sourceLines: [],
+      calculationPath: null,
+      reason: unreadableSet.has('sozialversicherung') ? 'unreadable' : 'missing',
+    }
+  } else {
+    const sourceLines = svEntries.map((e) => e.line)
+    const calcParts = svEntries.map((e) => `Zeile ${e.line} (${formatDeAmount(e.amount)})`)
+    const calculationPath = `${calcParts.join(' + ')} = ${formatDeAmount(svRounded)}`
+
+    if (svExceedsBrutto) {
+      svField = {
+        value: svRounded,
+        status: 'pruefen',
+        sourceLines,
+        calculationPath,
+        reason: 'plausibility_conflict',
+      }
+    } else if (unreadableSet.has('sozialversicherung') || ambiguousSet.has('sozialversicherung')) {
+      svField = {
+        value: svRounded,
+        status: 'pruefen',
+        sourceLines,
+        calculationPath,
+        reason: 'unreadable',
+      }
+    } else if (svCategoriesPresent.size < 2 && svRounded > 0) {
+      svField = {
+        value: svRounded,
+        status: 'pruefen',
+        sourceLines,
+        calculationPath,
+        reason: 'partial_sv_lines',
+      }
+    } else {
+      svField = {
+        value: svRounded,
+        status: 'ok',
+        sourceLines,
+        calculationPath,
+        reason: null,
+      }
+    }
+  }
+
+  const needsLlmFallback =
+    taxYear === null ||
+    bruttoField.status === 'pruefen' ||
+    lohnsteuerField.status === 'pruefen' ||
+    svField.status === 'pruefen'
+
+  return {
+    taxYear,
+    fields: {
+      bruttoarbeitslohn: bruttoField,
+      lohnsteuer: lohnsteuerField,
+      sozialversicherung: svField,
+    },
+    svBreakdown,
+    needsLlmFallback,
+  }
+}
+
+type TargetRowKey = '3' | '4' | '23a' | '23b' | '23' | '25' | '26' | '27'
+type MatchedRowKey = TargetRowKey | 'other'
+
+function classifyLine(rawLine: string): MatchedRowKey | null {
+  const line = rawLine.trim()
+  if (!line) return null
+  // Monetary amounts at start of line (e.g. "3.906,00", "6.450,00 EUR", "25,50") are never row numbers
+  if (/^\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?(?:\s*(?:€|EUR|Euro))?\b/i.test(line)) return null
+  if (/^\d+[,.]\d{1,2}(?:\s*(?:€|EUR|Euro))?(?:\s|$)/i.test(line)) return null
+
+  // Employer/non-AN lines checked first so they never alias to AN lines
+  if (/^(?:Zeile\s+)?22\s*[ab](?:\b|[.)])/i.test(line)) return 'other'
+  if (/^(?:Zeile\s+)?24(?![\d,]|\.\d)(?:\b|[a-c.)])/i.test(line)) return 'other'
+
+  if (/^(?:Zeile\s+)?23\s*a(?![\d])(?:\b|[.)])/i.test(line) || /^23\.\s*a\)/i.test(line)) return '23a'
+  if (/^(?:Zeile\s+)?23\s*b(?![\d])(?:\b|[.)])/i.test(line) || /^23\.\s*b\)/i.test(line)) return '23b'
+  if (/^(?:Zeile\s+)?23(?!\s*[ab])(?![\d,]|\.\d)(?:\b|[.)])/i.test(line)) return '23'
+  if (/^(?:Zeile\s+)?25(?![\d,]|\.\d)(?:\b|[.)])/i.test(line)) return '25'
+  if (/^(?:Zeile\s+)?26(?![\d,]|\.\d)(?:\b|[.)])/i.test(line)) return '26'
+  if (/^(?:Zeile\s+)?27(?![\d,]|\.\d)(?:\b|[.)])/i.test(line)) return '27'
+  if (/^(?:Zeile\s+)?0?3(?![\d,]|\.\d)(?:\b|[.)])/i.test(line)) return '3'
+  if (/^(?:Zeile\s+)?0?4(?![\d,]|\.\d)(?:\b|[.)])/i.test(line)) return '4'
+
+  // Other numbered certificate rows act as lookahead stoppers (strictly followed by whitespace/letter/paren, not decimals)
+  if (/^(?:Zeile\s+)?(?:[1256789]|1\d|2[0189]|3\d)[a-c]?(?:\.?)(?=\s+[A-Za-zÄÖÜäöüß(]|\s*$)/i.test(line)) {
+    return 'other'
+  }
+
+  // Keyword fallbacks when OCR dropped the row number
+  if (/\bBruttoarbeitslohn\b/i.test(line) && !/\bohnen?\b/i.test(line)) return '3'
+  if (/\bEinbehaltene\s+Lohnsteuer\b/i.test(line)) return '4'
+  if (/Arbeitnehmeranteil.*Rentenversicherung/i.test(line) && !/Arbeitgeber/i.test(line)) return '23a'
+  if (/berufsständische/i.test(line) && /Arbeitnehmer/i.test(line)) return '23b'
+  if (/Arbeitnehmerbeiträge.*gesetzlichen\s+Krankenversicherung/i.test(line)) return '25'
+  if (/Arbeitnehmerbeiträge.*sozialen\s+Pflegeversicherung/i.test(line)) return '26'
+  if (/Arbeitnehmerbeiträge.*Arbeitslosenversicherung/i.test(line)) return '27'
+
+  return null
+}
+
+/**
+ * Extracts the trailing monetary value from an LStB line, ignoring line ordinals such as
+ * "ohne 9. und 10." or "von 3." at the middle of official BMF headings.
+ */
+function extractTrailingAmount(line: string, isRowHeader: boolean): number | null {
+  let sanitized = line.replace(
+    /\b(?:ohne|nach|von|gemäß|zu|lt\.|Zeile|Nr\.|Abs\.)\s+\d+\.?(?:\s*(?:und|bis|,|\/)\s*\d+\.?)*/gi,
+    ' ',
+  )
+  if (isRowHeader) {
+    sanitized = sanitized.replace(/^(?:Zeile\s+)?\d{1,2}\s*[a-c]?[.)]?(?=\s+[A-Za-zÄÖÜäöüß(])\s*/i, '')
+  }
+  sanitized = sanitized.trim()
+
+  if (!sanitized) return null
+
+  const amountRegex = /(?:^|\s)((?:\d{1,3}(?:[.\s]\d{3})+|\d+)(?:[,.]\d{1,2})?)\s*(?:€|EUR|Euro)?(?=\s*$|\s+\S*$)/g
+  let lastValid: number | null = null
+  for (const m of sanitized.matchAll(amountRegex)) {
+    const candidate = m[1]
+    if (!candidate) continue
+    const matchEnd = (m.index ?? 0) + m[0].length
+    const trailing = sanitized.slice(matchEnd).trim()
+    if (trailing && !/^(?:€|EUR|Euro)$/i.test(trailing)) continue
+    const parsed = parseGermanOcrAmount(candidate)
+    if (parsed !== null) {
+      lastValid = parsed
+    }
+  }
+
+  if (lastValid !== null) return lastValid
+
+  // Standalone amount line fallback
+  return parseGermanOcrAmount(sanitized)
+}
+
+/**
+ * Stage 1 deterministic parser for German Lohnsteuerbescheinigungen.
+ * Never extracts PII (Steuer-ID, eTIN, employer, Steuerklasse).
+ */
+export function parseLstbTextDeterministically(rawText: string): LstbExtractionResult {
+  const taxYear = extractLstbTaxYear(rawText)
+  const lines = rawText.split(/\r?\n/)
+
+  let line3: number | null = null
+  let line4: number | null = null
+  let line23: number | null = null
+  let line23a: number | null = null
+  let line23b: number | null = null
+  let line25: number | null = null
+  let line26: number | null = null
+  let line27: number | null = null
+
+  const ambiguous = new Set<WageTaxCertificateFieldId>()
+
+  const assignLine = (key: TargetRowKey, value: number) => {
+    switch (key) {
+      case '3':
+        if (line3 !== null && Math.round(line3) !== Math.round(value)) ambiguous.add('bruttoarbeitslohn')
+        else line3 = value
+        break
+      case '4':
+        if (line4 !== null && Math.round(line4) !== Math.round(value)) ambiguous.add('lohnsteuer')
+        else line4 = value
+        break
+      case '23a':
+        if (line23a !== null && Math.round(line23a) !== Math.round(value)) ambiguous.add('sozialversicherung')
+        else line23a = value
+        break
+      case '23b':
+        if (line23b !== null && Math.round(line23b) !== Math.round(value)) ambiguous.add('sozialversicherung')
+        else line23b = value
+        break
+      case '23':
+        if (line23 !== null && Math.round(line23) !== Math.round(value)) ambiguous.add('sozialversicherung')
+        else line23 = value
+        break
+      case '25':
+        if (line25 !== null && Math.round(line25) !== Math.round(value)) ambiguous.add('sozialversicherung')
+        else line25 = value
+        break
+      case '26':
+        if (line26 !== null && Math.round(line26) !== Math.round(value)) ambiguous.add('sozialversicherung')
+        else line26 = value
+        break
+      case '27':
+        if (line27 !== null && Math.round(line27) !== Math.round(value)) ambiguous.add('sozialversicherung')
+        else line27 = value
+        break
+    }
+  }
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i]!
+    const matched = classifyLine(line)
+    if (!matched || matched === 'other') {
+      continue
+    }
+
+    let amount = extractTrailingAmount(line, true)
+    // Look ahead up to 2 continuation lines if amount is on the next line (wrapped table cell)
+    if (amount === null) {
+      for (let offset = 1; offset <= 2 && i + offset < lines.length; offset += 1) {
+        const nextLine = lines[i + offset]!.trim()
+        if (!nextLine) continue
+        if (classifyLine(nextLine) !== null) break
+        const nextAmount = extractTrailingAmount(nextLine, false)
+        if (nextAmount !== null) {
+          amount = nextAmount
+          break
+        }
+      }
+    }
+
+    if (amount !== null) {
+      assignLine(matched, amount)
+    }
+  }
+
+  return evaluateLstbExtraction({
+    taxYear,
+    line3Brutto: line3,
+    line4Lohnsteuer: line4,
+    svBreakdown: {
+      line23,
+      line23a,
+      line23b,
+      line25,
+      line26,
+      line27,
+    },
+    hasAmbiguity: [...ambiguous],
+  })
+}
