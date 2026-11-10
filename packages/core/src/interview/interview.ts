@@ -160,10 +160,19 @@ export const LATER_ALLOWED_STEPS = [
 
 const LATER_ALLOWED_SET: ReadonlySet<string> = new Set<string>(LATER_ALLOWED_STEPS)
 
+/**
+ * Steps still marked „später“. A stored answer whose parent was later answered differently
+ * (Umzug „Ja“ → Kosten später → Umzug „Nein“) stays in storage but is no longer reachable, so it
+ * must not widen the range, raise a notice or keep a tile on „Betrag offen“.
+ */
 export function laterAmountSteps(answers: Answers): readonly EntryStepId[] {
   return Object.entries(answers)
     .filter(([step, value]) => Object.hasOwn(QUESTIONS, step) && value === AMOUNT_LATER)
     .map(([step]) => step as EntryStepId)
+    .filter((step) => {
+      const entry = entryForStep(step)
+      return entry !== undefined && isReachableFor(ENTRIES[entry], answers, step)
+    })
 }
 
 export function amountFromAnswer(value: string | undefined): number | null {
