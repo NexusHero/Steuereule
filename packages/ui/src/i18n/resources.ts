@@ -15,6 +15,9 @@ export const uiResources = {
       ai: {
         marke: 'KI',
       },
+      sheet: {
+        schliessen: 'Schließen',
+      },
     },
   },
   en: {
@@ -30,6 +33,9 @@ export const uiResources = {
       },
       ai: {
         marke: 'AI',
+      },
+      sheet: {
+        schliessen: 'Close',
       },
     },
   },
