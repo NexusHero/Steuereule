@@ -6672,7 +6672,8 @@
               "missing",
               "unreadable",
               "plausibility_conflict",
-              "partial_sv_lines"
+              "partial_sv_lines",
+              "llm_suggested"
             ],
             "example": null
           }
@@ -6895,7 +6896,8 @@
               "missing",
               "unreadable",
               "plausibility_conflict",
-              "partial_sv_lines"
+              "partial_sv_lines",
+              "llm_suggested"
             ],
             "example": null
           },
@@ -7135,7 +7137,8 @@
               "missing",
               "unreadable",
               "plausibility_conflict",
-              "partial_sv_lines"
+              "partial_sv_lines",
+              "llm_suggested"
             ],
             "example": null
           }

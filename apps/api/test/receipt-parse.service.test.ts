@@ -448,12 +448,12 @@ describe('ReceiptParseService — Two-Stage LStB Cascade (#444)', () => {
     expect(await h.lstbRepo.findForUserAndYear('user-lstb-1', 2025)).toBeNull()
   })
 
-  it('Stage 2 runs text-only LLM fallback on yellow/incomplete LStB, scrubs all PII, and never attaches images even when allowed', async () => {
+  it('Stage 2 sees only the allowlisted rows, and invented amounts never become values (ADR-0058, AC 4)', async () => {
     const h = buildTestHarness(
       [
         JSON.stringify({
           taxYear: 2025,
-          line3BruttoEur: 48000,
+          line3BruttoEur: 99000,
           line4LohnsteuerEur: 7600,
           line23RvEur: null,
           line23aRvEur: 4464,
@@ -461,7 +461,6 @@ describe('ReceiptParseService — Two-Stage LStB Cascade (#444)', () => {
           line25KvEur: 3650,
           line26PvEur: 850,
           line27AlvEur: 624,
-          unreadableFields: [],
         }),
       ],
       true,
@@ -473,15 +472,16 @@ describe('ReceiptParseService — Two-Stage LStB Cascade (#444)', () => {
       steuernummer: null,
     })
 
-    // Garbled OCR misses line 4 and leaves partial SV -> needsLlmFallback === true
+    // Line 4 is missing and SV is partial -> the deterministic stage leaves fields unresolved.
     const rawText = [
       'Lohnsteuerbescheinigung 2025',
-      'Name: Erika Mustermann',
+      'Herrn',
+      'Erika Mustermann',
+      'Am Hang 5',
       'Identifikationsnummer: 12345678901',
       'eTIN: XYZABC12345678',
       'Transferticket: TT-SECRET-77',
-      'Arbeitgeber: Acme Robotics GmbH',
-      'Musterstraße 42, 10115 Berlin',
+      'Stadtwerke Musterstadt',
       'Steuerklasse: I',
       'Zeile 3 Bruttoarbeitslohn 48.000,00',
       'Zeile 23a AN Rentenversicherung 4.464,00',
@@ -495,24 +495,61 @@ describe('ReceiptParseService — Two-Stage LStB Cascade (#444)', () => {
       mimeType: 'image/png',
     })
 
-    // Stage 2 called once, strictly text-only, ZERO image_url parts and ZERO PII
     expect(h.visionModel.calls).toHaveLength(1)
     const dump = JSON.stringify(h.visionModel.calls[0])
-    expect(dump).not.toContain('image_url')
-    expect(dump).not.toContain('iVBORw0KGgo')
-    expect(dump).not.toContain('Erika')
-    expect(dump).not.toContain('Mustermann')
-    expect(dump).not.toContain('12345678901')
-    expect(dump).not.toContain('XYZABC12345678')
-    expect(dump).not.toContain('TT-SECRET-77')
-    expect(dump).not.toContain('Acme Robotics GmbH')
-    expect(dump).not.toContain('Musterstraße')
+    for (const pii of ['image_url', 'Erika', 'Mustermann', 'Am Hang', '12345678901', 'XYZABC', 'TT-SECRET', 'Stadtwerke', 'Steuerklasse']) {
+      expect(dump).not.toContain(pii)
+    }
 
     expect(res.lstb?.stage).toBe('llm_text_fallback')
-    expect(res.lstb?.fields.bruttoarbeitslohn.value).toBe(48000)
-    expect(res.lstb?.fields.lohnsteuer.value).toBe(7600)
-    expect(res.lstb?.fields.sozialversicherung.value).toBe(4464 + 3650 + 850 + 624)
-    expect(res.lstb?.fields.sozialversicherung.status).toBe('ok')
+    // Deterministic green value is never overridden by the model's 99.000.
+    expect(res.lstb?.fields.bruttoarbeitslohn).toMatchObject({ value: 48000, status: 'ok' })
+    // 7.600 is not printed anywhere in the text the model saw -> dropped, stays open.
+    expect(res.lstb?.fields.lohnsteuer).toMatchObject({ value: null, status: 'pruefen' })
+    // SV was read deterministically (partial) and stays yellow — never upgraded to green.
+    expect(res.lstb?.fields.sozialversicherung).toMatchObject({ value: 4464, status: 'pruefen' })
+    expect(Object.values(res.lstb?.fields ?? {}).filter((f) => f.status === 'ok')).toHaveLength(1)
+  })
+
+  it('Stage 2 fills a field only with an amount printed in the row, always as llm_suggested', async () => {
+    const h = buildTestHarness(
+      [
+        JSON.stringify({
+          taxYear: 2025,
+          line3BruttoEur: null,
+          line4LohnsteuerEur: 7600,
+          line23RvEur: null,
+          line23aRvEur: null,
+          line23bRvEur: null,
+          line25KvEur: null,
+          line26PvEur: null,
+          line27AlvEur: null,
+        }),
+      ],
+      true,
+    )
+    const rawText = [
+      'Lohnsteuerbescheinigung für 2025',
+      '3. Bruttoarbeitslohn 48.000,00',
+      '4. Einbehaltene Lohnsteuer von 3. 7.600,00 Euro abzgl. Erstattung',
+      '23a AN Rentenversicherung 4.464,00',
+      '25. AN Krankenversicherung 3.650,00',
+    ].join('\n')
+
+    const res = await h.parseService.parseReceipt('user-lstb-4', { taxYear: 2025, kind: 'lstb', fileName: 'lstb.pdf', rawText })
+
+    expect(res.lstb?.fields.lohnsteuer).toMatchObject({ value: 7600, status: 'pruefen', reason: 'llm_suggested' })
+    expect(res.lstb?.fields.bruttoarbeitslohn.status).toBe('ok')
+  })
+
+  it('scrubs PII that sits inside an allowlisted row before the model sees it', async () => {
+    const h = buildTestHarness(['{}'], true)
+    const rawText = ['Lohnsteuerbescheinigung für 2025', '3. Bruttoarbeitslohn IBAN DE89370400440532013000'].join('\n')
+
+    await h.parseService.parseReceipt('user-lstb-5', { taxYear: 2025, kind: 'lstb', fileName: 'lstb.pdf', rawText })
+
+    expect(h.visionModel.calls).toHaveLength(1)
+    expect(JSON.stringify(h.visionModel.calls[0])).not.toContain('DE89370400440532013000')
   })
 
   it('surfaces tax year conflict visibly and stages ZERO drafts (ADR-0008)', async () => {

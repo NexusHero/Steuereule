@@ -14,6 +14,8 @@ export type LstbFieldReason =
   | 'unreadable'
   | 'plausibility_conflict'
   | 'partial_sv_lines'
+  /** Suggested by the text fallback: never green, always needs the user's confirmation. */
+  | 'llm_suggested'
 
 /** One summand of a field's calculation, e.g. line 23a with its printed amount. Formatting is the UI's job. */
 export interface LstbCalculationTerm {
@@ -528,4 +530,123 @@ export function parseLstbTextDeterministically(rawText: string): LstbExtractionR
     },
     hasAmbiguity: [...ambiguous],
   })
+}
+
+const AMOUNT_ONLY_LINE = /^\s*\d{1,3}(?:[.\s]\d{3})*(?:[,.]\d{1,2})?\s*(?:€|EUR|Euro)?\s*$/i
+
+/**
+ * Allowlist for the text fallback (ADR-0058): keeps only the certificate rows 3, 4, 23–27
+ * (plus a wrapped amount-only continuation line) and a synthetic year header. Everything
+ * else — name, address, employer, Steuer-ID, eTIN, Steuerklasse — never leaves the server,
+ * whether or not a scrubber would have recognised it.
+ */
+export function selectLstbRelevantLines(rawText: string): string {
+  if (!rawText) return ''
+  const lines = rawText.split(/\r?\n/)
+  const kept: string[] = []
+  const year = extractLstbTaxYear(rawText)
+  if (year !== null) kept.push(`Lohnsteuerbescheinigung ${year}`)
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i]!.trim()
+    const row = classifyLine(line)
+    if (row === null || row === 'other') continue
+    kept.push(line)
+    const next = lines[i + 1]?.trim()
+    if (next !== undefined && AMOUNT_ONLY_LINE.test(next)) {
+      kept.push(next)
+      i += 1
+    }
+  }
+  return kept.join('\n')
+}
+
+/** Raw line values a text fallback suggests; each is checked against the text it was shown. */
+export interface LstbTextFallbackSuggestion {
+  readonly line3Brutto: number | null
+  readonly line4Lohnsteuer: number | null
+  readonly svBreakdown: LstbSvBreakdown
+}
+
+function amountsPrintedIn(text: string): readonly number[] {
+  const amounts: number[] = []
+  for (const m of text.matchAll(/\d{1,3}(?:[.\s]\d{3})+(?:[,.]\d{1,2})?|\d+(?:[,.]\d{1,2})?/g)) {
+    const parsed = parseGermanOcrAmount(m[0])
+    if (parsed !== null) amounts.push(parsed)
+  }
+  return amounts
+}
+
+function groundedIn(printed: readonly number[], value: number | null): number | null {
+  if (value === null || !Number.isFinite(value)) return null
+  return printed.some((p) => Math.abs(p - value) < 0.005) ? value : null
+}
+
+/**
+ * Merges a text-fallback suggestion into the deterministic result without ever producing
+ * a false green (AC 4):
+ * - a suggested amount counts only if it is literally printed in `groundingText`
+ *   (the allowlisted text the model saw) — invented numbers are dropped;
+ * - it only fills fields the deterministic parser left empty, never overrides one;
+ * - every filled field is `pruefen` with reason `llm_suggested`;
+ * - deterministic fields keep their status unless the merged values now contradict each
+ *   other, in which case the shared plausibility rule downgrades them as well.
+ */
+export function applyLstbTextFallback(
+  stage1: LstbExtractionResult,
+  suggestion: LstbTextFallbackSuggestion,
+  groundingText: string,
+): LstbExtractionResult {
+  const printed = amountsPrintedIn(groundingText)
+  const rawAmount = (field: LstbExtractedField): number | null => field.calculation[0]?.amount ?? null
+
+  const bruttoFromFallback = stage1.fields.bruttoarbeitslohn.value === null
+  const lohnsteuerFromFallback = stage1.fields.lohnsteuer.value === null
+  const svFromFallback = stage1.fields.sozialversicherung.value === null
+
+  const groundedSv: LstbSvBreakdown = {
+    line23: groundedIn(printed, suggestion.svBreakdown.line23),
+    line23a: groundedIn(printed, suggestion.svBreakdown.line23a),
+    line23b: groundedIn(printed, suggestion.svBreakdown.line23b),
+    line25: groundedIn(printed, suggestion.svBreakdown.line25),
+    line26: groundedIn(printed, suggestion.svBreakdown.line26),
+    line27: groundedIn(printed, suggestion.svBreakdown.line27),
+  }
+
+  const merged = evaluateLstbExtraction({
+    taxYear: stage1.taxYear,
+    line3Brutto: bruttoFromFallback
+      ? groundedIn(printed, suggestion.line3Brutto)
+      : rawAmount(stage1.fields.bruttoarbeitslohn),
+    line4Lohnsteuer: lohnsteuerFromFallback
+      ? groundedIn(printed, suggestion.line4Lohnsteuer)
+      : rawAmount(stage1.fields.lohnsteuer),
+    svBreakdown: svFromFallback ? groundedSv : stage1.svBreakdown,
+  })
+
+  const pick = (
+    id: WageTaxCertificateFieldId,
+    fromFallback: boolean,
+  ): LstbExtractedField => {
+    const before = stage1.fields[id]
+    const after = merged.fields[id]
+    if (fromFallback) {
+      return after.value === null ? before : { ...after, status: 'pruefen', reason: 'llm_suggested' }
+    }
+    // Never upgrade: a deterministic `pruefen` stays as it was.
+    if (before.status === 'pruefen') return before
+    return after.status === 'pruefen' ? { ...before, status: 'pruefen', reason: after.reason } : before
+  }
+
+  const fields = {
+    bruttoarbeitslohn: pick('bruttoarbeitslohn', bruttoFromFallback),
+    lohnsteuer: pick('lohnsteuer', lohnsteuerFromFallback),
+    sozialversicherung: pick('sozialversicherung', svFromFallback),
+  }
+  return {
+    taxYear: stage1.taxYear,
+    fields,
+    svBreakdown: svFromFallback ? merged.svBreakdown : stage1.svBreakdown,
+    unresolvedFields: (Object.keys(fields) as WageTaxCertificateFieldId[]).filter((id) => fields[id].status === 'pruefen'),
+  }
 }

@@ -741,6 +741,7 @@ export const appResources = {
               unreadable: 'Feld auf dem Beleg schwer lesbar — bitte prüfen.',
               plausibility_conflict: 'Wert passt rechnerisch nicht zum Bruttoarbeitslohn — bitte prüfen.',
               partial_sv_lines: 'Nur ein Teil der SV-Zeilen (23, 25, 26, 27) erkannt — Summe bitte prüfen.',
+              llm_suggested: 'Vorschlag der Texterkennung — bitte mit deinem Beleg vergleichen.',
             },
           },
           yearConflict: {
@@ -2261,6 +2262,7 @@ export const appResources = {
               unreadable: 'Field is hard to read on the document — please verify.',
               plausibility_conflict: 'Value does not reconcile with gross pay — please verify.',
               partial_sv_lines: 'Only some social-insurance lines (23, 25, 26, 27) detected — please check sum.',
+              llm_suggested: 'Suggested by text recognition — please compare with your certificate.',
             },
           },
           yearConflict: {
