@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { AMOUNT_LATER } from '@steuereule/core'
+import { AMOUNT_LATER, type Conflict, type Notice } from '@steuereule/core'
 import type {
   ChSalaryCertificateResponseDto,
   ChildrenResponseDto,
@@ -10,10 +10,13 @@ import type {
   RentalResponseDto,
 } from '@steuereule/api-client'
 import {
+  FINDING_TILE,
   TILES,
   hasAnswersForEntry,
   nextStepTile,
   tileById,
+  tileHintSeverity,
+  tilesForFinding,
   visibleTiles,
   type TileFacts,
   type TileId,
@@ -353,6 +356,52 @@ describe('cockpit tiles (§ 2.2–2.4)', () => {
       expect(hasAnswersForEntry('lebenslagen', { dhf: 'Nein' })).toBe(true)
       expect(hasAnswersForEntry('einkuenfte', { einkuenfte: 'Kapitalerträge' })).toBe(true)
       expect(hasAnswersForEntry('sonderausgaben', { spenden: 'Ja', 'spenden-betrag': AMOUNT_LATER })).toBe(true)
+    })
+  })
+
+  describe('FINDING_TILE & tile hints (§ 3.2)', () => {
+    it('maps every conflict and notice kind to its fixing tile or abgabe', () => {
+      expect(FINDING_TILE['lstb-offen']).toBe('lstb')
+      expect(FINDING_TILE['lstb-unklar']).toBe('lstb')
+      expect(FINDING_TILE['lstb-widerspruch']).toBe('lstb')
+      expect(FINDING_TILE['werktage-widerspruch']).toBe('arbeitsweg')
+      expect(FINDING_TILE['gated-einkunftsart']).toBe('einkuenfte')
+      expect(FINDING_TILE['erfasst-nicht-gerechnet']).toBe('lebenslagen')
+      expect(FINDING_TILE['werbungskosten-uebersteigt-einnahmen']).toBe('abgabe')
+      expect(FINDING_TILE['betrag-spaeter']).toBe('abgabe')
+    })
+
+    it('resolves betrag-spaeter to the catalog tiles owning its steps and Gewerbe gate to abgabe', () => {
+      expect(tilesForFinding({ kind: 'betrag-spaeter', steps: ['dhf-miete'] })).toEqual(['lebenslagen'])
+      expect(
+        tilesForFinding({ kind: 'betrag-spaeter', steps: ['dhf-miete', 'umzug-kosten', 'spenden-betrag'] }),
+      ).toEqual(['lebenslagen', 'sonderausgaben'])
+      expect(tilesForFinding({ kind: 'betrag-spaeter', steps: [] })).toEqual(['abgabe'])
+      expect(tilesForFinding({ kind: 'gated-einkunftsart', incomeType: 'Kapital' })).toEqual(['einkuenfte'])
+      expect(tilesForFinding({ kind: 'gated-einkunftsart', incomeType: 'Vermietung' })).toEqual(['einkuenfte'])
+      expect(tilesForFinding({ kind: 'gated-einkunftsart', incomeType: 'Gewerbe' })).toEqual(['abgabe'])
+      expect(tilesForFinding({ kind: 'lstb-offen', fields: ['bruttoarbeitslohn'] })).toEqual(['lstb'])
+      expect(tilesForFinding({ kind: 'erfasst-nicht-gerechnet', amount: 1200 })).toEqual(['lebenslagen'])
+      expect(
+        tilesForFinding({ kind: 'werbungskosten-uebersteigt-einnahmen', werbungskosten: 5000, einnahmen: 1000 }),
+      ).toEqual(['abgabe'])
+    })
+
+    it('computes tileHintSeverity with blocker precedence over warnung', () => {
+      const conflicts: readonly Conflict[] = [{ kind: 'lstb-offen', fields: ['bruttoarbeitslohn'] }]
+      const notices: readonly Notice[] = [
+        { kind: 'betrag-spaeter', steps: ['spenden-betrag'] },
+        { kind: 'erfasst-nicht-gerechnet', amount: 500 },
+      ]
+
+      expect(tileHintSeverity('lstb', conflicts, notices)).toBe('blocker')
+      expect(tileHintSeverity('sonderausgaben', conflicts, notices)).toBe('warnung')
+      expect(tileHintSeverity('lebenslagen', conflicts, notices)).toBe('warnung')
+      expect(tileHintSeverity('einkuenfte', conflicts, notices)).toBeNull()
+
+      const gatedConflicts: readonly Conflict[] = [{ kind: 'gated-einkunftsart', incomeType: 'Kapital' }]
+      const sameTileNotices: readonly Notice[] = [{ kind: 'erfasst-nicht-gerechnet', amount: 500 }]
+      expect(tileHintSeverity('einkuenfte', gatedConflicts, sameTileNotices)).toBe('blocker')
     })
   })
 })
